@@ -761,7 +761,8 @@ static const cassette_config coco_cassette_config =
 {
 	coco_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static const floppy_config coco_floppy_config =
@@ -771,9 +772,9 @@ static const floppy_config coco_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(coco),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( dragon32 )
@@ -1248,7 +1249,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco3h )
 	MDRV_IMPORT_FROM( coco3 )
-	MDRV_CPU_REPLACE( "maincpu", HD6309, COCO_CPU_SPEED_HZ)
+	MDRV_CPU_REPLACE( "maincpu", HD6309, COCO_CPU_SPEED_HZ * 4)
+	MDRV_CPU_PROGRAM_MAP(coco3_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cocoe )

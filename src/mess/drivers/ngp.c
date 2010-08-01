@@ -615,12 +615,12 @@ static MACHINE_RESET( ngp )
 	ngp_state *state = (ngp_state *)machine->driver_data;
 
 	state->old_to3 = 0;
-	state->tlcs900 = devtag_get_device( machine, "maincpu" );
-	state->z80 = devtag_get_device( machine, "soundcpu" );
-	state->t6w28 = devtag_get_device( machine, "t6w28" );
-	state->dac_l = devtag_get_device( machine, "dac_l" );
-	state->dac_r = devtag_get_device( machine, "dac_r" );
-	state->k1ge = devtag_get_device( machine, "k1ge" );
+	state->tlcs900 = machine->device( "maincpu" );
+	state->z80 = machine->device( "soundcpu" );
+	state->t6w28 = machine->device( "t6w28" );
+	state->dac_l = machine->device( "dac_l" );
+	state->dac_r = machine->device( "dac_r" );
+	state->k1ge = machine->device( "k1ge" );
 
 	cpu_suspend( state->z80, SUSPEND_REASON_HALT, 1 );
 	cpu_set_input_line( state->z80, 0, CLEAR_LINE );
@@ -653,29 +653,29 @@ static DEVICE_START( ngp_cart )
 
 static DEVICE_IMAGE_LOAD( ngp_cart )
 {
-	ngp_state *state = (ngp_state *)image->machine->driver_data;
+	ngp_state *state = (ngp_state *)image.device().machine->driver_data;
 	UINT32 filesize;
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		filesize = image_length(image);
+		filesize = image.length();
 
 		if (filesize != 0x80000 && filesize != 0x100000 && filesize != 0x200000 && filesize != 0x400000)
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Incorrect or not support cartridge size");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Incorrect or not support cartridge size");
+			return IMAGE_INIT_FAIL;
 		}
 
-		if (image_fread(image, memory_region(image->machine, "cart"), filesize) != filesize)
+		if (image.fread( memory_region(image.device().machine, "cart"), filesize) != filesize)
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Error loading file");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Error loading file");
+			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
 	{
-		filesize = image_get_software_region_length(image, "rom");
-		memcpy(memory_region(image->machine, "cart"), image_get_software_region(image, "rom"), filesize);
+		filesize = image.get_software_region_length("rom");
+		memcpy(memory_region(image.device().machine, "cart"), image.get_software_region("rom"), filesize);
 	}
 
 	state->flash_chip[0].manufacturer_id = 0x98;
@@ -736,13 +736,13 @@ static DEVICE_IMAGE_LOAD( ngp_cart )
 	state->flash_chip[0].present = 1;
 	state->flash_chip[0].state = F_READ;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
 static DEVICE_IMAGE_UNLOAD( ngp_cart )
 {
-	ngp_state *state = (ngp_state *)image->machine->driver_data;
+	ngp_state *state = (ngp_state *)image.device().machine->driver_data;
 
 	state->flash_chip[0].present = 0;
 	state->flash_chip[0].state = F_READ;
@@ -818,7 +818,7 @@ static MACHINE_DRIVER_START( ngp )
 	MDRV_CARTSLOT_LOAD(ngp_cart)
 	MDRV_CARTSLOT_INTERFACE("ngp_cart")
 	MDRV_CARTSLOT_UNLOAD(ngp_cart)
-	MDRV_SOFTWARE_LIST_ADD("ngp")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","ngp")
 MACHINE_DRIVER_END
 
 
@@ -837,7 +837,7 @@ static MACHINE_DRIVER_START( ngpc )
 	MDRV_CARTSLOT_LOAD(ngp_cart)
 	MDRV_CARTSLOT_INTERFACE("ngp_cart")
 	MDRV_CARTSLOT_UNLOAD(ngp_cart)
-	MDRV_SOFTWARE_LIST_ADD("ngp")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","ngp")
 MACHINE_DRIVER_END
 
 

@@ -349,9 +349,9 @@ VIDEO_START( arcadia )
 	}
 
 	{
-		running_device *screen = video_screen_first(machine);
-		int width = video_screen_get_width(screen);
-		int height = video_screen_get_height(screen);
+		screen_device *screen = screen_first(*machine);
+		int width = screen->width();
+		int height = screen->height();
 		arcadia_video.bitmap = auto_bitmap_alloc(machine, width, height, BITMAP_FORMAT_INDEXED16);
 	}
 }
@@ -420,11 +420,11 @@ WRITE8_HANDLER(arcadia_video_w)
 			arcadia_video.ypos=255-data+YPOS;
 			break;
 		case 0xfd:
-			arcadia_soundport_w(devtag_get_device(space->machine, "custom"), offset&3, data);
+			arcadia_soundport_w(space->machine->device("custom"), offset&3, data);
 			arcadia_video.multicolor=data&0x80;
 			break;
 		case 0xfe:
-			arcadia_soundport_w(devtag_get_device(space->machine, "custom"), offset&3, data);
+			arcadia_soundport_w(space->machine->device("custom"), offset&3, data);
 			arcadia_video.shift=(data>>5);
 			break;
 		case 0xf0: case 0xf2: case 0xf4: case 0xf6:
@@ -643,8 +643,8 @@ static void arcadia_draw_sprites(running_machine *machine, bitmap_t *bitmap)
 
 INTERRUPT_GEN( arcadia_video_line )
 {
-	running_device *screen = video_screen_first(device->machine);
-	int width = video_screen_get_width(screen);
+	screen_device *screen = screen_first(*device->machine);
+	int width = screen->width();
 
 	if (arcadia_video.ad_delay<=0)
 	arcadia_video.ad_select=arcadia_video.reg.d.pal[1]&0x40;

@@ -692,7 +692,7 @@ static MACHINE_DRIVER_START( snes_base )
 	MDRV_DRIVER_DATA(snes_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 5A22, MCLK_NTSC)	/* 2.68 MHz, also 3.58 MHz */
+	MDRV_CPU_ADD("maincpu", _5A22, MCLK_NTSC)	/* 2.68 MHz, also 3.58 MHz */
 	MDRV_CPU_PROGRAM_MAP(snes_map)
 
 	MDRV_CPU_ADD("soundcpu", SPC700, 1024000)	/* 1.024 MHz */
@@ -741,7 +741,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( snespal )
 	MDRV_IMPORT_FROM(snes)
-	MDRV_CPU_REPLACE("maincpu", 5A22, MCLK_PAL)
+	MDRV_CPU_MODIFY( "maincpu" )
+	MDRV_CPU_CLOCK( MCLK_PAL )
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_PAL, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_PAL, 0, SNES_SCR_HEIGHT_PAL)
@@ -826,24 +827,6 @@ ROM_START( snespsfx )
 	ROM_REGION( MAX_SNES_CART_SIZE, "cart", ROMREGION_ERASE00 )
 ROM_END
 
-ROM_START( sfcbox )
-	ROM_REGION( 0x1000000, "maincpu", ROMREGION_ERASE00 )
-
-	/* atm, we only load these here, but we don't really emulate anything */
-	ROM_REGION( 0x10000, "grom", 0 )
-	ROM_LOAD( "grom1-1.bin", 0x0000, 0x8000, CRC(333bf9a7) SHA1(5d0cd9ca29e5580c3eebe9f136839987c879f979) )
-	ROM_LOAD( "grom1-3.bin", 0x8000, 0x8000, CRC(ebec4c1c) SHA1(d638ef1486b4c0b3d4d5b666929ca7947e16efad) )
-
-	ROM_REGION( 0x80000, "atrom", 0 )
-	ROM_LOAD( "atrom-4s-0.smc", 0x00000, 0x80000, CRC(ad3ec05c) SHA1(a3d336db585fe02a37c323422d9db6a33fd489a6) )
-
-	ROM_REGION( 0x100, "user5", 0 )		/* IPL ROM */
-	ROM_LOAD( "spc700.rom", 0x00, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0) )	/* boot rom */
-
-	ROM_REGION( 0x1000, "addons", ROMREGION_ERASE00 )		/* add-on chip ROMs (DSP, SFX, etc) */
-	ROM_REGION( MAX_SNES_CART_SIZE, "cart", ROMREGION_ERASE00 )
-ROM_END
-
 ROM_START( snesst )
 	ROM_REGION( 0x1000000, "maincpu", ROMREGION_ERASE00 )
 
@@ -884,7 +867,6 @@ ROM_END
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT  INIT          COMPANY     FULLNAME                                      FLAGS */
 CONS( 1989, snes,     0,      0,      snes,     snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 CONS( 1991, snespal,  snes,   0,      snespal,  snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System (PAL)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 199?, sfcbox,   snes,   0,      snes,     snes,  snes_mess,    "Nintendo", "Super Famicom Box (NTSC)", GAME_NOT_WORKING )
 
 // FIXME: the "hacked" drivers below, currently needed due to limitations in the core device design, should eventually be removed
 

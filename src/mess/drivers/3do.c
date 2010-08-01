@@ -94,13 +94,8 @@ Part list of Goldstar 3DO Interactive Multiplayer
 #include "emu.h"
 #include "includes/3do.h"
 #include "devices/chd_cd.h"
+#include "cpu/arm/arm.h"
 #include "cpu/arm7/arm7.h"
-
-
-/* The 3DO has an ARM6 core which is a bit different from the current
-   ARM cpu cores. This define 'hack' can be removed once the ARM6 core
-   is fully supported. */
-#define CPU_ARM6	CPU_ARM7
 
 
 #define X2_CLOCK_PAL	59000000
@@ -110,14 +105,16 @@ Part list of Goldstar 3DO Interactive Multiplayer
 
 static ADDRESS_MAP_START( 3do_mem, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0x00000000, 0x001FFFFF) AM_RAMBANK("bank1") AM_BASE_MEMBER(_3do_state,dram)						/* DRAM */
-	AM_RANGE(0x00200000, 0x002FFFFF) AM_RAM	AM_BASE_MEMBER(_3do_state,vram)									/* VRAM */
+	AM_RANGE(0x00200000, 0x003FFFFF) AM_RAM	AM_BASE_MEMBER(_3do_state,vram)									/* VRAM */
 	AM_RANGE(0x03000000, 0x030FFFFF) AM_ROMBANK("bank2")									/* BIOS */
+	AM_RANGE(0x03100000, 0x0313FFFF) AM_RAM													/* Brooktree? */
 	AM_RANGE(0x03140000, 0x0315FFFF) AM_READWRITE(_3do_nvarea_r, _3do_nvarea_w)				/* NVRAM */
-	AM_RANGE(0x03180000, 0x031FFFFF) AM_READWRITE(_3do_unk_318_r, _3do_unk_318_w)			/* ???? */
+	AM_RANGE(0x03180000, 0x031BFFFF) AM_READWRITE(_3do_slow2_r, _3do_slow2_w)				/* Slow bus - additional expansion */
 	AM_RANGE(0x03200000, 0x0320FFFF) AM_READWRITE(_3do_svf_r, _3do_svf_w)					/* special vram access1 */
 	AM_RANGE(0x03300000, 0x033FFFFF) AM_READWRITE(_3do_madam_r, _3do_madam_w)				/* address decoder */
 	AM_RANGE(0x03400000, 0x034FFFFF) AM_READWRITE(_3do_clio_r, _3do_clio_w)					/* io controller */
 ADDRESS_MAP_END
+
 
 static INPUT_PORTS_START( 3do )
 	PORT_START("P1")
@@ -136,6 +133,8 @@ static MACHINE_RESET( 3do )
 {
 	_3do_state *state = (_3do_state *)machine->driver_data;
 
+	state->maincpu = downcast<legacy_cpu_device*>( machine->device("maincpu") );
+
 	memory_set_bankptr(machine, "bank2",memory_region(machine, "user1"));
 
 	/* configure overlay */
@@ -145,8 +144,9 @@ static MACHINE_RESET( 3do )
 	/* start with overlay enabled */
 	memory_set_bank(machine, "bank1", 1);
 
-	_3do_madam_init();
-	_3do_clio_init();
+	_3do_slow2_init(machine);
+	_3do_madam_init(machine);
+	_3do_clio_init(machine, downcast<screen_device *>(machine->device("screen")));
 }
 
 
@@ -155,13 +155,15 @@ static MACHINE_DRIVER_START( 3do )
 	MDRV_DRIVER_DATA( _3do_state )
 
 	/* Basic machine hardware */
-	MDRV_CPU_ADD( "maincpu", ARM6, XTAL_50MHz/4 )
+	MDRV_CPU_ADD( "maincpu", ARM7_BE, XTAL_50MHz/4 )
 	MDRV_CPU_PROGRAM_MAP( 3do_mem)
 
 	MDRV_MACHINE_RESET( 3do )
 
-	MDRV_VIDEO_START( generic_bitmapped )
-	MDRV_VIDEO_UPDATE( generic_bitmapped )
+//	MDRV_VIDEO_START( generic_bitmapped )
+//	MDRV_VIDEO_UPDATE( generic_bitmapped )
+	MDRV_VIDEO_START( _3do )
+	MDRV_VIDEO_UPDATE( _3do )
 
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_RGB32 )
@@ -176,7 +178,7 @@ static MACHINE_DRIVER_START( 3do_pal )
 	MDRV_DRIVER_DATA( _3do_state )
 
 	/* Basic machine hardware */
-	MDRV_CPU_ADD("maincpu", ARM6, XTAL_50MHz/4 )
+	MDRV_CPU_ADD("maincpu", ARM7_BE, XTAL_50MHz/4 )
 	MDRV_CPU_PROGRAM_MAP( 3do_mem)
 
 	MDRV_MACHINE_RESET( 3do )

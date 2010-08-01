@@ -10,14 +10,14 @@ BOOL DriverIsComputer(int driver_index)
 {
 	machine_config *config;
 	ioport_list portlist;
-	config = machine_config_alloc(drivers[driver_index]->machine_config);
+	config = global_alloc(machine_config(drivers[driver_index]->machine_config));
 	input_port_list_init(portlist, drivers[driver_index]->ipt, NULL, 0, FALSE);
 
 	const input_field_config *field;
 	const input_port_config *port;
 	int has_keyboard = FALSE;
 	if (portlist.first()==NULL) has_keyboard = TRUE;
-	for (port = portlist.first(); port != NULL; port = port->next)
+	for (port = portlist.first(); port != NULL; port = port->next())
 	{
 		for (field = port->fieldlist; field != NULL; field = field->next)
 		{
@@ -26,7 +26,7 @@ BOOL DriverIsComputer(int driver_index)
 				break;
 		}
 	}
-	machine_config_free(config);
+	global_free(config);
 
 	return has_keyboard;
 }
@@ -40,24 +40,21 @@ BOOL DriverHasDevice(const game_driver *gamedrv, iodevice_t type)
 {
 	BOOL b = FALSE;
 	machine_config *config;
-	const device_config *device;
+	const device_config_image_interface *device;
 
 	// allocate the machine config
-	config = machine_config_alloc(gamedrv->machine_config);
+	config = global_alloc(machine_config(gamedrv->machine_config));
 
-	for (device = config->devicelist.first(); device != NULL;device = device->next)
+	for (bool gotone = config->m_devicelist.first(device); gotone; gotone = device->next(device))
 	{
-		if (is_image_device(device))
+		if (device->image_type() == type)
 		{
-			if (image_device_getinfo(config, device).type == type)
-			{
-				b = TRUE;
-				break;
-			}
+			b = TRUE;
+			break;
 		}
 	}
 
-	machine_config_free(config);
+	global_free(config);
 	return b;
 }
 

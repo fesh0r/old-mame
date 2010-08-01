@@ -557,12 +557,12 @@ static DEVICE_START( a2600_cart )
 
 static DEVICE_IMAGE_LOAD( a2600_cart )
 {
-	running_machine *machine = image->machine;
+	running_machine *machine = image.device().machine;
 	const struct _extrainfo_banking_def *eibd;
 	UINT8 *cart = CART;
 	const char	*extrainfo;
 
-	cart_size = image_length(image);
+	cart_size = image.length();
 
 	switch (cart_size)
 	{
@@ -579,15 +579,15 @@ static DEVICE_IMAGE_LOAD( a2600_cart )
 		break;
 
 	default:
-		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Invalid rom file size" );
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, "Invalid rom file size" );
 		return 1; /* unsupported image format */
 	}
 
 	current_bank = 0;
 
-	image_fread(image, cart, cart_size);
+	image.fread(cart, cart_size);
 
-	if (!(cart_size == 0x4000 && detect_modef6(image->machine)))
+	if (!(cart_size == 0x4000 && detect_modef6(image.device().machine)))
 	{
 		while (cart_size > 0x00800)
 		{
@@ -596,7 +596,7 @@ static DEVICE_IMAGE_LOAD( a2600_cart )
 		}
 	}
 
-	extrainfo = image_extrainfo( image );
+	extrainfo = image.extrainfo();
 
 	if ( extrainfo && extrainfo[0] )
 	{
@@ -678,14 +678,14 @@ static void mode3E_switch(running_machine *machine, UINT16 offset, UINT8 data)
 }
 static void mode3E_RAM_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
-	ram_base = extra_RAM->base.u8 + 0x200 * ( data & 0x3F );
+	ram_base = extra_RAM->base() + 0x200 * ( data & 0x3F );
 	memory_set_bankptr(machine,"bank1", ram_base );
 	mode3E_ram_enabled = 1;
 }
 static void modeFV_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	//printf("ModeFV %04x\n",offset);
-	if (!FVlocked && ( cpu_get_pc(devtag_get_device(machine, "maincpu")) & 0x1F00 ) == 0x1F00 )
+	if (!FVlocked && ( cpu_get_pc(machine->device("maincpu")) & 0x1F00 ) == 0x1F00 )
 	{
 		FVlocked = 1;
 		current_bank = current_bank ^ 0x01;
@@ -702,7 +702,7 @@ static void modeJVP_switch(running_machine *machine, UINT16 offset, UINT8 data)
 		current_bank ^= 1;
 		break;
 	default:
-		printf("%04X: write to unknown mapper address %02X\n", cpu_get_pc(devtag_get_device(machine, "maincpu")), 0xfa0 + offset );
+		printf("%04X: write to unknown mapper address %02X\n", cpu_get_pc(machine->device("maincpu")), 0xfa0 + offset );
 		break;
 	}
 	bank_base[1] = CART + 0x1000 * current_bank;
@@ -782,74 +782,64 @@ static READ8_HANDLER(modeSS_r)
 {
 	UINT8 data = ( offset & 0x800 ) ? bank_base[2][offset & 0x7FF] : bank_base[1][offset];
 
-	//logerror("%04X: read from modeSS area offset = %04X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset);
+	//logerror("%04X: read from modeSS area offset = %04X\n", cpu_get_pc(space->machine->device("maincpu")), offset);
 	/* Check for control register "write" */
 	if ( offset == 0xFF8 )
 	{
-		//logerror("%04X: write to modeSS control register data = %02X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), modeSS_byte);
+		//logerror("%04X: write to modeSS control register data = %02X\n", cpu_get_pc(space->machine->device("maincpu")), modeSS_byte);
 		modeSS_write_enabled = modeSS_byte & 0x02;
 		modeSS_write_delay = modeSS_byte >> 5;
 		switch ( modeSS_byte & 0x1C )
 		{
 		case 0x00:
-			bank_base[1] = extra_RAM->base.u8 + 2 * 0x800;
+			bank_base[1] = extra_RAM->base() + 2 * 0x800;
 			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x04:
-			bank_base[1] = extra_RAM->base.u8;
+			bank_base[1] = extra_RAM->base();
 			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x08:
-			bank_base[1] = extra_RAM->base.u8 + 2 * 0x800;
-			bank_base[2] = extra_RAM->base.u8;
+			bank_base[1] = extra_RAM->base() + 2 * 0x800;
+			bank_base[2] = extra_RAM->base();
 			modeSS_high_ram_enabled = 1;
 			break;
 		case 0x0C:
-			bank_base[1] = extra_RAM->base.u8;
-			bank_base[2] = extra_RAM->base.u8 + 2 * 0x800;
+			bank_base[1] = extra_RAM->base();
+			bank_base[2] = extra_RAM->base() + 2 * 0x800;
 			modeSS_high_ram_enabled = 1;
 			break;
 		case 0x10:
-			bank_base[1] = extra_RAM->base.u8 + 2 * 0x800;
+			bank_base[1] = extra_RAM->base() + 2 * 0x800;
 			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x14:
-			bank_base[1] = extra_RAM->base.u8 + 0x800;
+			bank_base[1] = extra_RAM->base() + 0x800;
 			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x18:
-			bank_base[1] = extra_RAM->base.u8 + 2 * 0x800;
-			bank_base[2] = extra_RAM->base.u8 + 0x800;
+			bank_base[1] = extra_RAM->base() + 2 * 0x800;
+			bank_base[2] = extra_RAM->base() + 0x800;
 			modeSS_high_ram_enabled = 1;
 			break;
 		case 0x1C:
-			bank_base[1] = extra_RAM->base.u8 + 0x800;
-			bank_base[2] = extra_RAM->base.u8 + 2 * 0x800;
+			bank_base[1] = extra_RAM->base() + 0x800;
+			bank_base[2] = extra_RAM->base() + 2 * 0x800;
 			modeSS_high_ram_enabled = 1;
 			break;
 		}
 		memory_set_bankptr(space->machine, "bank1", bank_base[1] );
 		memory_set_bankptr(space->machine, "bank2", bank_base[2] );
-
-		/* Check if we should stop the tape */
-		if ( cpu_get_pc(devtag_get_device(space->machine, "maincpu")) == 0x00FD )
-		{
-			running_device *img = devtag_get_device(space->machine, "cassette");
-			if ( img )
-			{
-				cassette_change_state(img, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
-			}
-		}
 	}
 	else if ( offset == 0xFF9 )
 	{
 		/* Cassette port read */
-		double tap_val = cassette_input( devtag_get_device(space->machine, "cassette") );
-		//logerror("%04X: Cassette port read, tap_val = %f\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), tap_val);
+		double tap_val = cassette_input( space->machine->device("cassette") );
+		//logerror("%04X: Cassette port read, tap_val = %f\n", cpu_get_pc(space->machine->device("maincpu")), tap_val);
 		if ( tap_val < 0 )
 		{
 			data = 0x00;
@@ -864,11 +854,11 @@ static READ8_HANDLER(modeSS_r)
 		/* Possible RAM write */
 		if ( modeSS_write_enabled )
 		{
-			int diff = cputag_get_total_cycles(space->machine, "maincpu") - modeSS_byte_started;
-			//logerror("%04X: offset = %04X, %d\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, diff);
+			int diff = space->machine->device<cpu_device>("maincpu")->total_cycles() - modeSS_byte_started;
+			//logerror("%04X: offset = %04X, %d\n", cpu_get_pc(space->machine->device("maincpu")), offset, diff);
 			if ( diff - modeSS_diff_adjust == 5 )
 			{
-				//logerror("%04X: RAM write offset = %04X, data = %02X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, modeSS_byte );
+				//logerror("%04X: RAM write offset = %04X, data = %02X\n", cpu_get_pc(space->machine->device("maincpu")), offset, modeSS_byte );
 				if ( offset & 0x800 )
 				{
 					if ( modeSS_high_ram_enabled )
@@ -886,7 +876,7 @@ static READ8_HANDLER(modeSS_r)
 			else if ( offset < 0x0100 )
 			{
 				modeSS_byte = offset;
-				modeSS_byte_started = cputag_get_total_cycles(space->machine, "maincpu");
+				modeSS_byte_started = space->machine->device<cpu_device>("maincpu")->total_cycles();
 			}
 			/* Check for dummy read from same address */
 			if ( diff == 2 )
@@ -901,12 +891,12 @@ static READ8_HANDLER(modeSS_r)
 		else if ( offset < 0x0100 )
 		{
 			modeSS_byte = offset;
-			modeSS_byte_started = cputag_get_total_cycles(space->machine, "maincpu");
+			modeSS_byte_started = space->machine->device<cpu_device>("maincpu")->total_cycles();
 		}
 	}
 	/* Because the mame core caches opcode data and doesn't perform reads like normal */
 	/* we have to put in this little hack here to get Suicide Mission to work. */
-	if ( offset != 0xFF8 && ( cpu_get_pc(devtag_get_device(space->machine, "maincpu")) & 0x1FFF ) == 0x1FF8 )
+	if ( offset != 0xFF8 && ( cpu_get_pc(space->machine->device("maincpu")) & 0x1FFF ) == 0x1FF8 )
 	{
 		modeSS_r( space, 0xFF8 );
 	}
@@ -970,7 +960,7 @@ static READ8_HANDLER(modeDPC_r)
 	UINT8	data_fetcher = offset & 0x07;
 	UINT8	data = 0xFF;
 
-	logerror("%04X: Read from DPC offset $%02X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset);
+	logerror("%04X: Read from DPC offset $%02X\n", cpu_get_pc(space->machine->device("maincpu")), offset);
 	if ( offset < 0x08 )
 	{
 		switch( offset & 0x06 )
@@ -1077,13 +1067,13 @@ static WRITE8_HANDLER(modeDPC_w)
 		dpc.movamt = data;
 		break;
 	case 0x28:			/* Not used */
-		logerror("%04X: Write to unused DPC register $%02X, data $%02X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, data);
+		logerror("%04X: Write to unused DPC register $%02X, data $%02X\n", cpu_get_pc(space->machine->device("maincpu")), offset, data);
 		break;
 	case 0x30:			/* Random number generator reset */
 		dpc.shift_reg = 0;
 		break;
 	case 0x38:			/* Not used */
-		logerror("%04X: Write to unused DPC register $%02X, data $%02X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, data);
+		logerror("%04X: Write to unused DPC register $%02X, data $%02X\n", cpu_get_pc(space->machine->device("maincpu")), offset, data);
 		break;
 	}
 }
@@ -1175,7 +1165,7 @@ static WRITE8_DEVICE_HANDLER(switch_A_w)
 		keypad_right_column = data & 0x0F;
 		break;
 	case 0x0a:	/* KidVid voice module */
-		cassette_change_state( devtag_get_device(machine, "cassette"), ( data & 0x02 ) ? (cassette_state)CASSETTE_MOTOR_DISABLED : (cassette_state)(CASSETTE_MOTOR_ENABLED | CASSETTE_PLAY), (cassette_state)CASSETTE_MOTOR_DISABLED );
+		cassette_change_state( machine->device("cassette"), ( data & 0x02 ) ? (cassette_state)CASSETTE_MOTOR_DISABLED : (cassette_state)(CASSETTE_MOTOR_ENABLED | CASSETTE_PLAY), (cassette_state)CASSETTE_MOTOR_DISABLED );
 		break;
 	}
 }
@@ -1483,7 +1473,7 @@ static READ8_HANDLER(a2600_get_databus_contents)
 	UINT16	last_address, prev_address;
 	UINT8	last_byte, prev_byte;
 
-	last_address = cpu_get_pc(devtag_get_device(space->machine, "maincpu")) - 1;
+	last_address = cpu_get_pc(space->machine->device("maincpu")) - 1;
 	if ( ! ( last_address & 0x1080 ) )
 	{
 		return offset;
@@ -1524,7 +1514,7 @@ static WRITE16_HANDLER( a2600_tia_vsync_callback )
 			if ( supported_screen_heights[i] != current_screen_height )
 			{
 				current_screen_height = supported_screen_heights[i];
-//              video_screen_configure( machine->primary_screen, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_NTSC ) * 228 * current_screen_height );
+//              machine->primary_screen->configure(228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_NTSC ) * 228 * current_screen_height );
 			}
 		}
 	}
@@ -1541,7 +1531,7 @@ static WRITE16_HANDLER( a2600_tia_vsync_callback_pal )
 			if ( supported_screen_heights[i] != current_screen_height )
 			{
 				current_screen_height = supported_screen_heights[i];
-//              video_screen_configure( machine->primary_screen, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_PAL ) * 228 * current_screen_height );
+//              machine->primary_screen->configure(228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_PAL ) * 228 * current_screen_height );
 			}
 		}
 	}
@@ -1563,9 +1553,9 @@ static const struct tia_interface tia_interface_pal =
 
 static MACHINE_START( a2600 )
 {
-	running_device *screen = video_screen_first(machine);
-	current_screen_height = video_screen_get_height(screen);
-	extra_RAM = memory_region_alloc( machine, "user2", 0x8600, ROM_REQUIRED );
+	screen_device *screen = screen_first(*machine);
+	current_screen_height = screen->height();
+	extra_RAM =	machine->region_alloc("user2", 0x8600, ROM_REQUIRED );
 	tia_init( machine, &tia_interface );
 	memset( riot_ram, 0x00, 0x80 );
 	current_reset_bank_counter = 0xFF;
@@ -1573,9 +1563,9 @@ static MACHINE_START( a2600 )
 
 static MACHINE_START( a2600p )
 {
-	running_device *screen = video_screen_first(machine);
-	current_screen_height = video_screen_get_height(screen);
-	extra_RAM = memory_region_alloc( machine, "user2", 0x8600, ROM_REQUIRED );
+	screen_device *screen = screen_first(*machine);
+	current_screen_height = screen->height();
+	extra_RAM = machine->region_alloc("user2", 0x8600, ROM_REQUIRED );
 	tia_init( machine, &tia_interface_pal );
 	memset( riot_ram, 0x00, 0x80 );
 	current_reset_bank_counter = 0xFF;
@@ -1875,15 +1865,15 @@ static MACHINE_RESET( a2600 )
 
 	case modeSS:
 		memory_install_read8_handler(space, 0x1000, 0x1fff, 0, 0, modeSS_r);
-		bank_base[1] = extra_RAM->base.u8 + 2 * 0x800;
+		bank_base[1] = extra_RAM->base() + 2 * 0x800;
 		bank_base[2] = CART;
 		memory_set_bankptr(machine, "bank1", bank_base[1] );
 		memory_set_bankptr(machine, "bank2", bank_base[2] );
 		modeSS_write_enabled = 0;
 		modeSS_byte_started = 0;
 		memory_set_direct_update_handler(space, modeSS_opbase );
-		/* Already start the motor of the cassette for the user */
-		cassette_change_state( devtag_get_device(machine, "cassette"), CASSETTE_MOTOR_ENABLED, CASSETTE_MOTOR_DISABLED );
+		/* The Supercharger has no motor control so just enable it */
+		cassette_change_state( machine->device("cassette"), CASSETTE_MOTOR_ENABLED, CASSETTE_MOTOR_DISABLED );
 		break;
 
 	case modeFV:
@@ -1948,7 +1938,7 @@ static MACHINE_RESET( a2600 )
 	}
 
 	/* Banks may have changed, reset the cpu so it uses the correct reset vector */
-	devtag_get_device(machine, "maincpu")->reset();
+	machine->device("maincpu")->reset();
 }
 
 
@@ -2108,7 +2098,8 @@ static const cassette_config a2600_cassette_config =
 {
 	a26_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( a2600_cartslot )

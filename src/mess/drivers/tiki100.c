@@ -514,7 +514,7 @@ static Z80PIO_INTERFACE( pio_intf )
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	tiki100_state *state = (tiki100_state *)timer->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)timer.machine->driver_data;
 
 	z80ctc_trg0_w(state->z80ctc, 1);
 	z80ctc_trg0_w(state->z80ctc, 0);
@@ -567,7 +567,7 @@ static const ay8910_interface ay8910_intf =
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain tiki100_daisy_chain[] =
+static const z80_daisy_config tiki100_daisy_chain[] =
 {
 	{ Z80CTC_TAG },
 	{ Z80PIO_TAG },
@@ -582,21 +582,21 @@ static MACHINE_START( tiki100 )
 	tiki100_state *state = (tiki100_state *)machine->driver_data;
 
 	/* find devices */
-	state->fd1797 = devtag_get_device(machine, FD1797_TAG);
-	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
+	state->fd1797 = machine->device(FD1797_TAG);
+	state->z80ctc = machine->device(Z80CTC_TAG);
 
 	/* allocate video RAM */
 	state->video_ram = auto_alloc_array(machine, UINT8, TIKI100_VIDEORAM_SIZE);
 
 	/* setup memory banking */
 	memory_configure_bank(machine, "bank1", BANK_ROM, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, "bank1", BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, "bank1", BANK_RAM, 1, messram_get_ptr(machine->device("messram")), 0);
 	memory_configure_bank(machine, "bank1", BANK_VIDEO_RAM, 1, state->video_ram, 0);
 
-	memory_configure_bank(machine, "bank2", BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0);
+	memory_configure_bank(machine, "bank2", BANK_RAM, 1, messram_get_ptr(machine->device("messram")) + 0x4000, 0);
 	memory_configure_bank(machine, "bank2", BANK_VIDEO_RAM, 1, state->video_ram + 0x4000, 0);
 
-	memory_configure_bank(machine, "bank3", BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0);
+	memory_configure_bank(machine, "bank3", BANK_RAM, 1, messram_get_ptr(machine->device("messram")) + 0x8000, 0);
 
 	tiki100_bankswitch(machine);
 
@@ -644,9 +644,9 @@ static const floppy_config tiki100_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(tiki100),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* Machine Driver */

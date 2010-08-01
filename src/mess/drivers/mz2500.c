@@ -232,8 +232,8 @@ static READ8_HANDLER( mz2500_crtc_r )
 	static UINT8 vblank_bit, hblank_bit;
 
 	/* TODO */
-	vblank_bit^= 1;//video_screen_get_vblank(space->machine->primary_screen) ? 0 : 1;
-	hblank_bit = video_screen_get_hblank(space->machine->primary_screen) ? 0 : 2;
+	vblank_bit^= 1;//space->machine->primary_screen->vblank() ? 0 : 1;
+	hblank_bit = space->machine->primary_screen->hblank() ? 0 : 2;
 
 	return vblank_bit | hblank_bit;
 }
@@ -277,7 +277,7 @@ static WRITE8_HANDLER( mz2500_irq_data_w )
 #if 0
 static READ8_HANDLER( mz2500_fdc_r )
 {
-	running_device* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = space->machine->device("fdc");
 	//UINT8 ret = 0;
 
 	switch(offset+0xd8)
@@ -298,7 +298,7 @@ static READ8_HANDLER( mz2500_fdc_r )
 
 static WRITE8_HANDLER( mz2500_fdc_w )
 {
-	running_device* dev = devtag_get_device(space->machine,"mb8877a");
+	running_device* dev = space->machine->device("mb8877a");
 
 	switch(offset+0xdc)
 	{
@@ -354,9 +354,9 @@ static const floppy_config mz2500_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static ADDRESS_MAP_START(mz2500_map, ADDRESS_SPACE_PROGRAM, 8)

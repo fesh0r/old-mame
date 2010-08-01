@@ -710,7 +710,7 @@ ROM_END
 
 static INTERRUPT_GEN( bbcb_vsync )
 {
-	running_device *via_0 = devtag_get_device(device->machine, "via6522_0");
+	running_device *via_0 = device->machine->device("via6522_0");
 	via_ca1_w(via_0, 1);
 	via_ca1_w(via_0, 0);
 	bbc_frameclock();
@@ -729,7 +729,8 @@ static const cassette_config bbc_cassette_config =
 {
 	bbc_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY)
+	(cassette_state)(CASSETTE_PLAY),
+	NULL
 };
 
 
@@ -774,9 +775,9 @@ static const floppy_config bbc_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(bbc),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( bbc_cartslot )

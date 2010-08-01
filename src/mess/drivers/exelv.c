@@ -107,7 +107,7 @@ static INTERRUPT_GEN( exelv_hblank_interrupt )
 #ifdef UNUSED_FUNCTION
 static DEVICE_IMAGE_LOAD(exelv_cart)
 {
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static DEVICE_IMAGE_UNLOAD( exelv_cart )
@@ -271,7 +271,7 @@ static WRITE8_HANDLER(tms7020_portb_w)
 */
 static READ8_HANDLER(tms7041_porta_r)
 {
-	running_device *tms5220c = devtag_get_device( space->machine, "tms5220c" );
+	running_device *tms5220c = space->machine->device( "tms5220c" );
 	UINT8 data = 0x00;
 
 	logerror("tms7041_porta_r\n");
@@ -316,7 +316,7 @@ static READ8_HANDLER(tms7041_portb_r)
 
 static WRITE8_HANDLER(tms7041_portb_w)
 {
-	running_device *tms5220c = devtag_get_device( space->machine, "tms5220c" );
+	running_device *tms5220c = space->machine->device( "tms5220c" );
 
 	logerror("tms7041_portb_w: data = 0x%02x\n", data);
 
@@ -386,7 +386,7 @@ static READ8_HANDLER(tms7041_portd_r)
 
 static WRITE8_HANDLER(tms7041_portd_w)
 {
-	running_device *tms5220c = devtag_get_device( space->machine, "tms5220c" );
+	running_device *tms5220c = space->machine->device( "tms5220c" );
 
 	logerror("tms7041_portd_w: data = 0x%02x\n", data);
 
@@ -488,6 +488,7 @@ INPUT_PORTS_END
 static const tms5220_interface exl100_tms5220_interface =
 {
 	DEVCB_NULL,						/* no IRQ callback */
+	DEVCB_NULL,						/* no Ready callback */
 	spchroms_read,					/* speech ROM read handler */
 	spchroms_load_address,			/* speech ROM load address handler */
 	spchroms_read_and_branch		/* speech ROM read and branch handler */

@@ -1075,10 +1075,9 @@ static const m6847_variant variants[] =
 INLINE mc6847_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
-	assert(device->type == MC6847);
+	assert(device->type() == MC6847);
 
-	return (mc6847_state *)device->token;
+	return (mc6847_state *)downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -1766,17 +1765,17 @@ static STATE_POSTLOAD( mc6847_postload )
 static DEVICE_START( mc6847 )
 {
 	mc6847_state *mc6847 = get_safe_token(device);
-	const mc6847_interface *intf = (mc6847_interface *)device->baseconfig().static_config;
-	const mc6847_config *cfg = (mc6847_config *)device->baseconfig().inline_config;
+	const mc6847_interface *intf = (mc6847_interface *)device->baseconfig().static_config();
+	const mc6847_config *cfg = (mc6847_config *)downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 
 	const m6847_variant *v;
 	UINT32 frequency;
-	attoseconds_t period, frame_period, cpu0_clock_period = 0;
+	attoseconds_t period, frame_period;
 	double total_scanlines;
 
 	/* validate some basic stuff */
-	assert(device->baseconfig().static_config != NULL);
-	assert(device->baseconfig().inline_config != NULL);
+	assert(device->baseconfig().static_config() != NULL);
+	assert(downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config() != NULL);
 
 	/* identify proper M6847 variant */
 	assert(cfg->type < ARRAY_LENGTH(variants));
@@ -1827,13 +1826,6 @@ static DEVICE_START( mc6847 )
 		* ((UINT32) (v->clocks_per_scanline * FACTOR_CLOCKS_PER_SCANLINE));
 	period = ATTOSECONDS_PER_SECOND / frequency;
 
-	/* choose CPU clock, if specified */
-	if (cfg->cpu0_timing_factor > 0)
-	{
-		cpu0_clock_period = period * cfg->cpu0_timing_factor * GROSS_FACTOR;
-		cpu_set_clock(device->machine->firstcpu, ATTOSECONDS_PER_SECOND / cpu0_clock_period);
-	}
-
 	/* calculate timing */
 	total_scanlines = v->vblank_scanlines
 		+ v->top_border_scanlines
@@ -1859,8 +1851,6 @@ static DEVICE_START( mc6847 )
 	{
 		logerror("m6847_init():\n");
 		logerror("\tclock:      %30s sec\n", attotime_string(attotime_make(0, period * GROSS_FACTOR), ATTOTIME_STRING_PRECISION));
-		if (cpu0_clock_period > 0)
-			logerror("\tCPU0 clock: %30s sec\n", attotime_string(attotime_make(0, cpu0_clock_period), ATTOTIME_STRING_PRECISION));
 		logerror("\tscanline:   %30s sec\n", attotime_string(attotime_make(0, mc6847->scanline_period), ATTOTIME_STRING_PRECISION));
 		logerror("\tfield sync: %30s sec\n", attotime_string(attotime_make(0, mc6847->field_sync_period), ATTOTIME_STRING_PRECISION));
 		logerror("\thorz sync:  %30s sec\n", attotime_string(attotime_make(0, mc6847->horizontal_sync_period), ATTOTIME_STRING_PRECISION));
@@ -1914,7 +1904,6 @@ DEVICE_GET_INFO( mc6847 )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(mc6847_state);					break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = sizeof(mc6847_config);				break;
-		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_VIDEO;					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(mc6847);		break;
@@ -2195,3 +2184,4 @@ UINT32 mc6847_update(running_device *device, bitmap_t *bitmap, const rectangle *
 	return rc;
 }
 
+DEFINE_LEGACY_DEVICE(MC6847, mc6847);

@@ -133,7 +133,8 @@ static const cassette_config vector_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 static FLOPPY_OPTIONS_START(vector)
@@ -152,9 +153,9 @@ static const floppy_config vector_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(vector),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 const wd17xx_interface vector06_wd17xx_interface =
@@ -168,7 +169,7 @@ const wd17xx_interface vector06_wd17xx_interface =
 /* Machine driver */
 static MACHINE_DRIVER_START( vector06 )
   /* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8080, 3000000)
+	MDRV_CPU_ADD("maincpu", I8080, 3000000)
 //  MDRV_CPU_ADD("maincpu", Z80, 3000000)
 	MDRV_CPU_PROGRAM_MAP(vector06_mem)
 	MDRV_CPU_IO_MAP(vector06_io)

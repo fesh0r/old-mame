@@ -23,14 +23,14 @@ struct _gmaster_sound
 static gmaster_sound *get_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(sound_get_type(device) == SOUND_GMASTER);
-	return (gmaster_sound *) device->token;
+	assert(device->type() == SOUND_GMASTER);
+	return (gmaster_sound *) downcast<legacy_device_base *>(device)->token();
 }
 
 
 int gmaster_io_callback(running_device *device, int ioline, int state)
 {	/* comes across with cpu device - need to use sound device */
-	gmaster_sound *token = get_token(devtag_get_device(device->machine, "custom"));
+	gmaster_sound *token = get_token(device->machine->device("custom"));
 
 	switch (ioline)
 	{
@@ -87,3 +87,5 @@ DEVICE_GET_INFO( gmaster_sound )
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
 	}
 }
+
+DEFINE_LEGACY_SOUND_DEVICE(GMASTER, gmaster_sound);

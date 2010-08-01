@@ -91,7 +91,7 @@ static WRITE8_HANDLER ( rset_callback )
 
 static WRITE8_HANDLER ( ckon_ckof_callback )
 {
-	running_device *maincpu = devtag_get_device(space->machine, "maincpu");
+	running_device *maincpu = space->machine->device("maincpu");
 	ti990_ckon_ckof_callback(maincpu, (offset & 0x1000) ? 1 : 0);
 }
 
@@ -212,9 +212,9 @@ static const floppy_config ti990_4_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(fd800),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START(ti990_4)

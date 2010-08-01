@@ -87,7 +87,7 @@ static void bankswitch(running_machine *machine)
 {
 	px8_state *state = (px8_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, UPD70008_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *ram = messram_get_ptr(machine->device("messram"));
 	UINT8 *ipl_rom = memory_region(machine, UPD70008_TAG);
 
 	if (!state->bank0)
@@ -807,7 +807,8 @@ static const cassette_config px8_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 /***************************************************************************
@@ -823,8 +824,8 @@ static MACHINE_START( px8 )
 	px8_state *state = (px8_state *)machine->driver_data;
 
 	/* find devices */
-	state->sed1320 = devtag_get_device(machine, SED1320_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->sed1320 = machine->device(SED1320_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->ier);
@@ -861,12 +862,12 @@ static MACHINE_DRIVER_START( px8 )
 	MDRV_CPU_ADD(HD6303_TAG, M6803, XTAL_CR1 / 4) /* 614 kHz */
 	MDRV_CPU_PROGRAM_MAP(px8_slave_mem)
 	MDRV_CPU_IO_MAP(px8_slave_io)
-	MDRV_CPU_FLAGS(CPU_DISABLE)
+	MDRV_DEVICE_DISABLE()
 
     /* sub CPU (uPD7508) */
 //  MDRV_CPU_ADD(UPD7508_TAG, UPD7508, 200000) /* 200 kHz */
 //  MDRV_CPU_IO_MAP(px8_sub_io)
-//  MDRV_CPU_FLAGS(CPU_DISABLE)
+//  MDRV_DEVICE_DISABLE()
 
 	MDRV_MACHINE_START(px8)
 	MDRV_MACHINE_RESET(px8)

@@ -997,7 +997,7 @@ static const ay8910_interface msx_ay8910_interface =
 static VIDEO_START( msx2 )
 {
 	VIDEO_START_CALL(generic_bitmapped);
-	v9938_init(machine, 0, machine->primary_screen, machine->generic.tmpbitmap, MODEL_V9938, 0x20000, msx_vdp_interrupt);
+	v9938_init(machine, 0, *machine->primary_screen, machine->generic.tmpbitmap, MODEL_V9938, 0x20000, msx_vdp_interrupt);
 }
 
 #define MSX_XBORDER_PIXELS		15
@@ -1011,7 +1011,8 @@ static const cassette_config msx_cassette_config =
 {
 	fmsx_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY)
+	(cassette_state)(CASSETTE_PLAY),
+	NULL
 };
 
 static const floppy_config msx_floppy_config =
@@ -1021,9 +1022,9 @@ static const floppy_config msx_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(msx),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( msx_cartslot )

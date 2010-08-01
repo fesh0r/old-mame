@@ -1,6 +1,5 @@
 #include "emu.h"
 #include "includes/spectrum.h"
-#include "eventlst.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -13,10 +12,10 @@
 static DIRECT_UPDATE_HANDLER( pentagon_direct )
 {
 	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
-	running_device *beta = devtag_get_device(space->machine, BETA_DISK_TAG);
-	UINT16 pc = cpu_get_reg(devtag_get_device(space->machine, "maincpu"), REG_GENPCBASE);
+	running_device *beta = space->machine->device(BETA_DISK_TAG);
+	UINT16 pc = cpu_get_reg(space->machine->device("maincpu"), STATE_GENPCBASE);
 
-	if (beta->started && betadisk_is_active(beta))
+	if (beta->started() && betadisk_is_active(beta))
 	{
 		if (pc >= 0x4000)
 		{
@@ -28,7 +27,7 @@ static DIRECT_UPDATE_HANDLER( pentagon_direct )
 	} else if (((pc & 0xff00) == 0x3d00) && (state->ROMSelection==1))
 	{
 		state->ROMSelection = 3;
-		if (beta->started)
+		if (beta->started())
 			betadisk_enable(beta);
 
 	}
@@ -36,7 +35,7 @@ static DIRECT_UPDATE_HANDLER( pentagon_direct )
 	{
 		memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 		if (state->ROMSelection == 3) {
-			if (beta->started)
+			if (beta->started())
 				direct->raw = direct->decrypted =  memory_region(space->machine, "beta:beta");
 		} else {
 			direct->raw = direct->decrypted =  memory_region(space->machine, "maincpu") + 0x010000 + (state->ROMSelection<<14);
@@ -50,13 +49,13 @@ static DIRECT_UPDATE_HANDLER( pentagon_direct )
 static void pentagon_update_memory(running_machine *machine)
 {
 	spectrum_state *state = (spectrum_state *)machine->driver_data;
-	running_device *beta = devtag_get_device(machine, BETA_DISK_TAG);
-	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	running_device *beta = machine->device(BETA_DISK_TAG);
+	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 	state->screen_location = messram + ((state->port_7ffd_data & 8) ? (7<<14) : (5<<14));
 
 	memory_set_bankptr(machine, "bank4", messram + ((state->port_7ffd_data & 0x07) * 0x4000));
 
-	if (beta->started && betadisk_is_active(beta) && !( state->port_7ffd_data & 0x10 ) )
+	if (beta->started() && betadisk_is_active(beta) && !( state->port_7ffd_data & 0x10 ) )
 	{
 		/* GLUK */
 		if (strcmp(machine->gamedrv->name, "pent1024")==0) {
@@ -104,14 +103,14 @@ ADDRESS_MAP_END
 static MACHINE_RESET( pentagon )
 {
 	spectrum_state *state = (spectrum_state *)machine->driver_data;
-	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
-	running_device *beta = devtag_get_device(machine, BETA_DISK_TAG);
+	UINT8 *messram = messram_get_ptr(machine->device("messram"));
+	running_device *beta = machine->device(BETA_DISK_TAG);
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
 	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 
-	if (beta->started)  {
+	if (beta->started())  {
 		betadisk_enable(beta);
 		betadisk_clear_status(beta);
 	}

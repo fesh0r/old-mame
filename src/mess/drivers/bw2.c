@@ -74,7 +74,7 @@ static void bw2_set_banks(running_machine *machine, UINT8 data)
 
 	state->bank = data & 0x07;
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 64 * 1024:
 		max_ram_bank = BANK_RAM1;
@@ -156,7 +156,7 @@ static void ramcard_set_banks(running_machine *machine, UINT8 data)
 
 	state->bank = data & 0x07;
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 64 * 1024:
 	case 96 * 1024:
@@ -240,7 +240,7 @@ static WRITE_LINE_DEVICE_HANDLER( bw2_wd17xx_drq_w )
 {
 	if (state)
 	{
-		if (cpu_get_reg(devtag_get_device(device->machine, Z80_TAG), Z80_HALT))
+		if (cpu_get_reg(device->machine->device(Z80_TAG), Z80_HALT))
 			cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, HOLD_LINE);
 	}
 	else
@@ -252,7 +252,7 @@ static WRITE_LINE_DEVICE_HANDLER( bw2_wd17xx_drq_w )
 static READ8_HANDLER( bw2_wd2797_r )
 {
 	UINT8 result = 0xff;
-	running_device *fdc = devtag_get_device(space->machine, "wd179x");
+	running_device *fdc = space->machine->device("wd179x");
 
 	switch (offset & 0x03)
 	{
@@ -275,7 +275,7 @@ static READ8_HANDLER( bw2_wd2797_r )
 
 static WRITE8_HANDLER( bw2_wd2797_w )
 {
-	running_device *fdc = devtag_get_device(space->machine, "wd179x");
+	running_device *fdc = space->machine->device("wd179x");
 	switch (offset & 0x3)
 	{
 		case 0:
@@ -313,7 +313,7 @@ static WRITE8_HANDLER( bw2_wd2797_w )
 
 static WRITE8_DEVICE_HANDLER( bw2_8255_a_w )
 {
-	running_device *fdc = devtag_get_device(device->machine, "wd179x");
+	running_device *fdc = device->machine->device("wd179x");
 	/*
 
         PA0     KB0 Keyboard line select 0
@@ -502,7 +502,7 @@ static DRIVER_INIT( bw2 )
 	bw2_state *state = (bw2_state *) machine->driver_data;
 
 	/* allocate work memory */
-	state->work_ram = auto_alloc_array(machine, UINT8, messram_get_size(devtag_get_device(machine, "messram")));
+	state->work_ram = auto_alloc_array(machine, UINT8, messram_get_size(machine->device("messram")));
 
 	/* allocate video memory */
 	state->video_ram = auto_alloc_array(machine, UINT8, BW2_VIDEORAM_SIZE);
@@ -516,9 +516,9 @@ static MACHINE_START( bw2 )
 	bw2_state *state = (bw2_state *) machine->driver_data;
 
 	/* find devices */
-	state->msm8251 = devtag_get_device(machine, MSM8251_TAG);
-	state->msm6255 = devtag_get_device(machine, MSM6255_TAG);
-	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
+	state->msm8251 = machine->device(MSM8251_TAG);
+	state->msm6255 = machine->device(MSM6255_TAG);
+	state->centronics = machine->device(CENTRONICS_TAG);
 
 	/* memory banking */
 	memory_configure_bank(machine, "bank1", BANK_RAM1, 1, state->work_ram, 0);
@@ -527,7 +527,7 @@ static MACHINE_START( bw2 )
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keyboard_row);
-	state_save_register_global_pointer(machine, state->work_ram, messram_get_size(devtag_get_device(machine, "messram")));
+	state_save_register_global_pointer(machine, state->work_ram, messram_get_size(machine->device("messram")));
 	state_save_register_global_pointer(machine, state->ramcard_ram, BW2_RAMCARD_SIZE);
 	state_save_register_global(machine, state->bank);
 	state_save_register_global(machine, state->selected_drive);
@@ -762,9 +762,9 @@ static const floppy_config bw2_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(bw2),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static const wd17xx_interface bw2_wd17xx_interface =
@@ -779,24 +779,24 @@ static const wd17xx_interface bw2_wd17xx_interface =
 
 static DEVICE_IMAGE_LOAD( bw2_serial )
 {
-	bw2_state *state = (bw2_state *) image->machine->driver_data;
+	bw2_state *state = (bw2_state *) image.device().machine->driver_data;
 
-	if (device_load_serial(image) == INIT_PASS)
+	if (device_load_serial(image) == IMAGE_INIT_PASS)
 	{
-		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
+		serial_device_setup(image, 9600 >> input_port_read(image.device().machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
 
 		msm8251_connect_to_serial_device(state->msm8251, image);
 
 		serial_device_set_transmit_state(image, 1);
 
-		return INIT_PASS;
+		return IMAGE_INIT_PASS;
 	}
 
-	return INIT_FAIL;
+	return IMAGE_INIT_FAIL;
 }
 
 
-static DEVICE_GET_INFO( bw2_serial )
+DEVICE_GET_INFO( bw2_serial )
 {
 	switch ( state )
 	{
@@ -810,7 +810,8 @@ static DEVICE_GET_INFO( bw2_serial )
 	}
 }
 
-#define BW2_SERIAL	DEVICE_GET_INFO_NAME(bw2_serial)
+DECLARE_LEGACY_IMAGE_DEVICE(BW2_SERIAL, bw2_serial);
+DEFINE_LEGACY_IMAGE_DEVICE(BW2_SERIAL, bw2_serial);
 
 #define MDRV_BW2_SERIAL_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, BW2_SERIAL, 0)

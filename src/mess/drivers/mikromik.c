@@ -38,7 +38,7 @@
     6,144 MHz xtal (CPU clock)
     18,720 MHz xtal (pixel clock)
     16 MHz xtal (FDC clock)
-    Intel 8085AP (CPU)
+    Intel I8085AP (CPU)
     Intel 8253-5P (PIT)
     Intel 8275P (CRTC)
     Intel 8212P (I/OP)
@@ -576,7 +576,7 @@ static UPD7201_INTERFACE( mm1_upd7201_intf )
 	}
 };
 
-/* 8085A Interface */
+/* I8085A Interface */
 
 static READ_LINE_DEVICE_HANDLER( dsra_r )
 {
@@ -587,19 +587,19 @@ static I8085_CONFIG( mm1_i8085_config )
 {
 	DEVCB_NULL,			/* STATUS changed callback */
 	DEVCB_NULL,			/* INTE changed callback */
-	DEVCB_LINE(dsra_r),	/* SID changed callback (8085A only) */
-	DEVCB_DEVICE_LINE(SPEAKER_TAG, speaker_level_w)	/* SOD changed callback (8085A only) */
+	DEVCB_LINE(dsra_r),	/* SID changed callback (I8085A only) */
+	DEVCB_DEVICE_LINE(SPEAKER_TAG, speaker_level_w)	/* SOD changed callback (I8085A only) */
 };
 
 /* Keyboard */
 
 static TIMER_DEVICE_CALLBACK( kbclk_tick )
 {
-	mm1_state *state = (mm1_state *)timer->machine->driver_data;
+	mm1_state *state = (mm1_state *)timer.machine->driver_data;
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9" };
 
-	UINT8 data = input_port_read(timer->machine, keynames[state->drive]);
-	UINT8 special = input_port_read(timer->machine, "SPECIAL");
+	UINT8 data = input_port_read(timer.machine, keynames[state->drive]);
+	UINT8 special = input_port_read(timer.machine, "SPECIAL");
 	int ctrl = BIT(special, 0);
 	int shift = BIT(special, 2) & BIT(special, 1);
 	UINT8 keydata = 0xff;
@@ -675,9 +675,9 @@ static const floppy_config mm1_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(mm1),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* Machine Initialization */
@@ -688,13 +688,13 @@ static MACHINE_START( mm1 )
 	const address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* look up devices */
-	state->i8212 = devtag_get_device(machine, I8212_TAG);
-	state->i8237 = devtag_get_device(machine, I8237_TAG);
-	state->i8275 = devtag_get_device(machine, I8275_TAG);
-	state->upd765 = devtag_get_device(machine, UPD765_TAG);
-	state->upd7201 = devtag_get_device(machine, UPD7201_TAG);
-	state->upd7220 = devtag_get_device(machine, UPD7220_TAG);
-	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
+	state->i8212 = machine->device(I8212_TAG);
+	state->i8237 = machine->device(I8237_TAG);
+	state->i8275 = machine->device(I8275_TAG);
+	state->upd765 = machine->device(UPD765_TAG);
+	state->upd7201 = machine->device(UPD7201_TAG);
+	state->upd7220 = machine->device(UPD7220_TAG);
+	state->speaker = machine->device(SPEAKER_TAG);
 
 	/* find memory regions */
 	state->key_rom = memory_region(machine, "keyboard");
@@ -703,7 +703,7 @@ static MACHINE_START( mm1 )
 	memory_install_read_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
 	memory_unmap_write(program, 0x0000, 0x0fff, 0, 0);
 	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, "bios"), 0);
-	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(machine->device("messram")), 0);
 	memory_set_bank(machine, "bank1", 0);
 
 	/* register for state saving */
@@ -741,7 +741,7 @@ static MACHINE_DRIVER_START( mm1 )
 	MDRV_DRIVER_DATA(mm1_state)
 
 	/* basic system hardware */
-	MDRV_CPU_ADD(I8085A_TAG, 8085A, XTAL_6_144MHz)
+	MDRV_CPU_ADD(I8085A_TAG, I8085A, XTAL_6_144MHz)
 	MDRV_CPU_PROGRAM_MAP(mm1_map)
 	MDRV_CPU_CONFIG(mm1_i8085_config)
 

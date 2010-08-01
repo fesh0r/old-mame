@@ -101,14 +101,14 @@ static void vg230_reset(running_machine *machine)
 {
 	pasogo_state *state = (pasogo_state *)machine->driver_data;
 	vg230_t *vg230 = &state->vg230;
-	mame_system_time systime;
+	system_time systime;
 
 	memset(vg230, 0, sizeof(*vg230));
 	vg230->pmu.write_protected=TRUE;
 	timer_pulse(machine, ATTOTIME_IN_HZ(1), NULL, 0, vg230_timer);
 
 
-	mame_get_base_datetime(machine, &systime);
+	machine->base_datetime(systime);
 
 	vg230->rtc.seconds= systime.local_time.second;
 	vg230->rtc.minutes= systime.local_time.minute;
@@ -449,8 +449,8 @@ static VIDEO_UPDATE( pasogo )
 	if (w!=width || h!=height)
 	{
 		width=w; height=h;
-//      video_screen_set_visarea(machine->primary_screen, 0, width-1, 0, height-1);
-		video_screen_set_visarea(screen, 0, width-1, 0, height-1);
+//      machine->primary_screen->set_visible_area(0, width-1, 0, height-1);
+		screen->set_visible_area(0, width-1, 0, height-1);
 	}
 #endif
 	return 0;
@@ -463,12 +463,12 @@ static INTERRUPT_GEN( pasogo_interrupt )
 
 static IRQ_CALLBACK(pasogo_irq_callback)
 {
-	return pic8259_acknowledge( devtag_get_device(device->machine, "pic8259"));
+	return pic8259_acknowledge( device->machine->device("pic8259"));
 }
 
 static MACHINE_RESET( pasogo )
 {
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), pasogo_irq_callback);
+	cpu_set_irq_callback(machine->device("maincpu"), pasogo_irq_callback);
 }
 
 //static const unsigned i86_address_mask = 0x000fffff;
@@ -505,26 +505,26 @@ static const struct pic8259_interface pasogo_pic8259_config =
 
 static DEVICE_IMAGE_LOAD( pasogo_cart )
 {
-	UINT8 *user = memory_region(image->machine, "user1");
+	UINT8 *user = memory_region(image.device().machine, "user1");
 	UINT32 size;
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		size = image_length(image);
+		size = image.length();
 
-		if (image_fread(image, user, size) != size)
+		if (image.fread( user, size) != size)
 		{
-			logerror("%s load error\n", image_filename(image));
-			return INIT_FAIL;
+			logerror("%s load error\n", image.filename());
+			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
 	{
-		size = image_get_software_region_length(image, "rom");
-		memcpy(user, image_get_software_region(image, "rom"), size);
+		size = image.get_software_region_length("rom");
+		memcpy(user, image.get_software_region("rom"), size);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static MACHINE_DRIVER_START( pasogo )
@@ -562,7 +562,7 @@ static MACHINE_DRIVER_START( pasogo )
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_INTERFACE("pasogo_cart")
 	MDRV_CARTSLOT_LOAD(pasogo_cart)
-	MDRV_SOFTWARE_LIST_ADD("pasogo")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","pasogo")
 MACHINE_DRIVER_END
 
 

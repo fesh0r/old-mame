@@ -15,8 +15,6 @@
 
 #include "emu.h"
 #include "includes/spectrum.h"
-#include "eventlst.h"
-#include "video/border.h"
 #include "devices/messram.h"
 
 INLINE void spectrum_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
@@ -46,7 +44,7 @@ VIDEO_EOF( ts2068 )
 		pItem = EventList_GetFirstItem();
 		border_set_last_color ( pItem[NumItems-1].Event_Data );
 		EventList_Reset();
-		EventList_SetOffsetStartTime ( cpu_attotime_to_clocks(machine->firstcpu, attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
+		EventList_SetOffsetStartTime ( machine->firstcpu->attotime_to_cycles(attotime_mul(machine->primary_screen->scan_period(), machine->primary_screen->vpos())) );
 		logerror ("Event log reset in callback fn.\n");
 	}
 }
@@ -85,7 +83,7 @@ static void ts2068_hires_scanline(running_machine *machine,bitmap_t *bitmap, int
 	scrx=TS2068_LEFT_BORDER;
 	scry=((y&7) * 8) + ((y&0x38)>>3) + (y&0xC0);
 
-	scr=messram_get_ptr(devtag_get_device(machine, "messram")) + y*32;
+	scr=messram_get_ptr(machine->device("messram")) + y*32;
 	attr=scr + 0x2000;
 
 	for (x=0;x<32;x++)
@@ -129,7 +127,7 @@ static void ts2068_64col_scanline(running_machine *machine,bitmap_t *bitmap, int
 	scrx=TS2068_LEFT_BORDER;
 	scry=((y&7) * 8) + ((y&0x38)>>3) + (y&0xC0);
 
-	scr1=messram_get_ptr(devtag_get_device(machine, "messram")) + y*32;
+	scr1=messram_get_ptr(machine->device("messram")) + y*32;
 	scr2=scr1 + 0x2000;
 
 	for (x=0;x<32;x++)
@@ -165,8 +163,8 @@ static void ts2068_lores_scanline(running_machine *machine,bitmap_t *bitmap, int
 	scrx=TS2068_LEFT_BORDER;
 	scry=((y&7) * 8) + ((y&0x38)>>3) + (y&0xC0);
 
-	scr = messram_get_ptr(devtag_get_device(machine, "messram")) + y*32 + screen*0x2000;
-	attr = messram_get_ptr(devtag_get_device(machine, "messram")) + ((scry>>3)*32) + screen*0x2000 + 0x1800;
+	scr = messram_get_ptr(machine->device("messram")) + y*32 + screen*0x2000;
+	attr = messram_get_ptr(machine->device("messram")) + ((scry>>3)*32) + screen*0x2000 + 0x1800;
 
 	for (x=0;x<32;x++)
 	{

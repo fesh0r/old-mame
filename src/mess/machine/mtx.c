@@ -7,6 +7,7 @@
 **************************************************************************/
 
 #include "emu.h"
+#include "imageutl.h"
 #include "includes/mtx.h"
 #include "cpu/z80/z80.h"
 #include "devices/cassette.h"
@@ -73,7 +74,7 @@ static void bankswitch(running_machine *machine, UINT8 data)
     */
 
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-	running_device *messram = devtag_get_device(machine, "messram");
+	running_device *messram = machine->device("messram");
 
 //  UINT8 cbm_mode = data >> 7 & 0x01;
 	UINT8 rom_page = data >> 4 & 0x07;
@@ -361,35 +362,35 @@ INTERRUPT_GEN( mtx_interrupt )
 
 SNAPSHOT_LOAD( mtx )
 {
-	const address_space *program = cputag_get_address_space(image->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	const address_space *program = cputag_get_address_space(image.device().machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	UINT8 header[18];
 	UINT16 addr;
 
 	/* get the header */
-	image_fread(image, &header, sizeof(header));
+	image.fread( &header, sizeof(header));
 
 	if (header[0] == 0xff)
 	{
 		/* long header */
 		addr = pick_integer_le(header, 16, 2);
 		void *ptr = memory_get_write_ptr(program, addr);
-		image_fread(image, ptr, 599);
+		image.fread( ptr, 599);
 		ptr = memory_get_write_ptr(program, 0xc000);
-		image_fread(image, ptr, snapshot_size - 599 - 18);
+		image.fread( ptr, snapshot_size - 599 - 18);
 	}
 	else
 	{
 		/* short header */
 		addr = pick_integer_le(header, 0, 2);
-		image_fseek(image, 4, SEEK_SET);
+		image.fseek(4, SEEK_SET);
 		void *ptr = memory_get_write_ptr(program, addr);
-		image_fread(image, ptr, 599);
+		image.fread( ptr, 599);
 		ptr = memory_get_write_ptr(program, 0xc000);
-		image_fread(image, ptr, snapshot_size - 599 - 4);
+		image.fread( ptr, snapshot_size - 599 - 4);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /***************************************************************************
@@ -403,12 +404,12 @@ SNAPSHOT_LOAD( mtx )
 MACHINE_START( mtx512 )
 {
 	mtx_state *state = (mtx_state *)machine->driver_data;
-	running_device *messram = devtag_get_device(machine, "messram");
+	running_device *messram = machine->device("messram");
 
 	/* find devices */
-	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
-	state->z80dart = devtag_get_device(machine, Z80DART_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->z80ctc = machine->device(Z80CTC_TAG);
+	state->z80dart = machine->device(Z80DART_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* configure memory */
 	memory_set_bankptr(machine, "bank1", memory_region(machine, "user1"));

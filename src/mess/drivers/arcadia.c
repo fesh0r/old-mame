@@ -459,24 +459,24 @@ static PALETTE_INIT( arcadia )
 
 static DEVICE_IMAGE_LOAD( arcadia_cart )
 {
-	UINT8 *rom = memory_region(image->machine, "maincpu");
+	UINT8 *rom = memory_region(image.device().machine, "maincpu");
 	int size;
 
 	memset(rom, 0, 0x8000);
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		size = image_length(image);
+		size = image.length();
 
-		if (size > memory_region_length(image->machine, "maincpu"))
-			size = memory_region_length(image->machine, "maincpu");
+		if (size > memory_region_length(image.device().machine, "maincpu"))
+			size = memory_region_length(image.device().machine, "maincpu");
 
-		if (image_fread(image, rom, size) != size)
-			return INIT_FAIL;
+		if (image.fread(rom, size) != size)
+			return IMAGE_INIT_FAIL;
 	}
 	else
 	{
-		size = image_get_software_region_length(image, "rom");
-		memcpy(rom, image_get_software_region(image, "rom"), size);
+		size = image.get_software_region_length("rom");
+		memcpy(rom, image.get_software_region("rom"), size);
 	}
 
 	if (size > 0x1000)
@@ -528,7 +528,7 @@ static DEVICE_IMAGE_LOAD( arcadia_cart )
 	    rom[patch[i].address] = patch[i].new;
 	}
 #endif
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static MACHINE_DRIVER_START( arcadia )
@@ -566,7 +566,7 @@ static MACHINE_DRIVER_START( arcadia )
 	MDRV_CARTSLOT_LOAD(arcadia_cart)
 
 	/* Software lists */
-	MDRV_SOFTWARE_LIST_ADD("arcadia")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","arcadia")
 MACHINE_DRIVER_END
 
 ROM_START(advsnha)
@@ -664,7 +664,7 @@ ROM_START(poppympt)
 	ROM_REGION(0x100,"gfx1", ROMREGION_ERASEFF)
 ROM_END
 
-ROM_START(prestige)
+ROM_START(prestmpt)
 	ROM_REGION(0x8000,"maincpu", ROMREGION_ERASEFF)
 	ROM_REGION(0x100,"gfx1", ROMREGION_ERASEFF)
 ROM_END
@@ -891,7 +891,7 @@ CONS(198?, ormatu,    0,         arcadia,  arcadia,      arcadia,  arcadia,     
 CONS(198?, plldium,   0,         arcadia,  arcadia,      plldium,  arcadia,      "Neckermann",         "Palladium Video-Computer-Game", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )      /* Germany, 16 keys instead of 12 */
 CONS(1983, polyvcg,   plldium,   0,        arcadia,      arcadia,  arcadia,      "Polybrain",          "Polybrain Video Computer Game", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )      /* Germany */
 CONS(198?, poppympt,  intmpt03,  0,        arcadia,      arcadia,  arcadia,      "Transonic",          "Poppy MPT-03 Tele Computer Spiel", GAME_IMPERFECT_SOUND )           /* Germany */
-CONS(198?, prestige,  intmpt03,  0,        arcadia,      arcadia,  arcadia,      "Prestige",           "Prestige Video Computer Game MPT-03", GAME_IMPERFECT_SOUND )        /* France */
+CONS(198?, prestmpt,  intmpt03,  0,        arcadia,      arcadia,  arcadia,      "Prestige",           "Prestige Video Computer Game MPT-03", GAME_IMPERFECT_SOUND )        /* France */
 CONS(198?, rowtrn2k,  intmpt03,  0,        arcadia,      arcadia,  arcadia,      "Rowtron",            "Rowtron 2000", GAME_IMPERFECT_SOUND )               /* UK */
 CONS(1982, tvg2000,   arcadia,   0,        arcadia,      arcadia,  arcadia,      "Schmid",             "Schmid TVG 2000", GAME_IMPERFECT_SOUND )            /* Germany */
 CONS(198?, sheenhvc,  ormatu,    0,        arcadia,      arcadia,  arcadia,      "Sheen",              "Sheen Home Video Centre 2001", GAME_IMPERFECT_SOUND )     /* Australia */

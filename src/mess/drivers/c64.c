@@ -568,7 +568,7 @@ static CBM_IEC_DAISY( cbm_iec_daisy )
 
 static VIDEO_UPDATE( c64 )
 {
-	running_device *vic2 = devtag_get_device(screen->machine, "vic2");
+	running_device *vic2 = screen->machine->device("vic2");
 
 	vic2_video_update(vic2, bitmap, cliprect);
 	return 0;
@@ -834,7 +834,7 @@ MACHINE_DRIVER_END
 
 ROM_START( max )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( c64 )
@@ -852,7 +852,7 @@ ROM_START( c64 )
 
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )	// Character
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_c64pal	rom_c64
@@ -863,7 +863,7 @@ ROM_START( c64jpn )
 	ROM_LOAD( "906145-02.bin", 0x12000, 0x2000, CRC(3a9ef6f1) SHA1(4ff0f11e80f4b57430d8f0c3799ed0f0e0f4565d) )
 	ROM_LOAD( "906143-02.bin", 0x14000, 0x1000, CRC(1604f6c1) SHA1(0fad19dbcdb12461c99657b2979dbb5c2e47b527) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 
@@ -876,7 +876,7 @@ ROM_START( vic64s )
 	ROM_SYSTEM_BIOS(1, "alt", "Swedish Characters (Alt)" )
 	ROMX_LOAD( "charswe2.bin",0x14000, 0x1000, CRC(377a382b) SHA1(20df25e0ba1c88f31689c1521397c96968967fac), ROM_BIOS(2) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_c64swe	rom_vic64s
@@ -887,7 +887,7 @@ ROM_START( pet64 )
 	ROM_LOAD( "901246-01.bin", 0x12000, 0x2000, CRC(789c8cc5) SHA1(6c4fa9465f6091b174df27dfe679499df447503c) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_cbm4064 rom_pet64
@@ -906,7 +906,7 @@ ROM_START( sx64 )
 
 	ROM_LOAD( "901225-01.ud1", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( dx64 )
@@ -914,7 +914,7 @@ ROM_START( dx64 )
     ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
     ROM_LOAD( "dx64kern.bin",  0x12000, 0x2000, CRC(58065128) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( vip64 )
@@ -923,7 +923,7 @@ ROM_START( vip64 )
 	ROM_LOAD( "kernelsx.swe",   0x12000, 0x2000, CRC(7858d3d7) SHA1(097cda60469492a8916c2677b7cce4e12a944bc0) )
 	ROM_LOAD( "charswe.bin", 0x14000, 0x1000, CRC(bee9b3fd) SHA1(446ae58f7110d74d434301491209299f66798d8a) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 
@@ -933,11 +933,19 @@ ROM_START( c64c )
 	ROM_LOAD( "251913-01.bin", 0x10000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_c64cpal		rom_c64c
 #define rom_c64g		rom_c64c
+
+ROM_START( c64csfi )
+	ROM_REGION( 0x19400, "maincpu", 0 )
+	ROM_LOAD( "325182-01.ua4",		  0x10000, 0x4000, CRC(2aff27d3) SHA1(267654823c4fdf2167050f41faa118218d2569ce) ) // 128/64 FI
+	ROM_LOAD( "cbm 64 skand.gen.ua5", 0x14000, 0x1000, CRC(377a382b) SHA1(20df25e0ba1c88f31689c1521397c96968967fac) )
+
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
+ROM_END
 
 ROM_START( c64gs )
 	ROM_REGION( 0x19400, "maincpu", 0 )
@@ -945,7 +953,7 @@ ROM_START( c64gs )
 	ROM_LOAD( "390852-01.bin", 0x10000, 0x4000, CRC(b0a9c2da) SHA1(21940ef5f1bfe67d7537164f7ca130a1095b067a) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
 
-	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( 0x80000, "user1", ROMREGION_ERASE00 )
 ROM_END
 
 
@@ -970,7 +978,7 @@ ROM_END
 
 /*   YEAR  NAME   PARENT COMPAT MACHINE  INPUT    INIT     COMPANY                            FULLNAME */
 
-COMP(1982, max,	  0,    0,    ultimax, c64,     ultimax, "Commodore Business Machines", "Commodore Max Machine", 0)
+COMP(1982, max,		0,    0,    ultimax, c64,     ultimax, "Commodore Business Machines", "Commodore Max Machine", 0)
 
 COMP(1982, c64,     0,    0,    c64,     c64,     c64,     "Commodore Business Machines", "Commodore 64 (NTSC)", 0)
 COMP(1982, c64pal,  c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines", "Commodore 64 (PAL)",  0)
@@ -978,16 +986,19 @@ COMP(1982, c64jpn,  c64,  0,    c64,     c64,     c64,     "Commodore Business M
 COMP(1982, vic64s,  c64,  0,    c64pal,  vic64s,  c64pal,  "Commodore Business Machines", "VIC 64S", 0)
 COMP(1982, c64swe,  c64,  0,    c64pal,  vic64s,  c64pal,  "Commodore Business Machines", "Commodore 64 (Sweden/Finland)", 0)
 
-COMP(1983, pet64,	  c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "PET 64 (NTSC)", 0)
+COMP(1983, pet64,	c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "PET 64 (NTSC)", 0)
 COMP(1983, cbm4064, c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "CBM 4064 (NTSC)", 0)
 COMP(1983, edu64,   c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "Educator 64 (NTSC)", 0) // maybe different palette?
+//COMP(1983, clipper,  c64,  0,	c64pal,  clipper, c64pal,  "PDC", "Clipper", GAME_NOT_WORKING) // C64 in a briefcase with 3" floppy, electroluminescent flat screen, thermal printer
+//COMP(1983, tesa6240, c64,  0,	c64pal,  c64,	  c64pal,  "Tesa", "6240", GAME_NOT_WORKING) // modified SX64 with label printer
 
 COMP(1984, sx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "SX-64 Executive Computer (PAL)", GAME_NOT_WORKING)
 COMP(1984, vip64,   c64,  0,    sx64,    vip64,   sx64,    "Commodore Business Machines", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
-COMP(198?, dx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "DX-64 (Prototype, PAL)", GAME_NOT_WORKING)
+COMP(1983, dx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "DX-64 (Prototype, PAL)", GAME_NOT_WORKING)
 
 COMP(1986, c64c,    c64,  0,    c64,     c64,     c64,     "Commodore Business Machines", "Commodore 64C (NTSC)", 0)
 COMP(1986, c64cpal, c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines", "Commodore 64C (PAL)", 0)
+COMP(1986, c64csfi, c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines", "Commodore 64C (Sweden/Finland)", 0)
 COMP(1986, c64g,    c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines", "Commodore 64G (PAL)", 0)
 
 CONS(1990, c64gs,   c64,  0,    c64gs,   c64gs,   c64gs,   "Commodore Business Machines", "Commodore 64 Games System (PAL)", 0)

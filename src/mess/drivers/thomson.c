@@ -200,17 +200,20 @@ INPUT_PORTS_END
 
 /* ------------ serial ------------ */
 
-#define THOM_SERIAL_CC90323	DEVICE_GET_INFO_NAME(thom_serial_cc90323)
+DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_CC90323, thom_serial_cc90323);
+DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_CC90323, thom_serial_cc90323);
 
 #define MDRV_THOM_SERIAL_CC90323_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_CC90323, 0)
 
-#define THOM_SERIAL_RF57232	DEVICE_GET_INFO_NAME(thom_serial_rf57232)
+DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_RF57232, thom_serial_rf57232);
+DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_RF57232, thom_serial_rf57232);
 
 #define MDRV_THOM_SERIAL_RF57232_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_RF57232, 0)
 
-#define THOM_SERIAL_MODEM	DEVICE_GET_INFO_NAME(thom_serial_modem)
+DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_MODEM, thom_serial_modem);
+DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_MODEM, thom_serial_modem);
 
 #define MDRV_THOM_SERIAL_MODEM_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_MODEM, 0)
@@ -336,7 +339,7 @@ static ADDRESS_MAP_START ( to7, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x10000 - 0x1ffff: 64 KB external ROM cartridge */
 /* 0x20000 - 0x247ff: 18 KB floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping:
+/* messram_get_ptr(machine->device("messram")) mapping:
    0x0000 - 0x3fff: 16 KB video RAM (actually 8 K x 8 bits + 8 K x 6 bits)
    0x4000 - 0x5fff:  8 KB base RAM
    0x6000 - 0x9fff: 16 KB extended RAM
@@ -589,9 +592,9 @@ static const floppy_config thomson_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(thomson),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* ------------ driver ------------ */
@@ -759,7 +762,7 @@ static ADDRESS_MAP_START ( to770, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x10000 - 0x1ffff: 64 KB external ROM cartridge */
 /* 0x20000 - 0x247ff: 18 KB floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping:
+/* messram_get_ptr(machine->device("messram")) mapping:
    0x00000 - 0x03fff: 16 KB video RAM
    0x04000 - 0x07fff: 16 KB unbanked base RAM
    0x08000 - 0x1ffff: 6 * 16 KB banked extended RAM
@@ -948,7 +951,7 @@ static ADDRESS_MAP_START ( mo5, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x10000 - 0x1ffff: 16 KB integrated BASIC / 64 KB external cartridge */
 /* 0x20000 - 0x247ff: 18 KB floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping:
+/* messram_get_ptr(machine->device("messram")) mapping:
    0x00000 - 0x03fff: 16 KB video RAM
    0x04000 - 0x0bfff: 32 KB unbanked base RAM
    0x0c000 - 0x1bfff: 4 * 16 KB bank extended RAM
@@ -1155,7 +1158,7 @@ static ADDRESS_MAP_START ( to9, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x20000 - 0x3ffff: 128 KB internal software ROM */
 /* 0x40000 - 0x447ff: 18  KB external floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping:
+/* messram_get_ptr(machine->device("messram")) mapping:
    0x00000 - 0x03fff: 16 KB video RAM
    0x04000 - 0x07fff: 16 KB unbanked base RAM
    0x08000 - 0x2ffff: 10 * 16 KB banked extended RAM
@@ -1482,7 +1485,7 @@ static ADDRESS_MAP_START ( to8, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x30000 - 0x33fff: 16 KB BIOS ROM */
 /* 0x34000 - 0x387ff: 18 KB external floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping: 512 KB flat (including video) */
+/* messram_get_ptr(machine->device("messram")) mapping: 512 KB flat (including video) */
 
 ADDRESS_MAP_END
 
@@ -1682,7 +1685,7 @@ static ADDRESS_MAP_START ( to9p, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x30000 - 0x33fff: 16 KB BIOS ROM */
 /* 0x34000 - 0x387ff: 18 KB external floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping: 512 KB flat (including video) */
+/* messram_get_ptr(machine->device("messram")) mapping: 512 KB flat (including video) */
 
 ADDRESS_MAP_END
 
@@ -1844,7 +1847,7 @@ static ADDRESS_MAP_START ( mo6, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x20000 - 0x2ffff: 64 KB BIOS ROM */
 /* 0x30000 - 0x347ff: 16 KB floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping: 128 KB flat (including video) */
+/* messram_get_ptr(machine->device("messram")) mapping: 128 KB flat (including video) */
 
 ADDRESS_MAP_END
 
@@ -2160,7 +2163,7 @@ static ADDRESS_MAP_START ( mo5nr, ADDRESS_SPACE_PROGRAM, 8 )
 /* 0x20000 - 0x2ffff: 64 KB BIOS ROM */
 /* 0x30000 - 0x347ff: 16 KB floppy / network ROM controllers */
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) mapping: 128 KB flat (including video) */
+/* messram_get_ptr(machine->device("messram")) mapping: 128 KB flat (including video) */
 
 ADDRESS_MAP_END
 

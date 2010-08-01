@@ -319,7 +319,7 @@ WRITE8_DEVICE_HANDLER( kaypro_sio_w )
 
 static TIMER_CALLBACK( kaypro_timer_callback )
 {
-	if (cpu_get_reg(devtag_get_device(machine, "maincpu"), Z80_HALT))
+	if (cpu_get_reg(machine->device("maincpu"), Z80_HALT))
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 }
 
@@ -356,11 +356,11 @@ const wd17xx_interface kaypro_wd1793_interface =
 ************************************************************/
 MACHINE_START( kayproii )
 {
-	kayproii_z80pio_g = devtag_get_device(machine, "z80pio_g");
-	kayproii_z80pio_s = devtag_get_device(machine, "z80pio_s");
-	kaypro_z80sio = devtag_get_device(machine, "z80sio");
-	kaypro_printer = devtag_get_device(machine, "centronics");
-	kaypro_fdc = devtag_get_device(machine, "wd1793");
+	kayproii_z80pio_g = machine->device("z80pio_g");
+	kayproii_z80pio_s = machine->device("z80pio_s");
+	kaypro_z80sio = machine->device("z80sio");
+	kaypro_printer = machine->device("centronics");
+	kaypro_fdc = machine->device("wd1793");
 
 	z80pio_astb_w(kayproii_z80pio_s, 0);
 }
@@ -372,10 +372,10 @@ MACHINE_RESET( kayproii )
 
 MACHINE_START( kaypro2x )
 {
-	kaypro_z80sio = devtag_get_device(machine, "z80sio");
-	kaypro2x_z80sio = devtag_get_device(machine, "z80sio_2x");
-	kaypro_printer = devtag_get_device(machine, "centronics");
-	kaypro_fdc = devtag_get_device(machine, "wd1793");
+	kaypro_z80sio = machine->device("z80sio");
+	kaypro2x_z80sio = machine->device("z80sio_2x");
+	kaypro_printer = machine->device("centronics");
+	kaypro_fdc = machine->device("wd1793");
 }
 
 MACHINE_RESET( kaypro2x )
@@ -398,52 +398,52 @@ MACHINE_RESET( kaypro2x )
 
 QUICKLOAD_LOAD( kayproii )
 {
-	running_device *cpu = devtag_get_device(image->machine, "maincpu");
-	UINT8 *RAM = memory_region(image->machine, "rambank");
+	running_device *cpu = image.device().machine->device("maincpu");
+	UINT8 *RAM = memory_region(image.device().machine, "rambank");
 	UINT16 i;
 	UINT8 data;
 
 	/* Load image to the TPA (Transient Program Area) */
 	for (i = 0; i < quickload_size; i++)
 	{
-		if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
+		if (image.fread( &data, 1) != 1) return IMAGE_INIT_FAIL;
 
 		RAM[i+0x100] = data;
 	}
 
-//  if (input_port_read(image->machine, "CONFIG") & 1)
+//  if (input_port_read(image.device().machine, "CONFIG") & 1)
 	{
 		common_pio_system_w(kayproii_z80pio_s, 0, kaypro_system_port & 0x7f);	// switch TPA in
 		RAM[0x80]=0;							// clear out command tail
 		RAM[0x81]=0;
-		cpu_set_reg(cpu, REG_GENPC, 0x100);				// start program
+		cpu_set_reg(cpu, STATE_GENPC, 0x100);				// start program
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 QUICKLOAD_LOAD( kaypro2x )
 {
-	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	running_device *cpu = devtag_get_device(image->machine, "maincpu");
-	UINT8 *RAM = memory_region(image->machine, "rambank");
+	const address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	running_device *cpu = image.device().machine->device("maincpu");
+	UINT8 *RAM = memory_region(image.device().machine, "rambank");
 	UINT16 i;
 	UINT8 data;
 
 	for (i = 0; i < quickload_size; i++)
 	{
-		if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
+		if (image.fread( &data, 1) != 1) return IMAGE_INIT_FAIL;
 
 		RAM[i+0x100] = data;
 	}
 
-//  if (input_port_read(image->machine, "CONFIG") & 1)
+//  if (input_port_read(image.device().machine, "CONFIG") & 1)
 	{
 		kaypro2x_system_port_w(space, 0, kaypro_system_port & 0x7f);
 		RAM[0x80]=0;
 		RAM[0x81]=0;
-		cpu_set_reg(cpu, REG_GENPC, 0x100);
+		cpu_set_reg(cpu, STATE_GENPC, 0x100);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }

@@ -15,7 +15,7 @@ static UINT16* dual68_ram;
 
 static WRITE16_HANDLER(dual68_terminal_w)
 {
-	running_device *devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = space->machine->device("terminal");
 	terminal_write(devconf,0,data >> 8);
 }
 
@@ -49,7 +49,7 @@ static MACHINE_RESET(dual68)
 
 	memcpy((UINT8*)dual68_ram,user1,0x2000);
 
-	devtag_get_device(machine, "maincpu")->reset();
+	machine->device("maincpu")->reset();
 }
 
 static WRITE8_DEVICE_HANDLER( dual68_kbd_put )
@@ -67,7 +67,7 @@ static MACHINE_DRIVER_START( dual68 )
     MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz / 2)
     MDRV_CPU_PROGRAM_MAP(dual68_mem)
 
-	MDRV_CPU_ADD("siocpu", 8085A, XTAL_16MHz / 8)
+	MDRV_CPU_ADD("siocpu", I8085A, XTAL_16MHz / 8)
     MDRV_CPU_PROGRAM_MAP(sio4_mem)
     MDRV_CPU_IO_MAP(sio4_io)
 

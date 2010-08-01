@@ -112,9 +112,9 @@ static READ8_HANDLER(fd5_data_r)
 
 	LOG(("fd5 0x010 r: %02x %04x\n",state->fd5_databus,cpu_get_pc(space->cpu)));
 
-	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
-	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x10);
-	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
+	ppi8255_set_port_c(space->machine->device("ppi8255"), 0x50);
+	ppi8255_set_port_c(space->machine->device("ppi8255"), 0x10);
+	ppi8255_set_port_c(space->machine->device("ppi8255"), 0x50);
 
 	return state->fd5_databus;
 }
@@ -128,9 +128,9 @@ static WRITE8_HANDLER(fd5_data_w)
 	state->fd5_databus = data;
 
 	/* set stb on data write */
-	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
-	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x40);
-	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
+	ppi8255_set_port_c(space->machine->device("ppi8255"), 0x50);
+	ppi8255_set_port_c(space->machine->device("ppi8255"), 0x40);
+	ppi8255_set_port_c(space->machine->device("ppi8255"), 0x50);
 
 	cpu_yield(space->cpu);
 }
@@ -154,7 +154,7 @@ static WRITE8_HANDLER( fd5_drive_control_w )
 
 static WRITE8_HANDLER( fd5_tc_w )
 {
-	running_device *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = space->machine->device("upd765");
 	upd765_tc_w(fdc, 1);
 	upd765_tc_w(fdc, 0);
 }
@@ -192,7 +192,7 @@ static const struct upd765_interface sord_fd5_upd765_interface=
 static MACHINE_RESET( sord_m5_fd5 )
 {
 	MACHINE_RESET_CALL(sord_m5);
-	ppi8255_set_port_c(devtag_get_device(machine, "ppi8255"), 0x50);
+	ppi8255_set_port_c(machine->device("ppi8255"), 0x50);
 }
 
 
@@ -203,16 +203,16 @@ static READ8_DEVICE_HANDLER(sord_ppi_porta_r)
 {
 	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+	cpu_yield(device->machine->device("maincpu"));
 
 	return state->fd5_databus;
 }
 
 static READ8_DEVICE_HANDLER(sord_ppi_portb_r)
 {
-	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+	cpu_yield(device->machine->device("maincpu"));
 
-	LOG(("m5 read from pi5 port b %04x\n", cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
+	LOG(("m5 read from pi5 port b %04x\n", cpu_get_pc(device->machine->device("maincpu"))));
 
 	return 0x0ff;
 }
@@ -221,9 +221,9 @@ static READ8_DEVICE_HANDLER(sord_ppi_portc_r)
 {
 	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+	cpu_yield(device->machine->device("maincpu"));
 
-	LOG(("m5 read from pi5 port c %04x\n", cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
+	LOG(("m5 read from pi5 port c %04x\n", cpu_get_pc(device->machine->device("maincpu"))));
 
 /* from fd5 */
 /* 00 = 0000 = write */
@@ -254,14 +254,14 @@ static WRITE8_DEVICE_HANDLER(sord_ppi_porta_w)
 {
 	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+	cpu_yield(device->machine->device("maincpu"));
 
 	state->fd5_databus = data;
 }
 
 static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 {
-	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+	cpu_yield(device->machine->device("maincpu"));
 
 	/* f0, 40 */
 	/* 1111 */
@@ -272,7 +272,7 @@ static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 		cputag_set_input_line(device->machine, "floppy", INPUT_LINE_RESET, ASSERT_LINE);
 		cputag_set_input_line(device->machine, "floppy", INPUT_LINE_RESET, CLEAR_LINE);
 	}
-	LOG(("m5 write to pi5 port b: %02x %04x\n", data, cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
+	LOG(("m5 write to pi5 port b: %02x %04x\n", data, cpu_get_pc(device->machine->device("maincpu"))));
 }
 
 /* A,  B,  C,  D,  E,   F,  G,  H,  I,  J, K,  L,  M,   N, O, P, Q, R,   */
@@ -289,8 +289,8 @@ static WRITE8_DEVICE_HANDLER(sord_ppi_portc_w)
 	state->intra = (data & 0x08) ? 1 : 0;
 	state->ibfa = (data & 0x20) ? 1 : 0;
 
-	cpu_yield(devtag_get_device(device->machine, "maincpu"));
-	LOG(("m5 write to pi5 port c: %02x %04x\n", data, cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
+	cpu_yield(device->machine->device("maincpu"));
+	LOG(("m5 write to pi5 port c: %02x %04x\n", data, cpu_get_pc(device->machine->device("maincpu"))));
 }
 
 static const ppi8255_interface sord_ppi8255_interface =
@@ -313,8 +313,8 @@ static void sordm5_video_interrupt_callback(running_machine *machine, int state)
 {
 	if (state)
 	{
-		z80ctc_trg3_w(devtag_get_device(machine, "z80ctc"), 1);
-		z80ctc_trg3_w(devtag_get_device(machine, "z80ctc"), 0);
+		z80ctc_trg3_w(machine->device("z80ctc"), 1);
+		z80ctc_trg3_w(machine->device("z80ctc"), 0);
 	}
 }
 
@@ -330,8 +330,8 @@ static INTERRUPT_GEN( sord_interrupt )
 /* bit 7 is the reset/halt key */
 static READ8_HANDLER( sord_sts_r )
 {
-	running_device *printer = devtag_get_device(space->machine, "centronics");
-	running_device *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *printer = space->machine->device("centronics");
+	running_device *cassette = space->machine->device("cassette");
 	UINT8 data = 0;
 
 	data |= cassette_input(cassette) >= 0 ? 1 : 0;
@@ -348,8 +348,8 @@ static READ8_HANDLER( sord_sts_r )
 /* bit 1 is cassette remote */
 static WRITE8_HANDLER( sord_com_w )
 {
-	running_device *printer = devtag_get_device(space->machine, "centronics");
-	running_device *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *printer = space->machine->device("centronics");
+	running_device *cassette = space->machine->device("cassette");
 
 	/* cassette data */
 	cassette_output(cassette, BIT(data, 0) ? -1.0 : 1.0);
@@ -498,7 +498,7 @@ INPUT_PORTS_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static const z80_daisy_chain sord_m5_daisy_chain[] =
+static const z80_daisy_config sord_m5_daisy_chain[] =
 {
 	{ "z80ctc" },
 	{ NULL }
@@ -517,7 +517,8 @@ static const cassette_config sordm5_cassette_config =
 {
 	sordm5_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY)
+	(cassette_state)(CASSETTE_PLAY),
+	NULL
 };
 
 static const TMS9928a_interface tms9928a_interface =
@@ -528,6 +529,26 @@ static const TMS9928a_interface tms9928a_interface =
 	sordm5_video_interrupt_callback
 };
 
+
+static DEVICE_IMAGE_LOAD( sord_cart )
+{
+	UINT32 size;
+	UINT8 *ptr = memory_region(image.device().machine, "maincpu");
+	
+	if (image.software_entry() == NULL)
+	{
+		size = image.length();
+		if (image.fread(ptr + 0x2000, size) != size)
+			return IMAGE_INIT_FAIL;
+	}
+	else
+	{
+		size = image.get_software_region_length("rom");
+		memcpy(ptr + 0x2000, image.get_software_region("rom"), size);
+	}
+	
+	return IMAGE_INIT_PASS;
+}
 
 static MACHINE_START( sord_m5 )
 {
@@ -574,8 +595,14 @@ static MACHINE_DRIVER_START( sord_m5 )
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,rom")
 	MDRV_CARTSLOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(sord_cart)
+	MDRV_CARTSLOT_INTERFACE("m5_cart")
+
+	/* software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","sordm5")
+
 MACHINE_DRIVER_END
 
 
@@ -595,9 +622,9 @@ static const floppy_config sordm5_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_SS_40,
+	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(sordm5),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( sord_m5_fd5 )
@@ -618,6 +645,9 @@ static MACHINE_DRIVER_START( sord_m5_fd5 )
 	MDRV_MACHINE_RESET(sord_m5_fd5)
 
 	MDRV_FLOPPY_4_DRIVES_ADD(sordm5_floppy_config)
+
+	MDRV_CARTSLOT_MODIFY("cart")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 
@@ -627,15 +657,17 @@ MACHINE_DRIVER_END
 
 ROM_START( sordm5 )
 	ROM_REGION(0x10000, "maincpu", 0)
-	ROM_LOAD("sordint.rom", 0x0000, 0x2000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2))
-	ROM_CART_LOAD("cart", 0x2000, 0x5000, ROM_NOMIRROR)
+	ROM_SYSTEM_BIOS(0, "int", "International")
+	ROMX_LOAD("sordint.rom", 0x0000, 0x2000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2),ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "jap", "Japanese")
+    ROMX_LOAD("sordjap.rom", 0x0000, 0x2000, CRC(92cf9353) SHA1(b0a4b3658fde68cb1f344dfb095bac16a78e9b3e),ROM_BIOS(2))	
 ROM_END
 
 
-ROM_START( srdm5fd5 )
+ROM_START( sordm5fd5 )
 	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_LOAD("sordint.rom",0x0000, 0x2000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2))
-	ROM_CART_LOAD("cart", 0x2000, 0x5000, ROM_NOMIRROR | ROM_OPTIONAL)
+
 	ROM_REGION(0x4000, "floppy", 0)
 	ROM_LOAD("sordfd5.rom",0x0000, 0x4000, NO_DUMP)
 ROM_END
@@ -654,6 +686,6 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE      INPUT    INIT  COMPANY  FULLNAME               FLAGS */
-COMP( 1983, sordm5,	  0,      0,      sord_m5,	   sord_m5, 0,    "Sord",  "Sord M5",             0 )
-COMP( 1983, srdm5fd5, sordm5, 0,      sord_m5_fd5, sord_m5, 0,    "Sord",  "Sord M5 + PI5 + FD5", GAME_NOT_WORKING )
+/*    YEAR  NAME       PARENT  COMPAT  MACHINE      INPUT    INIT  COMPANY  FULLNAME               FLAGS */
+COMP( 1983, sordm5,    0,      0,      sord_m5,	    sord_m5, 0,    "Sord",  "Sord M5",             0 )
+COMP( 1983, sordm5fd5, sordm5, 0,      sord_m5_fd5, sord_m5, 0,    "Sord",  "Sord M5 + PI5 + FD5", GAME_NOT_WORKING )

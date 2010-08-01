@@ -65,30 +65,30 @@ static DEVICE_IMAGE_LOAD( advision_cart )
 {
 	UINT32 size;
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		size = image_length(image);
+		size = image.length();
 
-		if (size > memory_region_length(image->machine, I8048_TAG))
+		if (size > memory_region_length(image.device().machine, I8048_TAG))
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
+			return IMAGE_INIT_FAIL;
 		}
 
-		if (image_fread(image, memory_region(image->machine, I8048_TAG), size) != size)
+		if (image.fread( memory_region(image.device().machine, I8048_TAG), size) != size)
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return IMAGE_INIT_FAIL;
 		}
 
 	}
 	else
 	{
-		size = image_get_software_region_length(image, "rom");
-		memcpy(memory_region(image->machine, I8048_TAG), image_get_software_region(image, "rom"), size);
+		size = image.get_software_region_length("rom");
+		memcpy(memory_region(image.device().machine, I8048_TAG), image.get_software_region("rom"), size);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /* Machine Driver */
@@ -142,7 +142,7 @@ static MACHINE_DRIVER_START( advision )
 	MDRV_CARTSLOT_LOAD(advision_cart)
 
 	/* Software lists */
-	MDRV_SOFTWARE_LIST_ADD("advision")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","advision")
 MACHINE_DRIVER_END
 
 /* ROMs */

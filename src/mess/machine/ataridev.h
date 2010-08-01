@@ -18,6 +18,7 @@ MACHINE_START( a400 );
 MACHINE_START( a800 );
 MACHINE_START( a800xl );
 MACHINE_START( a5200 );
+MACHINE_START( xegs );
 
 DEVICE_IMAGE_LOAD( a800_cart );
 DEVICE_IMAGE_UNLOAD( a800_cart );
@@ -28,13 +29,14 @@ DEVICE_IMAGE_UNLOAD( a800xl_cart );
 DEVICE_IMAGE_LOAD( a5200_cart );
 DEVICE_IMAGE_UNLOAD( a5200_cart );
 
+DEVICE_IMAGE_LOAD( xegs_cart );
 
 /*----------- defined in machine/atarifdc.c -----------*/
 /***************************************************************************
     MACROS
 ***************************************************************************/
 
-#define ATARI_FDC		DEVICE_GET_INFO_NAME(atari_fdc)
+DECLARE_LEGACY_DEVICE(ATARI_FDC, atari_fdc);
 
 #define MDRV_ATARI_FDC_ADD(_tag)	\
 	MDRV_DEVICE_ADD((_tag),  ATARI_FDC, 0)
@@ -43,9 +45,6 @@ DEVICE_IMAGE_UNLOAD( a5200_cart );
 /***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
-
-DEVICE_GET_INFO(atari_fdc);
-
 READ8_DEVICE_HANDLER( atari_serin_r );
 WRITE8_DEVICE_HANDLER( atari_serout_w );
 WRITE_LINE_DEVICE_HANDLER( atarifdc_pia_cb2_w );

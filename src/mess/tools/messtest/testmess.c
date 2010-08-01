@@ -18,8 +18,6 @@
 #include "sound/wavwrite.h"
 #include "video/generic.h"
 #include "render.h"
-#include "messopts.h"
-#include "device.h"
 #include "devices/messram.h"
 #include "debug/debugcpu.h"
 
@@ -225,16 +223,16 @@ static void dump_screenshot(running_machine *machine, int write_file)
 		if (filerr == FILERR_NONE)
 		{
 			/* choose a screen */
-			running_device *screen = video_screen_first(machine);
+			screen_device *screen = screen_first(*machine);
 			while((screen != NULL) && !render_is_live_screen(screen))
 			{
-				screen = video_screen_next(screen);
+				screen = screen_next(screen);
 			}
 
 			/* did we find a live screen? */
 			if (screen != NULL)
 			{
-				video_screen_save_snapshot(screen->machine, screen, fp);
+				screen_save_snapshot(screen->machine, screen, fp);
 				report_message(MSG_INFO, "Saved screenshot as %s", buf);
 			}
 			else
@@ -358,8 +356,8 @@ static messtest_result_t run_test(int flags, messtest_results *results)
 		/* get the path */
 		fullpath = assemble_software_path(astring_alloc(), driver, current_command->u.image_args.filename);
 
-		/* get the option name */
-		device_opt = device_typename(current_command->u.image_args.device_ident.type);
+		/* get the option name */		
+		device_opt = device_config_image_interface::device_typename(current_command->u.image_args.device_ident.type);
 
 		/* set the option */
 		options_set_string(opts, device_opt, astring_c(fullpath), OPTION_PRIORITY_CMDLINE);
@@ -425,7 +423,7 @@ static messtest_result_t run_test(int flags, messtest_results *results)
 
 
 
-static void testmess_exit(running_machine *machine)
+static void testmess_exit(running_machine &machine)
 {
 	if (target != NULL)
 	{
@@ -437,8 +435,8 @@ static void testmess_exit(running_machine *machine)
 
 
 void osd_init(running_machine *machine)
-{
-	add_exit_callback(machine, testmess_exit);
+{	
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, testmess_exit);
 	target = render_target_alloc(machine, NULL, 0);
 	render_target_set_orientation(target, 0);
 }
@@ -495,7 +493,7 @@ static const input_setting_config *find_switch(running_machine *machine, const c
 
 	/* find switch with the name */
 	found = FALSE;
-	for (port = machine->portlist.first(); !found && (port != NULL); port = port->next)
+	for (port = machine->m_portlist.first(); !found && (port != NULL); port = port->next())
 	{
 		for (field = port->fieldlist; !found && (field != NULL); field = field->next)
 		{
@@ -703,15 +701,15 @@ static void command_image_preload(running_machine *machine)
 
 
 
-static running_device *find_device_by_identity(running_machine *machine, const messtest_device_identity *ident)
+static device_image_interface *find_device_by_identity(running_machine *machine, const messtest_device_identity *ident)
 {
-	running_device *device = NULL;
+	device_image_interface *device = NULL;
 
 	/* look up the image slot */
 	if (ident->type == IO_UNKNOWN)
 	{
 		/* no device_type was specified; use the new preferred mechanism */
-		device = devtag_get_device(machine, ident->tag);
+		device = dynamic_cast<device_image_interface *>(machine->device(ident->tag));
 	}
 
 	/* did the image slot lookup fail? */
@@ -719,7 +717,7 @@ static running_device *find_device_by_identity(running_machine *machine, const m
 	{
 		state = STATE_ABORTED;
 		report_message(MSG_FAILURE, "Device '%s %i' does not exist",
-			device_typename(ident->type), ident->slot);
+			device_config_image_interface::device_typename(ident->type), ident->slot);
 	}
 
 	return device;
@@ -729,11 +727,10 @@ static running_device *find_device_by_identity(running_machine *machine, const m
 
 static void command_image_loadcreate(running_machine *machine)
 {
-	running_device *image;
+	device_image_interface *image;
 	const char *filename;
 	const char *format_name;
 	char buf[128];
-	image_device_info info;
 	const char *file_extensions;
 	astring *filepath;
 	int success;
@@ -745,8 +742,7 @@ static void command_image_loadcreate(running_machine *machine)
 	if (image == NULL)
 		return;
 
-	info = image_device_getinfo(machine->config, image);
-	file_extensions = info.file_extensions;
+	file_extensions = image->image_config().file_extensions();
 
 	/* is an image format specified? */
 	format_name = current_command->u.image_args.format;
@@ -760,7 +756,7 @@ static void command_image_loadcreate(running_machine *machine)
 		}
 
 		/* look up the format name */
-		format = image_device_get_named_creatable_format(image, format_name);
+		format = image->device_get_named_creatable_format(format_name);
 		if (format == NULL)
 		{
 			state = STATE_ABORTED;
@@ -789,11 +785,11 @@ static void command_image_loadcreate(running_machine *machine)
 		switch(current_command->command_type)
 		{
 			case MESSTEST_COMMAND_IMAGE_CREATE:
-				success = (image_create(image, astring_c(filepath), format, NULL) == INIT_PASS);
+				success = (image->create(astring_c(filepath), format, NULL) == IMAGE_INIT_PASS);
 				break;
 
 			case MESSTEST_COMMAND_IMAGE_LOAD:
-				success = (image_load(image, astring_c(filepath)) == INIT_PASS);
+				success = (image->load(astring_c(filepath)) == IMAGE_INIT_PASS);
 				break;
 
 			default:
@@ -805,7 +801,7 @@ static void command_image_loadcreate(running_machine *machine)
 	if (!success)
 	{
 		state = STATE_ABORTED;
-		report_message(MSG_FAILURE, "Failed to load/create image '%s': %s", filename, image_error(image));
+		report_message(MSG_FAILURE, "Failed to load/create image '%s': %s", filename, image->error());
 		return;
 	}
 }
@@ -881,7 +877,7 @@ static void command_verify_image(running_machine *machine)
 	size_t verify_data_size;
 	size_t offset, offset_start, offset_end;
 	const char *filename;
-	running_device *image;
+	device_image_interface *image;
 	FILE *f;
 	UINT8 c;
 	char filename_buf[512];
@@ -894,7 +890,7 @@ static void command_verify_image(running_machine *machine)
 	if (image == NULL)
 		return;
 
-	filename = image_filename(image);
+	filename = image->filename();
 	if (filename == NULL)
 	{
 		state = STATE_ABORTED;
@@ -905,7 +901,7 @@ static void command_verify_image(running_machine *machine)
 	/* very dirty hack - we unload the image because we cannot access it
      * because the file is locked */
 	strcpy(filename_buf, filename);
-	image_unload(image);
+	image->unload();
 	filename = filename_buf;
 
 	f = fopen(filename, "r");
@@ -939,14 +935,15 @@ static void command_verify_image(running_machine *machine)
 
 static void command_trace(running_machine *machine)
 {
-	running_device *cpu;
+	device_execute_interface *cpu;
 	int cpunum = 0;
 	FILE *file;
 	char filename[256];
-
-	for (cpu = cpu_first(machine); cpu != NULL; cpu = cpu_next(cpu))
+	for (bool gotone = machine->m_devicelist.first(cpu); gotone; gotone = cpu->next(cpu))
 	{
-		if (cpu_next(cpu_first(machine)) == NULL)
+		device_execute_interface *first = NULL;
+		machine->m_devicelist.first(first);
+		if (!cpu->next(first))
 			snprintf(filename, ARRAY_LENGTH(filename), "_%s.tr", current_testcase.name);
 		else
 			snprintf(filename, ARRAY_LENGTH(filename), "_%s.%d.tr", current_testcase.name, cpunum);
@@ -955,7 +952,7 @@ static void command_trace(running_machine *machine)
 		if (file)
 		{
 			report_message(MSG_INFO, "Tracing CPU #%d: %s", cpunum, filename);
-			debug_cpu_trace(cpu, file, FALSE, NULL);
+			downcast<cpu_device *>(&cpu->device())->debug()->trace( file, FALSE, NULL);
 			fclose(file);
 		}
 
@@ -967,14 +964,14 @@ static void command_trace(running_machine *machine)
 
 static void command_soft_reset(running_machine *machine)
 {
-	mame_schedule_soft_reset(machine);
+	machine->schedule_soft_reset();
 }
 
 
 
 static void command_hard_reset(running_machine *machine)
 {
-	mame_schedule_hard_reset(machine);
+	machine->schedule_hard_reset();
 }
 
 
@@ -984,7 +981,7 @@ static void command_end(running_machine *machine)
 	/* at the end of our test */
 	state = STATE_DONE;
 	final_time = timer_get_time(machine);
-	mame_schedule_exit(machine);
+	machine->schedule_exit();
 }
 
 
@@ -1025,18 +1022,19 @@ void osd_update(running_machine *machine, int skip_redraw)
 	render_target_get_primitives(target);
 
 	/* don't do anything if we are initializing! */
-	switch(mame_get_phase(machine))
+	switch(machine->phase())
 	{
-		case MAME_PHASE_PREINIT:
-		case MAME_PHASE_INIT:
-		case MAME_PHASE_RESET:
+		case MACHINE_PHASE_PREINIT:
+		case MACHINE_PHASE_INIT:
+		case MACHINE_PHASE_RESET:
 			return;
+		default: break;
 	}
 
 	/* if we have already aborted or completed, our work is done */
 	if ((state == STATE_ABORTED) || (state == STATE_DONE))
 	{
-		mame_schedule_exit(machine);
+		machine->schedule_exit();
 		return;
 	}
 
@@ -1250,7 +1248,7 @@ static int get_device_identity_tags(xml_data_node *node, messtest_device_identit
 	{
 		s2 = attr_node->value;
 
-		ident->type = device_typeid(s2);
+		ident->type = device_config_image_interface::device_typeid(s2);
 		if (ident->type <= IO_UNKNOWN)
 		{
 			error_baddevicetype(s2);

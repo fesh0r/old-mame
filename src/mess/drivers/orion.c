@@ -83,7 +83,8 @@ static const cassette_config orion_cassette_config =
 {
 	rko_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 static FLOPPY_OPTIONS_START(orion)
@@ -116,14 +117,14 @@ static const floppy_config orion_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(orion),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* Machine driver */
 static MACHINE_DRIVER_START( orion128 )
-    MDRV_CPU_ADD("maincpu", 8080, 2000000)
+    MDRV_CPU_ADD("maincpu", I8080, 2000000)
     MDRV_CPU_PROGRAM_MAP(orion128_mem)
     MDRV_CPU_IO_MAP(orion128_io)
 

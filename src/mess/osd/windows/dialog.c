@@ -4,14 +4,14 @@
 //
 //============================================================
 
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <tchar.h>
 #include <commctrl.h>
 #include <commdlg.h>
-#include <tchar.h>
 
 #include "dialog.h"
 #include "emu.h"
-#include "utils.h"
 #include "strconv.h"
 #include "pool.h"
 #include "winutil.h"
@@ -19,6 +19,7 @@
 #include "windows/input.h"
 #include "windows/window.h"
 #include "winutf8.h"
+
 
 #ifdef UNDER_CE
 #include "invokegx.h"
@@ -1113,7 +1114,7 @@ static void seqselect_start_read_from_main_thread(void *param)
 	// the Win32 OSD code thinks that we are paused, we need to temporarily
 	// unpause ourselves or else we will block
 	pause_count = 0;
-	while(mame_is_paused(Machine) && !winwindow_ui_is_paused(Machine))
+	while(Machine->paused() && !winwindow_ui_is_paused(Machine))
 	{
 		winwindow_ui_pause_from_main_thread(Machine, FALSE);
 		pause_count++;

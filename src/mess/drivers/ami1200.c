@@ -35,7 +35,7 @@
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/6526cia.h"
-
+#include "machine/i2cmem.h"
 #include "machine/amigafdc.h"
 #include "machine/amigakbd.h"
 
@@ -91,7 +91,7 @@ static WRITE32_HANDLER( aga_overlay_w )
 static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 {
 	/* bit 1 = cd audio mute */
-	running_device *cdda = devtag_get_device(device->machine, "cdda");
+	running_device *cdda = device->machine->device("cdda");
 
 	if (cdda != NULL)
 		sound_set_output_gain(cdda, 0, BIT(data, 0) ? 0.0 : 1.0 );
@@ -380,7 +380,7 @@ INPUT_PORTS_END
 static READ8_DEVICE_HANDLER( a1200_cia_0_portA_r )
 {
 	UINT8 ret = input_port_read(device->machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= amiga_fdc_status_r(devtag_get_device(device->machine, "fdc"));
+	ret |= amiga_fdc_status_r(device->machine->device("fdc"));
 	return ret;
 }
 
@@ -443,6 +443,8 @@ static MACHINE_DRIVER_START( a1200n )
 	MDRV_CPU_ADD("maincpu", M68EC020, AMIGA_68EC020_NTSC_CLOCK) /* 14.3 Mhz */
 	MDRV_CPU_PROGRAM_MAP(a1200_map)
 
+//	MDRV_CPU_ADD("keyboard_mpu", MC68HC05)
+
 	MDRV_MACHINE_RESET(amiga)
 
 	/* video hardware */
@@ -478,7 +480,8 @@ static MACHINE_DRIVER_START( a1200p )
 	MDRV_IMPORT_FROM(a1200n)
 
 	/* adjust for PAL specs */
-	MDRV_CPU_REPLACE("maincpu", M68EC020, A1200PAL_XTAL_X1/2) /* 14.18758 MHz */
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_CLOCK(A1200PAL_XTAL_X1/2) /* 14.18758 MHz */
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -495,6 +498,14 @@ static MACHINE_DRIVER_START( a1200p )
 	MDRV_DEVICE_CLOCK(A1200PAL_XTAL_X1/20)
 MACHINE_DRIVER_END
 
+#define	NVRAM_SIZE 1024
+#define	NVRAM_PAGE_SIZE	16	/* max size of one write request */
+
+static const i2cmem_interface i2cmem_interface =
+{
+	I2CMEM_SLAVE_ADDRESS, NVRAM_PAGE_SIZE, NVRAM_SIZE
+};
+
 static MACHINE_DRIVER_START( cd32 )
 
 	/* basic machine hardware */
@@ -502,7 +513,7 @@ static MACHINE_DRIVER_START( cd32 )
 	MDRV_CPU_PROGRAM_MAP(cd32_map)
 
 	MDRV_MACHINE_RESET(amiga)
-	MDRV_NVRAM_HANDLER(cd32)
+	MDRV_I2CMEM_ADD("i2cmem",i2cmem_interface)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -549,6 +560,14 @@ ROM_START( a1200n )
 	ROM_SYSTEM_BIOS(1, "kick31", "Kickstart 3.1 (40.068)")
 	ROMX_LOAD("391773-01.u6a", 0x000000, 0x040000, CRC(08dbf275) SHA1(b8800f5f909298109ea69690b1b8523fa22ddb37), ROM_GROUPWORD | ROM_REVERSE | ROM_SKIP(2) | ROM_BIOS(2))	// ROM_LOAD32_WORD_SWAP!
 	ROMX_LOAD("391774-01.u6b", 0x000002, 0x040000, CRC(16c07bf8) SHA1(90e331be1970b0e53f53a9b0390b51b59b3869c2), ROM_GROUPWORD | ROM_REVERSE | ROM_SKIP(2) | ROM_BIOS(2))
+
+	// COMMODORE | 391508-01 REV0 | KEYBOARD MPU
+	ROM_REGION(0x1040, "keyboard_rev0", 0)
+	ROM_LOAD("391508-01.u13", 0x0000, 0x1040, NO_DUMP)
+
+	// Amiga Tech REV1 Keyboard MPU
+	ROM_REGION(0x2f40, "keyboard_rev1", 0)
+	ROM_LOAD("391508-02.u13", 0x0000, 0x2f40, NO_DUMP)
 ROM_END
 
 #define rom_a1200p    rom_a1200n
@@ -565,7 +584,7 @@ ROM_END
 
 static UINT16 a1200_read_dskbytr(running_machine *machine)
 {
-	return amiga_fdc_get_byte(devtag_get_device(machine, "fdc"));
+	return amiga_fdc_get_byte(machine->device("fdc"));
 }
 
 static void a1200_write_dsklen(running_machine *machine, UINT16 data)
@@ -573,7 +592,7 @@ static void a1200_write_dsklen(running_machine *machine, UINT16 data)
 	if ( data & 0x8000 )
 	{
 		if ( CUSTOM_REG(REG_DSKLEN) & 0x8000 )
-			amiga_fdc_setup_dma(devtag_get_device(machine, "fdc"));
+			amiga_fdc_setup_dma(machine->device("fdc"));
 	}
 }
 

@@ -52,28 +52,28 @@ const game_driver * const drivers[] =
 	DRIVER( jaguarcd )  /* Atari Jaguar CD    */
 
 	/* Nintendo */
-	DRIVER( nes )	   /* Nintendo Entertainment System */
-	DRIVER( nespal )	/* Nintendo Entertainment System    */
-	DRIVER( m82 )	   /* Nintendo M82 Display Unit */
-	DRIVER( famicom )
-	DRIVER( famitwin )  /* Sharp Famicom Twin System    */
-	DRIVER( drpcjr )	/* Bung Doctor PC Jr    */
-	DRIVER( dendy )	 /* Dendy Classic russian famiclone   */
-	DRIVER( gameboy )   /* Nintendo Game Boy Handheld      */
-	DRIVER( supergb )   /* Nintendo Super Game Boy SNES Cartridge      */
-	DRIVER( gbpocket )  /* Nintendo Game Boy Pocket Handheld    */
-	DRIVER( gblight )   /* Nintendo Game Boy Light Handheld  */
-	DRIVER( gbcolor )   /* Nintendo Game Boy Color Handheld  */
-	DRIVER( snes )		/* Nintendo Super Nintendo NTSC    */
-	DRIVER( snespal )   /* Nintendo Super Nintendo PAL    */
-	DRIVER( snessfx )	/* Nintendo Super Nintendo NTSC w/SuperFX CPU*/
-	DRIVER( snespsfx )	/* Nintendo Super Nintendo PAL w/SuperFX CPU */
-	DRIVER( snesst )	/* Nintendo Super Nintendo NTSC w/Sufami Turbo base cart */
-	DRIVER( snesbsx )	/* Nintendo Super Nintendo NTSC w/BS-X compatible cart  */
-	DRIVER( sfcbox )	/* Nintendo Super Famicom Box      */
-	DRIVER( n64 )	   /* Nintendo N64   */
-	DRIVER( pokemini )  /* Nintendo Pokemon Mini    */
-	DRIVER( gba )	/* Nintendo Game Boy Advance Handheld      */
+	DRIVER( nes )       /* Nintendo Entertainment System */
+	DRIVER( nespal )	/* Nintendo Entertainment System PAL */
+	DRIVER( m82 )       /* Nintendo M82 Display Unit */
+	DRIVER( famicom )   /* Nintendo Family Computer (a.k.a. Famicom) + Disk System add-on */
+	DRIVER( fami_key )  /* Nintendo Family Computer (a.k.a. Famicom) + Disk System add-on + Keyboard add-on */
+	DRIVER( famitwin )  /* Sharp Famicom Twin System */
+	DRIVER( drpcjr )    /* Bung Doctor PC Jr */
+	DRIVER( dendy )     /* Dendy (Classic russian famiclone) */
+	DRIVER( gameboy )   /* Nintendo Game Boy Handheld */
+	DRIVER( supergb )   /* Nintendo Super Game Boy SNES Cartridge */
+	DRIVER( gbpocket )  /* Nintendo Game Boy Pocket Handheld */
+	DRIVER( gblight )   /* Nintendo Game Boy Light Handheld */
+	DRIVER( gbcolor )   /* Nintendo Game Boy Color Handheld */
+	DRIVER( gba )       /* Nintendo Game Boy Advance Handheld */
+	DRIVER( snes )      /* Nintendo Super Nintendo NTSC */
+	DRIVER( snespal )   /* Nintendo Super Nintendo PAL */
+	DRIVER( snessfx )   /* Nintendo Super Nintendo NTSC w/SuperFX CPU*/
+	DRIVER( snespsfx )  /* Nintendo Super Nintendo PAL w/SuperFX CPU */
+	DRIVER( snesst )    /* Nintendo Super Nintendo NTSC w/Sufami Turbo base cart */
+	DRIVER( snesbsx )   /* Nintendo Super Nintendo NTSC w/BS-X compatible cart  */
+	DRIVER( n64 )       /* Nintendo N64   */
+	DRIVER( pokemini )  /* Nintendo Pokemon Mini */
 
 	DRIVER( megaduck )  /* Megaduck  */
 
@@ -83,8 +83,8 @@ const game_driver * const drivers[] =
 	DRIVER( sc3000 )	/* Sega SC-3000 (Japan)  */
 	DRIVER( sc3000h )   /* Sega SC-3000H (Japan)    */
 	DRIVER( sf7000 )	/* Sega SC-3000 w/ SF-7000 (Japan)    */
-//  DRIVER( omv1000 )   /* Tsukuda Original Othello Multivision FG-1000  */
-//  DRIVER( omv2000 )   /* Tsukuda Original Othello Multivision FG-2000  */
+	DRIVER( omv1000 )   /* Tsukuda Original Othello Multivision FG-1000  */
+	DRIVER( omv2000 )   /* Tsukuda Original Othello Multivision FG-2000  */
 
 	DRIVER( gamegear )  /* Sega GameGear    */
 	DRIVER( gamegeaj )  /* Sega GameGear (Japan)    */
@@ -138,8 +138,9 @@ const game_driver * const drivers[] =
 	DRIVER( pockstat )  /* 1999 Sony PocketStation    */
 
 	/* Bally */
-	DRIVER( astrocde )  /* Bally Astrocade    */
-	DRIVER( astrocdw )  /* Bally Astrocade (white case)  */
+	DRIVER( astrocde )	/* Bally Professional Arcade / Astrocade    */
+	DRIVER( astrocdl )	/* Bally Home Library Computer    */
+	DRIVER( astrocdw )	/* Bally Computer System (white case)  */
 
 	/* RCA */
 	DRIVER( vip )	   /* 1977 Cosmac VIP VP-711       */
@@ -169,6 +170,7 @@ const game_driver * const drivers[] =
 
 	/* Casio */
 	DRIVER( pv1000 )	/* Casio PV-1000 */
+	DRIVER( pv2000 )	/* Casio PV-2000 */
 
 	/* Coleco */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS)  */
@@ -205,7 +207,7 @@ const game_driver * const drivers[] =
 	DRIVER( plldium )		/* Palladium Video-Computer-Game    */
 	DRIVER( polyvcg )		/* Polybrain Video Computer Game    */
 	DRIVER( poppympt )		/* Poppy MPT-03 Tele Computer Spiel */
-	DRIVER( prestige )		/* Prestige Video Computer Game MPT-03  */
+	DRIVER( prestmpt )		/* Prestige Video Computer Game MPT-03  */
 	DRIVER( rowtrn2k )		/* Rowtron 2000 */
 	DRIVER( tvg2000 )		/* Schmid TVG 2000   */
 	DRIVER( sheenhvc )		/* Sheen Home Video Centre 2001  */
@@ -314,6 +316,8 @@ const game_driver * const drivers[] =
 	DRIVER( bbcbc )	 /* 1985 BBC Bridge Companion   */
 	DRIVER( electron )  /* 1983 Acorn Electron    */
 	DRIVER( a310 )	  /* 1988 Acorn Archimedes 310  */
+	DRIVER( a7000 )	  /* 1995 Acorn Archimedes 7000  */
+	DRIVER( a7000p )	  /* 1997 Acorn Archimedes 7000+  */
 	DRIVER( a6809 )
 
 	/* ACT */
@@ -494,6 +498,7 @@ const game_driver * const drivers[] =
 //  DRIVER( dx64 )    /* Commodore DX-64 - Prototype      */
 	DRIVER( c64c )	  /* Commodore 64C (NTSC)    */
 	DRIVER( c64cpal )   /* Commodore 64C (PAL)    */
+	DRIVER( c64csfi )
 	DRIVER( c64g )	  /* Commodore 64G (PAL)      */
 	DRIVER( c64gs )	 /* Commodore 64 Games System   */
 	DRIVER( c64dtv )	 /* Commodore 64 Direct-to-TV   */
@@ -532,7 +537,6 @@ const game_driver * const drivers[] =
 	DRIVER( c128 )	  /* Commodore 128 - NTSC    */
 	DRIVER( c128cr )	/* Commodore 128CR - NTSC (proto?)    */
 	DRIVER( c128sfi )   /* Commodore 128 - PAL (Swedish / Finnish)    */
-	DRIVER( c128fino )  /* Commodore 128 - PAL (Finnish, Unconfirmed dumps) */
 	DRIVER( c128fra )   /* Commodore 128 - PAL (French)  */
 	DRIVER( c128ger )   /* Commodore 128 - PAL (German)  */
 	DRIVER( c128nor )   /* Commodore 128 - PAL (Norwegian)    */
@@ -575,9 +579,10 @@ const game_driver * const drivers[] =
 
 	/* PC Junior */
 	DRIVER( ibmpcjr )   /* 1984 IBM PC Jr      */
-	DRIVER( t1000hx )   /* 1987 Tandy 1000HX (similiar to PCJr)  */
-	DRIVER( t1000sx )   /* 1987 Tandy 1000SX (similiar to PCJr)  */
-	DRIVER( t1000rl )	/* 1989 Tandy 1000RL    */
+	DRIVER( t1000hx )   /* 1987 Tandy 1000 HX (similiar to PCJr)  */
+	DRIVER( t1000sx )   /* 1987 Tandy 1000 SX (similiar to PCJr)  */
+	DRIVER( t1000tx )	/* 1987 Tandy 1000 TX */
+	DRIVER( t1000rl )	/* 1989 Tandy 1000 RL */
 
 	/* XT */
 	DRIVER( ibm5160 )   /* 1982 IBM XT 5160  */
@@ -703,8 +708,11 @@ const game_driver * const drivers[] =
 	DRIVER( pc1401 )	/* Pocket Computer 1401  */
 	DRIVER( pc1402 )	/* Pocket Computer 1402  */
 	DRIVER( pc1350 )	/* Pocket Computer 1350  */
+	DRIVER( pc1360 )	/* Pocket Computer 1360  */
 	DRIVER( pc1403 )	/* Pocket Computer 1403  */
 	DRIVER( pc1403h )   /* Pocket Computer 1403H    */
+	DRIVER( pc1450 )	/* Pocket Computer 1450  */
+	DRIVER( pc1500 )	/* Pocket Computer 1500  */
 
 	DRIVER( mz700 )	 /* 1982 Sharp MZ700     */
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan      */
@@ -716,6 +724,7 @@ const game_driver * const drivers[] =
 	DRIVER( mz80k )	 /* 1979 Sharp MZ80K     */
 	DRIVER( mz80a )	 /* 1982 Sharp MZ80A     */
 	DRIVER( mz80b )	 /* 1981 Sharp MZ80B     */
+	DRIVER( mz2000 )	 /* 1981 Sharp MZ2000     */
 
 	DRIVER( x1 )	/* 1982 Sharp X1    */
 	DRIVER( x1ck )	  /* 1984 Sharp X1Ck      */
@@ -805,7 +814,7 @@ const game_driver * const drivers[] =
 
 	/* Sord */
 	DRIVER( sordm5 )
-	DRIVER( srdm5fd5 )
+	DRIVER( sordm5fd5 )
 
 	/* APF Electronics Inc. */
 	DRIVER( apfm1000 )
@@ -899,6 +908,7 @@ const game_driver * const drivers[] =
 	DRIVER( rameses )
 	DRIVER( vz2000 )
 	DRIVER( crvisio2 )
+	DRIVER( manager )
 	DRIVER( laser110 )  /* 1983 Laser 110      */
 	DRIVER( las110de )  /* 1983 Sanyo Laser 110 (Germany)      */
 	DRIVER( laser200 )  /* 1983 Laser 200 (color version of 110)    */
@@ -932,6 +942,9 @@ const game_driver * const drivers[] =
 	DRIVER( videopac )  /* 1979 Videopac G7000/C52    */
 	DRIVER( g7400 )	 /* 1983 Videopac Plus G7400     */
 	DRIVER( vg5k )	  /* 1984 VG-5000    */
+
+	/* Brandt */
+	DRIVER( jopac )	/* 19?? Jopac JO7400    */
 
 	/* Compukit */
 	DRIVER( uk101 )
@@ -1462,6 +1475,7 @@ const game_driver * const drivers[] =
 
 	/* Fujitsu */
 	DRIVER( fm7 )
+	DRIVER( fm7a )
 	DRIVER( fm77av )
 	DRIVER( fm7740sx )
 	DRIVER( fmtowns )   /* 1989 Fujitsu FM-Towns */
@@ -1540,6 +1554,7 @@ const game_driver * const drivers[] =
 	DRIVER( amu880 )
 	DRIVER( interact )
 	DRIVER( jr200 )
+	DRIVER( jr200u )
 	DRIVER( h8 )
 	DRIVER( h19 )
 	DRIVER( h89 )
@@ -1679,6 +1694,7 @@ const game_driver * const drivers[] =
 	DRIVER( vcc )
 	DRIVER( victor9k )
 	DRIVER( phc25 )
+	DRIVER( phc25j )
 	DRIVER( pv9234 )
 	DRIVER( dm7000 )
 	DRIVER( dm5620 )
@@ -1699,5 +1715,23 @@ const game_driver * const drivers[] =
 	DRIVER( pegasusm )
 	DRIVER( e01 )
 	DRIVER( e01s )
+	DRIVER( pasopia7 )
+	DRIVER( prestige )
+	DRIVER( smc777 )
+	DRIVER( multi8 )
+	DRIVER( rx78 )
+	DRIVER( bmjr )
+	DRIVER( bml3 )
+	DRIVER( psioncm )
+	DRIVER( psionla )
+	DRIVER( psionp350 )
+	DRIVER( psionlam )
+	DRIVER( psionlz64 )
+	DRIVER( psionlz64s )
+	DRIVER( psionlz )
+	DRIVER( psionp464 )
+	DRIVER( rex6000 )
+	DRIVER( mycom )
+	DRIVER( tk80bs )
 
 #endif /* DRIVER_RECURSIVE */

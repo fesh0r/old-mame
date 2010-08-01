@@ -46,7 +46,7 @@ WRITE8_DEVICE_HANDLER( tmc600_vismac_data_w )
 
 static TIMER_DEVICE_CALLBACK( blink_tick )
 {
-	tmc600_state *state = (tmc600_state *)timer->machine->driver_data;
+	tmc600_state *state = (tmc600_state *)timer.machine->driver_data;
 
 	state->blink = !state->blink;
 }
@@ -134,7 +134,7 @@ static VIDEO_START( tmc600 )
 
 	/* find devices */
 
-	state->cdp1869 = devtag_get_device(machine, CDP1869_TAG);
+	state->cdp1869 = machine->device(CDP1869_TAG);
 
 	/* find memory regions */
 

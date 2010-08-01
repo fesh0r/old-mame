@@ -199,9 +199,9 @@ static const floppy_config apple2gs_floppy35_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(apple35_iigs),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static const floppy_config apple2gs_floppy525_floppy_config =
@@ -211,9 +211,9 @@ static const floppy_config apple2gs_floppy525_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(apple2),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( apple2gs )
@@ -247,7 +247,7 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_DEVICE_REMOVE("fdc")
 	MDRV_IWM_ADD("fdc", apple2_fdc_interface)
 	/* SCC */
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", APPLE2GS_14M/2)
 
 	MDRV_FLOPPY_APPLE_2_DRIVES_REMOVE()
 	MDRV_FLOPPY_APPLE_2_DRIVES_ADD(apple2gs_floppy525_floppy_config,15,16)
@@ -268,7 +268,7 @@ MACHINE_DRIVER_END
 
 ROM_START(apple2gs)
 	ROM_REGION(0x1000,"keyboard",0)
-	ROM_LOAD ("341-0024-a", 0x0000, 0x1000, NO_DUMP) /* Label needs verify: Keyboard M50741 MCU, 4K ROM */
+	ROM_LOAD( "341s0632-2.bin", 0x000000, 0x001000, CRC(e1c11fb0) SHA1(141d18c36a617ab9dce668445440d34354be0672) )
 
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89)) /* need label/part number */
@@ -280,7 +280,7 @@ ROM_END
 
 ROM_START(apple2gsr3p)
 	ROM_REGION(0x1000,"keyboard",0)
-	ROM_LOAD ("341-0024-a", 0x0000, 0x1000, NO_DUMP) /* Label and type needs verify: Keyboard M50741 MCU, 4K ROM */
+	ROM_LOAD( "341s0632-2.bin", 0x000000, 0x001000, CRC(e1c11fb0) SHA1(141d18c36a617ab9dce668445440d34354be0672) )
 
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89)) /* need label/part number */
@@ -292,7 +292,7 @@ ROM_END
 
 ROM_START(apple2gsr3lp)
 	ROM_REGION(0x1000,"keyboard",0)
-	ROM_LOAD ("341-0024-a", 0x0000, 0x1000, NO_DUMP) /* Label needs verify: Keyboard M50741 MCU, 4K ROM */
+	ROM_LOAD( "341s0632-2.bin", 0x000000, 0x001000, CRC(e1c11fb0) SHA1(141d18c36a617ab9dce668445440d34354be0672) )
 
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89)) /* need label/part number */
@@ -303,8 +303,8 @@ ROM_START(apple2gsr3lp)
 ROM_END
 
 ROM_START(apple2gsr1)
-	ROM_REGION(0x1000,"keyboard",0)
-	ROM_LOAD ("341-0024", 0x0000, 0x0C00, NO_DUMP) /* Label needs verify: Keyboard M50740 MCU, 3K ROM */
+	ROM_REGION(0xc00,"keyboard",0)
+	ROM_LOAD( "341s0345.bin", 0x000000, 0x000c00, CRC(48cd5779) SHA1(97e421f5247c00a0ca34cd08b6209df573101480) ) 
 
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89)) /* need label/part number */
@@ -314,8 +314,8 @@ ROM_START(apple2gsr1)
 ROM_END
 
 ROM_START(apple2gsr0)
-	ROM_REGION(0x1000,"keyboard",0)
-	ROM_LOAD ("341-0024", 0x0000, 0x0C00, NO_DUMP)  /* Label needs verify: Keyboard M50740 MCU, 3K ROM */
+	ROM_REGION(0xc00,"keyboard",0)
+	ROM_LOAD( "341s0345.bin", 0x000000, 0x000c00, CRC(48cd5779) SHA1(97e421f5247c00a0ca34cd08b6209df573101480) ) 
 
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89))

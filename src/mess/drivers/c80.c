@@ -215,7 +215,7 @@ static Z80PIO_INTERFACE( pio2_intf )
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain c80_daisy_chain[] =
+static const z80_daisy_config c80_daisy_chain[] =
 {
 	{ Z80PIO1_TAG },
 	{ Z80PIO2_TAG },
@@ -229,7 +229,7 @@ static MACHINE_START( c80 )
 	c80_state *state = (c80_state *)machine->driver_data;
 
 	/* find devices */
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keylatch);
@@ -244,7 +244,8 @@ static const cassette_config c80_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( c80 )

@@ -34,11 +34,20 @@
     If you use memory view in the debugger, it crashes at 6000 and some higher addresses. This is
     because the memory map has references to GROM handlers.
 
+    2010-06-19
+    MZ: Driver fixed
+    Important: The SGCPU card relies on a properly set up HSGPL flash memory
+    card; without, it will immediately lock up. It is impossible to set it up
+    from here (a bootstrap problem; you cannot start without the HSGPL).
+    The best chance is to start a ti99_4ev, activate the
+    HSGPL, and go through the setup process there. Copy the hsgpl.nv into this
+    driver's nvram subdirectory. The contents will be directly usable for the SGCPU.
 */
 
 #include "emu.h"
 #include "deprecat.h"
 #include "cpu/tms9900/tms9900.h"
+#include "sound/wave.h"
 #include "sound/dac.h"
 #include "sound/sn76496.h"
 #include "sound/tms5220.h"
@@ -48,7 +57,7 @@
 #include "machine/tms9901.h"
 #include "machine/tms9902.h"
 #include "audio/spchroms.h"
-#include "machine/99_peb.h"
+#include "devices/ti99_peb.h"
 #include "machine/994x_ser.h"
 #include "machine/99_dsk.h"
 #include "machine/99_ide.h"
@@ -59,39 +68,40 @@
 #include "devices/ti99_hd.h"
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h"
+#include "machine/mm58274c.h"
 #include "machine/rtc65271.h"
 #include "formats/ti99_dsk.h"
 
 
 static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK("bank1")								/*system ROM*/
-	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")								/*lower 8kb of RAM extension: AMS bank 2*/
-	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK("bank4")								/*lower 8kb of RAM extension: AMS bank 3*/
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4p_peb_r, ti99_4p_peb_w)	/*DSR ROM space*/
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_4p_cart_r,ti99_4p_cart_w)/*cartridge space (internal or hsgpl)*/
-	AM_RANGE(0x8000, 0x83ff) AM_RAMBANK("bank2")								/*RAM PAD*/
-	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
-	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rv38_r, ti99_nop_8_w)	/*vdp read*/
-	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wv38_w)	/*vdp write*/
-	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech read - installed dynamically*/
-	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech write - installed dynamically*/
-	AM_RANGE(0x9800, 0x98ff) AM_READWRITE(ti99_4p_grom_r, ti99_nop_8_w)	/*GPL read*/
-	AM_RANGE(0x9900, 0x9bff) AM_RAMBANK("bank11")								/*extra RAM for debugger*/
-	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_4p_grom_w)	/*GPL write*/
-	AM_RANGE(0xa000, 0xafff) AM_RAMBANK("bank5")								/*upper 24kb of RAM extension: AMS bank 10*/
-	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK("bank6")								/*upper 24kb of RAM extension: AMS bank 11*/
-	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK("bank7")								/*upper 24kb of RAM extension: AMS bank 12*/
-	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK("bank8")								/*upper 24kb of RAM extension: AMS bank 13*/
-	AM_RANGE(0xe000, 0xefff) AM_RAMBANK("bank9")								/*upper 24kb of RAM extension: AMS bank 14*/
-	AM_RANGE(0xf000, 0xffff) AM_RAMBANK("bank10")								/*upper 24kb of RAM extension: AMS bank 15*/
+	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK("bank1")                         // system ROM
+	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")                         // lower 8kb of RAM extension: AMS bank 2
+	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK("bank4")                         // lower 8kb of RAM extension: AMS bank 3
+	AM_RANGE(0x4000, 0x5fff) AM_DEVREADWRITE("per_exp_box", ti99_4p_peb_r, ti99_4p_peb_w)	 // DSR ROM space
+	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_4p_cart_r,ti99_4p_cart_w) // cartridge space (internal or hsgpl)
+	AM_RANGE(0x8000, 0x83ff) AM_RAMBANK("bank2")                         // RAM PAD
+	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)     // soundchip write
+	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rv38_r, ti99_nop_8_w)     // vdp read
+	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wv38_w)     // vdp write
+	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)    // speech read - installed dynamically
+	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)    // speech write - installed dynamically*/
+	AM_RANGE(0x9800, 0x98ff) AM_READWRITE(ti99_4p_grom_r, ti99_nop_8_w)  // GPL read
+	AM_RANGE(0x9900, 0x9bff) AM_RAMBANK("bank11")                        // extra RAM for debugger
+	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_4p_grom_w)  // GPL write
+	AM_RANGE(0xa000, 0xafff) AM_RAMBANK("bank5")                         // upper 24kb of RAM extension: AMS bank 10
+	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK("bank6")                         // upper 24kb of RAM extension: AMS bank 11
+	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK("bank7")                         // upper 24kb of RAM extension: AMS bank 12
+	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK("bank8")                         // upper 24kb of RAM extension: AMS bank 13
+	AM_RANGE(0xe000, 0xefff) AM_RAMBANK("bank9")                         // upper 24kb of RAM extension: AMS bank 14
+	AM_RANGE(0xf000, 0xffff) AM_RAMBANK("bank10")                        // upper 24kb of RAM extension: AMS bank 15
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(cru_map, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0000, 0x003f) AM_DEVREAD("tms9901", tms9901_cru_r)
-	AM_RANGE(0x0040, 0x01ff) AM_READ(ti99_4p_peb_cru_r)
+	AM_RANGE(0x0040, 0x01ff) AM_DEVREAD("per_exp_box", ti99_4p_peb_cru_r)
 
 	AM_RANGE(0x0000, 0x01ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
-	AM_RANGE(0x0200, 0x0fff) AM_WRITE(ti99_4p_peb_cru_w)
+	AM_RANGE(0x0200, 0x0fff) AM_DEVWRITE("per_exp_box", ti99_4p_peb_cru_w)
 ADDRESS_MAP_END
 
 
@@ -105,12 +115,12 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START(ti99_4p)
 
 	PORT_START( "SPEECH" )
-	PORT_CONFNAME( 0x01, 0x00, "Speech synthesizer" )
+	PORT_CONFNAME( 0x01, 0x01, "Speech synthesizer" )
 		PORT_CONFSETTING( 0x00, DEF_STR( Off ) )
 		PORT_CONFSETTING( 0x01, DEF_STR( On ) )
 
 	PORT_START( "DISKCTRL" )
-	PORT_CONFNAME( 0x07, 0x00, "Disk controller" )
+	PORT_CONFNAME( 0x07, 0x03, "Disk controller" )
 		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 		PORT_CONFSETTING(    0x01, "TI SD Floppy Controller" )
 		PORT_CONFSETTING(    0x02, "SNUG BwG Controller" )
@@ -120,7 +130,7 @@ static INPUT_PORTS_START(ti99_4p)
 	PORT_START( "HDCTRL" )
 	PORT_CONFNAME( 0x03, 0x00, "HD controller" )
 		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
-		PORT_CONFSETTING(    0x01, "Nouspikel IDE Controller" )
+//      PORT_CONFSETTING(    0x01, "Nouspikel IDE Controller" )
 //      PORT_CONFSETTING(    0x02, "WHTech SCSI Controller" )
 	PORT_CONFNAME( 0x08, 0x00, "USB-SM card" )
 		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
@@ -132,14 +142,9 @@ static INPUT_PORTS_START(ti99_4p)
 		PORT_CONFSETTING(    0x01, "TI RS-232 card" )
 
 	PORT_START( "EXTCARD" )
-	PORT_CONFNAME( 0x02, 0x00, "P-Code card" )
+	PORT_CONFNAME( 0x04, 0x00, "P-Code card" )
 		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-		PORT_CONFSETTING(    0x02, DEF_STR( On ) )
-
-	PORT_START( "HCI" )
-	PORT_CONFNAME( 0x01, 0x00, "Mouse support" )
-		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-		PORT_CONFSETTING(    0x01, "Mechatronics Mouse" )
+		PORT_CONFSETTING(    0x04, DEF_STR( On ) )
 
 	PORT_START( "HFDCDIP" )
 	PORT_DIPNAME( 0xff, 0x55, "HFDC drive config" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
@@ -152,6 +157,26 @@ static INPUT_PORTS_START(ti99_4p)
 	PORT_CONFNAME( 0x01, 0x01, "Floppy and HD speed" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
 		PORT_CONFSETTING( 0x00, "No delay")
 		PORT_CONFSETTING( 0x01, "Realistic")
+
+	PORT_START( "EVPC-SW1" )
+	PORT_DIPNAME( 0x01, 0x00, "EVPC video mode" ) PORT_CONDITION( "EVPC-SW8", 0x01, PORTCOND_EQUALS, 0x00 ) PORT_CHANGED( evpc_changed, (void *)0)
+		PORT_DIPSETTING(    0x00, "PAL" )
+		PORT_DIPSETTING(    0x01, "NTSC" )
+
+	PORT_START( "EVPC-SW3" )
+	PORT_DIPNAME( 0x01, 0x00, "EVPC charset" ) PORT_CONDITION( "EVPC-SW8", 0x01, PORTCOND_EQUALS, 0x00 ) PORT_CHANGED( evpc_changed, (void *)1)
+		PORT_DIPSETTING(    0x00, DEF_STR( International ))
+		PORT_DIPSETTING(    0x01, DEF_STR( German ))
+
+	PORT_START( "EVPC-SW4" )
+	PORT_DIPNAME( 0x01, 0x00, "EVPC VDP RAM" ) PORT_CONDITION( "EVPC-SW8", 0x01, PORTCOND_EQUALS, 0x00 ) PORT_CHANGED( evpc_changed, (void *)2)
+		PORT_DIPSETTING(    0x00, "shifted" )
+		PORT_DIPSETTING(    0x01, "not shifted" )
+
+	PORT_START( "EVPC-SW8" )
+	PORT_DIPNAME( 0x01, 0x00, "EVPC Configuration" ) PORT_CHANGED( evpc_changed, (void *)3)
+		PORT_DIPSETTING(    0x00, "DIP" )
+		PORT_DIPSETTING(    0x01, "NOVRAM" )
 
 	/* 3 ports for mouse */
 	PORT_START("MOUSEX") /* Mouse - X AXIS */
@@ -252,12 +277,86 @@ GFXDECODE_END
 static const tms5220_interface ti99_4p_tms5220interface =
 {
 	DEVCB_NULL,					/* no IRQ callback */
+	DEVCB_NULL,					/* no Ready callback */
 #if 1
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
 	spchroms_read_and_branch	/* speech ROM read and branch handler */
 #endif
 };
+
+/* F4 Character Displayer */
+static const gfx_layout ti99_6_charlayout =
+{
+	8, 6,					/* 8 x 6 characters */
+	64,					/* 64 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8 },
+	8*6					/* every char takes 6 bytes */
+};
+
+static const gfx_layout ti99_7_charlayout =
+{
+	8, 7,					/* 8 x 7 characters */
+	95,					/* 95 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8 },
+	8*7					/* every char takes 7 bytes */
+};
+
+static const gfx_layout ti99_8_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	64,					/* 64 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout ti99_c_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	1,					/* 1 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout ti99_24_charlayout =
+{
+	24, 24,					/* 24 x 24 characters */
+	1,					/* 1 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 64, 65, 66, 67, 68, 69, 70, 71, 128, 129, 130, 131, 132, 133, 134, 135 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 24*8, 25*8, 26*8, 27*8, 28*8, 29*8, 30*8, 31*8, 48*8, 49*8, 50*8, 51*8, 52*8, 53*8, 54*8, 55*8 },
+	24*24					/* every char takes 72 bytes */
+};
+
+static GFXDECODE_START( ti99b )
+	GFXDECODE_ENTRY( region_grom, 0x04b4, ti99_8_charlayout, 2, 2 )
+	GFXDECODE_ENTRY( region_grom, 0x06b4, ti99_7_charlayout, 2, 2 )
+	GFXDECODE_ENTRY( region_grom, 0x0950, ti99_24_charlayout, 2, 2 )
+	GFXDECODE_ENTRY( region_grom, 0x0998, ti99_c_charlayout, 2, 2 )
+GFXDECODE_END
 
 /*
     We use a DAC to emulate "audio gate", even though
@@ -272,9 +371,15 @@ static const floppy_config ti99_4p_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(ti99),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
+};
+
+static const mm58274c_interface floppy_mm58274c_interface =
+{
+	1,	/*  mode 24*/
+	0   /*  first day of week */
 };
 
 /*
@@ -286,9 +391,17 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap)
 	MDRV_CPU_IO_MAP(cru_map)
-	MDRV_CPU_VBLANK_INT_HACK(ti99_4ev_hblank_interrupt, 263)	/* 262.5 in 60Hz, 312.5 in 50Hz */
 
-	MDRV_MACHINE_RESET( ti99 )
+	// MZ: Changed 263 to 262 to avoid blank image on startup
+	// The issue is somehow related to changing VReg 9 to 0 in an unconvenient situation
+	// but I could not identify it more closely. Seems to happen in v9938_interrupt.
+	MDRV_CPU_VBLANK_INT_HACK(ti99_4ev_hblank_interrupt, 262)	/* 262.5 in 60Hz, 312.5 in 50Hz */
+
+	MDRV_MACHINE_START( ti99_4p )
+	MDRV_MACHINE_RESET( ti99_4p )
+
+	/* For HSGPL */
+	MDRV_NVRAM_HANDLER( ti99 )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -298,18 +411,22 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_SCREEN_SIZE(512+32, (212+28)*2)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512+32 - 1, 0, (212+28)*2 - 1)
 
+// Didn't work, probably just done wrong by me:
+//  MDRV_TIMER_ADD_SCANLINE("v9938_scanline", ti99_4ev_scanline_interrupt , "screen", 0, 1)
+
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(v9938)
 	MDRV_VIDEO_START(ti99_4ev)
 	MDRV_VIDEO_UPDATE(generic_bitmapped)
+	MDRV_GFXDECODE(ti99b)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-//  MDRV_SOUND_WAVE_ADD("wave", "cassette")
-//  MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tmc0285", TMC0285, 680000L)
@@ -317,16 +434,21 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )	/* FIXME */
+	MDRV_PBOX_ADD( "per_exp_box", TRUE, tms9901_set_int1, NULL )
 
-	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
+/*  MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )
+    MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback) */
 
-	/* MDRV_CASSETTE_ADD( "cassette", default_cassette_config ) */
+	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* tms9901 */
 	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
 
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
+
 	MDRV_SMC92X4_ADD("smc92x4", ti99_smc92x4_interface )
 
 	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4p_floppy_config)
@@ -364,4 +486,4 @@ ROM_START(ti99_4p)
 ROM_END
 
 /*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT      COMPANY     FULLNAME */
-COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, "System 99 Users Group",		"SGCPU (a.k.a. 99/4P)" , GAME_NOT_WORKING )
+COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, "System 99 Users Group",		"SGCPU (a.k.a. 99/4P)" , 0 )

@@ -144,7 +144,8 @@ static const cassette_config pk8020_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY)
+	(cassette_state)(CASSETTE_PLAY),
+	NULL
 };
 
 static FLOPPY_OPTIONS_START(pk8020)
@@ -163,9 +164,9 @@ static const floppy_config pk8020_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(pk8020),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static const wd17xx_interface pk8020_wd17xx_interface =
@@ -198,7 +199,7 @@ GFXDECODE_END
 /* Machine driver */
 static MACHINE_DRIVER_START( pk8020 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8080, XTAL_20MHz / 8)
+	MDRV_CPU_ADD("maincpu", I8080, XTAL_20MHz / 8)
 	MDRV_CPU_PROGRAM_MAP(pk8020_mem)
 	MDRV_CPU_IO_MAP(pk8020_io)
 	MDRV_CPU_VBLANK_INT("screen", pk8020_interrupt)

@@ -3,7 +3,7 @@
 //  wmain.h - Win32 GUI Imgtool main code
 //
 //============================================================
-
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <commctrl.h>
 

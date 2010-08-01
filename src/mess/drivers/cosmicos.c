@@ -362,7 +362,7 @@ INPUT_PORTS_END
 
 static TIMER_DEVICE_CALLBACK( digit_tick )
 {
-	cosmicos_state *state = (cosmicos_state *)timer->machine->driver_data;
+	cosmicos_state *state = (cosmicos_state *)timer.machine->driver_data;
 
 	state->digit = !state->digit;
 
@@ -371,7 +371,7 @@ static TIMER_DEVICE_CALLBACK( digit_tick )
 
 static TIMER_DEVICE_CALLBACK( int_tick )
 {
-	cputag_set_input_line(timer->machine, CDP1802_TAG, CDP1802_INPUT_LINE_INT, ASSERT_LINE);
+	cputag_set_input_line(timer.machine, CDP1802_TAG, CDP1802_INPUT_LINE_INT, ASSERT_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( cosmicos_dmaout_w )
@@ -518,10 +518,10 @@ static MACHINE_START( cosmicos )
 	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
-	state->dm9368 = devtag_get_device(machine, DM9368_TAG);
-	state->cdp1864 = devtag_get_device(machine, CDP1864_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
-	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
+	state->dm9368 = machine->device(DM9368_TAG);
+	state->cdp1864 = machine->device(CDP1864_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
+	state->speaker = machine->device(SPEAKER_TAG);
 
 	/* initialize LED display */
 	dm9368_rbi_w(state->dm9368, 1);
@@ -533,7 +533,7 @@ static MACHINE_START( cosmicos )
 	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, CDP1802_TAG) + 0xff00, 0);
 	memory_set_bank(machine, "bank2", 0);
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 256:
 		memory_unmap_readwrite(program, 0x0000, 0xbfff, 0, 0);
@@ -577,13 +577,13 @@ static MACHINE_RESET( cosmicos )
 
 static QUICKLOAD_LOAD( cosmicos )
 {
-	UINT8 *ptr = memory_region(image->machine, CDP1802_TAG);
-	int size = image_length(image);
+	UINT8 *ptr = memory_region(image.device().machine, CDP1802_TAG);
+	int size = image.length();
 
 	/* load image to RAM */
-	image_fread(image, ptr, size);
+	image.fread(ptr, size);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /* Machine Driver */
@@ -592,7 +592,8 @@ static const cassette_config cosmicos_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( cosmicos )

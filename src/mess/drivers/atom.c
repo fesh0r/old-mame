@@ -56,26 +56,26 @@ Hardware:   PPIA 8255
 
     http://www.xs4all.nl/~fjkraan/comp/atom/index.html
 
-	---
+    ---
 
-	The Econet card for the ATOM is decoded on the ATOM PCB at memory address B400 (hex). The Econet Eurocard has decoding circuits on it which select memory address 1940 (hex).
-	There are then five significant addresses above these bases which contain the following registers: -
+    The Econet card for the ATOM is decoded on the ATOM PCB at memory address B400 (hex). The Econet Eurocard has decoding circuits on it which select memory address 1940 (hex).
+    There are then five significant addresses above these bases which contain the following registers: -
 
-				ATOM card	Eurocard
-	6854	register 1	B400		1940
-	6854	register 2	B401		1941
-	6854	register 3	B402		1942
-	6854	Tx/Rx Data reg.	B403		1943
-	Station	identification	B404		1944
+                ATOM card   Eurocard
+    6854    register 1  B400        1940
+    6854    register 2  B401        1941
+    6854    register 3  B402        1942
+    6854    Tx/Rx Data reg. B403        1943
+    Station identification  B404        1944
 
-	Station identification
+    Station identification
 
-	The identity number of each station is set up in hardware by links to IC 8. IC 8 is an octal buffer which when enabled feeds the cards station ID to the computer bus. 
-	Each link codes a bit in an eight bit binary number allowing any station ID in the range 0 to 255 to be set up. if a link is left open then the bit is a one, when a 
-	link is made the bit is a zero. Hence all links open corresponds to station ID 255, and all links made to station ID 0. Each station must have a unique identity and
-	some indentities are associated with specific functions on the network. Station ID zero is reserved for broadcast signals and should not be used. Station ID 255 is 
-	reserved at present for the file server, and 235 for the printer server. Wire links must be soldered to each network station card during installation, a sugested 
-	scheme for number allocation is to number normal user stations from one upwards and to number special stations and servers from 255 downwards.
+    The identity number of each station is set up in hardware by links to IC 8. IC 8 is an octal buffer which when enabled feeds the cards station ID to the computer bus.
+    Each link codes a bit in an eight bit binary number allowing any station ID in the range 0 to 255 to be set up. if a link is left open then the bit is a one, when a
+    link is made the bit is a zero. Hence all links open corresponds to station ID 255, and all links made to station ID 0. Each station must have a unique identity and
+    some indentities are associated with specific functions on the network. Station ID zero is reserved for broadcast signals and should not be used. Station ID 255 is
+    reserved at present for the file server, and 235 for the printer server. Wire links must be soldered to each network station card during installation, a sugested
+    scheme for number allocation is to number normal user stations from one upwards and to number special stations and servers from 255 downwards.
 
 
 ***************************************************************************/
@@ -84,8 +84,8 @@ Hardware:   PPIA 8255
 
     TODO:
 
-	- connect to softwarelist
-	- e000 EPROM switching
+    - connect to softwarelist
+    - e000 EPROM switching
     - ERROR repeats ad infinitum
     - display should be monochrome
     - ram expansion
@@ -94,16 +94,16 @@ Hardware:   PPIA 8255
     - color card
     - CP/M card
     - speech synthesis card (SPO256 connected to VIA)
-	- econet
-	- teletext card
-	- Busicomputers Prophet 2
-		* The Shift and Return keys are orange and the Return key is large,
-		* There is a MODE switch to the top right of the keyboard,
-		* There is a VIDEO port in addition to the TV output,
-		* An Acorn AtomCalc ROM PCB is installed (is this standard on the Prophet2 or an upgrade?),
-		* An Acorn 32K dynamic RAM card is installed,
-		* A 5v DC input is added in addition to the standard power in (but this may be a later upgrade),
-		* The Utility ROM is labelled P2/FP is installed
+    - econet
+    - teletext card
+    - Busicomputers Prophet 2
+        * The Shift and Return keys are orange and the Return key is large,
+        * There is a MODE switch to the top right of the keyboard,
+        * There is a VIDEO port in addition to the TV output,
+        * An Acorn AtomCalc ROM PCB is installed (is this standard on the Prophet2 or an upgrade?),
+        * An Acorn 32K dynamic RAM card is installed,
+        * A 5v DC input is added in addition to the standard power in (but this may be a later upgrade),
+        * The Utility ROM is labelled P2/FP is installed
 
 */
 
@@ -163,18 +163,18 @@ static WRITE8_HANDLER( eprom_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		block A bit 0
-		1		block A bit 1
-		2		block A bit 2
-		3		block A bit 3
-		4		
-		5		
-		6		
-		7		block E
+        0       block A bit 0
+        1       block A bit 1
+        2       block A bit 2
+        3       block A bit 3
+        4
+        5
+        6
+        7       block E
 
-	*/
+    */
 
 	atom_state *state = (atom_state *)space->machine->driver_data;
 
@@ -203,8 +203,8 @@ static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xafff) AM_ROM AM_REGION("a000", 0)
 	AM_RANGE(0xb000, 0xb003) AM_MIRROR(0x3fc) AM_DEVREADWRITE(INS8255_TAG, i8255a_r, i8255a_w)
-//	AM_RANGE(0xb400, 0xb403) AM_DEVREADWRITE(MC6854_TAG, mc6854_r, mc6854_w)
-//	AM_RANGE(0xb404, 0xb404) AM_READ_PORT("ECONET")
+//  AM_RANGE(0xb400, 0xb403) AM_DEVREADWRITE(MC6854_TAG, mc6854_r, mc6854_w)
+//  AM_RANGE(0xb404, 0xb404) AM_READ_PORT("ECONET")
 	AM_RANGE(0xb800, 0xb80f) AM_MIRROR(0x3f0) AM_DEVREADWRITE(R6522_TAG, via_r, via_w)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(SY6502_TAG, 0)
 ADDRESS_MAP_END
@@ -624,9 +624,9 @@ static const floppy_config atom_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_SS_40,
+	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(atom),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /*-------------------------------------------------
@@ -635,7 +635,7 @@ static const floppy_config atom_floppy_config =
 
 static TIMER_DEVICE_CALLBACK( cassette_output_tick )
 {
-	atom_state *state = (atom_state *)timer->machine->driver_data;
+	atom_state *state = (atom_state *)timer.machine->driver_data;
 
 	int level = !(!(!state->hz2400 & state->pc1) & state->pc0);
 
@@ -653,7 +653,8 @@ static const cassette_config atom_cassette_config =
 {
 	atom_cassette_formats,
 	NULL,
-	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 /*-------------------------------------------------
@@ -710,8 +711,8 @@ static MACHINE_START( atom )
 	memory_region(machine, SY6502_TAG)[0x0b] = mame_rand(machine) & 0x0ff;
 
 	/* find devices */
-	state->mc6847 = devtag_get_device(machine, MC6847_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->mc6847 = machine->device(MC6847_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 }
 
 /*-------------------------------------------------
@@ -729,13 +730,103 @@ static MACHINE_START( atomeb )
     MACHINE DRIVERS
 ***************************************************************************/
 
+struct atom_cart_range
+{
+	const char *tag;
+	int offset;
+	const char *region;
+};
+
+static const struct atom_cart_range atom_cart_table[] =
+{
+	{ "cart", 0x0000, "a000" },
+	{ "a0",   0x0000, "a000" },
+	{ "a1",   0x1000, "a000" },
+	{ "a2",   0x2000, "a000" },
+	{ "a3",   0x3000, "a000" },
+	{ "a4",   0x4000, "a000" },
+	{ "a5",   0x5000, "a000" },
+	{ "a6",   0x6000, "a000" },
+	{ "a7",   0x7000, "a000" },
+	{ "a8",   0x8000, "a000" },
+	{ "a9",   0x9000, "a000" },
+	{ "aa",   0xa000, "a000" },
+	{ "ab",   0xb000, "a000" },
+	{ "ac",   0xc000, "a000" },
+	{ "ad",   0xd000, "a000" },
+	{ "ae",   0xe000, "a000" },
+	{ "af",   0xf000, "a000" },
+	{ "e0",   0x0000, "e000" },
+	{ "e1",   0x1000, "e000" },
+	{ 0 }
+};
+
+static DEVICE_IMAGE_LOAD( atom_cart )
+{
+	UINT32 size;
+	UINT8 *temp_copy;
+	int mirror, i;
+	const struct atom_cart_range *atom_cart = &atom_cart_table[0], *this_cart;
+
+	/* First, determine where this cart has to be loaded */
+	while (atom_cart->tag)
+	{
+		if (strcmp(atom_cart->tag, image.device().tag()) == 0)
+			break;
+
+		atom_cart++;
+	}
+
+	this_cart = atom_cart;
+
+	if (image.software_entry() == NULL)
+	{
+		size = image.length();
+		temp_copy = auto_alloc_array(image.device().machine, UINT8, size);
+
+		if (size > 0x1000)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
+			auto_free(image.device().machine, temp_copy);
+			return IMAGE_INIT_FAIL;
+		}
+
+		if (image.fread(temp_copy, size) != size)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			auto_free(image.device().machine, temp_copy);
+			return IMAGE_INIT_FAIL;
+		}
+	}
+	else
+	{
+		size = image.get_software_region_length( "rom");
+		temp_copy = auto_alloc_array(image.device().machine, UINT8, size);
+		memcpy(temp_copy, image.get_software_region("rom"), size);
+	}
+
+	mirror = 0x1000 / size;
+
+	/* With the following, we mirror the cart in the whole memory region */
+	for (i = 0; i < mirror; i++)
+		memcpy(memory_region(image.device().machine, this_cart->region) + this_cart->offset + i * size, temp_copy, size);
+
+	auto_free(image.device().machine, temp_copy);
+
+	return IMAGE_INIT_PASS;
+}
+
+
 /*-------------------------------------------------
     MACHINE_DRIVER( atom )
 -------------------------------------------------*/
 
 #define MDRV_ATOM_CARTSLOT_ADD(_tag) \
 	MDRV_CARTSLOT_ADD(_tag) \
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,rom")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,rom") \
+	MDRV_CARTSLOT_INTERFACE("atom_cart") \
+	MDRV_CARTSLOT_LOAD(atom_cart)
+
 
 static MACHINE_DRIVER_START( atom )
 	MDRV_DRIVER_DATA(atom_state)
@@ -780,6 +871,9 @@ static MACHINE_DRIVER_START( atom )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
 	MDRV_RAM_EXTRA_OPTIONS("4K,6K,8K,10K,12K")
+
+	/* Software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","atom")
 MACHINE_DRIVER_END
 
 /*-------------------------------------------------
@@ -794,6 +888,7 @@ static MACHINE_DRIVER_START( atomeb )
 	MDRV_MACHINE_START(atomeb)
 
 	/* cartridges */
+	MDRV_DEVICE_REMOVE("cart")
 	MDRV_ATOM_CARTSLOT_ADD("a0")
 	MDRV_ATOM_CARTSLOT_ADD("a1")
 	MDRV_ATOM_CARTSLOT_ADD("a2")
@@ -805,7 +900,7 @@ static MACHINE_DRIVER_START( atomeb )
 	MDRV_ATOM_CARTSLOT_ADD("a8")
 	MDRV_ATOM_CARTSLOT_ADD("a9")
 	MDRV_ATOM_CARTSLOT_ADD("aa")
-	MDRV_ATOM_CARTSLOT_ADD("an")
+	MDRV_ATOM_CARTSLOT_ADD("ab")
 	MDRV_ATOM_CARTSLOT_ADD("ac")
 	MDRV_ATOM_CARTSLOT_ADD("ad")
 	MDRV_ATOM_CARTSLOT_ADD("ae")
@@ -830,8 +925,7 @@ ROM_START( atom )
 	ROM_LOAD( "afloat.ic21", 0x1000, 0x1000, CRC(81d86af7) SHA1(ebcde5b36cb3a3344567cbba4c7b9fde015f4802) )
 	ROM_LOAD( "dosrom.u15",  0x2000, 0x1000, CRC(c431a9b7) SHA1(71ea0a4b8d9c3caf9718fc7cc279f4306a23b39c) )
 
-	ROM_REGION( 0x1000, "a000", 0 )
-	ROM_CART_LOAD( "cart", 0x0000, 0x1000, ROM_MIRROR )
+	ROM_REGION( 0x1000, "a000", ROMREGION_ERASEFF )
 ROM_END
 
 /*-------------------------------------------------
@@ -845,27 +939,9 @@ ROM_START( atomeb )
 	ROM_LOAD( "afloat.ic21", 0x1000, 0x1000, CRC(81d86af7) SHA1(ebcde5b36cb3a3344567cbba4c7b9fde015f4802) )
 	ROM_LOAD( "dosrom.u15",  0x2000, 0x1000, CRC(c431a9b7) SHA1(71ea0a4b8d9c3caf9718fc7cc279f4306a23b39c) )
 
-	ROM_REGION( 0x10000, "a000", 0 )
-	ROM_CART_LOAD( "a0", 0x0000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a1", 0x1000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a2", 0x2000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a3", 0x3000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a4", 0x4000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a5", 0x5000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a6", 0x6000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a7", 0x7000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a8", 0x8000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "a9", 0x9000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "aa", 0xa000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "ab", 0xb000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "ac", 0xc000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "ad", 0xd000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "ae", 0xe000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "af", 0xf000, 0x1000, ROM_MIRROR )
+	ROM_REGION( 0x10000, "a000", ROMREGION_ERASEFF )
 
-	ROM_REGION( 0x2000, "e000", 0)
-	ROM_CART_LOAD( "e0", 0x0000, 0x1000, ROM_MIRROR )
-	ROM_CART_LOAD( "e1", 0x1000, 0x1000, ROM_MIRROR )
+	ROM_REGION( 0x2000, "e000", ROMREGION_ERASEFF )
 ROM_END
 
 /***************************************************************************
@@ -875,4 +951,4 @@ ROM_END
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      COMPANY   FULLNAME */
 COMP( 1979, atom,     0,        0,		atom,     atom,     0,        "Acorn",  "Atom" , 0)
 COMP( 1979, atomeb,   atom,     0,		atomeb,   atom,     0,        "Acorn",  "Atom with Eprom Box" , 0)
-//COMP( 1983, prophet2, atom,     0,		atom,	  atom,     0,        "Busicomputers",  "Prophet 2" , 0)
+//COMP( 1983, prophet2, atom,     0,        atom,     atom,     0,        "Busicomputers",  "Prophet 2" , 0)

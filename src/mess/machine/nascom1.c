@@ -83,7 +83,7 @@ READ8_HANDLER( nascom2_fdc_select_r )
 
 WRITE8_HANDLER( nascom2_fdc_select_w )
 {
-	running_device *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = space->machine->device("wd1793");
 	nascom2_fdc.select = data;
 
 	logerror("nascom2_fdc_select_w: %02x\n", data);
@@ -128,7 +128,7 @@ READ8_HANDLER ( nascom1_port_00_r )
 WRITE8_HANDLER( nascom1_port_00_w )
 {
 
-	cassette_change_state( devtag_get_device(space->machine, "cassette"),
+	cassette_change_state( space->machine->device("cassette"),
 		( data & 0x10 ) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR );
 
 	if (!(data & NASCOM1_KEY_RESET))
@@ -198,13 +198,13 @@ WRITE8_DEVICE_HANDLER( nascom1_hd6402_so )
 
 DEVICE_IMAGE_LOAD( nascom1_cassette )
 {
-	nascom1_tape_size = image_length(image);
-	nascom1_tape_image = (UINT8*)image_ptr(image);
+	nascom1_tape_size = image.length();
+	nascom1_tape_image = (UINT8*)image.ptr();
 	if (!nascom1_tape_image)
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 
 	nascom1_tape_index = 0;
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -228,25 +228,25 @@ SNAPSHOT_LOAD( nascom1 )
 {
 	UINT8 line[35];
 
-	while (image_fread(image, &line, sizeof(line)) == sizeof(line))
+	while (image.fread( &line, sizeof(line)) == sizeof(line))
 	{
 		int addr, b0, b1, b2, b3, b4, b5, b6, b7, dummy;
 
 		if (sscanf((char *)line, "%x %x %x %x %x %x %x %x %x %x\010\010\n",
 			&addr, &b0, &b1, &b2, &b3, &b4, &b5, &b6, &b7, &dummy) == 10)
 		{
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b0);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b1);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b2);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b3);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b4);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b5);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b6);
-			memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b7);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b0);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b1);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b2);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b3);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b4);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b5);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b6);
+			memory_write_byte(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM), addr++, b7);
 		}
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -259,7 +259,7 @@ SNAPSHOT_LOAD( nascom1 )
 
 MACHINE_RESET( nascom1 )
 {
-	nascom1_hd6402 = devtag_get_device(machine, "hd6402");
+	nascom1_hd6402 = machine->device("hd6402");
 
 	/* Set up hd6402 pins */
 	ay31015_set_input_pin( nascom1_hd6402, AY31015_SWE, 1 );
@@ -275,7 +275,7 @@ MACHINE_RESET( nascom1 )
 
 DRIVER_INIT( nascom1 )
 {
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 1 * 1024:
 		memory_nop_readwrite(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
@@ -287,7 +287,7 @@ DRIVER_INIT( nascom1 )
 			0x1400, 0x4fff, 0, 0, "bank1");
 		memory_nop_readwrite(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x5000, 0xafff, 0, 0);
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 		break;
 
 	case 32 * 1024:
@@ -295,13 +295,13 @@ DRIVER_INIT( nascom1 )
 			0x1400, 0x8fff, 0, 0, "bank1");
 		memory_nop_readwrite(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x9000, 0xafff, 0, 0);
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 		break;
 
 	case 40 * 1024:
 		memory_install_readwrite_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x1400, 0xafff, 0, 0, "bank1");
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 		break;
 	}
 }

@@ -62,7 +62,7 @@ static UINT8 scrambler;
 */
 static READ8_HANDLER( cassette_r )
 {
-	running_device *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *cassette = space->machine->device("cassette");
 	return (cassette_input(cassette) < +0.0) ? 0 : 1;
 }
 
@@ -74,8 +74,8 @@ static READ8_HANDLER( cassette_r )
 */
 static WRITE8_HANDLER( cassette_w )
 {
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
-	running_device *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *speaker = space->machine->device("speaker");
+	running_device *cassette = space->machine->device("cassette");
 
 	speaker_level_w(speaker, BIT(data, 0));
 	cassette_output(cassette, BIT(data, 0) ? +1.0 : -1.0);
@@ -96,8 +96,8 @@ static WRITE8_HANDLER( cassette_w )
 */
 static READ8_HANDLER( vsync_r )
 {
-	running_device *screen = space->machine->primary_screen;
-	return video_screen_get_vblank(screen) ? 0 : 1;
+	screen_device *screen = space->machine->primary_screen;
+	return screen->vblank() ? 0 : 1;
 }
 
 
@@ -215,12 +215,12 @@ static WRITE8_HANDLER( floppy_w )
 static DRIVER_INIT( aquarius )
 {
 	/* install expansion memory if available */
-	if (messram_get_size(devtag_get_device(machine, "messram")) > 0x1000)
+	if (messram_get_size(machine->device("messram")) > 0x1000)
 	{
 		const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-		memory_install_readwrite_bank(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 0x1000 - 1, 0, 0, "bank1");
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_install_readwrite_bank(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 0x1000 - 1, 0, 0, "bank1");
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 	}
 }
 
@@ -388,7 +388,8 @@ static const cassette_config aquarius_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( aquarius )
@@ -449,9 +450,9 @@ static const floppy_config aquarius_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(aquarius),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( aquarius_qd )

@@ -64,8 +64,8 @@ static void ds1315_input_raw_data(running_device *device);
 INLINE ds1315_t *get_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->type == DS1315);
-	return (ds1315_t *) device->token;
+	assert(device->type() == DS1315);
+	return (ds1315_t *) downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -196,12 +196,12 @@ static void ds1315_fill_raw_data(running_device *device)
        date and time and then fill in the raw data struct.
     */
 
-	mame_system_time systime;
+	system_time systime;
 	ds1315_t *ds1315 = get_token(device);
 	int raw[8], i, j;
 
 	/* get the current date/time from the core */
-	mame_get_current_datetime(device->machine, &systime);
+	device->machine->current_datetime(systime);
 
 	raw[0] = 0;	/* tenths and hundreths of seconds are always zero */
 	raw[1] = dec_2_bcd(systime.local_time.second);
@@ -250,7 +250,6 @@ DEVICE_GET_INFO( ds1315 )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(ds1315_t);					break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(ds1315);	break;
@@ -265,3 +264,5 @@ DEVICE_GET_INFO( ds1315 )
 		case DEVINFO_STR_CREDITS:						/* Nothing */								break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(DS1315, ds1315);

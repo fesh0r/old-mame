@@ -4,7 +4,8 @@
 
     Dual floppy drive with HX-20 factory option
 
-    Skeleton driver, not working
+
+    Status: Boots from system disk, missing µPD7201 emulation
 
 ***************************************************************************/
 
@@ -47,10 +48,9 @@ struct _tf20_state
 INLINE tf20_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
-	assert(device->type == TF20);
+	assert(device->type() == TF20);
 
-	return (tf20_state *)device->token;
+	return (tf20_state *)downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -61,7 +61,7 @@ INLINE tf20_state *get_safe_token(running_device *device)
 /* serial clock, 38400 baud by default */
 static TIMER_DEVICE_CALLBACK( serial_clock )
 {
-	tf20_state *tf20 = get_safe_token(timer->owner);
+	tf20_state *tf20 = get_safe_token(timer.owner());
 
 	upd7201_rxca_w(tf20->upd7201, ASSERT_LINE);
 	upd7201_txca_w(tf20->upd7201, ASSERT_LINE);
@@ -72,52 +72,46 @@ static TIMER_DEVICE_CALLBACK( serial_clock )
 /* a read from this location disables the rom */
 static READ8_HANDLER( tf20_rom_disable )
 {
-	tf20_state *tf20 = get_safe_token(space->cpu->owner);
+	tf20_state *tf20 = get_safe_token(space->cpu->owner());
 	const address_space *prg = cpu_get_address_space(space->cpu, ADDRESS_SPACE_PROGRAM);
 
 	/* switch in ram */
 	memory_install_ram(prg, 0x0000, 0x7fff, 0, 0, messram_get_ptr(tf20->ram));
-
-	/* clear tc */
-	upd765_tc_w(tf20->upd765a, CLEAR_LINE);
 
 	return 0xff;
 }
 
 static READ8_HANDLER( tf20_dip_r )
 {
-	tf20_state *tf20 = get_safe_token(space->cpu->owner);
 	logerror("%s: tf20_dip_r\n", cpuexec_describe_context(space->machine));
 
-	/* clear tc */
-	upd765_tc_w(tf20->upd765a, CLEAR_LINE);
+	return input_port_read(space->machine, "tf20_dip");
+}
 
-	return 0xff;
+static TIMER_CALLBACK( tf20_upd765_tc_reset )
+{
+	upd765_tc_w((device_t *)ptr, CLEAR_LINE);
 }
 
 static READ8_DEVICE_HANDLER( tf20_upd765_tc_r )
 {
 	logerror("%s: tf20_upd765_tc_r\n", cpuexec_describe_context(device->machine));
 
-	/* set tc on read */
+	/* toggle tc on read */
 	upd765_tc_w(device, ASSERT_LINE);
+	timer_set(device->machine, attotime_zero, device, 0, tf20_upd765_tc_reset);
 
 	return 0xff;
 }
 
 static WRITE8_HANDLER( tf20_fdc_control_w )
 {
-	tf20_state *tf20 = get_safe_token(space->cpu->owner);
+	tf20_state *tf20 = get_safe_token(space->cpu->owner());
 	logerror("%s: tf20_fdc_control_w %02x\n", cpuexec_describe_context(space->machine), data);
 
 	/* bit 0, motor on signal */
 	floppy_mon_w(tf20->floppy_0, !BIT(data, 0));
 	floppy_mon_w(tf20->floppy_1, !BIT(data, 0));
-	floppy_drive_set_ready_state(tf20->floppy_0, BIT(data, 0), 1);
-	floppy_drive_set_ready_state(tf20->floppy_1, BIT(data, 0), 1);
-
-	/* set tc on write */
-	upd765_tc_w(tf20->upd765a, ASSERT_LINE);
 }
 
 static IRQ_CALLBACK( tf20_irq_ack )
@@ -222,6 +216,19 @@ static ADDRESS_MAP_START( tf20_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
+/***************************************************************************
+    INPUT PORTS
+***************************************************************************/
+
+INPUT_PORTS_START( tf20 )
+	PORT_START("tf20_dip")
+	PORT_DIPNAME(0x0f, 0x0f, "Drive extension")
+	PORT_DIPLOCATION("TF-20 TFX:8,7,6,5")
+	PORT_DIPSETTING(0x0f, "A & B Drive")
+	PORT_DIPSETTING(0x07, "C & D Drive")
+INPUT_PORTS_END
+
+
 /*****************************************************************************
     MACHINE CONFIG
 *****************************************************************************/
@@ -276,9 +283,9 @@ static const floppy_config tf20_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSDD_40,
 	FLOPPY_OPTIONS_NAME(default),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( tf20 )
@@ -328,7 +335,7 @@ static DEVICE_START( tf20 )
 	tf20->ram = device->subdevice("ram");
 
 	/* make sure its already running */
-	if (!tf20->ram->started)
+	if (!tf20->ram->started())
 		throw device_missing_dependencies();
 
 	/* locate child devices */
@@ -347,7 +354,7 @@ static DEVICE_RESET( tf20 )
 	const address_space *prg = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
 
 	/* enable rom */
-	memory_install_rom(prg, 0x0000, 0x07ff, 0, 0x7800, cpu->region->base.v);
+	memory_install_rom(prg, 0x0000, 0x07ff, 0, 0x7800, cpu->region()->base());
 }
 
 DEVICE_GET_INFO( tf20 )
@@ -357,7 +364,6 @@ DEVICE_GET_INFO( tf20 )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(tf20_state);					break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0;									break;
-		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_OTHER;					break;
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_MACHINE_CONFIG:		info->machine_config = MACHINE_DRIVER_NAME(tf20);	break;
@@ -376,3 +382,5 @@ DEVICE_GET_INFO( tf20 )
 		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(TF20, tf20);

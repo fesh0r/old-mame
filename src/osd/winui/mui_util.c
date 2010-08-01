@@ -21,22 +21,23 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <shellapi.h>
-#include <shlwapi.h>
 
 // standard C headers
 #include <assert.h>
 #include <stdio.h>
 #include <tchar.h>
 
+#include "emu.h"
+
 // MAME/MAMEUI headers
 #include "unzip.h"
-#include "emu.h"
 #include "sound/samples.h"
 #include "winutf8.h"
 #include "strconv.h"
 #include "winui.h"
 #include "mui_util.h"
 
+#include <shlwapi.h>
 
 /***************************************************************************
 	function prototypes
@@ -319,13 +320,11 @@ const char * GetDriverFilename(int nIndex)
 
 BOOL isDriverVector(const machine_config *config)
 {
-	const device_config *screen = video_screen_first(config);
+	const screen_device_config *screen  = screen_first(*config);
 
 	if (screen != NULL) {
-		const screen_config *scrconfig = (const screen_config *)screen->inline_config;
-
-		/* parse "vector.ini" for vector games */
-		if (SCREEN_TYPE_VECTOR == scrconfig->type)
+		// parse "vector.ini" for vector games 
+		if (SCREEN_TYPE_VECTOR == screen->screen_type())
 		{
 			return TRUE;
 		}
@@ -335,12 +334,12 @@ BOOL isDriverVector(const machine_config *config)
 
 int numberOfScreens(const machine_config *config)
 {
-	const device_config *screen = video_screen_first(config);
+	const screen_device_config *screen  = screen_first(*config);
 	int i=0;
-	for (; screen != NULL; screen = video_screen_next(screen)) {
+	for (; screen != NULL; screen = screen_next(screen)) {
 		i++;
 	}
-	return i;
+	return i;	
 }
 
 
@@ -367,7 +366,7 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			int num_speakers;
 
 			/* Allocate machine config */
-			config = machine_config_alloc(gamedrv->machine_config);
+			config = global_alloc(machine_config(gamedrv->machine_config));
 
 			gameinfo->isClone = (GetParentRomSetIndex(gamedrv) != -1);
 			gameinfo->isBroken = ((gamedrv->flags & GAME_NOT_WORKING) != 0);
@@ -415,26 +414,24 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			gameinfo->usesSamples = FALSE;
 			
 			{
-				const device_config *sound;
+				const device_config_sound_interface *sound = NULL;
 				const char * const * samplenames = NULL;
-
-				for (sound = sound_first(config); sound != NULL; sound = sound_next(sound))
-				{
-
+				for (bool gotone = config->m_devicelist.first(sound); gotone; gotone = sound->next(sound)) {
+					if (sound->devconfig().type() == SOUND_SAMPLES)
 					{
-						if( sound_get_type(sound) == SOUND_SAMPLES )
-							samplenames = ((const samples_interface *)sound->static_config)->samplenames;
-					}
+						const samples_interface *intf = (const samples_interface *)sound->devconfig().static_config();
+						samplenames = intf->samplenames;
 
-					if (samplenames != 0 && samplenames[0] != 0)
-					{
-						gameinfo->usesSamples = TRUE;
-						break;
-					}			
-				}			
+						if (samplenames != 0 && samplenames[0] != 0)
+						{
+							gameinfo->usesSamples = TRUE;
+							break;
+						}			
+					}				
+				}
 			}
 			/* Free the structure */
-			machine_config_free(config);
+			global_free(config);
 
 			gameinfo->usesTrackball = FALSE;
 			gameinfo->usesLightGun = FALSE;
@@ -445,7 +442,7 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 				
 				input_port_list_init(portlist, gamedrv->ipt, NULL, 0, FALSE);
 
-				for (port = portlist.first(); port != NULL; port = port->next)
+				for (port = portlist.first(); port != NULL; port = port->next())
 				{
 					const input_field_config *field;
 					for (field = port->fieldlist; field != NULL; field = field->next)
@@ -464,7 +461,6 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 							gameinfo->usesMouse = TRUE;
 					}
 				}
-				//input_port_list_deinit(&portlist);
 			}
 		}
 	}
@@ -582,6 +578,15 @@ BOOL SafeIsAppThemed(void)
 }
 
 
+void GetSystemErrorMessage(DWORD dwErrorId, TCHAR **tErrorMessage)
+{
+	if( FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwErrorId, 0, (LPTSTR)tErrorMessage, 0, NULL) == 0 )
+	{
+		*tErrorMessage = (LPTSTR)LocalAlloc(LPTR, MAX_PATH * sizeof(TCHAR));
+		_tcscpy(*tErrorMessage, TEXT("Unknown Error"));
+	}
+}
+
 
 //============================================================
 //  win_extract_icon_utf8
@@ -694,3 +699,4 @@ HANDLE win_find_first_file_utf8(const char* filename, LPWIN32_FIND_DATA findfile
 	
 	return result;
 }
+

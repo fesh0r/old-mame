@@ -1,13 +1,12 @@
 /*
     SNUG HSGPL card emulation.
-
     Raphael Nabet, 2003.
 */
 
 #include "emu.h"
 #include "emuopts.h"
 #include "ti99_4x.h"
-#include "99_peb.h"
+#include "devices/ti99_peb.h"
 #include "99_hsgpl.h"
 #include "at29040.h"
 
@@ -89,13 +88,15 @@ static struct
 	UINT16 addr;
 	char raddr_LSB, waddr_LSB;
 
+	/* Holds the current GROM base */
 	int cur_port;
 
+	/* Holds the current ROM6 bank */
 	int cur_bank;
 
+	/* Latches the setting of the 16 CRU bits. Also contains the */
+	/* current DSR bank (PG0...) */
 	int cru_reg;
-
-	int is_image_writable;
 } hsgpl;
 
 enum
@@ -103,10 +104,10 @@ enum
 	cr_grmena  = 0x0002,
 	cr_bnkinh  = 0x0004,
 	cr_pg      = 0x01f8,
-		cr_pg_mask = 0x3f,
-		cr_pg_shift= 3,
+	cr_pg_mask = 0x3f,
+	cr_pg_shift= 3,
 	cr_crdena  = 0x0200,
-		cr_crdena_bit = 9,
+	cr_crdena_bit = 9,
 	cr_wriena  = 0x0400,
 	cr_scena   = 0x0800,
 	cr_ledena  = 0x1000,
@@ -117,6 +118,8 @@ enum
 
 static void hsgpl_cru_w(running_machine *machine, int offset, int data);
 static READ8_HANDLER(hsgpl_dsr_r);
+
+static running_device *expansion_box;
 
 static const ti99_peb_card_handlers_t hsgpl_handlers =
 {
@@ -139,7 +142,6 @@ static int ti99_hsgpl_file_load(running_machine *machine, mame_file *file)
 {
 	UINT8 version;
 	UINT8 *rgn;
-
 
 	/* version flag */
 	if (mame_fread(file, & version, 1) != 1)
@@ -176,7 +178,6 @@ static int ti99_hsgpl_file_save(mame_file *file)
 {
 	UINT8 version;
 
-
 	/* version flag */
 	version = 0;
 	if (mame_fwrite(file, & version, 1) != 1)
@@ -211,14 +212,14 @@ static int ti99_hsgpl_get_dirty_flag(void)
 
 
 
-int ti99_hsgpl_load_memcard(running_machine *machine)
+int ti99_hsgpl_load_flashroms(running_machine *machine, const char *name)
 {
 	file_error filerr;
 	mame_file *file;
 
-	filerr = mame_fopen(SEARCHPATH_MEMCARD, "hsgpl.nv", OPEN_FLAG_READ, &file);
+	filerr = mame_fopen(SEARCHPATH_NVRAM, name, OPEN_FLAG_READ, &file);
 	if (filerr != FILERR_NONE)
-		return /*1*/0;
+		return 0;
 	if (ti99_hsgpl_file_load(machine, file))
 	{
 		mame_fclose(file);
@@ -229,14 +230,16 @@ int ti99_hsgpl_load_memcard(running_machine *machine)
 	return 0;
 }
 
-int ti99_hsgpl_save_memcard(running_machine *machine)
+int ti99_hsgpl_save_flashroms(running_machine *machine, const char *name)
 {
 	file_error filerr;
 	mame_file *file;
 
 	if (ti99_hsgpl_get_dirty_flag())
 	{
-		filerr = mame_fopen(SEARCHPATH_MEMCARD, "hsgpl.nv", OPEN_FLAG_WRITE, &file);
+		filerr = mame_fopen(SEARCHPATH_NVRAM, name,
+			OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
+
 		if (filerr != FILERR_NONE)
 			return 1;
 		if (ti99_hsgpl_file_save(file))
@@ -281,9 +284,13 @@ void ti99_hsgpl_reset(running_machine *machine)
 	hsgpl.cur_port = 0;
 	hsgpl.cur_bank = 0;
 	hsgpl.cru_reg = 0;
-	ti99_set_hsgpl_crdena(/*0*/1);
 
-	ti99_peb_set_card_handlers(0x1b00, & hsgpl_handlers);
+	expansion_box = machine->device("per_exp_box");
+
+	/* Card is enabled on startup. */
+	ti99_set_hsgpl_crdena(1);
+
+	ti99_peb_set_card_handlers(expansion_box, 0x1b00, &hsgpl_handlers);
 }
 
 
@@ -304,7 +311,7 @@ static void hsgpl_cru_w(running_machine *machine, int offset, int data)
 }
 
 /*
-    read a byte in hsgpl DSR space
+    read a byte in hsgpl DSR space (4000-5fff)
 */
 static  READ8_HANDLER(hsgpl_dsr_r)
 {
@@ -339,6 +346,7 @@ READ16_HANDLER ( ti99_hsgpl_gpl_r )
 			reply = (hsgpl.addr + 1) & 0xff00;
 			hsgpl.raddr_LSB = TRUE;
 		}
+//      printf("hsgpl grmra: [%04x] = %02x\n", (offset<<1)+0x9800, reply>>8);
 	}
 	else
 	{	/* read GPL data */
@@ -398,13 +406,13 @@ READ16_HANDLER ( ti99_hsgpl_gpl_r )
 
 		case 32:
 		case 33:
-			/* This has been verified */
+			/* GRAM access */
 			reply = hsgpl.GRAM_ptr[hsgpl.addr + 0x10000*(port-32)];
 			break;
 
 		case 48:
-		case 49:		/* this mirror is mistakenly used by the hsgpl DSR */
-			/* This has been verified. */
+		case 49:
+			/* RAM6 access */
 			reply = hsgpl.RAM6_ptr[hsgpl.addr];
 			break;
 
@@ -414,14 +422,14 @@ READ16_HANDLER ( ti99_hsgpl_gpl_r )
 			break;
 		}
 
-		reply <<= 8;
+//      printf("hsgpl grmrd: [%04x:%04x] = %02x\n", (offset<<1)+0x9800, hsgpl.addr, reply);
 
+		reply <<= 8;
 
 		/* increment address */
 		hsgpl.addr++;
 		hsgpl.raddr_LSB = hsgpl.waddr_LSB = FALSE;
 	}
-
 	return reply;
 }
 
@@ -431,7 +439,6 @@ READ16_HANDLER ( ti99_hsgpl_gpl_r )
 WRITE16_HANDLER ( ti99_hsgpl_gpl_w )
 {
 	int port;
-
 
 	//activecpu_adjust_icount(-4);
 
@@ -444,8 +451,8 @@ WRITE16_HANDLER ( ti99_hsgpl_gpl_w )
 		if (hsgpl.waddr_LSB)
 		{
 			hsgpl.addr = (hsgpl.addr & 0xFF00) | ((data >> 8) & 0xFF);
-
 			hsgpl.waddr_LSB = FALSE;
+//          printf("hsgpl grmsa: [%04x:%04x]\n", (offset<<1)+0x9c00, hsgpl.addr);
 		}
 		else
 		{
@@ -514,13 +521,13 @@ WRITE16_HANDLER ( ti99_hsgpl_gpl_w )
 
 			case 32:
 			case 33:
-				/* This has been verified */
+				/* GRAM access */
 				hsgpl.GRAM_ptr[hsgpl.addr + 0x10000*(port-32)] = data;
 				break;
 
 			case 48:
-			case 49:		/* this mirror is mistakenly used by the hsgpl DSR */
-				/* This has been verified. */
+			case 49:
+				/* RAM6 access */
 				hsgpl.RAM6_ptr[hsgpl.addr] = data;
 				break;
 
@@ -582,7 +589,7 @@ READ16_HANDLER ( ti99_hsgpl_rom6_r )
 		reply = 0;
 		break;
 	}
-
+//  printf("[%02x:%04x] = %04x\n", hsgpl.cur_bank, 0x6000 + 2*offset, reply);
 	return reply;
 }
 
@@ -605,9 +612,9 @@ WRITE16_HANDLER ( ti99_hsgpl_rom6_w )
 		return;
 	}
 
-	/* MBX: RAM in 0x6c00-0x6ffd (it is unclear whether the MBX RAM area is
-    enabled/disabled by the wriena bit).  I guess RAM is unpaged, but it is
-    not implemented */
+	// MBX: RAM in 0x6c00-0x6ffd (it is unclear whether the MBX RAM area is
+	// enabled/disabled by the wriena bit).  I guess RAM is unpaged, but it is
+	// not implemented
 	if ((hsgpl.cru_reg & cr_wriena) || ((hsgpl.cru_reg & cr_mbxena) && (offset >= 0x0600) && (offset <= 0x07fe)))
 	{
 		switch (port)
@@ -636,8 +643,8 @@ WRITE16_HANDLER ( ti99_hsgpl_rom6_w )
 		case 13:
 		case 14:
 		case 15:
-			/* feeprom is normally written to using GPL ports, and I don't know
-            writing through >6000 page is enabled */
+			// feeprom is normally written to using GPL ports, and I don't know
+			// writing through >6000 page is enabled
 #if 0
 			at29c040a_w(feeprom_rom6, 1 + 2*offset + 0x2000*hsgpl.cur_bank + 0x8000*port, data);
 			at29c040a_w(feeprom_rom6, 2*offset + 0x2000*hsgpl.cur_bank + 0x8000*port, data >> 8);

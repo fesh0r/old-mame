@@ -4,11 +4,11 @@
 
     NVRAM works only if the calculator is turned off (2nd + ON) before closing of MESS
 
-	TODO:
-	 -Link
-	 -HW 3 I/O port
-	 -RTC
-	 -LCD contrast
+    TODO:
+     -Link
+     -HW 3 I/O port
+     -RTC
+     -LCD contrast
 ****************************************************************************/
 
 #include "emu.h"
@@ -329,7 +329,7 @@ static INPUT_CHANGED( ti68k_on_key )
 
 	if (state->on_key)
 	{
-		if (cputag_is_suspended(field->port->machine, "maincpu", SUSPEND_REASON_DISABLE))
+		if (field->port->machine->device<cpu_device>("maincpu")->suspended(SUSPEND_REASON_DISABLE))
 			cputag_resume(field->port->machine, "maincpu", SUSPEND_REASON_DISABLE);
 
 		cputag_set_input_line(field->port->machine, "maincpu", M68K_IRQ_6, HOLD_LINE);
@@ -522,7 +522,7 @@ NVRAM_HANDLER( ti68k )
 static MACHINE_RESET(ti68k)
 {
 	t68k_state *state = (t68k_state *)machine->driver_data;
-	cpu_set_reg(devtag_get_device(machine, "maincpu"), M68K_PC, state->initial_pc);
+	cpu_set_reg(machine->device("maincpu"), M68K_PC, state->initial_pc);
 
 	state->kb_mask = 0xff;
 	state->on_key = 0;
@@ -554,8 +554,8 @@ static VIDEO_UPDATE( ti68k )
 	/* preliminary implementation, doesn't use the contrast value */
 	t68k_state *state = (t68k_state *)screen->machine->driver_data;
 	const address_space *space = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 width = video_screen_get_width(screen);
-	UINT8 height = video_screen_get_height(screen);
+	UINT8 width = screen->width();
+	UINT8 height = screen->height();
 	UINT8 x, y, b;
 
 	if (!state->lcd_on || !state->lcd_base)

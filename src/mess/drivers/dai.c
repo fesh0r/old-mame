@@ -7,7 +7,7 @@ What's new:
 21.05.2004  TMS5501 fixes. Debug code cleanups.
 06.03.2004  Stack overflow interrupt added.
 05.09.2003  Random number generator added. Few video hardware bugs fixed.
-        Fixed few i8080 instructions, making much more BASIC games playable.
+        Fixed few I8080 instructions, making much more BASIC games playable.
 
 Notes on emulation status and to do list:
 -----------------------------------------
@@ -18,7 +18,7 @@ DAI technical information
 
 CPU:
 ----
-    8080 2MHz
+    I8080 2MHz
 
 
 Memory map:
@@ -178,7 +178,8 @@ static const cassette_config dai_cassette_config =
 {
 	cassette_default_formats,
 	&dai_cassette_options,
-	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 /* F4 Character Displayer */
@@ -202,7 +203,7 @@ GFXDECODE_END
 /* machine definition */
 static MACHINE_DRIVER_START( dai )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8080, 2000000)
+	MDRV_CPU_ADD("maincpu", I8080, 2000000)
 	MDRV_CPU_PROGRAM_MAP(dai_mem)
 	MDRV_CPU_IO_MAP(dai_io)
 	MDRV_QUANTUM_TIME(HZ(60))

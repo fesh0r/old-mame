@@ -69,8 +69,8 @@ static TIMER_CALLBACK( pcf8593_timer_callback );
 
 INLINE pcf8593_t *get_token(running_device *device)
 {
-	assert(device->type == PCF8593);
-	return (pcf8593_t *) device->token;
+	assert(device->type() == PCF8593);
+	return (pcf8593_t *) downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -397,11 +397,11 @@ static TIMER_CALLBACK( pcf8593_timer_callback )
 void pcf8593_load(running_device *device, mame_file *file)
 {
 	pcf8593_t *rtc = get_token(device);
-	mame_system_time systime;
+	system_time systime;
 
 	_logerror( 0, ("pcf8593_load (%p)\n", file));
 	mame_fread( file, rtc->data, sizeof(rtc->data));
-	mame_get_current_datetime(device->machine, &systime);
+	device->machine->current_datetime(systime);
 	pcf8593_set_date(device, systime.local_time.year, systime.local_time.month + 1, systime.local_time.mday);
 	pcf8593_set_time(device, systime.local_time.hour, systime.local_time.minute, systime.local_time.second);
 }
@@ -454,7 +454,6 @@ DEVICE_GET_INFO( pcf8593 )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(pcf8593_t);				break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(pcf8593);	break;
@@ -469,3 +468,5 @@ DEVICE_GET_INFO( pcf8593 )
 		case DEVINFO_STR_CREDITS:						/* Nothing */								break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(PCF8593, pcf8593);

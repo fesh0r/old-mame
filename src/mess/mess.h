@@ -9,41 +9,80 @@
 #ifndef __MESS_H__
 #define __MESS_H__
 
-#include "configms.h"
-#include "messopts.h"
+#include "options.h"
 
+/******************************************************************************
+ * MESS' version of the GAME() macros of MAME
+ * CONS is for consoles
+ * COMP is for computers
+ ******************************************************************************/
+
+#define CONS(YEAR,NAME,PARENT,COMPAT,MACHINE,INPUT,INIT,COMPANY,FULLNAME,FLAGS)	\
+extern const game_driver GAME_NAME(NAME) =	\
+{											\
+	__FILE__,								\
+	#PARENT,								\
+	#NAME,									\
+	FULLNAME,								\
+	#YEAR,									\
+	COMPANY,								\
+	MACHINE_DRIVER_NAME(MACHINE),			\
+	INPUT_PORTS_NAME(INPUT),				\
+	DRIVER_INIT_NAME(INIT),					\
+	ROM_NAME(NAME),							\
+	#COMPAT,								\
+	ROT0|(FLAGS),							\
+	NULL									\
+};
+
+#define COMP(YEAR,NAME,PARENT,COMPAT,MACHINE,INPUT,INIT,COMPANY,FULLNAME,FLAGS)	\
+extern const game_driver GAME_NAME(NAME) =	\
+{											\
+	__FILE__,								\
+	#PARENT,								\
+	#NAME,									\
+	FULLNAME,								\
+	#YEAR,									\
+	COMPANY,								\
+	MACHINE_DRIVER_NAME(MACHINE),			\
+	INPUT_PORTS_NAME(INPUT),				\
+	DRIVER_INIT_NAME(INIT),					\
+	ROM_NAME(NAME),							\
+	#COMPAT,								\
+	ROT0|(FLAGS),				\
+	NULL									\
+};
+
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
+
+#define OPTION_RAMSIZE			"ramsize"
+#define OPTION_WRITECONFIG		"writeconfig"
+#define LCD_FRAMES_PER_SECOND	30
 
 
 /***************************************************************************
-
-    Constants
-
+    GLOBALS
 ***************************************************************************/
 
-#define LCD_FRAMES_PER_SECOND	30
+extern const options_entry mess_core_options[];
 
-/**************************************************************************/
-
-/* mess specific layout files */
 extern const char layout_lcd[];	/* generic 1:1 lcd screen layout */
 extern const char layout_lcd_rot[];	/* same, for use with ROT90 or ROT270 */
 
-
-/***************************************************************************/
-
 extern const char mess_disclaimer[];
 
-/***************************************************************************/
+/***************************************************************************
+    FUNCTION PROTOTYPES
+***************************************************************************/
 
-/* IODevice Initialisation return values.  Use these to determine if */
-/* the emulation can continue if IODevice initialisation fails */
-#define INIT_PASS 0
-#define INIT_FAIL 1
-#define IMAGE_VERIFY_PASS 0
-#define IMAGE_VERIFY_FAIL 1
+void mess_display_help(void);
 
-/* these are called from mame.c */
-void mess_predevice_init(running_machine *machine);
-void mess_postdevice_init(running_machine *machine);
+/* code used by print_mame_xml() */
+void print_mess_game_xml(FILE *out, const game_driver *game, const machine_config *config);
+
+/* initialize MESS specific options (called from MAME core) */
+void mess_options_init(core_options *opts);
 
 #endif /* __MESS_H__ */

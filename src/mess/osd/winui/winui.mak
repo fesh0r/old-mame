@@ -57,6 +57,7 @@ WINUIOBJS += \
 	$(MESS_WINUIOBJ)/propertiesms.o \
 	$(MESS_WINUIOBJ)/swconfig.o \
 	$(MESS_WINUIOBJ)/softwarepicker.o \
+	$(MESS_WINUIOBJ)/softwarelist.o \
 	$(MESS_WINUIOBJ)/devview.o
 
 
@@ -133,6 +134,6 @@ $(WINUIOBJ)/mamevers.rc: $(OBJ)/build/verinfo$(EXE) $(SRC)/version.c
 	@echo Emitting $@...
 	@"$(VERINFO)" -b mess $(SRC)/version.c  > $@
 
-$(MESSUIEXE): $(WINUIOBJS) $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(SOFTFLOAT) $(LIBOCORE_NOMAIN) $(RESFILEUI)
+$(MESSUIEXE): $(WINUIOBJS) $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(SOFTFLOAT) $(LIBOCORE_NOMAIN) $(RESFILEUI)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS_UI) -mwindows $^ $(LIBS) $(EXPAT) -o $@

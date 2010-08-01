@@ -230,9 +230,50 @@ static INPUT_PORTS_START( channelf )
 	PORT_BIT ( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON3) /* CLOCKWISE   */ PORT_PLAYER(2)
 	PORT_BIT ( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON2) /* PULL UP     */ PORT_PLAYER(2)
 	PORT_BIT ( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1) /* PUSH DOWN   */ PORT_PLAYER(2)
-
 INPUT_PORTS_END
 
+
+
+static DEVICE_IMAGE_LOAD( channelf_cart )
+{
+	UINT32 size;
+
+	if (image.software_entry() == NULL)
+	{
+		size = image.length();
+
+		if (size > 0xf800)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
+			return IMAGE_INIT_FAIL;
+		}
+
+		if (image.fread( memory_region(image.device().machine, "maincpu") + 0x0800, size) != size)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return IMAGE_INIT_FAIL;
+		}
+
+	}
+	else
+	{
+		size = image.get_software_region_length("rom");
+		memcpy(memory_region(image.device().machine, "maincpu") + 0x0800, image.get_software_region("rom"), size);
+	}
+
+	return IMAGE_INIT_PASS;
+}
+
+static MACHINE_DRIVER_START( channelf_cart )
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,chf")
+	MDRV_CARTSLOT_INTERFACE("channelf_cart")
+	MDRV_CARTSLOT_LOAD(channelf_cart)
+
+	/* Software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","channelf")
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( channelf )
 	/* basic machine hardware */
@@ -259,8 +300,7 @@ static MACHINE_DRIVER_START( channelf )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,chf")
+	MDRV_IMPORT_FROM( channelf_cart )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sabavdpl )
@@ -288,8 +328,7 @@ static MACHINE_DRIVER_START( sabavdpl )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,chf")
+	MDRV_IMPORT_FROM( channelf_cart )
 MACHINE_DRIVER_END
 
 
@@ -318,8 +357,7 @@ static MACHINE_DRIVER_START( channlf2 )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,chf")
+	MDRV_IMPORT_FROM( channelf_cart )
 MACHINE_DRIVER_END
 
 
@@ -348,8 +386,7 @@ static MACHINE_DRIVER_START( sabavpl2 )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,chf")
+	MDRV_IMPORT_FROM( channelf_cart )
 MACHINE_DRIVER_END
 
 ROM_START( channelf )
@@ -359,7 +396,6 @@ ROM_START( channelf )
 	ROM_SYSTEM_BIOS( 1, "sl31253", "Channel F" )
 	ROMX_LOAD("sl31253.rom",  0x0000, 0x0400, CRC(04694ed9) SHA1(81193965a374d77b99b4743d317824b53c3e3c78), ROM_BIOS(2))
 	ROM_LOAD("sl31254.rom",   0x0400, 0x0400, CRC(9c047ba3) SHA1(8f70d1b74483ba3a37e86cf16c849d601a8c3d2c))
-	ROM_CART_LOAD("cart", 0x0800, 0xf800, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 #define rom_sabavdpl rom_channelf
@@ -378,11 +414,11 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT     INIT   COMPANY         FULLNAME        FLAGS */
-CONS( 1976, channelf,  0,        0,    channelf,  channelf,   0,      "Fairchild",    "Channel F",                            0)
-CONS( 1977, sabavdpl,  channelf, 0,    sabavdpl,  channelf,   0,      "SABA",         "SABA Videoplay",                       0)
-CONS( 197?, luxorves,  channelf, 0,    sabavdpl,  channelf,   0,      "Luxor",        "Luxor Video Entertainment System",     0)
-CONS( 1978, channlf2,  0, channelf,    channlf2,  channelf,   0,      "Fairchild",    "Channel F II",                         0)
-CONS( 1978, sabavpl2,  channlf2, 0,    sabavpl2,  channelf,   0,      "SABA",         "SABA Videoplay 2",                     0)
-CONS( 197?, luxorvec,  channlf2, 0,    sabavpl2,  channelf,   0,      "Luxor",        "Luxor Video Entertainment Computer",   0)
-CONS( 197?, itttelma,  channlf2, 0,    sabavpl2,  channelf,   0,      "ITT",          "ITT Tele-Match Processor",             0)
-CONS( 1978, ingtelma,  channlf2, 0,    sabavpl2,  channelf,   0,      "Ingelen",      "Ingelen Tele-Match Processor",         0)
+CONS( 1976, channelf,  0,        0,    channelf,  channelf,   0,      "Fairchild",    "Channel F",                            0 )
+CONS( 1977, sabavdpl,  channelf, 0,    sabavdpl,  channelf,   0,      "SABA",         "SABA Videoplay",                       0 )
+CONS( 197?, luxorves,  channelf, 0,    sabavdpl,  channelf,   0,      "Luxor",        "Luxor Video Entertainment System",     0 )
+CONS( 1978, channlf2,  0, channelf,    channlf2,  channelf,   0,      "Fairchild",    "Channel F II",                         0 )
+CONS( 1978, sabavpl2,  channlf2, 0,    sabavpl2,  channelf,   0,      "SABA",         "SABA Videoplay 2",                     0 )
+CONS( 197?, luxorvec,  channlf2, 0,    sabavpl2,  channelf,   0,      "Luxor",        "Luxor Video Entertainment Computer",   0 )
+CONS( 197?, itttelma,  channlf2, 0,    sabavpl2,  channelf,   0,      "ITT",          "ITT Tele-Match Processor",             0 )
+CONS( 1978, ingtelma,  channlf2, 0,    sabavpl2,  channelf,   0,      "Ingelen",      "Ingelen Tele-Match Processor",         0 )

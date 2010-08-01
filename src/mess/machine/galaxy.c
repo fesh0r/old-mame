@@ -23,7 +23,7 @@ READ8_HANDLER( galaxy_keyboard_r )
 
 	if (offset == 0)
 	{
-		double level = cassette_input(devtag_get_device(space->machine, "cassette"));
+		double level = cassette_input(space->machine->device("cassette"));
 		return (level >  0) ? 0xfe : 0xff;
 	}
 	else
@@ -38,7 +38,7 @@ WRITE8_HANDLER( galaxy_latch_w )
 {
 	double val = (((data >>6) & 1 ) + ((data >> 2) & 1) - 1) * 32000;
 	galaxy_latch_value = data;
-	cassette_output(devtag_get_device(space->machine, "cassette"), val);
+	cassette_output(space->machine->device("cassette"), val);
 }
 
 
@@ -69,7 +69,7 @@ static IRQ_CALLBACK ( galaxy_irq_callback )
 
 static void galaxy_setup_snapshot (running_machine *machine, const UINT8 * data, UINT32 size)
 {
-	running_device *cpu = devtag_get_device(machine, "maincpu");
+	running_device *cpu = machine->device("maincpu");
 
 	switch (size)
 	{
@@ -93,7 +93,7 @@ static void galaxy_setup_snapshot (running_machine *machine, const UINT8 * data,
 			cpu_set_reg(cpu, Z80_I,    data[0x40]);
 			cpu_set_reg(cpu, Z80_R,    (data[0x44] & 0x7f) | (data[0x48] & 0x80));
 
-			memcpy (messram_get_ptr(devtag_get_device(machine, "messram")), data + 0x084c, (messram_get_size(devtag_get_device(machine, "messram")) < 0x1800) ? messram_get_size(devtag_get_device(machine, "messram")) : 0x1800);
+			memcpy (messram_get_ptr(machine->device("messram")), data + 0x084c, (messram_get_size(machine->device("messram")) < 0x1800) ? messram_get_size(machine->device("messram")) : 0x1800);
 
 			break;
 		case GALAXY_SNAPSHOT_V2_SIZE:
@@ -111,16 +111,16 @@ static void galaxy_setup_snapshot (running_machine *machine, const UINT8 * data,
 			cpu_set_reg(cpu, Z80_HL2,  data[0x16] | data[0x17] << 8);
 
 			cpu_set_reg(cpu, Z80_IFF1, data[0x18] & 0x01);
-			cpu_set_reg(cpu, Z80_IFF2, 0);
+			cpu_set_reg(cpu, Z80_IFF2, (UINT64)0);
 
-			cpu_set_reg(cpu, Z80_HALT, 0);
+			cpu_set_reg(cpu, Z80_HALT, (UINT64)0);
 
 			cpu_set_reg(cpu, Z80_IM,   (data[0x18] >> 1) & 0x03);
 
 			cpu_set_reg(cpu, Z80_I,    data[0x19]);
 			cpu_set_reg(cpu, Z80_R,    data[0x1a]);
 
-			memcpy (messram_get_ptr(devtag_get_device(machine, "messram")), data + 0x0834, (messram_get_size(devtag_get_device(machine, "messram")) < 0x1800) ? messram_get_size(devtag_get_device(machine, "messram")) : 0x1800);
+			memcpy (messram_get_ptr(machine->device("messram")), data + 0x0834, (messram_get_size(machine->device("messram")) < 0x1800) ? messram_get_size(machine->device("messram")) : 0x1800);
 
 			break;
 	}
@@ -137,17 +137,17 @@ SNAPSHOT_LOAD( galaxy )
 	{
 		case GALAXY_SNAPSHOT_V1_SIZE:
 		case GALAXY_SNAPSHOT_V2_SIZE:
-			snapshot_data = auto_alloc_array(image->machine, UINT8, snapshot_size);
+			snapshot_data = auto_alloc_array(image.device().machine, UINT8, snapshot_size);
 			break;
 		default:
-			return INIT_FAIL;
+			return IMAGE_INIT_FAIL;
 	}
 
-	image_fread(image, snapshot_data, snapshot_size);
+	image.fread( snapshot_data, snapshot_size);
 
-	galaxy_setup_snapshot(image->machine, snapshot_data, snapshot_size);
+	galaxy_setup_snapshot(image.device().machine, snapshot_data, snapshot_size);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -158,12 +158,12 @@ SNAPSHOT_LOAD( galaxy )
 DRIVER_INIT( galaxy )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	memory_install_readwrite_bank( space, 0x2800, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, "bank1");
-	memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank( space, 0x2800, 0x2800 + messram_get_size(machine->device("messram")) - 1, 0, 0, "bank1");
+	memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 
-	if (messram_get_size(devtag_get_device(machine, "messram")) < (6 + 48) * 1024)
+	if (messram_get_size(machine->device("messram")) < (6 + 48) * 1024)
 	{
-		memory_nop_readwrite( space, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")), 0xffff, 0, 0);
+		memory_nop_readwrite( space, 0x2800 + messram_get_size(machine->device("messram")), 0xffff, 0, 0);
 	}
 }
 
@@ -186,7 +186,7 @@ MACHINE_RESET( galaxy )
 	if (input_port_read(machine, "ROM2"))
 		memory_set_bankptr(machine,"bank10", memory_region(machine, "maincpu") + 0x1000);
 
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), galaxy_irq_callback);
+	cpu_set_irq_callback(machine->device("maincpu"), galaxy_irq_callback);
 	galaxy_interrupts_enabled = TRUE;
 }
 
@@ -200,7 +200,7 @@ MACHINE_RESET( galaxyp )
 	UINT8 *ROM = memory_region(machine, "maincpu");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), galaxy_irq_callback);
+	cpu_set_irq_callback(machine->device("maincpu"), galaxy_irq_callback);
 
 	ROM[0x0037] = 0x29;
 	ROM[0x03f9] = 0xcd;

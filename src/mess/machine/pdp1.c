@@ -39,7 +39,7 @@ static TIMER_CALLBACK(reader_callback);
 static TIMER_CALLBACK(puncher_callback);
 static TIMER_CALLBACK(tyo_callback);
 static TIMER_CALLBACK(dpy_callback);
-static void pdp1_machine_stop(running_machine *machine);
+static void pdp1_machine_stop(running_machine &machine);
 
 static void pdp1_tape_read_binary(running_device *device);
 static void pdp1_io_sc_callback(running_device *device);
@@ -96,7 +96,7 @@ enum
 /* tape reader registers */
 typedef struct tape_reader_t
 {
-	running_device *fd;	/* file descriptor of tape image */
+	device_image_interface *fd;	/* file descriptor of tape image */
 
 	int motor_on;	/* 1-bit reader motor on */
 
@@ -115,7 +115,7 @@ static tape_reader_t tape_reader;
 /* tape puncher registers */
 typedef struct tape_puncher_t
 {
-	running_device *fd;	/* file descriptor of tape image */
+	device_image_interface *fd;	/* file descriptor of tape image */
 
 	emu_timer *timer;	/* timer to generate completion pulses */
 } tape_puncher_t;
@@ -126,7 +126,7 @@ static tape_puncher_t tape_puncher;
 /* typewriter registers */
 typedef struct typewriter_t
 {
-	running_device *fd;	/* file descriptor of output image */
+	device_image_interface *fd;	/* file descriptor of output image */
 
 	int tb;			/* typewriter buffer */
 
@@ -146,7 +146,7 @@ static lightpen_t lightpen;
 /* MIT parallel drum (mostly similar to type 23) */
 typedef struct parallel_drum_t
 {
-	running_device *fd;	/* file descriptor of drum image */
+	device_image_interface *fd;	/* file descriptor of drum image */
 
 	int il;			/* initial location (12-bit) */
 	int wc;			/* word counter (12-bit) */
@@ -219,7 +219,7 @@ MACHINE_RESET( pdp1 )
 }
 
 
-static void pdp1_machine_stop(running_machine *machine)
+static void pdp1_machine_stop(running_machine &machine)
 {
 	/* the core will take care of freeing the timers, BUT we must set the variables
     to NULL if we don't want to risk confusing the tape image init function */
@@ -365,7 +365,7 @@ MACHINE_START( pdp1 )
 	dst = memory_region(machine, "gfx1");
 	memcpy(dst, fontdata6x8, pdp1_fontdata_size);
 
-	add_exit_callback(machine, pdp1_machine_stop);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, pdp1_machine_stop);
 
 	tape_reader.timer = timer_alloc(machine, reader_callback, NULL);
 	tape_puncher.timer = timer_alloc(machine, puncher_callback, NULL);
@@ -445,7 +445,7 @@ DEVICE_IMAGE_LOAD( pdp1_tape )
 		break;
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD( pdp1_tape )
@@ -477,7 +477,7 @@ DEVICE_IMAGE_UNLOAD( pdp1_tape )
 */
 static int tape_read(UINT8 *reply)
 {
-	if (tape_reader.fd && (image_fread(tape_reader.fd, reply, 1) == 1))
+	if (tape_reader.fd && (tape_reader.fd->fread(reply, 1) == 1))
 		return 0;	/* unit OK */
 	else
 		return 1;	/* unit not ready */
@@ -489,7 +489,7 @@ static int tape_read(UINT8 *reply)
 static void tape_write(UINT8 data)
 {
 	if (tape_puncher.fd)
-		image_fwrite(tape_puncher.fd, & data, 1);
+		tape_puncher.fd->fwrite(& data, 1);
 }
 
 /*
@@ -553,8 +553,8 @@ static TIMER_CALLBACK(reader_callback)
 					tape_reader.rcl = 0;
 					if (tape_reader.rcp)
 					{
-						cpu_set_reg(devtag_get_device(machine, "maincpu"), PDP1_IO, tape_reader.rb);	/* transfer reader buffer to IO */
-						pdp1_pulse_iot_done(devtag_get_device(machine, "maincpu"));
+						cpu_set_reg(machine->device("maincpu"), PDP1_IO, tape_reader.rb);	/* transfer reader buffer to IO */
+						pdp1_pulse_iot_done(machine->device("maincpu"));
 					}
 					else
 						io_status |= io_st_ptr;
@@ -579,7 +579,7 @@ static TIMER_CALLBACK(puncher_callback)
 	io_status |= io_st_ptp;
 	if (nac)
 	{
-		pdp1_pulse_iot_done(devtag_get_device(machine, "maincpu"));
+		pdp1_pulse_iot_done(machine->device("maincpu"));
 	}
 }
 
@@ -747,11 +747,11 @@ static void iot_ppb(running_device *device, int op2, int nac, int mb, int *io, i
 DEVICE_IMAGE_LOAD(pdp1_typewriter)
 {
 	/* open file */
-	typewriter.fd = image;
+	typewriter.fd = &image;
 
 	io_status |= io_st_tyo;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD(pdp1_typewriter)
@@ -770,7 +770,7 @@ static void typewriter_out(running_machine *machine, UINT8 data)
 	pdp1_typewriter_drawchar(machine, data);
 	if (typewriter.fd)
 #if 1
-		image_fwrite(typewriter.fd, & data, 1);
+		typewriter.fd->fwrite(& data, 1);
 #else
 	{
 		static const char ascii_table[2][64] =
@@ -876,7 +876,7 @@ static TIMER_CALLBACK(tyo_callback)
 	io_status |= io_st_tyo;
 	if (nac)
 	{
-		pdp1_pulse_iot_done(devtag_get_device(machine, "maincpu"));
+		pdp1_pulse_iot_done(machine->device("maincpu"));
 	}
 }
 
@@ -992,7 +992,7 @@ static void iot_tyi(running_device *device, int op2, int nac, int mb, int *io, i
 */
 static TIMER_CALLBACK(dpy_callback)
 {
-	pdp1_pulse_iot_done(devtag_get_device(machine, "maincpu"));
+	pdp1_pulse_iot_done(machine->device("maincpu"));
 }
 
 
@@ -1018,7 +1018,7 @@ static void iot_dpy(running_device *device, int op2, int nac, int mb, int *io, i
 	{
 		io_status |= io_st_pen;
 
-		cpu_set_reg(devtag_get_device(device->machine, "maincpu"), PDP1_PF3, 1);
+		cpu_set_reg(device->machine->device("maincpu"), PDP1_PF3, 1);
 	}
 
 	if (nac)
@@ -1079,9 +1079,9 @@ static void parallel_drum_init(void)
 DEVICE_IMAGE_LOAD(pdp1_drum)
 {
 	/* open file */
-	parallel_drum.fd = image;
+	parallel_drum.fd = &image;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD(pdp1_drum)
@@ -1113,7 +1113,7 @@ static UINT32 drum_read(int field, int position)
 	int offset = (field*4096+position)*3;
 	UINT8 buf[3];
 
-	if (parallel_drum.fd && (!image_fseek(parallel_drum.fd, offset, SEEK_SET)) && (image_fread(parallel_drum.fd, buf, 3) == 3))
+	if (parallel_drum.fd && (!parallel_drum.fd->fseek(offset, SEEK_SET)) && (parallel_drum.fd->fread( buf, 3) == 3))
 		return ((buf[0] << 16) | (buf[1] << 8) | buf[2]) & 0777777;
 
 	return 0;
@@ -1133,8 +1133,8 @@ static void drum_write(int field, int position, UINT32 data)
 		buf[1] = data >> 8;
 		buf[2] = data;
 
-		image_fseek(parallel_drum.fd, offset, SEEK_SET);
-		image_fwrite(parallel_drum.fd, buf, 3);
+		parallel_drum.fd->fseek(offset, SEEK_SET);
+		parallel_drum.fd->fwrite( buf, 3);
 	}
 }
 
@@ -1172,9 +1172,9 @@ static void iot_dcc(running_device *device, int op2, int nac, int mb, int *io, i
 		if (parallel_drum.wc)
 			delay = attotime_add(delay, PARALLEL_DRUM_WORD_TIME);
 	} while (parallel_drum.wc);
-	cpu_adjust_icount(devtag_get_device(device->machine, "maincpu"),-cputag_attotime_to_clocks(device->machine, "maincpu", delay));
+	cpu_adjust_icount(device->machine->device("maincpu"),-cputag_attotime_to_clocks(device->machine, "maincpu", delay));
 	/* if no error, skip */
-	cpu_set_reg(devtag_get_device(device->machine, "maincpu"), PDP1_PC, cpu_get_reg(devtag_get_device(device->machine, "maincpu"), PDP1_PC)+1);
+	cpu_set_reg(device->machine->device("maincpu"), PDP1_PC, cpu_get_reg(device->machine->device("maincpu"), PDP1_PC)+1);
 }
 
 static void iot_dra(running_device *device, int op2, int nac, int mb, int *io, int ac)
@@ -1303,7 +1303,7 @@ static void pdp1_keyboard(running_machine *machine)
 			#if USE_SBS
 				cputag_set_input_line_and_vector(machine, "maincpu", 0, ASSERT_LINE, 0);	/* interrupt it, baby */
 			#endif
-			cpu_set_reg(devtag_get_device(machine, "maincpu"), PDP1_PF1, 1);
+			cpu_set_reg(machine->device("maincpu"), PDP1_PF1, 1);
 			pdp1_typewriter_drawchar(machine, typewriter.tb);	/* we want to echo input */
 			break;
 		}
@@ -1403,8 +1403,8 @@ INTERRUPT_GEN( pdp1_interrupt )
 		{
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
 			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
-			cpu_set_reg(device, PDP1_SBM, 0);
-			cpu_set_reg(device, PDP1_OV, 0);
+			cpu_set_reg(device, PDP1_SBM, (UINT64)0);
+			cpu_set_reg(device, PDP1_OV, (UINT64)0);
 			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
 			cpu_set_reg(device, PDP1_RUN, 1);
 		}
@@ -1413,14 +1413,14 @@ INTERRUPT_GEN( pdp1_interrupt )
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
 			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
 			cpu_set_reg(device, PDP1_SBM, 1);
-			cpu_set_reg(device, PDP1_OV, 0);
+			cpu_set_reg(device, PDP1_OV, (UINT64)0);
 			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
 			cpu_set_reg(device, PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_stop)
 		{
-			cpu_set_reg(device, PDP1_RUN, 0);
-			cpu_set_reg(device, PDP1_RIM, 0);	/* bug : we stop after reading an even-numbered word
+			cpu_set_reg(device, PDP1_RUN, (UINT64)0);
+			cpu_set_reg(device, PDP1_RIM, (UINT64)0);	/* bug : we stop after reading an even-numbered word
                                             (i.e. data), whereas a real pdp-1 stops after reading
                                             an odd-numbered word (i.e. dio instruciton) */
 		}
@@ -1454,10 +1454,10 @@ INTERRUPT_GEN( pdp1_interrupt )
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
 			cpu_set_reg(device, PDP1_PC, (  cpu_get_reg(device, PDP1_TA) & 0170000)
 										|  (cpu_get_reg(device, PDP1_PC) & 0007777));	/* transfer ETA to EPC */
-			/*cpu_set_reg(devtag_get_device(machine, "maincpu"), PDP1_MA, cpu_get_reg(devtag_get_device(machine, "maincpu"), PDP1_PC));*/
+			/*cpu_set_reg(machine->device("maincpu"), PDP1_MA, cpu_get_reg(machine->device("maincpu"), PDP1_PC));*/
 			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
-			cpu_set_reg(device, PDP1_OV, 0);		/* right??? */
-			cpu_set_reg(device, PDP1_RUN, 0);
+			cpu_set_reg(device, PDP1_OV, (UINT64)0);		/* right??? */
+			cpu_set_reg(device, PDP1_RUN, (UINT64)0);
 			cpu_set_reg(device, PDP1_RIM, 1);
 		}
 		if (control_transitions & pdp1_reader)

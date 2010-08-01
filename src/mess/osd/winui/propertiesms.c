@@ -25,11 +25,9 @@
 #include "mui_opts.h"
 #include "resourcems.h"
 #include "mess.h"
-#include "utils.h"
 #include "propertiesms.h"
 #include "optionsms.h"
 #include "msuiutil.h"
-#include "messopts.h"
 #include "strconv.h"
 #include "winutf8.h"
 #include "devices/messram.h"
@@ -212,7 +210,7 @@ static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR)
 
 BOOL PropSheetFilter_Config(const machine_config *drv, const game_driver *gamedrv)
 {
-	return (drv->devicelist.first(MESSRAM)!=NULL) || DriverHasDevice(gamedrv, IO_PRINTER);
+	return (drv->m_devicelist.first(MESSRAM)!=NULL) || DriverHasDevice(gamedrv, IO_PRINTER);
 }
 
 
@@ -405,17 +403,17 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 	(void)ComboBox_ResetContent(control);
 
 	// allocate the machine config
-	cfg = machine_config_alloc(gamedrv->machine_config);
+	cfg = global_alloc(machine_config(gamedrv->machine_config));
 
 	// identify how many options that we have
-	device = cfg->devicelist.first(MESSRAM);
+	device = cfg->m_devicelist.first(MESSRAM);
 
 	EnableWindow(control, (device != NULL));
 	i = 0;
 	// we can only do something meaningful if there is more than one option
 	if (device != NULL)
 	{
-		ram_config *config = (ram_config *)device->inline_config;
+		ram_config *config = (ram_config *)downcast<const legacy_device_config_base *>(device)->inline_config();
 
 		// identify the current amount of RAM
 		this_ram_string = options_get_string(opts, OPTION_RAMSIZE);
@@ -487,7 +485,7 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 	if (cfg != NULL)
 	{
 		/* Free the structure */
-		machine_config_free(cfg);
+		global_free(cfg);
 	}
 	return TRUE;
 }

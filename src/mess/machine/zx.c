@@ -18,9 +18,9 @@
 #define	DEBUG_ZX81_PORTS	1
 #define DEBUG_ZX81_VSYNC	1
 
-#define LOG_ZX81_IOR(_comment) do { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOR: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, video_screen_get_vpos(space->machine->primary_screen), _comment); } while (0)
-#define LOG_ZX81_IOW(_comment) do { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOW: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, video_screen_get_vpos(space->machine->primary_screen), _comment); } while (0)
-#define LOG_ZX81_VSYNC do { if (DEBUG_ZX81_VSYNC) logerror("VSYNC starts in scanline: %d\n", video_screen_get_vpos(space->machine->primary_screen)); } while (0)
+#define LOG_ZX81_IOR(_comment) do { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOR: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, space->machine->primary_screen->vpos(), _comment); } while (0)
+#define LOG_ZX81_IOW(_comment) do { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOW: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, space->machine->primary_screen->vpos(), _comment); } while (0)
+#define LOG_ZX81_VSYNC do { if (DEBUG_ZX81_VSYNC) logerror("VSYNC starts in scanline: %d\n", space->machine->primary_screen->vpos()); } while (0)
 
 static UINT8 zx_tape_bit = 0x80;
 
@@ -52,8 +52,8 @@ DRIVER_INIT ( zx )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_install_read_bank(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, "bank1");
-	memory_install_write8_handler(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, zx_ram_w);
+	memory_install_read_bank(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 1, 0, 0, "bank1");
+	memory_install_write8_handler(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 1, 0, 0, zx_ram_w);
 	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x4000);
 }
 
@@ -133,7 +133,7 @@ READ8_HANDLER ( zx80_io_r )
 		if (!input_port_read(space->machine, "CONFIG"))
 			data &= ~0x40;
 
-		cassette_output(devtag_get_device(space->machine, "cassette"), +0.75);
+		cassette_output(space->machine->device("cassette"), +0.75);
 
 		if (ula_irq_active)
 		{
@@ -144,7 +144,7 @@ READ8_HANDLER ( zx80_io_r )
 		}
 //      else
 //      {
-			if ((cassette_input(devtag_get_device(space->machine, "cassette")) < -0.75) && zx_tape_bit)
+			if ((cassette_input(space->machine->device("cassette")) < -0.75) && zx_tape_bit)
 			{
 				zx_tape_bit = 0x00;
 				timer_set(space->machine, ATTOTIME_IN_USEC(362), NULL, 0, zx_tape_pulse);
@@ -197,7 +197,7 @@ READ8_HANDLER ( zx81_io_r )
 		if (!input_port_read(space->machine, "CONFIG"))
 			data &= ~0x40;
 
-		cassette_output(devtag_get_device(space->machine, "cassette"), +0.75);
+		cassette_output(space->machine->device("cassette"), +0.75);
 
 		if (ula_irq_active)
 		{
@@ -208,7 +208,7 @@ READ8_HANDLER ( zx81_io_r )
 		}
 		else
 		{
-			if ((cassette_input(devtag_get_device(space->machine, "cassette")) < -0.75) && zx_tape_bit)
+			if ((cassette_input(space->machine->device("cassette")) < -0.75) && zx_tape_bit)
 			{
 				zx_tape_bit = 0x00;
 				timer_set(space->machine, ATTOTIME_IN_USEC(362), NULL, 0, zx_tape_pulse);
@@ -242,7 +242,7 @@ READ8_HANDLER ( pc8300_io_r )
 	UINT8 data = 0xff;
 	UINT8 offs = offset & 0xff;
 	static UINT8 speaker_state = 0;
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = space->machine->device("speaker");
 
 	if (offs == 0xf5)
 	{
@@ -269,7 +269,7 @@ READ8_HANDLER ( pc8300_io_r )
 		if ((offset & 0x8000) == 0)
 			data &= input_port_read(space->machine, "ROW7");
 
-		cassette_output(devtag_get_device(space->machine, "cassette"), +0.75);
+		cassette_output(space->machine->device("cassette"), +0.75);
 
 		if (ula_irq_active)
 		{
@@ -280,7 +280,7 @@ READ8_HANDLER ( pc8300_io_r )
 		}
 		else
 		{
-			if ((cassette_input(devtag_get_device(space->machine, "cassette")) < -0.75) && zx_tape_bit)
+			if ((cassette_input(space->machine->device("cassette")) < -0.75) && zx_tape_bit)
 			{
 				zx_tape_bit = 0x00;
 				timer_set(space->machine, ATTOTIME_IN_USEC(362), NULL, 0, zx_tape_pulse);
@@ -314,7 +314,7 @@ READ8_HANDLER ( pow3000_io_r )
 	UINT8 data = 0xff;
 	UINT8 offs = offset & 0xff;
 	static UINT8 speaker_state = 0;
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = space->machine->device("speaker");
 
 	if (offs == 0x7e)
 	{
@@ -346,7 +346,7 @@ READ8_HANDLER ( pow3000_io_r )
 		if ((offset & 0x8000) == 0)
 			data &= input_port_read(space->machine, "ROW7");
 
-		cassette_output(devtag_get_device(space->machine, "cassette"), +0.75);
+		cassette_output(space->machine->device("cassette"), +0.75);
 
 		if (ula_irq_active)
 		{
@@ -356,7 +356,7 @@ READ8_HANDLER ( pow3000_io_r )
 		}
 		else
 		{
-			if ((cassette_input(devtag_get_device(space->machine, "cassette")) < -0.75) && zx_tape_bit)
+			if ((cassette_input(space->machine->device("cassette")) < -0.75) && zx_tape_bit)
 			{
 				zx_tape_bit = 0x00;
 				timer_set(space->machine, ATTOTIME_IN_USEC(362), NULL, 0, zx_tape_pulse);
@@ -385,7 +385,7 @@ WRITE8_HANDLER( zx80_io_w )
 	UINT8 offs = offset & 0xff;
 
 	if (offs == 0xff)
-		cassette_output(devtag_get_device(space->machine, "cassette"), -0.75);
+		cassette_output(space->machine->device("cassette"), -0.75);
 	else
 		LOG_ZX81_IOR("Unmapped port");
 }
@@ -399,8 +399,8 @@ WRITE8_HANDLER ( zx81_io_w )
     FE = turn on NMI generator
     FF = write HSYNC and cass data */
 
-	running_device *screen = video_screen_first(space->machine);
-	int height = video_screen_get_height(screen);
+	screen_device *screen = screen_first(*space->machine);
+	int height = screen->height();
 	UINT8 offs = offset & 0xff;
 
 	if (offs == 0xfd)
@@ -422,13 +422,13 @@ WRITE8_HANDLER ( zx81_io_w )
 	else
 	if (offs == 0xff)
 	{
-		cassette_output(devtag_get_device(space->machine, "cassette"), -0.75);
+		cassette_output(space->machine->device("cassette"), -0.75);
 		zx_ula_bkgnd(space->machine, 1);
 		if (ula_frame_vsync == 2)
 		{
-			cpu_spinuntil_time(space->cpu,video_screen_get_time_until_pos(space->machine->primary_screen, height - 1, 0));
+			cpu_spinuntil_time(space->cpu,space->machine->primary_screen->time_until_pos(height - 1, 0));
 			ula_scanline_count = height - 1;
-			logerror ("S: %d B: %d\n", video_screen_get_vpos(space->machine->primary_screen), video_screen_get_hpos(space->machine->primary_screen));
+			logerror ("S: %d B: %d\n", space->machine->primary_screen->vpos(), space->machine->primary_screen->hpos());
 		}
 
 		LOG_ZX81_IOW("ULA IRQs on");

@@ -12,6 +12,16 @@
 #include "machine/8530scc.h"
 #include "machine/6522via.h"
 
+/* for Egret and CUDA streaming MCU commands, command types */
+typedef enum
+{
+	MCU_STREAMING_NONE = 0,
+	MCU_STREAMING_PRAMRD,
+	MCU_STREAMING_PRAMWR,
+	MCU_STREAMING_WRAMRD,
+	MCU_STREAMING_WRAMWR
+} mac_streaming_t;
+
 /* tells which model is being emulated (set by macxxx_init) */
 typedef enum
 {
@@ -157,9 +167,7 @@ INTERRUPT_GEN( mac_cb264_vbl );
 
 /*----------- defined in audio/mac.c -----------*/
 
-#define SOUND_MAC_SOUND DEVICE_GET_INFO_NAME(mac_sound)
-
-DEVICE_GET_INFO( mac_sound );
+DECLARE_LEGACY_SOUND_DEVICE(MAC_SOUND, mac_sound);
 
 void mac_enable_sound( running_device *device, int on );
 void mac_set_sound_buffer( running_device *device, int buffer );
@@ -241,6 +249,7 @@ public:
 	INT32 adb_irq_pending, adb_waiting_cmd, adb_datasize, adb_buffer[257];
 	INT32 adb_state, adb_command, adb_send, adb_timer_ticks, adb_extclock, adb_direction;
 	INT32 adb_listenreg, adb_listenaddr, adb_last_talk, adb_srq_switch;
+	INT32 adb_streaming, adb_stream_ptr;
 
 	// Portable/PB100 Power Manager IC comms (chapter 4, "Guide to the Macintosh Family Hardware", second edition)
 	UINT8 pm_data_send, pm_data_recv, pm_ack, pm_req;

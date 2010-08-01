@@ -193,9 +193,14 @@ static PALETTE_INIT( vc4000 )
 
 static DEVICE_IMAGE_LOAD( vc4000_cart )
 {
-	running_machine *machine = image->machine;
-	int size = image_length(image);
+	running_machine *machine = image.device().machine;
 	const address_space *memspace = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	UINT32 size;
+
+	if (image.software_entry() == NULL)
+		size = image.length();
+	else
+		size = image.get_software_region_length("rom");
 
 	if (size > 0x1600)
 		size = 0x1600;
@@ -208,8 +213,7 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 		memory_install_readwrite_bank(memspace, 0x1800, 0x1bff, 0, 0, "bank2");	/* ram */
 		memory_set_bankptr(machine, "bank2", memory_region(machine, "maincpu") + 0x1800);
 	}
-	else
-	if (size > 0x0800)	/* some 4k roms have 1k of mirrored ram */
+	else if (size > 0x0800)	/* some 4k roms have 1k of mirrored ram */
 	{
 		memory_install_read_bank(memspace, 0x0800, 0x0fff, 0, 0, "bank1");	/* extra rom */
 		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x0800);
@@ -217,8 +221,7 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 		memory_install_readwrite_bank(memspace, 0x1000, 0x15ff, 0, 0x800, "bank2"); /* ram */
 		memory_set_bankptr(machine, "bank2", memory_region(machine, "maincpu") + 0x1000);
 	}
-	else
-	if (size == 0x0800)	/* 2k roms + 2k ram - Hobby Module(Radofin) and elektor TVGC*/
+	else if (size == 0x0800)	/* 2k roms + 2k ram - Hobby Module(Radofin) and elektor TVGC*/
 	{
 		memory_install_readwrite_bank(memspace, 0x0800, 0x0fff, 0, 0, "bank1"); /* ram */
 		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x0800);
@@ -226,10 +229,16 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 
 	if (size > 0)
 	{
-		image_fread(image, memory_region(machine, "maincpu") + 0x0000, size);
+		if (image.software_entry() == NULL)
+		{
+			if (image.fread( memory_region(machine, "maincpu"), size) != size)
+				return IMAGE_INIT_FAIL;
+		}
+		else
+			memcpy(memory_region(machine, "maincpu"), image.get_software_region("rom"), size);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static MACHINE_DRIVER_START( vc4000 )
@@ -264,150 +273,131 @@ static MACHINE_DRIVER_START( vc4000 )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_INTERFACE("vc4000_cart")
 	MDRV_CARTSLOT_LOAD(vc4000_cart)
 
+	/* software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","vc4000")
 MACHINE_DRIVER_END
 
-ROM_START(vc4000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+
+ROM_START( vc4000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(spc4000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( spc4000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(cx3000tc)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( cx3000tc )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(tvc4000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( tvc4000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(1292apvs)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( 1292apvs )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(1392apvs)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( 1392apvs )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(mpu1000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( mpu1000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(mpu2000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( mpu2000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(pp1292)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( pp1292 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(pp1392)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( pp1392 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(f1392)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( f1392 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(fforce2)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( fforce2 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(hmg1292)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( hmg1292 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(hmg1392)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( hmg1392 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(lnsy1392)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( lnsy1392 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(vc6000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( vc6000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(database)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( database )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(wvmdtbse)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( wvmdtbse )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(rwtrntcs)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( rwtrntcs )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(telngtcs)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( telngtcs )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(krvnjvtv)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( krvnjvtv )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(oc2000)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( oc2000 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START(mpt05)
-	ROM_REGION(0x2000,"maincpu", 0)
-	ROM_FILL( 0x0000, 0x2000, 0xFF )
+ROM_START( mpt05 )
+	ROM_REGION( 0x2000,"maincpu", ROMREGION_ERASEFF )
 ROM_END
 
 QUICKLOAD_LOAD(vc4000)
 {
-	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int i;
 	int quick_addr = 0x08c0;
 	int quick_length;
 	UINT8 *quick_data;
 	int read_;
 
-	quick_length = image_length(image);
+	quick_length = image.length();
 	quick_data = (UINT8*)malloc(quick_length);
 	if (!quick_data)
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 
-	read_ = image_fread(image, quick_data, quick_length);
+	read_ = image.fread( quick_data, quick_length);
 	if (read_ != quick_length)
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 
 	if (quick_data[0] != 2)
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 
 	quick_addr = quick_data[1] * 256 + quick_data[2];
 
 	//if ((quick_addr + quick_length - 5) > 0x1000)
-	//  return INIT_FAIL;
+	//  return IMAGE_INIT_FAIL;
 
 	memory_write_byte(space, 0x08be, quick_data[3]);
 	memory_write_byte(space, 0x08bf, quick_data[4]);
@@ -418,34 +408,34 @@ QUICKLOAD_LOAD(vc4000)
 	}
 
 	logerror("quick loading at %.4x size:%.4x\n", quick_addr, (quick_length-5));
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
-/*   YEAR  NAME     PARENT     COMPAT    MACHINE    INPUT     INIT      COMPANY         FULLNAME */
-CONS(1978, vc4000,	0,	   0,	     vc4000,	vc4000,	  0,    	"Interton",     	"VC 4000", GAME_IMPERFECT_GRAPHICS )					/* Germany, Austria, UK, Australia */
-CONS(197?, spc4000,	vc4000,	   0,	     vc4000,	vc4000,	  0,    	"Grundig",      	"Super Play Computer 4000", GAME_IMPERFECT_GRAPHICS )			/* Germany, Austria */
-CONS(1979, cx3000tc,	vc4000,	   0,	     vc4000,	vc4000,	  0,    	"Palson",   		"CX 3000 Tele Computer", GAME_IMPERFECT_GRAPHICS )			/* Spain */
-CONS(197?, tvc4000,	vc4000,	   0,	     vc4000,	vc4000,	  0,    	"Korting",      	"TVC-4000", GAME_IMPERFECT_GRAPHICS )					/* Argentina */
-CONS(1976, 1292apvs,	0,	   vc4000,   vc4000,	vc4000,	  0,    	"Radofin",      	"1292 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
-CONS(1976, 1392apvs,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Radofin",      	"1392 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
-CONS(1979, mpu1000,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Acetronic",    	"MPU-1000", GAME_IMPERFECT_GRAPHICS )					/* Europe */
-CONS(1979, mpu2000,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Acetronic",    	"MPU-2000", GAME_IMPERFECT_GRAPHICS )					/* Europe */
-CONS(197?, pp1292,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Audiosonic",   	"PP-1292 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
-CONS(197?, pp1392,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Audiosonic",   	"PP-1392 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
-CONS(197?, f1392,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Fountain",     	"Fountain 1392", GAME_IMPERFECT_GRAPHICS )				/* New Zealand */
-CONS(197?, fforce2,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Fountain",     	"Fountain Force 2", GAME_IMPERFECT_GRAPHICS )				/* New Zealand, Australia */
-CONS(197?, hmg1292,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Hanimex",      	"HMG 1292", GAME_IMPERFECT_GRAPHICS )					/* Europe */
-CONS(197?, hmg1392,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Hanimex",      	"HMG 1392", GAME_IMPERFECT_GRAPHICS )					/* Europe */
-CONS(197?, lnsy1392,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Lansay",   		"Lansay 1392", GAME_IMPERFECT_GRAPHICS )				/* Europe */
-CONS(197?, vc6000,	1292apvs,  0,	     vc4000,	vc4000,	  0,    	"Prinztronic",      	"VC 6000", GAME_IMPERFECT_GRAPHICS )					/* UK */
-CONS(197?, database,	0,         vc4000,   vc4000,	vc4000,	  0,    	"Voltmace",     	"Voltmace Database", GAME_IMPERFECT_GRAPHICS )				/* UK */
-CONS(197?, wvmdtbse,	database,  0,	     vc4000,	vc4000,	  0,    	"Waddington's",     	"Waddington Videomaster Database", GAME_IMPERFECT_GRAPHICS )		/* UK */
-CONS(197?, rwtrntcs,	0,         vc4000,   vc4000,	vc4000,	  0,    	"Rowtron",      	"Rowtron Television Computer System", GAME_IMPERFECT_GRAPHICS )		/* UK */
-CONS(197?, telngtcs,	rwtrntcs,  0,	     vc4000,	vc4000,	  0,    	"Teleng",   		"Teleng Television Computer System", GAME_IMPERFECT_GRAPHICS )		/* UK */
-CONS(197?, krvnjvtv,	0,         vc4000,   vc4000,	vc4000,	  0,    	"Karvan",   		"Jeu Video TV", GAME_IMPERFECT_GRAPHICS )				/* France */
-CONS(1979, oc2000,	krvnjvtv,  0,	     vc4000,	vc4000,	  0,    	"S.O.E",    		"OC-2000", GAME_IMPERFECT_GRAPHICS )					/* France */
-CONS(197?, mpt05,	0,         vc4000,   vc4000,	vc4000,	  0,    	"ITMC",     		"MPT-05", GAME_IMPERFECT_GRAPHICS )					/* France */
+/*   YEAR  NAME      PARENT     COMPAT    MACHINE    INPUT        INIT      COMPANY         FULLNAME */
+CONS(1978, vc4000,   0,         0,        vc4000,    vc4000,      0,        "Interton",         "VC 4000",          GAME_IMPERFECT_GRAPHICS )					/* Germany, Austria, UK, Australia */
+CONS(197?, spc4000,  vc4000,    0,        vc4000,    vc4000,      0,        "Grundig",          "Super Play Computer 4000", GAME_IMPERFECT_GRAPHICS )			/* Germany, Austria */
+CONS(1979, cx3000tc, vc4000,    0,        vc4000,    vc4000,      0,        "Palson",           "CX 3000 Tele Computer", GAME_IMPERFECT_GRAPHICS )			/* Spain */
+CONS(197?, tvc4000,  vc4000,    0,        vc4000,    vc4000,      0,        "Korting",          "TVC-4000",         GAME_IMPERFECT_GRAPHICS )					/* Argentina */
+CONS(1976, 1292apvs, 0,         vc4000,   vc4000,    vc4000,      0,        "Radofin",          "1292 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
+CONS(1976, 1392apvs, 1292apvs,  0,        vc4000,    vc4000,      0,        "Radofin",          "1392 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
+CONS(1979, mpu1000,  1292apvs,  0,        vc4000,    vc4000,      0,        "Acetronic",        "MPU-1000",         GAME_IMPERFECT_GRAPHICS )					/* Europe */
+CONS(1979, mpu2000,  1292apvs,  0,        vc4000,    vc4000,      0,        "Acetronic",        "MPU-2000",         GAME_IMPERFECT_GRAPHICS )					/* Europe */
+CONS(197?, pp1292,   1292apvs,  0,        vc4000,    vc4000,      0,        "Audiosonic",       "PP-1292 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
+CONS(197?, pp1392,   1292apvs,  0,        vc4000,    vc4000,      0,        "Audiosonic",       "PP-1392 Advanced Programmable Video System", GAME_IMPERFECT_GRAPHICS )	/* Europe */
+CONS(197?, f1392,    1292apvs,  0,        vc4000,    vc4000,      0,        "Fountain",         "Fountain 1392",    GAME_IMPERFECT_GRAPHICS )				/* New Zealand */
+CONS(197?, fforce2,  1292apvs,  0,        vc4000,    vc4000,      0,        "Fountain",         "Fountain Force 2", GAME_IMPERFECT_GRAPHICS )				/* New Zealand, Australia */
+CONS(197?, hmg1292,  1292apvs,  0,        vc4000,    vc4000,      0,        "Hanimex",          "HMG 1292",         GAME_IMPERFECT_GRAPHICS )					/* Europe */
+CONS(197?, hmg1392,  1292apvs,  0,        vc4000,    vc4000,      0,        "Hanimex",          "HMG 1392",         GAME_IMPERFECT_GRAPHICS )					/* Europe */
+CONS(197?, lnsy1392, 1292apvs,  0,        vc4000,    vc4000,      0,        "Lansay",           "Lansay 1392",      GAME_IMPERFECT_GRAPHICS )				/* Europe */
+CONS(197?, vc6000,   1292apvs,  0,        vc4000,    vc4000,      0,        "Prinztronic",      "VC 6000",          GAME_IMPERFECT_GRAPHICS )					/* UK */
+CONS(197?, database, 0,         vc4000,   vc4000,    vc4000,      0,        "Voltmace",         "Voltmace Database", GAME_IMPERFECT_GRAPHICS )				/* UK */
+CONS(197?, wvmdtbse, database,  0,        vc4000,    vc4000,      0,        "Waddington's",     "Waddington Videomaster Database", GAME_IMPERFECT_GRAPHICS )		/* UK */
+CONS(197?, rwtrntcs, 0,         vc4000,   vc4000,    vc4000,      0,        "Rowtron",          "Rowtron Television Computer System", GAME_IMPERFECT_GRAPHICS )		/* UK */
+CONS(197?, telngtcs, rwtrntcs,  0,        vc4000,    vc4000,      0,        "Teleng",           "Teleng Television Computer System", GAME_IMPERFECT_GRAPHICS )		/* UK */
+CONS(197?, krvnjvtv, 0,         vc4000,   vc4000,    vc4000,      0,        "Karvan",           "Jeu Video TV",     GAME_IMPERFECT_GRAPHICS )				/* France */
+CONS(1979, oc2000,   krvnjvtv,  0,        vc4000,    vc4000,      0,        "S.O.E",            "OC-2000",          GAME_IMPERFECT_GRAPHICS )					/* France */
+CONS(197?, mpt05,    0,         vc4000,   vc4000,    vc4000,      0,        "ITMC",             "MPT-05",           GAME_IMPERFECT_GRAPHICS )					/* France */
 
 /*  Game List and Emulation Status
 

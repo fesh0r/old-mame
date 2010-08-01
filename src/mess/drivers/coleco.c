@@ -539,7 +539,7 @@ static MACHINE_START( coleco )
 static MACHINE_RESET( coleco )
 {
 	last_state = 0;
-	cpu_set_input_line_vector(devtag_get_device(machine, "maincpu"), INPUT_LINE_IRQ0, 0xff);
+	cpu_set_input_line_vector(machine->device("maincpu"), INPUT_LINE_IRQ0, 0xff);
 	memset(&memory_region(machine, "maincpu")[0x6000], 0xff, 0x400);	// initialize RAM
 }
 
@@ -558,15 +558,15 @@ static MACHINE_RESET( coleco )
 
 static DEVICE_IMAGE_LOAD( czz50_cart )
 {
-	int size = image_length(image);
-	UINT8 *ptr = memory_region(image->machine, "maincpu") + 0x8000;
+	int size = image.length();
+	UINT8 *ptr = memory_region(image.device().machine, "maincpu") + 0x8000;
 
-	if (image_fread(image, ptr, size ) != size)
+	if (image.fread( ptr, size ) != size)
 	{
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /* Machine Drivers */

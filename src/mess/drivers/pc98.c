@@ -13,6 +13,7 @@
     - run a first time without doing anything;
     - call the debugger then soft reset (the debugger will be called after the reset because the CPU is into an halt state);
     - wpiset 35,1,r -> do eip=90 -> bpset f926c -> do eip=128d -> run until HALT
+
     - soft reset -> wpiset 35,1,r -> do eip=90 again -> run until HALT
     - soft reset -> modify I/O $43d with a 0x02 (should bankswitch with the basic ROM) -> run
     - modify memory 0x53c from 0xc4 to 0x84 two times
@@ -284,7 +285,7 @@ static VIDEO_UPDATE( pc9801 )
 					if(attr & 4)
 						color^=7;
 
-					if(((x*2+1)*8+xi)<video_screen_get_visible_area(screen->machine->primary_screen)->max_x && (y*8+yi)<video_screen_get_visible_area(screen->machine->primary_screen)->max_y)
+					if(((x*2+1)*8+xi)<screen->machine->primary_screen->visible_area().max_x && (y*8+yi)<screen->machine->primary_screen->visible_area().max_y)
 						*BITMAP_ADDR16(bitmap, y*8+yi, (x*2+1)*8+xi) = screen->machine->pens[color];
 
 					tile = (pc9801_vram[(x+y*40)] & 0x000000ff) >> 0;
@@ -301,7 +302,7 @@ static VIDEO_UPDATE( pc9801 )
 					if(attr & 4)
 						color^=7;
 
-					if(((x*2+0)*8+xi)<video_screen_get_visible_area(screen->machine->primary_screen)->max_x && (y*8+yi)<video_screen_get_visible_area(screen->machine->primary_screen)->max_y)
+					if(((x*2+0)*8+xi)<screen->machine->primary_screen->visible_area().max_x && (y*8+yi)<screen->machine->primary_screen->visible_area().max_y)
 						*BITMAP_ADDR16(bitmap, y*8+yi, (x*2+0)*8+xi) = screen->machine->pens[color];
 				}
 			}
@@ -316,8 +317,17 @@ static READ8_HANDLER( sys_port_r )
 	if(cpu_get_pc(space->cpu) == 0xf9088)
 		return 0x18; //FIXME: kludge to get over a probable PPI bug.
 
+	if(cpu_get_pc(space->cpu) == 0xf90b2)
+		return 0x38;
+
+	if(cpu_get_pc(space->cpu) == 0xf90e9)
+		return 0x38;
+
+	if(cpu_get_pc(space->cpu) == 0xf9233)
+		return 0x38;
+
 	if(offset & 1)
-		return i8255a_r(devtag_get_device(space->machine, "ppi8255_0"), (offset & 6) >> 1);
+		return i8255a_r(space->machine->device("ppi8255_0"), (offset & 6) >> 1);
 
 	logerror("RS-232c R access %02x\n",offset >> 1);
 	return 0xff;
@@ -327,7 +337,7 @@ static READ8_HANDLER( sys_port_r )
 static WRITE8_HANDLER( sys_port_w )
 {
 	if(offset & 1)
-		i8255a_w(devtag_get_device(space->machine, "ppi8255_0"), (offset & 6) >> 1, data);
+		i8255a_w(space->machine->device("ppi8255_0"), (offset & 6) >> 1, data);
 	else
 		logerror("RS-232c W access %02x %02x\n",offset >> 1,data);
 }
@@ -335,7 +345,7 @@ static WRITE8_HANDLER( sys_port_w )
 static READ8_HANDLER( sio_port_r )
 {
 	if(!(offset & 1))
-		return i8255a_r(devtag_get_device(space->machine, "ppi8255_1"), (offset & 6) >> 1);
+		return i8255a_r(space->machine->device("ppi8255_1"), (offset & 6) >> 1);
 
 	logerror("keyboard R access %02x\n",offset >> 1);
 	return 0xff;
@@ -345,7 +355,7 @@ static READ8_HANDLER( sio_port_r )
 static WRITE8_HANDLER( sio_port_w )
 {
 	if(!(offset & 1))
-		i8255a_w(devtag_get_device(space->machine, "ppi8255_1"), (offset & 6) >> 1, data);
+		i8255a_w(space->machine->device("ppi8255_1"), (offset & 6) >> 1, data);
 	else
 		logerror("keyboard W access %02x %02x\n",offset >> 1,data);
 }
@@ -466,7 +476,7 @@ static READ8_HANDLER( port_70_r )
 	if(offset & 1)
 	{
 		logerror("pit port $70 R access %02x\n",offset >> 1);
-		return pit8253_r(devtag_get_device(space->machine, "pit8253"), (offset & 6) >> 1);
+		return pit8253_r(space->machine->device("pit8253"), (offset & 6) >> 1);
 	}
 
 	logerror("crtc port $70 R access %02x\n",offset >> 1);
@@ -478,7 +488,7 @@ static WRITE8_HANDLER( port_70_w )
 	if(offset & 1)
 	{
 		logerror("pit port $70 W access %02x %02x\n",offset >> 1,data);
-		pit8253_w(devtag_get_device(space->machine, "pit8253"), (offset & 6) >> 1, data);
+		pit8253_w(space->machine->device("pit8253"), (offset & 6) >> 1, data);
 	}
 	else
 		logerror("crtc port $70 W access %02x %02x\n",offset >> 1,data);
@@ -489,11 +499,11 @@ static READ8_HANDLER( port_00_r )
 	if(!(offset & 1))
 	{
 		logerror("pic8259 port $00 R access %02x\n",offset >> 1);
-		return pic8259_r(devtag_get_device(space->machine, (offset & 8) ? "pic8259_slave" : "pic8259_master"), (offset & 2) >> 1);
+		return pic8259_r(space->machine->device((offset & 8) ? "pic8259_slave" : "pic8259_master"), (offset & 2) >> 1);
 	}
 
 	//logerror("DMA port $00 R access %02x\n",offset >> 1);
-	return i8237_r(devtag_get_device(space->machine, "dma8237_1"), (offset & 0x1e) >> 1);
+	return i8237_r(space->machine->device("dma8237_1"), (offset & 0x1e) >> 1);
 }
 
 static WRITE8_HANDLER( port_00_w )
@@ -501,12 +511,12 @@ static WRITE8_HANDLER( port_00_w )
 	if(!(offset & 1))
 	{
 		logerror("pic8259 port $00 W access %02x %02x\n",offset >> 1,data);
-		pic8259_w(devtag_get_device(space->machine, (offset & 8) ? "pic8259_slave" : "pic8259_master"), (offset & 2) >> 1, data);
+		pic8259_w(space->machine->device((offset & 8) ? "pic8259_slave" : "pic8259_master"), (offset & 2) >> 1, data);
 	}
 	else
 	{
 		//logerror("DMA port $00 W access %02x %02x\n",offset >> 1,data);
-		i8237_w(devtag_get_device(space->machine, "dma8237_1"), (offset & 0x1e) >> 1, data);
+		i8237_w(space->machine->device("dma8237_1"), (offset & 0x1e) >> 1, data);
 	}
 }
 
@@ -565,6 +575,9 @@ static WRITE8_HANDLER( wram_sel_w )
 
 static READ8_HANDLER( pc98_mouse_r )
 {
+	if(offset == 5)
+		return 0xfb;
+
 	//TODO: 0x7fd8 bit 6 controls testing of bank 3 (0x80000-0x9ffff), afaik the mouse ppi is at odd addresses...
 	return 0xff;
 }
@@ -587,6 +600,9 @@ static ADDRESS_MAP_START( pc9801_mem, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0x000a8000, 0x000bffff) AM_READWRITE(gfx_bitmap_ram_r,gfx_bitmap_ram_w)
 	AM_RANGE(0x000c0000, 0x000dffff) AM_READWRITE(wram_ide_r,wram_ide_w)
 	AM_RANGE(0x000e0000, 0x000fffff) AM_ROMBANK("bank1") AM_WRITE8(rom_bank_w,0xffffffff)
+	AM_RANGE(0x00100000, 0x007fffff) AM_RAM //extended memory, 7168 KB for now
+	AM_RANGE(0x00800000, 0x00ffffff) AM_NOP
+
 	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROMBANK("bank1") AM_WRITE8(rom_bank_w,0xffffffff)
 ADDRESS_MAP_END
 
@@ -633,10 +649,10 @@ INPUT_PORTS_END
 static IRQ_CALLBACK(irq_callback)
 {
 	int r = 0;
-	r = pic8259_acknowledge( devtag_get_device( device->machine, "pic8259_slave" ));
+	r = pic8259_acknowledge( device->machine->device( "pic8259_slave" ));
 	if (r==0)
 	{
-		r = pic8259_acknowledge( devtag_get_device( device->machine, "pic8259_master" ));
+		r = pic8259_acknowledge( device->machine->device( "pic8259_master" ));
 		//printf("%02x ACK\n",r);
 	}
 	return r;
@@ -649,12 +665,12 @@ static MACHINE_RESET(pc9801)
 {
 	UINT8 *ROM = memory_region(machine, "cpudata");
 
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), irq_callback);
+	cpu_set_irq_callback(machine->device("maincpu"), irq_callback);
 
 	cputag_set_input_line(machine, "maincpu", INPUT_LINE_A20, 0);
 
 	gate_a20 = 0;
-	cpu_set_reg(devtag_get_device(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
+	cpu_set_reg(machine->device("maincpu"), I386_EIP, 0xffff0+0x10000);
 
 	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
 
@@ -665,12 +681,12 @@ static MACHINE_RESET(pc9801)
 static MACHINE_RESET(pc9821)
 {
 	UINT8 *ROM = memory_region(machine, "cpudata");
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), irq_callback);
+	cpu_set_irq_callback(machine->device("maincpu"), irq_callback);
 
 	cputag_set_input_line(machine, "maincpu", INPUT_LINE_A20, 0);
 
 	gate_a20 = 0;
-	cpu_set_reg(devtag_get_device(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
+	cpu_set_reg(machine->device("maincpu"), I386_EIP, 0xffff0+0x10000);
 
 	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
 
@@ -1033,7 +1049,65 @@ ROM_START( pc9821 )
 	ROM_LOAD( "font.rom", 0x00000, 0x46800, BAD_DUMP CRC(a61c0649) SHA1(554b87377d176830d21bd03964dc71f8e98676b1) )
 ROM_END
 
+static DRIVER_INIT( pc9801 )
+{
+	UINT8 *ROM = memory_region(machine, "cpudata");
+
+	/* patch unimplemented opcodes verr / verw */
+	ROM[0xf90be & 0x3ffff] = 0x90;
+	ROM[0xf90bf & 0x3ffff] = 0x90;
+	ROM[0xf90c0 & 0x3ffff] = 0x90;
+
+	ROM[0xf90c3 & 0x3ffff] = 0x90;
+	ROM[0xf90c4 & 0x3ffff] = 0x90;
+	ROM[0xf90c5 & 0x3ffff] = 0x90;
+
+	ROM[0xf90d8 & 0x3ffff] = 0x90;
+	ROM[0xf90d9 & 0x3ffff] = 0x90;
+	ROM[0xf90da & 0x3ffff] = 0x90;
+
+	ROM[0xf90dd & 0x3ffff] = 0x90;
+	ROM[0xf90de & 0x3ffff] = 0x90;
+	ROM[0xf90df & 0x3ffff] = 0x90;
+
+	/* patch verr / verw checks */
+	ROM[0xf90c1 & 0x3ffff] = 0x90;
+	ROM[0xf90c2 & 0x3ffff] = 0x90;
+
+	ROM[0xf90c6 & 0x3ffff] = 0x90;
+	ROM[0xf90c7 & 0x3ffff] = 0x90;
+
+	ROM[0xf90e0 & 0x3ffff] = 0x90;
+	ROM[0xf90e1 & 0x3ffff] = 0x90;
+
+	/* patch lldt / sldt checks (it tests a word at 0xf8070, and it wants zeroes on bits 8-15). */
+	ROM[0xf9103 & 0x3ffff] = 0x90;
+	ROM[0xf9104 & 0x3ffff] = 0x90;
+
+	/* patch ltr / str checks (it tests a word at 0xf8060, and it wants zeroes on bits 8-15).  */
+	ROM[0xf9118 & 0x3ffff] = 0x90;
+	ROM[0xf9119 & 0x3ffff] = 0x90;
+	ROM[0xf911a & 0x3ffff] = 0x90;
+
+	/* patch unimplemented lar opcode */
+	ROM[0xf91f6 & 0x3ffff] = 0x90;
+	ROM[0xf91f7 & 0x3ffff] = 0x90;
+	ROM[0xf91f8 & 0x3ffff] = 0x90;
+
+	/* patch lar checks */
+	ROM[0xf91fe & 0x3ffff] = 0x90;
+	ROM[0xf91ff & 0x3ffff] = 0x90;
+
+	/* can't avoid this??? */
+	ROM[0xf9258 & 0x3ffff] = 0xeb;
+	ROM[0xf9259 & 0x3ffff] = 0x33;
+
+	/* patch ROM checksum */
+	ROM[0xf8595 & 0x3ffff] = 0x90;
+	ROM[0xf8596 & 0x3ffff] = 0x90;
+}
+
 
 /*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    COMPANY                        FULLNAME    FLAGS */
-COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   pc9801,      "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING | GAME_NO_SOUND)
 COMP( 1993, pc9821,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING | GAME_NO_SOUND)

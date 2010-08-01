@@ -192,16 +192,16 @@ static const floppy_config b2m_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(b2m),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* Machine driver */
 static MACHINE_DRIVER_START( b2m )
 	MDRV_DRIVER_DATA(b2m_state)
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", 8080, 2000000)
+    MDRV_CPU_ADD("maincpu", I8080, 2000000)
     MDRV_CPU_PROGRAM_MAP(b2m_mem)
     MDRV_CPU_IO_MAP(b2m_io)
     MDRV_CPU_VBLANK_INT("screen", b2m_vblank_interrupt)

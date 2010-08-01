@@ -12,23 +12,38 @@
 #define FLOPPY_TYPE_APPLE	1
 #define FLOPPY_TYPE_SONY	2
 
+#define FLOPPY_DRIVE_2_8_INCH	1
+#define FLOPPY_DRIVE_3_INCH	 	2
+#define FLOPPY_DRIVE_3_5_INCH	3
+#define FLOPPY_DRIVE_5_25_INCH	4
+#define FLOPPY_DRIVE_8_INCH		5
+
+// Maximum supoprted density
+#define FLOPPY_DRIVE_SD 1
+#define FLOPPY_DRIVE_DD 2
+#define FLOPPY_DRIVE_QD 3
+#define FLOPPY_DRIVE_HD 4
+#define FLOPPY_DRIVE_ED 5
+
+#define FLOPPY_STANDARD_3_5_DSHD     { FLOPPY_DRIVE_3_5_INCH,  2, 83, FLOPPY_DRIVE_HD }
+#define FLOPPY_STANDARD_5_25_DSHD    { FLOPPY_DRIVE_5_25_INCH, 2, 83, FLOPPY_DRIVE_HD }
+#define FLOPPY_STANDARD_5_25_SSDD    { FLOPPY_DRIVE_5_25_INCH, 1, 83, FLOPPY_DRIVE_DD }
+#define FLOPPY_STANDARD_3_SSDD       { FLOPPY_DRIVE_3_INCH,    1, 42, FLOPPY_DRIVE_DD }
+#define FLOPPY_STANDARD_3_DSDD       { FLOPPY_DRIVE_3_INCH,    2, 42, FLOPPY_DRIVE_DD }
+#define FLOPPY_STANDARD_5_25_DSDD_40 { FLOPPY_DRIVE_5_25_INCH, 2, 42, FLOPPY_DRIVE_DD }
+#define FLOPPY_STANDARD_5_25_SSDD_40 { FLOPPY_DRIVE_5_25_INCH, 1, 42, FLOPPY_DRIVE_DD }
+
 /***************************************************************************
     TYPE DEFINITIONS
 ***************************************************************************/
-/* floppy drive types */
-typedef enum
+typedef struct floppy_type_t	floppy_type;
+struct floppy_type_t
 {
-	FLOPPY_DRIVE_SS_40,
-	FLOPPY_DRIVE_DS_40,
-	FLOPPY_DRIVE_SS_80,
-	FLOPPY_DRIVE_DS_80
-} floppy_type_t;
-
-typedef enum
-{
-	DO_NOT_KEEP_GEOMETRY=0,
-	KEEP_GEOMETRY
-} keep_geometry;
+	UINT8 media_size;
+	UINT8 head_number;
+	UINT8 max_track_number;
+	UINT8 max_density;
+};
 
 typedef struct floppy_config_t	floppy_config;
 struct floppy_config_t
@@ -42,7 +57,7 @@ struct floppy_config_t
 
 	floppy_type_t floppy_type;
 	const struct FloppyFormat *formats;
-	keep_geometry keep_drive_geometry;
+	const char *interface;
 };
 
 /* sector has a deleted data address mark */
@@ -108,15 +123,11 @@ void floppy_drive_set_controller(running_device *img, running_device *controller
 floppy_image *flopimg_get_image(running_device *image);
 
 /* hack for apple II; replace this when we think of something better */
-void floppy_install_unload_proc(running_device *image, void (*proc)(running_device *image));
+void floppy_install_unload_proc(running_device *image, void (*proc)(device_image_interface &image));
 
-void floppy_install_load_proc(running_device *image, void (*proc)(running_device *image));
-
-/* hack for TI99; replace this when we think of something better */
-void floppy_install_tracktranslate_proc(running_device *image, int (*proc)(running_device *image, floppy_image *floppy, int physical_track));
+void floppy_install_load_proc(running_device *image, void (*proc)(device_image_interface &image));
 
 running_device *floppy_get_device(running_machine *machine,int drive);
-running_device *floppy_get_device_owner(running_device *device,int drive);
 running_device *floppy_get_device_by_type(running_machine *machine,int ftype,int drive);
 int floppy_get_drive_type(running_device *image);
 void floppy_set_type(running_device *image,int ftype);
@@ -155,8 +166,7 @@ READ_LINE_DEVICE_HANDLER( floppy_dskchg_r );
 /* 2-sided disk */
 READ_LINE_DEVICE_HANDLER( floppy_twosid_r );
 
-#define FLOPPY	DEVICE_GET_INFO_NAME(floppy)
-DEVICE_GET_INFO(floppy);
+DECLARE_LEGACY_IMAGE_DEVICE(FLOPPY, floppy);
 
 extern DEVICE_START( floppy );
 extern DEVICE_IMAGE_LOAD( floppy );

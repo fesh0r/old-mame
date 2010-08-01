@@ -39,7 +39,7 @@ extern WRITE64_HANDLER( dc_mess_g1_ctrl_w );
 
 static UINT32 *dc_sound_ram;
 static UINT64 *dc_ram;
-
+UINT16 actel_id;
 int jvsboard_type;
 
 static READ64_HANDLER( dcus_idle_skip_r )
@@ -200,7 +200,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( dc_console )
 {
-	running_device *aica = devtag_get_device(machine, "aica");
+	running_device *aica = machine->device("aica");
 	MACHINE_RESET_CALL(dc);
 	aica_set_ram_base(aica, dc_sound_ram, 2*1024*1024);
 	dreamcast_atapi_reset(machine);

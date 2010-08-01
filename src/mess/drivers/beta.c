@@ -228,9 +228,9 @@ static const riot6532_interface beta_riot_interface =
 
 static DEVICE_IMAGE_UNLOAD( beta_eprom )
 {
-	UINT8 *ptr = memory_region(image->machine, EPROM_TAG);
+	UINT8 *ptr = memory_region(image.device().machine, EPROM_TAG);
 
-	image_fwrite(image, ptr, 0x800);
+	image.fwrite(ptr, 0x800);
 }
 
 /* Machine Initialization */
@@ -240,7 +240,7 @@ static MACHINE_START( beta )
 	beta_state *state = (beta_state *)machine->driver_data;
 
 	/* find devices */
-	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
+	state->speaker = machine->device(SPEAKER_TAG);
 
 	state->led_refresh_timer = timer_alloc(machine, led_refresh, 0);
 

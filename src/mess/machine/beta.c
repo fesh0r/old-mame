@@ -33,9 +33,8 @@ struct _beta_disk_state
 INLINE beta_disk_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
 
-	return (beta_disk_state *)device->token;
+	return (beta_disk_state *)downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -69,7 +68,7 @@ void betadisk_clear_status(running_device *device)
 
 static WRITE_LINE_DEVICE_HANDLER( betadisk_wd179x_intrq_w )
 {
-	beta_disk_state *beta = get_safe_token(device->owner);
+	beta_disk_state *beta = get_safe_token(device->owner());
 
 	if (state)
 		beta->betadisk_status |= (1<<7);
@@ -79,7 +78,7 @@ static WRITE_LINE_DEVICE_HANDLER( betadisk_wd179x_intrq_w )
 
 static WRITE_LINE_DEVICE_HANDLER( betadisk_wd179x_drq_w )
 {
-	beta_disk_state *beta = get_safe_token(device->owner);
+	beta_disk_state *beta = get_safe_token(device->owner());
 
 	if (state)
 		beta->betadisk_status |= (1<<6);
@@ -210,9 +209,9 @@ static const floppy_config beta_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(trd),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( beta_disk )
@@ -316,7 +315,7 @@ static DEVICE_START( beta_disk )
 
 	/* find our WD179x */
 	astring_printf(&tempstring, "%s:%s", device->tag(), "wd179x");
-	beta->wd179x = devtag_get_device(device->machine, astring_c(&tempstring));
+	beta->wd179x = device->machine->device(astring_c(&tempstring));
 }
 
 /*-------------------------------------------------
@@ -338,7 +337,6 @@ DEVICE_GET_INFO( beta_disk )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(beta_disk_state);							break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;							break;
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(beta_disk);						break;
@@ -357,3 +355,5 @@ DEVICE_GET_INFO( beta_disk )
 		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(BETA_DISK, beta_disk);

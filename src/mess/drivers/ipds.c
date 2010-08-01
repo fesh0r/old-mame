@@ -56,12 +56,12 @@ const i8275_interface ipds_i8275_interface = {
 
 static MACHINE_RESET(ipds)
 {
-	cpu_set_reg(devtag_get_device(machine, "maincpu"), I8085_PC, 0x0000);
+	cpu_set_reg(machine->device("maincpu"), I8085_PC, (UINT64)0x0000);
 }
 
 static VIDEO_UPDATE( ipds )
 {
-    running_device *devconf = devtag_get_device(screen->machine, "i8275");
+    running_device *devconf = screen->machine->device("i8275");
 	i8275_update( devconf, bitmap, cliprect);
 	VIDEO_UPDATE_CALL ( generic_bitmapped );
 	return 0;
@@ -87,7 +87,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( ipds )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",8085A, XTAL_19_6608MHz / 4)
+    MDRV_CPU_ADD("maincpu",I8085A, XTAL_19_6608MHz / 4)
     MDRV_CPU_PROGRAM_MAP(ipds_mem)
     MDRV_CPU_IO_MAP(ipds_io)
 

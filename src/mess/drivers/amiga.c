@@ -48,14 +48,14 @@ static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w );
 
 static READ16_HANDLER( amiga_clock_r )
 {
-	running_device *rtc = devtag_get_device(space->machine, "rtc");
+	running_device *rtc = space->machine->device("rtc");
 	return msm6242_r(rtc, offset / 2);
 }
 
 
 static WRITE16_HANDLER( amiga_clock_w )
 {
-	running_device *rtc = devtag_get_device(space->machine, "rtc");
+	running_device *rtc = space->machine->device("rtc");
 	msm6242_w(rtc, offset / 2, data);
 }
 
@@ -460,7 +460,8 @@ static MACHINE_DRIVER_START( pal )
 	MDRV_IMPORT_FROM(ntsc)
 
 	/* adjust for PAL specs */
-	MDRV_CPU_REPLACE("maincpu", M68000, AMIGA_68000_PAL_CLOCK)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_CLOCK( AMIGA_68000_PAL_CLOCK)
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -493,7 +494,7 @@ MACHINE_DRIVER_END
 static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r )
 {
 	UINT8 ret = input_port_read(device->machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= amiga_fdc_status_r(devtag_get_device(device->machine, "fdc"));
+	ret |= amiga_fdc_status_r(device->machine->device("fdc"));
 	return ret;
 }
 
@@ -562,14 +563,14 @@ static UINT16 amiga_read_joy1dat(running_machine *machine)
 
 static UINT16 amiga_read_dskbytr(running_machine *machine)
 {
-	return amiga_fdc_get_byte(devtag_get_device(machine, "fdc"));
+	return amiga_fdc_get_byte(machine->device("fdc"));
 }
 
 static void amiga_write_dsklen(running_machine *machine, UINT16 data)
 {
 	if ( data & 0x8000 ) {
 		if ( CUSTOM_REG(REG_DSKLEN) & 0x8000 )
-			amiga_fdc_setup_dma(devtag_get_device(machine, "fdc"));
+			amiga_fdc_setup_dma(machine->device("fdc"));
 	}
 }
 

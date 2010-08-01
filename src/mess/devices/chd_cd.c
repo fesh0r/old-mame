@@ -37,6 +37,12 @@ static const char *const error_strings[] =
 	"unsupported CHD version"
 };
 
+INLINE const cdrom_config *get_config_dev(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->type() == CDROM);
+	return (const cdrom_config *)downcast<const legacy_device_config_base *>(device)->inline_config();
+}
 
 static const char *chd_get_error_string(int chderr)
 {
@@ -63,19 +69,18 @@ struct _dev_cdrom_t
 
 INLINE dev_cdrom_t *get_safe_token(running_device *device) {
 	assert( device != NULL );
-	assert( device->token != NULL );
-	assert( ( device->type == DEVICE_GET_INFO_NAME(cdrom) ) );
-	return (dev_cdrom_t *)  device->token;
+	assert( ( device->type() == CDROM ) );
+	return (dev_cdrom_t *)  downcast<legacy_device_base *>(device)->token();
 }
 
 
 static DEVICE_IMAGE_LOAD(cdrom)
 {
-	dev_cdrom_t	*cdrom = get_safe_token(image);
+	dev_cdrom_t	*cdrom = get_safe_token(&image.device());
 	chd_error	err = (chd_error)0;
 	chd_file	*chd = NULL;
 
-	err = chd_open_file( image_core_file( image ), CHD_OPEN_READ, NULL, &chd );	/* CDs are never writeable */
+	err = chd_open_file( image.image_core_file(), CHD_OPEN_READ, NULL, &chd );	/* CDs are never writeable */
 	if ( err )
 		goto error;
 
@@ -84,20 +89,20 @@ static DEVICE_IMAGE_LOAD(cdrom)
 	if ( ! cdrom->cdrom_handle )
 		goto error;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 
 error:
 	if ( chd )
 		chd_close( chd );
 	if ( err )
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, chd_get_error_string( err ) );
-	return INIT_FAIL;
+		image.seterror( IMAGE_ERROR_UNSPECIFIED, chd_get_error_string( err ) );
+	return IMAGE_INIT_FAIL;
 }
 
 
 static DEVICE_IMAGE_UNLOAD(cdrom)
 {
-	dev_cdrom_t	*cdrom = get_safe_token( image );
+	dev_cdrom_t	*cdrom = get_safe_token( &image.device() );
 
 	assert( cdrom->cdrom_handle );
 	cdrom_close( cdrom->cdrom_handle );
@@ -131,6 +136,13 @@ static DEVICE_START(cdrom)
 	cdrom->cdrom_handle = NULL;
 }
 
+/*-------------------------------------------------
+    DEVICE_IMAGE_SOFTLIST_LOAD(cdrom)
+-------------------------------------------------*/
+static DEVICE_IMAGE_SOFTLIST_LOAD(cdrom)
+{
+	return image.load_software(swlist, swname, start_entry);
+}
 
 /*-------------------------------------------------
     DEVICE_GET_INFO(cdrom)
@@ -142,8 +154,7 @@ DEVICE_GET_INFO(cdrom)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:				info->i = sizeof(dev_cdrom_t); break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = 0; break;
-		case DEVINFO_INT_CLASS:						info->i = DEVICE_CLASS_PERIPHERAL; break;
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = sizeof(cdrom_config); break;
 		case DEVINFO_INT_IMAGE_TYPE:				info->i = IO_CDROM; break;
 		case DEVINFO_INT_IMAGE_READABLE:			info->i = 1; break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 0; break;
@@ -154,6 +165,7 @@ DEVICE_GET_INFO(cdrom)
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(cdrom); break;
 		case DEVINFO_FCT_IMAGE_LOAD:				info->f = (genf *) DEVICE_IMAGE_LOAD_NAME(cdrom); break;
 		case DEVINFO_FCT_IMAGE_UNLOAD:				info->f = (genf *) DEVICE_IMAGE_UNLOAD_NAME(cdrom); break;
+		case DEVINFO_FCT_IMAGE_SOFTLIST_LOAD:		info->f = (genf *) DEVICE_IMAGE_SOFTLIST_LOAD_NAME(cdrom);	break;
 		case DEVINFO_PTR_IMAGE_CREATE_OPTGUIDE:		info->p = (void *) mess_cd_option_guide; break;
 		case DEVINFO_PTR_IMAGE_CREATE_OPTSPEC+0:	info->p = (void *) mess_cd_option_spec; break;
 
@@ -165,6 +177,15 @@ DEVICE_GET_INFO(cdrom)
 		case DEVINFO_STR_IMAGE_CREATE_OPTNAME+0:	strcpy(info->s, "chdcd"); break;
 		case DEVINFO_STR_IMAGE_CREATE_OPTDESC+0:	strcpy(info->s, "MAME/MESS CHD CD-ROM drive"); break;
 		case DEVINFO_STR_IMAGE_CREATE_OPTEXTS+0:	strcpy(info->s, "chd"); break;
+
+		case DEVINFO_STR_IMAGE_INTERFACE:
+			if ( device && downcast<const legacy_image_device_config_base *>(device)->inline_config() && get_config_dev(device)->interface )
+			{
+				strcpy(info->s, get_config_dev(device)->interface );
+			}
+			break;
+		
 	}
 }
 
+DEFINE_LEGACY_IMAGE_DEVICE(CDROM, cdrom);

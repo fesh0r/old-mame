@@ -142,7 +142,8 @@ static const cassette_config mikro80_cassette_config =
 {
 	rk8_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 
@@ -166,7 +167,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( mikro80 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",8080, 2000000)
+	MDRV_CPU_ADD("maincpu",I8080, 2000000)
 	MDRV_CPU_PROGRAM_MAP(mikro80_mem)
 	MDRV_CPU_IO_MAP(mikro80_io)
 	MDRV_MACHINE_RESET( mikro80 )

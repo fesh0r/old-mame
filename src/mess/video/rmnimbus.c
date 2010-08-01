@@ -22,7 +22,6 @@
 */
 
 #include "emu.h"
-#include "video/border.h"
 #include "memory.h"
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
@@ -646,7 +645,7 @@ VIDEO_EOF( nimbus )
 VIDEO_UPDATE( nimbus )
 {
     int     XCoord;
-    int     YCoord = video_screen_get_vpos(screen);
+    int     YCoord = screen->vpos();
 
     for(XCoord=0;XCoord<SCREEN_WIDTH_PIXELS;XCoord++)
     {

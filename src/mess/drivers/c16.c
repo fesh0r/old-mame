@@ -448,12 +448,12 @@ static MACHINE_START( c16 )
 {
 	c16_state *state = (c16_state *)machine->driver_data;
 
-	state->maincpu = devtag_get_device(machine, "maincpu");
-	state->ted7360 = devtag_get_device(machine, "ted7360");
-	state->serbus = devtag_get_device(machine, "iec");
-	state->cassette = devtag_get_device(machine, "cassette");
-	state->messram = devtag_get_device(machine, "messram");
-	state->sid = devtag_get_device(machine, "sid");
+	state->maincpu = machine->device<legacy_cpu_device>("maincpu");
+	state->ted7360 = machine->device("ted7360");
+	state->serbus = machine->device("iec");
+	state->cassette = machine->device("cassette");
+	state->messram = machine->device("messram");
+	state->sid = machine->device("sid");
 
 	state_save_register_global(machine, state->old_level);
 	state_save_register_global(machine, state->lowrom);
@@ -543,7 +543,9 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( plus4 )
 	MDRV_IMPORT_FROM( c16 )
-	MDRV_CPU_REPLACE( "maincpu", M7501, XTAL_14_31818MHz/16)
+
+	MDRV_CPU_MODIFY( "maincpu" )
+	MDRV_CPU_CLOCK( XTAL_14_31818MHz/16 )
 	MDRV_CPU_PROGRAM_MAP(plus4_map)
 	MDRV_CPU_CONFIG( c16_m7501_interface )
 

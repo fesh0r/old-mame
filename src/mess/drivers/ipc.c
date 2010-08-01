@@ -26,7 +26,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(ipc)
 {
-	cpu_set_reg(devtag_get_device(machine, "maincpu"), I8085_PC, 0xE800);
+	cpu_set_reg(machine->device("maincpu"), I8085_PC, 0xE800);
 }
 
 static VIDEO_START( ipc )
@@ -40,7 +40,7 @@ static VIDEO_UPDATE( ipc )
 
 static MACHINE_DRIVER_START( ipc )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",8085A, XTAL_19_6608MHz / 4)
+    MDRV_CPU_ADD("maincpu",I8085A, XTAL_19_6608MHz / 4)
     MDRV_CPU_PROGRAM_MAP(ipc_mem)
     MDRV_CPU_IO_MAP(ipc_io)
 

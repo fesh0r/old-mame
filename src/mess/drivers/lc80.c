@@ -277,7 +277,7 @@ static Z80PIO_INTERFACE( pio2_intf )
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain lc80_daisy_chain[] =
+static const z80_daisy_config lc80_daisy_chain[] =
 {
 	{ Z80CTC_TAG },
 	{ Z80PIO2_TAG },
@@ -293,9 +293,9 @@ static MACHINE_START( lc80 )
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
-	state->z80pio2 = devtag_get_device(machine, Z80PIO2_TAG);
-	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->z80pio2 = machine->device(Z80PIO2_TAG);
+	state->speaker = machine->device(SPEAKER_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* setup memory banking */
 	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, Z80_TAG), 0); // TODO
@@ -317,7 +317,7 @@ static MACHINE_START( lc80 )
 	memory_install_readwrite_bank(program, 0x0800, 0x0fff, 0, 0, "bank2");
 	memory_install_readwrite_bank(program, 0x1000, 0x17ff, 0, 0, "bank3");
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 1*1024:
 		memory_install_readwrite_bank(program, 0x2000, 0x23ff, 0, 0, "bank4");
@@ -350,7 +350,8 @@ static const cassette_config lc80_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( lc80 )

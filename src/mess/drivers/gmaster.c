@@ -221,30 +221,30 @@ static DEVICE_IMAGE_LOAD( gmaster_cart )
 {
 	UINT32 size;
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		size = image_length(image);
+		size = image.length();
 
-		if (size > (memory_region_length(image->machine, "maincpu") - 0x8000))
+		if (size > (memory_region_length(image.device().machine, "maincpu") - 0x8000))
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
+			return IMAGE_INIT_FAIL;
 		}
 
-		if (image_fread(image, memory_region(image->machine, "maincpu") + 0x8000, size) != size)
+		if (image.fread( memory_region(image.device().machine, "maincpu") + 0x8000, size) != size)
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return IMAGE_INIT_FAIL;
 		}
 
 	}
 	else
 	{
-		size = image_get_software_region_length(image, "rom");
-		memcpy(memory_region(image->machine, "maincpu") + 0x8000, image_get_software_region(image, "rom"), size);
+		size = image.get_software_region_length("rom");
+		memcpy(memory_region(image.device().machine, "maincpu") + 0x8000, image.get_software_region("rom"), size);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static INTERRUPT_GEN( gmaster_interrupt )
@@ -284,7 +284,7 @@ static MACHINE_DRIVER_START( gmaster )
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_INTERFACE("gmaster_cart")
 	MDRV_CARTSLOT_LOAD(gmaster_cart)
-	MDRV_SOFTWARE_LIST_ADD("gmaster")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","gmaster")
 MACHINE_DRIVER_END
 
 

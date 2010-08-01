@@ -274,7 +274,6 @@ SamRam
 #include "sound/speaker.h"
 #include "sound/wave.h"
 #include "includes/spectrum.h"
-#include "eventlst.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -296,7 +295,7 @@ SamRam
 WRITE8_HANDLER(spectrum_port_fe_w)
 {
 	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = space->machine->device("speaker");
 	unsigned char Changed;
 
 	Changed = state->port_fe_data^data;
@@ -305,7 +304,7 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 	if ((Changed & 0x07)!=0)
 	{
 		/* yes - send event */
-		EventList_AddItemOffset(space->machine, 0x0fe, data & 0x07, cputag_attotime_to_clocks(space->machine, "maincpu", attotime_mul(video_screen_get_scan_period(space->machine->primary_screen), video_screen_get_vpos(space->machine->primary_screen))));
+		EventList_AddItemOffset(space->machine, 0x0fe, data & 0x07, cputag_attotime_to_clocks(space->machine, "maincpu", attotime_mul(space->machine->primary_screen->scan_period(), space->machine->primary_screen->vpos())));
 	}
 
 	if ((Changed & (1<<4))!=0)
@@ -317,7 +316,7 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 	if ((Changed & (1<<3))!=0)
 	{
 		/* write cassette data */
-		cassette_output(devtag_get_device(space->machine, "cassette"), (data & (1<<3)) ? -1.0 : +1.0);
+		cassette_output(space->machine->device("cassette"), (data & (1<<3)) ? -1.0 : +1.0);
 	}
 
 	state->port_fe_data = data;
@@ -327,9 +326,9 @@ static DIRECT_UPDATE_HANDLER(spectrum_direct)
 {
     /* Hack for correct handling 0xffff interrupt vector */
     if (address == 0x0001)
-        if (cpu_get_reg(devtag_get_device(space->machine, "maincpu"), REG_GENPCBASE)==0xffff)
+        if (cpu_get_reg(space->machine->device("maincpu"), STATE_GENPCBASE)==0xffff)
         {
-            cpu_set_reg(devtag_get_device(space->machine, "maincpu"), Z80_PC, 0xfff4);
+            cpu_set_reg(space->machine->device("maincpu"), Z80_PC, 0xfff4);
             return 0xfff4;
         }
     return address;
@@ -393,7 +392,7 @@ READ8_HANDLER(spectrum_port_fe_r)
 	data |= (0xe0); /* Set bits 5-7 - as reset above */
 
 	/* cassette input from wav */
-	if (cassette_input(devtag_get_device(space->machine, "cassette")) > 0.0038 )
+	if (cassette_input(space->machine->device("cassette")) > 0.0038 )
 	{
 		data &= ~0x40;
 	}
@@ -427,7 +426,7 @@ READ8_HANDLER(spectrum_port_df_r)
 static READ8_HANDLER ( spectrum_port_ula_r )
 {
 	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
-	int vpos = video_screen_get_vpos(space->machine->primary_screen);
+	int vpos = space->machine->primary_screen->vpos();
 
 	return vpos<193 ? state->video_ram[(vpos&0xf8)<<2]:0xff;
 }
@@ -625,7 +624,7 @@ DRIVER_INIT( spectrum )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	    case 48*1024:
 		memory_install_ram(space, 0x8000, 0xffff, 0, 0, NULL); // Fall through
@@ -672,8 +671,37 @@ static const cassette_config spectrum_cassette_config =
 {
 	tzx_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
+
+static DEVICE_IMAGE_LOAD( spectrum_cart )
+{
+	UINT32 filesize;
+
+	if (image.software_entry() == NULL)
+	{
+		filesize = image.length();
+
+		if (filesize != 0x4000 )
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Incorrect or not support cartridge size");
+			return IMAGE_INIT_FAIL;
+		}
+
+		if (image.fread(memory_region(image.device().machine, "maincpu"), filesize) != filesize)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Error loading file");
+			return IMAGE_INIT_FAIL;
+		}
+	}
+	else
+	{
+		filesize = image.get_software_region_length("rom");
+		memcpy(memory_region(image.device().machine, "maincpu"), image.get_software_region("rom"), filesize);
+	}
+	return IMAGE_INIT_PASS;
+}
 
 MACHINE_DRIVER_START( spectrum_common )
 
@@ -718,6 +746,9 @@ MACHINE_DRIVER_START( spectrum_common )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom")
 	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(spectrum_cart)
+	MDRV_CARTSLOT_INTERFACE("spectrum_cart")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","spectrum")
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( spectrum )

@@ -593,7 +593,7 @@ GFXDECODE_END
 /**************************** BASIC MACHINE CONSTRUCTION ***********************************************************/
 
 
-static const z80_daisy_chain super80_daisy_chain[] =
+static const z80_daisy_config super80_daisy_chain[] =
 {
 	{ "z80pio" },
 	{ NULL }
@@ -603,15 +603,16 @@ static const cassette_config super80_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 
 static DEVICE_IMAGE_LOAD( super80_cart )
 {
-	image_fread(image, memory_region(image->machine, "maincpu") + 0xc000, 0x3000);
+	image.fread( memory_region(image.device().machine, "maincpu") + 0xc000, 0x3000);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static const mc6845_interface super80v_crtc = {

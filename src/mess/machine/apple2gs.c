@@ -117,6 +117,7 @@
 #include "cpu/g65816/g65816.h"
 #include "sound/es5503.h"
 #include "devices/messram.h"
+#include "debugger.h"
 
 #define LOG_C0XX			0
 #define LOG_ADB				0
@@ -307,8 +308,6 @@ static const char *apple2gs_irq_name(UINT8 irq_mask)
 	}
 	return NULL;
 }
-
-
 
 static void apple2gs_add_irq(running_machine *machine, UINT8 irq_mask)
 {
@@ -561,7 +560,7 @@ static UINT8 adb_read_datareg(void)
 			break;
 
 		default:
-			result = adb_latent_result;
+			result = 0; //adb_latent_result & 0x7f;
 			break;
 	}
 
@@ -681,7 +680,8 @@ static void adb_write_datareg(running_machine *machine, UINT8 data)
 }
 
 
-
+// real rom 3 h/w reads 0x90 when idle, 0x98 when key pressed
+// current MESS reads back 0xb0 when idle
 static UINT8 adb_read_kmstatus(void)
 {
 	return adb_kmstatus;
@@ -703,9 +703,9 @@ static UINT8 adb_read_mousedata(running_machine *machine)
 	UINT8 absolute;
 	INT8 delta;
 
-	if (adb_kmstatus & 0x80)
+	if (adb_kmstatus & 0x80)	// mouse register full
 	{
-		if (adb_kmstatus & 0x02)
+		if (adb_kmstatus & 0x02)	// H/V mouse data select
 		{
 			absolute = apple2gs_mouse_y;
 			delta = apple2gs_mouse_dy;
@@ -795,8 +795,8 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 {
 	int scanline;
 
-	scanline = video_screen_get_vpos(machine->primary_screen);
-	video_screen_update_partial(machine->primary_screen, scanline);
+	scanline = machine->primary_screen->vpos();
+	machine->primary_screen->update_partial(scanline);
 
 	/* scanline interrupt */
 	if ((apple2gs_newvideo & 0x80) && (apple2gs_vgcint & 0x02) && (scanline >= (BORDER_TOP-1)) && (scanline < (200+BORDER_TOP-1)))
@@ -828,11 +828,11 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 		adb_check_mouse(machine);
 
 		/* call Apple II interrupt handler */
-		if ((video_screen_get_vpos(machine->primary_screen) % 8) == 7)
-			apple2_interrupt(devtag_get_device(machine, "maincpu"));
+		if ((machine->primary_screen->vpos() % 8) == 7)
+			apple2_interrupt(machine->device("maincpu"));
 	}
 
-	timer_adjust_oneshot(apple2gs_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, (scanline+1)%262, 0), 0);
+	timer_adjust_oneshot(apple2gs_scanline_timer, machine->primary_screen->time_until_pos((scanline+1)%262, 0), 0);
 }
 
 
@@ -862,7 +862,7 @@ static READ8_HANDLER( gssnd_r )
 			}
 			else
 			{
-				running_device *es5503 = devtag_get_device(space->machine, "es5503");
+				running_device *es5503 = space->machine->device("es5503");
 				sndglu_dummy_read = es5503_r(es5503, sndglu_addr);
 			}
 
@@ -902,7 +902,7 @@ static WRITE8_HANDLER( gssnd_w )
 			}
 			else
 			{
-				running_device *es5503 = devtag_get_device(space->machine, "es5503");
+				running_device *es5503 = space->machine->device("es5503");
 				es5503_w(es5503, sndglu_addr, data);
 			}
 
@@ -939,7 +939,7 @@ static int apple2gs_get_vpos(running_machine *machine)
 
 	};
 
-	scan = video_screen_get_vpos(machine->primary_screen);
+	scan = machine->primary_screen->vpos();
 
 	if (scan < BORDER_TOP)
 	{
@@ -963,7 +963,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 	switch(offset)
 	{
 		case 0x19:	/* C019 - RDVBLBAR */
-			result = (video_screen_get_vpos(space->machine->primary_screen) >= (192+BORDER_TOP)) ? 0x80 : 0x00;
+			result = (space->machine->primary_screen->vpos() >= (192+BORDER_TOP)) ? 0x80 : 0x00;
 			break;
 
 		case 0x22:	/* C022 - TBCOLOR */
@@ -1008,7 +1008,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			break;
 
 		case 0x2F:	/* C02F - HORIZCNT */
-			result = video_screen_get_hpos(space->machine->primary_screen) / 11;
+			result = space->machine->primary_screen->hpos() / 11;
 			if (result > 0)
 			{
 				result += 0x40;
@@ -1044,7 +1044,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			scc = devtag_get_device(space->machine, "scc");
+			scc = space->machine->device("scc");
 			result = scc8530_r(scc, offset & 0x03);
 			break;
 
@@ -1184,7 +1184,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			scc = devtag_get_device(space->machine, "scc");
+			scc = space->machine->device("scc");
 			scc8530_w(scc, offset & 0x03, data);
 			break;
 
@@ -1236,7 +1236,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 static WRITE8_HANDLER( apple2gs_main0400_w )
 {
 	offset += 0x000400;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 
 	if (!(apple2gs_shadow & 0x01))
 	{
@@ -1247,7 +1247,7 @@ static WRITE8_HANDLER( apple2gs_main0400_w )
 static WRITE8_HANDLER( apple2gs_aux0400_w )
 {
 	offset += 0x010400;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 
 	if (!(apple2gs_shadow & 0x01))
 	{
@@ -1258,7 +1258,7 @@ static WRITE8_HANDLER( apple2gs_aux0400_w )
 static WRITE8_HANDLER( apple2gs_main2000_w )
 {
 	offset += 0x002000;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 
 	if (!(apple2gs_shadow & 0x02))
 	{
@@ -1269,7 +1269,7 @@ static WRITE8_HANDLER( apple2gs_main2000_w )
 static WRITE8_HANDLER( apple2gs_aux2000_w )
 {
 	offset += 0x012000;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 
 	if (!(apple2gs_shadow & 0x12) || !(apple2gs_shadow & 0x08))
 	{
@@ -1280,7 +1280,7 @@ static WRITE8_HANDLER( apple2gs_aux2000_w )
 static WRITE8_HANDLER( apple2gs_main4000_w )
 {
 	offset += 0x004000;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 
 	if ((offset >= 0x004000) && (offset <= 0x005FFF))
 	{
@@ -1292,7 +1292,7 @@ static WRITE8_HANDLER( apple2gs_main4000_w )
 static WRITE8_HANDLER( apple2gs_aux4000_w )
 {
 	offset += 0x014000;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 
 	if ((offset >= 0x014000) && (offset <= 0x015FFF))
 	{
@@ -1535,7 +1535,7 @@ static UINT8 apple2gs_xxCxxx_r(running_machine *machine, offs_t address)
 
 	if ((apple2gs_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
 	{
-		result = messram_get_ptr(devtag_get_device(machine, "messram"))[address];
+		result = messram_get_ptr(machine->device("messram"))[address];
 	}
 	else if ((address & 0x000F00) == 0x000000)
 	{
@@ -1561,7 +1561,7 @@ static void apple2gs_xxCxxx_w(running_machine *machine, offs_t address, UINT8 da
 
 	if ((apple2gs_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
 	{
-		messram_get_ptr(devtag_get_device(machine, "messram"))[address] = data;
+		messram_get_ptr(machine->device("messram"))[address] = data;
 	}
 	else if ((address & 0x000F00) == 0x000000)
 	{
@@ -1587,7 +1587,7 @@ static DIRECT_UPDATE_HANDLER( apple2gs_opbase )
 	{
 		if ((apple2gs_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
 		{
-			opptr = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[address];
+			opptr = &messram_get_ptr(space->machine->device("messram"))[address];
 		}
 		else if ((address & 0x000F00) == 0x000000)
 		{
@@ -1664,8 +1664,8 @@ static void apple2gs_setup_memory(running_machine *machine)
 	state_save_register_item_array(machine, "APPLE2GS_SLOWMEM", NULL, 0, apple2gs_slowmem);
 
 	/* install expanded memory */
-	memory_install_readwrite_bank(space, 0x010000, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, "bank1");
-	memory_set_bankptr(machine,"bank1", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x010000);
+	memory_install_readwrite_bank(space, 0x010000, messram_get_size(machine->device("messram")) - 1, 0, 0, "bank1");
+	memory_set_bankptr(machine,"bank1", messram_get_ptr(machine->device("messram")) + 0x010000);
 
 	/* install hi memory */
 	memory_install_read_bank(space, 0xe00000, 0xe1ffff, 0, 0, "bank2");
@@ -1729,7 +1729,7 @@ MACHINE_START( apple2gs )
 	apple2_init_common(machine);
 
 	/* set up Apple IIgs vectoring */
-	g65816_set_read_vector_callback(devtag_get_device(machine, "maincpu"), apple2gs_read_vector);
+	g65816_set_read_vector_callback(machine->device("maincpu"), apple2gs_read_vector);
 
 	/* setup globals */
 	apple2gs_cur_slot6_image = NULL;
@@ -1778,7 +1778,7 @@ MACHINE_START( apple2gs )
 	apple2gs_setup_memory(machine);
 
 	/* save state stuff.  note that the driver takes care of docram. */
-	state_save_register_global_array(machine, messram_get_ptr(devtag_get_device(machine, "messram")));
+	state_save_register_global_array(machine, messram_get_ptr(machine->device("messram")));
 
 	state_save_register_item(machine, "NEWVIDEO", NULL, 0, apple2gs_newvideo);
 
@@ -1833,5 +1833,5 @@ MACHINE_START( apple2gs )
 	timer_adjust_oneshot(apple2gs_scanline_timer, attotime_never, 0);
 
 	// fire on scanline zero
-	timer_adjust_oneshot(apple2gs_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
+	timer_adjust_oneshot(apple2gs_scanline_timer, machine->primary_screen->time_until_pos(0, 0), 0);
 }

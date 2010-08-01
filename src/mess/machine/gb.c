@@ -62,7 +62,7 @@ enum {
 	MBC_UNKNOWN,	/* Unknown mapper                                */
 };
 
-/* messram_get_ptr(devtag_get_device(machine, "messram")) layout defines */
+/* messram_get_ptr(machine->device("messram")) layout defines */
 #define CGB_START_VRAM_BANKS	0x0000
 #define CGB_START_RAM_BANKS	( 2 * 8 * 1024 )
 
@@ -139,7 +139,7 @@ static gb_state gb_driver_data;
 */
 
 static TIMER_CALLBACK(gb_serial_timer_proc);
-static void gb_machine_stop(running_machine *machine);
+static void gb_machine_stop(running_machine &machine);
 static WRITE8_HANDLER( gb_rom_bank_select_mbc1 );
 static WRITE8_HANDLER( gb_ram_bank_select_mbc1 );
 static WRITE8_HANDLER( gb_mem_mode_select_mbc1 );
@@ -290,7 +290,7 @@ static void gb_init(running_machine *machine)
 			break;
 	}
 
-	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x16, 0x00 );       /* Initialize sound hardware */
+	gb_sound_w(space->machine->device("custom"), 0x16, 0x00 );       /* Initialize sound hardware */
 
 	gb_driver_data.divcount = 0;
 	gb_driver_data.triggering_irq = 0;
@@ -299,7 +299,7 @@ static void gb_init(running_machine *machine)
 
 MACHINE_START( gb )
 {
-	add_exit_callback(machine, gb_machine_stop);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, gb_machine_stop);
 
 	/* Allocate the serial timer, and disable it */
 	gb_driver_data.gb_serial_timer = timer_alloc(machine,  gb_serial_timer_proc , NULL);
@@ -310,7 +310,7 @@ MACHINE_START( gb )
 
 MACHINE_START( gbc )
 {
-	add_exit_callback(machine, gb_machine_stop);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, gb_machine_stop);
 
 	/* Allocate the serial timer, and disable it */
 	gb_driver_data.gb_serial_timer = timer_alloc(machine,  gb_serial_timer_proc , NULL);
@@ -338,8 +338,8 @@ MACHINE_START( sgb )
 {
 	sgb_tile_data = auto_alloc_array_clear(machine, UINT8, 0x2000 );
 
-	add_exit_callback(machine, gb_machine_stop);
-	
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, gb_machine_stop);
+
 	/* Allocate the serial timer, and disable it */
 	gb_driver_data.gb_serial_timer = timer_alloc(machine,  gb_serial_timer_proc , NULL);
 	timer_enable( gb_driver_data.gb_serial_timer, 0 );
@@ -390,9 +390,9 @@ MACHINE_RESET( gbpocket )
 	gb_init_regs(machine);
 
 	/* Initialize the Sound registers */
-	gb_sound_w(devtag_get_device(machine, "custom"), 0x16,0x80);
-	gb_sound_w(devtag_get_device(machine, "custom"), 0x15,0xF3);
-	gb_sound_w(devtag_get_device(machine, "custom"), 0x14,0x77);
+	gb_sound_w(machine->device("custom"), 0x16,0x80);
+	gb_sound_w(machine->device("custom"), 0x15,0xF3);
+	gb_sound_w(machine->device("custom"), 0x14,0x77);
 
 	/* Enable BIOS rom if we have one */
 	gb_rom16_0000( machine, gb_driver_data.ROMMap[gb_driver_data.ROMBank00] ? gb_driver_data.ROMMap[gb_driver_data.ROMBank00] : gb_driver_data.gb_dummy_rom_bank );
@@ -419,12 +419,12 @@ MACHINE_RESET( gbc )
 	/* Allocate memory for internal ram */
 	for( ii = 0; ii < 8; ii++ )
 	{
-		gb_driver_data.GBC_RAMMap[ii] = messram_get_ptr(devtag_get_device(machine, "messram")) + CGB_START_RAM_BANKS + ii * 0x1000;
+		gb_driver_data.GBC_RAMMap[ii] = messram_get_ptr(machine->device("messram")) + CGB_START_RAM_BANKS + ii * 0x1000;
 		memset (gb_driver_data.GBC_RAMMap[ii], 0, 0x1000);
 	}
 }
 
-static void gb_machine_stop(running_machine *machine)
+static void gb_machine_stop(running_machine &machine)
 {
 	/* Don't save if there was no battery */
 	if(!(gb_driver_data.CartType & BATTERY) || !gb_driver_data.RAMBanks)
@@ -433,7 +433,8 @@ static void gb_machine_stop(running_machine *machine)
 	/* NOTE: The reason we save the carts RAM this way instead of using MAME's
        built in macros is because they force the filename to be the name of
        the machine.  We need to have a separate name for each game. */
-	image_battery_save(devtag_get_device(machine, "cart"), gb_driver_data.gb_cart_ram, gb_driver_data.RAMBanks * 0x2000);
+	device_image_interface *image = dynamic_cast<device_image_interface *>(machine.device("cart"));
+	image->battery_save(gb_driver_data.gb_cart_ram, gb_driver_data.RAMBanks * 0x2000);
 }
 
 static void gb_set_mbc1_banks( running_machine *machine )
@@ -890,7 +891,7 @@ WRITE8_HANDLER ( gb_io_w )
 		break;
 	case 0x0F:						/* IF - Interrupt flag */
 		data &= 0x1F;
-		cpu_set_reg( devtag_get_device(space->machine, "maincpu"), LR35902_IF, data );
+		cpu_set_reg( space->machine->device("maincpu"), LR35902_IF, data );
 		break;
 	}
 
@@ -1445,12 +1446,12 @@ WRITE8_HANDLER ( sgb_io_w )
 /* Interrupt Enable register */
 READ8_HANDLER( gb_ie_r )
 {
-	return cpu_get_reg( devtag_get_device(space->machine, "maincpu"), LR35902_IE );
+	return cpu_get_reg( space->machine->device("maincpu"), LR35902_IE );
 }
 
 WRITE8_HANDLER ( gb_ie_w )
 {
-	cpu_set_reg( devtag_get_device(space->machine, "maincpu"), LR35902_IE, data & 0x1F );
+	cpu_set_reg( space->machine->device("maincpu"), LR35902_IE, data & 0x1F );
 }
 
 /* IO read */
@@ -1470,7 +1471,7 @@ READ8_HANDLER ( gb_io_r )
 			return gb_driver_data.gb_io[offset];
 		case 0x0F:
 			/* Make sure the internal states are up to date */
-			return 0xE0 | cpu_get_reg( devtag_get_device(space->machine, "maincpu"), LR35902_IF );
+			return 0xE0 | cpu_get_reg( space->machine->device("maincpu"), LR35902_IF );
 		default:
 			/* It seems unsupported registers return 0xFF */
 			return 0xFF;
@@ -1639,10 +1640,10 @@ DEVICE_IMAGE_LOAD(gb_cart)
 	UINT8 *gb_header;
 	static const int rambanks[8] = {0, 1, 1, 4, 16, 8, 0, 0};
 
-	if (image_software_entry(image) == NULL)
-		filesize = image_length(image);
+	if (image.software_entry() == NULL)
+		filesize = image.length();
 	else
-		filesize = image_get_software_region_length(image, "rom");
+		filesize = image.get_software_region_length("rom");
 
 	/* Check for presence of a header, and skip that header */
 	J = filesize % 0x4000;
@@ -1656,27 +1657,27 @@ DEVICE_IMAGE_LOAD(gb_cart)
 	/* Verify that the file contains 16kb blocks */
 	if ((filesize == 0) || ((filesize % 0x4000) != 0))
 	{
-		image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Invalid rom file size");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSPECIFIED, "Invalid rom file size");
+		return IMAGE_INIT_FAIL;
 	}
 
 	/* Claim memory */
-	gb_driver_data.gb_cart = auto_alloc_array(image->machine, UINT8, filesize);
+	gb_driver_data.gb_cart = auto_alloc_array(image.device().machine, UINT8, filesize);
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
 		/* Actually skip the header */
-		image_fseek(image, load_start, SEEK_SET);
+		image.fseek(load_start, SEEK_SET);
 
 		/* Read cartridge */
-		if (image_fread(image, gb_driver_data.gb_cart, filesize) != filesize)
+		if (image.fread( gb_driver_data.gb_cart, filesize) != filesize)
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
-		memcpy(gb_driver_data.gb_cart, image_get_software_region(image, "rom") + load_start, filesize);
+		memcpy(gb_driver_data.gb_cart, image.get_software_region("rom") + load_start, filesize);
 
 	gb_header = gb_driver_data.gb_cart;
 	gb_driver_data.ROMBank00 = 0;
@@ -1771,25 +1772,25 @@ DEVICE_IMAGE_LOAD(gb_cart)
 	}
 	if (gb_driver_data.MBCType == MBC_UNKNOWN)
 	{
-		image_seterror(image, IMAGE_ERROR_UNSUPPORTED, "Unknown mapper type");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, "Unknown mapper type");
+		return IMAGE_INIT_FAIL;
 	}
 	if (gb_driver_data.MBCType == MBC_MMM01)
 	{
-//      image_seterror(image, IMAGE_ERROR_UNSUPPORTED, "Mapper MMM01 is not supported yet");
-//      return INIT_FAIL;
+//      image.seterror(IMAGE_ERROR_UNSUPPORTED, "Mapper MMM01 is not supported yet");
+//      return IMAGE_INIT_FAIL;
 	}
 	if (gb_driver_data.MBCType == MBC_MBC4)
 	{
-		image_seterror(image, IMAGE_ERROR_UNSUPPORTED, "Mapper MBC4 is not supported yet");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, "Mapper MBC4 is not supported yet");
+		return IMAGE_INIT_FAIL;
 	}
 	/* MBC7 support is still work-in-progress, so only enable it for debug builds */
 #ifndef MAME_DEBUG
 	if (gb_driver_data.MBCType == MBC_MBC7)
 	{
-		image_seterror(image, IMAGE_ERROR_UNSUPPORTED, "Mapper MBC7 is not supported yet");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, "Mapper MBC7 is not supported yet");
+		return IMAGE_INIT_FAIL;
 	}
 #endif
 
@@ -1905,7 +1906,7 @@ DEVICE_IMAGE_LOAD(gb_cart)
 	if (gb_driver_data.RAMBanks && gb_driver_data.MBCType)
 	{
 		/* Claim memory */
-		gb_driver_data.gb_cart_ram = auto_alloc_array(image->machine, UINT8, gb_driver_data.RAMBanks * 0x2000);
+		gb_driver_data.gb_cart_ram = auto_alloc_array(image.device().machine, UINT8, gb_driver_data.RAMBanks * 0x2000);
 		memset(gb_driver_data.gb_cart_ram, 0xFF, gb_driver_data.RAMBank * 0x2000);
 
 		for (I = 0; I < gb_driver_data.RAMBanks; I++)
@@ -1928,22 +1929,22 @@ DEVICE_IMAGE_LOAD(gb_cart)
 	/* If there's an RTC claim memory to store the RTC contents */
 	if (gb_driver_data.CartType & TIMER)
 	{
-		gb_driver_data.MBC3RTCData = auto_alloc_array(image->machine, UINT8, 0x2000);
+		gb_driver_data.MBC3RTCData = auto_alloc_array(image.device().machine, UINT8, 0x2000);
 	}
 
 	if (gb_driver_data.MBCType == MBC_TAMA5)
 	{
-		gb_driver_data.MBC3RTCData = auto_alloc_array(image->machine, UINT8, 0x2000);
+		gb_driver_data.MBC3RTCData = auto_alloc_array(image.device().machine, UINT8, 0x2000);
 		memset(gb_driver_data.gbTama5Memory, 0xff, sizeof(gb_driver_data.gbTama5Memory));
 	}
 
 	/* Load the saved RAM if this cart has a battery */
 	if (gb_driver_data.CartType & BATTERY && gb_driver_data.RAMBanks)
 	{
-		image_battery_load(image, gb_driver_data.gb_cart_ram, gb_driver_data.RAMBanks * 0x2000, 0x00);
+		image.battery_load(gb_driver_data.gb_cart_ram, gb_driver_data.RAMBanks * 0x2000, 0x00);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 INTERRUPT_GEN( gb_scanline_interrupt )
@@ -2023,7 +2024,7 @@ WRITE8_HANDLER ( gbc_io2_w )
 	switch( offset )
 	{
 		case 0x0D:	/* KEY1 - Prepare speed switch */
-			cpu_set_reg( devtag_get_device(space->machine, "maincpu"), LR35902_SPEED, data );
+			cpu_set_reg( space->machine->device("maincpu"), LR35902_SPEED, data );
 			return;
 		case 0x10:	/* BFF - Bios disable */
 			gb_rom16_0000( space->machine, gb_driver_data.ROMMap[gb_driver_data.ROMBank00] );
@@ -2047,7 +2048,7 @@ READ8_HANDLER( gbc_io2_r )
 	switch( offset )
 	{
 	case 0x0D:	/* KEY1 */
-		return cpu_get_reg( devtag_get_device(space->machine, "maincpu"), LR35902_SPEED );
+		return cpu_get_reg( space->machine->device("maincpu"), LR35902_SPEED );
 	case 0x16:	/* RP - Infrared port */
 		break;
 	case 0x30:	/* SVBK - RAM bank select */
@@ -2150,25 +2151,25 @@ static const UINT8 megaduck_sound_offsets[16] = { 0, 2, 1, 3, 4, 6, 5, 7, 8, 9, 
 
 WRITE8_HANDLER( megaduck_sound_w1 )
 {
-	gb_sound_w(devtag_get_device(space->machine, "custom"), megaduck_sound_offsets[offset], data );
+	gb_sound_w(space->machine->device("custom"), megaduck_sound_offsets[offset], data );
 }
 
 READ8_HANDLER( megaduck_sound_r1 )
 {
-	return gb_sound_r( devtag_get_device(space->machine, "custom"), megaduck_sound_offsets[offset] );
+	return gb_sound_r( space->machine->device("custom"), megaduck_sound_offsets[offset] );
 }
 
 WRITE8_HANDLER( megaduck_sound_w2 )
 {
 	switch(offset)
 	{
-		case 0x00:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x10, data );	break;
-		case 0x01:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x12, data );	break;
-		case 0x02:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x11, data );	break;
-		case 0x03:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x13, data );	break;
-		case 0x04:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x14, data );	break;
-		case 0x05:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x16, data );	break;
-		case 0x06:	gb_sound_w(devtag_get_device(space->machine, "custom"), 0x15, data );	break;
+		case 0x00:	gb_sound_w(space->machine->device("custom"), 0x10, data );	break;
+		case 0x01:	gb_sound_w(space->machine->device("custom"), 0x12, data );	break;
+		case 0x02:	gb_sound_w(space->machine->device("custom"), 0x11, data );	break;
+		case 0x03:	gb_sound_w(space->machine->device("custom"), 0x13, data );	break;
+		case 0x04:	gb_sound_w(space->machine->device("custom"), 0x14, data );	break;
+		case 0x05:	gb_sound_w(space->machine->device("custom"), 0x16, data );	break;
+		case 0x06:	gb_sound_w(space->machine->device("custom"), 0x15, data );	break;
 		case 0x07:
 		case 0x08:
 		case 0x09:
@@ -2184,7 +2185,7 @@ WRITE8_HANDLER( megaduck_sound_w2 )
 
 READ8_HANDLER( megaduck_sound_r2 )
 {
-	return gb_sound_r(devtag_get_device(space->machine, "custom"), 0x10 + megaduck_sound_offsets[offset]);
+	return gb_sound_r(space->machine->device("custom"), 0x10 + megaduck_sound_offsets[offset]);
 }
 
 WRITE8_HANDLER( megaduck_rom_bank_select_type1 )
@@ -2220,34 +2221,34 @@ DEVICE_IMAGE_LOAD(megaduck_cart)
 	for (I = 0; I < MAX_RAMBANK; I++)
 		gb_driver_data.RAMMap[I] = NULL;
 
-	if (image_software_entry(image) == NULL)
-		filesize = image_length(image);
+	if (image.software_entry() == NULL)
+		filesize = image.length();
 	else
-		filesize = image_get_software_region_length(image, "rom");
+		filesize = image.get_software_region_length("rom");
 
 	if ((filesize == 0) || ((filesize % 0x4000) != 0))
 	{
-		image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Invalid rom file size");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSPECIFIED, "Invalid rom file size");
+		return IMAGE_INIT_FAIL;
 	}
 
 	gb_driver_data.ROMBanks = filesize / 0x4000;
 
 	/* Claim memory */
-	gb_driver_data.gb_cart = auto_alloc_array(image->machine, UINT8, filesize);
+	gb_driver_data.gb_cart = auto_alloc_array(image.device().machine, UINT8, filesize);
 
 	/* Read cartridge */
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		if (image_fread(image, gb_driver_data.gb_cart, filesize) != filesize)
+		if (image.fread( gb_driver_data.gb_cart, filesize) != filesize)
 		{
-			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			return INIT_FAIL;
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
 	{
-		memcpy(gb_driver_data.gb_cart, image_get_software_region(image, "rom"), filesize);
+		memcpy(gb_driver_data.gb_cart, image.get_software_region("rom"), filesize);
 	}
 
 	/* Log cart information */
@@ -2272,5 +2273,5 @@ DEVICE_IMAGE_LOAD(megaduck_cart)
 
 	gb_driver_data.MBCType = MBC_MEGADUCK;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }

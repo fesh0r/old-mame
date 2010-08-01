@@ -639,7 +639,7 @@ static VIDEO_START( pet_crtc )
 
 static VIDEO_UPDATE( pet_crtc )
 {
-	running_device *mc6845 = devtag_get_device(screen->machine, "crtc");
+	running_device *mc6845 = screen->machine->device("crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
@@ -647,7 +647,7 @@ static VIDEO_UPDATE( pet_crtc )
 static IEEE488_DAISY( ieee488_daisy )
 {
 	{ "pia_0" },
-	{ "pia_1", DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER("pia_1", pia6821_cb1_w), DEVCB_DEVICE_HANDLER("pia_1", pia6821_ca1_w), DEVCB_NULL },
+	{ "pia_1", DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_LINE("pia_1", pia6821_cb1_w), DEVCB_DEVICE_LINE("pia_1", pia6821_ca1_w), DEVCB_NULL },
 	{ "via6522_0" },
 	{ C2040_IEEE488("c4040") },
 	{ NULL}

@@ -8,29 +8,32 @@
     - Understand how keyboard works and decap/dump the keyboard MCU if possible;
     - Hook-up remaining .tap image formats;
     - Implement .rom format support (needs an image for it);
-    - Implement write support for the .d88 based images, later x1turbo games uses it as a copy
-      protection mechanism;
     - Implement tape commands;
     - Sort out / redump the BIOS gfx roms;
     - Implement SIO, they are X1Turbo only features.
     - clean-ups!
     - There are various unclear video things, these are:
         - Understand why some games still doesn't upload the proper PCG index;
-        - Implement PCG reading, used by Maison Ikkoku, Mule and Gyajiko for kanji reading.
-          Is there a way to select which ROM to use?
         - Implement the remaining scrn regs;
         - Interlace mode?
         - Implement the new features of the x1turbo, namely the 4096 color feature amongst other
           things
         - (anything else?)
 
-    per-game specific TODO:
+    per-game/program specific TODO:
     - Bosconian: title screen background is completely white because it reverts the pen used
       (it's gray in the Arcade version),could be either flickering for pseudo-alpha effect or it's
       a btanb;
-    - Mappy/Gradius: they sets 320x200 with fps = 30 Hz, due of that they are too slow (they must run at 60 Hz),
-      HW limitation/MC6845 bug?
     - Exoa II - Warroid: major tile width/height positioning bugs (especially during gameplay);
+	- Hydlide 2 / 3: can't get the user disk to work properly
+	- Gruppe: shows a random bitmap graphic then returns "program load error"
+	- Sorcerian / Ys 3 / Psy-O-Blade (and others): they all fails tight loops with the fdc ready bit check
+	- Turbo Alpha: has z80dma / fdc bugs, doesn't show the presentation properly and then hangs;
+	- Legend of Kage: has serious graphic artifacts, pcg doesn't scroll properly, bitmap-based sprites aren't shown properly, dma bugs?
+	- "newtype": dies with a z80dma assert;
+	- Ys 2: fills the screen with "syntax errors"
+	- Thexder: Can't start a play, keyboard related issue?
+	- V.I.P.: can't get inputs to work at all there;
 
     Notes:
     - An interesting feature of the Sharp X-1 is the extended i/o bank. When the ppi port c bit 5
@@ -198,6 +201,7 @@
 #include "formats/basicdsk.h"
 #include "formats/x1_tap.h"
 #include "devices/cartslot.h"
+#include "includes/x1.h"
 //#include <ctype.h>
 
 #define MAIN_CLOCK XTAL_16MHz
@@ -212,7 +216,7 @@ static UINT8 pcg_reset;
 static UINT16 crtc_start_addr;
 static UINT8 tile_height;
 static UINT8 sub_obf;
-static UINT8 key_irq_flag;
+UINT8 x1_key_irq_flag;
 static UINT8 ctc_irq_flag;
 static struct
 {
@@ -233,9 +237,16 @@ static struct
 	UINT8 txt_disp;
 }turbo_reg;
 
+static struct
+{
+	UINT8 sec, min, hour, day, wday, month, year;
+}x1_rtc;
+
+static emu_timer *x1_rtc_timer;
+
 static UINT8 pcg_write_addr;
 
-static DEVICE_START(x1_daisy){}
+//static DEVICE_START(x1_daisy){}
 
 static UINT8 *x1_colorram;
 /*************************************
@@ -293,7 +304,7 @@ static void draw_fgtilemap(running_machine *machine, bitmap_t *bitmap,const rect
 
 						pcg_pen = pen[2]<<2|pen[1]<<1|pen[0]<<0;
 
-						if(color & 0x10 &&	video_screen_get_frame_number(machine->primary_screen) & 0x10) //reverse flickering
+						if(color & 0x10 &&	machine->primary_screen->frame_number() & 0x10) //reverse flickering
 							pcg_pen^=7;
 
 						if(pcg_pen == 0 && (!(color & 8)))
@@ -305,7 +316,7 @@ static void draw_fgtilemap(running_machine *machine, bitmap_t *bitmap,const rect
 						if((scrn_reg.blackclip & 8) && (color == (scrn_reg.blackclip & 7)))
 							pcg_pen = 0; // clip the pen to black
 
-						if((res_x+xi)>video_screen_get_visible_area(machine->primary_screen)->max_x && (res_y+yi)>video_screen_get_visible_area(machine->primary_screen)->max_y)
+						if((res_x+xi)>machine->primary_screen->visible_area().max_x && (res_y+yi)>machine->primary_screen->visible_area().max_y)
 							continue;
 
 						if(scrn_reg.v400_mode)
@@ -398,14 +409,14 @@ static void draw_gfxbitmap(running_machine *machine, bitmap_t *bitmap,const rect
 
 					if(scrn_reg.v400_mode)
 					{
-						if((x*8+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (( y*(tile_height+1)+yi)*2+0)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+						if((x*8+xi)<=machine->primary_screen->visible_area().max_x && (( y*(tile_height+1)+yi)*2+0)<=machine->primary_screen->visible_area().max_y)
 							*BITMAP_ADDR16(bitmap, ( y*(tile_height+1)+yi)*2+0, x*8+xi) = machine->pens[color+0x100];
-						if((x*8+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (( y*(tile_height+1)+yi)*2+1)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+						if((x*8+xi)<=machine->primary_screen->visible_area().max_x && (( y*(tile_height+1)+yi)*2+1)<=machine->primary_screen->visible_area().max_y)
 							*BITMAP_ADDR16(bitmap, ( y*(tile_height+1)+yi)*2+1, x*8+xi) = machine->pens[color+0x100];
 					}
 					else
 					{
-						if((x*8+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (y*(tile_height+1)+yi)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+						if((x*8+xi)<=machine->primary_screen->visible_area().max_x && (y*(tile_height+1)+yi)<=machine->primary_screen->visible_area().max_y)
 							*BITMAP_ADDR16(bitmap, y*(tile_height+1)+yi, x*8+xi) = machine->pens[color+0x100];
 					}
 				}
@@ -451,14 +462,14 @@ static void draw_gfxbitmap(running_machine *machine, bitmap_t *bitmap,const rect
 
 						if(scrn_reg.v400_mode)
 						{
-							if((x+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (y+(yi >> 1)*2+0)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+							if((x+xi)<=machine->primary_screen->visible_area().max_x && (y+(yi >> 1)*2+0)<=machine->primary_screen->visible_area().max_y)
 								*BITMAP_ADDR16(bitmap, (y+(yi >> 1))*2+0, x+xi) = machine->pens[color+0x100];
-							if((x+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (y+(yi >> 1)*2+1)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+							if((x+xi)<=machine->primary_screen->visible_area().max_x && (y+(yi >> 1)*2+1)<=machine->primary_screen->visible_area().max_y)
 								*BITMAP_ADDR16(bitmap, (y+(yi >> 1))*2+1, x+xi) = machine->pens[color+0x100];
 						}
 						else
 						{
-							if((x+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (y+(yi >> 1))<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+							if((x+xi)<=machine->primary_screen->visible_area().max_x && (y+(yi >> 1))<=machine->primary_screen->visible_area().max_y)
 								*BITMAP_ADDR16(bitmap, y+(yi >> 1), x+xi) = machine->pens[color+0x100];
 						}
 					}
@@ -466,14 +477,14 @@ static void draw_gfxbitmap(running_machine *machine, bitmap_t *bitmap,const rect
 					{
 						if(scrn_reg.v400_mode)
 						{
-							if((x+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && ((y+yi)*2+0)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+							if((x+xi)<=machine->primary_screen->visible_area().max_x && ((y+yi)*2+0)<=machine->primary_screen->visible_area().max_y)
 								*BITMAP_ADDR16(bitmap, (y+yi)*2+0, x+xi) = machine->pens[color+0x100];
-							if((x+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && ((y+yi)*2+1)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+							if((x+xi)<=machine->primary_screen->visible_area().max_x && ((y+yi)*2+1)<=machine->primary_screen->visible_area().max_y)
 								*BITMAP_ADDR16(bitmap, (y+yi)*2+1, x+xi) = machine->pens[color+0x100];
 						}
 						else
 						{
-							if((x+xi)<=video_screen_get_visible_area(machine->primary_screen)->max_x && (y+yi)<=video_screen_get_visible_area(machine->primary_screen)->max_y)
+							if((x+xi)<=machine->primary_screen->visible_area().max_x && (y+yi)<=machine->primary_screen->visible_area().max_y)
 								*BITMAP_ADDR16(bitmap, y+yi, x+xi) = machine->pens[color+0x100];
 						}
 					}
@@ -491,7 +502,7 @@ static VIDEO_UPDATE( x1 )
 {
 	int w;
 
-	w = (video_screen_get_width(screen) < 640) ? 1 : 2;
+	w = (screen->width() < 640) ? 1 : 2;
 
 	bitmap_fill(bitmap, cliprect, MAKE_ARGB(0xff,0x00,0x00,0x00));
 
@@ -516,7 +527,7 @@ static VIDEO_EOF( x1 )
 
 static UINT8 sub_cmd;//,key_flag;
 static UINT8 sub_cmd_length;
-static UINT8 sub_val[4];
+static UINT8 sub_val[8];
 
 static UINT8 check_keyboard_press(running_machine *machine)
 {
@@ -524,6 +535,7 @@ static UINT8 check_keyboard_press(running_machine *machine)
 	int i,port_i,scancode;
 	UINT8 keymod = input_port_read(machine,"key_modifiers") & 0x1f;
 	UINT32 pad = input_port_read(machine,"tenkey");
+	UINT32 f_key = input_port_read(machine, "f_keys");
 	scancode = 0;
 
 	for(port_i=0;port_i<3;port_i++)
@@ -558,6 +570,17 @@ static UINT8 check_keyboard_press(running_machine *machine)
 	for(i=0;i<10;i++)
 	{
 		if((pad >> i) & 0x01)
+		{
+			return scancode;
+		}
+		scancode++;
+	}
+
+	// check function keys
+	scancode = 0x71;
+	for(i=0;i<5;i++)
+	{
+		if((f_key >> i) & 0x01)
 		{
 			return scancode;
 		}
@@ -615,7 +638,7 @@ static UINT8 get_game_key(running_machine *machine, int port)
 			if(pad & 0x00000008) ret |= 0x01;  // Tenkey 3
 			break;
 		case 2:
-			if(key1 & 0x10000000) ret |= 0x80;  // ESC
+			if(key1 & 0x08000000) ret |= 0x80;  // ESC
 			if(key2 & 0x00020000) ret |= 0x40;  // 1
 			if(pad & 0x00000400) ret |= 0x20;  // Tenkey -
 			if(pad & 0x00000800) ret |= 0x10;  // Tenkey +
@@ -667,7 +690,7 @@ static READ8_HANDLER( sub_io_r )
 
 static UINT8 x1_irq_vector;
 //static UINT8 ctc_irq_vector; //always 0x5e?
-static UINT8 key_irq_vector;
+UINT8 x1_key_irq_vector;
 static UINT8 cmt_current_cmd;
 static UINT8 cmt_test;
 
@@ -687,39 +710,39 @@ static void cmt_command( running_machine* machine, UINT8 cmd )
 	switch(cmd)
 	{
 		case 0x01:  // Stop
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			cmt_test = 1;
 			popmessage("CMT: Stop");
 			break;
 		case 0x02:  // Play
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Play");
 			break;
 		case 0x03:  // Fast Forward
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Fast Forward");
 			break;
 		case 0x04:  // Rewind
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Rewind");
 			break;
 		case 0x05:  // APSS Fast Forward
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: APSS Fast Forward");
 			break;
 		case 0x06:  // APSS Rewind
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: APSS Rewind");
 			break;
 		case 0x0a:  // Record
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
+			cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+			cassette_change_state(machine->device("cass" ),CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Record");
 			break;
 		default:
@@ -730,7 +753,7 @@ static void cmt_command( running_machine* machine, UINT8 cmd )
 
 static TIMER_CALLBACK( cmt_wind_timer )
 {
-	running_device* cmt = devtag_get_device(machine,"cass");
+	running_device* cmt = machine->device("cass");
 	switch(cmt_current_cmd)
 	{
 		case 0x03:
@@ -750,8 +773,6 @@ static TIMER_CALLBACK( cmt_wind_timer )
 
 static WRITE8_HANDLER( sub_io_w )
 {
-	mame_system_time systime;
-	mame_get_base_datetime(space->machine, &systime);
 	/* TODO: check sub-routine at $10e */
 	/* $17a -> floppy? */
 	/* $094 -> ROM */
@@ -761,12 +782,23 @@ static WRITE8_HANDLER( sub_io_w )
 
 	if(sub_cmd == 0xe4)
 	{
-		key_irq_vector = data;
+		x1_key_irq_vector = data;
 		logerror("Key vector set to 0x%02x\n",data);
 	}
 
 	if(sub_cmd == 0xe9)
 		cmt_command(space->machine,data);
+
+	if((data & 0xf0) == 0xd0) //reads here tv recording timer data.
+	{
+		sub_val[0] = 0;
+		sub_val[1] = 0;
+		sub_val[2] = 0;
+		sub_val[3] = 0;
+		sub_val[4] = 0;
+		sub_val[5] = 0;
+		sub_cmd_length = 6;
+	}
 
 	switch(data)
 	{
@@ -795,21 +827,21 @@ static WRITE8_HANDLER( sub_io_w )
 					// bit 1 = tape inserted
 					// bit 2 = record status (1=OK, 0=write protect?)
 			sub_val[0] = 0x05;
-			if(cassette_get_image(devtag_get_device(space->machine,"cass")) != NULL)
+			if(cassette_get_image(space->machine->device("cass")) != NULL)
 				sub_val[0] |= 0x02;
 			sub_cmd_length = 1;
 			logerror("CMT: Command 0xEB received, returning 0x%02x.\n",sub_val[0]);
 			break;
 		case 0xed: //get date
-			sub_val[0] = ((systime.local_time.mday / 10)<<4) | ((systime.local_time.mday % 10) & 0xf);
-			sub_val[1] = ((systime.local_time.month+1)<<4) | ((systime.local_time.weekday % 10) & 0xf);
-			sub_val[2] = (((systime.local_time.year % 100)/10)<<4) | ((systime.local_time.year % 10) & 0xf);
+			sub_val[0] = x1_rtc.day;
+			sub_val[1] = (x1_rtc.month<<4) | (x1_rtc.wday & 0xf);
+			sub_val[2] = x1_rtc.year;
 			sub_cmd_length = 3;
 			break;
 		case 0xef: //get time
-			sub_val[0] = ((systime.local_time.hour / 10)<<4) | ((systime.local_time.hour % 10) & 0xf);
-			sub_val[1] = ((systime.local_time.minute / 10)<<4) | ((systime.local_time.minute % 10) & 0xf);
-			sub_val[2] = ((systime.local_time.second / 10)<<4) | ((systime.local_time.second % 10) & 0xf);
+			sub_val[0] = x1_rtc.hour;
+			sub_val[1] = x1_rtc.min;
+			sub_val[2] = x1_rtc.sec;
 			sub_cmd_length = 3;
 			break;
 		#if 0
@@ -825,44 +857,6 @@ static WRITE8_HANDLER( sub_io_w )
 
 	sub_obf = (sub_cmd_length) ? 0x00 : 0x20;
 	logerror("SUB: Command byte 0x%02x\n",data);
-}
-
-static int x1_keyboard_irq_state(running_device* device)
-{
-	if(key_irq_flag != 0)
-		return Z80_DAISY_INT;
-
-	return 0;
-}
-
-static int x1_keyboard_irq_ack(running_device* device)
-{
-	key_irq_flag = 0;
-	cputag_set_input_line(device->machine,"maincpu",INPUT_LINE_IRQ0,CLEAR_LINE);
-	return key_irq_vector;
-}
-
-static DEVICE_GET_INFO( x1_keyboard_getinfo )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = 4;											break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;											break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;						break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(x1_daisy);		break;
-		case DEVINFO_FCT_IRQ_STATE:						info->f = (genf *)x1_keyboard_irq_state;	break;
-		case DEVINFO_FCT_IRQ_ACK:						info->f = (genf *)x1_keyboard_irq_ack;		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "X1 keyboard");		break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "X1 daisy chain");				break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");									break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);								break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");				break;
-	}
 }
 
 /*************************************
@@ -922,7 +916,7 @@ static WRITE8_HANDLER( rom_data_w )
 
 static READ8_HANDLER( x1_fdc_r )
 {
-	running_device* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = space->machine->device("fdc");
 	//UINT8 ret = 0;
 
 	switch(offset+0xff8)
@@ -948,7 +942,7 @@ static READ8_HANDLER( x1_fdc_r )
 
 static WRITE8_HANDLER( x1_fdc_w )
 {
-	running_device* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = space->machine->device("fdc");
 
 	switch(offset+0xff8)
 	{
@@ -1195,7 +1189,7 @@ static WRITE8_HANDLER( x1_6845_w )
 	if(offset == 0)
 	{
 		addr_latch = data;
-		mc6845_address_w(devtag_get_device(space->machine, "crtc"), 0,data);
+		mc6845_address_w(space->machine->device("crtc"), 0,data);
 	}
 	else
 	{
@@ -1207,7 +1201,10 @@ static WRITE8_HANDLER( x1_6845_w )
 		else if(addr_latch == 0x0d)
 			crtc_start_addr = (crtc_start_addr & 0x3f00) | (data & 0xff);
 
-		mc6845_register_w(devtag_get_device(space->machine, "crtc"), 0,data);
+		mc6845_register_w(space->machine->device("crtc"), 0,data);
+
+		/* double pump the pixel clock if we are in 640 x 200 mode */
+		mc6845_set_clock(space->machine->device("crtc"), (space->machine->primary_screen->width() < 640) ? VDP_CLOCK/48 : VDP_CLOCK/24);
 	}
 }
 
@@ -1316,18 +1313,18 @@ static READ8_HANDLER( x1_io_r )
 {
 	io_bank_mode = 0; //any read disables the extended mode.
 
-	//if(offset >= 0x0704 && offset <= 0x0707)      { return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x0704); }
+	//if(offset >= 0x0704 && offset <= 0x0707)      { return z80ctc_r(space->machine->device("ctc"), offset-0x0704); }
 	if(offset == 0x0e03)                    		{ return x1_rom_r(space, 0); }
 	else if(offset >= 0x0ff8 && offset <= 0x0fff)	{ return x1_fdc_r(space, offset-0xff8); }
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ return x1_pcg_r(space, offset-0x1400); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ return sub_io_r(space, 0); }
-	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ return i8255a_r(devtag_get_device(space->machine, "ppi8255_0"), (offset-0x1a00) & 3); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(devtag_get_device(space->machine, "ay"), 0); }
-//  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { return z80dma_r(devtag_get_device(space->machine, "dma"), 0); }
-//  else if(offset >= 0x1f90 && offset <= 0x1f91)   { return z80sio_c_r(devtag_get_device(space->machine, "sio"), (offset-0x1f90) & 1); }
-//  else if(offset >= 0x1f92 && offset <= 0x1f93)   { return z80sio_d_r(devtag_get_device(space->machine, "sio"), (offset-0x1f92) & 1); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x1fa0); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x1fa8); }
+	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ return i8255a_r(space->machine->device("ppi8255_0"), (offset-0x1a00) & 3); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(space->machine->device("ay"), 0); }
+//  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { return z80dma_r(space->machine->device("dma"), 0); }
+//  else if(offset >= 0x1f90 && offset <= 0x1f91)   { return z80sio_c_r(space->machine->device("sio"), (offset-0x1f90) & 1); }
+//  else if(offset >= 0x1f92 && offset <= 0x1f93)   { return z80sio_d_r(space->machine->device("sio"), (offset-0x1f92) & 1); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return z80ctc_r(space->machine->device("ctc"), offset-0x1fa0); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return z80ctc_r(space->machine->device("ctc"), offset-0x1fa8); }
 //  else if(offset >= 0x1fd0 && offset <= 0x1fdf)   { return x1_scrn_r(space,offset-0x1fd0); }
 //  else if(offset == 0x1fe0)                       { return x1_blackclip_r(space,0); }
 	else if(offset >= 0x2000 && offset <= 0x2fff)	{ return x1_colorram[offset-0x2000]; }
@@ -1343,7 +1340,7 @@ static READ8_HANDLER( x1_io_r )
 static WRITE8_HANDLER( x1_io_w )
 {
 	if(io_bank_mode == 1)                       	{ x1_ex_gfxram_w(space, offset, data); }
-//  else if(offset >= 0x0704 && offset <= 0x0707)   { z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x0704,data); }
+//  else if(offset >= 0x0704 && offset <= 0x0707)   { z80ctc_w(space->machine->device("ctc"), offset-0x0704,data); }
 //  else if(offset >= 0x0c00 && offset <= 0x0cff)   { x1_rs232c_w(space->machine, 0, data); }
 	else if(offset >= 0x0e00 && offset <= 0x0e02)	{ x1_rom_w(space, offset-0xe00,data); }
 //  else if(offset >= 0x0e80 && offset <= 0x0e82)   { x1_kanji_w(space->machine, offset-0xe80,data); }
@@ -1355,16 +1352,16 @@ static WRITE8_HANDLER( x1_io_w )
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ x1_pcg_w(space, offset-0x1400,data); }
 	else if(offset == 0x1800 || offset == 0x1801)	{ x1_6845_w(space, offset-0x1800, data); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ sub_io_w(space, 0,data); }
-	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ i8255a_w(devtag_get_device(space->machine, "ppi8255_0"), (offset-0x1a00) & 3,data); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(devtag_get_device(space->machine, "ay"), 0,data); }
-	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(devtag_get_device(space->machine, "ay"), 0,data); }
+	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ i8255a_w(space->machine->device("ppi8255_0"), (offset-0x1a00) & 3,data); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(space->machine->device("ay"), 0,data); }
+	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(space->machine->device("ay"), 0,data); }
 	else if(offset >= 0x1d00 && offset <= 0x1dff)	{ rom_bank_1_w(space,0,data); }
 	else if(offset >= 0x1e00 && offset <= 0x1eff)	{ rom_bank_0_w(space,0,data); }
-//  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { z80dma_w(devtag_get_device(space->machine, "dma"), 0,data); }
-//  else if(offset >= 0x1f90 && offset <= 0x1f91)   { z80sio_c_w(devtag_get_device(space->machine, "sio"), (offset-0x1f90) & 1,data); }
-//  else if(offset >= 0x1f92 && offset <= 0x1f93)   { z80sio_d_w(devtag_get_device(space->machine, "sio"), (offset-0x1f92) & 1,data); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x1fa0,data); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x1fa8,data); }
+//  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { z80dma_w(space->machine->device("dma"), 0,data); }
+//  else if(offset >= 0x1f90 && offset <= 0x1f91)   { z80sio_c_w(space->machine->device("sio"), (offset-0x1f90) & 1,data); }
+//  else if(offset >= 0x1f92 && offset <= 0x1f93)   { z80sio_d_w(space->machine->device("sio"), (offset-0x1f92) & 1,data); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ z80ctc_w(space->machine->device("ctc"), offset-0x1fa0,data); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ z80ctc_w(space->machine->device("ctc"), offset-0x1fa8,data); }
 //  else if(offset == 0x1fb0)                       { x1turbo_pal_w(space,0,data); }
 //  else if(offset >= 0x1fb9 && offset <= 0x1fbf)   { x1turbo_txpal_w(space,offset-0x1fb9,data); }
 //  else if(offset == 0x1fc0)                       { x1turbo_txdisp_w(space,0,data); }
@@ -1384,21 +1381,21 @@ static READ8_HANDLER( x1turbo_io_r )
 {
 	io_bank_mode = 0; //any read disables the extended mode.
 
-	if(offset == 0x0700)							{ return (ym2151_r(devtag_get_device(space->machine, "ym"), offset-0x0700) & 0x7f) | (input_port_read(space->machine, "SOUND_SW") & 0x80); }
-	else if(offset == 0x0701)		                { return ym2151_r(devtag_get_device(space->machine, "ym"), offset-0x0700); }
-	else if(offset >= 0x0704 && offset <= 0x0707)   { return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x0704); }
+	if(offset == 0x0700)							{ return (ym2151_r(space->machine->device("ym"), offset-0x0700) & 0x7f) | (input_port_read(space->machine, "SOUND_SW") & 0x80); }
+	else if(offset == 0x0701)		                { return ym2151_r(space->machine->device("ym"), offset-0x0700); }
+	else if(offset >= 0x0704 && offset <= 0x0707)   { return z80ctc_r(space->machine->device("ctc"), offset-0x0704); }
 	else if(offset == 0x0e03)                   	{ return x1_rom_r(space, 0); }
 	else if(offset >= 0x0e80 && offset <= 0x0e83)	{ return x1_kanji_r(space, offset-0xe80); }
 	else if(offset >= 0x0ff8 && offset <= 0x0fff)	{ return x1_fdc_r(space, offset-0xff8); }
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ return x1_pcg_r(space, offset-0x1400); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ return sub_io_r(space, 0); }
-	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ return i8255a_r(devtag_get_device(space->machine, "ppi8255_0"), (offset-0x1a00) & 3); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(devtag_get_device(space->machine, "ay"), 0); }
-	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ return z80dma_r(devtag_get_device(space->machine, "dma"), 0); }
-	else if(offset >= 0x1f90 && offset <= 0x1f91)	{ return z80sio_c_r(devtag_get_device(space->machine, "sio"), (offset-0x1f90) & 1); }
-	else if(offset >= 0x1f92 && offset <= 0x1f93)	{ return z80sio_d_r(devtag_get_device(space->machine, "sio"), (offset-0x1f92) & 1); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x1fa0); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x1fa8); }
+	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ return i8255a_r(space->machine->device("ppi8255_0"), (offset-0x1a00) & 3); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(space->machine->device("ay"), 0); }
+	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ return z80dma_r(space->machine->device("dma"), 0); }
+	else if(offset >= 0x1f90 && offset <= 0x1f91)	{ return z80sio_c_r(space->machine->device("sio"), (offset-0x1f90) & 1); }
+	else if(offset >= 0x1f92 && offset <= 0x1f93)	{ return z80sio_d_r(space->machine->device("sio"), (offset-0x1f92) & 1); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return z80ctc_r(space->machine->device("ctc"), offset-0x1fa0); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return z80ctc_r(space->machine->device("ctc"), offset-0x1fa8); }
 	else if(offset == 0x1fb0)						{ return x1turbo_pal_r(space,0); }
 	else if(offset >= 0x1fb8 && offset <= 0x1fbf)	{ return x1turbo_txpal_r(space,offset-0x1fb8); }
 	else if(offset == 0x1fc0)						{ return x1turbo_txdisp_r(space,0); }
@@ -1420,8 +1417,8 @@ static READ8_HANDLER( x1turbo_io_r )
 static WRITE8_HANDLER( x1turbo_io_w )
 {
 	if(io_bank_mode == 1)                       	{ x1_ex_gfxram_w(space, offset, data); }
-	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(devtag_get_device(space->machine, "ym"), offset-0x0700,data); }
-	else if(offset >= 0x0704 && offset <= 0x0707)	{ z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x0704,data); }
+	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(space->machine->device("ym"), offset-0x0700,data); }
+	else if(offset >= 0x0704 && offset <= 0x0707)	{ z80ctc_w(space->machine->device("ctc"), offset-0x0704,data); }
 //  else if(offset >= 0x0c00 && offset <= 0x0cff)   { x1_rs232c_w(space->machine, 0, data); }
 	else if(offset >= 0x0e00 && offset <= 0x0e02)	{ x1_rom_w(space, offset-0xe00,data); }
 	else if(offset >= 0x0e80 && offset <= 0x0e83)	{ x1_kanji_w(space, offset-0xe80,data); }
@@ -1433,16 +1430,16 @@ static WRITE8_HANDLER( x1turbo_io_w )
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ x1_pcg_w(space, offset-0x1400,data); }
 	else if(offset == 0x1800 || offset == 0x1801)	{ x1_6845_w(space, offset-0x1800, data); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ sub_io_w(space, 0,data); }
-	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ i8255a_w(devtag_get_device(space->machine, "ppi8255_0"), (offset-0x1a00) & 3,data); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(devtag_get_device(space->machine, "ay"), 0,data); }
-	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(devtag_get_device(space->machine, "ay"), 0,data); }
+	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ i8255a_w(space->machine->device("ppi8255_0"), (offset-0x1a00) & 3,data); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(space->machine->device("ay"), 0,data); }
+	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(space->machine->device("ay"), 0,data); }
 	else if(offset >= 0x1d00 && offset <= 0x1dff)	{ rom_bank_1_w(space,0,data); }
 	else if(offset >= 0x1e00 && offset <= 0x1eff)	{ rom_bank_0_w(space,0,data); }
-	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ z80dma_w(devtag_get_device(space->machine, "dma"), 0,data); }
-	else if(offset >= 0x1f90 && offset <= 0x1f91)	{ z80sio_c_w(devtag_get_device(space->machine, "sio"), (offset-0x1f90) & 1,data); }
-	else if(offset >= 0x1f92 && offset <= 0x1f93)	{ z80sio_d_w(devtag_get_device(space->machine, "sio"), (offset-0x1f92) & 1,data); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x1fa0,data); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x1fa8,data); }
+	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ z80dma_w(space->machine->device("dma"), 0,data); }
+	else if(offset >= 0x1f90 && offset <= 0x1f91)	{ z80sio_c_w(space->machine->device("sio"), (offset-0x1f90) & 1,data); }
+	else if(offset >= 0x1f92 && offset <= 0x1f93)	{ z80sio_d_w(space->machine->device("sio"), (offset-0x1f92) & 1,data); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ z80ctc_w(space->machine->device("ctc"), offset-0x1fa0,data); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ z80ctc_w(space->machine->device("ctc"), offset-0x1fa8,data); }
 	else if(offset == 0x1fb0)						{ x1turbo_pal_w(space,0,data); }
 	else if(offset >= 0x1fb8 && offset <= 0x1fbf)	{ x1turbo_txpal_w(space,offset-0x1fb8,data); }
 	else if(offset == 0x1fc0)						{ x1turbo_txdisp_w(space,0,data); }
@@ -1502,13 +1499,13 @@ static READ8_DEVICE_HANDLER( x1_portb_r )
     ---- ---x "cmt test" (active low)
     */
 	UINT8 dat = 0;
-	vdisp = (video_screen_get_vpos(device->machine->primary_screen) < 200) ? 0x80 : 0x00;
+	vdisp = (device->machine->primary_screen->vpos() < 200) ? 0x80 : 0x00;
 	dat = (input_port_read(device->machine, "SYSTEM") & 0x10) | sub_obf | vsync | vdisp;
 
-	if(cassette_input(devtag_get_device(device->machine,"cass")) > 0.03)
+	if(cassette_input(device->machine->device("cass")) > 0.03)
 		dat |= 0x02;
 
-//  if(cassette_get_state(devtag_get_device(device->machine,"cass")) & CASSETTE_MOTOR_DISABLED)
+//  if(cassette_get_state(device->machine->device("cass")) & CASSETTE_MOTOR_DISABLED)
 //      dat &= ~0x02;  // is zero if not playing
 
 	// CMT test bit is set low when the CMT Stop command is issued, and becomes
@@ -1555,7 +1552,7 @@ static WRITE8_DEVICE_HANDLER( x1_portc_w )
 	io_switch = data & 0x20;
 	io_sys = data & 0xff;
 
-	cassette_output(devtag_get_device(device->machine,"cass"),(data & 0x01) ? +1.0 : -1.0);
+	cassette_output(device->machine->device("cass"),(data & 0x01) ? +1.0 : -1.0);
 }
 
 static I8255A_INTERFACE( ppi8255_intf )
@@ -1575,7 +1572,7 @@ static WRITE_LINE_DEVICE_HANDLER(vsync_changed)
 	vsync = (state & 1) ? 0x04 : 0x00;
 	if(state & 1 && pcg_reset_occurred == 0) { pcg_reset = pcg_reset_occurred = 1; }
 	if(!(state & 1))                         { pcg_reset_occurred = 0; }
-	//printf("%d %02x\n",video_screen_get_vpos(device->machine->primary_screen),vsync);
+	//printf("%d %02x\n",device->machine->primary_screen->vpos(),vsync);
 }
 
 static const mc6845_interface mc6845_intf =
@@ -1716,8 +1713,8 @@ static INPUT_PORTS_START( x1 )
 	PORT_BIT(0x01000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x18 etb
 	PORT_BIT(0x02000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x19 cancel
 	PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x1a em
-	PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x1b sub
-	PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("ESC") PORT_CODE(KEYCODE_TILDE) PORT_CHAR(27)
+	PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("ESC") PORT_CHAR(27)
+	PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x1c ???
 	PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x1d fs
 	PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x1e gs
 	PORT_BIT(0x80000000,IP_ACTIVE_HIGH,IPT_UNUSED) //0x1f us
@@ -1791,6 +1788,13 @@ static INPUT_PORTS_START( x1 )
 	PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("^") PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('^')
 	PORT_BIT(0x80000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("_")
 
+	PORT_START("f_keys")
+	PORT_BIT(0x00000001,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF1") PORT_CODE(KEYCODE_F1)
+	PORT_BIT(0x00000002,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF2") PORT_CODE(KEYCODE_F2)
+	PORT_BIT(0x00000004,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF3") PORT_CODE(KEYCODE_F3)
+	PORT_BIT(0x00000008,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF4") PORT_CODE(KEYCODE_F4)
+	PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF5") PORT_CODE(KEYCODE_F5)
+
 	PORT_START("tenkey")
 	PORT_BIT(0x00000001,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 0") PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT(0x00000002,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 1") PORT_CODE(KEYCODE_1_PAD)
@@ -1850,11 +1854,6 @@ static INPUT_PORTS_START( x1 )
 	PORT_BIT(0x00010000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Down") PORT_CODE(KEYCODE_DOWN)
 	PORT_BIT(0x00020000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Right") PORT_CODE(KEYCODE_RIGHT)
 	PORT_BIT(0x00040000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("BREAK") PORT_CODE(KEYCODE_ESC)
-	PORT_BIT(0x00080000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF1") PORT_CODE(KEYCODE_F1)
-	PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF2") PORT_CODE(KEYCODE_F2)
-	PORT_BIT(0x00200000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF3") PORT_CODE(KEYCODE_F3)
-	PORT_BIT(0x00400000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF4") PORT_CODE(KEYCODE_F4)
-	PORT_BIT(0x00800000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF5") PORT_CODE(KEYCODE_F5)
 	PORT_BIT(0x01000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF6") PORT_CODE(KEYCODE_F6)
 	PORT_BIT(0x02000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF7") PORT_CODE(KEYCODE_F7)
 	PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF8") PORT_CODE(KEYCODE_F8)
@@ -1947,16 +1946,16 @@ static const z80sio_interface sio_intf =
 	0					/* receive handler */
 };
 
-static const z80_daisy_chain x1_daisy[] =
+static const z80_daisy_config x1_daisy[] =
 {
-	{ "x1kb" },
+    { "x1kb" },
 	{ "ctc" },
 	{ NULL }
 };
 
-static const z80_daisy_chain x1turbo_daisy[] =
+static const z80_daisy_config x1turbo_daisy[] =
 {
-	{ "x1kb" },
+    { "x1kb" },
 	{ "ctc" },
 	{ "dma" },
 //  { "sio" },
@@ -1991,7 +1990,8 @@ static const cassette_config x1_cassette_config =
 {
 	x1_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	"x1_cass"
 };
 
 
@@ -2012,16 +2012,16 @@ static IRQ_CALLBACK(x1_irq_callback)
     if(ctc_irq_flag != 0)
     {
         ctc_irq_flag = 0;
-        if(key_irq_flag == 0)  // if no other devices are pulling the IRQ line high
+        if(x1_key_irq_flag == 0)  // if no other devices are pulling the IRQ line high
             cpu_set_input_line(device, 0, CLEAR_LINE);
         return x1_irq_vector;
     }
-    if(key_irq_flag != 0)
+    if(x1_key_irq_flag != 0)
     {
-        key_irq_flag = 0;
+        x1_key_irq_flag = 0;
         if(ctc_irq_flag == 0)  // if no other devices are pulling the IRQ line high
             cpu_set_input_line(device, 0, CLEAR_LINE);
-        return key_irq_vector;
+        return x1_key_irq_vector;
     }
     return x1_irq_vector;
 }
@@ -2034,23 +2034,52 @@ static TIMER_CALLBACK(keyboard_callback)
 	UINT32 key2 = input_port_read(machine,"key2");
 	UINT32 key3 = input_port_read(machine,"key3");
 	UINT32 key4 = input_port_read(machine,"tenkey");
-	static UINT32 old_key1,old_key2,old_key3,old_key4;
+	UINT32 f_key = input_port_read(machine, "f_keys");
+	static UINT32 old_key1,old_key2,old_key3,old_key4,old_fkey;
 
-	if(key_irq_vector)
+	if(x1_key_irq_vector)
 	{
-		if((key1 != old_key1) || (key2 != old_key2) || (key3 != old_key3) || (key4 != old_key4))
+		if((key1 != old_key1) || (key2 != old_key2) || (key3 != old_key3) || (key4 != old_key4) || (f_key != old_fkey))
 		{
 			// generate keyboard IRQ
 			sub_io_w(space,0,0xe6);
-			x1_irq_vector = key_irq_vector;
-			key_irq_flag = 1;
+			x1_irq_vector = x1_key_irq_vector;
+			x1_key_irq_flag = 1;
 			cputag_set_input_line(machine,"maincpu",0,ASSERT_LINE);
 			old_key1 = key1;
 			old_key2 = key2;
 			old_key3 = key3;
 			old_key4 = key4;
+			old_fkey = f_key;
 		}
 	}
+}
+
+static TIMER_CALLBACK(x1_rtc_increment)
+{
+	static const UINT8 dpm[12] = { 0x31, 0x28, 0x31, 0x30, 0x31, 0x30, 0x31, 0x31, 0x30, 0x31, 0x30, 0x31 };
+
+	x1_rtc.sec++;
+
+	if((x1_rtc.sec & 0x0f) >= 0x0a) 				{ x1_rtc.sec+=0x10; x1_rtc.sec&=0xf0; }
+	if((x1_rtc.sec & 0xf0) >= 0x60) 				{ x1_rtc.min++; x1_rtc.sec = 0; }
+	if((x1_rtc.min & 0x0f) >= 0x0a) 				{ x1_rtc.min+=0x10; x1_rtc.min&=0xf0; }
+	if((x1_rtc.min & 0xf0) >= 0x60) 				{ x1_rtc.hour++; x1_rtc.min = 0; }
+	if((x1_rtc.hour & 0x0f) >= 0x0a)				{ x1_rtc.hour+=0x10; x1_rtc.hour&=0xf0; }
+	if((x1_rtc.hour & 0xff) >= 0x24)				{ x1_rtc.day++; x1_rtc.wday++; x1_rtc.hour = 0; }
+	if((x1_rtc.wday & 0x0f) >= 0x07)				{ x1_rtc.wday = 0; }
+	if((x1_rtc.day & 0x0f) >= 0x0a)					{ x1_rtc.day+=0x10; x1_rtc.day&=0xf0; }
+	/* FIXME: very crude leap year support (i.e. it treats the RTC to be with a 2000-2099 timeline), dunno how the real x1 supports this,
+       maybe it just have a 1980-1999 timeline since year 0x00 shows as a XX on display */
+	if(((x1_rtc.year % 4) == 0) && x1_rtc.month == 2)
+	{
+		if((x1_rtc.day & 0xff) >= dpm[x1_rtc.month-1]+1+1)
+			{ x1_rtc.month++; x1_rtc.day = 0x01; }
+	}
+	else if((x1_rtc.day & 0xff) >= dpm[x1_rtc.month-1]+1){ x1_rtc.month++; x1_rtc.day = 0x01; }
+	if(x1_rtc.month > 12)							{ x1_rtc.year++;  x1_rtc.month = 0x01; }
+	if((x1_rtc.year & 0x0f) >= 0x0a)				{ x1_rtc.year+=0x10; x1_rtc.year&=0xf0; }
+	if((x1_rtc.year & 0xf0) >= 0xa0)				{ x1_rtc.year = 0; } //roll over
 }
 
 static MACHINE_RESET( x1 )
@@ -2079,13 +2108,13 @@ static MACHINE_RESET( x1 )
 	io_bank_mode = 0;
 	pcg_index[0] = pcg_index[1] = pcg_index[2] = 0;
 
-	//cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), x1_irq_callback);
+	//cpu_set_irq_callback(machine->device("maincpu"), x1_irq_callback);
 
 	cmt_current_cmd = 0;
 	cmt_test = 0;
-	cassette_change_state(devtag_get_device(machine, "cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+	cassette_change_state(machine->device("cass" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 
-	key_irq_flag = ctc_irq_flag = 0;
+	x1_key_irq_flag = ctc_irq_flag = 0;
 
 	/* Reinitialize palette here if there's a soft reset for the Turbo PAL stuff*/
 	for(i=0;i<8;i++)
@@ -2093,13 +2122,32 @@ static MACHINE_RESET( x1 )
 		palette_set_color_rgb(machine, i+0x000, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
 		palette_set_color_rgb(machine, i+0x100, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
 	}
+
+	timer_adjust_periodic(x1_rtc_timer, attotime_zero, 0, ATTOTIME_IN_SEC(1));
 }
 
 static MACHINE_START( x1 )
 {
 	timer_pulse(machine, ATTOTIME_IN_HZ(240), NULL, 0, keyboard_callback);
 	timer_pulse(machine, ATTOTIME_IN_HZ(16), NULL, 0, cmt_wind_timer);
+
+	/* set up RTC */
+	{
+		system_time systime;
+		machine->base_datetime(systime);
+
+		x1_rtc.day = ((systime.local_time.mday / 10)<<4) | ((systime.local_time.mday % 10) & 0xf);
+		x1_rtc.month = ((systime.local_time.month+1));
+		x1_rtc.wday = ((systime.local_time.weekday % 10) & 0xf);
+		x1_rtc.year = (((systime.local_time.year % 100)/10)<<4) | ((systime.local_time.year % 10) & 0xf);
+		x1_rtc.hour = ((systime.local_time.hour / 10)<<4) | ((systime.local_time.hour % 10) & 0xf);
+		x1_rtc.min = ((systime.local_time.minute / 10)<<4) | ((systime.local_time.minute % 10) & 0xf);
+		x1_rtc.sec = ((systime.local_time.second / 10)<<4) | ((systime.local_time.second % 10) & 0xf);
+
+		x1_rtc_timer = timer_alloc(machine, x1_rtc_increment, 0);
+	}
 }
+
 static PALETTE_INIT(x1)
 {
 	int i;
@@ -2141,9 +2189,9 @@ static const floppy_config x1_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_40,
+	FLOPPY_STANDARD_5_25_DSDD_40,
 	FLOPPY_OPTIONS_NAME(x1),
-	DO_NOT_KEEP_GEOMETRY
+	"x1_flop"
 };
 
 static MACHINE_DRIVER_START( x1 )
@@ -2156,7 +2204,7 @@ static MACHINE_DRIVER_START( x1 )
 
 	MDRV_Z80CTC_ADD( "ctc", MAIN_CLOCK/4 , ctc_intf )
 
-	MDRV_DEVICE_ADD("x1kb", DEVICE_GET_INFO_NAME(x1_keyboard_getinfo), 0)
+	MDRV_DEVICE_ADD("x1kb", X1_KEYBOARD, 0)
 
 	MDRV_I8255A_ADD( "ppi8255_0", ppi8255_intf )
 
@@ -2195,8 +2243,11 @@ static MACHINE_DRIVER_START( x1 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	MDRV_CASSETTE_ADD("cass",x1_cassette_config)
+	MDRV_SOFTWARE_LIST_ADD("cass_list","x1_cass")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(x1_floppy_config)
+	MDRV_SOFTWARE_LIST_ADD("flop_list","x1_flop")
+
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( x1turbo )

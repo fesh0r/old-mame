@@ -1889,8 +1889,8 @@ void m6847_init(running_machine *machine, const m6847_config *cfg)
 	/* choose CPU clock, if specified */
 	if (cfg->cpu0_timing_factor > 0)
 	{
-		cpu0_clock_period = period * cfg->cpu0_timing_factor * GROSS_FACTOR;
-		cpu_set_clock(machine->firstcpu, ATTOSECONDS_PER_SECOND / cpu0_clock_period);
+		cpu0_clock_period = period * 1 * GROSS_FACTOR;
+		machine->firstcpu->set_unscaled_clock( ATTOSECONDS_PER_SECOND / cpu0_clock_period);
 	}
 
 	/* calculate timing */

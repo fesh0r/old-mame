@@ -22,7 +22,7 @@
 
 #include "emu.h"
 #include "ti99_4x.h"
-#include "99_peb.h"
+#include "devices/ti99_peb.h"
 #include "tms9902.h"
 #include "994x_ser.h"
 
@@ -65,10 +65,9 @@ struct _card_t
 INLINE pio_t *get_safe_token_pio(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
-	assert(device->type == TI99_4_PIO);
+	assert(device->type() == TI99_4_PIO);
 
-	return (pio_t *)device->token;
+	return (pio_t *)downcast<legacy_device_base *>(device)->token();
 }
 
 static const ti99_peb_card_handlers_t rs232_handlers =
@@ -86,16 +85,16 @@ static DEVICE_IMAGE_LOAD( ti99_4_pio )
 {
 	pio_t *pio = get_safe_token_pio(image);
 	/* tell whether the image is writable */
-	pio->pio_readable = ! image_has_been_created(image);
+	pio->pio_readable = ! image.has_been_created();
 	/* tell whether the image is writable */
-	pio->pio_writable = image_is_writable(image);
+	pio->pio_writable = image.is_writable();
 
 	if (pio->pio_write && pio->pio_writable)
 		pio->pio_handshakein = 0;	/* receiver ready */
 	else
 		pio->pio_handshakein = 1;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /*
@@ -132,11 +131,11 @@ static DEVICE_IMAGE_LOAD( ti99_4_rs232 )
 {
 	running_device *tms9902 = NULL;
 
-	if (strcmp(image->tag(), "rs232:port0")) {
-		tms9902 = devtag_get_device(image->machine, "rs232:tms9902_0");
+	if (strcmp(image.device().tag(), "rs232:port0")) {
+		tms9902 = image.device().machine->device("rs232:tms9902_0");
 	}
-	if (strcmp(image->tag(), "rs232:port1")) {
-		tms9902 = devtag_get_device(image->machine, "rs232:tms9902_1");
+	if (strcmp(image.device().tag(), "rs232:port1")) {
+		tms9902 = image.device().machine->device("rs232:tms9902_1");
 	}
 
 	if (image)
@@ -150,7 +149,7 @@ static DEVICE_IMAGE_LOAD( ti99_4_rs232 )
 		tms9902_set_dsr(tms9902, 0);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /*
@@ -174,8 +173,8 @@ static DEVICE_START( ti99_4_rs232 )
 static DEVICE_RESET( ti99_4_rs232 )
 {
 	rs232_DSR = memory_region(device->machine, region_dsr) + offset_rs232_dsr;
-
-	ti99_peb_set_card_handlers(0x1300, & rs232_handlers);
+	running_device *box = device->machine->device("per_exp_box");
+	ti99_peb_set_card_handlers(box, 0x1300, & rs232_handlers);
 }
 
 static READ8_DEVICE_HANDLER(ti99_4_pio_r)
@@ -214,6 +213,7 @@ static WRITE8_DEVICE_HANDLER(ti99_4_pio_buf_w)
 static WRITE8_DEVICE_HANDLER(ti99_4_pio_w)
 {
 	pio_t *pio = get_safe_token_pio(device);
+	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
 	switch (offset & 7)
 	{
 		case 0:
@@ -235,7 +235,7 @@ static WRITE8_DEVICE_HANDLER(ti99_4_pio_w)
 					{	/* write data strobe */
 						/* write data and acknowledge */
 						UINT8 buf = pio->pio_out_buffer;
-						if (image_fwrite(device, &buf, 1))
+						if (image->fwrite(&buf, 1))
 							pio->pio_handshakein = 1;
 					}
 					else
@@ -251,7 +251,7 @@ static WRITE8_DEVICE_HANDLER(ti99_4_pio_w)
 					{	/* receiver ready */
 						/* send data and strobe */
 						UINT8 buf;
-						if (image_fread(device, &buf, 1))
+						if (image->fread(&buf, 1))
 							pio->pio_in_buffer = buf;
 						pio->pio_handshakein = 0;
 					}
@@ -303,7 +303,7 @@ static int rs232_cru_r(running_machine *machine, int offset)
 		switch (offset)
 		{
 		case 0:
-			reply = ti99_4_pio_r(devtag_get_device(machine, "rs232:pio"), offset);
+			reply = ti99_4_pio_r(machine->device("rs232:pio"), offset);
 			break;
 
 		default:
@@ -314,12 +314,12 @@ static int rs232_cru_r(running_machine *machine, int offset)
 
 	case 1:
 		/* first 9902 */
-		reply = tms9902_cru_r(devtag_get_device(machine, "rs232:tms9902_0"), offset);
+		reply = tms9902_cru_r(machine->device("rs232:tms9902_0"), offset);
 		break;
 
 	case 2:
 		/* second 9902 */
-		reply = tms9902_cru_r(devtag_get_device(machine, "rs232:tms9902_1"), offset);
+		reply = tms9902_cru_r(machine->device("rs232:tms9902_1"), offset);
 		break;
 
 	default:
@@ -340,17 +340,17 @@ static void rs232_cru_w(running_machine *machine, int offset, int data)
 	{
 	case 0:
 		/* custom buffer */
-		ti99_4_pio_w(devtag_get_device(machine, "rs232:pio"), offset, data);
+		ti99_4_pio_w(machine->device("rs232:pio"), offset, data);
 		break;
 
 	case 1:
 		/* first 9902 */
-		tms9902_cru_w(devtag_get_device(machine, "rs232:tms9902_0"), offset, data);
+		tms9902_cru_w(machine->device("rs232:tms9902_0"), offset, data);
 		break;
 
 	case 2:
 		/* second 9902 */
-		tms9902_cru_w(devtag_get_device(machine, "rs232:tms9902_1"), offset, data);
+		tms9902_cru_w(machine->device("rs232:tms9902_1"), offset, data);
 		break;
 
 	default:
@@ -375,7 +375,7 @@ static  READ8_HANDLER(rs232_mem_r)
 	else
 	{
 		/* PIO */
-		reply = ti99_4_pio_buf_r(devtag_get_device(space->machine, "rs232:pio"), offset);
+		reply = ti99_4_pio_buf_r(space->machine->device("rs232:pio"), offset);
 	}
 
 	return reply;
@@ -389,7 +389,7 @@ static WRITE8_HANDLER(rs232_mem_w)
 	if (offset >= 0x1000)
 	{
 		/* PIO */
-		ti99_4_pio_buf_w(devtag_get_device(space->machine, "rs232:pio"), offset, data);
+		ti99_4_pio_buf_w(space->machine->device("rs232:pio"), offset, data);
 	}
 	else
 	{
@@ -402,29 +402,31 @@ static WRITE8_HANDLER(rs232_mem_w)
 */
 static TMS9902_INT_CALLBACK( int_callback_0 )
 {
-	ti99_peb_set_ila_bit(device->machine, inta_rs232_1_bit, INT);
+	running_device *box = device->machine->device("per_exp_box");
+	ti99_peb_set_ila_bit(box, inta_rs232_1_bit, INT);
 }
 static TMS9902_INT_CALLBACK( int_callback_1 )
 {
-	ti99_peb_set_ila_bit(device->machine, inta_rs232_2_bit, INT);
+	running_device *box = device->machine->device("per_exp_box");
+	ti99_peb_set_ila_bit(box, inta_rs232_2_bit, INT);
 }
 
 static TMS9902_XMIT_CALLBACK( xmit_callback_0 )
 {
 	UINT8 buf = data;
-	running_device *rs232_fp = devtag_get_device(device->machine, "rs232:port0");
+	device_image_interface *rs232_fp = dynamic_cast<device_image_interface *>(device->machine->device("rs232:port0"));
 
 	if (rs232_fp)
-		image_fwrite(rs232_fp, &buf, 1);
+		rs232_fp->fwrite(&buf, 1);
 }
 
 static TMS9902_XMIT_CALLBACK( xmit_callback_1 )
 {
 	UINT8 buf = data;
-	running_device *rs232_fp = devtag_get_device(device->machine, "rs232:port1");
+	device_image_interface *rs232_fp = dynamic_cast<device_image_interface *>(device->machine->device("rs232:port1"));
 
 	if (rs232_fp)
-		image_fwrite(rs232_fp, &buf, 1);
+		rs232_fp->fwrite(&buf, 1);
 }
 static const tms9902_interface tms9902_params_0 =
 {
@@ -444,11 +446,10 @@ static const tms9902_interface tms9902_params_1 =
 	xmit_callback_1			/* called when a character is transmitted */
 };
 
-static DEVICE_GET_INFO( ti99_4_rs232 )
+DEVICE_GET_INFO( ti99_4_rs232 )
 {
 	switch ( state )
 	{
-		case DEVINFO_INT_CLASS:	                    info->i = DEVICE_CLASS_PERIPHERAL;                         break;
 		case DEVINFO_INT_TOKEN_BYTES:				info->i = sizeof(card_t);							break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = 0;								break;
 		case DEVINFO_INT_IMAGE_TYPE:	            info->i = IO_SERIAL;                                      break;
@@ -469,9 +470,8 @@ static DEVICE_GET_INFO( ti99_4_rs232 )
 	}
 }
 
-static DEVICE_GET_INFO( ti99_4_rs232 );
-
-#define TI99_4_RS232	DEVICE_GET_INFO_NAME(ti99_4_rs232)
+DECLARE_LEGACY_IMAGE_DEVICE(TI99_4_RS232, ti99_4_rs232);
+DEFINE_LEGACY_IMAGE_DEVICE(TI99_4_RS232, ti99_4_rs232);
 
 #define MDRV_TI99_4_RS232_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, TI99_4_RS232, 0)
@@ -481,7 +481,6 @@ DEVICE_GET_INFO( ti99_4_pio )
 {
 	switch ( state )
 	{
-		case DEVINFO_INT_CLASS:	                    info->i = DEVICE_CLASS_PERIPHERAL;                         break;
 		case DEVINFO_INT_TOKEN_BYTES:				info->i = sizeof(pio_t);							break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = 0;								break;
 		case DEVINFO_INT_IMAGE_TYPE:	            info->i = IO_PARALLEL;                                      break;
@@ -501,6 +500,9 @@ DEVICE_GET_INFO( ti99_4_pio )
 		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 		break;
 	}
 }
+
+
+DEFINE_LEGACY_IMAGE_DEVICE(TI99_4_PIO, ti99_4_pio);
 
 static MACHINE_DRIVER_START( ti99_4_rs232 )
 	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
@@ -522,7 +524,6 @@ DEVICE_GET_INFO( ti99_4_rs232_card )
 {
 	switch ( state )
 	{
-		case DEVINFO_INT_CLASS:	                    info->i = DEVICE_CLASS_PERIPHERAL;                         break;
 		case DEVINFO_INT_TOKEN_BYTES:				info->i = sizeof(card_t);							break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = 0;								break;
 		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( ti99_4_rs232_card );              break;
@@ -536,3 +537,5 @@ DEVICE_GET_INFO( ti99_4_rs232_card )
 		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 		break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(TI99_4_RS232_CARD, ti99_4_rs232_card);

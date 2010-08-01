@@ -112,7 +112,7 @@ Notes:
 ******************************************************************************/
 
 #include "emu.h"
-#include "utils.h"
+#include "imageutl.h"
 #include "cpu/z80/z80.h"
 #include "video/m6847.h"
 #include "machine/ctronics.h"
@@ -191,14 +191,14 @@ public:
 
 static SNAPSHOT_LOAD( vtech1 )
 {
-	vtech1_state *vtech1 = (vtech1_state *)image->machine->driver_data;
-	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	vtech1_state *vtech1 = (vtech1_state *)image.device().machine->driver_data;
+	const address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 i, header[24];
 	UINT16 start, end, size;
 	char pgmname[18];
 
 	/* get the header */
-	image_fread(image, &header, sizeof(header));
+	image.fread( &header, sizeof(header));
 	for (i = 0; i < 16; i++) pgmname[i] = header[i+4];
 	pgmname[16] = '\0';
 
@@ -212,13 +212,13 @@ static SNAPSHOT_LOAD( vtech1 )
 	{
 		char message[256];
 		snprintf(message, ARRAY_LENGTH(message), "SNAPLOAD: %s\nInsufficient RAM - need %04X",pgmname,size);
-		image_seterror(image, IMAGE_ERROR_INVALIDIMAGE, message);
-		image_message(image, "SNAPLOAD: %s\nInsufficient RAM - need %04X",pgmname,size);
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_INVALIDIMAGE, message);
+		image.message("SNAPLOAD: %s\nInsufficient RAM - need %04X",pgmname,size);
+		return IMAGE_INIT_FAIL;
 	}
 
 	/* write it to ram */
-	image_fread(image, &vtech1->ram[start - 0x7800], size);
+	image.fread( &vtech1->ram[start - 0x7800], size);
 
 	/* patch variables depending on snapshot type */
 	switch (header[21])
@@ -232,28 +232,28 @@ static SNAPSHOT_LOAD( vtech1 )
 		memory_write_byte(space, 0x78fc, end / 256);
 		memory_write_byte(space, 0x78fd, end % 256); /* start free mem, end variable table */
 		memory_write_byte(space, 0x78fe, end / 256);
-		image_message(image, " %s (B)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
+		image.message(" %s (B)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
 		break;
 
 	case VZ_MCODE:		/* 0xF1 */
 		memory_write_byte(space, 0x788e, start % 256); /* usr subroutine address */
 		memory_write_byte(space, 0x788f, start / 256);
-		image_message(image, " %s (M)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
-		cpu_set_reg(devtag_get_device(image->machine, "maincpu"), REG_GENPC, start);				/* start program */
+		image.message(" %s (M)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
+		cpu_set_reg(image.device().machine->device("maincpu"), STATE_GENPC, start);				/* start program */
 		break;
 
 	default:
-		image_seterror(image, IMAGE_ERROR_UNSUPPORTED, "Snapshot format not supported.");
-		image_message(image, "Snapshot format not supported.");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, "Snapshot format not supported.");
+		image.message("Snapshot format not supported.");
+		return IMAGE_INIT_FAIL;
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static Z80BIN_EXECUTE( vtech1 )
 {
-	running_device *cpu = devtag_get_device(machine, "maincpu");
+	running_device *cpu = machine->device("maincpu");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* A Microsoft Basic program needs some manipulation before it can be run.
@@ -285,12 +285,12 @@ static Z80BIN_EXECUTE( vtech1 )
 		if (!autorun)
 			memory_write_byte(space, 0x7929, 0xb6);	/* turn off autorun */
 
-		cpu_set_reg(cpu, REG_GENPC, 0x791e);
+		cpu_set_reg(cpu, STATE_GENPC, 0x791e);
 	}
 	else
 	{
 		if (autorun)
-			cpu_set_reg(cpu, REG_GENPC, execute_address);
+			cpu_set_reg(cpu, STATE_GENPC, execute_address);
 	}
 }
 
@@ -298,12 +298,12 @@ static Z80BIN_EXECUTE( vtech1 )
 /***************************************************************************
     FLOPPY DRIVE
 ***************************************************************************/
-static void vtech1_load_proc(running_device *image)
+static void vtech1_load_proc(device_image_interface &image)
 {
-	vtech1_state *vtech1 = (vtech1_state *)image->machine->driver_data;
-	int id = floppy_get_drive(image);
+	vtech1_state *vtech1 = (vtech1_state *)image.device().machine->driver_data;
+	int id = floppy_get_drive(&image.device());
 
-	if (image_is_writable(image))
+	if (image.is_writable())
 		vtech1->fdc_wrprot[id] = 0x00;
 	else
 		vtech1->fdc_wrprot[id] = 0x80;
@@ -312,15 +312,16 @@ static void vtech1_load_proc(running_device *image)
 static void vtech1_get_track(running_machine *machine)
 {
 	vtech1_state *vtech1 = (vtech1_state *)machine->driver_data;
+	device_image_interface *image = dynamic_cast<device_image_interface *>(floppy_get_device(machine,vtech1->drive));
 
 	/* drive selected or and image file ok? */
-	if (vtech1->drive >= 0 && image_exists(floppy_get_device(machine,vtech1->drive)))
+	if (vtech1->drive >= 0 && image->exists())
 	{
 		int size, offs;
 		size = TRKSIZE_VZ;
 		offs = TRKSIZE_VZ * vtech1->fdc_track_x2[vtech1->drive]/2;
-		image_fseek(floppy_get_device(machine,vtech1->drive), offs, SEEK_SET);
-		size = image_fread(floppy_get_device(machine,vtech1->drive), vtech1->fdc_data, size);
+		image->fseek(offs, SEEK_SET);
+		size = image->fread(vtech1->fdc_data, size);
 		if (LOG_VTECH1_FDC)
 			logerror("get track @$%05x $%04x bytes\n", offs, size);
     }
@@ -332,13 +333,15 @@ static void vtech1_put_track(running_machine *machine)
 {
 	vtech1_state *vtech1 = (vtech1_state *)machine->driver_data;
 
+
     /* drive selected and image file ok? */
 	if (vtech1->drive >= 0 && floppy_get_device(machine,vtech1->drive) != NULL)
 	{
 		int size, offs;
+		device_image_interface *image = dynamic_cast<device_image_interface *>(floppy_get_device(machine,vtech1->drive));
 		offs = TRKSIZE_VZ * vtech1->fdc_track_x2[vtech1->drive]/2;
-		image_fseek(floppy_get_device(machine,vtech1->drive), offs + vtech1->fdc_start, SEEK_SET);
-		size = image_fwrite(floppy_get_device(machine,vtech1->drive), &vtech1->fdc_data[vtech1->fdc_start], vtech1->fdc_write);
+		image->fseek(offs + vtech1->fdc_start, SEEK_SET);
+		size = image->fwrite(&vtech1->fdc_data[vtech1->fdc_start], vtech1->fdc_write);
 		if (LOG_VTECH1_FDC)
 			logerror("put track @$%05X+$%X $%04X/$%04X bytes\n", offs, vtech1->fdc_start, size, vtech1->fdc_write);
     }
@@ -518,9 +521,9 @@ static const floppy_config vtech1_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(vtech1_only),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /***************************************************************************
@@ -685,14 +688,14 @@ static DRIVER_INIT( vtech1 )
 	int id;
 
 	/* find devices */
-	vtech1->mc6847 = devtag_get_device(machine, "mc6847");
-	vtech1->speaker = devtag_get_device(machine, "speaker");
-	vtech1->cassette = devtag_get_device(machine, "cassette");
-	vtech1->printer = devtag_get_device(machine, "printer");
+	vtech1->mc6847 = machine->device("mc6847");
+	vtech1->speaker = machine->device("speaker");
+	vtech1->cassette = machine->device("cassette");
+	vtech1->printer = machine->device("printer");
 
 	/* ram */
-	vtech1->ram = messram_get_ptr(devtag_get_device(machine, "messram"));
-	vtech1->ram_size = messram_get_size(devtag_get_device(machine, "messram"));
+	vtech1->ram = messram_get_ptr(machine->device("messram"));
+	vtech1->ram_size = messram_get_size(machine->device("messram"));
 
 	/* setup memory banking */
 	memory_set_bankptr(machine, "bank1", vtech1->ram);
@@ -963,7 +966,8 @@ static const cassette_config laser_cassette_config =
 {
 	vtech1_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_PLAY)
+	(cassette_state)(CASSETTE_PLAY),
+	NULL
 };
 
 static const mc6847_interface vtech1_mc6847_intf =

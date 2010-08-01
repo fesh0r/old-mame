@@ -68,7 +68,7 @@ static UINT8 *cbmb_memory;
  */
 READ8_DEVICE_HANDLER( cbmb_tpi0_port_a_r )
 {
-	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = device->machine->device("ieee_bus");
 	UINT8 data = 0;
 
 	if (ieee488_nrfd_r(ieeebus))
@@ -94,7 +94,7 @@ READ8_DEVICE_HANDLER( cbmb_tpi0_port_a_r )
 
 WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_a_w )
 {
-	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = device->machine->device("ieee_bus");
 
 	ieee488_nrfd_w(ieeebus, device, BIT(data, 7));
 	ieee488_ndac_w(ieeebus, device, BIT(data, 6));
@@ -106,7 +106,7 @@ WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_a_w )
 
 READ8_DEVICE_HANDLER( cbmb_tpi0_port_b_r )
 {
-	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = device->machine->device("ieee_bus");
 	UINT8 data = 0;
 
 	if (ieee488_srq_r(ieeebus))
@@ -120,7 +120,7 @@ READ8_DEVICE_HANDLER( cbmb_tpi0_port_b_r )
 
 WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_b_w )
 {
-	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = device->machine->device("ieee_bus");
 
 	ieee488_srq_w(ieeebus, device, BIT(data, 1));
 	ieee488_ifc_w(ieeebus, device, BIT(data, 0));
@@ -263,13 +263,13 @@ void cbmb_irq( running_device *device, int level )
  */
 static READ8_DEVICE_HANDLER( cbmb_cia_port_a_r )
 {
-	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = device->machine->device("ieee_bus");
 	return ieee488_dio_r(ieeebus, 0);
 }
 
 static WRITE8_DEVICE_HANDLER( cbmb_cia_port_a_w )
 {
-	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = device->machine->device("ieee_bus");
 	ieee488_dio_w(ieeebus, device, data);
 }
 
@@ -385,7 +385,7 @@ static TIMER_CALLBACK( p500_lightpen_tick )
 static TIMER_CALLBACK(cbmb_frame_interrupt)
 {
 	static int level = 0;
-	running_device *tpi_0 = devtag_get_device(machine, "tpi6525_0");
+	running_device *tpi_0 = machine->device("tpi6525_0");
 
 #if 0
 	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;
@@ -502,11 +502,11 @@ static CBM_ROM cbmb_cbm_cart[0x20]= { {0} };
 
 static DEVICE_IMAGE_LOAD(cbmb_cart)
 {
-	int size = image_length(image), test;
+	int size = image.length(), test;
 	const char *filetype;
 	int address = 0;
 
-	filetype = image_filetype(image);
+	filetype = image.filetype();
 
 	if (!mame_stricmp(filetype, "crt"))
 	{
@@ -530,20 +530,20 @@ static DEVICE_IMAGE_LOAD(cbmb_cart)
 		else if (!mame_stricmp(filetype, "60"))
 			address = 0x6000;
 
-		logerror("Loading cart %s at %.4x size:%.4x\n", image_filename(image), address, size);
+		logerror("Loading cart %s at %.4x size:%.4x\n", image.filename(), address, size);
 
 		/* Does cart contain any data? */
-		cbmb_cbm_cart[0].chip = (UINT8*) image_malloc(image, size);
+		cbmb_cbm_cart[0].chip = (UINT8*) image.image_malloc(size);
 		if (!cbmb_cbm_cart[0].chip)
-			return INIT_FAIL;
+			return IMAGE_INIT_FAIL;
 
 		/* Store data, address & size */
 		cbmb_cbm_cart[0].addr = address;
 		cbmb_cbm_cart[0].size = size;
-		test = image_fread(image, cbmb_cbm_cart[0].chip, cbmb_cbm_cart[0].size);
+		test = image.fread(cbmb_cbm_cart[0].chip, cbmb_cbm_cart[0].size);
 
 		if (test != cbmb_cbm_cart[0].size)
-			return INIT_FAIL;
+			return IMAGE_INIT_FAIL;
 	}
 
 	/* Finally load the cart */
@@ -552,7 +552,7 @@ static DEVICE_IMAGE_LOAD(cbmb_cart)
 //      memcpy(cbmb_memory + cbmb_cbm_cart[i].addr + 0xf0000, cbmb_cbm_cart[i].chip, cbmb_cbm_cart[i].size);
 	memcpy(cbmb_memory + cbmb_cbm_cart[0].addr + 0xf0000, cbmb_cbm_cart[0].chip, cbmb_cbm_cart[0].size);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 

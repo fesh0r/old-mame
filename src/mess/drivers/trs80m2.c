@@ -123,7 +123,7 @@ static void trs80m2_keyboard_scan(running_machine *machine)
 
 static TIMER_DEVICE_CALLBACK( trs80m2_keyboard_tick )
 {
-	trs80m2_keyboard_scan(timer->machine);
+	trs80m2_keyboard_scan(timer.machine);
 }
 
 /* Read/Write Handlers */
@@ -163,7 +163,7 @@ static void bankswitch(running_machine *machine)
 	trs80m2_state *state = (trs80m2_state *)machine->driver_data;
 
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-	running_device *messram = devtag_get_device(machine, "messram");
+	running_device *messram = machine->device("messram");
 	UINT8 *rom = memory_region(machine, Z80_TAG);
 	UINT8 *ram = messram_get_ptr(messram);
 	int last_page = (messram_get_size(messram) / 0x8000) - 1;
@@ -733,7 +733,7 @@ static VIDEO_START( trs80m2 )
 	trs80m2_state *state = (trs80m2_state *)machine->driver_data;
 
 	/* find devices */
-	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
+	state->mc6845 = machine->device(MC6845_TAG);
 
 	/* find memory regions */
 	state->char_rom = memory_region(machine, MC6845_TAG);
@@ -882,7 +882,7 @@ static const z80sio_interface sio_intf =
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	trs80m2_state *state = (trs80m2_state *) timer->machine->driver_data;
+	trs80m2_state *state = (trs80m2_state *) timer.machine->driver_data;
 
 	z80ctc_trg0_w(state->z80ctc, 1);
 	z80ctc_trg0_w(state->z80ctc, 0);
@@ -912,9 +912,9 @@ static const floppy_config trs80m2_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static WRITE_LINE_DEVICE_HANDLER( fdc_intrq_w )
@@ -936,7 +936,7 @@ static const wd17xx_interface fd1791_intf =
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain trs80m2_daisy_chain[] =
+static const z80_daisy_config trs80m2_daisy_chain[] =
 {
 	{ Z80CTC_TAG },
 	{ Z80SIO_TAG },
@@ -952,11 +952,11 @@ static MACHINE_START( trs80m2 )
 	trs80m2_state *state = (trs80m2_state *)machine->driver_data;
 
 	/* find devices */
-	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
-	state->z80pio = devtag_get_device(machine, Z80PIO_TAG);
-	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
-	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->floppy = devtag_get_device(machine, FLOPPY_0);
+	state->z80ctc = machine->device(Z80CTC_TAG);
+	state->z80pio = machine->device(Z80PIO_TAG);
+	state->mc6845 = machine->device(MC6845_TAG);
+	state->centronics = machine->device(CENTRONICS_TAG);
+	state->floppy = machine->device(FLOPPY_0);
 
 	/* Shugart SA-800 motor spins constantly */
 	floppy_mon_w(state->floppy, CLEAR_LINE);

@@ -23,17 +23,16 @@ struct _terminal_state
 INLINE terminal_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
-	assert(device->type == GENERIC_TERMINAL);
+	assert(device->type() == GENERIC_TERMINAL);
 
-	return (terminal_state *)device->token;
+	return (terminal_state *)downcast<legacy_device_base *>(device)->token();
 }
 
 INLINE const terminal_interface *get_interface(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->type == GENERIC_TERMINAL);
-	return (const terminal_interface *) device->baseconfig().static_config;
+	assert(device->type() == GENERIC_TERMINAL);
+	return (const terminal_interface *) device->baseconfig().static_config();
 }
 
 /***************************************************************************
@@ -258,11 +257,12 @@ void generic_terminal_update(running_device *device, bitmap_t *bitmap, const rec
 			for (x = 0; x < TERMINAL_WIDTH; x++)
 			{
 				code = terminal_font[term->buffer[y*TERMINAL_WIDTH + x] *16 + c];
-				for (b = 7; b >= 0; b--)
+				*BITMAP_ADDR16(bitmap, y*10 + c, horpos++) =  (code >> 7) & 0x01;
+				for (b = 6; b >= 0; b--)
 				{
-					*BITMAP_ADDR16(bitmap, y*10 + c, horpos++) =  (code >> b) & 0x01;
+					*BITMAP_ADDR16(bitmap, y*10 + c, horpos++) =  ((code >> b) | (code >> (b+1))) & 0x01;
 				}
-				*BITMAP_ADDR16(bitmap, y*10 + c, horpos++) =  0;
+				*BITMAP_ADDR16(bitmap, y*10 + c, horpos++) =  code & 0x01;
 				*BITMAP_ADDR16(bitmap, y*10 + c, horpos++) =  0;
 			}
 		}
@@ -393,7 +393,7 @@ static VIDEO_START( terminal )
 
 static VIDEO_UPDATE(terminal )
 {
-	running_device *devconf = devtag_get_device(screen->machine, TERMINAL_TAG);
+	running_device *devconf = screen->machine->device(TERMINAL_TAG);
 	generic_terminal_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -449,7 +449,6 @@ DEVICE_GET_INFO( terminal )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(terminal_state);							break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;							break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(terminal);					break;
@@ -583,3 +582,5 @@ INPUT_PORTS_START( generic_terminal )
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) PORT_CHAR(9)
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
 INPUT_PORTS_END
+
+DEFINE_LEGACY_DEVICE(GENERIC_TERMINAL, terminal);

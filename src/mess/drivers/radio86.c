@@ -311,7 +311,8 @@ static const cassette_config radio86_cassette_config =
 {
 	rkr_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 
@@ -337,7 +338,7 @@ GFXDECODE_END
 /* Machine driver */
 static MACHINE_DRIVER_START( radio86 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",8080, XTAL_16MHz / 9)
+	MDRV_CPU_ADD("maincpu",I8080, XTAL_16MHz / 9)
 	MDRV_CPU_PROGRAM_MAP(radio86_mem)
 	MDRV_CPU_IO_MAP(radio86_io)
 	MDRV_MACHINE_RESET( radio86 )

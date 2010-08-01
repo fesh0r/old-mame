@@ -28,14 +28,14 @@ enum
 
 enum
 {
-	offset_rom0_4p = 0x4000,
-	offset_rom4_4p = 0xc000,
-	offset_rom6_4p = 0x6000,
-	offset_rom6b_4p= 0xe000,
-	offset_sram_4p = 0x10000,		/* scratch RAM (1kbyte) */
-	offset_dram_4p = 0x10400,		/* extra ram for debugger (768 bytes) */
-	offset_xram_4p = 0x10700,		/* extended RAM (1Mb with super AMS compatible mapper) */
-	region_cpu1_len_4p = 0x110700	/* total len */
+	offset_rom0_4p = 0x4000,        // ROM0: 4000-5fff
+	offset_rom4_4p = 0xc000,        // ROM4: c000-dfff
+	offset_rom6_4p = 0x6000,        // ROM6: 6000-7fff (first bank)
+	offset_rom6b_4p= 0xe000,        // ROM6: e000-ffff (second bank)
+	offset_sram_4p = 0x10000,       // scratch RAM (1 KiB)
+	offset_dram_4p = 0x10400,       // extra ram for debugger (768 bytes)
+	offset_xram_4p = 0x10700,       // extended RAM (1Mb with super AMS compatible mapper)
+	region_cpu1_len_4p = 0x110700   // total len
 };
 
 enum
@@ -80,51 +80,18 @@ enum
 /* GROM_port_t: descriptor for a port of 8 GROMs. Required by ti99_4x, ti99pcod */
 struct _GROM_port_t
 {
-        /* pointer to GROM data */
-        UINT8 *data_ptr;
-        /* current address pointer for the active GROM in port (16 bits) */
-        unsigned int addr;
-        /* GROM data buffer */
-        UINT8 buf;
-        /* internal flip-flops that are set after the first access to the GROM
-        address so that next access is mapped to the LSB, and cleared after each
-        data access */
-        char raddr_LSB, waddr_LSB;
+	// pointer to GROM data
+	UINT8 *data_ptr;
+	// current address pointer for the active GROM in port (16 bits)
+	unsigned int addr;
+	// GROM data buffer
+	UINT8 buf;
+	// internal flip-flops that are set after the first access to the GROM
+	// address so that next access is mapped to the LSB, and cleared after each
+	// data access
+	char raddr_LSB, waddr_LSB;
 };
 typedef struct _GROM_port_t GROM_port_t;
-
-
-#if 0
-/* defines for input port "CFG" */
-enum
-{
-	config_xRAM_bit		= 0,
-	config_xRAM_mask	= 0x7,	/* 3 bits */
-	config_speech_bit	= 3,
-	config_speech_mask	= 0x1,
-	config_fdc_bit		= 4,
-	config_fdc_mask		= 0x103,/* 3 bits (4, 5 and 12) */
-	config_rs232_bit	= 6,
-	config_rs232_mask	= 0x1,
-	/* next option only makes sense for ti99/4 */
-	config_handsets_bit	= 7,
-	config_handsets_mask= 0x1,
-	config_ide_bit		= 8,
-	config_ide_mask		= 0x1,
-	config_hsgpl_bit	= 9,
-	config_hsgpl_mask	= 0x1,
-	config_mecmouse_bit	= 10,
-	config_mecmouse_mask	= 0x1,
-	config_usbsm_bit	= 11,
-	config_usbsm_mask	= 0x1,
-	config_boot_bit		= 13,
-	config_boot_mask	= 0x1,
-	config_cartslot_bit	= 14,
-	config_cartslot_mask	= 0xf, /* need four bits: covers all current and possibly future cartslots, and one auto mode */
-	config_pcode_bit	= 18,
-	config_pcode_mask	= 0x1
-};
-#endif
 
 /*
     Configuration values
@@ -168,8 +135,9 @@ enum
 enum
 {
 	EXT_NONE = 0,
-	EXT_HSGPL,
-	EXT_PCODE
+	EXT_HSGPL_FLASH = 1,
+	EXT_HSGPL_ON = 2,
+	EXT_PCODE = 4
 };
 
 enum
@@ -186,7 +154,22 @@ enum
 	CART_2,
 	CART_3,
 	CART_4,
-	CART_GK
+	CART_GK = 15
+};
+
+enum
+{
+	GK_OFF = 0,
+	GK_NORMAL = 1,
+	GK_GRAM0 = 0,
+	GK_OPSYS = 1,
+	GK_GRAM12 = 0,
+	GK_TIBASIC = 1,
+	GK_BANK1 = 0,
+	GK_WP = 1,
+	GK_BANK2 = 2,
+	GK_LDON = 0,
+	GK_LDOFF = 1
 };
 
 
@@ -213,39 +196,55 @@ MACHINE_START( ti99_4_50hz );
 MACHINE_START( ti99_4a_60hz );
 MACHINE_START( ti99_4a_50hz );
 MACHINE_START( ti99_4ev_60hz );
-MACHINE_RESET( ti99 );
+MACHINE_START( ti99_4p );
 
-// DEVICE_START( ti99_cart );
-// DEVICE_IMAGE_LOAD( ti99_cart );
-// DEVICE_IMAGE_UNLOAD( ti99_cart );
+MACHINE_RESET( ti99 );
+MACHINE_RESET( ti99_4p );
+MACHINE_RESET( ti99_8 );
+
+/* For HSGPL */
+NVRAM_HANDLER( ti99 );
+INPUT_CHANGED( hsgpl_changed );
+
+/* For GRAM Kracker */
+INPUT_CHANGED( gk_changed );
+
+/* For EVPC */
+INPUT_CHANGED( evpc_changed );
 
 VIDEO_START( ti99_4ev );
 INTERRUPT_GEN( ti99_vblank_interrupt );
 INTERRUPT_GEN( ti99_4ev_hblank_interrupt );
+TIMER_DEVICE_CALLBACK( ti99_4ev_scanline_interrupt );
 
 void ti99_set_hsgpl_crdena(int data);
 void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxparm);
 int ti99_is_99_8(void);
 
-READ16_HANDLER ( ti99_nop_8_r );
-WRITE16_HANDLER ( ti99_nop_8_w );
+UINT8 get_gk_switch(int index);
 
-READ16_HANDLER ( ti99_4p_cart_r );
-WRITE16_HANDLER ( ti99_4p_cart_w );
+READ16_HANDLER( ti99_nop_8_r );
+WRITE16_HANDLER( ti99_nop_8_w );
+
+READ16_HANDLER( ti99_cart_r );
+WRITE16_HANDLER( ti99_cart_w );
+READ16_HANDLER( ti99_4p_cart_r );
+WRITE16_HANDLER( ti99_4p_cart_w );
 
 WRITE16_HANDLER( ti99_wsnd_w );
 
-READ16_HANDLER ( ti99_rvdp_r );
-WRITE16_HANDLER ( ti99_wvdp_w );
-READ16_HANDLER ( ti99_rv38_r );
-WRITE16_HANDLER ( ti99_wv38_w );
+READ16_HANDLER( ti99_rvdp_r );
+WRITE16_HANDLER( ti99_wvdp_w );
+READ16_HANDLER( ti99_rv38_r );
+WRITE16_HANDLER( ti99_wv38_w );
 
-READ16_HANDLER ( ti99_grom_r );
+READ16_HANDLER( ti99_grom_r );
 WRITE16_HANDLER( ti99_grom_w );
-READ16_HANDLER ( ti99_4p_grom_r );
-WRITE16_HANDLER ( ti99_4p_grom_w );
+READ16_HANDLER( ti99_4p_grom_r );
+WRITE16_HANDLER( ti99_4p_grom_w );
 
-extern void tms9901_set_int2(running_machine *machine, int state);
+void tms9901_set_int2(running_machine *machine, int state);
+void tms9901_set_int1(running_machine *machine, int state);
 
 READ8_HANDLER ( ti99_8_r );
 WRITE8_HANDLER ( ti99_8_w );

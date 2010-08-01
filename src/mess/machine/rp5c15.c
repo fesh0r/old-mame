@@ -123,7 +123,7 @@ static void rtc_add_month(running_device*);
 static TIMER_CALLBACK(rtc_alarm_pulse)
 {
 	running_device* device = (running_device*)ptr;
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 
 	if(rtc->pulse16_state == 0)  // low
 	{
@@ -149,39 +149,37 @@ static TIMER_CALLBACK(rtc_alarm_pulse)
 
 static DEVICE_START( rp5c15 )
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
-	mame_system_time systm;
-	mame_system_tm time;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
+	system_time systm;
 
-	rtc->intf = (const rp5c15_intf*)device->baseconfig().static_config;
+	rtc->intf = (const rp5c15_intf*)device->baseconfig().static_config();
 
 	rtc->alarm_callback = rtc->intf->alarm_irq_callback;
 
-	mame_get_base_datetime(device->machine,&systm);
-	time = systm.local_time;
+	device->machine->base_datetime(systm);
 
 	// date/time is stored as BCD
-	rtc->systime.sec_1 = time.second % 10;
-	rtc->systime.sec_10 = time.second / 10;
-	rtc->systime.min_1 = time.minute % 10;
-	rtc->systime.min_10 = time.minute / 10;
-	rtc->systime.hour_1 = time.hour % 10;
-	rtc->systime.hour_10 = time.hour / 10;
-	rtc->systime.day_1 = time.mday % 10;
-	rtc->systime.day_10 = time.mday / 10;
-	rtc->systime.month_1 = (time.month+1) % 10;
-	rtc->systime.month_10 = (time.month+1) / 10;
-	rtc->systime.year_1 = (time.year - 1980) % 10;
-	rtc->systime.year_10 = (time.year - 1980) / 10;
-	rtc->systime.dayofweek = time.weekday;
-	rtc->alarm.min_1 = time.minute % 10;
-	rtc->alarm.min_10 = time.minute / 10;
-	rtc->alarm.hour_1 = time.hour % 10;
-	rtc->alarm.hour_10 = time.hour / 10;
-	rtc->alarm.day_1 = time.mday % 10;
-	rtc->alarm.day_10 = time.mday / 10;
-	rtc->alarm.dayofweek = time.weekday;
-	rtc->leap = time.year % 4;
+	rtc->systime.sec_1 = systm.local_time.second % 10;
+	rtc->systime.sec_10 = systm.local_time.second / 10;
+	rtc->systime.min_1 = systm.local_time.minute % 10;
+	rtc->systime.min_10 = systm.local_time.minute / 10;
+	rtc->systime.hour_1 = systm.local_time.hour % 10;
+	rtc->systime.hour_10 = systm.local_time.hour / 10;
+	rtc->systime.day_1 = systm.local_time.mday % 10;
+	rtc->systime.day_10 = systm.local_time.mday / 10;
+	rtc->systime.month_1 = (systm.local_time.month+1) % 10;
+	rtc->systime.month_10 = (systm.local_time.month+1) / 10;
+	rtc->systime.year_1 = (systm.local_time.year - 1980) % 10;
+	rtc->systime.year_10 = (systm.local_time.year - 1980) / 10;
+	rtc->systime.dayofweek = systm.local_time.weekday;
+	rtc->alarm.min_1 = systm.local_time.minute % 10;
+	rtc->alarm.min_10 = systm.local_time.minute / 10;
+	rtc->alarm.hour_1 = systm.local_time.hour % 10;
+	rtc->alarm.hour_10 = systm.local_time.hour / 10;
+	rtc->alarm.day_1 = systm.local_time.mday % 10;
+	rtc->alarm.day_10 = systm.local_time.mday / 10;
+	rtc->alarm.dayofweek = systm.local_time.weekday;
+	rtc->leap = systm.local_time.year % 4;
 
 	rtc->mode = 0x08;  // Timer enabled, Alarm disable, BANK 0 selected (defaults are guessed)
 	rtc->reset = 0x00;  // enable both 1Hz and 16Hz alarm counters by default
@@ -194,7 +192,7 @@ static DEVICE_START( rp5c15 )
 
 static int rp5c15_read(running_device* device, int offset, UINT16 mem_mask)
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 	if((rtc->mode & 0x01) == 0x00)  // BANK 0 selected
 	{
 		switch(offset)
@@ -266,7 +264,7 @@ static int rp5c15_read(running_device* device, int offset, UINT16 mem_mask)
 
 static void rp5c15_write(running_device* device, int offset, int data, UINT16 mem_mask)
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 	if(offset == 13)
 	{
 		rtc->mode = data & 0x0f;
@@ -361,7 +359,7 @@ static void rp5c15_write(running_device* device, int offset, int data, UINT16 me
 
 static void rtc_add_second(running_device* device)  // add one second to current time
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 
 	if((rtc->mode & 0x08) == 0x00) // if timer is not enabled
 		return;
@@ -378,7 +376,7 @@ static void rtc_add_second(running_device* device)  // add one second to current
 
 static void rtc_add_minute(running_device* device)
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 
 	rtc->systime.min_1++;
 	if(rtc->systime.min_1 < 10)
@@ -403,7 +401,7 @@ static void rtc_add_minute(running_device* device)
 
 static void rtc_add_day(running_device* device)
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 	int d,m;
 
 	rtc->systime.dayofweek++;
@@ -471,7 +469,7 @@ static void rtc_add_day(running_device* device)
 
 static void rtc_add_month(running_device* device)
 {
-	rp5c15_t* rtc = (rp5c15_t*)device->token;
+	rp5c15_t* rtc = (rp5c15_t*)downcast<legacy_device_base *>(device)->token();
 
 	rtc->systime.month_1++;
 	if(rtc->systime.month_1 < 10 && rtc->systime.month_10 < 1)
@@ -499,7 +497,6 @@ DEVICE_GET_INFO( rp5c15 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_OTHER;				break;
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(rp5c15_t);				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
@@ -518,3 +515,5 @@ DEVICE_GET_INFO( rp5c15 )
 
 READ16_DEVICE_HANDLER(rp5c15_r) { return rp5c15_read(device,offset,mem_mask); }
 WRITE16_DEVICE_HANDLER(rp5c15_w) { rp5c15_write(device,offset,data,mem_mask); }
+
+DEFINE_LEGACY_DEVICE(RP5C15, rp5c15);

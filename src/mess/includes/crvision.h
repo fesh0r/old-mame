@@ -9,8 +9,8 @@
 #define CASSETTE_TAG	"cassette"
 #define CENTRONICS_TAG	"centronics"
 
-#define BANK_ROM1	"bank1"
-#define BANK_ROM2	"bank2"
+#define BANK_ROM1		"bank1"
+#define BANK_ROM2		"bank2"
 
 class crvision_state
 {
@@ -20,11 +20,15 @@ public:
 	crvision_state(running_machine &machine) { }
 
 	/* keyboard state */
-	int keylatch;
+	UINT8 keylatch;
+
+	/* joystick state */
+	UINT8 joylatch;
 
 	/* devices */
-	running_device *sn76489;
+	running_device *psg;
 	running_device *cassette;
+	running_device *centronics;
 };
 
 #endif

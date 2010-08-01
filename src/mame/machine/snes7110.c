@@ -121,7 +121,7 @@ static const UINT8 spc7110_mode2_context_table[32][2] =
 typedef struct
 {
 	running_machine *machine;
-	
+
 	UINT32 decomp_mode;
 	UINT32 decomp_offset;
 

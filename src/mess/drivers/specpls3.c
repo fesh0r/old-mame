@@ -146,7 +146,6 @@ http://www.z88forever.org.uk/zxplus3e/
 
 #include "emu.h"
 #include "includes/spectrum.h"
-#include "eventlst.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -186,7 +185,7 @@ static WRITE8_HANDLER(spectrum_plus3_port_3ffd_w)
 {
 	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
 	if (state->floppy==1)
-		upd765_data_w(devtag_get_device(space->machine, "upd765"), 0,data);
+		upd765_data_w(space->machine->device("upd765"), 0,data);
 }
 
 static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
@@ -195,7 +194,7 @@ static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
 	if (state->floppy==0)
 		return 0xff;
 	else
-		return upd765_data_r(devtag_get_device(space->machine, "upd765"), 0);
+		return upd765_data_r(space->machine->device("upd765"), 0);
 }
 
 
@@ -205,7 +204,7 @@ static  READ8_HANDLER(spectrum_plus3_port_2ffd_r)
 	if (state->floppy==0)
 			return 0xff;
 	else
-			return upd765_status_r(devtag_get_device(space->machine, "upd765"), 0);
+			return upd765_status_r(space->machine->device("upd765"), 0);
 }
 
 
@@ -213,7 +212,7 @@ void spectrum_plus3_update_memory(running_machine *machine)
 {
 	spectrum_state *state = (spectrum_state *)machine->driver_data;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 
 	if (state->port_7ffd_data & 8)
 	{
@@ -356,7 +355,7 @@ ADDRESS_MAP_END
 static MACHINE_RESET( spectrum_plus3 )
 {
 	spectrum_state *state = (spectrum_state *)machine->driver_data;
-	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 	memset(messram,0,128*1024);
 
 	MACHINE_RESET_CALL(spectrum);
@@ -386,9 +385,9 @@ static const floppy_config specpls3_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_SS_40,
+	FLOPPY_STANDARD_3_SSDD,
 	FLOPPY_OPTIONS_NAME(default),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* F4 Character Displayer */

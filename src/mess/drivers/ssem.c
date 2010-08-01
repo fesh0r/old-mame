@@ -74,7 +74,7 @@ static INPUT_CHANGED( panel_check )
     UINT8 edit2_state = input_port_read(field->port->machine, "EDIT2");
     UINT8 edit3_state = input_port_read(field->port->machine, "EDIT3");
     UINT8 misc_state = input_port_read(field->port->machine, "MISC");
-    running_device *ssem_cpu = devtag_get_device(field->port->machine, "maincpu");
+    running_device *ssem_cpu = field->port->machine->device("maincpu");
 
     switch( (int)(FPTR)param )
     {
@@ -384,8 +384,8 @@ static void glyph_print(running_machine *machine, bitmap_t *bitmap, INT32 x, INT
     va_list arg_list;
     char buf[32768];
     INT32 index = 0;
-    running_device *screen = video_screen_first(machine);
-    rectangle visarea = *video_screen_get_visible_area(screen);
+    screen_device *screen = screen_first(*machine);
+    const rectangle &visarea = screen->visible_area();
 
     va_start( arg_list, msg );
     vsprintf( buf, msg, arg_list );
@@ -431,7 +431,7 @@ static void glyph_print(running_machine *machine, bitmap_t *bitmap, INT32 x, INT
 static VIDEO_UPDATE( ssem )
 {
     UINT32 line = 0;
-    running_device *ssem_cpu = devtag_get_device(screen->machine, "maincpu");
+    running_device *ssem_cpu = screen->machine->device("maincpu");
     UINT32 accum = cpu_get_reg(ssem_cpu, SSEM_A);
     UINT32 bit = 0;
     UINT32 word = 0;
@@ -500,7 +500,7 @@ static void strlower(char *buf)
 
 static DEVICE_IMAGE_LOAD(ssem_store)
 {
-    const char* image_name = image_filename(image);
+    const char* image_name = image.filename();
     char image_ext[5] = { 0 };
     char image_line[100] = { 0 };
     char token_buf[100] = { 0 };
@@ -511,7 +511,7 @@ static DEVICE_IMAGE_LOAD(ssem_store)
     memcpy(image_ext, image_name + (strlen(image_name) - 4), 5);
     strlower(image_ext);
 
-    image_fgets(image, image_line, 99);
+    image.fgets(image_line, 99);
     sscanf(image_line, "%d", &num_lines);
 
     if(num_lines)
@@ -519,7 +519,7 @@ static DEVICE_IMAGE_LOAD(ssem_store)
         for(i = 0; i < num_lines; i++)
         {
             UINT32 line = 0;
-            image_fgets(image, image_line, 99);
+            image.fgets(image_line, 99);
 
             // Isolate and convert 4-digit decimal address
             memcpy(token_buf, image_line, 4);
@@ -602,7 +602,7 @@ static DEVICE_IMAGE_LOAD(ssem_store)
         }
     }
 
-    return INIT_PASS;
+    return IMAGE_INIT_PASS;
 }
 
 /****************************************************\

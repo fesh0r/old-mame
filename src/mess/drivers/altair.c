@@ -34,7 +34,7 @@ static READ8_HANDLER(sio_data_r)
 
 static WRITE8_HANDLER(sio_data_w)
 {
-	running_device *devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = space->machine->device("terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -68,21 +68,21 @@ QUICKLOAD_LOAD(altair)
 {
 	int quick_length;
 	int read_;
-	quick_length = image_length(image);
+	quick_length = image.length();
 	if (quick_length >= 0xfd00)
-		return INIT_FAIL;
-	read_ = image_fread(image, altair_ram, quick_length);
+		return IMAGE_INIT_FAIL;
+	read_ = image.fread(altair_ram, quick_length);
 	if (read_ != quick_length)
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
 static MACHINE_RESET(altair)
 {
 	// Set startup addess done by turn-key
-	cpu_set_reg(devtag_get_device(machine, "maincpu"), I8085_PC, 0xFD00);
+	cpu_set_reg(machine->device("maincpu"), I8085_PC, 0xFD00);
 
 	term_data = 0;
 }
@@ -99,7 +99,7 @@ static GENERIC_TERMINAL_INTERFACE( altair_terminal_intf )
 
 static MACHINE_DRIVER_START( altair )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", 8080, XTAL_2MHz)
+    MDRV_CPU_ADD("maincpu", I8080, XTAL_2MHz)
     MDRV_CPU_PROGRAM_MAP(altair_mem)
     MDRV_CPU_IO_MAP(altair_io)
 

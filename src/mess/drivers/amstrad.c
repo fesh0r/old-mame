@@ -834,7 +834,8 @@ static const cassette_config amstrad_cassette_config =
 {
 	cdt_cassette_formats,
 	NULL,
-	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 static const floppy_config cpc6128_floppy_config =
@@ -844,9 +845,9 @@ static const floppy_config cpc6128_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_SS_40,
+	FLOPPY_STANDARD_3_SSDD,
 	FLOPPY_OPTIONS_NAME(default),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static const floppy_config aleste_floppy_config =
@@ -856,9 +857,9 @@ static const floppy_config aleste_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(msx),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( cpcplus_cartslot )
@@ -867,7 +868,7 @@ static MACHINE_DRIVER_START( cpcplus_cartslot )
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_INTERFACE("gx4000_cart")
 	MDRV_CARTSLOT_LOAD(amstrad_plus_cartridge)
-	MDRV_SOFTWARE_LIST_ADD("gx4000")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","gx4000")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( amstrad )

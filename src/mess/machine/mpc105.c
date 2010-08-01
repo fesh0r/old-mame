@@ -26,7 +26,7 @@ static struct mpc105_info *mpc105;
 
 static void mpc105_update_memory(running_machine *machine)
 {
-	running_device *cpu;
+	const cpu_device *cpu = NULL;
 	int bank;
 	offs_t begin, end;
 	char bank_str[10];
@@ -37,9 +37,9 @@ static void mpc105_update_memory(running_machine *machine)
 	if (mpc105->bank_base > 0)
 	{
 		/* TODO: Fix me properly! changing all cpus???? */
-		for (cpu = cpu_first(machine); cpu != NULL; cpu = cpu_next(cpu))
+		for (bool gotone = machine->config->m_devicelist.first(cpu); gotone; gotone = cpu->typenext())
 		{
-			const address_space *space = cpu_get_address_space( cpu, ADDRESS_SPACE_PROGRAM );
+			const address_space *space = cpu_get_address_space( (cpu_device *)cpu, ADDRESS_SPACE_PROGRAM );
 
 			/* first clear everything out */
 			memory_nop_read(space, 0x00000000, 0x3FFFFFFF, 0, 0);
@@ -58,19 +58,19 @@ static void mpc105_update_memory(running_machine *machine)
 				|	(((mpc105->bank_registers[(bank / 4) + 6] >> (bank % 4) * 8)) & 0x03) << 28
 				| 0x000FFFFF;
 
-			end = MIN(end, begin + messram_get_size(devtag_get_device(machine, "messram")) - 1);
+			end = MIN(end, begin + messram_get_size(machine->device("messram")) - 1);
 
 			if ((begin + 0x100000) <= end)
 			{
 				if (LOG_MPC105)
-					logerror("\tbank #%d [%02d]: 0x%08X - 0x%08X [%p-%p]\n", bank, bank + mpc105->bank_base, begin, end, messram_get_ptr(devtag_get_device(machine, "messram")), messram_get_ptr(devtag_get_device(machine, "messram")) + (end - begin));
+					logerror("\tbank #%d [%02d]: 0x%08X - 0x%08X [%p-%p]\n", bank, bank + mpc105->bank_base, begin, end, messram_get_ptr(machine->device("messram")), messram_get_ptr(machine->device("messram")) + (end - begin));
 
 				if (mpc105->bank_base > 0)
 				{
 					/* TODO: Fix me properly! changing all cpus??? */
-					for (cpu = cpu_first(machine); cpu != NULL; cpu = cpu_next(cpu))
+					for (bool gotone = machine->config->m_devicelist.first(cpu); gotone; gotone = cpu->typenext())
 					{
-						const address_space *space = cpu_get_address_space( cpu, ADDRESS_SPACE_PROGRAM );
+						const address_space *space = cpu_get_address_space( (cpu_device *)cpu, ADDRESS_SPACE_PROGRAM );
 
 						memory_install_read64_handler(space, begin, end,
 							0, 0, (read64_space_func) (FPTR)(bank + mpc105->bank_base));
@@ -78,7 +78,7 @@ static void mpc105_update_memory(running_machine *machine)
 							0, 0, (write64_space_func) (FPTR)(bank + mpc105->bank_base));
 					}
 					sprintf(bank_str,"bank%d",bank + mpc105->bank_base);
-					memory_set_bankptr(machine, bank_str, messram_get_ptr(devtag_get_device(machine, "messram")));
+					memory_set_bankptr(machine, bank_str, messram_get_ptr(machine->device("messram")));
 				}
 			}
 		}

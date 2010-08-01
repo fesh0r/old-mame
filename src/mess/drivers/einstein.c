@@ -62,60 +62,7 @@
 #include "video/mc6845.h"
 #include "rendlay.h"
 #include "devices/messram.h"
-
-/***************************************************************************
-    CONSTANTS
-***************************************************************************/
-
-/* xtals */
-#define XTAL_X001  XTAL_10_738635MHz
-#define XTAL_X002  XTAL_8MHz
-
-/* integrated circuits */
-#define IC_I001  "i001"  /* Z8400A */
-#define IC_I030  "i030"  /* AY-3-8910 */
-#define IC_I038  "i038"  /* TMM9129 */
-#define IC_I042  "i042"  /* WD1770-PH */
-#define IC_I050  "i050"  /* ADC0844CCN */
-#define IC_I058  "i058"  /* Z8430A */
-#define IC_I060  "i060"  /* uPD8251A */
-#define IC_I063  "i063"  /* Z8420A */
-
-/* interrupt sources */
-#define EINSTEIN_KEY_INT   (1<<0)
-#define EINSTEIN_ADC_INT   (1<<1)
-#define EINSTEIN_FIRE_INT  (1<<2)
-
-
-/***************************************************************************
-    TYPE DEFINITIONS
-***************************************************************************/
-
-class einstein_state
-{
-public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, einstein_state(machine)); }
-
-	einstein_state(running_machine &machine) { }
-
-	running_device *color_screen;
-	running_device *ctc;
-
-	int rom_enabled;
-	int interrupt;
-	int interrupt_mask;
-	int ctc_trigger;
-
-	/* keyboard */
-	UINT8 keyboard_line;
-	UINT8 keyboard_data;
-
-	/* 80 column device */
-	running_device *mc6845;
-	running_device *crtc_screen;
-	UINT8 *crtc_ram;
-};
-
+#include "includes/einstein.h"
 
 /***************************************************************************
     80 COLUMN DEVICE
@@ -170,7 +117,7 @@ static READ8_HANDLER( einstein_80col_state_r )
 	einstein_state *einstein = (einstein_state *)space->machine->driver_data;
 	UINT8 result = 0;
 
-	result |= video_screen_get_vblank(einstein->crtc_screen);
+	result |= einstein->crtc_screen->vblank();
 	result |= input_port_read(space->machine, "80column_dips") & 0x06;
 
 	logerror("%s: einstein_80col_state_r %02x\n", cpuexec_describe_context(space->machine), result);
@@ -178,130 +125,9 @@ static READ8_HANDLER( einstein_80col_state_r )
 	return result;
 }
 
-
-/****************************************************************
-    EINSTEIN NON-Z80 DEVICES DAISY CHAIN SUPPORT
-****************************************************************/
-
-static DEVICE_START( einstein_daisy ) { }
-
-static int einstein_keyboard_daisy_irq_state(running_device *device)
-{
-	einstein_state *einstein = (einstein_state *)device->machine->driver_data;
-
-	if (einstein->interrupt & einstein->interrupt_mask & EINSTEIN_KEY_INT)
-		return Z80_DAISY_INT;
-
-	return 0;
-}
-
-static int einstein_keyboard_daisy_irq_ack(running_device *device)
-{
-	return 0xf7;
-}
-
-static DEVICE_GET_INFO( einstein_keyboard_daisy )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = 4;											break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;											break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;						break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(einstein_daisy);		break;
-		case DEVINFO_FCT_IRQ_STATE:						info->f = (genf *)einstein_keyboard_daisy_irq_state;	break;
-		case DEVINFO_FCT_IRQ_ACK:						info->f = (genf *)einstein_keyboard_daisy_irq_ack;		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Einstein keyboard daisy chain");		break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Einstein daisy chain");				break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");									break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);								break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");				break;
-	}
-}
-
-static int einstein_adc_daisy_irq_state(running_device *device)
-{
-	einstein_state *einstein = (einstein_state *)device->machine->driver_data;
-
-	if (einstein->interrupt & einstein->interrupt_mask & EINSTEIN_ADC_INT)
-		return Z80_DAISY_INT;
-
-	return 0;
-}
-
-static int einstein_adc_daisy_irq_ack(running_device *device)
-{
-	return 0xfb;
-}
-
-static DEVICE_GET_INFO( einstein_adc_daisy )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = 4;											break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;											break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;						break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(einstein_daisy);		break;
-		case DEVINFO_FCT_IRQ_STATE:						info->f = (genf *)einstein_adc_daisy_irq_state;	break;
-		case DEVINFO_FCT_IRQ_ACK:						info->f = (genf *)einstein_adc_daisy_irq_ack;		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Einstein ADC daisy chain");			break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Einstein daisy chain");				break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");									break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);								break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");				break;
-	}
-}
-
-static int einstein_fire_daisy_irq_state(running_device *device)
-{
-	einstein_state *einstein = (einstein_state *)device->machine->driver_data;
-
-	if (einstein->interrupt & einstein->interrupt_mask & EINSTEIN_FIRE_INT)
-		return Z80_DAISY_INT;
-
-	return 0;
-}
-
-static int einstein_fire_daisy_irq_ack(running_device *device)
-{
-	return 0xfd;
-}
-
-static DEVICE_GET_INFO( einstein_fire_daisy )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = 4;											break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;											break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;						break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(einstein_daisy);		break;
-		case DEVINFO_FCT_IRQ_STATE:						info->f = (genf *)einstein_fire_daisy_irq_state;		break;
-		case DEVINFO_FCT_IRQ_ACK:						info->f = (genf *)einstein_fire_daisy_irq_ack;			break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Einstein fire button daisy chain");		break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Einstein daisy chain");				break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");									break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);								break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");				break;
-	}
-}
-
 /* int priority */
 /* keyboard int->ctc/adc->pio */
-static const z80_daisy_chain einstein_daisy_chain[] =
+static const z80_daisy_config einstein_daisy_chain[] =
 {
 	{ "keyboard_daisy" },
 	{ IC_I058 },
@@ -336,13 +162,13 @@ static void einstein_scan_keyboard(running_machine *machine)
 
 static TIMER_DEVICE_CALLBACK( einstein_keyboard_timer_callback )
 {
-	einstein_state *einstein = (einstein_state *)timer->machine->driver_data;
+	einstein_state *einstein = (einstein_state *)timer.machine->driver_data;
 
 	/* re-scan keyboard */
-	einstein_scan_keyboard(timer->machine);
+	einstein_scan_keyboard(timer.machine);
 
 	/* if /fire1 or /fire2 is 0, signal a fire interrupt */
-	if ((input_port_read(timer->machine, "BUTTONS") & 0x03) != 0)
+	if ((input_port_read(timer.machine, "BUTTONS") & 0x03) != 0)
 	{
 		einstein->interrupt |= EINSTEIN_FIRE_INT;
 	}
@@ -410,7 +236,7 @@ static WRITE8_DEVICE_HANDLER( einstein_drsel_w )
 /* channel 0 and 1 have a 2 MHz input clock for triggering */
 static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
 {
-	einstein_state *einstein = (einstein_state *)timer->machine->driver_data;
+	einstein_state *einstein = (einstein_state *)timer.machine->driver_data;
 
 	/* toggle line status */
 	einstein->ctc_trigger ^= 1;
@@ -426,13 +252,13 @@ static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
 
 static WRITE_LINE_DEVICE_HANDLER( einstein_serial_transmit_clock )
 {
-	running_device *uart = devtag_get_device(device->machine, IC_I060);
+	running_device *uart = device->machine->device(IC_I060);
 	msm8251_transmit_clock(uart);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( einstein_serial_receive_clock )
 {
-	running_device *uart = devtag_get_device(device->machine, IC_I060);
+	running_device *uart = device->machine->device(IC_I060);
 	msm8251_receive_clock(uart);
 }
 
@@ -444,7 +270,7 @@ static WRITE_LINE_DEVICE_HANDLER( einstein_serial_receive_clock )
 static void einstein_page_rom(running_machine *machine)
 {
 	einstein_state *einstein = (einstein_state *)machine->driver_data;
-	memory_set_bankptr(machine, "bank1", einstein->rom_enabled ? memory_region(machine, "bios") : messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, "bank1", einstein->rom_enabled ? memory_region(machine, "bios") : messram_get_ptr(machine->device("messram")));
 }
 
 /* writing to this port is a simple trigger, and switches between RAM and ROM */
@@ -462,7 +288,7 @@ static WRITE8_HANDLER( einstein_rom_w )
 
 static READ8_HANDLER( einstein_kybintmsk_r )
 {
-	running_device *printer = devtag_get_device(space->machine, "centronics");
+	running_device *printer = space->machine->device("centronics");
 	einstein_state *einstein = (einstein_state *)space->machine->driver_data;
 	UINT8 data = 0;
 
@@ -569,12 +395,12 @@ static MACHINE_RESET( einstein )
 	UINT8 config = input_port_read(machine, "config");
 
 	/* save pointers to our devices */
-	einstein->color_screen = devtag_get_device(machine, "screen");
-	einstein->ctc = devtag_get_device(machine, IC_I058);
+	einstein->color_screen = machine->device("screen");
+	einstein->ctc = machine->device(IC_I058);
 
 	/* initialize memory mapping */
-	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")));
-	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")));
+	memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x8000);
 	einstein->rom_enabled = 1;
 	einstein_page_rom(machine);
 
@@ -588,14 +414,16 @@ static MACHINE_RESET( einstein )
 	einstein->ctc_trigger = 0;
 
 	/* configure floppy drives */
-	floppy = devtag_get_device(machine, "floppy0");
-	floppy_drive_set_geometry(floppy, config & 0x01 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
-	floppy = devtag_get_device(machine, "floppy1");
-	floppy_drive_set_geometry(floppy, config & 0x02 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
-	floppy = devtag_get_device(machine, "floppy2");
-	floppy_drive_set_geometry(floppy, config & 0x04 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
-	floppy = devtag_get_device(machine, "floppy3");
-	floppy_drive_set_geometry(floppy, config & 0x08 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
+	floppy_type type_80 = FLOPPY_STANDARD_5_25_DSHD;
+	floppy_type type_40 = FLOPPY_STANDARD_5_25_SSDD_40;
+	floppy = machine->device("floppy0");
+	floppy_drive_set_geometry(floppy, config & 0x01 ? type_80 : type_40);
+	floppy = machine->device("floppy1");
+	floppy_drive_set_geometry(floppy, config & 0x02 ? type_80 : type_40);
+	floppy = machine->device("floppy2");
+	floppy_drive_set_geometry(floppy, config & 0x04 ? type_80 : type_40);
+	floppy = machine->device("floppy3");
+	floppy_drive_set_geometry(floppy, config & 0x08 ? type_80 : type_40);
 }
 
 static MACHINE_RESET( einstein2 )
@@ -606,8 +434,8 @@ static MACHINE_RESET( einstein2 )
 	MACHINE_RESET_CALL(einstein);
 
 	/* get 80 column specific devices */
-	einstein->mc6845 = devtag_get_device(machine, "crtc");
-	einstein->crtc_screen = devtag_get_device(machine, "80column");
+	einstein->mc6845 = machine->device("crtc");
+	einstein->crtc_screen = machine->device<screen_device>("80column");
 
 	/* 80 column card palette */
 	palette_set_color(machine, TMS9928A_PALETTE_SIZE, RGB_BLACK);
@@ -893,9 +721,9 @@ static const floppy_config einstein_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_SS_40,
+	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(default),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( einstein )
@@ -921,9 +749,9 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_TIMER_ADD_PERIODIC("ctc", einstein_ctc_trigger_callback, HZ(XTAL_X002 /4))
 
 	/* Einstein daisy chain support for non-Z80 devices */
-	MDRV_DEVICE_ADD("keyboard_daisy", DEVICE_GET_INFO_NAME(einstein_keyboard_daisy), 0)
-	MDRV_DEVICE_ADD("adc_daisy", DEVICE_GET_INFO_NAME(einstein_adc_daisy), 0)
-	MDRV_DEVICE_ADD("fire_daisy", DEVICE_GET_INFO_NAME(einstein_fire_daisy), 0)
+	MDRV_DEVICE_ADD("keyboard_daisy", EINSTEIN_KEYBOARD_DAISY, 0)
+	MDRV_DEVICE_ADD("adc_daisy", EINSTEIN_ADC_DAISY, 0)
+	MDRV_DEVICE_ADD("fire_daisy", EINSTEIN_FIRE_DAISY, 0)
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)

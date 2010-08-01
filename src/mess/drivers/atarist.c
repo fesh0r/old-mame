@@ -105,6 +105,14 @@ static WRITE_LINE_DEVICE_HANDLER( atarist_fdc_drq_w )
 
 static const wd17xx_interface fdc_intf =
 {
+	DEVCB_LINE_GND,
+	DEVCB_LINE(atarist_fdc_intrq_w),
+	DEVCB_LINE(atarist_fdc_drq_w),
+	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
+};
+
+static const wd17xx_interface stbook_fdc_intf =
+{
 	DEVCB_NULL,
 	DEVCB_LINE(atarist_fdc_intrq_w),
 	DEVCB_LINE(atarist_fdc_drq_w),
@@ -1454,7 +1462,7 @@ static void atarist_configure_memory(running_machine *machine)
 	const address_space *program = cputag_get_address_space(machine, M68000_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT8 *RAM = memory_region(machine, M68000_TAG);
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 256 * 1024:
 		memory_install_readwrite_bank(program, 0x000008, 0x03ffff, 0, 0, "bank1");
@@ -1524,13 +1532,13 @@ static MACHINE_START( atarist )
 	atarist_configure_memory(machine);
 
 	/* set CPU interrupt callback */
-	cpu_set_irq_callback(devtag_get_device(machine, M68000_TAG), atarist_int_ack);
+	cpu_set_irq_callback(machine->device(M68000_TAG), atarist_int_ack);
 
 	/* find devices */
-	state->mc68901 = devtag_get_device(machine, MC68901_TAG);
-	state->wd1772 = devtag_get_device(machine, WD1772_TAG);
-	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->rs232 = devtag_get_device(machine, RS232_TAG);
+	state->mc68901 = machine->device(MC68901_TAG);
+	state->wd1772 = machine->device(WD1772_TAG);
+	state->centronics = machine->device(CENTRONICS_TAG);
+	state->rs232 = machine->device(RS232_TAG);
 
 	/* register for state saving */
 	atarist_state_save(machine);
@@ -1622,18 +1630,18 @@ static MACHINE_START( atariste )
 	atarist_configure_memory(machine);
 
 	/* set CPU interrupt callback */
-	cpu_set_irq_callback(devtag_get_device(machine, M68000_TAG), atarist_int_ack);
+	cpu_set_irq_callback(machine->device(M68000_TAG), atarist_int_ack);
 
 	/* allocate timers */
 	state->dmasound_timer = timer_alloc(machine, atariste_dmasound_tick, NULL);
 	state->microwire_timer = timer_alloc(machine, atariste_microwire_tick, NULL);
 
 	/* find devices */
-	state->mc68901 = devtag_get_device(machine, MC68901_TAG);
-	state->wd1772 = devtag_get_device(machine, WD1772_TAG);
-	state->lmc1992 = devtag_get_device(machine, LMC1992_TAG);
-	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->rs232 = devtag_get_device(machine, RS232_TAG);
+	state->mc68901 = machine->device(MC68901_TAG);
+	state->wd1772 = machine->device(WD1772_TAG);
+	state->lmc1992 = machine->device(LMC1992_TAG);
+	state->centronics = machine->device(CENTRONICS_TAG);
+	state->rs232 = machine->device(RS232_TAG);
 
 	/* register for state saving */
 	atariste_state_save(machine);
@@ -1653,7 +1661,7 @@ static void stbook_configure_memory(running_machine *machine)
 	const address_space *program = cputag_get_address_space(machine, M68000_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT8 *RAM = memory_region(machine, M68000_TAG);
 
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 1024 * 1024:
 		memory_install_readwrite_bank(program, 0x000008, 0x07ffff, 0, 0x080000, "bank1");
@@ -1699,7 +1707,8 @@ static WRITE8_DEVICE_HANDLER( stbook_ym2149_port_a_w )
 	centronics_strobe_w(state->centronics, BIT(data, 5));
 
 	// 0x40 = IDE RESET
-	// 0x80 = FDD_DENSE_SEL
+
+	wd17xx_dden_w(state->wd1772, BIT(data, 7));
 }
 
 static const ay8910_interface stbook_psg_intf =
@@ -1778,13 +1787,13 @@ static MACHINE_START( stbook )
 	stbook_configure_memory(machine);
 
 	/* set CPU interrupt callback */
-	cpu_set_irq_callback(devtag_get_device(machine, M68000_TAG), atarist_int_ack);
+	cpu_set_irq_callback(machine->device(M68000_TAG), atarist_int_ack);
 
 	/* find devices */
-	state->mc68901 = devtag_get_device(machine, MC68901_TAG);
-	state->wd1772 = devtag_get_device(machine, WD1772_TAG);
-	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->rs232 = devtag_get_device(machine, RS232_TAG);
+	state->mc68901 = machine->device(MC68901_TAG);
+	state->wd1772 = machine->device(WD1772_TAG);
+	state->centronics = machine->device(CENTRONICS_TAG);
+	state->rs232 = machine->device(RS232_TAG);
 
 	/* register for state saving */
 	atariste_state_save(machine);
@@ -1792,21 +1801,21 @@ static MACHINE_START( stbook )
 
 static DEVICE_IMAGE_LOAD( atarist_cart )
 {
-	UINT8 *RAM = memory_region(image->machine, M68000_TAG);
+	UINT8 *RAM = memory_region(image.device().machine, M68000_TAG);
 	UINT8 *ptr = RAM + 0xfa0000;
-	int	filesize = image_length(image);
+	int	filesize = image.length();
 
 	if (filesize <= 128 * 1024)
 	{
-		if (image_fread(image, ptr, filesize) == filesize)
+		if (image.fread( ptr, filesize) == filesize)
 		{
-			memory_install_readwrite_bank(cputag_get_address_space(image->machine, M68000_TAG, ADDRESS_SPACE_PROGRAM), 0xfa0000, 0xfbffff, 0, 0, "bank3");
+			memory_install_readwrite_bank(cputag_get_address_space(image.device().machine, M68000_TAG, ADDRESS_SPACE_PROGRAM), 0xfa0000, 0xfbffff, 0, 0, "bank3");
 
-			return INIT_PASS;
+			return IMAGE_INIT_PASS;
 		}
 	}
 
-	return INIT_FAIL;
+	return IMAGE_INIT_FAIL;
 }
 
 static const floppy_config atarist_floppy_config =
@@ -1816,9 +1825,9 @@ static const floppy_config atarist_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_3_5_DSHD,
 	FLOPPY_OPTIONS_NAME(atarist),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( atarist_cartslot )
@@ -1849,7 +1858,7 @@ static MACHINE_DRIVER_START( atarist )
 
 	// device hardware
 	MDRV_MC68901_ADD(MC68901_TAG, Y2/8, mfp_intf)
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", Y2/4)
 	MDRV_RS232_ADD(RS232_TAG, rs232_intf)
 
 	// video hardware
@@ -1916,7 +1925,7 @@ static MACHINE_DRIVER_START( atariste )
 
 	// device hardware
 	MDRV_MC68901_ADD(MC68901_TAG, Y2/8, atariste_mfp_intf)
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", Y2/4)
 	MDRV_RS232_ADD(RS232_TAG, rs232_intf)
 
 	// video hardware
@@ -1990,7 +1999,7 @@ static MACHINE_DRIVER_START( stbook )
 	// device hardware
 	MDRV_MC68901_ADD(MC68901_TAG, U517/8, stbook_mfp_intf)
 	MDRV_RP5C15_ADD(RP5C15_TAG, rtc_intf)
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", U517/2)
 	MDRV_RS232_ADD(RS232_TAG, rs232_intf)
 
 	// video hardware
@@ -2018,7 +2027,7 @@ static MACHINE_DRIVER_START( stbook )
 	MDRV_ACIA6850_ADD(MC6850_0_TAG, stbook_acia_ikbd_intf)
 	MDRV_ACIA6850_ADD(MC6850_1_TAG, acia_midi_intf)
 
-	MDRV_WD1772_ADD(WD1772_TAG, fdc_intf )
+	MDRV_WD1772_ADD(WD1772_TAG, stbook_fdc_intf )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(atarist_floppy_config)
 
@@ -2041,7 +2050,7 @@ ROM_START( atarist )
 	ROM_SYSTEM_BIOS( 2, "tos100", "TOS 1.0 (ROM TOS)" )
 	ROMX_LOAD( "tos100.img", 0xfc0000, 0x030000, BAD_DUMP CRC(1a586c64) SHA1(9a6e4c88533a9eaa4d55cdc040e47443e0226eb2), ROM_BIOS(3) )
 	ROM_SYSTEM_BIOS( 3, "tos099", "TOS 0.99 (Disk TOS)" )
-	ROMX_LOAD( "tos099.img", 0xfc0000, 0x008000, NO_DUMP, ROM_BIOS(4) )
+	ROMX_LOAD( "tos099.img", 0xfc0000, 0x004000, CRC(cee3c664) SHA1(80c10b31b63b906395151204ec0a4984c8cb98d6), ROM_BIOS(4) )
 	ROM_SYSTEM_BIOS( 4, "tos100de", "TOS 1.0 (ROM TOS) (Germany)" )
 	ROMX_LOAD( "st_7c1_a4.u4", 0xfc0000, 0x008000, CRC(867fdd7e) SHA1(320d12acf510301e6e9ab2e3cf3ee60b0334baa0), ROM_SKIP(1) | ROM_BIOS(5) )
 	ROMX_LOAD( "st_7c1_a9.u7", 0xfc0001, 0x008000, CRC(30e8f982) SHA1(253f26ff64b202b2681ab68ffc9954125120baea), ROM_SKIP(1) | ROM_BIOS(5) )

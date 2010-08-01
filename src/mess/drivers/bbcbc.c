@@ -112,7 +112,7 @@ static Z80PIO_INTERFACE( bbcbc_z80pio_intf )
 	DEVCB_NULL	/* ready b */
 };
 
-static const z80_daisy_chain bbcbc_daisy_chain[] =
+static const z80_daisy_config bbcbc_daisy_chain[] =
 {
 	{ "z80pio" },
 	{ NULL }
@@ -129,25 +129,25 @@ static DEVICE_START( bbcbc_cart )
 
 static DEVICE_IMAGE_LOAD( bbcbc_cart )
 {
-	UINT8 *cart = memory_region(image->machine,  "maincpu" ) + 0x4000;
+	UINT8 *cart = memory_region(image.device().machine,  "maincpu" ) + 0x4000;
 
-	if ( image_software_entry(image) == NULL )
+	if ( image.software_entry() == NULL )
 	{
-		int size = image_length( image );
-		if ( image_fread( image, cart, size ) != size ) {
-			image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-			return INIT_FAIL;
+		int size = image.length();
+		if ( image.fread(cart, size ) != size ) {
+			image.seterror( IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
+			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
 	{
-		UINT8 *reg = image_get_software_region( image, "rom" );
-		int reg_len = image_get_software_region_length( image, "rom" );
+		UINT8 *reg = image.get_software_region( "rom" );
+		int reg_len = image.get_software_region_length( "rom" );
 
 		memcpy( cart, reg, MIN(reg_len, 0x8000) );
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 
 }
 
@@ -184,7 +184,7 @@ static MACHINE_DRIVER_START( bbcbc )
 	MDRV_CARTSLOT_LOAD( bbcbc_cart )
 
 	/* Software lists */
-	MDRV_SOFTWARE_LIST_ADD("bbcbc")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","bbcbc")
 MACHINE_DRIVER_END
 
 

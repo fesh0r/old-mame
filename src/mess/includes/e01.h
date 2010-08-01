@@ -18,6 +18,16 @@ public:
 
 	e01_state(running_machine &machine) { }
 
+	/* interrupt state */
+	int adlc_ie;
+	int hdc_ie;
+
+	int rtc_irq;
+	int via_irq;
+	int hdc_irq;
+	int fdc_drq;
+	int adlc_irq;
+
 	/* devices */
 	running_device *fdc;
 };

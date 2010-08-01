@@ -390,12 +390,12 @@ static void mc6845_screen_configure(running_machine *machine)
 	visarea.min_y = 0;
 	visarea.max_y = height-1;
 	if ((width < 610) && (height < 460) && (bytes < 0x1000))	/* bounds checking to prevent an assert or violation */
-		video_screen_set_visarea(machine->primary_screen, 0, width, 0, height);
+		machine->primary_screen->set_visible_area(0, width, 0, height);
 }
 
 VIDEO_START( super80v )
 {
-	mc6845 = devtag_get_device(machine, "crtc");
+	mc6845 = machine->device("crtc");
 	FNT = memory_region(machine, "gfx1");
 }
 

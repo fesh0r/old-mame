@@ -168,8 +168,8 @@ static I8085_CONFIG( exp85_i8085_config )
 {
 	DEVCB_NULL,					/* STATUS changed callback */
 	DEVCB_NULL,					/* INTE changed callback */
-	DEVCB_LINE(exp85_sid_r),	/* SID changed callback (8085A only) */
-	DEVCB_LINE(exp85_sod_w)		/* SOD changed callback (8085A only) */
+	DEVCB_LINE(exp85_sid_r),	/* SID changed callback (I8085A only) */
+	DEVCB_LINE(exp85_sod_w)		/* SOD changed callback (I8085A only) */
 };
 
 /* Machine Initialization */
@@ -187,8 +187,8 @@ static MACHINE_START( exp85 )
 	memory_set_bank(machine, "bank1", 0);
 
 	/* find devices */
-	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->speaker = machine->device(SPEAKER_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 }
 
 /* Machine Driver */
@@ -197,14 +197,15 @@ static const cassette_config exp85_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( exp85 )
 	MDRV_DRIVER_DATA(exp85_state)
 
     /* basic machine hardware */
-    MDRV_CPU_ADD(I8085A_TAG, 8085A, XTAL_6_144MHz)
+    MDRV_CPU_ADD(I8085A_TAG, I8085A, XTAL_6_144MHz)
     MDRV_CPU_PROGRAM_MAP(exp85_mem)
     MDRV_CPU_IO_MAP(exp85_io)
 	MDRV_CPU_CONFIG(exp85_i8085_config)

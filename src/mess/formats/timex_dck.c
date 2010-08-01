@@ -25,9 +25,7 @@
 
 #include "emu.h"
 #include "formats/timex_dck.h"
-#include "video/border.h"
 #include "sound/ay8910.h"
-#include "utils.h"
 
 
 int timex_cart_type;
@@ -40,50 +38,50 @@ DEVICE_IMAGE_LOAD( timex_cart )
 {
 	int file_size;
 	UINT8 * file_data;
-
+	
 	int chunks_in_file = 0;
-
+	
 	int i;
-
+	
 	logerror ("Trying to load cart\n");
-
-	file_size = image_length(image);
-
+	
+	file_size = image.length();
+	
 	if (file_size < 0x09)
 	{
 		logerror ("Bad file size\n");
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
-
+	
 	file_data = (UINT8 *)malloc(file_size);
 	if (file_data == NULL)
 	{
 		logerror ("Memory allocating error\n");
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
-
-	image_fread(image, file_data, file_size);
-
+	
+	image.fread(file_data, file_size);
+	
 	for (i=0; i<8; i++)
-		if(file_data[i+1]&0x02)	chunks_in_file++;
-
+		if(file_data[i+1]&0x02) chunks_in_file++;
+	
 	if (chunks_in_file*0x2000+0x09 != file_size)
 	{
 		free (file_data);
 		logerror ("File corrupted\n");
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
-
+	
 	switch (file_data[0x00])
 	{
-		case 0x00:	logerror ("DOCK cart\n");
+		case 0x00:  logerror ("DOCK cart\n");
 				timex_cart_type = TIMEX_CART_DOCK;
 				timex_cart_data = (UINT8*) malloc (0x10000);
 				if (!timex_cart_data)
 				{
 					free (file_data);
 					logerror ("Memory allocate error\n");
-					return INIT_FAIL;
+					return IMAGE_INIT_FAIL;
 				}
 				chunks_in_file = 0;
 				for (i=0; i<8; i++)
@@ -104,25 +102,25 @@ DEVICE_IMAGE_LOAD( timex_cart )
 				}
 				free (file_data);
 				break;
-
-		default:	logerror ("Cart type not supported\n");
+	
+		default:    logerror ("Cart type not supported\n");
 				free (file_data);
 				timex_cart_type = TIMEX_CART_NONE;
-				return INIT_FAIL;
+				return IMAGE_INIT_FAIL;
 	}
-
+	
 	logerror ("Cart loaded\n");
 	logerror ("Chunks %02x\n", timex_cart_chunks);
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD( timex_cart )
 {
-	if (timex_cart_data)
-	{
-		free (timex_cart_data);
-		timex_cart_data = NULL;
-	}
-	timex_cart_type = TIMEX_CART_NONE;
-	timex_cart_chunks = 0x00;
+  if (timex_cart_data)
+  {
+      free (timex_cart_data);
+      timex_cart_data = NULL;
+  }
+  timex_cart_type = TIMEX_CART_NONE;
+  timex_cart_chunks = 0x00;
 }

@@ -24,7 +24,6 @@
 #include "video/v9938.h"
 #include "machine/ctronics.h"
 #include "devices/cassette.h"
-#include "utils.h"
 #include "osdepend.h"
 #include "sound/ay8910.h"
 #include "sound/2413intf.h"
@@ -94,23 +93,23 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	slot_state *state;
 	int id = -1;
 
-	if (strcmp(image->tag(),"cart1")==0) {
+	if (strcmp(image.device().tag(),"cart1")==0) {
 		id = 0;
 	}
-	if (strcmp(image->tag(),"cart2")==0) {
+	if (strcmp(image.device().tag(),"cart2")==0) {
 		id = 1;
 	}
 
 	if( id == -1 ) {
 		//logerror ("error: invalid cart tag '%s'\n", image->tag);
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 
-	size = image_length (image);
+	size = image.length ();
 	if (size < 0x2000) {
 		logerror ("cart #%d: error: file is smaller than 2kb, too small "
 				  "to be true!\n", id);
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 
 	/* allocate memory and load */
@@ -118,23 +117,23 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	while (size_aligned < size) {
 		size_aligned *= 2;
 	}
-	mem = (UINT8*)image_malloc (image, size_aligned);
+	mem = (UINT8*)image.image_malloc(size_aligned);
 	if (!mem) {
 		logerror ("cart #%d: error: failed to allocate memory for cartridge\n",
 						id);
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 	if (size < size_aligned) {
 		memset (mem, 0xff, size_aligned);
 	}
-	if (image_fread(image, mem, size) != size) {
+	if (image.fread(mem, size) != size) {
 		logerror ("cart #%d: %s: can't read full %d bytes\n",
-						id, image_filename (image), size);
-		return INIT_FAIL;
+						id, image.filename (), size);
+		return IMAGE_INIT_FAIL;
 	}
 
 	/* see if msx.crc will tell us more */
-	extra = image_extrainfo (image);
+	extra = image.extrainfo ();
 	if (!extra) {
 		logerror("cart #%d: warning: no information in crc file\n", id);
 		type = -1;
@@ -155,7 +154,7 @@ DEVICE_IMAGE_LOAD (msx_cart)
 
 		if (mem[0] != 'A' || mem[1] != 'B') {
 			logerror("cart #%d: %s: May not be a valid ROM file\n",
-							id, image_filename (image));
+							id, image.filename ());
 		}
 
 		logerror("cart #%d: Probed cartridge mapper %d/%s\n", id,
@@ -166,10 +165,10 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	if (!type && size_aligned != 0x10000)
 	{
 		size_aligned = 0x10000;
-		mem = (UINT8*)image_realloc(image, mem, 0x10000);
+		mem = (UINT8*)image.image_realloc(mem, 0x10000);
 		if (!mem) {
 			logerror ("cart #%d: error: cannot allocate memory\n", id);
-			return INIT_FAIL;
+			return IMAGE_INIT_FAIL;
 		}
 
 		if (size < 0x10000) {
@@ -240,22 +239,22 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	}
 
 	/* allocate and set slot_state for this cartridge */
-	state = (slot_state*) image_malloc(image, sizeof (slot_state));
+	state = (slot_state*) image.image_malloc(sizeof (slot_state));
 	if (!state)
 	{
 		logerror ("cart #%d: error: cannot allocate memory for "
 				  "cartridge state\n", id);
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 	memset (state, 0, sizeof (slot_state));
 
 	state->type = type;
-	sramfile = (char*)image_malloc(image, strlen (image_filename (image) + 1));
+	sramfile = (char*)image.image_malloc(strlen (image.filename () + 1));
 
 	if (sramfile) {
 		char *ext;
 
-		strcpy (sramfile, image_basename (image));
+		strcpy (sramfile, image.basename ());
 		ext = strrchr (sramfile, '.');
 		if (ext) {
 			*ext = 0;
@@ -263,8 +262,8 @@ DEVICE_IMAGE_LOAD (msx_cart)
 		state->sramfile = sramfile;
 	}
 
-	if (msx_slot_list[type].init (image->machine, state, 0, mem, size_aligned)) {
-		return INIT_FAIL;
+	if (msx_slot_list[type].init (image.device().machine, state, 0, mem, size_aligned)) {
+		return IMAGE_INIT_FAIL;
 	}
 	if (msx_slot_list[type].loadsram) {
 		msx_slot_list[type].loadsram (state);
@@ -273,17 +272,17 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	msx1.cart_state[id] = cart_state[id] = state;
 	msx_memory_set_carts ();
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD (msx_cart)
 {
 	int id = -1;
 
-	if (strcmp(image->tag(),"cart1")==0) {
+	if (strcmp(image.device().tag(),"cart1")==0) {
 		id = 0;
 	}
-	if (strcmp(image->tag(),"cart2")==0) {
+	if (strcmp(image.device().tag(),"cart2")==0) {
 		id = 1;
 	}
 
@@ -483,11 +482,11 @@ DRIVER_INIT( msx )
 		msx1.cart_state[i] = cart_state[i];
 	}
 
-	cpu_set_input_line_vector (devtag_get_device(machine, "maincpu"), 0, 0xff);
+	cpu_set_input_line_vector (machine->device("maincpu"), 0, 0xff);
 
 	msx_memory_init (machine);
 
-	z80_set_cycle_tables( devtag_get_device(machine, "maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
+	z80_set_cycle_tables( machine->device("maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
 }
 
 INTERRUPT_GEN( msx2_interrupt )
@@ -517,7 +516,7 @@ INTERRUPT_GEN( msx_interrupt )
 
 static running_device *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, "cassette");
+	return machine->device("cassette");
 }
 
 READ8_HANDLER ( msx_psg_port_a_r )
@@ -617,7 +616,7 @@ WRITE8_DEVICE_HANDLER( msx_printer_data_w )
 	if (input_port_read(device->machine, "DSW") & 0x80)
 	{
 		/* SIMPL emulation */
-		dac_signed_data_w(devtag_get_device(device->machine, "dac"), data);
+		dac_signed_data_w(device->machine->device("dac"), data);
 	}
 	else
 	{
@@ -641,7 +640,7 @@ WRITE8_HANDLER (msx_fmpac_w)
 {
 	if (msx1.opll_active)
 	{
-		running_device *ym = devtag_get_device(space->machine, "ym2413");
+		running_device *ym = space->machine->device("ym2413");
 
 		if (offset == 1)
 			ym2413_w (ym, 1, data);
@@ -661,19 +660,19 @@ WRITE8_HANDLER (msx_rtc_latch_w)
 
 WRITE8_HANDLER (msx_rtc_reg_w)
 {
-	running_device *rtc = devtag_get_device(space->machine, "rtc");
+	running_device *rtc = space->machine->device("rtc");
 	tc8521_w(rtc, msx1.rtc_latch, data);
 }
 
 READ8_HANDLER (msx_rtc_reg_r)
 {
-	running_device *rtc = devtag_get_device(space->machine, "rtc");
+	running_device *rtc = space->machine->device("rtc");
 	return tc8521_r(rtc, msx1.rtc_latch);
 }
 
 NVRAM_HANDLER( msx2 )
 {
-	running_device *rtc = devtag_get_device(machine, "rtc");
+	running_device *rtc = machine->device("rtc");
 	if (file)
 	{
 		if (read_or_write)
@@ -776,7 +775,7 @@ static WRITE8_DEVICE_HANDLER ( msx_ppi_port_c_w )
 
 	/* key click */
 	if ( (old_val ^ data) & 0x80)
-		dac_signed_data_w (devtag_get_device(device->machine, "dac"), (data & 0x80 ? 0x7f : 0));
+		dac_signed_data_w (device->machine->device("dac"), (data & 0x80 ? 0x7f : 0));
 
 	/* cassette motor on/off */
 	if ( (old_val ^ data) & 0x10)

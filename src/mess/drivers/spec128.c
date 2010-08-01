@@ -151,7 +151,6 @@ resulting mess can be seen in the F4 viewer display.
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/spectrum.h"
-#include "eventlst.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -193,7 +192,7 @@ static WRITE8_HANDLER(spectrum_128_port_7ffd_w)
 void spectrum_128_update_memory(running_machine *machine)
 {
 	spectrum_state *state = (spectrum_state *)machine->driver_data;
-	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 	unsigned char *ChosenROM;
 	int ROMSelection;
 
@@ -230,7 +229,7 @@ void spectrum_128_update_memory(running_machine *machine)
 static  READ8_HANDLER ( spectrum_128_ula_r )
 {
 	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
-	int vpos = video_screen_get_vpos(space->machine->primary_screen);
+	int vpos = space->machine->primary_screen->vpos();
 
 	return vpos<193 ? state->screen_location[0x1800|(vpos&0xf8)<<2]:0xff;
 }
@@ -256,7 +255,7 @@ ADDRESS_MAP_END
 static MACHINE_RESET( spectrum_128 )
 {
 	spectrum_state *state = (spectrum_state *)machine->driver_data;
-	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 
 	memset(messram,0,128*1024);
 	/* 0x0000-0x3fff always holds ROM */
@@ -297,7 +296,7 @@ GFXDECODE_END
 MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_IMPORT_FROM( spectrum )
 
-	MDRV_CPU_REPLACE("maincpu", Z80, 3500000)        /* 3.5 MHz */
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(spectrum_128_mem)
 	MDRV_CPU_IO_MAP(spectrum_128_io)
 

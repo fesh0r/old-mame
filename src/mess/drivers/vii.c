@@ -113,7 +113,7 @@ INLINE void verboselog(running_machine *machine, int n_level, const char *s_fmt,
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%04x: %s", cpu_get_pc(devtag_get_device(machine, "maincpu")), buf );
+		logerror( "%04x: %s", cpu_get_pc(machine->device("maincpu")), buf );
 	}
 }
 #else
@@ -607,7 +607,7 @@ static READ16_HANDLER( vii_io_r )
 			break;
 
 		case 0x2f: // Data Segment
-			val = cpu_get_reg(devtag_get_device(space->machine, "maincpu"), UNSP_SR) >> 10;
+			val = cpu_get_reg(space->machine->device("maincpu"), UNSP_SR) >> 10;
 			verboselog(space->machine, 3, "vii_io_r: Data Segment = %04x (%04x)\n", val, mem_mask);
 			break;
 
@@ -686,8 +686,8 @@ static WRITE16_HANDLER( vii_io_w )
 			break;
 
 		case 0x2f: // Data Segment
-			temp = cpu_get_reg(devtag_get_device(space->machine, "maincpu"), UNSP_SR);
-			cpu_set_reg(devtag_get_device(space->machine, "maincpu"), UNSP_SR, (temp & 0x03ff) | ((data & 0x3f) << 10));
+			temp = cpu_get_reg(space->machine->device("maincpu"), UNSP_SR);
+			cpu_set_reg(space->machine->device("maincpu"), UNSP_SR, (temp & 0x03ff) | ((data & 0x3f) << 10));
 			verboselog(space->machine, 3, "vii_io_w: Data Segment = %04x (%04x)\n", data, mem_mask);
 			break;
 
@@ -839,14 +839,20 @@ INPUT_PORTS_END
 
 static DEVICE_IMAGE_LOAD( vii_cart )
 {
-	vii_state *state = (vii_state *)image->machine->driver_data;
-	UINT8 *cart = memory_region( image->machine, "cart" );
-	int size = image_length( image );
-
-	if( image_fread( image, cart, size ) != size )
+	vii_state *state = (vii_state *)image.device().machine->driver_data;
+	UINT8 *cart = memory_region( image.device().machine, "cart" );
+	if (image.software_entry() == NULL)
 	{
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-		return INIT_FAIL;
+		int size = image.length();
+
+		if( image.fread(cart, size ) != size )
+		{
+			image.seterror( IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
+			return IMAGE_INIT_FAIL;
+		}
+	} else {
+		int filesize = image.get_software_region_length("rom");
+		memcpy(cart, image.get_software_region("rom"), filesize);
 	}
 
 	memcpy(state->cart, cart + 0x4000*2, (0x400000 - 0x4000) * 2);
@@ -862,24 +868,30 @@ static DEVICE_IMAGE_LOAD( vii_cart )
 	{
 		state->centered_coordinates = 0;
 	}
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static DEVICE_IMAGE_LOAD( vsmile_cart )
 {
-	vii_state *state = (vii_state *)image->machine->driver_data;
-	UINT8 *cart = memory_region( image->machine, "cart" );
-	int size = image_length( image );
-
-	if( image_fread( image, cart, size ) != size )
+	vii_state *state = (vii_state *)image.device().machine->driver_data;
+	UINT8 *cart = memory_region( image.device().machine, "cart" );
+	if (image.software_entry() == NULL)
 	{
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-		return INIT_FAIL;
+		int size = image.length();
+
+		if( image.fread( cart, size ) != size )
+		{
+			image.seterror( IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
+			return IMAGE_INIT_FAIL;
+		}		
 	}
-
+	else
+	{
+		int filesize = image.get_software_region_length("rom");
+		memcpy(cart, image.get_software_region("rom"), filesize);
+	}
 	memcpy(state->cart, cart + 0x4000*2, (0x400000 - 0x4000) * 2);
-
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 static MACHINE_START( vii )
@@ -894,6 +906,11 @@ static MACHINE_START( vii )
 	state->controller_input[4] = 0;
 	state->controller_input[6] = 0xff;
 	state->controller_input[7] = 0;
+
+	UINT8 *rom = memory_region( machine, "cart" );
+	if (rom) { // to prevent batman crash
+		memcpy(state->cart, rom + 0x4000*2, (0x400000 - 0x4000) * 2);
+	}
 }
 
 static MACHINE_RESET( vii )
@@ -956,11 +973,13 @@ static MACHINE_DRIVER_START( vii )
 
 	MDRV_CARTSLOT_ADD( "cart" )
 	MDRV_CARTSLOT_EXTENSION_LIST( "bin" )
-	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_LOAD( vii_cart )
+	MDRV_CARTSLOT_INTERFACE("vii_cart")
 
 	MDRV_VIDEO_START( vii )
 	MDRV_VIDEO_UPDATE( vii )
+	
+	MDRV_SOFTWARE_LIST_ADD("vii_cart","vii")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vsmile )
@@ -991,6 +1010,11 @@ static MACHINE_DRIVER_START( vsmile )
 	MDRV_VIDEO_UPDATE( vii )
 MACHINE_DRIVER_END
 
+static const i2cmem_interface i2cmem_interface =
+{
+       I2CMEM_SLAVE_ADDRESS, 0, 0x200
+};
+
 static MACHINE_DRIVER_START( batman )
 
 	MDRV_DRIVER_DATA( vii_state )
@@ -1002,7 +1026,7 @@ static MACHINE_DRIVER_START( batman )
 	MDRV_MACHINE_START( vii )
 	MDRV_MACHINE_RESET( vii )
 
-	MDRV_NVRAM_HANDLER( i2cmem_0 )
+	MDRV_I2CMEM_ADD("i2cmem",i2cmem_interface)
 
 	MDRV_SCREEN_ADD( "screen", RASTER )
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -1030,7 +1054,6 @@ static DRIVER_INIT( batman )
 
 	state->spg243_mode = SPG243_BATMAN;
 	state->centered_coordinates = 1;
-	i2cmem_init(machine, 0, I2CMEM_SLAVE_ADDRESS, 0, 0x200, NULL);
 }
 
 static DRIVER_INIT( vsmile )
@@ -1045,6 +1068,7 @@ ROM_START( vii )
 	ROM_REGION( 0x800000, "maincpu", ROMREGION_ERASEFF )      /* dummy region for u'nSP */
 
 	ROM_REGION( 0x2000000, "cart", ROMREGION_ERASE00 )
+	ROM_LOAD( "vii.bin", 0x0000, 0x2000000, CRC(04627639) SHA1(f883a92d31b53c9a5b0cdb112d07cd793c95fc43))
 ROM_END
 
 ROM_START( batman )

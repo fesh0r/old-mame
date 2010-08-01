@@ -77,9 +77,9 @@ static UINT8 joy1_x,joy1_y,joy2_x,joy2_y;
 
 VIDEO_START(vc4000)
 {
-	running_device *screen = video_screen_first(machine);
-	int width = video_screen_get_width(screen);
-	int height = video_screen_get_height(screen);
+	screen_device *screen = screen_first(*machine);
+	int width = screen->width();
+	int height = screen->height();
 	int i;
 
 	for (i=0;i<0x20; i++)
@@ -182,7 +182,7 @@ READ8_HANDLER(vc4000_video_r)
 	case 0xcc:		/* left joystick */
 		if (input_port_read(space->machine, "CONFIG")&1)
 		{		/* paddle */
-			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(space->machine->device("maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x03;
 				switch (data)
@@ -221,7 +221,7 @@ READ8_HANDLER(vc4000_video_r)
 		}
 		else
 		{		/* buttons */
-			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(space->machine->device("maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x03;
 				switch (data)
@@ -259,7 +259,7 @@ READ8_HANDLER(vc4000_video_r)
 	case 0xcd:		/* right joystick */
 		if (input_port_read(space->machine, "CONFIG")&1)
 		{
-			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(space->machine->device("maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x30;
 				switch (data)
@@ -298,7 +298,7 @@ READ8_HANDLER(vc4000_video_r)
 		}
 		else
 		{
-			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(space->machine->device("maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x30;
 				switch (data)
@@ -375,7 +375,7 @@ WRITE8_HANDLER(vc4000_video_w)
 
 	case 0xc7:						// Soundregister
 		vc4000_video.reg.data[offset] = data;
-		vc4000_soundport_w(devtag_get_device(space->machine, "custom"), 0, data);
+		vc4000_soundport_w(space->machine->device("custom"), 0, data);
 		break;
 
 	case 0xc8:						// Digits 1 and 2
@@ -565,9 +565,9 @@ static void vc4000_sprite_update(bitmap_t *bitmap, UINT8 *collision, SPRITE *Thi
 
 INLINE void vc4000_draw_grid(running_machine *machine, UINT8 *collision)
 {
-	running_device *screen = video_screen_first(machine);
-	int width = video_screen_get_width(screen);
-	int height = video_screen_get_height(screen);
+	screen_device *screen = screen_first(*machine);
+	int width = screen->width();
+	int height = screen->height();
 	int i, j, m, x, line=vc4000_video.line-20;
 	int w, k;
 
@@ -624,8 +624,8 @@ INTERRUPT_GEN( vc4000_video_line )
 	int x,y,i;
 	UINT8 collision[400]={0}; // better alloca or gcc feature of non constant long automatic arrays
 	static UINT8 irq_pause=0;
-	const rectangle visarea = *video_screen_get_visible_area(device->machine->primary_screen);
-	assert(ARRAY_LENGTH(collision) >= video_screen_get_width(device->machine->primary_screen));
+	const rectangle &visarea = device->machine->primary_screen->visible_area();
+	assert(ARRAY_LENGTH(collision) >= device->machine->primary_screen->width());
 
 	vc4000_video.line++;
 	if (irq_pause) irq_pause++;

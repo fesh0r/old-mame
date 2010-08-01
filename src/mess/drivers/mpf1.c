@@ -318,7 +318,7 @@ static Z80PIO_INTERFACE( mpf1_pio_intf )
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain mpf1_daisy_chain[] =
+static const z80_daisy_config mpf1_daisy_chain[] =
 {
 	{ Z80CTC_TAG },
 	{ Z80PIO_TAG },
@@ -331,7 +331,8 @@ static const cassette_config mpf1_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 /* TMS5220 Interface */
@@ -339,6 +340,7 @@ static const cassette_config mpf1_cassette_config =
 static const tms5220_interface mpf1_tms5220_intf =
 {
 	DEVCB_NULL,					/* no IRQ callback */
+	DEVCB_NULL,					/* no Ready callback */
 #if 1
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
@@ -352,7 +354,7 @@ static TIMER_CALLBACK( check_halt_callback )
 {
 	// halt-LED; the red one, is turned on when the processor is halted
 	// TODO: processor seems to halt, but restarts(?) at 0x0000 after a while -> fix
-	INT64 led_halt = machine->device(Z80_TAG)->get_runtime_int(CPUINFO_INT_REGISTER + Z80_HALT);
+	INT64 led_halt = cpu_get_reg(machine->device(Z80_TAG), Z80_HALT);
 	set_led_status(machine, 1, led_halt);
 }
 
@@ -361,8 +363,8 @@ static MACHINE_START( mpf1 )
 	mpf1_state *state = (mpf1_state *)machine->driver_data;
 
 	/* find devices */
-	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->speaker = machine->device(SPEAKER_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	state->led_refresh_timer = timer_alloc(machine, led_refresh, 0);
 

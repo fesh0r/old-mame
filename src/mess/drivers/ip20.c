@@ -38,7 +38,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog(running_machine *machine, int n_level, c
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", cpu_get_pc(devtag_get_device(machine, "maincpu")), buf );
+		logerror( "%08x: %s", cpu_get_pc(machine->device("maincpu")), buf );
 	}
 }
 
@@ -128,7 +128,7 @@ static READ32_HANDLER( hpc_r )
 		return nHPC_MiscStatus;
 	case 0x01bc:
 //      verboselog(machine, 2, "HPC CPU Serial EEPROM Read\n" );
-		return ( ( eeprom_read_bit(devtag_get_device(space->machine, "eeprom")) << 4 ) );
+		return ( ( eeprom_read_bit(space->machine->device("eeprom")) << 4 ) );
 	case 0x01c4:
 		verboselog(machine, 2, "HPC Local IO Register 0 Mask Read: %08x (%08x)\n", nHPC_LocalIOReg0Mask, mem_mask );
 		return nHPC_LocalIOReg0Mask;
@@ -148,7 +148,7 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d04:
 		verboselog(machine, 2, "HPC DUART0 Channel B Data Read\n" );
 //      return 0;
-		scc = devtag_get_device(space->machine, "scc");
+		scc = space->machine->device("scc");
 		return scc8530_r(scc, 2);
 	case 0x0d08:
 		verboselog(machine, 2, "HPC DUART0 Channel A Control Read (%08x)\n", mem_mask	 );
@@ -157,7 +157,7 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d0c:
 		verboselog(machine, 2, "HPC DUART0 Channel A Data Read\n" );
 //      return 0;
-		scc = devtag_get_device(space->machine, "scc");
+		scc = space->machine->device("scc");
 		return scc8530_r(scc, 3);
 	case 0x0d10:
 //      verboselog(machine, 2, "HPC DUART1 Channel B Control Read\n" );
@@ -206,7 +206,7 @@ static WRITE32_HANDLER( hpc_w )
 	running_device *eeprom;
 	running_machine *machine = space->machine;
 
-	eeprom = devtag_get_device(space->machine, "eeprom");
+	eeprom = space->machine->device("eeprom");
 	offset <<= 2;
 	if( offset >= 0x0e00 && offset <= 0x0e7c )
 	{
@@ -341,22 +341,22 @@ static WRITE32_HANDLER( hpc_w )
 		break;
 	case 0x0d00:
 		verboselog(machine, 2, "HPC DUART0 Channel B Control Write: %08x (%08x)\n", data, mem_mask );
-		scc = devtag_get_device(space->machine, "scc");
+		scc = space->machine->device("scc");
 		scc8530_w(scc, 0, data);
 		break;
 	case 0x0d04:
 		verboselog(machine, 2, "HPC DUART0 Channel B Data Write: %08x (%08x)\n", data, mem_mask );
-		scc = devtag_get_device(space->machine, "scc");
+		scc = space->machine->device("scc");
 		scc8530_w(scc, 2, data);
 		break;
 	case 0x0d08:
 		verboselog(machine, 2, "HPC DUART0 Channel A Control Write: %08x (%08x)\n", data, mem_mask );
-		scc = devtag_get_device(space->machine, "scc");
+		scc = space->machine->device("scc");
 		scc8530_w(scc, 1, data);
 		break;
 	case 0x0d0c:
 		verboselog(machine, 2, "HPC DUART0 Channel A Data Write: %08x (%08x)\n", data, mem_mask );
-		scc = devtag_get_device(space->machine, "scc");
+		scc = space->machine->device("scc");
 		scc8530_w(scc, 3, data);
 		break;
 	case 0x0d10:
@@ -472,14 +472,14 @@ static const struct WD33C93interface scsi_intf =
 	&scsi_irq,		/* command completion IRQ */
 };
 
-static void ip204415_exit(running_machine *machine)
+static void ip204415_exit(running_machine &machine)
 {
 	wd33c93_exit(&scsi_intf);
 }
 
 static DRIVER_INIT( ip204415 )
 {
-	add_exit_callback(machine, ip204415_exit);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, ip204415_exit);
 }
 
 // sgi_mc_update wants once every millisecond (1/1000th of a second)
@@ -597,7 +597,7 @@ static MACHINE_DRIVER_START( ip204415 )
 	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", 7000000)
 
 	MDRV_CDROM_ADD( "cdrom" )
 

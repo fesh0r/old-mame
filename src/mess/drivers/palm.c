@@ -16,7 +16,7 @@
 #include "debugger.h"
 #include "devices/messram.h"
 
-static CPU_DISASSEMBLE(palm_dasm_override);
+static offs_t palm_dasm_override(device_t &device, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram, int options);
 
 static UINT8 port_f_latch;
 static UINT16 spim_data;
@@ -28,7 +28,7 @@ static UINT16 spim_data;
 static INPUT_CHANGED( pen_check )
 {
     UINT8 button = input_port_read(field->port->machine, "PENB");
-    running_device *mc68328_device = devtag_get_device(field->port->machine, "dragonball");
+    running_device *mc68328_device = field->port->machine->device("dragonball");
     if(button)
     {
         mc68328_set_penirq_line(mc68328_device, 1);
@@ -42,7 +42,7 @@ static INPUT_CHANGED( pen_check )
 static INPUT_CHANGED( button_check )
 {
     UINT8 button_state = input_port_read(field->port->machine, "PORTD");
-    running_device *mc68328_device = devtag_get_device(field->port->machine, "dragonball");
+    running_device *mc68328_device = field->port->machine->device("dragonball");
 
     mc68328_set_port_d_lines(mc68328_device, button_state, (int)(FPTR)param);
 }
@@ -92,22 +92,25 @@ static void palm_spim_exchange( running_device *device )
 static MACHINE_START( palm )
 {
     const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-    memory_install_read_bank (space, 0x000000, messram_get_size(devtag_get_device(machine, "messram")) - 1, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, "bank1");
-    memory_install_write_bank(space, 0x000000, messram_get_size(devtag_get_device(machine, "messram")) - 1, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, "bank1");
-    memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+    memory_install_read_bank (space, 0x000000, messram_get_size(machine->device("messram")) - 1, messram_get_size(machine->device("messram")) - 1, 0, "bank1");
+    memory_install_write_bank(space, 0x000000, messram_get_size(machine->device("messram")) - 1, messram_get_size(machine->device("messram")) - 1, 0, "bank1");
+    memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 
     state_save_register_global(machine, port_f_latch);
     state_save_register_global(machine, spim_data);
+	if (machine->device<cpu_device>("maincpu")->debug()) {
+		machine->device<cpu_device>("maincpu")->debug()->set_dasm_override(palm_dasm_override);
+	}	
 }
 
 static MACHINE_RESET( palm )
 {
     // Copy boot ROM
     UINT8* bios = memory_region(machine, "bios");
-    memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0, messram_get_size(devtag_get_device(machine, "messram")));
-    memcpy(messram_get_ptr(devtag_get_device(machine, "messram")), bios, 0x20000);
+    memset(messram_get_ptr(machine->device("messram")), 0, messram_get_size(machine->device("messram")));
+    memcpy(messram_get_ptr(machine->device("messram")), bios, 0x20000);
 
-    devtag_get_device(machine, "maincpu")->reset();
+    machine->device("maincpu")->reset();
 }
 
 
@@ -127,19 +130,13 @@ ADDRESS_MAP_END
 
 static WRITE8_DEVICE_HANDLER( palm_dac_transition )
 {
-    dac_data_w( devtag_get_device(device->machine, "dac"), 0x7f * data );
+    dac_data_w( device->machine->device("dac"), 0x7f * data );
 }
 
 
 /***************************************************************************
     MACHINE DRIVERS
 ***************************************************************************/
-
-static DRIVER_INIT( palm )
-{
-    debug_cpu_set_dasm_override(devtag_get_device(machine, "maincpu"), CPU_DISASSEMBLE_NAME(palm_dasm_override));
-}
-
 static const mc68328_interface palm_dragonball_iface =
 {
 	"maincpu",
@@ -474,21 +471,21 @@ static MACHINE_DRIVER_START( palmvx )
 MACHINE_DRIVER_END
 
 /*    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT         COMPANY FULLNAME */
-COMP( 1996, pilot1k,  0,        0,       pilot1k,     palm,     palm,     "U.S. Robotics", "Pilot 1000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-COMP( 1996, pilot5k,  pilot1k,  0,       pilot5k,     palm,     palm,     "U.S. Robotics", "Pilot 5000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-COMP( 1997, palmpers, pilot1k,  0,       pilot5k,     palm,     palm,     "U.S. Robotics", "Palm Pilot Personal", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-COMP( 1997, palmpro,  pilot1k,  0,       palmpro,     palm,     palm,     "U.S. Robotics", "Palm Pilot Pro", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-COMP( 1998, palmiii,  pilot1k,  0,       palmiii,     palm,     palm,     "3Com", "Palm III", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-COMP( 1998, palmiiic, pilot1k,  0,       palmiii,     palm,     palm,     "Palm Inc.", "Palm IIIc", GAME_NOT_WORKING )
-COMP( 2000, palmm100, pilot1k,  0,       palmiii,     palm,     palm,     "Palm Inc.", "Palm m100", GAME_NOT_WORKING )
-COMP( 2000, palmm130, pilot1k,  0,       palmiii,     palm,     palm,     "Palm Inc.", "Palm m130", GAME_NOT_WORKING )
-COMP( 2001, palmm505, pilot1k,  0,       palmiii,     palm,     palm,     "Palm Inc.", "Palm m505", GAME_NOT_WORKING )
-COMP( 2001, palmm515, pilot1k,  0,       palmiii,     palm,     palm,     "Palm Inc.", "Palm m515", GAME_NOT_WORKING )
-COMP( 1999, palmv,    pilot1k,  0,       palmv,       palm,     palm,     "3Com", "Palm V", GAME_NOT_WORKING )
-COMP( 1999, palmvx,   pilot1k,  0,       palmvx,      palm,     palm,     "Palm Inc.", "Palm Vx", GAME_NOT_WORKING )
-COMP( 2001, visor,    pilot1k,  0,       palmvx,      palm,     palm,     "Handspring", "Visor Edge", GAME_NOT_WORKING )
-COMP( 19??, spt1500,  pilot1k,  0,       palmvx,      palm,     palm,     "Symbol", "SPT 1500", GAME_NOT_WORKING )
-COMP( 19??, spt1700,  pilot1k,  0,       palmvx,      palm,     palm,     "Symbol", "SPT 1700", GAME_NOT_WORKING )
-COMP( 19??, spt1740,  pilot1k,  0,       palmvx,      palm,     palm,     "Symbol", "SPT 1740", GAME_NOT_WORKING )
+COMP( 1996, pilot1k,  0,        0,       pilot1k,     palm,     0,     "U.S. Robotics", "Pilot 1000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+COMP( 1996, pilot5k,  pilot1k,  0,       pilot5k,     palm,     0,     "U.S. Robotics", "Pilot 5000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+COMP( 1997, palmpers, pilot1k,  0,       pilot5k,     palm,     0,     "U.S. Robotics", "Palm Pilot Personal", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+COMP( 1997, palmpro,  pilot1k,  0,       palmpro,     palm,     0,     "U.S. Robotics", "Palm Pilot Pro", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+COMP( 1998, palmiii,  pilot1k,  0,       palmiii,     palm,     0,     "3Com", "Palm III", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+COMP( 1998, palmiiic, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm IIIc", GAME_NOT_WORKING )
+COMP( 2000, palmm100, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m100", GAME_NOT_WORKING )
+COMP( 2000, palmm130, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m130", GAME_NOT_WORKING )
+COMP( 2001, palmm505, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m505", GAME_NOT_WORKING )
+COMP( 2001, palmm515, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m515", GAME_NOT_WORKING )
+COMP( 1999, palmv,    pilot1k,  0,       palmv,       palm,     0,     "3Com", "Palm V", GAME_NOT_WORKING )
+COMP( 1999, palmvx,   pilot1k,  0,       palmvx,      palm,     0,     "Palm Inc.", "Palm Vx", GAME_NOT_WORKING )
+COMP( 2001, visor,    pilot1k,  0,       palmvx,      palm,     0,     "Handspring", "Visor Edge", GAME_NOT_WORKING )
+COMP( 19??, spt1500,  pilot1k,  0,       palmvx,      palm,     0,     "Symbol", "SPT 1500", GAME_NOT_WORKING )
+COMP( 19??, spt1700,  pilot1k,  0,       palmvx,      palm,     0,     "Symbol", "SPT 1700", GAME_NOT_WORKING )
+COMP( 19??, spt1740,  pilot1k,  0,       palmvx,      palm,     0,     "Symbol", "SPT 1740", GAME_NOT_WORKING )
 
 #include "palm_dbg.c"

@@ -349,13 +349,13 @@ static TIMER_CALLBACK( x68k_led_callback )
 // 4 channel DMA controller (Hitachi HD63450)
 static WRITE16_HANDLER( x68k_dmac_w )
 {
-	running_device* device = devtag_get_device(space->machine, "hd63450");
+	running_device* device = space->machine->device("hd63450");
 	hd63450_w(device, offset, data, mem_mask);
 }
 
 static READ16_HANDLER( x68k_dmac_r )
 {
-	running_device* device = devtag_get_device(space->machine, "hd63450");
+	running_device* device = space->machine->device("hd63450");
 	return hd63450_r(device, offset, mem_mask);
 }
 
@@ -537,7 +537,7 @@ void mfp_recv_data(int data)
 // typically read from the SCC data port on receive buffer full interrupt per byte
 static int x68k_read_mouse(running_machine *machine)
 {
-	running_device *scc = devtag_get_device(machine, "scc");
+	running_device *scc = machine->device("scc");
 	char val = 0;
 	char ipt = 0;
 
@@ -582,7 +582,7 @@ static int x68k_read_mouse(running_machine *machine)
 */
 static READ16_HANDLER( x68k_scc_r )
 {
-	running_device *scc = devtag_get_device(space->machine, "scc");
+	running_device *scc = space->machine->device("scc");
 	offset %= 4;
 	switch(offset)
 	{
@@ -601,7 +601,7 @@ static READ16_HANDLER( x68k_scc_r )
 
 static WRITE16_HANDLER( x68k_scc_w )
 {
-	running_device *scc = devtag_get_device(space->machine, "scc");
+	running_device *scc = space->machine->device("scc");
 	static unsigned char prev;
 	offset %= 4;
 
@@ -635,7 +635,7 @@ static WRITE16_HANDLER( x68k_scc_w )
 
 static TIMER_CALLBACK(x68k_scc_ack)
 {
-	running_device *scc = devtag_get_device(machine, "scc");
+	running_device *scc = machine->device("scc");
 	if(x68k_sys.mouse.bufferempty != 0)  // nothing to do if the mouse data buffer is empty
 		return;
 
@@ -660,7 +660,7 @@ static TIMER_CALLBACK(x68k_scc_ack)
 
 static void x68k_set_adpcm(running_machine* machine)
 {
-	running_device *dev = devtag_get_device(machine, "hd63450");
+	running_device *dev = machine->device("hd63450");
 	UINT32 rate = 0;
 
 	switch(x68k_sys.adpcm.rate & 0x0c)
@@ -917,7 +917,7 @@ static READ8_DEVICE_HANDLER( ppi_port_c_r )
 static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 {
 	// ADPCM / Joystick control
-	running_device *oki = devtag_get_device(device->machine, "okim6258");
+	running_device *oki = device->machine->device("okim6258");
 	static UINT16 prev1;
 	static UINT16 prev2;
 	static UINT16 prevA;
@@ -960,7 +960,7 @@ static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 // NEC uPD72065 at 0xe94000
 static WRITE16_HANDLER( x68k_fdc_w )
 {
-	running_device *fdc = devtag_get_device(space->machine, "upd72065");
+	running_device *fdc = space->machine->device("upd72065");
 	unsigned int drive, x;
 	switch(offset)
 	{
@@ -981,7 +981,7 @@ static WRITE16_HANDLER( x68k_fdc_w )
 					output_set_indexed_value("eject_drv",drive,(data & 0x40) ? 1 : 0);
 					if(data & 0x20)  // ejects disk
 					{
-						image_unload(floppy_get_device(space->machine, drive));
+						(dynamic_cast<device_image_interface *>(floppy_get_device(space->machine, drive)))->unload();
 						floppy_mon_w(floppy_get_device(space->machine, drive), ASSERT_LINE);
 					}
 				}
@@ -1038,7 +1038,7 @@ static READ16_HANDLER( x68k_fdc_r )
 {
 	unsigned int ret;
 	int x;
-	running_device *fdc = devtag_get_device(space->machine, "upd72065");
+	running_device *fdc = space->machine->device("upd72065");
 
 	switch(offset)
 	{
@@ -1087,7 +1087,7 @@ static WRITE_LINE_DEVICE_HANDLER( fdc_irq )
 static int x68k_fdc_read_byte(running_machine *machine,int addr)
 {
 	int data = -1;
-	running_device *fdc = devtag_get_device(machine, "upd72065");
+	running_device *fdc = machine->device("upd72065");
 
 	if(x68k_sys.fdc.drq_state != 0)
 		data = upd765_dack_r(fdc, 0);
@@ -1097,7 +1097,7 @@ static int x68k_fdc_read_byte(running_machine *machine,int addr)
 
 static void x68k_fdc_write_byte(running_machine *machine,int addr, int data)
 {
-	running_device *fdc = devtag_get_device(machine, "upd72065");
+	running_device *fdc = machine->device("upd72065");
 	upd765_dack_w(fdc, 0, data);
 }
 
@@ -1112,7 +1112,7 @@ static WRITE16_HANDLER( x68k_fm_w )
 	{
 	case 0x00:
 	case 0x01:
-		ym2151_w(devtag_get_device(space->machine, "ym2151"), offset, data);
+		ym2151_w(space->machine->device("ym2151"), offset, data);
 		break;
 	}
 }
@@ -1120,15 +1120,15 @@ static WRITE16_HANDLER( x68k_fm_w )
 static READ16_HANDLER( x68k_fm_r )
 {
 	if(offset == 0x01)
-		return ym2151_r(devtag_get_device(space->machine, "ym2151"), 1);
+		return ym2151_r(space->machine->device("ym2151"), 1);
 
 	return 0xffff;
 }
 
 static WRITE8_DEVICE_HANDLER( x68k_ct_w )
 {
-	running_device *fdc = devtag_get_device(device->machine, "upd72065");
-	running_device *okim = devtag_get_device(device->machine, "okim6258");
+	running_device *fdc = device->machine->device("upd72065");
+	running_device *okim = device->machine->device("okim6258");
 
 	// CT1 and CT2 bits from YM2151 port 0x1b
 	// CT1 - ADPCM clock - 0 = 8MHz, 1 = 4MHz
@@ -1255,7 +1255,7 @@ static READ16_HANDLER( x68k_sysport_r )
 	case 0x03:  // bit 3 = key control (is 1 if keyboard is connected)
 		return 0x08;
 	case 0x05:  // CPU type and speed
-		return 0xff;  // 68000, 10MHz.  Technically, the port doesn't exist on the X68000, only the X68000 XVI and X68030
+		return x68k_sys.sysport.cputype;
 	default:
 		logerror("Read from invalid or unimplemented system port %04x\n",offset);
 		return 0xff;
@@ -1265,7 +1265,7 @@ static READ16_HANDLER( x68k_sysport_r )
 #ifdef UNUSED_FUNCTION
 static READ16_HANDLER( x68k_mfp_r )
 {
-	running_device *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	running_device *x68k_mfp = space->machine->device(MC68901_TAG);
 
 	return mc68901_register_r(x68k_mfp, offset);
 }
@@ -1273,7 +1273,7 @@ static READ16_HANDLER( x68k_mfp_r )
 
 static READ16_HANDLER( x68k_mfp_r )
 {
-	running_device *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	running_device *x68k_mfp = space->machine->device(MC68901_TAG);
     // Initial settings indicate that IRQs are generated for FM (YM2151), Receive buffer error or full,
     // MFP Timer C, and the power switch
 //  logerror("MFP: [%08x] Reading offset %i\n",cpu_get_pc(space->cpu),offset);
@@ -1282,13 +1282,13 @@ static READ16_HANDLER( x68k_mfp_r )
 #if 0
     case 0x00:  // GPIP - General purpose I/O register (read-only)
         ret = 0x23;
-        if(video_screen_get_vpos(machine->primary_screen) == x68k_sys.crtc.reg[9])
+        if(machine->primary_screen->vpos() == x68k_sys.crtc.reg[9])
             ret |= 0x40;
         if(x68k_sys.crtc.vblank == 0)
             ret |= 0x10;  // Vsync signal (low if in vertical retrace)
 //      if(x68k_sys.mfp.isrb & 0x08)
 //          ret |= 0x08;  // FM IRQ signal
-        if(video_screen_get_hpos(machine->primary_screen) > x68k_sys.crtc.width - 32)
+        if(machine->primary_screen->hpos() > x68k_sys.crtc.width - 32)
             ret |= 0x80;  // Hsync signal
 //      logerror("MFP: [%08x] Reading offset %i (ret=%02x)\n",cpu_get_pc(space->cpu),offset,ret);
         return ret;  // bit 5 is always 1
@@ -1337,7 +1337,7 @@ static READ16_HANDLER( x68k_mfp_r )
 
 static WRITE16_HANDLER( x68k_mfp_w )
 {
-	running_device *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	running_device *x68k_mfp = space->machine->device(MC68901_TAG);
 
 	/* For the Interrupt registers, the bits are set out as such:
        Reg A - bit 7: GPIP7 (HSync)
@@ -1518,7 +1518,7 @@ static READ16_HANDLER( x68k_sram_r )
 //  if(offset == 0x5a/2)  // 0x5a should be 0 if no SASI HDs are present.
 //      return 0x0000;
 	if(offset == 0x08/2)
-		return messram_get_size(devtag_get_device(space->machine, "messram")) >> 16;  // RAM size
+		return messram_get_size(space->machine->device("messram")) >> 16;  // RAM size
 #if 0
 	if(offset == 0x46/2)
         return 0x0024;
@@ -1533,7 +1533,7 @@ static READ16_HANDLER( x68k_sram_r )
 static READ32_HANDLER( x68k_sram32_r )
 {
 	if(offset == 0x08/4)
-		return (messram_get_size(devtag_get_device(space->machine, "messram")) & 0xffff0000);  // RAM size
+		return (messram_get_size(space->machine->device("messram")) & 0xffff0000);  // RAM size
 #if 0
 	if(offset == 0x46/2)
         return 0x0024;
@@ -1659,29 +1659,29 @@ static TIMER_CALLBACK(x68k_fake_bus_error)
 		v = 0x09;
 
 	// rather hacky, but this generally works for programs that check for MIDI hardware
-	if(messram_get_ptr(devtag_get_device(machine, "messram"))[v] != 0x02)  // normal vector for bus errors points to 02FF0540
+	if(messram_get_ptr(machine->device("messram"))[v] != 0x02)  // normal vector for bus errors points to 02FF0540
 	{
-		int addr = (messram_get_ptr(devtag_get_device(machine, "messram"))[0x09] << 24) | (messram_get_ptr(devtag_get_device(machine, "messram"))[0x08] << 16) |(messram_get_ptr(devtag_get_device(machine, "messram"))[0x0b] << 8) | messram_get_ptr(devtag_get_device(machine, "messram"))[0x0a];
-		int sp = cpu_get_reg(devtag_get_device(machine, "maincpu"), REG_GENSP);
-		int pc = cpu_get_reg(devtag_get_device(machine, "maincpu"), REG_GENPC);
-		int sr = cpu_get_reg(devtag_get_device(machine, "maincpu"), M68K_SR);
-		//int pda = cpu_get_reg(devtag_get_device(machine, "maincpu"), M68K_PREF_DATA);
+		int addr = (messram_get_ptr(machine->device("messram"))[0x09] << 24) | (messram_get_ptr(machine->device("messram"))[0x08] << 16) |(messram_get_ptr(machine->device("messram"))[0x0b] << 8) | messram_get_ptr(machine->device("messram"))[0x0a];
+		int sp = cpu_get_reg(machine->device("maincpu"), STATE_GENSP);
+		int pc = cpu_get_reg(machine->device("maincpu"), STATE_GENPC);
+		int sr = cpu_get_reg(machine->device("maincpu"), M68K_SR);
+		//int pda = cpu_get_reg(machine->device("maincpu"), M68K_PREF_DATA);
 		if(strcmp(machine->gamedrv->name,"x68030") == 0)
 		{  // byte order varies on the 68030
-			addr = (messram_get_ptr(devtag_get_device(machine, "messram"))[0x0b] << 24) | (messram_get_ptr(devtag_get_device(machine, "messram"))[0x0a] << 16) |(messram_get_ptr(devtag_get_device(machine, "messram"))[0x09] << 8) | messram_get_ptr(devtag_get_device(machine, "messram"))[0x08];
+			addr = (messram_get_ptr(machine->device("messram"))[0x0b] << 24) | (messram_get_ptr(machine->device("messram"))[0x0a] << 16) |(messram_get_ptr(machine->device("messram"))[0x09] << 8) | messram_get_ptr(machine->device("messram"))[0x08];
 		}
-		cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENSP, sp - 14);
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-11] = (val & 0xff000000) >> 24;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-12] = (val & 0x00ff0000) >> 16;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-9] = (val & 0x0000ff00) >> 8;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-10] = (val & 0x000000ff);  // place address onto the stack
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-3] = (pc & 0xff000000) >> 24;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-4] = (pc & 0x00ff0000) >> 16;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-1] = (pc & 0x0000ff00) >> 8;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-2] = (pc & 0x000000ff);  // place PC onto the stack
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-5] = (sr & 0xff00) >> 8;
-		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-6] = (sr & 0x00ff);  // place SR onto the stack
-		cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, addr);  // real exceptions seem to take too long to be acknowledged
+		cpu_set_reg(machine->device("maincpu"), STATE_GENSP, sp - 14);
+		messram_get_ptr(machine->device("messram"))[sp-11] = (val & 0xff000000) >> 24;
+		messram_get_ptr(machine->device("messram"))[sp-12] = (val & 0x00ff0000) >> 16;
+		messram_get_ptr(machine->device("messram"))[sp-9] = (val & 0x0000ff00) >> 8;
+		messram_get_ptr(machine->device("messram"))[sp-10] = (val & 0x000000ff);  // place address onto the stack
+		messram_get_ptr(machine->device("messram"))[sp-3] = (pc & 0xff000000) >> 24;
+		messram_get_ptr(machine->device("messram"))[sp-4] = (pc & 0x00ff0000) >> 16;
+		messram_get_ptr(machine->device("messram"))[sp-1] = (pc & 0x0000ff00) >> 8;
+		messram_get_ptr(machine->device("messram"))[sp-2] = (pc & 0x000000ff);  // place PC onto the stack
+		messram_get_ptr(machine->device("messram"))[sp-5] = (sr & 0xff00) >> 8;
+		messram_get_ptr(machine->device("messram"))[sp-6] = (sr & 0x00ff);  // place SR onto the stack
+		cpu_set_reg(machine->device("maincpu"), STATE_GENPC, addr);  // real exceptions seem to take too long to be acknowledged
 		popmessage("Expansion access [%08x]: PC jump to %08x", val, addr);
 	}
 }
@@ -1785,7 +1785,7 @@ static WRITE16_HANDLER( x68k_exp_w )
 
 static void x68k_dma_irq(running_machine *machine, int channel)
 {
-	running_device *device = devtag_get_device(machine, "hd63450");
+	running_device *device = machine->device("hd63450");
 	current_vector[3] = hd63450_get_vector(device, channel);
 	current_irq_line = 3;
 	logerror("DMA#%i: DMA End (vector 0x%02x)\n",channel,current_vector[3]);
@@ -1802,7 +1802,7 @@ static void x68k_dma_end(running_machine *machine, int channel,int irq)
 
 static void x68k_dma_error(running_machine *machine, int channel, int irq)
 {
-	running_device *device = devtag_get_device(machine, "hd63450");
+	running_device *device = machine->device("hd63450");
 	if(irq != 0)
 	{
 		current_vector[3] = hd63450_get_error_vector(device,channel);
@@ -1874,14 +1874,14 @@ static INTERRUPT_GEN( x68k_vsync_irq )
 //  mfp_trigger_irq(MFP_IRQ_GPIP4);
 //  }
 //  if(x68k_sys.crtc.height == 256)
-//      video_screen_update_partial(machine->primary_screen,256);//x68k_sys.crtc.reg[4]/2);
+//      machine->primary_screen->update_partial(256);//x68k_sys.crtc.reg[4]/2);
 //  else
-//      video_screen_update_partial(machine->primary_screen,512);//x68k_sys.crtc.reg[4]);
+//      machine->primary_screen->update_partial(512);//x68k_sys.crtc.reg[4]);
 }
 
 static IRQ_CALLBACK(x68k_int_ack)
 {
-	running_device *x68k_mfp = devtag_get_device(device->machine, MC68901_TAG);
+	running_device *x68k_mfp = device->machine->device(MC68901_TAG);
 
 	if(irqline == 6)  // MFP
 	{
@@ -2358,29 +2358,29 @@ static INPUT_PORTS_START( x68000 )
 
 INPUT_PORTS_END
 
-static void x68k_load_proc(running_device *image)
+static void x68k_load_proc(device_image_interface &image)
 {
 	if(x68k_sys.ioc.irqstatus & 0x02)
 	{
 		current_vector[1] = 0x61;
 		x68k_sys.ioc.irqstatus |= 0x40;
 		current_irq_line = 1;
-		cputag_set_input_line_and_vector(image->machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
+		cputag_set_input_line_and_vector(image.device().machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 		logerror("IOC: Disk image inserted\n");
 	}
-	x68k_sys.fdc.disk_inserted[floppy_get_drive(image)] = 1;
+	x68k_sys.fdc.disk_inserted[floppy_get_drive(&image.device())] = 1;
 }
 
-static void x68k_unload_proc(running_device *image)
+static void x68k_unload_proc(device_image_interface &image)
 {
 	if(x68k_sys.ioc.irqstatus & 0x02)
 	{
 		current_vector[1] = 0x61;
 		x68k_sys.ioc.irqstatus |= 0x40;
 		current_irq_line = 1;
-		cputag_set_input_line_and_vector(image->machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
+		cputag_set_input_line_and_vector(image.device().machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 	}
-	x68k_sys.fdc.disk_inserted[floppy_get_drive(image)] = 0;
+	x68k_sys.fdc.disk_inserted[floppy_get_drive(&image.device())] = 0;
 }
 
 static FLOPPY_OPTIONS_START( x68k )
@@ -2401,9 +2401,9 @@ static const floppy_config x68k_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(x68k),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_RESET( x68000 )
@@ -2416,8 +2416,8 @@ static MACHINE_RESET( x68000 )
 	UINT8* romdata = memory_region(machine, "user2");
 	attotime irq_time;
 
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,messram_get_size(devtag_get_device(machine, "messram")));
-	memcpy(messram_get_ptr(devtag_get_device(machine, "messram")),romdata,8);
+	memset(messram_get_ptr(machine->device("messram")),0,messram_get_size(machine->device("messram")));
+	memcpy(messram_get_ptr(machine->device("messram")),romdata,8);
 
 	// init keyboard
 	x68k_sys.keyboard.delay = 500;  // 3*100+200
@@ -2426,7 +2426,8 @@ static MACHINE_RESET( x68000 )
 	// check for disks
 	for(drive=0;drive<4;drive++)
 	{
-		if(image_exists(floppy_get_device(machine, drive)))
+		device_image_interface *image = dynamic_cast<device_image_interface *>(floppy_get_device(machine, drive));
+		if(image->exists())
 			x68k_sys.fdc.disk_inserted[drive] = 1;
 		else
 			x68k_sys.fdc.disk_inserted[drive] = 0;
@@ -2445,15 +2446,15 @@ static MACHINE_RESET( x68000 )
 
 	mfp_init();
 
-	x68k_scanline = video_screen_get_vpos(machine->primary_screen);// = x68k_sys.crtc.reg[6];  // Vertical start
+	x68k_scanline = machine->primary_screen->vpos();// = x68k_sys.crtc.reg[6];  // Vertical start
 
 	// start VBlank timer
 	x68k_sys.crtc.vblank = 1;
-	irq_time = video_screen_get_time_until_pos(machine->primary_screen,x68k_sys.crtc.reg[6],2);
+	irq_time = machine->primary_screen->time_until_pos(x68k_sys.crtc.reg[6],2);
 	timer_adjust_oneshot(x68k_vblank_irq, irq_time, 0);
 
 	// start HBlank timer
-	timer_adjust_oneshot(x68k_scanline_timer, video_screen_get_scan_period(machine->primary_screen), 1);
+	timer_adjust_oneshot(x68k_scanline_timer, machine->primary_screen->scan_period(), 1);
 
 	x68k_sys.mfp.gpio = 0xfb;
 
@@ -2475,7 +2476,7 @@ static MACHINE_RESET( x68000 )
 	}
 
 	// reset CPU
-	devtag_get_device(machine, "maincpu")->reset();
+	machine->device("maincpu")->reset();
 }
 
 static MACHINE_START( x68000 )
@@ -2485,8 +2486,8 @@ static MACHINE_START( x68000 )
 	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
 	memory_install_read16_handler(space,0x000000,0xbffffb,0xffffffff,0,(read16_space_func)x68k_emptyram_r);
 	memory_install_write16_handler(space,0x000000,0xbffffb,0xffffffff,0,(write16_space_func)x68k_emptyram_w);
-	memory_install_readwrite_bank(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,"bank1");
-	memory_set_bankptr(machine, "bank1",messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank(space,0x000000,messram_get_size(machine->device("messram"))-1,0xffffffff,0,"bank1");
+	memory_set_bankptr(machine, "bank1",messram_get_ptr(machine->device("messram")));
 	memory_install_read16_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram_r);
 	memory_install_write16_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram_w);
 	memory_set_bankptr(machine, "bank2",x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
@@ -2515,11 +2516,11 @@ static MACHINE_START( x68030 )
 	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
 	memory_install_read32_handler(space,0x000000,0xbffffb,0xffffffff,0,(read32_space_func)x68k_rom0_r);
 	memory_install_write32_handler(space,0x000000,0xbffffb,0xffffffff,0,(write32_space_func)x68k_rom0_w);
-	memory_install_readwrite_bank(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,"bank1");
+	memory_install_readwrite_bank(space,0x000000,messram_get_size(machine->device("messram"))-1,0xffffffff,0,"bank1");
 	// mirror? Human68k 3.02 explicitly adds 0x3000000 to some pointers
-	memory_install_readwrite_bank(space,0x3000000,0x3000000+messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,"bank5");
-	memory_set_bankptr(machine, "bank1",messram_get_ptr(devtag_get_device(machine, "messram")));
-	memory_set_bankptr(machine, "bank5",messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank(space,0x3000000,0x3000000+messram_get_size(machine->device("messram"))-1,0xffffffff,0,"bank5");
+	memory_set_bankptr(machine, "bank1",messram_get_ptr(machine->device("messram")));
+	memory_set_bankptr(machine, "bank5",messram_get_ptr(machine->device("messram")));
 	memory_install_read32_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram32_r);
 	memory_install_write32_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram32_w);
 	memory_set_bankptr(machine, "bank2",x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
@@ -2565,7 +2566,7 @@ static DRIVER_INIT( x68000 )
 
 	mfp_init();
 
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), x68k_int_ack);
+	cpu_set_irq_callback(machine->device("maincpu"), x68k_int_ack);
 
 	// init keyboard
 	x68k_sys.keyboard.delay = 500;  // 3*100+200
@@ -2579,11 +2580,20 @@ static DRIVER_INIT( x68000 )
 
 	// Initialise timers for 6-button MD controllers
 	md_6button_init(machine);
+
+	x68k_sys.sysport.cputype = 0xff;  // 68000, 10MHz
+}
+
+static DRIVER_INIT( x68kxvi )
+{
+	DRIVER_INIT_CALL( x68000 );
+	x68k_sys.sysport.cputype = 0xfe; // 68000, 16MHz
 }
 
 static DRIVER_INIT( x68030 )
 {
 	DRIVER_INIT_CALL( x68000 );
+	x68k_sys.sysport.cputype = 0xdc; // 68030, 25MHz
 }
 
 static MACHINE_DRIVER_START( x68000 )
@@ -2597,7 +2607,7 @@ static MACHINE_DRIVER_START( x68000 )
 	MDRV_MACHINE_RESET( x68000 )
 
 	/* device hardware */
-	MDRV_MC68901_ADD(MC68901_TAG, 2000000, mfp_interface)
+	MDRV_MC68901_ADD(MC68901_TAG, 4000000, mfp_interface)
 
 	MDRV_I8255A_ADD( "ppi8255",  ppi_interface )
 
@@ -2605,7 +2615,7 @@ static MACHINE_DRIVER_START( x68000 )
 
 	MDRV_X68KHDC_ADD( "x68k_hdc" )
 
-	MDRV_SCC8530_ADD( "scc" )
+	MDRV_SCC8530_ADD( "scc", 5000000 )
 
 	MDRV_RP5C15_ADD( "rp5c15" , rtc_intf)
 
@@ -2650,7 +2660,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( x68kxvi )
 	MDRV_IMPORT_FROM( x68000 )
 
-	MDRV_CPU_REPLACE("maincpu", M68000, 16000000)  /* 16 MHz */
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_CLOCK(16000000)  /* 16 MHz */
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( x68030 )
@@ -2724,5 +2735,5 @@ ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY     FULLNAME        FLAGS */
 COMP( 1987, x68000, 0,      0,      x68000, x68000, x68000, "Sharp",    "X68000", GAME_IMPERFECT_GRAPHICS )
-COMP( 1991, x68kxvi,x68000, 0,      x68kxvi,x68000, x68000, "Sharp",    "X68000 XVI", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+COMP( 1991, x68kxvi,x68000, 0,      x68kxvi,x68000, x68kxvi, "Sharp",    "X68000 XVI", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
 COMP( 1993, x68030, x68000, 0,      x68030, x68000, x68030, "Sharp",    "X68030", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )

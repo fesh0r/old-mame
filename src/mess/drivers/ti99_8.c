@@ -164,7 +164,7 @@ Known Issues (MZ, 2009-04-26)
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
 #include "audio/spchroms.h"
-#include "machine/99_peb.h"
+#include "devices/ti99_peb.h"
 #include "machine/994x_ser.h"
 #include "machine/99_dsk.h"
 #include "machine/99_ide.h"
@@ -203,12 +203,12 @@ static ADDRESS_MAP_START(ti99_8_cru_map, ADDRESS_SPACE_IO, 8)
 //  AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0000, 0x007f) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0080, 0x00ff) AM_DEVREAD("ti99_multicart", ti99_multicart_cru_r)     /* SuperSpace cartridge */
-	AM_RANGE(0x0100, 0x02ff) AM_READ(ti99_8_peb_cru_r)
+	AM_RANGE(0x0100, 0x02ff) AM_DEVREAD("per_exp_box", ti99_8_peb_cru_r)
 
 //      AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
 	AM_RANGE(0x0000, 0x03ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
 	AM_RANGE(0x0400, 0x07ff) AM_DEVWRITE("ti99_multicart", ti99_multicart_cru_w)    /* SuperSpace cartridge */
-	AM_RANGE(0x0800, 0x17ff) AM_WRITE(ti99_8_peb_cru_w)
+	AM_RANGE(0x0800, 0x17ff) AM_DEVWRITE("per_exp_box", ti99_8_peb_cru_w)
 
 ADDRESS_MAP_END
 
@@ -216,7 +216,7 @@ ADDRESS_MAP_END
 /* ti99/8 : 54-key keyboard */
 static INPUT_PORTS_START(ti99_8)
 	PORT_START( "SPEECH" )
-	PORT_CONFNAME( 0x01, 0x00, "Speech synthesizer" )
+	PORT_CONFNAME( 0x01, 0x01, "Speech synthesizer" )
 		PORT_CONFSETTING( 0x00, DEF_STR( Off ) )
 		PORT_CONFSETTING( 0x01, DEF_STR( On ) )
 
@@ -231,7 +231,7 @@ static INPUT_PORTS_START(ti99_8)
 	PORT_START( "HDCTRL" )
 	PORT_CONFNAME( 0x03, 0x00, "HD controller" )
 		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
-		PORT_CONFSETTING(    0x01, "Nouspikel IDE Controller" )
+//      PORT_CONFSETTING(    0x01, "Nouspikel IDE Controller" )
 //      PORT_CONFSETTING(    0x02, "WHTech SCSI Controller" )
 	PORT_CONFNAME( 0x08, 0x00, "USB-SM card" )
 		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
@@ -242,13 +242,15 @@ static INPUT_PORTS_START(ti99_8)
 		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 		PORT_CONFSETTING(    0x01, "TI RS-232 card" )
 
+	/* Flash setting is used to flash an empty HSGPL DSR ROM */
 	PORT_START( "EXTCARD" )
-	PORT_CONFNAME( 0x01, 0x00, "HSGPL extension" )
+	PORT_CONFNAME( 0x03, 0x00, "HSGPL extension" ) PORT_CHANGED( hsgpl_changed, NULL)
 		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-		PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-	PORT_CONFNAME( 0x02, 0x00, "P-Code card" )
-		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
+		PORT_CONFSETTING(    0x01, "Flash" )
 		PORT_CONFSETTING(    0x02, DEF_STR( On ) )
+	PORT_CONFNAME( 0x04, 0x00, "P-Code card" )
+		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
+		PORT_CONFSETTING(    0x04, DEF_STR( On ) )
 
 	PORT_START( "HCI" )
 	PORT_CONFNAME( 0x01, 0x00, "Mouse support" )
@@ -256,20 +258,47 @@ static INPUT_PORTS_START(ti99_8)
 		PORT_CONFSETTING(    0x01, "Mechatronics Mouse" )
 
 	PORT_START( "CARTSLOT" )
-	PORT_DIPNAME( 0x07, 0x00, "Cartridge slot" )
+	PORT_DIPNAME( 0x0f, 0x00, "Cartridge slot" )
 		PORT_DIPSETTING(    0x00, "Auto" )
 		PORT_DIPSETTING(    0x01, "Slot 1" )
 		PORT_DIPSETTING(    0x02, "Slot 2" )
 		PORT_DIPSETTING(    0x03, "Slot 3" )
 		PORT_DIPSETTING(    0x04, "Slot 4" )
-//      PORT_CONFSETTING(    0x05, "GRAM Kracker" )
+		PORT_DIPSETTING(    0x0f, "GRAM Kracker" )
+
+	/* GRAM Kracker Support */
+	PORT_START( "GKSWITCH1" )
+	PORT_DIPNAME( 0x01, 0x01, "GK switch 1" ) PORT_CONDITION( "CARTSLOT", 0x0f, PORTCOND_EQUALS, 0x0f )  PORT_CHANGED( gk_changed, (void *)1)
+		PORT_DIPSETTING(    0x00, "GK Off" )
+		PORT_DIPSETTING(    0x01, DEF_STR( Normal ) )
+
+	PORT_START( "GKSWITCH2" )
+	PORT_DIPNAME( 0x01, 0x01, "GK switch 2" ) PORT_CONDITION( "CARTSLOT", 0x0f, PORTCOND_EQUALS, 0x0f )  PORT_CHANGED( gk_changed, (void *)2)
+		PORT_DIPSETTING(    0x00, "GRAM 0" )
+		PORT_DIPSETTING(    0x01, "Op Sys" )
+
+	PORT_START( "GKSWITCH3" )
+	PORT_DIPNAME( 0x01, 0x01, "GK switch 3" ) PORT_CONDITION( "CARTSLOT", 0x0f, PORTCOND_EQUALS, 0x0f )  PORT_CHANGED( gk_changed, (void *)3)
+		PORT_DIPSETTING(    0x00, "GRAM 1-2" )
+		PORT_DIPSETTING(    0x01, "TI BASIC" )
+
+	PORT_START( "GKSWITCH4" )
+	PORT_DIPNAME( 0x03, 0x01, "GK switch 4" ) PORT_CONDITION( "CARTSLOT", 0x0f, PORTCOND_EQUALS, 0x0f )  PORT_CHANGED( gk_changed, (void *)4)
+		PORT_DIPSETTING(    0x00, "Bank 1" )
+		PORT_DIPSETTING(    0x01, "W/P" )
+		PORT_DIPSETTING(    0x02, "Bank 2" )
+
+	PORT_START( "GKSWITCH5" )
+	PORT_DIPNAME( 0x01, 0x00, "GK switch 5" ) PORT_CONDITION( "CARTSLOT", 0x0f, PORTCOND_EQUALS, 0x0f )  PORT_CHANGED( gk_changed, (void *)5)
+		PORT_DIPSETTING(    0x00, "Loader On" )
+		PORT_DIPSETTING(    0x01, "Loader Off" )
 
 	PORT_START( "HFDCDIP" )
-	PORT_DIPNAME( 0x03, 0x02, "HFDC drive config" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
+	PORT_DIPNAME( 0xff, 0x55, "HFDC drive config" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
 		PORT_DIPSETTING( 0x00, "40 track, 16 ms")
-		PORT_DIPSETTING( 0x01, "40 track, 8 ms")
-		PORT_DIPSETTING( 0x02, "80 track, 2 ms")
-		PORT_DIPSETTING( 0x03, "80 track HD, 2 ms")
+		PORT_DIPSETTING( 0xaa, "40 track, 8 ms")
+		PORT_DIPSETTING( 0x55, "80 track, 2 ms")
+		PORT_DIPSETTING( 0xff, "80 track HD, 2 ms")
 
 	PORT_START( "DRVSPD" )
 	PORT_CONFNAME( 0x01, 0x01, "Floppy and HD speed" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
@@ -467,6 +496,7 @@ GFXDECODE_END
 static const tms5220_interface ti99_8_tms5220interface =
 {
 	DEVCB_NULL,					/* no IRQ callback */
+	DEVCB_NULL,					/* no Ready callback */
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
 	spchroms_read_and_branch	/* speech ROM read and branch handler */
@@ -523,9 +553,9 @@ static const floppy_config ti99_8_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(ti99),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START(ti99_8_60hz)
@@ -538,7 +568,10 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_8_60hz )
-	MDRV_MACHINE_RESET( ti99 )
+	MDRV_MACHINE_RESET( ti99_8 )
+
+	/* For HSGPL */
+	MDRV_NVRAM_HANDLER( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
@@ -558,8 +591,10 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )
-	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
+	MDRV_PBOX_ADD( "per_exp_box", FALSE, tms9901_set_int1, NULL )
+
+	// MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt
+	// MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
@@ -591,7 +626,7 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_8_50hz )
-	MDRV_MACHINE_RESET( ti99 )
+	MDRV_MACHINE_RESET( ti99_8 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
@@ -611,10 +646,10 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
-	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )	/* FIXME */
-
-	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
-	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
+	MDRV_PBOX_ADD( "per_exp_box", FALSE, tms9901_set_int1, NULL )
+	// MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )
+	// MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	// MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 

@@ -266,7 +266,7 @@ static WRITE8_HANDLER( bankswitch_w )
 
 	memory_set_bank(space->machine, "bank1", VIP_BANK_RAM);
 
-	switch (messram_get_size(devtag_get_device(space->machine, "messram")))
+	switch (messram_get_size(space->machine->device("messram")))
 	{
 	case 1 * 1024:
 		memory_install_readwrite_bank(program, 0x0000, 0x03ff, 0, 0x7c00, "bank1");
@@ -639,7 +639,7 @@ static MACHINE_START( vip )
 	memory_set_bank(machine, "bank2", 0);
 
 	/* randomize RAM contents */
-	for (addr = 0; addr < messram_get_size(devtag_get_device(machine, "messram")); addr++)
+	for (addr = 0; addr < messram_get_size(machine->device("messram")); addr++)
 	{
 		ram[addr] = mame_rand(machine) & 0xff;
 	}
@@ -651,13 +651,13 @@ static MACHINE_START( vip )
 	set_led_status(machine, VIP_LED_POWER, 1);
 
 	/* look up devices */
-	state->cdp1861 = devtag_get_device(machine, CDP1861_TAG);
-	state->cdp1862 = devtag_get_device(machine, CDP1862_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
-	state->beeper = devtag_get_device(machine, DISCRETE_TAG);
-	state->vp595 = devtag_get_device(machine, VP595_TAG);
-	state->vp550 = devtag_get_device(machine, VP550_TAG);
-	state->vp551 = devtag_get_device(machine, VP551_TAG);
+	state->cdp1861 = machine->device(CDP1861_TAG);
+	state->cdp1862 = machine->device(CDP1862_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
+	state->beeper = machine->device(DISCRETE_TAG);
+	state->vp595 = machine->device(VP595_TAG);
+	state->vp550 = machine->device(VP550_TAG);
+	state->vp551 = machine->device(VP551_TAG);
 
 	/* reset sound */
 	discrete_sound_w(state->beeper, NODE_01, 0);
@@ -743,7 +743,8 @@ static const cassette_config vip_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 static MACHINE_DRIVER_START( vip )
@@ -820,27 +821,27 @@ ROM_END
 
 static QUICKLOAD_LOAD( vip )
 {
-	UINT8 *ptr = memory_region(image->machine, CDP1802_TAG);
+	UINT8 *ptr = memory_region(image.device().machine, CDP1802_TAG);
 	UINT8 *chip8_ptr = NULL;
 	int chip8_size = 0;
-	int size = image_length(image);
+	int size = image.length();
 
-	if (strcmp(image_filetype(image), "c8") == 0)
+	if (strcmp(image.filetype(), "c8") == 0)
 	{
 		/* CHIP-8 program */
-		chip8_ptr = memory_region(image->machine, "chip8");
-		chip8_size = memory_region_length(image->machine, "chip8");
+		chip8_ptr = memory_region(image.device().machine, "chip8");
+		chip8_size = memory_region_length(image.device().machine, "chip8");
 	}
-	else if (strcmp(image_filetype(image), "c8x") == 0)
+	else if (strcmp(image.filename(), "c8x") == 0)
 	{
 		/* CHIP-8X program */
-		chip8_ptr = memory_region(image->machine, "chip8x");
-		chip8_size = memory_region_length(image->machine, "chip8x");
+		chip8_ptr = memory_region(image.device().machine, "chip8x");
+		chip8_size = memory_region_length(image.device().machine, "chip8x");
 	}
 
-	if ((size + chip8_size) > messram_get_size(devtag_get_device(image->machine, "messram")))
+	if ((size + chip8_size) > messram_get_size(image.device().machine->device("messram")))
 	{
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 
 	if (chip8_size > 0)
@@ -850,9 +851,9 @@ static QUICKLOAD_LOAD( vip )
 	}
 
 	/* load image to RAM */
-	image_fread(image, ptr + chip8_size, size);
+	image.fread( ptr + chip8_size, size);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /* System Drivers */

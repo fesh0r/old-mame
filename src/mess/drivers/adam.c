@@ -600,11 +600,9 @@ static MACHINE_START( adam )
 
 static MACHINE_RESET( adam )
 {
-	running_device *img;
+	device_image_interface *image = dynamic_cast<device_image_interface *>(machine->device("cart"));
 
-	img = devtag_get_device(machine, "cart");
-
-	if (image_exists(img))
+	if (image->exists())
 	{
 		/* ColecoVision Mode Reset (Cartridge Mounted) */
 		adam_lower_memory = 3; /* OS7 + 24k RAM */
@@ -632,9 +630,9 @@ static const floppy_config adam_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(adam),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( adam )

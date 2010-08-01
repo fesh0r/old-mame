@@ -361,7 +361,8 @@ static const cassette_config comx35_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 static const floppy_config comx35_floppy_config =
@@ -371,9 +372,9 @@ static const floppy_config comx35_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(comx35),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* F4 Character Displayer */

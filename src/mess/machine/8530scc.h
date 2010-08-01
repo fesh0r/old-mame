@@ -14,9 +14,7 @@
     MACROS
 ***************************************************************************/
 
-#define SCC8530			DEVICE_GET_INFO_NAME(scc8530)
-
-
+DECLARE_LEGACY_DEVICE(SCC8530, scc8530);
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -34,8 +32,8 @@ struct _scc8530_interface
     DEVICE CONFIGURATION MACROS
 ***************************************************************************/
 
-#define MDRV_SCC8530_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, SCC8530, 0)
+#define MDRV_SCC8530_ADD(_tag, _clock) \
+	MDRV_DEVICE_ADD(_tag, SCC8530, _clock)
 
 #define MDRV_SCC8530_IRQ(_irq) \
 	MDRV_DEVICE_CONFIG_DATAPTR(scc8530_interface, irq, _irq)
@@ -51,8 +49,6 @@ UINT8 scc8530_get_reg_a(running_device *device, int reg);
 UINT8 scc8530_get_reg_b(running_device *device, int reg);
 void scc8530_set_reg_a(running_device *device, int reg, UINT8 data);
 void scc8530_set_reg_b(running_device *device, int reg, UINT8 data);
-
-DEVICE_GET_INFO(scc8530);
 
 READ8_DEVICE_HANDLER(scc8530_r);
 WRITE8_DEVICE_HANDLER(scc8530_w);

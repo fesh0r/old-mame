@@ -537,14 +537,15 @@ static const cassette_config pmd85_cassette_config =
 {
 	pmd85_pmd_format,
 	&pmd85_cassette_options,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 
 /* machine definition */
 static MACHINE_DRIVER_START( pmd85 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8080, 2000000)		/* 2.048MHz ??? */
+	MDRV_CPU_ADD("maincpu", I8080, 2000000)		/* 2.048MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(pmd85_mem)
 	MDRV_CPU_IO_MAP(pmd85_io_map)
 	MDRV_QUANTUM_TIME(HZ(60))

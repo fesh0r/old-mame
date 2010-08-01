@@ -143,6 +143,30 @@ INPUT_PORTS_END
  *
  *************************************/
 
+static DEVICE_IMAGE_LOAD( astrocde_cart )
+{
+	UINT32 size;
+
+	if (image.software_entry() == NULL)
+	{
+		size = image.length();
+
+		if (image.fread( memory_region(image.device().machine, "maincpu") + 0x2000, size) != size)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return IMAGE_INIT_FAIL;
+		}
+
+	}
+	else
+	{
+		size = image.get_software_region_length("rom");
+		memcpy(memory_region(image.device().machine, "maincpu") + 0x2000, image.get_software_region("rom"), size);
+	}
+
+	return IMAGE_INIT_PASS;
+}
+
 static MACHINE_DRIVER_START( astrocde )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, ASTROCADE_CLOCK/4)        /* 1.789 MHz */
@@ -165,7 +189,14 @@ static MACHINE_DRIVER_START( astrocde )
 	MDRV_SOUND_ADD("astrocade1", ASTROCADE, ASTROCADE_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
+	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin")
+	MDRV_CARTSLOT_INTERFACE("astrocde_cart")
+	MDRV_CARTSLOT_LOAD(astrocde_cart)
+
+	/* Software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","astrocde")
 MACHINE_DRIVER_END
 
 
@@ -176,15 +207,18 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( astrocde )
-    ROM_REGION( 0x10000, "maincpu", 0 )
-    ROM_LOAD( "astro.bin",  0x0000, 0x2000, CRC(ebc77f3a) SHA1(b902c941997c9d150a560435bf517c6a28137ecc))
-    ROM_CART_LOAD("cart", 0x2000, 0x2000, ROM_OPTIONAL)
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "astro.bin",  0x0000, 0x2000, CRC(ebc77f3a) SHA1(b902c941997c9d150a560435bf517c6a28137ecc) )
+ROM_END
+
+ROM_START( astrocdl )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "ballyhlc.bin",  0x0000, 0x2000, CRC(d7c517ba) SHA1(6b2bef5d970e54ed204549f58ba6d197a8bfd3cc) )
 ROM_END
 
 ROM_START( astrocdw )
-    ROM_REGION( 0x10000, "maincpu", 0 )
-    ROM_LOAD( "bioswhit.bin",  0x0000, 0x2000, CRC(6eb53e79) SHA1(d84341feec1a0a0e8aa6151b649bc3cf6ef69fbf))
-    ROM_CART_LOAD("cart", 0x2000, 0x2000, ROM_OPTIONAL)
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "bioswhit.bin",  0x0000, 0x2000, CRC(6eb53e79) SHA1(d84341feec1a0a0e8aa6151b649bc3cf6ef69fbf) )
 ROM_END
 
 /*************************************
@@ -207,4 +241,5 @@ static DRIVER_INIT( astrocde )
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY                FULLNAME                     FLAGS */
 CONS( 1978, astrocde, 0,        0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Professional Arcade", GAME_SUPPORTS_SAVE )
-CONS( 1977, astrocdw, astrocde, 0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Computer System",     GAME_SUPPORTS_SAVE )
+CONS( 1977, astrocdl, astrocde, 0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Home Library Computer", GAME_SUPPORTS_SAVE )
+CONS( 1977, astrocdw, astrocde, 0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Computer System", GAME_SUPPORTS_SAVE )

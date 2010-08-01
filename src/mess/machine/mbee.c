@@ -34,7 +34,7 @@ static WRITE8_DEVICE_HANDLER( mbee_pio_interrupt )
 static WRITE8_DEVICE_HANDLER( pio_ardy )
 {
 	/* devices need to be redeclared in this callback for some strange reason */
-	mbee_printer = devtag_get_device(device->machine, "centronics");
+	mbee_printer = device->machine->device("centronics");
 	centronics_strobe_w(mbee_printer, (data) ? 0 : 1);
 }
 
@@ -162,11 +162,13 @@ MACHINE_RESET( mbee )
 {
 	timer_set(machine, ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
 	memory_set_bank(machine, "bank1", 1);
-	mbee_z80pio = devtag_get_device(machine, "z80pio");
-	mbee_speaker = devtag_get_device(machine, "speaker");
-	mbee_cassette = devtag_get_device(machine, "cassette");
-	mbee_printer = devtag_get_device(machine, "centronics");
-	mbee_fdc = devtag_get_device(machine, "wd179x");
+	mbee_z80pio = machine->device("z80pio");
+	mbee_speaker = machine->device("speaker");
+	mbee_cassette = machine->device("cassette");
+	mbee_printer = machine->device("centronics");
+	mbee_fdc = machine->device("wd179x");
+	wd17xx_set_pause_time(mbee_fdc, 45);       /* default is 40 usec if not set */
+	//wd17xx_set_complete_command_delay(mbee_fdc, 50);   /* default is 12 usec if not set */
 }
 
 
@@ -196,7 +198,7 @@ INTERRUPT_GEN( mbee_interrupt )
 
 Z80BIN_EXECUTE( mbee )
 {
-	running_device *cpu = devtag_get_device(machine, "maincpu");
+	running_device *cpu = machine->device("maincpu");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_write_word_16le(space, 0xa6, execute_address);			/* fix the EXEC command */
@@ -204,7 +206,7 @@ Z80BIN_EXECUTE( mbee )
 	if (autorun)
 	{
 		memory_write_word_16le(space, 0xa2, execute_address);		/* fix warm-start vector to get around some copy-protections */
-		cpu_set_reg(cpu, REG_GENPC, execute_address);
+		cpu_set_reg(cpu, STATE_GENPC, execute_address);
 	}
 	else
 	{
@@ -214,65 +216,65 @@ Z80BIN_EXECUTE( mbee )
 
 QUICKLOAD_LOAD( mbee )
 {
-	running_device *cpu = devtag_get_device(image->machine, "maincpu");
-	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	running_device *cpu = image.device().machine->device("maincpu");
+	const address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 i, j;
-	UINT8 data, sw = input_port_read(image->machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */
+	UINT8 data, sw = input_port_read(image.device().machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */
 
-	if (!mame_stricmp(image_filetype(image), "mwb"))
+	if (!mame_stricmp(image.filetype(), "mwb"))
 	{
 		/* mwb files - standard basic files */
 		for (i = 0; i < quickload_size; i++)
 		{
 			j = 0x8c0 + i;
 
-			if (image_fread(image, &data, 1) != 1)
+			if (image.fread(&data, 1) != 1)
 			{
-				image_message(image, "Unexpected EOF");
-				return INIT_FAIL;
+				image.message("Unexpected EOF");
+				return IMAGE_INIT_FAIL;
 			}
 
 			if ((j < mbee_size) || (j > 0xefff))
 				memory_write_byte(space, j, data);
 			else
 			{
-				image_message(image, "Not enough memory in this microbee");
-				return INIT_FAIL;
+				image.message("Not enough memory in this microbee");
+				return IMAGE_INIT_FAIL;
 			}
 		}
 
 		if (sw)
 		{
 			memory_write_word_16le(space, 0xa2,0x801e);	/* fix warm-start vector to get around some copy-protections */
-			cpu_set_reg(cpu, REG_GENPC, 0x801e);
+			cpu_set_reg(cpu, STATE_GENPC, 0x801e);
 		}
 		else
 			memory_write_word_16le(space, 0xa2,0x8517);
 	}
-	else if (!mame_stricmp(image_filetype(image), "com"))
+	else if (!mame_stricmp(image.filetype(), "com"))
 	{
 		/* com files - most com files are just machine-language games with a wrapper and don't need cp/m to be present */
 		for (i = 0; i < quickload_size; i++)
 		{
 			j = 0x100 + i;
 
-			if (image_fread(image, &data, 1) != 1)
+			if (image.fread(&data, 1) != 1)
 			{
-				image_message(image, "Unexpected EOF");
-				return INIT_FAIL;
+				image.message("Unexpected EOF");
+				return IMAGE_INIT_FAIL;
 			}
 
 			if ((j < mbee_size) || (j > 0xefff))
 				memory_write_byte(space, j, data);
 			else
 			{
-				image_message(image, "Not enough memory in this microbee");
-				return INIT_FAIL;
+				image.message("Not enough memory in this microbee");
+				return IMAGE_INIT_FAIL;
 			}
 		}
 
-		if (sw) cpu_set_reg(cpu, REG_GENPC, 0x100);
+		if (sw) cpu_set_reg(cpu, STATE_GENPC, 0x100);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }

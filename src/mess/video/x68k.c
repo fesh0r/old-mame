@@ -185,7 +185,7 @@ static void x68k_crtc_refresh_mode(running_machine *machine)
 //  logerror("CRTC regs - %i %i %i %i  - %i %i %i %i - %i - %i\n",x68k_sys.crtc.reg[0],x68k_sys.crtc.reg[1],x68k_sys.crtc.reg[2],x68k_sys.crtc.reg[3],
 //      x68k_sys.crtc.reg[4],x68k_sys.crtc.reg[5],x68k_sys.crtc.reg[6],x68k_sys.crtc.reg[7],x68k_sys.crtc.reg[8],x68k_sys.crtc.reg[9]);
 	logerror("video_screen_configure(machine->primary_screen,%i,%i,[%i,%i,%i,%i],55.45)\n",scr.max_x,scr.max_y,visiblescr.min_x,visiblescr.min_y,visiblescr.max_x,visiblescr.max_y);
-	video_screen_configure(machine->primary_screen,scr.max_x,scr.max_y,&visiblescr,HZ_TO_ATTOSECONDS(55.45));
+	machine->primary_screen->configure(scr.max_x,scr.max_y,visiblescr,HZ_TO_ATTOSECONDS(55.45));
 }
 
 TIMER_CALLBACK(x68k_hsync)
@@ -201,31 +201,31 @@ TIMER_CALLBACK(x68k_hsync)
 		{
 			if(oddscanline == 1)
 			{
-				int scan = video_screen_get_vpos(machine->primary_screen);
+				int scan = machine->primary_screen->vpos();
 				if(scan > x68k_sys.crtc.vend)
 					scan = x68k_sys.crtc.vbegin;
-				hsync_time = video_screen_get_time_until_pos(machine->primary_screen,scan,(x68k_sys.crtc.htotal + x68k_sys.crtc.hend) / 2);
+				hsync_time = machine->primary_screen->time_until_pos(scan,(x68k_sys.crtc.htotal + x68k_sys.crtc.hend) / 2);
 				timer_adjust_oneshot(x68k_scanline_timer, hsync_time, 0);
 				if(scan != 0)
 				{
 					if((input_port_read(machine, "options") & 0x04))
 					{
-						video_screen_update_partial(machine->primary_screen,scan);
+						machine->primary_screen->update_partial(scan);
 					}
 				}
 			}
 			else
 			{
-				int scan = video_screen_get_vpos(machine->primary_screen);
+				int scan = machine->primary_screen->vpos();
 				if(scan > x68k_sys.crtc.vend)
 					scan = x68k_sys.crtc.vbegin;
-				hsync_time = video_screen_get_time_until_pos(machine->primary_screen,scan,x68k_sys.crtc.hend / 2);
+				hsync_time = machine->primary_screen->time_until_pos(scan,x68k_sys.crtc.hend / 2);
 				timer_adjust_oneshot(x68k_scanline_timer, hsync_time, 0);
 				if(scan != 0)
 				{
 					if((input_port_read(machine, "options") & 0x04))
 					{
-						video_screen_update_partial(machine->primary_screen,scan);
+						machine->primary_screen->update_partial(scan);
 					}
 				}
 			}
@@ -234,18 +234,18 @@ TIMER_CALLBACK(x68k_hsync)
 		{
 			if(oddscanline == 1)
 			{
-				int scan = video_screen_get_vpos(machine->primary_screen);
+				int scan = machine->primary_screen->vpos();
 				if(scan > x68k_sys.crtc.vend)
 					scan = x68k_sys.crtc.vbegin;
 				else
 					scan++;
-				hsync_time = video_screen_get_time_until_pos(machine->primary_screen,scan,x68k_sys.crtc.hbegin / 2);
+				hsync_time = machine->primary_screen->time_until_pos(scan,x68k_sys.crtc.hbegin / 2);
 				timer_adjust_oneshot(x68k_scanline_timer, hsync_time, 1);
 				oddscanline = 0;
 			}
 			else
 			{
-				hsync_time = video_screen_get_time_until_pos(machine->primary_screen,video_screen_get_vpos(machine->primary_screen),(x68k_sys.crtc.htotal + x68k_sys.crtc.hbegin) / 2);
+				hsync_time = machine->primary_screen->time_until_pos(machine->primary_screen->vpos(),(x68k_sys.crtc.htotal + x68k_sys.crtc.hbegin) / 2);
 				timer_adjust_oneshot(x68k_scanline_timer, hsync_time, 1);
 				oddscanline = 1;
 			}
@@ -255,22 +255,22 @@ TIMER_CALLBACK(x68k_hsync)
 	{
 		if(state == 1)
 		{
-			int scan = video_screen_get_vpos(machine->primary_screen);
+			int scan = machine->primary_screen->vpos();
 			if(scan > x68k_sys.crtc.vend)
 				scan = 0;
-			hsync_time = video_screen_get_time_until_pos(machine->primary_screen,scan,x68k_sys.crtc.hend);
+			hsync_time = machine->primary_screen->time_until_pos(scan,x68k_sys.crtc.hend);
 			timer_adjust_oneshot(x68k_scanline_timer, hsync_time, 0);
 			if(scan != 0)
 			{
 				if((input_port_read(machine, "options") & 0x04))
 				{
-					video_screen_update_partial(machine->primary_screen,scan);
+					machine->primary_screen->update_partial(scan);
 				}
 			}
 		}
 		if(state == 0)
 		{
-			hsync_time = video_screen_get_time_until_pos(machine->primary_screen,video_screen_get_vpos(machine->primary_screen)+1,x68k_sys.crtc.hbegin);
+			hsync_time = machine->primary_screen->time_until_pos(machine->primary_screen->vpos()+1,x68k_sys.crtc.hbegin);
 			timer_adjust_oneshot(x68k_scanline_timer, hsync_time, 1);
 	//      if(!(x68k_sys.mfp.gpio & 0x40))  // if GPIP6 is active, clear it
 	//          x68k_sys.mfp.gpio |= 0x40;
@@ -292,19 +292,19 @@ TIMER_CALLBACK(x68k_crtc_raster_irq)
 	if(scan <= x68k_sys.crtc.vtotal)
 	{
 		x68k_sys.mfp.gpio &= ~0x40;  // GPIP6
-		video_screen_update_partial(machine->primary_screen,scan);
-		irq_time = video_screen_get_time_until_pos(machine->primary_screen,scan,2);
+		machine->primary_screen->update_partial(scan);
+		irq_time = machine->primary_screen->time_until_pos(scan,2);
 		// end of HBlank period clears GPIP6 also?
-		end_time = video_screen_get_time_until_pos(machine->primary_screen,scan,x68k_sys.crtc.hbegin);
+		end_time = machine->primary_screen->time_until_pos(scan,x68k_sys.crtc.hbegin);
 		timer_adjust_oneshot(x68k_raster_irq, irq_time, scan);
 		timer_set(machine, end_time,NULL,0,x68k_crtc_raster_end);
-		logerror("GPIP6: Raster triggered at line %i (%i)\n",scan,video_screen_get_vpos(machine->primary_screen));
+		logerror("GPIP6: Raster triggered at line %i (%i)\n",scan,machine->primary_screen->vpos());
 	}
 }
 
 TIMER_CALLBACK(x68k_crtc_vblank_irq)
 {
-	running_device *x68k_mfp = devtag_get_device(machine, MC68901_TAG);
+	running_device *x68k_mfp = machine->device(MC68901_TAG);
 	int val = param;
 	attotime irq_time;
 	int vblank_line;
@@ -313,7 +313,7 @@ TIMER_CALLBACK(x68k_crtc_vblank_irq)
 	{
 		x68k_sys.crtc.vblank = 1;
 		vblank_line = x68k_sys.crtc.vbegin;
-		irq_time = video_screen_get_time_until_pos(machine->primary_screen,vblank_line,2);
+		irq_time = machine->primary_screen->time_until_pos(vblank_line,2);
 		timer_adjust_oneshot(x68k_vblank_irq, irq_time, 0);
 		logerror("CRTC: VBlank on\n");
 	}
@@ -323,7 +323,7 @@ TIMER_CALLBACK(x68k_crtc_vblank_irq)
 		vblank_line = x68k_sys.crtc.vend;
 		if(vblank_line > x68k_sys.crtc.vtotal)
 			vblank_line = x68k_sys.crtc.vtotal;
-		irq_time = video_screen_get_time_until_pos(machine->primary_screen,vblank_line,2);
+		irq_time = machine->primary_screen->time_until_pos(vblank_line,2);
 		timer_adjust_oneshot(x68k_vblank_irq, irq_time, 1);
 		logerror("CRTC: VBlank off\n");
 	}
@@ -399,7 +399,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 	case 9:  // CRTC raster IRQ (GPIP6)
 		{
 			attotime irq_time;
-			irq_time = video_screen_get_time_until_pos(space->machine->primary_screen,(data) / x68k_sys.crtc.vmultiple,2);
+			irq_time = space->machine->primary_screen->time_until_pos((data) / x68k_sys.crtc.vmultiple,2);
 
 			if(attotime_to_double(irq_time) > 0)
 				timer_adjust_oneshot(x68k_raster_irq, irq_time, (data) / x68k_sys.crtc.vmultiple);
@@ -485,7 +485,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 		}
 		break;
 	}
-//  logerror("CRTC: [%08x] Wrote %04x to CRTC register %i\n",cpu_get_pc(devtag_get_device(space->machine, "maincpu")),data,offset);
+//  logerror("CRTC: [%08x] Wrote %04x to CRTC register %i\n",cpu_get_pc(space->machine->device("maincpu")),data,offset);
 }
 
 READ16_HANDLER( x68k_crtc_r )
@@ -501,7 +501,7 @@ READ16_HANDLER( x68k_crtc_r )
 
 	if(offset < 24)
 	{
-//      logerror("CRTC: [%08x] Read %04x from CRTC register %i\n",cpu_get_pc(devtag_get_device(space->machine, "maincpu")),x68k_sys.crtc.reg[offset],offset);
+//      logerror("CRTC: [%08x] Read %04x from CRTC register %i\n",cpu_get_pc(space->machine->device("maincpu")),x68k_sys.crtc.reg[offset],offset);
 		switch(offset)
 		{
 		case 9:
@@ -1273,7 +1273,7 @@ VIDEO_UPDATE( x68000 )
 //  popmessage("Graphic layer scroll - %i, %i - %i, %i - %i, %i - %i, %i",
 //      x68k_sys.crtc.reg[12],x68k_sys.crtc.reg[13],x68k_sys.crtc.reg[14],x68k_sys.crtc.reg[15],x68k_sys.crtc.reg[16],x68k_sys.crtc.reg[17],x68k_sys.crtc.reg[18],x68k_sys.crtc.reg[19]);
 //  popmessage("IOC IRQ status - %02x",x68k_sys.ioc.irqstatus);
-//  popmessage("RAM: mouse data - %02x %02x %02x %02x",messram_get_ptr(devtag_get_device(machine, "messram"))[0x931],messram_get_ptr(devtag_get_device(machine, "messram"))[0x930],messram_get_ptr(devtag_get_device(machine, "messram"))[0x933],messram_get_ptr(devtag_get_device(machine, "messram"))[0x932]);
+//  popmessage("RAM: mouse data - %02x %02x %02x %02x",messram_get_ptr(machine->device("messram"))[0x931],messram_get_ptr(machine->device("messram"))[0x930],messram_get_ptr(machine->device("messram"))[0x933],messram_get_ptr(machine->device("messram"))[0x932]);
 #endif
 	return 0;
 }

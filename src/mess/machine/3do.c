@@ -1,6 +1,72 @@
+/*
+
+Reset boot sequence:
+- jump to ROM address space 03000028)
+- determine source of reset from cstatbits (03000068)
+- write cstatbits to safe madam location (03000078)
+- clear cstatbits (0300007c)
+- disable interrupts
+- set up audout register
+- set up brooktree part (03001020)
+- wait 100ms
+- set msysbits register for max memory config (030002d0)
+- set sltime to 178906 (030002dc)
+- write 0 to 0 to unmap ram address space (030002e4)
+- do 8 reads to 4 banks memory tyest (030002fc)
+- do cbr to both banks of vram (03000320)
+- determine ram & vram sizes (03000330)
+- do initial diagnostics, including test of initial 64kb of ram (0300021c)
+- copy remainder of code to ram at address 0 (030000224)
+- jump to address 0 and continue boot sequence (00000124)
+- do some more memory checks (00000298)
+- init stack pointer to 64k (00000054)
+- set hdelay to c6
+- do remaining diagnostics
+- set up vdl for 3do logo screen (at 003b0000)
+- set up frame buffer 3do logo screen (at 003c000, 0000166c)
+00000064 (done)
+- transfer sherry from rom to 10000
+- transfer operator from rom to 20000
+- transfer dipir from rom to 200
+- transfer filesystem from rom to 28000
+- init stack pointer to 64k (000000d8)
+- store sherry address to 28 for use by dipir
+- delay for at least 600ms to allow expansion bus to start
+- wait for vcount = 10 and enable clut transfer
+- wait for vcount = 10 and enable video
+- set adbio to disable software controlled muting
+- init registers for entry to sherry
+- jump to sherry (00010000)
+
+00010000
+0001cbbc - ldr offset issue
+0001cbcc
+
+at address 00013914 is value 000031ED which gets read as 0031ED00. This breaks the executing code.
+this data comes from 00010100 stored by the loop at 1cba4 (read from 00010100, store to 00013917)
+this data comes from 0300d4f8 stored to 00010100 (done by loop at 000000a8)
+
+
+Expansion bus stuff:
+00022ba4 - init exp bus, write 17x 00 to the selection register to let all expansion devices determine their id on the bus.
+00022bd0 - write 0x8f to the selection register to determine if there are too many devices attached.
+
+*/
 
 #include "emu.h"
 #include "includes/3do.h"
+
+
+typedef struct {
+	/* 03180000 - 0318003f - configuration group */
+	/* 03180040 - 0318007f - diagnostic UART */
+
+	UINT8	cg_r_count;
+	UINT8	cg_w_count;
+	UINT32	cg_input;
+	UINT32	cg_output;
+} SLOW2;
+
 
 typedef struct {
 	UINT32	revision;		/* 03300000 */
@@ -39,6 +105,8 @@ typedef struct {
 
 
 typedef struct {
+	screen_device *screen;
+
 	UINT32	revision;		/* 03400000 */
 	UINT32	csysbits;		/* 03400004 */
 	UINT32	vint0;			/* 03400008 */
@@ -61,82 +129,146 @@ typedef struct {
 	UINT32	hdelay;			/* 03400080 */
 	UINT32	adbio;			/* 03400084 */
 	UINT32	adbctl;			/* 03400088 */
+							/* Timers */
+	UINT32	timer0;			/* 03400100 */
+	UINT32	timerback0;		/* 03400104 */
+	UINT32	timer1;			/* 03400108 */
+	UINT32	timerback1;		/* 0340010c */
+	UINT32	timer2;			/* 03400110 */
+	UINT32	timerback2;		/* 03400114 */
+	UINT32	timer3;			/* 03400118 */
+	UINT32	timerback3;		/* 0340011c */
+	UINT32	timer4;			/* 03400120 */
+	UINT32	timerback4;		/* 03400124 */
+	UINT32	timer5;			/* 03400128 */
+	UINT32	timerback5;		/* 0340012c */
+	UINT32	timer6;			/* 03400130 */
+	UINT32	timerback6;		/* 03400134 */
+	UINT32	timer7;			/* 03400138 */
+	UINT32	timerback7;		/* 0340013c */
+	UINT32	timer8;			/* 03400140 */
+	UINT32	timerback8;		/* 03400144 */
+	UINT32	timer9;			/* 03400148 */
+	UINT32	timerback9;		/* 0340014c */
+	UINT32	timer10;		/* 03400150 */
+	UINT32	timerback10;	/* 03400154 */
+	UINT32	timer11;		/* 03400158 */
+	UINT32	timerback11;	/* 0340015c */
+	UINT32	timer12;		/* 03400160 */
+	UINT32	timerback12;	/* 03400164 */
+	UINT32	timer13;		/* 03400168 */
+	UINT32	timerback13;	/* 0340016c */
+	UINT32	timer14;		/* 03400170 */
+	UINT32	timerback14;	/* 03400174 */
+	UINT32	timer15;		/* 03400178 */
+	UINT32	timerback15;	/* 0340017c */
+	UINT32	settm0;			/* 03400200 */
+	UINT32	clrtm0;			/* 03400204 */
+	UINT32	settm1;			/* 03400208 */
+	UINT32	clrtm1;			/* 0340020c */
+	UINT32	slack;			/* 03400220 */
+							/* DMA */
+	UINT32	dmareqdis;		/* 03400308 */
+							/* Expansion bus */
+	UINT32	expctl;			/* 03400400/03400404 */
+	UINT32	type0_4;		/* 03400408 */
+	UINT32	dipir1;			/* 03400410 */
+	UINT32	dipir2;			/* 03400414 */
+							/* Bus signals */
+	UINT32	sel;			/* 03400500 - 0340053f */
+	UINT32	poll;			/* 03400540 - 0340057f */
+	UINT32	cmdstat;		/* 03400580 - 034005bf */
+	UINT32	data;			/* 034005c0 - 034005ff */
+							/* DSPP */
+	UINT32	semaphore;		/* 034017d0 */
+	UINT32	semaack;		/* 034017d4 */
+	UINT32	dsppdma;		/* 034017e0 */
+	UINT32	dspprst0;		/* 034017e4 */
+	UINT32	dspprst1;		/* 034017e8 */
+	UINT32	dspppc;			/* 034017f4 */
+	UINT32	dsppnr;			/* 034017f8 */
+	UINT32	dsppgw;			/* 034017fc */
+	UINT32	dsppn[0x400];	/* 03401800 - 03401bff DSPP N stack (32bit writes) */
+							/* 03402000 - 034027ff DSPP N stack (16bit writes) */
+	UINT32	dsppei[0x100];	/* 03403000 - 034030ff DSPP EI stack (32bit writes) */
+							/* 03403400 - 034035ff DSPP EI stack (16bit writes) */
+	UINT32	dsppeo[0x1f];	/* 03403800 - 0340381f DSPP EO stack (32bit reads) */
+							/* 03403c00 - 03403c3f DSPP EO stack (32bit reads) */
+	UINT32	dsppclkreload;	/* 034039dc / 03403fbc */
+							/* UNCLE */
+	UINT32	unclerev;		/* 0340c000 */
+	UINT32	uncle_soft_rev;	/* 0340c004 */
+	UINT32	uncle_addr;		/* 0340c008 */
+	UINT32	uncle_rom;		/* 0340c00c */
 } CLIO;
 
 
-//static UINT32 unk_318_data_0 = 0;
+typedef struct {
+	UINT32	sport[512];
+	UINT32	color;
+} SVF;
+
+
+static SLOW2	slow2;
 static MADAM	madam;
 static CLIO		clio;
-static UINT32	svf_color;
+static SVF		svf;
 
 
 READ32_HANDLER( _3do_nvarea_r ) {
-	logerror( "%08X: NVRAM read offset = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset );
+	logerror( "%08X: NVRAM read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset );
 	return 0;
 }
 
 WRITE32_HANDLER( _3do_nvarea_w ) {
-	logerror( "%08X: NVRAM write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, data, mem_mask );
+	logerror( "%08X: NVRAM write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset, data, mem_mask );
 }
 
 
 
 /*
-    I have no idea what piece of hardware this is. Possibly some kind of communication hardware.
+    I have no idea what piece of hardware this is. Possibly some kind of communication hardware using shift registers.
 
     During booting the following things get written/read:
-    write 03180000 to 03180000
-    4 read actions from 03180000, if lower bit is 1 0 1 0 then
-    write 02000000 to 03180000
-    write 04000000 to 03180000
-    write 08000000 to 03180000
-    write 10000000 to 03180000
-    write 20000000 to 03180000
-    write 40000000 to 03180000
-    write 80000000 to 03180000
-    write 00000001 to 03180000
-    write 00000002 to 03180000
-    write 00000004 to 03180000
-    write 00000008 to 03180000
-    write 00000010 to 03180000
-    write 00000020 to 03180000
-    write 00000040 to 03180000
-    write 00000080 to 03180000
-    write 00000100 to 03180000
-    read from 03180000
-    write 04000000 to 03180000
-    write 08000000 to 03180000
-    write 10000000 to 03180000
-    write 20000000 to 03180000
-    write 40000000 to 03180000
-    write 80000000 to 03180000
-    write 00000001 to 03180000
-    write 00000002 to 03180000
-    write 00000004 to 03180000
-    write 00000008 to 03180000
-    write 00000010 to 03180000
-    write 00000020 to 03180000
-    write 00000040 to 03180000
-    write 00000080 to 03180000
-    write 00000100 to 03180000
-    write 00002000 to 03180000
-    several groups of 16 write actions or 16 read actions
+    - write 03180000 to 03180000 (init reading sequence)
+    - 4 read actions from 03180000 bit#0, if lower bit is 1 0 1 0 then   (expect to read 0x0a)
+	- read from 03180000 (init writing sequence)
+	- write 0x0100 to shift register bit#0
+	- reset PON bit in CSTATBITS
+    - wait a little while
+    - read from 03180000
+	- write 0x0200 to shift register bit#0
+	- write 0x0002 to shift register bit#1
+	- dummy write to 03180000
+	- read from shift register bits #0 and #1.
+	- check if data read equals 0x44696167 (=Diag)   If so, jump 302196c in default bios
+	- dummy read from shift register
+	- write 0x0300 to shift register bit #0
+	- dummy write to shift register
+    - read data from shift register bit #0.
+    - xor that data with 0x07ff
+	- write that data & 0x00ff | 0x4000 to the shift register
+3022630
 */
-READ32_HANDLER( _3do_unk_318_r ) {
-	logerror( "%08X: UNK_318 read offset = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset );
-#if 0
+
+READ32_HANDLER( _3do_slow2_r ) {
+	UINT32 data = 0;
+
+	logerror( "%08X: UNK_318 read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset );
+
 	switch( offset ) {
 	case 0:		/* Boot ROM checks here and expects to read 1, 0, 1, 0 in the lowest bit */
-		unk_318_data_0 ^= 1;
-		return unk_318_data_0;
+		data = slow2.cg_output & 0x00000001;
+		slow2.cg_output = slow2.cg_output >> 1;
+		slow2.cg_w_count = 0;
 	}
-#endif
-	return 0;
+	return data;
 }
 
-WRITE32_HANDLER( _3do_unk_318_w )
+
+WRITE32_HANDLER( _3do_slow2_w )
 {
-	logerror( "%08X: UNK_318 write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, data, mem_mask );
+	logerror( "%08X: UNK_318 write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset, data, mem_mask );
 
 	switch( offset )
 	{
@@ -145,20 +277,41 @@ WRITE32_HANDLER( _3do_unk_318_w )
 			/* disable ROM overlay */
 			memory_set_bank(space->machine, "bank1", 0);
 		}
+		slow2.cg_input = slow2.cg_input << 1 | ( data & 0x00000001 );
+		slow2.cg_w_count ++;
+		if ( slow2.cg_w_count == 16 )
+		{
+		}
 		break;
 	}
 }
 
 
+void _3do_slow2_init( running_machine *machine )
+{
+	slow2.cg_input = 0;
+	slow2.cg_output = 0x00000005 - 1;
+}
+
+
 READ32_HANDLER( _3do_svf_r )
 {
-	logerror( "%08X: SVF read offset = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset*4 );
+	_3do_state *state = (_3do_state *)space->machine->driver_data;
+	UINT32 addr = ( offset & ( 0x07fc / 4 ) ) << 9;
+	UINT32 *p = state->vram + addr;
+
+	logerror( "%08X: SVF read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4 );
+
 	switch( offset & ( 0xE000 / 4 ) )
 	{
 	case 0x0000/4:		/* SPORT transfer */
+		for ( int i = 0; i < 512; i++ )
+		{
+			svf.sport[i] = p[i];
+		}
 		break;
 	case 0x2000/4:		/* Write to color register */
-		return svf_color;
+		return svf.color;
 	case 0x4000/4:		/* Flash write */
 		break;
 	case 0x6000/4:		/* CAS before RAS refresh/reset (CBR). Used to initialize VRAM mode during boot. */
@@ -169,15 +322,37 @@ READ32_HANDLER( _3do_svf_r )
 
 WRITE32_HANDLER( _3do_svf_w )
 {
-	logerror( "%08X: SVF write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset*4, data, mem_mask );
+	_3do_state *state = (_3do_state *)space->machine->driver_data;
+	UINT32 addr = ( offset & ( 0x07fc / 4 ) ) << 9;
+	UINT32 *p = state->vram + addr;
+
+	logerror( "%08X: SVF write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4, data, mem_mask );
+
 	switch( offset & ( 0xe000 / 4 ) )
 	{
 	case 0x0000/4:		/* SPORT transfer */
+		{
+			UINT32 keep_bits = data ^ 0xffffffff;
+
+			for ( int i = 0; i < 512; i++ )
+			{
+				p[i] = ( p[i] & keep_bits ) | ( svf.sport[i] & data );
+			}
+		}
 		break;
 	case 0x2000/4:		/* Write to color register */
-		svf_color = data;
+		svf.color = data;
 		break;
 	case 0x4000/4:		/* Flash write */
+		{
+			UINT32 keep_bits = data ^ 0xffffffff;
+			UINT32 new_bits = svf.color & data;
+
+			for ( int i = 0; i < 512; i++ )
+			{
+				p[i] = ( p[i] & keep_bits ) | new_bits;
+			}
+		}
 		break;
 	case 0x6000/4:		/* CAS before RAS refresh/reset (CBR). Used to initialize VRAM mode during boot. */
 		break;
@@ -187,10 +362,13 @@ WRITE32_HANDLER( _3do_svf_w )
 
 
 READ32_HANDLER( _3do_madam_r ) {
-	logerror( "%08X: MADAM read offset = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset );
+	logerror( "%08X: MADAM read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4 );
+
 	switch( offset ) {
 	case 0x0000/4:		/* 03300000 - Revision */
 		return madam.revision;
+	case 0x0004/4:
+		return madam.msysbits;
 	case 0x0008/4:
 		return madam.mctl;
 	case 0x000c/4:
@@ -334,14 +512,20 @@ READ32_HANDLER( _3do_madam_r ) {
 		return madam.mult_control;
 	case 0x07f8/4:
 		return madam.mult_status;
+	default:
+		logerror( "%08X: unhandled MADAM read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4 );
+		break;
 	}
 	return 0;
 }
 
 
 WRITE32_HANDLER( _3do_madam_w ) {
-	logerror( "%08X: MADAM write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, data, mem_mask );
+	logerror( "%08X: MADAM write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4, data, mem_mask );
+
 	switch( offset ) {
+	case 0x0000/4:
+		break;
 	case 0x0004/4:	/* 03300004 - Memory configuration 29 = 2MB DRAM, 1MB VRAM */
 		madam.msysbits = data;
 		break;
@@ -506,20 +690,25 @@ WRITE32_HANDLER( _3do_madam_w ) {
 		break;
 	case 0x07fc/4:	/* Start process */
 		break;
+
+	default:
+		logerror( "%08X: unhandled MADAM write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4, data, mem_mask );
+		break;
 	}
 }
 
 
-void _3do_madam_init( void )
+void _3do_madam_init( running_machine *machine )
 {
 	memset( &madam, 0, sizeof(MADAM) );
 	madam.revision = 0x01020000;
+	madam.msysbits = 0x51;
 }
 
 
 READ32_HANDLER( _3do_clio_r )
 {
-	logerror( "%08X: CLIO read offset = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset );
+	logerror( "%08X: CLIO read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset * 4 );
 
 	switch( offset )
 	{
@@ -532,15 +721,14 @@ READ32_HANDLER( _3do_clio_r )
 	case 0x0028/4:
 		return clio.cstatbits;
 	case 0x0030/4:
-		return clio.hcnt;
+		return clio.screen->hpos();
 	case 0x0034/4:
+		/* This needs to moved to a proper timer callback function */
+		if ( clio.screen->vpos() == 0 )
 		{
-			static const UINT32 irq_sequence[3] = { 0, 4, 12 };
-			static int counter = 0;
-
-			return irq_sequence[(counter++)%3];
+			clio.vcnt ^= 0x800;
 		}
-		return clio.vcnt;
+		return ( clio.vcnt & 0x800 ) | clio.screen->vpos();
 	case 0x0038/4:
 		return clio.seed;
 	case 0x003c/4:
@@ -551,16 +739,128 @@ READ32_HANDLER( _3do_clio_r )
 		return clio.adbio;
 	case 0x0088/4:
 		return clio.adbctl;
+
+	case 0x0100/4:
+		return clio.timer0;
+	case 0x0104/4:
+		return clio.timerback0;
+	case 0x0108/4:
+		return clio.timer1;
+	case 0x010c/4:
+		return clio.timerback1;
+	case 0x0110/4:
+		return clio.timer2;
+	case 0x0114/4:
+		return clio.timerback2;
+	case 0x0118/4:
+		return clio.timer3;
+	case 0x011c/4:
+		return clio.timerback3;
+	case 0x0120/4:
+		return clio.timer4;
+	case 0x0124/4:
+		return clio.timerback4;
+	case 0x0128/4:
+		return clio.timer5;
+	case 0x012c/4:
+		return clio.timerback5;
+	case 0x0130/4:
+		return clio.timer6;
+	case 0x0134/4:
+		return clio.timerback6;
+	case 0x0138/4:
+		return clio.timer7;
+	case 0x013c/4:
+		return clio.timerback7;
+	case 0x0140/4:
+		return clio.timer8;
+	case 0x0144/4:
+		return clio.timerback8;
+	case 0x0148/4:
+		return clio.timer9;
+	case 0x014c/4:
+		return clio.timerback9;
+	case 0x0150/4:
+		return clio.timer10;
+	case 0x0154/4:
+		return clio.timerback10;
+	case 0x0158/4:
+		return clio.timer11;
+	case 0x015c/4:
+		return clio.timerback11;
+	case 0x0160/4:
+		return clio.timer12;
+	case 0x0164/4:
+		return clio.timerback12;
+	case 0x0168/4:
+		return clio.timer13;
+	case 0x016c/4:
+		return clio.timerback13;
+	case 0x0170/4:
+		return clio.timer14;
+	case 0x0174/4:
+		return clio.timerback14;
+	case 0x0178/4:
+		return clio.timer15;
+	case 0x017c/4:
+		return clio.timerback15;
+
+	case 0x0200/4:
+		return clio.settm0;
+	case 0x0204/4:
+		return clio.clrtm0;
+	case 0x0208/4:
+		return clio.settm1;
+	case 0x020c/4:
+		return clio.clrtm1;
+
+	case 0x0220/4:
+		return clio.slack;
+
+	case 0x0400/4:
+	case 0x0404/4:
+		return clio.expctl;
+	case 0x0410/4:
+		return clio.dipir1;
+	case 0x0414/4:
+		return clio.dipir2;
+
+	case 0x0500/4: case 0x0504/4: case 0x0508/4: case 0x050c/4:
+	case 0x0510/4: case 0x0514/4: case 0x0518/4: case 0x051c/4:
+	case 0x0520/4: case 0x0524/4: case 0x0528/4: case 0x052c/4:
+	case 0x0530/4: case 0x0534/4: case 0x0538/4: case 0x053c/4:
+		return clio.sel;
+
+	case 0x0540/4: case 0x0544/4: case 0x0548/4: case 0x054c/4:
+	case 0x0550/4: case 0x0554/4: case 0x0558/4: case 0x055c/4:
+	case 0x0560/4: case 0x0564/4: case 0x0568/4: case 0x056c/4:
+	case 0x0570/4: case 0x0574/4: case 0x0578/4: case 0x057c/4:
+		return clio.poll;
+
+	case 0xc000/4:
+		return clio.unclerev;
+	case 0xc004/4:
+		return clio.uncle_soft_rev;
+	case 0xc008/4:
+		return clio.uncle_addr;
+	case 0xc00c/4:
+		return clio.uncle_rom;
+
+	default:
+		logerror( "%08X: unhandled CLIO read offset = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset * 4 );
+		break;
 	}
 	return 0;
 }
 
 WRITE32_HANDLER( _3do_clio_w )
 {
-	logerror( "%08X: CLIO write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), offset, data, mem_mask );
+	logerror( "%08X: CLIO write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4, data, mem_mask );
 
 	switch( offset )
 	{
+	case 0x0000/4:
+		break;
 	case 0x0004/4:
 		clio.csysbits = data;
 		break;
@@ -576,7 +876,7 @@ WRITE32_HANDLER( _3do_clio_w )
 	case 0x0024/4:	/* 03400024 - c0020f0f is written here during boot */
 		clio.audout = data;
 		break;
-	case 0x0028/4:	/* 03400028 - bits 0,1, and 6 are tested (irq sources?) */
+	case 0x0028/4:	/* 03400028 - bits 0,1, and 6 are tested (reset source) */
 		clio.cstatbits = data;
 		break;
 	case 0x002c/4:	/* 0340002C - ?? during boot 0000000B is written here counter reload related?? */
@@ -637,15 +937,240 @@ WRITE32_HANDLER( _3do_clio_w )
 		clio.adbctl = data;
 		break;
 
-	case 0x88:	/* set timer frequency */
+	case 0x0100/4:
+		clio.timer0 = data & 0x0000ffff;
+		break;
+	case 0x0104/4:
+		clio.timerback0 = data & 0x0000ffff;
+		break;
+	case 0x0108/4:
+		clio.timer1 = data & 0x0000ffff;
+		break;
+	case 0x010c/4:
+		clio.timerback1 = data & 0x0000ffff;
+		break;
+	case 0x0110/4:
+		clio.timer2 = data & 0x0000ffff;
+		break;
+	case 0x0114/4:
+		clio.timerback2 = data & 0x0000ffff;
+		break;
+	case 0x0118/4:
+		clio.timer3 = data & 0x0000ffff;
+		break;
+	case 0x011c/4:
+		clio.timerback3 = data & 0x0000ffff;
+		break;
+	case 0x0120/4:
+		clio.timer4 = data & 0x0000ffff;
+		break;
+	case 0x0124/4:
+		clio.timerback4 = data & 0x0000ffff;
+		break;
+	case 0x0128/4:
+		clio.timer5 = data & 0x0000ffff;
+		break;
+	case 0x012c/4:
+		clio.timerback5 = data & 0x0000ffff;
+		break;
+	case 0x0130/4:
+		clio.timer6 = data & 0x0000ffff;
+		break;
+	case 0x0134/4:
+		clio.timerback6 = data & 0x0000ffff;
+		break;
+	case 0x0138/4:
+		clio.timer7 = data & 0x0000ffff;
+		break;
+	case 0x013c/4:
+		clio.timerback7 = data & 0x0000ffff;
+		break;
+	case 0x0140/4:
+		clio.timer8 = data & 0x0000ffff;
+		break;
+	case 0x0144/4:
+		clio.timerback8 = data & 0x0000ffff;
+		break;
+	case 0x0148/4:
+		clio.timer9 = data & 0x0000ffff;
+		break;
+	case 0x014c/4:
+		clio.timerback9 = data & 0x0000ffff;
+		break;
+	case 0x0150/4:
+		clio.timer10 = data & 0x0000ffff;
+		break;
+	case 0x0154/4:
+		clio.timerback10 = data & 0x0000ffff;
+		break;
+	case 0x0158/4:
+		clio.timer11 = data & 0x0000ffff;
+		break;
+	case 0x015c/4:
+		clio.timerback11 = data & 0x0000ffff;
+		break;
+	case 0x0160/4:
+		clio.timer12 = data & 0x0000ffff;
+		break;
+	case 0x0164/4:
+		clio.timerback12 = data & 0x0000ffff;
+		break;
+	case 0x0168/4:
+		clio.timer13 = data & 0x0000ffff;
+		break;
+	case 0x016c/4:
+		clio.timerback13 = data & 0x0000ffff;
+		break;
+	case 0x0170/4:
+		clio.timer14 = data & 0x0000ffff;
+		break;
+	case 0x0174/4:
+		clio.timerback14 = data & 0x0000ffff;
+		break;
+	case 0x0178/4:
+		clio.timer15 = data & 0x0000ffff;
+		break;
+	case 0x017c/4:
+		clio.timerback15 = data & 0x0000ffff;
+		break;
+
+	case 0x0200/4:
+		clio.settm0 = data;
+		break;
+	case 0x0204/4:
+		clio.clrtm0 = data;
+		break;
+	case 0x0208/4:
+		clio.settm0 = data;
+		break;
+	case 0x020c/4:
+		break;
+
+	case 0x0220/4:
+		clio.slack = data & 0x000003ff;
+		break;
+
+	case 0x0308/4:
+		clio.dmareqdis = data;
+		break;
+
+	case 0x0400/4:
+		clio.expctl = clio.expctl | ( data & 0xca00 );
+		break;
+	case 0x0404/4:
+		clio.expctl = clio.expctl & ~( data & 0xca00 );
+		break;
+	case 0x0408/4:
+		clio.type0_4 = data;
+		break;
+
+	case 0x0500/4: case 0x0504/4: case 0x0508/4: case 0x050c/4:
+	case 0x0510/4: case 0x0514/4: case 0x0518/4: case 0x051c/4:
+	case 0x0520/4: case 0x0524/4: case 0x0528/4: case 0x052c/4:
+	case 0x0530/4: case 0x0534/4: case 0x0538/4: case 0x053c/4:
+		clio.sel = data & 0xff;
+		/* Start WRSEL cycle */
+
+		/* Detection of too many devices on the bus */
+		switch ( data & 0xff )
+		{
+		case 0x8f:
+			/* Everything is fine, there are not too many devices in the system */
+			clio.poll = ( clio.poll & 0x0f );
+			break;
+		default:
+			clio.poll = ( clio.poll & 0x0f ) | 0x90;
+		}
+		break;
+
+	case 0x0540/4: case 0x0544/4: case 0x0548/4: case 0x054c/4:
+	case 0x0550/4: case 0x0554/4: case 0x0558/4: case 0x055c/4:
+	case 0x0560/4: case 0x0564/4: case 0x0568/4: case 0x056c/4:
+	case 0x0570/4: case 0x0574/4: case 0x0578/4: case 0x057c/4:
+		clio.poll = ( clio.poll & 0xf8 ) | ( data & 0x07 );
+		break;
+
+	case 0xc000/4:
+	case 0xc004/4:
+	case 0xc00c/4:
+		break;
+	case 0xc008/4:
+		clio.uncle_addr = data;
+		break;
+
+	default:
+		logerror( "%08X: unhandled CLIO write offset = %08X, data = %08X, mask = %08X\n", cpu_get_pc(space->machine->device("maincpu")), offset*4, data, mem_mask );
 		break;
 	}
 }
 
-void _3do_clio_init( void )
+
+void _3do_clio_init( running_machine *machine, screen_device *screen )
 {
 	memset( &clio, 0, sizeof(CLIO) );
-	clio.revision = 0x02022000;
-	clio.cstatbits = 0x40;
+	clio.screen = screen;
+	clio.revision = 0x02022000 /* 0x04000000 */;
+	clio.cstatbits = 0x01;	/* bit 0 = reset of clio caused by power on */
+	clio.unclerev = 0x03800000;
+	clio.expctl = 0x80;	/* ARM has the expansion bus */
+}
+
+
+/* 9 -> 5 bits translation */
+static UINT8 video_bits[512];
+
+VIDEO_START( _3do )
+{
+	/* We only keep the odd bits and get rid of the even bits */
+	for ( int i = 0; i < 512; i++ )
+	{
+		video_bits[i] = ( i & 1 ) | ( ( i & 4 ) >> 1 ) | ( ( i & 0x10 ) >> 2 ) | ( ( i & 0x40 ) >> 3 ) | ( ( i & 0x100 ) >> 4 );
+	}
+}
+
+
+/* This is incorrect! Just testing stuff */
+VIDEO_UPDATE( _3do )
+{
+	_3do_state *state = (_3do_state *)screen->machine->driver_data;
+	UINT32 *source_p = state->vram + 0x1c0000 / 4;
+
+	for ( int i = 0; i < 120; i++ )
+	{
+		UINT32	*dest_p0 = BITMAP_ADDR32( bitmap, 22 + i * 2, 254 );
+		UINT32	*dest_p1 = BITMAP_ADDR32( bitmap, 22 + i * 2 + 1, 254 );
+
+		for ( int j = 0; j < 320; j++ )
+		{
+			/* Odd numbered bits go to lower half, even numbered bits to upper half */
+			UINT32 lower = *source_p & 0x55555555;
+			UINT32 upper = ( *source_p >> 1 ) & 0x55555555;
+			UINT32 rgb = 0;
+
+			rgb = ( ( video_bits[upper & 0x1ff] << 3 ) << 8 );
+			rgb |= ( ( video_bits[ ( upper >> 10 ) & 0x1ff ] << 3 ) << 0 );
+			rgb |= ( ( video_bits[ ( upper >> 20 ) & 0x1ff ] << 3 ) << 16 );
+
+			dest_p0[0] = rgb;
+			dest_p0[1] = rgb;
+			dest_p0[2] = rgb;
+			dest_p0[3] = rgb;
+
+			rgb = ( ( video_bits[lower & 0x1ff] << 3 ) << 8 );
+			rgb |= ( ( video_bits[ ( lower >> 10 ) & 0x1ff ] << 3 ) << 0 );
+			rgb |= ( ( video_bits[ ( lower >> 20 ) & 0x1ff ] << 3 ) << 16 );
+
+			dest_p1[0] = rgb;
+			dest_p1[1] = rgb;
+			dest_p1[2] = rgb;
+			dest_p1[3] = rgb;
+
+			source_p++;
+			dest_p0 += 4;
+			dest_p1 += 4;
+		}
+	}
+
+	return 0;
 }
 

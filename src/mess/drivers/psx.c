@@ -388,7 +388,7 @@ static DIRECT_UPDATE_HANDLER( psx_setopbase )
 {
 	if( address == 0x80030000 )
 	{
-		running_device *cpu = devtag_get_device(space->machine, "maincpu");
+		running_device *cpu = space->machine->device("maincpu");
 
 		memory_set_direct_update_handler( space, NULL );
 
@@ -413,23 +413,23 @@ static DIRECT_UPDATE_HANDLER( psx_setopbase )
 
 static QUICKLOAD_LOAD( psx_exe_load )
 {
-	const address_space *space = cputag_get_address_space( image->machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	const address_space *space = cputag_get_address_space( image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
 	exe_size = 0;
 	exe_buffer = (UINT8*)malloc( quickload_size );
 	if( exe_buffer == NULL )
 	{
 		logerror( "psx_exe_load: out of memory\n" );
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
-	if( image_fread( image, exe_buffer, quickload_size ) != quickload_size )
+	if( image.fread( exe_buffer, quickload_size ) != quickload_size )
 	{
 		free( exe_buffer );
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 	exe_size = quickload_size;
 	memory_set_direct_update_handler( space, psx_setopbase );
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /* PAD emulation */
@@ -999,7 +999,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( psx )
 {
-	running_device *cdrom_dev = devtag_get_device(machine, "cdrom");
+	running_device *cdrom_dev = machine->device("cdrom");
 	if( cdrom_dev )
 	{
 		psx_cdrom = mess_cd_get_cdrom_file(cdrom_dev);

@@ -142,7 +142,8 @@ static const cassette_config partner_cassette_config =
 {
 	rkp_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 static FLOPPY_OPTIONS_START(partner)
@@ -161,9 +162,9 @@ static const floppy_config partner_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(partner),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* F4 Character Displayer */
@@ -187,7 +188,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( partner )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", 8080, XTAL_16MHz / 9)
+    MDRV_CPU_ADD("maincpu", I8080, XTAL_16MHz / 9)
     MDRV_CPU_PROGRAM_MAP(partner_mem)
 
     MDRV_MACHINE_START( partner )

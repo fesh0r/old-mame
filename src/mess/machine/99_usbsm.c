@@ -26,7 +26,7 @@
 
 #include "emu.h"
 #include "ti99_4x.h"
-#include "99_peb.h"
+#include "devices/ti99_peb.h"
 #include "99_usbsm.h"
 #include "strata.h"
 #include "smartmed.h"
@@ -44,6 +44,8 @@ static void usbsm_mem_16_w(const address_space* space,offs_t offset, UINT16 data
 static UINT16 *ti99_usbsm_RAM;
 static int feeprom_page;
 static int sram_page;
+
+static running_device *expansion_box;
 
 static const ti99_peb_card_handlers_t usbsm_handlers =
 {
@@ -83,7 +85,8 @@ void ti99_usbsm_init(running_machine *machine)
 */
 int ti99_usbsm_reset(running_machine *machine, int in_tms9995_mode)
 {
-	ti99_peb_set_card_handlers(0x1600, & usbsm_handlers);
+	expansion_box = machine->device("per_exp_box");
+	ti99_peb_set_card_handlers(expansion_box, 0x1600, & usbsm_handlers);
 
 	feeprom_page = 0;
 	sram_page = 0;
@@ -100,7 +103,7 @@ int ti99_usbsm_reset(running_machine *machine, int in_tms9995_mode)
 static int usbsm_cru_r(running_machine *machine, int offset)
 {
 	int reply = 0;
-	running_device *smartmedia =devtag_get_device(machine, "smartmedia");
+	running_device *smartmedia =machine->device("smartmedia");
 	offset &= 3;
 
 	switch (offset)
@@ -224,7 +227,7 @@ static WRITE8_HANDLER(usbsm_mem_w)
 static UINT16 usbsm_mem_16_r(const address_space* space,offs_t offset)
 {
 	UINT16 reply = 0;
-	running_device *smartmedia =devtag_get_device(space->machine, "smartmedia");
+	running_device *smartmedia =space->machine->device("smartmedia");
 	if (offset < 0x800)
 	{	/* 0x4000-0x4fff range */
 		if ((cru_register & cru_reg_io_regs_enable) && (offset >= 0x7f8))
@@ -257,7 +260,7 @@ static UINT16 usbsm_mem_16_r(const address_space* space,offs_t offset)
 */
 static void usbsm_mem_16_w(const address_space* space,offs_t offset, UINT16 data)
 {
-	running_device *smartmedia =devtag_get_device(space->machine, "smartmedia");
+	running_device *smartmedia =space->machine->device("smartmedia");
 	if (offset < 0x800)
 	{	/* 0x4000-0x4fff range */
 		if ((cru_register & cru_reg_io_regs_enable) && (offset >= 0x7f8))

@@ -444,7 +444,8 @@ static const cassette_config vidbrain_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 /*-------------------------------------------------
@@ -454,21 +455,21 @@ static const cassette_config vidbrain_cassette_config =
 static DEVICE_IMAGE_LOAD( vidbrain_cart )
 {
 	UINT32 size;
-	UINT8 *ptr = memory_region(image->machine, F3850_TAG) + 0x1000;
+	UINT8 *ptr = memory_region(image.device().machine, F3850_TAG) + 0x1000;
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		size = image_length(image);
-		if (image_fread(image, ptr, size) != size)
-			return INIT_FAIL;
+		size = image.length();
+		if (image.fread(ptr, size) != size)
+			return IMAGE_INIT_FAIL;
 	}
 	else
 	{
-		size = image_get_software_region_length(image, "rom");
-		memcpy(ptr, image_get_software_region(image, "rom"), size);
+		size = image.get_software_region_length("rom");
+		memcpy(ptr, image.get_software_region("rom"), size);
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /***************************************************************************
@@ -484,7 +485,7 @@ static MACHINE_START( vidbrain )
 	vidbrain_state *state = (vidbrain_state *)machine->driver_data;
 
 	/* find devices */
-	state->discrete = devtag_get_device(machine, DISCRETE_TAG);
+	state->discrete = machine->device(DISCRETE_TAG);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keylatch);
@@ -544,7 +545,7 @@ static MACHINE_DRIVER_START( vidbrain )
 	MDRV_CARTSLOT_LOAD(vidbrain_cart)
 
 	/* software lists */
-	MDRV_SOFTWARE_LIST_ADD("vidbrain")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","vidbrain")
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")

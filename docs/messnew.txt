@@ -1,3 +1,125 @@
+0.139
+
+New System Drivers Supported:
+-----------------------------
+- Bally Home Library Computer [ranger_lennier]
+- Commodore 64C (Sweden/Finland) [Curt Coder]
+- Sega SC-3000 [Miodrag Milanovic]
+- Tandy 1000 TX [Cowering, Wilbert Pol]
+- Casio PV-2000 [anondumper]
+- Salora Manager [Curt Coder]
+
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- Canon X07 [Sandro Ronco]
+- Othello Multivision FG-1000/FG-2000 [Enri, Curt Coder]
+- Philips VG5000 [Daniel Coulom, Sandro Ronco]
+- SGCPU aka TI-99/4P [Michael Zapf]
+
+
+
+Skeleton drivers:
+-----------------
+- Bandai Gundam RX-78
+- Hitachi Basic Master Jr (MB-6885)
+- Hitachi Basic Master Level 3 (MB-6890)
+- Mitsubishi Multi 8
+- Psion Organiser II CM
+- Psion Organiser II LA
+- Psion Organiser II P350
+- Psion Organiser II LAM
+- Psion Organiser II LZ64
+- Psion Organiser II LZ64S
+- Psion Organiser II LZ
+- Psion Organiser II P464
+- Sharp MZ-2000
+- Sharp Pocket Computer 1360
+- Sharp Pocket Computer 1450
+- Sharp Pocket Computer 1500
+- Sony SMC-777
+- Toshiba PASOPIA 7
+- VTech PC Prestige Elite [Joseba Epalza, Curt Coder]
+- Xircom / Intel REX 6000
+- NEC TK-80BS
+- Japan Electronics College MYCOMZ-80A
+- Acorn Archimedes 7000/7000+
+
+
+System Driver Changes:
+----------------------
+- [APPLE2] Support for Rich Dreher's Compact Flash/IDE adaptor on the
+  enhanced IIe driver (apple2ee). [R. Belmont]
+
+- [APPLE2] Preliminary cassette support - many Applesoft tapes load
+  fine. [R. Belmont]
+
+- [C128] Removed c128fino set, fixed ROM labels for c128sfi. [Curt Coder]
+
+- [COCO3] Extended video to support 8MB of RAM. (bug #1963) [Robert Gault]
+
+- [FAMICOM] Fixed long standing problems (present at least since MESS 0.122) 
+  with disks not loading correctly. Many games are playable again. [Fabio Priuli]
+
+- [GBA] Improved flash saving in games such as Sword of Mana [R. Belmont]
+
+- [MAC] Improved Egret MCU simulation [R. Belmont]
+
+- [MICRONIC] Improved emulation and added NVRAM [Sandro Ronco]
+
+- [NES] Added support for loading proper dumps with separate PRG and CHR files
+  by using an xml software list, additional emulation features being based on 
+  the pcb_type attribute. Also, converted code for iNES and UNIF files to use 
+  the new code: this allowed to greatly simplify emulation for many boards and
+  mappers. [Fabio Priuli]
+
+- [NES] Simplified emulation of MMC3 clone boards, resulting in more boards 
+  correctly emulated and many new boards supported [Fabio Priuli]
+
+- [TI99] ti99cart: Fix for bug #1953 (assert with HSGPL set to on); 
+  type paged379i can now handle 128 KiB, minimem now accepts cartridges without 
+  rom part. Fixed at29c040a (CFI commands are only checked against A14 to A0).
+  v9938: Added status register 4+6 presets. 
+  Fixed HSGPL extension, introduced a "flash" mode which allows to upload 
+  the required OS to the HSGPL in-system. Various fixes for SGCPU 
+  (aka TI-99/4P), changed to working. New: GRAM Kracker module port device. 
+  Deactivated IDE support (pending review). Refactorings towards device 
+  structure support.
+
+- [VG5K] Added emulation for the EF9345 video chip, based on 
+  Daniel Coulom's implementation in DCVG5K. [Sandro Ronco]
+
+- [VG5K] Added support for cassettes in .k7 format. [Sandro Ronco]
+
+- [VG5K] Improved emulation (fixing some games like Mission Omega & Helicopter).
+  [Sandro Ronco]
+
+- [VG5K] Implemented double height chars (fixing US Rally intro) and 80 columns 
+  mode. [Sandro Ronco]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.139.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed setting of tape flags when reaching end of tape. This prevented
+  the user from using any other tape beyond the first mounted tape image
+  on certain systems.  [Wilbert Pol]
+
+- Added software lists in xml format for more systems [incog, k1w1, Kaylee, 
+  Micko, Fabio Priuli, Barry Rodewald]
+
+
+
 0.138
 
 New System Drivers Supported:
@@ -191,7 +313,7 @@ Imgtool Changes:
 Source Changes:
 ----------------
 
-- The core is based on MAME 0.137u4.  This incorporates all features of the
+- The core is based on MAME 0.138.  This incorporates all features of the
   update to this core.  [MAME team]
 
 - Added core support for loading images with shortnames which are recognized

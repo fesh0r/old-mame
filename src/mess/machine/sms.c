@@ -113,7 +113,7 @@ static WRITE8_HANDLER( sms_input_write )
 		case 0x03:	/* Sports Pad */
 			if (data != sms_state.sports_pad_last_data_1)
 			{
-				UINT32 cpu_cycles = cpu_get_total_cycles(space->cpu);
+				UINT32 cpu_cycles = downcast<cpu_device *>(space->cpu)->total_cycles();
 
 				sms_state.sports_pad_last_data_1 = data;
 				if (cpu_cycles - sms_state.last_sports_pad_time_1 > 512)
@@ -135,7 +135,7 @@ static WRITE8_HANDLER( sms_input_write )
 		case 0x03:	/* Sports Pad */
 			if (data != sms_state.sports_pad_last_data_2)
 			{
-				UINT32 cpu_cycles = cpu_get_total_cycles(space->cpu);
+				UINT32 cpu_cycles = downcast<cpu_device *>(space->cpu)->total_cycles();
 
 				sms_state.sports_pad_last_data_2 = data;
 				if (cpu_cycles - sms_state.last_sports_pad_time_2 > 2048)
@@ -174,7 +174,7 @@ static TIMER_CALLBACK( lightgun_tick )
 static void sms_vdp_hcount_lphaser( running_machine *machine, int hpos)
 {
 	UINT8 tmp = ((hpos - 46) >> 1) & 0xff;
-	running_device *smsvdp = devtag_get_device(machine, "sms_vdp");
+	running_device *smsvdp = machine->device("sms_vdp");
 
 	//printf ("sms_vdp_hcount_lphaser: hpos %3d => hcount %2X\n", hpos, tmp);
 	sms_vdp_hcount_latch_w(smsvdp, 0, tmp);
@@ -184,8 +184,8 @@ static void sms_vdp_hcount_lphaser( running_machine *machine, int hpos)
 static UINT8 sms_vdp_hcount( running_machine *machine )
 {
 	UINT8 tmp;
-	running_device *screen = video_screen_first(machine);
-	int hpos = video_screen_get_hpos(screen);
+	screen_device *screen = screen_first(*machine);
+	int hpos = screen->hpos();
 
 	/* alternative method: pass HCounter test, but some others fail */
 	//int hpos_tmp = hpos;
@@ -194,14 +194,14 @@ static UINT8 sms_vdp_hcount( running_machine *machine )
 
 	UINT64 calc_cycles;
 	attotime time_end;
-	int vpos = video_screen_get_vpos(screen);
-	int max_hpos = video_screen_get_width(screen) - 1;
+	int vpos = screen->vpos();
+	int max_hpos = screen->width() - 1;
 
 	if (hpos == max_hpos)
 		time_end = attotime_zero;
 	else
-		time_end = video_screen_get_time_until_pos(screen, vpos, max_hpos);
-	calc_cycles = cpu_attotime_to_clocks(devtag_get_device(machine, "maincpu"), time_end);
+		time_end = screen->time_until_pos(vpos, max_hpos);
+	calc_cycles = machine->device<cpu_device>("maincpu")->attotime_to_clocks(time_end);
 
 	/* equation got from SMSPower forum, posted by Flubba. */
 	tmp = ((590 - (calc_cycles * 3)) / 4) & 0xff;
@@ -214,25 +214,25 @@ static UINT8 sms_vdp_hcount( running_machine *machine )
 static void sms_vdp_hcount_latch( running_machine *machine )
 {
 	UINT8 value = sms_vdp_hcount(machine);
-	running_device *smsvdp = devtag_get_device(machine, "sms_vdp");
+	running_device *smsvdp = machine->device("sms_vdp");
 
 	sms_vdp_hcount_latch_w(smsvdp, 0, value);
 }
 
 
-static UINT16 screen_hpos_nonscaled( running_device *screen, int scaled_hpos )
+static UINT16 screen_hpos_nonscaled( screen_device *screen, int scaled_hpos )
 {
-	const rectangle *visarea = video_screen_get_visible_area(screen);
-	int offset_x = (scaled_hpos * (visarea->max_x - visarea->min_x)) / 255;
-	return visarea->min_x + offset_x;
+	const rectangle &visarea = screen->visible_area();
+	int offset_x = (scaled_hpos * (visarea.max_x - visarea.min_x)) / 255;
+	return visarea.min_x + offset_x;
 }
 
 
-static UINT16 screen_vpos_nonscaled( running_device *screen, int scaled_vpos )
+static UINT16 screen_vpos_nonscaled( screen_device *screen, int scaled_vpos )
 {
-	const rectangle *visarea = video_screen_get_visible_area(screen);
-	int offset_y = (scaled_vpos * (visarea->max_y - visarea->min_y)) / 255;
-	return visarea->min_y + offset_y;
+	const rectangle &visarea = screen->visible_area();
+	int offset_y = (scaled_vpos * (visarea.max_y - visarea.min_y)) / 255;
+	return visarea.min_y + offset_y;
 }
 
 
@@ -241,7 +241,7 @@ static int lphaser_sensor_is_on( running_machine *machine, const char *tag_x, co
 	int x = screen_hpos_nonscaled(machine->primary_screen, input_port_read(machine, tag_x));
 	int y = screen_vpos_nonscaled(machine->primary_screen, input_port_read(machine, tag_y));
 
-	if (sms_vdp_area_brightness(devtag_get_device(machine, "sms_vdp"), x, y, 60, 5) >= 0x7f)
+	if (sms_vdp_area_brightness(machine->device("sms_vdp"), x, y, 60, 5) >= 0x7f)
 	{
 		/* avoid latching hcount more than once in a line */
 		if (sms_state.lphaser_latch == 0)
@@ -263,7 +263,7 @@ static int lphaser_sensor_is_on( running_machine *machine, const char *tag_x, co
 static void sms_get_inputs( const address_space *space )
 {
 	UINT8 data = 0x00;
-	UINT32 cpu_cycles = cpu_get_total_cycles(space->cpu);
+	UINT32 cpu_cycles = downcast<cpu_device *>(space->cpu)->total_cycles();
 	running_machine *machine = space->machine;
 
 	sms_state.input_port0 = 0xff;
@@ -456,7 +456,7 @@ WRITE8_HANDLER( sms_io_control_w )
 
 READ8_HANDLER( sms_count_r )
 {
-	running_device *smsvdp = devtag_get_device(space->machine, "sms_vdp");
+	running_device *smsvdp = space->machine->device("sms_vdp");
 
 	if (offset & 0x01)
 		return sms_vdp_hcount_latch_r(smsvdp, offset);
@@ -547,7 +547,7 @@ WRITE8_HANDLER( sms_ym2413_register_port_0_w )
 {
 	if (sms_state.has_fm)
 	{
-		running_device *ym = devtag_get_device(space->machine, "ym2413");
+		running_device *ym = space->machine->device("ym2413");
 		ym2413_w(ym, 0, (data & 0x3f));
 	}
 }
@@ -557,7 +557,7 @@ WRITE8_HANDLER( sms_ym2413_data_port_0_w )
 {
 	if (sms_state.has_fm)
 	{
-		running_device *ym = devtag_get_device(space->machine, "ym2413");
+		running_device *ym = space->machine->device("ym2413");
 		logerror("data_port_0_w %x %x\n", offset, data);
 		ym2413_w(ym, 1, data);
 	}
@@ -927,11 +927,13 @@ READ8_HANDLER( gg_sio_r )
 	return sms_state.gg_sio[offset];
 }
 
-static void sms_machine_stop( running_machine *machine )
+static void sms_machine_stop( running_machine &machine )
 {
 	/* Does the cartridge have SRAM that should be saved? */
-	if (sms_state.cartridge[sms_state.current_cartridge].sram_save)
-		image_battery_save(devtag_get_device(machine, "cart1"), sms_state.cartridge[sms_state.current_cartridge].cartSRAM, sizeof(UINT8) * NVRAM_SIZE );
+	if (sms_state.cartridge[sms_state.current_cartridge].sram_save) {
+		device_image_interface *image = dynamic_cast<device_image_interface *>(machine.device("cart1"));
+		image->battery_save(sms_state.cartridge[sms_state.current_cartridge].cartSRAM, sizeof(UINT8) * NVRAM_SIZE );
+	}
 }
 
 
@@ -1196,48 +1198,48 @@ DEVICE_IMAGE_LOAD( sms_cart )
 	int size, index = 0, offset = 0;
 	const char *extrainfo;
 
-	if (strcmp(image->tag(), "cart1") == 0)
+	if (strcmp(image.device().tag(), "cart1") == 0)
 		index = 0;
-	if (strcmp(image->tag(), "cart2") == 0)
+	if (strcmp(image.device().tag(), "cart2") == 0)
 		index = 1;
-	if (strcmp(image->tag(), "cart3") == 0)
+	if (strcmp(image.device().tag(), "cart3") == 0)
 		index = 2;
-	if (strcmp(image->tag(), "cart4") == 0)
+	if (strcmp(image.device().tag(), "cart4") == 0)
 		index = 3;
-	if (strcmp(image->tag(), "cart5") == 0)
+	if (strcmp(image.device().tag(), "cart5") == 0)
 		index = 4;
-	if (strcmp(image->tag(), "cart6") == 0)
+	if (strcmp(image.device().tag(), "cart6") == 0)
 		index = 5;
-	if (strcmp(image->tag(), "cart7") == 0)
+	if (strcmp(image.device().tag(), "cart7") == 0)
 		index = 6;
-	if (strcmp(image->tag(), "cart8") == 0)
+	if (strcmp(image.device().tag(), "cart8") == 0)
 		index = 7;
-	if (strcmp(image->tag(), "cart9") == 0)
+	if (strcmp(image.device().tag(), "cart9") == 0)
 		index = 8;
-	if (strcmp(image->tag(), "cart10") == 0)
+	if (strcmp(image.device().tag(), "cart10") == 0)
 		index = 9;
-	if (strcmp(image->tag(), "cart11") == 0)
+	if (strcmp(image.device().tag(), "cart11") == 0)
 		index = 10;
-	if (strcmp(image->tag(), "cart12") == 0)
+	if (strcmp(image.device().tag(), "cart12") == 0)
 		index = 11;
-	if (strcmp(image->tag(), "cart13") == 0)
+	if (strcmp(image.device().tag(), "cart13") == 0)
 		index = 12;
-	if (strcmp(image->tag(), "cart14") == 0)
+	if (strcmp(image.device().tag(), "cart14") == 0)
 		index = 13;
-	if (strcmp(image->tag(), "cart15") == 0)
+	if (strcmp(image.device().tag(), "cart15") == 0)
 		index = 14;
-	if (strcmp(image->tag(), "cart16") == 0)
+	if (strcmp(image.device().tag(), "cart16") == 0)
 		index = 15;
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		extrainfo = image_extrainfo(image);
-		size = image_length(image);
+		extrainfo = image.extrainfo();
+		size = image.length();
 	}
 	else
 	{
 		extrainfo = NULL;
-		size = image_get_software_region_length(image, "rom");
+		size = image.get_software_region_length("rom");
 	}
 
 	/* Check for 512-byte header */
@@ -1249,26 +1251,26 @@ DEVICE_IMAGE_LOAD( sms_cart )
 
 	if (!size)
 	{
-		image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Invalid ROM image: ROM image is too small");
-		return INIT_FAIL;
+		image.seterror(IMAGE_ERROR_UNSPECIFIED, "Invalid ROM image: ROM image is too small");
+		return IMAGE_INIT_FAIL;
 	}
 
 	/* Create a new memory region to hold the ROM. */
 	/* Make sure the region holds only complete (0x4000) rom banks */
 	sms_state.cartridge[index].size = (size & 0x3fff) ? (((size >> 14) + 1) << 14) : size;
-	sms_state.cartridge[index].ROM = auto_alloc_array(image->machine, UINT8, sms_state.cartridge[index].size);
-	sms_state.cartridge[index].cartSRAM = auto_alloc_array(image->machine, UINT8, NVRAM_SIZE);
+	sms_state.cartridge[index].ROM = auto_alloc_array(image.device().machine, UINT8, sms_state.cartridge[index].size);
+	sms_state.cartridge[index].cartSRAM = auto_alloc_array(image.device().machine, UINT8, NVRAM_SIZE);
 
 	/* Load ROM banks */
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		image_fseek(image, offset, SEEK_SET);
+		image.fseek(offset, SEEK_SET);
 
-		if (image_fread(image, sms_state.cartridge[index].ROM, size) != size)
-			return INIT_FAIL;
+		if (image.fread( sms_state.cartridge[index].ROM, size) != size)
+			return IMAGE_INIT_FAIL;
 	}
 	else
-		memcpy(sms_state.cartridge[index].ROM, image_get_software_region(image, "rom") + offset, size);
+		memcpy(sms_state.cartridge[index].ROM, image.get_software_region("rom") + offset, size);
 
 	/* check the image */
 	if (!sms_state.has_bios)
@@ -1305,7 +1307,7 @@ DEVICE_IMAGE_LOAD( sms_cart )
 		{
 			sms_state.cartridge[index].features |= CF_ONCART_RAM;
 			sms_state.cartridge[index].ram_size = 0x2000;
-			sms_state.cartridge[index].cartRAM = auto_alloc_array(image->machine, UINT8, sms_state.cartridge[index].ram_size);
+			sms_state.cartridge[index].cartRAM = auto_alloc_array(image.device().machine, UINT8, sms_state.cartridge[index].ram_size);
 		}
 	}
 	else
@@ -1324,10 +1326,10 @@ DEVICE_IMAGE_LOAD( sms_cart )
 		}
 
 		/* Check for special SMS Compatibility mode gamegear cartridges */
-		if (sms_state.is_gamegear && image_software_entry(image) == NULL)	// not sure about how to handle this with softlists
+		if (sms_state.is_gamegear && image.software_entry() == NULL)	// not sure about how to handle this with softlists
 		{
 			/* Just in case someone passes us an sms file */
-			if (!mame_stricmp (image_filetype(image), "sms"))
+			if (!mame_stricmp (image.filetype(), "sms"))
 				sms_state.cartridge[index].features |= CF_GG_SMS_MODE;
 		}
 	}
@@ -1335,7 +1337,7 @@ DEVICE_IMAGE_LOAD( sms_cart )
 	if (sms_state.cartridge[index].features & CF_CODEMASTERS_MAPPER)
 	{
 		sms_state.cartridge[index].ram_size = 0x10000;
-		sms_state.cartridge[index].cartRAM = auto_alloc_array(image->machine, UINT8, sms_state.cartridge[index].ram_size);
+		sms_state.cartridge[index].cartRAM = auto_alloc_array(image.device().machine, UINT8, sms_state.cartridge[index].ram_size);
 		sms_state.cartridge[index].ram_page = 0;
 	}
 
@@ -1345,7 +1347,7 @@ DEVICE_IMAGE_LOAD( sms_cart )
 	/* Terebi Oekaki (TV Draw) is a SG1000 game with special input device which is compatible with SG1000 Mark III */
 	if ((detect_tvdraw(sms_state.cartridge[index].ROM)) && sms_state.is_region_japan)
 	{
-		const address_space *program = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+		const address_space *program = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 		memory_install_write8_handler(program, 0x6000, 0x6000, 0, 0, &sms_tvdraw_axis_w);
 		memory_install_read8_handler(program, 0x8000, 0x8000, 0, 0, &sms_tvdraw_status_r);
 		memory_install_read8_handler(program, 0xa000, 0xa000, 0, 0, &sms_tvdraw_data_r);
@@ -1353,9 +1355,9 @@ DEVICE_IMAGE_LOAD( sms_cart )
 	}
 
 	/* Load battery backed RAM, if available */
-	image_battery_load(image, sms_state.cartridge[index].cartSRAM, sizeof(UINT8) * NVRAM_SIZE, 0x00);
+	image.battery_load(sms_state.cartridge[index].cartSRAM, sizeof(UINT8) * NVRAM_SIZE, 0x00);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -1416,7 +1418,7 @@ static void setup_banks( running_machine *machine )
 
 MACHINE_START( sms )
 {
-	add_exit_callback(machine, sms_machine_stop);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, sms_machine_stop);
 	sms_state.rapid_fire_timer = timer_alloc(machine, rapid_fire_callback , NULL);
 	timer_adjust_periodic(sms_state.rapid_fire_timer, ATTOTIME_IN_HZ(10), 0, ATTOTIME_IN_HZ(10));
 	/* Check if lightgun has been chosen as input: if so, enable crosshair */
@@ -1427,7 +1429,7 @@ MACHINE_START( sms )
 MACHINE_RESET( sms )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	running_device *smsvdp = devtag_get_device(machine, "sms_vdp");
+	running_device *smsvdp = machine->device("sms_vdp");
 
 	sms_state.ctrl_reg = 0xff;
 	if (sms_state.has_fm)
@@ -1535,7 +1537,7 @@ WRITE8_HANDLER( sms_store_control_w )
 	else
 	{
 		/* Pull reset line of CPU #0 low */
-		devtag_get_device(space->machine, "maincpu")->reset();
+		space->machine->device("maincpu")->reset();
 		cputag_suspend(space->machine, "maincpu", SUSPEND_REASON_HALT, 1);
 	}
 	sms_state.store_control = data;
@@ -1616,10 +1618,10 @@ DRIVER_INIT( gamegeaj )
 /* This needs to be here to check if segascope has been enabled */
 VIDEO_UPDATE( sms1 )
 {
-	running_device *main_scr = devtag_get_device(screen->machine, "screen");
-	running_device *left_lcd = devtag_get_device(screen->machine, "left_lcd");
-	running_device *right_lcd = devtag_get_device(screen->machine, "right_lcd");
-	running_device *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
+	running_device *main_scr = screen->machine->device("screen");
+	running_device *left_lcd = screen->machine->device("left_lcd");
+	running_device *right_lcd = screen->machine->device("right_lcd");
+	running_device *smsvdp = screen->machine->device("sms_vdp");
 	UINT8 segascope = input_port_read_safe(screen->machine, "SEGASCOPE", 0x00);
 
 	if (screen == main_scr)
@@ -1628,8 +1630,8 @@ VIDEO_UPDATE( sms1 )
 	}
 	else if (screen == left_lcd)
 	{
-		int width = video_screen_get_width(screen);
-		int height = video_screen_get_height(screen);
+		int width = screen->width();
+		int height = screen->height();
 		int x, y;
 
 		if (segascope)
@@ -1652,8 +1654,8 @@ VIDEO_UPDATE( sms1 )
 	}
 	else if (screen == right_lcd)
 	{
-		int width = video_screen_get_width(screen);
-		int height = video_screen_get_height(screen);
+		int width = screen->width();
+		int height = screen->height();
 		int x, y;
 
 		if (segascope)
@@ -1680,7 +1682,7 @@ VIDEO_UPDATE( sms1 )
 
 VIDEO_UPDATE( sms )
 {
-	running_device *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
+	running_device *smsvdp = screen->machine->device("sms_vdp");
 	sms_vdp_update(smsvdp, bitmap, cliprect);
 
 	return 0;

@@ -305,11 +305,11 @@ static WRITE8_HANDLER( scv_portc_w )
 {
 	scv_state *state = (scv_state *)space->machine->driver_data;
 
-	//logerror("%04x: scv_portc_w: data = 0x%02x\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), data );
+	//logerror("%04x: scv_portc_w: data = 0x%02x\n", cpu_get_pc(space->machine->device("maincpu")), data );
 	state->portc = data;
 
 	scv_set_banks( space->machine );
-	upd1771_pcm_w( devtag_get_device( space->machine, "upd1771c" ), state->portc & 0x08 );
+	upd1771_pcm_w( space->machine->device( "upd1771c" ), state->portc & 0x08 );
 }
 
 
@@ -328,23 +328,23 @@ static DEVICE_START( scv_cart )
 
 static DEVICE_IMAGE_LOAD( scv_cart )
 {
-	scv_state *state = (scv_state *)image->machine->driver_data;
+	scv_state *state = (scv_state *)image.device().machine->driver_data;
 
-	if ( image_software_entry(image) == NULL )
+	if ( image.software_entry() == NULL )
 	{
-		UINT8 *cart = memory_region( image->machine, "cart" );
-		int size = image_length( image );
+		UINT8 *cart = memory_region( image.device().machine, "cart" );
+		int size = image.length();
 
-		if ( size > memory_region_length( image->machine, "cart" ) )
+		if ( size > memory_region_length( image.device().machine, "cart" ) )
 		{
-			image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size" );
-			return INIT_FAIL;
+			image.seterror( IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size" );
+			return IMAGE_INIT_FAIL;
 		}
 
-		if ( image_fread( image, cart, size ) != size )
+		if ( image.fread( cart, size ) != size )
 		{
-			image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-			return INIT_FAIL;
+			image.seterror( IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
+			return IMAGE_INIT_FAIL;
 		}
 
 		state->cart_rom = cart;
@@ -354,15 +354,15 @@ static DEVICE_IMAGE_LOAD( scv_cart )
 	}
 	else
 	{
-		state->cart_rom = image_get_software_region( image, "rom" );
-		state->cart_rom_size = image_get_software_region_length( image, "rom" );
-		state->cart_ram = image_get_software_region( image, "ram" );
-		state->cart_ram_size = image_get_software_region_length( image, "ram" );
+		state->cart_rom = image.get_software_region( "rom" );
+		state->cart_rom_size = image.get_software_region_length( "rom" );
+		state->cart_ram = image.get_software_region( "ram" );
+		state->cart_ram_size = image.get_software_region_length( "ram" );
 	}
 
-	scv_set_banks( image->machine );
+	scv_set_banks( image.device().machine );
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -421,7 +421,7 @@ static PALETTE_INIT( scv )
 static TIMER_CALLBACK( scv_vb_callback )
 {
 	scv_state *state = (scv_state *)machine->driver_data;
-	int vpos = video_screen_get_vpos(machine->primary_screen);
+	int vpos = machine->primary_screen->vpos();
 
 	switch( vpos )
 	{
@@ -433,7 +433,7 @@ static TIMER_CALLBACK( scv_vb_callback )
 		break;
 	}
 
-	timer_adjust_oneshot( state->vb_timer, video_screen_get_time_until_pos( machine->primary_screen, ( vpos + 1 ) % 262, 0 ), 0 );
+	timer_adjust_oneshot( state->vb_timer, machine->primary_screen->time_until_pos(( vpos + 1 ) % 262, 0 ), 0 );
 }
 
 
@@ -737,7 +737,7 @@ static MACHINE_RESET( scv )
 {
 	scv_state *state = (scv_state *)machine->driver_data;
 
-	timer_adjust_oneshot( state->vb_timer, video_screen_get_time_until_pos( machine->primary_screen, 0, 0 ), 0 );
+	timer_adjust_oneshot( state->vb_timer, machine->primary_screen->time_until_pos(0, 0 ), 0 );
 }
 
 
@@ -800,7 +800,7 @@ static MACHINE_DRIVER_START( scv )
 	MDRV_CARTSLOT_LOAD( scv_cart )
 
 	/* Software lists */
-	MDRV_SOFTWARE_LIST_ADD("scv")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","scv")
 MACHINE_DRIVER_END
 
 
@@ -840,7 +840,7 @@ static MACHINE_DRIVER_START( scv_pal )
 	MDRV_CARTSLOT_LOAD( scv_cart )
 
 	/* Software lists */
-	MDRV_SOFTWARE_LIST_ADD("scv")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","scv")
 MACHINE_DRIVER_END
 
 

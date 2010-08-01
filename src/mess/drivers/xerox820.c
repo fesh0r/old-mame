@@ -131,7 +131,7 @@ static void xerox820_keyboard_scan(running_machine *machine)
 
 static TIMER_DEVICE_CALLBACK( xerox820_keyboard_tick )
 {
-	xerox820_keyboard_scan(timer->machine);
+	xerox820_keyboard_scan(timer.machine);
 }
 
 /* Read/Write Handlers */
@@ -140,7 +140,7 @@ static void xerox820_bankswitch(running_machine *machine, int bank)
 {
 	xerox820_state *state = (xerox820_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *ram = messram_get_ptr(machine->device("messram"));
 
 	if (bank)
 	{
@@ -161,7 +161,7 @@ static void xerox820ii_bankswitch(running_machine *machine, int bank)
 {
 	xerox820_state *state = (xerox820_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *ram = messram_get_ptr(machine->device("messram"));
 
 	if (bank)
 	{
@@ -541,7 +541,7 @@ static const z80sio_interface sio_intf =
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	xerox820_state *state = (xerox820_state *)timer->machine->driver_data;
+	xerox820_state *state = (xerox820_state *)timer.machine->driver_data;
 
 	z80ctc_trg0_w(state->z80ctc, 1);
 	z80ctc_trg0_w(state->z80ctc, 0);
@@ -568,7 +568,7 @@ static Z80CTC_INTERFACE( ctc_intf )
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain xerox820_daisy_chain[] =
+static const z80_daisy_config xerox820_daisy_chain[] =
 {
 	{ Z80SIO_TAG },
 	{ Z80KBPIO_TAG },
@@ -582,7 +582,7 @@ static const z80_daisy_chain xerox820_daisy_chain[] =
 static WRITE_LINE_DEVICE_HANDLER( xerox820_wd1771_intrq_w )
 {
 	xerox820_state *driver_state = (xerox820_state *)device->machine->driver_data;
-	int halt = cpu_get_reg(devtag_get_device(device->machine, Z80_TAG), Z80_HALT);
+	int halt = cpu_get_reg(device->machine->device(Z80_TAG), Z80_HALT);
 
 	driver_state->fdc_irq = state;
 
@@ -595,7 +595,7 @@ static WRITE_LINE_DEVICE_HANDLER( xerox820_wd1771_intrq_w )
 static WRITE_LINE_DEVICE_HANDLER( xerox820_wd1771_drq_w )
 {
 	xerox820_state *driver_state = (xerox820_state *)device->machine->driver_data;
-	int halt = cpu_get_reg(devtag_get_device(device->machine, Z80_TAG), Z80_HALT);
+	int halt = cpu_get_reg(device->machine->device(Z80_TAG), Z80_HALT);
 
 	driver_state->fdc_drq = state;
 
@@ -681,11 +681,11 @@ static VIDEO_UPDATE( xerox820 )
 	return 0;
 }
 
-static void xerox820_load_proc(running_device *image)
+static void xerox820_load_proc(device_image_interface &image)
 {
-	xerox820_state *state = (xerox820_state *)image->machine->driver_data;
+	xerox820_state *state = (xerox820_state *)image.device().machine->driver_data;
 
-	switch (image_length(image))
+	switch (image.length())
 	{
 	case 77*1*26*128: // 250K 8" SSSD
 		state->_8n5 = 1;
@@ -718,9 +718,9 @@ static MACHINE_START( xerox820 )
 	xerox820_state *state = (xerox820_state *)machine->driver_data;
 
 	/* find devices */
-	state->kbpio = devtag_get_device(machine, Z80KBPIO_TAG);
-	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
-	state->wd1771 = devtag_get_device(machine, WD1771_TAG);
+	state->kbpio = machine->device(Z80KBPIO_TAG);
+	state->z80ctc = machine->device(Z80CTC_TAG);
+	state->wd1771 = machine->device(WD1771_TAG);
 
 	for (drive = 0; drive < 2; drive++)
 	{
@@ -795,9 +795,9 @@ static const floppy_config xerox820_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(xerox820),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* F4 Character Displayer */

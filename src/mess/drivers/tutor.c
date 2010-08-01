@@ -259,13 +259,27 @@ static READ8_HANDLER(read_keyboard)
 
 static DEVICE_IMAGE_LOAD( tutor_cart )
 {
-	image_fread(image, memory_region(image->machine, "maincpu") + cartridge_base, 0x6000);
-	return INIT_PASS;
+	UINT32 size;
+	UINT8 *ptr = memory_region(image.device().machine, "maincpu");
+	
+	if (image.software_entry() == NULL)
+	{
+		size = image.length();
+		if (image.fread(ptr + cartridge_base, size) != size)
+			return IMAGE_INIT_FAIL;
+	}
+	else
+	{
+		size = image.get_software_region_length("rom");
+		memcpy(ptr + cartridge_base, image.get_software_region("rom"), size);
+	}
+	
+	return IMAGE_INIT_PASS;
 }
 
 static DEVICE_IMAGE_UNLOAD( tutor_cart )
 {
-	memset(memory_region(image->machine, "maincpu") + cartridge_base, 0, 0x6000);
+	memset(memory_region(image.device().machine, "maincpu") + cartridge_base, 0, 0x6000);
 }
 
 /*
@@ -351,13 +365,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 static TIMER_CALLBACK(tape_interrupt_handler)
 {
 	//assert(tape_interrupt_enable);
-	cputag_set_input_line(machine, "maincpu", 1, (cassette_input(devtag_get_device(machine, "cassette")) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 1, (cassette_input(machine->device("cassette")) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
 static  READ8_HANDLER(tutor_cassette_r)
 {
-	return (cassette_input(devtag_get_device(space->machine, "cassette")) > 0.0) ? 1 : 0;
+	return (cassette_input(space->machine->device("cassette")) > 0.0) ? 1 : 0;
 }
 
 /* memory handler */
@@ -374,7 +388,7 @@ static WRITE8_HANDLER(tutor_cassette_w)
 		{
 		case 0:
 			/* data out */
-			cassette_output(devtag_get_device(space->machine, "cassette"), (data) ? +1.0 : -1.0);
+			cassette_output(space->machine->device("cassette"), (data) ? +1.0 : -1.0);
 			break;
 		case 1:
 			/* interrupt control??? */
@@ -672,6 +686,8 @@ static MACHINE_DRIVER_START(tutor)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
+	MDRV_CENTRONICS_ADD("printer", standard_centronics)
+
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* cartridge */
@@ -679,8 +695,11 @@ static MACHINE_DRIVER_START(tutor)
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(tutor_cart)
 	MDRV_CARTSLOT_UNLOAD(tutor_cart)
+	MDRV_CARTSLOT_INTERFACE("tutor_cart")
 
-	MDRV_CENTRONICS_ADD("printer", standard_centronics)
+	/* software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","tutor")
+
 MACHINE_DRIVER_END
 
 

@@ -20,6 +20,8 @@
 #include "devices/sonydriv.h"
 #include "devices/appldriv.h"
 #include "devices/flopdrv.h"
+#include "image.h"
+#include "devices/cassette.h"
 #include "devices/messram.h"
 #include "sound/speaker.h"
 #include "profiler.h"
@@ -201,11 +203,11 @@ void apple2_update_memory(running_machine *machine)
 			else
 			{
 				/* RAM */
-				if (end_r >= messram_get_size(devtag_get_device(machine, "messram")))
-					end_r = messram_get_size(devtag_get_device(machine, "messram")) - 1;
+				if (end_r >= messram_get_size(machine->device("messram")))
+					end_r = messram_get_size(machine->device("messram")) - 1;
 				offset = meminfo.read_mem & APPLE2_MEM_MASK;
 				if (end_r >= begin)
-					rbase = &messram_get_ptr(devtag_get_device(machine, "messram"))[offset];
+					rbase = &messram_get_ptr(machine->device("messram"))[offset];
 			}
 
 			/* install the actual handlers */
@@ -284,11 +286,11 @@ void apple2_update_memory(running_machine *machine)
 			else
 			{
 				/* RAM */
-				if (end_w >= messram_get_size(devtag_get_device(machine, "messram")))
-					end_w = messram_get_size(devtag_get_device(machine, "messram")) - 1;
+				if (end_w >= messram_get_size(machine->device("messram")))
+					end_w = messram_get_size(machine->device("messram")) - 1;
 				offset = meminfo.write_mem & APPLE2_MEM_MASK;
 				if (end_w >= begin)
-					wbase = &messram_get_ptr(devtag_get_device(machine, "messram"))[offset];
+					wbase = &messram_get_ptr(machine->device("messram"))[offset];
 			}
 
 
@@ -855,7 +857,7 @@ static const apple2_memmap_entry apple2_memmap_entries[] =
 void apple2_setvar(running_machine *machine, UINT32 val, UINT32 mask)
 {
 	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask,
-					(unsigned int) cpu_get_reg(devtag_get_device(machine, "maincpu"), REG_GENPC)));
+					(unsigned int) cpu_get_reg(machine->device("maincpu"), STATE_GENPC)));
 
 	assert((val & mask) == val);
 
@@ -914,7 +916,7 @@ UINT8 apple2_getfloatingbusvalue(running_machine *machine)
 
 	// video scanner data
 	//
-	i = cputag_get_total_cycles(machine, "maincpu") % kClocksPerVSync; // cycles into this VSync
+	i = (machine->device<cpu_device>("maincpu"))->total_cycles() % kClocksPerVSync; // cycles into this VSync
 
 	// machine state switches
 	//
@@ -1016,7 +1018,7 @@ UINT8 apple2_getfloatingbusvalue(running_machine *machine)
 		//CMemory::mState |= CMemory::kVBLBar; // N: VBL' is true // FIX: MESS?
 	}
 
-	return messram_get_ptr(devtag_get_device(machine, "messram"))[address % messram_get_size(devtag_get_device(machine, "messram"))]; // FIX: this seems to work, but is it right!?
+	return messram_get_ptr(machine->device("messram"))[address % messram_get_size(machine->device("messram"))]; // FIX: this seems to work, but is it right!?
 }
 
 
@@ -1025,21 +1027,23 @@ UINT8 apple2_getfloatingbusvalue(running_machine *machine)
  * Machine reset
  * ----------------------------------------------------------------------- */
 
-static void apple2_reset(running_machine *machine)
+static void apple2_reset(running_machine &machine)
 {
 	int need_intcxrom;
 
-	need_intcxrom = !strcmp(machine->gamedrv->name, "apple2c")
-		|| !strcmp(machine->gamedrv->name, "apple2c0")
-		|| !strcmp(machine->gamedrv->name, "apple2c3")
-		|| !strcmp(machine->gamedrv->name, "apple2cp")
-		|| !strncmp(machine->gamedrv->name, "apple2g", 7);
-	apple2_setvar(machine, need_intcxrom ? VAR_INTCXROM : 0, ~0);
+	need_intcxrom = !strcmp(machine.gamedrv->name, "apple2c")
+		|| !strcmp(machine.gamedrv->name, "apple2c0")
+		|| !strcmp(machine.gamedrv->name, "apple2c3")
+		|| !strcmp(machine.gamedrv->name, "apple2c4")
+		|| !strcmp(machine.gamedrv->name, "prav8c")
+		|| !strcmp(machine.gamedrv->name, "apple2cp")
+		|| !strncmp(machine.gamedrv->name, "apple2g", 7);
+	apple2_setvar(&machine, need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
 	// ROM 0 cannot boot unless language card bank 2 is write-enabled (but read ROM) on startup
-	if (!strncmp(machine->gamedrv->name, "apple2g", 7))
+	if (!strncmp(machine.gamedrv->name, "apple2g", 7))
 	{
-		apple2_setvar(machine, VAR_LCWRITE|VAR_LCRAM2, VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2);
+		apple2_setvar(&machine, VAR_LCWRITE|VAR_LCRAM2, VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2);
 	}
 
 	a2_speaker_state = 0;
@@ -1061,7 +1065,7 @@ INTERRUPT_GEN( apple2_interrupt )
 
 	profiler_mark_start(PROFILER_A2INT);
 
-	scanline = video_screen_get_vpos(device->machine->primary_screen);
+	scanline = device->machine->primary_screen->vpos();
 
 	if (scanline > 190)
 	{
@@ -1073,7 +1077,7 @@ INTERRUPT_GEN( apple2_interrupt )
 			cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, PULSE_LINE);
 	}
 
-	video_screen_update_partial(device->machine->primary_screen, scanline);
+	device->machine->primary_screen->update_partial(scanline);
 
 	profiler_mark_end();
 }
@@ -1090,25 +1094,25 @@ INTERRUPT_GEN( apple2_interrupt )
 static WRITE8_HANDLER ( apple2_mainram0400_w )
 {
 	offset += 0x400;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 }
 
 static WRITE8_HANDLER ( apple2_mainram2000_w )
 {
 	offset += 0x2000;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 }
 
 static WRITE8_HANDLER ( apple2_auxram0400_w )
 {
 	offset += 0x10400;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 }
 
 static WRITE8_HANDLER ( apple2_auxram2000_w )
 {
 	offset += 0x12000;
-	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
+	messram_get_ptr(space->machine->device("messram"))[offset] = data;
 }
 
 
@@ -1188,7 +1192,7 @@ READ8_HANDLER ( apple2_c01x_r )
 			case 0x06:			result |= (apple2_flags & VAR_ALTZP)		? 0x80 : 0x00;	break;
 			case 0x07:			result |= (apple2_flags & VAR_SLOTC3ROM)	? 0x80 : 0x00;	break;
 			case 0x08:			result |= (apple2_flags & VAR_80STORE)	? 0x80 : 0x00;	break;
-			case 0x09:			result |= !video_screen_get_vblank(space->machine->primary_screen)		? 0x80 : 0x00;	break;
+			case 0x09:			result |= !space->machine->primary_screen->vblank()		? 0x80 : 0x00;	break;
 			case 0x0A:			result |= (apple2_flags & VAR_TEXT)		? 0x80 : 0x00;	break;
 			case 0x0B:			result |= (apple2_flags & VAR_MIXED)		? 0x80 : 0x00;	break;
 			case 0x0C:			result |= (apple2_flags & VAR_PAGE2)		? 0x80 : 0x00;	break;
@@ -1260,7 +1264,7 @@ READ8_HANDLER ( apple2_c03x_r )
 	{
 		if (!offset)
 		{
-			running_device *speaker_device = devtag_get_device(space->machine, "a2speaker");
+			running_device *speaker_device = space->machine->device("a2speaker");
 
 			if (a2_speaker_state == 1)
 			{
@@ -1328,6 +1332,11 @@ WRITE8_HANDLER ( apple2_c05x_w )
   apple2_c06x_r
 ***************************************************************************/
 
+static running_device *cassette_device_image(running_machine *machine)
+{
+	return machine->device("cassette");
+}
+
 READ8_HANDLER ( apple2_c06x_r )
 {
 	int result = 0;
@@ -1335,6 +1344,10 @@ READ8_HANDLER ( apple2_c06x_r )
 	{
 		switch (offset & 0x0F)
 		{
+			case 0x00:
+				/* Cassette input */
+				result = cassette_input(cassette_device_image(space->machine)) > 0.0 ? 0x80 : 0;
+				break;
 			case 0x01:
 				/* Open-Apple/Joystick button 0 */
 				result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON0);
@@ -1549,7 +1562,7 @@ void apple2_iwm_setdiskreg(running_machine *machine, UINT8 data)
 {
 	apple2_fdc_diskreg = data & 0xC0;
 	if (apple2_fdc_has_35(machine))
-		sony_set_sel_line( devtag_get_device(machine, "fdc"),apple2_fdc_diskreg & 0x80);
+		sony_set_sel_line( machine->device("fdc"),apple2_fdc_diskreg & 0x80);
 }
 
 
@@ -1584,7 +1597,7 @@ void apple2_init_common(running_machine *machine)
 	apple2_fdc_diskreg = 0;
 
 	AY3600_init(machine);
-	add_reset_callback(machine, apple2_reset);
+	machine->add_notifier(MACHINE_NOTIFY_RESET, apple2_reset);
 
 	/* state save registers */
 	state_save_register_global(machine, apple2_flags);
@@ -1600,7 +1613,7 @@ void apple2_init_common(running_machine *machine)
 	if (memory_region_length(machine, "maincpu") < 0x8000)
 		a2_mask &= ~VAR_ROMSWITCH;
 
-	if (messram_get_size(devtag_get_device(machine, "messram")) <= 64*1024)
+	if (messram_get_size(machine->device("messram")) <= 64*1024)
 		a2_mask &= ~(VAR_RAMRD | VAR_RAMWRT | VAR_80STORE | VAR_ALTZP | VAR_80COL);
 }
 
@@ -1627,7 +1640,7 @@ MACHINE_START( apple2 )
 	apple2_setup_memory(machine, &mem_cfg);
 
 	/* perform initial reset */
-	apple2_reset(machine);
+	apple2_reset(*machine);
 }
 
 

@@ -134,7 +134,7 @@ INPUT_PORTS_END
 
 static READ8_HANDLER( jupiter_io_r )
 {
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = space->machine->device("speaker");
 	UINT8 data = 0xff;
 
 	if ( ( offset & 0xff ) != 0xfe )
@@ -170,11 +170,11 @@ static READ8_HANDLER( jupiter_io_r )
 	}
 	if ( ! ( offset & 0x8000 ) )
 	{
-//      cassette_output( devtag_get_device(space->machine, "cassette"), -1 );
+//      cassette_output( space->machine->device("cassette"), -1 );
 		speaker_level_w(speaker,0);
 		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY7" ) );;
 	}
-	if ( cassette_input(devtag_get_device(space->machine, "cassette")) > 0 )
+	if ( cassette_input(space->machine->device("cassette")) > 0 )
 	{
 		data &= ~0x20;
 	}
@@ -184,8 +184,8 @@ static READ8_HANDLER( jupiter_io_r )
 
 static WRITE8_HANDLER( jupiter_port_fe_w )
 {
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
-//  cassette_output( devtag_get_device(machine, "cassette"), 1 );
+	running_device *speaker = space->machine->device("speaker");
+//  cassette_output( machine->device("cassette"), 1 );
 	speaker_level_w(speaker,1);
 }
 
@@ -266,12 +266,12 @@ static VIDEO_START( jupiter )
 	jupiter_clear_irq_timer = timer_alloc(machine,  jupiter_clear_irq_callback, NULL );
 
 	timer_adjust_periodic( jupiter_set_irq_timer,
-		video_screen_get_time_until_pos( machine->primary_screen, 31*8, 0 ),
-		0, video_screen_get_frame_period( machine->primary_screen ) );
+		machine->primary_screen->time_until_pos(31*8, 0 ),
+		0, machine->primary_screen->frame_period() );
 
 	timer_adjust_periodic( jupiter_clear_irq_timer,
-		video_screen_get_time_until_pos( machine->primary_screen, 32*8, 0 ),
-		0, video_screen_get_frame_period( machine->primary_screen ) );
+		machine->primary_screen->time_until_pos(32*8, 0 ),
+		0, machine->primary_screen->frame_period() );
 }
 
 
@@ -303,7 +303,8 @@ static const cassette_config jupiter_cassette_config =
 {
 	jupiter_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED)
+	(cassette_state)(CASSETTE_STOPPED),
+	NULL
 };
 
 /* machine definition */

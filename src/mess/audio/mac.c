@@ -50,8 +50,8 @@ struct _mac_sound
 INLINE mac_sound *get_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(sound_get_type(device) == SOUND_MAC_SOUND);
-	return (mac_sound *) device->token;
+	assert(device->type() == SOUND_MAC_SOUND);
+	return (mac_sound *) downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -137,9 +137,9 @@ void mac_set_sound_buffer(running_device *device, int buffer)
 	mac_sound *token = get_token(device);
 
 	if (buffer)
-		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(devtag_get_device(device->machine, "messram")) + messram_get_size(devtag_get_device(device->machine, "messram")) - MAC_MAIN_SND_BUF_OFFSET);
+		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(device->machine->device("messram")) + messram_get_size(device->machine->device("messram")) - MAC_MAIN_SND_BUF_OFFSET);
 	else
-		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(devtag_get_device(device->machine, "messram")) + messram_get_size(devtag_get_device(device->machine, "messram")) - MAC_ALT_SND_BUF_OFFSET);
+		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(device->machine->device("messram")) + messram_get_size(device->machine->device("messram")) - MAC_ALT_SND_BUF_OFFSET);
 }
 
 
@@ -201,3 +201,5 @@ DEVICE_GET_INFO( mac_sound )
 		case DEVINFO_STR_SOURCE_FILE:		strcpy(info->s, __FILE__);						break;
 	}
 }
+
+DEFINE_LEGACY_SOUND_DEVICE(MAC_SOUND, mac_sound);

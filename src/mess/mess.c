@@ -6,17 +6,13 @@
 
 ***************************************************************************/
 
-#include <ctype.h>
-#include <stdarg.h>
-#include <assert.h>
-
 #include "emu.h"
-#include "utils.h"
-#include "image.h"
-#include "messopts.h"
+#include "emuopts.h"
 
 #include "lcd.lh"
 #include "lcd_rot.lh"
+
+#include "devices/messram.h"
 
 /* Globals */
 const char mess_disclaimer[] =
@@ -30,129 +26,111 @@ const char mess_disclaimer[] =
 		"with these files is a violation of copyright law and should be promptly\n"
 		"reported to the authors so that appropriate legal action can be taken.\n\n";
 
-static char *filename_basename(char *filename)
-{
-	char *c;
-
-	// NULL begets NULL
-	if (!filename)
-		return NULL;
-
-	// start at the end and return when we hit a slash or colon
-	for (c = filename + strlen(filename) - 1; c >= filename; c--)
-		if (*c == '\\' || *c == '/' || *c == ':')
-			return c + 1;
-
-	// otherwise, return the whole thing
-	return filename;
-}
-
 /*-------------------------------------------------
-    mess_predevice_init - initialize devices for a specific
-    running_machine
+    mess_display_help - display MESS help to
+    standard output
 -------------------------------------------------*/
 
-void mess_predevice_init(running_machine *machine)
+void mess_display_help(void)
 {
-	const char *image_name;
-	running_device *image;
-	image_device_info info;
-	device_get_image_devices_func get_image_devices;
+	mame_printf_info(
+		"MESS v%s\n"
+		"Multi Emulator Super System - Copyright (C) 1997-2009 by the MESS Team\n"
+		"MESS is based on MAME Source code\n"
+		"Copyright (C) 1997-2009 by Nicola Salmoria and the MAME Team\n\n",
+		build_version);
+	mame_printf_info("%s\n", mess_disclaimer);
+	mame_printf_info(
+		"Usage:  MESS <system> <device> <software> <options>\n"
+		"\n"
+		"        MESS -showusage    for a brief list of options\n"
+		"        MESS -showconfig   for a list of configuration options\n"
+		"        MESS -listdevices  for a full list of supported devices\n"
+		"        MESS -createconfig to create a mess.ini\n"
+		"\n"
+		"See config.txt and windows.txt for usage instructions.\n");
+}
 
-	/* init all devices */
-	image_init(machine);
+/*************************************
+ *
+ *  Code used by print_mame_xml()
+ *
+ *************************************/
 
-	/* make sure that any required devices have been allocated */
-    for (image = machine->devicelist.first(); image != NULL; image = image->next)
-    {
-        if (is_image_device(image))
+/* device iteration helpers */
+#define ram_first(config)				(config)->m_devicelist.first(MESSRAM)
+#define ram_next(previous)				((previous)->typenext())
+
+/*-------------------------------------------------
+    print_game_ramoptions - prints out all RAM
+    options for this system
+-------------------------------------------------*/
+static void print_game_ramoptions(FILE *out, const game_driver *game, const machine_config *config)
+{
+	const device_config *device;
+
+	for (device = ram_first(config); device != NULL; device = ram_next(device))
+	{
+		ram_config *ram = (ram_config *)downcast<const legacy_device_config_base *>(device)->inline_config();
+		fprintf(out, "\t\t<ramoption default=\"1\">%u</ramoption>\n",  messram_parse_string(ram->default_size));
+		if (ram->extra_options != NULL)
 		{
-			/* get the device info */
-			info = image_device_getinfo(machine->config, image);
-
-			/* is an image specified for this image */
-			image_name = mess_get_device_option(&info);
-
-			if ((image_name != NULL) && (image_name[0] != '\0'))
-			{
-				int result = INIT_FAIL;
-
-				/* mark init state */
-				set_init_phase(image);
-
-				/* try to load this image */
-				result = image_load(image, image_name);
-
-				/* did the image load fail? */
-				if (result)
-				{
-					/* retrieve image error message */
-					const char *image_err = image_error(image);
-					char *image_basename = auto_strdup(machine, filename_basename((char *)image_name));
-
-					/* unload all images */
-					image_unload_all(machine);
-
-					fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s",
-						info.name,
-						image_basename,
-						image_err);
-				}
+			int j;
+			int size = strlen(ram->extra_options);
+			char * const s = mame_strdup(ram->extra_options);
+			char * const e = s + size;
+			char *p = s;
+			for (j=0;j<size;j++) {
+				if (p[j]==',') p[j]=0;
 			}
-			else
+			/* try to parse each option */
+			while(p <= e)
 			{
-				/* no image... must this device be loaded? */
-				if (info.must_be_loaded)
-				{
-					fatalerror_exitcode(machine, MAMERR_DEVICE, "Driver requires that device \"%s\" must have an image to load", info.instance_name);
-				}
+				fprintf(out, "\t\t<ramoption>%u</ramoption>\n",  messram_parse_string(p));
+				p += strlen(p);
+				if (p == e)
+					break;
+				p += 1;
 			}
 
-			/* get image-specific hardware */
-			get_image_devices = (device_get_image_devices_func) image->get_config_fct(DEVINFO_FCT_GET_IMAGE_DEVICES);
-			if (get_image_devices != NULL)
-				(*get_image_devices)(image);
+			osd_free(s);
 		}
 	}
 }
 
 
-
 /*-------------------------------------------------
-    mess_postdevice_init - initialize devices for a specific
-    running_machine
+    print_mess_game_xml - print MESS specific game
+    information.
 -------------------------------------------------*/
 
-void mess_postdevice_init(running_machine *machine)
+void print_mess_game_xml(FILE *out, const game_driver *game, const machine_config *config)
 {
-	running_device *device;
-
-	/* make sure that any required devices have been allocated */
-    for (device = machine->devicelist.first(); device != NULL; device = device->next)
-    {
-        if (is_image_device(device))
-		{
-			int result = image_finish_load(device);
-			/* did the image load fail? */
-			if (result)
-			{
-				/* retrieve image error message */
-				const char *image_err = image_error(device);
-				char *image_basename_str = auto_strdup(machine, image_basename(device));
-				image_device_info info = image_device_getinfo(machine->config, device);
-
-				/* unload all images */
-				image_unload_all(machine);
-
-				fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s",
-					info.name,
-					image_basename_str,
-					image_err);
-			}
-		}
-	}
-
-	/* add a callback for when we shut down */
-	add_exit_callback(machine, image_unload_all);
+	print_game_ramoptions( out, game, config );
 }
 
+/***************************************************************************
+    LOCAL VARIABLES
+***************************************************************************/
+
+const options_entry mess_core_options[] =
+{
+	{ NULL,							NULL,   OPTION_HEADER,						"MESS SPECIFIC OPTIONS" },
+	{ "ramsize;ram",				NULL,	0,									"size of RAM (if supported by driver)" },
+	{ "newui;nu",                   "0",    OPTION_BOOLEAN,						"use the new MESS UI" },
+	{ NULL }
+};
+
+/***************************************************************************
+    IMPLEMENTATION
+***************************************************************************/
+/*-------------------------------------------------
+    mess_options_init - called from core to add
+    MESS specific options
+-------------------------------------------------*/
+
+void mess_options_init(core_options *opts)
+{
+	/* add MESS-specific options */
+	options_add_entries(opts, mess_core_options);
+}

@@ -36,9 +36,7 @@ IMGTOOL_LIB_OBJS =					\
 	$(EMUOBJ)/emucore.o				\
 	$(EMUOBJ)/emuopts.o 				\
 	$(EMUOBJ)/memory.o				\
-	$(MESSOBJ)/utils.o				\
-	$(MESSOBJ)/opresolv.o				\
-	$(MESS_FORMATS)/ioprocs.o			\
+	$(EMUOBJ)/ioprocs.o			\
 	$(MESS_FORMATS)/flopimg.o			\
 	$(MESS_FORMATS)/cassimg.o			\
 	$(MESS_FORMATS)/basicdsk.o			\
@@ -81,7 +79,8 @@ IMGTOOL_LIB_OBJS =					\
 	$(IMGTOOL_MODULES)/vzdos.o			\
 	$(IMGTOOL_MODULES)/thomson.o			\
 	$(IMGTOOL_MODULES)/macutil.o			\
-	$(IMGTOOL_MODULES)/cybiko.o
+	$(IMGTOOL_MODULES)/cybiko.o			\
+	$(IMGTOOL_MODULES)/cybikoxt.o
 #	$(IMGTOOLOBJ)/tstsuite.o			\
 #	$(MESS_FORMATS)/fmsx_cas.o			\
 #	$(MESS_FORMATS)/svi_cas.o			\

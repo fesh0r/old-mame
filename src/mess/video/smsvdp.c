@@ -143,17 +143,16 @@ static void sms_update_palette( smsvdp_t *smsvdp );
 INLINE smsvdp_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
-	assert(device->type == SMSVDP);
+	assert(device->type() == SMSVDP);
 
-	return (smsvdp_t *)device->token;
+	return (smsvdp_t *)downcast<legacy_device_base *>(device)->token();
 }
 
 INLINE const smsvdp_interface *get_interface(running_device *device)
 {
 	assert(device != NULL);
-	assert((device->type == SMSVDP));
-	return (const smsvdp_interface *) device->baseconfig().static_config;
+	assert((device->type() == SMSVDP));
+	return (const smsvdp_interface *) device->baseconfig().static_config();
 }
 
 /*************************************
@@ -166,8 +165,8 @@ static void set_display_settings( running_device *device )
 {
 	smsvdp_t *smsvdp = get_safe_token(device);
 
-	running_device *screen = video_screen_first(device->machine);
-	int height = video_screen_get_height(screen);
+	screen_device *screen = screen_first(*device->machine);
+	int height = screen->height();
 	int M1, M2, M3, M4;
 	M1 = smsvdp->reg[0x01] & 0x10;
 	M2 = smsvdp->reg[0x00] & 0x02;
@@ -235,13 +234,13 @@ static void set_display_settings( running_device *device )
 READ8_DEVICE_HANDLER( sms_vdp_vcount_r )
 {
 	smsvdp_t *smsvdp = get_safe_token(device);
-	int vpos = video_screen_get_vpos(device->machine->primary_screen);
+	int vpos = device->machine->primary_screen->vpos();
 
-	if (video_screen_get_hpos(device->machine->primary_screen) < VCOUNT_CHANGE_HPOS)
+	if (device->machine->primary_screen->hpos() < VCOUNT_CHANGE_HPOS)
 	{
 		vpos--;
 		if (vpos < 0)
-			vpos += video_screen_get_height(device->machine->primary_screen);
+			vpos += device->machine->primary_screen->height();
 	}
 
 	return (smsvdp->sms_frame_timing[INIT_VCOUNT] + vpos) & 0xff;
@@ -323,7 +322,7 @@ static TIMER_CALLBACK( smsvdp_display_callback )
 	smsvdp_t *smsvdp = (smsvdp_t *) ptr;
 
 	rectangle rec;
-	int vpos = video_screen_get_vpos(machine->primary_screen);
+	int vpos = machine->primary_screen->vpos();
 	int vpos_limit = smsvdp->sms_frame_timing[VERTICAL_BLANKING] + smsvdp->sms_frame_timing[TOP_BLANKING]
 	               + smsvdp->sms_frame_timing[TOP_BORDER] + smsvdp->sms_frame_timing[ACTIVE_DISPLAY_V]
 	               + smsvdp->sms_frame_timing[BOTTOM_BORDER] + smsvdp->sms_frame_timing[BOTTOM_BLANKING];
@@ -356,7 +355,7 @@ static TIMER_CALLBACK( smsvdp_display_callback )
 	{
 		if (vpos == vpos_limit)
 		{
-			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, vpos, HINT_HPOS), smsvdp, 0, smsvdp_check_hint);
+			timer_set(machine, machine->primary_screen->time_until_pos(vpos, HINT_HPOS), smsvdp, 0, smsvdp_check_hint);
 		}
 		else
 		{
@@ -365,8 +364,8 @@ static TIMER_CALLBACK( smsvdp_display_callback )
 
 		if (vpos == vpos_limit + 1)
 		{
-			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, vpos, VINT_FLAG_HPOS), smsvdp, (int)STATUS_VINT, smsvdp_set_status);
-			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, vpos, VINT_HPOS), smsvdp, 0, smsvdp_check_vint);
+			timer_set(machine, machine->primary_screen->time_until_pos(vpos, VINT_FLAG_HPOS), smsvdp, (int)STATUS_VINT, smsvdp_set_status);
+			timer_set(machine, machine->primary_screen->time_until_pos(vpos, VINT_HPOS), smsvdp, 0, smsvdp_check_vint);
 		}
 
 		sms_update_palette(smsvdp);
@@ -398,7 +397,7 @@ static TIMER_CALLBACK( smsvdp_display_callback )
 			smsvdp->reg9copy = smsvdp->reg[0x09];
 		}
 
-		timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, vpos, HINT_HPOS), smsvdp, 0, smsvdp_check_hint);
+		timer_set(machine, machine->primary_screen->time_until_pos(vpos, HINT_HPOS), smsvdp, 0, smsvdp_check_hint);
 
 		sms_update_palette(smsvdp);
 
@@ -462,7 +461,7 @@ READ8_DEVICE_HANDLER( sms_vdp_data_r )
 	temp = smsvdp->buffer;
 
 	/* Load read buffer */
-	smsvdp->buffer = smsvdp->VRAM->base.u8[(smsvdp->addr & 0x3fff)];
+	smsvdp->buffer = smsvdp->VRAM->u8((smsvdp->addr & 0x3fff));
 
 	/* Bump internal address register */
 	smsvdp->addr += 1;
@@ -511,14 +510,14 @@ WRITE8_DEVICE_HANDLER( sms_vdp_data_w )
 		case 0x01:
 		case 0x02:
 			address = (smsvdp->addr & 0x3fff);
-			smsvdp->VRAM->base.u8[address] = data;
+			smsvdp->VRAM->u8(address) = data;
 			break;
 
 		case 0x03:
 			address = smsvdp->addr & smsvdp->cram_mask;
-			if (data != smsvdp->CRAM->base.u8[address])
+			if (data != smsvdp->CRAM->u8(address))
 			{
-				smsvdp->CRAM->base.u8[address] = data;
+				smsvdp->CRAM->u8(address) = data;
 				smsvdp->cram_dirty = 1;
 			}
 			break;
@@ -550,7 +549,7 @@ WRITE8_DEVICE_HANDLER( sms_vdp_ctrl_w )
 		switch (smsvdp->addrmode)
 		{
 		case 0:		/* VRAM reading mode */
-			smsvdp->buffer = smsvdp->VRAM->base.u8[smsvdp->addr & 0x3fff];
+			smsvdp->buffer = smsvdp->VRAM->u8(smsvdp->addr & 0x3fff);
 			smsvdp->addr += 1;
 			break;
 
@@ -568,7 +567,7 @@ WRITE8_DEVICE_HANDLER( sms_vdp_ctrl_w )
 
 			if (reg_num == 1)
 			{
-				timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, video_screen_get_vpos(device->machine->primary_screen), VINT_HPOS), smsvdp, 0, smsvdp_check_vint);
+				timer_set(device->machine, device->machine->primary_screen->time_until_pos(device->machine->primary_screen->vpos(), VINT_HPOS), smsvdp, 0, smsvdp_check_vint);
 			}
 			smsvdp->addrmode = 0;
 			break;
@@ -621,7 +620,7 @@ static void sms_refresh_line_mode4( smsvdp_t *smsvdp, int *line_buffer, int *pri
 		/* vertical scrolling when bit 7 of reg[0x00] is set */
 		y_scroll = ((smsvdp->reg[0x00] & 0x80) && (tile_column > 23)) ? 0 : smsvdp->reg9copy;
 
-		name_table = smsvdp->VRAM->base.u8 + name_table_address + ((((line + y_scroll) % scroll_mod) >> 3) << 6);
+		name_table = smsvdp->VRAM->base() + name_table_address + ((((line + y_scroll) % scroll_mod) >> 3) << 6);
 
 		tile_line = ((tile_column + x_scroll_start_column) & 0x1f) * 2;
 		tile_data = name_table[tile_line] | (name_table[tile_line + 1] << 8);
@@ -636,10 +635,10 @@ static void sms_refresh_line_mode4( smsvdp_t *smsvdp, int *line_buffer, int *pri
 		if (vert_selected)
 			tile_line = 0x07 - tile_line;
 
-		bit_plane_0 = smsvdp->VRAM->base.u8[((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x00];
-		bit_plane_1 = smsvdp->VRAM->base.u8[((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x01];
-		bit_plane_2 = smsvdp->VRAM->base.u8[((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x02];
-		bit_plane_3 = smsvdp->VRAM->base.u8[((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x03];
+		bit_plane_0 = smsvdp->VRAM->u8(((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x00);
+		bit_plane_1 = smsvdp->VRAM->u8(((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x01);
+		bit_plane_2 = smsvdp->VRAM->u8(((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x02);
+		bit_plane_3 = smsvdp->VRAM->u8(((tile_selected << 5) + ((tile_line & 0x07) << 2)) + 0x03);
 
 		for (pixel_x = 0; pixel_x < 8 ; pixel_x++)
 		{
@@ -683,7 +682,7 @@ static void sms_refresh_mode4_sprites( running_machine *machine, smsvdp_t *smsvd
 	int sprite_col_occurred, sprite_col_x;
 	int sprite_buffer[8], sprite_buffer_count, sprite_buffer_index;
 	int bit_plane_0, bit_plane_1, bit_plane_2, bit_plane_3;
-	UINT8 *sprite_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x05] << 7) & 0x3f00);
+	UINT8 *sprite_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x05] << 7) & 0x3f00);
 
 	/* Draw sprite layer */
 	sprite_height = (smsvdp->reg[0x01] & 0x02 ? 16 : 8);
@@ -709,7 +708,7 @@ static void sms_refresh_mode4_sprites( running_machine *machine, smsvdp_t *smsvd
 			else if (line >= 0 && line < smsvdp->sms_frame_timing[ACTIVE_DISPLAY_V])
 			{
 				/* Too many sprites per line */
-				timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, pixel_plot_y + line, SPROVR_HPOS), smsvdp, (int)STATUS_SPROVR, smsvdp_set_status);
+				timer_set(machine, machine->primary_screen->time_until_pos(pixel_plot_y + line, SPROVR_HPOS), smsvdp, (int)STATUS_SPROVR, smsvdp_set_status);
 			}
 			sprite_buffer_count++;
 		}
@@ -751,10 +750,10 @@ static void sms_refresh_mode4_sprites( running_machine *machine, smsvdp_t *smsvd
 		if (sprite_line > 0x07)
 			sprite_tile_selected += 1;
 
-		bit_plane_0 = smsvdp->VRAM->base.u8[((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x00];
-		bit_plane_1 = smsvdp->VRAM->base.u8[((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x01];
-		bit_plane_2 = smsvdp->VRAM->base.u8[((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x02];
-		bit_plane_3 = smsvdp->VRAM->base.u8[((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x03];
+		bit_plane_0 = smsvdp->VRAM->u8(((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x00);
+		bit_plane_1 = smsvdp->VRAM->u8(((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x01);
+		bit_plane_2 = smsvdp->VRAM->u8(((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x02);
+		bit_plane_3 = smsvdp->VRAM->u8(((sprite_tile_selected << 5) + ((sprite_line & 0x07) << 2)) + 0x03);
 
 		sprite_col_occurred = 0;
 		sprite_col_x = 0;
@@ -864,7 +863,7 @@ static void sms_refresh_mode4_sprites( running_machine *machine, smsvdp_t *smsvd
 			}
 		}
 		if (sprite_col_occurred)
-			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, pixel_plot_y + line, SPRCOL_BASEHPOS + sprite_col_x), smsvdp, (int)STATUS_SPRCOL, smsvdp_set_status);
+			timer_set(machine, machine->primary_screen->time_until_pos(pixel_plot_y + line, SPRCOL_BASEHPOS + sprite_col_x), smsvdp, (int)STATUS_SPRCOL, smsvdp_set_status);
 	}
 
 	/* Fill column 0 with overscan color from reg[0x07] */
@@ -890,8 +889,8 @@ static void sms_refresh_tms9918_sprites( running_machine *machine, smsvdp_t *sms
 	UINT8 *sprite_table, *sprite_pattern_table;
 
 	/* Draw sprite layer */
-	sprite_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x05] & 0x7f) << 7);
-	sprite_pattern_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x06] & 0x07) << 11);
+	sprite_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x05] & 0x7f) << 7);
+	sprite_pattern_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x06] & 0x07) << 11);
 	sprite_height = 8;
 
 	if (smsvdp->reg[0x01] & 0x02)                         /* Check if SI is set */
@@ -916,7 +915,7 @@ static void sms_refresh_tms9918_sprites( running_machine *machine, smsvdp_t *sms
 			else if (line >= 0 && line < smsvdp->sms_frame_timing[ACTIVE_DISPLAY_V])
 			{
 				/* Too many sprites per line */
-				timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, pixel_plot_y + line, SPROVR_HPOS), smsvdp, (int)STATUS_SPROVR, smsvdp_set_status);
+				timer_set(machine, machine->primary_screen->time_until_pos(pixel_plot_y + line, SPROVR_HPOS), smsvdp, (int)STATUS_SPROVR, smsvdp_set_status);
 			}
 			sprite_buffer_count++;
 		}
@@ -1128,7 +1127,7 @@ static void sms_refresh_tms9918_sprites( running_machine *machine, smsvdp_t *sms
 			}
 		}
 		if (sprite_col_occurred)
-			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, pixel_plot_y + line, SPRCOL_BASEHPOS + sprite_col_x), smsvdp, (int)STATUS_SPRCOL, smsvdp_set_status);
+			timer_set(machine, machine->primary_screen->time_until_pos(pixel_plot_y + line, SPRCOL_BASEHPOS + sprite_col_x), smsvdp, (int)STATUS_SPRCOL, smsvdp_set_status);
 	}
 }
 
@@ -1141,10 +1140,10 @@ static void sms_refresh_line_mode2( smsvdp_t *smsvdp, int *line_buffer, int line
 	int pattern_mask, color_mask, pattern_offset;
 
 	/* Draw background layer */
-	name_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x02] & 0x0f) << 10) + ((line >> 3) * 32);
-	color_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x03] & 0x80) << 6);
+	name_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x02] & 0x0f) << 10) + ((line >> 3) * 32);
+	color_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x03] & 0x80) << 6);
 	color_mask = ((smsvdp->reg[0x03] & 0x7f) << 3) | 0x07;
-	pattern_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x04] & 0x04) << 11);
+	pattern_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x04] & 0x04) << 11);
 	pattern_mask = ((smsvdp->reg[0x04] & 0x03) << 8) | 0xff;
 	pattern_offset = (line & 0xc0) << 2;
 
@@ -1190,9 +1189,9 @@ static void sms_refresh_line_mode0( smsvdp_t *smsvdp, int *line_buffer, int line
 	UINT8 *name_table, *color_table, *pattern_table;
 
 	/* Draw background layer */
-	name_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x02] & 0x0f) << 10) + ((line >> 3) * 32);
-	color_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x03] << 6) & (VRAM_SIZE - 1));
-	pattern_table = smsvdp->VRAM->base.u8 + ((smsvdp->reg[0x04] << 11) & (VRAM_SIZE - 1));
+	name_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x02] & 0x0f) << 10) + ((line >> 3) * 32);
+	color_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x03] << 6) & (VRAM_SIZE - 1));
+	pattern_table = smsvdp->VRAM->base() + ((smsvdp->reg[0x04] << 11) & (VRAM_SIZE - 1));
 
 	for (tile_column = 0; tile_column < 32; tile_column++)
 	{
@@ -1367,8 +1366,8 @@ UINT8 sms_vdp_area_brightness(running_device *device, int x, int y, int x_range,
 
 	smsvdp = get_safe_token(device);
 
-	beam_x = video_screen_get_hpos(device->machine->primary_screen);
-	beam_y = video_screen_get_vpos(device->machine->primary_screen);
+	beam_x = device->machine->primary_screen->hpos();
+	beam_y = device->machine->primary_screen->vpos();
 	dx = x - beam_x;
 	dy = y - beam_y;
 
@@ -1421,14 +1420,14 @@ static void sms_update_palette( smsvdp_t *smsvdp )
 		{
 			for (i = 0; i < 32; i++)
 			{
-				smsvdp->current_palette[i] = ((smsvdp->CRAM->base.u8[i] & 0x30) << 6) | ((smsvdp->CRAM->base.u8[i] & 0x0c ) << 4) | ((smsvdp->CRAM->base.u8[i] & 0x03) << 2);
+				smsvdp->current_palette[i] = ((smsvdp->CRAM->u8(i) & 0x30) << 6) | ((smsvdp->CRAM->u8(i) & 0x0c ) << 4) | ((smsvdp->CRAM->u8(i) & 0x03) << 2);
 			}
 		}
 		else
 		{
 			for (i = 0; i < 32; i++)
 			{
-				smsvdp->current_palette[i] = ((smsvdp->CRAM->base.u8[i * 2 + 1] << 8) | smsvdp->CRAM->base.u8[i * 2]) & 0x0fff;
+				smsvdp->current_palette[i] = ((smsvdp->CRAM->u8(i * 2 + 1) << 8) | smsvdp->CRAM->u8(i * 2)) & 0x0fff;
 			}
 		}
 	}
@@ -1436,7 +1435,7 @@ static void sms_update_palette( smsvdp_t *smsvdp )
 	{
 		for (i = 0; i < 32; i++)
 		{
-			smsvdp->current_palette[i] = smsvdp->CRAM->base.u8[i] & 0x3f;
+			smsvdp->current_palette[i] = smsvdp->CRAM->u8(i) & 0x3f;
 		}
 	}
 }
@@ -1445,9 +1444,9 @@ static void sms_update_palette( smsvdp_t *smsvdp )
 UINT32 sms_vdp_update( running_device *device, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	smsvdp_t *smsvdp = get_safe_token(device);
-	running_device *screen = video_screen_first(device->machine);
-	int width = video_screen_get_width(screen);
-	int height = video_screen_get_height(screen);
+	screen_device *screen = screen_first(*device->machine);
+	int width = screen->width();
+	int height = screen->height();
 	int x, y;
 
 	if (IS_GAMEGEAR_VDP)
@@ -1493,17 +1492,17 @@ static DEVICE_START( smsvdp )
 	smsvdp_t *smsvdp = get_safe_token(device);
 	const smsvdp_interface *intf = get_interface(device);
 
-	running_device *screen = video_screen_first(device->machine);
-	int width = video_screen_get_width(screen);
-	int height = video_screen_get_height(screen);
+	screen_device *screen = screen_first(*device->machine);
+	int width = screen->width();
+	int height = screen->height();
 
 	smsvdp->features = intf->model;
 	smsvdp->int_callback = intf->int_callback;
 	smsvdp->pause_callback = intf->pause_callback;
 
 	/* Allocate video RAM */
-	smsvdp->VRAM = memory_region_alloc(device->machine, "vdp_vram", VRAM_SIZE, ROM_REQUIRED);
-	smsvdp->CRAM = memory_region_alloc(device->machine, "vdp_cram", MAX_CRAM_SIZE, ROM_REQUIRED);
+	smsvdp->VRAM = device->machine->region_alloc("vdp_vram", VRAM_SIZE, ROM_REQUIRED);
+	smsvdp->CRAM = device->machine->region_alloc("vdp_cram", MAX_CRAM_SIZE, ROM_REQUIRED);
 	smsvdp->line_buffer = auto_alloc_array(device->machine, int, 256 * 5);
 
 	smsvdp->collision_buffer = auto_alloc_array(device->machine, UINT8, SMS_X_PIXELS);
@@ -1514,7 +1513,7 @@ static DEVICE_START( smsvdp )
 	smsvdp->prev_bitmap = auto_bitmap_alloc(device->machine, width, height, BITMAP_FORMAT_INDEXED32);
 
 	smsvdp->smsvdp_display_timer = timer_alloc(device->machine, smsvdp_display_callback, smsvdp);
-	timer_adjust_periodic(smsvdp->smsvdp_display_timer, video_screen_get_time_until_pos(screen, 0, DISPLAY_CB_HPOS), 0, video_screen_get_scan_period(screen));
+	timer_adjust_periodic(smsvdp->smsvdp_display_timer, screen->time_until_pos(0, DISPLAY_CB_HPOS), 0, screen->scan_period());
 
 	state_save_register_device_item(device, 0, smsvdp->status);
 	state_save_register_device_item(device, 0, smsvdp->reg9copy);
@@ -1574,8 +1573,8 @@ static DEVICE_RESET( smsvdp )
 	set_display_settings(device);
 
 	/* Clear RAM */
-	memset(smsvdp->VRAM->base.u8, 0, VRAM_SIZE);
-	memset(smsvdp->CRAM->base.u8, 0, MAX_CRAM_SIZE);
+	memset(smsvdp->VRAM->base(), 0, VRAM_SIZE);
+	memset(smsvdp->CRAM->base(), 0, MAX_CRAM_SIZE);
 	memset(smsvdp->line_buffer, 0, 256 * 5 * sizeof(int));
 }
 
@@ -1585,7 +1584,6 @@ DEVICE_GET_INFO( smsvdp )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(smsvdp_t);					break;
-		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_VIDEO;					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(smsvdp);		break;
@@ -1600,3 +1598,5 @@ DEVICE_GET_INFO( smsvdp )
 		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright MAME / MESS Team");			break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(SMSVDP, smsvdp);

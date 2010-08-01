@@ -94,7 +94,8 @@ static const cassette_config interact_cassette_config =
 {
 	hector_cassette_formats,
 	&interact_cassette_options,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MASK_SPEAKER)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MASK_SPEAKER),
+	NULL
 };
 
 /* Discrete Sound */
@@ -115,7 +116,7 @@ static MACHINE_START(interact)
 
 static VIDEO_UPDATE( interact )
 {
-	video_screen_set_visarea(screen, 0, 113, 0, 75);
+	screen->set_visible_area(0, 113, 0, 75);
 	hector_hr( bitmap, screen->machine->generic.videoram.u8,  77, 32);
 	return 0;
 }
@@ -123,9 +124,9 @@ static VIDEO_UPDATE( interact )
 static MACHINE_DRIVER_START( interact )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8080, XTAL_2MHz)
+	MDRV_CPU_ADD("maincpu", I8080, XTAL_2MHz)
 	MDRV_CPU_PROGRAM_MAP(interact_mem)
-	MDRV_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the 8080 irq in Hz*/
+	MDRV_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
 
 	MDRV_MACHINE_RESET(interact)
 	MDRV_MACHINE_START(interact)
@@ -166,7 +167,7 @@ static MACHINE_DRIVER_START( hector1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(interact_mem)
-	MDRV_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the 8080 irq in Hz*/
+	MDRV_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
 
 	MDRV_MACHINE_RESET(interact)
 	MDRV_MACHINE_START(interact)

@@ -54,7 +54,8 @@ static VIDEO_UPDATE( act_f1 )
 
 					color = pen[0]|pen[1]<<1;
 
-					if((x+i)<=video_screen_get_visible_area(screen)->max_x && ((y)+0)<video_screen_get_visible_area(screen)->max_y)
+					const rectangle &visarea = screen->visible_area();
+					if((x+i)<=visarea.max_x && ((y)+0)<visarea.max_y)
 						*BITMAP_ADDR16(bitmap, y, x+i) = screen->machine->pens[color];
 				}
 
@@ -74,7 +75,7 @@ static VIDEO_UPDATE( act_f1 )
 static READ8_HANDLER( act_fdc_r )
 {
 	act_state *state = (act_state *)space->machine->driver_data;
-	running_device* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = space->machine->device("fdc");
 
 //  printf("%02x\n",offset);
 
@@ -102,7 +103,7 @@ static READ8_HANDLER( act_fdc_r )
 static WRITE8_HANDLER( act_fdc_w )
 {
 	act_state *state = (act_state *)space->machine->driver_data;
-	running_device* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = space->machine->device("fdc");
 
 //  printf("%02x %02x\n",offset,data);
 
@@ -165,7 +166,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( actf1_sys_w )
 {
 //  static UINT8 cur_fdrv;
-//  running_device* dev = devtag_get_device(space->machine,"fdc");
+//  running_device* dev = space->machine->device("fdc");
 
 	switch(offset)
 	{
@@ -255,7 +256,7 @@ static const z80sio_interface sio_intf =
 #endif
 
 #if 0
-static const z80_daisy_chain x1_daisy[] =
+static const z80_daisy_config x1_daisy[] =
 {
 	{ "ctc" },
 	{ NULL }
@@ -284,9 +285,9 @@ static const floppy_config act_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(act),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( act_f1 )

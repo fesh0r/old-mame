@@ -11,10 +11,10 @@
 #include <expat.h>
 
 #ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif /* WIN32 */
 #include "emu.h"
-#include "utils.h"
 #include "core.h"
 #include "testmess.h"
 #include "testimgt.h"
@@ -42,6 +42,15 @@ static const char *current_testcase_name;
 static int is_failure;
 
 
+int hexdigit(char c)
+{
+	int result = 0;
+	if (isdigit(c))
+		result = c - '0';
+	else if (isxdigit(c))
+		result = toupper(c) - 'A' + 10;
+	return result;
+}
 
 void error_report(const char *message)
 {

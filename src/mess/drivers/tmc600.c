@@ -273,10 +273,10 @@ static MACHINE_START( tmc600 )
 	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* configure RAM */
-	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	switch (messram_get_size(machine->device("messram")))
 	{
 	case 8*1024:
 		memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
@@ -302,7 +302,8 @@ static const cassette_config tmc600_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 static FLOPPY_OPTIONS_START(tmc600)
 	// dsk
@@ -315,9 +316,9 @@ static const floppy_config tmc600_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(tmc600),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* F4 Character Displayer */

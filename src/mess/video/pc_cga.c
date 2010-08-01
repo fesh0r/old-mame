@@ -78,7 +78,7 @@
 #include "emu.h"
 #include "video/pc_cga.h"
 #include "video/mc6845.h"
-#include "video/pc_video.h"
+#include "video/pc_video_mess.h"
 #include "video/cgapal.h"
 #include "memconv.h"
 
@@ -448,7 +448,7 @@ static int internal_pc_cga_video_start(running_machine *machine, int personality
 	state_save_register_item(machine, "pccga", NULL, 0, cga.status);
 	state_save_register_item(machine, "pccga", NULL, 0, cga.plantronics);
 
-	cga.config_input_port = machine->portlist.find("pcvideo_cga_config" );
+	cga.config_input_port = machine->m_portlist.find("pcvideo_cga_config" );
 
 	return 0;
 }
@@ -465,7 +465,7 @@ static VIDEO_START( pc_cga )
      * Plantronics chipset.
      * TODO: Cards which don't support Plantronics should repeat at
      * BC000h */
-	buswidth = machine->firstcpu->databus_width(AS_PROGRAM);
+	buswidth = device_memory(machine->firstcpu)->space_config(AS_PROGRAM)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
@@ -510,7 +510,7 @@ static VIDEO_START( pc_cga )
 static VIDEO_UPDATE( mc6845_cga )
 {
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
-	running_device *devconf = devtag_get_device(screen->machine, CGA_MC6845_NAME);
+	running_device *devconf = screen->machine->device(CGA_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 
 	/* Check for changes in font dipsetting */
@@ -536,7 +536,7 @@ static VIDEO_START( cga_poisk2 )
 static VIDEO_UPDATE( cga_poisk2 )
 {
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
-	running_device *devconf = devtag_get_device(screen->machine, CGA_MC6845_NAME);
+	running_device *devconf = screen->machine->device(CGA_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 
 	/* Check for changes in font dipsetting */
@@ -1077,7 +1077,7 @@ static void pc_cga_set_palette_luts(void)
  */
 static void pc_cga_mode_control_w(running_machine *machine, int data)
 {
-	running_device *devconf = devtag_get_device(machine, CGA_MC6845_NAME);
+	running_device *devconf = machine->device(CGA_MC6845_NAME);
 
 	CGA_LOG(1,"CGA_mode_control_w",("$%02x: columns %d, gfx %d, hires %d, blink %d\n",
 		data, (data&1)?80:40, (data>>1)&1, (data>>4)&1, (data>>5)&1));
@@ -1237,7 +1237,7 @@ READ32_HANDLER( char_ram_32_r )   { return read32le_with_read8_handler(char_ram_
 
 static READ8_HANDLER( pc_cga8_r )
 {
-	running_device *devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
+	running_device *devconf = space->machine->device(CGA_MC6845_NAME);
 	int data = 0xff;
 	switch( offset )
 	{
@@ -1265,11 +1265,11 @@ static WRITE8_HANDLER( pc_cga8_w )
 
 	switch(offset) {
 	case 0: case 2: case 4: case 6:
-		devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
+		devconf = space->machine->device(CGA_MC6845_NAME);
 		mc6845_address_w( devconf, offset, data );
 		break;
 	case 1: case 3: case 5: case 7:
-		devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
+		devconf = space->machine->device(CGA_MC6845_NAME);
 		mc6845_register_w( devconf, offset, data );
 		break;
 	case 8:
@@ -1283,7 +1283,7 @@ static WRITE8_HANDLER( pc_cga8_w )
 		break;
 	case 0x0f:
 		// Not sure if some all CGA cards have ability to upload char definition
-		UINT8 buswidth = space->machine->firstcpu->databus_width(AS_PROGRAM);
+		UINT8 buswidth = device_memory(space->machine->firstcpu)->space_config(AS_PROGRAM)->m_databus_width;
 		const address_space *space_prg = cpu_get_address_space(space->machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 		cga.p3df = data;
 		if (data & 1) {
@@ -1579,7 +1579,7 @@ static MC6845_UPDATE_ROW( pc1512_gfx_4bpp_update_row )
 
 static WRITE8_HANDLER ( pc1512_w )
 {
-	running_device *devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
+	running_device *devconf = space->machine->device(CGA_MC6845_NAME);
 
 	switch (offset)
 	{
@@ -1743,7 +1743,7 @@ static VIDEO_START( pc1512 )
 static VIDEO_UPDATE( mc6845_pc1512 )
 {
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
-	running_device *devconf = devtag_get_device(screen->machine, CGA_MC6845_NAME);
+	running_device *devconf = screen->machine->device(CGA_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 
 	/* Check for changes in font dipsetting */

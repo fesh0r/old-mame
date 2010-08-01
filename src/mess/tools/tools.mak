@@ -42,4 +42,4 @@ ifdef BUILD_WIMGTOOL
 include $(MESSSRC)/tools/imgtool/windows/wimgtool.mak
 TOOLS += $(WIMGTOOL)
 endif
-endif
+endif 

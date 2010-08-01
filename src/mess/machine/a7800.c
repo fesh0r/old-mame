@@ -125,7 +125,7 @@ MACHINE_RESET( a7800 )
 	/* pokey cartridge */
 	if (a7800_cart_type & 0x01)
 	{
-		running_device *pokey = devtag_get_device(machine, "pokey");
+		running_device *pokey = machine->device("pokey");
 		memory_install_read8_device_handler(space, pokey, 0x4000, 0x7FFF, 0, 0, pokey_r);
 		memory_install_write8_device_handler(space, pokey, 0x4000, 0x7FFF, 0, 0, pokey_w);
 	}
@@ -223,14 +223,14 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 	unsigned char header[128];
 	UINT8 *memory;
 
-	memory = memory_region(image->machine, "maincpu");
+	memory = memory_region(image.device().machine, "maincpu");
 
 	/* Load and decode the header */
-	image_fread( image, header, 128 );
+	image.fread(header, 128 );
 
 	/* Check the cart */
 	if( a7800_verify_cart((char *)header) == IMAGE_VERIFY_FAIL)
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 
 	len =(header[49] << 24) |(header[50] << 16) |(header[51] << 8) | header[52];
 	a7800_cart_size = len;
@@ -249,7 +249,7 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 
 		start = 0x10000 - len;
 		a7800_cartridge_rom = memory + start;
-		image_fread(image, a7800_cartridge_rom, len);
+		image.fread(a7800_cartridge_rom, len);
 	}
 	else if( a7800_cart_type & 0x02 )
 	{
@@ -258,12 +258,12 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 		/* Extra ROM at $4000 */
 		if( a7800_cart_type & 0x08 )
 		{
-			image_fread(image, memory + 0x4000, 0x4000 );
+			image.fread(memory + 0x4000, 0x4000 );
 			len -= 0x4000;
 		}
 
 		a7800_cartridge_rom = memory + 0x10000;
-		image_fread(image, a7800_cartridge_rom, len);
+		image.fread(a7800_cartridge_rom, len);
 
 		/* bank 0 */
 		memcpy( memory + 0x8000, memory + 0x10000, 0x4000);
@@ -289,7 +289,7 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 		logerror( "Cart type: %x Absolute\n",a7800_cart_type );
 
 		a7800_cartridge_rom = memory + 0x10000;
-		image_fread(image, a7800_cartridge_rom, len );
+		image.fread(a7800_cartridge_rom, len );
 
 		/* bank 0 */
 		memcpy( memory + 0x4000, memory + 0x10000, 0x4000 );
@@ -304,7 +304,7 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 		logerror( "Cart type: %x Activision\n",a7800_cart_type );
 
 		a7800_cartridge_rom = memory + 0x10000;
-		image_fread(image, a7800_cartridge_rom, len );
+		image.fread(a7800_cartridge_rom, len );
 
 		/* bank 0 */
 		memcpy( memory + 0xA000, memory + 0x10000, 0x4000 );
@@ -325,7 +325,7 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 
 	memcpy( a7800_cart_bkup, memory + 0xC000, 0x4000 );
 	memcpy( memory + 0xC000, a7800_bios_bkup, 0x4000 );
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -348,7 +348,7 @@ WRITE8_HANDLER( a7800_cart_w )
 		}
 		else if(a7800_cart_type & 0x01)
 		{
-			running_device *pokey = devtag_get_device(space->machine, "pokey");
+			running_device *pokey = space->machine->device("pokey");
 			pokey_w(pokey, offset, data);
 		}
 		else
@@ -452,6 +452,6 @@ WRITE8_HANDLER( a7800_TIA_w )
 		}
 		break;
 	}
-	tia_sound_w(devtag_get_device(space->machine, "tia"), offset, data);
+	tia_sound_w(space->machine->device("tia"), offset, data);
 	ROM[offset] = data;
 }

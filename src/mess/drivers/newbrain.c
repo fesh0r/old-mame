@@ -823,13 +823,13 @@ static WRITE8_HANDLER( cop_w )
 
 static TIMER_DEVICE_CALLBACK( cop_regint_tick )
 {
-	newbrain_state *state = (newbrain_state *)timer->machine->driver_data;
+	newbrain_state *state = (newbrain_state *)timer.machine->driver_data;
 
 	if (copregint)
 	{
 		logerror("COP REGINT\n");
 		state->copint = 0;
-		check_interrupt(timer->machine);
+		check_interrupt(timer.machine);
 	}
 }
 
@@ -1349,7 +1349,7 @@ static Z80CTC_INTERFACE( newbrain_ctc_intf )
 
 static TIMER_DEVICE_CALLBACK( ctc_c2_tick )
 {
-	newbrain_state *state = (newbrain_state *)timer->machine->driver_data;
+	newbrain_state *state = (newbrain_state *)timer.machine->driver_data;
 
 	z80ctc_trg2_w(state->z80ctc, 1);
 	z80ctc_trg2_w(state->z80ctc, 0);
@@ -1384,8 +1384,8 @@ static MACHINE_START( newbrain )
 	newbrain_state *state = (newbrain_state *)machine->driver_data;
 
 	/* find devices */
-	state->cassette1 = devtag_get_device(machine, CASSETTE1_TAG);
-	state->cassette2 = devtag_get_device(machine, CASSETTE2_TAG);
+	state->cassette1 = machine->device(CASSETTE1_TAG);
+	state->cassette2 = machine->device(CASSETTE2_TAG);
 
 	/* allocate reset timer */
 	state->reset_timer = timer_alloc(machine, reset_tick, NULL);
@@ -1447,9 +1447,9 @@ static MACHINE_START( newbrain_eim )
 	state->eim_ram = auto_alloc_array(machine, UINT8, NEWBRAIN_EIM_RAM_SIZE);
 
 	/* find devices */
-	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
-	state->mc6850 = devtag_get_device(machine, MC6850_TAG);
-	state->upd765 = devtag_get_device(machine, UPD765_TAG);
+	state->z80ctc = machine->device(Z80CTC_TAG);
+	state->mc6850 = machine->device(MC6850_TAG);
+	state->upd765 = machine->device(UPD765_TAG);
 
 	/* register for state saving */
 	state_save_register_global_pointer(machine, state->eim_ram, NEWBRAIN_EIM_RAM_SIZE);
@@ -1489,26 +1489,27 @@ static const cassette_config newbrain_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 
 static DEVICE_IMAGE_LOAD( newbrain_serial )
 {
-	if (device_load_serial(image)==INIT_PASS)
+	if (device_load_serial(image)==IMAGE_INIT_PASS)
 	{
 		serial_device_setup(image, 9600, 8, 1, SERIAL_PARITY_NONE);
 
 		serial_device_set_transmit_state(image, 1);
 
-		return INIT_PASS;
+		return IMAGE_INIT_PASS;
 	}
 
-	return INIT_FAIL;
+	return IMAGE_INIT_FAIL;
 }
 
 
-static DEVICE_GET_INFO( newbrain_serial )
+DEVICE_GET_INFO( newbrain_serial )
 {
 	switch ( state )
 	{
@@ -1540,7 +1541,8 @@ static GFXDECODE_START( newbrain )
 	GFXDECODE_ENTRY( "chargen", 0x0000, newbrain_charlayout, 0, 1 )
 GFXDECODE_END
 
-#define NEWBRAIN_SERIAL	DEVICE_GET_INFO_NAME(newbrain_serial)
+DECLARE_LEGACY_IMAGE_DEVICE(NEWBRAIN_SERIAL, newbrain_serial);
+DEFINE_LEGACY_IMAGE_DEVICE(NEWBRAIN_SERIAL, newbrain_serial);
 
 #define MDRV_NEWBRAIN_SERIAL_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, NEWBRAIN_SERIAL, 0)
@@ -1591,9 +1593,9 @@ static const floppy_config newbrain_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(newbrain),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( newbrain_eim )

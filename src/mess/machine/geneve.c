@@ -11,7 +11,7 @@
 #include "audio/spchroms.h"
 #include "ti99_4x.h"
 #include "includes/geneve.h"
-#include "99_peb.h"
+#include "devices/ti99_peb.h"
 #include "994x_ser.h"
 #include "99_dsk.h"
 #include "99_ide.h"
@@ -19,11 +19,6 @@
 
 #include "sound/tms5220.h"	/* for tms5220_set_variant() */
 #include "sound/sn76496.h"
-
-
-/* prototypes */
-static void inta_callback(running_machine *machine, int state);
-static void intb_callback(running_machine *machine, int state);
 
 static void read_key_if_possible(running_machine *machine);
 static void poll_keyboard(running_machine *machine);
@@ -80,6 +75,8 @@ static int KeyFakeUnshiftState;
 static int KeyAutoRepeatKey;
 static int KeyAutoRepeatTimer;
 
+static running_device *expansion_box;
+
 /*
     GROM support.
 
@@ -126,7 +123,7 @@ enum
 };
 
 /* tms9995_ICount: used to implement memory waitstates (hack) */
-/* NPW 23-Feb-2004 - externs no longer needed because we now use cpu_adjust_icount(devtag_get_device(space->machine, "maincpu"),) */
+/* NPW 23-Feb-2004 - externs no longer needed because we now use cpu_adjust_icount(space->machine->device("maincpu"),) */
 
 enum
 {
@@ -155,7 +152,6 @@ MACHINE_START( geneve )
 	/* Initialize all. Actually, at this point, we don't know
        how the switches are set. Later we use the configuration switches to
        determine which one to use. */
-	ti99_peb_init();
 	ti99_floppy_controllers_init_all(machine);
 	ti99_ide_init(machine);
 	ti99_usbsm_init(machine);
@@ -178,6 +174,8 @@ MACHINE_RESET( geneve )
 
 	/* reset cartridge mapper */
 	cartridge_page = 0;
+
+	expansion_box = machine->device("per_exp_box");
 
 	v9938_reset(0);
 
@@ -202,7 +200,6 @@ MACHINE_RESET( geneve )
 	has_usb_sm = input_port_read(machine, "HDCTRL") & HD_USB;
 
 	/* set up optional expansion hardware */
-	ti99_peb_reset(0, inta_callback, intb_callback);
 
 	if (has_speech)
 	{
@@ -239,7 +236,7 @@ MACHINE_RESET( geneve )
 		ti99_usbsm_reset(machine, TRUE);
 
 	/* reset CPU */
-	devtag_get_device(machine, "maincpu")->reset();
+	machine->device("maincpu")->reset();
 }
 
 /*
@@ -248,7 +245,7 @@ MACHINE_RESET( geneve )
 VIDEO_START(geneve)
 {
 	VIDEO_START_CALL(generic_bitmapped);
-	v9938_init(machine, 0, machine->primary_screen, machine->generic.tmpbitmap, MODEL_V9938, /*0x20000*/0x30000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
+	v9938_init(machine, 0, *machine->primary_screen, machine->generic.tmpbitmap, MODEL_V9938, /*0x20000*/0x30000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
 }
 
 /*
@@ -269,18 +266,18 @@ INTERRUPT_GEN( geneve_hblank_interrupt )
 /*
     inta is connected to both tms9901 IRQ1 line and to tms9995 INT4/EC line.
 */
-static void inta_callback(running_machine *machine, int state)
+void inta_callback(running_machine *machine, int state)
 {
-	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 1, state);
+	tms9901_set_single_int(machine->device("tms9901"), 1, state);
 	cputag_set_input_line(machine, "maincpu", 1, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
     intb is connected to tms9901 IRQ12 line.
 */
-static void intb_callback(running_machine *machine, int state)
+void intb_callback(running_machine *machine, int state)
 {
-	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 12, state);
+	tms9901_set_single_int(machine->device("tms9901"), 12, state);
 }
 
 
@@ -298,16 +295,16 @@ static void intb_callback(running_machine *machine, int state)
 */
 static  READ8_HANDLER ( geneve_speech_r )
 {
-	cpu_adjust_icount(devtag_get_device(space->machine, "maincpu"),-8);		/* this is just a minimum, it can be more */
+	cpu_adjust_icount(space->machine->device("maincpu"),-8);		/* this is just a minimum, it can be more */
 
-	return tms5220_status_r(devtag_get_device(space->machine, "tmc0285"), offset);
+	return tms5220_status_r(space->machine->device("tmc0285"), offset);
 }
 
 #if 0
 
 static void speech_kludge_callback(int dummy)
 {
-	if (! tms5220_readyq_r(devtag_get_device(space->machine, "tmc0285")))
+	if (! tms5220_readyq_r(space->machine->device("tmc0285")))
 	{
 		/* Weirdly enough, we are always seeing some problems even though
         everything is working fine. */
@@ -326,26 +323,26 @@ static void speech_kludge_callback(int dummy)
 */
 static WRITE8_HANDLER ( geneve_speech_w )
 {
-	cpu_adjust_icount(devtag_get_device(space->machine, "maincpu"),-32*4);		/* this is just an approx. minimum, it can be much more */
+	cpu_adjust_icount(space->machine->device("maincpu"),-32*4);		/* this is just an approx. minimum, it can be much more */
 
 #if 1
 	/* the stupid design of the tms5220 core means that ready is cleared when
     there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
     case, we would need to store the value on the bus, which would be more
     complex. */
-	if (! tms5220_readyq_r(devtag_get_device(space->machine, "tmc0285")))
+	if (! tms5220_readyq_r(space->machine->device("tmc0285")))
 	{
-		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(devtag_get_device(space->machine, "tmc0285")));
+		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(space->machine->device("tmc0285")));
 		int cycles_to_ready = cputag_attotime_to_clocks(space->machine, "maincpu", time_to_ready);
 
 		logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
 
-		cpu_adjust_icount(devtag_get_device(space->machine, "maincpu"),-cycles_to_ready);
+		cpu_adjust_icount(space->machine->device("maincpu"),-cycles_to_ready);
 		timer_set(space->machine, attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
 	}
 #endif
 
-	tms5220_data_w(devtag_get_device(space->machine, "tmc0285"), offset, data);
+	tms5220_data_w(space->machine->device("tmc0285"), offset, data);
 }
 
 READ8_HANDLER ( geneve_r )
@@ -402,7 +399,7 @@ READ8_HANDLER ( geneve_r )
 			case 0xf13d:
 			case 0xf13e:
 			case 0xf13f:
-				return mm58274c_r(devtag_get_device(space->machine, "mm58274c"), offset-0xf130);
+				return mm58274c_r(space->machine->device("mm58274c"), offset-0xf130);
 
 			default:
 				logerror("unmapped read offs=%d\n", (int) offset);
@@ -448,7 +445,7 @@ READ8_HANDLER ( geneve_r )
 			case 0x801d:
 			case 0x801e:
 			case 0x801f:
-				return mm58274c_r(devtag_get_device(space->machine, "mm58274c"), offset-0xf130);
+				return mm58274c_r(space->machine->device("mm58274c"), offset-0xf130);
 
 			default:
 				logerror("unmapped read offs=%d\n", (int) offset);
@@ -578,7 +575,7 @@ READ8_HANDLER ( geneve_r )
 #endif
 	case 0xba:
 		/* DSR space */
-		return geneve_peb_r(space, offset);
+		return geneve_peb_r(expansion_box, offset);
 
 	case 0xbc:
 		/* speech space */
@@ -650,7 +647,7 @@ WRITE8_HANDLER ( geneve_w )
 #endif
 
 			case 0xf120:
-				sn76496_w(devtag_get_device(space->machine, "sn76496"), 0, data);
+				sn76496_w(space->machine->device("sn76496"), 0, data);
 				break;
 
 			case 0xf130:
@@ -669,7 +666,7 @@ WRITE8_HANDLER ( geneve_w )
 			case 0xf13d:
 			case 0xf13e:
 			case 0xf13f:
-				mm58274c_w(devtag_get_device(space->machine, "mm58274c"), offset-0xf130, data);
+				mm58274c_w(space->machine->device("mm58274c"), offset-0xf130, data);
 				return;
 
 			default:
@@ -720,7 +717,7 @@ WRITE8_HANDLER ( geneve_w )
 			case 0x801d:
 			case 0x801e:
 			case 0x801f:
-				mm58274c_w(devtag_get_device(space->machine, "mm58274c"), offset-0xf130, data);
+				mm58274c_w(space->machine->device("mm58274c"), offset-0xf130, data);
 				return;
 
 			default:
@@ -736,7 +733,7 @@ WRITE8_HANDLER ( geneve_w )
 			{
 			case 1:
 				/* sound write */
-				sn76496_w(devtag_get_device(space->machine, "sn76496"), 0, data);
+				sn76496_w(space->machine->device("sn76496"), 0, data);
 				return;
 
 			case 3:
@@ -874,7 +871,7 @@ WRITE8_HANDLER ( geneve_w )
 #endif
 	case 0xba:
 		/* DSR space */
-		geneve_peb_w(space, offset, data);
+		geneve_peb_w(expansion_box, offset, data);
 		return;
 
 	case 0xbc:
@@ -937,13 +934,13 @@ WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 					KeyQueueLen--;
 				}
 				/* clear keyboard interrupt */
-				tms9901_set_single_int(devtag_get_device(space->machine, "tms9901"), 8, 0);
+				tms9901_set_single_int(space->machine->device("tms9901"), 8, 0);
 				KeyInBuf = 0;
 			}
 		}
 	}
 
-	geneve_peb_cru_w(space, offset, data);
+	geneve_peb_cru_w(expansion_box, offset, data);
 }
 
 /*===========================================================================*/
@@ -958,7 +955,7 @@ static void read_key_if_possible(running_machine *machine)
     buffer clear is disabled, and key queue is not empty. */
 	if ((! KeyReset) && (mode_flags & mf_keyclock) && (mode_flags & mf_keyclear) && KeyQueueLen)
 	{
-		tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 8, 1);
+		tms9901_set_single_int(machine->device("tms9901"), 8, 1);
 		KeyInBuf = 1;
 	}
 }
@@ -1271,7 +1268,7 @@ static void poll_mouse(running_machine *machine)
 #ifdef UNUSED_FUNCTION
 void tms9901_set_int2(int state)
 {
-	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 2, state);
+	tms9901_set_single_int(machine->device("tms9901"), 2, state);
 }
 #endif
 

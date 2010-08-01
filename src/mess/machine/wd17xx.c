@@ -134,9 +134,9 @@
 
 
 #include "emu.h"
+#include "imageutl.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
-
 #include "formats/flopimg.h"
 
 /***************************************************************************
@@ -377,6 +377,8 @@ const wd17xx_interface default_wd17xx_interface_2_drives =
 static void wd17xx_complete_command(running_device *device, int delay);
 static void wd17xx_timed_data_request(running_device *device);
 static void wd17xx_index_pulse_callback(running_device *controller, running_device *img, int state);
+static int wd17xx_locate_sector(running_device *device);
+static void wd17xx_timed_read_sector_request(running_device *device);
 
 
 /*****************************************************************************
@@ -386,9 +388,8 @@ static void wd17xx_index_pulse_callback(running_device *controller, running_devi
 INLINE wd1770_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
 
-	return (wd1770_state *)device->token;
+	return (wd1770_state *)downcast<legacy_device_base *>(device)->token();
 }
 
 
@@ -398,7 +399,7 @@ INLINE wd1770_state *get_safe_token(running_device *device)
 
 static int wd17xx_has_side_select(running_device *device)
 {
-	return (device->type == WD1773 || device->type == WD1793 || device->type == WD2793);
+	return (device->type() == WD1773 || device->type() == WD1793 || device->type() == WD2793);
 }
 
 static int wd17xx_dden(running_device *device)
@@ -473,11 +474,72 @@ static TIMER_CALLBACK( wd17xx_command_callback )
 	}
 }
 
-/* set drq after delay */
+/* write next byte to data register and set drq */
 static TIMER_CALLBACK( wd17xx_data_callback )
 {
 	running_device *device = (running_device *)ptr;
-	wd17xx_set_drq(device);
+	wd1770_state *w = get_safe_token(device);
+
+	/* any bytes remaining? */
+	if (w->data_count >= 1)
+	{
+		/* yes */
+		w->data = w->buffer[w->data_offset++];
+
+		if (VERBOSE_DATA)
+			logerror("wd17xx_data_callback: $%02X (data_count %d)\n", w->data, w->data_count);
+
+		wd17xx_set_drq(device);
+
+		/* any bytes remaining? */
+		if (--w->data_count < 1)
+		{
+			/* no */
+			w->data_offset = 0;
+
+			/* clear ddam type */
+			w->status &=~STA_2_REC_TYPE;
+
+			/* read a sector with ddam set? */
+			if (w->command_type == TYPE_II && w->ddam != 0)
+			{
+				/* set it */
+				w->status |= STA_2_REC_TYPE;
+			}
+
+			/* check if we should handle the next sector for a multi record read */
+			if (w->command_type == TYPE_II && w->command == FDC_READ_SEC && (w->read_cmd & 0x10))
+			{
+				if (VERBOSE)
+					logerror("wd17xx_data_callback: multi sector read\n");
+
+				if (w->sector == 0xff)
+					w->sector = 0x01;
+				else
+					w->sector++;
+
+				wd17xx_timed_read_sector_request(device);
+			}
+			else
+			{
+				/* Delay the INTRQ 3 byte times because we need to read two CRC bytes and
+				   compare them with a calculated CRC */
+				wd17xx_complete_command(device, DELAY_DATADONE);
+
+				if (VERBOSE)
+					logerror("wd17xx_data_callback: data read completed\n");
+			}
+		}
+		else
+		{
+			/* requeue us for more data */
+			timer_adjust_oneshot(w->timer_data, ATTOTIME_IN_USEC(wd17xx_dden(device) ? 128 : 32), 0);
+		}
+	}
+	else
+	{
+		logerror("wd17xx_data_callback: (no new data) $%02X (data_count %d)\n", w->data, w->data_count);
+	}
 }
 
 
@@ -515,7 +577,7 @@ static void wd17xx_command_restore(running_device *device)
 	/* reset busy count */
 	w->busy_count = 0;
 
-	if (image_slotexists(w->drive))
+	if (1) // image_slotexists(w->drive) : FIXME
 	{
 		/* keep stepping until track 0 is received or 255 steps have been done */
 		while (floppy_tk00_r(w->drive) && (step_counter != 0))
@@ -587,7 +649,7 @@ static void write_track(running_device *device)
 
         if (w->data_count==0)
         {
-                if (device->type == WD1771)
+                if (device->type() == WD1771)
                         w->data_count = TRKSIZE_SD;
                 else
 			w->data_count = wd17xx_dden(device) ? TRKSIZE_SD : TRKSIZE_DD;
@@ -739,7 +801,7 @@ static void read_track(running_device *device)
 
         if (w->data_count==0)
         {
-                if (device->type == WD1771)
+                if (device->type() == WD1771)
                         w->data_count = TRKSIZE_SD;
                 else
 			w->data_count = wd17xx_dden(device) ? TRKSIZE_SD : TRKSIZE_DD;
@@ -791,13 +853,11 @@ static void wd17xx_read_id(running_device *device)
 		w->buffer[5] = crc & 255;
 
 		w->sector = id.C;
-		wd17xx_set_busy(device, ATTOTIME_IN_USEC(400));
-		w->busy_count = 0;
-
-		wd17xx_set_drq(device);
 
 		if (VERBOSE)
-			logerror("read id succeeded.\n");
+			logerror("wd17xx_read_id: read id succeeded.\n");
+
+		wd17xx_timed_data_request(device);
 	}
 	else
 	{
@@ -805,7 +865,7 @@ static void wd17xx_read_id(running_device *device)
 		w->status |= STA_2_REC_N_FND;
 		//w->sector = w->track;
 		if (VERBOSE)
-			logerror("read id failed\n");
+			logerror("wd17xx_read_id: read id failed\n");
 
 		wd17xx_complete_command(device, DELAY_ERROR);
 	}
@@ -1051,7 +1111,7 @@ static TIMER_CALLBACK( wd17xx_read_sector_callback )
 
 
 /* callback to initiate write sector */
-static TIMER_CALLBACK(wd17xx_write_sector_callback)
+static TIMER_CALLBACK( wd17xx_write_sector_callback )
 {
 	running_device *device = (running_device *)ptr;
 	wd1770_state *w = get_safe_token(device);
@@ -1145,14 +1205,14 @@ void wd17xx_set_drive(running_device *device, UINT8 drive)
 
 	if (w->intf->floppy_drive_tags[drive] != NULL)
 	{
-		if (device->owner != NULL) {
-			w->drive = device->owner->subdevice(w->intf->floppy_drive_tags[drive]);
+		if (device->owner() != NULL) {
+			w->drive = device->owner()->subdevice(w->intf->floppy_drive_tags[drive]);
 			if (w->drive == NULL) {
-				w->drive = devtag_get_device(device->machine, w->intf->floppy_drive_tags[drive]);
+				w->drive = device->machine->device(w->intf->floppy_drive_tags[drive]);
 			}
 		}
 		else
-			w->drive = devtag_get_device(device->machine, w->intf->floppy_drive_tags[drive]);
+			w->drive = device->machine->device(w->intf->floppy_drive_tags[drive]);
 	}
 }
 
@@ -1252,7 +1312,7 @@ WRITE_LINE_DEVICE_HANDLER( wd17xx_dden_w )
 	wd1770_state *w = get_safe_token(device);
 
 	/* not supported on FD1771, FD1792, FD1794, FD1762 and FD1764 */
-	if (device->type == WD1771)
+	if (device->type() == WD1771)
 		fatalerror("wd17xx_dden_w: double density input not supported on this model!");
 	else if (w->in_dden_func.read != NULL)
 		logerror("wd17xx_dden_w: write has no effect because a read handler is already defined!\n");
@@ -1286,7 +1346,7 @@ READ8_DEVICE_HANDLER( wd17xx_status_r )
 	}
 
 	/* bit 7, 'not ready' or 'motor on' */
-	if (device->type == WD1770 || device->type == WD1772)
+	if (device->type() == WD1770 || device->type() == WD1772)
 	{
 		w->status &= ~STA_1_MOTOR_ON;
 		w->status |= w->mo << 7;
@@ -1319,7 +1379,6 @@ READ8_DEVICE_HANDLER( wd17xx_status_r )
 				w->status &= ~ STA_1_HD_LOADED;
 		}
 
-		if (w->command_type==TYPE_IV) result &= 0x63; /* to allow microbee to boot up */
 	}
 
 	/* eventually set data request bit */
@@ -1361,75 +1420,11 @@ READ8_DEVICE_HANDLER( wd17xx_data_r )
 {
 	wd1770_state *w = get_safe_token(device);
 
-	if (w->data_count >= 1)
-	{
-		/* clear data request */
-		wd17xx_clear_drq(device);
+	if (VERBOSE_DATA)
+		logerror("wd17xx_data_r: %02x\n", w->data);
 
-		/* yes */
-		w->data = w->buffer[w->data_offset++];
-
-		if (VERBOSE_DATA)
-			logerror("wd17xx_data_r: $%02X (data_count %d)\n", w->data, w->data_count);
-
-		/* any bytes remaining? */
-		if (--w->data_count < 1)
-		{
-			/* no */
-			w->data_offset = 0;
-
-			/* clear ddam type */
-			w->status &=~STA_2_REC_TYPE;
-			/* read a sector with ddam set? */
-			if (w->command_type == TYPE_II && w->ddam != 0)
-			{
-				/* set it */
-				w->status |= STA_2_REC_TYPE;
-			}
-
-			/* Check we should handle the next sector for a multi record read */
-			if ( w->command_type == TYPE_II && w->command == FDC_READ_SEC && ( w->read_cmd & 0x10 ) ) {
-				w->sector++;
-				if (wd17xx_locate_sector(device))
-				{
-					w->data_count = w->sector_length;
-
-					/* read data */
-					floppy_drive_read_sector_data(w->drive, w->hd, w->sector_data_id, (char *)w->buffer, w->sector_length);
-
-					wd17xx_timed_data_request(device);
-
-					w->status |= STA_2_BUSY;
-					w->busy_count = 0;
-				}
-				else
-				{
-					wd17xx_complete_command(device, DELAY_DATADONE);
-
-					if (VERBOSE)
-						logerror("wd17xx_data_r(): multi data read completed\n");
-				}
-			}
-			else
-			{
-				/* Delay the INTRQ 3 byte times because we need to read two CRC bytes and
-                   compare them with a calculated CRC */
-				wd17xx_complete_command(device, DELAY_DATADONE);
-
-				if (VERBOSE)
-					logerror("wd17xx_data_r(): data read completed\n");
-			}
-		}
-		else
-		{
-			/* issue a timed data request */
-			wd17xx_timed_data_request(device);
-		}
-	}
-	else
-	{
-		logerror("wd17xx_data_r: (no new data) $%02X (data_count %d)\n", w->data, w->data_count);
-	}
+	/* clear data request */
+	wd17xx_clear_drq(device);
 
 	return w->data;
 }
@@ -1442,7 +1437,7 @@ WRITE8_DEVICE_HANDLER( wd17xx_command_w )
 	w->last_command_data = data;
 
 	/* only the WD1770 and WD1772 have a 'motor on' line */
-	if (device->type == WD1770 || device->type == WD1772)
+	if (device->type() == WD1770 || device->type() == WD1772)
 	{
 		w->mo = ASSERT_LINE;
 		floppy_mon_w(w->drive, CLEAR_LINE);
@@ -1593,7 +1588,7 @@ WRITE8_DEVICE_HANDLER( wd17xx_command_w )
 				{
 				w->command = data & ~FDC_MASK_TYPE_III;
 				w->data_offset = 0;
-				if (device->type == WD1771)
+				if (device->type() == WD1771)
 					w->data_count = TRKSIZE_SD;
 				else
 					w->data_count = wd17xx_dden(device) ? TRKSIZE_SD : TRKSIZE_DD;
@@ -1613,6 +1608,8 @@ WRITE8_DEVICE_HANDLER( wd17xx_command_w )
 
 			w->command_type = TYPE_III;
 			w->status &= ~STA_2_LOST_DAT;
+			w->status |= STA_2_BUSY;
+
 			wd17xx_clear_drq(device);
 
 			if (floppy_drive_get_flag_state(w->drive, FLOPPY_DRIVE_READY))
@@ -1971,12 +1968,12 @@ static DEVICE_START( wd1770 )
 {
 	wd1770_state *w = get_safe_token(device);
 
-	assert(device->baseconfig().static_config != NULL);
+	assert(device->baseconfig().static_config() != NULL);
 
-	w->intf = (const wd17xx_interface*)device->baseconfig().static_config;
+	w->intf = (const wd17xx_interface*)device->baseconfig().static_config();
 
 	w->status = STA_1_TRACK0;
-	w->pause_time = 40;
+	w->pause_time = 1000;
     w->complete_command_delay = 12;
 
 	/* allocate timers */
@@ -2025,14 +2022,14 @@ static DEVICE_RESET( wd1770 )
 		if(w->intf->floppy_drive_tags[i]!=NULL) {
 			running_device *img = NULL;
 
-			if (device->owner != NULL)
-				img = device->owner->subdevice(w->intf->floppy_drive_tags[i]);
+			if (device->owner() != NULL)
+				img = device->owner()->subdevice(w->intf->floppy_drive_tags[i]);
 				if (img == NULL) {
-					img = devtag_get_device(device->machine, w->intf->floppy_drive_tags[i]);
+					img = device->machine->device(w->intf->floppy_drive_tags[i]);
 				}
 
 			else
-				img = devtag_get_device(device->machine, w->intf->floppy_drive_tags[i]);
+				img = device->machine->device(w->intf->floppy_drive_tags[i]);
 
 			if (img!=NULL) {
 				floppy_drive_set_controller(img,device);
@@ -2109,3 +2106,14 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_DERIVED_FEATURES	0
 #define DEVTEMPLATE_DERIVED_NAME		"MB8877"
 #include "devtempl.h"
+
+DEFINE_LEGACY_DEVICE(WD1770, wd1770);
+DEFINE_LEGACY_DEVICE(WD1771, wd1771);
+DEFINE_LEGACY_DEVICE(WD1772, wd1772);
+DEFINE_LEGACY_DEVICE(WD1773, wd1773);
+DEFINE_LEGACY_DEVICE(WD179X, wd179x);
+DEFINE_LEGACY_DEVICE(WD1793, wd1793);
+DEFINE_LEGACY_DEVICE(WD2793, wd2793);
+DEFINE_LEGACY_DEVICE(WD177X, wd177x);
+DEFINE_LEGACY_DEVICE(MB8877, mb8877);
+

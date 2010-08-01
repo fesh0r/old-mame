@@ -393,7 +393,8 @@ static const cassette_config special_cassette_config =
 {
 	rks_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 static const floppy_config specimx_floppy_config =
@@ -403,15 +404,15 @@ static const floppy_config specimx_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(specimx),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* Machine driver */
 static MACHINE_DRIVER_START( special )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", 8080, 2000000)
+    MDRV_CPU_ADD("maincpu", I8080, 2000000)
     MDRV_CPU_PROGRAM_MAP(specialist_mem)
     MDRV_MACHINE_RESET( special )
 

@@ -77,14 +77,20 @@ static int vectrex_verify_cart(char *data)
 
 DEVICE_IMAGE_LOAD(vectrex_cart)
 {
-	UINT8 *mem = memory_region(image->machine, "maincpu");
-	image_fread(image, mem, 0x8000);
+	UINT8 *mem = memory_region(image.device().machine, "maincpu");
+	if (image.software_entry() == NULL)
+	{	
+		image.fread( mem, 0x8000);
+	} else {
+		int size = image.get_software_region_length("rom");
+		memcpy(mem, image.get_software_region("rom"), size);
+	}
 
 	/* check image! */
 	if (vectrex_verify_cart((char*)mem) == IMAGE_VERIFY_FAIL)
 	{
 		logerror("Invalid image!\n");
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 
 	/* If VIA T2 starts, reset refresh timer.
@@ -116,7 +122,7 @@ DEVICE_IMAGE_LOAD(vectrex_cart)
 		vectrex_reset_refresh = 0;
 	}
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 
@@ -242,7 +248,7 @@ READ8_DEVICE_HANDLER(vectrex_via_pa_r)
 	if ((!(vectrex_via_out[PORTB] & 0x10)) && (vectrex_via_out[PORTB] & 0x08))
 		/* BDIR inactive, we can read the PSG. BC1 has to be active. */
 	{
-		running_device *ay = devtag_get_device(device->machine, "ay8912");
+		running_device *ay = device->machine->device("ay8912");
 
 		vectrex_via_out[PORTA] = ay8910_r(ay, 0)
 			& ~(vectrex_imager_pinlevel & 0x80);
@@ -278,7 +284,7 @@ static TIMER_CALLBACK(update_level)
 
 TIMER_CALLBACK(vectrex_imager_eye)
 {
-	running_device *via_0 = devtag_get_device(machine, "via6522_0");
+	running_device *via_0 = machine->device("via6522_0");
 	int coffset;
 	double rtime = (1.0 / vectrex_imager_freq);
 

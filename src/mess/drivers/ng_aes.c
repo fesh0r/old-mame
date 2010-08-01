@@ -86,7 +86,7 @@ static void adjust_display_position_interrupt_timer( running_machine *machine )
 	if ((state->display_counter + 1) != 0)
 	{
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(NEOGEO_PIXEL_CLOCK), state->display_counter + 1);
-		if (LOG_VIDEO_SYSTEM) logerror("adjust_display_position_interrupt_timer  current y: %02x  current x: %02x   target y: %x  target x: %x\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen), (state->display_counter + 1) / NEOGEO_HTOTAL, (state->display_counter + 1) % NEOGEO_HTOTAL);
+		if (LOG_VIDEO_SYSTEM) logerror("adjust_display_position_interrupt_timer  current y: %02x  current x: %02x   target y: %x  target x: %x\n", machine->primary_screen->vpos(), machine->primary_screen->hpos(), (state->display_counter + 1) / NEOGEO_HTOTAL, (state->display_counter + 1) % NEOGEO_HTOTAL);
 
 		timer_adjust_oneshot(state->display_position_interrupt_timer, period, 0);
 	}
@@ -155,11 +155,11 @@ static TIMER_CALLBACK( display_position_interrupt_callback )
 {
 	neogeo_state *state = (neogeo_state *)machine->driver_data;
 
-	if (LOG_VIDEO_SYSTEM) logerror("--- Scanline @ %d,%d\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
+	if (LOG_VIDEO_SYSTEM) logerror("--- Scanline @ %d,%d\n", machine->primary_screen->vpos(), machine->primary_screen->hpos());
 
 	if (state->display_position_interrupt_control & IRQ2CTRL_ENABLE)
 	{
-		if (LOG_VIDEO_SYSTEM) logerror("*** Scanline interrupt (IRQ2) ***  y: %02x  x: %02x\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
+		if (LOG_VIDEO_SYSTEM) logerror("*** Scanline interrupt (IRQ2) ***  y: %02x  x: %02x\n", machine->primary_screen->vpos(), machine->primary_screen->hpos());
 		state->display_position_interrupt_pending = 1;
 
 		update_interrupts(machine);
@@ -184,7 +184,7 @@ static TIMER_CALLBACK( display_position_vblank_callback )
 	}
 
 	/* set timer for next screen */
-	timer_adjust_oneshot(state->display_position_vblank_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0);
+	timer_adjust_oneshot(state->display_position_vblank_timer, machine->primary_screen->time_until_pos(NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0);
 }
 
 
@@ -192,7 +192,7 @@ static TIMER_CALLBACK( vblank_interrupt_callback )
 {
 	neogeo_state *state = (neogeo_state *)machine->driver_data;
 
-	if (LOG_VIDEO_SYSTEM) logerror("+++ VBLANK @ %d,%d\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
+	if (LOG_VIDEO_SYSTEM) logerror("+++ VBLANK @ %d,%d\n", machine->primary_screen->vpos(), machine->primary_screen->hpos());
 
 	/* add a timer tick to the pd4990a */
 	upd4990a_addretrace(state->upd4990a);
@@ -202,7 +202,7 @@ static TIMER_CALLBACK( vblank_interrupt_callback )
 	update_interrupts(machine);
 
 	/* set timer for next screen */
-	timer_adjust_oneshot(state->vblank_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, 0), 0);
+	timer_adjust_oneshot(state->vblank_interrupt_timer, machine->primary_screen->time_until_pos(NEOGEO_VBSTART, 0), 0);
 }
 
 
@@ -218,8 +218,8 @@ static void create_interrupt_timers( running_machine *machine )
 static void start_interrupt_timers( running_machine *machine )
 {
 	neogeo_state *state = (neogeo_state *)machine->driver_data;
-	timer_adjust_oneshot(state->vblank_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, 0), 0);
-	timer_adjust_oneshot(state->display_position_vblank_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0);
+	timer_adjust_oneshot(state->vblank_interrupt_timer, machine->primary_screen->time_until_pos(NEOGEO_VBSTART, 0), 0);
+	timer_adjust_oneshot(state->display_position_vblank_timer, machine->primary_screen->time_until_pos(NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0);
 }
 
 
@@ -366,10 +366,10 @@ READ16_HANDLER( neogeo_unmapped_r )
 static void calendar_init(running_machine *machine)
 {
 	/* set the celander IC to 'right now' */
-	mame_system_time systime;
-	mame_system_tm time;
+	system_time systime;
+	system_tm time;
 
-	mame_get_base_datetime(machine, &systime);
+	machine->base_datetime(&systime);
 	time = systime.local_time;
 
 	pd4990a.seconds = ((time.second / 10) << 4) + (time.second % 10);
@@ -547,7 +547,7 @@ static CUSTOM_INPUT( get_audio_result )
 	neogeo_state *state = (neogeo_state *)field->port->machine->driver_data;
 	UINT32 ret = state->audio_result;
 
-//  if (LOG_CPU_COMM) logerror("MAIN CPU PC %06x: audio_result_r %02x\n", cpu_get_pc(devtag_get_device(field->port->machine, "maincpu")), ret);
+//  if (LOG_CPU_COMM) logerror("MAIN CPU PC %06x: audio_result_r %02x\n", cpu_get_pc(field->port->machine->device("maincpu")), ret);
 
 	return ret;
 }
@@ -835,9 +835,9 @@ static MACHINE_START( neogeo )
 	state->irq3_pending = 1;
 
 	/* get devices */
-	state->maincpu = devtag_get_device(machine, "maincpu");
-	state->audiocpu = devtag_get_device(machine, "audiocpu");
-	state->upd4990a = devtag_get_device(machine, "upd4990a");
+	state->maincpu = machine->device("maincpu");
+	state->audiocpu = machine->device("audiocpu");
+	state->upd4990a = machine->device("upd4990a");
 
 	/* register state save */
 	state_save_register_global(machine, state->display_position_interrupt_control);
@@ -866,10 +866,10 @@ static MACHINE_START( neogeo )
 
 //static DEVICE_IMAGE_LOAD(aes_cart)
 //{
-//	else
-//		return INIT_FAIL;
-	
-//	return INIT_PASS;
+//  else
+//      return IMAGE_INIT_FAIL;
+
+//  return IMAGE_INIT_PASS;
 //}
 
 /*************************************
@@ -888,7 +888,7 @@ static MACHINE_RESET( neogeo )
 	for (offs = 0; offs < 8; offs++)
 		system_control_w(space, offs, 0, 0x00ff);
 
-	devtag_get_device(machine, "maincpu")->reset();
+	machine->device("maincpu")->reset();
 
 	neogeo_reset_rng(machine);
 
@@ -1026,20 +1026,20 @@ static const ym2610_interface ym2610_config =
 	PORT_START("IN2")																				\
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )													\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )   												\
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Next Game") PORT_CODE(KEYCODE_7)		\
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("1P Select") PORT_CODE(KEYCODE_5) PORT_PLAYER(1) PORT_CATEGORY(1)	\
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START2 )   												\
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Previous Game") PORT_CODE(KEYCODE_8)	\
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("2P Select") PORT_CODE(KEYCODE_6) PORT_PLAYER(2) PORT_CATEGORY(2)	\
 	PORT_BIT( 0x7000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_memcard_status, NULL)			\
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_UNKNOWN )  /* Matrimelee expects this bit to be active high when on an AES */
 
 
 #define STANDARD_IN3																				\
 	PORT_START("IN3")																				\
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )													\
-	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )													\
-	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )													\
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )  /* Coin 1 - AES has no coin slots, it's a console */	\
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )  /* Coin 2 - AES has no coin slots, it's a console */	\
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )  /* Service Coin - not used, AES is a console */	\
+	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
+	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SPECIAL ) /* what is this? */								\
 	PORT_BIT( 0x00c0, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_calendar_status, NULL)			\
 	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_audio_result, NULL)
@@ -1053,7 +1053,7 @@ static const ym2610_interface ym2610_config =
 	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
 	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SPECIAL ) /* what is this? */							\
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* what is this? - is 0 for 1 or 2 slot MVS (and AES?)*/							\
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Enter BIOS") PORT_CODE(KEYCODE_F2)	\
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
@@ -1276,12 +1276,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( aes )
 	MDRV_IMPORT_FROM(neogeo)
 	MDRV_AES_CARTRIDGE_ADD("aes_multicart")
-//	MDRV_CARTSLOT_ADD("cart")
-//	MDRV_CARTSLOT_MANDATORY
-	
-//	MDRV_CARTSLOT_LOAD(aes_cart)
-	
-	MDRV_SOFTWARE_LIST_ADD("aes")
+//  MDRV_CARTSLOT_ADD("cart")
+//  MDRV_CARTSLOT_MANDATORY
+
+//  MDRV_CARTSLOT_LOAD(aes_cart)
+
+	MDRV_SOFTWARE_LIST_ADD("cart_list","aes")
 MACHINE_DRIVER_END
 
 /*************************************
@@ -1301,6 +1301,8 @@ ROM_START( aes )
 	ROMX_LOAD("neo-po.bin",  0x00000, 0x020000, CRC(16d0c132) SHA1(4e4a440cae46f3889d20234aebd7f8d5f522e22c), ROM_GROUPWORD | ROM_REVERSE | ROM_BIOS(1))	/* AES Console (Japan) Bios */
 	ROM_SYSTEM_BIOS( 1, "asia-aes",   "Asia AES" )
 	ROMX_LOAD("neo-epo.bin", 0x00000, 0x020000, CRC(d27a71f1) SHA1(1b3b22092f30c4d1b2c15f04d1670eb1e9fbea07), ROM_GROUPWORD | ROM_REVERSE | ROM_BIOS(2))	/* AES Console (Asia?) Bios */
+//	ROM_SYSTEM_BIOS( 2, "uni-bios_2_3","Universe Bios (Hack, Ver. 2.3)" )
+//	ROMX_LOAD( "uni-bios_2_3.rom",  0x00000, 0x020000, CRC(27664eb5) SHA1(5b02900a3ccf3df168bdcfc98458136fd2b92ac0), ROM_GROUPWORD | ROM_REVERSE | ROM_BIOS(3) ) /* Universe Bios v2.3 (hack) */
 
 	ROM_REGION( 0x200000, "maincpu", ROMREGION_ERASEFF )
 

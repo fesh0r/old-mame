@@ -133,8 +133,8 @@ static int nc_membank_rom_mask;
 static int nc_membank_internal_ram_mask;
 int nc_membank_card_ram_mask;
 
-static void nc100_machine_stop(running_machine *machine);
-static void nc200_machine_stop(running_machine *machine);
+static void nc100_machine_stop(running_machine &machine);
+static void nc200_machine_stop(running_machine &machine);
 
 /*
     Port 0x00:
@@ -378,7 +378,7 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 
 			mem_bank = mem_bank & nc_membank_internal_ram_mask;
 
-			addr = messram_get_ptr(devtag_get_device(machine, "messram")) + (mem_bank<<14);
+			addr = messram_get_ptr(machine->device("messram")) + (mem_bank<<14);
 
 			memory_set_bankptr(machine, bank1, addr);
 			memory_set_bankptr(machine, bank5, addr);
@@ -451,13 +451,13 @@ static void nc_common_restore_memory_from_stream(running_machine *machine)
 	/* get size of memory data stored */
 	mame_fread(file, &stored_size, sizeof(unsigned long));
 
-	if (stored_size > messram_get_size(devtag_get_device(machine, "messram")))
-		restore_size = messram_get_size(devtag_get_device(machine, "messram"));
+	if (stored_size > messram_get_size(machine->device("messram")))
+		restore_size = messram_get_size(machine->device("messram"));
 	else
 		restore_size = stored_size;
 
 	/* read as much as will fit into memory */
-	mame_fread(file, messram_get_ptr(devtag_get_device(machine, "messram")), restore_size);
+	mame_fread(file, messram_get_ptr(machine->device("messram")), restore_size);
 	/* seek over remaining data */
 	mame_fseek(file, SEEK_CUR,stored_size - restore_size);
 }
@@ -465,7 +465,7 @@ static void nc_common_restore_memory_from_stream(running_machine *machine)
 /* store a block of memory to the nvram file */
 static void nc_common_store_memory_to_stream(running_machine *machine)
 {
-	UINT32 size = messram_get_size(devtag_get_device(machine, "messram"));
+	UINT32 size = messram_get_size(machine->device("messram"));
 	if (!file)
 		return;
 
@@ -474,7 +474,7 @@ static void nc_common_store_memory_to_stream(running_machine *machine)
 	mame_fwrite(file, &size, sizeof(UINT32));
 
 	/* write data block */
-	mame_fwrite(file, messram_get_ptr(devtag_get_device(machine, "messram")), size);
+	mame_fwrite(file, messram_get_ptr(machine->device("messram")), size);
 }
 
 static void nc_common_open_stream_for_reading(running_machine *machine)
@@ -711,9 +711,9 @@ static void nc_sound_update(running_machine *machine, int channel)
 	frequency = (int)(1000000.0f/((float)((period & 0x07fff)<<1) * 1.6276f));
 
 	/* set state */
-	beep_set_state(devtag_get_device(machine, beep_device), on);
+	beep_set_state(machine->device(beep_device), on);
 	/* set frequency */
-	beep_set_frequency(devtag_get_device(machine, beep_device), frequency);
+	beep_set_frequency(machine->device(beep_device), frequency);
 }
 
 static WRITE8_HANDLER(nc_sound_w)
@@ -779,7 +779,7 @@ static const unsigned long baud_rate_table[]=
 
 static TIMER_CALLBACK(nc_serial_timer_callback)
 {
-	running_device *uart = devtag_get_device(machine, "uart");
+	running_device *uart = machine->device("uart");
 
 	msm8251_transmit_clock(uart);
 	msm8251_receive_clock(uart);
@@ -813,7 +813,7 @@ static WRITE8_HANDLER(nc_uart_control_w)
 /* same for nc100 and nc200 */
 static void	nc_printer_update(running_machine *machine, UINT8 data)
 {
-	running_device *printer = devtag_get_device(machine, "centronics");
+	running_device *printer = machine->device("centronics");
 	centronics_strobe_w(printer, BIT(data, 6));
 }
 
@@ -952,7 +952,7 @@ static MACHINE_RESET( nc100 )
 	nc_common_open_stream_for_reading(machine);
 
 	{
-		running_device *rtc = devtag_get_device(machine, "rtc");
+		running_device *rtc = machine->device("rtc");
 		tc8521_load_stream(rtc, file);
 	}
 
@@ -964,14 +964,14 @@ static MACHINE_RESET( nc100 )
 	nc_irq_latch_mask = (1<<0) | (1<<1);
 }
 
-static void nc100_machine_stop(running_machine *machine)
+static void nc100_machine_stop(running_machine &machine)
 {
-	nc_common_open_stream_for_writing(machine);
+	nc_common_open_stream_for_writing(&machine);
 	{
-		running_device *rtc = devtag_get_device(machine, "rtc");
+		running_device *rtc = machine.device("rtc");
 		tc8521_save_stream(rtc, file);
 	}
-	nc_common_store_memory_to_stream(machine);
+	nc_common_store_memory_to_stream(&machine);
 	nc_common_close_stream();
 }
 
@@ -979,7 +979,7 @@ static MACHINE_START( nc100 )
 {
     nc_type = NC_TYPE_1xx;
 
-	add_exit_callback(machine, nc100_machine_stop);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, nc100_machine_stop);
 
 	/* keyboard timer */
 	nc_keyboard_timer = timer_alloc(machine, nc_keyboard_timer_callback, NULL);
@@ -1005,7 +1005,7 @@ static WRITE8_HANDLER(nc100_poweroff_control_w)
 /* nc100 version of card/battery status */
 static  READ8_HANDLER(nc100_card_battery_status_r)
 {
-	running_device *printer = devtag_get_device(space->machine, "centronics");
+	running_device *printer = space->machine->device("centronics");
 	int nc_card_battery_status = 0x0fc;
 
 	/* printer */
@@ -1147,7 +1147,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)		PORT_CHAR('=') PORT_CHAR('+')
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)			PORT_CHAR('7') PORT_CHAR('&')
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_TILDE)		PORT_CHAR('\\') PORT_CHAR('|')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_UP)			PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_UP)			PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Menu") PORT_CODE(KEYCODE_PGUP) PORT_CHAR(UCHAR_MAMEKEY(F4))
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U)			PORT_CHAR('u') PORT_CHAR('U')
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)			PORT_CHAR('m') PORT_CHAR('M')
@@ -1354,14 +1354,14 @@ static MACHINE_RESET( nc200 )
 	nc200_video_set_backlight(0);
 }
 
-static void nc200_machine_stop(running_machine *machine)
+static void nc200_machine_stop(running_machine &machine)
 {
-	nc_common_open_stream_for_writing(machine);
+	nc_common_open_stream_for_writing(&machine);
 	if (file)
 	{
 		mc146818_save_stream(file);
 	}
-	nc_common_store_memory_to_stream(machine);
+	nc_common_store_memory_to_stream(&machine);
 	nc_common_close_stream();
 }
 
@@ -1369,7 +1369,7 @@ static MACHINE_START( nc200 )
 {
     nc_type = NC_TYPE_200;
 
-	add_exit_callback(machine, nc200_machine_stop);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, nc200_machine_stop);
 
 	/* keyboard timer */
 	nc_keyboard_timer = timer_alloc(machine, nc_keyboard_timer_callback, NULL);
@@ -1434,7 +1434,7 @@ static  READ8_HANDLER(nc200_card_battery_status_r)
 
 static READ8_HANDLER(nc200_printer_status_r)
 {
-	running_device *printer = devtag_get_device(space->machine, "centronics");
+	running_device *printer = space->machine->device("centronics");
 	UINT8 result = 0;
 
 	result |= centronics_busy_r(printer);
@@ -1457,7 +1457,7 @@ static WRITE8_HANDLER(nc200_uart_control_w)
 	}
 
 	/* bit 5 is used in disk interface */
-	LOG_DEBUG(("bit 5: PC: %04x %02x\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), data & (1 << 5)));
+	LOG_DEBUG(("bit 5: PC: %04x %02x\n", cpu_get_pc(space->machine->device("maincpu")), data & (1 << 5)));
 }
 
 
@@ -1475,8 +1475,8 @@ static WRITE8_HANDLER(nc200_uart_control_w)
 
 static WRITE8_HANDLER(nc200_memory_card_wait_state_w)
 {
-	running_device *fdc = devtag_get_device(space->machine, "upd765");
-	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), data));
+	running_device *fdc = space->machine->device("upd765");
+	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n", cpu_get_pc(space->machine->device("maincpu")), data));
 #if 0
 	floppy_drive_set_motor_state(0, 1);
 	floppy_drive_set_ready_state(0, 1, 1);
@@ -1489,7 +1489,7 @@ static WRITE8_HANDLER(nc200_memory_card_wait_state_w)
 /* bit 0 seems to be the same as nc100 */
 static WRITE8_HANDLER(nc200_poweroff_control_w)
 {
-	LOG_DEBUG(("nc200 power off: PC: %04x %02x\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), data));
+	LOG_DEBUG(("nc200 power off: PC: %04x %02x\n", cpu_get_pc(space->machine->device("maincpu")), data));
 
 	nc200_video_set_backlight(((data ^ (1 << 2)) >> 2) & 0x01);
 }
@@ -1590,7 +1590,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x01, 0x00, IPT_UNUSED)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)		PORT_CHAR('=') PORT_CHAR('+')
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_TILDE)		PORT_CHAR('\\') PORT_CHAR('|')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_UP)			PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Cursor Up (White)") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Menu") PORT_CODE(KEYCODE_PGUP) PORT_CHAR(UCHAR_MAMEKEY(F4))
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U)			PORT_CHAR('u') PORT_CHAR('U')
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)			PORT_CHAR('m') PORT_CHAR('M')
@@ -1629,28 +1629,28 @@ INPUT_PORTS_END
 /* Serial */
 static DEVICE_IMAGE_LOAD( nc_serial )
 {
-	running_device *uart = devtag_get_device(image->machine, "uart");
+	running_device *uart = image.device().machine->device("uart");
 
 	/* filename specified */
-	if (device_load_serial(image)==INIT_PASS)
+	if (device_load_serial(image)==IMAGE_INIT_PASS)
 	{
 		/* setup transmit parameters */
-		serial_device_setup(image, 9600, 8, 1, SERIAL_PARITY_NONE);
+		serial_device_setup(&image.device(), 9600, 8, 1, SERIAL_PARITY_NONE);
 
 		/* connect serial chip to serial device */
-		msm8251_connect_to_serial_device(uart, image);
+		msm8251_connect_to_serial_device(uart, &image.device());
 
 		/* and start transmit */
-		serial_device_set_transmit_state(image,1);
+		serial_device_set_transmit_state(&image.device(),1);
 
-		return INIT_PASS;
+		return IMAGE_INIT_PASS;
 	}
 
-	return INIT_FAIL;
+	return IMAGE_INIT_FAIL;
 
 }
 
-static DEVICE_GET_INFO( nc_serial )
+DEVICE_GET_INFO( nc_serial )
 {
 	switch ( state )
 	{
@@ -1664,7 +1664,8 @@ static DEVICE_GET_INFO( nc_serial )
 	}
 }
 
-#define NC_SERIAL	DEVICE_GET_INFO_NAME(nc_serial)
+DECLARE_LEGACY_IMAGE_DEVICE(NC_SERIAL, nc_serial);
+DEFINE_LEGACY_IMAGE_DEVICE(NC_SERIAL, nc_serial);
 
 #define MDRV_NC_SERIAL_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, NC_SERIAL, 0)
@@ -1733,9 +1734,9 @@ static const floppy_config nc200_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(pc),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( nc200 )

@@ -110,9 +110,8 @@ static const UINT8 sam_video_mode_row_pitches[] =
 INLINE sam6883_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->token != NULL);
 
-	return (sam6883_t *)device->token;
+	return (sam6883_t *)downcast<legacy_device_base *>(device)->token();
 }
 
 static void update_sam(running_device *device)
@@ -224,7 +223,7 @@ const UINT8 *sam6883_videoram(running_device *device,int scanline)
 		logerror("sam_m6847_get_video_ram(): scanline=%d video_position=0x%04X\n", scanline, video_position);
 
 	/* return actual position */
-	ram_base = sam->intf->get_rambase ? sam->intf->get_rambase(device) : messram_get_ptr(devtag_get_device(device->machine, "messram"));
+	ram_base = sam->intf->get_rambase ? sam->intf->get_rambase(device) : messram_get_ptr(device->machine->device("messram"));
 	return &ram_base[video_position];
 }
 
@@ -253,9 +252,9 @@ static void common_start(running_device *device, SAM6883_VERSION device_type)
 	// validate arguments
 	assert(device != NULL);
 	assert(device->tag() != NULL);
-	assert(device->baseconfig().static_config != NULL);
+	assert(device->baseconfig().static_config() != NULL);
 
-	sam->intf = (const sam6883_interface*)device->baseconfig().static_config;
+	sam->intf = (const sam6883_interface*)device->baseconfig().static_config();
 
 	sam->type = device_type;
 
@@ -293,7 +292,6 @@ DEVICE_GET_INFO( sam6883 )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(sam6883_t);					break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(sam6883);		break;
@@ -322,3 +320,6 @@ DEVICE_GET_INFO( sam6883_gime )
 		default:										DEVICE_GET_INFO_CALL(sam6883);				break;
 	}
 }
+
+DEFINE_LEGACY_DEVICE(SAM6883, sam6883);
+DEFINE_LEGACY_DEVICE(SAM6883_GIME, sam6883_gime);

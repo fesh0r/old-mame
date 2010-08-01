@@ -31,7 +31,7 @@
 
 static TIMER_DEVICE_CALLBACK( keyboard_tick )
 {
-	amu880_state *state = (amu880_state *)timer->machine->driver_data;
+	amu880_state *state = (amu880_state *)timer.machine->driver_data;
 
 	state->key_y++;
 
@@ -320,7 +320,7 @@ static const z80sio_interface sio_intf =
 
 /* Z80 Daisy Chain */
 
-static const z80_daisy_chain amu880_daisy_chain[] =
+static const z80_daisy_config amu880_daisy_chain[] =
 {
 	{ Z80CTC_TAG },
 	{ Z80SIO_TAG },
@@ -336,7 +336,7 @@ static MACHINE_START( amu880 )
 	amu880_state *state = (amu880_state *)machine->driver_data;
 
 	/* find devices */
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* find memory regions */
 	state->keyboard_rom = memory_region(machine, "keyboard");
@@ -352,7 +352,8 @@ static const cassette_config amu880_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
 };
 
 /* F4 Character Displayer */

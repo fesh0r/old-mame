@@ -9,6 +9,8 @@
 
     TODO:
 
+	CreatiVision
+
     - fix Diagnostic A (video) sprites generator test
     - proper keyboard emulation, need keyboard schematics
     - memory expansion 16K, can be chained
@@ -19,6 +21,108 @@
         * Christmas Demo 1.0
         * Titanic Frogger Demo 1.0
         * Titanic Frogger Demo 1.1
+
+	Salora Manager
+
+	- keyboard Ctrl+I/J/N don't print out BASIC commands
+	- RAM mapping
+	- cassette (figure out correct input level)
+	- floppy (interface cartridge needed)
+
+*/
+
+/*
+
+Salora Manager
+
+PCB Layout
+----------
+
+Main board
+
+35 0352 02
+700391F
+
+|-------------------------------------------------------------------------------|
+|               |-----CN1-----|             |-----CN2-----|                     |
+|                                                                   10.738MHz   --|
+|                                   4116                                    CN3   |
+|       ROM01                                               VDC                   |
+|                                   4116                                        --|
+|                                                                               |
+|       ROM23                       4116    -                                   |
+|                                           |                                   |
+|                                   4116    |                                   |
+|   LS04                                   CN6                                  --|
+|                                   4116    |                  6821               |
+|   LS32                                    |                                     |
+|                                   4116    -                                     |
+|   LS139                                           PSG                           |
+|                                   4116                                          |
+|   LS138                                                                         |
+|                                   4116                                    CN4   |
+|   LS244                                                                         |
+|                                                                                 |
+|   LS245                                                                         |
+|                                                                                 |
+|                   LS244                                                         |
+|       6502                                                                    --|
+|                   LS244                                                       |
+|                                           |-------------CN5-------------|     |
+|-------------------------------------------------------------------------------|
+
+Notes:
+All IC's shown. Prototype-ish board, with many jumper wires and extra capacitors.
+
+ROM01   - Toshiba TMM2464P 8Kx8 one-time PROM, labeled "0.1"
+ROM23   - Toshiba TMM2464P 8Kx8 one-time PROM, labeled "23"
+6502    - Rockwell R6502AP 8-bit Microprocessor
+6821    - Hitachi HD468B21P Peripheral Interface Adaptor
+VDC     - Texas Instruments TMS9929A Video Display Controller (covered w/heatsink)
+PSG     - Texas Instruments SN76489AN Programmable Sound Generator
+4116    - Toshiba TMM416P-3 16Kx1 RAM (covered w/heatsink)
+CN1     - sub board connector (17x2 pin header)
+CN2     - RF board connector (17x1 pin header)
+CN3     - printer connector (7x2 PCB edge male)
+CN4     - expansion connector (30x2 PCB edge male)
+CN5     - cartridge connector (18x2 PCB edge female)
+CN6		- keyboard connector (16x1 pin header)
+
+
+Sub board
+
+700472
+35 0473 03
+
+|---------------------------------------|
+|   17.73447MHz |-----CN1-----|         |
+|                                       |
+|   74S04                       4116    |
+|                                       |
+|   LS90                        4116    |
+|                                       |
+|   LS10                        4116    |
+|                                       |
+|   LS367                       4116    |
+|                                       |
+|   LS393                       4116    |
+|                                       |
+|   LS244                       4116    |
+|                                       |
+|   LS257                       4116    |
+|                                       |
+|   LS257                       4116    |
+|                                       |
+|                               LS139   |
+|                                       |
+|---------------------------------------|
+
+Notes:
+All IC's shown.
+
+4116    - Toshiba TMM416P-3 16Kx1 RAM
+CN1     - main board connector (17x2 pin header)
+
 */
 
 #include "emu.h"
@@ -26,6 +130,8 @@
 #include "cpu/m6502/m6502.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
+#include "devices/flopdrv.h"
+#include "formats/basicdsk.h"
 #include "machine/ctronics.h"
 #include "machine/6821pia.h"
 #include "sound/sn76496.h"
@@ -33,7 +139,13 @@
 #include "video/tms9928a.h"
 #include "devices/messram.h"
 
-/* Read/Write Handlers */
+/***************************************************************************
+    READ/WRITE HANDLERS
+***************************************************************************/
+
+/*-------------------------------------------------
+    centronics_status_r - centronics status
+-------------------------------------------------*/
 
 static READ8_DEVICE_HANDLER( centronics_status_r )
 {
@@ -44,12 +156,22 @@ static READ8_DEVICE_HANDLER( centronics_status_r )
 	return 0;
 }
 
+/*-------------------------------------------------
+    centronics_ctrl_w - centronics control
+-------------------------------------------------*/
+
 static WRITE8_DEVICE_HANDLER( centronics_ctrl_w )
 {
 	centronics_strobe_w(device, BIT(data, 4));
 }
 
-/* Memory Map */
+/***************************************************************************
+    MEMORY MAPS
+***************************************************************************/
+
+/*-------------------------------------------------
+    ADDRESS_MAP( crvision_map )
+-------------------------------------------------*/
 
 static ADDRESS_MAP_START( crvision_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x0c00) AM_RAM
@@ -64,15 +186,41 @@ static ADDRESS_MAP_START( crvision_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe800, 0xe800) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
 	AM_RANGE(0xe801, 0xe801) AM_DEVREADWRITE(CENTRONICS_TAG, centronics_status_r, centronics_ctrl_w)
 //  AM_RANGE(0xe802, 0xf7ff) AM_RAMBANK(4)
-	AM_RANGE(0xf800, 0xffff) AM_ROM
+	AM_RANGE(0xf800, 0xffff) AM_ROM AM_REGION(M6502_TAG, 0)
 ADDRESS_MAP_END
 
-/* Input Ports */
+/*-------------------------------------------------
+    ADDRESS_MAP( lasr2001_map )
+-------------------------------------------------*/
+
+static ADDRESS_MAP_START( lasr2001_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x0c00) AM_RAM
+	AM_RANGE(0x1000, 0x1003) AM_MIRROR(0x0ffc) AM_DEVREADWRITE(PIA6821_TAG, pia6821_r, pia6821_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_READ(TMS9928A_vram_r)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x0ffe) AM_READ(TMS9928A_register_r)
+	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffe) AM_WRITE(TMS9928A_vram_w)
+	AM_RANGE(0x3001, 0x3001) AM_MIRROR(0x0ffe) AM_WRITE(TMS9928A_register_w)
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(BANK_ROM2)
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(BANK_ROM1)
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(M6502_TAG, 0)
+ADDRESS_MAP_END
+
+/***************************************************************************
+    INPUT PORTS
+***************************************************************************/
+
+/*-------------------------------------------------
+    INPUT_CHANGED( trigger_nmi )
+-------------------------------------------------*/
 
 static INPUT_CHANGED( trigger_nmi )
 {
 	cputag_set_input_line(field->port->machine, M6502_TAG, INPUT_LINE_NMI, (input_port_read(field->port->machine, "NMI") ? CLEAR_LINE : ASSERT_LINE));
 }
+
+/*-------------------------------------------------
+    INPUT_PORTS( crvision )
+-------------------------------------------------*/
 
 static INPUT_PORTS_START( crvision )
 	// Player 1 Joystick
@@ -239,7 +387,127 @@ static INPUT_PORTS_START( crvision )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START ) PORT_NAME("Reset") PORT_CODE(KEYCODE_F10) PORT_CHANGED(trigger_nmi, 0)
 INPUT_PORTS_END
 
-/* Machine Interface */
+/*-------------------------------------------------
+    INPUT_PORTS( manager )
+-------------------------------------------------*/
+
+static INPUT_PORTS_START( manager )
+	PORT_START("ROW0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER) PORT_CHAR('\r')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('-')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('E') PORT_CHAR('e')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('S') PORT_CHAR('s')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('X') PORT_CHAR('x')
+
+	PORT_START("ROW1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x84 \xC3\xA4") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0x00C4) PORT_CHAR(0x00E4)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR(';') PORT_CHAR('+')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('"')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('W') PORT_CHAR('w')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('A') PORT_CHAR('a')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('Z') PORT_CHAR('z')
+
+	PORT_START("ROW2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('I') PORT_CHAR('i')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x85 \xC3\xA5") PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR(0x00C5) PORT_CHAR(0x00E5)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!') 
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q) PORT_CHAR('Q') PORT_CHAR('q')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
+
+	PORT_START("ROW3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('N') PORT_CHAR('n')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('X') PORT_CHAR('x')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x96 \xC3\xB6") PORT_CODE(KEYCODE_COLON) PORT_CHAR(0x00D6) PORT_CHAR(0x00F6)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR(':') PORT_CHAR('*')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_R) PORT_CHAR('R') PORT_CHAR('r')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('D') PORT_CHAR('d')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('C') PORT_CHAR('c')
+
+	PORT_START("ROW4")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('P') PORT_CHAR('p')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_T) PORT_CHAR('T') PORT_CHAR('t')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F') PORT_CHAR('f')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('V') PORT_CHAR('v')
+
+	PORT_START("ROW5")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J) PORT_CHAR('J') PORT_CHAR('j')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L) PORT_CHAR('L') PORT_CHAR('l')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR('=')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('Y') PORT_CHAR('y')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('G') PORT_CHAR('g')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('B') PORT_CHAR('b')
+
+	PORT_START("ROW6")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) 
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('S') PORT_CHAR('s')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_K) PORT_CHAR('K') PORT_CHAR('k')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR(')')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U) PORT_CHAR('U') PORT_CHAR('u')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('H') PORT_CHAR('h')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('N') PORT_CHAR('n')
+
+	PORT_START("ROW7")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('X') PORT_CHAR('x')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('N') PORT_CHAR('n')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O) PORT_CHAR('O') PORT_CHAR('o')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('I') PORT_CHAR('i')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J) PORT_CHAR('J') PORT_CHAR('j')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('M') PORT_CHAR('m')
+	
+	PORT_START("JOY0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
+
+	PORT_START("JOY1")
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
+
+	PORT_START("JOY2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+
+	PORT_START("JOY3")
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+INPUT_PORTS_END
+
+/***************************************************************************
+    DEVICE CONFIGURATION
+***************************************************************************/
+
+/*-------------------------------------------------
+    TMS9928a_interface tms9918_intf
+-------------------------------------------------*/
 
 static INTERRUPT_GEN( crvision_int )
 {
@@ -259,6 +527,10 @@ static const TMS9928a_interface tms9918_intf =
 	crvision_vdp_interrupt
 };
 
+/*-------------------------------------------------
+    TMS9928a_interface tms9929_intf
+-------------------------------------------------*/
+
 static const TMS9928a_interface tms9929_intf =
 {
 	TMS9929,
@@ -267,7 +539,23 @@ static const TMS9928a_interface tms9929_intf =
 	crvision_vdp_interrupt
 };
 
-static WRITE8_DEVICE_HANDLER( crvision_pia_porta_w )
+/*-------------------------------------------------
+    TMS9928a_interface tms9929a_intf
+-------------------------------------------------*/
+
+static const TMS9928a_interface tms9929a_intf =
+{
+	TMS9929A,
+	0x4000,
+	0, 0,
+	crvision_vdp_interrupt
+};
+
+/*-------------------------------------------------
+    pia6821_interface pia_intf
+-------------------------------------------------*/
+
+static WRITE8_DEVICE_HANDLER( pia_pa_w )
 {
 	/*
         Signal  Description
@@ -322,7 +610,7 @@ static UINT8 read_keyboard(running_machine *machine, int pa)
 	return 0xff;
 }
 
-static READ8_DEVICE_HANDLER( crvision_pia_porta_r )
+static READ8_DEVICE_HANDLER( pia_pa_r )
 {
 	/*
         PA0     Keyboard raster player 1 output (joystick)
@@ -344,7 +632,7 @@ static READ8_DEVICE_HANDLER( crvision_pia_porta_r )
 	return data;
 }
 
-static READ8_DEVICE_HANDLER( crvision_pia_portb_r )
+static READ8_DEVICE_HANDLER( pia_pb_r )
 {
 	/*
         Signal  Description
@@ -371,64 +659,237 @@ static READ8_DEVICE_HANDLER( crvision_pia_portb_r )
 	return data;
 }
 
-static READ_LINE_DEVICE_HANDLER( crvision_pia_cb1_r )
+static const pia6821_interface pia_intf =
 {
-	crvision_state *state = (crvision_state *)device->machine->driver_data;
+	DEVCB_HANDLER(pia_pa_r),							// input A
+	DEVCB_HANDLER(pia_pb_r),							// input B
+	DEVCB_LINE_VCC,										// input CA1 (+5V)
+	DEVCB_DEVICE_LINE(SN76489_TAG, sn76496_ready_r),	// input CB1
+	DEVCB_LINE_VCC,										// input CA2 (+5V)
+	DEVCB_LINE_VCC,										// input CB2 (+5V)
+	DEVCB_HANDLER(pia_pa_w),							// output A
+	DEVCB_DEVICE_HANDLER(SN76489_TAG, sn76496_w),		// output B
+	DEVCB_NULL,											// output CA2
+	DEVCB_NULL,											// output CB2 (SN76489 pin CE_)
+	DEVCB_NULL,											// irq A
+	DEVCB_NULL											// irq B
+};
 
-	return sn76496_ready_r(state->sn76489, 0);
-}
+/*-------------------------------------------------
+    pia6821_interface lasr2001_pia_intf
+-------------------------------------------------*/
 
-static WRITE_LINE_DEVICE_HANDLER( crvision_pia_cb2_w )
-{
-}
-
-static WRITE8_DEVICE_HANDLER( crvision_pia_portb_w )
+static READ8_DEVICE_HANDLER( lasr2001_pia_pa_r )
 {
 	/*
         Signal  Description
 
-        PB0     SN76489 data output
-        PB1     SN76489 data output
-        PB2     SN76489 data output
-        PB3     SN76489 data output
-        PB4     SN76489 data output
-        PB5     SN76489 data output
-        PB6     SN76489 data output
-        PB7     SN76489 data output
+        PA0     Keyboard column 0
+        PA1     Keyboard column 1
+        PA2     Keyboard column 2
+        PA3     Keyboard column 3
+        PA4     Keyboard column 4
+        PA5     Keyboard column 5
+        PA6     Keyboard column 6
+        PA7     Keyboard column 7
     */
 
 	crvision_state *state = (crvision_state *)device->machine->driver_data;
 
-	sn76496_w(state->sn76489, 0, data);
+	UINT8 data = 0xff;
+
+	if (!BIT(state->keylatch, 0)) data &= input_port_read(device->machine, "ROW0");
+	if (!BIT(state->keylatch, 1)) data &= input_port_read(device->machine, "ROW1");
+	if (!BIT(state->keylatch, 2)) data &= input_port_read(device->machine, "ROW2");
+	if (!BIT(state->keylatch, 3)) data &= input_port_read(device->machine, "ROW3");
+	if (!BIT(state->keylatch, 4)) data &= input_port_read(device->machine, "ROW4");
+	if (!BIT(state->keylatch, 5)) data &= input_port_read(device->machine, "ROW5");
+	if (!BIT(state->keylatch, 6)) data &= input_port_read(device->machine, "ROW6");
+	if (!BIT(state->keylatch, 7)) data &= input_port_read(device->machine, "ROW7");
+
+	return data;
 }
 
-static const pia6821_interface crvision_pia_intf =
+static WRITE8_DEVICE_HANDLER( lasr2001_pia_pa_w )
 {
-	DEVCB_HANDLER(crvision_pia_porta_r),	// input A
-	DEVCB_HANDLER(crvision_pia_portb_r),	// input B
-	DEVCB_LINE_VCC,							// input CA1 (+5V)
-	DEVCB_LINE(crvision_pia_cb1_r),			// input CB1 (SN76489 pin READY )
-	DEVCB_LINE_VCC,							// input CA2 (+5V)
-	DEVCB_LINE_VCC,							// input CB2 (+5V)
-	DEVCB_HANDLER(crvision_pia_porta_w),	// output A
-	DEVCB_HANDLER(crvision_pia_portb_w),	// output B (SN76489 pins D0-D7)
-	DEVCB_NULL,								// output CA2
-	DEVCB_LINE(crvision_pia_cb2_w),			// output CB2 (SN76489 pin CE_)
-	DEVCB_NULL,								// irq A
-	DEVCB_NULL								// irq B
+	/*
+        PA0     Joystick player 1 output 0
+        PA1     Joystick player 1 output 1
+        PA2     Joystick player 2 output 0
+        PA3     Joystick player 2 output 1
+        PA4     ?
+        PA5     ?
+        PA6     ?
+        PA7     ?
+    */
+
+	crvision_state *state = (crvision_state *)device->machine->driver_data;
+
+	state->joylatch = data;
+}
+
+static READ8_DEVICE_HANDLER( lasr2001_pia_pb_r )
+{
+	crvision_state *state = (crvision_state *)device->machine->driver_data;
+
+	UINT8 data = 0xff;
+
+	if (!BIT(state->joylatch, 0)) data &= input_port_read(device->machine, "JOY0");
+	if (!BIT(state->joylatch, 1)) data &= input_port_read(device->machine, "JOY1");
+	if (!BIT(state->joylatch, 2)) data &= input_port_read(device->machine, "JOY2");
+	if (!BIT(state->joylatch, 3)) data &= input_port_read(device->machine, "JOY3");
+
+	return data;
+}
+
+static WRITE8_DEVICE_HANDLER( lasr2001_pia_pb_w )
+{
+	/*
+        Signal  Description
+
+        PB0     Keyboard row 0, PSG data 7, centronics data 0
+        PB1     Keyboard row 1, PSG data 6, centronics data 1
+        PB2     Keyboard row 2, PSG data 5, centronics data 2
+        PB3     Keyboard row 3, PSG data 4, centronics data 3
+        PB4     Keyboard row 4, PSG data 3, centronics data 4
+        PB5     Keyboard row 5, PSG data 2, centronics data 5
+        PB6     Keyboard row 6, PSG data 1, centronics data 6
+        PB7     Keyboard row 7, PSG data 0, centronics data 7
+    */
+
+	crvision_state *state = (crvision_state *)device->machine->driver_data;
+
+	/* keyboard latch */
+	state->keylatch = data;
+	
+	/* centronics data */
+	centronics_data_w(device, 0, data);
+}
+
+static READ_LINE_DEVICE_HANDLER( lasr2001_pia_ca1_r )
+{
+	return cassette_input(device) > -0.1469;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( lasr2001_pia_ca2_w )
+{
+	cassette_output(device, state ? +1.0 : -1.0);
+}
+
+static READ_LINE_DEVICE_HANDLER( lasr2001_pia_cb1_r )
+{
+	crvision_state *state = (crvision_state *)device->machine->driver_data;
+	
+	/* actually this is a diode-AND (READY & _BUSY), but ctronics.c returns busy status if printer image is not mounted -> Manager won't boot */
+	return sn76496_ready_r(state->psg) & (centronics_not_busy_r(state->centronics) | pia6821_get_output_ca2_z(device));
+}
+
+static WRITE_LINE_DEVICE_HANDLER( lasr2001_pia_cb2_w )
+{
+	crvision_state *driver_state = (crvision_state *)device->machine->driver_data;
+
+	if (pia6821_get_output_ca2_z(device))
+	{
+		if (!state) sn76496_w(driver_state->psg, 0, driver_state->keylatch);
+	}
+	else
+	{
+		centronics_strobe_w(driver_state->centronics, state);
+	}
+}
+
+static const pia6821_interface lasr2001_pia_intf =
+{
+	DEVCB_HANDLER(lasr2001_pia_pa_r),							// input A
+	DEVCB_HANDLER(lasr2001_pia_pb_r),							// input B
+	DEVCB_DEVICE_LINE(CASSETTE_TAG, lasr2001_pia_ca1_r),		// input CA1
+	DEVCB_LINE(lasr2001_pia_cb1_r),								// input CB1
+	DEVCB_LINE_GND,												// input CA2
+	DEVCB_LINE_VCC,												// input CB2 (+5V)
+	DEVCB_HANDLER(lasr2001_pia_pa_w),							// output A
+	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, lasr2001_pia_pb_w),	// output B
+	DEVCB_DEVICE_LINE(CASSETTE_TAG, lasr2001_pia_ca2_w),		// output CA2
+	DEVCB_LINE(lasr2001_pia_cb2_w),								// output CB2
+	DEVCB_NULL,													// irq A (floating)
+	DEVCB_NULL													// irq B (floating)
 };
+
+/*-------------------------------------------------
+    cassette_config crvision_cassette_config
+-------------------------------------------------*/
+
+static const cassette_config crvision_cassette_config =
+{
+	cassette_default_formats,
+	NULL,
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
+};
+
+/*-------------------------------------------------
+    cassette_config lasr2001_cassette_config
+-------------------------------------------------*/
+
+static const cassette_config lasr2001_cassette_config =
+{
+	cassette_default_formats,
+	NULL,
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL
+};
+
+/*-------------------------------------------------
+    floppy_config lasr2001_floppy_config
+-------------------------------------------------*/
+
+static const floppy_config lasr2001_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_STANDARD_5_25_SSDD,
+	FLOPPY_OPTIONS_NAME(default),
+	NULL
+};
+
+/*-------------------------------------------------
+    centronics_interface lasr2001_centronics_intf
+-------------------------------------------------*/
+
+static const centronics_interface lasr2001_centronics_intf =
+{
+	FALSE,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE(PIA6821_TAG, pia6821_cb1_w)
+};
+
+/***************************************************************************
+    MACHINE INITIALIZATION
+***************************************************************************/
+
+/*-------------------------------------------------
+    MACHINE_START( creativision )
+-------------------------------------------------*/
 
 static MACHINE_START( creativision )
 {
 	crvision_state *state = (crvision_state *)machine->driver_data;
 
 	/* find devices */
-	state->sn76489 = devtag_get_device(machine, SN76489_TAG);
-	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->psg = machine->device(SN76489_TAG);
+	state->cassette = machine->device(CASSETTE_TAG);
+	state->centronics = machine->device(CENTRONICS_TAG);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keylatch);
 }
+
+/*-------------------------------------------------
+    MACHINE_START( ntsc )
+-------------------------------------------------*/
 
 static MACHINE_START( ntsc )
 {
@@ -437,6 +898,10 @@ static MACHINE_START( ntsc )
 	TMS9928A_configure(&tms9918_intf);
 }
 
+/*-------------------------------------------------
+    MACHINE_START( pal )
+-------------------------------------------------*/
+
 static MACHINE_START( pal )
 {
 	MACHINE_START_CALL(creativision);
@@ -444,25 +909,40 @@ static MACHINE_START( pal )
 	TMS9928A_configure(&tms9929_intf);
 }
 
+/*-------------------------------------------------
+    MACHINE_START( lasr2001 )
+-------------------------------------------------*/
+
+static MACHINE_START( lasr2001 )
+{
+	MACHINE_START_CALL(creativision);
+
+	TMS9928A_configure(&tms9929a_intf);
+}
+
+/***************************************************************************
+    CARTRIDGE
+***************************************************************************/
+
 static DEVICE_IMAGE_LOAD( crvision_cart )
 {
 	UINT32 size;
 	UINT8 *temp_copy;
-	running_machine *machine = image->machine;
+	running_machine *machine = image.device().machine;
 	UINT8 *mem = memory_region(machine, M6502_TAG);
 	const address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 
-	if (image_software_entry(image) == NULL)
+	if (image.software_entry() == NULL)
 	{
-		size = image_length(image);
+		size = image.length();
 		temp_copy = auto_alloc_array(machine, UINT8, size);
-		image_fread(image, temp_copy, size);
+		image.fread( temp_copy, size);
 	}
 	else
 	{
-		size= image_get_software_region_length(image, "rom");
+		size= image.get_software_region_length("rom");
 		temp_copy = auto_alloc_array(machine, UINT8, size);
-		memcpy(temp_copy, image_get_software_region(image, "rom"), size);
+		memcpy(temp_copy, image.get_software_region("rom"), size);
 	}
 
 	switch (size)
@@ -539,7 +1019,7 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 
 	default:
 		auto_free(machine, temp_copy);
-		return INIT_FAIL;
+		return IMAGE_INIT_FAIL;
 	}
 
 	memory_configure_bank(machine, "bank1", 0, 1, mem + 0x8000, 0);
@@ -550,17 +1030,16 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 
 	auto_free(machine, temp_copy);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
-/* Machine Driver */
+/***************************************************************************
+    MACHINE DRIVERS
+***************************************************************************/
 
-static const cassette_config crvision_cassette_config =
-{
-	cassette_default_formats,
-	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
-};
+/*-------------------------------------------------
+    MACHINE_DRIVER_START( creativision )
+-------------------------------------------------*/
 
 static MACHINE_DRIVER_START( creativision )
 	MDRV_DRIVER_DATA(crvision_state)
@@ -579,7 +1058,7 @@ static MACHINE_DRIVER_START( creativision )
 	MDRV_SOUND_ROUTE(1, "mono", 0.25)
 
 	/* peripheral hardware */
-	MDRV_PIA6821_ADD(PIA6821_TAG, crvision_pia_intf)
+	MDRV_PIA6821_ADD(PIA6821_TAG, pia_intf)
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
@@ -589,7 +1068,7 @@ static MACHINE_DRIVER_START( creativision )
 	MDRV_CARTSLOT_LOAD(crvision_cart)
 
 	/* software lists */
-	MDRV_SOFTWARE_LIST_ADD("crvision")
+	MDRV_SOFTWARE_LIST_ADD("cart_list","crvision")
 
 	/* cassette */
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, crvision_cassette_config)
@@ -603,6 +1082,10 @@ static MACHINE_DRIVER_START( creativision )
 	MDRV_RAM_EXTRA_OPTIONS("15K") // 16K expansion (lower 14K available only, upper 2K shared with BIOS ROM)
 MACHINE_DRIVER_END
 
+/*-------------------------------------------------
+    MACHINE_DRIVER_START( ntsc )
+-------------------------------------------------*/
+
 static MACHINE_DRIVER_START( ntsc )
 	MDRV_IMPORT_FROM(creativision)
 
@@ -614,6 +1097,10 @@ static MACHINE_DRIVER_START( ntsc )
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 MACHINE_DRIVER_END
+
+/*-------------------------------------------------
+    MACHINE_DRIVER_START( pal )
+-------------------------------------------------*/
 
 static MACHINE_DRIVER_START( pal )
 	MDRV_IMPORT_FROM(creativision)
@@ -627,16 +1114,73 @@ static MACHINE_DRIVER_START( pal )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 MACHINE_DRIVER_END
 
-/* ROMs */
+/*-------------------------------------------------
+    MACHINE_DRIVER_START( lasr2001 )
+-------------------------------------------------*/
+
+static MACHINE_DRIVER_START( lasr2001 )
+	MDRV_DRIVER_DATA(crvision_state)
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD(M6502_TAG, M6502, 17734470/9)
+	MDRV_CPU_PROGRAM_MAP(lasr2001_map)
+	MDRV_CPU_VBLANK_INT(SCREEN_TAG, crvision_int)
+
+	MDRV_MACHINE_START(lasr2001)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(SN76489_TAG, SN76489A, 17734470/9)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MDRV_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MDRV_SOUND_ROUTE(1, "mono", 0.25)
+
+	/* peripheral hardware */
+	MDRV_PIA6821_ADD(PIA6821_TAG, lasr2001_pia_intf)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,rom")
+	MDRV_CARTSLOT_INTERFACE("crvision_cart")
+	MDRV_CARTSLOT_LOAD(crvision_cart)
+
+	/* software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","crvision")
+
+	/* cassette */
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, lasr2001_cassette_config)
+
+	/* floppy */
+	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, lasr2001_floppy_config)
+
+	/* printer */
+	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, lasr2001_centronics_intf)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+	MDRV_RAM_EXTRA_OPTIONS("32K")
+
+	/* video hardware */
+	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY(SCREEN_TAG)
+	MDRV_SCREEN_REFRESH_RATE((float)10738000/2/342/313)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+MACHINE_DRIVER_END
+
+/***************************************************************************
+    ROMS
+***************************************************************************/
 
 ROM_START( crvision )
     ROM_REGION( 0x10000, M6502_TAG, 0 )
-    ROM_LOAD( "crvision.u20", 0xf800, 0x0800, CRC(c3c590c6) SHA1(5ac620c529e4965efb5560fe824854a44c983757) )
+    ROM_LOAD( "crvision.u20", 0x0000, 0x0800, CRC(c3c590c6) SHA1(5ac620c529e4965efb5560fe824854a44c983757) )
 ROM_END
 
 ROM_START( fnvision )
     ROM_REGION( 0x10000, M6502_TAG, 0 )
-    ROM_LOAD( "funboot.rom",  0xf800, 0x0800, CRC(05602697) SHA1(c280b20c8074ba9abb4be4338b538361dfae517f) )
+    ROM_LOAD( "funboot.rom",  0x0000, 0x0800, CRC(05602697) SHA1(c280b20c8074ba9abb4be4338b538361dfae517f) )
 ROM_END
 
 #define rom_wizzard rom_crvision
@@ -645,18 +1189,29 @@ ROM_END
 #define rom_rameses rom_fnvision
 #define rom_vz2000 rom_fnvision
 
-/* System Drivers */
+ROM_START( manager )
+    ROM_REGION( 0x4000, M6502_TAG, 0 )
+    ROM_LOAD( "01", 0x0000, 0x2000, CRC(702f4cf5) SHA1(cd14ee74e787d24b76c166de484dae24206e219b) )
+    ROM_LOAD( "23", 0x2000, 0x2000, CRC(46489d88) SHA1(467f5bcd62d0b4117c443e13373df8f3c45df7b2) )
 
-/*    YEAR  NAME        PARENT    COMPAT  MACHINE     INPUT       INIT   COMPANY                   FULLNAME */
-CONS(	1982,	crvision,   0,          0,    pal,        crvision,	0,     "Video Technology",       "CreatiVision", 0 )
-CONS(	1982,	fnvision,   crvision,   0,    pal,        crvision,	0,     "Video Technology",       "FunVision", 0 )
-CONS(	1982,	crvisioj,   crvision,   0,    ntsc,       crvision,	0,     "Cheryco",                "CreatiVision (Japan)", 0 )
-CONS(	1982,	wizzard,    crvision,   0,    pal,        crvision,	0,     "Dick Smith Electronics", "Wizzard (Oceania)", 0 )
-CONS(	1982,	rameses,    crvision,   0,    pal,        crvision,	0,     "Hanimex",                "Rameses (Oceania)", 0 )
-CONS(	1983,	vz2000,     crvision,   0,    pal,        crvision,	0,     "Dick Smith Electronics", "VZ 2000 (Oceania)", 0 )
-CONS(	1983,	crvisio2,   crvision,   0,    pal,        crvision,	0,     "Video Technology",       "CreatiVision MK-II (Europe)", 0 )
+	ROM_REGION( 0x1000, "disk", 0 )
+	ROM_LOAD( "floppy interface cartridge", 0x0000, 0x1000, NO_DUMP )
+ROM_END
+
+/***************************************************************************
+    SYSTEM DRIVERS
+***************************************************************************/
+
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY                   FULLNAME */
+CONS( 1982,	crvision,   0,          0,		pal,		crvision,	0,		"Video Technology",			"CreatiVision", 0 )
+CONS( 1982,	fnvision,   crvision,   0,		pal,		crvision,	0,		"Video Technology",			"FunVision", 0 )
+CONS( 1982,	crvisioj,   crvision,   0,		ntsc,		crvision,	0,		"Cheryco",					"CreatiVision (Japan)", 0 )
+CONS( 1982,	wizzard,    crvision,   0,		pal,		crvision,	0,		"Dick Smith Electronics",	"Wizzard (Oceania)", 0 )
+CONS( 1982,	rameses,    crvision,   0,		pal,		crvision,	0,		"Hanimex",					"Rameses (Oceania)", 0 )
+CONS( 1983,	vz2000,     crvision,   0,		pal,		crvision,	0,		"Dick Smith Electronics",	"VZ 2000 (Oceania)", 0 )
+CONS( 1983,	crvisio2,   crvision,   0,		pal,		crvision,	0,		"Video Technology",			"CreatiVision MK-II (Europe)", 0 )
 /*
-COMP(   1983,   lasr2001,   0,          0,    lasr2001,   lasr2001, 0,     "Video Technology",       "Laser 2001", GAME_NOT_WORKING )
-COMP(   1983,   vz2001,     lasr2001,   0,    lasr2001,   lasr2001, 0,     "Dick Smith Electronics", "VZ 2001 (Oceania)", GAME_NOT_WORKING )
-COMP(   1983,   manager,    lasr2001,   0,    lasr2001,   lasr2001, 0,     "Salora",                 "Manager (Finland)", GAME_NOT_WORKING )
+COMP( 1983, lasr2001,   0,          0,      lasr2001,   lasr2001,   0,      "Video Technology",			"Laser 2001", GAME_NOT_WORKING )
+COMP( 1983, vz2001,     lasr2001,   0,      lasr2001,   lasr2001,   0,      "Dick Smith Electronics",	"VZ 2001 (Oceania)", GAME_NOT_WORKING )
 */
+COMP( 1983,	manager,	0,			0,		lasr2001,	manager,	0,		"Salora",					"Manager (Finland)", 0 )

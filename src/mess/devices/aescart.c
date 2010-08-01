@@ -96,8 +96,8 @@ static aescartridge_t *assemble_common(running_machine *machine, running_device 
 {
 	/* Pointer to the cartridge structure. */
 	aescartridge_t *cartridge;
-	running_device *cartsys = cartslot->owner;
-	aes_multicart_t *cartslots = (aes_multicart_t *)cartsys->token;
+	running_device *cartsys = cartslot->owner();
+	aes_multicart_t *cartslots = (aes_multicart_t *)downcast<legacy_device_base *>(cartsys)->token();
 	UINT8 *socketcont, *romrgn;
 	int reslength, i, blockofs;
 	char sprname1[16], sprname2[16];
@@ -217,12 +217,12 @@ static aescartridge_t *assemble_common(running_machine *machine, running_device 
 
 static void set_pointers(running_device *pcb, int index)
 {
-	running_device *cartsys = pcb->owner->owner;
-	aes_multicart_t *cartslots = (aes_multicart_t *)cartsys->token;
-	aes_pcb_t *pcb_def = (aes_pcb_t *)pcb->token;
+	running_device *cartsys = pcb->owner()->owner();
+	aes_multicart_t *cartslots = (aes_multicart_t *)downcast<legacy_device_base *>(cartsys)->token();
+	aes_pcb_t *pcb_def = (aes_pcb_t *)downcast<legacy_device_base *>(pcb)->token();
 
-	pcb_def->assemble = (assmfct *)pcb->get_config_fct(AESCART_FCT_ASSM);
-	pcb_def->disassemble = (assmfct *)pcb->get_config_fct(AESCART_FCT_DISASSM);
+	pcb_def->assemble = (assmfct *)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(AESCART_FCT_ASSM);
+	pcb_def->disassemble = (assmfct *)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(AESCART_FCT_DISASSM);
 
 	pcb_def->cartridge = &cartslots->cartridge[index];
 	pcb_def->cartridge->pcb = pcb;
@@ -237,7 +237,7 @@ static DEVICE_START(aes_pcb_none)
 {
 	/* device is aes_cartslot:cartridge:pcb */
 //  printf("DEVICE_START(aes_pcb_none), tag of device=%s\n", device->tag());
-	set_pointers(device, get_index_from_tagname(device->owner)-1);
+	set_pointers(device, get_index_from_tagname(device->owner())-1);
 }
 
 /*****************************************************************************
@@ -250,7 +250,7 @@ static DEVICE_START(aes_pcb_std)
 {
 	/* device is aes_cartslot:cartridge:pcb */
 //  printf("DEVICE_START(aes_pcb_std), tag of device=%s\n", device->tag());
-	set_pointers(device, get_index_from_tagname(device->owner)-1);
+	set_pointers(device, get_index_from_tagname(device->owner())-1);
 }
 
 /*
@@ -263,7 +263,7 @@ static int assemble_std(running_machine *machine, running_device *image)
 //  printf("assemble_std, %s\n", image->tag);
 	/*cart = */assemble_common(machine, image);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /*
@@ -278,7 +278,7 @@ static int disassemble_std(running_device *image)
 //  int slotnumber;
 //  int i;
 //  aescartridge_t *cart;
-//  running_device *cartsys = image->owner;
+//  running_device *cartsys = image->owner();
 //  aes_multicart_t *cartslots = (aes_multicart_t *)cartsys->token;
 
 //  slotnumber = get_index_from_tagname(image)-1;
@@ -304,7 +304,7 @@ static int disassemble_std(running_device *image)
 
 //  clear_slot(cartsys, slotnumber);
 
-	return INIT_PASS;
+	return IMAGE_INIT_PASS;
 }
 
 /*****************************************************************************
@@ -321,9 +321,6 @@ static DEVICE_GET_INFO(aes_cart_common)
 			break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:
 			info->i = 0;
-			break;
-		case DEVINFO_INT_CLASS:
-			info->i = DEVICE_CLASS_PERIPHERAL;
 			break;
 
 		/* --- the following bits of info are returned as pointers to functions --- */
@@ -364,7 +361,7 @@ static DEVICE_GET_INFO(aes_cart_common)
 	}
 }
 
-static DEVICE_GET_INFO(aes_cartridge_pcb_none)
+DEVICE_GET_INFO(aes_cartridge_pcb_none)
 {
 	switch(state)
 	{
@@ -397,22 +394,127 @@ DEVICE_GET_INFO(aes_cartridge_pcb_std)
 */
 static DEVICE_START( aes_cartridge )
 {
-	cartslot_t *cart = (cartslot_t *)device->token;
+	cartslot_t *cart = (cartslot_t *)downcast<legacy_device_base *>(device)->token();
 
 	/* find the PCB device */
 	cart->pcb_device = device->subdevice(TAG_PCB);
 }
 
 // handle protected carts
-static void install_protection(running_device* image)
+static void install_protection(device_image_interface& image)
 {
-	if(image_get_feature(image) == NULL)
+	neogeo_state *state = (neogeo_state *)image.device().machine->driver_data;
+	const char *crypt_feature = image.get_feature( "crypt" );
+
+	if(crypt_feature == NULL)
 		return;
-		
-	if(strcmp(image_get_feature(image),"fatfury2_prot") == 0)
+
+	if(strcmp(crypt_feature,"fatfury2_prot") == 0)
 	{
-		fatfury2_install_protection(image->machine);
+		fatfury2_install_protection(image.device().machine);
 		logerror("Installed Fatal Fury 2 protection\n");
+	}
+	if(strcmp(crypt_feature,"kof99_crypt") == 0)
+	{
+		kof99_decrypt_68k(image.device().machine);
+		state->fixed_layer_bank_type = 1;
+		kof99_neogeo_gfx_decrypt(image.device().machine, 0x00);
+		kof99_install_protection(image.device().machine);
+		logerror("Decrypted KOF99 code and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"mslug3_crypt") == 0)
+	{
+		state->fixed_layer_bank_type = 1;
+		kof99_neogeo_gfx_decrypt(image.device().machine, 0xad);
+		logerror("Decrypted Metal Slug 3 graphics\n");
+	}
+	if(strcmp(crypt_feature,"matrim_crypt") == 0)
+	{
+		matrim_decrypt_68k(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 1);
+		state->fixed_layer_bank_type = 2;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x6a);
+		logerror("Decrypted Matrimelee code, sound and graphics\n");
+	}
+	if(strcmp(crypt_feature,"svc_crypt") == 0)
+	{
+		svc_px_decrypt(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 3);
+		state->fixed_layer_bank_type = 2;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x57);
+		install_pvc_protection(image.device().machine);
+		logerror("Decrypted SvC code, sound and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"samsho5_crypt") == 0)
+	{
+		samsho5_decrypt_68k(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 4);
+		state->fixed_layer_bank_type = 1;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x0f);
+		logerror("Decrypted Samurai Shodown V code, sound and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"kof2000_crypt") == 0)
+	{
+		kof2000_decrypt_68k(image.device().machine);
+		state->fixed_layer_bank_type = 2;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x00);
+		kof2000_install_protection(image.device().machine);
+		logerror("Decrypted KOF2000 code, sound and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"kof2001_crypt") == 0)
+	{
+		state->fixed_layer_bank_type = 1;
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x1e);
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		logerror("Decrypted KOF2001 code and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"kof2002_crypt") == 0)
+	{
+		kof2002_decrypt_68k(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 0);
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0xec);
+		logerror("Decrypted KOF2002 code, sound and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"mslug4_crypt") == 0)
+	{
+		state->fixed_layer_bank_type = 1; /* USA violent content screen is wrong -- not a bug, confirmed on real hardware! */
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x31);
+		neo_pcm2_snk_1999(image.device().machine, 8);
+		logerror("Decrypted Metal Slug 4 code, sound and graphics.\n");
+	}
+	if(strcmp(crypt_feature,"mslug5_crypt") == 0)
+	{
+		mslug5_decrypt_68k(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 2);
+		state->fixed_layer_bank_type = 1;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x19);
+		install_pvc_protection(image.device().machine);
+		logerror("Decrypted Metal Slug 5 code and graphics, and installed protection routines.\n");
+	}
+	if(strcmp(crypt_feature,"kof2003_crypt") == 0)
+	{
+		kof2003h_decrypt_68k(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 5);
+		state->fixed_layer_bank_type = 2;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x9d);
+		install_pvc_protection(image.device().machine);
+		logerror("Decrypted KOF2003 code and graphicss, and installed protection routines.\n");
+	}
+	if(strcmp(crypt_feature,"samsho5s_crypt") == 0)
+	{
+		samsh5sp_decrypt_68k(image.device().machine);
+		neo_pcm2_swap(image.device().machine, 6);
+		state->fixed_layer_bank_type = 1;
+		neogeo_cmc50_m1_decrypt(image.device().machine);
+		kof2000_neogeo_gfx_decrypt(image.device().machine, 0x0d);
 	}
 }
 
@@ -428,66 +530,71 @@ static DEVICE_IMAGE_LOAD( aes_cartridge )
 	cartslot_t *cart;
 	multicart_open_error me;
 	UINT32 size;
-	running_device* ym = devtag_get_device(image->machine,"ymsnd");
+	running_device* ym = image.device().machine->device("ymsnd");
 
 	// first check software list
-	if(image_software_entry(image) != NULL)
+	if(image.software_entry() != NULL)
 	{
 		// create memory regions
-		size = image_get_software_region_length(image,"maincpu");
-		memory_region_free(image->machine,"maincpu");
-		memory_region_alloc(image->machine,"maincpu",size,0);
-		memcpy(memory_region(image->machine,"maincpu"),image_get_software_region(image,"maincpu"),size);
-		size = image_get_software_region_length(image,"fixed");
-		memory_region_free(image->machine,"fixed");
-		memory_region_alloc(image->machine,"fixed",size,ROMREGION_ERASEFF);
-		memcpy(memory_region(image->machine,"fixed"),image_get_software_region(image,"fixed"),size);
-		size = image_get_software_region_length(image,"audiocpu");
-		memory_region_free(image->machine,"audiocpu");
-		memory_region_alloc(image->machine,"audiocpu",size,ROMREGION_ERASEFF);
-		memcpy(memory_region(image->machine,"audiocpu"),image_get_software_region(image,"audiocpu"),size);
-		size = image_get_software_region_length(image,"ymsnd");
-		memory_region_free(image->machine,"ymsnd");
-		memory_region_alloc(image->machine,"ymsnd",size,ROMREGION_ERASEFF);
-		memcpy(memory_region(image->machine,"ymsnd"),image_get_software_region(image,"ymsnd"),size);
-		if(image_get_software_region(image,"ymsnd.deltat") != NULL)
+		size = image.get_software_region_length("maincpu");
+		image.device().machine->region_free("maincpu");
+		image.device().machine->region_alloc("maincpu",size,0);
+		memcpy(memory_region(image.device().machine,"maincpu"),image.get_software_region("maincpu"),size);
+		size = image.get_software_region_length("fixed");
+		image.device().machine->region_free("fixed");
+		image.device().machine->region_alloc("fixed",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image.device().machine,"fixed"),image.get_software_region("fixed"),size);
+		size = image.get_software_region_length("audiocpu");
+		image.device().machine->region_free("audiocpu");
+		image.device().machine->region_alloc("audiocpu",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image.device().machine,"audiocpu"),image.get_software_region("audiocpu"),size);
+		size = image.get_software_region_length("ymsnd");
+		image.device().machine->region_free("ymsnd");
+		image.device().machine->region_alloc("ymsnd",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image.device().machine,"ymsnd"),image.get_software_region("ymsnd"),size);
+		if(image.get_software_region("ymsnd.deltat") != NULL)
 		{
-			size = image_get_software_region_length(image,"ymsnd.deltat");
-			memory_region_free(image->machine,"ymsnd.deltat");
-			memory_region_alloc(image->machine,"ymsnd.deltat",size,ROMREGION_ERASEFF);
-			memcpy(memory_region(image->machine,"ymsnd.deltat"),image_get_software_region(image,"ymsnd.deltat"),size);
+			size = image.get_software_region_length("ymsnd.deltat");
+			image.device().machine->region_free("ymsnd.deltat");
+			image.device().machine->region_alloc("ymsnd.deltat",size,ROMREGION_ERASEFF);
+			memcpy(memory_region(image.device().machine,"ymsnd.deltat"),image.get_software_region("ymsnd.deltat"),size);
 		}
 		else
-			memory_region_free(image->machine,"ymsnd.deltat");  // removing the region will fix sound glitches in non-Delta-T games
-		
+			image.device().machine->region_free("ymsnd.deltat");  // removing the region will fix sound glitches in non-Delta-T games
 		ym->reset();
-		size = image_get_software_region_length(image,"sprites");
-		memory_region_free(image->machine,"sprites");
-		memory_region_alloc(image->machine,"sprites",size,ROMREGION_ERASEFF);
-		memcpy(memory_region(image->machine,"sprites"),image_get_software_region(image,"sprites"),size);
-		
+		size = image.get_software_region_length("sprites");
+		image.device().machine->region_free("sprites");
+		image.device().machine->region_alloc("sprites",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image.device().machine,"sprites"),image.get_software_region("sprites"),size);
+		if(image.get_software_region("audiocrypt") != NULL)  // encrypted Z80 code
+		{
+			size = image.get_software_region_length("audiocrypt");
+			image.device().machine->region_alloc("audiocrypt",size,ROMREGION_ERASEFF);
+			memcpy(memory_region(image.device().machine,"audiocrypt"),image.get_software_region("audiocrypt"),size);
+		}
+
 		// setup cartridge ROM area
-		memory_install_read_bank(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM),0x000080,0x0fffff,0,0,"cart_rom");
-		memory_set_bankptr(image->machine,"cart_rom",&memory_region(image->machine,"maincpu")[0x80]);
-		
+		memory_install_read_bank(cputag_get_address_space(image.device().machine,"maincpu",ADDRESS_SPACE_PROGRAM),0x000080,0x0fffff,0,0,"cart_rom");
+		memory_set_bankptr(image.device().machine,"cart_rom",&memory_region(image.device().machine,"maincpu")[0x80]);
+
 		// handle possible protection
 		install_protection(image);
-		
-		return INIT_PASS;
+
+		return IMAGE_INIT_PASS;
 	}
 
 	if (pcbdev == NULL)
 		fatalerror("Error loading multicart: no pcb found.");
 
 	/* If we are here, we have a multicart. */
-	pcb = (aes_pcb_t *)pcbdev->token;
-	cart = (cartslot_t *)image->token;
+	pcb = (aes_pcb_t *)downcast<legacy_device_base *>(pcbdev)->token();
+	cart = (cartslot_t *)downcast<legacy_device_base *>(&image.device())->token();
 
 	/* try opening this as a multicart */
 	/* This line requires that cartslot_t be included in cartslot.h,
     otherwise one cannot make use of multicart handling within such a
     custom LOAD function. */
-	me = multicart_open(image_filename(image), image->machine->gamedrv->name, MULTICART_FLAGS_LOAD_RESOURCES, &cart->mc);
+	me = multicart_open(image.filename(), image.device().machine->gamedrv->name, MULTICART_FLAGS_LOAD_RESOURCES, &cart->mc);
 
 	/* Now that we have loaded the image files, let the PCB put them all
     together. This means we put the images in a structure which allows
@@ -507,7 +614,7 @@ static DEVICE_IMAGE_UNLOAD( aes_cartridge )
 {
 	running_device *pcbdev;
 
-	if (image->token == NULL)
+	if (downcast<legacy_device_base *>(&image.device())->token() == NULL)
 	{
 		/* This means something went wrong during the pcb
            identification (e.g. one of the cartridge files was not
@@ -519,8 +626,8 @@ static DEVICE_IMAGE_UNLOAD( aes_cartridge )
 
 	if (pcbdev != NULL)
 	{
-		aes_pcb_t *pcb = (aes_pcb_t *)pcbdev->token;
-		cartslot_t *cart = (cartslot_t *)image->token;
+		aes_pcb_t *pcb = (aes_pcb_t *)downcast<legacy_device_base *>(pcbdev)->token();
+		cartslot_t *cart = (cartslot_t *)downcast<legacy_device_base *>(&image.device())->token();
 
 		//  printf("unload\n");
 		if (cart->mc != NULL)
@@ -557,7 +664,7 @@ static DEVICE_START(aes_multicart)
 {
 	int i;
 //  printf("DEVICE_START(aes_multicart)\n");
-	aes_multicart_t *cartslots = (aes_multicart_t *)device->token;
+	aes_multicart_t *cartslots = (aes_multicart_t *)downcast<legacy_device_base *>(device)->token();
 
 	/* Save this in the shortcut; we don't want to look for it each time
        that we have a memory access. And currently we do not plan for
@@ -611,9 +718,6 @@ DEVICE_GET_INFO(aes_multicart)
 		case DEVINFO_INT_TOKEN_BYTES: /* private storage, automatically allocated */
 			info->i = sizeof(aes_multicart_t);
 			break;
-		case DEVINFO_INT_CLASS:
-			info->i = DEVICE_CLASS_PERIPHERAL;
-			break;
 
 		case DEVINFO_STR_FAMILY:
 			strcpy(info->s, "Cartridge slot");
@@ -637,3 +741,6 @@ DEVICE_GET_INFO(aes_multicart)
 	}
 }
 
+DEFINE_LEGACY_CART_SLOT_DEVICE(AES_MULTICART, aes_multicart);
+DEFINE_LEGACY_CART_SLOT_DEVICE(AES_CARTRIDGE_PCB_NONE, aes_cartridge_pcb_none);
+DEFINE_LEGACY_CART_SLOT_DEVICE(AES_CARTRIDGE_PCB_STD, aes_cartridge_pcb_std);

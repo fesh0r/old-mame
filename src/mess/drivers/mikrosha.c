@@ -135,7 +135,8 @@ static const cassette_config mikrosha_cassette_config =
 {
 	rkm_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 
@@ -185,7 +186,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( mikrosha )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8080, XTAL_16MHz / 9)
+	MDRV_CPU_ADD("maincpu", I8080, XTAL_16MHz / 9)
 	MDRV_CPU_PROGRAM_MAP(mikrosha_mem)
 	MDRV_CPU_IO_MAP(mikrosha_io)
 

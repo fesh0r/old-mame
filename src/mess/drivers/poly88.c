@@ -139,13 +139,14 @@ static const cassette_config poly88_cassette_config =
 {
 	cassette_default_formats,
 	&poly88_cassette_options,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED),
+	NULL
 };
 
 
 static MACHINE_DRIVER_START( poly88 )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",8080, 1853000)
+    MDRV_CPU_ADD("maincpu",I8080, 1853000)
     MDRV_CPU_PROGRAM_MAP(poly88_mem)
     MDRV_CPU_IO_MAP(poly88_io)
     MDRV_CPU_VBLANK_INT("screen", poly88_interrupt)

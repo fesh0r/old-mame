@@ -46,6 +46,7 @@ struct cassette_config_t
 	const struct CassetteFormat*	const *formats;
 	const struct CassetteOptions	*create_opts;
 	const cassette_state			default_state;
+	const char *					interface;
 };
 
 
@@ -65,8 +66,7 @@ double cassette_get_position(running_device *cassette);
 double cassette_get_length(running_device *cassette);
 void cassette_seek(running_device *cassette, double time, int origin);
 
-#define CASSETTE	DEVICE_GET_INFO_NAME(cassette)
-DEVICE_GET_INFO(cassette);
+DECLARE_LEGACY_IMAGE_DEVICE(CASSETTE, cassette);
 
 /***************************************************************************
     DEVICE CONFIGURATION MACROS

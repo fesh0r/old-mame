@@ -159,10 +159,10 @@ static PALETTE_INIT( osborne1 )
 }
 
 
-static const z80_daisy_chain osborne1_daisy_chain[] =
+static const z80_daisy_config osborne1_daisy_chain[] =
 {
 /*  { osborne1_z80_reset, osborne1_z80_irq_state, osborne1_z80_irq_ack, osborne1_z80_irq_reti, 0 }, */
-	{ "osborne1_daisy" },
+    { "osborne1_daisy" },
 	{ NULL }
 };
 
@@ -215,9 +215,9 @@ static const floppy_config osborne1_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_SS_40,
+	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(osborne1),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 /* F4 Character Displayer */

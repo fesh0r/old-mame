@@ -17,6 +17,7 @@
 #include "machine/msm8251.h"
 #include "includes/b2m.h"
 #include "devices/messram.h"
+#include "devices/flopdrv.h"
 
 static READ8_HANDLER (b2m_keyboard_r )
 {
@@ -56,10 +57,10 @@ static void b2m_set_bank(running_machine *machine,int bank)
 		case 1 :
 						memory_unmap_write(space, 0xe000, 0xffff, 0, 0);
 
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
-						memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2800);
-						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x3000);
-						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x7000);
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
+						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x2800);
+						memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x3000);
+						memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x7000);
 						memory_set_bankptr(machine, "bank5", rom + 0x10000);
 						break;
 #if 0
@@ -67,8 +68,8 @@ static void b2m_set_bank(running_machine *machine,int bank)
 						memory_unmap_write(space, 0x3000, 0x6fff, 0, 0);
 						memory_unmap_write(space, 0xe000, 0xffff, 0, 0);
 
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
-						memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2800);
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
+						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x2800);
 						memory_set_bankptr(machine, "bank3", rom + 0x12000);
 						memory_set_bankptr(machine, "bank4", rom + 0x16000);
 						memory_set_bankptr(machine, "bank5", rom + 0x10000);
@@ -78,30 +79,30 @@ static void b2m_set_bank(running_machine *machine,int bank)
 						memory_unmap_write(space, 0x2800, 0x2fff, 0, 0);
 						memory_unmap_write(space, 0xe000, 0xffff, 0, 0);
 
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 						memory_install_read8_handler(space, 0x2800, 0x2fff, 0, 0, b2m_keyboard_r);
-						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000);
-						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x7000);
+						memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x10000);
+						memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x7000);
 						memory_set_bankptr(machine, "bank5", rom + 0x10000);
 						break;
 		case 3 :
 						memory_unmap_write(space, 0x2800, 0x2fff, 0, 0);
 						memory_unmap_write(space, 0xe000, 0xffff, 0, 0);
 
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 						memory_install_read8_handler(space, 0x2800, 0x2fff, 0, 0, b2m_keyboard_r);
-						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x14000);
-						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x7000);
+						memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x14000);
+						memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x7000);
 						memory_set_bankptr(machine, "bank5", rom + 0x10000);
 						break;
 		case 4 :
 						memory_unmap_write(space, 0x2800, 0x2fff, 0, 0);
 						memory_unmap_write(space, 0xe000, 0xffff, 0, 0);
 
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 						memory_install_read8_handler(space, 0x2800, 0x2fff, 0, 0, b2m_keyboard_r);
-						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x18000);
-						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x7000);
+						memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x18000);
+						memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x7000);
 						memory_set_bankptr(machine, "bank5", rom + 0x10000);
 
 						break;
@@ -109,19 +110,19 @@ static void b2m_set_bank(running_machine *machine,int bank)
 						memory_unmap_write(space, 0x2800, 0x2fff, 0, 0);
 						memory_unmap_write(space, 0xe000, 0xffff, 0, 0);
 
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 						memory_install_read8_handler(space, 0x2800, 0x2fff, 0, 0, b2m_keyboard_r);
-						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1c000);
-						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x7000);
+						memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x1c000);
+						memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x7000);
 						memory_set_bankptr(machine, "bank5", rom + 0x10000);
 
 						break;
 		case 6 :
-						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
-						memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2800);
-						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x3000);
-						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x7000);
-						memory_set_bankptr(machine, "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
+						memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
+						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x2800);
+						memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x3000);
+						memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x7000);
+						memory_set_bankptr(machine, "bank5", messram_get_ptr(machine->device("messram")) + 0xe000);
 						break;
 		case 7 :
 						memory_unmap_write(space, 0x0000, 0x27ff, 0, 0);
@@ -210,15 +211,22 @@ static WRITE8_DEVICE_HANDLER (b2m_ext_8255_portc_w )
 	UINT8 drive = ((data >> 1) & 1) ^ 1;
 	UINT8 side  = (data  & 1) ^ 1;
 	b2m_state *state = (b2m_state *)device->machine->driver_data;
+	floppy_mon_w(floppy_get_device(device->machine, 0), 1);
+	floppy_mon_w(floppy_get_device(device->machine, 1), 1);
 
 	if (state->b2m_drive!=drive) {
 		wd17xx_set_drive(state->fdc,drive);
+		floppy_mon_w(floppy_get_device(device->machine, 0), 0);			
+		floppy_drive_set_ready_state(floppy_get_device(device->machine, 0), 1, 1);
 		state->b2m_drive = drive;
 	}
 	if (state->b2m_side!=side) {
 		wd17xx_set_side(state->fdc,side);
+		floppy_mon_w(floppy_get_device(device->machine, 1), 0);
+		floppy_drive_set_ready_state(floppy_get_device(device->machine, 1), 1, 1);
 		state->b2m_side = side;
 	}
+	wd17xx_dden_w(state->fdc, 0);
 }
 
 I8255A_INTERFACE( b2m_ppi8255_interface_2 )
@@ -319,9 +327,9 @@ static STATE_POSTLOAD( b2m_postload )
 MACHINE_START(b2m)
 {
 	b2m_state *state = (b2m_state *)machine->driver_data;
-	state->pic = devtag_get_device(machine, "pic8259");
-	state->fdc = devtag_get_device(machine, "wd1793");
-	state->speaker = devtag_get_device(machine, "speaker");
+	state->pic = machine->device("pic8259");
+	state->fdc = machine->device("wd1793");
+	state->speaker = machine->device("speaker");
 
 	wd17xx_set_pause_time(state->fdc,10);
 
@@ -366,6 +374,6 @@ MACHINE_RESET(b2m)
 	state->b2m_side = 0;
 	state->b2m_drive = 0;
 
-	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), b2m_irq_callback);
+	cpu_set_irq_callback(machine->device("maincpu"), b2m_irq_callback);
 	b2m_set_bank(machine, 7);
 }

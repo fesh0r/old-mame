@@ -5,7 +5,6 @@
 
     Nate Woods, Raphael Nabet, R. Belmont
 
-
         0x000000 - 0x3fffff     RAM/ROM (switches based on overlay)
         0x400000 - 0x4fffff     ROM
         0x580000 - 0x5fffff     5380 NCR/Symbios SCSI peripherals chip (Mac Plus only)
@@ -60,14 +59,23 @@
 
     Registers:
     0x800: VERSION
-    0x801: MODE
-    0x802: CONTROL
-    0x803: FIFO MODE (bit 0 = half, bit 1 = full?)
-    0x804: FIFO IRQ STATUS
-    0x805: WAVETABLE CONTROL
-    0x806: VOLUME
-    0x807: CLOCK RATE (0 = 22 kHz)
+    0x801: MODE (1=FIFO mode, 2=wavetable mode)
+    0x802: CONTROL (bit 0=analog or PWM output, 1=stereo/mono, 7=processing time exceeded)
+    0x803: FIFO MODE (bit 7=clear FIFO, bit 1="non-ROM companding", bit 0="ROM companding")
+    0x804: FIFO IRQ STATUS (bit 0=ch A 1/2 full, 1=ch A full, 2=ch B 1/2 full, 3=ch B full)
+    0x805: WAVETABLE CONTROL (bits 0-3 wavetables 0-3 start)
+    0x806: VOLUME (bits 2-4 = 3 bit internal ASC volume, bits 5-7 = volume control sent to Sony sound chip)
+    0x807: CLOCK RATE (0 = Mac 22257 Hz, 1 = undefined, 2 = 22050 Hz, 3 = 44100 Hz)
     0x80a: PLAY REC A
+    0x80f: TEST (bits 6-7 = digital test, bits 4-5 = analog test)
+    0x810: WAVETABLE 0 PHASE (big-endian, only 24 bits valid)
+    0x814: WAVETABLE 0 INCREMENT (big-endian, only 24 bits valid)
+    0x818: WAVETABLE 1 PHASE
+    0x81C: WAVETABLE 1 INCREMENT
+    0x820: WAVETABLE 2 PHASE
+    0x824: WAVETABLE 2 INCREMENT
+    0x828: WAVETABLE 3 PHASE
+    0x82C: WAVETABLE 3 INCREMENT
 
     Should become it's own device.
 */
@@ -76,12 +84,31 @@ static READ8_HANDLER(mac_asc_r)
 {
 	mac_state *mac = (mac_state *)space->machine->driver_data;
 
-//  logerror("ASC: Read @ %x (PC %x)\n", offset, cpu_get_pc(devtag_get_device(space->machine, "maincpu")));
+	logerror("ASC: Read @ %x (PC %x)\n", offset, cpu_get_pc(space->machine->device("maincpu")));
 
 	switch (offset)
 	{
-		case 0:	// VERSION
+		case 0x800:	// VERSION
+			// LC/LCII return 0xe8 (V8 ASIC ASC emulation)
+			if ((mac->mac_model == MODEL_MAC_LC) || (mac->mac_model == MODEL_MAC_LC_II))
+		      	{
+				return 0xe8;
+			}
+
+			// LCIII returns 0xbc (Sonora ASIC ASC emulation)
+			if (mac->mac_model == MODEL_MAC_LC_III)
+			{
+				return 0xbc;
+			}
+
 			return 0;	// original ASC
+
+		case 0x804:
+			if ((mac->mac_model == MODEL_MAC_LC) || (mac->mac_model == MODEL_MAC_LC_II))
+		      	{
+				return 3;
+			}
+			break;
 
 		default:
 			break;
@@ -92,19 +119,19 @@ static READ8_HANDLER(mac_asc_r)
 
 static WRITE8_HANDLER(mac_asc_w)
 {
-	static running_device *dacs[2];
+	static dmadac_sound_device *dacs[2];
 	INT32 i;
 	mac_state *mac = (mac_state *)space->machine->driver_data;
 
-//  logerror("ASC: %02x to %x (PC %x)\n", data, offset, cpu_get_pc(devtag_get_device(space->machine, "maincpu")));
+	logerror("ASC: %02x to %x (PC %x)\n", data, offset, cpu_get_pc(space->machine->device("maincpu")));
 
 	mac->mac_asc_regs[offset] = data;
 
 	switch (offset)
 	{
 		case 0x801:	// CONTROL
-			dacs[0] = devtag_get_device(space->machine, "ascal");
-			dacs[1] = devtag_get_device(space->machine, "ascar");
+			dacs[0] = space->machine->device<dmadac_sound_device>("ascal");
+			dacs[1] = space->machine->device<dmadac_sound_device>("ascar");
 
 			if (data == 2)	// boot ROM uses this mode
 			{
@@ -201,7 +228,7 @@ static UINT32 rbv_toggle = 0;
 static READ16_HANDLER ( mac_rbv_r )
 {
 	int data;
-	running_device *via_1 = devtag_get_device(space->machine, "via6522_1");
+	running_device *via_1 = space->machine->device("via6522_1");
 
 	logerror("rbv_r: %x, mask %x\n", offset, mem_mask);
 
@@ -230,7 +257,7 @@ static READ16_HANDLER ( mac_rbv_r )
 
 static WRITE16_HANDLER ( mac_rbv_w )
 {
-	running_device *via_1 = devtag_get_device(space->machine, "via6522_1");
+	running_device *via_1 = space->machine->device("via6522_1");
 
 	logerror("rbv_w: %x to offset %x, mask %x\n", data, offset, mem_mask);
 
@@ -250,9 +277,9 @@ static UINT32 v8_palette[256];
 static READ16_HANDLER ( mac_v8_r )
 {
 	int data, viaoffs;
-	running_device *via_1 = devtag_get_device(space->machine, "via6522_1");
+	running_device *via_1 = space->machine->device("via6522_1");
 
-	printf("v8_r: %x, mask %x (PC %x)\n", offset*2, mem_mask, cpu_get_pc(space->cpu));
+//  printf("v8_r: %x, mask %x (PC %x)\n", offset*2, mem_mask, cpu_get_pc(space->cpu));
 
 	viaoffs = (offset >> 8) & 0x0f;
 
@@ -271,10 +298,10 @@ static READ16_HANDLER ( mac_v8_r )
 
 static WRITE16_HANDLER ( mac_v8_w )
 {
-	running_device *via_1 = devtag_get_device(space->machine, "via6522_1");
+	running_device *via_1 = space->machine->device("via6522_1");
 	int viaoffs;
 
-	printf("v8_w: %x to offset %x, mask %x (PC %x)\n", data, offset*2, mem_mask, cpu_get_pc(space->cpu));
+//  printf("v8_w: %x to offset %x, mask %x (PC %x)\n", data, offset*2, mem_mask, cpu_get_pc(space->cpu));
 
 	viaoffs = (offset >> 8) & 0x0f;
 
@@ -342,9 +369,9 @@ static UINT32 sonora_palette[256];
 static READ16_HANDLER ( mac_sonora_r )
 {
 	int data, viaoffs;
-	running_device *via_1 = devtag_get_device(space->machine, "via6522_1");
+	running_device *via_1 = space->machine->device("via6522_1");
 
-	printf("sonora_r: %x, mask %x (PC %x)\n", offset*2, mem_mask, cpu_get_pc(space->cpu));
+//  printf("sonora_r: %x, mask %x (PC %x)\n", offset*2, mem_mask, cpu_get_pc(space->cpu));
 
 	viaoffs = (offset >> 8) & 0x0f;
 
@@ -363,10 +390,10 @@ static READ16_HANDLER ( mac_sonora_r )
 
 static WRITE16_HANDLER ( mac_sonora_w )
 {
-	running_device *via_1 = devtag_get_device(space->machine, "via6522_1");
+	running_device *via_1 = space->machine->device("via6522_1");
 	int viaoffs;
 
-	printf("sonora_w: %x to offset %x, mask %x (PC %x)\n", data, offset*2, mem_mask, cpu_get_pc(space->cpu));
+//  printf("sonora_w: %x to offset %x, mask %x (PC %x)\n", data, offset*2, mem_mask, cpu_get_pc(space->cpu));
 
 	viaoffs = (offset >> 8) & 0x0f;
 
@@ -427,7 +454,7 @@ static VIDEO_UPDATE( macsonora )
 
 static READ32_HANDLER(mac_lc3_id)
 {
-	printf("Sonora ID register read, PC=%x\n", cpu_get_pc(space->cpu));
+//  printf("Sonora ID register read, PC=%x\n", cpu_get_pc(space->cpu));
 
 	return 0xa55a0001;	// 25 MHz LC III
 }
@@ -625,9 +652,9 @@ static const floppy_config mac128512_floppy_config = //SONY_FLOPPY_ALLOW400K
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_3_5_DSHD,
 	FLOPPY_OPTIONS_NAME(apple35_mac),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 
@@ -638,9 +665,9 @@ static const floppy_config mac_floppy_config = //SONY_FLOPPY_ALLOW400K | SONY_FL
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_3_5_DSHD,
 	FLOPPY_OPTIONS_NAME(apple35_mac),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static MACHINE_DRIVER_START( mac512ke )
@@ -680,7 +707,7 @@ static MACHINE_DRIVER_START( mac512ke )
 	MDRV_IWM_ADD("fdc", mac_iwm_interface)
 	MDRV_FLOPPY_SONY_2_DRIVES_ADD(mac128512_floppy_config)
 
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", 7833600)
 	MDRV_SCC8530_IRQ(mac_scc_irq)
 	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_intf)
 
@@ -763,7 +790,7 @@ static MACHINE_DRIVER_START( macii )
 	MDRV_DRIVER_DATA(mac_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M68020_68851, 7833600*2)
+	MDRV_CPU_ADD("maincpu", M68020PMMU, 7833600*2)
 	MDRV_CPU_PROGRAM_MAP(macii_map)
 	MDRV_CPU_VBLANK_INT("screen", mac_cb264_vbl)
 
@@ -802,7 +829,7 @@ static MACHINE_DRIVER_START( macii )
 	MDRV_IWM_ADD("fdc", mac_iwm_interface)
 	MDRV_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_config)
 
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", 7833600)
 	MDRV_SCC8530_IRQ(mac_scc_irq)
 	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_intf)
 
@@ -865,6 +892,7 @@ static MACHINE_DRIVER_START( maciix )
 
 	MDRV_CPU_REPLACE("maincpu", M68030, 7833600*2)
 	MDRV_CPU_PROGRAM_MAP(macii_map)
+	MDRV_CPU_VBLANK_INT("screen", mac_cb264_vbl)
 
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2M")
@@ -914,7 +942,7 @@ static MACHINE_DRIVER_START( macse30 )
 	MDRV_IWM_ADD("fdc", mac_iwm_interface)
 	MDRV_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_config)
 
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", 7833600)
 	MDRV_SCC8530_IRQ(mac_scc_irq)
 	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_intf)
 
@@ -1017,7 +1045,7 @@ static MACHINE_DRIVER_START( pwrmac )
 	MDRV_IWM_ADD("fdc", mac_iwm_interface)
 	MDRV_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_config)
 
-	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ADD("scc", 7833600)
 	MDRV_SCC8530_IRQ(mac_scc_irq)
 	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_intf)
 

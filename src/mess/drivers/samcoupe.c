@@ -61,7 +61,7 @@
 
 static READ8_HANDLER( samcoupe_disk_r )
 {
-	running_device *fdc = devtag_get_device(space->machine, "wd1772");
+	running_device *fdc = space->machine->device("wd1772");
 
 	/* drive and side is encoded into bit 5 and 3 */
 	wd17xx_set_drive(fdc, (offset >> 4) & 1);
@@ -81,7 +81,7 @@ static READ8_HANDLER( samcoupe_disk_r )
 
 static WRITE8_HANDLER( samcoupe_disk_w )
 {
-	running_device *fdc = devtag_get_device(space->machine, "wd1772");
+	running_device *fdc = space->machine->device("wd1772");
 
 	/* drive and side is encoded into bit 5 and 3 */
 	wd17xx_set_drive(fdc, (offset >> 4) & 1);
@@ -99,12 +99,12 @@ static WRITE8_HANDLER( samcoupe_disk_w )
 
 static READ8_HANDLER( samcoupe_pen_r )
 {
-	running_device *scr = space->machine->primary_screen;
+	screen_device *scr = space->machine->primary_screen;
 	UINT8 data;
 
 	if (offset & 0x100)
 	{
-		int vpos = video_screen_get_vpos(scr);
+		int vpos = scr->vpos();
 
 		/* return the current screen line or 192 for the border area */
 		if (vpos < SAM_BORDER_TOP || vpos >= SAM_BORDER_TOP + SAM_SCREEN_HEIGHT)
@@ -115,7 +115,7 @@ static READ8_HANDLER( samcoupe_pen_r )
 	else
 	{
 		/* horizontal position is encoded into bits 3 to 8 */
-		data = video_screen_get_hpos(scr) & 0xfc;
+		data = scr->hpos() & 0xfc;
 	}
 
 	return data;
@@ -212,7 +212,7 @@ static WRITE8_HANDLER( samcoupe_midi_w )
 
 static READ8_HANDLER( samcoupe_keyboard_r )
 {
-	running_device *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *cassette = space->machine->device("cassette");
 	UINT8 data = 0x1f;
 
 	/* bit 0-4, keyboard input */
@@ -243,15 +243,13 @@ static READ8_HANDLER( samcoupe_keyboard_r )
 	/* bit 7, external memory */
 	data |= 1 << 7;
 
-	logerror("data = %02x\n", data);
-
 	return data;
 }
 
 static WRITE8_HANDLER( samcoupe_border_w )
 {
-	running_device *cassette = devtag_get_device(space->machine, "cassette");
-	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *cassette = space->machine->device("cassette");
+	running_device *speaker = space->machine->device("speaker");
 	coupe_asic *asic = (coupe_asic *)space->machine->driver_data;
 
 	asic->border = data;
@@ -502,7 +500,8 @@ static const cassette_config samcoupe_cassette_config =
 {
 	tzx_cassette_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL
 };
 
 
@@ -543,9 +542,9 @@ static const floppy_config samcoupe_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
+	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(samcoupe),
-	DO_NOT_KEEP_GEOMETRY
+	NULL
 };
 
 static const wd17xx_interface samcoupe_wd17xx_intf =

@@ -547,12 +547,12 @@ static UINT8 stv_SMPC_r8(const address_space *space, int offset)
 
 static void stv_SMPC_w8(const address_space *space, int offset, UINT8 data)
 {
-	mame_system_time systime;
+	system_time systime;
 	UINT8 last;
 	running_machine *machine = space->machine;
 
 	/* get the current date/time from the core */
-	mame_get_current_datetime(machine, &systime);
+	machine->current_datetime(systime);
 
   if (LOG_SMPC) logerror ("8-bit SMPC Write to Offset %02x (reg %d) with Data %02x (prev %02x)\n", offset, offset>>1, data, smpc_ram[offset]);
 
@@ -1827,7 +1827,7 @@ static READ32_HANDLER( stv_sh2_soundram_r )
 
 static READ32_HANDLER( stv_scsp_regs_r32 )
 {
-	running_device *scsp = devtag_get_device(space->machine, "scsp");
+	running_device *scsp = space->machine->device("scsp");
 
 	offset <<= 1;
 	return (scsp_r(scsp, offset+1, 0xffff) | (scsp_r(scsp, offset, 0xffff)<<16));
@@ -1835,7 +1835,7 @@ static READ32_HANDLER( stv_scsp_regs_r32 )
 
 static WRITE32_HANDLER( stv_scsp_regs_w32 )
 {
-	running_device *scsp = devtag_get_device(space->machine, "scsp");
+	running_device *scsp = space->machine->device("scsp");
 
 	offset <<= 1;
 	scsp_w(scsp, offset, data>>16, mem_mask >> 16);
@@ -1849,14 +1849,14 @@ static WRITE32_HANDLER( minit_w )
 	logerror("cpu %s (PC=%08X) MINIT write = %08x\n", space->cpu->tag(), cpu_get_pc(space->cpu),data);
 	cpuexec_boost_interleave(space->machine, minit_boost_timeslice, ATTOTIME_IN_USEC(minit_boost));
 	cpuexec_trigger(space->machine, 1000);
-	sh2_set_frt_input(devtag_get_device(space->machine, "slave"), PULSE_LINE);
+	sh2_set_frt_input(space->machine->device("slave"), PULSE_LINE);
 }
 
 static WRITE32_HANDLER( sinit_w )
 {
 	logerror("cpu %s (PC=%08X) SINIT write = %08x\n", space->cpu->tag(), cpu_get_pc(space->cpu),data);
 	cpuexec_boost_interleave(space->machine, sinit_boost_timeslice, ATTOTIME_IN_USEC(sinit_boost));
-	sh2_set_frt_input(devtag_get_device(space->machine, "maincpu"), PULSE_LINE);
+	sh2_set_frt_input(space->machine->device("maincpu"), PULSE_LINE);
 }
 
 static UINT32 backup[64*1024/4];
@@ -2041,7 +2041,7 @@ SCU register[40] is for IRQ masking.
 
 /* to do, update bios idle skips so they work better with this arrangement.. */
 
-static running_device *vblank_out_timer,*scan_timer,*t1_timer;
+static timer_device *vblank_out_timer,*scan_timer,*t1_timer;
 static int h_sync,v_sync;
 static int cur_scan;
 
@@ -2049,7 +2049,7 @@ static int cur_scan;
 timer_0 = 0; \
 { \
 	/*if(LOG_IRQ) logerror ("Interrupt: VBlank-OUT Vector 0x41 Level 0x0e\n");*/ \
-	cputag_set_input_line_and_vector(timer->machine, "maincpu", 0xe, (stv_irq.vblank_out) ? HOLD_LINE : CLEAR_LINE , 0x41); \
+	cputag_set_input_line_and_vector(timer.machine, "maincpu", 0xe, (stv_irq.vblank_out) ? HOLD_LINE : CLEAR_LINE , 0x41); \
 } \
 
 #define VBLANK_IN_IRQ \
@@ -2062,14 +2062,14 @@ timer_0 = 0; \
 timer_1 = stv_scu[37] & 0x1ff; \
 { \
 	/*if(LOG_IRQ) logerror ("Interrupt: HBlank-In at scanline %04x, Vector 0x42 Level 0x0d\n",scanline);*/ \
-	cputag_set_input_line_and_vector(timer->machine, "maincpu", 0xd, (stv_irq.hblank_in) ? HOLD_LINE : CLEAR_LINE, 0x42); \
+	cputag_set_input_line_and_vector(timer.machine, "maincpu", 0xd, (stv_irq.hblank_in) ? HOLD_LINE : CLEAR_LINE, 0x42); \
 } \
 
 #define TIMER_0_IRQ \
 if(timer_0 == (stv_scu[36] & 0x3ff)) \
 { \
 	/*if(LOG_IRQ) logerror ("Interrupt: Timer 0 at scanline %04x, Vector 0x43 Level 0x0c\n",scanline);*/ \
-	cputag_set_input_line_and_vector(timer->machine, "maincpu", 0xc, (stv_irq.timer_0) ? HOLD_LINE : CLEAR_LINE, 0x43 ); \
+	cputag_set_input_line_and_vector(timer.machine, "maincpu", 0xc, (stv_irq.timer_0) ? HOLD_LINE : CLEAR_LINE, 0x43 ); \
 } \
 
 #define TIMER_1_IRQ	\
@@ -2078,14 +2078,14 @@ if((stv_scu[38] & 1)) \
 	if(!(stv_scu[38] & 0x80)) \
 	{ \
 		/*if(LOG_IRQ) logerror ("Interrupt: Timer 1 at point %04x, Vector 0x44 Level 0x0b\n",point);*/ \
-		cputag_set_input_line_and_vector(timer->machine, "maincpu", 0xb, (stv_irq.timer_1) ? HOLD_LINE : CLEAR_LINE, 0x44 ); \
+		cputag_set_input_line_and_vector(timer.machine, "maincpu", 0xb, (stv_irq.timer_1) ? HOLD_LINE : CLEAR_LINE, 0x44 ); \
 	} \
 	else \
 	{ \
 		if((timer_0) == (stv_scu[36] & 0x3ff)) \
 		{ \
 			/*if(LOG_IRQ) logerror ("Interrupt: Timer 1 at point %04x, Vector 0x44 Level 0x0b\n",point);*/ \
-			cputag_set_input_line_and_vector(timer->machine, "maincpu", 0xb, (stv_irq.timer_1) ? HOLD_LINE : CLEAR_LINE, 0x44 ); \
+			cputag_set_input_line_and_vector(timer.machine, "maincpu", 0xb, (stv_irq.timer_1) ? HOLD_LINE : CLEAR_LINE, 0x44 ); \
 		} \
 	} \
 } \
@@ -2099,8 +2099,8 @@ static TIMER_DEVICE_CALLBACK( hblank_in_irq )
 {
 	int scanline = param;
 
-//  h = video_screen_get_height(timer->machine->primary_screen);
-//  w = video_screen_get_width(timer->machine->primary_screen);
+//  h = timer.machine->primary_screen->height();
+//  w = timer.machine->primary_screen->width();
 
 	HBLANK_IN_IRQ;
 	TIMER_0_IRQ;
@@ -2108,11 +2108,11 @@ static TIMER_DEVICE_CALLBACK( hblank_in_irq )
 	if(scanline+1 < v_sync)
 	{
 		if(stv_irq.hblank_in || stv_irq.timer_0)
-			timer_device_adjust_oneshot(scan_timer, video_screen_get_time_until_pos(timer->machine->primary_screen, scanline+1, h_sync), scanline+1);
+			scan_timer->adjust(timer.machine->primary_screen->time_until_pos(scanline+1, h_sync), scanline+1);
 		/*set the first Timer-1 event*/
 		cur_scan = scanline+1;
 		if(stv_irq.timer_1)
-			timer_device_adjust_oneshot(t1_timer, video_screen_get_time_until_pos(timer->machine->primary_screen, scanline+1, 0), 0);
+			t1_timer->adjust(timer.machine->primary_screen->time_until_pos(scanline+1, 0));
 	}
 
 	timer_0++;
@@ -2126,7 +2126,7 @@ static TIMER_DEVICE_CALLBACK( timer1_irq )
 
 	if((cur_point+1) < h_sync && stv_irq.timer_1)
 	{
-		timer_device_adjust_oneshot(t1_timer, video_screen_get_time_until_pos(timer->machine->primary_screen, cur_scan, cur_point+1), cur_point+1);
+		t1_timer->adjust(timer.machine->primary_screen->time_until_pos(cur_scan, cur_point+1), cur_point+1);
 	}
 
 	if(timer_1 > 0) timer_1--;
@@ -2146,7 +2146,7 @@ static TIMER_DEVICE_CALLBACK( vblank_out_irq )
 static INTERRUPT_GEN( stv_interrupt )
 {
 //  scanline = 0;
-	rectangle visarea = *video_screen_get_visible_area(device->machine->primary_screen);
+	const rectangle &visarea = device->machine->primary_screen->visible_area();
 
 	h_sync = visarea.max_x+1;//horz
 	v_sync = visarea.max_y+1;//vert
@@ -2155,28 +2155,28 @@ static INTERRUPT_GEN( stv_interrupt )
 
 	/*Next V-Blank-OUT event*/
 	if(stv_irq.vblank_out)
-		timer_device_adjust_oneshot(vblank_out_timer,video_screen_get_time_until_pos(device->machine->primary_screen, 0, 0), 0);
+		vblank_out_timer->adjust(device->machine->primary_screen->time_until_pos(0, 0));
 	/*Set the first Hblank-IN event*/
 	if(stv_irq.hblank_in || stv_irq.timer_0 || stv_irq.timer_1)
-		timer_device_adjust_oneshot(scan_timer, video_screen_get_time_until_pos(device->machine->primary_screen, 0, h_sync), 0);
+		scan_timer->adjust(device->machine->primary_screen->time_until_pos(0, h_sync));
 
 	/*TODO: timing of this one (related to the VDP1 speed)*/
 	/*      (NOTE: value shouldn't be at h_sync/v_sync position (will break shienryu))*/
-	timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen,0,0), NULL, 0, vdp1_irq);
+	timer_set(device->machine, device->machine->primary_screen->time_until_pos(0,0), NULL, 0, vdp1_irq);
 }
 
 static void saturn_init_driver(running_machine *machine, int rgn)
 {
-	mame_system_time systime;
+	system_time systime;
 
 	saturn_region = rgn;
 
 	// set compatible options
-	sh2drc_set_options(devtag_get_device(machine, "maincpu"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
-	sh2drc_set_options(devtag_get_device(machine, "slave"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	sh2drc_set_options(machine->device("maincpu"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	sh2drc_set_options(machine->device("slave"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
 
 	/* get the current date/time from the core */
-	mame_get_current_datetime(machine, &systime);
+	machine->current_datetime(systime);
 
 	/* amount of time to boost interleave for on MINIT / SINIT, needed for communication to work */
 	minit_boost = 400;
@@ -2220,7 +2220,7 @@ static int scsp_last_line = 0;
 
 static MACHINE_START( saturn )
 {
-	scsp_set_ram_base(devtag_get_device(machine, "scsp"), sound_ram);
+	scsp_set_ram_base(machine->device("scsp"), sound_ram);
 
 	// save states
 	state_save_register_global_pointer(machine, smpc_ram, 0x80);
@@ -2247,7 +2247,7 @@ static MACHINE_START( saturn )
 	state_save_register_global(machine, smpcSR);
 	state_save_register_global_array(machine, SMEM);
 
-	add_exit_callback(machine, stvcd_exit);
+	machine->add_notifier(MACHINE_NOTIFY_EXIT, stvcd_exit);
 }
 
 static MACHINE_RESET( saturn )
@@ -2277,11 +2277,11 @@ static MACHINE_RESET( saturn )
 	stvcd_reset( machine );
 
 	/* set the first scanline 0 timer to go off */
-	scan_timer = devtag_get_device(machine, "scan_timer");
-	t1_timer = devtag_get_device(machine, "t1_timer");
-	vblank_out_timer = devtag_get_device(machine, "vbout_timer");
-	timer_device_adjust_oneshot(vblank_out_timer,video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
-	timer_device_adjust_oneshot(scan_timer, video_screen_get_time_until_pos(machine->primary_screen, 224, 352), 0);
+	scan_timer = machine->device<timer_device>("scan_timer");
+	t1_timer = machine->device<timer_device>("t1_timer");
+	vblank_out_timer = machine->device<timer_device>("vbout_timer");
+	vblank_out_timer->adjust(machine->primary_screen->time_until_pos(0, 0));
+	scan_timer->adjust(machine->primary_screen->time_until_pos(224, 352));
 }
 
 static const gfx_layout tiles8x8x4_layout =

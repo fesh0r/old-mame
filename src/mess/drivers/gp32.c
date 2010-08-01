@@ -268,10 +268,10 @@ static void s3c240x_lcd_render_16( running_machine *machine)
 
 static TIMER_CALLBACK( s3c240x_lcd_timer_exp )
 {
-	running_device *screen = machine->primary_screen;
+	screen_device *screen = machine->primary_screen;
 	verboselog( machine, 2, "LCD timer callback\n");
-	s3c240x_lcd.vpos = video_screen_get_vpos( screen);
-	s3c240x_lcd.hpos = video_screen_get_hpos( screen);
+	s3c240x_lcd.vpos = screen->vpos();
+	s3c240x_lcd.hpos = screen->hpos();
 	verboselog( machine, 3, "LCD - vpos %d hpos %d\n", s3c240x_lcd.vpos, s3c240x_lcd.hpos);
 	if (s3c240x_lcd.vramaddr_cur >= s3c240x_lcd.vramaddr_max)
 	{
@@ -291,7 +291,7 @@ static TIMER_CALLBACK( s3c240x_lcd_timer_exp )
 		}
 		if ((s3c240x_lcd.vpos == 0) && (s3c240x_lcd.hpos == 0)) break;
 	}
-	timer_adjust_oneshot( s3c240x_lcd_timer, video_screen_get_time_until_pos( screen, s3c240x_lcd.vpos, s3c240x_lcd.hpos), 0);
+	timer_adjust_oneshot( s3c240x_lcd_timer, screen->time_until_pos(s3c240x_lcd.vpos, s3c240x_lcd.hpos), 0);
 }
 
 static VIDEO_START( gp32 )
@@ -318,7 +318,7 @@ static READ32_HANDLER( s3c240x_lcd_r )
 		{
 			// make sure line counter is going
 			UINT32 lineval = BITS( s3c240x_lcd_regs[1], 23, 14);
-			data = (data & ~0xFFFC0000) | ((lineval - video_screen_get_vpos( machine->primary_screen)) << 18);
+			data = (data & ~0xFFFC0000) | ((lineval - machine->primary_screen->vpos()) << 18);
 		}
 		break;
 	}
@@ -328,7 +328,7 @@ static READ32_HANDLER( s3c240x_lcd_r )
 
 static void s3c240x_lcd_configure( running_machine *machine)
 {
-	running_device *screen = machine->primary_screen;
+	screen_device *screen = machine->primary_screen;
 	UINT32 vspw, vbpd, lineval, vfpd, hspw, hbpd, hfpd, hozval, clkval, hclk;
 	double framerate, vclk;
 	rectangle visarea;
@@ -352,16 +352,16 @@ static void s3c240x_lcd_configure( running_machine *machine)
 	visarea.max_x = hozval;
 	visarea.max_y = lineval;
 	verboselog( machine, 3, "LCD - visarea min_x %d min_y %d max_x %d max_y %d\n", visarea.min_x, visarea.min_y, visarea.max_x, visarea.max_y);
-	video_screen_configure( screen, hozval + 1, lineval + 1, &visarea, HZ_TO_ATTOSECONDS( framerate));
+	screen->configure(hozval + 1, lineval + 1, visarea, HZ_TO_ATTOSECONDS( framerate));
 }
 
 static void s3c240x_lcd_start( running_machine *machine)
 {
-	running_device *screen = machine->primary_screen;
+	screen_device *screen = machine->primary_screen;
 	verboselog( machine, 1, "LCD start\n");
 	s3c240x_lcd_configure( machine);
 	s3c240x_lcd_dma_init( machine);
-	timer_adjust_oneshot( s3c240x_lcd_timer, video_screen_get_time_until_pos( screen, 0, 0), 0);
+	timer_adjust_oneshot( s3c240x_lcd_timer, screen->time_until_pos(0, 0), 0);
 }
 
 static void s3c240x_lcd_stop( running_machine *machine)
@@ -505,11 +505,11 @@ static void s3c240x_check_pending_irq( running_machine *machine)
 		}
 		s3c240x_irq_regs[4] |= (1 << int_type); // INTPND
 		s3c240x_irq_regs[5] = int_type; // INTOFFSET
-		cpu_set_input_line( devtag_get_device( machine, "maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line( machine->device( "maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
 	}
 	else
 	{
-		cpu_set_input_line( devtag_get_device( machine, "maincpu"), ARM7_IRQ_LINE, CLEAR_LINE);
+		cpu_set_input_line( machine->device( "maincpu"), ARM7_IRQ_LINE, CLEAR_LINE);
 	}
 }
 
@@ -521,7 +521,7 @@ static void s3c240x_request_irq( running_machine *machine, UINT32 int_type)
 		s3c240x_irq_regs[0] |= (1 << int_type); // SRCPND
 		s3c240x_irq_regs[4] |= (1 << int_type); // INTPND
 		s3c240x_irq_regs[5] = int_type; // INTOFFSET
-		cpu_set_input_line( devtag_get_device( machine, "maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line( machine->device( "maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
 	}
 	else
 	{
@@ -967,7 +967,7 @@ static void smc_init( running_machine *machine)
 
 static UINT8 smc_read( running_machine *machine)
 {
-	running_device *smartmedia = devtag_get_device( machine, "smartmedia");
+	running_device *smartmedia = machine->device( "smartmedia");
 	UINT8 data;
 	data = smartmedia_data_r( smartmedia);
 	verboselog( machine, 5, "smc_read %08X\n", data);
@@ -979,7 +979,7 @@ static void smc_write( running_machine *machine, UINT8 data)
 	verboselog( machine, 5, "smc_write %08X\n", data);
 	if ((smc.chip) && (!smc.read))
 	{
-		running_device *smartmedia = devtag_get_device( machine, "smartmedia");
+		running_device *smartmedia = machine->device( "smartmedia");
 		if (smc.cmd_latch)
 		{
 			verboselog( machine, 5, "smartmedia_command_w %08X\n", data);
@@ -1107,7 +1107,7 @@ static READ32_HANDLER( s3c240x_gpio_r )
 		// PDDAT
 		case 0x24 / 4 :
 		{
-			running_device *smartmedia = devtag_get_device( machine, "smartmedia");
+			running_device *smartmedia = machine->device( "smartmedia");
 			// smartmedia
 			data = (data & ~0x000003C0);
 			if (!smc.busy) data = data | 0x00000200;
@@ -1119,7 +1119,7 @@ static READ32_HANDLER( s3c240x_gpio_r )
 		// PEDAT
 		case 0x30 / 4 :
 		{
-			running_device *smartmedia = devtag_get_device( machine, "smartmedia");
+			running_device *smartmedia = machine->device( "smartmedia");
 			// smartmedia
 			data = (data & ~0x0000003C);
 			if (smc.cmd_latch) data = data | 0x00000020;
@@ -1634,8 +1634,8 @@ static WRITE32_HANDLER( s3c240x_iis_w )
 			if (s3c240x_iis.fifo_index == 2)
 			{
 				running_device *dac[2];
-				dac[0] = devtag_get_device( machine, "dac1");
-				dac[1] = devtag_get_device( machine, "dac2");
+				dac[0] = machine->device( "dac1");
+				dac[1] = machine->device( "dac2");
 				s3c240x_iis.fifo_index = 0;
 				dac_signed_data_16_w( dac[0], s3c240x_iis.fifo[0] + 0x8000);
 				dac_signed_data_16_w( dac[1], s3c240x_iis.fifo[1] + 0x8000);
