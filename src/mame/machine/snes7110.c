@@ -138,7 +138,7 @@ typedef struct
 
 	UINT32 morton16[2][256];
 	UINT32 morton32[4][256];
-	
+
 	UINT32 rom_size;
 } SPC7110Decomp;
 
@@ -867,7 +867,7 @@ typedef struct
 	UINT64 rtc_offset;
 
 	UINT8 rtc_ram[16];	// 0-12 secs, min, hrs, etc.; 13-14-15 control registers
-	
+
 	UINT32 size;
 } _snes_spc7110_t;
 
@@ -929,9 +929,9 @@ static void spc7110_init(running_machine* machine)
 	snes_spc7110.r4840 = 0x00;
 	snes_spc7110.r4841 = 0x00;
 	snes_spc7110.r4842 = 0x00;
-	
-	snes_spc7110.size = state->cart_size;	
-	
+
+	snes_spc7110.size = state->cart_size;
+
 	snes_spc7110.decomp = SPC7110Decomp_ctor(machine, snes_spc7110.size);
 }
 
@@ -992,8 +992,8 @@ static void spc7110_set_data_adjust(UINT32 addr)
 // (and indeed current code fails to pass Tengai Makyou Zero tests)
 static void spc7110_update_time(running_machine *machine, UINT8 offset)
 {
-	mame_system_time curtime, *systime = &curtime;
-	mame_get_current_datetime(machine, &curtime);
+	system_time curtime, *systime = &curtime;
+	machine->current_datetime(curtime);
 	int update = 1;
 
 	snes_spc7110.rtc_offset += offset;
