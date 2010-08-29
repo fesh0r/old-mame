@@ -45,6 +45,7 @@ EMUOBJS = \
 	$(EMUOBJ)/config.o \
 	$(EMUOBJ)/crsshair.o \
 	$(EMUOBJ)/debugger.o \
+	$(EMUOBJ)/delegate.o \
 	$(EMUOBJ)/devcb.o \
 	$(EMUOBJ)/devcpu.o \
 	$(EMUOBJ)/devimage.o \
@@ -109,12 +110,8 @@ EMUOBJS = \
 	$(EMUOBJ)/debug/dvtext.o \
 	$(EMUOBJ)/debug/express.o \
 	$(EMUOBJ)/debug/textbuf.o \
-	$(EMUOBJ)/debugint/debugint.o
-
-ifdef PROFILER
-EMUOBJS += \
+	$(EMUOBJ)/debugint/debugint.o \
 	$(EMUOBJ)/profiler.o
-endif
 
 EMUSOUNDOBJS = \
 	$(EMUOBJ)/sound/filter.o \
