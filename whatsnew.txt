@@ -1,3 +1,131 @@
+0.140
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 04091: [Misc.] simpbowl: NVRAM is not created correctly. 
+         (Aaron Giles)
+- 03770: [Interface] Setting 'snapname %g' does not allow snap to be 
+         saved with F12. (Aaron Giles)
+- 03835: [Compiling] Visual Studio compiler warning in 
+         src\mame\video\n64.c
+- 03937: [Misc.] Using CTRL-C to end MAME no longer works reliably 
+         (Aaron Giles)
+- 03915: [Interface] All sets using -autosave: "auto.sta" can 
+         mistakenly be erased (Aaron Giles)
+- 03930: [Compiling] LDPLAYER fails to link (Aaron Giles)
+- 04065: [Compiling] Default 'tiny' does not build (Aaron Giles)
+- 03074: [Sound] dkongjr and clones: Discrete audio output is lower 
+         pitched than normal (Derrick Renaud)
+- 04085: [Sound] All sets in seibuspi.c: sound issue
+- 04081: [Crash/Freeze] Games/drivers with no screen: When you exit 
+         MAME, you do not get control back (Aaron Giles)
+- 04059: [Graphics] qix, zookeep and clones: Player's character 
+         disappears during gameplay. (Aaron Giles)
+- 04080: [Crash/Freeze] [debug] Massive memory leaks + crash upon 
+         exit in debug build (Aaron Giles)
+- 03800: [Debugger] Many sets in snk.c: Viewing c000-c700 in debugger 
+         for "SUB" Z-80 causes memory corruption (MooglyGuy)
+- 04083: [Graphics] All sets in balsente.c: Black screen corruption 
+         (missing graphics) (MooglyGuy)
+- 04075: [Crash/Freeze] All sets in cps3.c: Black screen/Hang 
+         (Aaron Giles)
+- 04077: [Misc.] Crash when -effect is used (Aaron Giles)
+- 04078: [Crash/Freeze] mtrap + clones: Crash/Assert after OK 
+         (Aaron Giles)
+- 04076: [Misc.] Artwork cropping not working correctly (Aaron Giles)
+
+
+
+Source Changes
+--------------
+- Considerably improved UART communications in the CD-i 68070
+implementation, increasing Quizard stability as a result. [Harmony]
+
+Fixed use of the sign bits on the SegaCD Roz parameters, improves 
+the SegaCD intro rotations etc. which now appear correct. Clamp Roz 
+stuff to 24-bit, seems to fix the remaining issues with the Sega 
+logos. [David Haywood]
+
+Moved -effect implementation out of OSD code and into core since the
+implementations were identical across Windows/SDL and implemented in
+the core itself. [Aaron Giles]
+
+More Clang fixes (verified OK with GCC) [Balrog]
+
+Correctly free textures when screen size dynamically changes. Fixes
+texture assert when exiting on a number of games. [Aaron Giles]
+
+Attempt to provide a correct M50458 char rom, used by the Nintendo
+Super System [Pat Dardenko, Angelo Salese]
+
+Re-worked Quizard MCU communications handling to be more easily
+expanded. [Harmony]
+
+Convert rendlay objects into C++, reduce the number of unused textures
+allocated. [Aaron Giles]
+
+Fix texture leak in crsshair.c. [Aaron Giles]
+
+Added new method reset_origin() to screen devices to allow
+manual synchronization of VBLANK start against an external timing
+source. Updated the MC6845 device to call reset_origin() on its screen
+at the start of each frame if a screen is present. [Aaron Giles]
+
+Converted the RCA CDP1802 CPU into a C++ device. Refactored cidelsa.c
+to use the new RCA COSMAC CPU. [Curt Coder]
+
+Added new devcb type DEVCB_TYPE_DRIVER, which implies the
+driver_device. [Aaron Giles]
+
+Added new macros DEVCB_DRIVER_LINE_MEMBER and DEVCB_DRIVER_MEMBER to
+specify member functions of the driver device in callbacks.
+[Aaron Giles]
+
+Reworked NMK16 irqs by not using cpu_getiloops() function
+[Angelo Salese]
+
+Fix custom mapping for dsp56k internal memory. [Aaron Giles]
+
+Refactored the CDP1869 chip into a C++ device. [Curt Coder]
+
+Added explicit control handler for the console. Ctrl+C/Ctrl+Break now
+explicitly terminate the process forcefully, rather than unwinding
+through the system in an unexpected state. Other console events (exit,
+shutdown, logoff) request a graceful exit. [Aaron Giles]
+
+Reworked 1942 interrupts by not using cpu_getiloops() function
+[Angelo Salese]
+
+Removed deprecat.h usage from 1943 driver [Angelo Salese]
+
+Removed deprecat.h usage from 40love driver [Angelo Salese]
+
+Removed deprecat.h usage and did some minor clean-ups to the 4enraya
+driver [Angelo Salese]
+
+Rewrote Alien Command irqs by not using cpu_getiloops() function
+[Angelo Salese]
+
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Devil Island (2 sets) [Brian Troha, The Dumping Union]
+
+
+New clones added
+----------------
+Streaking (set 2) [Roberto Fresca]
+
+
+New games marked as GAME_NOT_WORKING
+------------------------------------
+Magical Touch [Siftware, Mariusz Wojcieszek]
+
+
+
 0.139u4
 -------
 
@@ -153,16 +281,15 @@ Improvements to vpoker.c driver [Roberto Fresca]
 Added new driver for NSM TMS9995 based hardware. [Roberto Fresca]
 
 Added UART Tx/Rx framework to the CD-i 68070 implementation, necessary
-for Quizard protection. [Harmony] Changed default CD-i SLAVE video
-setting to PAL, necessary for Quizard to boot. [Harmony]
+for Quizard protection. [Harmony]
+
+Changed default CD-i SLAVE video setting to PAL, necessary for Quizard
+to boot. [Harmony]
 
 Naomi: added protection key for gundmct, it boots now [Cah4e3]
 
 Changed visible area and resolution of CD-i based arcade games.
 [Harmony] 
-
-Got Quizard 1.7 to boot with a targeted hack. Still not
-playable. [Harmony]
 
 New driver for Advanced Video Technology (AVT) platform
 [Roberto Fresca]
@@ -269,14 +396,13 @@ Star Raker [Andreas Kraemer, Steffen & Laschek]
 New games marked as GAME_NOT_WORKING
 ------------------------------------
 Cosplay Heaven 5 [alien_mame, Angelo Salese]
-Game stops working due to "BAD" RAMDAC at u12 [briantro]
 Falcons Wild - World Wide Poker (Falcon original)
   [Roberto Fresca, Darran]
 Faster Than Speed [Cah4e3, R. Belmont]
 Wave Runner GP [Cah4e3, R. Belmont]
 5-Aces Poker [Roberto Fresca]
 NSM Poker (TMS9995) [Roberto Fresca, Team Europe]
-Dual Games (prototype) [Smitdogg, The Dumping Union]
+Dual Games (prototype) [ChrisQC, Smitdogg, The Dumping Union]
 Symbols (ver 1.4) [Roberto Fresca, Dave Ormiston]
 Symbols (ver 2.5) [Roberto Fresca, Dave Ormiston]
 Arrow Bingo [Roberto Fresca, Dave Ormiston]
@@ -417,9 +543,6 @@ sprcros2, ssozumo, suna16, suna8 to driver_data. [Atari Ace]
 Added include files for all remaining drivers with multiple source
 files. [Atari Ace]
 
-Corrected or clarified a number of duplicated inputs for drivers up
-through A  [Tafoid]
-
 Changed driver_device to expose the game_driver's ROMs through the
 device interface. This means all ROMs are now exposed via devices, and
 thus the process of enumerating ROMs gets simpler. [Aaron Giles]
@@ -519,9 +642,6 @@ Replaced all remaining calls to okim6295_r/okim6295_w with calls to
 the new methods, and removed the static functions. [Aaron Giles]
 
 namcops2: added dongle dump for Federation vs. Z.A.F.T. [Guru]
-
-Corrected or clarified a number of duplicated inputs for drivers up
-through C  [Tafoid]
 
 Fixed sprite OV flag behaviour in PC Engine VDC emulation
 [Angelo Salese, Charles MacDonald]
@@ -686,7 +806,7 @@ Added a set volume function for CD-DA [Angelo Salese]
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
 Shinobi / FZ-2006 (Korean System 16 bootleg) 
-  (ISG Selection Master Type 2006) [Angelo Salese]
+  (ISG Selection Master Type 2006) [Anonymous]
 Poker Master (Tony-Poker V3.A, hack?)
   [David Haywood, William Ostronic]
 
