@@ -124,6 +124,8 @@ static  READ8_HANDLER( channelf_2102B_r )  /* SKR */
 
 static WRITE8_HANDLER( channelf_port_0_w )
 {
+	channelf_state *state = space->machine->driver_data<channelf_state>();
+	UINT8 *videoram = state->videoram;
 	int offs;
 
 	latch[0] = data;
@@ -131,8 +133,8 @@ static WRITE8_HANDLER( channelf_port_0_w )
     if (data & 0x20)
 	{
 		offs = channelf_row_reg*128+channelf_col_reg;
-		if (space->machine->generic.videoram.u8[offs] != channelf_val_reg)
-			space->machine->generic.videoram.u8[offs] = channelf_val_reg;
+		if (videoram[offs] != channelf_val_reg)
+			videoram[offs] = channelf_val_reg;
 	}
 }
 
@@ -264,7 +266,7 @@ static DEVICE_IMAGE_LOAD( channelf_cart )
 	return IMAGE_INIT_PASS;
 }
 
-static MACHINE_DRIVER_START( channelf_cart )
+static MACHINE_CONFIG_FRAGMENT( channelf_cart )
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,chf")
@@ -273,9 +275,9 @@ static MACHINE_DRIVER_START( channelf_cart )
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","channelf")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( channelf )
+static MACHINE_CONFIG_START( channelf, channelf_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", F8, 3579545/2)        /* Colorburst/2 */
 	MDRV_CPU_PROGRAM_MAP(channelf_map)
@@ -300,10 +302,10 @@ static MACHINE_DRIVER_START( channelf )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_IMPORT_FROM( channelf_cart )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( channelf_cart )
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sabavdpl )
+static MACHINE_CONFIG_START( sabavdpl, channelf_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", F8, MASTER_CLOCK_PAL)        /* PAL speed */
 	MDRV_CPU_PROGRAM_MAP(channelf_map)
@@ -328,11 +330,11 @@ static MACHINE_DRIVER_START( sabavdpl )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_IMPORT_FROM( channelf_cart )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( channelf_cart )
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( channlf2 )
+static MACHINE_CONFIG_START( channlf2, channelf_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", F8, 3579545/2)        /* Colorburst / 2 */
 	MDRV_CPU_PROGRAM_MAP(channelf_map)
@@ -357,11 +359,11 @@ static MACHINE_DRIVER_START( channlf2 )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_IMPORT_FROM( channelf_cart )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( channelf_cart )
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( sabavpl2 )
+static MACHINE_CONFIG_START( sabavpl2, channelf_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", F8, MASTER_CLOCK_PAL)        /* PAL speed */
 	MDRV_CPU_PROGRAM_MAP(channelf_map)
@@ -386,8 +388,8 @@ static MACHINE_DRIVER_START( sabavpl2 )
 	MDRV_SOUND_ADD("custom", CHANNELF, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_IMPORT_FROM( channelf_cart )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( channelf_cart )
+MACHINE_CONFIG_END
 
 ROM_START( channelf )
 	ROM_REGION(0x10000,"maincpu",0)

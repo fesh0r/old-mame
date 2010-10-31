@@ -9,7 +9,6 @@
 
 #include "emu.h"
 #include "includes/sym1.h"
-#include "includes/cbm.h"
 
 /* M6502 CPU */
 #include "cpu/m6502/m6502.h"
@@ -189,7 +188,7 @@ static WRITE8_DEVICE_HANDLER( sym1_via0_b_w )
  */
 static WRITE8_DEVICE_HANDLER( sym1_via2_a_w )
 {
-	const address_space *cpu0space = cputag_get_address_space( device->machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	address_space *cpu0space = cputag_get_address_space( device->machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
 	logerror("SYM1 VIA2 W 0x%02x\n", data);
 

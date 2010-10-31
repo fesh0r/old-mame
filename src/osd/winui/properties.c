@@ -385,21 +385,14 @@ static PROPSHEETPAGE *CreatePropSheetPages(HINSTANCE hInst, BOOL bOnlyDefault,
 	memset(pspages, 0, sizeof(PROPSHEETPAGE) * possiblePropSheets);
 
 	maxPropSheets = 0;
-	
+
 	i = ( isGame ) ? 0 : 2;
 
 	for (; g_propSheets[i].pfnDlgProc; i++)
 	{
-		if ((gamedrv != NULL) || g_propSheets[i].bOnDefaultPage)
+		if (!gamedrv)
 		{
-			machine_config *config = NULL;
-
-			/* Allocate machine config */
-			if (gamedrv != NULL)
-			{
-				config = global_alloc(machine_config(gamedrv->machine_config));
-			}
-			if (!gamedrv || !g_propSheets[i].pfnFilterProc || g_propSheets[i].pfnFilterProc(config, gamedrv))
+			if (g_propSheets[i].bOnDefaultPage)
 			{
 				pspages[maxPropSheets].dwSize      = sizeof(PROPSHEETPAGE);
 				pspages[maxPropSheets].dwFlags     = 0;
@@ -410,14 +403,26 @@ static PROPSHEETPAGE *CreatePropSheetPages(HINSTANCE hInst, BOOL bOnlyDefault,
 				pspages[maxPropSheets].pfnDlgProc  = g_propSheets[i].pfnDlgProc;
 				maxPropSheets++;
 			}
-			if (config != NULL)
+		}
+		else
+		if ((gamedrv != NULL) || g_propSheets[i].bOnDefaultPage)
+		{
+			machine_config config(*gamedrv);
+
+			if (!gamedrv || !g_propSheets[i].pfnFilterProc || g_propSheets[i].pfnFilterProc(&config, gamedrv))
 			{
-				/* Free the structure */
-				global_free(config);
+				pspages[maxPropSheets].dwSize      = sizeof(PROPSHEETPAGE);
+				pspages[maxPropSheets].dwFlags     = 0;
+				pspages[maxPropSheets].hInstance   = hInst;
+				pspages[maxPropSheets].pszTemplate = MAKEINTRESOURCE(g_propSheets[i].dwDlgID);
+				pspages[maxPropSheets].pfnCallback = NULL;
+				pspages[maxPropSheets].lParam      = 0;
+				pspages[maxPropSheets].pfnDlgProc  = g_propSheets[i].pfnDlgProc;
+				maxPropSheets++;
 			}
 		}
 	}
-	
+
 	if (pnMaxPropSheets)
 		*pnMaxPropSheets = maxPropSheets;
 
@@ -602,12 +607,12 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, HICON hIcon, OPTIONS_TYP
 static char *GameInfoCPU(UINT nIndex)
 {
 	static char buf[1024];
-	machine_config *config = global_alloc(machine_config(drivers[nIndex]->machine_config));
+	machine_config config(*drivers[nIndex]);
 	const device_config_execute_interface *cpu;
 
 	ZeroMemory(buf, sizeof(buf));
 
-	bool gotone = config->m_devicelist.first(cpu);
+	bool gotone = config.m_devicelist.first(cpu);
 	while (gotone)
 	{
 		if (cpu->devconfig().clock() >= 1000000)
@@ -629,10 +634,7 @@ static char *GameInfoCPU(UINT nIndex)
 
 		gotone = cpu->next(cpu);
     }
-
-	/* Free the structure */
-	global_free(config);
-
+	
 	return buf;
 }
 
@@ -643,11 +645,11 @@ static char *GameInfoSound(UINT nIndex)
 
 	buf[0] = 0;
 	
-	machine_config *config = global_alloc(machine_config(drivers[nIndex]->machine_config));
+	machine_config config(*drivers[nIndex]);
 	
 	/* iterate over sound chips */
 	const device_config_sound_interface *sound = NULL;
-	bool gotone = config->m_devicelist.first(sound);
+	bool gotone = config.m_devicelist.first(sound);
 	while(gotone)
 	{
 		int clock,count;
@@ -695,9 +697,6 @@ static char *GameInfoSound(UINT nIndex)
 
 		strcat(buf,"\n");
 	}
-	/* Free the structure */
-	global_free(config);
-
 	return buf;
 }
 
@@ -705,16 +704,16 @@ static char *GameInfoSound(UINT nIndex)
 static char *GameInfoScreen(UINT nIndex)
 {
 	static char buf[1024];
-	machine_config *config = global_alloc(machine_config(drivers[nIndex]->machine_config));
+	machine_config config(*drivers[nIndex]);
 	memset(buf, '\0', 1024);
 
-	if (isDriverVector(config))
+	if (isDriverVector(&config))
 	{
 		strcpy(buf, "Vector Game"); 
 	}
 	else
 	{
-		const screen_device_config *screen = screen_first(*config);
+		const screen_device_config *screen = screen_first(config);
 		if (screen == NULL) {
 			strcpy(buf, "Screenless Game"); 
 		}
@@ -739,9 +738,6 @@ static char *GameInfoScreen(UINT nIndex)
 			}
 		}
 	}
-	/* Free the structure */
-	global_free(config);
-
 	return buf;
 }
 
@@ -749,11 +745,10 @@ static char *GameInfoScreen(UINT nIndex)
 static char *GameInfoColors(UINT nIndex)
 {
 	static char buf[1024];
-	machine_config *config = global_alloc(machine_config(drivers[nIndex]->machine_config));
+	machine_config config(*drivers[nIndex]);
 
 	ZeroMemory(buf, sizeof(buf));
-	sprintf(buf, "%d colors ", config->m_total_colors);
-	global_free(config);
+	sprintf(buf, "%d colors ", config.m_total_colors);
 
 	return buf;
 }
@@ -1681,10 +1676,10 @@ static void OptionsToProp(HWND hWnd, core_options* o)
 	}
 	hCtrl = GetDlgItem(hWnd, IDC_EFFECT);
 	if (hCtrl) {
-		const char* effect = options_get_string(o, WINOPTION_EFFECT);
+		const char* effect = options_get_string(o, OPTION_EFFECT);
 		if (effect == NULL) {
 			effect = "none";
-			options_set_string(o, WINOPTION_EFFECT, effect, OPTION_PRIORITY_CMDLINE);
+			options_set_string(o, OPTION_EFFECT, effect, OPTION_PRIORITY_CMDLINE);
 		}
 		win_set_window_text_utf8(hCtrl, effect);
 	}
@@ -2427,7 +2422,7 @@ static void BuildDataMap(void)
 	datamap_add(properties_datamap, IDC_KEEPASPECT,				DM_BOOL,	WINOPTION_KEEPASPECT);
 	datamap_add(properties_datamap, IDC_PRESCALE,				DM_INT,		WINOPTION_PRESCALE);
 	datamap_add(properties_datamap, IDC_PRESCALEDISP,			DM_INT,		WINOPTION_PRESCALE);
-	// datamap_add(properties_datamap, IDC_EFFECT,					DM_STRING,	WINOPTION_EFFECT);
+	// datamap_add(properties_datamap, IDC_EFFECT,					DM_STRING,	OPTION_EFFECT);
 	datamap_add(properties_datamap, IDC_WAITVSYNC,				DM_BOOL,	WINOPTION_WAITVSYNC);
 	datamap_add(properties_datamap, IDC_SYNCREFRESH,			DM_BOOL,	WINOPTION_SYNCREFRESH);
 
@@ -2586,36 +2581,28 @@ BOOL IsControlOptionValue(HWND hDlg,HWND hwnd_ctrl, core_options *opts )
 
 static void SetSamplesEnabled(HWND hWnd, int nIndex, BOOL bSoundEnabled)
 {
-	machine_config *config = NULL;
 	BOOL enabled = FALSE;
 	HWND hCtrl;
 
 	hCtrl = GetDlgItem(hWnd, IDC_SAMPLES);
 
-	if ( nIndex > -1 ) {
-		config = global_alloc(machine_config(drivers[nIndex]->machine_config));
-	}
 	
 	if (hCtrl)
 	{		
 		const device_config_sound_interface *sound;
-		if (config != NULL)
-		{
-			for (bool gotone = config->m_devicelist.first(sound); gotone; gotone = sound->next(sound))
+		if ( nIndex > -1 ) {
+			machine_config config(*drivers[nIndex]);
+		
+			for (bool gotone = config.m_devicelist.first(sound); gotone; gotone = sound->next(sound))
 			{
-				if (sound->devconfig().type() == SOUND_SAMPLES ||
-					sound->devconfig().type() == SOUND_VLM5030) {
+				if (sound->devconfig().type() == SAMPLES ||
+					sound->devconfig().type() == VLM5030) {
 					enabled = TRUE;
 				}
 			}
 		}
-
 		enabled = enabled && bSoundEnabled;
 		EnableWindow(hCtrl, enabled);
-	}
-	if (config != NULL)
-	{
-		global_free(config);
 	}
 }
 
@@ -2978,10 +2965,10 @@ static BOOL SelectEffect(HWND hWnd)
 		}
 		buff[l] = '\0';
 
-		if (strcmp(buff, options_get_string(pCurrentOpts, WINOPTION_EFFECT)))
+		if (strcmp(buff, options_get_string(pCurrentOpts, OPTION_EFFECT)))
 		{
 			HWND control = GetDlgItem(hWnd, IDC_EFFECT);
-			options_set_string(pCurrentOpts, WINOPTION_EFFECT, buff, OPTION_PRIORITY_CMDLINE);
+			options_set_string(pCurrentOpts, OPTION_EFFECT, buff, OPTION_PRIORITY_CMDLINE);
 			win_set_window_text_utf8(control, buff);
 			// datamap_populate_control(properties_datamap, hWnd, pCurrentOpts, IDC_EFFECT);
 			changed = TRUE;
@@ -2995,10 +2982,10 @@ static BOOL ResetEffect(HWND hWnd)
 	BOOL changed = FALSE;
 	const char *new_value = "none";
 
-	if (strcmp(new_value, options_get_string(pCurrentOpts, WINOPTION_EFFECT)))
+	if (strcmp(new_value, options_get_string(pCurrentOpts, OPTION_EFFECT)))
 	{
 		HWND control = GetDlgItem(hWnd, IDC_EFFECT);
-		options_set_string(pCurrentOpts, WINOPTION_EFFECT, new_value, OPTION_PRIORITY_CMDLINE);
+		options_set_string(pCurrentOpts, OPTION_EFFECT, new_value, OPTION_PRIORITY_CMDLINE);
 		win_set_window_text_utf8(control, new_value);
 		// datamap_populate_control(properties_datamap, hWnd, pCurrentOpts, IDC_EFFECT);
 		changed = TRUE;

@@ -1,42 +1,42 @@
 /************************************************************************************************************
 
-	Gundam RX-78 (c) 1983 Bandai
+    Gundam RX-78 (c) 1983 Bandai
 
-	preliminary driver by Angelo Salese
-	Monitor command list, and cassette interface added by Robbbert.
+    preliminary driver by Angelo Salese
+    Monitor command list, and cassette interface added by Robbbert.
 
-	TODO:
-	- implement printer
-	- caps lock doesn't seem quite right, I need to press it twice to have the desired effect;
+    TODO:
+    - implement printer
+    - caps lock doesn't seem quite right, I need to press it twice to have the desired effect;
 
-	Notes:
-	- BS-BASIC v1.0 have a graphic bug with the RX-78 logo, it doesn't set the read bank so all of the color
-	  info minus plane 1 is lost when the screen scrolls vertically. Almost certainly a btanb.
-	- To stop a cmt load, press STOP + SHIFT keys
+    Notes:
+    - BS-BASIC v1.0 have a graphic bug with the RX-78 logo, it doesn't set the read bank so all of the color
+      info minus plane 1 is lost when the screen scrolls vertically. Almost certainly a btanb.
+    - To stop a cmt load, press STOP + SHIFT keys
 
 ==============================================================================================================
-	Summary of Monitor commands.
-	- The monitor is entered at bootup. The prompt is the * character. This is followed by a command
-	  letter (upper case). Some commands require hex parameters. You must enter all 4 characters of
-	  these. No spaces allowed except where shown.
-	- While in BASIC, you may enter the monitor by using the MON command. After you have finished,
-	  you can return to BASIC by entering the command *J2005.
+    Summary of Monitor commands.
+    - The monitor is entered at bootup. The prompt is the * character. This is followed by a command
+      letter (upper case). Some commands require hex parameters. You must enter all 4 characters of
+      these. No spaces allowed except where shown.
+    - While in BASIC, you may enter the monitor by using the MON command. After you have finished,
+      you can return to BASIC by entering the command *J2005.
 
-	- Tape commands:
-	*L Load a tape
-	*V Verify a tape
-	*S Save a block of memory to tape. You are asked for a filename (blank is allowed), the start address,
-	   the end address, and the Jump address (where it should begin execution)
+    - Tape commands:
+    *L Load a tape
+    *V Verify a tape
+    *S Save a block of memory to tape. You are asked for a filename (blank is allowed), the start address,
+       the end address, and the Jump address (where it should begin execution)
 
-	- Memory commands:
-	*Dnnnn nnnn Displays a hex dump in the address range entered
-	*Mnnnn      Allows you to examine and modify memory. Enter to skip to next, period (.) to quit.
-	*Jnnnn      Transfer execution (Jump) to a program in memory at the specified address
+    - Memory commands:
+    *Dnnnn nnnn Displays a hex dump in the address range entered
+    *Mnnnn      Allows you to examine and modify memory. Enter to skip to next, period (.) to quit.
+    *Jnnnn      Transfer execution (Jump) to a program in memory at the specified address
 
-	- Other:
-	*R          This is a block transfer load from a mystery parallel device, using ports E0 and E1,
-	            using handshaking similar to a centronics printer. The incoming file is loaded into
-	            memory and it appears that the operator is not provided any information of what happened.
+    - Other:
+    *R          This is a block transfer load from a mystery parallel device, using ports E0 and E1,
+                using handshaking similar to a centronics printer. The incoming file is loaded into
+                memory and it appears that the operator is not provided any information of what happened.
 
 *************************************************************************************************************/
 
@@ -234,8 +234,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( rx78_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-//	AM_RANGE(0xe2, 0xe2) AM_READNOP AM_WRITENOP //printer
-//	AM_RANGE(0xe3, 0xe3) AM_WRITENOP //printer
+//  AM_RANGE(0xe2, 0xe2) AM_READNOP AM_WRITENOP //printer
+//  AM_RANGE(0xe3, 0xe3) AM_WRITENOP //printer
 	AM_RANGE(0xf0, 0xf0) AM_READWRITE(rx78_f0_r,rx78_f0_w) //cmt
 	AM_RANGE(0xf1, 0xf1) AM_WRITE(vram_read_bank_w)
 	AM_RANGE(0xf2, 0xf2) AM_WRITE(vram_write_bank_w)
@@ -426,7 +426,7 @@ static GFXDECODE_START( rx78 )
 	GFXDECODE_ENTRY( "maincpu", 0x1a27, rx78_charlayout, 0, 8 )
 GFXDECODE_END
 
-static MACHINE_DRIVER_START( rx78 )
+static MACHINE_CONFIG_START( rx78, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, MASTER_CLOCK/7)	// unknown divider
 	MDRV_CPU_PROGRAM_MAP(rx78_mem)
@@ -470,7 +470,7 @@ static MACHINE_DRIVER_START( rx78 )
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","rx78")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( rx78 )
@@ -486,7 +486,7 @@ ROM_END
 static DRIVER_INIT( rx78 )
 {
 	UINT32 ram_size = messram_get_size(machine->device("messram"));
-	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if(ram_size == 0x4000)
 		memory_unmap_readwrite(prg, 0x6000, 0xafff, 0, 0);
@@ -495,5 +495,5 @@ static DRIVER_INIT( rx78 )
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1983, rx78,  	0,       0, 		rx78, 	rx78, 	 rx78,  	  "Bandai",   "Gundam RX-78",		GAME_NOT_WORKING)
+COMP( 1983, rx78,	0,       0, 		rx78,	rx78,	 rx78,  	  "Bandai",   "Gundam RX-78",		GAME_NOT_WORKING)
 

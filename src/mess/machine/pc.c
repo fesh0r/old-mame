@@ -20,6 +20,7 @@
 #include "machine/pic8259.h"
 #include "machine/pc_turbo.h"
 
+#include "video/pc_video_mess.h"
 #include "video/pc_vga.h"
 #include "video/pc_cga.h"
 #include "video/pc_aga.h"
@@ -72,7 +73,7 @@ READ8_HANDLER(pc_page_r)
 
 WRITE8_HANDLER(pc_page_w)
 {
-	pc_state *st = (pc_state *)space->machine->driver_data;
+	pc_state *st = space->machine->driver_data<pc_state>();
 	switch(offset % 4)
 	{
 	case 1:
@@ -90,7 +91,7 @@ WRITE8_HANDLER(pc_page_w)
 
 static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	cpu_set_input_line(st->maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
@@ -101,22 +102,22 @@ static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 static READ8_HANDLER( pc_dma_read_byte )
 {
 	UINT8 result;
-	pc_state *st = (pc_state *)space->machine->driver_data;
+	pc_state *st = space->machine->driver_data<pc_state>();
 	offs_t page_offset = (((offs_t) st->dma_offset[0][st->dma_channel]) << 16)
 		& 0x0F0000;
 
-	result = memory_read_byte( space, page_offset + offset);
+	result = space->read_byte( page_offset + offset);
 	return result;
 }
 
 
 static WRITE8_HANDLER( pc_dma_write_byte )
 {
-	pc_state *st = (pc_state *)space->machine->driver_data;
+	pc_state *st = space->machine->driver_data<pc_state>();
 	offs_t page_offset = (((offs_t) st->dma_offset[0][st->dma_channel]) << 16)
 		& 0x0F0000;
 
-	memory_write_byte( space, page_offset + offset, data);
+	space->write_byte( page_offset + offset, data);
 }
 
 
@@ -146,7 +147,7 @@ static WRITE8_DEVICE_HANDLER( pc_dma8237_hdc_dack_w )
 
 static WRITE8_DEVICE_HANDLER( pc_dma8237_0_dack_w )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	st->u73_q2 = 0;
 	i8237_dreq0_w( st->dma8237, st->u73_q2 );
 }
@@ -159,7 +160,7 @@ static WRITE_LINE_DEVICE_HANDLER( pc_dma8237_out_eop )
 
 static void set_dma_channel(running_device *device, int channel, int state)
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 
 	if (!state) st->dma_channel = channel;
 }
@@ -240,7 +241,7 @@ const struct pic8259_interface pcjr_pic8259_config =
  *************************************************************************/
 UINT8 pc_speaker_get_spk(running_machine *machine)
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	return st->pc_spkrdata & st->pc_input;
 }
 
@@ -248,7 +249,7 @@ UINT8 pc_speaker_get_spk(running_machine *machine)
 void pc_speaker_set_spkrdata(running_machine *machine, UINT8 data)
 {
 	running_device *speaker = machine->device("speaker");
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	st->pc_spkrdata = data ? 1 : 0;
 	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
 }
@@ -257,7 +258,7 @@ void pc_speaker_set_spkrdata(running_machine *machine, UINT8 data)
 void pc_speaker_set_input(running_machine *machine, UINT8 data)
 {
 	running_device *speaker = machine->device("speaker");
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	st->pc_input = data ? 1 : 0;
 	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
 }
@@ -271,7 +272,7 @@ void pc_speaker_set_input(running_machine *machine, UINT8 data)
 
 static WRITE_LINE_DEVICE_HANDLER( ibm5150_pit8253_out1_changed )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	/* Trigger DMA channel #0 */
 	if ( st->out1 == 0 && state == 1 && st->u73_q2 == 0 )
 	{
@@ -342,13 +343,13 @@ const struct pit8253_config pcjr_pit8253_config =
 /* called when a interrupt is set/cleared from com hardware */
 static INS8250_INTERRUPT( pc_com_interrupt_1 )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	pic8259_ir4_w(st->pic8259, state);
 }
 
 static INS8250_INTERRUPT( pc_com_interrupt_2 )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	pic8259_ir3_w(st->pic8259, state);
 }
 
@@ -486,7 +487,7 @@ static TIMER_CALLBACK( pcjr_keyb_signal_callback )
 
 static void pcjr_set_keyb_int(running_machine *machine, int state)
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	if ( state )
 	{
 		UINT8	data = pc_keyb_read();
@@ -602,7 +603,7 @@ static READ8_DEVICE_HANDLER (ibm5150_ppi_porta_r)
 {
 	int data = 0xFF;
 	running_machine *machine = device->machine;
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 
 	/* KB port A */
 	if (st->ppi_keyboard_clear)
@@ -655,7 +656,7 @@ static READ8_DEVICE_HANDLER (ibm5150_ppi_portb_r )
 
 static READ8_DEVICE_HANDLER ( ibm5150_ppi_portc_r )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	int timer2_output = pit8253_get_output( st->pit8253, 2 );
 	int data=0xff;
 	running_machine *machine = device->machine;
@@ -735,7 +736,7 @@ static WRITE8_DEVICE_HANDLER ( ibm5150_ppi_porta_w )
 
 static WRITE8_DEVICE_HANDLER ( ibm5150_ppi_portb_w )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	running_device *keyboard = device->machine->device("keyboard");
 
 	/* KB controller port B */
@@ -772,7 +773,7 @@ static WRITE8_DEVICE_HANDLER ( ibm5150_ppi_portc_w )
 
 WRITE8_HANDLER( ibm5150_kb_set_clock_signal )
 {
-	pc_state *st = (pc_state *)space->machine->driver_data;
+	pc_state *st = space->machine->driver_data<pc_state>();
 	running_device *keyboard = space->machine->device("keyboard");
 
 	if ( st->ppi_clock_signal != data )
@@ -806,7 +807,7 @@ WRITE8_HANDLER( ibm5150_kb_set_clock_signal )
 
 WRITE8_HANDLER( ibm5150_kb_set_data_signal )
 {
-	pc_state *st = (pc_state *)space->machine->driver_data;
+	pc_state *st = space->machine->driver_data<pc_state>();
 	running_device *keyboard = space->machine->device("keyboard");
 
 	st->ppi_data_signal = data;
@@ -832,7 +833,7 @@ static READ8_DEVICE_HANDLER (ibm5160_ppi_porta_r)
 {
 	int data = 0xFF;
 	running_machine *machine = device->machine;
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 
 	/* KB port A */
 	if (st->ppi_keyboard_clear)
@@ -859,7 +860,7 @@ static READ8_DEVICE_HANDLER (ibm5160_ppi_porta_r)
 
 static READ8_DEVICE_HANDLER ( ibm5160_ppi_portc_r )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	int timer2_output = pit8253_get_output( st->pit8253, 2 );
 	int data=0xff;
 	running_machine *machine = device->machine;
@@ -893,7 +894,7 @@ static READ8_DEVICE_HANDLER ( ibm5160_ppi_portc_r )
 
 static WRITE8_DEVICE_HANDLER( ibm5160_ppi_portb_w )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	running_device *keyboard = device->machine->device("keyboard");
 
 	/* PPI controller port B*/
@@ -932,7 +933,7 @@ static READ8_DEVICE_HANDLER (pc_ppi_porta_r)
 {
 	int data = 0xFF;
 	running_machine *machine = device->machine;
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 
 	/* KB port A */
 	if (st->ppi_keyboard_clear)
@@ -959,7 +960,7 @@ static READ8_DEVICE_HANDLER (pc_ppi_porta_r)
 
 static WRITE8_DEVICE_HANDLER( pc_ppi_portb_w )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	/* PPI controller port B*/
 	st->ppi_portb = data;
 	st->ppi_portc_switch_high = data & 0x08;
@@ -987,7 +988,7 @@ I8255A_INTERFACE( pc_ppi8255_interface )
 
 static WRITE8_DEVICE_HANDLER ( pcjr_ppi_portb_w )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	/* KB controller port B */
 	st->ppi_portb = data;
 	st->ppi_portc_switch_high = data & 0x08;
@@ -1025,7 +1026,7 @@ static READ8_DEVICE_HANDLER (pcjr_ppi_porta_r )
  */
 static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	int timer2_output = pit8253_get_output( device->machine->device("pit8253"), 2 );
 	int data=0xff;
 
@@ -1080,7 +1081,7 @@ I8255A_INTERFACE( pcjr_ppi8255_interface )
 
 static void pc_fdc_interrupt(running_machine *machine, int state)
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	if (st->pic8259)
 	{
 		pic8259_ir6_w(st->pic8259, state);
@@ -1089,7 +1090,7 @@ static void pc_fdc_interrupt(running_machine *machine, int state)
 
 static void pc_fdc_dma_drq(running_machine *machine, int state, int read_)
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	i8237_dreq2_w( st->dma8237, state);
 }
 
@@ -1118,7 +1119,7 @@ static const struct pc_fdc_interface pcjr_fdc_interface_nc =
 
 static void pc_set_irq_line(running_machine *machine,int irq, int state)
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 
 	switch (irq)
 	{
@@ -1222,7 +1223,7 @@ DRIVER_INIT( t1000hx )
 
 DRIVER_INIT( pc200 )
 {
-	const address_space *space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_PROGRAM );
+	address_space *space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_PROGRAM );
 	UINT8 *gfx = &memory_region(machine, "gfx1")[0x8000];
 	int i;
 
@@ -1232,14 +1233,14 @@ DRIVER_INIT( pc200 )
 
 	memory_install_read16_handler( space, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_r );
 	memory_install_write16_handler( space, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_w );
-	machine->generic.videoram_size=0x10000;
-	machine->generic.videoram.u8 =memory_region(machine, "maincpu")+0xb0000;
+	pc_videoram_size = 0x10000;
+	pc_videoram = memory_region(machine, "maincpu")+0xb0000;
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 }
 
 DRIVER_INIT( ppc512 )
 {
-	const address_space *space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_PROGRAM );
+	address_space *space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_PROGRAM );
 	UINT8 *gfx = &memory_region(machine, "gfx1")[0x8000];
 	int i;
 
@@ -1249,15 +1250,14 @@ DRIVER_INIT( ppc512 )
 
 	memory_install_read16_handler( space, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_r );
 	memory_install_write16_handler( space, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_w );
-	machine->generic.videoram_size=0x10000;
-	machine->generic.videoram.u8 =memory_region(machine, "maincpu")+0xb0000;
+	pc_videoram_size = 0x10000;
+	pc_videoram = memory_region(machine, "maincpu")+0xb0000;
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 DRIVER_INIT( pc1512 )
 {
-	const address_space *space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_PROGRAM );
-	const address_space *io_space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_IO );
+	address_space *space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_PROGRAM );
+	address_space *io_space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_IO );
 	UINT8 *gfx = &memory_region(machine, "gfx1")[0x8000];
 	int i;
 
@@ -1272,7 +1272,6 @@ DRIVER_INIT( pc1512 )
 	memory_install_write16_handler( io_space, 0x3d0, 0x3df, 0, 0, pc1512_16le_w );
 
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 
 
@@ -1298,14 +1297,12 @@ static const struct pc_vga_interface vga_interface =
 
 DRIVER_INIT( pc1640 )
 {
-	const address_space *io_space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_IO );
+	address_space *io_space = cpu_get_address_space( machine->firstcpu, ADDRESS_SPACE_IO );
 
 	memory_install_read16_handler(io_space, 0x278, 0x27b, 0, 0, pc1640_16le_port278_r );
 	memory_install_read16_handler(io_space, 0x4278, 0x427b, 0, 0, pc1640_16le_port4278_r );
 
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-
-	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 
 DRIVER_INIT( pc_vga )
@@ -1317,14 +1314,14 @@ DRIVER_INIT( pc_vga )
 
 static IRQ_CALLBACK(pc_irq_callback)
 {
-	pc_state *st = (pc_state *)device->machine->driver_data;
+	pc_state *st = device->machine->driver_data<pc_state>();
 	return pic8259_acknowledge( st->pic8259 );
 }
 
 
 MACHINE_START( pc )
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 
 	st->pic8259 = machine->device("pic8259");
 	st->dma8237 = machine->device("dma8237");
@@ -1336,8 +1333,7 @@ MACHINE_START( pc )
 MACHINE_RESET( pc )
 {
 	running_device *speaker = machine->device("speaker");
-	pc_state *st = (pc_state *)machine->driver_data;
-	memset(st,0,sizeof(st));
+	pc_state *st = machine->driver_data<pc_state>();
 	st->maincpu = machine->device("maincpu" );
 	cpu_set_irq_callback(st->maincpu, pc_irq_callback);
 
@@ -1345,6 +1341,18 @@ MACHINE_RESET( pc )
 	st->out1 = 0;
 	st->pc_spkrdata = 0;
 	st->pc_input = 0;
+	st->dma_channel = 0;
+	memset(st->dma_offset,0,sizeof(st->dma_offset));
+	st->ppi_portc_switch_high = 0;
+	st->ppi_speaker = 0;
+	st->ppi_keyboard_clear = 0;
+	st->ppi_keyb_clock = 0;
+	st->ppi_portb = 0;
+	st->ppi_clock_signal = 0;
+	st->ppi_data_signal = 0;
+	st->ppi_shift_register = 0;
+	st->ppi_shift_enable = 0;
+
 	pc_mouse_set_serial_port( machine->device("ins8250_0") );
 	pc_hdc_set_dma8237_device( st->dma8237 );
 	speaker_level_w( speaker, 0 );
@@ -1353,7 +1361,7 @@ MACHINE_RESET( pc )
 
 MACHINE_START( pcjr )
 {
-	pc_state *st = (pc_state *)machine->driver_data;
+	pc_state *st = machine->driver_data<pc_state>();
 	pc_fdc_init( machine, &pcjr_fdc_interface_nc );
 	pcjr_keyb.keyb_signal_timer = timer_alloc(machine,  pcjr_keyb_signal_callback, NULL );
 	pc_int_delay_timer = timer_alloc(machine,  pcjr_delayed_pic8259_irq, NULL );
@@ -1369,12 +1377,22 @@ MACHINE_START( pcjr )
 MACHINE_RESET( pcjr )
 {
 	running_device *speaker = machine->device("speaker");
-	pc_state *st = (pc_state *)machine->driver_data;
-	memset(st,0,sizeof(st));
+	pc_state *st = machine->driver_data<pc_state>();
 	st->u73_q2 = 0;
 	st->out1 = 0;
 	st->pc_spkrdata = 0;
 	st->pc_input = 0;
+	st->dma_channel = 0;
+	memset(st->dma_offset,0,sizeof(st->dma_offset));
+	st->ppi_portc_switch_high = 0;
+	st->ppi_speaker = 0;
+	st->ppi_keyboard_clear = 0;
+	st->ppi_keyb_clock = 0;
+	st->ppi_portb = 0;
+	st->ppi_clock_signal = 0;
+	st->ppi_data_signal = 0;
+	st->ppi_shift_register = 0;
+	st->ppi_shift_enable = 0;
 	pc_mouse_set_serial_port( machine->device("ins8250_0") );
 	pc_hdc_set_dma8237_device( st->dma8237 );
 	speaker_level_w( speaker, 0 );

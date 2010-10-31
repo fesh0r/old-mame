@@ -1,3 +1,145 @@
+0.140
+
+New System Drivers Supported:
+-----------------------------
+- Tomy Pyuuta [anondumper]
+- Elektronika KR-03 [Miodrag Milanovic]
+- Microbee 128k [Robbbert]
+- Microbee 256TC [Robbbert]
+- Microbee PC85 Newer version [Robbbert]
+- Microbee PC85 Swedish version [Robbbert]
+- Panasonic JR-100U [Murray Moffatt, Miodrag Milanovic]
+- National JR-100 [anonymous, Miodrag Milanovic]
+- Novag SuperConstellation Chess Computer [Ralf Schaefer]
+- Mephisto MM2 [Ralf Schaefer]
+- Alice 32 [Sandro Ronco]
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- Microbee Premium PC85 [Robbbert]
+- TRS-80 Model II [Curt Coder]
+- Schachcomputer SC2 [Sandro Ronco]
+- Psion Organiser II [Sandro Ronco]
+
+
+
+Skeleton drivers:
+-----------------
+- Cromemco C-10
+- CZK-80
+- Robotron K8915
+- Schleicher MES
+- Fidelity Chess Challenger 10
+- Systec Z80
+- P112 Single Board Computer
+- NEC TK-80
+- SEL Z80 Trainer
+- mc-CP/M-Computer
+- TIM-011
+- WaveMate Bullet
+- ABC 1600 [Rune Tapper, Curt Coder]
+- Atari TT030 [Curt Coder]
+- Atari Falcon [Curt Coder]
+- Atari Falcon040 [Curt Coder]
+- IBM PS/2 Model 55SX [Joseba Epalza]
+- Nakajima ES-210 (Spain) [Joseba Epalza]
+- Laser PC4 [Joseba Epalza, Curt Coder]
+- Atari Portfolio [Joseba Epalza, Curt Coder]
+
+
+
+System Driver Changes:
+----------------------
+- [ABC800] Added a new revision of the floppy controller ROM. [exon, Curt Coder]
+
+- [ABC800] Added a dump of the keyboard controller ROM. [exon, Curt Coder]
+
+- [ABC800] Emulated the built-in keyboard. [Curt Coder, exon]
+
+- [ABC800] Emulated the "fast" floppy disk controller. Note that only raw
+  sector dumps work currently (td0 not supported). [Curt Coder, exon]
+
+- [ABC800] Refactored drivers to define ADDRESS_MAP_MODERN. [Curt Coder]
+
+- [ABC806] Added enhanced options ROM. [exon, Curt Coder]
+
+- [ATARIST] Added several language variants. [Curt Coder]
+
+- [COCO] Fixed delays in when propagating interrupts signals from the floppy
+  disk controller to the CPU. Added a small pool of timers to allow
+  overlapping interrupt signals. [tim lindner]
+
+- [COCO] Added bi-directional bitbanger support. Needs further core
+  changes to be fully implemented. [tim lindner]
+
+- [HECTOR] Added initial support for DISK II unit [JJ Stacino]
+
+- [MAC] Macintosh IIci now boots, promoted to working. [R. Belmont]
+
+- [MAC] Improvements to PMU and Egret MCU emulation. [R. Belmont]
+
+- [MAC] Greatly improved Apple Sound Chip emulation for Mac II, IIx,
+  IIcx, and SE/30. [R. Belmont]
+
+- [MEPHISTO] the mephisto chess board is defined as a 
+  machine (mboard). [Ralf Schaefer]
+
+- [MEPHISTO] to reduce the artwork files glasgow, amsterd and mm4 
+  are defined as PARENTS. [Ralf Schaefer]
+
+- [MYCOM] Improved video and keyboard [Robbbert]
+
+- [MBEE] Added some accessory roms, made various improvements. [Robbbert]
+
+- [POFO] Refactored driver to define ADDRESS_MAP_MODERN. [Curt Coder]
+
+- [PSION] Added support for datapack images [Sandro Ronco]
+
+- [VIP] Refactored driver to define ADDRESS_MAP_MODERN and use the new
+  RCA COSMAC CPU. [Curt Coder]
+
+
+
+Imgtool Changes:
+----------------
+
+- Fixed WIMGTOOL to properly support file systems that use directory separators
+  other than the backslash. [tim lindner]
+
+- Added module for create and manage psion datapack images [Sandro Ronco]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.140.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed Z80-SIO and DMA to allow trs80m2 to boot CP/M and TRSDOS. [Curt Coder]
+
+- Fixed sector counting in TeleDisk images. [Curt Coder]
+
+- Added automatic sector translation to the basicdsk format when the 
+  INTERLEAVE parameter is specified in a FLOPPY_OPTION block. [Curt Coder]
+
+- Fixed writing with the WD17xx. When writing, a timed data request will only set
+  the DRQ. All of the other functionality (for reading) will be omitted.
+  [tim lindner]
+
+- Added support for external character generator ROM to HD61830 LCDC. [Curt Coder]
+
+- Introduced more accurate MC6847 palette. [Ensjo]
+
+- Refactored the HD61830 LCD to a C++ device. [Curt Coder]
+
+- Added call to fetch metadata (in cartslot.c) so correct PCB can be loaded.
+  [tim lindner]
+
+- Refactored the RCA CDP1802 CPU to a C++ device (COSMAC). [Curt Coder]
+
+
+
 0.139
 
 New System Drivers Supported:

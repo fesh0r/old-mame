@@ -17,12 +17,11 @@
 #include "machine/z80pio.h"
 
 
-class mz_state
+class mz_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mz_state(machine)); }
-
-	mz_state(running_machine &machine) { }
+	mz_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	int mz700;				/* 1 if running on an mz700 */
 
@@ -47,6 +46,7 @@ public:
 	int hires_mode;			/* 1 if in 640x200 mode */
 	int screen; 			/* screen designation */
 	UINT8 *colorram;
+	UINT8 *videoram;
 };
 
 

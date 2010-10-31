@@ -92,7 +92,7 @@ static WRITE8_HANDLER( rom_bank_w )
 
 static WRITE8_HANDLER( ram_bank_w )
 {
-	const address_space *space_prg = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space_prg = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 bank = BIT(data,2);
 	memory_install_write_bank(space_prg, 0x0000, 0x3fff, 0, 0, "bank1");
 
@@ -187,7 +187,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(pce220)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 	memory_set_bankptr(machine, "bank1", memory_region(machine, "user1") + 0x0000);
 }
@@ -208,7 +208,7 @@ static GFXDECODE_START( pce220 )
 	GFXDECODE_ENTRY( "lcd_vram",   0x00000, test_decode,    0, 1 )
 GFXDECODE_END
 
-static MACHINE_DRIVER_START( pce220 )
+static MACHINE_CONFIG_START( pce220, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, 3072000 ) // CMOS-SC7852
     MDRV_CPU_PROGRAM_MAP(pce220_mem)
@@ -234,7 +234,7 @@ static MACHINE_DRIVER_START( pce220 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K") // 32K internal + 32K external card
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( pce220 )

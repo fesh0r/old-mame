@@ -357,7 +357,7 @@ static void cmd_read_binary_forward(running_device *device)
 		/* DMA */
 		for (i=0; i<bytes_read; i+=2)
 		{
-			memory_write_word_16be(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM),dma_address, (((int) buffer[i]) << 8) | buffer[i+1]);
+			cputag_get_address_space(device->machine,"maincpu", ADDRESS_SPACE_PROGRAM)->write_word(dma_address, (((int) buffer[i]) << 8) | buffer[i+1]);
 			dma_address = (dma_address + 2) & 0x1ffffe;
 		}
 
@@ -1026,12 +1026,12 @@ DEFINE_LEGACY_IMAGE_DEVICE(TI990_TAPE, ti990_tape);
 	MDRV_DEVICE_ADD((_tag),  TI990_TAPE, 0)
 
 
-static MACHINE_DRIVER_START( tap_990 )
+static MACHINE_CONFIG_FRAGMENT( tap_990 )
 	MDRV_TI990_TAPE_ADD("tape0")
 	MDRV_TI990_TAPE_ADD("tape1")
 	MDRV_TI990_TAPE_ADD("tape2")
 	MDRV_TI990_TAPE_ADD("tape3")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*
     Init the tape controller core
@@ -1063,7 +1063,7 @@ DEVICE_GET_INFO( tap_990 )
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(tap_990_t);								break;
 
 		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(tap_990);		break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(tap_990);		break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(tap_990);					break;

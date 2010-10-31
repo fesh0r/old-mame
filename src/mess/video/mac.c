@@ -147,7 +147,7 @@ VIDEO_UPDATE( mac_cb264 )
 					scanline = BITMAP_ADDR32(bitmap, y, 0);
 					for (x = 0; x < 640/8; x++)
 					{
-						pixels = vram8[(y * 1024) + (x^3)];
+						pixels = vram8[(y * 1024) + (BYTE4_XOR_BE(x))];
 
 						*scanline++ = cb264_palette[pixels&0x80];
 						*scanline++ = cb264_palette[(pixels<<1)&0x80];
@@ -172,7 +172,7 @@ VIDEO_UPDATE( mac_cb264 )
 					scanline = BITMAP_ADDR32(bitmap, y, 0);
 					for (x = 0; x < 640/4; x++)
 					{
-						pixels = vram8[(y * 1024) + (x^3)];
+						pixels = vram8[(y * 1024) + (BYTE4_XOR_BE(x))];
 
 						*scanline++ = cb264_palette[pixels&0xc0];
 						*scanline++ = cb264_palette[(pixels<<2)&0xc0];
@@ -194,12 +194,12 @@ VIDEO_UPDATE( mac_cb264 )
 
 					for (x = 0; x < 640/2; x++)
 					{
-						pixels = vram8[(y * 1024) + (x^3)];
+						pixels = vram8[(y * 1024) + (BYTE4_XOR_BE(x))];
 
 						*scanline++ = cb264_palette[pixels&0xf0];
 						*scanline++ = cb264_palette[(pixels<<4)&0xf0];
 					}
-				}
+				}	      
 			}
 			break;
 
@@ -214,7 +214,7 @@ VIDEO_UPDATE( mac_cb264 )
 
 					for (x = 0; x < 640; x++)
 					{
-						pixels = vram8[(y * 1024) + (x^3)];
+						pixels = vram8[(y * 1024) + (BYTE4_XOR_BE(x))];
 						*scanline++ = cb264_palette[pixels];
 					}
 				}
@@ -310,5 +310,347 @@ WRITE32_HANDLER( mac_cb264_ramdac_w )
 //          printf("%x to unknown RAMDAC register @ %x\n", data, offset);
 			break;
 	}
+}
+
+// IIci/IIsi RAM-Based Video (RBV) and children: V8, Eagle, Spice, VASP, Sonora
+
+VIDEO_START( macrbv )
+{
+}
+
+VIDEO_RESET(macrbv)
+{
+	mac_state *mac = machine->driver_data<mac_state>();
+	rectangle visarea;
+	int htotal, vtotal;
+	double framerate;
+
+	memset(mac->rbv_regs, 0, sizeof(mac->rbv_regs));
+
+	mac->rbv_count = 0;
+	mac->rbv_clutoffs = 0;
+	mac->rbv_immed10wr = 0;
+
+	mac->rbv_regs[2] = 0xff;
+
+	mac->rbv_type = RBV_TYPE_RBV;
+
+	visarea.min_x = 0;
+	visarea.min_y = 0;
+
+	if (mac->model == MODEL_MAC_CLASSIC_II)
+	{
+		mac->rbv_montype = 32;
+		visarea.max_x = MAC_H_VIS-1;
+		visarea.max_y = MAC_V_VIS-1;
+	     	htotal = MAC_H_TOTAL;
+		vtotal = MAC_V_TOTAL;
+		framerate = 60.15;
+	}
+	else
+	{
+		mac->rbv_montype = input_port_read_safe(machine, "MONTYPE", 2);
+		switch (mac->rbv_montype)
+		{
+			case 1:	// 15" portrait display
+				visarea.max_x = 640-1;
+				visarea.max_y = 870-1;
+			     	htotal = 832;
+				vtotal = 918;
+				framerate = 75.0;
+				break;
+
+			case 2: // 12" RGB
+				visarea.max_x = 512-1;
+				visarea.max_y = 384-1;
+			     	htotal = 640;
+				vtotal = 407;
+				framerate = 60.15;
+				break;
+
+			case 6: // 13" RGB
+			default:
+				visarea.max_x = 640-1;
+				visarea.max_y = 480-1;
+			     	htotal = 800;
+				vtotal = 525;
+				framerate = 59.94;
+				break;
+		}
+	}
+
+//	printf("RBV reset: monitor is %dx%d @ %f Hz\n", visarea.max_x+1, visarea.max_y+1, framerate);
+	machine->primary_screen->configure(htotal, vtotal, visarea, HZ_TO_ATTOSECONDS(framerate));
+}
+
+VIDEO_START( macsonora )
+{
+	mac_state *mac = machine->driver_data<mac_state>();
+
+	memset(mac->rbv_regs, 0, sizeof(mac->rbv_regs));
+
+	mac->rbv_count = 0;
+	mac->rbv_clutoffs = 0;
+	mac->rbv_immed10wr = 0;
+
+	mac->rbv_regs[2] = 0xff;
+	mac->rbv_regs[4] = 0x6;
+	mac->rbv_regs[5] = 0x3;
+
+	mac->sonora_vctl[0] = 0x9f;
+	mac->sonora_vctl[1] = 0;
+	mac->sonora_vctl[2] = 0;
+
+	mac->rbv_type = RBV_TYPE_SONORA;
+}
+
+VIDEO_START( macv8 )
+{
+	mac_state *mac = machine->driver_data<mac_state>();
+
+	memset(mac->rbv_regs, 0, sizeof(mac->rbv_regs));
+
+	mac->rbv_count = 0;
+	mac->rbv_clutoffs = 0;
+	mac->rbv_immed10wr = 0;
+
+	mac->rbv_regs[0] = 0x4f;
+	mac->rbv_regs[1] = 0x06;
+	mac->rbv_regs[2] = 0xff;
+
+	mac->rbv_type = RBV_TYPE_V8;
+}
+
+VIDEO_UPDATE( macrbv )
+{
+	UINT32 *scanline;
+	int x, y, hres, vres;
+	mac_state *mac = screen->machine->driver_data<mac_state>();
+
+	switch (mac->rbv_montype)
+	{
+		case 32: // classic II built-in display
+			hres = MAC_H_VIS;
+			vres = MAC_V_VIS;
+			break;
+
+		case 1:	// 15" portrait display
+			hres = 640;
+			vres = 870;
+			break;
+
+		case 2: // 12" RGB
+			hres = 512;
+			vres = 384;
+			break;
+
+		case 6: // 13" RGB
+		default:
+			hres = 640;
+			vres = 480;
+			break;
+	}
+
+	switch (mac->rbv_regs[0x10] & 7)
+	{
+		case 0:	// 1bpp
+		{
+			UINT8 *vram8 = (UINT8 *)messram_get_ptr(screen->machine->device("messram"));
+			UINT8 pixels;
+
+			for (y = 0; y < vres; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				for (x = 0; x < hres; x+=8)
+				{
+					pixels = vram8[(y * (hres/8)) + ((x/8)^3)];
+
+					*scanline++ = mac->rbv_palette[0xfe|(pixels>>7)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>6)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>5)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>4)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>3)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>2)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>1)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|(pixels&1)];
+				}
+			}
+		}
+		break;
+
+		case 1:	// 2bpp
+		{
+			UINT8 *vram8 = (UINT8 *)messram_get_ptr(screen->machine->device("messram")); 
+			UINT8 pixels;
+
+			for (y = 0; y < vres; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				for (x = 0; x < hres/4; x++)
+				{
+					pixels = vram8[(y * (hres/4)) + (BYTE4_XOR_BE(x))];
+
+					*scanline++ = mac->rbv_palette[0xfc|((pixels>>6)&3)];
+					*scanline++ = mac->rbv_palette[0xfc|((pixels>>4)&3)];
+					*scanline++ = mac->rbv_palette[0xfc|((pixels>>2)&3)];
+					*scanline++ = mac->rbv_palette[0xfc|(pixels&3)];
+				}
+			}
+		}
+		break;
+
+		case 2: // 4bpp
+		{
+			UINT8 *vram8 = (UINT8 *)messram_get_ptr(screen->machine->device("messram")); 
+			UINT8 pixels;
+
+			for (y = 0; y < vres; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+
+				for (x = 0; x < hres/2; x++)
+				{
+					pixels = vram8[(y * (hres/2)) + (BYTE4_XOR_BE(x))];
+
+					*scanline++ = mac->rbv_palette[0xf0|(pixels>>4)];
+					*scanline++ = mac->rbv_palette[0xf0|(pixels&0xf)];
+				}
+			}
+		}
+		break;
+
+		case 3: // 8bpp
+		{
+			UINT8 *vram8 = (UINT8 *)messram_get_ptr(screen->machine->device("messram")); 
+			UINT8 pixels;
+			
+			for (y = 0; y < vres; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+
+				for (x = 0; x < hres; x++)
+				{
+					pixels = vram8[(y * hres) + (BYTE4_XOR_BE(x))];
+					*scanline++ = mac->rbv_palette[pixels];
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+VIDEO_UPDATE( macrbvvram )
+{
+	UINT32 *scanline;
+	int x, y;
+	mac_state *mac = screen->machine->driver_data<mac_state>();
+	UINT8 mode = 0;
+
+	switch (mac->rbv_type)
+	{
+		case RBV_TYPE_RBV:
+		case RBV_TYPE_V8:
+			mode = mac->rbv_regs[0x10] & 7;
+			break;
+
+		case RBV_TYPE_SONORA:
+			mode = mac->sonora_vctl[1] & 7;
+
+			// forced blank?
+			if (mac->sonora_vctl[0] & 0x80)
+			{
+				return 0;
+			}
+			break;
+	}
+
+	switch (mode)
+	{
+		case 0:	// 1bpp
+		{
+			UINT8 *vram8 = (UINT8 *)mac->rbv_vram;
+			UINT8 pixels;
+
+			for (y = 0; y < 480; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				for (x = 0; x < 640; x+=8)
+				{
+					pixels = vram8[(y * 80) + ((x/8)^3)];
+
+					*scanline++ = mac->rbv_palette[0xfe|(pixels>>7)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>6)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>5)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>4)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>3)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>2)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|((pixels>>1)&1)];
+					*scanline++ = mac->rbv_palette[0xfe|(pixels&1)];
+				}
+			}
+		}
+		break;
+
+		case 1:	// 2bpp
+		{
+			UINT8 *vram8 = (UINT8 *)mac->rbv_vram;
+			UINT8 pixels;
+
+			for (y = 0; y < 480; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				for (x = 0; x < 640/4; x++)
+				{
+					pixels = vram8[(y * 160) + (BYTE4_XOR_BE(x))];
+
+					*scanline++ = mac->rbv_palette[0xfc|((pixels>>6)&3)];
+					*scanline++ = mac->rbv_palette[0xfc|((pixels>>4)&3)];
+					*scanline++ = mac->rbv_palette[0xfc|((pixels>>2)&3)];
+					*scanline++ = mac->rbv_palette[0xfc|(pixels&3)];
+				}
+			}
+		}
+		break;
+
+		case 2: // 4bpp
+		{
+			UINT8 *vram8 = (UINT8 *)mac->rbv_vram;
+			UINT8 pixels;
+
+			for (y = 0; y < 480; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+
+				for (x = 0; x < 640/2; x++)
+				{
+					pixels = vram8[(y * 320) + (BYTE4_XOR_BE(x))];
+
+					*scanline++ = mac->rbv_palette[0xf0|(pixels>>4)];
+					*scanline++ = mac->rbv_palette[0xf0|(pixels&0xf)];
+				}
+			}
+		}
+		break;
+
+		case 3: // 8bpp
+		{
+			UINT8 *vram8 = (UINT8 *)mac->rbv_vram;
+			UINT8 pixels;
+			
+			for (y = 0; y < 480; y++)
+			{
+				scanline = BITMAP_ADDR32(bitmap, y, 0);
+
+				for (x = 0; x < 640; x++)
+				{
+					pixels = vram8[(y * 640) + (BYTE4_XOR_BE(x))];
+					*scanline++ = mac->rbv_palette[pixels];
+				}
+			}
+		}
+	}
+
+	return 0;
 }
 

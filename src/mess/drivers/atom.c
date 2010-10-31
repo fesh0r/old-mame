@@ -136,8 +136,8 @@ Hardware:   PPIA 8255
 
 static void bankswitch(running_machine *machine)
 {
-	atom_state *state = (atom_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, SY6502_TAG, ADDRESS_SPACE_PROGRAM);
+	atom_state *state = machine->driver_data<atom_state>();
+	address_space *program = cputag_get_address_space(machine, SY6502_TAG, ADDRESS_SPACE_PROGRAM);
 
 	UINT8 *eprom = memory_region(machine, "a000") + (state->eprom << 12);
 
@@ -150,7 +150,7 @@ static void bankswitch(running_machine *machine)
 
 static READ8_HANDLER( eprom_r )
 {
-	atom_state *state = (atom_state *)space->machine->driver_data;
+	atom_state *state = space->machine->driver_data<atom_state>();
 
 	return state->eprom;
 }
@@ -176,7 +176,7 @@ static WRITE8_HANDLER( eprom_w )
 
     */
 
-	atom_state *state = (atom_state *)space->machine->driver_data;
+	atom_state *state = space->machine->driver_data<atom_state>();
 
 	/* block A */
 	state->eprom = data & 0x0f;
@@ -205,7 +205,7 @@ static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb000, 0xb003) AM_MIRROR(0x3fc) AM_DEVREADWRITE(INS8255_TAG, i8255a_r, i8255a_w)
 //  AM_RANGE(0xb400, 0xb403) AM_DEVREADWRITE(MC6854_TAG, mc6854_r, mc6854_w)
 //  AM_RANGE(0xb404, 0xb404) AM_READ_PORT("ECONET")
-	AM_RANGE(0xb800, 0xb80f) AM_MIRROR(0x3f0) AM_DEVREADWRITE(R6522_TAG, via_r, via_w)
+	AM_RANGE(0xb800, 0xb80f) AM_MIRROR(0x3f0) AM_DEVREADWRITE_MODERN(R6522_TAG, via6522_device, read, write)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(SY6502_TAG, 0)
 ADDRESS_MAP_END
 
@@ -366,7 +366,7 @@ INPUT_PORTS_END
 
 static VIDEO_UPDATE( atom )
 {
-	atom_state *state = (atom_state *)screen->machine->driver_data;
+	atom_state *state = screen->machine->driver_data<atom_state>();
 
 	return mc6847_update(state->mc6847, bitmap, cliprect);
 }
@@ -396,7 +396,7 @@ static WRITE8_DEVICE_HANDLER( ppi_pa_w )
 
     */
 
-	atom_state *state = (atom_state *)device->machine->driver_data;
+	atom_state *state = device->machine->driver_data<atom_state>();
 
 	/* keyboard column */
 	state->keylatch = data & 0x0f;
@@ -425,7 +425,7 @@ static READ8_DEVICE_HANDLER( ppi_pb_r )
 
     */
 
-	atom_state *state = (atom_state *)device->machine->driver_data;
+	atom_state *state = device->machine->driver_data<atom_state>();
 	UINT8 data = 0xff;
 
 	switch (state->keylatch)
@@ -464,7 +464,7 @@ static READ8_DEVICE_HANDLER( ppi_pc_r )
 
     */
 
-	atom_state *state = (atom_state *)device->machine->driver_data;
+	atom_state *state = device->machine->driver_data<atom_state>();
 
 	UINT8 data = 0;
 
@@ -500,7 +500,7 @@ static WRITE8_DEVICE_HANDLER( ppi_pc_w )
 
     */
 
-	atom_state *state = (atom_state *)device->machine->driver_data;
+	atom_state *state = device->machine->driver_data<atom_state>();
 
 	/* cassette output */
 	state->pc0 = BIT(data, 0);
@@ -595,7 +595,7 @@ static const i8271_interface fdc_intf =
 static const centronics_interface atom_centronics_config =
 {
 	FALSE,
-	DEVCB_DEVICE_LINE(R6522_TAG, via_ca1_w),
+	DEVCB_DEVICE_LINE_MEMBER(R6522_TAG, via6522_device,write_ca1),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -635,7 +635,7 @@ static const floppy_config atom_floppy_config =
 
 static TIMER_DEVICE_CALLBACK( cassette_output_tick )
 {
-	atom_state *state = (atom_state *)timer.machine->driver_data;
+	atom_state *state = timer.machine->driver_data<atom_state>();
 
 	int level = !(!(!state->hz2400 & state->pc1) & state->pc0);
 
@@ -663,7 +663,7 @@ static const cassette_config atom_cassette_config =
 
 static READ8_DEVICE_HANDLER( atom_mc6847_videoram_r )
 {
-	atom_state *state = (atom_state *)device->machine->driver_data;
+	atom_state *state = device->machine->driver_data<atom_state>();
 
 	mc6847_as_w(device, BIT(state->video_ram[offset], 6));
 	mc6847_intext_w(device, BIT(state->video_ram[offset], 6));
@@ -698,7 +698,7 @@ static const mc6847_interface atom_mc6847_intf =
 
 static MACHINE_START( atom )
 {
-	atom_state *state = (atom_state *)machine->driver_data;
+	atom_state *state = machine->driver_data<atom_state>();
 
 	/* this is temporary */
 	/* Kees van Oss mentions that address 8-b are used for the random number
@@ -828,8 +828,7 @@ static DEVICE_IMAGE_LOAD( atom_cart )
 	MDRV_CARTSLOT_LOAD(atom_cart)
 
 
-static MACHINE_DRIVER_START( atom )
-	MDRV_DRIVER_DATA(atom_state)
+static MACHINE_CONFIG_START( atom, atom_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(SY6502_TAG, M65C02, X2/4)
@@ -851,7 +850,7 @@ static MACHINE_DRIVER_START( atom )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
@@ -874,14 +873,13 @@ static MACHINE_DRIVER_START( atom )
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","atom")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( atomeb )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( atomeb )
-	MDRV_IMPORT_FROM(atom)
+static MACHINE_CONFIG_DERIVED( atomeb, atom )
 	MDRV_CPU_MODIFY(SY6502_TAG)
 	MDRV_CPU_PROGRAM_MAP(atomeb_mem)
 
@@ -908,7 +906,7 @@ static MACHINE_DRIVER_START( atomeb )
 
 	MDRV_ATOM_CARTSLOT_ADD("e0")
 	MDRV_ATOM_CARTSLOT_ADD("e1")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
     ROMS

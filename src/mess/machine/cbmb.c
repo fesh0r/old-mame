@@ -9,8 +9,6 @@
 #include "sound/sid6581.h"
 #include "machine/6525tpi.h"
 #include "machine/6526cia.h"
-
-#include "includes/cbm.h"
 #include "machine/ieee488.h"
 
 #include "includes/cbmb.h"
@@ -43,7 +41,6 @@ UINT8 *cbmb_kernal;
 static UINT8 *cbmb_chargen;
 UINT8 *cbmb_videoram;
 UINT8 *cbmb_colorram;
-static UINT8 *cbmb_memory;
 
 /* tpi at 0xfde00
  in interrupt mode
@@ -204,7 +201,7 @@ READ8_DEVICE_HANDLER( cbmb_keyboard_line_b )
 READ8_DEVICE_HANDLER( cbmb_keyboard_line_c )
 {
 	int data = 0;
-	cbmb_state *state = (cbmb_state *)device->machine->driver_data;
+	cbmb_state *state = device->machine->driver_data<cbmb_state>();
 	if ((input_port_read(device->machine, "ROW0") & ~cbmb_keyline_a) ||
 				(input_port_read(device->machine, "ROW1") & ~cbmb_keyline_b))
 		 data |= 0x01;
@@ -311,7 +308,7 @@ WRITE8_DEVICE_HANDLER( cbmb_change_font )
 
 static void cbmb_common_driver_init( running_machine *machine )
 {
-	cbmb_state *state = (cbmb_state *)machine->driver_data;
+	cbmb_state *state = machine->driver_data<cbmb_state>();
 	cbmb_chargen = memory_region(machine, "maincpu") + 0x100000;
 	/*    memset(c64_memory, 0, 0xfd00); */
 
@@ -323,7 +320,7 @@ static void cbmb_common_driver_init( running_machine *machine )
 
 DRIVER_INIT( cbm600 )
 {
-	cbmb_state *state = (cbmb_state *)machine->driver_data;
+	cbmb_state *state = machine->driver_data<cbmb_state>();
 	cbmb_common_driver_init(machine);
 	state->cbm_ntsc = 1;
 	cbm600_vh_init(machine);
@@ -331,7 +328,7 @@ DRIVER_INIT( cbm600 )
 
 DRIVER_INIT( cbm600pal )
 {
-	cbmb_state *state = (cbmb_state *)machine->driver_data;
+	cbmb_state *state = machine->driver_data<cbmb_state>();
 	cbmb_common_driver_init(machine);
 	state->cbm_ntsc = 0;
 	cbm600_vh_init(machine);
@@ -339,14 +336,14 @@ DRIVER_INIT( cbm600pal )
 
 DRIVER_INIT( cbm600hu )
 {
-	cbmb_state *state = (cbmb_state *)machine->driver_data;
+	cbmb_state *state = machine->driver_data<cbmb_state>();
 	cbmb_common_driver_init(machine);
 	state->cbm_ntsc = 0;
 }
 
 DRIVER_INIT( cbm700 )
 {
-	cbmb_state *state = (cbmb_state *)machine->driver_data;
+	cbmb_state *state = machine->driver_data<cbmb_state>();
 	cbmb_common_driver_init(machine);
 	state->cbm700 = 1;
 	state->cbm_ntsc = 0;
@@ -355,7 +352,7 @@ DRIVER_INIT( cbm700 )
 
 DRIVER_INIT( p500 )
 {
-	cbmb_state *state = (cbmb_state *)machine->driver_data;
+	cbmb_state *state = machine->driver_data<cbmb_state>();
 	cbmb_common_driver_init(machine);
 	state->p500 = 1;
 	state->cbm_ntsc = 1;
@@ -497,73 +494,42 @@ static TIMER_CALLBACK(cbmb_frame_interrupt)
 
 ***********************************************/
 
-
-static CBM_ROM cbmb_cbm_cart[0x20]= { {0} };
-
 static DEVICE_IMAGE_LOAD(cbmb_cart)
 {
-	int size = image.length(), test;
-	const char *filetype;
+	UINT32 size = image.length();
+	const char *filetype = image.filetype();
+	UINT8 *cbmb_memory = memory_region(image.device().machine, "maincpu");
 	int address = 0;
 
-	filetype = image.filetype();
+	/* Assign loading address according to extension */
+	if (!mame_stricmp(filetype, "10"))
+		address = 0x1000;
 
-	if (!mame_stricmp(filetype, "crt"))
-	{
-	/* We temporarily remove .crt loading. Previous versions directly used
-    the same routines used to load C64 .crt file, but I seriously doubt the
-    formats are compatible. While waiting for confirmation about .crt dumps
-    for CBMB machines, we simply do not load .crt files */
-	}
-	else
-	{
-		/* Assign loading address according to extension */
-		if (!mame_stricmp(filetype, "10"))
-			address = 0x1000;
+	else if (!mame_stricmp(filetype, "20"))
+		address = 0x2000;
 
-		else if (!mame_stricmp(filetype, "20"))
-			address = 0x2000;
+	else if (!mame_stricmp(filetype, "40"))
+		address = 0x4000;
 
-		else if (!mame_stricmp(filetype, "40"))
-			address = 0x4000;
+	else if (!mame_stricmp(filetype, "60"))
+		address = 0x6000;
 
-		else if (!mame_stricmp(filetype, "60"))
-			address = 0x6000;
+	logerror("Loading cart %s at %.4x size:%.4x\n", image.filename(), address, size);
 
-		logerror("Loading cart %s at %.4x size:%.4x\n", image.filename(), address, size);
-
-		/* Does cart contain any data? */
-		cbmb_cbm_cart[0].chip = (UINT8*) image.image_malloc(size);
-		if (!cbmb_cbm_cart[0].chip)
-			return IMAGE_INIT_FAIL;
-
-		/* Store data, address & size */
-		cbmb_cbm_cart[0].addr = address;
-		cbmb_cbm_cart[0].size = size;
-		test = image.fread(cbmb_cbm_cart[0].chip, cbmb_cbm_cart[0].size);
-
-		if (test != cbmb_cbm_cart[0].size)
-			return IMAGE_INIT_FAIL;
-	}
-
-	/* Finally load the cart */
-//  This could be needed with .crt support
-//  for (i = 0; (i < ARRAY_LENGTH(pet_cbm_cart)) && (pet_cbm_cart[i].size != 0); i++)
-//      memcpy(cbmb_memory + cbmb_cbm_cart[i].addr + 0xf0000, cbmb_cbm_cart[i].chip, cbmb_cbm_cart[i].size);
-	memcpy(cbmb_memory + cbmb_cbm_cart[0].addr + 0xf0000, cbmb_cbm_cart[0].chip, cbmb_cbm_cart[0].size);
+	image.fread(cbmb_memory + 0xf0000 + address, size);
 
 	return IMAGE_INIT_PASS;
 }
 
 
-MACHINE_DRIVER_START(cbmb_cartslot)
+MACHINE_CONFIG_FRAGMENT(cbmb_cartslot)
 	MDRV_CARTSLOT_ADD("cart1")
-	MDRV_CARTSLOT_EXTENSION_LIST("crt,10,20,40,60")
+	MDRV_CARTSLOT_EXTENSION_LIST("10,20,40,60")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(cbmb_cart)
 
 	MDRV_CARTSLOT_ADD("cart2")
-	MDRV_CARTSLOT_EXTENSION_LIST("crt,10,20,40,60")
+	MDRV_CARTSLOT_EXTENSION_LIST("10,20,40,60")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(cbmb_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

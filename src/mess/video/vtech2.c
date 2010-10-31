@@ -49,7 +49,6 @@ static int laser_two_color = 0;
 
 VIDEO_START( laser )
 {
-	machine->generic.videoram_size = 0x04000;
 }
 
 static const int offs_2[192] = {
@@ -123,6 +122,8 @@ static const int offs_0[96] = {
 
 VIDEO_UPDATE( laser )
 {
+	vtech2_state *state = screen->machine->driver_data<vtech2_state>();
+	UINT8 *videoram = state->videoram;
 	int offs, x, y;
 	int full_refresh = 1;
 
@@ -148,7 +149,7 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code, color = laser_two_color;
 					sy = BORDER_V/2 + y;
 					sx = BORDER_H/2 + x * 8;
-					code = screen->machine->generic.videoram.u8[offs];
+					code = videoram[offs];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[2],code,color,0,0,sx,sy);
 				}
 			}
@@ -167,8 +168,8 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code, color;
 					sy = BORDER_V/2 + y;
 					sx = BORDER_H/2 + x * 16;
-					code = screen->machine->generic.videoram.u8[offs];
-					color = screen->machine->generic.videoram.u8[offs+1];
+					code = videoram[offs];
+					color = videoram[offs+1];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[3],code,color,0,0,sx,sy);
 				}
 			}
@@ -187,7 +188,7 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code;
 					sy = BORDER_V/2 + y;
 					sx = BORDER_H/2 + x * 8;
-					code = screen->machine->generic.videoram.u8[offs];
+					code = videoram[offs];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[5],code,0,0,0,sx,sy);
 				}
 			}
@@ -207,7 +208,7 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code;
 					sy = BORDER_V/2 + y * 2;
 					sx = BORDER_H/2 + x * 8;
-					code = screen->machine->generic.videoram.u8[offs];
+					code = videoram[offs];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[6],code,0,0,0,sx,sy);
 				}
 			}
@@ -226,7 +227,7 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code, color = laser_two_color;
 					sy = BORDER_V/2 + y;
 					sx = BORDER_H/2 + x * 16;
-					code = screen->machine->generic.videoram.u8[offs];
+					code = videoram[offs];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[3],code,color,0,0,sx,sy);
 				}
 			}
@@ -245,8 +246,8 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code, color;
 					sy = BORDER_V/2 + y;
 					sx = BORDER_H/2 + x * 32;
-					code = screen->machine->generic.videoram.u8[offs];
-					color = screen->machine->generic.videoram.u8[offs+1];
+					code = videoram[offs];
+					color = videoram[offs+1];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[4],code,color,0,0,sx,sy);
 				}
 			}
@@ -267,7 +268,7 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code, color = laser_two_color;
 					sy = BORDER_V/2 + y * 8;
 					sx = BORDER_H/2 + x * 8;
-					code = screen->machine->generic.videoram.u8[0x3800+offs];
+					code = videoram[0x3800+offs];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[0],code,color,0,0,sx,sy);
 				}
 			}
@@ -283,8 +284,8 @@ VIDEO_UPDATE( laser )
 					int sx, sy, code, color = 0;
 					sy = BORDER_V/2 + y * 8;
 					sx = BORDER_H/2 + x * 16;
-					code = screen->machine->generic.videoram.u8[0x3800+offs];
-					color = screen->machine->generic.videoram.u8[0x3801+offs];
+					code = videoram[0x3800+offs];
+					color = videoram[0x3801+offs];
 					drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[1],code,color,0,0,sx,sy);
 				}
 			}

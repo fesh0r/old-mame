@@ -208,7 +208,7 @@ static const r3000_cpu_core config =
 	4096	/* data cache size */
 };
 
-static MACHINE_DRIVER_START( sgi_ip6 )
+static MACHINE_CONFIG_START( sgi_ip6, driver_device )
 	MDRV_CPU_ADD( "maincpu", R3000BE, 20000000 ) // FIXME: Should be R2000
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( sgi_ip6_map )
@@ -228,7 +228,7 @@ static MACHINE_DRIVER_START( sgi_ip6 )
 
 	MDRV_VIDEO_START(sgi_ip6)
 	MDRV_VIDEO_UPDATE(sgi_ip6)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( sgi_ip6 )
 	PORT_START("UNUSED") // unused IN0
@@ -251,4 +251,4 @@ ROM_START( sgi_ip6 )
 ROM_END
 
 /*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT     COMPANY   FULLNAME */
-COMP( 1988, sgi_ip6,  0,        0,        sgi_ip6,  sgi_ip6,  sgi_ip6,  "Silicon Graphics, Inc", "4D/PI (R2000, 20MHz)", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1988, sgi_ip6,  0,        0,        sgi_ip6,  sgi_ip6,  sgi_ip6,  "Silicon Graphics Inc", "4D/PI (R2000, 20MHz)", GAME_NOT_WORKING | GAME_NO_SOUND)

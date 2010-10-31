@@ -37,12 +37,11 @@ INLINE void verboselog(running_machine *machine, int n_level, const char *s_fmt,
 * I/O devices                                        *
 \****************************************************/
 
-class craft_state
+class craft_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, craft_state(machine)); }
-
-	craft_state(running_machine &machine) { }
+	craft_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT8 regs[0x100];
 	INT32 tcnt1_direction;
@@ -189,7 +188,7 @@ static void avr8_maybe_start_timer_1(craft_state *state)
 
 static TIMER_CALLBACK( ocr1a_timer_compare )
 {
-    //craft_state *state = (craft_state *)machine->driver_data;
+    //craft_state *state = machine->driver_data<craft_state>();
     //avr8_regs *regs = &state->regs;
 
 	// TODO
@@ -200,7 +199,7 @@ static TIMER_CALLBACK( ocr1a_timer_compare )
 
 static TIMER_CALLBACK( ocr1b_timer_compare )
 {
-    //craft_state *state = (craft_state *)machine->driver_data;
+    //craft_state *state = machine->driver_data<craft_state>();
     //avr8_regs *regs = &state->regs;
 
 	// TODO
@@ -211,7 +210,7 @@ static TIMER_CALLBACK( ocr1b_timer_compare )
 
 static READ8_HANDLER( avr8_read )
 {
-    craft_state *state = (craft_state *)space->machine->driver_data;
+    craft_state *state = space->machine->driver_data<craft_state>();
 
 	if(offset <= Avr8::REGIDX_R31)
 	{
@@ -234,7 +233,7 @@ static READ8_HANDLER( avr8_read )
 
 static UINT8 avr8_get_ddr(running_machine *machine, int reg)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
 	switch(reg)
 	{
@@ -257,7 +256,7 @@ static UINT8 avr8_get_ddr(running_machine *machine, int reg)
 
 static void avr8_change_ddr(running_machine *machine, int reg, UINT8 data)
 {
-    //craft_state *state = (craft_state *)machine->driver_data;
+    //craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldddr = avr8_get_ddr(machine, reg);
 	UINT8 newddr = data;
@@ -272,7 +271,7 @@ static void avr8_change_ddr(running_machine *machine, int reg, UINT8 data)
 
 static void avr8_change_port(running_machine *machine, int reg, UINT8 data)
 {
-    //craft_state *state = (craft_state *)machine->driver_data;
+    //craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldport = avr8_get_ddr(machine, reg);
 	UINT8 newport = data;
@@ -345,21 +344,21 @@ static void avr8_disable_spi(running_machine *machine)
 static void avr8_spi_update_masterslave_select(running_machine *machine)
 {
 	// TODO
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 	verboselog(machine, 0, "avr8_spi_update_masterslave_select: TODO; AVR is %s\n", AVR8_SPCR_MSTR ? "Master" : "Slave");
 }
 
 static void avr8_spi_update_clock_polarity(running_machine *machine)
 {
 	// TODO
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 	verboselog(machine, 0, "avr8_spi_update_clock_polarity: TODO; SCK is Active-%s\n", AVR8_SPCR_CPOL ? "Low" : "High");
 }
 
 static void avr8_spi_update_clock_phase(running_machine *machine)
 {
 	// TODO
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 	verboselog(machine, 0, "avr8_spi_update_clock_phase: TODO; Sampling edge is %s\n", AVR8_SPCR_CPHA ? "Trailing" : "Leading");
 }
 
@@ -368,13 +367,13 @@ static UINT8 avr8_spi_clock_divisor[8] = { 4, 16, 64, 128, 2, 8, 32, 64 };
 static void avr8_spi_update_clock_rate(running_machine *machine)
 {
 	// TODO
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 	verboselog(machine, 0, "avr8_spi_update_clock_rate: TODO; New clock rate should be f/%d\n", avr8_spi_clock_divisor[AVR8_SPCR_SPR] / (AVR8_SPSR_SPR2X ? 2 : 1));
 }
 
 static void avr8_change_spcr(running_machine *machine, UINT8 data)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldspcr = AVR8_SPCR;
 	UINT8 newspcr = data;
@@ -422,7 +421,7 @@ static void avr8_change_spcr(running_machine *machine, UINT8 data)
 
 static void avr8_change_spsr(running_machine *machine, UINT8 data)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldspsr = AVR8_SPSR;
 	UINT8 newspsr = data;
@@ -445,7 +444,7 @@ static void avr8_change_spsr(running_machine *machine, UINT8 data)
 
 static void avr8_change_timsk1(running_machine *machine, UINT8 data)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldtimsk = AVR8_TIMSK1;
 	UINT8 newtimsk = data;
@@ -479,7 +478,7 @@ static void avr8_change_timsk1(running_machine *machine, UINT8 data)
 static void avr8_update_timer1_compare_mode(running_machine *machine, int reg)
 {
 	// TODO
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
     UINT8 mode = (reg == AVR8_REG_A) ? AVR8_TCCR1A_COM1A : AVR8_TCCR1A_COM1B;
     switch(mode)
     {
@@ -577,7 +576,7 @@ static void avr8_update_timer1_waveform_gen_mode(running_machine *machine)
 {
 	// TODO
 	UINT16 top = 0;
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 	verboselog(machine, 0, "avr8_update_timer1_waveform_gen_mode: TODO; WGM1 is %d\n", AVR8_WGM1 );
 	switch(AVR8_WGM1)
 	{
@@ -622,7 +621,7 @@ static void avr8_update_timer1_waveform_gen_mode(running_machine *machine)
 
 static void avr8_changed_tccr1a(running_machine *machine, UINT8 data)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldtccr = AVR8_TCCR1A;
 	UINT8 newtccr = data;
@@ -654,7 +653,7 @@ static void avr8_update_timer1_input_noise_canceler(running_machine *machine)
 static void avr8_update_timer1_input_edge_select(running_machine *machine)
 {
 	// TODO
-    //craft_state *state = (craft_state *)machine->driver_data;
+    //craft_state *state = machine->driver_data<craft_state>();
 	verboselog(machine, 0, "avr8_update_timer1_input_edge_select: TODO; Clocking edge is %s\n", "test");
 }
 
@@ -664,7 +663,7 @@ static void avr8_update_timer1_clock_source(running_machine *machine)
 
 static void avr8_changed_tccr1b(running_machine *machine, UINT8 data)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
 	UINT8 oldtccr = AVR8_TCCR1B;
 	UINT8 newtccr = data;
@@ -697,7 +696,7 @@ static void avr8_changed_tccr1b(running_machine *machine, UINT8 data)
 
 static void avr8_update_ocr1(running_machine *machine, UINT16 newval, UINT8 reg)
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 	UINT8 *p_reg_h = (reg == AVR8_REG_A) ? &AVR8_OCR1AH : &AVR8_OCR1BH;
 	UINT8 *p_reg_l = (reg == AVR8_REG_A) ? &AVR8_OCR1AL : &AVR8_OCR1BL;
 	*p_reg_h = (UINT8)(newval >> 8);
@@ -708,7 +707,7 @@ static void avr8_update_ocr1(running_machine *machine, UINT16 newval, UINT8 reg)
 
 static WRITE8_HANDLER( avr8_write )
 {
-    craft_state *state = (craft_state *)space->machine->driver_data;
+    craft_state *state = space->machine->driver_data<craft_state>();
 
 	if(offset <= Avr8::REGIDX_R31)
 	{
@@ -818,7 +817,7 @@ static VIDEO_UPDATE( craft )
 
 static DRIVER_INIT( craft )
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
     state->ocr1a_timer = timer_alloc(machine, ocr1a_timer_compare, 0);
     state->ocr1b_timer = timer_alloc(machine, ocr1b_timer_compare, 0);
@@ -826,7 +825,7 @@ static DRIVER_INIT( craft )
 
 static MACHINE_RESET( craft )
 {
-    craft_state *state = (craft_state *)machine->driver_data;
+    craft_state *state = machine->driver_data<craft_state>();
 
     AVR8_TIMSK1 = 0;
     AVR8_OCR1AH = 0;
@@ -841,9 +840,7 @@ static MACHINE_RESET( craft )
     dac_data_w(machine->device("dac"), 0x00);
 }
 
-static MACHINE_DRIVER_START( craft )
-
-    MDRV_DRIVER_DATA( craft_state )
+static MACHINE_CONFIG_START( craft, craft_state )
 
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", AVR8, MASTER_CLOCK)
@@ -869,7 +866,7 @@ static MACHINE_DRIVER_START( craft )
     MDRV_SPEAKER_STANDARD_MONO("avr8")
     MDRV_SOUND_ADD("dac", DAC, 0)
     MDRV_SOUND_ROUTE(0, "avr8", 1.00)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START( craft )
 	ROM_REGION( 0x2000, "maincpu", 0 )  /* Main program store */

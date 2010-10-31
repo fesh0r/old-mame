@@ -85,8 +85,8 @@ enum
 
 static void bankswitch(running_machine *machine)
 {
-	px8_state *state = (px8_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, UPD70008_TAG, ADDRESS_SPACE_PROGRAM);
+	px8_state *state = machine->driver_data<px8_state>();
+	address_space *program = cputag_get_address_space(machine, UPD70008_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT8 *ram = messram_get_ptr(machine->device("messram"));
 	UINT8 *ipl_rom = memory_region(machine, UPD70008_TAG);
 
@@ -275,7 +275,7 @@ static READ8_HANDLER( gah40m_r )
 
 static WRITE8_HANDLER( gah40m_w )
 {
-	px8_state *state = (px8_state *)space->machine->driver_data;
+	px8_state *state = space->machine->driver_data<px8_state>();
 
 	switch (offset)
 	{
@@ -383,7 +383,7 @@ static WRITE8_HANDLER( gah40m_w )
 
 static READ8_HANDLER( gah40s_r )
 {
-	px8_state *state = (px8_state *)space->machine->driver_data;
+	px8_state *state = space->machine->driver_data<px8_state>();
 	UINT8 data = 0xff;
 
 	switch (offset)
@@ -410,7 +410,7 @@ static READ8_HANDLER( gah40s_r )
 
 static WRITE8_HANDLER( gah40s_w )
 {
-	px8_state *state = (px8_state *)space->machine->driver_data;
+	px8_state *state = space->machine->driver_data<px8_state>();
 
 	switch (offset)
 	{
@@ -455,65 +455,65 @@ static WRITE8_HANDLER( gah40s_w )
 
 static WRITE8_HANDLER( gah40s_ier_w )
 {
-	px8_state *state = (px8_state *)space->machine->driver_data;
+	px8_state *state = space->machine->driver_data<px8_state>();
 
 	state->ier = data;
 }
 
-/*-------------------------------------------------
-    krtn_read - read keyboard return
--------------------------------------------------*/
-
-static UINT8 krtn_read(running_machine *machine)
-{
-	px8_state *state = (px8_state *)machine->driver_data;
-	UINT8 data = 0xff;
-
-	switch (state->ksc)
-	{
-	case 0: data = input_port_read(machine, "KSC0"); break;
-	case 1: data = input_port_read(machine, "KSC1"); break;
-	case 2: data = input_port_read(machine, "KSC2"); break;
-	case 3: data = input_port_read(machine, "KSC3"); break;
-	case 4: data = input_port_read(machine, "KSC4"); break;
-	case 5: data = input_port_read(machine, "KSC5"); break;
-	case 6: data = input_port_read(machine, "KSC6"); break;
-	case 7: data = input_port_read(machine, "KSC7"); break;
-	case 8: data = input_port_read(machine, "KSC8"); break;
-	case 9: data = input_port_read(machine, "SW4");  break;
-	}
-
-	return data;
-}
-
-/*-------------------------------------------------
-    krtn_0_3_r - keyboard return 0..3 read
--------------------------------------------------*/
-
-static READ8_HANDLER( krtn_0_3_r )
-{
-	return krtn_read(space->machine) & 0x0f;
-}
-
-/*-------------------------------------------------
-    krtn_4_7_r - keyboard return 4..7 read
--------------------------------------------------*/
-
-static READ8_HANDLER( krtn_4_7_r )
-{
-	return krtn_read(space->machine) >> 4;
-}
-
-/*-------------------------------------------------
-    ksc_w - keyboard scan write
--------------------------------------------------*/
-
-static WRITE8_HANDLER( ksc_w )
-{
-	px8_state *state = (px8_state *)space->machine->driver_data;
-
-	state->ksc = data;
-}
+///*-------------------------------------------------
+//    krtn_read - read keyboard return
+//-------------------------------------------------*/
+//
+//static UINT8 krtn_read(running_machine *machine)
+//{
+//  px8_state *state = machine->driver_data<px8_state>();
+//  UINT8 data = 0xff;
+//
+//  switch (state->ksc)
+//  {
+//  case 0: data = input_port_read(machine, "KSC0"); break;
+//  case 1: data = input_port_read(machine, "KSC1"); break;
+//  case 2: data = input_port_read(machine, "KSC2"); break;
+//  case 3: data = input_port_read(machine, "KSC3"); break;
+//  case 4: data = input_port_read(machine, "KSC4"); break;
+//  case 5: data = input_port_read(machine, "KSC5"); break;
+//  case 6: data = input_port_read(machine, "KSC6"); break;
+//  case 7: data = input_port_read(machine, "KSC7"); break;
+//  case 8: data = input_port_read(machine, "KSC8"); break;
+//  case 9: data = input_port_read(machine, "SW4");  break;
+//  }
+//
+//  return data;
+//}
+//
+///*-------------------------------------------------
+//    krtn_0_3_r - keyboard return 0..3 read
+//-------------------------------------------------*/
+//
+//static READ8_HANDLER( krtn_0_3_r )
+//{
+//  return krtn_read(space->machine) & 0x0f;
+//}
+//
+///*-------------------------------------------------
+//    krtn_4_7_r - keyboard return 4..7 read
+//-------------------------------------------------*/
+//
+//static READ8_HANDLER( krtn_4_7_r )
+//{
+//  return krtn_read(space->machine) >> 4;
+//}
+//
+///*-------------------------------------------------
+//    ksc_w - keyboard scan write
+//-------------------------------------------------*/
+//
+//static WRITE8_HANDLER( ksc_w )
+//{
+//  px8_state *state = space->machine->driver_data<px8_state>();
+//
+//  state->ksc = data;
+//}
 
 /***************************************************************************
     MEMORY MAPS
@@ -573,16 +573,16 @@ ADDRESS_MAP_END
     ADDRESS_MAP( px8_sub_io )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( px8_sub_io, ADDRESS_SPACE_IO, 8 )
-//  AM_RANGE(0x00, 0x00) AM_READWRITE()
-	AM_RANGE(0x01, 0x01) AM_READ(krtn_0_3_r)
-//  AM_RANGE(0x02, 0x02) AM_WRITE()
-	AM_RANGE(0x03, 0x03) AM_WRITE(ksc_w)
-//  AM_RANGE(0x04, 0x04) AM_WRITE()
-	AM_RANGE(0x05, 0x05) AM_READ(krtn_4_7_r)
-//  AM_RANGE(0x06, 0x06) AM_READ()
-//  AM_RANGE(0x07, 0x07) AM_WRITE()
-ADDRESS_MAP_END
+//static ADDRESS_MAP_START( px8_sub_io, ADDRESS_SPACE_IO, 8 )
+////  AM_RANGE(0x00, 0x00) AM_READWRITE()
+//  AM_RANGE(0x01, 0x01) AM_READ(krtn_0_3_r)
+////  AM_RANGE(0x02, 0x02) AM_WRITE()
+//  AM_RANGE(0x03, 0x03) AM_WRITE(ksc_w)
+////  AM_RANGE(0x04, 0x04) AM_WRITE()
+//  AM_RANGE(0x05, 0x05) AM_READ(krtn_4_7_r)
+////  AM_RANGE(0x06, 0x06) AM_READ()
+////  AM_RANGE(0x07, 0x07) AM_WRITE()
+//ADDRESS_MAP_END
 
 /***************************************************************************
     INPUT PORTS
@@ -709,14 +709,14 @@ INPUT_PORTS_END
 
 static READ8_DEVICE_HANDLER( vd_r )
 {
-	px8_state *state = (px8_state *)device->machine->driver_data;
+	px8_state *state = device->machine->driver_data<px8_state>();
 
 	return state->video_ram[offset & PX8_VIDEORAM_MASK];
 }
 
 static WRITE8_DEVICE_HANDLER( vd_w )
 {
-	px8_state *state = (px8_state *)device->machine->driver_data;
+	px8_state *state = device->machine->driver_data<px8_state>();
 
 	state->video_ram[offset & PX8_VIDEORAM_MASK] = data;
 }
@@ -752,7 +752,7 @@ static VIDEO_START( px8 )
 
 static VIDEO_UPDATE( px8 )
 {
-	px8_state *state = (px8_state *)screen->machine->driver_data;
+	px8_state *state = screen->machine->driver_data<px8_state>();
 
 	sed1330_update(state->sed1320, bitmap, cliprect);
 
@@ -821,7 +821,7 @@ static const cassette_config px8_cassette_config =
 
 static MACHINE_START( px8 )
 {
-	px8_state *state = (px8_state *)machine->driver_data;
+	px8_state *state = machine->driver_data<px8_state>();
 
 	/* find devices */
 	state->sed1320 = machine->device(SED1320_TAG);
@@ -838,7 +838,7 @@ static MACHINE_START( px8 )
 
 static MACHINE_RESET( px8 )
 {
-	px8_state *state = (px8_state *)machine->driver_data;
+	px8_state *state = machine->driver_data<px8_state>();
 
 	state->bank0 = 0;
 	state->bk2 = 1;
@@ -850,8 +850,7 @@ static MACHINE_RESET( px8 )
     MACHINE DRIVERS
 ***************************************************************************/
 
-static MACHINE_DRIVER_START( px8 )
-	MDRV_DRIVER_DATA(px8_state)
+static MACHINE_CONFIG_START( px8, px8_state )
 
 	/* main cpu (uPD70008) */
 	MDRV_CPU_ADD(UPD70008_TAG, Z80, XTAL_CR1 / 4) /* 2.45 MHz */
@@ -906,7 +905,7 @@ static MACHINE_DRIVER_START( px8 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
     ROMS

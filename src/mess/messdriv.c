@@ -47,7 +47,7 @@ const game_driver * const drivers[] =
 	DRIVER( a7800 )	 /* Atari 7800 NTSC   */
 	DRIVER( a7800p )	/* Atari 7800 PAL      */
 	DRIVER( lynx )	  /* Atari Lynx Handheld      */
-	DRIVER( lynx2 )	 /* Atari Lynx II Handheld redesigned, no additions  */
+//  DRIVER( lynx2 )  /* Atari Lynx II Handheld redesigned, no additions  */
 	DRIVER( jaguar )	/* Atari Jaguar  */
 	DRIVER( jaguarcd )  /* Atari Jaguar CD    */
 
@@ -239,7 +239,7 @@ const game_driver * const drivers[] =
 	DRIVER( lnsy1392 )
 	DRIVER( vc6000 )
 	DRIVER( database )
-	DRIVER( wvmdtbse )
+	DRIVER( vmdtbase )
 	DRIVER( rwtrntcs )
 	DRIVER( telngtcs )
 	DRIVER( krvnjvtv )
@@ -436,17 +436,46 @@ const game_driver * const drivers[] =
 	DRIVER( a130xe )	/* 1986 Atari 130 XE    */
 	DRIVER( a800xe )	/* 1986 Atari 800 XE    */
 	DRIVER( xegs )	  /* 1987 Atari XE Game System  */
-	DRIVER( atarist )   /* Atari ST  */
+	DRIVER( st )   /* Atari ST  */
+	DRIVER( st_uk )
+	DRIVER( st_de )
+	DRIVER( st_es )
+	DRIVER( st_nl )
+	DRIVER( st_fr )
+	DRIVER( st_se )
+	DRIVER( st_sg )
 	DRIVER( megast )	/* Atari Mega ST    */
+	DRIVER( megast_uk )
+	DRIVER( megast_de )
+	DRIVER( megast_fr )
+	DRIVER( megast_se )
+	DRIVER( megast_sg )
 //  DRIVER( stacy )  /* Atari STacy   */
-	DRIVER( atariste )  /* Atari STe    */
+	DRIVER( ste )  /* Atari STe    */
+	DRIVER( ste_uk )
+	DRIVER( ste_de )
+	DRIVER( ste_es )
+	DRIVER( ste_fr )
+	DRIVER( ste_it )
+	DRIVER( ste_se )
+	DRIVER( ste_sg )
 	DRIVER( stbook )	/* Atari STBook  */
 	DRIVER( megaste )   /* Atari Mega STe      */
+	DRIVER( megaste_uk )
+	DRIVER( megaste_de )
+	DRIVER( megaste_es )
+	DRIVER( megaste_fr )
+	DRIVER( megaste_it )
+	DRIVER( megaste_se )
 //  DRIVER( stpad )  /* Atari STPad (prototype)   */
-//  DRIVER( tt030 )  /* Atari TT030   */
+	DRIVER( tt030 )  /* Atari TT030   */
+	DRIVER( tt030_uk )
+	DRIVER( tt030_de )
+	DRIVER( tt030_fr )
+	DRIVER( tt030_pl )
 //  DRIVER( fx1 )      /* Atari FX-1 (prototype)       */
-//  DRIVER( falcon )    /* Atari Falcon030    */
-//  DRIVER( falcon40 )  /* Atari Falcon040 (prototype)    */
+	DRIVER( falcon )    /* Atari Falcon030    */
+	DRIVER( falcon40 )  /* Atari Falcon040 (prototype)    */
 
 	/* Commodore */
 	DRIVER( kim1 )	  /* Commodore (MOS) KIM-1 1975    */
@@ -566,6 +595,7 @@ const game_driver * const drivers[] =
 	DRIVER( px4p )	  /* 1985 Epson PX-4+    */
 	DRIVER( px8 )
 	DRIVER( qx10 )
+	DRIVER( qc10 )
 	DRIVER( ehx20 )
 
 	/* IBM PC & Clones */
@@ -609,7 +639,8 @@ const game_driver * const drivers[] =
 	/* AT */
 	DRIVER( ibm5170 )   /* 1984 IBM PC/AT 5170, original 6 MHz model    */
 	DRIVER( ibm5170a )  /* 1985 IBM PC/AT 5170, enhanced 8 MHz model    */
-	DRIVER( i8530286 )  /* 1988 IBM PS2 Model 30 286 (VGA)    */
+	DRIVER( i8530286 )  /* 1988 IBM PS/2 Model 30-286 (VGA)    */
+	DRIVER( i8555081 )  /* 1988 IBM PS/2 Model 55SX (VGA)    */
 	DRIVER( at )	/* 1987 AMI Bios and Diagnostics    */
 	DRIVER( atvga )	 /* 19?? AT VGA   */
 	DRIVER( neat )	  /* 1989 New Enhanced AT chipset, AMI BIOS    */
@@ -726,8 +757,8 @@ const game_driver * const drivers[] =
 	DRIVER( mz80b )	 /* 1981 Sharp MZ80B     */
 	DRIVER( mz2000 )	 /* 1981 Sharp MZ2000     */
 
-	DRIVER( x1 )	/* 1982 Sharp X1    */
-	DRIVER( x1ck )	  /* 1984 Sharp X1Ck      */
+	DRIVER( x1 )		/* 1982 Sharp X1    */
+	DRIVER( x1twin )	/* 1986 Sharp X1 Twin      */
 	DRIVER( x1turbo )   /* 1984 Sharp X1 Turbo (Model 10)      */
 	DRIVER( x1turbo40 ) /* 1985 Sharp X1 Turbo (Model 40)      */
 //  DRIVER( x1turboz )  /* 1986 Sharp X1 TurboZ  */
@@ -762,6 +793,7 @@ const game_driver * const drivers[] =
 
 	/* TI 99 clones */
 	DRIVER( tutor)	  /* 1983? Tomy Tutor    */
+	DRIVER( pyuuta )	/* 1982 Tomy Pyuuta     */
 	DRIVER( geneve )	/* 1987? Myarc Geneve 9640    */
 	DRIVER( genmod )	/* 199?? Myarc Geneve 9640    */
 	DRIVER( ti99_4p )   /* 1996 SNUG 99/4P (a.k.a. SGCPU)      */
@@ -789,12 +821,13 @@ const game_driver * const drivers[] =
 	/* NEC */
 	DRIVER( pc6001 )
 	DRIVER( pc6001a )
-	DRIVER( pc6001m2 )
+	DRIVER( pc6001mk2 )
+	DRIVER( pc6601 )
 	DRIVER( pc6001sr )
-	DRIVER( pc6600 )
-	DRIVER( pc6600sr )
+
 	DRIVER( pc8001 )
 	DRIVER( pc8001mk2 )
+
 	DRIVER( pc8801 )
 	DRIVER( pc8801mk2 )
 	DRIVER( pc8801mk2sr )
@@ -806,8 +839,11 @@ const game_driver * const drivers[] =
 	DRIVER( pc8801ma2 )
 	DRIVER( pc8801mc )
 	DRIVER( pc88va )
+
 	DRIVER( pc9801 )
 	DRIVER( pc9821 )
+	DRIVER( pc9821ne )
+	DRIVER( pc9821a )
 
 	/* Cantab */
 	DRIVER( jupiter )   /* Jupiter Ace    */
@@ -857,9 +893,13 @@ const game_driver * const drivers[] =
 	DRIVER( mbeeic )	/* Microbee 32 IC      */
 	DRIVER( mbeepc )	/* Microbee 32 PC      */
 	DRIVER( mbeepc85 )  /* Microbee 32 PC85  */
+	DRIVER( mbeepc85b )  /* Microbee 32 PC85 (Business version) */
+	DRIVER( mbeepc85s )  /* Microbee 32 PC85 (Swedish) */
 	DRIVER( mbeeppc )   /* Microbee 32 PPC85    */
 	DRIVER( mbee56 )	/* Microbee 56K (CP/M)    */
 	DRIVER( mbee64 )	/* Microbee 64K (CP/M)    */
+	DRIVER( mbee128 )	/* Microbee 128K (CP/M)    */
+	DRIVER( mbee256 )	/* Microbee 256TC (CP/M)    */
 
 	/* Tandy / Radio Shack */
 	DRIVER( trs80 )	 /* TRS-80 Model I - Level I BASIC     */
@@ -894,6 +934,7 @@ const game_driver * const drivers[] =
 	DRIVER( cp400 )	 /* Prologica CP400   */
 	DRIVER( mc10 )	  /* MC-10  */
 	DRIVER( alice )	 /* Matra & Hachette Ordinateur Alice   */
+	DRIVER( alice32 ) /* Matra & Hachette Alice 32   */
 
 	/* EACA */
 	DRIVER( cgenie )	/* Colour Genie EG2000    */
@@ -1216,7 +1257,7 @@ const game_driver * const drivers[] =
 
 	/* OSCOM Oy */
 //  DRIVER(osc1000b)
-	DRIVER(oscnano)
+	DRIVER(nano)
 
 	/* MIT */
 	DRIVER( tx0_64kw )  /* April 1956 MIT TX-0 (64kw RAM)      */
@@ -1229,6 +1270,7 @@ const game_driver * const drivers[] =
 	DRIVER( abc800m )
 	DRIVER( abc800c )
 	DRIVER( abc806 )
+	DRIVER( abc1600 )
 
 	/* Be Incorporated */
 	DRIVER( bebox )	 /* BeBox Dual603-66     */
@@ -1317,6 +1359,7 @@ const game_driver * const drivers[] =
 	DRIVER( radioram )
 	DRIVER( spektr01 )
 	DRIVER( mikron2 )
+	DRIVER( kr03 )
 	DRIVER( apogee )
 	DRIVER( mikrosha )
 	DRIVER( partner )
@@ -1340,6 +1383,7 @@ const game_driver * const drivers[] =
 
 	/* Robotron 1715 */
 	DRIVER (rt1715)
+	DRIVER (rt1715lc) /* (latin/cyrillic) */
 	DRIVER (rt1715w)
 
 	/* Z1013 */
@@ -1461,13 +1505,14 @@ const game_driver * const drivers[] =
 	DRIVER( trsm100 )
 	DRIVER( tandy102 )
 	DRIVER( tandy200 )
-//  DRIVER( pc8201 )
+    DRIVER( pc8201 )
 	DRIVER( pc8201a )
 //  DRIVER( npc8300 )
 //  DRIVER( pc8401a )
 	DRIVER( pc8500 )
 
 	/* Nakajima manufactured eletronic typewriters */
+	DRIVER( es210_es )
 	DRIVER( drwrt200 )  /* 199? NTS DreamWriter T200     */
 	DRIVER( drwrt400 )  /* 1996 NTS DreamWriter T400     */
 	DRIVER( wales210 )  /* 199? Walther ES-210 (German)   */
@@ -1509,20 +1554,23 @@ const game_driver * const drivers[] =
 
 	/* Novag */
 	DRIVER( ssystem3 )  /* Chess Champion Super System III / MK III  */
+	DRIVER( supercon )
 
 	/* Hegener & Glaser Munich */
 //  DRIVER( mephisto )  /* Mephisto  */
-	DRIVER( mm4 )	   /* Mephisto 4       */
-	DRIVER( mm5 )	   /* Mephisto 5.1 ROM   */
-	DRIVER( mm50 )	  /* Mephisto 5.0 ROM    */
-	DRIVER( rebel5 )	/* Mephisto 5      */
-	DRIVER( glasgow )	   /* Glasgow     */
-	DRIVER( amsterd )	   /* Amsterdam */
-	DRIVER( dallas )	/* Dallas      */
-	DRIVER( dallas16 )	  /* Dallas    */
-	DRIVER( dallas32 )	  /* Dallas    */
-	DRIVER( roma )	  /* Roma    */
-	DRIVER( roma32 )	/* Roma  */
+	DRIVER( mm2 )       /* Mephisto 2 */
+	DRIVER( mm4 )       /* Mephisto 4       */
+	DRIVER( mm5 )       /* Mephisto 5.1 ROM   */
+	DRIVER( mm50 )      /* Mephisto 5.0 ROM    */
+	DRIVER( rebel5 )    /* Mephisto 5      */
+	DRIVER( glasgow )       /* Glasgow     */
+	DRIVER( amsterd )       /* Amsterdam */
+	DRIVER( dallas )    /* Dallas      */
+	DRIVER( dallas16 )      /* Dallas    */
+	DRIVER( dallas32 )      /* Dallas    */
+	DRIVER( roma )      /* Roma    */
+	DRIVER( roma32 )    /* Roma  */
+        DRIVER( polgar )      /* Polgar    */
 
 	/* JAKKS Pacific, Inc. / HotGen, Ltd. */
 	DRIVER( batman )	/* The Batman, 2004 */
@@ -1553,6 +1601,8 @@ const game_driver * const drivers[] =
 	DRIVER( et3400 )
 	DRIVER( amu880 )
 	DRIVER( interact )
+	DRIVER( jr100 )
+	DRIVER( jr100u )
 	DRIVER( jr200 )
 	DRIVER( jr200u )
 	DRIVER( h8 )
@@ -1732,6 +1782,21 @@ const game_driver * const drivers[] =
 	DRIVER( psionp464 )
 	DRIVER( rex6000 )
 	DRIVER( mycom )
+	DRIVER( tk80 )
 	DRIVER( tk80bs )
+	DRIVER( czk80 )
+	DRIVER( c10 )
+	DRIVER( k8915 )
+	DRIVER( mes )
+	DRIVER( cc10 )
+	DRIVER( systec )
+	DRIVER( p112 )
+	DRIVER( selz80 )
+	DRIVER( mccpm )
+	DRIVER( casloopy )
+	DRIVER( tim011 )
+	DRIVER( bullet )
+	DRIVER( pc4 )
+	DRIVER( pofo )
 
 #endif /* DRIVER_RECURSIVE */

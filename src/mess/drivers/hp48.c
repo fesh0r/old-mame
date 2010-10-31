@@ -7,13 +7,11 @@
 **********************************************************************/
 
 #include "emu.h"
-#include "timer.h"
-#include "state.h"
-
 #include "devices/xmodem.h"
 #include "devices/kermit.h"
 #include "cpu/saturn/saturn.h"
 #include "sound/dac.h"
+#include "machine/nvram.h"
 
 #include "includes/hp48.h"
 
@@ -837,7 +835,7 @@ ROM_END
 
 
 /* These ROMS are common to the S and SX models.
-   The only difference is that, the S beeing later, it was only shipped with revisions
+   The only difference is that, the S being later, it was only shipped with revisions
    E and later.
 
    (Note that G/GX revisions start at K, after the S/S revisions ends...)
@@ -941,7 +939,7 @@ static const char layout_hp48s [] = "hp48s";
 /*************************** driver ********************************/
 
 
-static MACHINE_DRIVER_START ( hp48_common )
+static MACHINE_CONFIG_START( hp48_common, hp48_state )
 	MDRV_MACHINE_RESET ( hp48 )
 
 	/* cpu */
@@ -950,7 +948,7 @@ static MACHINE_DRIVER_START ( hp48_common )
 	MDRV_CPU_CONFIG( hp48_config )
 
 	/* memory */
-	MDRV_NVRAM_HANDLER( generic_0fill )
+	MDRV_NVRAM_ADD_0FILL("nvram")
 
 	/* video */
 	MDRV_SCREEN_ADD( "screen", RASTER )
@@ -967,10 +965,9 @@ static MACHINE_DRIVER_START ( hp48_common )
 	MDRV_SPEAKER_STANDARD_MONO( "mono" )
 	MDRV_SOUND_ADD( "dac",  DAC, 0 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 1-bit beeper */
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START ( hp48gx )
-	MDRV_IMPORT_FROM    ( hp48_common )
+static MACHINE_CONFIG_DERIVED( hp48gx, hp48_common )
 	MDRV_MACHINE_START  ( hp48gx )
 	MDRV_DEFAULT_LAYOUT ( layout_hp48gx )
 
@@ -981,32 +978,29 @@ static MACHINE_DRIVER_START ( hp48gx )
 	/* serial I/O */
 	MDRV_XMODEM_ADD( "rs232_x", hp48_xmodem_rs232_conf )
 	MDRV_KERMIT_ADD( "rs232_k", hp48_kermit_rs232_conf )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START ( hp48g )
-	MDRV_IMPORT_FROM    ( hp48_common )
+static MACHINE_CONFIG_DERIVED( hp48g, hp48_common )
 	MDRV_MACHINE_START  ( hp48g )
 	MDRV_DEFAULT_LAYOUT ( layout_hp48g )
 
 	/* serial I/O */
 	MDRV_XMODEM_ADD( "rs232_x", hp48_xmodem_rs232_conf )
 	MDRV_KERMIT_ADD( "rs232_k", hp48_kermit_rs232_conf )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START ( hp48gp )
-	MDRV_IMPORT_FROM    ( hp48_common )
+static MACHINE_CONFIG_DERIVED( hp48gp, hp48_common )
 	MDRV_MACHINE_START  ( hp48gp )
 	MDRV_DEFAULT_LAYOUT ( layout_hp48gp )
 
 	/* serial I/O */
 	MDRV_XMODEM_ADD( "rs232_x", hp48_xmodem_rs232_conf )
 	MDRV_KERMIT_ADD( "rs232_k", hp48_kermit_rs232_conf )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START ( hp48sx )
-	MDRV_IMPORT_FROM    ( hp48_common )
+static MACHINE_CONFIG_DERIVED( hp48sx, hp48_common )
 	MDRV_CPU_MODIFY     ( "maincpu" )
 	MDRV_CPU_CLOCK      ( 2000000 )
 	MDRV_MACHINE_START  ( hp48sx )
@@ -1018,10 +1012,9 @@ static MACHINE_DRIVER_START ( hp48sx )
 
 	/* serial I/O */
 	MDRV_KERMIT_ADD( "rs232_k", hp48_kermit_rs232_conf )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START ( hp48s )
-	MDRV_IMPORT_FROM    ( hp48_common )
+static MACHINE_CONFIG_DERIVED( hp48s, hp48_common )
 	MDRV_CPU_MODIFY     ( "maincpu" )
 	MDRV_CPU_CLOCK      ( 2000000 )
 	MDRV_MACHINE_START  ( hp48s )
@@ -1029,7 +1022,7 @@ static MACHINE_DRIVER_START ( hp48s )
 
 	/* serial I/O */
 	MDRV_KERMIT_ADD( "rs232_k", hp48_kermit_rs232_conf )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 COMP ( 1990, hp48sx, 0     , 0, hp48sx, hp48sx, hp48, "Hewlett Packard", "HP48SX", 0 )

@@ -620,7 +620,7 @@ static int c64_dma_read_color( running_machine *machine, int offset )
 
 static UINT8 c64_rdy_cb( running_machine *machine )
 {
-	return input_port_read(machine, "CTRLSEL") & 0x08;
+	return input_port_read(machine, "CYCLES") & 0x07;
 }
 
 static const vic2_interface c64_vic2_ntsc_intf = {
@@ -669,7 +669,7 @@ static const vic2_interface ultimax_vic2_intf = {
  *
  *************************************/
 
-static MACHINE_DRIVER_START( c64 )
+static MACHINE_CONFIG_START( c64, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6510, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(c64_mem)
@@ -718,10 +718,10 @@ static MACHINE_DRIVER_START( c64 )
 	MDRV_CBM_IEC_ADD("iec", cbm_iec_daisy)
 	MDRV_C1541_ADD("c1541", "iec", 8)
 
-	MDRV_IMPORT_FROM(c64_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(c64_cartslot)
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( c64pal )
+static MACHINE_CONFIG_START( c64pal, driver_device )
 	MDRV_CPU_ADD( "maincpu", M6510, VIC6569_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(c64_mem)
 	MDRV_CPU_CONFIG( c64_m6510_interface )
@@ -769,11 +769,10 @@ static MACHINE_DRIVER_START( c64pal )
 	MDRV_CBM_IEC_ADD("iec", cbm_iec_daisy)
 	MDRV_C1541_ADD("c1541", "iec", 8)
 
-	MDRV_IMPORT_FROM(c64_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(c64_cartslot)
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ultimax )
-	MDRV_IMPORT_FROM( c64 )
+static MACHINE_CONFIG_DERIVED( ultimax, c64 )
 	MDRV_CPU_REPLACE( "maincpu", M6510, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP( ultimax_mem)
 	MDRV_CPU_CONFIG( c64_m6510_interface )
@@ -790,27 +789,24 @@ static MACHINE_DRIVER_START( ultimax )
 	MDRV_DEVICE_REMOVE("cart1")
 	MDRV_DEVICE_REMOVE("cart2")
 
-	MDRV_IMPORT_FROM(ultimax_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(ultimax_cartslot)
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( pet64 )
-	MDRV_IMPORT_FROM( c64 )
+static MACHINE_CONFIG_DERIVED( pet64, c64 )
 	MDRV_PALETTE_INIT( pet64 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( c64gs )
-	MDRV_IMPORT_FROM( c64pal )
+static MACHINE_CONFIG_DERIVED( c64gs, c64pal )
 	MDRV_DEVICE_REMOVE( "dac" )
 	MDRV_DEVICE_REMOVE( "cassette" )
 	MDRV_DEVICE_REMOVE( "quickload" )
 	//MDRV_DEVICE_REMOVE("iec")
 	//MDRV_DEVICE_REMOVE("c1541")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( sx64 )
-	MDRV_IMPORT_FROM( c64pal )
+static MACHINE_CONFIG_DERIVED( sx64, c64pal )
 
 	MDRV_DEVICE_REMOVE( "c1541" )
 	MDRV_SX1541_ADD("c1541", "iec", 8)
@@ -822,7 +818,7 @@ static MACHINE_DRIVER_START( sx64 )
 #else
 	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /*************************************
@@ -989,8 +985,8 @@ COMP(1982, c64swe,  c64,  0,    c64pal,  vic64s,  c64pal,  "Commodore Business M
 COMP(1983, pet64,	c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "PET 64 (NTSC)", 0)
 COMP(1983, cbm4064, c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "CBM 4064 (NTSC)", 0)
 COMP(1983, edu64,   c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines", "Educator 64 (NTSC)", 0) // maybe different palette?
-//COMP(1983, clipper,  c64,  0,	c64pal,  clipper, c64pal,  "PDC", "Clipper", GAME_NOT_WORKING) // C64 in a briefcase with 3" floppy, electroluminescent flat screen, thermal printer
-//COMP(1983, tesa6240, c64,  0,	c64pal,  c64,	  c64pal,  "Tesa", "6240", GAME_NOT_WORKING) // modified SX64 with label printer
+//COMP(1983, clipper,  c64,  0, c64pal,  clipper, c64pal,  "PDC", "Clipper", GAME_NOT_WORKING) // C64 in a briefcase with 3" floppy, electroluminescent flat screen, thermal printer
+//COMP(1983, tesa6240, c64,  0, c64pal,  c64,     c64pal,  "Tesa", "6240", GAME_NOT_WORKING) // modified SX64 with label printer
 
 COMP(1984, sx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "SX-64 Executive Computer (PAL)", GAME_NOT_WORKING)
 COMP(1984, vip64,   c64,  0,    sx64,    vip64,   sx64,    "Commodore Business Machines", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)

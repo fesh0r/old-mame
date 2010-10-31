@@ -263,11 +263,11 @@ static WRITE8_HANDLER( apple3_c0xx_w )
 
 INTERRUPT_GEN( apple3_interrupt )
 {
-	running_device *via_1 = device->machine->device("via6522_1");
+	via6522_device *via_1 = device->machine->device<via6522_device>("via6522_1");
 
-	via_ca2_w(via_1, (AY3600_keydata_strobe_r() & 0x80) ? 1 : 0);
-	via_cb1_w(via_1, device->machine->primary_screen->vblank());
-	via_cb2_w(via_1, device->machine->primary_screen->vblank());
+	via_1->write_ca2((AY3600_keydata_strobe_r() & 0x80) ? 1 : 0);
+	via_1->write_cb1(device->machine->primary_screen->vblank());
+	via_1->write_cb2(device->machine->primary_screen->vblank());
 }
 
 
@@ -338,7 +338,7 @@ static void apple3_update_memory(running_machine *machine)
 {
 	UINT16 bank;
 	UINT8 page;
-	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if (LOG_MEMORY)
 	{
@@ -459,10 +459,9 @@ static void apple3_update_memory(running_machine *machine)
 	{
 		running_device *via_0 = space->machine->device("via6522_0");
 		running_device *via_1 = space->machine->device("via6522_1");
-		memory_install_read8_device_handler(space, via_0, 0xFFD0, 0xFFDF, 0, 0, via_r);
-		memory_install_write8_device_handler(space, via_0, 0xFFD0, 0xFFDF, 0, 0, via_w);
-		memory_install_read8_device_handler(space, via_1, 0xFFE0, 0xFFEF, 0, 0, via_r);
-		memory_install_write8_device_handler(space, via_1, 0xFFE0, 0xFFEF, 0, 0, via_w);
+
+        space->install_handler(0xFFD0, 0xFFDF, 0, 0, read8_delegate_create(via6522_device, read, *via_0), write8_delegate_create(via6522_device, write, *via_0));
+		space->install_handler(0xFFE0, 0xFFEF, 0, 0, read8_delegate_create(via6522_device, read, *via_1), write8_delegate_create(via6522_device, write, *via_1));
 	}
 }
 
@@ -622,7 +621,7 @@ READ8_HANDLER( apple3_indexed_read )
 
 	addr = apple3_get_indexed_addr(space->machine,offset);
 	if (!addr)
-		result = memory_read_byte(space, offset);
+		result = space->read_byte(offset);
 	else if (addr != (UINT8 *) ~0)
 		result = *addr;
 	else
@@ -638,24 +637,21 @@ WRITE8_HANDLER( apple3_indexed_write )
 
 	addr = apple3_get_indexed_addr(space->machine,offset);
 	if (!addr)
-		memory_write_byte(space, offset, data);
+		space->write_byte(offset, data);
 	else if (addr != (UINT8 *) ~0)
 		*addr = data;
 }
 
 
 
-static DIRECT_UPDATE_HANDLER( apple3_opbase )
+DIRECT_UPDATE_HANDLER( apple3_opbase )
 {
 	UINT8 *opptr;
 
 	if ((address & 0xFF00) == 0x0000)
 	{
-		opptr = apple3_get_zpa_addr(space->machine,address);
-		direct->bytemask = ~0;
-		direct->raw = direct->decrypted = opptr - address;
-		direct->bytestart = address;
-		direct->byteend = address;
+		opptr = apple3_get_zpa_addr(machine,address);
+		direct.explicit_configure(address, address, ~0, opptr - address);
 		address = ~0;
 	}
 	return address;
@@ -727,5 +723,5 @@ DRIVER_INIT( apple3 )
 	via_1_irq = 0;
 	apple3_update_memory(machine);
 
-	memory_set_direct_update_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), apple3_opbase);
+	cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(apple3_opbase, *machine));
 }

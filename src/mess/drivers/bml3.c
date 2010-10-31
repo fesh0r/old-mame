@@ -1,29 +1,30 @@
 /**************************************************************************************
 
-	Basic Master Level 3 (MB-6890) (c) 1980 Hitachi
+    Basic Master Level 3 (MB-6890) (c) 1980 Hitachi
 
-	preliminary driver by Angelo Salese
+    preliminary driver by Angelo Salese
 
-	TODO:
-	- no documentation, the entire driver is just a bunch of educated
+    TODO:
+    - no documentation, the entire driver is just a bunch of educated
       guesses ...
-	- keyboard shift key, necessary for some key commands
-	- understand how to load a tape
-	- every time that you switch with NEW ON command, there's a "device i/o error" if
-	  the hres_reg bit 5 is active.
+    - keyboard shift key is ugly mapped.
+    - understand how to load a tape
+    - every time that you switch with NEW ON command, there's a "device i/o error" if
+      the hres_reg bit 5 is active.
+    - LINE command doesn't work? It says "type mismatch"
 
-	NOTES:
-	- NEW ON changes the video mode, they are:
-		0: 320 x 200, bit 5 active
-		1: 320 x 200, bit 5 unactive
-		2: 320 x 375, bit 5 active
-		3: 320 x 375, bit 5 unactive
-		4: 640 x 200, bit 5 active
-		5: 640 x 200, bit 5 unactive
-		6: 640 x 375, bit 5 active
-		7: 640 x 375, bit 5 unactive
-		8-15: same as above plus sets bit 4
-		16-31: same as above plus shows the bar at the bottom
+    NOTES:
+    - NEW ON changes the video mode, they are:
+        0: 320 x 200, bit 5 active
+        1: 320 x 200, bit 5 unactive
+        2: 320 x 375, bit 5 active
+        3: 320 x 375, bit 5 unactive
+        4: 640 x 200, bit 5 active
+        5: 640 x 200, bit 5 unactive
+        6: 640 x 375, bit 5 active
+        7: 640 x 375, bit 5 unactive
+        8-15: same as above plus sets bit 4
+        16-31: same as above plus shows the bar at the bottom
 
 **************************************************************************************/
 
@@ -54,7 +55,7 @@ static VIDEO_UPDATE( bml3 )
 	width = (hres_reg & 0x80) ? 80 : 40;
 	height = (vres_reg & 0x08) ? 1 : 0;
 
-//	popmessage("%02x %02x",hres_reg,vres_reg);
+//  popmessage("%02x %02x",hres_reg,vres_reg);
 
 	for(y=0;y<25;y++)
 	{
@@ -156,7 +157,7 @@ static READ8_HANDLER( bml3_keyboard_r )
 		return res | 0x80;
 	}
 
-	return 0;
+	return 0x00;
 }
 
 /* Note: this custom code is there just for simplicity, it'll be nuked in the end */
@@ -166,22 +167,22 @@ static READ8_HANDLER( bml3_io_r )
 
 	if(offset == 0x19) return io_latch;
 	if(offset == 0xc4) return 0xff; //some video modes wants this to be high
-//	if(offset == 0xc5 || offset == 0xca) return mame_rand(space->machine); //tape related
+//  if(offset == 0xc5 || offset == 0xca) return mame_rand(space->machine); //tape related
 	if(offset == 0xc8) return 0; //??? checks bit 7, scrolls vertically if active high
 	if(offset == 0xc9) return 0x11; //0x01 put 320 x 200 mode, 0x07 = 640 x 375
 
 	/* one of these sets something, apparently available RAM space is smaller if one of these bits is zero (?) */
-//	if(offset == 0x40) return 0 ? 0xff : 0x00;
-//	if(offset == 0x42) return 0 ? 0xff : 0x00;
-//	if(offset == 0x44) return 0 ? 0xff : 0x00;
-//	if(offset == 0x46) return 0 ? 0xff : 0x00;
+//  if(offset == 0x40) return 0 ? 0xff : 0x00;
+//  if(offset == 0x42) return 0 ? 0xff : 0x00;
+//  if(offset == 0x44) return 0 ? 0xff : 0x00;
+//  if(offset == 0x46) return 0 ? 0xff : 0x00;
 
 	if(offset == 0xd8) return attr_latch;
 	if(offset == 0xe0) return bml3_keyboard_r(space,0);
 
-//	if(offset == 0xcb)
+//  if(offset == 0xcb)
 
-//	if(offset == 0x40 || offset == 0x42 || offset == 0x44 || offset == 0x46)
+//  if(offset == 0x40 || offset == 0x42 || offset == 0x44 || offset == 0x46)
 
 	if(offset < 0xf0)
 	{
@@ -213,10 +214,10 @@ static void m6845_change_clock(running_machine *machine, UINT8 setting)
 static WRITE8_HANDLER( bml3_hres_reg_w )
 {
 	/*
-	x--- ---- width (1) 80 / (0) 40
-	-x-- ---- used in some modes, unknown purpose
-	--x- ---- used in some modes, unknown purpose (also wants $ffc4 to be 0xff), color / monochrome switch?
-	*/
+    x--- ---- width (1) 80 / (0) 40
+    -x-- ---- used in some modes, unknown purpose
+    --x- ---- used in some modes, unknown purpose (also wants $ffc4 to be 0xff), color / monochrome switch?
+    */
 
 	hres_reg = data;
 
@@ -226,8 +227,8 @@ static WRITE8_HANDLER( bml3_hres_reg_w )
 static WRITE8_HANDLER( bml3_vres_reg_w )
 {
 	/*
-	---- x--- char height
-	*/
+    ---- x--- char height
+    */
 	vres_reg = data;
 
 	m6845_change_clock(space->machine,(hres_reg & 0x80) | (vres_reg & 0x08));
@@ -235,13 +236,13 @@ static WRITE8_HANDLER( bml3_vres_reg_w )
 
 static WRITE8_HANDLER( bml3_io_w )
 {
-	if(offset == 0x19)					 		{ io_latch = data; } //???
-//	else if(offset == 0xc4)						{ /* system latch, writes 0x53 -> 0x51 when a tape is loaded */}
-	else if(offset == 0xc6 || offset == 0xc7) 	{ bml3_6845_w(space,offset-0xc6,data); }
+	if(offset == 0x19)							{ io_latch = data; } //???
+//  else if(offset == 0xc4)                     { /* system latch, writes 0x53 -> 0x51 when a tape is loaded */}
+	else if(offset == 0xc6 || offset == 0xc7)	{ bml3_6845_w(space,offset-0xc6,data); }
 	else if(offset == 0xd0)						{ bml3_hres_reg_w(space,0,data);  }
 	else if(offset == 0xd3)						{ beep_set_state(space->machine->device("beeper"),!(data & 0x80)); }
 	else if(offset == 0xd6)						{ bml3_vres_reg_w(space,0,data); }
-	else if(offset == 0xd8)				 		{ attr_latch = data; }
+	else if(offset == 0xd8)						{ attr_latch = data; }
 	else
 	{
 		logerror("I/O write %02x -> [%02x] at PC=%04x\n",data,offset,cpu_get_pc(space->cpu));
@@ -286,20 +287,20 @@ static INPUT_PORTS_START( bml3 )
 	PORT_BIT(0x00000008,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Left") PORT_CODE(KEYCODE_LEFT)
 	PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Down") PORT_CODE(KEYCODE_DOWN)
 	PORT_BIT(0x00000020,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Right") PORT_CODE(KEYCODE_RIGHT)
-	PORT_BIT(0x00000040,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00000080,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Caps Lock?")// (changes the items at the bottom, caps lock?)
-	PORT_BIT(0x00000100,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00000200,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00000400,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00000800,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00001000,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00002000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8) PORT_CHAR('8')
-	PORT_BIT(0x00004000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9) PORT_CHAR('9')
-	PORT_BIT(0x00008000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("*")
+	PORT_BIT(0x00000040,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("X1")
+	PORT_BIT(0x00000080,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Shift")PORT_CODE(KEYCODE_LSHIFT)
+	PORT_BIT(0x00000100,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("X2")
+	PORT_BIT(0x00000200,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Caps Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
+	PORT_BIT(0x00000400,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Kana Lock") PORT_CODE(KEYCODE_NUMLOCK) PORT_TOGGLE
+	PORT_BIT(0x00000800,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Kana Shift") PORT_CODE(KEYCODE_LCONTROL)
+	PORT_BIT(0x00001000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("X6")
+	PORT_BIT(0x00002000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("8 PAD") PORT_CODE(KEYCODE_8_PAD) PORT_CHAR('8')
+	PORT_BIT(0x00004000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("9 PAD") PORT_CODE(KEYCODE_9_PAD) PORT_CHAR('9')
+	PORT_BIT(0x00008000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("*") PORT_CODE(KEYCODE_ASTERISK) PORT_CHAR('*')
 	PORT_BIT(0x00010000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7) PORT_CHAR('7')
 	PORT_BIT(0x00020000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("4") PORT_CODE(KEYCODE_4) PORT_CHAR('4')
 	PORT_BIT(0x00040000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6) PORT_CHAR('6')
-	PORT_BIT(0x00080000,IP_ACTIVE_HIGH,IPT_UNKNOWN) //8
+	PORT_BIT(0x00080000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8) PORT_CHAR('8')
 	PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0) PORT_CHAR('0')
 	PORT_BIT(0x00200000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("^")
 	PORT_BIT(0x00400000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("-") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-')
@@ -309,9 +310,9 @@ static INPUT_PORTS_START( bml3 )
 	PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1) PORT_CHAR('1')
 	PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2) PORT_CHAR('2')
 	PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9) PORT_CHAR('9')
-	PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7) PORT_CHAR('7')
-	PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_UNKNOWN) //backspace
-	PORT_BIT(0x80000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("\xC2\xA5") //PORT_NAME("¥")
+	PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("7 PAD") PORT_CODE(KEYCODE_7_PAD) PORT_CHAR('7')
+	PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("X7") //backspace
+	PORT_BIT(0x80000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("\xC2\xA5") //PORT_NAME("?")
 
 	PORT_START("key2") //0x20-0x3f
 	PORT_BIT(0x00000001,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("U") PORT_CODE(KEYCODE_U)
@@ -321,7 +322,7 @@ static INPUT_PORTS_START( bml3 )
 	PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("P") PORT_CODE(KEYCODE_P)
 	PORT_BIT(0x00000020,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("[")
 	PORT_BIT(0x00000040,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("@")
-	PORT_BIT(0x00000080,IP_ACTIVE_HIGH,IPT_UNKNOWN) //0
+	PORT_BIT(0x00000080,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("0 PAD") PORT_CODE(KEYCODE_0_PAD) PORT_CHAR('0')
 	PORT_BIT(0x00000100,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q)
 	PORT_BIT(0x00000200,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("T") PORT_CODE(KEYCODE_T)
 	PORT_BIT(0x00000400,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W)
@@ -337,14 +338,14 @@ static INPUT_PORTS_START( bml3 )
 	PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(";")
 	PORT_BIT(0x00200000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("]")
 	PORT_BIT(0x00400000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(":")
-	PORT_BIT(0x00800000,IP_ACTIVE_HIGH,IPT_UNKNOWN) //4
+	PORT_BIT(0x00800000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("4 PAD") PORT_CODE(KEYCODE_4_PAD) PORT_CHAR('4')
 	PORT_BIT(0x01000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A)
 	PORT_BIT(0x02000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G)
 	PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S)
 	PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)
 	PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("L") PORT_CODE(KEYCODE_L)
-	PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_UNKNOWN) //5
-	PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_UNKNOWN) //6
+	PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("5 PAD") PORT_CODE(KEYCODE_5_PAD) PORT_CHAR('5')
+	PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("6 PAD") PORT_CODE(KEYCODE_6_PAD) PORT_CHAR('6')
 	PORT_BIT(0x80000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("-") PORT_CODE(KEYCODE_MINUS)
 
 	PORT_START("key3") //0x40-0x5f
@@ -353,16 +354,16 @@ static INPUT_PORTS_START( bml3 )
 	PORT_BIT(0x00000004,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N)
 	PORT_BIT(0x00000008,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA)
 	PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("/") PORT_CODE(KEYCODE_BACKSLASH)
-	PORT_BIT(0x00000020,IP_ACTIVE_HIGH,IPT_UNKNOWN) // /
+	PORT_BIT(0x00000020,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("/ PAD") PORT_CODE(KEYCODE_SLASH_PAD)
 	PORT_BIT(0x00000040,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("_")
-	PORT_BIT(0x00000080,IP_ACTIVE_HIGH,IPT_UNKNOWN) //1
+	PORT_BIT(0x00000080,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1_PAD) PORT_CHAR('1')
 	PORT_BIT(0x00000100,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z)
 	PORT_BIT(0x00000200,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)
 	PORT_BIT(0x00000400,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("X") PORT_CODE(KEYCODE_X)
 	PORT_BIT(0x00000800,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)
 	PORT_BIT(0x00001000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_STOP)
-	PORT_BIT(0x00002000,IP_ACTIVE_HIGH,IPT_UNKNOWN)
-	PORT_BIT(0x00004000,IP_ACTIVE_HIGH,IPT_UNKNOWN)
+	PORT_BIT(0x00002000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("X8")
+	PORT_BIT(0x00004000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("3 PAD") PORT_CODE(KEYCODE_3_PAD) PORT_CHAR('3')
 	PORT_BIT(0x00008000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("+") PORT_CODE(KEYCODE_PLUS_PAD)
 	PORT_BIT(0x00010000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF1") PORT_CODE(KEYCODE_F1)
 	PORT_BIT(0x00020000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF2") PORT_CODE(KEYCODE_F2)
@@ -398,10 +399,12 @@ static TIMER_CALLBACK( keyboard_callback )
 		{
 			if((input_port_read(machine,portnames[port_i])>>i) & 1)
 			{
-				keyb_press = scancode;
-				keyb_press_flag = 1;
-				cputag_set_input_line(machine, "maincpu", M6809_IRQ_LINE, HOLD_LINE);
-				return;
+				{
+					keyb_press = scancode;
+					keyb_press_flag = 1;
+					cputag_set_input_line(machine, "maincpu", M6809_IRQ_LINE, HOLD_LINE);
+					return;
+				}
 			}
 
 			scancode++;
@@ -441,17 +444,35 @@ static MACHINE_RESET(bml3)
 {
 }
 
-static MACHINE_DRIVER_START( bml3 )
+/* F4 Character Displayer */
+static const gfx_layout bml3_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( bml3 )
+	GFXDECODE_ENTRY( "char", 0, bml3_charlayout, 0, 4 )
+GFXDECODE_END
+
+static MACHINE_CONFIG_START( bml3, driver_device )
     /* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",M6809, XTAL_1MHz)
 	MDRV_CPU_PROGRAM_MAP(bml3_mem)
-//	MDRV_CPU_VBLANK_INT("screen", bml3_irq )
-//	MDRV_CPU_PERIODIC_INT(bml3_firq,45)
+//  MDRV_CPU_VBLANK_INT("screen", bml3_irq )
+//  MDRV_CPU_PERIODIC_INT(bml3_firq,45)
 
 	MDRV_MACHINE_START(bml3)
- 	MDRV_MACHINE_RESET(bml3)
+	MDRV_MACHINE_RESET(bml3)
 
- 	/* video hardware */
+	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -459,7 +480,8 @@ static MACHINE_DRIVER_START( bml3 )
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 200-1)
 	MDRV_PALETTE_LENGTH(8)
-    MDRV_PALETTE_INIT(bml3)
+	MDRV_PALETTE_INIT(bml3)
+	MDRV_GFXDECODE(bml3)
 
 	MDRV_MC6845_ADD("crtc", H46505, XTAL_3_579545MHz/4, mc6845_intf)	/* unknown clock, hand tuned to get ~60 fps */
 
@@ -470,12 +492,12 @@ static MACHINE_DRIVER_START( bml3 )
 
 	MDRV_SOUND_ADD("beeper", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( bml3 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-//	ROM_LOAD( "l3bas.rom", 0xa000, 0x6000, BAD_DUMP CRC(d81baa07) SHA1(a8fd6b29d8c505b756dbf5354341c48f9ac1d24d)) //original, 24k isn't a proper rom size!
+//  ROM_LOAD( "l3bas.rom", 0xa000, 0x6000, BAD_DUMP CRC(d81baa07) SHA1(a8fd6b29d8c505b756dbf5354341c48f9ac1d24d)) //original, 24k isn't a proper rom size!
 	/* Handcrafted ROMs, rom labels and contents might not match */
 	ROM_LOAD( "598 p16611.ic3", 0xa000, 0x2000, BAD_DUMP CRC(954b9bad) SHA1(047948fac6808717c60a1d0ac9205a5725362430))
 	ROM_LOAD( "599 p16561.ic4", 0xc000, 0x2000, BAD_DUMP CRC(b27a48f5) SHA1(94cb616df4caa6415c5076f9acdf675acb7453e2))
@@ -491,5 +513,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1980, bml3,  	0,       0, 		bml3, 	bml3, 	 0,  	   "Hitachi",   "Basic Master Level 3",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1980, bml3,	0,       0, 		bml3,	bml3,	 0, 	   "Hitachi",   "Basic Master Level 3",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

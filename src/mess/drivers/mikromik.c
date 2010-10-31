@@ -1,5 +1,4 @@
 #include "emu.h"
-#include "includes/mikromik.h"
 #include "formats/basicdsk.h"
 #include "devices/flopdrv.h"
 #include "cpu/i8085/i8085.h"
@@ -12,6 +11,7 @@
 #include "video/upd7220.h"
 #include "sound/speaker.h"
 #include "devices/messram.h"
+#include "includes/mikromik.h"
 
 /*
 
@@ -69,8 +69,8 @@
 
 static WRITE8_HANDLER( ls259_w )
 {
-	mm1_state *state = (mm1_state *)space->machine->driver_data;
-	const address_space *program = cputag_get_address_space(space->machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
+	mm1_state *state = space->machine->driver_data<mm1_state>();
+	address_space *program = cputag_get_address_space(space->machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
 	int d = BIT(data, 0);
 
 	switch (offset)
@@ -138,7 +138,7 @@ static ADDRESS_MAP_START( mm1_map, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
     AM_RANGE(0xff20, 0xff21) AM_MIRROR(0x8e) AM_DEVREADWRITE(I8275_TAG, i8275_r, i8275_w)
 	AM_RANGE(0xff30, 0xff33) AM_MIRROR(0x8c) AM_DEVREADWRITE(I8253_TAG, pit8253_r, pit8253_w)
-	AM_RANGE(0xff40, 0xff40) AM_MIRROR(0x8f) AM_DEVREADWRITE(I8212_TAG, i8212_r, i8212_w)
+	AM_RANGE(0xff40, 0xff40) AM_MIRROR(0x8f) AM_DEVREADWRITE_MODERN(I8212_TAG, i8212_device, data_r, data_w)
 	AM_RANGE(0xff50, 0xff50) AM_MIRROR(0x8e) AM_DEVREAD(UPD765_TAG, upd765_status_r)
 	AM_RANGE(0xff51, 0xff51) AM_MIRROR(0x8e) AM_DEVREADWRITE(UPD765_TAG, upd765_data_r, upd765_data_w)
 	AM_RANGE(0xff60, 0xff67) AM_MIRROR(0x88) AM_WRITE(ls259_w)
@@ -279,7 +279,7 @@ static PALETTE_INIT( mm1 )
 
 static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 {
-	mm1_state *state = (mm1_state *)device->machine->driver_data;
+	mm1_state *state = device->machine->driver_data<mm1_state>();
 
 	UINT8 romdata = state->char_rom[(charcode << 4) | linecount];
 
@@ -336,7 +336,7 @@ static UPD7220_INTERFACE( mm1_upd7220_intf )
 
 static VIDEO_START( mm1 )
 {
-	mm1_state *state = (mm1_state *)machine->driver_data;
+	mm1_state *state = machine->driver_data<mm1_state>();
 
 	/* find memory regions */
 	state->char_rom = memory_region(machine, "chargen");
@@ -346,7 +346,7 @@ static VIDEO_START( mm1 )
 
 static VIDEO_UPDATE( mm1 )
 {
-	mm1_state *state = (mm1_state *)screen->machine->driver_data;
+	mm1_state *state = screen->machine->driver_data<mm1_state>();
 
 	/* text */
 	i8275_update(state->i8275, bitmap, cliprect);
@@ -378,7 +378,7 @@ GFXDECODE_END
 
 static READ8_DEVICE_HANDLER( kb_r )
 {
-	mm1_state *state = (mm1_state *)device->machine->driver_data;
+	mm1_state *state = device->machine->driver_data<mm1_state>();
 
 	return state->keydata;
 }
@@ -402,7 +402,7 @@ static WRITE_LINE_DEVICE_HANDLER( dma_hrq_changed )
 
 static READ8_DEVICE_HANDLER( mpsc_dack_r )
 {
-	mm1_state *state = (mm1_state *)device->machine->driver_data;
+	mm1_state *state = device->machine->driver_data<mm1_state>();
 
 	/* clear data request */
 	i8237_dreq2_w(state->i8237, CLEAR_LINE);
@@ -412,7 +412,7 @@ static READ8_DEVICE_HANDLER( mpsc_dack_r )
 
 static WRITE8_DEVICE_HANDLER( mpsc_dack_w )
 {
-	mm1_state *state = (mm1_state *)device->machine->driver_data;
+	mm1_state *state = device->machine->driver_data<mm1_state>();
 
 	upd7201_hai_w(device, data);
 
@@ -422,7 +422,7 @@ static WRITE8_DEVICE_HANDLER( mpsc_dack_w )
 
 static WRITE_LINE_DEVICE_HANDLER( tc_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	if (!driver_state->dack3)
 	{
@@ -437,7 +437,7 @@ static WRITE_LINE_DEVICE_HANDLER( tc_w )
 
 static WRITE_LINE_DEVICE_HANDLER( dack3_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	driver_state->dack3 = state;
 
@@ -447,6 +447,9 @@ static WRITE_LINE_DEVICE_HANDLER( dack3_w )
 		upd765_tc_w(driver_state->upd765, driver_state->tc);
 	}
 }
+
+static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
 
 static I8237_INTERFACE( mm1_dma8237_intf )
 {
@@ -463,7 +466,7 @@ static I8237_INTERFACE( mm1_dma8237_intf )
 
 static UPD765_DMA_REQUEST( drq_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	i8237_dreq3_w(driver_state->i8237, state);
 }
@@ -481,7 +484,7 @@ static const upd765_interface mm1_upd765_intf =
 
 static WRITE_LINE_DEVICE_HANDLER( itxc_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	if (!driver_state->intc)
 	{
@@ -491,7 +494,7 @@ static WRITE_LINE_DEVICE_HANDLER( itxc_w )
 
 static WRITE_LINE_DEVICE_HANDLER( irxc_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	if (!driver_state->intc)
 	{
@@ -501,7 +504,7 @@ static WRITE_LINE_DEVICE_HANDLER( irxc_w )
 
 static WRITE_LINE_DEVICE_HANDLER( auxc_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	upd7201_txcb_w(driver_state->upd7201, state);
 	upd7201_rxcb_w(driver_state->upd7201, state);
@@ -530,14 +533,14 @@ static const struct pit8253_config mm1_pit8253_intf =
 
 static WRITE_LINE_DEVICE_HANDLER( drq2_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	if (state) i8237_dreq2_w(driver_state->i8237, ASSERT_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( drq1_w )
 {
-	mm1_state *driver_state = (mm1_state *)device->machine->driver_data;
+	mm1_state *driver_state = device->machine->driver_data<mm1_state>();
 
 	if (state) i8237_dreq1_w(driver_state->i8237, ASSERT_LINE);
 }
@@ -595,7 +598,7 @@ static I8085_CONFIG( mm1_i8085_config )
 
 static TIMER_DEVICE_CALLBACK( kbclk_tick )
 {
-	mm1_state *state = (mm1_state *)timer.machine->driver_data;
+	mm1_state *state = timer.machine->driver_data<mm1_state>();
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9" };
 
 	UINT8 data = input_port_read(timer.machine, keynames[state->drive]);
@@ -618,8 +621,8 @@ static TIMER_DEVICE_CALLBACK( kbclk_tick )
 		if (keydata != 0xff)
 		{
 			/* strobe in key data */
-			i8212_stb_w(state->i8212, 1);
-			i8212_stb_w(state->i8212, 0);
+			state->i8212->stb_w(1);
+			state->i8212->stb_w(0);
 		}
 	}
 
@@ -684,11 +687,11 @@ static const floppy_config mm1_floppy_config =
 
 static MACHINE_START( mm1 )
 {
-	mm1_state *state = (mm1_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
+	mm1_state *state = machine->driver_data<mm1_state>();
+	address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* look up devices */
-	state->i8212 = machine->device(I8212_TAG);
+	state->i8212 = machine->device<i8212_device>(I8212_TAG);
 	state->i8237 = machine->device(I8237_TAG);
 	state->i8275 = machine->device(I8275_TAG);
 	state->upd765 = machine->device(UPD765_TAG);
@@ -720,8 +723,8 @@ static MACHINE_START( mm1 )
 
 static MACHINE_RESET( mm1 )
 {
-	mm1_state *state = (mm1_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
+	mm1_state *state = machine->driver_data<mm1_state>();
+	address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
 	int i;
 
 	/* reset LS259 */
@@ -737,8 +740,7 @@ static MACHINE_RESET( mm1 )
 
 /* Machine Drivers */
 
-static MACHINE_DRIVER_START( mm1 )
-	MDRV_DRIVER_DATA(mm1_state)
+static MACHINE_CONFIG_START( mm1, mm1_state )
 
 	/* basic system hardware */
 	MDRV_CPU_ADD(I8085A_TAG, I8085A, XTAL_6_144MHz)
@@ -769,7 +771,7 @@ static MACHINE_DRIVER_START( mm1 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* peripheral hardware */
@@ -784,10 +786,9 @@ static MACHINE_DRIVER_START( mm1 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( mm1m6 )
-	MDRV_IMPORT_FROM(mm1)
+static MACHINE_CONFIG_DERIVED( mm1m6, mm1 )
 
 	/* basic system hardware */
 	MDRV_CPU_MODIFY(I8085A_TAG)
@@ -795,7 +796,7 @@ static MACHINE_DRIVER_START( mm1m6 )
 
 	/* video hardware */
 	MDRV_UPD7220_ADD(UPD7220_TAG, XTAL_18_720MHz/8, mm1_upd7220_intf, mm1_upd7220_map)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 

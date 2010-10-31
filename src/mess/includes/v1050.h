@@ -34,12 +34,11 @@
 #define INT_EXPANSION_B		0x40
 #define INT_EXPANSION_A		0x80
 
-class v1050_state
+class v1050_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, v1050_state(machine)); }
-
-	v1050_state(running_machine &machine) { }
+	v1050_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* interrupt state */
 	UINT8 int_mask;				/* interrupt mask */
@@ -89,6 +88,6 @@ WRITE8_HANDLER( v1050_attr_w );
 READ8_HANDLER( v1050_videoram_r );
 WRITE8_HANDLER( v1050_videoram_w );
 
-MACHINE_DRIVER_EXTERN( v1050_video );
+MACHINE_CONFIG_EXTERN( v1050_video );
 
 #endif

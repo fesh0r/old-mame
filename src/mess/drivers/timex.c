@@ -171,14 +171,14 @@ static const ay8910_interface spectrum_ay_interface =
 
 static  READ8_HANDLER(ts2068_port_f4_r)
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 
 	return state->port_f4_data;
 }
 
 static WRITE8_HANDLER(ts2068_port_f4_w)
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 
 	state->port_f4_data = data;
 	ts2068_update_memory(space->machine);
@@ -186,7 +186,7 @@ static WRITE8_HANDLER(ts2068_port_f4_w)
 
 static  READ8_HANDLER(ts2068_port_ff_r)
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 
 	return state->port_ff_data;
 }
@@ -199,7 +199,7 @@ static WRITE8_HANDLER(ts2068_port_ff_w)
            Bit  6   17ms Interrupt Inhibit
            Bit  7   Cartridge (0) / EXROM (1) select
         */
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 
 	state->port_ff_data = data;
 	ts2068_update_memory(space->machine);
@@ -226,9 +226,9 @@ static WRITE8_HANDLER(ts2068_port_ff_w)
  *******************************************************************/
 void ts2068_update_memory(running_machine *machine)
 {
-	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	spectrum_state *state = machine->driver_data<spectrum_state>();
 	UINT8 *messram = messram_get_ptr(machine->device("messram"));
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	unsigned char *ChosenROM, *ExROM, *DOCK;
 
 	DOCK = timex_cart_data;
@@ -561,7 +561,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( ts2068 )
 {
-	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	spectrum_state *state = machine->driver_data<spectrum_state>();
 
 	state->port_ff_data = 0;
 	state->port_f4_data = 0;
@@ -577,7 +577,7 @@ static MACHINE_RESET( ts2068 )
 
 static WRITE8_HANDLER( tc2048_port_ff_w )
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 
 	state->port_ff_data = data;
 	logerror("Port %04x write %02x\n", offset, data);
@@ -598,7 +598,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( tc2048 )
 {
-	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	spectrum_state *state = machine->driver_data<spectrum_state>();
 	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 
 	memory_set_bankptr(machine, "bank1", messram);
@@ -627,8 +627,7 @@ static GFXDECODE_START( ts2068 )
 	GFXDECODE_ENTRY( "maincpu", 0x13d00, ts2068_charlayout, 0, 8 )
 GFXDECODE_END
 
-static MACHINE_DRIVER_START( ts2068 )
-	MDRV_IMPORT_FROM( spectrum_128 )
+static MACHINE_CONFIG_DERIVED( ts2068, spectrum_128 )
 	MDRV_CPU_REPLACE("maincpu", Z80, XTAL_14_112MHz/4)        /* From Schematic; 3.528 MHz */
 	MDRV_CPU_PROGRAM_MAP(ts2068_mem)
 	MDRV_CPU_IO_MAP(ts2068_io)
@@ -661,18 +660,16 @@ static MACHINE_DRIVER_START( ts2068 )
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("48K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( uk2086 )
-	MDRV_IMPORT_FROM( ts2068 )
+static MACHINE_CONFIG_DERIVED( uk2086, ts2068 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( tc2048 )
-	MDRV_IMPORT_FROM( spectrum )
+static MACHINE_CONFIG_DERIVED( tc2048, spectrum )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(tc2048_mem)
 	MDRV_CPU_IO_MAP(tc2048_io)
@@ -693,7 +690,7 @@ static MACHINE_DRIVER_START( tc2048 )
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("48K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 

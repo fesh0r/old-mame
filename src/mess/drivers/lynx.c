@@ -61,7 +61,7 @@ static PALETTE_INIT( lynx )
 }
 
 
-static MACHINE_DRIVER_START( lynx )
+static MACHINE_CONFIG_START( lynx, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MDRV_CPU_PROGRAM_MAP(lynx_mem)
@@ -92,12 +92,11 @@ static MACHINE_DRIVER_START( lynx )
 	/* devices */
 	MDRV_QUICKLOAD_ADD("quickload", lynx, "o", 0)
 
-	MDRV_IMPORT_FROM(lynx_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(lynx_cartslot)
+MACHINE_CONFIG_END
 
-
-static MACHINE_DRIVER_START( lynx2 )
-	MDRV_IMPORT_FROM( lynx )
+#if 0
+static MACHINE_CONFIG_DERIVED( lynx2, lynx )
 
 	/* sound hardware */
 	MDRV_DEVICE_REMOVE("mono")
@@ -106,8 +105,8 @@ static MACHINE_DRIVER_START( lynx2 )
 	MDRV_SOUND_ADD("lynx2", LYNX2, 0)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
-MACHINE_DRIVER_END
-
+MACHINE_CONFIG_END
+#endif
 
 /* these 2 dumps are saved from an running machine,
    and therefor the rom byte at 0xff09 is not readable!
@@ -118,9 +117,9 @@ MACHINE_DRIVER_END
 ROM_START(lynx)
 	ROM_REGION(0x200,"maincpu", 0)
 	ROM_SYSTEM_BIOS( 0, "default",   "rom save" )
-	ROMX_LOAD( "lynx.bin",  0x00000, 0x200, CRC(e1ffecb6) SHA1(de60f2263851bbe10e5801ef8f6c357a4bc077e6), ROM_BIOS(1))
+	ROMX_LOAD( "lynx.bin",  0x00000, 0x200, BAD_DUMP CRC(e1ffecb6) SHA1(de60f2263851bbe10e5801ef8f6c357a4bc077e6), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "a", "alternate rom save" )
-	ROMX_LOAD( "lynxa.bin", 0x00000, 0x200, CRC(0d973c9d) SHA1(e4ed47fae31693e016b081c6bda48da5b70d7ccb), ROM_BIOS(2))
+	ROMX_LOAD( "lynxa.bin", 0x00000, 0x200, BAD_DUMP CRC(0d973c9d) SHA1(e4ed47fae31693e016b081c6bda48da5b70d7ccb), ROM_BIOS(2))
 
 	ROM_REGION(0x100,"gfx1", ROMREGION_ERASE00)
 
@@ -140,7 +139,7 @@ ROM_END
 static QUICKLOAD_LOAD( lynx )
 {
 	running_device *cpu = image.device().machine->device("maincpu");
-	const address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *data = NULL;
 	UINT8 *rom = memory_region(image.device().machine, "maincpu");
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
@@ -167,14 +166,14 @@ static QUICKLOAD_LOAD( lynx )
 	}
 
 	for (i = 0; i < length; i++)
-		memory_write_byte(space, start + i, data[i]);
+		space->write_byte(start + i, data[i]);
 
 	free(data);
 
 	rom[0x1fc] = start & 0xff;
 	rom[0x1fd] = start >> 8;
-	memory_write_byte(space, 0x1fc, start & 0xff);
-	memory_write_byte(space, 0x1fd, start >> 8);
+	space->write_byte(0x1fc, start & 0xff);
+	space->write_byte(0x1fd, start >> 8);
 
 	lynx_crc_keyword((device_image_interface&)*image.device().machine->device("quickload"));
 
@@ -191,4 +190,4 @@ static QUICKLOAD_LOAD( lynx )
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY   FULLNAME      FLAGS */
 CONS( 1989, lynx,   0,      0,      lynx,   lynx,   0,       "Atari",  "Lynx",       GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
-CONS( 1991, lynx2,  lynx,   0,      lynx2,  lynx,   0,       "Atari",  "Lynx II",    GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
+// CONS( 1991, lynx2,  lynx,   0,      lynx2,  lynx,   0,       "Atari",  "Lynx II",    GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )

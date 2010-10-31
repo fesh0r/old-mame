@@ -545,7 +545,7 @@ static const crtc_ega_interface crtc_ega_ega_intf =
 };
 
 
-MACHINE_DRIVER_START( pcvideo_ega )
+MACHINE_CONFIG_FRAGMENT( pcvideo_ega )
 	MDRV_SCREEN_ADD(EGA_SCREEN_NAME, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(16257000,912,0,640,262,0,200)
@@ -557,7 +557,7 @@ MACHINE_DRIVER_START( pcvideo_ega )
 
 	MDRV_VIDEO_START( pc_ega )
 	MDRV_VIDEO_UPDATE( pc_ega )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 static PALETTE_INIT( pc_ega )
@@ -609,8 +609,8 @@ static void pc_ega_install_banks( running_machine *machine )
 static VIDEO_START( pc_ega )
 {
 	int buswidth;
-	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
-	const address_space *spaceio = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_IO);
+	address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
+	address_space *spaceio = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_IO);
 
 	buswidth = device_memory(machine->firstcpu)->space_config(AS_PROGRAM)->m_databus_width;
 	switch(buswidth)

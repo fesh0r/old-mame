@@ -40,10 +40,12 @@ static ADDRESS_MAP_START( lc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2400, 0x2fff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
+#if 0
 static ADDRESS_MAP_START( sc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_IMPORT_FROM(lc80_mem)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 ADDRESS_MAP_END
+#endif
 
 static ADDRESS_MAP_START( lc80_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
@@ -154,7 +156,7 @@ static WRITE8_DEVICE_HANDLER( pio1_port_a_w )
 
     */
 
-	lc80_state *state = (lc80_state *)device->machine->driver_data;
+	lc80_state *state = device->machine->driver_data<lc80_state>();
 
 	state->segment = BITSWAP8(~data, 4, 3, 1, 6, 7, 5, 0, 2);
 
@@ -178,7 +180,7 @@ static READ8_DEVICE_HANDLER( pio1_port_b_r )
 
     */
 
-	lc80_state *state = (lc80_state *)device->machine->driver_data;
+	lc80_state *state = device->machine->driver_data<lc80_state>();
 
 	return (cassette_input(state->cassette) < +0.0);
 }
@@ -200,7 +202,7 @@ static WRITE8_DEVICE_HANDLER( pio1_port_b_w )
 
     */
 
-	lc80_state *state = (lc80_state *)device->machine->driver_data;
+	lc80_state *state = device->machine->driver_data<lc80_state>();
 
 	/* tape output */
 	cassette_output(state->cassette, BIT(data, 1) ? +1.0 : -1.0);
@@ -246,7 +248,7 @@ static READ8_DEVICE_HANDLER( pio2_port_b_r )
 
     */
 
-	lc80_state *state = (lc80_state *)device->machine->driver_data;
+	lc80_state *state = device->machine->driver_data<lc80_state>();
 	UINT8 data = 0xf0;
 	int i;
 
@@ -289,8 +291,8 @@ static const z80_daisy_config lc80_daisy_chain[] =
 
 static MACHINE_START( lc80 )
 {
-	lc80_state *state = (lc80_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	lc80_state *state = machine->driver_data<lc80_state>();
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
 	state->z80pio2 = machine->device(Z80PIO2_TAG);
@@ -354,8 +356,7 @@ static const cassette_config lc80_cassette_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( lc80 )
-	MDRV_DRIVER_DATA(lc80_state)
+static MACHINE_CONFIG_START( lc80, lc80_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(Z80_TAG, Z80, 900000) /* UD880D */
@@ -369,7 +370,7 @@ static MACHINE_DRIVER_START( lc80 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -382,10 +383,9 @@ static MACHINE_DRIVER_START( lc80 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1K")
 	MDRV_RAM_EXTRA_OPTIONS("2K,3K,4K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( lc80_2 )
-	MDRV_DRIVER_DATA(lc80_state)
+static MACHINE_CONFIG_START( lc80_2, lc80_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(Z80_TAG, Z80, 1800000) /* UD880D */
@@ -399,7 +399,7 @@ static MACHINE_DRIVER_START( lc80_2 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -412,15 +412,16 @@ static MACHINE_DRIVER_START( lc80_2 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sc80 )
-	MDRV_IMPORT_FROM( lc80_2 )
+#if 0
+static MACHINE_CONFIG_DERIVED( sc80, lc80_2 )
 
 	/* basic machine hardware */
     MDRV_CPU_MODIFY(Z80_TAG)
     MDRV_CPU_PROGRAM_MAP(sc80_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
+#endif
 
 /* ROMs */
 

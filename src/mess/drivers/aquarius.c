@@ -217,7 +217,7 @@ static DRIVER_INIT( aquarius )
 	/* install expansion memory if available */
 	if (messram_get_size(machine->device("messram")) > 0x1000)
 	{
-		const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+		address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 		memory_install_readwrite_bank(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 0x1000 - 1, 0, 0, "bank1");
 		memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
@@ -231,7 +231,7 @@ static DRIVER_INIT( aquarius )
 
 static ADDRESS_MAP_START( aquarius_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x3000, 0x33ff) AM_RAM_WRITE(aquarius_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x3000, 0x33ff) AM_RAM_WRITE(aquarius_videoram_w) AM_BASE_MEMBER(aquarius_state, videoram)
 	AM_RANGE(0x3400, 0x37ff) AM_RAM_WRITE(aquarius_colorram_w) AM_BASE(&aquarius_colorram)
 	AM_RANGE(0x3800, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0xbfff) AM_NOP /* expansion ram */
@@ -392,7 +392,7 @@ static const cassette_config aquarius_cassette_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( aquarius )
+static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_3_579545MHz) // ???
 	MDRV_CPU_PROGRAM_MAP(aquarius_mem)
@@ -415,7 +415,7 @@ static MACHINE_DRIVER_START( aquarius )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_SOUND_ADD("ay8910", AY8910, XTAL_3_579545MHz/2) // ??? AY-3-8914
@@ -437,7 +437,7 @@ static MACHINE_DRIVER_START( aquarius )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
 	MDRV_RAM_EXTRA_OPTIONS("8K,20K,36K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static FLOPPY_OPTIONS_START(aquarius)
 	/* 128K images, 64K/side */
@@ -455,8 +455,7 @@ static const floppy_config aquarius_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( aquarius_qd )
-	MDRV_IMPORT_FROM( aquarius )
+static MACHINE_CONFIG_DERIVED( aquarius_qd, aquarius )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(aquarius_qd_io)
@@ -464,7 +463,7 @@ static MACHINE_DRIVER_START( aquarius_qd )
 	MDRV_DEVICE_REMOVE("cart")
 
 	MDRV_FLOPPY_2_DRIVES_ADD(aquarius_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************

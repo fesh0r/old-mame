@@ -560,7 +560,7 @@ static DEVICE_IMAGE_LOAD( a2600_cart )
 	running_machine *machine = image.device().machine;
 	const struct _extrainfo_banking_def *eibd;
 	UINT8 *cart = CART;
-	const char	*extrainfo;
+	const char	*extrainfo = NULL;
 
 	cart_size = image.length();
 
@@ -596,13 +596,14 @@ static DEVICE_IMAGE_LOAD( a2600_cart )
 		}
 	}
 
-	extrainfo = image.extrainfo();
+	if (strcmp(image.extrainfo(), ""))
+		extrainfo = image.extrainfo();
 
-	if ( extrainfo && extrainfo[0] )
+	if (extrainfo && extrainfo[0])
 	{
-		for ( eibd = extrainfo_banking_defs; eibd->extrainfo[0]; eibd++ )
+		for (eibd = extrainfo_banking_defs; eibd->extrainfo[0]; eibd++)
 		{
-			if ( ! mame_stricmp( eibd->extrainfo, extrainfo ) )
+			if (! mame_stricmp(eibd->extrainfo, extrainfo))
 			{
 				banking_mode = eibd->bank_mode;
 			}
@@ -747,31 +748,26 @@ static WRITE8_HANDLER(modeFV_switch_w) { modeFV_switch(space->machine, offset, d
 static WRITE8_HANDLER(modeJVP_switch_w) { modeJVP_switch(space->machine, offset, data); riot_ram[ 0x20 + offset ] = data; }
 
 
-static DIRECT_UPDATE_HANDLER( modeF6_opbase )
+DIRECT_UPDATE_HANDLER( modeF6_opbase )
 {
 	if ( ( address & 0x1FFF ) >= 0x1FF6 && ( address & 0x1FFF ) <= 0x1FF9 )
 	{
-		modeF6_switch_w( space, ( address & 0x1FFF ) - 0x1FF6, 0 );
+		modeF6_switch_w( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), ( address & 0x1FFF ) - 0x1FF6, 0 );
 	}
 	return address;
 }
 
-static DIRECT_UPDATE_HANDLER( modeSS_opbase )
+DIRECT_UPDATE_HANDLER( modeSS_opbase )
 {
 	if ( address & 0x1000 )
 	{
-		direct->bytemask = 0x7ff;
-		direct->bytestart = ( address & 0xf800 );
-		direct->byteend = ( address & 0xf800 ) | 0x7ff;
 		if ( address & 0x800 )
 		{
-			direct->decrypted = bank_base[2];
-			direct->raw = bank_base[2];
+			direct.explicit_configure(( address & 0xf800 ), ( address & 0xf800 ) | 0x7ff, 0x7ff, bank_base[2]);
 		}
 		else
 		{
-			direct->decrypted = bank_base[1];
-			direct->raw = bank_base[1];
+			direct.explicit_configure(( address & 0xf800 ), ( address & 0xf800 ) | 0x7ff, 0x7ff, bank_base[1]);
 		}
 		return ~0;
 	}
@@ -944,7 +940,7 @@ static TIMER_CALLBACK(modeDPC_timer_callback)
 	}
 }
 
-static DIRECT_UPDATE_HANDLER(modeDPC_opbase_handler)
+DIRECT_UPDATE_HANDLER(modeDPC_opbase_handler)
 {
 	UINT8	new_bit;
 	new_bit = ( dpc.shift_reg & 0x80 ) ^ ( ( dpc.shift_reg & 0x20 ) << 2 );
@@ -1090,20 +1086,20 @@ depending on last byte & 0x20 -> 0x00 -> switch to bank #1
 
  */
 
-static direct_update_func FE_old_opbase_handler;
+direct_update_delegate FE_old_opbase_handler;
 static int FETimer;
 
-static DIRECT_UPDATE_HANDLER(modeFE_opbase_handler)
+DIRECT_UPDATE_HANDLER(modeFE_opbase_handler)
 {
 	if ( ! FETimer )
 	{
 		/* Still cheating a bit here by looking bit 13 of the address..., but the high byte of the
            cpu should be the last byte that was on the data bus and so should determine the bank
            we should switch in. */
-		bank_base[1] = memory_region(space->machine, "user1") + 0x1000 * ( ( address & 0x2000 ) ? 0 : 1 );
-		memory_set_bankptr(space->machine, "bank1", bank_base[1] );
+		bank_base[1] = memory_region(machine, "user1") + 0x1000 * ( ( address & 0x2000 ) ? 0 : 1 );
+		memory_set_bankptr(machine, "bank1", bank_base[1] );
 		/* and restore old opbase handler */
-		memory_set_direct_update_handler(space, FE_old_opbase_handler);
+		cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(FE_old_opbase_handler);
 	}
 	else
 	{
@@ -1115,23 +1111,23 @@ static DIRECT_UPDATE_HANDLER(modeFE_opbase_handler)
 
 static void modeFE_switch(running_machine *machine,UINT16 offset, UINT8 data)
 {
-	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/* Retrieve last byte read by the cpu (for this mapping scheme this
        should be the last byte that was on the data bus
     */
 	FETimer = 1;
-	FE_old_opbase_handler = memory_set_direct_update_handler(space, modeFE_opbase_handler);
+	FE_old_opbase_handler = space->set_direct_update_handler(direct_update_delegate_create_static(modeFE_opbase_handler, *machine));
 }
 
 static READ8_HANDLER(modeFE_switch_r)
 {
 	modeFE_switch(space->machine,offset, 0 );
-	return memory_read_byte(space,  0xFE );
+	return space->read_byte(0xFE );
 }
 
 static WRITE8_HANDLER(modeFE_switch_w)
 {
-	memory_write_byte(space,  0xFE, data );
+	space->write_byte(0xFE, data );
 	modeFE_switch(space->machine,offset, 0 );
 }
 
@@ -1478,7 +1474,7 @@ static READ8_HANDLER(a2600_get_databus_contents)
 	{
 		return offset;
 	}
-	last_byte = memory_read_byte(space,  last_address );
+	last_byte = space->read_byte(last_address );
 	if ( last_byte < 0x80 || last_byte == 0xFF )
 	{
 		return last_byte;
@@ -1488,10 +1484,10 @@ static READ8_HANDLER(a2600_get_databus_contents)
 	{
 		return last_byte;
 	}
-	prev_byte = memory_read_byte(space,  prev_address );
+	prev_byte = space->read_byte(prev_address );
 	if ( prev_byte == 0xB1 )
 	{	/* LDA (XX),Y */
-		return memory_read_byte(space,  last_byte + 1 );
+		return space->read_byte(last_byte + 1 );
 	}
 	return last_byte;
 }
@@ -1618,7 +1614,7 @@ static void set_controller( running_machine *machine, const char *controller, un
 
 static MACHINE_RESET( a2600 )
 {
-	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int chip = 0xFF;
 	unsigned long controltemp;
 	static const unsigned char snowwhite[] = { 0x10, 0xd0, 0xff, 0xff }; // Snow White Proto
@@ -1816,7 +1812,7 @@ static MACHINE_RESET( a2600 )
 	case modeF6:
 		memory_install_write8_handler(space, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_w);
 		memory_install_read8_handler(space, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_r);
-		memory_set_direct_update_handler(space, modeF6_opbase );
+		space->set_direct_update_handler(direct_update_delegate_create_static(modeF6_opbase, *machine));
 		break;
 
 	case modeF4:
@@ -1871,7 +1867,7 @@ static MACHINE_RESET( a2600 )
 		memory_set_bankptr(machine, "bank2", bank_base[2] );
 		modeSS_write_enabled = 0;
 		modeSS_byte_started = 0;
-		memory_set_direct_update_handler(space, modeSS_opbase );
+		space->set_direct_update_handler(direct_update_delegate_create_static(modeSS_opbase, *machine));
 		/* The Supercharger has no motor control so just enable it */
 		cassette_change_state( machine->device("cassette"), CASSETTE_MOTOR_ENABLED, CASSETTE_MOTOR_DISABLED );
 		break;
@@ -1886,7 +1882,7 @@ static MACHINE_RESET( a2600 )
 		memory_install_write8_handler(space, 0x1040, 0x107f, 0, 0, modeDPC_w);
 		memory_install_write8_handler(space, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
 		memory_install_read8_handler(space, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
-		memory_set_direct_update_handler(space, modeDPC_opbase_handler );
+		space->set_direct_update_handler(direct_update_delegate_create_static(modeDPC_opbase_handler, *machine));
 		{
 			int	data_fetcher;
 			for( data_fetcher = 0; data_fetcher < 8; data_fetcher++ )
@@ -2102,15 +2098,15 @@ static const cassette_config a2600_cassette_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( a2600_cartslot )
+static MACHINE_CONFIG_FRAGMENT(a2600_cartslot)
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,a26")
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_START(a2600_cart)
 	MDRV_CARTSLOT_LOAD(a2600_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( a2600 )
+static MACHINE_CONFIG_START( a2600, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK_NTSC / 3)	/* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem)
@@ -2137,12 +2133,12 @@ static MACHINE_DRIVER_START( a2600 )
 
 	/* devices */
 	MDRV_RIOT6532_ADD("riot", MASTER_CLOCK_NTSC / 3, r6532_interface)
-	MDRV_IMPORT_FROM(a2600_cartslot)
+	MDRV_FRAGMENT_ADD(a2600_cartslot)
 	MDRV_CASSETTE_ADD( "cassette", a2600_cassette_config )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( a2600p )
+static MACHINE_CONFIG_START( a2600p, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK_PAL / 3)    /* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem)
@@ -2169,9 +2165,9 @@ static MACHINE_DRIVER_START( a2600p )
 
 	/* devices */
 	MDRV_RIOT6532_ADD("riot", MASTER_CLOCK_PAL / 3, r6532_interface)
-	MDRV_IMPORT_FROM(a2600_cartslot)
+	MDRV_FRAGMENT_ADD(a2600_cartslot)
 	MDRV_CASSETTE_ADD( "cassette", a2600_cassette_config )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START( a2600 )

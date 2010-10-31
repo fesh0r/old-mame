@@ -4,6 +4,18 @@
  *
  *  Skeleton: Juergen Buchmueller <pullmoll@t-online.de>, Jul 2000
  *  Enhanced: R. Belmont, June 2007
+ *  Angelo Salese, August 2010
+ *
+ *  TODO:
+ *  - try to understand why bios 2 was working at some point and now isn't
+ *  - fix RISC OS / Arthur booting, possible causes:
+ *  \- missing reset page size hook-up
+ *  \- some subtle memory paging fault
+ *  \- missing RAM max size
+ *  \- ARM bug?
+ *
+ *
+=======================================================================================
  *
  *      Memory map (from http://b-em.bbcmicro.com/arculator/archdocs.txt)
  *
@@ -28,6 +40,20 @@
  *  3600000 - 3FFFFFF - MEMC (write - supervisor only)
  *
  *****************************************************************************/
+/*
+    DASM of code (bios 2 / RISC OS 2)
+    0x380d4e0: MEMC: control to 0x10c (page size 32 kbytes, DRAM ram refresh only during flyback)
+    0x380d4f0: VIDC: params (screen + sound frequency)
+    0x380d51c: IOC: sets control to 0xff, clear IRQA and FIQ masks, sets IRQB mask to 0x80 (keyboard receive full irq)
+    0x380d530: IOC: sets timer 0 to 0x4e20, go command
+        0x380e0a8: work RAM physical check, max size etc.
+    0x380e1f8: IOC: Disables DRAM ram refresh, sets timer 1 to 0x7ffe, go command, then it tests the latch of this timer, enables DRAM refresh
+        0x380d00c: Set up default logical space
+        0x380d16c: Set up case by case logical space
+
+
+*/
+
 
 #include "emu.h"
 #include "machine/wd17xx.h"
@@ -35,15 +61,8 @@
 #include "cpu/arm/arm.h"
 #include "sound/dac.h"
 #include "includes/archimds.h"
-
-static VIDEO_START( a310 )
-{
-}
-
-static VIDEO_UPDATE( a310 )
-{
-	return 0;
-}
+#include "machine/i2cmem.h"
+#include "devices/messram.h"
 
 static WRITE_LINE_DEVICE_HANDLER( a310_wd177x_intrq_w )
 {
@@ -61,8 +80,25 @@ static WRITE_LINE_DEVICE_HANDLER( a310_wd177x_drq_w )
 		archimedes_clear_fiq(device->machine, ARCHIMEDES_FIQ_FLOPPY_DRQ);
 }
 
+static READ32_HANDLER( a310_psy_wram_r )
+{
+	return archimedes_memc_physmem[offset];
+}
+
+static WRITE32_HANDLER( a310_psy_wram_w )
+{
+	COMBINE_DATA(&archimedes_memc_physmem[offset]);
+}
+
+
 static DRIVER_INIT(a310)
 {
+	UINT32 ram_size = messram_get_size(machine->device("messram"));
+
+	archimedes_memc_physmem = auto_alloc_array(machine, UINT32, 0x01000000);
+
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x02000000, 0x02000000+(ram_size-1), 0, 0, a310_psy_wram_r, a310_psy_wram_w );
+
 	archimedes_driver_init(machine);
 }
 
@@ -71,7 +107,7 @@ static MACHINE_START( a310 )
 	archimedes_init(machine);
 
 	// reset the DAC to centerline
-	dac_signed_data_w(machine->device("dac"), 0x80);
+	//dac_signed_data_w(machine->device("dac"), 0x80);
 }
 
 static MACHINE_RESET( a310 )
@@ -81,7 +117,7 @@ static MACHINE_RESET( a310 )
 
 static ADDRESS_MAP_START( a310_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x01ffffff) AM_READWRITE(archimedes_memc_logical_r, archimedes_memc_logical_w)
-	AM_RANGE(0x02000000, 0x02ffffff) AM_RAM AM_BASE(&archimedes_memc_physmem) /* physical RAM - 16 MB for now, should be 512k for the A310 */
+//  AM_RANGE(0x02000000, 0x02ffffff) AM_RAM AM_BASE(&archimedes_memc_physmem) /* physical RAM - 16 MB for now, should be 512k for the A310 */
 	AM_RANGE(0x03000000, 0x033fffff) AM_READWRITE(archimedes_ioc_r, archimedes_ioc_w)
 	AM_RANGE(0x03400000, 0x035fffff) AM_READWRITE(archimedes_vidc_r, archimedes_vidc_w)
 	AM_RANGE(0x03600000, 0x037fffff) AM_READWRITE(archimedes_memc_r, archimedes_memc_w)
@@ -208,34 +244,66 @@ static const wd17xx_interface a310_wd17xx_interface =
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
-static MACHINE_DRIVER_START( a310 )
+static const i2cmem_interface i2cmem_interface =
+{
+	I2CMEM_SLAVE_ADDRESS, 0, 0x100
+};
+
+static MACHINE_CONFIG_START( a310, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", ARM, 8000000)        /* 8 MHz */
 	MDRV_CPU_PROGRAM_MAP(a310_mem)
 
-	MDRV_MACHINE_RESET( a310 )
 	MDRV_MACHINE_START( a310 )
+	MDRV_MACHINE_RESET( a310 )
+
+	MDRV_I2CMEM_ADD("i2cmem",i2cmem_interface)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 16*16)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8 - 1, 0*16, 16*16 - 1)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MDRV_SCREEN_SIZE(1280, 1024) //TODO: default screen size
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 1280 - 1, 0*16, 1024 - 1)
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_VIDEO_START(a310)
-	MDRV_VIDEO_UPDATE(a310)
+	MDRV_VIDEO_START(archimds_vidc)
+	MDRV_VIDEO_UPDATE(archimds_vidc)
 
-	MDRV_SPEAKER_STANDARD_MONO("a310")
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "a310", 1.00)
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("2M")
+	MDRV_RAM_EXTRA_OPTIONS("512K, 1M, 4M, 8M, 16M")
 
 	MDRV_WD1772_ADD("wd1772", a310_wd17xx_interface )
 
 	//MDRV_FLOPPY_4_DRIVES_ADD(a310_floppy_config)
-MACHINE_DRIVER_END
+
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("dac0", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac1", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac2", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac3", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac4", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac5", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac6", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+
+	MDRV_SOUND_ADD("dac7", DAC, 0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.10)
+MACHINE_CONFIG_END
 
 ROM_START(a310)
 	ROM_REGION( 0x800000, "maincpu", 0 )
@@ -249,8 +317,10 @@ ROM_START(a310)
 	ROM_SYSTEM_BIOS( 2, "200", "RiscOS 2.0 (05 Oct 1988)" )
 	ROMX_LOAD( "riscos2.bin",  0x000000, 0x080000, CRC(89c4ad36) SHA1(b82a78830dac386f9b649b6d32a34f9c6910546d), ROM_BIOS(3) )
 
-	ROM_REGION( 0x00800, "gfx1", ROMREGION_ERASE00 )
+	ROM_REGION( 0x200000, "vram", ROMREGION_ERASE00 )
+
+	ROM_REGION( 0x100, "i2cmem", ROMREGION_ERASE00 )
 ROM_END
 
-/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT     INIT   COMPANY  FULLNAME */
+/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  INIT   COMPANY  FULLNAME */
 COMP( 1988, a310, 0,      0,      a310,    a310,  a310,   "Acorn", "Archimedes 310", GAME_NOT_WORKING)

@@ -18,12 +18,11 @@
 #define PC8500_LCD_VIDEORAM_SIZE	0x4000
 #define PC8500_LCD_VIDEORAM_MASK	0x3fff
 
-class pc8401a_state
+class pc8401a_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pc8401a_state(machine)); }
-
-	pc8401a_state(running_machine &machine) { }
+	pc8401a_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	int key_strobe;			/* key pressed */
@@ -48,7 +47,7 @@ public:
 
 /* ---------- defined in video/pc8401a.c ---------- */
 
-MACHINE_DRIVER_EXTERN( pc8401a_video );
-MACHINE_DRIVER_EXTERN( pc8500_video );
+MACHINE_CONFIG_EXTERN( pc8401a_video );
+MACHINE_CONFIG_EXTERN( pc8500_video );
 
 #endif

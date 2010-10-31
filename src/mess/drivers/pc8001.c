@@ -55,7 +55,7 @@ static WRITE8_HANDLER( port30_w )
 
     */
 
-	pc8001_state *state = (pc8001_state *)space->machine->driver_data;
+	pc8001_state *state = space->machine->driver_data<pc8001_state>();
 
 	/* characters per line */
 	state->width80 = BIT(data, 0);
@@ -309,7 +309,7 @@ static PALETTE_INIT( pc8001 )
 
 static VIDEO_START( pc8001 )
 {
-	pc8001_state *state = (pc8001_state *)machine->driver_data;
+	pc8001_state *state = machine->driver_data<pc8001_state>();
 
 	/* find memory regions */
 	state->char_rom = memory_region(machine, "chargen");
@@ -317,7 +317,7 @@ static VIDEO_START( pc8001 )
 
 static VIDEO_UPDATE( pc8001 )
 {
-	pc8001_state *state = (pc8001_state *)screen->machine->driver_data;
+	pc8001_state *state = screen->machine->driver_data<pc8001_state>();
 
 	upd3301_update(state->upd3301, bitmap, cliprect);
 
@@ -328,7 +328,7 @@ static VIDEO_UPDATE( pc8001 )
 
 static UPD3301_DISPLAY_PIXELS( pc8001_display_pixels )
 {
-	pc8001_state *state = (pc8001_state *)device->machine->driver_data;
+	pc8001_state *state = device->machine->driver_data<pc8001_state>();
 
 	UINT8 data = state->char_rom[(cc << 3) | lc];
 	int i;
@@ -342,7 +342,7 @@ static UPD3301_DISPLAY_PIXELS( pc8001_display_pixels )
 		{
 			int color = BIT(data, 7) ^ rvv;
 
-			*BITMAP_ADDR16(bitmap, y, (sx * 8) + i) = color;
+			*BITMAP_ADDR16(bitmap, y, (sx * 8) + i) = color ? 7 : 0;
 
 			data <<= 1;
 		}
@@ -355,8 +355,8 @@ static UPD3301_DISPLAY_PIXELS( pc8001_display_pixels )
 		{
 			int color = BIT(data, 7) ^ rvv;
 
-			*BITMAP_ADDR16(bitmap, y, (sx/2 * 16) + (i * 2)) = color;
-			*BITMAP_ADDR16(bitmap, y, (sx/2 * 16) + (i * 2) + 1) = color;
+			*BITMAP_ADDR16(bitmap, y, (sx/2 * 16) + (i * 2)) = color ? 7 : 0;
+			*BITMAP_ADDR16(bitmap, y, (sx/2 * 16) + (i * 2) + 1) = color ? 7 : 0;
 
 			data <<= 1;
 		}
@@ -406,6 +406,9 @@ static WRITE_LINE_DEVICE_HANDLER( hrq_w )
 	i8257_hlda_w(device, state);
 }
 
+static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+
 static I8257_INTERFACE( pc8001_8257_intf )
 {
 	DEVCB_LINE(hrq_w),
@@ -430,8 +433,8 @@ static UPD1990A_INTERFACE( pc8001_upd1990a_intf )
 
 static MACHINE_START( pc8001 )
 {
-	pc8001_state *state = (pc8001_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	pc8001_state *state = machine->driver_data<pc8001_state>();
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	running_device *messram = machine->device("messram");
 
 	/* look up devices */
@@ -504,8 +507,7 @@ static const cassette_config pc8001_cassette_config =
 
 /* Machine Drivers */
 
-static MACHINE_DRIVER_START( pc8001 )
-	MDRV_DRIVER_DATA(pc8001_state)
+static MACHINE_CONFIG_START( pc8001, pc8001_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, 4000000)
@@ -529,7 +531,7 @@ static MACHINE_DRIVER_START( pc8001 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -545,10 +547,9 @@ static MACHINE_DRIVER_START( pc8001 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K,64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pc8001mk2 )
-	MDRV_IMPORT_FROM(pc8001)
+static MACHINE_CONFIG_DERIVED( pc8001mk2, pc8001 )
 
 	MDRV_CPU_MODIFY(Z80_TAG)
 	MDRV_CPU_PROGRAM_MAP(pc8001mk2_mem)
@@ -557,7 +558,7 @@ static MACHINE_DRIVER_START( pc8001mk2 )
 
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 

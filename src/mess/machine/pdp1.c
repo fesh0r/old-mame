@@ -1158,12 +1158,12 @@ static void iot_dcc(running_device *device, int op2, int nac, int mb, int *io, i
 	{
 		if ((parallel_drum.wfb >= 1) && (parallel_drum.wfb <= 22))
 		{
-			drum_write(parallel_drum.wfb-1, dc, (signed)memory_read_dword_32be(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM),parallel_drum.wcl<<2));
+			drum_write(parallel_drum.wfb-1, dc, (signed)cputag_get_address_space(device->machine,"maincpu", ADDRESS_SPACE_PROGRAM)->read_dword(parallel_drum.wcl<<2));
 		}
 
 		if ((parallel_drum.rfb >= 1) && (parallel_drum.rfb <= 22))
 		{
-			memory_write_dword_32be(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM),parallel_drum.wcl<<2, drum_read(parallel_drum.rfb-1, dc));
+			cputag_get_address_space(device->machine,"maincpu", ADDRESS_SPACE_PROGRAM)->write_dword(parallel_drum.wcl<<2, drum_read(parallel_drum.rfb-1, dc));
 		}
 
 		parallel_drum.wc = (parallel_drum.wc+1) & 07777;
@@ -1172,7 +1172,7 @@ static void iot_dcc(running_device *device, int op2, int nac, int mb, int *io, i
 		if (parallel_drum.wc)
 			delay = attotime_add(delay, PARALLEL_DRUM_WORD_TIME);
 	} while (parallel_drum.wc);
-	cpu_adjust_icount(device->machine->device("maincpu"),-cputag_attotime_to_clocks(device->machine, "maincpu", delay));
+	cpu_adjust_icount(device->machine->device("maincpu"),-device->machine->device<cpu_device>("maincpu")->attotime_to_cycles(delay));
 	/* if no error, skip */
 	cpu_set_reg(device->machine->device("maincpu"), PDP1_PC, cpu_get_reg(device->machine->device("maincpu"), PDP1_PC)+1);
 }
@@ -1435,7 +1435,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 			cpu_set_reg(device, PDP1_MA, cpu_get_reg(device, PDP1_PC));
 			cpu_set_reg(device, PDP1_IR, LAC);	/* this instruction is actually executed */
 
-			cpu_set_reg(device, PDP1_MB, (signed)memory_read_dword_32be(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), PDP1_MA<<2));
+			cpu_set_reg(device, PDP1_MB, (signed)cpu_get_address_space(device,ADDRESS_SPACE_PROGRAM)->read_dword(PDP1_MA<<2));
 			cpu_set_reg(device, PDP1_AC, cpu_get_reg(device, PDP1_MB));
 		}
 		if (control_transitions & pdp1_deposit)
@@ -1447,7 +1447,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 			cpu_set_reg(device, PDP1_IR, DAC);	/* this instruction is actually executed */
 
 			cpu_set_reg(device, PDP1_MB, cpu_get_reg(device, PDP1_AC));
-			memory_write_dword_32be(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM),cpu_get_reg(device, PDP1_MA)<<2, cpu_get_reg(device, PDP1_MB));
+			cpu_get_address_space(device,ADDRESS_SPACE_PROGRAM)->write_dword(cpu_get_reg(device, PDP1_MA)<<2, cpu_get_reg(device, PDP1_MB));
 		}
 		if (control_transitions & pdp1_read_in)
 		{	/* set cpu to read instructions from perforated tape */

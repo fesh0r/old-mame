@@ -136,7 +136,7 @@ static ADDRESS_MAP_START( c9060_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(C9060_REGION, 0x0000)
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c9060:c9060", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -146,12 +146,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( c9060_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
-	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
+	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1800, 0x1fff) AM_ROM AM_REGION(C9060_REGION, 0x2000) // 6530
+	AM_RANGE(0x1800, 0x1fff) AM_ROM AM_REGION("c9060:c9060", 0x2000) // 6530
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -452,7 +452,7 @@ static const via6522_interface via_intf =
     MACHINE_DRIVER( c9060 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c9060 )
+static MACHINE_CONFIG_FRAGMENT( c9060 )
 	/* DOS */
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/16)
 	MDRV_CPU_PROGRAM_MAP(c9060_dos_map)
@@ -467,17 +467,17 @@ static MACHINE_DRIVER_START( c9060 )
 	MDRV_VIA6522_ADD(M6522_TAG, XTAL_16MHz/16, via_intf)
 
 	// Tandon TM602S
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( c9090 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c9090 )
-	MDRV_IMPORT_FROM(c9060)
+static MACHINE_CONFIG_FRAGMENT( c9090 )
+	MDRV_FRAGMENT_ADD(c9060)
 
 	// Tandon TM603S
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     ROM( c9060 )
@@ -485,13 +485,13 @@ MACHINE_DRIVER_END
 
 ROM_START( c9060 ) // schematic 300010
 	ROM_REGION( 0x4800, C9060_REGION, ROMREGION_LOADBYNAME )
-	ROM_LOAD( "300516-revb.7c", 0x0000, 0x2000, CRC(2d758a14) SHA1(c959cc9dde84fc3d64e95e58a0a096a26d8107fd) )
+	ROM_LOAD_OPTIONAL( "300516-revb.7c", 0x0000, 0x2000, CRC(2d758a14) SHA1(c959cc9dde84fc3d64e95e58a0a096a26d8107fd) )
 	ROM_LOAD( "300516-revc.7c", 0x0000, 0x2000, CRC(d6a3e88f) SHA1(bb1ddb5da94a86266012eca54818aa21dc4cef6a) )
-	ROM_LOAD( "300517-reva.7d", 0x2000, 0x2000, CRC(566df630) SHA1(b1602dfff408b165ee52a6a4ca3e2ec27e689ba9) )
-	ROM_LOAD( "300517-revb.7d", 0x2000, 0x2000, CRC(f0382bc3) SHA1(0b0a8dc520f5b41ffa832e4a636b3d226ccbb7f1) )
+	ROM_LOAD_OPTIONAL( "300517-reva.7d", 0x2000, 0x2000, CRC(566df630) SHA1(b1602dfff408b165ee52a6a4ca3e2ec27e689ba9) )
+	ROM_LOAD_OPTIONAL( "300517-revb.7d", 0x2000, 0x2000, CRC(f0382bc3) SHA1(0b0a8dc520f5b41ffa832e4a636b3d226ccbb7f1) )
 	ROM_LOAD( "300517-revc.7d", 0x2000, 0x2000, CRC(2a9ad4ad) SHA1(4c17d014de48c906871b9b6c7d037d8736b1fd52) )
 
-	ROM_LOAD( "300515-reva.4c", 0x4000, 0x0800, CRC(99e096f7) SHA1(a3d1deb27bf5918b62b89c27fa3e488eb8f717a4) )
+	ROM_LOAD_OPTIONAL( "300515-reva.4c", 0x4000, 0x0800, CRC(99e096f7) SHA1(a3d1deb27bf5918b62b89c27fa3e488eb8f717a4) )
 	ROM_LOAD( "300515-revb.4c", 0x4000, 0x0800, CRC(49adf4fb) SHA1(59dafbd4855083074ba8dc96a04d4daa5b76e0d6) )
 ROM_END
 
@@ -552,7 +552,7 @@ DEVICE_GET_INFO( c9060 )
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c9060);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c9060);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c9060);			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(c9060);						break;
@@ -577,7 +577,7 @@ DEVICE_GET_INFO( c9090 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c9090);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c9090);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 9090");							break;

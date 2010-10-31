@@ -9,12 +9,11 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 
-class z9001_state
+class z9001_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, z9001_state(machine)); }
-
-	z9001_state(running_machine &machine) { }
+	z9001_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT8 *videoram;
 };
@@ -47,7 +46,7 @@ static VIDEO_START( z9001 )
 
 static VIDEO_UPDATE( z9001 )
 {
-	z9001_state *state = (z9001_state *)screen->machine->driver_data;
+	z9001_state *state = screen->machine->driver_data<z9001_state>();
 	UINT8 code;
 	UINT8 line;
 	int y, x, j, b;
@@ -91,9 +90,7 @@ static GFXDECODE_START( z9001 )
 GFXDECODE_END
 
 
-static MACHINE_DRIVER_START( z9001 )
-
-    MDRV_DRIVER_DATA( z9001_state )
+static MACHINE_CONFIG_START( z9001, z9001_state )
 
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, XTAL_9_8304MHz / 4)
@@ -115,7 +112,7 @@ static MACHINE_DRIVER_START( z9001 )
 
     MDRV_VIDEO_START(z9001)
     MDRV_VIDEO_UPDATE(z9001)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( z9001 )

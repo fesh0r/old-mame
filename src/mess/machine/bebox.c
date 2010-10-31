@@ -571,7 +571,7 @@ static WRITE64_HANDLER( bebox_video_w )
 
 static void bebox_map_vga_memory(running_machine *machine, offs_t begin, offs_t end, read8_space_func rh, write8_space_func wh)
 {
-	const address_space *space = cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM);
 
 	memory_nop_readwrite(space, 0xC00A0000, 0xC00BFFFF, 0, 0);
 
@@ -711,7 +711,7 @@ static READ8_HANDLER( bebox_dma_read_byte )
 {
 	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0x7FFF0000;
-	return memory_read_byte(space, page_offset + offset);
+	return space->read_byte(page_offset + offset);
 }
 
 
@@ -719,7 +719,7 @@ static WRITE8_HANDLER( bebox_dma_write_byte )
 {
 	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0x7FFF0000;
-	memory_write_byte(space, page_offset + offset, data);
+	space->write_byte(page_offset + offset, data);
 }
 
 
@@ -815,15 +815,17 @@ const struct pit8253_config bebox_pit8254_config =
 
 static READ8_HANDLER( bebox_flash8_r )
 {
+	fujitsu_29f016a_device *flash = space->machine->device<fujitsu_29f016a_device>("flash");
 	offset = (offset & ~7) | (7 - (offset & 7));
-	return intelflash_read(0, offset);
+	return flash->read(offset);
 }
 
 
 static WRITE8_HANDLER( bebox_flash8_w )
 {
+	fujitsu_29f016a_device *flash = space->machine->device<fujitsu_29f016a_device>("flash");
 	offset = (offset & ~7) | (7 - (offset & 7));
-	intelflash_write(0, offset, data);
+	flash->write(offset, data);
 }
 
 
@@ -945,7 +947,7 @@ static WRITE64_HANDLER( scsi53c810_w )
 static UINT32 scsi53c810_fetch(running_machine *machine, UINT32 dsp)
 {
 	UINT32 result;
-	result = memory_read_dword_64be(cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM), dsp & 0x7FFFFFFF);
+	result = cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM)->read_dword(dsp & 0x7FFFFFFF);
 	return BYTE_REVERSE32(result);
 }
 
@@ -1011,7 +1013,7 @@ void scsi53c810_pci_write(running_device *busdevice, running_device *device, int
 					/* brutal ugly hack; at some point the PCI code should be handling this stuff */
 					if (scsi53c810_data[5] != 0xFFFFFFF0)
 					{
-						const address_space *space = cputag_get_address_space(device->machine, "ppc1", ADDRESS_SPACE_PROGRAM);
+						address_space *space = cputag_get_address_space(device->machine, "ppc1", ADDRESS_SPACE_PROGRAM);
 
 						addr = (scsi53c810_data[5] | 0xC0000000) & ~0xFF;
 						memory_install_read64_handler(space, addr, addr + 0xFF, 0, 0, scsi53c810_r);
@@ -1056,11 +1058,6 @@ static TIMER_CALLBACK( bebox_get_devices ) {
  *
  *************************************/
 
-NVRAM_HANDLER( bebox )
-{
-	nvram_handler_intelflash(machine, 0, file, read_or_write);
-}
-
 MACHINE_RESET( bebox )
 {
 	bebox_devices.pic8259_master = NULL;
@@ -1072,6 +1069,8 @@ MACHINE_RESET( bebox )
 
 	cputag_set_input_line(machine, "ppc1", INPUT_LINE_RESET, CLEAR_LINE);
 	cputag_set_input_line(machine, "ppc2", INPUT_LINE_RESET, ASSERT_LINE);
+
+	memcpy(machine->device<fujitsu_29f016a_device>("flash")->space()->get_read_ptr(0),memory_region(machine, "user1"),0x200000);
 }
 
 static void bebox_exit(running_machine &machine)
@@ -1089,8 +1088,8 @@ MACHINE_START( bebox )
 
 DRIVER_INIT( bebox )
 {
-	const address_space *space_0 = cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM);
-	const address_space *space_1 = cputag_get_address_space(machine, "ppc2", ADDRESS_SPACE_PROGRAM);
+	address_space *space_0 = cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM);
+	address_space *space_1 = cputag_get_address_space(machine, "ppc2", ADDRESS_SPACE_PROGRAM);
 	offs_t vram_begin;
 	offs_t vram_end;
 
@@ -1098,14 +1097,12 @@ DRIVER_INIT( bebox )
 
 	/* set up boot and flash ROM */
 	memory_set_bankptr(machine, "bank2", memory_region(machine, "user2"));
-	intelflash_init(machine, 0, FLASH_FUJITSU_29F016A, memory_region(machine, "user1"));
 
 	/* install MESS managed RAM */
 	memory_install_readwrite_bank(space_0, 0, messram_get_size(machine->device("messram")) - 1, 0, 0x02000000, "bank3");
 	memory_install_readwrite_bank(space_1, 0, messram_get_size(machine->device("messram")) - 1, 0, 0x02000000, "bank3");
 	memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")));
-
-	mc146818_init(machine, MC146818_STANDARD);
+	
 	pc_vga_init(machine, &bebox_vga_interface, &cirrus_svga_interface);
 	kbdc8042_init(machine, &bebox_8042_interface);
 

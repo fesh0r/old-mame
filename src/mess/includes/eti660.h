@@ -1,7 +1,7 @@
 #ifndef __ETI660__
 #define __ETI660__
 
-#include "cpu/cdp1802/cdp1802.h"
+#include "cpu/cosmac/cosmac.h"
 
 #define SCREEN_TAG		"screen"
 #define CDP1802_TAG		"ic3"
@@ -15,21 +15,16 @@ enum
 	LED_PULSE
 };
 
-class eti660_state
+class eti660_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, eti660_state(machine)); }
-
-	eti660_state(running_machine &machine) { }
-
-	/* cpu state */
-	cdp1802_control_mode cdp1802_mode;
+	eti660_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	UINT8 keylatch;
 
 	/* video state */
-	int cdp1864_efx;
 	UINT8 color_ram[0x100];
 	UINT8 color;
 

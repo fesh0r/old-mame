@@ -16,12 +16,11 @@
 #define BANK_RAM		1
 #define BANK_VIDEO_RAM	2
 
-class tiki100_state
+class tiki100_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, tiki100_state(machine)); }
-
-	tiki100_state(running_machine &machine) { }
+	tiki100_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* memory state */
 	int rome;

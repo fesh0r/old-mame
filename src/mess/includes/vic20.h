@@ -1,6 +1,8 @@
 #ifndef __VIC20__
 #define __VIC20__
 
+#include "machine/6522via.h"
+
 #define SCREEN_TAG		"screen"
 #define M6502_TAG		"ue10"
 #define M6522_0_TAG		"uab3"
@@ -14,19 +16,18 @@
 #define CASSETTE_TAG	"cassette"
 #define TIMER_C1530_TAG	"c1530"
 
-class vic20_state
+class vic20_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, vic20_state(machine)); }
-
-	vic20_state(running_machine &machine) { }
+	vic20_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	int key_col;
 
 	/* devices */
-	running_device *via0;
-	running_device *via1;
+	via6522_device *via0;
+	via6522_device *via1;
 	running_device *iec;
 	running_device *cassette;
 	running_device *mos6560;

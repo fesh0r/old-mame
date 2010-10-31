@@ -107,7 +107,7 @@ Notes:
 
 static WRITE8_HANDLER( tvdraw_axis_w )
 {
-	sg1000_state *state = (sg1000_state *)space->machine->driver_data;
+	sg1000_state *state = space->machine->driver_data<sg1000_state>();
 
 	if (data & 0x01)
 	{
@@ -137,7 +137,7 @@ static READ8_HANDLER( tvdraw_status_r )
 
 static READ8_HANDLER( tvdraw_data_r )
 {
-	sg1000_state *state = (sg1000_state *)space->machine->driver_data;
+	sg1000_state *state = space->machine->driver_data<sg1000_state>();
 
 	return state->tvdraw_data;
 }
@@ -574,7 +574,7 @@ static READ8_DEVICE_HANDLER( sc3000_ppi_pa_r )
         PA7     Keyboard input
     */
 
-	sg1000_state *state = (sg1000_state *)device->machine->driver_data;
+	sg1000_state *state = device->machine->driver_data<sg1000_state>();
 
 	static const char *const keynames[] = { "PA0", "PA1", "PA2", "PA3", "PA4", "PA5", "PA6", "PA7" };
 
@@ -596,7 +596,7 @@ static READ8_DEVICE_HANDLER( sc3000_ppi_pb_r )
         PB7     Cassette tape input
     */
 
-	sg1000_state *state = (sg1000_state *)device->machine->driver_data;
+	sg1000_state *state = device->machine->driver_data<sg1000_state>();
 
 	static const char *const keynames[] = { "PB0", "PB1", "PB2", "PB3", "PB4", "PB5", "PB6", "PB7" };
 
@@ -630,7 +630,7 @@ static WRITE8_DEVICE_HANDLER( sc3000_ppi_pc_w )
         PC7     /FEED to printer
     */
 
-	sg1000_state *state = (sg1000_state *)device->machine->driver_data;
+	sg1000_state *state = device->machine->driver_data<sg1000_state>();
 
 	/* keyboard */
 	state->keylatch = data & 0x07;
@@ -682,7 +682,7 @@ static READ8_DEVICE_HANDLER( sf7000_ppi_pa_r )
         PA7
     */
 
-	sg1000_state *state = (sg1000_state *)device->machine->driver_data;
+	sg1000_state *state = device->machine->driver_data<sg1000_state>();
 	UINT8 result = 0;
 
 	result |= state->fdc_irq;
@@ -707,7 +707,7 @@ static WRITE8_DEVICE_HANDLER( sf7000_ppi_pc_w )
         PC7     /STROBE to Centronics printer
     */
 
-	sg1000_state *state = (sg1000_state *)device->machine->driver_data;
+	sg1000_state *state = device->machine->driver_data<sg1000_state>();
 
 	/* floppy motor */
 	floppy_mon_w(floppy_get_device(device->machine, 0), BIT(data, 1));
@@ -745,7 +745,7 @@ static I8255A_INTERFACE( sf7000_ppi_intf )
 
 static WRITE_LINE_DEVICE_HANDLER( sf7000_fdc_interrupt )
 {
-	sg1000_state *driver_state = (sg1000_state *)device->machine->driver_data;
+	sg1000_state *driver_state = device->machine->driver_data<sg1000_state>();
 
 	driver_state->fdc_irq = state;
 }
@@ -798,7 +798,7 @@ static const floppy_config sf7000_floppy_config =
 
 static void sg1000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, int size)
 {
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	switch (size)
 	{
@@ -838,7 +838,7 @@ static void sg1000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, in
 
 static DEVICE_IMAGE_LOAD( sg1000_cart )
 {
-	const address_space *program = cputag_get_address_space(image.device().machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(image.device().machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT32 size;
 	UINT8 *ptr = memory_region(image.device().machine, Z80_TAG);
 
@@ -896,7 +896,7 @@ static DEVICE_IMAGE_LOAD( omv_cart )
 
 static void sc3000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, int size)
 {
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* include SG-1000 mapping */
 	sg1000_map_cartridge_memory(machine, ptr, size);
@@ -975,7 +975,7 @@ static TIMER_CALLBACK( lightgun_tick )
 
 static MACHINE_START( sg1000 )
 {
-	sg1000_state *state = (sg1000_state *)machine->driver_data;
+	sg1000_state *state = machine->driver_data<sg1000_state>();
 
 	/* configure VDP */
 	TMS9928A_configure(&tms9928a_interface);
@@ -993,7 +993,7 @@ static MACHINE_START( sg1000 )
 
 static MACHINE_START( sc3000 )
 {
-	sg1000_state *state = (sg1000_state *)machine->driver_data;
+	sg1000_state *state = machine->driver_data<sg1000_state>();
 
 	/* find devices */
 	state->cassette = machine->device(CASSETTE_TAG);
@@ -1015,7 +1015,7 @@ static MACHINE_START( sc3000 )
 
 static void sf7000_fdc_index_callback(running_device *controller, running_device *img, int state)
 {
-	sg1000_state *driver_state = (sg1000_state *)img->machine->driver_data;
+	sg1000_state *driver_state = img->machine->driver_data<sg1000_state>();
 
 	driver_state->fdc_index = state;
 }
@@ -1026,7 +1026,7 @@ static void sf7000_fdc_index_callback(running_device *controller, running_device
 
 static MACHINE_START( sf7000 )
 {
-	sg1000_state *state = (sg1000_state *)machine->driver_data;
+	sg1000_state *state = machine->driver_data<sg1000_state>();
 
 	/* find devices */
 	state->upd765 = machine->device(UPD765_TAG);
@@ -1065,11 +1065,10 @@ static MACHINE_RESET( sf7000 )
 ***************************************************************************/
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( sg1000 )
+    MACHINE_CONFIG_START( sg1000, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( sg1000 )
-	MDRV_DRIVER_DATA(sg1000_state)
+static MACHINE_CONFIG_START( sg1000, sg1000_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_10_738635MHz/3)
@@ -1080,7 +1079,7 @@ static MACHINE_DRIVER_START( sg1000 )
 	MDRV_MACHINE_START(sg1000)
 
     /* video hardware */
-	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_FRAGMENT_ADD(tms9928a)
 	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -1103,14 +1102,13 @@ static MACHINE_DRIVER_START( sg1000 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( omv )
+    MACHINE_CONFIG_START( omv, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( omv )
-	MDRV_IMPORT_FROM(sg1000)
+static MACHINE_CONFIG_DERIVED( omv, sg1000 )
 
 	MDRV_CPU_MODIFY(Z80_TAG)
 	MDRV_CPU_PROGRAM_MAP(omv_map)
@@ -1123,14 +1121,13 @@ static MACHINE_DRIVER_START( omv )
 
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( sc3000 )
+    MACHINE_CONFIG_START( sc3000, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( sc3000 )
-	MDRV_DRIVER_DATA(sg1000_state)
+static MACHINE_CONFIG_START( sc3000, sg1000_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_10_738635MHz/3) // LH0080A
@@ -1141,7 +1138,7 @@ static MACHINE_DRIVER_START( sc3000 )
 	MDRV_MACHINE_START(sc3000)
 
     /* video hardware */
-	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_FRAGMENT_ADD(tms9928a)
 	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -1168,14 +1165,13 @@ static MACHINE_DRIVER_START( sc3000 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( sf7000 )
+    MACHINE_CONFIG_START( sf7000, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( sf7000 )
-	MDRV_DRIVER_DATA(sg1000_state)
+static MACHINE_CONFIG_START( sf7000, sg1000_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_10_738635MHz/3)
@@ -1187,7 +1183,7 @@ static MACHINE_DRIVER_START( sf7000 )
 	MDRV_MACHINE_RESET(sf7000)
 
     /* video hardware */
-	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_FRAGMENT_ADD(tms9928a)
 	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -1210,7 +1206,7 @@ static MACHINE_DRIVER_START( sf7000 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
     ROMS

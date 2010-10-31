@@ -54,6 +54,7 @@ static void psxexe_conv32( UINT32 *p_uint32 )
 
 static int load_psxexe( running_device *cpu, unsigned char *p_n_file, int n_len )
 {
+	psx_state *state = cpu->machine->driver_data<psx_state>();
 	struct PSXEXE_HEADER
 	{
 		UINT8 id[ 8 ];
@@ -115,8 +116,8 @@ static int load_psxexe( running_device *cpu, unsigned char *p_n_file, int n_len 
 		logerror( "psx_exe_load: sp    %08x\n", psxexe_header->s_addr );
 		logerror( "psx_exe_load: len   %08x\n", psxexe_header->s_size );
 
-		p_ram = (UINT8 *)g_p_n_psxram;
-		n_ram = g_n_psxramsize;
+		p_ram = (UINT8 *)state->p_n_psxram;
+		n_ram = state->n_psxramsize;
 
 		p_psxexe = p_n_file + sizeof( struct PSXEXE_HEADER );
 
@@ -189,6 +190,7 @@ static void cpe_set_register( running_device *cpu, int n_reg, int n_value )
 
 static int load_cpe( running_device *cpu, unsigned char *p_n_file, int n_len )
 {
+	psx_state *state = cpu->machine->driver_data<psx_state>();
 	if( n_len >= 4 &&
 		memcmp( p_n_file, "CPE\001", 4 ) == 0 )
 	{
@@ -218,8 +220,8 @@ static int load_cpe( running_device *cpu, unsigned char *p_n_file, int n_len )
 						( (int)p_n_file[ n_offset + 6 ] << 16 ) |
 						( (int)p_n_file[ n_offset + 7 ] << 24 );
 
-					UINT8 *p_ram = (UINT8 *)g_p_n_psxram;
-					UINT32 n_ram = g_n_psxramsize;
+					UINT8 *p_ram = (UINT8 *)state->p_n_psxram;
+					UINT32 n_ram = state->n_psxramsize;
 
 					n_offset += 8;
 
@@ -384,14 +386,19 @@ static int load_psf( running_device *cpu, unsigned char *p_n_file, int n_len )
 	return n_return;
 }
 
-static DIRECT_UPDATE_HANDLER( psx_setopbase )
+DIRECT_UPDATE_HANDLER( psx_default )
+{
+	return address;
+}
+
+DIRECT_UPDATE_HANDLER( psx_setopbase )
 {
 	if( address == 0x80030000 )
 	{
-		running_device *cpu = space->machine->device("maincpu");
+		running_device *cpu = machine->device("maincpu");
 
-		memory_set_direct_update_handler( space, NULL );
-
+		cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(psx_default, *machine));
+		
 		if( load_psxexe( cpu, exe_buffer, exe_size ) ||
 			load_cpe( cpu, exe_buffer, exe_size ) ||
 			load_psf( cpu, exe_buffer, exe_size ) )
@@ -413,7 +420,7 @@ static DIRECT_UPDATE_HANDLER( psx_setopbase )
 
 static QUICKLOAD_LOAD( psx_exe_load )
 {
-	const address_space *space = cputag_get_address_space( image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	address_space *space = cputag_get_address_space( image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
 	exe_size = 0;
 	exe_buffer = (UINT8*)malloc( quickload_size );
@@ -428,7 +435,8 @@ static QUICKLOAD_LOAD( psx_exe_load )
 		return IMAGE_INIT_FAIL;
 	}
 	exe_size = quickload_size;
-	memory_set_direct_update_handler( space, psx_setopbase );
+	space->set_direct_update_handler(direct_update_delegate_create_static(psx_setopbase, *image.device().machine));
+
 	return IMAGE_INIT_PASS;
 }
 
@@ -970,7 +978,7 @@ static WRITE32_HANDLER( psx_cd_w )
 }
 
 static ADDRESS_MAP_START( psx_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x001fffff) AM_RAM	AM_SHARE("share1") AM_BASE(&g_p_n_psxram) AM_SIZE(&g_n_psxramsize) /* ram */
+	AM_RANGE(0x00000000, 0x001fffff) AM_RAM	AM_SHARE("share1") /* ram */
 	AM_RANGE(0x1f800000, 0x1f8003ff) AM_RAM /* scratchpad */
 	AM_RANGE(0x1f801000, 0x1f801007) AM_WRITENOP
 	AM_RANGE(0x1f801008, 0x1f80100b) AM_RAM /* ?? */
@@ -1006,7 +1014,7 @@ static MACHINE_RESET( psx )
 	}
 
 	psx_machine_init(machine);
-	psx_sio_install_handler( 0, psx_sio0 );
+	psx_sio_install_handler( machine, 0, psx_sio0 );
 }
 
 static DRIVER_INIT( psx )
@@ -1063,13 +1071,12 @@ static void spu_irq(running_device *device, UINT32 data)
 
 static const psx_spu_interface psxspu_interface =
 {
-	&g_p_n_psxram,
 	spu_irq,
 	psx_dma_install_read_handler,
 	psx_dma_install_write_handler
 };
 
-static MACHINE_DRIVER_START( psxntsc )
+static MACHINE_CONFIG_START( psxntsc, psx_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( psx_map)
@@ -1102,9 +1109,9 @@ static MACHINE_DRIVER_START( psxntsc )
 	MDRV_QUICKLOAD_ADD("quickload", psx_exe_load, "cpe,exe,psf,psx", 0)
 
 	MDRV_CDROM_ADD("cdrom")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( psxpal )
+static MACHINE_CONFIG_START( psxpal, psx_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( psx_map)
@@ -1137,7 +1144,7 @@ static MACHINE_DRIVER_START( psxpal )
 	MDRV_QUICKLOAD_ADD("quickload", psx_exe_load, "cpe,exe,psf,psx", 0)
 
 	MDRV_CDROM_ADD("cdrom")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START( psj )
 	ROM_REGION32_LE( 0x080000, "user1", 0 )
@@ -1261,7 +1268,7 @@ Version 4.3 E
 */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY                             FULLNAME                            FLAGS */
-CONS( 1994, psj,    0,      0,      psxntsc,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Japan)",         GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-CONS( 1995, pse,    psj,    0,      psxpal,     psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Europe)",        GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-CONS( 1995, psu,    psj,    0,      psxntsc,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (USA)",           GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-CONS( 1995, psa,    psj,    0,      psxntsc,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Asia-Pacific)",  GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1994, psj,    0,      0,      psxntsc,    psx,    psx,    "Sony Computer Entertainment Inc", "Sony PlayStation (Japan)",         GAME_NOT_WORKING | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1995, pse,    psj,    0,      psxpal,     psx,    psx,    "Sony Computer Entertainment Inc", "Sony PlayStation (Europe)",        GAME_NOT_WORKING | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1995, psu,    psj,    0,      psxntsc,    psx,    psx,    "Sony Computer Entertainment Inc", "Sony PlayStation (USA)",           GAME_NOT_WORKING | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1995, psa,    psj,    0,      psxntsc,    psx,    psx,    "Sony Computer Entertainment Inc", "Sony PlayStation (Asia-Pacific)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

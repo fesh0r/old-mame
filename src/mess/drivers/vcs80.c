@@ -92,7 +92,7 @@ INPUT_PORTS_END
 
 static TIMER_DEVICE_CALLBACK( vcs80_keyboard_tick )
 {
-	vcs80_state *state = (vcs80_state *)timer.machine->driver_data;
+	vcs80_state *state = timer.machine->driver_data<vcs80_state>();
 
 	if (state->keyclk)
 	{
@@ -122,7 +122,7 @@ static READ8_DEVICE_HANDLER( pio_port_a_r )
 
     */
 
-	vcs80_state *state = (vcs80_state *)device->machine->driver_data;
+	vcs80_state *state = device->machine->driver_data<vcs80_state>();
 
 	UINT8 data = 0;
 
@@ -157,7 +157,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_b_w )
 
     */
 
-	vcs80_state *state = (vcs80_state *)device->machine->driver_data;
+	vcs80_state *state = device->machine->driver_data<vcs80_state>();
 
 	UINT8 led_data = BITSWAP8(data & 0x7f, 7, 5, 6, 4, 3, 2, 1, 0);
 	int digit = state->keylatch;
@@ -191,7 +191,7 @@ static const z80_daisy_config vcs80_daisy_chain[] =
 
 static MACHINE_START(vcs80)
 {
-	vcs80_state *state = (vcs80_state *)machine->driver_data;
+	vcs80_state *state = machine->driver_data<vcs80_state>();
 
 	/* find devices */
 	state->z80pio = machine->device(Z80PIO_TAG);
@@ -206,8 +206,7 @@ static MACHINE_START(vcs80)
 
 /* Machine Driver */
 
-static MACHINE_DRIVER_START( vcs80 )
-	MDRV_DRIVER_DATA(vcs80_state)
+static MACHINE_CONFIG_START( vcs80, vcs80_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_5MHz/2) /* U880D */
@@ -229,7 +228,7 @@ static MACHINE_DRIVER_START( vcs80 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 
@@ -240,9 +239,9 @@ ROM_END
 
 /* Driver Initialization */
 
-static DIRECT_UPDATE_HANDLER( vcs80_direct_update_handler )
+DIRECT_UPDATE_HANDLER( vcs80_direct_update_handler )
 {
-	vcs80_state *state = (vcs80_state *)space->machine->driver_data;
+	vcs80_state *state = machine->driver_data<vcs80_state>();
 
 	/* _A0 is connected to PIO PB7 */
 	z80pio_pb_w(state->z80pio, 0, (!BIT(address, 0)) << 7);
@@ -252,8 +251,8 @@ static DIRECT_UPDATE_HANDLER( vcs80_direct_update_handler )
 
 static DRIVER_INIT( vcs80 )
 {
-	memory_set_direct_update_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), vcs80_direct_update_handler);
-	memory_set_direct_update_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO), vcs80_direct_update_handler);
+	cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(vcs80_direct_update_handler, *machine));
+	cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO)->set_direct_update_handler(direct_update_delegate_create_static(vcs80_direct_update_handler, *machine));
 }
 
 /* System Drivers */

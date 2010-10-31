@@ -945,7 +945,7 @@ static DEVICE_IMAGE_LOAD( pockstat_flash)
 	return IMAGE_INIT_PASS;
 }
 
-static MACHINE_DRIVER_START( pockstat )
+static MACHINE_CONFIG_START( pockstat, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", ARM7, DEFAULT_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(pockstat_mem)
@@ -975,7 +975,7 @@ static MACHINE_DRIVER_START( pockstat )
 	MDRV_CARTSLOT_EXTENSION_LIST("gme")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pockstat_flash)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( pockstat )
@@ -988,4 +988,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE    INPUT     INIT  COMPANY                             FULLNAME       FLAGS */
-CONS( 1999, pockstat, 0,      0,      pockstat,  pockstat, 0,    "Sony Computer Entertainment Inc.", "Sony PocketStation", GAME_SUPPORTS_SAVE )
+CONS( 1999, pockstat, 0,      0,      pockstat,  pockstat, 0,    "Sony Computer Entertainment Inc", "Sony PocketStation", GAME_SUPPORTS_SAVE )

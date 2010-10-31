@@ -33,12 +33,11 @@
     Driver data
 */
 
-class qx10_state
+class qx10_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, qx10_state(machine)); }
-
-	qx10_state(running_machine &machine) { }
+	qx10_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	int		mc146818_offset;
 
@@ -66,7 +65,7 @@ public:
 static void update_memory_mapping(running_machine *machine)
 {
 	int drambank = 0;
-	qx10_state *state = (qx10_state *)machine->driver_data;
+	qx10_state *state = machine->driver_data<qx10_state>();
 
 	if (state->membank & 1)
 	{
@@ -105,21 +104,21 @@ static void update_memory_mapping(running_machine *machine)
 
 static WRITE8_HANDLER(qx10_18_w)
 {
-	qx10_state *state = (qx10_state *)space->machine->driver_data;
+	qx10_state *state = space->machine->driver_data<qx10_state>();
 	state->membank = (data >> 4) & 0x0f;
 	update_memory_mapping(space->machine);
 }
 
 static WRITE8_HANDLER(prom_sel_w)
 {
-	qx10_state *state = (qx10_state *)space->machine->driver_data;
+	qx10_state *state = space->machine->driver_data<qx10_state>();
 	state->memprom = data & 1;
 	update_memory_mapping(space->machine);
 }
 
 static WRITE8_HANDLER(cmos_sel_w)
 {
-	qx10_state *state = (qx10_state *)space->machine->driver_data;
+	qx10_state *state = space->machine->driver_data<qx10_state>();
 	state->memcmos = data & 1;
 	update_memory_mapping(space->machine);
 }
@@ -142,7 +141,7 @@ static const floppy_config qx10_floppy_config =
 
 static WRITE_LINE_DEVICE_HANDLER(qx10_upd765_interrupt)
 {
-	qx10_state *driver_state = (qx10_state *)device->machine->driver_data;
+	qx10_state *driver_state = device->machine->driver_data<qx10_state>();
 	driver_state->fdcint = state;
 
 	//logerror("Interrupt from upd765: %d\n", state);
@@ -152,7 +151,7 @@ static WRITE_LINE_DEVICE_HANDLER(qx10_upd765_interrupt)
 
 static UPD765_DMA_REQUEST( drq_w )
 {
-	qx10_state *driver_state = (qx10_state *)device->machine->driver_data;
+	qx10_state *driver_state = device->machine->driver_data<qx10_state>();
 	//logerror("DMA Request from upd765: %d\n", state);
 	i8237_dreq0_w(driver_state->dma8237_1, !state);
 }
@@ -168,7 +167,7 @@ static const struct upd765_interface qx10_upd765_interface =
 
 static WRITE8_HANDLER(fdd_motor_w)
 {
-	qx10_state *driver_state = (qx10_state *)space->machine->driver_data;
+	qx10_state *driver_state = space->machine->driver_data<qx10_state>();
 	driver_state->fdcmotor = 1;
 
 	floppy_mon_w(floppy_get_device(space->machine, 0), CLEAR_LINE);
@@ -178,7 +177,7 @@ static WRITE8_HANDLER(fdd_motor_w)
 
 static READ8_HANDLER(qx10_30_r)
 {
-	qx10_state *driver_state = (qx10_state *)space->machine->driver_data;
+	qx10_state *driver_state = space->machine->driver_data<qx10_state>();
 	return driver_state->fdcint |
 		   /*driver_state->fdcmotor*/ 0 << 1 |
 		   driver_state->membank << 4;
@@ -206,7 +205,7 @@ static WRITE8_DEVICE_HANDLER( gdc_dack_w )
 
 static WRITE_LINE_DEVICE_HANDLER( tc_w )
 {
-	qx10_state *driver_state = (qx10_state *)device->machine->driver_data;
+	qx10_state *driver_state = device->machine->driver_data<qx10_state>();
 
 	/* floppy terminal count */
 	upd765_tc_w(driver_state->upd765, !state);
@@ -218,6 +217,9 @@ static WRITE_LINE_DEVICE_HANDLER( tc_w )
     Channel 2: GDC
     Channel 3: Option slots
 */
+static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+
 static I8237_INTERFACE( qx10_dma8237_1_interface )
 {
 	DEVCB_LINE(dma_hrq_changed),
@@ -265,19 +267,19 @@ static I8255A_INTERFACE(qx10_i8255_interface)
 */
 static READ8_HANDLER(mc146818_data_r)
 {
-	qx10_state *state = (qx10_state *)space->machine->driver_data;
-	return mc146818_port_r(space, state->mc146818_offset);
+	qx10_state *state = space->machine->driver_data<qx10_state>();
+	return space->machine->device<mc146818_device>("rtc")->read(*space, state->mc146818_offset);
 };
 
 static WRITE8_HANDLER(mc146818_data_w)
 {
-	qx10_state *state = (qx10_state *)space->machine->driver_data;
-	mc146818_port_w(space, state->mc146818_offset, data);
+	qx10_state *state = space->machine->driver_data<qx10_state>();
+	space->machine->device<mc146818_device>("rtc")->write(*space, state->mc146818_offset, data);
 };
 
 static WRITE8_HANDLER(mc146818_offset_w)
 {
-	qx10_state *state = (qx10_state *)space->machine->driver_data;
+	qx10_state *state = space->machine->driver_data<qx10_state>();
 	state->mc146818_offset = data;
 };
 
@@ -396,10 +398,10 @@ static const struct pic8259_interface qx10_pic8259_slave_config =
 static IRQ_CALLBACK( irq_callback )
 {
 	int r = 0;
-	r = pic8259_acknowledge( ((qx10_state*)device->machine->driver_data)->pic8259_slave );
+	r = pic8259_acknowledge(device->machine->driver_data<qx10_state>()->pic8259_slave );
 	if (r==0)
 	{
-		r = pic8259_acknowledge( ((qx10_state*)device->machine->driver_data)->pic8259_master );
+		r = pic8259_acknowledge(device->machine->driver_data<qx10_state>()->pic8259_master );
 	}
 	return r;
 }
@@ -453,11 +455,10 @@ static const compis_gdc_interface i82720_interface =
 
 static MACHINE_START(qx10)
 {
-	qx10_state *state = (qx10_state *)machine->driver_data;
+	qx10_state *state = machine->driver_data<qx10_state>();
 
 	cpu_set_irq_callback(machine->device("maincpu"), irq_callback);
 
-	mc146818_init(machine, MC146818_STANDARD);
 	compis_init( &i82720_interface );
 
 	// find devices
@@ -470,7 +471,7 @@ static MACHINE_START(qx10)
 
 static MACHINE_RESET(qx10)
 {
-	qx10_state *state = (qx10_state *)machine->driver_data;
+	qx10_state *state = machine->driver_data<qx10_state>();
 
 	i8237_dreq0_w(state->dma8237_1, 1);
 
@@ -499,7 +500,7 @@ static GFXDECODE_START( qx10 )
 GFXDECODE_END
 
 
-static MACHINE_DRIVER_START( qx10 )
+static MACHINE_CONFIG_START( qx10, qx10_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, MAIN_CLK / 4)
 	MDRV_CPU_PROGRAM_MAP(qx10_mem)
@@ -519,8 +520,6 @@ static MACHINE_DRIVER_START( qx10 )
 	MDRV_UPD765A_ADD("upd765", qx10_upd765_interface)
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, qx10_floppy_config)
 
-	MDRV_DRIVER_DATA(qx10_state)
-
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -535,10 +534,12 @@ static MACHINE_DRIVER_START( qx10 )
 	MDRV_VIDEO_START(compis_gdc)
 	MDRV_VIDEO_UPDATE(compis_gdc)
 
+	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
+	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("256K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( qx10 )
@@ -555,6 +556,21 @@ ROM_START( qx10 )
 	ROM_REGION( 0x800, "chargen", 0 )
 	ROM_LOAD( "qge.2e", 0x0000, 0x0800, CRC(ed93cb81) SHA1(579e68bde3f4184ded7d89b72c6936824f48d10b))
 ROM_END
+
+ROM_START( qc10 )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "ipl.rom", 0x0000, 0x0800, CRC(73e8b3cd) SHA1(be9a84a5a27b387798d2b94d3b5fe547b4b4620d))
+
+	/* This is probably the i8039 program ROM for the Q10MF Multifont card, and the actual font ROMs are missing (6 * HM43128) */
+	/* The first part of this rom looks like code for an embedded controller?
+        From 8300 on, looks like a characters generator */
+	ROM_REGION( 0x800, "i8039", 0 )
+	ROM_LOAD( "m12020a.3e", 0x0000, 0x0800, CRC(fa27f333) SHA1(73d27084ca7b002d5f370220d8da6623a6e82132)) //mfont.rom
+
+	ROM_REGION( 0x800, "chargen", 0 ) //this one contains normal characters
+	ROM_LOAD( "font.rom", 0x0000, 0x0800, CRC(04a6da6d) SHA1(ef9743476f6fb30ca9209cf700e985a7f85066bb))
+ROM_END
+
 
 /* Driver */
 
@@ -583,3 +599,4 @@ static DRIVER_INIT(qx10)
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
 COMP( 1983, qx10,  0,       0,	qx10,	qx10,	 qx10,  		  "Epson",   "QX-10",		GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1983, qc10,  qx10,    0,	qx10,	qx10,	 0,  		      "Epson",   "QC-10 (Japan)",		GAME_NOT_WORKING | GAME_NO_SOUND )

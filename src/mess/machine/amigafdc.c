@@ -224,6 +224,7 @@ static void check_extended_image( running_device *device, int id )
 
 static int fdc_get_curpos( running_device *device, int drive )
 {
+	amiga_state *state = device->machine->driver_data<amiga_state>();
 	double elapsed;
 	int speed;
 	int	bytes;
@@ -246,6 +247,7 @@ static int fdc_get_curpos( running_device *device, int drive )
 
 UINT16 amiga_fdc_get_byte (running_device *device)
 {
+	amiga_state *state = device->machine->driver_data<amiga_state>();
 	int pos;
 	int i, drive = -1;
 	UINT16 ret;
@@ -285,6 +287,7 @@ UINT16 amiga_fdc_get_byte (running_device *device)
 
 static TIMER_CALLBACK(fdc_sync_proc)
 {
+	amiga_state *state = machine->driver_data<amiga_state>();
 	int drive = param;
 	UINT16			sync = CUSTOM_REG(REG_DSRSYNC);
 	int				cur_pos;
@@ -318,7 +321,7 @@ static TIMER_CALLBACK(fdc_sync_proc)
 	if ( fdc->fdc_status[drive].mfm[cur_pos-2] == ( ( sync >> 8 ) & 0xff ) &&
 		 fdc->fdc_status[drive].mfm[cur_pos-1] == ( sync & 0xff ) )
 	{
-		const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+		address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 		amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKSYN, 0xffff);
 	}
@@ -339,6 +342,7 @@ bail:
 
 static TIMER_CALLBACK(fdc_dma_proc)
 {
+	amiga_state *state = machine->driver_data<amiga_state>();
 	int drive = param;
 	amiga_fdc_t *fdc = get_safe_token((running_device*)ptr);
 
@@ -362,7 +366,7 @@ static TIMER_CALLBACK(fdc_dma_proc)
 	{
 		if ( fdc->fdc_status[drive].len > 0 )
 		{
-			const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+			address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 			logerror("Write to disk unsupported yet\n" );
 
@@ -389,7 +393,7 @@ static TIMER_CALLBACK(fdc_dma_proc)
 
 			cur_pos %= ( fdc->fdc_status[drive].tracklen );
 
-			amiga_chip_ram_w(offset, dat);
+			(*state->chip_ram_w)(state, offset, dat);
 
 			offset += 2;
 		}
@@ -399,7 +403,7 @@ static TIMER_CALLBACK(fdc_dma_proc)
 
 		if ( fdc->fdc_status[drive].len <= 0 )
 		{
-			const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+			address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 			amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		}
@@ -422,6 +426,7 @@ bail:
 }
 
 void amiga_fdc_setup_dma( running_device *device ) {
+	amiga_state *state = device->machine->driver_data<amiga_state>();
 	int i, cur_pos, drive = -1, len_words = 0;
 	int time = 0;
 	amiga_fdc_t *fdc = get_safe_token(device);
@@ -432,7 +437,7 @@ void amiga_fdc_setup_dma( running_device *device ) {
 	}
 
 	if ( drive == -1 ) {
-		const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+		address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 		logerror("Disk DMA started with no drive selected!\n" );
 		amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
@@ -657,6 +662,7 @@ static void setup_fdc_buffer( running_device *device,int drive )
 
 static TIMER_CALLBACK(fdc_rev_proc)
 {
+	amiga_state *state = machine->driver_data<amiga_state>();
 	int drive = param;
 	int time;
 	running_device *cia;
@@ -835,9 +841,9 @@ static const floppy_config amiga_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( amiga_fdc )
+static MACHINE_CONFIG_FRAGMENT( amiga_fdc )
 	MDRV_FLOPPY_2_DRIVES_ADD(amiga_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 DEVICE_GET_INFO( amiga_fdc )
@@ -849,7 +855,7 @@ DEVICE_GET_INFO( amiga_fdc )
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(amiga_fdc_t);								break;
 
 		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(amiga_fdc);		break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(amiga_fdc);		break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(amiga_fdc);					break;

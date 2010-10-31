@@ -2,222 +2,226 @@
 
         Psion Organiser II series
 
-		Driver by Sandro Ronco
+        Driver by Sandro Ronco
 
-		TODO:
-		- implement Datapack read/write interface
-		- add save state and NVRAM
-		- dump CGROM of the HD44780
-		- move HD44780 implementation in a device
+        TODO:
+        - add save state
+        - dump CGROM of the HD44780
+		- emulate other devices in slot C(Comms Link, printer)
 
-		Note:
-		- 4 lines dysplay has an custom LCD controller derived from an HD66780
+        Note:
+        - 4 lines display has an custom LCD controller derived from an HD66780
+        - NVRAM works only if the machine is turned off (with OFF menu) before closing MESS
 
         16/07/2010 Skeleton driver.
 
-		Memory map info :
-			http://archive.psion2.org/org2/techref/memory.htm
+        Memory map info :
+            http://archive.psion2.org/org2/techref/memory.htm
 
 ****************************************************************************/
 
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/beep.h"
+#include "devices/cartslot.h"
+#include "video/hd44780.h"
 
-static struct _psion
+struct datapack
 {
-	UINT8 kb_counter;
+	device_image_interface *image;
+	UINT8 id;
+	UINT8 len;
+	UINT16 counter;
+	UINT8 page;
+	UINT8 segment;
+	UINT8 control_lines;
+	UINT8* data;
+
+	bool write_flag;
+};
+
+class psion_state : public driver_device
+{
+public:
+	psion_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT16 kb_counter;
 	UINT8 enable_nmi;
 	UINT8 *sys_register;
 	UINT8 tcsr_value;
+	UINT8 stby_pwr;
+	UINT8 pulse;
 
 	/* RAM/ROM banks */
 	UINT8 *ram;
+	size_t ram_size;
+	UINT8 *paged_ram;
 	UINT8 rom_bank;
 	UINT8 ram_bank;
 	UINT8 ram_bank_count;
 	UINT8 rom_bank_count;
-} psion;
 
-/*************************************************
+	UINT8 port2_ddr;
+	UINT8 port2;
+	UINT8 port6_ddr;
+	UINT8 port6;
 
-    Hitachi HD44780 LCD controller implemantation
+	datapack pack1;
+	datapack pack2;
 
-*************************************************/
+	// devices
+	hd44780_device *hd44780;
+	device_t *beep;
+};
 
-static struct _hd44780
+
+/***********************************************
+
+    Datapack
+
+***********************************************/
+
+static UINT8 datapack_update(datapack *pack, UINT8 data)
 {
-	UINT8 busy_flag;
+	assert(pack != NULL);
 
-	//HD44780 has only 80 bytes of DDRAM, customized HD66780 has 128 bytes
-	UINT8 ddram[128];	//internal display data RAM,
-	UINT8 cgram[64];	//internal chargen RAM
+	if (pack->len == 0 || (pack->control_lines & 0x80))
+		return 0;
 
-	UINT8 ac;			//address counter
-	UINT8 ddram_a;		//DDRAM address
-	UINT8 cgram_a;		//CGRAM address
-	UINT8 ac_mode;		//0=DDRAM 1=CGRAM
+	UINT32 pack_addr = pack->counter + ((pack->id & 0x04) ? 0x100 * pack->page : 0);
 
-	UINT8 cursor_pos;	//cursor position
-	UINT8 display_on;	//display on/off
-	UINT8 cursor_on;	//cursor on/off
-	UINT8 blink_on;		//blink on/off
+	// if the datapack is 128k or more is treated as segmented
+	if (pack->len >= 0x10)
+		pack_addr += (pack->segment * 0x4000);
 
-	UINT8 direction;	//auto increment/decrement
-	UINT8 data_len;		//interface data length 4 or 8 bit
-	UINT8 n_line;		//number of lines
-	UINT8 char_size;	//char size 5x8 or 5x10
-
-	UINT8 disp_shift;	//display shift
-
-	UINT8 blink;
-} hd44780;
-
-static TIMER_CALLBACK( bf_clear )
-{
-	hd44780.busy_flag = 0;
-}
-
-void set_busy_flag(running_machine *machine, UINT16 usec)
-{
-	hd44780.busy_flag = 1;
-	timer_set(machine, ATTOTIME_IN_USEC(usec), NULL, 0, bf_clear);
-}
-
-void hd44780_reset(running_machine *machine)
-{
-	memset(&hd44780, 0x00, sizeof(_hd44780));
-	hd44780.direction = 1;
-	hd44780.data_len = 1;
-	set_busy_flag(machine, 1520);
-}
-
-void hd44780_control_w(running_machine *machine, UINT8 data)
-{
-	if (BIT(data, 7))
+	if (pack_addr < pack->len * 0x2000)
 	{
-		hd44780.ac_mode = 0;
-		hd44780.ac = data & 0x7f;
-		hd44780.ddram_a = data & 0x7f;
-		if (data != 0x81)
-			hd44780.cursor_pos = hd44780.ddram_a;
-		set_busy_flag(machine, 37);
-	}
-	else if (BIT(data, 6))
-	{
-		hd44780.ac_mode = 1;
-		hd44780.ac = data & 0x3f;
-		hd44780.cgram_a = data & 0x3f;
-		set_busy_flag(machine, 37);
-	}
-	else if (BIT(data, 5))
-	{
-		hd44780.data_len = BIT(data, 4);
-		hd44780.n_line = BIT(data, 3);
-		hd44780.char_size = BIT(data, 2);
-		set_busy_flag(machine, 37);
-	}
-	else if (BIT(data, 4))
-	{
-		UINT8 direction = (BIT(data, 2)) ? +1 : -1;
-
-		if (BIT(data, 3))
-			hd44780.disp_shift += direction;
-		else
+		if ((pack->control_lines&0x08) && !(pack->control_lines & 0x02))
 		{
-			hd44780.ac += direction;
-
-			if (hd44780.ac_mode == 0)
-			{
-				hd44780.ddram_a += hd44780.direction;
-				hd44780.cursor_pos += hd44780.direction;
-			}
-			else
-				hd44780.cgram_a += hd44780.direction;
+			//write latched data
+			pack->data[pack_addr] = data;
+			pack->write_flag = true;
 		}
-		set_busy_flag(machine, 37);
+		else if ((pack->control_lines&0x08) && (pack->control_lines & 0x02))
+		{
+			//write datapack segment
+			if (pack->len <= 0x10)
+				pack->segment = data & 0x07;
+			else if (pack->len <= 0x20)
+				pack->segment = data & 0x0f;
+			else if (pack->len <= 0x40)
+				pack->segment = data & 0x1f;
+			else if (pack->len <= 0x80)
+				pack->segment = data & 0x3f;
+			else
+				pack->segment = data;
+		}
+		else if (!(pack->control_lines&0x08) && !(pack->control_lines & 0x02))
+		{
+			//latch data
+			data = pack->data[pack_addr];
+		}
+		else if (!(pack->control_lines&0x08) && (pack->control_lines & 0x02))
+		{
+			//read datapack ID
+			if (pack->id & 0x02)
+				data = pack->data[0];
+			else
+				data = 1;
+		}
 	}
-	else if (BIT(data, 3))
-	{
-		hd44780.display_on = BIT(data, 2);
-		hd44780.cursor_on = BIT(data, 1);
-		hd44780.blink_on = BIT(data, 0);
-
-		set_busy_flag(machine, 37);
-	}
-	else if (BIT(data, 2))
-	{
-		hd44780.direction = (BIT(data, 1)) ? +1 : -1;
-		if (BIT(data, 0))
-			hd44780.disp_shift += hd44780.direction;
-
-		set_busy_flag(machine, 37);
-	}
-	else if (BIT(data, 1))
-	{
-		hd44780.ac = 0;
-		hd44780.ddram_a = 0;
-		hd44780.cgram_a = 0;
-		hd44780.cursor_pos = 0;
-		hd44780.ac_mode = 0;
-		hd44780.direction = 1;
-		set_busy_flag(machine, 1520);
-	}
-	else if (BIT(data, 0))
-	{
-		hd44780.ac = 0;
-		hd44780.ddram_a = 0;
-		hd44780.cgram_a = 0;
-		hd44780.cursor_pos = 0;
-		hd44780.ac_mode = 0;
-		hd44780.direction = 1;
-		memset(hd44780.ddram, 0x20, ARRAY_LENGTH(hd44780.ddram));
-		memset(hd44780.cgram, 0x20, ARRAY_LENGTH(hd44780.cgram));
-		set_busy_flag(machine, 1520);
-	}
-}
-
-UINT8 hd44780_control_r(running_machine *machine)
-{
-	return hd44780.busy_flag<<7 || hd44780.ac&0x7f;
-}
-
-void hd44780_data_w(running_machine *machine, UINT8 data)
-{
-	if (hd44780.ac_mode == 0)
-	{
-		hd44780.ddram[hd44780.ac] = data;
-		hd44780.ddram_a += hd44780.direction;
-		hd44780.cursor_pos += hd44780.direction;
-	}
-	else
-	{
-		hd44780.cgram[hd44780.ac] = data;
-		hd44780.cgram_a += hd44780.direction;
-	}
-
-	hd44780.ac += hd44780.direction;
-}
-
-UINT8 hd44780_data_r(running_machine *machine)
-{
-	UINT8 data;
-
-	if (hd44780.ac_mode == 0)
-	{
-		data = hd44780.ddram[hd44780.ac];
-		hd44780.ddram_a += hd44780.direction;
-		hd44780.cursor_pos += hd44780.direction;
-	}
-	else
-	{
-		data = hd44780.cgram[hd44780.ac];
-		hd44780.cgram_a += hd44780.direction;
-	}
-
-	hd44780.ac += hd44780.direction;
 
 	return data;
+}
+
+static void datapack_control_lines_w(datapack *pack, UINT8 data)
+{
+	assert(pack != NULL);
+
+	if ((pack->control_lines & 0x01) != (data & 0x01))
+	{
+		pack->counter++;
+
+		if (pack->counter >= ((pack->id & 0x04) ? 0x100 : (pack->len * 0x2000)))
+			pack->counter = 0;
+	}
+
+	if ((pack->control_lines & 0x04) && !(data & 0x04))
+	{
+		pack->page++;
+
+		if (pack->page >= (pack->len * 0x2000) / 0x100)
+			pack->page = 0;
+	}
+
+	if (data & 0x02)
+	{
+		pack->counter = 0;
+		pack->page = 0;
+	}
+
+	pack->control_lines = data;
+}
+
+static UINT8 datapack_control_lines_r(datapack *pack)
+{
+	assert(pack != NULL);
+
+	return pack->control_lines;
+}
+
+static int datapack_load(device_image_interface &image, datapack &pack)
+{
+	running_machine *machine = image.device().machine;
+	char opk_head[6];
+	UINT8 pack_id, pack_len;
+
+	image.fread(opk_head, 6);
+	image.fread(&pack_id, 1);
+	image.fread(&pack_len, 1);
+
+	if(strcmp(opk_head, "OPK") || pack_len * 0x2000 < image.length() - 6)
+		return IMAGE_INIT_FAIL;
+
+	pack.image = &image;
+	pack.write_flag = false;
+	pack.id = pack_id;
+	pack.len = pack_len;
+	image.fseek(6, SEEK_SET);
+	pack.data = auto_alloc_array(machine, UINT8, pack.len * 0x2000);
+	memset(pack.data, 0xff, pack.len * 0x2000);
+	image.fread(pack.data, image.length() - 6);
+
+	/* load battery */
+	UINT8 *opk = auto_alloc_array(machine, UINT8, pack.len * 0x2000 + 6);
+	image.battery_load(opk, pack.len * 0x2000 + 6, 0xff);
+	if(!strncmp((char*)opk, "OPK", 3))
+		memcpy(pack.data, opk + 6, pack.len * 0x2000);
+
+	return IMAGE_INIT_PASS;
+}
+
+static void datapack_unload(device_image_interface &image, datapack &pack)
+{
+	running_machine *machine = image.device().machine;
+
+	// save battery only if a write-access occurs
+	if (pack.len > 0 && pack.write_flag)
+	{
+		UINT8 opk_magic[6] = {'O', 'P', 'K', 0x00, 0x00, 0x00};
+		UINT8 *opk = auto_alloc_array(machine, UINT8, pack.len * 0x2000 + 6);
+
+		memcpy(opk, opk_magic, 6);
+		memcpy(opk + 6, pack.data, pack.len * 0x2000);
+
+		pack.image->battery_save(opk, pack.len * 0x2000 + 6);
+
+		auto_free(machine, opk);
+	}
+
+	auto_free(machine, pack.data);
+	pack.len = 0;
 }
 
 /***********************************************
@@ -228,24 +232,22 @@ UINT8 hd44780_data_r(running_machine *machine)
 
 static TIMER_CALLBACK( nmi_timer )
 {
-	if (psion.enable_nmi)
+	psion_state *state = machine->driver_data<psion_state>();
+
+	if (state->enable_nmi)
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static TIMER_CALLBACK( blink_timer )
+static UINT8 kb_read(running_machine *machine)
 {
-	hd44780.blink = ~hd44780.blink;
-}
-
-UINT8 kb_read(running_machine *machine)
-{
+	psion_state *state = machine->driver_data<psion_state>();
 	static const char *const bitnames[] = {"K1", "K2", "K3", "K4", "K5", "K6", "K7"};
 	UINT8 line, data = 0x7c;
 
-	if (psion.kb_counter)
+	if (state->kb_counter)
 	{
 		for (line = 0; line < 7; line++)
-			if (psion.kb_counter == (0x7f & ~(1 << line)))
+			if (state->kb_counter == (0x7f & ~(1 << line)))
 				data = input_port_read(machine, bitnames[line]);
 	}
 	else
@@ -257,129 +259,233 @@ UINT8 kb_read(running_machine *machine)
 	return data & 0x7c;
 }
 
-void update_bank(running_machine *machine)
+static void update_bank(running_machine *machine)
 {
-	if (psion.ram_bank < psion.ram_bank_count && psion.ram_bank_count)
-		memory_set_bankptr(machine,"rambank", psion.ram + psion.ram_bank*0x4000);
+	psion_state *state = machine->driver_data<psion_state>();
 
-	if (psion.rom_bank_count)
+	if (state->ram_bank < state->ram_bank_count && state->ram_bank_count)
+		memory_set_bankptr(machine,"rambank", state->paged_ram + state->ram_bank*0x4000);
+
+	if (state->rom_bank_count)
 	{
-		if (psion.rom_bank==0)
+		if (state->rom_bank==0)
 			memory_set_bankptr(machine,"rombank", memory_region(machine, "maincpu") + 0x8000);
-		else if (psion.rom_bank < psion.rom_bank_count)
-			memory_set_bankptr(machine,"rombank", memory_region(machine, "maincpu") + psion.rom_bank*0x4000 + 0xc000);
+		else if (state->rom_bank < state->rom_bank_count)
+			memory_set_bankptr(machine,"rombank", memory_region(machine, "maincpu") + state->rom_bank*0x4000 + 0xc000);
 	}
 }
 
-WRITE8_HANDLER( hd63701_int_reg_w )
+static struct datapack *get_active_slot(running_machine *machine, UINT8 data)
 {
+	psion_state *state = machine->driver_data<psion_state>();
+
+	switch(data & 0x70)
+	{
+		case 0x60:
+			return &state->pack1;
+		case 0x50:
+			return &state->pack2;
+	}
+
+	return NULL;
+}
+
+static WRITE8_HANDLER( hd63701_int_reg_w )
+{
+	psion_state *state = space->machine->driver_data<psion_state>();
+
 	switch (offset)
 	{
+	case 0x01:
+		state->port2_ddr = data;
+		break;
+	case 0x03:
+		/* datapack i/o data bus */
+		if (state->port2_ddr == 0xff)
+		{
+			datapack *pack = get_active_slot(space->machine, state->port6);
+
+			if (pack)
+				state->port2 = datapack_update(pack, data);
+			else
+				state->port2 = data;
+		}
+		break;
 	case 0x08:
-		psion.tcsr_value = data;
+		state->tcsr_value = data;
+		break;
+	case 0x15:
+		/* read-only */
+		break;
+	case 0x16:
+		state->port6_ddr = data;
+		break;
+	case 0x17:
+		/*
+        datapack control lines
+        x--- ---- slot on/off
+        -x-- ---- slot 3
+        --x- ---- slot 2
+        ---x ---- slot 1
+        ---- x--- output enable
+        ---- -x-- program line
+        ---- --x- reset line
+        ---- ---x clock line
+        */
+		{
+			state->port6 = (data & state->port6_ddr) | (state->port6 & ~state->port6_ddr);
+			datapack *pack = get_active_slot(space->machine, state->port6);
+
+			if (pack != NULL)
+			{
+				datapack_control_lines_w(pack, state->port6);
+				datapack_update(pack, state->port2);
+			}
+		}
 		break;
 	}
 
 	hd63701_internal_registers_w(space, offset, data);
 }
 
-READ8_HANDLER( hd63701_int_reg_r )
+static READ8_HANDLER( hd63701_int_reg_r )
 {
+	psion_state *state = space->machine->driver_data<psion_state>();
+
 	switch (offset)
 	{
+	case 0x03:
+		/* datapack i/o data bus */
+		if (state->port2_ddr == 0)
+		{
+			datapack *pack = get_active_slot(space->machine, state->port6);
+
+			if (pack)
+				state->port2 = datapack_update(pack, state->port2);
+			else
+				state->port2 = 0;
+
+			return state->port2;
+		}
+		else
+			return 0;
+	case 0x14:
+		return (hd63701_internal_registers_r(space, offset)&0x7f) | (state->stby_pwr<<7);
 	case 0x15:
 		/*
-		x--- ---- ON key active high
-		-xxx xx-- keys matrix active low
-		---- --x- ??
-		---- ---x battery status
-		*/
-		return kb_read(space->machine) | input_port_read(space->machine, "BATTERY") | input_port_read(space->machine, "ON");
+        x--- ---- ON key active high
+        -xxx xx-- keys matrix active low
+        ---- --x- pulse
+        ---- ---x battery status
+        */
+		return kb_read(space->machine) | input_port_read(space->machine, "BATTERY") | input_port_read(space->machine, "ON") | (state->kb_counter == 0x7ff)<<1 | state->pulse<<1;
+	case 0x17:
+		/* datapack control lines */
+		{
+			datapack *pack = get_active_slot(space->machine, state->port6);
+
+			if (pack)
+				return datapack_control_lines_r(pack);
+			else
+				return state->port6;
+		}
 	case 0x08:
-		hd63701_internal_registers_w(space, offset, psion.tcsr_value);
+		hd63701_internal_registers_w(space, offset, state->tcsr_value);
 	default:
 		return hd63701_internal_registers_r(space, offset);
 	}
 }
 
 /* Read/Write common */
-void io_rw(const address_space* space, UINT16 offset)
+static void io_rw(address_space* space, UINT16 offset)
 {
+	psion_state *state = space->machine->driver_data<psion_state>();
+
+	if (space->debugger_access())
+		return;
+
 	switch (offset & 0xffc0)
 	{
 	case 0xc0:
-		//Switch off
+		/* switch off, CPU goes into standby mode */
+		state->enable_nmi = 0;
+		state->stby_pwr = 1;
+		space->machine->device<cpu_device>("maincpu")->suspend(SUSPEND_REASON_HALT, 1);
 		break;
 	case 0x100:
-		//Pulse enable
+		state->pulse = 1;
 		break;
 	case 0x140:
-		//Pulse disable
+		state->pulse = 0;
 		break;
 	case 0x200:
-		psion.kb_counter = 0;
+		state->kb_counter = 0;
 		break;
 	case 0x180:
-		beep_set_state(space->machine->device("beep"), 1);
+		beep_set_state(state->beep, 1);
 		break;
 	case 0x1c0:
-		beep_set_state(space->machine->device("beep"), 0);
+		beep_set_state(state->beep, 0);
 		break;
 	case 0x240:
-		if (offset == 0x260 && (psion.rom_bank_count || psion.ram_bank_count))
+		if (offset == 0x260 && (state->rom_bank_count || state->ram_bank_count))
 		{
-			psion.ram_bank=0;
-			psion.rom_bank=0;
+			state->ram_bank=0;
+			state->rom_bank=0;
 			update_bank(space->machine);
 		}
 		else
-			psion.kb_counter++;
+			state->kb_counter++;
 		break;
 	case 0x280:
-		if (offset == 0x2a0 && psion.ram_bank_count)
+		if (offset == 0x2a0 && state->ram_bank_count)
 		{
-			psion.ram_bank++;
+			state->ram_bank++;
 			update_bank(space->machine);
 		}
 		else
-			psion.enable_nmi = 1;
+			state->enable_nmi = 1;
 		break;
 	case 0x2c0:
-		if (offset == 0x2e0 && psion.rom_bank_count)
+		if (offset == 0x2e0 && state->rom_bank_count)
 		{
-			psion.rom_bank++;
+			state->rom_bank++;
 			update_bank(space->machine);
 		}
 		else
-			psion.enable_nmi = 0;
+			state->enable_nmi = 0;
 		break;
 	}
 }
 
-WRITE8_HANDLER( io_w )
+static WRITE8_HANDLER( io_w )
 {
+	psion_state *state = space->machine->driver_data<psion_state>();
+
 	switch (offset & 0x0ffc0)
 	{
 	case 0x80:
 		if (offset & 1)
-			hd44780_data_w(space->machine, data);
+			state->hd44780->data_write(offset, data);
 		else
-			hd44780_control_w(space->machine, data);
+			state->hd44780->control_write(offset, data);
 		break;
 	default:
 		io_rw(space, offset);
 	}
 }
 
-READ8_HANDLER( io_r )
+static READ8_HANDLER( io_r )
 {
+		psion_state *state = space->machine->driver_data<psion_state>();
+
 	switch (offset & 0xffc0)
 	{
 	case 0x80:
 		if (offset& 1)
-			return hd44780_data_r(space->machine);
+			return state->hd44780->data_read(offset);
 		else
-			return hd44780_control_r(space->machine);
+			return state->hd44780->control_read(offset);
 	default:
 		io_rw(space, offset);
 	}
@@ -387,30 +493,39 @@ READ8_HANDLER( io_r )
 	return 0;
 }
 
+static INPUT_CHANGED( psion_on )
+{
+	cpu_device *cpu = field->port->machine->device<cpu_device>("maincpu");
+
+	/* reset the CPU for resume from standby */
+	if (cpu->suspended(SUSPEND_REASON_HALT))
+		cpu->reset();
+}
+
 static ADDRESS_MAP_START(psioncm_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_LOW
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_int_reg_r, hd63701_int_reg_w)
-	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE(&psion.sys_register)
+	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE_MEMBER(psion_state, sys_register)
 	AM_RANGE(0x0100, 0x03ff) AM_READWRITE(io_r, io_w)
-	AM_RANGE(0x2000, 0x3fff) AM_RAM
+	AM_RANGE(0x2000, 0x3fff) AM_RAM AM_BASE_SIZE_MEMBER(psion_state, ram, ram_size)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(psionla_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_LOW
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_int_reg_r, hd63701_int_reg_w)
-	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE(&psion.sys_register)
+	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE_MEMBER(psion_state, sys_register)
 	AM_RANGE(0x0100, 0x03ff) AM_READWRITE(io_r, io_w)
-	AM_RANGE(0x0400, 0x5fff) AM_RAM
+	AM_RANGE(0x0400, 0x5fff) AM_RAM AM_BASE_SIZE_MEMBER(psion_state, ram, ram_size)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(psionp350_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_LOW
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_int_reg_r, hd63701_int_reg_w)
-	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE(&psion.sys_register)
+	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE_MEMBER(psion_state, sys_register)
 	AM_RANGE(0x0100, 0x03ff) AM_READWRITE(io_r, io_w)
-	AM_RANGE(0x0400, 0x3fff) AM_RAM
+	AM_RANGE(0x0400, 0x3fff) AM_RAM AM_BASE_SIZE_MEMBER(psion_state, ram, ram_size)
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("rambank")
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -418,9 +533,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(psionlam_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_LOW
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_int_reg_r, hd63701_int_reg_w)
-	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE(&psion.sys_register)
+	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE_MEMBER(psion_state, sys_register)
 	AM_RANGE(0x0100, 0x03ff) AM_READWRITE(io_r, io_w)
-	AM_RANGE(0x0400, 0x7fff) AM_RAM
+	AM_RANGE(0x0400, 0x7fff) AM_RAM AM_BASE_SIZE_MEMBER(psion_state, ram, ram_size)
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("rombank")
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -428,9 +543,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(psionlz_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_LOW
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_int_reg_r, hd63701_int_reg_w)
-	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE(&psion.sys_register)
+	AM_RANGE(0x0040, 0x00ff) AM_RAM AM_BASE_MEMBER(psion_state, sys_register)
 	AM_RANGE(0x0100, 0x03ff) AM_READWRITE(io_r, io_w)
-	AM_RANGE(0x0400, 0x3fff) AM_RAM
+	AM_RANGE(0x0400, 0x3fff) AM_RAM AM_BASE_SIZE_MEMBER(psion_state, ram, ram_size)
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("rambank")
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("rombank")
 	AM_RANGE(0xc000, 0xffff) AM_ROM
@@ -444,7 +559,7 @@ INPUT_PORTS_START( psion )
 		PORT_CONFSETTING( 0x01, "Low Battery" )
 
 	PORT_START("ON")
-		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON/CLEAR") PORT_CODE(KEYCODE_F10)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON/CLEAR") PORT_CODE(KEYCODE_F10)  PORT_CHANGED(psion_on, 0)
 
 	PORT_START("K1")
 		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("MODE") PORT_CODE(KEYCODE_EQUALS)
@@ -496,54 +611,111 @@ INPUT_PORTS_START( psion )
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D [)]") PORT_CODE(KEYCODE_D)
 INPUT_PORTS_END
 
-static MACHINE_START(psion)
+static DEVICE_IMAGE_LOAD( psion_pack1 )
 {
-	if (!strcmp(machine->gamedrv->name, "psionlam"))
+	psion_state *state = image.device().machine->driver_data<psion_state>();
+
+	return datapack_load(image, state->pack1);
+}
+
+static DEVICE_IMAGE_UNLOAD( psion_pack1 )
+{
+	psion_state *state = image.device().machine->driver_data<psion_state>();
+
+	datapack_unload(image, state->pack1);
+}
+
+static DEVICE_IMAGE_LOAD( psion_pack2 )
+{
+	psion_state *state = image.device().machine->driver_data<psion_state>();
+
+	return datapack_load(image, state->pack2);
+}
+
+static DEVICE_IMAGE_UNLOAD( psion_pack2 )
+{
+	psion_state *state = image.device().machine->driver_data<psion_state>();
+
+	datapack_unload(image, state->pack2);
+}
+
+static NVRAM_HANDLER( psion )
+{
+	psion_state *state = machine->driver_data<psion_state>();
+
+	if (read_or_write)
 	{
-		psion.rom_bank_count = 3;
-		psion.ram_bank_count = 0;
-	}
-	else if (!strcmp(machine->gamedrv->name, "psionp350"))
-	{
-		psion.rom_bank_count = 0;
-		psion.ram_bank_count = 5;
-	}
-	else if (!strncmp(machine->gamedrv->name, "psionlz", 7))
-	{
-		psion.rom_bank_count = 3;
-		psion.ram_bank_count = 3;
-	}
-	else if (!strcmp(machine->gamedrv->name, "psionp464"))
-	{
-		psion.rom_bank_count = 3;
-		psion.ram_bank_count = 9;
+		mame_fwrite(file, state->sys_register, 0xc0);
+		mame_fwrite(file, state->ram, state->ram_size);
+		if (state->ram_bank_count)
+			mame_fwrite(file, state->paged_ram, state->ram_bank_count * 0x4000);
 	}
 	else
 	{
-		psion.rom_bank_count = 0;
-		psion.ram_bank_count = 0;
+		if (file)
+		{
+			mame_fread(file, state->sys_register, 0xc0);
+			mame_fread(file, state->ram, state->ram_size);
+			if (state->ram_bank_count)
+				mame_fread(file, state->paged_ram, state->ram_bank_count * 0x4000);
+
+			state->stby_pwr = 1;
+		}
+		else
+			state->stby_pwr = 0;
+	}
+}
+
+static MACHINE_START(psion)
+{
+	psion_state *state = machine->driver_data<psion_state>();
+
+	if (!strcmp(machine->gamedrv->name, "psionlam"))
+	{
+		state->rom_bank_count = 3;
+		state->ram_bank_count = 0;
+	}
+	else if (!strcmp(machine->gamedrv->name, "psionp350"))
+	{
+		state->rom_bank_count = 0;
+		state->ram_bank_count = 5;
+	}
+	else if (!strncmp(machine->gamedrv->name, "psionlz", 7))
+	{
+		state->rom_bank_count = 3;
+		state->ram_bank_count = 3;
+	}
+	else if (!strcmp(machine->gamedrv->name, "psionp464"))
+	{
+		state->rom_bank_count = 3;
+		state->ram_bank_count = 9;
+	}
+	else
+	{
+		state->rom_bank_count = 0;
+		state->ram_bank_count = 0;
 	}
 
-	if (psion.ram_bank_count)
-		psion.ram = auto_alloc_array(machine, UINT8, psion.ram_bank_count * 0x4000);
+	if (state->ram_bank_count)
+		state->paged_ram = auto_alloc_array(machine, UINT8, state->ram_bank_count * 0x4000);
 
 	timer_pulse(machine, ATTOTIME_IN_SEC(1), NULL, 0, nmi_timer);
-	timer_pulse(machine, ATTOTIME_IN_MSEC(500), NULL, 0, blink_timer);
 
-	state_save_register_global_array(machine, hd44780.ddram);
-	state_save_register_global_array(machine, hd44780.cgram);
+	state->hd44780 = machine->device<hd44780_device>("hd44780");
+	state->beep = machine->device<device_t>("beep");
 }
 
 static MACHINE_RESET(psion)
 {
-	psion.enable_nmi=0;
-	psion.kb_counter=0;
-	psion.ram_bank=0;
-	psion.rom_bank=0;
+	psion_state *state = machine->driver_data<psion_state>();
 
-	hd44780_reset(machine);
+	state->enable_nmi=0;
+	state->kb_counter=0;
+	state->ram_bank=0;
+	state->rom_bank=0;
+	state->pulse=0;
 
-	if (psion.rom_bank_count || psion.ram_bank_count)
+	if (state->rom_bank_count || state->ram_bank_count)
 		update_bank(machine);
 }
 
@@ -553,130 +725,16 @@ static VIDEO_START( psion )
 
 static VIDEO_UPDATE( psion_2lines )
 {
-	char lcd_map[2][16];
-	UINT8 cur_x = 0;
-	UINT8 cur_y = 0;
-	UINT8 display_layout[2] = {0x00, 0x40};
+	psion_state *state = screen->machine->driver_data<psion_state>();
 
-	memset(lcd_map, 0, 2*16);
-
-	for (int i=0; i<2; i++)
-	{
-		if (hd44780.cursor_pos >= display_layout[i] && hd44780.cursor_pos < display_layout[i]+16)
-		{
-			cur_y = i+1;
-			cur_x = hd44780.cursor_pos - display_layout[i];
-		}
-
-		memcpy(&lcd_map[i], hd44780.ddram + display_layout[i], 16);
-	}
-
-	bitmap_fill(bitmap, NULL, 0);
-
-	if (hd44780.display_on)
-	{
-		for (int l=0; l<2; l++)
-			for (int i=0; i<16; i++)
-				for (int y=0; y<8; y++)
-					for (int x=0; x<5; x++)
-						if (lcd_map[l][i] <= 0x10)
-						{
-							//draw CGRAM characters
-							*BITMAP_ADDR16(bitmap, l*9 + y, i*6 + x) = BIT(hd44780.cgram[(lcd_map[l][i]&0x07)*8+y], 4-x);
-						}
-						else
-						{
-							//draw CGROM characters
-							UINT8 * gc_base = memory_region(screen->machine, "chargen");
-							*BITMAP_ADDR16(bitmap, l*9 + y, i*6 + x) = BIT(gc_base[(lcd_map[l][i]-0x20)*8+y], 4-x);
-						}
-
-		//draw the cursor
-		if (hd44780.cursor_on)
-			for (int i=0; i<5; i++)
-				*BITMAP_ADDR16(bitmap, cur_y * 9-2, cur_x*6 + i) = 1;
-
-		if (!hd44780.blink && hd44780.blink_on)
-			for (int l=0; l<7; l++)
-				for (int i=0; i<5; i++)
-					*BITMAP_ADDR16(bitmap, (cur_y-1) * 9 + l, cur_x*6 + i) = 1;
-	}
-
-#if(1)
-	popmessage("cur: %u, pos %u, shift %u", hd44780.cursor_on, hd44780.ddram_a, hd44780.disp_shift);
-#endif
-    return 0;
+	return state->hd44780->video_update( bitmap, cliprect );
 }
 
 static VIDEO_UPDATE( psion_4lines )
 {
-	UINT8 lcd_map[4][20];
-	UINT8 cur_x = 0;
-	UINT8 cur_y = 0;
-	UINT8 line_pos = 0;
-	UINT8 display_layout[4][3]=
-	{
-		{0x00, 0x08, 0x18},
-		{0x40, 0x48, 0x58},
-		{0x04, 0x10, 0x20},
-		{0x44, 0x50, 0x60}
-	};
+	psion_state *state = screen->machine->driver_data<psion_state>();
 
-	memset(lcd_map, 0, 4*20);
-
-	for (int i=0; i<4; i++)
-	{
-		line_pos = 0;
-
-		for (int j=0; j<3; j++)
-		{
-			if (hd44780.cursor_pos >= display_layout[i][j] && hd44780.cursor_pos < display_layout[i][j] + ((j==0)?4:8))
-			{
-				cur_y = i+1;
-				cur_x = line_pos + hd44780.cursor_pos - display_layout[i][j];
-			}
-
-			memcpy(&lcd_map[i][line_pos], hd44780.ddram + display_layout[i][j], ((j==0)?4:8));
-
-			line_pos += (j==0)?4:8;
-		}
-	}
-
-	bitmap_fill(bitmap, NULL, 0);
-
-	if (hd44780.display_on)
-	{
-		for (int l=0; l<4; l++)
-			for (int i=0; i<20; i++)
-				for (int y=0; y<8; y++)
-					for (int x=0; x<5; x++)
-						if (lcd_map[l][i] <= 0x10)
-						{
-							//draw CGRAM characters
-							*BITMAP_ADDR16(bitmap, l*9 + y, i*6 + x) = BIT(hd44780.cgram[(lcd_map[l][i]&0x07)*8+y], 4-x);
-						}
-						else
-						{
-							//draw CGROM characters
-							UINT8 * gc_base = memory_region(screen->machine, "chargen");
-							*BITMAP_ADDR16(bitmap, l*9 + y, i*6 + x) = BIT(gc_base[(lcd_map[l][i]-0x20)*8+y], 4-x);
-						}
-
-		//draw the cursor
-		if (hd44780.cursor_on)
-			for (int i=0; i<5; i++)
-				*BITMAP_ADDR16(bitmap, cur_y * 9-2, cur_x*6 + i) = 1;
-
-		if (!hd44780.blink && hd44780.blink_on)
-			for (int l=0; l<7; l++)
-				for (int i=0; i<5; i++)
-					*BITMAP_ADDR16(bitmap, (cur_y-1) * 9 + l, cur_x*6 + i) = 1;
-	}
-
-#if(1)
-	popmessage("cur: %u, pos %u, shift %u", hd44780.cursor_on, hd44780.cursor_pos, hd44780.disp_shift);
-#endif
-    return 0;
+	return state->hd44780->video_update( bitmap, cliprect );
 }
 
 static PALETTE_INIT( psion )
@@ -700,8 +758,32 @@ static GFXDECODE_START( psion )
 	GFXDECODE_ENTRY( "chargen", 0x0000, psion_charlayout, 0, 1 )
 GFXDECODE_END
 
+
+static MACHINE_CONFIG_FRAGMENT( psion_slot )
+	/* Datapack slot 1 */
+	MDRV_CARTSLOT_ADD("pack1")
+	MDRV_CARTSLOT_EXTENSION_LIST("opk")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(psion_pack1)
+	MDRV_CARTSLOT_UNLOAD(psion_pack1)
+
+	/* Datapack slot 2 */
+	MDRV_CARTSLOT_ADD("pack2")
+	MDRV_CARTSLOT_EXTENSION_LIST("opk")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(psion_pack2)
+	MDRV_CARTSLOT_UNLOAD(psion_pack2)
+MACHINE_CONFIG_END
+
+static const hd44780_interface psion_2line_display =
+{
+	2,					// number of lines
+	16,					// chars for line
+	NULL				// custom display layout
+};
+
 /* basic configuration for 2 lines display */
-static MACHINE_DRIVER_START( psion_2lines )
+static MACHINE_CONFIG_START( psion_2lines, psion_state )
 	/* basic machine hardware */
     MDRV_CPU_ADD("maincpu",HD63701, 980000) // should be HD6303 at 0.98MHz
 
@@ -720,6 +802,8 @@ static MACHINE_DRIVER_START( psion_2lines )
     MDRV_PALETTE_INIT(psion)
 	MDRV_GFXDECODE(psion)
 
+	MDRV_HD44780_ADD("hd44780", psion_2line_display)
+
     MDRV_VIDEO_START(psion)
     MDRV_VIDEO_UPDATE(psion_2lines)
 
@@ -728,10 +812,28 @@ static MACHINE_DRIVER_START( psion_2lines )
 	MDRV_SOUND_ADD( "beep", BEEP, 0 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
-MACHINE_DRIVER_END
+	MDRV_NVRAM_HANDLER(psion)
+
+	MDRV_FRAGMENT_ADD( psion_slot )
+MACHINE_CONFIG_END
+
+UINT8 psion_4line_layout[] =
+{
+	0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+	0x40, 0x41, 0x42, 0x43, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+	0x04, 0x05, 0x06, 0x07, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+	0x44, 0x45, 0x46, 0x47, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67
+};
+
+static const hd44780_interface psion_4line_display =
+{
+	4,					// number of lines
+	20,					// chars for line
+	psion_4line_layout	// custom display layout
+};
 
 /* basic configuration for 4 lines display */
-static MACHINE_DRIVER_START( psion_4lines )
+static MACHINE_CONFIG_START( psion_4lines, psion_state )
 	/* basic machine hardware */
     MDRV_CPU_ADD("maincpu",HD63701, 980000) // should be HD6303 at 0.98MHz
 
@@ -750,6 +852,8 @@ static MACHINE_DRIVER_START( psion_4lines )
     MDRV_PALETTE_INIT(psion)
 	MDRV_GFXDECODE(psion)
 
+	MDRV_HD44780_ADD("hd44780", psion_4line_display)
+
     MDRV_VIDEO_START(psion)
     MDRV_VIDEO_UPDATE(psion_4lines)
 
@@ -757,47 +861,47 @@ static MACHINE_DRIVER_START( psion_4lines )
 	MDRV_SPEAKER_STANDARD_MONO( "mono" )
 	MDRV_SOUND_ADD( "beep", BEEP, 0 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
-MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( psioncm )
-	MDRV_IMPORT_FROM( psion_2lines )
+	MDRV_NVRAM_HANDLER(psion)
+
+	MDRV_FRAGMENT_ADD( psion_slot )
+MACHINE_CONFIG_END
+
+static MACHINE_CONFIG_DERIVED( psioncm, psion_2lines )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(psioncm_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( psionla )
-	MDRV_IMPORT_FROM( psion_2lines )
+static MACHINE_CONFIG_DERIVED( psionla, psion_2lines )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(psionla_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( psionlam )
-	MDRV_IMPORT_FROM( psion_2lines )
+static MACHINE_CONFIG_DERIVED( psionlam, psion_2lines )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(psionlam_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( psionp350 )
-	MDRV_IMPORT_FROM( psion_2lines )
+static MACHINE_CONFIG_DERIVED( psionp350, psion_2lines )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(psionp350_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( psionlz )
-	MDRV_IMPORT_FROM( psion_4lines )
+static MACHINE_CONFIG_DERIVED( psionlz, psion_4lines )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(psionlz_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( psioncm )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "24-cm.dat",    0x8000, 0x8000,  CRC(f6798394) SHA1(736997f0db9a9ee50d6785636bdc3f8ff1c33c66))
+	ROM_SYSTEM_BIOS(0, "v24", "CM v2.4")
+	ROMX_LOAD( "24-cm.dat",    0x8000, 0x8000,  CRC(f6798394) SHA1(736997f0db9a9ee50d6785636bdc3f8ff1c33c66), ROM_BIOS(1))
 
     ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -805,7 +909,8 @@ ROM_END
 
 ROM_START( psionla )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "33-la.dat",    0x8000, 0x8000,  CRC(02668ed4) SHA1(e5d4ee6b1cde310a2970ffcc6f29a0ce09b08c46))
+	ROM_SYSTEM_BIOS(0, "v33", "LA v3.3")
+	ROMX_LOAD( "33-la.dat",    0x8000, 0x8000,  CRC(02668ed4) SHA1(e5d4ee6b1cde310a2970ffcc6f29a0ce09b08c46), ROM_BIOS(1))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -813,8 +918,10 @@ ROM_END
 
 ROM_START( psionp350 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "36-p350.dat",  0x8000, 0x8000,  CRC(3a371a74) SHA1(9167210b2c0c3bd196afc08ca44ab23e4e62635e))
-	ROM_LOAD( "38-p350.dat",  0x8000, 0x8000,  CRC(1b8b082f) SHA1(a3e875a59860e344f304a831148a7980f28eaa4a))
+	ROM_SYSTEM_BIOS(0, "v36", "POS350 v3.6")
+	ROMX_LOAD( "36-p350.dat",  0x8000, 0x8000,  CRC(3a371a74) SHA1(9167210b2c0c3bd196afc08ca44ab23e4e62635e), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "v38", "POS350 v3.8")
+	ROMX_LOAD( "38-p350.dat",  0x8000, 0x8000,  CRC(1b8b082f) SHA1(a3e875a59860e344f304a831148a7980f28eaa4a), ROM_BIOS(2))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -822,7 +929,8 @@ ROM_END
 
 ROM_START( psionlam )
     ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "37-lam.dat",   0x8000, 0x10000, CRC(7ee3a1bc) SHA1(c7fbd6c8e47c9b7d5f636e9f56e911b363d6796b))
+	ROM_SYSTEM_BIOS(0, "v37", "LA v3.7")
+	ROMX_LOAD( "37-lam.dat",   0x8000, 0x10000, CRC(7ee3a1bc) SHA1(c7fbd6c8e47c9b7d5f636e9f56e911b363d6796b), ROM_BIOS(1))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -830,7 +938,8 @@ ROM_END
 
 ROM_START( psionlz64 )
     ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "44-lz64.dat",  0x8000, 0x10000, CRC(aa487913) SHA1(5a44390f63fc8c1bc94299ab2eb291bc3a5b989a))
+	ROM_SYSTEM_BIOS(0, "v44", "LZ64 v4.4")
+	ROMX_LOAD( "44-lz64.dat",  0x8000, 0x10000, CRC(aa487913) SHA1(5a44390f63fc8c1bc94299ab2eb291bc3a5b989a), ROM_BIOS(1))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -838,7 +947,8 @@ ROM_END
 
 ROM_START( psionlz64s )
     ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "46-lz64s.dat", 0x8000, 0x10000, CRC(328d9772) SHA1(7f9e2d591d59ecfb0822d7067c2fe59542ea16dd))
+	ROM_SYSTEM_BIOS(0, "v46", "LZ64 v4.6")
+	ROMX_LOAD( "46-lz64s.dat", 0x8000, 0x10000, CRC(328d9772) SHA1(7f9e2d591d59ecfb0822d7067c2fe59542ea16dd), ROM_BIOS(1))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -846,7 +956,8 @@ ROM_END
 
 ROM_START( psionlz )
     ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "46-lz.dat",    0x8000, 0x10000, CRC(22715f48) SHA1(cf460c81cadb53eddb7afd8dadecbe8c38ea3fc2))
+	ROM_SYSTEM_BIOS(0, "v46", "LZ v4.6")
+	ROMX_LOAD( "46-lz.dat",    0x8000, 0x10000, CRC(22715f48) SHA1(cf460c81cadb53eddb7afd8dadecbe8c38ea3fc2), ROM_BIOS(1))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -854,7 +965,8 @@ ROM_END
 
 ROM_START( psionp464 )
     ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "46-p464.dat",  0x8000, 0x10000, CRC(672a0945) SHA1(d2a6e3fe1019d1bd7ae4725e33a0b9973f8cd7d8))
+	ROM_SYSTEM_BIOS(0, "v46", "POS464 v4.6")
+	ROMX_LOAD( "46-p464.dat",  0x8000, 0x10000, CRC(672a0945) SHA1(d2a6e3fe1019d1bd7ae4725e33a0b9973f8cd7d8), ROM_BIOS(1))
 
 	ROM_REGION( 0x00700, "chargen", ROMREGION_ERASE )
 	ROM_LOAD( "chargen.bin",    0x0000, 0x0700,  BAD_DUMP CRC(4c64fc7d) SHA1(123a87b2dc7efd7afcd8e27eb9bc74f54a8f1bc9))
@@ -863,11 +975,11 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 1986, psioncm,	0,       0, 	psioncm, 		psion, 	 0,   "Psion",   "Organiser II CM",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 198?, psionla,	psioncm, 0, 	psionla, 	    psion, 	 0,   "Psion",   "Organiser II LA",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 198?, psionp350,	psioncm, 0, 	psionp350, 	    psion, 	 0,   "Psion",   "Organiser II P350",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 198?, psionlam,	psioncm, 0, 	psionlam, 	    psion, 	 0,   "Psion",   "Organiser II LAM",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1989, psionlz64,  psioncm, 0, 	psionlz, 	    psion, 	 0,   "Psion",   "Organiser II LZ64",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1989, psionlz64s,	psioncm, 0, 	psionlz, 	    psion, 	 0,   "Psion",   "Organiser II LZ64S",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1989, psionlz,	psioncm, 0, 	psionlz, 	    psion, 	 0,   "Psion",   "Organiser II LZ",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 198?, psionp464,	psioncm, 0, 	psionlz, 	    psion, 	 0,   "Psion",   "Organiser II P464",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1986, psioncm,	0,       0, 	psioncm,		psion,	 0,   "Psion",   "Organiser II CM",		0)
+COMP( 198?, psionla,	psioncm, 0, 	psionla,	    psion,	 0,   "Psion",   "Organiser II LA",		0)
+COMP( 198?, psionp350,	psioncm, 0, 	psionp350,	    psion,	 0,   "Psion",   "Organiser II P350",	0)
+COMP( 198?, psionlam,	psioncm, 0, 	psionlam,	    psion,	 0,   "Psion",   "Organiser II LAM",	0)
+COMP( 1989, psionlz64,  psioncm, 0, 	psionlz,	    psion,	 0,   "Psion",   "Organiser II LZ64",	0)
+COMP( 1989, psionlz64s,	psioncm, 0, 	psionlz,	    psion,	 0,   "Psion",   "Organiser II LZ64S",	0)
+COMP( 1989, psionlz,	psioncm, 0, 	psionlz,	    psion,	 0,   "Psion",   "Organiser II LZ",		0)
+COMP( 198?, psionp464,	psioncm, 0, 	psionlz,	    psion,	 0,   "Psion",   "Organiser II P464",	0)

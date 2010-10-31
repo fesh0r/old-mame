@@ -340,13 +340,13 @@ const via6522_interface microtan_via6522_1 =
 static TIMER_CALLBACK(microtan_read_cassette)
 {
 	double level = cassette_input(cassette_device_image(machine));
-	running_device *via_0 = machine->device("via6522_0");
+	via6522_device *via_0 = machine->device<via6522_device>("via6522_0");
 
 	LOG(("microtan_read_cassette: %g\n", level));
 	if (level < -0.07)
-		via_cb2_w(via_0, 0);
+		via_0->write_cb2(0);
 	else if (level > +0.07)
-		via_cb2_w(via_0, 1);
+		via_0->write_cb2(1);
 }
 
 READ8_HANDLER( microtan_sound_r )
@@ -404,7 +404,7 @@ WRITE8_HANDLER ( microtan_bffx_w )
         break;
     case 1: /* BFF1: write delayed NMI */
         LOG(("microtan_bff1_w: %d <- %02x (delayed NMI)\n", offset, data));
-        timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 8), NULL, 0, microtan_pulse_nmi);
+        timer_set(space->machine, space->machine->device<cpu_device>("maincpu")->cycles_to_attotime(8), NULL, 0, microtan_pulse_nmi);
         break;
     case 2: /* BFF2: write keypad column write (what is this meant for?) */
         LOG(("microtan_bff2_w: %d <- %02x (keypad column)\n", offset, data));
@@ -518,7 +518,7 @@ DRIVER_INIT( microtan )
 {
     UINT8 *dst = memory_region(machine, "gfx2");
     int i;
-    const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+    address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
     for (i = 0; i < 256; i++)
     {

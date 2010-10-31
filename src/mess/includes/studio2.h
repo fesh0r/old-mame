@@ -1,36 +1,42 @@
 #ifndef __STUDIO2__
 #define __STUDIO2__
 
-#include "cpu/cdp1802/cdp1802.h"
+#include "cpu/cosmac/cosmac.h"
 
 #define CDP1802_TAG "ic1"
 #define CDP1861_TAG "ic2"
 #define CDP1864_TAG "cdp1864"
 #define SCREEN_TAG	"screen"
 
-class studio2_state
+class studio2_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, studio2_state(machine)); }
+	studio2_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config),
+		  m_maincpu(*this, CDP1802_TAG),
+		  m_vdc(*this, CDP1861_TAG),
+		  m_cti(*this, CDP1864_TAG)
+	{ }
 
-	studio2_state(running_machine &machine) { }
+	required_device<cosmac_device> m_maincpu;
+	optional_device<running_device> m_vdc;
+	optional_device<running_device> m_cti;
 
-	/* cpu state */
-	cdp1802_control_mode cdp1802_mode;
+	virtual void machine_start();
+	virtual void machine_reset();
+
+	DECLARE_READ8_MEMBER(dispon_r);
+
+	DECLARE_WRITE8_MEMBER(keylatch_w);
+	DECLARE_WRITE8_MEMBER(dispon_w);
 
 	/* keyboard state */
-	UINT8 keylatch;
+	UINT8 m_keylatch;
 
 	/* video state */
-	int cdp1861_efx;
-	int cdp1864_efx;
-	UINT8 *color_ram;
-	UINT8 *color_ram1;
-	UINT8 color;
-
-	/* devices */
-	running_device *cdp1861;
-	running_device *cdp1864;
+	UINT8 *m_color_ram;
+	UINT8 *m_color_ram1;
+	UINT8 m_color;
 };
 
 #endif

@@ -8,12 +8,11 @@
 #include "cpu/hcd62121/hcd62121.h"
 
 
-class cfx9850_state
+class cfx9850_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, cfx9850_state(machine)); }
-
-	cfx9850_state(running_machine &machine) { }
+	cfx9850_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT8 *video_ram;
 	UINT8 *display_ram;
@@ -36,14 +35,14 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( cfx9850_kol_w )
 {
-	cfx9850_state *state = (cfx9850_state *)space->machine->driver_data;
+	cfx9850_state *state = space->machine->driver_data<cfx9850_state>();
 
 	state->ko = ( state->ko & 0xff00 ) | data;
 }
 
 static WRITE8_HANDLER( cfx9850_koh_w )
 {
-	cfx9850_state *state = (cfx9850_state *)space->machine->driver_data;
+	cfx9850_state *state = space->machine->driver_data<cfx9850_state>();
 
 	state->ko = ( state->ko & 0x00ff ) | ( data << 8 );
 }
@@ -51,7 +50,7 @@ static WRITE8_HANDLER( cfx9850_koh_w )
 
 static READ8_HANDLER( cfx9850_ki_r )
 {
-	cfx9850_state *state = (cfx9850_state *)space->machine->driver_data;
+	cfx9850_state *state = space->machine->driver_data<cfx9850_state>();
 	UINT8 data = 0;
 
 	if ( state->ko & 0x0001 )
@@ -176,8 +175,7 @@ static INPUT_PORTS_START( cfx9850 )
 INPUT_PORTS_END
 
 
-static MACHINE_DRIVER_START( cfx9850 )
-	MDRV_DRIVER_DATA( cfx9850_state )
+static MACHINE_CONFIG_START( cfx9850, cfx9850_state )
 
 	MDRV_CPU_ADD( "maincpu", HCD62121, 4300000 )	/* 4.3 MHz */
 	MDRV_CPU_PROGRAM_MAP( cfx9850 )
@@ -194,7 +192,7 @@ static MACHINE_DRIVER_START( cfx9850 )
 	MDRV_PALETTE_LENGTH( 2 )
 	MDRV_PALETTE_INIT(black_and_white)
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START( cfx9850 )

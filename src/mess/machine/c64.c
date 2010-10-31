@@ -64,7 +64,6 @@ int c64_tape_on;
 static int c64_cia1_on;
 static int c64_io_enabled;
 static int is_sx64;				// temporary workaround until we implement full vc1541 emulation for every c64 set
-static UINT8 c64_cart_n_banks = 0;
 
 static UINT8 vicirq;
 
@@ -316,20 +315,15 @@ READ8_HANDLER( c64_read_io )
 	else if (offset < 0xc00)
 		return c64_colorram[offset & 0x3ff];
 
-	else if (offset == 0xc00)
-		{
-			cia_set_port_mask_value(cia_0, 0, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
-			return mos6526_r(cia_0, offset);
-		}
-
-	else if (offset == 0xc01)
-		{
-			cia_set_port_mask_value(cia_0, 1, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
-			return mos6526_r(cia_0, offset);
-		}
-
 	else if (offset < 0xd00)
-		return mos6526_r(cia_0, offset);
+		{
+			if (offset & 1)
+				cia_set_port_mask_value(cia_0, 1, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
+			else
+				cia_set_port_mask_value(cia_0, 0, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
+
+			return mos6526_r(cia_0, offset);
+		}
 
 	else if (c64_cia1_on && (offset < 0xe00))
 		return mos6526_r(cia_1, offset);
@@ -612,8 +606,9 @@ void c64_m6510_port_write( running_device *device, UINT8 direction, UINT8 data )
 	if (!ultimax)
 		c64_bankswitch(device->machine, 0);
 
-	c64_memory[0x000] = memory_read_byte(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 0);
-	c64_memory[0x001] = memory_read_byte(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 1);
+	c64_memory[0x000] = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM)->read_byte(0);
+	c64_memory[0x001] = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM)->read_byte(1);
+
 }
 
 UINT8 c64_m6510_port_read( running_device *device, UINT8 direction )
@@ -639,7 +634,6 @@ int c64_paddle_read( running_device *device, int which )
 	UINT8 cia0porta = mos6526_pa_r(machine->device("cia_0"), 0);
 	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;
 	int controller2 = input_port_read(machine, "CTRLSEL") & 0x70;
-
 	/* Notice that only a single input is defined for Mouse & Lightpen in both ports */
 	switch (controller1)
 	{
@@ -667,6 +661,11 @@ int c64_paddle_read( running_device *device, int which )
 				pot2 = input_port_read(machine, "LIGHTY");
 			else
 				pot1 = input_port_read(machine, "LIGHTX");
+			break;
+
+		case 0x06:
+			if (which && (input_port_read(machine, "OTHER") & 0x04))	/* Lightpen Signal */
+				pot2 = 0x00;
 			break;
 
 		case 0x00:
@@ -706,6 +705,11 @@ int c64_paddle_read( running_device *device, int which )
 				pot3 = input_port_read(machine, "LIGHTX");
 			break;
 
+		case 0x60:
+			if (which && (input_port_read(machine, "OTHER") & 0x04))	/* Lightpen Signal */
+				pot4 = 0x00;
+			break;
+
 		case 0x00:
 		case 0x70:
 			break;
@@ -717,20 +721,23 @@ int c64_paddle_read( running_device *device, int which )
 
 	if (input_port_read(machine, "CTRLSEL") & 0x80)		/* Swap */
 	{
-		temp = pot1; pot1 = pot2; pot2 = temp;
-		temp = pot3; pot3 = pot4; pot4 = temp;
+		temp = pot1; pot1 = pot3; pot3 = temp;
+		temp = pot2; pot2 = pot4; pot4 = temp;
 	}
 
 	switch (cia0porta & 0xc0)
 	{
-	case 0x40:
-		return which ? pot2 : pot1;
+		case 0x40:
+			return which ? pot2 : pot1;
 
-	case 0x80:
-		return which ? pot4 : pot3;
+		case 0x80:
+			return which ? pot4 : pot3;
 
-	default:
-		return 0;
+		case 0xc0:
+			return which ? pot2 : pot1;
+
+		default:
+			return 0;
 	}
 }
 
@@ -931,45 +938,6 @@ CHIP content description
 */
 
 
-#define C64_MAX_ROMBANK 64 //?
-
-static CBM_ROM c64_cbm_cart[C64_MAX_ROMBANK] = { {0} };
-static INT8 cbm_c64_game;
-static INT8 cbm_c64_exrom;
-
-static DEVICE_IMAGE_UNLOAD( c64_cart )
-{
-	int i;
-
-	for (i = 0; i < C64_MAX_ROMBANK; i++)
-	{
-		c64_cbm_cart[i].size = 0;
-		c64_cbm_cart[i].addr = 0;
-		c64_cbm_cart[i].chip = 0;
-	}
-}
-
-
-static DEVICE_START( c64_cart )
-{
-	int index = 0;
-
-	if (strcmp(device->tag(), "cart1") == 0)
-		index = 0;
-
-	if (strcmp(device->tag(), "cart2") == 0)
-		index = 1;
-
-
-	/* In the first slot we can load a .crt file. In this case we want
-        to use game & exrom values from the header, not the default ones. */
-	if (index == 0)
-	{
-		cbm_c64_game = -1;
-		cbm_c64_exrom = -1;
-	}
-}
-
 /* Hardware Types for C64 carts */
 enum {
 	GENERIC_CRT = 0,		/* 00 - Normal cartridge                    */
@@ -979,31 +947,31 @@ enum {
 	SIMONS_BASIC,		/* 04 - Simons Basic                        */
 	OCEAN_1,			/* 05 - Ocean type 1 (1)                    */
 	EXPERT,			/* 06 - Expert Cartridge                    */
-	FUN_PLAY,			/* 07 - Fun Play, Power Play                    */
-	SUPER_GAMES,		/* 08 - Super Games                     */
+	FUN_PLAY,			/* 07 - Fun Play, Power Play                */
+	SUPER_GAMES,		/* 08 - Super Games                         */
 	ATOMIC_POWER,		/* 09 - Atomic Power                        */
 	EPYX_FASTLOAD,		/* 10 - Epyx Fastload                       */
 	WESTERMANN,			/* 11 - Westermann Learning                 */
-	REX,				/* 12 - Rex Utility                     */
+	REX,				/* 12 - Rex Utility                         */
 	FINAL_CART_I,		/* 13 - Final Cartridge I                   */
 	MAGIC_FORMEL,		/* 14 - Magic Formel                        */
-	C64GS,			/* 15 - C64 Game System, System 3               */
+	C64GS,			/* 15 - C64 Game System, System 3           */
 	WARPSPEED,			/* 16 - WarpSpeed                           */
-	DINAMIC,			/* 17 - Dinamic (2)                     */
-	ZAXXON,			/* 18 - Zaxxon, Super Zaxxon (SEGA)             */
-	DOMARK,			/* 19 - Magic Desk, Domark, HES Australia           */
+	DINAMIC,			/* 17 - Dinamic (2)                         */
+	ZAXXON,			/* 18 - Zaxxon, Super Zaxxon (SEGA)         */
+	DOMARK,			/* 19 - Magic Desk, Domark, HES Australia   */
 	SUPER_SNAP_5,		/* 20 - Super Snapshot 5                    */
 	COMAL_80,			/* 21 - Comal-80                            */
 	STRUCT_BASIC,		/* 22 - Structured Basic                    */
-	ROSS,				/* 23 - Ross                            */
+	ROSS,				/* 23 - Ross                                */
 	DELA_EP64,			/* 24 - Dela EP64                           */
-	DELA_EP7X8,			/* 25 - Dela EP7x8                      */
-	DELA_EP256,			/* 26 - Dela EP256                      */
+	DELA_EP7X8,			/* 25 - Dela EP7x8                          */
+	DELA_EP256,			/* 26 - Dela EP256                          */
 	REX_EP256,			/* 27 - Rex EP256                           */
 	MIKRO_ASSMBLR,		/* 28 - Mikro Assembler                     */
-	REAL_FC_I,			/* 29 - (3)                             */
+	REAL_FC_I,			/* 29 - (3)                                 */
 	ACTION_REPLAY_4,		/* 30 - Action Replay 4                     */
-	STARDOS,			/* 31 - StarDOS                         */
+	STARDOS,			/* 31 - StarDOS                             */
 	/*
     (1) Ocean type 1 includes Navy Seals, Robocop 2 & 3,  Shadow  of
     the Beast, Toki, Terminator 2 and more. Both 256 and 128 Kb images.
@@ -1022,17 +990,55 @@ enum {
     *****************************************/
 };
 
-static UINT8 c64_mapper = GENERIC_CRT;
+#define C64_MAX_ROMBANK 64 // .crt files contain multiple 'CHIPs', i.e. rom banks (of variable size) with headers. Known carts have at most 64 'CHIPs'.
 
-static int c64_common_cart_load( device_image_interface &image )
+typedef struct {
+	int addr, size, index, start;
+} C64_ROM;
+
+typedef struct _c64_cart_t c64_cart_t;
+struct _c64_cart_t {
+	C64_ROM     bank[C64_MAX_ROMBANK];
+	INT8        game;
+	INT8        exrom;
+	UINT8       mapper;
+	UINT8       n_banks;
+};
+
+static c64_cart_t c64_cart;
+
+static DEVICE_IMAGE_UNLOAD( c64_cart )
 {
-	int size = image.length(), test, i = 0, n_banks;
-	const char *filetype;
+	int i;
+
+	for (i = 0; i < C64_MAX_ROMBANK; i++)
+	{
+		c64_cart.bank[i].size = 0;
+		c64_cart.bank[i].addr = 0;
+		c64_cart.bank[i].index = 0;
+		c64_cart.bank[i].start = 0;
+	}
+}
+
+
+static DEVICE_START( c64_cart )
+{
+	/* In the first slot we can load a .crt file. In this case we want
+        to use game & exrom values from the header, not the default ones. */
+	c64_cart.game = -1;
+	c64_cart.exrom = -1;
+	c64_cart.mapper = GENERIC_CRT;
+	c64_cart.n_banks = 0;
+}
+
+static int c64_crt_load( device_image_interface &image )
+{
+	int size = image.length(), test, i = 0, ii;
+	int _80_loaded = 0, _90_loaded = 0, a0_loaded = 0, b0_loaded = 0, e0_loaded = 0, f0_loaded = 0;
+	const char *filetype = image.filetype();
 	int address = 0, new_start = 0;
 	// int lbank_end_addr = 0, hbank_end_addr = 0;
-	UINT8 *cart = memory_region(image.device().machine, "user1");
-
-	filetype = image.filetype();
+	UINT8 *cart_cpy = memory_region(image.device().machine, "user1");
 
 	/* We support .crt files */
 	if (!mame_stricmp(filetype, "crt"))
@@ -1040,64 +1046,60 @@ static int c64_common_cart_load( device_image_interface &image )
 		int j;
 		unsigned short c64_cart_type;
 
-		for (i = 0; (i < ARRAY_LENGTH(c64_cbm_cart)) && (c64_cbm_cart[i].size != 0); i++)
-		;
-
-		if (i >= ARRAY_LENGTH(c64_cbm_cart))
+		if (i >= C64_MAX_ROMBANK)
 			return IMAGE_INIT_FAIL;
 
 		/* Start to parse the .crt header */
 		/* 0x16-0x17 is Hardware type */
 		image.fseek(0x16, SEEK_SET);
-		image.fread( &c64_cart_type, 2);
-		c64_cart_type = BIG_ENDIANIZE_INT16(c64_cart_type);
-		c64_mapper = c64_cart_type;
+		image.fread(&c64_cart_type, 2);
+		c64_cart.mapper = BIG_ENDIANIZE_INT16(c64_cart_type);
 
 		/* If it is unsupported cart type, warn the user */
-		switch (c64_cart_type)
+		switch (c64_cart.mapper)
 		{
-			case ACTION_REPLAY:	/* Type #  1 */
-			case KCS_PC:		/* Type #  2 */
-			case FINAL_CART_III:	/* Type #  3 */
 			case SIMONS_BASIC:	/* Type #  4 */
 			case OCEAN_1:		/* Type #  5 */
-			case EXPERT:		/* Type #  6 */
 			case FUN_PLAY:		/* Type #  7 */
 			case SUPER_GAMES:		/* Type #  8 */
-			case ATOMIC_POWER:	/* Type #  9 */
 			case EPYX_FASTLOAD:	/* Type # 10 */
-			case WESTERMANN:		/* Type # 11 */
 			case REX:			/* Type # 12 */
-			case FINAL_CART_I:	/* Type # 13 */
-			case MAGIC_FORMEL:	/* Type # 14 */
 			case C64GS:			/* Type # 15 */
 			case DINAMIC:		/* Type # 17 */
 			case ZAXXON:		/* Type # 18 */
 			case DOMARK:		/* Type # 19 */
-			case SUPER_SNAP_5:	/* Type # 20 */
 			case COMAL_80:		/* Type # 21 */
 			case GENERIC_CRT:		/* Type #  0 */
-				printf("Currently supported cart type (Type %d)\n", c64_cart_type);
+				printf("Currently supported cart type (Type %d)\n", c64_cart.mapper);
 				break;
 
 			default:
-				printf("Currently unsupported cart type (Type %d)\n", c64_cart_type);
+			case ACTION_REPLAY:	/* Type #  1 */
+			case KCS_PC:		/* Type #  2 */
+			case FINAL_CART_III:	/* Type #  3 */
+			case EXPERT:		/* Type #  6 */
+			case ATOMIC_POWER:	/* Type #  9 */
+			case WESTERMANN:		/* Type # 11 */
+			case FINAL_CART_I:	/* Type # 13 */
+			case MAGIC_FORMEL:	/* Type # 14 */
+			case SUPER_SNAP_5:	/* Type # 20 */
+				printf("Currently unsupported cart type (Type %d)\n", c64_cart.mapper);
 				break;
 		}
 
 		/* 0x18 is EXROM */
 		image.fseek(0x18, SEEK_SET);
-		image.fread( &cbm_c64_exrom, 1);
+		image.fread(&c64_cart.exrom, 1);
 
 		/* 0x19 is GAME */
-		image.fread( &cbm_c64_game, 1);
+		image.fread(&c64_cart.game, 1);
 
 		/* We can pass to the data: it starts from 0x40 */
 		image.fseek(0x40, SEEK_SET);
 		j = 0x40;
 
 		logerror("Loading cart %s size:%.4x\n", image.filename(), size);
-		logerror("Header info: EXROM %d, GAME %d, Cart Type %d \n", cbm_c64_exrom, cbm_c64_game, c64_cart_type);
+		logerror("Header info: EXROM %d, GAME %d, Cart Type %d \n", c64_cart.exrom, c64_cart.game, c64_cart_type);
 
 
 		/* Data in a .crt image are organized in blocks called 'CHIP':
@@ -1111,25 +1113,25 @@ static int c64_common_cart_load( device_image_interface &image )
 
 			/* Start to parse the CHIP header */
 			/* First 4 bytes are the string 'CHIP' */
-			image.fread( buffer, 6);
+			image.fread(buffer, 6);
 
 			/* 0x06-0x07 is the size of the CHIP block (header + data) */
-			image.fread( &chip_size, 2);
+			image.fread(&chip_size, 2);
 			chip_size = BIG_ENDIANIZE_INT16(chip_size);
 
 			/* 0x08-0x09 chip type (ROM, RAM + no ROM, Flash ROM) */
-			image.fread( buffer + 6, 2);
+			image.fread(buffer + 6, 2);
 
 			/* 0x0a-0x0b is the bank number of the CHIP block */
-			image.fread( &chip_bank_index, 2);
+			image.fread(&chip_bank_index, 2);
 			chip_bank_index = BIG_ENDIANIZE_INT16(chip_bank_index);
 
 			/* 0x0c-0x0d is the loading address of the CHIP block */
-			image.fread( &address, 2);
+			image.fread(&address, 2);
 			address = BIG_ENDIANIZE_INT16(address);
 
 			/* 0x0e-0x0f is the data size of the CHIP block (without header) */
-			image.fread( &chip_data_size, 2);
+			image.fread(&chip_data_size, 2);
 			chip_data_size = BIG_ENDIANIZE_INT16(chip_data_size);
 
 			/* Print out the CHIP header! */
@@ -1139,23 +1141,17 @@ static int c64_common_cart_load( device_image_interface &image )
 				address, chip_data_size);
 			logerror("Loading CHIP data at %.4x size:%.4x\n", address, chip_data_size);
 
-			/* Does CHIP contain any data? */
-			c64_cbm_cart[i].chip = (UINT8*) image.image_malloc(chip_data_size);
-			if (!c64_cbm_cart[i].chip)
-				return IMAGE_INIT_FAIL;
-
 			/* Store data, address & size of the CHIP block */
-			c64_cbm_cart[i].addr = address;
-			c64_cbm_cart[i].index = chip_bank_index;
-			c64_cbm_cart[i].size = chip_data_size;
-			c64_cbm_cart[i].start = new_start;
+			c64_cart.bank[i].addr = address;
+			c64_cart.bank[i].index = chip_bank_index;
+			c64_cart.bank[i].size = chip_data_size;
+			c64_cart.bank[i].start = new_start;
 
-			test = image.fread( c64_cbm_cart[i].chip, chip_data_size);
+			test = image.fread(cart_cpy + new_start, c64_cart.bank[i].size);
+			new_start += c64_cart.bank[i].size;
 
-			memcpy(&cart[new_start], c64_cbm_cart[i].chip, c64_cbm_cart[i].size);
-			new_start += c64_cbm_cart[i].size;
-
-			if (test != chip_data_size)
+			/* Does CHIP contain any data? */
+			if (test != c64_cart.bank[i].size)
 				return IMAGE_INIT_FAIL;
 
 			/* Advance to the next CHIP block */
@@ -1166,43 +1162,37 @@ static int c64_common_cart_load( device_image_interface &image )
 	else /* We also support .80 files for c64 & .e0/.f0 for max */
 	{
 		/* Assign loading address according to extension */
-		if (!mame_stricmp (filetype, "80"))
+		if (!mame_stricmp(filetype, "80"))
 			address = 0x8000;
 
-		if (!mame_stricmp (filetype, "e0"))
+		if (!mame_stricmp(filetype, "e0"))
 			address = 0xe000;
 
-		if (!mame_stricmp (filetype, "f0"))
+		if (!mame_stricmp(filetype, "f0"))
 			address = 0xf000;
 
 		logerror("loading %s rom at %.4x size:%.4x\n", image.filename(), address, size);
 
-		/* Does cart contain any data? */
-		c64_cbm_cart[0].chip = (UINT8*) image.image_malloc(size);
-		if (!c64_cbm_cart[0].chip)
-			return IMAGE_INIT_FAIL;
-
 		/* Store data, address & size */
-		c64_cbm_cart[0].addr = address;
-		c64_cbm_cart[0].size = size;
-		c64_cbm_cart[0].start = new_start;
+		c64_cart.bank[0].addr = address;
+		c64_cart.bank[0].size = size;
+		c64_cart.bank[0].start = new_start;
 
-		test = image.fread( c64_cbm_cart[0].chip, size);
+		test = image.fread(cart_cpy + new_start, c64_cart.bank[0].size);
+		new_start += c64_cart.bank[0].size;
 
-		memcpy(&cart[new_start], c64_cbm_cart[0].chip, c64_cbm_cart[0].size);
-		new_start += c64_cbm_cart[0].size;
-
-		if (test != c64_cbm_cart[0].size)
+		/* Does cart contain any data? */
+		if (test != c64_cart.bank[0].size)
 			return IMAGE_INIT_FAIL;
 	}
 
-	n_banks = i;
+	c64_cart.n_banks = i; // this is also needed so that we only set mappers if a cart is present!
 
 	/* If we load a .crt file, use EXROM & GAME from the header! */
-	if ((cbm_c64_exrom != -1) && (cbm_c64_game != -1))
+	if ((c64_cart.exrom != -1) && (c64_cart.game != -1))
 	{
-		c64_exrom = cbm_c64_exrom;
-		c64_game  = cbm_c64_game;
+		c64_exrom = c64_cart.exrom;
+		c64_game  = c64_cart.game;
 	}
 
 	/* Finally load the cart */
@@ -1212,40 +1202,90 @@ static int c64_common_cart_load( device_image_interface &image )
 	memset(roml, 0, 0x2000);
 	memset(romh, 0, 0x2000);
 
-	switch (c64_mapper)
+	switch (c64_cart.mapper)
 	{
-	case ZAXXON:
-		memcpy(romh, cart + 0x1000, 0x2000);
-		break;
 	default:
-		if (!c64_game && c64_exrom && (n_banks == 1))
-			memcpy(romh, cart, 0x2000);
+		if (!c64_game && c64_exrom && (c64_cart.n_banks == 1))
+		{
+			memcpy(romh, cart_cpy, 0x2000);
+		}
 		else
 		{
-			memcpy(roml, cart + 0 * 0x2000, 0x2000);
-			memcpy(romh, cart + 1 * 0x2000, 0x2000);
+			// we first attempt to load the first 'CHIPs' with address 0x8000-0xb000 and 0xe000-0xf000, otherwise we load the first (or first two) 'CHIPs' of the image
+			for (ii = 0; ii < c64_cart.n_banks; ii++)
+			{
+				if (c64_cart.bank[ii].addr == 0x8000 && !_80_loaded)
+				{
+					memcpy(roml, cart_cpy + c64_cart.bank[ii].start, c64_cart.bank[ii].size);
+					_80_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x1000)
+						_90_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x2000)
+						a0_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x3000)
+						b0_loaded = 1;
+//                  printf("addr 0x8000: 80 %d, 90 %d, a0 %d, b0 %d\n", _80_loaded, _90_loaded, a0_loaded, b0_loaded);
+				}
+
+				if (c64_cart.bank[ii].addr == 0x9000 && !_90_loaded)
+				{
+					memcpy(roml + 0x1000, cart_cpy + c64_cart.bank[ii].start, c64_cart.bank[ii].size);
+					_90_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x1000)
+						a0_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x2000)
+						b0_loaded = 1;
+//                  printf("addr 0x9000: 80 %d, 90 %d, a0 %d, b0 %d\n", _80_loaded, _90_loaded, a0_loaded, b0_loaded);
+				}
+
+				if (c64_cart.bank[ii].addr == 0xa000 && !a0_loaded)
+				{
+					memcpy(roml + 0x2000, cart_cpy + c64_cart.bank[ii].start, c64_cart.bank[ii].size);
+					a0_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x1000)
+						b0_loaded = 1;
+//                  printf("addr 0xa000: 80 %d, 90 %d, a0 %d, b0 %d\n", _80_loaded, _90_loaded, a0_loaded, b0_loaded);
+				}
+
+				if (c64_cart.bank[ii].addr == 0xb000 && !b0_loaded)
+				{
+					memcpy(roml + 0x3000, cart_cpy + c64_cart.bank[ii].start, c64_cart.bank[ii].size);
+					b0_loaded = 1;
+//                  printf("addr 0xb000: 80 %d, 90 %d, a0 %d, b0 %d\n", _80_loaded, _90_loaded, a0_loaded, b0_loaded);
+				}
+
+				if (c64_cart.bank[ii].addr == 0xe000 && !e0_loaded)
+				{
+					memcpy(romh, cart_cpy + c64_cart.bank[ii].start, c64_cart.bank[ii].size);
+					e0_loaded = 1;
+					if (c64_cart.bank[ii].size > 0x1000)
+						f0_loaded = 1;
+//                  printf("addr 0xe000: e0 %d, f0 %d\n", e0_loaded, f0_loaded);
+				}
+
+				if (c64_cart.bank[ii].addr == 0xf000 && !f0_loaded)
+				{
+					memcpy(romh + 0x1000, cart_cpy + c64_cart.bank[ii].start, c64_cart.bank[ii].size);
+					f0_loaded = 1;
+//                  printf("addr 0xe000: e0 %d, f0 %d\n", e0_loaded, f0_loaded);
+				}
+			}
 		}
 	}
-
-	c64_cart_n_banks = n_banks; // this is needed so that we only set mappers if a cart is present!
 
 	return IMAGE_INIT_PASS;
 }
 
 static DEVICE_IMAGE_LOAD( c64_cart )
 {
-	return c64_common_cart_load(image);
+	return c64_crt_load(image);
 }
 
 static DEVICE_IMAGE_LOAD( max_cart )
 {
 	int result = IMAGE_INIT_PASS;
 
-	if (image.software_entry() == NULL)
-	{
-		result = c64_common_cart_load(image);
-	}
-	else
+	if (image.software_entry() != NULL)
 	{
 		UINT32 size;
 
@@ -1269,6 +1309,8 @@ static DEVICE_IMAGE_LOAD( max_cart )
 		if (size)
 			memcpy(romh, image.get_software_region("romh"), size);
 	}
+	else
+		result = c64_crt_load(image);
 
 	return result;
 }
@@ -1294,9 +1336,9 @@ static WRITE8_HANDLER( fc3_bank_w )
 /*
             if (log_cart)
             {
-                logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cbm_cart[bank].size, c64_cbm_cart[bank].addr);
-                if (c64_cbm_cart[bank].index != bank)
-                    logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cbm_cart[bank].index, bank);
+                logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cart.bank[bank].size, c64_cart.bank[bank].addr);
+                if (c64_cart.bank[bank].index != bank)
+                    logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cart.bank[bank].index, bank);
             }
 */
 		}
@@ -1312,23 +1354,27 @@ static WRITE8_HANDLER( ocean1_bank_w )
 	UINT8 bank = data & 0x3f;
 	UINT8 *cart = memory_region(space->machine, "user1");
 
-	if (c64_cart_n_banks != 64)								// all carts except Terminator II
+	switch (c64_cart.bank[bank].addr)
 	{
-		if (bank < 16)
-			memcpy(roml, cart + bank * 0x2000, 0x2000);
-		else
-			memcpy(romh, cart + (bank - 16) * 0x2000, 0x2000);
-	}
-	else											// Terminator II
-	{
-		memcpy(roml, cart + bank * 0x2000, 0x2000);
+	case 0x8000:
+		memcpy(roml, cart + bank * 0x2000, c64_cart.bank[bank].size);
+		break;
+	case 0xa000:
+		memcpy(roml + 0x2000, cart + bank * 0x2000, c64_cart.bank[bank].size);
+		break;
+	case 0xe000:
+		memcpy(romh, cart + bank * 0x2000, c64_cart.bank[bank].size);
+		break;
+	default:
+		logerror("Unexpected loading address (%x) for bank %x\n", c64_cart.bank[bank].addr, bank);
+		break;
 	}
 /*
     if (log_cart)
     {
-        logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cbm_cart[bank].size, c64_cbm_cart[bank].addr);
-        if (c64_cbm_cart[bank].index != bank)
-            logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cbm_cart[bank].index, bank);
+        logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cart.bank[bank].size, c64_cart.bank[bank].addr);
+        if (c64_cart.bank[bank].index != bank)
+            logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cart.bank[bank].index, bank);
     }
 */
 }
@@ -1347,16 +1393,16 @@ static WRITE8_HANDLER( funplay_bank_w )
 		logerror("Reserved value written\n");
 	else
 	{
-		/* bank number is not the value written, but c64_cbm_cart[bank].index IS the value written! */
+		/* bank number is not the value written, but c64_cart.bank[bank].index IS the value written! */
 		real_bank = ((bank & 0x01) << 3) + ((bank & 0x38) >> 3);
 
 		memcpy(roml, cart + real_bank * 0x2000, 0x2000);
 /*
         if (log_cart)
         {
-            logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cbm_cart[bank].size, c64_cbm_cart[bank].addr);
-            if (c64_cbm_cart[bank].index != bank)
-                logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cbm_cart[bank].index, bank);
+            logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cart.bank[bank].size, c64_cart.bank[bank].addr);
+            if (c64_cart.bank[bank].index != bank)
+                logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cart.bank[bank].index, bank);
         }
 */
 	}
@@ -1416,9 +1462,9 @@ static WRITE8_HANDLER( c64gs_bank_w )
 /*
     if (log_cart)
     {
-        logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cbm_cart[bank].size, c64_cbm_cart[bank].addr);
-        if (c64_cbm_cart[bank].index != bank)
-            logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cbm_cart[bank].index, bank);
+        logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cart.bank[bank].size, c64_cart.bank[bank].addr);
+        if (c64_cart.bank[bank].index != bank)
+            logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cart.bank[bank].index, bank);
     }
 */
 }
@@ -1439,9 +1485,9 @@ static READ8_HANDLER( dinamic_bank_r )
 /*
     if (log_cart)
     {
-        logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cbm_cart[bank].size, c64_cbm_cart[bank].addr);
-        if (c64_cbm_cart[bank].index != bank)
-            logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cbm_cart[bank].index, bank);
+        logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cart.bank[bank].size, c64_cart.bank[bank].addr);
+        if (c64_cart.bank[bank].index != bank)
+            logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cart.bank[bank].index, bank);
     }
 */
 	return 0;
@@ -1511,9 +1557,9 @@ static WRITE8_HANDLER( comal80_bank_w )
 /*
         if (log_cart)
         {
-            logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cbm_cart[bank].size, c64_cbm_cart[bank].addr);
-            if (c64_cbm_cart[bank].index != bank)
-                logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cbm_cart[bank].index, bank);
+            logerror("bank %d of size %d successfully loaded at %d!\n", bank, c64_cart.bank[bank].size, c64_cart.bank[bank].addr);
+            if (c64_cart.bank[bank].index != bank)
+                logerror("Warning: According to the CHIP info this should be bank %d, but we are loading it as bank %d!\n", c64_cart.bank[bank].index, bank);
         }
 */
 	}
@@ -1521,9 +1567,9 @@ static WRITE8_HANDLER( comal80_bank_w )
 
 static void setup_c64_custom_mappers(running_machine *machine)
 {
-	const address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
-	switch (c64_mapper)
+	switch (c64_cart.mapper)
 	{
 		case ACTION_REPLAY:	/* Type #  1 not working */
 			break;
@@ -1583,12 +1629,12 @@ static void setup_c64_custom_mappers(running_machine *machine)
 
 MACHINE_RESET( c64 )
 {
-	if (c64_cart_n_banks)
+	if (c64_cart.n_banks)
 		setup_c64_custom_mappers(machine);
 }
 
 
-MACHINE_DRIVER_START( c64_cartslot )
+MACHINE_CONFIG_FRAGMENT( c64_cartslot )
 	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("crt,80")
 	MDRV_CARTSLOT_NOT_MANDATORY
@@ -1602,9 +1648,9 @@ MACHINE_DRIVER_START( c64_cartslot )
 	MDRV_CARTSLOT_START(c64_cart)
 	MDRV_CARTSLOT_LOAD(c64_cart)
 	MDRV_CARTSLOT_UNLOAD(c64_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START( ultimax_cartslot )
+MACHINE_CONFIG_FRAGMENT( ultimax_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("crt,e0,f0")
 	MDRV_CARTSLOT_MANDATORY
@@ -1615,4 +1661,4 @@ MACHINE_DRIVER_START( ultimax_cartslot )
 
 	/* software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","max")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

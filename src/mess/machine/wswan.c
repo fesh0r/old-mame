@@ -22,7 +22,7 @@ TODO:
 
 #define INTERNAL_EEPROM_SIZE	1024
 
-enum enum_system { WSWAN=0, WSC };
+enum enum_system { TYPE_WSWAN=0, TYPE_WSC };
 enum enum_sram { SRAM_NONE=0, SRAM_64K, SRAM_256K, SRAM_512K, SRAM_1M, SRAM_2M, EEPROM_1K, EEPROM_16K, EEPROM_8K, SRAM_UNKNOWN };
 static const char *const wswan_sram_str[] = { "none", "64Kbit SRAM", "256Kbit SRAM", "512Kbit SRAM", "1Mbit SRAM", "2Mbit SRAM", "1Kbit EEPROM", "16Kbit EEPROM", "8Kbit EEPROM", "Unknown" };
 static const int wswan_sram_size[] = { 0, 64*1024/8, 256*1024/8, 512*1024/8, 1024*1024/8, 2*1024*1024/8,  1024/8, 16*1024/8, 8*1024/8, 0 };
@@ -230,7 +230,7 @@ static void wswan_setup_bios( running_machine *machine )
 MACHINE_START( wswan )
 {
 	ws_bios_bank = NULL;
-	system_type = WSWAN;
+	system_type = TYPE_WSWAN;
 	machine->add_notifier(MACHINE_NOTIFY_EXIT, wswan_machine_stop );
 	wswan_vdp.timer = timer_alloc( machine, wswan_scanline_interrupt, &wswan_vdp );
 	timer_adjust_periodic( wswan_vdp.timer, ticks_to_attotime( 256, 3072000 ), 0, ticks_to_attotime( 256, 3072000 ) );
@@ -245,7 +245,7 @@ MACHINE_START( wswan )
 MACHINE_START( wscolor )
 {
 	ws_bios_bank = NULL;
-	system_type = WSC;
+	system_type = TYPE_WSC;
 	machine->add_notifier(MACHINE_NOTIFY_EXIT, wswan_machine_stop );
 	wswan_vdp.timer = timer_alloc( machine, wswan_scanline_interrupt, &wswan_vdp );
 	timer_adjust_periodic( wswan_vdp.timer, ticks_to_attotime( 256, 3072000 ), 0, ticks_to_attotime( 256, 3072000 ) );
@@ -259,7 +259,7 @@ MACHINE_START( wscolor )
 
 MACHINE_RESET( wswan )
 {
-	const address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
 	/* Intialize ports */
 	memcpy( ws_portram, ws_portram_init, 256 );
@@ -267,8 +267,8 @@ MACHINE_RESET( wswan )
 	/* Initialize VDP */
 	memset( &wswan_vdp, 0, sizeof( wswan_vdp ) );
 
-	wswan_vdp.vram = (UINT8*)memory_get_read_ptr( space, 0 );
-	wswan_vdp.palette_vram = (UINT8*)memory_get_read_ptr( space, ( system_type == WSC ) ? 0xFE00 : 0 );
+	wswan_vdp.vram = (UINT8*)space->get_read_ptr(0);
+	wswan_vdp.palette_vram = (UINT8*)space->get_read_ptr(( system_type == TYPE_WSC ) ? 0xFE00 : 0 );
 	wswan_vdp.current_line = 145;  /* Randomly chosen, beginning of VBlank period to give cart some time to boot up */
 	wswan_vdp.new_display_vertical = ROMMap[ROMBanks-1][0xfffc] & 0x01;
 	wswan_vdp.display_vertical = ~wswan_vdp.new_display_vertical;
@@ -372,7 +372,7 @@ READ8_HANDLER( wswan_port_r )
 					/* Bit 1 - Determine mono/color */
 					/* Bit 2 - Determine color/crystal */
 			value = value & ~ 0x02;
-			if ( system_type == WSC )
+			if ( system_type == TYPE_WSC )
 			{
 				value |= 2;
 			}
@@ -559,7 +559,7 @@ WRITE8_HANDLER( wswan_port_w )
                    Bit 0-3 - Gray tone setting for main palette index 0
                    Bit 4-7 - Gray tone setting for main palette index 1
                 */
-			if ( system_type == WSC )
+			if ( system_type == TYPE_WSC )
 			{
 				int i = 15 - ( data & 0x0F );
 				int j = 15 - ( ( data & 0xF0 ) >> 4 );
@@ -576,7 +576,7 @@ WRITE8_HANDLER( wswan_port_w )
                    Bit 0-3 - Gray tone setting for main palette index 2
                    Bit 4-7 - Gray tone setting for main palette index 3
                 */
-			if ( system_type == WSC )
+			if ( system_type == TYPE_WSC )
 			{
 				int i = 15 - ( data & 0x0F );
 				int j = 15 - ( ( data & 0xF0 ) >> 4 );
@@ -593,7 +593,7 @@ WRITE8_HANDLER( wswan_port_w )
                    Bit 0-3 - Gray tone setting for main palette index 4
                    Bit 4-7 - Gray tone setting for main paeltte index 5
                 */
-			if ( system_type == WSC )
+			if ( system_type == TYPE_WSC )
 			{
 				int i = 15 - ( data & 0x0F );
 				int j = 15 - ( ( data & 0xF0 ) >> 4 );
@@ -610,7 +610,7 @@ WRITE8_HANDLER( wswan_port_w )
                    Bit 0-3 - Gray tone setting for main palette index 6
                    Bit 4-7 - Gray tone setting for main palette index 7
                 */
-			if ( system_type == WSC )
+			if ( system_type == TYPE_WSC )
 			{
 				int i = 15 - ( data & 0x0F );
 				int j = 15 - ( ( data & 0xF0 ) >> 4 );
@@ -728,7 +728,7 @@ WRITE8_HANDLER( wswan_port_w )
 				length = ws_portram[0x46] + (ws_portram[0x47] << 8);
 				for( ; length > 0; length-- )
 				{
-					memory_write_byte(space,  dst, memory_read_byte(space,  src ) );
+					space->write_byte(dst, space->read_byte(src ) );
 					src++;
 					dst++;
 				}
@@ -797,7 +797,7 @@ WRITE8_HANDLER( wswan_port_w )
              * 001  - packed, 4 color, use 2000, monochrome
              * 000  - not packed, 4 color, use 2000, monochrome - Regular WS monochrome
              */
-			if ( system_type == WSC )
+			if ( system_type == TYPE_WSC )
 			{
 				wswan_vdp.color_mode = data & 0x80;
 				wswan_vdp.colors_16 = data & 0x40;
@@ -1382,7 +1382,7 @@ DEVICE_IMAGE_LOAD(wswan_cart)
 	else
 		size = image.get_software_region_length("rom");
 
-	ws_ram = (UINT8*) memory_get_read_ptr(cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0);
+	ws_ram = (UINT8*) cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM)->get_read_ptr(0);
 	memset(ws_ram, 0, 0xffff);
 	ROMBanks = size / 65536;
 
@@ -1485,9 +1485,9 @@ static TIMER_CALLBACK(wswan_scanline_interrupt)
 	/* Handle Sound DMA */
 	if ( ( sound_dma.enable & 0x88 ) == 0x80 )
 	{
-		const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+		address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 		/* TODO: Output sound DMA byte */
-		wswan_port_w( space, 0x89, memory_read_byte(space,  sound_dma.source ) );
+		wswan_port_w( space, 0x89, space->read_byte(sound_dma.source ) );
 		sound_dma.size--;
 		sound_dma.source = ( sound_dma.source + 1 ) & 0x0FFFFF;
 		if ( sound_dma.size == 0 )

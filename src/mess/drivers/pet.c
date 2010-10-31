@@ -402,21 +402,21 @@ normal keyboards?
  *************************************/
 
 static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_MEMBER(pet_state, videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 /*  AM_RANGE(0xe900, 0xe91f) AM_DEVREAD("ieee_bus", cbm_ieee_state)    // for debugging */
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_MEMBER(pet_state, videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
@@ -433,7 +433,7 @@ static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #else
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 #endif
@@ -460,11 +460,11 @@ ADDRESS_MAP_END
 */
 static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("share1") AM_BASE(&pet_memory)
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2") AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2") AM_BASE_MEMBER(pet_state, videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	/* 0xefe0, 0xefe3, mos 6702 */
@@ -480,7 +480,7 @@ static ADDRESS_MAP_START( superpet_m6809_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xeff8, 0xefff) AM_READWRITE(superpet_r, superpet_w)
@@ -649,7 +649,7 @@ static IEEE488_DAISY( ieee488_daisy )
 	{ "pia_0" },
 	{ "pia_1", DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_LINE("pia_1", pia6821_cb1_w), DEVCB_DEVICE_LINE("pia_1", pia6821_ca1_w), DEVCB_NULL },
 	{ "via6522_0" },
-	{ C2040_IEEE488("c4040") },
+	{ C2040_IEEE488("drive") },
 	{ NULL}
 };
 
@@ -659,8 +659,7 @@ static IEEE488_DAISY( ieee488_daisy )
  *
  *************************************/
 
-static MACHINE_DRIVER_START( pet_general )
-	MDRV_DRIVER_DATA(pet_state)
+static MACHINE_CONFIG_START( pet_general, pet_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, XTAL_8MHz/8)
 	MDRV_CPU_PROGRAM_MAP(pet_mem)
@@ -691,13 +690,12 @@ static MACHINE_DRIVER_START( pet_general )
 	/* pias */
 	MDRV_PIA6821_ADD( "pia_0", pet_pia0)
 	MDRV_PIA6821_ADD( "pia_1", pet_pia1)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( pet )
-	MDRV_IMPORT_FROM( pet_general )
+static MACHINE_CONFIG_DERIVED( pet, pet_general )
 	MDRV_QUICKLOAD_ADD("quickload", cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
-	MDRV_IMPORT_FROM(pet_cartslot)
+	MDRV_FRAGMENT_ADD(pet_cartslot)
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
@@ -706,19 +704,17 @@ static MACHINE_DRIVER_START( pet )
 
 	/* IEEE bus */
 	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
-	MDRV_C4040_ADD("c4040", "ieee_bus", 8)
-MACHINE_DRIVER_END
+	MDRV_C4040_ADD("drive", "ieee_bus", 8)
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( petb )
-	MDRV_IMPORT_FROM( pet )
+static MACHINE_CONFIG_DERIVED( petb, pet )
 	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pet2001 )
-	MDRV_IMPORT_FROM( pet_general )
+static MACHINE_CONFIG_DERIVED( pet2001, pet_general )
 	MDRV_QUICKLOAD_ADD("quickload", cbm_pet1, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
-	MDRV_IMPORT_FROM(pet_cartslot)
+	MDRV_FRAGMENT_ADD(pet_cartslot)
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
@@ -727,12 +723,11 @@ static MACHINE_DRIVER_START( pet2001 )
 
 	/* IEEE bus */
 	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
-	MDRV_C4040_ADD("c4040", "ieee_bus", 8)
-MACHINE_DRIVER_END
+	MDRV_C4040_ADD("drive", "ieee_bus", 8)
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( pet40 )
-	MDRV_IMPORT_FROM( pet )
+static MACHINE_CONFIG_DERIVED( pet40, pet )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pet40_mem)
 
@@ -741,22 +736,20 @@ static MACHINE_DRIVER_START( pet40 )
 	MDRV_VIDEO_START( pet_crtc )
 	MDRV_VIDEO_UPDATE( pet_crtc )
 
-	MDRV_IMPORT_FROM(pet4_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(pet4_cartslot)
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( pet40pal )
-	MDRV_IMPORT_FROM( pet40 )
+static MACHINE_CONFIG_DERIVED( pet40pal, pet40 )
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( pet80 )
-	MDRV_IMPORT_FROM( pet_general )
+static MACHINE_CONFIG_DERIVED( pet80, pet_general )
 	MDRV_QUICKLOAD_ADD("quickload", cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
-	MDRV_IMPORT_FROM(pet_cartslot)
+	MDRV_FRAGMENT_ADD(pet_cartslot)
 
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pet80_mem)
@@ -775,7 +768,7 @@ static MACHINE_DRIVER_START( pet80 )
 
 	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
 
-	MDRV_IMPORT_FROM(pet4_cartslot)
+	MDRV_FRAGMENT_ADD(pet4_cartslot)
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
@@ -783,19 +776,17 @@ static MACHINE_DRIVER_START( pet80 )
 
 	/* IEEE bus */
 	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
-	MDRV_C8050_ADD("c4040", "ieee_bus", 8)
-MACHINE_DRIVER_END
+	MDRV_C8050_ADD("drive", "ieee_bus", 8)
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( pet80pal )
-	MDRV_IMPORT_FROM( pet80 )
+static MACHINE_CONFIG_DERIVED( pet80pal, pet80 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( superpet )
-	MDRV_IMPORT_FROM( pet80 )
+static MACHINE_CONFIG_DERIVED( superpet, pet80 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( superpet_mem)
 
@@ -809,7 +800,7 @@ static MACHINE_DRIVER_START( superpet )
 	MDRV_GFXDECODE( superpet )
 
 	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 

@@ -11,7 +11,8 @@
 
 static ADDRESS_MAP_START(next_mem, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0x00000000, 0x0001ffff) AM_ROM AM_REGION("user1", 0)
-	AM_RANGE(0x02000000, 0x0200ffff) AM_RAM
+	AM_RANGE(0x01000000, 0x0101ffff) AM_ROM AM_REGION("user1", 0)
+	AM_RANGE(0x02000000, 0x0200ffff) AM_RAM	
 	AM_RANGE(0x0b000000, 0x0b03ffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -33,7 +34,7 @@ static VIDEO_UPDATE( next )
     return 0;
 }
 
-static MACHINE_DRIVER_START( next )
+static MACHINE_CONFIG_START( next, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",M68030, XTAL_25MHz)
     MDRV_CPU_PROGRAM_MAP(next_mem)
@@ -52,13 +53,12 @@ static MACHINE_DRIVER_START( next )
 
     MDRV_VIDEO_START(next)
     MDRV_VIDEO_UPDATE(next)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( next040 )
-	MDRV_IMPORT_FROM( next )
-
+static MACHINE_CONFIG_DERIVED( next040, next )
 	MDRV_CPU_REPLACE("maincpu", M68040, XTAL_33MHz)
-MACHINE_DRIVER_END
+	MDRV_CPU_PROGRAM_MAP(next_mem)
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( next )
@@ -92,7 +92,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                 FULLNAME                FLAGS */
-COMP( 1987, next,	0,      	0,	next,		next,	 0, 	 "Next Software, Inc",   "NeXT",				GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1990, nextnt, next,       0,	next040,	next,	 0, 	 "Next Software, Inc",   "NeXT (Non Turbo)",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1992, nexttrb,next,       0,	next040,	next,	 0, 	 "Next Software, Inc",   "NeXT (Turbo)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1987, next,   0,          0,   next,      next,    0,      "Next Software Inc",   "NeXT",				GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1990, nextnt, next,       0,   next040,   next,    0,      "Next Software Inc",   "NeXT (Non Turbo)",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1992, nexttrb,next,       0,   next040,   next,    0,      "Next Software Inc",   "NeXT (Turbo)",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

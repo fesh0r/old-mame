@@ -239,7 +239,7 @@ static WRITE8_HANDLER(devices_w)
 
 static void pk8020_set_bank(running_machine *machine,UINT8 data)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	switch(data & 0x1F) {
 		case 0x00 :
 					{
@@ -875,7 +875,7 @@ static WRITE8_DEVICE_HANDLER(pk8020_portb_w)
 	floppy_mon_w(floppy_get_device(device->machine, 0), 1);
 	floppy_mon_w(floppy_get_device(device->machine, 1), 1);
 	floppy_mon_w(floppy_get_device(device->machine, 2), 1);
-	floppy_mon_w(floppy_get_device(device->machine, 3), 1);	
+	floppy_mon_w(floppy_get_device(device->machine, 3), 1);
 	wd17xx_set_side(fdc,BIT(data,4));
 	if (BIT(data,0)) {
 		wd17xx_set_drive(fdc,0);

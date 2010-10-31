@@ -21,10 +21,12 @@ Todo:
 #include "devices/cartslot.h"
 
 UINT8 *gamecom_vram;
-UINT8 *gamecom_iram;
 
 static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x007F )  AM_BASE(&gamecom_iram) AM_READWRITE( gamecom_internal_r, gamecom_internal_w )/* CPU internal register file */
+	AM_RANGE( 0x0000, 0x0013 )  AM_RAM
+	AM_RANGE( 0x0014, 0x0017 )  AM_READWRITE( gamecom_pio_r, gamecom_pio_w )        // buttons
+	AM_RANGE( 0x0018, 0x001F )  AM_RAM
+	AM_RANGE( 0x0020, 0x007F )  AM_READWRITE( gamecom_internal_r, gamecom_internal_w )/* CPU internal register file */
 	AM_RANGE( 0x0080, 0x03FF )  AM_RAM						/* RAM */
 	AM_RANGE( 0x0400, 0x0FFF )  AM_NOP                                              /* Nothing */
 	AM_RANGE( 0x1000, 0x1FFF )  AM_ROM                                              /* Internal ROM (initially), or External ROM/Flash. Controlled by MMU0 (never swapped out in game.com) */
@@ -33,7 +35,7 @@ static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x6000, 0x7FFF )  AM_ROMBANK("bank3")                                       /* External ROM/Flash. Controlled by MMU3 */
 	AM_RANGE( 0x8000, 0x9FFF )  AM_ROMBANK("bank4")                                       /* External ROM/Flash. Controlled by MMU4 */
 	AM_RANGE( 0xA000, 0xDFFF )  AM_RAM AM_BASE(&gamecom_vram)			/* VRAM */
-	AM_RANGE( 0xE000, 0xFFFF )  AM_RAM                                              /* Extended I/O, Extended RAM */
+	AM_RANGE( 0xE000, 0xFFFF )  AM_RAM AM_SHARE("nvram")                  /* Extended I/O, Extended RAM */
 ADDRESS_MAP_END
 
 static const SM8500_CONFIG gamecom_cpu_config = {
@@ -57,7 +59,7 @@ static INPUT_PORTS_START( gamecom )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME( "Button C" )
 
 	PORT_START("IN2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "Power(?)" ) PORT_CODE( KEYCODE_N )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "Reset" ) PORT_CODE( KEYCODE_N )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME( "Button D" )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "Stylus press" ) PORT_CODE( KEYCODE_Z ) PORT_CODE( MOUSECODE_BUTTON1 )
 
@@ -88,16 +90,24 @@ static PALETTE_INIT( gamecom )
 	}
 }
 
-static MACHINE_DRIVER_START( gamecom )
+static INTERRUPT_GEN( gamecom_interrupt )
+{
+	cputag_set_input_line(device->machine, "maincpu", LCDC_INT, ASSERT_LINE );
+}
+
+static MACHINE_CONFIG_START( gamecom, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", SM8500, XTAL_11_0592MHz/2 )   /* actually it's an sm8521 microcontroller containing an sm8500 cpu */
 	MDRV_CPU_PROGRAM_MAP( gamecom_mem_map)
 	MDRV_CPU_CONFIG( gamecom_cpu_config )
+	MDRV_CPU_VBLANK_INT("screen", gamecom_interrupt)
 
 	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE( 59.732155 )
-	MDRV_SCREEN_VBLANK_TIME(0)
+	MDRV_SCREEN_VBLANK_TIME(500)
 	MDRV_QUANTUM_TIME(HZ(60))
+
+	//MDRV_NVRAM_ADD_0FILL("nvram")
 
 	MDRV_MACHINE_RESET( gamecom )
 
@@ -122,20 +132,24 @@ static MACHINE_DRIVER_START( gamecom )
 #endif
 
 	/* cartridge */
-	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,tgc")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_INTERFACE("gamecom_cart")
-	MDRV_CARTSLOT_LOAD(gamecom_cart)
+	MDRV_CARTSLOT_INTERFACE("gamecom_cart1")
+	MDRV_CARTSLOT_LOAD(gamecom_cart1)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","gamecom")
-MACHINE_DRIVER_END
+	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,tgc")
+	MDRV_CARTSLOT_INTERFACE("gamecom_cart2")
+	MDRV_CARTSLOT_LOAD(gamecom_cart2)
+MACHINE_CONFIG_END
 
 ROM_START( gamecom )
 	ROM_REGION( 0x2000, "maincpu", 0 )
 	ROM_LOAD( "internal.bin", 0x1000,  0x1000, CRC(a0cec361) SHA1(03368237e8fed4a8724f3b4a1596cf4b17c96d33) )
-	ROM_REGION( 0x40000, "user1", 0 )
+	ROM_REGION( 0x40000, "kernel", 0 )
 	ROM_LOAD( "external.bin", 0x00000, 0x40000, CRC(e235a589) SHA1(97f782e72d738f4d7b861363266bf46b438d9b50) )
-	ROM_REGION( 0x200000, "user2", ROMREGION_ERASEFF )
+	ROM_REGION( 0x200000, "cart1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x200000, "cart2", ROMREGION_ERASEFF )
 ROM_END
 
 /*    YEAR  NAME     PARENT COMPAT MACHINE  INPUT    INIT    COMPANY  FULLNAME */

@@ -87,6 +87,7 @@ static void check_interrupts( running_machine *machine )
 
 static TIMER_CALLBACK(dmac_dma_proc)
 {
+	amiga_state *state = machine->driver_data<amiga_state>();
 	while( dmac_data.wtc > 0 )
 	{
 		UINT16	dat16;
@@ -103,7 +104,7 @@ static TIMER_CALLBACK(dmac_dma_proc)
 		dat16 <<= 8;
 		dat16 |= dat8;
 
-		amiga_chip_ram_w(dmac_data.acr, dat16);
+		(*state->chip_ram_w)(state, dmac_data.acr, dat16);
 
 		dmac_data.acr += 2;
 		dmac_data.wtc--;
@@ -388,14 +389,14 @@ static WRITE16_HANDLER( amiga_dmac_w )
 
 static void	dmac_install(running_machine *machine, offs_t base)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_read16_handler(space, base, base + 0xFFFF, 0, 0, amiga_dmac_r);
 	memory_install_write16_handler(space, base, base + 0xFFFF, 0, 0, amiga_dmac_w);
 }
 
 static void	dmac_uninstall(running_machine *machine, offs_t base)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_unmap_readwrite(space, base, base + 0xFFFF, 0, 0);
 }
 
@@ -451,6 +452,7 @@ static emu_timer *tp6525_delayed_timer;
 
 static TIMER_CALLBACK(tp6525_delayed_irq)
 {
+	amiga_state *state = machine->driver_data<amiga_state>();
 	(void)param;
 
 	if ( (CUSTOM_REG(REG_INTREQ) & INTENA_PORTS) == 0 )
@@ -465,6 +467,7 @@ static TIMER_CALLBACK(tp6525_delayed_irq)
 
 void amigacd_tpi6525_irq(running_device *device, int level)
 {
+	amiga_state *state = device->machine->driver_data<amiga_state>();
 	LOG(( "TPI6525 Interrupt: level = %d\n", level ));
 
 	if ( level )

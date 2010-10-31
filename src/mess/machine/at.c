@@ -100,7 +100,7 @@ static void at_speaker_set_input(running_machine *machine, UINT8 data)
 
 static WRITE_LINE_DEVICE_HANDLER( at_pit8254_out0_changed )
 {
-	at_state *st = (at_state *)device->machine->driver_data;
+	at_state *st = device->machine->driver_data<at_state>();
 	if (st->pic8259_master)
 	{
 		pic8259_ir0_w(st->pic8259_master, state);
@@ -143,7 +143,7 @@ static void at_set_gate_a20(running_machine *machine, int a20)
 
 static void at_set_irq_line(running_machine *machine,int irq, int state)
 {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 
 	switch (irq)
 	{
@@ -161,16 +161,15 @@ static void at_set_irq_line(running_machine *machine,int irq, int state)
 
 static void at_set_keyb_int(running_machine *machine, int state)
 {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 	pic8259_ir1_w(st->pic8259_master, state);
 }
 
 
 static void init_at_common(running_machine *machine, const struct kbdc8042_interface *at8042)
 {
-	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_AT, at_set_keyb_int, at_set_irq_line);
-	mc146818_init(machine, MC146818_STANDARD);
 	soundblaster_config(&soundblaster);
 	kbdc8042_init(machine, at8042);
 
@@ -187,7 +186,7 @@ static void init_at_common(running_machine *machine, const struct kbdc8042_inter
 
 static void at_keyboard_interrupt(running_machine *machine, int state)
 {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 	pic8259_ir1_w(st->pic8259_master, state);
 }
 
@@ -255,7 +254,7 @@ WRITE8_HANDLER(at_page8_w)
 
 static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 {
-	at_state *st = (at_state *)device->machine->driver_data;
+	at_state *st = device->machine->driver_data<at_state>();
 	cpu_set_input_line(st->maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
@@ -268,7 +267,7 @@ static READ8_HANDLER( pc_dma_read_byte )
 	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
-	result = memory_read_byte(space, page_offset + offset);
+	result = space->read_byte(page_offset + offset);
 	return result;
 }
 
@@ -278,7 +277,7 @@ static WRITE8_HANDLER( pc_dma_write_byte )
 	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
-	memory_write_byte(space, page_offset + offset, data);
+	space->write_byte(page_offset + offset, data);
 }
 
 
@@ -318,7 +317,7 @@ static WRITE_LINE_DEVICE_HANDLER( pc_dack3_w ) { set_dma_channel(device, 3, stat
 
 I8237_INTERFACE( at_dma8237_1_config )
 {
-	DEVCB_LINE(pc_dma_hrq_changed),
+	DEVCB_DEVICE_LINE("dma8237_2",i8237_dreq0_w),
 	DEVCB_LINE(at_dma8237_out_eop),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
@@ -350,13 +349,13 @@ I8237_INTERFACE( at_dma8237_2_config )
 /* called when a interrupt is set/cleared from com hardware */
 static INS8250_INTERRUPT( at_com_interrupt_1 )
 {
-	at_state *st = (at_state *)device->machine->driver_data;
+	at_state *st = device->machine->driver_data<at_state>();
 	pic8259_ir4_w(st->pic8259_master, state);
 }
 
 static INS8250_INTERRUPT( at_com_interrupt_2 )
 {
-	at_state *st = (at_state *)device->machine->driver_data;
+	at_state *st = device->machine->driver_data<at_state>();
 	pic8259_ir3_w(st->pic8259_master, state);
 }
 
@@ -419,7 +418,7 @@ const ins8250_interface ibm5170_com_interface[4]=
 
 static void at_fdc_interrupt(running_machine *machine, int state)
 {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 	pic8259_ir6_w(st->pic8259_master, state);
 //if ( messram_get_ptr(machine->device("messram"))[0x0490] == 0x74 )
 //  messram_get_ptr(machine->device("messram"))[0x0490] = 0x54;
@@ -428,7 +427,7 @@ static void at_fdc_interrupt(running_machine *machine, int state)
 
 static void at_fdc_dma_drq(running_machine *machine, int state, int read_)
 {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 	i8237_dreq2_w( st->dma8237_1, state);
 }
 
@@ -447,7 +446,7 @@ static const struct pc_fdc_interface fdc_interface =
 
 
 static int at_get_out2(running_machine *machine) {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 	return pit8253_get_output(st->pit8254, 2 );
 }
 
@@ -468,7 +467,7 @@ static int at_get_out2(running_machine *machine) {
  *  3 - P13 - Undefined
  *  4 - P14 - External RAM ( 1 = Enable external RAM, 0 = Disable external RAM )
  *  5 - P15 - Manufacturing setting ( 1 = Setting enabled, 0 = Setting disabled )
- *  6 - P16 - Display type switch ( 1 = Color display, 0 = Monochrome display )
+ *  6 - P16 - Display type switch ( 1 = Monochrome display, 0 = Color display )
  *  7 - P17 - Keyboard inhibit switch ( 1 = Keyboard enabled, 0 = Keyboard inhibited )
  *
  *  Port 2 (Output port)
@@ -498,7 +497,7 @@ static struct {
 static READ8_HANDLER( at_kbdc8042_p1_r )
 {
 	//logerror("%04x: reading P1\n", cpu_get_pc(space->machine->device("maincpu")) );
-	return 0xFF;
+	return 0xbf;
 }
 
 
@@ -510,7 +509,7 @@ static READ8_HANDLER( at_kbdc8042_p2_r )
 
 static WRITE8_HANDLER( at_kbdc8042_p2_w )
 {
-	at_state *st = (at_state *)space->machine->driver_data;
+	at_state *st = space->machine->driver_data<at_state>();
 	running_device *keyboard = space->machine->device("keyboard");
 
 	//logerror("%04x: writing $%02x to P2\n", cpu_get_pc(space->machine->device("maincpu")), data );
@@ -563,16 +562,16 @@ static ADDRESS_MAP_START( kbdc8042_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-MACHINE_DRIVER_START( at_kbdc8042 )
+MACHINE_CONFIG_FRAGMENT( at_kbdc8042 )
 	MDRV_CPU_ADD("kbdc8042", I8042, XTAL_12MHz )
 	MDRV_CPU_IO_MAP( kbdc8042_io)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 READ8_HANDLER(at_kbdc8042_r)
 {
     UINT8 data = 0;
-	at_state *st = (at_state *)space->machine->driver_data;
+	at_state *st = space->machine->driver_data<at_state>();
 
 	switch ( offset )
 	{
@@ -618,7 +617,7 @@ READ8_HANDLER(at_kbdc8042_r)
 
 WRITE8_HANDLER(at_kbdc8042_w)
 {
-	at_state *st = (at_state *)space->machine->driver_data;
+	at_state *st = space->machine->driver_data<at_state>();
 	if (LOG_KBDC)
 		logerror("kbdc8042_8_w(): ofset=%d data=0x%02x\n", offset, data);
 
@@ -742,24 +741,24 @@ DRIVER_INIT( ps2m30286 )
 
 static IRQ_CALLBACK(at_irq_callback)
 {
-	at_state *st = (at_state *)device->machine->driver_data;
+	at_state *st = device->machine->driver_data<at_state>();
 	return pic8259_acknowledge( st->pic8259_master);
 }
 
 static void pc_set_irq_line(running_machine *machine,int irq, int state)
 {
-	pc_state *st = (pc_state*)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();;
 
 	switch (irq)
 	{
-	case 0: pic8259_ir0_w(st->pic8259, state); break;
-	case 1: pic8259_ir1_w(st->pic8259, state); break;
-	case 2: pic8259_ir2_w(st->pic8259, state); break;
-	case 3: pic8259_ir3_w(st->pic8259, state); break;
-	case 4: pic8259_ir4_w(st->pic8259, state); break;
-	case 5: pic8259_ir5_w(st->pic8259, state); break;
-	case 6: pic8259_ir6_w(st->pic8259, state); break;
-	case 7: pic8259_ir7_w(st->pic8259, state); break;
+	case 0: pic8259_ir0_w(st->pic8259_master, state); break;
+	case 1: pic8259_ir1_w(st->pic8259_master, state); break;
+	case 2: pic8259_ir2_w(st->pic8259_master, state); break;
+	case 3: pic8259_ir3_w(st->pic8259_master, state); break;
+	case 4: pic8259_ir4_w(st->pic8259_master, state); break;
+	case 5: pic8259_ir5_w(st->pic8259_master, state); break;
+	case 6: pic8259_ir6_w(st->pic8259_master, state); break;
+	case 7: pic8259_ir7_w(st->pic8259_master, state); break;
 	}
 }
 
@@ -775,7 +774,7 @@ MACHINE_START( at )
 
 MACHINE_RESET( at )
 {
-	at_state *st = (at_state *)machine->driver_data;
+	at_state *st = machine->driver_data<at_state>();
 	st->maincpu = machine->device("maincpu");
 	st->pic8259_master = machine->device("pic8259_master");
 	st->pic8259_slave = machine->device("pic8259_slave");

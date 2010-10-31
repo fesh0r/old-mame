@@ -9,12 +9,11 @@
 #define Z80PIO2_TAG		"z80pio2"
 #define CASSETTE_TAG	"cassette"
 
-class amu880_state
+class amu880_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, amu880_state(machine)); }
-
-	amu880_state(running_machine &machine) { }
+	amu880_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	int key_y;

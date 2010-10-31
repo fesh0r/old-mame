@@ -20,12 +20,11 @@
 #define CASSETTE_TAG	"cassette"
 #define CENTRONICS_TAG	"centronics"
 
-class mtx_state
+class mtx_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mtx_state(machine)); }
-
-	mtx_state(running_machine &machine) { }
+	mtx_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	UINT8 key_sense;

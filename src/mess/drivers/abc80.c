@@ -84,7 +84,7 @@ Notes:
 #include "machine/z80pio.h"
 #include "sound/sn76477.h"
 #include "machine/abcbus.h"
-#include "machine/conkort.h"
+#include "machine/abc830.h"
 
 /* Devices */
 #include "devices/flopdrv.h"
@@ -167,14 +167,14 @@ static const UINT8 abc80_keycodes[7*4][8] =
 
 static TIMER_CALLBACK( keyboard_data_clear )
 {
-	abc80_state *state = (abc80_state *)machine->driver_data;
+	abc80_state *state = machine->driver_data<abc80_state>();
 
 	state->key_data = 0;
 }
 
 static void abc80_keyboard_scan(running_machine *machine)
 {
-	abc80_state *state = (abc80_state *)machine->driver_data;
+	abc80_state *state = machine->driver_data<abc80_state>();
 
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
 	int table = 0, row, col;
@@ -244,8 +244,7 @@ static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7400, 0x77ff) AM_RAM AM_BASE_MEMBER(abc80_state, video_80_ram)
 	AM_RANGE(0x7800, 0x7bff) AM_ROM
 	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE_MEMBER(abc80_state, video_ram)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank1")
-	AM_RANGE(0xc000, 0xffff) AM_RAM
+	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
@@ -344,6 +343,8 @@ static INPUT_PORTS_START( abc80 )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
+
+	PORT_INCLUDE(luxor_55_10828)
 INPUT_PORTS_END
 
 /* Sound Interface */
@@ -379,7 +380,7 @@ static INTERRUPT_GEN( abc80_nmi_interrupt )
 
 static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 {
-	abc80_state *state = (abc80_state *)timer.machine->driver_data;
+	abc80_state *state = timer.machine->driver_data<abc80_state>();
 
 	/* toggle ASTB every other video line */
 	state->z80pio_astb = !state->z80pio_astb;
@@ -387,7 +388,7 @@ static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 	z80pio_astb_w(state->z80pio, state->z80pio_astb);
 }
 
-static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
+static READ8_DEVICE_HANDLER( pio_pa_r )
 {
 	/*
 
@@ -406,12 +407,12 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
 
     */
 
-	abc80_state *state = (abc80_state *)device->machine->driver_data;
+	abc80_state *state = device->machine->driver_data<abc80_state>();
 
 	return (state->key_strobe << 7) | state->key_data;
 };
 
-static READ8_DEVICE_HANDLER( abc80_pio_port_b_r )
+static READ8_DEVICE_HANDLER( pio_pb_r )
 {
 	/*
 
@@ -428,15 +429,13 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_b_r )
 
     */
 
-	abc80_state *state = (abc80_state *)device->machine->driver_data;
-
 	/* cassette data */
-	UINT8 data = (cassette_input(state->cassette) > +1.0) ? 0x80 : 0;
+	UINT8 data = (cassette_input(device) > +1.0) << 7;
 
 	return data;
 };
 
-static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
+static WRITE8_DEVICE_HANDLER( pio_pb_w )
 {
 	/*
 
@@ -453,24 +452,22 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 
     */
 
-	abc80_state *state = (abc80_state *)device->machine->driver_data;
-
 	/* cassette motor */
-	cassette_change_state(state->cassette, BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(device, BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 	/* cassette data */
-	cassette_output(state->cassette, BIT(data, 6) ? -1.0 : +1.0);
+	cassette_output(device, BIT(data, 6) ? -1.0 : +1.0);
 };
 
-static Z80PIO_INTERFACE( abc80_pio_intf )
+static Z80PIO_INTERFACE( pio_intf )
 {
-	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0), /* callback when change interrupt status */
-	DEVCB_HANDLER(abc80_pio_port_a_r),			/* port A read callback */
-	DEVCB_NULL,						/* port A write callback */
-	DEVCB_NULL,						/* portA ready active callback */
-	DEVCB_HANDLER(abc80_pio_port_b_r),			/* port B read callback */
-	DEVCB_HANDLER(abc80_pio_port_b_w),			/* port B write callback */
-	DEVCB_NULL						/* portB ready active callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
+	DEVCB_HANDLER(pio_pa_r),						/* port A read callback */
+	DEVCB_NULL,										/* port A write callback */
+	DEVCB_NULL,										/* portA ready active callback */
+	DEVCB_DEVICE_HANDLER(CASSETTE_TAG, pio_pb_r),	/* port B read callback */
+	DEVCB_DEVICE_HANDLER(CASSETTE_TAG, pio_pb_w),	/* port B write callback */
+	DEVCB_NULL										/* portB ready active callback */
 };
 
 static const z80_daisy_config abc80_daisy_chain[] =
@@ -479,11 +476,21 @@ static const z80_daisy_config abc80_daisy_chain[] =
 	{ NULL }
 };
 
+/* Cassette */
+
+static const cassette_config abc80_cassette_config =
+{
+	cassette_default_formats,
+	NULL,
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
+	NULL
+};
+
 /* ABC BUS */
 
 static ABCBUS_DAISY( abcbus_daisy )
 {
-	{ LUXOR_55_10828_ABCBUS("abc830") },
+	{ LUXOR_55_10828_ABCBUS("luxor_55_10828") },
 	{ NULL }
 };
 
@@ -491,26 +498,16 @@ static ABCBUS_DAISY( abcbus_daisy )
 
 static MACHINE_START( abc80 )
 {
-	abc80_state *state = (abc80_state *)machine->driver_data;
+	abc80_state *state = machine->driver_data<abc80_state>();
 
 	/* configure RAM expansion */
-	memory_configure_bank(machine, "bank1", 0, 1, messram_get_ptr(machine->device("messram")), 0);
-	memory_set_bank(machine, "bank1", 0);
-
-	switch (messram_get_size(machine->device("messram")))
+	if (messram_get_size(machine->device("messram")) == 16*1024)
 	{
-	case 16*1024:
 		memory_unmap_readwrite(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0);
-		break;
-
-	case 32*1024:
-		memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, "bank1");
-		break;
 	}
 
 	/* find devices */
 	state->z80pio = machine->device(Z80PIO_TAG);
-	state->cassette = machine->device(CASSETTE_TAG);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->key_data);
@@ -520,9 +517,7 @@ static MACHINE_START( abc80 )
 
 /* Machine Drivers */
 
-static MACHINE_DRIVER_START( abc80 )
-	MDRV_DRIVER_DATA(abc80_state)
-
+static MACHINE_CONFIG_START( abc80, abc80_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, ABC80_XTAL/2/2)	// 2.9952 MHz
 	MDRV_CPU_PROGRAM_MAP(abc80_map)
@@ -537,14 +532,14 @@ static MACHINE_DRIVER_START( abc80 )
 
 	/* Z80PIO */
 	MDRV_TIMER_ADD_SCANLINE("pio_astb", z80pio_astb_tick, SCREEN_TAG, 0, 1)
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, ABC80_XTAL/2/2, abc80_pio_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, ABC80_XTAL/2/2, pio_intf)
 
 	/* Luxor Conkort 55-10828 */
-	MDRV_ABCBUS_ADD(ABCBUS_TAG, abcbus_daisy)
-	MDRV_LUXOR_55_10828_ADD("abc830")
+	MDRV_ABCBUS_ADD(ABCBUS_TAG, abcbus_daisy, Z80_TAG)
+	MDRV_ABC830_PIO_ADD("luxor_55_10828", ABCBUS_TAG, DRIVE_MPI_51)
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(abc80_video)
+	MDRV_FRAGMENT_ADD(abc80_video)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -556,13 +551,13 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_PRINTER_ADD("printer")
 
 	/* cassette */
-	MDRV_CASSETTE_ADD(CASSETTE_TAG, default_cassette_config)
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, abc80_cassette_config)
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 
@@ -582,49 +577,11 @@ ROM_START( abc80 )
 	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
 	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
 
-	ROM_REGION( 0x10000, "keyboard", 0 )
-	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
+	ROM_REGION( 0x400, "keyboard", 0 ) // probably Keytronic 8048
+	ROM_LOAD( "keyboard.rom", 0x0000, 0x0400, NO_DUMP )
 
 	ROM_REGION( 0xa00, "chargen", 0 )
 	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, BAD_DUMP CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) ) // created by hand
-
-	ROM_REGION( 0x80, "hsync", 0 )
-	ROM_LOAD( "abc80_11.k5", 0x0000, 0x0080, NO_DUMP ) // "64 40029-01" 82S129 256x4 horizontal sync
-
-	ROM_REGION( 0x100, "vsync", 0 )
-	ROM_LOAD( "abc80_21.k2", 0x0000, 0x0100, NO_DUMP ) // "64 40030-01" 82S131 512x4 vertical sync
-
-	ROM_REGION( 0x80, "attr", 0 )
-	ROM_LOAD( "abc80_12.j3", 0x0000, 0x0080, NO_DUMP ) // "64 40056-01" 82S129 256x4 attribute
-
-	ROM_REGION( 0x100, "line", 0 )
-	ROM_LOAD( "abc80_22.k1", 0x0000, 0x0100, NO_DUMP ) // "64 40058-01" 82S131 512x4 chargen 74S263 row address
-
-	ROM_REGION( 0x80, "mmu", 0 )
-	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // "64 40057-01" 82S129 256x4 address decoder
-ROM_END
-
-ROM_START( abc80h )
-	ROM_REGION( 0x10000, Z80_TAG, 0 )
-	ROM_LOAD( "za3508.a2", 0x0000, 0x1000, CRC(e2afbf48) SHA1(9883396edd334835a844dcaa792d29599a8c67b9) )
-	ROM_LOAD( "za3509.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1) )
-	ROM_LOAD( "za3506.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b) )
-	ROM_LOAD( "za3507.a5", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710) )
-	ROM_SYSTEM_BIOS( 0, "default", "No DOS" )
-	ROM_SYSTEM_BIOS( 1, "abcdos", "ABC-DOS" ) // Scandia Metric FD2
-	ROMX_LOAD("abcdos",    0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "abcdosdd", "ABC-DOS DD" ) // ABC 830
-	ROMX_LOAD("abcdosdd",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(3) )
-	ROM_SYSTEM_BIOS( 3, "ufd20", "UFD-DOS v.20" ) // ABC 830
-	ROMX_LOAD("ufddos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(4) )
-	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
-	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
-
-	ROM_REGION( 0x10000, "keyboard", 0 )
-	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
-
-	ROM_REGION( 0xa00, "chargen", 0 )
-	ROM_LOAD( "sn74s262.h2", 0x0000, 0x0a00, NO_DUMP ) // UK charset
 
 	ROM_REGION( 0x80, "hsync", 0 )
 	ROM_LOAD( "abc80_11.k5", 0x0000, 0x0080, NO_DUMP ) // "64 40029-01" 82S129 256x4 horizontal sync
@@ -646,4 +603,3 @@ ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME                    FLAGS */
 COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      "Luxor Datorer AB",					"ABC 80 (Sweden, Finland)",	GAME_SUPPORTS_SAVE )
-COMP( 1978, abc80h, abc80,  0,      abc80,  abc80,  0,      "Budapesti Radiotechnikai Gyar",	"ABC 80 (Hungary)",			GAME_SUPPORTS_SAVE )

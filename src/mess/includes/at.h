@@ -11,12 +11,11 @@
 
 #include "machine/8237dma.h"
 
-class at_state
+class at_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, at_state(machine)); }
-
-	at_state(running_machine &machine) { }
+	at_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	running_device *maincpu;
 	running_device *pic8259_master;
@@ -40,7 +39,7 @@ extern const ins8250_interface ibm5170_com_interface[4];
 READ8_HANDLER( at_page8_r );
 WRITE8_HANDLER( at_page8_w );
 
-MACHINE_DRIVER_EXTERN( at_kbdc8042 );
+MACHINE_CONFIG_EXTERN( at_kbdc8042 );
 
 READ8_HANDLER(at_kbdc8042_r);
 WRITE8_HANDLER(at_kbdc8042_w);

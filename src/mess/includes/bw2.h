@@ -24,12 +24,11 @@ enum {
 	BANK_ROM
 };
 
-class bw2_state
+class bw2_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, bw2_state(machine)); }
-
-	bw2_state(running_machine &machine) { }
+	bw2_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 
 	/* keyboard state */

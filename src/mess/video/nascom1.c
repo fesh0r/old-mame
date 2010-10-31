@@ -11,12 +11,14 @@
 
 VIDEO_UPDATE( nascom1 )
 {
+	nascom1_state *state = screen->machine->driver_data<nascom1_state>();
+	UINT8 *videoram = state->videoram;
 	int	sy, sx;
 
 	for (sx = 0; sx < 48; sx++)
 	{
 		drawgfx_opaque (bitmap, NULL,
-			screen->machine->gfx[0], screen->machine->generic.videoram.u8[0x03ca + sx],
+			screen->machine->gfx[0], videoram[0x03ca + sx],
 			1, 0, 0, sx * 8, 0);
 	}
 
@@ -25,7 +27,7 @@ VIDEO_UPDATE( nascom1 )
 		for (sx = 0; sx < 48; sx++)
 		{
 			drawgfx_opaque (bitmap, NULL,
-				screen->machine->gfx[0], screen->machine->generic.videoram.u8[0x000a + (sy * 64) + sx],
+				screen->machine->gfx[0], videoram[0x000a + (sy * 64) + sx],
 				1, 0, 0, sx * 8, (sy + 1) * 16);
 		}
 	}
@@ -34,12 +36,14 @@ VIDEO_UPDATE( nascom1 )
 
 VIDEO_UPDATE( nascom2 )
 {
+	nascom1_state *state = screen->machine->driver_data<nascom1_state>();
+	UINT8 *videoram = state->videoram;
 	int	sy, sx;
 
 	for (sx = 0; sx < 48; sx++)
 	{
 		drawgfx_opaque (bitmap, NULL,
-			screen->machine->gfx[0], screen->machine->generic.videoram.u8[0x03ca + sx],
+			screen->machine->gfx[0], videoram[0x03ca + sx],
 			1, 0, 0, sx * 8, 0);
 	}
 
@@ -48,7 +52,7 @@ VIDEO_UPDATE( nascom2 )
 		for (sx = 0; sx < 48; sx++)
 		{
 			drawgfx_opaque (bitmap, NULL,
-				screen->machine->gfx[0], screen->machine->generic.videoram.u8[0x000a + (sy * 64) + sx],
+				screen->machine->gfx[0], videoram[0x000a + (sy * 64) + sx],
 				1, 0, 0, sx * 8, (sy + 1) * 14);
 		}
 	}

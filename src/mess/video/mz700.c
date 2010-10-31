@@ -48,8 +48,10 @@ PALETTE_INIT( mz700 )
 
 VIDEO_UPDATE( mz700 )
 {
+	mz_state *state = screen->machine->driver_data<mz_state>();
+	UINT8 *videoram = state->videoram;
 	int offs;
-	mz_state *mz = (mz_state *)screen->machine->driver_data;
+	mz_state *mz = screen->machine->driver_data<mz_state>();
 
 	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
@@ -61,7 +63,7 @@ VIDEO_UPDATE( mz700 )
 		sx = (offs % 40) * 8;
 
 		color = mz->colorram[offs];
-		code = screen->machine->generic.videoram.u8[offs] | (color & 0x80) << 1;
+		code = videoram[offs] | (color & 0x80) << 1;
 
 		drawgfx_opaque(bitmap, cliprect, screen->machine->gfx[0], code, color, 0, 0, sx, sy);
 	}
@@ -76,13 +78,15 @@ VIDEO_UPDATE( mz700 )
 
 VIDEO_START( mz800 )
 {
-	mz_state *mz = (mz_state *)machine->driver_data;
+	mz_state *mz = machine->driver_data<mz_state>();
 	gfx_element_set_source(machine->gfx[0], mz->cgram);
 }
 
 VIDEO_UPDATE( mz800 )
 {
-	mz_state *mz = (mz_state *)screen->machine->driver_data;
+	mz_state *state = screen->machine->driver_data<mz_state>();
+	UINT8 *videoram = state->videoram;
+	mz_state *mz = screen->machine->driver_data<mz_state>();
 
 	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
@@ -97,7 +101,7 @@ VIDEO_UPDATE( mz800 )
 		else
 		{
 			int x, y;
-			UINT8 *start_addr = screen->machine->generic.videoram.u8;
+			UINT8 *start_addr = videoram;
 
 			for (x = 0; x < 40; x++)
 			{
@@ -125,7 +129,7 @@ VIDEO_UPDATE( mz800 )
 
 WRITE8_HANDLER( mz800_cgram_w )
 {
-	mz_state *mz = (mz_state *)space->machine->driver_data;
+	mz_state *mz = space->machine->driver_data<mz_state>();
 	mz->cgram[offset] = data;
 
 	gfx_element_mark_dirty(space->machine->gfx[0], offset/8);

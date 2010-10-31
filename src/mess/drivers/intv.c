@@ -355,7 +355,7 @@ static ADDRESS_MAP_START( intv2_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x3fff) AM_READWRITE( intvkbd_dualport8_lsb_r, intvkbd_dualport8_lsb_w )	/* Dual-port RAM */
 	AM_RANGE( 0x4000, 0x7fff) AM_READWRITE( intvkbd_dualport8_msb_r, intvkbd_dualport8_msb_w )	/* Dual-port RAM */
 	AM_RANGE( 0xb7f8, 0xb7ff) AM_RAM	/* ??? */
-	AM_RANGE( 0xb800, 0xbfff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* Text Display */
+	AM_RANGE( 0xb800, 0xbfff) AM_RAM AM_BASE_MEMBER(intv_state, videoram) /* Text Display */
 	AM_RANGE( 0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -370,10 +370,10 @@ static TIMER_CALLBACK(intv_interrupt2_complete)
 static INTERRUPT_GEN( intv_interrupt2 )
 {
 	cputag_set_input_line(device->machine, "keyboard", 0, ASSERT_LINE);
-	timer_set(device->machine, cputag_clocks_to_attotime(device->machine, "keyboard", 100), NULL, 0, intv_interrupt2_complete);
+	timer_set(device->machine, device->machine->device<cpu_device>("keyboard")->cycles_to_attotime(100), NULL, 0, intv_interrupt2_complete);
 }
 
-static MACHINE_DRIVER_START( intv )
+static MACHINE_CONFIG_START( intv, intv_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", CP1610, XTAL_3_579545MHz/4)        /* Colorburst/4 */
 	MDRV_CPU_PROGRAM_MAP(intv_mem)
@@ -406,11 +406,10 @@ static MACHINE_DRIVER_START( intv )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
 	MDRV_CARTSLOT_LOAD(intv_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( intvkbd )
-	MDRV_IMPORT_FROM( intv )
+static MACHINE_CONFIG_DERIVED( intvkbd, intv )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(intvkbd_mem)
 
@@ -434,7 +433,7 @@ static MACHINE_DRIVER_START( intvkbd )
 	MDRV_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(intvkbd_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(intv)
 	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)

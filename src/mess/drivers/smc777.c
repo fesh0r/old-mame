@@ -7,8 +7,8 @@
     TODO:
     - no documentation, the entire driver is just a bunch of educated
       guesses ...
-	- BEEP pitch is horrible
-	- fix fdc issue with 1dd disks (irq related?)
+    - BEEP pitch is horrible
+    - fix fdc issue with 1dd disks (irq related?)
 
 ****************************************************************************/
 
@@ -244,23 +244,39 @@ static WRITE8_HANDLER( smc777_fbuf_w )
 static UINT8 fdc_irq_flag;
 static UINT8 fdc_drq_flag;
 
-static READ8_HANDLER( smc777_fdc_r )
+static void check_floppy_inserted(running_machine *machine)
+{
+	int f_num;
+	floppy_image *floppy;
+
+	/* check if a floppy is there, automatically disconnect the ready line if so (HW doesn't control the ready line) */
+	/* FIXME: floppy drive 1 doesn't work? */
+	for(f_num=0;f_num<2;f_num++)
+	{
+		floppy = flopimg_get_image(floppy_get_device(machine, f_num));
+		floppy_mon_w(floppy_get_device(machine, f_num), (floppy != NULL) ? 0 : 1);
+		floppy_drive_set_ready_state(floppy_get_device(machine, f_num), (floppy != NULL) ? 1 : 0,0);
+	}
+}
+
+static READ8_HANDLER( smc777_fdc1_r )
 {
 	running_device* dev = space->machine->device("fdc");
-	//UINT8 ret = 0;
 
-	switch(offset+0x30)
+	check_floppy_inserted(space->machine);
+
+	switch(offset)
 	{
-		case 0x30:
+		case 0x00:
 			return wd17xx_status_r(dev,offset);
-		case 0x31:
+		case 0x01:
 			return wd17xx_track_r(dev,offset);
-		case 0x32:
+		case 0x02:
 			return wd17xx_sector_r(dev,offset);
-		case 0x33:
+		case 0x03:
 			return wd17xx_data_r(dev,offset);
-		case 0x34: //irq / drq status
-			popmessage("%02x %02x\n",fdc_irq_flag,fdc_drq_flag);
+		case 0x04: //irq / drq status
+			//popmessage("%02x %02x\n",fdc_irq_flag,fdc_drq_flag);
 
 			return (fdc_irq_flag ? 0x80 : 0x00) | (fdc_drq_flag ? 0x00 : 0x40);
 	}
@@ -268,31 +284,31 @@ static READ8_HANDLER( smc777_fdc_r )
 	return 0x00;
 }
 
-static WRITE8_HANDLER( smc777_fdc_w )
+static WRITE8_HANDLER( smc777_fdc1_w )
 {
 	running_device* dev = space->machine->device("fdc");
 
-	switch(offset+0x30)
+	check_floppy_inserted(space->machine);
+
+	switch(offset)
 	{
-		case 0x30:
+		case 0x00:
 			wd17xx_command_w(dev,offset,data);
 			break;
-		case 0x31:
+		case 0x01:
 			wd17xx_track_w(dev,offset,data);
 			break;
-		case 0x32:
+		case 0x02:
 			wd17xx_sector_w(dev,offset,data);
 			break;
-		case 0x33:
+		case 0x03:
 			wd17xx_data_w(dev,offset,data);
 			break;
-		case 0x34:
-		//	wd17xx_set_drive(dev,data & 3);
-			/* TODO: understand the conditions of this */
-			floppy_mon_w(floppy_get_device(space->machine, 0), !BIT(data, 7));
-			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1,0);
-		//	wd17xx_set_side(dev,(data & 0x10)>>4);
-			if(data)
+		case 0x04:
+			// ---- xxxx select floppy drive (yes, 15 of them, A to P)
+			wd17xx_set_drive(dev,data & 0x01);
+			//  wd17xx_set_side(dev,(data & 0x10)>>4);
+			if(data & 0xf0)
 			printf("%02x\n",data);
 			break;
 	}
@@ -301,7 +317,7 @@ static WRITE8_HANDLER( smc777_fdc_w )
 static WRITE_LINE_DEVICE_HANDLER( smc777_fdc_intrq_w )
 {
 	fdc_irq_flag = state;
-//	cputag_set_input_line(device->machine, "maincpu", 0, (state) ? ASSERT_LINE : CLEAR_LINE);
+//  cputag_set_input_line(device->machine, "maincpu", 0, (state) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( smc777_fdc_drq_w )
@@ -319,7 +335,7 @@ static READ8_HANDLER( key_r )
 
 	keyb_press_flag = 0;
 	res = keyb_press;
-//	keyb_press = 0xff;
+//  keyb_press = 0xff;
 
 	return res;
 }
@@ -339,9 +355,9 @@ static READ8_HANDLER( system_input_r )
 static WRITE8_HANDLER( system_output_w )
 {
 	/*
-	---x --- beep
-	all the rest is unknown at current time
-	*/
+    ---x --- beep
+    all the rest is unknown at current time
+    */
 	system_data = data;
 	beep_set_state(space->machine->device("beeper"),data & 0x10);
 }
@@ -373,9 +389,9 @@ static READ8_HANDLER( display_reg_r )
 static WRITE8_HANDLER( display_reg_w )
 {
 	/*
-	x--- ---- width 80 / 40 switch (0 = 640 x 200 1 = 320 x 200)
-	---- -x-- mode select?
-	*/
+    x--- ---- width 80 / 40 switch (0 = 640 x 200 1 = 320 x 200)
+    ---- -x-- mode select?
+    */
 
 	{
 		if((display_reg & 0x80) != (data & 0x80))
@@ -410,33 +426,33 @@ static ADDRESS_MAP_START( smc777_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x18, 0x19) AM_WRITE(smc777_6845_w)
 	AM_RANGE(0x1a, 0x1b) AM_READ(key_r) AM_WRITENOP//keyboard data
 	AM_RANGE(0x1c, 0x1c) AM_READWRITE(system_input_r,system_output_w) //status and control data / Printer strobe
-//	AM_RANGE(0x1d, 0x1d) AM_WRITENOP //status and control data / Printer status / strobe
-//	AM_RANGE(0x1e, 0x1f) AM_WRITENOP //RS232C irq control
+//  AM_RANGE(0x1d, 0x1d) AM_WRITENOP //status and control data / Printer status / strobe
+//  AM_RANGE(0x1e, 0x1f) AM_WRITENOP //RS232C irq control
 	AM_RANGE(0x20, 0x20) AM_READWRITE(display_reg_r,display_reg_w) //display mode switching
-//	AM_RANGE(0x21, 0x21) AM_WRITENOP //60 Hz irq control
-//	AM_RANGE(0x22, 0x22) AM_WRITENOP //printer output data
+//  AM_RANGE(0x21, 0x21) AM_WRITENOP //60 Hz irq control
+//  AM_RANGE(0x22, 0x22) AM_WRITENOP //printer output data
 	AM_RANGE(0x23, 0x23) AM_WRITE(border_col_w) //border area control
-//	AM_RANGE(0x24, 0x24) AM_WRITENOP //Timer write / specify address (RTC)
-//	AM_RANGE(0x25, 0x25) AM_READNOP  //Timer read (RTC)
-//	AM_RANGE(0x26, 0x26) AM_WRITENOP //RS232C RX / TX
-//	AM_RANGE(0x27, 0x27) AM_WRITENOP //RS232C Mode / Command / Status
+//  AM_RANGE(0x24, 0x24) AM_WRITENOP //Timer write / specify address (RTC)
+//  AM_RANGE(0x25, 0x25) AM_READNOP  //Timer read (RTC)
+//  AM_RANGE(0x26, 0x26) AM_WRITENOP //RS232C RX / TX
+//  AM_RANGE(0x27, 0x27) AM_WRITENOP //RS232C Mode / Command / Status
 
-//	AM_RANGE(0x28, 0x2c) AM_NOP //fdc 2, MB8876 -> FD1791
-//	AM_RANGE(0x2d, 0x2f) AM_NOP //rs-232c no. 2
-	AM_RANGE(0x30, 0x34) AM_READWRITE(smc777_fdc_r,smc777_fdc_w) //fdc 1, MB8876 -> FD1791
-//	AM_RANGE(0x35, 0x37) AM_NOP //rs-232c no. 3
-//	AM_RANGE(0x38, 0x3b) AM_NOP //cache disk unit
-//	AM_RANGE(0x3c, 0x3d) AM_NOP //RGB Superimposer
-//	AM_RANGE(0x40, 0x47) AM_NOP //IEEE-488 interface unit
-//	AM_RANGE(0x48, 0x50) AM_NOP //HDD (Winchester)
+//  AM_RANGE(0x28, 0x2c) AM_READWRITE(smc777_fdc_r,smc777_fdc_w) //fdc 2, MB8876 -> FD1791
+//  AM_RANGE(0x2d, 0x2f) AM_NOP //rs-232c no. 2
+	AM_RANGE(0x30, 0x34) AM_READWRITE(smc777_fdc1_r,smc777_fdc1_w) //fdc 1, MB8876 -> FD1791
+//  AM_RANGE(0x35, 0x37) AM_NOP //rs-232c no. 3
+//  AM_RANGE(0x38, 0x3b) AM_NOP //cache disk unit
+//  AM_RANGE(0x3c, 0x3d) AM_NOP //RGB Superimposer
+//  AM_RANGE(0x40, 0x47) AM_NOP //IEEE-488 interface unit
+//  AM_RANGE(0x48, 0x50) AM_NOP //HDD (Winchester)
 	AM_RANGE(0x51, 0x51) AM_READ(unk_r)
 	AM_RANGE(0x52, 0x52) AM_WRITE(smc777_ramdac_w)
-//	AM_RANGE(0x54, 0x59) AM_NOP //VTR Controller
+//  AM_RANGE(0x54, 0x59) AM_NOP //VTR Controller
 	AM_RANGE(0x53, 0x53) AM_DEVWRITE("sn1", sn76496_w) //not in the datasheet ... almost certainly SMC-777 specific
-//	AM_RANGE(0x5a, 0x5b) AM_WRITENOP //RAM banking
-//	AM_RANGE(0x70, 0x70) AM_NOP //Auto Start ROM
-//	AM_RANGE(0x74, 0x74) AM_NOP //IEEE-488 ROM
-//	AM_RANGE(0x75, 0x75) AM_NOP //VTR Controller ROM
+//  AM_RANGE(0x5a, 0x5b) AM_WRITENOP //RAM banking
+//  AM_RANGE(0x70, 0x70) AM_NOP //Auto Start ROM
+//  AM_RANGE(0x74, 0x74) AM_NOP //IEEE-488 ROM
+//  AM_RANGE(0x75, 0x75) AM_NOP //VTR Controller ROM
 	AM_RANGE(0x80, 0xff) AM_READWRITE(smc777_fbuf_r, smc777_fbuf_w) //GRAM
 ADDRESS_MAP_END
 
@@ -564,20 +580,20 @@ static TIMER_CALLBACK( keyboard_callback )
 			if((input_port_read(machine,portnames[port_i])>>i) & 1)
 			{
 				//key_flag = 1;
-//				if(keymod & 0x02)  // shift not pressed
-//				{
-//					if(scancode >= 0x41 && scancode < 0x5a)
-//						scancode += 0x20;  // lowercase
-//				}
-//				else
-//				{
-//					if(scancode >= 0x31 && scancode < 0x3a)
-//						scancode -= 0x10;
-//					if(scancode == 0x30)
-//					{
-//						scancode = 0x3d;
-//					}
-//				}
+//              if(keymod & 0x02)  // shift not pressed
+//              {
+//                  if(scancode >= 0x41 && scancode < 0x5a)
+//                      scancode += 0x20;  // lowercase
+//              }
+//              else
+//              {
+//                  if(scancode >= 0x31 && scancode < 0x3a)
+//                      scancode -= 0x10;
+//                  if(scancode == 0x30)
+//                  {
+//                      scancode = 0x3d;
+//                  }
+//              }
 				keyb_press = scancode;
 				keyb_press_flag = 1;
 				return;
@@ -683,7 +699,7 @@ static const floppy_config smc777_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( smc777 )
+static MACHINE_CONFIG_START( smc777, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz) //4,028 Mhz!
     MDRV_CPU_PROGRAM_MAP(smc777_mem)
@@ -718,14 +734,17 @@ static MACHINE_DRIVER_START( smc777 )
 
 	MDRV_SOUND_ADD("beeper", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( smc777 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 
     ROM_REGION( 0x10000, "bios", ROMREGION_ERASEFF )
-	ROM_LOAD( "smcrom.dat", 0x0000, 0x4000, CRC(b2520d31) SHA1(3c24b742c38bbaac85c0409652ba36e20f4687a1))
+	ROM_SYSTEM_BIOS(0, "1st", "1st rev.")
+	ROMX_LOAD( "smcrom.dat", 0x0000, 0x4000, CRC(b2520d31) SHA1(3c24b742c38bbaac85c0409652ba36e20f4687a1), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "2nd", "2nd rev.")
+	ROMX_LOAD( "smcrom.v2",  0x0000, 0x4000, CRC(c1494b8f) SHA1(a7396f5c292f11639ffbf0b909e8473c5aa63518), ROM_BIOS(2))
 
     ROM_REGION( 0x800, "vram", ROMREGION_ERASE00 )
 
@@ -739,5 +758,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1983, smc777,  0,       0, 	smc777, 	smc777, 	 0,  "Sony",   "SMC-777",		GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1983, smc777,  0,       0,	smc777, 	smc777, 	 0,  "Sony",   "SMC-777",		GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 

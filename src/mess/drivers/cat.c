@@ -11,12 +11,11 @@
 #include "cpu/m68000/m68000.h"
 #include "machine/68681.h"
 
-class cat_state
+class cat_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, cat_state(machine)); }
-
-	cat_state(running_machine &machine) { }
+	cat_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT16 *video_ram;
 
@@ -31,7 +30,7 @@ public:
 
 static WRITE16_HANDLER( cat_video_status_w )
 {
-	cat_state *state = (cat_state *)space->machine->driver_data;
+	cat_state *state = space->machine->driver_data<cat_state>();
 
 	state->video_enable = BIT( data, 3 );
 }
@@ -56,7 +55,7 @@ static READ16_HANDLER( cat_battery_r )
 }
 static WRITE16_HANDLER( cat_printer_w )
 {
-	cat_state *state = (cat_state *)space->machine->driver_data;
+	cat_state *state = space->machine->driver_data<cat_state>();
 
 	state->pr_cont = data;
 }
@@ -70,7 +69,7 @@ static WRITE16_HANDLER( cat_floppy_w )
 
 static READ16_HANDLER( cat_keyboard_r )
 {
-	cat_state *state = (cat_state *)space->machine->driver_data;
+	cat_state *state = space->machine->driver_data<cat_state>();
 	UINT16 retVal = 0;
 	// Read country code
 	if (state->pr_cont == 0x0900)
@@ -97,7 +96,7 @@ static READ16_HANDLER( cat_keyboard_r )
 }
 static WRITE16_HANDLER( cat_keyboard_w )
 {
-	cat_state *state = (cat_state *)space->machine->driver_data;
+	cat_state *state = space->machine->driver_data<cat_state>();
 
 	state->keyboard_line = data >> 8;
 }
@@ -269,7 +268,7 @@ static IRQ_CALLBACK(cat_int_ack)
 
 static MACHINE_START(cat)
 {
-	cat_state *state = (cat_state *)machine->driver_data;
+	cat_state *state = machine->driver_data<cat_state>();
 
 	state->duart_inp = 0x0e;
 	state->keyboard_timer = timer_alloc(machine, keyboard_callback, NULL);
@@ -277,7 +276,7 @@ static MACHINE_START(cat)
 
 static MACHINE_RESET(cat)
 {
-	cat_state *state = (cat_state *)machine->driver_data;
+	cat_state *state = machine->driver_data<cat_state>();
 	cpu_set_irq_callback(machine->device("maincpu"), cat_int_ack);
 	timer_adjust_periodic(state->keyboard_timer, attotime_zero, 0, ATTOTIME_IN_HZ(120));
 }
@@ -288,7 +287,7 @@ static VIDEO_START( cat )
 
 static VIDEO_UPDATE( cat )
 {
-	cat_state *state = (cat_state *)screen->machine->driver_data;
+	cat_state *state = screen->machine->driver_data<cat_state>();
 	UINT16 code;
 	int y, x, b;
 
@@ -316,7 +315,7 @@ static VIDEO_UPDATE( cat )
 
 static TIMER_CALLBACK( swyft_reset )
 {
-	memset(memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe2341), 0xff, 1);
+	memset(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->get_read_ptr(0xe2341), 0xff, 1);
 }
 
 static MACHINE_START(swyft)
@@ -334,7 +333,7 @@ static VIDEO_START( swyft )
 
 static VIDEO_UPDATE( swyft )
 {
-	cat_state *state = (cat_state *)screen->machine->driver_data;
+	cat_state *state = screen->machine->driver_data<cat_state>();
 	UINT16 code;
 	int y, x, b;
 
@@ -365,7 +364,7 @@ static void duart_tx(running_device *device, int channel, UINT8 data)
 
 static UINT8 duart_input(running_device *device)
 {
-	cat_state *state = (cat_state *)device->machine->driver_data;
+	cat_state *state = device->machine->driver_data<cat_state>();
 
 	if (state->duart_inp != 0)
 	{
@@ -389,7 +388,7 @@ static const duart68681_config cat_duart68681_config =
 
 static NVRAM_HANDLER( cat )
 {
-	cat_state *state = (cat_state *)machine->driver_data;
+	cat_state *state = machine->driver_data<cat_state>();
 
 	if (read_or_write)
 	{
@@ -404,9 +403,7 @@ static NVRAM_HANDLER( cat )
 	}
 }
 
-static MACHINE_DRIVER_START( cat )
-
-	MDRV_DRIVER_DATA( cat_state )
+static MACHINE_CONFIG_START( cat, cat_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",M68000, XTAL_5MHz)
@@ -431,11 +428,9 @@ static MACHINE_DRIVER_START( cat )
 	MDRV_DUART68681_ADD( "duart68681", XTAL_5MHz, cat_duart68681_config )
 
 	MDRV_NVRAM_HANDLER( cat )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( swyft )
-
-	MDRV_DRIVER_DATA( cat_state )
+static MACHINE_CONFIG_START( swyft, cat_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",M68000, XTAL_5MHz)
@@ -456,7 +451,7 @@ static MACHINE_DRIVER_START( swyft )
 
 	MDRV_VIDEO_START(swyft)
 	MDRV_VIDEO_UPDATE(swyft)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( swyft )
@@ -479,5 +474,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME  PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1985, swyft,0,       0,		swyft,		swyft,	 0, 	"Information Applicance Inc.",   "Swyft",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1985, swyft,0,       0,		swyft,		swyft,	 0, 	"Information Applicance Inc",   "Swyft",		GAME_NOT_WORKING | GAME_NO_SOUND)
 COMP( 1987, cat,  swyft,   0,		cat,		cat,	 0, 	"Canon",   "Cat",		GAME_NOT_WORKING | GAME_NO_SOUND)

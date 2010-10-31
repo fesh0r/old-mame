@@ -516,7 +516,7 @@ static const floppy_config cgenie_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( cgenie_common )
+static MACHINE_CONFIG_START( cgenie_common, cgenie_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_17_73447MHz/8)        /* 2,2168 MHz */
 	MDRV_CPU_PROGRAM_MAP(cgenie_mem)
@@ -564,19 +564,17 @@ static MACHINE_DRIVER_START( cgenie_common )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( cgenie )
-	MDRV_IMPORT_FROM( cgenie_common )
+static MACHINE_CONFIG_DERIVED( cgenie, cgenie_common )
 
 	MDRV_PALETTE_INIT( cgenie )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( cgenienz )
-	MDRV_IMPORT_FROM( cgenie_common )
+static MACHINE_CONFIG_DERIVED( cgenienz, cgenie_common )
 
 	MDRV_PALETTE_INIT( cgenienz )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
 
@@ -755,5 +753,5 @@ DEVICE_IMAGE_LOAD( cgenie_floppy )
 #endif
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     COMPANY    FULLNAME */
-COMP( 1982, cgenie,   0,		0,		cgenie,   cgenie,	0,       "EACA Computers Ltd.",  "Colour Genie EG2000" , 0)
-COMP( 1982, cgenienz, cgenie,	0,		cgenienz, cgenie,	0,       "EACA Computers Ltd.",  "Colour Genie EG2000 (New Zealand)" , 0)
+COMP( 1982, cgenie,   0,        0,      cgenie,   cgenie,	0,       "EACA Computers Ltd",  "Colour Genie EG2000" , 0)
+COMP( 1982, cgenienz, cgenie,   0,      cgenienz, cgenie,	0,       "EACA Computers Ltd",  "Colour Genie EG2000 (New Zealand)" , 0)

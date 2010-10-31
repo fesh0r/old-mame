@@ -4,6 +4,32 @@
 
   Machine file to handle emulation of the Sega Mega Drive & Genesis.
 
+	i2c games mapping table:
+
+	game name                         |   SDA_IN   |  SDA_OUT   |     SCL    |  SIZE_MASK     | PAGE_MASK |
+	----------------------------------|------------|------------|------------|----------------|-----------|
+	NBA Jam                           | 0x200001-0 | 0x200001-0 | 0x200001-1 | 0x00ff (24C02) |   0x03    | xx
+    NBA Jam TE                        | 0x200001-0 | 0x200001-0 | 0x200000-0 | 0x00ff (24C02) |   0x03    | xx
+    NBA Jam TE (32x)                  | 0x200001-0 | 0x200001-0 | 0x200000-0 | 0x00ff (24C02) |   0x03    |
+    NFL Quarterback Club              | 0x200001-0 | 0x200001-0 | 0x200000-0 | 0x00ff (24C02) |   0x03    | xx
+    NFL Quarterback Club 96           | 0x200001-0 | 0x200001-0 | 0x200000-0 | 0x07ff (24C16) |   0x07    | xx
+    College Slam                      | 0x200001-0 | 0x200001-0 | 0x200000-0 | 0x1fff (24C64) |   0x07    | xx
+    Frank Thomas Big Hurt Baseball    | 0x200001-0 | 0x200001-0 | 0x200000-0 | 0x1fff (24C64) |   0x07    | xx
+    NHLPA Hockey 93                   | 0x200001-7 | 0x200001-7 | 0x200001-6 | 0x007f (24C01) |   0x03    | xx
+    Rings of Power                    | 0x200001-7 | 0x200001-7 | 0x200001-6 | 0x007f (24C01) |   0x03    | xx
+    Evander Holyfield's Boxing        | 0x200001-0 | 0x200001-0 | 0x200001-1 | 0x007f (24C01) |   0x03    | xx
+    Greatest Heavyweights of the Ring | 0x200001-0 | 0x200001-0 | 0x200001-1 | 0x007f (24C01) |   0x03    | xx
+    Wonder Boy V                      | 0x200001-0 | 0x200001-0 | 0x200001-1 | 0x007f (24C01) |   0x03    | xx
+    Sports Talk Baseball              | 0x200001-0 | 0x200001-0 | 0x200001-1 | 0x007f (24C01) |   0x03    | xx
+    Megaman - the Wily Wars           | 0x200001-0 | 0x200001-0 | 0x200001-1 | 0x007f (24C01) |   0x03    | xx **
+    Micro Machines 2                  | 0x380001-7 | 0x300000-0*| 0x300000-1*| 0x03ff (24C08) |   0x0f    |
+    Micro Machines Military           | 0x380001-7 | 0x300000-0*| 0x300000-1*| 0x03ff (24C08) |   0x0f    |
+    Micro Machines 96                 | 0x380001-7 | 0x300000-0*| 0x300000-1*| 0x07ff (24C16) |   0x0f    |
+    Brian Lara Cricket 96             | 0x380001-7 | 0x300000-0*| 0x300000-1*| 0x1fff (24C64) |   0x??*   |
+    ----------------------------------|------------|------------|------------|----------------|-----------|
+
+	* Notes: check these
+	** original Rockman Mega World (J) set uses normal backup RAM
 
     2008-09: Moved here cart code and custom mapper handlers. Hopefully,
         it will make painless the future merging with HazeMD
@@ -35,30 +61,37 @@ enum t_cart_type
 {
 	STANDARD = 0,
 	SSF2,					/* Super Street Fighter 2 */
-	LIONK3,				/* Lion King 3 */
+	LIONK3,					/* Lion King 3 */
 	SKINGKONG,				/* Super King Kong 99 */
-	SDK99,				/* Super Donkey Kong 99 */
+	SDK99,					/* Super Donkey Kong 99 */
 	REDCLIFF,				/* Romance of the Three Kingdoms - Battle of Red Cliffs, already decoded from .mdx format */
 	REDCL_EN,				/* The encoded version... */
-	RADICA,				/* Radica TV games.. these probably should be a seperate driver since they are a seperate 'console' */
-	KOF99,				/* King of Fighters '99 */
+	RADICA,					/* Radica TV games.. these probably should be a seperate driver since they are a seperate 'console' */
+	KOF99,					/* King of Fighters '99 */
 	SOULBLAD,				/* Soul Blade */
 	MJLOVER,				/* Mahjong Lover */
 	SQUIRRELK,				/* Squirrel King */
-	SMOUSE,				/* Smart Mouse */
+	SMOUSE,					/* Smart Mouse */
 	SMB,					/* Super Mario Bros. */
 	SMB2,					/* Super Mario Bros. 2 */
-	KAIJU,				/* Pokemon Stadium */
+	KAIJU,					/* Pokemon Stadium */
 	CHINFIGHT3,				/* Chinese Fighters 3 */
-	LIONK2,				/* Lion King 2 */
+	LIONK2,					/* Lion King 2 */
 	BUGSLIFE,				/* A Bug's Life */
-	ELFWOR,				/* Elf Wor */
+	ELFWOR,					/* Elf Wor */
 	ROCKMANX3,				/* Rockman X3 */
 	SBUBBOB,				/* Super Bubble Bobble */
-	KOF98,				/* King of Fighters '98 */
+	KOF98,					/* King of Fighters '98 */
 	REALTEC,				/* Whac a Critter/Mallet legend, Defend the Earth, Funnyworld/Ballonboy */
 	SUP19IN1,				/* Super 19 in 1 */
-	SUP15IN1				/* Super 15 in 1 */
+	SUP15IN1,				/* Super 15 in 1 */
+	NBA_JAM,				/* NBA Jam */
+	NBA_JAM_TE,				/* NBA Jam TE / NFL Quarterback Club */
+	NFL_QB_96,				/* NFL Quarterback Club '96 */
+	C_SLAM,					/* College Slam / Frank Thomas Big Hurt Baseball */
+	EA_NHLPA,				/* NHLPA Hockey 93 / Rings of Power */
+	WBOY_V,					/* Wonder Boy V / Evander Holyfield's Boxing / Greatest Heavyweights of the Ring / Sports Talk Baseball / Megaman */
+	CODE_MASTERS			/* Micro Machines 2 / Military / 96 / Brian Lara Cricket */
 };
 
 
@@ -580,7 +613,7 @@ static void alloc_sram(running_machine *machine)
 {
 	genesis_sram = auto_alloc_array(machine, UINT16, (genesis_sram_end - genesis_sram_start + 1) / sizeof(UINT16));
 	device_image_interface *image = dynamic_cast<device_image_interface *>(machine->device("cart"));
-	image->battery_load(genesis_sram, genesis_sram_end - genesis_sram_start + 1, 0x00);
+	image->battery_load(genesis_sram, genesis_sram_end - genesis_sram_start + 1, 0xff); // Dino Dini's Soccer needs backup RAM to be 1fill
 	memcpy(megadriv_backupram, genesis_sram, genesis_sram_end - genesis_sram_start + 1);
 }
 
@@ -635,7 +668,92 @@ static WRITE16_HANDLER( genesis_sram_toggle )
 		install_sram_rw_handlers (space->machine);
 }
 
+/*
+I2c bare minimum handlings (TODO: supports proper device interfacing and parameter change!)
+*/
 
+static UINT8 i2c_mem,i2c_clk;
+
+static READ16_HANDLER( nba_jam_eeprom_r )
+{
+// 	i2c_mem = (i2cmem_sda_read(space->machine->device("i2cmem")) & 1);
+
+	return i2c_mem & 1;
+}
+
+static WRITE16_HANDLER( nba_jam_eeprom_w )
+{
+	i2c_clk = (data & 0x0002) >> 1;
+	i2c_mem = (data & 0x0001);
+
+//	i2cmem_sda_write(space->machine->device("i2cmem"), i2c_clk);
+//	i2cmem_scl_write(space->machine->device("i2cmem"), i2c_mem);
+}
+
+static READ16_HANDLER( nba_jam_te_eeprom_r )
+{
+// 	i2c_mem = (i2cmem_sda_read(space->machine->device("i2cmem")) & 1);
+
+	return (i2c_mem & 1);
+}
+
+static WRITE16_HANDLER( nba_jam_te_eeprom_w )
+{
+	i2c_clk = ((data & 0x0100) >> 8);
+	i2c_mem = data & 0x0001;
+
+//	i2cmem_sda_write(space->machine->device("i2cmem"), i2c_clk);
+//	i2cmem_scl_write(space->machine->device("i2cmem"), i2c_mem);
+}
+
+static READ16_HANDLER( ea_nhlpa_eeprom_r )
+{
+// 	i2c_mem = (i2cmem_sda_read(space->machine->device("i2cmem")) & 1);
+
+	return (i2c_mem & 1) << 7;
+}
+
+static WRITE16_HANDLER( ea_nhlpa_eeprom_w )
+{
+	i2c_clk = ((data & 0x0040) >> 6);
+	i2c_mem = ((data & 0x0080) >> 7);
+
+//	i2cmem_sda_write(space->machine->device("i2cmem"), i2c_clk);
+//	i2cmem_scl_write(space->machine->device("i2cmem"), i2c_mem);
+}
+
+/* TODO: identical as NBA Jam, used as kludge */
+static READ16_HANDLER( wboy_v_eeprom_r )
+{
+// 	i2c_mem = (i2cmem_sda_read(space->machine->device("i2cmem")) & 1);
+
+	return ~i2c_mem & 1;
+}
+
+static WRITE16_HANDLER( wboy_v_eeprom_w )
+{
+	i2c_clk = (data & 0x0002) >> 1;
+	i2c_mem = (data & 0x0001);
+
+//	i2cmem_sda_write(space->machine->device("i2cmem"), i2c_clk);
+//	i2cmem_scl_write(space->machine->device("i2cmem"), i2c_mem);
+}
+
+static READ16_HANDLER( codemasters_eeprom_r )
+{
+// 	i2c_mem = (i2cmem_sda_read(space->machine->device("i2cmem")) & 1);
+
+	return (i2c_mem & 1) << 7;
+}
+
+static WRITE16_HANDLER( codemasters_eeprom_w )
+{
+	i2c_clk = (data & 0x0200) >> 9;
+	i2c_mem = (data & 0x0100) >> 8;
+
+//	i2cmem_sda_write(space->machine->device("i2cmem"), i2c_clk);
+//	i2cmem_scl_write(space->machine->device("i2cmem"), i2c_mem);
+}
 
 /*************************************
  *
@@ -861,7 +979,7 @@ static void setup_megadriv_custom_mappers(running_machine *machine)
 	{
 		/* Info from DGen: If SRAM does not overlap main ROM, set it active by
         default since a few games can't manage to properly switch it on/off. */
-		if (genesis_last_loaded_image_length < genesis_sram_start)
+		if (genesis_last_loaded_image_length <= genesis_sram_start)
 			genesis_sram_active = 1;
 
 		memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa130f0, 0xa130f1, 0, 0, genesis_sram_toggle);
@@ -871,6 +989,27 @@ static void setup_megadriv_custom_mappers(running_machine *machine)
         write handlers if SRAM is active to not slow down emulation. */
 		if (genesis_sram_active)
 			install_sram_rw_handlers (machine);
+	}
+
+	/* install i2c handlers */
+	if(cart_type == NBA_JAM)
+		memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x200000, 0x200001, 0, 0, nba_jam_eeprom_r,nba_jam_eeprom_w);
+
+	if(cart_type == WBOY_V)
+		memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x200000, 0x200001, 0, 0, wboy_v_eeprom_r,wboy_v_eeprom_w);
+
+	if(cart_type == NBA_JAM_TE || cart_type == NFL_QB_96 || cart_type == C_SLAM) // same handling but different sizes
+		memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x200000, 0x200001, 0, 0, nba_jam_te_eeprom_r,nba_jam_te_eeprom_w);
+
+	if(cart_type == EA_NHLPA)
+		memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x200000, 0x200001, 0, 0, ea_nhlpa_eeprom_r,ea_nhlpa_eeprom_w);
+
+	if(cart_type == CODE_MASTERS)
+	{
+		memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x300000, 0x300001, 0, 0, codemasters_eeprom_w);
+		memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x380000, 0x380001, 0, 0, codemasters_eeprom_r);
+
+		// TODO: J-Cart device
 	}
 
 	/* install NOP handler for TMSS */
@@ -1126,7 +1265,8 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 			kof99_sig[]		= { 0x20, 0x3c, 0x30, 0x00, 0x00, 0xa1 }, // move.l  #$300000A1,d0
 			radica_sig[]	= { 0x4e, 0xd0, 0x30, 0x39, 0x00, 0xa1 }, // jmp (a0) move.w ($a130xx),d0
 			soulb_sig[]		= { 0x33, 0xfc, 0x00, 0x0c, 0x00, 0xff }, // move.w  #$C,($FF020A).l (what happens if check fails)
-			s19in1_sig[]	= { 0x13, 0xc0, 0x00, 0xa1, 0x30, 0x38 };
+			s19in1_sig[]	= { 0x13, 0xc0, 0x00, 0xa1, 0x30, 0x38 },
+			rockman_sig[] 	= { 0xea, 0x80 };
 
 		switch (genesis_last_loaded_image_length)
 		{
@@ -1138,6 +1278,20 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 					!allendianmemcmp((char *)&ROM[0x7e100], "SEGA", 4) ||
 					!allendianmemcmp((char *)&ROM[0x7e1e6], "SEGA", 4))
 						cart_type = REALTEC;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-50396", 10)) // NHLPA Hockey 93
+					cart_type = EA_NHLPA;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM MK-1215", 10)) // Evander Holyfield
+					cart_type = WBOY_V;
+
+				break;
+
+			case 0xc0000:
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM G-4060 ", 8)) // Wonder Boy V
+					cart_type = WBOY_V;
+
 				break;
 
 			case 0x100000:
@@ -1155,6 +1309,21 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 
 				if (!allendianmemcmp(&ROM[0x123e4], &sbub_sig[0], sizeof(sbub_sig)))
 					cart_type = SBUBBOB;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-50176", 10)) // Rings of Power
+					cart_type = EA_NHLPA;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "MK 00001211-00", 14)) // Sports Talk Baseball
+					cart_type = WBOY_V;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-120096-", 12)) // Micro Machines 2
+					cart_type = CODE_MASTERS;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-120146-", 12)) // Brian Lara Cricket 96 / Shane Wayne Cricket 96
+					cart_type = CODE_MASTERS;
+
+				if (!allendianmemcmp((char *)&ROM[0x0190], "OJKRPTBVFCA     ", 0x10)) // Micro Machines '96 / Military TODO: better way to recognize these?
+					cart_type = CODE_MASTERS;
 				break;
 
 			case 0x200000:
@@ -1190,6 +1359,17 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 
 				if (!allendianmemcmp(&ROM[0x17bb2], &s15in1_sig[0], sizeof(s15in1_sig)))
 					cart_type = SUP15IN1;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-081326 ", 12)) // NBA Jam
+					cart_type = NBA_JAM;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM MK-1228", 10)) // Greatest Heavyweight of the Ring
+					cart_type = WBOY_V;
+
+				if ((!allendianmemcmp((char *)&ROM[0x0180], "GM T-12046", 10)) || // Mega Man
+					(!allendianmemcmp((char *)&ROM[0x0180], "GM T-12053", 10) && !allendianmemcmp(&ROM[0x18e], &rockman_sig[0], sizeof(rockman_sig)))) // / Rock Man (EEPROM version)
+					cart_type = WBOY_V;
+
 				break;
 
 			case 0x200005:
@@ -1203,6 +1383,13 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 
 				if (!allendianmemcmp(&ROM[0x1fd0d2], &kof99_sig[0], sizeof(kof99_sig)))
 					cart_type = KOF99;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-81406", 10)) // NBA Jam TE
+					cart_type = NBA_JAM_TE;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-081276 ", 12)) // NFL Quarterback Club
+					cart_type = NBA_JAM_TE;
+
 				break;
 
 			case 0x400000:
@@ -1215,6 +1402,16 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 
 				if (!allendianmemcmp(&ROM[0x1e700], &s19in1_sig[0], sizeof(s19in1_sig)))
 					cart_type = SUP19IN1;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-081586-", 12)) // NFL Quarterback Club 96
+					cart_type = NFL_QB_96;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-081576 ", 12)) // College Slam
+					cart_type = C_SLAM;
+
+				if (!allendianmemcmp((char *)&ROM[0x0180], "GM T-81476", 10)) // Big Hurt Baseball
+					cart_type = C_SLAM;
+
 				break;
 
 			case 0x500000:
@@ -1276,8 +1473,8 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
      backup RAM, but only if the value is 0xFFFF, to not break MLBPA Sports
      Talk Baseball. With this hack some games at least run (NBA Jam, Evander
      Holyfield's Real Deal Boxing, Greatest Heavyweights of the Ring) */
-	if (has_serial_eeprom && megadriv_backupram[0] == 0xffff)
-		megadriv_backupram[0] = 0xff00;
+	//if (has_serial_eeprom && megadriv_backupram[0] == 0xffff)
+	//	megadriv_backupram[0] = 0xff00;
 
 	if (sram_detected)
 		logerror("SRAM detected from header: starting location %X - SRAM Length %X\n", genesis_sram_start, genesis_sram_end - genesis_sram_start + 1);
@@ -1334,17 +1531,19 @@ static DEVICE_IMAGE_LOAD( _32x_cart )
 		ROM32[i / 4] = pick_integer_be(temp_copy, i, 4);
 
 	ROM16 = (UINT16 *) memory_region(image.device().machine, "maincpu");
-	for (i = 0x100; i < length; i += 2)
+	for (i = 0x00; i < length; i += 2)
 		ROM16[i / 2] = pick_integer_be(temp_copy, i, 2);
 
 	auto_free(image.device().machine, temp_copy);
+
+	cart_type = NBA_JAM_TE;
 
 	return IMAGE_INIT_PASS;
 }
 
 /******* Cart getinfo *******/
 
-MACHINE_DRIVER_START( genesis_cartslot )
+MACHINE_CONFIG_FRAGMENT( genesis_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("smd,bin,md,gen")
 	MDRV_CARTSLOT_MANDATORY
@@ -1352,18 +1551,18 @@ MACHINE_DRIVER_START( genesis_cartslot )
 	MDRV_CARTSLOT_LOAD(genesis_cart)
 	MDRV_CARTSLOT_UNLOAD(genesis_cart)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","megadriv")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START( _32x_cartslot )
+MACHINE_CONFIG_FRAGMENT( _32x_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("32x,bin")
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_INTERFACE("_32x_cart")
 	MDRV_CARTSLOT_LOAD(_32x_cart)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","32x")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START( pico_cartslot )
+MACHINE_CONFIG_FRAGMENT( pico_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin")
 	MDRV_CARTSLOT_MANDATORY
@@ -1371,4 +1570,4 @@ MACHINE_DRIVER_START( pico_cartslot )
 	MDRV_CARTSLOT_LOAD(genesis_cart)
 	MDRV_CARTSLOT_UNLOAD(genesis_cart)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","pico")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

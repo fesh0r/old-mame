@@ -22,12 +22,11 @@
 #define VIA6522_1_TAG "via6522_1"
 #define MC6845_TAG "mc6845"
 
-class ec65_state
+class ec65_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, ec65_state(machine)); }
-
-	ec65_state(running_machine &machine) { }
+	ec65_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT8 *video_ram;
 };
@@ -38,8 +37,8 @@ static ADDRESS_MAP_START(ec65_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE(PIA6821_TAG, pia6821_r, pia6821_w)
 	AM_RANGE(0xe010, 0xe010) AM_DEVREADWRITE(ACIA6850_TAG, acia6850_stat_r, acia6850_ctrl_w)
 	AM_RANGE(0xe011, 0xe011) AM_DEVREADWRITE(ACIA6850_TAG, acia6850_data_r, acia6850_data_w)
-	AM_RANGE(0xe100, 0xe10f) AM_DEVREADWRITE(VIA6522_0_TAG, via_r, via_w)
-	AM_RANGE(0xe110, 0xe11f) AM_DEVREADWRITE(VIA6522_1_TAG, via_r, via_w)
+	AM_RANGE(0xe100, 0xe10f) AM_DEVREADWRITE_MODERN(VIA6522_0_TAG, via6522_device, read, write)
+	AM_RANGE(0xe110, 0xe11f) AM_DEVREADWRITE_MODERN(VIA6522_1_TAG, via6522_device, read, write)
 	AM_RANGE(0xe130, 0xe133) AM_DEVREADWRITE(ACIA6551_TAG,  acia_6551_r, acia_6551_w )
 	AM_RANGE(0xe140, 0xe140) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0xe141, 0xe141) AM_DEVREADWRITE(MC6845_TAG, mc6845_register_r , mc6845_register_w)
@@ -158,7 +157,7 @@ static VIDEO_UPDATE( ec65 )
 
 static MC6845_UPDATE_ROW( ec65_update_row )
 {
-	ec65_state *state = (ec65_state *)device->machine->driver_data;
+	ec65_state *state = device->machine->driver_data<ec65_state>();
 	UINT8 *charrom = memory_region(device->machine, "chargen");
 	int column, bit;
 
@@ -216,9 +215,7 @@ static GFXDECODE_START( ec65 )
 	GFXDECODE_ENTRY( "chargen", 0x0000, ec65_charlayout, 0, 1 )
 GFXDECODE_END
 
-static MACHINE_DRIVER_START( ec65 )
-
-    MDRV_DRIVER_DATA( ec65_state )
+static MACHINE_CONFIG_START( ec65, ec65_state )
 
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",M6502, XTAL_4MHz / 4)
@@ -248,11 +245,9 @@ static MACHINE_DRIVER_START( ec65 )
 	MDRV_VIA6522_ADD(VIA6522_0_TAG, XTAL_4MHz / 4, ec65_via_0_intf)
 	MDRV_VIA6522_ADD(VIA6522_1_TAG, XTAL_4MHz / 4, ec65_via_1_intf)
 	MDRV_ACIA6551_ADD(ACIA6551_TAG)     // have XTAL of 1.8432MHz connected
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ec65k )
-
-    MDRV_DRIVER_DATA( ec65_state )
+static MACHINE_CONFIG_START( ec65k, ec65_state )
 
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",G65816, XTAL_4MHz) // can use 4,2 or 1 MHz
@@ -275,7 +270,7 @@ static MACHINE_DRIVER_START( ec65k )
 
     MDRV_VIDEO_START(ec65)
     MDRV_VIDEO_UPDATE(ec65)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( ec65 )

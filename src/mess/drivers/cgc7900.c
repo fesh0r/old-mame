@@ -164,7 +164,7 @@ static WRITE16_HANDLER( interrupt_mask_w )
 
     */
 
-	cgc7900_state *state = (cgc7900_state *)space->machine->driver_data;
+	cgc7900_state *state = space->machine->driver_data<cgc7900_state>();
 
 	state->int_mask = data;
 }
@@ -294,20 +294,20 @@ ADDRESS_MAP_END
     ADDRESS_MAP( keyboard_mem )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( keyboard_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000, 0x7ff) AM_ROM
-ADDRESS_MAP_END
+//static ADDRESS_MAP_START( keyboard_mem, ADDRESS_SPACE_PROGRAM, 8 )
+//  AM_RANGE(0x000, 0x7ff) AM_ROM
+//ADDRESS_MAP_END
 
 /*-------------------------------------------------
     ADDRESS_MAP( keyboard_io )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( keyboard_io, ADDRESS_SPACE_IO, 8 )
+//static ADDRESS_MAP_START( keyboard_io, ADDRESS_SPACE_IO, 8 )
 /*  AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1)
     AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2)
     AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1)
     AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS)*/
-ADDRESS_MAP_END
+//ADDRESS_MAP_END
 
 /***************************************************************************
     INPUT PORTS
@@ -394,7 +394,7 @@ static const ay8910_interface ay8910_intf =
 
 static MACHINE_START( cgc7900 )
 {
-	cgc7900_state *state = (cgc7900_state *)machine->driver_data;
+	cgc7900_state *state = machine->driver_data<cgc7900_state>();
 
 	/* register for state saving */
 	state_save_register_global_pointer(machine, state->overlay_ram, 0x4000);
@@ -421,8 +421,7 @@ static MACHINE_RESET(cgc7900)
     MACHINE_DRIVER( cgc7900 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( cgc7900 )
-	MDRV_DRIVER_DATA(cgc7900_state)
+static MACHINE_CONFIG_START( cgc7900, cgc7900_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(M68000_TAG, M68000, XTAL_28_48MHz/4)
@@ -439,7 +438,7 @@ static MACHINE_DRIVER_START( cgc7900 )
     MDRV_MACHINE_RESET(cgc7900)
 
     /* video hardware */
-	MDRV_IMPORT_FROM(cgc7900_video)
+	MDRV_FRAGMENT_ADD(cgc7900_video)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -450,7 +449,7 @@ static MACHINE_DRIVER_START( cgc7900 )
 	/* devices */
 	MDRV_MSM8251_ADD(INS8251_0_TAG, rs232_intf)
 	MDRV_MSM8251_ADD(INS8251_1_TAG, rs449_intf)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
     ROMS

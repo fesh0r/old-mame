@@ -398,7 +398,7 @@ static int intv_load_rom_file(device_image_interface &image)
 		int start, size;
 		int mapper, rom[5], ram, extra;
 
-		if (!image.extrainfo())
+		if (!strcmp(image.extrainfo(), ""))
 		{
 			/* If no extrainfo, we assume a single 0x2000 chunk at 0x5000 */
 			for (i = 0; i < 0x2000; i++ )
@@ -499,7 +499,7 @@ INTERRUPT_GEN( intv_interrupt )
 {
 	cputag_set_input_line(device->machine, "maincpu", CP1610_INT_INTRM, ASSERT_LINE);
 	sr1_int_pending = 1;
-	timer_set(device->machine, cputag_clocks_to_attotime(device->machine, "maincpu", 3791), NULL, 0, intv_interrupt_complete);
+	timer_set(device->machine, device->machine->device<cpu_device>("maincpu")->cycles_to_attotime(3791), NULL, 0, intv_interrupt_complete);
 	intv_stic_screenrefresh(device->machine);
 }
 

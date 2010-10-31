@@ -383,7 +383,7 @@ static const cassette_config zx81_cassette_config =
 };
 
 
-static MACHINE_DRIVER_START( zx80 )
+static MACHINE_CONFIG_START( zx80, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, ZX81_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(zx80_map)
@@ -409,7 +409,7 @@ static MACHINE_DRIVER_START( zx80 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)	/* Used by pc8300/lambda/pow3000 */
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)	/* Used by pc8300/lambda/pow3000 */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
@@ -420,10 +420,9 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1K")
 	MDRV_RAM_EXTRA_OPTIONS("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( zx81 )
-	MDRV_IMPORT_FROM(zx80)
+static MACHINE_CONFIG_DERIVED( zx81, zx80 )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(zx81_io_map)
@@ -431,24 +430,21 @@ static MACHINE_DRIVER_START( zx81 )
 	MDRV_GFXDECODE(zx81)
 
 	MDRV_CASSETTE_MODIFY( "cassette", zx81_cassette_config )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ts1000 )
-	MDRV_IMPORT_FROM(zx81)
+static MACHINE_CONFIG_DERIVED( ts1000, zx81 )
 
 	MDRV_PALETTE_INIT(ts1000)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ts1500 )
-	MDRV_IMPORT_FROM(ts1000)
+static MACHINE_CONFIG_DERIVED( ts1500, ts1000 )
 
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pc8300 )
-	MDRV_IMPORT_FROM(zx81)
+static MACHINE_CONFIG_DERIVED( pc8300, zx81 )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(pc8300_io_map)
@@ -466,10 +462,9 @@ static MACHINE_DRIVER_START( pc8300 )
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pow3000 )
-	MDRV_IMPORT_FROM(zx81)
+static MACHINE_CONFIG_DERIVED( pow3000, zx81 )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(pow3000_io_map)
@@ -483,7 +478,7 @@ static MACHINE_DRIVER_START( pow3000 )
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
 	MDRV_RAM_EXTRA_OPTIONS("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /* ROMs */
@@ -564,9 +559,9 @@ ROM_END
 
 /* Game Drivers */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT      COMPANY                     FULLNAME                FLAGS */
-COMP( 1980, zx80,       0,      0,      zx80,       zx80,       zx,     "Sinclair Research",        "ZX-80",               0 )
-COMP( 1981, zx81,       0,      0,      zx81,       zx81,       zx,     "Sinclair Research",        "ZX-81",               0 )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY                     FULLNAME                FLAGS */
+COMP( 1980, zx80,       0,      0,      zx80,       zx80,       zx,     "Sinclair Research Ltd",    "ZX-80",               0 )
+COMP( 1981, zx81,       0,      0,      zx81,       zx81,       zx,     "Sinclair Research Ltd",    "ZX-81",               0 )
 COMP( 1982, ts1000,     zx81,   0,      ts1000,     zx81,       zx,     "Timex Sinclair",           "Timex Sinclair 1000", 0 )
 COMP( 1983, ts1500,     zx81,   0,      ts1500,     zx81,       zx,     "Timex Sinclair",           "Timex Sinclair 1500", 0 )
 COMP( 1983, tk85,   	zx81,   0,      ts1000,     zx81,       zx,     "Microdigital",             "TK85",                0 )
@@ -574,4 +569,4 @@ COMP( 1983, ringo470,   zx81,   0,      ts1000,     zx81,       zx,     "Ritas d
 COMP( 1984, pc8300,     zx81,   0,      pc8300,     pc8300,     zx,     "Your Computer",            "PC8300",              0 )
 COMP( 1983, pow3000,    zx81,   0,      pow3000,    pow3000,    zx,     "Creon Enterprises",        "Power 3000",          0 )
 COMP( 1982, lambda,     zx81,   0,      pow3000,    pow3000,    zx,     "Lambda Electronics Ltd",   "Lambda 8300",         0 )
-COMP( 1997, zx97,       zx81,   0,      zx81,       zx81,   	zx,     "Wilf Rigter",              "ZX97",	  GAME_NOT_WORKING )
+COMP( 1997, zx97,       zx81,   0,      zx81,       zx81,   	zx,     "Wilf Rigter",              "ZX97",	  GAME_NOT_WORKING | GAME_UNOFFICIAL )

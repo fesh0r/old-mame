@@ -165,17 +165,18 @@ static MACHINE_START( mk1 )
 static void mk1_interrupt( running_device *device, UINT16 addr, int level )
 {
 	cpu_set_input_line_vector(device->machine->device("maincpu"), 0, addr );
-	cputag_set_input_line(device->machine,"maincpu", 0, level ? F8_INT_INTR : F8_INT_NONE );
+
+	cputag_set_input_line(device->machine,"maincpu", F8_INPUT_LINE_INT_REQ, level ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
-static const f3853_config mk1_config =
+static const f3853_interface mk1_config =
 {
 	mk1_interrupt
 };
 
 
-static MACHINE_DRIVER_START( mk1 )
+static MACHINE_CONFIG_START( mk1, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", F8, MAIN_CLOCK )        /* MK3850 */
 	MDRV_CPU_PROGRAM_MAP( mk1_mem)
@@ -188,7 +189,7 @@ static MACHINE_DRIVER_START( mk1 )
 
     /* video hardware */
 	MDRV_DEFAULT_LAYOUT( layout_mk1 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START( mk1 )

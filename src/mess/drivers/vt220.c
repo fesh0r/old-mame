@@ -36,7 +36,7 @@ static VIDEO_UPDATE( vt220 )
 }
 
 
-static MACHINE_DRIVER_START( vt220 )
+static MACHINE_CONFIG_START( vt220, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", I8051, XTAL_16MHz)
     MDRV_CPU_PROGRAM_MAP(vt220_mem)
@@ -60,7 +60,7 @@ static MACHINE_DRIVER_START( vt220 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( vt220 )
@@ -71,5 +71,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1983, vt220,  0,       0, 	vt220,	vt220,	 0, 		 "DEC",   "VT220",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1983, vt220,  0,       0, 	vt220,	vt220,	 0, 		 "Digital Equipment Corporation",   "VT220",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

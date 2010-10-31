@@ -218,25 +218,25 @@ WRITE8_HANDLER ( bbc_memorybp1_w )
 */
 
 
-static DIRECT_UPDATE_HANDLER( bbcbp_direct_handler )
+DIRECT_UPDATE_HANDLER( bbcbp_direct_handler )
 {
-	UINT8 *ram = memory_region(space->machine, "maincpu");
+	UINT8 *ram = memory_region(machine, "maincpu");
 	if (vdusel == 0)
 	{
 		// not in shadow ram mode so just read normal ram
-		memory_set_bankptr(space->machine, "bank2", ram + 0x3000);
+		memory_set_bankptr(machine, "bank2", ram + 0x3000);
 	}
 	else
 	{
-		if (vdudriverset(space->machine))
+		if (vdudriverset(machine))
 		{
 			// if VDUDriver set then read from shadow ram
-			memory_set_bankptr(space->machine, "bank2", ram + 0xb000);
+			memory_set_bankptr(machine, "bank2", ram + 0xb000);
 		}
 		else
 		{
 			// else read from normal ram
-			memory_set_bankptr(space->machine, "bank2", ram + 0x3000);
+			memory_set_bankptr(machine, "bank2", ram + 0x3000);
 		}
 	}
 	return address;
@@ -478,21 +478,21 @@ WRITE8_HANDLER ( bbc_memorybm1_w )
 }
 
 
-static DIRECT_UPDATE_HANDLER( bbcm_direct_handler )
+DIRECT_UPDATE_HANDLER( bbcm_direct_handler )
 {
 	if (ACCCON_X)
 	{
-		memory_set_bankptr( space->machine, "bank2", memory_region( space->machine, "maincpu" ) + 0xb000 );
+		memory_set_bankptr( machine, "bank2", memory_region( machine, "maincpu" ) + 0xb000 );
 	}
 	else
 	{
-		if (ACCCON_E && bbcm_vdudriverset(space->machine))
+		if (ACCCON_E && bbcm_vdudriverset(machine))
 		{
-			memory_set_bankptr( space->machine, "bank2", memory_region( space->machine, "maincpu" ) + 0xb000 );
+			memory_set_bankptr( machine, "bank2", memory_region( machine, "maincpu" ) + 0xb000 );
 		}
 		else
 		{
-			memory_set_bankptr( space->machine, "bank2", memory_region( space->machine, "maincpu" ) + 0x3000 );
+			memory_set_bankptr( machine, "bank2", memory_region( machine, "maincpu" ) + 0x3000 );
 		}
 	}
 
@@ -609,9 +609,9 @@ long myo;
 
 
 	if ((offset>=0x200) && (offset<=0x2ff)) /* SHEILA */
-	{
-		running_device *via_0 = space->machine->device("via6522_0");
-		running_device *via_1 = space->machine->device("via6522_1");
+	{		
+		via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");
+		via6522_device *via_1 = space->machine->device<via6522_device>("via6522_1");
 
 		myo=offset-0x200;
 		if ((myo>=0x00) && (myo<=0x07)) return bbc_6845_r(space, myo-0x00);		/* Video Controller */
@@ -632,8 +632,8 @@ long myo;
 		if ((myo>=0x30) && (myo<=0x33)) return 0xfe;						/* page select */
 		if ((myo>=0x34) && (myo<=0x37)) return bbcm_ACCCON_read(space, myo-0x34);	/* ACCCON */
 		if ((myo>=0x38) && (myo<=0x3f)) return 0xfe;						/* NC ?? */
-		if ((myo>=0x40) && (myo<=0x5f)) return via_r(via_0, myo-0x40);
-		if ((myo>=0x60) && (myo<=0x7f)) return via_r(via_1, myo-0x60);
+		if ((myo>=0x40) && (myo<=0x5f)) return via_0->read(*space,myo-0x40);
+		if ((myo>=0x60) && (myo<=0x7f)) return via_1->read(*space,myo-0x60);
 		if ((myo>=0x80) && (myo<=0x9f)) return 0xfe;
 		if ((myo>=0xa0) && (myo<=0xbf)) return 0xfe;
 		if ((myo>=0xc0) && (myo<=0xdf)) return 0xfe;
@@ -649,8 +649,8 @@ long myo;
 
 	if ((offset>=0x200) && (offset<=0x2ff)) /* SHEILA */
 	{
-		running_device *via_0 = space->machine->device("via6522_0");
-		running_device *via_1 = space->machine->device("via6522_1");
+		via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");
+		via6522_device *via_1 = space->machine->device<via6522_device>("via6522_1");
 
 		myo=offset-0x200;
 		if ((myo>=0x00) && (myo<=0x07)) bbc_6845_w(space, myo-0x00,data);			/* Video Controller */
@@ -671,8 +671,8 @@ long myo;
 		if ((myo>=0x30) && (myo<=0x33)) page_selectbm_w(space, myo-0x30,data);		/* page select */
 		if ((myo>=0x34) && (myo<=0x37)) bbcm_ACCCON_write(space, myo-0x34,data);	/* ACCCON */
 		//if ((myo>=0x38) && (myo<=0x3f))                                   /* NC ?? */
-		if ((myo>=0x40) && (myo<=0x5f)) via_w(via_0, myo-0x40, data);
-		if ((myo>=0x60) && (myo<=0x7f)) via_w(via_1, myo-0x60, data);
+		if ((myo>=0x40) && (myo<=0x5f)) via_0->write(*space,myo-0x40, data);
+		if ((myo>=0x60) && (myo<=0x7f)) via_1->write(*space,myo-0x60, data);
 		//if ((myo>=0x80) && (myo<=0x9f))
 		//if ((myo>=0xa0) && (myo<=0xbf))
 		//if ((myo>=0xc0) && (myo<=0xdf))
@@ -813,7 +813,7 @@ INTERRUPT_GEN( bbcb_keyscan )
 		"COL0", "COL1", "COL2", "COL3", "COL4",
 		"COL5", "COL6", "COL7", "COL8", "COL9"
 	};
-	running_device *via_0 = device->machine->device("via6522_0");
+	via6522_device *via_0 = device->machine->device<via6522_device>("via6522_0");
 
 	/* only do auto scan if keyboard is not enabled */
 	if (b3_keyboard == 1)
@@ -829,17 +829,17 @@ INTERRUPT_GEN( bbcb_keyscan )
                  being pressed on the selected column */
 			if ((input_port_read(device->machine, colnames[column]) | 0x01) != 0xff)
 			{
-				via_ca2_w(via_0, 1);
+				via_0->write_ca2(1);
 			}
 			else
 			{
-				via_ca2_w(via_0, 0);
+				via_0->write_ca2(0);
 			}
 
 		}
 		else
 		{
-			via_ca2_w(via_0, 0);
+			via_0->write_ca2(0);
 		}
 	}
 }
@@ -851,7 +851,7 @@ INTERRUPT_GEN( bbcm_keyscan )
 		"COL0", "COL1", "COL2", "COL3", "COL4",
 		"COL5", "COL6", "COL7", "COL8", "COL9"
 	};
-	running_device *via_0 = device->machine->device("via6522_0");
+	via6522_device *via_0 = device->machine->device<via6522_device>("via6522_0");
 
 	/* only do auto scan if keyboard is not enabled */
 	if (b3_keyboard == 1)
@@ -869,24 +869,24 @@ INTERRUPT_GEN( bbcm_keyscan )
                  being pressed on the selected column */
 			if ((input_port_read(device->machine, colnames[column]) | 0x01) != 0xff)
 			{
-				via_ca2_w(via_0, 1);
+				via_0->write_ca2(1);
 			}
 			else
 			{
-				via_ca2_w(via_0, 0);
+				via_0->write_ca2(0);
 			}
 
 		}
 		else
 		{
-			via_ca2_w(via_0, 0);
+			via_0->write_ca2(0);
 		}
 	}
 }
 
 
 
-static int bbc_keyboard(const address_space *space, int data)
+static int bbc_keyboard(address_space *space, int data)
 {
 	int bit;
 	int row;
@@ -895,7 +895,7 @@ static int bbc_keyboard(const address_space *space, int data)
 		"COL0", "COL1", "COL2", "COL3", "COL4",
 		"COL5", "COL6", "COL7", "COL8", "COL9"
 	};
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");
 
 	column = data & 0x0f;
 	row = (data>>4) & 0x07;
@@ -919,11 +919,11 @@ static int bbc_keyboard(const address_space *space, int data)
 
 	if ((res | 1) != 0xff)
 	{
-		via_ca2_w(via_0, 1);
+		via_0->write_ca2(1);
 	}
 	else
 	{
-		via_ca2_w(via_0, 0);
+		via_0->write_ca2(0);
 	}
 
 	return (data & 0x7f) | (bit<<7);
@@ -945,10 +945,11 @@ static void bbcb_IC32_initialise(void)
 
 
 /* This the BBC Masters Real Time Clock and NVRam IC */
-static void MC146818_set(const address_space *space)
+static void MC146818_set(address_space *space)
 {
 	logerror ("146181 WR=%d DS=%d AS=%d CE=%d \n",MC146818_WR,MC146818_DS,MC146818_AS,MC146818_CE);
-
+	mc146818_device *rtc = space->machine->device<mc146818_device>("rtc");
+	
 	// if chip enabled
 	if (MC146818_CE)
 	{
@@ -957,12 +958,12 @@ static void MC146818_set(const address_space *space)
 		{
 			if (MC146818_WR)
 			{
-				via_system_porta=mc146818_port_r(space, 1);
+				via_system_porta=rtc->read(*space, 1);
 				//logerror("read 146818 data %d \n",via_system_porta);
 			}
 			else
 			{
-				mc146818_port_w(space, 1, via_system_porta);
+				rtc->write(*space, 1, via_system_porta);
 				//logerror("write 146818 data %d \n",via_system_porta);
 			}
 		}
@@ -970,7 +971,7 @@ static void MC146818_set(const address_space *space)
 		// if address select is set then set the address in the 146818
 		if (MC146818_AS)
 		{
-			mc146818_port_w(space, 0, via_system_porta);
+			rtc->write(*space, 0, via_system_porta);
 			//logerror("write 146818 address %d \n",via_system_porta);
 		}
 	}
@@ -979,7 +980,7 @@ static void MC146818_set(const address_space *space)
 
 static WRITE8_DEVICE_HANDLER( bbcb_via_system_write_porta )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	//logerror("SYSTEM write porta %d\n",data);
 
 	via_system_porta = data;
@@ -999,7 +1000,7 @@ static WRITE8_DEVICE_HANDLER( bbcb_via_system_write_porta )
 
 static WRITE8_DEVICE_HANDLER( bbcb_via_system_write_portb )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int bit, value;
 	bit = data & 0x07;
 	value = (data >> 3) & 0x01;
@@ -1342,8 +1343,8 @@ static UPD7002_GET_ANALOGUE(BBC_get_analogue_input)
 
 static UPD7002_EOC(BBC_uPD7002_EOC)
 {
-	running_device *via_0 = device->machine->device("via6522_0");
-	via_cb1_w(via_0, data);
+	via6522_device *via_0 = device->machine->device<via6522_device>("via6522_0");
+	via_0->write_cb1(data);
 }
 
 const uPD7002_interface bbc_uPD7002 =
@@ -1381,7 +1382,7 @@ static void MC6850_Receive_Clock(running_machine *machine, int new_clock)
 }
 
 static TIMER_CALLBACK(bbc_tape_timer_cb)
-{
+{	
 
 	double dev_val;
 	dev_val=cassette_input(machine->device("cassette"));
@@ -2058,7 +2059,6 @@ DRIVER_INIT( bbcm )
 {
 	bbc_Master=1;
 	bbc_tape_timer = timer_alloc(machine, bbc_tape_timer_cb, NULL);
-	mc146818_init(machine, MC146818_STANDARD);
 }
 
 MACHINE_START( bbca )
@@ -2139,7 +2139,7 @@ MACHINE_START( bbcbp )
 {
 	mc6850_clock = 0;
 
-	memory_set_direct_update_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), bbcbp_direct_handler);
+	cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(bbcbp_direct_handler, *machine));
 
 	/* bank 6 is the paged ROMs     from b000 to bfff */
 	memory_configure_bank(machine, "bank6", 0, 16, memory_region(machine, "user1") + 0x3000, 1<<14);
@@ -2165,7 +2165,7 @@ MACHINE_START( bbcm )
 {
 	mc6850_clock = 0;
 
-	memory_set_direct_update_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), bbcm_direct_handler);
+	cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(bbcm_direct_handler, *machine));
 
 	/* bank 5 is the paged ROMs     from 9000 to bfff */
 	memory_configure_bank(machine, "bank5", 0, 16, memory_region(machine, "user1")+0x01000, 1<<14);

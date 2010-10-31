@@ -20,7 +20,6 @@
 
   TODO:
         - Implement unimplemented SAM registers
-        - Implement unimplemented interrupts (serial)
         - Choose and implement more appropriate ratios for the speed up poke
         - Handle resets correctly
 
@@ -76,6 +75,11 @@ the CoCo 1/2 should stay in coco.c, and that the coco3 and dragon specifc code
 should go into coco3.c and dragon.c which should (hopefully) make the code
 easier to manage.
     P.Harvey-Smith, Dec 2006-Feb 2007
+    
+Added bi-directional bitbanger support. Also fixed reading PIA 1, port A. The
+DAC and bitbanger values written should be reflected in the read.
+    tim lindner, October 2010
+
 ***************************************************************************/
 
 #include <math.h>
@@ -125,6 +129,9 @@ static emu_timer *update_keyboard_timer;
 static emu_timer *mux_sel1_timer;
 static emu_timer *mux_sel2_timer;
 static UINT8 mux_sel1, mux_sel2;
+static UINT8 bitbanger_output_value;
+static UINT8 bitbanger_input_value;
+static UINT8 dac_value;
 
 static WRITE8_DEVICE_HANDLER ( d_pia1_pb_w );
 static WRITE8_DEVICE_HANDLER ( d_pia1_pa_w );
@@ -600,7 +607,7 @@ static int load_pak_into_region(device_image_interface &image, int *pakbase, int
 
 static void pak_load_trailer(running_machine *machine, const pak_decodedtrailer *trailer)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 
 	cpu_set_reg(machine->device("maincpu"), M6809_PC, trailer->reg_pc);
 	cpu_set_reg(machine->device("maincpu"), M6809_X, trailer->reg_x);
@@ -780,7 +787,7 @@ QUICKLOAD_LOAD ( coco )
 		}
 		else
 		{
-			const address_space *space = cputag_get_address_space( image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+			address_space *space = cputag_get_address_space( image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
 			/* data block - need to cap the maximum length of the block */
 			block_length = MIN(block_length, length - position);
@@ -788,7 +795,7 @@ QUICKLOAD_LOAD ( coco )
 			/* read the block into memory */
 			for (i = 0; i < block_length; i++)
 			{
-				memory_write_byte(space, block_address + i, ptr[position + i]);
+				space->write_byte(block_address + i, ptr[position + i]);
 			}
 
 			/* and advance */
@@ -909,7 +916,7 @@ enum
 
 static void d_recalc_irq(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	UINT8 pia0_irq_a = pia6821_get_irq_a(state->pia_0);
 	UINT8 pia0_irq_b = pia6821_get_irq_b(state->pia_0);
 
@@ -921,7 +928,7 @@ static void d_recalc_irq(running_machine *machine)
 
 static void d_recalc_firq(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	UINT8 pia1_firq_a = pia6821_get_irq_a(state->pia_1);
 	UINT8 pia1_firq_b = pia6821_get_irq_b(state->pia_1);
 	UINT8 pia2_firq_a = (state->pia_2 != NULL) ? pia6821_get_irq_a(state->pia_2) : 0x00;
@@ -1036,7 +1043,7 @@ static void coco3_raise_interrupt(running_machine *machine, UINT8 mask, int stat
 
 void coco3_horizontal_sync_callback(running_machine *machine,int data)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	pia6821_ca1_w(state->pia_0, data);
 	coco3_raise_interrupt(machine, COCO3_INT_HBORD, data);
 }
@@ -1045,7 +1052,7 @@ void coco3_horizontal_sync_callback(running_machine *machine,int data)
 
 void coco3_field_sync_callback(running_machine *machine,int data)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	pia6821_cb1_w(state->pia_0, data);
 }
 
@@ -1081,7 +1088,7 @@ void coco_set_halt_line(running_machine *machine, int halt_line)
 {
 	cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, halt_line);
 	if (halt_line == CLEAR_LINE)
-		timer_set(machine, cputag_clocks_to_attotime(machine, "maincpu", 1), NULL, 0, recalc_interrupts);
+		timer_set(machine, machine->device<cpu_device>("maincpu")->cycles_to_attotime(1), NULL, 0, recalc_interrupts);
 }
 #endif
 
@@ -1175,31 +1182,31 @@ static int coco_hiresjoy_ry( running_machine *machine )
 
 static running_device *cassette_device_image(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	return state->cassette_device;
 }
 
 static running_device *bitbanger_image(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	return state->bitbanger_device;
 }
 
 static running_device *printer_image(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	return state->printer_device;
 }
 
 static running_device *cococart_device(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	return state->cococart_device;
 }
 
 static int get_soundmux_status(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 
 	int soundmux_status = 0;
 	if (pia6821_get_output_cb2(state->pia_1))
@@ -1242,7 +1249,7 @@ static void soundmux_update(running_machine *machine)
 
 static void coco_sound_update(running_machine *machine)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 
 	/* Call this function whenever you need to update the sound. It will
      * automatically mute any devices that are switched out.
@@ -1356,7 +1363,7 @@ static attotime get_relative_time( running_machine *machine, attotime absolute_t
 
 static UINT8 coco_update_keyboard( running_machine *machine )
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 	UINT8 porta = 0x7f, port_za = 0x7f;
 	int joyval;
 	static const int joy_rat_table[] = {15, 24, 42, 33 };
@@ -1536,13 +1543,14 @@ static void (*printer_out)(running_machine *machine, int data);
 /* Printer output for the CoCo, output to bitbanger port */
 static void printer_out_coco(running_machine *machine, int data)
 {
-	bitbanger_output(bitbanger_image(machine), (data & 2) >> 1);
+   bitbanger_output_value = (data & 2) >> 1;
+	bitbanger_output(bitbanger_image(machine), bitbanger_output_value);
 }
 
 /* Printer output for the Dragon, output to Paralel port */
 static void printer_out_dragon(running_machine *machine, int data)
 {
-	coco_state *state = (coco_state *)machine->driver_data;
+	coco_state *state = machine->driver_data<coco_state>();
 
 	/* If strobe bit is high send data from pia0 port b to dragon parallel printer */
 	if (data & 0x02)
@@ -1564,6 +1572,7 @@ static WRITE8_DEVICE_HANDLER ( d_pia1_pa_w )
 	static int dclg_previous_bit;
 	UINT8 ctrl = input_port_read_safe(device->machine, "ctrl_sel", 0x00);
 	UINT8 hires = input_port_read_safe(device->machine, "hires_intf", 0x00);
+   dac_value = dac >> 2;
 
 	coco_sound_update(device->machine);
 
@@ -1735,7 +1744,7 @@ static void dragon_page_rom(running_machine *machine, int romswitch)
 /* The NMI line on the alphaAlpha is gated through IC16 (early PLD), and is gated by pia2 CA2  */
 static WRITE_LINE_DEVICE_HANDLER( dgnalpha_fdc_intrq_w )
 {
-	coco_state *cstate = (coco_state *)device->machine->driver_data;
+	coco_state *cstate = device->machine->driver_data<coco_state>();
 
 	if (state)
 	{
@@ -1757,7 +1766,7 @@ static WRITE_LINE_DEVICE_HANDLER( dgnalpha_fdc_intrq_w )
 /* for pia1 cb1 */
 static WRITE_LINE_DEVICE_HANDLER( dgnalpha_fdc_drq_w )
 {
-	coco_state *cstate = (coco_state *)device->machine->driver_data;
+	coco_state *cstate = device->machine->driver_data<coco_state>();
 	pia6821_cb1_w(cstate->pia_2, state ? CARTLINE_ASSERTED : CARTLINE_CLEAR);
 }
 
@@ -1828,21 +1837,46 @@ static WRITE8_DEVICE_HANDLER ( d_pia1_ca2_w )
 		CASSETTE_MASK_MOTOR);
 }
 
-
-
 static READ8_DEVICE_HANDLER ( d_pia1_pa_r )
 {
-	return (cassette_input(cassette_device_image(device->machine)) >= 0) ? 1 : 0;
+   UINT8 result;
+
+   result = cassette_input(cassette_device_image(device->machine)) >= 0 ? 1 : 0;
+   result |= bitbanger_output_value << 1;
+   result |= dac_value << 2;
+
+	return result;
 }
 
+void coco_bitbanger_callback(running_machine *machine, UINT8 bit)
+{
+      bitbanger_input_value = bit;
+}
 
+void coco3_bitbanger_callback(running_machine *machine, UINT8 bit)
+{
+   /* rant: this interrupt is next to useless. It would be useful information to know when a
+            start bit (high to low) occurs, but this interrupt activates in the opposite situation.
+   */
+
+   if( bitbanger_input_value == 0 && bit == 1)
+   {
+      bitbanger_input_value = bit;
+      coco3_raise_interrupt(machine, COCO3_INT_EI2, 0);
+      coco3_raise_interrupt(machine, COCO3_INT_EI2, 1);
+   }
+   else
+   {
+      bitbanger_input_value = bit;
+   }
+}
 
 static READ8_DEVICE_HANDLER ( d_pia1_pb_r_coco )
 {
-	coco_state *state = (coco_state *)device->machine->driver_data;
+	coco_state *state = device->machine->driver_data<coco_state>();
 
 	/* This handles the reading of the memory sense switch (pb2) for the CoCo 1,
-     * and serial-in (pb0). Serial-in not yet implemented. */
+     * and serial-in (pb0). */
 	int result;
 
 	/* For the CoCo 1, the logic has been changed to only select 64K rams
@@ -1858,6 +1892,8 @@ static READ8_DEVICE_HANDLER ( d_pia1_pb_r_coco )
 		result = 0x04;
 	else
 		result = 0x00;			/* 4K Rams */
+
+   result += bitbanger_input_value;
 
 	return result;
 }
@@ -1883,10 +1919,10 @@ static READ8_DEVICE_HANDLER ( d_pia1_pb_r_dragon32 )
 
 static READ8_DEVICE_HANDLER ( d_pia1_pb_r_coco2 )
 {
-	coco_state *state = (coco_state *)device->machine->driver_data;
+	coco_state *state = device->machine->driver_data<coco_state>();
 
 	/* This handles the reading of the memory sense switch (pb2) for the CoCo 2 and 3,
-     * and serial-in (pb0). Serial-in not yet implemented.
+     * and serial-in (pb0).
      */
 	int result;
 
@@ -1896,6 +1932,9 @@ static READ8_DEVICE_HANDLER ( d_pia1_pb_r_coco2 )
 		result = 0x04;					/* 16K: wire pia1_pb2 high */
 	else
 		result = (pia6821_get_output_b(state->pia_0) & 0x40) >> 4;		/* 32/64K: wire output of pia0_pb6 to input pia1_pb2  */
+
+   result += bitbanger_input_value;
+
 	return result;
 }
 
@@ -2033,8 +2072,8 @@ static void setup_memory_map(running_machine *machine)
 	};
 
 	/* We need to init these vars from the sam, as this may be called from outside the sam callbacks */
-	const address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
-	coco_state *state = (coco_state *)machine->driver_data;
+	address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	coco_state *state = machine->driver_data<coco_state>();
 	UINT8 memsize	= sam6883_memorysize(state->sam);
 	UINT8 maptype	= sam6883_maptype(state->sam);
 	//UINT8 pagemode  = sam6883_pagemode(machine);
@@ -2373,7 +2412,7 @@ static void coco3_mmu_update(running_machine *machine, int lowblock, int hiblock
 		{ 0xfe00, 0xfeff }
 	};
 
-	const address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 	int i, offset;
 	UINT8 *readbank;
 	UINT8 *cart_rom = memory_region(machine, "cart");
@@ -2711,7 +2750,7 @@ static SAM6883_SET_MAP_TYPE( coco3_sam_set_maptype )
 
 void coco_cart_w(running_device *device, int data)
 {
-	coco_state *state = (coco_state *)device->machine->driver_data;
+	coco_state *state = device->machine->driver_data<coco_state>();
 	pia6821_cb1_w(state->pia_1, data ? ASSERT_LINE : CLEAR_LINE);
 }
 
@@ -2783,7 +2822,7 @@ struct _machine_init_interface
 /* for everything except the coco3, so it made sense not to pass it as a parameter */
 static void generic_init_machine(running_machine *machine, const machine_init_interface *init)
 {
-	coco_state *state = (coco_state *)(coco_state *) machine->driver_data;
+	coco_state *state = (coco_state *) machine->driver_data<coco_state>();
 
 	/* locate devices */
 	state->cococart_device	= machine->device("coco_cartslot");
@@ -2826,6 +2865,11 @@ static void generic_init_machine(running_machine *machine, const machine_init_in
 	if (machine->device<cpu_device>("maincpu")->debug()) {
 		machine->device<cpu_device>("maincpu")->debug()->set_dasm_override(coco_dasm_override);
 	}
+
+   /* setup printer input line to "space", this is what a Tandy printer would do */
+   bitbanger_output_value = 1;
+   bitbanger_input_value = 0;
+   dac_value = 0;
 
 	state_save_register_global(machine, mux_sel1);
 	state_save_register_global(machine, mux_sel2);

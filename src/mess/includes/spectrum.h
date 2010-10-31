@@ -51,12 +51,11 @@
 #define TS2068_RIGHT_BORDER  96   /* Number of right hand border pixels */
 #define TS2068_SCREEN_WIDTH (TS2068_LEFT_BORDER + TS2068_DISPLAY_XSIZE + TS2068_RIGHT_BORDER)
 
-class spectrum_state
+class spectrum_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, spectrum_state(machine)); }
-
-	spectrum_state(running_machine &machine) { }
+	spectrum_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	int port_fe_data;
 	int port_7ffd_data;
@@ -90,7 +89,7 @@ public:
 INPUT_PORTS_EXTERN( spectrum );
 INPUT_PORTS_EXTERN( spec_plus );
 
-MACHINE_DRIVER_EXTERN( spectrum );
+MACHINE_CONFIG_EXTERN( spectrum );
 extern MACHINE_RESET( spectrum );
 
 extern READ8_HANDLER(spectrum_port_1f_r);
@@ -100,7 +99,7 @@ extern READ8_HANDLER(spectrum_port_fe_r);
 extern WRITE8_HANDLER(spectrum_port_fe_w);
 
 /*----------- defined in drivers/spec128.c -----------*/
-MACHINE_DRIVER_EXTERN( spectrum_128 );
+MACHINE_CONFIG_EXTERN( spectrum_128 );
 
 extern void spectrum_128_update_memory(running_machine *machine);
 
@@ -145,7 +144,7 @@ void    EventList_SetOffsetStartTime(int StartTime);
 void    EventList_AddItemOffset(running_machine *machine, int ID, int Data,int Time);
 int     EventList_NumEvents(void);
 EVENT_LIST_ITEM *EventList_GetFirstItem(void);
-				
+
 /*----------- defined in video/timex.c -----------*/
 extern VIDEO_EOF( ts2068 );
 extern VIDEO_UPDATE( ts2068 );

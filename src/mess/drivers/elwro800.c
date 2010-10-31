@@ -37,13 +37,12 @@
  * (note that in CP/J mode address 66 is used for FCB)
  *
  *************************************/
-static DIRECT_UPDATE_HANDLER(elwro800_direct_handler)
+DIRECT_UPDATE_HANDLER(elwro800_direct_handler)
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = machine->driver_data<spectrum_state>();
 	if (state->ram_at_0000 && address == 0x66)
 	{
-		direct->raw = direct->decrypted = &state->df_on_databus;
-		direct->bytemask = 0;
+		direct.explicit_configure(0x66, 0x66, 0, &state->df_on_databus);
 		return ~0;
 	}
 	return address;
@@ -90,7 +89,7 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 	UINT8 cs;
 	UINT8 ls175;
-	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	spectrum_state *state = machine->driver_data<spectrum_state>();
 
 	ls175 = BITSWAP8(data, 7, 6, 5, 4, 4, 5, 7, 6) & 0x0f;
 
@@ -208,7 +207,7 @@ static READ8_HANDLER(elwro800jr_io_r)
 {
 	UINT8 *prom = memory_region(space->machine, "proms");
 	UINT8 cs = prom[offset & 0x1ff];
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 
 	if (!BIT(cs,0))
 	{
@@ -491,7 +490,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(elwro800)
 {
-	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	spectrum_state *state = machine->driver_data<spectrum_state>();
 	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 
 	state->df_on_databus = 0xdf;
@@ -505,7 +504,7 @@ static MACHINE_RESET(elwro800)
 	// this is a reset of ls175 in mmu
 	elwro800jr_mmu_w(machine, 0);
 
-	memory_set_direct_update_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), elwro800_direct_handler);
+	cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(elwro800_direct_handler, *machine));
 }
 
 static const cassette_config elwro800jr_cassette_config =
@@ -552,9 +551,7 @@ static GFXDECODE_START( elwro800 )
 GFXDECODE_END
 
 
-static MACHINE_DRIVER_START( elwro800 )
-
-	MDRV_DRIVER_DATA(spectrum_state)
+static MACHINE_CONFIG_START( elwro800, spectrum_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, 3500000)	/* 3.5 MHz */
@@ -591,7 +588,7 @@ static MACHINE_DRIVER_START( elwro800 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_CASSETTE_ADD( "cassette", elwro800jr_cassette_config )
@@ -601,7 +598,7 @@ static MACHINE_DRIVER_START( elwro800 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*************************************
  *

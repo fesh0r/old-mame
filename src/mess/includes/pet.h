@@ -12,12 +12,11 @@
 #include "machine/6522via.h"
 #include "devices/cartslot.h"
 
-class pet_state
+class pet_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pet_state(machine)); }
-
-	pet_state(running_machine &machine) { }
+	pet_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	int pet_basic1; /* basic version 1 for quickloader */
 	int superpet;
@@ -26,6 +25,7 @@ public:
 	int pia0_irq;
 	int pia1_irq;
 	int via_irq;
+	UINT8 *videoram;
 };
 
 /*----------- defined in video/pet.c -----------*/
@@ -63,7 +63,7 @@ DRIVER_INIT( superpet );
 MACHINE_RESET( pet );
 INTERRUPT_GEN( pet_frame_interrupt );
 
-MACHINE_DRIVER_EXTERN( pet_cartslot );
-MACHINE_DRIVER_EXTERN( pet4_cartslot );
+MACHINE_CONFIG_EXTERN( pet_cartslot );
+MACHINE_CONFIG_EXTERN( pet4_cartslot );
 
 #endif /* PET_H_ */

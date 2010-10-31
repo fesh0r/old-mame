@@ -1,13 +1,13 @@
 /***************************************************************************
 
-	Multi 8 (c) 1983 Mitsubishi
+    Multi 8 (c) 1983 Mitsubishi
 
-	preliminary driver by Angelo Salese
+    preliminary driver by Angelo Salese
 
-	TODO:
-	- dunno how to trigger the text color mode in BASIC, I just modify
-	  $f0b1 to 1 for now
-	- bitmap B/W mode is untested
+    TODO:
+    - dunno how to trigger the text color mode in BASIC, I just modify
+      $f0b1 to 1 for now
+    - bitmap B/W mode is untested
 
 ****************************************************************************/
 
@@ -26,6 +26,11 @@ static UINT8 pen_clut[8],bw_mode;
 
 static VIDEO_START( multi8 )
 {
+	keyb_press = keyb_press_flag = shift_press_flag = display_reg = 0;
+	cursor_addr = cursor_raster = 0;
+	for (bw_mode = 0; bw_mode < 8; bw_mode++) pen_clut[bw_mode]=0;
+	vram_bank = 8;
+	bw_mode = 0;
 }
 
 static VIDEO_UPDATE( multi8 )
@@ -33,8 +38,8 @@ static VIDEO_UPDATE( multi8 )
 	int x,y,count;
 	int x_width;
 	int xi,yi;
-	static UINT8 *vram = memory_region(screen->machine, "vram");
-	static UINT8 *gfx_rom = memory_region(screen->machine, "chargen");
+	UINT8 *vram = memory_region(screen->machine, "vram");
+	UINT8 *gfx_rom = memory_region(screen->machine, "chargen");
 
 	count = 0x0000;
 
@@ -163,7 +168,7 @@ static READ8_HANDLER( key_input_r )
 
 static READ8_HANDLER( key_status_r )
 {
-	if(mcu_init == 0){ 				return 1; }
+	if(mcu_init == 0){				return 1; }
 	if(mcu_init == 1){ mcu_init++;	return 1; }
 	if(mcu_init == 2){ mcu_init++;	return 0; }
 
@@ -172,8 +177,8 @@ static READ8_HANDLER( key_status_r )
 
 static READ8_HANDLER( multi8_vram_r )
 {
-	static UINT8 *vram = memory_region(space->machine, "vram");
-	static UINT8 *wram = memory_region(space->machine, "wram");
+	UINT8 *vram = memory_region(space->machine, "vram");
+	UINT8 *wram = memory_region(space->machine, "wram");
 	UINT8 res;
 
 	if(!(vram_bank & 0x10)) //select plain work ram
@@ -190,8 +195,8 @@ static READ8_HANDLER( multi8_vram_r )
 
 static WRITE8_HANDLER( multi8_vram_w )
 {
-	static UINT8 *vram = memory_region(space->machine, "vram");
-	static UINT8 *wram = memory_region(space->machine, "wram");
+	UINT8 *vram = memory_region(space->machine, "vram");
+	UINT8 *wram = memory_region(space->machine, "wram");
 
 	if(!(vram_bank & 0x10)) //select plain work ram
 	{
@@ -232,22 +237,22 @@ static ADDRESS_MAP_START(multi8_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( multi8_io , ADDRESS_SPACE_IO, 8)
-//	ADDRESS_MAP_UNMAP_HIGH
+//  ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(key_input_r) AM_WRITENOP//keyboard
 	AM_RANGE(0x01, 0x01) AM_READ(key_status_r) AM_WRITENOP//keyboard
 	AM_RANGE(0x18, 0x19) AM_DEVWRITE("ymsnd", ym2203_w)
-//	AM_RANGE(0x18, 0x18) //opn read 0
+//  AM_RANGE(0x18, 0x18) //opn read 0
 	AM_RANGE(0x1a, 0x1a) AM_DEVREAD("ymsnd", ym2203_r)
 	AM_RANGE(0x1c, 0x1d) AM_WRITE(multi8_6845_w)
-//	AM_RANGE(0x20, 0x21) //sio, cmt
-//	AM_RANGE(0x24, 0x27) //pit
+//  AM_RANGE(0x20, 0x21) //sio, cmt
+//  AM_RANGE(0x24, 0x27) //pit
 	AM_RANGE(0x28, 0x2b) AM_DEVREADWRITE("ppi8255_0", i8255a_r, i8255a_w)
-//	AM_RANGE(0x2c, 0x2d) //i8259
+//  AM_RANGE(0x2c, 0x2d) //i8259
 	AM_RANGE(0x30, 0x37) AM_READWRITE(pal_r,pal_w)
-//	AM_RANGE(0x40, 0x41) //kanji regs
-//	AM_RANGE(0x70, 0x74) //upd765a fdc
-//	AM_RANGE(0x78, 0x78) //memory banking
+//  AM_RANGE(0x40, 0x41) //kanji regs
+//  AM_RANGE(0x70, 0x74) //upd765a fdc
+//  AM_RANGE(0x78, 0x78) //memory banking
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -429,7 +434,7 @@ static const gfx_layout multi8_charlayout =
 };
 
 static GFXDECODE_START( multi8 )
-	GFXDECODE_ENTRY( "chargen", 0x0000, multi8_charlayout, 0, 2 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, multi8_charlayout, 0, 4 )
 GFXDECODE_END
 
 static const mc6845_interface mc6845_intf =
@@ -465,14 +470,14 @@ static READ8_DEVICE_HANDLER( porta_r )
 static WRITE8_DEVICE_HANDLER( portb_w )
 {
 	/*
-		x--- ---- color mode
-		-x-- ---- screen width (80 / 40)
-		---- x--- memory bank status
-		---- -xxx page screen graphics in B/W mode
-	*/
-//	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+        x--- ---- color mode
+        -x-- ---- screen width (80 / 40)
+        ---- x--- memory bank status
+        ---- -xxx page screen graphics in B/W mode
+    */
+//  address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-//	printf("Port B w = %02x %04x\n",data,cpu_get_pc(space->cpu));
+//  printf("Port B w = %02x %04x\n",data,cpu_get_pc(space->cpu));
 
 	{
 		if((display_reg & 0x40) != (data & 0x40))
@@ -495,12 +500,12 @@ static WRITE8_DEVICE_HANDLER( portb_w )
 
 static WRITE8_DEVICE_HANDLER( portc_w )
 {
-//	printf("Port C w = %02x\n",data);
+//  printf("Port C w = %02x\n",data);
 	vram_bank = data & 0x1f;
 
 	if(data & 0x20 && data != 0xff)
 		printf("Work RAM bank selected!\n");
-//		fatalerror("Work RAM bank selected");
+//      fatalerror("Work RAM bank selected");
 }
 
 
@@ -542,7 +547,7 @@ static MACHINE_RESET(multi8)
 	mcu_init = 0;
 }
 
-static MACHINE_DRIVER_START( multi8 )
+static MACHINE_CONFIG_START( multi8, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
     MDRV_CPU_PROGRAM_MAP(multi8_mem)
@@ -577,7 +582,7 @@ static MACHINE_DRIVER_START( multi8 )
 
 	MDRV_SOUND_ADD("beeper", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( multi8 )
@@ -590,7 +595,7 @@ ROM_START( multi8 )
 	ROM_REGION( 0x1000, "fdc_bios", 0 )
 	ROM_LOAD( "disk.rom",  0x0000, 0x1000, NO_DUMP )
 
-	ROM_REGION( 0x10000, "vram", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "vram", ROMREGION_ERASE00 )
 
 	ROM_REGION( 0x4000, "wram", ROMREGION_ERASEFF )
 ROM_END
@@ -598,5 +603,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1983, multi8,  0,       0, 	multi8, 	multi8, 	 0,   "Mitsubishi",   "Multi 8",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1983, multi8,  0,       0,	multi8, 	multi8, 	 0,   "Mitsubishi",   "Multi 8",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

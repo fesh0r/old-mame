@@ -47,39 +47,41 @@ static WRITE8_HANDLER(mekd2_cas_w) { }
 
 static WRITE8_HANDLER(mekd2_kbd_w)
 {
+	mekd2_state *state = space->machine->driver_data<mekd2_state>();
+	UINT8 *videoram = state->videoram;
 	pia[offset] = data;
 	switch( offset )
 	{
 	case 2:
 		if( data & 0x20 )
 		{
-			space->machine->generic.videoram.u8[0*2+0] = ~pia[0];
-			space->machine->generic.videoram.u8[0*2+1] = 14;
+			videoram[0*2+0] = ~pia[0];
+			videoram[0*2+1] = 14;
 		}
 		if( data & 0x10 )
 		{
-			space->machine->generic.videoram.u8[1*2+0] = ~pia[0];
-			space->machine->generic.videoram.u8[1*2+1] = 14;
+			videoram[1*2+0] = ~pia[0];
+			videoram[1*2+1] = 14;
 		}
 		if( data & 0x08 )
 		{
-			space->machine->generic.videoram.u8[2*2+0] = ~pia[0];
-			space->machine->generic.videoram.u8[2*2+1] = 14;
+			videoram[2*2+0] = ~pia[0];
+			videoram[2*2+1] = 14;
 		}
 		if( data & 0x04 )
 		{
-			space->machine->generic.videoram.u8[3*2+0] = ~pia[0];
-			space->machine->generic.videoram.u8[3*2+1] = 14;
+			videoram[3*2+0] = ~pia[0];
+			videoram[3*2+1] = 14;
 		}
 		if( data & 0x02 )
 		{
-			space->machine->generic.videoram.u8[4*2+0] = ~pia[0];
-			space->machine->generic.videoram.u8[4*2+1] = 14;
+			videoram[4*2+0] = ~pia[0];
+			videoram[4*2+1] = 14;
 		}
 		if( data & 0x01 )
 		{
-			space->machine->generic.videoram.u8[5*2+0] = ~pia[0];
-			space->machine->generic.videoram.u8[5*2+1] = 14;
+			videoram[5*2+0] = ~pia[0];
+			videoram[5*2+1] = 14;
 		}
 		break;
 	}
@@ -196,7 +198,7 @@ static GFXDECODE_START( mekd2 )
 	GFXDECODE_ENTRY( "gfx2", 0, key_layout, 16*2, 2 )
 GFXDECODE_END
 
-static MACHINE_DRIVER_START( mekd2 )
+static MACHINE_CONFIG_START( mekd2, mekd2_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6800, 614400)        /* 614.4 kHz */
 	MDRV_CPU_PROGRAM_MAP(mekd2_mem)
@@ -226,7 +228,7 @@ static MACHINE_DRIVER_START( mekd2 )
 	MDRV_CARTSLOT_EXTENSION_LIST("d2")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(mekd2_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START(mekd2)

@@ -785,7 +785,7 @@ static void lynx_blitter(running_machine *machine)
 	int i; int o;int colors;
 
 	blitter.memory_accesses = 0;
-	blitter.mem = (UINT8*)memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000);
+	blitter.mem = (UINT8*)cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->get_read_ptr(0x0000);
 
 	blitter.xoff   = GET_WORD(suzy.data, 0x04);
 	blitter.yoff   = GET_WORD(suzy.data, 0x06);
@@ -886,7 +886,7 @@ static void lynx_blitter(running_machine *machine)
 	}
 
 	if (0)
-		timer_set(machine, cputag_clocks_to_attotime(machine, "maincpu", blitter.memory_accesses*20), NULL, 0, lynx_blitter_timer);
+		timer_set(machine, machine->device<cpu_device>("maincpu")->cycles_to_attotime(blitter.memory_accesses*20), NULL, 0, lynx_blitter_timer);
 }
 
 
@@ -1005,7 +1005,7 @@ static READ8_HANDLER( suzy_read )
 		case 0x92:	/* Better check this with docs! */
 			if (!attotime_compare(blitter.time, attotime_zero))
 			{
-				if (cputag_attotime_to_clocks(space->machine, "maincpu", attotime_sub(timer_get_time(space->machine), blitter.time)) > blitter.memory_accesses * 20)
+				if (space->machine->device<cpu_device>("maincpu")->attotime_to_cycles(attotime_sub(timer_get_time(space->machine), blitter.time)) > blitter.memory_accesses * 20)
 				{
 					suzy.data[offset] &= ~0x01; //blitter finished
 					blitter.time = attotime_zero;
@@ -1926,9 +1926,11 @@ INTERRUPT_GEN( lynx_frame_int )
 
 void lynx_crc_keyword(device_image_interface &image)
 {
-    const char *info;
+    const char *info = NULL;
 
-    info = image.extrainfo();
+	if (strcmp(image.extrainfo(), ""))
+	    info = image.extrainfo();
+
     rotate = 0;
 
     if (info)
@@ -2024,7 +2026,7 @@ static DEVICE_IMAGE_LOAD( lynx_cart )
 	return IMAGE_INIT_PASS;
 }
 
-MACHINE_DRIVER_START(lynx_cartslot)
+MACHINE_CONFIG_FRAGMENT(lynx_cartslot)
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("lnx,lyx")
 	MDRV_CARTSLOT_NOT_MANDATORY
@@ -2034,4 +2036,4 @@ MACHINE_DRIVER_START(lynx_cartslot)
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","lynx")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

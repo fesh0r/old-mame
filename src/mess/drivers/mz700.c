@@ -85,13 +85,13 @@
 
 static TIMER_DEVICE_CALLBACK( ne556_cursor_callback )
 {
-	mz_state *mz = (mz_state *)timer.machine->driver_data;
+	mz_state *mz = timer.machine->driver_data<mz_state>();
 	mz->cursor_timer ^= 1;
 }
 
 static TIMER_DEVICE_CALLBACK( ne556_other_callback )
 {
-	mz_state *mz = (mz_state *)timer.machine->driver_data;
+	mz_state *mz = timer.machine->driver_data<mz_state>();
 	mz->other_timer ^= 1;
 }
 
@@ -329,7 +329,7 @@ static const cassette_config mz700_cassette_config =
 };
 
 
-static MACHINE_DRIVER_START( mz700 )
+static MACHINE_CONFIG_START( mz700, mz_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_17_73447MHz/5)
 	MDRV_CPU_PROGRAM_MAP(mz700_mem)
@@ -352,10 +352,8 @@ static MACHINE_DRIVER_START( mz700 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-
-	MDRV_DRIVER_DATA(mz_state)
 
 	/* ne556 timers */
 	MDRV_TIMER_ADD_PERIODIC("cursor", ne556_cursor_callback, HZ(1.5))
@@ -371,11 +369,10 @@ static MACHINE_DRIVER_START( mz700 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( mz800 )
-	MDRV_IMPORT_FROM(mz700)
+static MACHINE_CONFIG_DERIVED( mz800, mz700 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
@@ -394,7 +391,7 @@ static MACHINE_DRIVER_START( mz800 )
 	MDRV_PIT8253_ADD("pit8253", mz800_pit8253_config)
 	MDRV_Z80PIO_ADD("z80pio", XTAL_17_73447MHz/5, mz800_z80pio_config)
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************
@@ -412,9 +409,9 @@ ROM_END
 ROM_START( mz700j )
 	ROM_REGION( 0x1000, "monitor", 0 )
 	ROM_LOAD( "1z-009b.rom", 0x0000, 0x1000, CRC(ab1fbe6f) SHA1(7b10d7965c541393e33a265bcf71a00314d2db7a))
-	
+
 	ROM_REGION( 0x1000, "cgrom", 0 )
-	//ROM_LOAD( "mz700fon.jp", 0x0000, 0x1000, CRC(697ec121) SHA1(5eb1d42d273b1fd2cab120486279ab8ff6c85dc7))	
+	//ROM_LOAD( "mz700fon.jp", 0x0000, 0x1000, CRC(697ec121) SHA1(5eb1d42d273b1fd2cab120486279ab8ff6c85dc7))
 	ROM_LOAD( "mz700fon.jpn", 0x0000, 0x1000, CRC(425eedf5) SHA1(bd2cc750f2d2f63e50a59786668509e81a276e32) )
 ROM_END
 
@@ -424,10 +421,10 @@ ROM_START( mz800 )
 ROM_END
 
 ROM_START( mz1500 )
-	ROM_REGION( 0x4000, "monitor", 0 )	
+	ROM_REGION( 0x4000, "monitor", 0 )
 	ROM_LOAD( "9z-502m.rom",  0x0000, 0x2800, CRC(643db428) SHA1(c2ad8af2ef00db32afde54d5741b07de5d4da16a))
 	ROM_REGION( 0x1000, "cgrom", 0 )
-	//ROM_LOAD( "mz700fon.jp", 0x0000, 0x1000, CRC(697ec121) SHA1(5eb1d42d273b1fd2cab120486279ab8ff6c85dc7))	
+	//ROM_LOAD( "mz700fon.jp", 0x0000, 0x1000, CRC(697ec121) SHA1(5eb1d42d273b1fd2cab120486279ab8ff6c85dc7))
 	ROM_LOAD( "mz700fon.jpn", 0x0000, 0x1000, CRC(425eedf5) SHA1(bd2cc750f2d2f63e50a59786668509e81a276e32) )
 ROM_END
 

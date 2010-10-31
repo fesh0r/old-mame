@@ -164,7 +164,7 @@ static ADDRESS_MAP_START( c1581_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x2000) AM_RAM
 	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE(M8520_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x6000, 0x6003) AM_MIRROR(0x1ffc) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
-	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1581", 0)
+	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1581:c1581", 0)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -175,7 +175,7 @@ static ADDRESS_MAP_START( c1563_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x2000) AM_RAM
 	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE(M8520_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x6000, 0x6003) AM_MIRROR(0x1ffc) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
-	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1563", 0)
+	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1563:c1563", 0)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -395,7 +395,7 @@ static const floppy_config c1581_floppy_config =
     MACHINE_DRIVER( c1581 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c1581 )
+static MACHINE_CONFIG_FRAGMENT( c1581 )
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(c1581_map)
 
@@ -403,13 +403,13 @@ static MACHINE_DRIVER_START( c1581 )
 	MDRV_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1581_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( c1563 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c1563 )
+static MACHINE_CONFIG_FRAGMENT( c1563 )
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(c1563_map)
 
@@ -417,7 +417,7 @@ static MACHINE_DRIVER_START( c1563 )
 	MDRV_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1581_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     ROM( c1581 )
@@ -425,10 +425,10 @@ MACHINE_DRIVER_END
 
 ROM_START( c1581 )
 	ROM_REGION( 0x10000, "c1581", ROMREGION_LOADBYNAME )
-	ROM_LOAD( "beta.u2",	  0x0000, 0x8000, CRC(ecc223cd) SHA1(a331d0d46ead1f0275b4ca594f87c6694d9d9594) )
-	ROM_LOAD( "318045-01.u2", 0x0000, 0x8000, CRC(113af078) SHA1(3fc088349ab83e8f5948b7670c866a3c954e6164) )
+	ROM_LOAD_OPTIONAL( "beta.u2",	  0x0000, 0x8000, CRC(ecc223cd) SHA1(a331d0d46ead1f0275b4ca594f87c6694d9d9594) )
+	ROM_LOAD_OPTIONAL( "318045-01.u2", 0x0000, 0x8000, CRC(113af078) SHA1(3fc088349ab83e8f5948b7670c866a3c954e6164) )
 	ROM_LOAD( "318045-02.u2", 0x0000, 0x8000, CRC(a9011b84) SHA1(01228eae6f066bd9b7b2b6a7fa3f667e41dad393) )
-	ROM_LOAD( "jiffydos 1581.u2", 0x8000, 0x8000, CRC(98873d0f) SHA1(65bbf2be7bcd5bdcbff609d6c66471ffb9d04bfe) )
+	ROM_LOAD_OPTIONAL( "jiffydos 1581.u2", 0x8000, 0x8000, CRC(98873d0f) SHA1(65bbf2be7bcd5bdcbff609d6c66471ffb9d04bfe) )
 ROM_END
 
 /*-------------------------------------------------
@@ -501,7 +501,7 @@ DEVICE_GET_INFO( c1581 )
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c1581);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c1581);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c1581);			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(c1581);						break;
@@ -527,7 +527,7 @@ DEVICE_GET_INFO( c1563 )
 	{
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c1563);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c1563);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c1563);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 1563");							break;

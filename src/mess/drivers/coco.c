@@ -694,46 +694,23 @@ INPUT_PORTS_END
   Bitbanger port
 ***************************************************************************/
 
-static int coco_bitbanger_filter(running_device *img, const int *pulses, int total_pulses, int total_duration)
-{
-	int i;
-	int result = 0;
-	int word;
-	int pos;
-	int pulse_type;
-	int c;
-
-	if (total_duration >= 11)
-	{
-		word = 0;
-		pos = 0;
-		pulse_type = 0;
-		result = 1;
-
-		for (i = 0; i < total_pulses; i++)
-		{
-			if (pulse_type)
-				word |= ((1 << pulses[i]) - 1) << pos;
-			pulse_type ^= 1;
-			pos += pulses[i];
-		}
-
-		c = (word >> 1) & 0xff;
-		printer_output(img, c);
-	}
-	return result;
-}
-
 static const bitbanger_config coco_bitbanger_config =
 {
-	coco_bitbanger_filter,
-	1.0 / 10.0,
-	0.2,
-	2,
-	10,
-	0,
-	0
+	coco_bitbanger_callback,
+	BITBANGER_PRINTER,   /* default mode */
+	BITBANGER_600,       /* default output baud */
+	BITBANGER_0PERCENT   /* default fine tune adjustment */
 };
+
+static const bitbanger_config coco3_bitbanger_config =
+{
+	coco3_bitbanger_callback,
+	BITBANGER_PRINTER,   /* default mode */
+	BITBANGER_600,       /* dafault output baud */
+	BITBANGER_0PERCENT   /* default fine tune adjustment */
+};
+
+
 
 /* ----------------------------------------------------------------------- */
 
@@ -749,13 +726,13 @@ static const ay8910_interface ay8912_interface =
 };
 
 
-static MACHINE_DRIVER_START( coco_sound )
+static MACHINE_CONFIG_FRAGMENT( coco_sound )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static const cassette_config coco_cassette_config =
 {
@@ -777,7 +754,7 @@ static const floppy_config coco_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( dragon32 )
+static MACHINE_CONFIG_START( dragon32, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(dragon_map)
@@ -785,7 +762,6 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 
 	MDRV_MACHINE_START( dragon32 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
@@ -795,7 +771,7 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* printer */
 	MDRV_PRINTER_ADD("printer")
@@ -821,15 +797,14 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_RAM_EXTRA_OPTIONS("64K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( dragon64 )
+static MACHINE_CONFIG_START( dragon64, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(d64_map)
 
 	MDRV_MACHINE_START( dragon64 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
@@ -841,7 +816,7 @@ static MACHINE_DRIVER_START( dragon64 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* printer */
 	MDRV_PRINTER_ADD("printer")
@@ -870,15 +845,14 @@ static MACHINE_DRIVER_START( dragon64 )
 	MDRV_RAM_DEFAULT_SIZE("64K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( d64plus )
+static MACHINE_CONFIG_START( d64plus, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(d64_plus_map)
 
 	MDRV_MACHINE_START( dragon64 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -891,7 +865,7 @@ static MACHINE_DRIVER_START( d64plus )
 	MDRV_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* printer */
 	MDRV_PRINTER_ADD("printer")
@@ -920,15 +894,14 @@ static MACHINE_DRIVER_START( d64plus )
 	MDRV_RAM_DEFAULT_SIZE("128K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( dgnalpha )
+static MACHINE_CONFIG_START( dgnalpha, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(dgnalpha_map)
 
 	MDRV_MACHINE_START( dgnalpha )
-	MDRV_DRIVER_DATA( coco_state )
     MDRV_MACHINE_RESET( dgnalpha )
 
 	/* video hardware */
@@ -942,7 +915,7 @@ static MACHINE_DRIVER_START( dgnalpha )
 	MDRV_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 	MDRV_SOUND_ADD("ay8912", AY8912, 1000000)
 	MDRV_SOUND_CONFIG(ay8912_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
@@ -978,15 +951,14 @@ static MACHINE_DRIVER_START( dgnalpha )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( tanodr64 )
+static MACHINE_CONFIG_START( tanodr64, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(d64_map)
 
 	MDRV_MACHINE_START( tanodr64 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -999,7 +971,7 @@ static MACHINE_DRIVER_START( tanodr64 )
 	MDRV_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* printer */
 	MDRV_PRINTER_ADD("printer")
@@ -1028,15 +1000,14 @@ static MACHINE_DRIVER_START( tanodr64 )
 	MDRV_RAM_DEFAULT_SIZE("64K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( coco )
+static MACHINE_CONFIG_START( coco, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco_map)
 
 	MDRV_MACHINE_START( coco )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -1049,7 +1020,7 @@ static MACHINE_DRIVER_START( coco )
 	MDRV_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* bitbanger/printer */
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
@@ -1077,15 +1048,14 @@ static MACHINE_DRIVER_START( coco )
 	MDRV_RAM_EXTRA_OPTIONS("4K,32K,64K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( coco2 )
+static MACHINE_CONFIG_START( coco2, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco_map)
 
 	MDRV_MACHINE_START( coco2 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -1097,7 +1067,7 @@ static MACHINE_DRIVER_START( coco2 )
 	MDRV_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* bitbanger/printer */
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
@@ -1125,15 +1095,14 @@ static MACHINE_DRIVER_START( coco2 )
 	MDRV_RAM_EXTRA_OPTIONS("16K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( coco2b )
+static MACHINE_CONFIG_START( coco2b, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco_map)
 
 	MDRV_MACHINE_START( coco2 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -1145,7 +1114,7 @@ static MACHINE_DRIVER_START( coco2b )
 	MDRV_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* bitbanger/printer */
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
@@ -1173,16 +1142,15 @@ static MACHINE_DRIVER_START( coco2b )
 	MDRV_RAM_EXTRA_OPTIONS("16K")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( coco3 )
+static MACHINE_CONFIG_START( coco3, coco_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco3_map)
 
 	MDRV_MACHINE_START( coco3 )
 	MDRV_MACHINE_RESET( coco3 )
-	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(coco3)
@@ -1205,10 +1173,10 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_PIA6821_ADD( "pia_1", coco3_pia_intf_1 )
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM( coco_sound )
+	MDRV_FRAGMENT_ADD( coco_sound )
 
 	/* bitbanger/printer */
-	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
+	MDRV_BITBANGER_ADD("bitbanger", coco3_bitbanger_config)
 
 	/* snapshot/quickload */
 	MDRV_SNAPSHOT_ADD("snapshot", coco3_pak, "pak", 0)
@@ -1233,10 +1201,9 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_RAM_EXTRA_OPTIONS("128K,2M,8M")
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( coco3p )
-	MDRV_IMPORT_FROM( coco3 )
+static MACHINE_CONFIG_DERIVED( coco3p, coco3 )
 
 	/* video hardware */
 	MDRV_VIDEO_START(coco3p)
@@ -1245,22 +1212,20 @@ static MACHINE_DRIVER_START( coco3p )
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 	MDRV_SCREEN_MODIFY("rgb")
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( coco3h )
-	MDRV_IMPORT_FROM( coco3 )
+static MACHINE_CONFIG_DERIVED( coco3h, coco3 )
 	MDRV_CPU_REPLACE( "maincpu", HD6309, COCO_CPU_SPEED_HZ * 4)
 	MDRV_CPU_PROGRAM_MAP(coco3_map)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( cocoe )
-	MDRV_IMPORT_FROM( coco )
+static MACHINE_CONFIG_DERIVED( cocoe, coco )
 
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("4K,16K,32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
 

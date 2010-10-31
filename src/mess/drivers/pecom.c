@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 #include "emu.h"
-#include "cpu/cdp1802/cdp1802.h"
+#include "cpu/cosmac/cosmac.h"
 #include "sound/cdp1869.h"
 #include "sound/wave.h"
 #include "devices/cassette.h"
@@ -26,11 +26,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pecom64_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_WRITE(pecom_bank_w)
-	AM_RANGE(0x03, 0x03) AM_READ(pecom_keyboard_r) AM_DEVWRITE(CDP1869_TAG, cdp1869_out3_w)
-	AM_RANGE(0x04, 0x04) AM_DEVWRITE(CDP1869_TAG, cdp1869_out4_w)
-	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CDP1869_TAG, cdp1869_out5_w)
-	AM_RANGE(0x06, 0x06) AM_DEVWRITE(CDP1869_TAG, cdp1869_out6_w)
-	AM_RANGE(0x07, 0x07) AM_DEVWRITE(CDP1869_TAG, cdp1869_out7_w)
+	AM_RANGE(0x03, 0x03) AM_READ(pecom_keyboard_r)
+	AM_RANGE(0x03, 0x07) AM_WRITE(pecom_cdp1869_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -50,6 +47,11 @@ Being keys distributed on four lines, it makes a bit difficult to accurately rem
 on modern keyboards. Hence, we move by default Up/Down/Left/Right to Cursor Keys and
 use LEft/Right Ctrl/Alt keys for the remaining keys. Due to the unnatural emulated keyboard
 mappings, this is another situation where natural keyboard comes very handy!          */
+
+static INPUT_CHANGED( ef_w )
+{
+	cputag_set_input_line(field->port->machine, CDP1802_TAG, (int)(FPTR)param, newval);
+}
 
 static INPUT_PORTS_START( pecom )
 	PORT_START("LINE0")
@@ -157,10 +159,10 @@ static INPUT_PORTS_START( pecom )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Del") PORT_CODE(KEYCODE_TAB) PORT_CHAR(UCHAR_MAMEKEY(DEL))
 
 	PORT_START("CNT")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Ctrl") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_2)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Ctrl") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_2) PORT_CHANGED(ef_w, (void*)COSMAC_INPUT_LINE_EF1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Shift") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_SHIFT_1)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Break") PORT_CODE(KEYCODE_MINUS)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK)) PORT_TOGGLE PORT_CHANGED(ef_w, (void*)COSMAC_INPUT_LINE_EF3)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Break") PORT_CODE(KEYCODE_MINUS) PORT_CHANGED(ef_w, (void*)COSMAC_INPUT_LINE_EF4)
 INPUT_PORTS_END
 
 static const cassette_config pecom_cassette_config =
@@ -172,11 +174,10 @@ static const cassette_config pecom_cassette_config =
 };
 
 /* Machine driver */
-static MACHINE_DRIVER_START( pecom64 )
-	MDRV_DRIVER_DATA(pecom_state)
+static MACHINE_CONFIG_START( pecom64, pecom_state )
 
     /* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", CDP1802, CDP1869_DOT_CLK_PAL/3)
+	MDRV_CPU_ADD(CDP1802_TAG, COSMAC, CDP1869_DOT_CLK_PAL/3)
 	MDRV_CPU_PROGRAM_MAP(pecom64_mem)
 	MDRV_CPU_IO_MAP(pecom64_io)
 	MDRV_CPU_CONFIG(pecom64_cdp1802_config)
@@ -186,7 +187,7 @@ static MACHINE_DRIVER_START( pecom64 )
 
 	// sound and video hardware
 
-	MDRV_IMPORT_FROM(pecom_video)
+	MDRV_FRAGMENT_ADD(pecom_video)
 
 	MDRV_CASSETTE_ADD( "cassette", pecom_cassette_config )
 
@@ -194,11 +195,11 @@ static MACHINE_DRIVER_START( pecom64 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
 	MDRV_RAM_DEFAULT_VALUE(0x00)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( pecom64 )
-	  ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	  ROM_REGION( 0x10000, CDP1802_TAG, ROMREGION_ERASEFF )
 	  ROM_SYSTEM_BIOS(0, "ver4", "version 4")
 	  ROMX_LOAD( "pecom64-1.bin", 0x8000, 0x4000, CRC(9a433b47) SHA1(dadb8c399e0a25a2693e10e42a2d7fc2ea9ad427), ROM_BIOS(1) )
 	  ROMX_LOAD( "pecom64-2.bin", 0xc000, 0x4000, CRC(2116cadc) SHA1(03f11055cd221d438a40a41874af8fba0fa116d9), ROM_BIOS(1) )

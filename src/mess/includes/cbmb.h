@@ -15,12 +15,11 @@
 #include "machine/6526cia.h"
 #include "devices/cartslot.h"
 
-class cbmb_state
+class cbmb_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, cbmb_state(machine)); }
-
-	cbmb_state(running_machine &machine) { }
+	cbmb_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard lines */
 	int cbmb_keyline_a;
@@ -30,6 +29,7 @@ public:
 	int p500;
 	int cbm700;
 	int cbm_ntsc;
+	UINT8 *videoram;
 };
 
 /*----------- defined in machine/cbmb.c -----------*/
@@ -70,7 +70,7 @@ DRIVER_INIT( cbm600hu );
 DRIVER_INIT( cbm700 );
 MACHINE_RESET( cbmb );
 
-MACHINE_DRIVER_EXTERN( cbmb_cartslot );
+MACHINE_CONFIG_EXTERN( cbmb_cartslot );
 
 
 /*----------- defined in video/cbmb.c -----------*/

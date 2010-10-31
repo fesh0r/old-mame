@@ -84,7 +84,7 @@ Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction
 * Add better P500 emulation (almost everything: memory access, inputs,
     Datasette, etc.)
 
-* Was CBM 710 / 720 monitor at 50Hz? If not remove MACHINE_DRIVER_START(cbm700pal)
+* Was CBM 710 / 720 monitor at 50Hz? If not remove MACHINE_CONFIG_START( cbm700pal, cbmb_state )
     and use the 60Hz version for the whole High Profile
 
 * Find info about the following models (if ever existed):
@@ -134,7 +134,7 @@ static ADDRESS_MAP_START(cbmb_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf4000, 0xf5fff) AM_ROM
 	AM_RANGE(0xf6000, 0xf7fff) AM_ROM
 	AM_RANGE(0xf8000, 0xfbfff) AM_ROM AM_BASE(&cbmb_basic)
-	AM_RANGE(0xfd000, 0xfd7ff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* VIDEORAM */
+	AM_RANGE(0xfd000, 0xfd7ff) AM_RAM AM_BASE_MEMBER(cbmb_state, videoram) /* VIDEORAM */
 	AM_RANGE(0xfd800, 0xfd800) AM_MIRROR(0xfe) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR(0xfe) AM_DEVREADWRITE("crtc", mc6845_register_r , mc6845_register_w)
 	/* disk units */
@@ -415,12 +415,11 @@ static IEEE488_DAISY( ieee488_daisy )
 {
 	{ "tpi6525_0" },
 	{ "cia" },
-	{ C2040_IEEE488("c8250") },
+	{ C2040_IEEE488("drive") },
 	{ NULL}
 };
 
-static MACHINE_DRIVER_START( cbm600 )
-	MDRV_DRIVER_DATA(cbmb_state)
+static MACHINE_CONFIG_START( cbm600, cbmb_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6509, 7833600)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(cbmb_mem)
@@ -460,21 +459,19 @@ static MACHINE_DRIVER_START( cbm600 )
 
 	/* IEEE bus */
 	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
-	MDRV_C8250_ADD("c8250", "ieee_bus", 8)
+	MDRV_C8250_ADD("drive", "ieee_bus", 8)
 
-	MDRV_IMPORT_FROM(cbmb_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(cbmb_cartslot)
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( cbm600pal )
-	MDRV_IMPORT_FROM( cbm600 )
+static MACHINE_CONFIG_DERIVED( cbm600pal, cbm600 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( cbm700 )
-	MDRV_IMPORT_FROM( cbm600 )
+static MACHINE_CONFIG_DERIVED( cbm700, cbm600 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(720, 350)
 	MDRV_SCREEN_VISIBLE_AREA(0, 720 - 1, 0, 350 - 1)
@@ -484,25 +481,22 @@ static MACHINE_DRIVER_START( cbm700 )
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 8 /*? I do not know if this is correct, please verify */, cbm700_crtc)
 
 	MDRV_VIDEO_START( cbm700 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( cbm700pal )
-	MDRV_IMPORT_FROM( cbm700 )
+static MACHINE_CONFIG_DERIVED( cbm700pal, cbm700 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( bx256hp )
-	MDRV_IMPORT_FROM( cbm700 )
+static MACHINE_CONFIG_DERIVED( bx256hp, cbm700 )
 
 //  MDRV_CPU_ADD("8088", I8088, /* ? */)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( p500 )
-	MDRV_DRIVER_DATA(cbmb_state)
+static MACHINE_CONFIG_START( p500, cbmb_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6509, VIC6567_CLOCK)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(p500_mem)
@@ -542,10 +536,10 @@ static MACHINE_DRIVER_START( p500 )
 
 	/* IEEE bus */
 	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
-	MDRV_C8250_ADD("c8250", "ieee_bus", 8)
+	MDRV_C8250_ADD("drive", "ieee_bus", 8)
 
-	MDRV_IMPORT_FROM(cbmb_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(cbmb_cartslot)
+MACHINE_CONFIG_END
 
 
 

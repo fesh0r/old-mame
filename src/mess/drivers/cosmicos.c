@@ -21,6 +21,7 @@
 
     TODO:
 
+    - fix direct update handler to make system work again
     - display interface INH
     - 2 segment display
     - single step
@@ -33,7 +34,7 @@
 
 #include "emu.h"
 #include "includes/cosmicos.h"
-#include "cpu/cdp1802/cdp1802.h"
+#include "cpu/cosmac/cosmac.h"
 #include "devices/cassette.h"
 #include "devices/messram.h"
 #include "devices/snapquik.h"
@@ -43,11 +44,19 @@
 #include "video/dm9368.h"
 #include "cosmicos.lh"
 
+enum
+{
+	MODE_RUN,
+	MODE_LOAD,
+	MODE_PAUSE,
+	MODE_RESET
+};
+
 /* Read/Write Handlers */
 
 static READ8_DEVICE_HANDLER( video_off_r )
 {
-	cosmicos_state *state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *state = device->machine->driver_data<cosmicos_state>();
 	UINT8 data = 0;
 
 	if (!state->q)
@@ -60,7 +69,7 @@ static READ8_DEVICE_HANDLER( video_off_r )
 
 static READ8_DEVICE_HANDLER( video_on_r )
 {
-	cosmicos_state *state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *state = device->machine->driver_data<cosmicos_state>();
 	UINT8 data = 0;
 
 	if (!state->q)
@@ -73,7 +82,7 @@ static READ8_DEVICE_HANDLER( video_on_r )
 
 static WRITE8_DEVICE_HANDLER( audio_latch_w )
 {
-	cosmicos_state *state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *state = device->machine->driver_data<cosmicos_state>();
 
 	if (state->q)
 	{
@@ -83,7 +92,7 @@ static WRITE8_DEVICE_HANDLER( audio_latch_w )
 
 static READ8_HANDLER( hex_keyboard_r )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = space->machine->driver_data<cosmicos_state>();
 	static const char *const keynames[] = { "ROW1", "ROW2", "ROW3", "ROW4" };
 	UINT8 data = 0;
 	int i;
@@ -106,14 +115,14 @@ static READ8_HANDLER( hex_keyboard_r )
 
 static WRITE8_HANDLER( hex_keylatch_w )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = space->machine->driver_data<cosmicos_state>();
 
 	state->keylatch = data & 0x0f;
 }
 
 static READ8_HANDLER( reset_counter_r )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = space->machine->driver_data<cosmicos_state>();
 
 	state->counter = 0;
 
@@ -122,7 +131,7 @@ static READ8_HANDLER( reset_counter_r )
 
 static WRITE8_HANDLER( segment_w )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = space->machine->driver_data<cosmicos_state>();
 
 	state->counter++;
 
@@ -139,14 +148,14 @@ static WRITE8_HANDLER( segment_w )
 
 static READ8_HANDLER( data_r )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = space->machine->driver_data<cosmicos_state>();
 
 	return state->data;
 }
 
 static WRITE8_HANDLER( display_w )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = space->machine->driver_data<cosmicos_state>();
 
 	state->segment = data;
 }
@@ -154,9 +163,9 @@ static WRITE8_HANDLER( display_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( cosmicos_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_RAMBANK("bank1")
-	AM_RANGE(0xc000, 0xcfff) AM_ROM
-	AM_RANGE(0xff00, 0xffff) AM_RAMBANK("bank2")
+	AM_RANGE(0x0000, 0xbfff) AM_RAM
+	AM_RANGE(0xc000, 0xcfff) AM_ROM AM_REGION(CDP1802_TAG, 0)
+	AM_RANGE(0xff00, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cosmicos_io, ADDRESS_SPACE_IO, 8 )
@@ -174,7 +183,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( data )
 {
-	cosmicos_state *state = (cosmicos_state *)field->port->machine->driver_data;
+	cosmicos_state *state = field->port->machine->driver_data<cosmicos_state>();
 	UINT8 data = input_port_read(field->port->machine, "DATA");
 	int i;
 
@@ -190,11 +199,11 @@ static INPUT_CHANGED( data )
 
 static INPUT_CHANGED( enter )
 {
-	cosmicos_state *state = (cosmicos_state *)field->port->machine->driver_data;
+	cosmicos_state *state = field->port->machine->driver_data<cosmicos_state>();
 
-	if (!newval && (state->cdp1802_mode == CDP1802_MODE_LOAD))
+	if (!newval && !state->wait && !state->clear)
 	{
-		cputag_set_input_line(field->port->machine, CDP1802_TAG, CDP1802_INPUT_LINE_DMAIN, ASSERT_LINE);
+		cputag_set_input_line(field->port->machine, CDP1802_TAG, COSMAC_INPUT_LINE_DMAIN, ASSERT_LINE);
 	}
 }
 
@@ -203,11 +212,9 @@ static INPUT_CHANGED( single_step )
 	// if in PAUSE mode, set RUN mode until TPB=active
 }
 
-static void set_cdp1802_mode(running_machine *machine, cdp1802_control_mode mode)
+static void set_cdp1802_mode(running_machine *machine, int mode)
 {
-	cosmicos_state *state = (cosmicos_state *)machine->driver_data;
-
-	state->cdp1802_mode = mode;
+	cosmicos_state *state = machine->driver_data<cosmicos_state>();
 
 	output_set_led_value(LED_RUN, 0);
 	output_set_led_value(LED_LOAD, 0);
@@ -216,22 +223,33 @@ static void set_cdp1802_mode(running_machine *machine, cdp1802_control_mode mode
 
 	switch (mode)
 	{
-	case CDP1802_MODE_RUN:
+	case MODE_RUN:
 		output_set_led_value(LED_RUN, 1);
+
+		state->wait = 1;
+		state->clear = 1;
 		break;
 
-	case CDP1802_MODE_LOAD:
+	case MODE_LOAD:
 		output_set_led_value(LED_LOAD, 1);
+
+		state->wait = 0;
+		state->clear = 0;
 		break;
 
-	case CDP1802_MODE_PAUSE:
+	case MODE_PAUSE:
 		output_set_led_value(LED_PAUSE, 1);
+
+		state->wait = 1;
+		state->clear = 0;
 		break;
 
-	case CDP1802_MODE_RESET:
-		cputag_set_input_line(machine, CDP1802_TAG, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
-		cputag_set_input_line(machine, CDP1802_TAG, CDP1802_INPUT_LINE_DMAIN, CLEAR_LINE);
+	case MODE_RESET:
+		cputag_set_input_line(machine, CDP1802_TAG, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
+		cputag_set_input_line(machine, CDP1802_TAG, COSMAC_INPUT_LINE_DMAIN, CLEAR_LINE);
 
+		state->wait = 1;
+		state->clear = 0;
 		state->boot = 1;
 
 		output_set_led_value(LED_RESET, 1);
@@ -239,14 +257,14 @@ static void set_cdp1802_mode(running_machine *machine, cdp1802_control_mode mode
 	}
 }
 
-static INPUT_CHANGED( run )   { if (!newval) set_cdp1802_mode(field->port->machine, CDP1802_MODE_RUN); }
-static INPUT_CHANGED( load )  { if (!newval) set_cdp1802_mode(field->port->machine, CDP1802_MODE_LOAD); }
-static INPUT_CHANGED( cosmicos_pause ) {	if (!newval) set_cdp1802_mode(field->port->machine, CDP1802_MODE_PAUSE); }
-static INPUT_CHANGED( reset ) {	if (!newval) set_cdp1802_mode(field->port->machine, CDP1802_MODE_RESET); }
+static INPUT_CHANGED( run )				{ if (!newval) set_cdp1802_mode(field->port->machine, MODE_RUN); }
+static INPUT_CHANGED( load )			{ if (!newval) set_cdp1802_mode(field->port->machine, MODE_LOAD); }
+static INPUT_CHANGED( cosmicos_pause )	{ if (!newval) set_cdp1802_mode(field->port->machine, MODE_PAUSE); }
+static INPUT_CHANGED( reset )			{ if (!newval) set_cdp1802_mode(field->port->machine, MODE_RESET); }
 
 static void clear_input_data(running_machine *machine)
 {
-	cosmicos_state *state = (cosmicos_state *)machine->driver_data;
+	cosmicos_state *state = machine->driver_data<cosmicos_state>();
 	int i;
 
 	state->data = 0;
@@ -264,32 +282,30 @@ static INPUT_CHANGED( clear_data )
 
 static void set_ram_mode(running_machine *machine)
 {
-	cosmicos_state *state = (cosmicos_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
+	cosmicos_state *state = machine->driver_data<cosmicos_state>();
+	address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
+	UINT8 *ram = messram_get_ptr(machine->device("messram"));
 
 	if (state->ram_disable)
 	{
-		memory_unmap_read(program, 0xff00, 0xffff, 0, 0);
-		memory_unmap_write(program, 0xff00, 0xffff, 0, 0);
+		memory_unmap_readwrite(program, 0xff00, 0xffff, 0, 0);
 	}
 	else
 	{
 		if (state->ram_protect)
 		{
-			memory_install_read_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
-			memory_unmap_write(program, 0xff00, 0xffff, 0, 0);
+			memory_install_rom(program, 0xff00, 0xffff, 0, 0, ram);
 		}
 		else
 		{
-			memory_install_read_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
-			memory_install_write_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
+			memory_install_ram(program, 0xff00, 0xffff, 0, 0, ram);
 		}
 	}
 }
 
 static INPUT_CHANGED( memory_protect )
 {
-	cosmicos_state *state = (cosmicos_state *)field->port->machine->driver_data;
+	cosmicos_state *state = field->port->machine->driver_data<cosmicos_state>();
 
 	state->ram_protect = newval;
 
@@ -298,7 +314,7 @@ static INPUT_CHANGED( memory_protect )
 
 static INPUT_CHANGED( memory_disable )
 {
-	cosmicos_state *state = (cosmicos_state *)field->port->machine->driver_data;
+	cosmicos_state *state = field->port->machine->driver_data<cosmicos_state>();
 
 	state->ram_disable = newval;
 
@@ -352,17 +368,17 @@ static INPUT_PORTS_START( cosmicos )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
 
 	PORT_START("SPECIAL")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RET") PORT_CODE(KEYCODE_F1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("DEC") PORT_CODE(KEYCODE_F2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("REQ") PORT_CODE(KEYCODE_F3)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SEQ") PORT_CODE(KEYCODE_F4)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RET") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("DEC") PORT_CODE(KEYCODE_F2)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("REQ") PORT_CODE(KEYCODE_F3)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("SEQ") PORT_CODE(KEYCODE_F4)
 INPUT_PORTS_END
 
 /* Video */
 
 static TIMER_DEVICE_CALLBACK( digit_tick )
 {
-	cosmicos_state *state = (cosmicos_state *)timer.machine->driver_data;
+	cosmicos_state *state = timer.machine->driver_data<cosmicos_state>();
 
 	state->digit = !state->digit;
 
@@ -371,19 +387,19 @@ static TIMER_DEVICE_CALLBACK( digit_tick )
 
 static TIMER_DEVICE_CALLBACK( int_tick )
 {
-	cputag_set_input_line(timer.machine, CDP1802_TAG, CDP1802_INPUT_LINE_INT, ASSERT_LINE);
+	cputag_set_input_line(timer.machine, CDP1802_TAG, COSMAC_INPUT_LINE_INT, ASSERT_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( cosmicos_dmaout_w )
 {
-	cosmicos_state *driver_state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *driver_state = device->machine->driver_data<cosmicos_state>();
 
 	driver_state->dmaout = state;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( cosmicos_efx_w )
 {
-	cosmicos_state *driver_state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *driver_state = device->machine->driver_data<cosmicos_state>();
 
 	driver_state->efx = state;
 }
@@ -396,7 +412,7 @@ static CDP1864_INTERFACE( cosmicos_cdp1864_intf )
 	DEVCB_LINE_VCC,
 	DEVCB_LINE_VCC,
 	DEVCB_LINE_VCC,
-	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_INT),
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_INT),
 	DEVCB_LINE(cosmicos_dmaout_w),
 	DEVCB_LINE(cosmicos_efx_w),
 	RES_K(2), // R2
@@ -407,7 +423,7 @@ static CDP1864_INTERFACE( cosmicos_cdp1864_intf )
 
 static VIDEO_UPDATE( cosmicos )
 {
-	cosmicos_state *state = (cosmicos_state *)screen->machine->driver_data;
+	cosmicos_state *state = screen->machine->driver_data<cosmicos_state>();
 
 	cdp1864_update(state->cdp1864, bitmap, cliprect);
 
@@ -416,52 +432,54 @@ static VIDEO_UPDATE( cosmicos )
 
 /* CDP1802 Configuration */
 
-static CDP1802_MODE_READ( cosmicos_mode_r )
+static READ_LINE_DEVICE_HANDLER( wait_r )
 {
-	cosmicos_state *state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *state = device->machine->driver_data<cosmicos_state>();
 
-	return state->cdp1802_mode;
+	return state->wait;
 }
 
-static CDP1802_EF_READ( cosmicos_ef_r )
+static READ_LINE_DEVICE_HANDLER( clear_r )
 {
-	/*
-        EF1
-        EF2     cassette input
-        EF3
-        EF4     ENTER
-    */
+	cosmicos_state *state = device->machine->driver_data<cosmicos_state>();
 
-	cosmicos_state *state = (cosmicos_state *)device->machine->driver_data;
+	return state->clear;
+}
+
+static READ_LINE_DEVICE_HANDLER( ef1_r )
+{
 	UINT8 special = input_port_read(device->machine, "SPECIAL");
-	UINT8 flags = 0x0f;
 
-	/* cassette input */
-	if (cassette_input(state->cassette) < 0.0)
-	{
-		output_set_led_value(LED_CASSETTE, 1);
-		flags &= ~EF2;
-	}
-	else
-	{
-		output_set_led_value(LED_CASSETTE, 0);
-	}
-
-	/* ENTER */
-	if (!BIT(input_port_read(device->machine, "BUTTONS"), 0)) flags &= ~EF4;
-
-	/* hexadecimal keypad */
-	if (!BIT(special, 0)) flags &= ~EF1;
-	if (!BIT(special, 1)) flags &= ~EF2;
-	if (!BIT(special, 2)) flags &= ~EF3;
-	if (!BIT(special, 3)) flags &= ~(EF2 | EF3);
-
-	return flags;
+	return BIT(special, 0);
 }
 
-static CDP1802_SC_WRITE( cosmicos_sc_w )
+static READ_LINE_DEVICE_HANDLER( ef2_r )
 {
-	cosmicos_state *driver_state = (cosmicos_state *)device->machine->driver_data;
+	UINT8 special = input_port_read(device->machine, "SPECIAL");
+	int casin = cassette_input(device) < 0.0;
+	
+	output_set_led_value(LED_CASSETTE, casin);
+
+	return BIT(special, 1) | BIT(special, 3) | casin;
+}
+
+static READ_LINE_DEVICE_HANDLER( ef3_r )
+{
+	UINT8 special = input_port_read(device->machine, "SPECIAL");
+
+	return BIT(special, 2) | BIT(special, 3);
+}
+
+static READ_LINE_DEVICE_HANDLER( ef4_r )
+{
+	return BIT(input_port_read(device->machine, "BUTTONS"), 0);
+}
+
+static COSMAC_SC_WRITE( cosmicos_sc_w )
+{
+	cosmicos_state *driver_state = device->machine->driver_data<cosmicos_state>();
+
+	int sc1 = BIT(sc, 1);
 
 	if (driver_state->sc1 && !sc1)
 	{
@@ -470,8 +488,8 @@ static CDP1802_SC_WRITE( cosmicos_sc_w )
 
 	if (sc1)
 	{
-		cpu_set_input_line(device, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
-		cpu_set_input_line(device, CDP1802_INPUT_LINE_DMAIN, CLEAR_LINE);
+		cpu_set_input_line(device, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
+		cpu_set_input_line(device, COSMAC_INPUT_LINE_DMAIN, CLEAR_LINE);
 	}
 
 	driver_state->sc1 = sc1;
@@ -479,7 +497,7 @@ static CDP1802_SC_WRITE( cosmicos_sc_w )
 
 static WRITE_LINE_DEVICE_HANDLER( cosmicos_q_w )
 {
-	cosmicos_state *driver_state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *driver_state = device->machine->driver_data<cosmicos_state>();
 
 	/* cassette */
 	cassette_output(driver_state->cassette, state ? +1.0 : -1.0);
@@ -495,27 +513,34 @@ static WRITE_LINE_DEVICE_HANDLER( cosmicos_q_w )
 
 static READ8_DEVICE_HANDLER( cosmicos_dma_r )
 {
-	cosmicos_state *state = (cosmicos_state *)device->machine->driver_data;
+	cosmicos_state *state = device->machine->driver_data<cosmicos_state>();
 
 	return state->data;
 }
 
-static CDP1802_INTERFACE( cosmicos_config )
+static COSMAC_INTERFACE( cosmicos_config )
 {
-	cosmicos_mode_r,
-	cosmicos_ef_r,
-	cosmicos_sc_w,
+	DEVCB_LINE(wait_r),
+	DEVCB_LINE(clear_r),
+	DEVCB_LINE(ef1_r),
+	DEVCB_DEVICE_LINE(CASSETTE_TAG, ef2_r),
+	DEVCB_LINE(ef3_r),
+	DEVCB_LINE(ef4_r),
 	DEVCB_LINE(cosmicos_q_w),
 	DEVCB_HANDLER(cosmicos_dma_r),
+	DEVCB_NULL,
+	cosmicos_sc_w,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
+
 
 /* Machine Initialization */
 
 static MACHINE_START( cosmicos )
 {
-	cosmicos_state *state = (cosmicos_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
+	cosmicos_state *state = machine->driver_data<cosmicos_state>();
+	address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
 	state->dm9368 = machine->device(DM9368_TAG);
@@ -527,12 +552,6 @@ static MACHINE_START( cosmicos )
 	dm9368_rbi_w(state->dm9368, 1);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, CDP1802_TAG), 0);
-	memory_set_bank(machine, "bank1", 0);
-
-	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, CDP1802_TAG) + 0xff00, 0);
-	memory_set_bank(machine, "bank2", 0);
-
 	switch (messram_get_size(machine->device("messram")))
 	{
 	case 256:
@@ -540,19 +559,15 @@ static MACHINE_START( cosmicos )
 		break;
 
 	case 4*1024:
-		memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
 		memory_unmap_readwrite(program, 0x1000, 0xbfff, 0, 0);
-		break;
-
-	case 48*1024:
-		memory_install_readwrite_bank(program, 0x0000, 0xbfff, 0, 0, "bank1");
 		break;
 	}
 
-	memory_install_readwrite_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
+	set_ram_mode(machine);
 
 	/* register for state saving */
-	state_save_register_global(machine, state->cdp1802_mode);
+	state_save_register_global(machine, state->wait);
+	state_save_register_global(machine, state->clear);
 	state_save_register_global(machine, state->sc1);
 	state_save_register_global(machine, state->data);
 	state_save_register_global(machine, state->boot);
@@ -570,7 +585,7 @@ static MACHINE_START( cosmicos )
 
 static MACHINE_RESET( cosmicos )
 {
-	set_cdp1802_mode(machine, CDP1802_MODE_RESET);
+	set_cdp1802_mode(machine, MODE_RESET);
 }
 
 /* Quickload */
@@ -596,11 +611,9 @@ static const cassette_config cosmicos_cassette_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( cosmicos )
-	MDRV_DRIVER_DATA(cosmicos_state)
-
+static MACHINE_CONFIG_START( cosmicos, cosmicos_state )
 	/* basic machine hardware */
-    MDRV_CPU_ADD(CDP1802_TAG, CDP1802, XTAL_1_75MHz)
+    MDRV_CPU_ADD(CDP1802_TAG, COSMAC, XTAL_1_75MHz)
     MDRV_CPU_PROGRAM_MAP(cosmicos_mem)
     MDRV_CPU_IO_MAP(cosmicos_io)
 	MDRV_CPU_CONFIG(cosmicos_config)
@@ -622,7 +635,7 @@ static MACHINE_DRIVER_START( cosmicos )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_CDP1864_ADD(CDP1864_TAG, XTAL_1_75MHz, cosmicos_cdp1864_intf)
@@ -636,30 +649,31 @@ static MACHINE_DRIVER_START( cosmicos )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("256")
 	MDRV_RAM_EXTRA_OPTIONS("4K,48K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 
 ROM_START( cosmicos )
-	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
+	ROM_REGION( 0x1000, CDP1802_TAG, 0 )
 	ROM_SYSTEM_BIOS( 0, "hex", "Hex Monitor" )
-	ROMX_LOAD( "hex.ic6",	0xc000, 0x0400, BAD_DUMP CRC(d25124bf) SHA1(121215ba3a979e1962327ebe73cbadf784c568d9), ROM_BIOS(1) ) /* typed in from manual */
-	ROMX_LOAD( "hex.ic7",	0xc400, 0x0400, BAD_DUMP CRC(364ac81b) SHA1(83936ee6a7ed44632eb290889b98fb9a500f15d4), ROM_BIOS(1) ) /* typed in from manual */
+	ROMX_LOAD( "hex.ic6",	0x000, 0x400, BAD_DUMP CRC(d25124bf) SHA1(121215ba3a979e1962327ebe73cbadf784c568d9), ROM_BIOS(1) ) /* typed in from manual */
+	ROMX_LOAD( "hex.ic7",	0x400, 0x400, BAD_DUMP CRC(364ac81b) SHA1(83936ee6a7ed44632eb290889b98fb9a500f15d4), ROM_BIOS(1) ) /* typed in from manual */
 	ROM_SYSTEM_BIOS( 1, "ascii", "ASCII Monitor" )
-	ROMX_LOAD( "ascii.ic6", 0xc000, 0x0400, NO_DUMP, ROM_BIOS(2) )
-	ROMX_LOAD( "ascii.ic7", 0xc400, 0x0400, NO_DUMP, ROM_BIOS(2) )
+	ROMX_LOAD( "ascii.ic6", 0x000, 0x400, NO_DUMP, ROM_BIOS(2) )
+	ROMX_LOAD( "ascii.ic7", 0x400, 0x400, NO_DUMP, ROM_BIOS(2) )
 ROM_END
 
 /* System Drivers */
 
-static DIRECT_UPDATE_HANDLER( cosmicos_direct_update_handler )
+DIRECT_UPDATE_HANDLER( cosmicos_direct_update_handler )
 {
-	cosmicos_state *state = (cosmicos_state *)space->machine->driver_data;
+	cosmicos_state *state = machine->driver_data<cosmicos_state>();
 
 	if (state->boot)
 	{
 		/* force A6 and A7 high */
-		return address | 0xc0c0;
+		direct.explicit_configure(0x0000, 0xffff, 0x3f3f, memory_region(machine, CDP1802_TAG) + 0xc0);
+		return ~0;
 	}
 
 	return address;
@@ -667,10 +681,10 @@ static DIRECT_UPDATE_HANDLER( cosmicos_direct_update_handler )
 
 static DRIVER_INIT( cosmicos )
 {
-	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
-	memory_set_direct_update_handler(program, cosmicos_direct_update_handler);
+	program->set_direct_update_handler(direct_update_delegate_create_static(cosmicos_direct_update_handler, *machine));
 }
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME    FLAGS */
-COMP( 1979, cosmicos,	0,		0,		cosmicos,	cosmicos,	cosmicos,	"Radio Bulletin",	"Cosmicos",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+COMP( 1979, cosmicos,	0,		0,		cosmicos,	cosmicos,	cosmicos,	"Radio Bulletin",	"Cosmicos",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )

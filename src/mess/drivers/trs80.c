@@ -164,7 +164,7 @@ UINT8 trs80_model4;
 static ADDRESS_MAP_START( trs80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_GENERIC(videoram)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_MEMBER(trs80_state, videoram)
 	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
@@ -185,7 +185,7 @@ static ADDRESS_MAP_START( model1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x37ee, 0x37ee) AM_DEVREADWRITE("wd179x", wd17xx_sector_r, wd17xx_sector_w)
 	AM_RANGE(0x37ef, 0x37ef) AM_DEVREADWRITE("wd179x", wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x300) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_GENERIC(videoram)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_MEMBER(trs80_state, videoram)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -554,7 +554,7 @@ static const floppy_config trs80_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( trs80 )		// the original model I, level I, with no extras
+static MACHINE_CONFIG_START( trs80, trs80_state )		// the original model I, level I, with no extras
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 1796000)        /* 1.796 MHz */
 	MDRV_CPU_PROGRAM_MAP(trs80_map)
@@ -580,17 +580,16 @@ static MACHINE_DRIVER_START( trs80 )		// the original model I, level I, with no 
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( model1 )		// model I, level II
-	MDRV_IMPORT_FROM( trs80 )
+static MACHINE_CONFIG_DERIVED( model1, trs80 )		// model I, level II
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( model1_map)
 	MDRV_CPU_IO_MAP( model1_io)
@@ -603,14 +602,13 @@ static MACHINE_DRIVER_START( model1 )		// model I, level II
 	MDRV_FLOPPY_4_DRIVES_ADD(trs80_floppy_config)
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 	MDRV_AY31015_ADD( "tr1602", trs80_ay31015_config )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
+#if 0
+static MACHINE_CONFIG_DERIVED( model2, model1 )
+MACHINE_CONFIG_END
+#endif
 
-static MACHINE_DRIVER_START( model2 )
-	MDRV_IMPORT_FROM(model1)
-MACHINE_DRIVER_END
-
-static MACHINE_DRIVER_START( model3 )
-	MDRV_IMPORT_FROM( model1 )
+static MACHINE_CONFIG_DERIVED( model3, model1 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( model3_map)
 	MDRV_CPU_IO_MAP( model3_io)
@@ -623,34 +621,29 @@ static MACHINE_DRIVER_START( model3 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(80*8, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( model4 )
-	MDRV_IMPORT_FROM( model3 )
+static MACHINE_CONFIG_DERIVED( model4, model3 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( model4_io)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( model4p )
-	MDRV_IMPORT_FROM( model3 )
+static MACHINE_CONFIG_DERIVED( model4p, model3 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( model4p_io)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sys80 )
-	MDRV_IMPORT_FROM( model1 )
+static MACHINE_CONFIG_DERIVED( sys80, model1 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( sys80_io)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ht1080z )
-	MDRV_IMPORT_FROM( sys80 )
+static MACHINE_CONFIG_DERIVED( ht1080z, sys80 )
 	MDRV_VIDEO_UPDATE( ht1080z )
 	MDRV_GFXDECODE(ht1080z)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( lnw80 )
-	MDRV_IMPORT_FROM( model1 )
+static MACHINE_CONFIG_DERIVED( lnw80, model1 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( lnw80_map)
 	MDRV_CPU_IO_MAP( lnw80_io)
@@ -663,16 +656,15 @@ static MACHINE_DRIVER_START( lnw80 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(80*FW, 16*FH)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*FW-1,0,16*FH-1)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( radionic )
-	MDRV_IMPORT_FROM( model1 )
+static MACHINE_CONFIG_DERIVED( radionic, model1 )
 	MDRV_VIDEO_UPDATE( radionic )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(64*8, 16*16)
 	MDRV_SCREEN_VISIBLE_AREA(0,64*8-1,0,16*16-1)
 	MDRV_GFXDECODE(radionic)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************
@@ -845,31 +837,34 @@ static DRIVER_INIT( trs80l2 )
 
 static DRIVER_INIT( trs80m4 )
 {
+	trs80_state *state = machine->driver_data<trs80_state>();
 	trs80_mode = 0;
 	trs80_model4 = 2;
-	machine->generic.videoram.u8 = memory_region(machine, "maincpu")+0x4000;
+	state->videoram = memory_region(machine, "maincpu")+0x4000;
 }
 
 static DRIVER_INIT( trs80m4p )
 {
+	trs80_state *state = machine->driver_data<trs80_state>();
 	trs80_mode = 0;
 	trs80_model4 = 4;
-	machine->generic.videoram.u8 = memory_region(machine, "maincpu")+0x4000;
+	state->videoram = memory_region(machine, "maincpu")+0x4000;
 }
 
 static DRIVER_INIT( lnw80 )
 {
+	trs80_state *state = machine->driver_data<trs80_state>();
 	trs80_mode = 0;
 	trs80_model4 = 0;
 	trs80_gfxram = memory_region(machine, "gfx2");
-	machine->generic.videoram.u8 = memory_region(machine, "gfx2")+0x4000;
+	state->videoram = memory_region(machine, "gfx2")+0x4000;
 }
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT  COMPANY  FULLNAME */
 COMP( 1977, trs80,    0,		0,	trs80,    trs80,   trs80,    "Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0 )
 COMP( 1978, trs80l2,  trs80,	0,	model1,   trs80,   trs80l2,  "Tandy Radio Shack",  "TRS-80 Model I (Level II Basic)" , 0 )
 COMP( 1983, radionic, trs80,	0,	radionic, trs80,   trs80,    "Komtek",  "Radionic" , 0 )
-COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  "EACA Computers Ltd.","System-80" , 0 )
+COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  "EACA Computers Ltd","System-80" , 0 )
 COMP( 1981, lnw80,    trs80,	0,	lnw80,    trs80m3, lnw80,    "LNW Research","LNW-80", 0 )
 COMP( 1980, trs80m3,  trs80,	0,	model3,   trs80m3, trs80m4,  "Tandy Radio Shack",  "TRS-80 Model III", 0 )
 COMP( 1980, trs80m4,  trs80,	0,	model4,   trs80m3, trs80m4,  "Tandy Radio Shack",  "TRS-80 Model 4", 0 )

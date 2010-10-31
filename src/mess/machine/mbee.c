@@ -9,12 +9,17 @@
 ****************************************************************************/
 
 #include "emu.h"
+#include "machine/mc146818.h"
 #include "devices/flopdrv.h"
 #include "includes/mbee.h"
 
-static UINT8 mbee_vsync;
-static UINT8 fdc_status = 0;
+static size_t mbee_size;
+static UINT8 mbee_clock_pulse;
+static UINT8 mbee256_key_available;
+static UINT8 fdc_intrq,fdc_drq;
+static UINT8 mbee_0a;
 static running_device *mbee_fdc;
+static mc146818_device *mbee_rtc;
 static running_device *mbee_z80pio;
 static running_device *mbee_speaker;
 static running_device *mbee_cassette;
@@ -25,11 +30,6 @@ static running_device *mbee_printer;
     PIO
 
 ************************************************************/
-
-static WRITE8_DEVICE_HANDLER( mbee_pio_interrupt )
-{
-	cputag_set_input_line(device->machine, "maincpu", 0, data );
-}
 
 static WRITE8_DEVICE_HANDLER( pio_ardy )
 {
@@ -54,7 +54,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_b_w )
     d4 rs232 input (0=mark)
     d3 rs232 CTS (0=clear to send)
     d2 rs232 clock or DTR
-    d1 cass out
+    d1 cass out and (on 256tc) keyboard irq
     d0 cass in */
 
 	cassette_output(mbee_cassette, (data & 0x02) ? -1.0 : +1.0);
@@ -66,19 +66,19 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
 {
 	UINT8 data = 0;
 
-	if (cassette_input(mbee_cassette) > 0.03)
-		data |= 0x01;
+	if (cassette_input(mbee_cassette) > 0.03) data |= 1;
 
-	data |= mbee_vsync << 7;
+	data |= mbee_clock_pulse;
+	data |= mbee256_key_available;
 
-	if (mbee_vsync) mbee_vsync = 0;
+	mbee_clock_pulse = 0;
 
 	return data;
 };
 
 const z80pio_interface mbee_z80pio_intf =
 {
-	DEVCB_HANDLER(mbee_pio_interrupt),	/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
 	DEVCB_HANDLER(pio_port_a_w),
 	DEVCB_HANDLER(pio_ardy),
@@ -98,18 +98,12 @@ const z80pio_interface mbee_z80pio_intf =
 
 static WRITE_LINE_DEVICE_HANDLER( mbee_fdc_intrq_w )
 {
-	if (state)
-		fdc_status |= 0x80;
-	else
-		fdc_status &= 0x7f;
+	fdc_intrq = state ? 0x80 : 0;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( mbee_fdc_drq_w )
 {
-	if (state)
-		fdc_status |= 0x80;
-	else
-		fdc_status &= 0x7f;
+	fdc_drq = state ? 0x80 : 0;
 }
 
 const wd17xx_interface mbee_wd17xx_interface =
@@ -125,7 +119,7 @@ READ8_HANDLER ( mbee_fdc_status_r )
 /*  d7 indicate if IRQ or DRQ is occuring (1=happening)
     d6..d0 not used */
 
-	return fdc_status;
+	return 0x7f | fdc_intrq | fdc_drq;
 }
 
 WRITE8_HANDLER ( mbee_fdc_motor_w )
@@ -133,12 +127,370 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 /*  d7..d4 not used
     d3 density (1=MFM)
     d2 side (1=side 1)
-    d1..d0 drive select (0 to 3 - although no microbee ever had more than 2 drives) */
+    d1..d0 drive select (0 to 3) */
 
 	wd17xx_set_drive(mbee_fdc, data & 3);
 	wd17xx_set_side(mbee_fdc, (data & 4) ? 1 : 0);
 	wd17xx_dden_w(mbee_fdc, !BIT(data, 3));
+	/* no idea what turns the motors on & off, guessing it could be drive select 
+	commented out because it prevents 128k and 256TC from booting up */
+	//floppy_mon_w(floppy_get_device(space->machine, data & 3), CLEAR_LINE); // motor on
 }
+
+/***********************************************************
+
+    256TC Keyboard
+
+************************************************************/
+
+static UINT8 mbee256_was_pressed[15] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+static UINT8 mbee256_q[20];
+static UINT8 mbee256_q_pos;
+
+static TIMER_CALLBACK( mbee256_kbd )
+{
+    /* Keyboard scanner is a '3870' chip. Its speed of operation is determined by a 15k resistor on
+    pin 2 (XTL2) and is therefore unknown. If a key change is detected (up or down), the /strobe
+    line activates, sending a high to bit 1 of port 2 (one of the pio input lines). The next read of
+    port 18 will clear this line, and read the key scancode. It will also signal the 3870 that the key
+    data has been read, on pin 38 (/extint). The 3870 can cache up to 9 keys. With no data sheet
+    available, the following is a guess. */
+
+	UINT8 i, j;
+	UINT8 pressed[15];
+	char kbdrow[6];
+
+
+	/* see what is pressed */
+	for (i = 0; i < 15; i++)
+	{
+		sprintf(kbdrow,"LINE%d",i);
+		pressed[i] = (input_port_read(machine, kbdrow));
+	}
+
+	/* find what has changed */
+	for (i = 0; i < 15; i++)
+	{
+		if (pressed[i] != mbee256_was_pressed[i])
+		{
+			/* get scankey value */
+			for (j = 0; j < 8; j++)
+			{
+				if (BIT(pressed[i]^mbee256_was_pressed[i], j))
+				{
+					/* put it in the queue */
+					mbee256_q[mbee256_q_pos] = (i << 3) | j | (BIT(pressed[i], j) ? 0x80 : 0);
+					if (mbee256_q_pos < 19) mbee256_q_pos++;
+				}
+			}
+			mbee256_was_pressed[i] = pressed[i];
+		}
+	}
+
+	/* if anything queued, cause an interrupt */
+	if (mbee256_q_pos)
+		mbee256_key_available = 2; // set irq
+}
+
+READ8_HANDLER( mbee256_18_r )
+{
+	UINT8 i, data = mbee256_q[0]; // get oldest key
+
+	if (mbee256_q_pos)
+	{
+		mbee256_q_pos--;
+		for (i = 0; i < mbee256_q_pos; i++) mbee256_q[i] = mbee256_q[i+1]; // ripple queue
+	}
+
+	mbee256_key_available = 0; // clear irq
+	return data;
+}
+
+
+/***********************************************************
+
+    256TC Change CPU speed
+
+************************************************************/
+
+READ8_HANDLER( mbee256_speed_low_r )
+{
+	cputag_set_clock(space->machine, "maincpu", 3375000);
+	return 0xff;
+}
+
+READ8_HANDLER( mbee256_speed_high_r )
+{
+	cputag_set_clock(space->machine, "maincpu", 6750000);
+	return 0xff;
+}
+
+
+
+/***********************************************************
+
+    256TC Real Time Clock
+
+************************************************************/
+
+WRITE8_HANDLER( mbee_04_w )	// address
+{
+	mbee_rtc->write(*space, 0, data);
+}
+
+WRITE8_HANDLER( mbee_06_w )	// write
+{
+	mbee_rtc->write(*space, 1, data);
+}
+
+READ8_HANDLER( mbee_07_r )	// read
+{
+	return mbee_rtc->read(*space, 1);
+}
+
+static TIMER_CALLBACK( mbee_rtc_irq )
+{
+	address_space *mem = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	mc146818_device *rtc = machine->device<mc146818_device>("rtc");
+	UINT8 data = rtc->read(*mem, 12);
+	if (data) mbee_clock_pulse = 0x80;
+}
+
+
+/***********************************************************
+
+    256TC Memory Banking
+
+    Bits 0, 1 and 5 select which bank goes into 0000-7FFF.
+    Bit 2 disables ROM, replacing it with RAM.
+    Bit 3 disables Video, replacing it with RAM.
+    Bit 4 switches the video circuits between F000-FFFF and
+          8000-8FFF.
+
+    In case of a clash, video overrides ROM which overrides RAM.
+
+************************************************************/
+
+WRITE8_HANDLER( mbee256_50_w )
+{
+	address_space *mem = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+
+	// primary low banks
+	memory_set_bank(space->machine, "boot", (data & 3) | ((data & 0x20) >> 3));
+	memory_set_bank(space->machine, "bank1", (data & 3) | ((data & 0x20) >> 3));
+
+	// 9000-EFFF
+	memory_set_bank(space->machine, "bank9", (data & 4) ? 1 : 0);
+
+	// 8000-8FFF, F000-FFFF
+	memory_unmap_readwrite (mem, 0x8000, 0x87ff, 0, 0);
+	memory_unmap_readwrite (mem, 0x8800, 0x8fff, 0, 0);
+	memory_unmap_readwrite (mem, 0xf000, 0xf7ff, 0, 0);
+	memory_unmap_readwrite (mem, 0xf800, 0xffff, 0, 0);
+
+	switch (data & 0x1c)
+	{
+		case 0x00:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_readwrite8_handler (mem, 0xf000, 0xf7ff, 0, 0, mbeeppc_low_r, mbeeppc_low_w);
+			memory_install_readwrite8_handler (mem, 0xf800, 0xffff, 0, 0, mbeeppc_high_r, mbeeppc_high_w);
+			memory_set_bank(space->machine, "bank8l", 0); // rom
+			memory_set_bank(space->machine, "bank8h", 0); // rom
+			break;
+		case 0x04:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_readwrite8_handler (mem, 0xf000, 0xf7ff, 0, 0, mbeeppc_low_r, mbeeppc_low_w);
+			memory_install_readwrite8_handler (mem, 0xf800, 0xffff, 0, 0, mbeeppc_high_r, mbeeppc_high_w);
+			memory_set_bank(space->machine, "bank8l", 1); // ram
+			memory_set_bank(space->machine, "bank8h", 1); // ram
+			break;
+		case 0x08:
+		case 0x18:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_read_bank (mem, 0xf000, 0xf7ff, 0, 0, "bankfl");
+			memory_install_read_bank (mem, 0xf800, 0xffff, 0, 0, "bankfh");
+			memory_set_bank(space->machine, "bank8l", 0); // rom
+			memory_set_bank(space->machine, "bank8h", 0); // rom
+			memory_set_bank(space->machine, "bankfl", 0); // ram
+			memory_set_bank(space->machine, "bankfh", 0); // ram
+			break;
+		case 0x0c:
+		case 0x1c:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_read_bank (mem, 0xf000, 0xf7ff, 0, 0, "bankfl");
+			memory_install_read_bank (mem, 0xf800, 0xffff, 0, 0, "bankfh");
+			memory_set_bank(space->machine, "bank8l", 1); // ram
+			memory_set_bank(space->machine, "bank8h", 1); // ram
+			memory_set_bank(space->machine, "bankfl", 0); // ram
+			memory_set_bank(space->machine, "bankfh", 0); // ram
+			break;
+		case 0x10:
+		case 0x14:
+			memory_install_readwrite8_handler (mem, 0x8000, 0x87ff, 0, 0, mbeeppc_low_r, mbeeppc_low_w);
+			memory_install_readwrite8_handler (mem, 0x8800, 0x8fff, 0, 0, mbeeppc_high_r, mbeeppc_high_w);
+			memory_install_read_bank (mem, 0xf000, 0xf7ff, 0, 0, "bankfl");
+			memory_install_read_bank (mem, 0xf800, 0xffff, 0, 0, "bankfh");
+			memory_set_bank(space->machine, "bankfl", 0); // ram
+			memory_set_bank(space->machine, "bankfh", 0); // ram
+			break;
+	}
+}
+
+/***********************************************************
+
+    128k Memory Banking
+
+    The only difference to the 256TC is that bit 5 switches
+    between rom2 and rom3. Since neither of these is dumped,
+    this bit is not emulated. If it was, this scheme is used:
+
+    Low - rom2 occupies C000-FFFF
+    High - ram = C000-DFFF, rom3 = E000-FFFF.
+
+************************************************************/
+
+WRITE8_HANDLER( mbee128_50_w )
+{
+	address_space *mem = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+
+	// primary low banks
+	memory_set_bank(space->machine, "boot", (data & 3));
+	memory_set_bank(space->machine, "bank1", (data & 3));
+
+	// 9000-EFFF
+	memory_set_bank(space->machine, "bank9", (data & 4) ? 1 : 0);
+
+	// 8000-8FFF, F000-FFFF
+	memory_unmap_readwrite (mem, 0x8000, 0x87ff, 0, 0);
+	memory_unmap_readwrite (mem, 0x8800, 0x8fff, 0, 0);
+	memory_unmap_readwrite (mem, 0xf000, 0xf7ff, 0, 0);
+	memory_unmap_readwrite (mem, 0xf800, 0xffff, 0, 0);
+
+	switch (data & 0x1c)
+	{
+		case 0x00:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_readwrite8_handler (mem, 0xf000, 0xf7ff, 0, 0, mbeeppc_low_r, mbeeppc_low_w);
+			memory_install_readwrite8_handler (mem, 0xf800, 0xffff, 0, 0, mbeeppc_high_r, mbeeppc_high_w);
+			memory_set_bank(space->machine, "bank8l", 0); // rom
+			memory_set_bank(space->machine, "bank8h", 0); // rom
+			break;
+		case 0x04:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_readwrite8_handler (mem, 0xf000, 0xf7ff, 0, 0, mbeeppc_low_r, mbeeppc_low_w);
+			memory_install_readwrite8_handler (mem, 0xf800, 0xffff, 0, 0, mbeeppc_high_r, mbeeppc_high_w);
+			memory_set_bank(space->machine, "bank8l", 1); // ram
+			memory_set_bank(space->machine, "bank8h", 1); // ram
+			break;
+		case 0x08:
+		case 0x18:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_read_bank (mem, 0xf000, 0xf7ff, 0, 0, "bankfl");
+			memory_install_read_bank (mem, 0xf800, 0xffff, 0, 0, "bankfh");
+			memory_set_bank(space->machine, "bank8l", 0); // rom
+			memory_set_bank(space->machine, "bank8h", 0); // rom
+			memory_set_bank(space->machine, "bankfl", 0); // ram
+			memory_set_bank(space->machine, "bankfh", 0); // ram
+			break;
+		case 0x0c:
+		case 0x1c:
+			memory_install_read_bank (mem, 0x8000, 0x87ff, 0, 0, "bank8l");
+			memory_install_read_bank (mem, 0x8800, 0x8fff, 0, 0, "bank8h");
+			memory_install_read_bank (mem, 0xf000, 0xf7ff, 0, 0, "bankfl");
+			memory_install_read_bank (mem, 0xf800, 0xffff, 0, 0, "bankfh");
+			memory_set_bank(space->machine, "bank8l", 1); // ram
+			memory_set_bank(space->machine, "bank8h", 1); // ram
+			memory_set_bank(space->machine, "bankfl", 0); // ram
+			memory_set_bank(space->machine, "bankfh", 0); // ram
+			break;
+		case 0x10:
+		case 0x14:
+			memory_install_readwrite8_handler (mem, 0x8000, 0x87ff, 0, 0, mbeeppc_low_r, mbeeppc_low_w);
+			memory_install_readwrite8_handler (mem, 0x8800, 0x8fff, 0, 0, mbeeppc_high_r, mbeeppc_high_w);
+			memory_install_read_bank (mem, 0xf000, 0xf7ff, 0, 0, "bankfl");
+			memory_install_read_bank (mem, 0xf800, 0xffff, 0, 0, "bankfh");
+			memory_set_bank(space->machine, "bankfl", 0); // ram
+			memory_set_bank(space->machine, "bankfh", 0); // ram
+			break;
+	}
+}
+
+
+/***********************************************************
+
+    64k Memory Banking
+
+    Bit 2 disables ROM, replacing it with RAM.
+
+    Due to lack of documentation, it is not possible to know
+    if other bits are used.
+
+************************************************************/
+
+WRITE8_HANDLER( mbee64_50_w )
+{
+	if (data & 4)
+	{
+		memory_set_bank(space->machine, "boot", 0);
+		memory_set_bank(space->machine, "bankl", 0);
+		memory_set_bank(space->machine, "bankh", 0);
+	}
+	else
+	{
+		memory_set_bank(space->machine, "bankl", 1);
+		memory_set_bank(space->machine, "bankh", 1);
+	}
+}
+
+
+/***********************************************************
+
+    ROM Banking on older models
+
+    Set A to 0 or 1 then read the port to switch between the
+    halves of the Telcom ROM.
+
+    Output the PAK number to choose an optional PAK ROM.
+
+    The bios will support 256 PAKs, although normally only
+    8 are available in hardware. Each PAK is normally a 4K
+    ROM. If 8K ROMs are used, the 2nd half becomes PAK+8,
+    thus 16 PAKs in total. This is used in the PC85 models.
+
+************************************************************/
+
+READ8_HANDLER ( mbeeic_0a_r )
+{
+	return mbee_0a;
+}
+
+WRITE8_HANDLER ( mbeeic_0a_w )
+{
+	mbee_0a = data;
+	memory_set_bank(space->machine, "pak", data & 15);
+}
+
+READ8_HANDLER ( mbeepc_telcom_low_r )
+{
+/* Read of port 0A - set Telcom rom to first half */
+	memory_set_bank(space->machine, "telcom", 0);
+	return mbee_0a;
+}
+
+READ8_HANDLER ( mbeepc_telcom_high_r )
+{
+/* Read of port 10A - set Telcom rom to 2nd half */
+	memory_set_bank(space->machine, "telcom", 1);
+	return mbee_0a;
+}
+
 
 /***********************************************************
 
@@ -155,37 +507,229 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( mbee_reset )
 {
-	memory_set_bank(machine, "bank1", 0);
+	memory_set_bank(machine, "boot", 0);
 }
 
-MACHINE_RESET( mbee )
+static void machine_reset_common(running_machine *machine)
 {
-	timer_set(machine, ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
-	memory_set_bank(machine, "bank1", 1);
 	mbee_z80pio = machine->device("z80pio");
 	mbee_speaker = machine->device("speaker");
 	mbee_cassette = machine->device("cassette");
 	mbee_printer = machine->device("centronics");
-	mbee_fdc = machine->device("wd179x");
-	wd17xx_set_pause_time(mbee_fdc, 45);       /* default is 40 usec if not set */
-	//wd17xx_set_complete_command_delay(mbee_fdc, 50);   /* default is 12 usec if not set */
 }
 
+static void machine_reset_common_disk(running_machine *machine)
+{
+	machine_reset_common(machine);
+	mbee_fdc = machine->device("fdc");
+	/* These values need to be fine tuned or the fdc repaired */
+	wd17xx_set_pause_time(mbee_fdc, 45);       /* default is 40 usec if not set */
+	wd17xx_set_complete_command_delay(mbee_fdc, 50);   /* default is 12 usec if not set */
+}
+
+MACHINE_RESET( mbee )
+{
+	machine_reset_common(machine);
+	memory_set_bank(machine, "boot", 1);
+	timer_set(machine, ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
+}
+
+MACHINE_RESET( mbee56 )
+{
+	machine_reset_common_disk(machine);
+	memory_set_bank(machine, "boot", 1);
+	timer_set(machine, ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
+}
+
+MACHINE_RESET( mbee64 )
+{
+	machine_reset_common_disk(machine);
+	memory_set_bank(machine, "boot", 1);
+	memory_set_bank(machine, "bankl", 1);
+	memory_set_bank(machine, "bankh", 1);
+}
+
+MACHINE_RESET( mbee128 )
+{
+	address_space *mem = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	machine_reset_common_disk(machine);
+	mbee128_50_w(mem,0,0); // set banks to default
+	memory_set_bank(machine, "boot", 4); // boot time
+}
+
+MACHINE_RESET( mbee256 )
+{
+	UINT8 i;
+	address_space *mem = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	machine_reset_common_disk(machine);
+	mbee_rtc = machine->device<mc146818_device>("rtc");
+	for (i = 0; i < 15; i++) mbee256_was_pressed[i] = 0;
+	mbee256_q_pos = 0;
+	mbee256_50_w(mem,0,0); // set banks to default
+	timer_set(machine, ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
+	memory_set_bank(machine, "boot", 8); // boot time
+}
 
 INTERRUPT_GEN( mbee_interrupt )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	/* once per frame, pulse the PIO B bit 7 */
-	mbee_vsync = 1;
+// Due to the uncertainly and hackage here, this is commented out for now - Robbbert - 05-Oct-2010
+#if 0
 
+	//address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/* The printer status connects to the pio ASTB pin, and the printer changing to not
         busy should signal an interrupt routine at B61C, (next line) but this doesn't work.
         The line below does what the interrupt should be doing. */
+	/* But it would break any program loaded to that area of memory, such as CP/M programs */
 
-	z80pio_astb_w( mbee_z80pio, centronics_busy_r(mbee_printer));	/* signal int when not busy (L->H) */
+	//z80pio_astb_w( mbee_z80pio, centronics_busy_r(mbee_printer));	/* signal int when not busy (L->H) */
+	//space->write_byte(0x109, centronics_busy_r(mbee_printer));
 
-	memory_write_byte(space, 0x109, centronics_busy_r(mbee_printer));
+
+	/* once per frame, pulse the PIO B bit 7 - it is in the schematic as an option,
+	but need to find out what it does */
+	mbee_clock_pulse = 0x80;
+	irq0_line_hold(device);
+
+#endif
 }
+
+DRIVER_INIT( mbee )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0x8000);
+	mbee_size = 0x4000;
+}
+
+DRIVER_INIT( mbeeic )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0x8000);
+
+	RAM = memory_region(machine, "pakrom");
+	memory_configure_bank(machine, "pak", 0, 16, &RAM[0x0000], 0x2000);
+
+	memory_set_bank(machine, "pak", 0);
+	mbee_size = 0x8000;
+}
+
+DRIVER_INIT( mbeepc )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0x8000);
+
+	RAM = memory_region(machine, "telcomrom");
+	memory_configure_bank(machine, "telcom", 0, 2, &RAM[0x0000], 0x1000);
+
+	RAM = memory_region(machine, "pakrom");
+	memory_configure_bank(machine, "pak", 0, 16, &RAM[0x0000], 0x2000);
+
+	memory_set_bank(machine, "pak", 0);
+	memory_set_bank(machine, "telcom", 0);
+	mbee_size = 0x8000;
+}
+
+DRIVER_INIT( mbeepc85 )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0x8000);
+
+	RAM = memory_region(machine, "telcomrom");
+	memory_configure_bank(machine, "telcom", 0, 2, &RAM[0x0000], 0x1000);
+
+	RAM = memory_region(machine, "pakrom");
+	memory_configure_bank(machine, "pak", 0, 16, &RAM[0x0000], 0x2000);
+
+	memory_set_bank(machine, "pak", 5);
+	memory_set_bank(machine, "telcom", 0);
+	mbee_size = 0x8000;
+}
+
+DRIVER_INIT( mbeeppc )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 1, &RAM[0x0000], 0x0000);
+
+	RAM = memory_region(machine, "basicrom");
+	memory_configure_bank(machine, "basic", 0, 2, &RAM[0x0000], 0x2000);
+	memory_configure_bank(machine, "boot", 1, 1, &RAM[0x0000], 0x0000);
+
+	RAM = memory_region(machine, "telcomrom");
+	memory_configure_bank(machine, "telcom", 0, 2, &RAM[0x0000], 0x1000);
+
+	RAM = memory_region(machine, "pakrom");
+	memory_configure_bank(machine, "pak", 0, 16, &RAM[0x0000], 0x2000);
+
+	memory_set_bank(machine, "pak", 5);
+	memory_set_bank(machine, "telcom", 0);
+	memory_set_bank(machine, "basic", 0);
+	mbee_size = 0x8000;
+}
+
+DRIVER_INIT( mbee56 )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0xe000);
+	mbee_size = 0xe000;
+}
+
+DRIVER_INIT( mbee64 )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 1, &RAM[0x0000], 0x0000);
+	memory_configure_bank(machine, "bankl", 0, 1, &RAM[0x1000], 0x0000);
+	memory_configure_bank(machine, "bankl", 1, 1, &RAM[0x9000], 0x0000);
+	memory_configure_bank(machine, "bankh", 0, 1, &RAM[0x8000], 0x0000);
+
+	RAM = memory_region(machine, "bootrom");
+	memory_configure_bank(machine, "bankh", 1, 1, &RAM[0x0000], 0x0000);
+	memory_configure_bank(machine, "boot", 1, 1, &RAM[0x0000], 0x0000);
+
+	mbee_size = 0xf000;
+}
+
+DRIVER_INIT( mbee128 )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 4, &RAM[0x0000], 0x8000); // standard banks 0000
+	memory_configure_bank(machine, "bank1", 0, 4, &RAM[0x1000], 0x8000); // standard banks 1000
+	memory_configure_bank(machine, "bank8l", 1, 1, &RAM[0x0000], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bank8h", 1, 1, &RAM[0x0800], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bank9", 1, 1, &RAM[0x1000], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bankfl", 0, 1, &RAM[0xf000], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bankfh", 0, 1, &RAM[0xf800], 0x0000); // shadow ram
+
+	RAM = memory_region(machine, "bootrom");
+	memory_configure_bank(machine, "bank9", 0, 1, &RAM[0x1000], 0x0000); // rom
+	memory_configure_bank(machine, "boot", 4, 1, &RAM[0x0000], 0x0000); // rom at boot for 4usec
+	memory_configure_bank(machine, "bank8l", 0, 1, &RAM[0x0000], 0x0000); // rom
+	memory_configure_bank(machine, "bank8h", 0, 1, &RAM[0x0800], 0x0000); // rom
+
+	mbee_size = 0x8000;
+}
+
+DRIVER_INIT( mbee256 )
+{
+	UINT8 *RAM = memory_region(machine, "maincpu");
+	memory_configure_bank(machine, "boot", 0, 8, &RAM[0x0000], 0x8000); // standard banks 0000
+	memory_configure_bank(machine, "bank1", 0, 8, &RAM[0x1000], 0x8000); // standard banks 1000
+	memory_configure_bank(machine, "bank8l", 1, 1, &RAM[0x0000], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bank8h", 1, 1, &RAM[0x0800], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bank9", 1, 1, &RAM[0x1000], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bankfl", 0, 1, &RAM[0xf000], 0x0000); // shadow ram
+	memory_configure_bank(machine, "bankfh", 0, 1, &RAM[0xf800], 0x0000); // shadow ram
+
+	RAM = memory_region(machine, "bootrom");
+	memory_configure_bank(machine, "bank9", 0, 1, &RAM[0x1000], 0x0000); // rom
+	memory_configure_bank(machine, "boot", 8, 1, &RAM[0x0000], 0x0000); // rom at boot for 4usec
+	memory_configure_bank(machine, "bank8l", 0, 1, &RAM[0x0000], 0x0000); // rom
+	memory_configure_bank(machine, "bank8h", 0, 1, &RAM[0x0800], 0x0000); // rom
+
+	timer_pulse(machine, ATTOTIME_IN_HZ(1),NULL,0,mbee_rtc_irq);	/* timer for rtc */
+	timer_pulse(machine, ATTOTIME_IN_HZ(25),NULL,0,mbee256_kbd);	/* timer for kbd */
+
+	mbee_size = 0x8000;
+}
+
 
 /***********************************************************
 
@@ -199,25 +743,25 @@ INTERRUPT_GEN( mbee_interrupt )
 Z80BIN_EXECUTE( mbee )
 {
 	running_device *cpu = machine->device("maincpu");
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_write_word_16le(space, 0xa6, execute_address);			/* fix the EXEC command */
+	space->write_word(0xa6, execute_address);			/* fix the EXEC command */
 
 	if (autorun)
 	{
-		memory_write_word_16le(space, 0xa2, execute_address);		/* fix warm-start vector to get around some copy-protections */
+		space->write_word(0xa2, execute_address);		/* fix warm-start vector to get around some copy-protections */
 		cpu_set_reg(cpu, STATE_GENPC, execute_address);
 	}
 	else
 	{
-		memory_write_word_16le(space, 0xa2, 0x8517);
+		space->write_word(0xa2, 0x8517);
 	}
 }
 
 QUICKLOAD_LOAD( mbee )
 {
 	running_device *cpu = image.device().machine->device("maincpu");
-	const address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 i, j;
 	UINT8 data, sw = input_port_read(image.device().machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */
 
@@ -235,7 +779,7 @@ QUICKLOAD_LOAD( mbee )
 			}
 
 			if ((j < mbee_size) || (j > 0xefff))
-				memory_write_byte(space, j, data);
+				space->write_byte(j, data);
 			else
 			{
 				image.message("Not enough memory in this microbee");
@@ -245,11 +789,11 @@ QUICKLOAD_LOAD( mbee )
 
 		if (sw)
 		{
-			memory_write_word_16le(space, 0xa2,0x801e);	/* fix warm-start vector to get around some copy-protections */
+			space->write_word(0xa2,0x801e);	/* fix warm-start vector to get around some copy-protections */
 			cpu_set_reg(cpu, STATE_GENPC, 0x801e);
 		}
 		else
-			memory_write_word_16le(space, 0xa2,0x8517);
+			space->write_word(0xa2,0x8517);
 	}
 	else if (!mame_stricmp(image.filetype(), "com"))
 	{
@@ -265,7 +809,7 @@ QUICKLOAD_LOAD( mbee )
 			}
 
 			if ((j < mbee_size) || (j > 0xefff))
-				memory_write_byte(space, j, data);
+				space->write_byte(j, data);
 			else
 			{
 				image.message("Not enough memory in this microbee");

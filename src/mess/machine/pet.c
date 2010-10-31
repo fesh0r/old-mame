@@ -8,7 +8,6 @@
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
 
-#include "includes/cbm.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
 #include "machine/ieee488.h"
@@ -151,7 +150,7 @@ static READ8_DEVICE_HANDLER( kin_r )
 static READ8_DEVICE_HANDLER( petb_kin_r )
 {
 	UINT8 data = 0xff;
-	pet_state *state = (pet_state *)device->machine->driver_data;
+	pet_state *state = device->machine->driver_data<pet_state>();
 	static const char *const keynames[] = {
 		"ROW0", "ROW1", "ROW2", "ROW3", "ROW4",
 		"ROW5", "ROW6", "ROW7", "ROW8", "ROW9"
@@ -206,7 +205,7 @@ static WRITE8_DEVICE_HANDLER( cass1_motor_w )
 
 static WRITE_LINE_DEVICE_HANDLER( pia0_irq_w )
 {
-	pet_state *driver_state = (pet_state *)device->machine->driver_data;
+	pet_state *driver_state = device->machine->driver_data<pet_state>();
 
 	driver_state->pia0_irq = state;
 	int level = (driver_state->pia0_irq | driver_state->pia1_irq | driver_state->via_irq) ? ASSERT_LINE : CLEAR_LINE;
@@ -293,7 +292,7 @@ static WRITE8_DEVICE_HANDLER( dav_w )
 
 static WRITE_LINE_DEVICE_HANDLER( pia1_irq_w )
 {
-	pet_state *driver_state = (pet_state *)device->machine->driver_data;
+	pet_state *driver_state = device->machine->driver_data<pet_state>();
 
 	driver_state->pia1_irq = state;
 	int level = (driver_state->pia0_irq | driver_state->pia1_irq | driver_state->via_irq) ? ASSERT_LINE : CLEAR_LINE;
@@ -425,7 +424,7 @@ static WRITE_LINE_DEVICE_HANDLER( gb_w )
 
 static WRITE_LINE_DEVICE_HANDLER( via_irq_w )
 {
-	pet_state *driver_state = (pet_state *)device->machine->driver_data;
+	pet_state *driver_state = device->machine->driver_data<pet_state>();
 
 	driver_state->via_irq = state;
 	int level = (driver_state->pia0_irq | driver_state->pia1_irq | driver_state->via_irq) ? ASSERT_LINE : CLEAR_LINE;
@@ -457,7 +456,7 @@ static struct {
 
 static WRITE8_HANDLER( cbm8096_io_w )
 {
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
 	running_device *pia_0 = space->machine->device("pia_0");
 	running_device *pia_1 = space->machine->device("pia_1");
 	running_device *mc6845 = space->machine->device("crtc");
@@ -467,7 +466,7 @@ static WRITE8_HANDLER( cbm8096_io_w )
 	else if (offset < 0x20) ;
 	else if (offset < 0x24) pia6821_w(pia_1, offset & 3, data);
 	else if (offset < 0x40) ;
-	else if (offset < 0x50) via_w(via_0, offset & 0xf, data);
+	else if (offset < 0x50) via_0->write(*space, offset & 0xf, data);
 	else if (offset < 0x80) ;
 	else if (offset == 0x80) mc6845_address_w(mc6845, 0, data);
 	else if (offset == 0x81) mc6845_register_w(mc6845, 0, data);
@@ -475,7 +474,7 @@ static WRITE8_HANDLER( cbm8096_io_w )
 
 static READ8_HANDLER( cbm8096_io_r )
 {
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
 	running_device *pia_0 = space->machine->device("pia_0");
 	running_device *pia_1 = space->machine->device("pia_1");
 	running_device *mc6845 = space->machine->device("crtc");
@@ -486,7 +485,7 @@ static READ8_HANDLER( cbm8096_io_r )
 	else if (offset < 0x20) ;
 	else if (offset < 0x24) data = pia6821_r(pia_1, offset & 3);
 	else if (offset < 0x40) ;
-	else if (offset < 0x50) data = via_r(via_0, offset & 0xf);
+	else if (offset < 0x50) data = via_0->read(*space, offset & 0xf);
 	else if (offset < 0x80) ;
 	else if (offset == 0x81) data = mc6845_register_r(mc6845, 0);
 	return data;
@@ -687,17 +686,17 @@ static TIMER_CALLBACK( pet_tape1_timer )
 
 static TIMER_CALLBACK( pet_tape2_timer )
 {
-	running_device *via_0 = machine->device("via6522_0");
+	via6522_device *via_0 = machine->device<via6522_device>("via6522_0");
 //  cassette 2
 	UINT8 data = (cassette_input(machine->device("cassette2")) > +0.0) ? 1 : 0;
-	via_cb1_w(via_0, data);
+	via_0->write_cb1(data);
 }
 
 
 static void pet_common_driver_init( running_machine *machine )
 {
 	int i;
-	pet_state *state = (pet_state *)machine->driver_data;
+	pet_state *state = machine->driver_data<pet_state>();
 
 	pet_font = 0;
 
@@ -730,7 +729,7 @@ static void pet_common_driver_init( running_machine *machine )
 
 DRIVER_INIT( pet2001 )
 {
-	pet_state *state = (pet_state *)machine->driver_data;
+	pet_state *state = machine->driver_data<pet_state>();
 	pet_memory = messram_get_ptr(machine->device("messram"));
 	pet_common_driver_init(machine);
 	state->pet_basic1 = 1;
@@ -746,20 +745,19 @@ DRIVER_INIT( pet )
 
 DRIVER_INIT( pet80 )
 {
-	pet_state *state = (pet_state *)machine->driver_data;
+	pet_state *state = machine->driver_data<pet_state>();
 	pet_memory = memory_region(machine, "maincpu");
 
 	pet_common_driver_init(machine);
 	state->cbm8096 = 1;
-	machine->generic.videoram.u8 = &pet_memory[0x8000];
-	machine->generic.videoram_size = 0x800;
+	state->videoram = &pet_memory[0x8000];
 	pet80_vh_init(machine);
 
 }
 
 DRIVER_INIT( superpet )
 {
-	pet_state *state = (pet_state *)machine->driver_data;
+	pet_state *state = machine->driver_data<pet_state>();
 	pet_memory = messram_get_ptr(machine->device("messram"));
 	pet_common_driver_init(machine);
 	state->superpet = 1;
@@ -774,7 +772,7 @@ DRIVER_INIT( superpet )
 
 MACHINE_RESET( pet )
 {
-	pet_state *state = (pet_state *)machine->driver_data;
+	pet_state *state = machine->driver_data<pet_state>();
 	running_device *ieeebus = machine->device("ieee_bus");
 	running_device *scapegoat = machine->device("pia_0");
 
@@ -820,7 +818,7 @@ MACHINE_RESET( pet )
 
 INTERRUPT_GEN( pet_frame_interrupt )
 {
-	pet_state *state = (pet_state *)device->machine->driver_data;
+	pet_state *state = device->machine->driver_data<pet_state>();
 	if (state->superpet)
 	{
 		if (input_port_read(device->machine, "CFG") & 0x04)
@@ -847,79 +845,48 @@ INTERRUPT_GEN( pet_frame_interrupt )
 
 ***********************************************/
 
-
-static CBM_ROM pet_cbm_cart[0x20] = { {0} };
-
-
 static DEVICE_IMAGE_LOAD(pet_cart)
 {
-	int size = image.length(), test;
-	const char *filetype;
+	UINT32 size = image.length();
+	const char *filetype = image.filetype();
 	int address = 0;
 
-	filetype = image.filetype();
+	/* Assign loading address according to extension */
+	if (!mame_stricmp(filetype, "90"))
+		address = 0x9000;
+	else if (!mame_stricmp(filetype, "a0"))
+		address = 0xa000;
+	else if (!mame_stricmp(filetype, "b0"))
+		address = 0xb000;
 
-	if (!mame_stricmp(filetype, "crt"))
-	{
-	/* We temporarily remove .crt loading. Previous versions directly used
-    the same routines used to load C64 .crt file, but I seriously doubt the
-    formats are compatible. While waiting for confirmation about .crt dumps
-    for PET machines, we simply do not load .crt files */
-	}
-	else
-	{
-		/* Assign loading address according to extension */
-		if (!mame_stricmp(filetype, "a0"))
-			address = 0xa000;
+	logerror("Loading cart %s at %.4x size:%.4x\n", image.filename(), address, size);
 
-		else if (!mame_stricmp(filetype, "b0"))
-			address = 0xb000;
-
-		logerror("Loading cart %s at %.4x size:%.4x\n", image.filename(), address, size);
-
-		/* Does cart contain any data? */
-		pet_cbm_cart[0].chip = (UINT8*) image.image_malloc(size);
-		if (!pet_cbm_cart[0].chip)
-			return IMAGE_INIT_FAIL;
-
-		/* Store data, address & size */
-		pet_cbm_cart[0].addr = address;
-		pet_cbm_cart[0].size = size;
-		test = image.fread(pet_cbm_cart[0].chip, pet_cbm_cart[0].size);
-
-		if (test != pet_cbm_cart[0].size)
-			return IMAGE_INIT_FAIL;
-	}
-
-	/* Finally load the cart */
-//  This could be needed with .crt support
-//  for (i = 0; (i < ARRAY_LENGTH(pet_cbm_cart)) && (pet_cbm_cart[i].size != 0); i++)
-//      memcpy(pet_memory + pet_cbm_cart[i].addr, pet_cbm_cart[i].chip, pet_cbm_cart[i].size);
-	memcpy(pet_memory + pet_cbm_cart[0].addr, pet_cbm_cart[0].chip, pet_cbm_cart[0].size);
+	image.fread(pet_memory + address, size);
 
 	return IMAGE_INIT_PASS;
 }
 
-MACHINE_DRIVER_START(pet_cartslot)
+MACHINE_CONFIG_FRAGMENT(pet_cartslot)
 	MDRV_CARTSLOT_ADD("cart1")
-	MDRV_CARTSLOT_EXTENSION_LIST("crt,a0,b0")
+	MDRV_CARTSLOT_EXTENSION_LIST("90,a0,b0")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pet_cart)
 
 	MDRV_CARTSLOT_ADD("cart2")
-	MDRV_CARTSLOT_EXTENSION_LIST("crt,a0,b0")
+	MDRV_CARTSLOT_EXTENSION_LIST("90,a0,b0")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pet_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START(pet4_cartslot)
+// 2010-08, FP: this is used by CBM40 & CBM80, and I actually have only found .prg files for these... does cart dumps exist?
+MACHINE_CONFIG_FRAGMENT(pet4_cartslot)
 	MDRV_CARTSLOT_MODIFY("cart1")
-	MDRV_CARTSLOT_EXTENSION_LIST("crt,a0")
+	MDRV_CARTSLOT_EXTENSION_LIST("a0")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pet_cart)
 
 	MDRV_CARTSLOT_MODIFY("cart2")
-	MDRV_CARTSLOT_EXTENSION_LIST("crt,a0")
+	MDRV_CARTSLOT_EXTENSION_LIST("a0")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pet_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

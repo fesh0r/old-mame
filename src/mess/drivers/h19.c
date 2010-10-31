@@ -103,7 +103,7 @@ static GFXDECODE_START( h19 )
 GFXDECODE_END
 
 
-static MACHINE_DRIVER_START( h19 )
+static MACHINE_CONFIG_START( h19, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, XTAL_12_288MHz / 6) // From schematics
 	MDRV_CPU_PROGRAM_MAP(h19_mem)
@@ -126,7 +126,7 @@ static MACHINE_DRIVER_START( h19 )
 
 	MDRV_VIDEO_START( h19 )
 	MDRV_VIDEO_UPDATE( h19 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( h19 )
@@ -156,4 +156,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 19??, h19,     0,       0,	h19,	h19,	 0, 	"Heath, Inc.", "Heathkit H-19", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 19??, h19,     0,       0,	h19,	h19,	 0, 	"Heath Inc", "Heathkit H-19", GAME_NOT_WORKING | GAME_NO_SOUND)

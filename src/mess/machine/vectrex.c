@@ -79,7 +79,7 @@ DEVICE_IMAGE_LOAD(vectrex_cart)
 {
 	UINT8 *mem = memory_region(image.device().machine, "maincpu");
 	if (image.software_entry() == NULL)
-	{	
+	{
 		image.fread( mem, 0x8000);
 	} else {
 		int size = image.get_software_region_length("rom");
@@ -284,7 +284,7 @@ static TIMER_CALLBACK(update_level)
 
 TIMER_CALLBACK(vectrex_imager_eye)
 {
-	running_device *via_0 = machine->device("via6522_0");
+	via6522_device *via_0 = machine->device<via6522_device>("via6522_0");
 	int coffset;
 	double rtime = (1.0 / vectrex_imager_freq);
 
@@ -301,8 +301,8 @@ TIMER_CALLBACK(vectrex_imager_eye)
 			timer_set (machine, double_to_attotime(rtime * 0.50), NULL, 1, vectrex_imager_eye);
 
 			/* Index hole sensor is connected to IO7 which triggers also CA1 of VIA */
-			via_ca1_w(via_0, 1);
-			via_ca1_w(via_0, 0);
+			via_0->write_ca1(1);
+			via_0->write_ca1(0);
 			vectrex_imager_pinlevel |= 0x80;
 			timer_set (machine, double_to_attotime(rtime / 360.0), &vectrex_imager_pinlevel, 0, update_level);
 		}
@@ -353,6 +353,8 @@ WRITE8_HANDLER(vectrex_psg_port_w)
 	}
 }
 
+extern UINT8 *gce_vectorram;
+extern size_t gce_vectorram_size;
 
 DRIVER_INIT(vectrex)
 {
@@ -367,5 +369,5 @@ DRIVER_INIT(vectrex)
      * the first level of Minestorm are not evenly distributed.
      */
 
-	memset(vectorram, 0xff, vectorram_size);
+	memset(gce_vectorram, 0xff, gce_vectorram_size);
 }

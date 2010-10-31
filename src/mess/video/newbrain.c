@@ -3,7 +3,7 @@
 
 static VIDEO_START( newbrain )
 {
-	newbrain_state *state = (newbrain_state *)machine->driver_data;
+	newbrain_state *state = machine->driver_data<newbrain_state>();
 
 	/* find memory regions */
 
@@ -19,9 +19,9 @@ static VIDEO_START( newbrain )
 
 static void newbrain_update(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
-	newbrain_state *state = (newbrain_state *)machine->driver_data;
+	newbrain_state *state = machine->driver_data<newbrain_state>();
 
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	int y, sx;
 	int columns = (state->tvctl & NEWBRAIN_VIDEO_80L) ? 80 : 40;
@@ -42,7 +42,7 @@ static void newbrain_update(running_machine *machine, bitmap_t *bitmap, const re
 		{
 			int bit;
 
-			UINT8 videoram_data = memory_read_byte_8le(program, videoram_addr + sx);
+			UINT8 videoram_data = program->read_byte(videoram_addr + sx);
 			UINT8 charrom_data;
 
 			if (gr)
@@ -109,7 +109,7 @@ static void newbrain_update(running_machine *machine, bitmap_t *bitmap, const re
 
 static VIDEO_UPDATE( newbrain )
 {
-	newbrain_state *state = (newbrain_state *)screen->machine->driver_data;
+	newbrain_state *state = screen->machine->driver_data<newbrain_state>();
 
 	if (state->enrg1 & NEWBRAIN_ENRG1_TVP)
 	{
@@ -125,7 +125,7 @@ static VIDEO_UPDATE( newbrain )
 
 /* Machine Drivers */
 
-MACHINE_DRIVER_START( newbrain_video )
+MACHINE_CONFIG_FRAGMENT( newbrain_video )
 	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -138,4 +138,4 @@ MACHINE_DRIVER_START( newbrain_video )
 
 	MDRV_VIDEO_START(newbrain)
 	MDRV_VIDEO_UPDATE(newbrain)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

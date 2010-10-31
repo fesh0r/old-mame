@@ -81,12 +81,11 @@
 #include "video/mc6845.h"
 #include "sound/dac.h"
 
-class camplynx_state
+class camplynx_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, camplynx_state(machine)); }
-
-	camplynx_state(running_machine &machine) { }
+	camplynx_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	running_device *mc6845;
 };
@@ -112,7 +111,7 @@ static WRITE8_HANDLER( lynx48k_bank_w )
 static WRITE8_HANDLER( lynx128k_bank_w )
 {
 	/* get address space */
-	const address_space *mem = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *mem = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* Set read banks */
 	UINT8 bank = data & 0x0f;
@@ -311,7 +310,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET( lynx128k )
 {
-	const address_space *mem = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *mem = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_read_bank (mem, 0x0000, 0x1fff, 0, 0, "bank1");
 	memory_install_read_bank (mem, 0x2000, 0x3fff, 0, 0, "bank2");
 	memory_install_read_bank (mem, 0x4000, 0x5fff, 0, 0, "bank3");
@@ -409,14 +408,14 @@ static MC6845_UPDATE_ROW( lynx128k_update_row )
 
 static VIDEO_START( lynx48k )
 {
-	camplynx_state *state = (camplynx_state *)machine->driver_data;
+	camplynx_state *state = machine->driver_data<camplynx_state>();
 
 	state->mc6845 = machine->device("crtc");
 }
 
 static VIDEO_UPDATE( lynx48k )
 {
-	camplynx_state *state = (camplynx_state *)screen->machine->driver_data;
+	camplynx_state *state = screen->machine->driver_data<camplynx_state>();
 
 	mc6845_update(state->mc6845, bitmap, cliprect);
 	return 0;
@@ -450,9 +449,7 @@ static const mc6845_interface lynx128k_crtc6845_interface = {
 };
 
 
-static MACHINE_DRIVER_START( lynx48k )
-
-	MDRV_DRIVER_DATA( camplynx_state )
+static MACHINE_CONFIG_START( lynx48k, camplynx_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_4MHz)
@@ -479,11 +476,9 @@ static MACHINE_DRIVER_START( lynx48k )
 
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.8)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( lynx128k )
-
-	MDRV_DRIVER_DATA( camplynx_state )
+static MACHINE_CONFIG_START( lynx128k, camplynx_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_6MHz)
@@ -512,7 +507,7 @@ static MACHINE_DRIVER_START( lynx128k )
 
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.8)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static DRIVER_INIT( lynx48k )
 {

@@ -543,7 +543,7 @@ static const cassette_config pmd85_cassette_config =
 
 
 /* machine definition */
-static MACHINE_DRIVER_START( pmd85 )
+static MACHINE_CONFIG_START( pmd85, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8080, 2000000)		/* 2.048MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(pmd85_mem)
@@ -581,10 +581,9 @@ static MACHINE_DRIVER_START( pmd85 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pmd851 )
-	MDRV_IMPORT_FROM( pmd85 )
+static MACHINE_CONFIG_DERIVED( pmd851, pmd85 )
 
 	MDRV_I8255A_ADD( "ppi8255_0", pmd85_ppi8255_interface[0] )
 
@@ -593,22 +592,19 @@ static MACHINE_DRIVER_START( pmd851 )
 	MDRV_I8255A_ADD( "ppi8255_2", pmd85_ppi8255_interface[2] )
 
 	MDRV_I8255A_ADD( "ppi8255_3", pmd85_ppi8255_interface[3] )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pmd852a )
-	MDRV_IMPORT_FROM( pmd851 )
+static MACHINE_CONFIG_DERIVED( pmd852a, pmd851 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(pmd852a_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pmd853 )
-	MDRV_IMPORT_FROM( pmd851 )
+static MACHINE_CONFIG_DERIVED( pmd853, pmd851 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(pmd853_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( alfa )
-	MDRV_IMPORT_FROM( pmd85 )
+static MACHINE_CONFIG_DERIVED( alfa, pmd85 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(alfa_mem)
 
@@ -618,10 +614,9 @@ static MACHINE_DRIVER_START( alfa )
 
 	MDRV_I8255A_ADD( "ppi8255_2", alfa_ppi8255_interface[1] )
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( mato )
-	MDRV_IMPORT_FROM( pmd85 )
+static MACHINE_CONFIG_DERIVED( mato, pmd85 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(mato_mem)
 	MDRV_CPU_IO_MAP(mato_io_map)
@@ -630,13 +625,12 @@ static MACHINE_DRIVER_START( mato )
 
 	/* no uart */
 	MDRV_DEVICE_REMOVE( "uart" )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( c2717 )
-	MDRV_IMPORT_FROM( pmd851 )
+static MACHINE_CONFIG_DERIVED( c2717, pmd851 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(c2717_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START(pmd851)
@@ -715,7 +709,7 @@ COMP( 1985, pmd852,  pmd851, 0,		pmd851,  pmd85, pmd851,   "Tesla", "PMD-85.2" ,
 COMP( 1985, pmd852a, pmd851, 0,		pmd852a, pmd85, pmd852a,  "Tesla", "PMD-85.2A" , 0)
 COMP( 1985, pmd852b, pmd851, 0,		pmd852a, pmd85, pmd852a,  "Tesla", "PMD-85.2B" , 0)
 COMP( 1988, pmd853,  pmd851, 0,		pmd853,  pmd85, pmd853,   "Tesla", "PMD-85.3" , 0)
-COMP( 1986, alfa,    pmd851, 0,		alfa,    alfa,  alfa,     "Didaktik", "Alfa" , 0)
+COMP( 1986, alfa,    pmd851, 0,		alfa,    alfa,  alfa,     "Didaktik Skalica", "Didaktik Alfa" , 0)
 COMP( 1985, mato,    pmd851, 0,		mato,    mato,  mato,     "Statny", "Mato" , 0)
 COMP( 1989, c2717,   pmd851, 0,		c2717,   pmd85, c2717,    "Zbrojovka Brno", "Consul 2717" , 0)
 COMP( 1989, c2717pmd,pmd851, 0,		c2717,   pmd85, c2717,    "Zbrojovka Brno", "Consul 2717 (with PMD-32)" , GAME_NOT_WORKING)

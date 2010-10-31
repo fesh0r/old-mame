@@ -161,7 +161,7 @@ static char oric_psg_control;
 /* this port is also used to read printer data */
 static READ8_DEVICE_HANDLER ( oric_via_in_a_func )
 {
-	const address_space *space = cputag_get_address_space( device->machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	address_space *space = cputag_get_address_space( device->machine, "maincpu", ADDRESS_SPACE_PROGRAM );
 
 	/*logerror("port a read\r\n"); */
 
@@ -282,7 +282,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
 {
 	int data;
 	int input_port_9;
-	running_device *via_0 = machine->device("via6522_0");
+	via6522_device *via_0 = machine->device<via6522_device>("via6522_0");
 
 	data = 0;
 
@@ -302,7 +302,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
 		data = input_port_9>>4;
 	}
 
-	via_cb1_w(via_0, data);
+	via_0->write_cb1(data);
 }
 
 static unsigned char previous_portb_data = 0;
@@ -463,7 +463,7 @@ CALL &320 to start, or use BOBY rom.
 static void oric_install_apple2_interface(running_machine *machine)
 {
 	running_device *fdc = machine->device("fdc");
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if (oric_is_telestrat)
 		return;
@@ -481,7 +481,7 @@ static void oric_install_apple2_interface(running_machine *machine)
 static void oric_enable_memory(running_machine *machine, int low, int high, int rd, int wr)
 {
 	int i;
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if (oric_is_telestrat)
 		return;
@@ -585,7 +585,7 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 static void oric_install_apple2_v2_interface(running_machine *machine)
 {
 	running_device *fdc = machine->device("fdc");
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_install_read8_handler(space, 0x0300, 0x030f, 0, 0, oric_IO_r);
 	memory_install_read8_device_handler(space, fdc, 0x0310, 0x031f, 0, 0, applefdc_r);
@@ -705,7 +705,7 @@ static WRITE_LINE_DEVICE_HANDLER( oric_jasmin_wd179x_drq_w )
 
 static READ8_HANDLER (oric_jasmin_r)
 {
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");
 	running_device *fdc = space->machine->device("wd179x");
 	unsigned char data = 0x0ff;
 
@@ -725,7 +725,7 @@ static READ8_HANDLER (oric_jasmin_r)
 			data = wd17xx_data_r(fdc, 0);
 			break;
 		default:
-			data = via_r(via_0, offset & 0x0f);
+			data = via_0->read(*space,offset & 0x0f);
 			//logerror("unhandled io read: %04x %02x\n", offset, data);
 			break;
 
@@ -736,7 +736,7 @@ static READ8_HANDLER (oric_jasmin_r)
 
 static WRITE8_HANDLER(oric_jasmin_w)
 {
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
 	running_device *fdc = space->machine->device("wd179x");
 	switch (offset & 0x0f)
 	{
@@ -780,7 +780,7 @@ static WRITE8_HANDLER(oric_jasmin_w)
 			break;
 
 		default:
-			via_w(via_0, offset & 0x0f, data);
+			via_0->write(*space,offset & 0x0f, data);
 			break;
 	}
 }
@@ -788,7 +788,7 @@ static WRITE8_HANDLER(oric_jasmin_w)
 
 static void oric_install_jasmin_interface(running_machine *machine)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/* romdis */
 	port_3fb_w = 1;
 	oric_jasmin_set_mem_0x0c000(machine);
@@ -952,8 +952,8 @@ READ8_HANDLER (oric_microdisc_r)
 
 		default:
 			{
-				running_device *via_0 = space->machine->device("via6522_0");
-				data = via_r(via_0, offset & 0x0f);
+				via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
+				data = via_0->read(*space, offset & 0x0f);
 			}
 			break;
 
@@ -1001,8 +1001,8 @@ WRITE8_HANDLER(oric_microdisc_w)
 
 		default:
 			{
-				running_device *via_0 = space->machine->device("via6522_0");
-				via_w(via_0, offset & 0x0f, data);
+				via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
+				via_0->write(*space, offset & 0x0f, data);
 			}
 			break;
 	}
@@ -1010,7 +1010,7 @@ WRITE8_HANDLER(oric_microdisc_w)
 
 static void oric_install_microdisc_interface(running_machine *machine)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_install_read8_handler(space, 0x0300, 0x030f, 0, 0, oric_IO_r);
 	memory_install_read8_handler(space, 0x0310, 0x031f, 0, 0, oric_microdisc_r);
@@ -1084,7 +1084,7 @@ MACHINE_START( oric )
 MACHINE_RESET( oric )
 {
 	int disc_interface_id = input_port_read(machine, "FLOPPY") & 0x07;
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	if (oric_is_telestrat)
 		return;
 
@@ -1146,7 +1146,7 @@ MACHINE_RESET( oric )
 
 READ8_HANDLER ( oric_IO_r )
 {
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
 	switch (input_port_read(space->machine, "FLOPPY") & 0x07)
 	{
 		default:
@@ -1179,12 +1179,12 @@ READ8_HANDLER ( oric_IO_r )
 		}
 	}
 	/* it is repeated */
-	return via_r(via_0, offset & 0x0f);
+	return via_0->read(*space, offset & 0x0f);
 }
 
 WRITE8_HANDLER ( oric_IO_w )
 {
-	running_device *via_0 = space->machine->device("via6522_0");
+	via6522_device *via_0 = space->machine->device<via6522_device>("via6522_0");;
 	switch (input_port_read(space->machine, "FLOPPY") & 0x07)
 	{
 		default:
@@ -1217,7 +1217,7 @@ WRITE8_HANDLER ( oric_IO_w )
 		//logerror("via 0 w: %04x %02x %04x\n", offset, data,(unsigned) cpu_get_reg(space->machine->device("maincpu"), STATE_GENPC));
 	}
 
-	via_w(via_0, offset & 0x0f, data);
+	via_0->write(*space, offset & 0x0f, data);
 }
 
 
@@ -1294,7 +1294,7 @@ static struct telestrat_mem_block	telestrat_blocks[8];
 
 static void	telestrat_refresh_mem(running_machine *machine)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	struct telestrat_mem_block *mem_block = &telestrat_blocks[telestrat_bank_selection];
 

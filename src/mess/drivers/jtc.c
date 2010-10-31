@@ -34,7 +34,7 @@ static WRITE8_HANDLER( p2_w )
 
     */
 
-	jtc_state *state = (jtc_state *)space->machine->driver_data;
+	jtc_state *state = space->machine->driver_data<jtc_state>();
 
 	centronics_strobe_w(state->centronics, BIT(data, 5));
 }
@@ -56,7 +56,7 @@ static READ8_HANDLER( p3_r )
 
     */
 
-	jtc_state *state = (jtc_state *)space->machine->driver_data;
+	jtc_state *state = space->machine->driver_data<jtc_state>();
 
 	UINT8 data = 0;
 
@@ -83,7 +83,7 @@ static WRITE8_HANDLER( p3_w )
 
     */
 
-	jtc_state *state = (jtc_state *)space->machine->driver_data;
+	jtc_state *state = space->machine->driver_data<jtc_state>();
 
 	/* tape */
 	cassette_output(state->cassette, BIT(data, 6) ? +1.0 : -1.0);
@@ -94,7 +94,7 @@ static WRITE8_HANDLER( p3_w )
 
 static READ8_HANDLER( es40_videoram_r )
 {
-	jtc_state *state = (jtc_state *)space->machine->driver_data;
+	jtc_state *state = space->machine->driver_data<jtc_state>();
 
 	UINT8 data = 0;
 
@@ -108,7 +108,7 @@ static READ8_HANDLER( es40_videoram_r )
 
 static WRITE8_HANDLER( es40_videoram_w )
 {
-	jtc_state *state = (jtc_state *)space->machine->driver_data;
+	jtc_state *state = space->machine->driver_data<jtc_state>();
 
 	if (state->video_bank & 0x80) state->color_ram_r[offset] = data;
 	if (state->video_bank & 0x40) state->color_ram_g[offset] = data;
@@ -118,7 +118,7 @@ static WRITE8_HANDLER( es40_videoram_w )
 
 static WRITE8_HANDLER( es40_banksel_w )
 {
-	jtc_state *state = (jtc_state *)space->machine->driver_data;
+	jtc_state *state = space->machine->driver_data<jtc_state>();
 
 	state->video_bank = offset & 0xf0;
 }
@@ -510,7 +510,7 @@ static VIDEO_START( jtc )
 
 static VIDEO_UPDATE( jtc )
 {
-	jtc_state *state = (jtc_state *)screen->machine->driver_data;
+	jtc_state *state = screen->machine->driver_data<jtc_state>();
 
 	int x, y, sx;
 
@@ -537,7 +537,7 @@ static VIDEO_START( jtc_es23 )
 
 static VIDEO_UPDATE( jtc_es23 )
 {
-	jtc_state *state = (jtc_state *)screen->machine->driver_data;
+	jtc_state *state = screen->machine->driver_data<jtc_state>();
 
 	int x, y, sx;
 
@@ -564,7 +564,7 @@ static PALETTE_INIT( jtc_es40 )
 
 static VIDEO_START( jtc_es40 )
 {
-	jtc_state *state = (jtc_state *)machine->driver_data;
+	jtc_state *state = machine->driver_data<jtc_state>();
 
 	/* allocate memory */
 	state->video_ram = auto_alloc_array(machine, UINT8, JTC_ES40_VIDEORAM_SIZE);
@@ -582,7 +582,7 @@ static VIDEO_START( jtc_es40 )
 
 static VIDEO_UPDATE( jtc_es40 )
 {
-	jtc_state *state = (jtc_state *)screen->machine->driver_data;
+	jtc_state *state = screen->machine->driver_data<jtc_state>();
 
 	int x, y, sx;
 
@@ -611,7 +611,7 @@ static VIDEO_UPDATE( jtc_es40 )
 
 static MACHINE_START( jtc )
 {
-	jtc_state *state = (jtc_state *)machine->driver_data;
+	jtc_state *state = machine->driver_data<jtc_state>();
 
 	/* find devices */
 	state->cassette = machine->device(CASSETTE_TAG);
@@ -667,8 +667,7 @@ static GFXDECODE_START( jtces40 )
 	GFXDECODE_ENTRY( UB8830D_TAG, 0x1000, jtces40_charlayout, 0, 8 )
 GFXDECODE_END
 
-static MACHINE_DRIVER_START( basic )
-	MDRV_DRIVER_DATA(jtc_state)
+static MACHINE_CONFIG_START( basic, jtc_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(UB8830D_TAG, UB8830D, XTAL_8MHz)
@@ -679,7 +678,7 @@ static MACHINE_DRIVER_START( basic )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
@@ -690,10 +689,9 @@ static MACHINE_DRIVER_START( basic )
 
 	/* printer */
 	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( jtc )
-	MDRV_IMPORT_FROM(basic)
+static MACHINE_CONFIG_DERIVED( jtc, basic )
 
     /* video hardware */
     MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
@@ -711,10 +709,9 @@ static MACHINE_DRIVER_START( jtc )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( jtces88 )
-	MDRV_IMPORT_FROM(jtc)
+static MACHINE_CONFIG_DERIVED( jtces88, jtc )
 
     /* basic machine hardware */
     MDRV_CPU_MODIFY(UB8830D_TAG)
@@ -723,10 +720,9 @@ static MACHINE_DRIVER_START( jtces88 )
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( jtces23 )
-	MDRV_IMPORT_FROM(basic)
+static MACHINE_CONFIG_DERIVED( jtces23, basic )
 
     /* basic machine hardware */
     MDRV_CPU_MODIFY(UB8830D_TAG)
@@ -749,10 +745,9 @@ static MACHINE_DRIVER_START( jtces23 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( jtces40 )
-	MDRV_IMPORT_FROM(basic)
+static MACHINE_CONFIG_DERIVED( jtces40, basic )
 
     /* basic machine hardware */
     MDRV_CPU_MODIFY(UB8830D_TAG)
@@ -776,7 +771,7 @@ static MACHINE_DRIVER_START( jtces40 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
 	MDRV_RAM_EXTRA_OPTIONS("16K,32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 

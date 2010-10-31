@@ -636,8 +636,34 @@ static ADDRESS_MAP_START( pc9801_io, ADDRESS_SPACE_IO, 32)
 //  (and many more...)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc9821_mem, ADDRESS_SPACE_PROGRAM, 32)
-	AM_RANGE(0x00000000, 0x0001ffff) AM_ROM
+static ADDRESS_MAP_START( pc9821_io, ADDRESS_SPACE_IO, 32)
+	AM_RANGE(0x0000, 0x001f) AM_READWRITE8(port_00_r,port_00_w,0xffffffff) // pic8259 (even ports) / dma (odd ports)
+//  AM_RANGE(0x0020, 0x0020) rtc
+//  AM_RANGE(0x0022, 0x0022)
+	AM_RANGE(0x0030, 0x0037) AM_READWRITE8(sys_port_r,sys_port_w,0xffffffff) // rs232c (even ports) / system ppi8255 (odd ports)
+	AM_RANGE(0x0040, 0x0047) AM_READWRITE8(sio_port_r,sio_port_w,0xffffffff) // printer ppi8255 (even ports) / keyboard (odd ports)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(port_60_r,port_60_w,0xffffffff) // uPD7220 status & fifo (R) / param & cmd (W) master (even ports)
+//  AM_RANGE(0x0064, 0x0064) V-SYNC related write
+//  AM_RANGE(0x0068, 0x0068) Flip-Flop 1 r/w
+//  AM_RANGE(0x006a, 0x006a) Flip-Flop 2 r/w
+//  AM_RANGE(0x006e, 0x006e) Flip-Flop 3 r/w
+//  AM_RANGE(0x0070, 0x0070) crtc registers
+//  AM_RANGE(0x0072, 0x0072)
+//  AM_RANGE(0x0074, 0x0074)
+//  AM_RANGE(0x0076, 0x0076)
+//  AM_RANGE(0x0078, 0x0078)
+//  AM_RANGE(0x007a, 0x007a)
+//  AM_RANGE(0x007c, 0x007c) GRCG mode write
+//  AM_RANGE(0x007e, 0x007e) GRCG tile write
+	AM_RANGE(0x0070, 0x007f) AM_READWRITE8(port_70_r,port_70_w,0xffffffff) // crtc regs (even ports) / pit8253 (odd ports)
+	AM_RANGE(0x00a0, 0x00a3) AM_READWRITE8(port_a0_r,port_a0_w,0xffffffff) // uPD7220 status & fifo (R) / param & cmd (W) slave (even ports)
+//  AM_RANGE(0x00e0, 0x00ef) DMA
+	AM_RANGE(0x00f0, 0x00ff) AM_READWRITE8(port_f0_r,port_f0_w,0xffffffff)
+	AM_RANGE(0x043c, 0x043f) AM_WRITE8(ems_sel_w,0xffffffff)
+	AM_RANGE(0x0460, 0x0463) AM_READWRITE8(wram_sel_r,wram_sel_w,0xffffffff)
+	AM_RANGE(0x7fd8, 0x7fdf) AM_READ8(pc98_mouse_r,0xffffffff)
+
+//  (and many more...)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -678,22 +704,6 @@ static MACHINE_RESET(pc9801)
 	rom_bank = 1;
 }
 
-static MACHINE_RESET(pc9821)
-{
-	UINT8 *ROM = memory_region(machine, "cpudata");
-	cpu_set_irq_callback(machine->device("maincpu"), irq_callback);
-
-	cputag_set_input_line(machine, "maincpu", INPUT_LINE_A20, 0);
-
-	gate_a20 = 0;
-	cpu_set_reg(machine->device("maincpu"), I386_EIP, 0xffff0+0x10000);
-
-	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
-
-	wram_bank = 0;
-	rom_bank = 1;
-}
-
 /*************************************************************
  *
  * pic8259 configuration
@@ -715,15 +725,6 @@ static const struct pic8259_interface pic8259_slave_config =
 {
 	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir2_w)
 };
-
-static VIDEO_START( pc9821 )
-{
-}
-
-static VIDEO_UPDATE( pc9821 )
-{
-	return 0;
-}
 
 static const gfx_layout charset_8x8 =
 {
@@ -923,7 +924,7 @@ static READ8_HANDLER( pc_dma_read_byte )
 	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
-	return memory_read_byte(space, page_offset + offset);
+	return space->read_byte(page_offset + offset);
 }
 
 
@@ -932,7 +933,7 @@ static WRITE8_HANDLER( pc_dma_write_byte )
 	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
-	memory_write_byte(space, page_offset + offset, data);
+	space->write_byte(page_offset + offset, data);
 }
 
 static void set_dma_channel(running_device *device, int channel, int state)
@@ -958,7 +959,7 @@ static I8237_INTERFACE( dma8237_1_config )
 
 /* I suspect the dump for pc9801 comes from a i386 later model... the original machine would use a i8086 @ 5Mhz CPU (see notes at top) */
 /* More investigations are required, but in the meanwhile I set a I386 as main CPU */
-static MACHINE_DRIVER_START( pc9801 )
+static MACHINE_CONFIG_START( pc9801, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I386, 16000000)
 	MDRV_CPU_PROGRAM_MAP(pc9801_mem)
@@ -986,28 +987,14 @@ static MACHINE_DRIVER_START( pc9801 )
 
 	MDRV_VIDEO_START(pc9801)
 	MDRV_VIDEO_UPDATE(pc9801)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pc9821 )
-	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", I486, 25000000)
-	MDRV_CPU_PROGRAM_MAP(pc9821_mem)
+static MACHINE_CONFIG_DERIVED( pc9821, pc9801 )
 
-	MDRV_MACHINE_RESET(pc9821)
-
-	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(640, 480)
-	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
-
-	MDRV_VIDEO_START(pc9821)
-	MDRV_VIDEO_UPDATE(pc9821)
-MACHINE_DRIVER_END
+	MDRV_CPU_REPLACE("maincpu", I486, 25000000)
+	MDRV_CPU_PROGRAM_MAP(pc9801_mem)
+	MDRV_CPU_IO_MAP(pc9821_io)
+MACHINE_CONFIG_END
 
 
 /* ROM definition */
@@ -1016,7 +1003,7 @@ MACHINE_DRIVER_END
 /* I strongly suspect this dump comes from a later machine, like an i386-based one, but I could be wrong... */
 ROM_START( pc9801 )
 	ROM_REGION( 0x60000, "cpudata", ROMREGION_ERASEFF )
-	ROM_LOAD( "bios.rom", 0x08000, 0x18000, CRC(315d2703) SHA1(4f208d1dbb68373080d23bff5636bb6b71eb7565) )
+	ROM_LOAD( "bios.rom", 0x08000, 0x18000, BAD_DUMP CRC(315d2703) SHA1(4f208d1dbb68373080d23bff5636bb6b71eb7565) )
 	ROM_LOAD( "itf.rom",  0x38000, 0x08000, CRC(c1815325) SHA1(a2fb11c000ed7c976520622cfb7940ed6ddc904e) )
 
 	/* where shall we load this? */
@@ -1039,7 +1026,7 @@ ROM_END
 
 ROM_START( pc9821 )
 	ROM_REGION( 0x60000, "cpudata", ROMREGION_ERASEFF )
-	ROM_LOAD( "bios.rom", 0x08000, 0x18000, CRC(34a19a59) SHA1(2e92346727b0355bc1ec9a7ded1b444a4917f2b9) )
+	ROM_LOAD( "bios.rom", 0x08000, 0x18000, BAD_DUMP CRC(34a19a59) SHA1(2e92346727b0355bc1ec9a7ded1b444a4917f2b9) )
 	ROM_LOAD( "itf.rom",  0x38000, 0x08000, CRC(dd4c7bb8) SHA1(cf3aa193df2722899066246bccbed03f2e79a74a) )
 
 	ROM_REGION( 0x10000, "soundcpu", 0 )
@@ -1049,8 +1036,33 @@ ROM_START( pc9821 )
 	ROM_LOAD( "font.rom", 0x00000, 0x46800, BAD_DUMP CRC(a61c0649) SHA1(554b87377d176830d21bd03964dc71f8e98676b1) )
 ROM_END
 
+ROM_START( pc9821ne )
+	ROM_REGION( 0x60000, "cpudata", ROMREGION_ERASEFF )
+	ROM_LOAD( "bios_ne.rom", 0x08000, 0x18000, BAD_DUMP CRC(2ae070c4) SHA1(d7963942042bfd84ed5fc9b7ba8f1c327c094172) )
+	ROM_LOAD( "itf.rom",  0x38000, 0x08000, CRC(dd4c7bb8) SHA1(cf3aa193df2722899066246bccbed03f2e79a74a) )
+
+	ROM_REGION( 0x10000, "soundcpu", 0 )
+	ROM_LOAD( "sound.rom", 0x0000, 0x4000, CRC(a21ef796) SHA1(34137c287c39c44300b04ee97c1e6459bb826b60) )
+
+	ROM_REGION( 0x50000, "gfx1", 0 )
+	ROM_LOAD( "font_ne.rom", 0x00000, 0x46800, BAD_DUMP CRC(fb213757) SHA1(61525826d62fb6e99377b23812faefa291d78c2e) )
+ROM_END
+
+ROM_START( pc9821a )
+	ROM_REGION( 0x60000, "cpudata", ROMREGION_ERASEFF )
+	ROM_LOAD( "bios_a.rom", 0x08000, 0x18000, BAD_DUMP CRC(0a682b93) SHA1(76a7360502fa0296ea93b4c537174610a834d367) )
+	ROM_LOAD( "itf.rom",  0x38000, 0x08000, CRC(dd4c7bb8) SHA1(cf3aa193df2722899066246bccbed03f2e79a74a) )
+
+	ROM_REGION( 0x10000, "soundcpu", 0 )
+	ROM_LOAD( "sound.rom", 0x0000, 0x4000, CRC(a21ef796) SHA1(34137c287c39c44300b04ee97c1e6459bb826b60) )
+
+	ROM_REGION( 0x50000, "gfx1", 0 )
+	ROM_LOAD( "font_a.rom", 0x00000, 0x46800, BAD_DUMP CRC(c9a77d8f) SHA1(deb8563712eb2a634a157289838b95098ba0c7f2) )
+ROM_END
+
 static DRIVER_INIT( pc9801 )
 {
+	#if 0
 	UINT8 *ROM = memory_region(machine, "cpudata");
 
 	/* patch unimplemented opcodes verr / verw */
@@ -1105,9 +1117,12 @@ static DRIVER_INIT( pc9801 )
 	/* patch ROM checksum */
 	ROM[0xf8595 & 0x3ffff] = 0x90;
 	ROM[0xf8596 & 0x3ffff] = 0x90;
+	#endif
 }
 
 
 /*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    COMPANY                        FULLNAME    FLAGS */
-COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   pc9801,      "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1993, pc9821,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   pc9801, "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1993, pc9821,   0,       0,     pc9821,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1993, pc9821ne, pc9821,  0,     pc9821,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98NOTE)",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1993, pc9821a,  pc9821,  0,     pc9821,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (v13)",  GAME_NOT_WORKING | GAME_NO_SOUND) //TODO: identify this

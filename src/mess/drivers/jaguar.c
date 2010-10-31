@@ -582,7 +582,7 @@ static INPUT_PORTS_START( jaguar )
 	PORT_BIT( 0xfffc, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("CONFIG")
-	PORT_CONFNAME( 0x02, 0x02, "Show Logo")
+	PORT_CONFNAME( 0x02, 0x00, "Show Logo")
 	PORT_CONFSETTING(    0x00, "Yes")
 	PORT_CONFSETTING(    0x02, "No")
 	PORT_CONFNAME( 0x10, 0x10, "TV System")
@@ -609,7 +609,7 @@ static const jaguar_cpu_config dsp_config =
 	jaguar_dsp_cpu_int
 };
 
-static MACHINE_DRIVER_START( jaguar )
+static MACHINE_CONFIG_START( jaguar, driver_device )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68EC020, JAGUAR_CLOCK/2)
@@ -659,7 +659,7 @@ static MACHINE_DRIVER_START( jaguar )
 	MDRV_SOFTWARE_LIST_ADD("cart_list","jaguar")
 
 	MDRV_EEPROM_93C46_ADD("eeprom")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 
@@ -830,5 +830,5 @@ static DEVICE_IMAGE_LOAD( jaguar )
  *************************************/
 
 /*    YEAR   NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      COMPANY    FULLNAME */
-CONS( 1993,  jaguar,   0,        0,      jaguar,   jaguar,   jaguar,   "Atari",   "Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)
-CONS( 1995,  jaguarcd, jaguar,   0,      jaguar,   jaguar,   jaguar,   "Atari",   "Atari Jaguar CD", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)
+CONS( 1993,  jaguar,   0,        0,      jaguar,   jaguar,   jaguar,   "Atari",   "Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+CONS( 1995,  jaguarcd, jaguar,   0,      jaguar,   jaguar,   jaguar,   "Atari",   "Jaguar CD", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )

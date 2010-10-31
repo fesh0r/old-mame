@@ -91,7 +91,7 @@ static void palm_spim_exchange( running_device *device )
 
 static MACHINE_START( palm )
 {
-    const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+    address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
     memory_install_read_bank (space, 0x000000, messram_get_size(machine->device("messram")) - 1, messram_get_size(machine->device("messram")) - 1, 0, "bank1");
     memory_install_write_bank(space, 0x000000, messram_get_size(machine->device("messram")) - 1, messram_get_size(machine->device("messram")) - 1, 0, "bank1");
     memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
@@ -100,7 +100,7 @@ static MACHINE_START( palm )
     state_save_register_global(machine, spim_data);
 	if (machine->device<cpu_device>("maincpu")->debug()) {
 		machine->device<cpu_device>("maincpu")->debug()->set_dasm_override(palm_dasm_override);
-	}	
+	}
 }
 
 static MACHINE_RESET( palm )
@@ -171,7 +171,7 @@ static const mc68328_interface palm_dragonball_iface =
 };
 
 
-static MACHINE_DRIVER_START( palm )
+static MACHINE_CONFIG_START( palm, driver_device )
 
     /* basic machine hardware */
     MDRV_CPU_ADD( "maincpu", M68000, 32768*506 )        /* 16.580608 MHz */
@@ -203,7 +203,7 @@ static MACHINE_DRIVER_START( palm )
 
     MDRV_MC68328_ADD( palm_dragonball_iface )
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( palm )
     PORT_START( "PENX" )
@@ -417,58 +417,52 @@ ROM_START( spt1740 )
 	ROM_RELOAD(0x000000, 0x004000)
 ROM_END
 
-static MACHINE_DRIVER_START( pilot1k )
-	MDRV_IMPORT_FROM(palm)
+static MACHINE_CONFIG_DERIVED( pilot1k, palm )
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
 	MDRV_RAM_EXTRA_OPTIONS("512K,1M,2M,4M,8M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pilot5k )
-	MDRV_IMPORT_FROM(palm)
+static MACHINE_CONFIG_DERIVED( pilot5k, palm )
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
 	MDRV_RAM_EXTRA_OPTIONS("1M,2M,4M,8M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( palmpro )
-	MDRV_IMPORT_FROM(palm)
+static MACHINE_CONFIG_DERIVED( palmpro, palm )
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1M")
 	MDRV_RAM_EXTRA_OPTIONS("2M,4M,8M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( palmiii )
-	MDRV_IMPORT_FROM(palm)
-
-	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("2M")
-	MDRV_RAM_EXTRA_OPTIONS("4M,8M")
-MACHINE_DRIVER_END
-
-static MACHINE_DRIVER_START( palmv )
-	MDRV_IMPORT_FROM(palm)
+static MACHINE_CONFIG_DERIVED( palmiii, palm )
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2M")
 	MDRV_RAM_EXTRA_OPTIONS("4M,8M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( palmvx )
-	MDRV_IMPORT_FROM(palm)
+static MACHINE_CONFIG_DERIVED( palmv, palm )
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("2M")
+	MDRV_RAM_EXTRA_OPTIONS("4M,8M")
+MACHINE_CONFIG_END
+
+static MACHINE_CONFIG_DERIVED( palmvx, palm )
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT         COMPANY FULLNAME */
 COMP( 1996, pilot1k,  0,        0,       pilot1k,     palm,     0,     "U.S. Robotics", "Pilot 1000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
@@ -476,13 +470,13 @@ COMP( 1996, pilot5k,  pilot1k,  0,       pilot5k,     palm,     0,     "U.S. Rob
 COMP( 1997, palmpers, pilot1k,  0,       pilot5k,     palm,     0,     "U.S. Robotics", "Palm Pilot Personal", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
 COMP( 1997, palmpro,  pilot1k,  0,       palmpro,     palm,     0,     "U.S. Robotics", "Palm Pilot Pro", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
 COMP( 1998, palmiii,  pilot1k,  0,       palmiii,     palm,     0,     "3Com", "Palm III", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-COMP( 1998, palmiiic, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm IIIc", GAME_NOT_WORKING )
-COMP( 2000, palmm100, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m100", GAME_NOT_WORKING )
-COMP( 2000, palmm130, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m130", GAME_NOT_WORKING )
-COMP( 2001, palmm505, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m505", GAME_NOT_WORKING )
-COMP( 2001, palmm515, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc.", "Palm m515", GAME_NOT_WORKING )
+COMP( 1998, palmiiic, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc", "Palm IIIc", GAME_NOT_WORKING )
+COMP( 2000, palmm100, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc", "Palm m100", GAME_NOT_WORKING )
+COMP( 2000, palmm130, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc", "Palm m130", GAME_NOT_WORKING )
+COMP( 2001, palmm505, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc", "Palm m505", GAME_NOT_WORKING )
+COMP( 2001, palmm515, pilot1k,  0,       palmiii,     palm,     0,     "Palm Inc", "Palm m515", GAME_NOT_WORKING )
 COMP( 1999, palmv,    pilot1k,  0,       palmv,       palm,     0,     "3Com", "Palm V", GAME_NOT_WORKING )
-COMP( 1999, palmvx,   pilot1k,  0,       palmvx,      palm,     0,     "Palm Inc.", "Palm Vx", GAME_NOT_WORKING )
+COMP( 1999, palmvx,   pilot1k,  0,       palmvx,      palm,     0,     "Palm Inc", "Palm Vx", GAME_NOT_WORKING )
 COMP( 2001, visor,    pilot1k,  0,       palmvx,      palm,     0,     "Handspring", "Visor Edge", GAME_NOT_WORKING )
 COMP( 19??, spt1500,  pilot1k,  0,       palmvx,      palm,     0,     "Symbol", "SPT 1500", GAME_NOT_WORKING )
 COMP( 19??, spt1700,  pilot1k,  0,       palmvx,      palm,     0,     "Symbol", "SPT 1700", GAME_NOT_WORKING )

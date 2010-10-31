@@ -31,12 +31,11 @@
 #define SAM_MIDIOUT_INT  0x10
 
 
-class coupe_asic
+class samcoupe_state :  public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, coupe_asic(machine)); }
-
-	coupe_asic(running_machine &machine) { }
+	samcoupe_state(running_machine &machine, const driver_device_config_base &config)
+			: driver_device(machine, config) { }
 
 	emu_timer *video_update_timer;
 
@@ -55,6 +54,7 @@ public:
 	emu_timer *mouse_reset;
 	UINT8 mouse_data[9];
 	int mouse_x, mouse_y;
+	UINT8 *videoram;
 };
 
 
@@ -65,7 +65,7 @@ void samcoupe_irq(running_device *device, UINT8 src);
 
 /*----------- defined in machine/samcoupe.c -----------*/
 
-void samcoupe_update_memory(const address_space *space);
+void samcoupe_update_memory(address_space *space);
 UINT8 samcoupe_mouse_r(running_machine *machine);
 
 WRITE8_HANDLER( samcoupe_ext_mem_w );

@@ -79,7 +79,7 @@ static UINT8 fm77av_ym_irq;
 static UINT8 speaker_active;
 static UINT16 fm7_kanji_address;
 
-static void fm7_mmr_refresh(const address_space*);
+static void fm7_mmr_refresh(address_space*);
 
 
 static struct key_encoder
@@ -864,7 +864,7 @@ static READ8_HANDLER( fm77av_boot_mode_r )
  */
 static void fm7_update_psg(running_machine* machine)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if(fm7_type == SYS_FM7)
 	{
@@ -1025,7 +1025,7 @@ static READ8_HANDLER( fm7_mmr_r )
 	return 0xff;
 }
 
-static void fm7_update_bank(const address_space* space, int bank, UINT8 physical)
+static void fm7_update_bank(address_space* space, int bank, UINT8 physical)
 {
 	UINT8* RAM = memory_region(space->machine,"maincpu");
 	UINT16 size = 0xfff;
@@ -1116,7 +1116,7 @@ static void fm7_update_bank(const address_space* space, int bank, UINT8 physical
 	memory_set_bankptr(space->machine,bank_name,RAM+(physical<<12));
 }
 
-static void fm7_mmr_refresh(const address_space* space)
+static void fm7_mmr_refresh(address_space* space)
 {
 	int x;
 	UINT16 window_addr;
@@ -1855,7 +1855,7 @@ static const floppy_config fm7_floppy_config =
 	"fm7_flop"
 };
 
-static MACHINE_DRIVER_START( fm7 )
+static MACHINE_CONFIG_START( fm7, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, XTAL_2MHz)
 	MDRV_CPU_PROGRAM_MAP(fm7_mem)
@@ -1901,9 +1901,9 @@ static MACHINE_DRIVER_START( fm7 )
 
 	MDRV_SOFTWARE_LIST_ADD("cass_list","fm7_cass")
 	MDRV_SOFTWARE_LIST_ADD("flop_list","fm7_disk")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( fm77av )
+static MACHINE_CONFIG_START( fm77av, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, XTAL_2MHz)  // actually MB68B09E, but the 6809E core runs too slowly
 	MDRV_CPU_PROGRAM_MAP(fm77av_mem)
@@ -1949,7 +1949,7 @@ static MACHINE_DRIVER_START( fm77av )
 	MDRV_SOFTWARE_LIST_ADD("av_flop_list","fm77av")
 	MDRV_SOFTWARE_LIST_COMPATIBLE_ADD("cass_list","fm7_cass")
 	MDRV_SOFTWARE_LIST_COMPATIBLE_ADD("flop_list","fm7_disk")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( fm7 )

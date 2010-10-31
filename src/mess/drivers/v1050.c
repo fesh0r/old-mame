@@ -72,7 +72,7 @@ Notes:
     6502    - Synertek SY6502A CPU
     4164    - NEC D4164-2 64Kx1 Dynamic RAM
     9016    - AMD AM9016EPC 16Kx1 Dynamic RAM
-    8214    - NEC ?PB8214C Priority Interrupt Control Unit
+    8214    - NEC uPB8214C Priority Interrupt Control Unit
     8255A   - NEC D8255AC-5 Programmable Peripheral Interface
     8251A   - NEC D8251AC Programmable Communication Interface
     WD1793  - Mitsubishi MB8877 Floppy Disc Controller
@@ -94,11 +94,6 @@ Notes:
 /*
 
     TODO:
-
-    - ?
-        Device 'u76': warning - attempt to direct-map address 00001FFD in program space
-        Device 'u76': warning - attempt to direct-map address 00001FFE in program space
-        Device 'u76': warning - attempt to direct-map address 00001FFF in program space
 
     - write to banked RAM at 0x0000-0x1fff when ROM is active
     - real keyboard w/i8049
@@ -124,14 +119,9 @@ Notes:
 #include "sound/discrete.h"
 #include "devices/messram.h"
 
-INLINE running_device *get_floppy_image(running_machine *machine, int drive)
-{
-	return floppy_get_device(machine, drive);
-}
-
 void v1050_set_int(running_machine *machine, UINT8 mask, int state)
 {
-	v1050_state *driver_state = (v1050_state *)machine->driver_data;
+	v1050_state *driver_state = machine->driver_data<v1050_state>();
 
 	if (state)
 	{
@@ -147,8 +137,8 @@ void v1050_set_int(running_machine *machine, UINT8 mask, int state)
 
 static void v1050_bankswitch(running_machine *machine)
 {
-	v1050_state *state = (v1050_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	v1050_state *state = machine->driver_data<v1050_state>();
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	int bank = (state->bank >> 1) & 0x03;
 
@@ -248,7 +238,7 @@ static const UINT8 v1050_keycodes[4][12][8] =
 
 static void v1050_keyboard_scan(running_machine *machine)
 {
-	v1050_state *state = (v1050_state *)machine->driver_data;
+	v1050_state *state = machine->driver_data<v1050_state>();
 
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9", "ROW10", "ROW11" };
 	int table = 0, row, col;
@@ -303,7 +293,7 @@ static TIMER_DEVICE_CALLBACK( v1050_keyboard_tick )
 
 static READ8_HANDLER( v1050_get_key )
 {
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
+	v1050_state *state = space->machine->driver_data<v1050_state>();
 
 	state->keyavail = 0;
 
@@ -314,7 +304,7 @@ static READ8_HANDLER( v1050_get_key )
 
 static READ8_HANDLER( v1050_get_key_status )
 {
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
+	v1050_state *state = space->machine->driver_data<v1050_state>();
 
 	UINT8 val =	msm8251_status_r(state->i8251_kb, 0);
 
@@ -325,7 +315,7 @@ static READ8_HANDLER( v1050_get_key_status )
 
 static WRITE8_HANDLER( v1050_i8214_w )
 {
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
+	v1050_state *state = space->machine->driver_data<v1050_state>();
 
 	i8214_b_w(state->i8214, 0, (data >> 1) & 0x0f);
 }
@@ -356,7 +346,7 @@ static WRITE8_HANDLER( dint_clr_w )
 
 static WRITE8_HANDLER( bank_w )
 {
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
+	v1050_state *state = space->machine->driver_data<v1050_state>();
 
 	state->bank = data;
 
@@ -377,45 +367,45 @@ static WRITE8_HANDLER( dvint_clr_w )
 
 /* i8049 Read/Write Handlers */
 
-static READ8_HANDLER( keyboard_r )
+/*static READ8_HANDLER( keyboard_r )
 {
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
+    v1050_state *state = space->machine->driver_data<v1050_state>();
 
-	static const char *const KEY_ROW[] = { "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "XA", "XB" };
+    static const char *const KEY_ROW[] = { "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "XA", "XB" };
 
-	return input_port_read(space->machine, KEY_ROW[state->keylatch]);
+    return input_port_read(space->machine, KEY_ROW[state->keylatch]);
 }
 
 static WRITE8_HANDLER( keyboard_w )
 {
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
+    v1050_state *state = space->machine->driver_data<v1050_state>();
 
-	state->keylatch = data & 0x0f;
+    state->keylatch = data & 0x0f;
 }
-
-static WRITE8_HANDLER( p2_w )
-{
-	/*
-
-        bit     description
-
-        P20
-        P21
-        P22
-        P23
-        P24
-        P25     led output
-        P26     speaker (NE555) output
-        P27     serial output
-
-    */
-
-	v1050_state *state = (v1050_state *)space->machine->driver_data;
-
-	output_set_led_value(0, BIT(data, 5));
-//  discrete_sound_w(discrete, NODE_01, BIT(data, 6));
-	state->kb_so = BIT(data, 7);
-}
+*/
+//static WRITE8_HANDLER( p2_w )
+//{
+//  /*
+//
+//        bit     description
+//
+//        P20
+//        P21
+//        P22
+//        P23
+//        P24
+//        P25     led output
+//        P26     speaker (NE555) output
+//        P27     serial output
+//
+//    */
+//
+//  v1050_state *state = space->machine->driver_data<v1050_state>();
+//
+//  output_set_led_value(0, BIT(data, 5));
+////  discrete_sound_w(discrete, NODE_01, BIT(data, 6));
+//  state->kb_so = BIT(data, 7);
+//}
 
 /* Memory Maps */
 
@@ -459,10 +449,10 @@ static ADDRESS_MAP_START( v1050_crt_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( v1050_kbd_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(keyboard_r, keyboard_w)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(p2_w)
-ADDRESS_MAP_END
+//static ADDRESS_MAP_START( v1050_kbd_io, ADDRESS_SPACE_IO, 8 )
+//  AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(keyboard_r, keyboard_w)
+//  AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(p2_w)
+//ADDRESS_MAP_END
 
 /* Input Ports */
 
@@ -744,7 +734,7 @@ static MSM58321_INTERFACE( msm58321_intf )
 
 static WRITE8_DEVICE_HANDLER( crt_z80_8255_c_w )
 {
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	i8255a_pc2_w(state->i8255a_crt_m6502, BIT(data, 6));
 	i8255a_pc4_w(state->i8255a_crt_m6502, BIT(data, 7));
@@ -762,7 +752,7 @@ static I8255A_INTERFACE( disp_8255_intf )
 
 static WRITE8_DEVICE_HANDLER( crt_m6502_8255_c_w )
 {
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	i8255a_pc2_w(state->i8255a_crt_z80, BIT(data, 7));
 	i8255a_pc4_w(state->i8255a_crt_z80, BIT(data, 6));
@@ -797,7 +787,7 @@ static WRITE8_DEVICE_HANDLER( misc_8255_a_w )
 
     */
 
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	int f_motor_on = !BIT(data, 6);
 
@@ -811,10 +801,10 @@ static WRITE8_DEVICE_HANDLER( misc_8255_a_w )
 	wd17xx_set_side(state->mb8877, BIT(data, 4));
 
 	/* floppy motor */
-	floppy_mon_w(get_floppy_image(device->machine, 0), BIT(data, 6));
-	floppy_mon_w(get_floppy_image(device->machine, 1), BIT(data, 6));
-	floppy_drive_set_ready_state(get_floppy_image(device->machine, 0), f_motor_on, 1);
-	floppy_drive_set_ready_state(get_floppy_image(device->machine, 1), f_motor_on, 1);
+	floppy_mon_w(floppy_get_device(device->machine, 0), BIT(data, 6));
+	floppy_mon_w(floppy_get_device(device->machine, 1), BIT(data, 6));
+	floppy_drive_set_ready_state(floppy_get_device(device->machine, 0), f_motor_on, 1);
+	floppy_drive_set_ready_state(floppy_get_device(device->machine, 1), f_motor_on, 1);
 
 	/* density select */
 	wd17xx_dden_w(state->mb8877, BIT(data, 7));
@@ -822,7 +812,7 @@ static WRITE8_DEVICE_HANDLER( misc_8255_a_w )
 
 static WRITE8_DEVICE_HANDLER( misc_8255_b_w )
 {
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	centronics_data_w(state->centronics, 0, ~data & 0xff);
 }
@@ -844,7 +834,7 @@ static READ8_DEVICE_HANDLER( misc_8255_c_r )
 
     */
 
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	UINT8 data = 0;
 
@@ -871,7 +861,7 @@ static WRITE8_DEVICE_HANDLER( misc_8255_c_w )
 
     */
 
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	int baud_sel = (data >> 2) & 0x03;
 
@@ -880,6 +870,12 @@ static WRITE8_DEVICE_HANDLER( misc_8255_c_w )
 
 	/* floppy interrupt enable */
 	state->f_int_enb = BIT(data, 1);
+
+	if (!state->f_int_enb)
+	{
+		v1050_set_int(device->machine, INT_FLOPPY, 0);
+		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
+	}
 
 	/* baud select */
 	if (baud_sel != state->baud_sel)
@@ -929,7 +925,7 @@ static WRITE8_DEVICE_HANDLER( rtc_8255_b_w )
 
     */
 
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	state->int_mask = data;
 }
@@ -951,7 +947,7 @@ static READ8_DEVICE_HANDLER( rtc_8255_c_r )
 
     */
 
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	return msm58321_busy_r(state->msm58321) << 3;
 }
@@ -973,7 +969,7 @@ static WRITE8_DEVICE_HANDLER( rtc_8255_c_w )
 
     */
 
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	msm58321_address_write_w(state->msm58321, BIT(data, 4));
 	msm58321_write_w(state->msm58321, BIT(data, 5));
@@ -995,7 +991,7 @@ static I8255A_INTERFACE( rtc_8255_intf )
 
 static TIMER_DEVICE_CALLBACK( kb_8251_tick )
 {
-	v1050_state *state = (v1050_state *)timer.machine->driver_data;
+	v1050_state *state = timer.machine->driver_data<v1050_state>();
 
 	msm8251_transmit_clock(state->i8251_kb);
 	msm8251_receive_clock(state->i8251_kb);
@@ -1017,7 +1013,7 @@ static const msm8251_interface kb_8251_intf =
 
 static TIMER_DEVICE_CALLBACK( sio_8251_tick )
 {
-	v1050_state *state = (v1050_state *)timer.machine->driver_data;
+	v1050_state *state = timer.machine->driver_data<v1050_state>();
 
 	msm8251_transmit_clock(state->i8251_sio);
 	msm8251_receive_clock(state->i8251_sio);
@@ -1025,7 +1021,7 @@ static TIMER_DEVICE_CALLBACK( sio_8251_tick )
 
 static WRITE_LINE_DEVICE_HANDLER( sio_8251_rxrdy_w )
 {
-	v1050_state *driver_state = (v1050_state *)device->machine->driver_data;
+	v1050_state *driver_state = device->machine->driver_data<v1050_state>();
 
 	driver_state->rxrdy = state;
 
@@ -1034,7 +1030,7 @@ static WRITE_LINE_DEVICE_HANDLER( sio_8251_rxrdy_w )
 
 static WRITE_LINE_DEVICE_HANDLER( sio_8251_txrdy_w )
 {
-	v1050_state *driver_state = (v1050_state *)device->machine->driver_data;
+	v1050_state *driver_state = device->machine->driver_data<v1050_state>();
 
 	driver_state->txrdy = state;
 
@@ -1052,25 +1048,28 @@ static const msm8251_interface sio_8251_intf =
 
 static WRITE_LINE_DEVICE_HANDLER( v1050_mb8877_intrq_w )
 {
-	v1050_state *driver_state = (v1050_state *)device->machine->driver_data;
+	v1050_state *driver_state = device->machine->driver_data<v1050_state>();
 
 	if (driver_state->f_int_enb)
+	{
 		v1050_set_int(device->machine, INT_FLOPPY, state);
+	}
+	else
 	{
 		v1050_set_int(device->machine, INT_FLOPPY, 0);
-		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
 	}
 }
 
 static WRITE_LINE_DEVICE_HANDLER( v1050_mb8877_drq_w )
 {
-	v1050_state *driver_state = (v1050_state *)device->machine->driver_data;
+	v1050_state *driver_state = device->machine->driver_data<v1050_state>();
 
 	if (driver_state->f_int_enb)
+	{
 		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, state);
+	}
 	else
 	{
-		v1050_set_int(device->machine, INT_FLOPPY, 0);
 		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
 	}
 }
@@ -1080,14 +1079,14 @@ static const wd17xx_interface v1050_wd17xx_intf =
 	DEVCB_NULL,
 	DEVCB_LINE(v1050_mb8877_intrq_w),
 	DEVCB_LINE(v1050_mb8877_drq_w),
-	{FLOPPY_0,FLOPPY_1,NULL,NULL}
+	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
 };
 
 /* Machine Initialization */
 
 static IRQ_CALLBACK( v1050_int_ack )
 {
-	v1050_state *state = (v1050_state *)device->machine->driver_data;
+	v1050_state *state = device->machine->driver_data<v1050_state>();
 
 	UINT8 vector = 0xf0 | (i8214_a_r(state->i8214, 0) << 1);
 
@@ -1100,8 +1099,8 @@ static IRQ_CALLBACK( v1050_int_ack )
 
 static MACHINE_START( v1050 )
 {
-	v1050_state *state = (v1050_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	v1050_state *state = machine->driver_data<v1050_state>();
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
 	state->i8214 = machine->device(UPB8214_TAG);
@@ -1160,13 +1159,13 @@ static MACHINE_START( v1050 )
 
 static MACHINE_RESET( v1050 )
 {
-	v1050_state *state = (v1050_state *)machine->driver_data;
+	v1050_state *state = machine->driver_data<v1050_state>();
 
 	state->bank = 0;
 
 	v1050_bankswitch(machine);
-	
-	state->timer_sio->adjust(attotime_zero, 0, ATTOTIME_IN_HZ((double)XTAL_16MHz/4/13/16));	
+
+	state->timer_sio->adjust(attotime_zero, 0, ATTOTIME_IN_HZ((double)XTAL_16MHz/4/13/16));
 }
 
 
@@ -1192,8 +1191,7 @@ static const floppy_config v1050_floppy_config =
 };
 
 /* Machine Driver */
-static MACHINE_DRIVER_START( v1050 )
-	MDRV_DRIVER_DATA(v1050_state)
+static MACHINE_CONFIG_START( v1050, v1050_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
@@ -1215,7 +1213,7 @@ static MACHINE_DRIVER_START( v1050 )
 	MDRV_TIMER_ADD_PERIODIC("keyboard", v1050_keyboard_tick, HZ(60))
 
     /* video hardware */
-	MDRV_IMPORT_FROM(v1050_video)
+	MDRV_FRAGMENT_ADD(v1050_video)
 
 	/* sound hardware */
 /*  MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1243,7 +1241,7 @@ static MACHINE_DRIVER_START( v1050 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 
@@ -1262,4 +1260,4 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME        FLAGS */
-COMP( 1983, v1050,	0,		0,		v1050,	v1050,	0,		"Visual Technology Incorporated",	"Visual 1050",	GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE | GAME_NO_SOUND)
+COMP( 1983, v1050,	0,		0,		v1050,	v1050,	0,		"Visual Technology Inc",	"Visual 1050",	GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE | GAME_NO_SOUND)

@@ -113,7 +113,7 @@ static VIDEO_UPDATE( vk100 )
     return 0;
 }
 
-static MACHINE_DRIVER_START( vk100 )
+static MACHINE_CONFIG_START( vk100, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", I8085A, XTAL_5_0688MHz)
     MDRV_CPU_PROGRAM_MAP(vk100_mem)
@@ -134,7 +134,7 @@ static MACHINE_DRIVER_START( vk100 )
 
     MDRV_VIDEO_START(vk100)
     MDRV_VIDEO_UPDATE(vk100)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 /* according to http://www.computer.museum.uq.edu.au/pdf/EK-VK100-TM-001%20VK100%20Technical%20Manual.pdf page 5-10 (pdf pg 114),
@@ -157,5 +157,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1980, vk100,  0,       0, 	vk100,	vk100,	 0, 		 "DEC",   "VK 100",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1980, vk100,  0,       0, 	vk100,	vk100,	 0, 		 "Digital Equipment Corporation",   "VK 100",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

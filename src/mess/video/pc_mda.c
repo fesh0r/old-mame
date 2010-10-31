@@ -77,7 +77,7 @@ static const mc6845_interface mc6845_mda_intf =
 	NULL
 };
 
-MACHINE_DRIVER_START( pcvideo_mda )
+MACHINE_CONFIG_FRAGMENT( pcvideo_mda )
 	MDRV_SCREEN_ADD( MDA_SCREEN_NAME, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MDA_CLOCK, 882, 0, 720, 370, 0, 350 )
@@ -89,7 +89,7 @@ MACHINE_DRIVER_START( pcvideo_mda )
 
 	MDRV_VIDEO_START( pc_mda )
 	MDRV_VIDEO_UPDATE( mc6845_mda)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************
@@ -101,7 +101,7 @@ MACHINE_DRIVER_END
 VIDEO_START( pc_mda )
 {
 	int buswidth;
-	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
+	address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	buswidth = device_memory(machine->firstcpu)->space_config(AS_PROGRAM)->m_databus_width;
 	switch(buswidth)
@@ -122,9 +122,9 @@ VIDEO_START( pc_mda )
 	mda.update_row = NULL;
 	mda.chr_gen = memory_region( machine, "gfx1" );
 
-	machine->generic.videoram_size = 0x1000;	/* This is actually 0x1000 in reality */
-	machine->generic.videoram.u8 = auto_alloc_array(machine, UINT8, machine->generic.videoram_size);
-	memory_set_bankptr(machine,"bank11", machine->generic.videoram.u8);
+	pc_videoram_size = 0x1000;	/* This is actually 0x1000 in reality */
+	pc_videoram = auto_alloc_array(machine, UINT8, 0x1000);
+	memory_set_bankptr(machine,"bank11", pc_videoram);
 }
 
 
@@ -144,6 +144,7 @@ static VIDEO_UPDATE( mc6845_mda )
 
 static MC6845_UPDATE_ROW( mda_text_inten_update_row )
 {
+	UINT8 *videoram = pc_videoram;
 	UINT16	*p = BITMAP_ADDR16( bitmap, y, 0 );
 	UINT16	chr_base = ( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
 	int i;
@@ -153,8 +154,8 @@ static MC6845_UPDATE_ROW( mda_text_inten_update_row )
 	for ( i = 0; i < x_count; i++ )
 	{
 		UINT16 offset = ( ( ma + i ) << 1 ) & 0x0FFF;
-		UINT8 chr = machine->generic.videoram.u8[ offset ];
-		UINT8 attr = machine->generic.videoram.u8[ offset + 1 ];
+		UINT8 chr = videoram[ offset ];
+		UINT8 attr = videoram[ offset + 1 ];
 		UINT8 data = mda.chr_gen[ chr_base + chr * 8 ];
 		UINT8 fg = ( attr & 0x08 ) ? 3 : 2;
 		UINT8 bg = 0;
@@ -217,6 +218,7 @@ static MC6845_UPDATE_ROW( mda_text_inten_update_row )
 
 static MC6845_UPDATE_ROW( mda_text_blink_update_row )
 {
+	UINT8 *videoram = pc_videoram;
 	UINT16	*p = BITMAP_ADDR16( bitmap, y, 0 );
 	UINT16	chr_base = ( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
 	int i;
@@ -226,8 +228,8 @@ static MC6845_UPDATE_ROW( mda_text_blink_update_row )
 	for ( i = 0; i < x_count; i++ )
 	{
 		UINT16 offset = ( ( ma + i ) << 1 ) & 0x0FFF;
-		UINT8 chr = device->machine->generic.videoram.u8[ offset ];
-		UINT8 attr = device->machine->generic.videoram.u8[ offset + 1 ];
+		UINT8 chr = videoram[ offset ];
+		UINT8 attr = videoram[ offset + 1 ];
 		UINT8 data = mda.chr_gen[ chr_base + chr * 8 ];
 		UINT8 fg = ( attr & 0x08 ) ? 3 : 2;
 		UINT8 bg = 0;
@@ -435,7 +437,7 @@ static const mc6845_interface mc6845_hercules_intf =
 	NULL
 };
 
-MACHINE_DRIVER_START( pcvideo_hercules )
+MACHINE_CONFIG_FRAGMENT( pcvideo_hercules )
 	MDRV_SCREEN_ADD( HERCULES_SCREEN_NAME, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MDA_CLOCK, 882, 0, 720, 370, 0, 350 )
@@ -447,13 +449,13 @@ MACHINE_DRIVER_START( pcvideo_hercules )
 
 	MDRV_VIDEO_START( pc_hercules )
 	MDRV_VIDEO_UPDATE( mc6845_hercules )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 static VIDEO_START( pc_hercules )
 {
 	int buswidth;
-	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
+	address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	buswidth = device_memory(machine->firstcpu)->space_config(AS_PROGRAM)->m_databus_width;
 	switch(buswidth)
@@ -474,9 +476,9 @@ static VIDEO_START( pc_hercules )
 	mda.update_row = NULL;
 	mda.chr_gen = memory_region( machine, "gfx1" );
 
-	machine->generic.videoram_size = 0x10000;
-	machine->generic.videoram.u8 = auto_alloc_array(machine, UINT8, machine->generic.videoram_size);
-	memory_set_bankptr(machine,"bank11", machine->generic.videoram.u8);
+	pc_videoram_size = 0x10000;
+	pc_videoram = auto_alloc_array(machine, UINT8, 0x10000);
+	memory_set_bankptr(machine,"bank11", pc_videoram);
 }
 
 
@@ -489,6 +491,7 @@ static VIDEO_START( pc_hercules )
 
 static MC6845_UPDATE_ROW( hercules_gfx_update_row )
 {
+	UINT8 *videoram = pc_videoram;
 	UINT16	*p = BITMAP_ADDR16( bitmap, y, 0 );
 	UINT16	gfx_base = ( ( mda.mode_control & 0x80 ) ? 0x8000 : 0x0000 ) | ( ( ra & 0x03 ) << 13 );
 	int i;
@@ -497,7 +500,7 @@ static MC6845_UPDATE_ROW( hercules_gfx_update_row )
 	if ( y == 0 ) MDA_LOG(1,"hercules_gfx_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
 	{
-		UINT8	data = device->machine->generic.videoram.u8[ gfx_base + ( ( ma + i ) << 1 ) ];
+		UINT8	data = videoram[ gfx_base + ( ( ma + i ) << 1 ) ];
 
 		*p = ( data & 0x80 ) ? 2 : 0; p++;
 		*p = ( data & 0x40 ) ? 2 : 0; p++;
@@ -508,7 +511,7 @@ static MC6845_UPDATE_ROW( hercules_gfx_update_row )
 		*p = ( data & 0x02 ) ? 2 : 0; p++;
 		*p = ( data & 0x01 ) ? 2 : 0; p++;
 
-		data = device->machine->generic.videoram.u8[ gfx_base + ( ( ma + i ) << 1 ) + 1 ];
+		data = videoram[ gfx_base + ( ( ma + i ) << 1 ) + 1 ];
 
 		*p = ( data & 0x80 ) ? 2 : 0; p++;
 		*p = ( data & 0x40 ) ? 2 : 0; p++;

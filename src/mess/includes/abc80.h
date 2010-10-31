@@ -51,12 +51,11 @@
 #define ABCBUS_TAG		"abcbus"
 #define CASSETTE_TAG	"cassette"
 
-class abc80_state
+class abc80_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, abc80_state(machine)); }
-
-	abc80_state(running_machine &machine) { }
+	abc80_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	int key_data;
@@ -80,11 +79,10 @@ public:
 
 	/* devices */
 	running_device *z80pio;
-	running_device *cassette;
 };
 
 /*----------- defined in video/abc80.c -----------*/
 
-MACHINE_DRIVER_EXTERN( abc80_video );
+MACHINE_CONFIG_EXTERN( abc80_video );
 
 #endif /* ABC80_H_ */

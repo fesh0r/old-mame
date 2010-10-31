@@ -294,7 +294,7 @@ SamRam
 
 WRITE8_HANDLER(spectrum_port_fe_w)
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 	running_device *speaker = space->machine->device("speaker");
 	unsigned char Changed;
 
@@ -304,7 +304,7 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 	if ((Changed & 0x07)!=0)
 	{
 		/* yes - send event */
-		EventList_AddItemOffset(space->machine, 0x0fe, data & 0x07, cputag_attotime_to_clocks(space->machine, "maincpu", attotime_mul(space->machine->primary_screen->scan_period(), space->machine->primary_screen->vpos())));
+		EventList_AddItemOffset(space->machine, 0x0fe, data & 0x07, space->machine->device<cpu_device>("maincpu")->attotime_to_cycles(attotime_mul(space->machine->primary_screen->scan_period(), space->machine->primary_screen->vpos())));
 	}
 
 	if ((Changed & (1<<4))!=0)
@@ -322,13 +322,13 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 	state->port_fe_data = data;
 }
 
-static DIRECT_UPDATE_HANDLER(spectrum_direct)
+DIRECT_UPDATE_HANDLER(spectrum_direct)
 {
     /* Hack for correct handling 0xffff interrupt vector */
     if (address == 0x0001)
-        if (cpu_get_reg(space->machine->device("maincpu"), STATE_GENPCBASE)==0xffff)
+        if (cpu_get_reg(machine->device("maincpu"), STATE_GENPCBASE)==0xffff)
         {
-            cpu_set_reg(space->machine->device("maincpu"), Z80_PC, 0xfff4);
+            cpu_set_reg(machine->device("maincpu"), Z80_PC, 0xfff4);
             return 0xfff4;
         }
     return address;
@@ -425,7 +425,7 @@ READ8_HANDLER(spectrum_port_df_r)
 
 static READ8_HANDLER ( spectrum_port_ula_r )
 {
-	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	spectrum_state *state = space->machine->driver_data<spectrum_state>();
 	int vpos = space->machine->primary_screen->vpos();
 
 	return vpos<193 ? state->video_ram[(vpos&0xf8)<<2]:0xff;
@@ -622,7 +622,7 @@ INPUT_PORTS_END
 
 DRIVER_INIT( spectrum )
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	switch (messram_get_size(machine->device("messram")))
 	{
@@ -635,10 +635,11 @@ DRIVER_INIT( spectrum )
 
 MACHINE_RESET( spectrum )
 {
-	spectrum_state *state = (spectrum_state *)machine->driver_data;
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	spectrum_state *state = machine->driver_data<spectrum_state>();
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_set_direct_update_handler(space, spectrum_direct);
+	space->set_direct_update_handler(direct_update_delegate_create_static(spectrum_direct, *machine));
+
 	state->port_7ffd_data = -1;
 	state->port_1ffd_data = -1;
 }
@@ -703,9 +704,7 @@ static DEVICE_IMAGE_LOAD( spectrum_cart )
 	return IMAGE_INIT_PASS;
 }
 
-MACHINE_DRIVER_START( spectrum_common )
-
-	MDRV_DRIVER_DATA( spectrum_state )
+MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, X1 / 4)        /* This is verified only for the ZX Spectum. Other clones are reported to have different clocks */
@@ -734,7 +733,7 @@ MACHINE_DRIVER_START( spectrum_common )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
@@ -749,17 +748,16 @@ MACHINE_DRIVER_START( spectrum_common )
 	MDRV_CARTSLOT_LOAD(spectrum_cart)
 	MDRV_CARTSLOT_INTERFACE("spectrum_cart")
 	MDRV_SOFTWARE_LIST_ADD("cart_list","spectrum")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START( spectrum )
-	MDRV_IMPORT_FROM( spectrum_common )
+MACHINE_CONFIG_DERIVED( spectrum, spectrum_common )
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")				// This configuration is verified only for the original ZX Spectrum.
 	MDRV_RAM_DEFAULT_SIZE("48K")		// It's likely, but still to be checked, that many clones were produced only
 	MDRV_RAM_EXTRA_OPTIONS("16K")		// in the 48k configuration, while others have extra memory (80k, 128K, 1024K)
 	MDRV_RAM_DEFAULT_VALUE(0xff)		// available via bankswitching.
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
 
@@ -1014,7 +1012,7 @@ ROM_START(zvezda)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    COMPANY     FULLNAME */
-COMP( 1982, spectrum, 0,        0,		spectrum,		spectrum,	spectrum,	"Sinclair Research",	"ZX Spectrum" , 0)
+COMP( 1982, spectrum, 0,        0,		spectrum,		spectrum,	spectrum,	"Sinclair Research Ltd",	"ZX Spectrum" , 0)
 COMP( 1987, spec80k,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"ZX Spectrum 80K" , GAME_UNOFFICIAL)
 COMP( 1995, specide,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"ZX Spectrum IDE" , GAME_UNOFFICIAL)
 COMP( 1986, inves,    spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Investronica",	"Inves Spectrum 48K+" , 0)

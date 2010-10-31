@@ -33,6 +33,11 @@
 #define TI86_SCREEN_Y_SIZE	  64
 #define TI86_NUMBER_OF_FRAMES	   6
 
+#define TI73_VIDEO_MEMORY_SIZE	768
+#define TI73_SCREEN_X_SIZE	  12
+#define TI73_SCREEN_Y_SIZE	  64
+#define TI73_NUMBER_OF_FRAMES	   6
+
 static int ti_video_memory_size;
 static int ti_screen_x_size;
 static int ti_screen_y_size;
@@ -170,6 +175,13 @@ PALETTE_INIT( ti85 )
 		ti_screen_y_size = TI86_SCREEN_Y_SIZE;
 		ti_number_of_frames = TI86_NUMBER_OF_FRAMES;
 	}
+	else if (!strncmp(machine->gamedrv->name, "ti73", 4))
+	{
+		ti_video_memory_size = TI73_VIDEO_MEMORY_SIZE;
+		ti_screen_x_size = TI73_SCREEN_X_SIZE;
+		ti_screen_y_size = TI73_SCREEN_Y_SIZE;
+		ti_number_of_frames = TI73_NUMBER_OF_FRAMES;
+	}
 	else
 	{
 		/* don't allocate memory for the others drivers */
@@ -185,7 +197,7 @@ VIDEO_START( ti85 )
 
 VIDEO_UPDATE( ti85 )
 {
-	const address_space *space = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int x,y,b;
 	int brightnes;
 	int lcdmem;
@@ -205,7 +217,7 @@ VIDEO_UPDATE( ti85 )
 
         for (y=0; y<ti_screen_y_size; y++)
 		for (x=0; x<ti_screen_x_size; x++)
-			*(ti85_frames+(ti_number_of_frames-1)*ti_video_memory_size+y*ti_screen_x_size+x) = memory_read_byte(space, lcdmem+y*ti_screen_x_size+x);
+			*(ti85_frames+(ti_number_of_frames-1)*ti_video_memory_size+y*ti_screen_x_size+x) = space->read_byte(lcdmem+y*ti_screen_x_size+x);
 
     	for (y=0; y<ti_screen_y_size; y++)
 		for (x=0; x<ti_screen_x_size; x++)

@@ -17,7 +17,7 @@ static UINT8 tvc_flipflop = 0xff;
 
 static void tvc_set_mem_page(running_machine *machine, UINT8 data)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	switch(data & 0x18) {
 		case 0x00 : // system ROM selected
 				memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
@@ -355,7 +355,7 @@ static INTERRUPT_GEN( tvc_interrupt )
 	cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
-static MACHINE_DRIVER_START( tvc )
+static MACHINE_CONFIG_START( tvc, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, 3125000)
     MDRV_CPU_PROGRAM_MAP(tvc_mem)
@@ -383,7 +383,7 @@ static MACHINE_DRIVER_START( tvc )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("80K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( tvc64 )

@@ -12,12 +12,11 @@
 #define UPD7220_TAG		"ic101"
 #define SPEAKER_TAG		"speaker"
 
-class mm1_state
+class mm1_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mm1_state(machine)); }
-
-	mm1_state(running_machine &machine) { }
+	mm1_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* keyboard state */
 	int sense;
@@ -41,7 +40,7 @@ public:
 	int tc;
 
 	/* devices */
-	running_device *i8212;
+	i8212_device *i8212;
 	running_device *i8237;
 	running_device *i8275;
 	running_device *upd765;

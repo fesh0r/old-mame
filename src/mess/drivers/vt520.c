@@ -39,7 +39,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(vt520)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "maincpu");
 	memory_unmap_write(space, 0x0000, 0xffff, 0, 0);
 	memory_set_bankptr(machine, "bank1", rom + 0x70000);
@@ -54,7 +54,7 @@ static VIDEO_UPDATE( vt520 )
     return 0;
 }
 
-static MACHINE_DRIVER_START( vt520 )
+static MACHINE_CONFIG_START( vt520, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",I8032, XTAL_20MHz)
     MDRV_CPU_PROGRAM_MAP(vt520_mem)
@@ -80,7 +80,7 @@ static MACHINE_DRIVER_START( vt520 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("256K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( vt520 )
@@ -91,6 +91,6 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE   INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-//COMP( 1993, vt510,  0,       0,   vt520,  vt520,   0,          "DEC",   "VT510",      GAME_NOT_WORKING)
-COMP( 1994, vt520,  0,       0, 	vt520,	vt520,	 0, 		 "DEC",   "VT520",		GAME_NOT_WORKING | GAME_NO_SOUND)
-//COMP( 1994, vt525,  0,       0,   vt520,  vt520,   0,          "DEC",   "VT525",      GAME_NOT_WORKING)
+//COMP( 1993, vt510,  0,       0,   vt520,  vt520,   0,          "Digital Equipment Corporation",   "VT510",      GAME_NOT_WORKING)
+COMP( 1994, vt520,  0,       0, 	vt520,	vt520,	 0, 		 "Digital Equipment Corporation",   "VT520",		GAME_NOT_WORKING | GAME_NO_SOUND)
+//COMP( 1994, vt525,  0,       0,   vt520,  vt520,   0,          "Digital Equipment Corporation",   "VT525",      GAME_NOT_WORKING)

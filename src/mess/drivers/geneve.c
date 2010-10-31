@@ -240,7 +240,7 @@ static ADDRESS_MAP_START(cru_map, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0100, 0x01ff) AM_DEVREAD("per_exp_box", geneve_peb_cru_r)
 
 	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
-	AM_RANGE(0x0800, 0x0fff) AM_DEVWRITE("per_exp_box", geneve_peb_mode_cru_w)
+	AM_RANGE(0x0800, 0x0fff) AM_WRITE(geneve_peb_mode_cru_w)
 ADDRESS_MAP_END
 
 
@@ -492,7 +492,7 @@ static const floppy_config geneve_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START(geneve_60hz)
+static MACHINE_CONFIG_START( geneve_60hz, driver_device )
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 12.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9995, 12000000)
@@ -548,7 +548,7 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_SMARTMEDIA_ADD("smartmedia")
 
 	MDRV_TI99_4_RS232_CARD_ADD("rs232")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /*

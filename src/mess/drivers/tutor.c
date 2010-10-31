@@ -196,6 +196,14 @@ static DRIVER_INIT(tutor)
 	memory_set_bank(machine, "bank1", 0);
 }
 
+
+static DRIVER_INIT(pyuuta)
+{
+	DRIVER_INIT_CALL(tutor);
+	memory_set_bank(machine, "bank1", 1);
+}
+
+
 static const TMS9928a_interface tms9929a_interface =
 {
 	TMS9929A,
@@ -261,7 +269,7 @@ static DEVICE_IMAGE_LOAD( tutor_cart )
 {
 	UINT32 size;
 	UINT8 *ptr = memory_region(image.device().machine, "maincpu");
-	
+
 	if (image.software_entry() == NULL)
 	{
 		size = image.length();
@@ -273,7 +281,7 @@ static DEVICE_IMAGE_LOAD( tutor_cart )
 		size = image.get_software_region_length("rom");
 		memcpy(ptr + cartridge_base, image.get_software_region("rom"), size);
 	}
-	
+
 	return IMAGE_INIT_PASS;
 }
 
@@ -661,7 +669,7 @@ static const struct tms9995reset_param tutor_processor_config =
 	NULL		/* no IDLE callback */
 };
 
-static MACHINE_DRIVER_START(tutor)
+static MACHINE_CONFIG_START( tutor, driver_device )
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9995, 10700000)
@@ -674,7 +682,7 @@ static MACHINE_DRIVER_START(tutor)
 	MDRV_MACHINE_RESET( tutor )
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_FRAGMENT_ADD(tms9928a)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -700,7 +708,7 @@ static MACHINE_DRIVER_START(tutor)
 	/* software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","tutor")
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /*
@@ -713,5 +721,15 @@ ROM_START(tutor)
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END
 
+
+ROM_START(pyuuta)
+	/*CPU memory space*/
+	ROM_REGION(0x14000,"maincpu",0)
+	ROM_LOAD("tomy29.7", 0x0000, 0x8000, CRC(7553bb6a) SHA1(fa41c45cb6d3daf7435f2a82f77dfa286003255e))      /* system ROM */
+ROM_END
+
+
 /*      YEAR    NAME    PARENT      COMPAT  MACHINE     INPUT   INIT    COMPANY     FULLNAME */
 COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	tutor,	"Tomy",		"Tomy Tutor" , 0)
+COMP(	1982,	pyuuta,	tutor,		0,		tutor,		tutor,	pyuuta,	"Tomy",		"Tomy Pyuuta" , 0)
+

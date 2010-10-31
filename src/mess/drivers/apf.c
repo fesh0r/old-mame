@@ -46,12 +46,11 @@ text screen in the superior part of the graphical screen.
 */
 
 /* 6600, 6500-6503 wd179x disc controller? 6400, 6401 */
-class apf_state
+class apf_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, apf_state(machine)); }
-
-	apf_state(running_machine &machine) { }
+	apf_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	unsigned char keyboard_data;
 	unsigned char pad_data;
@@ -67,7 +66,7 @@ static void apf_update_ints(running_machine *machine);
 
 static READ8_DEVICE_HANDLER( apf_mc6847_videoram_r )
 {
-	apf_state *state = (apf_state *)device->machine->driver_data;
+	apf_state *state = device->machine->driver_data<apf_state>();
 	mc6847_css_w(device, state->mc6847_css && BIT(state->videoram[offset + 0x200], 6));
 	mc6847_inv_w(device, BIT(state->videoram[offset + 0x200], 6));
 	mc6847_as_w(device, BIT(state->videoram[offset + 0x200], 7));
@@ -77,7 +76,7 @@ static READ8_DEVICE_HANDLER( apf_mc6847_videoram_r )
 
 static WRITE_LINE_DEVICE_HANDLER( apf_mc6847_fs_w )
 {
-	apf_state *state_ = (apf_state *)device->machine->driver_data;
+	apf_state *state_ = device->machine->driver_data<apf_state>();
 
 	if (state)
 		state_->apf_ints |= 0x10;
@@ -95,7 +94,7 @@ static VIDEO_UPDATE( apf )
 
 static  READ8_DEVICE_HANDLER(apf_m1000_pia_in_a_func)
 {
-	apf_state *state = (apf_state *)device->machine->driver_data;
+	apf_state *state = device->machine->driver_data<apf_state>();
 	UINT8 data=~0;
 
 	if (!(state->pad_data & 0x08))
@@ -144,7 +143,7 @@ static WRITE8_DEVICE_HANDLER(apf_m1000_pia_out_a_func)
 
 static WRITE8_DEVICE_HANDLER( apf_m1000_pia_out_b_func )
 {
-	apf_state *state = (apf_state *)device->machine->driver_data;
+	apf_state *state = device->machine->driver_data<apf_state>();
 	running_device *mc6847 = device->machine->device("mc6847");
 
 	/* bit 7..4 video control -- TODO: bit 5 and 4? */
@@ -157,7 +156,7 @@ static WRITE8_DEVICE_HANDLER( apf_m1000_pia_out_b_func )
 
 static WRITE_LINE_DEVICE_HANDLER(apf_m1000_pia_out_ca2_func)
 {
-	apf_state *state_ = (apf_state *)device->machine->driver_data;
+	apf_state *state_ = device->machine->driver_data<apf_state>();
 
 	state_->mc6847_css = state;
 }
@@ -176,14 +175,14 @@ static WRITE8_DEVICE_HANDLER(apf_m1000_pia_out_cb2_func)
 
 static void apf_update_ints(running_machine *machine)
 {
-	apf_state *state = (apf_state *)machine->driver_data;
+	apf_state *state = machine->driver_data<apf_state>();
 
 	cputag_set_input_line(machine, "maincpu", 0, state->apf_ints ? HOLD_LINE : CLEAR_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( apf_m1000_irq_a_func )
 {
-	apf_state *state_ = (apf_state *)device->machine->driver_data;
+	apf_state *state_ = device->machine->driver_data<apf_state>();
 
 	if (state)
 	{
@@ -200,7 +199,7 @@ static WRITE_LINE_DEVICE_HANDLER( apf_m1000_irq_a_func )
 
 static WRITE_LINE_DEVICE_HANDLER( apf_m1000_irq_b_func )
 {
-	apf_state *state_ = (apf_state *)device->machine->driver_data;
+	apf_state *state_ = device->machine->driver_data<apf_state>();
 
 	//logerror("pia 0 irq b %d\n",state);
 
@@ -236,7 +235,7 @@ static const pia6821_interface apf_m1000_pia_interface=
 
 static  READ8_DEVICE_HANDLER(apf_imagination_pia_in_a_func)
 {
-	apf_state *state = (apf_state *)device->machine->driver_data;
+	apf_state *state = device->machine->driver_data<apf_state>();
 
 	return state->keyboard_data;
 }
@@ -280,7 +279,7 @@ static WRITE8_DEVICE_HANDLER(apf_imagination_pia_out_a_func)
 
 static WRITE8_DEVICE_HANDLER(apf_imagination_pia_out_b_func)
 {
-	apf_state *state = (apf_state *)device->machine->driver_data;
+	apf_state *state = device->machine->driver_data<apf_state>();
 
 	/* bits 2..0 = keyboard line */
 	/* bit 3 = ??? */
@@ -315,7 +314,7 @@ static WRITE8_DEVICE_HANDLER(apf_imagination_pia_out_cb2_func)
 
 static WRITE_LINE_DEVICE_HANDLER( apf_imagination_irq_a_func )
 {
-	apf_state *state_ = (apf_state *)device->machine->driver_data;
+	apf_state *state_ = device->machine->driver_data<apf_state>();
 
 	if (state)
 	{
@@ -331,7 +330,7 @@ static WRITE_LINE_DEVICE_HANDLER( apf_imagination_irq_a_func )
 
 static WRITE_LINE_DEVICE_HANDLER( apf_imagination_irq_b_func )
 {
-	apf_state *state_ = (apf_state *)device->machine->driver_data;
+	apf_state *state_ = device->machine->driver_data<apf_state>();
 
 	if (state)
 	{
@@ -365,7 +364,7 @@ static const pia6821_interface apf_imagination_pia_interface=
 
 static MACHINE_START( apf_imagination )
 {
-	apf_state *state = (apf_state *)machine->driver_data;
+	apf_state *state = machine->driver_data<apf_state>();
 
 	state->apf_ints = 0;
 }
@@ -704,9 +703,7 @@ static const mc6847_interface apf_mc6847_intf =
 	DEVCB_NULL
 };
 
-static MACHINE_DRIVER_START( apf_imagination )
-
-	MDRV_DRIVER_DATA( apf_state )
+static MACHINE_CONFIG_START( apf_imagination, apf_state )
 
 	/* basic machine hardware */
 	//  MDRV_CPU_ADD("maincpu", M6800, 3750000)        /* 7.8336 MHz, only 6800p type used 1 MHz max*/
@@ -731,7 +728,7 @@ static MACHINE_DRIVER_START( apf_imagination )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", apf_cassette_config )
@@ -739,10 +736,9 @@ static MACHINE_DRIVER_START( apf_imagination )
 	MDRV_WD179X_ADD("wd179x", default_wd17xx_interface )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(apfimag_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( apf_m1000 )
-	MDRV_IMPORT_FROM( apf_imagination )
+static MACHINE_CONFIG_DERIVED( apf_m1000, apf_imagination )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( apf_m1000_map)
 
@@ -751,7 +747,7 @@ static MACHINE_DRIVER_START( apf_m1000 )
 	MDRV_DEVICE_REMOVE( "cassette" )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_FLOPPY_2_DRIVES_REMOVE()
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************

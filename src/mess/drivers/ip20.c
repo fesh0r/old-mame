@@ -573,7 +573,7 @@ static const mips3_config config =
 	32768	/* data cache size */
 };
 
-static MACHINE_DRIVER_START( ip204415 )
+static MACHINE_CONFIG_START( ip204415, driver_device )
 	MDRV_CPU_ADD( "maincpu", R4600BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip204415_map)
@@ -602,7 +602,7 @@ static MACHINE_DRIVER_START( ip204415 )
 	MDRV_CDROM_ADD( "cdrom" )
 
 	MDRV_EEPROM_ADD("eeprom", eeprom_interface_93C56)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START( ip204415 )
 	ROM_REGION( 0x80000, "user1", 0 )
@@ -610,4 +610,4 @@ ROM_START( ip204415 )
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, "Silicon Graphics, Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, "Silicon Graphics Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )

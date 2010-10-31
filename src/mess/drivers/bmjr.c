@@ -1,14 +1,14 @@
 /***************************************************************************
 
-	Basic Master Jr (MB-6885) (c) 1982? Hitachi
+    Basic Master Jr (MB-6885) (c) 1982? Hitachi
 
-	preliminary driver by Angelo Salese
+    preliminary driver by Angelo Salese
 
-	TODO:
-	- for whatever reason, BASIC won't work if you try to use it directly,
-	  it does if you enter into MON first then exit (with E)
-	- tape hook-up doesn't work yet (shouldn't be hard to fix)
-	- Break key is unemulated (tied with the NMI)
+    TODO:
+    - for whatever reason, BASIC won't work if you try to use it directly,
+      it does if you enter into MON first then exit (with E)
+    - tape hook-up doesn't work yet (shouldn't be hard to fix)
+    - Break key is unemulated (tied with the NMI)
 
 ****************************************************************************/
 
@@ -79,8 +79,8 @@ static WRITE8_HANDLER( key_w )
 {
 	key_mux = data & 0xf;
 
-//	if(data & 0xf0)
-//		printf("%02x",data & 0xf0);
+//  if(data & 0xf0)
+//      printf("%02x",data & 0xf0);
 }
 
 static running_device *bmjr_cassette;
@@ -143,9 +143,9 @@ static ADDRESS_MAP_START(bmjr_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xafff) AM_RAM AM_BASE(&wram)
 	AM_RANGE(0xb000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xe7ff) AM_ROM
-//	AM_RANGE(0xe890, 0xe890) W MP-1710 tile color
-//	AM_RANGE(0xe891, 0xe891) W MP-1710 background color
-//	AM_RANGE(0xe892, 0xe892) W MP-1710 monochrome / color setting
+//  AM_RANGE(0xe890, 0xe890) W MP-1710 tile color
+//  AM_RANGE(0xe891, 0xe891) W MP-1710 background color
+//  AM_RANGE(0xe892, 0xe892) W MP-1710 monochrome / color setting
 	AM_RANGE(0xee00, 0xee00) AM_READ(tape_stop_r) //R stop tape
 	AM_RANGE(0xee20, 0xee20) AM_READ(tape_start_r) //R start tape
 	AM_RANGE(0xee40, 0xee40) AM_WRITE(xor_display_w) //W Picture reverse
@@ -154,7 +154,7 @@ static ADDRESS_MAP_START(bmjr_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xef00, 0xef00) AM_READ(ff_r) //R timer
 	AM_RANGE(0xef40, 0xef40) AM_READ(ff_r) //R unknown
 	AM_RANGE(0xef80, 0xef80) AM_READ(unk_r) //R unknown
-//	AM_RANGE(0xefe0, 0xefe0) W screen mode
+//  AM_RANGE(0xefe0, 0xefe0) W screen mode
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -314,7 +314,7 @@ static MACHINE_RESET(bmjr)
 	cassette_change_state(bmjr_cassette,CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 }
 
-static MACHINE_DRIVER_START( bmjr )
+static MACHINE_CONFIG_START( bmjr, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",M6800, XTAL_4MHz/4) //unknown clock / divider
     MDRV_CPU_PROGRAM_MAP(bmjr_mem)
@@ -347,7 +347,7 @@ static MACHINE_DRIVER_START( bmjr )
 
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( bmjr )
@@ -367,5 +367,5 @@ static DRIVER_INIT( bmjr )
 }
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1982, bmjr,  	0,       0, 	bmjr, 		bmjr, 	 bmjr,  	 "Hitachi",   "Basic Master Jr",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1982, bmjr,	0,       0, 	bmjr,		bmjr,	 bmjr,  	 "Hitachi",   "Basic Master Jr",	GAME_NOT_WORKING | GAME_NO_SOUND)
 

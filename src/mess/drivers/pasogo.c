@@ -53,12 +53,11 @@ struct _ems_t
 	} mapper[26];
 };
 
-class pasogo_state
+class pasogo_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pasogo_state(machine)); }
-
-	pasogo_state(running_machine &machine) { }
+	pasogo_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 
 	struct _vg230_t vg230;
@@ -68,7 +67,7 @@ public:
 
 static TIMER_CALLBACK( vg230_timer )
 {
-	pasogo_state *state = (pasogo_state *)machine->driver_data;
+	pasogo_state *state = machine->driver_data<pasogo_state>();
 	vg230_t *vg230 = &state->vg230;
 
 	vg230->rtc.seconds+=1;
@@ -99,7 +98,7 @@ static TIMER_CALLBACK( vg230_timer )
 
 static void vg230_reset(running_machine *machine)
 {
-	pasogo_state *state = (pasogo_state *)machine->driver_data;
+	pasogo_state *state = machine->driver_data<pasogo_state>();
 	vg230_t *vg230 = &state->vg230;
 	system_time systime;
 
@@ -126,7 +125,7 @@ static void vg230_init(running_machine *machine)
 
 static READ8_HANDLER( vg230_io_r )
 {
-	pasogo_state *state = (pasogo_state *)space->machine->driver_data;
+	pasogo_state *state = space->machine->driver_data<pasogo_state>();
 	vg230_t *vg230 = &state->vg230;
 	int log=TRUE;
 	UINT8 data=0;
@@ -191,7 +190,7 @@ static READ8_HANDLER( vg230_io_r )
 
 static WRITE8_HANDLER( vg230_io_w )
 {
-	pasogo_state *state = (pasogo_state *)space->machine->driver_data;
+	pasogo_state *state = space->machine->driver_data<pasogo_state>();
 	vg230_t *vg230 = &state->vg230;
 	int log=TRUE;
 
@@ -236,7 +235,7 @@ static WRITE8_HANDLER( vg230_io_w )
 
 static READ8_HANDLER( ems_r )
 {
-	pasogo_state *state = (pasogo_state *)space->machine->driver_data;
+	pasogo_state *state = space->machine->driver_data<pasogo_state>();
 	ems_t *ems = &state->ems;
 	UINT8 data=0;
 
@@ -250,7 +249,7 @@ static READ8_HANDLER( ems_r )
 
 static WRITE8_HANDLER( ems_w )
 {
-	pasogo_state *state = (pasogo_state *)space->machine->driver_data;
+	pasogo_state *state = space->machine->driver_data<pasogo_state>();
 	ems_t *ems = &state->ems;
 	char bank[10];
 
@@ -527,9 +526,7 @@ static DEVICE_IMAGE_LOAD( pasogo_cart )
 	return IMAGE_INIT_PASS;
 }
 
-static MACHINE_DRIVER_START( pasogo )
-
-	MDRV_DRIVER_DATA( pasogo_state )
+static MACHINE_CONFIG_START( pasogo, pasogo_state )
 
 	MDRV_CPU_ADD("maincpu", I80188/*V30HL in vadem vg230*/, 10000000/*?*/)
 	MDRV_CPU_PROGRAM_MAP(pasogo_mem)
@@ -563,7 +560,7 @@ static MACHINE_DRIVER_START( pasogo )
 	MDRV_CARTSLOT_INTERFACE("pasogo_cart")
 	MDRV_CARTSLOT_LOAD(pasogo_cart)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","pasogo")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START(pasogo)
@@ -574,7 +571,7 @@ ROM_END
 
 static DRIVER_INIT( pasogo )
 {
-	pasogo_state *state = (pasogo_state *)machine->driver_data;
+	pasogo_state *state = machine->driver_data<pasogo_state>();
 	vg230_init(machine);
 	memset(&state->ems, 0, sizeof(state->ems));
 	memory_set_bankptr( machine, "bank27", memory_region(machine, "user1") + 0x00000 );

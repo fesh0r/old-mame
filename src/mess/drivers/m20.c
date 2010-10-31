@@ -69,8 +69,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m20_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x61, 0x61) AM_DEVWRITE8("crtc", mc6845_address_w, 0x00ff)
-	AM_RANGE(0x63, 0x63) AM_DEVWRITE8("crtc", mc6845_register_w, 0x00ff)
+	AM_RANGE(0x61, 0x61) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0x63, 0x63) AM_DEVWRITE("crtc", mc6845_register_w)
 	// 0x81 / 0x87 - i8255A
 	// 0xa1 - i8251 keyboard data
 	// 0xa3 - i8251 keyboard status / control
@@ -136,7 +136,7 @@ static const mc6845_interface mc6845_intf =
 	NULL		/* update address callback */
 };
 
-static MACHINE_DRIVER_START( m20 )
+static MACHINE_CONFIG_START( m20, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", Z8001, MAIN_CLOCK)
     MDRV_CPU_PROGRAM_MAP(m20_mem)
@@ -165,7 +165,7 @@ static MACHINE_DRIVER_START( m20 )
     MDRV_VIDEO_UPDATE(m20)
 
 	MDRV_GFXDECODE(m20)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(m20)
 	ROM_REGION(0x12000,"maincpu",0)

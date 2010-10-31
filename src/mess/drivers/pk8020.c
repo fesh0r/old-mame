@@ -197,7 +197,7 @@ GFXDECODE_END
 
 
 /* Machine driver */
-static MACHINE_DRIVER_START( pk8020 )
+static MACHINE_CONFIG_START( pk8020, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8080, XTAL_20MHz / 8)
 	MDRV_CPU_PROGRAM_MAP(pk8020_mem)
@@ -232,7 +232,7 @@ static MACHINE_DRIVER_START( pk8020 )
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -245,7 +245,7 @@ static MACHINE_DRIVER_START( pk8020 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("258K")	//64 + 4*48 + 2
 	MDRV_RAM_DEFAULT_VALUE(0x00)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 

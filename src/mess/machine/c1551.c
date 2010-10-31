@@ -337,7 +337,7 @@ static const m6502_interface m6510t_intf =
 static ADDRESS_MAP_START( c1551_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x0800) AM_RAM
 	AM_RANGE(0x4000, 0x4007) AM_MIRROR(0x3ff8) AM_DEVREADWRITE(M6523_0_TAG, tpi6525_r, tpi6525_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1551", 0)
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1551:c1551", 0)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -672,7 +672,7 @@ static const floppy_config c1551_floppy_config =
     MACHINE_DRIVER( c1551 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c1551 )
+static MACHINE_CONFIG_FRAGMENT( c1551 )
 	MDRV_CPU_ADD(M6510T_TAG, M6510T, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(c1551_map)
 	MDRV_CPU_CONFIG(m6510t_intf)
@@ -683,7 +683,7 @@ static MACHINE_DRIVER_START( c1551 )
 	MDRV_TIMER_ADD_PERIODIC("irq", irq_tick, HZ(120))
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1551_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     ROM( c1551 )
@@ -723,7 +723,7 @@ static DEVICE_START( c1551 )
 	c1551->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
 
 	/* map TPI1 to host CPU memory space */
-	const address_space *program = cpu_get_address_space(device->machine->device(config->cpu_tag), ADDRESS_SPACE_PROGRAM);
+	address_space *program = cpu_get_address_space(device->machine->device(config->cpu_tag), ADDRESS_SPACE_PROGRAM);
 	UINT32 start_address = c1551->address ? 0xfec0 : 0xfef0;
 
 	memory_install_readwrite8_device_handler(program, c1551->tpi1, start_address, start_address + 7, 0, 0, tpi6525_r, tpi6525_w);
@@ -775,7 +775,7 @@ DEVICE_GET_INFO( c1551 )
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c1551);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c1551);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c1551);			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(c1551);						break;

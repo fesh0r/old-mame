@@ -54,14 +54,14 @@
 
 static ADDRESS_MAP_START( microtan_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
-	AM_RANGE(0x0200, 0x03ff) AM_RAM_WRITE(microtan_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x0200, 0x03ff) AM_RAM_WRITE(microtan_videoram_w) AM_BASE_MEMBER(microtan_state, videoram)
 	AM_RANGE(0xbc00, 0xbc00) AM_DEVWRITE("ay8910.1", ay8910_address_w)
 	AM_RANGE(0xbc01, 0xbc01) AM_DEVREADWRITE("ay8910.1", ay8910_r, ay8910_data_w)
 	AM_RANGE(0xbc02, 0xbc02) AM_DEVWRITE("ay8910.2", ay8910_address_w)
 	AM_RANGE(0xbc03, 0xbc03) AM_DEVREADWRITE("ay8910.2", ay8910_r, ay8910_data_w)
-	AM_RANGE(0xbfc0, 0xbfcf) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xbfc0, 0xbfcf) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 	AM_RANGE(0xbfd0, 0xbfd3) AM_DEVREADWRITE("acia", acia_6551_r, acia_6551_w)
-	AM_RANGE(0xbfe0, 0xbfef) AM_DEVREADWRITE("via6522_1", via_r, via_w)
+	AM_RANGE(0xbfe0, 0xbfef) AM_DEVREADWRITE_MODERN("via6522_1", via6522_device, read, write)
 	AM_RANGE(0xbff0, 0xbfff) AM_READWRITE(microtan_bffx_r, microtan_bffx_w)
 	AM_RANGE(0xc000, 0xe7ff) AM_ROM
 	AM_RANGE(0xf000, 0xffff) AM_ROM
@@ -215,7 +215,7 @@ static const ay8910_interface microtan_ay8910_interface =
 	DEVCB_NULL
 };
 
-static MACHINE_DRIVER_START( microtan )
+static MACHINE_CONFIG_START( microtan, microtan_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 750000)	// 750 kHz
 	MDRV_CPU_PROGRAM_MAP(microtan_map)
@@ -263,7 +263,7 @@ static MACHINE_DRIVER_START( microtan )
 	/* via */
 	MDRV_VIA6522_ADD("via6522_0", 0, microtan_via6522_0)
 	MDRV_VIA6522_ADD("via6522_1", 0, microtan_via6522_1)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START( microtan )
     ROM_REGION( 0x10000, "maincpu", 0 )

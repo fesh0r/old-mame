@@ -1,24 +1,29 @@
 #ifndef __PECOM__
 #define __PECOM__
 
+#include "cpu/cosmac/cosmac.h"
+
 #define SCREEN_TAG	"screen"
+#define CDP1802_TAG	"cdp1802"
 #define CDP1869_TAG	"cdp1869"
 
-#define PECOM_PAGE_RAM_SIZE	0x400
-#define PECOM_PAGE_RAM_MASK	0x3ff
+#define PECOM_CHAR_RAM_SIZE	0x800
 
-class pecom_state
+class pecom_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pecom_state(machine)); }
+	pecom_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config),
+		  cdp1802(*this, CDP1802_TAG),
+		  cdp1869(*this, CDP1869_TAG)
+	{ }
 
-	pecom_state(running_machine &machine) { }
+	required_device<cosmac_device> cdp1802;
+	required_device<cdp1869_device> cdp1869;
 
-	UINT8 *page_ram;		/* page memory */
 	UINT8 *charram;			/* character generator ROM */
-	int cdp1802_mode;		/* CPU mode */
+	int reset;				/* CPU mode */
 	int dma;				/* memory refresh DMA */
-	running_device *cdp1869;
 
 	/* timers */
 	emu_timer *reset_timer;	/* power on reset timer */
@@ -32,10 +37,11 @@ extern MACHINE_RESET( pecom );
 extern WRITE8_HANDLER( pecom_bank_w );
 extern READ8_HANDLER (pecom_keyboard_r);
 
-extern const cdp1802_interface pecom64_cdp1802_config;
+extern const cosmac_interface pecom64_cdp1802_config;
 
 /* ---------- defined in video/pecom.c ---------- */
 
-MACHINE_DRIVER_EXTERN( pecom_video );
+WRITE8_HANDLER( pecom_cdp1869_w );
+MACHINE_CONFIG_EXTERN( pecom_video );
 
 #endif

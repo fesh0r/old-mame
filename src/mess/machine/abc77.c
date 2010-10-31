@@ -320,7 +320,7 @@ INPUT_PORTS_END
     MACHINE_DRIVER( abc77 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( abc77 )
+static MACHINE_CONFIG_FRAGMENT( abc77 )
 	/* keyboard cpu */
 	MDRV_CPU_ADD(I8035_TAG, I8035, XTAL_4_608MHz)
 	MDRV_CPU_PROGRAM_MAP(abc77_map)
@@ -336,7 +336,7 @@ static MACHINE_DRIVER_START( abc77 )
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(abc77)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     ROM( abc77 )
@@ -403,16 +403,13 @@ static DEVICE_START( abc77 )
 	abc77_t *abc77 = (abc77_t *)downcast<legacy_device_base *>(device)->token();
 	const abc77_interface *intf = get_interface(device);
 
-	astring tempstring;
-
 	/* resolve callbacks */
 	devcb_resolve_write_line(&abc77->out_txd_func, &intf->out_txd_func, device);
 	devcb_resolve_write_line(&abc77->out_clock_func, &intf->out_clock_func, device);
 	devcb_resolve_write_line(&abc77->out_keydown_func, &intf->out_keydown_func, device);
 
 	/* find our CPU */
-	astring_printf(&tempstring, "%s:%s", device->tag(), I8035_TAG);
-	abc77->cpu = device->machine->device(astring_c(&tempstring));
+	abc77->cpu = device->subdevice(I8035_TAG);
 
 	/* allocate reset timer */
 	abc77->reset_timer = timer_alloc(device->machine, reset_tick, (FPTR *) device);
@@ -439,7 +436,7 @@ DEVICE_GET_INFO( abc77 )
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = rom_abc77;				break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(abc77); break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(abc77); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(abc77);		break;

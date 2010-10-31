@@ -251,7 +251,7 @@ static CBM_IEC_DAISY( cbm_iec_daisy )
 	{ NULL}
 };
 
-static MACHINE_DRIVER_START( primoa32 )
+static MACHINE_CONFIG_START( primoa32, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", Z80, 2500000 )
 	MDRV_CPU_PROGRAM_MAP( primo32_mem)
@@ -276,7 +276,7 @@ static MACHINE_DRIVER_START( primoa32 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* snapshot/quickload */
@@ -297,51 +297,45 @@ static MACHINE_DRIVER_START( primoa32 )
 	MDRV_CARTSLOT_ADD("cart2")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom")
 	MDRV_CARTSLOT_NOT_MANDATORY
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( primoa48 )
-	MDRV_IMPORT_FROM( primoa32 )
+static MACHINE_CONFIG_DERIVED( primoa48, primoa32 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( primo48_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( primoa64 )
-	MDRV_IMPORT_FROM( primoa32 )
+static MACHINE_CONFIG_DERIVED( primoa64, primoa32 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( primo64_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( primob32 )
-	MDRV_IMPORT_FROM( primoa32 )
+static MACHINE_CONFIG_DERIVED( primob32, primoa32 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( primob48 )
-	MDRV_IMPORT_FROM( primoa48 )
+static MACHINE_CONFIG_DERIVED( primob48, primoa48 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( primob64 )
-	MDRV_IMPORT_FROM( primoa64 )
+static MACHINE_CONFIG_DERIVED( primob64, primoa64 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( primoc64 )
-	MDRV_IMPORT_FROM( primoa64 )
+static MACHINE_CONFIG_DERIVED( primoc64, primoa64 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START( primoa32 )
 	ROM_REGION( 0x1c000, "maincpu", 0 )

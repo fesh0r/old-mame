@@ -53,7 +53,7 @@ static WRITE8_HANDLER( jupiter_vh_charram_w );
 /* memory w/r functions */
 static ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x2400, 0x27ff) AM_MIRROR(0x0400) AM_RAM AM_BASE_GENERIC(videoram)
+	AM_RANGE(0x2400, 0x27ff) AM_MIRROR(0x0400) AM_RAM AM_BASE_MEMBER(jupiter_state, videoram)
 	AM_RANGE(0x2c00, 0x2fff) AM_MIRROR(0x0400) AM_WRITE(jupiter_vh_charram_w) AM_BASE(&jupiter_charram)
 	AM_RANGE(0x3c00, 0x3fff) AM_MIRROR(0x0c00) AM_RAM
 	AM_RANGE(0x4800, 0xffff) AM_RAM_WRITE( jupiter_expram_w ) AM_BASE(&jupiter_expram)			/* Expansion RAM */
@@ -277,11 +277,13 @@ static VIDEO_START( jupiter )
 
 static VIDEO_UPDATE( jupiter )
 {
+	jupiter_state *state = screen->machine->driver_data<jupiter_state>();
+	UINT8 *videoram = state->videoram;
 	int offs;
 
 	for(offs = 0; offs < 768; offs++)
 	{
-		int code = screen->machine->generic.videoram.u8[offs];
+		int code = videoram[offs];
 		int sx, sy;
 
 		sy = (offs / 32) << 3;
@@ -308,7 +310,7 @@ static const cassette_config jupiter_cassette_config =
 };
 
 /* machine definition */
-static MACHINE_DRIVER_START( jupiter )
+static MACHINE_CONFIG_START( jupiter, jupiter_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_6_5MHz/2)        /* 3.25 MHz */
 	MDRV_CPU_PROGRAM_MAP(jupiter_mem)
@@ -331,7 +333,7 @@ static MACHINE_DRIVER_START( jupiter )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", jupiter_cassette_config )
@@ -340,7 +342,7 @@ static MACHINE_DRIVER_START( jupiter )
 	MDRV_CARTSLOT_EXTENSION_LIST("ace")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(jupiter_ace)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START (jupiter)
@@ -350,4 +352,4 @@ ROM_START (jupiter)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT        COMPANY   FULLNAME */
-COMP( 1981, jupiter,  0,	0,	jupiter,  jupiter,  jupiter,	"Cantab",  "Jupiter Ace" , 0)
+COMP( 1981, jupiter,  0,	0,	jupiter,  jupiter,  jupiter,	"Jupiter Cantab",  "Jupiter Ace" , 0 )

@@ -722,7 +722,7 @@ static void s3c240x_dma_trigger( running_machine *machine, int dma)
 {
 	UINT32 *regs = &s3c240x_dma_regs[dma<<3];
 	UINT32 curr_tc, curr_src, curr_dst;
-	const address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int dsz, inc_src, inc_dst, servmode;
 	const UINT32 ch_int[] = { INT_DMA0, INT_DMA1, INT_DMA2, INT_DMA3};
 	verboselog( machine, 5, "DMA %d trigger\n", dma);
@@ -739,9 +739,9 @@ static void s3c240x_dma_trigger( running_machine *machine, int dma)
 		curr_tc--;
 		switch (dsz)
 		{
-			case 0 : memory_write_byte( space, curr_dst, memory_read_byte( space, curr_src)); break;
-			case 1 : memory_write_word( space, curr_dst, memory_read_word( space, curr_src)); break;
-			case 2 : memory_write_dword( space, curr_dst, memory_read_dword( space, curr_src)); break;
+			case 0 : space->write_byte( curr_dst, space->read_byte( curr_src)); break;
+			case 1 : space->write_word( curr_dst, space->read_word( curr_src)); break;
+			case 2 : space->write_dword( curr_dst, space->read_dword( curr_src)); break;
 		}
 		if (inc_src == 0) curr_src += (1 << dsz);
 		if (inc_dst == 0) curr_dst += (1 << dsz);
@@ -1827,7 +1827,7 @@ static MACHINE_RESET( gp32 )
 	s3c240x_machine_reset(machine);
 }
 
-static MACHINE_DRIVER_START( gp32 )
+static MACHINE_CONFIG_START( gp32, driver_device )
 	MDRV_CPU_ADD("maincpu", ARM9, 40000000)
 	MDRV_CPU_PROGRAM_MAP(gp32_map)
 
@@ -1857,7 +1857,7 @@ static MACHINE_DRIVER_START( gp32 )
 	MDRV_NVRAM_HANDLER(gp32)
 
 	MDRV_SMARTMEDIA_ADD("smartmedia")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START( gp32 )
 	ROM_REGION( 0x80000, "maincpu", 0 )

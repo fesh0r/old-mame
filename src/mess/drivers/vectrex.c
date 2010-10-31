@@ -16,10 +16,14 @@ Bruce Tomlin (hardware info)
 #include "devices/cartslot.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
+#include "machine/nvram.h"
+
+UINT8 *gce_vectorram;
+size_t gce_vectorram_size;
 
 static ADDRESS_MAP_START(vectrex_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE(&vectorram) AM_SIZE(&vectorram_size)
+	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE(&gce_vectorram) AM_SIZE(&gce_vectorram_size)
 	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(vectrex_via_r, vectrex_via_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -94,7 +98,7 @@ static const ay8910_interface vectrex_ay8910_interface =
 	DEVCB_NULL
 };
 
-static MACHINE_DRIVER_START(vectrex)
+static MACHINE_CONFIG_START( vectrex, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, XTAL_6MHz / 4)
 	MDRV_CPU_PROGRAM_MAP(vectrex_map)
@@ -127,10 +131,10 @@ static MACHINE_DRIVER_START(vectrex)
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(vectrex_cart)
 	MDRV_CARTSLOT_INTERFACE("vectrex_cart")
-	
+
 	/* software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","vectrex")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(vectrex)
 	ROM_REGION(0x10000,"maincpu", 0)
@@ -175,9 +179,9 @@ ROM_END
 
 static ADDRESS_MAP_START(raaspec_map , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_BASE_SIZE_GENERIC(nvram)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(raaspec_led_w)
-	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE(&vectorram) AM_SIZE(&vectorram_size)
+	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE(&gce_vectorram) AM_SIZE(&gce_vectorram_size)
 	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE (vectrex_via_r, vectrex_via_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -201,11 +205,10 @@ static INPUT_PORTS_START(raaspec)
 INPUT_PORTS_END
 
 
-static MACHINE_DRIVER_START(raaspec)
-	MDRV_IMPORT_FROM(vectrex)
+static MACHINE_CONFIG_DERIVED( raaspec, vectrex )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(raaspec_map)
-	MDRV_NVRAM_HANDLER(generic_0fill)
+	MDRV_NVRAM_ADD_0FILL("nvram")
 
 	MDRV_VIDEO_START(raaspec)
 
@@ -214,7 +217,7 @@ static MACHINE_DRIVER_START(raaspec)
 	MDRV_VIA6522_ADD("via6522_0", 0, spectrum1_via6522_interface)
 
 	MDRV_DEVICE_REMOVE("cart")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(raaspec)
 	ROM_REGION(0x10000,"maincpu", 0)

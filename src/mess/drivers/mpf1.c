@@ -216,7 +216,7 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( led_refresh )
 {
-	mpf1_state *state = (mpf1_state *)machine->driver_data;
+	mpf1_state *state = machine->driver_data<mpf1_state>();
 
 	if (BIT(state->lednum, 5)) output_set_digit_value(0, param);
 	if (BIT(state->lednum, 4)) output_set_digit_value(1, param);
@@ -228,7 +228,7 @@ static TIMER_CALLBACK( led_refresh )
 
 static READ8_DEVICE_HANDLER( mpf1_porta_r )
 {
-	mpf1_state *state = (mpf1_state *)device->machine->driver_data;
+	mpf1_state *state = device->machine->driver_data<mpf1_state>();
 	UINT8 data = 0x7f;
 
 	/* bit 0 to 5, keyboard rows 0 to 5 */
@@ -250,7 +250,7 @@ static READ8_DEVICE_HANDLER( mpf1_porta_r )
 
 static WRITE8_DEVICE_HANDLER( mpf1_portb_w )
 {
-	mpf1_state *state = (mpf1_state *)device->machine->driver_data;
+	mpf1_state *state = device->machine->driver_data<mpf1_state>();
 
 	/* swap bits around for the mame 7-segment emulation */
 	UINT8 led_data = BITSWAP8(data, 6, 1, 2, 0, 7, 5, 4, 3);
@@ -261,7 +261,7 @@ static WRITE8_DEVICE_HANDLER( mpf1_portb_w )
 
 static WRITE8_DEVICE_HANDLER( mpf1_portc_w )
 {
-	mpf1_state *state = (mpf1_state *)device->machine->driver_data;
+	mpf1_state *state = device->machine->driver_data<mpf1_state>();
 
 	/* bits 0-5, led select and keyboard latch */
 	state->lednum = data & 0x3f;
@@ -360,7 +360,7 @@ static TIMER_CALLBACK( check_halt_callback )
 
 static MACHINE_START( mpf1 )
 {
-	mpf1_state *state = (mpf1_state *)machine->driver_data;
+	mpf1_state *state = machine->driver_data<mpf1_state>();
 
 	/* find devices */
 	state->speaker = machine->device(SPEAKER_TAG);
@@ -378,15 +378,14 @@ static MACHINE_START( mpf1 )
 
 static MACHINE_RESET( mpf1 )
 {
-	mpf1_state *state = (mpf1_state *)machine->driver_data;
+	mpf1_state *state = machine->driver_data<mpf1_state>();
 
 	state->lednum = 0;
 }
 
 /* Machine Drivers */
 
-static MACHINE_DRIVER_START( mpf1 )
-	MDRV_DRIVER_DATA(mpf1_state)
+static MACHINE_CONFIG_START( mpf1, mpf1_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_3_579545MHz/2)
@@ -408,12 +407,11 @@ static MACHINE_DRIVER_START( mpf1 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( mpf1b )
-	MDRV_DRIVER_DATA(mpf1_state)
+static MACHINE_CONFIG_START( mpf1b, mpf1_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_3_579545MHz/2)
@@ -435,16 +433,15 @@ static MACHINE_DRIVER_START( mpf1b )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_SOUND_ADD(TMS5220_TAG, TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(mpf1_tms5220_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( mpf1p )
-	MDRV_DRIVER_DATA(mpf1_state)
+static MACHINE_CONFIG_START( mpf1p, mpf1_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, 2500000)
@@ -466,9 +463,9 @@ static MACHINE_DRIVER_START( mpf1p )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 
@@ -493,9 +490,9 @@ ROM_END
 
 /* System Drivers */
 
-static DIRECT_UPDATE_HANDLER( mpf1_direct_update_handler )
+DIRECT_UPDATE_HANDLER( mpf1_direct_update_handler )
 {
-	mpf1_state *state = (mpf1_state *)space->machine->driver_data;
+	mpf1_state *state = machine->driver_data<mpf1_state>();
 
 	if (!state->_break)
 	{
@@ -503,7 +500,7 @@ static DIRECT_UPDATE_HANDLER( mpf1_direct_update_handler )
 
 		if (state->m1 == 5)
 		{
-			cputag_set_input_line(space->machine, Z80_TAG, INPUT_LINE_NMI, ASSERT_LINE);
+			cputag_set_input_line(machine, Z80_TAG, INPUT_LINE_NMI, ASSERT_LINE);
 		}
 	}
 
@@ -512,7 +509,7 @@ static DIRECT_UPDATE_HANDLER( mpf1_direct_update_handler )
 
 static DRIVER_INIT( mpf1 )
 {
-	memory_set_direct_update_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), mpf1_direct_update_handler);
+	cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(mpf1_direct_update_handler, *machine));
 }
 
 COMP( 1979, mpf1,  0,    0, mpf1, mpf1,  mpf1, "Multitech", "Micro Professor 1", 0)

@@ -27,6 +27,18 @@
     - tune cassette trigger level
     - accurate video timing
 
+    10 SCREEN 2,1,1:CLS
+    20 FOR X=0 TO 8
+    30 LINE(X*24,0)-(X*24+16,191),X,BF
+    40 NEXT
+
+    10 SCREEN3,1,1:COLOR,,1:CLS
+    20 X1=INT(RND(1)*256):Y1=INT(RND(1)*192):X2=INT(RND(1)*256):Y2=INT(RND(1)*192):C=INT(RND(1)*4)+1:LINE(X1,Y1)-(X2,Y2),C:GOTO 20
+    RUN
+
+
+    10 SCREEN2,1,1:CLS:FORX=0TO8:LINE(X*24,0)-(X*24+16,191),X,BF:NEXT
+
 */
 
 #include "emu.h"
@@ -57,7 +69,7 @@ static READ8_HANDLER( port40_r )
 
     */
 
-	phc25_state *state = (phc25_state *)space->machine->driver_data;
+	phc25_state *state = space->machine->driver_data<phc25_state>();
 
 	UINT8 data = 0;
 
@@ -87,19 +99,16 @@ static WRITE8_HANDLER( port40_w )
         2       MC6847 INT/EXT
         3       centronics strobe
         4
-        5       MC6847
-        6       MC6847
+        5       MC6847 GM1
+        6       MC6847 GM0
         7       MC6847 A/G
 
     */
 
-	phc25_state *state = (phc25_state *)space->machine->driver_data;
+	phc25_state *state = space->machine->driver_data<phc25_state>();
 
 	/* cassette output */
 	cassette_output(state->cassette, BIT(data, 0) ? -1.0 : +1.0);
-
-	/* internal/external character generator */
-	mc6847_intext_w(state->mc6847, BIT(data, 2));
 
 	/* cassette motor */
 	cassette_change_state(state->cassette, BIT(data, 1) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
@@ -107,7 +116,10 @@ static WRITE8_HANDLER( port40_w )
 	/* centronics strobe */
 	centronics_strobe_w(state->centronics, BIT(data, 3));
 
-	/* alphanumerics/graphics */
+	/* MC6847 */
+	mc6847_intext_w(state->mc6847, BIT(data, 2));
+	mc6847_gm0_w(state->mc6847, BIT(data, 5));
+	mc6847_gm1_w(state->mc6847, BIT(data, 6));
 	mc6847_ag_w(state->mc6847, BIT(data, 7));
 }
 
@@ -260,14 +272,14 @@ INPUT_PORTS_END
 
 static READ8_DEVICE_HANDLER( phc25_video_ram_r )
 {
-	phc25_state *state = (phc25_state *)device->machine->driver_data;
+	phc25_state *state = device->machine->driver_data<phc25_state>();
 
 	return state->video_ram[offset & 0x17ff];
 }
 
 static UINT8 phc25_char_rom_r(running_machine *machine, UINT8 ch, int line)
 {
-	phc25_state *state = (phc25_state *)machine->driver_data;
+	phc25_state *state = machine->driver_data<phc25_state>();
 
 	return state->char_rom[((ch - state->char_substact) * state->char_size) + line + state->char_correct];
 }
@@ -290,7 +302,7 @@ static const mc6847_interface mc6847_intf =
 
 static VIDEO_START( pal )
 {
-	phc25_state *state = (phc25_state *)machine->driver_data;
+	phc25_state *state = machine->driver_data<phc25_state>();
 
 	/* find memory regions */
 	state->char_rom = memory_region(machine, Z80_TAG) + 0x5000;
@@ -301,7 +313,7 @@ static VIDEO_START( pal )
 
 static VIDEO_START( ntsc )
 {
-	phc25_state *state = (phc25_state *)machine->driver_data;
+	phc25_state *state = machine->driver_data<phc25_state>();
 
 	/* find memory regions */
 	state->char_rom = memory_region(machine, Z80_TAG) + 0x5000;
@@ -312,7 +324,7 @@ static VIDEO_START( ntsc )
 
 static VIDEO_UPDATE( phc25 )
 {
-	phc25_state *state = (phc25_state *)screen->machine->driver_data;
+	phc25_state *state = screen->machine->driver_data<phc25_state>();
 
 	return mc6847_update(state->mc6847, bitmap, cliprect);
 }
@@ -343,7 +355,7 @@ static const cassette_config phc25_cassette_config =
 
 static MACHINE_START( phc25 )
 {
-	phc25_state *state = (phc25_state *)machine->driver_data;
+	phc25_state *state = machine->driver_data<phc25_state>();
 
 	/* find devices */
 	state->mc6847 = machine->device(MC6847_TAG);
@@ -356,8 +368,7 @@ static MACHINE_START( phc25 )
 
 /* Machine Driver */
 
-static MACHINE_DRIVER_START( phc25 )
-	MDRV_DRIVER_DATA(phc25_state)
+static MACHINE_CONFIG_START( phc25, phc25_state )
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(Z80_TAG, Z80, 4000000)
@@ -382,10 +393,9 @@ static MACHINE_DRIVER_START( phc25 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pal )
-	MDRV_IMPORT_FROM(phc25)
+static MACHINE_CONFIG_DERIVED( pal, phc25 )
 
     /* video hardware */
     MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
@@ -402,10 +412,9 @@ static MACHINE_DRIVER_START( pal )
 	MDRV_MC6847_CHAR_ROM(phc25_char_rom_r)
 
 	MDRV_VIDEO_START(pal)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ntsc )
-	MDRV_IMPORT_FROM(phc25)
+static MACHINE_CONFIG_DERIVED( ntsc, phc25 )
 
     /* video hardware */
     MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
@@ -418,11 +427,11 @@ static MACHINE_DRIVER_START( ntsc )
     MDRV_PALETTE_LENGTH(16)
 
 	MDRV_MC6847_ADD(MC6847_TAG, mc6847_intf)
-    MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC)
+    MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC) // actually M5C6847P-1
 	MDRV_MC6847_CHAR_ROM(phc25_char_rom_r)
 
 	MDRV_VIDEO_START(ntsc)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 

@@ -480,6 +480,16 @@ static TIMER_CALLBACK( wd17xx_data_callback )
 	running_device *device = (running_device *)ptr;
 	wd1770_state *w = get_safe_token(device);
 
+   /* check if this is a write command */
+   if( (w->command_type == TYPE_II && w->command == FDC_WRITE_SEC) ||
+         (w->command_type == TYPE_III && w->command == FDC_WRITE_TRK) )
+   {
+      /* we are ready for new data */
+      wd17xx_set_drq(device);
+
+      return;
+   }
+
 	/* any bytes remaining? */
 	if (w->data_count >= 1)
 	{
@@ -523,7 +533,7 @@ static TIMER_CALLBACK( wd17xx_data_callback )
 			else
 			{
 				/* Delay the INTRQ 3 byte times because we need to read two CRC bytes and
-				   compare them with a calculated CRC */
+                   compare them with a calculated CRC */
 				wd17xx_complete_command(device, DELAY_DATADONE);
 
 				if (VERBOSE)
@@ -2043,7 +2053,7 @@ static DEVICE_RESET( wd1770 )
 
 	w->hd = 0;
 	w->hld_count = 0;
-
+	w->sector = 1;
 	wd17xx_command_restore(device);
 }
 

@@ -58,12 +58,11 @@
 /* PI-5 interface is required. mode 2 of the 8255 is used to communicate with the FD-5 */
 
 
-class sord_state
+class sord_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, sord_state(machine)); }
-
-	sord_state(running_machine &machine) { }
+	sord_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT8 fd5_databus;
 	int fd5_port_0x020_data;
@@ -83,7 +82,7 @@ ADDRESS_MAP_END
 /* stb and ack automatically set on read/write? */
 static WRITE8_HANDLER(fd5_communication_w)
 {
-	sord_state *state = (sord_state *)space->machine->driver_data;
+	sord_state *state = space->machine->driver_data<sord_state>();
 
 	cpu_yield(space->cpu);
 
@@ -93,7 +92,7 @@ static WRITE8_HANDLER(fd5_communication_w)
 
 static  READ8_HANDLER(fd5_communication_r)
 {
-	sord_state *state = (sord_state *)space->machine->driver_data;
+	sord_state *state = space->machine->driver_data<sord_state>();
 	int data;
 
 	cpu_yield(space->cpu);
@@ -106,7 +105,7 @@ static  READ8_HANDLER(fd5_communication_r)
 
 static READ8_HANDLER(fd5_data_r)
 {
-	sord_state *state = (sord_state *)space->machine->driver_data;
+	sord_state *state = space->machine->driver_data<sord_state>();
 
 	cpu_yield(space->cpu);
 
@@ -121,7 +120,7 @@ static READ8_HANDLER(fd5_data_r)
 
 static WRITE8_HANDLER(fd5_data_w)
 {
-	sord_state *state = (sord_state *)space->machine->driver_data;
+	sord_state *state = space->machine->driver_data<sord_state>();
 
 	LOG(("fd5 0x010 w: %02x %04x\n",data,cpu_get_pc(space->cpu)));
 
@@ -201,7 +200,7 @@ static MACHINE_RESET( sord_m5_fd5 )
 
 static READ8_DEVICE_HANDLER(sord_ppi_porta_r)
 {
-	sord_state *state = (sord_state *)device->machine->driver_data;
+	sord_state *state = device->machine->driver_data<sord_state>();
 
 	cpu_yield(device->machine->device("maincpu"));
 
@@ -219,7 +218,7 @@ static READ8_DEVICE_HANDLER(sord_ppi_portb_r)
 
 static READ8_DEVICE_HANDLER(sord_ppi_portc_r)
 {
-	sord_state *state = (sord_state *)device->machine->driver_data;
+	sord_state *state = device->machine->driver_data<sord_state>();
 
 	cpu_yield(device->machine->device("maincpu"));
 
@@ -252,7 +251,7 @@ static READ8_DEVICE_HANDLER(sord_ppi_portc_r)
 
 static WRITE8_DEVICE_HANDLER(sord_ppi_porta_w)
 {
-	sord_state *state = (sord_state *)device->machine->driver_data;
+	sord_state *state = device->machine->driver_data<sord_state>();
 
 	cpu_yield(device->machine->device("maincpu"));
 
@@ -283,7 +282,7 @@ static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 
 static WRITE8_DEVICE_HANDLER(sord_ppi_portc_w)
 {
-	sord_state *state = (sord_state *)device->machine->driver_data;
+	sord_state *state = device->machine->driver_data<sord_state>();
 
 	state->obfa = (data & 0x80) ? 1 : 0;
 	state->intra = (data & 0x08) ? 1 : 0;
@@ -534,7 +533,7 @@ static DEVICE_IMAGE_LOAD( sord_cart )
 {
 	UINT32 size;
 	UINT8 *ptr = memory_region(image.device().machine, "maincpu");
-	
+
 	if (image.software_entry() == NULL)
 	{
 		size = image.length();
@@ -546,7 +545,7 @@ static DEVICE_IMAGE_LOAD( sord_cart )
 		size = image.get_software_region_length("rom");
 		memcpy(ptr + 0x2000, image.get_software_region("rom"), size);
 	}
-	
+
 	return IMAGE_INIT_PASS;
 }
 
@@ -561,9 +560,7 @@ static MACHINE_RESET( sord_m5 )
 }
 
 
-static MACHINE_DRIVER_START( sord_m5 )
-
-	MDRV_DRIVER_DATA( sord_state )
+static MACHINE_CONFIG_START( sord_m5, sord_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_14_31818MHz/4)
@@ -576,7 +573,7 @@ static MACHINE_DRIVER_START( sord_m5 )
 	MDRV_MACHINE_RESET(sord_m5)
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_FRAGMENT_ADD(tms9928a)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -603,7 +600,7 @@ static MACHINE_DRIVER_START( sord_m5 )
 	/* software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","sordm5")
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 static FLOPPY_OPTIONS_START( sordm5 )
@@ -627,8 +624,7 @@ static const floppy_config sordm5_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( sord_m5_fd5 )
-	MDRV_IMPORT_FROM( sord_m5 )
+static MACHINE_CONFIG_DERIVED( sord_m5_fd5, sord_m5 )
 
 	MDRV_CPU_REPLACE("maincpu", Z80, XTAL_14_31818MHz/4)
 	MDRV_CPU_IO_MAP(srdm5fd5_io)
@@ -648,7 +644,7 @@ static MACHINE_DRIVER_START( sord_m5_fd5 )
 
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_NOT_MANDATORY
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************
@@ -660,7 +656,7 @@ ROM_START( sordm5 )
 	ROM_SYSTEM_BIOS(0, "int", "International")
 	ROMX_LOAD("sordint.rom", 0x0000, 0x2000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2),ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "jap", "Japanese")
-    ROMX_LOAD("sordjap.rom", 0x0000, 0x2000, CRC(92cf9353) SHA1(b0a4b3658fde68cb1f344dfb095bac16a78e9b3e),ROM_BIOS(2))	
+    ROMX_LOAD("sordjap.rom", 0x0000, 0x2000, CRC(92cf9353) SHA1(b0a4b3658fde68cb1f344dfb095bac16a78e9b3e),ROM_BIOS(2))
 ROM_END
 
 

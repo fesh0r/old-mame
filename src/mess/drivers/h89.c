@@ -38,7 +38,7 @@ static VIDEO_UPDATE( h89 )
     return 0;
 }
 
-static MACHINE_DRIVER_START( h89 )
+static MACHINE_CONFIG_START( h89, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, XTAL_12_288MHz / 6)
     MDRV_CPU_PROGRAM_MAP(h89_mem)
@@ -58,7 +58,7 @@ static MACHINE_DRIVER_START( h89 )
 
     MDRV_VIDEO_START(h89)
     MDRV_VIDEO_UPDATE(h89)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( h89 )
@@ -73,4 +73,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1979, h89,	0,       0, 		h89,	h89,	 0, 	  "Heath, Inc.",   "Heathkit H89",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1979, h89,	0,       0, 		h89,	h89,	 0, 	  "Heath Inc",   "Heathkit H89",		GAME_NOT_WORKING | GAME_NO_SOUND)

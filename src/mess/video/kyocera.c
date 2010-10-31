@@ -11,7 +11,7 @@ static PALETTE_INIT( kc85 )
 
 static VIDEO_START( kc85 )
 {
-	kc85_state *state = (kc85_state *)machine->driver_data;
+	kc85_state *state = machine->driver_data<kc85_state>();
 
 	/* find devices */
 	state->hd44102[0] = machine->device("m1");
@@ -28,7 +28,7 @@ static VIDEO_START( kc85 )
 
 static VIDEO_UPDATE( kc85 )
 {
-	kc85_state *state = (kc85_state *)screen->machine->driver_data;
+	kc85_state *state = screen->machine->driver_data<kc85_state>();
 	int i;
 
 	for (i = 0; i < 10; i++)
@@ -41,22 +41,28 @@ static VIDEO_UPDATE( kc85 )
 
 static VIDEO_START( tandy200 )
 {
-	tandy200_state *state = (tandy200_state *)machine->driver_data;
+	tandy200_state *state = machine->driver_data<tandy200_state>();
 
 	/* find devices */
-	state->hd61830 = machine->device(HD61830_TAG);
+	state->hd61830 = machine->device<hd61830_device>(HD61830_TAG);
 }
 
 static VIDEO_UPDATE( tandy200 )
 {
-	tandy200_state *state = (tandy200_state *)screen->machine->driver_data;
+	tandy200_state *state = screen->machine->driver_data<tandy200_state>();
 
-	hd61830_update(state->hd61830, bitmap, cliprect);
+	state->hd61830->update_screen(bitmap, cliprect);
 
 	return 0;
 }
 
-MACHINE_DRIVER_START( kc85_video )
+static HD61830_INTERFACE( lcdc_intf )
+{
+	SCREEN_TAG,
+	DEVCB_NULL
+};
+
+MACHINE_CONFIG_FRAGMENT( kc85_video )
 	MDRV_SCREEN_ADD(SCREEN_TAG, LCD)
 	MDRV_SCREEN_REFRESH_RATE(44)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -84,9 +90,9 @@ MACHINE_DRIVER_START( kc85_video )
 
 //  MDRV_HD44103_MASTER_ADD("m11", SCREEN_TAG, CAP_P(18), RES_K(100), HD44103_FS_HIGH, HD44103_DUTY_1_32)
 //  MDRV_HD44103_SLAVE_ADD( "m12", "m11", SCREEN_TAG, HD44103_FS_HIGH, HD44103_DUTY_1_32)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START( tandy200_video )
+MACHINE_CONFIG_FRAGMENT( tandy200_video )
 	MDRV_SCREEN_ADD(SCREEN_TAG, LCD)
 	MDRV_SCREEN_REFRESH_RATE(80)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -101,5 +107,5 @@ MACHINE_DRIVER_START( tandy200_video )
 	MDRV_VIDEO_START(tandy200)
 	MDRV_VIDEO_UPDATE(tandy200)
 
-	MDRV_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, SCREEN_TAG)
-MACHINE_DRIVER_END
+	MDRV_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
+MACHINE_CONFIG_END

@@ -7,12 +7,11 @@
 #ifndef __C16_H__
 #define __C16_H__
 
-class c16_state
+class c16_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, c16_state(machine)); }
-
-	c16_state(running_machine &machine) { }
+	c16_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* memory pointers */
 	UINT8 *      mem10000;
@@ -74,6 +73,6 @@ extern DRIVER_INIT( plus4sid );
 extern MACHINE_RESET( c16 );
 extern INTERRUPT_GEN( c16_frame_interrupt );
 
-MACHINE_DRIVER_EXTERN( c16_cartslot );
+MACHINE_CONFIG_EXTERN( c16_cartslot );
 
 #endif /* __C16_H__ */

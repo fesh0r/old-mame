@@ -211,7 +211,7 @@ INPUT_PORTS_END
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	mtx_state *state = (mtx_state *)timer.machine->driver_data;
+	mtx_state *state = timer.machine->driver_data<mtx_state>();
 
 	z80ctc_trg1_w(state->z80ctc, 1);
 	z80ctc_trg1_w(state->z80ctc, 0 );
@@ -221,7 +221,7 @@ static TIMER_DEVICE_CALLBACK( ctc_tick )
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_trg1_w )
 {
-	mtx_state *driver_state = (mtx_state *)device->machine->driver_data;
+	mtx_state *driver_state = device->machine->driver_data<mtx_state>();
 
 	if (driver_state->z80dart != NULL)
 	{
@@ -232,7 +232,7 @@ static WRITE_LINE_DEVICE_HANDLER( ctc_trg1_w )
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_trg2_w )
 {
-	mtx_state *driver_state = (mtx_state *)device->machine->driver_data;
+	mtx_state *driver_state = device->machine->driver_data<mtx_state>();
 
 	if (driver_state->z80dart != NULL)
 	{
@@ -258,13 +258,16 @@ static Z80DART_INTERFACE( dart_intf )
 	0,
 	0,
 	0,
+	0,
 
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
+	DEVCB_NULL,
 
+	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -301,7 +304,7 @@ static const z80_daisy_config rs128_daisy_chain[] =
 
 static TIMER_DEVICE_CALLBACK( cassette_tick )
 {
-	mtx_state *state = (mtx_state *)timer.machine->driver_data;
+	mtx_state *state = timer.machine->driver_data<mtx_state>();
 	int data = (cassette_input(state->cassette) > +0.0) ? 0 : 1;
 
 	z80ctc_trg3_w(state->z80ctc, data);
@@ -320,11 +323,10 @@ static const cassette_config mtx_cassette_config =
 ***************************************************************************/
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( mtx512 )
+    MACHINE_CONFIG_START( mtx512, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( mtx512 )
-	MDRV_DRIVER_DATA(mtx_state)
+static MACHINE_CONFIG_START( mtx512, mtx_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_4MHz)
@@ -337,7 +339,7 @@ static MACHINE_DRIVER_START( mtx512 )
 	MDRV_MACHINE_RESET(mtx512)
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_FRAGMENT_ADD(tms9928a)
 	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -359,27 +361,25 @@ static MACHINE_DRIVER_START( mtx512 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("96K,128K,160K,192K,224K,256K,288K,320K,352K,384K,416K,448K,480K,512K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( mtx500 )
+    MACHINE_CONFIG_START( mtx500, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( mtx500 )
-	MDRV_IMPORT_FROM(mtx512)
+static MACHINE_CONFIG_DERIVED( mtx500, mtx512 )
 
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
 	MDRV_RAM_EXTRA_OPTIONS("64K,96K,128K,160K,192K,224K,256K,288K,320K,352K,384K,416K,448K,480K,512K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
-    MACHINE_DRIVER_START( rs128 )
+    MACHINE_CONFIG_START( rs128, driver_device )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( rs128 )
-	MDRV_IMPORT_FROM(mtx512)
+static MACHINE_CONFIG_DERIVED( rs128, mtx512 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY(Z80_TAG)
@@ -393,7 +393,7 @@ static MACHINE_DRIVER_START( rs128 )
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
 	MDRV_RAM_EXTRA_OPTIONS("160K,192K,224K,256K,288K,320K,352K,384K,416K,448K,480K,512K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /***************************************************************************
     ROMS
@@ -429,6 +429,6 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY          FULLNAME   FLAGS */
-COMP( 1983, mtx512,   0,		0,		mtx512,   mtx512,   0,		"Memotech Ltd.", "MTX 512", 0 )
-COMP( 1983, mtx500,   mtx512,   0,      mtx500,   mtx512,   0,		"Memotech Ltd.", "MTX 500", 0 )
-COMP( 1984, rs128,    mtx512,   0,      rs128,    mtx512,   0,		"Memotech Ltd.", "RS 128",  0 )
+COMP( 1983, mtx512,   0,		0,      mtx512,   mtx512,   0,		"Memotech Ltd", "MTX 512", 0 )
+COMP( 1983, mtx500,   mtx512,   0,      mtx500,   mtx512,   0,		"Memotech Ltd", "MTX 500", 0 )
+COMP( 1984, rs128,    mtx512,   0,      rs128,    mtx512,   0,		"Memotech Ltd", "RS 128",  0 )

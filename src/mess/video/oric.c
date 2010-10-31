@@ -121,7 +121,7 @@ static void oric_vh_update_attribute(running_machine *machine,int c)
 {
 	/* attribute */
 	int attribute = c & 0x03f;
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	switch ((attribute>>3) & 0x03)
 	{
@@ -168,7 +168,7 @@ static void oric_vh_update_attribute(running_machine *machine,int c)
 				if (oric_ram)
 					vh_state.char_base = oric_ram + (unsigned long)0x09800;
 				else
-					vh_state.char_base = (unsigned char *)memory_get_read_ptr(space, 0x09800);
+					vh_state.char_base = (unsigned char *)space->get_read_ptr(0x09800);
 
 				/* changing the mode also changes the position of the standard charset
                 and alternative charset */
@@ -181,7 +181,7 @@ static void oric_vh_update_attribute(running_machine *machine,int c)
 				if (oric_ram)
 					vh_state.char_base = oric_ram + (unsigned long)0x0b400;
 				else
-					vh_state.char_base = (unsigned char *)memory_get_read_ptr(space, 0x0b400);
+					vh_state.char_base = (unsigned char *)space->get_read_ptr(0x0b400);
 
 				/* changing the mode also changes the position of the standard charset
                 and alternative charset */
@@ -299,7 +299,7 @@ VIDEO_UPDATE( oric )
 			}
 
 			/* fetch data */
-			c = RAM ? RAM[read_addr] : memory_read_byte(cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM), read_addr);
+			c = RAM ? RAM[read_addr] : cputag_get_address_space(screen->machine,"maincpu", ADDRESS_SPACE_PROGRAM)->read_byte(read_addr);
 
 			/* if bits 6 and 5 are zero, the byte contains a serial attribute */
 			if ((c & ((1 << 6) | (1 << 5))) == 0)

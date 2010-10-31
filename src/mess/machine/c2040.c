@@ -111,7 +111,7 @@ struct _c2040_t
 	running_device *riot0;
 	running_device *riot1;
 	running_device *miot;
-	running_device *via;
+	via6522_device *via;
 	running_device *bus;
 
 	/* timers */
@@ -259,8 +259,8 @@ static TIMER_CALLBACK( bit_tick )
 		/* set byte ready flag */
 		c2040->ready = ready;
 
-		via_ca1_w(c2040->via, ready);
-		via_cb1_w(c2040->via, ERROR);
+		c2040->via->write_ca1(ready);
+		c2040->via->write_cb1(ERROR);
 
 		if ((device->type() == C8050) || (device->type() == C8250) || (device->type() == SFD1001))
 		{
@@ -432,7 +432,7 @@ static ADDRESS_MAP_START( c2040_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x6000, 0x7fff) AM_MIRROR(0x0000) AM_ROM AM_REGION(C2040_REGION, 0x0000)
+	AM_RANGE(0x6000, 0x7fff) AM_MIRROR(0x0000) AM_ROM AM_REGION("drive:c2040", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -442,13 +442,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( c2040_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
-	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
+	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
 	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION(C2040_REGION, 0x2000) // 6530
+	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION("drive:c2040", 0x2000) // 6530
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -465,7 +465,7 @@ static ADDRESS_MAP_START( c4040_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x5000, 0x7fff) AM_ROM AM_REGION(C4040_REGION, 0x0000)
+	AM_RANGE(0x5000, 0x7fff) AM_ROM AM_REGION("drive:c4040", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -475,13 +475,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( c4040_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
-	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
+	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
 	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION(C4040_REGION, 0x3000) // 6530
+	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION("drive:c4040", 0x3000) // 6530
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -497,7 +497,7 @@ static ADDRESS_MAP_START( c8050_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(C8050_REGION, 0x0000)
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("drive:c8050", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -507,13 +507,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( c8050_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
-	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
+	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
 	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION(C8050_REGION, 0x4000) // 6530
+	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION("drive:c8050", 0x4000) // 6530
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -529,7 +529,7 @@ static ADDRESS_MAP_START( sfd1001_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(SFD1001_REGION, 0x0000)
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("drive:sfd1001", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -539,13 +539,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sfd1001_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
-	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
+	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
 	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1800, 0x1fff) AM_ROM AM_REGION(SFD1001_REGION, 0x4000)
+	AM_RANGE(0x1800, 0x1fff) AM_ROM AM_REGION("drive:sfd1001", 0x4000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -842,7 +842,7 @@ static WRITE_LINE_DEVICE_HANDLER( mode_sel_w )
 	c2040->mode = state;
 
 	update_gcr_data(c2040);
-	via_cb1_w(device, ERROR);
+	c2040->via->write_cb1(ERROR);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( rw_sel_w )
@@ -853,7 +853,7 @@ static WRITE_LINE_DEVICE_HANDLER( rw_sel_w )
 	c2040->rw = state;
 
 	update_gcr_data(c2040);
-	via_cb1_w(device, ERROR);
+	c2040->via->write_cb1(ERROR);
 }
 
 static const via6522_interface via_intf =
@@ -1287,7 +1287,7 @@ static const floppy_config c8250_floppy_config =
     MACHINE_DRIVER( c2040 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c2040 )
+static MACHINE_CONFIG_FRAGMENT( c2040 )
 	/* DOS */
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/16)
 	MDRV_CPU_PROGRAM_MAP(c2040_dos_map)
@@ -1303,13 +1303,13 @@ static MACHINE_DRIVER_START( c2040 )
 	MDRV_MOS6530_ADD(M6530_TAG, XTAL_16MHz/16, miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c2040_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( c4040 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c4040 )
+static MACHINE_CONFIG_FRAGMENT( c4040 )
 	/* DOS */
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/16)
 	MDRV_CPU_PROGRAM_MAP(c4040_dos_map)
@@ -1325,13 +1325,13 @@ static MACHINE_DRIVER_START( c4040 )
 	MDRV_MOS6530_ADD(M6530_TAG, XTAL_16MHz/16, miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c4040_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( c8050 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c8050 )
+static MACHINE_CONFIG_FRAGMENT( c8050 )
 	/* DOS */
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_12MHz/12)
 	MDRV_CPU_PROGRAM_MAP(c8050_dos_map)
@@ -1347,13 +1347,13 @@ static MACHINE_DRIVER_START( c8050 )
 	MDRV_MOS6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c8050_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( c8250 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( c8250 )
+static MACHINE_CONFIG_FRAGMENT( c8250 )
 	/* DOS */
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_12MHz/12)
 	MDRV_CPU_PROGRAM_MAP(c8050_dos_map)
@@ -1369,13 +1369,13 @@ static MACHINE_DRIVER_START( c8250 )
 	MDRV_MOS6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c8250_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_DRIVER( sfd1001 )
 -------------------------------------------------*/
 
-static MACHINE_DRIVER_START( sfd1001 )
+static MACHINE_CONFIG_FRAGMENT( sfd1001 )
 	/* DOS */
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_12MHz/12)
 	MDRV_CPU_PROGRAM_MAP(sfd1001_dos_map)
@@ -1391,7 +1391,7 @@ static MACHINE_DRIVER_START( sfd1001 )
 	MDRV_MOS6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c8250_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     ROM( c2040 )
@@ -1417,9 +1417,9 @@ ROM_END
 ROM_START( c4040 ) // schematic ?
 	ROM_REGION( 0x3c00, C4040_REGION, ROMREGION_LOADBYNAME )
 	/* DOS 2.1 */
-	ROM_LOAD( "901468-11.uj1", 0x0000, 0x1000, CRC(b7157458) SHA1(8415f3159dea73161e0cef7960afa6c76953b6f8) )
-	ROM_LOAD( "901468-12.ul1", 0x1000, 0x1000, CRC(02c44ff9) SHA1(e8a94f239082d45f64f01b2d8e488d18fe659cbb) )
-	ROM_LOAD( "901468-13.uh1", 0x2000, 0x1000, CRC(cbd785b3) SHA1(6ada7904ac9d13c3f1c0a8715f9c4be1aa6eb0bb) )
+	ROM_LOAD_OPTIONAL( "901468-11.uj1", 0x0000, 0x1000, CRC(b7157458) SHA1(8415f3159dea73161e0cef7960afa6c76953b6f8) )
+	ROM_LOAD_OPTIONAL( "901468-12.ul1", 0x1000, 0x1000, CRC(02c44ff9) SHA1(e8a94f239082d45f64f01b2d8e488d18fe659cbb) )
+	ROM_LOAD_OPTIONAL( "901468-13.uh1", 0x2000, 0x1000, CRC(cbd785b3) SHA1(6ada7904ac9d13c3f1c0a8715f9c4be1aa6eb0bb) )
 	/* DOS 2 rev */
 	ROM_LOAD( "901468-14.uj1", 0x0000, 0x1000, CRC(bc4d4872) SHA1(ffb992b82ec913ddff7be964d7527aca3e21580c) )
 	ROM_LOAD( "901468-15.ul1", 0x1000, 0x1000, CRC(b6970533) SHA1(f702d6917fe8a798740ba4d467b500944ae7b70a) )
@@ -1454,20 +1454,20 @@ ROM_END
 ROM_START( c8050 ) // schematic 8050001
 	ROM_REGION( 0x4c00, C8050_REGION, ROMREGION_LOADBYNAME )
 	/* 2364 ROM DOS 2.5 */
-	ROM_LOAD( "901482-03.ul1", 0x0000, 0x2000, CRC(09a609b9) SHA1(166d8bfaaa9c4767f9b17ad63fc7ae77c199a64e) )
-	ROM_LOAD( "901482-04.uh1", 0x2000, 0x2000, CRC(1bcf9df9) SHA1(217f4a8b348658bb365f4a1de21ecbaa6402b1c0) )
+	ROM_LOAD_OPTIONAL( "901482-03.ul1", 0x0000, 0x2000, CRC(09a609b9) SHA1(166d8bfaaa9c4767f9b17ad63fc7ae77c199a64e) )
+	ROM_LOAD_OPTIONAL( "901482-04.uh1", 0x2000, 0x2000, CRC(1bcf9df9) SHA1(217f4a8b348658bb365f4a1de21ecbaa6402b1c0) )
 	/* 2364-091 ROM DOS 2.5 rev */
-	ROM_LOAD( "901482-06.ul1", 0x0000, 0x2000, CRC(3cbd2756) SHA1(7f5fbed0cddb95138dd99b8fe84fddab900e3650) )
-	ROM_LOAD( "901482-07.uh1", 0x2000, 0x2000, CRC(c7532d90) SHA1(0b6d1e55afea612516df5f07f4a6dccd3bd73963) )
+	ROM_LOAD_OPTIONAL( "901482-06.ul1", 0x0000, 0x2000, CRC(3cbd2756) SHA1(7f5fbed0cddb95138dd99b8fe84fddab900e3650) )
+	ROM_LOAD_OPTIONAL( "901482-07.uh1", 0x2000, 0x2000, CRC(c7532d90) SHA1(0b6d1e55afea612516df5f07f4a6dccd3bd73963) )
 	/* 2364 ROM DOS 2.7 */
 	ROM_LOAD( "901887-01.ul1", 0x0000, 0x2000, CRC(0073b8b2) SHA1(b10603195f240118fe5fb6c6dfe5c5097463d890) )
 	ROM_LOAD( "901888-01.uh1", 0x2000, 0x2000, CRC(de9b6132) SHA1(2e6c2d7ca934e5c550ad14bd5e9e7749686b7af4) )
 
 	/* controller */
-	ROM_LOAD( "901483-03.uk3", 0x4000, 0x0400, CRC(9e83fa70) SHA1(e367ea8a5ddbd47f13570088427293138a10784b) )
-	ROM_LOAD( "901483-04.uk3", 0x4000, 0x0400, NO_DUMP )
-	ROM_LOAD( "901884-01.uk3", 0x4000, 0x0400, NO_DUMP )
-	ROM_LOAD( "901885-04.uk3", 0x4000, 0x0400, CRC(bab998c9) SHA1(0dc9a3b60f1b866c63eebd882403532fc59fe57f) )
+	ROM_LOAD_OPTIONAL( "901483-03.uk3", 0x4000, 0x0400, CRC(9e83fa70) SHA1(e367ea8a5ddbd47f13570088427293138a10784b) )
+	ROM_LOAD_OPTIONAL( "901483-04.uk3", 0x4000, 0x0400, NO_DUMP )
+	ROM_LOAD_OPTIONAL( "901884-01.uk3", 0x4000, 0x0400, NO_DUMP )
+	ROM_LOAD_OPTIONAL( "901885-04.uk3", 0x4000, 0x0400, CRC(bab998c9) SHA1(0dc9a3b60f1b866c63eebd882403532fc59fe57f) )
 	ROM_LOAD( "901869-01.uk3", 0x4000, 0x0400, CRC(2915327a) SHA1(3a9a80f72ce76e5f5c72513f8ef7553212912ae3) )
 
 	/* GCR decoder */
@@ -1511,7 +1511,7 @@ static DEVICE_START( c2040 )
 	c2040->riot0 = device->subdevice(M6532_0_TAG);
 	c2040->riot1 = device->subdevice(M6532_1_TAG);
 	c2040->miot = device->subdevice(M6530_TAG);
-	c2040->via = device->subdevice(M6522_TAG);
+	c2040->via = device->subdevice<via6522_device>(M6522_TAG);
 	c2040->bus = device->machine->device(config->bus_tag);
 	c2040->unit[0].image = device->subdevice(FLOPPY_0);
 	c2040->unit[1].image = device->subdevice(FLOPPY_1);
@@ -1614,7 +1614,7 @@ DEVICE_GET_INFO( c2040 )
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c2040);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c2040);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c2040);			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(c2040);						break;
@@ -1640,7 +1640,7 @@ DEVICE_GET_INFO( c3040 )
 	{
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c2040);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c2040);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c2040);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 3040");							break;
@@ -1659,7 +1659,7 @@ DEVICE_GET_INFO( c4040 )
 	{
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c4040);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c4040);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c4040);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 4040");							break;
@@ -1678,7 +1678,7 @@ DEVICE_GET_INFO( c8050 )
 	{
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c8050);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c8050);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c8050);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 8050");							break;
@@ -1697,7 +1697,7 @@ DEVICE_GET_INFO( c8250 )
 	{
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(c8050);							break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(c8250);			break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(c8250);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 8250");							break;
@@ -1716,7 +1716,7 @@ DEVICE_GET_INFO( sfd1001 )
 	{
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(sfd1001);						break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(sfd1001);		break;
+		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(sfd1001);		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore SFD-1001");						break;

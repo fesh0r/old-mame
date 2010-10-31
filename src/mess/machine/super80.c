@@ -8,14 +8,6 @@
 #include "machine/ctronics.h"
 #include "includes/super80.h"
 
-/* Bits in shared variable:
-    d5 cassette LED
-    d4 super80v rom or pcg bankswitch (1=pcg ram, 0=char gen rom)
-    d2 super80v video or colour bankswitch (1=video ram, 0=colour ram)
-    d2 super80 screen off (=2mhz) or on (bursts of 2mhz at 50hz = 1mhz) */
-
-UINT8 super80_shared=0xff;
-UINT8 *super80_colorram;
 static running_device *super80_z80pio;
 static running_device *super80_speaker;
 static running_device *super80_cassette;
@@ -24,12 +16,6 @@ static running_device *super80_printer;
 /**************************** PIO ******************************************************************************/
 
 static UINT8 keylatch;
-
-/* This activates when Control + C + 4 pressed */
-static void super80_pio_interrupt(running_device *device, int state)
-{
-	cputag_set_input_line(device->machine, "maincpu", 0, state );
-}
 
 static WRITE8_DEVICE_HANDLER( pio_port_a_w )
 {
@@ -53,7 +39,7 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
 
 Z80PIO_INTERFACE( super80_pio_intf )
 {
-	DEVCB_LINE(super80_pio_interrupt),		/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
 	DEVCB_HANDLER(pio_port_a_w),
 	DEVCB_NULL,			/* portA ready active callback (not used in super80) */
@@ -129,7 +115,8 @@ static TIMER_CALLBACK( super80_halfspeed )
 {
 	static UINT8 int_sw=0;
 	UINT8 go_fast = 0;
-	if (!(super80_shared & 4) || (!(input_port_read(machine, "CONFIG") & 2)))	/* bit 2 of port F0 is low, OR user turned on config switch */
+	super80_state *state = machine->driver_data<super80_state>();
+	if (!(state->super80_shared & 4) || (!(input_port_read(machine, "CONFIG") & 2)))	/* bit 2 of port F0 is low, OR user turned on config switch */
 		go_fast++;
 
 	/* code to slow down computer to 1 MHz by halting cpu on every second frame */
@@ -200,8 +187,9 @@ static UINT8 last_data;
 
 WRITE8_HANDLER( super80_f0_w )
 {
+	super80_state *state = space->machine->driver_data<super80_state>();
 	UINT8 bits = data ^ last_data;
-	super80_shared = data;
+	state->super80_shared = data;
 	speaker_level_w(super80_speaker, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
 	if (bits & 2) super80_cassette_motor(space->machine, data & 2 ? 1 : 0);	/* bit 1 - cassette motor */
 	cassette_output(super80_cassette, (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
@@ -211,15 +199,17 @@ WRITE8_HANDLER( super80_f0_w )
 
 WRITE8_HANDLER( super80r_f0_w )
 {
+	super80_state *state = space->machine->driver_data<super80_state>();
 	super80_f0_w(space, 0, data);
-	super80_shared |= 0x14;
+	state->super80_shared |= 0x14;
 }
 
 /**************************** BASIC MACHINE CONSTRUCTION ***********************************************************/
 
 MACHINE_RESET( super80 )
 {
-	super80_shared=0xff;
+	super80_state *state = machine->driver_data<super80_state>();
+	state->super80_shared=0xff;
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, super80_reset);
 	memory_set_bank(machine, "bank1", 1);
 	super80_z80pio = machine->device("z80pio");
@@ -243,9 +233,6 @@ DRIVER_INIT( super80 )
 
 DRIVER_INIT( super80v )
 {
-	super80_pcgram = memory_region(machine, "maincpu")+0xf000;
-	machine->generic.videoram.u8 = memory_region(machine, "maincpu")+0x18000;
-	super80_colorram = memory_region(machine, "maincpu")+0x1C000;
 	driver_init_common(machine);
 }
 

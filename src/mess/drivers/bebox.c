@@ -28,6 +28,7 @@
 #include "machine/pit8253.h"
 #include "machine/idectrl.h"
 #include "machine/mpc105.h"
+#include "machine/intelfsh.h"
 
 /* Devices */
 #include "devices/flopdrv.h"
@@ -60,8 +61,8 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x80000000, 0x8000001F) AM_DEVREADWRITE8( "dma8237_1", i8237_r, i8237_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000020, 0x8000003F) AM_DEVREADWRITE8( "pic8259_master", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000040, 0x8000005f) AM_DEVREADWRITE8( "pit8254", pit8253_r, pit8253_w, U64(0xffffffffffffffff) )
-	AM_RANGE(0x80000060, 0x8000006F) AM_READWRITE( kbdc8042_64be_r, kbdc8042_64be_w )
-	AM_RANGE(0x80000070, 0x8000007F) AM_READWRITE( mc146818_port64be_r, mc146818_port64be_w )
+	AM_RANGE(0x80000060, 0x8000006F) AM_READWRITE( kbdc8042_64be_r, kbdc8042_64be_w )	
+	AM_RANGE(0x80000070, 0x8000007F) AM_DEVREADWRITE8_MODERN("rtc", mc146818_device, read, write , U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000080, 0x8000009F) AM_READWRITE( bebox_page_r, bebox_page_w)
 	AM_RANGE(0x800000A0, 0x800000BF) AM_DEVREADWRITE8( "pic8259_slave", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x800000C0, 0x800000DF) AM_READWRITE( bebox_dma8237_1_r, bebox_dma8237_1_w)
@@ -115,7 +116,7 @@ static const floppy_config bebox_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( bebox )
+static MACHINE_CONFIG_START( bebox, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("ppc1", PPC603, 66000000)	/* 66 MHz */
 	MDRV_CPU_PROGRAM_MAP(bebox_mem)
@@ -143,7 +144,7 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_IDE_CONTROLLER_ADD( "ide", bebox_ide_interrupt )	/* FIXME */
 
 	/* video hardware */
-	MDRV_IMPORT_FROM( pcvideo_vga )
+	MDRV_FRAGMENT_ADD( pcvideo_vga )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -155,7 +156,7 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_SOUND_ADD("ym3812", YM3812, 3579545)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_NVRAM_HANDLER( bebox )
+	MDRV_FUJITSU_29F016A_ADD("flash")
 
 	MDRV_CDROM_ADD( "cdrom" )
 	MDRV_HARDDISK_ADD( "harddisk1" )
@@ -170,20 +171,21 @@ static MACHINE_DRIVER_START( bebox )
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, bebox_floppy_config)
 
+	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
+	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32M")
 	MDRV_RAM_EXTRA_OPTIONS("8M,16M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( bebox2 )
-	MDRV_IMPORT_FROM( bebox )
+static MACHINE_CONFIG_DERIVED( bebox2, bebox )
 	MDRV_CPU_REPLACE("ppc1", PPC603E, 133000000)	/* 133 MHz */
 	MDRV_CPU_PROGRAM_MAP(bebox_mem)
-	
+
 	MDRV_CPU_REPLACE("ppc2", PPC603E, 133000000)	/* 133 MHz */
 	MDRV_CPU_PROGRAM_MAP(bebox_slave_mem)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( bebox )
 	PORT_INCLUDE( at_keyboard )
@@ -204,5 +206,5 @@ ROM_START(bebox2)
 ROM_END
 
 /*     YEAR   NAME      PARENT  COMPAT  MACHINE   INPUT     INIT    COMPANY             FULLNAME */
-COMP( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,   "Be Incorporated",  "BeBox Dual603-66", GAME_NOT_WORKING )
-COMP( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,   "Be Incorporated",  "BeBox Dual603-133", GAME_NOT_WORKING )
+COMP( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,   "Be Inc",  "BeBox Dual603-66", GAME_NOT_WORKING )
+COMP( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,   "Be Inc",  "BeBox Dual603-133", GAME_NOT_WORKING )

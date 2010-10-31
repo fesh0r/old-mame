@@ -161,7 +161,7 @@ static MACHINE_RESET(mmd2)
 {
 }
 
-static MACHINE_DRIVER_START( mmd1 )
+static MACHINE_CONFIG_START( mmd1, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",I8080, 6750000 / 9)
     MDRV_CPU_PROGRAM_MAP(mmd1_mem)
@@ -171,9 +171,9 @@ static MACHINE_DRIVER_START( mmd1 )
 
 	/* video hardware */
 	MDRV_DEFAULT_LAYOUT(layout_mmd1)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( mmd2 )
+static MACHINE_CONFIG_START( mmd2, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",I8080, 6750000 / 9)
     MDRV_CPU_PROGRAM_MAP(mmd2_mem)
@@ -183,7 +183,7 @@ static MACHINE_DRIVER_START( mmd2 )
 
 	/* video hardware */
 	MDRV_DEFAULT_LAYOUT(layout_mmd2)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( mmd1 )
@@ -202,6 +202,6 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1976, mmd1,	0,       0, 		mmd1,	mmd1,	 0, 	 "E&L Instruments, Inc.",   "MMD-1",		GAME_NO_SOUND)
-COMP( 1976, mmd2,	mmd1,    0, 		mmd2,	mmd2,	 0, 	 "E&L Instruments, Inc.",   "MMD-2",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1976, mmd1,	0,       0, 		mmd1,	mmd1,	 0, 	 "E&L Instruments Inc",   "MMD-1",		GAME_NO_SOUND)
+COMP( 1976, mmd2,	mmd1,    0, 		mmd2,	mmd2,	 0, 	 "E&L Instruments Inc",   "MMD-2",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

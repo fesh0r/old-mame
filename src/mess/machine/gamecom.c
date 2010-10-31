@@ -40,7 +40,6 @@ typedef struct {
 	int enabled;
 	int state_count;
 	int state_limit;
-	int counter;
 	int check_value;
 } GAMECOM_TIMER;
 
@@ -58,7 +57,6 @@ typedef struct
 	UINT8 sg1w[16];
 } gamecom_sound_t;
 
-UINT8 gamecom_internal_registers[0x80];
 static UINT8 *cartridge1 = NULL;
 static UINT8 *cartridge2 = NULL;
 static UINT8 *cartridge = NULL;
@@ -68,46 +66,35 @@ static GAMECOM_DMA gamecom_dma;
 static GAMECOM_TIMER gamecom_timer[2];
 static gamecom_sound_t gamecom_sound;
 
-//static const int gamecom_timer_limit[8] = { 2/2, 1024/2, 2048/2, 4096/2, 8192/2, 16384/2, 32768/2, 65536/2 };
 static const int gamecom_timer_limit[8] = { 2, 1024, 2048, 4096, 8192, 16384, 32768, 65536 };
-static running_device *gamecom_cpu;
-
-
-static void gamecom_dma_init(running_machine *machine);
 
 static TIMER_CALLBACK(gamecom_clock_timer_callback)
 {
-	UINT8 val = ( ( gamecom_internal_registers[SM8521_CLKT] & 0x3F ) + 1 ) & 0x3F;
-	gamecom_internal_registers[SM8521_CLKT] = ( gamecom_internal_registers[SM8521_CLKT] & 0xC0 ) | val;
+	UINT8 * RAM = memory_region(machine, "maincpu");
+	UINT8 val = ( ( RAM[SM8521_CLKT] & 0x3F ) + 1 ) & 0x3F;
+	RAM[SM8521_CLKT] = ( RAM[SM8521_CLKT] & 0xC0 ) | val;
 	cputag_set_input_line(machine, "maincpu", CK_INT, ASSERT_LINE );
 }
 
 MACHINE_RESET( gamecom )
 {
-	UINT8 *rom = memory_region(machine, "user1");
+	UINT8 *rom = memory_region(machine, "kernel");
 	memory_set_bankptr( machine, "bank1", rom );
 	memory_set_bankptr( machine, "bank2", rom );
 	memory_set_bankptr( machine, "bank3", rom );
 	memory_set_bankptr( machine, "bank4", rom );
 
 	cartridge = NULL;
-	/* disable DMA and timer */
-	gamecom_dma.enabled = 0;
-
-	memset( gamecom_internal_registers, 0x00, sizeof(gamecom_internal_registers) );
-	gamecom_internal_w( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), SM8521_URTT, 0xFF );
-	gamecom_internal_w( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), SM8521_URTS, 0x42 );
-	gamecom_internal_w( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), SM8521_WDTC, 0x38 );
 }
 
 static void gamecom_set_mmu( running_machine *machine, int mmu, UINT8 data )
 {
-	char bank[10];
+	char bank[5];
 	sprintf(bank,"bank%d",mmu);
 	if ( data < 0x20 )
 	{
 		/* select internal ROM bank */
-		memory_set_bankptr( machine, bank, memory_region(machine, "user1") + (data << 13) );
+		memory_set_bankptr( machine, bank, memory_region(machine, "kernel") + (data << 13) );
 	}
 	else
 	{
@@ -119,6 +106,7 @@ static void gamecom_set_mmu( running_machine *machine, int mmu, UINT8 data )
 
 static void handle_stylus_press( running_machine *machine, UINT8 column )
 {
+	UINT8 * RAM = memory_region(machine, "maincpu");
 	static const UINT16 row_data[10] = { 0x3FE, 0x3FD, 0x3FB, 0x3F7, 0x3EF, 0x3DF, 0x3BF, 0x37F, 0x2FF, 0x1FF };
 	static UINT32 stylus_x;
 	static UINT32 stylus_y;
@@ -139,28 +127,24 @@ static void handle_stylus_press( running_machine *machine, UINT8 column )
 
 	if ( stylus_x == column )
 	{
-		cpu_set_reg( gamecom_cpu, SM8500_P0, row_data[stylus_y] & 0xFF );
-		cpu_set_reg( gamecom_cpu, SM8500_P1, ( cpu_get_reg( gamecom_cpu, SM8500_P1 ) & 0xFC ) | ( ( row_data[stylus_y] >> 8 ) & 0x03 ) );
+		RAM[SM8521_P0] = row_data[stylus_y];
+		RAM[SM8521_P1] = ( RAM[SM8521_P1] & 0xFC ) | ( ( row_data[stylus_y] >> 8 ) & 3 );
 	}
 	else
 	{
-		cpu_set_reg( gamecom_cpu, SM8500_P0, 0xFF );
-		cpu_set_reg( gamecom_cpu, SM8500_P1, ( cpu_get_reg( gamecom_cpu, SM8500_P1 ) & 0xFC ) | 0x03 );
+		RAM[SM8521_P0] = 0xFF;
+		RAM[SM8521_P1] = ( RAM[SM8521_P1] & 0xFC ) | 3;
 	}
 }
 
-WRITE8_HANDLER( gamecom_internal_w )
+WRITE8_HANDLER( gamecom_pio_w )
 {
+	UINT8 * RAM = memory_region(space->machine, "maincpu");
+	offset += 0x14;
+	RAM[offset] = data;
 	switch( offset )
 	{
-	case SM8521_IE0:	cpu_set_reg( gamecom_cpu, SM8500_IE0, data ); return;
-	case SM8521_IE1:	cpu_set_reg( gamecom_cpu, SM8500_IE1, data ); return;
-	case SM8521_IR0:	cpu_set_reg( gamecom_cpu, SM8500_IR0, data ); return;
-	case SM8521_IR1:	cpu_set_reg( gamecom_cpu, SM8500_IR1, data ); return;
-	case SM8521_P0:		cpu_set_reg( gamecom_cpu, SM8500_P0, data ); return;
-	case SM8521_P1:		cpu_set_reg( gamecom_cpu, SM8500_P1, data ); return;
-	case SM8521_P2:		cpu_set_reg( gamecom_cpu, SM8500_P2, data );
-				switch( ( cpu_get_reg( gamecom_cpu, SM8500_P1 ) << 8 ) | data )
+	case SM8521_P2:		switch( ( RAM[SM8521_P1] << 8 ) | data )
 				{
 				case 0xFBFF:	/* column #0 */
 						/* P0 bit 0 cleared => 01 */
@@ -222,8 +206,8 @@ WRITE8_HANDLER( gamecom_internal_w )
 						/* P0 bit 7 cleared => 8B (button A) */
 						/* P1 bit 0 cleared => 8C (button B) */
 						/* P1 bit 1 cleared => 8D (button C) */
-					cpu_set_reg( gamecom_cpu, SM8500_P0, input_port_read(space->machine, "IN0") );
-					cpu_set_reg( gamecom_cpu, SM8500_P1, ( cpu_get_reg( gamecom_cpu, SM8500_P1 ) & 0xFC ) | ( input_port_read(space->machine, "IN1") & 0x03 ) );
+					RAM[SM8521_P0] = input_port_read(space->machine, "IN0");
+					RAM[SM8521_P1] = (RAM[SM8521_P1] & 0xFC) | ( input_port_read(space->machine, "IN1") & 3 );
 					break;
 				case 0xFFFF:	/* keys #2 */
 						/* P0 bit 0 cleared => 88 (power) */
@@ -236,15 +220,14 @@ WRITE8_HANDLER( gamecom_internal_w )
 						/* P0 bit 7 cleared => A0 */
 						/* P1 bit 0 cleared => A0 */
 						/* P1 bit 1 cleared => A0 */
-					cpu_set_reg( gamecom_cpu, SM8500_P0, ( cpu_get_reg( gamecom_cpu, SM8500_P0 ) & 0xFC ) | ( input_port_read(space->machine, "IN2") & 0x03 ) );
-					cpu_set_reg( gamecom_cpu, SM8500_P1, 0xFF );
+					RAM[SM8521_P0] = (RAM[SM8521_P0] & 0xFC) | ( input_port_read(space->machine, "IN2") & 3 );
+					RAM[SM8521_P1] = 0xFF;
 					break;
 				}
 				return;
 	case SM8521_P3:
 				/* P3 bit7 clear, bit6 set -> enable cartridge port #0? */
 				/* P3 bit6 clear, bit7 set -> enable cartridge port #1? */
-				cpu_set_reg( gamecom_cpu, SM8500_P3, data );
 				switch( data & 0xc0 )
 				{
 				case 0x40: cartridge = cartridge1; break;
@@ -252,16 +235,27 @@ WRITE8_HANDLER( gamecom_internal_w )
 				default:   cartridge = NULL;       break;
 				}
 				return;
-	case SM8521_SYS:	cpu_set_reg( gamecom_cpu, SM8500_SYS, data ); return;
-	case SM8521_CKC:	cpu_set_reg( gamecom_cpu, SM8500_CKC, data ); return;
-	case SM8521_SPH:	cpu_set_reg( gamecom_cpu, SM8500_SPH, data ); return;
-	case SM8521_SPL:	cpu_set_reg( gamecom_cpu, SM8500_SPL, data ); return;
-	case SM8521_PS0:	cpu_set_reg( gamecom_cpu, SM8500_PS0, data ); return;
-	case SM8521_PS1:	cpu_set_reg( gamecom_cpu, SM8500_PS1, data ); return;
-	case SM8521_P0C:	cpu_set_reg( gamecom_cpu, SM8500_P0C, data ); return;
-	case SM8521_P1C:	cpu_set_reg( gamecom_cpu, SM8500_P1C, data ); return;
-	case SM8521_P2C:	cpu_set_reg( gamecom_cpu, SM8500_P2C, data ); return;
-	case SM8521_P3C:	cpu_set_reg( gamecom_cpu, SM8500_P3C, data ); return;
+	}
+}
+
+READ8_HANDLER( gamecom_pio_r )
+{
+	UINT8 * RAM = memory_region(space->machine, "maincpu");
+	return RAM[offset + 0x14];
+}
+
+READ8_HANDLER( gamecom_internal_r )
+{
+	UINT8 * RAM = memory_region(space->machine, "maincpu");
+	return RAM[offset + 0x20];
+}
+
+WRITE8_HANDLER( gamecom_internal_w )
+{
+	UINT8 * RAM = memory_region(space->machine, "maincpu");
+	offset += 0x20;
+	switch( offset )
+	{
 	case SM8521_MMU0:	/* disable bootstrap ROM? most likely not written to on game.com */
 		logerror( "Write to MMU0\n" );
 		break;
@@ -279,60 +273,26 @@ WRITE8_HANDLER( gamecom_internal_w )
 		break;
 
 	/* Video hardware and DMA */
-	case SM8521_LCDC:
-//      logerror( "%X: Setting LCDC to %X\n", activecpu_get_pc(), data );
-		break;
-	case SM8521_LCH:
-		break;
-	case SM8521_LCV:
-		break;
-	case SM8521_DMC:
-		gamecom_dma.overwrite_mode = data & 0x01;
-		gamecom_dma.transfer_mode = data & 0x06;
-		gamecom_dma.decrement_x = data & 0x08;
-		gamecom_dma.decrement_y = data & 0x10;
-		gamecom_dma.enabled = data & 0x80;
-		if ( gamecom_dma.enabled )
-		{
-			gamecom_dma_init(space->machine);
-		}
-		break;
-	case SM8521_DMX1:
-		break;
-	case SM8521_DMY1:
-		break;
-	case SM8521_DMDX:
-		break;
-	case SM8521_DMDY:
-		break;
-	case SM8521_DMX2:
-		break;
-	case SM8521_DMY2:
-		break;
-	case SM8521_DMPL:
-		break;
 	case SM8521_DMBR:
 		data &= 0x7f;
 		break;
-	case SM8521_DMVP:
-		break;
 	case SM8521_TM0D:
 		gamecom_timer[0].check_value = data;
-		break;
+		return;
 	case SM8521_TM0C:
 		gamecom_timer[0].enabled = data & 0x80;
 		gamecom_timer[0].state_limit = gamecom_timer_limit[data & 0x07];
 		gamecom_timer[0].state_count = 0;
-		gamecom_timer[0].counter = 0;
+		RAM[SM8521_TM0D] = 0;
 		break;
 	case SM8521_TM1D:
 		gamecom_timer[1].check_value = data;
-		break;
+		return;
 	case SM8521_TM1C:
 		gamecom_timer[1].enabled = data & 0x80;
 		gamecom_timer[1].state_limit = gamecom_timer_limit[data & 0x07];
 		gamecom_timer[1].state_count = 0;
-		gamecom_timer[1].counter = 0;
+		RAM[SM8521_TM1D] = 0;
 		break;
 	case SM8521_CLKT:	/* bit 6-7 */
 		if ( data & 0x80 )
@@ -441,115 +401,86 @@ WRITE8_HANDLER( gamecom_internal_w )
 		logerror( "%X: Write to reserved address (0x%02X). Value written: 0x%02X\n", cpu_get_pc(space->cpu), offset, data );
 		break;
 	}
-	gamecom_internal_registers[offset] = data;
+	RAM[offset] = data;
 }
 
-READ8_HANDLER( gamecom_internal_r )
-{
-	/* NPW 22-Dec-2008 - Shouldn't this entire function be moved to an internal memory map of the CPU core? */
-	switch( offset )
-	{
-	case SM8521_IE0:	return cpu_get_reg( gamecom_cpu, SM8500_IE0 );
-	case SM8521_IE1:	return cpu_get_reg( gamecom_cpu, SM8500_IE1 );
-	case SM8521_IR0:	return cpu_get_reg( gamecom_cpu, SM8500_IR0 );
-	case SM8521_IR1:	return cpu_get_reg( gamecom_cpu, SM8500_IR1 );
-	case SM8521_P0:		return cpu_get_reg( gamecom_cpu, SM8500_P0 );
-	case SM8521_P1:		return cpu_get_reg( gamecom_cpu, SM8500_P1 );
-	case SM8521_P2:		return cpu_get_reg( gamecom_cpu, SM8500_P2 );
-	case SM8521_P3:		return cpu_get_reg( gamecom_cpu, SM8500_P3 );
-	case SM8521_SYS:	return cpu_get_reg( gamecom_cpu, SM8500_SYS );
-	case SM8521_CKC:	return cpu_get_reg( gamecom_cpu, SM8500_CKC );
-	case SM8521_SPH:	return cpu_get_reg( gamecom_cpu, SM8500_SPH );
-	case SM8521_SPL:	return cpu_get_reg( gamecom_cpu, SM8500_SPL );
-	case SM8521_PS0:	return cpu_get_reg( gamecom_cpu, SM8500_PS0 );
-	case SM8521_PS1:	return cpu_get_reg( gamecom_cpu, SM8500_PS1 );
-	case SM8521_P0C:	return cpu_get_reg( gamecom_cpu, SM8500_P0C );
-	case SM8521_P1C:	return cpu_get_reg( gamecom_cpu, SM8500_P1C );
-	case SM8521_P2C:	return cpu_get_reg( gamecom_cpu, SM8500_P2C );
-	case SM8521_P3C:	return cpu_get_reg( gamecom_cpu, SM8500_P3C );
-	case SM8521_TM0D:	return gamecom_timer[0].counter;
-	case SM8521_TM1D:	return gamecom_timer[1].counter;
-//  case SM8521_CLKT:   /* bit 0-5 read only, 6-7 read/write */
-//          return ( gamecom_internal_registers[offset] & 0xC0 ) | ( clock_timer_val & 0x3F );
-
-	/* Reserved addresses */
-	case SM8521_18: case SM8521_1B:
-	case SM8521_29: case SM8521_2A: case SM8521_2F:
-	case SM8521_33: case SM8521_3E: case SM8521_3F:
-	case SM8521_41: case SM8521_43: case SM8521_45: case SM8521_4B:
-	case SM8521_4F:
-	case SM8521_55: case SM8521_56: case SM8521_57: case SM8521_58:
-	case SM8521_59: case SM8521_5A: case SM8521_5B: case SM8521_5C:
-	case SM8521_5D:
-//      logerror( "%X: Read from reserved address (0x%02X)\n", cpu_get_pc(space->cpu), offset );
-		break;
-
-	}
-	return gamecom_internal_registers[offset];
-}
 
 /* The manual is not conclusive as to which bit of the DMVP register (offset 0x3D) determines
    which page for source or destination is used */
-static void gamecom_dma_init(running_machine *machine)
+/* For now the increment/decrement-x and increment/decrement-y parts are NOT supported.
+   Their usage is also not explained properly in the manuals. Guess we'll have to wait
+   for them to show up in some rom images...
+ */
+void gamecom_handle_dma( running_device *device, int cycles )
 {
+	UINT8 * RAM = memory_region(device->machine, "maincpu");
+	UINT8 data = RAM[SM8521_DMC];
+	gamecom_dma.overwrite_mode = data & 0x01;
+	gamecom_dma.transfer_mode = data & 0x06;
+	gamecom_dma.decrement_x = data & 0x08;
+	gamecom_dma.decrement_y = data & 0x10;
+	gamecom_dma.enabled = data & 0x80;
+	if ( !gamecom_dma.enabled ) return;
+
+
 	if ( gamecom_dma.decrement_x || gamecom_dma.decrement_y )
 	{
 		logerror( "TODO: Decrement-x and decrement-y are not supported yet\n" );
 	}
-	gamecom_dma.width_x = gamecom_internal_registers[SM8521_DMDX];
+	gamecom_dma.width_x = RAM[SM8521_DMDX];
 	gamecom_dma.width_x_count = 0;
-	gamecom_dma.width_y = gamecom_internal_registers[SM8521_DMDY];
+	gamecom_dma.width_y = RAM[SM8521_DMDY];
 	gamecom_dma.width_y_count = 0;
-	gamecom_dma.source_x = gamecom_internal_registers[SM8521_DMX1];
+	gamecom_dma.source_x = RAM[SM8521_DMX1];
 	gamecom_dma.source_x_current = gamecom_dma.source_x;
-	gamecom_dma.source_y = gamecom_internal_registers[SM8521_DMY1];
-	gamecom_dma.source_width = ( gamecom_internal_registers[SM8521_LCH] & 0x20 ) ? 50 : 40;
-	gamecom_dma.dest_x = gamecom_internal_registers[SM8521_DMX2];
+	gamecom_dma.source_y = RAM[SM8521_DMY1];
+	gamecom_dma.source_width = ( RAM[SM8521_LCH] & 0x20 ) ? 50 : 40;
+	gamecom_dma.dest_x = RAM[SM8521_DMX2];
 	gamecom_dma.dest_x_current = gamecom_dma.dest_x;
-	gamecom_dma.dest_y = gamecom_internal_registers[SM8521_DMY2];
-	gamecom_dma.dest_width = ( gamecom_internal_registers[SM8521_LCH] & 0x20 ) ? 50 : 40;
-	gamecom_dma.palette[0] = ( gamecom_internal_registers[SM8521_DMPL] & 0x03 );
-	gamecom_dma.palette[1] = ( gamecom_internal_registers[SM8521_DMPL] & 0x0C ) >> 2;
-	gamecom_dma.palette[2] = ( gamecom_internal_registers[SM8521_DMPL] & 0x30 ) >> 4;
-	gamecom_dma.palette[3] = ( gamecom_internal_registers[SM8521_DMPL] & 0xC0 ) >> 6;
+	gamecom_dma.dest_y = RAM[SM8521_DMY2];
+	gamecom_dma.dest_width = ( RAM[SM8521_LCH] & 0x20 ) ? 50 : 40;
+	gamecom_dma.palette[0] = ( RAM[SM8521_DMPL] & 0x03 );
+	gamecom_dma.palette[1] = ( RAM[SM8521_DMPL] & 0x0C ) >> 2;
+	gamecom_dma.palette[2] = ( RAM[SM8521_DMPL] & 0x30 ) >> 4;
+	gamecom_dma.palette[3] = ( RAM[SM8521_DMPL] & 0xC0 ) >> 6;
 	gamecom_dma.source_mask = 0x1FFF;
 	gamecom_dma.dest_mask = 0x1FFF;
-//  logerror("DMA: width %Xx%X, source (%X,%X), dest (%X,%X), transfer_mode %X, banks %X \n", gamecom_dma.width_x, gamecom_dma.width_y, gamecom_dma.source_x, gamecom_dma.source_y, gamecom_dma.dest_x, gamecom_dma.dest_y, gamecom_dma.transfer_mode, gamecom_internal_registers[SM8521_DMVP] );
+//  logerror("DMA: width %Xx%X, source (%X,%X), dest (%X,%X), transfer_mode %X, banks %X \n", gamecom_dma.width_x, gamecom_dma.width_y, gamecom_dma.source_x, gamecom_dma.source_y, gamecom_dma.dest_x, gamecom_dma.dest_y, gamecom_dma.transfer_mode, RAM[SM8521_DMVP] );
 //  logerror( "   Palette: %d, %d, %d, %d\n", gamecom_dma.palette[0], gamecom_dma.palette[1], gamecom_dma.palette[2], gamecom_dma.palette[3] );
 	switch( gamecom_dma.transfer_mode )
 	{
 	case 0x00:
 		/* VRAM->VRAM */
-		gamecom_dma.source_bank = &gamecom_vram[(gamecom_internal_registers[SM8521_DMVP] & 0x01) ? 0x2000 : 0x0000];
-		gamecom_dma.dest_bank = &gamecom_vram[(gamecom_internal_registers[SM8521_DMVP] & 0x02) ? 0x2000 : 0x0000];
+		gamecom_dma.source_bank = &gamecom_vram[(RAM[SM8521_DMVP] & 0x01) ? 0x2000 : 0x0000];
+		gamecom_dma.dest_bank = &gamecom_vram[(RAM[SM8521_DMVP] & 0x02) ? 0x2000 : 0x0000];
 		break;
 	case 0x02:
 		/* ROM->VRAM */
-//      logerror( "DMA DMBR = %X\n", gamecom_internal_registers[SM8521_DMBR] );
+//      logerror( "DMA DMBR = %X\n", RAM[SM8521_DMBR] );
 		gamecom_dma.source_width = 64;
 		gamecom_dma.source_mask = 0x3FFF;
-		if ( gamecom_internal_registers[SM8521_DMBR] < 16 )
+		if ( RAM[SM8521_DMBR] < 16 )
 		{
-			gamecom_dma.source_bank = memory_region(machine, "user1") + (gamecom_internal_registers[SM8521_DMBR] << 14);
+			gamecom_dma.source_bank = memory_region(device->machine, "kernel") + (RAM[SM8521_DMBR] << 14);
 		}
 		else
 		{
 			if (cartridge)
-				gamecom_dma.source_bank = cartridge + (gamecom_internal_registers[SM8521_DMBR] << 14);
+				gamecom_dma.source_bank = cartridge + (RAM[SM8521_DMBR] << 14);
 		}
-		gamecom_dma.dest_bank = &gamecom_vram[(gamecom_internal_registers[SM8521_DMVP] & 0x02) ? 0x2000 : 0x0000];
+		gamecom_dma.dest_bank = &gamecom_vram[(RAM[SM8521_DMVP] & 0x02) ? 0x2000 : 0x0000];
 		break;
 	case 0x04:
 		/* Extend RAM->VRAM */
 		gamecom_dma.source_width = 64;
-		gamecom_dma.source_bank = (UINT8*)memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xE000 );
-		gamecom_dma.dest_bank = &gamecom_vram[(gamecom_internal_registers[SM8521_DMVP] & 0x02) ? 0x2000 : 0x0000];
+		gamecom_dma.source_bank = &gamecom_vram[0x4000];
+		gamecom_dma.dest_bank = &gamecom_vram[(RAM[SM8521_DMVP] & 0x02) ? 0x2000 : 0x0000];
 		break;
 	case 0x06:
 		/* VRAM->Extend RAM */
-		gamecom_dma.source_bank = &gamecom_vram[(gamecom_internal_registers[SM8521_DMVP] & 0x01) ? 0x2000 : 0x0000];
+		gamecom_dma.source_bank = &gamecom_vram[(RAM[SM8521_DMVP] & 0x01) ? 0x2000 : 0x0000];
 		gamecom_dma.dest_width = 64;
-		gamecom_dma.dest_bank = (UINT8*)memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xE000 );
+		gamecom_dma.dest_bank = &gamecom_vram[0x4000];
 		break;
 	}
 	gamecom_dma.source_current = gamecom_dma.source_width * gamecom_dma.source_y;
@@ -559,20 +490,9 @@ static void gamecom_dma_init(running_machine *machine)
 	gamecom_dma.source_line = gamecom_dma.source_current;
 	gamecom_dma.dest_line = gamecom_dma.dest_current;
 	gamecom_dma.state_count = 0;
-}
 
-/* For now the increment/decrement-x and increment/decrement-y parts are NOT supported.
-   Their usage is also not explained properly in the manuals. Guess we'll have to wait
-   for them to show up in some rom images...
- */
-void gamecom_handle_dma( running_device *device, int cycles )
-{
 	unsigned y_count, x_count;
-	/* If not enabled, ignore */
-	if ( ! gamecom_dma.enabled )
-	{
-		return;
-	}
+
 	for( y_count = 0; y_count <= gamecom_dma.width_y; y_count++ )
 	{
 		for( x_count = 0; x_count <= gamecom_dma.width_x; x_count++ )
@@ -661,16 +581,17 @@ void gamecom_handle_dma( running_device *device, int cycles )
 
 void gamecom_update_timers( running_device *device, int cycles )
 {
+	UINT8 * RAM = memory_region(device->machine, "maincpu");
 	if ( gamecom_timer[0].enabled )
 	{
 		gamecom_timer[0].state_count += cycles;
 		while ( gamecom_timer[0].state_count >= gamecom_timer[0].state_limit )
 		{
 			gamecom_timer[0].state_count -= gamecom_timer[0].state_limit;
-			gamecom_timer[0].counter++;
-			if ( gamecom_timer[0].counter == gamecom_timer[0].check_value )
+			RAM[SM8521_TM0D]++;
+			if ( RAM[SM8521_TM0D] >= gamecom_timer[0].check_value )
 			{
-				gamecom_timer[0].counter = 0;
+				RAM[SM8521_TM0D] = 0;
 				cputag_set_input_line(device->machine, "maincpu", TIM0_INT, ASSERT_LINE );
 			}
 		}
@@ -681,10 +602,10 @@ void gamecom_update_timers( running_device *device, int cycles )
 		while ( gamecom_timer[1].state_count >= gamecom_timer[1].state_limit )
 		{
 			gamecom_timer[1].state_count -= gamecom_timer[1].state_limit;
-			gamecom_timer[1].counter++;
-			if ( gamecom_timer[1].counter == gamecom_timer[1].check_value )
+			RAM[SM8521_TM1D]++;
+			if ( RAM[SM8521_TM1D] >= gamecom_timer[1].check_value )
 			{
-				gamecom_timer[1].counter = 0;
+				RAM[SM8521_TM1D] = 0;
 				cputag_set_input_line(device->machine, "maincpu", TIM1_INT, ASSERT_LINE );
 			}
 		}
@@ -693,17 +614,15 @@ void gamecom_update_timers( running_device *device, int cycles )
 
 DRIVER_INIT( gamecom )
 {
-	gamecom_cpu = machine->device("maincpu");
-	gamecom_iram = sm8500_get_internal_ram(machine->device<legacy_cpu_device>("maincpu"));
 	gamecom_clock_timer = timer_alloc(machine,  gamecom_clock_timer_callback , NULL);
 }
 
-DEVICE_IMAGE_LOAD( gamecom_cart )
+DEVICE_IMAGE_LOAD( gamecom_cart1 )
 {
 	UINT32 filesize;
 	UINT32 load_offset = 0;
 
-	cartridge1 = memory_region(image.device().machine, "user2");
+	cartridge1 = memory_region(image.device().machine, "cart1");
 
 	if (image.software_entry() == NULL)
 		filesize = image.length();
@@ -741,6 +660,52 @@ DEVICE_IMAGE_LOAD( gamecom_cart )
 	if (filesize < 0x080000) { memcpy(cartridge1 + 0x040000, cartridge1, 0x040000); } /* ->512KB */
 	if (filesize < 0x100000) { memcpy(cartridge1 + 0x080000, cartridge1, 0x080000); } /* ->1MB */
 	if (filesize < 0x1c0000) { memcpy(cartridge1 + 0x100000, cartridge1, 0x100000); } /* -> >=1.8MB */
+	return IMAGE_INIT_PASS;
+}
+
+DEVICE_IMAGE_LOAD( gamecom_cart2 )
+{
+	UINT32 filesize;
+	UINT32 load_offset = 0;
+
+	cartridge2 = memory_region(image.device().machine, "cart2");
+
+//  if (image.software_entry() == NULL)
+		filesize = image.length();
+//  else
+//      filesize = image.get_software_region_length("rom");
+
+	switch(filesize)
+	{
+		case 0x008000: load_offset = 0;        break;  /* 32 KB */
+		case 0x040000: load_offset = 0;        break;  /* 256KB */
+		case 0x080000: load_offset = 0;        break;  /* 512KB */
+		case 0x100000: load_offset = 0;        break;  /* 1  MB */
+		case 0x1c0000: load_offset = 0x040000; break;  /* 1.8MB */
+		case 0x200000: load_offset = 0;        break;  /* 2  MB */
+		default:                                       /* otherwise */
+			logerror("Error loading cartridge: Invalid file size 0x%X\n", filesize);
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unhandled cart size");
+			return IMAGE_INIT_FAIL;
+	}
+
+//  if (image.software_entry() == NULL)
+	{
+		if (image.fread( cartridge2 + load_offset, filesize) != filesize)
+		{
+			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to load all of the cart");
+			return IMAGE_INIT_FAIL;
+		}
+	}
+//  else
+//      memcpy(cartridge2 + load_offset, image.get_software_region("rom"), filesize);
+
+	if (filesize < 0x010000) { memcpy(cartridge2 + 0x008000, cartridge2, 0x008000); } /* ->64KB */
+	if (filesize < 0x020000) { memcpy(cartridge2 + 0x010000, cartridge2, 0x010000); } /* ->128KB */
+	if (filesize < 0x040000) { memcpy(cartridge2 + 0x020000, cartridge2, 0x020000); } /* ->256KB */
+	if (filesize < 0x080000) { memcpy(cartridge2 + 0x040000, cartridge2, 0x040000); } /* ->512KB */
+	if (filesize < 0x100000) { memcpy(cartridge2 + 0x080000, cartridge2, 0x080000); } /* ->1MB */
+	if (filesize < 0x1c0000) { memcpy(cartridge2 + 0x100000, cartridge2, 0x100000); } /* -> >=1.8MB */
 	return IMAGE_INIT_PASS;
 }
 

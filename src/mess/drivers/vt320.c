@@ -62,7 +62,7 @@ static VIDEO_UPDATE( vt320 )
 }
 
 
-static MACHINE_DRIVER_START( vt320 )
+static MACHINE_CONFIG_START( vt320, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", I8051, XTAL_16MHz)
     MDRV_CPU_PROGRAM_MAP(vt320_mem)
@@ -86,7 +86,7 @@ static MACHINE_DRIVER_START( vt320 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( vt320 )
@@ -97,8 +97,8 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1987, vt320,  0,       0, 	vt320,	vt320,	 0, 	    "DEC",   "VT320",		GAME_NOT_WORKING | GAME_NO_SOUND)
-//COMP( 1989?, vt330,  0,       0,  vt320,  vt320,   0,         "DEC",   "VT330",      GAME_NOT_WORKING)
-//COMP( 1989?, vt340,  0,       0,  vt320,  vt320,   0,         "DEC",   "VT340",      GAME_NOT_WORKING)
-//COMP( 1990?, vt340p,  0,      0,  vt320,  vt320,   0,         "DEC",   "VT340+",     GAME_NOT_WORKING)
+COMP( 1987, vt320,  0,       0, 	vt320,	vt320,	 0, 	    "Digital Equipment Corporation",   "VT320",		GAME_NOT_WORKING | GAME_NO_SOUND)
+//COMP( 1989?, vt330,  0,       0,  vt320,  vt320,   0,         "Digital Equipment Corporation",   "VT330",      GAME_NOT_WORKING)
+//COMP( 1989?, vt340,  0,       0,  vt320,  vt320,   0,         "Digital Equipment Corporation",   "VT340",      GAME_NOT_WORKING)
+//COMP( 1990?, vt340p,  0,      0,  vt320,  vt320,   0,         "Digital Equipment Corporation",   "VT340+",     GAME_NOT_WORKING)
 

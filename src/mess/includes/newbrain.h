@@ -38,12 +38,11 @@
 #define NEWBRAIN_VIDEO_UCR				0x08
 #define NEWBRAIN_VIDEO_80L				0x40
 
-class newbrain_state
+class newbrain_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, newbrain_state(machine)); }
-
-	newbrain_state(running_machine &machine) { }
+	newbrain_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* processor state */
 	int pwrup;				/* power up */
@@ -107,6 +106,6 @@ public:
 
 /* ---------- defined in video/newbrain.c ---------- */
 
-MACHINE_DRIVER_EXTERN( newbrain_video );
+MACHINE_CONFIG_EXTERN( newbrain_video );
 
 #endif

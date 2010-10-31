@@ -41,12 +41,11 @@ static void draw_char(running_machine *machine, UINT8 x, UINT8 y, UINT8 char_pos
 static void draw_point(running_machine *machine, UINT8 x, UINT8 y, UINT8 color);
 static void draw_udk(running_machine *machine);
 
-class t6834_state
+class t6834_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, t6834_state(machine)); }
-
-	t6834_state(running_machine &machine) { }
+	t6834_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* General */
 	UINT8 *ram;
@@ -113,7 +112,7 @@ static void t6834_cmd (running_machine *machine, UINT8 cmd)
 {
 	UINT16 address;
 	UINT8 p1, p2, p3, p4, i;
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	switch (cmd)
 	{
@@ -500,7 +499,7 @@ static void t6834_cmd (running_machine *machine, UINT8 cmd)
 
 static void receive_from_t6834 (running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	state->regs_r[0]  = 0x40;
 	state->regs_r[1]  = state->out_data[state->out_pos];
@@ -510,7 +509,7 @@ static void receive_from_t6834 (running_machine *machine)
 
 static void ack_from_t6834 (running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	state->out_pos++;
 	state->regs_r[2] &= 0xfe;
@@ -524,7 +523,7 @@ static void ack_from_t6834 (running_machine *machine)
 
 static void send_to_t6834 (running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	if (!state->in_size)
 	{
@@ -597,7 +596,7 @@ static void send_to_t6834 (running_machine *machine)
 ****************************************************/
 static void send_to_printer(running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 	UINT16 char_pos = 0;
 	UINT16 text_color = 0;
 	UINT16 text_size = 1;
@@ -660,7 +659,7 @@ static void send_to_printer(running_machine *machine)
 
 static void keyboard_scan(running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8"};
 	UINT8 row, col, val, kb_table = 0;
 	UINT16 f_ptr = 0;
@@ -767,7 +766,7 @@ static void keyboard_scan(running_machine *machine)
 
 static void irq_exec(running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	if (state->kb_size)
 	{
@@ -777,7 +776,7 @@ static void irq_exec(running_machine *machine)
 		state->kb_size--;
 		state->regs_r[2] |= 0x01;
 		cputag_set_input_line(machine, "maincpu", NSC800_RSTA, ASSERT_LINE);
-		timer_adjust_oneshot(state->irq_clear, cputag_clocks_to_attotime(machine, "maincpu", 500), 0);
+		timer_adjust_oneshot(state->irq_clear, machine->device<cpu_device>("maincpu")->cycles_to_attotime(500), 0);
 		return;
 	}
 	else if (state->kb_brk)
@@ -787,7 +786,7 @@ static void irq_exec(running_machine *machine)
 		state->regs_r[2] |= 0x01;
 		state->kb_brk = 0;
 		cputag_set_input_line(machine, "maincpu", NSC800_RSTA, ASSERT_LINE );
-		timer_adjust_oneshot(state->irq_clear, cputag_clocks_to_attotime(machine, "maincpu", 500), 0);
+		timer_adjust_oneshot(state->irq_clear, machine->device<cpu_device>("maincpu")->cycles_to_attotime(500), 0);
 		return;
 	}
 	else if ( state->z80_irq&1 )
@@ -795,7 +794,7 @@ static void irq_exec(running_machine *machine)
 		receive_from_t6834 (machine);
 		state->z80_irq &= ~1;
 		cputag_set_input_line(machine, "maincpu", NSC800_RSTA, ASSERT_LINE);
-		timer_adjust_oneshot(state->irq_clear, cputag_clocks_to_attotime(machine, "maincpu", 500), 0);
+		timer_adjust_oneshot(state->irq_clear, machine->device<cpu_device>("maincpu")->cycles_to_attotime(500), 0);
 		return;
 	}
 }
@@ -807,7 +806,7 @@ static void irq_exec(running_machine *machine)
 
 static void draw_char(running_machine *machine, UINT8 x, UINT8 y, UINT8 char_pos)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 	UINT8 cl;
 
 	if(x < 20 && y < 4)
@@ -825,7 +824,7 @@ static void draw_char(running_machine *machine, UINT8 x, UINT8 y, UINT8 char_pos
 
 static void draw_point(running_machine *machine, UINT8 x, UINT8 y, UINT8 color)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 	if((x) < 120 && (y) < 32)
 		state->lcd_map[y][x] = color;
 }
@@ -833,7 +832,7 @@ static void draw_point(running_machine *machine, UINT8 x, UINT8 y, UINT8 color)
 
 static void draw_udk(running_machine *machine)
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 	UINT8 i, x, j;
 
 	for(i = 0, x = 0; i < 5; i++)
@@ -856,7 +855,7 @@ static PALETTE_INIT( x07 )
 
 static VIDEO_UPDATE( x07 )
 {
-	t6834_state *state = (t6834_state *)screen->machine->driver_data;
+	t6834_state *state = screen->machine->driver_data<t6834_state>();
 	static UINT8 cursor_blink = 0;
 
 	cursor_blink++;
@@ -906,7 +905,7 @@ static VIDEO_UPDATE( x07 )
 
 static READ8_HANDLER( x07_IO_r )
 {
-	t6834_state *state = (t6834_state *)space->machine->driver_data;
+	t6834_state *state = space->machine->driver_data<t6834_state>();
 	UINT32 val = 0xff;
 
 	switch(offset)
@@ -956,7 +955,7 @@ static READ8_HANDLER( x07_IO_r )
 
 static WRITE8_HANDLER( x07_IO_w )
 {
-	t6834_state *state = (t6834_state *)space->machine->driver_data;
+	t6834_state *state = space->machine->driver_data<t6834_state>();
 
 	switch(offset)
 	{
@@ -1113,7 +1112,7 @@ INPUT_PORTS_END
 
 static NVRAM_HANDLER( x07 )
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	if (read_or_write)
 	{
@@ -1154,7 +1153,7 @@ static TIMER_CALLBACK( beep_stop )
 
 static TIMER_CALLBACK( keyboard_clear )
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	state->kb_wait = 0;
 }
@@ -1182,7 +1181,7 @@ GFXDECODE_END
 
 static MACHINE_START( x07 )
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	state->irq_clear = timer_alloc(machine, irq_clear, 0);
 	state->beep_clear = timer_alloc(machine, beep_stop, 0);
@@ -1236,7 +1235,7 @@ static MACHINE_START( x07 )
 
 static MACHINE_RESET( x07 )
 {
-	t6834_state *state = (t6834_state *)machine->driver_data;
+	t6834_state *state = machine->driver_data<t6834_state>();
 
 	cpu_set_reg(machine->device("maincpu"), Z80_PC, 0xc3c3);
 
@@ -1284,9 +1283,7 @@ static MACHINE_RESET( x07 )
 	state->regs_r[2] = input_port_read(machine, "CARDBATTERY");
 }
 
-static MACHINE_DRIVER_START( x07 )
-
-	MDRV_DRIVER_DATA(t6834_state)
+static MACHINE_CONFIG_START( x07, t6834_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", NSC800, XTAL_15_36MHz / 4)
@@ -1321,7 +1318,7 @@ static MACHINE_DRIVER_START( x07 )
 
 	MDRV_NVRAM_HANDLER(x07)
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( x07 )

@@ -43,6 +43,7 @@
     - tandy200 UART8251
     - tandy200 RTC alarm
     - tandy200 TCM5089 sound
+	- tandy200 LCDC has only 8K of video RAM
     - international keyboard option ROMs
 
 */
@@ -104,16 +105,16 @@ static READ8_HANDLER( pc8201_bank_r )
 
     */
 
-	kc85_state *state = (kc85_state *)space->machine->driver_data;
+	kc85_state *state = space->machine->driver_data<kc85_state>();
 
 	return (state->iosel << 5) | state->bank;
 }
 
 static void pc8201_bankswitch(running_machine *machine, UINT8 data)
 {
-	kc85_state *state = (kc85_state *)machine->driver_data;
+	kc85_state *state = machine->driver_data<kc85_state>();
 
-	const address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
 
 	int rom_bank = data & 0x03;
 	int ram_bank = (data >> 2) & 0x03;
@@ -207,7 +208,7 @@ static WRITE8_HANDLER( pc8201_ctrl_w )
 
     */
 
-	kc85_state *state = (kc85_state *)space->machine->driver_data;
+	kc85_state *state = space->machine->driver_data<kc85_state>();
 
 	/* cassette motor */
 	cassette_change_state(state->cassette, BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
@@ -239,7 +240,7 @@ static WRITE8_HANDLER( uart_ctrl_w )
 
     */
 #if 0
-    kc85_state *state = (kc85_state *)space->machine->driver_data;
+    kc85_state *state = space->machine->driver_data<kc85_state>();
 
     im6402_sbs_w(state->im6402, BIT(data, 0));
     im6402_epe_w(state->im6402, BIT(data, 1));
@@ -266,7 +267,7 @@ static READ8_HANDLER( uart_status_r )
 
     */
 #if 0
-    kc85_state *state = (kc85_state *)space->machine->driver_data;
+    kc85_state *state = space->machine->driver_data<kc85_state>();
 
     UINT8 data = 0;
 
@@ -301,7 +302,7 @@ static READ8_HANDLER( pc8201_uart_status_r )
 
     */
 #if 0
-    kc85_state *state = (kc85_state *)space->machine->driver_data;
+    kc85_state *state = space->machine->driver_data<kc85_state>();
 
     UINT8 data = 0;
 
@@ -336,7 +337,7 @@ static WRITE8_HANDLER( modem_w )
 
     */
 #if 0
-    kc85_state *state = (kc85_state *)space->machine->driver_data;
+    kc85_state *state = space->machine->driver_data<kc85_state>();
 
     mc14412_en_w(state->mc14412, BIT(data, 1));
 #endif
@@ -359,7 +360,7 @@ static WRITE8_HANDLER( kc85_ctrl_w )
 
     */
 
-	kc85_state *state = (kc85_state *)space->machine->driver_data;
+	kc85_state *state = space->machine->driver_data<kc85_state>();
 
 	/* ROM bank selection */
 	memory_set_bank(space->machine, "bank1", BIT(data, 0));
@@ -393,23 +394,23 @@ static UINT8 read_keyboard(running_machine *machine, UINT16 keylatch)
 
 static READ8_HANDLER( keyboard_r )
 {
-	kc85_state *state = (kc85_state *)space->machine->driver_data;
+	kc85_state *state = space->machine->driver_data<kc85_state>();
 
 	return read_keyboard(space->machine, state->keylatch);
 }
 
 static READ8_HANDLER( tandy200_bank_r )
 {
-	tandy200_state *state = (tandy200_state *)space->machine->driver_data;
+	tandy200_state *state = space->machine->driver_data<tandy200_state>();
 
 	return state->bank;
 }
 
 static WRITE8_HANDLER( tandy200_bank_w )
 {
-	tandy200_state *state = (tandy200_state *)space->machine->driver_data;
+	tandy200_state *state = space->machine->driver_data<tandy200_state>();
 
-	const address_space *program = cputag_get_address_space(space->machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(space->machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
 
 	int rom_bank = data & 0x03;
 	int ram_bank = (data >> 2) & 0x03;
@@ -442,7 +443,7 @@ static WRITE8_HANDLER( tandy200_bank_w )
 
 static READ8_HANDLER( tandy200_stbk_r )
 {
-	tandy200_state *state = (tandy200_state *)space->machine->driver_data;
+	tandy200_state *state = space->machine->driver_data<tandy200_state>();
 
 	return read_keyboard(space->machine, state->keylatch);
 }
@@ -464,7 +465,7 @@ static WRITE8_HANDLER( tandy200_stbk_w )
 
     */
 
-	tandy200_state *state = (tandy200_state *)space->machine->driver_data;
+	tandy200_state *state = space->machine->driver_data<tandy200_state>();
 
 	/* printer strobe */
 	centronics_strobe_w(state->centronics, BIT(data, 0));
@@ -475,7 +476,7 @@ static WRITE8_HANDLER( tandy200_stbk_w )
 
 static READ8_HANDLER( lcd_r )
 {
-	kc85_state *state = (kc85_state *)space->machine->driver_data;
+	kc85_state *state = space->machine->driver_data<kc85_state>();
 
 	UINT8 data = 0;
 	int i;
@@ -490,7 +491,7 @@ static READ8_HANDLER( lcd_r )
 
 static WRITE8_HANDLER( lcd_w )
 {
-	kc85_state *state = (kc85_state *)space->machine->driver_data;
+	kc85_state *state = space->machine->driver_data<kc85_state>();
 	int i;
 
 	for (i = 0; i < 10; i++)
@@ -526,7 +527,7 @@ static ADDRESS_MAP_START( kc85_io, ADDRESS_SPACE_IO, 8 )
 //  AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional I/O controller unit
 //  AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) optional answering telephone unit
 //  AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) optional modem
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE_MODERN(I8155_TAG, i8155_device, io_r, io_w)
 //  AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(uart_status_r, uart_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(keyboard_r, kc85_ctrl_w)
@@ -539,7 +540,7 @@ static ADDRESS_MAP_START( trsm100_io, ADDRESS_SPACE_IO, 8 )
 //  AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional I/O controller unit
 //  AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) optional answering telephone unit
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_WRITE(modem_w)
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE_MODERN(I8155_TAG, i8155_device, io_r, io_w)
 //  AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(uart_status_r, uart_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(keyboard_r, kc85_ctrl_w)
@@ -552,7 +553,7 @@ static ADDRESS_MAP_START( pc8201_io, ADDRESS_SPACE_IO, 8 )
 //  AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional 128K ROM cartridge
 	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) AM_WRITE(pc8201_ctrl_w)
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_READWRITE(pc8201_bank_r, pc8201_bank_w)
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w )
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE_MODERN(I8155_TAG, i8155_device, io_r, io_w)
 //  AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(pc8201_uart_status_r, uart_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READ(keyboard_r)
@@ -563,13 +564,20 @@ static ADDRESS_MAP_START( tandy200_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x90, 0x9f) AM_DEVREADWRITE(RP5C01A_TAG, rp5c01a_r, rp5c01a_w)
 //  AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_DEVWRITE(TCM5089_TAG, tcm5089_w)
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE_MODERN(I8155_TAG, i8155_device, io_r, io_w)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0e) AM_DEVREADWRITE(MSM8251_TAG, msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xc1, 0xc1) AM_MIRROR(0x0e) AM_DEVREADWRITE(MSM8251_TAG, msm8251_status_r, msm8251_control_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(tandy200_bank_r, tandy200_bank_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(tandy200_stbk_r, tandy200_stbk_w)
-	AM_RANGE(0xf0, 0xf1) AM_MIRROR(0x0e) AM_DEVREADWRITE(HD61830_TAG, hd61830_r, hd61830_w)
+	AM_RANGE(0xf0, 0xf0) AM_MIRROR(0x0e) AM_DEVREADWRITE_MODERN(HD61830_TAG, hd61830_device, data_r, data_w)
+	AM_RANGE(0xf1, 0xf1) AM_MIRROR(0x0e) AM_DEVREADWRITE_MODERN(HD61830_TAG, hd61830_device, status_r, control_w)
 ADDRESS_MAP_END
+/*
+static ADDRESS_MAP_START( tandy200_lcdc, 0, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
+	AM_RANGE(0x0000, 0x1fff) AM_RAM
+ADDRESS_MAP_END
+*/
 
 /* Input Ports */
 
@@ -843,7 +851,7 @@ static READ8_DEVICE_HANDLER( kc85_8155_port_c_r )
 
     */
 
-	kc85_state *state = (kc85_state *)device->machine->driver_data;
+	kc85_state *state = device->machine->driver_data<kc85_state>();
 
 	UINT8 data = 0;
 
@@ -871,7 +879,7 @@ static WRITE8_DEVICE_HANDLER( kc85_8155_port_a_w )
 
     */
 
-	kc85_state *state = (kc85_state *)device->machine->driver_data;
+	kc85_state *state = device->machine->driver_data<kc85_state>();
 
 	/* keyboard */
 	state->keylatch = (state->keylatch & 0x100) | data;
@@ -911,7 +919,7 @@ static WRITE8_DEVICE_HANDLER( kc85_8155_port_b_w )
 
     */
 
-	kc85_state *state = (kc85_state *)device->machine->driver_data;
+	kc85_state *state = device->machine->driver_data<kc85_state>();
 
 	/* keyboard */
 	state->keylatch = (BIT(data, 0) << 8) | (state->keylatch & 0xff);
@@ -929,7 +937,7 @@ static WRITE8_DEVICE_HANDLER( kc85_8155_port_b_w )
 
 static WRITE_LINE_DEVICE_HANDLER( kc85_8155_to_w )
 {
-	kc85_state *driver_state = (kc85_state *)device->machine->driver_data;
+	kc85_state *driver_state = device->machine->driver_data<kc85_state>();
 
 	if (!driver_state->buzzer && driver_state->bell)
 	{
@@ -940,10 +948,10 @@ static WRITE_LINE_DEVICE_HANDLER( kc85_8155_to_w )
 static I8155_INTERFACE( kc85_8155_intf )
 {
 	DEVCB_NULL,								/* port A read */
-	DEVCB_NULL,								/* port B read */
-	DEVCB_HANDLER(kc85_8155_port_c_r),		/* port C read */
 	DEVCB_HANDLER(kc85_8155_port_a_w),		/* port A write */
+	DEVCB_NULL,								/* port B read */
 	DEVCB_HANDLER(kc85_8155_port_b_w),		/* port B write */
+	DEVCB_HANDLER(kc85_8155_port_c_r),		/* port C read */
 	DEVCB_NULL,								/* port C write */
 	DEVCB_LINE(kc85_8155_to_w)				/* timer output */
 };
@@ -963,7 +971,7 @@ static READ8_DEVICE_HANDLER( pc8201_8155_port_c_r )
 
     */
 
-	kc85_state *state = (kc85_state *)device->machine->driver_data;
+	kc85_state *state = device->machine->driver_data<kc85_state>();
 
 	UINT8 data = 0;
 
@@ -991,7 +999,7 @@ static WRITE8_DEVICE_HANDLER( pc8201_8155_port_b_w )
 
     */
 
-	kc85_state *state = (kc85_state *)device->machine->driver_data;
+	kc85_state *state = device->machine->driver_data<kc85_state>();
 
 	/* keyboard */
 	state->keylatch = (BIT(data, 0) << 8) | (state->keylatch & 0xff);
@@ -1010,10 +1018,10 @@ static WRITE8_DEVICE_HANDLER( pc8201_8155_port_b_w )
 static I8155_INTERFACE( pc8201_8155_intf )
 {
 	DEVCB_NULL,								/* port A read */
-	DEVCB_NULL,								/* port B read */
-	DEVCB_HANDLER(pc8201_8155_port_c_r),	/* port C read */
 	DEVCB_HANDLER(kc85_8155_port_a_w),		/* port A write */
+	DEVCB_NULL,								/* port B read */
 	DEVCB_HANDLER(pc8201_8155_port_b_w),	/* port B write */
+	DEVCB_HANDLER(pc8201_8155_port_c_r),	/* port C read */
 	DEVCB_NULL,								/* port C write */
 	DEVCB_LINE(kc85_8155_to_w)				/* timer output */
 };
@@ -1033,7 +1041,7 @@ static READ8_DEVICE_HANDLER( tandy200_8155_port_c_r )
 
     */
 
-	tandy200_state *state = (tandy200_state *)device->machine->driver_data;
+	tandy200_state *state = device->machine->driver_data<tandy200_state>();
 
 	UINT8 data = 0x01;
 
@@ -1060,7 +1068,7 @@ static WRITE8_DEVICE_HANDLER( tandy200_8155_port_a_w )
 
     */
 
-	tandy200_state *state = (tandy200_state *)device->machine->driver_data;
+	tandy200_state *state = device->machine->driver_data<tandy200_state>();
 
 	centronics_data_w(state->centronics, 0, data);
 
@@ -1084,7 +1092,7 @@ static WRITE8_DEVICE_HANDLER( tandy200_8155_port_b_w )
 
     */
 
-	tandy200_state *state = (tandy200_state *)device->machine->driver_data;
+	tandy200_state *state = device->machine->driver_data<tandy200_state>();
 
 	/* keyboard */
 	state->keylatch = (BIT(data, 0) << 8) | (state->keylatch & 0xff);
@@ -1098,7 +1106,7 @@ static WRITE8_DEVICE_HANDLER( tandy200_8155_port_b_w )
 
 static WRITE_LINE_DEVICE_HANDLER( tandy200_8155_to_w )
 {
-	tandy200_state *driver_state = (tandy200_state *)device->machine->driver_data;
+	tandy200_state *driver_state = device->machine->driver_data<tandy200_state>();
 
 	if (!driver_state->buzzer && driver_state->bell)
 	{
@@ -1109,10 +1117,10 @@ static WRITE_LINE_DEVICE_HANDLER( tandy200_8155_to_w )
 static I8155_INTERFACE( tandy200_8155_intf )
 {
 	DEVCB_NULL,								/* port A read */
-	DEVCB_NULL,								/* port B read */
-	DEVCB_HANDLER(tandy200_8155_port_c_r),	/* port C read */
 	DEVCB_HANDLER(tandy200_8155_port_a_w),	/* port A write */
+	DEVCB_NULL,								/* port B read */
 	DEVCB_HANDLER(tandy200_8155_port_b_w),	/* port B write */
+	DEVCB_HANDLER(tandy200_8155_port_c_r),	/* port C read */
 	DEVCB_NULL,								/* port C write */
 	DEVCB_LINE(tandy200_8155_to_w)			/* timer output */
 };
@@ -1129,9 +1137,9 @@ static msm8251_interface tandy200_msm8251_interface = {
 
 static MACHINE_START( kc85 )
 {
-	kc85_state *state = (kc85_state *)machine->driver_data;
+	kc85_state *state = machine->driver_data<kc85_state>();
 
-	const address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
 	state->upd1990a = machine->device(UPD1990A_TAG);
@@ -1175,7 +1183,7 @@ static MACHINE_START( kc85 )
 
 static MACHINE_START( pc8201 )
 {
-	kc85_state *state = (kc85_state *)machine->driver_data;
+	kc85_state *state = machine->driver_data<kc85_state>();
 
 	/* find devices */
 	state->upd1990a = machine->device(UPD1990A_TAG);
@@ -1210,9 +1218,9 @@ static MACHINE_START( pc8201 )
 
 static MACHINE_START( trsm100 )
 {
-	kc85_state *state = (kc85_state *)machine->driver_data;
+	kc85_state *state = machine->driver_data<kc85_state>();
 
-	const address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
 	state->upd1990a = machine->device(UPD1990A_TAG);
@@ -1266,7 +1274,7 @@ static MACHINE_START( trsm100 )
 
 static MACHINE_START( tandy200 )
 {
-	tandy200_state *state = (tandy200_state *)machine->driver_data;
+	tandy200_state *state = machine->driver_data<tandy200_state>();
 
 	/* find devices */
 	state->centronics = machine->device(CENTRONICS_TAG);
@@ -1319,16 +1327,14 @@ static I8085_CONFIG( kc85_i8085_config )
 
 static TIMER_DEVICE_CALLBACK( tandy200_tp_tick )
 {
-	tandy200_state *state = (tandy200_state *)timer.machine->driver_data;
+	tandy200_state *state = timer.machine->driver_data<tandy200_state>();
 
 	cputag_set_input_line(timer.machine, I8085_TAG, I8085_RST75_LINE, state->tp);
 
 	state->tp = !state->tp;
 }
 
-static MACHINE_DRIVER_START( kc85 )
-	MDRV_DRIVER_DATA(kc85_state)
-
+static MACHINE_CONFIG_START( kc85, kc85_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(I8085_TAG, I8085A, XTAL_4_9152MHz)
 	MDRV_CPU_PROGRAM_MAP(kc85_mem)
@@ -1338,11 +1344,11 @@ static MACHINE_DRIVER_START( kc85 )
 	MDRV_MACHINE_START( kc85 )
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(kc85_video)
+	MDRV_FRAGMENT_ADD(kc85_video)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -1364,11 +1370,9 @@ static MACHINE_DRIVER_START( kc85 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( pc8201 )
-	MDRV_DRIVER_DATA(kc85_state)
-
+static MACHINE_CONFIG_START( pc8201, kc85_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(I8085_TAG, I8085A, XTAL_4_9152MHz)
 	MDRV_CPU_PROGRAM_MAP(pc8201_mem)
@@ -1378,11 +1382,11 @@ static MACHINE_DRIVER_START( pc8201 )
 	MDRV_MACHINE_START(pc8201)
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(kc85_video)
+	MDRV_FRAGMENT_ADD(kc85_video)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -1404,11 +1408,9 @@ static MACHINE_DRIVER_START( pc8201 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K,64K,96K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( trsm100 )
-	MDRV_IMPORT_FROM(kc85)
-
+static MACHINE_CONFIG_DERIVED( trsm100, kc85 )
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY(I8085_TAG)
 	MDRV_CPU_IO_MAP(trsm100_io)
@@ -1422,20 +1424,16 @@ static MACHINE_DRIVER_START( trsm100 )
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
 	MDRV_RAM_EXTRA_OPTIONS("16K,24K,32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( tandy102 )
-	MDRV_IMPORT_FROM(trsm100)
-
+static MACHINE_CONFIG_DERIVED( tandy102, trsm100 )
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("24K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( tandy200 )
-	MDRV_DRIVER_DATA(tandy200_state)
-
+static MACHINE_CONFIG_START( tandy200, tandy200_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(I8085_TAG, I8085A, XTAL_4_9152MHz)
 	MDRV_CPU_PROGRAM_MAP(tandy200_mem)
@@ -1445,14 +1443,14 @@ static MACHINE_DRIVER_START( tandy200 )
 	MDRV_MACHINE_START( tandy200 )
 
 	/* video hardware */
-	MDRV_IMPORT_FROM(tandy200_video)
+	MDRV_FRAGMENT_ADD(tandy200_video)
 
 	/* TP timer */
 	MDRV_TIMER_ADD_PERIODIC("tp", tandy200_tp_tick, HZ(XTAL_4_9152MHz/2/8192))
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 //  MDRV_TCM5089_ADD(TCM5089_TAG, XTAL_3_579545MHz)
 
@@ -1477,7 +1475,7 @@ static MACHINE_DRIVER_START( tandy200 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("24K")
 	MDRV_RAM_EXTRA_OPTIONS("48K,72K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 
@@ -1489,9 +1487,22 @@ ROM_START( kc85 )
 	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
+// This BIOS is 99% bad: it contains no Japanese keyboard layout and if you enter the following BASIC program
+// 10 FOR A=0 TO 255
+// 20 PRINT CHR$(A);
+// 30 NEXT A
+// there are no Japanese characters printed out (contrary to what can be seen at Takeda's emu page)
+ROM_START( pc8201 )
+	ROM_REGION( 0x10000, I8085_TAG, 0 )
+	ROM_LOAD( "ipl.rom", 0x0000, 0x8000, BAD_DUMP CRC(3725d32a) SHA1(5b63b520e667b202b27c630cda821beae819e914) )
+	
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
 ROM_START( pc8201a )
 	ROM_REGION( 0x10000, I8085_TAG, 0 )
-	ROM_LOAD( "pc8201rom.rom0", 0x0000, 0x8000, CRC(30555035) SHA1(96f33ff235db3028bf5296052acedbc94437c596) )
+	ROM_LOAD( "pc8201rom.rom", 0x0000, 0x8000, CRC(30555035) SHA1(96f33ff235db3028bf5296052acedbc94437c596) )
 
 	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
 	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
@@ -1548,7 +1559,7 @@ COMP( 1983, m10,		kc85,	0,		kc85,		olivm10,	0,		"Olivetti",				"M-10", 0 )
 //COMP( 1983, m10m,     kc85,   0,      kc85,       olivm10,    0,      "Olivetti",             "M-10 Modem (US)", 0 )
 COMP( 1983, trsm100,	0,		0,		trsm100,	kc85,		0,		"Tandy Radio Shack",	"TRS-80 Model 100", 0 )
 COMP( 1986, tandy102,	trsm100,0,		tandy102,	kc85,		0,		"Tandy Radio Shack",	"Tandy 102", 0 )
-//COMP( 1983, npc8201,  0,      0,      pc8201,     pc8201a,    0,      "Nippon Electronic Company",                  "PC-8201 (Japan)", 0 )
-COMP( 1983, pc8201a,	0,		0,		pc8201,		pc8201a,	0,		"Nippon Electronic Company",					"PC-8201A", 0 )
+COMP( 1983, pc8201,     0,      0,      pc8201,     pc8201a,    0,      "Nippon Electronic Company",                  "PC-8201 (Japan)", 0 )
+COMP( 1983, pc8201a,	pc8201,	0,		pc8201,		pc8201a,	0,		"Nippon Electronic Company",					"PC-8201A", 0 )
 //COMP( 1987, npc8300,  npc8201,0,      pc8300,     pc8300,     0,      "Nippon Electronic Company",                  "PC-8300", 0 )
 COMP( 1984, tandy200,	0,		0,		tandy200,	kc85,		0,		"Tandy Radio Shack",	"Tandy 200", 0 )

@@ -73,7 +73,7 @@ static void bankswitch(running_machine *machine, UINT8 data)
 
     */
 
-	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	running_device *messram = machine->device("messram");
 
 //  UINT8 cbm_mode = data >> 7 & 0x01;
@@ -115,7 +115,7 @@ WRITE8_HANDLER( mtx_bankswitch_w )
 
 READ8_DEVICE_HANDLER( mtx_sound_strobe_r )
 {
-	mtx_state *state = (mtx_state *)device->machine->driver_data;
+	mtx_state *state = device->machine->driver_data<mtx_state>();
 
 	sn76496_w(device, 0, state->sound_latch);
 
@@ -128,7 +128,7 @@ READ8_DEVICE_HANDLER( mtx_sound_strobe_r )
 
 WRITE8_HANDLER( mtx_sound_latch_w )
 {
-	mtx_state *state = (mtx_state *)space->machine->driver_data;
+	mtx_state *state = space->machine->driver_data<mtx_state>();
 
 	state->sound_latch = data;
 }
@@ -189,7 +189,7 @@ READ8_DEVICE_HANDLER( mtx_prt_r )
 
 WRITE8_HANDLER( mtx_sense_w )
 {
-	mtx_state *state = (mtx_state *)space->machine->driver_data;
+	mtx_state *state = space->machine->driver_data<mtx_state>();
 
 	state->key_sense = data;
 }
@@ -200,7 +200,7 @@ WRITE8_HANDLER( mtx_sense_w )
 
 READ8_HANDLER( mtx_key_lo_r )
 {
-	mtx_state *state = (mtx_state *)space->machine->driver_data;
+	mtx_state *state = space->machine->driver_data<mtx_state>();
 
 	UINT8 data = 0xff;
 
@@ -222,7 +222,7 @@ READ8_HANDLER( mtx_key_lo_r )
 
 READ8_HANDLER( mtx_key_hi_r )
 {
-	mtx_state *state = (mtx_state *)space->machine->driver_data;
+	mtx_state *state = space->machine->driver_data<mtx_state>();
 
 	UINT8 data = input_port_read(space->machine, "country_code");
 
@@ -338,7 +338,7 @@ WRITE8_HANDLER( hrx_attr_w )
 
 static void mtx_tms9929a_interrupt(running_machine *machine, int data)
 {
-	mtx_state *state = (mtx_state *)machine->driver_data;
+	mtx_state *state = machine->driver_data<mtx_state>();
 
 	z80ctc_trg0_w(state->z80ctc, data ? 0 : 1);
 }
@@ -362,7 +362,7 @@ INTERRUPT_GEN( mtx_interrupt )
 
 SNAPSHOT_LOAD( mtx )
 {
-	const address_space *program = cputag_get_address_space(image.device().machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(image.device().machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	UINT8 header[18];
 	UINT16 addr;
@@ -374,9 +374,9 @@ SNAPSHOT_LOAD( mtx )
 	{
 		/* long header */
 		addr = pick_integer_le(header, 16, 2);
-		void *ptr = memory_get_write_ptr(program, addr);
+		void *ptr = program->get_write_ptr(addr);
 		image.fread( ptr, 599);
-		ptr = memory_get_write_ptr(program, 0xc000);
+		ptr = program->get_write_ptr(0xc000);
 		image.fread( ptr, snapshot_size - 599 - 18);
 	}
 	else
@@ -384,9 +384,9 @@ SNAPSHOT_LOAD( mtx )
 		/* short header */
 		addr = pick_integer_le(header, 0, 2);
 		image.fseek(4, SEEK_SET);
-		void *ptr = memory_get_write_ptr(program, addr);
+		void *ptr = program->get_write_ptr(addr);
 		image.fread( ptr, 599);
-		ptr = memory_get_write_ptr(program, 0xc000);
+		ptr = program->get_write_ptr(0xc000);
 		image.fread( ptr, snapshot_size - 599 - 4);
 	}
 
@@ -403,7 +403,7 @@ SNAPSHOT_LOAD( mtx )
 
 MACHINE_START( mtx512 )
 {
-	mtx_state *state = (mtx_state *)machine->driver_data;
+	mtx_state *state = machine->driver_data<mtx_state>();
 	running_device *messram = machine->device("messram");
 
 	/* find devices */

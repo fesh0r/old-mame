@@ -9,12 +9,11 @@
 #define CASSETTE_TAG	"cassette"
 #define SPEAKER_TAG		"speaker"
 
-class mpf1_state
+class mpf1_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mpf1_state(machine)); }
-
-	mpf1_state(running_machine &machine) { }
+	mpf1_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	int _break;
 	int m1;

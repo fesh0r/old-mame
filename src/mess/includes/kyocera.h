@@ -1,6 +1,8 @@
 #ifndef __KYOCERA__
 #define __KYOCERA__
 
+#include "video/hd61830.h"
+
 #define SCREEN_TAG		"screen"
 #define I8085_TAG		"m19"
 #define I8155_TAG		"m25"
@@ -17,13 +19,13 @@
 #define RP5C01A_TAG		"m301"
 #define TCM5089_TAG		"m11"
 #define MSM8251_TAG		"m20"
+#define HD61830_TAG		"m18"
 
-class kc85_state
+class kc85_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, kc85_state(machine)); }
-
-	kc85_state(running_machine &machine) { }
+	kc85_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* memory state */
 	UINT8 bank;				/* memory bank selection */
@@ -47,12 +49,11 @@ public:
 	running_device *cassette;
 };
 
-class tandy200_state
+class tandy200_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, tandy200_state(machine)); }
-
-	tandy200_state(running_machine &machine) { }
+	tandy200_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* memory state */
 	UINT8 bank;				/* memory bank selection */
@@ -65,7 +66,7 @@ public:
 	int buzzer;				/* buzzer select */
 	int bell;				/* bell output */
 
-	running_device *hd61830;
+	hd61830_device *hd61830;
 	running_device *im6042;
 	running_device *mc14412;
 	running_device *tcm5089;
@@ -76,7 +77,7 @@ public:
 
 /* ---------- defined in video/kyocera.c ---------- */
 
-MACHINE_DRIVER_EXTERN( kc85_video );
-MACHINE_DRIVER_EXTERN( tandy200_video );
+MACHINE_CONFIG_EXTERN( kc85_video );
+MACHINE_CONFIG_EXTERN( tandy200_video );
 
 #endif

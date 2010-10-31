@@ -188,8 +188,6 @@ hardware.
 #include "super80.lh"
 #include "includes/super80.h"
 
-UINT8 *super80_pcgram;
-
 #define MASTER_CLOCK			(XTAL_12MHz)
 #define PIXEL_CLOCK			(MASTER_CLOCK/2)
 #define HTOTAL				(384)
@@ -228,7 +226,7 @@ static ADDRESS_MAP_START( super80v_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0xbfff) AM_RAM
 	AM_RANGE(0xc000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(super80v_low_r, super80v_low_w) AM_BASE(&super80_pcgram)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(super80v_low_r, super80v_low_w)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(super80v_high_r, super80v_high_w)
 ADDRESS_MAP_END
 
@@ -628,14 +626,14 @@ static const mc6845_interface super80v_crtc = {
 	NULL
 };
 
-static MACHINE_DRIVER_START( super80_cartslot )
+static MACHINE_CONFIG_FRAGMENT( super80_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(super80_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( super80 )
+static MACHINE_CONFIG_START( super80, super80_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(super80_map)
@@ -662,7 +660,7 @@ static MACHINE_DRIVER_START( super80 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* printer */
@@ -675,23 +673,20 @@ static MACHINE_DRIVER_START( super80 )
 	MDRV_CASSETTE_ADD( "cassette", super80_cassette_config )
 
 	/* cartridge */
-	MDRV_IMPORT_FROM(super80_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(super80_cartslot)
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( super80d )
-	MDRV_IMPORT_FROM(super80)
+static MACHINE_CONFIG_DERIVED( super80d, super80 )
 	MDRV_GFXDECODE(super80d)
 	MDRV_VIDEO_UPDATE(super80d)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( super80e )
-	MDRV_IMPORT_FROM(super80)
+static MACHINE_CONFIG_DERIVED( super80e, super80 )
 	MDRV_GFXDECODE(super80e)
 	MDRV_VIDEO_UPDATE(super80e)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( super80m )
-	MDRV_IMPORT_FROM(super80)
+static MACHINE_CONFIG_DERIVED( super80m, super80 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(super80m_map)
 
@@ -700,9 +695,9 @@ static MACHINE_DRIVER_START( super80m )
 	MDRV_PALETTE_INIT(super80m)
 	MDRV_VIDEO_EOF(super80m)
 	MDRV_VIDEO_UPDATE(super80m)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( super80v )
+static MACHINE_CONFIG_START( super80v, super80_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(super80v_map)
@@ -733,7 +728,7 @@ static MACHINE_DRIVER_START( super80v )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* printer */
@@ -746,14 +741,13 @@ static MACHINE_DRIVER_START( super80v )
 	MDRV_CASSETTE_ADD( "cassette", super80_cassette_config )
 
 	/* cartridge */
-	MDRV_IMPORT_FROM(super80_cartslot)
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD(super80_cartslot)
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( super80r )
-	MDRV_IMPORT_FROM(super80v)
+static MACHINE_CONFIG_DERIVED( super80r, super80v )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(super80r_io)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /**************************** ROMS *****************************************************************/
 
@@ -821,7 +815,7 @@ ROM_START( super80m )
 ROM_END
 
 ROM_START( super80r )
-	ROM_REGION( 0x20000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_SYSTEM_BIOS(0, "super80r", "MCE (original)")
 	ROMX_LOAD("super80r.u26", 0xc000, 0x1000, CRC(01bb6406) SHA1(8e275ecf5141b93f86e45ff8a735b965ea3e8d44), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "super80s", "MCE (upgraded)")
@@ -830,20 +824,25 @@ ROM_START( super80r )
 	ROM_LOAD("super80.u33",	  0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
 	ROM_LOAD("super80.u42",	  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 	ROM_LOAD("s80hmce.ic24",  0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
+
+	ROM_REGION( 0x1000, "videoram", ROMREGION_ERASEFF )
 ROM_END
 
 ROM_START( super80v )
-	ROM_REGION( 0x20000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("s80-v37v.u26",  0xc000, 0x1000, CRC(01e0c0dd) SHA1(ef66af9c44c651c65a21d5bda939ffa100078c08) )
 	ROM_LOAD("s80-v37.u33",   0xd000, 0x1000, CRC(812ad777) SHA1(04f355bea3470a7d9ea23bb2811f6af7d81dc400) )
 	ROM_LOAD("s80-v37.u42",   0xe000, 0x1000, CRC(e02e736e) SHA1(57b0264c805da99234ab5e8e028fca456851a4f9) )
 	ROM_LOAD("s80hmce.ic24",  0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
+
+	ROM_REGION( 0x1000, "videoram", ROMREGION_ERASEFF )
+	ROM_REGION( 0x1000, "colorram", ROMREGION_ERASEFF )
 ROM_END
 
 /*    YEAR  NAME      PARENT COMPAT MACHINE INPUT     INIT      COMPANY       FULLNAME */
 COMP( 1981, super80,  0,       0, super80,  super80,  super80,  "Dick Smith Electronics","Super-80 (V1.2)" , 0)
 COMP( 1981, super80d, super80, 0, super80d, super80d, super80,  "Dick Smith Electronics","Super-80 (V2.2)" , 0)
-COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  "Dick Smith Electronics","Super-80 (El Graphix 4)" , 0)
-COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  "Dick Smith Electronics","Super-80 (8R0)" , 0)
-COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, "Dick Smith Electronics","Super-80 (with VDUEB)" , 0)
-COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , 0)
+COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  "Dick Smith Electronics","Super-80 (El Graphix 4)" , GAME_UNOFFICIAL)
+COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  "Dick Smith Electronics","Super-80 (8R0)" , GAME_UNOFFICIAL)
+COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, "Dick Smith Electronics","Super-80 (with VDUEB)" , GAME_UNOFFICIAL)
+COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , GAME_UNOFFICIAL)

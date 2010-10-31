@@ -14,6 +14,7 @@
 
 #include "devices/xmodem.h"
 #include "devices/kermit.h"
+#include "machine/nvram.h"
 
 #include "includes/hp48.h"
 
@@ -752,7 +753,7 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 {
 	int i;
 	int nce2_enable = 1;
-	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	hp48_io_addr = 0x100000;
 
@@ -817,7 +818,10 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 		if (hp48_modules[i].data)
 			memory_install_read_bank( space, base, end, 0, mirror, bank );
 		else
-			memory_install_read8_handler( space, base, end, 0, mirror, hp48_modules[i].read );
+		{
+			if (hp48_modules[i].read != NULL)
+				memory_install_read8_handler( space, base, end, 0, mirror, hp48_modules[i].read );
+		}
 
 		if (hp48_modules[i].isnop)
 			memory_nop_write(space, base, end, 0, mirror);
@@ -826,7 +830,10 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 			if (hp48_modules[i].data)
 				memory_install_write_bank( space, base, end, 0, mirror, bank );
 			else
-				memory_install_write8_handler( space, base, end, 0, mirror, hp48_modules[i].write );
+			{
+				if (hp48_modules[i].write != NULL)
+					memory_install_write8_handler( space, base, end, 0, mirror, hp48_modules[i].write );
+			}
 		}
 
 		LOG(( "hp48_apply_modules: module %s configured at %05x-%05x, mirror %05x\n",
@@ -1164,9 +1171,10 @@ static void hp48_machine_start( running_machine *machine, hp48_models model )
 
 	/* internal RAM */
 	ram_size = HP48_GX_MODEL ? (128 * 1024) : (32 * 1024);
-	machine->generic.nvram_size = 2 * ram_size;
-	machine->generic.nvram.u8 = auto_alloc_array(machine, UINT8, machine->generic.nvram_size);
-	ram = machine->generic.nvram.u8;
+		
+	ram = auto_alloc_array(machine, UINT8, 2 * ram_size);
+	machine->device<nvram_device>("nvram")->set_base(ram, 2 * ram_size);	
+	
 
 	/* ROM load */
 	rom_size = HP48_S_SERIES ? (256 * 1024) : (512 * 1024);
@@ -1174,7 +1182,7 @@ static void hp48_machine_start( running_machine *machine, hp48_models model )
 	hp48_decode_nibble( rom, memory_region( machine, "maincpu" ), rom_size );
 
 	/* init state */
-	memset( machine->generic.nvram.u8, 0, machine->generic.nvram_size );
+	memset( ram, 0, 2 * ram_size );
 	memset( hp48_io, 0, sizeof( hp48_io ) );
 	hp48_out = 0;
 	hp48_kdn = 0;
@@ -1233,7 +1241,7 @@ static void hp48_machine_start( running_machine *machine, hp48_models model )
 		state_save_register_item(machine, "globals", NULL, i, hp48_modules[i].mask );
 	}
 	state_save_register_global_array(machine,  hp48_io );
-	state_save_register_global_pointer(machine,  machine->generic.nvram.u8, machine->generic.nvram_size );
+	//state_save_register_global_pointer(machine,  machine->generic.nvram.u8, machine->generic.nvram_size );
 
 	state_save_register_postload( machine, hp48_update_annunciators, NULL );
 	state_save_register_postload( machine, hp48_apply_modules, NULL );

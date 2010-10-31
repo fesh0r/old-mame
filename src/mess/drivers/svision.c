@@ -155,7 +155,7 @@ static WRITE8_HANDLER(svision_w)
 			else
 				delay = 256;
 			timer_enable(svision.timer1, TRUE);
-			timer_reset(svision.timer1, cputag_clocks_to_attotime(space->machine, "maincpu", value * delay));
+			timer_reset(svision.timer1, space->machine->device<cpu_device>("maincpu")->cycles_to_attotime(value * delay));
 			break;
 		case 0x10: case 0x11: case 0x12: case 0x13:
 			svision_soundport_w(space->machine, svision_channel + 0, offset & 3, data);
@@ -247,7 +247,7 @@ static WRITE8_HANDLER(tvlink_w)
 static ADDRESS_MAP_START( svision_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_RAM
 	AM_RANGE( 0x2000, 0x3fff) AM_READWRITE(svision_r, svision_w) AM_BASE(&svision_reg)
-	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE_GENERIC(videoram)
+	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE_MEMBER(svision_state, videoram)
 	AM_RANGE( 0x6000, 0x7fff) AM_NOP
 	AM_RANGE( 0x8000, 0xbfff) AM_ROMBANK("bank1")
 	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK("bank2")
@@ -256,7 +256,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( tvlink_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_RAM
 	AM_RANGE( 0x2000, 0x3fff) AM_READWRITE(tvlink_r, tvlink_w) AM_BASE(&svision_reg)
-	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE_GENERIC(videoram)
+	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE_MEMBER(svision_state, videoram)
 	AM_RANGE( 0x6000, 0x7fff) AM_NOP
 	AM_RANGE( 0x8000, 0xbfff) AM_ROMBANK("bank1")
 	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK("bank2")
@@ -366,8 +366,9 @@ static PALETTE_INIT( svisionp )
 
 static VIDEO_UPDATE( svision )
 {
+	svision_state *state = screen->machine->driver_data<svision_state>();
 	int x, y, i, j=XPOS/4+YPOS*0x30;
-	UINT8 *vram= screen->machine->generic.videoram.u8;
+	UINT8 *videoram = state->videoram;
 
 	if (BANK&8)
 	{
@@ -376,7 +377,7 @@ static VIDEO_UPDATE( svision )
 			UINT16 *line = BITMAP_ADDR16(bitmap, y, 3 - (XPOS & 3));
 			for (x=3-(XPOS&3),i=0; x<160+3 && x<XSIZE+3; x+=4,i++)
 			{
-				UINT8 b=vram[j+i];
+				UINT8 b=videoram[j+i];
 				line[3]=((b>>6)&3)+PALETTE_START;
 				line[2]=((b>>4)&3)+PALETTE_START;
 				line[1]=((b>>2)&3)+PALETTE_START;
@@ -397,8 +398,9 @@ static VIDEO_UPDATE( svision )
 
 static VIDEO_UPDATE( tvlink )
 {
+	svision_state *state = screen->machine->driver_data<svision_state>();
 	int x, y, i, j = XPOS/4+YPOS*0x30;
-	UINT8 *vram = screen->machine->generic.videoram.u8;
+	UINT8 *videoram = state->videoram;
 
 	if (BANK & 8)
 	{
@@ -407,7 +409,7 @@ static VIDEO_UPDATE( tvlink )
 			UINT16 *line = BITMAP_ADDR16(bitmap, y, 3 - (XPOS & 3));
 			for (x = 3 - (XPOS & 3), i = 0; x < 160 + 3 && x < XSIZE + 3; x += 4, i++)
 			{
-				UINT8 b=vram[j+i];
+				UINT8 b=videoram[j+i];
 				line[3]=tvlink.palette[(b>>6)&3];
 				line[2]=tvlink.palette[(b>>4)&3];
 				line[1]=tvlink.palette[(b>>2)&3];
@@ -523,7 +525,7 @@ static MACHINE_RESET( tvlink )
 	tvlink.palette[3] = MAKE24_RGB15(svisionp_palette[(PALETTE_START+3)*3+0], svisionp_palette[(PALETTE_START+3)*3+1], svisionp_palette[(PALETTE_START+3)*3+2]);
 }
 
-static MACHINE_DRIVER_START( svision )
+static MACHINE_CONFIG_START( svision, svision_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M65C02, 4000000)        /* ? stz used! speed? */
 	MDRV_CPU_PROGRAM_MAP(svision_mem)
@@ -558,28 +560,25 @@ static MACHINE_DRIVER_START( svision )
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","svision")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( svisionp )
-	MDRV_IMPORT_FROM( svision )
+static MACHINE_CONFIG_DERIVED( svisionp, svision )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_CLOCK(4430000)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_PALETTE_INIT( svisionp )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( svisionn )
-	MDRV_IMPORT_FROM( svision )
+static MACHINE_CONFIG_DERIVED( svisionn, svision )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_CLOCK(3560000/*?*/)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_PALETTE_INIT( svisionn )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( tvlinkp )
-	MDRV_IMPORT_FROM( svisionp )
+static MACHINE_CONFIG_DERIVED( tvlinkp, svisionp )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(tvlink_mem)
 
@@ -589,7 +588,7 @@ static MACHINE_DRIVER_START( tvlinkp )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_VIDEO_UPDATE( tvlink )
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(svision)
 	ROM_REGION(0x20000, "user1", ROMREGION_ERASE00)

@@ -194,7 +194,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(spc1000)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_install_read_bank(space, 0x0000, 0x7fff, 0, 0, "bank1");
 	memory_install_read_bank(space, 0x8000, 0xffff, 0, 0, "bank3");
@@ -274,7 +274,7 @@ static const mc6847_interface spc1000_mc6847_intf =
 	DEVCB_NULL									// RS (output)
 };
 
-static MACHINE_DRIVER_START( spc1000 )
+static MACHINE_CONFIG_START( spc1000, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
 	MDRV_CPU_PROGRAM_MAP(spc1000_mem)
@@ -309,7 +309,7 @@ static MACHINE_DRIVER_START( spc1000 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( spc1000 )

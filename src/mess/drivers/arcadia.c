@@ -202,7 +202,7 @@ static INPUT_PORTS_START( arcadia )
 /* FIXME: the joystick are analog - the actual definition is merely an hack */
 
 #if 0
-    // shit, auto centering too slow, so only using 5 bits, and scaling at videoside
+    // auto centering too slow, so only using 5 bits, and scaling at videoside
     PORT_START("controller1_joy_x")
     PORT_BIT( 0x1fe,0x10,IPT_AD_STICK_X)
     PORT_SENSITIVITY(1)
@@ -341,7 +341,7 @@ static INPUT_PORTS_START( plldium )
 /* FIXME: the joystick are analog - the actual definition is merely an hack */
 
 #if 0
-    // shit, auto centering too slow, so only using 5 bits, and scaling at videoside
+    // auto centering too slow, so only using 5 bits, and scaling at videoside
     PORT_START("controller1_joy_x")
     PORT_BIT( 0x1fe,0x10,IPT_AD_STICK_X)
     PORT_SENSITIVITY(1)
@@ -531,7 +531,7 @@ static DEVICE_IMAGE_LOAD( arcadia_cart )
 	return IMAGE_INIT_PASS;
 }
 
-static MACHINE_DRIVER_START( arcadia )
+static MACHINE_CONFIG_START( arcadia, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", S2650, 3580000/4)        /* 0.895 MHz */
 	MDRV_CPU_PROGRAM_MAP(arcadia_mem)
@@ -567,7 +567,7 @@ static MACHINE_DRIVER_START( arcadia )
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","arcadia")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(advsnha)
 	ROM_REGION(0x8000,"maincpu", ROMREGION_ERASEFF)
@@ -875,7 +875,7 @@ static DRIVER_INIT( arcadia )
 CONS(1983, advsnha,   arcadia,   0,        arcadia,      arcadia,  arcadia,      "Advision",           "Advision Home Arcade", GAME_IMPERFECT_SOUND )    /* France */
 CONS(1982, bndarc,    arcadia,   0,        arcadia,      arcadia,  arcadia,      "Bandai",             "Arcadia", GAME_IMPERFECT_SOUND )                 /* Japan */
 CONS(1982, arcadia,   0,         0,        arcadia,      arcadia,  arcadia,      "Emerson",            "Arcadia 2001", GAME_IMPERFECT_SOUND )            /* U.S.A. */
-CONS(198?, tccosmos,  arcadia,   0,        arcadia,      arcadia,  arcadia,      "Tele-Computer",      "Cosmos", GAME_IMPERFECT_SOUND )                  /* Spain */
+CONS(198?, tccosmos,  arcadia,   0,        arcadia,      arcadia,  arcadia,      "Mobilar?",           "Tele-Computer Cosmos", GAME_IMPERFECT_SOUND )    /* Spain? I have only found pictures of a German Cosmos ( http://www.pong-picture-page.de/catalog/product_info.php?products_id=2170 ) */
 CONS(1982, dynavisn,  intmpt03,  0,        arcadia,      arcadia,  arcadia,      "Yamagiwa",           "Dynavision", GAME_IMPERFECT_SOUND )              /* Japan */
 CONS(1982, ekusera,   intmpt03,  0,        arcadia,      arcadia,  arcadia,      "P.I.C",              "Ekusera", GAME_IMPERFECT_SOUND )                 /* Japan */
 CONS(1982, hanihac,   arcadia,   0,        arcadia,      arcadia,  arcadia,      "Hanimex",            "Hanimex Home Arcade Centre", GAME_IMPERFECT_SOUND )  /* UK */

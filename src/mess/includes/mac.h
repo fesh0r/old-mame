@@ -22,6 +22,13 @@ typedef enum
 	MCU_STREAMING_WRAMWR
 } mac_streaming_t;
 
+enum
+{
+	RBV_TYPE_RBV = 0,
+	RBV_TYPE_V8,
+	RBV_TYPE_SONORA
+};
+
 /* tells which model is being emulated (set by macxxx_init) */
 typedef enum
 {
@@ -39,12 +46,15 @@ typedef enum
 	MODEL_MAC_IICX,
 	MODEL_MAC_IICI,
 	MODEL_MAC_IISI,
+	MODEL_MAC_IIVX,
+	MODEL_MAC_IIVI,
 	MODEL_MAC_IIFX,
 	MODEL_MAC_SE30,
 
 	MODEL_MAC_LC,		// LC class 68030 machines, generally using a V8 or compatible gate array
 	MODEL_MAC_LC_II,
 	MODEL_MAC_LC_III,
+	MODEL_MAC_LC_III_PLUS,
 	MODEL_MAC_CLASSIC_II,
 	MODEL_MAC_TV,
 	MODEL_MAC_COLOR_CLASSIC,
@@ -83,8 +93,10 @@ typedef enum
 	MODEL_MAC_PB190,
 	MODEL_MAC_PB190cs,
 
-	MODEL_MAC_POWERMAC_6100	// original PowerMac
-} mac_model_t;
+	MODEL_MAC_POWERMAC_6100,	// original-series PowerMacs
+	MODEL_MAC_POWERMAC_7100,
+	MODEL_MAC_POWERMAC_8100
+} model_t;
 
 // video parameters for classic Macs
 #define MAC_H_VIS	(512)
@@ -94,7 +106,6 @@ typedef enum
 
 /*----------- defined in machine/mac.c -----------*/
 
-extern mac_model_t mac_model;
 extern const via6522_interface mac_via6522_intf;
 extern const via6522_interface mac_via6522_2_intf;
 extern const via6522_interface mac_via6522_adb_intf;
@@ -108,6 +119,7 @@ DRIVER_INIT(mac512ke);
 DRIVER_INIT(macplus);
 DRIVER_INIT(macse);
 DRIVER_INIT(macclassic);
+DRIVER_INIT(maclrcclassic);
 DRIVER_INIT(maclc);
 DRIVER_INIT(macii);
 DRIVER_INIT(maciifdhd);
@@ -146,6 +158,12 @@ void mac_fdc_set_enable_lines(running_device *device, int enable_mask);
 
 void mac_nubus_slot_interrupt(running_machine *machine, UINT8 slot, UINT32 state);
 
+void mac_scsi_irq(running_machine *machine, int state);
+
+void mac_asc_irq(running_device *device, int state);
+
+void mac_set_via2_interrupt(running_machine *machine, int value);
+
 /*----------- defined in video/mac.c -----------*/
 
 extern UINT32 *mac_se30_vram;
@@ -154,6 +172,13 @@ VIDEO_START( mac );
 VIDEO_UPDATE( mac );
 VIDEO_UPDATE( macse30 );
 PALETTE_INIT( mac );
+
+VIDEO_START( macrbv );
+VIDEO_START( macv8 );
+VIDEO_START( macsonora );
+VIDEO_UPDATE( macrbv );
+VIDEO_UPDATE( macrbvvram );
+VIDEO_RESET(macrbv);
 
 void mac_set_screen_buffer( int buffer );
 
@@ -177,23 +202,21 @@ void mac_sh_updatebuffer(running_device *device);
 
 /* Mac driver data */
 
-class mac_state
+class mac_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mac_state(machine)); }
+	mac_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
-	mac_state(running_machine &machine) { }
+	model_t model;
 
-	mac_model_t mac_model;
-
-	UINT32 mac_overlay;
-	int mac_drive_select;
-	int mac_scsiirq_enable;
+	UINT32 overlay;
+	int drive_select;
+	int scsiirq_enable;
 
 	UINT32 mac_via2_vbl;
 	UINT32 mac_se30_vbl_enable;
 	UINT8 mac_nubus_irq_state;
-	UINT8 via2_ca1;
 
 	/* used to store the reply to most keyboard commands */
 	int keyboard_reply;
@@ -252,12 +275,26 @@ public:
 	INT32 adb_streaming, adb_stream_ptr;
 
 	// Portable/PB100 Power Manager IC comms (chapter 4, "Guide to the Macintosh Family Hardware", second edition)
-	UINT8 pm_data_send, pm_data_recv, pm_ack, pm_req;
+	UINT8 pm_data_send, pm_data_recv, pm_ack, pm_req, pm_cmd[32], pm_out[32], pm_dptr, pm_sptr, pm_slen, pm_state;
+	emu_timer *pmu_send_timer;
 
-	// Apple Sound Chip
-	UINT8 mac_asc_regs[0x2000];
-	INT16 xfersamples[0x800];
+	// 60.15 Hz timer for RBV/V8/Sonora/Eagle/VASP/etc.
+	emu_timer *mac6015_timer;
+
+	// RBV and friends (V8, etc)
+	UINT8 rbv_regs[256], rbv_ier, rbv_ifr, rbv_type, rbv_montype;
+	UINT32 rbv_colors[3], rbv_count, rbv_clutoffs, rbv_immed10wr;
+	UINT32 rbv_palette[256];
+	UINT32 *rbv_vram;
+	UINT8 sonora_vctl[4];
+
+	// Egret/Caboose/Cuda stuff
+	UINT8 egregs[0x20];
 };
+
+// defined in machine/mac.c
+void mac_v8_resize(running_machine *machine, mac_state *mac);
+void mac_set_memory_overlay(running_machine *machine, int overlay);
 
 #endif /* MAC_H_ */
 

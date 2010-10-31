@@ -385,7 +385,7 @@ static const mm58274c_interface floppy_mm58274c_interface =
 /*
     Machine description.
 */
-static MACHINE_DRIVER_START(ti99_4p_60hz)
+static MACHINE_CONFIG_START( ti99_4p_60hz, driver_device )
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
@@ -457,7 +457,7 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_SMARTMEDIA_ADD("smartmedia")
 
 	MDRV_TI99_4_RS232_CARD_ADD("rs232")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START(ti99_4p)
@@ -465,6 +465,10 @@ ROM_START(ti99_4p)
 	ROM_REGION16_BE(region_cpu1_len_4p, "maincpu", 0)
 	ROM_LOAD16_BYTE("sgcpu_hb.bin", 0x0000, 0x8000, CRC(aa100730) SHA1(35e585b2dcd3f2a0005bebb15ede6c5b8c787366) ) /* system ROMs */
 	ROM_LOAD16_BYTE("sgcpu_lb.bin", 0x0001, 0x8000, CRC(2a5dc818) SHA1(dec141fe2eea0b930859cbe1ebd715ac29fa8ecb) ) /* system ROMs */
+
+	/*GROM memory space*/
+	ROM_REGION(0x10000, region_grom, 0)
+	ROM_LOAD("994agr38.bin", 0x0000, 0x6000, CRC(bdd9f09b) SHA1(9b058a55d2528d2a6a69d7081aa296911ed7c0de)) /* system GROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)

@@ -79,41 +79,41 @@ Notes:
 
 */
 
+#define ADDRESS_MAP_MODERN
+
 #include "emu.h"
 #include "machine/ctronics.h"
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
-#include "cpu/cdp1802/cdp1802.h"
+#include "cpu/cosmac/cosmac.h"
 #include "sound/cdp1869.h"
 #include "includes/tmc600.h"
 #include "devices/messram.h"
 
 /* Read/Write Handlers */
 
-static WRITE8_HANDLER( keyboard_latch_w )
+WRITE8_MEMBER( tmc600_state::keyboard_latch_w )
 {
-	tmc600_state *state = (tmc600_state *)space->machine->driver_data;
-
-	state->keylatch = data;
+	m_keylatch = data;
 }
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( tmc600_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( tmc600_map, ADDRESS_SPACE_PROGRAM, 8, tmc600_state )
 	AM_RANGE(0x0000, 0x4fff) AM_ROM
 	AM_RANGE(0x6000, 0xbfff) AM_RAM
-	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_charram_r, cdp1869_charram_w)
-	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_pageram_r, cdp1869_pageram_w)
+	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_device, char_ram_r, char_ram_w)
+	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_device, page_ram_r, page_ram_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( tmc600_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( tmc600_io_map, ADDRESS_SPACE_IO, 8, tmc600_state )
 	AM_RANGE(0x03, 0x03) AM_WRITE(keyboard_latch_w)
-	AM_RANGE(0x04, 0x04) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
-	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CDP1869_TAG, tmc600_vismac_data_w)
+	AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY(CENTRONICS_TAG, centronics_data_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(vismac_data_w)
 //  AM_RANGE(0x06, 0x06) AM_WRITE(floppy_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(tmc600_vismac_register_w)
+	AM_RANGE(0x07, 0x07) AM_WRITE(vismac_register_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -199,84 +199,60 @@ static INPUT_PORTS_START( tmc600 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
 
-	PORT_START("EF")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) //
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL ) // tape in
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL ) // keyboard
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SPECIAL ) //
-
 	PORT_START("RUN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Stop") PORT_CODE(KEYCODE_F10) PORT_CHAR(UCHAR_MAMEKEY(F10)) PORT_TOGGLE
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Stop") PORT_CODE(KEYCODE_F3) PORT_CHAR(UCHAR_MAMEKEY(F3)) PORT_TOGGLE
 INPUT_PORTS_END
 
 /* CDP1802 Interface */
 
-static CDP1802_MODE_READ( tmc600_mode_r )
+static READ_LINE_DEVICE_HANDLER( clear_r )
 {
-	if (input_port_read(device->machine, "RUN") & 0x01)
-	{
-		return CDP1802_MODE_RESET;
-	}
-	else
-	{
-		return CDP1802_MODE_RUN;
-	}
+	return BIT(input_port_read(device->machine, "RUN"), 0);
 }
 
-static CDP1802_EF_READ( tmc600_ef_r )
+static READ_LINE_DEVICE_HANDLER( ef2_r )
 {
-	tmc600_state *state = (tmc600_state *)device->machine->driver_data;
+	return cassette_input(device) < 0;
+}
 
-	int flags = 0x0f;
+static READ_LINE_DEVICE_HANDLER( ef3_r )
+{
+	tmc600_state *state = device->machine->driver_data<tmc600_state>();
 	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
+	UINT8 data = ~input_port_read(device->machine, keynames[state->m_keylatch / 8]);
 
-	/*
-        EF1     ?
-        EF2     tape in
-        EF3     keyboard
-        EF4     ?
-    */
-
-	// tape in
-
-	if (cassette_input(state->cassette) < +0.0) flags -= EF2;
-
-	// keyboard
-
-	flags -= (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) ? EF3 : 0;
-
-	return flags;
+	return BIT(data, state->m_keylatch % 8);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( tmc600_q_w )
+static WRITE_LINE_DEVICE_HANDLER( q_w )
 {
-	tmc600_state *driver_state = (tmc600_state *)device->machine->driver_data;
-
-	cassette_output(driver_state->cassette, state ? +1.0 : -1.0);
+	cassette_output(device, state ? +1.0 : -1.0);
 }
 
-static CDP1802_INTERFACE( tmc600_cdp1802_config )
+static COSMAC_INTERFACE( cosmac_intf )
 {
-	tmc600_mode_r,
-	tmc600_ef_r,
+	DEVCB_LINE_VCC,
+	DEVCB_LINE(clear_r),
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE(CASSETTE_TAG, ef2_r),
+	DEVCB_LINE(ef3_r),
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE(CASSETTE_TAG, q_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	NULL,
-	DEVCB_LINE(tmc600_q_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
 
 /* Machine Initialization */
 
-static MACHINE_START( tmc600 )
+void tmc600_state::machine_start()
 {
-	tmc600_state *state = (tmc600_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
-
-	/* find devices */
-	state->cassette = machine->device(CASSETTE_TAG);
+	address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* configure RAM */
-	switch (messram_get_size(machine->device("messram")))
+	switch (messram_get_size(m_ram))
 	{
 	case 8*1024:
 		memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
@@ -288,12 +264,7 @@ static MACHINE_START( tmc600 )
 	}
 
 	/* register for state saving */
-	state_save_register_global(machine, state->keylatch);
-}
-
-static MACHINE_RESET( tmc600 )
-{
-	cputag_set_input_line(machine, CDP1802_TAG, INPUT_LINE_RESET, PULSE_LINE);
+	state_save_register_global(machine, m_keylatch);
 }
 
 /* Machine Drivers */
@@ -305,9 +276,6 @@ static const cassette_config tmc600_cassette_config =
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
 	NULL
 };
-static FLOPPY_OPTIONS_START(tmc600)
-	// dsk
-FLOPPY_OPTIONS_END
 
 static const floppy_config tmc600_floppy_config =
 {
@@ -316,60 +284,31 @@ static const floppy_config tmc600_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_STANDARD_5_25_DSHD,
-	FLOPPY_OPTIONS_NAME(tmc600),
+	FLOPPY_STANDARD_5_25_DSDD,
+	FLOPPY_OPTIONS_NAME(default),
 	NULL
 };
 
-/* F4 Character Displayer */
-static const gfx_layout tmc600_charlayout =
-{
-	6, 9,					/* 6 x 9 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
-	/* x offsets */
-	{ 2, 3, 4, 5, 6, 7 },
-	/* y offsets */
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 2048*8 },
-	8*8					/* every char takes 2 x 8 bytes */
-};
-
-static GFXDECODE_START( tmc600 )
-	GFXDECODE_ENTRY( "chargen", 0x0000, tmc600_charlayout, 0, 36 )
-GFXDECODE_END
-
-static MACHINE_DRIVER_START( tmc600 )
-	MDRV_DRIVER_DATA(tmc600_state)
-
+static MACHINE_CONFIG_START( tmc600, tmc600_state )
 	// basic system hardware
-
-	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, 3579545)	// ???
+	MDRV_CPU_ADD(CDP1802_TAG, COSMAC, 3579545)	// ???
 	MDRV_CPU_PROGRAM_MAP(tmc600_map)
 	MDRV_CPU_IO_MAP(tmc600_io_map)
-	MDRV_CPU_CONFIG(tmc600_cdp1802_config)
-
-	MDRV_MACHINE_START(tmc600)
-	MDRV_MACHINE_RESET(tmc600)
+	MDRV_CPU_CONFIG(cosmac_intf)
 
 	// sound and video hardware
+	MDRV_FRAGMENT_ADD(tmc600_video)
 
-	MDRV_IMPORT_FROM(tmc600_video)
-	MDRV_GFXDECODE(tmc600)
-
-	/* printer */
+	/* devices */
 	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
-
-	/* cassette */
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, tmc600_cassette_config)
-
-	MDRV_FLOPPY_4_DRIVES_ADD(tmc600_floppy_config)
+	MDRV_FLOPPY_2_DRIVES_ADD(tmc600_floppy_config)
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
 	MDRV_RAM_EXTRA_OPTIONS("16K,24K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 

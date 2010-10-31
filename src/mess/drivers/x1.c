@@ -10,7 +10,8 @@
     - Implement .rom format support (needs an image for it);
     - Implement tape commands;
     - Sort out / redump the BIOS gfx roms;
-    - Implement SIO, they are X1Turbo only features.
+    - X1Turbo: Implement SIO.
+    - X1Twin: Hook-up the PC Engine part (actually needs his own driver?);
     - clean-ups!
     - There are various unclear video things, these are:
         - Understand why some games still doesn't upload the proper PCG index;
@@ -25,15 +26,15 @@
       (it's gray in the Arcade version),could be either flickering for pseudo-alpha effect or it's
       a btanb;
     - Exoa II - Warroid: major tile width/height positioning bugs (especially during gameplay);
-	- Hydlide 2 / 3: can't get the user disk to work properly
-	- Gruppe: shows a random bitmap graphic then returns "program load error"
-	- Sorcerian / Ys 3 / Psy-O-Blade (and others): they all fails tight loops with the fdc ready bit check
-	- Turbo Alpha: has z80dma / fdc bugs, doesn't show the presentation properly and then hangs;
-	- Legend of Kage: has serious graphic artifacts, pcg doesn't scroll properly, bitmap-based sprites aren't shown properly, dma bugs?
-	- "newtype": dies with a z80dma assert;
-	- Ys 2: fills the screen with "syntax errors"
-	- Thexder: Can't start a play, keyboard related issue?
-	- V.I.P.: can't get inputs to work at all there;
+    - Hydlide 2 / 3: can't get the user disk to work properly
+    - Gruppe: shows a random bitmap graphic then returns "program load error"
+    - Sorcerian / Ys 3 / Psy-O-Blade (and others): they all fails tight loops with the fdc ready bit check
+    - Turbo Alpha: has z80dma / fdc bugs, doesn't show the presentation properly and then hangs;
+    - Legend of Kage: has serious graphic artifacts, pcg doesn't scroll properly, bitmap-based sprites aren't shown properly, dma bugs?
+    - "newtype": dies with a z80dma assert;
+    - Ys 2: fills the screen with "syntax errors"
+    - Thexder: Can't start a play, keyboard related issue?
+    - V.I.P.: can't get inputs to work at all there;
 
     Notes:
     - An interesting feature of the Sharp X-1 is the extended i/o bank. When the ppi port c bit 5
@@ -257,13 +258,16 @@ static UINT8 *x1_colorram;
 
 static VIDEO_START( x1 )
 {
+	x1_state *state = machine->driver_data<x1_state>();
 	x1_colorram = auto_alloc_array(machine, UINT8, 0x1000);
-	machine->generic.videoram.u8 = auto_alloc_array(machine, UINT8, 0x1000);
+	state->videoram = auto_alloc_array(machine, UINT8, 0x1000);
 	gfx_bitmap_ram = auto_alloc_array(machine, UINT8, 0xc000*2);
 }
 
 static void draw_fgtilemap(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int w)
 {
+	x1_state *state = machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	int y,x,res_x,res_y;
 	int screen_mask;
 
@@ -273,7 +277,7 @@ static void draw_fgtilemap(running_machine *machine, bitmap_t *bitmap,const rect
 	{
 		for (x=0;x<40*w;x++)
 		{
-			int tile = machine->generic.videoram.u8[(x+(y*40*w)+crtc_start_addr) & screen_mask];
+			int tile = videoram[(x+(y*40*w)+crtc_start_addr) & screen_mask];
 			int color = x1_colorram[(x+(y*40*w)+crtc_start_addr) & screen_mask] & 0x1f;
 			int width = (x1_colorram[(x+(y*40*w)+crtc_start_addr) & screen_mask] & 0x80)>>7;
 			int height = (x1_colorram[(x+(y*40*w)+crtc_start_addr) & screen_mask] & 0x40)>>6;
@@ -980,6 +984,18 @@ static const wd17xx_interface x1_mb8877a_interface =
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
+static WRITE_LINE_DEVICE_HANDLER( fdc_drq_w )
+{
+	z80dma_rdy_w(device->machine->device("dma"), state ^ 1);
+}
+
+static const wd17xx_interface x1turbo_mb8877a_interface =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE(fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
 
 /*************************************
  *
@@ -1009,6 +1025,8 @@ static UINT16 check_chr_addr(running_machine *machine)
 
 static READ8_HANDLER( x1_pcg_r )
 {
+	x1_state *state = space->machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	int addr;
 	int calc_pcg_offset;
 	static UINT32 kanji_offset;
@@ -1017,12 +1035,18 @@ static READ8_HANDLER( x1_pcg_r )
 
 	addr = (offset & 0x300) >> 8;
 
+	if(pcg_reset)
+	{
+		pcg_index_r[0] = pcg_index_r[1] = pcg_index_r[2] = bios_offset = 0;
+		pcg_reset = 0;
+	}
+
 	if(addr == 0)
 	{
 		if(scrn_reg.pcg_mode)
 		{
 			gfx_data = memory_region(space->machine, "kanji");
-			calc_pcg_offset = (space->machine->generic.videoram.u8[check_chr_addr(space->machine)]+(space->machine->generic.videoram.u8[check_chr_addr(space->machine)+0x800]<<8)) & 0xfff;
+			calc_pcg_offset = (videoram[check_chr_addr(space->machine)]+(videoram[check_chr_addr(space->machine)+0x800]<<8)) & 0xfff;
 
 			kanji_offset = calc_pcg_offset*0x20;
 
@@ -1061,6 +1085,8 @@ static READ8_HANDLER( x1_pcg_r )
 
 static WRITE8_HANDLER( x1_pcg_w )
 {
+	x1_state *state = space->machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	int addr,pcg_offset;
 	UINT8 *PCG_RAM = memory_region(space->machine, "pcg");
 	static UINT16 used_pcg_addr;
@@ -1082,7 +1108,7 @@ static WRITE8_HANDLER( x1_pcg_w )
 	{
 		if(scrn_reg.pcg_mode)
 		{
-			used_pcg_addr = space->machine->generic.videoram.u8[check_pcg_addr(space->machine)]*8;
+			used_pcg_addr = videoram[check_pcg_addr(space->machine)]*8;
 			pcg_index[addr-1] = (offset & 0xe) >> 1;
 			pcg_offset = (pcg_index[addr-1]+used_pcg_addr) & 0x7ff;
 			pcg_offset+=((addr-1)*0x800);
@@ -1311,6 +1337,8 @@ static WRITE8_HANDLER( x1_kanji_w )
 
 static READ8_HANDLER( x1_io_r )
 {
+	x1_state *state = space->machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	io_bank_mode = 0; //any read disables the extended mode.
 
 	//if(offset >= 0x0704 && offset <= 0x0707)      { return z80ctc_r(space->machine->device("ctc"), offset-0x0704); }
@@ -1328,7 +1356,7 @@ static READ8_HANDLER( x1_io_r )
 //  else if(offset >= 0x1fd0 && offset <= 0x1fdf)   { return x1_scrn_r(space,offset-0x1fd0); }
 //  else if(offset == 0x1fe0)                       { return x1_blackclip_r(space,0); }
 	else if(offset >= 0x2000 && offset <= 0x2fff)	{ return x1_colorram[offset-0x2000]; }
-	else if(offset >= 0x3000 && offset <= 0x3fff)	{ return space->machine->generic.videoram.u8[offset-0x3000]; }
+	else if(offset >= 0x3000 && offset <= 0x3fff)	{ return videoram[offset-0x3000]; }
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ return gfx_bitmap_ram[offset-0x4000+(scrn_reg.gfx_bank*0xc000)]; }
 	else
 	{
@@ -1339,6 +1367,8 @@ static READ8_HANDLER( x1_io_r )
 
 static WRITE8_HANDLER( x1_io_w )
 {
+	x1_state *state = space->machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	if(io_bank_mode == 1)                       	{ x1_ex_gfxram_w(space, offset, data); }
 //  else if(offset >= 0x0704 && offset <= 0x0707)   { z80ctc_w(space->machine->device("ctc"), offset-0x0704,data); }
 //  else if(offset >= 0x0c00 && offset <= 0x0cff)   { x1_rs232c_w(space->machine, 0, data); }
@@ -1369,7 +1399,7 @@ static WRITE8_HANDLER( x1_io_w )
 	else if(offset >= 0x1fd0 && offset <= 0x1fdf)	{ x1_scrn_w(space,0,data); }
 //  else if(offset == 0x1fe0)                       { x1_blackclip_w(space,0,data); }
 	else if(offset >= 0x2000 && offset <= 0x2fff)	{ x1_colorram[offset-0x2000] = data; }
-	else if(offset >= 0x3000 && offset <= 0x3fff)	{ space->machine->generic.videoram.u8[offset-0x3000] = pcg_write_addr = data; }
+	else if(offset >= 0x3000 && offset <= 0x3fff)	{ videoram[offset-0x3000] = pcg_write_addr = data; }
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ gfx_bitmap_ram[offset-0x4000+(scrn_reg.gfx_bank*0xc000)] = data; }
 	else
 	{
@@ -1379,6 +1409,8 @@ static WRITE8_HANDLER( x1_io_w )
 
 static READ8_HANDLER( x1turbo_io_r )
 {
+	x1_state *state = space->machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	io_bank_mode = 0; //any read disables the extended mode.
 
 	if(offset == 0x0700)							{ return (ym2151_r(space->machine->device("ym"), offset-0x0700) & 0x7f) | (input_port_read(space->machine, "SOUND_SW") & 0x80); }
@@ -1403,7 +1435,7 @@ static READ8_HANDLER( x1turbo_io_r )
 //  else if(offset >= 0x1fd0 && offset <= 0x1fdf)   { return x1_scrn_r(space,offset-0x1fd0); }
 	else if(offset == 0x1fe0)						{ return x1_blackclip_r(space,0); }
 	else if(offset >= 0x2000 && offset <= 0x2fff)	{ return x1_colorram[offset-0x2000]; }
-	else if(offset >= 0x3000 && offset <= 0x3fff)	{ return space->machine->generic.videoram.u8[offset-0x3000]; }
+	else if(offset >= 0x3000 && offset <= 0x3fff)	{ return videoram[offset-0x3000]; }
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ return gfx_bitmap_ram[offset-0x4000+(scrn_reg.gfx_bank*0xc000)]; }
 	else
 	{
@@ -1416,6 +1448,8 @@ static READ8_HANDLER( x1turbo_io_r )
 
 static WRITE8_HANDLER( x1turbo_io_w )
 {
+	x1_state *state = space->machine->driver_data<x1_state>();
+	UINT8 *videoram = state->videoram;
 	if(io_bank_mode == 1)                       	{ x1_ex_gfxram_w(space, offset, data); }
 	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(space->machine->device("ym"), offset-0x0700,data); }
 	else if(offset >= 0x0704 && offset <= 0x0707)	{ z80ctc_w(space->machine->device("ctc"), offset-0x0704,data); }
@@ -1447,7 +1481,7 @@ static WRITE8_HANDLER( x1turbo_io_w )
 	else if(offset >= 0x1fd0 && offset <= 0x1fdf)	{ x1_scrn_w(space,0,data); }
 	else if(offset == 0x1fe0)						{ x1_blackclip_w(space,0,data); }
 	else if(offset >= 0x2000 && offset <= 0x2fff)	{ x1_colorram[offset-0x2000] = data; }
-	else if(offset >= 0x3000 && offset <= 0x3fff)	{ space->machine->generic.videoram.u8[offset-0x3000] = pcg_write_addr = data; }
+	else if(offset >= 0x3000 && offset <= 0x3fff)	{ videoram[offset-0x3000] = pcg_write_addr = data; }
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ gfx_bitmap_ram[offset-0x4000+(scrn_reg.gfx_bank*0xc000)] = data; }
 	else
 	{
@@ -1589,6 +1623,9 @@ static const mc6845_interface mc6845_intf =
 	NULL		/* update address callback */
 };
 
+static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+
 static Z80DMA_INTERFACE( x1_dma )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_HALT),
@@ -1608,7 +1645,7 @@ static Z80DMA_INTERFACE( x1_dma )
 
 static INPUT_CHANGED( ipl_reset )
 {
-	const address_space *space = cputag_get_address_space(field->port->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(field->port->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
 	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
@@ -2029,7 +2066,7 @@ static IRQ_CALLBACK(x1_irq_callback)
 
 static TIMER_CALLBACK(keyboard_callback)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT32 key1 = input_port_read(machine,"key1");
 	UINT32 key2 = input_port_read(machine,"key2");
 	UINT32 key3 = input_port_read(machine,"key3");
@@ -2194,7 +2231,7 @@ static const floppy_config x1_floppy_config =
 	"x1_flop"
 };
 
-static MACHINE_DRIVER_START( x1 )
+static MACHINE_CONFIG_START( x1, x1_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(x1_mem)
@@ -2248,10 +2285,9 @@ static MACHINE_DRIVER_START( x1 )
 	MDRV_FLOPPY_4_DRIVES_ADD(x1_floppy_config)
 	MDRV_SOFTWARE_LIST_ADD("flop_list","x1_flop")
 
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( x1turbo )
-	MDRV_IMPORT_FROM( x1 )
+static MACHINE_CONFIG_DERIVED( x1turbo, x1 )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(x1turbo_io)
@@ -2260,10 +2296,13 @@ static MACHINE_DRIVER_START( x1turbo )
 	MDRV_Z80SIO_ADD( "sio", MAIN_CLOCK/4 , sio_intf )
 	MDRV_Z80DMA_ADD( "dma", MAIN_CLOCK/4 , x1_dma )
 
+	MDRV_DEVICE_REMOVE("fdc")
+	MDRV_MB8877_ADD("fdc",x1turbo_mb8877a_interface)
+
 	MDRV_SOUND_ADD("ym", YM2151, MAIN_CLOCK/8) //option board
 //  MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /*************************************
  *
@@ -2273,10 +2312,7 @@ MACHINE_DRIVER_END
 
  ROM_START( x1 )
 	ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
-	ROM_SYSTEM_BIOS( 0, "default", "X1 IPL" )
-	ROMX_LOAD( "ipl.x1", 0x0000, 0x1000, CRC(7b28d9de) SHA1(c4db9a6e99873808c8022afd1c50fef556a8b44d), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "alt", "X1 IPL (alt)" )
-	ROMX_LOAD( "ipl_alt.x1", 0x0000, 0x1000, CRC(e70011d3) SHA1(d3395e9aeb5b8bbba7654dd471bcd8af228ee69a), ROM_BIOS(2) )
+	ROM_LOAD( "ipl.x1", 0x0000, 0x1000, CRC(7b28d9de) SHA1(c4db9a6e99873808c8022afd1c50fef556a8b44d) )
 
 	ROM_REGION(0x1000, "mcu", ROMREGION_ERASEFF) //MCU for the Keyboard, "sub cpu"
 	ROM_LOAD( "80c48", 0x0000, 0x1000, NO_DUMP )
@@ -2299,29 +2335,30 @@ MACHINE_DRIVER_END
 	ROM_CART_LOAD("cart", 0x0000, 0xffffff, ROM_OPTIONAL | ROM_NOMIRROR)
 ROM_END
 
-ROM_START( x1ck )
+ROM_START( x1twin )
 	ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
-	ROM_SYSTEM_BIOS( 0, "default", "X1 IPL" )
-	ROMX_LOAD( "ipl.x1", 0x0000, 0x1000, CRC(7b28d9de) SHA1(c4db9a6e99873808c8022afd1c50fef556a8b44d), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "alt", "X1 IPL (alt)" )
-	ROMX_LOAD( "ipl_alt.x1", 0x0000, 0x1000, CRC(e70011d3) SHA1(d3395e9aeb5b8bbba7654dd471bcd8af228ee69a), ROM_BIOS(2) )
+	ROM_LOAD( "ipl.rom", 0x0000, 0x1000, CRC(e70011d3) SHA1(d3395e9aeb5b8bbba7654dd471bcd8af228ee69a) )
 
 	ROM_REGION(0x1000, "mcu", ROMREGION_ERASEFF) //MCU for the Keyboard, "sub cpu"
 	ROM_LOAD( "80c48", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION(0x1800, "pcg", ROMREGION_ERASEFF)
 
-	ROM_REGION(0x2000, "font", 0) //TODO: this contains 8x16 charset only, maybe it's possible that it derivates a 8x8 charset by skipping gfx lines?
-	ROM_LOAD( "ank.fnt", 0x0000, 0x2000, BAD_DUMP CRC(19689fbd) SHA1(0d4e072cd6195a24a1a9b68f1d37500caa60e599) )
+	ROM_REGION(0x1000, "font", 0) //TODO: this contains 8x16 charset only, maybe it's possible that it derivates a 8x8 charset by skipping gfx lines?
+	ROM_LOAD( "ank16.rom", 0x0000, 0x1000, CRC(8f9fb213) SHA1(4f06d20c997a79ee6af954b69498147789bf1847) )
 
 	ROM_REGION(0x4d600, "cgrom", 0)
-	ROM_LOAD("fnt0808.x1", 0x00000, 0x00800, CRC(e3995a57) SHA1(1c1a0d8c9f4c446ccd7470516b215ddca5052fb2) )
-	ROM_RELOAD(            0x00800, 0x00800)
-	ROM_RELOAD(            0x01000, 0x00800)
+	ROM_LOAD("ank8.rom", 0x00000, 0x00800, CRC(e3995a57) SHA1(1c1a0d8c9f4c446ccd7470516b215ddca5052fb2) )
+	ROM_RELOAD(          0x00800, 0x00800)
+	ROM_RELOAD(          0x01000, 0x00800)
 
 	ROM_REGION(0x20000, "kanji", ROMREGION_ERASEFF)
 
-	ROM_REGION(0x20000, "raw_kanji", ROMREGION_ERASEFF)
+	ROM_REGION(0x20000, "raw_kanji", ROMREGION_ERASEFF) // these comes from x1 turbo
+	ROM_LOAD("kanji4.rom", 0x00000, 0x8000, BAD_DUMP CRC(3e39de89) SHA1(d3fd24892bb1948c4697dedf5ff065ff3eaf7562) )
+	ROM_LOAD("kanji2.rom", 0x08000, 0x8000, BAD_DUMP CRC(e710628a) SHA1(103bbe459dc8da27a9400aa45b385255c18fcc75) )
+	ROM_LOAD("kanji3.rom", 0x10000, 0x8000, BAD_DUMP CRC(8cae13ae) SHA1(273f3329c70b332f6a49a3a95e906bbfe3e9f0a1) )
+	ROM_LOAD("kanji1.rom", 0x18000, 0x8000, BAD_DUMP CRC(5874f70b) SHA1(dad7ada1b70c45f1e9db11db273ef7b385ef4f17) )
 
 	ROM_REGION( 0x1000000, "cart_img", ROMREGION_ERASE00 )
 	ROM_CART_LOAD("cart", 0x0000, 0xffffff, ROM_OPTIONAL | ROM_NOMIRROR)
@@ -2411,6 +2448,6 @@ static DRIVER_INIT( kanji )
 
 /*    YEAR  NAME       PARENT  COMPAT   MACHINE  INPUT  INIT  COMPANY   FULLNAME      FLAGS */
 COMP( 1982, x1,        0,      0,       x1,      x1,    0,    "Sharp",  "X1 (CZ-800C)",         0)
-COMP( 1984, x1ck,      x1,     0,       x1,      x1,    0,    "Sharp",  "X1Ck (CZ-804C)",       0)
+COMP( 1986, x1twin,    x1,     0,       x1, 	 x1,    kanji,"Sharp",  "X1 Twin (CZ-830C)",    GAME_NOT_WORKING)
 COMP( 1984, x1turbo,   x1,     0,       x1turbo, x1,    kanji,"Sharp",  "X1 Turbo (CZ-850C)",   GAME_NOT_WORKING) //model 10
 COMP( 1985, x1turbo40, x1,     0,       x1turbo, x1,    kanji,"Sharp",  "X1 Turbo (CZ-862C)",   GAME_NOT_WORKING) //model 40

@@ -55,7 +55,7 @@ static TIMER_CALLBACK( handle_cassette_input )
 
 MACHINE_RESET( cgenie )
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	running_device *ay8910 = machine->device("ay8910");
 	UINT8 *ROM = memory_region(machine, "maincpu");
 
@@ -132,7 +132,8 @@ MACHINE_RESET( cgenie )
 
 MACHINE_START( cgenie )
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	cgenie_state *state = machine->driver_data<cgenie_state>();
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *gfx = memory_region(machine, "gfx2");
 	int i;
 
@@ -155,7 +156,7 @@ MACHINE_START( cgenie )
 	/* set up RAM */
 	memory_install_read_bank(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 1, 0, 0, "bank1");
 	memory_install_write8_handler(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 1, 0, 0, cgenie_videoram_w);
-	machine->generic.videoram.u8 = messram_get_ptr(machine->device("messram"));
+	state->videoram = messram_get_ptr(machine->device("messram"));
 	memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
 	timer_pulse(machine,  ATTOTIME_IN_HZ(11025), NULL, 0, handle_cassette_input );
 }
@@ -520,15 +521,19 @@ WRITE8_HANDLER( cgenie_motor_w )
 
 int cgenie_videoram_r( running_machine *machine, int offset )
 {
-	return machine->generic.videoram.u8[offset];
+	cgenie_state *state = machine->driver_data<cgenie_state>();
+	UINT8 *videoram = state->videoram;
+	return videoram[offset];
 }
 
 WRITE8_HANDLER( cgenie_videoram_w )
 {
+	cgenie_state *state = space->machine->driver_data<cgenie_state>();
+	UINT8 *videoram = state->videoram;
 	/* write to video RAM */
-	if( data == space->machine->generic.videoram.u8[offset] )
+	if( data == videoram[offset] )
 		return; 			   /* no change */
-	space->machine->generic.videoram.u8[offset] = data;
+	videoram[offset] = data;
 }
 
  READ8_HANDLER( cgenie_colorram_r )

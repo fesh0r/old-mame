@@ -13,12 +13,11 @@
 #define MC6845_TAG		"u11"
 #define CENTRONICS_TAG	"j2"
 
-class trs80m2_state
+class trs80m2_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, trs80m2_state(machine)); }
-
-	trs80m2_state(running_machine &machine) { }
+	trs80m2_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	/* memory state */
 	int boot_rom;

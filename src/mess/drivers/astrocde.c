@@ -22,7 +22,7 @@
 static ADDRESS_MAP_START( astrocade_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM AM_WRITE(astrocade_funcgen_w)
 	AM_RANGE(0x1000, 0x3fff) AM_ROM /* Star Fortress writes in here?? */
-	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* ASG */
+	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE_MEMBER(astrocde_state, videoram) /* ASG */
 ADDRESS_MAP_END
 
 
@@ -167,7 +167,7 @@ static DEVICE_IMAGE_LOAD( astrocde_cart )
 	return IMAGE_INIT_PASS;
 }
 
-static MACHINE_DRIVER_START( astrocde )
+static MACHINE_CONFIG_START( astrocde, astrocde_state )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, ASTROCADE_CLOCK/4)        /* 1.789 MHz */
 	MDRV_CPU_PROGRAM_MAP(astrocade_mem)
@@ -197,7 +197,7 @@ static MACHINE_DRIVER_START( astrocde )
 
 	/* Software lists */
 	MDRV_SOFTWARE_LIST_ADD("cart_list","astrocde")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /*************************************

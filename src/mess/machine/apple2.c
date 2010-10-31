@@ -112,7 +112,7 @@ void apple2_setup_memory(running_machine *machine, const apple2_memmap_config *c
 
 void apple2_update_memory(running_machine *machine)
 {
-	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int i, bank;
 	char rbank[10], wbank[10];
 	int full_update = 0;
@@ -340,7 +340,7 @@ static STATE_POSTLOAD( apple2_update_memory_postload )
 
 READ8_HANDLER(apple2_c0xx_r)
 {
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		static const read8_space_func handlers[] =
 		{
@@ -581,7 +581,7 @@ static WRITE8_HANDLER ( apple2_c4xx_w )
 static READ8_HANDLER(apple2_cfff_r)
 {
 	// debugger guard
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		a2_cnxx_slot = -1;
 		apple2_update_memory(space->machine);
@@ -1063,7 +1063,7 @@ INTERRUPT_GEN( apple2_interrupt )
 	int irq_freq = 1;
 	int scanline;
 
-	profiler_mark_start(PROFILER_A2INT);
+	g_profiler.start(PROFILER_A2INT);
 
 	scanline = device->machine->primary_screen->vpos();
 
@@ -1079,7 +1079,7 @@ INTERRUPT_GEN( apple2_interrupt )
 
 	device->machine->primary_screen->update_partial(scanline);
 
-	profiler_mark_end();
+	g_profiler.stop();
 }
 
 
@@ -1125,12 +1125,12 @@ READ8_HANDLER ( apple2_c00x_r )
 {
 	UINT8 result = 0;
 
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		/* Read the keyboard data and strobe */
-		profiler_mark_start(PROFILER_C00X);
+		g_profiler.start(PROFILER_C00X);
 		result = AY3600_keydata_strobe_r();
-		profiler_mark_end();
+		g_profiler.stop();
 	}
 
 	return result;
@@ -1176,9 +1176,9 @@ READ8_HANDLER ( apple2_c01x_r )
 {
 	UINT8 result = apple2_getfloatingbusvalue(space->machine) & 0x7F;
 
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
-		profiler_mark_start(PROFILER_C01X);
+		g_profiler.start(PROFILER_C01X);
 
 		LOG(("a2 softswitch_r: %04x\n", offset + 0xc010));
 		switch (offset)
@@ -1201,7 +1201,7 @@ READ8_HANDLER ( apple2_c01x_r )
 			case 0x0F:			result |= (apple2_flags & VAR_80COL)		? 0x80 : 0x00;	break;
 		}
 
-		profiler_mark_end();
+		g_profiler.stop();
 	}
 
 	return result;
@@ -1216,9 +1216,9 @@ READ8_HANDLER ( apple2_c01x_r )
 WRITE8_HANDLER( apple2_c01x_w )
 {
 	/* Clear the keyboard strobe - ignore the returned results */
-	profiler_mark_start(PROFILER_C01X);
+	g_profiler.start(PROFILER_C01X);
 	AY3600_anykey_clearstrobe_r();
-	profiler_mark_end();
+	g_profiler.stop();
 }
 
 
@@ -1229,7 +1229,7 @@ WRITE8_HANDLER( apple2_c01x_w )
 
 READ8_HANDLER( apple2_c02x_r )
 {
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		apple2_c02x_w(space, offset, 0);
 	}
@@ -1260,7 +1260,7 @@ WRITE8_HANDLER( apple2_c02x_w )
 
 READ8_HANDLER ( apple2_c03x_r )
 {
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		if (!offset)
 		{
@@ -1299,7 +1299,7 @@ WRITE8_HANDLER ( apple2_c03x_w )
 
 READ8_HANDLER ( apple2_c05x_r )
 {
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		UINT32 mask;
 
@@ -1340,7 +1340,7 @@ static running_device *cassette_device_image(running_machine *machine)
 READ8_HANDLER ( apple2_c06x_r )
 {
 	int result = 0;
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		switch (offset & 0x0F)
 		{
@@ -1394,7 +1394,7 @@ READ8_HANDLER ( apple2_c06x_r )
 
 READ8_HANDLER ( apple2_c07x_r )
 {
-	if(!space->debugger_access)
+	if(!space->debugger_access())
 	{
 		double x_calibration = attotime_to_double(ATTOTIME_IN_USEC(12));
 		double y_calibration = attotime_to_double(ATTOTIME_IN_USEC(13));

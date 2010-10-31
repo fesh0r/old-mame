@@ -76,9 +76,10 @@ DC00      - Selection buttons #2, 9-16 (R)
 static ADDRESS_MAP_START( sms1_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_ROMBANK("bank1")					/* First 0x0400 part always points to first page */
 	AM_RANGE(0x0400, 0x3fff) AM_ROMBANK("bank2")					/* switchable rom bank */
-	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bank3")					/* switchable rom bank */
-	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank4") AM_WRITE(sms_cartram_w)	/* ROM bank / on-cart RAM */
-	AM_RANGE(0xa000, 0xbfff) AM_READ_BANK("bank5") AM_WRITE(sms_cartram2_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank3")					/* switchable rom bank */
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank4")					/* switchable rom bank */
+	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank5") AM_WRITE(sms_cartram_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0xa000, 0xbfff) AM_READ_BANK("bank6") AM_WRITE(sms_cartram2_w)	/* ROM bank / on-cart RAM */
 	AM_RANGE(0xc000, 0xdff7) AM_MIRROR(0x2000) AM_RAM			/* RAM (mirror at 0xE000) */
 	AM_RANGE(0xdff8, 0xdfff) AM_RAM						/* RAM "underneath" frame registers */
 	AM_RANGE(0xfff8, 0xfffb) AM_READWRITE(sms_sscope_r, sms_sscope_w)	/* 3-D glasses */
@@ -88,9 +89,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sms_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_ROMBANK("bank1")					/* First 0x0400 part always points to first page */
 	AM_RANGE(0x0400, 0x3fff) AM_ROMBANK("bank2")					/* switchable rom bank */
-	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bank3")					/* switchable rom bank */
-	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank4") AM_WRITE(sms_cartram_w)	/* ROM bank / on-cart RAM */
-	AM_RANGE(0xa000, 0xbfff) AM_READ_BANK("bank5") AM_WRITE(sms_cartram2_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank3")					/* switchable rom bank */
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank4")					/* switchable rom bank */
+	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank5") AM_WRITE(sms_cartram_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0xa000, 0xbfff) AM_READ_BANK("bank6") AM_WRITE(sms_cartram2_w)	/* ROM bank / on-cart RAM */
 	AM_RANGE(0xc000, 0xdffb) AM_MIRROR(0x2000) AM_RAM			/* RAM (mirror at 0xE000) */
 	AM_RANGE(0xdffc, 0xdfff) AM_RAM						/* RAM "underneath" frame registers */
 	AM_RANGE(0xfffc, 0xffff) AM_READWRITE(sms_mapper_r, sms_mapper_w)	/* Bankswitch control */
@@ -369,7 +371,7 @@ static const smsvdp_interface sms_store_intf =
 	sms_pause_callback
 };
 
-static MACHINE_DRIVER_START( sms_cartslot )
+static MACHINE_CONFIG_FRAGMENT( sms_cartslot )
 	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("sms,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
@@ -378,9 +380,9 @@ static MACHINE_DRIVER_START( sms_cartslot )
 	MDRV_CARTSLOT_LOAD(sms_cart)
 
 	MDRV_SOFTWARE_LIST_ADD("cart_list","sms")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( gg_cartslot )
+static MACHINE_CONFIG_FRAGMENT( gg_cartslot )
 	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("gg,bin")
 	MDRV_CARTSLOT_MANDATORY
@@ -389,9 +391,9 @@ static MACHINE_DRIVER_START( gg_cartslot )
 	MDRV_CARTSLOT_LOAD(sms_cart)
 
 	MDRV_SOFTWARE_LIST_ADD("cart_list","gamegear")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms_ntsc_base )
+static MACHINE_CONFIG_START( sms_ntsc_base, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem)
@@ -407,11 +409,10 @@ static MACHINE_DRIVER_START( sms_ntsc_base )
 	MDRV_SOUND_ADD("smsiii", SMSIII, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_IMPORT_FROM( sms_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( sms_cartslot )
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms2_ntsc )
-	MDRV_IMPORT_FROM( sms_ntsc_base )
+static MACHINE_CONFIG_DERIVED( sms2_ntsc, sms_ntsc_base )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -424,10 +425,9 @@ static MACHINE_DRIVER_START( sms2_ntsc )
 	MDRV_VIDEO_UPDATE(sms)
 
 	MDRV_SMSVDP_ADD("sms_vdp", _315_5246_intf)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START(sms1_ntsc)
-	MDRV_IMPORT_FROM( sms_ntsc_base )
+static MACHINE_CONFIG_DERIVED( sms1_ntsc, sms_ntsc_base )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(sms1_mem)	// This adds the SegaScope handlers for 3-D glasses
@@ -454,7 +454,7 @@ static MACHINE_DRIVER_START(sms1_ntsc)
 	MDRV_VIDEO_UPDATE(sms1)
 
 	MDRV_SMSVDP_ADD("sms_vdp", _315_5124_intf)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 #define MDRV_SMSSDISP_CARTSLOT_ADD(_tag) \
 	MDRV_CARTSLOT_ADD(_tag) \
@@ -464,8 +464,7 @@ MACHINE_DRIVER_END
 	MDRV_CARTSLOT_START(sms_cart) \
 	MDRV_CARTSLOT_LOAD(sms_cart)
 
-static MACHINE_DRIVER_START( sms_sdisp )
-	MDRV_IMPORT_FROM( sms2_ntsc )
+static MACHINE_CONFIG_DERIVED( sms_sdisp, sms2_ntsc )
 
 	MDRV_DEVICE_REMOVE("sms_vdp")
 	MDRV_SMSVDP_ADD("sms_vdp", sms_store_intf)
@@ -497,9 +496,9 @@ static MACHINE_DRIVER_START( sms_sdisp )
 	MDRV_SMSSDISP_CARTSLOT_ADD("cart14")
 	MDRV_SMSSDISP_CARTSLOT_ADD("cart15")
 	MDRV_SMSSDISP_CARTSLOT_ADD("cart16")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms_pal_base )
+static MACHINE_CONFIG_START( sms_pal_base, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_PAL/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem)
@@ -515,11 +514,10 @@ static MACHINE_DRIVER_START( sms_pal_base )
 	MDRV_SOUND_ADD("smsiii", SMSIII, MASTER_CLOCK_PAL/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_IMPORT_FROM( sms_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( sms_cartslot )
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms2_pal )
-	MDRV_IMPORT_FROM( sms_pal_base )
+static MACHINE_CONFIG_DERIVED( sms2_pal, sms_pal_base )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -532,10 +530,9 @@ static MACHINE_DRIVER_START( sms2_pal )
 	MDRV_VIDEO_UPDATE(sms)
 
 	MDRV_SMSVDP_ADD("sms_vdp", _315_5246_intf)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms1_pal )
-	MDRV_IMPORT_FROM( sms_pal_base )
+static MACHINE_CONFIG_DERIVED( sms1_pal, sms_pal_base )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(sms1_mem)	// This adds the SegaScope handlers for 3-D glasses
@@ -562,33 +559,30 @@ static MACHINE_DRIVER_START( sms1_pal )
 	MDRV_DEFAULT_LAYOUT(layout_sms1)
 
 	MDRV_SMSVDP_ADD("sms_vdp", _315_5124_intf)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms_fm )
-	MDRV_IMPORT_FROM(sms1_ntsc)
+static MACHINE_CONFIG_DERIVED( sms_fm, sms1_ntsc )
 
 	MDRV_SOUND_ADD("ym2413", YM2413, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sg1000m3 )
-	MDRV_IMPORT_FROM(sms_fm)
+static MACHINE_CONFIG_DERIVED( sg1000m3, sms_fm )
 
 	MDRV_CARTSLOT_MODIFY("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("sms,bin,sg")
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_START(sms_cart)
 	MDRV_CARTSLOT_LOAD(sms_cart)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( sms2_fm )
-	MDRV_IMPORT_FROM(sms2_ntsc)
+static MACHINE_CONFIG_DERIVED( sms2_fm, sms2_ntsc )
 
 	MDRV_SOUND_ADD("ym2413", YM2413, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( gamegear )
+static MACHINE_CONFIG_START( gamegear, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem)
@@ -617,8 +611,8 @@ static MACHINE_DRIVER_START( gamegear )
 	MDRV_SOUND_ROUTE(1, "rspeaker", 1.00)
 
 	/* cartridge */
-	MDRV_IMPORT_FROM( gg_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( gg_cartslot )
+MACHINE_CONFIG_END
 
 
 ROM_START(sms1)

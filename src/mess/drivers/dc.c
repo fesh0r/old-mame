@@ -220,7 +220,7 @@ static const aica_interface dc_aica_interface =
 
 static const struct sh4_config sh4cpu_config = {  1,  0,  1,  0,  0,  0,  1,  1,  0, CPU_CLOCK };
 
-static MACHINE_DRIVER_START( dc )
+static MACHINE_CONFIG_START( dc, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", SH4, CPU_CLOCK)
 	MDRV_CPU_CONFIG(sh4cpu_config)
@@ -253,7 +253,7 @@ static MACHINE_DRIVER_START( dc )
 	MDRV_SOUND_ROUTE(0, "rspeaker", 2.0)
 
 	MDRV_CDROM_ADD( "cdrom" )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 ROM_START(dc)
 	ROM_REGION(0x220000, "maincpu", 0)
@@ -365,8 +365,7 @@ INPUT_PORTS_END
 
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT      COMPANY FULLNAME */
-CONS( 1999, dc,		dcjp,	0,	dc,	dc,	dcus,	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
-CONS( 1998, dcjp,	0,		0,	dc,	dc,	dcjp,	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
-CONS( 1999, dceu,	dcjp,	0,	dc,	dc,	dcus,	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
-CONS( 1998, dcdev,	dcjp,	0,	dc,	dc,	dc,	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
-
+CONS( 1999, dc,     dcjp,   0,      dc,     dc,     dcus,   "Sega", "Dreamcast (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1998, dcjp,   0,      0,      dc,     dc,     dcjp,   "Sega", "Dreamcast (Japan, NTSC)", GAME_NOT_WORKING )
+CONS( 1999, dceu,   dcjp,   0,      dc,     dc,     dcus,   "Sega", "Dreamcast (Europe, PAL)", GAME_NOT_WORKING )
+CONS( 1998, dcdev,  dcjp,   0,      dc,     dc,     dc,     "Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )

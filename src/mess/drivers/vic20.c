@@ -100,8 +100,8 @@ static ADDRESS_MAP_START( vic20_mem, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0x6000, 0x7fff) BLK3
 	AM_RANGE(0x8000, 0x8fff) AM_ROM
 	AM_RANGE(0x9000, 0x900f) AM_DEVREADWRITE(M6560_TAG, mos6560_port_r, mos6560_port_w)
-	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
+	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
 	AM_RANGE(0x9400, 0x97ff) AM_RAM
 //  AM_RANGE(0x9800, 0x9bff) I/O2
 //  AM_RANGE(0x9c00, 0x9fff) I/O3
@@ -185,7 +185,7 @@ static READ8_DEVICE_HANDLER( via0_pa_r )
 
     */
 
-	vic20_state *state = (vic20_state *)device->machine->driver_data;
+	vic20_state *state = device->machine->driver_data<vic20_state>();
 	UINT8 data = 0xfc;
 
 	/* serial clock in */
@@ -223,7 +223,7 @@ static WRITE8_DEVICE_HANDLER( via0_pa_w )
 
     */
 
-	vic20_state *state = (vic20_state *)device->machine->driver_data;
+	vic20_state *state = device->machine->driver_data<vic20_state>();
 
 	/* serial attention out */
 	cbm_iec_atn_w(state->iec, device, !BIT(data, 7));
@@ -269,17 +269,17 @@ static WRITE8_DEVICE_HANDLER( via0_pb_w )
 
 static WRITE8_DEVICE_HANDLER( via0_ca2_w )
 {
-	vic20_state *state = (vic20_state *)device->machine->driver_data;
+	vic20_state *state = device->machine->driver_data<vic20_state>();
 
 	if (!BIT(data, 0))
 	{
 		cassette_change_state(state->cassette, CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
-		state->cassette_timer->adjust(attotime_zero, 0, ATTOTIME_IN_HZ(44100));
+		state->cassette_timer->enable(true);
 	}
 	else
 	{
 		cassette_change_state(state->cassette, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
-		state->cassette_timer->reset();
+		state->cassette_timer->enable(false);
 	}
 }
 
@@ -319,7 +319,7 @@ static READ8_DEVICE_HANDLER( via1_pa_r )
 
     */
 
-	vic20_state *state = (vic20_state *)device->machine->driver_data;
+	vic20_state *state = device->machine->driver_data<vic20_state>();
 	UINT8 data = 0xff;
 
 	if (!BIT(state->key_col, 0)) data &= input_port_read(device->machine, "ROW0");
@@ -376,7 +376,7 @@ static WRITE8_DEVICE_HANDLER( via1_pb_w )
 
     */
 
-	vic20_state *state = (vic20_state *)device->machine->driver_data;
+	vic20_state *state = device->machine->driver_data<vic20_state>();
 
 	/* cassette write */
 	cassette_output(device->machine->device("cassette"), BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
@@ -387,7 +387,7 @@ static WRITE8_DEVICE_HANDLER( via1_pb_w )
 
 static WRITE_LINE_DEVICE_HANDLER( via1_ca2_w )
 {
-	vic20_state *driver_state = (vic20_state *)device->machine->driver_data;
+	vic20_state *driver_state = device->machine->driver_data<vic20_state>();
 
 	/* serial clock out */
 	cbm_iec_clk_w(driver_state->iec, device, !state);
@@ -395,7 +395,7 @@ static WRITE_LINE_DEVICE_HANDLER( via1_ca2_w )
 
 static WRITE_LINE_DEVICE_HANDLER( via1_cb2_w )
 {
-	vic20_state *driver_state = (vic20_state *)device->machine->driver_data;
+	vic20_state *driver_state = device->machine->driver_data<vic20_state>();
 
 	/* serial data out */
 	cbm_iec_data_w(driver_state->iec, device, !state);
@@ -424,10 +424,10 @@ static const via6522_interface vic20_via1_intf =
 
 static TIMER_DEVICE_CALLBACK( cassette_tick )
 {
-	vic20_state *state = (vic20_state *)timer.machine->driver_data;
+	vic20_state *state = timer.machine->driver_data<vic20_state>();
 	int data = (cassette_input(state->cassette) > +0.0) ? 1 : 0;
 
-	via_ca1_w(state->via1, data);
+	state->via1->write_ca1(data);
 }
 
 /* IEC Serial Bus */
@@ -435,7 +435,7 @@ static TIMER_DEVICE_CALLBACK( cassette_tick )
 static CBM_IEC_DAISY( cbm_iec_daisy )
 {
 	{ M6522_0_TAG },
-	{ M6522_1_TAG, DEVCB_DEVICE_LINE(M6522_1_TAG, via_cb1_w) },
+	{ M6522_1_TAG, DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb1), },
 	{ C1541_IEC(C1540_TAG) },
 	{ NULL}
 };
@@ -456,16 +456,16 @@ static IEEE488_DAISY( ieee488_daisy )
 
 static int vic20_dma_read_color( running_machine *machine, int offset )
 {
-	const address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 
-	return memory_read_byte(program, 0x9400 | (offset & 0x3ff));
+	return program->read_byte(0x9400 | (offset & 0x3ff));
 }
 
 static int vic20_dma_read( running_machine *machine, int offset )
 {
-	const address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 
-	return memory_read_byte(program, MOS6560ADDR2VC20ADDR(offset));
+	return program->read_byte(MOS6560ADDR2VC20ADDR(offset));
 }
 
 static UINT8 vic20_lightx_cb( running_machine *machine )
@@ -516,12 +516,12 @@ static const mos6560_interface vic20_6561_intf =
 
 static MACHINE_START( vic20 )
 {
-	vic20_state *state = (vic20_state *)machine->driver_data;
-	const address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
+	vic20_state *state = machine->driver_data<vic20_state>();
+	address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* find devices */
-	state->via0 = machine->device(M6522_0_TAG);
-	state->via1 = machine->device(M6522_1_TAG);
+	state->via0 = machine->device<via6522_device>(M6522_0_TAG);
+	state->via1 = machine->device<via6522_device>(M6522_1_TAG);
 	state->iec = machine->device(IEC_TAG);
 	state->cassette = machine->device(CASSETTE_TAG);
 	state->cassette_timer = machine->device<timer_device>(TIMER_C1530_TAG);
@@ -556,40 +556,85 @@ static MACHINE_START( vic20 )
 
 static DEVICE_IMAGE_LOAD( vic20_cart )
 {
-	const address_space *program = cputag_get_address_space(image.device().machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(image.device().machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 	const char *filetype = image.filetype();
-	int address = 0;
-	int size = image.length();
-	UINT8 *ptr;
+	UINT32 address = 0;
+	UINT32 size;
+	UINT8 *ptr = memory_region(image.device().machine, M6502_TAG);
 
-	if (!mame_stricmp(filetype, "20"))
-		address = 0x2000;
-	else if (!mame_stricmp(filetype, "40"))
-		address = 0x4000;
-	else if (!mame_stricmp(filetype, "60"))
-		address = 0x6000;
-	else if (!mame_stricmp(filetype, "70"))
-		address = 0x7000;
-	else if (!mame_stricmp(filetype, "a0"))
-		address = 0xa000;
-	else if (!mame_stricmp(filetype, "b0"))
-		address = 0xb000;
-
-	ptr = memory_region(image.device().machine, M6502_TAG);
-
-	if (size == 0x4000 && address != 0x4000)
+	if (image.software_entry() == NULL)
 	{
-		image.fread( ptr + address, 0x2000);
-		image.fread( ptr + 0xa000, 0x2000);
+		size = image.length();
 
-		memory_install_rom(program, address, address + 0x1fff, 0, 0, ptr + address);
-		memory_install_rom(program, 0xa000, 0xbfff, 0, 0, ptr + 0xa000);
+		if (!mame_stricmp(filetype, "20"))
+			address = 0x2000;
+		else if (!mame_stricmp(filetype, "40"))
+			address = 0x4000;
+		else if (!mame_stricmp(filetype, "60"))
+			address = 0x6000;
+		else if (!mame_stricmp(filetype, "70"))
+			address = 0x7000;
+		else if (!mame_stricmp(filetype, "a0"))
+			address = 0xa000;
+		else if (!mame_stricmp(filetype, "b0"))
+			address = 0xb000;
+
+		// special case for a 16K image containing two 8K files glued together
+		if (size == 0x4000 && address != 0x4000)
+		{
+			image.fread(ptr + address, 0x2000);
+			image.fread(ptr + 0xa000, 0x2000);
+
+			memory_install_rom(program, address, address + 0x1fff, 0, 0, ptr + address);
+			memory_install_rom(program, 0xa000, 0xbfff, 0, 0, ptr + 0xa000);
+		}
+		else
+		{
+			image.fread(ptr + address, size);
+			memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		}
 	}
 	else
 	{
-		image.fread( ptr + address, size);
+		size = image.get_software_region_length("2000");
+		if (size)
+		{
+			address = 0x2000;
+			memcpy(ptr + address, image.get_software_region("2000"), size);
+			memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		}
 
-		memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		size = image.get_software_region_length("4000");
+		if (size)
+		{
+			address = 0x4000;
+			memcpy(ptr + address, image.get_software_region("4000"), size);
+			memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		}
+
+		size = image.get_software_region_length("6000");
+		if (size)
+		{
+			address = 0x6000;
+			memcpy(ptr + address, image.get_software_region("6000"), size);
+			memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		}
+
+		size = image.get_software_region_length("a000");
+		if (size)
+		{
+			address = 0xa000;
+			memcpy(ptr + address, image.get_software_region("a000"), size);
+			memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		}
+
+		size = image.get_software_region_length("b000");
+		if (size)
+		{
+			address = 0xb000;
+			memcpy(ptr + address, image.get_software_region("b000"), size);
+			memory_install_rom(program, address, (address + size) - 1, 0, 0, ptr + address);
+		}
 	}
 
 	return IMAGE_INIT_PASS;
@@ -622,7 +667,7 @@ static PALETTE_INIT( vic20 )
 
 static VIDEO_UPDATE( vic20 )
 {
-	vic20_state *state = (vic20_state *)screen->machine->driver_data;
+	vic20_state *state = screen->machine->driver_data<vic20_state>();
 	mos6560_video_update(state->mos6560, bitmap, cliprect);
 	return 0;
 }
@@ -631,12 +676,11 @@ static VIDEO_UPDATE( vic20 )
 
 static INTERRUPT_GEN( vic20_raster_interrupt )
 {
-	vic20_state *state = (vic20_state *)device->machine->driver_data;
+	vic20_state *state = device->machine->driver_data<vic20_state>();
 	mos6560_raster_interrupt_gen(state->mos6560);
 }
 
-static MACHINE_DRIVER_START( vic20_common )
-	MDRV_DRIVER_DATA(vic20_state)
+static MACHINE_CONFIG_START( vic20_common, vic20_state )
 
 	MDRV_TIMER_ADD_PERIODIC(TIMER_C1530_TAG, cassette_tick, HZ(44100))
 
@@ -656,16 +700,19 @@ static MACHINE_DRIVER_START( vic20_common )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("20,40,60,70,a0,b0")
 	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_INTERFACE("vic1001_cart")
 	MDRV_CARTSLOT_LOAD(vic20_cart)
+
+	/* software lists */
+	MDRV_SOFTWARE_LIST_ADD("cart_list","vic1001_cart")
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("5K")
 	MDRV_RAM_EXTRA_OPTIONS("8K,16K,24K,32K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( vic20_ntsc )
-	MDRV_IMPORT_FROM( vic20_common )
+static MACHINE_CONFIG_DERIVED( vic20_ntsc, vic20_common )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502_TAG, M6502, MOS6560_CLOCK)
@@ -693,10 +740,9 @@ static MACHINE_DRIVER_START( vic20_ntsc )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( vic20_pal )
-	MDRV_IMPORT_FROM( vic20_common )
+static MACHINE_CONFIG_DERIVED( vic20_pal, vic20_common )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502_TAG, M6502, MOS6561_CLOCK)
@@ -724,7 +770,7 @@ static MACHINE_DRIVER_START( vic20_pal )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROMs */
 

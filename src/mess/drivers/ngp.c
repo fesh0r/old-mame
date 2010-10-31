@@ -117,12 +117,11 @@ enum flash_state
 };
 
 
-class ngp_state
+class ngp_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, ngp_state(machine)); }
-
-	ngp_state(running_machine &machine) { }
+	ngp_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	UINT8 io_reg[0x40];
 	UINT8 old_to3;
@@ -149,7 +148,7 @@ public:
 
 static TIMER_CALLBACK( ngp_seconds_callback )
 {
-	ngp_state *state = (ngp_state *)machine->driver_data;
+	ngp_state *state = machine->driver_data<ngp_state>();
 
 	state->io_reg[0x16] += 1;
 	if ( ( state->io_reg[0x16] & 0x0f ) == 0x0a )
@@ -184,7 +183,7 @@ static TIMER_CALLBACK( ngp_seconds_callback )
 
 static READ8_HANDLER( ngp_io_r )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 	UINT8 data = state->io_reg[offset];
 
 	switch( offset )
@@ -204,7 +203,7 @@ static READ8_HANDLER( ngp_io_r )
 
 static WRITE8_HANDLER( ngp_io_w )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	switch( offset )
 	{
@@ -472,7 +471,7 @@ static void flash_w( ngp_state *state, int which, offs_t offset, UINT8 data )
 
 static WRITE8_HANDLER( flash0_w )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	flash_w( state, 0, offset, data );
 }
@@ -480,7 +479,7 @@ static WRITE8_HANDLER( flash0_w )
 
 static WRITE8_HANDLER( flash1_w )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	flash_w( state, 1, offset, data );
 }
@@ -500,7 +499,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( ngp_z80_comm_r )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	return state->io_reg[0x3c];
 }
@@ -508,7 +507,7 @@ static READ8_HANDLER( ngp_z80_comm_r )
 
 static WRITE8_HANDLER( ngp_z80_comm_w )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	state->io_reg[0x3c] = data;
 }
@@ -516,7 +515,7 @@ static WRITE8_HANDLER( ngp_z80_comm_w )
 
 static WRITE8_HANDLER( ngp_z80_signal_main_w )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	cpu_set_input_line( state->tlcs900, TLCS900_INT5, ASSERT_LINE );
 }
@@ -532,7 +531,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( ngp_z80_clear_irq )
 {
-	ngp_state *state = (ngp_state *)space->machine->driver_data;
+	ngp_state *state = space->machine->driver_data<ngp_state>();
 
 	cpu_set_input_line( state->z80, 0, CLEAR_LINE );
 
@@ -548,7 +547,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( power_callback )
 {
-	ngp_state *state = (ngp_state *)field->port->machine->driver_data;
+	ngp_state *state = field->port->machine->driver_data<ngp_state>();
 
 	if ( state->io_reg[0x33] & 0x04 )
 	{
@@ -576,7 +575,7 @@ INPUT_PORTS_END
 
 static WRITE8_DEVICE_HANDLER( ngp_vblank_pin_w )
 {
-	ngp_state *state = (ngp_state *)device->machine->driver_data;
+	ngp_state *state = device->machine->driver_data<ngp_state>();
 
 	cpu_set_input_line( state->tlcs900, TLCS900_INT4, data ? ASSERT_LINE : CLEAR_LINE );
 }
@@ -584,7 +583,7 @@ static WRITE8_DEVICE_HANDLER( ngp_vblank_pin_w )
 
 static WRITE8_DEVICE_HANDLER( ngp_hblank_pin_w )
 {
-	ngp_state *state = (ngp_state *)device->machine->driver_data;
+	ngp_state *state = device->machine->driver_data<ngp_state>();
 
 	cpu_set_input_line( state->tlcs900, TLCS900_TIO, data ? ASSERT_LINE : CLEAR_LINE );
 }
@@ -592,7 +591,7 @@ static WRITE8_DEVICE_HANDLER( ngp_hblank_pin_w )
 
 static WRITE8_DEVICE_HANDLER( ngp_tlcs900_to3 )
 {
-	ngp_state *state = (ngp_state *)device->machine->driver_data;
+	ngp_state *state = device->machine->driver_data<ngp_state>();
 
 	if ( data && ! state->old_to3 )
 		cpu_set_input_line( state->z80, 0, ASSERT_LINE );
@@ -603,7 +602,7 @@ static WRITE8_DEVICE_HANDLER( ngp_tlcs900_to3 )
 
 static MACHINE_START( ngp )
 {
-	ngp_state *state = (ngp_state *)machine->driver_data;
+	ngp_state *state = machine->driver_data<ngp_state>();
 
 	state->seconds_timer = timer_alloc( machine, ngp_seconds_callback, NULL );
 	timer_adjust_periodic( state->seconds_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1) );
@@ -612,7 +611,7 @@ static MACHINE_START( ngp )
 
 static MACHINE_RESET( ngp )
 {
-	ngp_state *state = (ngp_state *)machine->driver_data;
+	ngp_state *state = machine->driver_data<ngp_state>();
 
 	state->old_to3 = 0;
 	state->tlcs900 = machine->device( "maincpu" );
@@ -629,7 +628,7 @@ static MACHINE_RESET( ngp )
 
 static VIDEO_UPDATE( ngp )
 {
-	ngp_state *state = (ngp_state *)screen->machine->driver_data;
+	ngp_state *state = screen->machine->driver_data<ngp_state>();
 
 	k1ge_update( state->k1ge, bitmap, cliprect );
 	return 0;
@@ -638,7 +637,7 @@ static VIDEO_UPDATE( ngp )
 
 static DEVICE_START( ngp_cart )
 {
-	ngp_state *state = (ngp_state *)device->machine->driver_data;
+	ngp_state *state = device->machine->driver_data<ngp_state>();
 	UINT8 *cart = memory_region(device->machine, "cart");
 
 	state->flash_chip[0].present = 0;
@@ -653,7 +652,7 @@ static DEVICE_START( ngp_cart )
 
 static DEVICE_IMAGE_LOAD( ngp_cart )
 {
-	ngp_state *state = (ngp_state *)image.device().machine->driver_data;
+	ngp_state *state = image.device().machine->driver_data<ngp_state>();
 	UINT32 filesize;
 
 	if (image.software_entry() == NULL)
@@ -742,7 +741,7 @@ static DEVICE_IMAGE_LOAD( ngp_cart )
 
 static DEVICE_IMAGE_UNLOAD( ngp_cart )
 {
-	ngp_state *state = (ngp_state *)image.device().machine->driver_data;
+	ngp_state *state = image.device().machine->driver_data<ngp_state>();
 
 	state->flash_chip[0].present = 0;
 	state->flash_chip[0].state = F_READ;
@@ -768,8 +767,7 @@ static const tlcs900_interface ngp_tlcs900_interface =
 };
 
 
-static MACHINE_DRIVER_START( ngp_common )
-	MDRV_DRIVER_DATA( ngp_state )
+static MACHINE_CONFIG_START( ngp_common, ngp_state )
 
 	MDRV_CPU_ADD( "maincpu", TLCS900H, XTAL_6_144MHz )
 	MDRV_CPU_PROGRAM_MAP( ngp_mem)
@@ -800,11 +798,10 @@ static MACHINE_DRIVER_START( ngp_common )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "lspeaker", 0.50 )
 	MDRV_SOUND_ADD( "dac_r", DAC, 0 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "rspeaker", 0.50 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( ngp )
-	MDRV_IMPORT_FROM( ngp_common )
+static MACHINE_CONFIG_DERIVED( ngp, ngp_common )
 
 	MDRV_PALETTE_LENGTH( 8 )
 	MDRV_PALETTE_INIT( k1ge )
@@ -819,11 +816,10 @@ static MACHINE_DRIVER_START( ngp )
 	MDRV_CARTSLOT_INTERFACE("ngp_cart")
 	MDRV_CARTSLOT_UNLOAD(ngp_cart)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","ngp")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
-static MACHINE_DRIVER_START( ngpc )
-	MDRV_IMPORT_FROM( ngp_common )
+static MACHINE_CONFIG_DERIVED( ngpc, ngp_common )
 
 	MDRV_PALETTE_LENGTH( 4096 )
 	MDRV_PALETTE_INIT( k2ge )
@@ -838,7 +834,7 @@ static MACHINE_DRIVER_START( ngpc )
 	MDRV_CARTSLOT_INTERFACE("ngp_cart")
 	MDRV_CARTSLOT_UNLOAD(ngp_cart)
 	MDRV_SOFTWARE_LIST_ADD("cart_list","ngp")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 ROM_START( ngp )

@@ -25,12 +25,11 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-class apricot_state
+class apricot_state : public driver_device
 {
 public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, apricot_state(machine)); }
-
-	apricot_state(running_machine &machine) { }
+	apricot_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
 
 	running_device *pic8259;
 	running_device *wd2793;
@@ -49,7 +48,7 @@ public:
 
 static READ8_DEVICE_HANDLER( apricot_sysctrl_r )
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 	UINT8 data = 0;
 
 	data |= apricot->display_enabled << 3;
@@ -59,7 +58,7 @@ static READ8_DEVICE_HANDLER( apricot_sysctrl_r )
 
 static WRITE8_DEVICE_HANDLER( apricot_sysctrl_w )
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 
 	apricot->display_on = BIT(data, 3);
 	apricot->video_mode = BIT(data, 4);
@@ -101,7 +100,7 @@ static const struct pit8253_config apricot_pit8253_intf =
 
 static void apricot_sio_irq_w(running_device *device, int state)
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 	pic8259_ir5_w(apricot->pic8259, state);
 }
 
@@ -122,7 +121,7 @@ static const z80sio_interface apricot_z80sio_intf =
 
 static IRQ_CALLBACK( apricot_irq_ack )
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 	return pic8259_acknowledge(apricot->pic8259);
 }
 
@@ -138,7 +137,7 @@ static const struct pic8259_interface apricot_pic8259_intf =
 
 static WRITE_LINE_DEVICE_HANDLER( apricot_wd2793_intrq_w )
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 
 	pic8259_ir4_w(apricot->pic8259, state);
 //  i8089 external terminate channel 1
@@ -164,7 +163,7 @@ static const wd17xx_interface apricot_wd17xx_intf =
 
 static VIDEO_UPDATE( apricot )
 {
-	apricot_state *apricot = (apricot_state *)screen->machine->driver_data;
+	apricot_state *apricot = screen->machine->driver_data<apricot_state>();
 
 	if (!apricot->display_on)
 		mc6845_update(apricot->mc6845, bitmap, cliprect);
@@ -176,7 +175,7 @@ static VIDEO_UPDATE( apricot )
 
 static MC6845_UPDATE_ROW( apricot_update_row )
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 	UINT8 *ram = messram_get_ptr(device->machine->device("messram"));
 	int i, x;
 
@@ -211,7 +210,7 @@ static MC6845_UPDATE_ROW( apricot_update_row )
 
 static WRITE_LINE_DEVICE_HANDLER( apricot_mc6845_de )
 {
-	apricot_state *apricot = (apricot_state *)device->machine->driver_data;
+	apricot_state *apricot = device->machine->driver_data<apricot_state>();
 	apricot->display_enabled = state;
 }
 
@@ -236,9 +235,9 @@ static const mc6845_interface apricot_mc6845_intf =
 
 static DRIVER_INIT( apricot )
 {
-	apricot_state *apricot = (apricot_state *)machine->driver_data;
+	apricot_state *apricot = machine->driver_data<apricot_state>();
 	running_device *maincpu = machine->device("maincpu");
-	const address_space *prg = cpu_get_address_space(maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *prg = cpu_get_address_space(maincpu, ADDRESS_SPACE_PROGRAM);
 
 	UINT8 *ram = messram_get_ptr(machine->device("messram"));
 	UINT32 ram_size = messram_get_size(machine->device("messram"));
@@ -331,8 +330,7 @@ static const floppy_config apricot_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( apricot )
-	MDRV_DRIVER_DATA(apricot_state)
+static MACHINE_CONFIG_START( apricot, apricot_state )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8086, XTAL_15MHz / 3)
@@ -373,11 +371,10 @@ static MACHINE_DRIVER_START( apricot )
 	/* floppy */
 	MDRV_WD2793_ADD("ic68", apricot_wd17xx_intf)
 	MDRV_FLOPPY_2_DRIVES_ADD(apricot_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( apricotxi )
-	MDRV_IMPORT_FROM(apricot)
-MACHINE_DRIVER_END
+static MACHINE_CONFIG_DERIVED( apricotxi, apricot )
+MACHINE_CONFIG_END
 
 
 /***************************************************************************

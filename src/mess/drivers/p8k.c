@@ -184,6 +184,9 @@ static WRITE_LINE_DEVICE_HANDLER( p8k_dma_irq_w )
 	p8k_daisy_interrupt(device, state);
 }
 
+static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+
 static Z80DMA_INTERFACE( p8k_dma_intf )
 {
 	DEVCB_LINE(p8k_dma_irq_w),
@@ -493,7 +496,7 @@ GFXDECODE_END
 
 ****************************************************************************/
 
-static MACHINE_DRIVER_START( p8k )
+static MACHINE_CONFIG_START( p8k, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_4MHz )
 	MDRV_CPU_CONFIG(p8k_daisy_chain)
@@ -533,9 +536,9 @@ static MACHINE_DRIVER_START( p8k )
 
 	MDRV_VIDEO_START(p8k)
 	MDRV_VIDEO_UPDATE(p8k)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( p8k_16 )
+static MACHINE_CONFIG_START( p8k_16, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z8001, XTAL_4MHz )	// actually z8001, appropriate changes pending
 	MDRV_CPU_CONFIG(p8k_16_daisy_chain)
@@ -572,7 +575,7 @@ static MACHINE_DRIVER_START( p8k_16 )
 
 	MDRV_VIDEO_START(p8k)
 	MDRV_VIDEO_UPDATE(p8k)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( p8000 )

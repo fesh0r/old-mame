@@ -125,7 +125,7 @@ static VIDEO_UPDATE( pippin )
     return 0;
 }
 
-static MACHINE_DRIVER_START( pippin )
+static MACHINE_CONFIG_START( pippin, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",PPC603, 66000000)
     MDRV_CPU_PROGRAM_MAP(pippin_mem)
@@ -153,7 +153,7 @@ static MACHINE_DRIVER_START( pippin )
 	MDRV_SOUND_ROUTE( 1, "rspeaker", 1.00 )
 
 	MDRV_CDROM_ADD("cdrom")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 /*
@@ -182,4 +182,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1996, pippin,  0,       0,	pippin, 	pippin, 	 0,  "Apple/Bandai",   "Pippin @mark",		GAME_NOT_WORKING)
+COMP( 1996, pippin,  0,       0,	pippin, 	pippin, 	 0,  "Apple / Bandai",   "Pippin @mark",		GAME_NOT_WORKING)

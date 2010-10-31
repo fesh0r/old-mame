@@ -324,7 +324,7 @@ static const cassette_config pk8000_cassette_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( pk8000 )
+static MACHINE_CONFIG_START( pk8000, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",I8080, 1780000)
     MDRV_CPU_PROGRAM_MAP(pk8000_mem)
@@ -351,7 +351,7 @@ static MACHINE_DRIVER_START( pk8000 )
 
     /* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -361,7 +361,7 @@ static MACHINE_DRIVER_START( pk8000 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( vesta )

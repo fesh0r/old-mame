@@ -234,7 +234,7 @@ INPUT_PORTS_END
 // MACHINE DRIVER //
 ////////////////////
 
-static MACHINE_DRIVER_START( cybikov1 )
+static MACHINE_CONFIG_START( cybikov1, driver_device )
 	// cpu
 	MDRV_CPU_ADD( "maincpu", H8S2241, 11059200 )
 	MDRV_CPU_PROGRAM_MAP( cybikov1_mem )
@@ -253,7 +253,7 @@ static MACHINE_DRIVER_START( cybikov1 )
 	MDRV_DEFAULT_LAYOUT(layout_lcd)
 	// sound
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	// machine
 	MDRV_MACHINE_START(cybikov1)
@@ -268,11 +268,9 @@ static MACHINE_DRIVER_START( cybikov1 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
 	MDRV_RAM_EXTRA_OPTIONS("1M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( cybikov2 )
-	// import
-	MDRV_IMPORT_FROM(cybikov1)
+static MACHINE_CONFIG_DERIVED( cybikov2, cybikov1)
 	// cpu
 	MDRV_CPU_REPLACE("maincpu", H8S2246, 11059200)
 	MDRV_CPU_PROGRAM_MAP(cybikov2_mem )
@@ -288,11 +286,9 @@ static MACHINE_DRIVER_START( cybikov2 )
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("256K")
 	MDRV_RAM_EXTRA_OPTIONS("512K,1M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( cybikoxt )
-	// import
-	MDRV_IMPORT_FROM( cybikov1)
+static MACHINE_CONFIG_DERIVED( cybikoxt, cybikov1)
 	// cpu
 	MDRV_CPU_REPLACE("maincpu", H8S2323, 18432000)
 	MDRV_CPU_PROGRAM_MAP(cybikoxt_mem )
@@ -311,7 +307,7 @@ static MACHINE_DRIVER_START( cybikoxt )
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2M")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /////////
@@ -338,6 +334,6 @@ ROM_END
 //////////////
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        COMPANY         FULLNAME                FLAGS */
-COMP( 2000, cybikov1,   0,          0,      cybikov1,   cybiko, cybikov1,   "Cybiko, Inc.", "Cybiko Classic (V1)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
-COMP( 2000, cybikov2,   cybikov1,   0,      cybikov2,   cybiko, cybikov2,   "Cybiko, Inc.", "Cybiko Classic (V2)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
-COMP( 2001, cybikoxt,   cybikov1,   0,      cybikoxt,   cybiko, cybikoxt,   "Cybiko, Inc.", "Cybiko Xtreme",        GAME_NO_SOUND | GAME_NOT_WORKING )
+COMP( 2000, cybikov1,   0,          0,      cybikov1,   cybiko, cybikov1,   "Cybiko Inc", "Cybiko Classic (V1)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP( 2000, cybikov2,   cybikov1,   0,      cybikov2,   cybiko, cybikov2,   "Cybiko Inc", "Cybiko Classic (V2)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP( 2001, cybikoxt,   cybikov1,   0,      cybikoxt,   cybiko, cybikoxt,   "Cybiko Inc", "Cybiko Xtreme",        GAME_NO_SOUND | GAME_NOT_WORKING )

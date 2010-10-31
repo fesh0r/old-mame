@@ -120,7 +120,8 @@ static READ16_HANDLER(sgi_ip2_swtch_r)
 
 static READ8_HANDLER(sgi_ip2_clock_ctl_r)
 {
-	UINT8 ret = mc146818_port_r(space, 1);
+	mc146818_device *rtc = space->machine->device<mc146818_device>("rtc");
+	UINT8 ret = rtc->read(*space, 1);
 	verboselog(space->machine, 1, "sgi_ip2_clock_ctl_r: %02x\n", ret);
 	return ret;
 }
@@ -128,12 +129,15 @@ static READ8_HANDLER(sgi_ip2_clock_ctl_r)
 static WRITE8_HANDLER(sgi_ip2_clock_ctl_w)
 {
 	verboselog(space->machine, 1, "sgi_ip2_clock_ctl_w: %02x\n", data);
-	mc146818_port_w(space, 1, data);
+	mc146818_device *rtc = space->machine->device<mc146818_device>("rtc");
+	rtc->write(*space, 1, data);
 }
 
 static READ8_HANDLER(sgi_ip2_clock_data_r)
 {
-	UINT8 ret = mc146818_port_r(space, 0);
+	mc146818_device *rtc = space->machine->device<mc146818_device>("rtc");
+	UINT8 ret = rtc->read(*space, 0);
+
 	verboselog(space->machine, 1, "sgi_ip2_clock_data_r: %02x\n", ret);
 	return ret;
 }
@@ -141,7 +145,8 @@ static READ8_HANDLER(sgi_ip2_clock_data_r)
 static WRITE8_HANDLER(sgi_ip2_clock_data_w)
 {
 	verboselog(space->machine, 1, "sgi_ip2_clock_data_w: %02x\n", data);
-	mc146818_port_w(space, 0, data);
+	mc146818_device *rtc = space->machine->device<mc146818_device>("rtc");
+	rtc->write(*space, 0, data);
 }
 
 
@@ -422,7 +427,7 @@ static const duart68681_config sgi_ip2_duart68681b_config =
 	duartb_output
 };
 
-static MACHINE_DRIVER_START( sgi_ip2 )
+static MACHINE_CONFIG_START( sgi_ip2, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(sgi_ip2_map)
@@ -432,18 +437,18 @@ static MACHINE_DRIVER_START( sgi_ip2 )
 	MDRV_MACHINE_RESET(sgi_ip2)
 
 	/* video hardware */
-	MDRV_IMPORT_FROM( generic_terminal )
+	MDRV_FRAGMENT_ADD( generic_terminal )
 	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG,sgi_terminal_intf)
 
     MDRV_DUART68681_ADD( "duart68681a", XTAL_3_6864MHz, sgi_ip2_duart68681a_config ) /* Y3 3.6864MHz Xtal ??? copy-over from dectalk */
     MDRV_DUART68681_ADD( "duart68681b", XTAL_3_6864MHz, sgi_ip2_duart68681b_config ) /* Y3 3.6864MHz Xtal ??? copy-over from dectalk */
-	MDRV_NVRAM_HANDLER(mc146818)
+	MDRV_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD( "dac", DAC, 0 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( sgi_ip2 )
     PORT_START("SWTCH")
@@ -501,8 +506,6 @@ static DRIVER_INIT( sgi_ip2 )
 	memcpy(dst, src, 8);
 
 	machine->device("maincpu")->reset();
-
-	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 
 /***************************************************************************
@@ -519,4 +522,4 @@ ROM_START( sgi_ip2 )
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE  INPUT     INIT     COMPANY                   FULLNAME */
-COMP( 1985, sgi_ip2,  0,        0,        sgi_ip2, sgi_ip2,  sgi_ip2, "Silicon Graphics, Inc.", "IRIS 3130 (IP2)", GAME_NOT_WORKING )
+COMP( 1985, sgi_ip2,  0,        0,        sgi_ip2, sgi_ip2,  sgi_ip2, "Silicon Graphics Inc", "IRIS 3130 (IP2)", GAME_NOT_WORKING )

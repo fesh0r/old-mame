@@ -41,36 +41,36 @@ Notes:
 */
 
 /*
-	
-	Undumped cartridges:
-  
-	80-1410   Super Science
-	80-1533   Famous Things & Places
-	80-0989   Bible Knowledge
-	80-1001   Fantasy Trivia
-	80-1002   General Knowledge II
-	80-1003   Sports History
-	80-2314   Familiar Faces
-	80-2315   Historical Happenings
-	80-2333   Arts, Entertainment & More
-	80-2334   Customs & Cultures
-	80-1531   32K RAM Memory Expansion Cartridge
-	80-12051  Space Scholar
-	80-12053  Frenzy of Facts
-	80-12052  Spreadsheet Success
+
+    Undumped cartridges:
+
+    80-1410   Super Science
+    80-1533   Famous Things & Places
+    80-0989   Bible Knowledge
+    80-1001   Fantasy Trivia
+    80-1002   General Knowledge II
+    80-1003   Sports History
+    80-2314   Familiar Faces
+    80-2315   Historical Happenings
+    80-2333   Arts, Entertainment & More
+    80-2334   Customs & Cultures
+    80-1531   32K RAM Memory Expansion Cartridge
+    80-12051  Space Scholar
+    80-12053  Frenzy of Facts
+    80-12052  Spreadsheet Success
 
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	- identify unknown chips
-	- boot animation won't play
-	- keyboard
-	- mouse
-	- sound
-	- cartridges
+    - identify unknown chips
+    - boot animation won't play
+    - keyboard
+    - mouse
+    - sound
+    - cartridges
 
 */
 
@@ -88,7 +88,7 @@ static READ8_HANDLER( bankswitch_r )
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	const address_space *program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	switch (offset)
 	{
@@ -182,14 +182,14 @@ static VIDEO_START( prestige )
 
 static VIDEO_UPDATE( prestige )
 {
-	const address_space *program = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *program = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 addr = 0xe000;
 
 	for (int y = 0; y < 100; y++)
 	{
 		for (int sx = 0; sx < 30; sx++)
 		{
-			UINT8 data = memory_read_byte(program, addr);
+			UINT8 data = program->read_byte(addr);
 
 			for (int x = 0; x < 8; x++)
 			{
@@ -210,7 +210,7 @@ static DEVICE_IMAGE_LOAD( prestige_cart )
 	return IMAGE_INIT_FAIL;
 }
 
-static MACHINE_DRIVER_START( prestige )
+static MACHINE_CONFIG_START( prestige, driver_device )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
     MDRV_CPU_PROGRAM_MAP(prestige_mem)
@@ -243,7 +243,7 @@ static MACHINE_DRIVER_START( prestige )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
 	MDRV_RAM_EXTRA_OPTIONS("64K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( prestige )

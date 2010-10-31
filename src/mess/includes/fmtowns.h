@@ -3,6 +3,8 @@
 
 #include "emu.h"
 
+#define IRQ_LOG 0  // set to 1 to log IRQ line activity
+
 READ8_HANDLER( towns_gfx_high_r );
 WRITE8_HANDLER( towns_gfx_high_w );
 READ8_HANDLER( towns_gfx_r );
@@ -61,6 +63,8 @@ struct towns_video_controller
 	UINT8 towns_video_reg[2];
 	UINT8 towns_sprite_sel;  // selected sprite register
 	UINT8 towns_sprite_reg[8];
+	UINT8 towns_sprite_flag;  // sprite drawing flag
+	UINT8 towns_sprite_page;  // VRAM page (not layer) sprites are drawn to
 	UINT8 towns_tvram_enable;
 	UINT16 towns_kanji_offset;
 	UINT8 towns_kanji_code_h;
@@ -70,14 +74,16 @@ struct towns_video_controller
 	UINT8 towns_display_page_sel;
 	UINT8 towns_vblank_flag;
 	UINT8 towns_layer_ctrl;
+	emu_timer* sprite_timer;
 };
 
-class towns_state
+class towns_state : public driver_device
 {
 	public:
-	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, towns_state(machine)); }
-	towns_state(running_machine &machine) {}
-
+	towns_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config),
+		  m_nvram(*this, "nvram") { }
+		  
 	UINT8 ftimer;
 	UINT8 nmi_mask;
 	UINT8 compat_mode;
@@ -85,7 +91,6 @@ class towns_state
 	UINT32 towns_ankcg_enable;
 	UINT32 towns_mainmem_enable;
 	UINT32 towns_ram_enable;
-	UINT8* towns_cmos;
 	UINT32* towns_vram;
 	UINT8* towns_gfxvram;
 	UINT8* towns_txtvram;
@@ -115,8 +120,13 @@ class towns_state
 	UINT8 towns_mouse_output;
 	UINT8 towns_mouse_x;
 	UINT8 towns_mouse_y;
+	UINT8 towns_volume[8];  // volume ports
+	UINT8 towns_volume_select;
+	UINT8 towns_scsi_control;
+	UINT8 towns_scsi_status;
 	struct towns_cdrom_controller towns_cd;
 	struct towns_video_controller video;
+	required_shared_ptr<UINT8>	m_nvram;
 
 	/* devices */
 	running_device* maincpu;
@@ -129,10 +139,15 @@ class towns_state
 	running_device* messram;
 	running_device* cdrom;
 	running_device* cdda;
-
+	running_device* scsibus;
+	running_device* hd0;
+	running_device* hd1;
+	running_device* hd2;
+	running_device* hd3;
+	running_device* hd4;
 };
 
-void towns_update_video_banks(const address_space*);
+void towns_update_video_banks(address_space*);
 
 INTERRUPT_GEN( towns_vsync_irq );
 VIDEO_START( towns );

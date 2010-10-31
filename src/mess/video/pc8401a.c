@@ -14,7 +14,7 @@ static PALETTE_INIT( pc8401a )
 
 static VIDEO_START( pc8401a )
 {
-	pc8401a_state *state = (pc8401a_state *)machine->driver_data;
+	pc8401a_state *state = machine->driver_data<pc8401a_state>();
 
 	/* allocate video memory */
 	state->video_ram = auto_alloc_array(machine, UINT8, PC8401A_LCD_VIDEORAM_SIZE);
@@ -32,7 +32,7 @@ static VIDEO_UPDATE( pc8401a )
 
 static VIDEO_START( pc8500 )
 {
-	pc8401a_state *state = (pc8401a_state *)machine->driver_data;
+	pc8401a_state *state = machine->driver_data<pc8401a_state>();
 
 	/* find devices */
 	state->sed1330 = machine->device(SED1330_TAG);
@@ -48,7 +48,7 @@ static VIDEO_START( pc8500 )
 
 static VIDEO_UPDATE( pc8500 )
 {
-	pc8401a_state *state = (pc8401a_state *)screen->machine->driver_data;
+	pc8401a_state *state = screen->machine->driver_data<pc8401a_state>();
 
 	if (screen == state->lcd)
 	{
@@ -66,14 +66,14 @@ static VIDEO_UPDATE( pc8500 )
 
 static READ8_HANDLER( pc8500_sed1330_vd_r )
 {
-	pc8401a_state *state = (pc8401a_state *)space->machine->driver_data;
+	pc8401a_state *state = space->machine->driver_data<pc8401a_state>();
 
 	return state->video_ram[offset & PC8500_LCD_VIDEORAM_MASK];
 }
 
 static WRITE8_HANDLER( pc8500_sed1330_vd_w )
 {
-	pc8401a_state *state = (pc8401a_state *)space->machine->driver_data;
+	pc8401a_state *state = space->machine->driver_data<pc8401a_state>();
 
 	state->video_ram[offset & PC8500_LCD_VIDEORAM_MASK] = data;
 }
@@ -106,7 +106,7 @@ static const mc6845_interface pc8441a_mc6845_interface = {
 
 /* Machine Drivers */
 
-MACHINE_DRIVER_START( pc8401a_video )
+MACHINE_CONFIG_FRAGMENT( pc8401a_video )
 //  MDRV_DEFAULT_LAYOUT(layout_pc8401a)
 
 	MDRV_PALETTE_LENGTH(2)
@@ -121,9 +121,9 @@ MACHINE_DRIVER_START( pc8401a_video )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(480, 128)
 	MDRV_SCREEN_VISIBLE_AREA(0, 480-1, 0, 128-1)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
-MACHINE_DRIVER_START( pc8500_video )
+MACHINE_CONFIG_FRAGMENT( pc8500_video )
 	MDRV_DEFAULT_LAYOUT(layout_pc8500)
 
 	MDRV_PALETTE_LENGTH(2+8)
@@ -148,4 +148,4 @@ MACHINE_DRIVER_START( pc8500_video )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_MC6845_ADD(MC6845_TAG, MC6845, 400000, pc8441a_mc6845_interface)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END

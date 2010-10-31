@@ -339,7 +339,7 @@ static const char *nc_bankhandler_w[]={
 
 static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int mem_type;
 	int mem_bank;
 	char bank1[10];
@@ -1341,10 +1341,6 @@ static MACHINE_RESET( nc200 )
 	nc200_uart_interrupt_irq = 0;
 
 	nc_common_open_stream_for_reading(machine);
-	if (file)
-	{
-		mc146818_load_stream(file);
-	}
 	nc_common_restore_memory_from_stream(machine);
 	nc_common_close_stream();
 
@@ -1357,10 +1353,6 @@ static MACHINE_RESET( nc200 )
 static void nc200_machine_stop(running_machine &machine)
 {
 	nc_common_open_stream_for_writing(&machine);
-	if (file)
-	{
-		mc146818_save_stream(file);
-	}
 	nc_common_store_memory_to_stream(&machine);
 	nc_common_close_stream();
 }
@@ -1380,8 +1372,6 @@ static MACHINE_START( nc200 )
 
 	/* serial timer */
 	nc_serial_timer = timer_alloc(machine, nc_serial_timer_callback, NULL);
-
-	mc146818_init(machine, MC146818_STANDARD);
 }
 
 /*
@@ -1510,7 +1500,7 @@ static ADDRESS_MAP_START(nc200_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xb0, 0xb9) AM_READ(nc_key_data_in_r)
 	AM_RANGE(0xc0, 0xc0) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xc1, 0xc1) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
-	AM_RANGE(0xd0, 0xd1) AM_READWRITE(mc146818_port_r, mc146818_port_w)
+	AM_RANGE(0xd0, 0xd1) AM_DEVREADWRITE_MODERN("mc", mc146818_device, read, write)
 	AM_RANGE(0xe0, 0xe0) AM_DEVREAD("upd765", upd765_status_r)
 	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE("upd765",upd765_data_r, upd765_data_w)
 ADDRESS_MAP_END
@@ -1672,7 +1662,7 @@ DEFINE_LEGACY_IMAGE_DEVICE(NC_SERIAL, nc_serial);
 
 /**********************************************************************************************************/
 
-static MACHINE_DRIVER_START( nc100 )
+static MACHINE_CONFIG_START( nc100, driver_device )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, /*6000000*/ 4606000)        /* Russell Marks says this is more accurate */
 	MDRV_CPU_PROGRAM_MAP(nc_map)
@@ -1719,13 +1709,13 @@ static MACHINE_DRIVER_START( nc100 )
 	MDRV_CARTSLOT_START(nc_pcmcia_card)
 	MDRV_CARTSLOT_LOAD(nc_pcmcia_card)
 	MDRV_CARTSLOT_UNLOAD(nc_pcmcia_card)
-
+	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 
 	MDRV_NC_SERIAL_ADD("serial")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 static const floppy_config nc200_floppy_config =
 {
@@ -1739,8 +1729,7 @@ static const floppy_config nc200_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( nc200 )
-	MDRV_IMPORT_FROM( nc100 )
+static MACHINE_CONFIG_DERIVED( nc200, nc100 )
 
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP(nc200_io)
@@ -1769,10 +1758,12 @@ static MACHINE_DRIVER_START( nc200 )
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, nc200_floppy_config)
 
+	MDRV_MC146818_ADD( "mc", MC146818_STANDARD )
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************

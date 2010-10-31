@@ -5,7 +5,7 @@
     Dual floppy drive with HX-20 factory option
 
 
-    Status: Boots from system disk, missing µPD7201 emulation
+    Status: Boots from system disk, missing ??PD7201 emulation
 
 ***************************************************************************/
 
@@ -73,7 +73,7 @@ static TIMER_DEVICE_CALLBACK( serial_clock )
 static READ8_HANDLER( tf20_rom_disable )
 {
 	tf20_state *tf20 = get_safe_token(space->cpu->owner());
-	const address_space *prg = cpu_get_address_space(space->cpu, ADDRESS_SPACE_PROGRAM);
+	address_space *prg = cpu_get_address_space(space->cpu, ADDRESS_SPACE_PROGRAM);
 
 	/* switch in ram */
 	memory_install_ram(prg, 0x0000, 0x7fff, 0, 0, messram_get_ptr(tf20->ram));
@@ -288,7 +288,7 @@ static const floppy_config tf20_floppy_config =
 	NULL
 };
 
-static MACHINE_DRIVER_START( tf20 )
+static MACHINE_CONFIG_FRAGMENT( tf20 )
 	MDRV_CPU_ADD("tf20", Z80, XTAL_CR1 / 2) /* uPD780C */
 	MDRV_CPU_PROGRAM_MAP(tf20_mem)
 	MDRV_CPU_IO_MAP(tf20_io)
@@ -306,7 +306,7 @@ static MACHINE_DRIVER_START( tf20 )
 
 	/* 2 floppy drives */
 	MDRV_FLOPPY_2_DRIVES_ADD(tf20_floppy_config)
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************
@@ -327,7 +327,7 @@ static DEVICE_START( tf20 )
 {
 	tf20_state *tf20 = get_safe_token(device);
 	running_device *cpu = device->subdevice("tf20");
-	const address_space *prg = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
+	address_space *prg = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
 
 	cpu_set_irq_callback(cpu, tf20_irq_ack);
 
@@ -351,7 +351,7 @@ static DEVICE_START( tf20 )
 static DEVICE_RESET( tf20 )
 {
 	running_device *cpu = device->subdevice("tf20");
-	const address_space *prg = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
+	address_space *prg = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
 
 	/* enable rom */
 	memory_install_rom(prg, 0x0000, 0x07ff, 0, 0x7800, cpu->region()->base());
@@ -366,7 +366,7 @@ DEVICE_GET_INFO( tf20 )
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0;									break;
 
 		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:		info->machine_config = MACHINE_DRIVER_NAME(tf20);	break;
+		case DEVINFO_PTR_MACHINE_CONFIG:		info->machine_config = MACHINE_CONFIG_NAME(tf20);	break;
 		case DEVINFO_PTR_ROM_REGION:			info->romregion = ROM_NAME(tf20);				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */

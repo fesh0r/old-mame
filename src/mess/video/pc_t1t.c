@@ -10,6 +10,7 @@
 
 #include "emu.h"
 #include "pc_t1t.h"
+#include "video/pc_video_mess.h"
 #include "video/mc6845.h"
 #include "machine/pic8259.h"
 #include "devices/messram.h"
@@ -44,7 +45,7 @@ static const mc6845_interface mc6845_t1000_intf = {
 };
 
 
-MACHINE_DRIVER_START( pcvideo_t1000 )
+MACHINE_CONFIG_FRAGMENT( pcvideo_t1000 )
 	MDRV_SCREEN_ADD(T1000_SCREEN_NAME, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_14_31818MHz,912,0,640,262,0,200)
@@ -55,7 +56,7 @@ MACHINE_DRIVER_START( pcvideo_t1000 )
 
 	MDRV_VIDEO_START(pc_t1t)
 	MDRV_VIDEO_UPDATE( mc6845_t1000 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 static const mc6845_interface mc6845_pcjr_intf = {
@@ -72,7 +73,7 @@ static const mc6845_interface mc6845_pcjr_intf = {
 };
 
 
-MACHINE_DRIVER_START( pcvideo_pcjr )
+MACHINE_CONFIG_FRAGMENT( pcvideo_pcjr )
 	MDRV_SCREEN_ADD(T1000_SCREEN_NAME, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_14_31818MHz,912,0,640,262,0,200)
@@ -83,7 +84,7 @@ MACHINE_DRIVER_START( pcvideo_pcjr )
 
 	MDRV_VIDEO_START(pc_pcjr)
 	MDRV_VIDEO_UPDATE( mc6845_t1000 )
-MACHINE_DRIVER_END
+MACHINE_CONFIG_END
 
 
 /***************************************************************************
@@ -158,7 +159,7 @@ static VIDEO_START( pc_t1t )
 	pcjr.bank = 0;
 	pcjr.chr_size = 16;
 
-	machine->generic.videoram_size = 0x8000;
+	pc_videoram_size = 0x8000;
 }
 
 
@@ -170,7 +171,7 @@ static VIDEO_START( pc_pcjr )
 	pcjr.mode_control = 0x08;
 	pcjr.chr_size = 8;
 
-	machine->generic.videoram_size = 0x8000;
+	pc_videoram_size = 0x8000;
 }
 
 static VIDEO_UPDATE( mc6845_t1000 )
@@ -404,9 +405,10 @@ static MC6845_UPDATE_ROW( t1000_update_row )
 
  READ8_HANDLER ( pc_t1t_videoram_r )
 {
+	UINT8 *videoram = pc_videoram;
 	int data = 0xff;
-	if( space->machine->generic.videoram.u8 )
-		data = space->machine->generic.videoram.u8[offset];
+	if( videoram )
+		data = videoram[offset];
 	return data;
 }
 
@@ -737,7 +739,7 @@ static void pc_t1t_bank_w(running_machine *machine, int data)
 		dram = (data & 0x07) << 14;
 		vram = (data & 0x38) << (14-3);
 #endif
-		machine->generic.videoram.u8 = &ram[vram];
+		pc_videoram = &ram[vram];
 		pcjr.displayram = &ram[dram];
 		pc_t1t_mode_switch();
 	}

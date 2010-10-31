@@ -210,7 +210,7 @@ static void mess_md_io_write_data_port(running_machine *machine, int portnum, UI
 			if (((megadrive_io_data_regs[portnum] & 0x40) == 0x00) && ((data & 0x40) == 0x40))
 			{
 				mess_io_stage[portnum]++;
-				timer_adjust_oneshot(mess_io_timeout[portnum], cputag_clocks_to_attotime(machine, "maincpu", 8192), 0);
+				timer_adjust_oneshot(mess_io_timeout[portnum], machine->device<cpu_device>("maincpu")->cycles_to_attotime(8192), 0);
 			}
 
 		}
@@ -335,32 +335,29 @@ static MACHINE_RESET( ms_megadriv )
 	MACHINE_RESET_CALL( md_mappers );
 }
 
-static MACHINE_DRIVER_START( ms_megadriv )
-	MDRV_IMPORT_FROM(megadriv)
+static MACHINE_CONFIG_DERIVED( ms_megadriv, megadriv )
 
 	MDRV_MACHINE_START( ms_megadriv )
 	MDRV_MACHINE_RESET( ms_megadriv )
 
-	MDRV_IMPORT_FROM( genesis_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( genesis_cartslot )
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( ms_megadpal )
-	MDRV_IMPORT_FROM(megadpal)
-
-	MDRV_MACHINE_START( ms_megadriv )
-	MDRV_MACHINE_RESET( ms_megadriv )
-
-	MDRV_IMPORT_FROM( genesis_cartslot )
-MACHINE_DRIVER_END
-
-static MACHINE_DRIVER_START( ms_megdsvp )
-	MDRV_IMPORT_FROM(megdsvp)
+static MACHINE_CONFIG_DERIVED( ms_megadpal, megadpal )
 
 	MDRV_MACHINE_START( ms_megadriv )
 	MDRV_MACHINE_RESET( ms_megadriv )
 
-	MDRV_IMPORT_FROM( genesis_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( genesis_cartslot )
+MACHINE_CONFIG_END
+
+static MACHINE_CONFIG_DERIVED( ms_megdsvp, megdsvp )
+
+	MDRV_MACHINE_START( ms_megadriv )
+	MDRV_MACHINE_RESET( ms_megadriv )
+
+	MDRV_FRAGMENT_ADD( genesis_cartslot )
+MACHINE_CONFIG_END
 
 
 
@@ -441,11 +438,10 @@ static DRIVER_INIT( mess_32x )
 	DRIVER_INIT_CALL(mess_md_common);
 }
 
-static MACHINE_DRIVER_START( ms_32x )
-	MDRV_IMPORT_FROM( genesis_32x )
+static MACHINE_CONFIG_DERIVED( ms_32x, genesis_32x )
 
-	MDRV_IMPORT_FROM( _32x_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( _32x_cartslot )
+MACHINE_CONFIG_END
 
 
 ROM_START( 32x )
@@ -464,7 +460,10 @@ ROM_START( 32x )
 	ROM_COPY( "32x_68k_bios", 0x0, 0x0, 0x100)
 
 	ROM_REGION( 0x400000, "32x_master_sh2", 0 ) /* SH2 Code */
-	ROM_LOAD( "32x_m_bios.bin", 0x000000,  0x000800, CRC(dd9c46b8) SHA1(1e5b0b2441a4979b6966d942b20cc76c413b8c5e) )
+	ROM_SYSTEM_BIOS( 0, "retail", "Mars Version 1.0 (retail)" )
+	ROMX_LOAD( "32x_m_bios.bin", 0x000000,  0x000800, CRC(dd9c46b8) SHA1(1e5b0b2441a4979b6966d942b20cc76c413b8c5e), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "sdk", "Mars Version 1.0 (early sdk)" )
+	ROMX_LOAD( "32x_m_bios_sdk.bin", 0x000000,  0x000800, BAD_DUMP CRC(c7102c53) SHA1(ed73a47f186b373b8eff765f84ef26c3d9ef6cb0), ROM_BIOS(2) )
 
 	ROM_REGION( 0x400000, "32x_slave_sh2", 0 ) /* SH2 Code */
 	ROM_LOAD( "32x_s_bios.bin", 0x000000,  0x000400, CRC(bfda1fe5) SHA1(4103668c1bbd66c5e24558e73d4f3f92061a109a) )
@@ -776,8 +775,7 @@ static INPUT_PORTS_START( pico )
 INPUT_PORTS_END
 
 
-static MACHINE_DRIVER_START( pico )
-	MDRV_IMPORT_FROM(megadriv)
+static MACHINE_CONFIG_DERIVED( pico, megadriv )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(_pico_mem)
@@ -786,11 +784,10 @@ static MACHINE_DRIVER_START( pico )
 
 	MDRV_MACHINE_RESET( ms_megadriv )
 
-	MDRV_IMPORT_FROM( pico_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( pico_cartslot )
+MACHINE_CONFIG_END
 
-static MACHINE_DRIVER_START( picopal )
-	MDRV_IMPORT_FROM(megadpal)
+static MACHINE_CONFIG_DERIVED( picopal, megadpal )
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(_pico_mem)
@@ -799,8 +796,8 @@ static MACHINE_DRIVER_START( picopal )
 
 	MDRV_MACHINE_RESET( ms_megadriv )
 
-	MDRV_IMPORT_FROM( pico_cartslot )
-MACHINE_DRIVER_END
+	MDRV_FRAGMENT_ADD( pico_cartslot )
+MACHINE_CONFIG_END
 
 
 
