@@ -28,10 +28,10 @@ public:
 	mc10_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	running_device *mc6847;
-	running_device *ef9345;
-	running_device *dac;
-	running_device *cassette;
+	device_t *mc6847;
+	ef9345_device *ef9345;
+	device_t *dac;
+	device_t *cassette;
 
 	UINT8 *ram;
 	UINT32 ram_size;
@@ -175,7 +175,7 @@ static VIDEO_UPDATE( alice32 )
 {
 	mc10_state *state = screen->machine->driver_data<mc10_state>();
 
-	video_update_ef9345(state->ef9345, bitmap, cliprect);
+	state->ef9345->video_update(bitmap, cliprect);
 
 	return 0;
 }
@@ -184,7 +184,7 @@ static TIMER_DEVICE_CALLBACK( alice32_scanline )
 {
 	mc10_state *state = timer.machine->driver_data<mc10_state>();
 
-	ef9345_scanline(state->ef9345, (UINT16)param);
+	state->ef9345->update_scanline((UINT16)param);
 }
 
 /***************************************************************************
@@ -229,7 +229,7 @@ static DRIVER_INIT( alice32 )
 	mc10->keyboard_strobe = 0x00;
 
 	/* find devices */
-	mc10->ef9345 = machine->device("ef9345");
+	mc10->ef9345 = machine->device<ef9345_device>("ef9345");
 	mc10->dac = machine->device("dac");
 	mc10->cassette = machine->device("cassette");
 
@@ -273,7 +273,7 @@ static ADDRESS_MAP_START( alice32_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3000, 0x4fff) AM_RAMBANK("bank1") /* 8k internal ram */
 	AM_RANGE(0x5000, 0x8fff) AM_RAMBANK("bank2") /* 16k memory expansion */
 	AM_RANGE(0x9000, 0xafff) AM_NOP /* unused */
-	AM_RANGE(0xbf20, 0xbf29) AM_DEVREADWRITE("ef9345", ef9345_r, ef9345_w)
+	AM_RANGE(0xbf20, 0xbf29) AM_DEVREADWRITE_MODERN("ef9345", ef9345_device, data_r, data_w)
 	AM_RANGE(0xbfff, 0xbfff) AM_READWRITE(alice32_bfff_r, alice32_bfff_w)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("maincpu", 0x0000) /* ROM */
 ADDRESS_MAP_END
@@ -487,71 +487,69 @@ static const mc6847_interface mc10_mc6847_intf =
 static MACHINE_CONFIG_START( mc10, mc10_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6803, XTAL_3_579545MHz)  /* 0,894886 MHz */
-	MDRV_CPU_PROGRAM_MAP(mc10_mem)
-	MDRV_CPU_IO_MAP(mc10_io)
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MCFG_CPU_ADD("maincpu", M6803, XTAL_3_579545MHz)  /* 0,894886 MHz */
+	MCFG_CPU_PROGRAM_MAP(mc10_mem)
+	MCFG_CPU_IO_MAP(mc10_io)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
 
 	/* video hardware */
-	MDRV_VIDEO_UPDATE(mc10)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(320, 25+192+26)
-	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_VIDEO_UPDATE(mc10)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MCFG_SCREEN_SIZE(320, 25+192+26)
+	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 
-	MDRV_MC6847_ADD("mc6847", mc10_mc6847_intf)
-	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC)
+	MCFG_MC6847_ADD("mc6847", mc10_mc6847_intf)
+	MCFG_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CASSETTE_ADD("cassette", mc10_cassette_config)
+	MCFG_CASSETTE_ADD("cassette", mc10_cassette_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("20K")
-	MDRV_RAM_EXTRA_OPTIONS("4K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("20K")
+	MCFG_RAM_EXTRA_OPTIONS("4K")
 MACHINE_CONFIG_END
 
-
-static const ef9345_config alice32_ef9345_config =
+static const ef9345_interface alice32_ef9345_config =
 {
-	"screen",			/* screen we are acting on */
-	"ef9345"			/* charset */
+	"screen"			/* screen we are acting on */
 };
 
 static MACHINE_CONFIG_START( alice32, mc10_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6803, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(alice32_mem)
-	MDRV_CPU_IO_MAP(mc10_io)
+	MCFG_CPU_ADD("maincpu", M6803, XTAL_3_579545MHz)
+	MCFG_CPU_PROGRAM_MAP(alice32_mem)
+	MCFG_CPU_IO_MAP(mc10_io)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(336, 270)
-	MDRV_SCREEN_VISIBLE_AREA(00, 336-1, 00, 270-1)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_VIDEO_UPDATE(alice32)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(336, 270)
+	MCFG_SCREEN_VISIBLE_AREA(00, 336-1, 00, 270-1)
+	MCFG_PALETTE_LENGTH(8)
+	MCFG_VIDEO_UPDATE(alice32)
 
-	MDRV_EF9345_ADD("ef9345", alice32_ef9345_config)
-	MDRV_TIMER_ADD_SCANLINE("alice32_sl", alice32_scanline, "screen", 0, 10)
+	MCFG_EF9345_ADD("ef9345", alice32_ef9345_config)
+	MCFG_TIMER_ADD_SCANLINE("alice32_sl", alice32_scanline, "screen", 0, 10)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CASSETTE_ADD("cassette", mc10_cassette_config)
+	MCFG_CASSETTE_ADD("cassette", mc10_cassette_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("24K")
-	MDRV_RAM_EXTRA_OPTIONS("8K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("24K")
+	MCFG_RAM_EXTRA_OPTIONS("8K")
 MACHINE_CONFIG_END
 
 /***************************************************************************

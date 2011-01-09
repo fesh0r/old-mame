@@ -10,6 +10,19 @@
 #include "devices/snapquik.h"
 #include "machine/wd17xx.h"
 
+typedef struct
+{
+	UINT8	stat_flags;
+	UINT8	stat_count;
+} nascom1_portstat_t;
+
+typedef struct
+{
+	UINT8 select;
+	UINT8 irq;
+	UINT8 drq;
+} nascom2_fdc_t;
+
 
 class nascom1_state : public driver_device
 {
@@ -18,6 +31,12 @@ public:
 		: driver_device(machine, config) { }
 
 	UINT8 *videoram;
+	device_t *hd6402;
+	int tape_size;
+	UINT8 *tape_image;
+	int tape_index;
+	nascom1_portstat_t portstat;
+	nascom2_fdc_t nascom2_fdc;
 };
 
 
@@ -34,11 +53,11 @@ READ8_HANDLER( nascom2_fdc_select_r );
 WRITE8_HANDLER( nascom2_fdc_select_w );
 READ8_HANDLER( nascom2_fdc_status_r );
 
-READ8_HANDLER( nascom1_port_00_r);
-READ8_HANDLER( nascom1_port_01_r);
-READ8_HANDLER( nascom1_port_02_r);
-WRITE8_HANDLER( nascom1_port_00_w);
-WRITE8_HANDLER( nascom1_port_01_w);
+READ8_HANDLER( nascom1_port_00_r );
+READ8_HANDLER( nascom1_port_01_r );
+READ8_HANDLER( nascom1_port_02_r );
+WRITE8_HANDLER( nascom1_port_00_w );
+WRITE8_HANDLER( nascom1_port_01_w );
 
 READ8_DEVICE_HANDLER( nascom1_hd6402_si );
 WRITE8_DEVICE_HANDLER( nascom1_hd6402_so );

@@ -11,7 +11,17 @@
 #include "video/mc6845.h"
 #include "machine/ins8250.h"
 
-static UINT8 *video_ram;
+
+class zrt80_state : public driver_device
+{
+public:
+	zrt80_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 *video_ram;
+};
+
+
 
 static ADDRESS_MAP_START(zrt80_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
@@ -19,7 +29,7 @@ static ADDRESS_MAP_START(zrt80_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x1000, 0x1fff) AM_ROM // Z24 - Expansion
 	AM_RANGE(0x4000, 0x43ff) AM_RAM	// Board RAM
 	// Normaly video RAM is 0x800 but could be expanded up to 8K
-	AM_RANGE(0xc000, 0xdfff) AM_RAM	 AM_BASE(&video_ram) // Video RAM
+	AM_RANGE(0xc000, 0xdfff) AM_RAM	 AM_BASE_MEMBER(zrt80_state, video_ram) // Video RAM
 
 ADDRESS_MAP_END
 
@@ -90,7 +100,7 @@ static INPUT_PORTS_START( zrt80 )
 		PORT_DIPSETTING(    0x80, "No LF on CR" )
 		PORT_DIPSETTING(    0x00, "Auto" )
 	PORT_START("DIPSW3")
-		PORT_DIPNAME( 0x07, 0x07, "Video" )
+		PORT_DIPNAME( 0x07, 0x07, "Display" )
 		PORT_DIPSETTING(    0x00, "96 x 24 15750Hz, 50Hz" )
 		PORT_DIPSETTING(    0x01, "80 x 48 15750Hz, 50Hz" )
 		PORT_DIPSETTING(    0x02, "80 x 24 15750Hz, 50Hz" )
@@ -126,20 +136,21 @@ static VIDEO_START( zrt80 )
 
 static VIDEO_UPDATE( zrt80 )
 {
-	running_device *mc6845 = screen->machine->device("crtc");
+	device_t *mc6845 = screen->machine->device("crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
 
 static MC6845_UPDATE_ROW( zrt80_update_row )
 {
-	UINT8 *charrom = memory_region(device->machine, "chargen");
+	zrt80_state *state = device->machine->driver_data<zrt80_state>();
+	UINT8 *charrom = device->machine->region("chargen")->base();
 
 	int column, bit;
 
 	for (column = 0; column < x_count; column++)
 	{
-		UINT8 code = video_ram[ma + column] & 0x7f;
+		UINT8 code = state->video_ram[ma + column] & 0x7f;
 		UINT16 addr = code << 4 | (ra & 0x0f);
 		UINT8 data = charrom[addr & 0x7ff];
 
@@ -204,31 +215,31 @@ static GFXDECODE_START( zrt80 )
 	GFXDECODE_ENTRY( "chargen", 0x0000, zrt80_charlayout, 0, 1 )
 GFXDECODE_END
 
-static MACHINE_CONFIG_START( zrt80, driver_device )
+static MACHINE_CONFIG_START( zrt80, zrt80_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",Z80, XTAL_2_4576MHz)
-	MDRV_CPU_PROGRAM_MAP(zrt80_mem)
-	MDRV_CPU_IO_MAP(zrt80_io)
+	MCFG_CPU_ADD("maincpu",Z80, XTAL_2_4576MHz)
+	MCFG_CPU_PROGRAM_MAP(zrt80_mem)
+	MCFG_CPU_IO_MAP(zrt80_io)
 
-	MDRV_MACHINE_RESET(zrt80)
+	MCFG_MACHINE_RESET(zrt80)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(640, 200)
-	MDRV_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 200 - 1)
-	MDRV_GFXDECODE(zrt80)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(640, 200)
+	MCFG_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 200 - 1)
+	MCFG_GFXDECODE(zrt80)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_MC6845_ADD("crtc", MC6845, XTAL_20MHz / 8, zrt80_crtc6845_interface)
+	MCFG_MC6845_ADD("crtc", MC6845, XTAL_20MHz / 8, zrt80_crtc6845_interface)
 
-	MDRV_VIDEO_START(zrt80)
-	MDRV_VIDEO_UPDATE(zrt80)
+	MCFG_VIDEO_START(zrt80)
+	MCFG_VIDEO_UPDATE(zrt80)
 
-	MDRV_INS8250_ADD( "ins8250", zrt80_com_interface )
+	MCFG_INS8250_ADD( "ins8250", zrt80_com_interface )
 MACHINE_CONFIG_END
 
 /* ROM definition */

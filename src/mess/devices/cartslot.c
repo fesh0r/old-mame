@@ -27,7 +27,7 @@ typedef enum _process_mode process_mode;
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE cartslot_t *get_token(running_device *device)
+INLINE cartslot_t *get_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == CARTSLOT);
@@ -35,7 +35,7 @@ INLINE cartslot_t *get_token(running_device *device)
 }
 
 
-INLINE const cartslot_config *get_config(running_device *device)
+INLINE const cartslot_config *get_config(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == CARTSLOT);
@@ -66,29 +66,45 @@ static int load_cartridge(device_image_interface *image, const rom_entry *romrgn
 	UINT8 *ptr;
 	UINT8 clear_val;
 	int datawidth, littleendian, i, j;
-	running_device *cpu;
+	device_t *cpu;
 
 	region = ROMREGION_GETTAG(romrgn);
 	offset = ROM_GETOFFSET(roment);
 	length = ROM_GETLENGTH(roment);
 	flags = ROM_GETFLAGS(roment);
-	ptr = ((UINT8 *) memory_region(image->device().machine, region)) + offset;
+	ptr = ((UINT8 *) image->device().machine->region(region)->base()) + offset;
 
 	if (mode == PROCESS_LOAD)
 	{
-		/* must this be full size */
-		if (flags & ROM_FULLSIZE)
+		if (image->software_entry() == NULL)
 		{
-			if (image->length() != length)
-				return IMAGE_INIT_FAIL;
+			/* must this be full size */
+			if (flags & ROM_FULLSIZE)
+			{
+				if (image->length() != length)
+					return IMAGE_INIT_FAIL;
+			}
+
+			/* read the ROM */
+			pos = read_length = image->fread(ptr, length);
+
+			/* reset the ROM to the initial point. */
+			/* eventually, we could add a flag to allow the ROM to continue instead of restarting whenever a new cart region is present */
+			image->fseek(0, SEEK_SET);
 		}
+		else
+		{
+			/* must this be full size */
+			if (flags & ROM_FULLSIZE)
+			{
+				if (image->get_software_region_length("rom") != length)
+					return IMAGE_INIT_FAIL;
+			}
 
-		/* read the ROM */
-		pos = read_length = image->fread(ptr, length);
-
-		/* reset the ROM to the initial point. */
-		/* eventually, we could add a flag to allow the ROM to continue instead of restarting whenever a new cart region is present */
-		image->fseek(0, SEEK_SET);
+			/* read the ROM */
+			pos = read_length = image->get_software_region_length("rom");
+			memcpy(ptr, image->get_software_region("rom"), read_length);
+		}
 
 		/* do we need to mirror the ROM? */
 		if (flags & ROM_MIRROR)
@@ -184,7 +200,7 @@ static int process_cartridge(device_image_interface *image, process_mode mode)
     cartslot_get_pcb
 -------------------------------------------------*/
 
-running_device *cartslot_get_pcb(running_device *device)
+device_t *cartslot_get_pcb(device_t *device)
 {
 	cartslot_t *cart = get_token(device);
 	return cart->pcb_device;
@@ -195,7 +211,7 @@ running_device *cartslot_get_pcb(running_device *device)
     cartslot_get_socket
 -------------------------------------------------*/
 
-void *cartslot_get_socket(running_device *device, const char *socket_name)
+void *cartslot_get_socket(device_t *device, const char *socket_name)
 {
 	cartslot_t *cart = get_token(device);
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
@@ -222,7 +238,7 @@ void *cartslot_get_socket(running_device *device, const char *socket_name)
     cartslot_get_resource_length
 -------------------------------------------------*/
 
-int cartslot_get_resource_length(running_device *device, const char *socket_name)
+int cartslot_get_resource_length(device_t *device, const char *socket_name)
 {
 	cartslot_t *cart = get_token(device);
 	int result = 0;

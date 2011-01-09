@@ -3,70 +3,95 @@
         mc-CP/M-Computer
 
         31/08/2010 Skeleton driver.
+        18/11/2010 Connected to a terminal
 
 ****************************************************************************/
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "machine/terminal.h"
 
-static UINT8 *mccpm_ram;
+
+class mccpm_state : public driver_device
+{
+public:
+	mccpm_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 *ram;
+	UINT8 term_data;
+};
+
+
+
+static WRITE8_HANDLER( mccpm_f0_w )
+{
+	device_t *terminal = space->machine->device("terminal");
+
+	terminal_write(terminal, 0, data);
+}
+
+static READ8_HANDLER( mccpm_f0_r )
+{
+	mccpm_state *state = space->machine->driver_data<mccpm_state>();
+	UINT8 ret = state->term_data;
+	state->term_data = 0;
+	return ret;
+}
 
 static ADDRESS_MAP_START(mccpm_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0xffff) AM_RAM AM_BASE(&mccpm_ram)
+	AM_RANGE(0x0000, 0xffff) AM_RAM AM_BASE_MEMBER(mccpm_state, ram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mccpm_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0xf0, 0xf0) AM_READWRITE(mccpm_f0_r,mccpm_f0_w)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( mccpm )
+static INPUT_PORTS_START( mccpm )
+	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(mccpm)
 {
-	UINT8* bios = memory_region(machine, "maincpu");
+	mccpm_state *state = machine->driver_data<mccpm_state>();
+	UINT8* bios = machine->region("maincpu")->base();
 
-	memcpy(mccpm_ram,bios, 0x1000);
+	memcpy(state->ram,bios, 0x1000);
 }
 
-static VIDEO_START( mccpm )
+static WRITE8_DEVICE_HANDLER( mccpm_kbd_put )
 {
+	mccpm_state *state = device->machine->driver_data<mccpm_state>();
+	state->term_data = data;
 }
 
-static VIDEO_UPDATE( mccpm )
+static GENERIC_TERMINAL_INTERFACE( mccpm_terminal_intf )
 {
-    return 0;
-}
+	DEVCB_HANDLER(mccpm_kbd_put)
+};
 
-static MACHINE_CONFIG_START( mccpm, driver_device )
-    /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-    MDRV_CPU_PROGRAM_MAP(mccpm_mem)
-    MDRV_CPU_IO_MAP(mccpm_io)
+static MACHINE_CONFIG_START( mccpm, mccpm_state )
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+	MCFG_CPU_PROGRAM_MAP(mccpm_mem)
+	MCFG_CPU_IO_MAP(mccpm_io)
 
-    MDRV_MACHINE_RESET(mccpm)
+	MCFG_MACHINE_RESET(mccpm)
 
-    /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+	/* video hardware */
+	MCFG_FRAGMENT_ADD( generic_terminal )
 
-    MDRV_VIDEO_START(mccpm)
-    MDRV_VIDEO_UPDATE(mccpm)
+	MCFG_GENERIC_TERMINAL_ADD("terminal", mccpm_terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( mccpm )
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "mon36.j15", 0x0000, 0x1000, CRC(9c441537) SHA1(f95bad52d9392b8fc9d9b8779b7b861672a0022b))
 ROM_END
 

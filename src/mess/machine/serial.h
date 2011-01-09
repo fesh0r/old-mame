@@ -101,7 +101,8 @@ enum
 
 
 /* this structure represents a serial connection */
-struct serial_connection
+typedef struct _serial_connection serial_connection;
+struct _serial_connection
 {
 	int id;
 	/* state of this side */
@@ -121,22 +122,23 @@ struct serial_connection
 /*----------- defined in machine/serial.c -----------*/
 
 /* setup out and in callbacks */
-void serial_connection_init(running_machine *machine, struct serial_connection *connection);
+void serial_connection_init(running_machine *machine, serial_connection *connection);
 
 /* set callback which will be executed when in status has changed */
-void serial_connection_set_in_callback(running_machine *machine, struct serial_connection *connection, void (*in_cb)(running_machine *machine, int id, unsigned long status));
+void serial_connection_set_in_callback(running_machine *machine, serial_connection *connection, void (*in_cb)(running_machine *machine, int id, unsigned long status));
 
 /* output status, if callback is setup it will be executed with the new status */
-void serial_connection_out(running_machine *machine, struct serial_connection *connection);
+void serial_connection_out(running_machine *machine, serial_connection *connection);
 
 /* join two serial connections */
-void serial_connection_link(running_machine *machine, struct serial_connection *connection_a, struct serial_connection *connection_b);
+void serial_connection_link(running_machine *machine, serial_connection *connection_a, serial_connection *connection_b);
 
 
 /*******************************************************************************/
 
 /* form of data being transmitted and received */
-struct data_form
+typedef struct _data_form data_form;
+struct _data_form
 {
 	/* length of word in bits */
 	unsigned long word_length;
@@ -166,7 +168,8 @@ start of start bit. This is used to synchronise with the data being transfered *
 
 /* the receive register holds data in receive form! */
 /* this must be extracted to get the data byte received */
-struct serial_receive_register
+typedef struct _serial_receive_register serial_receive_register;
+struct _serial_receive_register
 {
 	/* data */
 	unsigned long register_data;
@@ -181,10 +184,10 @@ struct serial_receive_register
 	unsigned char byte_received;
 };
 
-void	receive_register_setup(struct serial_receive_register *receive, struct data_form *data_form);
-void	receive_register_update_bit(struct serial_receive_register *receive, int bit_state);
-void	receive_register_extract(struct serial_receive_register *receive_reg, struct data_form *data_form);
-void	receive_register_reset(struct serial_receive_register *receive_reg);
+void	receive_register_setup(serial_receive_register *receive, data_form *data_form);
+void	receive_register_update_bit(serial_receive_register *receive, int bit_state);
+void	receive_register_extract(serial_receive_register *receive_reg, data_form *data_form);
+void	receive_register_reset(serial_receive_register *receive_reg);
 
 /* the transmit register is the final stage
 in the serial transmit procedure */
@@ -195,7 +198,8 @@ then it is assembled into transmit form and transmitted */
 /* register is empty and ready to be filled with data */
 #define TRANSMIT_REGISTER_EMPTY 0x0001
 
-struct serial_transmit_register
+typedef struct _serial_transmit_register serial_transmit_register;
+struct _serial_transmit_register
 {
 	/* data */
 	unsigned long register_data;
@@ -208,9 +212,9 @@ struct serial_transmit_register
 };
 
 /* setup transmit reg ready for transmit */
-void transmit_register_setup(struct serial_transmit_register *transmit_reg, struct data_form *data_form,unsigned char data_byte);
-void	transmit_register_send_bit(running_machine *machine, struct serial_transmit_register *transmit_reg, struct serial_connection *connection);
-void	transmit_register_reset(struct serial_transmit_register *transmit_reg);
+void transmit_register_setup(serial_transmit_register *transmit_reg, data_form *data_form,unsigned char data_byte);
+void	transmit_register_send_bit(running_machine *machine, serial_transmit_register *transmit_reg, serial_connection *connection);
+void	transmit_register_reset(serial_transmit_register *transmit_reg);
 
 /*******************************************************************************/
 /**** SERIAL HELPER ****/
@@ -220,24 +224,24 @@ void serial_helper_setup(void);
 /*******************************************************************************/
 /**** SERIAL DEVICE ****/
 
-unsigned long serial_device_get_state(running_device *device);
+unsigned long serial_device_get_state(device_t *device);
 
 /* connect this device to the emulated serial chip */
 /* id is the serial device to connect to */
 /* connection is the serial connection to connect to the serial device */
-void serial_device_connect(running_device *image, struct serial_connection *connection);
+void serial_device_connect(device_t *image, serial_connection *connection);
 
 DECLARE_LEGACY_IMAGE_DEVICE(SERIAL, serial);
 
-#define MDRV_SERIAL_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, SERIAL, 0)
+#define MCFG_SERIAL_ADD(_tag) \
+	MCFG_DEVICE_ADD(_tag, SERIAL, 0)
 
 DEVICE_START(serial);
 DEVICE_IMAGE_LOAD(serial);
 
-void serial_device_setup(running_device *image, int baud_rate, int num_data_bits, int stop_bit_count, int parity_code);
+void serial_device_setup(device_t *image, int baud_rate, int num_data_bits, int stop_bit_count, int parity_code);
 
 /* set the transmit state of the serial device */
-void serial_device_set_transmit_state(running_device *image, int state);
+void serial_device_set_transmit_state(device_t *image, int state);
 
 #endif /* SERIAL_H_ */

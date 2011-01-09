@@ -10,6 +10,16 @@
 #include "cpu/m68000/m68000.h"
 
 
+class a3000_state : public driver_device
+{
+public:
+	a3000_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
+
 /***************************************************************************
     CONSTANTS
 ***************************************************************************/
@@ -40,16 +50,16 @@ INPUT_PORTS_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static MACHINE_CONFIG_START( a3000, driver_device )
-	MDRV_CPU_ADD("maincpu", M68030, XTAL_U104 / 2)
-	MDRV_CPU_PROGRAM_MAP(a3000_mem)
+static MACHINE_CONFIG_START( a3000, a3000_state )
+	MCFG_CPU_ADD("maincpu", M68030, XTAL_U104 / 2)
+	MCFG_CPU_PROGRAM_MAP(a3000_mem)
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(512*2, 312)
-	MDRV_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MCFG_SCREEN_SIZE(512*2, 312)
+	MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
 MACHINE_CONFIG_END
 
 

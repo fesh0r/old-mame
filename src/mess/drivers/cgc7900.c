@@ -43,7 +43,6 @@
 #include "sound/ay8910.h"
 
 
-static UINT16* chrom_ram; // TODO remove
 
 
 /***************************************************************************
@@ -235,7 +234,7 @@ static WRITE16_HANDLER( disk_command_w )
 
 static ADDRESS_MAP_START( cgc7900_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x000000, 0x1fffff) AM_RAM AM_BASE(&chrom_ram)
+	AM_RANGE(0x000000, 0x1fffff) AM_RAM AM_BASE_MEMBER(cgc7900_state, chrom_ram)
 	AM_RANGE(0x800000, 0x80ffff) AM_ROM AM_REGION(M68000_TAG, 0)
 	AM_RANGE(0xa00000, 0xbfffff) AM_READWRITE(cgc7900_z_mode_r, cgc7900_z_mode_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_RAM AM_BASE_MEMBER(cgc7900_state, plane_ram)
@@ -352,7 +351,7 @@ INPUT_PORTS_END
     msm8251_interface rs232_intf
 -------------------------------------------------*/
 
-static msm8251_interface rs232_intf =
+static const msm8251_interface rs232_intf =
 {
 	NULL,
 	NULL,
@@ -363,7 +362,7 @@ static msm8251_interface rs232_intf =
     msm8251_interface rs449_intf
 -------------------------------------------------*/
 
-static msm8251_interface rs449_intf =
+static const msm8251_interface rs449_intf =
 {
 	NULL,
 	NULL,
@@ -406,9 +405,10 @@ static MACHINE_START( cgc7900 )
 
 static MACHINE_RESET(cgc7900)
 {
-	UINT8* user1 = memory_region(machine, M68000_TAG);
+	cgc7900_state *state = machine->driver_data<cgc7900_state>();
+	UINT8* user1 = machine->region(M68000_TAG)->base();
 
-	memcpy((UINT8*)chrom_ram,user1,8);
+	memcpy((UINT8*)state->chrom_ram,user1,8);
 
 	machine->device(M68000_TAG)->reset();
 }
@@ -424,31 +424,31 @@ static MACHINE_RESET(cgc7900)
 static MACHINE_CONFIG_START( cgc7900, cgc7900_state )
 
 	/* basic machine hardware */
-    MDRV_CPU_ADD(M68000_TAG, M68000, XTAL_28_48MHz/4)
-    MDRV_CPU_PROGRAM_MAP(cgc7900_mem)
+    MCFG_CPU_ADD(M68000_TAG, M68000, XTAL_28_48MHz/4)
+    MCFG_CPU_PROGRAM_MAP(cgc7900_mem)
 
-/*  MDRV_CPU_ADD(I8035_TAG, I8035, 1000000)
-    MDRV_CPU_PROGRAM_MAP(keyboard_mem)
-    MDRV_CPU_IO_MAP(keyboard_io)*/
+/*  MCFG_CPU_ADD(I8035_TAG, I8035, 1000000)
+    MCFG_CPU_PROGRAM_MAP(keyboard_mem)
+    MCFG_CPU_IO_MAP(keyboard_io)*/
 
-/*  MDRV_CPU_ADD(AM2910_TAG, AM2910, XTAL_17_36MHz)
-    MDRV_CPU_PROGRAM_MAP(omti10_mem)*/
+/*  MCFG_CPU_ADD(AM2910_TAG, AM2910, XTAL_17_36MHz)
+    MCFG_CPU_PROGRAM_MAP(omti10_mem)*/
 
-	MDRV_MACHINE_START(cgc7900)
-    MDRV_MACHINE_RESET(cgc7900)
+	MCFG_MACHINE_START(cgc7900)
+    MCFG_MACHINE_RESET(cgc7900)
 
     /* video hardware */
-	MDRV_FRAGMENT_ADD(cgc7900_video)
+	MCFG_FRAGMENT_ADD(cgc7900_video)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910_TAG, AY8910, XTAL_28_48MHz/16)
-	MDRV_SOUND_CONFIG(ay8910_intf)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD(AY8910_TAG, AY8910, XTAL_28_48MHz/16)
+	MCFG_SOUND_CONFIG(ay8910_intf)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_MSM8251_ADD(INS8251_0_TAG, rs232_intf)
-	MDRV_MSM8251_ADD(INS8251_1_TAG, rs449_intf)
+	MCFG_MSM8251_ADD(INS8251_0_TAG, rs232_intf)
+	MCFG_MSM8251_ADD(INS8251_1_TAG, rs449_intf)
 MACHINE_CONFIG_END
 
 /***************************************************************************

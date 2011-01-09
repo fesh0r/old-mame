@@ -14,7 +14,35 @@ public:
 		: driver_device(machine, config) { }
 
 	UINT8 *videoram;
+	device_t *kayproii_z80pio_g;
+	device_t *kayproii_z80pio_s;
+	device_t *z80sio;
+	device_t *kaypro2x_z80sio;
+	device_t *printer;
+	device_t *fdc;
+	UINT8 system_port;
+	UINT8 mc6845_cursor[16];
+	UINT8 mc6845_reg[32];
+	UINT8 mc6845_ind;
+	device_t *mc6845;
+	const UINT8 *FNT;
+	UINT8 speed;
+	UINT8 flash;
+	UINT8 framecnt;
+	UINT16 cursor;
+	UINT16 mc6845_video_address;
+	struct _kay_kbd_t *kbd;
 };
+
+
+/*----------- defined in machine/kay_kbd.c -----------*/
+
+UINT8 kay_kbd_c_r( running_machine *machine );
+UINT8 kay_kbd_d_r( running_machine *machine );
+void kay_kbd_d_w( running_machine *machine, UINT8 data );
+INTERRUPT_GEN( kay_kbd_interrupt );
+MACHINE_RESET( kay_kbd );
+INPUT_PORTS_EXTERN( kay_kbd );
 
 
 /*----------- defined in machine/kaypro.c -----------*/
@@ -45,7 +73,6 @@ QUICKLOAD_LOAD( kayproii );
 QUICKLOAD_LOAD( kaypro2x );
 
 /*----------- defined in video/kaypro.c -----------*/
-
 
 MC6845_UPDATE_ROW( kaypro2x_update_row );
 PALETTE_INIT( kaypro );

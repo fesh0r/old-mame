@@ -13,11 +13,21 @@
 #include "machine/wd17xx.h"
 #include "machine/terminal.h"
 
-static UINT16* ht68k_ram;
+
+class ht68k_state : public driver_device
+{
+public:
+	ht68k_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT16* ram;
+};
+
+
 
 static ADDRESS_MAP_START(ht68k_mem, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE(&ht68k_ram) // 512 KB RAM / ROM at boot
+	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE_MEMBER(ht68k_state, ram) // 512 KB RAM / ROM at boot
 	//AM_RANGE(0x00080000, 0x000fffff) // Expansion
 	//AM_RANGE(0x00d80000, 0x00d8ffff) // Printer
 	AM_RANGE(0x00e00000, 0x00e00007) AM_MIRROR(0xfff8) AM_DEVREADWRITE8("wd1770", wd17xx_r, wd17xx_w, 0x00ff) // FDC WD1770
@@ -33,32 +43,33 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(ht68k)
 {
-	UINT8* user1 = memory_region(machine, "user1");
+	ht68k_state *state = machine->driver_data<ht68k_state>();
+	UINT8* user1 = machine->region("user1")->base();
 
-	memcpy((UINT8*)ht68k_ram,user1,0x8000);
+	memcpy((UINT8*)state->ram,user1,0x8000);
 
 	machine->device("maincpu")->reset();
 }
 
-static void duart_irq_handler(running_device *device, UINT8 vector)
+static void duart_irq_handler(device_t *device, UINT8 vector)
 {
 	cputag_set_input_line_and_vector(device->machine, "maincpu", M68K_IRQ_3, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
-static void duart_tx(running_device *device, int channel, UINT8 data)
+static void duart_tx(device_t *device, int channel, UINT8 data)
 {
-	running_device *devconf = device->machine->device("terminal");
+	device_t *devconf = device->machine->device("terminal");
 	terminal_write(devconf,0,data);
 }
 
-static UINT8 duart_input(running_device *device)
+static UINT8 duart_input(device_t *device)
 {
 	return 0;
 }
 
-static void duart_output(running_device *device, UINT8 data)
+static void duart_output(device_t *device, UINT8 data)
 {
-	running_device *fdc = device->machine->device("wd1770");
+	device_t *fdc = device->machine->device("wd1770");
 	wd17xx_set_side(fdc,BIT(data,3) ? 0 : 1);
 	if (BIT(data,7)==0) {
 		wd17xx_set_drive(fdc,0);
@@ -114,20 +125,20 @@ static const floppy_config ht68k_floppy_config =
 	NULL
 };
 
-static MACHINE_CONFIG_START( ht68k, driver_device )
+static MACHINE_CONFIG_START( ht68k, ht68k_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",M68000, XTAL_8MHz)
-    MDRV_CPU_PROGRAM_MAP(ht68k_mem)
+    MCFG_CPU_ADD("maincpu",M68000, XTAL_8MHz)
+    MCFG_CPU_PROGRAM_MAP(ht68k_mem)
 
-    MDRV_MACHINE_RESET(ht68k)
+    MCFG_MACHINE_RESET(ht68k)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG,ht68k_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG,ht68k_terminal_intf)
 
-	MDRV_DUART68681_ADD( "duart68681", XTAL_8MHz / 2, ht68k_duart68681_config )
-	MDRV_WD1770_ADD("wd1770", ht68k_wd17xx_interface )
-	MDRV_FLOPPY_4_DRIVES_ADD(ht68k_floppy_config)
+	MCFG_DUART68681_ADD( "duart68681", XTAL_8MHz / 2, ht68k_duart68681_config )
+	MCFG_WD1770_ADD("wd1770", ht68k_wd17xx_interface )
+	MCFG_FLOPPY_4_DRIVES_ADD(ht68k_floppy_config)
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -19,8 +19,6 @@
 #include "includes/rmnimbus.h"
 #include "machine/er59256.h"
 #include "machine/scsi.h"
-#include "machine/scsibus.h"
-#include "machine/z80sio.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
 
@@ -54,7 +52,7 @@ static const floppy_config nimbus_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_STANDARD_5_25_DSHD,
+	FLOPPY_STANDARD_5_25_DSSD_35,
 	FLOPPY_OPTIONS_NAME(pc),
 	NULL
 };
@@ -68,8 +66,8 @@ static const ay8910_interface nimbus_ay8910_interface =
 	AY8910_DEFAULT_LOADS,
 	DEVCB_NULL,	                    /* portA read */
 	DEVCB_NULL, 					/* portB read */
-	DEVCB_MEMORY_HANDLER(MAINCPU_TAG, PROGRAM, sound_ay8910_porta_w),   /* portA write */
-	DEVCB_MEMORY_HANDLER(MAINCPU_TAG, PROGRAM, sound_ay8910_portb_w)    /* portB write */
+	DEVCB_MEMORY_HANDLER(MAINCPU_TAG, PROGRAM, nimbus_sound_ay8910_porta_w),   /* portA write */
+	DEVCB_MEMORY_HANDLER(MAINCPU_TAG, PROGRAM, nimbus_sound_ay8910_portb_w)    /* portB write */
 };
 
 static const msm5205_interface msm5205_config =
@@ -111,14 +109,14 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(nimbus_io, ADDRESS_SPACE_IO, 16)
     AM_RANGE( 0x0000, 0x0031) AM_READWRITE( nimbus_video_io_r, nimbus_video_io_w)
     AM_RANGE( 0x0032, 0x007f) AM_READWRITE( nimbus_io_r, nimbus_io_w)
-    AM_RANGE( 0x0080, 0x0081) AM_READWRITE8( mcu_r, mcu_w, 0x00FF)
-    AM_RANGE( 0x0092, 0x0093) AM_READWRITE8( iou_r, iou_w, 0x00FF)
-    AM_RANGE( 0x00A4, 0x00A5) AM_READWRITE8( mouse_js_r, mouse_js_w, 0x00FF)
-    AM_RANGE( 0X00c0, 0X00cf) AM_READWRITE8( pc8031_r, pc8031_w, 0x00FF)
-    AM_RANGE( 0X00e0, 0X00ef) AM_READWRITE8( sound_ay8910_r, sound_ay8910_w, 0x00FF)
+    AM_RANGE( 0x0080, 0x0081) AM_READWRITE8( nimbus_mcu_r, nimbus_mcu_w, 0x00FF)
+    AM_RANGE( 0x0092, 0x0093) AM_READWRITE8( nimbus_iou_r, nimbus_iou_w, 0x00FF)
+    AM_RANGE( 0x00A4, 0x00A5) AM_READWRITE8( nimbus_mouse_js_r, nimbus_mouse_js_w, 0x00FF)
+    AM_RANGE( 0X00c0, 0X00cf) AM_READWRITE8( nimbus_pc8031_r, nimbus_pc8031_w, 0x00FF)
+    AM_RANGE( 0X00e0, 0X00ef) AM_READWRITE8( nimbus_sound_ay8910_r, nimbus_sound_ay8910_w, 0x00FF)
     AM_RANGE( 0x00f0, 0x00f7) AM_DEVREADWRITE8(Z80SIO_TAG, z80sio_cd_ba_r, z80sio_cd_ba_w, 0x00ff)
     AM_RANGE( 0x0400, 0x041f) AM_READWRITE8( nimbus_disk_r, nimbus_disk_w, 0x00FF)
-	AM_RANGE( 0xff00, 0xffff) AM_READWRITE( i186_internal_port_r, i186_internal_port_w)/* CPU 80186         */
+	AM_RANGE( 0xff00, 0xffff) AM_READWRITE( nimbus_i186_internal_port_r, nimbus_i186_internal_port_w)/* CPU 80186         */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( nimbus )
@@ -272,9 +270,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nimbus_iocpu_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-    AM_RANGE(0x00000, 0x000FF) AM_READWRITE(pc8031_iou_r, pc8031_iou_w)
+	AM_RANGE(0x00000, 0x000FF) AM_READWRITE(nimbus_pc8031_iou_r, nimbus_pc8031_iou_w)
 	AM_RANGE(0x00010, 0x07fff) AM_RAM
-    AM_RANGE(0x20000, 0x20004) AM_READWRITE(pc8031_port_r, pc8031_port_w)
+	AM_RANGE(0x20000, 0x20004) AM_READWRITE(nimbus_pc8031_port_r, nimbus_pc8031_port_w)
 ADDRESS_MAP_END
 
 
@@ -289,67 +287,67 @@ static PALETTE_INIT( nimbus )
 }
 
 
-static MACHINE_CONFIG_START( nimbus, driver_device )
+static MACHINE_CONFIG_START( nimbus, rmnimbus_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD(MAINCPU_TAG, I80186, 10000000)
-    MDRV_CPU_PROGRAM_MAP(nimbus_mem)
-    MDRV_CPU_IO_MAP(nimbus_io)
+    MCFG_CPU_ADD(MAINCPU_TAG, I80186, 10000000)
+    MCFG_CPU_PROGRAM_MAP(nimbus_mem)
+    MCFG_CPU_IO_MAP(nimbus_io)
 
-    MDRV_CPU_ADD(IOCPU_TAG, I8031, 11059200)
-    MDRV_CPU_PROGRAM_MAP(nimbus_iocpu_mem)
-    MDRV_CPU_IO_MAP(nimbus_iocpu_io)
+    MCFG_CPU_ADD(IOCPU_TAG, I8031, 11059200)
+    MCFG_CPU_PROGRAM_MAP(nimbus_iocpu_mem)
+    MCFG_CPU_IO_MAP(nimbus_iocpu_io)
 
-    MDRV_MACHINE_START( nimbus )
+    MCFG_MACHINE_START( nimbus )
 
-    MDRV_MACHINE_RESET(nimbus)
+    MCFG_MACHINE_RESET(nimbus)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
-    MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
+    MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
 
-    MDRV_PALETTE_LENGTH(SCREEN_NO_COLOURS * 3)
-	MDRV_PALETTE_INIT( nimbus )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_PALETTE_LENGTH(SCREEN_NO_COLOURS * 3)
+	MCFG_PALETTE_INIT( nimbus )
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
-    MDRV_SCREEN_SIZE(650, 260)
-    MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
+    MCFG_SCREEN_SIZE(650, 260)
+    MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
 
-    MDRV_VIDEO_START(nimbus)
-    MDRV_VIDEO_UPDATE(nimbus)
-    MDRV_VIDEO_EOF(nimbus)
-    MDRV_VIDEO_RESET(nimbus)
+    MCFG_VIDEO_START(nimbus)
+    MCFG_VIDEO_UPDATE(nimbus)
+    MCFG_VIDEO_EOF(nimbus)
+    MCFG_VIDEO_RESET(nimbus)
 
 
     /* Backing storage */
-	MDRV_WD2793_ADD(FDC_TAG, nimbus_wd17xx_interface )
-	MDRV_FLOPPY_4_DRIVES_ADD(nimbus_floppy_config)
+	MCFG_WD2793_ADD(FDC_TAG, nimbus_wd17xx_interface )
+	MCFG_FLOPPY_4_DRIVES_ADD(nimbus_floppy_config)
 
-    MDRV_HARDDISK_ADD(HARDDISK0_TAG)
-    MDRV_HARDDISK_ADD(HARDDISK1_TAG)
-    MDRV_HARDDISK_ADD(HARDDISK2_TAG)
-    MDRV_HARDDISK_ADD(HARDDISK3_TAG)
-    MDRV_SCSIBUS_ADD(SCSIBUS_TAG, scsibus_config)
+    MCFG_HARDDISK_ADD(HARDDISK0_TAG)
+    MCFG_HARDDISK_ADD(HARDDISK1_TAG)
+    MCFG_HARDDISK_ADD(HARDDISK2_TAG)
+    MCFG_HARDDISK_ADD(HARDDISK3_TAG)
+    MCFG_SCSIBUS_ADD(SCSIBUS_TAG, scsibus_config)
 
-    MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1536K")
-	MDRV_RAM_EXTRA_OPTIONS("128K,256K,384K,512K,640K,1024K")
+    MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("1536K")
+	MCFG_RAM_EXTRA_OPTIONS("128K,256K,384K,512K,640K,1024K")
 
     /* Peripheral chips */
-    MDRV_Z80SIO_ADD(Z80SIO_TAG, 4000000, sio_intf)
+    MCFG_Z80SIO_ADD(Z80SIO_TAG, 4000000, nimbus_sio_intf)
 
-    MDRV_ER59256_ADD(ER59256_TAG)
+    MCFG_ER59256_ADD(ER59256_TAG)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO(MONO_TAG)
-	MDRV_SOUND_ADD(AY8910_TAG, AY8910, 2000000)
-	MDRV_SOUND_CONFIG(nimbus_ay8910_interface)
+	MCFG_SPEAKER_STANDARD_MONO(MONO_TAG)
+	MCFG_SOUND_ADD(AY8910_TAG, AY8910, 2000000)
+	MCFG_SOUND_CONFIG(nimbus_ay8910_interface)
 
-	MDRV_SOUND_ADD(MSM5205_TAG, MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_config)
+	MCFG_SOUND_ADD(MSM5205_TAG, MSM5205, 384000)
+	MCFG_SOUND_CONFIG(msm5205_config)
 
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, MONO_TAG, 0.75)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, MONO_TAG, 0.75)
 
 
 MACHINE_CONFIG_END

@@ -7,6 +7,25 @@
 #ifndef SVISION_H_
 #define SVISION_H_
 
+typedef struct
+{
+	emu_timer *timer1;
+	int timer_shot;
+} svision_t;
+
+typedef struct
+{
+	int state;
+	int on, clock, data;
+	UINT8 input;
+	emu_timer *timer;
+} svision_pet_t;
+
+typedef struct
+{
+	UINT16 palette[4/*0x40?*/]; /* rgb8 */
+	int palette_on;
+} tvlink_t;
 
 
 class svision_state : public driver_device
@@ -16,6 +35,12 @@ public:
 		: driver_device(machine, config) { }
 
 	UINT8 *videoram;
+	UINT8 *reg;
+	device_t *sound;
+	int *dma_finished;
+	svision_t svision;
+	svision_pet_t pet;
+	tvlink_t tvlink;
 };
 
 
@@ -26,54 +51,13 @@ void svision_irq( running_machine *machine );
 
 /*----------- defined in audio/svision.c -----------*/
 
-typedef struct
-{
-	UINT8 reg[5];
-	int on, right, left;
-	int ca14to16;
-	int start,size;
-	double pos, step;
-	int finished;
-} SVISION_DMA;
-
-extern SVISION_DMA svision_dma;
-
-typedef enum
-{
-	SVISION_NOISE_Type7Bit,
-	SVISION_NOISE_Type14Bit
-} SVISION_NOISE_Type;
-
-typedef struct
-{
-	UINT8 reg[3];
-	int on, right, left, play;
-	SVISION_NOISE_Type type;
-	int state;
-	int volume;
-	int count;
-	double step, pos;
-	int value; // currently simple random function
-} SVISION_NOISE;
-
-extern SVISION_NOISE svision_noise;
-
-typedef struct
-{
-	UINT8 reg[4];
-	int on;
-	int waveform, volume;
-	int pos;
-	int size;
-	int count;
-} SVISION_CHANNEL;
-
-extern SVISION_CHANNEL svision_channel[2];
-
 DECLARE_LEGACY_SOUND_DEVICE(SVISION, svision_sound);
-void svision_soundport_w (running_machine *machine, SVISION_CHANNEL *channel, int offset, int data);
-WRITE8_HANDLER( svision_sounddma_w );
-WRITE8_HANDLER( svision_noise_w );
+
+int *svision_dma_finished(device_t *device);
+void svision_sound_decrement(device_t *device);
+void svision_soundport_w(device_t *device, int which, int offset, int data);
+WRITE8_DEVICE_HANDLER( svision_sounddma_w );
+WRITE8_DEVICE_HANDLER( svision_noise_w );
 
 
 #endif /* SVISION_H_ */

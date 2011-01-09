@@ -12,16 +12,29 @@
 #define CONTRAST (input_port_read(machine, "DSW0") & 0x07)
 
 
+class pc1401_state : public driver_device
+{
+public:
+	pc1401_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 portc;
+	UINT8 outa;
+	UINT8 outb;
+	int power;
+	UINT8 reg[0x100];
+};
+
+
 /*----------- defined in machine/pc1401.c -----------*/
 
-extern UINT8 pc1401_portc;
-int pc1401_reset(running_device *device);
-int pc1401_brk(running_device *device);
-void pc1401_outa(running_device *device, int data);
-void pc1401_outb(running_device *device, int data);
-void pc1401_outc(running_device *device, int data);
-int pc1401_ina(running_device *device);
-int pc1401_inb(running_device *device);
+int pc1401_reset(device_t *device);
+int pc1401_brk(device_t *device);
+void pc1401_outa(device_t *device, int data);
+void pc1401_outb(device_t *device, int data);
+void pc1401_outc(device_t *device, int data);
+int pc1401_ina(device_t *device);
+int pc1401_inb(device_t *device);
 
 DRIVER_INIT( pc1401 );
 NVRAM_HANDLER( pc1401 );

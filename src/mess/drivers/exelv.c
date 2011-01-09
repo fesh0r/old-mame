@@ -59,8 +59,12 @@ TODO:
 #include "devices/cassette.h"*/
 
 
-typedef struct _exelv_state
+class exelv_state : public driver_device
 {
+public:
+	exelv_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
 	/* tms7020 i/o ports */
 	UINT8	tms7020_porta;
 	UINT8	tms7020_portb;
@@ -74,10 +78,7 @@ typedef struct _exelv_state
 	/* mailbox data */
 	UINT8	wx318;	/* data of 74ls374 labeled wx318 */
 	UINT8	wx319;	/* data of 74sl374 labeled wx319 */
-} exelv_state;
-
-
-static exelv_state exelv_driver_state;
+};
 
 
 /*
@@ -96,7 +97,7 @@ static MACHINE_RESET( exelv )
 
 	tms3556_reset();
 	spchroms_config( machine, &exelv_speech_intf );
-	memory_set_bankptr( machine, "bank1", memory_region(machine, "user1") + 0x0200 );
+	memory_set_bankptr( machine, "bank1", machine->region("user1")->base() + 0x0200 );
 }
 
 static INTERRUPT_GEN( exelv_hblank_interrupt )
@@ -192,15 +193,17 @@ static DEVICE_IMAGE_UNLOAD( exelv_cart )
 
 static READ8_HANDLER(mailbox_wx319_r)
 {
-	return exelv_driver_state.wx319;
+	exelv_state *state = space->machine->driver_data<exelv_state>();
+	return state->wx319;
 }
 
 
 static WRITE8_HANDLER(mailbox_wx318_w)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	logerror("wx318 write 0x%02x\n", data);
 
-	exelv_driver_state.wx318 = data;
+	state->wx318 = data;
 }
 
 
@@ -217,17 +220,19 @@ static WRITE8_HANDLER(mailbox_wx318_w)
 */
 static READ8_HANDLER(tms7020_porta_r)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	logerror("tms7020_porta_r\n");
 
-	return ( exelv_driver_state.tms7041_portb & 0x80 ) ? 0x01 : 0x00;
+	return ( state->tms7041_portb & 0x80 ) ? 0x01 : 0x00;
 }
 
 
 static WRITE8_HANDLER(tms7020_porta_w)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	logerror("tms7020_porta_w: data = 0x%02x\n", data);
 
-	exelv_driver_state.tms7020_porta = data;
+	state->tms7020_porta = data;
 }
 
 
@@ -252,9 +257,10 @@ static READ8_HANDLER(tms7020_portb_r)
 
 static WRITE8_HANDLER(tms7020_portb_w)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	logerror("tms7020_portb_w: data = 0x%02x\n", data);
 
-	exelv_driver_state.tms7020_portb = data;
+	state->tms7020_portb = data;
 }
 
 
@@ -271,14 +277,15 @@ static WRITE8_HANDLER(tms7020_portb_w)
 */
 static READ8_HANDLER(tms7041_porta_r)
 {
-	running_device *tms5220c = space->machine->device( "tms5220c" );
+	exelv_state *state = space->machine->driver_data<exelv_state>();
+	device_t *tms5220c = space->machine->device( "tms5220c" );
 	UINT8 data = 0x00;
 
 	logerror("tms7041_porta_r\n");
 
-	data |= ( exelv_driver_state.tms7020_portb & 0x01 ) ? 0x04 : 0x00;
+	data |= ( state->tms7020_portb & 0x01 ) ? 0x04 : 0x00;
 	data |= tms5220_intq_r( tms5220c ) ? 0x08 : 0x00;
-	data |= ( exelv_driver_state.tms7020_portb & 0x02 ) ? 0x10 : 0x00;
+	data |= ( state->tms7020_portb & 0x02 ) ? 0x10 : 0x00;
 	data |= tms5220_readyq_r( tms5220c ) ? 0x80 : 0x00;
 
 	return data;
@@ -287,9 +294,10 @@ static READ8_HANDLER(tms7041_porta_r)
 
 static WRITE8_HANDLER(tms7041_porta_w)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	logerror("tms7041_porta_w: data = 0x%02x\n", data);
 
-	exelv_driver_state.tms7041_porta = data;
+	state->tms7041_porta = data;
 }
 
 
@@ -316,7 +324,8 @@ static READ8_HANDLER(tms7041_portb_r)
 
 static WRITE8_HANDLER(tms7041_portb_w)
 {
-	running_device *tms5220c = space->machine->device( "tms5220c" );
+	exelv_state *state = space->machine->driver_data<exelv_state>();
+	device_t *tms5220c = space->machine->device( "tms5220c" );
 
 	logerror("tms7041_portb_w: data = 0x%02x\n", data);
 
@@ -326,13 +335,13 @@ static WRITE8_HANDLER(tms7041_portb_w)
 	cputag_set_input_line(space->machine, "maincpu", TMS7000_IRQ1_LINE, ( data & 0x04 ) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* Check for low->high transition on B6 */
-	if ( ! ( exelv_driver_state.tms7041_portb & 0x40 ) && ( data & 0x40 ) )
+	if ( ! ( state->tms7041_portb & 0x40 ) && ( data & 0x40 ) )
 	{
-		logerror("wx319 write 0x%02x\n", exelv_driver_state.tms7041_portc);
-		exelv_driver_state.wx319 = exelv_driver_state.tms7041_portc;
+		logerror("wx319 write 0x%02x\n", state->tms7041_portc);
+		state->wx319 = state->tms7041_portc;
 	}
 
-	exelv_driver_state.tms7041_portb = data;
+	state->tms7041_portb = data;
 }
 
 
@@ -341,14 +350,15 @@ static WRITE8_HANDLER(tms7041_portb_w)
 */
 static READ8_HANDLER(tms7041_portc_r)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	UINT8 data = 0xFF;
 
 	logerror("tms7041_portc_r\n");
 
 	/* Check if wx318 output is enabled */
-	if ( ! ( exelv_driver_state.tms7041_portb & 0x20 ) )
+	if ( ! ( state->tms7041_portb & 0x20 ) )
 	{
-		data = exelv_driver_state.wx318;
+		data = state->wx318;
 	}
 
 	return data;
@@ -357,9 +367,10 @@ static READ8_HANDLER(tms7041_portc_r)
 
 static WRITE8_HANDLER(tms7041_portc_w)
 {
+	exelv_state *state = space->machine->driver_data<exelv_state>();
 	logerror("tms7041_portc_w: data = 0x%02x\n", data);
 
-	exelv_driver_state.tms7041_portc = data;
+	state->tms7041_portc = data;
 }
 
 
@@ -386,13 +397,14 @@ static READ8_HANDLER(tms7041_portd_r)
 
 static WRITE8_HANDLER(tms7041_portd_w)
 {
-	running_device *tms5220c = space->machine->device( "tms5220c" );
+	exelv_state *state = space->machine->driver_data<exelv_state>();
+	device_t *tms5220c = space->machine->device( "tms5220c" );
 
 	logerror("tms7041_portd_w: data = 0x%02x\n", data);
 
 	tms5220_data_w( tms5220c, 0, BITSWAP8(data,0,1,2,3,4,5,6,7) );
 
-	exelv_driver_state.tms7041_portd = data;
+	state->tms7041_portd = data;
 }
 
 /*
@@ -495,69 +507,69 @@ static const tms5220_interface exl100_tms5220_interface =
 };
 
 
-static MACHINE_CONFIG_START( exl100, driver_device )
+static MACHINE_CONFIG_START( exl100, exelv_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", TMS7000_EXL, XTAL_4_9152MHz)	/* TMS7020 */
-	MDRV_CPU_PROGRAM_MAP(tms7020_mem)
-	MDRV_CPU_IO_MAP(tms7020_port)
-	MDRV_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
+	MCFG_CPU_ADD("maincpu", TMS7000_EXL, XTAL_4_9152MHz)	/* TMS7020 */
+	MCFG_CPU_PROGRAM_MAP(tms7020_mem)
+	MCFG_CPU_IO_MAP(tms7020_port)
+	MCFG_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
 
-	MDRV_CPU_ADD("tms7041", TMS7000, XTAL_4_9152MHz)
-	MDRV_CPU_PROGRAM_MAP(tms7041_map)
-	MDRV_CPU_IO_MAP(tms7041_port)
+	MCFG_CPU_ADD("tms7041", TMS7000, XTAL_4_9152MHz)
+	MCFG_CPU_PROGRAM_MAP(tms7041_map)
+	MCFG_CPU_IO_MAP(tms7041_port)
 
-	MDRV_QUANTUM_PERFECT_CPU("maincpu")
-	MDRV_QUANTUM_PERFECT_CPU("tms7041")
+	MCFG_QUANTUM_PERFECT_CPU("maincpu")
+	MCFG_QUANTUM_PERFECT_CPU("tms7041")
 
-	MDRV_MACHINE_RESET( exelv )
+	MCFG_MACHINE_RESET( exelv )
 
 	/* video hardware */
-	MDRV_FRAGMENT_ADD(tms3556)
+	MCFG_FRAGMENT_ADD(tms3556)
 
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
-	MDRV_VIDEO_START(exelv)
+	MCFG_VIDEO_START(exelv)
 
 	/* sound */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("tms5220c", TMS5220C, 640000)
-	MDRV_SOUND_CONFIG(exl100_tms5220_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("tms5220c", TMS5220C, 640000)
+	MCFG_SOUND_CONFIG(exl100_tms5220_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_CONFIG_END
 
 
-static MACHINE_CONFIG_START( exeltel, driver_device )
+static MACHINE_CONFIG_START( exeltel, exelv_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", TMS7000_EXL, XTAL_4_9152MHz)	/* TMS7040 */
-	MDRV_CPU_PROGRAM_MAP(tms7040_mem)
-	MDRV_CPU_IO_MAP(tms7020_port)
-	MDRV_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
+	MCFG_CPU_ADD("maincpu", TMS7000_EXL, XTAL_4_9152MHz)	/* TMS7040 */
+	MCFG_CPU_PROGRAM_MAP(tms7040_mem)
+	MCFG_CPU_IO_MAP(tms7020_port)
+	MCFG_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
 
-	MDRV_CPU_ADD("tms7042", TMS7000, XTAL_4_9152MHz)
-	MDRV_CPU_PROGRAM_MAP(tms7042_map)
-	MDRV_CPU_IO_MAP(tms7041_port)
+	MCFG_CPU_ADD("tms7042", TMS7000, XTAL_4_9152MHz)
+	MCFG_CPU_PROGRAM_MAP(tms7042_map)
+	MCFG_CPU_IO_MAP(tms7041_port)
 
-	MDRV_QUANTUM_PERFECT_CPU("maincpu")
-	MDRV_QUANTUM_PERFECT_CPU("tms7042")
+	MCFG_QUANTUM_PERFECT_CPU("maincpu")
+	MCFG_QUANTUM_PERFECT_CPU("tms7042")
 
-	MDRV_MACHINE_RESET( exelv )
+	MCFG_MACHINE_RESET( exelv )
 
 	/* video hardware */
-	MDRV_FRAGMENT_ADD(tms3556)
+	MCFG_FRAGMENT_ADD(tms3556)
 
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
-	MDRV_VIDEO_START(exelv)
+	MCFG_VIDEO_START(exelv)
 
 	/* sound */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("tms5220c", TMS5220C, 640000)
-	MDRV_SOUND_CONFIG(exl100_tms5220_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("tms5220c", TMS5220C, 640000)
+	MCFG_SOUND_CONFIG(exl100_tms5220_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_CONFIG_END
 
 

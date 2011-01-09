@@ -143,7 +143,17 @@ PCB 'Z545-1 A240570-1'
 //#include "cpu/v60/v60.h"
 #include "devices/cartslot.h"
 
-static UINT32 *bios_rom;
+
+class casloopy_state : public driver_device
+{
+public:
+	casloopy_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT32 *bios_rom;
+};
+
+
 
 static VIDEO_START( casloopy )
 {
@@ -156,7 +166,7 @@ static VIDEO_UPDATE( casloopy )
 }
 
 static ADDRESS_MAP_START( casloopy_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x00000007) AM_RAM AM_BASE(&bios_rom)
+	AM_RANGE(0x00000000, 0x00000007) AM_RAM AM_BASE_MEMBER(casloopy_state, bios_rom)
 //	AM_RANGE(0x01000000, 0x017fffff) - i/o?
 	AM_RANGE(0x06000000, 0x061fffff) AM_ROM AM_REGION("cart",0) // wrong?
 	AM_RANGE(0x07fff000, 0x07ffffff) AM_RAM
@@ -177,35 +187,35 @@ static MACHINE_RESET( casloopy )
 
 }
 
-static MACHINE_CONFIG_START( casloopy, driver_device )
+static MACHINE_CONFIG_START( casloopy, casloopy_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",SH2,8000000)
-	MDRV_CPU_PROGRAM_MAP(casloopy_map)
+	MCFG_CPU_ADD("maincpu",SH2,8000000)
+	MCFG_CPU_PROGRAM_MAP(casloopy_map)
 
-//	MDRV_CPU_ADD("subcpu",V60,8000000)
-//	MDRV_CPU_PROGRAM_MAP(casloopy_sub_map)
+//	MCFG_CPU_ADD("subcpu",V60,8000000)
+//	MCFG_CPU_PROGRAM_MAP(casloopy_sub_map)
 
-	MDRV_MACHINE_RESET(casloopy)
+	MCFG_MACHINE_RESET(casloopy)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_PALETTE_LENGTH(512)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(32*8, 32*8)
+	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MCFG_PALETTE_LENGTH(512)
 
-	MDRV_VIDEO_START(casloopy)
-	MDRV_VIDEO_UPDATE(casloopy)
+	MCFG_VIDEO_START(casloopy)
+	MCFG_VIDEO_UPDATE(casloopy)
 
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("ic1")
-	MDRV_CARTSLOT_MANDATORY
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("ic1")
+	MCFG_CARTSLOT_MANDATORY
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SPEAKER_STANDARD_MONO("mono")
 MACHINE_CONFIG_END
 
 /***************************************************************************
@@ -227,9 +237,10 @@ ROM_END
 
 static DRIVER_INIT( casloopy )
 {
+	casloopy_state *state = machine->driver_data<casloopy_state>();
 	/* load hand made bios data*/
-	bios_rom[0/4] = 0x6000964; //SPC
-	bios_rom[4/4] = 0xffffff0; //SSP
+	state->bios_rom[0/4] = 0x6000964; //SPC
+	state->bios_rom[4/4] = 0xffffff0; //SSP
 }
 
 GAME( 1995, casloopy,  0,   casloopy,  casloopy,  casloopy, ROT0, "Casio", "Loopy", GAME_NOT_WORKING | GAME_NO_SOUND )

@@ -158,8 +158,6 @@ There don't seem to be any JV1 boot disks for Model III/4.
 #include "formats/trs_cas.h"
 #include "formats/trs_cmd.h"
 
-UINT8 *trs80_gfxram;
-UINT8 trs80_model4;
 
 static ADDRESS_MAP_START( trs80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
@@ -399,7 +397,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("Enter") PORT_CODE(KEYCODE_ENTER)							PORT_CHAR(13) PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("Clear") PORT_CODE(KEYCODE_HOME)		PORT_CHAR(UCHAR_MAMEKEY(F8)) // 3rd line, 1st key from right
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("Break") PORT_CODE(KEYCODE_END)		PORT_CHAR(UCHAR_MAMEKEY(F9)) // 1st line, 1st key from right
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP)	PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME(UTF8_UP) PORT_CODE(KEYCODE_UP)	PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_NAME("Down") PORT_CODE(KEYCODE_DOWN)				PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	/* backspace do the same as cursor left */
 	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_NAME("Left") PORT_CODE(KEYCODE_LEFT) PORT_CODE(KEYCODE_BACKSPACE)	PORT_CHAR(UCHAR_MAMEKEY(LEFT))
@@ -556,52 +554,52 @@ static const floppy_config trs80_floppy_config =
 
 static MACHINE_CONFIG_START( trs80, trs80_state )		// the original model I, level I, with no extras
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, 1796000)        /* 1.796 MHz */
-	MDRV_CPU_PROGRAM_MAP(trs80_map)
-	MDRV_CPU_IO_MAP(trs80_io)
+	MCFG_CPU_ADD("maincpu", Z80, 1796000)        /* 1.796 MHz */
+	MCFG_CPU_PROGRAM_MAP(trs80_map)
+	MCFG_CPU_IO_MAP(trs80_io)
 
-	MDRV_MACHINE_START( trs80 )
-	MDRV_MACHINE_RESET( trs80 )
+	MCFG_MACHINE_START( trs80 )
+	MCFG_MACHINE_RESET( trs80 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(64*FW, 16*FH)
-	MDRV_SCREEN_VISIBLE_AREA(0,64*FW-1,0,16*FH-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(64*FW, 16*FH)
+	MCFG_SCREEN_VISIBLE_AREA(0,64*FW-1,0,16*FH-1)
 
-	MDRV_GFXDECODE(trs80)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_GFXDECODE(trs80)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_START( trs80 )
-	MDRV_VIDEO_UPDATE( trs80 )
+	MCFG_VIDEO_START( trs80 )
+	MCFG_VIDEO_UPDATE( trs80 )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
-	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( model1, trs80 )		// model I, level II
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( model1_map)
-	MDRV_CPU_IO_MAP( model1_io)
-	MDRV_CPU_PERIODIC_INT(trs80_rtc_interrupt, 40)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP( model1_map)
+	MCFG_CPU_IO_MAP( model1_io)
+	MCFG_CPU_PERIODIC_INT(trs80_rtc_interrupt, 40)
 
 	/* devices */
-	MDRV_CASSETTE_MODIFY( "cassette", trs80l2_cassette_config )
-	MDRV_QUICKLOAD_ADD("quickload", trs80_cmd, "cmd", 0.5)
-	MDRV_WD179X_ADD("wd179x", trs80_wd17xx_interface )
-	MDRV_FLOPPY_4_DRIVES_ADD(trs80_floppy_config)
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
-	MDRV_AY31015_ADD( "tr1602", trs80_ay31015_config )
+	MCFG_CASSETTE_MODIFY( "cassette", trs80l2_cassette_config )
+	MCFG_QUICKLOAD_ADD("quickload", trs80_cmd, "cmd", 0.5)
+	MCFG_WD179X_ADD("wd179x", trs80_wd17xx_interface )
+	MCFG_FLOPPY_4_DRIVES_ADD(trs80_floppy_config)
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_AY31015_ADD( "tr1602", trs80_ay31015_config )
 MACHINE_CONFIG_END
 #if 0
 static MACHINE_CONFIG_DERIVED( model2, model1 )
@@ -609,61 +607,61 @@ MACHINE_CONFIG_END
 #endif
 
 static MACHINE_CONFIG_DERIVED( model3, model1 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( model3_map)
-	MDRV_CPU_IO_MAP( model3_io)
-	MDRV_CPU_PERIODIC_INT(trs80_rtc_interrupt, 30)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP( model3_map)
+	MCFG_CPU_IO_MAP( model3_io)
+	MCFG_CPU_PERIODIC_INT(trs80_rtc_interrupt, 30)
 
-	MDRV_MACHINE_RESET( trs80m4 )
+	MCFG_MACHINE_RESET( trs80m4 )
 
-	MDRV_GFXDECODE(trs80m4)
-	MDRV_VIDEO_UPDATE( trs80m4 )
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_SIZE(80*8, 240)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
+	MCFG_GFXDECODE(trs80m4)
+	MCFG_VIDEO_UPDATE( trs80m4 )
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_SIZE(80*8, 240)
+	MCFG_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( model4, model3 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( model4_io)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_IO_MAP( model4_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( model4p, model3 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( model4p_io)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_IO_MAP( model4p_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( sys80, model1 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( sys80_io)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_IO_MAP( sys80_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ht1080z, sys80 )
-	MDRV_VIDEO_UPDATE( ht1080z )
-	MDRV_GFXDECODE(ht1080z)
+	MCFG_VIDEO_UPDATE( ht1080z )
+	MCFG_GFXDECODE(ht1080z)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( lnw80, model1 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( lnw80_map)
-	MDRV_CPU_IO_MAP( lnw80_io)
-	MDRV_MACHINE_RESET( lnw80 )
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP( lnw80_map)
+	MCFG_CPU_IO_MAP( lnw80_io)
+	MCFG_MACHINE_RESET( lnw80 )
 
-	MDRV_GFXDECODE(lnw80)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_PALETTE_INIT(lnw80)
-	MDRV_VIDEO_UPDATE(lnw80)
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_SIZE(80*FW, 16*FH)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*FW-1,0,16*FH-1)
+	MCFG_GFXDECODE(lnw80)
+	MCFG_PALETTE_LENGTH(8)
+	MCFG_PALETTE_INIT(lnw80)
+	MCFG_VIDEO_UPDATE(lnw80)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_SIZE(80*FW, 16*FH)
+	MCFG_SCREEN_VISIBLE_AREA(0,80*FW-1,0,16*FH-1)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( radionic, model1 )
-	MDRV_VIDEO_UPDATE( radionic )
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_SIZE(64*8, 16*16)
-	MDRV_SCREEN_VISIBLE_AREA(0,64*8-1,0,16*16-1)
-	MDRV_GFXDECODE(radionic)
+	MCFG_VIDEO_UPDATE( radionic )
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_SIZE(64*8, 16*16)
+	MCFG_SCREEN_VISIBLE_AREA(0,64*8-1,0,16*16-1)
+	MCFG_GFXDECODE(radionic)
 MACHINE_CONFIG_END
 
 
@@ -825,39 +823,41 @@ ROM_END
 
 static DRIVER_INIT( trs80 )
 {
-	trs80_mode = 0;
-	trs80_model4 = 0;
+	trs80_state *state = machine->driver_data<trs80_state>();
+	state->mode = 0;
+	state->model4 = 0;
 }
 
 static DRIVER_INIT( trs80l2 )
 {
-	trs80_mode = 2;
-	trs80_model4 = 0;
+	trs80_state *state = machine->driver_data<trs80_state>();
+	state->mode = 2;
+	state->model4 = 0;
 }
 
 static DRIVER_INIT( trs80m4 )
 {
 	trs80_state *state = machine->driver_data<trs80_state>();
-	trs80_mode = 0;
-	trs80_model4 = 2;
-	state->videoram = memory_region(machine, "maincpu")+0x4000;
+	state->mode = 0;
+	state->model4 = 2;
+	state->videoram = machine->region("maincpu")->base()+0x4000;
 }
 
 static DRIVER_INIT( trs80m4p )
 {
 	trs80_state *state = machine->driver_data<trs80_state>();
-	trs80_mode = 0;
-	trs80_model4 = 4;
-	state->videoram = memory_region(machine, "maincpu")+0x4000;
+	state->mode = 0;
+	state->model4 = 4;
+	state->videoram = machine->region("maincpu")->base()+0x4000;
 }
 
 static DRIVER_INIT( lnw80 )
 {
 	trs80_state *state = machine->driver_data<trs80_state>();
-	trs80_mode = 0;
-	trs80_model4 = 0;
-	trs80_gfxram = memory_region(machine, "gfx2");
-	state->videoram = memory_region(machine, "gfx2")+0x4000;
+	state->mode = 0;
+	state->model4 = 0;
+	state->gfxram = machine->region("gfx2")->base();
+	state->videoram = machine->region("gfx2")->base()+0x4000;
 }
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT  COMPANY  FULLNAME */

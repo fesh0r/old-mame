@@ -27,9 +27,9 @@
 //  INTERFACE CONFIGURATION MACROS
 //**************************************************************************
 
-#define MDRV_HD61830_ADD(_tag, _clock, _config) \
-	MDRV_DEVICE_ADD(_tag, HD61830, _clock) \
-	MDRV_DEVICE_CONFIG(_config)
+#define MCFG_HD61830_ADD(_tag, _clock, _config) \
+	MCFG_DEVICE_ADD(_tag, HD61830, _clock) \
+	MCFG_DEVICE_CONFIG(_config)
 
 
 #define HD61830_INTERFACE(name) \
@@ -144,7 +144,7 @@ private:
 	int m_cp;						// cursor position
 
     int m_blink;					// blink counter
-	bool m_cursor;					// cursor visible
+	int m_cursor;					// cursor visible
 
 	const hd61830_device_config &m_config;
 };

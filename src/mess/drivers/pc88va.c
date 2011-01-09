@@ -5,21 +5,27 @@
 	A follow up of the regular PC-8801. It can also run PC-8801 software in compatible mode
 
 	preliminary driver by Angelo Salese
+	Special thanks to Fujix for his documentation translation help
 
 	TODO:
 	- Does this system have one or two CPUs? I'm prone to think that the V30 does all the job
 	  and then enters into z80 compatible mode for PC-8801 emulation.
+	- What exact kind of garbage happens if you try to enable both direct and palette color
+	  modes to a graphic layer?
+	- What is exactly supposed to be a "bus slot"?
 
 ********************************************************************************************/
 
 #include "emu.h"
 #include "cpu/nec/nec.h"
-//#include "cpu/z80/z80.h"
+#include "cpu/z80/z80.h"
 #include "machine/i8255a.h"
+#include "machine/pic8259.h"
+#include "machine/pit8253.h"
+#include "machine/upd765.h"
+#include "sound/2203intf.h"
 
-static UINT16 *palram;
-static UINT16 bank_reg;
-static struct
+typedef struct
 {
 	UINT16 tvram_vreg_offset;
 	UINT16 attr_offset;
@@ -31,9 +37,32 @@ static struct
 	UINT8 h_line_pos;
 	UINT8 blink;
 	UINT16 cur_pos_x,cur_pos_y;
-}tsp;
+	UINT8 curn;
+	UINT8 curn_blink;
+} tsp_t;
 
-static UINT8 backupram_wp;
+
+class pc88va_state : public driver_device
+{
+public:
+	pc88va_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT16 *palram;
+	UINT16 bank_reg;
+	UINT16 screen_ctrl_reg;
+	UINT8 timer3_io_reg;
+	emu_timer *t3_mouse_timer;
+	tsp_t tsp;
+	UINT16 video_pri_reg[2];
+	UINT8 backupram_wp;
+	UINT8 cmd;
+	UINT8 buf_size;
+	UINT8 buf_index;
+	UINT8 buf_ram[16];
+	UINT8 portc_test;
+};
+
 
 static VIDEO_START( pc88va )
 {
@@ -42,10 +71,11 @@ static VIDEO_START( pc88va )
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
-	UINT16 *tvram = (UINT16 *)memory_region(machine, "tvram");
+	pc88va_state *state = machine->driver_data<pc88va_state>();
+	UINT16 *tvram = (UINT16 *)machine->region("tvram")->base();
 	int offs,i;
 
-	offs = tsp.spr_offset;
+	offs = state->tsp.spr_offset;
 	for(i=0;i<(0x100);i+=(8))
 	{
 		int xp,yp,sw,md,xsize,ysize,spda,fg_col,bc;
@@ -134,25 +164,269 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	}
 }
 
+/* TODO: this is either a result of an hand-crafted ROM or the JIS stuff is really attribute related ... */
+static UINT32 calc_kanji_rom_addr(UINT8 jis1,UINT8 jis2,int x,int y)
+{
+	if(jis1 < 0x30)
+		return ((jis2 & 0x60) << 8) + ((jis1 & 0x07) << 10) + ((jis2 & 0x1f) << 5);
+	else if(jis1 >= 0x30 && jis1 < 0x3f)
+		return ((jis2 & 0x60) << 10) + ((jis1 & 0x0f) << 10) + ((jis2 & 0x1f) << 5);
+	else if(jis1 >= 0x40 && jis1 < 0x50)
+		return 0x4000 + ((jis2 & 0x60) << 10) + ((jis1 & 0x0f) << 10) + ((jis2 & 0x1f) << 5);
+	else if(x == 0 && y == 0 && jis1 != 0) // debug stuff, to be nuked in the end
+		printf("%02x\n",jis1);
+
+	return 0;
+}
+
+static void draw_text(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
+{
+	pc88va_state *state = machine->driver_data<pc88va_state>();
+	UINT8 *tvram = machine->region("tvram")->base();
+	UINT8 *kanji = machine->region("kanji")->base();
+	int xi,yi;
+	int x,y;
+	int res_x,res_y;
+	UINT16 lr_half_gfx;
+	UINT8 jis1,jis2;
+	UINT32 count;
+	UINT32 tile_num;
+	UINT16 attr;
+	UINT8 attr_mode;
+	UINT8 fg_col,bg_col,secret,reverse,blink,dwidc,dwid,uline,hline;
+	UINT8 screen_fg_col,screen_bg_col;
+
+	count = (tvram[state->tsp.tvram_vreg_offset+0] | tvram[state->tsp.tvram_vreg_offset+1] << 8);
+
+	attr_mode = tvram[state->tsp.tvram_vreg_offset+0xa] & 0x1f;
+	/* Note: bug in docs has the following two reversed */
+	screen_fg_col = (tvram[state->tsp.tvram_vreg_offset+0xb] & 0xf0) >> 4;
+	screen_bg_col = tvram[state->tsp.tvram_vreg_offset+0xb] & 0x0f;
+
+	for(y=0;y<13;y++)
+	{
+		for(x=0;x<80;x++)
+		{
+			jis1 = (tvram[count+0] & 0x7f) + 0x20;
+			jis2 = tvram[count+1] & 0x7f;
+			lr_half_gfx = ((tvram[count+1] & 0x80) >> 7);
+
+			tile_num = calc_kanji_rom_addr(jis1,jis2,x,y);
+
+			attr = (tvram[count+state->tsp.attr_offset] & 0x00ff);
+
+			fg_col = bg_col = reverse = blink = secret = dwidc = dwid = uline = hline = 0;
+
+			switch(attr_mode)
+			{
+				/*
+				xxxx ---- foreground color
+				---- xxxx background color
+				*/
+				case 0:
+					fg_col = (attr & 0xf0) >> 4;
+					bg_col = (attr & 0x0f) >> 0;
+					break;
+				/*
+				xxxx ---- foreground color
+				---- x--- horizontal line
+				---- -x-- reverse
+				---- --x- blink
+				---- ---x secret (hide text)
+				background color is defined by screen control table values
+				*/
+				case 1:
+					fg_col = (attr & 0xf0) >> 4;
+					bg_col = screen_bg_col;
+					hline = (attr & 0x08) >> 3;
+					reverse = (attr & 0x04) >> 2;
+					blink = (attr & 0x02) >> 1;
+					secret = (attr & 0x01) >> 0;
+					break;
+				/*
+				x--- ---- dwidc
+				-x-- ---- dwid
+				--x- ---- uline
+				---x ---- hline
+				---- -x-- reverse
+				---- --x- blink
+				---- ---x secret (hide text)
+				background and foreground colors are defined by screen control table values
+				*/
+				case 2:
+					fg_col = screen_fg_col;
+					bg_col = screen_bg_col;
+					dwidc = (attr & 0x80) >> 7;
+					dwid = (attr & 0x40) >> 6;
+					uline = (attr & 0x20) >> 5;
+					hline = (attr & 0x10) >> 4;
+					reverse = (attr & 0x04) >> 2;
+					blink = (attr & 0x02) >> 1;
+					secret = (attr & 0x01) >> 0;
+					break;
+				/*
+				---- x--- mixes between mode 0 and 2
+
+				xxxx 1--- foreground color
+				---- 1xxx background color
+				2)
+				x--- 0--- dwidc
+				-x-- 0--- dwid
+				--x- 0--- uline
+				---x 0--- hline
+				---- 0x-- reverse
+				---- 0-x- blink
+				---- 0--x secret (hide text)
+				background and foreground colors are defined by screen control table values
+				*/
+				case 3:
+					{
+						if(attr & 0x8)
+						{
+							fg_col = (attr & 0xf0) >> 4;
+							bg_col = (attr & 0x07) >> 0;
+						}
+						else
+						{
+							fg_col = screen_fg_col;
+							bg_col = screen_bg_col;
+							dwidc = (attr & 0x80) >> 7;
+							dwid = (attr & 0x40) >> 6;
+							uline = (attr & 0x20) >> 5;
+							hline = (attr & 0x10) >> 4;
+							reverse = (attr & 0x04) >> 2;
+							blink = (attr & 0x02) >> 1;
+							secret = (attr & 0x01) >> 0;
+						}
+					}
+					break;
+				/*
+				x--- ---- blink
+				-xxx ---- background color
+				---- xxxx foreground color
+				*/
+				case 4:
+					fg_col = (attr & 0x0f) >> 0;
+					bg_col = (attr & 0x70) >> 4;
+					blink = (attr & 0x80) >> 7;
+					break;
+				/*
+				x--- ---- blink
+				-xxx ---- background color
+				---- xxxx foreground color
+				hline is enabled if foreground color is 1 or 9
+				*/
+				case 5:
+					fg_col = (attr & 0x0f) >> 0;
+					bg_col = (attr & 0x70) >> 4;
+					blink = (attr & 0x80) >> 7;
+					if((fg_col & 7) == 1)
+						hline = 1;
+					break;
+				default:
+					popmessage("Illegal text tilemap attribute mode %02x, contact MESSdev",attr_mode);
+					return;
+			}
+
+			for(yi=0;yi<16;yi++)
+			{
+				for(xi=0;xi<8;xi++)
+				{
+					int pen;
+
+					res_x = x*8+xi;
+					res_y = y*16+yi;
+
+					if((res_x)>machine->primary_screen->visible_area().max_x || (res_y)>machine->primary_screen->visible_area().max_y)
+						continue;
+
+					pen = kanji[((yi*2)+lr_half_gfx)+tile_num] >> (7-xi) & 1;
+
+					if(reverse)
+						pen = pen & 1 ? bg_col : fg_col;
+					else
+						pen = pen & 1 ? fg_col : bg_col;
+
+					if(secret) { pen = 0; } //hide text
+
+					if(pen != -1) //transparent
+						*BITMAP_ADDR32(bitmap, res_y, res_x) = machine->pens[pen];
+				}
+			}
+
+			count+=2;
+			count&=0xffff;
+		}
+	}
+}
+
 static VIDEO_UPDATE( pc88va )
 {
+	pc88va_state *state = screen->machine->driver_data<pc88va_state>();
+	UINT8 pri,cur_pri_lv;
+	UINT32 screen_pri;
 	bitmap_fill(bitmap, cliprect, 0);
 
-	if(tsp.spr_on)
-		draw_sprites(screen->machine,bitmap,cliprect);
+	if(state->tsp.disp_on == 0) // don't bother if we are under DSPOFF command
+		return 0;
+
+	/*
+	state->video_pri_reg[0]
+	xxxx ---- ---- ---- priority 3
+	---- xxxx ---- ---- priority 2
+	---- ---- xxxx ---- priority 1
+	---- ---- ---- xxxx priority 0
+	state->video_pri_reg[1]
+	---- ---- xxxx ---- priority 5
+	---- ---- ---- xxxx priority 4
+
+	Note that orthogonality level is actually REVERSED than the level number it indicates, so we have to play a little with the data for an easier usage ...
+	*/
+
+	screen_pri = (state->video_pri_reg[1] & 0x00f0) >> 4; // priority 5
+	screen_pri|= (state->video_pri_reg[1] & 0x000f) << 4; // priority 4
+	screen_pri|= (state->video_pri_reg[0] & 0xf000) >> 4; // priority 3
+	screen_pri|= (state->video_pri_reg[0] & 0x0f00) << 4; // priority 2
+	screen_pri|= (state->video_pri_reg[0] & 0x00f0) << 12; // priority 1
+	screen_pri|= (state->video_pri_reg[0] & 0x000f) << 20; // priority 0
+
+	for(pri=0;pri<6;pri++)
+	{
+		cur_pri_lv = (screen_pri >> (pri*4)) & 0xf;
+
+		if(cur_pri_lv & 8) // enable layer
+		{
+			if(pri <= 1) // (direct color mode, priority 5 and 4)
+			{
+				// 8 = graphic 0
+				// 9 = graphic 1
+			}
+			else
+			{
+				switch(cur_pri_lv & 3) // (palette color mode)
+				{
+					case 0: draw_text(screen->machine,bitmap,cliprect); break;
+					case 1: if(state->tsp.spr_on) { draw_sprites(screen->machine,bitmap,cliprect); } break;
+					case 2: /* A = graphic 0 */ break;
+					case 3: /* B = graphic 1 */ break;
+				}
+			}
+		}
+	}
 
 	return 0;
 }
 
 static READ16_HANDLER( sys_mem_r )
 {
-	switch((bank_reg & 0xf00) >> 8)
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	switch((state->bank_reg & 0xf00) >> 8)
 	{
 		case 0: // select bus slot
 			return 0xffff;
 		case 1: // TVRAM
 		{
-			UINT16 *tvram = (UINT16 *)memory_region(space->machine, "tvram");
+			UINT16 *tvram = (UINT16 *)space->machine->region("tvram")->base();
 
 			if(((offset*2) & 0x30000) == 0)
 				return tvram[offset];
@@ -161,17 +435,17 @@ static READ16_HANDLER( sys_mem_r )
 		}
 		case 4:
 		{
-			UINT16 *gvram = (UINT16 *)memory_region(space->machine, "gvram");
+			UINT16 *gvram = (UINT16 *)space->machine->region("gvram")->base();
 
 			return gvram[offset];
 		}
 		case 8: // kanji ROM
 		case 9:
 		{
-			UINT16 *knj_ram = (UINT16 *)memory_region(space->machine, "kanji");
+			UINT16 *knj_ram = (UINT16 *)space->machine->region("kanji")->base();
 			UINT32 knj_offset;
 
-			knj_offset = (offset + (((bank_reg & 0x100) >> 8)*0x20000));
+			knj_offset = (offset + (((state->bank_reg & 0x100) >> 8)*0x20000));
 
 			/* 0x00000 - 0x3ffff Kanji ROM 1*/
 			/* 0x40000 - 0x4ffff Kanji ROM 2*/
@@ -184,10 +458,10 @@ static READ16_HANDLER( sys_mem_r )
 		case 0xc: // Dictionary ROM
 		case 0xd:
 		{
-			UINT16 *dic_rom = (UINT16 *)memory_region(space->machine, "dictionary");
+			UINT16 *dic_rom = (UINT16 *)space->machine->region("dictionary")->base();
 			UINT32 dic_offset;
 
-			dic_offset = (offset + (((bank_reg & 0x100) >> 8)*0x20000));
+			dic_offset = (offset + (((state->bank_reg & 0x100) >> 8)*0x20000));
 
 			return dic_rom[dic_offset];
 		}
@@ -198,13 +472,14 @@ static READ16_HANDLER( sys_mem_r )
 
 static WRITE16_HANDLER( sys_mem_w )
 {
-	switch((bank_reg & 0xf00) >> 8)
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	switch((state->bank_reg & 0xf00) >> 8)
 	{
 		case 0: // select bus slot
 			break;
 		case 1: // TVRAM
 		{
-			UINT16 *tvram = (UINT16 *)memory_region(space->machine, "tvram");
+			UINT16 *tvram = (UINT16 *)space->machine->region("tvram")->base();
 
 			if(((offset*2) & 0x30000) == 0)
 				COMBINE_DATA(&tvram[offset]);
@@ -212,7 +487,7 @@ static WRITE16_HANDLER( sys_mem_w )
 		break;
 		case 4: // TVRAM
 		{
-			UINT16 *gvram = (UINT16 *)memory_region(space->machine, "gvram");
+			UINT16 *gvram = (UINT16 *)space->machine->region("gvram")->base();
 
 			COMBINE_DATA(&gvram[offset]);
 		}
@@ -220,10 +495,10 @@ static WRITE16_HANDLER( sys_mem_w )
 		case 8: // kanji ROM, backup RAM at 0xb0000 - 0xb3fff
 		case 9:
 		{
-			UINT16 *knj_ram = (UINT16 *)memory_region(space->machine, "kanji");
+			UINT16 *knj_ram = (UINT16 *)space->machine->region("kanji")->base();
 			UINT32 knj_offset;
 
-			knj_offset = ((offset) + (((bank_reg & 0x100) >> 8)*0x20000));
+			knj_offset = ((offset) + (((state->bank_reg & 0x100) >> 8)*0x20000));
 
 			if(knj_offset >= 0x50000/2 && knj_offset <= 0x53fff/2) // TODO: there's an area that can be write protected
 			{
@@ -265,8 +540,6 @@ static READ8_HANDLER( idp_status_r )
 	return 0x00;
 }
 
-static UINT8 cmd,buf_size,buf_index;
-static UINT8 buf_ram[16];
 
 #define SYNC   0x10
 #define DSPON  0x12
@@ -284,55 +557,70 @@ static UINT8 buf_ram[16];
 
 static WRITE8_HANDLER( idp_command_w )
 {
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
 	switch(data)
 	{
 		/* 0x10 - SYNC: sets CRTC values */
-		case SYNC:   cmd = SYNC;  buf_size = 14; buf_index = 0; break;
+		case SYNC:   state->cmd = SYNC;  state->buf_size = 14; state->buf_index = 0; break;
 
 		/* 0x12 - DSPON: set DiSPlay ON and set up tvram table vreg */
-		case DSPON:  cmd = DSPON; buf_size = 3;  buf_index = 0; break;
+		case DSPON:  state->cmd = DSPON; state->buf_size = 3;  state->buf_index = 0; break;
 
 		/* 0x13 - DSPOFF: set DiSPlay OFF */
-		case DSPOFF: tsp.disp_on = 0; break;
+		case DSPOFF: state->cmd = DSPOFF; state->tsp.disp_on = 0; break;
 
 		/* 0x14 - DSPDEF: set DiSPlay DEFinitions */
-		case DSPDEF: cmd = DSPDEF; buf_size = 6; buf_index = 0; break;
+		case DSPDEF: state->cmd = DSPDEF; state->buf_size = 6; state->buf_index = 0; break;
 
 		/* 0x15 - CURDEF: set CURsor DEFinition */
-		case CURDEF: cmd = CURDEF; buf_size = 1; buf_index = 0; break;
+		case CURDEF: state->cmd = CURDEF; state->buf_size = 1; state->buf_index = 0; break;
 
 		/* 0x16 - ACTSCR: ??? */
-		case ACTSCR: cmd = ACTSCR; buf_size = 1; buf_index = 0; break;
+		case ACTSCR: state->cmd = ACTSCR; state->buf_size = 1; state->buf_index = 0; break;
 
 		/* 0x15 - CURS: set CURSor position */
-		case CURS:   cmd = CURS;   buf_size = 4; buf_index = 0; break;
+		case CURS:   state->cmd = CURS;   state->buf_size = 4; state->buf_index = 0; break;
 
 		/* 0x8c - EMUL: set 3301 EMULation */
-		case EMUL:   cmd = EMUL;   buf_size = 4; buf_index = 0; break;
+		case EMUL:   state->cmd = EMUL;   state->buf_size = 4; state->buf_index = 0; break;
 
 		/* 0x88 - EXIT: ??? */
-		case EXIT: break;
+		case EXIT:   state->cmd = EXIT; break;
 
 		/* 0x82 - SPRON: set SPRite ON */
-		case SPRON:   cmd = SPRON;  buf_size = 3; buf_index = 0; break;
+		case SPRON:  state->cmd = SPRON;  state->buf_size = 3; state->buf_index = 0; break;
 
 		/* 0x83 - SPROFF: set SPRite OFF */
-		case SPROFF:  tsp.spr_on = 0; break;
+		case SPROFF: state->cmd = SPROFF; state->tsp.spr_on = 0; break;
 
 		/* 0x85 - SPRSW: ??? */
-		case SPRSW:   cmd = SPRSW;  buf_size = 1; buf_index = 0; break;
+		case SPRSW:  state->cmd = SPRSW;  state->buf_size = 1; state->buf_index = 0; break;
 
 		/* 0x81 - SPROV: set SPRite OVerflow information */
-		case 0x81: /* ... */ break;
+		/*
+		-x-- ---- Sprite Over flag
+		--x- ---- Sprite Collision flag
+		---x xxxx First sprite that caused Sprite Over event
+		*/
+		case SPROV:  state->cmd = SPROV; /* TODO: where it returns the info? */ break;
 
 		/* TODO: 0x89 shouldn't trigger, should be one of the above commands */
-		default:   cmd = 0x00; printf("PC=%05x: Unknown IDP %02x cmd set\n",cpu_get_pc(space->cpu),data); break;
+		default:   state->cmd = 0x00; printf("PC=%05x: Unknown IDP %02x cmd set\n",cpu_get_pc(space->cpu),data); break;
 	}
+}
+
+static void tsp_sprite_enable(running_machine *machine, UINT32 spr_offset, UINT8 sw_bit)
+{
+	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+
+	space->write_word(spr_offset, space->read_word(spr_offset) & ~0x200);
+	space->write_word(spr_offset, space->read_word(spr_offset) | (sw_bit & 0x200));
 }
 
 /* TODO: very preliminary, needs something showable first */
 static void execute_sync_cmd(running_machine *machine)
 {
+	pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
 		???? ???? [0] - unknown
 		???? ???? [1] - unknown
@@ -352,7 +640,7 @@ static void execute_sync_cmd(running_machine *machine)
 	*/
 	rectangle visarea;
 	attoseconds_t refresh;
-	static UINT16 x_vis_area,y_vis_area;
+	UINT16 x_vis_area,y_vis_area;
 
 	//printf("V blank start: %d\n",(sync_cmd[0x8]));
 	//printf("V border start: %d\n",(sync_cmd[0x9]));
@@ -360,8 +648,8 @@ static void execute_sync_cmd(running_machine *machine)
 	//printf("V border end: %d\n",(sync_cmd[0xc]));
 	//printf("V blank end: %d\n",(sync_cmd[0xd]));
 
-	x_vis_area = buf_ram[4] * 4;
-	y_vis_area = (buf_ram[0xa])|((buf_ram[0xb] & 0x40)<<2);
+	x_vis_area = state->buf_ram[4] * 4;
+	y_vis_area = (state->buf_ram[0xa])|((state->buf_ram[0xb] & 0x40)<<2);
 
 	visarea.min_x = 0;
 	visarea.min_y = 0;
@@ -380,54 +668,65 @@ static void execute_sync_cmd(running_machine *machine)
 
 static void execute_dspon_cmd(running_machine *machine)
 {
+	pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
 	[0] text table offset (hi word)
 	[1] unknown
 	[2] unknown
 	*/
-	tsp.tvram_vreg_offset = buf_ram[0] << 8;
-	tsp.disp_on = 1;
+	state->tsp.tvram_vreg_offset = state->buf_ram[0] << 8;
+	state->tsp.disp_on = 1;
 }
 
 static void execute_dspdef_cmd(running_machine *machine)
 {
+	pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
 	[0] attr offset (lo word)
 	[1] attr offset (hi word)
-	[2] pitch
+	[2] pitch (character code interval x 16, i.e. 0x20 = 2 bytes
 	[3] line height
-	[4] h line position
+	[4] hline vertical position
 	[5] blink number
 	*/
-	tsp.attr_offset = buf_ram[0] | buf_ram[1] << 8;
-	tsp.pitch = (buf_ram[2] & 0xf0) >> 4;
-	tsp.line_height = buf_ram[3] + 1;
-	tsp.h_line_pos = buf_ram[4];
-	tsp.blink = (buf_ram[5] & 0xf8) >> 3;
+	state->tsp.attr_offset = state->buf_ram[0] | state->buf_ram[1] << 8;
+	state->tsp.pitch = (state->buf_ram[2] & 0xf0) >> 4;
+	state->tsp.line_height = state->buf_ram[3] + 1;
+	state->tsp.h_line_pos = state->buf_ram[4];
+	state->tsp.blink = (state->buf_ram[5] & 0xf8) >> 3;
 }
 
 static void execute_curdef_cmd(running_machine *machine)
 {
+	pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
 	xxxx x--- [0] Sprite Cursor number (sprite RAM entry)
-	---- --x- [0] (bit in sprite def)
+	---- --x- [0] show cursor bit (actively modifies the spriteram entry)
 	---- ---x [0] Blink Enable
 	*/
 
 	/* TODO: needs basic sprite emulation */
+	state->tsp.curn = (state->buf_ram[0] & 0xf8);
+	state->tsp.curn_blink = (state->buf_ram[0] & 1);
+
+	tsp_sprite_enable(machine, 0xa0000 + state->tsp.spr_offset + state->tsp.curn, (state->buf_ram[0] & 2) << 8);
 }
 
 static void execute_actscr_cmd(running_machine *machine)
 {
+	//pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
-	xxxx xxxx [0] param * 32 (???)
+	This command assigns a strip where the cursor is located.
+	xxxx xxxx [0] strip ID * 32 (???)
 	*/
 
 	/* TODO: no idea about this command */
+	//printf("ACTSCR: %02x\n",state->buf_ram[0]);
 }
 
 static void execute_curs_cmd(running_machine *machine)
 {
+	pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
 	[0] Cursor Position Y (lo word)
 	[1] Cursor Position Y (hi word)
@@ -435,46 +734,63 @@ static void execute_curs_cmd(running_machine *machine)
 	[3] Cursor Position X (hi word)
 	*/
 
-	tsp.cur_pos_y = buf_ram[0] | buf_ram[1] << 8;
-	tsp.cur_pos_x = buf_ram[2] | buf_ram[3] << 8;
+	state->tsp.cur_pos_y = state->buf_ram[0] | state->buf_ram[1] << 8;
+	state->tsp.cur_pos_x = state->buf_ram[2] | state->buf_ram[3] << 8;
 }
 
 static void execute_emul_cmd(running_machine *machine)
 {
+	/*
+	[0] Emulate target strip ID x 32
+	[1] The number of chars
+	[2] The number of attributes
+	[3] The number of lines
+	*/
+
 	// TODO: this starts 3301 video emulation
+	//popmessage("Warning: TSP executes EMUL command, contact MESSdev");
 }
 
 static void execute_spron_cmd(running_machine *machine)
 {
+	pc88va_state *state = machine->driver_data<pc88va_state>();
 	/*
 	[0] Sprite Table Offset (hi word)
 	[1] (unknown / reserved)
-	xxxx x--- [2] HSPN: some kind of Sprite Over register
-	---- --x- [2] MG: ???
-	---- ---x [2] GR: ???
+	xxxx x--- [2] HSPN: Maximum number of sprites in one raster (num + 1) for Sprite Over
+	---- --x- [2] MG: all sprites are 2x zoomed vertically when 1
+	---- ---x [2] GR: 1 to enable the group collision detection
 	*/
-	tsp.spr_offset = buf_ram[0] << 8;
-	tsp.spr_on = 1;
-	printf("SPR TABLE %02x %02x %02x\n",buf_ram[0],buf_ram[1],buf_ram[2]);
+	state->tsp.spr_offset = state->buf_ram[0] << 8;
+	state->tsp.spr_on = 1;
+	printf("SPR TABLE %02x %02x %02x\n",state->buf_ram[0],state->buf_ram[1],state->buf_ram[2]);
 }
 
 static void execute_sprsw_cmd(running_machine *machine)
 {
-	/* TODO: no idea about this command, some kind of manual sprite switch? */
+	pc88va_state *state = machine->driver_data<pc88va_state>();
+	/*
+	Toggle an individual sprite in the sprite ram entry
+	[0] xxxx x--- target sprite number
+	[0] ---- --x- sprite off/on switch
+	*/
+
+	tsp_sprite_enable(machine, 0xa0000 + state->tsp.spr_offset + (state->buf_ram[0] & 0xf8), (state->buf_ram[0] & 2) << 8);
 }
 
 static WRITE8_HANDLER( idp_param_w )
 {
-	if(cmd == DSPOFF || cmd == EXIT || cmd == SPROFF || cmd == SPROV) // no param commands
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	if(state->cmd == DSPOFF || state->cmd == EXIT || state->cmd == SPROFF || state->cmd == SPROV) // no param commands
 		return;
 
-	buf_ram[buf_index] = data;
-	buf_index++;
+	state->buf_ram[state->buf_index] = data;
+	state->buf_index++;
 
-	if(buf_index >= buf_size)
+	if(state->buf_index >= state->buf_size)
 	{
-		buf_index = 0;
-		switch(cmd)
+		state->buf_index = 0;
+		switch(state->cmd)
 		{
 			case SYNC: 		execute_sync_cmd(space->machine); 	break;
 			case DSPON: 	execute_dspon_cmd(space->machine); 	break;
@@ -495,12 +811,13 @@ static WRITE8_HANDLER( idp_param_w )
 
 static WRITE16_HANDLER( palette_ram_w )
 {
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
 	int r,g,b;
-	COMBINE_DATA(&palram[offset]);
+	COMBINE_DATA(&state->palram[offset]);
 
-	b = (palram[offset] & 0x001e) >> 1;
-	r = (palram[offset] & 0x03c0) >> 6;
-	g = (palram[offset] & 0x7800) >> 11;
+	b = (state->palram[offset] & 0x001e) >> 1;
+	r = (state->palram[offset] & 0x03c0) >> 6;
+	g = (state->palram[offset] & 0x7800) >> 11;
 
 	palette_set_color_rgb(space->machine,offset,pal4bit(r),pal4bit(g),pal4bit(b));
 }
@@ -512,16 +829,18 @@ static READ16_HANDLER( sys_port4_r )
 
 	sw1 = (input_port_read(space->machine, "DSW") & 1) ? 2 : 0;
 
-	return vrtc | sw1;
+	return vrtc | sw1 | 0xc0;
 }
 
 static READ16_HANDLER( bios_bank_r )
 {
-	return bank_reg;
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	return state->bank_reg;
 }
 
 static WRITE16_HANDLER( bios_bank_w )
 {
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
 	/*
 	-x-- ---- ---- ---- SMM (compatibility mode)
 	---x ---- ---- ---- GMSP (VRAM drawing Mode)
@@ -530,26 +849,26 @@ static WRITE16_HANDLER( bios_bank_w )
 	---- ---- ---- xxxx RBC0 (0xe0000 - 0xeffff ROM bank)
 	*/
 	if ((mem_mask&0xffff) == 0xffff)
-		bank_reg = data;
+		state->bank_reg = data;
 	else if ((mem_mask & 0xffff) == 0xff00)
-		bank_reg = (data & 0xff00) | (bank_reg & 0x00ff);
+		state->bank_reg = (data & 0xff00) | (state->bank_reg & 0x00ff);
 	else if ((mem_mask & 0xffff) == 0x00ff)
-		bank_reg = (data & 0x00ff) | (bank_reg & 0xff00);
+		state->bank_reg = (data & 0x00ff) | (state->bank_reg & 0xff00);
 
 
 	/* RBC1 */
 	{
-		UINT8 *ROM10 = memory_region(space->machine, "rom10");
+		UINT8 *ROM10 = space->machine->region("rom10")->base();
 
-		if((bank_reg & 0xe0) == 0x00)
-			memory_set_bankptr(space->machine, "rom10_bank", &ROM10[(bank_reg & 0x10) ? 0x10000 : 0x00000]);
+		if((state->bank_reg & 0xe0) == 0x00)
+			memory_set_bankptr(space->machine, "rom10_bank", &ROM10[(state->bank_reg & 0x10) ? 0x10000 : 0x00000]);
 	}
 
 	/* RBC0 */
 	{
-		UINT8 *ROM00 = memory_region(space->machine, "rom00");
+		UINT8 *ROM00 = space->machine->region("rom00")->base();
 
-		memory_set_bankptr(space->machine, "rom00_bank", &ROM00[(bank_reg & 0xf)*0x10000]); // TODO: docs says that only 0 - 5 are used, dunno why ...
+		memory_set_bankptr(space->machine, "rom00_bank", &ROM00[(state->bank_reg & 0xf)*0x10000]); // TODO: docs says that only 0 - 5 are used, dunno why ...
 	}
 }
 
@@ -571,12 +890,14 @@ static READ8_HANDLER( key_r )
 
 static WRITE16_HANDLER( backupram_wp_1_w )
 {
-	backupram_wp = 1;
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	state->backupram_wp = 1;
 }
 
 static WRITE16_HANDLER( backupram_wp_0_w )
 {
-	backupram_wp = 0;
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	state->backupram_wp = 0;
 }
 
 static READ8_HANDLER( hdd_status_r )
@@ -584,39 +905,148 @@ static READ8_HANDLER( hdd_status_r )
 	return 0x20;
 }
 
-static READ8_HANDLER( fdc_r )
+static READ8_HANDLER( pc88va_fdc_r )
 {
-	return mame_rand(space->machine);
+	switch(offset*2)
+	{
+		case 0x00: return 0; // FDC mode register
+		case 0x02: return 0; // FDC control port 0
+		case 0x04: return 0; // FDC control port 1
+		/* ---x ---- RDY: (0) Busy (1) Ready */
+		case 0x06: // FDC control port 2
+			return 0;
+		case 0x08: return upd765_status_r(space->machine->device("upd765"), 0);
+		case 0x0a: return upd765_data_r(space->machine->device("upd765"), 0);
+	}
+
+	return 0xff;
 }
+
+static WRITE8_HANDLER( pc88va_fdc_w )
+{
+	switch(offset*2)
+	{
+		/*
+		---- ---x MODE: FDC op mode (0) Intelligent (1) DMA
+		*/
+		case 0x00: // FDC mode register
+			break;
+		/*
+		--x- ---- CLK: FDC clock selection (0) 4.8MHz (1) 8 MHz
+		---x ---- DS1: Prohibition of the drive selection of FDC (0) Permission (1) Prohibition
+		---- xx-- TD1/TD0: Drive 1/0 track density (0) 48 TPI (1) 96 TPI
+		---- --xx RV1/RV0: Drive 1/0 mode selection (0) 2D and 2DD mode (1) 2HD mode
+		*/
+		case 0x02: // FDC control port 0
+			break;
+		/*
+		---- x--- PCM: ?
+		---- --xx M1/M0: Drive 1/0 motor control (0) Motor OFF (1) Motor ON
+		*/
+		case 0x04: // FDC control port 1
+			break;
+		/*
+		x--- ---- FDCRST: FDC Reset
+		-xx- ---- FDCFRY FRYCEN: FDC force ready control
+		---x ---- DMAE: DMA Enable (0) Prohibit DMA (1) Enable DMA
+		---- -x-- XTMASK: FDC timer IRQ mask (0) Disable (1) Enable
+		---- ---x TTRG: FDC timer trigger (0) FDC timer clearing (1) FDC timer start
+		*/
+		case 0x06:
+			break; // FDC control port 2
+		case 0x08: break; // UPD765 status
+		case 0x0a: upd765_data_w(space->machine->device("upd765"), 0,data); break;
+	}
+}
+
 
 static READ16_HANDLER( sysop_r )
 {
-	static UINT8 sys_op;
+	UINT8 sys_op;
 
 	sys_op = input_port_read(space->machine, "SYSOP_SW") & 3;
 
 	return 0xfffc | sys_op; // docs says all the other bits are high
 }
 
+static READ16_HANDLER( screen_ctrl_r )
+{
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	return state->screen_ctrl_reg;
+}
+
+static WRITE16_HANDLER( screen_ctrl_w )
+{
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	state->screen_ctrl_reg = data;
+}
+
+static TIMER_CALLBACK( t3_mouse_callback )
+{
+	pc88va_state *state = machine->driver_data<pc88va_state>();
+	if(state->timer3_io_reg & 0x80)
+	{
+		pic8259_ir5_w(machine->device("pic8259_slave"), 1);
+		timer_adjust_oneshot(state->t3_mouse_timer, ATTOTIME_IN_HZ(120 >> (state->timer3_io_reg & 3)), 0);
+	}
+}
+
+static WRITE8_HANDLER( timer3_ctrl_reg_w )
+{
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	/*
+	x--- ---- MINTEN (TCU irq enable)
+	---- --xx general purpose timer 3 interval (120, 60, 30, 15)
+	*/
+	state->timer3_io_reg = data;
+
+	if(data & 0x80)
+		timer_adjust_oneshot(state->t3_mouse_timer, ATTOTIME_IN_HZ(120 >> (state->timer3_io_reg & 3)), 0);
+	else
+	{
+		pic8259_ir5_w(space->machine->device("pic8259_slave"), 0);
+		timer_adjust_oneshot(state->t3_mouse_timer, attotime_never, 0);
+	}
+}
+
+static WRITE16_HANDLER( video_pri_w )
+{
+	pc88va_state *state = space->machine->driver_data<pc88va_state>();
+	COMBINE_DATA(&state->video_pri_reg[offset]);
+}
+
+static READ8_HANDLER( backupram_dsw_r )
+{
+	UINT16 *knj_ram = (UINT16 *)space->machine->region("kanji")->base();
+
+	if(offset == 0)
+		return knj_ram[(0x50000 + 0x1fc2) / 2] & 0xff;
+
+	return knj_ram[(0x50000 + 0x1fc6) / 2] & 0xff;
+}
+
+static WRITE8_HANDLER( sys_port1_w )
+{
+	// ...
+}
+
 static ADDRESS_MAP_START( pc88va_io_map, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x0000, 0x000f) AM_READ8(key_r,0xffff) // Keyboard ROW reading
 //	AM_RANGE(0x0010, 0x0010) Printer / Calendar Clock Interface
-//	AM_RANGE(0x0020, 0x0021) RS-232C
-//	AM_RANGE(0x0030, 0x0030) (R) DSW1 (W) Text Control Port 0
-//	AM_RANGE(0x0031, 0x0031) (R) DSW2 (W) System Port 1
+	AM_RANGE(0x0020, 0x0021) AM_NOP // RS-232C
+	AM_RANGE(0x0030, 0x0031) AM_READWRITE8(backupram_dsw_r,sys_port1_w,0xffff) // 0x30 (R) DSW1 (W) Text Control Port 0 / 0x31 (R) DSW2 (W) System Port 1
 //	AM_RANGE(0x0032, 0x0032) (R) ? (W) System Port 2
 //	AM_RANGE(0x0034, 0x0034) GVRAM Control Port 1
 //	AM_RANGE(0x0035, 0x0035) GVRAM Control Port 2
 	AM_RANGE(0x0040, 0x0041) AM_READ(sys_port4_r) // (R) System Port 4 (W) System port 3 (strobe port)
-//	AM_RANGE(0x0044, 0x0045) YM2203
-//	AM_RANGE(0x0046, 0x0047) YM2203 mirror
+	AM_RANGE(0x0044, 0x0045) AM_MIRROR(0x0002) AM_DEVREADWRITE8("ym", ym2203_r,ym2203_w,0xffff)
 //	AM_RANGE(0x005c, 0x005c) (R) GVRAM status
 //	AM_RANGE(0x005c, 0x005f) (W) GVRAM selection
 //	AM_RANGE(0x0070, 0x0070) ? (*)
 //	AM_RANGE(0x0071, 0x0071) Expansion ROM select (*)
 //	AM_RANGE(0x0078, 0x0078) Memory offset increment (*)
 //	AM_RANGE(0x0080, 0x0081) HDD related
-	AM_RANGE(0x0082, 0x0083) AM_READ8(hdd_status_r,0xff)// HDD control, byte access 7-0
+	AM_RANGE(0x0082, 0x0083) AM_READ8(hdd_status_r,0x00ff)// HDD control, byte access 7-0
 //	AM_RANGE(0x00bc, 0x00bf) d8255 1
 //	AM_RANGE(0x00e2, 0x00e3) Expansion RAM selection (*)
 //	AM_RANGE(0x00e4, 0x00e4) 8214 IRQ control (*)
@@ -625,10 +1055,9 @@ static ADDRESS_MAP_START( pc88va_io_map, ADDRESS_SPACE_IO, 16 )
 //	AM_RANGE(0x00ec, 0x00ed) ? (*)
 	AM_RANGE(0x00fc, 0x00ff) AM_DEVREADWRITE8("d8255_2", i8255a_r,i8255a_w,0xffff) // d8255 2, FDD
 
-//	AM_RANGE(0x0100, 0x0101) Screen Control Register
+	AM_RANGE(0x0100, 0x0101) AM_READWRITE(screen_ctrl_r,screen_ctrl_w) // Screen Control Register
 //	AM_RANGE(0x0102, 0x0103) Graphic Screen Control Register
-//	AM_RANGE(0x0106, 0x0107) Palette Control Register
-//	AM_RANGE(0x0108, 0x0109) Direct Color Control Register
+	AM_RANGE(0x0106, 0x0109) AM_WRITE(video_pri_w) // Palette Control Register (priority) / Direct Color Control Register (priority)
 //	AM_RANGE(0x010a, 0x010b) Picture Mask Mode Register
 //	AM_RANGE(0x010c, 0x010d) Color Palette Mode Register
 //	AM_RANGE(0x010e, 0x010f) Backdrop Color Register
@@ -648,23 +1077,24 @@ static ADDRESS_MAP_START( pc88va_io_map, ADDRESS_SPACE_IO, 16 )
 //	AM_RANGE(0x0158, 0x0159) Interruption Mode Modification
 //	AM_RANGE(0x015c, 0x015f) NMI mask port (strobe port)
 //	AM_RANGE(0x0160, 0x016f) DMA Controller
-//	AM_RANGE(0x0184, 0x018b) IRQ Controller
+	AM_RANGE(0x0184, 0x0187) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0x00ff)
+	AM_RANGE(0x0188, 0x018b) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0x00ff) // ICU, also controls 8214 emulation
 //	AM_RANGE(0x0190, 0x0191) System Port 5
 //	AM_RANGE(0x0196, 0x0197) Keyboard sub CPU command port
 	AM_RANGE(0x0198, 0x0199) AM_WRITE(backupram_wp_1_w) //Backup RAM write inhibit
 	AM_RANGE(0x019a, 0x019b) AM_WRITE(backupram_wp_0_w) //Backup RAM write permission
-//	AM_RANGE(0x01a0, 0x01a7) TCU (timer counter unit)
-//	AM_RANGE(0x01a8, 0x01a9) General-purpose timer 3 control port
-	AM_RANGE(0x01b0, 0x01bb) AM_READ8(fdc_r,0xffff)// FDC related (765)
+	AM_RANGE(0x01a0, 0x01a7) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0x00ff)// vTCU (timer counter unit)
+	AM_RANGE(0x01a8, 0x01a9) AM_WRITE8(timer3_ctrl_reg_w,0x00ff) // General-purpose timer 3 control port
+	AM_RANGE(0x01b0, 0x01bb) AM_READWRITE8(pc88va_fdc_r,pc88va_fdc_w,0x00ff)// FDC related (765)
 //	AM_RANGE(0x01c0, 0x01c1) ?
 	AM_RANGE(0x01c6, 0x01c7) AM_WRITENOP // ???
 	AM_RANGE(0x01c8, 0x01cf) AM_DEVREADWRITE8("d8255_3", i8255a_r,i8255a_w,0xff00) //i8255 3 (byte access)
 //	AM_RANGE(0x01d0, 0x01d1) Expansion RAM bank selection
-//	AM_RANGE(0x0200, 0x021f) Frame buffer 0 control parameter
-//	AM_RANGE(0x0220, 0x023f) Frame buffer 1 control parameter
-//	AM_RANGE(0x0240, 0x025f) Frame buffer 2 control parameter
-//	AM_RANGE(0x0260, 0x027f) Frame buffer 3 control parameter
-	AM_RANGE(0x0300, 0x033f) AM_RAM_WRITE(palette_ram_w) AM_BASE(&palram) // Palette RAM (xBBBBxRRRRxGGGG format)
+	AM_RANGE(0x0200, 0x021f) AM_RAM // Frame buffer 0 control parameter
+	AM_RANGE(0x0220, 0x023f) AM_RAM // Frame buffer 1 control parameter
+	AM_RANGE(0x0240, 0x025f) AM_RAM // Frame buffer 2 control parameter
+	AM_RANGE(0x0260, 0x027f) AM_RAM // Frame buffer 3 control parameter
+	AM_RANGE(0x0300, 0x033f) AM_RAM_WRITE(palette_ram_w) AM_BASE_MEMBER(pc88va_state, palram) // Palette RAM (xBBBBxRRRRxGGGG format)
 
 //	AM_RANGE(0x0500, 0x05ff) GVRAM
 //	AM_RANGE(0x1000, 0xfeff) user area (???)
@@ -672,14 +1102,26 @@ static ADDRESS_MAP_START( pc88va_io_map, ADDRESS_SPACE_IO, 16 )
 ADDRESS_MAP_END
 // (*) are specific N88 V1 / V2 ports
 
-#if 0
+/* FDC subsytem CPU */
 static ADDRESS_MAP_START( pc88va_z80_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x0000, 0x1fff) AM_ROM
+	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc88va_z80_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+//	AM_RANGE(0xf0, 0xf0) // Interrupt Opcode Port
+//	AM_RANGE(0xf4, 0xf4) // Drive Control Port
+//	AM_RANGE(0xf8, 0xf8) // (R) Terminal Count Port (W) Motor Control Port
+//	AM_RANGE(0xfa, 0xfa) // FDC Status Register
+//	AM_RANGE(0xfb, 0xfb) // FDC Data Register
+	// 0xfc - 0xff there's a i8255 mapped, bidiretional handshake port
+//	AM_RANGE(0xfc, 0xfc) // (R) Data input port from main CPU
+//	AM_RANGE(0xfd, 0xfd) // (W) Data input port to main CPU
+	AM_RANGE(0xfe, 0xfe) AM_NOP // Handshake Control Port
+//	AM_RANGE(0xff, 0xff) // Mode Set / Bit Control
 ADDRESS_MAP_END
-#endif
+
 
 /* TODO: active low or active high? */
 static INPUT_PORTS_START( pc88va )
@@ -870,25 +1312,6 @@ static INPUT_PORTS_START( pc88va )
 //	PORT_DIPSETTING(    0x03, "???" )
 INPUT_PORTS_END
 
-static MACHINE_RESET( pc88va )
-{
-	UINT8 *ROM00 = memory_region(machine, "rom00");
-	UINT8 *ROM10 = memory_region(machine, "rom10");
-
-	memory_set_bankptr(machine, "rom10_bank", &ROM10[0x00000]);
-	memory_set_bankptr(machine, "rom00_bank", &ROM00[0x00000]);
-
-	bank_reg = 0x4100;
-	backupram_wp = 1;
-
-	/* default palette */
-	{
-		UINT8 i;
-		for(i=0;i<32;i++)
-			palette_set_color_rgb(machine,i,pal1bit((i & 2) >> 1),pal1bit((i & 4) >> 2),pal1bit(i & 1));
-	}
-}
-
 static const gfx_layout pc88va_chars_8x8 =
 {
 	8,8,
@@ -929,12 +1352,10 @@ static READ8_DEVICE_HANDLER( fdd_portb_r )
 
 static READ8_DEVICE_HANDLER( fdd_portc_r )
 {
-	static UINT8 test1,test2;
+	pc88va_state *state = device->machine->driver_data<pc88va_state>();
+	state->portc_test^=5;
 
-	test1^=4;
-	test2^=1;
-
-	return 0xff ^ test1 ^ test2;
+	return 0xff ^ state->portc_test;
 }
 
 static WRITE8_DEVICE_HANDLER( fdd_porta_w )
@@ -964,7 +1385,7 @@ static I8255A_INTERFACE( fdd_intf )
 
 static READ8_DEVICE_HANDLER( r232_ctrl_porta_r )
 {
-	static UINT8 sw5, sw4, sw3, sw2,speed_sw;
+	UINT8 sw5, sw4, sw3, sw2,speed_sw;
 
 	speed_sw = (input_port_read(device->machine, "SPEED_SW") & 1) ? 0x20 : 0x00;
 	sw5 = (input_port_read(device->machine, "DSW") & 0x10);
@@ -977,7 +1398,7 @@ static READ8_DEVICE_HANDLER( r232_ctrl_porta_r )
 
 static READ8_DEVICE_HANDLER( r232_ctrl_portb_r )
 {
-	static UINT8 xsw1;
+	UINT8 xsw1;
 
 	xsw1 = (input_port_read(device->machine, "DSW") & 1) ? 0 : 8;
 
@@ -1014,43 +1435,193 @@ static I8255A_INTERFACE( r232c_ctrl_intf )
 	DEVCB_HANDLER(r232_ctrl_portc_w)						/* Port C write */
 };
 
-static MACHINE_CONFIG_START( pc88va, driver_device )
+static IRQ_CALLBACK(pc88va_irq_callback)
+{
+	int r = 0;
+	r = pic8259_acknowledge( device->machine->device( "pic8259_slave" ));
+	if (r==0)
+	{
+		r = pic8259_acknowledge( device->machine->device( "pic8259_master" ) );
+	}
+	return r;
+}
 
-	MDRV_CPU_ADD("maincpu", V30, 8000000)        /* 8 MHz */
-	MDRV_CPU_PROGRAM_MAP(pc88va_map)
-	MDRV_CPU_IO_MAP(pc88va_io_map)
+static WRITE_LINE_DEVICE_HANDLER( pc88va_pic_irq )
+{
+	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+//  logerror("PIC#1: set IRQ line to %i\n",interrupt);
+}
 
-	#if 0
-	MDRV_CPU_ADD("subcpu", Z80, 8000000)        /* 8 MHz */
-	MDRV_CPU_PROGRAM_MAP(pc88va_z80_map)
-	MDRV_CPU_IO_MAP(pc88va_z80_io_map)
-	#endif
+static const struct pic8259_interface pc88va_pic8259_master_config =
+{
+	DEVCB_LINE(pc88va_pic_irq)
+};
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(640, 480)
-	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
-	MDRV_PALETTE_LENGTH(32)
-//	MDRV_PALETTE_INIT( pc8801 )
-	MDRV_GFXDECODE( pc88va )
+static const struct pic8259_interface pc88va_pic8259_slave_config =
+{
+	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir7_w)
+};
 
-	MDRV_VIDEO_START( pc88va )
-	MDRV_VIDEO_UPDATE( pc88va )
+static MACHINE_START( pc88va )
+{
+	pc88va_state *state = machine->driver_data<pc88va_state>();
+	cpu_set_irq_callback(machine->device("maincpu"), pc88va_irq_callback);
 
-	MDRV_MACHINE_RESET( pc88va )
+	state->t3_mouse_timer = timer_alloc(machine, t3_mouse_callback, 0);
+	timer_adjust_oneshot(state->t3_mouse_timer, attotime_never, 0);
+}
 
-	MDRV_I8255A_ADD( "d8255_2", fdd_intf )
-	MDRV_I8255A_ADD( "d8255_3", r232c_ctrl_intf )
+static MACHINE_RESET( pc88va )
+{
+	pc88va_state *state = machine->driver_data<pc88va_state>();
+	UINT8 *ROM00 = machine->region("rom00")->base();
+	UINT8 *ROM10 = machine->region("rom10")->base();
+
+	memory_set_bankptr(machine, "rom10_bank", &ROM10[0x00000]);
+	memory_set_bankptr(machine, "rom00_bank", &ROM00[0x00000]);
+
+	state->bank_reg = 0x4100;
+	state->backupram_wp = 1;
+
+	/* default palette */
+	{
+		UINT8 i;
+		for(i=0;i<32;i++)
+			palette_set_color_rgb(machine,i,pal1bit((i & 2) >> 1),pal1bit((i & 4) >> 2),pal1bit(i & 1));
+	}
+
+	state->tsp.tvram_vreg_offset = 0;
+}
+
+static INTERRUPT_GEN( pc88va_vrtc_irq )
+{
+	pic8259_ir2_w(device->machine->device("pic8259_master"), 1);
+}
+
+/* TODO */
+static const floppy_config pc88va_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_STANDARD_5_25_DSHD,
+	FLOPPY_OPTIONS_NAME(default),
+	NULL
+};
 
 
+static WRITE_LINE_DEVICE_HANDLER( pc88va_pit_out0_changed )
+{
+	pic8259_ir0_w(device->machine->device("pic8259_master"), 1);
+}
+
+static const struct pit8253_config pc88va_pit8253_config =
+{
+	{
+		{
+			/* general purpose timer 1 */
+			8000000,
+			DEVCB_NULL,
+			DEVCB_LINE(pc88va_pit_out0_changed)
+		},
+		{
+			/* BEEP frequency setting */
+			8000000,
+			DEVCB_NULL,
+			DEVCB_NULL
+		},
+		{
+			/* RS232C baud rate setting  */
+			8000000,
+			DEVCB_NULL,
+			DEVCB_NULL
+		}
+	}
+};
+
+
+static WRITE_LINE_DEVICE_HANDLER(pc88va_upd765_interrupt)
+{
+	pic8259_ir3_w(device->machine->device( "pic8259_slave"), state);
+};
+
+
+static const struct upd765_interface pc88va_upd765_interface =
+{
+	DEVCB_LINE(pc88va_upd765_interrupt),
+	DEVCB_NULL, //DRQ, TODO
+	NULL,
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0,NULL, NULL, NULL}
+};
+
+static const ym2203_interface pc88va_ym2203_intf =
+{
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_NULL
+	},
+	NULL
+};
+
+static MACHINE_CONFIG_START( pc88va, pc88va_state )
+
+	MCFG_CPU_ADD("maincpu", V30, 8000000)        /* 8 MHz */
+	MCFG_CPU_PROGRAM_MAP(pc88va_map)
+	MCFG_CPU_IO_MAP(pc88va_io_map)
+	MCFG_CPU_VBLANK_INT("screen",pc88va_vrtc_irq)
+
+	MCFG_CPU_ADD("fdccpu", Z80, 8000000)        /* 8 MHz */
+	MCFG_CPU_PROGRAM_MAP(pc88va_z80_map)
+	MCFG_CPU_IO_MAP(pc88va_z80_io_map)
+
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MCFG_SCREEN_SIZE(640, 480)
+	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
+	MCFG_PALETTE_LENGTH(32)
+//	MCFG_PALETTE_INIT( pc8801 )
+	MCFG_GFXDECODE( pc88va )
+
+	MCFG_VIDEO_START( pc88va )
+	MCFG_VIDEO_UPDATE( pc88va )
+
+	MCFG_MACHINE_START( pc88va )
+	MCFG_MACHINE_RESET( pc88va )
+
+	MCFG_I8255A_ADD( "d8255_2", fdd_intf )
+	MCFG_I8255A_ADD( "d8255_3", r232c_ctrl_intf )
+
+	MCFG_PIC8259_ADD( "pic8259_master", pc88va_pic8259_master_config )
+	MCFG_PIC8259_ADD( "pic8259_slave", pc88va_pic8259_slave_config )
+
+	MCFG_UPD765A_ADD("upd765", pc88va_upd765_interface)
+	MCFG_FLOPPY_2_DRIVES_ADD(pc88va_floppy_config)
+
+    MCFG_PIT8253_ADD("pit8253",pc88va_pit8253_config)
+
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("ym", YM2203, 3993600) //unknown clock / divider
+	MCFG_SOUND_CONFIG(pc88va_ym2203_intf)
+	MCFG_SOUND_ROUTE(0, "mono", 0.25)
+	MCFG_SOUND_ROUTE(1, "mono", 0.25)
+	MCFG_SOUND_ROUTE(2, "mono", 0.50)
+	MCFG_SOUND_ROUTE(3, "mono", 0.50)
 MACHINE_CONFIG_END
 
 
 ROM_START( pc88va )
 	ROM_REGION( 0x100000, "maincpu", ROMREGION_ERASEFF )
 
-	ROM_REGION( 0x100000, "subcpu", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100000, "fdccpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "vasubsys.rom", 0x0000, 0x2000, CRC(08962850) SHA1(a9375aa480f85e1422a0e1385acb0ea170c5c2e0) )
 
 	ROM_REGION( 0x100000, "rom00", ROMREGION_ERASEFF ) // 0xe0000 - 0xeffff
 	ROM_LOAD( "varom00.rom",   0x00000, 0x80000, CRC(98c9959a) SHA1(bcaea28c58816602ca1e8290f534360f1ca03fe8) )
@@ -1059,9 +1630,6 @@ ROM_START( pc88va )
 	ROM_REGION( 0x20000, "rom10", 0 ) // 0xf0000 - 0xfffff
 	ROM_LOAD( "varom1.rom",    0x00000, 0x20000, CRC(7e767f00) SHA1(dd4f4521bfbb068f15ab3bcdb8d47c7d82b9d1d4) )
 
-	ROM_REGION( 0x2000, "sub", 0 )		// not sure what this should do...
-	ROM_LOAD( "vasubsys.rom", 0x0000, 0x2000, CRC(08962850) SHA1(a9375aa480f85e1422a0e1385acb0ea170c5c2e0) )
-
 	/* No idea of the proper size: it has never been dumped */
 	ROM_REGION( 0x2000, "audiocpu", 0)
 	ROM_LOAD( "soundbios.rom", 0x0000, 0x2000, NO_DUMP )
@@ -1069,7 +1637,6 @@ ROM_START( pc88va )
 	ROM_REGION( 0x80000, "kanji", ROMREGION_ERASEFF )
 	ROM_LOAD( "vafont.rom", 0x00000, 0x50000, BAD_DUMP CRC(b40d34e4) SHA1(a0227d1fbc2da5db4b46d8d2c7e7a9ac2d91379f) ) // should be splitted
 
-	/* 32 banks, to be loaded at 0xc000 - 0xffff */
 	ROM_REGION( 0x80000, "dictionary", 0 )
 	ROM_LOAD( "vadic.rom", 0x00000, 0x80000, CRC(a6108f4d) SHA1(3665db538598abb45d9dfe636423e6728a812b12) )
 

@@ -132,6 +132,17 @@ TODO:  - The UPD7810 core is missing analog port emulation
 #include "ex800.lh"
 
 
+class ex800_state : public driver_device
+{
+public:
+	ex800_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	int irq_state;
+};
+
+
+
 #define PA0 (data & 0x01)
 #define PA1 (data & 0x02)
 #define PA2 (data & 0x04)
@@ -168,19 +179,20 @@ TODO:  - The UPD7810 core is missing analog port emulation
 /* The ON LINE switch is directly connected to the INT1 input of the CPU */
 static INPUT_CHANGED( online_switch )
 {
-	static int state = ASSERT_LINE;
-
+	ex800_state *state = field->port->machine->driver_data<ex800_state>();
 	if (newval)
 	{
-		cputag_set_input_line(field->port->machine, "maincpu", UPD7810_INTF1, state);
-		state = (state == ASSERT_LINE) ? CLEAR_LINE : ASSERT_LINE;
+		cputag_set_input_line(field->port->machine, "maincpu", UPD7810_INTF1, state->irq_state);
+		state->irq_state = (state->irq_state == ASSERT_LINE) ? CLEAR_LINE : ASSERT_LINE;
 	}
 }
 
 
 static MACHINE_START(ex800)
 {
-	running_device *speaker = machine->device("beep");
+	ex800_state *state = machine->driver_data<ex800_state>();
+	state->irq_state = ASSERT_LINE;
+	device_t *speaker = machine->device("beep");
 	/* Setup beep */
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 4000); /* measured at 4000 Hz */
@@ -190,19 +202,19 @@ static MACHINE_START(ex800)
 static READ8_HANDLER(ex800_porta_r)
 {
 	logerror("PA R @%x\n", cpu_get_pc(space->cpu));
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static READ8_HANDLER(ex800_portb_r)
 {
 	logerror("PB R @%x\n", cpu_get_pc(space->cpu));
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static READ8_HANDLER(ex800_portc_r)
 {
 	logerror("PC R @%x\n", cpu_get_pc(space->cpu));
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static WRITE8_HANDLER(ex800_porta_w)
@@ -239,7 +251,7 @@ static WRITE8_HANDLER(ex800_portb_w)
 
 static WRITE8_HANDLER(ex800_portc_w)
 {
-	running_device *speaker = space->machine->device("beep");
+	device_t *speaker = space->machine->device("beep");
 	if (data & 0x80)
 		beep_set_state(speaker, 0);
 	else
@@ -254,7 +266,7 @@ static WRITE8_HANDLER(ex800_portc_w)
 static READ8_HANDLER(ex800_devsel_r)
 {
 	logerror("DEVSEL R @%x with offset %x\n", cpu_get_pc(space->cpu), offset);
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static WRITE8_HANDLER(ex800_devsel_w)
@@ -265,7 +277,7 @@ static WRITE8_HANDLER(ex800_devsel_w)
 static READ8_HANDLER(ex800_gate5a_r)
 {
 	logerror("GATE5A R @%x with offset %x\n", cpu_get_pc(space->cpu), offset);
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static WRITE8_HANDLER(ex800_gate5a_w)
@@ -276,7 +288,7 @@ static WRITE8_HANDLER(ex800_gate5a_w)
 static READ8_HANDLER(ex800_iosel_r)
 {
 	logerror("IOSEL R @%x with offset %x\n", cpu_get_pc(space->cpu), offset);
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static WRITE8_HANDLER(ex800_iosel_w)
@@ -287,7 +299,7 @@ static WRITE8_HANDLER(ex800_iosel_w)
 static READ8_HANDLER(ex800_gate7a_r)
 {
 	logerror("GATE7A R @%x with offset %x\n", cpu_get_pc(space->cpu), offset);
-	return mame_rand(space->machine);
+	return space->machine->rand();
 }
 
 static WRITE8_HANDLER(ex800_gate7a_w)
@@ -418,21 +430,21 @@ static const UPD7810_CONFIG ex800_cpu_config =
 ******************************************************************************/
 
 
-static MACHINE_CONFIG_START( ex800, driver_device )
+static MACHINE_CONFIG_START( ex800, ex800_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", UPD7810, 12000000)  /* 12 MHz? */
-    MDRV_CPU_CONFIG(ex800_cpu_config)
-    MDRV_CPU_PROGRAM_MAP(ex800_mem)
-	MDRV_CPU_IO_MAP(ex800_io)
+    MCFG_CPU_ADD("maincpu", UPD7810, 12000000)  /* 12 MHz? */
+    MCFG_CPU_CONFIG(ex800_cpu_config)
+    MCFG_CPU_PROGRAM_MAP(ex800_mem)
+	MCFG_CPU_IO_MAP(ex800_io)
 
-	MDRV_MACHINE_START(ex800)
+	MCFG_MACHINE_START(ex800)
 
-	MDRV_DEFAULT_LAYOUT(layout_ex800)
+	MCFG_DEFAULT_LAYOUT(layout_ex800)
 
 	/* audio hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("beep", BEEP, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
 

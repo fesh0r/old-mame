@@ -15,6 +15,16 @@
 #include "video/saa5050.h"
 #include "video/mc6845.h"
 
+
+class a6809_state : public driver_device
+{
+public:
+	a6809_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(a6809_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000,0x03ff) AM_RAM
@@ -41,7 +51,7 @@ static MACHINE_RESET(a6809)
 
 static VIDEO_UPDATE( a6809 )
 {
-	running_device *saa5050 = screen->machine->device("saa5050");
+	device_t *saa5050 = screen->machine->device("saa5050");
 
 	saa5050_update(saa5050, bitmap, NULL);
 	return 0;
@@ -90,33 +100,33 @@ static const via6522_interface via_intf =
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0)
 };
 
-static MACHINE_CONFIG_START( a6809, driver_device )
+static MACHINE_CONFIG_START( a6809, a6809_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",M6809E, XTAL_4MHz)
-	MDRV_CPU_PROGRAM_MAP(a6809_mem)
-	MDRV_CPU_IO_MAP(a6809_io)
+	MCFG_CPU_ADD("maincpu",M6809E, XTAL_4MHz)
+	MCFG_CPU_PROGRAM_MAP(a6809_mem)
+	MCFG_CPU_IO_MAP(a6809_io)
 
-	MDRV_MACHINE_RESET(a6809)
+	MCFG_MACHINE_RESET(a6809)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(SAA5050_VBLANK))
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(SAA5050_VBLANK))
 
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(40 * 12, 24 * 20)
-	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 12 - 1, 0, 24 * 20 - 1)
-	MDRV_GFXDECODE(saa5050)
-	MDRV_PALETTE_LENGTH(128)
-	MDRV_PALETTE_INIT(saa5050)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(40 * 12, 24 * 20)
+	MCFG_SCREEN_VISIBLE_AREA(0, 40 * 12 - 1, 0, 24 * 20 - 1)
+	MCFG_GFXDECODE(saa5050)
+	MCFG_PALETTE_LENGTH(128)
+	MCFG_PALETTE_INIT(saa5050)
 
-	MDRV_SAA5050_ADD("saa5050", a6809_saa5050_intf)
+	MCFG_SAA5050_ADD("saa5050", a6809_saa5050_intf)
 
-	MDRV_VIDEO_UPDATE(a6809)
+	MCFG_VIDEO_UPDATE(a6809)
 
-	MDRV_VIA6522_ADD("via", XTAL_4MHz / 4, via_intf)
+	MCFG_VIA6522_ADD("via", XTAL_4MHz / 4, via_intf)
 
-	MDRV_MC6845_ADD("mc6845", MC6845, XTAL_4MHz / 2, a6809_crtc6845_interface)
+	MCFG_MC6845_ADD("mc6845", MC6845, XTAL_4MHz / 2, a6809_crtc6845_interface)
 MACHINE_CONFIG_END
 
 /* ROM definition */

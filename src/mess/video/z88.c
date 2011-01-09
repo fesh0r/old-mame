@@ -10,8 +10,6 @@
 #include "devices/messram.h"
 #include "includes/z88.h"
 
-static int frame_number = 0;
-static int flash_invert = 0;
 
 INLINE void z88_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 {
@@ -132,18 +130,19 @@ static unsigned char *z88_convert_address(running_machine *machine, unsigned lon
 	else
 	{
 		offset = offset & 0x01FFFF;
-		return memory_region(machine, "maincpu") + 0x010000 + offset;
+		return machine->region("maincpu")->base() + 0x010000 + offset;
 	}
 }
 
 
 VIDEO_EOF( z88 )
 {
-	frame_number++;
-	if (frame_number >= 50)
+	z88_state *state = machine->driver_data<z88_state>();
+	state->frame_number++;
+	if (state->frame_number >= 50)
 	{
-		frame_number = 0;
-		flash_invert = !flash_invert;
+		state->frame_number = 0;
+		state->flash_invert = !state->flash_invert;
 	}
 }
 
@@ -156,8 +155,9 @@ VIDEO_EOF( z88 )
 ***************************************************************************/
 VIDEO_UPDATE( z88 )
 {
+	z88_state *state = screen->machine->driver_data<z88_state>();
 	int x,y;
-	unsigned char *ptr = z88_convert_address(screen->machine, z88_blink.sbf);
+	unsigned char *ptr = z88_convert_address(screen->machine, state->blink.sbf);
 	unsigned char *stored_ptr = ptr;
 	int pen0, pen1;
 
@@ -204,7 +204,7 @@ VIDEO_UPDATE( z88 )
 
 //          if (byte1 & Z88_SCR_HW_FLS)
 //          {
-//              if (flash_invert)
+//              if (state->flash_invert)
 //              {
 //                  pen1 = pen0;
 //              }
@@ -222,12 +222,12 @@ VIDEO_UPDATE( z88 )
 					if (ch & 0x0100)
 					{
 						ch_index =ch & 0x0ff;	//(~0x0100);
-						pCharGfx = z88_convert_address(screen->machine, z88_blink.hires1);
+						pCharGfx = z88_convert_address(screen->machine, state->blink.hires1);
 					}
 					else
 					{
 						ch_index = ch & 0x0ff;
-						pCharGfx = z88_convert_address(screen->machine, z88_blink.hires0);
+						pCharGfx = z88_convert_address(screen->machine, state->blink.hires0);
 					}
 
 					pCharGfx += (ch_index<<3);
@@ -245,13 +245,13 @@ VIDEO_UPDATE( z88 )
 				{
 				   ch_index = ch & (~0x01c0);
 
-				   pCharGfx = z88_convert_address(screen->machine, z88_blink.lores0);
+				   pCharGfx = z88_convert_address(screen->machine, state->blink.lores0);
 				}
 				else
 				{
 				   ch_index = ch;
 
-				   pCharGfx = z88_convert_address(screen->machine, z88_blink.lores1);
+				   pCharGfx = z88_convert_address(screen->machine, state->blink.lores1);
 				}
 
 				pCharGfx += (ch_index<<3);

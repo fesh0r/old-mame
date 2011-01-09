@@ -10,6 +10,16 @@
 #include "devices/messram.h"
 #include "cpu/mcs51/mcs51.h"
 
+
+class vt520_state : public driver_device
+{
+public:
+	vt520_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(vt520_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xffff) AM_RAMBANK("bank1")
 ADDRESS_MAP_END
@@ -40,7 +50,7 @@ INPUT_PORTS_END
 static MACHINE_RESET(vt520)
 {
 	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 *rom = memory_region(machine, "maincpu");
+	UINT8 *rom = machine->region("maincpu")->base();
 	memory_unmap_write(space, 0x0000, 0xffff, 0, 0);
 	memory_set_bankptr(machine, "bank1", rom + 0x70000);
 }
@@ -54,32 +64,32 @@ static VIDEO_UPDATE( vt520 )
     return 0;
 }
 
-static MACHINE_CONFIG_START( vt520, driver_device )
+static MACHINE_CONFIG_START( vt520, vt520_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",I8032, XTAL_20MHz)
-    MDRV_CPU_PROGRAM_MAP(vt520_mem)
-    MDRV_CPU_IO_MAP(vt520_io)
+    MCFG_CPU_ADD("maincpu",I8032, XTAL_20MHz)
+    MCFG_CPU_PROGRAM_MAP(vt520_mem)
+    MCFG_CPU_IO_MAP(vt520_io)
 
-    MDRV_MACHINE_RESET(vt520)
+    MCFG_MACHINE_RESET(vt520)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(802, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 802-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(802, 480)
+    MCFG_SCREEN_VISIBLE_AREA(0, 802-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(vt520)
-    MDRV_VIDEO_UPDATE(vt520)
+    MCFG_VIDEO_START(vt520)
+    MCFG_VIDEO_UPDATE(vt520)
 
 	// On the board there are two M5M44256BJ-7 chips
 	// Which are DRAM 256K x 4bit
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("256K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("256K")
 MACHINE_CONFIG_END
 
 /* ROM definition */

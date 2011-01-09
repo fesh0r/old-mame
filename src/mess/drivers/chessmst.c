@@ -9,6 +9,16 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 
+
+class chessmst_state : public driver_device
+{
+public:
+	chessmst_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(chessmst_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x27ff ) AM_ROM
@@ -37,26 +47,26 @@ static VIDEO_UPDATE( chessmst )
     return 0;
 }
 
-static MACHINE_CONFIG_START( chessmst, driver_device )
+static MACHINE_CONFIG_START( chessmst, chessmst_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-    MDRV_CPU_PROGRAM_MAP(chessmst_mem)
-    MDRV_CPU_IO_MAP(chessmst_io)
+    MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+    MCFG_CPU_PROGRAM_MAP(chessmst_mem)
+    MCFG_CPU_IO_MAP(chessmst_io)
 
-    MDRV_MACHINE_RESET(chessmst)
+    MCFG_MACHINE_RESET(chessmst)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(640, 480)
+    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(chessmst)
-    MDRV_VIDEO_UPDATE(chessmst)
+    MCFG_VIDEO_START(chessmst)
+    MCFG_VIDEO_UPDATE(chessmst)
 MACHINE_CONFIG_END
 
 /* ROM definition */

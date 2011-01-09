@@ -28,40 +28,36 @@ Ports:
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "includes/jupiter.h"
-#include "devices/cartslot.h"
 #include "devices/cassette.h"
+#include "devices/snapquik.h"
 #include "sound/speaker.h"
+#include "sound/wave.h"
 #include "formats/jupi_tap.h"
+#include "includes/jupiter.h"
 
 
 /* This needs to be moved to drivers/xtal */
 #define XTAL_6_5MHz	6500000
 
-static emu_timer	*jupiter_set_irq_timer;
-static emu_timer	*jupiter_clear_irq_timer;
-static UINT8		*jupiter_charram;
-static UINT8		*jupiter_expram;
 
 
 static READ8_HANDLER( jupiter_io_r );
-static WRITE8_HANDLER( jupiter_port_fe_w );
+static WRITE8_HANDLER( jupiter_io_w );
 static WRITE8_HANDLER( jupiter_expram_w );
-static WRITE8_HANDLER( jupiter_vh_charram_w );
 
 
 /* memory w/r functions */
 static ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2400, 0x27ff) AM_MIRROR(0x0400) AM_RAM AM_BASE_MEMBER(jupiter_state, videoram)
-	AM_RANGE(0x2c00, 0x2fff) AM_MIRROR(0x0400) AM_WRITE(jupiter_vh_charram_w) AM_BASE(&jupiter_charram)
+	AM_RANGE(0x2c00, 0x2fff) AM_MIRROR(0x0400) AM_RAM AM_BASE_MEMBER(jupiter_state, charram) AM_REGION("maincpu", 0xfc00)
 	AM_RANGE(0x3c00, 0x3fff) AM_MIRROR(0x0c00) AM_RAM
-	AM_RANGE(0x4800, 0xffff) AM_RAM_WRITE( jupiter_expram_w ) AM_BASE(&jupiter_expram)			/* Expansion RAM */
+	AM_RANGE(0x4000, 0xffff) AM_RAM_WRITE( jupiter_expram_w ) AM_BASE_MEMBER(jupiter_state, expram) /* Expansion RAM */
 ADDRESS_MAP_END
 
 /* port i/o functions */
 static ADDRESS_MAP_START( jupiter_io , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x0000, 0xffff ) AM_READWRITE( jupiter_io_r, jupiter_port_fe_w )
+	AM_RANGE( 0x0000, 0xffff ) AM_READWRITE( jupiter_io_r, jupiter_io_w )
 ADDRESS_MAP_END
 
 
@@ -94,14 +90,14 @@ static INPUT_PORTS_START (jupiter)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_2)			PORT_CHAR('2') PORT_CHAR('@')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)			PORT_CHAR('3') PORT_CHAR('#')
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_4)			PORT_CHAR('4') PORT_CHAR('$')
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_5)			PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_LEFT) PORT_CHAR('5') PORT_CHAR('%')
 
 	PORT_START("KEY4")	/* 4: 0xEFFE */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_0)			PORT_CHAR('0') PORT_CHAR('_')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_9)			PORT_CHAR('9') PORT_CHAR(')')
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_8)			PORT_CHAR('8') PORT_CHAR('(')
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)			PORT_CHAR('7') PORT_CHAR('\'')
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)			PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) PORT_CODE(KEYCODE_DOWN) PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_UP)	PORT_CHAR('6') PORT_CHAR('&')
 
 	PORT_START("KEY5")	/* 5: 0xDFFE */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_P)			PORT_CHAR('p') PORT_CHAR('P') PORT_CHAR('"')
@@ -134,7 +130,7 @@ INPUT_PORTS_END
 
 static READ8_HANDLER( jupiter_io_r )
 {
-	running_device *speaker = space->machine->device("speaker");
+	device_t *speaker = space->machine->device("speaker");
 	UINT8 data = 0xff;
 
 	if ( ( offset & 0xff ) != 0xfe )
@@ -182,38 +178,32 @@ static READ8_HANDLER( jupiter_io_r )
 }
 
 
-static WRITE8_HANDLER( jupiter_port_fe_w )
+static WRITE8_HANDLER( jupiter_io_w )
 {
-	running_device *speaker = space->machine->device("speaker");
-//  cassette_output( machine->device("cassette"), 1 );
+	device_t *speaker = space->machine->device("speaker");
+//  cassette_output( space->machine->device("cassette"), 1 );
 	speaker_level_w(speaker,1);
 }
 
 
 static WRITE8_HANDLER( jupiter_expram_w )
 {
+	jupiter_state *state = space->machine->driver_data<jupiter_state>();
+
 	if ( offset > 0x4000 )
 	{
 		if ( input_port_read(space->machine, "CFG") >= 1 )
-			jupiter_expram[offset] = data;
+			state->expram[offset] = data;
 	}
 	else
 	{
 		if ( input_port_read(space->machine, "CFG") == 2 )
-			jupiter_expram[offset] = data;
+			state->expram[offset] = data;
 	}
 }
 
 
 /* graphics output */
-
-static PALETTE_INIT( jupiter )
-{
-	palette_set_color(machine,0,RGB_BLACK); /* black */
-	palette_set_color(machine,1,RGB_WHITE); /* white */
-	palette_set_color(machine,2,RGB_WHITE); /* white */
-	palette_set_color(machine,3,RGB_BLACK); /* black */
-}
 
 
 static const gfx_layout jupiter_charlayout =
@@ -229,23 +219,8 @@ static const gfx_layout jupiter_charlayout =
 
 
 static GFXDECODE_START( jupiter )
-	GFXDECODE_ENTRY( "maincpu", 0x2c00, jupiter_charlayout, 0, 1 )
-	GFXDECODE_ENTRY( "maincpu", 0x2c00, jupiter_charlayout, 2, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0xfc00, jupiter_charlayout, 0, 1 )
 GFXDECODE_END
-
-
-static WRITE8_HANDLER( jupiter_vh_charram_w )
-{
-	if(data == jupiter_charram[offset])
-		return; /* no change */
-
-	jupiter_charram[offset] = data;
-
-	/* decode character graphics again */
-	offset >>= 3;
-	gfx_element_mark_dirty(space->machine->gfx[0], offset);
-	gfx_element_mark_dirty(space->machine->gfx[1], offset);
-}
 
 
 static TIMER_CALLBACK( jupiter_set_irq_callback )
@@ -262,14 +237,15 @@ static TIMER_CALLBACK( jupiter_clear_irq_callback )
 
 static VIDEO_START( jupiter )
 {
-	jupiter_set_irq_timer = timer_alloc(machine,  jupiter_set_irq_callback, NULL );
-	jupiter_clear_irq_timer = timer_alloc(machine,  jupiter_clear_irq_callback, NULL );
+	jupiter_state *state = machine->driver_data<jupiter_state>();
+	state->set_irq_timer = timer_alloc(machine,  jupiter_set_irq_callback, NULL );
+	state->clear_irq_timer = timer_alloc(machine,  jupiter_clear_irq_callback, NULL );
 
-	timer_adjust_periodic( jupiter_set_irq_timer,
+	timer_adjust_periodic( state->set_irq_timer,
 		machine->primary_screen->time_until_pos(31*8, 0 ),
 		0, machine->primary_screen->frame_period() );
 
-	timer_adjust_periodic( jupiter_clear_irq_timer,
+	timer_adjust_periodic( state->clear_irq_timer,
 		machine->primary_screen->time_until_pos(32*8, 0 ),
 		0, machine->primary_screen->frame_period() );
 }
@@ -278,28 +254,40 @@ static VIDEO_START( jupiter )
 static VIDEO_UPDATE( jupiter )
 {
 	jupiter_state *state = screen->machine->driver_data<jupiter_state>();
+	UINT8 *charram = state->charram;
 	UINT8 *videoram = state->videoram;
-	int offs;
+	UINT8 y,ra,chr,gfx;
+	UINT16 sy=0,ma=0,x;
 
-	for(offs = 0; offs < 768; offs++)
+	for (y = 0; y < 24; y++)
 	{
-		int code = videoram[offs];
-		int sx, sy;
+		for (ra = 0; ra < 8; ra++)
+		{
+			UINT16 *p = BITMAP_ADDR16(bitmap, sy++, 0);
 
-		sy = (offs / 32) << 3;
-		sx = (offs % 32) << 3;
+			for (x = ma; x < ma+32; x++)
+			{
+				chr = videoram[x];
 
-		drawgfx_opaque(bitmap, NULL, ( code & 0x80 ) ? screen->machine->gfx[1] : screen->machine->gfx[0],
-			code & 0x7f, 0, 0,0, sx,sy);
+				/* get pattern of pixels for that character scanline */
+				gfx = charram[((chr&0x7f)<<3) | ra] ^ ((chr&0x80) ? 0xff : 0);
+
+				/* Display a scanline of a character (8 pixels) */
+				*p++ = ( gfx & 0x80 ) ? 1 : 0;
+				*p++ = ( gfx & 0x40 ) ? 1 : 0;
+				*p++ = ( gfx & 0x20 ) ? 1 : 0;
+				*p++ = ( gfx & 0x10 ) ? 1 : 0;
+				*p++ = ( gfx & 0x08 ) ? 1 : 0;
+				*p++ = ( gfx & 0x04 ) ? 1 : 0;
+				*p++ = ( gfx & 0x02 ) ? 1 : 0;
+				*p++ = ( gfx & 0x01 ) ? 1 : 0;
+			}
+		}
+		ma+=32;
 	}
-
 	return 0;
 }
 
-static DRIVER_INIT( jupiter )
-{
-	jupiter_charram = memory_region(machine, "maincpu")+0x2c00;
-}
 
 static const cassette_config jupiter_cassette_config =
 {
@@ -312,36 +300,33 @@ static const cassette_config jupiter_cassette_config =
 /* machine definition */
 static MACHINE_CONFIG_START( jupiter, jupiter_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, XTAL_6_5MHz/2)        /* 3.25 MHz */
-	MDRV_CPU_PROGRAM_MAP(jupiter_mem)
-	MDRV_CPU_IO_MAP(jupiter_io)
-	MDRV_QUANTUM_TIME(HZ(60))
-
-	MDRV_MACHINE_START( jupiter )
+	MCFG_CPU_ADD("maincpu", Z80, XTAL_6_5MHz/2)        /* 3.25 MHz */
+	MCFG_CPU_PROGRAM_MAP(jupiter_mem)
+	MCFG_CPU_IO_MAP(jupiter_io)
+	MCFG_QUANTUM_TIME(HZ(60))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS( XTAL_6_5MHz, 416, 0, 256, 264, 0, 192 )
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_RAW_PARAMS( XTAL_6_5MHz, 416, 0, 256, 264, 0, 192 )
 
-	MDRV_GFXDECODE( jupiter )
-	MDRV_PALETTE_LENGTH(4)
-	MDRV_PALETTE_INIT(jupiter)
+	MCFG_GFXDECODE( jupiter )
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_START( jupiter )
-	MDRV_VIDEO_UPDATE( jupiter )
+	MCFG_VIDEO_START( jupiter )
+	MCFG_VIDEO_UPDATE( jupiter )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_CASSETTE_ADD( "cassette", jupiter_cassette_config )
-
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("ace")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_LOAD(jupiter_ace)
+	/* Devices */
+	MCFG_CASSETTE_ADD( "cassette", jupiter_cassette_config )
+	MCFG_SNAPSHOT_ADD("snapshot", jupiter, "ace", 1)
 MACHINE_CONFIG_END
 
 
@@ -352,4 +337,4 @@ ROM_START (jupiter)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT        COMPANY   FULLNAME */
-COMP( 1981, jupiter,  0,	0,	jupiter,  jupiter,  jupiter,	"Jupiter Cantab",  "Jupiter Ace" , 0 )
+COMP( 1981, jupiter,  0,	0,	jupiter,  jupiter,  0,	"Jupiter Cantab",  "Jupiter Ace" , 0 )

@@ -11,17 +11,27 @@
 #include "cpu/i8085/i8085.h"
 #include "machine/terminal.h"
 
-static UINT16* dual68_ram;
+
+class dual68_state : public driver_device
+{
+public:
+	dual68_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT16* ram;
+};
+
+
 
 static WRITE16_HANDLER(dual68_terminal_w)
 {
-	running_device *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine->device("terminal");
 	terminal_write(devconf,0,data >> 8);
 }
 
 static ADDRESS_MAP_START(dual68_mem, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000000, 0x0000ffff) AM_RAM AM_BASE(&dual68_ram)
+	AM_RANGE(0x00000000, 0x0000ffff) AM_RAM AM_BASE_MEMBER(dual68_state, ram)
 	AM_RANGE(0x00080000, 0x00081fff) AM_ROM AM_REGION("user1",0)
 	AM_RANGE(0x007f0000, 0x007f0001) AM_WRITE(dual68_terminal_w)
 	AM_RANGE(0x00800000, 0x00801fff) AM_ROM AM_REGION("user1",0)
@@ -45,9 +55,10 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(dual68)
 {
-	UINT8* user1 = memory_region(machine, "user1");
+	dual68_state *state = machine->driver_data<dual68_state>();
+	UINT8* user1 = machine->region("user1")->base();
 
-	memcpy((UINT8*)dual68_ram,user1,0x2000);
+	memcpy((UINT8*)state->ram,user1,0x2000);
 
 	machine->device("maincpu")->reset();
 }
@@ -62,20 +73,20 @@ static GENERIC_TERMINAL_INTERFACE( dual68_terminal_intf )
 	DEVCB_HANDLER(dual68_kbd_put)
 };
 
-static MACHINE_CONFIG_START( dual68, driver_device )
+static MACHINE_CONFIG_START( dual68, dual68_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz / 2)
-    MDRV_CPU_PROGRAM_MAP(dual68_mem)
+    MCFG_CPU_ADD("maincpu", M68000, XTAL_16MHz / 2)
+    MCFG_CPU_PROGRAM_MAP(dual68_mem)
 
-	MDRV_CPU_ADD("siocpu", I8085A, XTAL_16MHz / 8)
-    MDRV_CPU_PROGRAM_MAP(sio4_mem)
-    MDRV_CPU_IO_MAP(sio4_io)
+	MCFG_CPU_ADD("siocpu", I8085A, XTAL_16MHz / 8)
+    MCFG_CPU_PROGRAM_MAP(sio4_mem)
+    MCFG_CPU_IO_MAP(sio4_io)
 
-    MDRV_MACHINE_RESET(dual68)
+    MCFG_MACHINE_RESET(dual68)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG,dual68_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG,dual68_terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -4,13 +4,13 @@
 
     Apple/Sony 3.5" floppy drive emulation (to be interfaced with iwm.c)
 
-    Nate Woods, Raphael Nabet
+    Nate Woods, Raphael Nabet, R. Belmont
 
     This floppy drive was present in all variants of Lisa 2 (including Mac XL),
-    and in all Macintosh in production before 1988, when SIWM and superdrive
-    were introduced.
+    all Apple IIgs and IIc Plus machines, and in all Macintoshes in production 
+    before 1988, when SWIM and SuperDrive were introduced.
 
-    There were two variants :
+    There were three major variants :
     - A single-sided 400k unit which was used on Lisa 2/Mac XL, and Macintosh
       128k/512k.  This unit needs the computer to send the proper pulses to
       control the drive motor rotation.  It can be connected to all early
@@ -20,19 +20,13 @@
       control signals.  It can be connected to earlier (and later) Macintosh as
       an external or internal unit.  Some Lisa2/10 and Mac XL were upgraded to
       use it, too, but a fdc ROM upgrade was required.
-
-    * Note: I don't know for sure whether some Mac II were actually produced
-      with a Superdrive unit, though Apple did sell an upgrade kit, made of
-      a Superdrive unit, a SIWM controller and upgraded systems ROMs, which
-      added HD and MFM support to existing Macintosh II.
+    - A double-sided 1440k unit.  This is fully back compatible with the 800k
+      drive, and adds 1440k MFM capability.  This drive, called FDHD or 
+      SuperDrive by Apple, came in automatic and manual-inject versions.
 
     TODO :
-    * bare images are supposed to be in Macintosh format (look for formatByte
-      in sony_floppy_init(), and you will understand).  We need to support
-      Lisa, Apple II...
     * support for other image formats?
-    * should we support more than 2 floppy disk units? (Mac SE *MAY* have
-      supported 3 drives)
+    * should we support more than 2 floppy disk units? (Mac SE supported 3 drives)
 
 *********************************************************************/
 
@@ -76,7 +70,7 @@ static unsigned int rotation_speed;		/* drive rotation speed - ignored if ext_sp
 */
 typedef struct
 {
-	running_device *img;
+	device_t *img;
 	mame_file *fd;
 
 	unsigned int ext_speed_control : 1;	/* is motor rotation controlled by external device ? */
@@ -88,14 +82,14 @@ typedef struct
 
 	unsigned int loadedtrack_valid : 1;	/* is data in track buffer valid ? */
 	unsigned int loadedtrack_dirty : 1;	/* has data in track buffer been modified? */
-	size_t loadedtrack_size;			/* size of loaded track */
-	size_t loadedtrack_pos;				/* position within loaded track */
-	UINT8 *loadedtrack_data;			/* pointer to track buffer */
+	size_t loadedtrack_size;		/* size of loaded track */
+	size_t loadedtrack_pos;			/* position within loaded track */
+	UINT8 *loadedtrack_data;		/* pointer to track buffer */
+	
+	int is_fdhd;				/* is drive an FDHD? */
 } floppy;
 
 static floppy sony_floppy[2];			/* data for two floppy disk units */
-
-
 
 /* bit of code used in several places - I am unsure why it is here */
 static int sony_enable2(void)
@@ -103,7 +97,7 @@ static int sony_enable2(void)
 	return (sony_lines & SONY_CA1) && (sony_lines & SONY_LSTRB);
 }
 
-static void load_track_data(running_device *device,int floppy_select)
+static void load_track_data(device_t *device,int floppy_select)
 {
 	int track_size;
 	device_image_interface *cur_image;
@@ -128,7 +122,7 @@ static void load_track_data(running_device *device,int floppy_select)
 
 
 
-static void save_track_data(running_device *device, int floppy_select)
+static void save_track_data(device_t *device, int floppy_select)
 {
 	device_image_interface *cur_image;
 	floppy *f;
@@ -147,7 +141,7 @@ static void save_track_data(running_device *device, int floppy_select)
 
 
 
-UINT8 sony_read_data(running_device *device)
+UINT8 sony_read_data(device_t *device)
 {
 	UINT8 result = 0;
 	device_image_interface *cur_image;
@@ -170,7 +164,7 @@ UINT8 sony_read_data(running_device *device)
 
 
 
-void sony_write_data(running_device *device,UINT8 data)
+void sony_write_data(device_t *device,UINT8 data)
 {
 	device_image_interface *cur_image;
 	floppy *f;
@@ -188,7 +182,7 @@ void sony_write_data(running_device *device,UINT8 data)
 
 
 
-static int sony_rpm(floppy *f, running_device *cur_image)
+static int sony_rpm(floppy *f, device_t *cur_image)
 {
 	int result = 0;
 	device_image_interface *image =dynamic_cast<device_image_interface *>(cur_image);
@@ -241,7 +235,7 @@ static int sony_rpm(floppy *f, running_device *cur_image)
 	return result;
 }
 
-int sony_read_status(running_device *device)
+int sony_read_status(device_t *device)
 {
 	int result = 1;
 	int action;
@@ -252,7 +246,7 @@ int sony_read_status(running_device *device)
 
 	if (LOG_SONY_EXTRA)
 	{
-		logerror("sony_status(): action=%d pc=0x%08x%s\n",
+		printf("sony_status(): action=%x pc=0x%08x%s\n",
 			action, (int) cpu_get_pc(device->machine->firstcpu), sony_floppy_enable ? "" : " (no drive enabled)");
 	}
 
@@ -290,6 +284,9 @@ int sony_read_status(running_device *device)
 			break;
 		case 0x04:	/* Disk is stepping 0=stepping 1=not stepping*/
 			result = 1;
+			break;
+		case 0x05:	/* Drive is SuperDrive: 0 = 400/800k, 1 = SuperDrive */
+			result = f->is_fdhd ? 1: 0;
 			break;
 		case 0x06:	/* Disk is locked 0=locked 1=unlocked */
 			if (cur_image)
@@ -333,10 +330,21 @@ int sony_read_status(running_device *device)
 			break;
 		case 0x0e:	/* Tachometer */
 			/* (time in seconds) / (60 sec/minute) * (rounds/minute) * (60 pulses) * (2 pulse phases) */
-			result = ((int) (attotime_to_double(timer_get_time(device->machine)) / 60.0 * sony_rpm(f, &cur_image->device()) * 60.0 * 2.0)) & 1;
+			if (cur_image)
+			{
+				result = ((int) (attotime_to_double(timer_get_time(device->machine)) / 60.0 * sony_rpm(f, &cur_image->device()) * 60.0 * 2.0)) & 1;
+			}
 			break;
-		case 0x0f:	/* Drive installed: 0=drive connected, 1=drive not connected */
-			result = 0;
+		case 0x0f:	/* 400k/800k: Drive installed: 0=drive connected, 1=drive not connected */
+				/* FDHD: Inserted disk density: 0=HD, 1=DD */
+			if (f->is_fdhd)
+			{
+				result = 1;
+			}
+			else
+			{
+				result = 0;
+			}
 			break;
 		default:
 			if (LOG_SONY)
@@ -348,7 +356,7 @@ int sony_read_status(running_device *device)
 	return result;
 }
 
-static void sony_doaction(running_device *device)
+static void sony_doaction(device_t *device)
 {
 	int action;
 	floppy *f;
@@ -413,11 +421,16 @@ static void sony_doaction(running_device *device)
 	}
 }
 
-void sony_set_lines(running_device *device,UINT8 lines)
+void sony_set_lines(device_t *device,UINT8 lines)
 {
 	int old_sony_lines = sony_lines;
 
 	sony_lines = lines & 0x0F;
+
+	{
+//		int action = ((sony_lines & (SONY_CA1 | SONY_CA0)) << 2) | (sony_sel_line << 1) | ((sony_lines & SONY_CA2) >> 2);
+//		printf("sony_set_lines: %02x, action now %d\n", lines&0xf, action);
+	}
 
 	/* have we just set LSTRB ? */
 	if ((sony_lines & ~old_sony_lines) & SONY_LSTRB)
@@ -430,7 +443,7 @@ void sony_set_lines(running_device *device,UINT8 lines)
 		logerror("sony_set_lines(): %d\n", lines);
 }
 
-void sony_set_enable_lines(running_device *device,int enable_mask)
+void sony_set_enable_lines(device_t *device,int enable_mask)
 {
 	switch (enable_mask)
 	{
@@ -452,9 +465,14 @@ void sony_set_enable_lines(running_device *device,int enable_mask)
 		logerror("sony_set_enable_lines(): %d\n", enable_mask);
 }
 
-void sony_set_sel_line(running_device *device,int sel)
+void sony_set_sel_line(device_t *device,int sel)
 {
 	sony_sel_line = sel ? 1 : 0;
+
+	{
+//		int action = ((sony_lines & (SONY_CA1 | SONY_CA0)) << 2) | (sony_sel_line << 1) | ((sony_lines & SONY_CA2) >> 2);
+//		printf("sony_set_sel_line: %d, action now %d\n", sony_sel_line, action);
+	}
 
 	if (LOG_SONY_EXTRA)
 		logerror("sony_set_sel_line(): %s line IWM_SEL\n", sony_sel_line ? "setting" : "clearing");
@@ -467,15 +485,17 @@ void sony_set_speed(int speed)
 
 static DEVICE_START( sonydriv_floppy )
 {
-
 	DEVICE_START_CALL(floppy);
-	floppy_set_type(device,FLOPPY_TYPE_SONY);
+	floppy_set_type(device, FLOPPY_TYPE_SONY);
+
+	sony_floppy[0].is_fdhd = 0;
+	sony_floppy[1].is_fdhd = 0;
 }
 
 static DEVICE_IMAGE_UNLOAD( sonydriv_floppy )
 {
 	int id;
-	running_device *fdc;
+	device_t *fdc;
 
 	/* locate the FDC */
 	fdc = image.device().machine->device("fdc");

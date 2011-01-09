@@ -131,14 +131,14 @@ static INPUT_PORTS_START( thom_game_port )
 
 /* joysticks, common to CM 90-112 & SX 90-018 */
      PORT_START ( "game_port_directions" )
-     PAD ( 0x01, 1, "\xE2\x86\x91", JOYSTICK_UP,    UP,    UP)
-     PAD ( 0x02, 1, "\xE2\x86\x93", JOYSTICK_DOWN,  DOWN,  DOWN )
-     PAD ( 0x04, 1, "\xE2\x86\x90", JOYSTICK_LEFT,  LEFT,  LEFT )
-     PAD ( 0x08, 1, "\xE2\x86\x92", JOYSTICK_RIGHT, RIGHT, RIGHT )
-     PAD ( 0x10, 2, "\xE2\x86\x91", JOYSTICK_UP,    UP,    8_PAD )
-     PAD ( 0x20, 2, "\xE2\x86\x93", JOYSTICK_DOWN,  DOWN,  2_PAD )
-     PAD ( 0x40, 2, "\xE2\x86\x90", JOYSTICK_LEFT,  LEFT,  4_PAD )
-     PAD ( 0x80, 2, "\xE2\x86\x92", JOYSTICK_RIGHT, RIGHT, 6_PAD )
+     PAD ( 0x01, 1, UTF8_UP, JOYSTICK_UP,    UP,    UP)
+     PAD ( 0x02, 1, UTF8_DOWN, JOYSTICK_DOWN,  DOWN,  DOWN )
+     PAD ( 0x04, 1, UTF8_LEFT, JOYSTICK_LEFT,  LEFT,  LEFT )
+     PAD ( 0x08, 1, UTF8_RIGHT, JOYSTICK_RIGHT, RIGHT, RIGHT )
+     PAD ( 0x10, 2, UTF8_UP, JOYSTICK_UP,    UP,    8_PAD )
+     PAD ( 0x20, 2, UTF8_DOWN, JOYSTICK_DOWN,  DOWN,  2_PAD )
+     PAD ( 0x40, 2, UTF8_LEFT, JOYSTICK_LEFT,  LEFT,  4_PAD )
+     PAD ( 0x80, 2, UTF8_RIGHT, JOYSTICK_RIGHT, RIGHT, 6_PAD )
 
      PORT_START ( "game_port_buttons" )
      PAD ( 0x40, 1, "Action A", BUTTON1, BUTTON1, LCONTROL )
@@ -203,20 +203,20 @@ INPUT_PORTS_END
 DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_CC90323, thom_serial_cc90323);
 DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_CC90323, thom_serial_cc90323);
 
-#define MDRV_THOM_SERIAL_CC90323_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_CC90323, 0)
+#define MCFG_THOM_SERIAL_CC90323_ADD(_tag) \
+	MCFG_DEVICE_ADD(_tag, THOM_SERIAL_CC90323, 0)
 
 DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_RF57232, thom_serial_rf57232);
 DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_RF57232, thom_serial_rf57232);
 
-#define MDRV_THOM_SERIAL_RF57232_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_RF57232, 0)
+#define MCFG_THOM_SERIAL_RF57232_ADD(_tag) \
+	MCFG_DEVICE_ADD(_tag, THOM_SERIAL_RF57232, 0)
 
 DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_MODEM, thom_serial_modem);
 DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_MODEM, thom_serial_modem);
 
-#define MDRV_THOM_SERIAL_MODEM_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_MODEM, 0)
+#define MCFG_THOM_SERIAL_MODEM_ADD(_tag) \
+	MCFG_DEVICE_ADD(_tag, THOM_SERIAL_MODEM, 0)
 
 /************************** T9000 / TO7 *******************************
 
@@ -503,7 +503,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      PORT_BIT  ( 0xfe, IP_ACTIVE_LOW, IPT_UNUSED )
      PORT_START ( "keyboard_1" )
      KEY ( 0, "W", W )                PORT_CHAR('W')
-     KEY ( 1, "\xE2\x86\x91", UP )    PORT_CHAR(UCHAR_MAMEKEY(UP))
+     KEY ( 1, UTF8_UP, UP )    PORT_CHAR(UCHAR_MAMEKEY(UP))
      KEY ( 2, "C \303\247", C )       PORT_CHAR('C')
      KEY ( 3, "Clear", ESC )          PORT_CHAR(UCHAR_MAMEKEY(ESC))
      KEY ( 4, "Enter", ENTER )        PORT_CHAR(13)
@@ -512,7 +512,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 7, "Stop", TAB )           PORT_CHAR(27)
      PORT_START ( "keyboard_2" )
      KEY ( 0, "X", X )                PORT_CHAR('X')
-     KEY ( 1, "\xE2\x86\x90", LEFT )  PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+     KEY ( 1, UTF8_LEFT, LEFT )  PORT_CHAR(UCHAR_MAMEKEY(LEFT))
      KEY ( 2, "V", V )                PORT_CHAR('V')
      KEY ( 3, "Q", Q )                PORT_CHAR('Q')
      KEY ( 4, "* :", QUOTE )          PORT_CHAR('*') PORT_CHAR(':')
@@ -521,7 +521,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 7, "1 !", 1 )              PORT_CHAR('1') PORT_CHAR('!')
      PORT_START ( "keyboard_3" )
      KEY ( 0, "Space Caps-Lock", SPACE ) PORT_CHAR(' ') PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
-     KEY ( 1, "\xE2\x86\x93", DOWN )  PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+     KEY ( 1, UTF8_DOWN, DOWN )  PORT_CHAR(UCHAR_MAMEKEY(DOWN))
      KEY ( 2, "B", B )                PORT_CHAR('B')
      KEY ( 3, "S", S )                PORT_CHAR('S')
      KEY ( 4, "/ ?", SLASH )          PORT_CHAR('/') PORT_CHAR('?')
@@ -530,7 +530,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 7, "2 \" \302\250", 2 )    PORT_CHAR('2') PORT_CHAR('"')
      PORT_START ( "keyboard_4" )
      KEY ( 0, "@ \342\206\221", TILDE ) PORT_CHAR('@')
-     KEY ( 1, "\xE2\x86\x92", RIGHT ) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+     KEY ( 1, UTF8_RIGHT, RIGHT ) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
      KEY ( 2, "M", M )                PORT_CHAR('M')
      KEY ( 3, "D", D )                PORT_CHAR('D')
      KEY ( 4, "P", P )                PORT_CHAR('P')
@@ -601,82 +601,82 @@ static const floppy_config thomson_floppy_config =
 
 static MACHINE_CONFIG_START( to7, driver_device )
 
-     MDRV_MACHINE_START ( to7 )
-     MDRV_MACHINE_RESET ( to7 )
+     MCFG_MACHINE_START ( to7 )
+     MCFG_MACHINE_RESET ( to7 )
 
 /* cpu */
-     MDRV_CPU_ADD ( "maincpu", M6809, 1000000 )
-     MDRV_CPU_PROGRAM_MAP ( to7)
+     MCFG_CPU_ADD ( "maincpu", M6809, 1000000 )
+     MCFG_CPU_PROGRAM_MAP ( to7)
 
 /* video */
-     MDRV_SCREEN_ADD("screen", RASTER)
-     MDRV_SCREEN_REFRESH_RATE ( /*50*/ 1./0.019968 )
-     MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
-     MDRV_SCREEN_SIZE ( THOM_TOTAL_WIDTH * 2, THOM_TOTAL_HEIGHT )
-     MDRV_SCREEN_VISIBLE_AREA ( 0, THOM_TOTAL_WIDTH * 2 - 1,
+     MCFG_SCREEN_ADD("screen", RASTER)
+     MCFG_SCREEN_REFRESH_RATE ( /*50*/ 1./0.019968 )
+     MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
+     MCFG_SCREEN_SIZE ( THOM_TOTAL_WIDTH * 2, THOM_TOTAL_HEIGHT )
+     MCFG_SCREEN_VISIBLE_AREA ( 0, THOM_TOTAL_WIDTH * 2 - 1,
 				0, THOM_TOTAL_HEIGHT - 1 )
-     MDRV_PALETTE_LENGTH ( 4097 ) /* 12-bit color + transparency */
-     MDRV_PALETTE_INIT ( thom )
-     MDRV_VIDEO_START ( thom )
-     MDRV_VIDEO_UPDATE ( thom )
-     MDRV_VIDEO_EOF ( thom )
-     MDRV_DEFAULT_LAYOUT( layout_thomson )
+     MCFG_PALETTE_LENGTH ( 4097 ) /* 12-bit color + transparency */
+     MCFG_PALETTE_INIT ( thom )
+     MCFG_VIDEO_START ( thom )
+     MCFG_VIDEO_UPDATE ( thom )
+     MCFG_VIDEO_EOF ( thom )
+     MCFG_DEFAULT_LAYOUT( layout_thomson )
 
 /* sound */
-     MDRV_SPEAKER_STANDARD_MONO("mono")
-     MDRV_SOUND_ADD ( "buzzer", DAC, 0 )
-     MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 1-bit buzzer */
-     MDRV_SOUND_ADD ( "dac", DAC, 0 )
-     MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 6-bit game extention DAC */
-     MDRV_SOUND_ADD ( "speech", DAC, 0 )
-     MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* speech synthesis */
+     MCFG_SPEAKER_STANDARD_MONO("mono")
+     MCFG_SOUND_ADD ( "buzzer", DAC, 0 )
+     MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 1-bit buzzer */
+     MCFG_SOUND_ADD ( "dac", DAC, 0 )
+     MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 6-bit game extention DAC */
+     MCFG_SOUND_ADD ( "speech", DAC, 0 )
+     MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* speech synthesis */
 
 /* printer */
-     MDRV_CENTRONICS_ADD("centronics", to7_centronics_config)
+     MCFG_CENTRONICS_ADD("centronics", to7_centronics_config)
 
 /* cassette */
-     MDRV_CASSETTE_ADD( "cassette", to7_cassette_config )
+     MCFG_CASSETTE_ADD( "cassette", to7_cassette_config )
 
 /* timer */
-     MDRV_MC6846_ADD( "mc6846", to7_timer )
+     MCFG_MC6846_ADD( "mc6846", to7_timer )
 
 /* speech synthesis */
-     MDRV_MEA8000_ADD( "mea8000", to7_speech )
+     MCFG_MEA8000_ADD( "mea8000", to7_speech )
 
 /* floppy */
-     MDRV_MC6843_ADD( "mc6843", to7_6843_itf )
-     MDRV_WD2793_ADD( "wd2793", default_wd17xx_interface )
-     MDRV_FLOPPY_4_DRIVES_ADD(thomson_floppy_config)
+     MCFG_MC6843_ADD( "mc6843", to7_6843_itf )
+     MCFG_WD2793_ADD( "wd2793", default_wd17xx_interface )
+     MCFG_FLOPPY_4_DRIVES_ADD(thomson_floppy_config)
 
 /* network */
-     MDRV_MC6854_ADD( "mc6854", to7_network_iface )
+     MCFG_MC6854_ADD( "mc6854", to7_network_iface )
 
 /* pia */
-     MDRV_PIA6821_ADD( THOM_PIA_SYS, to7_pia6821_sys )
-     MDRV_PIA6821_ADD( THOM_PIA_IO, to7_pia6821_io )
-     MDRV_PIA6821_ADD( THOM_PIA_GAME, to7_pia6821_game )
-     MDRV_PIA6821_ADD( THOM_PIA_MODEM, to7_pia6821_modem )
+     MCFG_PIA6821_ADD( THOM_PIA_SYS, to7_pia6821_sys )
+     MCFG_PIA6821_ADD( THOM_PIA_IO, to7_pia6821_io )
+     MCFG_PIA6821_ADD( THOM_PIA_GAME, to7_pia6821_game )
+     MCFG_PIA6821_ADD( THOM_PIA_MODEM, to7_pia6821_modem )
 
 /* acia */
-     MDRV_ACIA6551_ADD("acia")
+     MCFG_ACIA6551_ADD("acia")
 
 /* modem */
-     MDRV_ACIA6850_ADD( "acia6850", to7_modem )
+     MCFG_ACIA6850_ADD( "acia6850", to7_modem )
 
 /* cartridge */
-     MDRV_CARTSLOT_ADD("cart")
-     MDRV_CARTSLOT_EXTENSION_LIST("m7,rom")
-     MDRV_CARTSLOT_NOT_MANDATORY
-     MDRV_CARTSLOT_LOAD(to7_cartridge)
+     MCFG_CARTSLOT_ADD("cart")
+     MCFG_CARTSLOT_EXTENSION_LIST("m7,rom")
+     MCFG_CARTSLOT_NOT_MANDATORY
+     MCFG_CARTSLOT_LOAD(to7_cartridge)
 
 /* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("40K")
-	MDRV_RAM_EXTRA_OPTIONS("24K,48K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("40K")
+	MCFG_RAM_EXTRA_OPTIONS("24K,48K")
 
-	MDRV_THOM_SERIAL_CC90323_ADD("cc90232")
-	MDRV_THOM_SERIAL_RF57232_ADD("rf57932")
-	MDRV_THOM_SERIAL_MODEM_ADD("modem")
+	MCFG_THOM_SERIAL_CC90323_ADD("cc90232")
+	MCFG_THOM_SERIAL_RF57232_ADD("rf57932")
+	MCFG_THOM_SERIAL_MODEM_ADD("modem")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( t9000, to7 )
@@ -844,20 +844,20 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( to770, to7 )
-    MDRV_MACHINE_START ( to770 )
-    MDRV_MACHINE_RESET ( to770 )
+    MCFG_MACHINE_START ( to770 )
+    MCFG_MACHINE_RESET ( to770 )
 
-    MDRV_CPU_MODIFY( "maincpu" )
-    MDRV_CPU_PROGRAM_MAP ( to770)
+    MCFG_CPU_MODIFY( "maincpu" )
+    MCFG_CPU_PROGRAM_MAP ( to770)
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to770_pia6821_sys )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, to770_pia6821_sys )
 
-    MDRV_MC6846_MODIFY( "mc6846", to770_timer )
+    MCFG_MC6846_MODIFY( "mc6846", to770_timer )
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")
-	MDRV_RAM_EXTRA_OPTIONS("64K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_EXTRA_OPTIONS("64K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( to770a, to770 )
@@ -1024,25 +1024,25 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( mo5, to7 )
-     MDRV_MACHINE_START ( mo5 )
-     MDRV_MACHINE_RESET ( mo5 )
+     MCFG_MACHINE_START ( mo5 )
+     MCFG_MACHINE_RESET ( mo5 )
 
-     MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( mo5)
+     MCFG_CPU_MODIFY( "maincpu" )
+     MCFG_CPU_PROGRAM_MAP ( mo5)
 
-     MDRV_CASSETTE_MODIFY( "cassette", mo5_cassette_config )
+     MCFG_CASSETTE_MODIFY( "cassette", mo5_cassette_config )
 
-     MDRV_DEVICE_REMOVE( "mc6846" )
+     MCFG_DEVICE_REMOVE( "mc6846" )
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo5_pia6821_sys )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, mo5_pia6821_sys )
 
-	MDRV_CARTSLOT_MODIFY("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
-	MDRV_CARTSLOT_LOAD(mo5_cartridge)
+	MCFG_CARTSLOT_MODIFY("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("m5,rom")
+	MCFG_CARTSLOT_LOAD(mo5_cartridge)
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("112K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("112K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mo5e, mo5 )
@@ -1216,8 +1216,8 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 1, "_ 6", 6 )              PORT_CHAR('_') PORT_CHAR('6')
      KEY ( 2, "Y", Y )                PORT_CHAR('Y')
      KEY ( 3, "H \302\250", H )       PORT_CHAR('H')
-     KEY ( 4, "\xE2\x86\x91", UP )    PORT_CHAR(UCHAR_MAMEKEY(UP))
-     KEY ( 5, "\xE2\x86\x92", RIGHT ) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+     KEY ( 4, UTF8_UP, UP )    PORT_CHAR(UCHAR_MAMEKEY(UP))
+     KEY ( 5, UTF8_RIGHT, RIGHT ) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
      KEY ( 6, "Home Clear", HOME )    PORT_CHAR(UCHAR_MAMEKEY(HOME)) PORT_CHAR(UCHAR_MAMEKEY(ESC))
      KEY ( 7, "N", N )                PORT_CHAR('N')
      PORT_START ( "keyboard_1" )
@@ -1226,7 +1226,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 2, "T", T )                PORT_CHAR('T')
      KEY ( 3, "G", G )                PORT_CHAR('G')
      KEY ( 4, "= +", EQUALS )         PORT_CHAR('=') PORT_CHAR('+')
-     KEY ( 5, "\xE2\x86\x90", LEFT )  PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+     KEY ( 5, UTF8_LEFT, LEFT )  PORT_CHAR(UCHAR_MAMEKEY(LEFT))
      KEY ( 6, "Insert", INSERT )      PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 7, "B \302\264", B )       PORT_CHAR('B')
      PORT_START ( "keyboard_2" )
@@ -1280,7 +1280,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 2, "I", I )                PORT_CHAR('I')
      KEY ( 3, "K", K )                PORT_CHAR('K')
      KEY ( 4, "$ &", CLOSEBRACE )     PORT_CHAR('$') PORT_CHAR('&')
-     KEY ( 5, "\xE2\x86\x93", DOWN )  PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+     KEY ( 5, UTF8_DOWN, DOWN )  PORT_CHAR(UCHAR_MAMEKEY(DOWN))
      KEY ( 6, "] }", BACKSLASH )      PORT_CHAR(']') PORT_CHAR('}')
      KEY ( 7, "; .", STOP )           PORT_CHAR(';') PORT_CHAR('.')
      PORT_START ( "keyboard_8" )
@@ -1363,24 +1363,24 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( to9, to7 )
-     MDRV_MACHINE_START ( to9 )
-     MDRV_MACHINE_RESET ( to9 )
+     MCFG_MACHINE_START ( to9 )
+     MCFG_MACHINE_RESET ( to9 )
 
-     MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to9)
+     MCFG_CPU_MODIFY( "maincpu" )
+     MCFG_CPU_PROGRAM_MAP ( to9)
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to9_pia6821_sys )
-	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, to9_pia6821_sys )
+	MCFG_DEVICE_REMOVE( THOM_PIA_IO )
 
-	MDRV_DEVICE_REMOVE("centronics")
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_DEVICE_REMOVE("centronics")
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
-     MDRV_MC6846_MODIFY( "mc6846", to9_timer )
+     MCFG_MC6846_MODIFY( "mc6846", to9_timer )
 
 	 /* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("192K")
-	MDRV_RAM_EXTRA_OPTIONS("128K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("192K")
+	MCFG_RAM_EXTRA_OPTIONS("128K")
 MACHINE_CONFIG_END
 
 
@@ -1581,24 +1581,24 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( to8, to7 )
-     MDRV_MACHINE_START ( to8 )
-     MDRV_MACHINE_RESET ( to8 )
+     MCFG_MACHINE_START ( to8 )
+     MCFG_MACHINE_RESET ( to8 )
 
-     MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to8)
+     MCFG_CPU_MODIFY( "maincpu" )
+     MCFG_CPU_PROGRAM_MAP ( to8)
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to8_pia6821_sys )
-	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, to8_pia6821_sys )
+	MCFG_DEVICE_REMOVE( THOM_PIA_IO )
 
-	MDRV_DEVICE_REMOVE("centronics")
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_DEVICE_REMOVE("centronics")
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
-     MDRV_MC6846_MODIFY( "mc6846", to8_timer )
+     MCFG_MC6846_MODIFY( "mc6846", to8_timer )
 
 	 /* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("512K")
-	MDRV_RAM_EXTRA_OPTIONS("256K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("512K")
+	MCFG_RAM_EXTRA_OPTIONS("256K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( to8d, to8 )
@@ -1730,23 +1730,23 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( to9p, to7 )
-     MDRV_MACHINE_START ( to9p )
-     MDRV_MACHINE_RESET ( to9p )
+     MCFG_MACHINE_START ( to9p )
+     MCFG_MACHINE_RESET ( to9p )
 
-     MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to9p)
+     MCFG_CPU_MODIFY( "maincpu" )
+     MCFG_CPU_PROGRAM_MAP ( to9p)
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to9p_pia6821_sys )
-	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, to9p_pia6821_sys )
+	MCFG_DEVICE_REMOVE( THOM_PIA_IO )
 
-	MDRV_DEVICE_REMOVE("centronics")
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_DEVICE_REMOVE("centronics")
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
-     MDRV_MC6846_MODIFY( "mc6846", to9p_timer )
+     MCFG_MC6846_MODIFY( "mc6846", to9p_timer )
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("512K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("512K")
 MACHINE_CONFIG_END
 
 COMP ( 1986, to9p, 0, 0, to9p, to9p, 0, "Thomson", "TO9+", 0 )
@@ -1921,10 +1921,10 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 0, "Delete Backspace", DEL )  PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(BACKSPACE))
      KEY ( 1, "Insert", INSERT )         PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 2, "> <", BACKSLASH2 )        PORT_CHAR('>') PORT_CHAR('<')
-     KEY ( 3, "\xE2\x86\x92", RIGHT )    PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
-     KEY ( 4, "\xE2\x86\x93", DOWN )     PORT_CHAR(UCHAR_MAMEKEY(DOWN))
-     KEY ( 5, "\xE2\x86\x90", LEFT )     PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-     KEY ( 6, "\xE2\x86\x91", UP )       PORT_CHAR(UCHAR_MAMEKEY(UP))
+     KEY ( 3, UTF8_RIGHT, RIGHT )    PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+     KEY ( 4, UTF8_DOWN, DOWN )     PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+     KEY ( 5, UTF8_LEFT, LEFT )     PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+     KEY ( 6, UTF8_UP, UP )       PORT_CHAR(UCHAR_MAMEKEY(UP))
      KEY ( 7, "BASIC", RCONTROL )        PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
      PORT_START ( "keyboard_2" )
      KEY ( 0, "J", J )                   PORT_CHAR('J')
@@ -2061,28 +2061,28 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( mo6, to7 )
-     MDRV_MACHINE_START ( mo6 )
-     MDRV_MACHINE_RESET ( mo6 )
+     MCFG_MACHINE_START ( mo6 )
+     MCFG_MACHINE_RESET ( mo6 )
 
-     MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( mo6)
+     MCFG_CPU_MODIFY( "maincpu" )
+     MCFG_CPU_PROGRAM_MAP ( mo6)
 
-     MDRV_DEVICE_REMOVE( "mc6846" )
+     MCFG_DEVICE_REMOVE( "mc6846" )
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo6_pia6821_sys )
-	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
-	MDRV_PIA6821_MODIFY( THOM_PIA_GAME, mo6_pia6821_game )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, mo6_pia6821_sys )
+	MCFG_DEVICE_REMOVE( THOM_PIA_IO )
+	MCFG_PIA6821_MODIFY( THOM_PIA_GAME, mo6_pia6821_game )
 
-	MDRV_DEVICE_REMOVE("centronics")
-	MDRV_CENTRONICS_ADD("centronics", mo6_centronics_config)
+	MCFG_DEVICE_REMOVE("centronics")
+	MCFG_CENTRONICS_ADD("centronics", mo6_centronics_config)
 
-	MDRV_CARTSLOT_MODIFY("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
-	MDRV_CARTSLOT_LOAD(mo5_cartridge)
+	MCFG_CARTSLOT_MODIFY("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("m5,rom")
+	MCFG_CARTSLOT_LOAD(mo5_cartridge)
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pro128, mo6 )
@@ -2208,10 +2208,10 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 0, "Delete Backspace", DEL )  PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(BACKSPACE))
      KEY ( 1, "Insert", INSERT )         PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 2, "Home", HOME )             PORT_CHAR(UCHAR_MAMEKEY(HOME))
-     KEY ( 3, "\xE2\x86\x92", RIGHT )    PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
-     KEY ( 4, "\xE2\x86\x93", DOWN )     PORT_CHAR(UCHAR_MAMEKEY(DOWN))
-     KEY ( 5, "\xE2\x86\x90", LEFT )     PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-     KEY ( 6, "\xE2\x86\x91", UP )       PORT_CHAR(UCHAR_MAMEKEY(UP))
+     KEY ( 3, UTF8_RIGHT, RIGHT )    PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+     KEY ( 4, UTF8_DOWN, DOWN )     PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+     KEY ( 5, UTF8_LEFT, LEFT )     PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+     KEY ( 6, UTF8_UP, UP )       PORT_CHAR(UCHAR_MAMEKEY(UP))
      KEY ( 7, "BASIC", RCONTROL )
      PORT_START ( "keyboard_2" )
      KEY ( 0, "J", J )                   PORT_CHAR('J')
@@ -2287,28 +2287,28 @@ INPUT_PORTS_END
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_DERIVED( mo5nr, to7 )
-     MDRV_MACHINE_START ( mo5nr )
-     MDRV_MACHINE_RESET ( mo5nr )
+     MCFG_MACHINE_START ( mo5nr )
+     MCFG_MACHINE_RESET ( mo5nr )
 
-     MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( mo5nr)
+     MCFG_CPU_MODIFY( "maincpu" )
+     MCFG_CPU_PROGRAM_MAP ( mo5nr)
 
-     MDRV_DEVICE_REMOVE( "mc6846" )
+     MCFG_DEVICE_REMOVE( "mc6846" )
 
-	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo5nr_pia6821_sys )
-	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
-	MDRV_PIA6821_MODIFY( THOM_PIA_GAME, mo5nr_pia6821_game )
+	MCFG_PIA6821_MODIFY( THOM_PIA_SYS, mo5nr_pia6821_sys )
+	MCFG_DEVICE_REMOVE( THOM_PIA_IO )
+	MCFG_PIA6821_MODIFY( THOM_PIA_GAME, mo5nr_pia6821_game )
 
-	MDRV_DEVICE_REMOVE("centronics")
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_DEVICE_REMOVE("centronics")
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
-	MDRV_CARTSLOT_MODIFY("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
-	MDRV_CARTSLOT_LOAD(mo5_cartridge)
+	MCFG_CARTSLOT_MODIFY("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("m5,rom")
+	MCFG_CARTSLOT_LOAD(mo5_cartridge)
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
 COMP ( 1986, mo5nr, 0, 0, mo5nr, mo5nr, 0, "Thomson", "MO5 NR", 0 )

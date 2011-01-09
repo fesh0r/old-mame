@@ -135,30 +135,30 @@ static UINT8 keypad_r (running_machine *machine)
 	return data;
 }
 
-READ8_HANDLER( kp_r )
+static READ8_HANDLER( kp_r )
 {
 	return  keypad_r(space->machine);
 }
 
-READ8_HANDLER( status_flag_r )
+static READ8_HANDLER( status_flag_r )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	return  state->status_flag;
 }
 
-WRITE8_HANDLER( status_flag_w )
+static WRITE8_HANDLER( status_flag_w )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	state->status_flag = data;
 }
 
-WRITE8_HANDLER( kp_matrix_w )
+static WRITE8_HANDLER( kp_matrix_w )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	state->kp_matrix = data;
 }
 
-WRITE8_HANDLER( beep_w )
+static WRITE8_HANDLER( beep_w )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	UINT16 frequency = 0;
@@ -188,12 +188,12 @@ WRITE8_HANDLER( beep_w )
 	beep_set_frequency(state->speaker, frequency);
 }
 
-READ8_HANDLER( irq_flag_r )
+static READ8_HANDLER( irq_flag_r )
 {
 	return (input_port_read(space->machine, "BACKBATTERY")<<4) | (input_port_read(space->machine, "MAINBATTERY")<<3) | (keypad_r(space->machine) ? 0 : 1);
 }
 
-WRITE8_HANDLER( bank_select_w )
+static WRITE8_HANDLER( bank_select_w )
 {
 	if (data < 2)
 	{
@@ -207,7 +207,7 @@ WRITE8_HANDLER( bank_select_w )
 	}
 }
 
-WRITE8_HANDLER( lcd_contrast_w )
+static WRITE8_HANDLER( lcd_contrast_w )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 
@@ -219,7 +219,7 @@ WRITE8_HANDLER( lcd_contrast_w )
     RTC-146818
 ***************************************************************************/
 
-void set_146818_periodic_irq(running_machine *machine, UINT8 data)
+static void set_146818_periodic_irq(running_machine *machine, UINT8 data)
 {
 	micronic_state *state = machine->driver_data<micronic_state>();
 
@@ -248,7 +248,7 @@ void set_146818_periodic_irq(running_machine *machine, UINT8 data)
 	timer_adjust_periodic(state->rtc_periodic_irq, timer_per, 0, timer_per);
 }
 
-WRITE8_HANDLER( rtc_address_w )
+static WRITE8_HANDLER( rtc_address_w )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	state->rtc_address = data;
@@ -256,7 +256,7 @@ WRITE8_HANDLER( rtc_address_w )
 	rtc->write(*space, 0, data);
 }
 
-READ8_HANDLER( rtc_data_r )
+static READ8_HANDLER( rtc_data_r )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	UINT8 data = 0;
@@ -274,7 +274,7 @@ READ8_HANDLER( rtc_data_r )
 	return data;
 }
 
-WRITE8_HANDLER( rtc_data_w )
+static WRITE8_HANDLER( rtc_data_w )
 {
 	micronic_state *state = space->machine->driver_data<micronic_state>();
 	mc146818_device *rtc = space->machine->device<mc146818_device>("rtc");
@@ -460,7 +460,7 @@ static MACHINE_START( micronic )
 	state->speaker = machine->device("beep");
 
 	/* ROM banks */
-	memory_configure_bank(machine, "bank1", 0x00, 0x02, memory_region(machine, Z80_TAG), 0x10000);
+	memory_configure_bank(machine, "bank1", 0x00, 0x02, machine->region(Z80_TAG)->base(), 0x10000);
 
 	/* RAM banks */
 	memory_configure_bank(machine, "bank1", 0x02, 0x07, messram_get_ptr(machine->device("messram")), 0x8000);
@@ -478,42 +478,42 @@ static MACHINE_RESET( micronic )
 
 static MACHINE_CONFIG_START( micronic, micronic_state )
 	/* basic machine hardware */
-    MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_3_579545MHz)
-    MDRV_CPU_PROGRAM_MAP(micronic_mem)
-    MDRV_CPU_IO_MAP(micronic_io)
+    MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_3_579545MHz)
+    MCFG_CPU_PROGRAM_MAP(micronic_mem)
+    MCFG_CPU_IO_MAP(micronic_io)
 
-    MDRV_MACHINE_START(micronic)
-	MDRV_MACHINE_RESET(micronic)
+    MCFG_MACHINE_START(micronic)
+	MCFG_MACHINE_RESET(micronic)
 
     /* video hardware */
-	MDRV_SCREEN_ADD(SCREEN_TAG, LCD)
-	MDRV_SCREEN_REFRESH_RATE(80)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(120, 64)	//6x20, 8x8
-	MDRV_SCREEN_VISIBLE_AREA(0, 120-1, 0, 64-1)
+	MCFG_SCREEN_ADD(SCREEN_TAG, LCD)
+	MCFG_SCREEN_REFRESH_RATE(80)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(120, 64)	//6x20, 8x8
+	MCFG_SCREEN_VISIBLE_AREA(0, 120-1, 0, 64-1)
 
-	MDRV_DEFAULT_LAYOUT(layout_lcd)
+	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(micronic)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(micronic)
 
-    MDRV_VIDEO_START(micronic)
-    MDRV_VIDEO_UPDATE(micronic)
+    MCFG_VIDEO_START(micronic)
+    MCFG_VIDEO_UPDATE(micronic)
 
-	MDRV_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
+	MCFG_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO( "mono" )
-	MDRV_SOUND_ADD( "beep", BEEP, 0 )
-	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
+	MCFG_SPEAKER_STANDARD_MONO( "mono" )
+	MCFG_SOUND_ADD( "beep", BEEP, 0 )
+	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
 	/* ram banks */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("224K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("224K")
 
-	MDRV_NVRAM_HANDLER(micronic)
+	MCFG_NVRAM_HANDLER(micronic)
 	
-	MDRV_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
+	MCFG_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
 MACHINE_CONFIG_END
 
 /* ROM definition */

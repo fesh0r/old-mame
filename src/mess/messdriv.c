@@ -154,6 +154,7 @@ const game_driver * const drivers[] =
 	DRIVER( shmc1200 )
 	DRIVER( cm1200 )
 	DRIVER( apollo80 )
+	DRIVER( d6800 )		/* Dream 6800 */
 
 	/* Ensoniq */
 	DRIVER( esq1 )	/* 1986 ESQ-1 Digital Wave Synthesizer */
@@ -312,7 +313,7 @@ const game_driver * const drivers[] =
 	DRIVER( bbcb )	  /* 1981 BBC Micro Model B    */
 	DRIVER( bbcbp )	 /* 198? BBC Micro Model B+ 64K   */
 	DRIVER( bbcbp128 )  /* 198? BBC Micro Model B+ 128K  */
-	DRIVER( bbcm)	   /* 198? BBC Master     */
+	DRIVER( bbcm )	   /* 198? BBC Master     */
 	DRIVER( bbcbc )	 /* 1985 BBC Bridge Companion   */
 	DRIVER( electron )  /* 1983 Acorn Electron    */
 	DRIVER( a310 )	  /* 1988 Acorn Archimedes 310  */
@@ -477,6 +478,9 @@ const game_driver * const drivers[] =
 	DRIVER( falcon )    /* Atari Falcon030    */
 	DRIVER( falcon40 )  /* Atari Falcon040 (prototype)    */
 
+	/* AT&T */
+	DRIVER( 3b1 )		/* 3B1 "Unix PC" */
+
 	/* Commodore */
 	DRIVER( kim1 )	  /* Commodore (MOS) KIM-1 1975    */
 	DRIVER( sym1 )	  /* Synertek SYM-1    */
@@ -522,6 +526,8 @@ const game_driver * const drivers[] =
 	DRIVER( pet64 )	 /* Commodore PET 64     */
 	DRIVER( cbm4064 )   /* Commodore CBM 4064      */
 	DRIVER( edu64 )	 /* Commodore Educator 64   */
+//  DRIVER( clipper )  /* C64 in a briefcase with 3" floppy, electroluminescent flat screen, thermal printer */
+//  DRIVER( tesa6240 )  /*  modified SX64 with label printer */
 	DRIVER( sx64 )	  /* Commodore SX-64 Executive Machine (PAL)      */
 	DRIVER( vip64 )	 /* Commodore VIP64 (SX64, PAL, Swedish)     */
 //  DRIVER( dx64 )    /* Commodore DX-64 - Prototype      */
@@ -627,7 +633,7 @@ const game_driver * const drivers[] =
 
 	DRIVER( xtvga )	 /* 198? PC-XT (VGA, MF2 Keyboard)     */
 	DRIVER( iskr1031 )
-	DRIVER( iskr1030m)
+	DRIVER( iskr1030m )
 	DRIVER( ec1840 )
 	DRIVER( ec1841 )
 	DRIVER( ec1845 )
@@ -635,6 +641,7 @@ const game_driver * const drivers[] =
 	DRIVER( poisk1 )
 	DRIVER( poisk2 )
 	DRIVER( mc1702 )
+	DRIVER( mc1502 )
 
 	/* AT */
 	DRIVER( ibm5170 )   /* 1984 IBM PC/AT 5170, original 6 MHz model    */
@@ -647,6 +654,7 @@ const game_driver * const drivers[] =
 	DRIVER( at386 )	 /* 19?? IBM AT 386   */
 	DRIVER( at486 )	 /* 19?? IBM AT 486   */
 	DRIVER( at586 )	 /* 19?? AT 586   */
+	DRIVER( c386sx16 )	/* 1990 Commodore 386SX-16 */
 	DRIVER( ficvt503 )	/* 1997 FIC VT-503  */
 	DRIVER( megapc )
 	DRIVER( megapcpl )
@@ -658,7 +666,7 @@ const game_driver * const drivers[] =
 	DRIVER( palmpers )  /* Palm Pilot Personal */
 	DRIVER( palmpro )   /* Palm Pilot Professional */
 	DRIVER( palmiii )   /* Palm III */
-	DRIVER( palmiiic)   /* Palm IIIc */
+	DRIVER( palmiiic )   /* Palm IIIc */
 	DRIVER( palmv )	 /* Palm V */
 	DRIVER( palmvx )	/* Palm Vx */
 	DRIVER( palmm100 )  /* Palm m100 */
@@ -673,6 +681,7 @@ const game_driver * const drivers[] =
 
 	/* Osborne */
 	DRIVER( osborne1 )  /* 1981 Osborne-1      */
+	DRIVER( osbexec )	/* 1982 Osborne Executive */
 
 	/* Research Machines */
 	DRIVER( nimbus )	/* RM Nimbus 186 */
@@ -787,12 +796,12 @@ const game_driver * const drivers[] =
 	DRIVER( ti99_4e )   /* 1980 TI-99/4 with 50Hz video  */
 	DRIVER( ti99_4a )   /* 1981 TI-99/4A    */
 	DRIVER( ti99_4ae )  /* 1981 TI-99/4A with 50Hz video    */
-	DRIVER( ti99_4ev)   /* 1994 TI-99/4A with EVPC video card      */
+	DRIVER( ti99_4ev )   /* 1994 TI-99/4A with EVPC video card      */
 	DRIVER( ti99_8 )	/* 1983 TI-99/8  */
 	DRIVER( ti99_8e )   /* 1983 TI-99/8 with 50Hz video  */
 
 	/* TI 99 clones */
-	DRIVER( tutor)	  /* 1983? Tomy Tutor    */
+	DRIVER( tutor )	  /* 1983? Tomy Tutor    */
 	DRIVER( pyuuta )	/* 1982 Tomy Pyuuta     */
 	DRIVER( geneve )	/* 1987? Myarc Geneve 9640    */
 	DRIVER( genmod )	/* 199?? Myarc Geneve 9640    */
@@ -889,13 +898,14 @@ const game_driver * const drivers[] =
 	DRIVER( sc80 )
 
 	/* Microbee Systems */
-	DRIVER( mbee )	  /* Microbee 16 Standard or Plus    */
+	DRIVER( mbee )		/* Microbee 16 Standard or Plus    */
 	DRIVER( mbeeic )	/* Microbee 32 IC      */
 	DRIVER( mbeepc )	/* Microbee 32 PC      */
-	DRIVER( mbeepc85 )  /* Microbee 32 PC85  */
-	DRIVER( mbeepc85b )  /* Microbee 32 PC85 (Business version) */
-	DRIVER( mbeepc85s )  /* Microbee 32 PC85 (Swedish) */
-	DRIVER( mbeeppc )   /* Microbee 32 PPC85    */
+	DRIVER( mbeepc85 )	/* Microbee 32 PC85  */
+	DRIVER( mbeepc85b )	/* Microbee 32 PC85 (Business version) */
+	DRIVER( mbeepc85s )	/* Microbee 32 PC85 (Swedish) */
+	DRIVER( mbeeppc )	/* Microbee 32 PPC85    */
+	DRIVER( mbeett )	/* Microbee Teleterm */
 	DRIVER( mbee56 )	/* Microbee 56K (CP/M)    */
 	DRIVER( mbee64 )	/* Microbee 64K (CP/M)    */
 	DRIVER( mbee128 )	/* Microbee 128K (CP/M)    */
@@ -1078,19 +1088,19 @@ const game_driver * const drivers[] =
 	DRIVER( nms8220a )  /* 1986 MSX2    */
 	DRIVER( vg8230 )	/* 1986 MSX2    */
 	DRIVER( vg8235 )	/* 1986 MSX2    */
-	DRIVER( vg8235f)	/* 1986 MSX2    */
-	DRIVER( vg8240) /* 1986 MSX2    */
+	DRIVER( vg8235f )	/* 1986 MSX2    */
+	DRIVER( vg8240 ) /* 1986 MSX2    */
 	DRIVER( nms8245 )   /* 1986 MSX2    */
-	DRIVER( nms8245f)   /* 1986 MSX2    */
+	DRIVER( nms8245f )   /* 1986 MSX2    */
 	DRIVER( nms8250 )   /* 1986 MSX2    */
 	DRIVER( nms8255 )   /* 1986 MSX2    */
 	DRIVER( nms8280 )   /* 1986 MSX2    */
-	DRIVER( nms8280g)   /* 1986 MSX2    */
-	DRIVER( tpc310)   /* 1986 MSX2    */
-	DRIVER( hx23)	   /* 1986 MSX2 */
-	DRIVER( hx23f)	/* 1986 MSX2      */
-	DRIVER( cx7m)	   /* 1986 MSX2 */
-	DRIVER( cx7m128)	/* 1986 MSX2    */
+	DRIVER( nms8280g )   /* 1986 MSX2    */
+	DRIVER( tpc310 )   /* 1986 MSX2    */
+	DRIVER( hx23 )	   /* 1986 MSX2 */
+	DRIVER( hx23f )	/* 1986 MSX2      */
+	DRIVER( cx7m )	   /* 1986 MSX2 */
+	DRIVER( cx7m128 )	/* 1986 MSX2    */
 	DRIVER( fs5500 )	/* 1985 MSX2 Japan    */
 	DRIVER( fs4500 )	/* 1986 MSX2 Japan    */
 	DRIVER( fs4700 )	/* 1986 MSX2 Japan    */
@@ -1139,24 +1149,24 @@ const game_driver * const drivers[] =
 
 	/* DEC */
 	DRIVER( pdp1 )	  /* 1961 DEC PDP1  */
-	DRIVER(vt100) /* 1978 Digital Equipment Corporation */
-	//DRIVER(vt100wp) /* 1978 Digital Equipment Corporation */
-	//DRIVER(vt100stp) /* 1978 Digital Equipment Corporation */
-	//DRIVER(vt101) /* 1981 Digital Equipment Corporation */
-	//DRIVER(vt102) /* 1981 Digital Equipment Corporation */
-	//DRIVER(vt103) /* 1979 Digital Equipment Corporation */
-	DRIVER(vt105) /* 1978 Digital Equipment Corporation */
-	//DRIVER(vt110) /* 1978 Digital Equipment Corporation */
-	//DRIVER(vt125) /* 1981 Digital Equipment Corporation */
-	DRIVER(vt131) /* 1981 Digital Equipment Corporation */
-	//DRIVER(vt132) /* 1978 Digital Equipment Corporation */
-	//DRIVER(vt180) /* 1981 Digital Equipment Corporation */
-	DRIVER(vt220) /* 1983 Digital Equipment Corporation */
-	DRIVER(vt320) /* 1987 Digital Equipment Corporation */
-	DRIVER(vt520) /* 1994 Digital Equipment Corporation */
-	DRIVER(vk100) /* 1980 Digital Equipment Corporation */
-	DRIVER(dectalk) /* 1982 Digital Equipment Corporation */
-	DRIVER(mc7105) /* Elektronika MC7105 */
+	DRIVER( vt100 ) /* 1978 Digital Equipment Corporation */
+	//DRIVER( vt100wp ) /* 1978 Digital Equipment Corporation */
+	//DRIVER( vt100stp ) /* 1978 Digital Equipment Corporation */
+	//DRIVER( vt101 ) /* 1981 Digital Equipment Corporation */
+	//DRIVER( vt102 ) /* 1981 Digital Equipment Corporation */
+	//DRIVER( vt103 ) /* 1979 Digital Equipment Corporation */
+	DRIVER( vt105 ) /* 1978 Digital Equipment Corporation */
+	//DRIVER( vt110 ) /* 1978 Digital Equipment Corporation */
+	//DRIVER( vt125 ) /* 1981 Digital Equipment Corporation */
+	DRIVER( vt131 ) /* 1981 Digital Equipment Corporation */
+	//DRIVER( vt132 ) /* 1978 Digital Equipment Corporation */
+	DRIVER( vt180 ) /* 1981 Digital Equipment Corporation */
+	DRIVER( vt220 ) /* 1983 Digital Equipment Corporation */
+	DRIVER( vt320 ) /* 1987 Digital Equipment Corporation */
+	DRIVER( vt520 ) /* 1994 Digital Equipment Corporation */
+	DRIVER( vk100 ) /* 1980 Digital Equipment Corporation */
+	DRIVER( dectalk ) /* 1982 Digital Equipment Corporation */
+	DRIVER( mc7105 ) /* Elektronika MC7105 */
 
 	/* Memotech */
 	DRIVER( mtx512 )	/* 1983 Memotech MTX 512    */
@@ -1220,6 +1230,7 @@ const game_driver * const drivers[] =
 	DRIVER( hp48gx )	/* HP 48GX */
 	DRIVER( hp48gp )	/* HP 48G+ */
 	DRIVER( hp49g )
+	DRIVER( hp49gp )	/* HP 49G+ */
 	DRIVER( hp16500b )
 
 	/* SpectraVideo */
@@ -1235,29 +1246,29 @@ const game_driver * const drivers[] =
 	DRIVER( apexc )	 /* 1955(?) APEXC: All-Purpose Electronic X-ray Computer */
 
 	/* Corvus */
-	DRIVER(concept)	 /* 1982 Corvus Concept   */
+	DRIVER( concept )	 /* 1982 Corvus Concept   */
 
 	/* DAI */
-	DRIVER(dai)	 /* DAI   */
+	DRIVER( dai )	 /* DAI   */
 
 	/* Telenova */
-	DRIVER(compis)	  /* 1985 Telenova Compis    */
-	DRIVER(compis2)	 /* 1985 Telenova Compis     */
+	DRIVER( compis )	  /* 1985 Telenova Compis    */
+	DRIVER( compis2 )	 /* 1985 Telenova Compis     */
 
 	/* Multitech */
-	DRIVER(mpf1)	/* 1979 Multitech Micro Professor 1  */
-	DRIVER(mpf1b)	   /* 1979 Multitech Micro Professor 1B */
+	DRIVER( mpf1 )	/* 1979 Multitech Micro Professor 1  */
+	DRIVER( mpf1b )	   /* 1979 Multitech Micro Professor 1B */
 
 	/* Telercas Oy */
-//  DRIVER(tmc1800)
-	DRIVER(tmc2000)
-	DRIVER(tmc2000e)
-//  DRIVER(tmc600s1)
-	DRIVER(tmc600s2)
+	DRIVER( tmc1800 )
+	DRIVER( tmc2000 )
+	DRIVER( tmc2000e )
+//  DRIVER( tmc600s1 )
+	DRIVER( tmc600s2 )
 
 	/* OSCOM Oy */
-//  DRIVER(osc1000b)
-	DRIVER(nano)
+	DRIVER( osc1000b )
+	DRIVER( nano )
 
 	/* MIT */
 	DRIVER( tx0_64kw )  /* April 1956 MIT TX-0 (64kw RAM)      */
@@ -1265,7 +1276,6 @@ const game_driver * const drivers[] =
 
 	/* Luxor Datorer AB */
 	DRIVER( abc80 )
-//  DRIVER( abc80h )
 	DRIVER( abc802 )
 	DRIVER( abc800m )
 	DRIVER( abc800c )
@@ -1278,6 +1288,9 @@ const game_driver * const drivers[] =
 
 	/* Tiger Electronics */
 	DRIVER( gamecom )   /* Tiger Game.com      */
+
+	/* Tiger Telematics */
+	DRIVER( gizmondo )
 
 	/* Thomson */
 	DRIVER( t9000 )	 /* 1980 Thomson T9000 (TO7 prototype)     */
@@ -1363,51 +1376,52 @@ const game_driver * const drivers[] =
 	DRIVER( apogee )
 	DRIVER( mikrosha )
 	DRIVER( partner )
+	DRIVER( impuls03 )
 
 	/* Homelab */
-	DRIVER (homelab2)
-	DRIVER (homelab3)
-	DRIVER (homelab4)
-	DRIVER (brailab4)
+	DRIVER ( homelab2 )
+	DRIVER ( homelab3 )
+	DRIVER ( homelab4 )
+	DRIVER ( brailab4 )
 
 	/* Irisha */
-	DRIVER (irisha)
+	DRIVER ( irisha )
 
 	/* PK-8020 */
-	DRIVER (korvet)
-	DRIVER (kontur)
-	DRIVER (neiva)
+	DRIVER ( korvet )
+	DRIVER ( kontur )
+	DRIVER ( neiva )
 
 	/* Vector-06c */
-	DRIVER (vector06)
+	DRIVER ( vector06 )
 
 	/* Robotron 1715 */
-	DRIVER (rt1715)
-	DRIVER (rt1715lc) /* (latin/cyrillic) */
-	DRIVER (rt1715w)
+	DRIVER ( rt1715 )
+	DRIVER ( rt1715lc ) /* (latin/cyrillic) */
+	DRIVER ( rt1715w )
 
 	/* Z1013 */
-	DRIVER (z1013)
-	DRIVER (z1013a2)
-	DRIVER (z1013k76)
-	DRIVER (z1013s60)
-	DRIVER (z1013k69)
+	DRIVER ( z1013 )
+	DRIVER ( z1013a2 )
+	DRIVER ( z1013k76 )
+	DRIVER ( z1013s60 )
+	DRIVER ( z1013k69 )
 
 	/* LLC */
-	DRIVER (llc1)
-	DRIVER (llc2)
+	DRIVER ( llc1 )
+	DRIVER ( llc2 )
 
 	/* PP-01 */
-	DRIVER (pp01)
+	DRIVER ( pp01 )
 
 	/* Ondra */
-	DRIVER (ondrat)
-	DRIVER (ondrav)
+	DRIVER ( ondrat )
+	DRIVER ( ondrav )
 
 	/* SAPI-1 */
-	DRIVER (sapi1)
-	DRIVER (sapizps2)
-	DRIVER (sapizps3)
+	DRIVER ( sapi1 )
+	DRIVER ( sapizps2 )
+	DRIVER ( sapizps3 )
 
   /* Spectrum clones */
 
@@ -1427,13 +1441,13 @@ const game_driver * const drivers[] =
 	DRIVER( jet )	 /* 1990 JET     */
 
   /* Didaktik Skalica */
-	DRIVER( dgama87)  /* 1987 Didaktik Gama 87    */
-	DRIVER( dgama88)  /* 1988 Didaktik Gama 88    */
-	DRIVER( dgama89)  /* 1989 Didaktik Gama 89    */
-	DRIVER( didakt90) /* 1990 Didaktik Skalica 90      */
-	DRIVER( didakm91) /* 1991 Didaktik M 91  */
-	DRIVER( didaktk)  /* 1992 Didaktik Kompakt    */
-	DRIVER( didakm93) /* 1993 Didaktik M 93  */
+	DRIVER( dgama87 )  /* 1987 Didaktik Gama 87    */
+	DRIVER( dgama88 )  /* 1988 Didaktik Gama 88    */
+	DRIVER( dgama89 )  /* 1989 Didaktik Gama 89    */
+	DRIVER( didakt90 ) /* 1990 Didaktik Skalica 90      */
+	DRIVER( didakm91 ) /* 1991 Didaktik M 91  */
+	DRIVER( didaktk )  /* 1992 Didaktik Kompakt    */
+	DRIVER( didakm93 ) /* 1993 Didaktik M 93  */
 
 	DRIVER( mistrum ) /* 1988 Mistrum      */
 
@@ -1448,20 +1462,20 @@ const game_driver * const drivers[] =
 	DRIVER( zvezda )  /* 1990 Zvezda */
 
 	/* Kramer */
-	DRIVER(kramermc)	/* 1987 Kramer MC   */
+	DRIVER( kramermc )	/* 1987 Kramer MC   */
 
 	/* AC1 */
-	DRIVER(ac1)	 /* 1984 Amateurcomputer AC1     */
-	DRIVER(ac1_32)  /* 1984 Amateurcomputer AC1 (32 lines)  */
-	DRIVER(ac1scch) /* 1984 Amateurcomputer AC1 SCCH    */
+	DRIVER( ac1 )	 /* 1984 Amateurcomputer AC1     */
+	DRIVER( ac1_32 )  /* 1984 Amateurcomputer AC1 (32 lines)  */
+	DRIVER( ac1scch ) /* 1984 Amateurcomputer AC1 SCCH    */
 
 	DRIVER( pcm )   /* PC/M Mugler    */
 
 	/* Ei Nis */
-	DRIVER(pecom64)
+	DRIVER( pecom64 )
 
 	/* Samsung SPC-1000 */
-	DRIVER(spc1000)
+	DRIVER( spc1000 )
 
 	/* PolyMorphic Systems */
 	DRIVER( poly88 )
@@ -1505,10 +1519,10 @@ const game_driver * const drivers[] =
 	DRIVER( trsm100 )
 	DRIVER( tandy102 )
 	DRIVER( tandy200 )
-    DRIVER( pc8201 )
+	DRIVER( pc8201 )
 	DRIVER( pc8201a )
-//  DRIVER( npc8300 )
-//  DRIVER( pc8401a )
+    DRIVER( npc8300 )
+//  DRIVER( pc8401bd )
 	DRIVER( pc8500 )
 
 	/* Nakajima manufactured eletronic typewriters */
@@ -1545,6 +1559,7 @@ const game_driver * const drivers[] =
 	DRIVER( prof80g31 )
 	DRIVER( prof80g562 )
 	DRIVER( prof180x )
+	DRIVER( prof181x )
 
 /****************Games*******************************************************/
 	/* Computer Electronic */
@@ -1640,14 +1655,14 @@ const game_driver * const drivers[] =
 	DRIVER( beehive )
 	DRIVER( uts20 )
 	DRIVER( uknc )
-	DRIVER( zx97)
-	DRIVER( x07)
-	DRIVER( vesta)
-	DRIVER( hobby)
-	DRIVER( pk8002)
-	DRIVER( unior)
-	DRIVER( vec1200)
-	DRIVER( pk6128c)
+	DRIVER( zx97 )
+	DRIVER( x07 )
+	DRIVER( vesta )
+	DRIVER( hobby )
+	DRIVER( pk8002 )
+	DRIVER( unior )
+	DRIVER( vec1200 )
+	DRIVER( pk6128c )
 	DRIVER( tvc64 )
 	DRIVER( tvc64p )
 	DRIVER( tvc64pru )
@@ -1736,12 +1751,15 @@ const game_driver * const drivers[] =
 	DRIVER( scv )
 	DRIVER( scv_pal )
 	DRIVER( vii ) // Chintendo / KenSingTon / Jungle Soft / Siatronics Vii
+	DRIVER( vsmile )
 	DRIVER( zsbc3 )
 	DRIVER( dms5000 )
 	DRIVER( dms86 )
 	DRIVER( codata )
 	DRIVER( rvoicepc )
 	DRIVER( vcc )
+	DRIVER( uvc )
+	DRIVER( abc )
 	DRIVER( victor9k )
 	DRIVER( phc25 )
 	DRIVER( phc25j )
@@ -1798,5 +1816,18 @@ const game_driver * const drivers[] =
 	DRIVER( bullet )
 	DRIVER( pc4 )
 	DRIVER( pofo )
-
+	DRIVER( homez80 )
+	DRIVER( tek4051 )
+	DRIVER( tek4052a )
+	DRIVER( tek4107a )
+	DRIVER( tek4109a )
+	DRIVER( phunsy )
+	DRIVER( ob68k1a )
+	DRIVER( vta2000 )
+	DRIVER( dct11em )
+	DRIVER( sm1800 )
+	DRIVER( mikrolab )
+	DRIVER( dim68k )
+	DRIVER( okean240 )
+	
 #endif /* DRIVER_RECURSIVE */

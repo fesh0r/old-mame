@@ -84,15 +84,15 @@ static ADDRESS_MAP_START( c65_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0dc00, 0x0dfff) AM_READ_BANK("bank8") AM_WRITE_BANK("bank9")
 	AM_RANGE(0x0e000, 0x0ffff) AM_READ_BANK("bank10") AM_WRITE_BANK("bank15")
 	AM_RANGE(0x10000, 0x1f7ff) AM_RAM
-	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE(&c64_colorram)
+	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE_MEMBER(c65_state, colorram)
 
 	AM_RANGE(0x20000, 0x23fff) AM_ROM /* &c65_dos,     maps to 0x8000    */
 	AM_RANGE(0x24000, 0x28fff) AM_ROM /* reserved */
-	AM_RANGE(0x29000, 0x29fff) AM_ROM AM_BASE(&c65_chargen)
-	AM_RANGE(0x2a000, 0x2bfff) AM_ROM AM_BASE(&c64_basic)
-	AM_RANGE(0x2c000, 0x2cfff) AM_ROM AM_BASE(&c65_interface)
-	AM_RANGE(0x2d000, 0x2dfff) AM_ROM AM_BASE(&c64_chargen)
-	AM_RANGE(0x2e000, 0x2ffff) AM_ROM AM_BASE(&c64_kernal)
+	AM_RANGE(0x29000, 0x29fff) AM_ROM AM_BASE_MEMBER(c65_state, chargen)
+	AM_RANGE(0x2a000, 0x2bfff) AM_ROM AM_BASE_MEMBER(c65_state, basic)
+	AM_RANGE(0x2c000, 0x2cfff) AM_ROM AM_BASE_MEMBER(c65_state, interface)
+	AM_RANGE(0x2d000, 0x2dfff) AM_ROM AM_BASE_MEMBER(c65_state, chargen)
+	AM_RANGE(0x2e000, 0x2ffff) AM_ROM AM_BASE_MEMBER(c65_state, kernal)
 
 	AM_RANGE(0x30000, 0x31fff) AM_ROM /*&c65_monitor,     monitor maps to 0x6000    */
 	AM_RANGE(0x32000, 0x37fff) AM_ROM /*&c65_basic, */
@@ -215,7 +215,7 @@ static CBM_IEC_DAISY( cbm_iec_daisy )
 
 static VIDEO_UPDATE( c65 )
 {
-	running_device *vic3 = screen->machine->device("vic3");
+	device_t *vic3 = screen->machine->device("vic3");
 
 	vic3_video_update(vic3, bitmap, cliprect);
 	return 0;
@@ -236,9 +236,10 @@ static UINT8 c65_lightpen_button_cb( running_machine *machine )
 	return input_port_read(machine, "OTHER") & 0x04;
 }
 
-static UINT8 c65_c64_mem_r( int offset )
+static UINT8 c65_c64_mem_r( running_machine *machine, int offset )
 {
-	return c64_memory[offset];
+	c65_state *state = machine->driver_data<c65_state>();
+	return state->memory[offset];
 }
 
 static const vic3_interface c65_vic3_ntsc_intf = {
@@ -271,7 +272,7 @@ static const vic3_interface c65_vic3_pal_intf = {
 
 static INTERRUPT_GEN( vic3_raster_irq )
 {
-	running_device *vic3 = device->machine->device("vic3");
+	device_t *vic3 = device->machine->device("vic3");
 
 	vic3_raster_interrupt_gen(vic3);
 }
@@ -282,77 +283,77 @@ static INTERRUPT_GEN( vic3_raster_irq )
  *
  *************************************/
 
-static MACHINE_CONFIG_START( c65, driver_device )
+static MACHINE_CONFIG_START( c65, c65_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M4510, 3500000)  /* or VIC6567_CLOCK, */
-	MDRV_CPU_PROGRAM_MAP(c65_mem)
-	MDRV_CPU_VBLANK_INT("screen", c65_frame_interrupt)
-	MDRV_CPU_PERIODIC_INT(vic3_raster_irq, VIC6567_HRETRACERATE)
+	MCFG_CPU_ADD("maincpu", M4510, 3500000)  /* or VIC6567_CLOCK, */
+	MCFG_CPU_PROGRAM_MAP(c65_mem)
+	MCFG_CPU_VBLANK_INT("screen", c65_frame_interrupt)
+	MCFG_CPU_PERIODIC_INT(vic3_raster_irq, VIC6567_HRETRACERATE)
 
-	MDRV_MACHINE_START( c65 )
+	MCFG_MACHINE_START( c65 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_SIZE(525 * 2, 520 * 2)
-	MDRV_SCREEN_VISIBLE_AREA(VIC6567_STARTVISIBLECOLUMNS ,(VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1) * 2, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_SIZE(525 * 2, 520 * 2)
+	MCFG_SCREEN_VISIBLE_AREA(VIC6567_STARTVISIBLECOLUMNS ,(VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1) * 2, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1)
 
-	MDRV_PALETTE_LENGTH(0x100)
-	MDRV_PALETTE_INIT( c65 )
+	MCFG_PALETTE_LENGTH(0x100)
+	MCFG_PALETTE_INIT( c65 )
 
-	MDRV_VIDEO_UPDATE( c65 )
+	MCFG_VIDEO_UPDATE( c65 )
 
-	MDRV_VIC3_ADD("vic3", c65_vic3_ntsc_intf)
+	MCFG_VIC3_ADD("vic3", c65_vic3_ntsc_intf)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MDRV_SOUND_ADD("sid_r", SID8580, 985248)
-	MDRV_SOUND_CONFIG(c65_sound_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
-	MDRV_SOUND_ADD("sid_l", SID8580, 985248)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MCFG_SOUND_ADD("sid_r", SID8580, 985248)
+	MCFG_SOUND_CONFIG(c65_sound_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
+	MCFG_SOUND_ADD("sid_l", SID8580, 985248)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD("quickload", cbm_c65, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MCFG_QUICKLOAD_ADD("quickload", cbm_c65, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cia */
-	MDRV_MOS6526R1_ADD("cia_0", 3500000, c65_ntsc_cia0)
-	MDRV_MOS6526R1_ADD("cia_1", 3500000, c65_ntsc_cia1)
+	MCFG_MOS6526R1_ADD("cia_0", 3500000, c65_ntsc_cia0)
+	MCFG_MOS6526R1_ADD("cia_1", 3500000, c65_ntsc_cia1)
 
 	/* floppy from serial bus */
-	MDRV_CBM_IEC_ADD("serial_bus", cbm_iec_daisy)
+	MCFG_CBM_IEC_ADD("serial_bus", cbm_iec_daisy)
 
-	MDRV_FRAGMENT_ADD(c64_cartslot)
+	MCFG_FRAGMENT_ADD(c64_cartslot)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")
-	MDRV_RAM_EXTRA_OPTIONS("640K,4224K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_EXTRA_OPTIONS("640K,4224K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( c65pal, c65 )
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
-	MDRV_SCREEN_SIZE(625 * 2, 520 * 2)
-	MDRV_SCREEN_VISIBLE_AREA(VIC6569_STARTVISIBLECOLUMNS, (VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1) * 2, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
+	MCFG_SCREEN_SIZE(625 * 2, 520 * 2)
+	MCFG_SCREEN_VISIBLE_AREA(VIC6569_STARTVISIBLECOLUMNS, (VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1) * 2, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1)
 
-	MDRV_DEVICE_REMOVE("vic3")
-	MDRV_VIC3_ADD("vic3", c65_vic3_pal_intf)
+	MCFG_DEVICE_REMOVE("vic3")
+	MCFG_VIC3_ADD("vic3", c65_vic3_pal_intf)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("sid_r", SID8580, 1022727)
-	MDRV_SOUND_CONFIG(c65_sound_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
-	MDRV_SOUND_REPLACE("sid_l", SID8580, 1022727)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MCFG_SOUND_REPLACE("sid_r", SID8580, 1022727)
+	MCFG_SOUND_CONFIG(c65_sound_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
+	MCFG_SOUND_REPLACE("sid_l", SID8580, 1022727)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
 
 	/* cia */
-	MDRV_DEVICE_REMOVE("cia_0")
-	MDRV_DEVICE_REMOVE("cia_1")
-	MDRV_MOS6526R1_ADD("cia_0", 3500000, c65_pal_cia0)
-	MDRV_MOS6526R1_ADD("cia_1", 3500000, c65_pal_cia1)
+	MCFG_DEVICE_REMOVE("cia_0")
+	MCFG_DEVICE_REMOVE("cia_1")
+	MCFG_MOS6526R1_ADD("cia_0", 3500000, c65_pal_cia0)
+	MCFG_MOS6526R1_ADD("cia_1", 3500000, c65_pal_cia1)
 MACHINE_CONFIG_END
 
 

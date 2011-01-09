@@ -399,17 +399,17 @@ C64DTV TODO:
  *************************************/
 
 static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE(&c64_memory)
-	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE(&c64_roml)
+	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE_MEMBER(c64_state, memory)
+	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE_MEMBER(c64_state, c64_roml)
 	AM_RANGE(0xd000, 0xd3ff) AM_DEVREADWRITE("vic2", vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd7ff) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)
-	AM_RANGE(0xd800, 0xdbff) AM_RAM_WRITE( c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
+	AM_RANGE(0xd800, 0xdbff) AM_RAM_WRITE( c64_colorram_write) AM_BASE_MEMBER(c64_state, colorram) /* colorram  */
 	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE("cia_0", mos6526_r, mos6526_w)
-	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE(&c64_romh)				/* ram or kernel rom */
+	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE_MEMBER(c64_state, c64_romh)				/* ram or kernel rom */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(c64_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE(&c64_memory)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE_MEMBER(c64_state, memory)
 	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")		/* ram or external roml */
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK("bank3") AM_WRITEONLY				/* ram or basic rom or external romh */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
@@ -568,7 +568,7 @@ static CBM_IEC_DAISY( cbm_iec_daisy )
 
 static VIDEO_UPDATE( c64 )
 {
-	running_device *vic2 = screen->machine->device("vic2");
+	device_t *vic2 = screen->machine->device("vic2");
 
 	vic2_video_update(vic2, bitmap, cliprect);
 	return 0;
@@ -591,31 +591,34 @@ static UINT8 c64_lightpen_button_cb( running_machine *machine )
 
 static int c64_dma_read( running_machine *machine, int offset )
 {
-	if (!c64_game && c64_exrom)
+	c64_state *state = machine->driver_data<c64_state>();
+	if (!state->game && state->exrom)
 	{
 		if (offset < 0x3000)
-			return c64_memory[offset];
+			return state->memory[offset];
 
-		return c64_romh[offset & 0x1fff];
+		return state->c64_romh[offset & 0x1fff];
 	}
 
-	if (((c64_vicaddr - c64_memory + offset) & 0x7000) == 0x1000)
-		return c64_chargen[offset & 0xfff];
+	if (((state->vicaddr - state->memory + offset) & 0x7000) == 0x1000)
+		return state->chargen[offset & 0xfff];
 
-	return c64_vicaddr[offset];
+	return state->vicaddr[offset];
 }
 
 static int c64_dma_read_ultimax( running_machine *machine, int offset )
 {
+	c64_state *state = machine->driver_data<c64_state>();
 	if (offset < 0x3000)
-		return c64_memory[offset];
+		return state->memory[offset];
 
-	return c64_romh[offset & 0x1fff];
+	return state->c64_romh[offset & 0x1fff];
 }
 
 static int c64_dma_read_color( running_machine *machine, int offset )
 {
-	return c64_colorram[offset & 0x3ff] & 0xf;
+	c64_state *state = machine->driver_data<c64_state>();
+	return state->colorram[offset & 0x3ff] & 0xf;
 }
 
 static UINT8 c64_rdy_cb( running_machine *machine )
@@ -669,154 +672,154 @@ static const vic2_interface ultimax_vic2_intf = {
  *
  *************************************/
 
-static MACHINE_CONFIG_START( c64, driver_device )
+static MACHINE_CONFIG_START( c64, c64_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6510, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(c64_mem)
-	MDRV_CPU_CONFIG( c64_m6510_interface )
-	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
-	//MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
-	MDRV_QUANTUM_TIME(HZ(60))
+	MCFG_CPU_ADD("maincpu", M6510, VIC6567_CLOCK)
+	MCFG_CPU_PROGRAM_MAP(c64_mem)
+	MCFG_CPU_CONFIG( c64_m6510_interface )
+	MCFG_CPU_VBLANK_INT("screen", c64_frame_interrupt)
+	//MCFG_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
+	MCFG_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_START( c64 )
-	MDRV_MACHINE_RESET( c64 )
+	MCFG_MACHINE_START( c64 )
+	MCFG_MACHINE_RESET( c64 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
-	MDRV_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
+	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
 
-	MDRV_PALETTE_INIT( c64 )
-	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
+	MCFG_PALETTE_INIT( c64 )
+	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
 
-	MDRV_VIDEO_UPDATE( c64 )
+	MCFG_VIDEO_UPDATE( c64 )
 
-	MDRV_VIC2_ADD("vic2", c64_vic2_ntsc_intf)
+	MCFG_VIC2_ADD("vic2", c64_vic2_ntsc_intf)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sid6581", SID6581, VIC6567_CLOCK)
-	MDRV_SOUND_CONFIG(c64_sound_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("sid6581", SID6581, VIC6567_CLOCK)
+	MCFG_SOUND_CONFIG(c64_sound_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
+	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
-	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", cbm_cassette_config )
 
 	/* cia */
-	MDRV_MOS6526R1_ADD("cia_0", VIC6567_CLOCK, c64_ntsc_cia0)
-	MDRV_MOS6526R1_ADD("cia_1", VIC6567_CLOCK, c64_ntsc_cia1)
+	MCFG_MOS6526R1_ADD("cia_0", VIC6567_CLOCK, c64_ntsc_cia0)
+	MCFG_MOS6526R1_ADD("cia_1", VIC6567_CLOCK, c64_ntsc_cia1)
 
 	/* floppy from serial bus */
-	MDRV_CBM_IEC_ADD("iec", cbm_iec_daisy)
-	MDRV_C1541_ADD("c1541", "iec", 8)
+	MCFG_CBM_IEC_ADD("iec", cbm_iec_daisy)
+	MCFG_C1541_ADD("c1541", "iec", 8)
 
-	MDRV_FRAGMENT_ADD(c64_cartslot)
+	MCFG_FRAGMENT_ADD(c64_cartslot)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( c64pal, driver_device )
-	MDRV_CPU_ADD( "maincpu", M6510, VIC6569_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(c64_mem)
-	MDRV_CPU_CONFIG( c64_m6510_interface )
-	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
-	// MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6569_HRETRACERATE)
-	MDRV_QUANTUM_TIME(HZ(50))
+static MACHINE_CONFIG_START( c64pal, c64_state )
+	MCFG_CPU_ADD( "maincpu", M6510, VIC6569_CLOCK)
+	MCFG_CPU_PROGRAM_MAP(c64_mem)
+	MCFG_CPU_CONFIG( c64_m6510_interface )
+	MCFG_CPU_VBLANK_INT("screen", c64_frame_interrupt)
+	// MCFG_CPU_PERIODIC_INT(vic2_raster_irq, VIC6569_HRETRACERATE)
+	MCFG_QUANTUM_TIME(HZ(50))
 
-	MDRV_MACHINE_START( c64 )
-	MDRV_MACHINE_RESET( c64 )
+	MCFG_MACHINE_START( c64 )
+	MCFG_MACHINE_RESET( c64 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)) /* 2500 not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
-	MDRV_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)) /* 2500 not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
+	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
 
-	MDRV_PALETTE_INIT( c64 )
-	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
+	MCFG_PALETTE_INIT( c64 )
+	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
 
-	MDRV_VIDEO_UPDATE( c64 )
+	MCFG_VIDEO_UPDATE( c64 )
 
-	MDRV_VIC2_ADD("vic2", c64_vic2_pal_intf)
+	MCFG_VIC2_ADD("vic2", c64_vic2_pal_intf)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sid6581", SID6581, VIC6569_CLOCK)
-	MDRV_SOUND_CONFIG(c64_sound_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("sid6581", SID6581, VIC6569_CLOCK)
+	MCFG_SOUND_CONFIG(c64_sound_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
+	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
-	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", cbm_cassette_config )
 
 	/* cia */
-	MDRV_MOS6526R1_ADD("cia_0", VIC6569_CLOCK, c64_pal_cia0)
-	MDRV_MOS6526R1_ADD("cia_1", VIC6569_CLOCK, c64_pal_cia1)
+	MCFG_MOS6526R1_ADD("cia_0", VIC6569_CLOCK, c64_pal_cia0)
+	MCFG_MOS6526R1_ADD("cia_1", VIC6569_CLOCK, c64_pal_cia1)
 
 	/* floppy from serial bus */
-	MDRV_CBM_IEC_ADD("iec", cbm_iec_daisy)
-	MDRV_C1541_ADD("c1541", "iec", 8)
+	MCFG_CBM_IEC_ADD("iec", cbm_iec_daisy)
+	MCFG_C1541_ADD("c1541", "iec", 8)
 
-	MDRV_FRAGMENT_ADD(c64_cartslot)
+	MCFG_FRAGMENT_ADD(c64_cartslot)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ultimax, c64 )
-	MDRV_CPU_REPLACE( "maincpu", M6510, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP( ultimax_mem)
-	MDRV_CPU_CONFIG( c64_m6510_interface )
+	MCFG_CPU_REPLACE( "maincpu", M6510, VIC6567_CLOCK)
+	MCFG_CPU_PROGRAM_MAP( ultimax_mem)
+	MCFG_CPU_CONFIG( c64_m6510_interface )
 
-	MDRV_SOUND_REPLACE("sid6581", SID6581, VIC6567_CLOCK)
-	MDRV_SOUND_CONFIG(c64_sound_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_REPLACE("sid6581", SID6581, VIC6567_CLOCK)
+	MCFG_SOUND_CONFIG(c64_sound_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_DEVICE_REMOVE("vic2")
-	MDRV_VIC2_ADD("vic2", ultimax_vic2_intf)
+	MCFG_DEVICE_REMOVE("vic2")
+	MCFG_VIC2_ADD("vic2", ultimax_vic2_intf)
 
-	MDRV_DEVICE_REMOVE("iec")
-	MDRV_DEVICE_REMOVE("c1541")
-	MDRV_DEVICE_REMOVE("cart1")
-	MDRV_DEVICE_REMOVE("cart2")
+	MCFG_DEVICE_REMOVE("iec")
+	MCFG_DEVICE_REMOVE("c1541")
+	MCFG_DEVICE_REMOVE("cart1")
+	MCFG_DEVICE_REMOVE("cart2")
 
-	MDRV_FRAGMENT_ADD(ultimax_cartslot)
+	MCFG_FRAGMENT_ADD(ultimax_cartslot)
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_DERIVED( pet64, c64 )
-	MDRV_PALETTE_INIT( pet64 )
+	MCFG_PALETTE_INIT( pet64 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( c64gs, c64pal )
-	MDRV_DEVICE_REMOVE( "dac" )
-	MDRV_DEVICE_REMOVE( "cassette" )
-	MDRV_DEVICE_REMOVE( "quickload" )
-	//MDRV_DEVICE_REMOVE("iec")
-	//MDRV_DEVICE_REMOVE("c1541")
+	MCFG_DEVICE_REMOVE( "dac" )
+	MCFG_DEVICE_REMOVE( "cassette" )
+	MCFG_DEVICE_REMOVE( "quickload" )
+	//MCFG_DEVICE_REMOVE("iec")
+	//MCFG_DEVICE_REMOVE("c1541")
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_DERIVED( sx64, c64pal )
 
-	MDRV_DEVICE_REMOVE( "c1541" )
-	MDRV_SX1541_ADD("c1541", "iec", 8)
+	MCFG_DEVICE_REMOVE( "c1541" )
+	MCFG_SX1541_ADD("c1541", "iec", 8)
 
-	MDRV_DEVICE_REMOVE( "dac" )
-	MDRV_DEVICE_REMOVE( "cassette" )
+	MCFG_DEVICE_REMOVE( "dac" )
+	MCFG_DEVICE_REMOVE( "cassette" )
 #ifdef CPU_SYNC
-	MDRV_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_QUANTUM_TIME(HZ(180000))
+	MCFG_QUANTUM_TIME(HZ(180000))
 #endif
 MACHINE_CONFIG_END
 
@@ -990,7 +993,7 @@ COMP(1983, edu64,   c64,  0,    pet64,   c64,     c64,     "Commodore Business M
 
 COMP(1984, sx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "SX-64 Executive Computer (PAL)", GAME_NOT_WORKING)
 COMP(1984, vip64,   c64,  0,    sx64,    vip64,   sx64,    "Commodore Business Machines", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
-COMP(1983, dx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "DX-64 (Prototype, PAL)", GAME_NOT_WORKING)
+//COMP(1983, dx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines", "DX-64 (Prototype, PAL)", GAME_NOT_WORKING)
 
 COMP(1986, c64c,    c64,  0,    c64,     c64,     c64,     "Commodore Business Machines", "Commodore 64C (NTSC)", 0)
 COMP(1986, c64cpal, c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines", "Commodore 64C (PAL)", 0)

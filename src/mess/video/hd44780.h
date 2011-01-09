@@ -10,9 +10,9 @@
 #define __HD44780_H__
 
 
-#define MDRV_HD44780_ADD( _tag , _config) \
-	MDRV_DEVICE_ADD( _tag, HD44780, 0 ) \
-	MDRV_DEVICE_CONFIG(_config)
+#define MCFG_HD44780_ADD( _tag , _config) \
+	MCFG_DEVICE_ADD( _tag, HD44780, 0 ) \
+	MCFG_DEVICE_CONFIG(_config)
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -24,7 +24,7 @@ struct hd44780_interface
 {
 	UINT8 height;			// number of lines
 	UINT8 width;			// chars for line
-	UINT8 *custom_layout;	// custom display layout (NULL for default)
+	const UINT8 *custom_layout;	// custom display layout (NULL for default)
 };
 
 
@@ -74,18 +74,20 @@ protected:
 	// device-level overrides
 	virtual void device_start();
 	virtual void device_reset();
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 
+private:
 	// internal helper
-	static TIMER_CALLBACK( bf_clear );
-	static TIMER_CALLBACK( blink_timer );
-
 	void set_busy_flag(UINT16 usec);
-
+	void update_ac(void);
 	// internal state
 	const hd44780_device_config &m_config;
+	static const device_timer_id BUSY_TIMER = 0;
+	static const device_timer_id BLINKING_TIMER = 1;
 
-	emu_timer *busy_timer;
-	UINT8 *chargen;
+	emu_timer *m_blink_timer;
+	emu_timer *m_busy_timer;
+
 	UINT8 busy_flag;
 
 	UINT8 ddram[0x80];	//internal display data RAM
@@ -112,15 +114,5 @@ protected:
 
 // device type definition
 extern const device_type HD44780;
-
-
-//**************************************************************************
-//  READ/WRITE HANDLERS
-//**************************************************************************
-
-WRITE8_DEVICE_HANDLER( hd44780_control_w );
-WRITE8_DEVICE_HANDLER( hd44780_data_w );
-READ8_DEVICE_HANDLER( hd44780_control_r );
-READ8_DEVICE_HANDLER( hd44780_data_r );
 
 #endif

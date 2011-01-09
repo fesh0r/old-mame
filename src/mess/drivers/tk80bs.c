@@ -16,6 +16,20 @@
 #include "machine/i8255a.h"
 
 
+class tk80bs_state : public driver_device
+{
+public:
+	tk80bs_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 *vram;
+	UINT8 keyb_press;
+	UINT8 keyb_press_flag;
+	UINT8 shift_press_flag;
+};
+
+
+
 
 static VIDEO_START( tk80 )
 {
@@ -46,8 +60,6 @@ static MACHINE_RESET(tk80)
 {
 }
 
-static UINT8 *vram;
-static UINT8 keyb_press,keyb_press_flag,shift_press_flag;
 
 static VIDEO_START( tk80bs )
 {
@@ -55,6 +67,7 @@ static VIDEO_START( tk80bs )
 
 static VIDEO_UPDATE( tk80bs )
 {
+	tk80bs_state *state = screen->machine->driver_data<tk80bs_state>();
 	int x,y;
 	int count;
 
@@ -64,7 +77,7 @@ static VIDEO_UPDATE( tk80bs )
 	{
 		for(x=0;x<32;x++)
 		{
-			int tile = vram[count];
+			int tile = state->vram[count];
 
 			drawgfx_opaque(bitmap, cliprect, screen->machine->gfx[0], tile, 0, 0, 0, x*8, y*8);
 
@@ -78,13 +91,14 @@ static VIDEO_UPDATE( tk80bs )
 /* FIXME: current i8255 core doesn't seem to like this system at all, so we use custom code here for now */
 static READ8_HANDLER( ppi_custom_r )
 {
+	tk80bs_state *state = space->machine->driver_data<tk80bs_state>();
 //  printf("%02x\n",offset);
 
 	switch(offset+0x7dfc)
 	{
-		case 0x7dfc: keyb_press_flag = 0; return keyb_press;
+		case 0x7dfc: state->keyb_press_flag = 0; return state->keyb_press;
 		case 0x7dfd: return 0xff;
-		case 0x7dfe: return keyb_press_flag << 5; //keyboard flag
+		case 0x7dfe: return state->keyb_press_flag << 5; //keyboard flag
 	}
 
 	return 0xff;
@@ -107,7 +121,7 @@ static ADDRESS_MAP_START(tk80bs_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x7df8, 0x7df9) AM_NOP // i8251 sio
 //  AM_RANGE(0x7dfc, 0x7dff) AM_DEVREADWRITE("ppi8255_0", i8255a_r, i8255a_w)
 	AM_RANGE(0x7dfc, 0x7dff) AM_READWRITE(ppi_custom_r,ppi_custom_w)
-	AM_RANGE(0x7e00, 0x7fff) AM_RAM AM_BASE(&vram) // video ram
+	AM_RANGE(0x7e00, 0x7fff) AM_RAM AM_BASE_MEMBER(tk80bs_state, vram) // video ram
 	AM_RANGE(0x8000, 0xcfff) AM_RAM // RAM
 	AM_RANGE(0xd000, 0xefff) AM_ROM // BASIC
 	AM_RANGE(0xf000, 0xffff) AM_ROM // BSMON
@@ -230,12 +244,13 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( keyboard_callback )
 {
-	const char* portnames[3] = { "key1","key2","key3" };
+	tk80bs_state *state = machine->driver_data<tk80bs_state>();
+	static const char *const portnames[3] = { "key1","key2","key3" };
 	int i,port_i,scancode;
 	UINT8 keymod = input_port_read(machine,"key_modifiers") & 0x1f;
 	scancode = 0;
 
-	shift_press_flag = ((keymod & 0x02) >> 1);
+	state->shift_press_flag = ((keymod & 0x02) >> 1);
 
 	for(port_i=0;port_i<3;port_i++)
 	{
@@ -247,7 +262,7 @@ static TIMER_CALLBACK( keyboard_callback )
 				{
 					scancode |= 0x80;
 				}
-				if(!shift_press_flag)  // shift not pressed
+				if(!state->shift_press_flag)  // shift not pressed
 				{
 					//if(scancode >= 0x41 && scancode < 0x5b)
 					//  scancode += 0x20;  // lowercase doesn't exist here
@@ -269,8 +284,8 @@ static TIMER_CALLBACK( keyboard_callback )
 					if(scancode == 0x3c)
 						scancode = 0x3e;
 				}
-				keyb_press = scancode;
-				keyb_press_flag = 1;
+				state->keyb_press = scancode;
+				state->keyb_press_flag = 1;
 				return;
 			}
 			scancode++;
@@ -332,53 +347,53 @@ static I8255A_INTERFACE( ppi8255_intf_0 )
 };
 
 
-static MACHINE_CONFIG_START( tk80, driver_device )
+static MACHINE_CONFIG_START( tk80, tk80bs_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",I8080, XTAL_1MHz)
-    MDRV_CPU_PROGRAM_MAP(tk80_mem)
-    MDRV_CPU_IO_MAP(tk80_io)
+    MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz)
+    MCFG_CPU_PROGRAM_MAP(tk80_mem)
+    MCFG_CPU_IO_MAP(tk80_io)
 
-    MDRV_MACHINE_RESET(tk80)
+    MCFG_MACHINE_RESET(tk80)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(640, 480)
+    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_I8255A_ADD( "ppi8255_0", ppi8255_intf_0 )
+	MCFG_I8255A_ADD( "ppi8255_0", ppi8255_intf_0 )
 	
-    MDRV_VIDEO_START(tk80)
-    MDRV_VIDEO_UPDATE(tk80)
+    MCFG_VIDEO_START(tk80)
+    MCFG_VIDEO_UPDATE(tk80)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( tk80bs, driver_device )
+static MACHINE_CONFIG_START( tk80bs, tk80bs_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",I8080, XTAL_1MHz) //unknown clock
-    MDRV_CPU_PROGRAM_MAP(tk80bs_mem)
+    MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz) //unknown clock
+    MCFG_CPU_PROGRAM_MAP(tk80bs_mem)
 
-//  MDRV_I8255A_ADD( "ppi8255_0", ppi8255_intf_0 )
+//  MCFG_I8255A_ADD( "ppi8255_0", ppi8255_intf_0 )
 
-    MDRV_MACHINE_START(tk80bs)
-    MDRV_MACHINE_RESET(tk80bs)
+    MCFG_MACHINE_START(tk80bs)
+    MCFG_MACHINE_RESET(tk80bs)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(256, 128)
-    MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 128-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
-	MDRV_GFXDECODE(tk80bs)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(256, 128)
+    MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 128-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
+	MCFG_GFXDECODE(tk80bs)
 
-    MDRV_VIDEO_START(tk80bs)
-    MDRV_VIDEO_UPDATE(tk80bs)
+    MCFG_VIDEO_START(tk80bs)
+    MCFG_VIDEO_UPDATE(tk80bs)
 MACHINE_CONFIG_END
 
 /* ROM definition */

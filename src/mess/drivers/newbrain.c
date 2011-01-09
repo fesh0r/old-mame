@@ -106,7 +106,7 @@ static void newbrain_eim_bankswitch(running_machine *machine)
 		case 0:
 			/* ROM */
 			memory_install_rom_helper(program, bank_name, bank_start, bank_end);
-			memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, "eim") + eim_bank_start, 0);
+			memory_configure_bank(machine, bank_name, 0, 1, machine->region("eim")->base() + eim_bank_start, 0);
 			break;
 
 		case 2:
@@ -147,11 +147,11 @@ static void newbrain_a_bankswitch(running_machine *machine)
 		{
 			/* all banks point to ROM at 0xe000 */
 			memory_install_rom_helper(program, bank_name, bank_start, bank_end);
-			memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, Z80_TAG) + 0xe000, 0);
+			memory_configure_bank(machine, bank_name, 0, 1, machine->region(Z80_TAG)->base() + 0xe000, 0);
 		}
 		else
 		{
-			memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, Z80_TAG) + bank_start, 0);
+			memory_configure_bank(machine, bank_name, 0, 1, machine->region(Z80_TAG)->base() + bank_start, 0);
 
 			if (bank < 5)
 			{
@@ -161,16 +161,16 @@ static void newbrain_a_bankswitch(running_machine *machine)
 			else if (bank == 5)
 			{
 				/* 0x8000-0x9fff */
-				if (memory_region(machine, "eim"))
+				if (machine->region("eim")->base())
 				{
 					/* expansion interface ROM */
 					memory_install_rom_helper(program, bank_name, bank_start, bank_end);
-					memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, "eim") + 0x4000, 0);
+					memory_configure_bank(machine, bank_name, 0, 1, machine->region("eim")->base() + 0x4000, 0);
 				}
 				else
 				{
 					/* mirror of 0xa000-0xbfff */
-					if (memory_region(machine, Z80_TAG)[0xa001] == 0)
+					if (machine->region(Z80_TAG)->base()[0xa001] == 0)
 					{
 						/* unmapped on the M model */
 						memory_install_unmapped(program, bank_name, bank_start, bank_end);
@@ -181,13 +181,13 @@ static void newbrain_a_bankswitch(running_machine *machine)
 						memory_install_rom_helper(program, bank_name, bank_start, bank_end);
 					}
 
-					memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, Z80_TAG) + 0xa000, 0);
+					memory_configure_bank(machine, bank_name, 0, 1, machine->region(Z80_TAG)->base() + 0xa000, 0);
 				}
 			}
 			else if (bank == 6)
 			{
 				/* 0xa000-0xbfff */
-				if (memory_region(machine, Z80_TAG)[0xa001] == 0)
+				if (machine->region(Z80_TAG)->base()[0xa001] == 0)
 				{
 					/* unmapped on the M model */
 					memory_install_unmapped(program, bank_name, bank_start, bank_end);
@@ -743,8 +743,6 @@ enum
 	NEWBRAIN_COP_STATE_DATA
 };
 
-static UINT8 copdata;
-static int copstate, copbytes, copregint = 1;
 
 static READ8_HANDLER( cop_r )
 {
@@ -753,16 +751,16 @@ static READ8_HANDLER( cop_r )
 	state->copint = 1;
 	check_interrupt(space->machine);
 
-	return copdata;
+	return state->copdata;
 }
 
 static WRITE8_HANDLER( cop_w )
 {
 	newbrain_state *state = space->machine->driver_data<newbrain_state>();
 
-	copdata = data;
+	state->copdata = data;
 
-	switch (copstate)
+	switch (state->copstate)
 	{
 	case NEWBRAIN_COP_STATE_COMMAND:
 		logerror("COP command %02x\n", data);
@@ -773,11 +771,11 @@ static WRITE8_HANDLER( cop_w )
 			break;
 
 		case NEWBRAIN_COPCMD_DISPCOM:
-			copregint = 0;
-			copbytes = 18;
-			copstate = NEWBRAIN_COP_STATE_DATA;
+			state->copregint = 0;
+			state->copbytes = 18;
+			state->copstate = NEWBRAIN_COP_STATE_DATA;
 
-			copdata = NEWBRAIN_COP_NO_DATA;
+			state->copdata = NEWBRAIN_COP_NO_DATA;
 			state->copint = 0;
 			check_interrupt(space->machine);
 
@@ -785,35 +783,35 @@ static WRITE8_HANDLER( cop_w )
 
 #if 0
 		case NEWBRAIN_COPCMD_TIMCOM:
-			copregint = 0;
-			copbytes = 6;
-			copstate = NEWBRAIN_COP_STATE_DATA;
+			state->copregint = 0;
+			state->copbytes = 6;
+			state->copstate = NEWBRAIN_COP_STATE_DATA;
 			break;
 #endif
 		case NEWBRAIN_COPCMD_PDNCOM:
 			/* power down */
-			copregint = 0;
+			state->copregint = 0;
 			break;
 
 		default:
 			if (data & NEWBRAIN_COPCMD_TAPECOM)
 			{
-				copregint = 0;
+				state->copregint = 0;
 			}
 		}
 		break;
 
 	case NEWBRAIN_COP_STATE_DATA:
 		logerror("COP data %02x\n", data);
-		copbytes--;
+		state->copbytes--;
 
-		if (copbytes == 0)
+		if (state->copbytes == 0)
 		{
-			copstate = NEWBRAIN_COP_STATE_COMMAND;
-			copregint = 1;
+			state->copstate = NEWBRAIN_COP_STATE_COMMAND;
+			state->copregint = 1;
 		}
 
-		copdata = NEWBRAIN_COP_NO_DATA;
+		state->copdata = NEWBRAIN_COP_NO_DATA;
 		state->copint = 0;
 		check_interrupt(space->machine);
 
@@ -825,7 +823,7 @@ static TIMER_DEVICE_CALLBACK( cop_regint_tick )
 {
 	newbrain_state *state = timer.machine->driver_data<newbrain_state>();
 
-	if (copregint)
+	if (state->copregint)
 	{
 		logerror("COP REGINT\n");
 		state->copint = 0;
@@ -1172,10 +1170,10 @@ static INPUT_PORTS_START( newbrain )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("D1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(UTF8_DOWN) PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(UTF8_RIGHT) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(UTF8_LEFT) PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(UTF8_UP) PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
 
 	PORT_START("D2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U) PORT_CHAR('u') PORT_CHAR('U')
@@ -1307,7 +1305,7 @@ static WRITE_LINE_DEVICE_HANDLER( newbrain_fdc_interrupt )
 static const upd765_interface newbrain_upd765_interface =
 {
 	DEVCB_LINE(newbrain_fdc_interrupt),
-	NULL,
+	DEVCB_NULL,
 	NULL,
 	UPD765_RDY_PIN_NOT_CONNECTED,
 	{FLOPPY_0,FLOPPY_1, NULL, NULL}
@@ -1382,6 +1380,8 @@ static TIMER_CALLBACK( pwrup_tick )
 static MACHINE_START( newbrain )
 {
 	newbrain_state *state = machine->driver_data<newbrain_state>();
+
+	state->copregint = 1;
 
 	/* find devices */
 	state->cassette1 = machine->device(CASSETTE1_TAG);
@@ -1544,41 +1544,41 @@ GFXDECODE_END
 DECLARE_LEGACY_IMAGE_DEVICE(NEWBRAIN_SERIAL, newbrain_serial);
 DEFINE_LEGACY_IMAGE_DEVICE(NEWBRAIN_SERIAL, newbrain_serial);
 
-#define MDRV_NEWBRAIN_SERIAL_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, NEWBRAIN_SERIAL, 0)
+#define MCFG_NEWBRAIN_SERIAL_ADD(_tag) \
+	MCFG_DEVICE_ADD(_tag, NEWBRAIN_SERIAL, 0)
 
 static MACHINE_CONFIG_START( newbrain_a, newbrain_state )
 
 	/* basic system hardware */
-	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/8)
-	MDRV_CPU_PROGRAM_MAP(newbrain_map)
-	MDRV_CPU_IO_MAP(newbrain_a_io_map)
-	MDRV_CPU_VBLANK_INT(SCREEN_TAG, newbrain_interrupt)
+	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/8)
+	MCFG_CPU_PROGRAM_MAP(newbrain_map)
+	MCFG_CPU_IO_MAP(newbrain_a_io_map)
+	MCFG_CPU_VBLANK_INT(SCREEN_TAG, newbrain_interrupt)
 
-	MDRV_CPU_ADD(COP420_TAG, COP420, XTAL_16MHz/8) // COP420-GUW/N
-	MDRV_CPU_IO_MAP(newbrain_cop_io_map)
-	MDRV_CPU_CONFIG(newbrain_cop_intf)
+	MCFG_CPU_ADD(COP420_TAG, COP420, XTAL_16MHz/8) // COP420-GUW/N
+	MCFG_CPU_IO_MAP(newbrain_cop_io_map)
+	MCFG_CPU_CONFIG(newbrain_cop_intf)
 
-	MDRV_GFXDECODE(newbrain)
+	MCFG_GFXDECODE(newbrain)
 
-	MDRV_TIMER_ADD_PERIODIC("cop_regint", cop_regint_tick, USEC(12500)) // HACK
+	MCFG_TIMER_ADD_PERIODIC("cop_regint", cop_regint_tick, USEC(12500)) // HACK
 
-	MDRV_MACHINE_START(newbrain)
-	MDRV_MACHINE_RESET(newbrain)
+	MCFG_MACHINE_START(newbrain)
+	MCFG_MACHINE_RESET(newbrain)
 
 	/* video hardware */
-	MDRV_DEFAULT_LAYOUT(layout_newbrain)
-	MDRV_FRAGMENT_ADD(newbrain_video)
+	MCFG_DEFAULT_LAYOUT(layout_newbrain)
+	MCFG_FRAGMENT_ADD(newbrain_video)
 
 	/* cassette */
-	MDRV_CASSETTE_ADD("cassette1", newbrain_cassette_config)
-	MDRV_CASSETTE_ADD("cassette2", newbrain_cassette_config)
+	MCFG_CASSETTE_ADD("cassette1", newbrain_cassette_config)
+	MCFG_CASSETTE_ADD("cassette2", newbrain_cassette_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("32K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("32K")
 
-	MDRV_NEWBRAIN_SERIAL_ADD("serial")
+	MCFG_NEWBRAIN_SERIAL_ADD("serial")
 MACHINE_CONFIG_END
 
 static FLOPPY_OPTIONS_START(newbrain)
@@ -1600,33 +1600,33 @@ static const floppy_config newbrain_floppy_config =
 static MACHINE_CONFIG_DERIVED( newbrain_eim, newbrain_a )
 
 	/* basic system hardware */
-	MDRV_CPU_MODIFY(Z80_TAG)
-	MDRV_CPU_IO_MAP(newbrain_ei_io_map)
+	MCFG_CPU_MODIFY(Z80_TAG)
+	MCFG_CPU_IO_MAP(newbrain_ei_io_map)
 
-	MDRV_CPU_ADD(FDC_Z80_TAG, Z80, XTAL_4MHz)
-	MDRV_CPU_PROGRAM_MAP(newbrain_fdc_map)
-	MDRV_CPU_IO_MAP(newbrain_fdc_io_map)
+	MCFG_CPU_ADD(FDC_Z80_TAG, Z80, XTAL_4MHz)
+	MCFG_CPU_PROGRAM_MAP(newbrain_fdc_map)
+	MCFG_CPU_IO_MAP(newbrain_fdc_io_map)
 
-	MDRV_MACHINE_START(newbrain_eim)
+	MCFG_MACHINE_START(newbrain_eim)
 
 	/* Z80 CTC */
-	MDRV_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/8, newbrain_ctc_intf)
-	MDRV_TIMER_ADD_PERIODIC("z80ctc_c2", ctc_c2_tick, HZ(XTAL_16MHz/4/13))
+	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/8, newbrain_ctc_intf)
+	MCFG_TIMER_ADD_PERIODIC("z80ctc_c2", ctc_c2_tick, HZ(XTAL_16MHz/4/13))
 
 	/* AD-DA converters */
-	MDRV_ADC0809_ADD(ADC0809_TAG, 500000, newbrain_adc0809_intf)
+	MCFG_ADC0809_ADD(ADC0809_TAG, 500000, newbrain_adc0809_intf)
 
 	/* MC6850 */
-	MDRV_ACIA6850_ADD(MC6850_TAG, newbrain_acia_intf)
+	MCFG_ACIA6850_ADD(MC6850_TAG, newbrain_acia_intf)
 
 	/* UPD765 */
-	MDRV_UPD765A_ADD(UPD765_TAG, newbrain_upd765_interface)
+	MCFG_UPD765A_ADD(UPD765_TAG, newbrain_upd765_interface)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(newbrain_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(newbrain_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("96K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("96K")
 MACHINE_CONFIG_END
 
 /* ROMs */

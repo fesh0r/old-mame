@@ -9,6 +9,16 @@
 #include "emu.h"
 #include "cpu/t11/t11.h"
 
+
+class mk85_state : public driver_device
+{
+public:
+	mk85_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(mk85_mem, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x7fff ) AM_ROM
@@ -38,26 +48,26 @@ static const struct t11_setup t11_data =
 	5 << 13			/* start from 0000 */
 };
 
-static MACHINE_CONFIG_START( mk85, driver_device )
+static MACHINE_CONFIG_START( mk85, mk85_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",T11, XTAL_4MHz)
-    MDRV_CPU_CONFIG(t11_data)
-    MDRV_CPU_PROGRAM_MAP(mk85_mem)
+    MCFG_CPU_ADD("maincpu",T11, XTAL_4MHz)
+    MCFG_CPU_CONFIG(t11_data)
+    MCFG_CPU_PROGRAM_MAP(mk85_mem)
 
-    MDRV_MACHINE_RESET(mk85)
+    MCFG_MACHINE_RESET(mk85)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(640, 480)
+    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(mk85)
-    MDRV_VIDEO_UPDATE(mk85)
+    MCFG_VIDEO_START(mk85)
+    MCFG_VIDEO_UPDATE(mk85)
 MACHINE_CONFIG_END
 
 /* ROM definition */

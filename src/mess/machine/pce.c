@@ -83,14 +83,17 @@ enum {
 	PCE_CD_CDDA_PAUSED
 };
 
+static UINT8 pce_io_port_options;
+
 /* system RAM */
 unsigned char *pce_user_ram;    /* scratch RAM at F8 */
 
 /* CD Unit RAM */
-UINT8	*pce_cd_ram;			/* 64KB RAM from a CD unit */
+UINT8 *pce_cd_ram;			/* 64KB RAM from a CD unit */
 static UINT8	pce_sys3_card;	/* Is a Super CD System 3 card present */
 static UINT8	pce_acard;		/* Is this an Arcade Card? */
-static struct {
+
+typedef struct {
 	UINT8	regs[16];
 	UINT8	*bram;
 	UINT8	*adpcm_ram;
@@ -158,16 +161,15 @@ static struct {
 	emu_timer	*adpcm_fadeout_timer;
 	emu_timer	*adpcm_fadein_timer;
 	double	adpcm_volume;
-} pce_cd;
+} pce_cd_t;
+static pce_cd_t pce_cd;
 
 /* MSM5205 ADPCM decoder definition */
-static void pce_cd_msm5205_int(running_device *device);
+static void pce_cd_msm5205_int(device_t *device);
 const msm5205_interface pce_cd_msm5205_interface = {
 	pce_cd_msm5205_int,	/* interrupt function */
 	MSM5205_S48_4B		/* 1/48 prescaler, 4bit data */
 };
-
-struct pce_struct pce;
 
 static UINT8 *cartridge_ram;
 
@@ -190,9 +192,9 @@ static TIMER_CALLBACK( pce_cd_adpcm_fadein_callback );
 
 static WRITE8_HANDLER( pce_sf2_banking_w )
 {
-	memory_set_bankptr( space->machine, "bank2", memory_region(space->machine, "user1") + offset * 0x080000 + 0x080000 );
-	memory_set_bankptr( space->machine, "bank3", memory_region(space->machine, "user1") + offset * 0x080000 + 0x088000 );
-	memory_set_bankptr( space->machine, "bank4", memory_region(space->machine, "user1") + offset * 0x080000 + 0x0D0000 );
+	memory_set_bankptr( space->machine, "bank2", space->machine->region("user1")->base() + offset * 0x080000 + 0x080000 );
+	memory_set_bankptr( space->machine, "bank3", space->machine->region("user1")->base() + offset * 0x080000 + 0x088000 );
+	memory_set_bankptr( space->machine, "bank4", space->machine->region("user1")->base() + offset * 0x080000 + 0x0D0000 );
 }
 
 static WRITE8_HANDLER( pce_cartridge_ram_w )
@@ -209,7 +211,7 @@ DEVICE_IMAGE_LOAD(pce_cart)
 	logerror("*** DEVICE_IMAGE_LOAD(pce_cart) : %s\n", image.filename());
 
 	/* open file to get size */
-	ROM = memory_region(image.device().machine, "user1");
+	ROM = image.device().machine->region("user1")->base();
 
 	if (image.software_entry() == NULL)
 		size = image.length();
@@ -332,17 +334,17 @@ DEVICE_IMAGE_LOAD(pce_cart)
 
 DRIVER_INIT( pce )
 {
-	pce.io_port_options = PCE_JOY_SIG | CONST_SIG;
+	pce_io_port_options = PCE_JOY_SIG | CONST_SIG;
 }
 
 DRIVER_INIT( tg16 )
 {
-	pce.io_port_options = TG_16_JOY_SIG | CONST_SIG;
+	pce_io_port_options = TG_16_JOY_SIG | CONST_SIG;
 }
 
 DRIVER_INIT( sgx )
 {
-	pce.io_port_options = PCE_JOY_SIG | CONST_SIG;
+	pce_io_port_options = PCE_JOY_SIG | CONST_SIG;
 }
 
 MACHINE_START( pce )
@@ -443,7 +445,7 @@ READ8_HANDLER ( pce_joystick_r )
 	if (joystick_data_select)
 		data >>= 4;
 
-	ret = (data & 0x0f) | pce.io_port_options;
+	ret = (data & 0x0f) | pce_io_port_options;
 #ifdef UNIFIED_PCE
 	ret &= ~0x40;
 #endif
@@ -495,9 +497,9 @@ static void adpcm_play(running_machine *machine)
   the MSM5205. Currently we can only use static clocks for the
   MSM5205.
  */
-static void pce_cd_msm5205_int(running_device *device)
+static void pce_cd_msm5205_int(device_t *device)
 {
-	static UINT8 msm_data;
+	UINT8 msm_data;
 
 //	popmessage("%08x %08x %08x %02x %02x",pce_cd.msm_start_addr,pce_cd.msm_end_addr,pce_cd.msm_half_addr,pce_cd.regs[0x0c],pce_cd.regs[0x0d]);
 
@@ -1212,7 +1214,7 @@ static TIMER_CALLBACK( pce_cd_data_timer_callback )
 
 static void pce_cd_init( running_machine *machine )
 {
-	running_device *device;
+	device_t *device;
 
 	/* Initialize pce_cd struct */
 	memset( &pce_cd, 0, sizeof(pce_cd) );
@@ -1306,7 +1308,7 @@ static TIMER_CALLBACK( pce_cd_cdda_fadeout_callback )
 	{
 		pce_cd.cdda_volume = 0.0;
 		cdda_set_volume(machine->device("cdda"), 0.0);
-		timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, attotime_never, NULL);
+		timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, attotime_never, 0);
 	}
 	else
 	{
@@ -1323,7 +1325,7 @@ static TIMER_CALLBACK( pce_cd_cdda_fadein_callback )
 	{
 		pce_cd.cdda_volume = 100.0;
 		cdda_set_volume(machine->device("cdda"), 100.0);
-		timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, NULL);
+		timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, 0);
 	}
 	else
 	{
@@ -1340,7 +1342,7 @@ static TIMER_CALLBACK( pce_cd_adpcm_fadeout_callback )
 	{
 		pce_cd.adpcm_volume = 0.0;
 		msm5205_set_volume(machine->device("msm5205"), 0.0);
-		timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, NULL);
+		timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, 0);
 	}
 	else
 	{
@@ -1357,7 +1359,7 @@ static TIMER_CALLBACK( pce_cd_adpcm_fadein_callback )
 	{
 		pce_cd.adpcm_volume = 100.0;
 		msm5205_set_volume(machine->device("msm5205"), 100.0);
-		timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, attotime_never, NULL);
+		timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, attotime_never, 0);
 	}
 	else
 	{
@@ -1496,49 +1498,49 @@ WRITE8_HANDLER( pce_cd_intf_w )
 					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, ATTOTIME_IN_USEC(100), 100);
 					pce_cd.adpcm_volume = 0.0;
 					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, ATTOTIME_IN_USEC(100), 100);
-					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, attotime_never, NULL);
-					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, attotime_never, 0);
+					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, 0);
 					break;
 				case 0x01: //CD-DA enable (100 msecs)
 					pce_cd.cdda_volume = 0.0;
 					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, ATTOTIME_IN_USEC(100), 100);
-					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, attotime_never, 0);
 					break;
 				case 0x08: //CD-DA short (1500 msecs) fade out / ADPCM enable
 					pce_cd.cdda_volume = 100.0;
 					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, ATTOTIME_IN_USEC(1500), 1500);
 					pce_cd.adpcm_volume = 0.0;
 					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, ATTOTIME_IN_USEC(100), 100);
-					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, NULL);
-					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, 0);
+					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, 0);
 					break;
 				case 0x09: //CD-DA long (5000 msecs) fade out
 					pce_cd.cdda_volume = 100.0;
 					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, ATTOTIME_IN_USEC(5000), 5000);
-					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, 0);
 					break;
 				case 0x0a: //ADPCM long (5000 msecs) fade out
 					pce_cd.adpcm_volume = 100.0;
 					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, ATTOTIME_IN_USEC(5000), 5000);
-					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, attotime_never, 0);
 					break;
 				case 0x0c: //CD-DA short (1500 msecs) fade out / ADPCM enable
 					pce_cd.cdda_volume = 100.0;
 					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, ATTOTIME_IN_USEC(1500), 1500);
 					pce_cd.adpcm_volume = 0.0;
 					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, ATTOTIME_IN_USEC(100), 100);
-					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, NULL);
-					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, 0);
+					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, attotime_never, 0);
 					break;
 				case 0x0d: //CD-DA short (1500 msecs) fade out
 					pce_cd.cdda_volume = 100.0;
 					timer_adjust_oneshot(pce_cd.cdda_fadeout_timer, ATTOTIME_IN_USEC(1500), 1500);
-					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.cdda_fadein_timer, attotime_never, 0);
 					break;
 				case 0x0e: //ADPCM short (1500 msecs) fade out
 					pce_cd.adpcm_volume = 100.0;
 					timer_adjust_oneshot(pce_cd.adpcm_fadeout_timer, ATTOTIME_IN_USEC(1500), 1500);
-					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, attotime_never, NULL);
+					timer_adjust_oneshot(pce_cd.adpcm_fadein_timer, attotime_never, 0);
 					break;
 				default:
 					popmessage("CD-DA / ADPCM Fade effect mode %02x, contact MESSdev",data & 0x0f);
@@ -1697,7 +1699,7 @@ PC Engine Arcade Card emulation
 
 READ8_HANDLER( pce_cd_acard_r )
 {
-	static UINT8 r_num;
+	UINT8 r_num;
 
 	if((offset & 0x2e0) == 0x2e0)
 	{
@@ -1760,7 +1762,7 @@ READ8_HANDLER( pce_cd_acard_r )
 
 WRITE8_HANDLER( pce_cd_acard_w )
 {
-	static UINT8 w_num;
+	UINT8 w_num;
 
 	if((offset & 0x2e0) == 0x2e0)
 	{

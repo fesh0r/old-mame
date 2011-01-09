@@ -157,7 +157,7 @@ READ8_HANDLER( mz800_bank_0_r )
 	/* switch in cgrom */
 	memory_install_read_bank(spc, 0x1000, 0x1fff, 0, 0, "bank2");
 	memory_nop_write(spc, 0x1000, 0x1fff, 0, 0);
-	memory_set_bankptr(space->machine, "bank2", memory_region(space->machine, "monitor") + 0x1000);
+	memory_set_bankptr(space->machine, "bank2", space->machine->region("monitor")->base() + 0x1000);
 
 	if (mz->mz700_mode)
 	{
@@ -211,7 +211,7 @@ READ8_HANDLER( mz800_bank_1_r )
 	mz_state *mz = space->machine->driver_data<mz_state>();
 
 	/* switch in ram from 0x1000 to 0x1fff */
-	memory_install_readwrite_bank(spc, 0x1000, 0x1fff, 0x1000, 0, "bank2");
+	memory_install_readwrite_bank(spc, 0x1000, 0x1fff, 0, 0, "bank2");
 	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(space->machine->device("messram")) + 0x1000);
 
 	if (mz->mz700_mode)
@@ -263,7 +263,7 @@ WRITE8_HANDLER( mz700_bank_2_w )
 
 	memory_install_read_bank(spc, 0x0000, 0x0fff, 0, 0, "bank1");
 	memory_nop_write(spc, 0x0000, 0x0fff, 0, 0);
-	memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "monitor"));
+	memory_set_bankptr(space->machine, "bank1", space->machine->region("monitor")->base());
 }
 
 WRITE8_HANDLER( mz700_bank_3_w )
@@ -309,7 +309,7 @@ WRITE8_HANDLER( mz700_bank_3_w )
 			/* switch in mz800 monitor rom if not locked */
 			memory_install_read_bank(spc, 0xe000, 0xffff, 0, 0, "bank8");
 			memory_nop_write(spc, 0xe000, 0xffff, 0, 0);
-			memory_set_bankptr(space->machine, "bank8", memory_region(space->machine, "monitor") + 0x2000);
+			memory_set_bankptr(space->machine, "bank8", space->machine->region("monitor")->base() + 0x2000);
 			mz->mz800_ram_monitor = TRUE;
 		}
 	}
@@ -337,7 +337,7 @@ WRITE8_HANDLER( mz700_bank_4_w )
 		/* monitor rom and cgrom */
 		memory_install_read_bank(spc, 0x0000, 0x1fff, 0, 0, "bank1");
 		memory_nop_write(spc, 0x0000, 0x1fff, 0, 0);
-		memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "monitor"));
+		memory_set_bankptr(space->machine, "bank1", space->machine->region("monitor")->base());
 
 		/* ram from 0x2000 to 0x7fff */
 		memory_install_readwrite_bank(spc, 0x2000, 0x7fff, 0, 0, "bank3");
@@ -367,7 +367,7 @@ WRITE8_HANDLER( mz700_bank_4_w )
 		/* mz800 monitor rom from 0xe000 to 0xffff */
 		memory_install_read_bank(spc, 0xe000, 0xffff, 0, 0, "bank8");
 		memory_nop_write(spc, 0xe000, 0xffff, 0, 0);
-		memory_set_bankptr(space->machine, "bank8", memory_region(space->machine, "monitor") + 0x2000);
+		memory_set_bankptr(space->machine, "bank8", space->machine->region("monitor")->base() + 0x2000);
 		mz->mz800_ram_monitor = TRUE;
 
 		mz->mz800_ram_lock = FALSE; /* reset lock? */
@@ -423,17 +423,16 @@ WRITE8_HANDLER( mz700_bank_6_w )
 /************************ PIT ************************************************/
 
 /* Timer 0 is the clock for the speaker output */
-static UINT8 speaker_level = 0;
-static UINT8 prev_state = 0;
 
 static WRITE_LINE_DEVICE_HANDLER( pit_out0_changed )
 {
-	running_device *speaker = device->machine->device("speaker");
-	if((prev_state==0) && (state==1)) {
-		speaker_level ^= 1;
+	mz_state *drvstate = device->machine->driver_data<mz_state>();
+	device_t *speaker = device->machine->device("speaker");
+	if((drvstate->prev_state==0) && (state==1)) {
+		drvstate->speaker_level ^= 1;
 	}
-	prev_state = state;
-	speaker_level_w( speaker, speaker_level);
+	drvstate->prev_state = state;
+	speaker_level_w( speaker, drvstate->speaker_level);
 }
 
 /* timer 2 is the AM/PM (12 hour) interrupt */
@@ -480,7 +479,7 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
  */
 static READ8_DEVICE_HANDLER( pio_port_c_r )
 {
-	running_device *cas = device->machine->device("cassette");
+	device_t *cas = device->machine->device("cassette");
 	mz_state *mz = device->machine->driver_data<mz_state>();
 	UINT8 data = 0;
 
@@ -554,25 +553,22 @@ static WRITE8_DEVICE_HANDLER( pio_port_c_w )
  *
  ******************************************************************************/
 
-static UINT16 mz800_ramaddr = 0;
 //static UINT8 mz800_display_mode = 0;
 //static UINT8 mz800_port_e8 = 0;
-static UINT8 mz800_palette[4];
-static UINT8 mz800_palette_bank;
 
 
 /***************************************************************************
     Z80 PIO
 ***************************************************************************/
 
-static void mz800_z80pio_irq(running_device *device, int which)
+static void mz800_z80pio_irq(device_t *device, int which)
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, which);
 }
 
 static READ8_DEVICE_HANDLER( mz800_z80pio_port_a_r )
 {
-	running_device *printer = device->machine->device("centronics");
+	device_t *printer = device->machine->device("centronics");
 	UINT8 result = 0;
 
 	result |= centronics_busy_r(printer);
@@ -584,7 +580,7 @@ static READ8_DEVICE_HANDLER( mz800_z80pio_port_a_r )
 
 static WRITE8_DEVICE_HANDLER( mz800_z80pio_port_a_w )
 {
-	running_device *printer = device->machine->device("centronics");
+	device_t *printer = device->machine->device("centronics");
 
 	centronics_prime_w(printer, BIT(data, 6));
 	centronics_strobe_w(printer, BIT(data, 7));
@@ -592,7 +588,7 @@ static WRITE8_DEVICE_HANDLER( mz800_z80pio_port_a_w )
 
 static WRITE8_DEVICE_HANDLER( mz800_printer_data_w )
 {
-	running_device *printer = device->machine->device("centronics");
+	device_t *printer = device->machine->device("centronics");
 	centronics_data_w(printer, 0, data);
 }
 
@@ -622,10 +618,11 @@ READ8_HANDLER( mz800_crtc_r )
 /* port EA */
  READ8_HANDLER( mz800_ramdisk_r )
 {
-	UINT8 *mem = memory_region(space->machine, "user1");
-	UINT8 data = mem[mz800_ramaddr];
-	LOG(2,"mz800_ramdisk_r",("[%04X] -> %02X\n", mz800_ramaddr, data),space->machine);
-	if (mz800_ramaddr++ == 0)
+	mz_state *state = space->machine->driver_data<mz_state>();
+	UINT8 *mem = space->machine->region("user1")->base();
+	UINT8 data = mem[state->mz800_ramaddr];
+	LOG(2,"mz800_ramdisk_r",("[%04X] -> %02X\n", state->mz800_ramaddr, data),space->machine);
+	if (state->mz800_ramaddr++ == 0)
 		LOG(1,"mz800_ramdisk_r",("address wrap 0000\n"),space->machine);
     return data;
 }
@@ -674,33 +671,36 @@ WRITE8_HANDLER( mz800_scroll_border_w )
 /* port EA */
 WRITE8_HANDLER( mz800_ramdisk_w )
 {
-	UINT8 *mem = memory_region(space->machine, "user1");
-	LOG(2,"mz800_ramdisk_w",("[%04X] <- %02X\n", mz800_ramaddr, data),space->machine);
-	mem[mz800_ramaddr] = data;
-	if (mz800_ramaddr++ == 0)
+	mz_state *state = space->machine->driver_data<mz_state>();
+	UINT8 *mem = space->machine->region("user1")->base();
+	LOG(2,"mz800_ramdisk_w",("[%04X] <- %02X\n", state->mz800_ramaddr, data),space->machine);
+	mem[state->mz800_ramaddr] = data;
+	if (state->mz800_ramaddr++ == 0)
 		LOG(1,"mz800_ramdisk_w",("address wrap 0000\n"),space->machine);
 }
 
 /* port EB */
 WRITE8_HANDLER( mz800_ramaddr_w )
 {
-	mz800_ramaddr = (cpu_get_reg(space->machine->device("maincpu"), Z80_BC) & 0xff00) | (data & 0xff);
-	LOG(1,"mz800_ramaddr_w",("%04X\n", mz800_ramaddr),space->machine);
+	mz_state *state = space->machine->driver_data<mz_state>();
+	state->mz800_ramaddr = (cpu_get_reg(space->machine->device("maincpu"), Z80_BC) & 0xff00) | (data & 0xff);
+	LOG(1,"mz800_ramaddr_w",("%04X\n", state->mz800_ramaddr),space->machine);
 }
 
 /* port F0 */
 WRITE8_HANDLER( mz800_palette_w )
 {
+	mz_state *state = space->machine->driver_data<mz_state>();
 	if (data & 0x40)
 	{
-        mz800_palette_bank = data & 3;
-		LOG(1,"mz800_palette_w",("bank: %d\n", mz800_palette_bank),space->machine);
+        state->mz800_palette_bank = data & 3;
+		LOG(1,"mz800_palette_w",("bank: %d\n", state->mz800_palette_bank),space->machine);
     }
 	else
 	{
 		int idx = (data >> 4) & 3;
 		int val = data & 15;
 		LOG(1,"mz800_palette_w",("palette[%d] <- %d\n", idx, val),space->machine);
-		mz800_palette[idx] = val;
+		state->mz800_palette[idx] = val;
 	}
 }

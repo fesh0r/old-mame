@@ -15,13 +15,13 @@
 static QUICKLOAD_LOAD( lynx );
 
 static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_BASE(&lynx_mem_0000)
-	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_BASE(&lynx_mem_fc00)
-	AM_RANGE(0xfd00, 0xfdff) AM_RAM AM_BASE(&lynx_mem_fd00)
-	AM_RANGE(0xfe00, 0xfff7) AM_READ_BANK("bank3") AM_WRITEONLY AM_BASE(&lynx_mem_fe00) AM_SIZE(&lynx_mem_fe00_size)
+	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_BASE_MEMBER(lynx_state, mem_0000)
+	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_BASE_MEMBER(lynx_state, mem_fc00)
+	AM_RANGE(0xfd00, 0xfdff) AM_RAM AM_BASE_MEMBER(lynx_state, mem_fd00)
+	AM_RANGE(0xfe00, 0xfff7) AM_READ_BANK("bank3") AM_WRITEONLY AM_BASE_MEMBER(lynx_state, mem_fe00) AM_SIZE_MEMBER(lynx_state, mem_fe00_size)
 	AM_RANGE(0xfff8, 0xfff8) AM_RAM
 	AM_RANGE(0xfff9, 0xfff9) AM_READWRITE(lynx_memory_config_r, lynx_memory_config_w)
-	AM_RANGE(0xfffa, 0xffff) AM_READ_BANK("bank4") AM_WRITEONLY AM_BASE(&lynx_mem_fffa)
+	AM_RANGE(0xfffa, 0xffff) AM_READ_BANK("bank4") AM_WRITEONLY AM_BASE_MEMBER(lynx_state, mem_fffa)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( lynx )
@@ -61,50 +61,50 @@ static PALETTE_INIT( lynx )
 }
 
 
-static MACHINE_CONFIG_START( lynx, driver_device )
+static MACHINE_CONFIG_START( lynx, lynx_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
-	MDRV_CPU_PROGRAM_MAP(lynx_mem)
-	MDRV_CPU_VBLANK_INT("screen", lynx_frame_int)
-	MDRV_QUANTUM_TIME(HZ(60))
+	MCFG_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
+	MCFG_CPU_PROGRAM_MAP(lynx_mem)
+	MCFG_CPU_VBLANK_INT("screen", lynx_frame_int)
+	MCFG_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_START( lynx )
+	MCFG_MACHINE_START( lynx )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("screen", LCD)
-	MDRV_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	/*MDRV_SCREEN_SIZE(160, 102)*/
-	MDRV_SCREEN_SIZE(160, 160)
-	MDRV_SCREEN_VISIBLE_AREA(0, 160-1, 0, 102-1)
-	MDRV_PALETTE_LENGTH(0x1000)
-	MDRV_PALETTE_INIT( lynx )
+	MCFG_SCREEN_ADD("screen", LCD)
+	MCFG_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	/*MCFG_SCREEN_SIZE(160, 102)*/
+	MCFG_SCREEN_SIZE(160, 160)
+	MCFG_SCREEN_VISIBLE_AREA(0, 160-1, 0, 102-1)
+	MCFG_PALETTE_LENGTH(0x1000)
+	MCFG_PALETTE_INIT( lynx )
 
-	MDRV_VIDEO_START( generic_bitmapped )
-	MDRV_VIDEO_UPDATE( generic_bitmapped )
+	MCFG_VIDEO_START( generic_bitmapped )
+	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("lynx", LYNX, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("custom", LYNX, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD("quickload", lynx, "o", 0)
+	MCFG_QUICKLOAD_ADD("quickload", lynx, "o", 0)
 
-	MDRV_FRAGMENT_ADD(lynx_cartslot)
+	MCFG_FRAGMENT_ADD(lynx_cartslot)
 MACHINE_CONFIG_END
 
 #if 0
 static MACHINE_CONFIG_DERIVED( lynx2, lynx )
 
 	/* sound hardware */
-	MDRV_DEVICE_REMOVE("mono")
-	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MDRV_DEVICE_REMOVE("lynx")
-	MDRV_SOUND_ADD("lynx2", LYNX2, 0)
-	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
-	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
+	MCFG_DEVICE_REMOVE("mono")
+	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MCFG_DEVICE_REMOVE("lynx")
+	MCFG_SOUND_ADD("custom", LYNX2, 0)
+	MCFG_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MCFG_SOUND_ROUTE(1, "rspeaker", 0.50)
 MACHINE_CONFIG_END
 #endif
 
@@ -138,10 +138,10 @@ ROM_END
 
 static QUICKLOAD_LOAD( lynx )
 {
-	running_device *cpu = image.device().machine->device("maincpu");
+	device_t *cpu = image.device().machine->device("maincpu");
 	address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *data = NULL;
-	UINT8 *rom = memory_region(image.device().machine, "maincpu");
+	UINT8 *rom = image.device().machine->region("maincpu")->base();
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	UINT16 start, length;
 	int i;

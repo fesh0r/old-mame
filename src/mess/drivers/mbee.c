@@ -14,6 +14,7 @@
 
     Also thanks to the author of the "ubee512" emulator for his help.
 
+    TeleTerm roms dumped by ejwords. The correct slots found by ubee512 author.
     Swedish roms dumped by nama. The correct slots found by ubee512 author.
 
     Floppy Disk types (as used by ubee512)
@@ -86,6 +87,8 @@
       to be a MAME core bug involving the z80pio.
 
     - Disk system doesn't work because of fdc problems.
+
+    - Teleterm: keyboard is problematic, and cursor doesn't show.
 
 
 ***************************************************************************/
@@ -183,6 +186,16 @@ static ADDRESS_MAP_START(mbee128_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf800, 0xffff) AM_RAMBANK("bankfh")
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START(mbeett_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("boot")
+	AM_RANGE(0x1000, 0x7fff) AM_RAM
+	AM_RANGE(0x8000, 0x9fff) AM_ROM
+	AM_RANGE(0xa000, 0xbfff) AM_RAM
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("pak")
+	AM_RANGE(0xe000, 0xefff) AM_ROMBANK("telcom")
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(mbeeppc_low_r, mbeeppc_low_w)
+	AM_RANGE(0xf800, 0xffff) AM_READWRITE(mbeeppc_high_r, mbeeppc_high_w)
+ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbee_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
@@ -299,6 +312,23 @@ static ADDRESS_MAP_START(mbee256_io, ADDRESS_SPACE_IO, 8)
 	// AM_RANGE(0x0058, 0x005f) AM_MIRROR(0xff00) External options: floppy drive, hard drive and keyboard
 	// AM_RANGE(0x0060, 0x0067) AM_MIRROR(0xff00) Reserved for file server selection (unused)
 	// AM_RANGE(0x0068, 0x006f) AM_MIRROR(0xff00) Reserved for 8530 SCC (unused)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START(mbeett_io, ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff00) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x0004, 0x0004) AM_MIRROR(0xff00) AM_WRITE(mbee_04_w)
+	AM_RANGE(0x0006, 0x0006) AM_MIRROR(0xff00) AM_WRITE(mbee_06_w)
+	AM_RANGE(0x0007, 0x0007) AM_MIRROR(0xff00) AM_READ(mbee_07_r)
+	AM_RANGE(0x0008, 0x0008) AM_MIRROR(0xff00) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
+	AM_RANGE(0x000b, 0x000b) AM_MIRROR(0xff00) AM_READWRITE(mbee_0b_r, mbee_0b_w)
+	AM_RANGE(0x000c, 0x000c) AM_MIRROR(0xff00) AM_READWRITE(m6545_status_r, m6545_index_w)
+	AM_RANGE(0x000d, 0x000d) AM_MIRROR(0xff00) AM_READWRITE(m6545_data_r, m6545_data_w)
+	AM_RANGE(0x0018, 0x001b) AM_MIRROR(0xff00) AM_READ(mbee256_18_r)
+	AM_RANGE(0x001c, 0x001f) AM_MIRROR(0xff00) AM_READWRITE(mbeeppc_1c_r,mbee256_1c_w)
+	AM_RANGE(0x000a, 0x000a) AM_MIRROR(0xfe10) AM_READWRITE(mbeepc_telcom_low_r, mbeeic_0a_w)
+	AM_RANGE(0x010a, 0x010a) AM_MIRROR(0xfe10) AM_READWRITE(mbeepc_telcom_high_r, mbeeic_0a_w)
+	// AM_RANGE(0x0068, 0x006f) AM_MIRROR(0xff00) 8530 SCC
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( mbee )
@@ -645,146 +675,156 @@ static const mc6845_interface mbee256_crtc = {
 
 static MACHINE_CONFIG_START( mbee, mbee_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz / 6)         /* 2 MHz */
-	MDRV_CPU_PROGRAM_MAP(mbee_mem)
-	MDRV_CPU_IO_MAP(mbee_io)
-	MDRV_CPU_CONFIG(mbee_daisy_chain)
+	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz / 6)         /* 2 MHz */
+	MCFG_CPU_PROGRAM_MAP(mbee_mem)
+	MCFG_CPU_IO_MAP(mbee_io)
+	MCFG_CPU_CONFIG(mbee_daisy_chain)
 
-	MDRV_MACHINE_RESET( mbee )
+	MCFG_MACHINE_RESET( mbee )
 
-	MDRV_Z80PIO_ADD( "z80pio", XTAL_12MHz / 6, mbee_z80pio_intf )
+	MCFG_Z80PIO_ADD( "z80pio", XTAL_12MHz / 6, mbee_z80pio_intf )
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(64*8, 19*16)			/* need at least 17 lines for NET */
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0, 19*16-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(64*8, 19*16)			/* need at least 17 lines for NET */
+	MCFG_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0, 19*16-1)
 
-	MDRV_GFXDECODE(mbee)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_GFXDECODE(mbee)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_START(mbee)
-	MDRV_VIDEO_UPDATE(mbee)
+	MCFG_VIDEO_START(mbee)
+	MCFG_VIDEO_UPDATE(mbee)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_MC6845_ADD("crtc", SY6545_1, XTAL_12MHz / 8, mbee_crtc)
-	MDRV_QUICKLOAD_ADD("quickload", mbee, "mwb,com", 2)
-	MDRV_Z80BIN_QUICKLOAD_ADD("quickload2", mbee, 2)
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
-	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	MCFG_MC6845_ADD("crtc", SY6545_1, XTAL_12MHz / 8, mbee_crtc)
+	MCFG_QUICKLOAD_ADD("quickload", mbee, "mwb,com", 2)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload2", mbee, 2)
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_START( mbeeic, mbee_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, XTAL_13_5MHz / 4)         /* 3.37500 MHz */
-	MDRV_CPU_PROGRAM_MAP(mbeeic_mem)
-	MDRV_CPU_IO_MAP(mbeeic_io)
-	MDRV_CPU_CONFIG(mbee_daisy_chain)
-	//MDRV_CPU_VBLANK_INT("screen", mbee_interrupt)
+	MCFG_CPU_ADD("maincpu", Z80, XTAL_13_5MHz / 4)         /* 3.37500 MHz */
+	MCFG_CPU_PROGRAM_MAP(mbeeic_mem)
+	MCFG_CPU_IO_MAP(mbeeic_io)
+	MCFG_CPU_CONFIG(mbee_daisy_chain)
+	//MCFG_CPU_VBLANK_INT("screen", mbee_interrupt)
 
-	MDRV_MACHINE_RESET( mbee )
+	MCFG_MACHINE_RESET( mbee )
 
-	MDRV_Z80PIO_ADD( "z80pio", 3375000, mbee_z80pio_intf )
+	MCFG_Z80PIO_ADD( "z80pio", 3375000, mbee_z80pio_intf )
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(80*8, 310)
-	MDRV_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 19*16-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(80*8, 310)
+	MCFG_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 19*16-1)
 
-	MDRV_GFXDECODE(mbeeic)
-	MDRV_PALETTE_LENGTH(96)
-	MDRV_PALETTE_INIT(mbeeic)
+	MCFG_GFXDECODE(mbeeic)
+	MCFG_PALETTE_LENGTH(96)
+	MCFG_PALETTE_INIT(mbeeic)
 
-	MDRV_VIDEO_START(mbeeic)
-	MDRV_VIDEO_UPDATE(mbee)
+	MCFG_VIDEO_START(mbeeic)
+	MCFG_VIDEO_UPDATE(mbee)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbeeic_crtc)
-	MDRV_QUICKLOAD_ADD("quickload", mbee, "mwb,com", 2)
-	MDRV_Z80BIN_QUICKLOAD_ADD("quickload2", mbee, 2)
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
-	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	MCFG_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbeeic_crtc)
+	MCFG_QUICKLOAD_ADD("quickload", mbee, "mwb,com", 2)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload2", mbee, 2)
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbeepc, mbeeic )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(mbeepc_mem)
-	MDRV_CPU_IO_MAP(mbeepc_io)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbeepc_mem)
+	MCFG_CPU_IO_MAP(mbeepc_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbeepc85, mbeeic )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(mbeepc85_mem)
-	MDRV_CPU_IO_MAP(mbeepc85_io)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbeepc85_mem)
+	MCFG_CPU_IO_MAP(mbeepc85_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbeepc85b, mbeepc85 )
-	MDRV_PALETTE_INIT(mbeepc85b)
+	MCFG_PALETTE_INIT(mbeepc85b)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbeeppc, mbeeic )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(mbeeppc_mem)
-	MDRV_CPU_IO_MAP(mbeeppc_io)
-	MDRV_VIDEO_START(mbeeppc)
-	MDRV_GFXDECODE(mbeeppc)
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_PALETTE_INIT(mbeeppc)
-	MDRV_DEVICE_REMOVE("crtc")
-	MDRV_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbeeppc_crtc)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbeeppc_mem)
+	MCFG_CPU_IO_MAP(mbeeppc_io)
+	MCFG_VIDEO_START(mbeeppc)
+	MCFG_GFXDECODE(mbeeppc)
+	MCFG_PALETTE_LENGTH(16)
+	MCFG_PALETTE_INIT(mbeeppc)
+	MCFG_DEVICE_REMOVE("crtc")
+	MCFG_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbeeppc_crtc)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbee56, mbeeic )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(mbee56_mem)
-	MDRV_CPU_IO_MAP(mbee56_io)
-	MDRV_MACHINE_RESET( mbee56 )
-	MDRV_WD2793_ADD("fdc", mbee_wd17xx_interface )
-	MDRV_FLOPPY_2_DRIVES_ADD(mbee_floppy_config)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbee56_mem)
+	MCFG_CPU_IO_MAP(mbee56_io)
+	MCFG_MACHINE_RESET( mbee56 )
+	MCFG_WD2793_ADD("fdc", mbee_wd17xx_interface )
+	MCFG_FLOPPY_2_DRIVES_ADD(mbee_floppy_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbee64, mbee56 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(mbee64_mem)
-	MDRV_CPU_IO_MAP(mbee64_io)
-	MDRV_MACHINE_RESET( mbee64 )
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbee64_mem)
+	MCFG_CPU_IO_MAP(mbee64_io)
+	MCFG_MACHINE_RESET( mbee64 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbee128, mbeeppc )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(mbee128_mem)
-	MDRV_CPU_IO_MAP(mbee128_io)
-	MDRV_MACHINE_RESET( mbee128 )
-	MDRV_WD2793_ADD("fdc", mbee_wd17xx_interface )
-	MDRV_FLOPPY_2_DRIVES_ADD(mbee_floppy_config)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbee128_mem)
+	MCFG_CPU_IO_MAP(mbee128_io)
+	MCFG_MACHINE_RESET( mbee128 )
+	MCFG_WD2793_ADD("fdc", mbee_wd17xx_interface )
+	MCFG_FLOPPY_2_DRIVES_ADD(mbee_floppy_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( mbee256, mbee128 )
-	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP(mbee256_io)
-	MDRV_MACHINE_RESET( mbee256 )
-	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
-	MDRV_DEVICE_REMOVE("crtc")
-	MDRV_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbee256_crtc)
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_IO_MAP(mbee256_io)
+	MCFG_MACHINE_RESET( mbee256 )
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_DEVICE_REMOVE("crtc")
+	MCFG_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbee256_crtc)
+MACHINE_CONFIG_END
+
+static MACHINE_CONFIG_DERIVED( mbeett, mbeeppc )
+	MCFG_CPU_MODIFY( "maincpu" )
+	MCFG_CPU_PROGRAM_MAP(mbeett_mem)
+	MCFG_CPU_IO_MAP(mbeett_io)
+	MCFG_MACHINE_RESET( mbeett )
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_DEVICE_REMOVE("crtc")
+	MCFG_MC6845_ADD("crtc", SY6545_1, XTAL_13_5MHz / 8, mbee256_crtc)
 MACHINE_CONFIG_END
 
 /* Unused roms:
@@ -973,6 +1013,31 @@ ROM_START( mbeepc85s )
 	ROM_REGION( 0x0800, "colorram", ROMREGION_ERASE00 )
 ROM_END
 
+ROM_START( mbeett )
+	ROM_REGION(0x10000,"maincpu", ROMREGION_ERASEFF)
+	ROM_LOAD("kernel_106.rom",        0x8000,  0x2000, CRC(5ab9cb1d) SHA1(a1fb971622f85c4d866b91cb4bec6d75757e8c5f) )
+
+	ROM_REGION(0x2000, "telcomrom", 0)
+	ROM_LOAD("wm_106.rom",            0x0000,  0x2000, CRC(77e0b355) SHA1(1db6769cd6b12e1c335c83f17f8c139986c87758) )
+
+	ROM_REGION(0x20000, "pakrom", ROMREGION_ERASEFF)
+	ROM_LOAD("tv_470311.rom",         0x2000,  0x2000, CRC(2c4c2dcb) SHA1(77cd75166a389cb2d1d8abf00b1ddd077ce98354) ) // 1
+	ROM_CONTINUE( 0x12000, 0x2000 )
+	ROM_LOAD("tw_103.rom",            0x4000,  0x2000, CRC(881edb4b) SHA1(f6e30a12b1537bd55b69d1319799b150e80a471b) ) // 2
+	ROM_CONTINUE( 0x14000, 0x2000 )
+	ROM_LOAD("oside_107.rom",         0x6000,  0x2000, CRC(05d99aba) SHA1(4f88d63025f99bcc54d6f2abc20a699c97384f68) ) // 3
+	ROM_CONTINUE( 0x16000, 0x1000 )
+	ROM_LOAD("test_105.rom",          0x8000,  0x2000, CRC(b69aa618) SHA1(49de8cbad59f549c7ad9f8efc9beee0cfcd901fe) ) // 4
+
+	ROM_REGION(0x9800, "gfx", 0)
+	ROM_LOAD("charrom.bin",           0x1000,  0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0) )
+	ROM_RELOAD( 0x0000, 0x1000 )
+
+	ROM_REGION( 0x0800, "videoram", ROMREGION_ERASE00 )
+	ROM_REGION( 0x0800, "colorram", ROMREGION_ERASE00 )
+	ROM_REGION( 0x0800, "attrib", ROMREGION_ERASE00 )
+ROM_END
+
 ROM_START( mbeeppc )
 	ROM_REGION(0x10000,"maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD("bas529b.rom",           0xa000,  0x2000, CRC(a1bd986b) SHA1(5d79f210c9042db5aefc85a0bdf45210cb9e9899) )
@@ -1077,11 +1142,12 @@ ROM_END
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT       COMPANY         FULLNAME */
 COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,   		"Applied Technology",  "Microbee 16 Standard" , 0 )
 COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbeeic, 		"Applied Technology",  "Microbee 32 IC" , 0 )
-COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc, 		"Applied Technology",  "Microbee 32 Personal Communicator" , 0 )
-COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85,		"Applied Technology",  "Microbee 32 PC85" , 0 )
-COMP( 1985, mbeepc85b,mbee,	0,	mbeepc85b,mbee,     mbeepc85,		"Applied Technology",  "Microbee 32 PC85 (New version)" , 0 )
-COMP( 1985, mbeepc85s,mbee,	0,	mbeepc85, mbee,     mbeepc85,		"Applied Technology",  "Microbee 32 PC85 (Swedish)" , 0 )
-COMP( 1986, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,		"Applied Technology",  "Microbee 32 Premium PC85" , 0 )
+COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc, 		"Applied Technology",  "Microbee Personal Communicator" , 0 )
+COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85,		"Applied Technology",  "Microbee PC85" , 0 )
+COMP( 1985, mbeepc85b,mbee,	0,	mbeepc85b,mbee,     mbeepc85,		"Applied Technology",  "Microbee PC85 (New version)" , 0 )
+COMP( 1985, mbeepc85s,mbee,	0,	mbeepc85, mbee,     mbeepc85,		"Applied Technology",  "Microbee PC85 (Swedish)" , 0 )
+COMP( 1986, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,		"Applied Technology",  "Microbee Premium PC85" , 0 )
+COMP( 1986, mbeett,   mbee,	0,	mbeett,   mbee256,  mbeett,		"Applied Technology",  "Microbee Teleterm" , GAME_NOT_WORKING )
 COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee,     mbee56, 		"Applied Technology",  "Microbee 56k" , GAME_NOT_WORKING )
 COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee,     mbee64, 		"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING )
 COMP( 1986, mbee128,  mbee,	0,	mbee128,  mbee,     mbee128, 		"Applied Technology",  "Microbee 128k" , GAME_NOT_WORKING )

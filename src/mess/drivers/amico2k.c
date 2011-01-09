@@ -22,6 +22,16 @@
 #include "amico2k.lh"
 
 
+class amico2k_state : public driver_device
+{
+public:
+	amico2k_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
+
 static READ8_DEVICE_HANDLER( amico2k_i8255a_r )
 {
 	return 0xff;
@@ -59,17 +69,17 @@ static I8255A_INTERFACE( amico_8255_intf )
 	DEVCB_NULL							// Port C write
 };
 
-static MACHINE_CONFIG_START( amico2k, driver_device )
+static MACHINE_CONFIG_START( amico2k, amico2k_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6502, 1000000)	/* 1MHz */
-	MDRV_CPU_PROGRAM_MAP(amico2k_mem)
+	MCFG_CPU_ADD("maincpu", M6502, 1000000)	/* 1MHz */
+	MCFG_CPU_PROGRAM_MAP(amico2k_mem)
 
-	MDRV_MACHINE_RESET(amico2k)
+	MCFG_MACHINE_RESET(amico2k)
 
 	/* video hardware */
-	MDRV_DEFAULT_LAYOUT( layout_amico2k )
+	MCFG_DEFAULT_LAYOUT( layout_amico2k )
 
-	MDRV_I8255A_ADD( "i8255a", amico_8255_intf )
+	MCFG_I8255A_ADD( "i8255a", amico_8255_intf )
 MACHINE_CONFIG_END
 
 

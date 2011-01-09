@@ -15,11 +15,15 @@
 components in its INTERRUPT_GEN */
 
 /* keyboard lines */
-UINT8 c64_keyline[10] =
-{
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-};
+UINT8 c64_keyline[10];
 
+void cbm_common_init(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_LENGTH(c64_keyline); i++)
+		c64_keyline[i] = 0xff;
+}
 
 static TIMER_CALLBACK( lightpen_tick )
 {
@@ -35,7 +39,7 @@ static TIMER_CALLBACK( lightpen_tick )
 	}
 }
 
-void cbm_common_interrupt( running_device *device )
+void cbm_common_interrupt( device_t *device )
 {
 	int value, i;
 	int controller1 = input_port_read(device->machine, "CTRLSEL") & 0x07;
@@ -177,7 +181,7 @@ components (to select/read additional keyboard lines) */
  * irq to irq connected
  */
 
-UINT8 cbm_common_cia0_port_a_r( running_device *device, UINT8 output_b )
+UINT8 cbm_common_cia0_port_a_r( device_t *device, UINT8 output_b )
 {
 	UINT8 value = 0xff;
 
@@ -301,7 +305,7 @@ UINT8 cbm_common_cia0_port_a_r( running_device *device, UINT8 output_b )
 	return value;
 }
 
-UINT8 cbm_common_cia0_port_b_r( running_device *device, UINT8 output_a )
+UINT8 cbm_common_cia0_port_b_r( device_t *device, UINT8 output_a )
 {
 	UINT8 value = 0xff;
 

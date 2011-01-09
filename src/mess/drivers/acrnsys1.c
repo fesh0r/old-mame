@@ -15,13 +15,23 @@
 #include "acrnsys1.lh"
 
 
+class acrnsys1_state : public driver_device
+{
+public:
+	acrnsys1_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
+
 /***************************************************************************
     KEYBOARD HANDLING
 ***************************************************************************/
 
 static READ8_DEVICE_HANDLER( ins8154_b1_port_a_r )
 {
-	running_device *ttl74145 = device->machine->device("ic8_7445");
+	device_t *ttl74145 = device->machine->device("ic8_7445");
 	UINT8 key_line = ttl74145_r(ttl74145, 0, 0);
 
 	switch (key_line)
@@ -52,7 +62,7 @@ static WRITE8_DEVICE_HANDLER( ins8154_b1_port_a_w )
 
 static WRITE8_DEVICE_HANDLER( acrnsys1_led_segment_w )
 {
-	running_device *ttl74145 = device->machine->device("ic8_7445");
+	device_t *ttl74145 = device->machine->device("ic8_7445");
 	UINT8 key_line = ttl74145_r(ttl74145, 0, 0);
 
 	output_set_digit_value(key_line, data);
@@ -114,13 +124,13 @@ static INPUT_PORTS_START( acrnsys1 )
 
 	PORT_START("keyboard_6")
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E) PORT_CHAR('E')
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP)   PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(UTF8_UP) PORT_CODE(KEYCODE_UP)   PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6) PORT_CHAR('6')
 	PORT_BIT(0xc7, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_START("keyboard_7")
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F) PORT_CHAR('F')
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(UTF8_DOWN) PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7) PORT_CHAR('7')
 	PORT_BIT(0xc7, IP_ACTIVE_LOW, IPT_UNUSED)
 
@@ -153,16 +163,16 @@ static const ins8154_interface ins8154_b1 =
 	DEVCB_NULL
 };
 
-static MACHINE_CONFIG_START( acrnsys1, driver_device )
+static MACHINE_CONFIG_START( acrnsys1, acrnsys1_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6502, 1008000)  /* 1.008 MHz */
-	MDRV_CPU_PROGRAM_MAP(acrnsys1_map)
+	MCFG_CPU_ADD("maincpu", M6502, 1008000)  /* 1.008 MHz */
+	MCFG_CPU_PROGRAM_MAP(acrnsys1_map)
 
-	MDRV_DEFAULT_LAYOUT(layout_acrnsys1)
+	MCFG_DEFAULT_LAYOUT(layout_acrnsys1)
 
 	/* devices */
-	MDRV_INS8154_ADD("b1", ins8154_b1)
-	MDRV_TTL74145_ADD("ic8_7445", default_ttl74145)
+	MCFG_INS8154_ADD("b1", ins8154_b1)
+	MCFG_TTL74145_ADD("ic8_7445", default_ttl74145)
 MACHINE_CONFIG_END
 
 

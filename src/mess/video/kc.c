@@ -101,7 +101,6 @@ PALETTE_INIT( kc85 )
 	}
 }
 
-static int kc85_blink_state;
 
 enum
 {
@@ -111,12 +110,12 @@ enum
 /* set new blink state - record blink state in event list */
 void kc85_video_set_blink_state(running_machine *machine, int data)
 {
-//  EventList_AddItemOffset(machine, KC85_VIDEO_EVENT_SET_BLINK_STATE, ((data & 0x01)<<7), machine->firstcpu->attotime_to_cycles(attotime_mul(machine->primary_screen->scan_period(), machine->primary_screen->vpos())));
+	//spectrum_EventList_AddItemOffset(machine, KC85_VIDEO_EVENT_SET_BLINK_STATE, ((data & 0x01)<<7), machine->firstcpu->attotime_to_cycles(attotime_mul(machine->primary_screen->scan_period(), machine->primary_screen->vpos())));
 }
 
 
 /* draw 8 pixels */
-static void kc85_draw_8_pixels(bitmap_t *bitmap,int x,int y, unsigned char colour_byte, unsigned char gfx_byte)
+static void kc85_draw_8_pixels(kc_state *state, bitmap_t *bitmap,int x,int y, unsigned char colour_byte, unsigned char gfx_byte)
 {
 	int a;
 	int background_pen;
@@ -139,7 +138,7 @@ static void kc85_draw_8_pixels(bitmap_t *bitmap,int x,int y, unsigned char colou
     background_pen = (colour_byte&7) + 16;
     foreground_pen = ((colour_byte>>3) & 0x0f);
 
-	if (colour_byte & kc85_blink_state)
+	if (colour_byte & state->kc85_blink_state)
 	{
 		foreground_pen = background_pen;
 	}
@@ -251,8 +250,6 @@ static const int vertical_graphics_state_lines[]=
 	KC85_NUM_RETRACE_LINES*KC85_CYCLES_PER_LINE
 };
 
-/*static int kc85_blink_state;*/
-
 struct video_state
 {
 	/* current state */
@@ -288,7 +285,7 @@ struct video_update_state
 
 /* process visible cycles within a line */
 /* the cycles will never span over the end of a line */
-static void kc85_common_process_cycles(struct video_update_state *video_update, int cycles)
+static void kc85_common_process_cycles(kc_state *state, struct video_update_state *video_update, int cycles)
 {
 	while (cycles!=0)
 	{
@@ -322,7 +319,7 @@ static void kc85_common_process_cycles(struct video_update_state *video_update, 
 					/* grab colour and pixel information */
 					video_update->pixel_grab_callback(&video_update->grab_data,video_update->x,video_update->y,&colour_byte, &gfx_byte);
 					/* draw to screen */
-					kc85_draw_8_pixels(video_update->bitmap, video_update->render_x, video_update->render_y,colour_byte, gfx_byte);
+					kc85_draw_8_pixels(state, video_update->bitmap, video_update->render_x, video_update->render_y,colour_byte, gfx_byte);
 					/* update render coordinate */
 					video_update->render_x+=8;
 					video_update->x++;
@@ -373,7 +370,7 @@ static void kc85_common_process_cycles(struct video_update_state *video_update, 
 }
 
 /* process a whole visible line */
-static int kc85_common_vh_process_line(struct video_update_state *video_update, int cycles)
+static int kc85_common_vh_process_line(kc_state *state, struct video_update_state *video_update, int cycles)
 {
 	int cycles_to_do;
 
@@ -386,7 +383,7 @@ static int kc85_common_vh_process_line(struct video_update_state *video_update, 
 		//logerror("process line: cycles_to_do: %d\n",cycles_to_do);
 
 		/* do the cycles - draw them */
-		kc85_common_process_cycles(video_update, cycles_to_do);
+		kc85_common_process_cycles(state, video_update, cycles_to_do);
 
 		video_update->horizontal.cycles_remaining -= cycles_to_do;
 		cycles -=cycles_to_do;
@@ -423,7 +420,7 @@ static int kc85_common_vh_process_line(struct video_update_state *video_update, 
 	return cycles;
 }
 
-static void kc85_common_vh_process_lines(struct video_update_state *video_update, int cycles)
+static void kc85_common_vh_process_lines(kc_state *state, struct video_update_state *video_update, int cycles)
 {
 	while (cycles!=0)
 	{
@@ -451,7 +448,7 @@ static void kc85_common_vh_process_lines(struct video_update_state *video_update
 				int cycles_remaining;
 
 				/* update cycles with number of cycles not processed */
-				cycles_remaining = kc85_common_vh_process_line(video_update, cycles_to_do);
+				cycles_remaining = kc85_common_vh_process_line(state, video_update, cycles_to_do);
 
 				cycles_done = cycles_to_do - cycles_remaining;
 
@@ -494,6 +491,7 @@ static void kc85_common_vh_process_lines(struct video_update_state *video_update
 /* if we assume a 50Hz display, there are 312 lines for the complete frame, leaving 56 lines not visible */
 static void kc85_common_process_frame(running_machine *machine, bitmap_t *bitmap, void (*pixel_grab_callback)(struct grab_info *,int x,int y,unsigned char *, unsigned char *),struct grab_info *grab_data)
 {
+	kc_state *state = machine->driver_data<kc_state>();
 	int cycles_remaining_in_frame = KC85_CYCLES_PER_FRAME;
 
 //  EVENT_LIST_ITEM *pItem;
@@ -516,39 +514,40 @@ static void kc85_common_process_frame(running_machine *machine, bitmap_t *bitmap
 	video_update.vertical.cycles_remaining_in_state = vertical_graphics_state_lines[video_update.vertical.state];
 	video_update.vertical.cycles_remaining = KC85_CYCLES_PER_FRAME;
 
-//  /* first item in list */
-//  pItem = EventList_GetFirstItem();
-//  /* number of items remaining */
-//  NumItems = EventList_NumEvents();
-//
-//  while (NumItems)
-//  {
-//      int delta_cycles;
-//
-//      /* number of cycles until event will trigger */
-//      delta_cycles = pItem->Event_Time - cycles_offset;
-//
-//      //logerror("cycles between this event and next: %d\n",delta_cycles);
-//      kc85_common_vh_process_lines(&video_update, delta_cycles);
-//
-//      /* update number of cycles remaining in frame */
-//      cycles_remaining_in_frame -= delta_cycles;
-//      /* set new blink state */
-//      kc85_blink_state = pItem->Event_Data;
-//
-//      /* set new cycles into frame */
-//      cycles_offset = pItem->Event_Time;
-//      /* next event */
-//      pItem++;
-//      /* update number of events remaining */
-//      NumItems--;
-//  }
+#if 0
+	/* first item in list */
+	pItem = spectrum_EventList_GetFirstItem(machine);
+	/* number of items remaining */
+	NumItems = spectrum_EventList_NumEvents(machine);
 
+	while (NumItems)
+	{
+		int delta_cycles;
+
+		/* number of cycles until event will trigger */
+		delta_cycles = pItem->Event_Time - cycles_offset;
+
+		//logerror("cycles between this event and next: %d\n",delta_cycles);
+		kc85_common_vh_process_lines(&video_update, delta_cycles);
+
+		/* update number of cycles remaining in frame */
+		cycles_remaining_in_frame -= delta_cycles;
+		/* set new blink state */
+		state->kc85_blink_state = pItem->Event_Data;
+
+		/* set new cycles into frame */
+		cycles_offset = pItem->Event_Time;
+		/* next event */
+		pItem++;
+		/* update number of events remaining */
+		NumItems--;
+	}
+#endif
 
 	/* process remainder */
-	kc85_common_vh_process_lines(&video_update, cycles_remaining_in_frame);
-//  EventList_Reset();
-//  EventList_SetOffsetStartTime ( machine->firstcpu->attotime_to_cycles(attotime_mul(machine->primary_screen->scan_period(), machine->primary_screen->vpos())) );
+	kc85_common_vh_process_lines(state, &video_update, cycles_remaining_in_frame);
+	//spectrum_EventList_Reset(machine);
+	//spectrum_EventList_SetOffsetStartTime ( machine, machine->firstcpu->attotime_to_cycles(attotime_mul(machine->primary_screen->scan_period(), machine->primary_screen->vpos())) );
 }
 
 
@@ -558,31 +557,32 @@ static void kc85_common_process_frame(running_machine *machine, bitmap_t *bitmap
 ***************************************************************************/
 static void kc85_common_vh_start(running_machine *machine)
 {
-	kc85_blink_state = 0;
-//  EventList_Initialise(machine, 30000);
+	kc_state *state = machine->driver_data<kc_state>();
+	state->kc85_blink_state = 0;
+	//spectrum_EventList_Initialise(machine, 30000);
 }
 
-static unsigned char *kc85_4_display_video_ram;
 
-static unsigned char *kc85_4_video_ram;
 
 VIDEO_START( kc85_4 )
 {
+	kc_state *state = machine->driver_data<kc_state>();
 	kc85_common_vh_start(machine);
 
-    kc85_4_video_ram = auto_alloc_array(machine, UINT8,
+    state->kc85_4_video_ram = auto_alloc_array(machine, UINT8,
         (KC85_4_SCREEN_COLOUR_RAM_SIZE*2) +
         (KC85_4_SCREEN_PIXEL_RAM_SIZE*2));
 
-	kc85_4_display_video_ram = kc85_4_video_ram;
+	state->kc85_4_display_video_ram = state->kc85_4_video_ram;
 }
 
-void kc85_4_video_ram_select_bank(int bank)
+void kc85_4_video_ram_select_bank(running_machine *machine, int bank)
 {
+	kc_state *state = machine->driver_data<kc_state>();
     /* calculate address of video ram to display */
     unsigned char *video_ram;
 
-    video_ram = kc85_4_video_ram;
+    video_ram = state->kc85_4_video_ram;
 
     if (bank!=0)
     {
@@ -591,13 +591,14 @@ void kc85_4_video_ram_select_bank(int bank)
 				   KC85_4_SCREEN_COLOUR_RAM_SIZE);
 	}
 
-    kc85_4_display_video_ram = video_ram;
+    state->kc85_4_display_video_ram = video_ram;
 }
 
-unsigned char *kc85_4_get_video_ram_base(int bank, int colour)
+unsigned char *kc85_4_get_video_ram_base(running_machine *machine, int bank, int colour)
 {
+	kc_state *state = machine->driver_data<kc_state>();
     /* base address: screen 0 pixel data */
-	unsigned char *addr = kc85_4_video_ram;
+	unsigned char *addr = state->kc85_4_video_ram;
 
 	if (bank!=0)
 	{
@@ -634,8 +635,9 @@ static void kc85_4_pixel_grab_callback(struct grab_info *grab_data,int x,int y, 
 ***************************************************************************/
 VIDEO_UPDATE( kc85_4 )
 {
+	kc_state *state = screen->machine->driver_data<kc_state>();
 #if 0
-    unsigned char *pixel_ram = kc85_4_display_video_ram;
+    unsigned char *pixel_ram = state->kc85_4_display_video_ram;
     unsigned char *colour_ram = pixel_ram + 0x04000;
 
     int x,y;
@@ -652,15 +654,15 @@ VIDEO_UPDATE( kc85_4 )
 			colour_byte = colour_ram[offset];
 		    gfx_byte = pixel_ram[offset];
 
-			kc85_draw_8_pixels(bitmap,(x<<3),y, colour_byte, gfx_byte);
+			kc85_draw_8_pixels(state, bitmap,(x<<3),y, colour_byte, gfx_byte);
 
 		}
 	}
 #endif
 	struct grab_info grab_data;
 
-	grab_data.pixel_ram = kc85_4_display_video_ram;
-	grab_data.colour_ram = kc85_4_display_video_ram + 0x04000;
+	grab_data.pixel_ram = state->kc85_4_display_video_ram;
+	grab_data.colour_ram = state->kc85_4_display_video_ram + 0x04000;
 
 	kc85_common_process_frame(screen->machine, bitmap, kc85_4_pixel_grab_callback,&grab_data);
 
@@ -749,7 +751,7 @@ VIDEO_UPDATE( kc85_3 )
             colour_byte = colour_ram[colour_offset];
             gfx_byte = pixel_ram[pixel_offset];
 
-			kc85_draw_8_pixels(bitmap,(x<<3),y, colour_byte, gfx_byte);
+			kc85_draw_8_pixels(state, bitmap,(x<<3),y, colour_byte, gfx_byte);
 		}
 	}
 #endif

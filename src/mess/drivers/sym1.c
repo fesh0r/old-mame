@@ -24,11 +24,6 @@
 
 
 /* pointers to memory locations */
-UINT8 *sym1_monitor;
-static UINT8 *sym1_ram_1k;
-static UINT8 *sym1_ram_2k;
-static UINT8 *sym1_ram_3k;
-static UINT8 *sym1_riot_ram;
 
 
 
@@ -39,13 +34,13 @@ static UINT8 *sym1_riot_ram;
 
 static ADDRESS_MAP_START( sym1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM                              /* U12/U13 RAM */
-	AM_RANGE(0x0400, 0x07ff) AM_RAMBANK("bank2") AM_BASE(&sym1_ram_1k)
-	AM_RANGE(0x0800, 0x0bff) AM_RAMBANK("bank3") AM_BASE(&sym1_ram_2k)
-	AM_RANGE(0x0c00, 0x0fff) AM_RAMBANK("bank4") AM_BASE(&sym1_ram_3k)
-	AM_RANGE(0x8000, 0x8fff) AM_ROM AM_BASE(&sym1_monitor)       /* U20 Monitor ROM */
+	AM_RANGE(0x0400, 0x07ff) AM_RAMBANK("bank2") AM_BASE_MEMBER(sym1_state, ram_1k)
+	AM_RANGE(0x0800, 0x0bff) AM_RAMBANK("bank3") AM_BASE_MEMBER(sym1_state, ram_2k)
+	AM_RANGE(0x0c00, 0x0fff) AM_RAMBANK("bank4") AM_BASE_MEMBER(sym1_state, ram_3k)
+	AM_RANGE(0x8000, 0x8fff) AM_ROM AM_BASE_MEMBER(sym1_state, monitor)       /* U20 Monitor ROM */
 	AM_RANGE(0xa000, 0xa00f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)      /* U25 VIA #1 */
 	AM_RANGE(0xa400, 0xa40f) AM_DEVREADWRITE("riot", riot6532_r, riot6532_w)  /* U27 RIOT */
-	AM_RANGE(0xa600, 0xa67f) AM_RAMBANK("bank5") AM_BASE(&sym1_riot_ram)  /* U27 RIOT RAM */
+	AM_RANGE(0xa600, 0xa67f) AM_RAMBANK("bank5") AM_BASE_MEMBER(sym1_state, riot_ram)  /* U27 RIOT RAM */
 	AM_RANGE(0xa800, 0xa80f) AM_DEVREADWRITE_MODERN("via6522_1", via6522_device, read, write)      /* U28 VIA #2 */
 	AM_RANGE(0xac00, 0xac0f) AM_DEVREADWRITE_MODERN("via6522_2", via6522_device, read, write)      /* U29 VIA #3 */
 	AM_RANGE(0xb000, 0xefff) AM_ROM
@@ -122,30 +117,30 @@ INPUT_PORTS_END
 ******************************************************************************/
 
 
-static MACHINE_CONFIG_START( sym1, driver_device )
+static MACHINE_CONFIG_START( sym1, sym1_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6502, SYM1_CLOCK)  /* 1 MHz */
-	MDRV_CPU_PROGRAM_MAP(sym1_map)
-	MDRV_MACHINE_RESET(sym1)
+	MCFG_CPU_ADD("maincpu", M6502, SYM1_CLOCK)  /* 1 MHz */
+	MCFG_CPU_PROGRAM_MAP(sym1_map)
+	MCFG_MACHINE_RESET(sym1)
 
-	MDRV_DEFAULT_LAYOUT(layout_sym1)
+	MCFG_DEFAULT_LAYOUT(layout_sym1)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	/* devices */
-	MDRV_RIOT6532_ADD("riot", SYM1_CLOCK, sym1_r6532_interface)
-	MDRV_TTL74145_ADD("ttl74145", sym1_ttl74145_intf)
-	MDRV_VIA6522_ADD("via6522_0", 0, sym1_via0)
-	MDRV_VIA6522_ADD("via6522_1", 0, sym1_via1)
-	MDRV_VIA6522_ADD("via6522_2", 0, sym1_via2)
+	MCFG_RIOT6532_ADD("riot", SYM1_CLOCK, sym1_r6532_interface)
+	MCFG_TTL74145_ADD("ttl74145", sym1_ttl74145_intf)
+	MCFG_VIA6522_ADD("via6522_0", 0, sym1_via0)
+	MCFG_VIA6522_ADD("via6522_1", 0, sym1_via1)
+	MCFG_VIA6522_ADD("via6522_2", 0, sym1_via2)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("4K")
-	MDRV_RAM_EXTRA_OPTIONS("1K,2K,3K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("4K")
+	MCFG_RAM_EXTRA_OPTIONS("1K,2K,3K")
 MACHINE_CONFIG_END
 
 

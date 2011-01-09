@@ -19,8 +19,8 @@
 //  INTERFACE CONFIGURATION MACROS
 //**************************************************************************
 
-#define MDRV_ABC99_ADD(_tag) \
-    MDRV_DEVICE_ADD(_tag, ABC99, 0)
+#define MCFG_ABC99_ADD() \
+    MCFG_DEVICE_ADD(ABC99_TAG, ABC99, 0)
 
 
 
@@ -70,6 +70,12 @@ class abc99_device :  public device_t
     abc99_device(running_machine &_machine, const abc99_device_config &_config);
 
 public:
+	DECLARE_WRITE8_MEMBER( z2_p1_w );
+	DECLARE_READ8_MEMBER( z2_t1_r );
+	DECLARE_READ8_MEMBER( z5_p1_r );
+	DECLARE_WRITE8_MEMBER( z5_p2_w );
+	DECLARE_WRITE8_MEMBER( z5_t0_w );
+	DECLARE_READ8_MEMBER( z5_t1_r );
 
 protected:
     // device-level overrides
@@ -83,6 +89,10 @@ private:
 
 // device type definition
 extern const device_type ABC99;
+
+
+// keyboard matrix
+INPUT_PORTS_EXTERN( abc99 );
 
 
 

@@ -19,8 +19,6 @@
 #include "devices/harddriv.h"
 #include "image.h"
 
-static struct hd_state hd;
-
 static TIMER_CALLBACK( req_delay )
 {
 	sasi_ctrl_t* sasi = (sasi_ctrl_t*)ptr;
@@ -28,7 +26,7 @@ static TIMER_CALLBACK( req_delay )
 	sasi->status_port |= 0x01;
 }
 
-static unsigned char SASIReadByte(running_device* device)
+static unsigned char SASIReadByte(device_t* device)
 {
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
 	//int ret;
@@ -39,7 +37,7 @@ static unsigned char SASIReadByte(running_device* device)
 	return val;
 }
 
-static void SASIWriteByte(running_device* device, unsigned char val)
+static void SASIWriteByte(device_t* device, unsigned char val)
 {
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
 	image->fwrite(&val,1);
@@ -52,7 +50,6 @@ DEVICE_START( x68k_hdc )
 	sasi->status = 0x00;
 	sasi->status_port = 0x00;
 	sasi->phase = SASI_PHASE_BUSFREE;
-	hd.current_block = 0;
 }
 
 DEVICE_IMAGE_CREATE( sasihd )

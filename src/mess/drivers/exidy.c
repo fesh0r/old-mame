@@ -343,6 +343,42 @@ static GFXDECODE_START( exidy )
 	GFXDECODE_ENTRY( "maincpu", 0xf800, exidy_charlayout, 0, 1 )
 GFXDECODE_END
 
+static VIDEO_UPDATE( exidy )
+{
+	UINT8 y,ra,chr,gfx;
+	UINT16 sy=0,ma=0xf080,x;
+	UINT8 *RAM = screen->machine->region("maincpu")->base();
+
+	for (y = 0; y < 30; y++)
+	{
+		for (ra = 0; ra < 8; ra++)
+		{
+			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+
+			for (x = ma; x < ma+64; x++)
+			{
+				chr = RAM[x];
+
+				/* get pattern of pixels for that character scanline */
+				gfx = RAM[0xf800 | (chr<<3) | ra];
+
+				/* Display a scanline of a character (8 pixels) */
+				*p++ = ( gfx & 0x80 ) ? 1 : 0;
+				*p++ = ( gfx & 0x40 ) ? 1 : 0;
+				*p++ = ( gfx & 0x20 ) ? 1 : 0;
+				*p++ = ( gfx & 0x10 ) ? 1 : 0;
+				*p++ = ( gfx & 0x08 ) ? 1 : 0;
+				*p++ = ( gfx & 0x04 ) ? 1 : 0;
+				*p++ = ( gfx & 0x02 ) ? 1 : 0;
+				*p++ = ( gfx & 0x01 ) ? 1 : 0;
+			}
+		}
+		ma+=64;
+	}
+	return 0;
+}
+
+
 /**********************************************************************************************************/
 
 static const ay31015_config exidy_ay31015_config =
@@ -376,71 +412,71 @@ static const floppy_config exidy_floppy_config =
 	NULL
 };
 
-static MACHINE_CONFIG_START( exidy, driver_device )
+static MACHINE_CONFIG_START( exidy, exidy_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, 12638000/6)
-	MDRV_CPU_PROGRAM_MAP(exidy_mem)
-	MDRV_CPU_IO_MAP(exidy_io)
+	MCFG_CPU_ADD("maincpu", Z80, 12638000/6)
+	MCFG_CPU_PROGRAM_MAP(exidy_mem)
+	MCFG_CPU_IO_MAP(exidy_io)
 
-	MDRV_MACHINE_START( exidy )
-	MDRV_MACHINE_RESET( exidy )
+	MCFG_MACHINE_START( exidy )
+	MCFG_MACHINE_RESET( exidy )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(200))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(64*8, 30*8)
-	MDRV_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 30*8-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(200))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(64*8, 30*8)
+	MCFG_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 30*8-1)
 
-	MDRV_GFXDECODE(exidy)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_GFXDECODE(exidy)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_UPDATE( exidy )
+	MCFG_VIDEO_UPDATE( exidy )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass1 speaker
-	MDRV_SOUND_WAVE_ADD("wave.2", "cassette2")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass2 speaker
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)	// speaker or music card on parallel port
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave.1", "cassette1")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass1 speaker
+	MCFG_SOUND_WAVE_ADD("wave.2", "cassette2")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass2 speaker
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)	// speaker or music card on parallel port
 
-	MDRV_AY31015_ADD( "ay_3_1015", exidy_ay31015_config )
+	MCFG_AY31015_ADD( "ay_3_1015", exidy_ay31015_config )
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* quickload */
-	MDRV_SNAPSHOT_ADD("snapshot", exidy, "snp", 2)
-	MDRV_Z80BIN_QUICKLOAD_ADD("quickload", exidy, 2)
+	MCFG_SNAPSHOT_ADD("snapshot", exidy, "snp", 2)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", exidy, 2)
 
-	MDRV_CASSETTE_ADD( "cassette1", exidy_cassette_config )
-	MDRV_CASSETTE_ADD( "cassette2", exidy_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette1", exidy_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette2", exidy_cassette_config )
 
-	MDRV_WD179X_ADD("wd179x", default_wd17xx_interface )
+	MCFG_WD179X_ADD("wd179x", default_wd17xx_interface )
 
 	/* cartridge */
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("rom")
-	MDRV_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("rom")
+	MCFG_CARTSLOT_NOT_MANDATORY
 
-	MDRV_FLOPPY_4_DRIVES_ADD(exidy_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(exidy_floppy_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( exidyd, exidy )
 
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(exidyd_mem)
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_PROGRAM_MAP(exidyd_mem)
 
-	MDRV_FLOPPY_4_DRIVES_REMOVE()
+	MCFG_FLOPPY_4_DRIVES_REMOVE()
 MACHINE_CONFIG_END
 
 static DRIVER_INIT( exidy )
 {
-	UINT8 *RAM = memory_region(machine, "maincpu");
+	UINT8 *RAM = machine->region("maincpu")->base();
 	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000], 0xe000);
 }
 

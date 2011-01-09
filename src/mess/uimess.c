@@ -79,7 +79,7 @@ void ui_mess_main_menu_populate(running_machine *machine, ui_menu *menu)
 INLINE int cassette_count( running_machine *machine )
 {
 	int count = 0;
-	running_device *device = machine->m_devicelist.first(CASSETTE);
+	device_t *device = machine->m_devicelist.first(CASSETTE);
 
 	while ( device )
 	{
@@ -97,7 +97,7 @@ INLINE int cassette_count( running_machine *machine )
 INLINE int bitbanger_count( running_machine *machine )
 {
 	int count = 0;
-	running_device *device = machine->m_devicelist.first(BITBANGER);
+	device_t *device = machine->m_devicelist.first(BITBANGER);
 
 	while ( device )
 	{
@@ -112,7 +112,7 @@ INLINE int bitbanger_count( running_machine *machine )
     representation of the time
 -------------------------------------------------*/
 
-astring *tapecontrol_gettime(astring *dest, running_device *device, int *curpos, int *endpos)
+astring *tapecontrol_gettime(astring *dest, device_t *device, int *curpos, int *endpos)
 {
 	double t0, t1;
 
@@ -390,7 +390,7 @@ void ui_mess_menu_bitbanger_control(running_machine *machine, ui_menu *menu, voi
 		}
 		menustate->device = device;
 		ui_menu_reset(menu, (ui_menu_reset_options)0);
-   }
+	}
 
 	/* rebuild the menu */
 	ui_menu_reset(menu, UI_MENU_RESET_REMEMBER_POSITION);

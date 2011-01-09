@@ -7,13 +7,14 @@
 	http://www.best-electronics-ca.com/portfoli.htm
 	http://www.atari-portfolio.co.uk/pfnews/pf9.txt
 
-	Undumped cartridges:
+
+	Undumped Atari cartridges:
 
 	Utility-Card				HPC-701
 	Finance-Card				HPC-702
 	Science-Card				HPC-703	
 	File Manager / Tutorial		HPC-704
-	PowerBasic					HPC-705
+	PowerBASIC					HPC-705
 	Instant Spell				HPC-709
 	Hyperlist					HPC-713
 	Bridge Baron				HPC-724
@@ -22,6 +23,38 @@
 	Astrologer					HPC-728	
 	Stock Tracker				HPC-729	
 	Chess						HPC-750
+	
+
+	Undumped 3rd party cartridges:
+
+	Adcalc						AAC-1000
+	Alpha Paging Interface		SAMpage
+	Business Contacts and Information Manager		BCIM
+	Checkwriter
+	Colossal Cave Adventure
+	Drug Interactions
+	Dynapulse										200M-A
+	Form Letters
+	FORTH programming system						UTIL
+	FX-3 DUAT Flight Software
+	FX-4 Flight Planner
+	Graphics Screens
+	Marine Device Interface							CM380 UMPIRE
+	Message Mover (Mac)								MSG-PKG6
+	Message Mover (PC)								MSG-PKG5
+	Micro Hedge
+	Micro-Roentgen Radiation Monitor				RM-60
+	Patient Management
+	PBase
+	PDD2 Utilities
+	Pharmaceuticals
+	Physician's Reference I
+	PIPELINE Fuel Management
+	REACT
+	Stocks Games
+	Terminal+
+	Timekeeper
+	TIMEPAC-5
 
 */
 
@@ -79,7 +112,7 @@ enum
 	PID_NONE = 0xff
 };
 
-static UINT8 INTERRUPT_VECTOR[] = { 0x08, 0x09, 0x00 };
+static const UINT8 INTERRUPT_VECTOR[] = { 0x08, 0x09, 0x00 };
 
 //**************************************************************************
 //	INTERRUPTS
@@ -226,7 +259,7 @@ void portfolio_state::scan_keyboard()
 //  TIMER_DEVICE_CALLBACK( keyboard_tick )
 //-------------------------------------------------
 
-TIMER_DEVICE_CALLBACK( keyboard_tick )
+static TIMER_DEVICE_CALLBACK( keyboard_tick )
 {
 	portfolio_state *state = timer.machine->driver_data<portfolio_state>();
 
@@ -422,7 +455,7 @@ WRITE8_MEMBER( portfolio_state::ncc1_w )
 	if (BIT(data, 0))
 	{
 		// system ROM
-		UINT8 *rom = memory_region(&m_machine, M80C88A_TAG);
+		UINT8 *rom = machine->region(M80C88A_TAG)->base();
 		memory_install_rom(program, 0xc0000, 0xdffff, 0, 0, rom);
 	}
 	else
@@ -540,7 +573,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-')
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Left Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('[') PORT_CHAR('{')
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(UTF8_UP) PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('"') PORT_CHAR('`')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']') PORT_CHAR('}')
 
@@ -550,7 +583,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G')
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Right Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT)
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(UTF8_DOWN) PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
 
@@ -558,8 +591,8 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(UTF8_LEFT) PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(UTF8_RIGHT) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('8')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
@@ -637,7 +670,7 @@ static PALETTE_INIT( portfolio )
 READ8_DEVICE_HANDLER( hd61830_rd_r )
 {
 	UINT16 address = ((offset & 0xff) << 3) | ((offset >> 12) & 0x07);
-	UINT8 data = memory_region(device->machine, HD61830_TAG)[address];
+	UINT8 data = device->machine->region(HD61830_TAG)->base()[address];
 
 	return data;
 }
@@ -713,7 +746,7 @@ static const ins8250_interface i8250_intf =
 //  centronics_interface centronics_intf
 //-------------------------------------------------
 
-static centronics_interface centronics_intf =
+static const centronics_interface centronics_intf =
 {
 	TRUE,
 	DEVCB_NULL,
@@ -812,68 +845,68 @@ void portfolio_state::machine_reset()
 
 static MACHINE_CONFIG_START( portfolio, portfolio_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD(M80C88A_TAG, I8088, XTAL_4_9152MHz)
-    MDRV_CPU_PROGRAM_MAP(portfolio_mem)
-    MDRV_CPU_IO_MAP(portfolio_io)
+    MCFG_CPU_ADD(M80C88A_TAG, I8088, XTAL_4_9152MHz)
+    MCFG_CPU_PROGRAM_MAP(portfolio_mem)
+    MCFG_CPU_IO_MAP(portfolio_io)
 	
     /* video hardware */
-	MDRV_SCREEN_ADD(SCREEN_TAG, LCD)
-	MDRV_SCREEN_REFRESH_RATE(72)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(240, 64)
-	MDRV_SCREEN_VISIBLE_AREA(0, 240-1, 0, 64-1)
+	MCFG_SCREEN_ADD(SCREEN_TAG, LCD)
+	MCFG_SCREEN_REFRESH_RATE(72)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(240, 64)
+	MCFG_SCREEN_VISIBLE_AREA(0, 240-1, 0, 64-1)
 
-	MDRV_DEFAULT_LAYOUT(layout_lcd)
+	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(portfolio)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(portfolio)
 
-	MDRV_GFXDECODE(portfolio)
+	MCFG_GFXDECODE(portfolio)
 
-	MDRV_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
+	MCFG_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_I8255A_ADD(M82C55A_TAG, ppi_intf)
-	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, centronics_intf)
-	MDRV_INS8250_ADD(M82C50A_TAG, i8250_intf) // should be MDRV_INS8250A_ADD
-	MDRV_TIMER_ADD_PERIODIC("counter", counter_tick, HZ(XTAL_32_768kHz/16384))
-	MDRV_TIMER_ADD_PERIODIC(TIMER_TICK_TAG, system_tick, HZ(XTAL_32_768kHz/32768))
+	MCFG_I8255A_ADD(M82C55A_TAG, ppi_intf)
+	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, centronics_intf)
+	MCFG_INS8250_ADD(M82C50A_TAG, i8250_intf) // should be MCFG_INS8250A_ADD
+	MCFG_TIMER_ADD_PERIODIC("counter", counter_tick, HZ(XTAL_32_768kHz/16384))
+	MCFG_TIMER_ADD_PERIODIC(TIMER_TICK_TAG, system_tick, HZ(XTAL_32_768kHz/32768))
 
 	/* fake keyboard */
-	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
+	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
 
 	/* cartridge */
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin")
-	MDRV_CARTSLOT_INTERFACE("portfolio_cart")
-	MDRV_CARTSLOT_LOAD(portfolio_cart)
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("bin")
+	MCFG_CARTSLOT_INTERFACE("portfolio_cart")
+	MCFG_CARTSLOT_LOAD(portfolio_cart)
 
 	/* memory card */
-/*	MDRV_MEMCARD_ADD("memcard_a")
-	MDRV_MEMCARD_EXTENSION_LIST("bin")
-	MDRV_MEMCARD_LOAD(portfolio_memcard)
-	MDRV_MEMCARD_SIZE_OPTIONS("32K,64K,128K")
+/*	MCFG_MEMCARD_ADD("memcard_a")
+	MCFG_MEMCARD_EXTENSION_LIST("bin")
+	MCFG_MEMCARD_LOAD(portfolio_memcard)
+	MCFG_MEMCARD_SIZE_OPTIONS("32K,64K,128K")
 
-	MDRV_MEMCARD_ADD("memcard_b")
-	MDRV_MEMCARD_EXTENSION_LIST("bin")
-	MDRV_MEMCARD_LOAD(portfolio_memcard)
-	MDRV_MEMCARD_SIZE_OPTIONS("32K,64K,128K")*/
+	MCFG_MEMCARD_ADD("memcard_b")
+	MCFG_MEMCARD_EXTENSION_LIST("bin")
+	MCFG_MEMCARD_LOAD(portfolio_memcard)
+	MCFG_MEMCARD_SIZE_OPTIONS("32K,64K,128K")*/
 
 	/* software lists */
-//	MDRV_SOFTWARE_LIST_ADD("cart_list", "pofo")
+//	MCFG_SOFTWARE_LIST_ADD("cart_list", "pofo")
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")
-	MDRV_RAM_EXTRA_OPTIONS("384K,640K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_EXTRA_OPTIONS("384K,640K")
 
-	MDRV_NVRAM_ADD_RANDOM_FILL("nvram1")
-	MDRV_NVRAM_ADD_RANDOM_FILL("nvram2")
+	MCFG_NVRAM_ADD_RANDOM_FILL("nvram1")
+	MCFG_NVRAM_ADD_RANDOM_FILL("nvram2")
 MACHINE_CONFIG_END
 
 //**************************************************************************

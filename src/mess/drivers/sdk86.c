@@ -15,6 +15,16 @@
 #include "emu.h"
 #include "cpu/i86/i86.h"
 
+
+class sdk86_state : public driver_device
+{
+public:
+	sdk86_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(sdk86_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x00000, 0x03fff) AM_RAM
 	AM_RANGE(0xfe000, 0xfffff) AM_ROM
@@ -42,26 +52,26 @@ static VIDEO_UPDATE( sdk86 )
     return 0;
 }
 
-static MACHINE_CONFIG_START( sdk86, driver_device )
+static MACHINE_CONFIG_START( sdk86, sdk86_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",I8086, XTAL_14_7456MHz/3) /* divided down by i8284 clock generator; jumper selection allows it to be slowed to 2.5MHz, hence changing divider from 3 to 6 */
-    MDRV_CPU_PROGRAM_MAP(sdk86_mem)
-    MDRV_CPU_IO_MAP(sdk86_io)
+    MCFG_CPU_ADD("maincpu",I8086, XTAL_14_7456MHz/3) /* divided down by i8284 clock generator; jumper selection allows it to be slowed to 2.5MHz, hence changing divider from 3 to 6 */
+    MCFG_CPU_PROGRAM_MAP(sdk86_mem)
+    MCFG_CPU_IO_MAP(sdk86_io)
 
-    MDRV_MACHINE_RESET(sdk86)
+    MCFG_MACHINE_RESET(sdk86)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(640, 480)
+    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(sdk86)
-    MDRV_VIDEO_UPDATE(sdk86)
+    MCFG_VIDEO_START(sdk86)
+    MCFG_VIDEO_UPDATE(sdk86)
 MACHINE_CONFIG_END
 
 /* ROM definition */

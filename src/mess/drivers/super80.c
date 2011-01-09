@@ -1,5 +1,11 @@
 /*
-Super80.c written by Robbbert, 2005-2009. See the MESS sysinfo and wiki for usage documentation. Below for the most technical bits:
+
+Super80.c written by Robbbert, 2005-2010. 
+
+2010-12-19: Added V3.7 bios freshly dumped today.
+
+See the MESS sysinfo and wiki for usage
+documentation. Below for the most technical bits:
 
 = Architecture (super80):
 
@@ -100,7 +106,7 @@ then reset ready for the next wave state. The code for this is in the TIMER_CALL
 A kit was produced by ETI magazine, which plugged into the line from your cassette player earphone
 socket. The computer line was plugged into this box instead of the cassette player. The box was
 fitted with a speaker and a volume control. You could listen to the tones, to assist with head
-alignment, and with debugging. In RMESS, a config switch has been provided so that you can turn
+alignment, and with debugging. In MESS, a config switch has been provided so that you can turn
 this sound on or off as needed.
 
 = About the 1 MHz / 2 MHz switching:
@@ -129,7 +135,7 @@ To obtain accurate timing, the video update routine will toggle the HALT line on
 Although physically incorrect, it is the only way to accurately emulate the speed change function.
 The video update routine emulates the blank screen by filling it with spaces.
 
-For the benefit of those who like to experiment, config switches have been provided in RMESS to
+For the benefit of those who like to experiment, config switches have been provided in MESS to
 allow you to leave the screen on at all times, and to always run at 2 MHz if desired. These options
 cannot exist in real hardware.
 
@@ -234,6 +240,16 @@ static ADDRESS_MAP_START( super80_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
+	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
+	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( super80e_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0xbc, 0xbc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
@@ -608,7 +624,7 @@ static const cassette_config super80_cassette_config =
 
 static DEVICE_IMAGE_LOAD( super80_cart )
 {
-	image.fread( memory_region(image.device().machine, "maincpu") + 0xc000, 0x3000);
+	image.fread( image.device().machine->region("maincpu")->base() + 0xc000, 0x3000);
 
 	return IMAGE_INIT_PASS;
 }
@@ -627,126 +643,128 @@ static const mc6845_interface super80v_crtc = {
 };
 
 static MACHINE_CONFIG_FRAGMENT( super80_cartslot )
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("rom")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_LOAD(super80_cart)
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("rom")
+	MCFG_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_LOAD(super80_cart)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( super80, super80_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
-	MDRV_CPU_PROGRAM_MAP(super80_map)
-	MDRV_CPU_IO_MAP(super80_io)
-	MDRV_CPU_CONFIG(super80_daisy_chain)
+	MCFG_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
+	MCFG_CPU_PROGRAM_MAP(super80_map)
+	MCFG_CPU_IO_MAP(super80_io)
+	MCFG_CPU_CONFIG(super80_daisy_chain)
 
-	MDRV_MACHINE_RESET( super80 )
+	MCFG_MACHINE_RESET( super80 )
 
-	MDRV_Z80PIO_ADD( "z80pio", MASTER_CLOCK/6, super80_pio_intf )
+	MCFG_Z80PIO_ADD( "z80pio", MASTER_CLOCK/6, super80_pio_intf )
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(48.8)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(48.8)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_GFXDECODE(super80)
-	MDRV_DEFAULT_LAYOUT( layout_super80 )
-	MDRV_VIDEO_START(super80)
-	MDRV_VIDEO_UPDATE(super80)
+	MCFG_GFXDECODE(super80)
+	MCFG_DEFAULT_LAYOUT( layout_super80 )
+	MCFG_VIDEO_START(super80)
+	MCFG_VIDEO_UPDATE(super80)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* quickload */
-	MDRV_Z80BIN_QUICKLOAD_ADD("quickload", default, 1)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", default, 1)
 
 	/* cassette */
-	MDRV_CASSETTE_ADD( "cassette", super80_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", super80_cassette_config )
 
 	/* cartridge */
-	MDRV_FRAGMENT_ADD(super80_cartslot)
+	MCFG_FRAGMENT_ADD(super80_cartslot)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80d, super80 )
-	MDRV_GFXDECODE(super80d)
-	MDRV_VIDEO_UPDATE(super80d)
+	MCFG_GFXDECODE(super80d)
+	MCFG_VIDEO_UPDATE(super80d)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80e, super80 )
-	MDRV_GFXDECODE(super80e)
-	MDRV_VIDEO_UPDATE(super80e)
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_IO_MAP(super80e_io)
+	MCFG_GFXDECODE(super80e)
+	MCFG_VIDEO_UPDATE(super80e)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80m, super80 )
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(super80m_map)
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_PROGRAM_MAP(super80m_map)
 
-	MDRV_GFXDECODE(super80m)
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_PALETTE_INIT(super80m)
-	MDRV_VIDEO_EOF(super80m)
-	MDRV_VIDEO_UPDATE(super80m)
+	MCFG_GFXDECODE(super80m)
+	MCFG_PALETTE_LENGTH(16)
+	MCFG_PALETTE_INIT(super80m)
+	MCFG_VIDEO_EOF(super80m)
+	MCFG_VIDEO_UPDATE(super80m)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( super80v, super80_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
-	MDRV_CPU_PROGRAM_MAP(super80v_map)
-	MDRV_CPU_IO_MAP(super80v_io)
-	MDRV_CPU_CONFIG(super80_daisy_chain)
+	MCFG_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
+	MCFG_CPU_PROGRAM_MAP(super80v_map)
+	MCFG_CPU_IO_MAP(super80v_io)
+	MCFG_CPU_CONFIG(super80_daisy_chain)
 
-	MDRV_MACHINE_RESET( super80 )
+	MCFG_MACHINE_RESET( super80 )
 
-	MDRV_Z80PIO_ADD( "z80pio", MASTER_CLOCK/6, super80_pio_intf )
+	MCFG_Z80PIO_ADD( "z80pio", MASTER_CLOCK/6, super80_pio_intf )
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(SUPER80V_SCREEN_WIDTH, SUPER80V_SCREEN_HEIGHT)
-	MDRV_SCREEN_VISIBLE_AREA(0, SUPER80V_SCREEN_WIDTH-1, 0, SUPER80V_SCREEN_HEIGHT-1)
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_PALETTE_INIT(super80m)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(SUPER80V_SCREEN_WIDTH, SUPER80V_SCREEN_HEIGHT)
+	MCFG_SCREEN_VISIBLE_AREA(0, SUPER80V_SCREEN_WIDTH-1, 0, SUPER80V_SCREEN_HEIGHT-1)
+	MCFG_PALETTE_LENGTH(16)
+	MCFG_PALETTE_INIT(super80m)
 
-	MDRV_MC6845_ADD("crtc", MC6845, MASTER_CLOCK / SUPER80V_DOTS, super80v_crtc)
+	MCFG_MC6845_ADD("crtc", MC6845, MASTER_CLOCK / SUPER80V_DOTS, super80v_crtc)
 
-	MDRV_GFXDECODE(super80v)
-	MDRV_DEFAULT_LAYOUT( layout_super80 )
-	MDRV_VIDEO_START(super80v)
-	MDRV_VIDEO_EOF(super80m)
-	MDRV_VIDEO_UPDATE(super80v)
+	MCFG_GFXDECODE(super80v)
+	MCFG_DEFAULT_LAYOUT( layout_super80 )
+	MCFG_VIDEO_START(super80v)
+	MCFG_VIDEO_EOF(super80m)
+	MCFG_VIDEO_UPDATE(super80v)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* quickload */
-	MDRV_Z80BIN_QUICKLOAD_ADD("quickload", default, 1)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", default, 1)
 
 	/* cassette */
-	MDRV_CASSETTE_ADD( "cassette", super80_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", super80_cassette_config )
 
 	/* cartridge */
-	MDRV_FRAGMENT_ADD(super80_cartslot)
+	MCFG_FRAGMENT_ADD(super80_cartslot)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80r, super80v )
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(super80r_io)
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_IO_MAP(super80r_io)
 MACHINE_CONFIG_END
 
 /**************************** ROMS *****************************************************************/
@@ -791,9 +809,10 @@ ROM_END
 
 ROM_START( super80m )
 	ROM_REGION(0x10000, "maincpu", 0)
-	ROM_LOAD("s80-8r0.u26",	  0xc000, 0x1000, CRC(48d410d8) SHA1(750d984abc013a3344628300288f6d1ba140a95f) )
-	ROM_LOAD("s80-8r0.u33",   0xd000, 0x1000, CRC(9765793e) SHA1(4951b127888c1f3153004cc9fb386099b408f52c) )
-	ROM_LOAD("s80-8r0.u42",   0xe000, 0x1000, CRC(5f65d94b) SHA1(fe26b54dec14e1c4911d996c9ebd084a38dcb691) )
+	ROM_SYSTEM_BIOS(0, "Bios8R0", "8R0")
+	ROMX_LOAD("s80-8r0.u26",  0xc000, 0x1000, CRC(48d410d8) SHA1(750d984abc013a3344628300288f6d1ba140a95f), ROM_BIOS(1) )
+	ROMX_LOAD("s80-8r0.u33",  0xd000, 0x1000, CRC(9765793e) SHA1(4951b127888c1f3153004cc9fb386099b408f52c), ROM_BIOS(1) )
+	ROMX_LOAD("s80-8r0.u42",  0xe000, 0x1000, CRC(5f65d94b) SHA1(fe26b54dec14e1c4911d996c9ebd084a38dcb691), ROM_BIOS(1) )
 #if 0
 	/* Temporary patch to fix crash when lprinting a tab */
 	ROM_FILL(0xcc44,1,0x46)
@@ -809,6 +828,11 @@ ROM_START( super80m )
 	ROM_FILL(0xcc4e,1,0x00)
 	ROM_FILL(0xcc4f,1,0x00)
 #endif
+	ROM_SYSTEM_BIOS(1, "BiosV37", "V3.7")
+	ROMX_LOAD("s80-v37.u26",  0xc000, 0x1000, CRC(46043035) SHA1(1765105df4e4af83d56cafb88e158ed462d4709e), ROM_BIOS(2) )
+	ROMX_LOAD("s80-v37.u33",  0xd000, 0x1000, CRC(afb52b15) SHA1(0a2c25834074ce44bf12ac8532b4add492bcf950), ROM_BIOS(2) )
+	ROMX_LOAD("s80-v37.u42",  0xe000, 0x1000, CRC(7344b27a) SHA1(f43fc47ddb5c12bffffa63488301cd5eb386cc9a), ROM_BIOS(2) )
+
 	ROM_REGION(0x1800, "gfx1", 0)
 	ROM_LOAD("super80e.u27",  0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
 	ROM_LOAD("super80d.u27",  0x1000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
@@ -831,8 +855,8 @@ ROM_END
 ROM_START( super80v )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("s80-v37v.u26",  0xc000, 0x1000, CRC(01e0c0dd) SHA1(ef66af9c44c651c65a21d5bda939ffa100078c08) )
-	ROM_LOAD("s80-v37.u33",   0xd000, 0x1000, CRC(812ad777) SHA1(04f355bea3470a7d9ea23bb2811f6af7d81dc400) )
-	ROM_LOAD("s80-v37.u42",   0xe000, 0x1000, CRC(e02e736e) SHA1(57b0264c805da99234ab5e8e028fca456851a4f9) )
+	ROM_LOAD("s80-v37v.u33",  0xd000, 0x1000, CRC(812ad777) SHA1(04f355bea3470a7d9ea23bb2811f6af7d81dc400) )
+	ROM_LOAD("s80-v37v.u42",  0xe000, 0x1000, CRC(e02e736e) SHA1(57b0264c805da99234ab5e8e028fca456851a4f9) )
 	ROM_LOAD("s80hmce.ic24",  0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
 
 	ROM_REGION( 0x1000, "videoram", ROMREGION_ERASEFF )
@@ -843,6 +867,6 @@ ROM_END
 COMP( 1981, super80,  0,       0, super80,  super80,  super80,  "Dick Smith Electronics","Super-80 (V1.2)" , 0)
 COMP( 1981, super80d, super80, 0, super80d, super80d, super80,  "Dick Smith Electronics","Super-80 (V2.2)" , 0)
 COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  "Dick Smith Electronics","Super-80 (El Graphix 4)" , GAME_UNOFFICIAL)
-COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  "Dick Smith Electronics","Super-80 (8R0)" , GAME_UNOFFICIAL)
+COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  "Dick Smith Electronics","Super-80 (with colour)" , GAME_UNOFFICIAL)
 COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, "Dick Smith Electronics","Super-80 (with VDUEB)" , GAME_UNOFFICIAL)
 COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , GAME_UNOFFICIAL)

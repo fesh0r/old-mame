@@ -218,12 +218,12 @@ struct _slow_t
 	int sel1;				/* drive select 1 */
 
 	/* devices */
-	running_device *bus;
-	running_device *cpu;
-	running_device *z80pio;
-	running_device *fd1791;
-	running_device *image0;
-	running_device *image1;
+	device_t *bus;
+	device_t *cpu;
+	device_t *z80pio;
+	device_t *fd1791;
+	device_t *image0;
+	device_t *image1;
 };
 
 typedef struct _fast_t fast_t;
@@ -242,33 +242,33 @@ struct _fast_t
 	UINT8 sw3;				/* ABC bus address */
 
 	/* devices */
-	running_device *bus;
-	running_device *cpu;
-	running_device *z80dma;
-	running_device *wd1793;
-	running_device *image0;
-	running_device *image1;
+	device_t *bus;
+	device_t *cpu;
+	device_t *z80dma;
+	device_t *wd1793;
+	device_t *image0;
+	device_t *image1;
 };
 
 /***************************************************************************
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE slow_t *get_safe_token_slow(running_device *device)
+INLINE slow_t *get_safe_token_slow(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == ABC830_PIO);
 	return (slow_t *)downcast<legacy_device_base *>(device)->token();
 }
 
-INLINE fast_t *get_safe_token_fast(running_device *device)
+INLINE fast_t *get_safe_token_fast(device_t *device)
 {
 	assert(device != NULL);
 	assert((device->type() == ABC830) || (device->type() == ABC832) || (device->type() == ABC838));
 	return (fast_t *)downcast<legacy_device_base *>(device)->token();
 }
 
-INLINE conkort_config *get_safe_config(running_device *device)
+INLINE conkort_config *get_safe_config(device_t *device)
 {
 	assert(device != NULL);
 	assert((device->type() == ABC830_PIO) || (device->type() == ABC830) || (device->type() == ABC832) || (device->type() == ABC838));
@@ -1185,38 +1185,38 @@ static const wd17xx_interface fast_fdc_intf =
 /* Machine Driver */
 
 static MACHINE_CONFIG_FRAGMENT( luxor_55_10828 )
-	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_4MHz/2)
-	MDRV_CPU_PROGRAM_MAP(slow_map)
-	MDRV_CPU_IO_MAP(slow_io_map)
-	MDRV_CPU_CONFIG(slow_daisy_chain)
+	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_4MHz/2)
+	MCFG_CPU_PROGRAM_MAP(slow_map)
+	MCFG_CPU_IO_MAP(slow_io_map)
+	MCFG_CPU_CONFIG(slow_daisy_chain)
 
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, XTAL_4MHz/2, pio_intf)
-	MDRV_WD179X_ADD(FD1791_TAG, slow_fdc_intf)
+	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_4MHz/2, pio_intf)
+	MCFG_WD179X_ADD(FD1791_TAG, slow_fdc_intf)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( abc830_pio, luxor_55_10828 )
-	MDRV_FLOPPY_2_DRIVES_ADD(abc830_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc830_floppy_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_FRAGMENT( luxor_55_21046 )
-	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
-	MDRV_CPU_PROGRAM_MAP(fast_map)
-	MDRV_CPU_IO_MAP(fast_io_map)
+	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
+	MCFG_CPU_PROGRAM_MAP(fast_map)
+	MCFG_CPU_IO_MAP(fast_io_map)
 
-	MDRV_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)
-	MDRV_WD1793_ADD(SAB1793_TAG, fast_fdc_intf)
+	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)
+	MCFG_WD1793_ADD(SAB1793_TAG, fast_fdc_intf)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( abc830, luxor_55_21046 )
-	MDRV_FLOPPY_2_DRIVES_ADD(abc830_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc830_floppy_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( abc832, luxor_55_21046 )
-	MDRV_FLOPPY_2_DRIVES_ADD(abc832_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc832_floppy_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( abc838, luxor_55_21046 )
-	MDRV_FLOPPY_2_DRIVES_ADD(abc838_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc838_floppy_config)
 MACHINE_CONFIG_END
 
 /* ROMs */
@@ -1241,22 +1241,22 @@ ROM_START( luxor_55_10828 )
 	ROM_LOAD_OPTIONAL( "micr1325.bin", 0x0000, 0x0800, CRC(084af409) SHA1(342b8e214a8c4c2b014604e53c45ef1bd1c69ea3) ) // Micropolis 1325 (http://stason.org/TULARC/pc/hard-drives-hdd/micropolis/1325-69MB-5-25-FH-MFM-ST506.html)
 
 	// ABC 832
-	ROM_LOAD_OPTIONAL( "micr1015.7c", 0x0000, 0x0800, CRC(a7bc05fa) SHA1(6ac3e202b7ce802c70d89728695f1cb52ac80307) ) // Micropolis 1015
-	ROM_LOAD_OPTIONAL( "micr1115.7c", 0x0000, 0x0800, CRC(f2fc5ccc) SHA1(86d6baadf6bf1d07d0577dc1e092850b5ff6dd1b) ) // Micropolis 1115 (v2.3)
-	ROM_LOAD_OPTIONAL( "basf6118.7c", 0x0000, 0x0800, CRC(9ca1a1eb) SHA1(04973ad69de8da403739caaebe0b0f6757e4a6b1) ) // BASF 6118 (v1.2)
+	ROM_LOAD_OPTIONAL( "micr 1.4.7c", 0x0000, 0x0800, CRC(a7bc05fa) SHA1(6ac3e202b7ce802c70d89728695f1cb52ac80307) ) // Micropolis 1015 (v1.4)
+	ROM_LOAD_OPTIONAL( "micr 2.3.7c", 0x0000, 0x0800, CRC(f2fc5ccc) SHA1(86d6baadf6bf1d07d0577dc1e092850b5ff6dd1b) ) // Micropolis 1115 (v2.3)
+	ROM_LOAD_OPTIONAL( "basf 1.2.7c", 0x0000, 0x0800, CRC(9ca1a1eb) SHA1(04973ad69de8da403739caaebe0b0f6757e4a6b1) ) // BASF 6118 (v1.2)
 	// ABC 838
-	ROM_LOAD_OPTIONAL( "basf6104.7c", 0x0000, 0x0800, NO_DUMP ) // BASF 6104
-	ROM_LOAD_OPTIONAL( "basf6115.7c", 0x0000, 0x0800, NO_DUMP ) // BASF 6115
+	ROM_LOAD_OPTIONAL( "basf 8 1.0.7c", 0x0000, 0x0800, NO_DUMP ) // BASF 6104, BASF 6115 (v1.0)
 	// ABC 830
-	ROM_LOAD_OPTIONAL( "basf6106.7c", 0x0000, 0x0800, NO_DUMP ) // BASF 6106
-	ROM_LOAD( "mpi02.7c",    0x0000, 0x0800, CRC(2aac9296) SHA1(c01a62e7933186bdf7068d2e9a5bc36590544349) ) // MPI 51 (55 10760-01)
+	ROM_LOAD_OPTIONAL( "basf .02.7c", 0x0000, 0x0800, CRC(5daba200) SHA1(7881933760bed3b94f27585c0a6fc43e5d5153f5) ) // BASF 6106/08
+	ROM_LOAD( "mpi .02.7c", 0x0000, 0x0800, CRC(2aac9296) SHA1(c01a62e7933186bdf7068d2e9a5bc36590544349) ) // MPI 51 (55 10760-01)
+	ROM_LOAD( "new mpi .02.7c", 0x0000, 0x0800, CRC(ab788171) SHA1(c8e29965c04c85f2f2648496ea10c9c7ff95392f) ) // MPI 51 (55 10760-01)
 ROM_END
 
 ROM_START( luxor_55_21046 )
-	ROM_REGION( 0x4000, "conkort", ROMREGION_LOADBYNAME ) // A13 is always high
-	ROM_LOAD_OPTIONAL( "fast108.6cd", 0x2000, 0x2000, CRC(229764cb) SHA1(a2e2f6f49c31b827efc62f894de9a770b65d109d) ) // Luxor v1.08
-	ROM_LOAD_OPTIONAL( "fast207.6cd", 0x2000, 0x2000, CRC(86622f52) SHA1(61ad271de53152c1640c0b364fce46d1b0b4c7e2) ) // DIAB v2.07
-	ROM_LOAD( "cntr 1.07 6490318-07.6cd", 0x0000, 0x4000, CRC(db8c1c0e) SHA1(8bccd5bc72124984de529ee058df779f06d2c1d5) ) // PROM v1.07, Art N/O 6490318-07. Luxor Styrkort Art. N/O 55 21046-41. Date 1985-07-03
+	ROM_REGION( 0x4000, "conkort", ROMREGION_LOADBYNAME ) // A13 is always high, thus loading at 0x2000
+	ROM_LOAD_OPTIONAL( "cntr 108.6cd", 0x2000, 0x2000, CRC(229764cb) SHA1(a2e2f6f49c31b827efc62f894de9a770b65d109d) ) // 1986-03-12
+	ROM_LOAD_OPTIONAL( "diab 207.6cd", 0x2000, 0x2000, CRC(86622f52) SHA1(61ad271de53152c1640c0b364fce46d1b0b4c7e2) ) // 1987-06-24
+	ROM_LOAD( "cntr 1.07 6490318-07.6cd", 0x0000, 0x4000, CRC(db8c1c0e) SHA1(8bccd5bc72124984de529ee058df779f06d2c1d5) ) // 1985-07-03
 ROM_END
 
 /*-------------------------------------------------

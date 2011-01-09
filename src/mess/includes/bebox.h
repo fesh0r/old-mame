@@ -12,6 +12,32 @@
 #include "machine/ins8250.h"
 #include "machine/8237dma.h"
 
+typedef struct
+{
+	device_t *pic8259_master;
+	device_t *pic8259_slave;
+	device_t *dma8237_1;
+	device_t *dma8237_2;
+} bebox_devices_t;
+
+
+class bebox_state : public driver_device
+{
+public:
+	bebox_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT32 cpu_imask[2];
+	UINT32 interrupts;
+	UINT32 crossproc_interrupts;
+	bebox_devices_t devices;
+	int dma_channel;
+	UINT16 dma_offset[2][4];
+	UINT8 at_pages[0x10];
+	UINT32 scsi53c810_data[0x100 / 4];
+};
+
+
 /*----------- defined in machine/bebox.c -----------*/
 
 extern const struct pit8253_config bebox_pit8254_config;
@@ -49,9 +75,9 @@ WRITE64_HANDLER( bebox_page_w );
 WRITE64_HANDLER( bebox_80000480_w );
 WRITE64_HANDLER( bebox_flash_w );
 
-void bebox_ide_interrupt(running_device *device, int state);
+void bebox_ide_interrupt(device_t *device, int state);
 
-UINT32 scsi53c810_pci_read(running_device *busdevice, running_device *device, int function, int offset, UINT32 mem_mask);
-void scsi53c810_pci_write(running_device *busdevice, running_device *device, int function, int offset, UINT32 data, UINT32 mem_mask);
+UINT32 scsi53c810_pci_read(device_t *busdevice, device_t *device, int function, int offset, UINT32 mem_mask);
+void scsi53c810_pci_write(device_t *busdevice, device_t *device, int function, int offset, UINT32 data, UINT32 mem_mask);
 
 #endif /* BEBOX_H_ */

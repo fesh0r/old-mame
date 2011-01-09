@@ -9,6 +9,16 @@
 #include "emu.h"
 #include "cpu/m6502/m6502.h"
 
+
+class clcd_state : public driver_device
+{
+public:
+	clcd_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(clcd_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("maincpu", 0)
@@ -38,27 +48,27 @@ static VIDEO_UPDATE( clcd )
     return 0;
 }
 
-static MACHINE_CONFIG_START( clcd, driver_device )
+static MACHINE_CONFIG_START( clcd, clcd_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",M6502, 2000000) // really M65C102
-    MDRV_CPU_PROGRAM_MAP(clcd_mem)
+    MCFG_CPU_ADD("maincpu",M6502, 2000000) // really M65C102
+    MCFG_CPU_PROGRAM_MAP(clcd_mem)
 
-    MDRV_MACHINE_RESET(clcd)
+    MCFG_MACHINE_RESET(clcd)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", LCD)
-	MDRV_SCREEN_REFRESH_RATE(80)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(480, 128)
-	MDRV_SCREEN_VISIBLE_AREA(0, 480-1, 0, 128-1)
+    MCFG_SCREEN_ADD("screen", LCD)
+	MCFG_SCREEN_REFRESH_RATE(80)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(480, 128)
+	MCFG_SCREEN_VISIBLE_AREA(0, 480-1, 0, 128-1)
 
-	MDRV_DEFAULT_LAYOUT(layout_lcd)
+	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(clcd)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(clcd)
 
-    MDRV_VIDEO_START(clcd)
-    MDRV_VIDEO_UPDATE(clcd)
+    MCFG_VIDEO_START(clcd)
+    MCFG_VIDEO_UPDATE(clcd)
 MACHINE_CONFIG_END
 
 /* ROM definition */

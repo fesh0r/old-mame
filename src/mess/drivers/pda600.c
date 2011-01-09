@@ -56,6 +56,16 @@
 #include "emu.h"
 #include "cpu/z180/z180.h"
 
+
+class pda600_state : public driver_device
+{
+public:
+	pda600_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static ADDRESS_MAP_START(pda600_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0x1ffff) AM_ROM
@@ -92,26 +102,26 @@ static VIDEO_UPDATE( pda600 )
     return 0;
 }
 
-static MACHINE_CONFIG_START( pda600, driver_device )
+static MACHINE_CONFIG_START( pda600, pda600_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z180, XTAL_14_31818MHz)
-    MDRV_CPU_PROGRAM_MAP(pda600_mem)
-    MDRV_CPU_IO_MAP(pda600_io)
+    MCFG_CPU_ADD("maincpu",Z180, XTAL_14_31818MHz)
+    MCFG_CPU_PROGRAM_MAP(pda600_mem)
+    MCFG_CPU_IO_MAP(pda600_io)
 
-    MDRV_MACHINE_RESET(pda600)
+    MCFG_MACHINE_RESET(pda600)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(240, 320)
-    MDRV_SCREEN_VISIBLE_AREA(0, 240-1, 0, 320-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(240, 320)
+    MCFG_SCREEN_VISIBLE_AREA(0, 240-1, 0, 320-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(pda600)
-    MDRV_VIDEO_UPDATE(pda600)
+    MCFG_VIDEO_START(pda600)
+    MCFG_VIDEO_UPDATE(pda600)
 MACHINE_CONFIG_END
 
 /* ROM definition */

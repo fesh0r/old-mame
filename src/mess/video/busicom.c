@@ -10,10 +10,8 @@
 
 // Printer font 34x44 as provided by MIT Media Lab
 
-UINT8 busicom_printer_line[11][17];
-UINT8 busicom_printer_line_color[11];
 
-static UINT8 printer_font[]= {
+static const UINT8 printer_font[]= {
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -1820,14 +1818,15 @@ VIDEO_START( busicom )
 
 VIDEO_UPDATE( busicom )
 {
+	busicom_state *state = screen->machine->driver_data<busicom_state>();
 	int y, x, b, j;
 	//34x44
 	for (y = 0; y < 11; y++)
 	{
-		UINT8 col = 8 * busicom_printer_line_color[y];
+		UINT8 col = 8 * state->printer_line_color[y];
 		for (x = 0; x < 17; x++)
 		{
-			UINT8 chr = busicom_printer_line[y][x];
+			UINT8 chr = state->printer_line[y][x];
 			for (j = 0; j < 44; j++) {
 				for (b = 0; b < 34; b++)
 				{
@@ -1843,9 +1842,9 @@ VIDEO_UPDATE( busicom )
 	}
 	return 0;
 }
-static UINT8 color[] = { 0xFF,0xDB,0xB7,0x92,0x6E,0x49,0x25,0x00 };
+static const UINT8 color[] = { 0xFF,0xDB,0xB7,0x92,0x6E,0x49,0x25,0x00 };
 
-static UINT8 color_red[] = { 0xb0,0xb5,0xc0,0xc5,0xd0,0xd5,0xdf };
+static const UINT8 color_red[] = { 0xb0,0xb5,0xc0,0xc5,0xd0,0xd5,0xdf };
 
 PALETTE_INIT( busicom )
 {

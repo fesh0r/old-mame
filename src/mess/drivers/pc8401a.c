@@ -41,7 +41,6 @@
 
 /* Fake Keyboard */
 
-static UINT8 key_latch;
 
 static void pc8401a_keyboard_scan(running_machine *machine)
 {
@@ -58,7 +57,7 @@ static void pc8401a_keyboard_scan(running_machine *machine)
 		if (data != 0xff)
 		{
 			strobe = 1;
-			key_latch = data;
+			state->key_latch = data;
 		}
 	}
 
@@ -282,7 +281,7 @@ static READ8_HANDLER( io_rom_data_r )
 {
 	pc8401a_state *state = space->machine->driver_data<pc8401a_state>();
 
-	UINT8 *iorom = memory_region(space->machine, "iorom");
+	UINT8 *iorom = space->machine->region("iorom")->base();
 
 	//logerror("I/O ROM read from %05x\n", state->io_addr);
 
@@ -337,7 +336,8 @@ static READ8_HANDLER( port70_r )
 
 static READ8_HANDLER( port71_r )
 {
-	return key_latch;
+	pc8401a_state *state = space->machine->driver_data<pc8401a_state>();
+	return state->key_latch;
 }
 
 static WRITE8_HANDLER( port70_w )
@@ -349,8 +349,9 @@ static WRITE8_HANDLER( port70_w )
 
 static WRITE8_HANDLER( port71_w )
 {
+	pc8401a_state *state = space->machine->driver_data<pc8401a_state>();
 	cputag_set_input_line(space->machine, Z80_TAG, INPUT_LINE_IRQ0, CLEAR_LINE);
-	key_latch = data;
+	state->key_latch = data;
 }
 
 /* Memory Maps */
@@ -489,7 +490,7 @@ static INPUT_PORTS_START( pc8401a )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) // ^C
 
 	PORT_START("KEY8")
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(UTF8_RIGHT) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F6)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F7)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -506,7 +507,7 @@ static INPUT_PORTS_START( pc8401a )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F12)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("DEL BKSP") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(UTF8_LEFT) PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
 INPUT_PORTS_END
 
 /* Machine Initialization */
@@ -525,7 +526,7 @@ static MACHINE_START( pc8401a )
 	state->crt_ram = auto_alloc_array(machine, UINT8, PC8401A_CRT_VIDEORAM_SIZE);
 
 	/* set up A0/A1 memory banking */
-	memory_configure_bank(machine, "bank1", 0, 4, memory_region(machine, Z80_TAG), 0x8000);
+	memory_configure_bank(machine, "bank1", 0, 4, machine->region(Z80_TAG)->base(), 0x8000);
 	memory_configure_bank(machine, "bank1", 4, 2, messram_get_ptr(machine->device("messram")), 0x8000);
 	memory_set_bank(machine, "bank1", 0);
 
@@ -625,7 +626,8 @@ static UPD1990A_INTERFACE( pc8401a_upd1990a_intf )
 
 /* MSM8251 Interface */
 
-static msm8251_interface pc8401a_msm8251_interface = {
+static const msm8251_interface pc8401a_msm8251_interface =
+{
 	NULL,
 	NULL,
 	NULL
@@ -636,54 +638,54 @@ static msm8251_interface pc8401a_msm8251_interface = {
 static MACHINE_CONFIG_START( common, pc8401a_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80_TAG, Z80, 4000000) // NEC uPD70008C
-	MDRV_CPU_PROGRAM_MAP(pc8401a_mem)
-	MDRV_CPU_IO_MAP(pc8401a_io)
+	MCFG_CPU_ADD(Z80_TAG, Z80, 4000000) // NEC uPD70008C
+	MCFG_CPU_PROGRAM_MAP(pc8401a_mem)
+	MCFG_CPU_IO_MAP(pc8401a_io)
 
-	MDRV_MACHINE_START(pc8401a)
+	MCFG_MACHINE_START(pc8401a)
 
 	/* fake keyboard */
-	MDRV_TIMER_ADD_PERIODIC("keyboard", pc8401a_keyboard_tick, HZ(64))
+	MCFG_TIMER_ADD_PERIODIC("keyboard", pc8401a_keyboard_tick, HZ(64))
 
 	/* devices */
-	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8401a_upd1990a_intf)
-	MDRV_I8255A_ADD(I8255A_TAG, pc8401a_8255_interface)
-	MDRV_MSM8251_ADD(MSM8251_TAG, pc8401a_msm8251_interface)
+	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8401a_upd1990a_intf)
+	MCFG_I8255A_ADD(I8255A_TAG, pc8401a_8255_interface)
+	MCFG_MSM8251_ADD(MSM8251_TAG, pc8401a_msm8251_interface)
 
 	/* option ROM cartridge */
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
-	MDRV_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("rom,bin")
+	MCFG_CARTSLOT_NOT_MANDATORY
 
 	/* I/O ROM cartridge */
-	MDRV_CARTSLOT_ADD("iocart")
-	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
-	MDRV_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_ADD("iocart")
+	MCFG_CARTSLOT_EXTENSION_LIST("rom,bin")
+	MCFG_CARTSLOT_NOT_MANDATORY
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")
-	MDRV_RAM_EXTRA_OPTIONS("96K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("64K")
+	MCFG_RAM_EXTRA_OPTIONS("96K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc8401a, common )
 
 	/* video hardware */
-	MDRV_FRAGMENT_ADD(pc8401a_video)
+	MCFG_FRAGMENT_ADD(pc8401a_video)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc8500, common )
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY(Z80_TAG)
-	MDRV_CPU_IO_MAP(pc8500_io)
+	MCFG_CPU_MODIFY(Z80_TAG)
+	MCFG_CPU_IO_MAP(pc8500_io)
 
 	/* video hardware */
-	MDRV_FRAGMENT_ADD(pc8500_video)
+	MCFG_FRAGMENT_ADD(pc8500_video)
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")
+	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 /* ROMs */
@@ -716,7 +718,5 @@ ROM_END
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY FULLNAME */
 COMP( 1984,	pc8401a,	0,		0,		pc8401a,	pc8401a,	0,		"Nippon Electronic Company",	"PC-8401A-LS", GAME_NOT_WORKING )
-/*
-COMP( 1984, pc8401bd,   pc8401a,0,      pc8401a,    pc8401a,    0,      "Nippon Electronic Company",  "PC-8401BD", GAME_NOT_WORKING )
-*/
+//COMP( 1984, pc8401bd,   pc8401a,0,      pc8401a,    pc8401a,    0,      "Nippon Electronic Company",  "PC-8401BD", GAME_NOT_WORKING )
 COMP( 1985, pc8500,		0,		0,		pc8500,		pc8401a,	0,		"Nippon Electronic Company",	"PC-8500", GAME_NOT_WORKING | GAME_NO_SOUND)

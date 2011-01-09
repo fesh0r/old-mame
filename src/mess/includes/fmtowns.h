@@ -23,8 +23,8 @@ READ8_HANDLER(towns_video_ff81_r);
 WRITE8_HANDLER(towns_video_ff81_w);
 READ8_HANDLER(towns_spriteram_low_r);
 WRITE8_HANDLER(towns_spriteram_low_w);
-READ8_HANDLER( towns_spriteram_r);
-WRITE8_HANDLER( towns_spriteram_w);
+READ8_HANDLER(towns_spriteram_r);
+WRITE8_HANDLER(towns_spriteram_w);
 
 struct towns_cdrom_controller
 {
@@ -129,22 +129,26 @@ class towns_state : public driver_device
 	required_shared_ptr<UINT8>	m_nvram;
 
 	/* devices */
-	running_device* maincpu;
-	running_device* dma_1;
-	running_device* dma_2;
-	running_device* fdc;
-	running_device* pic_master;
-	running_device* pic_slave;
-	running_device* pit;
-	running_device* messram;
-	running_device* cdrom;
-	running_device* cdda;
-	running_device* scsibus;
-	running_device* hd0;
-	running_device* hd1;
-	running_device* hd2;
-	running_device* hd3;
-	running_device* hd4;
+	device_t* maincpu;
+	device_t* dma_1;
+	device_t* dma_2;
+	device_t* fdc;
+	device_t* pic_master;
+	device_t* pic_slave;
+	device_t* pit;
+	device_t* messram;
+	device_t* cdrom;
+	device_t* cdda;
+	class fmscsi_device* scsi;
+	device_t* hd0;
+	device_t* hd1;
+	device_t* hd2;
+	device_t* hd3;
+	device_t* hd4;
+	UINT32 kb_prev[4];
+	UINT8 prev_pad_mask;
+	UINT8 prev_x;
+	UINT8 prev_y;
 };
 
 void towns_update_video_banks(address_space*);

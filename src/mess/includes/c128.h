@@ -14,18 +14,44 @@
 #ifndef __C128_H__
 #define __C128_H__
 
+#include "includes/c64.h"
 #include "machine/6526cia.h"
 
-/*----------- defined in machine/c128.c -----------*/
+class c128_state : public c64_state
+{
+public:
+	c128_state(running_machine &machine, const driver_device_config_base &config)
+		: c64_state(machine, config) { }
 
-extern UINT8 *c128_basic;
-extern UINT8 *c128_kernal;
-extern UINT8 *c128_chargen;
-extern UINT8 *c128_z80;
-extern UINT8 *c128_editor;
-extern UINT8 *c128_internal_function;
-extern UINT8 *c128_external_function;
-extern UINT8 *c128_vdcram;
+	UINT8 *c128_basic;
+	UINT8 *c128_kernal;
+	UINT8 *c128_chargen;
+	UINT8 *z80;
+	UINT8 *editor;
+	UINT8 *internal_function;
+	UINT8 *external_function;
+	UINT8 *vdcram;
+	UINT8 mmu[0x0b];
+	int mmu_cpu;
+	int mmu_page0;
+	int mmu_page1;
+	int c64mode;
+	int write_io;
+	int ram_bottom;
+	int ram_top;
+	UINT8 *ram;
+	UINT8 c64_port_data;
+	UINT8 keyline[3];
+	int cnt1;
+	int sp1;
+	int data_out;
+	int va1617;
+	int monitor;
+	int nmilevel;
+};
+
+
+/*----------- defined in machine/c128.c -----------*/
 
 WRITE8_HANDLER(c128_mmu8722_port_w);
 READ8_HANDLER(c128_mmu8722_port_r);
@@ -62,8 +88,8 @@ int c128_dma_read(running_machine *machine, int offset);
 int c128_dma_read_color(running_machine *machine, int offset);
 void c128_vic_interrupt(running_machine *machine, int level);
 
-UINT8 c128_m6510_port_read(running_device *device, UINT8 direction);
-void c128_m6510_port_write(running_device *device, UINT8 direction, UINT8 data);
+UINT8 c128_m6510_port_read(device_t *device, UINT8 direction);
+void c128_m6510_port_write(device_t *device, UINT8 direction, UINT8 data);
 
 extern const mos6526_interface c128_ntsc_cia0, c128_pal_cia0;
 extern const mos6526_interface c128_ntsc_cia1, c128_pal_cia1;

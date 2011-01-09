@@ -89,14 +89,14 @@ struct _rp5c01a_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE rp5c01a_t *get_safe_token(running_device *device)
+INLINE rp5c01a_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == RP5C01A);
 	return (rp5c01a_t *)downcast<legacy_device_base *>(device)->token();
 }
 
-INLINE const rp5c01a_interface *get_interface(running_device *device)
+INLINE const rp5c01a_interface *get_interface(device_t *device)
 {
 	assert(device != NULL);
 	assert((device->type() == RP5C01A));
@@ -212,7 +212,7 @@ WRITE8_DEVICE_HANDLER( rp5c01a_w )
 
 static void advance_seconds(rp5c01a_t *rp5c01a)
 {
-	int days_per_month[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+	static const int days_per_month[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 	int seconds = (rp5c01a->reg[RP5C01A_MODE_TIME][RP5C01A_REGISTER_10_SECOND] * 10) + rp5c01a->reg[RP5C01A_MODE_TIME][RP5C01A_REGISTER_1_SECOND];
 	int minutes = (rp5c01a->reg[RP5C01A_MODE_TIME][RP5C01A_REGISTER_10_MINUTE] * 10) + rp5c01a->reg[RP5C01A_MODE_TIME][RP5C01A_REGISTER_1_MINUTE];
@@ -305,7 +305,7 @@ static void advance_seconds(rp5c01a_t *rp5c01a)
 
 static TIMER_CALLBACK( clock_tick )
 {
-	running_device *device = (running_device *)ptr;
+	device_t *device = (device_t *)ptr;
 	rp5c01a_t *rp5c01a = get_safe_token(device);
 
 	advance_seconds(rp5c01a);
@@ -317,7 +317,7 @@ static TIMER_CALLBACK( clock_tick )
 
 static TIMER_CALLBACK( alarm_tick )
 {
-	running_device *device = (running_device *)ptr;
+	device_t *device = (device_t *)ptr;
 	rp5c01a_t *rp5c01a = get_safe_token(device);
 
 	devcb_call_write_line(&rp5c01a->out_alarm_func, 0);

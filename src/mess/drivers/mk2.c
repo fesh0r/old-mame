@@ -8,6 +8,17 @@
 #include "sound/dac.h"
 #include "mk2.lh"
 
+
+class mk2_state : public driver_device
+{
+public:
+	mk2_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 led[5];
+};
+
+
 /* usage:
 
    under the black keys are operations to be added as first sign
@@ -75,20 +86,20 @@ static INPUT_PORTS_START( mk2 )
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("White 8") PORT_CODE(KEYCODE_8)
 INPUT_PORTS_END
 
-static UINT8 mk2_led[5];
 
 static TIMER_CALLBACK( update_leds )
 {
+	mk2_state *state = machine->driver_data<mk2_state>();
 	int i;
 
 	for (i=0; i<4; i++)
-	output_set_digit_value(i, mk2_led[i]);
-	output_set_led_value(0, mk2_led[4]&8?1:0);
-	output_set_led_value(1, mk2_led[4]&0x20?1:0);
-	output_set_led_value(2, mk2_led[4]&0x10?1:0);
-	output_set_led_value(3, mk2_led[4]&0x10?0:1);
+	output_set_digit_value(i, state->led[i]);
+	output_set_led_value(0, state->led[4]&8?1:0);
+	output_set_led_value(1, state->led[4]&0x20?1:0);
+	output_set_led_value(2, state->led[4]&0x10?1:0);
+	output_set_led_value(3, state->led[4]&0x10?0:1);
 
-	mk2_led[0]= mk2_led[1]= mk2_led[2]= mk2_led[3]= mk2_led[4]= 0;
+	state->led[0]= state->led[1]= state->led[2]= state->led[3]= state->led[4]= 0;
 }
 
 static MACHINE_START( mk2 )
@@ -130,11 +141,12 @@ static READ8_DEVICE_HANDLER( mk2_read_a )
 
 static WRITE8_DEVICE_HANDLER( mk2_write_a )
 {
+	mk2_state *state = device->machine->driver_data<mk2_state>();
 	int temp = mos6530_portb_out_get(device);
 
 	switch(temp&0x3) {
 	case 0: case 1: case 2: case 3:
-		mk2_led[temp&3]|=data;
+		state->led[temp&3]|=data;
 	}
 }
 
@@ -147,11 +159,12 @@ static READ8_DEVICE_HANDLER( mk2_read_b )
 
 static WRITE8_DEVICE_HANDLER( mk2_write_b )
 {
-	running_device *dac_device = device->machine->device("dac");
+	mk2_state *state = device->machine->driver_data<mk2_state>();
+	device_t *dac_device = device->machine->device("dac");
 
 	if ((data&0x06)==0x06)
 		dac_data_w(dac_device,data&1?80:0);
-	mk2_led[4]|=data;
+	state->led[4]|=data;
 
 	cputag_set_input_line( device->machine, "maincpu", M6502_IRQ_LINE, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE );
 }
@@ -165,24 +178,24 @@ static MOS6530_INTERFACE( mk2_mos6530_interface )
 };
 
 
-static MACHINE_CONFIG_START( mk2, driver_device )
+static MACHINE_CONFIG_START( mk2, mk2_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6502, 1000000)        /* 6504 */
-	MDRV_CPU_PROGRAM_MAP(mk2_mem)
-	MDRV_QUANTUM_TIME(HZ(60))
+	MCFG_CPU_ADD("maincpu", M6502, 1000000)        /* 6504 */
+	MCFG_CPU_PROGRAM_MAP(mk2_mem)
+	MCFG_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_START( mk2 )
+	MCFG_MACHINE_START( mk2 )
 
     /* video hardware */
-	MDRV_DEFAULT_LAYOUT(layout_mk2)
+	MCFG_DEFAULT_LAYOUT(layout_mk2)
 
-	MDRV_MOS6530_ADD( "miot", 1000000, mk2_mos6530_interface )
+	MCFG_MOS6530_ADD( "miot", 1000000, mk2_mos6530_interface )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_CONFIG_END
 
 

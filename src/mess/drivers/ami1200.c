@@ -45,6 +45,19 @@
 #include "devices/chd_cd.h"
 
 
+class ami1200_state : public cubocd32_state
+{
+public:
+	ami1200_state(running_machine &machine, const driver_device_config_base &config)
+		: cubocd32_state(machine, config) { }
+
+	UINT16 potgo_value;
+	int cd32_shifter[2];
+	int oldstate[2];
+};
+
+
+
 #define A1200PAL_XTAL_X1  XTAL_28_37516MHz
 #define A1200PAL_XTAL_X2  XTAL_4_433619MHz
 #define CD32PAL_XTAL_X1   XTAL_28_37516MHz
@@ -52,7 +65,7 @@
 #define CD32PAL_XTAL_X3   XTAL_16_9344MHz
 
 
-static void handle_cd32_joystick_cia(UINT8 pra, UINT8 dra);
+static void handle_cd32_joystick_cia(ami1200_state *state, UINT8 pra, UINT8 dra);
 
 static WRITE32_HANDLER( aga_overlay_w )
 {
@@ -90,8 +103,10 @@ static WRITE32_HANDLER( aga_overlay_w )
 
 static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 {
+	ami1200_state *state = device->machine->driver_data<ami1200_state>();
+
 	/* bit 1 = cd audio mute */
-	running_device *cdda = device->machine->device("cdda");
+	device_t *cdda = device->machine->device("cdda");
 
 	if (cdda != NULL)
 		sound_set_output_gain(cdda, 0, BIT(data, 0) ? 0.0 : 1.0 );
@@ -99,7 +114,7 @@ static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 	/* bit 2 = Power Led on Amiga */
 	set_led_status(device->machine, 0, !BIT(data, 1));
 
-	handle_cd32_joystick_cia(data, mos6526_r(device, 2));
+	handle_cd32_joystick_cia(state, data, mos6526_r(device, 2));
 }
 
 /*************************************
@@ -154,15 +169,14 @@ ADDRESS_MAP_END
 
 //int cd32_input_port_val = 0;
 //int cd32_input_select = 0;
-static UINT16 potgo_value = 0;
-static int cd32_shifter[2];
 
 static void cd32_potgo_w(running_machine *machine, UINT16 data)
 {
+	ami1200_state *state = machine->driver_data<ami1200_state>();
 	int i;
 
-	potgo_value = potgo_value & 0x5500;
-	potgo_value |= data & 0xaa00;
+	state->potgo_value = state->potgo_value & 0x5500;
+	state->potgo_value |= data & 0xaa00;
 
     for (i = 0; i < 8; i += 2)
 	{
@@ -170,23 +184,22 @@ static void cd32_potgo_w(running_machine *machine, UINT16 data)
 		if (data & dir)
 		{
 			UINT16 d = 0x0100 << i;
-			potgo_value &= ~d;
-			potgo_value |= data & d;
+			state->potgo_value &= ~d;
+			state->potgo_value |= data & d;
 		}
     }
     for (i = 0; i < 2; i++)
 	{
 	    UINT16 p5dir = 0x0200 << (i * 4); /* output enable P5 */
 	    UINT16 p5dat = 0x0100 << (i * 4); /* data P5 */
-	    if ((potgo_value & p5dir) && (potgo_value & p5dat))
-		cd32_shifter[i] = 8;
+	    if ((state->potgo_value & p5dir) && (state->potgo_value & p5dat))
+		state->cd32_shifter[i] = 8;
     }
 
 }
 
-static void handle_cd32_joystick_cia(UINT8 pra, UINT8 dra)
+static void handle_cd32_joystick_cia(ami1200_state *state, UINT8 pra, UINT8 dra)
 {
-    static int oldstate[2];
     int i;
 
     for (i = 0; i < 2; i++)
@@ -194,24 +207,25 @@ static void handle_cd32_joystick_cia(UINT8 pra, UINT8 dra)
 		UINT8 but = 0x40 << i;
 		UINT16 p5dir = 0x0200 << (i * 4); /* output enable P5 */
 		UINT16 p5dat = 0x0100 << (i * 4); /* data P5 */
-		if (!(potgo_value & p5dir) || !(potgo_value & p5dat))
+		if (!(state->potgo_value & p5dir) || !(state->potgo_value & p5dat))
 		{
-			if ((dra & but) && (pra & but) != oldstate[i])
+			if ((dra & but) && (pra & but) != state->oldstate[i])
 			{
 				if (!(pra & but))
 				{
-					cd32_shifter[i]--;
-					if (cd32_shifter[i] < 0)
-						cd32_shifter[i] = 0;
+					state->cd32_shifter[i]--;
+					if (state->cd32_shifter[i] < 0)
+						state->cd32_shifter[i] = 0;
 				}
 			}
 		}
-		oldstate[i] = pra & but;
+		state->oldstate[i] = pra & but;
     }
 }
 
 static UINT16 handle_joystick_potgor (running_machine *machine, UINT16 potgor)
 {
+	ami1200_state *state = machine->driver_data<ami1200_state>();
     int i;
 
     for (i = 0; i < 2; i++)
@@ -223,17 +237,17 @@ static UINT16 handle_joystick_potgor (running_machine *machine, UINT16 potgor)
 
 	    /* p5 is floating in input-mode */
 	    potgor &= ~p5dat;
-	    potgor |= potgo_value & p5dat;
-	    if (!(potgo_value & p9dir))
+	    potgor |= state->potgo_value & p5dat;
+	    if (!(state->potgo_value & p9dir))
 			potgor |= p9dat;
 	    /* P5 output and 1 -> shift register is kept reset (Blue button) */
-	    if ((potgo_value & p5dir) && (potgo_value & p5dat))
-			cd32_shifter[i] = 8;
+	    if ((state->potgo_value & p5dir) && (state->potgo_value & p5dat))
+			state->cd32_shifter[i] = 8;
 	    /* shift at 1 == return one, >1 = return button states */
-	    if (cd32_shifter[i] == 0)
+	    if (state->cd32_shifter[i] == 0)
 			potgor &= ~p9dat; /* shift at zero == return zero */
 		if (i == 0)
-			if (cd32_shifter[i] >= 2 && (input_port_read(machine, "IN0") & (1 << (cd32_shifter[i] - 2))))
+			if (state->cd32_shifter[i] >= 2 && (input_port_read(machine, "IN0") & (1 << (state->cd32_shifter[i] - 2))))
 				potgor &= ~p9dat;
     }
     return potgor;
@@ -241,7 +255,8 @@ static UINT16 handle_joystick_potgor (running_machine *machine, UINT16 potgor)
 
 static CUSTOM_INPUT(cd32_input)
 {
-	return handle_joystick_potgor(field->port->machine, potgo_value) >> 10;
+	ami1200_state *state = field->port->machine->driver_data<ami1200_state>();
+	return handle_joystick_potgor(field->port->machine, state->potgo_value) >> 10;
 }
 
 
@@ -437,64 +452,64 @@ static const mos6526_interface cd32_cia_1_intf =
 	DEVCB_NULL									/* port B */
 };
 
-static MACHINE_CONFIG_START( a1200n, cubocd32_state )
+static MACHINE_CONFIG_START( a1200n, ami1200_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M68EC020, AMIGA_68EC020_NTSC_CLOCK) /* 14.3 Mhz */
-	MDRV_CPU_PROGRAM_MAP(a1200_map)
+	MCFG_CPU_ADD("maincpu", M68EC020, AMIGA_68EC020_NTSC_CLOCK) /* 14.3 Mhz */
+	MCFG_CPU_PROGRAM_MAP(a1200_map)
 
-//  MDRV_CPU_ADD("keyboard_mpu", MC68HC05)
+//  MCFG_CPU_ADD("keyboard_mpu", MC68HC05)
 
-	MDRV_MACHINE_RESET(amiga)
+	MCFG_MACHINE_RESET(amiga)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(512*2, 312)
-	MDRV_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(59.997)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MCFG_SCREEN_SIZE(512*2, 312)
+	MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
 
-	MDRV_VIDEO_START(amiga_aga)
-	MDRV_VIDEO_UPDATE(amiga_aga)
+	MCFG_VIDEO_START(amiga_aga)
+	MCFG_VIDEO_UPDATE(amiga_aga)
 
 	/* sound hardware */
-    MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+    MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-    MDRV_SOUND_ADD("amiga", AMIGA, XTAL_28_63636MHz/8)
-    MDRV_SOUND_ROUTE(0, "lspeaker", 0.25)
-    MDRV_SOUND_ROUTE(1, "rspeaker", 0.25)
-    MDRV_SOUND_ROUTE(2, "rspeaker", 0.25)
-    MDRV_SOUND_ROUTE(3, "lspeaker", 0.25)
+    MCFG_SOUND_ADD("amiga", AMIGA, XTAL_28_63636MHz/8)
+    MCFG_SOUND_ROUTE(0, "lspeaker", 0.25)
+    MCFG_SOUND_ROUTE(1, "rspeaker", 0.25)
+    MCFG_SOUND_ROUTE(2, "rspeaker", 0.25)
+    MCFG_SOUND_ROUTE(3, "lspeaker", 0.25)
 
 	/* cia */
-	MDRV_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_0_intf)
-	MDRV_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_1_intf)
+	MCFG_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_0_intf)
+	MCFG_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_1_intf)
 
-	MDRV_AMIGA_FDC_ADD("fdc")
+	MCFG_AMIGA_FDC_ADD("fdc")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( a1200p, a1200n )
 
 	/* adjust for PAL specs */
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_CLOCK(A1200PAL_XTAL_X1/2) /* 14.18758 MHz */
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_CLOCK(A1200PAL_XTAL_X1/2) /* 14.18758 MHz */
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(50)
 
 	/* sound hardware */
-	MDRV_SOUND_MODIFY("amiga")
-	MDRV_SOUND_CLOCK(A1200PAL_XTAL_X1/8) /* 3.546895 MHz */
+	MCFG_SOUND_MODIFY("amiga")
+	MCFG_SOUND_CLOCK(A1200PAL_XTAL_X1/8) /* 3.546895 MHz */
 
 	/* cia */
-	MDRV_DEVICE_MODIFY("cia_0")
-	MDRV_DEVICE_CLOCK(A1200PAL_XTAL_X1/20)
-	MDRV_DEVICE_MODIFY("cia_1")
-	MDRV_DEVICE_CLOCK(A1200PAL_XTAL_X1/20)
+	MCFG_DEVICE_MODIFY("cia_0")
+	MCFG_DEVICE_CLOCK(A1200PAL_XTAL_X1/20)
+	MCFG_DEVICE_MODIFY("cia_1")
+	MCFG_DEVICE_CLOCK(A1200PAL_XTAL_X1/20)
 MACHINE_CONFIG_END
 
 #define	NVRAM_SIZE 1024
@@ -505,46 +520,46 @@ static const i2cmem_interface i2cmem_interface =
 	I2CMEM_SLAVE_ADDRESS, NVRAM_PAGE_SIZE, NVRAM_SIZE
 };
 
-static MACHINE_CONFIG_START( cd32, cubocd32_state )
+static MACHINE_CONFIG_START( cd32, ami1200_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M68EC020, AMIGA_68EC020_NTSC_CLOCK) /* 14.3 Mhz */
-	MDRV_CPU_PROGRAM_MAP(cd32_map)
+	MCFG_CPU_ADD("maincpu", M68EC020, AMIGA_68EC020_NTSC_CLOCK) /* 14.3 Mhz */
+	MCFG_CPU_PROGRAM_MAP(cd32_map)
 
-	MDRV_MACHINE_RESET(amiga)
-	MDRV_I2CMEM_ADD("i2cmem",i2cmem_interface)
+	MCFG_MACHINE_RESET(amiga)
+	MCFG_I2CMEM_ADD("i2cmem",i2cmem_interface)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(512*2, 312)
-	MDRV_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(59.997)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MCFG_SCREEN_SIZE(512*2, 312)
+	MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
 
-	MDRV_VIDEO_START(amiga_aga)
-	MDRV_VIDEO_UPDATE(amiga_aga)
+	MCFG_VIDEO_START(amiga_aga)
+	MCFG_VIDEO_UPDATE(amiga_aga)
 
 	/* sound hardware */
-    MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+    MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-    MDRV_SOUND_ADD("amiga", AMIGA, XTAL_28_63636MHz/8)
-    MDRV_SOUND_ROUTE(0, "lspeaker", 0.25)
-    MDRV_SOUND_ROUTE(1, "rspeaker", 0.25)
-    MDRV_SOUND_ROUTE(2, "rspeaker", 0.25)
-    MDRV_SOUND_ROUTE(3, "lspeaker", 0.25)
+    MCFG_SOUND_ADD("amiga", AMIGA, XTAL_28_63636MHz/8)
+    MCFG_SOUND_ROUTE(0, "lspeaker", 0.25)
+    MCFG_SOUND_ROUTE(1, "rspeaker", 0.25)
+    MCFG_SOUND_ROUTE(2, "rspeaker", 0.25)
+    MCFG_SOUND_ROUTE(3, "lspeaker", 0.25)
 
-    MDRV_SOUND_ADD( "cdda", CDDA, 0 )
-	MDRV_SOUND_ROUTE( 0, "lspeaker", 0.50 )
-	MDRV_SOUND_ROUTE( 1, "rspeaker", 0.50 )
+    MCFG_SOUND_ADD( "cdda", CDDA, 0 )
+	MCFG_SOUND_ROUTE( 0, "lspeaker", 0.50 )
+	MCFG_SOUND_ROUTE( 1, "rspeaker", 0.50 )
 
 	/* cia */
-	MDRV_MOS8520_ADD("cia_0", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_0_intf)
-	MDRV_MOS8520_ADD("cia_1", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_1_intf)
+	MCFG_MOS8520_ADD("cia_0", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_0_intf)
+	MCFG_MOS8520_ADD("cia_1", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_1_intf)
 	
-	MDRV_DEVICE_ADD("akiko", AKIKO, 0)
+	MCFG_DEVICE_ADD("akiko", AKIKO, 0)
 MACHINE_CONFIG_END
 
 
@@ -620,7 +635,7 @@ static DRIVER_INIT( a1200 )
 
 	/* set up memory */
 	memory_configure_bank(machine, "bank1", 0, 1, state->chip_ram, 0);
-	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, machine->region("user1")->base(), 0);
 
 	/* initialize keyboard */
 	amigakbd_init(machine);
@@ -647,7 +662,7 @@ static DRIVER_INIT( cd32 )
 
 	/* set up memory */
 	memory_configure_bank(machine, "bank1", 0, 1, state->chip_ram, 0);
-	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, machine->region("user1")->base(), 0);
 }
 
 /***************************************************************************************************/

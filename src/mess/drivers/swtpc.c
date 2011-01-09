@@ -12,9 +12,19 @@
 #include "cpu/m6800/m6800.h"
 #include "machine/terminal.h"
 
+
+class swtpc_state : public driver_device
+{
+public:
+	swtpc_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+};
+
+
 static WRITE8_HANDLER(swtpc_terminal_w)
 {
-	running_device *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine->device("terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -45,16 +55,16 @@ static GENERIC_TERMINAL_INTERFACE( swtpc_terminal_intf )
 	DEVCB_HANDLER(swtpc_kbd_put)
 };
 
-static MACHINE_CONFIG_START( swtpc, driver_device )
+static MACHINE_CONFIG_START( swtpc, swtpc_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", M6800, XTAL_1MHz)
-    MDRV_CPU_PROGRAM_MAP(swtpc_mem)
+    MCFG_CPU_ADD("maincpu", M6800, XTAL_1MHz)
+    MCFG_CPU_PROGRAM_MAP(swtpc_mem)
 
-    MDRV_MACHINE_RESET(swtpc)
+    MCFG_MACHINE_RESET(swtpc)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG, swtpc_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, swtpc_terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */

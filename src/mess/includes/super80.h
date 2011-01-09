@@ -16,6 +16,30 @@ public:
 		: driver_device(machine, config) { }
 
 	UINT8 super80_shared;
+	device_t *z80pio;
+	device_t *speaker;
+	device_t *cassette;
+	device_t *printer;
+	UINT8 keylatch;
+	UINT8 cass_data[4];
+	UINT8 int_sw;
+	UINT8 last_data;
+	UINT16 vidpg;
+	UINT8 current_palette;
+	UINT8 current_charset;
+	const UINT8 *FNT;
+	UINT8 s_options;
+	UINT8 mc6845_cursor[16];
+	UINT8 mc6845_reg[32];
+	UINT8 mc6845_ind;
+	device_t *mc6845;
+	UINT8 framecnt;
+	UINT8 speed;
+	UINT8 flash;
+	UINT16 cursor;
+	UINT8 *videoram;
+	UINT8 *colorram;
+	UINT8 *pcgram;
 };
 
 

@@ -489,396 +489,403 @@ static const kb_keytronic_interface at_keytronic_intf =
 
 static MACHINE_CONFIG_START( ibm5170, at_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
-	MDRV_CPU_PROGRAM_MAP(at16_map)
-	MDRV_CPU_IO_MAP(at16_io)
-	MDRV_CPU_CONFIG(i286_address_mask)
+	MCFG_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
+	MCFG_CPU_PROGRAM_MAP(at16_map)
+	MCFG_CPU_IO_MAP(at16_io)
+	MCFG_CPU_CONFIG(i286_address_mask)
 
-	MDRV_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(HZ(60))
 
-	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
+	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
+	MCFG_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
+	MCFG_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
-	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
+	MCFG_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
+	MCFG_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
-	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] ) /* Verified: IBM P/N 6320947 Serial/Parallel card uses an NS16450N */
-	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )
-	MDRV_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )
-	MDRV_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )
-	MDRV_MACHINE_START( at )
-	MDRV_MACHINE_RESET( at )
+	MCFG_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] ) /* Verified: IBM P/N 6320947 Serial/Parallel card uses an NS16450N */
+	MCFG_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )
+	MCFG_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )
+	MCFG_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )
+	MCFG_MACHINE_START( at )
+	MCFG_MACHINE_RESET( at )
 
-	MDRV_FRAGMENT_ADD( pcvideo_ega )
+	MCFG_FRAGMENT_ADD( pcvideo_ega )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #ifdef ADLIB
-	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
-	MDRV_SOUND_CONFIG(at_ym3812_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MCFG_SOUND_CONFIG(at_ym3812_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
 #ifdef GAMEBLASTER
-	MDRV_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("saa1099.2", SAA1099, 8000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.2", SAA1099, 8000000)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
-	MDRV_FRAGMENT_ADD( at_kbdc8042 )
+	MCFG_FRAGMENT_ADD( at_kbdc8042 )
 
-	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
+	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
-	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
 
 	/* printers */
-	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
-	MDRV_FRAGMENT_ADD( pc_hdc )
+	MCFG_FRAGMENT_ADD( pc_hdc )
 
-	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_DERIVED( ibm5170a, ibm5170 )
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_CLOCK(8000000)
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_CLOCK(8000000)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ec1849, ibm5170 )
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_CLOCK(12000000)
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_CLOCK(12000000)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( ibm5162, at_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
-	MDRV_CPU_PROGRAM_MAP(at16_map)
-	MDRV_CPU_IO_MAP(at16_io)
-	MDRV_CPU_CONFIG(i286_address_mask)
+	MCFG_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
+	MCFG_CPU_PROGRAM_MAP(at16_map)
+	MCFG_CPU_IO_MAP(at16_io)
+	MCFG_CPU_CONFIG(i286_address_mask)
 
-	MDRV_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(HZ(60))
 
-	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
+	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
+	MCFG_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
+	MCFG_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
-	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
+	MCFG_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
+	MCFG_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
-	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
 
-	MDRV_MACHINE_START( at )
-	MDRV_MACHINE_RESET( at )
+	MCFG_MACHINE_START( at )
+	MCFG_MACHINE_RESET( at )
 
-	MDRV_FRAGMENT_ADD( pcvideo_cga )
+	MCFG_FRAGMENT_ADD( pcvideo_cga )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #ifdef ADLIB
-	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
-	MDRV_SOUND_CONFIG(at_ym3812_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MCFG_SOUND_CONFIG(at_ym3812_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
 
-	MDRV_FRAGMENT_ADD( at_kbdc8042 )
+	MCFG_FRAGMENT_ADD( at_kbdc8042 )
 
-	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
+	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
-	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
 
 	/* printers */
-	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
-	MDRV_FRAGMENT_ADD( pc_hdc )
+	MCFG_FRAGMENT_ADD( pc_hdc )
 
-	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_START( ps2m30286, at_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", I80286, 12000000)
-	MDRV_CPU_PROGRAM_MAP(at16_map)
-	MDRV_CPU_IO_MAP(at16_io)
-	MDRV_CPU_CONFIG(i286_address_mask)
+	MCFG_CPU_ADD("maincpu", I80286, 12000000)
+	MCFG_CPU_PROGRAM_MAP(at16_map)
+	MCFG_CPU_IO_MAP(at16_io)
+	MCFG_CPU_CONFIG(i286_address_mask)
 
-	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
+	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
+	MCFG_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
+	MCFG_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
-	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
+	MCFG_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
+	MCFG_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
-	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
 
-	MDRV_MACHINE_START( at )
-	MDRV_MACHINE_RESET( at )
+	MCFG_MACHINE_START( at )
+	MCFG_MACHINE_RESET( at )
 
-	MDRV_FRAGMENT_ADD( pcvideo_vga )
+	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #ifdef ADLIB
-	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
-	MDRV_SOUND_CONFIG(at_ym3812_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MCFG_SOUND_CONFIG(at_ym3812_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
 #ifdef GAMEBLASTER
-	MDRV_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("saa1099.2", SAA1099, 8000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.2", SAA1099, 8000000)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
 
-	MDRV_FRAGMENT_ADD( at_kbdc8042 )
+	MCFG_FRAGMENT_ADD( at_kbdc8042 )
 
-	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
+	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
-	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
 
 	/* printers */
-	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
-	MDRV_FRAGMENT_ADD( pc_hdc )
+	MCFG_FRAGMENT_ADD( pc_hdc )
 
-	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_START( atvga, at_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", I80286, 12000000)
-	MDRV_CPU_PROGRAM_MAP(at16_map)
-	MDRV_CPU_IO_MAP(at16_io)
-	MDRV_CPU_CONFIG(i286_address_mask)
+	MCFG_CPU_ADD("maincpu", I80286, 12000000)
+	MCFG_CPU_PROGRAM_MAP(at16_map)
+	MCFG_CPU_IO_MAP(at16_io)
+	MCFG_CPU_CONFIG(i286_address_mask)
 
-	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
+	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
+	MCFG_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
+	MCFG_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
-	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
+	MCFG_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
+	MCFG_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
-	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
 
-	MDRV_FRAGMENT_ADD( pcvideo_vga )
+	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
-	MDRV_MACHINE_START( at )
-	MDRV_MACHINE_RESET( at )
+	MCFG_MACHINE_START( at )
+	MCFG_MACHINE_RESET( at )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #ifdef ADLIB
-	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
-	MDRV_SOUND_CONFIG(at_ym3812_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MCFG_SOUND_CONFIG(at_ym3812_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
 #ifdef GAMEBLASTER
-	MDRV_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("saa1099.2", SAA1099, 8000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.2", SAA1099, 8000000)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_FRAGMENT_ADD( at_kbdc8042 )
+	MCFG_FRAGMENT_ADD( at_kbdc8042 )
 
-	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
+	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
-	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
 
 	/* printers */
-	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
-	MDRV_FRAGMENT_ADD( pc_hdc )
+	MCFG_FRAGMENT_ADD( pc_hdc )
 
-	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_START( at386, at_state )
     /* basic machine hardware */
 	/* original at 6 MHz, at03 8 megahertz */
-	MDRV_CPU_ADD("maincpu", I386, 12000000)
-	MDRV_CPU_PROGRAM_MAP(at386_map)
-	MDRV_CPU_IO_MAP(at386_io)
-	//MDRV_CPU_CONFIG(i286_address_mask)
+	MCFG_CPU_ADD("maincpu", I386, 12000000)
+	MCFG_CPU_PROGRAM_MAP(at386_map)
+	MCFG_CPU_IO_MAP(at386_io)
+	//MCFG_CPU_CONFIG(i286_address_mask)
 
-	MDRV_MACHINE_START( at )
-	MDRV_MACHINE_RESET( at )
+	MCFG_MACHINE_START( at )
+	MCFG_MACHINE_RESET( at )
 
-	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
+	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
+	MCFG_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
+	MCFG_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
-	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
+	MCFG_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
+	MCFG_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
-	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
-	MDRV_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
+	MCFG_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
 
-	MDRV_FRAGMENT_ADD( pcvideo_vga )
+	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #ifdef ADLIB
-	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
-	MDRV_SOUND_CONFIG(at_ym3812_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MCFG_SOUND_CONFIG(at_ym3812_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
 #ifdef GAMEBLASTER
-	MDRV_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("saa1099.2", SAA1099, 8000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.1", SAA1099, 8000000)	/* running at 8 MHz ISA bus speed? */
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_ADD("saa1099.2", SAA1099, 8000000)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_FRAGMENT_ADD( at_kbdc8042 )
+	MCFG_FRAGMENT_ADD( at_kbdc8042 )
 
-	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
+	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
-	MDRV_MC146818_ADD( "rtc", MC146818_STANDARD )
-//  MDRV_NVRAM_ADD_0FILL("nvram")
+	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
+//  MCFG_NVRAM_ADD_0FILL("nvram")
 
 	/* printers */
-	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
-	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MCFG_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
-	MDRV_FRAGMENT_ADD( pc_hdc )
+	MCFG_FRAGMENT_ADD( pc_hdc )
 
-	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_DERIVED( at486, at386 )
 
-	MDRV_CPU_REPLACE("maincpu", I486, 25000000)
-	MDRV_CPU_PROGRAM_MAP(at386_map)
-	MDRV_CPU_IO_MAP(at386_io)
+	MCFG_CPU_REPLACE("maincpu", I486, 25000000)
+	MCFG_CPU_PROGRAM_MAP(at386_map)
+	MCFG_CPU_IO_MAP(at386_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( at586, at386 )
 
-	MDRV_CPU_REPLACE("maincpu", PENTIUM, 60000000)
-	MDRV_CPU_PROGRAM_MAP(at586_map)
-	MDRV_CPU_IO_MAP(at586_io)
+	MCFG_CPU_REPLACE("maincpu", PENTIUM, 60000000)
+	MCFG_CPU_PROGRAM_MAP(at586_map)
+	MCFG_CPU_IO_MAP(at586_io)
 
-	MDRV_I82371AB_ADD("i82371ab")
-	MDRV_I82439TX_ADD("i82439tx", "maincpu", "user1")
+	MCFG_I82371AB_ADD("i82371ab")
+	MCFG_I82439TX_ADD("i82439tx", "maincpu", "user1")
 
-	MDRV_PCI_BUS_ADD("pcibus", 0)
-	MDRV_PCI_BUS_DEVICE(0, "i82439tx", i82439tx_pci_read, i82439tx_pci_write)
-	MDRV_PCI_BUS_DEVICE(1, "i82371ab", i82371ab_pci_read, i82371ab_pci_write)
+	MCFG_PCI_BUS_ADD("pcibus", 0)
+	MCFG_PCI_BUS_DEVICE(0, "i82439tx", i82439tx_pci_read, i82439tx_pci_write)
+	MCFG_PCI_BUS_DEVICE(1, "i82371ab", i82371ab_pci_read, i82371ab_pci_write)
+MACHINE_CONFIG_END
+		
+static MACHINE_CONFIG_DERIVED( c386sx16, at386 )
+
+	MCFG_CPU_REPLACE("maincpu", I386, 16000000)		/* 386SX */
+	MCFG_CPU_PROGRAM_MAP(at386_map)
+	MCFG_CPU_IO_MAP(at386_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( megapc, at386 )
 
-	MDRV_CPU_REPLACE("maincpu", I386, XTAL_50MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(at386_map)
-	MDRV_CPU_IO_MAP(megapc_io)
+	MCFG_CPU_REPLACE("maincpu", I386, XTAL_50MHz / 2)
+	MCFG_CPU_PROGRAM_MAP(at386_map)
+	MCFG_CPU_IO_MAP(megapc_io)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( megapcpl, megapc )
 
-	MDRV_CPU_REPLACE("maincpu", I486, 66000000 / 2)
-	MDRV_CPU_PROGRAM_MAP(at386_map)
-	MDRV_CPU_IO_MAP(megapc_io)
+	MCFG_CPU_REPLACE("maincpu", I486, 66000000 / 2)
+	MCFG_CPU_PROGRAM_MAP(at386_map)
+	MCFG_CPU_IO_MAP(megapc_io)
 MACHINE_CONFIG_END
 
 
@@ -1292,6 +1299,23 @@ ROM_START( at586 )
 ROM_END
 
 
+ROM_START( c386sx16 )
+	ROM_REGION(0x1000000,"maincpu", 0)
+	/* actual VGA BIOS not dumped - uses a WD Paradise according to http://www.cbmhardware.de/pc/pc.php */
+	ROM_LOAD("et4000.bin", 0xc0000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
+	ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+
+	/* Commodore 80386SX BIOS Rev. 1.03 */
+	/* Copyright (C) 1985-1990 Commodore Electronics Ltd. */
+	/* Copyright (C) 1985-1990 Phoenix Technologies Ltd. */
+	ROM_LOAD16_BYTE( "390914-01.u39", 0xf0000, 0x8000, CRC(8f849198) SHA1(550b04bac0d0807d6e95ec25391a81272779b41b)) /* 390914-01 V1.03 CS-2100 U39 Copyright (C) 1990 CBM */
+	ROM_LOAD16_BYTE( "390915-01.u38", 0xf0001, 0x8000, CRC(ee4bad92) SHA1(6e02ef97a7ce336485814c06a1693bc099ce5cfb)) /* 390915-01 V1.03 CS-2100 U38 Copyright (C) 1990 CBM */
+
+	/* 8042 keyboard controller */
+	ROM_REGION( 0x0800, "kbdc8042", 0 )
+	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
+ROM_END
+
 /* FIC VT-503 (Intel TX chipset, ITE 8679 Super I/O) */
 ROM_START( ficvt503 )
 	ROM_REGION32_LE(0x40000, "user1", 0)
@@ -1358,6 +1382,7 @@ COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga,	at_vga,     "<generic
 COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga,	at386,      "<generic>",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga,	at386,      "<generic>",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga,	at386,      "<generic>",  "PC/AT 586 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, c386sx16, ibm5170, 0,       c386sx16,  atvga,  at386,      "Commodore Business Machines", "Commodore 386SX-16", GAME_NOT_WORKING )
 COMP ( 1997, ficvt503, ibm5170, 0,       at586,     atvga,  at386,      "FIC", "VT-503", GAME_NOT_WORKING )
 COMP ( 1993, megapc,   ibm5170, 0,       megapc,    atvga,  at386,      "Amstrad plc", "MegaPC", GAME_NOT_WORKING )
 COMP ( 199?, megapcpl, ibm5170, 0,       megapcpl,  atvga,  at386,      "Amstrad plc", "MegaPC Plus", GAME_NOT_WORKING )

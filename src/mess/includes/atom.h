@@ -40,8 +40,9 @@ public:
 	int pc1;
 
 	/* devices */
-	running_device *mc6847;
-	running_device *cassette;
+	device_t *mc6847;
+	device_t *cassette;
+	int previous_i8271_int_state;
 };
 
 #endif

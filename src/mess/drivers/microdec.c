@@ -12,24 +12,36 @@
 #include "devices/flopdrv.h"
 #include "machine/terminal.h"
 
-static UINT8 received_char = 0;
+
+class microdec_state : public driver_device
+{
+public:
+	microdec_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 received_char;
+};
+
+
 
 static WRITE8_HANDLER(microdec_terminal_w)
 {
-	running_device *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine->device("terminal");
 	terminal_write(devconf,0,data);
 }
 
 static READ8_HANDLER(microdec_terminal_status_r)
 {
-	if (received_char!=0) return 3; // char received
+	microdec_state *state = space->machine->driver_data<microdec_state>();
+	if (state->received_char!=0) return 3; // char received
 	return 1; // ready
 }
 
 static READ8_HANDLER(microdec_terminal_r)
 {
-	UINT8 retVal = received_char;
-	received_char = 0;
+	microdec_state *state = space->machine->driver_data<microdec_state>();
+	UINT8 retVal = state->received_char;
+	state->received_char = 0;
 	return retVal;
 }
 
@@ -56,12 +68,14 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(microdec)
 {
-	received_char = 0;
+	microdec_state *state = machine->driver_data<microdec_state>();
+	state->received_char = 0;
 }
 
 static WRITE8_DEVICE_HANDLER( microdec_kbd_put )
 {
-	received_char = data;
+	microdec_state *state = device->machine->driver_data<microdec_state>();
+	state->received_char = data;
 }
 
 static GENERIC_TERMINAL_INTERFACE( microdec_terminal_intf )
@@ -76,7 +90,7 @@ static WRITE_LINE_DEVICE_HANDLER( microdec_irq_w )
 static const struct upd765_interface microdec_upd765_interface =
 {
 	DEVCB_LINE(microdec_irq_w), /* interrupt */
-	NULL,						/* DMA request */
+	DEVCB_NULL,					/* DMA request */
 	NULL,	/* image lookup */
 	UPD765_RDY_PIN_CONNECTED,	/* ready pin */
 	{FLOPPY_0,FLOPPY_1, NULL, NULL}
@@ -94,20 +108,20 @@ static const floppy_config microdec_floppy_config =
 	NULL
 };
 
-static MACHINE_CONFIG_START( microdec, driver_device )
+static MACHINE_CONFIG_START( microdec, microdec_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-    MDRV_CPU_PROGRAM_MAP(microdec_mem)
-    MDRV_CPU_IO_MAP(microdec_io)
+    MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+    MCFG_CPU_PROGRAM_MAP(microdec_mem)
+    MCFG_CPU_IO_MAP(microdec_io)
 
-    MDRV_MACHINE_RESET(microdec)
+    MCFG_MACHINE_RESET(microdec)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG,microdec_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG,microdec_terminal_intf)
 
-	MDRV_UPD765A_ADD("upd765", microdec_upd765_interface)
-	MDRV_FLOPPY_2_DRIVES_ADD(microdec_floppy_config)
+	MCFG_UPD765A_ADD("upd765", microdec_upd765_interface)
+	MCFG_FLOPPY_2_DRIVES_ADD(microdec_floppy_config)
 MACHINE_CONFIG_END
 
 /* ROM definition */

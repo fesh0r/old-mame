@@ -10,17 +10,11 @@
 #define ABC80_XTAL		11980800.0
 
 #define ABC80_HTOTAL	384
-#define ABC80_HBEND		0
-#define ABC80_HBSTART	312
+#define ABC80_HBEND		35
+#define ABC80_HBSTART	384
 #define ABC80_VTOTAL	312
-#define ABC80_VBEND		0
-#define ABC80_VBSTART	287
-
-#define ABC80_HDSTART	36 // unverified
-#define ABC80_VDSTART	23 // unverified
-
-#define ABC80_MODE_TEXT	0x07
-#define ABC80_MODE_GFX	0x17
+#define ABC80_VBEND		15
+#define ABC80_VBSTART	312
 
 #define ABC80_K5_HSYNC			0x01
 #define ABC80_K5_DH				0x02
@@ -30,7 +24,7 @@
 #define ABC80_K2_VSYNC			0x01
 #define ABC80_K2_DV				0x02
 #define ABC80_K2_FRAME_END		0x04
-#define ABC80_K2_FRAME_START	0x08
+#define ABC80_K2_FRAME_RESET	0x08
 
 #define ABC80_J3_BLANK			0x01
 #define ABC80_J3_TEXT			0x02
@@ -50,39 +44,58 @@
 #define SN76477_TAG		"g8"
 #define ABCBUS_TAG		"abcbus"
 #define CASSETTE_TAG	"cassette"
+#define RS232_TAG		"rs232"
 
 class abc80_state : public driver_device
 {
 public:
 	abc80_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+		  m_maincpu(*this, Z80_TAG),
+		  m_pio(*this, Z80PIO_TAG),
+		  m_rs232(*this, RS232_TAG),
+		  m_cassette(*this, CASSETTE_TAG),
+		  m_ram(*this, "messram")
+	{ }
 
-	/* keyboard state */
-	int key_data;
-	int key_strobe;
-	int z80pio_astb;
+	required_device<cpu_device> m_maincpu;
+	required_device<device_t> m_pio;
+	required_device<device_t> m_rs232;
+	required_device<device_t> m_cassette;
+	required_device<device_t> m_ram;
 
-	/* video state */
-	UINT8 *video_ram;
-	UINT8 *video_80_ram;
-	tilemap_t *tx_tilemap;
-	int blink;
-	int char_bank;
-	int char_row;
+	virtual void machine_start();
 
-	/* memory regions */
-	const UINT8 *char_rom;		/* character generator ROM */
-	const UINT8 *hsync_prom;	/* horizontal sync PROM */
-	const UINT8 *vsync_prom;	/* horizontal sync PROM */
-	const UINT8 *line_prom;		/* line address PROM */
-	const UINT8 *attr_prom;		/* character attribute PROM */
+	virtual void video_start();
+	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
-	/* devices */
-	running_device *z80pio;
+	void update_screen(bitmap_t *bitmap, const rectangle *cliprect);
+
+	DECLARE_READ8_MEMBER( pio_pa_r );
+	DECLARE_READ8_MEMBER( pio_pb_r );
+	DECLARE_WRITE8_MEMBER( pio_pb_w );
+
+	// keyboard state
+	int m_key_data;
+	int m_key_strobe;
+	int m_pio_astb;
+
+	// video state
+	UINT8 *m_video_ram;
+	UINT8 *m_video_80_ram;
+	UINT8 m_latch;
+	int m_blink;
+
+	// memory regions
+	const UINT8 *m_char_rom;		// character generator ROM
+	const UINT8 *m_hsync_prom;		// horizontal sync PROM
+	const UINT8 *m_vsync_prom;		// horizontal sync PROM
+	const UINT8 *m_line_prom;		// line address PROM
+	const UINT8 *m_attr_prom;		// character attribute PROM
 };
 
-/*----------- defined in video/abc80.c -----------*/
+//----------- defined in video/abc80.c -----------
 
 MACHINE_CONFIG_EXTERN( abc80_video );
 
-#endif /* ABC80_H_ */
+#endif

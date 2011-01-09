@@ -27,7 +27,7 @@ static ADDRESS_MAP_START(galeb_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x1fff ) AM_RAM  // RAM
     AM_RANGE( 0xbfe0, 0xbfe7 ) AM_READ ( galeb_keyboard_r )
     AM_RANGE( 0xbfe0, 0xbfe0 ) AM_DEVWRITE("dac", galeb_dac_data_w )
-    AM_RANGE( 0xb000, 0xb3ff ) AM_RAM  AM_BASE(&galeb_video_ram) // video ram
+    AM_RANGE( 0xb000, 0xb3ff ) AM_RAM  AM_BASE_MEMBER(galeb_state, video_ram) // video ram
     AM_RANGE( 0xc000, 0xc7ff ) AM_ROM  // BASIC 01 ROM
     AM_RANGE( 0xc800, 0xcfff ) AM_ROM  // BASIC 02 ROM
     AM_RANGE( 0xd000, 0xd7ff ) AM_ROM  // BASIC 03 ROM
@@ -120,31 +120,31 @@ static INPUT_PORTS_START( galeb )
 INPUT_PORTS_END
 
 /* Machine driver */
-static MACHINE_CONFIG_START( galeb, driver_device )
+static MACHINE_CONFIG_START( galeb, galeb_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", M6502, 1000000)
-    MDRV_CPU_PROGRAM_MAP(galeb_mem)
-    MDRV_MACHINE_RESET( galeb )
+    MCFG_CPU_ADD("maincpu", M6502, 1000000)
+    MCFG_CPU_PROGRAM_MAP(galeb_mem)
+    MCFG_MACHINE_RESET( galeb )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(48*8, 16*8)
-	MDRV_SCREEN_VISIBLE_AREA(0, 48*8-1, 0, 16*8-1)
-	MDRV_GFXDECODE( galeb )
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(48*8, 16*8)
+	MCFG_SCREEN_VISIBLE_AREA(0, 48*8-1, 0, 16*8-1)
+	MCFG_GFXDECODE( galeb )
 
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(galeb)
-    MDRV_VIDEO_UPDATE(galeb)
+    MCFG_VIDEO_START(galeb)
+    MCFG_VIDEO_UPDATE(galeb)
 
     /* audio hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 8.00)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("dac", DAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 8.00)
 MACHINE_CONFIG_END
 
 /* ROM definition */

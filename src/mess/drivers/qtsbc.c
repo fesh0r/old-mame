@@ -4,66 +4,101 @@
 
         11/12/2009 Skeleton driver.
 
+	It expects a rom or similar at E377-up, so currently it crashes.
+
 ****************************************************************************/
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "machine/terminal.h"
+
+
+class qtsbc_state : public driver_device
+{
+public:
+	qtsbc_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 *ram;
+	UINT8 term_data;
+};
+
+
+
+static WRITE8_HANDLER( qtsbc_06_w )
+{
+	device_t *terminal = space->machine->device("terminal");
+
+	terminal_write(terminal, 0, data);
+}
+
+static READ8_HANDLER( qtsbc_06_r )
+{
+	qtsbc_state *state = space->machine->driver_data<qtsbc_state>();
+	UINT8 ret = state->term_data;
+	state->term_data = 0;
+	return ret;
+}
+
+static READ8_HANDLER( qtsbc_43_r )
+{
+	return 0;
+}
 
 static ADDRESS_MAP_START(qtsbc_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE( 0x0000, 0x07ff ) AM_ROM
-	AM_RANGE( 0x0800, 0xffff ) AM_RAM
+	AM_RANGE( 0x0000, 0xffff ) AM_RAM AM_BASE_MEMBER(qtsbc_state, ram) AM_REGION("maincpu",0)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( qtsbc_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x06, 0x06) AM_READWRITE(qtsbc_06_r,qtsbc_06_w)
+	AM_RANGE(0x43, 0x43) AM_READ(qtsbc_43_r)
 ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( qtsbc )
+	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(qtsbc)
 {
+	qtsbc_state *state = machine->driver_data<qtsbc_state>();
+	UINT8* bios = machine->region("maincpu")->base()+0x10000;
+	memcpy(state->ram,bios, 0x800);
 }
 
-static VIDEO_START( qtsbc )
+static WRITE8_DEVICE_HANDLER( qtsbc_kbd_put )
 {
+	qtsbc_state *state = device->machine->driver_data<qtsbc_state>();
+	state->term_data = data;
 }
 
-static VIDEO_UPDATE( qtsbc )
+static GENERIC_TERMINAL_INTERFACE( qtsbc_terminal_intf )
 {
-    return 0;
-}
+	DEVCB_HANDLER(qtsbc_kbd_put)
+};
 
-static MACHINE_CONFIG_START( qtsbc, driver_device )
-    /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz) // Mostek MK3880
-    MDRV_CPU_PROGRAM_MAP(qtsbc_mem)
-    MDRV_CPU_IO_MAP(qtsbc_io)
+static MACHINE_CONFIG_START( qtsbc, qtsbc_state )
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz) // Mostek MK3880
+	MCFG_CPU_PROGRAM_MAP(qtsbc_mem)
+	MCFG_CPU_IO_MAP(qtsbc_io)
 
-    MDRV_MACHINE_RESET(qtsbc)
+	MCFG_MACHINE_RESET(qtsbc)
 
-    /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+	/* video hardware */
+	MCFG_FRAGMENT_ADD( generic_terminal )
 
-    MDRV_VIDEO_START(qtsbc)
-    MDRV_VIDEO_UPDATE(qtsbc)
+	MCFG_GENERIC_TERMINAL_ADD("terminal", qtsbc_terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( qtsbc )
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "qtsbc.bin", 0x0000, 0x0800, CRC(823fd942) SHA1(64c4f74dd069ae4d43d301f5e279185f32a1efa0))
+	ROM_REGION( 0x10800, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "qtsbc.bin", 0x10000, 0x0800, CRC(823fd942) SHA1(64c4f74dd069ae4d43d301f5e279185f32a1efa0))
 ROM_END
 
 /* Driver */

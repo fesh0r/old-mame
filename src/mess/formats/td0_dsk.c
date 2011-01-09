@@ -88,7 +88,7 @@ static floperr_t get_offset(floppy_image *floppy, int head, int track, int secto
 
 	if (!sector_is_index) {
 		// when taking ID's return seek error if number is over counter
-		if (sector >= sectors_per_track) {
+		if (sector > sectors_per_track) {
 			return FLOPPY_ERROR_SEEKERROR;
 		}
 	}
@@ -229,7 +229,6 @@ static floperr_t td0_get_indexed_sector_info(floppy_image *floppy, int head, int
 
 	retVal = get_offset(floppy, head, track, sector_index, FALSE, &offset);
 	sector_info = get_tag(floppy)->data + offset;
-
 	if (cylinder)
 		*cylinder = sector_info[0];
 	if (side)
@@ -299,7 +298,7 @@ static UINT8 text_buf[N + F - 1];
  */
 
 /* decoder table */
-static UINT8 d_code[256] = {
+static const UINT8 d_code[256] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -334,7 +333,7 @@ static UINT8 d_code[256] = {
     0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
 };
 
-static UINT8 d_len[256] = {
+static const UINT8 d_len[256] = {
     0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
     0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
     0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,

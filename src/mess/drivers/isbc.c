@@ -11,24 +11,36 @@
 #include "cpu/i86/i286.h"
 #include "machine/terminal.h"
 
-static UINT8 received_char = 0;
+
+class isbc_state : public driver_device
+{
+public:
+	isbc_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 received_char;
+};
+
+
 
 static WRITE16_HANDLER(isbc_terminal_w)
 {
-	running_device *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine->device("terminal");
 	terminal_write(devconf,0,data);
 }
 
 static READ16_HANDLER(isbc_terminal_status_r)
 {
-	if (received_char!=0) return 3; // char received
+	isbc_state *state = space->machine->driver_data<isbc_state>();
+	if (state->received_char!=0) return 3; // char received
 	return 1; // ready
 }
 
 static READ16_HANDLER(isbc_terminal_r)
 {
-	UINT8 retVal = received_char;
-	received_char = 0;
+	isbc_state *state = space->machine->driver_data<isbc_state>();
+	UINT8 retVal = state->received_char;
+	state->received_char = 0;
 	return retVal;
 }
 
@@ -82,12 +94,14 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(isbc)
 {
-	received_char = 0;
+	isbc_state *state = machine->driver_data<isbc_state>();
+	state->received_char = 0;
 }
 
 static WRITE8_DEVICE_HANDLER( isbc_kbd_put )
 {
-	received_char = data;
+	isbc_state *state = device->machine->driver_data<isbc_state>();
+	state->received_char = data;
 }
 
 static GENERIC_TERMINAL_INTERFACE( isbc_terminal_intf )
@@ -95,56 +109,56 @@ static GENERIC_TERMINAL_INTERFACE( isbc_terminal_intf )
 	DEVCB_HANDLER(isbc_kbd_put)
 };
 
-static MACHINE_CONFIG_START( isbc86, driver_device )
+static MACHINE_CONFIG_START( isbc86, isbc_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", I8086, XTAL_9_8304MHz)
-    MDRV_CPU_PROGRAM_MAP(isbc86_mem)
-    MDRV_CPU_IO_MAP(isbc86_io)
+    MCFG_CPU_ADD("maincpu", I8086, XTAL_9_8304MHz)
+    MCFG_CPU_PROGRAM_MAP(isbc86_mem)
+    MCFG_CPU_IO_MAP(isbc86_io)
 
-    MDRV_MACHINE_RESET(isbc)
+    MCFG_MACHINE_RESET(isbc)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( rpc86, driver_device )
+static MACHINE_CONFIG_START( rpc86, isbc_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", I8086, XTAL_9_8304MHz)
-    MDRV_CPU_PROGRAM_MAP(rpc86_mem)
-    MDRV_CPU_IO_MAP(rpc86_io)
+    MCFG_CPU_ADD("maincpu", I8086, XTAL_9_8304MHz)
+    MCFG_CPU_PROGRAM_MAP(rpc86_mem)
+    MCFG_CPU_IO_MAP(rpc86_io)
 
-    MDRV_MACHINE_RESET(isbc)
+    MCFG_MACHINE_RESET(isbc)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( isbc286, driver_device )
+static MACHINE_CONFIG_START( isbc286, isbc_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", I80286, XTAL_9_8304MHz)
-    MDRV_CPU_PROGRAM_MAP(isbc286_mem)
-    MDRV_CPU_IO_MAP(isbc286_io)
+    MCFG_CPU_ADD("maincpu", I80286, XTAL_9_8304MHz)
+    MCFG_CPU_PROGRAM_MAP(isbc286_mem)
+    MCFG_CPU_IO_MAP(isbc286_io)
 
-    MDRV_MACHINE_RESET(isbc)
+    MCFG_MACHINE_RESET(isbc)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( isbc2861, driver_device )
+static MACHINE_CONFIG_START( isbc2861, isbc_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", I80286, XTAL_9_8304MHz)
-    MDRV_CPU_PROGRAM_MAP(isbc2861_mem)
-    MDRV_CPU_IO_MAP(isbc2861_io)
+    MCFG_CPU_ADD("maincpu", I80286, XTAL_9_8304MHz)
+    MCFG_CPU_PROGRAM_MAP(isbc2861_mem)
+    MCFG_CPU_IO_MAP(isbc2861_io)
 
-    MDRV_MACHINE_RESET(isbc)
+    MCFG_MACHINE_RESET(isbc)
 
     /* video hardware */
-    MDRV_FRAGMENT_ADD( generic_terminal )
-	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
+    MCFG_FRAGMENT_ADD( generic_terminal )
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, isbc_terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -96,20 +96,14 @@ struct _sasi_ctrl_t
 	int req;  // REQ
 };
 
-struct hd_state
-{
-	int current_block;
-	int current_pos;
-};
-
 DEVICE_START( x68k_hdc );
 
 DEVICE_IMAGE_CREATE( sasihd );
 
 DECLARE_LEGACY_IMAGE_DEVICE(X68KHDC, x68k_hdc);
 
-#define MDRV_X68KHDC_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, X68KHDC, 0)
+#define MCFG_X68KHDC_ADD(_tag) \
+	MCFG_DEVICE_ADD(_tag, X68KHDC, 0)
 
 WRITE16_DEVICE_HANDLER( x68k_hdc_w );
 READ16_DEVICE_HANDLER( x68k_hdc_r );

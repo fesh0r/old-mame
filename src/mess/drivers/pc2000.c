@@ -9,9 +9,19 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 
-static int lcd_vram_index;
-static UINT8 mux_data;
-static UINT8 *wram;
+
+class pc2000_state : public driver_device
+{
+public:
+	pc2000_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	int lcd_vram_index;
+	UINT8 mux_data;
+	UINT8 *wram;
+};
+
+
 
 static VIDEO_START( pc2000 )
 {
@@ -19,8 +29,9 @@ static VIDEO_START( pc2000 )
 
 static VIDEO_UPDATE( pc2000 )
 {
+	pc2000_state *state = screen->machine->driver_data<pc2000_state>();
 	int x,y;
-	static UINT8 *vram = memory_region(screen->machine, "lcd_vram");
+	UINT8 *vram = screen->machine->region("lcd_vram")->base();
 
 	for(y=0;y<2;y++)
 	{
@@ -32,27 +43,30 @@ static VIDEO_UPDATE( pc2000 )
 		}
 	}
 
-	popmessage("%c %02x",wram[0xce4],wram[0xce4]); //dce4
+	popmessage("%c %02x",state->wram[0xce4],state->wram[0xce4]); //dce4
     return 0;
 }
 
 static WRITE8_HANDLER( lcd_vram_addr_w )
 {
-	lcd_vram_index = data;
+	pc2000_state *state = space->machine->driver_data<pc2000_state>();
+	state->lcd_vram_index = data;
 }
 
 static WRITE8_HANDLER( lcd_vram_data_w )
 {
-	static UINT8 *vram = memory_region(space->machine, "lcd_vram");
+	pc2000_state *state = space->machine->driver_data<pc2000_state>();
+	UINT8 *vram = space->machine->region("lcd_vram")->base();
 
-	vram[lcd_vram_index] = data;
+	vram[state->lcd_vram_index] = data;
 }
 
 
 /* TODO: put a breakpoint at 1625 and test the inputs, writes at dce4 are the scancode values */
 static READ8_HANDLER( key_matrix_10_r )
 {
-	switch(mux_data)
+	pc2000_state *state = space->machine->driver_data<pc2000_state>();
+	switch(state->mux_data)
 	{
 		case 0x01: return input_port_read(space->machine, "IN0");
 		case 0x02: return input_port_read(space->machine, "IN1");
@@ -69,7 +83,8 @@ static READ8_HANDLER( key_matrix_10_r )
 
 static READ8_HANDLER( key_matrix_11_r )
 {
-	switch(mux_data)
+	pc2000_state *state = space->machine->driver_data<pc2000_state>();
+	switch(state->mux_data)
 	{
 		case 0x01: return input_port_read(space->machine, "IN8");
 		case 0x02: return input_port_read(space->machine, "IN9");
@@ -86,12 +101,13 @@ static READ8_HANDLER( key_matrix_11_r )
 
 static WRITE8_HANDLER( key_matrix_w )
 {
-	mux_data = data;
+	pc2000_state *state = space->machine->driver_data<pc2000_state>();
+	state->mux_data = data;
 }
 
 static WRITE8_HANDLER( rombank_w )
 {
-	UINT8 *ROM = memory_region(space->machine, "bios");
+	UINT8 *ROM = space->machine->region("bios")->base();
 
 	memory_set_bankptr(space->machine, "bank1", &ROM[(data & 0xf)*0x4000]);
 }
@@ -101,7 +117,7 @@ static ADDRESS_MAP_START(pc2000_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM AM_REGION("bios", 0x00000)
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bank1")
 	AM_RANGE(0x8000, 0xbfff) AM_READNOP //  0x8000 - 0xbfff tests a cartridge, header is 0x55 0xaa 0x59 0x45, if it succeeds a jump at 0x8004 occurs
-	AM_RANGE(0xd000, 0xdfff) AM_RAM AM_BASE(&wram)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM AM_BASE_MEMBER(pc2000_state, wram)
 	AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION("bios", 0x10000) //tied with rom bank at I/O 3
 ADDRESS_MAP_END
 
@@ -448,7 +464,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET( pc2000 )
 {
-	UINT8 *ROM = memory_region(machine, "bios");
+	UINT8 *ROM = machine->region("bios")->base();
 
 	memory_set_bankptr(machine, "bank1", &ROM[0x00000]);
 }
@@ -469,28 +485,28 @@ static GFXDECODE_START( pc2000 )
 GFXDECODE_END
 
 
-static MACHINE_CONFIG_START( pc2000, driver_device )
+static MACHINE_CONFIG_START( pc2000, pc2000_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz) /* probably not accurate */
-    MDRV_CPU_PROGRAM_MAP(pc2000_mem)
-    MDRV_CPU_IO_MAP(pc2000_io)
-    MDRV_CPU_VBLANK_INT("screen",irq0_line_hold)
+    MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz) /* probably not accurate */
+    MCFG_CPU_PROGRAM_MAP(pc2000_mem)
+    MCFG_CPU_IO_MAP(pc2000_io)
+    MCFG_CPU_VBLANK_INT("screen",irq0_line_hold)
 
-    MDRV_MACHINE_RESET(pc2000)
+    MCFG_MACHINE_RESET(pc2000)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480) /* not accurate either */
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
-	MDRV_GFXDECODE(pc2000)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(50)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(640, 480) /* not accurate either */
+    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
+	MCFG_GFXDECODE(pc2000)
 
-    MDRV_VIDEO_START(pc2000)
-    MDRV_VIDEO_UPDATE(pc2000)
+    MCFG_VIDEO_START(pc2000)
+    MCFG_VIDEO_UPDATE(pc2000)
 MACHINE_CONFIG_END
 
 /* ROM definition */

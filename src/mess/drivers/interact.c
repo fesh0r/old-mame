@@ -17,35 +17,34 @@
     This in turn gets upgraded (2HR, HRX, MX). The line is finally
     retired in about 1985.
 
-        Hector 2HR+
-        Victor
-        Hector 2HR
-        Hector HRX
-        Hector MX40c
-        Hector MX80c
-        Hector 1
-        Interact
+		Hector 2HR+
+		Victor
+		Hector 2HR
+		Hector HRX
+		Hector MX40c
+		Hector MX80c
+		Hector 1
+		Interact
 
-        29/10/2009 Update skeleton to functional machine
-                          by yo_fr       (jj.stac@aliceadsl.fr)
+		12/05/2009 Skeleton driver - Micko : mmicko@gmail.com
+		31/06/2009 Video - Robbbert
 
-               => add Keyboard,
-               => add color,
-               => add cassette (24/12/09 add the *.K7 and *.FOR format for the file and castools),
-               => add sn76477 sound and 1bit sound,
-               => add joysticks (stick, pot, fire)
-               => add BR/HR switching
-               => add bank switch for HRX
-               => add device MX80c and bank switching for the ROM
-       03/01/2010 Update and clean prog  by yo_fr       (jj.stac@aliceadsl.fr)
-               => add the port mapping for keyboard
+		29/10/2009 Update skeleton to functional machine
+					by yo_fr			(jj.stac @ aliceadsl.fr)
 
-      don't forget to keep some information about these machine see DChector project : http://dchector.free.fr/ made by DanielCoulom
-      (and thanks to Daniel!)
-
-    TODO : Add the cartridge function,
-           Adjust the one shot and A/D timing (sn76477)
-
+				=> add Keyboard,
+				=> add color,
+				=> add cassette,
+				=> add sn76477 sound and 1bit sound,
+				=> add joysticks (stick, pot, fire)
+				=> add BR/HR switching
+				=> add bank switch for HRX
+				=> add device MX80c and bank switching for the ROM
+    Importante note : the keyboard function add been piked from
+					DChector project : http://dchector.free.fr/ made by DanielCoulom
+					(thank's Daniel)
+	TODO :	Add the cartridge function,
+			Adjust the one shot and A/D timing (sn76477)
 ****************************************************************************/
 /* Mapping for joystick see hec2hrp.c*/
 
@@ -58,6 +57,7 @@
 #include "sound/wave.h"      /* for K7 sound*/
 #include "sound/sn76477.h"   /* for sn sound*/
 #include "sound/discrete.h"  /* for 1 Bit sound*/
+#include "machine/upd765.h"	/* for floppy disc controller */
 
 #include "includes/hec2hrp.h"
 
@@ -67,7 +67,6 @@ class interact_state : public driver_device
 public:
 	interact_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
-
 	UINT8 *videoram;
 };
 
@@ -85,7 +84,7 @@ static ADDRESS_MAP_START(interact_mem, ADDRESS_SPACE_PROGRAM, 8)
 
 	/* Main ROM page*/
 	AM_RANGE(0x0000,0x3fff) AM_ROM  /*BANK(2)*/
- /*   AM_RANGE(0x1000,0x3fff) AM_RAM*/
+	/*   AM_RANGE(0x1000,0x3fff) AM_RAM*/
 
 	/* Video br mapping*/
 	AM_RANGE(0x4000,0x49ff) AM_RAM AM_BASE_MEMBER(interact_state, videoram)
@@ -117,7 +116,7 @@ DISCRETE_SOUND_END
 
 static MACHINE_RESET(interact)
 {
-	hec2hrp_reset(machine, 0);
+	hector_reset(machine, 0, 0);
 }
 
 static MACHINE_START(interact)
@@ -137,82 +136,82 @@ static VIDEO_UPDATE( interact )
 static MACHINE_CONFIG_START( interact, interact_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", I8080, XTAL_2MHz)
-	MDRV_CPU_PROGRAM_MAP(interact_mem)
-	MDRV_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
+	MCFG_CPU_ADD("maincpu", I8080, XTAL_2MHz)
+	MCFG_CPU_PROGRAM_MAP(interact_mem)
+	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
 
-	MDRV_MACHINE_RESET(interact)
-	MDRV_MACHINE_START(interact)
+	MCFG_MACHINE_RESET(interact)
+	MCFG_MACHINE_START(interact)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(256, 79)
-	MDRV_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
-	MDRV_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(256, 79)
+	MCFG_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
+	MCFG_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
 
-	MDRV_VIDEO_START(hec2hrp)
-	MDRV_VIDEO_UPDATE(interact)
+	MCFG_VIDEO_START(hec2hrp)
+	MCFG_VIDEO_UPDATE(interact)
 		/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(0, "mono", 0.1)  /* Sound level for cassette, as it is in mono => output channel=0*/
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(0, "mono", 0.1)  /* Sound level for cassette, as it is in mono => output channel=0*/
 
-	MDRV_SOUND_ADD("sn76477", SN76477, 0)
-	MDRV_SOUND_CONFIG(hector_sn76477_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.1)
+	MCFG_SOUND_ADD("sn76477", SN76477, 0)
+	MCFG_SOUND_CONFIG(hector_sn76477_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.1)
 
-	MDRV_SOUND_ADD("discrete", DISCRETE, 0) /* Son 1bit*/
-	MDRV_SOUND_CONFIG_DISCRETE( hec2hrp )
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MCFG_SOUND_ADD("discrete", DISCRETE, 0) /* Son 1bit*/
+	MCFG_SOUND_CONFIG_DISCRETE( hec2hrp )
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_CASSETTE_ADD( "cassette", interact_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", interact_cassette_config )
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MCFG_PRINTER_ADD("printer")
 
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( hector1, interact_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, XTAL_1_75MHz)
-	MDRV_CPU_PROGRAM_MAP(interact_mem)
-	MDRV_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
+	MCFG_CPU_ADD("maincpu", Z80, XTAL_1_75MHz)
+	MCFG_CPU_PROGRAM_MAP(interact_mem)
+	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
 
-	MDRV_MACHINE_RESET(interact)
-	MDRV_MACHINE_START(interact)
+	MCFG_MACHINE_RESET(interact)
+	MCFG_MACHINE_START(interact)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(256, 79)
-	MDRV_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
-	MDRV_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(256, 79)
+	MCFG_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
+	MCFG_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
 
-	MDRV_VIDEO_START(hec2hrp)
-	MDRV_VIDEO_UPDATE(interact)
+	MCFG_VIDEO_START(hec2hrp)
+	MCFG_VIDEO_UPDATE(interact)
 		/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(0, "mono", 0.1)/* Sound level for cassette, as it is in mono => output channel=0*/
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(0, "mono", 0.1)/* Sound level for cassette, as it is in mono => output channel=0*/
 
-	MDRV_SOUND_ADD("sn76477", SN76477, 0)
-	MDRV_SOUND_CONFIG(hector_sn76477_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.1)
+	MCFG_SOUND_ADD("sn76477", SN76477, 0)
+	MCFG_SOUND_CONFIG(hector_sn76477_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.1)
 
-	MDRV_SOUND_ADD("discrete", DISCRETE, 0) /* Son 1bit*/
-	MDRV_SOUND_CONFIG_DISCRETE( hec2hrp )
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MCFG_SOUND_ADD("discrete", DISCRETE, 0) /* Son 1bit*/
+	MCFG_SOUND_CONFIG_DISCRETE( hec2hrp )
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_CASSETTE_ADD( "cassette", interact_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", interact_cassette_config )
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MCFG_PRINTER_ADD("printer")
 
 MACHINE_CONFIG_END
 
@@ -321,5 +320,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP(1979, interact, 0, 		0,   interact,	interact, 0,	 "Interact",   "Interact Family Computer", GAME_IMPERFECT_SOUND)
+COMP(1979, interact, 0, 		0,	interact,	interact, 0,	 "Interact",   "Interact Family Computer", GAME_IMPERFECT_SOUND)
 COMP(1983, hector1,  interact,	0,	 hector1,	interact, 0,	 "Micronique", "Hector 1",	GAME_IMPERFECT_SOUND)

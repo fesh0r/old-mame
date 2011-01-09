@@ -9,238 +9,111 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
+#include "devices/snapquik.h"
 #include "includes/jupiter.h"
-#include "image.h"
-
-#define	JUPITER_NONE	0
-#define	JUPITER_ACE	1
-#define	JUPITER_TAP	2
-
-static struct
-{
-	UINT8 hdr_type;
-	UINT8 hdr_name[10];
-	UINT16 hdr_len;
-	UINT16 hdr_addr;
-	UINT8 hdr_vars[8];
-	UINT8 hdr_3c4c;
-	UINT8 hdr_3c4d;
-	UINT16 dat_len;
-}
-jupiter_tape;
-
-static UINT8 *jupiter_data = NULL;
-static int jupiter_data_type = JUPITER_NONE;
-
-static void jupiter_machine_stop(running_machine &machine);
 
 
-/* only gets called at the start of a cpu time slice */
-
-DIRECT_UPDATE_HANDLER( jupiter_opbaseoverride )
-{
-	UINT16 loop,tmpword;
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-
-	if (address == 0x059d)
-	{
-		if (jupiter_data_type == JUPITER_ACE)
-		{
-			for (loop = 0; loop < 0x6000; loop++)
-				space->write_byte(loop + 0x2000, jupiter_data[loop]);
-		}
-		else if (jupiter_data_type == JUPITER_TAP)
-		{
-
-			for (loop = 0; loop < jupiter_tape.dat_len; loop++)
-				space->write_byte(loop + jupiter_tape.hdr_addr, jupiter_data[loop]);
-
-			space->write_byte(0x3c27, 0x01);
-
-			for (loop = 0; loop < 8; loop++)
-				space->write_byte(loop + 0x3c31, jupiter_tape.hdr_vars[loop]);
-			space->write_byte(0x3c39, 0x00);
-			space->write_byte(0x3c3a, 0x00);
-
-			tmpword = space->read_byte(0x3c3b) + space->read_byte(0x3c3c) * 256 + jupiter_tape.hdr_len;
-
-			space->write_byte(0x3c3b, tmpword & 0xff);
-			space->write_byte(0x3c3c, (tmpword >> 8) & 0xff);
-
-			space->write_byte(0x3c45, 0x0c);	/* ? */
-
-			space->write_byte(0x3c4c, jupiter_tape.hdr_3c4c);
-			space->write_byte(0x3c4d, jupiter_tape.hdr_3c4d);
-
-			if (!space->read_byte(0x3c57) && !space->read_byte(0x3c58))
-			{
-				space->write_byte(0x3c57, 0x49);
-				space->write_byte(0x3c58, 0x3c);
-			}
-		}
-	}
-	return ~1;
-}
-
-MACHINE_START( jupiter )
-{
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-
-	logerror("jupiter_init\r\n");
-	logerror("data: %p\n", jupiter_data);
-
-	if (jupiter_data)
-	{
-		logerror("data: %p. type: %d.\n", jupiter_data,	jupiter_data_type);
-		space->set_direct_update_handler(direct_update_delegate_create_static(jupiter_opbaseoverride, *machine));
-
-	}
-
-	machine->add_notifier(MACHINE_NOTIFY_EXIT, jupiter_machine_stop);
-}
-
-static void jupiter_machine_stop(running_machine &machine)
-{
-	if (jupiter_data)
-	{
-		free(jupiter_data);
-		jupiter_data = NULL;
-		jupiter_data_type = JUPITER_NONE;
-	}
-}
 
 /* Load in .ace files. These are memory images of 0x2000 to 0x7fff
    and compressed as follows:
 
    ED 00        : End marker
-   ED 01 ED     : 0xED
-   ED <cnt> <byt>   : repeat <byt> count <cnt:3-240> times
+   ED <cnt> <byt>   : repeat <byt> count <cnt:1-240> times
    <byt>        : <byt>
 */
 
-DEVICE_IMAGE_LOAD( jupiter_ace )
+
+/******************************************************************************
+ Snapshot Handling
+******************************************************************************/
+
+SNAPSHOT_LOAD(jupiter)
 {
+	UINT8 *RAM = image.device().machine->region("maincpu")->base();
+	device_t *cpu = image.device().machine->device("maincpu");
+	address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	unsigned char jupiter_repeat, jupiter_byte, loop;
-	int done, jupiter_index;
+	int done=0, jupiter_index=0x2000;
 
-	if (jupiter_data_type != JUPITER_NONE)
-		return (0);
-
-	done = 0;
-	jupiter_index = 0;
-
-	if ((jupiter_data = (UINT8*)malloc(0x6000)))
+	if (input_port_read(space->machine, "CFG")==0)
 	{
-		logerror("Loading file %s.\r\n", image.filename());
-		while (!done && (jupiter_index < 0x6001))
+		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "At least 16KB RAM expansion required");
+		image.message("At least 16KB RAM expansion required");
+		return IMAGE_INIT_FAIL;
+	}
+
+	logerror("Loading file %s.\r\n", image.filename());
+	while (!done && (jupiter_index < 0x8001))
+	{
+		image.fread( &jupiter_byte, 1);
+		if (jupiter_byte == 0xed)
 		{
-			image.fread( &jupiter_byte, 1);
-			if (jupiter_byte == 0xed)
+			image.fread(&jupiter_byte, 1);
+			switch (jupiter_byte)
 			{
-				image.fread(&jupiter_byte, 1);
-				switch (jupiter_byte)
-				{
-				case 0x00:
+			case 0x00:
 					logerror("File loaded!\r\n");
 					done = 1;
 					break;
-				case 0x01:
+			case 0x01:
 					image.fread(&jupiter_byte, 1);
-					jupiter_data[jupiter_index++] = jupiter_byte;
+					RAM[jupiter_index++] = jupiter_byte;
 					break;
-				case 0x02:
-					logerror("Sequence 0xED 0x02 found in .ace file\r\n");
-					break;
-				default:
+			default:
 					image.fread(&jupiter_repeat, 1);
 					for (loop = 0; loop < jupiter_byte; loop++)
-						jupiter_data[jupiter_index++] = jupiter_repeat;
+						RAM[jupiter_index++] = jupiter_repeat;
 					break;
-				}
 			}
-			else
-				jupiter_data[jupiter_index++] = jupiter_byte;
 		}
+		else
+			RAM[jupiter_index++] = jupiter_byte;
 	}
+
+	logerror("Decoded %X bytes.\r\n", jupiter_index-0x2000);
+
 	if (!done)
 	{
-		logerror("file not loaded\r\n");
-		return (1);
+		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "EOF marker not found");
+		image.message("EOF marker not found");
+		return IMAGE_INIT_FAIL;
 	}
 
-	logerror("Decoded %d bytes.\r\n", jupiter_index);
-	jupiter_data_type = JUPITER_ACE;
+        // patch CPU registers
+        // Some games do not follow the standard, and have rubbish in the CPU area. So,
+        // we check that some other bytes are correct.
+        // 2080 = memory size of original machine, should be 0000 or 8000 or C000.
+        // 2118 = new stack pointer, do not use if between 8000 and FF00.
 
-	logerror("data: %p\n", jupiter_data);
-	return (0);
+	jupiter_index = RAM[0x2080] | (RAM[0x2081] << 8);
+
+	if ((jupiter_index & 0x3FFF)==0)
+	{
+		cpu_set_reg(cpu, Z80_AF, RAM[0x2100] | (RAM[0x2101] << 8));
+		cpu_set_reg(cpu, Z80_BC, RAM[0x2104] | (RAM[0x2105] << 8));
+		cpu_set_reg(cpu, Z80_DE, RAM[0x2108] | (RAM[0x2109] << 8));
+		cpu_set_reg(cpu, Z80_HL, RAM[0x210c] | (RAM[0x210d] << 8));
+		cpu_set_reg(cpu, Z80_IX, RAM[0x2110] | (RAM[0x2111] << 8));
+		cpu_set_reg(cpu, Z80_IY, RAM[0x2114] | (RAM[0x2115] << 8));
+		cpu_set_reg(cpu, STATE_GENPC, RAM[0x211c] | (RAM[0x211d] << 8));
+		cpu_set_reg(cpu, Z80_AF2, RAM[0x2120] | (RAM[0x2121] << 8));
+		cpu_set_reg(cpu, Z80_BC2, RAM[0x2124] | (RAM[0x2125] << 8));
+		cpu_set_reg(cpu, Z80_DE2, RAM[0x2128] | (RAM[0x2129] << 8));
+		cpu_set_reg(cpu, Z80_HL2, RAM[0x212c] | (RAM[0x212d] << 8));
+		cpu_set_reg(cpu, Z80_IM, RAM[0x2130]);
+		cpu_set_reg(cpu, Z80_IFF1, RAM[0x2134]);
+		cpu_set_reg(cpu, Z80_IFF2, RAM[0x2138]);
+		cpu_set_reg(cpu, Z80_I, RAM[0x213c]);
+		cpu_set_reg(cpu, Z80_R, RAM[0x2140]);
+
+		if ((RAM[0x2119] < 0x80) || !jupiter_index)
+			cpu_set_reg(cpu, STATE_GENSP, RAM[0x2118] | (RAM[0x2119] << 8));
+	}
+
+	/* Copy data to the address space */
+	for (jupiter_index = 0x2000; jupiter_index < 0x8000; jupiter_index++)
+		space->write_byte(jupiter_index, RAM[jupiter_index]);
+
+	return IMAGE_INIT_PASS;
 }
 
-DEVICE_IMAGE_LOAD( jupiter_tap )
-{
-	UINT8 inpbyt;
-	int loop;
-	UINT16 hdr_len;
-
-	if (jupiter_data_type != JUPITER_NONE)
-		return (0);
-
-	logerror("Loading file %s.\r\n", image.filename());
-
-    image.fread(&inpbyt, 1);
-	hdr_len = inpbyt;
-	image.fread(&inpbyt, 1);
-	hdr_len += (inpbyt * 256);
-
-	/* Read header block */
-
-	image.fread(&jupiter_tape.hdr_type, 1);
-	image.fread(jupiter_tape.hdr_name, 10);
-	image.fread(&inpbyt, 1);
-	jupiter_tape.hdr_len = inpbyt;
-	image.fread(&inpbyt, 1);
-	jupiter_tape.hdr_len += (inpbyt * 256);
-	image.fread(&inpbyt, 1);
-	jupiter_tape.hdr_addr = inpbyt;
-	image.fread(&inpbyt, 1);
-	jupiter_tape.hdr_addr += (inpbyt * 256);
-	image.fread(&jupiter_tape.hdr_3c4c, 1);
-	image.fread(&jupiter_tape.hdr_3c4d, 1);
-	image.fread(jupiter_tape.hdr_vars, 8);
-	if (hdr_len > 0x19)
-		for (loop = 0x19; loop < hdr_len; loop++)
-			image.fread(&inpbyt, 1);
-
-	/* Read data block */
-
-	image.fread(&inpbyt, 1);
-	jupiter_tape.dat_len = inpbyt;
-	image.fread(&inpbyt, 1);
-	jupiter_tape.dat_len += (inpbyt * 256);
-
-	if ((jupiter_data = (UINT8*)malloc(jupiter_tape.dat_len)))
-	{
-		image.fread(jupiter_data, jupiter_tape.dat_len);
-		jupiter_data_type = JUPITER_TAP;
-		logerror("File loaded\r\n");
-	}
-
-	if (!jupiter_data)
-	{
-		logerror("file not loaded\r\n");
-		return (1);
-	}
-
-	return (0);
-
-}
-
-DEVICE_IMAGE_UNLOAD( jupiter_tap )
-{
-	logerror("jupiter_tap_unload\n");
-	if (jupiter_data)
-	{
-		free(jupiter_data);
-		jupiter_data = NULL;
-		jupiter_data_type = JUPITER_NONE;
-	}
-}

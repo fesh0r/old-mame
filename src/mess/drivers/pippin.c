@@ -33,13 +33,24 @@
 #include "devices/chd_cd.h"
 #include "sound/cdda.h"
 
+
+class pippin_state : public driver_device
+{
+public:
+	pippin_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT16 unk1_test;
+	UINT8 portb_data;
+};
+
+
 static READ64_HANDLER( unk1_r )
 {
-	static UINT16 test;
+	pippin_state *state = space->machine->driver_data<pippin_state>();
+	state->unk1_test ^= 0x0400; //PC=ff808760
 
-	test ^= 0x0400; //PC=ff808760
-
-	return test << 16 | 0;
+	return state->unk1_test << 16 | 0;
 }
 
 static READ64_HANDLER( unk2_r )
@@ -50,19 +61,19 @@ static READ64_HANDLER( unk2_r )
 	return 0;
 }
 
-static UINT8 portb_data;
 
 static READ64_HANDLER( adb_portb_r )
 {
+	pippin_state *state = space->machine->driver_data<pippin_state>();
 	if(ACCESSING_BITS_56_63)
 	{
-		if(portb_data == 0x10)
+		if(state->portb_data == 0x10)
 			return (UINT64)0x08 << 56;
 
-		if(portb_data == 0x38)	//fff04c80
+		if(state->portb_data == 0x38)	//fff04c80
 			return (UINT64)0x20 << 56; //almost sure this is wrong
 
-		//printf("PORTB R %02x\n",portb_data);
+		//printf("PORTB R %02x\n",state->portb_data);
 
 
 		return 0;
@@ -73,9 +84,10 @@ static READ64_HANDLER( adb_portb_r )
 
 static WRITE64_HANDLER( adb_portb_w )
 {
+	pippin_state *state = space->machine->driver_data<pippin_state>();
 	if(ACCESSING_BITS_56_63)
 	{
-		portb_data = (UINT64)data >> 56;
+		state->portb_data = (UINT64)data >> 56;
 	}
 }
 
@@ -125,34 +137,34 @@ static VIDEO_UPDATE( pippin )
     return 0;
 }
 
-static MACHINE_CONFIG_START( pippin, driver_device )
+static MACHINE_CONFIG_START( pippin, pippin_state )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",PPC603, 66000000)
-    MDRV_CPU_PROGRAM_MAP(pippin_mem)
+    MCFG_CPU_ADD("maincpu",PPC603, 66000000)
+    MCFG_CPU_PROGRAM_MAP(pippin_mem)
 
-    MDRV_MACHINE_RESET(pippin)
+    MCFG_MACHINE_RESET(pippin)
 
     /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(60)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MDRV_SCREEN_SIZE(640, 480)
-    MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_REFRESH_RATE(60)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+    MCFG_SCREEN_SIZE(640, 480)
+    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_PALETTE_LENGTH(2)
+    MCFG_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(pippin)
-    MDRV_VIDEO_UPDATE(pippin)
+    MCFG_VIDEO_START(pippin)
+    MCFG_VIDEO_UPDATE(pippin)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
-	MDRV_SOUND_ROUTE( 0, "lspeaker", 1.00 )
-	MDRV_SOUND_ROUTE( 1, "rspeaker", 1.00 )
+	MCFG_SOUND_ADD( "cdda", CDDA, 0 )
+	MCFG_SOUND_ROUTE( 0, "lspeaker", 1.00 )
+	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.00 )
 
-	MDRV_CDROM_ADD("cdrom")
+	MCFG_CDROM_ADD("cdrom")
 MACHINE_CONFIG_END
 
 /* ROM definition */

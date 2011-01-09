@@ -17,7 +17,20 @@
 #include "formats/basicdsk.h"
 #include "devices/messram.h"
 
-static const UINT8 *FNT;
+
+class nanos_state : public driver_device
+{
+public:
+	nanos_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	const UINT8 *FNT;
+	UINT8 key_command;
+	UINT8 last_code;
+	UINT8 key_pressed;
+};
+
+
 
 static ADDRESS_MAP_START(nanos_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x0fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank3")
@@ -26,7 +39,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(nanos_tc_w)
 {
-	running_device *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine->device("upd765");
 	upd765_tc_w(fdc, BIT(data,1));
 }
 
@@ -80,7 +93,7 @@ static Z80PIO_INTERFACE( pio2_intf )
 
 /* Z80-SIO Interface */
 
-static void z80daisy_interrupt(running_device *device, int state)
+static void z80daisy_interrupt(device_t *device, int state)
 {
 	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_IRQ0, state);
 }
@@ -227,11 +240,13 @@ INPUT_PORTS_END
 
 static VIDEO_START( nanos )
 {
-	FNT = memory_region(machine, "gfx1");
+	nanos_state *state = machine->driver_data<nanos_state>();
+	state->FNT = machine->region("gfx1")->base();
 }
 
 static VIDEO_UPDATE( nanos )
 {
+	nanos_state *state = screen->machine->driver_data<nanos_state>();
 //  static UINT8 framecnt=0;
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
@@ -251,20 +266,20 @@ static VIDEO_UPDATE( nanos )
 					chr = messram_get_ptr(screen->machine->device("messram"))[0xf800+ x];
 
 					/* get pattern of pixels for that character scanline */
-					gfx = FNT[(chr<<3) | ra ];
+					gfx = state->FNT[(chr<<3) | ra ];
 				}
 				else
 					gfx = 0;
 
 				/* Display a scanline of a character (8 pixels) */
-				*p = ( gfx & 0x80 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x40 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x20 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x10 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x08 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x04 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x02 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x01 ) ? 1 : 0; p++;
+				*p++ = ( gfx & 0x80 ) ? 1 : 0;
+				*p++ = ( gfx & 0x40 ) ? 1 : 0;
+				*p++ = ( gfx & 0x20 ) ? 1 : 0;
+				*p++ = ( gfx & 0x10 ) ? 1 : 0;
+				*p++ = ( gfx & 0x08 ) ? 1 : 0;
+				*p++ = ( gfx & 0x04 ) ? 1 : 0;
+				*p++ = ( gfx & 0x02 ) ? 1 : 0;
+				*p++ = ( gfx & 0x01 ) ? 1 : 0;
 			}
 		}
 		ma+=80;
@@ -272,17 +287,15 @@ static VIDEO_UPDATE( nanos )
 	return 0;
 }
 
-static UINT8 key_command;
-static UINT8 last_code = 0;
-static UINT8 key_pressed = 0xff;
 static READ8_DEVICE_HANDLER (nanos_port_a_r)
 {
+	nanos_state *state = device->machine->driver_data<nanos_state>();
 	UINT8 retVal;
-	if (key_command==0)  {
-		return key_pressed;
+	if (state->key_command==0)  {
+		return state->key_pressed;
 	} else {
-		retVal = last_code;
-		last_code = 0;
+		retVal = state->last_code;
+		state->last_code = 0;
 		return retVal;
 	}
 }
@@ -295,9 +308,10 @@ static READ8_DEVICE_HANDLER (nanos_port_b_r)
 
 static WRITE8_DEVICE_HANDLER (nanos_port_b_w)
 {
-	key_command = BIT(data,1);
+	nanos_state *state = device->machine->driver_data<nanos_state>();
+	state->key_command = BIT(data,1);
 	if (BIT(data,7)) {
-		memory_set_bankptr(device->machine, "bank1", memory_region(device->machine, "maincpu"));
+		memory_set_bankptr(device->machine, "bank1", device->machine->region("maincpu")->base());
 	} else {
 		memory_set_bankptr(device->machine, "bank1", messram_get_ptr(device->machine->device("messram")));
 	}
@@ -316,6 +330,7 @@ static UINT8 row_number(UINT8 code) {
 
 static TIMER_CALLBACK(keyboard_callback)
 {
+	nanos_state *state = machine->driver_data<nanos_state>();
 	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6" };
 
 	int i;
@@ -323,7 +338,7 @@ static TIMER_CALLBACK(keyboard_callback)
 	UINT8 key_code = 0;
 	UINT8 shift = input_port_read(machine, "LINEC") & 0x02 ? 1 : 0;
 	UINT8 ctrl =  input_port_read(machine, "LINEC") & 0x01 ? 1 : 0;
-	key_pressed = 0xff;
+	state->key_pressed = 0xff;
 	for(i = 0; i < 7; i++)
 	{
 
@@ -389,16 +404,18 @@ static TIMER_CALLBACK(keyboard_callback)
 					case 7: key_code = 0x0A; break; // LF
 				}
 			}
-			last_code = key_code;
+			state->last_code = key_code;
 		}
 	}
 	if (key_code==0){
-		key_pressed = 0xf7;
+		state->key_pressed = 0xf7;
 	}
 }
 
 static MACHINE_START(nanos)
 {
+	nanos_state *state = machine->driver_data<nanos_state>();
+	state->key_pressed = 0xff;
 	timer_pulse(machine, ATTOTIME_IN_HZ(24000), NULL, 0, keyboard_callback);
 }
 
@@ -409,7 +426,7 @@ static MACHINE_RESET(nanos)
 	memory_install_write_bank(space, 0x0000, 0x0fff, 0, 0, "bank3");
 	memory_install_write_bank(space, 0x1000, 0xffff, 0, 0, "bank2");
 
-	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu"));
+	memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base());
 	memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x1000);
 	memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")));
 
@@ -432,7 +449,7 @@ static Z80PIO_INTERFACE( nanos_z80pio_intf )
 static const upd765_interface nanos_upd765_interface =
 {
 	DEVCB_NULL,
-	NULL,
+	DEVCB_NULL,
 	NULL,
 	UPD765_RDY_PIN_NOT_CONNECTED,
 	{FLOPPY_0,FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -477,46 +494,46 @@ static GFXDECODE_START( nanos )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, nanos_charlayout, 0, 1 )
 GFXDECODE_END
 
-static MACHINE_CONFIG_START( nanos, driver_device )
+static MACHINE_CONFIG_START( nanos, nanos_state )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-	MDRV_CPU_PROGRAM_MAP(nanos_mem)
-	MDRV_CPU_IO_MAP(nanos_io)
-	MDRV_CPU_CONFIG(nanos_daisy_chain)
+	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+	MCFG_CPU_PROGRAM_MAP(nanos_mem)
+	MCFG_CPU_IO_MAP(nanos_io)
+	MCFG_CPU_CONFIG(nanos_daisy_chain)
 
-	MDRV_MACHINE_START(nanos)
-	MDRV_MACHINE_RESET(nanos)
+	MCFG_MACHINE_START(nanos)
+	MCFG_MACHINE_RESET(nanos)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(80*8, 25*10)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,25*10-1)
-	MDRV_GFXDECODE(nanos)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(80*8, 25*10)
+	MCFG_SCREEN_VISIBLE_AREA(0,80*8-1,0,25*10-1)
+	MCFG_GFXDECODE(nanos)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_START(nanos)
-	MDRV_VIDEO_UPDATE(nanos)
+	MCFG_VIDEO_START(nanos)
+	MCFG_VIDEO_UPDATE(nanos)
 
 	/* devices */
-	MDRV_Z80CTC_ADD( "z80ctc_0", XTAL_4MHz, ctc_intf)
-	MDRV_Z80CTC_ADD( "z80ctc_1", XTAL_4MHz, ctc_intf)
-	MDRV_Z80PIO_ADD( "z80pio_0", XTAL_4MHz, pio1_intf)
-	MDRV_Z80PIO_ADD( "z80pio_1", XTAL_4MHz, pio2_intf)
-	MDRV_Z80SIO_ADD( "z80sio_0", XTAL_4MHz, sio_intf)
-	MDRV_Z80SIO_ADD( "z80sio_1", XTAL_4MHz, sio_intf)
-	MDRV_Z80PIO_ADD( "z80pio", XTAL_4MHz, nanos_z80pio_intf )
+	MCFG_Z80CTC_ADD( "z80ctc_0", XTAL_4MHz, ctc_intf)
+	MCFG_Z80CTC_ADD( "z80ctc_1", XTAL_4MHz, ctc_intf)
+	MCFG_Z80PIO_ADD( "z80pio_0", XTAL_4MHz, pio1_intf)
+	MCFG_Z80PIO_ADD( "z80pio_1", XTAL_4MHz, pio2_intf)
+	MCFG_Z80SIO_ADD( "z80sio_0", XTAL_4MHz, sio_intf)
+	MCFG_Z80SIO_ADD( "z80sio_1", XTAL_4MHz, sio_intf)
+	MCFG_Z80PIO_ADD( "z80pio", XTAL_4MHz, nanos_z80pio_intf )
 	/* UPD765 */
-	MDRV_UPD765A_ADD("upd765", nanos_upd765_interface)
+	MCFG_UPD765A_ADD("upd765", nanos_upd765_interface)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(nanos_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(nanos_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -151,29 +151,29 @@ static const unsigned short vga_colortable[] =
 };
 
 MACHINE_CONFIG_FRAGMENT( pcvideo_vga )
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(720, 480)
-	MDRV_SCREEN_VISIBLE_AREA(0,720-1, 0,480-1)
-	MDRV_PALETTE_LENGTH(0x100)
-	MDRV_PALETTE_INIT(vga)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(720, 480)
+	MCFG_SCREEN_VISIBLE_AREA(0,720-1, 0,480-1)
+	MCFG_PALETTE_LENGTH(0x100)
+	MCFG_PALETTE_INIT(vga)
 
-	MDRV_VIDEO_START(vga)
-	MDRV_VIDEO_RESET(vga)
-	MDRV_VIDEO_UPDATE(pc_video)
+	MCFG_VIDEO_START(vga)
+	MCFG_VIDEO_RESET(vga)
+	MCFG_VIDEO_UPDATE(pc_video)
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_FRAGMENT( pcvideo_pc1640 )
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(720, 350)
-	MDRV_SCREEN_VISIBLE_AREA(0,720-1, 0,350-1)
-	MDRV_PALETTE_LENGTH(sizeof(ega_palette) / 3)
-	MDRV_PALETTE_INIT(ega)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(720, 350)
+	MCFG_SCREEN_VISIBLE_AREA(0,720-1, 0,350-1)
+	MCFG_PALETTE_LENGTH(sizeof(ega_palette) / 3)
+	MCFG_PALETTE_INIT(ega)
 
-	MDRV_VIDEO_START(ega)
-	MDRV_VIDEO_RESET(ega)
-	MDRV_VIDEO_UPDATE(pc_video)
+	MCFG_VIDEO_START(ega)
+	MCFG_VIDEO_RESET(ega)
+	MCFG_VIDEO_UPDATE(pc_video)
 MACHINE_CONFIG_END
 
 /***************************************************************************/
@@ -264,7 +264,7 @@ static struct
 // to use the mscrtc6845 macros
 #define REG(x) vga.crtc.data[x]
 
-#define DOUBLESCAN ((vga.crtc.data[9]&0x80)||((vga.crtc.data[9]&0x1f)!=0) )
+#define DOUBLESCAN ((vga.crtc.data[9]&0x80)||((vga.crtc.data[9]&0x1f)!=0))
 #define CRTC_PORT_ADDR ((vga.miscellaneous_output&1)?0x3d0:0x3b0)
 
 #define CRTC_ON (vga.crtc.data[0x17]&0x80)
@@ -293,15 +293,15 @@ static struct
 #define TEXT_START_ADDRESS (EGA_START_ADDRESS)
 #define TEXT_LINE_LENGTH (EGA_LINE_LENGTH>>2)
 
-#define TEXT_COPY_9COLUMN(ch) ( (ch>=192)&&(ch<=223)&&(vga.attribute.data[0x10]&4))
+#define TEXT_COPY_9COLUMN(ch) ((ch>=192)&&(ch<=223)&&(vga.attribute.data[0x10]&4))
 
 //#define CURSOR_ON (!(vga.crtc.data[0xa]&0x20))
 //#define CURSOR_STARTLINE (vga.crtc.data[0xa]&0x1f)
 //#define CURSOR_ENDLINE (vga.crtc.data[0xb]&0x1f)
 //#define CURSOR_POS (vga.crtc.data[0xf]|(vga.crtc.data[0xe]<<8))
 
-#define FONT1 ( ((vga.sequencer.data[3]&3)|((vga.sequencer.data[3]&0x10)<<2))*0x2000)
-#define FONT2 ((((vga.sequencer.data[3]&c)>>2)|((vga.sequencer.data[3]&0x20)<<3))*0x2000)
+#define FONT1 (  ((vga.sequencer.data[3]&0x3)    |((vga.sequencer.data[3]&0x10)<<2))*0x2000 )
+#define FONT2 ( (((vga.sequencer.data[3]&0xc)>>2)|((vga.sequencer.data[3]&0x20)<<3))*0x2000 )
 
 
 INLINE UINT8 rotate_right(UINT8 val, UINT8 rot)
@@ -830,7 +830,7 @@ READ8_HANDLER( vga_port_03b0_r )
 
 
 
-READ8_HANDLER( ega_port_03c0_r)
+READ8_HANDLER( ega_port_03c0_r )
 {
 	UINT8 data = 0xff;
 	switch (offset) {

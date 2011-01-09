@@ -167,18 +167,28 @@ FFFF
 #include "sound/sn76496.h"
 #include "machine/ctronics.h"
 
+
+class tutor_state : public driver_device
+{
+public:
+	tutor_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	char cartridge_enable;
+	char tape_interrupt_enable;
+	emu_timer *tape_interrupt_timer;
+	UINT8 printer_data;
+	char printer_strobe;
+};
+
+
 /* mapper state */
-static char cartridge_enable;
 
 /* tape interface state */
 static TIMER_CALLBACK(tape_interrupt_handler);
 
-static char tape_interrupt_enable;
-static emu_timer *tape_interrupt_timer;
 
 /* parallel interface state */
-static UINT8 printer_data;
-static char printer_strobe;
 
 enum
 {
@@ -189,10 +199,11 @@ enum
 
 static DRIVER_INIT(tutor)
 {
-	tape_interrupt_timer = timer_alloc(machine, tape_interrupt_handler, NULL);
+	tutor_state *state = machine->driver_data<tutor_state>();
+	state->tape_interrupt_timer = timer_alloc(machine, tape_interrupt_handler, NULL);
 
-	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, "maincpu") + basic_base, 0);
-	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "maincpu") + cartridge_base, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, machine->region("maincpu")->base() + basic_base, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, machine->region("maincpu")->base() + cartridge_base, 0);
 	memory_set_bank(machine, "bank1", 0);
 }
 
@@ -219,12 +230,13 @@ static MACHINE_START(tutor)
 
 static MACHINE_RESET(tutor)
 {
-	cartridge_enable = 0;
+	tutor_state *state = machine->driver_data<tutor_state>();
+	state->cartridge_enable = 0;
 
-	tape_interrupt_enable = 0;
+	state->tape_interrupt_enable = 0;
 
-	printer_data = 0;
-	printer_strobe = 0;
+	state->printer_data = 0;
+	state->printer_strobe = 0;
 }
 
 static INTERRUPT_GEN( tutor_vblank_interrupt )
@@ -268,7 +280,7 @@ static READ8_HANDLER(read_keyboard)
 static DEVICE_IMAGE_LOAD( tutor_cart )
 {
 	UINT32 size;
-	UINT8 *ptr = memory_region(image.device().machine, "maincpu");
+	UINT8 *ptr = image.device().machine->region("maincpu")->base();
 
 	if (image.software_entry() == NULL)
 	{
@@ -287,7 +299,7 @@ static DEVICE_IMAGE_LOAD( tutor_cart )
 
 static DEVICE_IMAGE_UNLOAD( tutor_cart )
 {
-	memset(memory_region(image.device().machine, "maincpu") + cartridge_base, 0, 0x6000);
+	memset(image.device().machine->region("maincpu")->base() + cartridge_base, 0, 0x6000);
 }
 
 /*
@@ -326,6 +338,7 @@ static  READ8_HANDLER(tutor_mapper_r)
 
 static WRITE8_HANDLER(tutor_mapper_w)
 {
+	tutor_state *state = space->machine->driver_data<tutor_state>();
 	switch (offset)
 	{
 	case 0x00:
@@ -334,13 +347,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 
 	case 0x08:
 		/* disable cartridge ROM, enable BASIC ROM at base >8000 */
-		cartridge_enable = 0;
+		state->cartridge_enable = 0;
 		memory_set_bank(space->machine, "bank1", 0);
 		break;
 
 	case 0x0c:
 		/* enable cartridge ROM, disable BASIC ROM at base >8000 */
-		cartridge_enable = 1;
+		state->cartridge_enable = 1;
 		memory_set_bank(space->machine, "bank1", 1);
 		break;
 
@@ -372,7 +385,8 @@ static WRITE8_HANDLER(tutor_mapper_w)
 
 static TIMER_CALLBACK(tape_interrupt_handler)
 {
-	//assert(tape_interrupt_enable);
+	//tutor_state *state = machine->driver_data<tutor_state>();
+	//assert(state->tape_interrupt_enable);
 	cputag_set_input_line(machine, "maincpu", 1, (cassette_input(machine->device("cassette")) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
@@ -385,6 +399,7 @@ static  READ8_HANDLER(tutor_cassette_r)
 /* memory handler */
 static WRITE8_HANDLER(tutor_cassette_w)
 {
+	tutor_state *state = space->machine->driver_data<tutor_state>();
 	if (offset & /*0x1f*/0x1e)
 		logerror("unknown port in %s %d\n", __FILE__, __LINE__);
 
@@ -401,14 +416,14 @@ static WRITE8_HANDLER(tutor_cassette_w)
 		case 1:
 			/* interrupt control??? */
 			//logerror("ignoring write of %d to cassette port 1\n", data);
-			if (tape_interrupt_enable != ! data)
+			if (state->tape_interrupt_enable != ! data)
 			{
-				tape_interrupt_enable = ! data;
-				if (tape_interrupt_enable)
-					timer_adjust_periodic(tape_interrupt_timer, /*ATTOTIME_IN_HZ(44100)*/attotime_zero, 0, ATTOTIME_IN_HZ(44100));
+				state->tape_interrupt_enable = ! data;
+				if (state->tape_interrupt_enable)
+					timer_adjust_periodic(state->tape_interrupt_timer, /*ATTOTIME_IN_HZ(44100)*/attotime_zero, 0, ATTOTIME_IN_HZ(44100));
 				else
 				{
-					timer_adjust_oneshot(tape_interrupt_timer, attotime_never, 0);
+					timer_adjust_oneshot(state->tape_interrupt_timer, attotime_never, 0);
 					cputag_set_input_line(space->machine, "maincpu", 1, CLEAR_LINE);
 				}
 			}
@@ -647,10 +662,10 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)			PORT_CHAR(' ')
 
 	PORT_START("LINE7")    /* col 7 */
-		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
-		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
-		PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(UTF8_LEFT) PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(UTF8_UP) PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(UTF8_DOWN) PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+		PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(UTF8_RIGHT) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
 
 		/* Unused? */
 		PORT_BIT(0xf0, IP_ACTIVE_HIGH, IPT_UNUSED)
@@ -669,44 +684,44 @@ static const struct tms9995reset_param tutor_processor_config =
 	NULL		/* no IDLE callback */
 };
 
-static MACHINE_CONFIG_START( tutor, driver_device )
+static MACHINE_CONFIG_START( tutor, tutor_state )
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
-	MDRV_CPU_ADD("maincpu", TMS9995, 10700000)
-	MDRV_CPU_CONFIG(tutor_processor_config)
-	MDRV_CPU_PROGRAM_MAP(tutor_memmap)
-	MDRV_CPU_IO_MAP(tutor_io)
-	MDRV_CPU_VBLANK_INT("screen", tutor_vblank_interrupt)
+	MCFG_CPU_ADD("maincpu", TMS9995, 10700000)
+	MCFG_CPU_CONFIG(tutor_processor_config)
+	MCFG_CPU_PROGRAM_MAP(tutor_memmap)
+	MCFG_CPU_IO_MAP(tutor_io)
+	MCFG_CPU_VBLANK_INT("screen", tutor_vblank_interrupt)
 
-	MDRV_MACHINE_START( tutor )
-	MDRV_MACHINE_RESET( tutor )
+	MCFG_MACHINE_START( tutor )
+	MCFG_MACHINE_RESET( tutor )
 
 	/* video hardware */
-	MDRV_FRAGMENT_ADD(tms9928a)
-	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_FRAGMENT_ADD(tms9928a)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76489a", SN76489A, 3579545)	/* 3.579545 MHz */
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD("sn76489a", SN76489A, 3579545)	/* 3.579545 MHz */
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
-	MDRV_CENTRONICS_ADD("printer", standard_centronics)
+	MCFG_CENTRONICS_ADD("printer", standard_centronics)
 
-	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* cartridge */
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_LOAD(tutor_cart)
-	MDRV_CARTSLOT_UNLOAD(tutor_cart)
-	MDRV_CARTSLOT_INTERFACE("tutor_cart")
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_LOAD(tutor_cart)
+	MCFG_CARTSLOT_UNLOAD(tutor_cart)
+	MCFG_CARTSLOT_INTERFACE("tutor_cart")
 
 	/* software lists */
-	MDRV_SOFTWARE_LIST_ADD("cart_list","tutor")
+	MCFG_SOFTWARE_LIST_ADD("cart_list","tutor")
 
 MACHINE_CONFIG_END
 

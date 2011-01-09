@@ -6,9 +6,12 @@
 #include "emu.h"
 #include "machine/mboard.h"
 
-UINT8 lcd_invert;
-UINT8 key_select;
-UINT8 key_selector;
+static void set_artwork(running_machine *machine );
+static void check_board_buttons(running_machine *machine );
+
+UINT8 mboard_lcd_invert;
+UINT8 mboard_key_select;
+UINT8 mboard_key_selector;
 
 static const int start_board[64] =
 {
@@ -26,7 +29,6 @@ static UINT8 border_pieces[12] = {WK,WQ,WR,WB,WN,WP,BK,BQ,BR,BB,BN,BP,};
 
 static int m_board[64];
 static int save_board[64];
-
 static UINT16 Line18_LED;
 static UINT16 Line18_REED;
 
@@ -65,7 +67,7 @@ static UINT8 read_board(void)
 
 /*
 
-Example board scan: 
+Example board scan:
 Starting postion and pawn on E2 is lifted
 
 
@@ -82,7 +84,7 @@ data: ff 1111 1111	all fields empty
 mask: fb 1111 1011	Line 3
 data: ff 1111 1111	all fields empty
 mask: fd 1111 1101	Line 2
-data: 10 0001 0000	E2 is empty rest is occupied 
+data: 10 0001 0000	E2 is empty rest is occupied
 mask: fe 1111 1110	Line 1
 data:  0 0000 0000	all fields occupied
 
@@ -117,11 +119,11 @@ static void write_board( running_machine *machine, UINT8 data)
 		Line18_LED = 0;
 	else
 		Line18_LED = data;
-	
+
 	 read_board_flag = FALSE;
 
 	if (data == 0xff)
-		key_selector = 0;
+		mboard_key_selector = 0;
 }
 
 
@@ -132,7 +134,7 @@ static void write_LED(UINT8 data)
 	UINT8 i_AH, i_18;
 	UINT8 LED;
 
-	lcd_invert = 1;
+	mboard_lcd_invert = 1;
 /*
 
 Example: turn led E2 on
@@ -141,7 +143,6 @@ mask:  fd 1111 1101	Line 2
 data:  10 0001 0000	Line E
 
 */
-
 
 	for (i=0; i < 64; i++)							/* all  LED's off */
 		output_set_led_value(i, 0);
@@ -154,11 +155,11 @@ data:  10 0001 0000	Line E
 			{
 				for (i_18 = 0; i_18 < 8; i_18++)
 				{
-					LED = (i_18*8 + 8-i_AH-1);		
-					if (!(Line18_LED & (1 << i_18)))	/* cleared bit */ 
+					LED = (i_18*8 + 8-i_AH-1);
+					if (!(Line18_LED & (1 << i_18)))	/* cleared bit */
 						output_set_led_value(LED, 1);
-					else
-						output_set_led_value(LED, 0);
+					//else
+					//	output_set_led_value(LED, 0);
 				}
 			}
 		}
@@ -168,15 +169,16 @@ data:  10 0001 0000	Line E
 
 
 
-READ8_HANDLER( read_board_8 )
+READ8_HANDLER( mboard_read_board_8 )
 {
 	UINT8 data;
 
 	data=read_board();
+	logerror("Read Board Port  Data = %d\n  ",data);
 	return data;
 }
 
-READ16_HANDLER( read_board_16 )
+READ16_HANDLER( mboard_read_board_16 )
 {
 	UINT8 data;
 
@@ -184,7 +186,7 @@ READ16_HANDLER( read_board_16 )
 	return data << 8;
 }
 
-READ32_HANDLER( read_board_32 )
+READ32_HANDLER( mboard_read_board_32 )
 {
 	UINT8 data;
 
@@ -192,53 +194,56 @@ READ32_HANDLER( read_board_32 )
 	return data<<24;
 }
 
-WRITE8_HANDLER( write_board_8 )
+WRITE8_HANDLER( mboard_write_board_8 )
 {
 	write_board(space->machine,data);
+	logerror("Write Board Port  Data = %02x\n  ",data);
 }
 
-WRITE16_HANDLER( write_board_16 )
+WRITE16_HANDLER( mboard_write_board_16 )
 {
+	if (data && 0xff) write_board(space->machine,data);
+	logerror("write board 16 %08x\n",data);
 	write_board(space->machine,data>>8);
 }
 
-WRITE32_HANDLER( write_board_32 )
+WRITE32_HANDLER( mboard_write_board_32 )
 {
+	data |= data << 24;
+	logerror("write board 32 o: %08x d: %08x\n",offset,data);
 	write_board(space->machine,data>>24);
 }
 
-WRITE8_HANDLER( write_LED_8 )
+WRITE8_HANDLER( mboard_write_LED_8 )
 {
-	 write_LED(data);
+	write_LED(data);
+	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(7));
 }
 
-WRITE16_HANDLER( write_LED_16 )
+WRITE16_HANDLER( mboard_write_LED_16 )
 {
 	 write_LED(data >> 8);
+	 cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(9));
 }
 
-WRITE32_HANDLER( write_LED_32 )
+WRITE32_HANDLER( mboard_write_LED_32 )
 {
-	 write_LED(data >> 24);
+	data = data | data << 24;
+	write_LED(data >> 24);
+	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(20));
 }
 
-TIMER_CALLBACK( update_artwork )
-{
-	check_board_buttons(machine);
-	set_artwork(machine);
-	set_boarder_pieces(); 
-}
 
 /* save states callback */
 
-STATE_PRESAVE( m_board_presave )
+static STATE_PRESAVE( m_board_presave )
 {
 	int i;
 	for (i=0;i<64;i++)
 		save_board[i]=m_board[i];
 }
 
-STATE_POSTLOAD( m_board_postload )
+static STATE_POSTLOAD( m_board_postload )
 {
 	int i;
 	for (i=0;i<64;i++)
@@ -253,35 +258,42 @@ void mboard_savestate_register(running_machine *machine)
 	state_save_register_presave(machine,m_board_presave,NULL);
 }
 
-void set_board( void )
+void mboard_set_board( void )
 {
 	int i;
 	for (i=0;i<64;i++)
 		m_board[i]=start_board[i];
 }
 
-void clear_board( void )
+static void clear_board( void )
 {
 	int i;
 	for (i=0;i<64;i++)
 		m_board[i]=EM;
 }
 
-void set_artwork ( running_machine *machine )
+static void set_artwork ( running_machine *machine )
 {
 	int i;
 	for (i=0;i<64;i++)
 		output_set_indexed_value("P", i, m_board[i]);
 }
 
-void set_boarder_pieces (void)
+void mboard_set_border_pieces (void)
 {
 	int i;
 	for (i=0;i<12;i++)
 		output_set_indexed_value("Q", i, border_pieces[i]);
 }
 
-void check_board_buttons ( running_machine *machine )
+TIMER_CALLBACK( mboard_update_artwork )
+{
+	check_board_buttons(machine);
+	set_artwork(machine);
+	mboard_set_border_pieces();
+}
+
+static void check_board_buttons ( running_machine *machine )
 {
 	int field;
 	int i;
@@ -293,7 +305,7 @@ void check_board_buttons ( running_machine *machine )
 	UINT8 pos2num_res = 0;
 	board_row++;
 	board_row &= 7;
-	int click_on_boarder_piece=FALSE;
+	int click_on_border_piece=FALSE;
 
 
 /* check click on border pieces */
@@ -302,19 +314,19 @@ void check_board_buttons ( running_machine *machine )
 	if (port_input)
 	{
 		i=get_first_bit(port_input)+6;
-		click_on_boarder_piece=TRUE;
+		click_on_border_piece=TRUE;
 	}
 
 	port_input=input_port_read(machine, "B_WHITE");
 	if (port_input)
 	{
 		i=get_first_bit(port_input);
-		click_on_boarder_piece=TRUE;
+		click_on_border_piece=TRUE;
 	}
 
-	if (click_on_boarder_piece)
+	if (click_on_border_piece)
 	{
-		if (!mouse_down) 
+		if (!mouse_down)
 		{
 			if (border_pieces[i] > 12 )		/* second click on selected border piece */
 			{
@@ -402,7 +414,7 @@ void check_board_buttons ( running_machine *machine )
 			mouse_hold.piece = 0;
 			mouse_hold.border_piece = FALSE;
 		}
-			
+
 		return;
 	}
 
@@ -417,7 +429,7 @@ void check_board_buttons ( running_machine *machine )
 			return;
 		}else if (port_input==0x02)
 		{
-			set_board();
+			mboard_set_board();
 			return;
 		}
 

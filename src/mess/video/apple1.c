@@ -70,35 +70,18 @@
 
 ***************************************************************************/
 
-typedef short termchar_t;
-
-struct terminal
-{
-	tilemap_t *tm;
-	int gfx;
-	int blank_char;
-	int char_bits;
-	int num_cols;
-	int num_rows;
-	int (*getcursorcode)(int original_code);
-	int cur_offset;
-	int cur_hidden;
-	termchar_t mem[1];
-};
-
-static struct terminal *current_terminal;
-
 static TILE_GET_INFO(terminal_gettileinfo)
 {
+	apple1_state *state = machine->driver_data<apple1_state>();
 	int ch, gfxfont, code, color;
 
-	ch = current_terminal->mem[tile_index];
-	code = ch & ((1 << current_terminal->char_bits) - 1);
-	color = ch >> current_terminal->char_bits;
-	gfxfont = current_terminal->gfx;
+	ch = state->current_terminal->mem[tile_index];
+	code = ch & ((1 << state->current_terminal->char_bits) - 1);
+	color = ch >> state->current_terminal->char_bits;
+	gfxfont = state->current_terminal->gfx;
 
-	if ((tile_index == current_terminal->cur_offset) && !current_terminal->cur_hidden && current_terminal->getcursorcode)
-		code = current_terminal->getcursorcode(code);
+	if ((tile_index == state->current_terminal->cur_offset) && !state->current_terminal->cur_hidden && state->current_terminal->getcursorcode)
+		code = state->current_terminal->getcursorcode(code);
 
 	SET_TILE_INFO(
 		gfxfont,	/* gfx */
@@ -107,14 +90,15 @@ static TILE_GET_INFO(terminal_gettileinfo)
 		0);			/* flags */
 }
 
-static void terminal_draw(bitmap_t *dest, const rectangle *cliprect, struct terminal *terminal)
+static void terminal_draw(running_machine *machine, bitmap_t *dest, const rectangle *cliprect, terminal_t *terminal)
 {
-	current_terminal = terminal;
+	apple1_state *state = machine->driver_data<apple1_state>();
+	state->current_terminal = terminal;
 	tilemap_draw(dest, cliprect, terminal->tm, 0, 0);
-	current_terminal = NULL;
+	state->current_terminal = NULL;
 }
 
-static void verify_coords(struct terminal *terminal, int x, int y)
+static void verify_coords(terminal_t *terminal, int x, int y)
 {
 	assert(x >= 0);
 	assert(y >= 0);
@@ -122,7 +106,7 @@ static void verify_coords(struct terminal *terminal, int x, int y)
 	assert(y < terminal->num_rows);
 }
 
-static void terminal_putchar(struct terminal *terminal, int x, int y, int ch)
+static void terminal_putchar(terminal_t *terminal, int x, int y, int ch)
 {
 	int offs;
 
@@ -136,7 +120,7 @@ static void terminal_putchar(struct terminal *terminal, int x, int y, int ch)
 	}
 }
 
-static int terminal_getchar(struct terminal *terminal, int x, int y)
+static int terminal_getchar(terminal_t *terminal, int x, int y)
 {
 	int offs;
 
@@ -145,43 +129,43 @@ static int terminal_getchar(struct terminal *terminal, int x, int y)
 	return terminal->mem[offs];
 }
 
-static void terminal_putblank(struct terminal *terminal, int x, int y)
+static void terminal_putblank(terminal_t *terminal, int x, int y)
 {
 	terminal_putchar(terminal, x, y, terminal->blank_char);
 }
 
-static void terminal_dirtycursor(struct terminal *terminal)
+static void terminal_dirtycursor(terminal_t *terminal)
 {
 	if (terminal->cur_offset >= 0)
 		tilemap_mark_tile_dirty(terminal->tm, terminal->cur_offset);
 }
 
-static void terminal_setcursor(struct terminal *terminal, int x, int y)
+static void terminal_setcursor(terminal_t *terminal, int x, int y)
 {
 	terminal_dirtycursor(terminal);
 	terminal->cur_offset = y * terminal->num_cols + x;
 	terminal_dirtycursor(terminal);
 }
 
-static void terminal_hidecursor(struct terminal *terminal)
+static void terminal_hidecursor(terminal_t *terminal)
 {
 	terminal->cur_hidden = 1;
 	terminal_dirtycursor(terminal);
 }
 
-static void terminal_showcursor(struct terminal *terminal)
+static void terminal_showcursor(terminal_t *terminal)
 {
 	terminal->cur_hidden = 0;
 	terminal_dirtycursor(terminal);
 }
 
-static void terminal_getcursor(struct terminal *terminal, int *x, int *y)
+static void terminal_getcursor(terminal_t *terminal, int *x, int *y)
 {
 	*x = terminal->cur_offset % terminal->num_cols;
 	*y = terminal->cur_offset / terminal->num_cols;
 }
 
-static void terminal_fill(struct terminal *terminal, int val)
+static void terminal_fill(terminal_t *terminal, int val)
 {
 	int i;
 	for (i = 0; i < terminal->num_cols * terminal->num_rows; i++)
@@ -189,24 +173,24 @@ static void terminal_fill(struct terminal *terminal, int val)
 	tilemap_mark_all_tiles_dirty(terminal->tm);
 }
 
-static void terminal_clear(struct terminal *terminal)
+static void terminal_clear(terminal_t *terminal)
 {
 	terminal_fill(terminal, terminal->blank_char);
 }
 
-static struct terminal *terminal_create(
+static terminal_t *terminal_create(
 	running_machine *machine,
 	int gfx, int blank_char, int char_bits,
 	int (*getcursorcode)(int original_code),
 	int num_cols, int num_rows)
 {
-	struct terminal *term;
+	terminal_t *term;
 	int char_width, char_height;
 
 	char_width = machine->gfx[gfx]->width;
 	char_height = machine->gfx[gfx]->height;
 
-	term = (struct terminal *) auto_alloc_array(machine, char, sizeof(struct terminal) - sizeof(term->mem)
+	term = (terminal_t *) auto_alloc_array(machine, char, sizeof(terminal_t) - sizeof(term->mem)
 		+ (num_cols * num_rows * sizeof(termchar_t)));
 
 	term->tm = tilemap_create(machine, terminal_gettileinfo, tilemap_scan_rows,
@@ -228,9 +212,6 @@ static struct terminal *terminal_create(
 /**************************************************************************/
 
 
-static struct terminal *apple1_terminal;
-
-int apple1_vh_clrscrn_pressed = 0;		/* flag for CLEAR SCREEN switch */
 
 /* The cursor blinking is generated by a free-running timer with a
    0.52-second period.  It is on for 2/3 of this period and off for
@@ -249,7 +230,9 @@ static int apple1_getcursorcode(int original_code)
 
 VIDEO_START( apple1 )
 {
-	apple1_terminal = terminal_create(
+	apple1_state *state = machine->driver_data<apple1_state>();
+	state->blink_on = 1;		/* cursor is visible initially */
+	state->terminal = terminal_create(
 		machine,
 		0,			/* graphics font 0 (the only one we have) */
 		32,			/* Blank character is symbol 32 in the ROM */
@@ -257,24 +240,25 @@ VIDEO_START( apple1 )
 		apple1_getcursorcode,
 		40, 24);	/* 40 columns, 24 rows */
 
-	terminal_setcursor(apple1_terminal, 0, 0);
+	terminal_setcursor(state->terminal, 0, 0);
 }
 
 /* This function handles all writes to the video display. */
-void apple1_vh_dsp_w (int data)
+void apple1_vh_dsp_w (running_machine *machine, int data)
 {
+	apple1_state *state = machine->driver_data<apple1_state>();
 	int	x, y;
 	int cursor_x, cursor_y;
 
 	/* While CLEAR SCREEN is being held down, the hardware is forced
        to clear the video memory, so video writes have no effect. */
-	if (apple1_vh_clrscrn_pressed)
+	if (state->vh_clrscrn_pressed)
 		return;
 
 	/* The video display port only accepts the 7 lowest bits of the char. */
 	data &= 0x7f;
 
-	terminal_getcursor(apple1_terminal, &cursor_x, &cursor_y);
+	terminal_getcursor(state->terminal, &cursor_x, &cursor_y);
 
 	if (data == '\r') {
 		/* Carriage-return moves the cursor to the start of the next
@@ -299,7 +283,7 @@ void apple1_vh_dsp_w (int data)
 
 		int romindx = (data & 0x1f) | (((data ^ 0x40) & 0x40) >> 1);
 
-		terminal_putchar(apple1_terminal, cursor_x, cursor_y, romindx);
+		terminal_putchar(state->terminal, cursor_x, cursor_y, romindx);
 		if (cursor_x < 39)
 		{
 			cursor_x++;
@@ -316,24 +300,25 @@ void apple1_vh_dsp_w (int data)
 	{
 		for (y = 1; y < 24; y++)
 			for (x = 0; x < 40; x++)
-				terminal_putchar(apple1_terminal, x, y-1,
-								 terminal_getchar(apple1_terminal, x, y));
+				terminal_putchar(state->terminal, x, y-1,
+								 terminal_getchar(state->terminal, x, y));
 
 		for (x = 0; x < 40; x++)
-			terminal_putblank(apple1_terminal, x, 23);
+			terminal_putblank(state->terminal, x, 23);
 
 		cursor_y--;
 	}
 
-	terminal_setcursor(apple1_terminal, cursor_x, cursor_y);
+	terminal_setcursor(state->terminal, cursor_x, cursor_y);
 }
 
 /* This function handles clearing the video display on cold-boot or in
    response to a press of the CLEAR SCREEN switch. */
-void apple1_vh_dsp_clr (void)
+void apple1_vh_dsp_clr (running_machine *machine)
 {
-	terminal_setcursor(apple1_terminal, 0, 0);
-	terminal_clear(apple1_terminal);
+	apple1_state *state = machine->driver_data<apple1_state>();
+	terminal_setcursor(state->terminal, 0, 0);
+	terminal_clear(state->terminal);
 }
 
 /* Calculate how long it will take for the display to assert the RDA
@@ -342,6 +327,7 @@ void apple1_vh_dsp_clr (void)
    write. */
 attotime apple1_vh_dsp_time_to_ready (running_machine *machine)
 {
+	apple1_state *state = machine->driver_data<apple1_state>();
 	int cursor_x, cursor_y;
 	int cursor_scanline;
 	double scanline_period = attotime_to_double(machine->primary_screen->scan_period());
@@ -355,7 +341,7 @@ attotime apple1_vh_dsp_time_to_ready (running_machine *machine)
        the cursor's character line, when the beam reaches the cursor's
        horizontal position. */
 
-	terminal_getcursor(apple1_terminal, &cursor_x, &cursor_y);
+	terminal_getcursor(state->terminal, &cursor_x, &cursor_y);
 	cursor_scanline = cursor_y * apple1_charlayout.height;
 
 	/* Each scanline is composed of 455 pixel times.  The first 175 of
@@ -370,7 +356,7 @@ attotime apple1_vh_dsp_time_to_ready (running_machine *machine)
            still use it to find what fraction of the current scanline
            period has elapsed. */
 		double current_hfrac = machine->primary_screen->hpos() /
-							   screen_first(*machine)->width();
+							   machine->first_screen()->width();
 		if (current_hfrac < cursor_hfrac)
 			return double_to_attotime(scanline_period * (cursor_hfrac - current_hfrac));
 	}
@@ -383,7 +369,7 @@ attotime apple1_vh_dsp_time_to_ready (running_machine *machine)
 /* Blink the cursor on or off, as appropriate. */
 static void apple1_vh_cursor_blink (running_machine *machine)
 {
-	static int blink_on = 1;		/* cursor is visible initially */
+	apple1_state *state = machine->driver_data<apple1_state>();
 	int new_blink_on;
 
 	/* The cursor is on for 2/3 of its blink period and off for 1/3.
@@ -397,18 +383,19 @@ static void apple1_vh_cursor_blink (running_machine *machine)
 	else
 		new_blink_on = 0;
 
-	if (new_blink_on != blink_on) {		/* have we changed state? */
+	if (new_blink_on != state->blink_on) {		/* have we changed state? */
 		if (new_blink_on)
-			terminal_showcursor(apple1_terminal);
+			terminal_showcursor(state->terminal);
 		else
-			terminal_hidecursor(apple1_terminal);
-		blink_on = new_blink_on;
+			terminal_hidecursor(state->terminal);
+		state->blink_on = new_blink_on;
 	}
 }
 
 VIDEO_UPDATE( apple1 )
 {
+	apple1_state *state = screen->machine->driver_data<apple1_state>();
 	apple1_vh_cursor_blink(screen->machine);
-	terminal_draw(bitmap, NULL, apple1_terminal);
+	terminal_draw(screen->machine, bitmap, NULL, state->terminal);
 	return 0;
 }

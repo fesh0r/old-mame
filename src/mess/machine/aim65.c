@@ -26,8 +26,6 @@
 ******************************************************************************/
 
 
-static UINT8 pia_a, pia_b;
-static UINT8 riot_port_a;
 
 
 
@@ -64,12 +62,13 @@ static UINT8 riot_port_a;
  * PB7: CU (Cursor)
  */
 
-static void dl1416_update(running_device *device, int index)
+static void dl1416_update(device_t *device, int index)
 {
-	dl1416_ce_w(device, pia_a & (0x04 << index));
-	dl1416_wr_w(device, BIT(pia_a, 7));
-	dl1416_cu_w(device, BIT(pia_b, 7));
-	dl1416_data_w(device, pia_a & 0x03, pia_b & 0x7f);
+	aim65_state *state = device->machine->driver_data<aim65_state>();
+	dl1416_ce_w(device, state->pia_a & (0x04 << index));
+	dl1416_wr_w(device, BIT(state->pia_a, 7));
+	dl1416_cu_w(device, BIT(state->pia_b, 7));
+	dl1416_data_w(device, state->pia_a & 0x03, state->pia_b & 0x7f);
 }
 
 static void aim65_pia(running_machine *machine)
@@ -84,39 +83,41 @@ static void aim65_pia(running_machine *machine)
 
 WRITE8_DEVICE_HANDLER(aim65_pia_a_w)
 {
-	pia_a = data;
+	aim65_state *state = device->machine->driver_data<aim65_state>();
+	state->pia_a = data;
 	aim65_pia(device->machine);
 }
 
 
 WRITE8_DEVICE_HANDLER(aim65_pia_b_w)
 {
-	pia_b = data;
+	aim65_state *state = device->machine->driver_data<aim65_state>();
+	state->pia_b = data;
 	aim65_pia(device->machine);
 }
 
 
-void aim65_update_ds1(running_device *device, int digit, int data)
+void aim65_update_ds1(device_t *device, int digit, int data)
 {
 	output_set_digit_value(0 + (digit ^ 3), data);
 }
 
-void aim65_update_ds2(running_device *device, int digit, int data)
+void aim65_update_ds2(device_t *device, int digit, int data)
 {
 	output_set_digit_value(4 + (digit ^ 3), data);
 }
 
-void aim65_update_ds3(running_device *device, int digit, int data)
+void aim65_update_ds3(device_t *device, int digit, int data)
 {
 	output_set_digit_value(8 + (digit ^ 3), data);
 }
 
-void aim65_update_ds4(running_device *device, int digit, int data)
+void aim65_update_ds4(device_t *device, int digit, int data)
 {
 	output_set_digit_value(12 + (digit ^ 3), data);
 }
 
-void aim65_update_ds5(running_device *device, int digit, int data)
+void aim65_update_ds5(device_t *device, int digit, int data)
 {
 	output_set_digit_value(16 + (digit ^ 3), data);
 }
@@ -130,6 +131,7 @@ void aim65_update_ds5(running_device *device, int digit, int data)
 
 READ8_DEVICE_HANDLER(aim65_riot_b_r)
 {
+	aim65_state *state = device->machine->driver_data<aim65_state>();
 	static const char *const keynames[] =
 	{
 		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
@@ -141,7 +143,7 @@ READ8_DEVICE_HANDLER(aim65_riot_b_r)
 	/* scan keyboard rows */
 	for (row = 0; row < 8; row++)
 	{
-		if (!(riot_port_a & (1 << row)))
+		if (!(state->riot_port_a & (1 << row)))
 			data &= input_port_read(device->machine, keynames[row]);
 	}
 
@@ -151,7 +153,8 @@ READ8_DEVICE_HANDLER(aim65_riot_b_r)
 
 WRITE8_DEVICE_HANDLER(aim65_riot_a_w)
 {
-	riot_port_a = data;
+	aim65_state *state = device->machine->driver_data<aim65_state>();
+	state->riot_port_a = data;
 }
 
 
@@ -168,15 +171,11 @@ WRITE_LINE_DEVICE_HANDLER(aim65_riot_irq)
 
 MACHINE_START( aim65 )
 {
-	via6522_device *via_0 = machine->device<via6522_device>("via6522_0");
-	running_device *ram = machine->device("messram");
+	device_t *ram = machine->device("messram");
 	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* Init RAM */
 	memory_install_ram(space, 0x0000, messram_get_size(ram) - 1, 0, 0, messram_get_ptr(ram));
-
-	via_0->write_cb1(1);
-	via_0->write_ca1(0);
 }
 
 

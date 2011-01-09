@@ -3368,9 +3368,9 @@ static const char teletext_separated_graphics[96*60]={
 static int teletext_data;
 static int teletext_LOSE;
 
-static const char *tt_lookup=teletext_saa5050_characters;
-static const char *tt_graphics=teletext_graphics;
-static int tt_colour=7;
+static const char *tt_lookup;
+static const char *tt_graphics;
+static int tt_colour;
 static int tt_rcolour;
 static int tt_bgcolour=0;
 static int tt_start_line=0;
@@ -3385,12 +3385,14 @@ static int tt_lastcode=0;
 static int tt_frame_count=0;
 
 // local copy of the 6845 external procedure calls
-static struct saa505x_interface
-saa505x_calls= { 0 };
+static struct saa505x_interface saa505x_calls;
 
 
 void saa505x_config(const struct saa505x_interface *intf)
 {
+	tt_lookup=teletext_saa5050_characters;
+	tt_graphics=teletext_graphics;
+	tt_colour=7;
 	saa505x_calls.out_Pixel_func=*intf->out_Pixel_func;
 }
 

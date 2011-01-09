@@ -14,18 +14,7 @@
 #include "devices/messram.h"
 #include "devices/flopdrv.h"
 
-static UINT8 attr = 0;
-static UINT8 text_attr = 0;
-static UINT8 takt = 0;
-UINT8 pk8020_color = 0;
-UINT8 pk8020_video_page = 0;
-UINT8 pk8020_wide = 0;
-UINT8 pk8020_font = 0;
-static UINT8 pk8020_video_page_access = 0;
-static UINT8 portc_data;
 static void pk8020_set_bank(running_machine *machine,UINT8 data);
-static UINT8 sound_gate = 0;
-static UINT8 sound_level = 0;
 
 
 static READ8_HANDLER( keyboard_r )
@@ -64,11 +53,12 @@ static READ8_HANDLER(sysreg_r)
 }
 static WRITE8_HANDLER(sysreg_w)
 {
+	pk8020_state *state = space->machine->driver_data<pk8020_state>();
 	if (BIT(offset,7)==0) {
 		pk8020_set_bank(space->machine,data >> 2);
 	} else if (BIT(offset,6)==0) {
 		// Color
-		pk8020_color = data;
+		state->color = data;
 	} else if (BIT(offset,2)==0) {
 		// Palette set
 		UINT8 number = data & 0x0f;
@@ -83,49 +73,52 @@ static WRITE8_HANDLER(sysreg_w)
 
 static READ8_HANDLER(text_r)
 {
-    if (attr == 3) text_attr=messram_get_ptr(space->machine->device("messram"))[0x40400+offset];
+	pk8020_state *state = space->machine->driver_data<pk8020_state>();
+    if (state->attr == 3) state->text_attr=messram_get_ptr(space->machine->device("messram"))[0x40400+offset];
 	return messram_get_ptr(space->machine->device("messram"))[0x40000+offset];
 }
 
 static WRITE8_HANDLER(text_w)
 {
+	pk8020_state *state = space->machine->driver_data<pk8020_state>();
 	messram_get_ptr(space->machine->device("messram"))[0x40000+offset] = data;
-	switch (attr) {
+	switch (state->attr) {
         case 0: break;
         case 1: messram_get_ptr(space->machine->device("messram"))[0x40400+offset]=0x01;break;
         case 2: messram_get_ptr(space->machine->device("messram"))[0x40400+offset]=0x00;break;
-        case 3: messram_get_ptr(space->machine->device("messram"))[0x40400+offset]=text_attr;break;
+        case 3: messram_get_ptr(space->machine->device("messram"))[0x40400+offset]=state->text_attr;break;
     }
 }
 
 static READ8_HANDLER(gzu_r)
 {
-	UINT8 *addr = messram_get_ptr(space->machine->device("messram")) + 0x10000 + (pk8020_video_page_access * 0xC000);
+	pk8020_state *state = space->machine->driver_data<pk8020_state>();
+	UINT8 *addr = messram_get_ptr(space->machine->device("messram")) + 0x10000 + (state->video_page_access * 0xC000);
 	UINT8 p0 = addr[offset];
 	UINT8 p1 = addr[offset + 0x4000];
 	UINT8 p2 = addr[offset + 0x8000];
 	UINT8 retVal = 0;
-	if(pk8020_color & 0x80) {
+	if(state->color & 0x80) {
 		// Color mode
-		if (!(pk8020_color & 0x10)) {
+		if (!(state->color & 0x10)) {
 			p0 ^= 0xff;
 		}
-		if (!(pk8020_color & 0x20)) {
+		if (!(state->color & 0x20)) {
 			p1 ^= 0xff;
 		}
-		if (!(pk8020_color & 0x40)) {
+		if (!(state->color & 0x40)) {
 			p2 ^= 0xff;
 		}
 		retVal = (p0 & p1 & p2) ^ 0xff;
 	} else {
 		// Plane mode
-		if (pk8020_color & 0x10) {
+		if (state->color & 0x10) {
 			retVal |= p0;
 		}
-		if (pk8020_color & 0x20) {
+		if (state->color & 0x20) {
 			retVal |= p1;
 		}
-		if (pk8020_color & 0x40) {
+		if (state->color & 0x40) {
 			retVal |= p2;
 		}
 	}
@@ -134,27 +127,28 @@ static READ8_HANDLER(gzu_r)
 
 static WRITE8_HANDLER(gzu_w)
 {
-	UINT8 *addr = messram_get_ptr(space->machine->device("messram")) + 0x10000 + (pk8020_video_page_access * 0xC000);
+	pk8020_state *state = space->machine->driver_data<pk8020_state>();
+	UINT8 *addr = messram_get_ptr(space->machine->device("messram")) + 0x10000 + (state->video_page_access * 0xC000);
 	UINT8 *plane_0 = addr;
 	UINT8 *plane_1 = addr + 0x4000;
 	UINT8 *plane_2 = addr + 0x8000;
 
-	if(pk8020_color & 0x80)
+	if(state->color & 0x80)
 	{
 		// Color mode
-		plane_0[offset] = (plane_0[offset] & ~data) | ((pk8020_color & 2) ? data : 0);
-		plane_1[offset] = (plane_1[offset] & ~data) | ((pk8020_color & 4) ? data : 0);
-		plane_2[offset] = (plane_2[offset] & ~data) | ((pk8020_color & 8) ? data : 0);
+		plane_0[offset] = (plane_0[offset] & ~data) | ((state->color & 2) ? data : 0);
+		plane_1[offset] = (plane_1[offset] & ~data) | ((state->color & 4) ? data : 0);
+		plane_2[offset] = (plane_2[offset] & ~data) | ((state->color & 8) ? data : 0);
 	} else {
 		// Plane mode
-		UINT8 mask = (pk8020_color & 1) ? data : 0;
-		if (!(pk8020_color & 0x02)) {
+		UINT8 mask = (state->color & 1) ? data : 0;
+		if (!(state->color & 0x02)) {
 			plane_0[offset] = (plane_0[offset] & ~data) | mask;
 		}
-		if (!(pk8020_color & 0x04)) {
+		if (!(state->color & 0x04)) {
 			plane_1[offset] = (plane_1[offset] & ~data) | mask;
 		}
-		if (!(pk8020_color & 0x08)) {
+		if (!(state->color & 0x08)) {
 			plane_2[offset] = (plane_2[offset] & ~data) | mask;
 		}
 	}
@@ -162,14 +156,14 @@ static WRITE8_HANDLER(gzu_w)
 
 static READ8_HANDLER(devices_r)
 {
-	running_device *ppi1 = space->machine->device("ppi8255_1");
-	running_device *ppi2 = space->machine->device("ppi8255_2");
-	running_device *ppi3 = space->machine->device("ppi8255_3");
-	running_device *pit = space->machine->device("pit8253");
-	running_device *pic = space->machine->device("pic8259");
-	running_device *rs232 = space->machine->device("rs232");
-	running_device *lan = space->machine->device("lan");
-	running_device *fdc = space->machine->device("wd1793");
+	device_t *ppi1 = space->machine->device("ppi8255_1");
+	device_t *ppi2 = space->machine->device("ppi8255_2");
+	device_t *ppi3 = space->machine->device("ppi8255_3");
+	device_t *pit = space->machine->device("pit8253");
+	device_t *pic = space->machine->device("pic8259");
+	device_t *rs232 = space->machine->device("rs232");
+	device_t *lan = space->machine->device("lan");
+	device_t *fdc = space->machine->device("wd1793");
 
 	switch(offset & 0x38)
 	{
@@ -201,14 +195,14 @@ static READ8_HANDLER(devices_r)
 
 static WRITE8_HANDLER(devices_w)
 {
-	running_device *ppi1 = space->machine->device("ppi8255_1");
-	running_device *ppi2 = space->machine->device("ppi8255_2");
-	running_device *ppi3 = space->machine->device("ppi8255_3");
-	running_device *pit = space->machine->device("pit8253");
-	running_device *pic = space->machine->device("pic8259");
-	running_device *rs232 = space->machine->device("rs232");
-	running_device *lan = space->machine->device("lan");
-	running_device *fdc = space->machine->device("wd1793");
+	device_t *ppi1 = space->machine->device("ppi8255_1");
+	device_t *ppi2 = space->machine->device("ppi8255_2");
+	device_t *ppi3 = space->machine->device("ppi8255_3");
+	device_t *pit = space->machine->device("pit8253");
+	device_t *pic = space->machine->device("pic8259");
+	device_t *rs232 = space->machine->device("rs232");
+	device_t *lan = space->machine->device("lan");
+	device_t *fdc = space->machine->device("wd1793");
 
 	switch(offset & 0x38)
 	{
@@ -246,7 +240,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x37ff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x37ff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// Keyboard
 						memory_install_read8_handler (space, 0x3800, 0x39ff, 0, 0, keyboard_r);
@@ -272,7 +266,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xffff, 0, 0, "bank3");
@@ -285,7 +279,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xffff, 0, 0, "bank3");
@@ -308,7 +302,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xf7ff, 0, 0, "bank3");
@@ -335,7 +329,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xf7ff, 0, 0, "bank3");
@@ -384,7 +378,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// Keyboard
 						memory_install_read8_handler (space, 0x3800, 0x39ff, 0, 0, keyboard_r);
@@ -415,7 +409,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xbfff, 0, 0, "bank3");
@@ -432,7 +426,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xbfff, 0, 0, "bank3");
@@ -462,7 +456,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0x3fff, 0, 0, "bank3");
@@ -490,7 +484,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// Video RAM
 						memory_install_read8_handler (space, 0x4000, 0x7fff, 0, 0, gzu_r);
@@ -536,7 +530,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x5fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x5fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x6000, 0xf7ff, 0, 0, "bank3");
@@ -563,7 +557,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xf7ff, 0, 0, "bank3");
@@ -590,7 +584,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xf7ff, 0, 0, "bank3");
@@ -639,7 +633,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x5fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x5fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x6000, 0xfdff, 0, 0, "bank3");
@@ -659,7 +653,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xfdff, 0, 0, "bank3");
@@ -679,7 +673,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xfdff, 0, 0, "bank3");
@@ -714,7 +708,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x5fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x5fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x6000, 0xbeff, 0, 0, "bank3");
@@ -734,7 +728,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xbeff, 0, 0, "bank3");
@@ -754,7 +748,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xbeff, 0, 0, "bank3");
@@ -789,7 +783,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x5fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x5fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x6000, 0xbfff, 0, 0, "bank3");
@@ -806,7 +800,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x1fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x1fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x2000, 0xbfff, 0, 0, "bank3");
@@ -823,7 +817,7 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 						// ROM
 						memory_install_read_bank (space, 0x0000, 0x3fff, 0, 0, "bank1");
 						memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank2");
-						memory_set_bankptr(machine, "bank1", memory_region(machine,"maincpu") + 0x10000);
+						memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x10000);
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0000);
 						// RAM
 						memory_install_read_bank (space, 0x4000, 0xbfff, 0, 0, "bank3");
@@ -853,24 +847,26 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data)
 
 static READ8_DEVICE_HANDLER(pk8020_porta_r)
 {
-	return 0xf0 | (takt <<1) | (text_attr)<<3;
+	pk8020_state *state = device->machine->driver_data<pk8020_state>();
+	return 0xf0 | (state->takt <<1) | (state->text_attr)<<3;
 }
 
 static WRITE8_DEVICE_HANDLER(pk8020_portc_w)
 {
-   pk8020_video_page_access =(data>>6) & 3;
-   attr = (data >> 4) & 3;
-   pk8020_wide = (data >> 3) & 1;
-   pk8020_font = (data >> 2) & 1;
-   pk8020_video_page = (data & 3);
+	pk8020_state *state = device->machine->driver_data<pk8020_state>();
+   state->video_page_access =(data>>6) & 3;
+   state->attr = (data >> 4) & 3;
+   state->wide = (data >> 3) & 1;
+   state->font = (data >> 2) & 1;
+   state->video_page = (data & 3);
 
 
-   portc_data = data;
+   state->portc_data = data;
 }
 
 static WRITE8_DEVICE_HANDLER(pk8020_portb_w)
 {
-	running_device *fdc = device->machine->device("wd1793");
+	device_t *fdc = device->machine->device("wd1793");
 	// Turn all motors off
 	floppy_mon_w(floppy_get_device(device->machine, 0), 1);
 	floppy_mon_w(floppy_get_device(device->machine, 1), 1);
@@ -898,7 +894,8 @@ static WRITE8_DEVICE_HANDLER(pk8020_portb_w)
 
 static READ8_DEVICE_HANDLER(pk8020_portc_r)
 {
-	return portc_data;
+	pk8020_state *state = device->machine->driver_data<pk8020_state>();
+	return state->portc_data;
 }
 
 
@@ -914,11 +911,12 @@ I8255A_INTERFACE( pk8020_ppi8255_interface_1 )
 
 static WRITE8_DEVICE_HANDLER(pk8020_2_portc_w)
 {
-	running_device *speaker = device->machine->device("speaker");
+	pk8020_state *state = device->machine->driver_data<pk8020_state>();
+	device_t *speaker = device->machine->device("speaker");
 
-	sound_gate = BIT(data,3);
+	state->sound_gate = BIT(data,3);
 
-	speaker_level_w(speaker, sound_gate ? sound_level : 0);
+	speaker_level_w(speaker, state->sound_gate ? state->sound_level : 0);
 }
 
 I8255A_INTERFACE( pk8020_ppi8255_interface_2 )
@@ -943,11 +941,12 @@ I8255A_INTERFACE( pk8020_ppi8255_interface_3 )
 
 static WRITE_LINE_DEVICE_HANDLER( pk8020_pit_out0 )
 {
-	running_device *speaker = device->machine->device("speaker");
+	pk8020_state *drvstate = device->machine->driver_data<pk8020_state>();
+	device_t *speaker = device->machine->device("speaker");
 
-	sound_level = state;
+	drvstate->sound_level = state;
 
-	speaker_level_w(speaker, sound_gate ? sound_level : 0);
+	speaker_level_w(speaker, drvstate->sound_gate ? drvstate->sound_level : 0);
 }
 
 
@@ -994,15 +993,17 @@ static IRQ_CALLBACK( pk8020_irq_callback )
 
 MACHINE_RESET( pk8020 )
 {
+	pk8020_state *state = machine->driver_data<pk8020_state>();
 	pk8020_set_bank(machine,0);
 	cpu_set_irq_callback(machine->device("maincpu"), pk8020_irq_callback);
 
-	sound_gate = 0;
-	sound_level = 0;
+	state->sound_gate = 0;
+	state->sound_level = 0;
 }
 
 INTERRUPT_GEN( pk8020_interrupt )
 {
-	takt ^= 1;
+	pk8020_state *state = device->machine->driver_data<pk8020_state>();
+	state->takt ^= 1;
 	pic8259_ir4_w(device->machine->device("pic8259"), 1);
 }

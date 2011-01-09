@@ -30,6 +30,23 @@
 #include "formats/tzx_cas.h"
 #include "devices/messram.h"
 
+
+class elwro800_state : public spectrum_state
+{
+public:
+	elwro800_state(running_machine &machine, const driver_device_config_base &config)
+		: spectrum_state(machine, config) { }
+
+	/* for elwro800 */
+	/* RAM mapped at 0 */
+	UINT8 ram_at_0000;
+
+	/* NR signal */
+	UINT8 NR;
+	UINT8 df_on_databus;
+};
+
+
 /*************************************
  *
  * When RAM is mapped at 0x0000 - 0x1fff (in CP/J mode), reading a location 66 with /M1=0
@@ -39,7 +56,7 @@
  *************************************/
 DIRECT_UPDATE_HANDLER(elwro800_direct_handler)
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
+	elwro800_state *state = machine->driver_data<elwro800_state>();
 	if (state->ram_at_0000 && address == 0x66)
 	{
 		direct.explicit_configure(0x66, 0x66, 0, &state->df_on_databus);
@@ -57,7 +74,7 @@ DIRECT_UPDATE_HANDLER(elwro800_direct_handler)
 static const struct upd765_interface elwro800jr_upd765_interface =
 {
 	DEVCB_NULL,
-	NULL,
+	DEVCB_NULL,
 	NULL,
 	UPD765_RDY_PIN_CONNECTED,
 	{FLOPPY_0,FLOPPY_1, NULL, NULL}
@@ -65,7 +82,7 @@ static const struct upd765_interface elwro800jr_upd765_interface =
 
 static WRITE8_HANDLER(elwro800jr_fdc_control_w)
 {
-	running_device *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine->device("upd765");
 
 	floppy_mon_w(floppy_get_device(space->machine, 0), !BIT(data, 0));
 	floppy_mon_w(floppy_get_device(space->machine, 1), !BIT(data, 1));
@@ -85,11 +102,11 @@ static WRITE8_HANDLER(elwro800jr_fdc_control_w)
 
 static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 {
-	UINT8 *prom = memory_region(machine, "proms") + 0x200;
+	UINT8 *prom = machine->region("proms")->base() + 0x200;
 	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 	UINT8 cs;
 	UINT8 ls175;
-	spectrum_state *state = machine->driver_data<spectrum_state>();
+	elwro800_state *state = machine->driver_data<elwro800_state>();
 
 	ls175 = BITSWAP8(data, 7, 6, 5, 4, 4, 5, 7, 6) & 0x0f;
 
@@ -97,14 +114,14 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 	if (!BIT(cs,0))
 	{
 		// rom BAS0
-		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x0000); /* BAS0 ROM */
+		memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x0000); /* BAS0 ROM */
 		memory_nop_write(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x1fff, 0, 0);
 		state->ram_at_0000 = 0;
 	}
 	else if (!BIT(cs,4))
 	{
 		// rom BOOT
-		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x4000); /* BOOT ROM */
+		memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x4000); /* BOOT ROM */
 		memory_nop_write(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x1fff, 0, 0);
 		state->ram_at_0000 = 0;
 	}
@@ -119,7 +136,7 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 	cs = prom[((0x2000 >> 10) | (ls175 << 6)) & 0x1ff];
 	if (!BIT(cs,1))
 	{
-		memory_set_bankptr(machine, "bank2", memory_region(machine, "maincpu") + 0x2000);	/* BAS1 ROM */
+		memory_set_bankptr(machine, "bank2", machine->region("maincpu")->base() + 0x2000);	/* BAS1 ROM */
 		memory_nop_write(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x2000, 0x3fff, 0, 0);
 	}
 	else
@@ -153,13 +170,13 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 
 static READ8_DEVICE_HANDLER(i8255_port_c_r)
 {
-	running_device *printer = device->machine->device("centronics");
+	device_t *printer = device->machine->device("centronics");
 	return (centronics_ack_r(printer) << 2);
 }
 
 static WRITE8_DEVICE_HANDLER(i8255_port_c_w)
 {
-	running_device *printer = device->machine->device("centronics");
+	device_t *printer = device->machine->device("centronics");
 	centronics_strobe_w(printer, (data >> 7) & 0x01);
 }
 
@@ -205,9 +222,9 @@ static const centronics_interface elwro800jr_centronics_interface =
 
 static READ8_HANDLER(elwro800jr_io_r)
 {
-	UINT8 *prom = memory_region(space->machine, "proms");
+	UINT8 *prom = space->machine->region("proms")->base();
 	UINT8 cs = prom[offset & 0x1ff];
-	spectrum_state *state = space->machine->driver_data<spectrum_state>();
+	elwro800_state *state = space->machine->driver_data<elwro800_state>();
 
 	if (!BIT(cs,0))
 	{
@@ -260,13 +277,13 @@ static READ8_HANDLER(elwro800jr_io_r)
 	else if (!BIT(cs,2))
 	{
 		// CS55
-		running_device *ppi = space->machine->device("ppi8255");
+		device_t *ppi = space->machine->device("ppi8255");
 		return i8255a_r(ppi, (offset & 0x03) ^ 0x03);
 	}
 	else if (!BIT(cs,3))
 	{
 		// CSFDC
-		running_device *fdc = space->machine->device("upd765");
+		device_t *fdc = space->machine->device("upd765");
 		if (offset & 1)
 		{
 			return upd765_data_r(fdc,0);
@@ -279,7 +296,7 @@ static READ8_HANDLER(elwro800jr_io_r)
 	else if (!BIT(cs,4))
 	{
 		// CS51
-		running_device *usart = space->machine->device("msm8251");
+		device_t *usart = space->machine->device("msm8251");
 		if (offset & 1)
 		{
 			return msm8251_status_r(usart, 0);
@@ -302,7 +319,7 @@ static READ8_HANDLER(elwro800jr_io_r)
 
 static WRITE8_HANDLER(elwro800jr_io_w)
 {
-	UINT8 *prom = memory_region(space->machine, "proms");
+	UINT8 *prom = space->machine->region("proms")->base();
 	UINT8 cs = prom[offset & 0x1ff];
 
 	if (!BIT(cs,0))
@@ -318,13 +335,13 @@ static WRITE8_HANDLER(elwro800jr_io_w)
 	else if (!BIT(cs,2))
 	{
 		// CS55
-		running_device *ppi = space->machine->device("ppi8255");
+		device_t *ppi = space->machine->device("ppi8255");
 		i8255a_w(ppi, (offset & 0x03) ^ 0x03, data);
 	}
 	else if (!BIT(cs,3))
 	{
 		// CSFDC
-		running_device *fdc = space->machine->device("upd765");
+		device_t *fdc = space->machine->device("upd765");
 		if (offset & 1)
 		{
 			upd765_data_w(fdc, 0, data);
@@ -333,7 +350,7 @@ static WRITE8_HANDLER(elwro800jr_io_w)
 	else if (!BIT(cs,4))
 	{
 		// CS51
-		running_device *usart = space->machine->device("msm8251");
+		device_t *usart = space->machine->device("msm8251");
 		if (offset & 1)
 		{
 			msm8251_control_w(usart, 0, data);
@@ -490,7 +507,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(elwro800)
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
+	elwro800_state *state = machine->driver_data<elwro800_state>();
 	UINT8 *messram = messram_get_ptr(machine->device("messram"));
 
 	state->df_on_databus = 0xdf;
@@ -551,53 +568,53 @@ static GFXDECODE_START( elwro800 )
 GFXDECODE_END
 
 
-static MACHINE_CONFIG_START( elwro800, spectrum_state )
+static MACHINE_CONFIG_START( elwro800, elwro800_state )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu",Z80, 3500000)	/* 3.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(elwro800_mem)
-	MDRV_CPU_IO_MAP(elwro800_io)
-	MDRV_CPU_VBLANK_INT("screen", elwro800jr_interrupt)
+	MCFG_CPU_ADD("maincpu",Z80, 3500000)	/* 3.5 MHz */
+	MCFG_CPU_PROGRAM_MAP(elwro800_mem)
+	MCFG_CPU_IO_MAP(elwro800_io)
+	MCFG_CPU_VBLANK_INT("screen", elwro800jr_interrupt)
 
-	MDRV_MACHINE_RESET(elwro800)
+	MCFG_MACHINE_RESET(elwro800)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50.08)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(SPEC_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
-	MDRV_SCREEN_VISIBLE_AREA(0, SPEC_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_PALETTE_INIT( spectrum )
-	MDRV_GFXDECODE(elwro800)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50.08)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(SPEC_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
+	MCFG_SCREEN_VISIBLE_AREA(0, SPEC_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
+	MCFG_PALETTE_LENGTH(16)
+	MCFG_PALETTE_INIT( spectrum )
+	MCFG_GFXDECODE(elwro800)
 
-	MDRV_VIDEO_START( spectrum )
-	MDRV_VIDEO_UPDATE( spectrum )
-	MDRV_VIDEO_EOF( spectrum )
+	MCFG_VIDEO_START( spectrum )
+	MCFG_VIDEO_UPDATE( spectrum )
+	MCFG_VIDEO_EOF( spectrum )
 
-	MDRV_UPD765A_ADD("upd765", elwro800jr_upd765_interface)
-	MDRV_I8255A_ADD( "ppi8255", elwro800jr_ppi8255_interface)
+	MCFG_UPD765A_ADD("upd765", elwro800jr_upd765_interface)
+	MCFG_I8255A_ADD( "ppi8255", elwro800jr_ppi8255_interface)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", elwro800jr_centronics_interface)
+	MCFG_CENTRONICS_ADD("centronics", elwro800jr_centronics_interface)
 
-	MDRV_MSM8251_ADD("msm8251", default_msm8251_interface)
+	MCFG_MSM8251_ADD("msm8251", default_msm8251_interface)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_CASSETTE_ADD( "cassette", elwro800jr_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", elwro800jr_cassette_config )
 
-	MDRV_FLOPPY_2_DRIVES_ADD(elwro800jr_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(elwro800jr_floppy_config)
 
 	/* internal ram */
-	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")
+	MCFG_RAM_ADD("messram")
+	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 /*************************************

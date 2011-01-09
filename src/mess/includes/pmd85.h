@@ -7,7 +7,28 @@
 #ifndef PMD85_H_
 #define PMD85_H_
 
+#include "machine/serial.h"
 #include "machine/i8255a.h"
+
+class pmd85_state : public driver_device
+{
+public:
+	pmd85_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 rom_module_present;
+	UINT8 ppi_port_outputs[4][3];
+	UINT8 startup_mem_map;
+	UINT8 pmd853_memory_mapping;
+	int previous_level;
+	int clk_level;
+	int clk_level_tape;
+	UINT8 model;
+	emu_timer * cassette_timer;
+	void (*update_memory)(running_machine *);
+	serial_connection cassette_serial_connection;
+};
+
 
 /*----------- defined in machine/pmd85.c -----------*/
 
