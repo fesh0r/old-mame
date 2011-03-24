@@ -723,7 +723,14 @@ struct _input_field_user_settings
 	UINT8						reverse;		/* for analog controls */
 };
 
-
+/* device defined default input settings */
+typedef struct _input_device_default input_device_default;
+struct _input_device_default
+{
+	const char *				tag;			/* tag of port to update */
+	input_port_value			mask;			/* mask to apply to the port */
+	input_port_value			defvalue;		/* new default value */
+};
 /* a single input port configuration */
 class input_port_config
 {
@@ -739,10 +746,11 @@ public:
 	const char *				tag;			/* pointer to this port's tag */
 	const input_field_config *	fieldlist;		/* list of input_field_configs */
 
-	/* these two fields are only valid if the port is live */
+	/* these fields are only valid if the port is live */
 	input_port_state *			state;			/* live state of port (NULL if not live) */
 	running_machine *			machine;		/* machine if port is live */
 	device_config *				owner;			/* associated device, when appropriate */
+	input_port_value			active;			/* mask of active bits in the port */
 };
 
 
@@ -1023,6 +1031,20 @@ struct _inp_header
 	TOKEN_STRING(_name),
 
 
+/* name of table */
+#define DEVICE_INPUT_DEFAULTS_NAME(_name) device_iptdef_##_name
+
+/* start of table */
+#define DEVICE_INPUT_DEFAULTS_START(_name) \
+	const input_device_default DEVICE_INPUT_DEFAULTS_NAME(_name)[] = {
+
+/* end of table */
+#define DEVICE_INPUT_DEFAULTS(_tag,_mask,_defval) \
+	{ _tag ,_mask, _defval }, \
+
+/* end of table */
+#define DEVICE_INPUT_DEFAULTS_END \
+	{NULL,0,0} };
 
 /***************************************************************************
     HELPER MACROS
@@ -1128,6 +1150,17 @@ int input_field_has_next_setting(const input_field_config *field);
 void input_field_select_next_setting(const input_field_config *field);
 
 
+/* ----- port checking ----- */
+
+/* return whether an input port exists */
+bool input_port_exists(running_machine *machine, const char *tag);
+
+/* return a bitmask of which bits of an input port are active (i.e. not unused or unknown) */
+input_port_value input_port_active(running_machine *machine, const char *tag);
+
+/* return a bitmask of which bits of an input port are active (i.e. not unused or unknown), or a default value if the port does not exist */
+input_port_value input_port_active_safe(running_machine *machine, const char *tag, input_port_value defvalue);
+
 
 /* ----- port reading ----- */
 
@@ -1137,8 +1170,8 @@ input_port_value input_port_read_direct(const input_port_config *port);
 /* return the value of an input port specified by tag */
 input_port_value input_port_read(running_machine *machine, const char *tag);
 
-/* return the value of an input port specified by tag */
-input_port_value input_port_read(running_machine *machine, device_t *device, const char *tag);
+/* return the value of a device input port specified by tag */
+input_port_value input_port_read(device_t *device, const char *tag);
 
 /* return the value of an input port specified by tag, or a default value if the port does not exist */
 input_port_value input_port_read_safe(running_machine *machine, const char *tag, input_port_value defvalue);
