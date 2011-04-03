@@ -16,7 +16,7 @@
 */
 
 #include "x68k_hdc.h"
-#include "devices/harddriv.h"
+#include "imagedev/harddriv.h"
 #include "image.h"
 
 static TIMER_CALLBACK( req_delay )
@@ -43,9 +43,17 @@ static void SASIWriteByte(device_t* device, unsigned char val)
 	image->fwrite(&val,1);
 }
 
+INLINE sasi_ctrl_t *get_safe_token(device_t *device)
+{
+	assert(device != NULL);
+	assert(device->type() == X68KHDC);
+
+	return (sasi_ctrl_t *)downcast<legacy_device_base *>(device)->token();
+}
+
 DEVICE_START( x68k_hdc )
 {
-	sasi_ctrl_t* sasi = (sasi_ctrl_t*)downcast<legacy_device_base *>(device)->token();
+	sasi_ctrl_t* sasi = get_safe_token(device);
 
 	sasi->status = 0x00;
 	sasi->status_port = 0x00;
@@ -72,7 +80,7 @@ DEVICE_IMAGE_CREATE( sasihd )
 
 WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 {
-	sasi_ctrl_t* sasi = (sasi_ctrl_t*)downcast<legacy_device_base *>(device)->token();
+	sasi_ctrl_t* sasi = get_safe_token(device);
 	unsigned int lba = 0;
 	char* blk;
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
@@ -119,7 +127,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			device->machine().scheduler().timer_set(attotime::from_nsec(450), FUNC(req_delay), 0, sasi);
 			sasi->transfer_byte_count++;
 			if(sasi->transfer_byte_count >= sasi->transfer_byte_total)
 			{
@@ -157,7 +165,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 			// reset REQ temporarily
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			device->machine().scheduler().timer_set(attotime::from_nsec(450), FUNC(req_delay), 0, sasi);
 
 			sasi->command_byte_count++;
 			if(sasi->command_byte_count >= sasi->command_byte_total)
@@ -302,7 +310,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 				sasi->status_port |= 0x08;
 				sasi->command_byte_count = 0;
 				sasi->command_byte_total = 0;
-				timer_set(device->machine,ATTOTIME_IN_NSEC(45),sasi,0,req_delay);
+				device->machine().scheduler().timer_set(attotime::from_nsec(45), FUNC(req_delay), 0, sasi);
 			}
 		}
 		break;
@@ -327,7 +335,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 
 READ16_DEVICE_HANDLER( x68k_hdc_r )
 {
-	sasi_ctrl_t* sasi = (sasi_ctrl_t*)downcast<legacy_device_base *>(device)->token();
+	sasi_ctrl_t* sasi = get_safe_token(device);
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
 	int retval = 0xff;
 
@@ -354,7 +362,7 @@ READ16_DEVICE_HANDLER( x68k_hdc_r )
 			// reset REQ temporarily
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			device->machine().scheduler().timer_set(attotime::from_nsec(450), FUNC(req_delay), 0, sasi);
 
 			return sasi->status;
 		}
@@ -410,7 +418,7 @@ READ16_DEVICE_HANDLER( x68k_hdc_r )
 
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			device->machine().scheduler().timer_set(attotime::from_nsec(450), FUNC(req_delay), 0, sasi);
 			sasi->transfer_byte_count++;
 			if(sasi->transfer_byte_count >= sasi->transfer_byte_total)
 			{

@@ -78,6 +78,7 @@ struct _msm58321_t
 INLINE msm58321_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == MSM58321RS);
 
 	return (msm58321_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -86,6 +87,7 @@ INLINE const msm58321_interface *get_interface(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == MSM58321RS);
+
 	return (const msm58321_interface *) device->baseconfig().static_config();
 }
 
@@ -109,7 +111,7 @@ READ8_DEVICE_HANDLER( msm58321_r )
 		{
 			system_time systime;
 
-			device->machine->current_datetime(systime);
+			device->machine().current_datetime(systime);
 
 			switch (msm58321->latch)
 			{
@@ -318,19 +320,19 @@ static DEVICE_START( msm58321 )
 	devcb_resolve_write_line(&msm58321->out_busy_func, &intf->out_busy_func, device);
 
 	/* create busy timer */
-	msm58321->busy_timer = timer_alloc(device->machine, busy_tick, (void *)device);
-	timer_adjust_periodic(msm58321->busy_timer, attotime_zero, 0, ATTOTIME_IN_HZ(2));
+	msm58321->busy_timer = device->machine().scheduler().timer_alloc(FUNC(busy_tick), (void *)device);
+	msm58321->busy_timer->adjust(attotime::zero, 0, attotime::from_hz(2));
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, msm58321->cs1);
-	state_save_register_device_item(device, 0, msm58321->cs2);
-	state_save_register_device_item(device, 0, msm58321->busy);
-	state_save_register_device_item(device, 0, msm58321->read);
-	state_save_register_device_item(device, 0, msm58321->write);
-	state_save_register_device_item(device, 0, msm58321->address_write);
-	state_save_register_device_item_array(device, 0, msm58321->reg);
-	state_save_register_device_item(device, 0, msm58321->latch);
-	state_save_register_device_item(device, 0, msm58321->address);
+	device->save_item(NAME(msm58321->cs1));
+	device->save_item(NAME(msm58321->cs2));
+	device->save_item(NAME(msm58321->busy));
+	device->save_item(NAME(msm58321->read));
+	device->save_item(NAME(msm58321->write));
+	device->save_item(NAME(msm58321->address_write));
+	device->save_item(NAME(msm58321->reg));
+	device->save_item(NAME(msm58321->latch));
+	device->save_item(NAME(msm58321->address));
 }
 
 /*-------------------------------------------------

@@ -66,9 +66,9 @@ typedef enum
 } applefdc_t;
 
 
-static UINT8 swim_default_parms[16] = 
+static UINT8 swim_default_parms[16] =
 {
-	0x38, 0x18, 0x41, 0x2e, 0x2e, 0x18, 0x18, 0x1b, 
+	0x38, 0x18, 0x41, 0x2e, 0x2e, 0x18, 0x18, 0x1b,
 	0x1b, 0x2f, 0x2f, 0x19, 0x19, 0x97, 0x1b, 0x57
 };
 
@@ -196,16 +196,16 @@ static void applefdc_start(device_t *device, applefdc_t type)
 
 	memset(fdc, 0, sizeof(*fdc));
 	fdc->type = type;
-	fdc->motor_timer = timer_alloc(device->machine, iwm_turnmotor_onoff, (void *) device);
+	fdc->motor_timer = device->machine().scheduler().timer_alloc(FUNC(iwm_turnmotor_onoff), (void *) device);
 	fdc->lines = 0x00;
 	fdc->mode = 0x1F;	/* default value needed by Lisa 2 - no, I don't know if it is true */
 	fdc->swim_mode = SWIM_MODE_IWM;
 
 	/* register save states */
-	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->write_byte);
-	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->lines);
-	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->mode);
-	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->handshake_hack);
+	state_save_register_item(device->machine(), "applefdc", NULL, 0, fdc->write_byte);
+	state_save_register_item(device->machine(), "applefdc", NULL, 0, fdc->lines);
+	state_save_register_item(device->machine(), "applefdc", NULL, 0, fdc->mode);
+	state_save_register_item(device->machine(), "applefdc", NULL, 0, fdc->handshake_hack);
 }
 
 
@@ -235,7 +235,7 @@ static DEVICE_RESET(applefdc)
 		}
 	}
 
-	timer_reset(fdc->motor_timer, attotime_never);
+	fdc->motor_timer->reset();
 }
 
 
@@ -331,7 +331,7 @@ static void iwm_modereg_w(device_t *device, UINT8 data)
 					fdc->swim_magic_state = 0;
 				}
 				break;
-			case 1: 
+			case 1:
 				if (!(data & 0x40))
 				{
 					fdc->swim_magic_state++;
@@ -346,7 +346,7 @@ static void iwm_modereg_w(device_t *device, UINT8 data)
 		if (fdc->swim_magic_state == 4)
 		{
 			fdc->swim_magic_state = 0;
-//			printf("IWM: switching to SWIM mode\n");
+//          printf("IWM: switching to SWIM mode\n");
 			fdc->swim_mode = SWIM_MODE_SWIM;
 		}
 	}
@@ -378,10 +378,10 @@ static UINT8 applefdc_read_reg(device_t *device, int lines)
 			else
 			{
 				/*
-		                 * Right now, this function assumes latch mode; which is always used for
-		                 * 3.5 inch drives.  Eventually we should check to see if latch mode is
-		                 * off
-		                 */
+                         * Right now, this function assumes latch mode; which is always used for
+                         * 3.5 inch drives.  Eventually we should check to see if latch mode is
+                         * off
+                         */
 				if (LOG_APPLEFDC)
 				{
 					if ((fdc->mode & IWM_MODE_LATCHMODE) == 0x00)
@@ -431,10 +431,10 @@ static void applefdc_write_reg(device_t *device, UINT8 data)
 			else if (!iwm_enable2(device))
 			{
 				/*
-		                 * Right now, this function assumes latch mode; which is always used for
-		                 * 3.5 inch drives.  Eventually we should check to see if latch mode is
-		                 * off
-		                 */
+                         * Right now, this function assumes latch mode; which is always used for
+                         * 3.5 inch drives.  Eventually we should check to see if latch mode is
+                         * off
+                         */
 				if (LOG_APPLEFDC)
 				{
 					if ((fdc->mode & IWM_MODE_LATCHMODE) == 0)
@@ -527,13 +527,13 @@ static void iwm_access(device_t *device, int offset)
 	{
 		case 0x08:
 			/* turn off motor */
-			timer_adjust_oneshot(fdc->motor_timer,
-				(fdc->mode & IWM_MODE_MOTOROFFDELAY) ? attotime_zero : ATTOTIME_IN_SEC(1), 0);
+			fdc->motor_timer->adjust(
+				(fdc->mode & IWM_MODE_MOTOROFFDELAY) ? attotime::zero : attotime::from_seconds(1), 0);
 			break;
 
 		case 0x09:
 			/* turn on motor */
-			timer_adjust_oneshot(fdc->motor_timer, attotime_zero, 1);
+			fdc->motor_timer->adjust(attotime::zero, 1);
 			break;
 
 		case 0x0A:

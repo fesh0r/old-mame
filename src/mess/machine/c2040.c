@@ -24,7 +24,7 @@
 #include "emu.h"
 #include "c2040.h"
 #include "cpu/m6502/m6502.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/d64_dsk.h"
 #include "formats/g64_dsk.h"
 #include "machine/6522via.h"
@@ -264,7 +264,7 @@ static TIMER_CALLBACK( bit_tick )
 
 		if ((device->type() == C8050) || (device->type() == C8250) || (device->type() == SFD1001))
 		{
-			cpu_set_input_line(c2040->cpu_fdc, M6502_SET_OVERFLOW, ready ? CLEAR_LINE : ASSERT_LINE);
+			device_set_input_line(c2040->cpu_fdc, M6502_SET_OVERFLOW, ready ? CLEAR_LINE : ASSERT_LINE);
 		}
 	}
 }
@@ -422,7 +422,7 @@ WRITE_LINE_DEVICE_HANDLER( c2040_ieee488_ifc_w )
     ADDRESS_MAP( c2040_dos_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c2040_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c2040_dos_map, AS_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x0100) AM_RAM // 6532 #1
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x0100) AM_RAM // 6532 #2
@@ -439,7 +439,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c2040_fdc_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c2040_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c2040_fdc_map, AS_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
@@ -455,7 +455,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c4040_dos_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c4040_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c4040_dos_map, AS_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x0100) AM_RAM // 6532 #1
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x0100) AM_RAM // 6532 #2
@@ -472,7 +472,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c4040_fdc_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c4040_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c4040_fdc_map, AS_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
@@ -488,7 +488,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c8050_dos_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c8050_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c8050_dos_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x0100) AM_RAM // 6532 #1
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x0100) AM_RAM // 6532 #2
 	AM_RANGE(0x0200, 0x021f) AM_MIRROR(0x0d60) AM_DEVREADWRITE(M6532_0_TAG, riot6532_r, riot6532_w)
@@ -504,7 +504,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c8050_fdc_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c8050_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c8050_fdc_map, AS_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
@@ -520,7 +520,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sfd1001_dos_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sfd1001_dos_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( sfd1001_dos_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x0100) AM_RAM // 6532 #1
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x0100) AM_RAM // 6532 #2
 	AM_RANGE(0x0200, 0x021f) AM_MIRROR(0x0d60) AM_DEVREADWRITE(M6532_0_TAG, riot6532_r, riot6532_w)
@@ -536,7 +536,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sfd1001_fdc_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sfd1001_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( sfd1001_fdc_map, AS_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE_MODERN(M6522_TAG, via6522_device, read, write)
@@ -740,7 +740,7 @@ static WRITE_LINE_DEVICE_HANDLER( riot1_irq_w )
 {
 	c2040_t *c2040 = get_safe_token(device->owner());
 
-	cpu_set_input_line(c2040->cpu_dos, M6502_IRQ_LINE, state);
+	device_set_input_line(c2040->cpu_dos, M6502_IRQ_LINE, state);
 }
 
 static const riot6532_interface riot1_intf =
@@ -817,7 +817,7 @@ static WRITE8_DEVICE_HANDLER( via_pb_w )
 	int s0 = (data >> 2) & 0x03;
 	micropolis_step_motor(c2040, 0, mtr0, s0);
 
-	timer_enable(c2040->bit_timer, !mtr1 | !mtr0);
+	c2040->bit_timer->enable(!mtr1 | !mtr0);
 }
 
 static READ_LINE_DEVICE_HANDLER( ready_r )
@@ -941,7 +941,7 @@ static WRITE8_DEVICE_HANDLER( c8050_via_pb_w )
 	int s0 = (data >> 2) & 0x03;
 	mpi_step_motor(c2040, 0, mtr0, s0);
 
-	timer_enable(c2040->bit_timer, !mtr1 | !mtr0);
+	c2040->bit_timer->enable(!mtr1 | !mtr0);
 }
 
 static const via6522_interface c8050_via_intf =
@@ -1068,14 +1068,14 @@ static WRITE8_DEVICE_HANDLER( miot_pb_w )
 
 	if (c2040->ds != ds)
 	{
-		timer_adjust_periodic(c2040->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C2040_BITRATE[ds]/4));
+		c2040->bit_timer->adjust(attotime::zero, 0, attotime::from_hz(C2040_BITRATE[ds]/4));
 		c2040->ds = ds;
 	}
 
 	/* interrupt */
 	if (c2040->miot_irq != BIT(data, 7))
 	{
-		cpu_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
+		device_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
 		c2040->miot_irq = BIT(data, 7);
 	}
 }
@@ -1158,7 +1158,7 @@ static WRITE8_DEVICE_HANDLER( c8050_miot_pb_w )
 
 	if (c2040->ds != ds)
 	{
-		timer_adjust_periodic(c2040->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C8050_BITRATE[ds]));
+		c2040->bit_timer->adjust(attotime::zero, 0, attotime::from_hz(C8050_BITRATE[ds]));
 		c2040->ds = ds;
 	}
 
@@ -1171,7 +1171,7 @@ static WRITE8_DEVICE_HANDLER( c8050_miot_pb_w )
 	/* interrupt */
 	if (c2040->miot_irq != BIT(data, 7))
 	{
-		cpu_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
+		device_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
 		c2040->miot_irq = BIT(data, 7);
 	}
 }
@@ -1296,7 +1296,7 @@ static MACHINE_CONFIG_FRAGMENT( c2040 )
 	MCFG_RIOT6532_ADD(M6532_1_TAG, XTAL_16MHz/16, riot1_intf)
 
 	/* controller */
-	MCFG_CPU_ADD(M6504_TAG, M6502, XTAL_16MHz/16)
+	MCFG_CPU_ADD(M6504_TAG, M6504, XTAL_16MHz/16)
 	MCFG_CPU_PROGRAM_MAP(c2040_fdc_map)
 
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_16MHz/16, via_intf)
@@ -1318,7 +1318,7 @@ static MACHINE_CONFIG_FRAGMENT( c4040 )
 	MCFG_RIOT6532_ADD(M6532_1_TAG, XTAL_16MHz/16, riot1_intf)
 
 	/* controller */
-	MCFG_CPU_ADD(M6504_TAG, M6502, XTAL_16MHz/16)
+	MCFG_CPU_ADD(M6504_TAG, M6504, XTAL_16MHz/16)
 	MCFG_CPU_PROGRAM_MAP(c4040_fdc_map)
 
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_16MHz/16, via_intf)
@@ -1340,7 +1340,7 @@ static MACHINE_CONFIG_FRAGMENT( c8050 )
 	MCFG_RIOT6532_ADD(M6532_1_TAG, XTAL_12MHz/12, riot1_intf)
 
 	/* controller */
-	MCFG_CPU_ADD(M6504_TAG, M6502, XTAL_12MHz/12)
+	MCFG_CPU_ADD(M6504_TAG, M6504, XTAL_12MHz/12)
 	MCFG_CPU_PROGRAM_MAP(c8050_fdc_map)
 
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_12MHz/12, c8050_via_intf)
@@ -1362,7 +1362,7 @@ static MACHINE_CONFIG_FRAGMENT( c8250 )
 	MCFG_RIOT6532_ADD(M6532_1_TAG, XTAL_12MHz/12, riot1_intf)
 
 	/* controller */
-	MCFG_CPU_ADD(M6504_TAG, M6502, XTAL_12MHz/12)
+	MCFG_CPU_ADD(M6504_TAG, M6504, XTAL_12MHz/12)
 	MCFG_CPU_PROGRAM_MAP(c8050_fdc_map)
 
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_12MHz/12, c8050_via_intf)
@@ -1384,7 +1384,7 @@ static MACHINE_CONFIG_FRAGMENT( sfd1001 )
 	MCFG_RIOT6532_ADD(M6532_1_TAG, XTAL_12MHz/12, riot1_intf)
 
 	/* controller */
-	MCFG_CPU_ADD(M6504_TAG, M6502, XTAL_12MHz/12)
+	MCFG_CPU_ADD(M6504_TAG, M6504, XTAL_12MHz/12)
 	MCFG_CPU_PROGRAM_MAP(sfd1001_fdc_map)
 
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_12MHz/12, c8050_via_intf)
@@ -1512,7 +1512,7 @@ static DEVICE_START( c2040 )
 	c2040->riot1 = device->subdevice(M6532_1_TAG);
 	c2040->miot = device->subdevice(M6530_TAG);
 	c2040->via = device->subdevice<via6522_device>(M6522_TAG);
-	c2040->bus = device->machine->device(config->bus_tag);
+	c2040->bus = device->machine().device(config->bus_tag);
 	c2040->unit[0].image = device->subdevice(FLOPPY_0);
 	c2040->unit[1].image = device->subdevice(FLOPPY_1);
 
@@ -1545,35 +1545,35 @@ static DEVICE_START( c2040 )
 	c2040->gcr = region->base() + region->bytes() - 0x800;
 
 	/* allocate data timer */
-	c2040->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
+	c2040->bit_timer = device->machine().scheduler().timer_alloc(FUNC(bit_tick), (void *)device);
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, c2040->drive);
-	state_save_register_device_item(device, 0, c2040->side);
-	state_save_register_device_item(device, 0, c2040->address);
-	state_save_register_device_item(device, 0, c2040->rfdo);
-	state_save_register_device_item(device, 0, c2040->daco);
-	state_save_register_device_item(device, 0, c2040->atna);
-	state_save_register_device_item(device, 0, c2040->ds);
-	state_save_register_device_item(device, 0, c2040->bit_count);
-	state_save_register_device_item(device, 0, c2040->sr);
-	state_save_register_device_item(device, 0, c2040->pi);
-	state_save_register_device_item(device, 0, c2040->i);
-	state_save_register_device_item(device, 0, c2040->e);
-	state_save_register_device_item(device, 0, c2040->ready);
-	state_save_register_device_item(device, 0, c2040->mode);
-	state_save_register_device_item(device, 0, c2040->rw);
-	state_save_register_device_item(device, 0, c2040->miot_irq);
-	state_save_register_device_item(device, 0, c2040->unit[0].stp);
-	state_save_register_device_item(device, 0, c2040->unit[0].mtr);
-	state_save_register_device_item(device, 0, c2040->unit[0].track_len);
-	state_save_register_device_item(device, 0, c2040->unit[0].buffer_pos);
-	state_save_register_device_item(device, 0, c2040->unit[0].bit_pos);
-	state_save_register_device_item(device, 0, c2040->unit[1].stp);
-	state_save_register_device_item(device, 0, c2040->unit[1].mtr);
-	state_save_register_device_item(device, 0, c2040->unit[1].track_len);
-	state_save_register_device_item(device, 0, c2040->unit[1].buffer_pos);
-	state_save_register_device_item(device, 0, c2040->unit[1].bit_pos);
+	device->save_item(NAME(c2040->drive));
+	device->save_item(NAME(c2040->side));
+	device->save_item(NAME(c2040->address));
+	device->save_item(NAME(c2040->rfdo));
+	device->save_item(NAME(c2040->daco));
+	device->save_item(NAME(c2040->atna));
+	device->save_item(NAME(c2040->ds));
+	device->save_item(NAME(c2040->bit_count));
+	device->save_item(NAME(c2040->sr));
+	device->save_item(NAME(c2040->pi));
+	device->save_item(NAME(c2040->i));
+	device->save_item(NAME(c2040->e));
+	device->save_item(NAME(c2040->ready));
+	device->save_item(NAME(c2040->mode));
+	device->save_item(NAME(c2040->rw));
+	device->save_item(NAME(c2040->miot_irq));
+	device->save_item(NAME(c2040->unit[0].stp));
+	device->save_item(NAME(c2040->unit[0].mtr));
+	device->save_item(NAME(c2040->unit[0].track_len));
+	device->save_item(NAME(c2040->unit[0].buffer_pos));
+	device->save_item(NAME(c2040->unit[0].bit_pos));
+	device->save_item(NAME(c2040->unit[1].stp));
+	device->save_item(NAME(c2040->unit[1].mtr));
+	device->save_item(NAME(c2040->unit[1].track_len));
+	device->save_item(NAME(c2040->unit[1].buffer_pos));
+	device->save_item(NAME(c2040->unit[1].bit_pos));
 }
 
 /*-------------------------------------------------
@@ -1593,8 +1593,8 @@ static DEVICE_RESET( c2040 )
 	c2040->via->reset();
 
 	/* toggle M6502 SO */
-	cpu_set_input_line(c2040->cpu_dos, M6502_SET_OVERFLOW, ASSERT_LINE);
-	cpu_set_input_line(c2040->cpu_dos, M6502_SET_OVERFLOW, CLEAR_LINE);
+	device_set_input_line(c2040->cpu_dos, M6502_SET_OVERFLOW, ASSERT_LINE);
+	device_set_input_line(c2040->cpu_dos, M6502_SET_OVERFLOW, CLEAR_LINE);
 
 	/* turn off spindle motors */
 	c2040->unit[0].mtr = c2040->unit[1].mtr = 1;
@@ -1623,6 +1623,7 @@ DEVICE_GET_INFO( c2040 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 2040");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c2040");									break;
 		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Commodore PET");							break;
 		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
@@ -1644,6 +1645,7 @@ DEVICE_GET_INFO( c3040 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 3040");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c3040");									break;
 
 		default:										DEVICE_GET_INFO_CALL(c2040);								break;
 	}
@@ -1663,6 +1665,7 @@ DEVICE_GET_INFO( c4040 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 4040");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c4040");									break;
 
 		default:										DEVICE_GET_INFO_CALL(c3040);								break;
 	}
@@ -1682,6 +1685,7 @@ DEVICE_GET_INFO( c8050 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 8050");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c8050");									break;		
 
 		default:										DEVICE_GET_INFO_CALL(c2040);								break;
 	}
@@ -1701,7 +1705,8 @@ DEVICE_GET_INFO( c8250 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 8250");							break;
-
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c8250");									break;
+	
 		default:										DEVICE_GET_INFO_CALL(c2040);								break;
 	}
 }
@@ -1720,6 +1725,7 @@ DEVICE_GET_INFO( sfd1001 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore SFD-1001");						break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "sfd1001");									break;
 
 		default:										DEVICE_GET_INFO_CALL(c2040);								break;
 	}

@@ -213,7 +213,7 @@ to use an EEPROM reader, in order to obtain a dump of the whole content.
  * 0x0000-0xedff ram (dram bank 1?)
  * 0xe000-0xffff ram as bank 0
  */
-static ADDRESS_MAP_START(c128_z80_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(c128_z80_mem , AS_PROGRAM, 8)
 #if 1
 	AM_RANGE(0x0000, 0x0fff) AM_READ_BANK("bank10") AM_WRITE(c128_write_0000)
 	AM_RANGE(0x1000, 0xbfff) AM_READ_BANK("bank11") AM_WRITE(c128_write_1000)
@@ -235,23 +235,23 @@ static ADDRESS_MAP_START(c128_z80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #if 0
 	AM_RANGE(0x10000, 0x1ffff) AM_WRITEONLY
 	AM_RANGE(0x20000, 0xfffff) AM_WRITEONLY	   /* or nothing */
-	AM_RANGE(0x100000, 0x107fff) AM_BASE_MEMBER(c128_state, c128_basic)	/* maps to 0x4000 */
-	AM_RANGE(0x108000, 0x109fff) AM_BASE_MEMBER(c128_state, basic)	/* maps to 0xa000 */
-	AM_RANGE(0x10a000, 0x10bfff) AM_BASE_MEMBER(c128_state, kernal)	/* maps to 0xe000 */
-	AM_RANGE(0x10c000, 0x10cfff) AM_BASE_MEMBER(c128_state, editor)
-	AM_RANGE(0x10d000, 0x10dfff) AM_BASE_MEMBER(c128_state, z80)		/* maps to z80 0 */
-	AM_RANGE(0x10e000, 0x10ffff) AM_BASE_MEMBER(c128_state, c128_kernal)
-	AM_RANGE(0x110000, 0x117fff) AM_BASE_MEMBER(c128_state, internal_function)
-	AM_RANGE(0x118000, 0x11ffff) AM_BASE_MEMBER(c128_state, external_function)
-	AM_RANGE(0x120000, 0x120fff) AM_BASE_MEMBER(c128_state, chargen)
-	AM_RANGE(0x121000, 0x121fff) AM_BASE_MEMBER(c128_state, c128_chargen)
-	AM_RANGE(0x122000, 0x1227ff) AM_BASE_MEMBER(c128_state, colorram)
-	AM_RANGE(0x122800, 0x1327ff) AM_BASE_MEMBER(c128_state, vdcram)
+	AM_RANGE(0x100000, 0x107fff) AM_BASE_MEMBER(c128_state, m_c128_basic)	/* maps to 0x4000 */
+	AM_RANGE(0x108000, 0x109fff) AM_BASE_MEMBER(c128_state, m_basic)	/* maps to 0xa000 */
+	AM_RANGE(0x10a000, 0x10bfff) AM_BASE_MEMBER(c128_state, m_kernal)	/* maps to 0xe000 */
+	AM_RANGE(0x10c000, 0x10cfff) AM_BASE_MEMBER(c128_state, m_editor)
+	AM_RANGE(0x10d000, 0x10dfff) AM_BASE_MEMBER(c128_state, m_z80)		/* maps to z80 0 */
+	AM_RANGE(0x10e000, 0x10ffff) AM_BASE_MEMBER(c128_state, m_c128_kernal)
+	AM_RANGE(0x110000, 0x117fff) AM_BASE_MEMBER(c128_state, m_internal_function)
+	AM_RANGE(0x118000, 0x11ffff) AM_BASE_MEMBER(c128_state, m_external_function)
+	AM_RANGE(0x120000, 0x120fff) AM_BASE_MEMBER(c128_state, m_chargen)
+	AM_RANGE(0x121000, 0x121fff) AM_BASE_MEMBER(c128_state, m_c128_chargen)
+	AM_RANGE(0x122000, 0x1227ff) AM_BASE_MEMBER(c128_state, m_colorram)
+	AM_RANGE(0x122800, 0x1327ff) AM_BASE_MEMBER(c128_state, m_vdcram)
 	/* 2 kbyte by 8 bits, only 1 kbyte by 4 bits used) */
 #endif
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( c128_z80_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( c128_z80_io , AS_IO, 8)
 	AM_RANGE(0x1000, 0x13ff) AM_READWRITE(c64_colorram_read, c64_colorram_write)
 	AM_RANGE(0xd000, 0xd3ff) AM_DEVREADWRITE("vic2e", vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)
@@ -262,7 +262,7 @@ static ADDRESS_MAP_START( c128_z80_io , ADDRESS_SPACE_IO, 8)
 /*  AM_RANGE(0xdf00, 0xdfff) AM_READWRITE(dma_port_r, dma_port_w) */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( c128_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( c128_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x00ff) AM_RAMBANK("bank1")
 	AM_RANGE(0x0100, 0x01ff) AM_RAMBANK("bank2")
 	AM_RANGE(0x0200, 0x03ff) AM_RAMBANK("bank3")
@@ -680,22 +680,22 @@ static CBM_IEC_DAISY( c128d81_iec_bus )
  *
  *************************************/
 
-static UINT8 c128_lightpen_x_cb( running_machine *machine )
+static UINT8 c128_lightpen_x_cb( running_machine &machine )
 {
 	return input_port_read(machine, "LIGHTX") & ~0x01;
 }
 
-static UINT8 c128_lightpen_y_cb( running_machine *machine )
+static UINT8 c128_lightpen_y_cb( running_machine &machine )
 {
 	return input_port_read(machine, "LIGHTY") & ~0x01;
 }
 
-static UINT8 c128_lightpen_button_cb( running_machine *machine )
+static UINT8 c128_lightpen_button_cb( running_machine &machine )
 {
 	return input_port_read(machine, "OTHER") & 0x04;
 }
 
-static UINT8 c128_rdy_cb( running_machine *machine )
+static UINT8 c128_rdy_cb( running_machine &machine )
 {
 	return input_port_read(machine, "CTRLSEL") & 0x08;
 }
@@ -762,12 +762,11 @@ static MACHINE_CONFIG_START( c128, c128_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(VIC6567_COLUMNS * 2, VIC6567_LINES)
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
+	MCFG_SCREEN_UPDATE( c128 )
 
 	MCFG_GFXDECODE( c128 )
 	MCFG_PALETTE_LENGTH((ARRAY_LENGTH(vic2_palette) + ARRAY_LENGTH(vdc8563_palette)) / 3 )
 	MCFG_PALETTE_INIT( c128 )
-
-	MCFG_VIDEO_UPDATE( c128 )
 
 	MCFG_VIC2_ADD("vic2e", c128_vic2_ntsc_intf)
 	MCFG_VDC8563_ADD("vdc8563", c128_vdc8563_intf)

@@ -130,55 +130,32 @@ public:
 	tx0_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	tape_reader_t tape_reader;
-	tape_puncher_t tape_puncher;
-	typewriter_t typewriter;
-	emu_timer *dis_timer;
-	magtape_t magtape;
-	int old_typewriter_keys[4];
-	int old_control_keys;
-	int old_tsr_keys;
-	int tsr_index;
-	int typewriter_color;
-	bitmap_t *panel_bitmap;
-	bitmap_t *typewriter_bitmap;
-	int pos;
-	int case_shift;
+	tape_reader_t m_tape_reader;
+	tape_puncher_t m_tape_puncher;
+	typewriter_t m_typewriter;
+	emu_timer *m_dis_timer;
+	magtape_t m_magtape;
+	int m_old_typewriter_keys[4];
+	int m_old_control_keys;
+	int m_old_tsr_keys;
+	int m_tsr_index;
+	int m_typewriter_color;
+	bitmap_t *m_panel_bitmap;
+	bitmap_t *m_typewriter_bitmap;
+	int m_pos;
+	int m_case_shift;
+	device_t *m_crt;
 };
-
-
-/*----------- defined in machine/tx0.c -----------*/
-
-MACHINE_START( tx0 );
-MACHINE_RESET( tx0 );
-
-void tx0_tape_get_open_mode(int id,	unsigned int *readable, unsigned int *writeable, unsigned int *creatable);
-DEVICE_START( tx0_tape );
-DEVICE_IMAGE_LOAD( tx0_tape );
-DEVICE_IMAGE_UNLOAD( tx0_tape );
-void tx0_io_r1l(device_t *device);
-void tx0_io_r3l(device_t *device);
-void tx0_io_p6h(device_t *device);
-void tx0_io_p7h(device_t *device);
-DEVICE_IMAGE_LOAD(tx0_typewriter);
-DEVICE_IMAGE_UNLOAD(tx0_typewriter);
-void tx0_io_prt(device_t *device);
-void tx0_io_dis(device_t *device);
-DEVICE_START( tx0_magtape );
-DEVICE_IMAGE_LOAD( tx0_magtape );
-DEVICE_IMAGE_UNLOAD( tx0_magtape );
-void tx0_sel(device_t *device);
-void tx0_io_cpy(device_t *device);
-void tx0_io_reset_callback(device_t *device);
-INTERRUPT_GEN( tx0_interrupt );
 
 
 /*----------- defined in video/tx0.c -----------*/
 
 VIDEO_START( tx0 );
-void tx0_plot(int x, int y);
-VIDEO_UPDATE( tx0 );
-void tx0_typewriter_drawchar(running_machine *machine, int character);
+SCREEN_EOF( tx0 );
+SCREEN_UPDATE( tx0 );
+
+void tx0_plot(running_machine &machine, int x, int y);
+void tx0_typewriter_drawchar(running_machine &machine, int character);
 
 /* defines for each bit and mask in input port "CSW" */
 enum

@@ -9,13 +9,13 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- set time
-	- read from microdrive
-	- write to microdrive
-	- DTR/CTS handling
-	- network
+    - set time
+    - read from microdrive
+    - write to microdrive
+    - DTR/CTS handling
+    - network
 
 */
 
@@ -28,7 +28,7 @@
 
 
 //**************************************************************************
-//	MACROS / CONSTANTS
+//  MACROS / CONSTANTS
 //**************************************************************************
 
 #define LOG 0
@@ -160,7 +160,7 @@ void zx8302_device_config::device_config_complete()
 //**************************************************************************
 
 //-------------------------------------------------
-//  trigger_interrupt - 
+//  trigger_interrupt -
 //-------------------------------------------------
 
 inline void zx8302_device::trigger_interrupt(UINT8 line)
@@ -350,31 +350,31 @@ void zx8302_device::device_start()
 	devcb_resolve_read_line(&m_in_raw2_func, &m_config.in_raw2_func, this);
 
 	// allocate timers
-	m_txd_timer = device_timer_alloc(*this, TIMER_TXD);
-	m_baudx4_timer = device_timer_alloc(*this, TIMER_BAUDX4);
-	m_rtc_timer = device_timer_alloc(*this, TIMER_RTC);
-	m_gap_timer = device_timer_alloc(*this, TIMER_GAP);
-	m_ipc_timer = device_timer_alloc(*this, TIMER_IPC);
+	m_txd_timer = timer_alloc(TIMER_TXD);
+	m_baudx4_timer = timer_alloc(TIMER_BAUDX4);
+	m_rtc_timer = timer_alloc(TIMER_RTC);
+	m_gap_timer = timer_alloc(TIMER_GAP);
+	m_ipc_timer = timer_alloc(TIMER_IPC);
 
-	timer_adjust_periodic(m_rtc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(m_config.rtc_clock / 32768));
-	timer_adjust_periodic(m_gap_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(31));
+	m_rtc_timer->adjust(attotime::zero, 0, attotime::from_hz(m_config.rtc_clock / 32768));
+	m_gap_timer->adjust(attotime::zero, 0, attotime::from_msec(31));
 
 	// register for state saving
-	state_save_register_device_item(this, 0, m_idr);
-	state_save_register_device_item(this, 0, m_tcr);
-	state_save_register_device_item(this, 0, m_tdr);
-	state_save_register_device_item(this, 0, m_irq);
-	state_save_register_device_item(this, 0, m_ctr);
-	state_save_register_device_item(this, 0, m_status);
-	state_save_register_device_item(this, 0, m_comdata);
-	state_save_register_device_item(this, 0, m_comctl);
-	state_save_register_device_item(this, 0, m_ipc_state);
-	state_save_register_device_item(this, 0, m_ipc_rx);
-	state_save_register_device_item(this, 0, m_ipc_busy);
-	state_save_register_device_item(this, 0, m_baudx4);
-	state_save_register_device_item(this, 0, m_tx_bits);
-	state_save_register_device_item_array(this, 0, m_mdv_data);
-	state_save_register_device_item(this, 0, m_track);
+	save_item(NAME(m_idr));
+	save_item(NAME(m_tcr));
+	save_item(NAME(m_tdr));
+	save_item(NAME(m_irq));
+	save_item(NAME(m_ctr));
+	save_item(NAME(m_status));
+	save_item(NAME(m_comdata));
+	save_item(NAME(m_comctl));
+	save_item(NAME(m_ipc_state));
+	save_item(NAME(m_ipc_rx));
+	save_item(NAME(m_ipc_busy));
+	save_item(NAME(m_baudx4));
+	save_item(NAME(m_tx_bits));
+	save_item(NAME(m_mdv_data));
+	save_item(NAME(m_track));
 }
 
 
@@ -461,8 +461,8 @@ WRITE8_MEMBER( zx8302_device::control_w )
 
 	m_tcr = data;
 
-	timer_adjust_periodic(m_txd_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baud));
-	timer_adjust_periodic(m_baudx4_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baudx4));
+	m_txd_timer->adjust(attotime::zero, 0, attotime::from_hz(baud));
+	m_baudx4_timer->adjust(attotime::zero, 0, attotime::from_hz(baudx4));
 }
 
 
@@ -540,7 +540,7 @@ WRITE8_MEMBER( zx8302_device::ipc_command_w )
 
 	if (data != 0x01)
 	{
-		timer_adjust_oneshot(m_ipc_timer, ATTOTIME_IN_NSEC(480), data);
+		m_ipc_timer->adjust(attotime::from_nsec(480), data);
 	}
 }
 

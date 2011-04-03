@@ -116,7 +116,7 @@ printers and other devices; most expansion modules; userport; rs232/v.24 interfa
 #include "audio/ted7360.h"
 #include "audio/t6721.h"
 #include "cpu/m6502/m6502.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "formats/cbm_snqk.h"
 #include "includes/cbm.h"
 #include "includes/c16.h"
@@ -168,7 +168,7 @@ printers and other devices; most expansion modules; userport; rs232/v.24 interfa
  * at 0xfc00 till 0xfcff is ram or rom kernal readable
  */
 
-static ADDRESS_MAP_START(c16_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(c16_map, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank9")
 	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")	   /* only ram memory configuration */
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
@@ -184,7 +184,7 @@ static ADDRESS_MAP_START(c16_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE(c16_switch_to_ram)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(plus4_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(plus4_map, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_READ_BANK("bank9")
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank2")
 	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank3")
@@ -202,7 +202,7 @@ static ADDRESS_MAP_START(plus4_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xff40, 0xffff) AM_WRITEONLY
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(c364_map , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(c364_map , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_READ_BANK("bank9")
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank2")
 	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank3")
@@ -430,36 +430,36 @@ static CBM_IEC_DAISY( c16_iec_1541 )
 	{ NULL}
 };
 
-static VIDEO_UPDATE( c16 )
+static SCREEN_UPDATE( c16 )
 {
-	c16_state *state = screen->machine->driver_data<c16_state>();
-	ted7360_video_update(state->ted7360, bitmap, cliprect);
+	c16_state *state = screen->machine().driver_data<c16_state>();
+	ted7360_video_update(state->m_ted7360, bitmap, cliprect);
 	return 0;
 }
 
 static INTERRUPT_GEN( c16_raster_interrupt )
 {
-	c16_state *state = device->machine->driver_data<c16_state>();
-	ted7360_raster_interrupt_gen(state->ted7360);
+	c16_state *state = device->machine().driver_data<c16_state>();
+	ted7360_raster_interrupt_gen(state->m_ted7360);
 }
 
 
 static MACHINE_START( c16 )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 
-	state->maincpu = machine->device<legacy_cpu_device>("maincpu");
-	state->ted7360 = machine->device("ted7360");
-	state->serbus = machine->device("iec");
-	state->cassette = machine->device("cassette");
-	state->messram = machine->device("messram");
-	state->sid = machine->device("sid");
+	state->m_maincpu = machine.device<legacy_cpu_device>("maincpu");
+	state->m_ted7360 = machine.device("ted7360");
+	state->m_serbus = machine.device("iec");
+	state->m_cassette = machine.device("cassette");
+	state->m_messram = machine.device(RAM_TAG);
+	state->m_sid = machine.device("sid");
 
-	state_save_register_global(machine, state->old_level);
-	state_save_register_global(machine, state->lowrom);
-	state_save_register_global(machine, state->highrom);
-	state_save_register_global(machine, state->port6529);
-	state_save_register_global_array(machine, state->keyline);
+	state->save_item(NAME(state->m_old_level));
+	state->save_item(NAME(state->m_lowrom));
+	state->save_item(NAME(state->m_highrom));
+	state->save_item(NAME(state->m_port6529));
+	state->save_item(NAME(state->m_keyline));
 }
 
 static MACHINE_CONFIG_START( c16, c16_state )
@@ -470,7 +470,7 @@ static MACHINE_CONFIG_START( c16, c16_state )
 	MCFG_CPU_CONFIG( c16_m7501_interface )
 	MCFG_CPU_VBLANK_INT("screen", c16_frame_interrupt)
 	MCFG_CPU_PERIODIC_INT(c16_raster_interrupt, TED7360_HRETRACERATE)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( c16 )
 	MCFG_MACHINE_RESET( c16 )
@@ -482,10 +482,10 @@ static MACHINE_CONFIG_START( c16, c16_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(336, 216)
 	MCFG_SCREEN_VISIBLE_AREA(0, 336 - 1, 0, 216 - 1)
+	MCFG_SCREEN_UPDATE( c16 )
+
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(ted7360_palette) / 3)
 	MCFG_PALETTE_INIT(c16)
-
-	MCFG_VIDEO_UPDATE( c16 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -504,7 +504,7 @@ static MACHINE_CONFIG_START( c16, c16_state )
 	MCFG_CBM_IEC_ADD("iec", c16_iec_no_drives)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("16K,32K")
 MACHINE_CONFIG_END
@@ -515,9 +515,9 @@ static MACHINE_CONFIG_DERIVED( c16c, c16 )
 	MCFG_C1551_ADD("c1551", "maincpu", 8)
 
 #ifdef CPU_SYNC
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 #else
-	MCFG_QUANTUM_TIME(HZ(6000))
+	MCFG_QUANTUM_TIME(attotime::from_hz(6000))
 #endif
 MACHINE_CONFIG_END
 
@@ -529,9 +529,9 @@ static MACHINE_CONFIG_DERIVED( c16v, c16 )
 	MCFG_CBM_IEC_ADD("iec", c16_iec_1541)
 	MCFG_C1541_ADD("c1541", "iec", 8)
 #ifdef CPU_SYNC
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 #else
-	MCFG_QUANTUM_TIME(HZ(300000))
+	MCFG_QUANTUM_TIME(attotime::from_hz(300000))
 #endif
 MACHINE_CONFIG_END
 
@@ -551,7 +551,7 @@ static MACHINE_CONFIG_DERIVED( plus4, c16 )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
@@ -563,9 +563,9 @@ static MACHINE_CONFIG_DERIVED( plus4c, plus4 )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 #else
-	MCFG_QUANTUM_TIME(HZ(60000))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60000))
 #endif
 MACHINE_CONFIG_END
 
@@ -580,9 +580,9 @@ static MACHINE_CONFIG_DERIVED( plus4v, plus4 )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 #else
-	MCFG_QUANTUM_TIME(HZ(300000))
+	MCFG_QUANTUM_TIME(attotime::from_hz(300000))
 #endif
 MACHINE_CONFIG_END
 
@@ -598,7 +598,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( c264, c16 )
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

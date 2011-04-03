@@ -18,25 +18,25 @@ READ8_HANDLER ( pc_JOY_r )
 {
 	UINT8 data = 0;
 	int delta;
-	attotime new_time = timer_get_time(space->machine);
-	const input_port_config *joystick_port = space->machine->m_portlist.find("pc_joy");
+	attotime new_time = space->machine().time();
+	const input_port_config *joystick_port = space->machine().m_portlist.find("pc_joy");
 
 	if (joystick_port != NULL)
 	{
 		data = input_port_read_direct(joystick_port) ^ 0xf0;
 
 		/* timer overflow? */
-		if (attotime_compare(attotime_sub(new_time, JOY_time), ATTOTIME_IN_MSEC(10)) > 0)
+		if ((new_time - JOY_time) > attotime::from_msec(10))
 		{
 			/* do nothing */
 		}
 		else
 		{
-			delta = attotime_mul(attotime_sub(new_time, JOY_time), 256 * 1000).seconds;
-			if (input_port_read(space->machine, "pc_joy_1") < delta) data &= ~0x01;
-			if (input_port_read(space->machine, "pc_joy_2") < delta) data &= ~0x02;
-			if (input_port_read(space->machine, "pc_joy_3") < delta) data &= ~0x04;
-			if (input_port_read(space->machine, "pc_joy_4") < delta) data &= ~0x08;
+			delta = ((new_time - JOY_time) * 256 * 1000).seconds;
+			if (input_port_read(space->machine(), "pc_joy_1") < delta) data &= ~0x01;
+			if (input_port_read(space->machine(), "pc_joy_2") < delta) data &= ~0x02;
+			if (input_port_read(space->machine(), "pc_joy_3") < delta) data &= ~0x04;
+			if (input_port_read(space->machine(), "pc_joy_4") < delta) data &= ~0x08;
 		}
 	}
 	return data;
@@ -46,7 +46,7 @@ READ8_HANDLER ( pc_JOY_r )
 
 WRITE8_HANDLER ( pc_JOY_w )
 {
-	JOY_time = timer_get_time(space->machine);
+	JOY_time = space->machine().time();
 }
 
 

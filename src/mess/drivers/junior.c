@@ -18,15 +18,15 @@ public:
 	junior_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 port_a;
-	UINT8 port_b;
-	UINT8 led_time[6];
+	UINT8 m_port_a;
+	UINT8 m_port_b;
+	UINT8 m_led_time[6];
 };
 
 
 
 
- static ADDRESS_MAP_START(junior_mem, ADDRESS_SPACE_PROGRAM, 8)
+ static ADDRESS_MAP_START(junior_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x1FFF)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x03ff) AM_RAM // 1K RAM
@@ -39,7 +39,7 @@ ADDRESS_MAP_END
 static INPUT_CHANGED( junior_reset )
 {
 	if (newval == 0)
-		field->port->machine->firstcpu->reset();
+		field->port->machine().firstcpu->reset();
 }
 
 
@@ -92,19 +92,19 @@ INPUT_PORTS_END
 
 static READ8_DEVICE_HANDLER(junior_riot_a_r)
 {
-	junior_state *state = device->machine->driver_data<junior_state>();
+	junior_state *state = device->machine().driver_data<junior_state>();
 	UINT8	data = 0xff;
 
-	switch( ( state->port_b >> 1 ) & 0x0f )
+	switch( ( state->m_port_b >> 1 ) & 0x0f )
 	{
 	case 0:
-		data = input_port_read(device->machine, "LINE0");
+		data = input_port_read(device->machine(), "LINE0");
 		break;
 	case 1:
-		data = input_port_read(device->machine, "LINE1");
+		data = input_port_read(device->machine(), "LINE1");
 		break;
 	case 2:
-		data = input_port_read(device->machine, "LINE2");
+		data = input_port_read(device->machine(), "LINE2");
 		break;
 	}
 	return data;
@@ -124,38 +124,38 @@ static READ8_DEVICE_HANDLER(junior_riot_b_r)
 
 static WRITE8_DEVICE_HANDLER(junior_riot_a_w)
 {
-	junior_state *state = device->machine->driver_data<junior_state>();
-	UINT8 idx = ( state->port_b >> 1 ) & 0x0f;
+	junior_state *state = device->machine().driver_data<junior_state>();
+	UINT8 idx = ( state->m_port_b >> 1 ) & 0x0f;
 
-	state->port_a = data;
+	state->m_port_a = data;
 
-	if ((idx >= 4 && idx < 10) & ( state->port_a != 0xff ))
+	if ((idx >= 4 && idx < 10) & ( state->m_port_a != 0xff ))
 	{
-		output_set_digit_value( idx-4, state->port_a ^ 0x7f );
-		state->led_time[idx - 4] = 10;
+		output_set_digit_value( idx-4, state->m_port_a ^ 0x7f );
+		state->m_led_time[idx - 4] = 10;
 	}
 }
 
 
 static WRITE8_DEVICE_HANDLER(junior_riot_b_w)
 {
-	junior_state *state = device->machine->driver_data<junior_state>();
+	junior_state *state = device->machine().driver_data<junior_state>();
 	UINT8 newdata = data;
 	UINT8 idx = ( newdata >> 1 ) & 0x0f;
 
-	state->port_b = newdata;
+	state->m_port_b = newdata;
 
-	if ((idx >= 4 && idx < 10) & ( state->port_a != 0xff ))
+	if ((idx >= 4 && idx < 10) & ( state->m_port_a != 0xff ))
 	{
-		output_set_digit_value( idx-4, state->port_a ^ 0x7f );
-		state->led_time[idx - 4] = 10;
+		output_set_digit_value( idx-4, state->m_port_a ^ 0x7f );
+		state->m_led_time[idx - 4] = 10;
 	}
 }
 
 
 static WRITE_LINE_DEVICE_HANDLER( junior_riot_irq )
 {
-	cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -169,15 +169,15 @@ static const riot6532_interface junior_riot_interface =
 };
 
 
-static TIMER_CALLBACK( junior_update_leds )
+static TIMER_DEVICE_CALLBACK( junior_update_leds )
 {
-	junior_state *state = machine->driver_data<junior_state>();
+	junior_state *state = timer.machine().driver_data<junior_state>();
 	int i;
 
 	for ( i = 0; i < 6; i++ )
 	{
-		if ( state->led_time[i] )
-			state->led_time[i]--;
+		if ( state->m_led_time[i] )
+			state->m_led_time[i]--;
 		else
 			output_set_digit_value( i, 0 );
 	}
@@ -186,21 +186,20 @@ static TIMER_CALLBACK( junior_update_leds )
 
 static MACHINE_START( junior )
 {
-	junior_state *state = machine->driver_data<junior_state>();
-	state_save_register_item(machine, "junior", NULL, 0, state->port_a );
-	state_save_register_item(machine, "junior", NULL, 0, state->port_b );
-	timer_pulse(machine,  ATTOTIME_IN_HZ(50), NULL, 0, junior_update_leds );
+	junior_state *state = machine.driver_data<junior_state>();
+	state_save_register_item(machine, "junior", NULL, 0, state->m_port_a );
+	state_save_register_item(machine, "junior", NULL, 0, state->m_port_b );
 }
 
 
 static MACHINE_RESET(junior)
 {
-	junior_state *state = machine->driver_data<junior_state>();
+	junior_state *state = machine.driver_data<junior_state>();
 	int i;
 
 	for ( i = 0; i < 6; i++ )
 	{
-		state->led_time[i] = 0;
+		state->m_led_time[i] = 0;
 	}
 }
 
@@ -209,7 +208,7 @@ static MACHINE_CONFIG_START( junior, junior_state )
     /* basic machine hardware */
     MCFG_CPU_ADD("maincpu",M6502, XTAL_1MHz)
     MCFG_CPU_PROGRAM_MAP(junior_mem)
-	MCFG_QUANTUM_TIME(HZ(50))
+	MCFG_QUANTUM_TIME(attotime::from_hz(50))
 
 	MCFG_MACHINE_START( junior )
     MCFG_MACHINE_RESET(junior)
@@ -218,6 +217,8 @@ static MACHINE_CONFIG_START( junior, junior_state )
     MCFG_DEFAULT_LAYOUT( layout_junior )
 
     MCFG_RIOT6532_ADD("riot", XTAL_1MHz, junior_riot_interface)
+
+	MCFG_TIMER_ADD_PERIODIC("led_timer", junior_update_leds, attotime::from_hz(50))
 MACHINE_CONFIG_END
 
 

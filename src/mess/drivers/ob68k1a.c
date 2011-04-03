@@ -8,61 +8,61 @@ PCB Layout
 REV-B
 
 |-----------------------------------------------------------|
-|	555		CN3		CN4			CN5	  8116	SW5		10MHz	|
-|										5.0688MHz			|
-|					PIA			PIA							|
-|			ACIA							ROM1	ROM0	|
-|					ACIA		PTM			ROM3	ROM2	|
-|			SW1								ROM5	ROM4	|
-|						CPU									|
-|			SW2							4164 4164 4164 4164 |
-|										4164 4164 4164 4164	|
-|			SW3							4164 4164 4164 4164 |
-|									555	4164 4164 4164 4164 |
-|			SW4									8409		|
+|   555     CN3     CN4         CN5   8116  SW5     10MHz   |
+|                                       5.0688MHz           |
+|                   PIA         PIA                         |
+|           ACIA                            ROM1    ROM0    |
+|                   ACIA        PTM         ROM3    ROM2    |
+|           SW1                             ROM5    ROM4    |
+|                       CPU                                 |
+|           SW2                         4164 4164 4164 4164 |
+|                                       4164 4164 4164 4164 |
+|           SW3                         4164 4164 4164 4164 |
+|                                   555 4164 4164 4164 4164 |
+|           SW4                                 8409        |
 |-|-------------CN1----------------|----|-------CN2-------|-|
-  |--------------------------------|	|-----------------|
+  |--------------------------------|    |-----------------|
 
 Notes:
     Relevant IC's shown.
 
-    CPU		- Motorola MC68000L10
-	PIA		- Motorola MC6821P
-	ACIA	- Motorola MC6850P
-	PTM		- Motorola MC6840P
-	8116	- SMC COM8116
-	8409	- National Semiconductor DP8409N DRAM Controller
-	4164	- Fujitsu MB8264A-12 64Kx1 RAM
-	555		- NE555N
-	SW1		- RAM address DIP8
-	SW2		- I/O address DIP8
-	SW3		- ROM address DIP8
-	SW4		- external RAM access address DIP8
-	SW5		- push button
-	CN1		- 2x43 PCB edge, IEEE 796 (Multibus)
-	CN2		- 2x30 PCB edge, IEEE 796 (Multibus)
-	CN3		- 2x25 header, ACIA 0
-	CN4		- 2x25 header, ACIA 1 
-	CN5		- 2x50 header, PIA
+    CPU     - Motorola MC68000L10
+    PIA     - Motorola MC6821P
+    ACIA    - Motorola MC6850P
+    PTM     - Motorola MC6840P
+    8116    - SMC COM8116
+    8409    - National Semiconductor DP8409N DRAM Controller
+    4164    - Fujitsu MB8264A-12 64Kx1 RAM
+    555     - NE555N
+    SW1     - RAM address DIP8
+    SW2     - I/O address DIP8
+    SW3     - ROM address DIP8
+    SW4     - external RAM access address DIP8
+    SW5     - push button
+    CN1     - 2x43 PCB edge, IEEE 796 (Multibus)
+    CN2     - 2x30 PCB edge, IEEE 796 (Multibus)
+    CN3     - 2x25 header, ACIA 0
+    CN4     - 2x25 header, ACIA 1
+    CN5     - 2x50 header, PIA
 
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	- COM8116 dividers are wrong
-	- interrupts
-	- configuration switches
-	- PIA odd/even byte access
-	
+    - COM8116 dividers are wrong
+    - interrupts
+    - configuration switches
+    - PIA odd/even byte access
+
 */
 
 #define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "machine/6821pia.h"
 #include "machine/6840ptm.h"
 #include "machine/6850acia.h"
@@ -73,7 +73,7 @@ Notes:
 
 
 //**************************************************************************
-//	READ/WRITE HANDLERS
+//  READ/WRITE HANDLERS
 //**************************************************************************
 
 //-------------------------------------------------
@@ -83,7 +83,7 @@ Notes:
 WRITE8_MEMBER( ob68k1a_state::com8116_w )
 {
 	com8116_stt_w(m_dbrg, 0, data & 0x0f);
-//	com8116_str_w(m_dbrg, 0, data >> 4); // HACK for terminal
+//  com8116_str_w(m_dbrg, 0, data >> 4); // HACK for terminal
 }
 
 
@@ -109,14 +109,14 @@ WRITE8_MEMBER( ob68k1a_state::pia_w )
 
 
 //**************************************************************************
-//	ADDRESS MAPS
+//  ADDRESS MAPS
 //**************************************************************************
 
 //-------------------------------------------------
 //  ADDRESS_MAP( ob68k1a_mem )
 //-------------------------------------------------
 
-static ADDRESS_MAP_START( ob68k1a_mem, ADDRESS_SPACE_PROGRAM, 16, ob68k1a_state )
+static ADDRESS_MAP_START( ob68k1a_mem, AS_PROGRAM, 16, ob68k1a_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x01ffff) AM_RAM
 	AM_RANGE(0xfe0000, 0xfeffff) AM_ROM AM_REGION(MC68000L10_TAG, 0)
@@ -125,8 +125,8 @@ static ADDRESS_MAP_START( ob68k1a_mem, ADDRESS_SPACE_PROGRAM, 16, ob68k1a_state 
 	AM_RANGE(0xffff10, 0xffff11) AM_WRITE8(com8116_w, 0xff00)
 	AM_RANGE(0xffff20, 0xffff21) AM_DEVREADWRITE8_LEGACY(MC6850_1_TAG, acia6850_stat_r, acia6850_ctrl_w, 0x00ff)
 	AM_RANGE(0xffff22, 0xffff23) AM_DEVREADWRITE8_LEGACY(MC6850_1_TAG, acia6850_data_r, acia6850_data_w, 0x00ff)
-//	AM_RANGE(0xffff40, 0xffff47) AM_DEVREADWRITE8_LEGACY(MC6821_0_TAG, pia6821_r, pia6821_w, 0x00ff)
-//	AM_RANGE(0xffff40, 0xffff47) AM_DEVREADWRITE8_LEGACY(MC6821_1_TAG, pia6821_r, pia6821_w, 0xff00)
+//  AM_RANGE(0xffff40, 0xffff47) AM_DEVREADWRITE8_LEGACY(MC6821_0_TAG, pia6821_r, pia6821_w, 0x00ff)
+//  AM_RANGE(0xffff40, 0xffff47) AM_DEVREADWRITE8_LEGACY(MC6821_1_TAG, pia6821_r, pia6821_w, 0xff00)
 	AM_RANGE(0xffff40, 0xffff47) AM_READWRITE8(pia_r, pia_w, 0xffff)
 	AM_RANGE(0xffff60, 0xffff6f) AM_DEVREADWRITE8_LEGACY(MC6840_TAG, ptm6840_read, ptm6840_write, 0x00ff)
 ADDRESS_MAP_END
@@ -134,7 +134,7 @@ ADDRESS_MAP_END
 
 
 //**************************************************************************
-//	INPUT PORTS
+//  INPUT PORTS
 //**************************************************************************
 
 //-------------------------------------------------
@@ -142,13 +142,12 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 INPUT_PORTS_START( ob68k1a )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 
 //**************************************************************************
-//	DEVICE CONFIGURATION
+//  DEVICE CONFIGURATION
 //**************************************************************************
 
 //-------------------------------------------------
@@ -266,15 +265,20 @@ static COM8116_INTERFACE( dbrg_intf )
 //  GENERIC_TERMINAL_INTERFACE( terminal_intf )
 //-------------------------------------------------
 
+static WRITE8_DEVICE_HANDLER( dummy_w )
+{
+	// this is here only so that terminal.c will initialize the keyboard scan timer
+}
+
 static GENERIC_TERMINAL_INTERFACE( terminal_intf )
 {
-	DEVCB_NULL
+	DEVCB_HANDLER(dummy_w)
 };
 
 
 
 //**************************************************************************
-//	MACHINE INITIALIZATION
+//  MACHINE INITIALIZATION
 //**************************************************************************
 
 //-------------------------------------------------
@@ -283,13 +287,13 @@ static GENERIC_TERMINAL_INTERFACE( terminal_intf )
 
 void ob68k1a_state::machine_start()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	// configure RAM
-	switch (messram_get_size(m_ram))
+	switch (ram_get_size(m_ram))
 	{
 	case 32*1024:
-		memory_unmap_readwrite(program, 0x008000, 0x01ffff, 0, 0);
+		program->unmap_readwrite(0x008000, 0x01ffff);
 		break;
 	}
 }
@@ -302,22 +306,22 @@ void ob68k1a_state::machine_start()
 void ob68k1a_state::machine_reset()
 {
 	// initialize COM8116
-//	com8116_stt_w(m_dbrg, 0, 0x01);
-//	com8116_str_w(m_dbrg, 0, 0x01);
+//  com8116_stt_w(m_dbrg, 0, 0x01);
+//  com8116_str_w(m_dbrg, 0, 0x01);
 
 	// set reset vector
-	void *ram = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM)->get_write_ptr(0);
-	UINT8 *rom = machine->region(MC68000L10_TAG)->base();
+	void *ram = m_maincpu->memory().space(AS_PROGRAM)->get_write_ptr(0);
+	UINT8 *rom = m_machine.region(MC68000L10_TAG)->base();
 
 	memcpy(ram, rom, 8);
 
-	machine->firstcpu->reset();
+	m_machine.firstcpu->reset();
 }
 
 
 
 //**************************************************************************
-//	MACHINE CONFIGURATION
+//  MACHINE CONFIGURATION
 //**************************************************************************
 
 //-------------------------------------------------
@@ -328,7 +332,7 @@ static MACHINE_CONFIG_START( ob68k1a, ob68k1a_state )
     // basic machine hardware
     MCFG_CPU_ADD(MC68000L10_TAG, M68000, XTAL_10MHz)
     MCFG_CPU_PROGRAM_MAP(ob68k1a_mem)
-	
+
     // video hardware
 	MCFG_FRAGMENT_ADD( generic_terminal )
 
@@ -340,9 +344,9 @@ static MACHINE_CONFIG_START( ob68k1a, ob68k1a_state )
 	MCFG_ACIA6850_ADD(MC6850_1_TAG, acia1_intf)
 	MCFG_COM8116_ADD(COM8116_TAG, XTAL_5_0688MHz, dbrg_intf)
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
-	
+
 	// internal ram
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 	MCFG_RAM_EXTRA_OPTIONS("128K")
 MACHINE_CONFIG_END
@@ -350,7 +354,7 @@ MACHINE_CONFIG_END
 
 
 //**************************************************************************
-//	ROMS
+//  ROMS
 //**************************************************************************
 
 //-------------------------------------------------
@@ -376,8 +380,8 @@ ROM_END
 
 
 //**************************************************************************
-//	SYSTEM DRIVERS
+//  SYSTEM DRIVERS
 //**************************************************************************
 
 //    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS
-COMP( 1982, ob68k1a,  0,       0, 	ob68k1a, 	ob68k1a, 	 0,  "Omnibyte",   "OB68K1A",		GAME_NO_SOUND_HW)
+COMP( 1982, ob68k1a,  0,       0,	ob68k1a,	ob68k1a,	 0,  "Omnibyte",   "OB68K1A",	GAME_NO_SOUND_HW )

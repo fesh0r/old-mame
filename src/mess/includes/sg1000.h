@@ -1,6 +1,8 @@
 #ifndef __SG1000__
 #define __SG1000__
 
+#include "machine/ram.h"
+
 #define SCREEN_TAG		"screen"
 #define Z80_TAG			"z80"
 #define SN76489A_TAG	"sn76489a"
@@ -30,14 +32,14 @@ public:
 	sg1000_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config),
 		  m_maincpu(*this, Z80_TAG),
-		  m_ram(*this, "messram")
+		  m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_ram;
 
 	virtual void machine_start();
-	
+
 	void install_cartridge(UINT8 *ptr, int size);
 
 	DECLARE_WRITE8_MEMBER( tvdraw_axis_w );

@@ -11,9 +11,9 @@
 
     TODO:
 
-	- wait state on memory access during video update
+    - wait state on memory access during video update
     - proper video timing
-	- get rid of flash timer
+    - get rid of flash timer
 
 */
 
@@ -23,7 +23,7 @@
 
 
 //**************************************************************************
-//	MACROS / CONSTANTS
+//  MACROS / CONSTANTS
 //**************************************************************************
 
 #define LOG 0
@@ -43,7 +43,7 @@ const device_type ZX8301 = zx8301_device_config::static_alloc_device_config;
 
 
 // default address map
-static ADDRESS_MAP_START( zx8301, 0, 8 )
+static ADDRESS_MAP_START( zx8301, AS_0, 8 )
 	AM_RANGE(0x00000, 0x1ffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -82,7 +82,7 @@ device_config *zx8301_device_config::static_alloc_device_config(const machine_co
 
 device_t *zx8301_device_config::alloc_device(running_machine &machine) const
 {
-	return auto_alloc(&machine, zx8301_device(machine, *this));
+	return auto_alloc(machine, zx8301_device(machine, *this));
 }
 
 
@@ -91,9 +91,9 @@ device_t *zx8301_device_config::alloc_device(running_machine &machine) const
 //  any address spaces owned by this device
 //-------------------------------------------------
 
-const address_space_config *zx8301_device_config::memory_space_config(int spacenum) const
+const address_space_config *zx8301_device_config::memory_space_config(address_spacenum spacenum) const
 {
-	return (spacenum == 0) ? &m_space_config : NULL;
+	return (spacenum == AS_0) ? &m_space_config : NULL;
 }
 
 
@@ -173,31 +173,31 @@ zx8301_device::zx8301_device(running_machine &_machine, const zx8301_device_conf
 void zx8301_device::device_start()
 {
 	// get the CPU
-	m_cpu = machine->device<cpu_device>(m_config.cpu_tag);
+	m_cpu = m_machine.device<cpu_device>(m_config.cpu_tag);
 	assert(m_cpu != NULL);
 
 	// get the screen device
-	m_screen = machine->device<screen_device>(m_config.screen_tag);
+	m_screen = m_machine.device<screen_device>(m_config.screen_tag);
 	assert(m_screen != NULL);
 
 	// resolve callbacks
     devcb_resolve_write_line(&m_out_vsync_func, &m_config.out_vsync_func, this);
-	
+
 	// allocate timers
-	m_vsync_timer = device_timer_alloc(*this, TIMER_VSYNC);
-	m_flash_timer = device_timer_alloc(*this, TIMER_FLASH);
+	m_vsync_timer = timer_alloc(TIMER_VSYNC);
+	m_flash_timer = timer_alloc(TIMER_FLASH);
 
 	// adjust timer periods
-	timer_adjust_periodic(m_vsync_timer, attotime_zero, 0, ATTOTIME_IN_HZ(50));
-	timer_adjust_periodic(m_flash_timer, ATTOTIME_IN_HZ(2), 0, ATTOTIME_IN_HZ(2));
+	m_vsync_timer->adjust(attotime::zero, 0, attotime::from_hz(50));
+	m_flash_timer->adjust(attotime::from_hz(2), 0, attotime::from_hz(2));
 
 	// register for state saving
-	state_save_register_device_item(this, 0, m_dispoff);
-	state_save_register_device_item(this, 0, m_mode8);
-	state_save_register_device_item(this, 0, m_base);
- 	state_save_register_device_item(this, 0, m_flash);
-	state_save_register_device_item(this, 0, m_vsync);
-	state_save_register_device_item(this, 0, m_vda);
+	save_item(NAME(m_dispoff));
+	save_item(NAME(m_mode8));
+	save_item(NAME(m_base));
+	save_item(NAME(m_flash));
+	save_item(NAME(m_vsync));
+	save_item(NAME(m_vda));
 }
 
 
@@ -229,18 +229,18 @@ WRITE8_MEMBER( zx8301_device::control_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0
-		1		display off
-		2
-		3		graphics mode
-		4
-		5
-		6
-		7		display base address
+        0
+        1       display off
+        2
+        3       graphics mode
+        4
+        5
+        6
+        7       display base address
 
-	*/
+    */
 
 	if (LOG) logerror("ZX8301 Control: %02x\n", data);
 
@@ -265,7 +265,7 @@ READ8_MEMBER( zx8301_device::data_r )
 
 	if (m_vda)
 	{
-		cpu_spinuntil_time(m_cpu, m_screen->time_until_pos(256, 0));
+		device_spin_until_time(m_cpu, m_screen->time_until_pos(256, 0));
 	}
 
 	return readbyte(offset);
@@ -282,7 +282,7 @@ WRITE8_MEMBER( zx8301_device::data_w )
 
 	if (m_vda)
 	{
-		cpu_spinuntil_time(m_cpu, m_screen->time_until_pos(256, 0));
+		device_spin_until_time(m_cpu, m_screen->time_until_pos(256, 0));
 	}
 
 	writebyte(offset, data);
@@ -380,6 +380,6 @@ void zx8301_device::update_screen(bitmap_t *bitmap, const rectangle *cliprect)
 	}
 	else
 	{
-		bitmap_fill(bitmap, cliprect, get_black_pen(machine));
+		bitmap_fill(bitmap, cliprect, get_black_pen(m_machine));
 	}
 }

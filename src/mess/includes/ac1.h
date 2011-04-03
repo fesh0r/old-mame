@@ -15,6 +15,7 @@ public:
 	ac1_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
+	device_t *m_cassette;
 };
 
 
@@ -30,8 +31,8 @@ extern const z80pio_interface ac1_z80pio_intf;
 extern const gfx_layout ac1_charlayout;
 
 VIDEO_START( ac1 );
-VIDEO_UPDATE( ac1 );
-VIDEO_UPDATE( ac1_32 );
+SCREEN_UPDATE( ac1 );
+SCREEN_UPDATE( ac1_32 );
 
 
 #endif /* AC1_h_ */

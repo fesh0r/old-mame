@@ -93,7 +93,7 @@ Part list of Goldstar 3DO Interactive Multiplayer
 
 #include "emu.h"
 #include "includes/3do.h"
-#include "devices/chd_cd.h"
+#include "imagedev/chd_cd.h"
 #include "cpu/arm/arm.h"
 #include "cpu/arm7/arm7.h"
 
@@ -103,9 +103,9 @@ Part list of Goldstar 3DO Interactive Multiplayer
 #define X601_CLOCK		XTAL_16_9344MHz
 
 
-static ADDRESS_MAP_START( 3do_mem, ADDRESS_SPACE_PROGRAM, 32)
-	AM_RANGE(0x00000000, 0x001FFFFF) AM_RAMBANK("bank1") AM_BASE_MEMBER(_3do_state,dram)						/* DRAM */
-	AM_RANGE(0x00200000, 0x003FFFFF) AM_RAM	AM_BASE_MEMBER(_3do_state,vram)									/* VRAM */
+static ADDRESS_MAP_START( 3do_mem, AS_PROGRAM, 32)
+	AM_RANGE(0x00000000, 0x001FFFFF) AM_RAMBANK("bank1") AM_BASE_MEMBER(_3do_state,m_dram)						/* DRAM */
+	AM_RANGE(0x00200000, 0x003FFFFF) AM_RAM	AM_BASE_MEMBER(_3do_state,m_vram)									/* VRAM */
 	AM_RANGE(0x03000000, 0x030FFFFF) AM_ROMBANK("bank2")									/* BIOS */
 	AM_RANGE(0x03100000, 0x0313FFFF) AM_RAM													/* Brooktree? */
 	AM_RANGE(0x03140000, 0x0315FFFF) AM_READWRITE(_3do_nvarea_r, _3do_nvarea_w)				/* NVRAM */
@@ -131,22 +131,22 @@ INPUT_PORTS_END
 
 static MACHINE_RESET( 3do )
 {
-	_3do_state *state = machine->driver_data<_3do_state>();
+	_3do_state *state = machine.driver_data<_3do_state>();
 
-	state->maincpu = downcast<legacy_cpu_device*>( machine->device("maincpu") );
+	state->m_maincpu = downcast<legacy_cpu_device*>( machine.device("maincpu") );
 
-	memory_set_bankptr(machine, "bank2",machine->region("user1")->base());
+	memory_set_bankptr(machine, "bank2",machine.region("user1")->base());
 
 	/* configure overlay */
-	memory_configure_bank(machine, "bank1", 0, 1, state->dram, 0);
-	memory_configure_bank(machine, "bank1", 1, 1, machine->region("user1")->base(), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, state->m_dram, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, machine.region("user1")->base(), 0);
 
 	/* start with overlay enabled */
 	memory_set_bank(machine, "bank1", 1);
 
 	_3do_slow2_init(machine);
 	_3do_madam_init(machine);
-	_3do_clio_init(machine, downcast<screen_device *>(machine->device("screen")));
+	_3do_clio_init(machine, downcast<screen_device *>(machine.device("screen")));
 }
 
 
@@ -159,13 +159,13 @@ static MACHINE_CONFIG_START( 3do, _3do_state )
 	MCFG_MACHINE_RESET( 3do )
 
 //  MCFG_VIDEO_START( generic_bitmapped )
-//  MCFG_VIDEO_UPDATE( generic_bitmapped )
 	MCFG_VIDEO_START( _3do )
-	MCFG_VIDEO_UPDATE( _3do )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_RGB32 )
 	MCFG_SCREEN_RAW_PARAMS( X2_CLOCK_NTSC / 2, 1592, 254, 1534, 263, 22, 262 )
+//  MCFG_SCREEN_UPDATE( generic_bitmapped )
+	MCFG_SCREEN_UPDATE( _3do )
 
 	MCFG_CDROM_ADD( "cdrom" )
 MACHINE_CONFIG_END
@@ -180,13 +180,13 @@ static MACHINE_CONFIG_START( 3do_pal, _3do_state )
 	MCFG_MACHINE_RESET( 3do )
 
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_RGB32 )
 	MCFG_SCREEN_SIZE( 640, 625 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
 	MCFG_SCREEN_REFRESH_RATE( 50 )
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
 
 	MCFG_CDROM_ADD( "cdrom" )
 MACHINE_CONFIG_END

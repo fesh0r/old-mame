@@ -14,16 +14,16 @@
 #include "machine/i8257.h"
 #include "machine/wd17xx.h"
 #include "video/i8275.h"
-#include "devices/cassette.h"
-#include "devices/flopdrv.h"
+#include "imagedev/cassette.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "formats/rk_cas.h"
 #include "includes/radio86.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/partner.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(partner_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(partner_mem, AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x07ff ) AM_RAMBANK("bank1")
 	AM_RANGE( 0x0800, 0x3fff ) AM_RAMBANK("bank2")
 	AM_RANGE( 0x4000, 0x5fff ) AM_RAMBANK("bank3")
@@ -204,12 +204,13 @@ static MACHINE_CONFIG_START( partner, partner_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(78*6, 30*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MCFG_SCREEN_UPDATE(radio86)
+
 	MCFG_GFXDECODE(partner)
 	MCFG_PALETTE_LENGTH(3)
 	MCFG_PALETTE_INIT(radio86)
 
 	MCFG_VIDEO_START(generic_bitmapped)
-	MCFG_VIDEO_UPDATE(radio86)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")
@@ -224,7 +225,7 @@ static MACHINE_CONFIG_START( partner, partner_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(partner_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END

@@ -1,96 +1,93 @@
 #include "emu.h"
 #include "includes/spectrum.h"
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
 #include "machine/beta.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 DIRECT_UPDATE_HANDLER( pentagon_direct )
 {
 	spectrum_state *state = machine->driver_data<spectrum_state>();
 	device_t *beta = machine->device(BETA_DISK_TAG);
 	UINT16 pc = cpu_get_reg(machine->device("maincpu"), STATE_GENPCBASE);
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if (beta->started() && betadisk_is_active(beta))
 	{
 		if (pc >= 0x4000)
 		{
-			state->ROMSelection = ((state->port_7ffd_data>>4) & 0x01) ? 1 : 0;
+			state->m_ROMSelection = ((state->m_port_7ffd_data>>4) & 0x01) ? 1 : 0;
 			betadisk_disable(beta);
-			memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-			memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x010000 + (state->ROMSelection<<14));
+			memory_set_bankptr(*machine, "bank1", machine->region("maincpu")->base() + 0x010000 + (state->m_ROMSelection<<14));
 		}
-	} else if (((pc & 0xff00) == 0x3d00) && (state->ROMSelection==1))
+	} else if (((pc & 0xff00) == 0x3d00) && (state->m_ROMSelection==1))
 	{
-		state->ROMSelection = 3;
+		state->m_ROMSelection = 3;
 		if (beta->started())
 			betadisk_enable(beta);
 
 	}
 	if((address>=0x0000) && (address<=0x3fff))
 	{
-		memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-		if (state->ROMSelection == 3) {
+		if (state->m_ROMSelection == 3) {
 			if (beta->started()) {
 				direct.explicit_configure(0x0000, 0x3fff, 0x3fff, machine->region("beta:beta")->base());
-				memory_set_bankptr(machine, "bank1", machine->region("beta:beta")->base());
+				memory_set_bankptr(*machine, "bank1", machine->region("beta:beta")->base());
 			}
 		} else {
-			direct.explicit_configure(0x0000, 0x3fff, 0x3fff, machine->region("maincpu")->base() + 0x010000 + (state->ROMSelection<<14));
-			memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x010000 + (state->ROMSelection<<14));
+			direct.explicit_configure(0x0000, 0x3fff, 0x3fff, machine->region("maincpu")->base() + 0x010000 + (state->m_ROMSelection<<14));
+			memory_set_bankptr(*machine, "bank1", machine->region("maincpu")->base() + 0x010000 + (state->m_ROMSelection<<14));
 		}
 		return ~0;
 	}
 	return address;
 }
 
-static void pentagon_update_memory(running_machine *machine)
+static void pentagon_update_memory(running_machine &machine)
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
-	device_t *beta = machine->device(BETA_DISK_TAG);
-	UINT8 *messram = messram_get_ptr(machine->device("messram"));
-	state->screen_location = messram + ((state->port_7ffd_data & 8) ? (7<<14) : (5<<14));
+	spectrum_state *state = machine.driver_data<spectrum_state>();
+	device_t *beta = machine.device(BETA_DISK_TAG);
+	UINT8 *messram = ram_get_ptr(machine.device(RAM_TAG));
+	state->m_screen_location = messram + ((state->m_port_7ffd_data & 8) ? (7<<14) : (5<<14));
 
-	memory_set_bankptr(machine, "bank4", messram + ((state->port_7ffd_data & 0x07) * 0x4000));
+	memory_set_bankptr(machine, "bank4", messram + ((state->m_port_7ffd_data & 0x07) * 0x4000));
 
-	if (beta->started() && betadisk_is_active(beta) && !( state->port_7ffd_data & 0x10 ) )
+	if (beta->started() && betadisk_is_active(beta) && !( state->m_port_7ffd_data & 0x10 ) )
 	{
 		/* GLUK */
-		if (strcmp(machine->gamedrv->name, "pent1024")==0) {
-			state->ROMSelection = 2;
+		if (strcmp(machine.system().name, "pent1024")==0) {
+			state->m_ROMSelection = 2;
 		} else {
-			state->ROMSelection = ((state->port_7ffd_data>>4) & 0x01) ;
+			state->m_ROMSelection = ((state->m_port_7ffd_data>>4) & 0x01) ;
 		}
 	}
 	else {
 		/* ROM switching */
-		state->ROMSelection = ((state->port_7ffd_data>>4) & 0x01) ;
+		state->m_ROMSelection = ((state->m_port_7ffd_data>>4) & 0x01) ;
 	}
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
-	memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x010000 + (state->ROMSelection<<14));
+	memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base() + 0x010000 + (state->m_ROMSelection<<14));
 }
 
 static WRITE8_HANDLER(pentagon_port_7ffd_w)
 {
-	spectrum_state *state = space->machine->driver_data<spectrum_state>();
+	spectrum_state *state = space->machine().driver_data<spectrum_state>();
 
 	/* disable paging */
-	if (state->port_7ffd_data & 0x20)
+	if (state->m_port_7ffd_data & 0x20)
 		return;
 
 	/* store new state */
-	state->port_7ffd_data = data;
+	state->m_port_7ffd_data = data;
 
 	/* update memory */
-	pentagon_update_memory(space->machine);
+	pentagon_update_memory(space->machine());
 }
 
-static ADDRESS_MAP_START (pentagon_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (pentagon_io, AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x001f, 0x001f) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_status_r,betadisk_command_w) AM_MIRROR(0xff00)
 	AM_RANGE(0x003f, 0x003f) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_track_r,betadisk_track_w) AM_MIRROR(0xff00)
@@ -105,20 +102,19 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( pentagon )
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
-	UINT8 *messram = messram_get_ptr(machine->device("messram"));
-	device_t *beta = machine->device(BETA_DISK_TAG);
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	spectrum_state *state = machine.driver_data<spectrum_state>();
+	UINT8 *messram = ram_get_ptr(machine.device(RAM_TAG));
+	device_t *beta = machine.device(BETA_DISK_TAG);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
-	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+	space->install_read_bank(0x0000, 0x3fff, "bank1");
+	space->unmap_write(0x0000, 0x3fff);
 
 	if (beta->started())  {
 		betadisk_enable(beta);
 		betadisk_clear_status(beta);
 	}
-
-	space->set_direct_update_handler(direct_update_delegate_create_static(pentagon_direct, *machine));
+	space->set_direct_update_handler(direct_update_delegate_create_static(pentagon_direct, machine));
 
 	memset(messram,0,128*1024);
 
@@ -128,8 +124,8 @@ static MACHINE_RESET( pentagon )
 	/* Bank 2 is always in 0x8000 - 0xbfff */
 	memory_set_bankptr(machine, "bank3", messram + (2<<14));
 
-	state->port_7ffd_data = 0;
-	state->port_1ffd_data = -1;
+	state->m_port_7ffd_data = 0;
+	state->m_port_1ffd_data = -1;
 	pentagon_update_memory(machine);
 }
 
@@ -162,7 +158,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pent1024, pentagon )
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1024K")
 MACHINE_CONFIG_END
 

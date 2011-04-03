@@ -55,12 +55,7 @@ endif
 # append "ui" to the emulator name 
 #-------------------------------------------------
 
-ifdef PTR64
-EMULATOR = $(NAME)ui64$(EXE)
-else
-EMULATOR = $(NAME)ui32$(EXE)
-endif
-
+EMULATOR = $(PREFIX)$(NAME)ui$(SUFFIX)$(SUFFIX64)$(SUFFIXDEBUG)$(EXE)
 
 #-------------------------------------------------
 # object and source roots
@@ -220,7 +215,7 @@ LIBS += \
 	-ladvapi32 \
 	-lcomctl32 \
 	-lshlwapi \
-
+	-lcomdlg32 \
 
 ifeq ($(DIRECTINPUT),7)
 LIBS += -ldinput
@@ -280,8 +275,10 @@ OSDOBJS = \
 	$(WINOBJ)/sound.o \
 	$(WINOBJ)/video.o \
 	$(WINOBJ)/window.o \
-	$(WINOBJ)/winmain.o \
-
+	$(UIOBJ)/dialog.o	\
+	$(UIOBJ)/menu.o	\
+	$(UIOBJ)/opcntrl.o	\
+	$(UIOBJ)/winutils.o
 
 ifeq ($(DIRECT3D),8)
 OSDOBJS += $(WINOBJ)/d3d8intf.o
@@ -292,6 +289,7 @@ endif
 
 # add UI objs
 OSDOBJS += \
+	$(WINOBJ)/winmainui.o \
 	$(UIOBJ)/mui_util.o \
 	$(UIOBJ)/directinput.o \
 	$(UIOBJ)/dijoystick.o \
@@ -312,12 +310,27 @@ OSDOBJS += \
 	$(UIOBJ)/history.o \
 	$(UIOBJ)/dialogs.o \
 	$(UIOBJ)/mui_opts.o \
-	$(UIOBJ)/layout.o \
 	$(UIOBJ)/datafile.o \
 	$(UIOBJ)/dirwatch.o \
 	$(UIOBJ)/winui.o \
 	$(UIOBJ)/helpids.o \
+	$(UIOBJ)/messui.o \
+	$(UIOBJ)/optionsms.o \
+	$(UIOBJ)/msuiutil.o \
+	$(UIOBJ)/propertiesms.o \
+	$(UIOBJ)/swconfig.o \
+	$(UIOBJ)/softwarepicker.o \
+	$(UIOBJ)/softwarelist.o \
+	$(UIOBJ)/devview.o
 
+ifneq ($(TARGET),mess)
+OSDOBJS += \
+	$(UIOBJ)/layout.o
+endif
+ifeq ($(TARGET),mess)
+OSDOBJS += \
+	$(UIOBJ)/layoutms.o
+endif
 
 # extra dependencies
 $(WINOBJ)/drawdd.o : 	$(SRC)/emu/rendersw.c
@@ -328,7 +341,7 @@ $(WINOBJ)/drawgdi.o :	$(SRC)/emu/rendersw.c
 OSDOBJS += \
 	$(WINOBJ)/debugwin.o
 
-$(WINOBJ)/winmain.o : $(WINSRC)/winmain.c
+$(WINOBJ)/winmainui.o : $(WINSRC)/winmain.c
 	@echo Compiling $<...
 	$(CC) $(CDEFS) -Dmain=utf8_main $(CFLAGS) -c $< -o $@
 
@@ -408,11 +421,11 @@ $(RESFILE): $(UISRC)/mameui.rc $(UIOBJ)/mamevers.rc
 #-------------------------------------------------
 # rules for resource file
 #-------------------------------------------------
-
+ifeq ($(TARGET),mame)
 $(UIOBJ)/mamevers.rc: $(OBJ)/build/verinfo$(EXE) $(SRC)/version.c
 	@echo Emitting $@...
 	@"$(OBJ)/build/verinfo$(EXE)" -b winui $(SRC)/version.c > $@
-
+endif
 
 
 

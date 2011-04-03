@@ -79,6 +79,8 @@ struct _at45dbxx_t
 INLINE at45dbxx_t *get_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == AT45DB041 || device->type() == AT45DB081 || device->type() == AT45DB161);
+
 	return (at45dbxx_t *) downcast<legacy_device_base *>(device)->token();
 }
 
@@ -100,20 +102,20 @@ static void common_start(device_t *device, int device_type)
 		case TYPE_AT45DB161 : flash->pages = 4096; flash->page_size = 528; flash->devid = 0x28; break;
 	}
 	flash->size = flash->pages * flash->page_size;
-	flash->data = auto_alloc_array(device->machine, UINT8, flash->size);
-	flash->buffer1 = auto_alloc_array(device->machine, UINT8, flash->page_size);
-	flash->buffer2 = auto_alloc_array(device->machine, UINT8, flash->page_size);
+	flash->data = auto_alloc_array(device->machine(), UINT8, flash->size);
+	flash->buffer1 = auto_alloc_array(device->machine(), UINT8, flash->page_size);
+	flash->buffer2 = auto_alloc_array(device->machine(), UINT8, flash->page_size);
 
 	// data
-	state_save_register_item_pointer(device->machine, "at45dbxx", device->tag(), 0, flash->data, flash->size);
+	state_save_register_item_pointer(device->machine(), "at45dbxx", device->tag(), 0, flash->data, flash->size);
 	// pins
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.cs);
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.sck);
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.si);
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.so);
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.wp);
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.reset);
-	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.busy);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.cs);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.sck);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.si);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.so);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.wp);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.reset);
+	state_save_register_item(device->machine(), "at45dbxx", device->tag(), 0, flash->pin.busy);
 }
 
 static DEVICE_START( at45db041 )
@@ -375,18 +377,18 @@ void at45dbxx_pin_sck(device_t *device,  int data)
 	flash->pin.sck = data;
 }
 
-void at45dbxx_load(device_t *device, mame_file *file)
+void at45dbxx_load(device_t *device, emu_file *file)
 {
 	at45dbxx_t *flash = get_token(device);
 	_logerror( 0, ("at45dbxx_load (%p)\n", file));
-	mame_fread( file, flash->data, flash->size);
+	file->read(flash->data, flash->size);
 }
 
-void at45dbxx_save(device_t *device, mame_file *file)
+void at45dbxx_save(device_t *device, emu_file *file)
 {
 	at45dbxx_t *flash = get_token(device);
 	_logerror( 0, ("at45dbxx_save (%p)\n", file));
-	mame_fwrite( file, flash->data, flash->size);
+	file->write(flash->data, flash->size);
 }
 
 #ifdef UNUSED_FUNCTION

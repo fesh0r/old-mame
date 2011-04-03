@@ -20,32 +20,26 @@
 #include "machine/pic8259.h"
 #include "machine/i82371ab.h"
 #include "machine/i82439tx.h"
-
+#include "machine/cs4031.h"
 #include "machine/pit8253.h"
 #include "video/pc_vga_mess.h"
 #include "video/pc_cga.h"
-#include "video/pc_mda.h"
 #include "video/pc_ega.h"
-#include "video/pc_video_mess.h"
-#include "includes/pc.h"
 
 #include "machine/pc_hdc.h"
 #include "includes/pc_ide.h"
 #include "machine/pc_fdc.h"
 #include "machine/pc_joy.h"
-#include "machine/pckeybrd.h"
 #include "machine/pc_lpt.h"
 #include "audio/sblaster.h"
 #include "includes/pc_mouse.h"
 
 #include "includes/at.h"
-#include "machine/8042kbdc.h"
+#include "machine/at_keybc.h"
 #include "includes/ps2.h"
 
-#include "machine/pcshare.h"
-
-#include "devices/flopdrv.h"
-#include "devices/harddriv.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/harddriv.h"
 #include "formats/pc_dsk.h"
 
 #include "machine/8237dma.h"
@@ -55,11 +49,10 @@
 #include "sound/dac.h"
 #include "sound/speaker.h"
 #include "sound/saa1099.h"
-#include "devices/messram.h"
-
+#include "machine/ram.h"
+#include "machine/nvram.h"
 #include "memconv.h"
 
-/* window resizing with dirtybuffering traping in xmess window */
 
 #define ym3812_StdClock 3579545
 
@@ -85,9 +78,8 @@
 */
 #define GAMEBLASTER
 
-static ADDRESS_MAP_START( at16_map, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( at16_map, AS_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK("bank10")
-//  AM_RANGE(0x0a0000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram16le_w) AM_BASE((UINT16 **)&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0c0000, 0x0c7fff) AM_ROM
 	AM_RANGE(0x0c8000, 0x0cffff) AM_ROM
 	AM_RANGE(0x0d0000, 0x0effff) AM_RAM
@@ -97,11 +89,10 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( at386_map, AS_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0x00ffffff)
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
-//  AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
 	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
 	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
@@ -110,10 +101,15 @@ static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00ff0000, 0x00ffffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( at586_map, ADDRESS_SPACE_PROGRAM, 32 )
+// memory is mostly handled by the chipset
+static ADDRESS_MAP_START( ct486_map, AS_PROGRAM, 32 )
+	AM_RANGE(0x00800000, 0x00800bff) AM_RAM AM_SHARE("nvram")
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START( at586_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
-//  AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x00800000, 0x00800bff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION("user1", 0x20000)
 ADDRESS_MAP_END
@@ -155,22 +151,32 @@ static WRITE16_DEVICE_HANDLER( at16_388_w )
 	}
 }
 
-static READ32_HANDLER( at_kbdc8042_32le_r )
+static READ8_HANDLER( at_keybc_r )
 {
-	return read32le_with_read8_handler(at_kbdc8042_r, space, offset, mem_mask);
+	switch (offset)
+	{
+	case 0: return downcast<at_keyboard_controller_device *>(space->machine().device("keybc"))->data_r(*space, 0);
+	case 1: return at_portb_r(space, 0);
+	}
+
+	return 0xff;
 }
 
-static WRITE32_HANDLER( at_kbdc8042_32le_w )
+static WRITE8_HANDLER( at_keybc_w )
 {
-	write32le_with_write8_handler(at_kbdc8042_w, space, offset, data, mem_mask);
+	switch (offset)
+	{
+	case 0: downcast<at_keyboard_controller_device *>(space->machine().device("keybc"))->data_w(*space, 0, data); break;
+	case 1: at_portb_w(space, 0, data); break;
+	}
 }
 
-
-static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START(at16_io, AS_IO, 16)
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffff)
-	AM_RANGE(0x0060, 0x006f) AM_READWRITE8(at_kbdc8042_r,            at_kbdc8042_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
+	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8_MODERN("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8_MODERN("rtc", mc146818_device, read, write , 0xffff)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,               at_page8_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffff)
@@ -194,11 +200,12 @@ static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
+static ADDRESS_MAP_START(at386_io, AS_IO, 32)
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
-	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_kbdc8042_32le_r,      at_kbdc8042_32le_w)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
+	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8_MODERN("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8_MODERN("rtc", mc146818_device, read, write , 0xffffffff)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
@@ -215,16 +222,72 @@ static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
 ADDRESS_MAP_END
 
 
+static READ32_HANDLER( ct486_chipset_r )
+{
+	at_state *state = space->machine().driver_data<at_state>();
 
-static ADDRESS_MAP_START(at586_io, ADDRESS_SPACE_IO, 32)
+	if (ACCESSING_BITS_0_7)
+		return pic8259_r(state->m_pic8259_master, 0);
+
+	if (ACCESSING_BITS_8_15)
+		return pic8259_r(state->m_pic8259_master, 1) << 8;
+
+	if (ACCESSING_BITS_24_31)
+		return downcast<cs4031_device *>(space->machine().device("cs4031"))->data_r(*space, 0, 0) << 24;
+
+	return 0xffffffff;
+}
+
+static WRITE32_HANDLER( ct486_chipset_w )
+{
+	at_state *state = space->machine().driver_data<at_state>();
+
+	if (ACCESSING_BITS_0_7)
+		pic8259_w(state->m_pic8259_master, 0, data);
+
+	if (ACCESSING_BITS_8_15)
+		pic8259_w(state->m_pic8259_master, 1, data >> 8);
+
+	if (ACCESSING_BITS_16_23)
+		downcast<cs4031_device *>(space->machine().device("cs4031"))->address_w(*space, 0, data >> 16, 0);
+
+	if (ACCESSING_BITS_24_31)
+		downcast<cs4031_device *>(space->machine().device("cs4031"))->data_w(*space, 0, data >> 24, 0);
+}
+
+static ADDRESS_MAP_START( ct486_io, AS_IO, 32 )
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffffffff)
-	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x0020, 0x0023) AM_READWRITE(ct486_chipset_r, ct486_chipset_w)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
-	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_kbdc8042_32le_r,      at_kbdc8042_32le_w)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
+	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8_MODERN("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8_MODERN("rtc", mc146818_device, read, write , 0xffffffff)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8("dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffffffff)
+	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc32le_HDC1_r,			pc32le_HDC1_w)
+	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc32le_HDC2_r,			pc32le_HDC2_w)
+	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffffffff)
+	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8("lpt_0", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ns16450_0", ins8250_r, ins8250_w, 0xffffffff)
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START(at586_io, AS_IO, 32)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffffffff)
+	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
+	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8_MODERN("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
+	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8_MODERN("rtc", mc146818_device, read, write , 0xffffffff)
+	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
+	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8("dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffffffff)
+	AM_RANGE(0x00e0, 0x00ef) AM_NOP // used for timing?
 	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x000000ff)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffffffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffffffff)
@@ -239,7 +302,7 @@ ADDRESS_MAP_END
 
 
 #ifdef UNUSED_FUNCTION
-static ADDRESS_MAP_START(ps2m30286_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(ps2m30286_io, AS_IO, 8)
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(dma8237_0_r,				dma8237_0_w)
 	AM_RANGE(0x0020, 0x003f) AM_READWRITE(pic8259_0_r,				pic8259_0_w)
 	AM_RANGE(0x0040, 0x005f) AM_READWRITE(pit8253_0_r,				pit8253_0_w)
@@ -269,7 +332,7 @@ static ADDRESS_MAP_START(ps2m30286_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 #endif
 
-static ADDRESS_MAP_START(megapc_io, ADDRESS_SPACE_IO, 32)
+static ADDRESS_MAP_START(megapc_io, AS_IO, 32)
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
@@ -477,13 +540,23 @@ static const floppy_config ibmat_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(pc),
-	NULL
+	"floppy_5_25"
+};
+
+static const at_keyboard_controller_interface keyboard_controller_intf =
+{
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_RESET),
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_A20),
+	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir1_w),
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE("keyboard", kb_keytronic_clock_w),
+	DEVCB_DEVICE_LINE("keyboard", kb_keytronic_data_w)
 };
 
 static const kb_keytronic_interface at_keytronic_intf =
 {
-	DEVCB_MEMORY_HANDLER("kbdc8042", IO, at_kbdc8042_set_clock_signal),
-	DEVCB_MEMORY_HANDLER("kbdc8042", IO, at_kbdc8042_set_data_signal),
+	DEVCB_DEVICE_LINE_MEMBER("keybc", at_keyboard_controller_device, keyboard_clock_w),
+	DEVCB_DEVICE_LINE_MEMBER("keybc", at_keyboard_controller_device, keyboard_data_w)
 };
 
 
@@ -494,7 +567,7 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 	MCFG_CPU_IO_MAP(at16_io)
 	MCFG_CPU_CONFIG(i286_address_mask)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
@@ -530,8 +603,8 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 	MCFG_SOUND_ADD("saa1099.2", SAA1099, 8000000)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
-	MCFG_FRAGMENT_ADD( at_kbdc8042 )
 
+	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
@@ -548,8 +621,11 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 
 	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("disk_list","ibm5170")
+
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
@@ -571,7 +647,7 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 	MCFG_CPU_IO_MAP(at16_io)
 	MCFG_CPU_CONFIG(i286_address_mask)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_PIT8254_ADD( "pit8254", at_pit8254_config )
 
@@ -603,8 +679,7 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
 
-	MCFG_FRAGMENT_ADD( at_kbdc8042 )
-
+	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
@@ -622,7 +697,7 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
@@ -654,10 +729,6 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 
 	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
@@ -674,8 +745,7 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
 
-	MCFG_FRAGMENT_ADD( at_kbdc8042 )
-
+	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
@@ -693,7 +763,7 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
@@ -722,10 +792,6 @@ static MACHINE_CONFIG_START( atvga, at_state )
 
 	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-
 	MCFG_MACHINE_START( at )
 	MCFG_MACHINE_RESET( at )
 
@@ -747,8 +813,7 @@ static MACHINE_CONFIG_START( atvga, at_state )
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MCFG_FRAGMENT_ADD( at_kbdc8042 )
-
+	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
@@ -766,7 +831,7 @@ static MACHINE_CONFIG_START( atvga, at_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
@@ -799,10 +864,6 @@ static MACHINE_CONFIG_START( at386, at_state )
 
 	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
@@ -821,12 +882,11 @@ static MACHINE_CONFIG_START( at386, at_state )
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_FRAGMENT_ADD( at_kbdc8042 )
-
+	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
-//  MCFG_NVRAM_ADD_0FILL("nvram")
+    MCFG_NVRAM_ADD_0FILL("nvram")
 
 	/* printers */
 	MCFG_PC_LPT_ADD("lpt_0", at_lpt_config)
@@ -841,7 +901,7 @@ static MACHINE_CONFIG_START( at386, at_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1664K")
 MACHINE_CONFIG_END
 
@@ -852,6 +912,21 @@ static MACHINE_CONFIG_DERIVED( at486, at386 )
 	MCFG_CPU_PROGRAM_MAP(at386_map)
 	MCFG_CPU_IO_MAP(at386_io)
 MACHINE_CONFIG_END
+
+
+static MACHINE_CONFIG_DERIVED( ct486, at386 )
+	MCFG_CPU_REPLACE("maincpu", I486, 25000000)
+	MCFG_CPU_PROGRAM_MAP(ct486_map)
+	MCFG_CPU_IO_MAP(ct486_io)
+
+	MCFG_CS4031_ADD("cs4031", "maincpu", "isa", "bios")
+
+	MCFG_DEVICE_REMOVE(RAM_TAG)
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("4M")
+	MCFG_RAM_EXTRA_OPTIONS("1M,2M,8M,16M,32M,64M")
+MACHINE_CONFIG_END
+
 
 static MACHINE_CONFIG_DERIVED( at586, at386 )
 
@@ -866,7 +941,7 @@ static MACHINE_CONFIG_DERIVED( at586, at386 )
 	MCFG_PCI_BUS_DEVICE(0, "i82439tx", i82439tx_pci_read, i82439tx_pci_write)
 	MCFG_PCI_BUS_DEVICE(1, "i82371ab", i82371ab_pci_read, i82371ab_pci_write)
 MACHINE_CONFIG_END
-		
+
 static MACHINE_CONFIG_DERIVED( c386sx16, at386 )
 
 	MCFG_CPU_REPLACE("maincpu", I386, 16000000)		/* 386SX */
@@ -879,6 +954,9 @@ static MACHINE_CONFIG_DERIVED( megapc, at386 )
 	MCFG_CPU_REPLACE("maincpu", I386, XTAL_50MHz / 2)
 	MCFG_CPU_PROGRAM_MAP(at386_map)
 	MCFG_CPU_IO_MAP(megapc_io)
+
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("disk_list","megapc")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( megapcpl, megapc )
@@ -943,10 +1021,6 @@ ROM_START( ibm5170 )
 	ROM_REGION(0x4000, "user1", 0)
 	ROM_LOAD("6277356.u44", 0x0000, 0x4000, CRC(dc146448) SHA1(dc0794499b3e499c5777b3aa39554bbf0f2cc19b))
 
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
 	/* Mainboard PALS */
 	ROM_REGION( 0x2000, "pals", 0 )
 	ROM_LOAD("1501824.pal14l4.u87", 0x0000, 0x0800, NO_DUMP) /* MMI 1501824 717750 // (C)1983 IBM(M) */
@@ -971,10 +1045,6 @@ ROM_START( ec1849 )
 	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
 	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 ROM_START( ibm5170a )
@@ -996,10 +1066,6 @@ ROM_START( ibm5170a )
 	/* This region holds the original EGA Video bios */
 	ROM_REGION(0x4000, "user1", 0)
 	ROM_LOAD("6277356.u44", 0x0000, 0x4000, CRC(dc146448) SHA1(dc0794499b3e499c5777b3aa39554bbf0f2cc19b))
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 
 	/* Mainboard PALS */
 	ROM_REGION( 0x2000, "pals", 0 )
@@ -1026,10 +1092,6 @@ ROM_START( ibm5162 ) //MB p/n 62x1168
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
 	/* Mainboard PALS */
 	ROM_REGION( 0x2000, "pals", 0 )
 	ROM_LOAD("59x7599.pal20l8.u27", 0x0000, 0x0800, NO_DUMP) /* MMI PAL20L8ACN5 8631 // N59X7599 IBM (C)85 K3 */
@@ -1040,7 +1102,7 @@ ROM_START( ibm5162 ) //MB p/n 62x1168
 	/* Mainboard PROMS */
 	ROM_REGION( 0x2000, "proms", 0 )
 	ROM_LOAD("1501814.82s123.u72", 0x0000, 0x0800, NO_DUMP) /* N82S123AN 8623 // SK-U 1501814 */
-	ROM_LOAD("68x7594.82s147.u90", 0x0800, 0x1000, NO_DUMP) /* S N82S147AN 8629 // VCT 68X7594 (warning, this is an educated guess because it is REALLY hard to read on http://www.yesterpc.com/Hardware/ISA%20motherboard/IBM%20XT286/slideshow/IMG_3608.JPG due to that damn watermark and EXTREME crappy jpeg artifacting. The only letters I'm really sure of are ...7.94 */
+	ROM_LOAD("59x7594.82s147.u90", 0x0800, 0x1000, NO_DUMP) /* S N82S147AN 8629 // VCT 59X7594 */
 ROM_END
 
 
@@ -1052,10 +1114,6 @@ ROM_START( i8530286 )
 	ROM_RELOAD(0xfe0000,0x10000)
     ROM_LOAD16_BYTE("ps2m30.1", 0xe0001, 0x10000, CRC(1448d3cb) SHA1(13fa26d895ce084278cd5ab1208fc16c80115ebe))
 	ROM_RELOAD(0xfe0001,0x10000)
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 
@@ -1067,10 +1125,6 @@ ROM_START( i8555081 )
 	ROM_RELOAD(0xfe0000, 0x10000)
     ROM_LOAD16_BYTE("33fb8146.zm41", 0xe0001, 0x10000, CRC(c6020680) SHA1(b25a64e4b2dca07c567648401100e04e89bbcddb))
 	ROM_RELOAD(0xfe0001, 0x10000)
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 
@@ -1117,12 +1171,19 @@ ROM_START( at )
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 
 	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
+ROM_START( cmdpc30 )
+    ROM_REGION(0x1000000,"maincpu", 0)
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROMX_LOAD( "commodore pc 30 iii even.bin", 0xf8000, 0x4000, CRC(36307aa9) SHA1(50237ffea703b867de426ab9ebc2af46bac1d0e1),ROM_SKIP(1))
+	ROMX_LOAD( "commodore pc 30 iii odd.bin",  0xf8001, 0x4000, CRC(41bae42d) SHA1(27d6ad9554be86359d44331f25591e3122a31519),ROM_SKIP(1))
+	/* Character rom */
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
+
+	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
+ROM_END
 
 ROM_START( atvga )
     ROM_REGION(0x1000000,"maincpu", 0)
@@ -1159,9 +1220,6 @@ ROM_START( atvga )
 	ROM_SYSTEM_BIOS(11, "amip1", "AMI P.1")
 	ROMX_LOAD( "poisk-h.bin",   0xf0001, 0x8000, CRC(83fd3f8c) SHA1(ca94850bbd949b97b11710629886b0ee69489a81),ROM_SKIP(1) | ROM_BIOS(12) )
 	ROMX_LOAD( "poisk-l.bin",   0xf0000, 0x8000, CRC(0b2ed291) SHA1(bb51a3f317cf4d429a6cfb44a46ca0ac39d9aaa7),ROM_SKIP(1) | ROM_BIOS(12) )
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 
@@ -1179,10 +1237,6 @@ ROM_START( neat )
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 
 	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 
@@ -1198,10 +1252,6 @@ ROM_START( at386 )
 	//ROM_RELOAD(0xff0000,0x8000)
 	ROMX_LOAD("012h-u24.bin", 0xf0001, 0x8000, CRC(17472521) SHA1(7588C148FE53D9DC4CB2D0AB6E0FD51A39BB5D1A),ROM_SKIP(1) | ROM_BIOS(2) )
 	//ROM_RELOAD(0xff0000,0x8000)
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 
@@ -1252,36 +1302,55 @@ ROM_START( at486 )
 	ROM_SYSTEM_BIOS(11, "ficgpak2", "FIC 486-PAK-2 5.15S") /* 1995-06-27, includes Phoenix S3 TRIO64 Enhanced VGA BIOS 1.4-01 */
 	ROMX_LOAD("515sbd8a.awd", 0x0e0000, 0x20000, CRC(778247e1) SHA1(07d8f0f2464abf507be1e8dfa06cd88737782411), ROM_BIOS(12))
 
-	ROM_SYSTEM_BIOS(12, "ficpio2c7", "FIC 486-PIO-2 1.15C701") /* pnp, i/o core: NS 332 */
-	ROMX_LOAD("115c701.awd",  0x0e0000, 0x20000, CRC(b0dd7975) SHA1(bfde13b0fbd141bc945d37d92faca9f4f59b716d), ROM_BIOS(13))
-	ROM_SYSTEM_BIOS(13, "ficpio2b7", "FIC 486-PIO-2 1.15B701") /* pnp, i/o core: NS 311/312 */
-	ROMX_LOAD("115b701.awd",  0x0e0000, 0x20000, CRC(ac24abad) SHA1(01174d84ed32fb1d95cd632d09f773acb8666c83), ROM_BIOS(14))
-	ROM_SYSTEM_BIOS(14, "ficpio2c1", "FIC 486-PIO-2 1.15C101") /* non-pnp, i/o core: NS 332  */
-	ROMX_LOAD("115c101.awd",  0x0e0000, 0x20000, CRC(5fadde88) SHA1(eff79692c1ecf34b6ea3f02409d14ce1f5c51bf9), ROM_BIOS(15))
-	ROM_SYSTEM_BIOS(15, "ficpio2b1", "FIC 486-PIO-2 1.15B101") /* non-pnp, i/o core: NS 311/312  */
-	ROMX_LOAD("115b101.awd",  0x0e0000, 0x20000, CRC(ff69617d) SHA1(ecbfc7315dcf6bd3e5b59e3ae9258759f64fe7a0), ROM_BIOS(16))
+	ROM_SYSTEM_BIOS(12, "ficpio3g7", "FIC 486-PIO-3 1.15G705") /* pnp */
+	ROMX_LOAD("115g705.awd",  0x0e0000, 0x20000, CRC(ddb1544a) SHA1(d165c9ecdc9397789abddfe0fef69fdf954fa41b), ROM_BIOS(13))
+	ROM_SYSTEM_BIOS(13, "ficpio3g1", "FIC 486-PIO-3 1.15G105") /* non-pnp */
+	ROMX_LOAD("115g105.awd",  0x0e0000, 0x20000, CRC(b327eb83) SHA1(9e1ff53e07ca035d8d43951bac345fec7131678d), ROM_BIOS(14))
 
-	ROM_SYSTEM_BIOS(16, "ficpio3g7", "FIC 486-PIO-3 1.15G705") /* pnp */
-	ROMX_LOAD("115g705.awd",  0x0e0000, 0x20000, CRC(ddb1544a) SHA1(d165c9ecdc9397789abddfe0fef69fdf954fa41b), ROM_BIOS(17))
-	ROM_SYSTEM_BIOS(17, "ficpio3g1", "FIC 486-PIO-3 1.15G105") /* non-pnp */
-	ROMX_LOAD("115g105.awd",  0x0e0000, 0x20000, CRC(b327eb83) SHA1(9e1ff53e07ca035d8d43951bac345fec7131678d), ROM_BIOS(18))
+	ROM_SYSTEM_BIOS(14, "ficpos", "FIC 486-POS")
+	ROMX_LOAD("116di6b7.bin", 0x0e0000, 0x20000, CRC(d1d84616) SHA1(2f2b27ce100cf784260d8e155b48db8cfbc63285), ROM_BIOS(15))
+	ROM_SYSTEM_BIOS(15, "ficpvt", "FIC 486-PVT 5.15")          /* 1995-06-27 */
+	ROMX_LOAD("5150eef3.awd", 0x0e0000, 0x20000, CRC(eb35785d) SHA1(1e601bc8da73f22f11effe9cdf5a84d52576142b), ROM_BIOS(16))
+	ROM_SYSTEM_BIOS(16, "ficpvtio", "FIC 486-PVT-IO 5.162W2")  /* 1995-10-05 */
+	ROMX_LOAD("5162cf37.awd", 0x0e0000, 0x20000, CRC(378d813d) SHA1(aa674eff5b972b31924941534c3c988f6f78dc93), ROM_BIOS(17))
+	ROM_SYSTEM_BIOS(17, "ficvipio426", "FIC 486-VIP-IO 4.26GN2") /* 1994-12-07 */
+	ROMX_LOAD("426gn2.awd",   0x0e0000, 0x20000, CRC(5f472aa9) SHA1(9160abefae32b450e973651c052657b4becc72ba), ROM_BIOS(18))
+	ROM_SYSTEM_BIOS(18, "ficvipio427", "FIC 486-VIP-IO 4.27GN2A") /* 1996-02-14 */
+	ROMX_LOAD("427gn2a.awd",  0x0e0000, 0x20000, CRC(035ad56d) SHA1(0086db3eff711fc710b30e7f422fc5b4ab8d47aa), ROM_BIOS(19))
+	ROM_SYSTEM_BIOS(19, "ficvipio2", "FIC 486-VIP-IO2")
+	ROMX_LOAD("1164g701.awd", 0x0e0000, 0x20000, CRC(7b762683) SHA1(84debce7239c8b1978246688ae538f7c4f519d13), ROM_BIOS(20))
 
-	ROM_SYSTEM_BIOS(18, "ficpos", "FIC 486-POS")
-	ROMX_LOAD("116di6b7.bin", 0x0e0000, 0x20000, CRC(d1d84616) SHA1(2f2b27ce100cf784260d8e155b48db8cfbc63285), ROM_BIOS(19))
-	ROM_SYSTEM_BIOS(19, "ficpvt", "FIC 486-PVT 5.15")          /* 1995-06-27 */
-	ROMX_LOAD("5150eef3.awd", 0x0e0000, 0x20000, CRC(eb35785d) SHA1(1e601bc8da73f22f11effe9cdf5a84d52576142b), ROM_BIOS(20))
-	ROM_SYSTEM_BIOS(20, "ficpvtio", "FIC 486-PVT-IO 5.162W2")  /* 1995-10-05 */
-	ROMX_LOAD("5162cf37.awd", 0x0e0000, 0x20000, CRC(378d813d) SHA1(aa674eff5b972b31924941534c3c988f6f78dc93), ROM_BIOS(21))
-	ROM_SYSTEM_BIOS(21, "ficvipio426", "FIC 486-VIP-IO 4.26GN2") /* 1994-12-07 */
-	ROMX_LOAD("426gn2.awd",   0x0e0000, 0x20000, CRC(5f472aa9) SHA1(9160abefae32b450e973651c052657b4becc72ba), ROM_BIOS(22))
-	ROM_SYSTEM_BIOS(22, "ficvipio427", "FIC 486-VIP-IO 4.27GN2A") /* 1996-02-14 */
-	ROMX_LOAD("427gn2a.awd",  0x0e0000, 0x20000, CRC(035ad56d) SHA1(0086db3eff711fc710b30e7f422fc5b4ab8d47aa), ROM_BIOS(23))
-	ROM_SYSTEM_BIOS(23, "ficvipio2", "FIC 486-VIP-IO2")
-	ROMX_LOAD("1164g701.awd", 0x0e0000, 0x20000, CRC(7b762683) SHA1(84debce7239c8b1978246688ae538f7c4f519d13), ROM_BIOS(24))
+	ROM_SYSTEM_BIOS(20, "qdi", "QDI PX486DX33/50P3")
+	ROMX_LOAD("qdi_px486.u23", 0x0f0000, 0x10000, CRC(c80ecfb6) SHA1(34cc9ef68ff719cd0771297bf184efa83a805f3e), ROM_BIOS(21))
+ROM_END
 
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
+
+// Unknown 486 board with Chips & Technologies CS4031 chipset
+ROM_START( ct486 )
+	ROM_REGION(0x100000, "isa", 0)
+	ROM_LOAD("et4000.bin",  0xc0000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+
+	ROM_REGION(0x100000, "bios", 0)
+	ROM_LOAD("chips_1.ami", 0xf0000, 0x10000, CRC(a14a7511) SHA1(b88d09be66905ed2deddc26a6f8522e7d2d6f9a8))
+ROM_END
+
+
+// FIC 486-PIO-2 (4 ISA, 4 PCI)
+// VIA VT82C505 + VT82C496G + VT82C406MV, NS311/312 or NS332 I/O
+ROM_START( ficpio2 )
+	ROM_REGION(0x1000000, "maincpu", 0)
+	ROM_LOAD("et4000.bin", 0xc0000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
+	ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+
+	ROM_SYSTEM_BIOS(0, "ficpio2c7", "FIC 486-PIO-2 1.15C701") /* pnp, i/o core: NS 332 */
+	ROMX_LOAD("115c701.awd",  0x0e0000, 0x20000, CRC(b0dd7975) SHA1(bfde13b0fbd141bc945d37d92faca9f4f59b716d), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "ficpio2b7", "FIC 486-PIO-2 1.15B701") /* pnp, i/o core: NS 311/312 */
+	ROMX_LOAD("115b701.awd",  0x0e0000, 0x20000, CRC(ac24abad) SHA1(01174d84ed32fb1d95cd632d09f773acb8666c83), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "ficpio2c1", "FIC 486-PIO-2 1.15C101") /* non-pnp, i/o core: NS 332  */
+	ROMX_LOAD("115c101.awd",  0x0e0000, 0x20000, CRC(5fadde88) SHA1(eff79692c1ecf34b6ea3f02409d14ce1f5c51bf9), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "ficpio2b1", "FIC 486-PIO-2 1.15B101") /* non-pnp, i/o core: NS 311/312  */
+	ROMX_LOAD("115b101.awd",  0x0e0000, 0x20000, CRC(ff69617d) SHA1(ecbfc7315dcf6bd3e5b59e3ae9258759f64fe7a0), ROM_BIOS(4))
 ROM_END
 
 
@@ -1291,11 +1360,15 @@ ROM_START( at586 )
     ROM_LOAD("wdbios.rom",  0x08000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 	ROM_SYSTEM_BIOS(0, "sptx", "SP-586TX")
     ROMX_LOAD("sp586tx.bin",   0x20000, 0x20000, CRC(1003d72c) SHA1(ec9224ff9b0fdfd6e462cb7bbf419875414739d6), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "unisys", "Unisys 586") // probably bad dump due to need of hac in i82439tx to work
+	ROM_SYSTEM_BIOS(1, "unisys", "Unisys 586") // probably bad dump due to need of hack in i82439tx to work
     ROMX_LOAD("at586.bin",     0x20000, 0x20000, CRC(717037f5) SHA1(1d49d1b7a4a40d07d1a897b7f8c827754d76f824), ROM_BIOS(2))
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
+
+	ROM_SYSTEM_BIOS(2, "ga586t2", "Gigabyte GA-586T2") // ITE 8679 I/O
+    ROMX_LOAD("gb_ga586t2.bin",  0x20000, 0x20000, CRC(3a50a6e1) SHA1(dea859b4f1492d0d08aacd260ed1e83e00ebac08), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "5tx52", "Acorp 5TX52") // W83877TF I/O
+    ROMX_LOAD("acorp_5tx52.bin", 0x20000, 0x20000, CRC(04d69419) SHA1(983377674fef05e710c8665c14cc348c99166fb6), ROM_BIOS(4))
+	ROM_SYSTEM_BIOS(4, "txp4", "ASUS TXP4") // W83977TF-A I/O
+    ROMX_LOAD("asus_txp4.bin",   0x20000, 0x20000, CRC(a1321bb1) SHA1(92e5f14d8505119f85b148a63510617ac12bcdf3), ROM_BIOS(5))
 ROM_END
 
 
@@ -1310,10 +1383,6 @@ ROM_START( c386sx16 )
 	/* Copyright (C) 1985-1990 Phoenix Technologies Ltd. */
 	ROM_LOAD16_BYTE( "390914-01.u39", 0xf0000, 0x8000, CRC(8f849198) SHA1(550b04bac0d0807d6e95ec25391a81272779b41b)) /* 390914-01 V1.03 CS-2100 U39 Copyright (C) 1990 CBM */
 	ROM_LOAD16_BYTE( "390915-01.u38", 0xf0001, 0x8000, CRC(ee4bad92) SHA1(6e02ef97a7ce336485814c06a1693bc099ce5cfb)) /* 390915-01 V1.03 CS-2100 U38 Copyright (C) 1990 CBM */
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 /* FIC VT-503 (Intel TX chipset, ITE 8679 Super I/O) */
@@ -1332,10 +1401,6 @@ ROM_START( ficvt503 )
 	ROMX_LOAD("109gi16.bin", 0x20000, 0x20000, CRC(a928f271) SHA1(127a83a60752cc33b3ca49774488e511ec7bac55), ROM_BIOS(4))
 	ROM_SYSTEM_BIOS(4, "115gk140", "1.15GK140") /* 1999-03-03 */
 	ROMX_LOAD("115gk140.awd", 0x20000, 0x20000, CRC(65e88956) SHA1(f94bb0732e00b5b0f18f4e349db24a289f8379c5), ROM_BIOS(5))
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 ROM_START( megapc )
@@ -1345,10 +1410,6 @@ ROM_START( megapc )
 
 	ROM_LOAD16_BYTE( "41651-bios lo.u18",  0xe0000, 0x10000, CRC(1e9bd3b7) SHA1(14fd39ec12df7fae99ccdb0484ee097d93bf8d95))
 	ROM_LOAD16_BYTE( "211253-bios hi.u19", 0xe0001, 0x10000, CRC(6acb573f) SHA1(376d483db2bd1c775d46424e1176b24779591525))
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
 
 ROM_START( megapcpl )
@@ -1358,11 +1419,14 @@ ROM_START( megapcpl )
 
 	ROM_LOAD16_BYTE( "41652.u18",  0xe0000, 0x10000, CRC(6f5b9a1c) SHA1(cae981a35a01234fcec99a96cb38075d7bf23474))
 	ROM_LOAD16_BYTE( "486slc.u19", 0xe0001, 0x10000, CRC(6fb7e3e9) SHA1(c439cb5a0d83176ceb2a3555e295dc1f84d85103))
-
-	/* 8042 keyboard controller */
-	ROM_REGION( 0x0800, "kbdc8042", 0 )
-	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 ROM_END
+
+ROM_START( t2000sx )
+    ROM_REGION( 0x1000000, "maincpu", 0 )
+	ROM_LOAD( "014d.ic9", 0xe0000, 0x20000, CRC(e9010b02) SHA1(75688fc8e222640fa22bcc90343c6966fe0da87f))
+ROM_END
+
+
 /***************************************************************************
 
   Game driver(s)
@@ -1377,12 +1441,16 @@ COMP ( 1985, ibm5162,  ibm5170, 0,       ibm5162,   atcga,  atcga,      "Interna
 COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,	ps2m30286,  "International Business Machines",  "IBM PS/2 Model 30-286", GAME_NOT_WORKING )
 COMP ( 1989, i8555081, ibm5170, 0,       at386,		atvga,	at386,		"International Business Machines",  "IBM PS/2 Model 55SX", GAME_NOT_WORKING )
 COMP ( 1987, at,       ibm5170, 0,       ibm5162,   atcga,	atcga,      "<generic>",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988, cmdpc30,  ibm5170, 0,       ibm5162,   atcga,	atcga,      "Commodore Business Machines",  "PC 30 III", GAME_NOT_WORKING )
 COMP ( 1989, neat,     ibm5170, 0,       ibm5162,   atcga,	atcga,      "<generic>",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga,	at_vga,     "<generic>",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )
 COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga,	at386,      "<generic>",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga,	at386,      "<generic>",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1993, ct486,    ibm5170, 0,       ct486,     atvga,	at386,      "<unknown>",  "PC/AT 486 with C&T chipset", GAME_NOT_WORKING )
+COMP ( 1995, ficpio2,  ibm5170, 0,       at486,     atvga,  at386,      "FIC", "486-PIO-2", GAME_NOT_WORKING )
 COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga,	at386,      "<generic>",  "PC/AT 586 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1990, c386sx16, ibm5170, 0,       c386sx16,  atvga,  at386,      "Commodore Business Machines", "Commodore 386SX-16", GAME_NOT_WORKING )
 COMP ( 1997, ficvt503, ibm5170, 0,       at586,     atvga,  at386,      "FIC", "VT-503", GAME_NOT_WORKING )
 COMP ( 1993, megapc,   ibm5170, 0,       megapc,    atvga,  at386,      "Amstrad plc", "MegaPC", GAME_NOT_WORKING )
 COMP ( 199?, megapcpl, ibm5170, 0,       megapcpl,  atvga,  at386,      "Amstrad plc", "MegaPC Plus", GAME_NOT_WORKING )
+COMP ( 1991, t2000sx,  ibm5170, 0,       c386sx16,  atvga,	at386,      "Toshiba",  "T2000SX", GAME_NOT_WORKING )

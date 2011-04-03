@@ -14,16 +14,17 @@
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
 #include "machine/mc146818.h"
-#include "includes/bbc.h"
 #include "machine/upd7002.h"
 #include "machine/ctronics.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 #include "formats/uef_cas.h"
 #include "formats/csw_cas.h"
 #include "sound/sn76496.h"
+#include "video/saa505x.h"
+#include "includes/bbc.h"
 
 
 /******************************************************************************
@@ -95,7 +96,7 @@ static READ8_HANDLER( bbc_fe_r )
 	return 0xfe;
 }
 
-static ADDRESS_MAP_START( bbca_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( bbca_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH											/*  Hardware marked with a 1 is not present in a Model A        */
 
 	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorya1_w     	)	/*    0000-3fff                 Regular Ram                     */
@@ -128,7 +129,7 @@ static ADDRESS_MAP_START( bbca_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( bbcb_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( bbcb_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 
 	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorya1_w     	)	/*    0000-3fff                 Regular Ram                     */
@@ -162,7 +163,7 @@ static ADDRESS_MAP_START( bbcb_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( bbcbp_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( bbcbp_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 
 	AM_RANGE(0x0000, 0x2fff) AM_READ_BANK("bank1") AM_WRITE(  bbc_memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
@@ -198,7 +199,7 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START( bbcbp128_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( bbcbp128_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 
 	AM_RANGE(0x0000, 0x2fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
@@ -259,7 +260,7 @@ ADDRESS_MAP_END
 ******************************************************************************/
 
 
-static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(bbcm_mem, AS_PROGRAM, 8)
 
 	AM_RANGE(0x0000, 0x2fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorybm1_w		)	/*    0000-2fff                 Regular Ram                     */
 
@@ -710,10 +711,10 @@ ROM_END
 
 static INTERRUPT_GEN( bbcb_vsync )
 {
-	via6522_device *via_0 = device->machine->device<via6522_device>("via6522_0");
+	via6522_device *via_0 = device->machine().device<via6522_device>("via6522_0");
 	via_0->write_ca1(1);
 	via_0->write_ca1(0);
-	bbc_frameclock(device->machine);
+	bbc_frameclock(device->machine());
 }
 
 
@@ -736,7 +737,7 @@ static const cassette_config bbc_cassette_config =
 
 static WRITE_LINE_DEVICE_HANDLER(bbcb_ack_w)
 {
-	via6522_device *via_1 = device->machine->device<via6522_device>("via6522_1");
+	via6522_device *via_1 = device->machine().device<via6522_device>("via6522_1");
 	via_1->write_ca1(!state); /* ack seems to be inverted? */
 }
 
@@ -781,6 +782,11 @@ static const floppy_config bbc_floppy_config =
 	NULL
 };
 
+static const saa505x_interface bbc_saa505x_intf =
+{
+	bbc_draw_RGB_in,
+};
+
 static MACHINE_CONFIG_FRAGMENT( bbc_cartslot )
 	MCFG_CARTSLOT_ADD("cart1")
 	MCFG_CARTSLOT_EXTENSION_LIST("rom")
@@ -809,23 +815,25 @@ static MACHINE_CONFIG_START( bbca, bbc_state )
 	MCFG_CPU_PROGRAM_MAP( bbca_mem)
 	MCFG_CPU_VBLANK_INT("screen", bbcb_vsync)				/* screen refresh interrupts */
 	MCFG_CPU_PERIODIC_INT(bbcb_keyscan, 1000)		/* scan keyboard */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( bbca )
 	MCFG_MACHINE_RESET( bbca )
 
 	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(800,300)
 	MCFG_SCREEN_VISIBLE_AREA(0,800-1,0,300-1)
+	MCFG_SCREEN_UPDATE(bbc)
+
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(bbc)
+	MCFG_SAA505X_VIDEO_ADD("saa505x", bbc_saa505x_intf)
 
 	MCFG_VIDEO_START(bbca)
-	MCFG_VIDEO_UPDATE(bbc)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -900,7 +908,7 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_CPU_PROGRAM_MAP( bbcm_mem)
 	MCFG_CPU_VBLANK_INT("screen", bbcb_vsync)				/* screen refresh interrupts */
 	MCFG_CPU_PERIODIC_INT(bbcm_keyscan, 1000)		/* scan keyboard */
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( bbcm )
 	MCFG_MACHINE_RESET( bbcm )
@@ -914,9 +922,11 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_SCREEN_VISIBLE_AREA(0,800-1,0,300-1)
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(bbc)
+	MCFG_SCREEN_UPDATE(bbc)
+
+	MCFG_SAA505X_VIDEO_ADD("saa505x", bbc_saa505x_intf)
 
 	MCFG_VIDEO_START(bbcm)
-	MCFG_VIDEO_UPDATE(bbc)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

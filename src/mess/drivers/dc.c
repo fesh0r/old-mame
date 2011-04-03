@@ -25,13 +25,21 @@
 #include "cpu/arm7/arm7core.h"
 #include "sound/aica.h"
 #include "includes/dc.h"
-#include "devices/chd_cd.h"
+#include "imagedev/chd_cd.h"
 
 #define CPU_CLOCK (200000000)
 
+#ifdef MESS
+UINT16 actel_id;
+int jvsboard_type;
+#else
+extern UINT16 actel_id;
+extern int jvsboard_type;
+#endif
+
 // things from mess/machine/dc.c
-void dreamcast_atapi_init(running_machine *machine);
-void dreamcast_atapi_reset(running_machine *machine);
+void dreamcast_atapi_init(running_machine &machine);
+void dreamcast_atapi_reset(running_machine &machine);
 extern READ64_HANDLER( dc_mess_gdrom_r );
 extern WRITE64_HANDLER( dc_mess_gdrom_w );
 extern READ64_HANDLER( dc_mess_g1_ctrl_r );
@@ -39,23 +47,21 @@ extern WRITE64_HANDLER( dc_mess_g1_ctrl_w );
 
 static UINT32 *dc_sound_ram;
 static UINT64 *dc_ram;
-UINT16 actel_id;
-int jvsboard_type;
 
 static READ64_HANDLER( dcus_idle_skip_r )
 {
-	if (cpu_get_pc(space->cpu)==0xc0ba52a)
-		cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(2500));
-	//  cpu_spinuntil_int(space->cpu);
+	if (cpu_get_pc(&space->device())==0xc0ba52a)
+		device_spin_until_time(&space->device(), attotime::from_usec(2500));
+	//  device_spinuntil_int(&space->device());
 
 	return dc_ram[0x2303b0/8];
 }
 
 static READ64_HANDLER( dcjp_idle_skip_r )
 {
-	if (cpu_get_pc(space->cpu)==0xc0bac62)
-		cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(2500));
-	//  cpu_spinuntil_int(space->cpu);
+	if (cpu_get_pc(&space->device())==0xc0bac62)
+		device_spin_until_time(&space->device(), attotime::from_usec(2500));
+	//  device_spinuntil_int(&space->device());
 
 	return dc_ram[0x2302f8/8];
 }
@@ -67,14 +73,14 @@ static DRIVER_INIT(dc)
 
 static DRIVER_INIT(dcus)
 {
-	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc2303b0, 0xc2303b7, 0, 0, dcus_idle_skip_r);
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0xc2303b0, 0xc2303b7, FUNC(dcus_idle_skip_r));
 
 	DRIVER_INIT_CALL(dc);
 }
 
 static DRIVER_INIT(dcjp)
 {
-	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc2302f8, 0xc2302ff, 0, 0, dcjp_idle_skip_r);
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0xc2302f8, 0xc2302ff, FUNC(dcjp_idle_skip_r));
 
 	DRIVER_INIT_CALL(dc);
 }
@@ -150,7 +156,7 @@ static WRITE64_HANDLER( dc_arm_w )
 	}
  }
 
-static ADDRESS_MAP_START( dc_map, ADDRESS_SPACE_PROGRAM, 64 )
+static ADDRESS_MAP_START( dc_map, AS_PROGRAM, 64 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_ROM	AM_WRITENOP				// BIOS
 	AM_RANGE(0x00200000, 0x0021ffff) AM_ROM AM_REGION("maincpu", 0x200000)	// flash
 	AM_RANGE(0x005f6800, 0x005f69ff) AM_READWRITE( dc_sysctrl_r, dc_sysctrl_w )
@@ -189,18 +195,18 @@ static ADDRESS_MAP_START( dc_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("maincpu", 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( dc_port, ADDRESS_SPACE_IO, 64 )
+static ADDRESS_MAP_START( dc_port, AS_IO, 64 )
 	AM_RANGE(0x00000000, 0x00000007) AM_READWRITE( dc_pdtra_r, dc_pdtra_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( dc_audio_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( dc_audio_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_RAM AM_BASE(&dc_sound_ram)		/* shared with SH-4 */
 	AM_RANGE(0x00800000, 0x00807fff) AM_DEVREADWRITE("aica", dc_arm_aica_r, dc_arm_aica_w)
 ADDRESS_MAP_END
 
 static MACHINE_RESET( dc_console )
 {
-	device_t *aica = machine->device("aica");
+	device_t *aica = machine.device("aica");
 	MACHINE_RESET_CALL(dc);
 	aica_set_ram_base(aica, dc_sound_ram, 2*1024*1024);
 	dreamcast_atapi_reset(machine);
@@ -208,7 +214,7 @@ static MACHINE_RESET( dc_console )
 
 static void aica_irq(device_t *device, int irq)
 {
-	cputag_set_input_line(device->machine, "soundcpu", ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine(), "soundcpu", ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const aica_interface dc_aica_interface =
@@ -240,11 +246,11 @@ static MACHINE_CONFIG_START( dc, driver_device )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_UPDATE(dc)
 
 	MCFG_PALETTE_LENGTH(0x1000)
 
 	MCFG_VIDEO_START(dc)
-	MCFG_VIDEO_UPDATE(dc)
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MCFG_SOUND_ADD("aica", AICA, 0)

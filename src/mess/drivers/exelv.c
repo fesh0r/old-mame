@@ -55,8 +55,8 @@ TODO:
 #include "video/tms3556.h"
 #include "sound/tms5220.h"
 #include "audio/spchroms.h"
-/*#include "devices/cartslot.h"
-#include "devices/cassette.h"*/
+/*#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"*/
 
 
 class exelv_state : public driver_device
@@ -66,18 +66,18 @@ public:
 		: driver_device(machine, config) { }
 
 	/* tms7020 i/o ports */
-	UINT8	tms7020_porta;
-	UINT8	tms7020_portb;
+	UINT8	m_tms7020_porta;
+	UINT8	m_tms7020_portb;
 
 	/* tms7041 i/o ports */
-	UINT8	tms7041_porta;
-	UINT8	tms7041_portb;
-	UINT8	tms7041_portc;
-	UINT8	tms7041_portd;
+	UINT8	m_tms7041_porta;
+	UINT8	m_tms7041_portb;
+	UINT8	m_tms7041_portc;
+	UINT8	m_tms7041_portd;
 
 	/* mailbox data */
-	UINT8	wx318;	/* data of 74ls374 labeled wx318 */
-	UINT8	wx319;	/* data of 74sl374 labeled wx319 */
+	UINT8	m_wx318;	/* data of 74ls374 labeled wx318 */
+	UINT8	m_wx319;	/* data of 74sl374 labeled wx319 */
 };
 
 
@@ -97,12 +97,12 @@ static MACHINE_RESET( exelv )
 
 	tms3556_reset();
 	spchroms_config( machine, &exelv_speech_intf );
-	memory_set_bankptr( machine, "bank1", machine->region("user1")->base() + 0x0200 );
+	memory_set_bankptr( machine, "bank1", machine.region("user1")->base() + 0x0200 );
 }
 
 static INTERRUPT_GEN( exelv_hblank_interrupt )
 {
-	tms3556_interrupt(device->machine);
+	tms3556_interrupt(device->machine());
 }
 
 #ifdef UNUSED_FUNCTION
@@ -193,17 +193,17 @@ static DEVICE_IMAGE_UNLOAD( exelv_cart )
 
 static READ8_HANDLER(mailbox_wx319_r)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
-	return state->wx319;
+	exelv_state *state = space->machine().driver_data<exelv_state>();
+	return state->m_wx319;
 }
 
 
 static WRITE8_HANDLER(mailbox_wx318_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	logerror("wx318 write 0x%02x\n", data);
 
-	state->wx318 = data;
+	state->m_wx318 = data;
 }
 
 
@@ -220,19 +220,19 @@ static WRITE8_HANDLER(mailbox_wx318_w)
 */
 static READ8_HANDLER(tms7020_porta_r)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	logerror("tms7020_porta_r\n");
 
-	return ( state->tms7041_portb & 0x80 ) ? 0x01 : 0x00;
+	return ( state->m_tms7041_portb & 0x80 ) ? 0x01 : 0x00;
 }
 
 
 static WRITE8_HANDLER(tms7020_porta_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	logerror("tms7020_porta_w: data = 0x%02x\n", data);
 
-	state->tms7020_porta = data;
+	state->m_tms7020_porta = data;
 }
 
 
@@ -257,10 +257,10 @@ static READ8_HANDLER(tms7020_portb_r)
 
 static WRITE8_HANDLER(tms7020_portb_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	logerror("tms7020_portb_w: data = 0x%02x\n", data);
 
-	state->tms7020_portb = data;
+	state->m_tms7020_portb = data;
 }
 
 
@@ -277,15 +277,15 @@ static WRITE8_HANDLER(tms7020_portb_w)
 */
 static READ8_HANDLER(tms7041_porta_r)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
-	device_t *tms5220c = space->machine->device( "tms5220c" );
+	exelv_state *state = space->machine().driver_data<exelv_state>();
+	device_t *tms5220c = space->machine().device( "tms5220c" );
 	UINT8 data = 0x00;
 
 	logerror("tms7041_porta_r\n");
 
-	data |= ( state->tms7020_portb & 0x01 ) ? 0x04 : 0x00;
+	data |= ( state->m_tms7020_portb & 0x01 ) ? 0x04 : 0x00;
 	data |= tms5220_intq_r( tms5220c ) ? 0x08 : 0x00;
-	data |= ( state->tms7020_portb & 0x02 ) ? 0x10 : 0x00;
+	data |= ( state->m_tms7020_portb & 0x02 ) ? 0x10 : 0x00;
 	data |= tms5220_readyq_r( tms5220c ) ? 0x80 : 0x00;
 
 	return data;
@@ -294,10 +294,10 @@ static READ8_HANDLER(tms7041_porta_r)
 
 static WRITE8_HANDLER(tms7041_porta_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	logerror("tms7041_porta_w: data = 0x%02x\n", data);
 
-	state->tms7041_porta = data;
+	state->m_tms7041_porta = data;
 }
 
 
@@ -324,24 +324,24 @@ static READ8_HANDLER(tms7041_portb_r)
 
 static WRITE8_HANDLER(tms7041_portb_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
-	device_t *tms5220c = space->machine->device( "tms5220c" );
+	exelv_state *state = space->machine().driver_data<exelv_state>();
+	device_t *tms5220c = space->machine().device( "tms5220c" );
 
 	logerror("tms7041_portb_w: data = 0x%02x\n", data);
 
 	tms5220_wsq_w( tms5220c, ( data & 0x01 ) ? 1 : 0 );
 	tms5220_rsq_w( tms5220c, ( data & 0x02 ) ? 1 : 0 );
 
-	cputag_set_input_line(space->machine, "maincpu", TMS7000_IRQ1_LINE, ( data & 0x04 ) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine(), "maincpu", TMS7000_IRQ1_LINE, ( data & 0x04 ) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* Check for low->high transition on B6 */
-	if ( ! ( state->tms7041_portb & 0x40 ) && ( data & 0x40 ) )
+	if ( ! ( state->m_tms7041_portb & 0x40 ) && ( data & 0x40 ) )
 	{
-		logerror("wx319 write 0x%02x\n", state->tms7041_portc);
-		state->wx319 = state->tms7041_portc;
+		logerror("wx319 write 0x%02x\n", state->m_tms7041_portc);
+		state->m_wx319 = state->m_tms7041_portc;
 	}
 
-	state->tms7041_portb = data;
+	state->m_tms7041_portb = data;
 }
 
 
@@ -350,15 +350,15 @@ static WRITE8_HANDLER(tms7041_portb_w)
 */
 static READ8_HANDLER(tms7041_portc_r)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	UINT8 data = 0xFF;
 
 	logerror("tms7041_portc_r\n");
 
 	/* Check if wx318 output is enabled */
-	if ( ! ( state->tms7041_portb & 0x20 ) )
+	if ( ! ( state->m_tms7041_portb & 0x20 ) )
 	{
-		data = state->wx318;
+		data = state->m_wx318;
 	}
 
 	return data;
@@ -367,10 +367,10 @@ static READ8_HANDLER(tms7041_portc_r)
 
 static WRITE8_HANDLER(tms7041_portc_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
+	exelv_state *state = space->machine().driver_data<exelv_state>();
 	logerror("tms7041_portc_w: data = 0x%02x\n", data);
 
-	state->tms7041_portc = data;
+	state->m_tms7041_portc = data;
 }
 
 
@@ -397,14 +397,14 @@ static READ8_HANDLER(tms7041_portd_r)
 
 static WRITE8_HANDLER(tms7041_portd_w)
 {
-	exelv_state *state = space->machine->driver_data<exelv_state>();
-	device_t *tms5220c = space->machine->device( "tms5220c" );
+	exelv_state *state = space->machine().driver_data<exelv_state>();
+	device_t *tms5220c = space->machine().device( "tms5220c" );
 
 	logerror("tms7041_portd_w: data = 0x%02x\n", data);
 
 	tms5220_data_w( tms5220c, 0, BITSWAP8(data,0,1,2,3,4,5,6,7) );
 
-	state->tms7041_portd = data;
+	state->m_tms7041_portd = data;
 }
 
 /*
@@ -432,7 +432,7 @@ static WRITE8_HANDLER(tms7041_portd_w)
     @>f800-@>ffff: tms7020/tms7040 internal ROM
 */
 
-static ADDRESS_MAP_START(tms7020_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tms7020_mem, AS_PROGRAM, 8)
 	//AM_RANGE(0x0000, 0x007f) AM_READWRITE(tms7000_internal_r, tms7000_internal_w)/* tms7020 internal RAM */
 	AM_RANGE(0x0080, 0x00ff) AM_NOP
 	//AM_RANGE(0x0100, 0x010b) AM_READWRITE(tms70x0_pf_r, tms70x0_pf_w)/* tms7020 internal I/O ports */
@@ -448,18 +448,18 @@ static ADDRESS_MAP_START(tms7020_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(tms7020_port, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(tms7020_port, AS_IO, 8)
 	AM_RANGE(TMS7000_PORTA, TMS7000_PORTA) AM_READWRITE(tms7020_porta_r, tms7020_porta_w)
 	AM_RANGE(TMS7000_PORTB, TMS7000_PORTB) AM_READWRITE(tms7020_portb_r, tms7020_portb_w)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(tms7041_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tms7041_map, AS_PROGRAM, 8)
 	AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION("tms7041",0x0000)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(tms7041_port, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(tms7041_port, AS_IO, 8)
 	AM_RANGE(TMS7000_PORTA, TMS7000_PORTA)	AM_READWRITE(tms7041_porta_r, tms7041_porta_w)
 	AM_RANGE(TMS7000_PORTB, TMS7000_PORTB)	AM_READWRITE(tms7041_portb_r, tms7041_portb_w)
 	AM_RANGE(TMS7000_PORTC, TMS7000_PORTC)	AM_READWRITE(tms7041_portc_r, tms7041_portc_w)
@@ -467,7 +467,7 @@ static ADDRESS_MAP_START(tms7041_port, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(tms7040_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tms7040_mem, AS_PROGRAM, 8)
 	//AM_RANGE(0x0000, 0x007f) AM_READWRITE(tms7000_internal_r, tms7000_internal_w)/* tms7040 internal RAM */
 	AM_RANGE(0x0080, 0x00ff) AM_NOP
 	//AM_RANGE(0x0100, 0x010b) AM_READWRITE(tms70x0_pf_r, tms70x0_pf_w)/* tms7020 internal I/O ports */
@@ -483,7 +483,7 @@ static ADDRESS_MAP_START(tms7040_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(tms7042_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tms7042_map, AS_PROGRAM, 8)
 	AM_RANGE(0xe000, 0xefff) AM_ROM AM_REGION("tms7042",0x0000)
     AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION("tms7042",0x0000)		/* Duplicated until a proper dump surfaces */
 ADDRESS_MAP_END

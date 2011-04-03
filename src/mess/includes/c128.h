@@ -23,31 +23,31 @@ public:
 	c128_state(running_machine &machine, const driver_device_config_base &config)
 		: c64_state(machine, config) { }
 
-	UINT8 *c128_basic;
-	UINT8 *c128_kernal;
-	UINT8 *c128_chargen;
-	UINT8 *z80;
-	UINT8 *editor;
-	UINT8 *internal_function;
-	UINT8 *external_function;
-	UINT8 *vdcram;
-	UINT8 mmu[0x0b];
-	int mmu_cpu;
-	int mmu_page0;
-	int mmu_page1;
-	int c64mode;
-	int write_io;
-	int ram_bottom;
-	int ram_top;
-	UINT8 *ram;
-	UINT8 c64_port_data;
-	UINT8 keyline[3];
-	int cnt1;
-	int sp1;
-	int data_out;
-	int va1617;
-	int monitor;
-	int nmilevel;
+	UINT8 *m_c128_basic;
+	UINT8 *m_c128_kernal;
+	UINT8 *m_c128_chargen;
+	UINT8 *m_z80;
+	UINT8 *m_editor;
+	UINT8 *m_internal_function;
+	UINT8 *m_external_function;
+	UINT8 *m_vdcram;
+	UINT8 m_mmu[0x0b];
+	int m_mmu_cpu;
+	int m_mmu_page0;
+	int m_mmu_page1;
+	int m_c64mode;
+	int m_write_io;
+	int m_ram_bottom;
+	int m_ram_top;
+	UINT8 *m_ram;
+	UINT8 m_c64_port_data;
+	UINT8 m_keyline[3];
+	int m_cnt1;
+	int m_sp1;
+	int m_data_out;
+	int m_va1617;
+	int m_monitor;
+	int m_nmilevel;
 };
 
 
@@ -80,13 +80,13 @@ extern MACHINE_START( c128 );
 extern MACHINE_RESET( c128 );
 extern INTERRUPT_GEN( c128_frame_interrupt );
 
-extern VIDEO_UPDATE( c128 );
+extern SCREEN_UPDATE( c128 );
 
-void c128_bankswitch_64(running_machine *machine, int reset);
+void c128_bankswitch_64(running_machine &machine, int reset);
 
-int c128_dma_read(running_machine *machine, int offset);
-int c128_dma_read_color(running_machine *machine, int offset);
-void c128_vic_interrupt(running_machine *machine, int level);
+int c128_dma_read(running_machine &machine, int offset);
+int c128_dma_read_color(running_machine &machine, int offset);
+void c128_vic_interrupt(running_machine &machine, int level);
 
 UINT8 c128_m6510_port_read(device_t *device, UINT8 direction);
 void c128_m6510_port_write(device_t *device, UINT8 direction, UINT8 data);

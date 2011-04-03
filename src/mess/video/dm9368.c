@@ -43,6 +43,8 @@ struct _dm9368_t
 INLINE dm9368_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == DM9368);
+
 	return (dm9368_t *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -50,6 +52,7 @@ INLINE dm9368_config *get_safe_config(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == DM9368);
+
 	return (dm9368_config *)downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 }
 
@@ -119,12 +122,12 @@ static DEVICE_START( dm9368 )
 	/* get the screen device */
 	if (config->rbo_tag)
 	{
-		dm9368->rbo_device = device->machine->device(config->rbo_tag);
+		dm9368->rbo_device = device->machine().device(config->rbo_tag);
 	}
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, dm9368->latch);
-	state_save_register_device_item(device, 0, dm9368->rbi);
+	device->save_item(NAME(dm9368->latch));
+	device->save_item(NAME(dm9368->rbi));
 }
 
 /*-------------------------------------------------

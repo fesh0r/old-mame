@@ -18,90 +18,89 @@ public:
 	isbc_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 received_char;
+	UINT8 m_received_char;
 };
 
 
 
 static WRITE16_HANDLER(isbc_terminal_w)
 {
-	device_t *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine().device(TERMINAL_TAG);
 	terminal_write(devconf,0,data);
 }
 
 static READ16_HANDLER(isbc_terminal_status_r)
 {
-	isbc_state *state = space->machine->driver_data<isbc_state>();
-	if (state->received_char!=0) return 3; // char received
+	isbc_state *state = space->machine().driver_data<isbc_state>();
+	if (state->m_received_char!=0) return 3; // char received
 	return 1; // ready
 }
 
 static READ16_HANDLER(isbc_terminal_r)
 {
-	isbc_state *state = space->machine->driver_data<isbc_state>();
-	UINT8 retVal = state->received_char;
-	state->received_char = 0;
+	isbc_state *state = space->machine().driver_data<isbc_state>();
+	UINT8 retVal = state->m_received_char;
+	state->m_received_char = 0;
 	return retVal;
 }
 
-static ADDRESS_MAP_START(rpc86_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(rpc86_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0x0ffff) AM_RAM
 	AM_RANGE(0xfc000, 0xfffff) AM_ROM AM_REGION("user1",0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( rpc86_io , ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START( rpc86_io , AS_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(isbc86_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(isbc86_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0xfbfff) AM_RAM
 	AM_RANGE(0xfc000, 0xfffff) AM_ROM AM_REGION("user1",0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( isbc86_io , ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START( isbc86_io , AS_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00da, 0x00db) AM_READ(isbc_terminal_status_r)
 	AM_RANGE(0x00d8, 0x00d9) AM_READWRITE(isbc_terminal_r, isbc_terminal_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(isbc286_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(isbc286_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0xdffff) AM_RAM
 	AM_RANGE(0xe0000, 0xfffff) AM_ROM AM_REGION("user1",0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( isbc286_io , ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START( isbc286_io , AS_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(isbc2861_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(isbc2861_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0xeffff) AM_RAM
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM AM_REGION("user1",0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( isbc2861_io , ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START( isbc2861_io , AS_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( isbc )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(isbc)
 {
-	isbc_state *state = machine->driver_data<isbc_state>();
-	state->received_char = 0;
+	isbc_state *state = machine.driver_data<isbc_state>();
+	state->m_received_char = 0;
 }
 
 static WRITE8_DEVICE_HANDLER( isbc_kbd_put )
 {
-	isbc_state *state = device->machine->driver_data<isbc_state>();
-	state->received_char = data;
+	isbc_state *state = device->machine().driver_data<isbc_state>();
+	state->m_received_char = data;
 }
 
 static GENERIC_TERMINAL_INTERFACE( isbc_terminal_intf )

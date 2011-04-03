@@ -1,6 +1,6 @@
 /*
 
-Super80.c written by Robbbert, 2005-2010. 
+Super80.c written by Robbbert, 2005-2010.
 
 2010-12-19: Added V3.7 bios freshly dumped today.
 
@@ -179,18 +179,10 @@ points to the ROMs. When a machine reset occurs, bank 1 is switched in. A timer 
 after 4 bytes are read, bank 0 is selected. The timer is as close as can be to real operation of the
 hardware.
 
-*/
+***********************************************************************************************************/
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
-#include "cpu/z80/z80.h"
-#include "cpu/z80/z80daisy.h"
-#include "sound/wave.h"
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
-#include "devices/z80bin.h"
-#include "sound/speaker.h"
-#include "machine/ctronics.h"
 #include "super80.lh"
 #include "includes/super80.h"
 
@@ -212,72 +204,72 @@ hardware.
 
 /* A read_byte or write_byte to unmapped memory crashes MESS, and UNMAP doesnt fix it.
     This makes the H and E monitor commands show FF */
-static READ8_HANDLER( super80_read_ff ) { return 0xff; }
+READ8_MEMBER( super80_state::super80_read_ff ) { return 0xff; }
 
-static ADDRESS_MAP_START( super80_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1") AM_REGION("maincpu", 0x0000)
+static ADDRESS_MAP_START( super80_map, AS_PROGRAM, 8, super80_state )
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("boot") AM_REGION("maincpu", 0x0000)
 	AM_RANGE(0x4000, 0xbfff) AM_RAM AM_REGION("maincpu", 0x4000)
 	AM_RANGE(0xc000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xffff) AM_READ(super80_read_ff) AM_WRITENOP
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( super80m_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1") AM_REGION("maincpu", 0x0000)
+static ADDRESS_MAP_START( super80m_map, AS_PROGRAM, 8, super80_state )
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("boot") AM_REGION("maincpu", 0x0000)
 	AM_RANGE(0x4000, 0xbfff) AM_RAM AM_REGION("maincpu", 0x4000)
 	AM_RANGE(0xc000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xffff) AM_RAM AM_REGION("maincpu", 0xf000)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( super80v_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+static ADDRESS_MAP_START( super80v_map, AS_PROGRAM, 8, super80_state)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("boot")
 	AM_RANGE(0x4000, 0xbfff) AM_RAM
 	AM_RANGE(0xc000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(super80v_low_r, super80v_low_w)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(super80v_high_r, super80v_high_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( super80_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( super80_io, AS_IO, 8, super80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( super80e_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( super80e_io, AS_IO, 8, super80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xbc, 0xbc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( super80r_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( super80r_io, AS_IO, 8, super80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x10, 0x10) AM_WRITE(super80v_10_w)
-	AM_RANGE(0x11, 0x11) AM_DEVREAD("crtc", mc6845_register_r)
+	AM_RANGE(0x11, 0x11) AM_DEVREAD_LEGACY("crtc", mc6845_register_r)
 	AM_RANGE(0x11, 0x11) AM_WRITE(super80v_11_w)
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80r_f0_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( super80v_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( super80v_io, AS_IO, 8, super80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x10, 0x10) AM_WRITE(super80v_10_w)
-	AM_RANGE(0x11, 0x11) AM_DEVREAD("crtc", mc6845_register_r)
+	AM_RANGE(0x11, 0x11) AM_DEVREAD_LEGACY("crtc", mc6845_register_r)
 	AM_RANGE(0x11, 0x11) AM_WRITE(super80v_11_w)
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
 /**************************** DIPSWITCHES, KEYBOARD, HARDWARE CONFIGURATION ****************************************/
@@ -617,14 +609,14 @@ static const cassette_config super80_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
 	NULL
 };
 
 
 static DEVICE_IMAGE_LOAD( super80_cart )
 {
-	image.fread( image.device().machine->region("maincpu")->base() + 0xc000, 0x3000);
+	image.fread( image.device().machine().region("maincpu")->base() + 0xc000, 0x3000);
 
 	return IMAGE_INIT_PASS;
 }
@@ -656,21 +648,20 @@ static MACHINE_CONFIG_START( super80, super80_state )
 	MCFG_CPU_IO_MAP(super80_io)
 	MCFG_CPU_CONFIG(super80_daisy_chain)
 
-	MCFG_MACHINE_RESET( super80 )
-
 	MCFG_Z80PIO_ADD( "z80pio", MASTER_CLOCK/6, super80_pio_intf )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(48.8)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
+	MCFG_SCREEN_UPDATE(super80)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_GFXDECODE(super80)
 	MCFG_DEFAULT_LAYOUT( layout_super80 )
 	MCFG_VIDEO_START(super80)
-	MCFG_VIDEO_UPDATE(super80)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -683,7 +674,7 @@ static MACHINE_CONFIG_START( super80, super80_state )
 	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* quickload */
-	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", default, 1)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", default, 3)
 
 	/* cassette */
 	MCFG_CASSETTE_ADD( "cassette", super80_cassette_config )
@@ -694,14 +685,16 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80d, super80 )
 	MCFG_GFXDECODE(super80d)
-	MCFG_VIDEO_UPDATE(super80d)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE(super80d)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80e, super80 )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_IO_MAP(super80e_io)
 	MCFG_GFXDECODE(super80e)
-	MCFG_VIDEO_UPDATE(super80e)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE(super80e)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80m, super80 )
@@ -711,8 +704,10 @@ static MACHINE_CONFIG_DERIVED( super80m, super80 )
 	MCFG_GFXDECODE(super80m)
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(super80m)
-	MCFG_VIDEO_EOF(super80m)
-	MCFG_VIDEO_UPDATE(super80m)
+
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE(super80m)
+	MCFG_SCREEN_EOF(super80m)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( super80v, super80_state )
@@ -722,8 +717,6 @@ static MACHINE_CONFIG_START( super80v, super80_state )
 	MCFG_CPU_IO_MAP(super80v_io)
 	MCFG_CPU_CONFIG(super80_daisy_chain)
 
-	MCFG_MACHINE_RESET( super80 )
-
 	MCFG_Z80PIO_ADD( "z80pio", MASTER_CLOCK/6, super80_pio_intf )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -731,6 +724,9 @@ static MACHINE_CONFIG_START( super80v, super80_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(SUPER80V_SCREEN_WIDTH, SUPER80V_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, SUPER80V_SCREEN_WIDTH-1, 0, SUPER80V_SCREEN_HEIGHT-1)
+	MCFG_SCREEN_UPDATE(super80v)
+	MCFG_SCREEN_EOF(super80m)
+
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(super80m)
 
@@ -739,8 +735,6 @@ static MACHINE_CONFIG_START( super80v, super80_state )
 	MCFG_GFXDECODE(super80v)
 	MCFG_DEFAULT_LAYOUT( layout_super80 )
 	MCFG_VIDEO_START(super80v)
-	MCFG_VIDEO_EOF(super80m)
-	MCFG_VIDEO_UPDATE(super80v)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -753,7 +747,7 @@ static MACHINE_CONFIG_START( super80v, super80_state )
 	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* quickload */
-	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", default, 1)
+	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", default, 3)
 
 	/* cassette */
 	MCFG_CASSETTE_ADD( "cassette", super80_cassette_config )

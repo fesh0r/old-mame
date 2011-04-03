@@ -52,7 +52,7 @@
 **********************************************************************/
 
 #include "machine/6883sam.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 #define LOG_VIDEO_POSITION	0
 
@@ -110,6 +110,7 @@ static const UINT8 sam_video_mode_row_pitches[] =
 INLINE sam6883_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == SAM6883 || device->type() == SAM6883_GIME);
 
 	return (sam6883_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -223,7 +224,7 @@ const UINT8 *sam6883_videoram(device_t *device,int scanline)
 		logerror("sam_m6847_get_video_ram(): scanline=%d video_position=0x%04X\n", scanline, video_position);
 
 	/* return actual position */
-	ram_base = sam->intf->get_rambase ? sam->intf->get_rambase(device) : messram_get_ptr(device->machine->device("messram"));
+	ram_base = sam->intf->get_rambase ? sam->intf->get_rambase(device) : ram_get_ptr(device->machine().device(RAM_TAG));
 	return &ram_base[video_position];
 }
 
@@ -262,9 +263,9 @@ static void common_start(device_t *device, SAM6883_VERSION device_type)
 	sam->old_state = ~0;
 
 	/* save state registration */
-	state_save_register_item(device->machine, "6883sam", NULL, 0, sam->state);
-	state_save_register_item(device->machine, "6883sam", NULL, 0, sam->video_position);
-	state_save_register_postload(device->machine, update_sam_postload, (void*)device);
+	state_save_register_item(device->machine(), "6883sam", NULL, 0, sam->state);
+	state_save_register_item(device->machine(), "6883sam", NULL, 0, sam->video_position);
+	device->machine().state().register_postload(update_sam_postload, (void*)device);
 }
 
 static DEVICE_START( sam6883 )

@@ -39,12 +39,16 @@ enum
 INLINE sst39vfx_t *get_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == SST39VF020 || device->type() == SST39VF400A);
+
 	return (sst39vfx_t *) downcast<legacy_device_base *>(device)->token();
 }
 
 INLINE const sst39vfx_config *get_config(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == SST39VF020 || device->type() == SST39VF400A);
+
 	return (const sst39vfx_config *) downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 }
 
@@ -65,15 +69,15 @@ static void common_start(device_t *device, int device_type)
 		case TYPE_SST39VF020  : flash->size = 256 * 1024; break;
 		case TYPE_SST39VF400A : flash->size = 512 * 1024; break;
 	}
-	flash->data = auto_alloc_array(device->machine, UINT8, flash->size);
+	flash->data = auto_alloc_array(device->machine(), UINT8, flash->size);
 #ifdef LSB_FIRST
 	if (config->cpu_endianess != ENDIANNESS_LITTLE) flash->swap = config->cpu_datawidth / 8; else flash->swap = 0;
 #else
 	if (config->cpu_endianess != ENDIANNESS_BIG) flash->swap = config->cpu_datawidth / 8; else flash->swap = 0;
 #endif
 
-	state_save_register_item_pointer(device->machine, "sst39vfx", device->tag(), 0, flash->data, flash->size);
-	state_save_register_item(device->machine, "sst39vfx", device->tag(), 0, flash->swap);
+	state_save_register_item_pointer(device->machine(), "sst39vfx", device->tag(), 0, flash->data, flash->size);
+	state_save_register_item(device->machine(), "sst39vfx", device->tag(), 0, flash->swap);
 }
 
 
@@ -133,22 +137,22 @@ static void sst39vfx_swap( device_t *device)
 	}
 }
 
-void sst39vfx_load(device_t *device, mame_file *file)
+void sst39vfx_load(device_t *device, emu_file *file)
 {
 	sst39vfx_t *flash = get_token(device);
 
 	_logerror( 0, ("sst39vfx_load (%p)\n", file));
-	mame_fread( file, flash->data, flash->size);
+	file->read(flash->data, flash->size);
 	if (flash->swap) sst39vfx_swap(device);
 }
 
-void sst39vfx_save(device_t *device, mame_file *file)
+void sst39vfx_save(device_t *device, emu_file *file)
 {
 	sst39vfx_t *flash = get_token(device);
 
 	_logerror( 0, ("sst39vfx_save (%p)\n", file));
 	if (flash->swap) sst39vfx_swap(device);
-	mame_fwrite( file, flash->data, flash->size);
+	file->write(flash->data, flash->size);
 	if (flash->swap) sst39vfx_swap(device);
 }
 

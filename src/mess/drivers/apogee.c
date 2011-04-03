@@ -13,7 +13,7 @@
 #include "machine/i8255a.h"
 #include "machine/i8257.h"
 #include "video/i8275.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/rk_cas.h"
 #include "includes/radio86.h"
 
@@ -28,7 +28,7 @@ public:
 
 
 /* Address maps */
-static ADDRESS_MAP_START(apogee_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(apogee_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0xebff ) AM_RAM  // RAM
     //AM_RANGE( 0xec00, 0xecff ) AM_RAM  // Timer
@@ -179,12 +179,13 @@ static MACHINE_CONFIG_START( apogee, apogee_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(78*6, 30*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MCFG_SCREEN_UPDATE(radio86)
+
 	MCFG_GFXDECODE(apogee)
 	MCFG_PALETTE_LENGTH(3)
 	MCFG_PALETTE_INIT(radio86)
 
 	MCFG_VIDEO_START(generic_bitmapped)
-	MCFG_VIDEO_UPDATE(radio86)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")

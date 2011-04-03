@@ -15,13 +15,13 @@
 #include "sound/dac.h"
 #include "sound/wave.h"
 #include "includes/orao.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/orao_cas.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(orao_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x5fff ) AM_RAM AM_BASE_MEMBER(orao_state, memory)
-    AM_RANGE( 0x6000, 0x7fff ) AM_RAM AM_BASE_MEMBER(orao_state, video_ram) // video ram
+static ADDRESS_MAP_START(orao_mem, AS_PROGRAM, 8)
+    AM_RANGE( 0x0000, 0x5fff ) AM_RAM AM_BASE_MEMBER(orao_state, m_memory)
+    AM_RANGE( 0x6000, 0x7fff ) AM_RAM AM_BASE_MEMBER(orao_state, m_video_ram) // video ram
     AM_RANGE( 0x8000, 0x9fff ) AM_READWRITE( orao_io_r, orao_io_w )
     AM_RANGE( 0xa000, 0xafff ) AM_RAM  // extension
     AM_RANGE( 0xb000, 0xbfff ) AM_RAM  // DOS
@@ -184,11 +184,12 @@ static MACHINE_CONFIG_START( orao, orao_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
+    MCFG_SCREEN_UPDATE(orao)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(orao)
-    MCFG_VIDEO_UPDATE(orao)
 
     /* audio hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

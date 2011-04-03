@@ -74,8 +74,8 @@
 #include "sound/sn76496.h"
 #include "sound/speaker.h"
 #include "sound/wave.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 #include "formats/mz_cas.h"
 
 
@@ -85,14 +85,14 @@
 
 static TIMER_DEVICE_CALLBACK( ne556_cursor_callback )
 {
-	mz_state *mz = timer.machine->driver_data<mz_state>();
-	mz->cursor_timer ^= 1;
+	mz_state *mz = timer.machine().driver_data<mz_state>();
+	mz->m_cursor_timer ^= 1;
 }
 
 static TIMER_DEVICE_CALLBACK( ne556_other_callback )
 {
-	mz_state *mz = timer.machine->driver_data<mz_state>();
-	mz->other_timer ^= 1;
+	mz_state *mz = timer.machine().driver_data<mz_state>();
+	mz->m_other_timer ^= 1;
 }
 
 
@@ -100,10 +100,10 @@ static TIMER_DEVICE_CALLBACK( ne556_other_callback )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( mz700_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mz700_mem, AS_PROGRAM, 8 )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mz700_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( mz700_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(mz700_bank_0_w)
 	AM_RANGE(0xe1, 0xe1) AM_WRITE(mz700_bank_1_w)
@@ -114,10 +114,10 @@ static ADDRESS_MAP_START( mz700_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xe6, 0xe6) AM_WRITE(mz700_bank_6_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mz800_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mz800_mem, AS_PROGRAM, 8 )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mz800_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( mz800_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xcc, 0xcc) AM_WRITE( mz800_write_format_w )
 	AM_RANGE(0xcd, 0xcd) AM_WRITE( mz800_read_format_w )
@@ -341,12 +341,11 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_17_73447MHz/2, 568, 0, 40*8, 312, 0, 25*8)
+	MCFG_SCREEN_UPDATE(mz700)
 
 	MCFG_GFXDECODE(mz700)
 	MCFG_PALETTE_LENGTH(256*2)
 	MCFG_PALETTE_INIT(mz700)
-
-	MCFG_VIDEO_UPDATE(mz700)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -356,8 +355,8 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* ne556 timers */
-	MCFG_TIMER_ADD_PERIODIC("cursor", ne556_cursor_callback, HZ(1.5))
-	MCFG_TIMER_ADD_PERIODIC("other", ne556_other_callback, HZ(34.5))
+	MCFG_TIMER_ADD_PERIODIC("cursor", ne556_cursor_callback, attotime::from_hz(1.5))
+	MCFG_TIMER_ADD_PERIODIC("other", ne556_other_callback, attotime::from_hz(34.5))
 
 	/* devices */
 	MCFG_PIT8253_ADD("pit8253", mz700_pit8253_config)
@@ -367,7 +366,7 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	MCFG_CASSETTE_ADD( "cassette", mz700_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
@@ -381,7 +380,9 @@ static MACHINE_CONFIG_DERIVED( mz800, mz700 )
 
 	MCFG_GFXDECODE(mz800)
 	MCFG_VIDEO_START(mz800)
-	MCFG_VIDEO_UPDATE(mz800)
+	
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE(mz800)
 
 	MCFG_SOUND_ADD("sn76489n", SN76489, XTAL_17_73447MHz/5)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)

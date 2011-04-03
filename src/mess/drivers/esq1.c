@@ -87,20 +87,20 @@ static VIDEO_START( esq1 )
 {
 }
 
-static VIDEO_UPDATE( esq1 )
+static SCREEN_UPDATE( esq1 )
 {
 	return 0;
 }
 
 static MACHINE_RESET( esq1 )
 {
-	es5503_set_base(machine->device("es5503"), machine->region("ensoniq")->base());
+	es5503_set_base(machine.device("es5503"), machine.region("ensoniq")->base());
 
 	// set default OSROM banking
-	memory_set_bankptr(machine, "osbank", machine->region("osrom")->base() );
+	memory_set_bankptr(machine, "osbank", machine.region("osrom")->base() );
 }
 
-static ADDRESS_MAP_START( esq1_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( esq1_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM					// OSRAM
 	AM_RANGE(0x4000, 0x5fff) AM_RAM					// SEQRAM
 	AM_RANGE(0x6000, 0x63ff) AM_DEVREADWRITE("es5503", es5503_r, es5503_w)
@@ -126,7 +126,7 @@ ADDRESS_MAP_END
 
 static void duart_irq_handler(device_t *device, UINT8 vector)
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", 0, HOLD_LINE);
 };
 
 static UINT8 duart_input(device_t *device)
@@ -139,8 +139,8 @@ static void duart_output(device_t *device, UINT8 data)
 	int bank = ((data >> 1) & 0x7);
 
 //  printf("DP [%02x]: %d mlo %d mhi %d tape %d\n", data, data&1, (data>>4)&1, (data>>5)&1, (data>>6)&3);
-//  printf("[%02x] bank %d => offset %x (PC=%x)\n", data, bank, bank * 0x1000, cpu_get_pc(device->machine->firstcpu));
-	memory_set_bankptr(device->machine, "osbank", device->machine->region("osrom")->base() + (bank * 0x1000) );
+//  printf("[%02x] bank %d => offset %x (PC=%x)\n", data, bank, bank * 0x1000, cpu_get_pc(device->machine().firstcpu));
+	memory_set_bankptr(device->machine(), "osbank", device->machine().region("osrom")->base() + (bank * 0x1000) );
 }
 
 static void duart_tx(device_t *device, int channel, UINT8 data)
@@ -169,11 +169,12 @@ static MACHINE_CONFIG_START( esq1, esq1_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_VIDEO_START(esq1)
-	MCFG_VIDEO_UPDATE(esq1)
+	MCFG_SCREEN_UPDATE(esq1)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+
+	MCFG_VIDEO_START(esq1)
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MCFG_SOUND_ADD("es5503", ES5503, 7000000)

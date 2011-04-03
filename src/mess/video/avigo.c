@@ -39,18 +39,18 @@ static const UINT8 pointermask[] =
 	0xf0, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00	/* whitemask */
 };
 
-void avigo_vh_set_stylus_marker_position(running_machine *machine, int x, int y)
+void avigo_vh_set_stylus_marker_position(running_machine &machine, int x, int y)
 {
-	avigo_state *state = machine->driver_data<avigo_state>();
-	state->stylus_x = x;
-	state->stylus_y = y;
+	avigo_state *state = machine.driver_data<avigo_state>();
+	state->m_stylus_x = x;
+	state->m_stylus_y = y;
 }
 
 READ8_HANDLER(avigo_vid_memory_r)
 {
-	avigo_state *state = space->machine->driver_data<avigo_state>();
+	avigo_state *state = space->machine().driver_data<avigo_state>();
 	if (!offset)
-		return state->screen_column;
+		return state->m_screen_column;
 
 	if ((offset<0x0100) || (offset>=0x01f0))
 	{
@@ -59,16 +59,16 @@ READ8_HANDLER(avigo_vid_memory_r)
 	}
 
 	/* 0x0100-0x01f0 contains data for selected column */
-	return state->video_memory[state->screen_column + ((offset&0xff)*(AVIGO_SCREEN_WIDTH>>3))];
+	return state->m_video_memory[state->m_screen_column + ((offset&0xff)*(AVIGO_SCREEN_WIDTH>>3))];
 }
 
 WRITE8_HANDLER(avigo_vid_memory_w)
 {
-	avigo_state *state = space->machine->driver_data<avigo_state>();
+	avigo_state *state = space->machine().driver_data<avigo_state>();
 	if (!offset)
 	{
 		/* select column to read/write */
-		state->screen_column = data;
+		state->m_screen_column = data;
 
 		LOG(("vid mem column write: %02x\n",data));
 
@@ -87,20 +87,20 @@ WRITE8_HANDLER(avigo_vid_memory_w)
 
 
 	/* 0x0100-0x01f0 contains data for selected column */
-	state->video_memory[state->screen_column + ((offset&0xff)*(AVIGO_SCREEN_WIDTH>>3))] = data;
+	state->m_video_memory[state->m_screen_column + ((offset&0xff)*(AVIGO_SCREEN_WIDTH>>3))] = data;
 }
 
 VIDEO_START( avigo )
 {
-	avigo_state *state = machine->driver_data<avigo_state>();
+	avigo_state *state = machine.driver_data<avigo_state>();
 	/* current selected column to read/write */
-	state->screen_column = 0;
+	state->m_screen_column = 0;
 
 	/* allocate video memory */
-	state->video_memory = auto_alloc_array_clear(machine, UINT8, ((AVIGO_SCREEN_WIDTH>>3)*AVIGO_SCREEN_HEIGHT+1));
-	machine->gfx[0] = gfx_element_alloc(machine, &pointerlayout, pointermask, machine->total_colors() / 16, 0);
+	state->m_video_memory = auto_alloc_array_clear(machine, UINT8, ((AVIGO_SCREEN_WIDTH>>3)*AVIGO_SCREEN_HEIGHT+1));
+	machine.gfx[0] = gfx_element_alloc(machine, &pointerlayout, pointermask, machine.total_colors() / 16, 0);
 
-	machine->gfx[0]->total_colors = 3;
+	machine.gfx[0]->total_colors = 3;
 }
 
 /* Initialise the palette */
@@ -118,9 +118,9 @@ PALETTE_INIT( avigo )
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-VIDEO_UPDATE( avigo )
+SCREEN_UPDATE( avigo )
 {
-	avigo_state *state = screen->machine->driver_data<avigo_state>();
+	avigo_state *state = screen->machine().driver_data<avigo_state>();
 	int y;
 	int b;
 	int x;
@@ -130,7 +130,7 @@ VIDEO_UPDATE( avigo )
 	for (y=0; y<AVIGO_SCREEN_HEIGHT; y++)
 	{
 		int by;
-		unsigned char *line_ptr = state->video_memory +  (y*(AVIGO_SCREEN_WIDTH>>3));
+		unsigned char *line_ptr = state->m_video_memory +  (y*(AVIGO_SCREEN_WIDTH>>3));
 
 		x = 0;
 		for (by=((AVIGO_SCREEN_WIDTH>>3)-1); by>=0; by--)
@@ -159,7 +159,7 @@ VIDEO_UPDATE( avigo )
 	r.max_y = AVIGO_SCREEN_HEIGHT;
 
 	/* draw stylus marker */
-	drawgfx_transpen (bitmap, &r, screen->machine->gfx[0], 0, 0, 0, 0, state->stylus_x, state->stylus_y, 0);
+	drawgfx_transpen (bitmap, &r, screen->machine().gfx[0], 0, 0, 0, 0, state->m_stylus_x, state->m_stylus_y, 0);
 #if 0
 	{
 

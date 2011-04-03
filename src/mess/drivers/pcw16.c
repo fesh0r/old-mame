@@ -103,8 +103,8 @@ TODO:
 
 /* Devices */
 #include "formats/pc_dsk.h"		/* pc disk images */
-#include "devices/flopdrv.h"
-#include "devices/messram.h"
+#include "imagedev/flopdrv.h"
+#include "machine/ram.h"
 
 // interrupt counter
 /* controls which bank of 2mb address space is paged into memory */
@@ -121,11 +121,11 @@ TODO:
 // bit 0: Display ints
 
 // debugging - write ram as seen by cpu
-static void pcw16_refresh_ints(running_machine *machine)
+static void pcw16_refresh_ints(running_machine &machine)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = machine.driver_data<pcw16_state>();
 	/* any bits set excluding vsync */
-	if ((state->system_status & (~0x04))!=0)
+	if ((state->m_system_status & (~0x04))!=0)
 	{
 		cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
 	}
@@ -136,24 +136,24 @@ static void pcw16_refresh_ints(running_machine *machine)
 }
 
 
-static TIMER_CALLBACK(pcw16_timer_callback)
+static TIMER_DEVICE_CALLBACK(pcw16_timer_callback)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = timer.machine().driver_data<pcw16_state>();
 	/* do not increment past 15 */
-	if (state->interrupt_counter!=15)
+	if (state->m_interrupt_counter!=15)
 	{
-		state->interrupt_counter++;
+		state->m_interrupt_counter++;
 		/* display int */
-		state->system_status |= (1<<0);
+		state->m_system_status |= (1<<0);
 	}
 
-	if (state->interrupt_counter!=0)
+	if (state->m_interrupt_counter!=0)
 	{
-		pcw16_refresh_ints(machine);
+		pcw16_refresh_ints(timer.machine());
 	}
 }
 
-static ADDRESS_MAP_START(pcw16_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START(pcw16_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
 	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
@@ -163,8 +163,8 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(pcw16_palette_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	state->colour_palette[offset & 0x0f] = data & 31;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	state->m_colour_palette[offset & 0x0f] = data & 31;
 }
 
 
@@ -190,20 +190,20 @@ static const char *const pcw16_read_handler_dram[4] =
 /* PCW16 can have two 1mb flash chips */
 
 /* read flash0 */
-static int pcw16_flash0_bank_handler_r(running_machine *machine, int bank, int offset)
+static int pcw16_flash0_bank_handler_r(running_machine &machine, int bank, int offset)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine->device<intel_e28f008sa_device>("flash0");
-	int flash_offset = (state->banks[bank]<<14) | offset;	
+	pcw16_state *state = machine.driver_data<pcw16_state>();
+	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash0");
+	int flash_offset = (state->m_banks[bank]<<14) | offset;
 	return flash->read(flash_offset);
 }
 
 /* read flash1 */
-static int pcw16_flash1_bank_handler_r(running_machine *machine, int bank, int offset)
+static int pcw16_flash1_bank_handler_r(running_machine &machine, int bank, int offset)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine->device<intel_e28f008sa_device>("flash1");
-	int flash_offset = ((state->banks[bank]&0x03f)<<14) | offset;
+	pcw16_state *state = machine.driver_data<pcw16_state>();
+	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash1");
+	int flash_offset = ((state->m_banks[bank]&0x03f)<<14) | offset;
 
 	return flash->read(flash_offset);
 }
@@ -211,43 +211,43 @@ static int pcw16_flash1_bank_handler_r(running_machine *machine, int bank, int o
 /* flash 0 */
 static  READ8_HANDLER(pcw16_flash0_bank_handler0_r)
 {
-	return pcw16_flash0_bank_handler_r(space->machine,0, offset);
+	return pcw16_flash0_bank_handler_r(space->machine(),0, offset);
 }
 
 static  READ8_HANDLER(pcw16_flash0_bank_handler1_r)
 {
-	return pcw16_flash0_bank_handler_r(space->machine,1, offset);
+	return pcw16_flash0_bank_handler_r(space->machine(),1, offset);
 }
 
 static  READ8_HANDLER(pcw16_flash0_bank_handler2_r)
 {
-	return pcw16_flash0_bank_handler_r(space->machine,2, offset);
+	return pcw16_flash0_bank_handler_r(space->machine(),2, offset);
 }
 
 static  READ8_HANDLER(pcw16_flash0_bank_handler3_r)
 {
-	return pcw16_flash0_bank_handler_r(space->machine,3, offset);
+	return pcw16_flash0_bank_handler_r(space->machine(),3, offset);
 }
 
 /* flash 1 */
 static  READ8_HANDLER(pcw16_flash1_bank_handler0_r)
 {
-	return pcw16_flash1_bank_handler_r(space->machine,0, offset);
+	return pcw16_flash1_bank_handler_r(space->machine(),0, offset);
 }
 
 static  READ8_HANDLER(pcw16_flash1_bank_handler1_r)
 {
-	return pcw16_flash1_bank_handler_r(space->machine,1, offset);
+	return pcw16_flash1_bank_handler_r(space->machine(),1, offset);
 }
 
 static  READ8_HANDLER(pcw16_flash1_bank_handler2_r)
 {
-	return pcw16_flash1_bank_handler_r(space->machine,2, offset);
+	return pcw16_flash1_bank_handler_r(space->machine(),2, offset);
 }
 
 static  READ8_HANDLER(pcw16_flash1_bank_handler3_r)
 {
-	return pcw16_flash1_bank_handler_r(space->machine,3, offset);
+	return pcw16_flash1_bank_handler_r(space->machine(),3, offset);
 }
 
 static const read8_space_func pcw16_flash0_bank_handlers_r[4] =
@@ -267,23 +267,23 @@ static const read8_space_func pcw16_flash1_bank_handlers_r[4] =
 };
 
 /* write flash0 */
-static void pcw16_flash0_bank_handler_w(running_machine *machine, int bank, int offset, int data)
+static void pcw16_flash0_bank_handler_w(running_machine &machine, int bank, int offset, int data)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine->device<intel_e28f008sa_device>("flash0");
+	pcw16_state *state = machine.driver_data<pcw16_state>();
+	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash0");
 
-	int flash_offset = (state->banks[bank]<<14) | offset;
+	int flash_offset = (state->m_banks[bank]<<14) | offset;
 
 	flash->write(flash_offset, data);
 }
 
 /* read flash1 */
-static void pcw16_flash1_bank_handler_w(running_machine *machine, int bank, int offset, int data)
+static void pcw16_flash1_bank_handler_w(running_machine &machine, int bank, int offset, int data)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine->device<intel_e28f008sa_device>("flash1");
+	pcw16_state *state = machine.driver_data<pcw16_state>();
+	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash1");
 
-	int flash_offset = ((state->banks[bank]&0x03f)<<14) | offset;
+	int flash_offset = ((state->m_banks[bank]&0x03f)<<14) | offset;
 
 	flash->write(flash_offset,data);
 }
@@ -291,46 +291,46 @@ static void pcw16_flash1_bank_handler_w(running_machine *machine, int bank, int 
 /* flash 0 */
 static WRITE8_HANDLER(pcw16_flash0_bank_handler0_w)
 {
-	pcw16_flash0_bank_handler_w(space->machine,0, offset, data);
+	pcw16_flash0_bank_handler_w(space->machine(),0, offset, data);
 }
 
 
 static WRITE8_HANDLER(pcw16_flash0_bank_handler1_w)
 {
-	pcw16_flash0_bank_handler_w(space->machine,1, offset, data);
+	pcw16_flash0_bank_handler_w(space->machine(),1, offset, data);
 }
 
 static WRITE8_HANDLER(pcw16_flash0_bank_handler2_w)
 {
-	pcw16_flash0_bank_handler_w(space->machine,2, offset, data);
+	pcw16_flash0_bank_handler_w(space->machine(),2, offset, data);
 }
 
 static WRITE8_HANDLER(pcw16_flash0_bank_handler3_w)
 {
-	pcw16_flash0_bank_handler_w(space->machine,3, offset, data);
+	pcw16_flash0_bank_handler_w(space->machine(),3, offset, data);
 }
 
 
 /* flash 1 */
 static WRITE8_HANDLER(pcw16_flash1_bank_handler0_w)
 {
-	pcw16_flash1_bank_handler_w(space->machine,0, offset, data);
+	pcw16_flash1_bank_handler_w(space->machine(),0, offset, data);
 }
 
 
 static WRITE8_HANDLER(pcw16_flash1_bank_handler1_w)
 {
-	pcw16_flash1_bank_handler_w(space->machine,1, offset, data);
+	pcw16_flash1_bank_handler_w(space->machine(),1, offset, data);
 }
 
 static WRITE8_HANDLER(pcw16_flash1_bank_handler2_w)
 {
-	pcw16_flash1_bank_handler_w(space->machine,2, offset, data);
+	pcw16_flash1_bank_handler_w(space->machine(),2, offset, data);
 }
 
 static WRITE8_HANDLER(pcw16_flash1_bank_handler3_w)
 {
-	pcw16_flash1_bank_handler_w(space->machine,3, offset, data);
+	pcw16_flash1_bank_handler_w(space->machine(),3, offset, data);
 }
 
 static const write8_space_func pcw16_flash0_bank_handlers_w[4] =
@@ -368,54 +368,54 @@ static  READ8_HANDLER(pcw16_no_mem_r)
 	return 0x0ff;
 }
 
-static void pcw16_set_bank_handlers(running_machine *machine, int bank, PCW16_RAM_TYPE type)
+static void pcw16_set_bank_handlers(running_machine &machine, int bank, PCW16_RAM_TYPE type)
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	switch (type) {
 	case PCW16_MEM_ROM:
 		/* rom */
-		memory_install_read_bank(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_read_handler_dram[bank]);
-		memory_nop_write(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0);
+		space->install_read_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_read_handler_dram[bank]);
+		space->nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
 		break;
 
 	case PCW16_MEM_FLASH_1:
 		/* sram */
-		memory_install_read8_handler(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_flash0_bank_handlers_r[bank]);
-		memory_install_write8_handler(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_flash0_bank_handlers_w[bank]);
+		space->install_legacy_read_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, FUNC(pcw16_flash0_bank_handlers_r[bank]));
+		space->install_legacy_write_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, FUNC(pcw16_flash0_bank_handlers_w[bank]));
 		break;
 
 	case PCW16_MEM_FLASH_2:
-		memory_install_read8_handler(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_flash1_bank_handlers_r[bank]);
-		memory_install_write8_handler(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_flash1_bank_handlers_w[bank]);
+		space->install_legacy_read_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, FUNC(pcw16_flash1_bank_handlers_r[bank]));
+		space->install_legacy_write_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, FUNC(pcw16_flash1_bank_handlers_w[bank]));
 		break;
 
 	case PCW16_MEM_NONE:
-		memory_install_read8_handler(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_no_mem_r);
-		memory_nop_write(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0);
+		space->install_legacy_read_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, FUNC(pcw16_no_mem_r));
+		space->nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
 		break;
 
 	default:
 	case PCW16_MEM_DRAM:
 		/* dram */
-		memory_install_read_bank(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_read_handler_dram[bank]);
-		memory_install_write_bank(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, pcw16_write_handler_dram[bank]);
+		space->install_read_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_read_handler_dram[bank]);
+		space->install_write_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_write_handler_dram[bank]);
 		break;
 	}
 
 }
 
-static void pcw16_update_bank(running_machine *machine, int bank)
+static void pcw16_update_bank(running_machine &machine, int bank)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
-	unsigned char *mem_ptr = messram_get_ptr(machine->device("messram"));
+	pcw16_state *state = machine.driver_data<pcw16_state>();
+	unsigned char *mem_ptr = ram_get_ptr(machine.device(RAM_TAG));
 	int bank_id = 0;
 	int bank_offs = 0;
 	char bank1[10];
 	char bank2[10];
 
 	/* get memory bank */
-	bank_id = state->banks[bank];
+	bank_id = state->m_banks[bank];
 
 
 	if ((bank_id & 0x080)==0)
@@ -426,7 +426,7 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 		{
 			/* lower 4 banks are write protected. Use the rom
             loaded */
-			mem_ptr = &machine->region("maincpu")->base()[0x010000];
+			mem_ptr = &machine.region("maincpu")->base()[0x010000];
 		}
 		else
 		{
@@ -434,12 +434,12 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 
 			/* nvram */
 			if ((bank_id & 0x040)==0)
-			{			
-				flashdev = machine->device<intelfsh8_device>("flash0");
+			{
+				flashdev = machine.device<intelfsh8_device>("flash0");
 			}
 			else
 			{
-				flashdev = machine->device<intelfsh8_device>("flash1");
+				flashdev = machine.device<intelfsh8_device>("flash1");
 			}
 
 			mem_ptr = (unsigned char *)flashdev->space()->get_read_ptr(0);
@@ -450,11 +450,11 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 	{
 		bank_offs = 128;
 		/* dram */
-		mem_ptr = messram_get_ptr(machine->device("messram"));
+		mem_ptr = ram_get_ptr(machine.device(RAM_TAG));
 	}
 
 	mem_ptr = mem_ptr + ((bank_id - bank_offs)<<14);
-	state->mem_ptr[bank] = (char*)mem_ptr;
+	state->m_mem_ptr[bank] = (char*)mem_ptr;
 	sprintf(bank1,"bank%d",(bank+1));
 	sprintf(bank2,"bank%d",(bank+5));
 	memory_set_bankptr(machine, bank1, mem_ptr);
@@ -490,7 +490,7 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 
 
 /* update memory h/w */
-static void pcw16_update_memory(running_machine *machine)
+static void pcw16_update_memory(running_machine &machine)
 {
 	pcw16_update_bank(machine, 0);
 	pcw16_update_bank(machine, 1);
@@ -501,28 +501,28 @@ static void pcw16_update_memory(running_machine *machine)
 
 static  READ8_HANDLER(pcw16_bankhw_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 //  logerror("bank r: %d \n", offset);
 
-	return state->banks[offset];
+	return state->m_banks[offset];
 }
 
 static WRITE8_HANDLER(pcw16_bankhw_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	//logerror("bank w: %d block: %02x\n", offset, data);
 
-	state->banks[offset] = data;
+	state->m_banks[offset] = data;
 
-	pcw16_update_memory(space->machine);
+	pcw16_update_memory(space->machine());
 }
 
 static WRITE8_HANDLER(pcw16_video_control_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	//logerror("video control w: %02x\n", data);
 
-	state->video_control = data;
+	state->m_video_control = data;
 }
 
 /* PCW16 KEYBOARD */
@@ -547,11 +547,11 @@ static WRITE8_HANDLER(pcw16_video_control_w)
 
 
 static void pcw16_keyboard_reset(pcw16_state *state);
-static void pcw16_keyboard_int(running_machine *, int);
+static void pcw16_keyboard_int(running_machine &, int);
 
-static void pcw16_keyboard_init(running_machine *machine)
+static void pcw16_keyboard_init(running_machine &machine)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = machine.driver_data<pcw16_state>();
 	int i;
 	int b;
 
@@ -572,14 +572,14 @@ static void pcw16_keyboard_init(running_machine *machine)
 			data = data>>1;
 		}
 
-		state->keyboard_parity_table[i] = sum & 0x01;
+		state->m_keyboard_parity_table[i] = sum & 0x01;
 	}
 
 
 	/* clear int */
 	pcw16_keyboard_int(machine, 0);
 	/* reset state */
-	state->keyboard_state = 0;
+	state->m_keyboard_state = 0;
 	/* reset ready for transmit */
 	pcw16_keyboard_reset(state);
 }
@@ -587,35 +587,35 @@ static void pcw16_keyboard_init(running_machine *machine)
 static void pcw16_keyboard_refresh_outputs(pcw16_state *state)
 {
 	/* generate output bits */
-	state->keyboard_bits_output = state->keyboard_bits;
+	state->m_keyboard_bits_output = state->m_keyboard_bits;
 
 	/* force clock low? */
-	if (state->keyboard_state & PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK)
+	if (state->m_keyboard_state & PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK)
 	{
-		state->keyboard_bits_output &= ~PCW16_KEYBOARD_CLOCK;
+		state->m_keyboard_bits_output &= ~PCW16_KEYBOARD_CLOCK;
 	}
 }
 
 static void pcw16_keyboard_set_clock_state(pcw16_state *drvstate, int state)
 {
-	drvstate->keyboard_bits &= ~PCW16_KEYBOARD_CLOCK;
+	drvstate->m_keyboard_bits &= ~PCW16_KEYBOARD_CLOCK;
 
 	if (state)
 	{
-		drvstate->keyboard_bits |= PCW16_KEYBOARD_CLOCK;
+		drvstate->m_keyboard_bits |= PCW16_KEYBOARD_CLOCK;
 	}
 
 	pcw16_keyboard_refresh_outputs(drvstate);
 }
 
-static void pcw16_keyboard_int(running_machine *machine, int state)
+static void pcw16_keyboard_int(running_machine &machine, int state)
 {
-	pcw16_state *drvstate = machine->driver_data<pcw16_state>();
-	drvstate->system_status &= ~(1<<1);
+	pcw16_state *drvstate = machine.driver_data<pcw16_state>();
+	drvstate->m_system_status &= ~(1<<1);
 
 	if (state)
 	{
-		drvstate->system_status |= (1<<1);
+		drvstate->m_system_status |= (1<<1);
 	}
 
 	pcw16_refresh_ints(machine);
@@ -630,16 +630,16 @@ static void pcw16_keyboard_reset(pcw16_state *state)
 /* interfaces to a pc-at keyboard */
 static READ8_HANDLER(pcw16_keyboard_data_shift_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	//logerror("keyboard data shift r: %02x\n", state->keyboard_data_shift);
-	state->keyboard_state &= ~(PCW16_KEYBOARD_BUSY_STATUS);
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	//logerror("keyboard data shift r: %02x\n", state->m_keyboard_data_shift);
+	state->m_keyboard_state &= ~(PCW16_KEYBOARD_BUSY_STATUS);
 
-	pcw16_keyboard_int(space->machine, 0);
+	pcw16_keyboard_int(space->machine(), 0);
 	/* reset for reception */
 	pcw16_keyboard_reset(state);
 
 	/* read byte */
-	return state->keyboard_data_shift;
+	return state->m_keyboard_data_shift;
 }
 
 /* if force keyboard clock is low it is safe to send */
@@ -647,7 +647,7 @@ static int pcw16_keyboard_can_transmit(pcw16_state *state)
 {
 	/* clock is not forced low */
 	/* and not busy - i.e. not already sent a char */
-	return ((state->keyboard_bits_output & PCW16_KEYBOARD_CLOCK)!=0);
+	return ((state->m_keyboard_bits_output & PCW16_KEYBOARD_CLOCK)!=0);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -658,30 +658,30 @@ static void pcw16_begin_byte_transfer(void)
 #endif
 
 /* signal a code has been received */
-static void pcw16_keyboard_signal_byte_received(running_machine *machine, int data)
+static void pcw16_keyboard_signal_byte_received(running_machine &machine, int data)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = machine.driver_data<pcw16_state>();
 	/* clear clock */
 	pcw16_keyboard_set_clock_state(state, 0);
 
 	/* set code in shift register */
-	state->keyboard_data_shift = data;
+	state->m_keyboard_data_shift = data;
 	/* busy */
-	state->keyboard_state |= PCW16_KEYBOARD_BUSY_STATUS;
+	state->m_keyboard_state |= PCW16_KEYBOARD_BUSY_STATUS;
 
 	/* initialise start, stop and parity bits */
-	state->keyboard_state &= ~PCW16_KEYBOARD_START_BIT_MASK;
-	state->keyboard_state |=PCW16_KEYBOARD_STOP_BIT_MASK;
+	state->m_keyboard_state &= ~PCW16_KEYBOARD_START_BIT_MASK;
+	state->m_keyboard_state |=PCW16_KEYBOARD_STOP_BIT_MASK;
 
 	/* "Keyboard data has odd parity, so the parity bit in the
     status register should only be set when the shift register
     data itself has even parity. */
 
-	state->keyboard_state &= ~PCW16_KEYBOARD_PARITY_MASK;
+	state->m_keyboard_state &= ~PCW16_KEYBOARD_PARITY_MASK;
 
 	/* if data has even parity, set parity bit */
-	if ((state->keyboard_parity_table[data])==0)
-		state->keyboard_state |= PCW16_KEYBOARD_PARITY_MASK;
+	if ((state->m_keyboard_parity_table[data])==0)
+		state->m_keyboard_state |= PCW16_KEYBOARD_PARITY_MASK;
 
 	pcw16_keyboard_int(machine, 1);
 }
@@ -689,26 +689,26 @@ static void pcw16_keyboard_signal_byte_received(running_machine *machine, int da
 
 static WRITE8_HANDLER(pcw16_keyboard_data_shift_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	//logerror("Keyboard Data Shift: %02x\n", data);
 	/* writing to shift register clears parity */
 	/* writing to shift register clears start bit */
-	state->keyboard_state &= ~(
+	state->m_keyboard_state &= ~(
 		PCW16_KEYBOARD_PARITY_MASK |
 		PCW16_KEYBOARD_START_BIT_MASK);
 
 	/* writing to shift register sets stop bit */
-	state->keyboard_state |= PCW16_KEYBOARD_STOP_BIT_MASK;
+	state->m_keyboard_state |= PCW16_KEYBOARD_STOP_BIT_MASK;
 
-	state->keyboard_data_shift = data;
+	state->m_keyboard_data_shift = data;
 
 }
 
 static  READ8_HANDLER(pcw16_keyboard_status_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* bit 2,3 are bits 8 and 9 of vdu pointer */
-	return (state->keyboard_state &
+	return (state->m_keyboard_state &
 		(PCW16_KEYBOARD_PARITY_MASK |
 		 PCW16_KEYBOARD_STOP_BIT_MASK |
 		 PCW16_KEYBOARD_START_BIT_MASK |
@@ -719,23 +719,23 @@ static  READ8_HANDLER(pcw16_keyboard_status_r)
 
 static WRITE8_HANDLER(pcw16_keyboard_control_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	//logerror("Keyboard control w: %02x\n",data);
 
-	state->keyboard_previous_state = state->keyboard_state;
+	state->m_keyboard_previous_state = state->m_keyboard_state;
 
 	/* if set, set parity */
 	if (data & 0x080)
 	{
-		state->keyboard_state |= PCW16_KEYBOARD_PARITY_MASK;
+		state->m_keyboard_state |= PCW16_KEYBOARD_PARITY_MASK;
 	}
 
 	/* clear read/write bits */
-	state->keyboard_state &=
+	state->m_keyboard_state &=
 		~(PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK |
 			PCW16_KEYBOARD_TRANSMIT_MODE);
 	/* set read/write bits from data */
-	state->keyboard_state |= (data & 0x03);
+	state->m_keyboard_state |= (data & 0x03);
 
 	if (data & PCW16_KEYBOARD_RESET_INTERFACE)
 	{
@@ -745,34 +745,34 @@ static WRITE8_HANDLER(pcw16_keyboard_control_w)
 	if (data & PCW16_KEYBOARD_TRANSMIT_MODE)
 	{
 		/* force clock changed */
-		if (((state->keyboard_state^state->keyboard_previous_state) & PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK)!=0)
+		if (((state->m_keyboard_state^state->m_keyboard_previous_state) & PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK)!=0)
 		{
 			/* just cleared? */
-			if ((state->keyboard_state & PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK)==0)
+			if ((state->m_keyboard_state & PCW16_KEYBOARD_FORCE_KEYBOARD_CLOCK)==0)
 			{
 
 				/* write */
 				/* busy */
-				state->keyboard_state |= PCW16_KEYBOARD_BUSY_STATUS;
+				state->m_keyboard_state |= PCW16_KEYBOARD_BUSY_STATUS;
 				/* keyboard takes data */
-				at_keyboard_write(space->machine,state->keyboard_data_shift);
+				at_keyboard_write(space->machine(),state->m_keyboard_data_shift);
 				/* set clock low - no furthur transmissions */
 				pcw16_keyboard_set_clock_state(state, 0);
 				/* set int */
-				pcw16_keyboard_int(space->machine, 1);
+				pcw16_keyboard_int(space->machine(), 1);
 			}
 		}
 
 
 	}
 
-	if (((state->keyboard_state^state->keyboard_previous_state) & PCW16_KEYBOARD_TRANSMIT_MODE)!=0)
+	if (((state->m_keyboard_state^state->m_keyboard_previous_state) & PCW16_KEYBOARD_TRANSMIT_MODE)!=0)
 	{
-		if ((state->keyboard_state & PCW16_KEYBOARD_TRANSMIT_MODE)==0)
+		if ((state->m_keyboard_state & PCW16_KEYBOARD_TRANSMIT_MODE)==0)
 		{
-			if ((state->system_status & (1<<1))!=0)
+			if ((state->m_system_status & (1<<1))!=0)
 			{
-				pcw16_keyboard_int(space->machine, 0);
+				pcw16_keyboard_int(space->machine(), 0);
 			}
 		}
 	}
@@ -781,9 +781,9 @@ static WRITE8_HANDLER(pcw16_keyboard_control_w)
 }
 
 
-static TIMER_CALLBACK(pcw16_keyboard_timer_callback)
+static TIMER_DEVICE_CALLBACK(pcw16_keyboard_timer_callback)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = timer.machine().driver_data<pcw16_state>();
 	at_keyboard_polling();
 	if (pcw16_keyboard_can_transmit(state))
 	{
@@ -798,7 +798,7 @@ static TIMER_CALLBACK(pcw16_keyboard_timer_callback)
 //              pcw16_dump_cpu_ram();
 //          }
 
-			pcw16_keyboard_signal_byte_received(machine, data);
+			pcw16_keyboard_signal_byte_received(timer.machine(), data);
 		}
 	}
 }
@@ -828,65 +828,65 @@ static const int rtc_days_in_february[] =
 static void rtc_setup_max_days(pcw16_state *state)
 {
 	/* february? */
-	if (state->rtc_months == 2)
+	if (state->m_rtc_months == 2)
 	{
 		/* low two bits of year select number of days in february */
-		state->rtc_days_max = rtc_days_in_february[state->rtc_years & 0x03];
+		state->m_rtc_days_max = rtc_days_in_february[state->m_rtc_years & 0x03];
 	}
 	else
 	{
-		state->rtc_days_max = (unsigned char)rtc_days_in_each_month[state->rtc_months];
+		state->m_rtc_days_max = (unsigned char)rtc_days_in_each_month[state->m_rtc_months];
 	}
 }
 
-static TIMER_CALLBACK(rtc_timer_callback)
+static TIMER_DEVICE_CALLBACK(rtc_timer_callback)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = timer.machine().driver_data<pcw16_state>();
 	int fraction_of_second;
 
 	/* halt counter? */
-	if ((state->rtc_control & 0x01)!=0)
+	if ((state->m_rtc_control & 0x01)!=0)
 	{
 		/* no */
 
 		/* increment 256th's of a second register */
-		fraction_of_second = state->rtc_256ths_seconds+1;
+		fraction_of_second = state->m_rtc_256ths_seconds+1;
 		/* add bit 8 = overflow */
-		state->rtc_seconds+=(fraction_of_second>>8);
+		state->m_rtc_seconds+=(fraction_of_second>>8);
 		/* ensure counter is in range 0-255 */
-		state->rtc_256ths_seconds = fraction_of_second & 0x0ff;
+		state->m_rtc_256ths_seconds = fraction_of_second & 0x0ff;
 	}
 
-	if (state->rtc_seconds>59)
+	if (state->m_rtc_seconds>59)
 	{
-		state->rtc_seconds = 0;
+		state->m_rtc_seconds = 0;
 
-		state->rtc_minutes++;
+		state->m_rtc_minutes++;
 
-		if (state->rtc_minutes>59)
+		if (state->m_rtc_minutes>59)
 		{
-			state->rtc_minutes = 0;
+			state->m_rtc_minutes = 0;
 
-			state->rtc_hours++;
+			state->m_rtc_hours++;
 
-			if (state->rtc_hours>23)
+			if (state->m_rtc_hours>23)
 			{
-				state->rtc_hours = 0;
+				state->m_rtc_hours = 0;
 
-				state->rtc_days++;
+				state->m_rtc_days++;
 
-				if (state->rtc_days > state->rtc_days_max)
+				if (state->m_rtc_days > state->m_rtc_days_max)
 				{
-					state->rtc_days = 1;
+					state->m_rtc_days = 1;
 
-					state->rtc_months++;
+					state->m_rtc_months++;
 
-					if (state->rtc_months>12)
+					if (state->m_rtc_months>12)
 					{
-						state->rtc_months = 1;
+						state->m_rtc_months = 1;
 
 						/* 7 bit year counter */
-						state->rtc_years = (state->rtc_years + 1) & 0x07f;
+						state->m_rtc_years = (state->m_rtc_years + 1) & 0x07f;
 
 					}
 
@@ -902,88 +902,88 @@ static TIMER_CALLBACK(rtc_timer_callback)
 
 static  READ8_HANDLER(rtc_year_invalid_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	/* year in lower 7 bits. RTC Invalid status is state->rtc_control bit 0
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	/* year in lower 7 bits. RTC Invalid status is state->m_rtc_control bit 0
     inverted */
-	return (state->rtc_years & 0x07f) | (((state->rtc_control & 0x01)<<7)^0x080);
+	return (state->m_rtc_years & 0x07f) | (((state->m_rtc_control & 0x01)<<7)^0x080);
 }
 
 static  READ8_HANDLER(rtc_month_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	return state->rtc_months;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	return state->m_rtc_months;
 }
 
 static  READ8_HANDLER(rtc_days_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	return state->rtc_days;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	return state->m_rtc_days;
 }
 
 static  READ8_HANDLER(rtc_hours_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	return state->rtc_hours;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	return state->m_rtc_hours;
 }
 
 static  READ8_HANDLER(rtc_minutes_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	return state->rtc_minutes;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	return state->m_rtc_minutes;
 }
 
 static  READ8_HANDLER(rtc_seconds_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	return state->rtc_seconds;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	return state->m_rtc_seconds;
 }
 
 static  READ8_HANDLER(rtc_256ths_seconds_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	return state->rtc_256ths_seconds;
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	return state->m_rtc_256ths_seconds;
 }
 
 static WRITE8_HANDLER(rtc_control_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* write control */
-	state->rtc_control = data;
+	state->m_rtc_control = data;
 }
 
 static WRITE8_HANDLER(rtc_seconds_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* TODO: Writing register could cause next to increment! */
-	state->rtc_seconds = data;
+	state->m_rtc_seconds = data;
 }
 
 static WRITE8_HANDLER(rtc_minutes_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* TODO: Writing register could cause next to increment! */
-	state->rtc_minutes = data;
+	state->m_rtc_minutes = data;
 }
 
 static WRITE8_HANDLER(rtc_hours_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* TODO: Writing register could cause next to increment! */
-	state->rtc_hours = data;
+	state->m_rtc_hours = data;
 }
 
 static WRITE8_HANDLER(rtc_days_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* TODO: Writing register could cause next to increment! */
-	state->rtc_days = data;
+	state->m_rtc_days = data;
 }
 
 static WRITE8_HANDLER(rtc_month_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* TODO: Writing register could cause next to increment! */
-	state->rtc_months = data;
+	state->m_rtc_months = data;
 
 	rtc_setup_max_days(state);
 }
@@ -991,22 +991,22 @@ static WRITE8_HANDLER(rtc_month_w)
 
 static WRITE8_HANDLER(rtc_year_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	/* TODO: Writing register could cause next to increment! */
-	state->rtc_hours = data;
+	state->m_rtc_hours = data;
 
 	rtc_setup_max_days(state);
 }
 
 
-static void pcw16_trigger_fdc_int(running_machine *machine)
+static void pcw16_trigger_fdc_int(running_machine &machine)
 {
-	pcw16_state *drvstate = machine->driver_data<pcw16_state>();
+	pcw16_state *drvstate = machine.driver_data<pcw16_state>();
 	int state;
 
-	state = drvstate->system_status & (1<<6);
+	state = drvstate->m_system_status & (1<<6);
 
-	switch (drvstate->fdc_int_code)
+	switch (drvstate->m_fdc_int_code)
 	{
 		/* nmi */
 		case 0:
@@ -1017,7 +1017,7 @@ static void pcw16_trigger_fdc_int(running_machine *machine)
             is cleared this will not cause another nmi */
 			/* I'll emulate it like this to be sure */
 
-			if (state!=drvstate->previous_fdc_int_state)
+			if (state!=drvstate->m_previous_fdc_int_state)
 			{
 				if (state)
 				{
@@ -1041,29 +1041,29 @@ static void pcw16_trigger_fdc_int(running_machine *machine)
 			break;
 	}
 
-	drvstate->previous_fdc_int_state = state;
+	drvstate->m_previous_fdc_int_state = state;
 }
 
 static READ8_HANDLER(pcw16_system_status_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 //  logerror("system status r: \n");
 
-	return state->system_status | (input_port_read(space->machine, "EXTRA") & 0x04);
+	return state->m_system_status | (input_port_read(space->machine(), "EXTRA") & 0x04);
 }
 
 static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
 	int data;
 
-	data = state->interrupt_counter;
+	data = state->m_interrupt_counter;
 
-	state->interrupt_counter = 0;
+	state->m_interrupt_counter = 0;
 	/* clear display int */
-	state->system_status &= ~(1<<0);
+	state->m_system_status &= ~(1<<0);
 
-	pcw16_refresh_ints(space->machine);
+	pcw16_refresh_ints(space->machine());
 
 	return data;
 }
@@ -1071,8 +1071,8 @@ static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 
 static WRITE8_HANDLER(pcw16_system_control_w)
 {
-	pcw16_state *state = space->machine->driver_data<pcw16_state>();
-	device_t *speaker = space->machine->device("beep");
+	pcw16_state *state = space->machine().driver_data<pcw16_state>();
+	device_t *speaker = space->machine().device("beep");
 	//logerror("0x0f8: function: %d\n",data);
 
 	/* lower 4 bits define function code */
@@ -1093,35 +1093,35 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 		/* connect IRQ6 input to /NMI */
 		case 0x02:
 		{
-			state->fdc_int_code = 0;
+			state->m_fdc_int_code = 0;
 		}
 		break;
 
 		/* connect IRQ6 input to /INT */
 		case 0x03:
 		{
-			state->fdc_int_code = 1;
+			state->m_fdc_int_code = 1;
 		}
 		break;
 
 		/* dis-connect IRQ6 input from /NMI and /INT */
 		case 0x04:
 		{
-			state->fdc_int_code = 2;
+			state->m_fdc_int_code = 2;
 		}
 		break;
 
 		/* set terminal count */
 		case 0x05:
 		{
-			pc_fdc_set_tc_state(space->machine, 1);
+			pc_fdc_set_tc_state(space->machine(), 1);
 		}
 		break;
 
 		/* clear terminal count */
 		case 0x06:
 		{
-			pc_fdc_set_tc_state(space->machine, 0);
+			pc_fdc_set_tc_state(space->machine(), 0);
 		}
 		break;
 
@@ -1159,7 +1159,7 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 			/* bit 5 - green/red led (1==green)*/
 			/* bit 4 - monitor on/off (1==on) */
 
-			state->_4_bit_port = data>>4;
+			state->m_4_bit_port = data>>4;
 
 
 		}
@@ -1204,24 +1204,24 @@ static  READ8_HANDLER(pcw16_superio_fdc_digital_input_register_r)
 	return pc_fdc_r(space, PC_FDC_DIGITIAL_INPUT_REGISTER);
 }
 
-static void pcw16_fdc_interrupt(running_machine *machine, int state)
+static void pcw16_fdc_interrupt(running_machine &machine, int state)
 {
-	pcw16_state *drvstate = machine->driver_data<pcw16_state>();
+	pcw16_state *drvstate = machine.driver_data<pcw16_state>();
 	/* IRQ6 */
 	/* bit 6 of PCW16 system status indicates floppy ints */
-	drvstate->system_status &= ~(1<<6);
+	drvstate->m_system_status &= ~(1<<6);
 
 	if (state)
 	{
-		drvstate->system_status |= (1<<6);
+		drvstate->m_system_status |= (1<<6);
 	}
 
 	pcw16_trigger_fdc_int(machine);
 }
 
-static device_t * pcw16_get_device(running_machine *machine)
+static device_t * pcw16_get_device(running_machine &machine)
 {
-	return machine->device("upd765");
+	return machine.device("upd765");
 }
 
 static const struct pc_fdc_interface pcw16_fdc_interface=
@@ -1235,27 +1235,27 @@ static const struct pc_fdc_interface pcw16_fdc_interface=
 
 static INS8250_INTERRUPT( pcw16_com_interrupt_1 )
 {
-	pcw16_state *drvstate = device->machine->driver_data<pcw16_state>();
-	drvstate->system_status &= ~(1 << 4);
+	pcw16_state *drvstate = device->machine().driver_data<pcw16_state>();
+	drvstate->m_system_status &= ~(1 << 4);
 
 	if ( state ) {
-		drvstate->system_status |= (1 << 4);
+		drvstate->m_system_status |= (1 << 4);
 	}
 
-	pcw16_refresh_ints(device->machine);
+	pcw16_refresh_ints(device->machine());
 }
 
 
 static INS8250_INTERRUPT( pcw16_com_interrupt_2 )
 {
-	pcw16_state *drvstate = device->machine->driver_data<pcw16_state>();
-	drvstate->system_status &= ~(1 << 3);
+	pcw16_state *drvstate = device->machine().driver_data<pcw16_state>();
+	drvstate->m_system_status &= ~(1 << 3);
 
 	if ( state ) {
-		drvstate->system_status |= (1 << 3);
+		drvstate->m_system_status |= (1 << 3);
 	}
 
-	pcw16_refresh_ints(device->machine);
+	pcw16_refresh_ints(device->machine());
 }
 
 
@@ -1273,7 +1273,7 @@ static INS8250_REFRESH_CONNECT( pcw16_com_refresh_connected_2 )
 	new_inputs = 0;
 
 	/* Power switch is connected to Ring indicator */
-	if (input_port_read(device->machine, "EXTRA") & 0x040)
+	if (input_port_read(device->machine(), "EXTRA") & 0x040)
 	{
 		new_inputs = UART8250_INPUTS_RING_INDICATOR;
 	}
@@ -1301,7 +1301,7 @@ static const ins8250_interface pcw16_com_interface[2]=
 
 
 
-static ADDRESS_MAP_START(pcw16_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(pcw16_io, AS_IO, 8)
 	/* super i/o chip */
 	AM_RANGE(0x01a, 0x01a) AM_WRITE(pcw16_superio_fdc_digital_output_register_w)
     AM_RANGE(0x01c, 0x01c) AM_READ(pcw16_superio_fdc_main_status_register_r)
@@ -1327,27 +1327,27 @@ static ADDRESS_MAP_START(pcw16_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
-static void pcw16_reset(running_machine *machine)
+static void pcw16_reset(running_machine &machine)
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
+	pcw16_state *state = machine.driver_data<pcw16_state>();
 	/* initialise defaults */
-	state->fdc_int_code = 2;
+	state->m_fdc_int_code = 2;
 	/* clear terminal count */
 	pc_fdc_set_tc_state(machine, 0);
 	/* select first rom page */
-	state->banks[0] = 0;
+	state->m_banks[0] = 0;
 	pcw16_update_memory(machine);
 
 	/* temp rtc setup */
-	state->rtc_seconds = 0;
-	state->rtc_minutes = 0;
-	state->rtc_hours = 0;
-	state->rtc_days_max = 0;
-	state->rtc_days = 1;
-	state->rtc_months = 1;
-	state->rtc_years = 0;
-	state->rtc_control = 1;
-	state->rtc_256ths_seconds = 0;
+	state->m_rtc_seconds = 0;
+	state->m_rtc_minutes = 0;
+	state->m_rtc_hours = 0;
+	state->m_rtc_days_max = 0;
+	state->m_rtc_days = 1;
+	state->m_rtc_months = 1;
+	state->m_rtc_years = 0;
+	state->m_rtc_control = 1;
+	state->m_rtc_256ths_seconds = 0;
 
 	pcw16_keyboard_init(machine);
 }
@@ -1355,24 +1355,16 @@ static void pcw16_reset(running_machine *machine)
 
 static MACHINE_START( pcw16 )
 {
-	pcw16_state *state = machine->driver_data<pcw16_state>();
-	device_t *speaker = machine->device("beep");
-	state->system_status = 0;
-	state->interrupt_counter = 0;
-
-	/* video ints */
-	timer_pulse(machine, ATTOTIME_IN_USEC(5830), NULL, 0,pcw16_timer_callback);
-	/* rtc timer */
-	timer_pulse(machine, ATTOTIME_IN_HZ(256), NULL, 0, rtc_timer_callback);
-	/* keyboard timer */
-	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, pcw16_keyboard_timer_callback);
-
+	pcw16_state *state = machine.driver_data<pcw16_state>();
+	device_t *speaker = machine.device("beep");
+	state->m_system_status = 0;
+	state->m_interrupt_counter = 0;
 
 	pc_fdc_init(machine, &pcw16_fdc_interface);
 
 	/* initialise mouse */
 	pc_mouse_initialise(machine);
-	pc_mouse_set_serial_port( machine->device("ns16550_0") );
+	pc_mouse_set_serial_port( machine.device("ns16550_0") );
 
 	/* initialise keyboard */
 	at_keyboard_init(machine, AT_KEYBOARD_TYPE_AT);
@@ -1421,7 +1413,7 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_CPU_ADD("maincpu", Z80, 16000000)
 	MCFG_CPU_PROGRAM_MAP(pcw16_map)
 	MCFG_CPU_IO_MAP(pcw16_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( pcw16 )
 
@@ -1436,11 +1428,12 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(PCW16_SCREEN_WIDTH, PCW16_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW16_SCREEN_WIDTH-1, 0, PCW16_SCREEN_HEIGHT-1)
+	MCFG_SCREEN_UPDATE( pcw16 )
+
 	MCFG_PALETTE_LENGTH(PCW16_NUM_COLOURS)
 	MCFG_PALETTE_INIT( pcw16 )
 
 	MCFG_VIDEO_START( pcw16 )
-	MCFG_VIDEO_UPDATE( pcw16 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1453,10 +1446,17 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(pcw16_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2M")
 	MCFG_INTEL_E28F008SA_ADD("flash0")
 	MCFG_INTEL_E28F008SA_ADD("flash1")
+
+	/* video ints */
+	MCFG_TIMER_ADD_PERIODIC("video_timer", pcw16_timer_callback, attotime::from_hz(5830))
+	/* rtc timer */
+	MCFG_TIMER_ADD_PERIODIC("rtc_timer", rtc_timer_callback, attotime::from_hz(256))
+	/* keyboard timer */
+	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", pcw16_keyboard_timer_callback, attotime::from_hz(50))
 MACHINE_CONFIG_END
 
 /***************************************************************************
@@ -1474,4 +1474,4 @@ ROM_END
 
 
 /*     YEAR  NAME     PARENT    COMPAT  MACHINE    INPUT     INIT    COMPANY          FULLNAME */
-COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    0,	 	"Amstrad plc",   "PCW16", GAME_NOT_WORKING )
+COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    0,		"Amstrad plc",   "PCW16", GAME_NOT_WORKING )

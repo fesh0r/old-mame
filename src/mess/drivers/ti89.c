@@ -22,9 +22,9 @@
 #include "includes/ti89.h"
 #include "machine/nvram.h"
 #include "machine/intelfsh.h"
+#include "rendlay.h"
 
-
-UINT8 ti68k_state::keypad_r (running_machine *machine)
+UINT8 ti68k_state::keypad_r (running_machine &machine)
 {
 	UINT8 port, bit, data = 0xff;
 	static const char *const bitnames[] = {"BIT0", "BIT1", "BIT2", "BIT3", "BIT4", "BIT5", "BIT6", "BIT7"};
@@ -93,7 +93,7 @@ READ16_MEMBER ( ti68k_state::ti68k_io_r )
 			data = m_timer_val;
 			break;
 		case 0x0d:
-			data = ((!m_on_key) << 9) | keypad_r(space.machine);
+			data = ((!m_on_key) << 9) | keypad_r(m_machine);
 			break;
 		default:
 			data= m_io_hw1[offset & 0x0f];
@@ -146,22 +146,22 @@ READ16_MEMBER ( ti68k_state::flash_r )
 	}
 	else
 	{
-		UINT16 *rom_base = (UINT16 *)space.machine->region("flash")->base();
+		UINT16 *rom_base = (UINT16 *)space.machine().region("flash")->base();
 
 		return rom_base[offset];
 	}
 }
 
 
-static TIMER_CALLBACK( ti68k_timer_callback )
+static TIMER_DEVICE_CALLBACK( ti68k_timer_callback )
 {
-	ti68k_state *state = machine->driver_data<ti68k_state>();
+	ti68k_state *state = timer.machine().driver_data<ti68k_state>();
 
-	state->timer++;
+	state->m_timer++;
 
 	if (state->m_timer_on)
 	{
-		if (!(state->timer & state->m_timer_mask) && BIT(state->m_io_hw1[0x0a], 3))
+		if (!(state->m_timer & state->m_timer_mask) && BIT(state->m_io_hw1[0x0a], 3))
 		{
 			if (state->m_timer_val)
 				state->m_timer_val++;
@@ -169,25 +169,25 @@ static TIMER_CALLBACK( ti68k_timer_callback )
 				state->m_timer_val = (state->m_io_hw1[0x0b]) & 0xff;
 		}
 
-		if (!BIT(state->m_io_hw1[0x0a], 7) && ((state->m_hw_version == state->HW1) || (!BIT(state->m_io_hw1[0x0f], 2) && !BIT(state->m_io_hw1[0x0f], 1))))
+		if (!BIT(state->m_io_hw1[0x0a], 7) && ((state->m_hw_version == state->m_HW1) || (!BIT(state->m_io_hw1[0x0f], 2) && !BIT(state->m_io_hw1[0x0f], 1))))
 		{
-			if (!(state->timer & 0x003f))
+			if (!(state->m_timer & 0x003f))
 				state->m_maincpu->set_input_line(M68K_IRQ_1, HOLD_LINE);
 
-			if (!(state->timer & 0x3fff) && !BIT(state->m_io_hw1[0x0a], 3))
+			if (!(state->m_timer & 0x3fff) && !BIT(state->m_io_hw1[0x0a], 3))
 				state->m_maincpu->set_input_line(M68K_IRQ_3, HOLD_LINE);
 
-			if (!(state->timer & state->m_timer_mask) && BIT(state->m_io_hw1[0x0a], 3) && state->m_timer_val == 0)
+			if (!(state->m_timer & state->m_timer_mask) && BIT(state->m_io_hw1[0x0a], 3) && state->m_timer_val == 0)
 				state->m_maincpu->set_input_line(M68K_IRQ_5, HOLD_LINE);
 		}
 	}
 
-	if (state->keypad_r(machine) != 0xff)
+	if (state->keypad_r(timer.machine()) != 0xff)
 		state->m_maincpu->set_input_line(M68K_IRQ_2, HOLD_LINE);
 }
 
 
-static ADDRESS_MAP_START(ti92_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
+static ADDRESS_MAP_START(ti92_mem, AS_PROGRAM, 16, ti68k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x0fffff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0x200000, 0x5fffff) AM_UNMAP	// ROM
@@ -195,7 +195,7 @@ static ADDRESS_MAP_START(ti92_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(ti89_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
+static ADDRESS_MAP_START(ti89_mem, AS_PROGRAM, 16, ti68k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x0fffff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0x200000, 0x3fffff) AM_READWRITE(flash_r, flash_w)
@@ -205,7 +205,7 @@ static ADDRESS_MAP_START(ti89_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(ti92p_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
+static ADDRESS_MAP_START(ti92p_mem, AS_PROGRAM, 16, ti68k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x0fffff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0x200000, 0x3fffff) AM_NOP
@@ -215,7 +215,7 @@ static ADDRESS_MAP_START(ti92p_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(v200_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
+static ADDRESS_MAP_START(v200_mem, AS_PROGRAM, 16, ti68k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x0fffff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0x200000, 0x5fffff) AM_READWRITE(flash_r, flash_w)
@@ -224,7 +224,7 @@ static ADDRESS_MAP_START(v200_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(ti89t_mem, ADDRESS_SPACE_PROGRAM, 16, ti68k_state)
+static ADDRESS_MAP_START(ti89t_mem, AS_PROGRAM, 16, ti68k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x0fffff) AM_RAM AM_MIRROR(0x200000) AM_SHARE("nvram")
 	AM_RANGE(0x600000, 0x6fffff) AM_READWRITE(ti68k_io_r, ti68k_io_w)
@@ -236,7 +236,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( ti68k_on_key )
 {
-	ti68k_state *state = field->port->machine->driver_data<ti68k_state>();
+	ti68k_state *state = field->port->machine().driver_data<ti68k_state>();
 
 	state->m_on_key = newval;
 
@@ -421,7 +421,7 @@ INPUT_PORTS_END
 
 void ti68k_state::machine_start()
 {
-	UINT16 *rom = (UINT16 *)machine->region("flash")->base();
+	UINT16 *rom = (UINT16 *)m_machine.region("flash")->base();
 	int i;
 
 	m_flash_mem = !((rom[0x32] & 0x0f) != 0);
@@ -434,7 +434,7 @@ void ti68k_state::machine_start()
 			m_hw_version = ((rom[base + 0x0b]) << 16) | rom[base + 0x0c];
 
 		if (!m_hw_version)
-			m_hw_version = HW1;
+			m_hw_version = m_HW1;
 
 		for (i = 0x9000; i < 0x100000; i++)
 			if (rom[i] == 0xcccc && rom[i + 1] == 0xcccc)
@@ -444,24 +444,20 @@ void ti68k_state::machine_start()
 	}
 	else
 	{
-		m_hw_version = HW1;
+		m_hw_version = m_HW1;
 		m_initial_pc = ((rom[2]) << 16) | rom[3];
 
-		memory_unmap_read(m_maincpu->space(ADDRESS_SPACE_PROGRAM), 0x200000, 0x5fffff, 0, 0);
+		m_maincpu->space(AS_PROGRAM)->unmap_read(0x200000, 0x5fffff);
 
 		if (m_initial_pc > 0x400000)
 		{
-			m_maincpu->space(ADDRESS_SPACE_PROGRAM)->install_handler(0x400000, 0x5fffff, 0, 0, read16_delegate_create(ti68k_state, flash_r, *this));
-			m_maincpu->space(ADDRESS_SPACE_PROGRAM)->install_handler(0x400000, 0x5fffff, 0, 0, write16_delegate_create(ti68k_state, flash_w, *this));
+			m_maincpu->space(AS_PROGRAM)->install_readwrite_handler(0x400000, 0x5fffff, 0, 0, read16_delegate_create(ti68k_state, flash_r, *this),write16_delegate_create(ti68k_state, flash_w, *this));
 		}
         else
 		{
-			m_maincpu->space(ADDRESS_SPACE_PROGRAM)->install_handler(0x200000, 0x3fffff, 0, 0, read16_delegate_create(ti68k_state, flash_r, *this));
-			m_maincpu->space(ADDRESS_SPACE_PROGRAM)->install_handler(0x200000, 0x3fffff, 0, 0, write16_delegate_create(ti68k_state, flash_w, *this));
+			m_maincpu->space(AS_PROGRAM)->install_readwrite_handler(0x200000, 0x3fffff, 0, 0, read16_delegate_create(ti68k_state, flash_r, *this), write16_delegate_create(ti68k_state, flash_w, *this));
 		}
 	}
-
-	timer_pulse(machine, ATTOTIME_IN_HZ(1<<14), NULL, 0, ti68k_timer_callback);
 
 	logerror("HW=v%x, PC=%06x, Type=%s\n", m_hw_version, m_initial_pc, (m_flash_mem) ? "Flash" : "ROM");
 }
@@ -486,7 +482,7 @@ void ti68k_state::machine_reset()
 }
 
 /* video */
-bool ti68k_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool ti68k_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	/* preliminary implementation, doesn't use the contrast value */
 	UINT8 width = screen.width();
@@ -499,7 +495,7 @@ bool ti68k_state::video_update(screen_device &screen, bitmap_t &bitmap, const re
 		for (y = 0; y < height; y++)
 			for (x = 0; x < width / 8; x++)
 			{
-				UINT8 s_byte= m_maincpu->space(ADDRESS_SPACE_PROGRAM)->read_byte(m_lcd_base + y * (width/8) + x);
+				UINT8 s_byte= m_maincpu->space(AS_PROGRAM)->read_byte(m_lcd_base + y * (width/8) + x);
 				for (b = 0; b<8; b++)
 					*BITMAP_ADDR16(&bitmap, y, x * 8 + (7 - b)) = BIT(s_byte, b);
 			}
@@ -532,6 +528,8 @@ static MACHINE_CONFIG_START( ti89, ti68k_state )
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	MCFG_SHARP_UNK128MBIT_ADD("flash")	//should be LH28F320 for ti89t and v200 and LH28F160S3T for other models
+
+	MCFG_TIMER_ADD_PERIODIC("ti68k_timer", ti68k_timer_callback, attotime::from_hz(1<<14))
 MACHINE_CONFIG_END
 
 

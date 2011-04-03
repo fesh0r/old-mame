@@ -172,27 +172,27 @@ I/O ports
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "includes/pmd85.h"
 #include "machine/i8255a.h"
 #include "machine/pit8253.h"
 #include "machine/msm8251.h"
 #include "formats/pmd_pmd.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* I/O ports */
 
-static ADDRESS_MAP_START( pmd85_io_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pmd85_io_map, AS_IO, 8)
 	AM_RANGE( 0x00, 0xff) AM_READWRITE( pmd85_io_r, pmd85_io_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mato_io_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( mato_io_map, AS_IO, 8)
 	AM_RANGE( 0x00, 0xff) AM_READWRITE( mato_io_r, mato_io_w )
 ADDRESS_MAP_END
 
 /* memory w/r functions */
 
-static ADDRESS_MAP_START( pmd85_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pmd85_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")
@@ -205,7 +205,7 @@ static ADDRESS_MAP_START( pmd85_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank8")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pmd852a_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pmd852a_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")
@@ -218,7 +218,7 @@ static ADDRESS_MAP_START( pmd852a_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank10")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pmd853_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pmd853_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank9")
 	AM_RANGE(0x2000, 0x3fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank10")
 	AM_RANGE(0x4000, 0x5fff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank11")
@@ -229,7 +229,7 @@ static ADDRESS_MAP_START( pmd853_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe000, 0xffff) AM_READ_BANK("bank8") AM_WRITE_BANK("bank16")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( alfa_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( alfa_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x33ff) AM_RAMBANK("bank2")
 	AM_RANGE(0x3400, 0x3fff) AM_RAMBANK("bank3")
@@ -240,14 +240,14 @@ static ADDRESS_MAP_START( alfa_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank7")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mato_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( mato_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3")
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( c2717_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( c2717_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3")
@@ -548,7 +548,7 @@ static MACHINE_CONFIG_START( pmd85, pmd85_state )
 	MCFG_CPU_ADD("maincpu", I8080, 2000000)		/* 2.048MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(pmd85_mem)
 	MCFG_CPU_IO_MAP(pmd85_io_map)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( pmd85 )
 
@@ -561,11 +561,12 @@ static MACHINE_CONFIG_START( pmd85, pmd85_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(288, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 288-1, 0, 256-1)
+	MCFG_SCREEN_UPDATE( pmd85 )
+
 	MCFG_PALETTE_LENGTH(sizeof (pmd85_palette) / 3)
 	MCFG_PALETTE_INIT( pmd85 )
 
 	MCFG_VIDEO_START( pmd85 )
-	MCFG_VIDEO_UPDATE( pmd85 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -579,7 +580,7 @@ static MACHINE_CONFIG_START( pmd85, pmd85_state )
 	MCFG_MSM8251_ADD("uart", default_msm8251_interface)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

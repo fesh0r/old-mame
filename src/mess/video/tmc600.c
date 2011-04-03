@@ -47,7 +47,7 @@ WRITE8_MEMBER( tmc600_state::vismac_data_w )
 
 static TIMER_DEVICE_CALLBACK( blink_tick )
 {
-	tmc600_state *state = timer.machine->driver_data<tmc600_state>();
+	tmc600_state *state = timer.machine().driver_data<tmc600_state>();
 
 	state->m_blink = !state->m_blink;
 }
@@ -71,13 +71,13 @@ WRITE8_MEMBER( tmc600_state::page_ram_w )
 	m_color_ram[offset] = m_vismac_color_latch;
 }
 
-static ADDRESS_MAP_START( cdp1869_page_ram, 0, 8, tmc600_state )
+static ADDRESS_MAP_START( cdp1869_page_ram, AS_0, 8, tmc600_state )
 	AM_RANGE(0x000, 0x3ff) AM_MIRROR(0x400) AM_RAM AM_BASE(m_page_ram) AM_WRITE(page_ram_w)
 ADDRESS_MAP_END
 
 static CDP1869_CHAR_RAM_READ( tmc600_char_ram_r )
 {
-	tmc600_state *state = device->machine->driver_data<tmc600_state>();
+	tmc600_state *state = device->machine().driver_data<tmc600_state>();
 
 	UINT16 pageaddr = pma & TMC600_PAGE_RAM_MASK;
 	UINT8 color = state->get_color(pageaddr);
@@ -92,7 +92,7 @@ static CDP1869_CHAR_RAM_READ( tmc600_char_ram_r )
 
 static CDP1869_PCB_READ( tmc600_pcb_r )
 {
-	tmc600_state *state = device->machine->driver_data<tmc600_state>();
+	tmc600_state *state = device->machine().driver_data<tmc600_state>();
 
 	UINT16 pageaddr = pma & TMC600_PAGE_RAM_MASK;
 	UINT8 color = state->get_color(pageaddr);
@@ -114,18 +114,18 @@ static CDP1869_INTERFACE( vis_intf )
 void tmc600_state::video_start()
 {
 	// allocate memory
-	m_color_ram = auto_alloc_array(machine, UINT8, TMC600_PAGE_RAM_SIZE);
+	m_color_ram = auto_alloc_array(m_machine, UINT8, TMC600_PAGE_RAM_SIZE);
 
 	// find memory regions
-	m_char_rom = machine->region("chargen")->base();
+	m_char_rom = m_machine.region("chargen")->base();
 
 	// register for state saving
-	state_save_register_global_pointer(machine, m_color_ram, TMC600_PAGE_RAM_SIZE);
+	state_save_register_global_pointer(m_machine, m_color_ram, TMC600_PAGE_RAM_SIZE);
 
-	state_save_register_global(machine, m_vismac_reg_latch);
-	state_save_register_global(machine, m_vismac_color_latch);
-	state_save_register_global(machine, m_vismac_bkg_latch);
-	state_save_register_global(machine, m_blink);
+	state_save_register_global(m_machine, m_vismac_reg_latch);
+	state_save_register_global(m_machine, m_vismac_color_latch);
+	state_save_register_global(m_machine, m_vismac_bkg_latch);
+	state_save_register_global(m_machine, m_blink);
 }
 
 static const gfx_layout tmc600_charlayout =
@@ -148,7 +148,7 @@ GFXDECODE_END
 MACHINE_CONFIG_FRAGMENT( tmc600_video )
 	// video hardware
 	MCFG_CDP1869_SCREEN_PAL_ADD(SCREEN_TAG, CDP1869_DOT_CLK_PAL)
-	MCFG_TIMER_ADD_PERIODIC("blink", blink_tick, HZ(2))
+	MCFG_TIMER_ADD_PERIODIC("blink", blink_tick, attotime::from_hz(2))
 	MCFG_GFXDECODE(tmc600)
 
 	// sound hardware

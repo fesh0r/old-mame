@@ -2,6 +2,21 @@
 
         XOR S-100-12
 
+*****************************************************************************************************
+
+        Summary of Monitor commands:
+
+        D xxxx yyyy = dump memory to screen
+        F xxxx yyyy zz = fill memory from xxxx to yyyy-1 with zz
+        G xxxx         = execute program at xxxx
+        H xxxx yyyy aa bb...  = unknown
+        L xxxx         = edit memory (. to exit)
+        M xxxx yyyy zzzz = Move (copy) memory
+        V xxxx           = unknown
+    X n     = Select a bank (0 works, others freeze)
+
+        Note some of the commands are a bit buggy, eg F doesn't fill the last byte
+
 *****************************************************************************************************/
 
 /*
@@ -21,8 +36,8 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "formats/basicdsk.h"
-#include "devices/flopdrv.h"
-#include "devices/messram.h"
+#include "imagedev/flopdrv.h"
+#include "machine/ram.h"
 #include "machine/com8116.h"
 #include "machine/ctronics.h"
 #include "machine/i8255a.h"
@@ -43,61 +58,61 @@ enum
 
 void xor100_state::bankswitch()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
-	int banks = messram_get_size(m_ram) / 0x10000;
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	int banks = ram_get_size(m_ram) / 0x10000;
 
 	switch (m_mode)
 	{
 	case EPROM_0000:
 		if (m_bank < banks)
 		{
-			memory_install_write_bank(program, 0x0000, 0xffff, 0, 0, "bank1");
-			memory_set_bank(machine, "bank1", 1 + m_bank);
+			program->install_write_bank(0x0000, 0xffff, "bank1");
+			memory_set_bank(m_machine, "bank1", 1 + m_bank);
 		}
 		else
 		{
-			memory_unmap_write(program, 0x0000, 0xffff, 0, 0);
+			program->unmap_write(0x0000, 0xffff);
 		}
 
-		memory_install_read_bank(program, 0x0000, 0xf7ff, 0x07ff, 0, "bank2");
-		memory_install_read_bank(program, 0xf800, 0xffff, 0, 0, "bank3");
-		memory_set_bank(machine, "bank2", 0);
-		memory_set_bank(machine, "bank3", 0);
+		program->install_read_bank(0x0000, 0xf7ff, 0x07ff, 0, "bank2");
+		program->install_read_bank(0xf800, 0xffff, "bank3");
+		memory_set_bank(m_machine, "bank2", 0);
+		memory_set_bank(m_machine, "bank3", 0);
 		break;
 
 	case EPROM_F800:
 		if (m_bank < banks)
 		{
-			memory_install_write_bank(program, 0x0000, 0xffff, 0, 0, "bank1");
-			memory_install_read_bank(program, 0x0000, 0xf7ff, 0, 0, "bank2");
-			memory_set_bank(machine, "bank1", 1 + m_bank);
-			memory_set_bank(machine, "bank2", 1 + m_bank);
+			program->install_write_bank(0x0000, 0xffff, "bank1");
+			program->install_read_bank(0x0000, 0xf7ff, "bank2");
+			memory_set_bank(m_machine, "bank1", 1 + m_bank);
+			memory_set_bank(m_machine, "bank2", 1 + m_bank);
 		}
 		else
 		{
-			memory_unmap_write(program, 0x0000, 0xffff, 0, 0);
-			memory_unmap_read(program, 0x0000, 0xf7ff, 0, 0);
+			program->unmap_write(0x0000, 0xffff);
+			program->unmap_read(0x0000, 0xf7ff);
 		}
 
-		memory_install_read_bank(program, 0xf800, 0xffff, 0, 0, "bank3");
-		memory_set_bank(machine, "bank3", 0);
+		program->install_read_bank(0xf800, 0xffff, "bank3");
+		memory_set_bank(m_machine, "bank3", 0);
 		break;
 
 	case EPROM_OFF:
 		if (m_bank < banks)
 		{
-			memory_install_write_bank(program, 0x0000, 0xffff, 0, 0, "bank1");
-			memory_install_read_bank(program, 0x0000, 0xf7ff, 0, 0, "bank2");
-			memory_install_read_bank(program, 0xf800, 0xffff, 0, 0, "bank3");
-			memory_set_bank(machine, "bank1", 1 + m_bank);
-			memory_set_bank(machine, "bank2", 1 + m_bank);
-			memory_set_bank(machine, "bank3", 1 + m_bank);
+			program->install_write_bank(0x0000, 0xffff, "bank1");
+			program->install_read_bank(0x0000, 0xf7ff, "bank2");
+			program->install_read_bank(0xf800, 0xffff, "bank3");
+			memory_set_bank(m_machine, "bank1", 1 + m_bank);
+			memory_set_bank(m_machine, "bank2", 1 + m_bank);
+			memory_set_bank(m_machine, "bank3", 1 + m_bank);
 		}
 		else
 		{
-			memory_unmap_write(program, 0x0000, 0xffff, 0, 0);
-			memory_unmap_read(program, 0x0000, 0xf7ff, 0, 0);
-			memory_unmap_read(program, 0xf800, 0xffff, 0, 0);
+			program->unmap_write(0x0000, 0xffff);
+			program->unmap_read(0x0000, 0xf7ff);
+			program->unmap_read(0xf800, 0xffff);
 		}
 		break;
 	}
@@ -177,7 +192,7 @@ READ8_MEMBER( xor100_state::fdc_wait_r )
 	if (!m_fdc_irq && !m_fdc_drq)
 	{
 		/* TODO: this is really connected to the Z80 _RDY line */
-		cpu_set_input_line(m_maincpu, INPUT_LINE_HALT, ASSERT_LINE);
+		device_set_input_line(m_maincpu, INPUT_LINE_HALT, ASSERT_LINE);
 	}
 
 	return !m_fdc_irq << 7;
@@ -240,13 +255,13 @@ WRITE8_MEMBER( xor100_state::fdc_dsel_w )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( xor100_mem, ADDRESS_SPACE_PROGRAM, 8, xor100_state )
+static ADDRESS_MAP_START( xor100_mem, AS_PROGRAM, 8, xor100_state )
 	AM_RANGE(0x0000, 0xffff) AM_WRITE_BANK("bank1")
 	AM_RANGE(0x0000, 0xf7ff) AM_READ_BANK("bank2")
 	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( xor100_io, ADDRESS_SPACE_IO, 8, xor100_state )
+static ADDRESS_MAP_START( xor100_io, AS_IO, 8, xor100_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_DEVREADWRITE_LEGACY(I8251_A_TAG, msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE_LEGACY(I8251_A_TAG, msm8251_status_r, msm8251_control_w)
@@ -266,7 +281,6 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( xor100 )
-	PORT_INCLUDE(generic_terminal)
 
 	PORT_START("DSW0")
 	PORT_DIPNAME( 0x0f, 0x05, "Serial Port A" )
@@ -372,18 +386,30 @@ static COM8116_INTERFACE( com5016_intf )
 
 static const msm8251_interface printer_8251_intf =
 {
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* Terminal 8251A Interface */
 
 static const msm8251_interface terminal_8251_intf =
 {
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* Printer 8255A Interface */
@@ -467,7 +493,7 @@ WRITE_LINE_MEMBER( xor100_state::fdc_irq_w )
 	if (state)
 	{
 		/* TODO: this is really connected to the Z80 _RDY line */
-		cpu_set_input_line(m_maincpu, INPUT_LINE_HALT, CLEAR_LINE);
+		device_set_input_line(m_maincpu, INPUT_LINE_HALT, CLEAR_LINE);
 	}
 }
 
@@ -478,7 +504,7 @@ WRITE_LINE_MEMBER( xor100_state::fdc_drq_w )
 	if (state)
 	{
 		/* TODO: this is really connected to the Z80 _RDY line */
-		cpu_set_input_line(m_maincpu, INPUT_LINE_HALT, CLEAR_LINE);
+		device_set_input_line(m_maincpu, INPUT_LINE_HALT, CLEAR_LINE);
 	}
 }
 
@@ -506,23 +532,23 @@ static GENERIC_TERMINAL_INTERFACE( xor100_terminal_intf )
 
 void xor100_state::machine_start()
 {
-	int banks = messram_get_size(m_ram) / 0x10000;
-	UINT8 *ram = messram_get_ptr(m_ram);
-	UINT8 *rom = machine->region(Z80_TAG)->base();
+	int banks = ram_get_size(m_ram) / 0x10000;
+	UINT8 *ram = ram_get_ptr(m_ram);
+	UINT8 *rom = m_machine.region(Z80_TAG)->base();
 
 	/* setup memory banking */
-	memory_configure_bank(machine, "bank1", 1, banks, ram, 0x10000);
-	memory_configure_bank(machine, "bank2", 0, 1, rom, 0);
-	memory_configure_bank(machine, "bank2", 1, banks, ram, 0x10000);
-	memory_configure_bank(machine, "bank3", 0, 1, rom, 0);
-	memory_configure_bank(machine, "bank3", 1, banks, ram + 0xf800, 0x10000);
+	memory_configure_bank(m_machine, "bank1", 1, banks, ram, 0x10000);
+	memory_configure_bank(m_machine, "bank2", 0, 1, rom, 0);
+	memory_configure_bank(m_machine, "bank2", 1, banks, ram, 0x10000);
+	memory_configure_bank(m_machine, "bank3", 0, 1, rom, 0);
+	memory_configure_bank(m_machine, "bank3", 1, banks, ram + 0xf800, 0x10000);
 
 	/* register for state saving */
-	state_save_register_global(machine, m_mode);
-	state_save_register_global(machine, m_bank);
-	state_save_register_global(machine, m_fdc_irq);
-	state_save_register_global(machine, m_fdc_drq);
-	state_save_register_global(machine, m_fdc_dden);
+	state_save_register_global(m_machine, m_mode);
+	state_save_register_global(m_machine, m_bank);
+	state_save_register_global(m_machine, m_fdc_irq);
+	state_save_register_global(m_machine, m_fdc_drq);
+	state_save_register_global(m_machine, m_fdc_dden);
 }
 
 void xor100_state::machine_reset()
@@ -547,12 +573,12 @@ static const floppy_config xor100_floppy_config =
 };
 
 static MACHINE_CONFIG_START( xor100, xor100_state )
-    /* basic machine hardware */
-    MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_8MHz/2)
-    MCFG_CPU_PROGRAM_MAP(xor100_mem)
-    MCFG_CPU_IO_MAP(xor100_io)
+	/* basic machine hardware */
+	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_8MHz/2)
+	MCFG_CPU_PROGRAM_MAP(xor100_mem)
+	MCFG_CPU_IO_MAP(xor100_io)
 
-    /* video hardware */
+	/* video hardware */
 	MCFG_FRAGMENT_ADD( generic_terminal )
 
 	/* devices */
@@ -567,7 +593,7 @@ static MACHINE_CONFIG_START( xor100, xor100_state )
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, xor100_terminal_intf)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("128K,192K,256K,320K,384K,448K,512K")
 MACHINE_CONFIG_END

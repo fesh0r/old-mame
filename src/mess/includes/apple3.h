@@ -9,6 +9,7 @@
 #ifndef APPLE3_H_
 #define APPLE3_H_
 
+#include "includes/apple2.h"
 #include "machine/applefdc.h"
 #include "machine/6522via.h"
 
@@ -22,30 +23,30 @@
 #define VAR_EXTSIDE		0x0080
 
 
-class apple3_state : public driver_device
+class apple3_state : public apple2_state
 {
 public:
 	apple3_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: apple2_state(machine, config) { }
 
-	UINT32 flags;
-	UINT8 via_0_a;
-	UINT8 via_0_b;
-	UINT8 via_1_a;
-	UINT8 via_1_b;
-	int via_1_irq;
-	int enable_mask;
-	offs_t zpa;
-	int profile_lastaddr;
-	UINT8 profile_gotstrobe;
-	UINT8 profile_readdata;
-	UINT8 profile_busycount;
-	UINT8 profile_busy;
-	UINT8 profile_online;
-	UINT8 profile_writedata;
-	UINT8 last_n;
-	UINT8 *char_mem;
-	UINT32 *hgr_map;
+	UINT32 m_flags;
+	UINT8 m_via_0_a;
+	UINT8 m_via_0_b;
+	UINT8 m_via_1_a;
+	UINT8 m_via_1_b;
+	int m_via_1_irq;
+	int m_enable_mask;
+	offs_t m_zpa;
+	int m_profile_lastaddr;
+	UINT8 m_profile_gotstrobe;
+	UINT8 m_profile_readdata;
+	UINT8 m_profile_busycount;
+	UINT8 m_profile_busy;
+	UINT8 m_profile_online;
+	UINT8 m_profile_writedata;
+	UINT8 m_last_n;
+	UINT8 *m_char_mem;
+	UINT32 *m_hgr_map;
 };
 
 
@@ -69,8 +70,8 @@ WRITE8_HANDLER( apple3_indexed_write );
 /*----------- defined in video/apple3.c -----------*/
 
 VIDEO_START( apple3 );
-VIDEO_UPDATE( apple3 );
-void apple3_write_charmem(running_machine *machine);
+SCREEN_UPDATE( apple3 );
+void apple3_write_charmem(running_machine &machine);
 
 
 #endif /* APPLE3_H_ */

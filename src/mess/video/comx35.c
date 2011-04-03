@@ -19,7 +19,7 @@ WRITE8_MEMBER( comx35_state::cdp1869_w )
 	case 4:
 		m_vis->out4_w(space, ma, data);
 		break;
-		
+
 	case 5:
 		m_vis->out5_w(space, ma, data);
 		break;
@@ -36,13 +36,13 @@ WRITE8_MEMBER( comx35_state::cdp1869_w )
 
 /* CDP1869 */
 
-static ADDRESS_MAP_START( cdp1869_page_ram, 0, 8 )
-	AM_RANGE(0x000, 0x3ff) AM_MIRROR(0x400) AM_RAM
+static ADDRESS_MAP_START( cdp1869_page_ram, AS_0, 8 )
+	AM_RANGE(0x000, 0x7ff) AM_RAM
 ADDRESS_MAP_END
 
 static CDP1869_CHAR_RAM_READ( comx35_charram_r )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
+	comx35_state *state = device->machine().driver_data<comx35_state>();
 
 	UINT8 column = pmd & 0x7f;
 	UINT16 charaddr = (column << 4) | cma;
@@ -52,7 +52,7 @@ static CDP1869_CHAR_RAM_READ( comx35_charram_r )
 
 static CDP1869_CHAR_RAM_WRITE( comx35_charram_w )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
+	comx35_state *state = device->machine().driver_data<comx35_state>();
 
 	UINT8 column = pmd & 0x7f;
 	UINT16 charaddr = (column << 4) | cma;
@@ -67,14 +67,14 @@ static CDP1869_PCB_READ( comx35_pcb_r )
 
 static WRITE_LINE_DEVICE_HANDLER( comx35_prd_w )
 {
-	comx35_state *driver_state = device->machine->driver_data<comx35_state>();
+	comx35_state *driver_state = device->machine().driver_data<comx35_state>();
 
 	if (!driver_state->m_iden && !state)
 	{
-		cpu_set_input_line(driver_state->m_maincpu, COSMAC_INPUT_LINE_INT, ASSERT_LINE);
+		device_set_input_line(driver_state->m_maincpu, COSMAC_INPUT_LINE_INT, ASSERT_LINE);
 	}
 
-	cpu_set_input_line(driver_state->m_maincpu, COSMAC_INPUT_LINE_EF1, state);
+	device_set_input_line(driver_state->m_maincpu, COSMAC_INPUT_LINE_EF1, state);
 }
 
 static CDP1869_INTERFACE( pal_cdp1869_intf )
@@ -102,15 +102,15 @@ static CDP1869_INTERFACE( ntsc_cdp1869_intf )
 void comx35_state::video_start()
 {
 	// allocate memory
-	m_charram = auto_alloc_array(machine, UINT8, COMX35_CHARRAM_SIZE);
-	m_videoram = auto_alloc_array(machine, UINT8, COMX35_VIDEORAM_SIZE);
+	m_charram = auto_alloc_array(m_machine, UINT8, COMX35_CHARRAM_SIZE);
+	m_videoram = auto_alloc_array(m_machine, UINT8, COMX35_VIDEORAM_SIZE);
 
 	// register for save state
-	state_save_register_global_pointer(machine, m_charram, COMX35_CHARRAM_SIZE);
-	state_save_register_global_pointer(machine, m_videoram, COMX35_VIDEORAM_SIZE);
+	state_save_register_global_pointer(m_machine, m_charram, COMX35_CHARRAM_SIZE);
+	state_save_register_global_pointer(m_machine, m_videoram, COMX35_VIDEORAM_SIZE);
 }
 
-bool comx35_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool comx35_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	if (screen.width() == CDP1869_SCREEN_WIDTH)
 	{
@@ -128,9 +128,9 @@ bool comx35_state::video_update(screen_device &screen, bitmap_t &bitmap, const r
 
 static MC6845_UPDATE_ROW( comx35_update_row )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
+	comx35_state *state = device->machine().driver_data<comx35_state>();
 
-	UINT8 *charrom = device->machine->region("chargen")->base();
+	UINT8 *charrom = device->machine().region("chargen")->base();
 
 	int column, bit;
 
@@ -159,7 +159,7 @@ static MC6845_UPDATE_ROW( comx35_update_row )
 
 static WRITE_LINE_DEVICE_HANDLER( comx35_hsync_changed )
 {
-	comx35_state *driver_state = device->machine->driver_data<comx35_state>();
+	comx35_state *driver_state = device->machine().driver_data<comx35_state>();
 
 	driver_state->m_cdp1802_ef4 = state;
 }

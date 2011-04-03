@@ -37,6 +37,8 @@ typedef struct _crubus_state
 INLINE crubus_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == CRUBUS);
+
 	return (crubus_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -131,7 +133,7 @@ static DEVICE_START( crubus )
 	{
 		if (cons[i].name != NULL)
 		{
-			device_t *dev = device->machine->device(cons[i].name);
+			device_t *dev = device->machine().device(cons[i].name);
 			if (dev!=NULL)
 				cru_mount_device(device, dev, cons[i].address_mask, cons[i].select_pattern, cons[i].read, cons[i].write);
 			else

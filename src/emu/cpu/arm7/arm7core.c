@@ -1874,11 +1874,6 @@ static void HandleMemBlock(arm_state *cpustate, UINT32 insn)
                 // LDM PC - takes 2 extra cycles
                 ARM7_ICOUNT -= 2;
             }
-
-			// note: the next statement should be located within the previous "if" statement (right?), however, doing so will break "39in1"
-
-            // LDM PC - takes 1 extra cycle
-            ARM7_ICOUNT -= 1;
         }
         else
         {

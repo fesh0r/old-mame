@@ -42,126 +42,126 @@ backup of playfield rom and picture/description of its board
 
 
 // in my opinion own cpu to display lcd field and to handle own buttons
-void ssystem3_playfield_getfigure(running_machine *machine, int x, int y, int *figure, int *black)
+void ssystem3_playfield_getfigure(running_machine &machine, int x, int y, int *figure, int *black)
 {
-	ssystem3_state *state = machine->driver_data<ssystem3_state>();
+	ssystem3_state *state = machine.driver_data<ssystem3_state>();
   int d;
   if (x&1)
-    d=state->playfield.u.s.field[y][x/2]&0xf;
+    d=state->m_playfield.u.s.field[y][x/2]&0xf;
   else
-    d=state->playfield.u.s.field[y][x/2]>>4;
+    d=state->m_playfield.u.s.field[y][x/2]>>4;
 
   *figure=d&7;
   *black=d&8;
 }
 
-static void ssystem3_playfield_reset(running_machine *machine)
+static void ssystem3_playfield_reset(running_machine &machine)
 {
-	ssystem3_state *state = machine->driver_data<ssystem3_state>();
-  memset(&state->playfield, 0, sizeof(state->playfield));
-  state->playfield.signal=FALSE;
-  //  state->playfield.on=TRUE; //input_port_read(machine, "Configuration")&1;
+	ssystem3_state *state = machine.driver_data<ssystem3_state>();
+  memset(&state->m_playfield, 0, sizeof(state->m_playfield));
+  state->m_playfield.signal=FALSE;
+  //  state->m_playfield.on=TRUE; //input_port_read(machine, "Configuration")&1;
 }
 
-static void ssystem3_playfield_write(running_machine *machine, int reset, int signal)
+static void ssystem3_playfield_write(running_machine &machine, int reset, int signal)
 {
-	ssystem3_state *state = machine->driver_data<ssystem3_state>();
+	ssystem3_state *state = machine.driver_data<ssystem3_state>();
   int d=FALSE;
 
   if (!reset) {
-    state->playfield.count=0;
-    state->playfield.bit=0;
-    state->playfield.started=FALSE;
-    state->playfield.signal=signal;
-    state->playfield.time=timer_get_time(machine);
+    state->m_playfield.count=0;
+    state->m_playfield.bit=0;
+    state->m_playfield.started=FALSE;
+    state->m_playfield.signal=signal;
+    state->m_playfield.time=machine.time();
   }
-  if (!signal && state->playfield.signal) {
-    attotime t=timer_get_time(machine);
-    state->playfield.high_time=attotime_sub(t, state->playfield.time);
-    state->playfield.time=t;
+  if (!signal && state->m_playfield.signal) {
+    attotime t=machine.time();
+    state->m_playfield.high_time=t - state->m_playfield.time;
+    state->m_playfield.time=t;
 
-    //    logerror("%.4x playfield %d lowtime %s hightime %s\n",(int)activecpu_get_pc(), state->playfield.count,
-    //       attotime_string(state->playfield.low_time, 7), attotime_string(state->playfield.high_time,7) );
+    //    logerror("%.4x playfield %d lowtime %s hightime %s\n",(int)activecpu_get_pc(), state->m_playfield.count,
+    //       state->m_playfield.low_time.as_string(7), state->m_playfield.high_time.as_string(7) );
 
-    if (state->playfield.started) {
+    if (state->m_playfield.started) {
       // 0 twice as long low
       // 1 twice as long high
-      if (attotime_compare(state->playfield.low_time,state->playfield.high_time)>0) d=TRUE;
+      if (state->m_playfield.low_time > state->m_playfield.high_time) d=TRUE;
 
-      state->playfield.data&=~(1<<(state->playfield.bit^7));
-      if (d) state->playfield.data|=1<<(state->playfield.bit^7);
-      state->playfield.bit++;
-      if (state->playfield.bit==8) {
-	logerror("%.4x playfield wrote %d %02x\n", (int)cpu_get_pc(machine->device("maincpu")), state->playfield.count, state->playfield.data);
-	state->playfield.u.data[state->playfield.count]=state->playfield.data;
-	state->playfield.bit=0;
-	state->playfield.count=(state->playfield.count+1)%ARRAY_LENGTH(state->playfield.u.data);
-	if (state->playfield.count==0) state->playfield.started=FALSE;
+      state->m_playfield.data&=~(1<<(state->m_playfield.bit^7));
+      if (d) state->m_playfield.data|=1<<(state->m_playfield.bit^7);
+      state->m_playfield.bit++;
+      if (state->m_playfield.bit==8) {
+	logerror("%.4x playfield wrote %d %02x\n", (int)cpu_get_pc(machine.device("maincpu")), state->m_playfield.count, state->m_playfield.data);
+	state->m_playfield.u.data[state->m_playfield.count]=state->m_playfield.data;
+	state->m_playfield.bit=0;
+	state->m_playfield.count=(state->m_playfield.count+1)%ARRAY_LENGTH(state->m_playfield.u.data);
+	if (state->m_playfield.count==0) state->m_playfield.started=FALSE;
       }
     }
 
-  } else if (signal && !state->playfield.signal) {
-    attotime t=timer_get_time(machine);
-    state->playfield.low_time=attotime_sub(t, state->playfield.time);
-    state->playfield.time=t;
-    state->playfield.started=TRUE;
+  } else if (signal && !state->m_playfield.signal) {
+    attotime t=machine.time();
+    state->m_playfield.low_time= t - state->m_playfield.time;
+    state->m_playfield.time=t;
+    state->m_playfield.started=TRUE;
   }
-  state->playfield.signal=signal;
+  state->m_playfield.signal=signal;
 }
 
-static void ssystem3_playfield_read(running_machine *machine, int *on, int *ready)
+static void ssystem3_playfield_read(running_machine &machine, int *on, int *ready)
 {
-	//ssystem3_state *state = machine->driver_data<ssystem3_state>();
+	//ssystem3_state *state = machine.driver_data<ssystem3_state>();
 	*on=!(input_port_read(machine, "Configuration")&1);
-	//  *on=!state->playfield.on;
+	//  *on=!state->m_playfield.on;
 	*ready=FALSE;
 }
 
 static WRITE8_DEVICE_HANDLER(ssystem3_via_write_a)
 {
-	ssystem3_state *state = device->machine->driver_data<ssystem3_state>();
-	state->porta=data;
+	ssystem3_state *state = device->machine().driver_data<ssystem3_state>();
+	state->m_porta=data;
   //  logerror("%.4x via port a write %02x\n",(int)activecpu_get_pc(), data);
 }
 
 static READ8_DEVICE_HANDLER(ssystem3_via_read_a)
 {
-	ssystem3_state *state = device->machine->driver_data<ssystem3_state>();
+	ssystem3_state *state = device->machine().driver_data<ssystem3_state>();
   UINT8 data=0xff;
 #if 1 // time switch
-  if (!(state->porta&0x10)) data&=input_port_read(device->machine, "matrix1")|0xf1;
-  if (!(state->porta&0x20)) data&=input_port_read(device->machine, "matrix2")|0xf1;
-  if (!(state->porta&0x40)) data&=input_port_read(device->machine, "matrix3")|0xf1;
-  if (!(state->porta&0x80)) data&=input_port_read(device->machine, "matrix4")|0xf1;
+  if (!(state->m_porta&0x10)) data&=input_port_read(device->machine(), "matrix1")|0xf1;
+  if (!(state->m_porta&0x20)) data&=input_port_read(device->machine(), "matrix2")|0xf1;
+  if (!(state->m_porta&0x40)) data&=input_port_read(device->machine(), "matrix3")|0xf1;
+  if (!(state->m_porta&0x80)) data&=input_port_read(device->machine(), "matrix4")|0xf1;
 #else
-  if (!(state->porta&0x10)) data&=input_port_read(device->machine, "matrix1")|0xf0;
-  if (!(state->porta&0x20)) data&=input_port_read(device->machine, "matrix2")|0xf0;
-  if (!(state->porta&0x40)) data&=input_port_read(device->machine, "matrix3")|0xf0;
-  if (!(state->porta&0x80)) data&=input_port_read(device->machine, "matrix4")|0xf0;
+  if (!(state->m_porta&0x10)) data&=input_port_read(device->machine(), "matrix1")|0xf0;
+  if (!(state->m_porta&0x20)) data&=input_port_read(device->machine(), "matrix2")|0xf0;
+  if (!(state->m_porta&0x40)) data&=input_port_read(device->machine(), "matrix3")|0xf0;
+  if (!(state->m_porta&0x80)) data&=input_port_read(device->machine(), "matrix4")|0xf0;
 #endif
-  if (!(state->porta&1)) {
-    if (!(input_port_read(device->machine, "matrix1")&1)) data&=~0x10;
-    if (!(input_port_read(device->machine, "matrix2")&1)) data&=~0x20;
-    if (!(input_port_read(device->machine, "matrix3")&1)) data&=~0x40;
-    if (!(input_port_read(device->machine, "matrix4")&1)) data&=~0x80;
+  if (!(state->m_porta&1)) {
+    if (!(input_port_read(device->machine(), "matrix1")&1)) data&=~0x10;
+    if (!(input_port_read(device->machine(), "matrix2")&1)) data&=~0x20;
+    if (!(input_port_read(device->machine(), "matrix3")&1)) data&=~0x40;
+    if (!(input_port_read(device->machine(), "matrix4")&1)) data&=~0x80;
   }
-  if (!(state->porta&2)) {
-    if (!(input_port_read(device->machine, "matrix1")&2)) data&=~0x10;
-    if (!(input_port_read(device->machine, "matrix2")&2)) data&=~0x20;
-    if (!(input_port_read(device->machine, "matrix3")&2)) data&=~0x40;
-    if (!(input_port_read(device->machine, "matrix4")&2)) data&=~0x80;
+  if (!(state->m_porta&2)) {
+    if (!(input_port_read(device->machine(), "matrix1")&2)) data&=~0x10;
+    if (!(input_port_read(device->machine(), "matrix2")&2)) data&=~0x20;
+    if (!(input_port_read(device->machine(), "matrix3")&2)) data&=~0x40;
+    if (!(input_port_read(device->machine(), "matrix4")&2)) data&=~0x80;
   }
-  if (!(state->porta&4)) {
-    if (!(input_port_read(device->machine, "matrix1")&4)) data&=~0x10;
-    if (!(input_port_read(device->machine, "matrix2")&4)) data&=~0x20;
-    if (!(input_port_read(device->machine, "matrix3")&4)) data&=~0x40;
-    if (!(input_port_read(device->machine, "matrix4")&4)) data&=~0x80;
+  if (!(state->m_porta&4)) {
+    if (!(input_port_read(device->machine(), "matrix1")&4)) data&=~0x10;
+    if (!(input_port_read(device->machine(), "matrix2")&4)) data&=~0x20;
+    if (!(input_port_read(device->machine(), "matrix3")&4)) data&=~0x40;
+    if (!(input_port_read(device->machine(), "matrix4")&4)) data&=~0x80;
   }
-  if (!(state->porta&8)) {
-    if (!(input_port_read(device->machine, "matrix1")&8)) data&=~0x10;
-    if (!(input_port_read(device->machine, "matrix2")&8)) data&=~0x20;
-    if (!(input_port_read(device->machine, "matrix3")&8)) data&=~0x40;
-    if (!(input_port_read(device->machine, "matrix4")&8)) data&=~0x80;
+  if (!(state->m_porta&8)) {
+    if (!(input_port_read(device->machine(), "matrix1")&8)) data&=~0x10;
+    if (!(input_port_read(device->machine(), "matrix2")&8)) data&=~0x20;
+    if (!(input_port_read(device->machine(), "matrix3")&8)) data&=~0x40;
+    if (!(input_port_read(device->machine(), "matrix4")&8)) data&=~0x80;
   }
   //  logerror("%.4x via port a read %02x\n",(int)activecpu_get_pc(), data);
   return data;
@@ -193,7 +193,7 @@ static READ8_DEVICE_HANDLER(ssystem3_via_read_b)
 {
 	UINT8 data=0xff;
 	int on, ready;
-	ssystem3_playfield_read(device->machine, &on, &ready);
+	ssystem3_playfield_read(device->machine(), &on, &ready);
 	if (!on) data&=~0x20;
 	if (!ready) data&=~0x10;
 	return data;
@@ -201,12 +201,12 @@ static READ8_DEVICE_HANDLER(ssystem3_via_read_b)
 
 static WRITE8_DEVICE_HANDLER(ssystem3_via_write_b)
 {
-	via6522_device *via_0 = device->machine->device<via6522_device>("via6522_0");
-	address_space* space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	via6522_device *via_0 = device->machine().device<via6522_device>("via6522_0");
+	address_space* space = device->machine().device("maincpu")->memory().space(AS_PROGRAM);
 	UINT8 d;
 
-	ssystem3_playfield_write(device->machine, data&1, data&8);
-	ssystem3_lcd_write(device->machine, data&4, data&2);
+	ssystem3_playfield_write(device->machine(), data&1, data&8);
+	ssystem3_lcd_write(device->machine(), data&4, data&2);
 
 	d=ssystem3_via_read_b(via_0, 0)&~0x40;
 	if (data&0x80) d|=0x40;
@@ -235,7 +235,7 @@ static DRIVER_INIT( ssystem3 )
 	ssystem3_lcd_reset(machine);
 }
 
-static ADDRESS_MAP_START( ssystem3_map , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( ssystem3_map , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x03ff) AM_RAM
 				  /*
 67-de playfield ($40 means white, $80 black)
@@ -306,7 +306,7 @@ static MACHINE_CONFIG_START( ssystem3, ssystem3_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, 1000000)
 	MCFG_CPU_PROGRAM_MAP(ssystem3_map)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
     /* video hardware */
 	MCFG_SCREEN_ADD("screen", LCD)
@@ -315,11 +315,12 @@ static MACHINE_CONFIG_START( ssystem3, ssystem3_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(728, 437)
 	MCFG_SCREEN_VISIBLE_AREA(0, 728-1, 0, 437-1)
+	MCFG_SCREEN_UPDATE( ssystem3 )
+
 	MCFG_PALETTE_LENGTH(242 + 32768)
 	MCFG_PALETTE_INIT( ssystem3 )
 
 	MCFG_VIDEO_START( ssystem3 )
-	MCFG_VIDEO_UPDATE( ssystem3 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

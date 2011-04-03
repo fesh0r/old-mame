@@ -14,7 +14,7 @@
 #define C64_H_
 
 #include "machine/6526cia.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 
 #define C64_MAX_ROMBANK 64 // .crt files contain multiple 'CHIPs', i.e. rom banks (of variable size) with headers. Known carts have at most 64 'CHIPs'.
 
@@ -37,37 +37,37 @@ public:
 	c64_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int old_level;
-	int old_data;
-	int old_exrom;
-	int old_game;
-	UINT8 vicirq;
-	emu_timer *datasette_timer;
-	UINT8 *colorram;
-	UINT8 *basic;
-	UINT8 *kernal;
-	UINT8 *chargen;
-	UINT8 *memory;
-	int pal;
-	int tape_on;
-	UINT8 *c64_roml;
-	UINT8 *c64_romh;
-	UINT8 *vicaddr;
-	UINT8 *c128_vicaddr;
-	UINT8 game;
-	UINT8 exrom;
-	UINT8 *io_mirror;
-	UINT8 port_data;
-	UINT8 *roml;
-	UINT8 *romh;
-	int ultimax;
-	int cia1_on;
-	int io_enabled;
-	int is_sx64;
-	UINT8 *io_ram_w_ptr;
-	UINT8 *io_ram_r_ptr;
-	c64_cart_t cart;
-	int nmilevel;
+	int m_old_level;
+	int m_old_data;
+	int m_old_exrom;
+	int m_old_game;
+	UINT8 m_vicirq;
+	emu_timer *m_datasette_timer;
+	UINT8 *m_colorram;
+	UINT8 *m_basic;
+	UINT8 *m_kernal;
+	UINT8 *m_chargen;
+	UINT8 *m_memory;
+	int m_pal;
+	int m_tape_on;
+	UINT8 *m_c64_roml;
+	UINT8 *m_c64_romh;
+	UINT8 *m_vicaddr;
+	UINT8 *m_c128_vicaddr;
+	UINT8 m_game;
+	UINT8 m_exrom;
+	UINT8 *m_io_mirror;
+	UINT8 m_port_data;
+	UINT8 *m_roml;
+	UINT8 *m_romh;
+	int m_ultimax;
+	int m_cia1_on;
+	int m_io_enabled;
+	int m_is_sx64;
+	UINT8 *m_io_ram_w_ptr;
+	UINT8 *m_io_ram_r_ptr;
+	c64_cart_t m_cart;
+	int m_nmilevel;
 };
 
 
@@ -99,7 +99,7 @@ WRITE8_HANDLER(c64_ioarea_w);
 WRITE8_HANDLER ( c64_write_io );
 READ8_HANDLER ( c64_read_io );
 int c64_paddle_read (device_t *device, int which);
-void c64_vic_interrupt (running_machine *machine, int level);
+void c64_vic_interrupt (running_machine &machine, int level);
 
 extern const mos6526_interface c64_ntsc_cia0, c64_pal_cia0;
 extern const mos6526_interface c64_ntsc_cia1, c64_pal_cia1;

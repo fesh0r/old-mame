@@ -40,27 +40,27 @@ public:
 	cgenie_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *videoram;
-	UINT8 *fontram;
-	UINT8 *colorram;
-	int tv_mode;
-	int font_offset[4];
-	int port_ff;
-	UINT8 irq_status;
-	UINT8 motor_drive;
-	UINT8 head;
-	UINT8 cass_level;
-	UINT8 cass_bit;
-	UINT8 psg_a_out;
-	UINT8 psg_b_out;
-	UINT8 psg_a_inp;
-	UINT8 psg_b_inp;
-	UINT8 control_port;
-	CRTC6845 crt;
-	int graphics;
-	bitmap_t *dlybitmap;
-	int off_x;
-	int off_y;
+	UINT8 *m_videoram;
+	UINT8 *m_fontram;
+	UINT8 *m_colorram;
+	int m_tv_mode;
+	int m_font_offset[4];
+	int m_port_ff;
+	UINT8 m_irq_status;
+	UINT8 m_motor_drive;
+	UINT8 m_head;
+	UINT8 m_cass_level;
+	UINT8 m_cass_bit;
+	UINT8 m_psg_a_out;
+	UINT8 m_psg_b_out;
+	UINT8 m_psg_a_inp;
+	UINT8 m_psg_b_inp;
+	UINT8 m_control_port;
+	CRTC6845 m_crt;
+	int m_graphics;
+	bitmap_t *m_dlybitmap;
+	int m_off_x;
+	int m_off_y;
 };
 
 
@@ -108,14 +108,14 @@ WRITE8_HANDLER ( cgenie_data_w );
 WRITE8_HANDLER ( cgenie_motor_w );
 
  READ8_HANDLER ( cgenie_keyboard_r );
-int cgenie_videoram_r(running_machine *machine,int offset);
+int cgenie_videoram_r(running_machine &machine,int offset);
 WRITE8_HANDLER ( cgenie_videoram_w );
 
 
 /*----------- defined in video/cgenie.c -----------*/
 
 VIDEO_START( cgenie );
-VIDEO_UPDATE( cgenie );
+SCREEN_UPDATE( cgenie );
 
 READ8_HANDLER ( cgenie_index_r );
 READ8_HANDLER ( cgenie_register_r );
@@ -123,8 +123,8 @@ READ8_HANDLER ( cgenie_register_r );
 WRITE8_HANDLER ( cgenie_index_w );
 WRITE8_HANDLER ( cgenie_register_w );
 
-int cgenie_get_register(running_machine *machine, int indx);
-void cgenie_mode_select(running_machine *machine, int graphics);
+int cgenie_get_register(running_machine &machine, int indx);
+void cgenie_mode_select(running_machine &machine, int graphics);
 
 
 #endif /* CGENIE_H_ */

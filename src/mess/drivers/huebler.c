@@ -10,7 +10,7 @@
     TODO:
 
     - keyboard repeat
-	- shift lock is not PORT_TOGGLE, instead RS flipflop
+    - shift lock is not PORT_TOGGLE, instead RS flipflop
     - tone generator
     - cassette serial clock
     - eprom programmer
@@ -24,11 +24,11 @@
 #include "includes/huebler.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "machine/z80pio.h"
 #include "machine/z80dart.h"
 #include "machine/z80ctc.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* Keyboard */
 
@@ -36,7 +36,7 @@ void amu880_state::scan_keyboard()
 {
 	static const char *const keynames[] = { "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7", "Y8", "Y9", "Y10", "Y11", "Y12", "Y13", "Y14", "Y15" };
 
-	UINT8 data = input_port_read(machine, keynames[m_key_a8 ? m_key_d6 : m_key_d7]);
+	UINT8 data = input_port_read(m_machine, keynames[m_key_a8 ? m_key_d6 : m_key_d7]);
 
 	int a8 = (data & 0x0f) == 0x0f;
 
@@ -59,7 +59,7 @@ void amu880_state::scan_keyboard()
 
 static TIMER_DEVICE_CALLBACK( keyboard_tick )
 {
-	amu880_state *state = timer.machine->driver_data<amu880_state>();
+	amu880_state *state = timer.machine().driver_data<amu880_state>();
 
 	state->scan_keyboard();
 }
@@ -80,12 +80,12 @@ READ8_MEMBER( amu880_state::keyboard_r )
 
     */
 
-	UINT8 special = input_port_read(machine, "SPECIAL");
-	
+	UINT8 special = input_port_read(m_machine, "SPECIAL");
+
 	int ctrl = BIT(special, 0);
 	int shift = BIT(special, 2) & BIT(special, 1);
 	int ab0 = BIT(offset, 0);
-	
+
 	UINT16 address = (ab0 << 9) | (m_key_a8 << 8) | (ctrl << 7) | (shift << 6) | (m_key_a5 << 5) | (m_key_a4 << 4) | m_key_d7;
 
 	return m_kb_rom[address];
@@ -93,7 +93,7 @@ READ8_MEMBER( amu880_state::keyboard_r )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( amu880_mem, ADDRESS_SPACE_PROGRAM, 8, amu880_state )
+static ADDRESS_MAP_START( amu880_mem, AS_PROGRAM, 8, amu880_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xe7ff) AM_RAM
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(m_video_ram)
@@ -101,7 +101,7 @@ static ADDRESS_MAP_START( amu880_mem, ADDRESS_SPACE_PROGRAM, 8, amu880_state )
 	AM_RANGE(0xfc00, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( amu880_io, ADDRESS_SPACE_IO, 8, amu880_state )
+static ADDRESS_MAP_START( amu880_io, AS_IO, 8, amu880_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x00, 0x00) AM_MIRROR(0x03) AM_WRITE(power_off_w)
@@ -224,10 +224,10 @@ INPUT_PORTS_END
 void amu880_state::video_start()
 {
 	// find memory regions
-	m_char_rom = machine->region("chargen")->base();
+	m_char_rom = m_machine.region("chargen")->base();
 }
 
-bool amu880_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool amu880_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	int y, sx, x, line;
 
@@ -350,14 +350,14 @@ static const z80_daisy_config amu880_daisy_chain[] =
 void amu880_state::machine_start()
 {
 	/* find memory regions */
-	m_kb_rom = machine->region("keyboard")->base();
+	m_kb_rom = m_machine.region("keyboard")->base();
 
 	/* register for state saving */
-	state_save_register_global(machine, m_key_d6);
-	state_save_register_global(machine, m_key_d7);
-	state_save_register_global(machine, m_key_a4);
-	state_save_register_global(machine, m_key_a5);
-	state_save_register_global(machine, m_key_a8);
+	state_save_register_global(m_machine, m_key_d6);
+	state_save_register_global(m_machine, m_key_d7);
+	state_save_register_global(m_machine, m_key_a4);
+	state_save_register_global(m_machine, m_key_a5);
+	state_save_register_global(m_machine, m_key_a8);
 }
 
 /* Machine Driver */
@@ -396,7 +396,7 @@ static MACHINE_CONFIG_START( amu880, amu880_state )
 	MCFG_CPU_IO_MAP(amu880_io)
 	MCFG_CPU_CONFIG(amu880_daisy_chain)
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, HZ(1500))
+	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, attotime::from_hz(1500))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
@@ -416,7 +416,7 @@ static MACHINE_CONFIG_START( amu880, amu880_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, amu880_cassette_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

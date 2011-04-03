@@ -10,18 +10,18 @@
 #include "cpu/m6502/m6502.h"
 #include "includes/lynx.h"
 
-#include "devices/snapquik.h"
+#include "imagedev/snapquik.h"
 
 static QUICKLOAD_LOAD( lynx );
 
-static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_BASE_MEMBER(lynx_state, mem_0000)
-	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_BASE_MEMBER(lynx_state, mem_fc00)
-	AM_RANGE(0xfd00, 0xfdff) AM_RAM AM_BASE_MEMBER(lynx_state, mem_fd00)
-	AM_RANGE(0xfe00, 0xfff7) AM_READ_BANK("bank3") AM_WRITEONLY AM_BASE_MEMBER(lynx_state, mem_fe00) AM_SIZE_MEMBER(lynx_state, mem_fe00_size)
+static ADDRESS_MAP_START( lynx_mem , AS_PROGRAM, 8)
+	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_BASE_MEMBER(lynx_state, m_mem_0000)
+	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_BASE_MEMBER(lynx_state, m_mem_fc00)
+	AM_RANGE(0xfd00, 0xfdff) AM_RAM AM_BASE_MEMBER(lynx_state, m_mem_fd00)
+	AM_RANGE(0xfe00, 0xfff7) AM_READ_BANK("bank3") AM_WRITEONLY AM_BASE_MEMBER(lynx_state, m_mem_fe00) AM_SIZE_MEMBER(lynx_state, m_mem_fe00_size)
 	AM_RANGE(0xfff8, 0xfff8) AM_RAM
 	AM_RANGE(0xfff9, 0xfff9) AM_READWRITE(lynx_memory_config_r, lynx_memory_config_w)
-	AM_RANGE(0xfffa, 0xffff) AM_READ_BANK("bank4") AM_WRITEONLY AM_BASE_MEMBER(lynx_state, mem_fffa)
+	AM_RANGE(0xfffa, 0xffff) AM_READ_BANK("bank4") AM_WRITEONLY AM_BASE_MEMBER(lynx_state, m_mem_fffa)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( lynx )
@@ -66,7 +66,7 @@ static MACHINE_CONFIG_START( lynx, lynx_state )
 	MCFG_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MCFG_CPU_PROGRAM_MAP(lynx_mem)
 	MCFG_CPU_VBLANK_INT("screen", lynx_frame_int)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( lynx )
 
@@ -78,11 +78,12 @@ static MACHINE_CONFIG_START( lynx, lynx_state )
 	/*MCFG_SCREEN_SIZE(160, 102)*/
 	MCFG_SCREEN_SIZE(160, 160)
 	MCFG_SCREEN_VISIBLE_AREA(0, 160-1, 0, 102-1)
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_PALETTE_LENGTH(0x1000)
 	MCFG_PALETTE_INIT( lynx )
 
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -138,10 +139,10 @@ ROM_END
 
 static QUICKLOAD_LOAD( lynx )
 {
-	device_t *cpu = image.device().machine->device("maincpu");
-	address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	device_t *cpu = image.device().machine().device("maincpu");
+	address_space *space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
 	UINT8 *data = NULL;
-	UINT8 *rom = image.device().machine->region("maincpu")->base();
+	UINT8 *rom = image.device().machine().region("maincpu")->base();
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	UINT16 start, length;
 	int i;
@@ -175,7 +176,7 @@ static QUICKLOAD_LOAD( lynx )
 	space->write_byte(0x1fc, start & 0xff);
 	space->write_byte(0x1fd, start >> 8);
 
-	lynx_crc_keyword((device_image_interface&)*image.device().machine->device("quickload"));
+	lynx_crc_keyword((device_image_interface&)*image.device().machine().device("quickload"));
 
 	cpu_set_reg(cpu, STATE_GENPC, start);
 

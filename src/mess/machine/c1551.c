@@ -20,7 +20,7 @@
 #include "emu.h"
 #include "c1551.h"
 #include "cpu/m6502/m6502.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/d64_dsk.h"
 #include "formats/g64_dsk.h"
 #include "machine/6525tpi.h"
@@ -109,8 +109,8 @@ static TIMER_DEVICE_CALLBACK( irq_tick )
 {
 	c1551_t *c1551 = get_safe_token(timer.owner());
 
-	cpu_set_input_line(c1551->cpu, M6502_IRQ_LINE, ASSERT_LINE);
-	cpu_set_input_line(c1551->cpu, M6502_IRQ_LINE, CLEAR_LINE);
+	device_set_input_line(c1551->cpu, M6502_IRQ_LINE, ASSERT_LINE);
+	device_set_input_line(c1551->cpu, M6502_IRQ_LINE, CLEAR_LINE);
 }
 
 /*-------------------------------------------------
@@ -158,7 +158,7 @@ static TIMER_CALLBACK( bit_tick )
 		if (!c1551->yb)
 		{
 			/* simulate weak bits with randomness */
-			c1551->yb = machine->rand() & 0xff;
+			c1551->yb = machine.rand() & 0xff;
 		}
 
 		c1551->byte = byte;
@@ -209,7 +209,7 @@ static void spindle_motor(c1551_t *c1551, int mtr)
 		}
 
 		floppy_mon_w(c1551->image, !mtr);
-		timer_enable(c1551->bit_timer, mtr);
+		c1551->bit_timer->enable(mtr);
 
 		c1551->mtr = mtr;
 	}
@@ -317,7 +317,7 @@ static void c1551_port_w( device_t *device, UINT8 direction, UINT8 data )
 
 	if (c1551->ds != ds)
 	{
-		timer_adjust_periodic(c1551->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C2040_BITRATE[ds]/4));
+		c1551->bit_timer->adjust(attotime::zero, 0, attotime::from_hz(C2040_BITRATE[ds]/4));
 		c1551->ds = ds;
 	}
 }
@@ -334,7 +334,7 @@ static const m6502_interface m6510t_intf =
     ADDRESS_MAP( c1551_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c1551_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c1551_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x0800) AM_RAM
 	AM_RANGE(0x4000, 0x4007) AM_MIRROR(0x3ff8) AM_DEVREADWRITE(M6523_0_TAG, tpi6525_r, tpi6525_w)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1551:c1551", 0)
@@ -680,7 +680,7 @@ static MACHINE_CONFIG_FRAGMENT( c1551 )
 	MCFG_TPI6525_ADD(M6523_0_TAG, tpi0_intf) // 6523
 	MCFG_TPI6525_ADD(M6523_1_TAG, tpi1_intf) // 6523
 
-	MCFG_TIMER_ADD_PERIODIC("irq", irq_tick, HZ(120))
+	MCFG_TIMER_ADD_PERIODIC("irq", irq_tick, attotime::from_hz(120))
 
 	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, c1551_floppy_config)
 MACHINE_CONFIG_END
@@ -720,31 +720,31 @@ static DEVICE_START( c1551 )
 	floppy_install_load_proc(c1551->image, on_disk_change);
 
 	/* allocate data timer */
-	c1551->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
+	c1551->bit_timer = device->machine().scheduler().timer_alloc(FUNC(bit_tick), (void *)device);
 
 	/* map TPI1 to host CPU memory space */
-	address_space *program = cpu_get_address_space(device->machine->device(config->cpu_tag), ADDRESS_SPACE_PROGRAM);
+	address_space *program = device->machine().device(config->cpu_tag)->memory().space(AS_PROGRAM);
 	UINT32 start_address = c1551->address ? 0xfec0 : 0xfef0;
 
-	memory_install_readwrite8_device_handler(program, c1551->tpi1, start_address, start_address + 7, 0, 0, tpi6525_r, tpi6525_w);
+	program->install_legacy_readwrite_handler(*c1551->tpi1, start_address, start_address + 7, FUNC(tpi6525_r), FUNC(tpi6525_w));
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, c1551->tcbm_data);
-	state_save_register_device_item(device, 0, c1551->status);
-	state_save_register_device_item(device, 0, c1551->dav);
-	state_save_register_device_item(device, 0, c1551->ack);
-	state_save_register_device_item(device, 0, c1551->stp);
-	state_save_register_device_item(device, 0, c1551->mtr);
-	state_save_register_device_item(device, 0, c1551->track_len);
-	state_save_register_device_item(device, 0, c1551->buffer_pos);
-	state_save_register_device_item(device, 0, c1551->bit_pos);
-	state_save_register_device_item(device, 0, c1551->bit_count);
-	state_save_register_device_item(device, 0, c1551->data);
-	state_save_register_device_item(device, 0, c1551->yb);
-	state_save_register_device_item(device, 0, c1551->ds);
-	state_save_register_device_item(device, 0, c1551->soe);
-	state_save_register_device_item(device, 0, c1551->byte);
-	state_save_register_device_item(device, 0, c1551->mode);
+	device->save_item(NAME(c1551->tcbm_data));
+	device->save_item(NAME(c1551->status));
+	device->save_item(NAME(c1551->dav));
+	device->save_item(NAME(c1551->ack));
+	device->save_item(NAME(c1551->stp));
+	device->save_item(NAME(c1551->mtr));
+	device->save_item(NAME(c1551->track_len));
+	device->save_item(NAME(c1551->buffer_pos));
+	device->save_item(NAME(c1551->bit_pos));
+	device->save_item(NAME(c1551->bit_count));
+	device->save_item(NAME(c1551->data));
+	device->save_item(NAME(c1551->yb));
+	device->save_item(NAME(c1551->ds));
+	device->save_item(NAME(c1551->soe));
+	device->save_item(NAME(c1551->byte));
+	device->save_item(NAME(c1551->mode));
 }
 
 /*-------------------------------------------------
@@ -784,6 +784,7 @@ DEVICE_GET_INFO( c1551 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 1551");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c1551");									break;				
 		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Commodore Plus/4");						break;
 		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;

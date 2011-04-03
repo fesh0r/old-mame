@@ -162,8 +162,8 @@ FFFF
 #include "cpu/tms9900/tms9900.h"
 #include "sound/wave.h"
 #include "video/tms9928a.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 #include "sound/sn76496.h"
 #include "machine/ctronics.h"
 
@@ -174,11 +174,11 @@ public:
 	tutor_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	char cartridge_enable;
-	char tape_interrupt_enable;
-	emu_timer *tape_interrupt_timer;
-	UINT8 printer_data;
-	char printer_strobe;
+	char m_cartridge_enable;
+	char m_tape_interrupt_enable;
+	emu_timer *m_tape_interrupt_timer;
+	UINT8 m_printer_data;
+	char m_printer_strobe;
 };
 
 
@@ -199,11 +199,11 @@ enum
 
 static DRIVER_INIT(tutor)
 {
-	tutor_state *state = machine->driver_data<tutor_state>();
-	state->tape_interrupt_timer = timer_alloc(machine, tape_interrupt_handler, NULL);
+	tutor_state *state = machine.driver_data<tutor_state>();
+	state->m_tape_interrupt_timer = machine.scheduler().timer_alloc(FUNC(tape_interrupt_handler));
 
-	memory_configure_bank(machine, "bank1", 0, 1, machine->region("maincpu")->base() + basic_base, 0);
-	memory_configure_bank(machine, "bank1", 1, 1, machine->region("maincpu")->base() + cartridge_base, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, machine.region("maincpu")->base() + basic_base, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, machine.region("maincpu")->base() + cartridge_base, 0);
 	memory_set_bank(machine, "bank1", 0);
 }
 
@@ -230,19 +230,19 @@ static MACHINE_START(tutor)
 
 static MACHINE_RESET(tutor)
 {
-	tutor_state *state = machine->driver_data<tutor_state>();
-	state->cartridge_enable = 0;
+	tutor_state *state = machine.driver_data<tutor_state>();
+	state->m_cartridge_enable = 0;
 
-	state->tape_interrupt_enable = 0;
+	state->m_tape_interrupt_enable = 0;
 
-	state->printer_data = 0;
-	state->printer_strobe = 0;
+	state->m_printer_data = 0;
+	state->m_printer_strobe = 0;
 }
 
 static INTERRUPT_GEN( tutor_vblank_interrupt )
 {
 	/* No vblank interrupt? */
-	TMS9928A_interrupt(device->machine);
+	TMS9928A_interrupt(device->machine());
 }
 
 /*
@@ -265,13 +265,13 @@ static READ8_HANDLER(read_keyboard)
 	UINT8 value;
 
 	snprintf(port, ARRAY_LENGTH(port), "LINE%d", offset);
-	value = input_port_read(space->machine, port);
+	value = input_port_read(space->machine(), port);
 
 	/* hack for ports overlapping with joystick */
 	if (offset == 4 || offset == 5)
 	{
 		snprintf(port, ARRAY_LENGTH(port), "LINE%d_alt", offset);
-		value |= input_port_read(space->machine, port);
+		value |= input_port_read(space->machine(), port);
 	}
 
 	return value;
@@ -280,7 +280,7 @@ static READ8_HANDLER(read_keyboard)
 static DEVICE_IMAGE_LOAD( tutor_cart )
 {
 	UINT32 size;
-	UINT8 *ptr = image.device().machine->region("maincpu")->base();
+	UINT8 *ptr = image.device().machine().region("maincpu")->base();
 
 	if (image.software_entry() == NULL)
 	{
@@ -299,7 +299,7 @@ static DEVICE_IMAGE_LOAD( tutor_cart )
 
 static DEVICE_IMAGE_UNLOAD( tutor_cart )
 {
-	memset(image.device().machine->region("maincpu")->base() + cartridge_base, 0, 0x6000);
+	memset(image.device().machine().region("maincpu")->base() + cartridge_base, 0, 0x6000);
 }
 
 /*
@@ -338,7 +338,7 @@ static  READ8_HANDLER(tutor_mapper_r)
 
 static WRITE8_HANDLER(tutor_mapper_w)
 {
-	tutor_state *state = space->machine->driver_data<tutor_state>();
+	tutor_state *state = space->machine().driver_data<tutor_state>();
 	switch (offset)
 	{
 	case 0x00:
@@ -347,14 +347,14 @@ static WRITE8_HANDLER(tutor_mapper_w)
 
 	case 0x08:
 		/* disable cartridge ROM, enable BASIC ROM at base >8000 */
-		state->cartridge_enable = 0;
-		memory_set_bank(space->machine, "bank1", 0);
+		state->m_cartridge_enable = 0;
+		memory_set_bank(space->machine(), "bank1", 0);
 		break;
 
 	case 0x0c:
 		/* enable cartridge ROM, disable BASIC ROM at base >8000 */
-		state->cartridge_enable = 1;
-		memory_set_bank(space->machine, "bank1", 1);
+		state->m_cartridge_enable = 1;
+		memory_set_bank(space->machine(), "bank1", 1);
 		break;
 
 	default:
@@ -385,21 +385,21 @@ static WRITE8_HANDLER(tutor_mapper_w)
 
 static TIMER_CALLBACK(tape_interrupt_handler)
 {
-	//tutor_state *state = machine->driver_data<tutor_state>();
-	//assert(state->tape_interrupt_enable);
-	cputag_set_input_line(machine, "maincpu", 1, (cassette_input(machine->device("cassette")) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	//tutor_state *state = machine.driver_data<tutor_state>();
+	//assert(state->m_tape_interrupt_enable);
+	cputag_set_input_line(machine, "maincpu", 1, (cassette_input(machine.device("cassette")) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
 static  READ8_HANDLER(tutor_cassette_r)
 {
-	return (cassette_input(space->machine->device("cassette")) > 0.0) ? 1 : 0;
+	return (cassette_input(space->machine().device("cassette")) > 0.0) ? 1 : 0;
 }
 
 /* memory handler */
 static WRITE8_HANDLER(tutor_cassette_w)
 {
-	tutor_state *state = space->machine->driver_data<tutor_state>();
+	tutor_state *state = space->machine().driver_data<tutor_state>();
 	if (offset & /*0x1f*/0x1e)
 		logerror("unknown port in %s %d\n", __FILE__, __LINE__);
 
@@ -411,20 +411,20 @@ static WRITE8_HANDLER(tutor_cassette_w)
 		{
 		case 0:
 			/* data out */
-			cassette_output(space->machine->device("cassette"), (data) ? +1.0 : -1.0);
+			cassette_output(space->machine().device("cassette"), (data) ? +1.0 : -1.0);
 			break;
 		case 1:
 			/* interrupt control??? */
 			//logerror("ignoring write of %d to cassette port 1\n", data);
-			if (state->tape_interrupt_enable != ! data)
+			if (state->m_tape_interrupt_enable != ! data)
 			{
-				state->tape_interrupt_enable = ! data;
-				if (state->tape_interrupt_enable)
-					timer_adjust_periodic(state->tape_interrupt_timer, /*ATTOTIME_IN_HZ(44100)*/attotime_zero, 0, ATTOTIME_IN_HZ(44100));
+				state->m_tape_interrupt_enable = ! data;
+				if (state->m_tape_interrupt_enable)
+					state->m_tape_interrupt_timer->adjust(/*attotime::from_hz(44100)*/attotime::zero, 0, attotime::from_hz(44100));
 				else
 				{
-					timer_adjust_oneshot(state->tape_interrupt_timer, attotime_never, 0);
-					cputag_set_input_line(space->machine, "maincpu", 1, CLEAR_LINE);
+					state->m_tape_interrupt_timer->adjust(attotime::never);
+					cputag_set_input_line(space->machine(), "maincpu", 1, CLEAR_LINE);
 				}
 			}
 			break;
@@ -528,7 +528,7 @@ static WRITE8_HANDLER(test_w)
 }
 #endif
 
-static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tutor_memmap, AS_PROGRAM, 8)
 
 	AM_RANGE(0x0000, 0x7fff) AM_ROM	/*system ROM*/
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1") AM_WRITENOP /*BASIC ROM & cartridge ROM*/
@@ -555,7 +555,7 @@ ADDRESS_MAP_END
     >ed00(r): tape input
 */
 
-static ADDRESS_MAP_START(tutor_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(tutor_io, AS_IO, 8)
 	AM_RANGE(0xec0, 0xec7) AM_READ(read_keyboard)			/*keyboard interface*/
 	AM_RANGE(0xed0, 0xed0) AM_READ(tutor_cassette_r)		/*cassette interface*/
 ADDRESS_MAP_END

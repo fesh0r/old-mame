@@ -5,10 +5,11 @@
         12/05/2009 Skeleton driver.
 
 
-	TODO:
-	- Proper artwork
+    TODO:
+    - Proper artwork
 
 ****************************************************************************/
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
@@ -19,27 +20,32 @@ class et3400_state : public driver_device
 {
 public:
 	et3400_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+		  m_maincpu(*this, "maincpu")
+	{ }
 
+	required_device<cpu_device> m_maincpu;
+	DECLARE_READ8_MEMBER( et3400_keypad_r );
+	DECLARE_WRITE8_MEMBER( et3400_display_w );
 };
 
 
 
-static READ8_HANDLER( et3400_keypad_r )
+READ8_MEMBER( et3400_state::et3400_keypad_r )
 {
 	UINT8 data = 0xff;
 
 	if (~offset & 4)
-		data &= input_port_read(space->machine, "X2");
+		data &= input_port_read(m_machine, "X2");
 	if (~offset & 2)
-		data &= input_port_read(space->machine, "X1");
+		data &= input_port_read(m_machine, "X1");
 	if (~offset & 1)
-		data &= input_port_read(space->machine, "X0");
+		data &= input_port_read(m_machine, "X0");
 
 	return data;
 }
 
-static WRITE8_HANDLER( et3400_display_w )
+WRITE8_MEMBER( et3400_state::et3400_display_w )
 {
 /* This computer sets each segment, one at a time. */
 
@@ -52,12 +58,12 @@ static WRITE8_HANDLER( et3400_display_w )
 		segdata |= segment;
 	else
 		segdata &= ~segment;
-	
+
 	output_set_digit_value(digit, segdata);
 }
 
 
-static ADDRESS_MAP_START(et3400_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(et3400_mem, AS_PROGRAM, 8, et3400_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x01ff ) AM_RAM
 	AM_RANGE( 0xc000, 0xc0ff ) AM_READ(et3400_keypad_r)

@@ -30,8 +30,8 @@ static const rectangle typewriter_bitmap_bounds =
 	0,	typewriter_window_height-1,	/* min_y, max_y */
 };
 
-static void tx0_draw_panel_backdrop(running_machine *machine, bitmap_t *bitmap);
-static void tx0_draw_panel(running_machine *machine, bitmap_t *bitmap);
+static void tx0_draw_panel_backdrop(running_machine &machine, bitmap_t *bitmap);
+static void tx0_draw_panel(running_machine &machine, bitmap_t *bitmap);
 
 
 
@@ -40,47 +40,56 @@ static void tx0_draw_panel(running_machine *machine, bitmap_t *bitmap);
 */
 VIDEO_START( tx0 )
 {
-	tx0_state *state = machine->driver_data<tx0_state>();
-	state->typewriter_color = color_typewriter_black;
+	tx0_state *state = machine.driver_data<tx0_state>();
+	state->m_typewriter_color = color_typewriter_black;
 
 	/* alloc bitmaps for our private fun */
-	state->panel_bitmap = auto_bitmap_alloc(machine, panel_window_width, panel_window_height, BITMAP_FORMAT_INDEXED16);
-	state->typewriter_bitmap = auto_bitmap_alloc(machine, typewriter_window_width, typewriter_window_height, BITMAP_FORMAT_INDEXED16);
+	state->m_panel_bitmap = auto_bitmap_alloc(machine, panel_window_width, panel_window_height, BITMAP_FORMAT_INDEXED16);
+	state->m_typewriter_bitmap = auto_bitmap_alloc(machine, typewriter_window_width, typewriter_window_height, BITMAP_FORMAT_INDEXED16);
 
 	/* set up out bitmaps */
-	tx0_draw_panel_backdrop(machine, state->panel_bitmap);
+	tx0_draw_panel_backdrop(machine, state->m_panel_bitmap);
 
-	bitmap_fill(state->typewriter_bitmap, &typewriter_bitmap_bounds, pen_typewriter_bg);
+	bitmap_fill(state->m_typewriter_bitmap, &typewriter_bitmap_bounds, pen_typewriter_bg);
 
-	/* initialize CRT */
-	video_start_crt(machine, pen_crt_num_levels, crt_window_offset_x, crt_window_offset_y, crt_window_width, crt_window_height);
+	state->m_crt = machine.device("crt");
+}
+
+
+SCREEN_EOF( tx0 )
+{
+	tx0_state *state = machine.driver_data<tx0_state>();
+
+	crt_eof(state->m_crt);
 }
 
 
 /*
     schedule a pixel to be plotted
 */
-void tx0_plot(int x, int y)
+void tx0_plot(running_machine &machine, int x, int y)
 {
+	tx0_state *state = machine.driver_data<tx0_state>();
+
 	/* compute pixel coordinates and plot */
 	x = x*crt_window_width/0777;
 	y = y*crt_window_height/0777;
-	crt_plot(x, y);
+	crt_plot(state->m_crt, x, y);
 }
 
 
 /*
-    VIDEO_UPDATE( tx0 ): effectively redraw the screen
+    SCREEN_UPDATE( tx0 ): effectively redraw the screen
 */
-VIDEO_UPDATE( tx0 )
+SCREEN_UPDATE( tx0 )
 {
-	tx0_state *state = screen->machine->driver_data<tx0_state>();
-	VIDEO_UPDATE_CALL(crt);
+	tx0_state *state = screen->machine().driver_data<tx0_state>();
+	crt_update(state->m_crt, bitmap);
 
-	tx0_draw_panel(screen->machine, state->panel_bitmap);
-	copybitmap(bitmap, state->panel_bitmap, 0, 0, panel_window_offset_x, panel_window_offset_y, cliprect);
+	tx0_draw_panel(screen->machine(), state->m_panel_bitmap);
+	copybitmap(bitmap, state->m_panel_bitmap, 0, 0, panel_window_offset_x, panel_window_offset_y, cliprect);
 
-	copybitmap(bitmap, state->typewriter_bitmap, 0, 0, typewriter_window_offset_x, typewriter_window_offset_y, cliprect);
+	copybitmap(bitmap, state->m_typewriter_bitmap, 0, 0, typewriter_window_offset_x, typewriter_window_offset_y, cliprect);
 	return 0;
 }
 
@@ -125,7 +134,7 @@ enum
 };
 
 /* draw a small 8*8 LED (or is this a lamp? ) */
-static void tx0_draw_led(running_machine *machine, bitmap_t *bitmap, int x, int y, int state)
+static void tx0_draw_led(running_machine &machine, bitmap_t *bitmap, int x, int y, int state)
 {
 	int xx, yy;
 
@@ -135,7 +144,7 @@ static void tx0_draw_led(running_machine *machine, bitmap_t *bitmap, int x, int 
 }
 
 /* draw nb_bits leds which represent nb_bits bits in value */
-static void tx0_draw_multipleled(running_machine *machine, bitmap_t *bitmap, int x, int y, int value, int nb_bits)
+static void tx0_draw_multipleled(running_machine &machine, bitmap_t *bitmap, int x, int y, int value, int nb_bits)
 {
 	while (nb_bits)
 	{
@@ -149,7 +158,7 @@ static void tx0_draw_multipleled(running_machine *machine, bitmap_t *bitmap, int
 
 
 /* draw a small 8*8 switch */
-static void tx0_draw_switch(running_machine *machine, bitmap_t *bitmap, int x, int y, int state)
+static void tx0_draw_switch(running_machine &machine, bitmap_t *bitmap, int x, int y, int state)
 {
 	int xx, yy;
 	int i;
@@ -190,7 +199,7 @@ static void tx0_draw_switch(running_machine *machine, bitmap_t *bitmap, int x, i
 
 
 /* draw nb_bits switches which represent nb_bits bits in value */
-static void tx0_draw_multipleswitch(running_machine *machine, bitmap_t *bitmap, int x, int y, int value, int nb_bits)
+static void tx0_draw_multipleswitch(running_machine &machine, bitmap_t *bitmap, int x, int y, int value, int nb_bits)
 {
 	while (nb_bits)
 	{
@@ -204,14 +213,14 @@ static void tx0_draw_multipleswitch(running_machine *machine, bitmap_t *bitmap, 
 
 
 /* write a single char on screen */
-static void tx0_draw_char(running_machine *machine, bitmap_t *bitmap, char character, int x, int y, int color)
+static void tx0_draw_char(running_machine &machine, bitmap_t *bitmap, char character, int x, int y, int color)
 {
-	drawgfx_transpen(bitmap, NULL, machine->gfx[0], character-32, color, 0, 0,
+	drawgfx_transpen(bitmap, NULL, machine.gfx[0], character-32, color, 0, 0,
 				x+1, y, 0);
 }
 
 /* write a string on screen */
-static void tx0_draw_string(running_machine *machine, bitmap_t *bitmap, const char *buf, int x, int y, int color)
+static void tx0_draw_string(running_machine &machine, bitmap_t *bitmap, const char *buf, int x, int y, int color)
 {
 	while (* buf)
 	{
@@ -242,14 +251,14 @@ static void tx0_draw_hline(bitmap_t *bitmap, int x, int y, int width, int color)
 /*
     draw the operator control panel (fixed backdrop)
 */
-static void tx0_draw_panel_backdrop(running_machine *machine, bitmap_t *bitmap)
+static void tx0_draw_panel_backdrop(running_machine &machine, bitmap_t *bitmap)
 {
-	tx0_state *state = machine->driver_data<tx0_state>();
+	tx0_state *state = machine.driver_data<tx0_state>();
 	int i;
 	char buf[3];
 
 	/* fill with black */
-	bitmap_fill(state->panel_bitmap, &panel_bitmap_bounds, pen_panel_bg);
+	bitmap_fill(state->m_panel_bitmap, &panel_bitmap_bounds, pen_panel_bg);
 
 	/* column 1: registers, test accumulator, test buffer, toggle switch storage */
 	tx0_draw_string(machine, bitmap, "program counter", x_panel_col1b_offset, y_panel_pc_offset, color_panel_caption);
@@ -290,41 +299,41 @@ static void tx0_draw_panel_backdrop(running_machine *machine, bitmap_t *bitmap)
 /*
     draw the operator control panel (dynamic elements)
 */
-static void tx0_draw_panel(running_machine *machine, bitmap_t *bitmap)
+static void tx0_draw_panel(running_machine &machine, bitmap_t *bitmap)
 {
 	int cm_sel, lr_sel;
 	int i;
 
 	/* column 1: registers, test accumulator, test buffer, toggle switch storage */
-	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset+2*8, y_panel_pc_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_PC), 16);
-	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset+2*8, y_panel_mar_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_MAR), 16);
-	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset, y_panel_mbr_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_MBR), 18);
-	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset, y_panel_ac_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_AC), 18);
-	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset, y_panel_lr_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_LR), 18);
-	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset+4*8, y_panel_xr_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_XR), 14);
-	tx0_draw_multipleswitch(machine, bitmap, x_panel_col1b_offset, y_panel_tbr_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_TBR), 18);
-	tx0_draw_multipleswitch(machine, bitmap, x_panel_col1b_offset, y_panel_tac_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_TAC), 18);
-	cm_sel = cpu_get_reg(machine->device("maincpu"), TX0_CM_SEL);
-	lr_sel = cpu_get_reg(machine->device("maincpu"), TX0_LR_SEL);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset+2*8, y_panel_pc_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_PC), 16);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset+2*8, y_panel_mar_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_MAR), 16);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset, y_panel_mbr_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_MBR), 18);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset, y_panel_ac_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_AC), 18);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset, y_panel_lr_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_LR), 18);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col1b_offset+4*8, y_panel_xr_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_XR), 14);
+	tx0_draw_multipleswitch(machine, bitmap, x_panel_col1b_offset, y_panel_tbr_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_TBR), 18);
+	tx0_draw_multipleswitch(machine, bitmap, x_panel_col1b_offset, y_panel_tac_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_TAC), 18);
+	cm_sel = cpu_get_reg(machine.device("maincpu"), TX0_CM_SEL);
+	lr_sel = cpu_get_reg(machine.device("maincpu"), TX0_LR_SEL);
 	for (i=0; i<16; i++)
 	{
 		tx0_draw_switch(machine, bitmap, x_panel_col1a_offset+16, y_panel_tss_offset+8+i*8, (cm_sel >> i) & 1);
-		tx0_draw_multipleswitch(machine, bitmap, x_panel_col1a_offset+24, y_panel_tss_offset+8+i*8, cpu_get_reg(machine->device("maincpu"), TX0_TSS00+i), 18);
+		tx0_draw_multipleswitch(machine, bitmap, x_panel_col1a_offset+24, y_panel_tss_offset+8+i*8, cpu_get_reg(machine.device("maincpu"), TX0_TSS00+i), 18);
 		tx0_draw_switch(machine, bitmap, x_panel_col1a_offset+168, y_panel_tss_offset+8+i*8, (lr_sel >> i) & 1);
 	}
 
 	/* column 2: stop c0, stop c1, cm sel, 1-bit indicators, instr, flags */
-	tx0_draw_switch(machine, bitmap, x_panel_col2_offset, y_panel_stop_c0_offset, cpu_get_reg(machine->device("maincpu"), TX0_STOP_CYC0));
-	tx0_draw_switch(machine, bitmap, x_panel_col2_offset, y_panel_stop_c1_offset, cpu_get_reg(machine->device("maincpu"), TX0_STOP_CYC1));
-	tx0_draw_switch(machine, bitmap, x_panel_col2_offset, y_panel_gbl_cm_sel_offset, cpu_get_reg(machine->device("maincpu"), TX0_GBL_CM_SEL));
-	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_run_offset, cpu_get_reg(machine->device("maincpu"), TX0_RUN));
-	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_cycle1_offset, cpu_get_reg(machine->device("maincpu"), TX0_CYCLE) & 1);
-	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_cycle2_offset, cpu_get_reg(machine->device("maincpu"), TX0_CYCLE) & 2);
-	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_rim_offset, cpu_get_reg(machine->device("maincpu"), TX0_RIM));
-	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_ioh_offset, cpu_get_reg(machine->device("maincpu"), TX0_IOH));
-	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_ios_offset, cpu_get_reg(machine->device("maincpu"), TX0_IOS));
-	tx0_draw_multipleled(machine, bitmap, x_panel_col2_offset, y_panel_ir_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_IR), 5);
-	tx0_draw_multipleled(machine, bitmap, x_panel_col2_offset, y_panel_pf_offset+8, cpu_get_reg(machine->device("maincpu"), TX0_PF), 6);
+	tx0_draw_switch(machine, bitmap, x_panel_col2_offset, y_panel_stop_c0_offset, cpu_get_reg(machine.device("maincpu"), TX0_STOP_CYC0));
+	tx0_draw_switch(machine, bitmap, x_panel_col2_offset, y_panel_stop_c1_offset, cpu_get_reg(machine.device("maincpu"), TX0_STOP_CYC1));
+	tx0_draw_switch(machine, bitmap, x_panel_col2_offset, y_panel_gbl_cm_sel_offset, cpu_get_reg(machine.device("maincpu"), TX0_GBL_CM_SEL));
+	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_run_offset, cpu_get_reg(machine.device("maincpu"), TX0_RUN));
+	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_cycle1_offset, cpu_get_reg(machine.device("maincpu"), TX0_CYCLE) & 1);
+	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_cycle2_offset, cpu_get_reg(machine.device("maincpu"), TX0_CYCLE) & 2);
+	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_rim_offset, cpu_get_reg(machine.device("maincpu"), TX0_RIM));
+	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_ioh_offset, cpu_get_reg(machine.device("maincpu"), TX0_IOH));
+	tx0_draw_led(machine, bitmap, x_panel_col2_offset, y_panel_ios_offset, cpu_get_reg(machine.device("maincpu"), TX0_IOS));
+	tx0_draw_multipleled(machine, bitmap, x_panel_col2_offset, y_panel_ir_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_IR), 5);
+	tx0_draw_multipleled(machine, bitmap, x_panel_col2_offset, y_panel_pf_offset+8, cpu_get_reg(machine.device("maincpu"), TX0_PF), 6);
 }
 
 
@@ -356,24 +365,24 @@ enum
 };
 
 
-static void tx0_typewriter_linefeed(running_machine *machine)
+static void tx0_typewriter_linefeed(running_machine &machine)
 {
-	tx0_state *state = machine->driver_data<tx0_state>();
+	tx0_state *state = machine.driver_data<tx0_state>();
 	UINT8 buf[typewriter_window_width];
 	int y;
 
 	for (y=0; y<typewriter_window_height-typewriter_scroll_step; y++)
 	{
-		extract_scanline8(state->typewriter_bitmap, 0, y+typewriter_scroll_step, typewriter_window_width, buf);
-		draw_scanline8(state->typewriter_bitmap, 0, y, typewriter_window_width, buf, machine->pens);
+		extract_scanline8(state->m_typewriter_bitmap, 0, y+typewriter_scroll_step, typewriter_window_width, buf);
+		draw_scanline8(state->m_typewriter_bitmap, 0, y, typewriter_window_width, buf, machine.pens);
 	}
 
-	bitmap_fill(state->typewriter_bitmap, &typewriter_scroll_clear_window, pen_typewriter_bg);
+	bitmap_fill(state->m_typewriter_bitmap, &typewriter_scroll_clear_window, pen_typewriter_bg);
 }
 
-void tx0_typewriter_drawchar(running_machine *machine, int character)
+void tx0_typewriter_drawchar(running_machine &machine, int character)
 {
-	tx0_state *state = machine->driver_data<tx0_state>();
+	tx0_state *state = machine.driver_data<tx0_state>();
 	static const char ascii_table[2][64] =
 	{
 		{	/* lower case */
@@ -423,25 +432,25 @@ void tx0_typewriter_drawchar(running_machine *machine, int character)
 	case 020:
 #if 0
 		/* color shift */
-		state->typewriter_color = color_typewriter_black;
-		state->typewriter_color = color_typewriter_red;
+		state->m_typewriter_color = color_typewriter_black;
+		state->m_typewriter_color = color_typewriter_red;
 #endif
 		break;
 
 	case 043:
 		/* Backspace */
-		if (state->pos)
-			state->pos--;
+		if (state->m_pos)
+			state->m_pos--;
 		break;
 
 	case 045:
 		/* Tab */
-		state->pos = state->pos + tab_step - (state->pos % tab_step);
+		state->m_pos = state->m_pos + tab_step - (state->m_pos % tab_step);
 		break;
 
 	case 051:
 		/* Carriage Return */
-		state->pos = 0;
+		state->m_pos = 0;
 		tx0_typewriter_linefeed( machine );
 		break;
 
@@ -452,12 +461,12 @@ void tx0_typewriter_drawchar(running_machine *machine, int character)
 
 	case 071:
 		/* Upper case */
-		state->case_shift = 1;
+		state->m_case_shift = 1;
 		break;
 
 	case 075:
 		/* Lower case */
-		state->case_shift = 0;
+		state->m_case_shift = 0;
 		break;
 
 	case 077:
@@ -468,18 +477,18 @@ void tx0_typewriter_drawchar(running_machine *machine, int character)
 	default:
 		/* Any printable character... */
 
-		if (state->pos >= 80)
+		if (state->m_pos >= 80)
 		{	/* if past right border, wrap around. (Right???) */
 			tx0_typewriter_linefeed( machine );	/* next line */
-			state->pos = 0;					/* return to start of line */
+			state->m_pos = 0;					/* return to start of line */
 		}
 
 		/* print character (lookup ASCII equivalent in table) */
-		tx0_draw_char(machine, state->typewriter_bitmap, ascii_table[state->case_shift][character],
-						8*state->pos, typewriter_write_offset_y,
-						state->typewriter_color);	/* print char */
+		tx0_draw_char(machine, state->m_typewriter_bitmap, ascii_table[state->m_case_shift][character],
+						8*state->m_pos, typewriter_write_offset_y,
+						state->m_typewriter_color);	/* print char */
 
-		state->pos++;		/* step carriage forward */
+		state->m_pos++;		/* step carriage forward */
 		break;
 	}
 }

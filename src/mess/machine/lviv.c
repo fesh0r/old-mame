@@ -10,13 +10,13 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "devices/cassette.h"
-#include "devices/snapquik.h"
+#include "imagedev/cassette.h"
+#include "imagedev/snapquik.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
 #include "includes/lviv.h"
 #include "sound/speaker.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 #define LVIV_SNAPSHOT_SIZE	82219
 
@@ -24,30 +24,32 @@
 
 
 
-static void lviv_update_memory (running_machine *machine)
+static void lviv_update_memory (running_machine &machine)
 {
-	lviv_state *state = machine->driver_data<lviv_state>();
-	if (state->ppi_port_outputs[0][2] & 0x02)
+	lviv_state *state = machine.driver_data<lviv_state>();
+	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
+
+	if (state->m_ppi_port_outputs[0][2] & 0x02)
 	{
-		memory_set_bankptr(machine,"bank1", messram_get_ptr(machine->device("messram")));
-		memory_set_bankptr(machine,"bank2", messram_get_ptr(machine->device("messram")) + 0x4000);
+		memory_set_bankptr(machine,"bank1", ram);
+		memory_set_bankptr(machine,"bank2", ram + 0x4000);
 	}
 	else
 	{
-		memory_set_bankptr(machine,"bank1", messram_get_ptr(machine->device("messram")) + 0x8000);
-		memory_set_bankptr(machine,"bank2", messram_get_ptr(machine->device("messram")) + 0xc000);
+		memory_set_bankptr(machine,"bank1", ram + 0x8000);
+		memory_set_bankptr(machine,"bank2", ram + 0xc000);
 	}
 }
 
 static TIMER_CALLBACK( lviv_reset )
 {
-	machine->schedule_soft_reset();
+	machine.schedule_soft_reset();
 }
 
 DIRECT_UPDATE_HANDLER(lviv_directoverride)
 {
-	if (input_port_read(machine, "RESET") & 0x01)
-		timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, lviv_reset);
+	if (input_port_read(*machine, "RESET") & 0x01)
+		machine->scheduler().timer_set(attotime::from_usec(10), FUNC(lviv_reset));
 	return address;
 }
 
@@ -63,37 +65,37 @@ static READ8_DEVICE_HANDLER ( lviv_ppi_0_portb_r )
 
 static READ8_DEVICE_HANDLER ( lviv_ppi_0_portc_r )
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	UINT8 data = state->ppi_port_outputs[0][2] & 0x0f;
-	if (cassette_input(device->machine->device("cassette")) > 0.038)
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	UINT8 data = state->m_ppi_port_outputs[0][2] & 0x0f;
+	if (cassette_input(device->machine().device("cassette")) > 0.038)
 		data |= 0x10;
-	if (state->ppi_port_outputs[0][0] & input_port_read(device->machine, "JOY"))
+	if (state->m_ppi_port_outputs[0][0] & input_port_read(device->machine(), "JOY"))
 		data |= 0x80;
 	return data;
 }
 
 static WRITE8_DEVICE_HANDLER ( lviv_ppi_0_porta_w )
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	state->ppi_port_outputs[0][0] = data;
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	state->m_ppi_port_outputs[0][0] = data;
 }
 
 static WRITE8_DEVICE_HANDLER ( lviv_ppi_0_portb_w )
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	state->ppi_port_outputs[0][1] = data;
-	lviv_update_palette(device->machine, data&0x7f);
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	state->m_ppi_port_outputs[0][1] = data;
+	lviv_update_palette(device->machine(), data&0x7f);
 }
 
 static WRITE8_DEVICE_HANDLER ( lviv_ppi_0_portc_w )	/* tape in/out, video memory on/off */
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	device_t *speaker = device->machine->device("speaker");
-	state->ppi_port_outputs[0][2] = data;
-	if (state->ppi_port_outputs[0][1]&0x80)
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	device_t *speaker = device->machine().device("speaker");
+	state->m_ppi_port_outputs[0][2] = data;
+	if (state->m_ppi_port_outputs[0][1]&0x80)
 		speaker_level_w(speaker, data&0x01);
-	cassette_output(device->machine->device("cassette"), (data & 0x01) ? -1.0 : 1.0);
-	lviv_update_memory(device->machine);
+	cassette_output(device->machine().device("cassette"), (data & 0x01) ? -1.0 : 1.0);
+	lviv_update_memory(device->machine());
 }
 
 static READ8_DEVICE_HANDLER ( lviv_ppi_1_porta_r )
@@ -103,50 +105,50 @@ static READ8_DEVICE_HANDLER ( lviv_ppi_1_porta_r )
 
 static READ8_DEVICE_HANDLER ( lviv_ppi_1_portb_r )	/* keyboard reading */
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	return	((state->ppi_port_outputs[1][0] & 0x01) ? 0xff : input_port_read(device->machine, "KEY0")) &
-		((state->ppi_port_outputs[1][0] & 0x02) ? 0xff : input_port_read(device->machine, "KEY1")) &
-		((state->ppi_port_outputs[1][0] & 0x04) ? 0xff : input_port_read(device->machine, "KEY2")) &
-		((state->ppi_port_outputs[1][0] & 0x08) ? 0xff : input_port_read(device->machine, "KEY3")) &
-		((state->ppi_port_outputs[1][0] & 0x10) ? 0xff : input_port_read(device->machine, "KEY4")) &
-		((state->ppi_port_outputs[1][0] & 0x20) ? 0xff : input_port_read(device->machine, "KEY5")) &
-		((state->ppi_port_outputs[1][0] & 0x40) ? 0xff : input_port_read(device->machine, "KEY6")) &
-		((state->ppi_port_outputs[1][0] & 0x80) ? 0xff : input_port_read(device->machine, "KEY7"));
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	return	((state->m_ppi_port_outputs[1][0] & 0x01) ? 0xff : input_port_read(device->machine(), "KEY0")) &
+		((state->m_ppi_port_outputs[1][0] & 0x02) ? 0xff : input_port_read(device->machine(), "KEY1")) &
+		((state->m_ppi_port_outputs[1][0] & 0x04) ? 0xff : input_port_read(device->machine(), "KEY2")) &
+		((state->m_ppi_port_outputs[1][0] & 0x08) ? 0xff : input_port_read(device->machine(), "KEY3")) &
+		((state->m_ppi_port_outputs[1][0] & 0x10) ? 0xff : input_port_read(device->machine(), "KEY4")) &
+		((state->m_ppi_port_outputs[1][0] & 0x20) ? 0xff : input_port_read(device->machine(), "KEY5")) &
+		((state->m_ppi_port_outputs[1][0] & 0x40) ? 0xff : input_port_read(device->machine(), "KEY6")) &
+		((state->m_ppi_port_outputs[1][0] & 0x80) ? 0xff : input_port_read(device->machine(), "KEY7"));
 }
 
 static READ8_DEVICE_HANDLER ( lviv_ppi_1_portc_r )     /* keyboard reading */
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	return	((state->ppi_port_outputs[1][2] & 0x01) ? 0xff : input_port_read(device->machine, "KEY8")) &
-		((state->ppi_port_outputs[1][2] & 0x02) ? 0xff : input_port_read(device->machine, "KEY9" )) &
-		((state->ppi_port_outputs[1][2] & 0x04) ? 0xff : input_port_read(device->machine, "KEY10")) &
-		((state->ppi_port_outputs[1][2] & 0x08) ? 0xff : input_port_read(device->machine, "KEY11"));
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	return	((state->m_ppi_port_outputs[1][2] & 0x01) ? 0xff : input_port_read(device->machine(), "KEY8")) &
+		((state->m_ppi_port_outputs[1][2] & 0x02) ? 0xff : input_port_read(device->machine(), "KEY9" )) &
+		((state->m_ppi_port_outputs[1][2] & 0x04) ? 0xff : input_port_read(device->machine(), "KEY10")) &
+		((state->m_ppi_port_outputs[1][2] & 0x08) ? 0xff : input_port_read(device->machine(), "KEY11"));
 }
 
 static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_porta_w )	/* kayboard scaning */
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	state->ppi_port_outputs[1][0] = data;
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	state->m_ppi_port_outputs[1][0] = data;
 }
 
 static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portb_w )
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	state->ppi_port_outputs[1][1] = data;
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	state->m_ppi_port_outputs[1][1] = data;
 }
 
 static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 {
-	lviv_state *state = device->machine->driver_data<lviv_state>();
-	state->ppi_port_outputs[1][2] = data;
+	lviv_state *state = device->machine().driver_data<lviv_state>();
+	state->m_ppi_port_outputs[1][2] = data;
 }
 
 
 /* I/O */
  READ8_HANDLER ( lviv_io_r )
 {
-	lviv_state *state = space->machine->driver_data<lviv_state>();
-	if (state->startup_mem_map)
+	lviv_state *state = space->machine().driver_data<lviv_state>();
+	if (state->m_startup_mem_map)
 	{
 		return 0;	/* ??? */
 	}
@@ -155,10 +157,10 @@ static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 		switch ((offset >> 4) & 0x3)
 		{
 		case 0:
-			return i8255a_r(space->machine->device("ppi8255_0"), offset & 3);
+			return i8255a_r(space->machine().device("ppi8255_0"), offset & 3);
 
 		case 1:
-			return i8255a_r(space->machine->device("ppi8255_1"), offset & 3);
+			return i8255a_r(space->machine().device("ppi8255_1"), offset & 3);
 
 		case 2:
 		case 3:
@@ -171,32 +173,34 @@ static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 
 WRITE8_HANDLER ( lviv_io_w )
 {
-	lviv_state *state = space->machine->driver_data<lviv_state>();
-	address_space *cpuspace = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	if (state->startup_mem_map)
+	lviv_state *state = space->machine().driver_data<lviv_state>();
+	address_space *cpuspace = space->machine().device("maincpu")->memory().space(AS_PROGRAM);
+	if (state->m_startup_mem_map)
 	{
-		state->startup_mem_map = 0;
+		UINT8 *ram = ram_get_ptr(space->machine().device(RAM_TAG));
 
-		memory_install_write_bank(cpuspace, 0x0000, 0x3fff, 0, 0, "bank1");
-		memory_install_write_bank(cpuspace, 0x4000, 0x7fff, 0, 0, "bank2");
-		memory_install_write_bank(cpuspace, 0x8000, 0xbfff, 0, 0, "bank3");
-		memory_unmap_write(cpuspace, 0xC000, 0xffff, 0, 0);
+		state->m_startup_mem_map = 0;
 
-		memory_set_bankptr(space->machine,"bank1", messram_get_ptr(space->machine->device("messram")));
-		memory_set_bankptr(space->machine,"bank2", messram_get_ptr(space->machine->device("messram")) + 0x4000);
-		memory_set_bankptr(space->machine,"bank3", messram_get_ptr(space->machine->device("messram")) + 0x8000);
-		memory_set_bankptr(space->machine,"bank4", space->machine->region("maincpu")->base() + 0x010000);
+		cpuspace->install_write_bank(0x0000, 0x3fff, "bank1");
+		cpuspace->install_write_bank(0x4000, 0x7fff, "bank2");
+		cpuspace->install_write_bank(0x8000, 0xbfff, "bank3");
+		cpuspace->unmap_write(0xC000, 0xffff);
+
+		memory_set_bankptr(space->machine(),"bank1", ram);
+		memory_set_bankptr(space->machine(),"bank2", ram + 0x4000);
+		memory_set_bankptr(space->machine(),"bank3", ram + 0x8000);
+		memory_set_bankptr(space->machine(),"bank4", space->machine().region("maincpu")->base() + 0x010000);
 	}
 	else
 	{
 		switch ((offset >> 4) & 0x3)
 		{
 		case 0:
-			i8255a_w(space->machine->device("ppi8255_0"), offset & 3, data);
+			i8255a_w(space->machine().device("ppi8255_0"), offset & 3, data);
 			break;
 
 		case 1:
-			i8255a_w(space->machine->device("ppi8255_1"), offset & 3, data);
+			i8255a_w(space->machine().device("ppi8255_1"), offset & 3, data);
 			break;
 
 		case 2:
@@ -230,27 +234,30 @@ I8255A_INTERFACE( lviv_ppi8255_interface_1 )
 
 MACHINE_RESET( lviv )
 {
-	lviv_state *state = machine->driver_data<lviv_state>();
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	space->set_direct_update_handler(direct_update_delegate_create_static(lviv_directoverride, *machine));
+	lviv_state *state = machine.driver_data<lviv_state>();
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	UINT8 *mem;
 
-	state->video_ram = messram_get_ptr(machine->device("messram")) + 0xc000;
+	space->set_direct_update_handler(direct_update_delegate_create_static(lviv_directoverride, machine));
 
-	state->startup_mem_map = 1;
+	state->m_video_ram = ram_get_ptr(machine.device(RAM_TAG)) + 0xc000;
 
-	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-	memory_unmap_write(space, 0x4000, 0x7fff, 0, 0);
-	memory_unmap_write(space, 0x8000, 0xbfff, 0, 0);
-	memory_unmap_write(space, 0xC000, 0xffff, 0, 0);
+	state->m_startup_mem_map = 1;
 
-	memory_set_bankptr(machine,"bank1", machine->region("maincpu")->base() + 0x010000);
-	memory_set_bankptr(machine,"bank2", machine->region("maincpu")->base() + 0x010000);
-	memory_set_bankptr(machine,"bank3", machine->region("maincpu")->base() + 0x010000);
-	memory_set_bankptr(machine,"bank4", machine->region("maincpu")->base() + 0x010000);
+	space->unmap_write(0x0000, 0x3fff);
+	space->unmap_write(0x4000, 0x7fff);
+	space->unmap_write(0x8000, 0xbfff);
+	space->unmap_write(0xC000, 0xffff);
 
-	/*timer_pulse(machine, TIME_IN_NSEC(200), NULL, 0, lviv_draw_pixel);*/
+	mem = machine.region("maincpu")->base();
+	memory_set_bankptr(machine,"bank1", mem + 0x010000);
+	memory_set_bankptr(machine,"bank2", mem + 0x010000);
+	memory_set_bankptr(machine,"bank3", mem + 0x010000);
+	memory_set_bankptr(machine,"bank4", mem + 0x010000);
 
-	/*memset(messram_get_ptr(machine->device("messram")), 0, sizeof(unsigned char)*0xffff);*/
+	/*machine.scheduler().timer_pulse(TIME_IN_NSEC(200), FUNC(lviv_draw_pixel));*/
+
+	/*memset(ram_get_ptr(machine.device(RAM_TAG)), 0, sizeof(unsigned char)*0xffff);*/
 }
 
 
@@ -269,51 +276,51 @@ Lviv snapshot files (SAV)
 1411D - 1412A:  ??? (something additional)
 *******************************************************************************/
 
-static void lviv_setup_snapshot (running_machine *machine,UINT8 * data)
+static void lviv_setup_snapshot (running_machine &machine,UINT8 * data)
 {
-	lviv_state *state = machine->driver_data<lviv_state>();
+	lviv_state *state = machine.driver_data<lviv_state>();
 	unsigned char lo,hi;
 
 	/* Set registers */
 	lo = data[0x14112] & 0x0ff;
 	hi = data[0x14111] & 0x0ff;
-	cpu_set_reg(machine->device("maincpu"), I8085_BC, (hi << 8) | lo);
+	cpu_set_reg(machine.device("maincpu"), I8085_BC, (hi << 8) | lo);
 	lo = data[0x14114] & 0x0ff;
 	hi = data[0x14113] & 0x0ff;
-	cpu_set_reg(machine->device("maincpu"), I8085_DE, (hi << 8) | lo);
+	cpu_set_reg(machine.device("maincpu"), I8085_DE, (hi << 8) | lo);
 	lo = data[0x14116] & 0x0ff;
 	hi = data[0x14115] & 0x0ff;
-	cpu_set_reg(machine->device("maincpu"), I8085_HL, (hi << 8) | lo);
+	cpu_set_reg(machine.device("maincpu"), I8085_HL, (hi << 8) | lo);
 	lo = data[0x14118] & 0x0ff;
 	hi = data[0x14117] & 0x0ff;
-	cpu_set_reg(machine->device("maincpu"), I8085_AF, (hi << 8) | lo);
+	cpu_set_reg(machine.device("maincpu"), I8085_AF, (hi << 8) | lo);
 	lo = data[0x14119] & 0x0ff;
 	hi = data[0x1411a] & 0x0ff;
-	cpu_set_reg(machine->device("maincpu"), I8085_SP, (hi << 8) | lo);
+	cpu_set_reg(machine.device("maincpu"), I8085_SP, (hi << 8) | lo);
 	lo = data[0x1411b] & 0x0ff;
 	hi = data[0x1411c] & 0x0ff;
-	cpu_set_reg(machine->device("maincpu"), I8085_PC, (hi << 8) | lo);
+	cpu_set_reg(machine.device("maincpu"), I8085_PC, (hi << 8) | lo);
 
 	/* Memory dump */
-	memcpy (messram_get_ptr(machine->device("messram")), data+0x0011, 0xc000);
-	memcpy (messram_get_ptr(machine->device("messram"))+0xc000, data+0x10011, 0x4000);
+	memcpy (ram_get_ptr(machine.device(RAM_TAG)), data+0x0011, 0xc000);
+	memcpy (ram_get_ptr(machine.device(RAM_TAG))+0xc000, data+0x10011, 0x4000);
 
 	/* Ports */
-	state->ppi_port_outputs[0][0] = data[0x14011+0xc0];
-	state->ppi_port_outputs[0][1] = data[0x14011+0xc1];
-	lviv_update_palette(machine, state->ppi_port_outputs[0][1]&0x7f);
-	state->ppi_port_outputs[0][2] = data[0x14011+0xc2];
+	state->m_ppi_port_outputs[0][0] = data[0x14011+0xc0];
+	state->m_ppi_port_outputs[0][1] = data[0x14011+0xc1];
+	lviv_update_palette(machine, state->m_ppi_port_outputs[0][1]&0x7f);
+	state->m_ppi_port_outputs[0][2] = data[0x14011+0xc2];
 	lviv_update_memory(machine);
 }
 
-static void dump_registers(running_machine *machine)
+static void dump_registers(running_machine &machine)
 {
-	logerror("PC   = %04x\n", (unsigned) cpu_get_reg(machine->device("maincpu"), I8085_PC));
-	logerror("SP   = %04x\n", (unsigned) cpu_get_reg(machine->device("maincpu"), I8085_SP));
-	logerror("AF   = %04x\n", (unsigned) cpu_get_reg(machine->device("maincpu"), I8085_AF));
-	logerror("BC   = %04x\n", (unsigned) cpu_get_reg(machine->device("maincpu"), I8085_BC));
-	logerror("DE   = %04x\n", (unsigned) cpu_get_reg(machine->device("maincpu"), I8085_DE));
-	logerror("HL   = %04x\n", (unsigned) cpu_get_reg(machine->device("maincpu"), I8085_HL));
+	logerror("PC   = %04x\n", (unsigned) cpu_get_reg(machine.device("maincpu"), I8085_PC));
+	logerror("SP   = %04x\n", (unsigned) cpu_get_reg(machine.device("maincpu"), I8085_SP));
+	logerror("AF   = %04x\n", (unsigned) cpu_get_reg(machine.device("maincpu"), I8085_AF));
+	logerror("BC   = %04x\n", (unsigned) cpu_get_reg(machine.device("maincpu"), I8085_BC));
+	logerror("DE   = %04x\n", (unsigned) cpu_get_reg(machine.device("maincpu"), I8085_DE));
+	logerror("HL   = %04x\n", (unsigned) cpu_get_reg(machine.device("maincpu"), I8085_HL));
 }
 
 static int lviv_verify_snapshot (UINT8 * data, UINT32 size)
@@ -355,9 +362,9 @@ SNAPSHOT_LOAD( lviv )
 		return IMAGE_INIT_FAIL;
 	}
 
-	lviv_setup_snapshot (image.device().machine,lviv_snapshot_data);
+	lviv_setup_snapshot (image.device().machine(),lviv_snapshot_data);
 
-	dump_registers(image.device().machine);
+	dump_registers(image.device().machine());
 
 	free(lviv_snapshot_data);
 

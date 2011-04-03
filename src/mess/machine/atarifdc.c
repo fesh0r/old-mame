@@ -16,7 +16,7 @@
 #include "ataridev.h"
 #include "sound/pokey.h"
 #include "machine/6821pia.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "image.h"
 
 #define VERBOSE_SERIAL	0
@@ -72,6 +72,7 @@ struct _atari_fdc_t
 INLINE atari_fdc_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == ATARI_FDC);
 
 	return (atari_fdc_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -420,7 +421,7 @@ static void add_serout(device_t *device,int expect_data)
 static void clr_serin(device_t *device, int ser_delay)
 {
 	atari_fdc_t *fdc = get_safe_token(device);
-	device_t *pokey = device->machine->device("pokey");
+	device_t *pokey = device->machine().device("pokey");
 	fdc->serin_chksum = 0;
 	fdc->serin_offs = 0;
 	fdc->serin_count = 0;
@@ -705,7 +706,7 @@ READ8_DEVICE_HANDLER ( atari_serin_r )
 
 	if (fdc->serin_count)
 	{
-		device_t *pokey = device->machine->device("pokey");
+		device_t *pokey = device->machine().device("pokey");
 
 		data = fdc->serin_buff[fdc->serin_offs];
 		ser_delay = 2 * 40;
@@ -730,7 +731,7 @@ READ8_DEVICE_HANDLER ( atari_serin_r )
 
 WRITE8_DEVICE_HANDLER ( atari_serout_w )
 {
-	device_t *pia = device->machine->device( "pia" );
+	device_t *pia = device->machine().device( "pia" );
 	atari_fdc_t *fdc = get_safe_token(device);
 
 	/* ignore serial commands if no floppy image is specified */

@@ -66,11 +66,11 @@ Notes:
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "devices/flopdrv.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
-#include "devices/printer.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
+#include "imagedev/printer.h"
 #include "formats/basicdsk.h"
 #include "machine/ctronics.h"
 #include "machine/i8255a.h"
@@ -110,14 +110,14 @@ WRITE8_MEMBER( sg1000_state::tvdraw_axis_w )
 {
 	if (data & 0x01)
 	{
-		m_tvdraw_data = input_port_read(machine, "TVDRAW_X");
+		m_tvdraw_data = input_port_read(m_machine, "TVDRAW_X");
 
 		if (m_tvdraw_data < 4) m_tvdraw_data = 4;
 		if (m_tvdraw_data > 251) m_tvdraw_data = 251;
 	}
 	else
 	{
-		m_tvdraw_data = input_port_read(machine, "TVDRAW_Y") + 32;
+		m_tvdraw_data = input_port_read(m_machine, "TVDRAW_Y") + 32;
 	}
 }
 
@@ -127,7 +127,7 @@ WRITE8_MEMBER( sg1000_state::tvdraw_axis_w )
 
 READ8_MEMBER( sg1000_state::tvdraw_status_r )
 {
-	return input_port_read(machine, "TVDRAW_PEN");
+	return input_port_read(m_machine, "TVDRAW_PEN");
 }
 
 /*-------------------------------------------------
@@ -156,7 +156,7 @@ READ8_MEMBER( sg1000_state::joysel_r )
     ADDRESS_MAP( sg1000_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sg1000_map, ADDRESS_SPACE_PROGRAM, 8, sg1000_state )
+static ADDRESS_MAP_START( sg1000_map, AS_PROGRAM, 8, sg1000_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank2")
@@ -166,7 +166,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sg1000_io_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sg1000_io_map, ADDRESS_SPACE_IO, 8, sg1000_state )
+static ADDRESS_MAP_START( sg1000_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE_LEGACY(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_READWRITE_LEGACY(TMS9928A_vram_r, TMS9928A_vram_w)
@@ -181,7 +181,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( omv_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( omv_map, ADDRESS_SPACE_PROGRAM, 8, sg1000_state )
+static ADDRESS_MAP_START( omv_map, AS_PROGRAM, 8, sg1000_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE(0xc000, 0xc7ff) AM_MIRROR(0x3800) AM_RAM
@@ -191,7 +191,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( omv_io_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( omv_io_map, ADDRESS_SPACE_IO, 8, sg1000_state )
+static ADDRESS_MAP_START( omv_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE_LEGACY(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_READWRITE_LEGACY(TMS9928A_vram_r, TMS9928A_vram_w)
@@ -208,7 +208,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sc3000_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sc3000_map, ADDRESS_SPACE_PROGRAM, 8, sg1000_state )
+static ADDRESS_MAP_START( sc3000_map, AS_PROGRAM, 8, sg1000_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank2")
@@ -218,7 +218,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sc3000_io_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8, sg1000_state )
+static ADDRESS_MAP_START( sc3000_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE_LEGACY(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE_LEGACY(TMS9928A_vram_r, TMS9928A_vram_w)
@@ -227,7 +227,7 @@ static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8, sg1000_state )
 ADDRESS_MAP_END
 
 /* This is how the I/O ports are really mapped, but MAME does not support overlapping ranges
-static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8, sg1000_state )
+static ADDRESS_MAP_START( sc3000_io_map, AS_IO, 8, sg1000_state )
     ADDRESS_MAP_GLOBAL_MASK(0xff)
     AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE_LEGACY(UPD9255_TAG, i8255a_r, i8255a_w)
     AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_DEVWRITE_LEGACY(SN76489A_TAG, sn76496_w)
@@ -241,7 +241,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sf7000_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sf7000_map, ADDRESS_SPACE_PROGRAM, 8, sf7000_state )
+static ADDRESS_MAP_START( sf7000_map, AS_PROGRAM, 8, sf7000_state )
 	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
@@ -250,7 +250,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sf7000_io_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sf7000_io_map, ADDRESS_SPACE_IO, 8, sf7000_state )
+static ADDRESS_MAP_START( sf7000_io_map, AS_IO, 8, sf7000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE_LEGACY(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE_LEGACY(TMS9928A_vram_r, TMS9928A_vram_w)
@@ -273,7 +273,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( trigger_nmi )
 {
-	cputag_set_input_line(field->port->machine, Z80_TAG, INPUT_LINE_NMI, (input_port_read(field->port->machine, "NMI") ? CLEAR_LINE : ASSERT_LINE));
+	cputag_set_input_line(field->port->machine(), Z80_TAG, INPUT_LINE_NMI, (input_port_read(field->port->machine(), "NMI") ? CLEAR_LINE : ASSERT_LINE));
 }
 
 /*-------------------------------------------------
@@ -536,10 +536,10 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( sg1000_int )
 {
-    TMS9928A_interrupt(device->machine);
+    TMS9928A_interrupt(device->machine());
 }
 
-static void sg1000_vdp_interrupt(running_machine *machine, int state)
+static void sg1000_vdp_interrupt(running_machine &machine, int state)
 {
 	cputag_set_input_line(machine, Z80_TAG, INPUT_LINE_IRQ0, state);
 }
@@ -573,7 +573,7 @@ READ8_MEMBER( sc3000_state::ppi_pa_r )
 
 	static const char *const keynames[] = { "PA0", "PA1", "PA2", "PA3", "PA4", "PA5", "PA6", "PA7" };
 
-	return input_port_read(machine, keynames[m_keylatch]);
+	return input_port_read(m_machine, keynames[m_keylatch]);
 }
 
 READ8_MEMBER( sc3000_state::ppi_pb_r )
@@ -594,7 +594,7 @@ READ8_MEMBER( sc3000_state::ppi_pb_r )
 	static const char *const keynames[] = { "PB0", "PB1", "PB2", "PB3", "PB4", "PB5", "PB6", "PB7" };
 
 	/* keyboard */
-	UINT8 data = input_port_read(machine, keynames[m_keylatch]);
+	UINT8 data = input_port_read(m_machine, keynames[m_keylatch]);
 
 	/* cartridge contact */
 	data |= 0x10;
@@ -711,7 +711,7 @@ WRITE8_MEMBER( sf7000_state::ppi_pc_w )
 	}
 
 	/* ROM selection */
-	memory_set_bank(machine, "bank1", BIT(data, 6));
+	memory_set_bank(m_machine, "bank1", BIT(data, 6));
 
 	/* printer strobe */
 	centronics_strobe_w(m_centronics, BIT(data, 7));
@@ -784,35 +784,35 @@ static const floppy_config sf7000_floppy_config =
 
 void sg1000_state::install_cartridge(UINT8 *ptr, int size)
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	switch (size)
 	{
 	case 40 * 1024:
-		memory_install_read_bank(program, 0x8000, 0x9fff, 0, 0, "bank1");
-		memory_unmap_write(program, 0x8000, 0x9fff, 0, 0);
-		memory_configure_bank(machine, "bank1", 0, 1, machine->region(Z80_TAG)->base() + 0x8000, 0);
-		memory_set_bank(machine, "bank1", 0);
+		program->install_read_bank(0x8000, 0x9fff, "bank1");
+		program->unmap_write(0x8000, 0x9fff);
+		memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region(Z80_TAG)->base() + 0x8000, 0);
+		memory_set_bank(m_machine, "bank1", 0);
 		break;
 
 	case 48 * 1024:
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0, "bank1");
-		memory_unmap_write(program, 0x8000, 0xbfff, 0, 0);
-		memory_configure_bank(machine, "bank1", 0, 1, machine->region(Z80_TAG)->base() + 0x8000, 0);
-		memory_set_bank(machine, "bank1", 0);
+		program->install_read_bank(0x8000, 0xbfff, "bank1");
+		program->unmap_write(0x8000, 0xbfff);
+		memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region(Z80_TAG)->base() + 0x8000, 0);
+		memory_set_bank(m_machine, "bank1", 0);
 		break;
 
 	default:
 		if (IS_CARTRIDGE_TV_DRAW(ptr))
 		{
-			program->install_handler(0x6000, 0x6000, 0, 0, write8_delegate_create(sg1000_state, tvdraw_axis_w, *this), 0);
-			program->install_handler(0x8000, 0x8000, 0, 0, read8_delegate_create(sg1000_state, tvdraw_status_r, *this), 0);
-			program->install_handler(0xa000, 0xa000, 0, 0, read8_delegate_create(sg1000_state, tvdraw_data_r, *this), 0);
-			memory_nop_write(program, 0xa000, 0xa000, 0, 0);
+			program->install_write_handler(0x6000, 0x6000, 0, 0, write8_delegate_create(sg1000_state, tvdraw_axis_w, *this), 0);
+			program->install_read_handler(0x8000, 0x8000, 0, 0, read8_delegate_create(sg1000_state, tvdraw_status_r, *this), 0);
+			program->install_read_handler(0xa000, 0xa000, 0, 0, read8_delegate_create(sg1000_state, tvdraw_data_r, *this), 0);
+			program->nop_write(0xa000, 0xa000);
 		}
 		else if (IS_CARTRIDGE_THE_CASTLE(ptr))
 		{
-			memory_install_readwrite_bank(program, 0x8000, 0x9fff, 0, 0, "bank1");
+			program->install_readwrite_bank(0x8000, 0x9fff, "bank1");
 		}
 		break;
 	}
@@ -824,10 +824,10 @@ void sg1000_state::install_cartridge(UINT8 *ptr, int size)
 
 static DEVICE_IMAGE_LOAD( sg1000_cart )
 {
-	running_machine *machine = image.device().machine;
-	sg1000_state *state = machine->driver_data<sg1000_state>();
-	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ptr = machine->region(Z80_TAG)->base();
+	running_machine &machine = image.device().machine();
+	sg1000_state *state = machine.driver_data<sg1000_state>();
+	address_space *program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
+	UINT8 *ptr = machine.region(Z80_TAG)->base();
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -846,7 +846,7 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 	state->install_cartridge(ptr, size);
 
 	/* work RAM banking */
-	memory_install_readwrite_bank(program, 0xc000, 0xc3ff, 0, 0x3c00, "bank2");
+	program->install_readwrite_bank(0xc000, 0xc3ff, 0, 0x3c00, "bank2");
 
 	return IMAGE_INIT_PASS;
 }
@@ -857,10 +857,10 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 
 static DEVICE_IMAGE_LOAD( omv_cart )
 {
-	running_machine *machine = image.device().machine;
-	sg1000_state *state = machine->driver_data<sg1000_state>();
+	running_machine &machine = image.device().machine();
+	sg1000_state *state = machine.driver_data<sg1000_state>();
 	UINT32 size;
-	UINT8 *ptr = machine->region(Z80_TAG)->base();
+	UINT8 *ptr = machine.region(Z80_TAG)->base();
 
 	if (image.software_entry() == NULL)
 	{
@@ -886,25 +886,25 @@ static DEVICE_IMAGE_LOAD( omv_cart )
 
 void sc3000_state::install_cartridge(UINT8 *ptr, int size)
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* include SG-1000 mapping */
 	sg1000_state::install_cartridge(ptr, size);
 
 	if (IS_CARTRIDGE_BASIC_LEVEL_III(ptr))
 	{
-		memory_install_readwrite_bank(program, 0x8000, 0xbfff, 0, 0, "bank1");
-		memory_install_readwrite_bank(program, 0xc000, 0xffff, 0, 0, "bank2");
+		program->install_readwrite_bank(0x8000, 0xbfff, "bank1");
+		program->install_readwrite_bank(0xc000, 0xffff, "bank2");
 	}
 	else if (IS_CARTRIDGE_MUSIC_EDITOR(ptr))
 	{
-		memory_install_readwrite_bank(program, 0x8000, 0x9fff, 0, 0, "bank1");
-		memory_install_readwrite_bank(program, 0xc000, 0xc7ff, 0, 0x3800, "bank2");
+		program->install_readwrite_bank(0x8000, 0x9fff, "bank1");
+		program->install_readwrite_bank(0xc000, 0xc7ff, 0, 0x3800, "bank2");
 	}
 	else
 	{
 		/* regular cartridges */
-		memory_install_readwrite_bank(program, 0xc000, 0xc7ff, 0, 0x3800, "bank2");
+		program->install_readwrite_bank(0xc000, 0xc7ff, 0, 0x3800, "bank2");
 	}
 }
 
@@ -914,9 +914,9 @@ void sc3000_state::install_cartridge(UINT8 *ptr, int size)
 
 static DEVICE_IMAGE_LOAD( sc3000_cart )
 {
-	running_machine *machine = image.device().machine;
-	sc3000_state *state = machine->driver_data<sc3000_state>();
-	UINT8 *ptr = machine->region(Z80_TAG)->base();
+	running_machine &machine = image.device().machine();
+	sc3000_state *state = machine.driver_data<sc3000_state>();
+	UINT8 *ptr = machine.region(Z80_TAG)->base();
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -947,7 +947,7 @@ static DEVICE_IMAGE_LOAD( sc3000_cart )
 
 static TIMER_CALLBACK( lightgun_tick )
 {
-	UINT8 *rom = machine->region(Z80_TAG)->base();
+	UINT8 *rom = machine.region(Z80_TAG)->base();
 
 	if (IS_CARTRIDGE_TV_DRAW(rom))
 	{
@@ -971,10 +971,10 @@ void sg1000_state::machine_start()
 	TMS9928A_configure(&tms9928a_interface);
 
 	/* toggle light gun crosshair */
-	timer_set(machine, attotime_zero, NULL, 0, lightgun_tick);
+	m_machine.scheduler().timer_set(attotime::zero, FUNC(lightgun_tick));
 
 	/* register for state saving */
-	state_save_register_global(machine, m_tvdraw_data);
+	state_save_register_global(m_machine, m_tvdraw_data);
 }
 
 /*-------------------------------------------------
@@ -987,11 +987,11 @@ void sc3000_state::machine_start()
 	TMS9928A_configure(&tms9928a_interface);
 
 	/* toggle light gun crosshair */
-	timer_set(machine, attotime_zero, NULL, 0, lightgun_tick);
+	m_machine.scheduler().timer_set(attotime::zero, FUNC(lightgun_tick));
 
 	/* register for state saving */
-	state_save_register_global(machine, m_tvdraw_data);
-	state_save_register_global(machine, m_keylatch);
+	state_save_register_global(m_machine, m_tvdraw_data);
+	state_save_register_global(m_machine, m_keylatch);
 }
 
 /*-------------------------------------------------
@@ -1000,7 +1000,7 @@ void sc3000_state::machine_start()
 
 static void sf7000_fdc_index_callback(device_t *controller, device_t *img, int state)
 {
-	sf7000_state *driver_state = img->machine->driver_data<sf7000_state>();
+	sf7000_state *driver_state = img->machine().driver_data<sf7000_state>();
 
 	driver_state->m_fdc_index = state;
 }
@@ -1018,14 +1018,14 @@ void sf7000_state::machine_start()
 	floppy_drive_set_index_pulse_callback(m_floppy0, sf7000_fdc_index_callback);
 
 	/* configure memory banking */
-	memory_configure_bank(machine, "bank1", 0, 1, machine->region(Z80_TAG)->base(), 0);
-	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(m_ram), 0);
-	memory_configure_bank(machine, "bank2", 0, 1, messram_get_ptr(m_ram), 0);
+	memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region(Z80_TAG)->base(), 0);
+	memory_configure_bank(m_machine, "bank1", 1, 1, ram_get_ptr(m_ram), 0);
+	memory_configure_bank(m_machine, "bank2", 0, 1, ram_get_ptr(m_ram), 0);
 
 	/* register for state saving */
-	state_save_register_global(machine, m_keylatch);
-	state_save_register_global(machine, m_fdc_irq);
-	state_save_register_global(machine, m_fdc_index);
+	state_save_register_global(m_machine, m_keylatch);
+	state_save_register_global(m_machine, m_fdc_irq);
+	state_save_register_global(m_machine, m_fdc_index);
 }
 
 /*-------------------------------------------------
@@ -1034,8 +1034,8 @@ void sf7000_state::machine_start()
 
 void sf7000_state::machine_reset()
 {
-	memory_set_bank(machine, "bank1", 0);
-	memory_set_bank(machine, "bank2", 0);
+	memory_set_bank(m_machine, "bank1", 0);
+	memory_set_bank(m_machine, "bank2", 0);
 }
 
 /***************************************************************************
@@ -1075,7 +1075,7 @@ static MACHINE_CONFIG_START( sg1000, sg1000_state )
 	MCFG_SOFTWARE_LIST_ADD("cart_list","sg1000")
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1K")
 MACHINE_CONFIG_END
 
@@ -1093,7 +1093,7 @@ static MACHINE_CONFIG_DERIVED( omv, sg1000 )
 	MCFG_CARTSLOT_NOT_MANDATORY
 	MCFG_CARTSLOT_LOAD(omv_cart)
 
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2K")
 MACHINE_CONFIG_END
 
@@ -1134,7 +1134,7 @@ static MACHINE_CONFIG_START( sc3000, sc3000_state )
 	MCFG_SOFTWARE_LIST_ADD("cart_list","sg1000")
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2K")
 MACHINE_CONFIG_END
 
@@ -1171,7 +1171,7 @@ static MACHINE_CONFIG_START( sf7000, sf7000_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

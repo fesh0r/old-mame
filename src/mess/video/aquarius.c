@@ -55,37 +55,37 @@ PALETTE_INIT( aquarius )
 {
 	int i;
 
-	machine->colortable = colortable_alloc(machine, 16);
+	machine.colortable = colortable_alloc(machine, 16);
 
 	for (i = 0; i < 16; i++)
-		colortable_palette_set_color(machine->colortable, i, aquarius_colors[i]);
+		colortable_palette_set_color(machine.colortable, i, aquarius_colors[i]);
 
 	for (i = 0; i < 512; i++)
-		colortable_entry_set_value(machine->colortable, i, aquarius_palette[i]);
+		colortable_entry_set_value(machine.colortable, i, aquarius_palette[i]);
 }
 
 WRITE8_HANDLER( aquarius_videoram_w )
 {
-	aquarius_state *state = space->machine->driver_data<aquarius_state>();
-	UINT8 *videoram = state->videoram;
+	aquarius_state *state = space->machine().driver_data<aquarius_state>();
+	UINT8 *videoram = state->m_videoram;
 	videoram[offset] = data;
-	tilemap_mark_tile_dirty(state->tilemap, offset);
+	tilemap_mark_tile_dirty(state->m_tilemap, offset);
 }
 
 WRITE8_HANDLER( aquarius_colorram_w )
 {
-	aquarius_state *state = space->machine->driver_data<aquarius_state>();
-	state->colorram[offset] = data;
-	tilemap_mark_tile_dirty(state->tilemap, offset);
+	aquarius_state *state = space->machine().driver_data<aquarius_state>();
+	state->m_colorram[offset] = data;
+	tilemap_mark_tile_dirty(state->m_tilemap, offset);
 }
 
 static TILE_GET_INFO(aquarius_gettileinfo)
 {
-	aquarius_state *state = machine->driver_data<aquarius_state>();
-	UINT8 *videoram = state->videoram;
+	aquarius_state *state = machine.driver_data<aquarius_state>();
+	UINT8 *videoram = state->m_videoram;
 	int bank = 0;
 	int code = videoram[tile_index];
-	int color = state->colorram[tile_index];
+	int color = state->m_colorram[tile_index];
 	int flags = 0;
 
 	SET_TILE_INFO(bank, code, color, flags);
@@ -93,14 +93,14 @@ static TILE_GET_INFO(aquarius_gettileinfo)
 
 VIDEO_START( aquarius )
 {
-	aquarius_state *state = machine->driver_data<aquarius_state>();
-	state->tilemap = tilemap_create(machine, aquarius_gettileinfo, tilemap_scan_rows, 8, 8, 40, 25);
+	aquarius_state *state = machine.driver_data<aquarius_state>();
+	state->m_tilemap = tilemap_create(machine, aquarius_gettileinfo, tilemap_scan_rows, 8, 8, 40, 25);
 }
 
-VIDEO_UPDATE( aquarius )
+SCREEN_UPDATE( aquarius )
 {
-	aquarius_state *state = screen->machine->driver_data<aquarius_state>();
-	tilemap_draw(bitmap, NULL, state->tilemap, 0, 0);
+	aquarius_state *state = screen->machine().driver_data<aquarius_state>();
+	tilemap_draw(bitmap, NULL, state->m_tilemap, 0, 0);
 
 	return 0;
 }

@@ -9,30 +9,31 @@
 
 #include "emu.h"
 #include "includes/b2m.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 VIDEO_START( b2m )
 {
 }
 
-VIDEO_UPDATE( b2m )
+SCREEN_UPDATE( b2m )
 {
+	b2m_state *state = screen->machine().driver_data<b2m_state>();
 	UINT8 code1;
 	UINT8 code2;
 	UINT8 col;
 	int y, x, b;
-	b2m_state *state = screen->machine->driver_data<b2m_state>();
+	UINT8 *ram = ram_get_ptr(screen->machine().device(RAM_TAG));
 
 	for (x = 0; x < 48; x++)
 	{
 		for (y = 0; y < 256; y++)
 		{
-			if (state->b2m_video_page==0) {
-				code1 = messram_get_ptr(screen->machine->device("messram"))[0x11000 + x*256 + ((y + state->b2m_video_scroll) & 0xff)];
-				code2 = messram_get_ptr(screen->machine->device("messram"))[0x15000 + x*256 + ((y + state->b2m_video_scroll) & 0xff)];
+			if (state->m_b2m_video_page==0) {
+				code1 = ram[0x11000 + x*256 + ((y + state->m_b2m_video_scroll) & 0xff)];
+				code2 = ram[0x15000 + x*256 + ((y + state->m_b2m_video_scroll) & 0xff)];
 			} else {
-				code1 = messram_get_ptr(screen->machine->device("messram"))[0x19000 + x*256 + ((y + state->b2m_video_scroll) & 0xff)];
-				code2 = messram_get_ptr(screen->machine->device("messram"))[0x1d000 + x*256 + ((y + state->b2m_video_scroll) & 0xff)];
+				code1 = ram[0x19000 + x*256 + ((y + state->m_b2m_video_scroll) & 0xff)];
+				code2 = ram[0x1d000 + x*256 + ((y + state->m_b2m_video_scroll) & 0xff)];
 			}
 			for (b = 7; b >= 0; b--)
 			{

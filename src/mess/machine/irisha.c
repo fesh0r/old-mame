@@ -19,28 +19,28 @@
 /* Driver initialization */
 DRIVER_INIT(irisha)
 {
-	irisha_state *state = machine->driver_data<irisha_state>();
-	state->keyboard_mask = 0;
+	irisha_state *state = machine.driver_data<irisha_state>();
+	state->m_keyboard_mask = 0;
 }
 
 
 
 static TIMER_CALLBACK( irisha_key )
 {
-	irisha_state *state = machine->driver_data<irisha_state>();
-	state->keypressed = 1;
-	state->keyboard_cnt = 0;
+	irisha_state *state = machine.driver_data<irisha_state>();
+	state->m_keypressed = 1;
+	state->m_keyboard_cnt = 0;
 }
 
 MACHINE_START( irisha )
 {
-	timer_pulse(machine, ATTOTIME_IN_MSEC(30), NULL, 0, irisha_key);
+	machine.scheduler().timer_pulse(attotime::from_msec(30), FUNC(irisha_key));
 }
 
 MACHINE_RESET( irisha )
 {
-	irisha_state *state = machine->driver_data<irisha_state>();
-	state->keypressed = 0;
+	irisha_state *state = machine.driver_data<irisha_state>();
+	state->m_keypressed = 0;
 }
 
 static const char *const keynames[] = {
@@ -51,9 +51,9 @@ static const char *const keynames[] = {
 
 static READ8_DEVICE_HANDLER (irisha_8255_portb_r )
 {
-	irisha_state *state = device->machine->driver_data<irisha_state>();
-  if (state->keypressed==1) {
-	state->keypressed =0;
+	irisha_state *state = device->machine().driver_data<irisha_state>();
+  if (state->m_keypressed==1) {
+	state->m_keypressed =0;
 	return 0x80;
   }
 
@@ -68,14 +68,14 @@ static READ8_DEVICE_HANDLER (irisha_8255_portc_r )
 
 READ8_HANDLER (irisha_keyboard_r)
 {
-	irisha_state *state = space->machine->driver_data<irisha_state>();
+	irisha_state *state = space->machine().driver_data<irisha_state>();
 	UINT8 keycode;
-	if (state->keyboard_cnt!=0 && state->keyboard_cnt<11) {
-		keycode = input_port_read(space->machine, keynames[state->keyboard_cnt-1]) ^ 0xff;
+	if (state->m_keyboard_cnt!=0 && state->m_keyboard_cnt<11) {
+		keycode = input_port_read(space->machine(), keynames[state->m_keyboard_cnt-1]) ^ 0xff;
 	} else {
 		keycode = 0xff;
 	}
-	state->keyboard_cnt++;
+	state->m_keyboard_cnt++;
 	return keycode;
 }
 
@@ -106,7 +106,7 @@ I8255A_INTERFACE( irisha_ppi8255_interface )
 
 static WRITE_LINE_DEVICE_HANDLER( irisha_pic_set_int_line )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 const struct pic8259_interface irisha_pic8259_config =

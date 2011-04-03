@@ -17,35 +17,35 @@
 #include "cpu/z80/z80.h"
 #include "includes/z88.h"
 #include "sound/speaker.h"
-#include "devices/messram.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
+#include "machine/ram.h"
 
 
-static void blink_reset(running_machine *machine)
+static void blink_reset(running_machine &machine)
 {
-	z88_state *state = machine->driver_data<z88_state>();
-	memset(&state->blink, 0, sizeof(state->blink));
+	z88_state *state = machine.driver_data<z88_state>();
+	memset(&state->m_blink, 0, sizeof(state->m_blink));
 
 	/* rams is cleared on reset */
-	state->blink.com &=~(1<<2);
-	state->blink.sbf = 0;
-	state->blink.z88_state = Z88_AWAKE;
+	state->m_blink.com &=~(1<<2);
+	state->m_blink.sbf = 0;
+	state->m_blink.z88_state = Z88_AWAKE;
 
 }
 
 
-static void z88_interrupt_refresh(running_machine *machine)
+static void z88_interrupt_refresh(running_machine &machine)
 {
-	z88_state *state = machine->driver_data<z88_state>();
+	z88_state *state = machine.driver_data<z88_state>();
 	/* ints enabled? */
-	if ((state->blink.ints & INT_GINT)!=0)
+	if ((state->m_blink.ints & INT_GINT)!=0)
 	{
 		/* yes */
 
 		/* other ints - except timer */
 		if (
-			(((state->blink.ints & state->blink.sta) & 0x0fc)!=0) ||
-			(((state->blink.ints>>1) & state->blink.sta & STA_TIME)!=0)
+			(((state->m_blink.ints & state->m_blink.sta) & 0x0fc)!=0) ||
+			(((state->m_blink.ints>>1) & state->m_blink.sta & STA_TIME)!=0)
 			)
 		{
 			logerror("set int\n");
@@ -58,35 +58,35 @@ static void z88_interrupt_refresh(running_machine *machine)
 	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 }
 
-static void z88_update_rtc_interrupt(running_machine *machine)
+static void z88_update_rtc_interrupt(running_machine &machine)
 {
-	z88_state *state = machine->driver_data<z88_state>();
-	state->blink.sta &=~STA_TIME;
+	z88_state *state = machine.driver_data<z88_state>();
+	state->m_blink.sta &=~STA_TIME;
 
 	/* time interrupt enabled? */
-	if (state->blink.ints & INT_TIME)
+	if (state->m_blink.ints & INT_TIME)
 	{
 		/* yes */
 
 		/* any ints occured? */
-		if ((state->blink.tsta & 0x07)!=0)
+		if ((state->m_blink.tsta & 0x07)!=0)
 		{
 			/* yes, set time int */
-			state->blink.sta |= STA_TIME;
+			state->m_blink.sta |= STA_TIME;
 		}
 	}
 }
 
 
 
-static TIMER_CALLBACK(z88_rtc_timer_callback)
+static TIMER_DEVICE_CALLBACK(z88_rtc_timer_callback)
 {
-	z88_state *state = machine->driver_data<z88_state>();
+	z88_state *state = timer.machine().driver_data<z88_state>();
 	int refresh_ints = 0;
 	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
 	/* is z88 in snooze state? */
-	if (state->blink.z88_state == Z88_SNOOZE)
+	if (state->m_blink.z88_state == Z88_SNOOZE)
 	{
 		int i;
 		unsigned char data = 0x0ff;
@@ -94,7 +94,7 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 		/* any key pressed will wake up z88 */
 		for (i=0; i<8; i++)
 		{
-			data &= input_port_read(machine, keynames[i]);
+			data &= input_port_read(timer.machine(), keynames[i]);
 		}
 
 		/* if any key is pressed, then one or more bits will be 0 */
@@ -103,67 +103,67 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 			logerror("Z88 wake up from snooze!\n");
 
 			/* wake up z88 */
-			state->blink.z88_state = Z88_AWAKE;
+			state->m_blink.z88_state = Z88_AWAKE;
 			/* column has gone low in snooze/coma */
-			state->blink.sta |= STA_KEY;
+			state->m_blink.sta |= STA_KEY;
 
-			cpuexec_trigger(machine, Z88_SNOOZE_TRIGGER);
+			timer.machine().scheduler().trigger(Z88_SNOOZE_TRIGGER);
 
-			z88_interrupt_refresh(machine);
+			z88_interrupt_refresh(timer.machine());
 		}
 	}
 
 
 
 	/* hold clock at reset? - in this mode it doesn't update */
-	if ((state->blink.com & (1<<4))==0)
+	if ((state->m_blink.com & (1<<4))==0)
 	{
 		/* update 5 millisecond counter */
-		state->blink.tim[0]++;
+		state->m_blink.tim[0]++;
 
 		/* tick */
-		if ((state->blink.tim[0]%10)==0)
+		if ((state->m_blink.tim[0]%10)==0)
 		{
 			/* set tick int has occured */
-			state->blink.tsta |= RTC_TICK_INT;
+			state->m_blink.tsta |= RTC_TICK_INT;
 			refresh_ints = 1;
 		}
 
-		if (state->blink.tim[0]==200)
+		if (state->m_blink.tim[0]==200)
 		{
-			state->blink.tim[0] = 0;
+			state->m_blink.tim[0] = 0;
 
 			/* set seconds int has occured */
-			state->blink.tsta |= RTC_SEC_INT;
+			state->m_blink.tsta |= RTC_SEC_INT;
 			refresh_ints = 1;
 
-			state->blink.tim[1]++;
+			state->m_blink.tim[1]++;
 
-			if (state->blink.tim[1]==60)
+			if (state->m_blink.tim[1]==60)
 			{
 				/* set minutes int has occured */
-				state->blink.tsta |=RTC_MIN_INT;
+				state->m_blink.tsta |=RTC_MIN_INT;
 				refresh_ints = 1;
 
-				state->blink.tim[1]=0;
+				state->m_blink.tim[1]=0;
 
-				state->blink.tim[2]++;
+				state->m_blink.tim[2]++;
 
-				if (state->blink.tim[2]==256)
+				if (state->m_blink.tim[2]==256)
 				{
-					state->blink.tim[2] = 0;
+					state->m_blink.tim[2] = 0;
 
-					state->blink.tim[3]++;
+					state->m_blink.tim[3]++;
 
-					if (state->blink.tim[3]==256)
+					if (state->m_blink.tim[3]==256)
 					{
-						state->blink.tim[3] = 0;
+						state->m_blink.tim[3] = 0;
 
-						state->blink.tim[4]++;
+						state->m_blink.tim[4]++;
 
-						if (state->blink.tim[4]==32)
+						if (state->m_blink.tim[4]==32)
 						{
-							state->blink.tim[4] = 0;
+							state->m_blink.tim[4] = 0;
 						}
 					}
 				}
@@ -173,16 +173,16 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 
 	if (refresh_ints)
 	{
-		z88_update_rtc_interrupt(machine);
+		z88_update_rtc_interrupt(timer.machine());
 
 		/* refresh */
-		z88_interrupt_refresh(machine);
+		z88_interrupt_refresh(timer.machine());
 	}
 }
 
 
 
-static void z88_install_memory_handler_pair(running_machine *machine, offs_t start, offs_t size, int bank_base, void *read_addr, void *write_addr)
+static void z88_install_memory_handler_pair(running_machine &machine, offs_t start, offs_t size, int bank_base, void *read_addr, void *write_addr)
 {
 	char bank_0[10];
 	char bank_1[10];
@@ -192,18 +192,18 @@ static void z88_install_memory_handler_pair(running_machine *machine, offs_t sta
 
 	/* special case */
 	if (read_addr == NULL)
-		read_addr = &machine->region("maincpu")->base()[start];
+		read_addr = &machine.region("maincpu")->base()[start];
 
 	/* install the handlers */
 	if (read_addr == NULL) {
-		memory_unmap_read(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0);
+		machine.device("maincpu")->memory().space(AS_PROGRAM )->unmap_read(start, start + size - 1);
 	} else {
-		memory_install_read_bank(cputag_get_address_space(machine, "maincpu",  ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, bank_0);
+		machine.device("maincpu")->memory().space(AS_PROGRAM )->install_read_bank(start, start + size - 1, bank_0);
 	}
 	if (write_addr == NULL) {
-		memory_unmap_write(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0);
+		machine.device("maincpu")->memory().space(AS_PROGRAM )->unmap_write(start, start + size - 1);
 	} else {
-		memory_install_write_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, bank_1);
+		machine.device("maincpu")->memory().space(AS_PROGRAM )->install_write_bank(start, start + size - 1, bank_1);
 	}
 
 	/* and set the banks */
@@ -230,9 +230,9 @@ explains why the extra checks are done
     bank 3      0xC000-0xFFFF
 */
 
-static void z88_refresh_memory_bank(running_machine *machine, int bank)
+static void z88_refresh_memory_bank(running_machine &machine, int bank)
 {
-	z88_state *state = machine->driver_data<z88_state>();
+	z88_state *state = machine.driver_data<z88_state>();
 	void *read_addr;
 	void *write_addr;
 	unsigned long block;
@@ -241,9 +241,9 @@ static void z88_refresh_memory_bank(running_machine *machine, int bank)
 	assert(bank <= 3);
 
 	/* ram? */
-	if (state->blink.mem[bank]>=0x020)
+	if (state->m_blink.mem[bank]>=0x020)
 	{
-		block = state->blink.mem[bank]-0x020;
+		block = state->m_blink.mem[bank]-0x020;
 
 		if (block >= 128)
 		{
@@ -252,12 +252,12 @@ static void z88_refresh_memory_bank(running_machine *machine, int bank)
 		}
 		else
 		{
-			read_addr = write_addr = messram_get_ptr(machine->device("messram")) + (block<<14);
+			read_addr = write_addr = ram_get_ptr(machine.device(RAM_TAG)) + (block<<14);
 		}
 	}
 	else
 	{
-		block = state->blink.mem[bank] & 0x07;
+		block = state->m_blink.mem[bank] & 0x07;
 
 		/* in rom area, but rom not present */
 		if (block>=8)
@@ -267,7 +267,7 @@ static void z88_refresh_memory_bank(running_machine *machine, int bank)
 		}
 		else
 		{
-			read_addr = machine->region("maincpu")->base() + 0x010000 + (block << 14);
+			read_addr = machine.region("maincpu")->base() + 0x010000 + (block << 14);
 			write_addr = NULL;
 		}
 	}
@@ -280,17 +280,17 @@ static void z88_refresh_memory_bank(running_machine *machine, int bank)
 		/* override setting for lower 8k of bank 0 */
 
 		/* enable rom? */
-		if ((state->blink.com & (1<<2))==0)
+		if ((state->m_blink.com & (1<<2))==0)
 		{
 			/* yes */
-			read_addr = machine->region("maincpu")->base() + 0x010000;
+			read_addr = machine.region("maincpu")->base() + 0x010000;
 			write_addr = NULL;
 		}
 		else
 		{
 			/* ram bank 20 */
-			read_addr = messram_get_ptr(machine->device("messram"));
-			write_addr = messram_get_ptr(machine->device("messram"));
+			read_addr = ram_get_ptr(machine.device(RAM_TAG));
+			write_addr = ram_get_ptr(machine.device(RAM_TAG));
 		}
 
 		z88_install_memory_handler_pair(machine, 0x0000, 0x2000, 9, read_addr, write_addr);
@@ -299,12 +299,11 @@ static void z88_refresh_memory_bank(running_machine *machine, int bank)
 
 static MACHINE_START( z88 )
 {
-	timer_pulse(machine, ATTOTIME_IN_MSEC(5), NULL, 0, z88_rtc_timer_callback);
 }
 
 static MACHINE_RESET( z88 )
 {
-	memset(messram_get_ptr(machine->device("messram")), 0x0ff, messram_get_size(machine->device("messram")));
+	memset(ram_get_ptr(machine.device(RAM_TAG)), 0x0ff, ram_get_size(machine.device(RAM_TAG)));
 
 	blink_reset(machine);
 
@@ -314,7 +313,7 @@ static MACHINE_RESET( z88 )
 	z88_refresh_memory_bank(machine, 3);
 }
 
-static ADDRESS_MAP_START(z88_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START(z88_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank6")
 	AM_RANGE(0x2000, 0x3fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank7")
 	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank8")
@@ -322,9 +321,9 @@ static ADDRESS_MAP_START(z88_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_READ_BANK("bank5") AM_WRITE_BANK("bank10")
 ADDRESS_MAP_END
 
-static void blink_pb_w(running_machine *machine, int offset, int data, int reg_index)
+static void blink_pb_w(running_machine &machine, int offset, int data, int reg_index)
 {
-	z88_state *state = machine->driver_data<z88_state>();
+	z88_state *state = machine.driver_data<z88_state>();
     unsigned short addr_written = (offset & 0x0ff00) | (data & 0x0ff);
 
 	logerror("reg_index: %02x addr: %04x\n",reg_index,addr_written);
@@ -336,44 +335,44 @@ static void blink_pb_w(running_machine *machine, int offset, int data, int reg_i
 
 	case 0x00:
 		{
-/**/            state->blink.pb[0] = addr_written;
-            state->blink.lores0 = ((addr_written & 0x01f)<<9) | ((addr_written & 0x01fe0)<<9);	// blink_pb_offset(-1, addr_written, 9);
-            logerror("lores0 %08x\n",state->blink.lores0);
+/**/            state->m_blink.pb[0] = addr_written;
+            state->m_blink.lores0 = ((addr_written & 0x01f)<<9) | ((addr_written & 0x01fe0)<<9);	// blink_pb_offset(-1, addr_written, 9);
+            logerror("lores0 %08x\n",state->m_blink.lores0);
 		}
 		break;
 
 		case 0x01:
 		{
-            state->blink.pb[1] = addr_written;
-            state->blink.lores1 = ((addr_written & 0x01f)<<12) | ((addr_written & 0x01fe0)<<12);	//blink_pb_offset(-1, addr_written, 12);
-            logerror("lores1 %08x\n",state->blink.lores1);
+            state->m_blink.pb[1] = addr_written;
+            state->m_blink.lores1 = ((addr_written & 0x01f)<<12) | ((addr_written & 0x01fe0)<<12);	//blink_pb_offset(-1, addr_written, 12);
+            logerror("lores1 %08x\n",state->m_blink.lores1);
 		}
 		break;
 
 		case 0x02:
 		{
-            state->blink.pb[2] = addr_written;
-/**/            state->blink.hires0 = ((addr_written & 0x01f)<<13) | ((addr_written & 0x01fe0)<<13);	//blink_pb_offset(-1, addr_written, 13);
-            logerror("hires0 %08x\n", state->blink.hires0);
+            state->m_blink.pb[2] = addr_written;
+/**/            state->m_blink.hires0 = ((addr_written & 0x01f)<<13) | ((addr_written & 0x01fe0)<<13);	//blink_pb_offset(-1, addr_written, 13);
+            logerror("hires0 %08x\n", state->m_blink.hires0);
 		}
 		break;
 
 
 		case 0x03:
 		{
-            state->blink.pb[3] = addr_written;
-            state->blink.hires1 = ((addr_written & 0x01f)<<11) | ((addr_written & 0x01fe0)<<11);	//blink_pb_offset(-1, addr_written, 11);
+            state->m_blink.pb[3] = addr_written;
+            state->m_blink.hires1 = ((addr_written & 0x01f)<<11) | ((addr_written & 0x01fe0)<<11);	//blink_pb_offset(-1, addr_written, 11);
 
-            logerror("hires1 %08x\n", state->blink.hires1);
+            logerror("hires1 %08x\n", state->m_blink.hires1);
 		}
 		break;
 
 		case 0x04:
 		{
-            state->blink.sbr = addr_written;
+            state->m_blink.sbr = addr_written;
 
-			state->blink.sbf = ((addr_written & 0x01f)<<11) | ((addr_written & 0x01fe0)<<11);
-            logerror("%08x\n", state->blink.sbf);
+			state->m_blink.sbf = ((addr_written & 0x01f)<<11) | ((addr_written & 0x01fe0)<<11);
+            logerror("%08x\n", state->m_blink.sbf);
 
 		}
 		break;
@@ -387,10 +386,10 @@ static void blink_pb_w(running_machine *machine, int offset, int data, int reg_i
 /* segment register write */
 static WRITE8_HANDLER(blink_srx_w)
 {
-	z88_state *state = space->machine->driver_data<z88_state>();
-	state->blink.mem[offset] = data;
+	z88_state *state = space->machine().driver_data<z88_state>();
+	state->m_blink.mem[offset] = data;
 
-	z88_refresh_memory_bank(space->machine, offset);
+	z88_refresh_memory_bank(space->machine(), offset);
 }
 /*
  00b0 00
@@ -406,8 +405,8 @@ blink w: 03b6 03
 
 static WRITE8_HANDLER(z88_port_w)
 {
-	z88_state *state = space->machine->driver_data<z88_state>();
-	device_t *speaker = space->machine->device("speaker");
+	z88_state *state = space->machine().driver_data<z88_state>();
+	device_t *speaker = space->machine().device("speaker");
 	unsigned char port;
 
 	port = offset & 0x0ff;
@@ -419,7 +418,7 @@ static WRITE8_HANDLER(z88_port_w)
 		case 0x072:
 		case 0x073:
 		case 0x074:
-			blink_pb_w(space->machine, offset, data, port & 0x0f);
+			blink_pb_w(space->machine(), offset, data, port & 0x0f);
 			return;
 
 
@@ -429,13 +428,13 @@ static WRITE8_HANDLER(z88_port_w)
 		    logerror("tack w: %02x\n", data);
 
 			/* set acknowledge */
-			state->blink.tack = data & 0x07;
+			state->m_blink.tack = data & 0x07;
 			/* clear ints that have occured */
-			state->blink.tsta &= ~state->blink.tack;
+			state->m_blink.tsta &= ~state->m_blink.tack;
 
 			/* refresh ints */
-			z88_update_rtc_interrupt(space->machine);
-			z88_interrupt_refresh(space->machine);
+			z88_update_rtc_interrupt(space->machine());
+			z88_interrupt_refresh(space->machine());
 		}
 		return;
 
@@ -445,11 +444,11 @@ static WRITE8_HANDLER(z88_port_w)
 		    logerror("tmk w: %02x\n", data);
 
 			/* set new int mask */
-			state->blink.tmk = data & 0x07;
+			state->m_blink.tmk = data & 0x07;
 
 			/* refresh ints */
-			z88_update_rtc_interrupt(space->machine);
-			z88_interrupt_refresh(space->machine);
+			z88_update_rtc_interrupt(space->machine());
+			z88_interrupt_refresh(space->machine());
 		}
 		return;
 
@@ -459,13 +458,13 @@ static WRITE8_HANDLER(z88_port_w)
 
 		    logerror("com w: %02x\n", data);
 
-			changed_bits = state->blink.com^data;
-			state->blink.com = data;
+			changed_bits = state->m_blink.com^data;
+			state->m_blink.com = data;
 
 			/* reset clock? */
 			if ((data & (1<<4))!=0)
 			{
-				state->blink.tim[0] = (state->blink.tim[1] = (state->blink.tim[2] = (state->blink.tim[3] = (state->blink.tim[4] = 0))));
+				state->m_blink.tim[0] = (state->m_blink.tim[1] = (state->m_blink.tim[2] = (state->m_blink.tim[3] = (state->m_blink.tim[4] = 0))));
 			}
 
 			/* SBIT controls speaker direct? */
@@ -489,7 +488,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			if ((changed_bits & (1<<2))!=0)
 			{
-				z88_refresh_memory_bank(space->machine, 0);
+				z88_refresh_memory_bank(space->machine(), 0);
 			}
 		}
 		return;
@@ -499,9 +498,9 @@ static WRITE8_HANDLER(z88_port_w)
 			/* set int enables */
 		    logerror("int w: %02x\n", data);
 
-			state->blink.ints = data;
-			z88_update_rtc_interrupt(space->machine);
-			z88_interrupt_refresh(space->machine);
+			state->m_blink.ints = data;
+			z88_update_rtc_interrupt(space->machine());
+			z88_interrupt_refresh(space->machine());
 		}
 		return;
 
@@ -511,11 +510,11 @@ static WRITE8_HANDLER(z88_port_w)
 		    logerror("ack w: %02x\n", data);
 
 			/* acknowledge ints */
-			state->blink.ack = data & ((1<<6) | (1<<5) | (1<<3) | (1<<2));
+			state->m_blink.ack = data & ((1<<6) | (1<<5) | (1<<3) | (1<<2));
 
-			state->blink.ints &= ~state->blink.ack;
-			z88_update_rtc_interrupt(space->machine);
-			z88_interrupt_refresh(space->machine);
+			state->m_blink.ints &= ~state->m_blink.ack;
+			z88_update_rtc_interrupt(space->machine());
+			z88_interrupt_refresh(space->machine());
 		}
 		return;
 
@@ -536,7 +535,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 static  READ8_HANDLER(z88_port_r)
 {
-	z88_state *state = space->machine->driver_data<z88_state>();
+	z88_state *state = space->machine().driver_data<z88_state>();
 	unsigned char port;
 
 	port = offset & 0x0ff;
@@ -544,9 +543,9 @@ static  READ8_HANDLER(z88_port_r)
 	switch (port)
 	{
 		case 0x0b1:
-			state->blink.sta &=~(1<<1);
-			logerror("sta r: %02x\n",state->blink.sta);
-			return state->blink.sta;
+			state->m_blink.sta &=~(1<<1);
+			logerror("sta r: %02x\n",state->m_blink.sta);
+			return state->m_blink.sta;
 
 
 		case 0x0b2:
@@ -558,39 +557,39 @@ static  READ8_HANDLER(z88_port_r)
 			lines = offset>>8;
 
 			/* if set, reading the keyboard will put z88 into snooze */
-			if ((state->blink.ints & INT_KWAIT)!=0)
+			if ((state->m_blink.ints & INT_KWAIT)!=0)
 			{
-				state->blink.z88_state = Z88_SNOOZE;
+				state->m_blink.z88_state = Z88_SNOOZE;
 				/* spin cycles until rtc timer */
-				cpu_spinuntil_trigger( space->machine->device("maincpu"), Z88_SNOOZE_TRIGGER);
+				device_spin_until_trigger( space->machine().device("maincpu"), Z88_SNOOZE_TRIGGER);
 
 				logerror("z88 entering snooze!\n");
 			}
 
 
 			if ((lines & 0x080)==0)
-				data &=input_port_read(space->machine, "LINE7");
+				data &=input_port_read(space->machine(), "LINE7");
 
 			if ((lines & 0x040)==0)
-				data &=input_port_read(space->machine, "LINE6");
+				data &=input_port_read(space->machine(), "LINE6");
 
 			if ((lines & 0x020)==0)
-				data &=input_port_read(space->machine, "LINE5");
+				data &=input_port_read(space->machine(), "LINE5");
 
 			if ((lines & 0x010)==0)
-				data &=input_port_read(space->machine, "LINE4");
+				data &=input_port_read(space->machine(), "LINE4");
 
 			if ((lines & 0x008)==0)
-				data &=input_port_read(space->machine, "LINE3");
+				data &=input_port_read(space->machine(), "LINE3");
 
 			if ((lines & 0x004)==0)
-				data &=input_port_read(space->machine, "LINE2");
+				data &=input_port_read(space->machine(), "LINE2");
 
 			if ((lines & 0x002)==0)
-				data &=input_port_read(space->machine, "LINE1");
+				data &=input_port_read(space->machine(), "LINE1");
 
 			if ((lines & 0x001)==0)
-				data &=input_port_read(space->machine, "LINE0");
+				data &=input_port_read(space->machine(), "LINE0");
 
 			logerror("lines: %02x\n",lines);
 			logerror("key r: %02x\n",data);
@@ -599,26 +598,26 @@ static  READ8_HANDLER(z88_port_r)
 
 		/* read real time clock status */
 		case 0x0b5:
-			state->blink.tsta &=~0x07;
-			logerror("tsta r: %02x\n",state->blink.tsta);
-			return state->blink.tsta;
+			state->m_blink.tsta &=~0x07;
+			logerror("tsta r: %02x\n",state->m_blink.tsta);
+			return state->m_blink.tsta;
 
 		/* read real time clock counters */
 		case 0x0d0:
-		    logerror("tim0 r: %02x\n", state->blink.tim[0]);
-			return state->blink.tim[0] & 0x0ff;
+		    logerror("tim0 r: %02x\n", state->m_blink.tim[0]);
+			return state->m_blink.tim[0] & 0x0ff;
 		case 0x0d1:
-			logerror("tim1 r: %02x\n", state->blink.tim[1]);
-			return state->blink.tim[1] & 0x03f;
+			logerror("tim1 r: %02x\n", state->m_blink.tim[1]);
+			return state->m_blink.tim[1] & 0x03f;
 		case 0x0d2:
-			logerror("tim2 r: %02x\n", state->blink.tim[2]);
-			return state->blink.tim[2] & 0x0ff;
+			logerror("tim2 r: %02x\n", state->m_blink.tim[2]);
+			return state->m_blink.tim[2] & 0x0ff;
 		case 0x0d3:
-			logerror("tim3 r: %02x\n", state->blink.tim[3]);
-			return state->blink.tim[3] & 0x0ff;
+			logerror("tim3 r: %02x\n", state->m_blink.tim[3]);
+			return state->m_blink.tim[3] & 0x0ff;
 		case 0x0d4:
-			logerror("tim4 r: %02x\n", state->blink.tim[4]);
-			return state->blink.tim[4] & 0x01f;
+			logerror("tim4 r: %02x\n", state->m_blink.tim[4]);
+			return state->m_blink.tim[4] & 0x01f;
 
 		default:
 			break;
@@ -632,7 +631,7 @@ static  READ8_HANDLER(z88_port_r)
 }
 
 
-static ADDRESS_MAP_START( z88_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( z88_io, AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xFFFF)
 	AM_RANGE(0x0000, 0x0ffff) AM_READWRITE(z88_port_r, z88_port_w)
 ADDRESS_MAP_END
@@ -749,7 +748,7 @@ static MACHINE_CONFIG_START( z88, z88_state )
 	MCFG_CPU_ADD("maincpu", Z80, 3276800)
 	MCFG_CPU_PROGRAM_MAP(z88_mem)
 	MCFG_CPU_IO_MAP(z88_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( z88 )
 	MCFG_MACHINE_RESET( z88 )
@@ -761,11 +760,11 @@ static MACHINE_CONFIG_START( z88, z88_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(Z88_SCREEN_WIDTH, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, (Z88_SCREEN_WIDTH - 1), 0, (480 - 1))
+	MCFG_SCREEN_UPDATE( z88 )
+	MCFG_SCREEN_EOF( z88 )
+
 	MCFG_PALETTE_LENGTH(Z88_NUM_COLOURS)
 	MCFG_PALETTE_INIT( z88 )
-
-	MCFG_VIDEO_EOF( z88 )
-	MCFG_VIDEO_UPDATE( z88 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -773,8 +772,10 @@ static MACHINE_CONFIG_START( z88, z88_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2M")
+
+	MCFG_TIMER_ADD_PERIODIC("rtc_timer", z88_rtc_timer_callback, attotime::from_msec(5))
 MACHINE_CONFIG_END
 
 

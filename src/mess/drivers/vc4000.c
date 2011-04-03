@@ -50,8 +50,8 @@ Go to the bottom to see the game list and emulation status of each.
 #include "cpu/s2650/s2650.h"
 
 #include "includes/vc4000.h"
-#include "devices/cartslot.h"
-#include "devices/snapquik.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/snapquik.h"
 
 static QUICKLOAD_LOAD( vc4000 );
 
@@ -60,25 +60,25 @@ static READ8_HANDLER(vc4000_key_r)
 	UINT8 data=0;
 	switch(offset & 0x0f) {
 	case 0x08:
-		data = input_port_read(space->machine, "KEYPAD1_1");
+		data = input_port_read(space->machine(), "KEYPAD1_1");
 		break;
 	case 0x09:
-		data = input_port_read(space->machine, "KEYPAD1_2");
+		data = input_port_read(space->machine(), "KEYPAD1_2");
 		break;
 	case 0x0a:
-		data = input_port_read(space->machine, "KEYPAD1_3");
+		data = input_port_read(space->machine(), "KEYPAD1_3");
 		break;
 	case 0x0b:
-		data = input_port_read(space->machine, "PANEL");
+		data = input_port_read(space->machine(), "PANEL");
 		break;
 	case 0x0c:
-		data = input_port_read(space->machine, "KEYPAD2_1");
+		data = input_port_read(space->machine(), "KEYPAD2_1");
 		break;
 	case 0x0d:
-		data = input_port_read(space->machine, "KEYPAD2_2");
+		data = input_port_read(space->machine(), "KEYPAD2_2");
 		break;
 	case 0x0e:
-		data = input_port_read(space->machine, "KEYPAD2_3");
+		data = input_port_read(space->machine(), "KEYPAD2_3");
 		break;
 	}
 	return data;
@@ -90,7 +90,7 @@ static WRITE8_HANDLER(vc4000_sound_ctl)
 }
 
 
-static ADDRESS_MAP_START( vc4000_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( vc4000_mem , AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
@@ -98,7 +98,7 @@ static ADDRESS_MAP_START( vc4000_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x1700, 0x17ff) AM_READWRITE( vc4000_video_r, vc4000_video_w ) AM_MIRROR(0x0800)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vc4000_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vc4000_io , AS_IO, 8)
 	AM_RANGE( S2650_SENSE_PORT,S2650_SENSE_PORT) AM_READ( vc4000_vsync_r)
 ADDRESS_MAP_END
 
@@ -193,8 +193,8 @@ static PALETTE_INIT( vc4000 )
 
 static DEVICE_IMAGE_LOAD( vc4000_cart )
 {
-	running_machine *machine = image.device().machine;
-	address_space *memspace = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	running_machine &machine = image.device().machine();
+	address_space *memspace = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -207,35 +207,35 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 
 	if (size > 0x1000)	/* 6k rom + 1k ram - Chess2 only */
 	{
-		memory_install_read_bank(memspace, 0x0800, 0x15ff, 0, 0, "bank1");	/* extra rom */
-		memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x1000);
+		memspace->install_read_bank(0x0800, 0x15ff, "bank1");	/* extra rom */
+		memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base() + 0x1000);
 
-		memory_install_readwrite_bank(memspace, 0x1800, 0x1bff, 0, 0, "bank2");	/* ram */
-		memory_set_bankptr(machine, "bank2", machine->region("maincpu")->base() + 0x1800);
+		memspace->install_readwrite_bank(0x1800, 0x1bff, "bank2");	/* ram */
+		memory_set_bankptr(machine, "bank2", machine.region("maincpu")->base() + 0x1800);
 	}
 	else if (size > 0x0800)	/* some 4k roms have 1k of mirrored ram */
 	{
-		memory_install_read_bank(memspace, 0x0800, 0x0fff, 0, 0, "bank1");	/* extra rom */
-		memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x0800);
+		memspace->install_read_bank(0x0800, 0x0fff, "bank1");	/* extra rom */
+		memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base() + 0x0800);
 
-		memory_install_readwrite_bank(memspace, 0x1000, 0x15ff, 0, 0x800, "bank2"); /* ram */
-		memory_set_bankptr(machine, "bank2", machine->region("maincpu")->base() + 0x1000);
+		memspace->install_readwrite_bank(0x1000, 0x15ff, 0, 0x800, "bank2"); /* ram */
+		memory_set_bankptr(machine, "bank2", machine.region("maincpu")->base() + 0x1000);
 	}
 	else if (size == 0x0800)	/* 2k roms + 2k ram - Hobby Module(Radofin) and elektor TVGC*/
 	{
-		memory_install_readwrite_bank(memspace, 0x0800, 0x0fff, 0, 0, "bank1"); /* ram */
-		memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base() + 0x0800);
+		memspace->install_readwrite_bank(0x0800, 0x0fff, "bank1"); /* ram */
+		memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base() + 0x0800);
 	}
 
 	if (size > 0)
 	{
 		if (image.software_entry() == NULL)
 		{
-			if (image.fread( machine->region("maincpu")->base(), size) != size)
+			if (image.fread( machine.region("maincpu")->base(), size) != size)
 				return IMAGE_INIT_FAIL;
 		}
 		else
-			memcpy(machine->region("maincpu")->base(), image.get_software_region("rom"), size);
+			memcpy(machine.region("maincpu")->base(), image.get_software_region("rom"), size);
 	}
 
 	return IMAGE_INIT_PASS;
@@ -255,11 +255,12 @@ static MACHINE_CONFIG_START( vc4000, vc4000_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(226, 312)
 	MCFG_SCREEN_VISIBLE_AREA(8, 184, 0, 269)
+	MCFG_SCREEN_UPDATE( vc4000 )
+
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_PALETTE_INIT( vc4000 )
 
 	MCFG_VIDEO_START( vc4000 )
-	MCFG_VIDEO_UPDATE( vc4000 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -375,7 +376,7 @@ ROM_END
 
 QUICKLOAD_LOAD(vc4000)
 {
-	address_space *space = cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int i;
 	int quick_addr = 0x08c0;
 	int quick_length;

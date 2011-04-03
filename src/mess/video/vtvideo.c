@@ -56,6 +56,7 @@ struct _vt_video_t
 INLINE vt_video_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == VT100_VIDEO);
 
 	return (vt_video_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -63,7 +64,8 @@ INLINE vt_video_t *get_safe_token(device_t *device)
 INLINE const vt_video_interface *get_interface(device_t *device)
 {
 	assert(device != NULL);
-//  assert((device->type() == dc012));
+	assert(device->type() == VT100_VIDEO);
+
 	return (const vt_video_interface *) device->baseconfig().static_config();
 }
 
@@ -174,7 +176,7 @@ WRITE8_DEVICE_HANDLER( vt_video_dc011_w )
 
 WRITE8_DEVICE_HANDLER( vt_video_brightness_w )
 {
-	//palette_set_color_rgb(device->machine, 1, data, data, data);
+	//palette_set_color_rgb(device->machine(), 1, data, data, data);
 }
 
 static void vt_video_display_char(device_t *device,bitmap_t *bitmap, UINT8 code,
@@ -305,14 +307,14 @@ static DEVICE_START( vt_video )
 	devcb_resolve_write8(&vt->clear_video_interrupt, &intf->clear_video_interrupt, device);
 
 	/* get the screen device */
-	vt->screen = device->machine->device<screen_device>(intf->screen_tag);
+	vt->screen = device->machine().device<screen_device>(intf->screen_tag);
 	assert(vt->screen != NULL);
 
-	vt->gfx = device->machine->region(intf->char_rom_region_tag)->base();
+	vt->gfx = device->machine().region(intf->char_rom_region_tag)->base();
 	assert(vt->gfx != NULL);
 
     // LBA7 is scan line frequency update
-	timer_pulse(device->machine, ATTOTIME_IN_NSEC(31778), (void *) device, 0, lba7_change);
+	device->machine().scheduler().timer_pulse(attotime::from_nsec(31778), FUNC(lba7_change), 0, (void *) device);
 }
 
 
@@ -323,8 +325,8 @@ static DEVICE_START( vt_video )
 static DEVICE_RESET( vt_video )
 {
 	vt_video_t *vt = get_safe_token(device);
-	palette_set_color_rgb(device->machine, 0, 0x00, 0x00, 0x00); // black
-	palette_set_color_rgb(device->machine, 1, 0xff, 0xff, 0xff); // white
+	palette_set_color_rgb(device->machine(), 0, 0x00, 0x00, 0x00); // black
+	palette_set_color_rgb(device->machine(), 1, 0xff, 0xff, 0xff); // white
 
 	vt->height = 25;
 	vt->lba7 = 0;

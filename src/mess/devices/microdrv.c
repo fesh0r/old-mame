@@ -75,7 +75,7 @@ static TIMER_CALLBACK( bit_timer_tick )
 	microdrive_t *mdv = get_safe_token(device);
 
 	mdv->bit_offset++;
-	
+
 	if (mdv->bit_offset == 8)
 	{
 		mdv->bit_offset = 0;
@@ -101,8 +101,8 @@ WRITE_LINE_DEVICE_HANDLER( microdrive_clk_w )
 		if (LOG) logerror("Microdrive '%s' COMMS OUT: %u\n", device->tag(), mdv->comms_out);
 
 		devcb_call_write_line(&mdv->out_comms_out_func, mdv->comms_out);
-		
-		timer_enable(mdv->bit_timer, mdv->comms_out);
+
+		mdv->bit_timer->enable(mdv->comms_out);
 	}
 
 	mdv->clk = state;
@@ -196,13 +196,13 @@ static DEVICE_START( microdrive )
 	devcb_resolve_write_line(&mdv->out_comms_out_func, &config->out_comms_out_func, device);
 
 	// allocate track buffers
-	mdv->left = auto_alloc_array(device->machine, UINT8, MDV_IMAGE_LENGTH / 2);
-	mdv->right = auto_alloc_array(device->machine, UINT8, MDV_IMAGE_LENGTH / 2);
+	mdv->left = auto_alloc_array(device->machine(), UINT8, MDV_IMAGE_LENGTH / 2);
+	mdv->right = auto_alloc_array(device->machine(), UINT8, MDV_IMAGE_LENGTH / 2);
 
 	// allocate timers
-	mdv->bit_timer = timer_alloc(device->machine, bit_timer_tick, (void *) device);
-	timer_adjust_periodic(mdv->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(MDV_BITRATE));
-	timer_enable(mdv->bit_timer, 0);
+	mdv->bit_timer = device->machine().scheduler().timer_alloc(FUNC(bit_timer_tick), (void *) device);
+	mdv->bit_timer->adjust(attotime::zero, 0, attotime::from_hz(MDV_BITRATE));
+	mdv->bit_timer->enable(0);
 }
 
 static DEVICE_IMAGE_LOAD( microdrive )

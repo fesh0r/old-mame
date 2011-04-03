@@ -131,6 +131,8 @@ struct _sed1330_t
 INLINE sed1330_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert((device->type() == SED1330));
+
 	return (sed1330_t *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -138,6 +140,7 @@ INLINE const sed1330_interface *get_interface(device_t *device)
 {
 	assert(device != NULL);
 	assert((device->type() == SED1330));
+
 	return (const sed1330_interface *) device->baseconfig().static_config();
 }
 
@@ -646,46 +649,46 @@ static DEVICE_START( sed1330 )
 	devcb_resolve_write8(&sed1330->out_vd_func, &intf->out_vd_func, device);
 
 	/* get the screen device */
-	sed1330->screen = device->machine->device<screen_device>(intf->screen_tag);
+	sed1330->screen = device->machine().device<screen_device>(intf->screen_tag);
 	assert(sed1330->screen != NULL);
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, sed1330->bf);
-	state_save_register_device_item(device, 0, sed1330->ir);
-	state_save_register_device_item(device, 0, sed1330->dor);
-	state_save_register_device_item(device, 0, sed1330->pbc);
-	state_save_register_device_item(device, 0, sed1330->d);
-	state_save_register_device_item(device, 0, sed1330->sleep);
-	state_save_register_device_item(device, 0, sed1330->sag);
-	state_save_register_device_item(device, 0, sed1330->m0);
-	state_save_register_device_item(device, 0, sed1330->m1);
-	state_save_register_device_item(device, 0, sed1330->m2);
-	state_save_register_device_item(device, 0, sed1330->ws);
-	state_save_register_device_item(device, 0, sed1330->iv);
-	state_save_register_device_item(device, 0, sed1330->wf);
-	state_save_register_device_item(device, 0, sed1330->fx);
-	state_save_register_device_item(device, 0, sed1330->fy);
-	state_save_register_device_item(device, 0, sed1330->cr);
-	state_save_register_device_item(device, 0, sed1330->tcr);
-	state_save_register_device_item(device, 0, sed1330->lf);
-	state_save_register_device_item(device, 0, sed1330->ap);
-	state_save_register_device_item(device, 0, sed1330->sad1);
-	state_save_register_device_item(device, 0, sed1330->sad2);
-	state_save_register_device_item(device, 0, sed1330->sad3);
-	state_save_register_device_item(device, 0, sed1330->sad4);
-	state_save_register_device_item(device, 0, sed1330->sl1);
-	state_save_register_device_item(device, 0, sed1330->sl2);
-	state_save_register_device_item(device, 0, sed1330->hdotscr);
-	state_save_register_device_item(device, 0, sed1330->csr);
-	state_save_register_device_item(device, 0, sed1330->cd);
-	state_save_register_device_item(device, 0, sed1330->crx);
-	state_save_register_device_item(device, 0, sed1330->cry);
-	state_save_register_device_item(device, 0, sed1330->cm);
-	state_save_register_device_item(device, 0, sed1330->fc);
-	state_save_register_device_item(device, 0, sed1330->fp);
-	state_save_register_device_item(device, 0, sed1330->mx);
-	state_save_register_device_item(device, 0, sed1330->dm);
-	state_save_register_device_item(device, 0, sed1330->ov);
+	device->save_item(NAME(sed1330->bf));
+	device->save_item(NAME(sed1330->ir));
+	device->save_item(NAME(sed1330->dor));
+	device->save_item(NAME(sed1330->pbc));
+	device->save_item(NAME(sed1330->d));
+	device->save_item(NAME(sed1330->sleep));
+	device->save_item(NAME(sed1330->sag));
+	device->save_item(NAME(sed1330->m0));
+	device->save_item(NAME(sed1330->m1));
+	device->save_item(NAME(sed1330->m2));
+	device->save_item(NAME(sed1330->ws));
+	device->save_item(NAME(sed1330->iv));
+	device->save_item(NAME(sed1330->wf));
+	device->save_item(NAME(sed1330->fx));
+	device->save_item(NAME(sed1330->fy));
+	device->save_item(NAME(sed1330->cr));
+	device->save_item(NAME(sed1330->tcr));
+	device->save_item(NAME(sed1330->lf));
+	device->save_item(NAME(sed1330->ap));
+	device->save_item(NAME(sed1330->sad1));
+	device->save_item(NAME(sed1330->sad2));
+	device->save_item(NAME(sed1330->sad3));
+	device->save_item(NAME(sed1330->sad4));
+	device->save_item(NAME(sed1330->sl1));
+	device->save_item(NAME(sed1330->sl2));
+	device->save_item(NAME(sed1330->hdotscr));
+	device->save_item(NAME(sed1330->csr));
+	device->save_item(NAME(sed1330->cd));
+	device->save_item(NAME(sed1330->crx));
+	device->save_item(NAME(sed1330->cry));
+	device->save_item(NAME(sed1330->cm));
+	device->save_item(NAME(sed1330->fc));
+	device->save_item(NAME(sed1330->fp));
+	device->save_item(NAME(sed1330->mx));
+	device->save_item(NAME(sed1330->dm));
+	device->save_item(NAME(sed1330->ov));
 }
 
 /*-------------------------------------------------

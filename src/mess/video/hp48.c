@@ -118,7 +118,7 @@ PALETTE_INIT ( hp48 )
 
 
 #define draw_pixel							\
-	state->screens[ state->cur_screen ][ y ][ xp + 8 ] = (data & 1) ? fg : 0; \
+	state->m_screens[ state->m_cur_screen ][ y ][ xp + 8 ] = (data & 1) ? fg : 0; \
 	xp++;								\
 	data >>= 1
 
@@ -127,10 +127,10 @@ PALETTE_INIT ( hp48 )
 	draw_pixel; draw_pixel; draw_pixel; draw_pixel;
 
 
-VIDEO_UPDATE ( hp48 )
+SCREEN_UPDATE ( hp48 )
 {
-	hp48_state *state = screen->machine->driver_data<hp48_state>();
-	address_space *space = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	hp48_state *state = screen->machine().driver_data<hp48_state>();
+	address_space *space = screen->machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int x, y, xp, i, addr;
 	int display       = HP48_IO_4(0) >> 3;           /* 1=on, 0=off */
 	int left_margin   = HP48_IO_4(0) & 7;            /* 0..7 pixels for main bitmap */
@@ -142,7 +142,7 @@ VIDEO_UPDATE ( hp48 )
 	int menu_start    = HP48_IO_20(0x30) & ~1;       /* menu bitmap address */
 	int fg = contrast + 2;
 
-	LOG(( "%f hp48 video_update called: ", attotime_to_double(timer_get_time(screen->machine)) ));
+	LOG(( "%f hp48 video_update called: ", screen->machine().time().as_double()));
 
 	if ( !display || refresh )
 	{
@@ -189,14 +189,14 @@ VIDEO_UPDATE ( hp48 )
 			int acc = 0;
 			for ( i = 0; i < HP48_NB_SCREENS; i++ )
 			{
-				acc += state->screens[ i ][ y ][ x+8 ];
+				acc += state->m_screens[ i ][ y ][ x+8 ];
 			}
 			acc = (acc * 255) / (33 * HP48_NB_SCREENS);
 			*BITMAP_ADDR16( bitmap, y, x ) = acc;
 		}
 	}
 
-	state->cur_screen = (state->cur_screen + 1) % HP48_NB_SCREENS;
+	state->m_cur_screen = (state->m_cur_screen + 1) % HP48_NB_SCREENS;
 
 	return 0;
 }

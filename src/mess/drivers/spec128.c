@@ -151,13 +151,13 @@ resulting mess can be seen in the F4 viewer display.
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/spectrum.h"
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 static const ay8910_interface spectrum_ay_interface =
 {
@@ -171,7 +171,7 @@ static const ay8910_interface spectrum_ay_interface =
 
 static WRITE8_HANDLER(spectrum_128_port_7ffd_w)
 {
-	spectrum_state *state = space->machine->driver_data<spectrum_state>();
+	spectrum_state *state = space->machine().driver_data<spectrum_state>();
 
    /* D0-D2: RAM page located at 0x0c000-0x0ffff */
    /* D3 - Screen select (screen 0 in ram page 5, screen 1 in ram page 7 */
@@ -179,30 +179,30 @@ static WRITE8_HANDLER(spectrum_128_port_7ffd_w)
    /* D5 - Disable paging */
 
 	/* disable paging? */
-	if (state->port_7ffd_data & 0x20)
+	if (state->m_port_7ffd_data & 0x20)
 			return;
 
 	/* store new state */
-	state->port_7ffd_data = data;
+	state->m_port_7ffd_data = data;
 
 	/* update memory */
-	spectrum_128_update_memory(space->machine);
+	spectrum_128_update_memory(space->machine());
 }
 
-void spectrum_128_update_memory(running_machine *machine)
+void spectrum_128_update_memory(running_machine &machine)
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
-	UINT8 *messram = messram_get_ptr(machine->device("messram"));
+	spectrum_state *state = machine.driver_data<spectrum_state>();
+	UINT8 *messram = ram_get_ptr(machine.device(RAM_TAG));
 	unsigned char *ChosenROM;
 	int ROMSelection;
 
-	if (state->port_7ffd_data & 8)
+	if (state->m_port_7ffd_data & 8)
 	{
-		state->screen_location = messram + (7<<14);
+		state->m_screen_location = messram + (7<<14);
 	}
 	else
 	{
-		state->screen_location = messram + (5<<14);
+		state->m_screen_location = messram + (5<<14);
 	}
 
 	/* select ram at 0x0c000-0x0ffff */
@@ -210,31 +210,31 @@ void spectrum_128_update_memory(running_machine *machine)
 		int ram_page;
 		unsigned char *ram_data;
 
-		ram_page = state->port_7ffd_data & 0x07;
+		ram_page = state->m_port_7ffd_data & 0x07;
 		ram_data = messram + (ram_page<<14);
 
 		memory_set_bankptr(machine, "bank4", ram_data);
 	}
 
 	/* ROM switching */
-	ROMSelection = ((state->port_7ffd_data>>4) & 0x01);
+	ROMSelection = ((state->m_port_7ffd_data>>4) & 0x01);
 
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
 
-	ChosenROM = machine->region("maincpu")->base() + 0x010000 + (ROMSelection<<14);
+	ChosenROM = machine.region("maincpu")->base() + 0x010000 + (ROMSelection<<14);
 
 	memory_set_bankptr(machine, "bank1", ChosenROM);
 }
 
 static  READ8_HANDLER ( spectrum_128_ula_r )
 {
-	spectrum_state *state = space->machine->driver_data<spectrum_state>();
-	int vpos = space->machine->primary_screen->vpos();
+	spectrum_state *state = space->machine().driver_data<spectrum_state>();
+	int vpos = space->machine().primary_screen->vpos();
 
-	return vpos<193 ? state->screen_location[0x1800|(vpos&0xf8)<<2]:0xff;
+	return vpos<193 ? state->m_screen_location[0x1800|(vpos&0xf8)<<2]:0xff;
 }
 
-static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (spectrum_128_io, AS_IO, 8)
 	AM_RANGE(0x0000, 0x0000) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff)
 	AM_RANGE(0x001f, 0x001f) AM_READ(spectrum_port_1f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x007f, 0x007f) AM_READ(spectrum_port_7f_r) AM_MIRROR(0xff00)
@@ -245,7 +245,7 @@ static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0001, 0x0001) AM_READ(spectrum_128_ula_r) AM_MIRROR(0xfffe)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (spectrum_128_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (spectrum_128_mem, AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE( 0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE( 0x8000, 0xbfff) AM_RAMBANK("bank3")
@@ -254,8 +254,8 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( spectrum_128 )
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
-	UINT8 *messram = messram_get_ptr(machine->device("messram"));
+	spectrum_state *state = machine.driver_data<spectrum_state>();
+	UINT8 *messram = ram_get_ptr(machine.device(RAM_TAG));
 
 	memset(messram,0,128*1024);
 	/* 0x0000-0x3fff always holds ROM */
@@ -269,8 +269,8 @@ static MACHINE_RESET( spectrum_128 )
 	MACHINE_RESET_CALL(spectrum);
 
 	/* set initial ram config */
-	state->port_7ffd_data = 0;
-	state->port_1ffd_data = -1;
+	state->m_port_7ffd_data = 0;
+	state->m_port_1ffd_data = -1;
 	spectrum_128_update_memory(machine);
 }
 
@@ -315,7 +315,7 @@ MACHINE_CONFIG_DERIVED( spectrum_128, spectrum )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 

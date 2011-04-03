@@ -687,36 +687,6 @@ static CPU_INIT( rsp )
     }
     */
 
-	/*
-	drcbe_info beinfo;
-	drcuml_get_backend_info(rsp->impstate->drcuml, &beinfo);
-	if (beinfo.direct_iregs > 2)
-	{
-		rsp->impstate->regmap[30].type = DRCUML_PTYPE_INT_REGISTER;
-		rsp->impstate->regmap[30].value = DRCUML_REG_I2;
-	}
-	if (beinfo.direct_iregs > 3)
-	{
-		rsp->impstate->regmap[31].type = DRCUML_PTYPE_INT_REGISTER;
-		rsp->impstate->regmap[31].value = DRCUML_REG_I3;
-	}
-	if (beinfo.direct_iregs > 4)
-	{
-		rsp->impstate->regmap[2].type = DRCUML_PTYPE_INT_REGISTER;
-		rsp->impstate->regmap[2].value = DRCUML_REG_I4;
-	}
-	if (beinfo.direct_iregs > 5)
-	{
-		rsp->impstate->regmap[3].type = DRCUML_PTYPE_INT_REGISTER;
-		rsp->impstate->regmap[3].value = DRCUML_REG_I5;
-	}
-	if (beinfo.direct_iregs > 6)
-	{
-		rsp->impstate->regmap[4].type = DRCUML_PTYPE_INT_REGISTER;
-		rsp->impstate->regmap[4].value = DRCUML_REG_I6;
-	}
-	*/
-
 	/* mark the cache dirty so it is updated on next execute */
 	rsp->impstate->cache_dirty = TRUE;
 }
@@ -2563,7 +2533,7 @@ INLINE void cfunc_rsp_vne(void *param)
 	int sel;
 	rsp->flag[1] = 0;
 
-	for (i=0; i < 8; i++)//переписано мной
+	for (i=0; i < 8; i++)//?????????? ????
 	{
 		sel = VEC_EL_2(EL, i);
 
@@ -2918,7 +2888,7 @@ INLINE void cfunc_rsp_vmrg(void *param)
 		}
 		else
 		{
-			vres[i] = VREG_S(VS2REG, sel);//моё исправление
+			vres[i] = VREG_S(VS2REG, sel);//??? ???????????
 		}
 
 		ACCUM_L(i) = vres[i];
@@ -3080,7 +3050,7 @@ INLINE void cfunc_rsp_vrcp(void *param)
 	{
 		for (i = 0; i < 32; i++)
 		{
-			if (datainput & (1 << ((~i) & 0x1f)))//т.ж.что 31 - i
+			if (datainput & (1 << ((~i) & 0x1f)))//?.?.??? 31 - i
 			{
 				shifter = i;
 				break;
@@ -3165,7 +3135,7 @@ INLINE void cfunc_rsp_vrcpl(void *param)
 	{
 		for (i = 0; i < 32; i++)
 		{
-			if (datainput & (1 << ((~i) & 0x1f)))//т.ж.что 31 - i
+			if (datainput & (1 << ((~i) & 0x1f)))//?.?.??? 31 - i
 			{
 				shifter = i;
 				break;

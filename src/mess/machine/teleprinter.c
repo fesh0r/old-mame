@@ -176,7 +176,7 @@ static void teleprinter_scroll_line(device_t *device)
 	teleprinter_state *term = get_safe_token(device);
 
 	memcpy(term->buffer,term->buffer+TELEPRINTER_WIDTH,(TELEPRINTER_HEIGHT-1)*TELEPRINTER_WIDTH);
-	memset(term->buffer + TELEPRINTER_WIDTH*(TELEPRINTER_HEIGHT-1),0,TELEPRINTER_WIDTH);
+	memset(term->buffer + TELEPRINTER_WIDTH*(TELEPRINTER_HEIGHT-1),0x20,TELEPRINTER_WIDTH);
 }
 
 static void teleprinter_write_char(device_t *device,UINT8 data) {
@@ -184,7 +184,8 @@ static void teleprinter_write_char(device_t *device,UINT8 data) {
 
 	term->buffer[(TELEPRINTER_HEIGHT-1)*TELEPRINTER_WIDTH+term->x_pos] = data;
 	term->x_pos++;
-	if (term->x_pos > TELEPRINTER_WIDTH) {
+	if (term->x_pos >= TELEPRINTER_WIDTH)
+	{
 		term->x_pos = 0;
 		teleprinter_scroll_line(device);
 	}
@@ -202,13 +203,14 @@ WRITE8_DEVICE_HANDLER ( teleprinter_write )
 	teleprinter_state *term = get_safe_token(device);
 	switch(data) {
 		case 10: term->x_pos = 0;
-				 teleprinter_scroll_line(device);
-				 break;
+				teleprinter_scroll_line(device);
+				break;
 		case 13: term->x_pos = 0; break;
-		case  9: do {
-					term->x_pos ++;
-				 } while ((term->x_pos % 8)!=0);
-				 break;
+		case  9: term->x_pos = (term->x_pos & 0xf8) + 8;
+				if (term->x_pos >= TELEPRINTER_WIDTH)
+					term->x_pos = TELEPRINTER_WIDTH-1;
+
+				break;
 		case 16: break;
 		default: teleprinter_write_char(device,data); break;
 	}
@@ -217,7 +219,7 @@ WRITE8_DEVICE_HANDLER ( teleprinter_write )
 /***************************************************************************
     VIDEO HARDWARE
 ***************************************************************************/
-void generic_teleprinter_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprect)
+static void generic_teleprinter_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT8 code;
 	int y, c, x, b;
@@ -243,7 +245,7 @@ void generic_teleprinter_update(device_t *device, bitmap_t *bitmap, const rectan
 static TIMER_CALLBACK(keyboard_callback)
 {
 	teleprinter_state *term = get_safe_token((device_t *)ptr);
-	term->last_code = terminal_keyboard_handler(machine, &term->teleprinter_keyboard_func, term->last_code, &term->scan_line, NULL, NULL);
+	term->last_code = terminal_keyboard_handler(machine, &term->teleprinter_keyboard_func, term->last_code, &term->scan_line, NULL, NULL, (device_t *)ptr);
 }
 
 /***************************************************************************
@@ -254,25 +256,26 @@ static VIDEO_START( teleprinter )
 
 }
 
-static VIDEO_UPDATE(teleprinter )
+static SCREEN_UPDATE(teleprinter )
 {
-	device_t *devconf = screen->machine->device(TELEPRINTER_TAG);
+	device_t *devconf = screen->machine().device(TELEPRINTER_TAG);
 	generic_teleprinter_update( devconf, bitmap, cliprect);
 	return 0;
 }
 
 MACHINE_CONFIG_FRAGMENT( generic_teleprinter )
 	MCFG_SCREEN_ADD(TELEPRINTER_SCREEN_TAG, RASTER)
-    MCFG_SCREEN_REFRESH_RATE(50)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(TELEPRINTER_WIDTH*8, TELEPRINTER_HEIGHT*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, TELEPRINTER_WIDTH*8-1, 0, TELEPRINTER_HEIGHT*8-1)
+	MCFG_SCREEN_UPDATE(teleprinter)
+
 	MCFG_PALETTE_LENGTH(2)
-    MCFG_PALETTE_INIT(black_and_white)
+	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(teleprinter)
-	MCFG_VIDEO_UPDATE(teleprinter)
 MACHINE_CONFIG_END
 
 
@@ -287,7 +290,8 @@ static DEVICE_START( teleprinter )
 
 	devcb_resolve_write8(&term->teleprinter_keyboard_func, &intf->teleprinter_keyboard_func, device);
 
-	timer_pulse(device->machine, ATTOTIME_IN_HZ(240), (void*)device, 0, keyboard_callback);
+	if (term->teleprinter_keyboard_func.target)
+		device->machine().scheduler().timer_pulse(attotime::from_hz(240), FUNC(keyboard_callback), 0, (void*)device);
 }
 
 /*-------------------------------------------------
@@ -320,6 +324,7 @@ DEVICE_GET_INFO( teleprinter )
 		case DEVINFO_FCT_STOP:							/* Nothing */												break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(teleprinter);					break;
 
+		case DEVINFO_PTR_INPUT_PORTS:					info->ipt = INPUT_PORTS_NAME(generic_terminal);				break;
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Generic Teleprinter");						break;
 		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Teleprinter");								break;
@@ -328,9 +333,5 @@ DEVICE_GET_INFO( teleprinter )
 		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;
 	}
 }
-
-INPUT_PORTS_START( generic_teleprinter )
-	PORT_INCLUDE(generic_terminal)
-INPUT_PORTS_END
 
 DEFINE_LEGACY_DEVICE(GENERIC_TELEPRINTER, teleprinter);

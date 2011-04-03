@@ -125,19 +125,7 @@ CN1     - main board connector (17x2 pin header)
 
 */
 
-#include "emu.h"
 #include "includes/crvision.h"
-#include "cpu/m6502/m6502.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
-#include "devices/flopdrv.h"
-#include "formats/basicdsk.h"
-#include "machine/ctronics.h"
-#include "machine/6821pia.h"
-#include "sound/sn76496.h"
-#include "sound/wave.h"
-#include "video/tms9928a.h"
-#include "devices/messram.h"
 
 /***************************************************************************
     READ/WRITE HANDLERS
@@ -147,11 +135,11 @@ CN1     - main board connector (17x2 pin header)
     centronics_status_r - centronics status
 -------------------------------------------------*/
 
-static READ8_DEVICE_HANDLER( centronics_status_r )
+READ8_MEMBER( crvision_state::centronics_status_r )
 {
 	UINT8 data = 0;
 
-	data |= centronics_busy_r(device) << 7;
+	data |= centronics_busy_r(m_centronics) << 7;
 
 	return 0;
 }
@@ -160,9 +148,9 @@ static READ8_DEVICE_HANDLER( centronics_status_r )
     centronics_ctrl_w - centronics control
 -------------------------------------------------*/
 
-static WRITE8_DEVICE_HANDLER( centronics_ctrl_w )
+WRITE8_MEMBER( crvision_state::centronics_ctrl_w )
 {
-	centronics_strobe_w(device, BIT(data, 4));
+	centronics_strobe_w(m_centronics, BIT(data, 4));
 }
 
 /***************************************************************************
@@ -173,18 +161,18 @@ static WRITE8_DEVICE_HANDLER( centronics_ctrl_w )
     ADDRESS_MAP( crvision_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( crvision_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( crvision_map, AS_PROGRAM, 8, crvision_state )
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x0c00) AM_RAM
-	AM_RANGE(0x1000, 0x1003) AM_MIRROR(0x0ffc) AM_DEVREADWRITE(PIA6821_TAG, pia6821_r, pia6821_w)
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_READ(TMS9928A_vram_r)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x0ffe) AM_READ(TMS9928A_register_r)
-	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffe) AM_WRITE(TMS9928A_vram_w)
-	AM_RANGE(0x3001, 0x3001) AM_MIRROR(0x0ffe) AM_WRITE(TMS9928A_register_w)
+	AM_RANGE(0x1000, 0x1003) AM_MIRROR(0x0ffc) AM_DEVREADWRITE_LEGACY(PIA6821_TAG, pia6821_r, pia6821_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_READ_LEGACY(TMS9928A_vram_r)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x0ffe) AM_READ_LEGACY(TMS9928A_register_r)
+	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffe) AM_WRITE_LEGACY(TMS9928A_vram_w)
+	AM_RANGE(0x3001, 0x3001) AM_MIRROR(0x0ffe) AM_WRITE_LEGACY(TMS9928A_register_w)
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(BANK_ROM2)
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(BANK_ROM1)
 //  AM_RANGE(0xc000, 0xe7ff) AM_RAMBANK(3)
-	AM_RANGE(0xe800, 0xe800) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
-	AM_RANGE(0xe801, 0xe801) AM_DEVREADWRITE(CENTRONICS_TAG, centronics_status_r, centronics_ctrl_w)
+	AM_RANGE(0xe800, 0xe800) AM_DEVWRITE_LEGACY(CENTRONICS_TAG, centronics_data_w)
+	AM_RANGE(0xe801, 0xe801) AM_READWRITE(centronics_status_r, centronics_ctrl_w)
 //  AM_RANGE(0xe802, 0xf7ff) AM_RAMBANK(4)
 	AM_RANGE(0xf800, 0xffff) AM_ROM AM_REGION(M6502_TAG, 0)
 ADDRESS_MAP_END
@@ -193,13 +181,13 @@ ADDRESS_MAP_END
     ADDRESS_MAP( lasr2001_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( lasr2001_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( lasr2001_map, AS_PROGRAM, 8, laser2001_state )
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x0c00) AM_RAM
-	AM_RANGE(0x1000, 0x1003) AM_MIRROR(0x0ffc) AM_DEVREADWRITE(PIA6821_TAG, pia6821_r, pia6821_w)
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_READ(TMS9928A_vram_r)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x0ffe) AM_READ(TMS9928A_register_r)
-	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffe) AM_WRITE(TMS9928A_vram_w)
-	AM_RANGE(0x3001, 0x3001) AM_MIRROR(0x0ffe) AM_WRITE(TMS9928A_register_w)
+	AM_RANGE(0x1000, 0x1003) AM_MIRROR(0x0ffc) AM_DEVREADWRITE_LEGACY(PIA6821_TAG, pia6821_r, pia6821_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_READ_LEGACY(TMS9928A_vram_r)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x0ffe) AM_READ_LEGACY(TMS9928A_register_r)
+	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffe) AM_WRITE_LEGACY(TMS9928A_vram_w)
+	AM_RANGE(0x3001, 0x3001) AM_MIRROR(0x0ffe) AM_WRITE_LEGACY(TMS9928A_register_w)
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(BANK_ROM2)
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(BANK_ROM1)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(M6502_TAG, 0)
@@ -215,7 +203,9 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( trigger_nmi )
 {
-	cputag_set_input_line(field->port->machine, M6502_TAG, INPUT_LINE_NMI, (input_port_read(field->port->machine, "NMI") ? CLEAR_LINE : ASSERT_LINE));
+	crvision_state *state = field->port->machine().driver_data<crvision_state>();
+
+	state->m_maincpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 /*-------------------------------------------------
@@ -511,10 +501,10 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( crvision_int )
 {
-	TMS9928A_interrupt(device->machine);
+	TMS9928A_interrupt(device->machine());
 }
 
-static void crvision_vdp_interrupt(running_machine *machine, int state)
+static void crvision_vdp_interrupt(running_machine &machine, int state)
 {
 	cputag_set_input_line(machine, M6502_TAG, INPUT_LINE_IRQ0, state);
 }
@@ -555,7 +545,7 @@ static const TMS9928a_interface tms9929a_intf =
     pia6821_interface pia_intf
 -------------------------------------------------*/
 
-static WRITE8_DEVICE_HANDLER( pia_pa_w )
+WRITE8_MEMBER( crvision_state::pia_pa_w )
 {
 	/*
         Signal  Description
@@ -570,19 +560,17 @@ static WRITE8_DEVICE_HANDLER( pia_pa_w )
         PA7     Cassette data in/out
     */
 
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	/* keyboard raster */
-	state->keylatch = ~data & 0x0f;
+	m_keylatch = ~data & 0x0f;
 
 	/* cassette motor */
-	cassette_change_state(state->cassette, BIT(data, 6) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(m_cassette, BIT(data, 6) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	/* cassette data output */
-	cassette_output(state->cassette, BIT(data, 7) ? +1.0 : -1.0);
+	cassette_output(m_cassette, BIT(data, 7) ? +1.0 : -1.0);
 }
 
-static UINT8 read_keyboard(running_machine *machine, int pa)
+UINT8 crvision_state::read_keyboard(int pa)
 {
 	int i;
 	UINT8 value;
@@ -596,7 +584,7 @@ static UINT8 read_keyboard(running_machine *machine, int pa)
 
 	for (i = 0; i < 8; i++)
 	{
-		value = input_port_read(machine, keynames[pa][i]);
+		value = input_port_read(m_machine, keynames[pa][i]);
 
 		if (value != 0xff)
 		{
@@ -610,7 +598,7 @@ static UINT8 read_keyboard(running_machine *machine, int pa)
 	return 0xff;
 }
 
-static READ8_DEVICE_HANDLER( pia_pa_r )
+READ8_MEMBER( crvision_state::pia_pa_r )
 {
 	/*
         PA0     Keyboard raster player 1 output (joystick)
@@ -623,16 +611,14 @@ static READ8_DEVICE_HANDLER( pia_pa_r )
         PA7     Cassette data in/out
     */
 
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	UINT8 data = 0x7f;
 
-	if (cassette_input(state->cassette) > -0.1469) data |= 0x80;
+	if (cassette_input(m_cassette) > -0.1469) data |= 0x80;
 
 	return data;
 }
 
-static READ8_DEVICE_HANDLER( pia_pb_r )
+READ8_MEMBER( crvision_state::pia_pb_r )
 {
 	/*
         Signal  Description
@@ -647,27 +633,25 @@ static READ8_DEVICE_HANDLER( pia_pb_r )
         PB7     Keyboard input
     */
 
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	UINT8 data = 0xff;
 
-	if (BIT(state->keylatch, 0)) data &= read_keyboard(device->machine, 0);
-	if (BIT(state->keylatch, 1)) data &= read_keyboard(device->machine, 1);
-	if (BIT(state->keylatch, 2)) data &= read_keyboard(device->machine, 2);
-	if (BIT(state->keylatch, 3)) data &= read_keyboard(device->machine, 3);
+	if (BIT(m_keylatch, 0)) data &= read_keyboard(0);
+	if (BIT(m_keylatch, 1)) data &= read_keyboard(1);
+	if (BIT(m_keylatch, 2)) data &= read_keyboard(2);
+	if (BIT(m_keylatch, 3)) data &= read_keyboard(3);
 
 	return data;
 }
 
 static const pia6821_interface pia_intf =
 {
-	DEVCB_HANDLER(pia_pa_r),							// input A
-	DEVCB_HANDLER(pia_pb_r),							// input B
+	DEVCB_DRIVER_MEMBER(crvision_state, pia_pa_r),		// input A
+	DEVCB_DRIVER_MEMBER(crvision_state, pia_pb_r),		// input B
 	DEVCB_LINE_VCC,										// input CA1 (+5V)
 	DEVCB_DEVICE_LINE(SN76489_TAG, sn76496_ready_r),	// input CB1
 	DEVCB_LINE_VCC,										// input CA2 (+5V)
 	DEVCB_LINE_VCC,										// input CB2 (+5V)
-	DEVCB_HANDLER(pia_pa_w),							// output A
+	DEVCB_DRIVER_MEMBER(crvision_state, pia_pa_w),		// output A
 	DEVCB_DEVICE_HANDLER(SN76489_TAG, sn76496_w),		// output B
 	DEVCB_NULL,											// output CA2
 	DEVCB_NULL,											// output CB2 (SN76489 pin CE_)
@@ -679,7 +663,7 @@ static const pia6821_interface pia_intf =
     pia6821_interface lasr2001_pia_intf
 -------------------------------------------------*/
 
-static READ8_DEVICE_HANDLER( lasr2001_pia_pa_r )
+READ8_MEMBER( laser2001_state::pia_pa_r )
 {
 	/*
         Signal  Description
@@ -694,23 +678,21 @@ static READ8_DEVICE_HANDLER( lasr2001_pia_pa_r )
         PA7     Keyboard column 7
     */
 
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	UINT8 data = 0xff;
 
-	if (!BIT(state->keylatch, 0)) data &= input_port_read(device->machine, "ROW0");
-	if (!BIT(state->keylatch, 1)) data &= input_port_read(device->machine, "ROW1");
-	if (!BIT(state->keylatch, 2)) data &= input_port_read(device->machine, "ROW2");
-	if (!BIT(state->keylatch, 3)) data &= input_port_read(device->machine, "ROW3");
-	if (!BIT(state->keylatch, 4)) data &= input_port_read(device->machine, "ROW4");
-	if (!BIT(state->keylatch, 5)) data &= input_port_read(device->machine, "ROW5");
-	if (!BIT(state->keylatch, 6)) data &= input_port_read(device->machine, "ROW6");
-	if (!BIT(state->keylatch, 7)) data &= input_port_read(device->machine, "ROW7");
+	if (!BIT(m_keylatch, 0)) data &= input_port_read(m_machine, "ROW0");
+	if (!BIT(m_keylatch, 1)) data &= input_port_read(m_machine, "ROW1");
+	if (!BIT(m_keylatch, 2)) data &= input_port_read(m_machine, "ROW2");
+	if (!BIT(m_keylatch, 3)) data &= input_port_read(m_machine, "ROW3");
+	if (!BIT(m_keylatch, 4)) data &= input_port_read(m_machine, "ROW4");
+	if (!BIT(m_keylatch, 5)) data &= input_port_read(m_machine, "ROW5");
+	if (!BIT(m_keylatch, 6)) data &= input_port_read(m_machine, "ROW6");
+	if (!BIT(m_keylatch, 7)) data &= input_port_read(m_machine, "ROW7");
 
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER( lasr2001_pia_pa_w )
+WRITE8_MEMBER( laser2001_state::pia_pa_w )
 {
 	/*
         PA0     Joystick player 1 output 0
@@ -723,26 +705,22 @@ static WRITE8_DEVICE_HANDLER( lasr2001_pia_pa_w )
         PA7     ?
     */
 
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
-	state->joylatch = data;
+	m_joylatch = data;
 }
 
-static READ8_DEVICE_HANDLER( lasr2001_pia_pb_r )
+READ8_MEMBER( laser2001_state::pia_pb_r )
 {
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	UINT8 data = 0xff;
 
-	if (!BIT(state->joylatch, 0)) data &= input_port_read(device->machine, "JOY0");
-	if (!BIT(state->joylatch, 1)) data &= input_port_read(device->machine, "JOY1");
-	if (!BIT(state->joylatch, 2)) data &= input_port_read(device->machine, "JOY2");
-	if (!BIT(state->joylatch, 3)) data &= input_port_read(device->machine, "JOY3");
+	if (!BIT(m_joylatch, 0)) data &= input_port_read(m_machine, "JOY0");
+	if (!BIT(m_joylatch, 1)) data &= input_port_read(m_machine, "JOY1");
+	if (!BIT(m_joylatch, 2)) data &= input_port_read(m_machine, "JOY2");
+	if (!BIT(m_joylatch, 3)) data &= input_port_read(m_machine, "JOY3");
 
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER( lasr2001_pia_pb_w )
+WRITE8_MEMBER( laser2001_state::pia_pb_w )
 {
 	/*
         Signal  Description
@@ -757,59 +735,53 @@ static WRITE8_DEVICE_HANDLER( lasr2001_pia_pb_w )
         PB7     Keyboard row 7, PSG data 0, centronics data 7
     */
 
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	/* keyboard latch */
-	state->keylatch = data;
+	m_keylatch = data;
 
 	/* centronics data */
-	centronics_data_w(device, 0, data);
+	centronics_data_w(m_centronics, 0, data);
 }
 
-static READ_LINE_DEVICE_HANDLER( lasr2001_pia_ca1_r )
+READ_LINE_MEMBER( laser2001_state::pia_ca1_r )
 {
-	return cassette_input(device) > -0.1469;
+	return cassette_input(m_cassette) > -0.1469;
 }
 
-static WRITE_LINE_DEVICE_HANDLER( lasr2001_pia_ca2_w )
+WRITE_LINE_MEMBER( laser2001_state::pia_ca2_w )
 {
-	cassette_output(device, state ? +1.0 : -1.0);
+	cassette_output(m_cassette, state ? +1.0 : -1.0);
 }
 
-static READ_LINE_DEVICE_HANDLER( lasr2001_pia_cb1_r )
+READ_LINE_MEMBER( laser2001_state::pia_cb1_r )
 {
-	crvision_state *state = device->machine->driver_data<crvision_state>();
-
 	/* actually this is a diode-AND (READY & _BUSY), but ctronics.c returns busy status if printer image is not mounted -> Manager won't boot */
-	return sn76496_ready_r(state->psg) & (centronics_not_busy_r(state->centronics) | pia6821_get_output_ca2_z(device));
+	return sn76496_ready_r(m_psg) & (centronics_not_busy_r(m_centronics) | pia6821_get_output_ca2_z(m_pia));
 }
 
-static WRITE_LINE_DEVICE_HANDLER( lasr2001_pia_cb2_w )
+WRITE_LINE_MEMBER( laser2001_state::pia_cb2_w )
 {
-	crvision_state *driver_state = device->machine->driver_data<crvision_state>();
-
-	if (pia6821_get_output_ca2_z(device))
+	if (pia6821_get_output_ca2_z(m_pia))
 	{
-		if (!state) sn76496_w(driver_state->psg, 0, driver_state->keylatch);
+		if (!state) sn76496_w(m_psg, 0, m_keylatch);
 	}
 	else
 	{
-		centronics_strobe_w(driver_state->centronics, state);
+		centronics_strobe_w(m_centronics, state);
 	}
 }
 
 static const pia6821_interface lasr2001_pia_intf =
 {
-	DEVCB_HANDLER(lasr2001_pia_pa_r),							// input A
-	DEVCB_HANDLER(lasr2001_pia_pb_r),							// input B
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, lasr2001_pia_ca1_r),		// input CA1
-	DEVCB_LINE(lasr2001_pia_cb1_r),								// input CB1
+	DEVCB_DRIVER_MEMBER(laser2001_state, pia_pa_r),				// input A
+	DEVCB_DRIVER_MEMBER(laser2001_state, pia_pb_r),				// input B
+	DEVCB_DRIVER_LINE_MEMBER(laser2001_state, pia_ca1_r),		// input CA1
+	DEVCB_DRIVER_LINE_MEMBER(laser2001_state, pia_cb1_r),		// input CB1
 	DEVCB_LINE_GND,												// input CA2
 	DEVCB_LINE_VCC,												// input CB2 (+5V)
-	DEVCB_HANDLER(lasr2001_pia_pa_w),							// output A
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, lasr2001_pia_pb_w),	// output B
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, lasr2001_pia_ca2_w),		// output CA2
-	DEVCB_LINE(lasr2001_pia_cb2_w),								// output CB2
+	DEVCB_DRIVER_MEMBER(laser2001_state, pia_pa_w),				// output A
+	DEVCB_DRIVER_MEMBER(laser2001_state, pia_pb_w),				// output B
+	DEVCB_DRIVER_LINE_MEMBER(laser2001_state, pia_ca2_w),		// output CA2
+	DEVCB_DRIVER_LINE_MEMBER(laser2001_state, pia_cb2_w),		// output CB2
 	DEVCB_NULL,													// irq A (floating)
 	DEVCB_NULL													// irq B (floating)
 };
@@ -874,50 +846,35 @@ static const centronics_interface lasr2001_centronics_intf =
     MACHINE_START( creativision )
 -------------------------------------------------*/
 
-static MACHINE_START( creativision )
+void crvision_state::machine_start()
 {
-	crvision_state *state = machine->driver_data<crvision_state>();
-
-	/* find devices */
-	state->psg = machine->device(SN76489_TAG);
-	state->cassette = machine->device(CASSETTE_TAG);
-	state->centronics = machine->device(CENTRONICS_TAG);
-
-	/* register for state saving */
-	state_save_register_global(machine, state->keylatch);
-}
-
-/*-------------------------------------------------
-    MACHINE_START( ntsc )
--------------------------------------------------*/
-
-static MACHINE_START( ntsc )
-{
-	MACHINE_START_CALL(creativision);
-
+	// this totally needs to be a device
 	TMS9928A_configure(&tms9918_intf);
+
+	// state saving
+	save_item(NAME(m_keylatch));
 }
 
-/*-------------------------------------------------
-    MACHINE_START( pal )
--------------------------------------------------*/
-
-static MACHINE_START( pal )
+void crvision_pal_state::machine_start()
 {
-	MACHINE_START_CALL(creativision);
-
+	// this totally needs to be a device
 	TMS9928A_configure(&tms9929_intf);
+
+	// state saving
+	save_item(NAME(m_keylatch));
 }
 
 /*-------------------------------------------------
     MACHINE_START( lasr2001 )
 -------------------------------------------------*/
 
-static MACHINE_START( lasr2001 )
+void laser2001_state::machine_start()
 {
-	MACHINE_START_CALL(creativision);
-
+	// this totally needs to be a device
 	TMS9928A_configure(&tms9929a_intf);
+
+	// state saving
+	save_item(NAME(m_keylatch));
 }
 
 /***************************************************************************
@@ -928,9 +885,9 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 {
 	UINT32 size;
 	UINT8 *temp_copy;
-	running_machine *machine = image.device().machine;
-	UINT8 *mem = machine->region(M6502_TAG)->base();
-	address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
+	running_machine &machine = image.device().machine();
+	UINT8 *mem = machine.region(M6502_TAG)->base();
+	address_space *program = machine.device(M6502_TAG)->memory().space(AS_PROGRAM);
 
 	if (image.software_entry() == NULL)
 	{
@@ -950,7 +907,7 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 	case 0x1000: // 4K
 		memcpy(mem + 0x9000, temp_copy, 0x1000);			// load 4KB at 0x9000
 		memcpy(mem + 0xb000, mem + 0x9000, 0x1000);			// mirror 4KB at 0xb000
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
+		program->install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
 		break;
 
 	case 0x1800: // 6K
@@ -960,13 +917,13 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x8800, mem + 0x8000, 0x0800);			// mirror higher 2KB at 0x8800
 		memcpy(mem + 0xa000, mem + 0x8000, 0x0800);			// mirror higher 2KB at 0xa000
 		memcpy(mem + 0xa800, mem + 0x8000, 0x0800);			// mirror higher 2KB at 0xa800
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
+		program->install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
 		break;
 
 	case 0x2000: // 8K
 		memcpy(mem + 0x8000, temp_copy, 0x2000);			// load 8KB at 0x8000
 		memcpy(mem + 0xa000, mem + 0x8000, 0x2000);			// mirror 8KB at 0xa000
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
+		program->install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
 		break;
 
 	case 0x2800: // 10K
@@ -980,8 +937,8 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x6800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x6800
 		memcpy(mem + 0x7000, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7000
 		memcpy(mem + 0x7800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7800
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0, BANK_ROM1);
-		memory_install_read_bank(program, 0x4000, 0x7fff, 0, 0, BANK_ROM2);
+		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	case 0x3000: // 12K
@@ -991,15 +948,15 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x5000, mem + 0x4000, 0x1000);			// mirror higher 4KB at 0x5000
 		memcpy(mem + 0x6000, mem + 0x4000, 0x1000);			// mirror higher 4KB at 0x6000
 		memcpy(mem + 0x7000, mem + 0x4000, 0x1000);			// mirror higher 4KB at 0x7000
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0, BANK_ROM1);
-		memory_install_read_bank(program, 0x4000, 0x7fff, 0, 0, BANK_ROM2);
+		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	case 0x4000: // 16K
 		memcpy(mem + 0xa000, temp_copy, 0x2000);			// load lower 8KB at 0xa000
 		memcpy(mem + 0x8000, temp_copy + 0x2000, 0x2000);	// load higher 8KB at 0x8000
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0, BANK_ROM1);
-		memory_install_read_bank(program, 0x4000, 0x7fff, 0, 0, BANK_ROM2);
+		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	case 0x4800: // 18K
@@ -1013,8 +970,8 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x6800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x6800
 		memcpy(mem + 0x7000, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7000
 		memcpy(mem + 0x7800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7800
-		memory_install_read_bank(program, 0x8000, 0xbfff, 0, 0, BANK_ROM1);
-		memory_install_read_bank(program, 0x4000, 0x7fff, 0, 0, BANK_ROM2);
+		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	default:
@@ -1042,13 +999,17 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 -------------------------------------------------*/
 
 static MACHINE_CONFIG_START( creativision, crvision_state )
-
-	/* basic machine hardware */
+	// basic machine hardware
 	MCFG_CPU_ADD(M6502_TAG, M6502, XTAL_2MHz)
 	MCFG_CPU_PROGRAM_MAP(crvision_map)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, crvision_int)
 
-	/* sound hardware */
+	// devices
+	MCFG_PIA6821_ADD(PIA6821_TAG, pia_intf)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, crvision_cassette_config)
+	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
+
+	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SN76489_TAG, SN76489, XTAL_2MHz)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -1056,29 +1017,20 @@ static MACHINE_CONFIG_START( creativision, crvision_state )
 	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(1, "mono", 0.25)
 
-	/* peripheral hardware */
-	MCFG_PIA6821_ADD(PIA6821_TAG, pia_intf)
-
-	/* cartridge */
+	// cartridge
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin,rom")
 	MCFG_CARTSLOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("crvision_cart")
 	MCFG_CARTSLOT_LOAD(crvision_cart)
 
-	/* software lists */
-	MCFG_SOFTWARE_LIST_ADD("cart_list","crvision")
-
-	/* cassette */
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, crvision_cassette_config)
-
-	/* printer */
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
-
-	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	// internal ram
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1K")	// MAIN RAM
 	MCFG_RAM_EXTRA_OPTIONS("15K") // 16K expansion (lower 14K available only, upper 2K shared with BIOS ROM)
+
+	// software lists
+	MCFG_SOFTWARE_LIST_ADD("cart_list","crvision")
 MACHINE_CONFIG_END
 
 /*-------------------------------------------------
@@ -1086,45 +1038,48 @@ MACHINE_CONFIG_END
 -------------------------------------------------*/
 
 static MACHINE_CONFIG_DERIVED( ntsc, creativision )
-
-	MCFG_MACHINE_START(ntsc)
-
-    /* video hardware */
+    // video hardware
 	MCFG_FRAGMENT_ADD(tms9928a)
 	MCFG_SCREEN_MODIFY(SCREEN_TAG)
 	MCFG_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // inaccurate
 MACHINE_CONFIG_END
 
 /*-------------------------------------------------
     MACHINE_CONFIG_DERIVED( pal, creativision )
 -------------------------------------------------*/
 
-static MACHINE_CONFIG_DERIVED( pal, creativision )
-
-	MCFG_MACHINE_START(pal)
-
-	/* video hardware */
+static MACHINE_CONFIG_DERIVED_CLASS( pal, creativision, crvision_pal_state )
+	// video hardware
 	MCFG_FRAGMENT_ADD(tms9928a)
 	MCFG_SCREEN_MODIFY(SCREEN_TAG)
 	MCFG_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/313)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // inaccurate
 MACHINE_CONFIG_END
 
 /*-------------------------------------------------
-    MACHINE_CONFIG_START( lasr2001, crvision_state )
+    MACHINE_CONFIG_START( lasr2001, laser2001_state )
 -------------------------------------------------*/
 
-static MACHINE_CONFIG_START( lasr2001, crvision_state )
-
-	/* basic machine hardware */
+static MACHINE_CONFIG_START( lasr2001, laser2001_state )
+	// basic machine hardware
 	MCFG_CPU_ADD(M6502_TAG, M6502, 17734470/9)
 	MCFG_CPU_PROGRAM_MAP(lasr2001_map)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, crvision_int)
 
-	MCFG_MACHINE_START(lasr2001)
+	// devices
+	MCFG_PIA6821_ADD(PIA6821_TAG, lasr2001_pia_intf)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, lasr2001_cassette_config)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, lasr2001_floppy_config)
+	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, lasr2001_centronics_intf)
 
-	/* sound hardware */
+	// video hardware
+	MCFG_FRAGMENT_ADD(tms9928a)
+	MCFG_SCREEN_MODIFY(SCREEN_TAG)
+	MCFG_SCREEN_REFRESH_RATE((float)10738000/2/342/313)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // inaccurate
+
+	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SN76489_TAG, SN76489A, 17734470/9)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -1132,37 +1087,19 @@ static MACHINE_CONFIG_START( lasr2001, crvision_state )
 	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(1, "mono", 0.25)
 
-	/* peripheral hardware */
-	MCFG_PIA6821_ADD(PIA6821_TAG, lasr2001_pia_intf)
-
-	/* cartridge */
+	// cartridge
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin,rom")
 	MCFG_CARTSLOT_INTERFACE("crvision_cart")
 	MCFG_CARTSLOT_LOAD(crvision_cart)
 
-	/* software lists */
-	MCFG_SOFTWARE_LIST_ADD("cart_list","crvision")
-
-	/* cassette */
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, lasr2001_cassette_config)
-
-	/* floppy */
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, lasr2001_floppy_config)
-
-	/* printer */
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, lasr2001_centronics_intf)
-
-	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	// internal ram
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("16K")
 	MCFG_RAM_EXTRA_OPTIONS("32K")
 
-	/* video hardware */
-	MCFG_FRAGMENT_ADD(tms9928a)
-	MCFG_SCREEN_MODIFY(SCREEN_TAG)
-	MCFG_SCREEN_REFRESH_RATE((float)10738000/2/342/313)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	// software list
+	MCFG_SOFTWARE_LIST_ADD("cart_list","crvision")
 MACHINE_CONFIG_END
 
 /***************************************************************************
@@ -1186,7 +1123,7 @@ ROM_END
 #define rom_vz2000 rom_fnvision
 
 ROM_START( manager )
-    ROM_REGION( 0x4000, M6502_TAG, 0 )
+    ROM_REGION( 0x10000, M6502_TAG, 0 )
     ROM_LOAD( "01", 0x0000, 0x2000, CRC(702f4cf5) SHA1(cd14ee74e787d24b76c166de484dae24206e219b) )
     ROM_LOAD( "23", 0x2000, 0x2000, CRC(46489d88) SHA1(467f5bcd62d0b4117c443e13373df8f3c45df7b2) )
 

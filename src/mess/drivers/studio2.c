@@ -149,7 +149,7 @@ Notes:
     Freeway                         built-in                yes
     Math                            built-in                yes
     Patterns                        built-in                yes
-    Gunfighter/Moonship Battle      TV Arcade               no, but Guru has one
+    Gunfighter/Moonship Battle      TV Arcade               yes
     Space War                       TV Arcade I             yes
     Fun with Numbers                TV Arcade II            no, but Guru has one
     Tennis/Squash                   TV Arcade III           yes
@@ -158,8 +158,8 @@ Notes:
     Blackjack                       TV Casino I             yes
     Bingo                           TV Casino               no
     Math and Social Studies         TV School House I       no, but Guru has one
-    Math Fun                        TV School House II      no, but Guru has one
-    Biorhythm                       TV Mystic               no, but Guru has one
+    Math Fun                        TV School House II      yes
+    Biorhythm                       TV Mystic               yes
 
 
     MPT-02 games list
@@ -198,7 +198,7 @@ Notes:
 #include "emu.h"
 #include "includes/studio2.h"
 #include "cpu/cosmac/cosmac.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "formats/studio2_st2.h"
 #include "sound/beep.h"
 #include "sound/cdp1864.h"
@@ -228,38 +228,38 @@ WRITE8_MEMBER( studio2_state::dispon_w )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( studio2_map, ADDRESS_SPACE_PROGRAM, 8, studio2_state )
+static ADDRESS_MAP_START( studio2_map, AS_PROGRAM, 8, studio2_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_MIRROR(0xf400) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( studio2_io_map, ADDRESS_SPACE_IO, 8, studio2_state )
+static ADDRESS_MAP_START( studio2_io_map, AS_IO, 8, studio2_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x01, 0x01) AM_READ(dispon_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( visicom_map, ADDRESS_SPACE_PROGRAM, 8, studio2_state )
+static ADDRESS_MAP_START( visicom_map, AS_PROGRAM, 8, studio2_state )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x1000, 0x10ff) AM_RAM
 	AM_RANGE(0x1100, 0x11ff) AM_RAM AM_BASE(m_color_ram)
 	AM_RANGE(0x1300, 0x13ff) AM_RAM AM_BASE(m_color_ram1)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( visicom_io_map, ADDRESS_SPACE_IO, 8, studio2_state )
+static ADDRESS_MAP_START( visicom_io_map, AS_IO, 8, studio2_state )
 	AM_RANGE(0x01, 0x01) AM_WRITE(dispon_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mpt02_map, ADDRESS_SPACE_PROGRAM, 8, studio2_state )
+static ADDRESS_MAP_START( mpt02_map, AS_PROGRAM, 8, studio2_state )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
 	AM_RANGE(0x0b00, 0x0b3f) AM_RAM AM_BASE(m_color_ram)
 	AM_RANGE(0x0c00, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mpt02_io_map, ADDRESS_SPACE_IO, 8, studio2_state )
+static ADDRESS_MAP_START( mpt02_io_map, AS_IO, 8, studio2_state )
 	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE_LEGACY(CDP1864_TAG, cdp1864_dispon_r, cdp1864_step_bgcolor_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 	AM_RANGE(0x04, 0x04) AM_DEVREADWRITE_LEGACY(CDP1864_TAG, cdp1864_dispoff_r, cdp1864_tone_latch_w)
@@ -269,7 +269,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( reset_w )
 {
-	studio2_state *state = field->port->machine->driver_data<studio2_state>();
+	studio2_state *state = field->port->machine().driver_data<studio2_state>();
 
 	if (oldval && !newval)
 	{
@@ -317,9 +317,9 @@ static CDP1861_INTERFACE( studio2_cdp1861_intf )
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_EF1)
 };
 
-static VIDEO_UPDATE( studio2 )
+static SCREEN_UPDATE( studio2 )
 {
-	studio2_state *state = screen->machine->driver_data<studio2_state>();
+	studio2_state *state = screen->machine().driver_data<studio2_state>();
 
 	cdp1861_update(state->m_vdc, bitmap, cliprect);
 
@@ -336,21 +336,21 @@ static PALETTE_INIT( visicom )
 
 static READ_LINE_DEVICE_HANDLER( rdata_r )
 {
-	studio2_state *state = device->machine->driver_data<studio2_state>();
+	studio2_state *state = device->machine().driver_data<studio2_state>();
 
 	return BIT(state->m_color, 0);
 }
 
 static READ_LINE_DEVICE_HANDLER( bdata_r )
 {
-	studio2_state *state = device->machine->driver_data<studio2_state>();
+	studio2_state *state = device->machine().driver_data<studio2_state>();
 
 	return BIT(state->m_color, 1);
 }
 
 static READ_LINE_DEVICE_HANDLER( gdata_r )
 {
-	studio2_state *state = device->machine->driver_data<studio2_state>();
+	studio2_state *state = device->machine().driver_data<studio2_state>();
 
 	return BIT(state->m_color, 2);
 }
@@ -372,9 +372,9 @@ static CDP1864_INTERFACE( mpt02_cdp1864_intf )
 	RES_K(4.7)	// unverified
 };
 
-static VIDEO_UPDATE( mpt02 )
+static SCREEN_UPDATE( mpt02 )
 {
-	studio2_state *state = screen->machine->driver_data<studio2_state>();
+	studio2_state *state = screen->machine().driver_data<studio2_state>();
 
 	cdp1864_update(state->m_cti, bitmap, cliprect);
 
@@ -385,26 +385,26 @@ static VIDEO_UPDATE( mpt02 )
 
 static READ_LINE_DEVICE_HANDLER( clear_r )
 {
-	return BIT(input_port_read(device->machine, "CLEAR"), 0);
+	return BIT(input_port_read(device->machine(), "CLEAR"), 0);
 }
 
 static READ_LINE_DEVICE_HANDLER( ef3_r )
 {
-	studio2_state *state = device->machine->driver_data<studio2_state>();
+	studio2_state *state = device->machine().driver_data<studio2_state>();
 
-	return BIT(input_port_read(device->machine, "A"), state->m_keylatch);
+	return BIT(input_port_read(device->machine(), "A"), state->m_keylatch);
 }
 
 static READ_LINE_DEVICE_HANDLER( ef4_r )
 {
-	studio2_state *state = device->machine->driver_data<studio2_state>();
+	studio2_state *state = device->machine().driver_data<studio2_state>();
 
-	return BIT(input_port_read(device->machine, "B"), state->m_keylatch);
+	return BIT(input_port_read(device->machine(), "B"), state->m_keylatch);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( studio2_q_w )
 {
-	device_t *speaker = device->machine->device("beep");
+	device_t *speaker = device->machine().device("beep");
 	beep_set_state(speaker, state);
 }
 
@@ -426,7 +426,7 @@ static COSMAC_INTERFACE( studio2_cosmac_intf )
 
 static WRITE8_DEVICE_HANDLER( mpt02_dma_w )
 {
-	studio2_state *state = device->machine->driver_data<studio2_state>();
+	studio2_state *state = device->machine().driver_data<studio2_state>();
 	UINT8 addr = ((offset & 0xe0) >> 2) | (offset & 0x07);
 
 	state->m_color = state->m_color_ram[addr];
@@ -456,7 +456,7 @@ static COSMAC_INTERFACE( mpt02_cosmac_intf )
 void studio2_state::machine_start()
 {
 	// register for state saving
-	state_save_register_global(machine, m_keylatch);
+	state_save_register_global(m_machine, m_keylatch);
 }
 
 void studio2_state::machine_reset()
@@ -465,13 +465,33 @@ void studio2_state::machine_reset()
 	if (m_cti) m_cti->reset();
 }
 
+
+DEVICE_IMAGE_LOAD( studio2_cart_load )
+{
+	if (image.software_entry() == NULL)
+		return device_load_st2_cartslot_load(image);
+	else
+	{
+		// WARNING: list code currently assume that cart mapping starts at 0x400.
+		// the five dumps currently available work like this, but the .st2 format
+		// allows for more freedom... how was the content of a real cart mapped?
+		UINT8 *ptr = ((UINT8 *) image.device().machine().region(CDP1802_TAG)->base()) + 0x400;
+		memcpy(ptr, image.get_software_region("rom"), image.get_software_region_length("rom"));
+		return IMAGE_INIT_PASS;
+	}
+}
+
 /* Machine Drivers */
 
 static MACHINE_CONFIG_FRAGMENT( studio2_cartslot )
 	MCFG_CARTSLOT_ADD("cart")
-	MCFG_CARTSLOT_EXTENSION_LIST("st2")
+	MCFG_CARTSLOT_EXTENSION_LIST("st2,bin")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_LOAD(st2_cartslot_load)
+	MCFG_CARTSLOT_LOAD(studio2_cart_load)
+	MCFG_CARTSLOT_INTERFACE("studio2_cart")
+
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("cart_list","studio2")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( studio2, studio2_state )
@@ -483,10 +503,10 @@ static MACHINE_CONFIG_START( studio2, studio2_state )
 
     /* video hardware */
 	MCFG_CDP1861_SCREEN_ADD(SCREEN_TAG, 1760000)
+	MCFG_SCREEN_UPDATE(studio2)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
-	MCFG_VIDEO_UPDATE(studio2)
 
 	MCFG_CDP1861_ADD(CDP1861_TAG, 1760000, studio2_cdp1861_intf)
 
@@ -507,10 +527,10 @@ static MACHINE_CONFIG_START( visicom, studio2_state )
 
     /* video hardware */
 	MCFG_CDP1861_SCREEN_ADD(SCREEN_TAG, XTAL_3_579545MHz/2)
+	MCFG_SCREEN_UPDATE(studio2)
 
 	MCFG_PALETTE_LENGTH(4)
 	MCFG_PALETTE_INIT(visicom)
-	MCFG_VIDEO_UPDATE(studio2)
 
 	MCFG_CDP1861_ADD(CDP1861_TAG, XTAL_3_579545MHz/2/8, studio2_cdp1861_intf)
 
@@ -531,9 +551,9 @@ static MACHINE_CONFIG_START( mpt02, studio2_state )
 
     /* video hardware */
 	MCFG_CDP1864_SCREEN_ADD(SCREEN_TAG, CDP1864_CLOCK)
+	MCFG_SCREEN_UPDATE(mpt02)
 
 	MCFG_PALETTE_LENGTH(8+8)
-	MCFG_VIDEO_UPDATE(mpt02)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -578,14 +598,14 @@ ROM_END
 
 static TIMER_CALLBACK( setup_beep )
 {
-	device_t *speaker = machine->device("beep");
+	device_t *speaker = machine.device("beep");
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 300);
 }
 
 static DRIVER_INIT( studio2 )
 {
-	timer_set(machine, attotime_zero, NULL, 0, setup_beep);
+	machine.scheduler().timer_set(attotime::zero, FUNC(setup_beep));
 }
 
 /* Game Drivers */

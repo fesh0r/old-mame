@@ -8,7 +8,7 @@
 #define Z1013_H_
 
 #include "machine/z80pio.h"
-#include "devices/snapquik.h"
+#include "imagedev/snapquik.h"
 
 
 class z1013_state : public driver_device
@@ -17,9 +17,9 @@ public:
 	z1013_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *video_ram;
-	UINT8 keyboard_line;
-	UINT8 keyboard_part;
+	UINT8 *m_video_ram;
+	UINT8 m_keyboard_line;
+	UINT8 m_keyboard_part;
 };
 
 
@@ -38,7 +38,7 @@ extern SNAPSHOT_LOAD( z1013 );
 /*----------- defined in video/z1013.c -----------*/
 
 VIDEO_START( z1013 );
-VIDEO_UPDATE( z1013 );
+SCREEN_UPDATE( z1013 );
 
 
 #endif /* Z1013_H_ */

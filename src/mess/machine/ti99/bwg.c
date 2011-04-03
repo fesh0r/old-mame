@@ -23,7 +23,7 @@
 #include "bwg.h"
 #include "machine/wd17xx.h"
 #include "formats/ti99_dsk.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "machine/mm58274c.h"
 
 #define CRU_BASE 0x1100
@@ -42,6 +42,10 @@ typedef struct _ti99_bwg_state
 
 	/* When TRUE, card is accessible. Indicated by a LED. */
 	int					selected;
+
+	/* Used for GenMod. */
+	int					select_mask;
+	int					select_value;
 
 	/* When TRUE, keeps DVENA high. */
 	int					strobe_motor;
@@ -94,6 +98,8 @@ typedef struct _ti99_bwg_state
 INLINE ti99_bwg_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == BWG);
+
 	return (ti99_bwg_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -117,7 +123,7 @@ static void bwg_handle_hold(device_t *device)
 		state = CLEAR_LINE;
 
 	// TODO: use READY
-	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_HALT, state);
+	cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_HALT, state);
 }
 
 /*
@@ -145,10 +151,10 @@ the controller. */
 
 static void set_all_geometries(device_t *device, floppy_type_t type)
 {
-	set_geometry(device->machine->device(PFLOPPY_0), type);
-	set_geometry(device->machine->device(PFLOPPY_1), type);
-	set_geometry(device->machine->device(PFLOPPY_2), type);
-	set_geometry(device->machine->device(PFLOPPY_3), type);
+	set_geometry(device->machine().device(PFLOPPY_0), type);
+	set_geometry(device->machine().device(PFLOPPY_1), type);
+	set_geometry(device->machine().device(PFLOPPY_2), type);
+	set_geometry(device->machine().device(PFLOPPY_3), type);
 }
 
 
@@ -206,7 +212,7 @@ static WRITE_LINE_DEVICE_HANDLER( ti99_bwg_ready )
 {
 	// Caution: The device pointer passed to this function is the calling
 	// device. That is, if we want *this* device, we need to take the owner.
-	ti99_bwg_state *card = (ti99_bwg_state*)downcast<legacy_device_base *>(device->owner())->token();
+	ti99_bwg_state *card = get_safe_token(device->owner());
 	devcb_call_write_line( &card->lines.ready, state );
 }
 #endif
@@ -269,7 +275,7 @@ static WRITE8_DEVICE_HANDLER( cru_w )
 			{	/* on rising edge, set motor_running for 4.23s */
 				card->DVENA = TRUE;
 				bwg_handle_hold(device);
-				timer_adjust_oneshot(card->motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
+				card->motor_on_timer->adjust(attotime::from_msec(4230));
 			}
 			card->strobe_motor = data;
 			break;
@@ -376,7 +382,7 @@ static READ8Z_DEVICE_HANDLER( data_r )
 
 	if (card->selected)
 	{
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & card->select_mask)==card->select_value)
 		{
 			// 010x xxxx xxxx xxxx
 			if ((offset & 0x1c00)==0x1c00)
@@ -435,7 +441,7 @@ static WRITE8_DEVICE_HANDLER( data_w )
 
 	if (card->selected)
 	{
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & card->select_mask)==card->select_value)
 		{
 			// 010x xxxx xxxx xxxx
 			if ((offset & 0x1c00)==0x1c00)
@@ -474,25 +480,25 @@ static WRITE8_DEVICE_HANDLER( data_w )
 
 static DEVICE_START( ti99_bwg )
 {
-	ti99_bwg_state *card = (ti99_bwg_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_bwg_state *card = get_safe_token(device);
 
 	/* Resolve the callbacks to the PEB */
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
 	devcb_resolve_write_line(&card->lines.ready, &topeb->ready, device);
 
-	card->motor_on_timer = timer_alloc(device->machine, motor_on_timer_callback, (void *)device);
+	card->motor_on_timer = device->machine().scheduler().timer_alloc(FUNC(motor_on_timer_callback), (void *)device);
 	card->controller = device->subdevice("wd1773");
 	card->clock = device->subdevice("mm58274c");
 	astring *region = new astring();
 	astring_assemble_3(region, device->tag(), ":", bwg_region);
-	card->rom = device->machine->region(astring_c(region))->base();
+	card->rom = device->machine().region(astring_c(region))->base();
 	card->ram = NULL;
 }
 
 static DEVICE_STOP( ti99_bwg )
 {
+	ti99_bwg_state *card = get_safe_token(device);
 	logerror("ti99_bwg: stop\n");
-	ti99_bwg_state *card = (ti99_bwg_state*)downcast<legacy_device_base *>(device)->token();
 	if (card->ram) free(card->ram);
 }
 
@@ -507,10 +513,10 @@ static const ti99_peb_card bwg_card =
 
 static DEVICE_RESET( ti99_bwg )
 {
-	ti99_bwg_state *card = (ti99_bwg_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_bwg_state *card = get_safe_token(device);
 
 	/* If the card is selected in the menu, register the card */
-	if (input_port_read(device->machine, "DISKCTRL") == DISK_BWG)
+	if (input_port_read(device->machine(), "DISKCTRL") == DISK_BWG)
 	{
 		device_t *peb = device->owner();
 		int success = mount_card(peb, device, &bwg_card, get_pebcard_config(device)->slot);
@@ -523,9 +529,9 @@ static DEVICE_RESET( ti99_bwg )
 			memset(card->ram, 0, 2048);
 		}
 
-		card->dip1 = input_port_read(device->machine, "BWGDIP1");
-		card->dip2 = input_port_read(device->machine, "BWGDIP2");
-		card->dip34 = input_port_read(device->machine, "BWGDIP34");
+		card->dip1 = input_port_read(device->machine(), "BWGDIP1");
+		card->dip2 = input_port_read(device->machine(), "BWGDIP2");
+		card->dip34 = input_port_read(device->machine(), "BWGDIP34");
 
 		card->DSEL = 0;
 		card->SIDE = 0;
@@ -541,6 +547,16 @@ static DEVICE_RESET( ti99_bwg )
 		card->ram_offset = 0;
 		card->rom_offset = 0;
 		card->rtc_enabled = 0;
+
+		card->select_mask = 0x7e000;
+		card->select_value = 0x74000;
+
+		if (input_port_read(device->machine(), "MODE")==GENMOD)
+		{
+			// GenMod card modification
+			card->select_mask = 0x1fe000;
+			card->select_value = 0x174000;
+		}
 
 		wd17xx_dden_w(card->controller, CLEAR_LINE);	// Correct?
 	}
@@ -575,6 +591,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_bwg##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "SNUG BwG Floppy Disk Controller Card"
+#define DEVTEMPLATE_SHORTNAME           "snugfdc"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

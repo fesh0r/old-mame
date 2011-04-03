@@ -59,15 +59,15 @@ Super System Card:
 #include "video/vdc.h"
 #include "cpu/h6280/h6280.h"
 #include "includes/pce.h"
-#include "devices/cartslot.h"
-#include "devices/chd_cd.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/chd_cd.h"
 #include "sound/c6280.h"
 #include "sound/cdda.h"
 #include "sound/msm5205.h"
 #include "hash.h"
 
 
-static ADDRESS_MAP_START( pce_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pce_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK("bank1")
 	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK("bank2")
 	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK("bank3")
@@ -86,11 +86,11 @@ static ADDRESS_MAP_START( pce_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1FF800, 0x1FFBFF) AM_READWRITE( pce_cd_intf_r, pce_cd_intf_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pce_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pce_io , AS_IO, 8)
 	AM_RANGE( 0x00, 0x03) AM_READWRITE( vdc_0_r, vdc_0_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sgx_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( sgx_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK("bank1")
 	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK("bank2")
 	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK("bank3")
@@ -111,7 +111,7 @@ static ADDRESS_MAP_START( sgx_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1FF800, 0x1FFBFF) AM_READWRITE( pce_cd_intf_r, pce_cd_intf_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sgx_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( sgx_io , AS_IO, 8)
 	AM_RANGE( 0x00, 0x03) AM_READWRITE( sgx_vdc_r, sgx_vdc_w )
 ADDRESS_MAP_END
 
@@ -256,29 +256,29 @@ static INPUT_PORTS_START( pce )
 	PORT_START("JOY_TYPE")
 	PORT_CATEGORY_CLASS(0x0003,0x0000,"Joystick Type Player 1")
 	PORT_CATEGORY_ITEM( 0x0000,"2-buttons", 10)
-//	PORT_CATEGORY_ITEM( 0x0001,"3-buttons", xx)
+//  PORT_CATEGORY_ITEM( 0x0001,"3-buttons", xx)
 	PORT_CATEGORY_ITEM( 0x0002,"6-buttons", 11)
-//	PORT_CATEGORY_ITEM( 0x0003,"Mouse",     xx)
+//  PORT_CATEGORY_ITEM( 0x0003,"Mouse",     xx)
 	PORT_CATEGORY_CLASS(0x000c,0x0000,"Joystick Type Player 2")
 	PORT_CATEGORY_ITEM( 0x0000,"2-buttons", 20)
-//	PORT_CATEGORY_ITEM( 0x0004,"3-buttons", xx)
+//  PORT_CATEGORY_ITEM( 0x0004,"3-buttons", xx)
 	PORT_CATEGORY_ITEM( 0x0008,"6-buttons", 21)
-//	PORT_CATEGORY_ITEM( 0x000c,"Mouse",     xx)
+//  PORT_CATEGORY_ITEM( 0x000c,"Mouse",     xx)
 	PORT_CATEGORY_CLASS(0x0030,0x0000,"Joystick Type Player 3")
 	PORT_CATEGORY_ITEM( 0x0000,"2-buttons", 30)
-//	PORT_CATEGORY_ITEM( 0x0010,"3-buttons", xx)
+//  PORT_CATEGORY_ITEM( 0x0010,"3-buttons", xx)
 	PORT_CATEGORY_ITEM( 0x0020,"6-buttons", 31)
-//	PORT_CATEGORY_ITEM( 0x0030,"Mouse",     xx)
+//  PORT_CATEGORY_ITEM( 0x0030,"Mouse",     xx)
 	PORT_CATEGORY_CLASS(0x00c0,0x0000,"Joystick Type Player 4")
 	PORT_CATEGORY_ITEM( 0x0000,"2-buttons", 40)
-//	PORT_CATEGORY_ITEM( 0x0040,"3-buttons", xx)
+//  PORT_CATEGORY_ITEM( 0x0040,"3-buttons", xx)
 	PORT_CATEGORY_ITEM( 0x0080,"6-buttons", 41)
-//	PORT_CATEGORY_ITEM( 0x00c0,"Mouse",     xx)
+//  PORT_CATEGORY_ITEM( 0x00c0,"Mouse",     xx)
 	PORT_CATEGORY_CLASS(0x0300,0x0000,"Joystick Type Player 5")
 	PORT_CATEGORY_ITEM( 0x0000,"2-buttons", 50)
-//	PORT_CATEGORY_ITEM( 0x0100,"3-buttons", xx)
+//  PORT_CATEGORY_ITEM( 0x0100,"3-buttons", xx)
 	PORT_CATEGORY_ITEM( 0x0200,"6-buttons", 51)
-//	PORT_CATEGORY_ITEM( 0x0300,"Mouse",     xx)
+//  PORT_CATEGORY_ITEM( 0x0300,"Mouse",     xx)
 
 	PORT_START("A_CARD")
 	PORT_CONFNAME( 0x01, 0x01, "Arcade Card" )
@@ -287,13 +287,13 @@ static INPUT_PORTS_START( pce )
 INPUT_PORTS_END
 
 
-static void pce_partialhash(char *dest, const unsigned char *data,
-        unsigned long length, unsigned int functions)
+static void pce_partialhash(hash_collection &dest, const unsigned char *data,
+	unsigned long length, const char *functions)
 {
 	if ( ( length <= PCE_HEADER_SIZE ) || ( length & PCE_HEADER_SIZE ) ) {
-	        hash_compute(dest, &data[PCE_HEADER_SIZE], length - PCE_HEADER_SIZE, functions);
-	} else {
-		hash_compute(dest, data, length, functions);
+			dest.compute(&data[PCE_HEADER_SIZE], length - PCE_HEADER_SIZE, functions);	
+	} else {		
+		dest.compute(data, length, functions);	
 	}
 }
 
@@ -301,7 +301,12 @@ static const c6280_interface c6280_config =
 {
 	"maincpu"
 };
+static MACHINE_CONFIG_FRAGMENT( pce_cdslot )
+	MCFG_CDROM_ADD( "cdrom" )
+	MCFG_CDROM_INTERFACE("pce_cdrom")
 
+	MCFG_SOFTWARE_LIST_ADD("cd_list","pcecd")
+MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_FRAGMENT( pce_cartslot )
 	MCFG_CARTSLOT_ADD("cart")
@@ -339,7 +344,7 @@ static MACHINE_CONFIG_START( pce_common, driver_device )
 	MCFG_CPU_PROGRAM_MAP(pce_mem)
 	MCFG_CPU_IO_MAP(pce_io)
 	MCFG_CPU_VBLANK_INT_HACK(pce_interrupt, VDC_LPF)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( pce )
 	MCFG_MACHINE_RESET( pce )
@@ -350,12 +355,13 @@ static MACHINE_CONFIG_START( pce_common, driver_device )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
+	MCFG_SCREEN_UPDATE( pce )
+
 	/* MCFG_GFXDECODE( pce ) */
 	MCFG_PALETTE_LENGTH(1024)
 	MCFG_PALETTE_INIT( vce )
 
 	MCFG_VIDEO_START( pce )
-	MCFG_VIDEO_UPDATE( pce )
 
 	MCFG_NVRAM_HANDLER( pce )
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -372,16 +378,16 @@ static MACHINE_CONFIG_START( pce_common, driver_device )
 	MCFG_SOUND_ADD( "cdda", CDDA, 0 )
 	MCFG_SOUND_ROUTE( 0, "lspeaker", 1.00 )
 	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.00 )
-
-	MCFG_CDROM_ADD( "cdrom" )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pce, pce_common )
 	MCFG_FRAGMENT_ADD( pce_cartslot )
+	MCFG_FRAGMENT_ADD( pce_cdslot )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( tg16, pce_common )
 	MCFG_FRAGMENT_ADD( tg16_cartslot )
+	MCFG_FRAGMENT_ADD( pce_cdslot )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( sgx, driver_device )
@@ -390,7 +396,7 @@ static MACHINE_CONFIG_START( sgx, driver_device )
 	MCFG_CPU_PROGRAM_MAP(sgx_mem)
 	MCFG_CPU_IO_MAP(sgx_io)
 	MCFG_CPU_VBLANK_INT_HACK(sgx_interrupt, VDC_LPF)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( pce )
 	MCFG_MACHINE_RESET( pce )
@@ -401,11 +407,12 @@ static MACHINE_CONFIG_START( sgx, driver_device )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
+	MCFG_SCREEN_UPDATE( pce )
+
 	MCFG_PALETTE_LENGTH(1024)
 	MCFG_PALETTE_INIT( vce )
 
 	MCFG_VIDEO_START( pce )
-	MCFG_VIDEO_UPDATE( pce )
 
 	MCFG_NVRAM_HANDLER( pce )
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -424,6 +431,7 @@ static MACHINE_CONFIG_START( sgx, driver_device )
 	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.00 )
 
 	MCFG_FRAGMENT_ADD( sgx_cartslot )
+	MCFG_FRAGMENT_ADD( pce_cdslot )
 MACHINE_CONFIG_END
 
 /***************************************************************************

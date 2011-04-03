@@ -52,8 +52,8 @@ public:
 	mk1_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 f8[2];
-	UINT8 led[4];
+	UINT8 m_f8[2];
+	UINT8 m_led[4];
 };
 
 
@@ -61,60 +61,60 @@ public:
 
 
 static READ8_HANDLER( mk1_f8_r ) {
-	mk1_state *state = space->machine->driver_data<mk1_state>();
-    UINT8 data = state->f8[offset];
+	mk1_state *state = space->machine().driver_data<mk1_state>();
+    UINT8 data = state->m_f8[offset];
 
     if ( offset == 0 ) {
-		if ( data & 1 ) data |= input_port_read(space->machine, "LINE1");
-		if ( data & 2 ) data |= input_port_read(space->machine, "LINE2");
-		if ( data & 4 ) data |= input_port_read(space->machine, "LINE3");
-		if ( data & 8 ) data |= input_port_read(space->machine, "LINE4");
+		if ( data & 1 ) data |= input_port_read(space->machine(), "LINE1");
+		if ( data & 2 ) data |= input_port_read(space->machine(), "LINE2");
+		if ( data & 4 ) data |= input_port_read(space->machine(), "LINE3");
+		if ( data & 8 ) data |= input_port_read(space->machine(), "LINE4");
 		if ( data & 0x10 ) {
-			if ( input_port_read(space->machine, "LINE1") & 0x10 ) data |= 1;
-			if ( input_port_read(space->machine, "LINE2") & 0x10 ) data |= 2;
-			if ( input_port_read(space->machine, "LINE3") & 0x10 ) data |= 4;
-			if ( input_port_read(space->machine, "LINE4") & 0x10 ) data |= 8;
+			if ( input_port_read(space->machine(), "LINE1") & 0x10 ) data |= 1;
+			if ( input_port_read(space->machine(), "LINE2") & 0x10 ) data |= 2;
+			if ( input_port_read(space->machine(), "LINE3") & 0x10 ) data |= 4;
+			if ( input_port_read(space->machine(), "LINE4") & 0x10 ) data |= 8;
 		}
 		if ( data & 0x20 ) {
-			if ( input_port_read(space->machine, "LINE1") & 0x20 ) data |= 1;
-			if ( input_port_read(space->machine, "LINE2") & 0x20 ) data |= 2;
-			if ( input_port_read(space->machine, "LINE3") & 0x20 ) data |= 4;
-			if ( input_port_read(space->machine, "LINE4") & 0x20 ) data |= 8;
+			if ( input_port_read(space->machine(), "LINE1") & 0x20 ) data |= 1;
+			if ( input_port_read(space->machine(), "LINE2") & 0x20 ) data |= 2;
+			if ( input_port_read(space->machine(), "LINE3") & 0x20 ) data |= 4;
+			if ( input_port_read(space->machine(), "LINE4") & 0x20 ) data |= 8;
 		}
 		if ( data & 0x40 ) {
-			if ( input_port_read(space->machine, "LINE1") & 0x40 ) data |= 1;
-			if ( input_port_read(space->machine, "LINE2") & 0x40 ) data |= 2;
-			if ( input_port_read(space->machine, "LINE3") & 0x40 ) data |= 4;
-			if ( input_port_read(space->machine, "LINE4") & 0x40 ) data |= 8;
+			if ( input_port_read(space->machine(), "LINE1") & 0x40 ) data |= 1;
+			if ( input_port_read(space->machine(), "LINE2") & 0x40 ) data |= 2;
+			if ( input_port_read(space->machine(), "LINE3") & 0x40 ) data |= 4;
+			if ( input_port_read(space->machine(), "LINE4") & 0x40 ) data |= 8;
 		}
 		if ( data & 0x80 ) {
-			if ( input_port_read(space->machine, "LINE1") & 0x80 ) data |= 1;
-			if ( input_port_read(space->machine, "LINE2") & 0x80 ) data |= 2;
-			if ( input_port_read(space->machine, "LINE3") & 0x80 ) data |= 4;
-			if ( input_port_read(space->machine, "LINE4") & 0x80 ) data |= 8;
+			if ( input_port_read(space->machine(), "LINE1") & 0x80 ) data |= 1;
+			if ( input_port_read(space->machine(), "LINE2") & 0x80 ) data |= 2;
+			if ( input_port_read(space->machine(), "LINE3") & 0x80 ) data |= 4;
+			if ( input_port_read(space->machine(), "LINE4") & 0x80 ) data |= 8;
 		}
     }
     return data;
 }
 
 static WRITE8_HANDLER( mk1_f8_w ) {
-	mk1_state *state = space->machine->driver_data<mk1_state>();
+	mk1_state *state = space->machine().driver_data<mk1_state>();
 	/* 0 is high and allows also input */
-	state->f8[offset] = data;
+	state->m_f8[offset] = data;
 
-	if ( ! ( state->f8[1] & 1 ) ) state->led[0] = BITSWAP8( state->f8[0],2,1,3,4,5,6,7,0 );
-	if ( ! ( state->f8[1] & 2 ) ) state->led[1] = BITSWAP8( state->f8[0],2,1,3,4,5,6,7,0 );
-	if ( ! ( state->f8[1] & 4 ) ) state->led[2] = BITSWAP8( state->f8[0],2,1,3,4,5,6,7,0 );
-	if ( ! ( state->f8[1] & 8 ) ) state->led[3] = BITSWAP8( state->f8[0],2,1,3,4,5,6,7,0 );
+	if ( ! ( state->m_f8[1] & 1 ) ) state->m_led[0] = BITSWAP8( state->m_f8[0],2,1,3,4,5,6,7,0 );
+	if ( ! ( state->m_f8[1] & 2 ) ) state->m_led[1] = BITSWAP8( state->m_f8[0],2,1,3,4,5,6,7,0 );
+	if ( ! ( state->m_f8[1] & 4 ) ) state->m_led[2] = BITSWAP8( state->m_f8[0],2,1,3,4,5,6,7,0 );
+	if ( ! ( state->m_f8[1] & 8 ) ) state->m_led[3] = BITSWAP8( state->m_f8[0],2,1,3,4,5,6,7,0 );
 }
 
-static ADDRESS_MAP_START( mk1_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mk1_mem, AS_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x07ff ) AM_ROM
 	AM_RANGE( 0x1800, 0x18ff ) AM_RAM
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( mk1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( mk1_io, AS_IO, 8 )
 	AM_RANGE( 0x0, 0x1 ) AM_READWRITE( mk1_f8_r, mk1_f8_w )
 	AM_RANGE( 0xc, 0xf ) AM_DEVREADWRITE("f3853", f3853_r, f3853_w )
 ADDRESS_MAP_END
@@ -156,30 +156,29 @@ static INPUT_PORTS_START( mk1 )
 INPUT_PORTS_END
 
 
-static TIMER_CALLBACK( mk1_update_leds )
+static TIMER_DEVICE_CALLBACK( mk1_update_leds )
 {
-	mk1_state *state = machine->driver_data<mk1_state>();
+	mk1_state *state = timer.machine().driver_data<mk1_state>();
 	int i;
 
 	for ( i = 0; i < 4; i++ ) {
-		output_set_digit_value( i, state->led[i] >> 1 );
-		output_set_led_value( i, state->led[i] & 0x01 );
-		state->led[i] = 0;
+		output_set_digit_value( i, state->m_led[i] >> 1 );
+		output_set_led_value( i, state->m_led[i] & 0x01 );
+		state->m_led[i] = 0;
 	}
 }
 
 
 static MACHINE_START( mk1 )
 {
-	timer_pulse(machine,  ATTOTIME_IN_HZ(30), NULL, 0, mk1_update_leds );
 }
 
 
 static void mk1_interrupt( device_t *device, UINT16 addr, int level )
 {
-	cpu_set_input_line_vector(device->machine->device("maincpu"), F8_INPUT_LINE_INT_REQ, addr );
+	device_set_input_line_vector(device->machine().device("maincpu"), F8_INPUT_LINE_INT_REQ, addr );
 
-	cputag_set_input_line(device->machine,"maincpu", F8_INPUT_LINE_INT_REQ, level ? ASSERT_LINE : CLEAR_LINE );
+	cputag_set_input_line(device->machine(),"maincpu", F8_INPUT_LINE_INT_REQ, level ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
@@ -194,7 +193,7 @@ static MACHINE_CONFIG_START( mk1, mk1_state )
 	MCFG_CPU_ADD( "maincpu", F8, MAIN_CLOCK )        /* MK3850 */
 	MCFG_CPU_PROGRAM_MAP( mk1_mem)
 	MCFG_CPU_IO_MAP( mk1_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( mk1 )
 
@@ -202,6 +201,8 @@ static MACHINE_CONFIG_START( mk1, mk1_state )
 
     /* video hardware */
 	MCFG_DEFAULT_LAYOUT( layout_mk1 )
+
+	MCFG_TIMER_ADD_PERIODIC("led_timer", mk1_update_leds, attotime::from_hz(30))
 MACHINE_CONFIG_END
 
 

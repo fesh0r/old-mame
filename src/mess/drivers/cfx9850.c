@@ -2,11 +2,19 @@
 
     Driver for Casio CFX-9850
 
+To operate:
+The unit is switched off by default, you have to switch it on by pressing 'Q'.
+
+Debugging information:
+First make sure system is initialized (g 10b3).
+At cs=23, ip=d1a4,d1af,d1ba,d1c5,d1d0,d1db,d1ea,d1f9,d208,d217,d226,d235,d244
+are routines which fill display ram with patterns.
+
 ***************************************************************************/
 
 #include "emu.h"
 #include "cpu/hcd62121/hcd62121.h"
-
+#include "rendlay.h"
 
 class cfx9850_state : public driver_device
 {
@@ -14,68 +22,68 @@ public:
 	cfx9850_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *video_ram;
-	UINT8 *display_ram;
+	UINT8 *m_video_ram;
+	UINT8 *m_display_ram;
 
-	UINT16 ko;				/* KO lines KO1 - KO14 */
+	UINT16 m_ko;				/* KO lines KO1 - KO14 */
 };
 
 
-static ADDRESS_MAP_START( cfx9850, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( cfx9850, AS_PROGRAM, 8 )
 	AM_RANGE( 0x000000, 0x007fff ) AM_ROM
-	AM_RANGE( 0x080000, 0x0807ff ) AM_RAM AM_BASE_MEMBER( cfx9850_state, video_ram )
+	AM_RANGE( 0x080000, 0x0807ff ) AM_RAM AM_BASE_MEMBER( cfx9850_state, m_video_ram )
 //  AM_RANGE( 0x100000, 0x10ffff ) /* some memory mapped i/o? */
 //  AM_RANGE( 0x110000, 0x11ffff ) /* some memory mapped i/o? */
 	AM_RANGE( 0x200000, 0x27ffff ) AM_ROM AM_REGION( "bios", 0 )
 	AM_RANGE( 0x400000, 0x40ffff ) AM_RAM
-	AM_RANGE( 0x600000, 0x601fff ) AM_MIRROR(0xe000) AM_RAM AM_BASE_MEMBER( cfx9850_state, display_ram )
+	AM_RANGE( 0x600000, 0x601fff ) AM_MIRROR(0xf800) AM_RAM AM_BASE_MEMBER( cfx9850_state, m_display_ram )
 //  AM_RANGE( 0xe10000, 0xe1ffff ) /* some memory mapped i/o? */
 ADDRESS_MAP_END
 
 
 static WRITE8_HANDLER( cfx9850_kol_w )
 {
-	cfx9850_state *state = space->machine->driver_data<cfx9850_state>();
+	cfx9850_state *state = space->machine().driver_data<cfx9850_state>();
 
-	state->ko = ( state->ko & 0xff00 ) | data;
+	state->m_ko = ( state->m_ko & 0xff00 ) | data;
 }
 
 static WRITE8_HANDLER( cfx9850_koh_w )
 {
-	cfx9850_state *state = space->machine->driver_data<cfx9850_state>();
+	cfx9850_state *state = space->machine().driver_data<cfx9850_state>();
 
-	state->ko = ( state->ko & 0x00ff ) | ( data << 8 );
+	state->m_ko = ( state->m_ko & 0x00ff ) | ( data << 8 );
 }
 
 
 static READ8_HANDLER( cfx9850_ki_r )
 {
-	cfx9850_state *state = space->machine->driver_data<cfx9850_state>();
+	cfx9850_state *state = space->machine().driver_data<cfx9850_state>();
 	UINT8 data = 0;
 
-	if ( state->ko & 0x0001 )
-		data |= input_port_read( space->machine, "KO1" );
-	if ( state->ko & 0x0002 )
-		data |= input_port_read( space->machine, "KO2" );
-	if ( state->ko & 0x0004 )
-		data |= input_port_read( space->machine, "KO3" );
-	if ( state->ko & 0x0008 )
-		data |= input_port_read( space->machine, "KO4" );
-	if ( state->ko & 0x0010 )
-		data |= input_port_read( space->machine, "KO5" );
-	if ( state->ko & 0x0020 )
-		data |= input_port_read( space->machine, "KO6" );
-	if ( state->ko & 0x0040 )
-		data |= input_port_read( space->machine, "KO7" );
-	if ( state->ko & 0x0080 )
-		data |= input_port_read( space->machine, "KO8" );
-	if ( state->ko & 0x0100 )
-		data |= input_port_read( space->machine, "KO9" );
-	if ( state->ko & 0x0200 )
-		data |= input_port_read( space->machine, "KO10" );
+	if ( state->m_ko & 0x0001 )
+		data |= input_port_read( space->machine(), "KO1" );
+	if ( state->m_ko & 0x0002 )
+		data |= input_port_read( space->machine(), "KO2" );
+	if ( state->m_ko & 0x0004 )
+		data |= input_port_read( space->machine(), "KO3" );
+	if ( state->m_ko & 0x0008 )
+		data |= input_port_read( space->machine(), "KO4" );
+	if ( state->m_ko & 0x0010 )
+		data |= input_port_read( space->machine(), "KO5" );
+	if ( state->m_ko & 0x0020 )
+		data |= input_port_read( space->machine(), "KO6" );
+	if ( state->m_ko & 0x0040 )
+		data |= input_port_read( space->machine(), "KO7" );
+	if ( state->m_ko & 0x0080 )
+		data |= input_port_read( space->machine(), "KO8" );
+	if ( state->m_ko & 0x0100 )
+		data |= input_port_read( space->machine(), "KO9" );
+	if ( state->m_ko & 0x0200 )
+		data |= input_port_read( space->machine(), "KO10" );
 	/* KO11 is not connected */
-	if ( state->ko & 0x0800 )
-		data |= input_port_read( space->machine, "KO12" );
+	if ( state->m_ko & 0x0800 )
+		data |= input_port_read( space->machine(), "KO12" );
 	/* KO13 is not connected */
 	/* KO14 is not connected */
 
@@ -83,7 +91,7 @@ static READ8_HANDLER( cfx9850_ki_r )
 }
 
 
-static ADDRESS_MAP_START( cfx9850_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( cfx9850_io, AS_IO, 8 )
 	AM_RANGE( HCD62121_KOL, HCD62121_KOL ) AM_WRITE( cfx9850_kol_w )
 	AM_RANGE( HCD62121_KOH, HCD62121_KOH ) AM_WRITE( cfx9850_koh_w )
 	AM_RANGE( HCD62121_KI, HCD62121_KI ) AM_READ( cfx9850_ki_r )
@@ -175,6 +183,44 @@ static INPUT_PORTS_START( cfx9850 )
 INPUT_PORTS_END
 
 
+static PALETTE_INIT( cfx9850 )
+{
+	palette_set_color_rgb( machine, 0, 0xff, 0xff, 0xff );
+	palette_set_color_rgb( machine, 1, 0x00, 0x00, 0xff );
+	palette_set_color_rgb( machine, 2, 0x00, 0xff, 0x00 );
+	palette_set_color_rgb( machine, 3, 0xff, 0x00, 0x00 );
+}
+
+
+static SCREEN_UPDATE( cfx9850 )
+{
+	cfx9850_state *state = screen->machine().driver_data<cfx9850_state>();
+	UINT16 offset = 0;
+
+	for ( int i = 0; i < 16; i++ )
+	{
+		int x = 120 - i * 8;
+
+		for ( int j = 0; j < 64; j++ )
+		{
+			UINT8 data1 = state->m_display_ram[ offset ];
+			UINT8 data2 = state->m_display_ram[ offset + 0x400 ];
+
+			for ( int b = 0; b < 8; b++ )
+			{
+				*BITMAP_ADDR16(bitmap, 63-j, x+b) = ( data1 & 0x80 ) ? ( data2 & 0x80 ? 3 : 2 ) : ( data2 & 0x80 ? 1 : 0 );
+				data1 <<= 1;
+				data2 <<= 1;
+			}
+
+			offset++;
+		}
+	}
+
+	return 0;
+}
+
+
 static MACHINE_CONFIG_START( cfx9850, cfx9850_state )
 
 	MCFG_CPU_ADD( "maincpu", HCD62121, 4300000 )	/* 4.3 MHz */
@@ -186,11 +232,14 @@ static MACHINE_CONFIG_START( cfx9850, cfx9850_state )
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MCFG_SCREEN_SIZE( 128, 64 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 127, 0, 63 )
+	MCFG_SCREEN_UPDATE( cfx9850 )
+
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
+
 	/* TODO: It uses a color display, but I'm being lazy here. 3 colour lcd */
-	MCFG_PALETTE_LENGTH( 2 )
-	MCFG_PALETTE_INIT(black_and_white)
+	MCFG_PALETTE_LENGTH( 4 )
+	MCFG_PALETTE_INIT( cfx9850 )
 
 MACHINE_CONFIG_END
 

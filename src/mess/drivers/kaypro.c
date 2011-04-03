@@ -37,8 +37,8 @@
 #include "cpu/z80/z80daisy.h"
 #include "machine/ctronics.h"
 #include "sound/beep.h"
-#include "devices/snapquik.h"
-#include "devices/flopdrv.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "includes/kaypro.h"
 
@@ -51,13 +51,13 @@ static READ8_HANDLER( kaypro2x_87 ) { return 0x7f; }	/* to bypass unemulated HD 
 
 ************************************************************/
 
-static ADDRESS_MAP_START( kaypro_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( kaypro_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM AM_REGION("maincpu", 0x0000)
-	AM_RANGE(0x3000, 0x3fff) AM_RAM AM_REGION("maincpu", 0x3000) AM_BASE_MEMBER(kaypro_state, videoram)
+	AM_RANGE(0x3000, 0x3fff) AM_RAM AM_REGION("maincpu", 0x3000) AM_BASE_MEMBER(kaypro_state, m_videoram)
 	AM_RANGE(0x4000, 0xffff) AM_RAM AM_REGION("rambank", 0x4000)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( kayproii_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( kayproii_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x03) AM_WRITE(kaypro_baud_a_w)
@@ -68,7 +68,7 @@ static ADDRESS_MAP_START( kayproii_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_s", z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( kaypro2x_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( kaypro2x_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x03) AM_WRITE(kaypro_baud_a_w)
@@ -236,12 +236,13 @@ static MACHINE_CONFIG_START( kayproii, kaypro_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(80*7, 24*10)
 	MCFG_SCREEN_VISIBLE_AREA(0,80*7-1,0,24*10-1)
+	MCFG_SCREEN_UPDATE( kayproii )
+
 	MCFG_GFXDECODE(kayproii)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(kaypro)
 
 	MCFG_VIDEO_START( kaypro )
-	MCFG_VIDEO_UPDATE( kayproii )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -283,6 +284,8 @@ static MACHINE_CONFIG_START( kaypro2x, kaypro_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(80*8, 25*16)
 	MCFG_SCREEN_VISIBLE_AREA(0,80*8-1,0,25*16-1)
+	MCFG_SCREEN_UPDATE( kaypro2x )
+
 	MCFG_GFXDECODE(kaypro2x)
 	MCFG_PALETTE_LENGTH(3)
 	MCFG_PALETTE_INIT(kaypro)
@@ -290,8 +293,7 @@ static MACHINE_CONFIG_START( kaypro2x, kaypro_state )
 	MCFG_MC6845_ADD("crtc", MC6845, 2000000, kaypro2x_crtc) /* comes out of ULA - needs to be measured */
 
 	MCFG_VIDEO_START( kaypro )
-	MCFG_VIDEO_UPDATE( kaypro2x )
-
+	
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("beep", BEEP, 0)
@@ -308,7 +310,8 @@ static MACHINE_CONFIG_START( kaypro2x, kaypro_state )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( omni2, kaypro4 )
-	MCFG_VIDEO_UPDATE( omni2 )
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE( omni2 )
 MACHINE_CONFIG_END
 
 /***********************************************************

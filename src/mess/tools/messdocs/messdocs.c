@@ -15,17 +15,17 @@
 
 struct messdocs_state
 {
-	const char *dest_dir;
+	const char *m_dest_dir;
 
-	const char *title;
-	const char *default_topic;
+	const char *m_title;
+	const char *m_default_topic;
 
-	object_pool *pool;
-	XML_Parser parser;
-	int depth;
-	int error;
-	char *toc_dir;
-	FILE *chm_toc;
+	object_pool *m_pool;
+	XML_Parser m_parser;
+	int m_depth;
+	int m_error;
+	char *m_toc_dir;
+	FILE *m_chm_toc;
 };
 
 
@@ -40,10 +40,10 @@ static void rtrim(char *buf);
 
 
 //============================================================
-//  win_error_to_mame_file_error
+//  win_error_to_emu_file_error
 //============================================================
 
-static file_error win_error_to_mame_file_error(DWORD error)
+static file_error win_error_to_emu_file_error(DWORD error)
 {
 	file_error filerr;
 
@@ -104,7 +104,7 @@ file_error osd_mkdir(const char *dir)
 
 	if (!CreateDirectory(tempstr, NULL))
 	{
-		filerr = win_error_to_mame_file_error(GetLastError());
+		filerr = win_error_to_emu_file_error(GetLastError());
 		goto done;
 	}
 
@@ -132,7 +132,7 @@ file_error osd_rmdir(const char *dir)
 
 	if (!RemoveDirectory(tempstr))
 	{
-		filerr = win_error_to_mame_file_error(GetLastError());
+		filerr = win_error_to_emu_file_error(GetLastError());
 		goto done;
 	}
 
@@ -151,7 +151,7 @@ file_error osd_copyfile(const char *destfile, const char *srcfile)
 {
 	// wrapper for win_copy_file_utf8()
 	if (!win_copy_file_utf8(srcfile, destfile, TRUE))
-		return win_error_to_mame_file_error(GetLastError());
+		return win_error_to_emu_file_error(GetLastError());
 
 	return FILERR_NONE;
 }
@@ -176,11 +176,11 @@ static void ATTR_PRINTF(3,4) process_error(struct messdocs_state *state, const c
 	}
 	else
 	{
-		msg = XML_ErrorString(XML_GetErrorCode(state->parser));
+		msg = XML_ErrorString(XML_GetErrorCode(state->m_parser));
 	}
 
-	fprintf(stderr, "%u:%s:%s\n", (unsigned) XML_GetCurrentLineNumber(state->parser), tag ? tag : "", msg);
-	state->error = 1;
+	fprintf(stderr, "%u:%s:%s\n", (unsigned) XML_GetCurrentLineNumber(state->m_parser), tag ? tag : "", msg);
+	state->m_error = 1;
 }
 
 
@@ -354,7 +354,7 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 
 	struct messdocs_state *state = (struct messdocs_state *) data;
 
-	if (state->depth == 0)
+	if (state->m_depth == 0)
 	{
 		/* help tag */
 		if (strcmp(tagname, "help"))
@@ -365,7 +365,7 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 
 		title = find_attribute(attributes, "title");
 		if (title)
-			state->title = pool_strdup_lib(state->pool, title);
+			state->m_title = pool_strdup_lib(state->m_pool, title);
 	}
 	else if (!strcmp(tagname, "topic"))
 	{
@@ -374,31 +374,31 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 		filepath = find_attribute(attributes, "filepath");
 
 		/* output TOC info */
-		fprintf(state->chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
-		fprintf(state->chm_toc, "\t\t<param name=\"Name\"  value=\"%s\">\n", name);
-		fprintf(state->chm_toc, "\t\t<param name=\"Local\" value=\"%s\">\n", filepath);
-		fprintf(state->chm_toc, "\t\t</OBJECT>\n");
+		fprintf(state->m_chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
+		fprintf(state->m_chm_toc, "\t\t<param name=\"Name\"  value=\"%s\">\n", name);
+		fprintf(state->m_chm_toc, "\t\t<param name=\"Local\" value=\"%s\">\n", filepath);
+		fprintf(state->m_chm_toc, "\t\t</OBJECT>\n");
 
 		/* copy file */
-		copy_file_to_dest(state->dest_dir, state->toc_dir, filepath);
+		copy_file_to_dest(state->m_dest_dir, state->m_toc_dir, filepath);
 
-		if (!state->default_topic)
-			state->default_topic = pool_strdup_lib(state->pool, filepath);
+		if (!state->m_default_topic)
+			state->m_default_topic = pool_strdup_lib(state->m_pool, filepath);
 	}
 	else if (!strcmp(tagname, "folder"))
 	{
 		/* folder tag */
 		name = find_attribute(attributes, "text");
-		fprintf(state->chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
-		fprintf(state->chm_toc, "\t\t<param name=\"Name\" value=\"%s\">\n", name);
-		fprintf(state->chm_toc, "\t\t</OBJECT>\n");
-		fprintf(state->chm_toc, "\t\t<UL>\n");
+		fprintf(state->m_chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
+		fprintf(state->m_chm_toc, "\t\t<param name=\"Name\" value=\"%s\">\n", name);
+		fprintf(state->m_chm_toc, "\t\t</OBJECT>\n");
+		fprintf(state->m_chm_toc, "\t\t<UL>\n");
 	}
 	else if (!strcmp(tagname, "file"))
 	{
 		/* file tag */
 		filepath = find_attribute(attributes, "filepath");
-		copy_file_to_dest(state->dest_dir, state->toc_dir, filepath);
+		copy_file_to_dest(state->m_dest_dir, state->m_toc_dir, filepath);
 	}
 	else if (!strcmp(tagname, "datfile"))
 	{
@@ -407,7 +407,7 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 		destpath = find_attribute(attributes, "destpath");
 		datfile_foldername = find_attribute(attributes, "text");
 
-		datfile_path = make_path(state->toc_dir, srcpath);
+		datfile_path = make_path(state->m_toc_dir, srcpath);
 		datfile = fopen(datfile_path, "r");
 		if (!datfile)
 		{
@@ -415,7 +415,7 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 			return;
 		}
 
-		snprintf(buf, ARRAY_LENGTH(buf), "%s", state->dest_dir);
+		snprintf(buf, ARRAY_LENGTH(buf), "%s", state->m_dest_dir);
 		combine_path(buf, ARRAY_LENGTH(buf), destpath);
 		osd_mkdir(buf);
 
@@ -439,16 +439,16 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 					s = strchr(buf, '=');
 					s = s ? s + 1 : &buf[strlen(buf)];
 
-					sysinfo_array = (system_info*)pool_realloc_lib(state->pool, sysinfo_array, sizeof(*sysinfo_array) * (sys_count + 1));
+					sysinfo_array = (system_info*)pool_realloc_lib(state->m_pool, sysinfo_array, sizeof(*sysinfo_array) * (sys_count + 1));
 					if (!sysinfo_array)
 						goto outofmemory;
-					sysinfo_array[sys_count].name = pool_strdup_lib(state->pool, s);
+					sysinfo_array[sys_count].name = pool_strdup_lib(state->m_pool, s);
 					sysinfo_array[sys_count].desc = NULL;
 
 					sysname = sysinfo_array[sys_count].name;
 					sys_count++;
 
-					snprintf(sysfilename, sizeof(sysfilename), "%s%s%s%s%s.htm", state->dest_dir, PATH_SEPARATOR, destpath, PATH_SEPARATOR, s);
+					snprintf(sysfilename, sizeof(sysfilename), "%s%s%s%s%s.htm", state->m_dest_dir, PATH_SEPARATOR, destpath, PATH_SEPARATOR, s);
 
 					if (sysfile)
 						fclose(sysfile);
@@ -484,7 +484,7 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 					fprintf(sysfile, "<p><i>(directory: %s)</i></p>\n", sysname);
 
 					if (!sysinfo_array[sys_count-1].desc)
-						sysinfo_array[sys_count-1].desc = pool_strdup_lib(state->pool, heading);
+						sysinfo_array[sys_count-1].desc = pool_strdup_lib(state->m_pool, heading);
 
 					free(heading);
 				}
@@ -534,23 +534,23 @@ static void start_handler(void *data, const XML_Char *tagname, const XML_Char **
 		/* now write out all toc */
 		qsort(sysinfo_array, sys_count, sizeof(*sysinfo_array), str_compare);
 
-		fprintf(state->chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
-		fprintf(state->chm_toc, "\t\t<param name=\"Name\" value=\"%s\">\n", datfile_foldername);
-		fprintf(state->chm_toc, "\t\t</OBJECT>\n");
-		fprintf(state->chm_toc, "\t\t<UL>\n");
+		fprintf(state->m_chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
+		fprintf(state->m_chm_toc, "\t\t<param name=\"Name\" value=\"%s\">\n", datfile_foldername);
+		fprintf(state->m_chm_toc, "\t\t</OBJECT>\n");
+		fprintf(state->m_chm_toc, "\t\t<UL>\n");
 
 		for (i = 0; i < sys_count; i++)
 		{
-			fprintf(state->chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
-			fprintf(state->chm_toc, "\t\t<param name=\"Name\" value=\"%s\">\n", sysinfo_array[i].desc);
-			fprintf(state->chm_toc, "\t\t<param name=\"Local\" value=\"%s%s%s.htm\">\n", destpath, PATH_SEPARATOR, sysinfo_array[i].name);
-			fprintf(state->chm_toc, "\t\t</OBJECT>\n");
+			fprintf(state->m_chm_toc, "\t<LI> <OBJECT type=\"text/sitemap\">\n");
+			fprintf(state->m_chm_toc, "\t\t<param name=\"Name\" value=\"%s\">\n", sysinfo_array[i].desc);
+			fprintf(state->m_chm_toc, "\t\t<param name=\"Local\" value=\"%s%s%s.htm\">\n", destpath, PATH_SEPARATOR, sysinfo_array[i].name);
+			fprintf(state->m_chm_toc, "\t\t</OBJECT>\n");
 		}
 
-		fprintf(state->chm_toc, "\t\t</UL>\n");
+		fprintf(state->m_chm_toc, "\t\t</UL>\n");
 	}
 
-	state->depth++;
+	state->m_depth++;
 
 outofmemory:
 	if (datfile_path)
@@ -567,11 +567,11 @@ static void end_handler(void *data, const XML_Char *name)
 {
 	struct messdocs_state *state = (struct messdocs_state *) data;
 
-	state->depth--;
+	state->m_depth--;
 
 	if (!strcmp(name, "folder"))
 	{
-		fprintf(state->chm_toc, "\t</UL>\n");
+		fprintf(state->m_chm_toc, "\t</UL>\n");
 	}
 }
 
@@ -639,7 +639,7 @@ int messdocs(const char *toc_filename, const char *dest_dir, const char *help_pr
 	XML_Memory_Handling_Suite memcallbacks;
 
 	memset(&state, 0, sizeof(state));
-	state.pool = pool_alloc_lib(NULL);
+	state.m_pool = pool_alloc_lib(NULL);
 
 	/* open the DOC */
 	in = fopen(toc_filename, "r");
@@ -650,61 +650,61 @@ int messdocs(const char *toc_filename, const char *dest_dir, const char *help_pr
 	}
 
 	/* figure out the TOC directory */
-	state.toc_dir = pool_strdup_lib(state.pool, toc_filename);
-	if (!state.toc_dir)
+	state.m_toc_dir = pool_strdup_lib(state.m_pool, toc_filename);
+	if (!state.m_toc_dir)
 		goto outofmemory;
-	for (i = strlen(state.toc_dir) - 1; (i > 0) && !osd_is_path_separator(state.toc_dir[i]); i--)
-		state.toc_dir[i] = '\0';
+	for (i = strlen(state.m_toc_dir) - 1; (i > 0) && !osd_is_path_separator(state.m_toc_dir[i]); i--)
+		state.m_toc_dir[i] = '\0';
 
 	/* clean the target directory */
 	rmdir_recursive(dest_dir);
 	osd_mkdir(dest_dir);
 
 	/* create the help contents file */
-	s = (char*)pool_malloc_lib(state.pool, strlen(dest_dir) + 1 + strlen(help_project_filename) + 1);
+	s = (char*)pool_malloc_lib(state.m_pool, strlen(dest_dir) + 1 + strlen(help_project_filename) + 1);
 	if (!s)
 		goto outofmemory;
 	strcpy(s, dest_dir);
 	strcat(s, PATH_SEPARATOR);
 	strcat(s, help_contents_filename);
-	state.chm_toc = fopen(s, "w");
-	state.dest_dir = dest_dir;
-	if (!state.chm_toc)
+	state.m_chm_toc = fopen(s, "w");
+	state.m_dest_dir = dest_dir;
+	if (!state.m_chm_toc)
 	{
 		fprintf(stderr, "Cannot open file %s\n", s);
 		goto error;
 	}
 
-	fprintf(state.chm_toc, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\"\n");
-	fprintf(state.chm_toc, "<HTML>\n");
-	fprintf(state.chm_toc, "<HEAD>\n");
-	fprintf(state.chm_toc, "</HEAD>\n");
-	fprintf(state.chm_toc, "<BODY>\n");
-	fprintf(state.chm_toc, "<OBJECT type=\"text/site properties\">\n");
-	fprintf(state.chm_toc, "\t<param name=\"Window Styles\" value=\"0x800625\">\n");
-	fprintf(state.chm_toc, "\t<param name=\"ImageType\" value=\"Folder\">\n");
-	fprintf(state.chm_toc, "\t<param name=\"Font\" value=\"Arial,8,0\">\n");
-	fprintf(state.chm_toc, "</OBJECT>\n");
-	fprintf(state.chm_toc, "<UL>\n");
+	fprintf(state.m_chm_toc, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML//EN\"\n");
+	fprintf(state.m_chm_toc, "<HTML>\n");
+	fprintf(state.m_chm_toc, "<HEAD>\n");
+	fprintf(state.m_chm_toc, "</HEAD>\n");
+	fprintf(state.m_chm_toc, "<BODY>\n");
+	fprintf(state.m_chm_toc, "<OBJECT type=\"text/site properties\">\n");
+	fprintf(state.m_chm_toc, "\t<param name=\"Window Styles\" value=\"0x800625\">\n");
+	fprintf(state.m_chm_toc, "\t<param name=\"ImageType\" value=\"Folder\">\n");
+	fprintf(state.m_chm_toc, "\t<param name=\"Font\" value=\"Arial,8,0\">\n");
+	fprintf(state.m_chm_toc, "</OBJECT>\n");
+	fprintf(state.m_chm_toc, "<UL>\n");
 
 	/* create the XML parser */
 	memcallbacks.malloc_fcn = expat_malloc;
 	memcallbacks.realloc_fcn = expat_realloc;
 	memcallbacks.free_fcn = expat_free;
-	state.parser = XML_ParserCreate_MM(NULL, &memcallbacks, NULL);
-	if (!state.parser)
+	state.m_parser = XML_ParserCreate_MM(NULL, &memcallbacks, NULL);
+	if (!state.m_parser)
 		goto outofmemory;
 
-	XML_SetUserData(state.parser, &state);
-	XML_SetElementHandler(state.parser, start_handler, end_handler);
-	XML_SetCharacterDataHandler(state.parser, data_handler);
+	XML_SetUserData(state.m_parser, &state);
+	XML_SetElementHandler(state.m_parser, start_handler, end_handler);
+	XML_SetCharacterDataHandler(state.m_parser, data_handler);
 
 	do
 	{
 		len = (int) fread(buf, 1, sizeof(buf), in);
 		done = feof(in);
 
-		if (XML_Parse(state.parser, buf, len, done) == XML_STATUS_ERROR)
+		if (XML_Parse(state.m_parser, buf, len, done) == XML_STATUS_ERROR)
 		{
 			process_error(&state, NULL, NULL);
 			break;
@@ -712,12 +712,12 @@ int messdocs(const char *toc_filename, const char *dest_dir, const char *help_pr
 	}
 	while(!done);
 
-	fprintf(state.chm_toc, "</UL>\n");
-	fprintf(state.chm_toc, "</BODY></HTML>");
-	fclose(state.chm_toc);
+	fprintf(state.m_chm_toc, "</UL>\n");
+	fprintf(state.m_chm_toc, "</BODY></HTML>");
+	fclose(state.m_chm_toc);
 
 	/* create the help project file */
-	s = (char*)pool_malloc_lib(state.pool, strlen(dest_dir) + 1 + strlen(help_project_filename) + 1);
+	s = (char*)pool_malloc_lib(state.m_pool, strlen(dest_dir) + 1 + strlen(help_project_filename) + 1);
 	if (!s)
 		goto outofmemory;
 	strcpy(s, dest_dir);
@@ -733,33 +733,29 @@ int messdocs(const char *toc_filename, const char *dest_dir, const char *help_pr
 	fprintf(chm_hhp, "[OPTIONS]\n");
 	fprintf(chm_hhp, "Compiled file=%s\n", help_filename);
 	fprintf(chm_hhp, "Contents file=%s\n", help_contents_filename);
-	fprintf(chm_hhp, "Default topic=%s\n", state.default_topic);
+	fprintf(chm_hhp, "Default topic=%s\n", state.m_default_topic);
 	fprintf(chm_hhp, "Language=0x409 English (United States)\n");
-	fprintf(chm_hhp, "Title=%s\n", state.title);
+	fprintf(chm_hhp, "Title=%s\n", state.m_title);
 	fprintf(chm_hhp, "\n");
 	fclose(chm_hhp);
 
 	/* finish up */
-	XML_ParserFree(state.parser);
+	XML_ParserFree(state.m_parser);
 	fclose(in);
-	pool_free_lib(state.pool);
-	return state.error ? -1 : 0;
+	pool_free_lib(state.m_pool);
+	return state.m_error ? -1 : 0;
 
 outofmemory:
 	fprintf(stderr, "Out of memory");
 error:
-	if (state.chm_toc) fclose(state.chm_toc);
+	if (state.m_chm_toc) fclose(state.m_chm_toc);
 	if (in)	fclose(in);
 	return -1;
 }
 
 
 
-#ifdef _WIN32
-int CLIB_DECL utf8_main(int argc, char **argv)
-#else
 int CLIB_DECL main(int argc, char **argv)
-#endif
 {
 	if (argc != 3)
 	{

@@ -1,3 +1,175 @@
+0.142
+
+New System Drivers Supported:
+-----------------------------
+- Victor Wondermega M2 (not working) [Justin Kerk]
+- Ferguson Big Board [Miodrag Milanovic]
+- Sanyo MBC-550, MBC-555 (boots but partial keyboard) [Phill Harvey-Smith]
+- Fujitsu FM-Towns II UX (not working) [bernhardh, Anna Wu, Barry Rodewald]
+- Fujitsu FM-Towns II HR (not working) [bernhardh, Anna Wu, Barry Rodewald]
+- Mikrosha-86RK [Miodrag Milanovic]
+- IBM PC 5155 [Lord Nightmare]
+- EA Car Computer (not working) [Robbbert]
+- 68k Single Board Computer [Robbbert]
+- PB-1000, PB2000c (not fully working) [Sandro Ronco]
+- DataSlim 2 (not working) [Sandro Ronco]
+
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- ZRT80 terminal [Robbbert]
+
+
+
+Skeleton drivers:
+-----------------
+- Applix 1616
+- Commodore PC 30 III
+- Ferguson Big Board II
+- Hewlett-Packard HP9816
+- IBM PC 5140 Convertible
+- IBM PC JX
+- Olivetti M24
+- Olivetti M240
+- PDP-11 [Unibus](M9301-YA)
+- PDP-11 [Unibus](M9312)
+- PDP-11 [Q-BUS] (M7195 - MXV11)
+- SacState 8008
+- Savia 84
+- Terak 8510A
+
+
+
+System Driver Changes:
+----------------------
+- [ABC802] Connected to ABC99 keyboard, removed keyboard hack. [Curt Coder]
+
+- [ABC806] Connected to ABC99 keyboard, removed keyboard hack. [Curt Coder]
+
+- [ABC1600] Implemented video and ABC 99 keyboard. [Curt Coder]
+
+- [AC1] Added cassette support. [Robbbert]
+
+- [ADAM] Added dumps of the internal M6801 ROMs. [KevinP]
+
+- [ADAM] Rewrote driver to use the M6801 CPUs. Currently the only working
+  peripheral is the keyboard. [Curt Coder]
+
+- [ASTROCDE] Add options for several RAM expansions.  Some features
+  are not implemented yet, as noted in comments.  Extended BASIC carts
+  are now playable.  [ranger_lennier]
+
+- [BBC] Made the SAA505x implementation a device.  [Atari Ace]
+
+- [BW2] Set proper FDC type and removed floppy side select hack. [Curt Coder]
+
+- [Einstein] Fixed addressing of character ROM for 80 column mode, added
+  dump of 80 column rom, fixed bit 0 of status register to reflect 6845
+  DE line. 80 Column interface is now usable. [Phill Harvey-Smith]
+
+- [GBA] Fixed EEPROM detection for "Banjo-Kazooie" and "Custom Robo GX".
+  [Tim Schuerewegen]
+
+- [GBA] Fixed an ARM7 carry flag bug. This fixes the palette corruption
+  in "Banjo-Kazooie". [Tim Schuerewegen]
+
+- [GBA] Fixed timer overflow/reload bugs. This fixes the lockups in
+  "2 in 1 - Dragon Ball Z 1 and 2", "Aggressive Inline", "Bibi und Tina"
+  and probably other games too. [Tim Schuerewegen]
+
+- [GBA] Implemented an undefined ARM7 THUMB instruction used by "Moto GP".
+  [Tim Schuerewegen]
+
+- [GBA] Allow reading of the BLDALPHA register. This fixes the lockup in
+  "Donkey Kong Country". [Tim Schuerewegen]
+
+- [GBA] Implemented FLASH bank select command. This fixes the NVRAM issue in
+  "Super Mario Advance 4". [Tim Schuerewegen]
+
+- [GBA] Generate SIO data transfer completion interrupt. This fixes the lockup
+  in "Digimon Racing". [Tim Schuerewegen]
+
+- [GBA] Removed "Metroid Fusion" DMA hack. This fixes the lockup in
+  "Caesar's Palace Advance". [Tim Schuerewegen]
+
+- [GENEVE] Made SRAM size configurable. Added MEMEX emulation. Genmod is now
+  a mode of the Geneve, not a separate system. Fixed Genmod. [Michael Zapf]
+ 
+- [M5] Added FD-5 floppy interface ROM, renamed driver to m5. [Curt Coder]
+
+- [MEKD2] Fixed keyboard. System is usable except for cassette. [Robbbert]
+
+- [PCFX] Added BIOS v1.01.  [trap15]
+
+- [PDP1] Made the CRT implementation a device.[Atari Ace]   Made papertape,
+  cylinder and printer into devices and added back in (not working) [Robbbert]
+
+- [PIPPIN] Added pre release rom
+
+- [PSX] Added CD-ROM support.  Some commercial games work well.  Some don't.
+        [pSXAuthor, R. Belmont]
+
+- [PSX] Added memory card support, not working yet. [pSXAuthor, R. Belmont]
+
+- [PV1000] 4 new cartridge dumps for the software list.  [anondumper]
+
+- [QL]  Added support for Miracle Systems Trump Card disk and memory
+        interface 
+	Added support for Sandy SuperDisk disk interface
+	Fixed up WD177x so disks can be formatted (single sided only)
+        [Phill Harvey-Smith]
+
+- [SNES] uPD96050 DSP (aka Seta ST-010) is now emulated instead of
+         simulated. [R. Belmont, byuu, Dr. Decapitator]
+
+- [STE] Added a proper dump of some French TOS ROM. [ElBarto]
+
+- [TI] Converted strata/733_asr/911_vdt to devices.  [Atari Ace]
+
+- [X68K] Refactored to use new MC68901 device. [Curt Coder]
+
+- [TX0] Made papertape, printer and magtape into devices and added
+  back in (not working) [Robbbert]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.142.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Added support for a new template to -snapname to use software names for 
+  snapshots. It is now possible to use %d_XXXX to name snaps after the name
+  of the file mounted in the device XXXX, being XXXX the brief name of any
+  device. E.g. you can use "-snapname %d_cart" to use the name of the game 
+  mounted in the cartslot, or "-snapname %d_flop2" to use the name of the game 
+  mounted in the second floppy drive, etc. If you are loading software through 
+  software lists, its shortname will be used; if you are using the fullpath of 
+  the software, its filename is used. Any combination of the new template with 
+  the old "/", "%g" and "%i" templates is supported as well. Notice that if you 
+  specify an invalid device, or if you have no software mounted in the chosen 
+  device, MESS will revert to the default template "%g/%i". [Fabio Priuli]
+
+- softlists: Added new lists, new dumps and info [anondumper, Barry Rodewald, 
+  Curt Coder, MESSfan, Fabio Priuli]
+
+- Cleanups; static qualifiers, added driver_states, consistent get_safe_token
+  usage, reduced calls to ram_get_ptr() and region(...)->base().  [Atari Ace]
+
+- [WD17XX] Added device types WD1795, WD1797, WD2795, and fixed 
+   wd17xx_has_side_select(). [Curt Coder]
+
+- [WD17XX] Set complete command delay to 16/32 usec based on DDEN. [Curt Coder]
+
+
+
 0.141
 
 New System Drivers Supported:
@@ -9,7 +181,8 @@ New System Drivers Supported:
 - Elektronika MC-1502 (not working) [Miodrag Milanovic]
 - Tiger Telematics Gizmondo (not working) [Tim Schuerewegen]
 - Hewlett Packard 49G+ Graphing Calculator (not working) [Tim Schuerewegen]
-
+- Zenith Data Systems SuperSport [incog]
+- Toshiba T2000SX
 
 
 Systems Promoted from GAME_NOT_WORKING:
@@ -38,6 +211,11 @@ Skeleton drivers:
 - Micro Craft Dimension 68000
 - Okean-240
 - NEC PC-8300 [Incog]
+- Peripheral Technology PT68K4
+- Osborne 4 Vixen [Curt Coder]
+- Wave Mate Jupiter II [Curt Coder]
+- Wave Mate Jupiter III [Curt Coder]
+
 
 
 System Driver Changes:
@@ -54,6 +232,11 @@ System Driver Changes:
 - [ABC800C] Added Color version ROMs. [Ola Andersson]
 
 - [ABC1600] Added ROM dumps. [Ola Andersson]
+
+- [ACE] Renamed jupiter to ace to avoid naming conflict with Wave Mate.
+  Cleaned up and modernized driver. Implemented the following expansions:
+  BoldField Joystick interface AC5, EME Soundbox AC4, EME Printer Board,
+  Big Mouth speech board. [Curt Coder]
 
 - [AMU880] Fixed keyboard. [Curt Coder]
 
@@ -123,6 +306,8 @@ System Driver Changes:
   selecting the Segascope views from the Video Options menu). The option 
   is turned off by default, being inaccurate [Enik Land, Fabio Priuli]
 
+- [ST] Fixed floppy reading. At least "Buggy Boy" and "First Age" demo load.
+
 - [SUPER80] Added a bios found in a scrapped machine. [Robbbert]
 
 - [SUPER80] Added printer support for the 'super80e' [Robbbert]
@@ -175,14 +360,16 @@ Source Changes:
 - Enabled loading ROMs from software lists to ROM_CART_LOAD entries. [Curt Coder]
 
 - Preliminary work done on these systems. Results vary from little difference
-  to almost fully working: beehive, c10, cd2650, ccs2422, czk80, d6800,
-  dolphin, et3400, h8, h19, k8915, mccpm, mekd2, mes, pipbug, qtsbc,
+  to almost fully working: beehive, c10, cd2650, ccs2422, czk80, d6800, dim68k,
+  dolphin, et3400, h8, h19, k8915, mccpm, mekd2, mes, okean240, pipbug, qtsbc,
   sapizcps3, selz80, sol20, uts20, vta2000, zsbc3 [Robbbert]
 
 - Added configurable cursor to the generic terminal device. [Robbbert]
 
 - Added rudimentary 8N1 serial I/O to the generic terminal device. [Curt Coder]
 
+
+- Refactored the MSM8251 device to use devcb. [Curt Coder]
 
 
 0.140

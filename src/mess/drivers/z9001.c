@@ -15,17 +15,17 @@ public:
 	z9001_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *videoram;
+	UINT8 *m_videoram;
 };
 
-static ADDRESS_MAP_START(z9001_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(z9001_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0xebff ) AM_RAM
-	AM_RANGE( 0xec00, 0xefff ) AM_RAM AM_BASE_MEMBER(z9001_state,videoram)
+	AM_RANGE( 0xec00, 0xefff ) AM_RAM AM_BASE_MEMBER(z9001_state,m_videoram)
 	AM_RANGE( 0xf000, 0xffff ) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( z9001_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( z9001_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
@@ -37,27 +37,27 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(z9001)
 {
-	cpu_set_reg(machine->device("maincpu"), Z80_PC, 0xf000);
+	cpu_set_reg(machine.device("maincpu"), Z80_PC, 0xf000);
 }
 
 static VIDEO_START( z9001 )
 {
 }
 
-static VIDEO_UPDATE( z9001 )
+static SCREEN_UPDATE( z9001 )
 {
-	z9001_state *state = screen->machine->driver_data<z9001_state>();
+	z9001_state *state = screen->machine().driver_data<z9001_state>();
 	UINT8 code;
 	UINT8 line;
 	int y, x, j, b;
 
-	UINT8 *gfx = screen->machine->region("gfx1")->base();
+	UINT8 *gfx = screen->machine().region("gfx1")->base();
 
 	for (y = 0; y < 24; y++)
 	{
 		for (x = 0; x < 40; x++)
 		{
-			code = state->videoram[y*40 + x];
+			code = state->m_videoram[y*40 + x];
 			for(j = 0; j < 8; j++ )
 			{
 				line = gfx[code*8 + j];
@@ -106,12 +106,13 @@ static MACHINE_CONFIG_START( z9001, z9001_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(40*8, 24*8)
     MCFG_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 24*8-1)
+    MCFG_SCREEN_UPDATE(z9001)
+
 	MCFG_GFXDECODE(z9001)
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(z9001)
-    MCFG_VIDEO_UPDATE(z9001)
 MACHINE_CONFIG_END
 
 /* ROM definition */

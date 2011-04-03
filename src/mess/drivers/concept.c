@@ -31,20 +31,20 @@
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "includes/concept.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "devices/harddriv.h"
+#include "imagedev/harddriv.h"
 #include "machine/mm58274c.h"
 #include "machine/wd17xx.h"
 
-static ADDRESS_MAP_START(concept_memmap, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(concept_memmap, AS_PROGRAM, 16)
 	AM_RANGE(0x000000, 0x000007) AM_ROM AM_REGION("maincpu", 0x010000)	/* boot ROM mirror */
 	AM_RANGE(0x000008, 0x000fff) AM_RAM										/* static RAM */
 	AM_RANGE(0x010000, 0x011fff) AM_ROM AM_REGION("maincpu", 0x010000)	/* boot ROM */
 	AM_RANGE(0x020000, 0x021fff) AM_ROM										/* macsbugs ROM (optional) */
 	AM_RANGE(0x030000, 0x03ffff) AM_READWRITE(concept_io_r,concept_io_w)	/* I/O space */
 
-	AM_RANGE(0x080000, 0x0fffff) AM_RAM AM_BASE_MEMBER(concept_state, videoram)/* AM_RAMBANK(2) */	/* DRAM */
+	AM_RANGE(0x080000, 0x0fffff) AM_RAM AM_BASE_MEMBER(concept_state, m_videoram)/* AM_RAMBANK(2) */	/* DRAM */
 ADDRESS_MAP_END
 
 /* init with simple, fixed, B/W palette */
@@ -120,7 +120,7 @@ static MACHINE_CONFIG_START( concept, concept_state )
 	MCFG_CPU_PROGRAM_MAP(concept_memmap)
 	MCFG_CPU_VBLANK_INT("screen", concept_interrupt)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 	MCFG_MACHINE_START(concept)
 
 	/* video hardware */
@@ -131,11 +131,12 @@ static MACHINE_CONFIG_START( concept, concept_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(720, 560)
 	MCFG_SCREEN_VISIBLE_AREA(0, 720-1, 0, 560-1)
+	MCFG_SCREEN_UPDATE(concept)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(concept)
-	MCFG_VIDEO_UPDATE(concept)
 
 	/* no sound? */
 

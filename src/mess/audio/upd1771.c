@@ -60,7 +60,6 @@
 **********************************************************************/
 
 #include "emu.h"
-#include "streams.h"
 #include "upd1771.h"
 
 
@@ -205,7 +204,7 @@ WRITE8_DEVICE_HANDLER( upd1771_w )
                 //logerror( "upd1771_w: ----------------noise state reset\n");
             }
             else
-                timer_adjust_oneshot( state->timer, ticks_to_attotime( 512, device->clock() ), 0 );
+                state->timer->adjust( attotime::from_ticks( 512, device->clock() ) );
 		}break;
 
         case 2:
@@ -224,7 +223,7 @@ WRITE8_DEVICE_HANDLER( upd1771_w )
                 state->index = 0;
             }
             else
-                timer_adjust_oneshot( state->timer, ticks_to_attotime( 512, device->clock() ), 0 );
+                state->timer->adjust( attotime::from_ticks( 512, device->clock() ) );
 
 		}break;
 
@@ -240,7 +239,7 @@ WRITE8_DEVICE_HANDLER( upd1771_w )
 				state->packet[0]=0;
 			}
 			else
-				timer_adjust_oneshot( state->timer, ticks_to_attotime( 512, device->clock() ), 0 );
+				state->timer->adjust( attotime::from_ticks( 512, device->clock() ) );
 
 		}break;
 
@@ -350,13 +349,13 @@ static DEVICE_START( upd1771c )
     /* resolve callbacks */
     devcb_resolve_write_line( &state->ack_out_func, &intf->ack_callback, device );
 
-    state->timer = timer_alloc( device->machine, upd1771c_callback, (void *)device );
+    state->timer = device->machine().scheduler().timer_alloc(FUNC(upd1771c_callback), (void *)device );
 
-    state->channel = stream_create( device, 0, 1, sample_rate, state, upd1771c_update );
+    state->channel = device->machine().sound().stream_alloc( *device, 0, 1, sample_rate, state, upd1771c_update );
 
-    state_save_register_device_item_array( device, 0, state->packet );
-    state_save_register_device_item(device, 0, state->index );
-    state_save_register_device_item(device, 0, state->expected_bytes );
+    device->save_item( NAME(state->packet) );
+    device->save_item(NAME(state->index) );
+    device->save_item(NAME(state->expected_bytes) );
 }
 
 

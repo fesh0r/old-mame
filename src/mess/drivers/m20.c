@@ -12,6 +12,25 @@ APB notes:
 
 0xfc903 checks for the string TEST at 0x3f4-0x3f6, does an int 0xfe if so, unknown purpose
 
+Error codes:
+Triangle 	Test CPU registers and instructions
+Triangle 	Test system RAM
+4 vertical lines 	Test CPU call and trap instructions
+Diamond 	Initialize screen and printer drivers
+EC0 	8255 parallel interface IC test failed
+EC1 	6845 CRT controller IC test failed
+EC2 	1797 floppy disk controller chip failed
+EC3 	8253 timer IC failed
+EC4 	8251 keyboard interface failed
+EC5 	8251 keyboard test failed
+EC6 	8259 PIC IC test failed
+EK0 	Keyboard did not respond
+Ek1 	Keyboard responds, but self test failed
+ED1 	Disk drive 1 test failed
+ED0 	Disk drive 0 test failed
+E10 	Non-vectored interrupt error
+E11 	Vectored interrupt error
+
 */
 
 #include "emu.h"
@@ -26,7 +45,7 @@ public:
 	m20_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT16 *vram;
+	UINT16 *m_vram;
 };
 
 
@@ -38,14 +57,14 @@ static VIDEO_START( m20 )
 {
 }
 
-static VIDEO_UPDATE( m20 )
+static SCREEN_UPDATE( m20 )
 {
-	m20_state *state = screen->machine->driver_data<m20_state>();
+	m20_state *state = screen->machine().driver_data<m20_state>();
 	int x,y,i;
 	UINT8 pen;
 	UINT32 count;
 
-	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine()));
 
 	count = (0);
 
@@ -55,10 +74,10 @@ static VIDEO_UPDATE( m20 )
 		{
 			for (i = 0; i < 16; i++)
 			{
-				pen = (state->vram[count]) >> (15 - i) & 1;
+				pen = (state->m_vram[count]) >> (15 - i) & 1;
 
 				if ((x + i) <= screen->visible_area().max_x && (y + 0) < screen->visible_area().max_y)
-					*BITMAP_ADDR32(bitmap, y, x + i) = screen->machine->pens[pen];
+					*BITMAP_ADDR32(bitmap, y, x + i) = screen->machine().pens[pen];
 			}
 
 			count++;
@@ -67,18 +86,18 @@ static VIDEO_UPDATE( m20 )
     return 0;
 }
 
-static ADDRESS_MAP_START(m20_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(m20_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x00000, 0x01fff ) AM_ROM AM_REGION("maincpu",0x10000)
 	AM_RANGE( 0x40000, 0x41fff ) AM_ROM AM_REGION("maincpu",0x10000) //mirror
 
-	AM_RANGE( 0x30000, 0x33fff ) AM_RAM AM_BASE_MEMBER(m20_state, vram)//base vram
+	AM_RANGE( 0x30000, 0x33fff ) AM_RAM AM_BASE_MEMBER(m20_state, m_vram)//base vram
 //  AM_RANGE( 0x34000, 0x37fff ) AM_RAM //extra vram for bitmap mode
 //  AM_RANGE( 0x20000, 0x2???? ) //work RAM?
 //
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( m20_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( m20_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x61, 0x61) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0x63, 0x63) AM_DEVWRITE("crtc", mc6845_register_w)
@@ -92,7 +111,7 @@ static ADDRESS_MAP_START( m20_io , ADDRESS_SPACE_IO, 8)
 	// 0x21?? / 0x21? - fdc ... seems to control the screen colors???
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(m20_apb_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(m20_apb_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x00000, 0x007ff ) AM_RAM
 	AM_RANGE( 0xf0000, 0xf7fff ) AM_RAM //mirrored?
@@ -100,7 +119,7 @@ static ADDRESS_MAP_START(m20_apb_mem, ADDRESS_SPACE_PROGRAM, 16)
 
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( m20_apb_io , ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START( m20_apb_io , AS_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	//0x4060 crtc address
 	//0x4062 crtc data
@@ -169,11 +188,12 @@ static MACHINE_CONFIG_START( m20, m20_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
     MCFG_SCREEN_SIZE(512, 256)
     MCFG_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+    MCFG_SCREEN_UPDATE(m20)
+
     MCFG_PALETTE_LENGTH(4)
 //  MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(m20)
-    MCFG_VIDEO_UPDATE(m20)
 
 	MCFG_GFXDECODE(m20)
 MACHINE_CONFIG_END

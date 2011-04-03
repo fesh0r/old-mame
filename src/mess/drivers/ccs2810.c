@@ -20,13 +20,13 @@ public:
 };
 
 
-static ADDRESS_MAP_START(ccs2810_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ccs2810_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xefff) AM_RAM
 	AM_RANGE(0xf000, 0xf7ff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( ccs2810_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( ccs2810_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x20, 0x27) AM_DEVREADWRITE("ins8250", ins8250_r, ins8250_w )
@@ -39,14 +39,14 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(ccs2810)
 {
-	cpu_set_reg(machine->device("maincpu"), Z80_PC, 0xf000);
+	cpu_set_reg(machine.device("maincpu"), Z80_PC, 0xf000);
 }
 
 static VIDEO_START( ccs2810 )
 {
 }
 
-static VIDEO_UPDATE( ccs2810 )
+static SCREEN_UPDATE( ccs2810 )
 {
     return 0;
 }
@@ -75,11 +75,12 @@ static MACHINE_CONFIG_START( ccs2810, ccs2810_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(ccs2810)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(ccs2810)
-    MCFG_VIDEO_UPDATE(ccs2810)
 
 	MCFG_INS8250_ADD( "ins8250", ccs2810_com_interface )
 MACHINE_CONFIG_END

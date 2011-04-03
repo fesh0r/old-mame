@@ -43,30 +43,30 @@
 #include "sound/speaker.h"
 #include "sound/wave.h"
 #include "includes/zx.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/zx81_p.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( zx80_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( zx80_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM AM_MIRROR(0x2000)
 	AM_RANGE(0xc000, 0xffff) AM_RAM_READ(zx_ram_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( zx80_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( zx80_io_map, AS_IO, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(zx80_io_r, zx80_io_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( zx81_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( zx81_io_map, AS_IO, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(zx81_io_r, zx81_io_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc8300_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pc8300_io_map, AS_IO, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(pc8300_io_r, zx81_io_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pow3000_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pow3000_io_map, AS_IO, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(pow3000_io_r, zx81_io_w)
 ADDRESS_MAP_END
 
@@ -398,14 +398,14 @@ static MACHINE_CONFIG_START( zx80, zx_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(ZX81_PIXELS_PER_SCANLINE, ZX81_PAL_SCANLINES)
 	MCFG_SCREEN_VISIBLE_AREA(0, ZX81_PIXELS_PER_SCANLINE-1, 0, ZX81_PAL_SCANLINES-1)
+	MCFG_SCREEN_UPDATE(generic_bitmapped)
+	MCFG_SCREEN_EOF(zx)
 
 	MCFG_GFXDECODE(zx80)
 	MCFG_PALETTE_LENGTH(4)
 	MCFG_PALETTE_INIT(zx80)
 
 	MCFG_VIDEO_START(zx)
-	MCFG_VIDEO_EOF(zx)
-	MCFG_VIDEO_UPDATE(generic_bitmapped)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -417,7 +417,7 @@ static MACHINE_CONFIG_START( zx80, zx_state )
 	MCFG_CASSETTE_ADD( "cassette", zx80_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1K")
 	MCFG_RAM_EXTRA_OPTIONS("16K")
 MACHINE_CONFIG_END
@@ -440,7 +440,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( ts1500, ts1000 )
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("16K")
 MACHINE_CONFIG_END
 
@@ -460,7 +460,7 @@ static MACHINE_CONFIG_DERIVED( pc8300, zx81 )
 	MCFG_PALETTE_INIT(zx80)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("16K")
 MACHINE_CONFIG_END
 
@@ -475,7 +475,7 @@ static MACHINE_CONFIG_DERIVED( pow3000, zx81 )
 	MCFG_PALETTE_INIT(zx80)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2K")
 	MCFG_RAM_EXTRA_OPTIONS("16K")
 MACHINE_CONFIG_END

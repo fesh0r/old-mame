@@ -20,8 +20,8 @@ public:
 	selz80_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 digit;
-	UINT8 segment;
+	UINT8 m_digit;
+	UINT8 m_segment;
 };
 
 
@@ -38,29 +38,29 @@ static READ8_HANDLER( selz80_01_r )
 
 static WRITE8_HANDLER( selz80_01_w )
 {
-	selz80_state *state = space->machine->driver_data<selz80_state>();
+	selz80_state *state = space->machine().driver_data<selz80_state>();
 	if ((data & 0xc0)==0x80)
 	{
-		state->digit = data & 7;
-		output_set_digit_value(state->digit, state->segment);
+		state->m_digit = data & 7;
+		output_set_digit_value(state->m_digit, state->m_segment);
 	}
 }
 
 static WRITE8_HANDLER( selz80_00_w )
 {
-	selz80_state *state = space->machine->driver_data<selz80_state>();
-	state->segment = BITSWAP8(data, 3, 2, 1, 0, 7, 6, 5, 4);
-	output_set_digit_value(state->digit, state->segment);
+	selz80_state *state = space->machine().driver_data<selz80_state>();
+	state->m_segment = BITSWAP8(data, 3, 2, 1, 0, 7, 6, 5, 4);
+	output_set_digit_value(state->m_digit, state->m_segment);
 }
 
-static ADDRESS_MAP_START(selz80_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(selz80_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x1fff) AM_RAM
 	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(selz80_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(selz80_io, AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(selz80_00_r,selz80_00_w)

@@ -82,17 +82,17 @@ public:
 	z88_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int frame_number;
-	int flash_invert;
-	blink_hw_t blink;
+	int m_frame_number;
+	int m_flash_invert;
+	blink_hw_t m_blink;
 };
 
 
 /*----------- defined in video/z88.c -----------*/
 
 extern PALETTE_INIT( z88 );
-extern VIDEO_UPDATE( z88 );
-extern VIDEO_EOF( z88 );
+extern SCREEN_UPDATE( z88 );
+extern SCREEN_EOF( z88 );
 
 
 #endif /* Z88_H_ */

@@ -6,8 +6,8 @@
 #include "emu.h"
 #include "machine/mboard.h"
 
-static void set_artwork(running_machine *machine );
-static void check_board_buttons(running_machine *machine );
+static void set_artwork(running_machine &machine );
+static void check_board_buttons(running_machine &machine );
 
 UINT8 mboard_lcd_invert;
 UINT8 mboard_key_select;
@@ -71,22 +71,22 @@ Example board scan:
 Starting postion and pawn on E2 is lifted
 
 
-mask: 7f 0111 1111	Line 8
-data:  0 0000 0000	all fields occupied
-mask: bf 1011 1111	Line 7
-data:  0 0000 0000	all fields occupied
-mask: df 1101 1111	Line 6
-data: ff 1111 1111	all fields empty
-mask: ef 1110 1111	Line 5
-data: ff 1111 1111	all fields empty
-mask: f7 1111 0111	Line 4
-data: ff 1111 1111	all fields empty
-mask: fb 1111 1011	Line 3
-data: ff 1111 1111	all fields empty
-mask: fd 1111 1101	Line 2
-data: 10 0001 0000	E2 is empty rest is occupied
-mask: fe 1111 1110	Line 1
-data:  0 0000 0000	all fields occupied
+mask: 7f 0111 1111  Line 8
+data:  0 0000 0000  all fields occupied
+mask: bf 1011 1111  Line 7
+data:  0 0000 0000  all fields occupied
+mask: df 1101 1111  Line 6
+data: ff 1111 1111  all fields empty
+mask: ef 1110 1111  Line 5
+data: ff 1111 1111  all fields empty
+mask: f7 1111 0111  Line 4
+data: ff 1111 1111  all fields empty
+mask: fb 1111 1011  Line 3
+data: ff 1111 1111  all fields empty
+mask: fd 1111 1101  Line 2
+data: 10 0001 0000  E2 is empty rest is occupied
+mask: fe 1111 1110  Line 1
+data:  0 0000 0000  all fields occupied
 
 
 */
@@ -110,12 +110,12 @@ data:  0 0000 0000	all fields occupied
 }
 
 
-static void write_board( running_machine *machine, UINT8 data)
+static void write_board( running_machine &machine, UINT8 data)
 {
 
 	Line18_REED=data;
 
-	if (read_board_flag && !strcmp(machine->m_game.name,"glasgow") ) //HACK
+	if (read_board_flag && !strcmp(machine.system().name,"glasgow") ) //HACK
 		Line18_LED = 0;
 	else
 		Line18_LED = data;
@@ -139,8 +139,8 @@ static void write_LED(UINT8 data)
 
 Example: turn led E2 on
 
-mask:  fd 1111 1101	Line 2
-data:  10 0001 0000	Line E
+mask:  fd 1111 1101 Line 2
+data:  10 0001 0000 Line E
 
 */
 
@@ -159,7 +159,7 @@ data:  10 0001 0000	Line E
 					if (!(Line18_LED & (1 << i_18)))	/* cleared bit */
 						output_set_led_value(LED, 1);
 					//else
-					//	output_set_led_value(LED, 0);
+					//  output_set_led_value(LED, 0);
 				}
 			}
 		}
@@ -196,41 +196,46 @@ READ32_HANDLER( mboard_read_board_32 )
 
 WRITE8_HANDLER( mboard_write_board_8 )
 {
-	write_board(space->machine,data);
+	write_board(space->machine(),data);
 	logerror("Write Board Port  Data = %02x\n  ",data);
 }
 
 WRITE16_HANDLER( mboard_write_board_16 )
 {
-	if (data && 0xff) write_board(space->machine,data);
+	if (data & 0xff) write_board(space->machine(),data);
 	logerror("write board 16 %08x\n",data);
-	write_board(space->machine,data>>8);
+	write_board(space->machine(),data>>8);
 }
 
 WRITE32_HANDLER( mboard_write_board_32 )
 {
-	data |= data << 24;
+//	data |= data << 24;
+//printf("write board %08x %08x\n",offset,data);
 	logerror("write board 32 o: %08x d: %08x\n",offset,data);
-	write_board(space->machine,data>>24);
+	if (offset) write_board(space->machine(),data);
+	else write_board(space->machine(),data>>24);
 }
 
 WRITE8_HANDLER( mboard_write_LED_8 )
 {
 	write_LED(data);
-	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(7));
+	device_spin_until_time(&space->device(), attotime::from_usec(7));
 }
 
 WRITE16_HANDLER( mboard_write_LED_16 )
 {
 	 write_LED(data >> 8);
-	 cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(9));
+	 device_spin_until_time(&space->device(), attotime::from_usec(9));
 }
 
 WRITE32_HANDLER( mboard_write_LED_32 )
 {
-	data = data | data << 24;
-	write_LED(data >> 24);
-	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(20));
+//	data = data | data << 24;
+//printf("write LED %08x %08x\n",offset,data);
+	if (offset) write_LED(data);
+	else write_LED(data >> 24);
+	logerror("write LED   32 o: %08x d: %08x\n",offset,data);
+//	device_spin_until_time(&space->device(), ATTOTIME_IN_USEC(20));
 }
 
 
@@ -251,11 +256,11 @@ static STATE_POSTLOAD( m_board_postload )
 
 }
 
-void mboard_savestate_register(running_machine *machine)
+void mboard_savestate_register(running_machine &machine)
 {
 	state_save_register_global_array(machine,save_board);
-	state_save_register_postload(machine,m_board_postload,NULL);
-	state_save_register_presave(machine,m_board_presave,NULL);
+	machine.state().register_postload(m_board_postload,NULL);
+	machine.state().register_presave(m_board_presave,NULL);
 }
 
 void mboard_set_board( void )
@@ -272,7 +277,7 @@ static void clear_board( void )
 		m_board[i]=EM;
 }
 
-static void set_artwork ( running_machine *machine )
+static void set_artwork ( running_machine &machine )
 {
 	int i;
 	for (i=0;i<64;i++)
@@ -286,14 +291,14 @@ void mboard_set_border_pieces (void)
 		output_set_indexed_value("Q", i, border_pieces[i]);
 }
 
-TIMER_CALLBACK( mboard_update_artwork )
+TIMER_DEVICE_CALLBACK( mboard_update_artwork )
 {
-	check_board_buttons(machine);
-	set_artwork(machine);
+	check_board_buttons(timer.machine());
+	set_artwork(timer.machine());
 	mboard_set_border_pieces();
 }
 
-static void check_board_buttons ( running_machine *machine )
+static void check_board_buttons ( running_machine &machine )
 {
 	int field;
 	int i;
@@ -438,4 +443,115 @@ static void check_board_buttons ( running_machine *machine )
 
 }
 
+extern INPUT_PORTS_START( chessboard )
 
+	PORT_START("LINE2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE4")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE5")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE6")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE7")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE8")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_START("LINE9")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)
+
+	PORT_START("LINE10")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD)
+
+	PORT_START("B_WHITE")
+	PORT_BIT(0x01,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x02,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x04,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x08,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x010, IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x020, IP_ACTIVE_HIGH, IPT_KEYBOARD)
+
+	PORT_START("B_BLACK")
+	PORT_BIT(0x01,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x02,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x04,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x08,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x010, IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x020, IP_ACTIVE_HIGH, IPT_KEYBOARD)
+
+	PORT_START("B_BUTTONS")
+	PORT_BIT(0x01,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+	PORT_BIT(0x02,  IP_ACTIVE_HIGH, IPT_KEYBOARD)
+
+	PORT_START("MOUSE_X")
+	PORT_BIT( 0xffff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100)
+
+	PORT_START("MOUSE_Y")
+	PORT_BIT( 0xffff, 0x00, IPT_MOUSE_Y ) PORT_SENSITIVITY(100)
+
+	PORT_START("BUTTON_L")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CODE(MOUSECODE_BUTTON1) PORT_NAME("left button")
+
+	PORT_START("BUTTON_R")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CODE(MOUSECODE_BUTTON2) PORT_NAME("right button")
+
+
+INPUT_PORTS_END

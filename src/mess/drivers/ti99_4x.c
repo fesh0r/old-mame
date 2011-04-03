@@ -26,7 +26,7 @@
 #include "sound/wave.h"
 #include "video/v9938.h"
 #include "machine/tms9901.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 
 #include "machine/ti99/tiboard.h"
 
@@ -53,7 +53,7 @@ public:
 /*
     Memory map
 */
-static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(memmap, AS_PROGRAM, 16)
 	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAM			/*RAM PAD, mirrored 4 times*/
@@ -62,7 +62,7 @@ static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE("datamux_16_8", ti99_dmux_r, ti99_dmux_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(memmap_4ev, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(memmap_4ev, AS_PROGRAM, 16)
 	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAM			/*RAM PAD, mirrored 4 times*/
@@ -74,7 +74,7 @@ ADDRESS_MAP_END
 /*
     CRU map
 */
-static ADDRESS_MAP_START(cru_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(cru_map, AS_IO, 8)
 	AM_RANGE(0x0000, 0x007f) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0000, 0x01ff) AM_DEVREAD("crubus", ti99_crubus_r )
 
@@ -88,7 +88,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( gk_changed )
 {
-	device_t *cartsys = field->port->machine->device("gromport");
+	device_t *cartsys = field->port->machine().device("gromport");
 	set_gk_switches(cartsys, (UINT8)((UINT64)param&0x07), newval);
 }
 
@@ -99,7 +99,7 @@ static INPUT_PORTS_START(ti99_4a)
 	PORT_CONFNAME( 0x07, 0x01, "RAM extension" )
 		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 		PORT_CONFSETTING(    0x01, "Console 32 KiB (16 bit)" )
-		PORT_CONFSETTING(    0x02, "TI Memexp card 32 KiB" )
+		PORT_CONFSETTING(    0x02, "TI 32 KiB card" )
 		PORT_CONFSETTING(    0x03, "Super AMS 1MiB" )
 		PORT_CONFSETTING(    0x07, "Myarc 512 KiB" )
 
@@ -143,6 +143,12 @@ static INPUT_PORTS_START(ti99_4a)
 	PORT_CONFNAME( 0x01, 0x00, "Mouse support" )
 		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
 		PORT_CONFSETTING(    0x01, "Mechatronics Mouse" )
+
+	// We do not want to show this setting; makes only sense for Geneve
+	PORT_START( "MODE" )
+	PORT_CONFNAME( 0x01, 0x00, "Ext. cards modification" ) PORT_CONDITION( "HFDCDIP", 0x0f, PORTCOND_EQUALS, GM_NEVER )
+		PORT_CONFSETTING(    0x00, "Standard" )
+		PORT_CONFSETTING(    GENMOD, "GenMod" )
 
 	PORT_START( "CARTSLOT" )
 	PORT_DIPNAME( 0x0f, CART_AUTO, "Cartridge slot" )
@@ -328,6 +334,11 @@ static INPUT_PORTS_START(ti99_4ev)
 		PORT_DIPSETTING(    0x00, "DIP" )
 		PORT_DIPSETTING(    0x01, "NOVRAM" )
 
+	PORT_START( "V9938-MEM" )
+	PORT_CONFNAME( 0x01, 0x00, "V9938 RAM size" )
+		PORT_CONFSETTING(	0x00, "128 KiB" )
+		PORT_CONFSETTING(	0x01, "192 KiB" )
+
 INPUT_PORTS_END
 
 #define JOYSTICK_DELTA			10
@@ -338,12 +349,10 @@ static INPUT_PORTS_START(ti99_4)
 
 	PORT_START( "RAM" )	/* config */
 	PORT_CONFNAME( 0x07, 0x01, "RAM extension" )
+		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 		PORT_CONFSETTING(    0x01, "Console 32 KiB (16 bit)" )
-		PORT_CONFSETTING(    0x02, "Texas Instruments 32 KiB" )
+		PORT_CONFSETTING(    0x02, "TI 32 KiB card" )
 		PORT_CONFSETTING(    0x03, "Super AMS 1MiB" )
-		PORT_CONFSETTING(    0x04, "Foundation 128 KiB" )
-		PORT_CONFSETTING(    0x05, "Foundation 512 KiB" )
-		PORT_CONFSETTING(    0x06, "Myarc 128 KiB" )
 		PORT_CONFSETTING(    0x07, "Myarc 512 KiB" )
 
 	PORT_START( "SPEECH" )
@@ -429,6 +438,12 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_DIPSETTING( 0xaa, "40 track, 8 ms")
 		PORT_DIPSETTING( 0x55, "80 track, 2 ms")
 		PORT_DIPSETTING( 0xff, "80 track HD, 2 ms")
+
+	// We do not want to show this setting; makes only sense for Geneve
+	PORT_START( "MODE" )
+	PORT_CONFNAME( 0x01, 0x00, "Ext. cards modification" ) PORT_CONDITION( "HFDCDIP", 0x0f, PORTCOND_EQUALS, GM_NEVER )
+		PORT_CONFSETTING(    0x00, "Standard" )
+		PORT_CONFSETTING(    GENMOD, "GenMod" )
 
 	PORT_START( "DRVSPD" )
 	PORT_CONFNAME( 0x01, 0x01, "Floppy and HD speed" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
@@ -980,13 +995,13 @@ MACHINE_CONFIG_END
 
 INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
 {
-	v9938_interrupt(device->machine, 0);
+	v9938_interrupt(device->machine(), 0);
 }
 
 // Unused
 TIMER_DEVICE_CALLBACK( ti99_4ev_scanline_interrupt )
 {
-	v9938_interrupt(timer.machine, 0);
+	v9938_interrupt(timer.machine(), 0);
 }
 
 static MACHINE_CONFIG_START( ti99_4ev_60hz, ti99_4x_state )

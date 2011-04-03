@@ -31,83 +31,83 @@ For BIOS CRC confirmation
 #include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 
 
 class pv2000_state : public driver_device
 {
 public:
 	pv2000_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { last_state = 0; }
+		: driver_device(machine, config) { m_last_state = 0; }
 
-	int		last_state;
-	UINT8	keyb_column;
-	UINT8	cass_conf;
-	UINT8	key_pressed;
+	int		m_last_state;
+	UINT8	m_keyb_column;
+	UINT8	m_cass_conf;
+	UINT8	m_key_pressed;
 };
 
 
 static WRITE8_HANDLER( pv2000_cass_conf_w )
 {
-	pv2000_state *state = space->machine->driver_data<pv2000_state>();
+	pv2000_state *state = space->machine().driver_data<pv2000_state>();
 
-	logerror( "%s: pv2000_cass_conf_w %02x\n", cpuexec_describe_context(space->machine), data );
+	logerror( "%s: pv2000_cass_conf_w %02x\n", space->machine().describe_context(), data );
 
-	state->cass_conf = data & 0x0f;
+	state->m_cass_conf = data & 0x0f;
 
-	if ( state->cass_conf & 0x01 )
-		cassette_change_state( space->machine->device("cassette"), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR );
+	if ( state->m_cass_conf & 0x01 )
+		cassette_change_state( space->machine().device("cassette"), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR );
 	else
-		cassette_change_state( space->machine->device("cassette"), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR );
+		cassette_change_state( space->machine().device("cassette"), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR );
 }
 
 
 static WRITE8_HANDLER( pv2000_keys_w )
 {
-	pv2000_state *state = space->machine->driver_data<pv2000_state>();
+	pv2000_state *state = space->machine().driver_data<pv2000_state>();
 
-	logerror( "%s: pv2000_keys_w %02x\n", cpuexec_describe_context(space->machine), data );
+	logerror( "%s: pv2000_keys_w %02x\n", space->machine().describe_context(), data );
 
-	state->keyb_column = data & 0x0f;
+	state->m_keyb_column = data & 0x0f;
 
-	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_IRQ0, CLEAR_LINE);
+	cputag_set_input_line(space->machine(), "maincpu", INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 
 static READ8_HANDLER( pv2000_keys_hi_r )
 {
-	pv2000_state *state = space->machine->driver_data<pv2000_state>();
+	pv2000_state *state = space->machine().driver_data<pv2000_state>();
 	UINT8 data = 0;
 
-	switch ( state->keyb_column )
+	switch ( state->m_keyb_column )
 	{
 	case 0:
-		data = input_port_read( space->machine, "IN0" ) >> 4;
+		data = input_port_read( space->machine(), "IN0" ) >> 4;
 		break;
 	case 1:
-		data = input_port_read( space->machine, "IN1" ) >> 4;
+		data = input_port_read( space->machine(), "IN1" ) >> 4;
 		break;
 	case 2:
-		data = input_port_read( space->machine, "IN2" ) >> 4;
+		data = input_port_read( space->machine(), "IN2" ) >> 4;
 		break;
 	case 3:
-		data = input_port_read( space->machine, "IN3" ) >> 4;
+		data = input_port_read( space->machine(), "IN3" ) >> 4;
 		break;
 	case 4:
-		data = input_port_read( space->machine, "IN4" ) >> 4;
+		data = input_port_read( space->machine(), "IN4" ) >> 4;
 		break;
 	case 5:
-		data = input_port_read( space->machine, "IN5" ) >> 4;
+		data = input_port_read( space->machine(), "IN5" ) >> 4;
 		break;
 	case 6:
-		data = input_port_read( space->machine, "IN6" ) >> 4;
+		data = input_port_read( space->machine(), "IN6" ) >> 4;
 		break;
 	case 7:
-		data = input_port_read( space->machine, "IN7" ) >> 4;
+		data = input_port_read( space->machine(), "IN7" ) >> 4;
 		break;
 	case 8:
-		data = input_port_read( space->machine, "IN8" ) >> 4;
+		data = input_port_read( space->machine(), "IN8" ) >> 4;
 		break;
 	}
 
@@ -117,42 +117,42 @@ static READ8_HANDLER( pv2000_keys_hi_r )
 
 static READ8_HANDLER( pv2000_keys_lo_r )
 {
-	pv2000_state *state = space->machine->driver_data<pv2000_state>();
+	pv2000_state *state = space->machine().driver_data<pv2000_state>();
 	UINT8 data = 0;
 
-	logerror("%s: pv2000_keys_r\n", cpuexec_describe_context(space->machine) );
+	logerror("%s: pv2000_keys_r\n", space->machine().describe_context() );
 
-	switch ( state->keyb_column )
+	switch ( state->m_keyb_column )
 	{
 	case 0:
-		data = input_port_read( space->machine, "IN0" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN0" ) & 0x0f;
 		break;
 	case 1:
-		data = input_port_read( space->machine, "IN1" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN1" ) & 0x0f;
 		break;
 	case 2:
-		data = input_port_read( space->machine, "IN2" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN2" ) & 0x0f;
 		break;
 	case 3:
-		data = input_port_read( space->machine, "IN3" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN3" ) & 0x0f;
 		break;
 	case 4:
-		data = input_port_read( space->machine, "IN4" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN4" ) & 0x0f;
 		break;
 	case 5:
-		data = input_port_read( space->machine, "IN5" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN5" ) & 0x0f;
 		break;
 	case 6:
-		data = input_port_read( space->machine, "IN6" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN6" ) & 0x0f;
 		break;
 	case 7:
-		data = input_port_read( space->machine, "IN7" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN7" ) & 0x0f;
 		break;
 	case 8:
-		data = input_port_read( space->machine, "IN8" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN8" ) & 0x0f;
 		break;
 	case 9:
-		data = input_port_read( space->machine, "IN9" ) & 0x0f;
+		data = input_port_read( space->machine(), "IN9" ) & 0x0f;
 		break;
 	}
 
@@ -162,13 +162,13 @@ static READ8_HANDLER( pv2000_keys_lo_r )
 
 static READ8_HANDLER(pv2000_keys_mod_r)
 {
-	return 0xf0 | input_port_read( space->machine, "MOD" );
+	return 0xf0 | input_port_read( space->machine(), "MOD" );
 }
 
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( pv2000_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pv2000_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3FFF) AM_ROM
 
 	AM_RANGE(0x4000, 0x4000) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
@@ -180,7 +180,7 @@ static ADDRESS_MAP_START( pv2000_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( pv2000_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pv2000_io_map, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	//theres also printer and tape I/O (TODO)
@@ -306,21 +306,21 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( pv2000_interrupt )
 {
-   TMS9928A_interrupt(device->machine);
+   TMS9928A_interrupt(device->machine());
 }
 
-static void pv2000_vdp_interrupt(running_machine *machine, int new_state)
+static void pv2000_vdp_interrupt(running_machine &machine, int new_state)
 {
-	pv2000_state *state = machine->driver_data<pv2000_state>();
+	pv2000_state *state = machine.driver_data<pv2000_state>();
 
     // only if it goes up
-	if (new_state && !state->last_state)
+	if (new_state && !state->m_last_state)
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 
-	state->last_state = new_state;
+	state->m_last_state = new_state;
 
 	/* Check if irq triggering from keyboard presses is enabled */
-	if ( state->keyb_column == 0x0f )
+	if ( state->m_keyb_column == 0x0f )
 	{
 		/* Check if a key is pressed */
 		UINT8 key_pressed;
@@ -335,10 +335,10 @@ static void pv2000_vdp_interrupt(running_machine *machine, int new_state)
 			| input_port_read( machine, "IN7" )
 			| input_port_read( machine, "IN8" );
 
-		if ( key_pressed && state->key_pressed != key_pressed )
+		if ( key_pressed && state->m_key_pressed != key_pressed )
 			cputag_set_input_line(machine, "maincpu", INPUT_LINE_IRQ0, ASSERT_LINE);
 
-		state->key_pressed = key_pressed;
+		state->m_key_pressed = key_pressed;
 	}
 }
 
@@ -361,19 +361,19 @@ static MACHINE_START( pv2000 )
 
 static MACHINE_RESET( pv2000 )
 {
-	pv2000_state *state = machine->driver_data<pv2000_state>();
+	pv2000_state *state = machine.driver_data<pv2000_state>();
 
-	state->last_state = 0;
-	state->key_pressed = 0;
-	state->keyb_column = 0;
+	state->m_last_state = 0;
+	state->m_key_pressed = 0;
+	state->m_keyb_column = 0;
 
-	cpu_set_input_line_vector(machine->device("maincpu"), INPUT_LINE_IRQ0, 0xff);
-	memset(&machine->region("maincpu")->base()[0x7000], 0xff, 0x1000);	// initialize RAM
+	device_set_input_line_vector(machine.device("maincpu"), INPUT_LINE_IRQ0, 0xff);
+	memset(&machine.region("maincpu")->base()[0x7000], 0xff, 0x1000);	// initialize RAM
 }
 
 static DEVICE_IMAGE_LOAD( pv2000_cart )
 {
-	UINT8 *cart = image.device().machine->region("maincpu")->base() + 0xC000;
+	UINT8 *cart = image.device().machine().region("maincpu")->base() + 0xC000;
 	UINT32 size;
 
 	if (image.software_entry() == NULL)

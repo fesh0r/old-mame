@@ -22,24 +22,24 @@
 #include "includes/advision.h"
 #include "cpu/mcs48/mcs48.h"
 #include "cpu/cop400/cop400.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "sound/dac.h"
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( program_map, ADDRESS_SPACE_PROGRAM, 8, advision_state )
+static ADDRESS_MAP_START( program_map, AS_PROGRAM, 8, advision_state )
 	AM_RANGE(0x0000, 0x03ff) AM_ROMBANK("bank1")
 	AM_RANGE(0x0400, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8, advision_state )
+static ADDRESS_MAP_START( io_map, AS_IO, 8, advision_state )
 	AM_RANGE(0x00, 0xff) AM_READWRITE(ext_ram_r, ext_ram_w)
 	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(controller_r, bankswitch_w)
 	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(av_control_w)
 	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(vsync_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8, advision_state )
+static ADDRESS_MAP_START( sound_io_map, AS_IO, 8, advision_state )
 	AM_RANGE(COP400_PORT_L, COP400_PORT_L) AM_READ(sound_cmd_r)
 	AM_RANGE(COP400_PORT_G, COP400_PORT_G) AM_WRITE(sound_g_w)
 	AM_RANGE(COP400_PORT_D, COP400_PORT_D) AM_WRITE(sound_d_w)
@@ -60,38 +60,6 @@ static INPUT_PORTS_START( advision )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1) PORT_8WAY
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(1) PORT_8WAY
 INPUT_PORTS_END
-
-/* Cartridge (+ Software List) */
-
-static DEVICE_IMAGE_LOAD( advision_cart )
-{
-	UINT32 size;
-
-	if (image.software_entry() == NULL)
-	{
-		size = image.length();
-
-		if (size > image.device().machine->region(I8048_TAG)->bytes())
-		{
-			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
-			return IMAGE_INIT_FAIL;
-		}
-
-		if (image.fread( image.device().machine->region(I8048_TAG)->base(), size) != size)
-		{
-			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			return IMAGE_INIT_FAIL;
-		}
-
-	}
-	else
-	{
-		size = image.get_software_region_length("rom");
-		memcpy(image.device().machine->region(I8048_TAG)->base(), image.get_software_region("rom"), size);
-	}
-
-	return IMAGE_INIT_PASS;
-}
 
 /* Machine Driver */
 
@@ -133,7 +101,6 @@ static MACHINE_CONFIG_START( advision, advision_state )
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("advision_cart")
-	MCFG_CARTSLOT_LOAD(advision_cart)
 
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","advision")
@@ -142,7 +109,8 @@ MACHINE_CONFIG_END
 /* ROMs */
 
 ROM_START( advision )
-	ROM_REGION( 0x1000, I8048_TAG, ROMREGION_ERASE00 )
+	ROM_REGION( 0x1000, I8048_TAG, 0 )
+	ROM_CART_LOAD( "cart", 0x0000, 0x1000, ROM_NOMIRROR | ROM_FULLSIZE )
 
 	ROM_REGION( 0x400, "bios", 0 )
     ROM_LOAD( "avbios.u5", 0x000, 0x400, CRC(279e33d1) SHA1(bf7b0663e9125c9bfb950232eab627d9dbda8460) )

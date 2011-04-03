@@ -88,7 +88,7 @@ struct _apple2_memmap_entry
 {
 	offs_t begin;
 	offs_t end;
-	void (*get_meminfo)(running_machine *machine, offs_t begin, offs_t end, apple2_meminfo *meminfo);
+	void (*get_meminfo)(running_machine &machine, offs_t begin, offs_t end, apple2_meminfo *meminfo);
 	bank_disposition_t bank_disposition;
 };
 
@@ -102,6 +102,46 @@ struct _apple2_memmap_config
 };
 
 
+class apple2_state : public driver_device
+{
+public:
+	apple2_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT32 m_flags;
+	INT32 m_a2_cnxx_slot;
+	UINT32 m_a2_mask;
+	UINT32 m_a2_set;
+	int m_a2_speaker_state;
+	double m_joystick_x1_time;
+	double m_joystick_y1_time;
+	double m_joystick_x2_time;
+	double m_joystick_y2_time;
+	apple2_memmap_config m_mem_config;
+	apple2_meminfo *m_current_meminfo;
+	int m_fdc_diskreg;
+	unsigned int *m_ay3600_keys;
+	UINT8 m_keycode;
+	UINT8 m_keycode_unmodified;
+	UINT8 m_keywaiting;
+	UINT8 m_keystilldown;
+	UINT8 m_keymodreg;
+	int m_reset_flag;
+	int m_last_key;
+	int m_last_key_unmodified;
+	unsigned int m_time_until_repeat;
+	const UINT8 *m_a2_videoram;
+	UINT32 m_a2_videomask;
+	UINT32 m_old_a2;
+	int m_fgcolor;
+	int m_bgcolor;
+	int m_flash;
+	int m_alt_charset_value;
+	UINT16 *m_hires_artifact_map;
+	UINT16 *m_dhires_artifact_map;
+};
+
+
 /*----------- defined in drivers/apple2.c -----------*/
 
 INPUT_PORTS_EXTERN( apple2ep );
@@ -110,43 +150,36 @@ PALETTE_INIT( apple2 );
 
 /*----------- defined in machine/apple2.c -----------*/
 
-extern UINT32 apple2_flags;
-extern INT32 a2_cnxx_slot;
-
 extern const applefdc_interface apple2_fdc_interface;
 
-void apple2_iwm_setdiskreg(running_machine *machine, UINT8 data);
-UINT8 apple2_iwm_getdiskreg(void);
+void apple2_iwm_setdiskreg(running_machine &machine, UINT8 data);
+UINT8 apple2_iwm_getdiskreg(running_machine &machine);
 
-void apple2_init_common(running_machine *machine);
+void apple2_init_common(running_machine &machine);
 MACHINE_START( apple2 );
-UINT8 apple2_getfloatingbusvalue(running_machine *machine);
+UINT8 apple2_getfloatingbusvalue(running_machine &machine);
 READ8_HANDLER( apple2_c0xx_r );
 WRITE8_HANDLER( apple2_c0xx_w );
 
 INTERRUPT_GEN( apple2_interrupt );
 
-INT8 apple2_slotram_r(running_machine *machine, int slotnum, int offset);
+INT8 apple2_slotram_r(running_machine &machine, int slotnum, int offset);
 
-void apple2_setvar(running_machine *machine, UINT32 val, UINT32 mask);
+void apple2_setvar(running_machine &machine, UINT32 val, UINT32 mask);
 
-int apple2_pressed_specialkey(running_machine *machine, UINT8 key);
+int apple2_pressed_specialkey(running_machine &machine, UINT8 key);
 
-void apple2_setup_memory(running_machine *machine, const apple2_memmap_config *config);
-void apple2_update_memory(running_machine *machine);
+void apple2_setup_memory(running_machine &machine, const apple2_memmap_config *config);
+void apple2_update_memory(running_machine &machine);
 
 
 
 /*----------- defined in video/apple2.c -----------*/
 
-void apple2_video_start(running_machine *machine, const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
+void apple2_video_start(running_machine &machine, const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
 VIDEO_START( apple2 );
 VIDEO_START( apple2p );
 VIDEO_START( apple2e );
-VIDEO_UPDATE( apple2 );
-void apple2_set_fgcolor(int color);
-void apple2_set_bgcolor(int color);
-int apple2_get_fgcolor(void);
-int apple2_get_bgcolor(void);
+SCREEN_UPDATE( apple2 );
 
 #endif /* APPLE2_H_ */

@@ -86,6 +86,7 @@ struct _kr2376_t
 INLINE kr2376_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == KR2376);
 
 	return (kr2376_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -162,9 +163,9 @@ static void detect_keypress(device_t *device)
 
 	static const char *const keynames[] = { "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7" };
 
-	if (input_port_read(device->machine, keynames[kr2376->ring8]) == (1 << kr2376->ring11))
+	if (input_port_read(device->machine(), keynames[kr2376->ring8]) == (1 << kr2376->ring11))
 	{
-		kr2376->modifiers = input_port_read(device->machine, "MODIFIERS");
+		kr2376->modifiers = input_port_read(device->machine(), "MODIFIERS");
 
 		kr2376->strobe = 1;
 		/*  strobe 0->1 transition, encode char and update parity */
@@ -358,17 +359,17 @@ static DEVICE_START( kr2376 )
 	change_output_lines(device);
 
 	/* create the timers */
-	kr2376->scan_timer = timer_alloc(device->machine, kr2376_scan_tick, (void *)device);
-	timer_adjust_periodic(kr2376->scan_timer, attotime_zero, 0, ATTOTIME_IN_HZ(kr2376->intf->clock));
+	kr2376->scan_timer = device->machine().scheduler().timer_alloc(FUNC(kr2376_scan_tick), (void *)device);
+	kr2376->scan_timer->adjust(attotime::zero, 0, attotime::from_hz(kr2376->intf->clock));
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, kr2376->ring11);
-	state_save_register_device_item(device, 0, kr2376->ring8);
-	state_save_register_device_item(device, 0, kr2376->modifiers);
-	state_save_register_device_item(device, 0, kr2376->strobe);
-	state_save_register_device_item(device, 0, kr2376->strobe_old);
-	state_save_register_device_item(device, 0, kr2376->parity);
-	state_save_register_device_item(device, 0, kr2376->data);
+	device->save_item(NAME(kr2376->ring11));
+	device->save_item(NAME(kr2376->ring8));
+	device->save_item(NAME(kr2376->modifiers));
+	device->save_item(NAME(kr2376->strobe));
+	device->save_item(NAME(kr2376->strobe_old));
+	device->save_item(NAME(kr2376->parity));
+	device->save_item(NAME(kr2376->data));
 }
 
 DEVICE_GET_INFO( kr2376 )

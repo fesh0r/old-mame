@@ -19,8 +19,8 @@ ToDo:
 #include "machine/6522via.h"
 #include "machine/6532riot.h"
 #include "machine/6821pia.h"
-#include "devices/cartslot.h"
-#include "devices/messram.h"
+#include "imagedev/cartslot.h"
+#include "machine/ram.h"
 #include "aim65.lh"
 
 
@@ -29,7 +29,7 @@ ToDo:
 ***************************************************************************/
 
 /* Note: RAM is mapped dynamically in machine/aim65.c */
-static ADDRESS_MAP_START( aim65_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( aim65_mem, AS_PROGRAM, 8 )
 	AM_RANGE( 0x1000, 0x9fff ) AM_NOP /* User available expansions */
 	AM_RANGE( 0xa000, 0xa00f ) AM_MIRROR(0x3f0) AM_DEVREADWRITE_MODERN("via6522_1", via6522_device, read, write)/* User VIA */
 	AM_RANGE( 0xa400, 0xa47f ) AM_RAM /* RIOT RAM */
@@ -222,7 +222,7 @@ static MACHINE_CONFIG_START( aim65, aim65_state )
 	MCFG_CARTSLOT_NOT_MANDATORY
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("4K")
 	MCFG_RAM_EXTRA_OPTIONS("1K,2K,3K")
 MACHINE_CONFIG_END

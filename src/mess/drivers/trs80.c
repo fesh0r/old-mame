@@ -152,26 +152,26 @@ There don't seem to be any JV1 boot disks for Model III/4.
 #include "sound/speaker.h"
 
 /* Devices */
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/trs_dsk.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/trs_cas.h"
 #include "formats/trs_cmd.h"
 
 
-static ADDRESS_MAP_START( trs80_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( trs80_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_MEMBER(trs80_state, videoram)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_MEMBER(trs80_state, m_videoram)
 	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( trs80_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( trs80_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_ff_r, trs80_ff_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( model1_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( model1_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x377f) AM_ROM	// sys80,ht1080 needs up to 375F
 	AM_RANGE(0x37de, 0x37de) AM_READWRITE(sys80_f9_r, sys80_f8_w)
 	AM_RANGE(0x37df, 0x37df) AM_READWRITE(trs80m4_eb_r, trs80m4_eb_w)
@@ -183,16 +183,16 @@ static ADDRESS_MAP_START( model1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x37ee, 0x37ee) AM_DEVREADWRITE("wd179x", wd17xx_sector_r, wd17xx_sector_w)
 	AM_RANGE(0x37ef, 0x37ef) AM_DEVREADWRITE("wd179x", wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x300) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_MEMBER(trs80_state, videoram)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_MEMBER(trs80_state, m_videoram)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( model1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( model1_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_ff_r, trs80_ff_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sys80_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sys80_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xf8, 0xf8) AM_READWRITE(trs80m4_eb_r, sys80_f8_w)
 	AM_RANGE(0xf9, 0xf9) AM_READWRITE(sys80_f9_r, trs80m4_eb_w)
@@ -201,11 +201,11 @@ static ADDRESS_MAP_START( sys80_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_ff_r, trs80_ff_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( lnw80_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( lnw80_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( lnw80_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( lnw80_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xe8, 0xe8) AM_READWRITE(trs80m4_e8_r, trs80m4_e8_w)
 	AM_RANGE(0xe9, 0xe9) AM_READ_PORT("E9")
@@ -215,10 +215,10 @@ static ADDRESS_MAP_START( lnw80_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_ff_r, trs80_ff_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( model3_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( model3_map, AS_PROGRAM, 8 )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( model3_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( model3_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80m4_e0_r, trs80m4_e0_w)
 	AM_RANGE(0xe4, 0xe4) AM_READWRITE(trs80m4_e4_r, trs80m4_e4_w)
@@ -236,7 +236,7 @@ static ADDRESS_MAP_START( model3_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xfc, 0xff) AM_READWRITE(trs80m4_ff_r, trs80m4_ff_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( model4_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( model4_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x84, 0x87) AM_WRITE(trs80m4_84_w)
 	AM_RANGE(0x88, 0x89) AM_WRITE(trs80m4_88_w)
@@ -257,7 +257,7 @@ static ADDRESS_MAP_START( model4_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xfc, 0xff) AM_READWRITE(trs80m4_ff_r, trs80m4_ff_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( model4p_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( model4p_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x84, 0x87) AM_WRITE(trs80m4_84_w)
 	AM_RANGE(0x88, 0x89) AM_WRITE(trs80m4_88_w)
@@ -568,13 +568,13 @@ static MACHINE_CONFIG_START( trs80, trs80_state )		// the original model I, leve
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(64*FW, 16*FH)
 	MCFG_SCREEN_VISIBLE_AREA(0,64*FW-1,0,16*FH-1)
+	MCFG_SCREEN_UPDATE( trs80 )
 
 	MCFG_GFXDECODE(trs80)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START( trs80 )
-	MCFG_VIDEO_UPDATE( trs80 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -615,8 +615,8 @@ static MACHINE_CONFIG_DERIVED( model3, model1 )
 	MCFG_MACHINE_RESET( trs80m4 )
 
 	MCFG_GFXDECODE(trs80m4)
-	MCFG_VIDEO_UPDATE( trs80m4 )
 	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE( trs80m4 )
 	MCFG_SCREEN_SIZE(80*8, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
 MACHINE_CONFIG_END
@@ -637,7 +637,8 @@ static MACHINE_CONFIG_DERIVED( sys80, model1 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ht1080z, sys80 )
-	MCFG_VIDEO_UPDATE( ht1080z )
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE( ht1080z )
 	MCFG_GFXDECODE(ht1080z)
 MACHINE_CONFIG_END
 
@@ -650,17 +651,17 @@ static MACHINE_CONFIG_DERIVED( lnw80, model1 )
 	MCFG_GFXDECODE(lnw80)
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_PALETTE_INIT(lnw80)
-	MCFG_VIDEO_UPDATE(lnw80)
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(80*FW, 16*FH)
 	MCFG_SCREEN_VISIBLE_AREA(0,80*FW-1,0,16*FH-1)
+	MCFG_SCREEN_UPDATE(lnw80)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( radionic, model1 )
-	MCFG_VIDEO_UPDATE( radionic )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(64*8, 16*16)
 	MCFG_SCREEN_VISIBLE_AREA(0,64*8-1,0,16*16-1)
+	MCFG_SCREEN_UPDATE( radionic )
 	MCFG_GFXDECODE(radionic)
 MACHINE_CONFIG_END
 
@@ -823,41 +824,41 @@ ROM_END
 
 static DRIVER_INIT( trs80 )
 {
-	trs80_state *state = machine->driver_data<trs80_state>();
-	state->mode = 0;
-	state->model4 = 0;
+	trs80_state *state = machine.driver_data<trs80_state>();
+	state->m_mode = 0;
+	state->m_model4 = 0;
 }
 
 static DRIVER_INIT( trs80l2 )
 {
-	trs80_state *state = machine->driver_data<trs80_state>();
-	state->mode = 2;
-	state->model4 = 0;
+	trs80_state *state = machine.driver_data<trs80_state>();
+	state->m_mode = 2;
+	state->m_model4 = 0;
 }
 
 static DRIVER_INIT( trs80m4 )
 {
-	trs80_state *state = machine->driver_data<trs80_state>();
-	state->mode = 0;
-	state->model4 = 2;
-	state->videoram = machine->region("maincpu")->base()+0x4000;
+	trs80_state *state = machine.driver_data<trs80_state>();
+	state->m_mode = 0;
+	state->m_model4 = 2;
+	state->m_videoram = machine.region("maincpu")->base()+0x4000;
 }
 
 static DRIVER_INIT( trs80m4p )
 {
-	trs80_state *state = machine->driver_data<trs80_state>();
-	state->mode = 0;
-	state->model4 = 4;
-	state->videoram = machine->region("maincpu")->base()+0x4000;
+	trs80_state *state = machine.driver_data<trs80_state>();
+	state->m_mode = 0;
+	state->m_model4 = 4;
+	state->m_videoram = machine.region("maincpu")->base()+0x4000;
 }
 
 static DRIVER_INIT( lnw80 )
 {
-	trs80_state *state = machine->driver_data<trs80_state>();
-	state->mode = 0;
-	state->model4 = 0;
-	state->gfxram = machine->region("gfx2")->base();
-	state->videoram = machine->region("gfx2")->base()+0x4000;
+	trs80_state *state = machine.driver_data<trs80_state>();
+	state->m_mode = 0;
+	state->m_model4 = 0;
+	state->m_gfxram = machine.region("gfx2")->base();
+	state->m_videoram = machine.region("gfx2")->base()+0x4000;
 }
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT  COMPANY  FULLNAME */

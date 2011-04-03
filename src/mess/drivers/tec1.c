@@ -33,34 +33,51 @@ Inbuilt games - press the following sequence of keys:
 - Invaders: RESET AD 3 2 0 GO GO
 - Luna Lander: RESET AD 4 9 0 GO GO
 
-Not emulated / need to be checked:
-- The 74C923 code may need to be revisited to improve keyboard response.
-- The 10ms debounce is not emulated.
-- Artwork needs to be produced.
-
 Thanks to Chris Schwartz who dumped his ROM for me way back in the old days.
 It's only taken 25 years to get around to emulating it...
 
+
+ToDo:
+- After a Soft Reset, pressing keys can crash the emulation.
+- The 74C923 code may need to be revisited to improve keyboard response.
+  Sometimes have to press a key a few times before it registers.
+- The 10ms debounce is not emulated.
+- Needs proper artwork.
+
 ***************************************************************************/
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
 #include "tec1.lh"
 
+#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
+#define MACHINE_START_MEMBER(name) void name::machine_start()
 
 class tec1_state : public driver_device
 {
 public:
 	tec1_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+		  m_maincpu(*this, "maincpu"),
+		  m_speaker(*this, "speaker")
+	{ }
 
-	emu_timer *kbd_timer;
-	UINT8 kbd;
-	UINT8 segment;
-	UINT8 digit;
-	device_t *speaker;
-	UINT8 kbd_row;
+	required_device<cpu_device> m_maincpu;
+	required_device<device_t> m_speaker;
+	emu_timer *m_kbd_timer;
+	DECLARE_READ8_MEMBER( tec1_kbd_r );
+	DECLARE_WRITE8_MEMBER( tec1_digit_w );
+	DECLARE_WRITE8_MEMBER( tec1_segment_w );
+	UINT8 m_kbd;
+	UINT8 m_segment;
+	UINT8 m_digit;
+	UINT8 m_kbd_row;
+	UINT8 m_refresh[6];
+	UINT8 tec1_convert_col_to_bin( UINT8 col, UINT8 row );
+	virtual void machine_reset();
+	virtual void machine_start();
 };
 
 
@@ -72,17 +89,8 @@ public:
 
 ***************************************************************************/
 
-static void tec1_display(tec1_state *state)
+WRITE8_MEMBER( tec1_state::tec1_segment_w )
 {
-	UINT8 i;
-	for (i = 0; i < 6; i++)
-		if (state->digit & (1 << i))
-			output_set_digit_value(5-i, state->segment);
-}
-
-static WRITE8_HANDLER( tec1_segment_w )
-{
-	tec1_state *state = space->machine->driver_data<tec1_state>();
 /*  d7 segment d
     d6 segment e
     d5 segment c
@@ -92,13 +100,11 @@ static WRITE8_HANDLER( tec1_segment_w )
     d1 segment f
     d0 segment a */
 
-	state->segment = BITSWAP8(data, 4, 2, 1, 6, 7, 5, 3, 0);
-	if (state->digit) tec1_display(state);
+	m_segment = BITSWAP8(data, 4, 2, 1, 6, 7, 5, 3, 0);
 }
 
-static WRITE8_HANDLER( tec1_digit_w )
+WRITE8_MEMBER( tec1_state::tec1_digit_w )
 {
-	tec1_state *state = space->machine->driver_data<tec1_state>();
 /*  d7 speaker
     d6 not used
     d5 data digit 1
@@ -108,10 +114,9 @@ static WRITE8_HANDLER( tec1_digit_w )
     d1 address digit 3
     d0 address digit 4 */
 
-	speaker_level_w(state->speaker, (data & 0x80) ? 1 : 0);
+	speaker_level_w(m_speaker, BIT(data, 7));
 
-	state->digit = data & 0x3f;
-	if (state->digit) tec1_display(state);
+	m_digit = data & 0x3f;
 }
 
 
@@ -121,51 +126,70 @@ static WRITE8_HANDLER( tec1_digit_w )
 
 ***************************************************************************/
 
-static READ8_HANDLER( tec1_kbd_r )
+READ8_MEMBER( tec1_state::tec1_kbd_r )
 {
-	tec1_state *state = space->machine->driver_data<tec1_state>();
-	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
-	return state->kbd;
+	cputag_set_input_line(m_machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
+	return m_kbd;
 }
 
-static UINT8 tec1_convert_col_to_bin( UINT8 col, UINT8 row )
+UINT8 tec1_state::tec1_convert_col_to_bin( UINT8 col, UINT8 row )
 {
 	UINT8 data = row;
 
-	if (col & 2)
+	if (BIT(col, 1))
 		data |= 4;
 	else
-	if (col & 4)
+	if (BIT(col, 2))
 		data |= 8;
 	else
-	if (col & 8)
+	if (BIT(col, 3))
 		data |= 12;
 	else
-	if (col & 16)
+	if (BIT(col, 4))
 		data |= 16;
 
 	return data;
 }
 
-
-static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
-
 static TIMER_CALLBACK( tec1_kbd_callback )
 {
-	tec1_state *state = machine->driver_data<tec1_state>();
-/* 74C923 4 by 5 key encoder. */
-	/* if previous key is still held, bail out */
-	if (input_port_read(machine, keynames[state->kbd_row]))
-		if (tec1_convert_col_to_bin(input_port_read(machine, keynames[state->kbd_row]), state->kbd_row) == state->kbd)
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
+	tec1_state *state = machine.driver_data<tec1_state>();
+	UINT8 i;
+
+    // Display the digits. Blank any digits that haven't been refreshed for a while.
+    // This will fix the problem reported by a user.
+	for (i = 0; i < 6; i++)
+	{
+		if (BIT(state->m_digit, i))
+		{
+			state->m_refresh[i] = 1;
+			output_set_digit_value(i, state->m_segment);
+		}
+		else
+		if (state->m_refresh[i] == 0x80)
+		{
+			output_set_digit_value(i, 0);
+			state->m_refresh[i] = 0;
+		}
+		else
+		if (state->m_refresh[i])
+			state->m_refresh[i]++;
+	}
+
+    // 74C923 4 by 5 key encoder.
+    // if previous key is still held, bail out
+	if (input_port_read(machine, keynames[state->m_kbd_row]))
+		if (state->tec1_convert_col_to_bin(input_port_read(machine, keynames[state->m_kbd_row]), state->m_kbd_row) == state->m_kbd)
 			return;
 
-	state->kbd_row++;
-	state->kbd_row &= 3;
+	state->m_kbd_row++;
+	state->m_kbd_row &= 3;
 
 	/* see if a key pressed */
-	if (input_port_read(machine, keynames[state->kbd_row]))
+	if (input_port_read(machine, keynames[state->m_kbd_row]))
 	{
-		state->kbd = tec1_convert_col_to_bin(input_port_read(machine, keynames[state->kbd_row]), state->kbd_row);
+		state->m_kbd = state->tec1_convert_col_to_bin(input_port_read(machine, keynames[state->m_kbd_row]), state->m_kbd_row);
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, HOLD_LINE);
 	}
 }
@@ -177,18 +201,15 @@ static TIMER_CALLBACK( tec1_kbd_callback )
 
 ***************************************************************************/
 
-static MACHINE_START( tec1 )
+MACHINE_START_MEMBER( tec1_state )
 {
-	tec1_state *state = machine->driver_data<tec1_state>();
-	state->kbd_timer = timer_alloc(machine,  tec1_kbd_callback, NULL );
-	timer_adjust_periodic( state->kbd_timer, attotime_zero, 0, ATTOTIME_IN_HZ(500) );
-	state->speaker = machine->device("speaker");
+	m_kbd_timer = m_machine.scheduler().timer_alloc(FUNC(tec1_kbd_callback));
 }
 
-static MACHINE_RESET( tec1 )
+MACHINE_RESET_MEMBER( tec1_state )
 {
-	tec1_state *state = machine->driver_data<tec1_state>();
-	state->kbd = 0;
+	m_kbd = 0;
+	m_kbd_timer->adjust( attotime::zero, 0, attotime::from_hz(500) );
 }
 
 
@@ -199,13 +220,13 @@ static MACHINE_RESET( tec1 )
 
 ***************************************************************************/
 
-static ADDRESS_MAP_START( tec1_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( tec1_map, AS_PROGRAM, 8, tec1_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x17ff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( tec1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( tec1_io, AS_IO, 8, tec1_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x07)
 	AM_RANGE(0x00, 0x00) AM_READ(tec1_kbd_r)
 	AM_RANGE(0x01, 0x01) AM_WRITE(tec1_digit_w)
@@ -262,16 +283,13 @@ static MACHINE_CONFIG_START( tec1, tec1_state )
 	MCFG_CPU_PROGRAM_MAP(tec1_map)
 	MCFG_CPU_IO_MAP(tec1_io)
 
-	MCFG_MACHINE_START(tec1)
-	MCFG_MACHINE_RESET(tec1)
-
 	/* video hardware */
 	MCFG_DEFAULT_LAYOUT(layout_tec1)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_CONFIG_END
 
 

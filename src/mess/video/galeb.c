@@ -27,17 +27,17 @@ VIDEO_START( galeb )
 {
 }
 
-VIDEO_UPDATE( galeb )
+SCREEN_UPDATE( galeb )
 {
-	galeb_state *state = screen->machine->driver_data<galeb_state>();
+	galeb_state *state = screen->machine().driver_data<galeb_state>();
 	int x,y;
 
 	for(y = 0; y < 16; y++ )
 	{
 		for(x = 0; x < 48; x++ )
 		{
-			int code = state->video_ram[15 + x + y*64];
-			drawgfx_opaque(bitmap, NULL, screen->machine->gfx[0],  code , 0, 0,0, x*8,y*8);
+			int code = state->m_video_ram[15 + x + y*64];
+			drawgfx_opaque(bitmap, NULL, screen->machine().gfx[0],  code , 0, 0,0, x*8,y*8);
 		}
 	}
 	return 0;

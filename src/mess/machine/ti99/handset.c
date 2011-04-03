@@ -52,6 +52,8 @@ static const char *const keynames[] = { "KP0", "KP1", "KP2", "KP3", "KP4" };
 INLINE ti99_handset_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == HANDSET);
+
 	return (ti99_handset_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -59,6 +61,7 @@ INLINE const ti99_handset_config *get_config(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == HANDSET);
+
 	return (const ti99_handset_config *) downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 }
 
@@ -114,7 +117,7 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 		// of next message is not requested for either, so we need to decide on
 		// our own when we can post a new event.  Currently, we wait for 1000us
 		// after the DSR acknowledges the second nybble.
-		timer_adjust_oneshot(handset->timer, ATTOTIME_IN_USEC(1000), 0);
+		handset->timer->adjust(attotime::from_usec(1000));
 	}
 
 	if (handset->buflen == 0)
@@ -134,7 +137,7 @@ void ti99_handset_set_acknowledge(device_t *device, UINT8 data)
 		handset->ack = data;
 		if (data == handset->clock)
 			/* I don't know what the real delay is, but 30us apears to be enough */
-			timer_adjust_oneshot(handset->timer, ATTOTIME_IN_USEC(30), 0);
+			handset->timer->adjust(attotime::from_usec(30));
 	}
 }
 
@@ -172,7 +175,7 @@ static int ti99_handset_poll_keyboard(device_t *device, int num)
 	int i;
 
 	/* read current key state */
-	key_buf = ( input_port_read(device->machine, keynames[num]) | (input_port_read(device->machine, keynames[num + 1]) << 16) ) >> (4*num);
+	key_buf = ( input_port_read(device->machine(), keynames[num]) | (input_port_read(device->machine(), keynames[num + 1]) << 16) ) >> (4*num);
 
 	// If a key was previously pressed, this key was not shift, and this key is
 	// still down, then don't change the current key press.
@@ -248,8 +251,8 @@ static int ti99_handset_poll_joystick(device_t *device, int num)
 	int message;
 
 	/* read joystick position */
-	current_joy_x = input_port_read(device->machine, joynames[0][num]);
-	current_joy_y = input_port_read(device->machine, joynames[1][num]);
+	current_joy_x = input_port_read(device->machine(), joynames[0][num]);
+	current_joy_y = input_port_read(device->machine(), joynames[1][num]);
 
 	/* compare with last saved position */
 	current_joy = current_joy_x | (current_joy_y << 4);
@@ -338,14 +341,14 @@ void ti99_handset_task(device_t *device)
 static DEVICE_START( ti99_handset )
 {
 	ti99_handset_state *handset = get_safe_token(device);
-	handset->timer = timer_alloc(device->machine, ti99_handset_ack_callback, (void *)device);
+	handset->timer = device->machine().scheduler().timer_alloc(FUNC(ti99_handset_ack_callback), (void *)device);
 }
 
 static DEVICE_RESET( ti99_handset )
 {
 	const ti99_handset_config* conf = (const ti99_handset_config*)get_config(device);
 	ti99_handset_state *handset = get_safe_token(device);
-	handset->console9901 = device->machine->device(conf->sysintf);
+	handset->console9901 = device->machine().device(conf->sysintf);
 	handset->buf = 0;
 	handset->buflen = 0;
 	handset->clock = 0;

@@ -9,93 +9,93 @@
 #include "emu.h"
 #include "cpu/cosmac/cosmac.h"
 #include "sound/cdp1869.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "includes/pecom.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 static TIMER_CALLBACK( reset_tick )
 {
-	pecom_state *state = machine->driver_data<pecom_state>();
+	pecom_state *state = machine.driver_data<pecom_state>();
 
-	state->reset = 1;
+	state->m_reset = 1;
 }
 
 MACHINE_START( pecom )
 {
-	pecom_state *state = machine->driver_data<pecom_state>();
-	state->reset_timer = timer_alloc(machine, reset_tick, NULL);
+	pecom_state *state = machine.driver_data<pecom_state>();
+	state->m_reset_timer = machine.scheduler().timer_alloc(FUNC(reset_tick));
 }
 
 MACHINE_RESET( pecom )
 {
-	UINT8 *rom = machine->region(CDP1802_TAG)->base();
-	address_space *space = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
+	UINT8 *rom = machine.region(CDP1802_TAG)->base();
+	address_space *space = machine.device(CDP1802_TAG)->memory().space(AS_PROGRAM);
 
-	pecom_state *state = machine->driver_data<pecom_state>();
+	pecom_state *state = machine.driver_data<pecom_state>();
 
-	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-	memory_install_write_bank(space, 0x4000, 0x7fff, 0, 0, "bank2");
-	memory_unmap_write(space, 0xf000, 0xf7ff, 0, 0);
-	memory_unmap_write(space, 0xf800, 0xffff, 0, 0);
-	memory_install_read_bank (space, 0xf000, 0xf7ff, 0, 0, "bank3");
-	memory_install_read_bank (space, 0xf800, 0xffff, 0, 0, "bank4");
+	space->unmap_write(0x0000, 0x3fff);
+	space->install_write_bank(0x4000, 0x7fff, "bank2");
+	space->unmap_write(0xf000, 0xf7ff);
+	space->unmap_write(0xf800, 0xffff);
+	space->install_read_bank (0xf000, 0xf7ff, "bank3");
+	space->install_read_bank (0xf800, 0xffff, "bank4");
 	memory_set_bankptr(machine, "bank1", rom + 0x8000);
-	memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x4000);
+	memory_set_bankptr(machine, "bank2", ram_get_ptr(machine.device(RAM_TAG)) + 0x4000);
 	memory_set_bankptr(machine, "bank3", rom + 0xf000);
 	memory_set_bankptr(machine, "bank4", rom + 0xf800);
 
-	state->reset = 0;
-	state->dma = 0;
-	timer_adjust_oneshot(state->reset_timer, ATTOTIME_IN_MSEC(5), 0);
+	state->m_reset = 0;
+	state->m_dma = 0;
+	state->m_reset_timer->adjust(attotime::from_msec(5));
 }
 
 static READ8_HANDLER( pecom_cdp1869_charram_r )
 {
-	pecom_state *state = space->machine->driver_data<pecom_state>();
-	return state->cdp1869->char_ram_r(*space, offset);
+	pecom_state *state = space->machine().driver_data<pecom_state>();
+	return state->m_cdp1869->char_ram_r(*space, offset);
 }
 
 static WRITE8_HANDLER( pecom_cdp1869_charram_w )
 {
-	pecom_state *state = space->machine->driver_data<pecom_state>();
-	return state->cdp1869->char_ram_w(*space, offset, data);
+	pecom_state *state = space->machine().driver_data<pecom_state>();
+	return state->m_cdp1869->char_ram_w(*space, offset, data);
 }
 
 static READ8_HANDLER( pecom_cdp1869_pageram_r )
 {
-	pecom_state *state = space->machine->driver_data<pecom_state>();
-	return state->cdp1869->page_ram_r(*space, offset);
+	pecom_state *state = space->machine().driver_data<pecom_state>();
+	return state->m_cdp1869->page_ram_r(*space, offset);
 }
 
 static WRITE8_HANDLER( pecom_cdp1869_pageram_w )
 {
-	pecom_state *state = space->machine->driver_data<pecom_state>();
-	return state->cdp1869->page_ram_w(*space, offset, data);
+	pecom_state *state = space->machine().driver_data<pecom_state>();
+	return state->m_cdp1869->page_ram_w(*space, offset, data);
 }
 
 WRITE8_HANDLER( pecom_bank_w )
 {
-//	pecom_state *state = space->machine->driver_data<pecom_state>();
-	address_space *space2 = cputag_get_address_space(space->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT8 *rom = space->machine->region(CDP1802_TAG)->base();
-	memory_install_write_bank(cputag_get_address_space(space->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, "bank1");
-	memory_set_bankptr(space->machine, "bank1", messram_get_ptr(space->machine->device("messram")) + 0x0000);
+//  pecom_state *state = space->machine().driver_data<pecom_state>();
+	address_space *space2 = space->machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
+	UINT8 *rom = space->machine().region(CDP1802_TAG)->base();
+	space->machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM)->install_write_bank(0x0000, 0x3fff, "bank1");
+	memory_set_bankptr(space->machine(), "bank1", ram_get_ptr(space->machine().device(RAM_TAG)) + 0x0000);
 
 	if (data==2)
 	{
-		memory_install_read8_handler (space2, 0xf000, 0xf7ff, 0, 0, pecom_cdp1869_charram_r);
-		memory_install_write8_handler(space2, 0xf000, 0xf7ff, 0, 0, pecom_cdp1869_charram_w);
-		memory_install_read8_handler (space2, 0xf800, 0xffff, 0, 0, pecom_cdp1869_pageram_r);
-		memory_install_write8_handler(space2, 0xf800, 0xffff, 0, 0, pecom_cdp1869_pageram_w);
-	} 
+		space2->install_legacy_read_handler (0xf000, 0xf7ff, FUNC(pecom_cdp1869_charram_r));
+		space2->install_legacy_write_handler(0xf000, 0xf7ff, FUNC(pecom_cdp1869_charram_w));
+		space2->install_legacy_read_handler (0xf800, 0xffff, FUNC(pecom_cdp1869_pageram_r));
+		space2->install_legacy_write_handler(0xf800, 0xffff, FUNC(pecom_cdp1869_pageram_w));
+	}
 	else
 	{
-		memory_unmap_write(space2, 0xf000, 0xf7ff, 0, 0);
-		memory_unmap_write(space2, 0xf800, 0xffff, 0, 0);
-		memory_install_read_bank (space2, 0xf000, 0xf7ff, 0, 0, "bank3");
-		memory_install_read_bank (space2, 0xf800, 0xffff, 0, 0, "bank4");
-		memory_set_bankptr(space->machine, "bank3", rom + 0xf000);
-		memory_set_bankptr(space->machine, "bank4", rom + 0xf800);
+		space2->unmap_write(0xf000, 0xf7ff);
+		space2->unmap_write(0xf800, 0xffff);
+		space2->install_read_bank (0xf000, 0xf7ff, "bank3");
+		space2->install_read_bank (0xf800, 0xffff, "bank4");
+		memory_set_bankptr(space->machine(), "bank3", rom + 0xf000);
+		memory_set_bankptr(space->machine(), "bank4", rom + 0xf800);
 	}
 }
 
@@ -112,24 +112,24 @@ READ8_HANDLER (pecom_keyboard_r)
        Address is available on address bus during reading of value from port, and that is
        used to determine keyboard line reading
     */
-	UINT16 addr = cpu_get_reg(space->machine->device(CDP1802_TAG), COSMAC_R0 + cpu_get_reg(space->machine->device(CDP1802_TAG), COSMAC_X));
+	UINT16 addr = cpu_get_reg(space->machine().device(CDP1802_TAG), COSMAC_R0 + cpu_get_reg(space->machine().device(CDP1802_TAG), COSMAC_X));
 	/* just in case somone is reading non existing ports */
 	if (addr<0x7cca || addr>0x7ce3) return 0;
-	return input_port_read(space->machine, keynames[addr - 0x7cca]) & 0x03;
+	return input_port_read(space->machine(), keynames[addr - 0x7cca]) & 0x03;
 }
 
 /* CDP1802 Interface */
 
 static READ_LINE_DEVICE_HANDLER( clear_r )
 {
-	pecom_state *state = device->machine->driver_data<pecom_state>();
+	pecom_state *state = device->machine().driver_data<pecom_state>();
 
-	return state->reset;
+	return state->m_reset;
 }
 
 static READ_LINE_DEVICE_HANDLER( ef2_r )
 {
-	int shift = BIT(input_port_read(device->machine, "CNT"), 1);
+	int shift = BIT(input_port_read(device->machine(), "CNT"), 1);
 	double cas = cassette_input(device);
 
 	return (cas > 0.0) | shift;
@@ -138,23 +138,23 @@ static READ_LINE_DEVICE_HANDLER( ef2_r )
 /*
 static COSMAC_EF_READ( pecom64_ef_r )
 {
-	int flags = 0x0f;
-	double valcas = cassette_input(cassette_device_image(device->machine));
-	UINT8 val = input_port_read(device->machine, "CNT");
+    int flags = 0x0f;
+    double valcas = cassette_input(cassette_device_image(device->machine()));
+    UINT8 val = input_port_read(device->machine(), "CNT");
 
-	if ((val & 0x04)==0x04 && pecom_prev_caps_state==0)
-	{
-		pecom_caps_state = (pecom_caps_state==4) ? 0 : 4; // Change CAPS state
-	}
-	pecom_prev_caps_state = val & 0x04;
-	if (valcas!=0.0)
-	{ // If there is any cassette signal
-		val = (val & 0x0D); // remove EF2 from SHIFT
-		flags -= EF2;
-		if ( valcas > 0.00) flags += EF2;
-	}
-	flags -= (val & 0x0b) + pecom_caps_state;
-	return flags;
+    if ((val & 0x04)==0x04 && pecom_prev_caps_state==0)
+    {
+        pecom_caps_state = (pecom_caps_state==4) ? 0 : 4; // Change CAPS state
+    }
+    pecom_prev_caps_state = val & 0x04;
+    if (valcas!=0.0)
+    { // If there is any cassette signal
+        val = (val & 0x0D); // remove EF2 from SHIFT
+        flags -= EF2;
+        if ( valcas > 0.00) flags += EF2;
+    }
+    flags -= (val & 0x0b) + pecom_caps_state;
+    return flags;
 }
 */
 static WRITE_LINE_DEVICE_HANDLER( pecom64_q_w )
@@ -175,7 +175,7 @@ static COSMAC_SC_WRITE( pecom64_sc_w )
 
 	case COSMAC_STATE_CODE_S2_DMA:
 		// DMA acknowledge clears the DMAOUT request
-		cputag_set_input_line(device->machine, CDP1802_TAG, COSMAC_INPUT_LINE_DMAOUT, CLEAR_LINE);
+		cputag_set_input_line(device->machine(), CDP1802_TAG, COSMAC_INPUT_LINE_DMAOUT, CLEAR_LINE);
 		break;
 	case COSMAC_STATE_CODE_S3_INTERRUPT:
 		break;

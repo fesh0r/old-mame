@@ -10,12 +10,12 @@
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/fmsx_cas.h"
 #include "sound/speaker.h"
 #include "sound/wave.h"
 #include "includes/pk8000.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 class pk8000_state : public driver_device
@@ -24,19 +24,20 @@ public:
 	pk8000_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 keyboard_line;
+	UINT8 m_keyboard_line;
 };
 
 
 
-static device_t *cassette_device_image(running_machine *machine)
+static device_t *cassette_device_image(running_machine &machine)
 {
-	return machine->device("cassette");
+	return machine.device("cassette");
 }
 
-static void pk8000_set_bank(running_machine *machine,UINT8 data)
+static void pk8000_set_bank(running_machine &machine,UINT8 data)
 {
-	UINT8 *rom = machine->region("maincpu")->base();
+	UINT8 *rom = machine.region("maincpu")->base();
+	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
 	UINT8 block1 = data & 3;
 	UINT8 block2 = (data >> 2) & 3;
 	UINT8 block3 = (data >> 4) & 3;
@@ -45,79 +46,79 @@ static void pk8000_set_bank(running_machine *machine,UINT8 data)
 	switch(block1) {
 		case 0:
 				memory_set_bankptr(machine, "bank1", rom + 0x10000);
-				memory_set_bankptr(machine, "bank5", messram_get_ptr(machine->device("messram")));
+				memory_set_bankptr(machine, "bank5", ram);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
-				memory_set_bankptr(machine, "bank5", messram_get_ptr(machine->device("messram")));
+				memory_set_bankptr(machine, "bank1", ram);
+				memory_set_bankptr(machine, "bank5", ram);
 				break;
 	}
 
 	switch(block2) {
 		case 0:
 				memory_set_bankptr(machine, "bank2", rom + 0x14000);
-				memory_set_bankptr(machine, "bank6", messram_get_ptr(machine->device("messram")) + 0x4000);
+				memory_set_bankptr(machine, "bank6", ram + 0x4000);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x4000);
-				memory_set_bankptr(machine, "bank6", messram_get_ptr(machine->device("messram")) + 0x4000);
+				memory_set_bankptr(machine, "bank2", ram + 0x4000);
+				memory_set_bankptr(machine, "bank6", ram + 0x4000);
 				break;
 	}
 	switch(block3) {
 		case 0:
 				memory_set_bankptr(machine, "bank3", rom + 0x18000);
-				memory_set_bankptr(machine, "bank7", messram_get_ptr(machine->device("messram")) + 0x8000);
+				memory_set_bankptr(machine, "bank7", ram + 0x8000);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x8000);
-				memory_set_bankptr(machine, "bank7", messram_get_ptr(machine->device("messram")) + 0x8000);
+				memory_set_bankptr(machine, "bank3", ram + 0x8000);
+				memory_set_bankptr(machine, "bank7", ram + 0x8000);
 				break;
 	}
 	switch(block4) {
 		case 0:
 				memory_set_bankptr(machine, "bank4", rom + 0x1c000);
-				memory_set_bankptr(machine, "bank8", messram_get_ptr(machine->device("messram")) + 0xc000);
+				memory_set_bankptr(machine, "bank8", ram + 0xc000);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0xc000);
-				memory_set_bankptr(machine, "bank8", messram_get_ptr(machine->device("messram")) + 0xc000);
+				memory_set_bankptr(machine, "bank4", ram + 0xc000);
+				memory_set_bankptr(machine, "bank8", ram + 0xc000);
 				break;
 	}
 }
 static WRITE8_DEVICE_HANDLER(pk8000_80_porta_w)
 {
-	pk8000_set_bank(device->machine,data);
+	pk8000_set_bank(device->machine(),data);
 }
 
 static READ8_DEVICE_HANDLER(pk8000_80_portb_r)
 {
-	pk8000_state *state = device->machine->driver_data<pk8000_state>();
+	pk8000_state *state = device->machine().driver_data<pk8000_state>();
 	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
-	if(state->keyboard_line>9) {
+	if(state->m_keyboard_line>9) {
 		return 0xff;
 	}
-	return input_port_read(device->machine,keynames[state->keyboard_line]);
+	return input_port_read(device->machine(),keynames[state->m_keyboard_line]);
 }
 
 static WRITE8_DEVICE_HANDLER(pk8000_80_portc_w)
 {
-	pk8000_state *state = device->machine->driver_data<pk8000_state>();
-	state->keyboard_line = data & 0x0f;
+	pk8000_state *state = device->machine().driver_data<pk8000_state>();
+	state->m_keyboard_line = data & 0x0f;
 
-	speaker_level_w(device->machine->device("speaker"), BIT(data,7));
+	speaker_level_w(device->machine().device("speaker"), BIT(data,7));
 
-	cassette_change_state(cassette_device_image(device->machine),
+	cassette_change_state(cassette_device_image(device->machine()),
 						(BIT(data,4)) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 						CASSETTE_MASK_MOTOR);
-	cassette_output(cassette_device_image(device->machine), (BIT(data,6)) ? +1.0 : 0.0);
+	cassette_output(cassette_device_image(device->machine()), (BIT(data,6)) ? +1.0 : 0.0);
 }
 
 static I8255A_INTERFACE( pk8000_ppi8255_interface_1 )
@@ -156,18 +157,18 @@ static I8255A_INTERFACE( pk8000_ppi8255_interface_2 )
 
 static READ8_HANDLER(pk8000_joy_1_r)
 {
-	UINT8 retVal = (cassette_input(cassette_device_image(space->machine)) > 0.0038 ? 0x80 : 0);
-	retVal |= input_port_read(space->machine, "JOY1") & 0x7f;
+	UINT8 retVal = (cassette_input(cassette_device_image(space->machine())) > 0.0038 ? 0x80 : 0);
+	retVal |= input_port_read(space->machine(), "JOY1") & 0x7f;
 	return retVal;
 }
 static READ8_HANDLER(pk8000_joy_2_r)
 {
-	UINT8 retVal = (cassette_input(cassette_device_image(space->machine)) > 0.0038 ? 0x80 : 0);
-	retVal |= input_port_read(space->machine, "JOY2") & 0x7f;
+	UINT8 retVal = (cassette_input(cassette_device_image(space->machine())) > 0.0038 ? 0x80 : 0);
+	retVal |= input_port_read(space->machine(), "JOY2") & 0x7f;
 	return retVal;
 }
 
-static ADDRESS_MAP_START(pk8000_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(pk8000_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x3fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
 	AM_RANGE( 0x4000, 0x7fff ) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
@@ -175,7 +176,7 @@ static ADDRESS_MAP_START(pk8000_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xc000, 0xffff ) AM_READ_BANK("bank4") AM_WRITE_BANK("bank8")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pk8000_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pk8000_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w)
 	AM_RANGE(0x84, 0x87) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w)
@@ -303,7 +304,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( pk8000_interrupt )
 {
-	cpu_set_input_line(device, 0, HOLD_LINE);
+	device_set_input_line(device, 0, HOLD_LINE);
 }
 
 static IRQ_CALLBACK(pk8000_irq_callback)
@@ -315,16 +316,16 @@ static IRQ_CALLBACK(pk8000_irq_callback)
 static MACHINE_RESET(pk8000)
 {
 	pk8000_set_bank(machine,0);
-	cpu_set_irq_callback(machine->device("maincpu"), pk8000_irq_callback);
+	device_set_irq_callback(machine.device("maincpu"), pk8000_irq_callback);
 }
 
 static VIDEO_START( pk8000 )
 {
 }
 
-static VIDEO_UPDATE( pk8000 )
+static SCREEN_UPDATE( pk8000 )
 {
-	return pk8000_video_update(screen, bitmap, cliprect, messram_get_ptr(screen->machine->device("messram")));
+	return pk8000_video_update(screen, bitmap, cliprect, ram_get_ptr(screen->machine().device(RAM_TAG)));
 }
 
 /* Machine driver */
@@ -337,58 +338,59 @@ static const cassette_config pk8000_cassette_config =
 };
 
 static MACHINE_CONFIG_START( pk8000, pk8000_state )
-    /* basic machine hardware */
-    MCFG_CPU_ADD("maincpu",I8080, 1780000)
-    MCFG_CPU_PROGRAM_MAP(pk8000_mem)
-    MCFG_CPU_IO_MAP(pk8000_io)
-    MCFG_CPU_VBLANK_INT("screen", pk8000_interrupt)
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",I8080, 1780000)
+	MCFG_CPU_PROGRAM_MAP(pk8000_mem)
+	MCFG_CPU_IO_MAP(pk8000_io)
+	MCFG_CPU_VBLANK_INT("screen", pk8000_interrupt)
 
-    MCFG_MACHINE_RESET(pk8000)
+	MCFG_MACHINE_RESET(pk8000)
 
-    /* video hardware */
-    MCFG_SCREEN_ADD("screen", RASTER)
-    MCFG_SCREEN_REFRESH_RATE(50)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MCFG_SCREEN_SIZE(256+32, 192+32)
-    MCFG_SCREEN_VISIBLE_AREA(0, 256+32-1, 0, 192+32-1)
-    MCFG_PALETTE_LENGTH(16)
-    MCFG_PALETTE_INIT(pk8000)
+	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(256+32, 192+32)
+	MCFG_SCREEN_VISIBLE_AREA(0, 256+32-1, 0, 192+32-1)
+	MCFG_SCREEN_UPDATE(pk8000)
 
-    MCFG_VIDEO_START(pk8000)
-    MCFG_VIDEO_UPDATE(pk8000)
+	MCFG_PALETTE_LENGTH(16)
+	MCFG_PALETTE_INIT(pk8000)
 
-    MCFG_I8255A_ADD( "ppi8255_1", pk8000_ppi8255_interface_1 )
-    MCFG_I8255A_ADD( "ppi8255_2", pk8000_ppi8255_interface_2 )
+	MCFG_VIDEO_START(pk8000)
 
-    /* audio hardware */
+	MCFG_I8255A_ADD( "ppi8255_1", pk8000_ppi8255_interface_1 )
+	MCFG_I8255A_ADD( "ppi8255_2", pk8000_ppi8255_interface_2 )
+
+	/* audio hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-    MCFG_CASSETTE_ADD( "cassette", pk8000_cassette_config )
+	MCFG_CASSETTE_ADD( "cassette", pk8000_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( vesta )
-  ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-  ROM_LOAD( "vesta.rom", 0x10000, 0x4000, CRC(fbf7e2cc) SHA1(4bc5873066124bd926c3c6aa2fd1a062c87af339))
+	ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "vesta.rom", 0x10000, 0x4000, CRC(fbf7e2cc) SHA1(4bc5873066124bd926c3c6aa2fd1a062c87af339))
 ROM_END
 
 ROM_START( hobby )
-  ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-  ROM_LOAD( "hobby.rom", 0x10000, 0x4000, CRC(a25b4b2c) SHA1(0d86e6e4be8d1aa389bfa9dd79e3604a356729f7))
+	ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "hobby.rom", 0x10000, 0x4000, CRC(a25b4b2c) SHA1(0d86e6e4be8d1aa389bfa9dd79e3604a356729f7))
 ROM_END
 
 ROM_START( pk8002 )
-  ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-  ROM_LOAD( "pk8002.rom", 0x10000, 0x4000, CRC(07b9ae71) SHA1(2137a41cc095c7aba58b7b109fce63f30a4568b2))
+	ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "pk8002.rom", 0x10000, 0x4000, CRC(07b9ae71) SHA1(2137a41cc095c7aba58b7b109fce63f30a4568b2))
 ROM_END
 
 /* Driver */

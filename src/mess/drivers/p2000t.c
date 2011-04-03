@@ -34,7 +34,7 @@ Philips P2000 1 Memory map
 
 
 /* port i/o functions */
-static ADDRESS_MAP_START( p2000t_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( p2000t_io , AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x0f) AM_READ(p2000t_port_000f_r)
 	AM_RANGE(0x10, 0x1f) AM_WRITE(p2000t_port_101f_w)
@@ -48,7 +48,7 @@ static ADDRESS_MAP_START( p2000t_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Memory w/r functions */
-static ADDRESS_MAP_START( p2000t_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( p2000t_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x4fff) AM_ROM
 	AM_RANGE(0x5000, 0x57ff) AM_DEVREADWRITE("saa5050", saa5050_videoram_r, saa5050_videoram_w)
@@ -56,10 +56,10 @@ static ADDRESS_MAP_START( p2000t_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xffff) AM_NOP
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( p2000m_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( p2000m_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x4fff) AM_ROM
-	AM_RANGE(0x5000, 0x5fff) AM_RAM AM_BASE_MEMBER(p2000t_state, videoram)
+	AM_RANGE(0x5000, 0x5fff) AM_RAM AM_BASE_MEMBER(p2000t_state, m_videoram)
 	AM_RANGE(0x6000, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -208,13 +208,13 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( p2000_interrupt )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", 0, HOLD_LINE);
 }
 
 
-static VIDEO_UPDATE( p2000t )
+static SCREEN_UPDATE( p2000t )
 {
-	device_t *saa5050 = screen->machine->device("saa5050");
+	device_t *saa5050 = screen->machine().device("saa5050");
 
 	saa5050_update(saa5050, bitmap, NULL);
 	return 0;
@@ -240,18 +240,18 @@ static MACHINE_CONFIG_START( p2000t, p2000t_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(SAA5050_VBLANK))
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40 * 12, 24 * 20)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40 * 12 - 1, 0, 24 * 20 - 1)
+	MCFG_SCREEN_UPDATE(p2000t)
+
 	MCFG_GFXDECODE(saa5050)
 	MCFG_PALETTE_LENGTH(128)
 	MCFG_PALETTE_INIT(saa5050)
 
 	MCFG_SAA5050_ADD("saa5050", p2000t_saa5050_intf)
-
-	MCFG_VIDEO_UPDATE(p2000t)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -267,7 +267,7 @@ static MACHINE_CONFIG_START( p2000m, p2000t_state )
 	MCFG_CPU_PROGRAM_MAP(p2000m_mem)
 	MCFG_CPU_IO_MAP(p2000t_io)
 	MCFG_CPU_VBLANK_INT("screen", p2000_interrupt)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -276,12 +276,13 @@ static MACHINE_CONFIG_START( p2000m, p2000t_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(80 * 12, 24 * 20)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80 * 12 - 1, 0, 24 * 20 - 1)
+	MCFG_SCREEN_UPDATE(p2000m)
+
 	MCFG_GFXDECODE( p2000m )
 	MCFG_PALETTE_LENGTH(4)
 	MCFG_PALETTE_INIT(p2000m)
 
 	MCFG_VIDEO_START(p2000m)
-	MCFG_VIDEO_UPDATE(p2000m)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

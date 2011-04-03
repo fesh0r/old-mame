@@ -45,6 +45,7 @@ struct _ay3600_t
 INLINE ay3600_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == AY3600PRO002);
 
 	return (ay3600_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -148,12 +149,12 @@ static DEVICE_START( ay3600 )
 	devcb_resolve_write_line(&ay3600->out_ako_func, &intf->out_ako_func, device);
 
 	/* create the timers */
-	ay3600->scan_timer = timer_alloc(device->machine, ay3600_scan_tick, (void *)device);
-	timer_adjust_periodic(ay3600->scan_timer, attotime_zero, 0, ATTOTIME_IN_HZ(60));
+	ay3600->scan_timer = device->machine().scheduler().timer_alloc(FUNC(ay3600_scan_tick), (void *)device);
+	ay3600->scan_timer->adjust(attotime::zero, 0, attotime::from_hz(60));
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, ay3600->b);
-	state_save_register_device_item(device, 0, ay3600->ako);
+	device->save_item(NAME(ay3600->b));
+	device->save_item(NAME(ay3600->ako));
 }
 
 /*-------------------------------------------------

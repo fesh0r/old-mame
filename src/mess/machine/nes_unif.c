@@ -109,6 +109,7 @@ static const unif unif_list[] =
 	{ "UNL-SHERO",                  0,    0, CHRRAM_8,  UNSUPPORTED_BOARD /*SACHEN_SHERO*/},
 	{ "UNL-TF1201",                 0,    0, CHRRAM_0,  UNSUPPORTED_BOARD /*UNL_TF1201*/},
 	{ "UNL-DRIPGAME",               0,    0, CHRRAM_0,  UNSUPPORTED_BOARD}, // [by Quietust - we need more info]}
+	{ "UNL-OneBus",                 0,    0, CHRRAM_0,  UNSUPPORTED_BOARD},
 	{ "BTL-MARIO1-MALEE2",          0,    0, CHRRAM_0,  UNSUPPORTED_BOARD},	// mapper 55?
 	{ "BMC-FK23C",                  0,    0, CHRRAM_0,  BMC_FK23C},
 	{ "BMC-FK23CA",                 0,    0, CHRRAM_0,  BMC_FK23CA},
@@ -147,9 +148,9 @@ const unif *nes_unif_lookup( const char *board )
 
  *************************************************************/
 
-void unif_mapr_setup( running_machine *machine, const char *board )
+void unif_mapr_setup( running_machine &machine, const char *board )
 {
-	nes_state *state = machine->driver_data<nes_state>();
+	nes_state *state = machine.driver_data<nes_state>();
 	const unif *unif_board = nes_unif_lookup(board);
 
 	logerror("%s\n", board);
@@ -157,15 +158,15 @@ void unif_mapr_setup( running_machine *machine, const char *board )
 	if (unif_board == NULL)
 		fatalerror("Unknown UNIF board %s.", board);
 
-	state->pcb_id = unif_board->board_idx;
-	state->battery = unif_board->nvwram;	// we should implement battery banks based on the size of this...
-	state->battery_size = NES_BATTERY_SIZE; // FIXME: we should allow for smaller battery!
-	state->prg_ram = unif_board->wram;	// we should implement WRAM banks based on the size of this...
+	state->m_pcb_id = unif_board->board_idx;
+	state->m_battery = unif_board->nvwram;	// we should implement battery banks based on the size of this...
+	state->m_battery_size = NES_BATTERY_SIZE; // FIXME: we should allow for smaller battery!
+	state->m_prg_ram = unif_board->wram;	// we should implement WRAM banks based on the size of this...
 
 	if (unif_board->chrram <= CHRRAM_8)
-		state->vram_chunks = 1;
+		state->m_vram_chunks = 1;
 	else if (unif_board->chrram == CHRRAM_16)
-		state->vram_chunks = 2;
+		state->m_vram_chunks = 2;
 	else if (unif_board->chrram == CHRRAM_32)
-		state->vram_chunks = 4;
+		state->m_vram_chunks = 4;
 }

@@ -1,6 +1,22 @@
 #ifndef __BW2__
 #define __BW2__
 
+#define ADDRESS_MAP_MODERN
+
+#include "emu.h"
+#include "cpu/z80/z80.h"
+#include "imagedev/flopdrv.h"
+#include "formats/basicdsk.h"
+#include "machine/i8255a.h"
+#include "machine/ctronics.h"
+#include "machine/msm8251.h"
+#include "machine/pit8253.h"
+#include "machine/ram.h"
+#include "machine/wd17xx.h"
+#include "video/msm6255.h"
+#include "rendlay.h"
+
+
 #define SCREEN_TAG		"screen"
 #define Z80_TAG			"ic1"
 #define I8255A_TAG		"ic4"
@@ -30,11 +46,11 @@ public:
 	bw2_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config),
 		  m_maincpu(*this, Z80_TAG),
-  		  m_uart(*this, MSM8251_TAG),
+		  m_uart(*this, MSM8251_TAG),
 		  m_fdc(*this, WD2797_TAG),
 		  m_lcdc(*this, MSM6255_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
-		  m_ram(*this, "messram"),
+		  m_ram(*this, RAM_TAG),
 		  m_floppy0(*this, FLOPPY_0),
 		  m_floppy1(*this, FLOPPY_1)
 	{ }
@@ -42,24 +58,22 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_uart;
 	required_device<device_t> m_fdc;
-	required_device<device_t> m_lcdc;
+	required_device<msm6255_device> m_lcdc;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
-	
+
 	virtual void machine_start();
 	virtual void machine_reset();
 
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	int get_ramdisk_size();
 	void bankswitch(UINT8 data);
 	void ramcard_bankswitch(UINT8 data);
 
 	DECLARE_WRITE8_MEMBER( ramcard_bank_w );
-	DECLARE_READ8_MEMBER( fdc_r );
-	DECLARE_WRITE8_MEMBER( fdc_w );
 	DECLARE_WRITE8_MEMBER( ppi_pa_w );
 	DECLARE_READ8_MEMBER( ppi_pb_r );
 	DECLARE_WRITE8_MEMBER( ppi_pc_w );

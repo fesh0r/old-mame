@@ -53,34 +53,46 @@ R.Schaefer Oct 2010
 #include "sound/beep.h"
 #include "machine/mboard.h"
 
-static UINT8 lcd_shift_counter;
-static UINT8 led7;
-static UINT8 irq_flag;
-static UINT16 beeper;
+
+class glasgow_state : public driver_device
+{
+public:
+	glasgow_state(running_machine &machine, const driver_device_config_base &config)
+		: driver_device(machine, config) { }
+
+	UINT8 m_lcd_shift_counter;
+	UINT8 m_led7;
+	UINT8 m_irq_flag;
+	UINT16 m_beeper;
+};
+
+
 
 static WRITE16_HANDLER( glasgow_lcd_w )
 {
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
 	UINT8 lcd_data = data >> 8;
 
-	if (led7 == 0)
-		output_set_digit_value(lcd_shift_counter, lcd_data);
+	if (state->m_led7 == 0)
+		output_set_digit_value(state->m_lcd_shift_counter, lcd_data);
 
-	lcd_shift_counter--;
-	lcd_shift_counter &= 3;
+	state->m_lcd_shift_counter--;
+	state->m_lcd_shift_counter &= 3;
 }
 
 static WRITE16_HANDLER( glasgow_lcd_flag_w )
 {
-	device_t *speaker = space->machine->device("beep");
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
+	device_t *speaker = space->machine().device("beep");
 	UINT16 lcd_flag = data & 0x8100;
 
 	beep_set_state(speaker, (lcd_flag & 0x100) ? 1 : 0);
 
 	if (lcd_flag)
-		led7 = 255;
+		state->m_led7 = 255;
 	else
 	{
-		led7 = 0;
+		state->m_led7 = 0;
 		mboard_key_selector = 1;
 	}
 }
@@ -92,10 +104,10 @@ static READ16_HANDLER( glasgow_keys_r )
 	/* See if any keys pressed */
 	data = 3;
 
-	if (mboard_key_select == input_port_read(space->machine, "LINE0"))
+	if (mboard_key_select == input_port_read(space->machine(), "LINE0"))
 		data &= 1;
 
-	if (mboard_key_select == input_port_read(space->machine, "LINE1"))
+	if (mboard_key_select == input_port_read(space->machine(), "LINE1"))
 		data &= 2;
 
 	return data << 8;
@@ -108,41 +120,48 @@ static WRITE16_HANDLER( glasgow_keys_w )
 
 static WRITE16_HANDLER( write_lcd )
 {
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
 	UINT8 lcd_data = data >> 8;
 
-	output_set_digit_value(lcd_shift_counter, mboard_lcd_invert & 1 ? lcd_data^0xff : lcd_data);
-	lcd_shift_counter--;
-	lcd_shift_counter &= 3;
+	output_set_digit_value(state->m_lcd_shift_counter, mboard_lcd_invert & 1 ? lcd_data^0xff : lcd_data);
+	state->m_lcd_shift_counter--;
+	state->m_lcd_shift_counter &= 3;
 	logerror("LCD Offset = %d Data low = %x \n", offset, lcd_data);
 }
 
 static WRITE16_HANDLER( write_lcd_flag )
 {
-	UINT8 lcd_flag;
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
+//	UINT8 lcd_flag;
 	mboard_lcd_invert = 0;
-	lcd_flag=data >> 8;
-	//beep_set_state(0, lcd_flag & 1 ? 1 : 0);
-	if (lcd_flag == 0)
+//	lcd_flag=data >> 8;
+	//beep_set_state(0, (data >> 8) & 1 ? 1 : 0);
+	if ((data >> 8) == 0) {
 		mboard_key_selector = 1;
+		state->m_led7 = 0;
+	} else {
+		state->m_led7 = 0xff;
+	}
 
- // The key function in the rom expects after writing to
- // the  a value from the second key row;
-	if (lcd_flag != 0)
-		led7 = 255;
-	else
-		led7 = 0;
-
+//  The key function in the rom expects after writing to
+//  the  a value from the second key row;
+//	if (lcd_flag != 0)
+//		state->m_led7 = 255;
+//	else
+//		state->m_led7 = 0;
+//
 	logerror("LCD Flag 16 = %x \n", data);
 }
 
 static WRITE16_HANDLER( write_irq_flag )
 {
-	device_t *speaker = space->machine->device("beep");
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
+	device_t *speaker = space->machine().device("beep");
 
 	beep_set_state(speaker, data & 0x100);
 	logerror("Write 0x800004 = %x \n", data);
-	irq_flag = 1;
-	beeper = data;
+	state->m_irq_flag = 1;
+	state->m_beeper = data;
 }
 
 static READ16_HANDLER( read_newkeys16 )  //Amsterdam, Roma
@@ -150,9 +169,9 @@ static READ16_HANDLER( read_newkeys16 )  //Amsterdam, Roma
 	UINT16 data;
 
 	if (mboard_key_selector == 0)
-		data = input_port_read(space->machine, "LINE0");
+		data = input_port_read(space->machine(), "LINE0");
 	else
-		data = input_port_read(space->machine, "LINE1");
+		data = input_port_read(space->machine(), "LINE1");
 
 	logerror("read Keyboard Offset = %x Data = %x Select = %x \n", offset, data, mboard_key_selector);
 	data <<= 8;
@@ -176,30 +195,36 @@ static READ16_HANDLER(read_test)
 
 static WRITE32_HANDLER( write_lcd32 )
 {
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
 	UINT8 lcd_data = data >> 8;
 
-	output_set_digit_value(lcd_shift_counter, mboard_lcd_invert & 1 ? lcd_data^0xff : lcd_data);
-	lcd_shift_counter--;
-	lcd_shift_counter &= 3;
+	output_set_digit_value(state->m_lcd_shift_counter, mboard_lcd_invert & 1 ? lcd_data^0xff : lcd_data);
+	state->m_lcd_shift_counter--;
+	state->m_lcd_shift_counter &= 3;
 	//logerror("LCD Offset = %d Data   = %x \n  ", offset, lcd_data);
 }
 
 static WRITE32_HANDLER( write_lcd_flag32 )
 {
-	UINT8 lcd_flag = data >> 24;
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
+//	UINT8 lcd_flag = data >> 24;
 
 	mboard_lcd_invert = 0;
 
-	if (lcd_flag == 0)
+	if ((data >> 24) == 0) {
 		mboard_key_selector = 1;
+		state->m_led7 = 0;
+	} else {
+		state->m_led7 = 0xff;
+	}
 
-	//logerror("LCD Flag 32 = %x \n", lcd_flag);
-	//beep_set_state(0, lcd_flag & 1 ? 1 : 0);
+	//logerror("LCD Flag 32 = %x \n", data >> 24);
+	//beep_set_state(0, (data >> 24) & 1 ? 1 : 0);
 
-	if (lcd_flag != 0)
-		led7 = 255;
-	else
-		led7 = 0;
+//	if (lcd_flag != 0)
+//		state->m_led7 = 255;
+//	else
+//		state->m_led7 = 0;
 }
 
 static READ32_HANDLER( read_newkeys32 ) // Dallas 32, Roma 32
@@ -207,9 +232,9 @@ static READ32_HANDLER( read_newkeys32 ) // Dallas 32, Roma 32
 	UINT32 data;
 
 	if (mboard_key_selector == 0)
-		data = input_port_read(space->machine, "LINE0");
+		data = input_port_read(space->machine(), "LINE0");
 	else
-		data = input_port_read(space->machine, "LINE1");
+		data = input_port_read(space->machine(), "LINE1");
 	//if (mboard_key_selector == 1) data = input_port_read(machine, "LINE0"); else data = 0;
 	if(data)
 		logerror("read Keyboard Offset = %x Data = %x\n", offset, data);
@@ -227,38 +252,32 @@ static READ16_HANDLER(read_board_amsterd)
 
 static WRITE32_HANDLER ( write_beeper32 )
 {
-	device_t *speaker = space->machine->device("beep");
+	glasgow_state *state = space->machine().driver_data<glasgow_state>();
+	device_t *speaker = space->machine().device("beep");
 	beep_set_state(speaker, data & 0x01000000);
 	logerror("Write 0x8000004 = %x \n", data);
-	irq_flag = 1;
-	beeper = data;
+	state->m_irq_flag = 1;
+	state->m_beeper = data;
 }
 
-static TIMER_CALLBACK( update_nmi )
+static TIMER_DEVICE_CALLBACK( update_nmi )
 {
-	//cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, irq_edge & 0xff ? CLEAR_LINE : ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
-	// irq_edge = ~irq_edge;
+	cputag_set_input_line(timer.machine(), "maincpu", 7, HOLD_LINE);
 }
 
-static TIMER_CALLBACK( update_nmi32 )
+static TIMER_DEVICE_CALLBACK( update_nmi32 )
 {
-	// cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, irq_edge & 0xff ? CLEAR_LINE : ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
-	// irq_edge = ~irq_edge;
+	cputag_set_input_line(timer.machine(), "maincpu", 6, HOLD_LINE);
 }
 
 static MACHINE_START( glasgow )
 {
-	device_t *speaker = machine->device("beep");
+	glasgow_state *state = machine.driver_data<glasgow_state>();
+	device_t *speaker = machine.device("beep");
 
 	mboard_key_selector = 0;
-	irq_flag = 0;
-	lcd_shift_counter = 3;
-	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, update_nmi);
-	timer_pulse(machine, ATTOTIME_IN_HZ(100), NULL, 0, mboard_update_artwork);
+	state->m_irq_flag = 0;
+	state->m_lcd_shift_counter = 3;
 	beep_set_frequency(speaker, 44);
 
 	mboard_savestate_register(machine);
@@ -267,11 +286,10 @@ static MACHINE_START( glasgow )
 
 static MACHINE_START( dallas32 )
 {
-	device_t *speaker = machine->device("beep");
+	glasgow_state *state = machine.driver_data<glasgow_state>();
+	device_t *speaker = machine.device("beep");
 
-	lcd_shift_counter = 3;
-	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, update_nmi32);
-	timer_pulse(machine, ATTOTIME_IN_HZ(100), NULL, 0, mboard_update_artwork);
+	state->m_lcd_shift_counter = 3;
 	beep_set_frequency(speaker, 44);
 
 	mboard_savestate_register(machine);
@@ -280,13 +298,14 @@ static MACHINE_START( dallas32 )
 
 static MACHINE_RESET( glasgow )
 {
-	lcd_shift_counter = 3;
+	glasgow_state *state = machine.driver_data<glasgow_state>();
+	state->m_lcd_shift_counter = 3;
 
 	mboard_set_border_pieces();
 	mboard_set_board();
 }
 
-static ADDRESS_MAP_START(glasgow_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(glasgow_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_GLOBAL_MASK(0x1FFFF)
 	AM_RANGE(0x00000000, 0x0000ffff) AM_ROM
 	AM_RANGE(0x00010000, 0x00010001) AM_WRITE( glasgow_lcd_w )
@@ -298,7 +317,7 @@ static ADDRESS_MAP_START(glasgow_mem, ADDRESS_SPACE_PROGRAM, 16)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(amsterd_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(amsterd_mem, AS_PROGRAM, 16)
 	// ADDRESS_MAP_GLOBAL_MASK(0x7FFFF)
 	AM_RANGE(0x00000000, 0x0000ffff) AM_ROM
 	AM_RANGE(0x00800002, 0x00800003) AM_WRITE( write_lcd )
@@ -312,7 +331,7 @@ static ADDRESS_MAP_START(amsterd_mem, ADDRESS_SPACE_PROGRAM, 16)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(dallas32_mem, ADDRESS_SPACE_PROGRAM, 32)
+static ADDRESS_MAP_START(dallas32_mem, AS_PROGRAM, 32)
 	// ADDRESS_MAP_GLOBAL_MASK(0x1FFFF)
 	AM_RANGE(0x00000000, 0x0000ffff) AM_ROM
 	AM_RANGE(0x00800000, 0x00800003) AM_WRITE( write_lcd32 )
@@ -479,7 +498,7 @@ static INPUT_PORTS_START( newkeys )
 	PORT_INCLUDE( board )
 INPUT_PORTS_END
 
-static MACHINE_CONFIG_START( glasgow, driver_device )
+static MACHINE_CONFIG_START( glasgow, glasgow_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(glasgow_mem)
@@ -488,6 +507,9 @@ static MACHINE_CONFIG_START( glasgow, driver_device )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("beep", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MCFG_TIMER_ADD_PERIODIC("nmi_timer", update_nmi, attotime::from_hz(50))
+	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(100))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( amsterd, glasgow )
@@ -501,6 +523,10 @@ static MACHINE_CONFIG_DERIVED( dallas32, glasgow )
     MCFG_CPU_REPLACE("maincpu", M68020, 14000000)
     MCFG_CPU_PROGRAM_MAP(dallas32_mem)
     MCFG_MACHINE_START( dallas32 )
+
+	MCFG_DEVICE_REMOVE("nmi_timer")
+	MCFG_TIMER_ADD_PERIODIC("nmi_timer", update_nmi32, attotime::from_hz(50))
+
 MACHINE_CONFIG_END
 
 /***************************************************************************

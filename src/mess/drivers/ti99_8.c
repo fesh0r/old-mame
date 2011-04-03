@@ -196,7 +196,7 @@ Known Issues (MZ, 2010-11-07)
 //#include "video/tms9928a.h"
 #include "sound/wave.h"
 #include "machine/tms9901.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 
 #include "machine/ti99/tiboard.h"
 
@@ -224,7 +224,7 @@ public:
     Memory map - see description above
 */
 
-static ADDRESS_MAP_START(ti99_8_memmap, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ti99_8_memmap, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE("mapper", ti99_mapper8_r, ti99_mapper8_w )
 ADDRESS_MAP_END
 
@@ -233,7 +233,7 @@ ADDRESS_MAP_END
     CRU map - see description above
 */
 
-static ADDRESS_MAP_START(ti99_8_cru_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(ti99_8_cru_map, AS_IO, 8)
 	AM_RANGE(0x0000, 0x007f) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0000, 0x02ff) AM_DEVREAD("crubus", ti99_crubus_r )
 
@@ -305,6 +305,12 @@ static INPUT_PORTS_START(ti99_8)
 	PORT_CONFNAME( 0x01, 0x01, "Floppy and HD speed" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
 		PORT_CONFSETTING( 0x00, "No delay")
 		PORT_CONFSETTING( 0x01, "Realistic")
+
+	// We do not want to show this setting; makes only sense for Geneve
+	PORT_START( "MODE" )
+	PORT_CONFNAME( 0x01, 0x00, "Ext. cards modification" ) PORT_CONDITION( "HFDCDIP", 0xff, PORTCOND_EQUALS, GM_NEVER )
+		PORT_CONFSETTING(    0x00, "Standard" )
+		PORT_CONFSETTING(    GENMOD, "GenMod" )
 
 	/* 3 ports for mouse */
 	PORT_START("MOUSEX") /* Mouse - X AXIS */

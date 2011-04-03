@@ -9,12 +9,12 @@
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/pp01.h"
 
 
 /* Address maps */
-static ADDRESS_MAP_START(pp01_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(pp01_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")
@@ -33,7 +33,7 @@ static ADDRESS_MAP_START(pp01_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf000, 0xffff) AM_RAMBANK("bank16")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pp01_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pp01_io, AS_IO, 8 )
 	AM_RANGE(0xc0, 0xc3) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 	//AM_RANGE(0xc4, 0xc7) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 	AM_RANGE(0xcc, 0xcf) AM_WRITE(pp01_video_write_mode_w)
@@ -211,18 +211,19 @@ static MACHINE_CONFIG_START( pp01, pp01_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
+	MCFG_SCREEN_UPDATE(pp01)
+
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_PALETTE_INIT(pp01)
 
 	MCFG_VIDEO_START(pp01)
-	MCFG_VIDEO_UPDATE(pp01)
 
 	MCFG_PIT8253_ADD( "pit8253", pp01_pit8253_intf )
 
 	MCFG_I8255A_ADD( "ppi8255", pp01_ppi8255_interface )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END

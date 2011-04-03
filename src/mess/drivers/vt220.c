@@ -8,7 +8,7 @@
 
 #include "emu.h"
 #include "cpu/mcs51/mcs51.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 class vt220_state : public driver_device
@@ -20,11 +20,11 @@ public:
 };
 
 
-static ADDRESS_MAP_START(vt220_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vt220_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vt220_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vt220_io , AS_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -33,14 +33,14 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(vt220)
 {
-	memset(messram_get_ptr(machine->device("messram")),0,16*1024);
+	memset(ram_get_ptr(machine.device(RAM_TAG)),0,16*1024);
 }
 
 static VIDEO_START( vt220 )
 {
 }
 
-static VIDEO_UPDATE( vt220 )
+static SCREEN_UPDATE( vt220 )
 {
     return 0;
 }
@@ -61,14 +61,15 @@ static MACHINE_CONFIG_START( vt220, vt220_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(vt220)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(vt220)
-    MCFG_VIDEO_UPDATE(vt220)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("16K")
 MACHINE_CONFIG_END
 

@@ -35,7 +35,7 @@
 #include "cpu/m6502/m6502.h"
 #include "cpu/cp1610/cp1610.h"
 #include "includes/intv.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "sound/ay8910.h"
 
 #ifndef VERBOSE
@@ -73,21 +73,21 @@ static PALETTE_INIT( intv )
 	UINT8 i, j, r, g, b;
 	/* Two copies of everything (why?) */
 
-	machine->colortable = colortable_alloc(machine, 32);
+	machine.colortable = colortable_alloc(machine, 32);
 
 	for ( i = 0; i < 16; i++ )
 	{
 		r = intv_colors[i*3]; g = intv_colors[i*3+1]; b = intv_colors[i*3+2];
-		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
-		colortable_palette_set_color(machine->colortable, i + 16, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine.colortable, i, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine.colortable, i + 16, MAKE_RGB(r, g, b));
 	}
 
 	for(i=0;i<16;i++)
 	{
 		for(j=0;j<16;j++)
 		{
-		colortable_entry_set_value(machine->colortable, k++, i);
-		colortable_entry_set_value(machine->colortable, k++, j);
+		colortable_entry_set_value(machine.colortable, k++, i);
+		colortable_entry_set_value(machine.colortable, k++, j);
 		}
 	}
 
@@ -95,8 +95,8 @@ static PALETTE_INIT( intv )
 	{
 		for(j=16;j<32;j++)
 		{
-			colortable_entry_set_value(machine->colortable, k++, i);
-			colortable_entry_set_value(machine->colortable, k++, j);
+			colortable_entry_set_value(machine.colortable, k++, i);
+			colortable_entry_set_value(machine.colortable, k++, j);
 		}
 	}
 }
@@ -326,7 +326,7 @@ static INPUT_PORTS_START( intvkbd )
 	PORT_INCLUDE( intv )
 INPUT_PORTS_END
 
-static ADDRESS_MAP_START( intv_mem , ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START( intv_mem , AS_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x003f) AM_READWRITE( intv_stic_r, intv_stic_w )
 	AM_RANGE(0x0100, 0x01ef) AM_READWRITE( intv_ram8_r, intv_ram8_w )
 	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE("ay8910", AY8914_directread_port_0_lsb_r, AY8914_directwrite_port_0_lsb_w )
@@ -337,7 +337,7 @@ static ADDRESS_MAP_START( intv_mem , ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x4800, 0x7fff) AM_ROM		/* Cartridges? */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( intvkbd_mem , ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START( intvkbd_mem , AS_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x003f) AM_READWRITE( intv_stic_r, intv_stic_w )
 	AM_RANGE(0x0100, 0x01ef) AM_READWRITE( intv_ram8_r, intv_ram8_w )
 	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE("ay8910", AY8914_directread_port_0_lsb_r, AY8914_directwrite_port_0_lsb_w )
@@ -347,15 +347,15 @@ static ADDRESS_MAP_START( intvkbd_mem , ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x3800, 0x39ff) AM_READWRITE( intv_gram_r, intv_gram_w )	/* GRAM,     8-bits wide */
 	AM_RANGE(0x4800, 0x6fff) AM_ROM		/* Cartridges? */
 	AM_RANGE(0x7000, 0x7fff) AM_ROM	AM_REGION("maincpu", 0x7000<<1)	/* Keyboard ROM */
-	AM_RANGE(0x8000, 0xbfff) AM_RAM_WRITE( intvkbd_dualport16_w ) AM_BASE_MEMBER(intv_state, intvkbd_dualport_ram)	/* Dual-port RAM */
+	AM_RANGE(0x8000, 0xbfff) AM_RAM_WRITE( intvkbd_dualport16_w ) AM_BASE_MEMBER(intv_state, m_intvkbd_dualport_ram)	/* Dual-port RAM */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( intv2_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( intv2_mem , AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH  /* Required because of probing */
 	AM_RANGE( 0x0000, 0x3fff) AM_READWRITE( intvkbd_dualport8_lsb_r, intvkbd_dualport8_lsb_w )	/* Dual-port RAM */
 	AM_RANGE( 0x4000, 0x7fff) AM_READWRITE( intvkbd_dualport8_msb_r, intvkbd_dualport8_msb_w )	/* Dual-port RAM */
 	AM_RANGE( 0xb7f8, 0xb7ff) AM_RAM	/* ??? */
-	AM_RANGE( 0xb800, 0xbfff) AM_RAM AM_BASE_MEMBER(intv_state, videoram) /* Text Display */
+	AM_RANGE( 0xb800, 0xbfff) AM_RAM AM_BASE_MEMBER(intv_state, m_videoram) /* Text Display */
 	AM_RANGE( 0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -369,8 +369,8 @@ static TIMER_CALLBACK(intv_interrupt2_complete)
 
 static INTERRUPT_GEN( intv_interrupt2 )
 {
-	cputag_set_input_line(device->machine, "keyboard", 0, ASSERT_LINE);
-	timer_set(device->machine, device->machine->device<cpu_device>("keyboard")->cycles_to_attotime(100), NULL, 0, intv_interrupt2_complete);
+	cputag_set_input_line(device->machine(), "keyboard", 0, ASSERT_LINE);
+	device->machine().scheduler().timer_set(device->machine().device<cpu_device>("keyboard")->cycles_to_attotime(100), FUNC(intv_interrupt2_complete));
 }
 
 static MACHINE_CONFIG_START( intv, intv_state )
@@ -378,7 +378,7 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	MCFG_CPU_ADD("maincpu", CP1610, XTAL_3_579545MHz/4)        /* Colorburst/4 */
 	MCFG_CPU_PROGRAM_MAP(intv_mem)
 	MCFG_CPU_VBLANK_INT("screen", intv_interrupt)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( intv )
 
@@ -389,12 +389,13 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40*8, 24*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 24*8-1)
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_GFXDECODE( intv )
 	MCFG_PALETTE_LENGTH(0x400)
 	MCFG_PALETTE_INIT( intv )
 
 	MCFG_VIDEO_START( intv )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -417,11 +418,12 @@ static MACHINE_CONFIG_DERIVED( intvkbd, intv )
 	MCFG_CPU_PROGRAM_MAP(intv2_mem)
 	MCFG_CPU_VBLANK_INT("screen", intv_interrupt2)
 
-	MCFG_QUANTUM_TIME(HZ(6000))
+	MCFG_QUANTUM_TIME(attotime::from_hz(6000))
 
 	/* video hardware */
 	MCFG_GFXDECODE(intvkbd)
-	MCFG_VIDEO_UPDATE(intvkbd)
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE(intvkbd)
 
 	/* cartridge */
 	MCFG_DEVICE_REMOVE("cart")

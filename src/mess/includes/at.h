@@ -17,12 +17,12 @@ public:
 	at_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	device_t *maincpu;
-	device_t *pic8259_master;
-	device_t *pic8259_slave;
-	device_t *dma8237_1;
-	device_t *dma8237_2;
-	device_t *pit8254;
+	device_t *m_maincpu;
+	device_t *m_pic8259_master;
+	device_t *m_pic8259_slave;
+	device_t *m_dma8237_1;
+	device_t *m_dma8237_2;
+	device_t *m_pit8254;
 };
 
 
@@ -39,12 +39,8 @@ extern const ins8250_interface ibm5170_com_interface[4];
 READ8_HANDLER( at_page8_r );
 WRITE8_HANDLER( at_page8_w );
 
-MACHINE_CONFIG_EXTERN( at_kbdc8042 );
-
-READ8_HANDLER(at_kbdc8042_r);
-WRITE8_HANDLER(at_kbdc8042_w);
-WRITE8_HANDLER( at_kbdc8042_set_clock_signal );
-WRITE8_HANDLER( at_kbdc8042_set_data_signal );
+READ8_HANDLER( at_portb_r );
+WRITE8_HANDLER( at_portb_w );
 
 DRIVER_INIT( atcga );
 DRIVER_INIT( atega );

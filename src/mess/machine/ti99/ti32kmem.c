@@ -16,6 +16,8 @@ typedef struct _ti99_mem32k_state
 INLINE ti99_mem32k_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == TI32KMEM);
+
 	return (ti99_mem32k_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -25,13 +27,12 @@ INLINE ti99_mem32k_state *get_safe_token(device_t *device)
 static READ8Z_DEVICE_HANDLER( mem32k_rz )
 {
 	ti99_mem32k_state *card = get_safe_token(device);
-
-	if (((offset & 0xe000)==0x2000) || ((offset & 0xe000)==0xa000) || ((offset & 0xc000)==0xc000))
+	if (((offset & 0x7e000)==0x72000) || ((offset & 0x7e000)==0x7a000) || ((offset & 0x7c000)==0x7c000))
 	{
-		if (offset < 0xa000)
-			*value = card->memory[offset-0x2000];
+		if ((offset & 0xffff) < 0xa000)
+			*value = card->memory[offset & 0x1fff];
 		else
-			*value = card->memory[offset-0x8000];
+			*value = card->memory[offset & 0x7fff];
 	}
 }
 
@@ -41,13 +42,12 @@ static READ8Z_DEVICE_HANDLER( mem32k_rz )
 static WRITE8_DEVICE_HANDLER( mem32k_w )
 {
 	ti99_mem32k_state *card = get_safe_token(device);
-
-	if (((offset & 0xe000)==0x2000) || ((offset & 0xe000)==0xa000) || ((offset & 0xc000)==0xc000))
+	if (((offset & 0x7e000)==0x72000) || ((offset & 0x7e000)==0x7a000) || ((offset & 0x7c000)==0x7c000))
 	{
-		if (offset < 0xa000)
-			card->memory[offset-0x2000] = data;
+		if ((offset & 0xffff) < 0xa000)
+			card->memory[offset & 0x1fff] = data;
 		else
-			card->memory[offset-0x8000] = data;
+			card->memory[offset & 0x7fff] = data;
 	}
 }
 
@@ -63,23 +63,23 @@ static const ti99_peb_card ti32k_card =
 
 static DEVICE_START( ti99_mem32k )
 {
-	ti99_mem32k_state *card = (ti99_mem32k_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_mem32k_state *card = get_safe_token(device);
 	card->memory = NULL;
 }
 
 static DEVICE_STOP( ti99_mem32k )
 {
-	ti99_mem32k_state *card = (ti99_mem32k_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_mem32k_state *card = get_safe_token(device);
 	if (card->memory) free(card->memory);
 }
 
 static DEVICE_RESET( ti99_mem32k )
 {
-	ti99_mem32k_state *card = (ti99_mem32k_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_mem32k_state *card = get_safe_token(device);
 	/* Register the card */
 	device_t *peb = device->owner();
 
-	if (input_port_read(device->machine, "RAM")==RAM_TI32_EXT)
+	if (input_port_read(device->machine(), "RAM")==RAM_TI32_EXT)
 	{
 		int success = mount_card(peb, device, &ti32k_card, get_pebcard_config(device)->slot);
 		if (!success) return;

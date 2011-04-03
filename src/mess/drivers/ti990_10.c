@@ -83,6 +83,7 @@ public:
 	ti990_10_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
+	device_t *m_terminal;
 };
 
 
@@ -102,9 +103,10 @@ static MACHINE_RESET( ti990_10 )
 
 static INTERRUPT_GEN( ti990_10_line_interrupt )
 {
-	vdt911_keyboard(device->machine, 0);
+	ti990_10_state *state = device->machine().driver_data<ti990_10_state>();
+	vdt911_keyboard(state->m_terminal);
 
-	ti990_line_interrupt(device->machine);
+	ti990_line_interrupt(device->machine());
 }
 
 #ifdef UNUSED_FUNCTION
@@ -117,16 +119,13 @@ static void rset_callback(device_t *device)
 {
 	ti990_cpuboard_reset();
 
-	vdt911_reset();
-	/* ... */
-
 	/* clear controller panel and smi fault LEDs */
 }
 
 static void lrex_callback(device_t *device)
 {
 	/* right??? */
-	ti990_hold_load(device->machine);
+	ti990_hold_load(device->machine());
 }
 
 /*
@@ -136,23 +135,25 @@ static void lrex_callback(device_t *device)
 */
 
 
+static const vdt911_init_params_t vdt911_intf =
+{
+	char_1920,
+	vdt911_model_US/*vdt911_model_UK*//*vdt911_model_French*//*vdt911_model_French*/
+	/*vdt911_model_German*//*vdt911_model_Swedish*//*vdt911_model_Norwegian*/
+	/*vdt911_model_Japanese*//*vdt911_model_Arabic*//*vdt911_model_FrenchWP*/,
+	ti990_set_int10
+};
+
 static VIDEO_START( ti990_10 )
 {
-	const vdt911_init_params_t params =
-	{
-		char_1920,
-		vdt911_model_US/*vdt911_model_UK*//*vdt911_model_French*//*vdt911_model_French*/
-		/*vdt911_model_German*//*vdt911_model_Swedish*//*vdt911_model_Norwegian*/
-		/*vdt911_model_Japanese*//*vdt911_model_Arabic*//*vdt911_model_FrenchWP*/,
-		ti990_set_int10
-	};
-
-	vdt911_init_term(machine, 0, & params);
+	ti990_10_state *state = machine.driver_data<ti990_10_state>();
+	state->m_terminal = machine.device("vdt911");
 }
 
-static VIDEO_UPDATE( ti990_10 )
+static SCREEN_UPDATE( ti990_10 )
 {
-	vdt911_refresh(screen->machine, bitmap, 0, 0, 0);
+	ti990_10_state *state = screen->machine().driver_data<ti990_10_state>();
+	vdt911_refresh(state->m_terminal, bitmap, 0, 0);
 	return 0;
 }
 
@@ -160,7 +161,7 @@ static VIDEO_UPDATE( ti990_10 )
   Memory map - see description above
 */
 
-static ADDRESS_MAP_START(ti990_10_memmap, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(ti990_10_memmap, AS_PROGRAM, 16)
 
 	AM_RANGE(0x000000, 0x0fffff) AM_RAM		/* let's say we have 1MB of RAM */
 	AM_RANGE(0x100000, 0x1ff7ff) AM_NOP		/* free TILINE space */
@@ -177,9 +178,9 @@ ADDRESS_MAP_END
   CRU map
 */
 
-static ADDRESS_MAP_START(ti990_10_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x10, 0x11) AM_READ(vdt911_0_cru_r)
-	AM_RANGE(0x80, 0x8f) AM_WRITE(vdt911_0_cru_w)
+static ADDRESS_MAP_START(ti990_10_io, AS_IO, 8)
+	AM_RANGE(0x10, 0x11) AM_DEVREAD("vdt911", vdt911_cru_r)
+	AM_RANGE(0x80, 0x8f) AM_DEVWRITE("vdt911", vdt911_cru_w)
 	AM_RANGE(0x1fa, 0x1fb) AM_READ(ti990_10_mapper_cru_r)
 	AM_RANGE(0x1fc, 0x1fd) AM_READ(ti990_10_eir_cru_r)
 	AM_RANGE(0x1fe, 0x1ff) AM_READ(ti990_panel_read)
@@ -223,14 +224,15 @@ static MACHINE_CONFIG_START( ti990_10, ti990_10_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(560, 280)
 	MCFG_SCREEN_VISIBLE_AREA(0, 560-1, 0, /*250*/280-1)
+	MCFG_SCREEN_UPDATE(ti990_10)
+	/*MCFG_SCREEN_EOF(name)*/
 
 	MCFG_GFXDECODE(vdt911)
 	MCFG_PALETTE_LENGTH(8)
 
 	MCFG_PALETTE_INIT(vdt911)
+	MCFG_VDT911_VIDEO_ADD("vdt911", vdt911_intf)
 	MCFG_VIDEO_START(ti990_10)
-	/*MCFG_VIDEO_EOF(name)*/
-	MCFG_VIDEO_UPDATE(ti990_10)
 
 	/* 911 VDT has a beep tone generator */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -293,7 +295,7 @@ static DRIVER_INIT( ti990_10 )
 	/* load specific ti990/12 rom page */
 	const int page = 3;
 
-	memmove(machine->region("maincpu")->base()+0x1FFC00, machine->region("maincpu")->base()+0x1FFC00+(page*0x400), 0x400);
+	memmove(machine.region("maincpu")->base()+0x1FFC00, machine.region("maincpu")->base()+0x1FFC00+(page*0x400), 0x400);
 #endif
 	vdt911_init(machine);
 }

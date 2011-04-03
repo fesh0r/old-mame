@@ -34,9 +34,9 @@
 #include "emu.h"
 #include "cpu/v30mz/nec.h"
 #include "includes/wswan.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 
-static ADDRESS_MAP_START (wswan_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (wswan_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x03fff) AM_RAM		/* 16kb RAM / 4 colour tiles */
 	AM_RANGE(0x04000, 0x0ffff) AM_NOP		/* nothing */
 	AM_RANGE(0x10000, 0x1ffff) AM_READWRITE(wswan_sram_r, wswan_sram_w)	/* SRAM bank */
@@ -56,7 +56,7 @@ static ADDRESS_MAP_START (wswan_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xF0000, 0xFffff) AM_ROMBANK("bank15")	/* ROM bank 14 */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (wscolor_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (wscolor_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x0ffff) AM_RAM		/* 16kb RAM / 4 colour tiles, 16 colour tiles + palettes */
 	AM_RANGE(0x10000, 0x1ffff) AM_READWRITE(wswan_sram_r, wswan_sram_w)	/* SRAM bank */
 	AM_RANGE(0x20000, 0x2ffff) AM_ROMBANK("bank2")	/* ROM bank 1 */
@@ -75,7 +75,7 @@ static ADDRESS_MAP_START (wscolor_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xF0000, 0xFffff) AM_ROMBANK("bank15")	/* ROM bank 14 */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (wswan_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (wswan_io, AS_IO, 8)
 	AM_RANGE(0x00, 0xff) AM_READWRITE(wswan_port_r, wswan_port_w)	/* I/O ports */
 ADDRESS_MAP_END
 
@@ -133,7 +133,12 @@ static MACHINE_CONFIG_START( wswan, wswan_state )
 	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_REFRESH_RATE(75)
 	MCFG_SCREEN_VBLANK_TIME(0)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE( WSWAN_X_PIXELS, WSWAN_X_PIXELS )
+	MCFG_SCREEN_VISIBLE_AREA(0*8, WSWAN_X_PIXELS - 1, 0, WSWAN_X_PIXELS - 1)
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_NVRAM_HANDLER( wswan )
 
@@ -141,11 +146,7 @@ static MACHINE_CONFIG_START( wswan, wswan_state )
 	MCFG_MACHINE_RESET( wswan )
 
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MCFG_SCREEN_SIZE( WSWAN_X_PIXELS, WSWAN_X_PIXELS )
-	MCFG_SCREEN_VISIBLE_AREA(0*8, WSWAN_X_PIXELS - 1, 0, WSWAN_X_PIXELS - 1)
 	MCFG_GFXDECODE(wswan)
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(wswan)
@@ -166,6 +167,7 @@ static MACHINE_CONFIG_START( wswan, wswan_state )
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","wswan")
+	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("wsc_list","wscolor")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( wscolor, wswan )
@@ -174,6 +176,13 @@ static MACHINE_CONFIG_DERIVED( wscolor, wswan )
 	MCFG_MACHINE_START( wscolor )
 	MCFG_PALETTE_LENGTH(4096)
 	MCFG_PALETTE_INIT( wscolor )
+
+
+	/* software lists */
+	MCFG_DEVICE_REMOVE("cart_list")
+	MCFG_DEVICE_REMOVE("wsc_list")
+	MCFG_SOFTWARE_LIST_ADD("cart_list","wscolor")
+	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("ws_list","wswan")
 MACHINE_CONFIG_END
 
 /***************************************************************************

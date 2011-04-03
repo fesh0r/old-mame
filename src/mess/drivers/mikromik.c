@@ -2,7 +2,7 @@
 
 #include "emu.h"
 #include "formats/basicdsk.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/8237dma.h"
 #include "machine/i8212.h"
@@ -12,7 +12,7 @@
 #include "video/i8275.h"
 #include "video/upd7220.h"
 #include "sound/speaker.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/mikromik.h"
 
 /*
@@ -71,23 +71,23 @@
 
 WRITE8_MEMBER( mm1_state::ls259_w )
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 	int d = BIT(data, 0);
 
 	switch (offset)
 	{
 	case 0: /* IC24 A8 */
 		//logerror("IC24 A8 %u\n", d);
-		memory_set_bank(machine, "bank1", d);
+		memory_set_bank(m_machine, "bank1", d);
 
 		if (d)
 		{
-			memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+			program->install_readwrite_bank(0x0000, 0x0fff, "bank1");
 		}
 		else
 		{
-			memory_install_read_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
-			memory_unmap_write(program, 0x0000, 0x0fff, 0, 0);
+			program->install_read_bank(0x0000, 0x0fff, "bank1");
+			program->unmap_write(0x0000, 0x0fff);
 		}
 		break;
 
@@ -125,18 +125,18 @@ WRITE8_MEMBER( mm1_state::ls259_w )
 		floppy_drive_set_ready_state(m_floppy0, d, 1);
 		floppy_drive_set_ready_state(m_floppy1, d, 1);
 
-		if (input_port_read(machine, "T5")) upd765_ready_w(m_fdc, d);
+		if (input_port_read(m_machine, "T5")) upd765_ready_w(m_fdc, d);
 		break;
 	}
 }
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( mm1_map, ADDRESS_SPACE_PROGRAM, 8, mm1_state )
+static ADDRESS_MAP_START( mm1_map, AS_PROGRAM, 8, mm1_state )
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0xfeff) AM_RAM
 	AM_RANGE(0xff00, 0xff0f) AM_MIRROR(0x80) AM_DEVREADWRITE_LEGACY(I8237_TAG, i8237_r, i8237_w)
-//  AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE_LEGACY(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
+	AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE_LEGACY(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
     AM_RANGE(0xff20, 0xff21) AM_MIRROR(0x8e) AM_DEVREADWRITE_LEGACY(I8275_TAG, i8275_r, i8275_w)
 	AM_RANGE(0xff30, 0xff33) AM_MIRROR(0x8c) AM_DEVREADWRITE_LEGACY(I8253_TAG, pit8253_r, pit8253_w)
 	AM_RANGE(0xff40, 0xff40) AM_MIRROR(0x8f) AM_DEVREADWRITE(I8212_TAG, i8212_device, data_r, data_w)
@@ -145,14 +145,13 @@ static ADDRESS_MAP_START( mm1_map, ADDRESS_SPACE_PROGRAM, 8, mm1_state )
 	AM_RANGE(0xff60, 0xff67) AM_MIRROR(0x88) AM_WRITE(ls259_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mm1m6_map, ADDRESS_SPACE_PROGRAM, 8, mm1_state )
+static ADDRESS_MAP_START( mm1m6_map, AS_PROGRAM, 8, mm1_state )
 	AM_IMPORT_FROM(mm1_map)
 	AM_RANGE(0xff70, 0xff71) AM_MIRROR(0x8e) AM_DEVREADWRITE_LEGACY(UPD7220_TAG, upd7220_r, upd7220_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mm1_upd7220_map, 0, 16, mm1_state )
-	AM_RANGE(0x00000, 0x07fff) AM_RAM
-	AM_RANGE(0x08000, 0x3ffff) AM_UNMAP // wrong
+static ADDRESS_MAP_START( mm1_upd7220_map, AS_0, 8, mm1_state )
+	AM_RANGE(0x00000, 0x3ffff) AM_DEVREADWRITE_LEGACY(UPD7220_TAG,upd7220_vram_r,upd7220_vram_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -280,7 +279,7 @@ static PALETTE_INIT( mm1 )
 
 static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 {
-	mm1_state *state = device->machine->driver_data<mm1_state>();
+	mm1_state *state = device->machine().driver_data<mm1_state>();
 
 	UINT8 romdata = state->m_char_rom[(charcode << 4) | linecount];
 
@@ -301,7 +300,7 @@ static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 
 		int color = hlt_in ? 2 : (video_in ^ compl_in);
 
-		*BITMAP_ADDR16(device->machine->generic.tmpbitmap, y, x + i) = color;
+		*BITMAP_ADDR16(device->machine().generic.tmpbitmap, y, x + i) = color;
 	}
 }
 
@@ -315,11 +314,12 @@ static const i8275_interface crtc_intf =
 	crtc_display_pixels
 };
 
+/* TODO */
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 {
 	int i;
 
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < 8; i++)
 	{
 		if (BIT(data, i)) *BITMAP_ADDR16(bitmap, y, x + i) = 1;
 	}
@@ -329,7 +329,7 @@ static UPD7220_INTERFACE( hgdc_intf )
 {
 	SCREEN_TAG,
 	hgdc_display_pixels,
-	DEVCB_NULL,
+	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL
@@ -338,16 +338,16 @@ static UPD7220_INTERFACE( hgdc_intf )
 void mm1_state::video_start()
 {
 	// find memory regions
-	m_char_rom = machine->region("chargen")->base();
+	m_char_rom = m_machine.region("chargen")->base();
 
-	VIDEO_START_CALL(generic_bitmapped);
+	VIDEO_START_NAME(generic_bitmapped)(m_machine);
 }
 
-bool mm1_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool mm1_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	/* text */
 	i8275_update(m_crtc, &bitmap, &cliprect);
-	copybitmap(&bitmap, screen.machine->generic.tmpbitmap, 0, 0, 0, 0, &cliprect);
+	copybitmap(&bitmap, screen.machine().generic.tmpbitmap, 0, 0, 0, 0, &cliprect);
 
 	/* graphics */
 	upd7220_update(m_hgdc, &bitmap, &cliprect);
@@ -389,7 +389,7 @@ static I8212_INTERFACE( mm1_i8212_intf )
 
 WRITE_LINE_MEMBER( mm1_state::dma_hrq_changed )
 {
-	cpu_set_input_line(m_maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	device_set_input_line(m_maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
 	i8237_hlda_w(m_dmac, state);
@@ -421,7 +421,7 @@ WRITE_LINE_MEMBER( mm1_state::tc_w )
 
 	m_tc = !state;
 
-	cpu_set_input_line(m_maincpu, I8085_RST75_LINE, state);
+	device_set_input_line(m_maincpu, I8085_RST75_LINE, state);
 }
 
 WRITE_LINE_MEMBER( mm1_state::dack3_w )
@@ -576,8 +576,8 @@ void mm1_state::scan_keyboard()
 {
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9" };
 
-	UINT8 data = input_port_read(machine, keynames[m_drive]);
-	UINT8 special = input_port_read(machine, "SPECIAL");
+	UINT8 data = input_port_read(m_machine, keynames[m_drive]);
+	UINT8 special = input_port_read(m_machine, "SPECIAL");
 	int ctrl = BIT(special, 0);
 	int shift = BIT(special, 2) & BIT(special, 1);
 	UINT8 keydata = 0xff;
@@ -622,7 +622,7 @@ void mm1_state::scan_keyboard()
 
 static TIMER_DEVICE_CALLBACK( kbclk_tick )
 {
-	mm1_state *state = timer.machine->driver_data<mm1_state>();
+	mm1_state *state = timer.machine().driver_data<mm1_state>();
 
 	state->scan_keyboard();
 }
@@ -670,40 +670,40 @@ static const floppy_config mm1_floppy_config =
 
 void mm1_state::machine_start()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* find memory regions */
-	m_key_rom = machine->region("keyboard")->base();
+	m_key_rom = m_machine.region("keyboard")->base();
 
 	/* setup memory banking */
-	memory_install_read_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
-	memory_unmap_write(program, 0x0000, 0x0fff, 0, 0);
-	memory_configure_bank(machine, "bank1", 0, 1, machine->region("bios")->base(), 0);
-	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(machine->device("messram")), 0);
-	memory_set_bank(machine, "bank1", 0);
+	program->install_read_bank(0x0000, 0x0fff, "bank1");
+	program->unmap_write(0x0000, 0x0fff);
+	memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region("bios")->base(), 0);
+	memory_configure_bank(m_machine, "bank1", 1, 1, ram_get_ptr(m_machine.device(RAM_TAG)), 0);
+	memory_set_bank(m_machine, "bank1", 0);
 
 	/* register for state saving */
-	state_save_register_global(machine, m_sense);
-	state_save_register_global(machine, m_drive);
-	state_save_register_global(machine, m_llen);
-	state_save_register_global(machine, m_intc);
-	state_save_register_global(machine, m_rx21);
-	state_save_register_global(machine, m_tx21);
-	state_save_register_global(machine, m_rcl);
-	state_save_register_global(machine, m_recall);
-	state_save_register_global(machine, m_dack3);
+	state_save_register_global(m_machine, m_sense);
+	state_save_register_global(m_machine, m_drive);
+	state_save_register_global(m_machine, m_llen);
+	state_save_register_global(m_machine, m_intc);
+	state_save_register_global(m_machine, m_rx21);
+	state_save_register_global(m_machine, m_tx21);
+	state_save_register_global(m_machine, m_rcl);
+	state_save_register_global(m_machine, m_recall);
+	state_save_register_global(m_machine, m_dack3);
 }
 
 void mm1_state::machine_reset()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 	int i;
 
 	/* reset LS259 */
 	for (i = 0; i < 8; i++) ls259_w(*program, i, 0);
 
 	/* set FDC ready */
-	if (!input_port_read(machine, "T5")) upd765_ready_w(m_fdc, 1);
+	if (!input_port_read(m_machine, "T5")) upd765_ready_w(m_fdc, 1);
 
 	/* reset FDC */
 	upd765_reset_w(m_fdc, 1);
@@ -718,7 +718,7 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	MCFG_CPU_PROGRAM_MAP(mm1_map)
 	MCFG_CPU_CONFIG(i8085_intf)
 
-	MCFG_TIMER_ADD_PERIODIC("kbclk", kbclk_tick, HZ(2500)) //HZ(XTAL_6_144MHz/2/8))
+	MCFG_TIMER_ADD_PERIODIC("kbclk", kbclk_tick, attotime::from_hz(2500)) //attotime::from_hz(XTAL_6_144MHz/2/8))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD( SCREEN_TAG, RASTER )
@@ -749,7 +749,7 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(mm1_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

@@ -1,66 +1,92 @@
 /*
 
-	The Dream 6800 is a CHIP-8 computer roughly modelled on the Cosmac VIP.
-	It was decribed in Electronics Australia magazine in 4 articles starting
-	in May 1979. It has 1k of ROM and 1k of RAM. The video consists of 64x32
-	pixels.	The keyboard is a hexcode 4x4 matrix, plus a Function key.
-	
-	Function keys:
-	FN 0 - Modify memory - firstly enter a 4-digit address, then 2-digit data
-	                the address will increment by itself, enter the next byte.
-	                FN by itself will step to the next address.
+    The Dream 6800 is a CHIP-8 computer roughly modelled on the Cosmac VIP.
+    It was decribed in Electronics Australia magazine in 4 articles starting
+    in May 1979. It has 1k of ROM and 1k of RAM. The video consists of 64x32
+    pixels. The keyboard is a hexcode 4x4 matrix, plus a Function key.
 
-	FN 1 - Tape load
+    Function keys:
+    FN 0 - Modify memory - firstly enter a 4-digit address, then 2-digit data
+                    the address will increment by itself, enter the next byte.
+                    FN by itself will step to the next address.
 
-	FN 2 - Tape save
+    FN 1 - Tape load
 
-	FN 3 - Run. Enter the 4-digit go address, then it starts executing.
+    FN 2 - Tape save
 
-
-	Information and programs can be found at http://chip8.com/?page=78
+    FN 3 - Run. Enter the 4-digit go address, then it starts executing.
 
 
-	To change the large numbers at the bottom, start in debug mode, enter
-	some data at memory 6 and 7, then G to run.
+    Information and programs can be found at http://chip8.com/?page=78
+
+
+    To change the large numbers at the bottom, start in debug mode, enter
+    some data at memory 6 and 7, then G to run.
 
 
     TODO:
-	- Cassette
-	- CPU should freeze while screen is being drawn
-	- Keyboard (should work but it doesn't)
+    - Cassette
+    - CPU should freeze while screen is being drawn
+    - Keyboard (should work but it doesn't, due to inadequate PIA emulation)
+
+    Current situation:
+    - It starts, displays initial screen
+    - It checks the status bits looking for a keypress
+    - When a key is pressed, it gets into a loop at C2E8-C2EB, waiting for
+      a memory location to change. This means it needs an interrupt to kick
+      in, from a keypress.
+    - The pia only looks for an interrupt when it gets polled, which is
+      not the case here, so the emulation hangs.
 */
+
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/beep.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "sound/wave.h"
 #include "sound/speaker.h"
 #include "machine/6821pia.h"
-#include "machine/rescap.h"
 
 
 class d6800_state : public driver_device
 {
 public:
 	d6800_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+		  m_maincpu(*this, "maincpu"),
+		  m_cass(*this, "cassette"),
+		  m_pia(*this, "pia"),
+		  m_speaker(*this, "speaker")
+	{ }
 
-	UINT8 dummy;
-	UINT8 keylatch;
-	UINT8 keydown;
-	UINT8 screen;
-	UINT8 rtc;
-	device_t *cassette;
-	device_t *speaker;
+	required_device<cpu_device> m_maincpu;
+	required_device<device_t> m_cass;
+	required_device<device_t> m_pia;
+	required_device<device_t> m_speaker;
+	DECLARE_READ8_MEMBER( d6800_cassette_r );
+	DECLARE_WRITE8_MEMBER( d6800_cassette_w );
+	DECLARE_READ8_MEMBER( d6800_keyboard_r );
+	DECLARE_WRITE8_MEMBER( d6800_keyboard_w );
+	DECLARE_READ_LINE_MEMBER( d6800_fn_key_r );
+	DECLARE_READ_LINE_MEMBER( d6800_keydown_r );
+	DECLARE_READ_LINE_MEMBER( d6800_rtc_pulse );
+	DECLARE_WRITE_LINE_MEMBER( d6800_screen_w );
+	UINT8 m_keylatch;
+	UINT8 m_screen_on;
+	UINT8 m_rtc;
+	UINT8 *m_videoram;
 };
 
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( d6800_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_REGION("maincpu", 0x0000)
-	AM_RANGE(0x8010, 0x8013) AM_DEVREADWRITE("pia", pia6821_r, pia6821_w)
+static ADDRESS_MAP_START( d6800_map, AS_PROGRAM, 8, d6800_state )
+	AM_RANGE(0x0000, 0x00ff) AM_RAM
+	AM_RANGE(0x0100, 0x01ff) AM_RAM AM_BASE( m_videoram )
+	AM_RANGE(0x0200, 0x07ff) AM_RAM
+	AM_RANGE(0x8010, 0x8013) AM_DEVREADWRITE_LEGACY("pia", pia6821_r, pia6821_w)
 	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3c00) AM_ROM
 ADDRESS_MAP_END
 
@@ -101,11 +127,10 @@ INPUT_PORTS_END
 
 /* Video */
 
-static VIDEO_UPDATE( d6800 )
+static SCREEN_UPDATE( d6800 )
 {
-	d6800_state *state = screen->machine->driver_data<d6800_state>();
-	UINT8 x,y,gfx=0;
-	UINT8 *RAM = screen->machine->region("maincpu")->base();
+	d6800_state *state = screen->machine().driver_data<d6800_state>();
+	UINT8 x,y,gfx=0,i;
 
 	for (y = 0; y < 32; y++)
 	{
@@ -113,17 +138,11 @@ static VIDEO_UPDATE( d6800 )
 
 		for (x = 0; x < 8; x++)
 		{
-			if (state->screen)
-				gfx = RAM[0x100 | x | (y<<3)];
+			if (state->m_screen_on)
+				gfx = state->m_videoram[ x | (y<<3)];
 
-			*p++ = ( gfx & 0x80 ) ? 1 : 0;
-			*p++ = ( gfx & 0x40 ) ? 1 : 0;
-			*p++ = ( gfx & 0x20 ) ? 1 : 0;
-			*p++ = ( gfx & 0x10 ) ? 1 : 0;
-			*p++ = ( gfx & 0x08 ) ? 1 : 0;
-			*p++ = ( gfx & 0x04 ) ? 1 : 0;
-			*p++ = ( gfx & 0x02 ) ? 1 : 0;
-			*p++ = ( gfx & 0x01 ) ? 1 : 0;
+			for (i = 0; i < 8; i++)
+				*p++ = BIT(gfx, 7-i);
 		}
 	}
 	return 0;
@@ -133,77 +152,74 @@ static VIDEO_UPDATE( d6800 )
 
 static INTERRUPT_GEN( d6800_interrupt )
 {
-	d6800_state *state = device->machine->driver_data<d6800_state>();
-	state->rtc = 1;
+	d6800_state *state = device->machine().driver_data<d6800_state>();
+	state->m_rtc = 1;
 }
 
-static READ_LINE_DEVICE_HANDLER( d6800_rtc_pulse )
+READ_LINE_MEMBER( d6800_state::d6800_rtc_pulse )
 {
-	d6800_state *state = device->machine->driver_data<d6800_state>();
-	UINT8 res = state->rtc;
-	state->rtc = 0;
+	UINT8 res = m_rtc;
+	m_rtc = 0;
 	return res;
 }
 
-static READ_LINE_DEVICE_HANDLER( d6800_keydown_r )
+READ_LINE_MEMBER( d6800_state::d6800_keydown_r )
 {
-	d6800_state *state = device->machine->driver_data<d6800_state>();
-	return state->keydown;
+	UINT8 data = input_port_read(m_machine, "LINE0")
+	           & input_port_read(m_machine, "LINE1")
+	           & input_port_read(m_machine, "LINE2")
+	           & input_port_read(m_machine, "LINE3");
+
+	return (data==0xff) ? 0 : 1;
 }
 
-static READ_LINE_DEVICE_HANDLER( d6800_fn_key_r )
+READ_LINE_MEMBER( d6800_state::d6800_fn_key_r )
 {
-	return input_port_read(device->machine, "SPECIAL");
+	return input_port_read(m_machine, "SPECIAL");
 }
 
-static WRITE_LINE_DEVICE_HANDLER( d6800_screen_w )
+WRITE_LINE_MEMBER( d6800_state::d6800_screen_w )
 {
-	d6800_state *drvstate = device->machine->driver_data<d6800_state>();
-	drvstate->screen = state;
+	m_screen_on = state;
 }
 
-static READ8_DEVICE_HANDLER( d6800_cassette_r )
+READ8_MEMBER( d6800_state::d6800_cassette_r )
 {
 	/*
-	Cassette circuit consists of a 741 op-amp, a 74121 oneshot, and a 74LS74.
-	When a pulse arrives, the oneshot is set. After a preset time, it triggers
-	and the 74LS74 compares this pulse to the output of the 741. Therefore it
-	knows if the tone is 1200 or 2400 Hz. Input to PIA is bit 7.
-	*/
+    Cassette circuit consists of a 741 op-amp, a 74121 oneshot, and a 74LS74.
+    When a pulse arrives, the oneshot is set. After a preset time, it triggers
+    and the 74LS74 compares this pulse to the output of the 741. Therefore it
+    knows if the tone is 1200 or 2400 Hz. Input to PIA is bit 7.
+    */
 
 	return 0xff;
 }
 
-static WRITE8_DEVICE_HANDLER( d6800_cassette_w )
+WRITE8_MEMBER( d6800_state::d6800_cassette_w )
 {
-	d6800_state *state = device->machine->driver_data<d6800_state>();
 	/*
-	Cassette circuit consists of a 566 and a transistor. The 556 runs at 2400
-	or 1200 Hz depending on the state of the transistor. This is controlled by
-	bit 0 of the PIA. Bit 6 drives the speaker.
-	*/
+    Cassette circuit consists of a 566 and a transistor. The 556 runs at 2400
+    or 1200 Hz depending on the state of the transistor. This is controlled by
+    bit 0 of the PIA. Bit 6 drives the speaker.
+    */
 
-	speaker_level_w(state->speaker, (data & 0x40) ? 0 : 1);
+	speaker_level_w(m_speaker, BIT(data, 6));
 }
 
-static READ8_DEVICE_HANDLER( d6800_keyboard_r )
+READ8_MEMBER( d6800_state::d6800_keyboard_r )
 {
-	d6800_state *state = device->machine->driver_data<d6800_state>();
-	UINT8 data = 0xff;
+	UINT8 data = 15;
 
-	if (!BIT(state->keylatch, 4)) data &= input_port_read(device->machine, "LINE0");
-	if (!BIT(state->keylatch, 5)) data &= input_port_read(device->machine, "LINE1");
-	if (!BIT(state->keylatch, 6)) data &= input_port_read(device->machine, "LINE2");
-	if (!BIT(state->keylatch, 7)) data &= input_port_read(device->machine, "LINE3");
+	if (!BIT(m_keylatch, 4)) data &= input_port_read(m_machine, "LINE0");
+	if (!BIT(m_keylatch, 5)) data &= input_port_read(m_machine, "LINE1");
+	if (!BIT(m_keylatch, 6)) data &= input_port_read(m_machine, "LINE2");
+	if (!BIT(m_keylatch, 7)) data &= input_port_read(m_machine, "LINE3");
 
-	state->keydown = (data==0xff) ? 0 : 1;
-
-	return data;
+	return data | m_keylatch;
 }
 
-static WRITE8_DEVICE_HANDLER( d6800_keyboard_w )
+WRITE8_MEMBER( d6800_state::d6800_keyboard_w )
 {
-	d6800_state *state = device->machine->driver_data<d6800_state>();
 	/*
 
         bit     description
@@ -220,21 +236,21 @@ static WRITE8_DEVICE_HANDLER( d6800_keyboard_w )
     */
 
 
-	state->keylatch = data & 0xf0;
+	m_keylatch = data & 0xf0;
 }
 
 static const pia6821_interface d6800_mc6821_intf =
 {
-	DEVCB_HANDLER(d6800_keyboard_r),			/* port A input */
-	DEVCB_HANDLER(d6800_cassette_r),			/* port B input */
-	DEVCB_LINE(d6800_keydown_r),				/* CA1 input */
-	DEVCB_LINE(d6800_rtc_pulse),				/* CB1 input */
-	DEVCB_LINE(d6800_fn_key_r),				/* CA2 input */
+	DEVCB_DRIVER_MEMBER(d6800_state, d6800_keyboard_r),	/* port A input */
+	DEVCB_DRIVER_MEMBER(d6800_state, d6800_cassette_r),	/* port B input */
+	DEVCB_DRIVER_LINE_MEMBER(d6800_state, d6800_keydown_r),	/* CA1 input */
+	DEVCB_DRIVER_LINE_MEMBER(d6800_state, d6800_rtc_pulse),	/* CB1 input */
+	DEVCB_DRIVER_LINE_MEMBER(d6800_state, d6800_fn_key_r),	/* CA2 input */
 	DEVCB_NULL,						/* CB2 input */
-	DEVCB_HANDLER(d6800_keyboard_w),			/* port A output */
-	DEVCB_HANDLER(d6800_cassette_w),			/* port B output */
+	DEVCB_DRIVER_MEMBER(d6800_state, d6800_keyboard_w),	/* port A output */
+	DEVCB_DRIVER_MEMBER(d6800_state, d6800_cassette_w),	/* port B output */
 	DEVCB_NULL,						/* CA2 output */
-	DEVCB_LINE(d6800_screen_w),				/* CB2 output */
+	DEVCB_DRIVER_LINE_MEMBER(d6800_state, d6800_screen_w),	/* CB2 output */
 	DEVCB_CPU_INPUT_LINE("maincpu", M6800_IRQ_LINE),	/* IRQA output */
 	DEVCB_CPU_INPUT_LINE("maincpu", M6800_IRQ_LINE)		/* IRQB output */
 };
@@ -243,9 +259,6 @@ static const pia6821_interface d6800_mc6821_intf =
 
 static MACHINE_START( d6800 )
 {
-	d6800_state *state = machine->driver_data<d6800_state>();
-	state->speaker = machine->device("speaker");
-	state->cassette = machine->device("cassette");
 }
 
 static MACHINE_RESET( d6800 )
@@ -277,9 +290,10 @@ static MACHINE_CONFIG_START( d6800, d6800_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(64, 32)
 	MCFG_SCREEN_VISIBLE_AREA(0, 63, 0, 31)
+	MCFG_SCREEN_UPDATE(d6800)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
-	MCFG_VIDEO_UPDATE(d6800)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

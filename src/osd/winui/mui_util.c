@@ -36,6 +36,7 @@
 #include "strconv.h"
 #include "winui.h"
 #include "mui_util.h"
+#include "mui_opts.h"
 
 #include <shlwapi.h>
 
@@ -346,8 +347,7 @@ int numberOfScreens(const machine_config *config)
 
 int numberOfSpeakers(const machine_config *config)
 {
-	int speakers = speaker_output_count(config);
-	return speakers;
+	return config->m_devicelist.count(SPEAKER);
 }
 
 static struct DriversInfo* GetDriversInfo(int driver_index)
@@ -361,7 +361,9 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			const game_driver *gamedrv = drivers[ndriver];
 			struct DriversInfo *gameinfo = &drivers_info[ndriver];
 			const rom_entry *region, *rom;
-			machine_config config(*gamedrv);
+			windows_options pCurrentOpts;
+			load_options(pCurrentOpts, OPTIONS_GLOBAL, driver_index); 
+			machine_config config(*gamedrv,pCurrentOpts);
 			const rom_source *source;
 			int num_speakers;
 
@@ -435,7 +437,13 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 				const input_port_config *port;
 				ioport_list portlist;
 				
-				input_port_list_init(portlist, gamedrv->ipt, NULL, 0, FALSE);
+				input_port_list_init(portlist, gamedrv->ipt, NULL, 0, FALSE, NULL);
+				for (device_config *cfg = config.m_devicelist.first(); cfg != NULL; cfg = cfg->next())
+				{
+					if (cfg->input_ports()!=NULL) {
+						input_port_list_init(portlist, cfg->input_ports(), NULL, 0, FALSE, cfg);
+					}
+				}
 
 				for (port = portlist.first(); port != NULL; port = port->next())
 				{
@@ -485,6 +493,13 @@ BOOL DriverIsBios(int driver_index)
 	return bBios;
 }
 
+BOOL DriverIsMechanical(int driver_index)
+{
+	BOOL bMechanical = FALSE;
+	if( !( (drivers[driver_index]->flags & GAME_MECHANICAL ) == 0)   )
+		bMechanical = TRUE;
+	return bMechanical;
+}
 
 BOOL DriverHasOptionalBIOS(int driver_index)
 {

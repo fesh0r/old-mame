@@ -16,17 +16,17 @@ public:
 	pmd85_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 rom_module_present;
-	UINT8 ppi_port_outputs[4][3];
-	UINT8 startup_mem_map;
-	UINT8 pmd853_memory_mapping;
-	int previous_level;
-	int clk_level;
-	int clk_level_tape;
-	UINT8 model;
-	emu_timer * cassette_timer;
-	void (*update_memory)(running_machine *);
-	serial_connection cassette_serial_connection;
+	UINT8 m_rom_module_present;
+	UINT8 m_ppi_port_outputs[4][3];
+	UINT8 m_startup_mem_map;
+	UINT8 m_pmd853_memory_mapping;
+	int m_previous_level;
+	int m_clk_level;
+	int m_clk_level_tape;
+	UINT8 m_model;
+	emu_timer * m_cassette_timer;
+	void (*update_memory)(running_machine &);
+	serial_connection m_cassette_serial_connection;
 };
 
 
@@ -53,7 +53,7 @@ extern MACHINE_RESET( pmd85 );
 /*----------- defined in video/pmd85.c -----------*/
 
 extern VIDEO_START( pmd85 );
-extern VIDEO_UPDATE( pmd85 );
+extern SCREEN_UPDATE( pmd85 );
 extern const unsigned char pmd85_palette[3*3];
 extern PALETTE_INIT( pmd85 );
 

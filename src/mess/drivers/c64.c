@@ -398,18 +398,18 @@ C64DTV TODO:
  *
  *************************************/
 
-static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE_MEMBER(c64_state, memory)
-	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE_MEMBER(c64_state, c64_roml)
+static ADDRESS_MAP_START(ultimax_mem , AS_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE_MEMBER(c64_state, m_memory)
+	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE_MEMBER(c64_state, m_c64_roml)
 	AM_RANGE(0xd000, 0xd3ff) AM_DEVREADWRITE("vic2", vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd7ff) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)
-	AM_RANGE(0xd800, 0xdbff) AM_RAM_WRITE( c64_colorram_write) AM_BASE_MEMBER(c64_state, colorram) /* colorram  */
+	AM_RANGE(0xd800, 0xdbff) AM_RAM_WRITE( c64_colorram_write) AM_BASE_MEMBER(c64_state, m_colorram) /* colorram  */
 	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE("cia_0", mos6526_r, mos6526_w)
-	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE_MEMBER(c64_state, c64_romh)				/* ram or kernel rom */
+	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE_MEMBER(c64_state, m_c64_romh)				/* ram or kernel rom */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(c64_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE_MEMBER(c64_state, memory)
+static ADDRESS_MAP_START(c64_mem, AS_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE_MEMBER(c64_state, m_memory)
 	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")		/* ram or external roml */
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK("bank3") AM_WRITEONLY				/* ram or basic rom or external romh */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
@@ -566,62 +566,62 @@ static CBM_IEC_DAISY( cbm_iec_daisy )
  *
  *************************************/
 
-static VIDEO_UPDATE( c64 )
+static SCREEN_UPDATE( c64 )
 {
-	device_t *vic2 = screen->machine->device("vic2");
+	device_t *vic2 = screen->machine().device("vic2");
 
 	vic2_video_update(vic2, bitmap, cliprect);
 	return 0;
 }
 
-static UINT8 c64_lightpen_x_cb( running_machine *machine )
+static UINT8 c64_lightpen_x_cb( running_machine &machine )
 {
 	return input_port_read(machine, "LIGHTX") & ~0x01;
 }
 
-static UINT8 c64_lightpen_y_cb( running_machine *machine )
+static UINT8 c64_lightpen_y_cb( running_machine &machine )
 {
 	return input_port_read(machine, "LIGHTY") & ~0x01;
 }
 
-static UINT8 c64_lightpen_button_cb( running_machine *machine )
+static UINT8 c64_lightpen_button_cb( running_machine &machine )
 {
 	return input_port_read(machine, "OTHER") & 0x04;
 }
 
-static int c64_dma_read( running_machine *machine, int offset )
+static int c64_dma_read( running_machine &machine, int offset )
 {
-	c64_state *state = machine->driver_data<c64_state>();
-	if (!state->game && state->exrom)
+	c64_state *state = machine.driver_data<c64_state>();
+	if (!state->m_game && state->m_exrom)
 	{
 		if (offset < 0x3000)
-			return state->memory[offset];
+			return state->m_memory[offset];
 
-		return state->c64_romh[offset & 0x1fff];
+		return state->m_c64_romh[offset & 0x1fff];
 	}
 
-	if (((state->vicaddr - state->memory + offset) & 0x7000) == 0x1000)
-		return state->chargen[offset & 0xfff];
+	if (((state->m_vicaddr - state->m_memory + offset) & 0x7000) == 0x1000)
+		return state->m_chargen[offset & 0xfff];
 
-	return state->vicaddr[offset];
+	return state->m_vicaddr[offset];
 }
 
-static int c64_dma_read_ultimax( running_machine *machine, int offset )
+static int c64_dma_read_ultimax( running_machine &machine, int offset )
 {
-	c64_state *state = machine->driver_data<c64_state>();
+	c64_state *state = machine.driver_data<c64_state>();
 	if (offset < 0x3000)
-		return state->memory[offset];
+		return state->m_memory[offset];
 
-	return state->c64_romh[offset & 0x1fff];
+	return state->m_c64_romh[offset & 0x1fff];
 }
 
-static int c64_dma_read_color( running_machine *machine, int offset )
+static int c64_dma_read_color( running_machine &machine, int offset )
 {
-	c64_state *state = machine->driver_data<c64_state>();
-	return state->colorram[offset & 0x3ff] & 0xf;
+	c64_state *state = machine.driver_data<c64_state>();
+	return state->m_colorram[offset & 0x3ff] & 0xf;
 }
 
-static UINT8 c64_rdy_cb( running_machine *machine )
+static UINT8 c64_rdy_cb( running_machine &machine )
 {
 	return input_port_read(machine, "CYCLES") & 0x07;
 }
@@ -679,7 +679,7 @@ static MACHINE_CONFIG_START( c64, c64_state )
 	MCFG_CPU_CONFIG( c64_m6510_interface )
 	MCFG_CPU_VBLANK_INT("screen", c64_frame_interrupt)
 	//MCFG_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( c64 )
 	MCFG_MACHINE_RESET( c64 )
@@ -691,11 +691,10 @@ static MACHINE_CONFIG_START( c64, c64_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
+	MCFG_SCREEN_UPDATE( c64 )
 
 	MCFG_PALETTE_INIT( c64 )
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIDEO_UPDATE( c64 )
 
 	MCFG_VIC2_ADD("vic2", c64_vic2_ntsc_intf)
 
@@ -730,7 +729,7 @@ static MACHINE_CONFIG_START( c64pal, c64_state )
 	MCFG_CPU_CONFIG( c64_m6510_interface )
 	MCFG_CPU_VBLANK_INT("screen", c64_frame_interrupt)
 	// MCFG_CPU_PERIODIC_INT(vic2_raster_irq, VIC6569_HRETRACERATE)
-	MCFG_QUANTUM_TIME(HZ(50))
+	MCFG_QUANTUM_TIME(attotime::from_hz(50))
 
 	MCFG_MACHINE_START( c64 )
 	MCFG_MACHINE_RESET( c64 )
@@ -742,11 +741,10 @@ static MACHINE_CONFIG_START( c64pal, c64_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
+	MCFG_SCREEN_UPDATE( c64 )
 
 	MCFG_PALETTE_INIT( c64 )
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIDEO_UPDATE( c64 )
 
 	MCFG_VIC2_ADD("vic2", c64_vic2_pal_intf)
 
@@ -817,9 +815,9 @@ static MACHINE_CONFIG_DERIVED( sx64, c64pal )
 	MCFG_DEVICE_REMOVE( "dac" )
 	MCFG_DEVICE_REMOVE( "cassette" )
 #ifdef CPU_SYNC
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 #else
-	MCFG_QUANTUM_TIME(HZ(180000))
+	MCFG_QUANTUM_TIME(attotime::from_hz(180000))
 #endif
 MACHINE_CONFIG_END
 

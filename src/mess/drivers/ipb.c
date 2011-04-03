@@ -19,14 +19,14 @@ public:
 };
 
 
-static ADDRESS_MAP_START(ipb_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ipb_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xdfff) AM_RAM
 	AM_RANGE(0xe800, 0xefff) AM_ROM
 	AM_RANGE(0xf800, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( ipb_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( ipb_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
@@ -37,14 +37,14 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(ipb)
 {
-	cpu_set_reg(machine->device("maincpu"), I8085_PC, 0xE800);
+	cpu_set_reg(machine.device("maincpu"), I8085_PC, 0xE800);
 }
 
 static VIDEO_START( ipb )
 {
 }
 
-static VIDEO_UPDATE( ipb )
+static SCREEN_UPDATE( ipb )
 {
     return 0;
 }
@@ -64,11 +64,12 @@ static MACHINE_CONFIG_START( ipb, ipb_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(ipb)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(ipb)
-    MCFG_VIDEO_UPDATE(ipb)
 MACHINE_CONFIG_END
 
 

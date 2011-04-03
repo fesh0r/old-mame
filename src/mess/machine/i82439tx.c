@@ -47,19 +47,19 @@ static void i82439tx_configure_memory(device_t *device, UINT8 val, offs_t begin,
 	switch (val & 0x03)
 	{
 	case 0:
-		memory_install_rom(i82439tx->space, begin, end, 0, 0, i82439tx->rom + (begin - 0xc0000));
-		memory_nop_write(i82439tx->space, begin, end, 0, 0);
+		i82439tx->space->install_rom(begin, end, i82439tx->rom + (begin - 0xc0000));
+		i82439tx->space->nop_write(begin, end);
 		break;
 	case 1:
-		memory_install_rom(i82439tx->space, begin, end, 0, 0, i82439tx->bios_ram + (begin - 0xc0000) / 4);
-		memory_nop_write(i82439tx->space, begin, end, 0, 0);
+		i82439tx->space->install_rom(begin, end, i82439tx->bios_ram + (begin - 0xc0000) / 4);
+		i82439tx->space->nop_write(begin, end);
 		break;
 	case 2:
-		memory_install_rom(i82439tx->space, begin, end, 0, 0, i82439tx->rom + (begin - 0xc0000));
-		memory_install_writeonly(i82439tx->space, begin, end, 0, 0, i82439tx->bios_ram + (begin - 0xc0000) / 4);
+		i82439tx->space->install_rom(begin, end, i82439tx->rom + (begin - 0xc0000));
+		i82439tx->space->install_writeonly(begin, end, i82439tx->bios_ram + (begin - 0xc0000) / 4);
 		break;
 	case 3:
-		memory_install_ram(i82439tx->space, begin, end, 0, 0, i82439tx->bios_ram + (begin - 0xc0000) / 4);
+		i82439tx->space->install_ram(begin, end, i82439tx->bios_ram + (begin - 0xc0000) / 4);
 		break;
 	}
 }
@@ -215,17 +215,17 @@ static DEVICE_START( i82439tx )
 	i82439tx_config *config = (i82439tx_config *)downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 
 	/* get address space we are working on */
-	device_t *cpu = device->machine->device(config->cputag);
+	device_t *cpu = device->machine().device(config->cputag);
 	assert(cpu != NULL);
 
-	i82439tx->space = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
+	i82439tx->space = cpu->memory().space(AS_PROGRAM);
 
 	/* get rom region */
-	i82439tx->rom = device->machine->region(config->rom_region)->base();
+	i82439tx->rom = device->machine().region(config->rom_region)->base();
 
 	/* setup save states */
-	state_save_register_device_item_array(device, 0, i82439tx->regs);
-	state_save_register_device_item_array(device, 0, i82439tx->bios_ram);
+	device->save_item(NAME(i82439tx->regs));
+	device->save_item(NAME(i82439tx->bios_ram));
 }
 
 static DEVICE_RESET( i82439tx )

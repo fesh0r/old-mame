@@ -18,7 +18,7 @@
 /* M6502 main CPU */
 #include "cpu/m6502/m6502.h"
 
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 /******************************************************************************
@@ -64,36 +64,36 @@
 
 static void dl1416_update(device_t *device, int index)
 {
-	aim65_state *state = device->machine->driver_data<aim65_state>();
-	dl1416_ce_w(device, state->pia_a & (0x04 << index));
-	dl1416_wr_w(device, BIT(state->pia_a, 7));
-	dl1416_cu_w(device, BIT(state->pia_b, 7));
-	dl1416_data_w(device, state->pia_a & 0x03, state->pia_b & 0x7f);
+	aim65_state *state = device->machine().driver_data<aim65_state>();
+	dl1416_ce_w(device, state->m_pia_a & (0x04 << index));
+	dl1416_wr_w(device, BIT(state->m_pia_a, 7));
+	dl1416_cu_w(device, BIT(state->m_pia_b, 7));
+	dl1416_data_w(device, state->m_pia_a & 0x03, state->m_pia_b & 0x7f);
 }
 
-static void aim65_pia(running_machine *machine)
+static void aim65_pia(running_machine &machine)
 {
-	dl1416_update(machine->device("ds1"), 0);
-	dl1416_update(machine->device("ds2"), 1);
-	dl1416_update(machine->device("ds3"), 2);
-	dl1416_update(machine->device("ds4"), 3);
-	dl1416_update(machine->device("ds5"), 4);
+	dl1416_update(machine.device("ds1"), 0);
+	dl1416_update(machine.device("ds2"), 1);
+	dl1416_update(machine.device("ds3"), 2);
+	dl1416_update(machine.device("ds4"), 3);
+	dl1416_update(machine.device("ds5"), 4);
 }
 
 
 WRITE8_DEVICE_HANDLER(aim65_pia_a_w)
 {
-	aim65_state *state = device->machine->driver_data<aim65_state>();
-	state->pia_a = data;
-	aim65_pia(device->machine);
+	aim65_state *state = device->machine().driver_data<aim65_state>();
+	state->m_pia_a = data;
+	aim65_pia(device->machine());
 }
 
 
 WRITE8_DEVICE_HANDLER(aim65_pia_b_w)
 {
-	aim65_state *state = device->machine->driver_data<aim65_state>();
-	state->pia_b = data;
-	aim65_pia(device->machine);
+	aim65_state *state = device->machine().driver_data<aim65_state>();
+	state->m_pia_b = data;
+	aim65_pia(device->machine());
 }
 
 
@@ -131,7 +131,7 @@ void aim65_update_ds5(device_t *device, int digit, int data)
 
 READ8_DEVICE_HANDLER(aim65_riot_b_r)
 {
-	aim65_state *state = device->machine->driver_data<aim65_state>();
+	aim65_state *state = device->machine().driver_data<aim65_state>();
 	static const char *const keynames[] =
 	{
 		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
@@ -143,8 +143,8 @@ READ8_DEVICE_HANDLER(aim65_riot_b_r)
 	/* scan keyboard rows */
 	for (row = 0; row < 8; row++)
 	{
-		if (!(state->riot_port_a & (1 << row)))
-			data &= input_port_read(device->machine, keynames[row]);
+		if (!(state->m_riot_port_a & (1 << row)))
+			data &= input_port_read(device->machine(), keynames[row]);
 	}
 
 	return data;
@@ -153,14 +153,14 @@ READ8_DEVICE_HANDLER(aim65_riot_b_r)
 
 WRITE8_DEVICE_HANDLER(aim65_riot_a_w)
 {
-	aim65_state *state = device->machine->driver_data<aim65_state>();
-	state->riot_port_a = data;
+	aim65_state *state = device->machine().driver_data<aim65_state>();
+	state->m_riot_port_a = data;
 }
 
 
 WRITE_LINE_DEVICE_HANDLER(aim65_riot_irq)
 {
-	cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -171,11 +171,11 @@ WRITE_LINE_DEVICE_HANDLER(aim65_riot_irq)
 
 MACHINE_START( aim65 )
 {
-	device_t *ram = machine->device("messram");
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	device_t *ram = machine.device(RAM_TAG);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	/* Init RAM */
-	memory_install_ram(space, 0x0000, messram_get_size(ram) - 1, 0, 0, messram_get_ptr(ram));
+	space->install_ram(0x0000, ram_get_size(ram) - 1, ram_get_ptr(ram));
 }
 
 

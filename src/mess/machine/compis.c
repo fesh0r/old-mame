@@ -99,9 +99,9 @@ void compis_irq_set(UINT8 irq)
 /*-------------------------------------------------------------------------*/
 /*  Keyboard                                                               */
 /*-------------------------------------------------------------------------*/
-static void compis_keyb_update(running_machine *machine)
+static void compis_keyb_update(running_machine &machine)
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	UINT8 key_code;
 	UINT8 key_status;
 	UINT8 irow;
@@ -147,28 +147,28 @@ static void compis_keyb_update(running_machine *machine)
 	}
 	if (key_code != 0)
 	{
-		state->compis.keyboard.key_code = key_code;
-		state->compis.keyboard.key_status = key_status;
-		state->compis.usart.status |= COMPIS_USART_STATUS_RX_READY;
-		state->compis.usart.bytes_sent = 0;
+		state->m_compis.keyboard.key_code = key_code;
+		state->m_compis.keyboard.key_status = key_status;
+		state->m_compis.usart.status |= COMPIS_USART_STATUS_RX_READY;
+		state->m_compis.usart.bytes_sent = 0;
 //      compis_osp_pic_irq(COMPIS_IRQ_8251_RXRDY);
 	}
 }
 
 static void compis_keyb_init(compis_state *state)
 {
-	state->compis.keyboard.key_code = 0;
-	state->compis.keyboard.key_status = 0x80;
-	state->compis.usart.status = 0;
-	state->compis.usart.bytes_sent = 0;
+	state->m_compis.keyboard.key_code = 0;
+	state->m_compis.keyboard.key_status = 0x80;
+	state->m_compis.usart.status = 0;
+	state->m_compis.usart.bytes_sent = 0;
 }
 
 /*-------------------------------------------------------------------------*/
 /*  FDC iSBX-218A                                                          */
 /*-------------------------------------------------------------------------*/
-static void compis_fdc_reset(running_machine *machine)
+static void compis_fdc_reset(running_machine &machine)
 {
-	device_t *fdc = machine->device("upd765");
+	device_t *fdc = machine.device("upd765");
 
 	upd765_reset(fdc, 0);
 
@@ -176,9 +176,9 @@ static void compis_fdc_reset(running_machine *machine)
 	upd765_reset_w(fdc, 1);
 }
 
-static void compis_fdc_tc(running_machine *machine, int state)
+static void compis_fdc_tc(running_machine &machine, int state)
 {
-	device_t *fdc = machine->device("upd765");
+	device_t *fdc = machine.device("upd765");
 	/* Terminal count if iSBX-218A has DMA enabled */
 	if (input_port_read(machine, "DSW1"))
 	{
@@ -188,14 +188,14 @@ static void compis_fdc_tc(running_machine *machine, int state)
 
 static WRITE_LINE_DEVICE_HANDLER( compis_fdc_int )
 {
-	compis_state *drvstate = device->machine->driver_data<compis_state>();
+	compis_state *drvstate = device->machine().driver_data<compis_state>();
 	/* No interrupt requests if iSBX-218A has DMA enabled */
-	if (!input_port_read(device->machine, "DSW1") && state)
+	if (!input_port_read(device->machine(), "DSW1") && state)
 	{
-		if (drvstate->devices.pic8259_master)
+		if (drvstate->m_devices.pic8259_master)
 		{
-			pic8259_ir0_w(drvstate->devices.pic8259_master, 1);
-			pic8259_ir0_w(drvstate->devices.pic8259_master, 0);
+			pic8259_ir0_w(drvstate->m_devices.pic8259_master, 1);
+			pic8259_ir0_w(drvstate->m_devices.pic8259_master, 0);
 		}
 	}
 }
@@ -203,7 +203,7 @@ static WRITE_LINE_DEVICE_HANDLER( compis_fdc_int )
 static WRITE_LINE_DEVICE_HANDLER( compis_fdc_dma_drq )
 {
 	/* DMA requst if iSBX-218A has DMA enabled */
-	if (input_port_read(device->machine, "DSW1") && state)
+	if (input_port_read(device->machine(), "DSW1") && state)
 	{
 		//compis_dma_drq(state, read);
 	}
@@ -220,11 +220,11 @@ const upd765_interface compis_fdc_interface =
 
 READ16_HANDLER (compis_fdc_dack_r)
 {
-	device_t *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine().device("upd765");
 	UINT16 data;
 	data = 0xffff;
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
-	if (input_port_read(space->machine, "DSW1"))
+	if (input_port_read(space->machine(), "DSW1"))
 	{
 		data = upd765_dack_r(fdc, 0);
 	}
@@ -232,23 +232,23 @@ READ16_HANDLER (compis_fdc_dack_r)
 	return data;
 }
 
-WRITE16_HANDLER (compis_fdc_w)
+WRITE8_HANDLER (compis_fdc_w)
 {
-	device_t *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine().device("upd765");
 	switch(offset)
 	{
 		case 2:
 			upd765_data_w(fdc, 0, data);
 			break;
 		default:
-			logerror("FDC Unknown Port Write %04X = %04X\n", offset, data);
+			printf("FDC Unknown Port Write %04X = %04X\n", offset, data);
 			break;
 	}
 }
 
-READ16_HANDLER (compis_fdc_r)
+READ8_HANDLER (compis_fdc_r)
 {
-	device_t *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine().device("upd765");
 	UINT16 data;
 	data = 0xffff;
 	switch(offset)
@@ -256,11 +256,11 @@ READ16_HANDLER (compis_fdc_r)
 		case 0:
 			data = upd765_status_r(fdc, 0);
 			break;
-		case 1:
+		case 2:
 			data = upd765_data_r(fdc, 0);
 			break;
 		default:
-			logerror("FDC Unknown Port Read %04X\n", offset);
+			printf("FDC Unknown Port Read %04X\n", offset);
 			break;
 	}
 
@@ -284,7 +284,7 @@ static READ8_DEVICE_HANDLER( compis_ppi_port_b_r )
 	UINT8 data;
 
 	/* DIP switch - Test mode */
-	data = input_port_read(device->machine, "DSW0");
+	data = input_port_read(device->machine(), "DSW0");
 
 	/* Centronics busy */
 	data |= centronics_busy_r(device) << 5;
@@ -310,10 +310,10 @@ static WRITE8_DEVICE_HANDLER( compis_ppi_port_c_w )
 
 	/* FDC Reset */
 	if (BIT(data, 6))
-		compis_fdc_reset(device->machine);
+		compis_fdc_reset(device->machine());
 
 	/* FDC Terminal count */
-	compis_fdc_tc(device->machine, BIT(data, 7));
+	compis_fdc_tc(device->machine(), BIT(data, 7));
 }
 
 I8255A_INTERFACE( compis_ppi_interface )
@@ -373,7 +373,7 @@ WRITE16_DEVICE_HANDLER ( compis_osp_pit_w )
 /*-------------------------------------------------------------------------*/
 /*  USART 8251                                                             */
 /*-------------------------------------------------------------------------*/
-static void compis_usart_rxready(device_t *device, int state)
+static WRITE_LINE_DEVICE_HANDLER( compis_usart_rxready )
 {
 #if 0
 	if (state)
@@ -383,20 +383,26 @@ static void compis_usart_rxready(device_t *device, int state)
 
 const msm8251_interface compis_usart_interface=
 {
-	NULL,
-	NULL,
-	compis_usart_rxready
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE(compis_usart_rxready),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 READ16_HANDLER ( compis_usart_r )
 {
-	device_t *uart = space->machine->device("uart");
+	device_t *uart = space->machine().device("uart");
 	return msm8251_data_r(uart, offset);
 }
 
 WRITE16_HANDLER ( compis_usart_w )
 {
-	device_t *uart = space->machine->device("uart");
+	device_t *uart = space->machine().device("uart");
 	switch (offset)
 	{
 		case 0x00:
@@ -418,110 +424,110 @@ WRITE16_HANDLER ( compis_usart_w )
  *************************************/
 static IRQ_CALLBACK(int_callback)
 {
-	compis_state *state = device->machine->driver_data<compis_state>();
+	compis_state *state = device->machine().driver_data<compis_state>();
 	if (LOG_INTERRUPTS)
-		logerror("(%f) **** Acknowledged interrupt vector %02X\n", attotime_to_double(timer_get_time(device->machine)), state->i186.intr.poll_status & 0x1f);
+		logerror("(%f) **** Acknowledged interrupt vector %02X\n", device->machine().time().as_double(), state->m_i186.intr.poll_status & 0x1f);
 
 	/* clear the interrupt */
-	cpu_set_input_line(device, 0, CLEAR_LINE);
-	state->i186.intr.pending = 0;
+	device_set_input_line(device, 0, CLEAR_LINE);
+	state->m_i186.intr.pending = 0;
 
 	/* clear the request and set the in-service bit */
 #if LATCH_INTS
-	state->i186.intr.request &= ~state->i186.intr.ack_mask;
+	state->m_i186.intr.request &= ~state->m_i186.intr.ack_mask;
 #else
-	state->i186.intr.request &= ~(state->i186.intr.ack_mask & 0x0f);
+	state->m_i186.intr.request &= ~(state->m_i186.intr.ack_mask & 0x0f);
 #endif
-	state->i186.intr.in_service |= state->i186.intr.ack_mask;
-	if (state->i186.intr.ack_mask == 0x0001)
+	state->m_i186.intr.in_service |= state->m_i186.intr.ack_mask;
+	if (state->m_i186.intr.ack_mask == 0x0001)
 	{
-		switch (state->i186.intr.poll_status & 0x1f)
+		switch (state->m_i186.intr.poll_status & 0x1f)
 		{
-			case 0x08:	state->i186.intr.status &= ~0x01;	break;
-			case 0x12:	state->i186.intr.status &= ~0x02;	break;
-			case 0x13:	state->i186.intr.status &= ~0x04;	break;
+			case 0x08:	state->m_i186.intr.status &= ~0x01;	break;
+			case 0x12:	state->m_i186.intr.status &= ~0x02;	break;
+			case 0x13:	state->m_i186.intr.status &= ~0x04;	break;
 		}
 	}
-	state->i186.intr.ack_mask = 0;
+	state->m_i186.intr.ack_mask = 0;
 
 	/* a request no longer pending */
-	state->i186.intr.poll_status &= ~0x8000;
+	state->m_i186.intr.poll_status &= ~0x8000;
 
 	/* return the vector */
-	return state->i186.intr.poll_status & 0x1f;
+	return state->m_i186.intr.poll_status & 0x1f;
 }
 
 
-static void update_interrupt_state(running_machine *machine)
+static void update_interrupt_state(running_machine &machine)
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	int i, j, new_vector = 0;
 
-	if (LOG_INTERRUPTS) logerror("update_interrupt_status: req=%02X stat=%02X serv=%02X\n", state->i186.intr.request, state->i186.intr.status, state->i186.intr.in_service);
+	if (LOG_INTERRUPTS) logerror("update_interrupt_status: req=%02X stat=%02X serv=%02X\n", state->m_i186.intr.request, state->m_i186.intr.status, state->m_i186.intr.in_service);
 
 	/* loop over priorities */
-	for (i = 0; i <= state->i186.intr.priority_mask; i++)
+	for (i = 0; i <= state->m_i186.intr.priority_mask; i++)
 	{
 		/* note: by checking 4 bits, we also verify that the mask is off */
-		if ((state->i186.intr.timer & 15) == i)
+		if ((state->m_i186.intr.timer & 15) == i)
 		{
 			/* if we're already servicing something at this level, don't generate anything new */
-			if (state->i186.intr.in_service & 0x01)
+			if (state->m_i186.intr.in_service & 0x01)
 				return;
 
 			/* if there's something pending, generate an interrupt */
-			if (state->i186.intr.status & 0x07)
+			if (state->m_i186.intr.status & 0x07)
 			{
-				if (state->i186.intr.status & 1)
+				if (state->m_i186.intr.status & 1)
 					new_vector = 0x08;
-				else if (state->i186.intr.status & 2)
+				else if (state->m_i186.intr.status & 2)
 					new_vector = 0x12;
-				else if (state->i186.intr.status & 4)
+				else if (state->m_i186.intr.status & 4)
 					new_vector = 0x13;
 				else
 					popmessage("Invalid timer interrupt!");
 
 				/* set the clear mask and generate the int */
-				state->i186.intr.ack_mask = 0x0001;
+				state->m_i186.intr.ack_mask = 0x0001;
 				goto generate_int;
 			}
 		}
 
 		/* check DMA interrupts */
 		for (j = 0; j < 2; j++)
-			if ((state->i186.intr.dma[j] & 15) == i)
+			if ((state->m_i186.intr.dma[j] & 15) == i)
 			{
 				/* if we're already servicing something at this level, don't generate anything new */
-				if (state->i186.intr.in_service & (0x04 << j))
+				if (state->m_i186.intr.in_service & (0x04 << j))
 					return;
 
 				/* if there's something pending, generate an interrupt */
-				if (state->i186.intr.request & (0x04 << j))
+				if (state->m_i186.intr.request & (0x04 << j))
 				{
 					new_vector = 0x0a + j;
 
 					/* set the clear mask and generate the int */
-					state->i186.intr.ack_mask = 0x0004 << j;
+					state->m_i186.intr.ack_mask = 0x0004 << j;
 					goto generate_int;
 				}
 			}
 
 		/* check external interrupts */
 		for (j = 0; j < 4; j++)
-			if ((state->i186.intr.ext[j] & 15) == i)
+			if ((state->m_i186.intr.ext[j] & 15) == i)
 			{
 				/* if we're already servicing something at this level, don't generate anything new */
-				if (state->i186.intr.in_service & (0x10 << j))
+				if (state->m_i186.intr.in_service & (0x10 << j))
 					return;
 
 				/* if there's something pending, generate an interrupt */
-				if (state->i186.intr.request & (0x10 << j))
+				if (state->m_i186.intr.request & (0x10 << j))
 				{
 					/* otherwise, generate an interrupt for this request */
 					new_vector = 0x0c + j;
 
 					/* set the clear mask and generate the int */
-					state->i186.intr.ack_mask = 0x0010 << j;
+					state->m_i186.intr.ack_mask = 0x0010 << j;
 					goto generate_int;
 				}
 			}
@@ -530,19 +536,19 @@ static void update_interrupt_state(running_machine *machine)
 
 generate_int:
 	/* generate the appropriate interrupt */
-	state->i186.intr.poll_status = 0x8000 | new_vector;
-	if (!state->i186.intr.pending)
+	state->m_i186.intr.poll_status = 0x8000 | new_vector;
+	if (!state->m_i186.intr.pending)
 		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
-	state->i186.intr.pending = 1;
-	cpuexec_trigger(machine, CPU_RESUME_TRIGGER);
+	state->m_i186.intr.pending = 1;
+	machine.scheduler().trigger(CPU_RESUME_TRIGGER);
 	if (LOG_OPTIMIZATION) logerror("  - trigger due to interrupt pending\n");
-	if (LOG_INTERRUPTS) logerror("(%f) **** Requesting interrupt vector %02X\n", attotime_to_double(timer_get_time(machine)), new_vector);
+	if (LOG_INTERRUPTS) logerror("(%f) **** Requesting interrupt vector %02X\n", machine.time().as_double(), new_vector);
 }
 
 
-static void handle_eoi(running_machine *machine,int data)
+static void handle_eoi(running_machine &machine,int data)
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	int i, j;
 
 	/* specific case */
@@ -551,18 +557,18 @@ static void handle_eoi(running_machine *machine,int data)
 		/* turn off the appropriate in-service bit */
 		switch (data & 0x1f)
 		{
-			case 0x08:	state->i186.intr.in_service &= ~0x01;	break;
-			case 0x12:	state->i186.intr.in_service &= ~0x01;	break;
-			case 0x13:	state->i186.intr.in_service &= ~0x01;	break;
-			case 0x0a:	state->i186.intr.in_service &= ~0x04;	break;
-			case 0x0b:	state->i186.intr.in_service &= ~0x08;	break;
-			case 0x0c:	state->i186.intr.in_service &= ~0x10;	break;
-			case 0x0d:	state->i186.intr.in_service &= ~0x20;	break;
-			case 0x0e:	state->i186.intr.in_service &= ~0x40;	break;
-			case 0x0f:	state->i186.intr.in_service &= ~0x80;	break;
-			default:	logerror("%05X:ERROR - 80186 EOI with unknown vector %02X\n", cpu_get_pc(machine->device("maincpu")), data & 0x1f);
+			case 0x08:	state->m_i186.intr.in_service &= ~0x01;	break;
+			case 0x12:	state->m_i186.intr.in_service &= ~0x01;	break;
+			case 0x13:	state->m_i186.intr.in_service &= ~0x01;	break;
+			case 0x0a:	state->m_i186.intr.in_service &= ~0x04;	break;
+			case 0x0b:	state->m_i186.intr.in_service &= ~0x08;	break;
+			case 0x0c:	state->m_i186.intr.in_service &= ~0x10;	break;
+			case 0x0d:	state->m_i186.intr.in_service &= ~0x20;	break;
+			case 0x0e:	state->m_i186.intr.in_service &= ~0x40;	break;
+			case 0x0f:	state->m_i186.intr.in_service &= ~0x80;	break;
+			default:	logerror("%05X:ERROR - 80186 EOI with unknown vector %02X\n", cpu_get_pc(machine.device("maincpu")), data & 0x1f);
 		}
-		if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for vector %02X\n", attotime_to_double(timer_get_time(machine)), data & 0x1f);
+		if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for vector %02X\n", machine.time().as_double(), data & 0x1f);
 	}
 
 	/* non-specific case */
@@ -572,28 +578,28 @@ static void handle_eoi(running_machine *machine,int data)
 		for (i = 0; i <= 7; i++)
 		{
 			/* check for in-service timers */
-			if ((state->i186.intr.timer & 7) == i && (state->i186.intr.in_service & 0x01))
+			if ((state->m_i186.intr.timer & 7) == i && (state->m_i186.intr.in_service & 0x01))
 			{
-				state->i186.intr.in_service &= ~0x01;
-				if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for timer\n", attotime_to_double(timer_get_time(machine)));
+				state->m_i186.intr.in_service &= ~0x01;
+				if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for timer\n", machine.time().as_double());
 				return;
 			}
 
 			/* check for in-service DMA interrupts */
 			for (j = 0; j < 2; j++)
-				if ((state->i186.intr.dma[j] & 7) == i && (state->i186.intr.in_service & (0x04 << j)))
+				if ((state->m_i186.intr.dma[j] & 7) == i && (state->m_i186.intr.in_service & (0x04 << j)))
 				{
-					state->i186.intr.in_service &= ~(0x04 << j);
-					if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for DMA%d\n", attotime_to_double(timer_get_time(machine)), j);
+					state->m_i186.intr.in_service &= ~(0x04 << j);
+					if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for DMA%d\n", machine.time().as_double(), j);
 					return;
 				}
 
 			/* check external interrupts */
 			for (j = 0; j < 4; j++)
-				if ((state->i186.intr.ext[j] & 7) == i && (state->i186.intr.in_service & (0x10 << j)))
+				if ((state->m_i186.intr.ext[j] & 7) == i && (state->m_i186.intr.in_service & (0x10 << j)))
 				{
-					state->i186.intr.in_service &= ~(0x10 << j);
-					if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for INT%d\n", attotime_to_double(timer_get_time(machine)), j);
+					state->m_i186.intr.in_service &= ~(0x10 << j);
+					if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for INT%d\n", machine.time().as_double(), j);
 					return;
 				}
 		}
@@ -609,9 +615,9 @@ static void handle_eoi(running_machine *machine,int data)
 
 static TIMER_CALLBACK(internal_timer_int)
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	int which = param;
-	struct timer_state *t = &state->i186.timer[which];
+	struct timer_state *t = &state->m_i186.timer[which];
 
 	if (LOG_TIMER) logerror("Hit interrupt callback for timer %d\n", which);
 
@@ -621,7 +627,7 @@ static TIMER_CALLBACK(internal_timer_int)
 	/* request an interrupt */
 	if (t->control & 0x2000)
 	{
-		state->i186.intr.status |= 0x01 << which;
+		state->m_i186.intr.status |= 0x01 << which;
 		update_interrupt_state(machine);
 		if (LOG_TIMER) logerror("  Generating timer interrupt\n");
 	}
@@ -630,24 +636,24 @@ static TIMER_CALLBACK(internal_timer_int)
 	if (t->control & 0x0001)
 	{
 		int count = t->maxA ? t->maxA : 0x10000;
-		timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), count), which);
+		t->int_timer->adjust(attotime::from_hz(2000000) * count, which);
 		if (LOG_TIMER) logerror("  Repriming interrupt\n");
 	}
 	else
-		timer_adjust_oneshot(t->int_timer, attotime_never, which);
+		t->int_timer->adjust(attotime::never, which);
 }
 
 
-static void internal_timer_sync(running_machine *machine, int which)
+static void internal_timer_sync(running_machine &machine, int which)
 {
-	compis_state *state = machine->driver_data<compis_state>();
-	struct timer_state *t = &state->i186.timer[which];
+	compis_state *state = machine.driver_data<compis_state>();
+	struct timer_state *t = &state->m_i186.timer[which];
 
 	/* if we have a timing timer running, adjust the count */
 	if (t->time_timer_active)
 	{
-		attotime current_time = timer_timeelapsed(t->time_timer);
-		int net_clocks = attotime_mul(attotime_sub(current_time, t->last_time),  2000000).seconds;
+		attotime current_time = t->time_timer->elapsed();
+		int net_clocks = ((current_time - t->last_time) * 2000000).seconds;
 		t->last_time = current_time;
 
 		/* set the max count bit if we passed the max */
@@ -663,15 +669,15 @@ static void internal_timer_sync(running_machine *machine, int which)
 }
 
 
-static void internal_timer_update(running_machine *machine,
+static void internal_timer_update(running_machine &machine,
                                   int which,
                                   int new_count,
                                   int new_maxA,
                                   int new_maxB,
                                   int new_control)
 {
-	compis_state *state = machine->driver_data<compis_state>();
-	struct timer_state *t = &state->i186.timer[which];
+	compis_state *state = machine.driver_data<compis_state>();
+	struct timer_state *t = &state->m_i186.timer[which];
 	int update_int_timer = 0;
 
 	/* if we have a new count and we're on, update things */
@@ -735,7 +741,7 @@ static void internal_timer_update(running_machine *machine,
 		diff = new_control ^ t->control;
 		if (diff & 0x001c)
 		  logerror("%05X:ERROR! -unsupported timer mode %04X\n",
-			   cpu_get_pc(machine->device("maincpu")), new_control);
+			   cpu_get_pc(machine.device("maincpu")), new_control);
 
 		/* if we have real changes, update things */
 		if (diff != 0)
@@ -747,7 +753,7 @@ static void internal_timer_update(running_machine *machine,
 				internal_timer_sync(machine, which);
 
 				/* nuke the timer and force the interrupt timer to be recomputed */
-				timer_adjust_oneshot(t->time_timer, attotime_never, which);
+				t->time_timer->adjust(attotime::never, which);
 				t->time_timer_active = 0;
 				update_int_timer = 1;
 			}
@@ -756,7 +762,7 @@ static void internal_timer_update(running_machine *machine,
 			else if ((diff & 0x8000) && (new_control & 0x8000))
 			{
 				/* start the timing */
-				timer_adjust_oneshot(t->time_timer, attotime_never, which);
+				t->time_timer->adjust(attotime::never, which);
 				t->time_timer_active = 1;
 				update_int_timer = 1;
 			}
@@ -781,12 +787,12 @@ static void internal_timer_update(running_machine *machine,
 	        	int diff = t->maxA - t->count;
 	        	if (diff <= 0)
 	        		diff += 0x10000;
-	        	timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which);
+	        	t->int_timer->adjust(attotime::from_hz(2000000) * diff, which);
 	        	if (LOG_TIMER) logerror("Set interrupt timer for %d\n", which);
 	    	}
 	    	else
 	    	{
-	        	timer_adjust_oneshot(t->int_timer, attotime_never, which);
+	        	t->int_timer->adjust(attotime::never, which);
 	    	}
 	}
 }
@@ -801,9 +807,9 @@ static void internal_timer_update(running_machine *machine,
 
 static TIMER_CALLBACK(dma_timer_callback)
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	int which = param;
-	struct dma_state *d = &state->i186.dma[which];
+	struct dma_state *d = &state->m_i186.dma[which];
 
 	/* force an update and see if we're really done */
 	//stream_update(dma_stream, 0);
@@ -817,16 +823,16 @@ static TIMER_CALLBACK(dma_timer_callback)
 	if (d->control & 0x0100)
 	{
 		if (LOG_DMA) logerror("DMA%d timer callback - requesting interrupt: count = %04X, source = %04X\n", which, d->count, d->source);
-		state->i186.intr.request |= 0x04 << which;
+		state->m_i186.intr.request |= 0x04 << which;
 		update_interrupt_state(machine);
 	}
 }
 
 
-static void update_dma_control(running_machine *machine, int which, int new_control)
+static void update_dma_control(running_machine &machine, int which, int new_control)
 {
-	compis_state *state = machine->driver_data<compis_state>();
-	struct dma_state *d = &state->i186.dma[which];
+	compis_state *state = machine.driver_data<compis_state>();
+	struct dma_state *d = &state->m_i186.dma[which];
 	int diff;
 
 	/* handle the CHG bit */
@@ -838,7 +844,7 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 	diff = new_control ^ d->control;
 	if (diff & 0x6811)
 	  logerror("%05X:ERROR! - unsupported DMA mode %04X\n",
-		   cpu_get_pc(machine->device("maincpu")), new_control);
+		   cpu_get_pc(machine.device("maincpu")), new_control);
 
 	/* if we're going live, set a timer */
 	if ((diff & 0x0002) && (new_control & 0x0002))
@@ -868,8 +874,8 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 			if (LOG_DMA) logerror("Initiated DMA %d - count = %04X, source = %04X, dest = %04X\n", which, d->count, d->source, d->dest);
 
 			d->finished = 0;
-/*          timer_adjust_oneshot(d->finish_timer,
-         ATTOTIME_IN_HZ(dac[dacnum].frequency) * (double)count, which);*/
+/*          d->finish_timer->adjust(
+         attotime::from_hz(dac[dacnum].frequency) * (double)count, which);*/
 		}
 	}
 
@@ -888,176 +894,176 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 
 READ16_HANDLER( compis_i186_internal_port_r )
 {
-	compis_state *state = space->machine->driver_data<compis_state>();
+	compis_state *state = space->machine().driver_data<compis_state>();
 	int temp, which;
 
 	switch (offset)
 	{
 		case 0x11:
-			logerror("%05X:ERROR - read from 80186 EOI\n", cpu_get_pc(space->cpu));
+			logerror("%05X:ERROR - read from 80186 EOI\n", cpu_get_pc(&space->device()));
 			break;
 
 		case 0x12:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt poll\n", cpu_get_pc(space->cpu));
-			if (state->i186.intr.poll_status & 0x8000)
-				int_callback(space->machine->device("maincpu"), 0);
-			return state->i186.intr.poll_status;
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt poll\n", cpu_get_pc(&space->device()));
+			if (state->m_i186.intr.poll_status & 0x8000)
+				int_callback(space->machine().device("maincpu"), 0);
+			return state->m_i186.intr.poll_status;
 
 		case 0x13:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt poll status\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.poll_status;
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt poll status\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.poll_status;
 
 		case 0x14:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt mask\n", cpu_get_pc(space->cpu));
-			temp  = (state->i186.intr.timer  >> 3) & 0x01;
-			temp |= (state->i186.intr.dma[0] >> 1) & 0x04;
-			temp |= (state->i186.intr.dma[1] >> 0) & 0x08;
-			temp |= (state->i186.intr.ext[0] << 1) & 0x10;
-			temp |= (state->i186.intr.ext[1] << 2) & 0x20;
-			temp |= (state->i186.intr.ext[2] << 3) & 0x40;
-			temp |= (state->i186.intr.ext[3] << 4) & 0x80;
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt mask\n", cpu_get_pc(&space->device()));
+			temp  = (state->m_i186.intr.timer  >> 3) & 0x01;
+			temp |= (state->m_i186.intr.dma[0] >> 1) & 0x04;
+			temp |= (state->m_i186.intr.dma[1] >> 0) & 0x08;
+			temp |= (state->m_i186.intr.ext[0] << 1) & 0x10;
+			temp |= (state->m_i186.intr.ext[1] << 2) & 0x20;
+			temp |= (state->m_i186.intr.ext[2] << 3) & 0x40;
+			temp |= (state->m_i186.intr.ext[3] << 4) & 0x80;
 			return temp;
 
 		case 0x15:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt priority mask\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.priority_mask;
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt priority mask\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.priority_mask;
 
 		case 0x16:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt in-service\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.in_service;
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt in-service\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.in_service;
 
 		case 0x17:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt request\n", cpu_get_pc(space->cpu));
-			temp = state->i186.intr.request & ~0x0001;
-			if (state->i186.intr.status & 0x0007)
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt request\n", cpu_get_pc(&space->device()));
+			temp = state->m_i186.intr.request & ~0x0001;
+			if (state->m_i186.intr.status & 0x0007)
 				temp |= 1;
 			return temp;
 
 		case 0x18:
-			if (LOG_PORTS) logerror("%05X:read 80186 interrupt status\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.status;
+			if (LOG_PORTS) logerror("%05X:read 80186 interrupt status\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.status;
 
 		case 0x19:
-			if (LOG_PORTS) logerror("%05X:read 80186 timer interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.timer;
+			if (LOG_PORTS) logerror("%05X:read 80186 timer interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.timer;
 
 		case 0x1a:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA 0 interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.dma[0];
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA 0 interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.dma[0];
 
 		case 0x1b:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA 1 interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.dma[1];
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA 1 interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.dma[1];
 
 		case 0x1c:
-			if (LOG_PORTS) logerror("%05X:read 80186 INT 0 interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.ext[0];
+			if (LOG_PORTS) logerror("%05X:read 80186 INT 0 interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.ext[0];
 
 		case 0x1d:
-			if (LOG_PORTS) logerror("%05X:read 80186 INT 1 interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.ext[1];
+			if (LOG_PORTS) logerror("%05X:read 80186 INT 1 interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.ext[1];
 
 		case 0x1e:
-			if (LOG_PORTS) logerror("%05X:read 80186 INT 2 interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.ext[2];
+			if (LOG_PORTS) logerror("%05X:read 80186 INT 2 interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.ext[2];
 
 		case 0x1f:
-			if (LOG_PORTS) logerror("%05X:read 80186 INT 3 interrupt control\n", cpu_get_pc(space->cpu));
-			return state->i186.intr.ext[3];
+			if (LOG_PORTS) logerror("%05X:read 80186 INT 3 interrupt control\n", cpu_get_pc(&space->device()));
+			return state->m_i186.intr.ext[3];
 
 		case 0x28:
 		case 0x2c:
 		case 0x30:
-			if (LOG_PORTS) logerror("%05X:read 80186 Timer %d count\n", cpu_get_pc(space->cpu), (offset - 0x28) / 4);
+			if (LOG_PORTS) logerror("%05X:read 80186 Timer %d count\n", cpu_get_pc(&space->device()), (offset - 0x28) / 4);
 			which = (offset - 0x28) / 4;
 			if (!(offset & 1))
-				internal_timer_sync(space->machine, which);
-			return state->i186.timer[which].count;
+				internal_timer_sync(space->machine(), which);
+			return state->m_i186.timer[which].count;
 
 		case 0x29:
 		case 0x2d:
 		case 0x31:
-			if (LOG_PORTS) logerror("%05X:read 80186 Timer %d max A\n", cpu_get_pc(space->cpu), (offset - 0x29) / 4);
+			if (LOG_PORTS) logerror("%05X:read 80186 Timer %d max A\n", cpu_get_pc(&space->device()), (offset - 0x29) / 4);
 			which = (offset - 0x29) / 4;
-			return state->i186.timer[which].maxA;
+			return state->m_i186.timer[which].maxA;
 
 		case 0x2a:
 		case 0x2e:
-			logerror("%05X:read 80186 Timer %d max B\n", cpu_get_pc(space->cpu), (offset - 0x2a) / 4);
+			logerror("%05X:read 80186 Timer %d max B\n", cpu_get_pc(&space->device()), (offset - 0x2a) / 4);
 			which = (offset - 0x2a) / 4;
-			return state->i186.timer[which].maxB;
+			return state->m_i186.timer[which].maxB;
 
 		case 0x2b:
 		case 0x2f:
 		case 0x33:
-			if (LOG_PORTS) logerror("%05X:read 80186 Timer %d control\n", cpu_get_pc(space->cpu), (offset - 0x2b) / 4);
+			if (LOG_PORTS) logerror("%05X:read 80186 Timer %d control\n", cpu_get_pc(&space->device()), (offset - 0x2b) / 4);
 			which = (offset - 0x2b) / 4;
-			return state->i186.timer[which].control;
+			return state->m_i186.timer[which].control;
 
 		case 0x50:
-			if (LOG_PORTS) logerror("%05X:read 80186 upper chip select\n", cpu_get_pc(space->cpu));
-			return state->i186.mem.upper;
+			if (LOG_PORTS) logerror("%05X:read 80186 upper chip select\n", cpu_get_pc(&space->device()));
+			return state->m_i186.mem.upper;
 
 		case 0x51:
-			if (LOG_PORTS) logerror("%05X:read 80186 lower chip select\n", cpu_get_pc(space->cpu));
-			return state->i186.mem.lower;
+			if (LOG_PORTS) logerror("%05X:read 80186 lower chip select\n", cpu_get_pc(&space->device()));
+			return state->m_i186.mem.lower;
 
 		case 0x52:
-			if (LOG_PORTS) logerror("%05X:read 80186 peripheral chip select\n", cpu_get_pc(space->cpu));
-			return state->i186.mem.peripheral;
+			if (LOG_PORTS) logerror("%05X:read 80186 peripheral chip select\n", cpu_get_pc(&space->device()));
+			return state->m_i186.mem.peripheral;
 
 		case 0x53:
-			if (LOG_PORTS) logerror("%05X:read 80186 middle chip select\n", cpu_get_pc(space->cpu));
-			return state->i186.mem.middle;
+			if (LOG_PORTS) logerror("%05X:read 80186 middle chip select\n", cpu_get_pc(&space->device()));
+			return state->m_i186.mem.middle;
 
 		case 0x54:
-			if (LOG_PORTS) logerror("%05X:read 80186 middle P chip select\n", cpu_get_pc(space->cpu));
-			return state->i186.mem.middle_size;
+			if (LOG_PORTS) logerror("%05X:read 80186 middle P chip select\n", cpu_get_pc(&space->device()));
+			return state->m_i186.mem.middle_size;
 
 		case 0x60:
 		case 0x68:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d lower source address\n", cpu_get_pc(space->cpu), (offset - 0x60) / 8);
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d lower source address\n", cpu_get_pc(&space->device()), (offset - 0x60) / 8);
 			which = (offset - 0x60) / 8;
 //          stream_update(dma_stream, 0);
-			return state->i186.dma[which].source;
+			return state->m_i186.dma[which].source;
 
 		case 0x61:
 		case 0x69:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d upper source address\n", cpu_get_pc(space->cpu), (offset - 0x61) / 8);
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d upper source address\n", cpu_get_pc(&space->device()), (offset - 0x61) / 8);
 			which = (offset - 0x61) / 8;
 //          stream_update(dma_stream, 0);
-			return state->i186.dma[which].source >> 16;
+			return state->m_i186.dma[which].source >> 16;
 
 		case 0x62:
 		case 0x6a:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d lower dest address\n", cpu_get_pc(space->cpu), (offset - 0x62) / 8);
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d lower dest address\n", cpu_get_pc(&space->device()), (offset - 0x62) / 8);
 			which = (offset - 0x62) / 8;
 //          stream_update(dma_stream, 0);
-			return state->i186.dma[which].dest;
+			return state->m_i186.dma[which].dest;
 
 		case 0x63:
 		case 0x6b:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d upper dest address\n", cpu_get_pc(space->cpu), (offset - 0x63) / 8);
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d upper dest address\n", cpu_get_pc(&space->device()), (offset - 0x63) / 8);
 			which = (offset - 0x63) / 8;
 //          stream_update(dma_stream, 0);
-			return state->i186.dma[which].dest >> 16;
+			return state->m_i186.dma[which].dest >> 16;
 
 		case 0x64:
 		case 0x6c:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d transfer count\n", cpu_get_pc(space->cpu), (offset - 0x64) / 8);
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d transfer count\n", cpu_get_pc(&space->device()), (offset - 0x64) / 8);
 			which = (offset - 0x64) / 8;
 //          stream_update(dma_stream, 0);
-			return state->i186.dma[which].count;
+			return state->m_i186.dma[which].count;
 
 		case 0x65:
 		case 0x6d:
-			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d control\n", cpu_get_pc(space->cpu), (offset - 0x65) / 8);
+			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d control\n", cpu_get_pc(&space->device()), (offset - 0x65) / 8);
 			which = (offset - 0x65) / 8;
 //          stream_update(dma_stream, 0);
-			return state->i186.dma[which].control;
+			return state->m_i186.dma[which].control;
 
 		default:
-			logerror("%05X:read 80186 port %02X\n", cpu_get_pc(space->cpu), offset);
+			logerror("%05X:read 80186 port %02X\n", cpu_get_pc(&space->device()), offset);
 			break;
 	}
 	return 0x00;
@@ -1071,153 +1077,153 @@ READ16_HANDLER( compis_i186_internal_port_r )
 
 WRITE16_HANDLER( compis_i186_internal_port_w )
 {
-	compis_state *state = space->machine->driver_data<compis_state>();
+	compis_state *state = space->machine().driver_data<compis_state>();
 	int temp, which, data16 = data;
 
 	switch (offset)
 	{
 		case 0x11:
-			if (LOG_PORTS) logerror("%05X:80186 EOI = %04X\n", cpu_get_pc(space->cpu), data16);
-			handle_eoi(space->machine,0x8000);
-			update_interrupt_state(space->machine);
+			if (LOG_PORTS) logerror("%05X:80186 EOI = %04X\n", cpu_get_pc(&space->device()), data16);
+			handle_eoi(space->machine(),0x8000);
+			update_interrupt_state(space->machine());
 			break;
 
 		case 0x12:
-			logerror("%05X:ERROR - write to 80186 interrupt poll = %04X\n", cpu_get_pc(space->cpu), data16);
+			logerror("%05X:ERROR - write to 80186 interrupt poll = %04X\n", cpu_get_pc(&space->device()), data16);
 			break;
 
 		case 0x13:
-			logerror("%05X:ERROR - write to 80186 interrupt poll status = %04X\n", cpu_get_pc(space->cpu), data16);
+			logerror("%05X:ERROR - write to 80186 interrupt poll status = %04X\n", cpu_get_pc(&space->device()), data16);
 			break;
 
 		case 0x14:
-			if (LOG_PORTS) logerror("%05X:80186 interrupt mask = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.timer  = (state->i186.intr.timer  & ~0x08) | ((data16 << 3) & 0x08);
-			state->i186.intr.dma[0] = (state->i186.intr.dma[0] & ~0x08) | ((data16 << 1) & 0x08);
-			state->i186.intr.dma[1] = (state->i186.intr.dma[1] & ~0x08) | ((data16 << 0) & 0x08);
-			state->i186.intr.ext[0] = (state->i186.intr.ext[0] & ~0x08) | ((data16 >> 1) & 0x08);
-			state->i186.intr.ext[1] = (state->i186.intr.ext[1] & ~0x08) | ((data16 >> 2) & 0x08);
-			state->i186.intr.ext[2] = (state->i186.intr.ext[2] & ~0x08) | ((data16 >> 3) & 0x08);
-			state->i186.intr.ext[3] = (state->i186.intr.ext[3] & ~0x08) | ((data16 >> 4) & 0x08);
-			update_interrupt_state(space->machine);
+			if (LOG_PORTS) logerror("%05X:80186 interrupt mask = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.timer  = (state->m_i186.intr.timer  & ~0x08) | ((data16 << 3) & 0x08);
+			state->m_i186.intr.dma[0] = (state->m_i186.intr.dma[0] & ~0x08) | ((data16 << 1) & 0x08);
+			state->m_i186.intr.dma[1] = (state->m_i186.intr.dma[1] & ~0x08) | ((data16 << 0) & 0x08);
+			state->m_i186.intr.ext[0] = (state->m_i186.intr.ext[0] & ~0x08) | ((data16 >> 1) & 0x08);
+			state->m_i186.intr.ext[1] = (state->m_i186.intr.ext[1] & ~0x08) | ((data16 >> 2) & 0x08);
+			state->m_i186.intr.ext[2] = (state->m_i186.intr.ext[2] & ~0x08) | ((data16 >> 3) & 0x08);
+			state->m_i186.intr.ext[3] = (state->m_i186.intr.ext[3] & ~0x08) | ((data16 >> 4) & 0x08);
+			update_interrupt_state(space->machine());
 			break;
 
 		case 0x15:
-			if (LOG_PORTS) logerror("%05X:80186 interrupt priority mask = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.priority_mask = data16 & 0x0007;
-			update_interrupt_state(space->machine);
+			if (LOG_PORTS) logerror("%05X:80186 interrupt priority mask = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.priority_mask = data16 & 0x0007;
+			update_interrupt_state(space->machine());
 			break;
 
 		case 0x16:
-			if (LOG_PORTS) logerror("%05X:80186 interrupt in-service = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.in_service = data16 & 0x00ff;
-			update_interrupt_state(space->machine);
+			if (LOG_PORTS) logerror("%05X:80186 interrupt in-service = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.in_service = data16 & 0x00ff;
+			update_interrupt_state(space->machine());
 			break;
 
 		case 0x17:
-			if (LOG_PORTS) logerror("%05X:80186 interrupt request = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.request = (state->i186.intr.request & ~0x00c0) | (data16 & 0x00c0);
-			update_interrupt_state(space->machine);
+			if (LOG_PORTS) logerror("%05X:80186 interrupt request = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.request = (state->m_i186.intr.request & ~0x00c0) | (data16 & 0x00c0);
+			update_interrupt_state(space->machine());
 			break;
 
 		case 0x18:
-			if (LOG_PORTS) logerror("%05X:WARNING - wrote to 80186 interrupt status = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.status = (state->i186.intr.status & ~0x8007) | (data16 & 0x8007);
-			update_interrupt_state(space->machine);
+			if (LOG_PORTS) logerror("%05X:WARNING - wrote to 80186 interrupt status = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.status = (state->m_i186.intr.status & ~0x8007) | (data16 & 0x8007);
+			update_interrupt_state(space->machine());
 			break;
 
 		case 0x19:
-			if (LOG_PORTS) logerror("%05X:80186 timer interrupt contol = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.timer = data16 & 0x000f;
+			if (LOG_PORTS) logerror("%05X:80186 timer interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.timer = data16 & 0x000f;
 			break;
 
 		case 0x1a:
-			if (LOG_PORTS) logerror("%05X:80186 DMA 0 interrupt control = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.dma[0] = data16 & 0x000f;
+			if (LOG_PORTS) logerror("%05X:80186 DMA 0 interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.dma[0] = data16 & 0x000f;
 			break;
 
 		case 0x1b:
-			if (LOG_PORTS) logerror("%05X:80186 DMA 1 interrupt control = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.dma[1] = data16 & 0x000f;
+			if (LOG_PORTS) logerror("%05X:80186 DMA 1 interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.dma[1] = data16 & 0x000f;
 			break;
 
 		case 0x1c:
-			if (LOG_PORTS) logerror("%05X:80186 INT 0 interrupt control = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.ext[0] = data16 & 0x007f;
+			if (LOG_PORTS) logerror("%05X:80186 INT 0 interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.ext[0] = data16 & 0x007f;
 			break;
 
 		case 0x1d:
-			if (LOG_PORTS) logerror("%05X:80186 INT 1 interrupt control = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.ext[1] = data16 & 0x007f;
+			if (LOG_PORTS) logerror("%05X:80186 INT 1 interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.ext[1] = data16 & 0x007f;
 			break;
 
 		case 0x1e:
-			if (LOG_PORTS) logerror("%05X:80186 INT 2 interrupt control = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.ext[2] = data16 & 0x001f;
+			if (LOG_PORTS) logerror("%05X:80186 INT 2 interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.ext[2] = data16 & 0x001f;
 			break;
 
 		case 0x1f:
-			if (LOG_PORTS) logerror("%05X:80186 INT 3 interrupt control = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.intr.ext[3] = data16 & 0x001f;
+			if (LOG_PORTS) logerror("%05X:80186 INT 3 interrupt control = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.intr.ext[3] = data16 & 0x001f;
 			break;
 
 		case 0x28:
 		case 0x2c:
 		case 0x30:
-			if (LOG_PORTS) logerror("%05X:80186 Timer %d count = %04X\n", cpu_get_pc(space->cpu), (offset - 0x28) / 4, data16);
+			if (LOG_PORTS) logerror("%05X:80186 Timer %d count = %04X\n", cpu_get_pc(&space->device()), (offset - 0x28) / 4, data16);
 			which = (offset - 0x28) / 4;
-			internal_timer_update(space->machine,which, data16, -1, -1, -1);
+			internal_timer_update(space->machine(),which, data16, -1, -1, -1);
 			break;
 
 		case 0x29:
 		case 0x2d:
 		case 0x31:
-			if (LOG_PORTS) logerror("%05X:80186 Timer %d max A = %04X\n", cpu_get_pc(space->cpu), (offset - 0x29) / 4, data16);
+			if (LOG_PORTS) logerror("%05X:80186 Timer %d max A = %04X\n", cpu_get_pc(&space->device()), (offset - 0x29) / 4, data16);
 			which = (offset - 0x29) / 4;
-			internal_timer_update(space->machine,which, -1, data16, -1, -1);
+			internal_timer_update(space->machine(),which, -1, data16, -1, -1);
 			break;
 
 		case 0x2a:
 		case 0x2e:
-			if (LOG_PORTS) logerror("%05X:80186 Timer %d max B = %04X\n", cpu_get_pc(space->cpu), (offset - 0x2a) / 4, data16);
+			if (LOG_PORTS) logerror("%05X:80186 Timer %d max B = %04X\n", cpu_get_pc(&space->device()), (offset - 0x2a) / 4, data16);
 			which = (offset - 0x2a) / 4;
-			internal_timer_update(space->machine,which, -1, -1, data16, -1);
+			internal_timer_update(space->machine(),which, -1, -1, data16, -1);
 			break;
 
 		case 0x2b:
 		case 0x2f:
 		case 0x33:
-			if (LOG_PORTS) logerror("%05X:80186 Timer %d control = %04X\n", cpu_get_pc(space->cpu), (offset - 0x2b) / 4, data16);
+			if (LOG_PORTS) logerror("%05X:80186 Timer %d control = %04X\n", cpu_get_pc(&space->device()), (offset - 0x2b) / 4, data16);
 			which = (offset - 0x2b) / 4;
-			internal_timer_update(space->machine,which, -1, -1, -1, data16);
+			internal_timer_update(space->machine(),which, -1, -1, -1, data16);
 			break;
 
 		case 0x50:
-			if (LOG_PORTS) logerror("%05X:80186 upper chip select = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.mem.upper = data16 | 0xc038;
+			if (LOG_PORTS) logerror("%05X:80186 upper chip select = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.mem.upper = data16 | 0xc038;
 			break;
 
 		case 0x51:
-			if (LOG_PORTS) logerror("%05X:80186 lower chip select = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.mem.lower = (data16 & 0x3fff) | 0x0038; printf("%X",state->i186.mem.lower);
+			if (LOG_PORTS) logerror("%05X:80186 lower chip select = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.mem.lower = (data16 & 0x3fff) | 0x0038; //printf("%X\n",state->m_i186.mem.lower);
 			break;
 
 		case 0x52:
-			if (LOG_PORTS) logerror("%05X:80186 peripheral chip select = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.mem.peripheral = data16 | 0x0038;
+			if (LOG_PORTS) logerror("%05X:80186 peripheral chip select = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.mem.peripheral = data16 | 0x0038;
 			break;
 
 		case 0x53:
-			if (LOG_PORTS) logerror("%05X:80186 middle chip select = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.mem.middle = data16 | 0x01f8;
+			if (LOG_PORTS) logerror("%05X:80186 middle chip select = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.mem.middle = data16 | 0x01f8;
 			break;
 
 		case 0x54:
-			if (LOG_PORTS) logerror("%05X:80186 middle P chip select = %04X\n", cpu_get_pc(space->cpu), data16);
-			state->i186.mem.middle_size = data16 | 0x8038;
+			if (LOG_PORTS) logerror("%05X:80186 middle P chip select = %04X\n", cpu_get_pc(&space->device()), data16);
+			state->m_i186.mem.middle_size = data16 | 0x8038;
 
-			temp = (state->i186.mem.peripheral & 0xffc0) << 4;
-			if (state->i186.mem.middle_size & 0x0040)
+			temp = (state->m_i186.mem.peripheral & 0xffc0) << 4;
+			if (state->m_i186.mem.middle_size & 0x0040)
 			{
 //              install_mem_read_handler(2, temp, temp + 0x2ff, peripheral_r);
 //              install_mem_write_handler(2, temp, temp + 0x2ff, peripheral_w);
@@ -1232,59 +1238,59 @@ WRITE16_HANDLER( compis_i186_internal_port_w )
 			/* we need to do this at a time when the I86 context is swapped in */
 			/* this register is generally set once at startup and never again, so it's a good */
 			/* time to set it up */
-			cpu_set_irq_callback(space->cpu, int_callback);
+			device_set_irq_callback(&space->device(), int_callback);
 			break;
 
 		case 0x60:
 		case 0x68:
-			if (LOG_PORTS) logerror("%05X:80186 DMA%d lower source address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x60) / 8, data16);
+			if (LOG_PORTS) logerror("%05X:80186 DMA%d lower source address = %04X\n", cpu_get_pc(&space->device()), (offset - 0x60) / 8, data16);
 			which = (offset - 0x60) / 8;
 //          stream_update(dma_stream, 0);
-			state->i186.dma[which].source = (state->i186.dma[which].source & ~0x0ffff) | (data16 & 0x0ffff);
+			state->m_i186.dma[which].source = (state->m_i186.dma[which].source & ~0x0ffff) | (data16 & 0x0ffff);
 			break;
 
 		case 0x61:
 		case 0x69:
-			if (LOG_PORTS) logerror("%05X:80186 DMA%d upper source address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x61) / 8, data16);
+			if (LOG_PORTS) logerror("%05X:80186 DMA%d upper source address = %04X\n", cpu_get_pc(&space->device()), (offset - 0x61) / 8, data16);
 			which = (offset - 0x61) / 8;
 //          stream_update(dma_stream, 0);
-			state->i186.dma[which].source = (state->i186.dma[which].source & ~0xf0000) | ((data16 << 16) & 0xf0000);
+			state->m_i186.dma[which].source = (state->m_i186.dma[which].source & ~0xf0000) | ((data16 << 16) & 0xf0000);
 			break;
 
 		case 0x62:
 		case 0x6a:
-			if (LOG_PORTS) logerror("%05X:80186 DMA%d lower dest address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x62) / 8, data16);
+			if (LOG_PORTS) logerror("%05X:80186 DMA%d lower dest address = %04X\n", cpu_get_pc(&space->device()), (offset - 0x62) / 8, data16);
 			which = (offset - 0x62) / 8;
 //          stream_update(dma_stream, 0);
-			state->i186.dma[which].dest = (state->i186.dma[which].dest & ~0x0ffff) | (data16 & 0x0ffff);
+			state->m_i186.dma[which].dest = (state->m_i186.dma[which].dest & ~0x0ffff) | (data16 & 0x0ffff);
 			break;
 
 		case 0x63:
 		case 0x6b:
-			if (LOG_PORTS) logerror("%05X:80186 DMA%d upper dest address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x63) / 8, data16);
+			if (LOG_PORTS) logerror("%05X:80186 DMA%d upper dest address = %04X\n", cpu_get_pc(&space->device()), (offset - 0x63) / 8, data16);
 			which = (offset - 0x63) / 8;
 //          stream_update(dma_stream, 0);
-			state->i186.dma[which].dest = (state->i186.dma[which].dest & ~0xf0000) | ((data16 << 16) & 0xf0000);
+			state->m_i186.dma[which].dest = (state->m_i186.dma[which].dest & ~0xf0000) | ((data16 << 16) & 0xf0000);
 			break;
 
 		case 0x64:
 		case 0x6c:
-			if (LOG_PORTS) logerror("%05X:80186 DMA%d transfer count = %04X\n", cpu_get_pc(space->cpu), (offset - 0x64) / 8, data16);
+			if (LOG_PORTS) logerror("%05X:80186 DMA%d transfer count = %04X\n", cpu_get_pc(&space->device()), (offset - 0x64) / 8, data16);
 			which = (offset - 0x64) / 8;
 //          stream_update(dma_stream, 0);
-			state->i186.dma[which].count = data16;
+			state->m_i186.dma[which].count = data16;
 			break;
 
 		case 0x65:
 		case 0x6d:
-			if (LOG_PORTS) logerror("%05X:80186 DMA%d control = %04X\n", cpu_get_pc(space->cpu), (offset - 0x65) / 8, data16);
+			if (LOG_PORTS) logerror("%05X:80186 DMA%d control = %04X\n", cpu_get_pc(&space->device()), (offset - 0x65) / 8, data16);
 			which = (offset - 0x65) / 8;
 //          stream_update(dma_stream, 0);
-			update_dma_control(space->machine, which, data16);
+			update_dma_control(space->machine(), which, data16);
 			break;
 
 		case 0x7f:
-			if (LOG_PORTS) logerror("%05X:80186 relocation register = %04X\n", cpu_get_pc(space->cpu), data16);
+			if (LOG_PORTS) logerror("%05X:80186 relocation register = %04X\n", cpu_get_pc(&space->device()), data16);
 
 			/* we assume here there that this doesn't happen too often */
 			/* plus, we can't really remove the old memory range, so we also assume that it's */
@@ -1292,20 +1298,20 @@ WRITE16_HANDLER( compis_i186_internal_port_w )
 			temp = (data16 & 0x0fff) << 8;
 			if (data16 & 0x1000)
 			{
-				memory_install_read16_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM), temp, temp + 0xff, 0, 0, compis_i186_internal_port_r);
-				memory_install_write16_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM), temp, temp + 0xff, 0, 0, compis_i186_internal_port_w);
+				space->machine().device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(temp, temp + 0xff, FUNC(compis_i186_internal_port_r));
+				space->machine().device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_write_handler(temp, temp + 0xff, FUNC(compis_i186_internal_port_w));
 			}
 			else
 			{
 				temp &= 0xffff;
-				memory_install_read16_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_IO), temp, temp + 0xff, 0, 0, compis_i186_internal_port_r);
-				memory_install_write16_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_IO), temp, temp + 0xff, 0, 0, compis_i186_internal_port_w);
+				space->machine().device("maincpu")->memory().space(AS_IO)->install_legacy_read_handler(temp, temp + 0xff, FUNC(compis_i186_internal_port_r));
+				space->machine().device("maincpu")->memory().space(AS_IO)->install_legacy_write_handler(temp, temp + 0xff, FUNC(compis_i186_internal_port_w));
 			}
 /*          popmessage("Sound CPU reset");*/
 			break;
 
 		default:
-			logerror("%05X:80186 port %02X = %04X\n", cpu_get_pc(space->cpu), offset, data16);
+			logerror("%05X:80186 port %02X = %04X\n", cpu_get_pc(&space->device()), offset, data16);
 			break;
 	}
 }
@@ -1314,18 +1320,18 @@ WRITE16_HANDLER( compis_i186_internal_port_w )
 /* Name: compis                                                            */
 /* Desc: CPU - Initialize the 80186 CPU                                    */
 /*-------------------------------------------------------------------------*/
-static void compis_cpu_init(running_machine *machine)
+static void compis_cpu_init(running_machine &machine)
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	/* create timers here so they stick around */
-	state->i186.timer[0].int_timer = timer_alloc(machine, internal_timer_int, NULL);
-	state->i186.timer[1].int_timer = timer_alloc(machine, internal_timer_int, NULL);
-	state->i186.timer[2].int_timer = timer_alloc(machine, internal_timer_int, NULL);
-	state->i186.timer[0].time_timer = timer_alloc(machine, NULL, NULL);
-	state->i186.timer[1].time_timer = timer_alloc(machine, NULL, NULL);
-	state->i186.timer[2].time_timer = timer_alloc(machine, NULL, NULL);
-	state->i186.dma[0].finish_timer = timer_alloc(machine, dma_timer_callback, NULL);
-	state->i186.dma[1].finish_timer = timer_alloc(machine, dma_timer_callback, NULL);
+	state->m_i186.timer[0].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
+	state->m_i186.timer[1].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
+	state->m_i186.timer[2].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
+	state->m_i186.timer[0].time_timer = machine.scheduler().timer_alloc(FUNC(NULL));
+	state->m_i186.timer[1].time_timer = machine.scheduler().timer_alloc(FUNC(NULL));
+	state->m_i186.timer[2].time_timer = machine.scheduler().timer_alloc(FUNC(NULL));
+	state->m_i186.dma[0].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
+	state->m_i186.dma[1].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1341,14 +1347,14 @@ static void compis_cpu_init(running_machine *machine)
 
 static WRITE_LINE_DEVICE_HANDLER( compis_pic8259_master_set_int_line )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( compis_pic8259_slave_set_int_line )
 {
-	compis_state *drvstate = device->machine->driver_data<compis_state>();
-	if (drvstate->devices.pic8259_master)
-		pic8259_ir2_w(drvstate->devices.pic8259_master, state);
+	compis_state *drvstate = device->machine().driver_data<compis_state>();
+	if (drvstate->m_devices.pic8259_master)
+		pic8259_ir2_w(drvstate->m_devices.pic8259_master, state);
 }
 
 const struct pic8259_interface compis_pic8259_master_config =
@@ -1364,23 +1370,26 @@ const struct pic8259_interface compis_pic8259_slave_config =
 
 static IRQ_CALLBACK( compis_irq_callback )
 {
-	compis_state *state = device->machine->driver_data<compis_state>();
-	return pic8259_acknowledge(state->devices.pic8259_master);
+	compis_state *state = device->machine().driver_data<compis_state>();
+	return pic8259_acknowledge(state->m_devices.pic8259_master);
 }
 
+#if 0
 static const compis_gdc_interface i82720_interface =
 {
 	GDC_MODE_HRG,
 	0x8000
 };
+#endif
 
 
 DRIVER_INIT( compis )
 {
-	compis_state *state = machine->driver_data<compis_state>();
-	compis_init( &i82720_interface );
-	cpu_set_irq_callback(machine->device("maincpu"), compis_irq_callback);
-	memset (&state->compis, 0, sizeof (state->compis) );
+	compis_state *state = machine.driver_data<compis_state>();
+//	compis_init( &i82720_interface );
+
+	device_set_irq_callback(machine.device("maincpu"), compis_irq_callback);
+	memset (&state->m_compis, 0, sizeof (state->m_compis) );
 }
 
 MACHINE_START( compis )
@@ -1394,7 +1403,7 @@ MACHINE_START( compis )
 /*-------------------------------------------------------------------------*/
 MACHINE_RESET( compis )
 {
-	compis_state *state = machine->driver_data<compis_state>();
+	compis_state *state = machine.driver_data<compis_state>();
 	/* FDC */
 	compis_fdc_reset(machine);
 
@@ -1402,10 +1411,10 @@ MACHINE_RESET( compis )
 	compis_keyb_init(state);
 
 	/* OSP PIC 8259 */
-	cpu_set_irq_callback(machine->device("maincpu"), compis_irq_callback);
+	device_set_irq_callback(machine.device("maincpu"), compis_irq_callback);
 
-	state->devices.pic8259_master = machine->device("pic8259_master");
-	state->devices.pic8259_slave = machine->device("pic8259_slave");
+	state->m_devices.pic8259_master = machine.device("pic8259_master");
+	state->m_devices.pic8259_slave = machine.device("pic8259_slave");
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1415,5 +1424,5 @@ MACHINE_RESET( compis )
 INTERRUPT_GEN( compis_vblank_int )
 {
 //  compis_gdc_vblank_int();
-	compis_keyb_update(device->machine);
+	compis_keyb_update(device->machine());
 }

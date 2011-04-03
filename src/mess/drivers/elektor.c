@@ -19,13 +19,13 @@ public:
 };
 
 
-static ADDRESS_MAP_START(elektor_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(elektor_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x07ff) AM_ROM
 	AM_RANGE( 0x0800, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( elektor_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( elektor_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
@@ -42,7 +42,7 @@ static VIDEO_START( elektor )
 {
 }
 
-static VIDEO_UPDATE( elektor )
+static SCREEN_UPDATE( elektor )
 {
     return 0;
 }
@@ -62,11 +62,12 @@ static MACHINE_CONFIG_START( elektor, elektor_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(elektor)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(elektor)
-    MCFG_VIDEO_UPDATE(elektor)
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -31,19 +31,19 @@ public:
 
 static READ8_DEVICE_HANDLER( ins8154_b1_port_a_r )
 {
-	device_t *ttl74145 = device->machine->device("ic8_7445");
+	device_t *ttl74145 = device->machine().device("ic8_7445");
 	UINT8 key_line = ttl74145_r(ttl74145, 0, 0);
 
 	switch (key_line)
 	{
-	case 1 << 0: return input_port_read(device->machine, "keyboard_0");
-	case 1 << 1: return input_port_read(device->machine, "keyboard_1");
-	case 1 << 2: return input_port_read(device->machine, "keyboard_2");
-	case 1 << 3: return input_port_read(device->machine, "keyboard_3");
-	case 1 << 4: return input_port_read(device->machine, "keyboard_4");
-	case 1 << 5: return input_port_read(device->machine, "keyboard_5");
-	case 1 << 6: return input_port_read(device->machine, "keyboard_6");
-	case 1 << 7: return input_port_read(device->machine, "keyboard_7");
+	case 1 << 0: return input_port_read(device->machine(), "keyboard_0");
+	case 1 << 1: return input_port_read(device->machine(), "keyboard_1");
+	case 1 << 2: return input_port_read(device->machine(), "keyboard_2");
+	case 1 << 3: return input_port_read(device->machine(), "keyboard_3");
+	case 1 << 4: return input_port_read(device->machine(), "keyboard_4");
+	case 1 << 5: return input_port_read(device->machine(), "keyboard_5");
+	case 1 << 6: return input_port_read(device->machine(), "keyboard_6");
+	case 1 << 7: return input_port_read(device->machine(), "keyboard_7");
 	}
 
 	/* should never reach this */
@@ -52,7 +52,7 @@ static READ8_DEVICE_HANDLER( ins8154_b1_port_a_r )
 
 static WRITE8_DEVICE_HANDLER( ins8154_b1_port_a_w )
 {
-	ttl74145_w(device->machine->device("ic8_7445"), 0, data & 0x07);
+	ttl74145_w(device->machine().device("ic8_7445"), 0, data & 0x07);
 }
 
 
@@ -62,7 +62,7 @@ static WRITE8_DEVICE_HANDLER( ins8154_b1_port_a_w )
 
 static WRITE8_DEVICE_HANDLER( acrnsys1_led_segment_w )
 {
-	device_t *ttl74145 = device->machine->device("ic8_7445");
+	device_t *ttl74145 = device->machine().device("ic8_7445");
 	UINT8 key_line = ttl74145_r(ttl74145, 0, 0);
 
 	output_set_digit_value(key_line, data);
@@ -73,7 +73,7 @@ static WRITE8_DEVICE_HANDLER( acrnsys1_led_segment_w )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( acrnsys1_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( acrnsys1_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0e00, 0x0e7f) AM_MIRROR(0x100) AM_DEVREADWRITE("b1", ins8154_r, ins8154_w)
 	AM_RANGE(0x0e80, 0x0eff) AM_MIRROR(0x100) AM_RAM

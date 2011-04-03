@@ -63,7 +63,9 @@ static void acia_6551_refresh_ints(device_t *device);
 
 INLINE acia6551_t *get_token(device_t *device)
 {
+	assert(device != NULL);
 	assert(device->type() == ACIA6551);
+
 	return (acia6551_t *) downcast<legacy_device_base *>(device)->token();
 }
 
@@ -78,13 +80,13 @@ INLINE acia6551_t *get_token(device_t *device)
     has updated state
 -------------------------------------------------*/
 
-static void acia_6551_in_callback(running_machine *machine, int id, unsigned long state)
+static void acia_6551_in_callback(running_machine &machine, int id, unsigned long state)
 {
 	device_t *device;
 	acia6551_t *acia;
 
 	/* NPW 29-Nov-2008 - These two lines are a hack and indicate why our "serial" infrastructure needs to be updated */
-	device = machine->device("acia");
+	device = machine.device("acia");
 	acia = get_token(device);
 
 	acia->connection.input_state = state;
@@ -148,10 +150,10 @@ static DEVICE_START( acia6551 )
 	memset(acia, 0, sizeof(*acia));
 	/* transmit data reg is empty */
 	acia->status_register |= (1<<4);
-	acia->timer = timer_alloc(device->machine, acia_6551_timer_callback, (void *) device);
+	acia->timer = device->machine().scheduler().timer_alloc(FUNC(acia_6551_timer_callback), (void *) device);
 
-	serial_connection_init(device->machine, &acia->connection);
-	serial_connection_set_in_callback(device->machine, &acia->connection, acia_6551_in_callback);
+	serial_connection_init(device->machine(), &acia->connection);
+	serial_connection_set_in_callback(device->machine(), &acia->connection, acia_6551_in_callback);
 	transmit_register_reset(&acia->transmit_reg);
 	receive_register_reset(&acia->receive_reg);
 }
@@ -396,7 +398,7 @@ WRITE8_DEVICE_HANDLER(acia_6551_w)
 				break;
 			}
 
-			serial_connection_out(device->machine, &acia->connection);
+			serial_connection_out(device->machine(), &acia->connection);
 
 			acia_6551_update_data_form(device);
 		}
@@ -449,7 +451,7 @@ WRITE8_DEVICE_HANDLER(acia_6551_w)
                 rate = data & 0x07;
 
 				/* baud rate changed? */
-				timer_reset(acia->timer, attotime_never);
+				acia->timer->reset();
 
 				if (rate==0)
 				{
@@ -555,7 +557,7 @@ WRITE8_DEVICE_HANDLER(acia_6551_w)
 						break;
 					}
 
-					timer_adjust_periodic(acia->timer, attotime_zero, 0, ATTOTIME_IN_HZ(baud_rate));
+					acia->timer->adjust(attotime::zero, 0, attotime::from_hz(baud_rate));
 				}
 			}
 

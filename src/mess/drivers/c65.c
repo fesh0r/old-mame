@@ -66,7 +66,7 @@ bus serial (available in all modes), a Fast and a Burst serial bus
 #include "includes/c64.h"
 #include "includes/c65.h"
 #include "machine/cbmiec.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /*************************************
  *
@@ -74,7 +74,7 @@ bus serial (available in all modes), a Fast and a Burst serial bus
  *
  *************************************/
 
-static ADDRESS_MAP_START( c65_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( c65_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x07fff) AM_RAMBANK("bank11")
 	AM_RANGE(0x08000, 0x09fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank12")
 	AM_RANGE(0x0a000, 0x0bfff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank13")
@@ -84,15 +84,15 @@ static ADDRESS_MAP_START( c65_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0dc00, 0x0dfff) AM_READ_BANK("bank8") AM_WRITE_BANK("bank9")
 	AM_RANGE(0x0e000, 0x0ffff) AM_READ_BANK("bank10") AM_WRITE_BANK("bank15")
 	AM_RANGE(0x10000, 0x1f7ff) AM_RAM
-	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE_MEMBER(c65_state, colorram)
+	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE_MEMBER(c65_state, m_colorram)
 
 	AM_RANGE(0x20000, 0x23fff) AM_ROM /* &c65_dos,     maps to 0x8000    */
 	AM_RANGE(0x24000, 0x28fff) AM_ROM /* reserved */
-	AM_RANGE(0x29000, 0x29fff) AM_ROM AM_BASE_MEMBER(c65_state, chargen)
-	AM_RANGE(0x2a000, 0x2bfff) AM_ROM AM_BASE_MEMBER(c65_state, basic)
-	AM_RANGE(0x2c000, 0x2cfff) AM_ROM AM_BASE_MEMBER(c65_state, interface)
-	AM_RANGE(0x2d000, 0x2dfff) AM_ROM AM_BASE_MEMBER(c65_state, chargen)
-	AM_RANGE(0x2e000, 0x2ffff) AM_ROM AM_BASE_MEMBER(c65_state, kernal)
+	AM_RANGE(0x29000, 0x29fff) AM_ROM AM_BASE_MEMBER(c65_state, m_chargen)
+	AM_RANGE(0x2a000, 0x2bfff) AM_ROM AM_BASE_MEMBER(c65_state, m_basic)
+	AM_RANGE(0x2c000, 0x2cfff) AM_ROM AM_BASE_MEMBER(c65_state, m_interface)
+	AM_RANGE(0x2d000, 0x2dfff) AM_ROM AM_BASE_MEMBER(c65_state, m_chargen)
+	AM_RANGE(0x2e000, 0x2ffff) AM_ROM AM_BASE_MEMBER(c65_state, m_kernal)
 
 	AM_RANGE(0x30000, 0x31fff) AM_ROM /*&c65_monitor,     monitor maps to 0x6000    */
 	AM_RANGE(0x32000, 0x37fff) AM_ROM /*&c65_basic, */
@@ -213,33 +213,33 @@ static CBM_IEC_DAISY( cbm_iec_daisy )
  *
  *************************************/
 
-static VIDEO_UPDATE( c65 )
+static SCREEN_UPDATE( c65 )
 {
-	device_t *vic3 = screen->machine->device("vic3");
+	device_t *vic3 = screen->machine().device("vic3");
 
 	vic3_video_update(vic3, bitmap, cliprect);
 	return 0;
 }
 
-static UINT8 c65_lightpen_x_cb( running_machine *machine )
+static UINT8 c65_lightpen_x_cb( running_machine &machine )
 {
 	return input_port_read(machine, "LIGHTX") & ~0x01;
 }
 
-static UINT8 c65_lightpen_y_cb( running_machine *machine )
+static UINT8 c65_lightpen_y_cb( running_machine &machine )
 {
 	return input_port_read(machine, "LIGHTY") & ~0x01;
 }
 
-static UINT8 c65_lightpen_button_cb( running_machine *machine )
+static UINT8 c65_lightpen_button_cb( running_machine &machine )
 {
 	return input_port_read(machine, "OTHER") & 0x04;
 }
 
-static UINT8 c65_c64_mem_r( running_machine *machine, int offset )
+static UINT8 c65_c64_mem_r( running_machine &machine, int offset )
 {
-	c65_state *state = machine->driver_data<c65_state>();
-	return state->memory[offset];
+	c65_state *state = machine.driver_data<c65_state>();
+	return state->m_memory[offset];
 }
 
 static const vic3_interface c65_vic3_ntsc_intf = {
@@ -272,7 +272,7 @@ static const vic3_interface c65_vic3_pal_intf = {
 
 static INTERRUPT_GEN( vic3_raster_irq )
 {
-	device_t *vic3 = device->machine->device("vic3");
+	device_t *vic3 = device->machine().device("vic3");
 
 	vic3_raster_interrupt_gen(vic3);
 }
@@ -299,11 +299,10 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(525 * 2, 520 * 2)
 	MCFG_SCREEN_VISIBLE_AREA(VIC6567_STARTVISIBLECOLUMNS ,(VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1) * 2, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1)
+	MCFG_SCREEN_UPDATE( c65 )
 
 	MCFG_PALETTE_LENGTH(0x100)
 	MCFG_PALETTE_INIT( c65 )
-
-	MCFG_VIDEO_UPDATE( c65 )
 
 	MCFG_VIC3_ADD("vic3", c65_vic3_ntsc_intf)
 
@@ -328,7 +327,7 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_FRAGMENT_ADD(c64_cartslot)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("640K,4224K")
 MACHINE_CONFIG_END

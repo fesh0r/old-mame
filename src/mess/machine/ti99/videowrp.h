@@ -19,7 +19,7 @@ typedef struct _ti99_video_config
 {
 	TMS9928a_interface			*tmsparam;
 	int							chip;
-	void						(*callback)(running_machine *, int);
+	void						(*callback)(running_machine &, int);
 
 } ti99_video_config;
 
@@ -58,9 +58,9 @@ DECLARE_LEGACY_DEVICE( TIVIDEO, ti99_video );
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(_blank))	\
 	MCFG_SCREEN_SIZE(_x, _y)	\
 	MCFG_SCREEN_VISIBLE_AREA(0, _x - 1, 0, _y - 1)	\
+	MCFG_SCREEN_UPDATE(generic_bitmapped)	\
 	MCFG_PALETTE_LENGTH(512)	\
-	MCFG_PALETTE_INIT(v9938)	\
-	MCFG_VIDEO_UPDATE(generic_bitmapped)
+	MCFG_PALETTE_INIT(v9938)
 
 #endif /* __TIVIDEO__ */
 

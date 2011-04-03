@@ -123,11 +123,19 @@ class compis_state : public driver_device
 {
 public:
 	compis_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+		  m_hgdc(*this, "upd7220")
+ 		  { }
 
-	i186_state i186;
-	compis_devices_t devices;
-	TYP_COMPIS compis;
+	required_device<device_t> m_hgdc;
+
+	virtual void video_start();
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	UINT8 *m_char_rom;
+
+	i186_state m_i186;
+	compis_devices_t m_devices;
+	TYP_COMPIS m_compis;
 };
 
 
@@ -160,8 +168,8 @@ WRITE16_HANDLER (compis_i186_internal_port_w);
 
 /* FDC 8272 */
 READ16_HANDLER (compis_fdc_dack_r);
-READ16_HANDLER (compis_fdc_r);
-WRITE16_HANDLER (compis_fdc_w);
+READ8_HANDLER (compis_fdc_r);
+WRITE8_HANDLER (compis_fdc_w);
 
 
 #endif /* COMPIS_H_ */

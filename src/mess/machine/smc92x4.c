@@ -17,8 +17,8 @@
 
 #include "emu.h"
 #include "imageutl.h"
-#include "devices/flopdrv.h"
-#include "devices/harddriv.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/harddriv.h"
 #include "harddisk.h"
 
 #include "smc92x4.h"
@@ -394,7 +394,7 @@ static void sync_status_in(device_t *device)
 
 	prev = w->register_r[DRIVE_STATUS];
 	w->register_r[DRIVE_STATUS] = devcb_call_read_line(&w->in_auxbus_func);
-	
+
 	/* Raise interrupt if ready changes. TODO: Check this more closely. */
 //  logerror("disk status = %02x\n", reply);
 	if (((w->register_r[DRIVE_STATUS] & DS_READY) != (prev & DS_READY))
@@ -431,7 +431,7 @@ static void smc92x4_timed_data_request(device_t *device)
 		time = 1;
 
 	/* set new timer */
-	timer_adjust_oneshot(w->timer_data, ATTOTIME_IN_USEC(time, 0));
+	w->timer_data->adjust(attotime::from_usec(time));
 }
 #endif
 
@@ -451,7 +451,7 @@ static void smc92x4_timed_sector_read_request(device_t *device)
 	if (!w->use_real_timing)
 		time = 1;
 
-	timer_adjust_oneshot(w->timer_rs, ATTOTIME_IN_USEC(time), 0);
+	w->timer_rs->adjust(attotime::from_usec(time));
 	w->to_be_continued = TRUE;
 }
 
@@ -470,7 +470,7 @@ static void smc92x4_timed_sector_write_request(device_t *device)
 	if (!w->use_real_timing)
 		time = 1;
 
-	timer_adjust_oneshot(w->timer_ws, ATTOTIME_IN_USEC(time), 0);
+	w->timer_ws->adjust(attotime::from_usec(time));
 	w->to_be_continued = TRUE;
 }
 
@@ -490,7 +490,7 @@ static void smc92x4_timed_track_request(device_t *device)
 	if (!w->use_real_timing)
 		time = 1;
 
-	timer_adjust_oneshot(w->timer_track, ATTOTIME_IN_USEC(time), 0);
+	w->timer_track->adjust(attotime::from_usec(time));
 
 	w->to_be_continued = TRUE;
 }
@@ -524,7 +524,7 @@ static void smc92x4_timed_seek_request(device_t *device)
 		time = 1;
 	}
 
-	timer_adjust_oneshot(w->timer_seek, ATTOTIME_IN_USEC(time), 0);
+	w->timer_seek->adjust(attotime::from_usec(time));
 	w->to_be_continued = TRUE;
 }
 
@@ -2145,11 +2145,11 @@ static DEVICE_START( smc92x4 )
 	devcb_resolve_read_line(&w->in_auxbus_func, &w->intf->in_auxbus_func, device);
 
 	/* allocate timers */
-	/* w->timer_data = timer_alloc(device->machine, smc92x4_data_callback, (void *)device); */
-	w->timer_rs = timer_alloc(device->machine, smc92x4_read_sector_callback, (void *)device);
-	w->timer_ws = timer_alloc(device->machine, smc92x4_write_sector_callback, (void *)device);
-	w->timer_track = timer_alloc(device->machine, smc92x4_track_callback, (void *)device);
-	w->timer_seek = timer_alloc(device->machine, smc92x4_seek_callback, (void *)device);
+	/* w->timer_data = device->machine().scheduler().timer_alloc(FUNC(smc92x4_data_callback), (void *)device); */
+	w->timer_rs = device->machine().scheduler().timer_alloc(FUNC(smc92x4_read_sector_callback), (void *)device);
+	w->timer_ws = device->machine().scheduler().timer_alloc(FUNC(smc92x4_write_sector_callback), (void *)device);
+	w->timer_track = device->machine().scheduler().timer_alloc(FUNC(smc92x4_track_callback), (void *)device);
+	w->timer_seek = device->machine().scheduler().timer_alloc(FUNC(smc92x4_seek_callback), (void *)device);
 
 	w->use_real_timing = TRUE;
 }

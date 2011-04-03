@@ -230,17 +230,6 @@ void InitTree(LPCFOLDERDATA lpFolderData, LPCFILTER_ITEM lpFilterList)
 	SetWindowLongPtr(GetTreeView(), GWLP_WNDPROC, (LONG_PTR)TreeWndProc);
 }
 
-#ifdef UNUSED_FUNCTION
-void DestroyTree(HWND hWnd)
-{
-    if ( hTreeSmall )
-    {
-        ImageList_Destroy( hTreeSmall );
-        hTreeSmall = NULL;
-    }
-}
-#endif
-
 void SetCurrentFolder(LPTREEFOLDER lpFolder)
 {
 	lpCurrentFolder = (lpFolder == 0) ? treeFolders[0] : lpFolder;
@@ -347,8 +336,8 @@ BOOL GameFiltered(int nGame, DWORD dwMask)
 	//Filter out the Bioses on all Folders, except for the Bios Folder
 	if( lpFolder->m_nFolderId != FOLDER_BIOS )
 	{
-		if( !( (drivers[nGame]->flags & GAME_IS_BIOS_ROOT ) == 0) )
-			return TRUE;
+//		if( !( (drivers[nGame]->flags & GAME_IS_BIOS_ROOT ) == 0) )
+//			return TRUE;
 	}
  	// Filter games--return TRUE if the game should be HIDDEN in this view
 	if( GetFilterInherit() )
@@ -929,7 +918,7 @@ void CreateCPUFolders(int parent_index)
 
 	for (i = 0; drivers[i] != NULL; i++)
 	{
-		machine_config config(*drivers[i]);
+		machine_config config(*drivers[i],MameUIGlobal());
 
 		// enumerate through all devices
 		for (bool gotone = config.m_devicelist.first(device); gotone; gotone = device->next(device))
@@ -989,7 +978,7 @@ void CreateSoundFolders(int parent_index)
 
 	for (i = 0; drivers[i] != NULL; i++)
 	{
-		machine_config config(*drivers[i]);
+		machine_config config(*drivers[i],MameUIGlobal());
 
 		// enumerate through all devices
 		
@@ -1239,7 +1228,7 @@ void CreateDumpingFolders(int parent_index)
 		bBadDump = FALSE;
 		bNoDump = FALSE;
 		/* Allocate machine config */
-		machine_config config(*gamedrv);
+		machine_config config(*gamedrv,MameUIGlobal());
 		
 		for (source = rom_first_source(config); source != NULL; source = rom_next_source(*source))
 		{
@@ -1250,9 +1239,10 @@ void CreateDumpingFolders(int parent_index)
 					if (ROMREGION_ISROMDATA(region) || ROMREGION_ISDISKDATA(region) )
 					{
 						//name = ROM_GETNAME(rom);
-						if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_BAD_DUMP))				
+						hash_collection hashes(ROM_GETHASHDATA(rom));						
+						if (hashes.flag(hash_collection::FLAG_BAD_DUMP))
 							bBadDump = TRUE;
-						if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))				
+						if (hashes.flag(hash_collection::FLAG_NO_DUMP))
 							bNoDump = TRUE;
 					}
 				}

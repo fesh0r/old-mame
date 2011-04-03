@@ -1,7 +1,8 @@
 #ifndef __V1050__
 #define __V1050__
 
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
+#include "machine/ram.h"
 
 #define SCREEN_TAG				"screen"
 
@@ -50,7 +51,7 @@ public:
 		  m_fdc(*this, MB8877_TAG),
 		  m_crtc(*this, H46505_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
-		  m_ram(*this, "messram"),
+		  m_ram(*this, RAM_TAG),
 		  m_discrete(*this, DISCRETE_TAG),
 		  m_floppy0(*this, FLOPPY_0),
 		  m_floppy1(*this, FLOPPY_1),
@@ -71,12 +72,12 @@ public:
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
 	required_device<timer_device> m_timer_sio;
-	
+
 	virtual void machine_start();
 	virtual void machine_reset();
-	
+
 	virtual void video_start();
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	DECLARE_READ8_MEMBER( kb_data_r );
 	DECLARE_READ8_MEMBER( kb_status_r );
@@ -94,6 +95,9 @@ public:
 	DECLARE_WRITE8_MEMBER( misc_ppi_pa_w );
 	DECLARE_WRITE8_MEMBER( misc_ppi_pc_w );
 	DECLARE_WRITE8_MEMBER( rtc_ppi_pb_w );
+	DECLARE_WRITE_LINE_MEMBER( kb_rxrdy_w );
+	DECLARE_WRITE_LINE_MEMBER( sio_rxrdy_w );
+	DECLARE_WRITE_LINE_MEMBER( sio_txrdy_w );
 	DECLARE_WRITE_LINE_MEMBER( fdc_intrq_w );
 	DECLARE_WRITE_LINE_MEMBER( fdc_drq_w );
 	DECLARE_READ8_MEMBER( attr_r );
@@ -101,7 +105,7 @@ public:
 	DECLARE_READ8_MEMBER( videoram_r );
 	DECLARE_WRITE8_MEMBER( videoram_w );
 	DECLARE_WRITE_LINE_MEMBER( crtc_vs_w );
-	
+
 	void bankswitch();
 	void set_interrupt(UINT8 mask, int state);
 	void scan_keyboard();

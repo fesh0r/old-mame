@@ -9,7 +9,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/upd765.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "machine/terminal.h"
 
 
@@ -19,39 +19,39 @@ public:
 	microdec_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 received_char;
+	UINT8 m_received_char;
 };
 
 
 
 static WRITE8_HANDLER(microdec_terminal_w)
 {
-	device_t *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine().device(TERMINAL_TAG);
 	terminal_write(devconf,0,data);
 }
 
 static READ8_HANDLER(microdec_terminal_status_r)
 {
-	microdec_state *state = space->machine->driver_data<microdec_state>();
-	if (state->received_char!=0) return 3; // char received
+	microdec_state *state = space->machine().driver_data<microdec_state>();
+	if (state->m_received_char!=0) return 3; // char received
 	return 1; // ready
 }
 
 static READ8_HANDLER(microdec_terminal_r)
 {
-	microdec_state *state = space->machine->driver_data<microdec_state>();
-	UINT8 retVal = state->received_char;
-	state->received_char = 0;
+	microdec_state *state = space->machine().driver_data<microdec_state>();
+	UINT8 retVal = state->m_received_char;
+	state->m_received_char = 0;
 	return retVal;
 }
 
-static ADDRESS_MAP_START(microdec_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(microdec_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x0fff ) AM_ROM
 	AM_RANGE( 0x1000, 0xffff ) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( microdec_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( microdec_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xfc, 0xfc) AM_READWRITE(microdec_terminal_r,microdec_terminal_w)
@@ -62,20 +62,19 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( microdec )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(microdec)
 {
-	microdec_state *state = machine->driver_data<microdec_state>();
-	state->received_char = 0;
+	microdec_state *state = machine.driver_data<microdec_state>();
+	state->m_received_char = 0;
 }
 
 static WRITE8_DEVICE_HANDLER( microdec_kbd_put )
 {
-	microdec_state *state = device->machine->driver_data<microdec_state>();
-	state->received_char = data;
+	microdec_state *state = device->machine().driver_data<microdec_state>();
+	state->m_received_char = data;
 }
 
 static GENERIC_TERMINAL_INTERFACE( microdec_terminal_intf )

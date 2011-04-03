@@ -33,6 +33,7 @@ struct _adc080x_t
 INLINE adc080x_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == ADC0808 || device->type() == ADC0809);
 
 	return (adc080x_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -148,18 +149,18 @@ static DEVICE_START( adc080x )
 	adc080x->eoc = 1;
 
 	/* allocate cycle timer */
-	adc080x->cycle_timer = timer_alloc(device->machine, cycle_tick, (void *)device);
-	timer_adjust_periodic(adc080x->cycle_timer, attotime_zero, 0, ATTOTIME_IN_HZ(device->clock()));
+	adc080x->cycle_timer = device->machine().scheduler().timer_alloc(FUNC(cycle_tick), (void *)device);
+	adc080x->cycle_timer->adjust(attotime::zero, 0, attotime::from_hz(device->clock()));
 
 	/* register for state saving */
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->address);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->ale);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->start);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->eoc);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->next_eoc);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->sar);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->cycle);
-	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->bit);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->address);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->ale);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->start);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->eoc);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->next_eoc);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->sar);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->cycle);
+	state_save_register_item(device->machine(), "adc080x", device->tag(), 0, adc080x->bit);
 }
 
 DEVICE_GET_INFO( adc0808 )

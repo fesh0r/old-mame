@@ -179,7 +179,7 @@ INPUT_PORTS_START( kay_kbd )
 	PORT_BIT(0xf0, 0x00, IPT_UNUSED)
 INPUT_PORTS_END
 
-static void kay_kbd_in( running_machine *machine, UINT8 data );
+static void kay_kbd_in( running_machine &machine, UINT8 data );
 
 static const UINT8 keyboard[8][10][8] = {
 	{ /* normal */
@@ -282,13 +282,13 @@ static const UINT8 keyboard[8][10][8] = {
 
 MACHINE_RESET( kay_kbd )
 {
-	kaypro_state *state = machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd = auto_alloc_clear(machine, kay_kbd_t);
+	kaypro_state *state = machine.driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd = auto_alloc_clear(machine, kay_kbd_t);
 
 	/* disable CapsLock LED initially */
 	set_led_status(machine, 1, 1);
 	set_led_status(machine, 1, 0);
-	kbd->beeper = machine->device("beep");
+	kbd->beeper = machine.device("beep");
 	kbd->beep_on = 1;
 	kbd->control_status = 0x14;
 	beep_set_state(kbd->beeper, 0);
@@ -305,8 +305,8 @@ MACHINE_RESET( kay_kbd )
  ******************************************************/
 INTERRUPT_GEN( kay_kbd_interrupt )
 {
-	kaypro_state *state = device->machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd;
+	kaypro_state *state = device->machine().driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd;
 	int mod, row, col, chg, newval;
 	UINT8 *keyrows = kbd->keyrows;
 
@@ -322,18 +322,18 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 	}
 
 	row = 9;
-	newval = input_port_read(device->machine, "ROW9");
+	newval = input_port_read(device->machine(), "ROW9");
 	chg = keyrows[row] ^ newval;
 
-	if (!chg) { newval = input_port_read(device->machine, "ROW8"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW7"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW6"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW5"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW4"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW3"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW2"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW1"); chg = keyrows[--row] ^ newval; }
-	if (!chg) { newval = input_port_read(device->machine, "ROW0"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW8"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW7"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW6"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW5"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW4"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW3"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW2"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW1"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine(), "ROW0"); chg = keyrows[--row] ^ newval; }
 	if (!chg) --row;
 
 	if (row >= 0)
@@ -344,7 +344,7 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 		kbd->lastrow = row;
 		/* CapsLock LED */
 		if( row == 3 && chg == 0x80 )
-			set_led_status(device->machine, 1, (kbd->keyrows[3] & 0x80) ? 0 : 1);
+			set_led_status(device->machine(), 1, (kbd->keyrows[3] & 0x80) ? 0 : 1);
 
 		if (newval & chg)	/* key(s) pressed ? */
 		{
@@ -377,11 +377,11 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 			if( kbd->key )	/* normal key */
 			{
 				kbd->repeater = 30;
-				kay_kbd_in(device->machine, kbd->key);
+				kay_kbd_in(device->machine(), kbd->key);
 			}
 			else
 			if( (row == 0) && (chg == 0x04) ) /* Ctrl-@ (NUL) */
-				kay_kbd_in(device->machine, 0);
+				kay_kbd_in(device->machine(), 0);
 			keyrows[row] |= newval;
 		}
 		else
@@ -392,7 +392,7 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 	}
 	else if ( kbd->key && (keyrows[kbd->lastrow] & kbd->mask) && kbd->repeat == 0 )
 	{
-		kay_kbd_in(device->machine, kbd->key);
+		kay_kbd_in(device->machine(), kbd->key);
 	}
 }
 
@@ -416,10 +416,10 @@ static WRITE8_HANDLER ( kaypro2_const_w )
  *  releases CPU if it was waiting for a key
  *  sounds bell if buffer would overflow
  ******************************************************/
-static void kay_kbd_in( running_machine *machine, UINT8 data )
+static void kay_kbd_in( running_machine &machine, UINT8 data )
 {
-	kaypro_state *state = machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd;
+	kaypro_state *state = machine.driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd;
 	UINT8 kbd_head_old;
 
 	kbd_head_old = kbd->head;
@@ -436,14 +436,14 @@ static void kay_kbd_in( running_machine *machine, UINT8 data )
 }
 
 
-UINT8 kay_kbd_c_r( running_machine *machine )
+UINT8 kay_kbd_c_r( running_machine &machine )
 {
 /*  d4 transmit buffer empty - 1=ok to send
     d2 appears to be receive buffer empty - 1=ok to receive
     d0 keyboard buffer empty - 1=key waiting to be used */
 
-	kaypro_state *state = machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd;
+	kaypro_state *state = machine.driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd;
 	UINT8 data = kbd->control_status;
 
 	if( kbd->head != kbd->tail )
@@ -452,12 +452,12 @@ UINT8 kay_kbd_c_r( running_machine *machine )
 	return data;
 }
 
-UINT8 kay_kbd_d_r( running_machine *machine )
+UINT8 kay_kbd_d_r( running_machine &machine )
 {
 /* return next key in buffer */
 
-	kaypro_state *state = machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd;
+	kaypro_state *state = machine.driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd;
 	UINT8 data = 0;
 
 	if (kbd->tail != kbd->head)
@@ -471,13 +471,13 @@ UINT8 kay_kbd_d_r( running_machine *machine )
 
 static TIMER_CALLBACK( kay_kbd_beepoff )
 {
-	kaypro_state *state = machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd;
+	kaypro_state *state = machine.driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd;
 	beep_set_state(kbd->beeper, 0);
 	kbd->control_status |= 4;
 }
 
-void kay_kbd_d_w( running_machine *machine, UINT8 data )
+void kay_kbd_d_w( running_machine &machine, UINT8 data )
 {
 /* Beeper control - lengths need verifying
     01 - keyclick
@@ -486,8 +486,8 @@ void kay_kbd_d_w( running_machine *machine, UINT8 data )
     08 - mute
     16 - unmute */
 
-	kaypro_state *state = machine->driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->kbd;
+	kaypro_state *state = machine.driver_data<kaypro_state>();
+	kay_kbd_t *kbd = state->m_kbd;
 	UINT16 length = 0;
 
 	if (data & 0x10)
@@ -510,7 +510,7 @@ void kay_kbd_d_w( running_machine *machine, UINT8 data )
 		if (length)
 		{
 			kbd->control_status &= 0xfb;
-			timer_set(machine, ATTOTIME_IN_MSEC(length), NULL, 0, kay_kbd_beepoff);
+			machine.scheduler().timer_set(attotime::from_msec(length), FUNC(kay_kbd_beepoff));
 			beep_set_state(kbd->beeper, 1);
 		}
 	}

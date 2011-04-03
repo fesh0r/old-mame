@@ -436,9 +436,9 @@ space. This mapper uses 32KB sized banks.
 ***************************************************************************/
 
 #include "emu.h"
+#include "machine/ram.h"
 #include "cpu/lr35902/lr35902.h"
-#include "devices/cartslot.h"
-#include "devices/messram.h"
+#include "imagedev/cartslot.h"
 #include "rendlay.h"
 #include "audio/gb.h"
 #include "includes/gb.h"
@@ -454,7 +454,7 @@ static const lr35902_cpu_core mgb_cpu_reset = { mgb_cpu_regs, LR35902_FEATURE_HA
 static const lr35902_cpu_core cgb_cpu_reset = { NULL, 0, gb_timer_callback };
 static const lr35902_cpu_core megaduck_cpu_reset = { megaduck_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
 
-static ADDRESS_MAP_START(gb_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(gb_map, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK("bank5")					/* BIOS or ROM */
 	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK("bank10")					/* ROM bank */
@@ -475,7 +475,7 @@ static ADDRESS_MAP_START(gb_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xffff, 0xffff) AM_READWRITE( gb_ie_r, gb_ie_w )		/* Interrupt enable register */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(sgb_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(sgb_map, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK("bank5")					/* BIOS or ROM */
 	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK("bank10")					/* ROM bank */
@@ -496,7 +496,7 @@ static ADDRESS_MAP_START(sgb_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xffff, 0xffff) AM_READWRITE( gb_ie_r, gb_ie_w )		/* Interrupt enable register */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(gbc_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(gbc_map, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK("bank5")					/* 16k fixed ROM bank */
 	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK("bank10")					/* ROM bank */
@@ -519,7 +519,7 @@ static ADDRESS_MAP_START(gbc_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xffff, 0xffff) AM_READWRITE( gb_ie_r, gb_ie_w )		/* Interrupt enable register */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(megaduck_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(megaduck_map, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK("bank10")						/* 16k switched ROM bank */
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bank1")						/* 16k switched ROM bank */
@@ -559,22 +559,23 @@ static MACHINE_CONFIG_START( gb_common, gb_state )
 	MCFG_CPU_CONFIG(dmg_cpu_reset)
 	MCFG_CPU_VBLANK_INT("screen", gb_scanline_interrupt)	/* 1 dummy int each frame */
 
-	MCFG_SCREEN_ADD("screen", LCD)
-	MCFG_SCREEN_REFRESH_RATE(DMG_FRAMES_PER_SECOND)
-	MCFG_SCREEN_VBLANK_TIME(0)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( gb )
 	MCFG_MACHINE_RESET( gb )
 
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
+	MCFG_SCREEN_ADD("screen", LCD)
+	MCFG_SCREEN_REFRESH_RATE(DMG_FRAMES_PER_SECOND)
+	MCFG_SCREEN_VBLANK_TIME(0)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 //  MCFG_SCREEN_SIZE(20*8, 18*8)
 	MCFG_SCREEN_SIZE( 458, 154 )
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 20*8-1, 0*8, 18*8-1)
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+	
 	MCFG_GFXDECODE(gb)
 	MCFG_PALETTE_LENGTH(4)
 	MCFG_PALETTE_INIT(gb)
@@ -595,6 +596,7 @@ static MACHINE_CONFIG_DERIVED( gameboy, gb_common )
 	MCFG_CARTSLOT_START(gb_cart)
 	MCFG_CARTSLOT_LOAD(gb_cart)
 	MCFG_SOFTWARE_LIST_ADD("cart_list","gameboy")
+	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("gbc_list","gbcolor")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( supergb, gameboy )
@@ -614,8 +616,6 @@ static MACHINE_CONFIG_DERIVED( supergb, gameboy )
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
 	MCFG_PALETTE_LENGTH(32768)
 	MCFG_PALETTE_INIT(sgb)
-
-	MCFG_CARTSLOT_MODIFY("cart")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( gbpocket, gameboy )
@@ -640,7 +640,7 @@ static MACHINE_CONFIG_DERIVED( gbcolor, gb_common )
 	MCFG_PALETTE_INIT(gbc)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("48K") /* 2 pages of 8KB VRAM, 8 pages of 4KB RAM */
 
 	MCFG_CARTSLOT_ADD("cart")
@@ -650,7 +650,7 @@ static MACHINE_CONFIG_DERIVED( gbcolor, gb_common )
 	MCFG_CARTSLOT_START(gb_cart)
 	MCFG_CARTSLOT_LOAD(gb_cart)
 	MCFG_SOFTWARE_LIST_ADD("cart_list","gbcolor")
-	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("gameboy","gameboy")
+	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("gb_list","gameboy")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( megaduck, gb_state )
@@ -663,17 +663,18 @@ static MACHINE_CONFIG_START( megaduck, gb_state )
 	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_REFRESH_RATE(DMG_FRAMES_PER_SECOND)
 	MCFG_SCREEN_VBLANK_TIME(0)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( megaduck )
 	MCFG_MACHINE_RESET( megaduck )
 
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(20*8, 18*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 20*8-1, 0*8, 18*8-1)
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	MCFG_GFXDECODE(gb)
 	MCFG_PALETTE_LENGTH(4)

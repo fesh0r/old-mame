@@ -8,42 +8,42 @@ PCB Layout
 REV B
 
 |-----------------------------------------------------------|
-|		CN1		CN2		CN3		CN4			SW1		CN5		|
-|															|
-|			3.6864MHz	3.6864MHz	ROM1					|
-|									ROM0					|
-|		SIO			SIO		SW3 SW2							|
-|								PIT							|
-|				12.5MHz					41256 41256 41256	|
-|										41256 41256 41256	|
-|	8MHz						CPU			  41245 41256	|
-|															|
-|												8419		|
-|							SW4								|
+|       CN1     CN2     CN3     CN4         SW1     CN5     |
+|                                                           |
+|           3.6864MHz   3.6864MHz   ROM1                    |
+|                                   ROM0                    |
+|       SIO         SIO     SW3 SW2                         |
+|                               PIT                         |
+|               12.5MHz                 41256 41256 41256   |
+|                                       41256 41256 41256   |
+|   8MHz                        CPU           41245 41256   |
+|                                                           |
+|                                               8419        |
+|                           SW4                             |
 |-|-------------CN6----------------|----|-------CN7-------|-|
-  |--------------------------------|	|-----------------|
+  |--------------------------------|    |-----------------|
 
 Notes:
     Relevant IC's shown.
 
-    CPU		- Motorola MC68000R12
-	SIO		- Mostek MK68564N-5A Serial Input/Output
-	PIT		- Motorola MC68230L10 Parallel Interface/Timer
-	8419	- National Semiconductor DP8419N DRAM Controller
-	41256	- Fujitsu MB81256-12 256Kx1 RAM
-	ROM0	- AMD AM27128ADC 16Kx8 ROM "47-2818-36G1"
-	ROM1	- AMD AM27128ADC 16Kx8 ROM "47-2818-36G2"
-	SW1		- push button
-	SW2		- rotary hex DIP
-	SW3		- rotary hex DIP
-	SW4		- DIP8
-	CN1		-
-	CN2		- 
-	CN3		-
-	CN4		-
-	CN5		-
-	CN6		-
-	CN7		-
+    CPU     - Motorola MC68000R12
+    SIO     - Mostek MK68564N-5A Serial Input/Output
+    PIT     - Motorola MC68230L10 Parallel Interface/Timer
+    8419    - National Semiconductor DP8419N DRAM Controller
+    41256   - Fujitsu MB81256-12 256Kx1 RAM
+    ROM0    - AMD AM27128ADC 16Kx8 ROM "47-2818-36G1"
+    ROM1    - AMD AM27128ADC 16Kx8 ROM "47-2818-36G2"
+    SW1     - push button
+    SW2     - rotary hex DIP
+    SW3     - rotary hex DIP
+    SW4     - DIP8
+    CN1     -
+    CN2     -
+    CN3     -
+    CN4     -
+    CN5     -
+    CN6     -
+    CN7     -
 
 */
 
@@ -54,7 +54,7 @@ Notes:
 #include "machine/terminal.h"
 #include "includes/msbc1.h"
 
-static ADDRESS_MAP_START( msbc1_mem, ADDRESS_SPACE_PROGRAM, 16, msbc1_state )
+static ADDRESS_MAP_START( msbc1_mem, AS_PROGRAM, 16, msbc1_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_RAM
 	AM_RANGE(0xf80000, 0xf87fff) AM_ROM AM_REGION(MC68000R12_TAG, 0)
@@ -62,17 +62,16 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( msbc1 )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 void msbc1_state::machine_reset()
 {
-	void *ram = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM)->get_write_ptr(0);
-	UINT8 *rom = machine->region(MC68000R12_TAG)->base();
+	void *ram = m_machine.firstcpu->memory().space(AS_PROGRAM)->get_write_ptr(0);
+	UINT8 *rom = m_machine.region(MC68000R12_TAG)->base();
 
 	memcpy(ram, rom, 8);
 
-	machine->firstcpu->reset();
+	m_machine.firstcpu->reset();
 }
 
 static GENERIC_TERMINAL_INTERFACE( terminal_intf )

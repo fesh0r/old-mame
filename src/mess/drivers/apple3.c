@@ -14,14 +14,14 @@
 #include "cpu/m6502/m6502.h"
 #include "includes/apple3.h"
 #include "includes/apple2.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/ap2_dsk.h"
 #include "machine/6551.h"
 #include "machine/6522via.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "devices/appldriv.h"
 
-static ADDRESS_MAP_START( apple3_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( apple3_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00FF) AM_READWRITE(apple3_00xx_r, apple3_00xx_w)
 	AM_RANGE(0x0100, 0x01FF) AM_RAMBANK("bank2")
 	AM_RANGE(0x0200, 0x1FFF) AM_RAMBANK("bank3")
@@ -81,7 +81,7 @@ static MACHINE_CONFIG_START( apple3, apple3_state )
 	MCFG_CPU_PROGRAM_MAP(apple3_map)
 	MCFG_CPU_CONFIG( apple3_m6502_interface )
 	MCFG_CPU_PERIODIC_INT(apple3_interrupt, 192)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( apple3 )
 
@@ -92,11 +92,12 @@ static MACHINE_CONFIG_START( apple3, apple3_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(280*2, 192)
 	MCFG_SCREEN_VISIBLE_AREA(0, (280*2)-1,0,192-1)
+	MCFG_SCREEN_UPDATE( apple3 )
+
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT( apple2 )
 
 	MCFG_VIDEO_START( apple3 )
-	MCFG_VIDEO_UPDATE( apple3 )
 
 	/* fdc */
 	MCFG_APPLEFDC_ADD("fdc", apple3_fdc_interface)
@@ -109,7 +110,7 @@ static MACHINE_CONFIG_START( apple3, apple3_state )
 	MCFG_VIA6522_ADD("via6522_1", 2000000, apple3_via_1_intf)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("512K")
 MACHINE_CONFIG_END
 

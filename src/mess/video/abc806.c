@@ -8,16 +8,11 @@
 
     TODO:
 
-	- check compatibility with new MC6845
     - HRU II PROM reading
 
 */
 
-#include "emu.h"
 #include "includes/abc80x.h"
-#include "machine/z80dart.h"
-#include "machine/e0516.h"
-#include "video/mc6845.h"
 
 
 
@@ -149,7 +144,7 @@ READ8_MEMBER( abc806_state::cli_r )
 	UINT16 hru2_addr = (m_hru2_a8 << 8) | (offset >> 8);
 	UINT8 data = m_hru2_prom[hru2_addr] & 0x0f;
 
-	data |= e0516_dio_r(m_rtc) << 7;
+	data |= m_rtc->dio_r() << 7;
 
 	return data;
 }
@@ -181,7 +176,7 @@ READ8_MEMBER( abc806_state::sti_r )
 
 
 //-------------------------------------------------
-//  abc806_sto_w - 
+//  abc806_sto_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( abc806_state::sto_w )
@@ -211,15 +206,15 @@ WRITE8_MEMBER( abc806_state::sto_w )
 		break;
 	case 5:
 		// RTC chip select
-		e0516_cs_w(m_rtc, !level);
+		m_rtc->cs_w(!level);
 		break;
 	case 6:
 		// RTC clock
-		e0516_clk_w(m_rtc, level);
+		m_rtc->clk_w(level);
 		break;
 	case 7:
 		// RTC data in, PROT DIN
-		e0516_dio_w(m_rtc, level);
+		m_rtc->dio_w(level);
 		break;
 	}
 }
@@ -241,7 +236,7 @@ WRITE8_MEMBER( abc806_state::sso_w )
 
 static MC6845_UPDATE_ROW( abc806_update_row )
 {
-	abc806_state *state = device->machine->driver_data<abc806_state>();
+	abc806_state *state = device->machine().driver_data<abc806_state>();
 
 	UINT8 old_data = 0xff;
 	int fg_color = 7;
@@ -392,7 +387,7 @@ WRITE_LINE_MEMBER( abc806_state::hs_w )
 		if (m_d_vsync != vsync)
 		{
 			// signal _DEW to DART
-			z80dart_rib_w(m_dart, !vsync);
+			m_dart->ri_w(1, !vsync);
 		}
 
 		m_d_vsync = vsync;
@@ -478,39 +473,39 @@ void abc806_state::video_start()
 	m_40 = 1;
 
 	// find memory regions
-	m_char_rom = machine->region(MC6845_TAG)->base();
-	m_rad_prom = machine->region("rad")->base();
-	m_hru2_prom = machine->region("hru2")->base();
+	m_char_rom = m_machine.region(MC6845_TAG)->base();
+	m_rad_prom = m_machine.region("rad")->base();
+	m_hru2_prom = m_machine.region("hru2")->base();
 
 	// allocate memory
-	m_char_ram = auto_alloc_array(machine, UINT8, ABC806_CHAR_RAM_SIZE);
-	m_color_ram = auto_alloc_array(machine, UINT8, ABC806_ATTR_RAM_SIZE);
+	m_char_ram = auto_alloc_array(m_machine, UINT8, ABC806_CHAR_RAM_SIZE);
+	m_color_ram = auto_alloc_array(m_machine, UINT8, ABC806_ATTR_RAM_SIZE);
 
 	// register for state saving
-	state_save_register_global_pointer(machine, m_char_ram, ABC806_CHAR_RAM_SIZE);
-	state_save_register_global_pointer(machine, m_color_ram, ABC806_ATTR_RAM_SIZE);
-	state_save_register_global_pointer(machine, m_video_ram, ABC806_VIDEO_RAM_SIZE);
-	state_save_register_global(machine, m_txoff);
-	state_save_register_global(machine, m_40);
-	state_save_register_global(machine, m_flshclk_ctr);
-	state_save_register_global(machine, m_flshclk);
-	state_save_register_global(machine, m_attr_data);
-	state_save_register_global(machine, m_hrs);
-	state_save_register_global_array(machine, m_hrc);
-	state_save_register_global(machine, m_sync);
-	state_save_register_global(machine, m_v50_addr);
-	state_save_register_global(machine, m_hru2_a8);
-	state_save_register_global(machine, m_vsync_shift);
-	state_save_register_global(machine, m_vsync);
-	state_save_register_global(machine, m_d_vsync);
+	state_save_register_global_pointer(m_machine, m_char_ram, ABC806_CHAR_RAM_SIZE);
+	state_save_register_global_pointer(m_machine, m_color_ram, ABC806_ATTR_RAM_SIZE);
+	state_save_register_global_pointer(m_machine, m_video_ram, ABC806_VIDEO_RAM_SIZE);
+	state_save_register_global(m_machine, m_txoff);
+	state_save_register_global(m_machine, m_40);
+	state_save_register_global(m_machine, m_flshclk_ctr);
+	state_save_register_global(m_machine, m_flshclk);
+	state_save_register_global(m_machine, m_attr_data);
+	state_save_register_global(m_machine, m_hrs);
+	state_save_register_global_array(m_machine, m_hrc);
+	state_save_register_global(m_machine, m_sync);
+	state_save_register_global(m_machine, m_v50_addr);
+	state_save_register_global(m_machine, m_hru2_a8);
+	state_save_register_global(m_machine, m_vsync_shift);
+	state_save_register_global(m_machine, m_vsync);
+	state_save_register_global(m_machine, m_d_vsync);
 }
 
 
 //-------------------------------------------------
-//  VIDEO_UPDATE( abc806 )
+//  SCREEN_UPDATE( abc806 )
 //-------------------------------------------------
 
-bool abc806_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool abc806_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	// HACK expand visible area to workaround MC6845
 	screen.set_visible_area(0, 767, 0, 311);

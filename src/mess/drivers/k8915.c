@@ -19,45 +19,45 @@ public:
 	k8915_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *videoram;
-	UINT8 *charrom;
-	UINT8 framecnt;
-	UINT8 term_data;
-	UINT8 k8915_53;
+	UINT8 *m_videoram;
+	UINT8 *m_charrom;
+	UINT8 m_framecnt;
+	UINT8 m_term_data;
+	UINT8 m_k8915_53;
 };
 
 static READ8_HANDLER( k8915_52_r )
 {
 // get data from ascii keyboard
-	k8915_state *state = space->machine->driver_data<k8915_state>();
-	state->k8915_53 = 0;	
-	return state->term_data;
+	k8915_state *state = space->machine().driver_data<k8915_state>();
+	state->m_k8915_53 = 0;
+	return state->m_term_data;
 }
 
 static READ8_HANDLER( k8915_53_r )
 {
 // keyboard status
-	k8915_state *state = space->machine->driver_data<k8915_state>();
-	return state->k8915_53;
+	k8915_state *state = space->machine().driver_data<k8915_state>();
+	return state->m_k8915_53;
 }
 
 static WRITE8_HANDLER( k8915_a8_w )
 {
 // seems to switch ram and rom around.
 	if (data == 0x87)
-		memory_set_bank(space->machine, "boot", 0); // ram at 0000
+		memory_set_bank(space->machine(), "boot", 0); // ram at 0000
 	else
-		memory_set_bank(space->machine, "boot", 1); // rom at 0000
+		memory_set_bank(space->machine(), "boot", 1); // rom at 0000
 }
 
-static ADDRESS_MAP_START(k8915_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(k8915_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("boot")
-	AM_RANGE(0x1000, 0x17ff) AM_RAM AM_BASE_MEMBER(k8915_state, videoram)
+	AM_RANGE(0x1000, 0x17ff) AM_RAM AM_BASE_MEMBER(k8915_state, m_videoram)
 	AM_RANGE(0x1800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( k8915_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( k8915_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x52, 0x52) AM_READ(k8915_52_r)
 	AM_RANGE(0x53, 0x53) AM_READ(k8915_53_r)
@@ -66,7 +66,6 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( k8915 )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 static MACHINE_RESET(k8915)
@@ -76,23 +75,23 @@ static MACHINE_RESET(k8915)
 
 static DRIVER_INIT(k8915)
 {
-	UINT8 *RAM = machine->region("maincpu")->base();
+	UINT8 *RAM = machine.region("maincpu")->base();
 	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0x10000);
 }
 
 static VIDEO_START( k8915 )
 {
-	k8915_state *state = machine->driver_data<k8915_state>();
-	state->charrom = machine->region("chargen")->base();
+	k8915_state *state = machine.driver_data<k8915_state>();
+	state->m_charrom = machine.region("chargen")->base();
 }
 
-static VIDEO_UPDATE( k8915 )
+static SCREEN_UPDATE( k8915 )
 {
-	k8915_state *state = screen->machine->driver_data<k8915_state>();
+	k8915_state *state = screen->machine().driver_data<k8915_state>();
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
 
-	state->framecnt++;
+	state->m_framecnt++;
 
 	for (y = 0; y < 25; y++)
 	{
@@ -106,15 +105,15 @@ static VIDEO_UPDATE( k8915 )
 
 				if (ra < 9)
 				{
-					chr = state->videoram[x];
+					chr = state->m_videoram[x];
 
 					/* Take care of flashing characters */
-					if ((chr & 0x80) && (state->framecnt & 0x08))
+					if ((chr & 0x80) && (state->m_framecnt & 0x08))
 						chr = 0x20;
 
 					chr &= 0x7f;
 
-					gfx = state->charrom[(chr<<4) | ra ];
+					gfx = state->m_charrom[(chr<<4) | ra ];
 				}
 
 				/* Display a scanline of a character */
@@ -141,9 +140,9 @@ PALETTE_INIT( k8915 )
 
 static WRITE8_DEVICE_HANDLER( k8915_kbd_put )
 {
-	k8915_state *state = device->machine->driver_data<k8915_state>();
-	state->term_data = data;
-	state->k8915_53 = 1;
+	k8915_state *state = device->machine().driver_data<k8915_state>();
+	state->m_term_data = data;
+	state->m_k8915_53 = 1;
 }
 
 static GENERIC_TERMINAL_INTERFACE( k8915_terminal_intf )
@@ -166,14 +165,14 @@ static MACHINE_CONFIG_START( k8915, k8915_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 250)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
+	MCFG_SCREEN_UPDATE(k8915)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(k8915)
 
 	MCFG_VIDEO_START(k8915)
-	MCFG_VIDEO_UPDATE(k8915)
 
-	MCFG_GENERIC_TERMINAL_ADD("terminal", k8915_terminal_intf) // keyboard only
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, k8915_terminal_intf) // keyboard only
 MACHINE_CONFIG_END
 
 

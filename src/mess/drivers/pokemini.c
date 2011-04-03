@@ -12,12 +12,12 @@ The LCD is likely to be a SSD1828 LCD.
 #include "machine/i2cmem.h"
 #include "includes/pokemini.h"
 #include "cpu/minx/minx.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
+#include "rendlay.h"
 
-
-static ADDRESS_MAP_START( pokemini_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pokemini_mem_map, AS_PROGRAM, 8 )
 	AM_RANGE( 0x000000, 0x000FFF )  AM_ROM							/* bios */
-	AM_RANGE( 0x001000, 0x001FFF )	AM_RAM AM_BASE_MEMBER(pokemini_state, ram)				/* VRAM/RAM */
+	AM_RANGE( 0x001000, 0x001FFF )	AM_RAM AM_BASE_MEMBER(pokemini_state, m_ram)				/* VRAM/RAM */
 	AM_RANGE( 0x002000, 0x0020FF )  AM_DEVREADWRITE( "i2cmem", pokemini_hwreg_r, pokemini_hwreg_w )	/* hardware registers */
 	AM_RANGE( 0x002100, 0x1FFFFF )  AM_ROM							/* cartridge area */
 ADDRESS_MAP_END
@@ -62,7 +62,7 @@ static MACHINE_CONFIG_START( pokemini, pokemini_state )
 	MCFG_CPU_ADD( "maincpu", MINX, 4000000 )
 	MCFG_CPU_PROGRAM_MAP( pokemini_mem_map)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( pokemini )
 
@@ -70,17 +70,19 @@ static MACHINE_CONFIG_START( pokemini, pokemini_state )
 
 	/* video hardware */
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
 	/* This still needs to be improved to actually match the hardware */
 	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE( 96, 64 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 95, 0, 63 )
+	MCFG_SCREEN_REFRESH_RATE( 72 )
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
+
 	MCFG_PALETTE_LENGTH( 4 )
 	MCFG_PALETTE_INIT( pokemini )
-	MCFG_SCREEN_REFRESH_RATE( 72 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

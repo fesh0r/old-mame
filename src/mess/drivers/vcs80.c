@@ -13,7 +13,7 @@
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80pio.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "vcs80.lh"
 
 /* Read/Write Handlers */
@@ -44,12 +44,12 @@ static WRITE8_DEVICE_HANDLER( vcs80_z80pio_w )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( vcs80_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( vcs80_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_ROM
 	AM_RANGE(0x0400, 0x07ff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vcs80_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( vcs80_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE(Z80PIO_TAG, vcs80_z80pio_r, vcs80_z80pio_w)
 ADDRESS_MAP_END
@@ -92,17 +92,17 @@ INPUT_PORTS_END
 
 static TIMER_DEVICE_CALLBACK( vcs80_keyboard_tick )
 {
-	vcs80_state *state = timer.machine->driver_data<vcs80_state>();
+	vcs80_state *state = timer.machine().driver_data<vcs80_state>();
 
-	if (state->keyclk)
+	if (state->m_keyclk)
 	{
-		state->keylatch++;
-		state->keylatch &= 7;
+		state->m_keylatch++;
+		state->m_keylatch &= 7;
 	}
 
-	z80pio_pa_w(state->z80pio, 0, state->keyclk << 7);
+	z80pio_pa_w(state->m_z80pio, 0, state->m_keyclk << 7);
 
-	state->keyclk = !state->keyclk;
+	state->m_keyclk = !state->m_keyclk;
 }
 
 static READ8_DEVICE_HANDLER( pio_port_a_r )
@@ -122,20 +122,20 @@ static READ8_DEVICE_HANDLER( pio_port_a_r )
 
     */
 
-	vcs80_state *state = device->machine->driver_data<vcs80_state>();
+	vcs80_state *state = device->machine().driver_data<vcs80_state>();
 
 	UINT8 data = 0;
 
 	/* keyboard and led latch */
-	data |= state->keylatch;
+	data |= state->m_keylatch;
 
 	/* keyboard rows */
-	data |= BIT(input_port_read(device->machine, "ROW0"), state->keylatch) << 4;
-	data |= BIT(input_port_read(device->machine, "ROW1"), state->keylatch) << 5;
-	data |= BIT(input_port_read(device->machine, "ROW2"), state->keylatch) << 6;
+	data |= BIT(input_port_read(device->machine(), "ROW0"), state->m_keylatch) << 4;
+	data |= BIT(input_port_read(device->machine(), "ROW1"), state->m_keylatch) << 5;
+	data |= BIT(input_port_read(device->machine(), "ROW2"), state->m_keylatch) << 6;
 
 	/* demultiplexer clock */
-	data |= (state->keyclk << 7);
+	data |= (state->m_keyclk << 7);
 
 	return data;
 }
@@ -157,10 +157,10 @@ static WRITE8_DEVICE_HANDLER( pio_port_b_w )
 
     */
 
-	vcs80_state *state = device->machine->driver_data<vcs80_state>();
+	vcs80_state *state = device->machine().driver_data<vcs80_state>();
 
 	UINT8 led_data = BITSWAP8(data & 0x7f, 7, 5, 6, 4, 3, 2, 1, 0);
-	int digit = state->keylatch;
+	int digit = state->m_keylatch;
 
 	/* skip middle digit */
 	if (digit > 3) digit++;
@@ -191,17 +191,17 @@ static const z80_daisy_config vcs80_daisy_chain[] =
 
 static MACHINE_START(vcs80)
 {
-	vcs80_state *state = machine->driver_data<vcs80_state>();
+	vcs80_state *state = machine.driver_data<vcs80_state>();
 
 	/* find devices */
-	state->z80pio = machine->device(Z80PIO_TAG);
+	state->m_z80pio = machine.device(Z80PIO_TAG);
 
-	z80pio_astb_w(state->z80pio, 1);
-	z80pio_bstb_w(state->z80pio, 1);
+	z80pio_astb_w(state->m_z80pio, 1);
+	z80pio_bstb_w(state->m_z80pio, 1);
 
 	/* register for state saving */
-	state_save_register_global(machine, state->keylatch);
-	state_save_register_global(machine, state->keyclk);
+	state->save_item(NAME(state->m_keylatch));
+	state->save_item(NAME(state->m_keyclk));
 }
 
 /* Machine Driver */
@@ -217,7 +217,7 @@ static MACHINE_CONFIG_START( vcs80, vcs80_state )
     MCFG_MACHINE_START(vcs80)
 
 	/* keyboard timer */
-	MCFG_TIMER_ADD_PERIODIC("keyboard", vcs80_keyboard_tick, HZ(1000))
+	MCFG_TIMER_ADD_PERIODIC("keyboard", vcs80_keyboard_tick, attotime::from_hz(1000))
 
     /* video hardware */
 	MCFG_DEFAULT_LAYOUT( layout_vcs80 )
@@ -226,7 +226,7 @@ static MACHINE_CONFIG_START( vcs80, vcs80_state )
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_5MHz/2, pio_intf)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1K")
 MACHINE_CONFIG_END
 
@@ -244,15 +244,15 @@ DIRECT_UPDATE_HANDLER( vcs80_direct_update_handler )
 	vcs80_state *state = machine->driver_data<vcs80_state>();
 
 	/* _A0 is connected to PIO PB7 */
-	z80pio_pb_w(state->z80pio, 0, (!BIT(address, 0)) << 7);
+	z80pio_pb_w(state->m_z80pio, 0, (!BIT(address, 0)) << 7);
 
 	return address;
 }
 
 static DRIVER_INIT( vcs80 )
 {
-	cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(vcs80_direct_update_handler, *machine));
-	cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO)->set_direct_update_handler(direct_update_delegate_create_static(vcs80_direct_update_handler, *machine));
+	machine.device(Z80_TAG)->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(vcs80_direct_update_handler, machine));
+	machine.device(Z80_TAG)->memory().space(AS_IO)->set_direct_update_handler(direct_update_delegate_create_static(vcs80_direct_update_handler, machine));
 }
 
 /* System Drivers */

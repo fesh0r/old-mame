@@ -10,18 +10,18 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/wave.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 #include "includes/ondra.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(ondra_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ondra_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0xdfff) AM_RAMBANK("bank2")
 	AM_RANGE(0xe000, 0xffff) AM_RAMBANK("bank3")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( ondra_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( ondra_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x0b)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x03, 0x03) AM_WRITE(ondra_port_03_w)
@@ -107,7 +107,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( ondra_interrupt )
 {
-	cpu_set_input_line(device, 0, HOLD_LINE);
+	device_set_input_line(device, 0, HOLD_LINE);
 }
 
 static const cassette_config ondra_cassette_config =
@@ -136,11 +136,12 @@ static MACHINE_CONFIG_START( ondra, ondra_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(320, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 256-1)
+    MCFG_SCREEN_UPDATE(ondra)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(ondra)
-    MCFG_VIDEO_UPDATE(ondra)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -150,7 +151,7 @@ static MACHINE_CONFIG_START( ondra, ondra_state )
 	MCFG_CASSETTE_ADD( "cassette", ondra_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END

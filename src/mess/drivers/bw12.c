@@ -27,8 +27,8 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "devices/flopdrv.h"
-#include "devices/messram.h"
+#include "imagedev/flopdrv.h"
+#include "machine/ram.h"
 #include "formats/basicdsk.h"
 #include "machine/6821pia.h"
 #include "machine/ctronics.h"
@@ -52,33 +52,33 @@
 
 void bw12_state::bankswitch()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	switch (m_bank)
 	{
 	case 0: /* ROM */
-		memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
-		memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
+		program->install_read_bank(0x0000, 0x7fff, "bank1");
+		program->unmap_write(0x0000, 0x7fff);
 		break;
 
 	case 1: /* BK0 */
-		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		break;
 
 	case 2: /* BK1 */
 	case 3: /* BK2 */
-		if (messram_get_size(m_ram) > 64*1024)
+		if (ram_get_size(m_ram) > 64*1024)
 		{
-			memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+			program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		}
 		else
 		{
-			memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
+			program->unmap_readwrite(0x0000, 0x7fff);
 		}
 		break;
 	}
 
-	memory_set_bank(machine, "bank1", m_bank);
+	memory_set_bank(m_machine, "bank1", m_bank);
 }
 
 void bw12_state::floppy_motor_off()
@@ -94,7 +94,7 @@ void bw12_state::floppy_motor_off()
 
 static TIMER_DEVICE_CALLBACK( floppy_motor_off_tick )
 {
-	bw12_state *state = timer.machine->driver_data<bw12_state>();
+	bw12_state *state = timer.machine().driver_data<bw12_state>();
 
 	state->floppy_motor_off();
 }
@@ -115,8 +115,8 @@ void bw12_state::set_floppy_motor_off_timer()
             C11 = CAP_U(4.7)
 
         */
-		
-		m_floppy_timer->adjust(attotime_zero);
+
+		m_floppy_timer->adjust(attotime::zero);
 	}
 }
 
@@ -191,13 +191,13 @@ READ8_MEMBER( bw12_state::ls259_r )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( bw12_mem, ADDRESS_SPACE_PROGRAM, 8, bw12_state )
+static ADDRESS_MAP_START( bw12_mem, AS_PROGRAM, 8, bw12_state )
 	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x8000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_BASE(m_video_ram)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( bw12_io, ADDRESS_SPACE_IO, 8, bw12_state )
+static ADDRESS_MAP_START( bw12_io, AS_IO, 8, bw12_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x0f) AM_READWRITE(ls259_r, ls259_w)
 	AM_RANGE(0x10, 0x10) AM_MIRROR(0x0e) AM_DEVWRITE_LEGACY(MC6845_TAG, mc6845_address_w)
@@ -361,7 +361,7 @@ INPUT_PORTS_END
 
 static MC6845_UPDATE_ROW( bw12_update_row )
 {
-	bw12_state *state = device->machine->driver_data<bw12_state>();
+	bw12_state *state = device->machine().driver_data<bw12_state>();
 
 	int column, bit;
 
@@ -405,10 +405,10 @@ static const mc6845_interface bw12_mc6845_interface =
 void bw12_state::video_start()
 {
 	/* find memory regions */
-	m_char_rom = machine->region("chargen")->base();
+	m_char_rom = m_machine.region("chargen")->base();
 }
 
-bool bw12_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool bw12_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	mc6845_update(m_crtc, &bitmap, &cliprect);
 
@@ -424,7 +424,7 @@ WRITE_LINE_MEMBER( bw12_state::fdc_intrq_w )
 
 static UPD765_GET_IMAGE( bw12_upd765_get_image )
 {
-	bw12_state *state = device->machine->driver_data<bw12_state>();
+	bw12_state *state = device->machine().driver_data<bw12_state>();
 
 	switch (floppy_index)
 	{
@@ -591,15 +591,15 @@ static AY3600_Y_READ( bw2_ay3600_y_r )
 
 	switch (x)
 	{
-	case 0: data = input_port_read(device->machine, "X0"); break;
-	case 1: data = input_port_read(device->machine, "X1"); break;
-	case 2: data = input_port_read(device->machine, "X2"); break;
-	case 3: data = input_port_read(device->machine, "X3"); break;
-	case 4: data = input_port_read(device->machine, "X4"); break;
-	case 5: data = input_port_read(device->machine, "X5"); break;
-	case 6: data = input_port_read(device->machine, "X6"); break;
-	case 7: data = input_port_read(device->machine, "X7"); break;
-	case 8: data = input_port_read(device->machine, "X8"); break;
+	case 0: data = input_port_read(device->machine(), "X0"); break;
+	case 1: data = input_port_read(device->machine(), "X1"); break;
+	case 2: data = input_port_read(device->machine(), "X2"); break;
+	case 3: data = input_port_read(device->machine(), "X3"); break;
+	case 4: data = input_port_read(device->machine(), "X4"); break;
+	case 5: data = input_port_read(device->machine(), "X5"); break;
+	case 6: data = input_port_read(device->machine(), "X6"); break;
+	case 7: data = input_port_read(device->machine(), "X7"); break;
+	case 8: data = input_port_read(device->machine(), "X8"); break;
 	}
 
 	return data;
@@ -607,12 +607,12 @@ static AY3600_Y_READ( bw2_ay3600_y_r )
 
 static READ_LINE_DEVICE_HANDLER( ay3600_shift_r )
 {
-	return BIT(input_port_read(device->machine, "MODIFIERS"), 0);
+	return BIT(input_port_read(device->machine(), "MODIFIERS"), 0);
 }
 
 static READ_LINE_DEVICE_HANDLER( ay3600_control_r )
 {
-	return BIT(input_port_read(device->machine, "MODIFIERS"), 1);
+	return BIT(input_port_read(device->machine(), "MODIFIERS"), 1);
 }
 
 WRITE_LINE_MEMBER( bw12_state::ay3600_data_ready_w )
@@ -654,21 +654,21 @@ static AY3600_INTERFACE( bw12_ay3600_intf )
 void bw12_state::machine_start()
 {
 	/* setup memory banking */
-	memory_configure_bank(machine, "bank1", 0, 1, machine->region(Z80_TAG)->base(), 0);
-	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(m_ram), 0);
-	memory_configure_bank(machine, "bank1", 2, 2, messram_get_ptr(m_ram) + 0x10000, 0x8000);
+	memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region(Z80_TAG)->base(), 0);
+	memory_configure_bank(m_machine, "bank1", 1, 1, ram_get_ptr(m_ram), 0);
+	memory_configure_bank(m_machine, "bank1", 2, 2, ram_get_ptr(m_ram) + 0x10000, 0x8000);
 
 	/* register for state saving */
-	state_save_register_global(machine, m_bank);
-	state_save_register_global(machine, m_pit_out2);
-	state_save_register_global_array(machine, m_key_data);
-	state_save_register_global(machine, m_key_sin);
-	state_save_register_global(machine, m_key_stb);
-	state_save_register_global(machine, m_key_shift);
-	state_save_register_global(machine, m_fdc_int);
-	state_save_register_global(machine, m_motor_on);
-	state_save_register_global(machine, m_motor0);
-	state_save_register_global(machine, m_motor1);
+	state_save_register_global(m_machine, m_bank);
+	state_save_register_global(m_machine, m_pit_out2);
+	state_save_register_global_array(m_machine, m_key_data);
+	state_save_register_global(m_machine, m_key_sin);
+	state_save_register_global(m_machine, m_key_stb);
+	state_save_register_global(m_machine, m_key_shift);
+	state_save_register_global(m_machine, m_fdc_int);
+	state_save_register_global(m_machine, m_motor_on);
+	state_save_register_global(m_machine, m_motor0);
+	state_save_register_global(m_machine, m_motor1);
 }
 
 void bw12_state::machine_reset()
@@ -823,7 +823,7 @@ static MACHINE_CONFIG_DERIVED( bw12, common )
 	MCFG_FLOPPY_2_DRIVES_ADD(bw12_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
@@ -832,7 +832,7 @@ static MACHINE_CONFIG_DERIVED( bw14, common )
 	MCFG_FLOPPY_2_DRIVES_ADD(bw14_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 

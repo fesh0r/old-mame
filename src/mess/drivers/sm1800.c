@@ -1,16 +1,16 @@
 /***************************************************************************
-   
+
         SM1800 (original name is CM1800 in cyrilic letters)
 
         10/12/2010 Skeleton driver.
 
-		On board hardware :
-			KR580VM80A central processing unit (i8080)
-			KR580VG75  programmable CRT video display controller (i8275)
-			KR580VV55  programmable parallel interface (i8255)
-			KR580IK51  programmable serial interface/communication controller (i8251)
-			KR580VV79  programmable peripheral device, keyboard and display controller (i8279)
-		
+        On board hardware :
+            KR580VM80A central processing unit (i8080)
+            KR580VG75  programmable CRT video display controller (i8275)
+            KR580VV55  programmable parallel interface (i8255)
+            KR580IK51  programmable serial interface/communication controller (i8251)
+            KR580VV79  programmable peripheral device, keyboard and display controller (i8279)
+
 ****************************************************************************/
 
 #include "emu.h"
@@ -24,22 +24,24 @@ class sm1800_state : public driver_device
 public:
 	sm1800_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
+
+	UINT8 m_irq_state;
 };
 
-static ADDRESS_MAP_START(sm1800_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(sm1800_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE( 0x0000, 0x07ff ) AM_ROM	
+	AM_RANGE( 0x0000, 0x07ff ) AM_ROM
 	//AM_RANGE( 0x0fb0, 0x0fff ) AM_DEVWRITE("i8275", i8275_dack_w)
 	AM_RANGE( 0x1000, 0x17ff ) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sm1800_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( sm1800_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x3c, 0x3d ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w)
 	AM_RANGE( 0x6c, 0x6f ) AM_DEVREADWRITE("i8255", i8255a_r, i8255a_w)
 	//AM_RANGE( 0x74, 0x75 ) AM_DEVREADWRITE("i8279", i8279_r, i8279_w)
 	AM_RANGE( 0x5c, 0x5c) AM_DEVREADWRITE("i8251", msm8251_data_r,msm8251_data_w)
-	AM_RANGE( 0x5d, 0x5d) AM_DEVREADWRITE("i8251", msm8251_status_r,msm8251_control_w)	
+	AM_RANGE( 0x5d, 0x5d) AM_DEVREADWRITE("i8251", msm8251_status_r,msm8251_control_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -51,33 +53,32 @@ static IRQ_CALLBACK(sm1800_irq_callback)
 	return 0xff;
 }
 
-static MACHINE_RESET(sm1800) 
-{	
-	cpu_set_irq_callback(machine->device("maincpu"), sm1800_irq_callback);
+static MACHINE_RESET(sm1800)
+{
+	device_set_irq_callback(machine.device("maincpu"), sm1800_irq_callback);
 }
 
 
-static VIDEO_UPDATE( sm1800 )
+static SCREEN_UPDATE( sm1800 )
 {
-	device_t *devconf = screen->machine->device("i8275");
+	device_t *devconf = screen->machine().device("i8275");
 	i8275_update( devconf, bitmap, cliprect);
-	VIDEO_UPDATE_CALL ( generic_bitmapped );
+	SCREEN_UPDATE_CALL ( generic_bitmapped );
 	return 0;
 }
 
-UINT8 state = 0;
-
-INTERRUPT_GEN( sm1800_vblank_interrupt )
+static INTERRUPT_GEN( sm1800_vblank_interrupt )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, state ?  HOLD_LINE : CLEAR_LINE);
-	state ^= 1;
+	sm1800_state *state = device->machine().driver_data<sm1800_state>();
+	cputag_set_input_line(device->machine(), "maincpu", 0, state->m_irq_state ?  HOLD_LINE : CLEAR_LINE);
+	state->m_irq_state ^= 1;
 }
 
-I8275_DISPLAY_PIXELS(sm1800_display_pixels)
+static I8275_DISPLAY_PIXELS(sm1800_display_pixels)
 {
 	int i;
-	bitmap_t *bitmap = device->machine->generic.tmpbitmap;
-	UINT8 *charmap = device->machine->region("gfx1")->base();
+	bitmap_t *bitmap = device->machine().generic.tmpbitmap;
+	UINT8 *charmap = device->machine().region("gfx1")->base();
 	UINT8 pixels = charmap[(linecount & 7) + (charcode << 3)] ^ 0xff;
 	if (vsp) {
 		pixels = 0;
@@ -119,6 +120,7 @@ static READ8_DEVICE_HANDLER (sm1800_8255_portc_r )
 {
 	return 0;
 }
+
 I8255A_INTERFACE( sm1800_ppi8255_interface )
 {
 	DEVCB_HANDLER(sm1800_8255_porta_r),
@@ -144,11 +146,11 @@ static MACHINE_CONFIG_START( sm1800, sm1800_state )
     /* basic machine hardware */
     MCFG_CPU_ADD("maincpu",I8080, XTAL_2MHz)
     MCFG_CPU_PROGRAM_MAP(sm1800_mem)
-    MCFG_CPU_IO_MAP(sm1800_io)	
+    MCFG_CPU_IO_MAP(sm1800_io)
 	MCFG_CPU_VBLANK_INT("screen", sm1800_vblank_interrupt)
-	
+
     MCFG_MACHINE_RESET(sm1800)
-	
+
 	MCFG_I8255A_ADD ("i8255", sm1800_ppi8255_interface )
 	MCFG_I8275_ADD	("i8275", sm1800_i8275_interface)
 	MCFG_MSM8251_ADD("i8251", default_msm8251_interface)
@@ -159,11 +161,12 @@ static MACHINE_CONFIG_START( sm1800, sm1800_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(sm1800)
+
     MCFG_PALETTE_LENGTH(3)
     MCFG_PALETTE_INIT(sm1800)
 
     MCFG_VIDEO_START(generic_bitmapped)
-    MCFG_VIDEO_UPDATE(sm1800)
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -177,5 +180,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, sm1800,  0,       0, 	sm1800, 	sm1800, 	 0,  	  "<unknown>",   "SM1800",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, sm1800,  0,       0,	sm1800, 	sm1800, 	 0, 	  "<unknown>",   "SM1800",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

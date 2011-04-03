@@ -161,6 +161,8 @@ static const INT8 upd765_cmd_size[32] =
 INLINE upd765_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == UPD765A || device->type() == UPD765B ||
+		device->type() == SMC37C78 || device->type() == UPD72065);
 
 	return (upd765_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -177,7 +179,7 @@ static device_t *current_image(device_t *device)
 			if (device->owner() != NULL)
 				image = device->owner()->subdevice(fdc->intf->floppy_drive_tags[fdc->drive]);
 			else
-				image = device->machine->device(fdc->intf->floppy_drive_tags[fdc->drive]);
+				image = device->machine().device(fdc->intf->floppy_drive_tags[fdc->drive]);
 		}
 	}
 	else
@@ -347,7 +349,7 @@ static TIMER_CALLBACK(upd765_seek_timer_callback)
 	/* seek complete */
 	upd765_seek_complete(device);
 
-	timer_reset(fdc->seek_timer, attotime_never);
+	fdc->seek_timer->reset();
 }
 
 static void upd765_timer_func(device_t *device, int timer_type)
@@ -366,12 +368,12 @@ static void upd765_timer_func(device_t *device, int timer_type)
 			if (fdc->upd765_command_bytes[0] & UPD765_MF)
 			{
 				/* MFM */
-				timer_reset(fdc->timer, ATTOTIME_IN_USEC(13));
+				fdc->timer->reset(attotime::from_usec(13));
 			}
 			else
 			{
 				/* FM */
-				timer_reset(fdc->timer, ATTOTIME_IN_USEC(27));
+				fdc->timer->reset(attotime::from_usec(27));
 			}
 		}
 		else
@@ -404,7 +406,7 @@ static void upd765_timer_func(device_t *device, int timer_type)
 
 		upd765_set_data_request(device);
 
-		timer_reset(fdc->timer, attotime_never);
+		fdc->timer->reset();
 	}
 	else if (fdc->timer_type == 4)
 	{
@@ -423,7 +425,7 @@ static void upd765_timer_func(device_t *device, int timer_type)
 			}
 		}
 
-		timer_reset(fdc->timer, attotime_never);
+		fdc->timer->reset();
 	}
 }
 
@@ -447,12 +449,12 @@ static void upd765_setup_timed_generic(device_t *device, int timer_type, attotim
 
 	if (!(fdc->upd765_flags & UPD765_DMA_MODE))
 	{
-		timer_adjust_oneshot(fdc->timer, duration, 0);
+		fdc->timer->adjust(duration);
 	}
 	else
 	{
 		upd765_timer_func(device,fdc->timer_type);
-		timer_reset(fdc->timer, attotime_never);
+		fdc->timer->reset();
 	}
 }
 
@@ -460,13 +462,13 @@ static void upd765_setup_timed_generic(device_t *device, int timer_type, attotim
 static void upd765_setup_timed_data_request(device_t *device, int bytes)
 {
 	/* setup timer to trigger in UPD765_DATA_RATE us */
-	upd765_setup_timed_generic(device, 0, ATTOTIME_IN_USEC(32-27)	/*UPD765_DATA_RATE)*bytes*/);
+	upd765_setup_timed_generic(device, 0, attotime::from_usec(32-27)	/*UPD765_DATA_RATE)*bytes*/);
 }
 
 /* setup result data request */
 static void upd765_setup_timed_result_data_request(device_t *device)
 {
-	upd765_setup_timed_generic(device, 2, ATTOTIME_IN_USEC(UPD765_DATA_RATE*2));
+	upd765_setup_timed_generic(device, 2, attotime::from_usec(UPD765_DATA_RATE*2));
 }
 
 
@@ -475,7 +477,7 @@ static void upd765_setup_timed_int(device_t *device,int signed_tracks)
 {
 	upd765_t *fdc = get_safe_token(device);
 	/* setup timer to signal after seek time is complete */
-	timer_adjust_oneshot(fdc->seek_timer, double_to_attotime(fdc->srt_in_ms*abs(signed_tracks)*0.001), 0);
+	fdc->seek_timer->adjust(attotime::from_double(fdc->srt_in_ms*abs(signed_tracks)*0.001));
 }
 
 static void upd765_seek_setup(device_t *device, int is_recalibrate)
@@ -758,14 +760,14 @@ WRITE_LINE_DEVICE_HANDLER( upd765_tc_w )
 			{
 				if (fdc->timer_type==0)
 				{
-					timer_reset(fdc->timer, attotime_never);
+					fdc->timer->reset();
 
 
 				}
 			}
 
 #ifdef NO_END_OF_CYLINDER
-			timer_adjust_oneshot(fdc->command_timer, attotime_zero, 0);
+			fdc->command_timer->adjust(attotime::zero);
 #else
 			upd765_update_state(device);
 #endif
@@ -777,7 +779,7 @@ READ8_DEVICE_HANDLER( upd765_status_r )
 {
 	upd765_t *fdc = get_safe_token(device);
 	if (LOG_EXTRA)
-		logerror("%s: upd765_status_r: %02x\n", cpuexec_describe_context(device->machine), fdc->FDC_main);
+		logerror("%s: upd765_status_r: %02x\n", device->machine().describe_context(), fdc->FDC_main);
 	return fdc->FDC_main;
 }
 
@@ -1235,10 +1237,14 @@ static int upd765_sector_count_complete(device_t *device)
         */
 
 		/* if just read last sector and on side 1 - finish */
-		if ((upd765_just_read_last_sector_on_track(device)) &&
-			(fdc->side==1))
+		if (upd765_just_read_last_sector_on_track(device))
 		{
-			return 1;
+			if (floppy_get_heads_per_disk(flopimg_get_image(current_image(device)))==1) {
+				return 1;
+			} else {
+				if (fdc->side==1) 
+					return 1;
+			}
 		}
 
 		/* if not on second side then we haven't finished yet */
@@ -1669,7 +1675,7 @@ void upd765_update_state(device_t *device)
 
 		if ((fdc->upd765_transfer_bytes_remaining==0) || (fdc->upd765_flags & UPD765_TC))
 		{
-			timer_adjust_oneshot(fdc->command_timer, attotime_zero, 0);
+			fdc->command_timer->adjust(attotime::zero);
 		}
 		else
 		{
@@ -1682,7 +1688,7 @@ void upd765_update_state(device_t *device)
 		fdc->FDC_main |= 0x10;                      /* set BUSY */
 
 		if (LOG_VERBOSE)
-			logerror("%s: upd765(): command=0x%02x\n", cpuexec_describe_context(device->machine), fdc->upd765_data_reg);
+			logerror("%s: upd765(): command=0x%02x\n", device->machine().describe_context(), fdc->upd765_data_reg);
 
 		/* seek in progress? */
 		if (fdc->upd765_flags & UPD765_SEEK_ACTIVE)
@@ -1714,7 +1720,7 @@ void upd765_update_state(device_t *device)
 
     case UPD765_COMMAND_PHASE_BYTES:
 		if (LOG_VERBOSE)
-			logerror("%s: upd765(): command=0x%02x\n", cpuexec_describe_context(device->machine), fdc->upd765_data_reg);
+			logerror("%s: upd765(): command=0x%02x\n", device->machine().describe_context(), fdc->upd765_data_reg);
 
 		fdc->upd765_command_bytes[fdc->upd765_transfer_bytes_count] = fdc->upd765_data_reg;
 		fdc->upd765_transfer_bytes_count++;
@@ -1738,7 +1744,7 @@ void upd765_update_state(device_t *device)
 
 		if ((fdc->upd765_transfer_bytes_remaining == 0) || (fdc->upd765_flags & UPD765_TC))
 		{
-			timer_adjust_oneshot(fdc->command_timer, attotime_zero, 0);
+			fdc->command_timer->adjust(attotime::zero);
 		}
 		else
 		{
@@ -2196,6 +2202,11 @@ READ8_DEVICE_HANDLER(upd765_dack_r)
 	return upd765_data_r(device, offset);
 }
 
+static TIMER_CALLBACK( interrupt_callback )
+{
+	device_t* device = (device_t*)ptr;
+	upd765_set_int(device, 1);
+}
 
 void upd765_reset(device_t *device, int offset)
 {
@@ -2234,7 +2245,7 @@ void upd765_reset(device_t *device, int offset)
 				if (device->owner() != NULL)
 					img = device->owner()->subdevice(fdc->intf->floppy_drive_tags[i]);
 				else
-					img = device->machine->device(fdc->intf->floppy_drive_tags[i]);
+					img = device->machine().device(fdc->intf->floppy_drive_tags[i]);
 
 				device_image_interface *image = dynamic_cast<device_image_interface *>( img);
 				if (image->exists())
@@ -2251,7 +2262,7 @@ void upd765_reset(device_t *device, int offset)
 			fdc->upd765_status[0] |= 0x08;
 		}
 
-		upd765_set_int(device, 1);
+		device->machine().scheduler().timer_set(attotime::from_usec(5), FUNC(interrupt_callback),0,device);
 	}
 }
 
@@ -2319,18 +2330,18 @@ static void common_start(device_t *device, int device_type)
 	fdc->intf = (const upd765_interface*)device->baseconfig().static_config();
 
 	fdc->version = (UPD765_VERSION)device_type;
-	fdc->timer = timer_alloc(device->machine, upd765_timer_callback, (void*)device);
-	fdc->seek_timer = timer_alloc(device->machine, upd765_seek_timer_callback, (void*)device);
-	fdc->command_timer = timer_alloc(device->machine, upd765_continue_command, (void*)device);
+	fdc->timer = device->machine().scheduler().timer_alloc(FUNC(upd765_timer_callback), (void*)device);
+	fdc->seek_timer = device->machine().scheduler().timer_alloc(FUNC(upd765_seek_timer_callback), (void*)device);
+	fdc->command_timer = device->machine().scheduler().timer_alloc(FUNC(upd765_continue_command), (void*)device);
 
 	fdc->upd765_flags &= UPD765_FDD_READY;
-	fdc->data_buffer = auto_alloc_array(device->machine, char, 32*1024);
+	fdc->data_buffer = auto_alloc_array(device->machine(), char, 32*1024);
 
 	devcb_resolve_write_line(&fdc->out_int_func, &fdc->intf->out_int_func, device);
 	devcb_resolve_write_line(&fdc->out_drq_func, &fdc->intf->out_drq_func, device);
 
 	// register for state saving
-	//state_save_register_item(device->machine, "upd765", device->tag(), 0, upd765->number);
+	//state_save_register_item(device->machine(), "upd765", device->tag(), 0, upd765->number);
 }
 
 static DEVICE_START( upd765a )
@@ -2365,7 +2376,7 @@ static DEVICE_RESET( upd765 )
 			if (device->owner() != NULL)
 				img = device->owner()->subdevice(fdc->intf->floppy_drive_tags[i]);
 			else
-				img = device->machine->device(fdc->intf->floppy_drive_tags[i]);
+				img = device->machine().device(fdc->intf->floppy_drive_tags[i]);
 
 			floppy_drive_set_controller(img, device);
 			floppy_drive_set_ready_state_change_callback(img, upd765_set_ready_change_callback);

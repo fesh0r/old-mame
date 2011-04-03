@@ -35,24 +35,24 @@
 #include "machine/6551.h"
 #include "formats/coco_dsk.h"
 #include "formats/coco_cas.h"
-#include "devices/printer.h"
-#include "devices/flopdrv.h"
-#include "devices/cassette.h"
-#include "devices/bitbngr.h"
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
+#include "imagedev/printer.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/cassette.h"
+#include "imagedev/bitbngr.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cartslot.h"
 #include "devices/cococart.h"
 #include "devices/coco_vhd.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "coco3.lh"
 
 #define SHOW_FULL_AREA			0
 #define JOYSTICK_DELTA			10
 #define JOYSTICK_SENSITIVITY	100
 
-static ADDRESS_MAP_START( coco_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( coco_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
@@ -79,7 +79,7 @@ static ADDRESS_MAP_START( coco_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( dragon_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( dragon_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
@@ -114,7 +114,7 @@ ADDRESS_MAP_END
  * Tepolt implies that $FFD4-$FFD7 and $FFDA-$FFDD are ignored on the CoCo 3,
  * which would make sense, but I'm not sure.
  */
-static ADDRESS_MAP_START( coco3_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( coco3_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK("bank3")
@@ -138,7 +138,7 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START( d64_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( d64_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
@@ -172,7 +172,7 @@ ADDRESS_MAP_END
     Currently only the memory is emulated.
 */
 
-static ADDRESS_MAP_START( d64_plus_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( d64_plus_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
@@ -250,7 +250,7 @@ ADDRESS_MAP_END
 */
 
 
-static ADDRESS_MAP_START( dgnalpha_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( dgnalpha_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
@@ -758,17 +758,18 @@ static MACHINE_CONFIG_START( dragon32, coco_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MCFG_CPU_PROGRAM_MAP(dragon_map)
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 
 	MCFG_MACHINE_START( dragon32 )
 
 	/* video hardware */
-	MCFG_VIDEO_START(dragon)
-	MCFG_VIDEO_UPDATE(m6847)
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
+
+	MCFG_VIDEO_START(dragon)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -792,7 +793,7 @@ static MACHINE_CONFIG_START( dragon32, coco_state )
 	MCFG_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 	MCFG_RAM_EXTRA_OPTIONS("64K")
 
@@ -808,12 +809,12 @@ static MACHINE_CONFIG_START( dragon64, coco_state )
 
 	/* video hardware */
 	MCFG_VIDEO_START(dragon)
-	MCFG_VIDEO_UPDATE(m6847)
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -841,7 +842,7 @@ static MACHINE_CONFIG_START( dragon64, coco_state )
 	MCFG_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 
 	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
@@ -860,9 +861,9 @@ static MACHINE_CONFIG_START( d64plus, coco_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
 
 	MCFG_VIDEO_START(dragon)
-	MCFG_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -890,7 +891,7 @@ static MACHINE_CONFIG_START( d64plus, coco_state )
 	MCFG_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 
 	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
@@ -910,9 +911,9 @@ static MACHINE_CONFIG_START( dgnalpha, coco_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
 
 	MCFG_VIDEO_START(dragon)
-	MCFG_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -949,7 +950,7 @@ static MACHINE_CONFIG_START( dgnalpha, coco_state )
 	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
@@ -966,9 +967,9 @@ static MACHINE_CONFIG_START( tanodr64, coco_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
 
 	MCFG_VIDEO_START(dragon)
-	MCFG_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -996,7 +997,7 @@ static MACHINE_CONFIG_START( tanodr64, coco_state )
 	MCFG_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 
 	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
@@ -1015,9 +1016,9 @@ static MACHINE_CONFIG_START( coco, coco_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
 
 	MCFG_VIDEO_START(coco)
-	MCFG_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -1043,7 +1044,7 @@ static MACHINE_CONFIG_START( coco, coco_state )
 	MCFG_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("16K")
 	MCFG_RAM_EXTRA_OPTIONS("4K,32K,64K")
 
@@ -1063,8 +1064,9 @@ static MACHINE_CONFIG_START( coco2, coco_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
+
 	MCFG_VIDEO_START(coco)
-	MCFG_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -1090,7 +1092,7 @@ static MACHINE_CONFIG_START( coco2, coco_state )
 	MCFG_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("16K")
 
@@ -1110,8 +1112,9 @@ static MACHINE_CONFIG_START( coco2b, coco_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(m6847)
+
 	MCFG_VIDEO_START(coco2b)
-	MCFG_VIDEO_UPDATE(m6847)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD( coco_sound )
@@ -1137,7 +1140,7 @@ static MACHINE_CONFIG_START( coco2b, coco_state )
 	MCFG_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("16K")
 
@@ -1154,7 +1157,6 @@ static MACHINE_CONFIG_START( coco3, coco3_state )
 
 	/* video hardware */
 	MCFG_VIDEO_START(coco3)
-	MCFG_VIDEO_UPDATE(coco3)
 	MCFG_DEFAULT_LAYOUT(layout_coco3)
 
 	MCFG_SCREEN_ADD("composite", RASTER)
@@ -1162,12 +1164,14 @@ static MACHINE_CONFIG_START( coco3, coco3_state )
 	MCFG_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 	MCFG_SCREEN_SIZE(640, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 239)
+	MCFG_SCREEN_UPDATE(coco3)
 
 	MCFG_SCREEN_ADD("rgb", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 	MCFG_SCREEN_SIZE(640, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 239)
+	MCFG_SCREEN_UPDATE(coco3)
 
 	MCFG_PIA6821_ADD( "pia_0", coco3_pia_intf_0 )
 	MCFG_PIA6821_ADD( "pia_1", coco3_pia_intf_1 )
@@ -1196,7 +1200,7 @@ static MACHINE_CONFIG_START( coco3, coco3_state )
 	MCFG_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("512K")
 	MCFG_RAM_EXTRA_OPTIONS("128K,2M,8M")
 
@@ -1207,11 +1211,12 @@ static MACHINE_CONFIG_DERIVED( coco3p, coco3 )
 
 	/* video hardware */
 	MCFG_VIDEO_START(coco3p)
-	MCFG_VIDEO_UPDATE(coco3)
 	MCFG_SCREEN_MODIFY("composite")
 	MCFG_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
+	MCFG_SCREEN_UPDATE(coco3)
 	MCFG_SCREEN_MODIFY("rgb")
 	MCFG_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
+	MCFG_SCREEN_UPDATE(coco3)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( coco3h, coco3 )
@@ -1222,7 +1227,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( cocoe, coco )
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("4K,16K,32K")
 MACHINE_CONFIG_END

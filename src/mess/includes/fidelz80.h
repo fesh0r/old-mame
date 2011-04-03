@@ -34,8 +34,8 @@ public:
 	UINT8 m_digit_line_status[4];	// prevent overwrite of m_digit_data
 
 	virtual void machine_reset();
-	
-	void update_display(running_machine *machine);
+
+	void update_display(running_machine &machine);
 	DECLARE_READ8_MEMBER( fidelz80_portc_r );
 	DECLARE_WRITE8_MEMBER( fidelz80_portb_w );
 	DECLARE_WRITE8_MEMBER( fidelz80_portc_w );
@@ -43,6 +43,7 @@ public:
 	DECLARE_WRITE8_MEMBER( cc10_porta_w );
 	DECLARE_READ8_MEMBER( vcc_portb_r );
 	DECLARE_WRITE8_MEMBER( vcc_porta_w );
+	DECLARE_WRITE8_MEMBER( abc_speech_w );
 	DECLARE_WRITE8_MEMBER(kp_matrix_w);
 	DECLARE_READ8_MEMBER(unknown_r);
 	DECLARE_READ8_MEMBER(exp_i8243_p2_r);

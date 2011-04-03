@@ -25,13 +25,13 @@ Galaksija driver by Krzysztof Strzecha and Miodrag Milanovic
 #include "cpu/z80/z80.h"
 #include "sound/wave.h"
 #include "includes/galaxy.h"
-#include "devices/snapquik.h"
-#include "devices/cassette.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cassette.h"
 #include "sound/ay8910.h"
 #include "formats/gtp_cas.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
-static ADDRESS_MAP_START (galaxyp_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (galaxyp_io, AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x01)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xbe, 0xbe) AM_DEVWRITE("ay8910", ay8910_address_w)
@@ -39,13 +39,13 @@ static ADDRESS_MAP_START (galaxyp_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START (galaxy_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (galaxy_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x2000, 0x2037) AM_MIRROR(0x07c0) AM_READ ( galaxy_keyboard_r )
 	AM_RANGE(0x2038, 0x203f) AM_MIRROR(0x07c0) AM_WRITE ( galaxy_latch_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START (galaxyp_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (galaxyp_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM // ROM A
 	AM_RANGE(0x1000, 0x1fff) AM_ROM // ROM B
 	AM_RANGE(0x2000, 0x2037) AM_MIRROR(0x07c0) AM_READ ( galaxy_keyboard_r )
@@ -196,12 +196,13 @@ static MACHINE_CONFIG_START( galaxy, galaxy_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(384, 212)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 208-1)
+	MCFG_SCREEN_UPDATE( galaxy )
+
 	MCFG_GFXDECODE(galaxy)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT( black_and_white )
 
 	MCFG_VIDEO_START( galaxy )
-	MCFG_VIDEO_UPDATE( galaxy )
 
 	/* snapshot */
 	MCFG_SNAPSHOT_ADD("snapshot", galaxy, "gal", 0)
@@ -213,7 +214,7 @@ static MACHINE_CONFIG_START( galaxy, galaxy_state )
 	MCFG_CASSETTE_ADD( "cassette", galaxy_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("6K")
 	MCFG_RAM_EXTRA_OPTIONS("2K,22K,38K,54K")
 MACHINE_CONFIG_END
@@ -233,11 +234,12 @@ static MACHINE_CONFIG_START( galaxyp, galaxy_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(384, 208)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 208-1)
+	MCFG_SCREEN_UPDATE( galaxy )
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT( black_and_white )
 
 	MCFG_VIDEO_START( galaxy )
-	MCFG_VIDEO_UPDATE( galaxy )
 
 	/* snapshot */
 	MCFG_SNAPSHOT_ADD("snapshot", galaxy, "gal", 0)
@@ -252,7 +254,7 @@ static MACHINE_CONFIG_START( galaxyp, galaxy_state )
 	MCFG_CASSETTE_ADD( "cassette", galaxy_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("38K")
 MACHINE_CONFIG_END
 

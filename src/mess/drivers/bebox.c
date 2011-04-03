@@ -31,14 +31,14 @@
 #include "machine/intelfsh.h"
 
 /* Devices */
-#include "devices/flopdrv.h"
-#include "devices/chd_cd.h"
-#include "devices/harddriv.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/chd_cd.h"
+#include "imagedev/harddriv.h"
 #include "formats/pc_dsk.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
-static READ8_HANDLER(at_dma8237_1_r)  { return i8237_r(space->machine->device("dma8237_2"), offset / 2); }
-static WRITE8_HANDLER(at_dma8237_1_w) { i8237_w(space->machine->device("dma8237_2"), offset / 2, data); }
+static READ8_HANDLER(at_dma8237_1_r)  { return i8237_r(space->machine().device("dma8237_2"), offset / 2); }
+static WRITE8_HANDLER(at_dma8237_1_w) { i8237_w(space->machine().device("dma8237_2"), offset / 2, data); }
 
 static READ64_HANDLER( bebox_dma8237_1_r )
 {
@@ -51,7 +51,7 @@ static WRITE64_HANDLER( bebox_dma8237_1_w )
 }
 
 
-static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
+static ADDRESS_MAP_START( bebox_mem, AS_PROGRAM, 64 )
 	AM_RANGE(0x7FFFF0F0, 0x7FFFF0F7) AM_READWRITE( bebox_cpu0_imask_r, bebox_cpu0_imask_w )
 	AM_RANGE(0x7FFFF1F0, 0x7FFFF1F7) AM_READWRITE( bebox_cpu1_imask_r, bebox_cpu1_imask_w )
 	AM_RANGE(0x7FFFF2F0, 0x7FFFF2F7) AM_READ( bebox_interrupt_sources_r )
@@ -61,7 +61,7 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x80000000, 0x8000001F) AM_DEVREADWRITE8( "dma8237_1", i8237_r, i8237_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000020, 0x8000003F) AM_DEVREADWRITE8( "pic8259_master", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000040, 0x8000005f) AM_DEVREADWRITE8( "pit8254", pit8253_r, pit8253_w, U64(0xffffffffffffffff) )
-	AM_RANGE(0x80000060, 0x8000006F) AM_READWRITE( kbdc8042_64be_r, kbdc8042_64be_w )	
+	AM_RANGE(0x80000060, 0x8000006F) AM_READWRITE( kbdc8042_64be_r, kbdc8042_64be_w )
 	AM_RANGE(0x80000070, 0x8000007F) AM_DEVREADWRITE8_MODERN("rtc", mc146818_device, read, write , U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000080, 0x8000009F) AM_READWRITE( bebox_page_r, bebox_page_w)
 	AM_RANGE(0x800000A0, 0x800000BF) AM_DEVREADWRITE8( "pic8259_slave", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
@@ -74,7 +74,7 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x800003F8, 0x800003FF) AM_DEVREADWRITE8( "ns16550_0", ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000480, 0x8000048F) AM_READWRITE( bebox_80000480_r, bebox_80000480_w )
 	AM_RANGE(0x80000CF8, 0x80000CFF) AM_DEVREADWRITE("pcibus", pci_64be_r, pci_64be_w )
-	AM_RANGE(0x800042E8, 0x800042EF) AM_WRITE( cirrus_64be_42E8_w )
+	AM_RANGE(0x800042E8, 0x800042EF) AM_DEVWRITE8( "cirrus", cirrus_42E8_w, U64(0xffffffffffffffff) )
 
 	AM_RANGE(0xBFFFFFF0, 0xBFFFFFFF) AM_READ( bebox_interrupt_ack_r )
 
@@ -87,10 +87,10 @@ ADDRESS_MAP_END
 
 static READ64_HANDLER(bb_slave_64be_r)
 {
-	device_t *device = space->machine->device("pcibus");
+	device_t *device = space->machine().device("pcibus");
 
 	// 2e94 is the real address, 2e84 is where the PC appears to be under full DRC
-	if ((cpu_get_pc(space->cpu) == 0xfff02e94) || (cpu_get_pc(space->cpu) == 0xfff02e84))
+	if ((cpu_get_pc(&space->device()) == 0xfff02e94) || (cpu_get_pc(&space->device()) == 0xfff02e84))
 	{
 		return 0x108000ff;	// indicate slave CPU
 	}
@@ -98,7 +98,7 @@ static READ64_HANDLER(bb_slave_64be_r)
 	return pci_64be_r(device, offset, mem_mask);
 }
 
-static ADDRESS_MAP_START( bebox_slave_mem, ADDRESS_SPACE_PROGRAM, 64 )
+static ADDRESS_MAP_START( bebox_slave_mem, AS_PROGRAM, 64 )
 	AM_RANGE(0x80000cf8, 0x80000cff) AM_READ(bb_slave_64be_r)
 	AM_RANGE(0x80000cf8, 0x80000cff) AM_DEVWRITE("pcibus", pci_64be_w )
 	AM_IMPORT_FROM(bebox_mem)
@@ -124,7 +124,7 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 	MCFG_CPU_ADD("ppc2", PPC603, 66000000)	/* 66 MHz */
 	MCFG_CPU_PROGRAM_MAP(bebox_slave_mem)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_PIT8254_ADD( "pit8254", bebox_pit8254_config )
 
@@ -145,9 +145,6 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 
 	/* video hardware */
 	MCFG_FRAGMENT_ADD( pcvideo_vga )
-	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	MCFG_MACHINE_START( bebox )
 	MCFG_MACHINE_RESET( bebox )
@@ -161,10 +158,12 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 	MCFG_CDROM_ADD( "cdrom" )
 	MCFG_HARDDISK_ADD( "harddisk1" )
 
+	MCFG_MPC105_ADD("mpc105","ppc1",0)
+	MCFG_CIRRUS_ADD("cirrus")
 	/* pci */
 	MCFG_PCI_BUS_ADD("pcibus", 0)
-	MCFG_PCI_BUS_DEVICE(0, NULL, mpc105_pci_read, mpc105_pci_write)
-	MCFG_PCI_BUS_DEVICE(1, NULL, cirrus5430_pci_read, cirrus5430_pci_write)
+	MCFG_PCI_BUS_DEVICE(0, "mpc105", mpc105_pci_read, mpc105_pci_write)
+	MCFG_PCI_BUS_DEVICE(1, "cirrus", cirrus5430_pci_read, cirrus5430_pci_write)
 	/*MCFG_PCI_BUS_DEVICE(12, NULL, scsi53c810_pci_read, scsi53c810_pci_write)*/
 
 	MCFG_SMC37C78_ADD("smc37c78", pc_fdc_upd765_connected_1_drive_interface)
@@ -172,9 +171,9 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, bebox_floppy_config)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
-	
+
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32M")
 	MCFG_RAM_EXTRA_OPTIONS("8M,16M")
 MACHINE_CONFIG_END

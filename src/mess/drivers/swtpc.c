@@ -24,12 +24,12 @@ public:
 
 static WRITE8_HANDLER(swtpc_terminal_w)
 {
-	device_t *devconf = space->machine->device("terminal");
+	device_t *devconf = space->machine().device(TERMINAL_TAG);
 	terminal_write(devconf,0,data);
 }
 
 
-static ADDRESS_MAP_START(swtpc_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(swtpc_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x8005, 0x8005 ) AM_WRITE(swtpc_terminal_w)
 	AM_RANGE( 0xa000, 0xa07f ) AM_RAM
@@ -38,7 +38,6 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( swtpc )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 

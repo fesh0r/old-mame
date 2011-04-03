@@ -41,7 +41,7 @@ GFXDECODE_END
 
 static TIMER_DEVICE_CALLBACK( blink_tick )
 {
-	abc80_state *state = timer.machine->driver_data<abc80_state>();
+	abc80_state *state = timer.machine().driver_data<abc80_state>();
 
 	state->m_blink = !state->m_blink;
 }
@@ -53,9 +53,9 @@ static TIMER_DEVICE_CALLBACK( blink_tick )
 
 static TIMER_DEVICE_CALLBACK( vsync_on_tick )
 {
-	abc80_state *state = timer.machine->driver_data<abc80_state>();
+	abc80_state *state = timer.machine().driver_data<abc80_state>();
 
-	cpu_set_input_line(state->m_maincpu, INPUT_LINE_NMI, ASSERT_LINE);
+	device_set_input_line(state->m_maincpu, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
@@ -65,14 +65,14 @@ static TIMER_DEVICE_CALLBACK( vsync_on_tick )
 
 static TIMER_DEVICE_CALLBACK( vsync_off_tick )
 {
-	abc80_state *state = timer.machine->driver_data<abc80_state>();
+	abc80_state *state = timer.machine().driver_data<abc80_state>();
 
-	cpu_set_input_line(state->m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+	device_set_input_line(state->m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
 //-------------------------------------------------
-//  update_screen - 
+//  update_screen -
 //-------------------------------------------------
 
 void abc80_state::update_screen(bitmap_t *bitmap, const rectangle *cliprect)
@@ -201,23 +201,23 @@ void abc80_state::update_screen(bitmap_t *bitmap, const rectangle *cliprect)
 void abc80_state::video_start()
 {
 	// find memory regions
-	m_char_rom = machine->region("chargen")->base();
-	m_hsync_prom = machine->region("hsync")->base();
-	m_vsync_prom = machine->region("vsync")->base();
-	m_line_prom = machine->region("line")->base();
-	m_attr_prom = machine->region("attr")->base();
+	m_char_rom = m_machine.region("chargen")->base();
+	m_hsync_prom = m_machine.region("hsync")->base();
+	m_vsync_prom = m_machine.region("vsync")->base();
+	m_line_prom = m_machine.region("line")->base();
+	m_attr_prom = m_machine.region("attr")->base();
 
 	// register for state saving
-	state_save_register_global(machine, m_blink);
-	state_save_register_global(machine, m_latch);
+	state_save_register_global(m_machine, m_blink);
+	state_save_register_global(m_machine, m_latch);
 }
 
 
 //-------------------------------------------------
-//  VIDEO_UPDATE( abc80 )
+//  SCREEN_UPDATE( abc80 )
 //-------------------------------------------------
 
-bool abc80_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool abc80_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	update_screen(&bitmap, &cliprect);
 
@@ -230,7 +230,7 @@ bool abc80_state::video_update(screen_device &screen, bitmap_t &bitmap, const re
 //-------------------------------------------------
 
 MACHINE_CONFIG_FRAGMENT( abc80_video )
-	MCFG_TIMER_ADD_PERIODIC("blink", blink_tick, HZ(ABC80_XTAL/2/6/64/312/16))
+	MCFG_TIMER_ADD_PERIODIC("blink", blink_tick, attotime::from_hz(ABC80_XTAL/2/6/64/312/16))
 	MCFG_TIMER_ADD_SCANLINE("vsync_on", vsync_on_tick, SCREEN_TAG, 0, ABC80_VTOTAL)
 	MCFG_TIMER_ADD_SCANLINE("vsync_off", vsync_off_tick, SCREEN_TAG, 16, ABC80_VTOTAL)
 
@@ -238,7 +238,7 @@ MACHINE_CONFIG_FRAGMENT( abc80_video )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
 	MCFG_GFXDECODE(abc80)
-	
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 

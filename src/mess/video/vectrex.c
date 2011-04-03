@@ -64,9 +64,6 @@ const via6522_interface vectrex_via6522_interface =
 };
 
 
-typedef void (*vector_add_point_fn)(running_machine *, int, int, rgb_t, int);
-vector_add_point_fn vector_add_point_function;
-
 
 /*********************************************************************
 
@@ -76,15 +73,15 @@ vector_add_point_fn vector_add_point_function;
 
 static TIMER_CALLBACK(lightpen_trigger)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
-	if (state->lightpen_port & 1)
+	vectrex_state *state = machine.driver_data<vectrex_state>();
+	if (state->m_lightpen_port & 1)
 	{
-		via6522_device *via_0 = machine->device<via6522_device>("via6522_0");
+		via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
 		via_0->write_ca1(1);
 		via_0->write_ca1(0);
 	}
 
-	if (state->lightpen_port & 2)
+	if (state->m_lightpen_port & 2)
 	{
 		cputag_set_input_line(machine, "maincpu", M6809_FIRQ_LINE, PULSE_LINE);
 	}
@@ -112,32 +109,32 @@ static TIMER_CALLBACK(lightpen_trigger)
 
 READ8_HANDLER(vectrex_via_r)
 {
-	via6522_device *via = space->machine->device<via6522_device>("via6522_0");
+	via6522_device *via = space->machine().device<via6522_device>("via6522_0");
 	return via->read(*space, offset);
 }
 
 WRITE8_HANDLER(vectrex_via_w)
 {
-	vectrex_state *state = space->machine->driver_data<vectrex_state>();
-	via6522_device *via = space->machine->device<via6522_device>("via6522_0");
+	vectrex_state *state = space->machine().driver_data<vectrex_state>();
+	via6522_device *via = space->machine().device<via6522_device>("via6522_0");
 	attotime period;
 
 	switch (offset)
 	{
 	case 8:
-		state->via_timer2 = (state->via_timer2 & 0xff00) | data;
+		state->m_via_timer2 = (state->m_via_timer2 & 0xff00) | data;
 		break;
 
 	case 9:
-		state->via_timer2 = (state->via_timer2 & 0x00ff) | (data << 8);
+		state->m_via_timer2 = (state->m_via_timer2 & 0x00ff) | (data << 8);
 
-		period = attotime_mul(ATTOTIME_IN_HZ(cputag_get_clock(space->machine, "maincpu")), state->via_timer2);
+		period = (attotime::from_hz(space->machine().device("maincpu")->unscaled_clock()) * state->m_via_timer2);
 
-		if (state->reset_refresh)
-			timer_adjust_periodic(state->refresh, period, 0, period);
+		if (state->m_reset_refresh)
+			state->m_refresh->adjust(period, 0, period);
 		else
-			timer_adjust_periodic(state->refresh,
-								  attotime_min(period, timer_timeleft(state->refresh)),
+			state->m_refresh->adjust(
+								  min(period, state->m_refresh->remaining()),
 								  0,
 								  period);
 		break;
@@ -154,38 +151,38 @@ WRITE8_HANDLER(vectrex_via_w)
 
 static TIMER_CALLBACK(vectrex_refresh)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
+	vectrex_state *state = machine.driver_data<vectrex_state>();
 	/* Refresh only marks the range of vectors which will be drawn
-     * during the next VIDEO_UPDATE. */
-	state->display_start = state->display_end;
-	state->display_end = state->point_index;
+     * during the next SCREEN_UPDATE. */
+	state->m_display_start = state->m_display_end;
+	state->m_display_end = state->m_point_index;
 }
 
 
-VIDEO_UPDATE(vectrex)
+SCREEN_UPDATE(vectrex)
 {
-	vectrex_state *state = screen->machine->driver_data<vectrex_state>();
+	vectrex_state *state = screen->machine().driver_data<vectrex_state>();
 	int i;
 
-	vectrex_configuration(screen->machine);
+	vectrex_configuration(screen->machine());
 
 	/* start black */
-	vector_add_point(screen->machine,
-					 state->points[state->display_start].x,
-					 state->points[state->display_start].y,
-					 state->points[state->display_start].col,
+	vector_add_point(screen->machine(),
+					 state->m_points[state->m_display_start].x,
+					 state->m_points[state->m_display_start].y,
+					 state->m_points[state->m_display_start].col,
 					 0);
 
-	for (i = state->display_start; i != state->display_end; i = (i + 1) % NVECT)
+	for (i = state->m_display_start; i != state->m_display_end; i = (i + 1) % NVECT)
 	{
-		vector_add_point(screen->machine,
-						 state->points[i].x,
-						 state->points[i].y,
-						 state->points[i].col,
-						 state->points[i].intensity);
+		vector_add_point(screen->machine(),
+						 state->m_points[i].x,
+						 state->m_points[i].y,
+						 state->m_points[i].col,
+						 state->m_points[i].intensity);
 	}
 
-	VIDEO_UPDATE_CALL(vector);
+	SCREEN_UPDATE_CALL(vector);
 	vector_clear_list();
 	return 0;
 }
@@ -197,13 +194,13 @@ VIDEO_UPDATE(vectrex)
 
 *********************************************************************/
 
-void vectrex_add_point(running_machine *machine, int x, int y, rgb_t color, int intensity)
+void vectrex_add_point(running_machine &machine, int x, int y, rgb_t color, int intensity)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
+	vectrex_state *state = machine.driver_data<vectrex_state>();
 	vectrex_point *newpoint;
 
-	state->point_index = (state->point_index+1) % NVECT;
-	newpoint = &state->points[state->point_index];
+	state->m_point_index = (state->m_point_index+1) % NVECT;
+	newpoint = &state->m_points[state->m_point_index];
 
 	newpoint->x = x;
 	newpoint->y = y;
@@ -212,17 +209,17 @@ void vectrex_add_point(running_machine *machine, int x, int y, rgb_t color, int 
 }
 
 
-void vectrex_add_point_stereo(running_machine *machine, int x, int y, rgb_t color, int intensity)
+void vectrex_add_point_stereo(running_machine &machine, int x, int y, rgb_t color, int intensity)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
-	if (state->imager_status == 2) /* left = 1, right = 2 */
-		vectrex_add_point(machine, (int)(y * M_SQRT1_2)+ state->x_center,
-						   (int)(((state->x_max - x) * M_SQRT1_2)),
+	vectrex_state *state = machine.driver_data<vectrex_state>();
+	if (state->m_imager_status == 2) /* left = 1, right = 2 */
+		vectrex_add_point(machine, (int)(y * M_SQRT1_2)+ state->m_x_center,
+						   (int)(((state->m_x_max - x) * M_SQRT1_2)),
 						   color,
 						   intensity);
 	else
 		vectrex_add_point(machine, (int)(y * M_SQRT1_2),
-						   (int)((state->x_max - x) * M_SQRT1_2),
+						   (int)((state->m_x_max - x) * M_SQRT1_2),
 						   color,
 						   intensity);
 }
@@ -230,10 +227,10 @@ void vectrex_add_point_stereo(running_machine *machine, int x, int y, rgb_t colo
 
 static TIMER_CALLBACK(vectrex_zero_integrators)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
-	state->x_int = state->x_center + (state->analog[A_ZR] * INT_PER_CLOCK);
-	state->y_int = state->y_center + (state->analog[A_ZR] * INT_PER_CLOCK);
-	vector_add_point_function(machine, state->x_int, state->y_int, state->beam_color, 0);
+	vectrex_state *state = machine.driver_data<vectrex_state>();
+	state->m_x_int = state->m_x_center + (state->m_analog[A_ZR] * INT_PER_CLOCK);
+	state->m_y_int = state->m_y_center + (state->m_analog[A_ZR] * INT_PER_CLOCK);
+	(*state->vector_add_point_function)(machine, state->m_x_int, state->m_y_int, state->m_beam_color, 0);
 }
 
 
@@ -249,26 +246,26 @@ static TIMER_CALLBACK(vectrex_zero_integrators)
 
 static TIMER_CALLBACK(update_signal)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
+	vectrex_state *state = machine.driver_data<vectrex_state>();
 	int length;
 
-	if (!state->ramp)
+	if (!state->m_ramp)
 	{
-		length = cputag_get_clock(machine, "maincpu") * INT_PER_CLOCK
-			* attotime_to_double(attotime_sub(timer_get_time(machine), state->vector_start_time));
+		length = machine.device("maincpu")->unscaled_clock() * INT_PER_CLOCK
+			* (machine.time() - state->m_vector_start_time).as_double();
 
-		state->x_int += length * (state->analog[A_X] + state->analog[A_ZR]);
-		state->y_int += length * (state->analog[A_Y] + state->analog[A_ZR]);
+		state->m_x_int += length * (state->m_analog[A_X] + state->m_analog[A_ZR]);
+		state->m_y_int += length * (state->m_analog[A_Y] + state->m_analog[A_ZR]);
 
-		vector_add_point_function(machine, state->x_int, state->y_int, state->beam_color, 2 * state->analog[A_Z] * state->blank);
+		(*state->vector_add_point_function)(machine, state->m_x_int, state->m_y_int, state->m_beam_color, 2 * state->m_analog[A_Z] * state->m_blank);
 	}
 	else
 	{
-		if (state->blank)
-			vector_add_point_function(machine, state->x_int, state->y_int, state->beam_color, 2 * state->analog[A_Z]);
+		if (state->m_blank)
+			(*state->vector_add_point_function)(machine, state->m_x_int, state->m_y_int, state->m_beam_color, 2 * state->m_analog[A_Z]);
 	}
 
-	state->vector_start_time = timer_get_time(machine);
+	state->m_vector_start_time = machine.time();
 
 	if (ptr)
 		* (UINT8 *) ptr = param;
@@ -283,27 +280,27 @@ static TIMER_CALLBACK(update_signal)
 
 VIDEO_START(vectrex)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
-	screen_device *screen = machine->first_screen();
+	vectrex_state *state = machine.driver_data<vectrex_state>();
+	screen_device *screen = machine.first_screen();
 	const rectangle &visarea = screen->visible_area();
 
-	state->x_center=((visarea.max_x - visarea.min_x) / 2) << 16;
-	state->y_center=((visarea.max_y - visarea.min_y) / 2) << 16;
-	state->x_max = visarea.max_x << 16;
-	state->y_max = visarea.max_y << 16;
+	state->m_x_center=((visarea.max_x - visarea.min_x) / 2) << 16;
+	state->m_y_center=((visarea.max_y - visarea.min_y) / 2) << 16;
+	state->m_x_max = visarea.max_x << 16;
+	state->m_y_max = visarea.max_y << 16;
 
-	state->imager_freq = 1;
+	state->m_imager_freq = 1;
 
-	vector_add_point_function = vectrex_add_point;
-	state->imager_timer = timer_alloc(machine, vectrex_imager_eye, NULL);
-	timer_adjust_periodic(state->imager_timer,
-						  ATTOTIME_IN_HZ(state->imager_freq),
+	state->vector_add_point_function = vectrex_add_point;
+	state->m_imager_timer = machine.scheduler().timer_alloc(FUNC(vectrex_imager_eye));
+	state->m_imager_timer->adjust(
+						  attotime::from_hz(state->m_imager_freq),
 						  2,
-						  ATTOTIME_IN_HZ(state->imager_freq));
+						  attotime::from_hz(state->m_imager_freq));
 
-	state->lp_t = timer_alloc(machine, lightpen_trigger, NULL);
+	state->m_lp_t = machine.scheduler().timer_alloc(FUNC(lightpen_trigger));
 
-	state->refresh = timer_alloc(machine, vectrex_refresh, NULL);
+	state->m_refresh = machine.scheduler().timer_alloc(FUNC(vectrex_refresh));
 
 	VIDEO_START_CALL(vector);
 }
@@ -315,29 +312,29 @@ VIDEO_START(vectrex)
 
 *********************************************************************/
 
-static void vectrex_multiplexer(running_machine *machine, int mux)
+static void vectrex_multiplexer(running_machine &machine, int mux)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
-	device_t *dac_device = machine->device("dac");
+	vectrex_state *state = machine.driver_data<vectrex_state>();
+	device_t *dac_device = machine.device("dac");
 
-	timer_set(machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &state->analog[mux], state->via_out[PORTA], update_signal);
+	machine.scheduler().timer_set(attotime::from_nsec(ANALOG_DELAY), FUNC(update_signal), state->m_via_out[PORTA], &state->m_analog[mux]);
 
 	if (mux == A_AUDIO)
-		dac_data_w(dac_device, state->via_out[PORTA]);
+		dac_data_w(dac_device, state->m_via_out[PORTA]);
 }
 
 
 static WRITE8_DEVICE_HANDLER(v_via_pb_w)
 {
-	vectrex_state *state = device->machine->driver_data<vectrex_state>();
+	vectrex_state *state = device->machine().driver_data<vectrex_state>();
 	if (!(data & 0x80))
 	{
 		/* RAMP is active */
-		if ((state->ramp & 0x80))
+		if ((state->m_ramp & 0x80))
 		{
 			/* RAMP was inactive before */
 
-			if (state->lightpen_down)
+			if (state->m_lightpen_down)
 			{
 				/* Simple lin. algebra to check if pen is near
                  * the line defined by (A_X,A_Y).
@@ -358,103 +355,103 @@ static WRITE8_DEVICE_HANDLER(v_via_pb_w)
                  *            a
                  */
 				double a2, b2, ab, d2;
-				ab = (state->pen_x - state->x_int) * state->analog[A_X]
-					+(state->pen_y - state->y_int) * state->analog[A_Y];
+				ab = (state->m_pen_x - state->m_x_int) * state->m_analog[A_X]
+					+(state->m_pen_y - state->m_y_int) * state->m_analog[A_Y];
 				if (ab > 0)
 				{
-					a2 = (double)(state->analog[A_X] * state->analog[A_X]
-								  +(double)state->analog[A_Y] * state->analog[A_Y]);
-					b2 = (double)(state->pen_x - state->x_int) * (state->pen_x - state->x_int)
-						+(double)(state->pen_y - state->y_int) * (state->pen_y - state->y_int);
+					a2 = (double)(state->m_analog[A_X] * state->m_analog[A_X]
+								  +(double)state->m_analog[A_Y] * state->m_analog[A_Y]);
+					b2 = (double)(state->m_pen_x - state->m_x_int) * (state->m_pen_x - state->m_x_int)
+						+(double)(state->m_pen_y - state->m_y_int) * (state->m_pen_y - state->m_y_int);
 					d2 = b2 - ab * ab / a2;
-					if (d2 < 2e10 && state->analog[A_Z] * state->blank > 0)
-						timer_adjust_oneshot(state->lp_t, double_to_attotime(ab / a2 / (cputag_get_clock(device->machine, "maincpu") * INT_PER_CLOCK)), 0);
+					if (d2 < 2e10 && state->m_analog[A_Z] * state->m_blank > 0)
+						state->m_lp_t->adjust(attotime::from_double(ab / a2 / (device->machine().device("maincpu")->unscaled_clock() * INT_PER_CLOCK)));
 				}
 			}
 		}
 
-		if (!(data & 0x1) && (state->via_out[PORTB] & 0x1))
+		if (!(data & 0x1) && (state->m_via_out[PORTB] & 0x1))
 		{
 			/* MUX has been enabled */
-			timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), NULL, 0, update_signal);
+			device->machine().scheduler().timer_set(attotime::from_nsec(ANALOG_DELAY), FUNC(update_signal));
 		}
 	}
 	else
 	{
 		/* RAMP is inactive */
-		if (!(state->ramp & 0x80))
+		if (!(state->m_ramp & 0x80))
 		{
 			/* Cancel running timer, line already finished */
-			if (state->lightpen_down)
-				timer_adjust_oneshot(state->lp_t, attotime_never, 0);
+			if (state->m_lightpen_down)
+				state->m_lp_t->adjust(attotime::never);
 		}
 	}
 
 	/* Sound */
 	if (data & 0x10)
 	{
-		device_t *ay8912 = device->machine->device("ay8912");
+		device_t *ay8912 = device->machine().device("ay8912");
 
 		if (data & 0x08) /* BC1 (do we select a reg or write it ?) */
-			ay8910_address_w(ay8912, 0, state->via_out[PORTA]);
+			ay8910_address_w(ay8912, 0, state->m_via_out[PORTA]);
 		else
-			ay8910_data_w(ay8912, 0, state->via_out[PORTA]);
+			ay8910_data_w(ay8912, 0, state->m_via_out[PORTA]);
 	}
 
-	if (!(data & 0x1) && (state->via_out[PORTB] & 0x1))
-		vectrex_multiplexer (device->machine, (data >> 1) & 0x3);
+	if (!(data & 0x1) && (state->m_via_out[PORTB] & 0x1))
+		vectrex_multiplexer (device->machine(), (data >> 1) & 0x3);
 
-	state->via_out[PORTB] = data;
-	timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &state->ramp, data & 0x80, update_signal);
+	state->m_via_out[PORTB] = data;
+	device->machine().scheduler().timer_set(attotime::from_nsec(ANALOG_DELAY), FUNC(update_signal), data & 0x80, &state->m_ramp);
 }
 
 
 static WRITE8_DEVICE_HANDLER(v_via_pa_w)
 {
-	vectrex_state *state = device->machine->driver_data<vectrex_state>();
+	vectrex_state *state = device->machine().driver_data<vectrex_state>();
 	/* DAC output always goes to Y integrator */
-	state->via_out[PORTA] = data;
-	timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &state->analog[A_Y], data, update_signal);
+	state->m_via_out[PORTA] = data;
+	device->machine().scheduler().timer_set(attotime::from_nsec(ANALOG_DELAY), FUNC(update_signal), data, &state->m_analog[A_Y]);
 
-	if (!(state->via_out[PORTB] & 0x1))
-		vectrex_multiplexer (device->machine, (state->via_out[PORTB] >> 1) & 0x3);
+	if (!(state->m_via_out[PORTB] & 0x1))
+		vectrex_multiplexer (device->machine(), (state->m_via_out[PORTB] >> 1) & 0x3);
 }
 
 
 static WRITE8_DEVICE_HANDLER(v_via_ca2_w)
 {
 	if (data == 0)
-		timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), NULL, 0, vectrex_zero_integrators);
+		device->machine().scheduler().timer_set(attotime::from_nsec(ANALOG_DELAY), FUNC(vectrex_zero_integrators));
 }
 
 
 static WRITE8_DEVICE_HANDLER(v_via_cb2_w)
 {
-	vectrex_state *state = device->machine->driver_data<vectrex_state>();
+	vectrex_state *state = device->machine().driver_data<vectrex_state>();
 	int dx, dy;
 
-	if (state->cb2 != data)
+	if (state->m_cb2 != data)
 	{
 
 		/* Check lightpen */
-		if (state->lightpen_port != 0)
+		if (state->m_lightpen_port != 0)
 		{
-			state->lightpen_down = input_port_read(device->machine, "LPENCONF") & 0x10;
+			state->m_lightpen_down = input_port_read(device->machine(), "LPENCONF") & 0x10;
 
-			if (state->lightpen_down)
+			if (state->m_lightpen_down)
 			{
-				state->pen_x = input_port_read(device->machine, "LPENX") * (state->x_max / 0xff);
-				state->pen_y = input_port_read(device->machine, "LPENY") * (state->y_max / 0xff);
+				state->m_pen_x = input_port_read(device->machine(), "LPENX") * (state->m_x_max / 0xff);
+				state->m_pen_y = input_port_read(device->machine(), "LPENY") * (state->m_y_max / 0xff);
 
-				dx = abs(state->pen_x - state->x_int);
-				dy = abs(state->pen_y - state->y_int);
+				dx = abs(state->m_pen_x - state->m_x_int);
+				dy = abs(state->m_pen_y - state->m_y_int);
 				if (dx < 500000 && dy < 500000 && data > 0)
-					timer_set(device->machine, attotime_zero, NULL, 0, lightpen_trigger);
+					device->machine().scheduler().timer_set(attotime::zero, FUNC(lightpen_trigger));
 			}
 		}
 
-		timer_set(device->machine, attotime_zero, &state->blank, data, update_signal);
-		state->cb2 = data;
+		device->machine().scheduler().timer_set(attotime::zero, FUNC(update_signal), data, &state->m_blank);
+		state->m_cb2 = data;
 	}
 }
 
@@ -483,17 +480,17 @@ WRITE8_HANDLER(raaspec_led_w)
 
 VIDEO_START(raaspec)
 {
-	vectrex_state *state = machine->driver_data<vectrex_state>();
-	screen_device *screen = machine->first_screen();
+	vectrex_state *state = machine.driver_data<vectrex_state>();
+	screen_device *screen = machine.first_screen();
 	const rectangle &visarea = screen->visible_area();
 
-	state->x_center=((visarea.max_x - visarea.min_x) / 2) << 16;
-	state->y_center=((visarea.max_y - visarea.min_y) / 2) << 16;
-	state->x_max = visarea.max_x << 16;
-	state->y_max = visarea.max_y << 16;
+	state->m_x_center=((visarea.max_x - visarea.min_x) / 2) << 16;
+	state->m_y_center=((visarea.max_y - visarea.min_y) / 2) << 16;
+	state->m_x_max = visarea.max_x << 16;
+	state->m_y_max = visarea.max_y << 16;
 
-	vector_add_point_function = vectrex_add_point;
-	state->refresh = timer_alloc(machine, vectrex_refresh, NULL);
+	state->vector_add_point_function = vectrex_add_point;
+	state->m_refresh = machine.scheduler().timer_alloc(FUNC(vectrex_refresh));
 
 	VIDEO_START_CALL(vector);
 }

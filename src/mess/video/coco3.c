@@ -31,7 +31,7 @@
 #include "machine/6883sam.h"
 #include "video/coco6847.h"
 #include "includes/coco.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 #if defined(__GNUC__) && (__GNUC__ >= 3)
 #define RESTRICT	__restrict__
@@ -66,7 +66,7 @@
 
 static void color_batch(coco3_state *state, UINT32 *results, const UINT8 *indexes, int count)
 {
-	coco3_video *video = state->video;
+	coco3_video *video = state->m_video;
 	UINT32 c;
 	const UINT32 *current_palette;
 	int is_black_white;
@@ -82,7 +82,7 @@ static void color_batch(coco3_state *state, UINT32 *results, const UINT8 *indexe
 	{
 		/* Composite/TV */
 		current_palette = video->composite_palette;
-		is_black_white = (state->gimereg[8] & 0x10) ? TRUE : FALSE;
+		is_black_white = (state->m_gimereg[8] & 0x10) ? TRUE : FALSE;
 	}
 
 	for (i = 0; i < count; i++)
@@ -263,10 +263,10 @@ static void graphics_none(UINT32 *line, int width)
 
 
 
-static void coco3_render_scanline(running_machine *machine, bitmap_t *bitmap, int scanline)
+static void coco3_render_scanline(running_machine &machine, bitmap_t *bitmap, int scanline)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
-	coco3_video *video = state->video;
+	coco3_state *state = machine.driver_data<coco3_state>();
+	coco3_video *video = state->m_video;
 	const coco3_scanline_record *scanline_record;
 	UINT32 *line;
 	UINT32 border_color;
@@ -355,10 +355,10 @@ static void coco3_render_scanline(running_machine *machine, bitmap_t *bitmap, in
 
 
 
-VIDEO_UPDATE( coco3 )
+SCREEN_UPDATE( coco3 )
 {
-	coco3_state *state = screen->machine->driver_data<coco3_state>();
-	coco3_video *video = state->video;
+	coco3_state *state = screen->machine().driver_data<coco3_state>();
+	coco3_video *video = state->m_video;
 	int i, row;
 	UINT32 *line;
 	UINT32 rc = 0;
@@ -384,7 +384,7 @@ VIDEO_UPDATE( coco3 )
 	if (video->legacy_video)
 	{
 		/* legacy CoCo 1/2 graphics */
-		rc = VIDEO_UPDATE_CALL(m6847);
+		rc = SCREEN_UPDATE_CALL(m6847);
 
 		if ((rc & UPDATE_HAS_NOT_CHANGED) == 0)
 		{
@@ -403,7 +403,7 @@ VIDEO_UPDATE( coco3 )
 		if (video->dirty[video->video_type])
 		{
 			for (row = cliprect->min_y; row <= cliprect->max_y; row++)
-				coco3_render_scanline(screen->machine, bitmap, row);
+				coco3_render_scanline(screen->machine(), bitmap, row);
 			video->dirty[video->video_type] = FALSE;
 		}
 		else
@@ -422,10 +422,10 @@ VIDEO_UPDATE( coco3 )
  *
  *************************************/
 
-static void coco3_set_dirty(running_machine *machine)
+static void coco3_set_dirty(running_machine &machine)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
-	coco3_video *video = state->video;
+	coco3_state *state = machine.driver_data<coco3_state>();
+	coco3_video *video = state->m_video;
 	int i;
 	for (i = 0; i < ARRAY_LENGTH(video->dirty); i++)
 		video->dirty[i] = TRUE;
@@ -433,23 +433,23 @@ static void coco3_set_dirty(running_machine *machine)
 
 
 
-static int coco3_new_frame(running_machine *machine)
+static int coco3_new_frame(running_machine &machine)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
-	coco3_video *video = state->video;
+	coco3_state *state = machine.driver_data<coco3_state>();
+	coco3_video *video = state->m_video;
 	int gime_field_sync = 0;
 
 	/* changing from non-legacy to legacy video? */
-	if (!video->legacy_video && (state->gimereg[0] & 0x80))
+	if (!video->legacy_video && (state->m_gimereg[0] & 0x80))
 		coco3_set_dirty(machine);
 
-	video->legacy_video = (state->gimereg[0] & 0x80) ? TRUE : FALSE;
-	video->line_in_row = (state->gimereg[12] & 0x0F);
+	video->legacy_video = (state->m_gimereg[0] & 0x80) ? TRUE : FALSE;
+	video->line_in_row = (state->m_gimereg[12] & 0x0F);
 
 	if (!video->legacy_video)
 	{
 		/* CoCo 3 video */
-		switch(state->gimereg[9] & 0x60)
+		switch(state->m_gimereg[9] & 0x60)
 		{
 			case 0x00:		/* 192 lines */
 				video->top_border_scanlines = 26;
@@ -486,7 +486,7 @@ static int coco3_new_frame(running_machine *machine)
 	}
 
 	/* set up GIME field sync */
-	timer_adjust_oneshot(video->gime_fs_timer,
+	video->gime_fs_timer->adjust(
 		coco6847_scanline_time(gime_field_sync), 0);
 
 	return video->legacy_video;
@@ -504,10 +504,10 @@ INLINE void memcpy_dirty(int *dirty, void *RESTRICT dest, const void *RESTRICT s
 
 
 
-static void coco3_prepare_scanline(running_machine *machine, int scanline)
+static void coco3_prepare_scanline(running_machine &machine, int scanline)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
-	coco3_video *video = state->video;
+	coco3_state *state = machine.driver_data<coco3_state>();
+	coco3_video *video = state->m_video;
 	static const UINT32 lines_per_row[] = { 1, 1, 2, 8, 9, 10, 11, ~0 };
 	static const UINT32 gfx_bytes_per_row[] = { 16, 20, 32, 40, 64, 80, 128, 160 };
 	UINT32 video_offset, video_data_size;
@@ -522,9 +522,9 @@ static void coco3_prepare_scanline(running_machine *machine, int scanline)
 
 	/* copy the basics */
 	scanline_record = &video->scanlines[scanline];
-	memcpy_dirty(&dirty, &scanline_record->ff98, &state->gimereg[8], 1);
-	memcpy_dirty(&dirty, &scanline_record->ff99, &state->gimereg[9], 1);
-	memcpy_dirty(&dirty, &scanline_record->ff9a, &state->gimereg[10], 1);
+	memcpy_dirty(&dirty, &scanline_record->ff98, &state->m_gimereg[8], 1);
+	memcpy_dirty(&dirty, &scanline_record->ff99, &state->m_gimereg[9], 1);
+	memcpy_dirty(&dirty, &scanline_record->ff9a, &state->m_gimereg[10], 1);
 
 	/* is this a display scanline? */
 	scanline -= video->top_border_scanlines;
@@ -534,8 +534,8 @@ static void coco3_prepare_scanline(running_machine *machine, int scanline)
 		memcpy_dirty(&dirty, scanline_record->palette, video->palette_ram, 16);
 
 		/* get ready to copy the video memory; get position and offsets */
-		video_data = &messram_get_ptr(machine->device("messram"))[video->video_position % messram_get_size(machine->device("messram"))];
-		video_offset = (state->gimereg[15] & 0x7F) * 2;
+		video_data = &ram_get_ptr(machine.device(RAM_TAG))[video->video_position % ram_get_size(machine.device(RAM_TAG))];
+		video_offset = (state->m_gimereg[15] & 0x7F) * 2;
 		video_data_size = sizeof(scanline_record->data);
 
 		/* FF9F offsets wrap around every 256 bytes, even if bit 7 is not set.
@@ -549,30 +549,30 @@ static void coco3_prepare_scanline(running_machine *machine, int scanline)
 		video->line_in_row++;
 
 		/* do we have to advance to the next row? */
-		if (video->line_in_row >= lines_per_row[state->gimereg[8] & 0x07])
+		if (video->line_in_row >= lines_per_row[state->m_gimereg[8] & 0x07])
 		{
 			/* on to the next row */
 			video->line_in_row = 0;
 
-			if (state->gimereg[15] & 0x80)
+			if (state->m_gimereg[15] & 0x80)
 			{
 				/* FF9F scrolling mode */
 				bytes_per_row = 256;
 			}
-			else if (state->gimereg[8] & 0x80)
+			else if (state->m_gimereg[8] & 0x80)
 			{
 				/* calc bytes per row for graphics */
-				bytes_per_row = gfx_bytes_per_row[(state->gimereg[9] & 0x1C) >> 2];
+				bytes_per_row = gfx_bytes_per_row[(state->m_gimereg[9] & 0x1C) >> 2];
 			}
 			else
 			{
 				/* calc bytes per row for text */
 				bytes_per_row = 32;
-				if (state->gimereg[9] & 0x04)
+				if (state->m_gimereg[9] & 0x04)
 					bytes_per_row += 8;
-				if (state->gimereg[9] & 0x10)
+				if (state->m_gimereg[9] & 0x10)
 					bytes_per_row *= 2;
-				if (state->gimereg[9] & 0x01)
+				if (state->m_gimereg[9] & 0x01)
 					bytes_per_row *= 2;
 			}
 
@@ -597,9 +597,9 @@ WRITE8_HANDLER(coco3_palette_w)
 {
 	data &= 0x3f;
 
-	if (space->machine->generic.paletteram.u8[offset] != data)
+	if (space->machine().generic.paletteram.u8[offset] != data)
 	{
-		space->machine->generic.paletteram.u8[offset] = data;
+		space->machine().generic.paletteram.u8[offset] = data;
 		if (LOG_PALETTE)
 			logerror("CoCo3 Palette: %i <== $%02x\n", offset, data);
 	}
@@ -607,18 +607,18 @@ WRITE8_HANDLER(coco3_palette_w)
 
 
 
-UINT32 coco3_get_video_base(running_machine *machine, UINT8 ff9d_mask, UINT8 ff9e_mask)
+UINT32 coco3_get_video_base(running_machine &machine, UINT8 ff9d_mask, UINT8 ff9e_mask)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
+	coco3_state *state = machine.driver_data<coco3_state>();
 	/* The purpose of the ff9d_mask and ff9e_mask is to mask out bits that are
      * ignored in lo-res mode.  Specifically, $FF9D is masked with $E0, and
      * $FF9E is masked with $3F
      *
      * John Kowalski confirms this behavior
      */
-	return	((offs_t) (state->gimereg[14] & ff9e_mask)	* 0x00008)
-		|	((offs_t) (state->gimereg[13] & ff9d_mask)	* 0x00800)
-		|	((offs_t) (state->gimereg[11] & 0x0F)		* 0x80000);
+	return	((offs_t) (state->m_gimereg[14] & ff9e_mask)	* 0x00008)
+		|	((offs_t) (state->m_gimereg[13] & ff9d_mask)	* 0x00800)
+		|	((offs_t) (state->m_gimereg[11] & 0x0F)		* 0x80000);
 }
 
 
@@ -758,22 +758,22 @@ static STATE_POSTLOAD( coco3_video_postload )
 }
 
 
-static const UINT8 *get_video_ram_coco3(running_machine *machine,int scanline)
+static const UINT8 *get_video_ram_coco3(running_machine &machine,int scanline)
 {
-	device_t *sam = machine->device("sam");
+	device_t *sam = machine.device("sam");
 	return sam6883_videoram(sam,scanline);
 }
 
-static void internal_video_start_coco3(running_machine *machine, m6847_type type)
+static void internal_video_start_coco3(running_machine &machine, m6847_type type)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
+	coco3_state *state = machine.driver_data<coco3_state>();
 	coco3_video *video;
 	int i;
 	m6847_config cfg;
 	const UINT8 *rom;
 
 	/* allocate video */
-	state->video = video = auto_alloc_clear(machine, coco3_video);
+	state->m_video = video = auto_alloc_clear(machine, coco3_video);
 	coco3_set_dirty(machine);
 
 	/* initialize palette */
@@ -784,11 +784,11 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 	}
 
 	/* incidentals */
-	machine->generic.paletteram.u8 = video->palette_ram;
-	memory_set_bankptr(machine, "bank10", machine->generic.paletteram.u8);
+	machine.generic.paletteram.u8 = video->palette_ram;
+	memory_set_bankptr(machine, "bank10", machine.generic.paletteram.u8);
 
 	/* font */
-	rom = machine->region("maincpu")->base();
+	rom = machine.region("maincpu")->base();
 	for (i = 0; i < 32; i++)
 	{
 		/* characters 0-31 are at $FA10 - $FB0F */
@@ -801,7 +801,7 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 	}
 
 	/* GIME field sync timer */
-	video->gime_fs_timer = timer_alloc(machine, gime_fs, NULL);
+	video->gime_fs_timer = machine.scheduler().timer_alloc(FUNC(gime_fs));
 
 	/* initialize the CoCo video code */
 	memset(&cfg, 0, sizeof(cfg));
@@ -821,7 +821,7 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 	state_save_register_global(machine, video->legacy_video);
 	state_save_register_global(machine, video->top_border_scanlines);
 	state_save_register_global(machine, video->display_scanlines);
-	state_save_register_postload(machine, coco3_video_postload, NULL);
+	machine.state().register_postload(coco3_video_postload, NULL);
 }
 
 
@@ -838,10 +838,10 @@ VIDEO_START( coco3p )
 
 
 
-void coco3_vh_blink(running_machine *machine)
+void coco3_vh_blink(running_machine &machine)
 {
-	coco3_state *state = machine->driver_data<coco3_state>();
-	coco3_video *video = state->video;
+	coco3_state *state = machine.driver_data<coco3_state>();
+	coco3_video *video = state->m_video;
 	video->blink = !video->blink;
 	coco3_set_dirty(machine);
 }

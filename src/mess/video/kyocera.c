@@ -1,9 +1,4 @@
-#define ADDRESS_MAP_MODERN
-
-#include "emu.h"
 #include "includes/kyocera.h"
-#include "video/hd44102.h"
-#include "video/hd61830.h"
 
 static PALETTE_INIT( kc85 )
 {
@@ -11,7 +6,7 @@ static PALETTE_INIT( kc85 )
 	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
 }
 
-bool kc85_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool kc85_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	hd44102_update(m_lcdc0, &bitmap, &cliprect);
 	hd44102_update(m_lcdc1, &bitmap, &cliprect);
@@ -27,7 +22,7 @@ bool kc85_state::video_update(screen_device &screen, bitmap_t &bitmap, const rec
 	return 0;
 }
 
-bool tandy200_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool tandy200_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	m_lcdc->update_screen(&bitmap, &cliprect);
 
@@ -40,7 +35,7 @@ static HD61830_INTERFACE( lcdc_intf )
 	DEVCB_NULL
 };
 
-static ADDRESS_MAP_START( tandy200_lcdc, 0, 8, tandy200_state )
+static ADDRESS_MAP_START( tandy200_lcdc, AS_0, 8, tandy200_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
 ADDRESS_MAP_END
@@ -85,5 +80,5 @@ MACHINE_CONFIG_FRAGMENT( tandy200_video )
 	MCFG_PALETTE_INIT(kc85)
 
 	MCFG_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
-	MCFG_DEVICE_ADDRESS_MAP(0, tandy200_lcdc)
+	MCFG_DEVICE_ADDRESS_MAP(AS_0, tandy200_lcdc)
 MACHINE_CONFIG_END

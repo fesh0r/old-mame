@@ -23,26 +23,26 @@
     ADDRESS MAP
 ***************************************************************************/
 
-static ADDRESS_MAP_START(lisa_map, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(lisa_map, AS_PROGRAM, 16)
 	AM_RANGE(0x000000, 0xffffff) AM_READWRITE(lisa_r, lisa_w)			/* no fixed map, we use an MMU */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(lisa_fdc_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(lisa_fdc_map, AS_PROGRAM, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)	// only 8k of address space
-	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE_MEMBER(lisa_state, fdc_ram)				/* RAM (shared with 68000) */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE_MEMBER(lisa_state, m_fdc_ram)				/* RAM (shared with 68000) */
 	AM_RANGE(0x0400, 0x07ff) AM_READWRITE(lisa_fdc_io_r, lisa_fdc_io_w)	/* disk controller (IWM and TTL logic) */
 	AM_RANGE(0x0800, 0x0fff) AM_NOP
-	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_BASE_MEMBER(lisa_state, fdc_rom)				/* ROM */
+	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_BASE_MEMBER(lisa_state, m_fdc_rom)				/* ROM */
 	AM_RANGE(0x2000, 0xffff) AM_READWRITE(lisa_fdc_r, lisa_fdc_w)		/* handler for wrap-around */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(lisa210_fdc_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(lisa210_fdc_map, AS_PROGRAM, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)	// only 8k of address space
-	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE_MEMBER(lisa_state, fdc_ram)				/* RAM (shared with 68000) */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE_MEMBER(lisa_state, m_fdc_ram)				/* RAM (shared with 68000) */
 	AM_RANGE(0x0400, 0x07ff) AM_NOP										/* nothing, or RAM wrap-around ??? */
 	AM_RANGE(0x0800, 0x0bff) AM_READWRITE(lisa_fdc_io_r, lisa_fdc_io_w)	/* disk controller (IWM and TTL logic) */
 	AM_RANGE(0x0c00, 0x0fff) AM_NOP										/* nothing, or IO port wrap-around ??? */
-	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_BASE_MEMBER(lisa_state, fdc_rom)				/* ROM */
+	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_BASE_MEMBER(lisa_state, m_fdc_rom)				/* ROM */
 	AM_RANGE(0x2000, 0xffff) AM_READWRITE(lisa_fdc_r, lisa_fdc_w)		/* handler for wrap-around */
 ADDRESS_MAP_END
 
@@ -106,7 +106,7 @@ static const floppy_config lisa_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(apple35_mac),
-	NULL
+	"floppy_5_25"
 };
 
 /***************************************************************************
@@ -123,7 +123,7 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	MCFG_CPU_ADD("fdccpu", M6502, 2000000)        /* 16.000 MHz / 8 in when DIS asserted, 16.000 MHz / 9 otherwise (?) */
 	MCFG_CPU_PROGRAM_MAP(lisa_fdc_map)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 	MCFG_MACHINE_START( lisa )
 	MCFG_MACHINE_RESET( lisa )
 
@@ -134,11 +134,12 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(880, 380)
 	MCFG_SCREEN_VISIBLE_AREA(0, 720-1, 0, 364-1)
+	MCFG_SCREEN_UPDATE(lisa)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(lisa)
-	MCFG_VIDEO_UPDATE(lisa)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -151,6 +152,9 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	/* devices */
 	MCFG_IWM_ADD("fdc", lisa2_fdc_interface)
 	MCFG_FLOPPY_SONY_2_DRIVES_ADD(lisa_floppy_config)
+
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("disk_list","lisa")
 
 	/* via */
 	MCFG_VIA6522_ADD("via6522_0", 500000, lisa_via6522_0_intf)

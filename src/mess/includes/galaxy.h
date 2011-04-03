@@ -7,7 +7,7 @@
 #ifndef GALAXY_H_
 #define GALAXY_H_
 
-#include "devices/snapquik.h"
+#include "imagedev/snapquik.h"
 
 
 class galaxy_state : public driver_device
@@ -16,13 +16,13 @@ public:
 	galaxy_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int interrupts_enabled;
-	UINT8 latch_value;
-	UINT32 gal_cnt;
-	UINT8 code;
-	UINT8 first;
-	UINT32 start_addr;
-	emu_timer *gal_video_timer;
+	int m_interrupts_enabled;
+	UINT8 m_latch_value;
+	UINT32 m_gal_cnt;
+	UINT8 m_code;
+	UINT8 m_first;
+	UINT32 m_start_addr;
+	emu_timer *m_gal_video_timer;
 };
 
 
@@ -43,8 +43,8 @@ DRIVER_INIT( galaxyp );
 /*----------- defined in video/galaxy.c -----------*/
 
 VIDEO_START( galaxy );
-VIDEO_UPDATE( galaxy );
+SCREEN_UPDATE( galaxy );
 
-void galaxy_set_timer(running_machine *machine);
+void galaxy_set_timer(running_machine &machine);
 
 #endif /* GALAXY_H_ */

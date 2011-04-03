@@ -80,18 +80,18 @@ static DEVICE_START( e05a03 )
 	devcb_resolve_read8(&e05a03->in_data_func, &intf->in_data_func, device);
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, e05a03->shift);
-	state_save_register_device_item(device, 0, e05a03->busy_leading);
-	state_save_register_device_item(device, 0, e05a03->busy_software);
-	state_save_register_device_item(device, 0, e05a03->nlqlp);
-	state_save_register_device_item(device, 0, e05a03->cndlp);
+	device->save_item(NAME(e05a03->shift));
+	device->save_item(NAME(e05a03->busy_leading));
+	device->save_item(NAME(e05a03->busy_software));
+	device->save_item(NAME(e05a03->nlqlp));
+	device->save_item(NAME(e05a03->cndlp));
 #if 0
-	state_save_register_device_item(device, 0, e05a03->pe);
-	state_save_register_device_item(device, 0, e05a03->pelp);
+	device->save_item(NAME(e05a03->pe));
+	device->save_item(NAME(e05a03->pelp));
 #endif
-	state_save_register_device_item(device, 0, e05a03->printhead);
-	state_save_register_device_item(device, 0, e05a03->pf_motor);
-	state_save_register_device_item(device, 0, e05a03->cr_motor);
+	device->save_item(NAME(e05a03->printhead));
+	device->save_item(NAME(e05a03->pf_motor));
+	device->save_item(NAME(e05a03->cr_motor));
 }
 
 static DEVICE_RESET( e05a03 )
@@ -141,7 +141,7 @@ WRITE8_DEVICE_HANDLER( e05a03_w )
 {
 	e05a03_state *e05a03 = get_safe_token(device);
 
-	logerror("%s: e05a03_w(%02x): %02x\n", cpuexec_describe_context(device->machine), offset, data);
+	logerror("%s: e05a03_w(%02x): %02x\n", device->machine().describe_context(), offset, data);
 
 	switch (offset)
 	{
@@ -181,7 +181,7 @@ READ8_DEVICE_HANDLER( e05a03_r )
 	e05a03_state *e05a03 = get_safe_token(device);
 	UINT8 result = 0;
 
-	logerror("%s: e05a03_r(%02x)\n", cpuexec_describe_context(device->machine), offset);
+	logerror("%s: e05a03_r(%02x)\n", device->machine().describe_context(), offset);
 
 	switch (offset)
 	{

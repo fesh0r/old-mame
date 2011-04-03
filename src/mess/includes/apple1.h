@@ -7,7 +7,7 @@
 #ifndef APPLE1_H_
 #define APPLE1_H_
 
-#include "devices/snapquik.h"
+#include "imagedev/snapquik.h"
 #include "machine/6821pia.h"
 
 typedef short termchar_t;
@@ -33,14 +33,14 @@ public:
 	apple1_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int vh_clrscrn_pressed;
-	int kbd_data;
-	UINT32 kbd_last_scan[4];
-	int reset_flag;
-	int cassette_output_flipflop;
-	terminal_t *current_terminal;
-	terminal_t *terminal;
-	int blink_on;
+	int m_vh_clrscrn_pressed;
+	int m_kbd_data;
+	UINT32 m_kbd_last_scan[4];
+	int m_reset_flag;
+	int m_cassette_output_flipflop;
+	terminal_t *m_current_terminal;
+	terminal_t *m_terminal;
+	int m_blink_on;
 };
 
 
@@ -59,11 +59,11 @@ WRITE8_HANDLER( apple1_cassette_w );
 /*----------- defined in video/apple1.c -----------*/
 
 VIDEO_START( apple1 );
-VIDEO_UPDATE( apple1 );
+SCREEN_UPDATE( apple1 );
 
-void apple1_vh_dsp_w (running_machine *machine, int data);
-void apple1_vh_dsp_clr (running_machine *machine);
-attotime apple1_vh_dsp_time_to_ready (running_machine *machine);
+void apple1_vh_dsp_w (running_machine &machine, int data);
+void apple1_vh_dsp_clr (running_machine &machine);
+attotime apple1_vh_dsp_time_to_ready (running_machine &machine);
 
 
 

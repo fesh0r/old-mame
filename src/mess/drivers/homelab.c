@@ -19,19 +19,19 @@ static READ8_HANDLER (homelab_keyboard_r)
 {
 	UINT8 key_mask = (offset ^ 0xff) & 0xff;
 	UINT8 key = 0xff;
-	if ((key_mask & 0x01)!=0) { key &= input_port_read(space->machine,"LINE0"); }
-	if ((key_mask & 0x02)!=0) { key &= input_port_read(space->machine,"LINE1"); }
-	if ((key_mask & 0x04)!=0) { key &= input_port_read(space->machine,"LINE2"); }
-	if ((key_mask & 0x08)!=0) { key &= input_port_read(space->machine,"LINE3"); }
-	if ((key_mask & 0x10)!=0) { key &= input_port_read(space->machine,"LINE4"); }
-	if ((key_mask & 0x20)!=0) { key &= input_port_read(space->machine,"LINE5"); }
-	if ((key_mask & 0x40)!=0) { key &= input_port_read(space->machine,"LINE6"); }
-	if ((key_mask & 0x80)!=0) { key &= input_port_read(space->machine,"LINE7"); }
+	if ((key_mask & 0x01)!=0) { key &= input_port_read(space->machine(),"LINE0"); }
+	if ((key_mask & 0x02)!=0) { key &= input_port_read(space->machine(),"LINE1"); }
+	if ((key_mask & 0x04)!=0) { key &= input_port_read(space->machine(),"LINE2"); }
+	if ((key_mask & 0x08)!=0) { key &= input_port_read(space->machine(),"LINE3"); }
+	if ((key_mask & 0x10)!=0) { key &= input_port_read(space->machine(),"LINE4"); }
+	if ((key_mask & 0x20)!=0) { key &= input_port_read(space->machine(),"LINE5"); }
+	if ((key_mask & 0x40)!=0) { key &= input_port_read(space->machine(),"LINE6"); }
+	if ((key_mask & 0x80)!=0) { key &= input_port_read(space->machine(),"LINE7"); }
 	return key;
 }
 
 /* Address maps */
-static ADDRESS_MAP_START(homelab2_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(homelab2_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x07ff ) AM_ROM  // ROM 1
     AM_RANGE( 0x0800, 0x0fff ) AM_ROM  // ROM 2
     AM_RANGE( 0x1000, 0x17ff ) AM_ROM  // ROM 3
@@ -44,7 +44,7 @@ static ADDRESS_MAP_START(homelab2_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xc000, 0xc3ff ) AM_RAM AM_MIRROR(0x3c00) // Video RAM 1K
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(homelab3_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(homelab3_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x3fff ) AM_ROM
     AM_RANGE( 0x4000, 0x7fff ) AM_RAM
     //AM_RANGE( 0xe000, 0xefff ) AM_RAM // Keyboard
@@ -146,6 +146,9 @@ static GFXDECODE_START( homelab )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, homelab_charlayout, 0, 1 )
 GFXDECODE_END
 
+static DRIVER_INIT(homelab)
+{
+}
 
 /* Machine driver */
 static MACHINE_CONFIG_START( homelab, homelab_state )
@@ -159,12 +162,13 @@ static MACHINE_CONFIG_START( homelab, homelab_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40*8, 25*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 25*8-1)
+	MCFG_SCREEN_UPDATE( homelab )
+
 	MCFG_GFXDECODE(homelab)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT( black_and_white )
 
 	MCFG_VIDEO_START( homelab )
-	MCFG_VIDEO_UPDATE( homelab )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( homelab3, homelab )
@@ -176,8 +180,7 @@ static MACHINE_CONFIG_DERIVED( homelab3, homelab )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(80*8, 25*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 25*8-1)
-	MCFG_VIDEO_UPDATE( homelab3 )
-
+	MCFG_SCREEN_UPDATE( homelab3 )
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -225,7 +228,7 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT   INIT                 COMPANY                 FULLNAME   FLAGS */
+/*    YEAR  NAME   		PARENT  COMPAT  MACHINE 	 INPUT   	INIT      COMPANY                 FULLNAME   FLAGS */
 COMP( 1982, homelab2,   0	,	 0, 	homelab,	homelab,	homelab, "Jozsef and Endre Lukacs", "Homelab 2 / Aircomp 16",		 GAME_NOT_WORKING | GAME_NO_SOUND)
 COMP( 1983, homelab3,   homelab2,0, 	homelab3,	homelab,	homelab, "Jozsef and Endre Lukacs", "Homelab 3",		 GAME_NOT_WORKING | GAME_NO_SOUND)
 COMP( 1984, homelab4,   homelab2,0, 	homelab3,	homelab,	homelab, "Jozsef and Endre Lukacs", "Homelab 4",		 GAME_NOT_WORKING | GAME_NO_SOUND)

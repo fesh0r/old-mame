@@ -8,15 +8,15 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- HD64180 CPU (DMA, MMU, SIO, etc) (Z80180 like)
-	- memory banking
-	- keyboard
-	- floppy
-	- floppy motor off timer
-	- floppy index callback
-	- RTC
+    - HD64180 CPU (DMA, MMU, SIO, etc) (Z80180 like)
+    - memory banking
+    - keyboard
+    - floppy
+    - floppy motor off timer
+    - floppy index callback
+    - RTC
 
 */
 
@@ -24,7 +24,7 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "machine/ctronics.h"
 #include "machine/upd765.h"
 #include "includes/prof180x.h"
@@ -36,15 +36,15 @@ void prof180x_state::bankswitch()
 	case 0:
 		// bank0_r = EPROM, bank0_w = RAM, bank1 = RAM
 		break;
-	
+
 	case 1:
 		// bank0_r = RAM, bank0_w = RAM, bank1 = RAM
 		break;
-	
+
 	case 2:
 		// bank0_r = UNMAP, bank0_w = UNMAP, bank1 = RAM
 		break;
-	
+
 	case 3:
 		// bank0_r = RAM, bank0_w = RAM, bank1 = UNMAP
 		break;
@@ -94,14 +94,14 @@ WRITE8_MEMBER( prof180x_state::flr_w )
 
         bit     description
 
-        0		VAL
+        0       VAL
         1       FLG0
         2       FLG1
         3       FLG2
-        4       
-        5       
-        6       
-        7       
+        4
+        5
+        6
+        7
 
     */
 
@@ -117,13 +117,13 @@ READ8_MEMBER( prof180x_state::status0_r )
 
         bit     description
 
-        0		BUSY
-        1       
-        2       
-        3       
+        0       BUSY
+        1
+        2
+        3
         4       B-E
         5       IDX
-        6       
+        6
         7       MOT
 
     */
@@ -137,13 +137,13 @@ READ8_MEMBER( prof180x_state::status1_r )
 
         bit     description
 
-        0		FREE
-        1       
-        2       
-        3       
+        0       FREE
+        1
+        2
+        3
         4       J18
         5       J19
-        6       
+        6
         7       TDO
 
     */
@@ -158,12 +158,12 @@ READ8_MEMBER( prof180x_state::status_r )
 
 /* Address Maps */
 
-static ADDRESS_MAP_START( prof180x_mem, ADDRESS_SPACE_PROGRAM, 8, prof180x_state )
+static ADDRESS_MAP_START( prof180x_mem, AS_PROGRAM, 8, prof180x_state )
 	AM_RANGE(0x00000, 0x3ffff) AM_READ_BANK("bank0_r") AM_WRITE_BANK("bank0_w")
 	AM_RANGE(0x40000, 0x7ffff) AM_RAMBANK("bank1")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( prof180x_io , ADDRESS_SPACE_IO, 8, prof180x_state )
+static ADDRESS_MAP_START( prof180x_io , AS_IO, 8, prof180x_state )
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xff00) AM_WRITE(flr_w)
 	AM_RANGE(0x09, 0x09) AM_MASK(0xff00) AM_READ(status_r)
 	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY(FDC9268_TAG, upd765_dack_r, upd765_dack_w)
@@ -203,18 +203,18 @@ static const floppy_config prof180x_floppy_config =
 /*
 static RTC8583_INTERFCE( rtc_intf )
 {
-	DEVCB_CPU_INPUT_LINE(HD64180_TAG, INPUT_LINE_INT2)
+    DEVCB_CPU_INPUT_LINE(HD64180_TAG, INPUT_LINE_INT2)
 };
 */
 
 void prof180x_state::machine_start()
 {
 	// register for state saving
-	state_save_register_global(machine, m_c0);
-	state_save_register_global(machine, m_c1);
-	state_save_register_global(machine, m_c2);
-	state_save_register_global(machine, m_mm0);
-	state_save_register_global(machine, m_mm1);
+	state_save_register_global(m_machine, m_c0);
+	state_save_register_global(m_machine, m_c1);
+	state_save_register_global(m_machine, m_c2);
+	state_save_register_global(m_machine, m_mm0);
+	state_save_register_global(m_machine, m_mm1);
 }
 
 void prof180x_state::machine_reset()
@@ -248,7 +248,7 @@ static MACHINE_CONFIG_START( prof180x, prof180x_state )
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("256K,512K")
 MACHINE_CONFIG_END

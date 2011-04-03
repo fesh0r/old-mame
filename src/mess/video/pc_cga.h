@@ -1,5 +1,4 @@
 #include "emu.h"
-#include "video/pc_video_mess.h"
 
 #define CGA_PALETTE_SETS 83	/* one for colour, one for mono,
                  * 81 for colour composite */
@@ -8,6 +7,7 @@
 #define CGA_MC6845_NAME	"mc6845_cga"
 
 MACHINE_CONFIG_EXTERN( pcvideo_cga );
+MACHINE_CONFIG_EXTERN( pcvideo_cga32k );
 INPUT_PORTS_EXTERN( pcvideo_cga );
 
 /* has a special 640x200 in 16 color mode, 4 banks at 0xb8000 */

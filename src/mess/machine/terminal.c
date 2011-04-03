@@ -283,8 +283,7 @@ WRITE8_DEVICE_HANDLER ( terminal_write )
 			case 0x08:	if (term->x_pos) term->x_pos--;
 					break;
 
-			case 0x09:	term->x_pos ++;
-					term->x_pos += term->x_pos % 8;
+			case 0x09:	term->x_pos = (term->x_pos & 0xf8) + 8;
 					if (term->x_pos >= TERMINAL_WIDTH)
 						term->x_pos = TERMINAL_WIDTH-1;
 					break;
@@ -317,7 +316,7 @@ WRITE8_DEVICE_HANDLER ( terminal_write )
 static void generic_terminal_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	terminal_state *term = get_safe_token(device);
-	UINT8 options = input_port_read(device->machine, "TERM_CONF");
+	UINT8 options = input_port_read(device, "TERM_CONF");
 	UINT16 cursor = term->y_pos * TERMINAL_WIDTH + term->x_pos;
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
@@ -351,7 +350,7 @@ static void generic_terminal_update(device_t *device, bitmap_t *bitmap, const re
 						}
 					}
 				}
-						
+
 				/* Display a scanline of a character */
 				*p++ = ( gfx & 0x80 ) ? 1 : 0;
 				*p++ = ( gfx & 0x40 ) ? 1 : 0;
@@ -379,19 +378,19 @@ static UINT8 row_number(UINT8 code) {
 	return 0;
 }
 
-UINT8 terminal_keyboard_handler(running_machine *machine, devcb_resolved_write8 *callback, UINT8 last_code, UINT8 *scan_line, UINT8 *tx_shift, int *tx_state)
+UINT8 terminal_keyboard_handler(running_machine &machine, devcb_resolved_write8 *callback, UINT8 last_code, UINT8 *scan_line, UINT8 *tx_shift, int *tx_state, device_t *device)
 {
 	static const char *const keynames[] = { "TERM_LINE0", "TERM_LINE1", "TERM_LINE2", "TERM_LINE3", "TERM_LINE4", "TERM_LINE5", "TERM_LINE6" };
 	int i;
 	UINT8 code;
 	UINT8 key_code = 0;
 	UINT8 retVal = 0;
-	UINT8 shift = BIT(input_port_read(machine, "TERM_LINEC"),1);
-	UINT8 caps  = BIT(input_port_read(machine, "TERM_LINEC"),2);
-	UINT8 ctrl  = BIT(input_port_read(machine, "TERM_LINEC"),0);
+	UINT8 shift = BIT(input_port_read(device, "TERM_LINEC"), 1);
+	UINT8 caps  = BIT(input_port_read(device, "TERM_LINEC"), 2);
+	UINT8 ctrl  = BIT(input_port_read(device, "TERM_LINEC"), 0);
 	i = *scan_line;
 	{
-		code =	input_port_read(machine, keynames[i]);
+		code =	input_port_read(device, keynames[i]);
 		if (code != 0)
 		{
 			if (i==0 && shift==0) {
@@ -480,7 +479,7 @@ UINT8 terminal_keyboard_handler(running_machine *machine, devcb_resolved_write8 
 static TIMER_CALLBACK(keyboard_callback)
 {
 	terminal_state *term = get_safe_token((device_t *)ptr);
-	term->last_code = terminal_keyboard_handler(machine, &term->terminal_keyboard_func, term->last_code, &term->scan_line, &term->tx_shift, &term->tx_state);
+	term->last_code = terminal_keyboard_handler(machine, &term->terminal_keyboard_func, term->last_code, &term->scan_line, &term->tx_shift, &term->tx_state, (device_t *)ptr);
 }
 
 /***************************************************************************
@@ -491,9 +490,9 @@ static VIDEO_START( terminal )
 
 }
 
-static VIDEO_UPDATE(terminal )
+static SCREEN_UPDATE(terminal )
 {
-	device_t *devconf = screen->machine->device(TERMINAL_TAG);
+	device_t *devconf = screen->machine().device(TERMINAL_TAG);
 	generic_terminal_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -505,11 +504,12 @@ MACHINE_CONFIG_FRAGMENT( generic_terminal )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(TERMINAL_WIDTH*8, TERMINAL_HEIGHT*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, TERMINAL_WIDTH*8-1, 0, TERMINAL_HEIGHT*10-1)
+	MCFG_SCREEN_UPDATE(terminal)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(terminal)
-	MCFG_VIDEO_UPDATE(terminal)
 MACHINE_CONFIG_END
 
 
@@ -523,7 +523,9 @@ static DEVICE_START( terminal )
 	const terminal_interface *intf = get_interface(device);
 
 	devcb_resolve_write8(&term->terminal_keyboard_func, &intf->terminal_keyboard_func, device);
-	timer_pulse(device->machine, ATTOTIME_IN_HZ(2400), (void*)device, 0, keyboard_callback);
+
+	if (term->terminal_keyboard_func.target)
+		device->machine().scheduler().timer_pulse(attotime::from_hz(2400), FUNC(keyboard_callback), 0, (void*)device);
 }
 
 /*-------------------------------------------------
@@ -538,32 +540,6 @@ static DEVICE_RESET( terminal )
 	term->scan_line = 0;
 	term->rx_state = START;
 	term->tx_state = STOP;
-}
-
-/*-------------------------------------------------
-    DEVICE_GET_INFO( terminal )
--------------------------------------------------*/
-
-DEVICE_GET_INFO( terminal )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(terminal_state);							break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(terminal);					break;
-		case DEVINFO_FCT_STOP:							/* Nothing */												break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(terminal);					break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Generic Terminal");						break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Terminal");								break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;
-	}
 }
 
 /*
@@ -698,5 +674,32 @@ INPUT_PORTS_START( generic_terminal )
 	PORT_CONFSETTING(    0x00, DEF_STR(No))
 	PORT_CONFSETTING(    0x08, DEF_STR(Yes))
 INPUT_PORTS_END
+
+/*-------------------------------------------------
+    DEVICE_GET_INFO( terminal )
+-------------------------------------------------*/
+
+DEVICE_GET_INFO( terminal )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(terminal_state);							break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(terminal);					break;
+		case DEVINFO_FCT_STOP:							/* Nothing */												break;
+		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(terminal);					break;
+
+		case DEVINFO_PTR_INPUT_PORTS:					info->ipt = INPUT_PORTS_NAME(generic_terminal);				break;
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Generic Terminal");						break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Terminal");								break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;
+	}
+}
 
 DEFINE_LEGACY_DEVICE(GENERIC_TERMINAL, terminal);

@@ -14,8 +14,8 @@ public:
 	orao_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *memory;
-	UINT8 *video_ram;
+	UINT8 *m_memory;
+	UINT8 *m_video_ram;
 };
 
 
@@ -33,7 +33,7 @@ extern WRITE8_HANDLER( orao_io_w );
 /*----------- defined in video/orao.c -----------*/
 
 extern VIDEO_START( orao );
-extern VIDEO_UPDATE( orao );
+extern SCREEN_UPDATE( orao );
 
 
 #endif /* ORAO_H_ */

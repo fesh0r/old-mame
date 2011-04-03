@@ -185,8 +185,8 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 #include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "devices/appldriv.h"
-#include "devices/flopdrv.h"
-#include "devices/cassette.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/cassette.h"
 #include "formats/ap2_dsk.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
@@ -197,10 +197,10 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 //#include "machine/a2z80.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "machine/a2cffa.h"
 #include "machine/idectrl.h"
-#include "devices/harddriv.h"
+#include "imagedev/harddriv.h"
 
 
 /***************************************************************************
@@ -220,7 +220,7 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
     ADDRESS MAP
 ***************************************************************************/
 
-static ADDRESS_MAP_START( apple2_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( apple2_map, AS_PROGRAM, 8 )
 	/* nothing in the address map - everything is added dynamically */
 ADDRESS_MAP_END
 
@@ -603,12 +603,12 @@ static const cassette_config apple2_cassette_config =
 	NULL
 };
 
-static MACHINE_CONFIG_START( apple2_common, driver_device )
+static MACHINE_CONFIG_START( apple2_common, apple2_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, 1021800)		/* close to actual CPU frequency of 1.020484 MHz */
 	MCFG_CPU_PROGRAM_MAP(apple2_map)
 	MCFG_CPU_VBLANK_INT_HACK(apple2_interrupt, 192/8)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( apple2 )
 
@@ -618,11 +618,12 @@ static MACHINE_CONFIG_START( apple2_common, driver_device )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(280*2, 192)
 	MCFG_SCREEN_VISIBLE_AREA(0, (280*2)-1,0,192-1)
+	MCFG_SCREEN_UPDATE(apple2)
+
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(apple2_palette))
 	MCFG_PALETTE_INIT(apple2)
 
 	MCFG_VIDEO_START(apple2)
-	MCFG_VIDEO_UPDATE(apple2)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -650,7 +651,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( apple2, apple2_common )
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("4K,8K,12K,16K,20K,24K,32K,36K,48K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
@@ -664,7 +665,7 @@ static MACHINE_CONFIG_DERIVED( apple2p, apple2_common )
 	MCFG_VIDEO_START(apple2p)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("16K,32K,48K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
@@ -686,7 +687,7 @@ ROM_END
 static MACHINE_CONFIG_DERIVED( apple2e, apple2_common )
 	MCFG_VIDEO_START(apple2e)
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
@@ -705,7 +706,7 @@ MACHINE_CONFIG_DERIVED( apple2e_z80, apple2_common )
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
@@ -714,7 +715,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( mprof3, apple2e )
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
@@ -1025,7 +1026,7 @@ COMP( 1983, mprof3,   apple2e,  0,        mprof3,	   apple2e,  0,        "Multit
 COMP( 1985, apple2ee, apple2e,  0,        apple2ee,	   apple2e,  0,        "Apple Computer",    "Apple //e (enhanced)", GAME_SUPPORTS_SAVE )
 COMP( 1987, apple2ep, apple2e,  0,        apple2ep,	   apple2ep, 0,        "Apple Computer",    "Apple //e (Platinum)", GAME_SUPPORTS_SAVE )
 COMP( 1984, apple2c,  0,        apple2,	  apple2c,	   apple2e,  0,        "Apple Computer",    "Apple //c" , GAME_SUPPORTS_SAVE )
-COMP( 1989, prav8c,   apple2c,  0,        apple2c,	   apple2e,  0,        "Pravetz",           "Pravetz 8C", GAME_SUPPORTS_SAVE )
+COMP( 1989, prav8c,   apple2c,  0,        apple2c,	   apple2e,  0,        "Pravetz",           "Pravetz 8C", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
 COMP( 1983, las3000,  apple2,   0,        apple2p,	   apple2p,  0,        "Video Technology",  "Laser 3000",	GAME_NOT_WORKING )
 COMP( 1987, laser128, apple2c,  0,        apple2c,	   apple2e,  0,        "Video Technology",  "Laser 128 (rev 4)", GAME_NOT_WORKING )
 COMP( 1987, las128ex, apple2c,  0,        apple2c,	   apple2e,  0,        "Video Technology",  "Laser 128ex (rev 4a)", GAME_NOT_WORKING )

@@ -31,9 +31,9 @@
 #include "includes/px8.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6800/m6800.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 #include "machine/msm8251.h"
 #include "machine/pf10.h"
 #include "sound/wave.h"
@@ -83,41 +83,41 @@ enum
     bankswitch - memory bankswitching
 -------------------------------------------------*/
 
-static void bankswitch(running_machine *machine)
+static void bankswitch(running_machine &machine)
 {
-	px8_state *state = machine->driver_data<px8_state>();
-	address_space *program = cputag_get_address_space(machine, UPD70008_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(machine->device("messram"));
-	UINT8 *ipl_rom = machine->region(UPD70008_TAG)->base();
+	px8_state *state = machine.driver_data<px8_state>();
+	address_space *program = machine.device(UPD70008_TAG)->memory().space(AS_PROGRAM);
+	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
+	UINT8 *ipl_rom = machine.region(UPD70008_TAG)->base();
 
-	if (!state->bank0)
+	if (!state->m_bank0)
 	{
 		/* IPL ROM */
-		memory_install_rom(program, 0x0000, 0x7fff, 0, 0, ipl_rom);
+		program->install_rom(0x0000, 0x7fff, ipl_rom);
 	}
 	else
 	{
-		if (state->bk2)
+		if (state->m_bk2)
 		{
 			/* D-RAM (L) */
-			memory_install_ram(program, 0x0000, 0x7fff, 0, 0, ram);
+			program->install_ram(0x0000, 0x7fff, ram);
 		}
 		else
 		{
 			/* OPTION ROM (L) */
-			memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
+			program->unmap_readwrite(0x0000, 0x7fff);
 		}
 	}
 
-	if (state->bk2)
+	if (state->m_bk2)
 	{
 		/* D-RAM (H) */
-		memory_install_ram(program, 0x8000, 0xffff, 0, 0, ram + 0x8000);
+		program->install_ram(0x8000, 0xffff, ram + 0x8000);
 	}
 	else
 	{
 		/* OPTION ROM (H) */
-		memory_unmap_readwrite(program, 0x8000, 0xffff, 0, 0);
+		program->unmap_readwrite(0x8000, 0xffff);
 	}
 }
 
@@ -275,7 +275,7 @@ static READ8_HANDLER( gah40m_r )
 
 static WRITE8_HANDLER( gah40m_w )
 {
-	px8_state *state = space->machine->driver_data<px8_state>();
+	px8_state *state = space->machine().driver_data<px8_state>();
 
 	switch (offset)
 	{
@@ -295,8 +295,8 @@ static WRITE8_HANDLER( gah40m_w )
 
         */
 
-		state->bank0 = BIT(data, 0);
-		bankswitch(space->machine);
+		state->m_bank0 = BIT(data, 0);
+		bankswitch(space->machine());
 		break;
 
 	case GAH40M_CMDR:
@@ -353,7 +353,7 @@ static WRITE8_HANDLER( gah40m_w )
 
         */
 
-		state->ier = data;
+		state->m_ier = data;
 		break;
 
 	case GAH40M_SIOR:
@@ -372,7 +372,7 @@ static WRITE8_HANDLER( gah40m_w )
 
         */
 
-		state->sio = data;
+		state->m_sio = data;
 		break;
 	}
 }
@@ -383,21 +383,21 @@ static WRITE8_HANDLER( gah40m_w )
 
 static READ8_HANDLER( gah40s_r )
 {
-	px8_state *state = space->machine->driver_data<px8_state>();
+	px8_state *state = space->machine().driver_data<px8_state>();
 	UINT8 data = 0xff;
 
 	switch (offset)
 	{
 	case 0: /* counter (upper byte) input */
-		data = (state->cnt >> 8) & 0x1f;
+		data = (state->m_cnt >> 8) & 0x1f;
 		break;
 
 	case 1: /* counter (lower byte) */
-		data = state->cnt & 0xff;
+		data = state->m_cnt & 0xff;
 		break;
 
 	case 3: /* P-ROM read data */
-		data = state->prd;
+		data = state->m_prd;
 		break;
 	}
 
@@ -410,12 +410,12 @@ static READ8_HANDLER( gah40s_r )
 
 static WRITE8_HANDLER( gah40s_w )
 {
-	px8_state *state = space->machine->driver_data<px8_state>();
+	px8_state *state = space->machine().driver_data<px8_state>();
 
 	switch (offset)
 	{
 	case 0: /* counter reset */
-		state->cnt = 0;
+		state->m_cnt = 0;
 		break;
 
 	case 1: /* command register */
@@ -434,17 +434,17 @@ static WRITE8_HANDLER( gah40s_w )
 
         */
 
-		state->swpr = BIT(data, 0);
+		state->m_swpr = BIT(data, 0);
 		break;
 
 	case 2: /* P-ROM address (upper 8 byte) */
-		state->pra = (data << 8) | (state->pra & 0xff);
-		state->prd = 0; // TODO read prom!
+		state->m_pra = (data << 8) | (state->m_pra & 0xff);
+		state->m_prd = 0; // TODO read prom!
 		break;
 
 	case 3: /* P-ROM address (lower 8 byte) */
-		state->pra = (state->pra & 0xff00) | data;
-		state->prd = 0; // TODO read prom!
+		state->m_pra = (state->m_pra & 0xff00) | data;
+		state->m_prd = 0; // TODO read prom!
 		break;
 	}
 }
@@ -455,21 +455,21 @@ static WRITE8_HANDLER( gah40s_w )
 
 static WRITE8_HANDLER( gah40s_ier_w )
 {
-	px8_state *state = space->machine->driver_data<px8_state>();
+	px8_state *state = space->machine().driver_data<px8_state>();
 
-	state->ier = data;
+	state->m_ier = data;
 }
 
 ///*-------------------------------------------------
 //    krtn_read - read keyboard return
 //-------------------------------------------------*/
 //
-//static UINT8 krtn_read(running_machine *machine)
+//static UINT8 krtn_read(running_machine &machine)
 //{
-//  px8_state *state = machine->driver_data<px8_state>();
+//  px8_state *state = machine.driver_data<px8_state>();
 //  UINT8 data = 0xff;
 //
-//  switch (state->ksc)
+//  switch (state->m_ksc)
 //  {
 //  case 0: data = input_port_read(machine, "KSC0"); break;
 //  case 1: data = input_port_read(machine, "KSC1"); break;
@@ -492,7 +492,7 @@ static WRITE8_HANDLER( gah40s_ier_w )
 //
 //static READ8_HANDLER( krtn_0_3_r )
 //{
-//  return krtn_read(space->machine) & 0x0f;
+//  return krtn_read(space->machine()) & 0x0f;
 //}
 //
 ///*-------------------------------------------------
@@ -501,7 +501,7 @@ static WRITE8_HANDLER( gah40s_ier_w )
 //
 //static READ8_HANDLER( krtn_4_7_r )
 //{
-//  return krtn_read(space->machine) >> 4;
+//  return krtn_read(space->machine()) >> 4;
 //}
 //
 ///*-------------------------------------------------
@@ -510,9 +510,9 @@ static WRITE8_HANDLER( gah40s_ier_w )
 //
 //static WRITE8_HANDLER( ksc_w )
 //{
-//  px8_state *state = space->machine->driver_data<px8_state>();
+//  px8_state *state = space->machine().driver_data<px8_state>();
 //
-//  state->ksc = data;
+//  state->m_ksc = data;
 //}
 
 /***************************************************************************
@@ -523,7 +523,7 @@ static WRITE8_HANDLER( gah40s_ier_w )
     ADDRESS_MAP( px8_mem )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( px8_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( px8_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank0")
 	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank1")
@@ -533,7 +533,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( px8_io )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( px8_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( px8_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0x0f)
 	AM_RANGE(0x00, 0x07) AM_READWRITE(gah40m_r, gah40m_w)
@@ -547,12 +547,12 @@ ADDRESS_MAP_END
     ADDRESS_MAP( px8_slave_mem )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( px8_slave_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( px8_slave_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0020, 0x0023) AM_READWRITE(gah40s_r, gah40s_w)
 //  AM_RANGE(0x0024, 0x0027) AM_DEVREADWRITE(SED1320_TAG, )
 	AM_RANGE(0x0028, 0x0028) AM_WRITE(gah40s_ier_w)
-	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE_MEMBER(px8_state, video_ram)
+	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE_MEMBER(px8_state, m_video_ram)
 	AM_RANGE(0x9800, 0xefff) AM_NOP
 	AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION(HD6303_TAG, 0) /* internal mask rom */
 ADDRESS_MAP_END
@@ -561,19 +561,19 @@ ADDRESS_MAP_END
     ADDRESS_MAP( px8_slave_io )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( px8_slave_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( px8_slave_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-//  AM_RANGE(M6803_PORT1, M6803_PORT1)
-//  AM_RANGE(M6803_PORT2, M6803_PORT2)
-//  AM_RANGE(M6803_PORT3, M6803_PORT3)
-//  AM_RANGE(M6803_PORT4, M6803_PORT4)
+//  AM_RANGE(M6801_PORT1, M6801_PORT1)
+//  AM_RANGE(M6801_PORT2, M6801_PORT2)
+//  AM_RANGE(M6801_PORT3, M6801_PORT3)
+//  AM_RANGE(M6801_PORT4, M6801_PORT4)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
     ADDRESS_MAP( px8_sub_io )
 -------------------------------------------------*/
 
-//static ADDRESS_MAP_START( px8_sub_io, ADDRESS_SPACE_IO, 8 )
+//static ADDRESS_MAP_START( px8_sub_io, AS_IO, 8 )
 ////  AM_RANGE(0x00, 0x00) AM_READWRITE()
 //  AM_RANGE(0x01, 0x01) AM_READ(krtn_0_3_r)
 ////  AM_RANGE(0x02, 0x02) AM_WRITE()
@@ -709,16 +709,16 @@ INPUT_PORTS_END
 
 static READ8_DEVICE_HANDLER( vd_r )
 {
-	px8_state *state = device->machine->driver_data<px8_state>();
+	px8_state *state = device->machine().driver_data<px8_state>();
 
-	return state->video_ram[offset & PX8_VIDEORAM_MASK];
+	return state->m_video_ram[offset & PX8_VIDEORAM_MASK];
 }
 
 static WRITE8_DEVICE_HANDLER( vd_w )
 {
-	px8_state *state = device->machine->driver_data<px8_state>();
+	px8_state *state = device->machine().driver_data<px8_state>();
 
-	state->video_ram[offset & PX8_VIDEORAM_MASK] = data;
+	state->m_video_ram[offset & PX8_VIDEORAM_MASK] = data;
 }
 
 static SED1330_INTERFACE( sed1320_intf )
@@ -747,14 +747,14 @@ static VIDEO_START( px8 )
 }
 
 /*-------------------------------------------------
-    VIDEO_UPDATE( px8 )
+    SCREEN_UPDATE( px8 )
 -------------------------------------------------*/
 
-static VIDEO_UPDATE( px8 )
+static SCREEN_UPDATE( px8 )
 {
-	px8_state *state = screen->machine->driver_data<px8_state>();
+	px8_state *state = screen->machine().driver_data<px8_state>();
 
-	sed1330_update(state->sed1320, bitmap, cliprect);
+	sed1330_update(state->m_sed1320, bitmap, cliprect);
 
 	return 0;
 }
@@ -794,9 +794,15 @@ GFXDECODE_END
 
 static const msm8251_interface i8251_intf =
 {
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /*-------------------------------------------------
@@ -821,27 +827,27 @@ static const cassette_config px8_cassette_config =
 
 static MACHINE_START( px8 )
 {
-	px8_state *state = machine->driver_data<px8_state>();
+	px8_state *state = machine.driver_data<px8_state>();
 
 	/* find devices */
-	state->sed1320 = machine->device(SED1320_TAG);
-	state->cassette = machine->device(CASSETTE_TAG);
+	state->m_sed1320 = machine.device(SED1320_TAG);
+	state->m_cassette = machine.device(CASSETTE_TAG);
 
 	/* register for state saving */
-	state_save_register_global(machine, state->ier);
-	state_save_register_global(machine, state->isr);
-	state_save_register_global(machine, state->bank0);
-	state_save_register_global(machine, state->bk2);
-	state_save_register_global(machine, state->sio);
-	state_save_register_global(machine, state->ksc);
+	state->save_item(NAME(state->m_ier));
+	state->save_item(NAME(state->m_isr));
+	state->save_item(NAME(state->m_bank0));
+	state->save_item(NAME(state->m_bk2));
+	state->save_item(NAME(state->m_sio));
+	state->save_item(NAME(state->m_ksc));
 }
 
 static MACHINE_RESET( px8 )
 {
-	px8_state *state = machine->driver_data<px8_state>();
+	px8_state *state = machine.driver_data<px8_state>();
 
-	state->bank0 = 0;
-	state->bk2 = 1;
+	state->m_bank0 = 0;
+	state->m_bk2 = 1;
 
 	bankswitch(machine);
 }
@@ -879,11 +885,12 @@ static MACHINE_CONFIG_START( px8, px8_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(480, 64)
 	MCFG_SCREEN_VISIBLE_AREA(0, 479, 0, 63)
+	MCFG_SCREEN_UPDATE(px8)
+
 	MCFG_GFXDECODE(px8)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(px8)
 	MCFG_VIDEO_START(px8)
-	MCFG_VIDEO_UPDATE(px8)
 	MCFG_SED1330_ADD(SED1320_TAG, 0, sed1320_intf)
 
 	/* sound hardware */
@@ -903,7 +910,7 @@ static MACHINE_CONFIG_START( px8, px8_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, px8_cassette_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

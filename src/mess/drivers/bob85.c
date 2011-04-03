@@ -9,7 +9,7 @@
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "bob85.lh"
 
 
@@ -19,19 +19,19 @@ public:
 	bob85_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 prev_key;
-	UINT8 count_key;
+	UINT8 m_prev_key;
+	UINT8 m_count_key;
 };
 
 
 
 static READ8_HANDLER(bob85_keyboard_r)
 {
-	bob85_state *state = space->machine->driver_data<bob85_state>();
+	bob85_state *state = space->machine().driver_data<bob85_state>();
 	UINT8 retVal = 0;
-	UINT8 line0 = input_port_read(space->machine, "LINE0");
-	UINT8 line1 = input_port_read(space->machine, "LINE1");
-	UINT8 line2 = input_port_read(space->machine, "LINE2");
+	UINT8 line0 = input_port_read(space->machine(), "LINE0");
+	UINT8 line1 = input_port_read(space->machine(), "LINE1");
+	UINT8 line2 = input_port_read(space->machine(), "LINE2");
 	if (line0!=0) {
 		switch(line0) {
 			case 0x01 : retVal = 0x80; break;
@@ -69,13 +69,13 @@ static READ8_HANDLER(bob85_keyboard_r)
 			default :  break;
 		}
 	}
-	if (retVal != state->prev_key) {
-		state->prev_key = retVal;
-		state->count_key = 0;
+	if (retVal != state->m_prev_key) {
+		state->m_prev_key = retVal;
+		state->m_count_key = 0;
 		return retVal;
 	} else {
-		if (state->count_key <1) {
-			state->count_key++;
+		if (state->m_count_key <1) {
+			state->m_count_key++;
 			return retVal;
 		} else {
 			return 0;
@@ -83,8 +83,8 @@ static READ8_HANDLER(bob85_keyboard_r)
 	}
 
 	if (retVal == 0) {
-		state->prev_key = 0;
-		state->count_key = 0;
+		state->m_prev_key = 0;
+		state->m_count_key = 0;
 	}
 
 	return retVal;
@@ -95,13 +95,13 @@ static WRITE8_HANDLER(bob85_7seg_w)
 	output_set_digit_value(offset,BITSWAP8( data,3,2,1,0,7,6,5,4 ));
 }
 
-static ADDRESS_MAP_START( bob85_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( bob85_mem, AS_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x02ff) AM_ROM
 	AM_RANGE(0x0600, 0x09ff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( bob85_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( bob85_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0a, 0x0a) AM_READ(bob85_keyboard_r)
 	AM_RANGE(0x0a, 0x0f) AM_WRITE(bob85_7seg_w)

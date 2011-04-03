@@ -61,10 +61,10 @@ struct hp48_port_config
 
 /* current HP48 model */
 
-#define HP48_G_SERIES ((state->model==HP48_G) || (state->model==HP48_GX) || (state->model==HP48_GP))
-#define HP48_S_SERIES ((state->model==HP48_S) || (state->model==HP48_SX))
-#define HP48_X_SERIES ((state->model==HP48_SX) || (state->model==HP48_GX))
-#define HP48_GX_MODEL ((state->model==HP48_GX) || (state->model==HP48_GP))
+#define HP48_G_SERIES ((state->m_model==HP48_G) || (state->m_model==HP48_GX) || (state->m_model==HP48_GP))
+#define HP48_S_SERIES ((state->m_model==HP48_S) || (state->m_model==HP48_SX))
+#define HP48_X_SERIES ((state->m_model==HP48_SX) || (state->m_model==HP48_GX))
+#define HP48_GX_MODEL ((state->m_model==HP48_GX) || (state->m_model==HP48_GP))
 
 /* OUT register from SATURN (actually 12-bit) */
 
@@ -85,9 +85,6 @@ static const UINT8 hp48_module_addr_id[6] = { 0x19, 0xf4, 0xf6, 0xf8, 0xf2, 0x00
  */
 
 
-/* I/O memory (each UINT8 stores one nibble) */
-UINT8 hp48_io[64]; /* 64 nibbles */
-
 /* CRC state */
 
 /* timers state */
@@ -101,10 +98,10 @@ UINT8 hp48_io[64]; /* 64 nibbles */
     FUNCTIONS
 ***************************************************************************/
 
-static void hp48_apply_modules( running_machine *machine, void* param );
+static void hp48_apply_modules( running_machine &machine, void* param );
 
 
-static void hp48_pulse_irq( running_machine *machine, int irq_line)
+static void hp48_pulse_irq( running_machine &machine, int irq_line)
 {
 	cputag_set_input_line(machine, "maincpu", irq_line, ASSERT_LINE );
 	cputag_set_input_line(machine, "maincpu", irq_line, CLEAR_LINE );
@@ -113,61 +110,61 @@ static void hp48_pulse_irq( running_machine *machine, int irq_line)
 
 /* ---------------- serial --------------------- */
 
-#define RS232_DELAY ATTOTIME_IN_USEC( 300 )
+#define RS232_DELAY attotime::from_usec( 300 )
 
 /* end of receive event */
 static TIMER_CALLBACK( hp48_rs232_byte_recv_cb )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	LOG_SERIAL(( "%f hp48_rs232_byte_recv_cb: end of receive, data=%02x\n",
-		     attotime_to_double(timer_get_time(machine)), param ));
+		     machine.time().as_double(), param ));
 
-	state->io[0x14] = param & 0xf; /* receive zone */
-	state->io[0x15] = param >> 4;
-	state->io[0x11] &= ~2; /* clear byte receiving */
-	state->io[0x11] |= 1;  /* set byte received */
+	state->m_io[0x14] = param & 0xf; /* receive zone */
+	state->m_io[0x15] = param >> 4;
+	state->m_io[0x11] &= ~2; /* clear byte receiving */
+	state->m_io[0x11] |= 1;  /* set byte received */
 
 	/* interrupt */
-	if ( state->io[0x10] & 2 )
+	if ( state->m_io[0x10] & 2 )
 	{
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 }
 
 /* outside world initiates a receive event */
-void hp48_rs232_start_recv_byte( running_machine *machine, UINT8 data )
+void hp48_rs232_start_recv_byte( running_machine &machine, UINT8 data )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	LOG_SERIAL(( "%f hp48_rs232_start_recv_byte: start receiving, data=%02x\n",
-		     attotime_to_double(timer_get_time(machine)), data ));
+		     machine.time().as_double(), data ));
 
-	state->io[0x11] |= 2;  /* set byte receiving */
+	state->m_io[0x11] |= 2;  /* set byte receiving */
 
 	/* interrupt */
-	if ( state->io[0x10] & 1 )
+	if ( state->m_io[0x10] & 1 )
 	{
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
 	/* schedule end of reception */
-	timer_set( machine, RS232_DELAY, NULL, data, hp48_rs232_byte_recv_cb );
+	machine.scheduler().timer_set( RS232_DELAY, FUNC(hp48_rs232_byte_recv_cb), data);
 }
 
 
 /* end of send event */
 static TIMER_CALLBACK( hp48_rs232_byte_sent_cb )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
-	device_image_interface *xmodem = dynamic_cast<device_image_interface *>(machine->device("rs232_x"));
-	device_image_interface *kermit = dynamic_cast<device_image_interface *>(machine->device("rs232_k"));
+	hp48_state *state = machine.driver_data<hp48_state>();
+	device_image_interface *xmodem = dynamic_cast<device_image_interface *>(machine.device("rs232_x"));
+	device_image_interface *kermit = dynamic_cast<device_image_interface *>(machine.device("rs232_k"));
 
 	LOG_SERIAL(( "%f hp48_rs232_byte_sent_cb: end of send, data=%02x\n",
-		     attotime_to_double(timer_get_time(machine)), param ));
+		     machine.time().as_double(), param ));
 
-	state->io[0x12] &= ~3; /* clear byte sending and buffer full */
+	state->m_io[0x12] &= ~3; /* clear byte sending and buffer full */
 
 	/* interrupt */
-	if ( state->io[0x10] & 4 )
+	if ( state->m_io[0x10] & 4 )
 	{
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
@@ -176,24 +173,24 @@ static TIMER_CALLBACK( hp48_rs232_byte_sent_cb )
 	if ( xmodem && xmodem->exists() ) xmodem_receive_byte( &xmodem->device(), param );
 	else if ( kermit && kermit->exists() ) kermit_receive_byte( &kermit->device(), param );
 #ifdef CHARDEV
-	else chardev_out( state->chardev, param );
+	else chardev_out( state->m_chardev, param );
 #endif
 }
 
 /* CPU initiates a send event */
-static void hp48_rs232_send_byte( running_machine *machine )
+static void hp48_rs232_send_byte( running_machine &machine )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	UINT8 data = HP48_IO_8(0x16); /* byte to send */
 
 	LOG_SERIAL(( "%05x %f hp48_rs232_send_byte: start sending, data=%02x\n",
-		     cpu_get_previouspc(machine->device("maincpu")), attotime_to_double(timer_get_time(machine)), data ));
+		     cpu_get_previouspc(machine.device("maincpu")), machine.time().as_double(), data ));
 
 	/* set byte sending and send buffer full */
-	state->io[0x12] |= 3;
+	state->m_io[0x12] |= 3;
 
 	/* schedule transmission */
-	timer_set( machine, RS232_DELAY, NULL, data, hp48_rs232_byte_sent_cb );
+	machine.scheduler().timer_set( RS232_DELAY, FUNC(hp48_rs232_byte_sent_cb), data);
 }
 
 
@@ -201,51 +198,51 @@ static void hp48_rs232_send_byte( running_machine *machine )
 
 static TIMER_CALLBACK( hp48_chardev_byte_recv_cb )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
-	UINT8 data = chardev_in( state->chardev );
+	hp48_state *state = machine.driver_data<hp48_state>();
+	UINT8 data = chardev_in( state->m_chardev );
 
 	LOG_SERIAL(( "%f hp48_chardev_byte_recv_cb: end of receive, data=%02x\n",
-		     attotime_to_double(timer_get_time(machine)), data ));
+		     machine.time().as_double(), data ));
 
-	state->io[0x14] = data & 0xf; /* receive zone */
-	state->io[0x15] = data >> 4;
-	state->io[0x11] &= ~2; /* clear byte receiving */
-	state->io[0x11] |= 1;  /* set byte received */
+	state->m_io[0x14] = data & 0xf; /* receive zone */
+	state->m_io[0x15] = data >> 4;
+	state->m_io[0x11] &= ~2; /* clear byte receiving */
+	state->m_io[0x11] |= 1;  /* set byte received */
 
 	/* interrupt */
-	if ( state->io[0x10] & 2 )
+	if ( state->m_io[0x10] & 2 )
 	{
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 }
 
-static void hp48_chardev_start_recv_byte( running_machine *machine, chardev_err status )
+static void hp48_chardev_start_recv_byte( running_machine &machine, chardev_err status )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	if ( status != CHARDEV_OK ) return;
 
 	LOG_SERIAL(( "%f hp48_chardev_start_recv_byte: start receiving\n",
-		     attotime_to_double(timer_get_time(machine)) ));
+		     machine.time().as_double() ));
 
-	state->io[0x11] |= 2;  /* set byte receiving */
+	state->m_io[0x11] |= 2;  /* set byte receiving */
 
 	/* interrupt */
-	if ( state->io[0x10] & 1 )
+	if ( state->m_io[0x10] & 1 )
 	{
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
 	/* schedule end of reception */
-	timer_set( machine, RS232_DELAY, NULL, 0, hp48_chardev_byte_recv_cb );
+	machine.scheduler().timer_set( RS232_DELAY, FUNC(hp48_chardev_byte_recv_cb));
 }
 
-static void hp48_chardev_ready_to_send( running_machine *machine )
+static void hp48_chardev_ready_to_send( running_machine &machine )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
-	state->io[0x12] &= ~3;
+	hp48_state *state = machine.driver_data<hp48_state>();
+	state->m_io[0x12] &= ~3;
 
 	/* interrupt */
-	if ( state->io[0x10] & 4 )
+	if ( state->m_io[0x10] & 4 )
 	{
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
@@ -263,34 +260,34 @@ static const chardev_interface hp48_chardev_iface =
 /* CPU sets OUT register (keyboard + beeper) */
 void hp48_reg_out( device_t *device, int out )
 {
-	hp48_state *state = device->machine->driver_data<hp48_state>();
+	hp48_state *state = device->machine().driver_data<hp48_state>();
 	LOG(( "%05x %f hp48_reg_out: %03x\n",
-	      cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)), out ));
+	      cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double(), out ));
 
 	/* bits 0-8: keyboard lines */
-	state->out = out & 0x1ff;
+	state->m_out = out & 0x1ff;
 
 	/* bits 9-10: unused */
 
 	/* bit 11: beeper */
-	dac_data_w( device->machine->device("dac"), (out & 0x800) ? 0x80 : 00 );
+	dac_data_w( device->machine().device("dac"), (out & 0x800) ? 0x80 : 00 );
 }
 
-static int hp48_get_in( running_machine *machine )
+static int hp48_get_in( running_machine &machine )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	int in = 0;
 
 	/* regular keys */
-	if ( (state->out >> 0) & 1 ) in |= input_port_read( machine, "LINE0" );
-	if ( (state->out >> 1) & 1 ) in |= input_port_read( machine, "LINE1" );
-	if ( (state->out >> 2) & 1 ) in |= input_port_read( machine, "LINE2" );
-	if ( (state->out >> 3) & 1 ) in |= input_port_read( machine, "LINE3" );
-	if ( (state->out >> 4) & 1 ) in |= input_port_read( machine, "LINE4" );
-	if ( (state->out >> 5) & 1 ) in |= input_port_read( machine, "LINE5" );
-	if ( (state->out >> 6) & 1 ) in |= input_port_read( machine, "LINE6" );
-	if ( (state->out >> 7) & 1 ) in |= input_port_read( machine, "LINE7" );
-	if ( (state->out >> 8) & 1 ) in |= input_port_read( machine, "LINE8" );
+	if ( (state->m_out >> 0) & 1 ) in |= input_port_read( machine, "LINE0" );
+	if ( (state->m_out >> 1) & 1 ) in |= input_port_read( machine, "LINE1" );
+	if ( (state->m_out >> 2) & 1 ) in |= input_port_read( machine, "LINE2" );
+	if ( (state->m_out >> 3) & 1 ) in |= input_port_read( machine, "LINE3" );
+	if ( (state->m_out >> 4) & 1 ) in |= input_port_read( machine, "LINE4" );
+	if ( (state->m_out >> 5) & 1 ) in |= input_port_read( machine, "LINE5" );
+	if ( (state->m_out >> 6) & 1 ) in |= input_port_read( machine, "LINE6" );
+	if ( (state->m_out >> 7) & 1 ) in |= input_port_read( machine, "LINE7" );
+	if ( (state->m_out >> 8) & 1 ) in |= input_port_read( machine, "LINE8" );
 
 	/* on key */
 	in |= input_port_read( machine, "ON" );
@@ -301,40 +298,40 @@ static int hp48_get_in( running_machine *machine )
 /* CPU reads IN register (keyboard) */
 int hp48_reg_in( device_t *device )
 {
-	int in = hp48_get_in( device->machine );
+	int in = hp48_get_in(device->machine());
 	LOG(( "%05x %f hp48_reg_in: %04x\n",
-	      cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)), in ));
+	      cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double(), in ));
 	return in;
 }
 
 /* key detect */
-static void hp48_update_kdn( running_machine *machine )
+static void hp48_update_kdn( running_machine &machine )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	int in = hp48_get_in( machine );
 
 	/* interrupt on raising edge */
-	if ( in && !state->kdn )
+	if ( in && !state->m_kdn )
 	{
-		LOG(( "%f hp48_update_kdn: interrupt\n", attotime_to_double(timer_get_time(machine)) ));
-		state->io[0x19] |= 8;                                              /* service request */
+		LOG(( "%f hp48_update_kdn: interrupt\n", machine.time().as_double() ));
+		state->m_io[0x19] |= 8;                                              /* service request */
 		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
 		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
-	state->kdn = (in!=0);
+	state->m_kdn = (in!=0);
 }
 
 /* periodic keyboard polling, generates an interrupt */
 static TIMER_CALLBACK( hp48_kbd_cb )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	/* NMI for ON key */
 	if ( input_port_read( machine, "ON" ) )
 	{
 		LOG(( "%f hp48_kbd_cb: keyboard interrupt, on key\n",
-		      attotime_to_double(timer_get_time(machine)) ));
-		state->io[0x19] |= 8;                                          /* set service request */
+		      machine.time().as_double() ));
+		state->m_io[0x19] |= 8;                                          /* set service request */
 		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
 		hp48_pulse_irq( machine, SATURN_NMI_LINE );
 		return;
@@ -347,21 +344,21 @@ static TIMER_CALLBACK( hp48_kbd_cb )
 /* RSI opcode */
 void hp48_rsi( device_t *device )
 {
-	hp48_state *state = device->machine->driver_data<hp48_state>();
-	LOG(( "%05x %f hp48_rsi\n", cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)) ));
+	hp48_state *state = device->machine().driver_data<hp48_state>();
+	LOG(( "%05x %f hp48_rsi\n", cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double() ));
 
 	/* enables interrupts on key repeat
        (normally, there is only one interrupt, when the key is pressed)
     */
-	state->kdn = 0;
+	state->m_kdn = 0;
 }
 
 
 /* ------------- annonciators ------------ */
 
-static void hp48_update_annunciators( running_machine *machine, void* param )
+static void hp48_update_annunciators( running_machine &machine, void* param )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	/* bit 0: left shift
        bit 1: right shift
        bit 2: alpha
@@ -390,59 +387,59 @@ static void hp48_update_annunciators( running_machine *machine, void* param )
 
 static WRITE8_HANDLER ( hp48_io_w )
 {
-	hp48_state *state = space->machine->driver_data<hp48_state>();
+	hp48_state *state = space->machine().driver_data<hp48_state>();
 	LOG(( "%05x %f hp48_io_w: off=%02x data=%x\n",
-	      cpu_get_previouspc(space->cpu), attotime_to_double(timer_get_time(space->machine)), offset, data ));
+	      cpu_get_previouspc(&space->device()), space->machine().time().as_double(), offset, data ));
 
 	switch( offset )
 	{
 
 	/* CRC register */
-	case 0x04: state->crc = (state->crc & 0xfff0) | data; break;
-	case 0x05: state->crc = (state->crc & 0xff0f) | (data << 4); break;
-	case 0x06: state->crc = (state->crc & 0xf0ff) | (data << 8); break;
-	case 0x07: state->crc = (state->crc & 0x0fff) | (data << 12); break;
+	case 0x04: state->m_crc = (state->m_crc & 0xfff0) | data; break;
+	case 0x05: state->m_crc = (state->m_crc & 0xff0f) | (data << 4); break;
+	case 0x06: state->m_crc = (state->m_crc & 0xf0ff) | (data << 8); break;
+	case 0x07: state->m_crc = (state->m_crc & 0x0fff) | (data << 12); break;
 
 	/* annunciators */
 	case 0x0b:
 	case 0x0c:
-		state->io[offset] = data;
-		hp48_update_annunciators( space->machine, NULL );
+		state->m_io[offset] = data;
+		hp48_update_annunciators( space->machine(), NULL );
 		break;
 
 	/* cntrl ROM */
 	case 0x29:
 	{
-		int old_cntrl = state->io[offset] & 8;
-		state->io[offset] = data;
+		int old_cntrl = state->m_io[offset] & 8;
+		state->m_io[offset] = data;
 		if ( old_cntrl != (data & 8) )
 		{
-			hp48_apply_modules( space->machine, NULL );
+			hp48_apply_modules( space->machine(), NULL );
 		}
 		break;
 	}
 
 	/* timers */
-	case 0x37: state->timer1 = data; break;
-	case 0x38: state->timer2 = (state->timer2 & 0xfffffff0) | data; break;
-	case 0x39: state->timer2 = (state->timer2 & 0xffffff0f) | (data << 4); break;
-	case 0x3a: state->timer2 = (state->timer2 & 0xfffff0ff) | (data << 8); break;
-	case 0x3b: state->timer2 = (state->timer2 & 0xffff0fff) | (data << 12); break;
-	case 0x3c: state->timer2 = (state->timer2 & 0xfff0ffff) | (data << 16); break;
-	case 0x3d: state->timer2 = (state->timer2 & 0xff0fffff) | (data << 20); break;
-	case 0x3e: state->timer2 = (state->timer2 & 0xf0ffffff) | (data << 24); break;
-	case 0x3f: state->timer2 = (state->timer2 & 0x0fffffff) | (data << 28); break;
+	case 0x37: state->m_timer1 = data; break;
+	case 0x38: state->m_timer2 = (state->m_timer2 & 0xfffffff0) | data; break;
+	case 0x39: state->m_timer2 = (state->m_timer2 & 0xffffff0f) | (data << 4); break;
+	case 0x3a: state->m_timer2 = (state->m_timer2 & 0xfffff0ff) | (data << 8); break;
+	case 0x3b: state->m_timer2 = (state->m_timer2 & 0xffff0fff) | (data << 12); break;
+	case 0x3c: state->m_timer2 = (state->m_timer2 & 0xfff0ffff) | (data << 16); break;
+	case 0x3d: state->m_timer2 = (state->m_timer2 & 0xff0fffff) | (data << 20); break;
+	case 0x3e: state->m_timer2 = (state->m_timer2 & 0xf0ffffff) | (data << 24); break;
+	case 0x3f: state->m_timer2 = (state->m_timer2 & 0x0fffffff) | (data << 28); break;
 
 	/* cards */
 	case 0x0e:
-		LOG(( "%05x: card control write %02x\n", cpu_get_previouspc(space->cpu), data ));
+		LOG(( "%05x: card control write %02x\n", cpu_get_previouspc(&space->device()), data ));
 
 		/* bit 0: software interrupt */
 		if ( data & 1 )
 		{
 			LOG(( "%f hp48_io_w: software interrupt requested\n",
-			      attotime_to_double(timer_get_time(space->machine)) ));
-			hp48_pulse_irq( space->machine, SATURN_IRQ_LINE );
+			      space->machine().time().as_double() ));
+			hp48_pulse_irq( space->machine(), SATURN_IRQ_LINE );
 			data &= ~1;
 		}
 
@@ -450,26 +447,26 @@ static WRITE8_HANDLER ( hp48_io_w )
             bit 1: card test?
          */
 
-		state->io[0x0e] = data;
+		state->m_io[0x0e] = data;
 		break;
 
 	case 0x0f:
-		LOG(( "%05x: card info write %02x\n", cpu_get_previouspc(space->cpu), data ));
-		state->io[0x0f] = data;
+		LOG(( "%05x: card info write %02x\n", cpu_get_previouspc(&space->device()), data ));
+		state->m_io[0x0f] = data;
 		break;
 
 	/* serial */
 	case 0x13:
-		state->io[0x11] &= ~4; /* clear error status */
+		state->m_io[0x11] &= ~4; /* clear error status */
 		break;
 	case 0x16:
 		/* first nibble of sent data */
-		state->io[offset] = data;
+		state->m_io[offset] = data;
 		break;
 	case 0x17:
 		/* second nibble of sent data */
-		state->io[offset] = data;
-		hp48_rs232_send_byte( space->machine );
+		state->m_io[offset] = data;
+		hp48_rs232_send_byte(space->machine());
 		break;
 
 	/* XXX not implemented:
@@ -497,7 +494,7 @@ static WRITE8_HANDLER ( hp48_io_w )
        - 0x1d: I/R output buffer
     */
 
-	default: state->io[offset] = data;
+	default: state->m_io[offset] = data;
 	}
 
 }
@@ -505,28 +502,28 @@ static WRITE8_HANDLER ( hp48_io_w )
 
 static READ8_HANDLER ( hp48_io_r )
 {
-	hp48_state *state = space->machine->driver_data<hp48_state>();
+	hp48_state *state = space->machine().driver_data<hp48_state>();
 	UINT8 data = 0;
 
 	switch( offset )
 	{
 
 	/* CRC register */
-	case 0x04: data = state->crc & 0xf; break;
-	case 0x05: data = (state->crc >> 4) & 0xf; break;
-	case 0x06: data = (state->crc >> 8) & 0xf; break;
-	case 0x07: data = (state->crc >> 12) & 0xf; break;
+	case 0x04: data = state->m_crc & 0xf; break;
+	case 0x05: data = (state->m_crc >> 4) & 0xf; break;
+	case 0x06: data = (state->m_crc >> 8) & 0xf; break;
+	case 0x07: data = (state->m_crc >> 12) & 0xf; break;
 
 	/* battery test */
 	case 0x08:
 		data = 0;
-		if ( state->io[0x9] & 8 ) /* test enable */
+		if ( state->m_io[0x9] & 8 ) /* test enable */
 		{
 			/* XXX not implemented:
                bit 3: battery in port 2
                bit 2: battery in port 1
              */
-			switch ( input_port_read( space->machine, "BATTERY" ) )
+			switch ( input_port_read( space->machine(), "BATTERY" ) )
 			{
 			case 1: data = 2; break; /* low */
 			case 2: data = 3; break; /* low | critical */
@@ -539,7 +536,7 @@ static READ8_HANDLER ( hp48_io_r )
 	case 0x29:
 	{
 		int last_line = HP48_IO_8(0x28) & 0x3f; /* last line of main bitmap before menu */
-		int cur_line = space->machine->primary_screen->vpos();
+		int cur_line = space->machine().primary_screen->vpos();
 		if ( last_line <= 1 ) last_line = 0x3f;
 		data = ( cur_line >= 0 && cur_line <= last_line ) ? last_line - cur_line : 0;
 		if ( offset == 0x29 )
@@ -555,26 +552,26 @@ static READ8_HANDLER ( hp48_io_r )
 	}
 
 	/* timers */
-	case 0x37: data = state->timer1; break;
-	case 0x38: data = state->timer2 & 0xf; break;
-	case 0x39: data = (state->timer2 >> 4) & 0xf; break;
-	case 0x3a: data = (state->timer2 >> 8) & 0xf; break;
-	case 0x3b: data = (state->timer2 >> 12) & 0xf; break;
-	case 0x3c: data = (state->timer2 >> 16) & 0xf; break;
-	case 0x3d: data = (state->timer2 >> 20) & 0xf; break;
-	case 0x3e: data = (state->timer2 >> 24) & 0xf; break;
-	case 0x3f: data = (state->timer2 >> 28) & 0xf; break;
+	case 0x37: data = state->m_timer1; break;
+	case 0x38: data = state->m_timer2 & 0xf; break;
+	case 0x39: data = (state->m_timer2 >> 4) & 0xf; break;
+	case 0x3a: data = (state->m_timer2 >> 8) & 0xf; break;
+	case 0x3b: data = (state->m_timer2 >> 12) & 0xf; break;
+	case 0x3c: data = (state->m_timer2 >> 16) & 0xf; break;
+	case 0x3d: data = (state->m_timer2 >> 20) & 0xf; break;
+	case 0x3e: data = (state->m_timer2 >> 24) & 0xf; break;
+	case 0x3f: data = (state->m_timer2 >> 28) & 0xf; break;
 
 	/* serial */
 	case 0x15:
 	{
                 /* second nibble of received data */
 
-		device_image_interface *xmodem = dynamic_cast<device_image_interface *>(space->machine->device("rs232_x"));
-		device_image_interface *kermit = dynamic_cast<device_image_interface *>(space->machine->device("rs232_k"));
+		device_image_interface *xmodem = dynamic_cast<device_image_interface *>(space->machine().device("rs232_x"));
+		device_image_interface *kermit = dynamic_cast<device_image_interface *>(space->machine().device("rs232_k"));
 
-		state->io[0x11] &= ~1;  /* clear byte received */
-		data = state->io[offset];
+		state->m_io[0x11] &= ~1;  /* clear byte received */
+		data = state->m_io[offset];
 
 		/* protocol action */
 		if ( xmodem && xmodem->exists() ) xmodem_byte_transmitted( &xmodem->device() );
@@ -584,34 +581,34 @@ static READ8_HANDLER ( hp48_io_r )
 
 	/* cards */
 	case 0x0e: /* detection */
-		data = state->io[0x0e];
-		LOG(( "%05x: card control read %02x\n", cpu_get_previouspc(space->cpu), data ));
+		data = state->m_io[0x0e];
+		LOG(( "%05x: card control read %02x\n", cpu_get_previouspc(&space->device()), data ));
 		break;
 	case 0x0f: /* card info */
 		data = 0;
 		if ( HP48_G_SERIES )
 		{
-			if ( state->port_size[1] ) data |= 1;
-			if ( state->port_size[0] ) data |= 2;
-			if ( state->port_size[1] && state->port_write[1] ) data |= 4;
-			if ( state->port_size[0] && state->port_write[0] ) data |= 8;
+			if ( state->m_port_size[1] ) data |= 1;
+			if ( state->m_port_size[0] ) data |= 2;
+			if ( state->m_port_size[1] && state->m_port_write[1] ) data |= 4;
+			if ( state->m_port_size[0] && state->m_port_write[0] ) data |= 8;
 		}
 		else
 		{
-			if ( state->port_size[0] ) data |= 1;
-			if ( state->port_size[1] ) data |= 2;
-			if ( state->port_size[0] && state->port_write[0] ) data |= 4;
-			if ( state->port_size[1] && state->port_write[1] ) data |= 8;
+			if ( state->m_port_size[0] ) data |= 1;
+			if ( state->m_port_size[1] ) data |= 2;
+			if ( state->m_port_size[0] && state->m_port_write[0] ) data |= 4;
+			if ( state->m_port_size[1] && state->m_port_write[1] ) data |= 8;
 		}
-		LOG(( "%05x: card info read %02x\n", cpu_get_previouspc(space->cpu), data ));
+		LOG(( "%05x: card info read %02x\n", cpu_get_previouspc(&space->device()), data ));
 		break;
 
 
-	default: data = state->io[offset];
+	default: data = state->m_io[offset];
 	}
 
 	LOG(( "%05x %f hp48_io_r: off=%02x data=%x\n",
-	      cpu_get_previouspc(space->cpu), attotime_to_double(timer_get_time(space->machine)), offset, data ));
+	      cpu_get_previouspc(&space->device()), space->machine().time().as_double(), offset, data ));
 	return data;
 }
 
@@ -620,14 +617,14 @@ static READ8_HANDLER ( hp48_io_r )
 
 static READ8_HANDLER ( hp48_bank_r )
 {
-	hp48_state *state = space->machine->driver_data<hp48_state>();
+	hp48_state *state = space->machine().driver_data<hp48_state>();
 	/* bit 0: ignored, bits 2-5: bank number, bit 6: enable */
 	offset &= 0x7e;
-	if ( state->bank_switch != offset )
+	if ( state->m_bank_switch != offset )
 	{
-		LOG(( "%05x %f hp48_bank_r: off=%03x\n", cpu_get_previouspc(space->cpu), attotime_to_double(timer_get_time(space->machine)), offset ));
-		state->bank_switch = offset;
-		hp48_apply_modules( space->machine, NULL );
+		LOG(( "%05x %f hp48_bank_r: off=%03x\n", cpu_get_previouspc(&space->device()), space->machine().time().as_double(), offset ));
+		state->m_bank_switch = offset;
+		hp48_apply_modules( space->machine(), NULL );
 	}
 	return 0;
 }
@@ -637,50 +634,50 @@ static READ8_HANDLER ( hp48_bank_r )
 
 static TIMER_CALLBACK( hp48_timer1_cb )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
-	if ( !(state->io[0x2f] & 1) ) return; /* timer enable */
+	hp48_state *state = machine.driver_data<hp48_state>();
+	if ( !(state->m_io[0x2f] & 1) ) return; /* timer enable */
 
-	state->timer1 = (state->timer1 - 1) & 0xf;
+	state->m_timer1 = (state->m_timer1 - 1) & 0xf;
 
 	/* wake-up on carry */
-	if ( (state->io[0x2e] & 4) && (state->timer1 == 0xf) )
+	if ( (state->m_io[0x2e] & 4) && (state->m_timer1 == 0xf) )
 	{
 		LOG(( "wake-up on timer1\n" ));
-		state->io[0x2e] |= 8;                                      /* set service request */
-		state->io[0x18] |= 4;                                      /* set service request */
+		state->m_io[0x2e] |= 8;                                      /* set service request */
+		state->m_io[0x18] |= 4;                                      /* set service request */
 		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
 	}
 	/* interrupt on carry */
-	if ( (state->io[0x2e] & 2) && (state->timer1 == 0xf) )
+	if ( (state->m_io[0x2e] & 2) && (state->m_timer1 == 0xf) )
 	{
 		LOG(( "generate timer1 interrupt\n" ));
-		state->io[0x2e] |= 8; /* set service request */
-		state->io[0x18] |= 4; /* set service request */
+		state->m_io[0x2e] |= 8; /* set service request */
+		state->m_io[0x18] |= 4; /* set service request */
 		hp48_pulse_irq( machine, SATURN_NMI_LINE );
 	}
 }
 
 static TIMER_CALLBACK( hp48_timer2_cb )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
-	if ( !(state->io[0x2f] & 1) ) return; /* timer enable */
+	hp48_state *state = machine.driver_data<hp48_state>();
+	if ( !(state->m_io[0x2f] & 1) ) return; /* timer enable */
 
-	state->timer2 = (state->timer2 - 1) & 0xffffffff;
+	state->m_timer2 = (state->m_timer2 - 1) & 0xffffffff;
 
 	/* wake-up on carry */
-	if ( (state->io[0x2f] & 4) && (state->timer2 == 0xffffffff) )
+	if ( (state->m_io[0x2f] & 4) && (state->m_timer2 == 0xffffffff) )
 	{
 		LOG(( "wake-up on timer2\n" ));
-		state->io[0x2f] |= 8;                                      /* set service request */
-		state->io[0x18] |= 4;                                      /* set service request */
+		state->m_io[0x2f] |= 8;                                      /* set service request */
+		state->m_io[0x18] |= 4;                                      /* set service request */
 		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
 	}
 	/* interrupt on carry */
-	if ( (state->io[0x2f] & 2) && (state->timer2 == 0xffffffff) )
+	if ( (state->m_io[0x2f] & 2) && (state->m_timer2 == 0xffffffff) )
 	{
 		LOG(( "generate timer2 interrupt\n" ));
-		state->io[0x2f] |= 8;                                      /* set service request */
-		state->io[0x18] |= 4;                                      /* set service request */
+		state->m_io[0x2f] |= 8;                                      /* set service request */
+		state->m_io[0x18] |= 4;                                      /* set service request */
 		hp48_pulse_irq( machine, SATURN_NMI_LINE );
 	}
 }
@@ -727,62 +724,62 @@ static TIMER_CALLBACK( hp48_timer2_cb )
 
 
 /* remap all modules according to hp48_modules */
-static void hp48_apply_modules( running_machine *machine, void* param )
+static void hp48_apply_modules( running_machine &machine, void* param )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	int i;
 	int nce2_enable = 1;
-	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	state->io_addr = 0x100000;
+	state->m_io_addr = 0x100000;
 
 	if ( HP48_G_SERIES )
 	{
 		/* port 2 bank switch */
-		if ( state->port_size[1] > 0 )
+		if ( state->m_port_size[1] > 0 )
 		{
-			int off = (state->bank_switch << 16) % state->port_size[1];
-			state->modules[4].data = state->port_data[1] + off;
+			int off = (state->m_bank_switch << 16) % state->m_port_size[1];
+			state->m_modules[4].data = state->m_port_data[1] + off;
 		}
 
 		/* ROM A19 (hi 256 KB) / NCE2 (port 2) control switch */
-		if ( state->io[0x29] & 8 )
+		if ( state->m_io[0x29] & 8 )
 		{
 			/* A19 */
-		        state->modules[5].off_mask = 0xfffff;
+		        state->m_modules[5].off_mask = 0xfffff;
 			nce2_enable = 0;
 		}
 		else
 		{
 			/* NCE2 */
-			state->modules[5].off_mask = 0x7ffff;
-			nce2_enable = state->bank_switch >> 6;
+			state->m_modules[5].off_mask = 0x7ffff;
+			nce2_enable = state->m_bank_switch >> 6;
 		}
 	}
 
 	/* S series ROM mapping compatibility */
-	if ( HP48_S_SERIES || !(state->io[0x29] & 8) )
+	if ( HP48_S_SERIES || !(state->m_io[0x29] & 8) )
 	{
-		state->modules[5].off_mask = 0x7ffff;
+		state->m_modules[5].off_mask = 0x7ffff;
 	}
 	else
 	{
-		state->modules[5].off_mask = 0xfffff;
+		state->m_modules[5].off_mask = 0xfffff;
 	}
 
 	/* from lowest to highest priority */
 	for ( i = 5; i >= 0; i-- )
 	{
-		UINT32 select_mask = state->modules[i].mask;
+		UINT32 select_mask = state->m_modules[i].mask;
 		UINT32 nselect_mask = ~select_mask & 0xfffff;
-		UINT32 base = state->modules[i].base;
-		UINT32 off_mask = state->modules[i].off_mask;
+		UINT32 base = state->m_modules[i].base;
+		UINT32 off_mask = state->m_modules[i].off_mask;
 		UINT32 mirror = nselect_mask & ~off_mask;
 		UINT32 end = base + (off_mask & nselect_mask);
 		char bank[10];
 		sprintf(bank,"bank%d",i);
 
-		if ( state->modules[i].state != HP48_MODULE_CONFIGURED ) continue;
+		if ( state->m_modules[i].state != HP48_MODULE_CONFIGURED ) continue;
 
 		if ( (i == 4) && !nce2_enable ) continue;
 
@@ -794,61 +791,61 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 			continue;
 		}
 
-		if (state->modules[i].data)
-			memory_install_read_bank( space, base, end, 0, mirror, bank );
+		if (state->m_modules[i].data)
+			space->install_read_bank( base, end, 0, mirror, bank );
 		else
 		{
-			if (state->modules[i].read != NULL)
-				memory_install_read8_handler( space, base, end, 0, mirror, state->modules[i].read );
+			if (state->m_modules[i].read != NULL)
+				space->install_legacy_read_handler( base, end, 0, mirror, FUNC(state->m_modules[i].read) );
 		}
 
-		if (state->modules[i].isnop)
-			memory_nop_write(space, base, end, 0, mirror);
+		if (state->m_modules[i].isnop)
+			space->nop_write(base, end, 0, mirror);
 		else
 		{
-			if (state->modules[i].data)
-				memory_install_write_bank( space, base, end, 0, mirror, bank );
+			if (state->m_modules[i].data)
+				space->install_write_bank( base, end, 0, mirror, bank );
 			else
 			{
-				if (state->modules[i].write != NULL)
-					memory_install_write8_handler( space, base, end, 0, mirror, state->modules[i].write );
+				if (state->m_modules[i].write != NULL)
+					space->install_legacy_write_handler( base, end, 0, mirror, FUNC(state->m_modules[i].write) );
 			}
 		}
 
 		LOG(( "hp48_apply_modules: module %s configured at %05x-%05x, mirror %05x\n",
 		      hp48_module_names[i], base, end, mirror ));
 
-		if ( state->modules[i].data )
+		if ( state->m_modules[i].data )
 		{
-			memory_set_bankptr( space->machine, bank, state->modules[i].data );
+			memory_set_bankptr( space->machine(), bank, state->m_modules[i].data );
 		}
 
 		if ( i == 0 )
 		{
-			state->io_addr = base;
+			state->m_io_addr = base;
 		}
 	}
 }
 
 
 /* reset the configuration */
-static void hp48_reset_modules( running_machine *machine )
+static void hp48_reset_modules( running_machine &machine )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	int i;
 	/* fixed size for HDW */
-	state->modules[0].state = HP48_MODULE_MASK_KNOWN;
-	state->modules[0].mask = 0xfffc0;
+	state->m_modules[0].state = HP48_MODULE_MASK_KNOWN;
+	state->m_modules[0].mask = 0xfffc0;
 	/* unconfigure NCE2, CE1, CE2, NCE3 */
 	for ( i = 1; i < 5; i++ )
 	{
-		state->modules[i].state = HP48_MODULE_UNCONFIGURED;
+		state->m_modules[i].state = HP48_MODULE_UNCONFIGURED;
 	}
 
 	/* fixed configuration for NCE1 */
-	state->modules[5].state = HP48_MODULE_CONFIGURED;
-	state->modules[5].base = 0;
-	state->modules[5].mask = 0;
+	state->m_modules[5].state = HP48_MODULE_CONFIGURED;
+	state->m_modules[5].base = 0;
+	state->m_modules[5].mask = 0;
 
 	hp48_apply_modules( machine, NULL );
 }
@@ -857,38 +854,38 @@ static void hp48_reset_modules( running_machine *machine )
 /* RESET opcode */
 void hp48_mem_reset( device_t *device )
 {
-	LOG(( "%05x %f hp48_mem_reset\n", cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)) ));
-	hp48_reset_modules( device->machine );
+	LOG(( "%05x %f hp48_mem_reset\n", cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double() ));
+	hp48_reset_modules(device->machine());
 }
 
 
 /* CONFIG opcode */
 void hp48_mem_config( device_t *device, int v )
 {
-	hp48_state *state = device->machine->driver_data<hp48_state>();
+	hp48_state *state = device->machine().driver_data<hp48_state>();
 	int i;
 
-	LOG(( "%05x %f hp48_mem_config: %05x\n", cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)), v ));
+	LOG(( "%05x %f hp48_mem_config: %05x\n", cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double(), v ));
 
 	/* find the highest priority unconfigured module (except non-configurable NCE1)... */
 	for ( i = 0; i < 5; i++ )
 	{
 		/* ... first call sets the address mask */
-		if ( state->modules[i].state == HP48_MODULE_UNCONFIGURED )
+		if ( state->m_modules[i].state == HP48_MODULE_UNCONFIGURED )
 		{
-			state->modules[i].mask = v & 0xff000;
-			state->modules[i].state = HP48_MODULE_MASK_KNOWN;
+			state->m_modules[i].mask = v & 0xff000;
+			state->m_modules[i].state = HP48_MODULE_MASK_KNOWN;
 			break;
 		}
 
 		/* ... second call sets the base address */
-		if ( state->modules[i].state == HP48_MODULE_MASK_KNOWN )
+		if ( state->m_modules[i].state == HP48_MODULE_MASK_KNOWN )
 		{
-			state->modules[i].base = v & state->modules[i].mask;
-			state->modules[i].state = HP48_MODULE_CONFIGURED;
+			state->m_modules[i].base = v & state->m_modules[i].mask;
+			state->m_modules[i].state = HP48_MODULE_CONFIGURED;
 			LOG(( "hp48_mem_config: module %s configured base=%05x, mask=%05x\n",
-			      hp48_module_names[i], state->modules[i].base, state->modules[i].mask ));
-			hp48_apply_modules( device->machine, NULL );
+			      hp48_module_names[i], state->m_modules[i].base, state->m_modules[i].mask ));
+			hp48_apply_modules( device->machine(), NULL );
 			break;
 		}
 	}
@@ -898,20 +895,20 @@ void hp48_mem_config( device_t *device, int v )
 /* UNCFG opcode */
 void hp48_mem_unconfig( device_t *device, int v )
 {
-	hp48_state *state = device->machine->driver_data<hp48_state>();
+	hp48_state *state = device->machine().driver_data<hp48_state>();
 	int i;
-	LOG(( "%05x %f hp48_mem_unconfig: %05x\n", cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)), v ));
+	LOG(( "%05x %f hp48_mem_unconfig: %05x\n", cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double(), v ));
 
 	/* find the highest priority fully configured module at address v (except NCE1)... */
 	for ( i = 0; i < 5; i++ )
 	{
 		/* ... and unconfigure it */
-		if ( state->modules[i].state == HP48_MODULE_CONFIGURED &&
-		     (state->modules[i].base == (v & state->modules[i].mask)) )
+		if ( state->m_modules[i].state == HP48_MODULE_CONFIGURED &&
+		     (state->m_modules[i].base == (v & state->m_modules[i].mask)) )
 		{
-			state->modules[i].state = i> 0 ? HP48_MODULE_UNCONFIGURED : HP48_MODULE_MASK_KNOWN;
+			state->m_modules[i].state = i> 0 ? HP48_MODULE_UNCONFIGURED : HP48_MODULE_MASK_KNOWN;
 			LOG(( "hp48_mem_unconfig: module %s\n", hp48_module_names[i] ));
-			hp48_apply_modules( device->machine, NULL );
+			hp48_apply_modules( device->machine(), NULL );
 			break;
 		}
 	}
@@ -921,7 +918,7 @@ void hp48_mem_unconfig( device_t *device, int v )
 /* C=ID opcode */
 int  hp48_mem_id( device_t *device )
 {
-	hp48_state *state = device->machine->driver_data<hp48_state>();
+	hp48_state *state = device->machine().driver_data<hp48_state>();
 	int i;
 	int data = 0; /* 0 = everything is configured */
 
@@ -929,22 +926,22 @@ int  hp48_mem_id( device_t *device )
 	for ( i = 0; i < 5; i++ )
 	{
 		/* ... mask need to be configured */
-		if ( state->modules[i].state == HP48_MODULE_UNCONFIGURED )
+		if ( state->m_modules[i].state == HP48_MODULE_UNCONFIGURED )
 		{
-			data = hp48_module_mask_id[i] | (state->modules[i].mask & ~0xff);
+			data = hp48_module_mask_id[i] | (state->m_modules[i].mask & ~0xff);
 			break;
 		}
 
 		/* ... address need to be configured */
-		if ( state->modules[i].state == HP48_MODULE_MASK_KNOWN )
+		if ( state->m_modules[i].state == HP48_MODULE_MASK_KNOWN )
 		{
-			data = hp48_module_addr_id[i] | (state->modules[i].base & ~0x3f);
+			data = hp48_module_addr_id[i] | (state->m_modules[i].base & ~0x3f);
 			break;
 		}
 	}
 
 	LOG(( "%05x %f hp48_mem_id = %02x\n",
-	      cpu_get_previouspc(device->machine->device("maincpu")), attotime_to_double(timer_get_time(device->machine)), data ));
+	      cpu_get_previouspc(device->machine().device("maincpu")), device->machine().time().as_double(), data ));
 
 	return data; /* everything is configured */
 }
@@ -956,11 +953,11 @@ int  hp48_mem_id( device_t *device )
 /* each memory read by the CPU updates the internal CRC state */
 void hp48_mem_crc( device_t *device, int addr, int data )
 {
-	hp48_state *state = device->machine->driver_data<hp48_state>();
+	hp48_state *state = device->machine().driver_data<hp48_state>();
 	/* no CRC for I/O RAM */
-	if ( addr >= state->io_addr && addr < state->io_addr + 0x40 ) return;
+	if ( addr >= state->m_io_addr && addr < state->m_io_addr + 0x40 ) return;
 
-	state->crc = (state->crc >> 4) ^ (((state->crc ^ data) & 0xf) * 0x1081);
+	state->m_crc = (state->m_crc >> 4) ^ (((state->m_crc ^ data) & 0xf) * 0x1081);
 }
 
 
@@ -1002,38 +999,38 @@ const struct hp48_port_config hp48gx_port2_config = { 1, 4, 4*1024*1024, "p2", "
 /* helper for load and create */
 static void hp48_fill_port( device_t* image )
 {
-	hp48_state *state = image->machine->driver_data<hp48_state>();
+	hp48_state *state = image->machine().driver_data<hp48_state>();
 	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config();
-	int size = state->port_size[conf->port];
-	LOG(( "hp48_fill_port: %s module=%i size=%i rw=%i\n", conf->name, conf->module, size, state->port_write[conf->port] ));
-	state->port_data[conf->port] = (UINT8*)malloc( 2 * size );
-	memset( state->port_data[conf->port], 0, 2 * size );
-	state->modules[conf->module].off_mask = 2 * (( size > 128 * 1024 ) ? 128 * 1024 : size) - 1;
-	state->modules[conf->module].read     = NULL;
-	state->modules[conf->module].write    = NULL;
-	state->modules[conf->module].isnop    = 0;
-	if (state->port_write[conf->port]) {
-		state->modules[conf->module].isnop    = 1;
+	int size = state->m_port_size[conf->port];
+	LOG(( "hp48_fill_port: %s module=%i size=%i rw=%i\n", conf->name, conf->module, size, state->m_port_write[conf->port] ));
+	state->m_port_data[conf->port] = (UINT8*)malloc( 2 * size );
+	memset( state->m_port_data[conf->port], 0, 2 * size );
+	state->m_modules[conf->module].off_mask = 2 * (( size > 128 * 1024 ) ? 128 * 1024 : size) - 1;
+	state->m_modules[conf->module].read     = NULL;
+	state->m_modules[conf->module].write    = NULL;
+	state->m_modules[conf->module].isnop    = 0;
+	if (state->m_port_write[conf->port]) {
+		state->m_modules[conf->module].isnop    = 1;
 	}
-	state->modules[conf->module].data     = state->port_data[conf->port];
-	hp48_apply_modules( image->machine, NULL );
+	state->m_modules[conf->module].data     = state->m_port_data[conf->port];
+	hp48_apply_modules(image->machine(), NULL );
 }
 
 /* helper for start and unload */
 static void hp48_unfill_port( device_t* image )
 {
-	hp48_state *state = image->machine->driver_data<hp48_state>();
+	hp48_state *state = image->machine().driver_data<hp48_state>();
 	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config();
-	state->modules[conf->module].off_mask = 0x00fff;  /* 2 KB */
-	state->modules[conf->module].read     = NULL;
-	state->modules[conf->module].write    = NULL;
-	state->modules[conf->module].data     = NULL;
+	state->m_modules[conf->module].off_mask = 0x00fff;  /* 2 KB */
+	state->m_modules[conf->module].read     = NULL;
+	state->m_modules[conf->module].write    = NULL;
+	state->m_modules[conf->module].data     = NULL;
 }
 
 
 static DEVICE_IMAGE_LOAD( hp48_port )
 {
-	hp48_state *state = image.device().machine->driver_data<hp48_state>();
+	hp48_state *state = image.device().machine().driver_data<hp48_state>();
 	struct hp48_port_config* conf = (struct hp48_port_config*) image.device().baseconfig().static_config();
 	int size = image.length();
 	if ( size == 0 ) size = conf->max_size; /* default size */
@@ -1045,17 +1042,17 @@ static DEVICE_IMAGE_LOAD( hp48_port )
 		return IMAGE_INIT_FAIL;
 	}
 
-	state->port_size[conf->port] = size;
-	state->port_write[conf->port] = image.is_writable();
+	state->m_port_size[conf->port] = size;
+	state->m_port_write[conf->port] = image.is_writable();
 	hp48_fill_port( image );
-	image.fread(state->port_data[conf->port], state->port_size[conf->port] );
-	hp48_decode_nibble( state->port_data[conf->port], state->port_data[conf->port], state->port_size[conf->port] );
+	image.fread(state->m_port_data[conf->port], state->m_port_size[conf->port] );
+	hp48_decode_nibble( state->m_port_data[conf->port], state->m_port_data[conf->port], state->m_port_size[conf->port] );
 	return IMAGE_INIT_PASS;
 }
 
 static DEVICE_IMAGE_CREATE( hp48_port )
 {
-	hp48_state *state = image.device().machine->driver_data<hp48_state>();
+	hp48_state *state = image.device().machine().driver_data<hp48_state>();
 	struct hp48_port_config* conf = (struct hp48_port_config*) image.device().baseconfig().static_config();
 	int size = conf->max_size;
         /* XXX defaults to max_size; get user-specified size instead */
@@ -1068,27 +1065,27 @@ static DEVICE_IMAGE_CREATE( hp48_port )
 		return IMAGE_INIT_FAIL;
 	}
 
-	state->port_size[conf->port] = size;
-	state->port_write[conf->port] = 1;
+	state->m_port_size[conf->port] = size;
+	state->m_port_write[conf->port] = 1;
 	hp48_fill_port( image );
 	return IMAGE_INIT_PASS;
 }
 
 static DEVICE_IMAGE_UNLOAD( hp48_port )
 {
-	hp48_state *state = image.device().machine->driver_data<hp48_state>();
+	hp48_state *state = image.device().machine().driver_data<hp48_state>();
 	struct hp48_port_config* conf = (struct hp48_port_config*) image.device().baseconfig().static_config();
 	LOG(( "hp48_port image unload: %s size=%i rw=%i\n",
-	      conf->name, state->port_size[conf->port] ,state->port_write[conf->port] ));
-	if ( state->port_write[conf->port] )
+	      conf->name, state->m_port_size[conf->port] ,state->m_port_write[conf->port] ));
+	if ( state->m_port_write[conf->port] )
 	{
-		hp48_encode_nibble( state->port_data[conf->port], state->port_data[conf->port], state->port_size[conf->port] );
+		hp48_encode_nibble( state->m_port_data[conf->port], state->m_port_data[conf->port], state->m_port_size[conf->port] );
 		image.fseek( 0, SEEK_SET );
-		image.fwrite( state->port_data[conf->port], state->port_size[conf->port] );
+		image.fwrite( state->m_port_data[conf->port], state->m_port_size[conf->port] );
 	}
-	free( state->port_data[conf->port] );
+	free( state->m_port_data[conf->port] );
 	hp48_unfill_port( image );
-	hp48_apply_modules( image.device().machine, NULL );
+	hp48_apply_modules( image.device().machine(), NULL );
 }
 
 static DEVICE_START( hp48_port )
@@ -1129,18 +1126,18 @@ DEVICE_GET_INFO( hp48_port )
 
 DRIVER_INIT( hp48 )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	int i;
 	LOG(( "hp48: driver init called\n" ));
 	for ( i = 0; i < 6; i++ )
 	{
-		state->modules[i].off_mask = 0x00fff;  /* 2 KB */
-		state->modules[i].read     = NULL;
-		state->modules[i].write    = NULL;
-		state->modules[i].data     = NULL;
+		state->m_modules[i].off_mask = 0x00fff;  /* 2 KB */
+		state->m_modules[i].read     = NULL;
+		state->m_modules[i].write    = NULL;
+		state->m_modules[i].data     = NULL;
 	}
-	state->port_size[0] = 0;
-	state->port_size[1] = 0;
+	state->m_port_size[0] = 0;
+	state->m_port_size[1] = 0;
 }
 
 MACHINE_RESET( hp48 )
@@ -1150,96 +1147,96 @@ MACHINE_RESET( hp48 )
 	hp48_update_annunciators( machine, NULL );
 }
 
-static void hp48_machine_start( running_machine *machine, hp48_models model )
+static void hp48_machine_start( running_machine &machine, hp48_models model )
 {
-	hp48_state *state = machine->driver_data<hp48_state>();
+	hp48_state *state = machine.driver_data<hp48_state>();
 	UINT8* rom, *ram;
 	int ram_size, rom_size, i;
 
 	LOG(( "hp48_machine_start: model %i\n", model ));
 
-	state->model = model;
+	state->m_model = model;
 
 	/* internal RAM */
 	ram_size = HP48_GX_MODEL ? (128 * 1024) : (32 * 1024);
-		
+
 	ram = auto_alloc_array(machine, UINT8, 2 * ram_size);
-	machine->device<nvram_device>("nvram")->set_base(ram, 2 * ram_size);	
-	
+	machine.device<nvram_device>("nvram")->set_base(ram, 2 * ram_size);
+
 
 	/* ROM load */
 	rom_size = HP48_S_SERIES ? (256 * 1024) : (512 * 1024);
 	rom = auto_alloc_array(machine, UINT8, 2 * rom_size);
-	hp48_decode_nibble( rom, machine->region( "maincpu" )->base(), rom_size );
+	hp48_decode_nibble( rom, machine.region( "maincpu" )->base(), rom_size );
 
 	/* init state */
 	memset( ram, 0, 2 * ram_size );
-	memset( state->io, 0, sizeof( state->io ) );
-	state->out = 0;
-	state->kdn = 0;
-	state->crc = 0;
-	state->timer1 = 0;
-	state->timer2 = 0;
-	state->bank_switch = 0;
+	memset( state->m_io, 0, sizeof( state->m_io ) );
+	state->m_out = 0;
+	state->m_kdn = 0;
+	state->m_crc = 0;
+	state->m_timer1 = 0;
+	state->m_timer2 = 0;
+	state->m_bank_switch = 0;
 
 	/* static module configuration */
-	memset(state->modules,0,sizeof(state->modules)); // to put all on 0
+	memset(state->m_modules,0,sizeof(state->m_modules)); // to put all on 0
 	/* I/O RAM */
-	state->modules[0].off_mask = 0x0003f;  /* 32 B */
-	state->modules[0].read     = hp48_io_r;
-	state->modules[0].write    = hp48_io_w;
+	state->m_modules[0].off_mask = 0x0003f;  /* 32 B */
+	state->m_modules[0].read     = hp48_io_r;
+	state->m_modules[0].write    = hp48_io_w;
 
 	/* internal RAM */
-	state->modules[1].off_mask = 2 * ram_size - 1;
-	state->modules[1].read	 = NULL;
-	state->modules[1].write	 = NULL;
-	state->modules[1].data     = ram;
+	state->m_modules[1].off_mask = 2 * ram_size - 1;
+	state->m_modules[1].read	 = NULL;
+	state->m_modules[1].write	 = NULL;
+	state->m_modules[1].data     = ram;
 
 	if ( HP48_G_SERIES )
 	{
                 /* bank switcher */
-		state->modules[2].off_mask = 0x00fff;  /* 2 KB */
-		state->modules[2].read     = hp48_bank_r;
-		state->modules[2].write    = NULL;
+		state->m_modules[2].off_mask = 0x00fff;  /* 2 KB */
+		state->m_modules[2].read     = hp48_bank_r;
+		state->m_modules[2].write    = NULL;
 	}
 
 	/* ROM */
-	state->modules[5].off_mask = 2 * rom_size - 1;
-	state->modules[5].read	 = NULL;
-	state->modules[5].write    = NULL;
-	state->modules[5].isnop    = 1;
-	state->modules[5].data     = rom;
+	state->m_modules[5].off_mask = 2 * rom_size - 1;
+	state->m_modules[5].read	 = NULL;
+	state->m_modules[5].write    = NULL;
+	state->m_modules[5].isnop    = 1;
+	state->m_modules[5].data     = rom;
 
 	/* timers */
-	timer_pulse(machine,  ATTOTIME_IN_HZ( 16 ),   NULL, 0, hp48_timer1_cb );
-	timer_pulse(machine,  ATTOTIME_IN_HZ( 8192 ), NULL, 0, hp48_timer2_cb );
+	machine.scheduler().timer_pulse(attotime::from_hz( 16 ), FUNC(hp48_timer1_cb));
+	machine.scheduler().timer_pulse(attotime::from_hz( 8192 ), FUNC(hp48_timer2_cb));
 
 	/* 1ms keyboard polling */
-	timer_pulse(machine,  ATTOTIME_IN_MSEC( 1 ), NULL, 0, hp48_kbd_cb );
+	machine.scheduler().timer_pulse(attotime::from_msec( 1 ), FUNC(hp48_kbd_cb));
 
 	/* save state */
-	state_save_register_global(machine,  state->out );
-	state_save_register_global(machine,  state->kdn );
-	state_save_register_global(machine,  state->io_addr );
-	state_save_register_global(machine,  state->crc );
-	state_save_register_global(machine,  state->timer1 );
-	state_save_register_global(machine,  state->timer2 );
-	state_save_register_global(machine,  state->bank_switch );
+	state->save_item(NAME(state->m_out) );
+	state->save_item(NAME(state->m_kdn) );
+	state->save_item(NAME(state->m_io_addr) );
+	state->save_item(NAME(state->m_crc) );
+	state->save_item(NAME(state->m_timer1) );
+	state->save_item(NAME(state->m_timer2) );
+	state->save_item(NAME(state->m_bank_switch) );
 	for ( i = 0; i < 6; i++ )
 	{
-		state_save_register_item(machine, "globals", NULL, i, state->modules[i].state );
-		state_save_register_item(machine, "globals", NULL, i, state->modules[i].base );
-		state_save_register_item(machine, "globals", NULL, i, state->modules[i].mask );
+		state_save_register_item(machine, "globals", NULL, i, state->m_modules[i].state );
+		state_save_register_item(machine, "globals", NULL, i, state->m_modules[i].base );
+		state_save_register_item(machine, "globals", NULL, i, state->m_modules[i].mask );
 	}
-	state_save_register_global_array(machine,  state->io );
-	//state_save_register_global_pointer(machine,  machine->generic.nvram.u8, machine->generic.nvram_size );
+	state->save_item(NAME(state->m_io) );
+	//state_save_register_global_pointer(machine,  machine.generic.nvram.u8, machine.generic.nvram_size );
 
-	state_save_register_postload( machine, hp48_update_annunciators, NULL );
-	state_save_register_postload( machine, hp48_apply_modules, NULL );
+	machine.state().register_postload( hp48_update_annunciators, NULL );
+	machine.state().register_postload( hp48_apply_modules, NULL );
 
 #ifdef CHARDEV
 	/* direct I/O */
-	state->chardev = chardev_open_pty( machine, &hp48_chardev_iface );
+	state->m_chardev = chardev_open_pty( machine, &hp48_chardev_iface );
 #endif
 }
 

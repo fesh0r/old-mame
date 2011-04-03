@@ -4,18 +4,7 @@
  *
  ****************************************************************************/
 
-/*
-
-    TODO:
-
-	- check compatibility with new MC6845
-
-*/
-
-#include "emu.h"
 #include "includes/abc80x.h"
-#include "machine/z80dart.h"
-#include "video/mc6845.h"
 
 
 
@@ -71,7 +60,7 @@ static MC6845_UPDATE_ROW( abc802_update_row )
 
     */
 
-	abc802_state *state =  device->machine->driver_data<abc802_state>();
+	abc802_state *state =  device->machine().driver_data<abc802_state>();
 
 	int rf = 0, rc = 0, rg = 0;
 
@@ -190,7 +179,7 @@ WRITE_LINE_MEMBER( abc802_state::vs_w )
 	}
 
 	// signal _DEW to DART
-	z80dart_rib_w(m_dart, !state);
+	m_dart->ri_w(1, !state);
 }
 
 
@@ -220,20 +209,20 @@ static const mc6845_interface crtc_intf =
 void abc802_state::video_start()
 {
 	// find memory regions
-	m_char_rom = machine->region(MC6845_TAG)->base();
+	m_char_rom = m_machine.region(MC6845_TAG)->base();
 
 	// register for state saving
-	state_save_register_global(machine, m_flshclk_ctr);
-	state_save_register_global(machine, m_flshclk);
-	state_save_register_global(machine, m_80_40_mux);
+	state_save_register_global(m_machine, m_flshclk_ctr);
+	state_save_register_global(m_machine, m_flshclk);
+	state_save_register_global(m_machine, m_80_40_mux);
 }
 
 
 //-------------------------------------------------
-//  VIDEO_UPDATE( abc802 )
+//  SCREEN_UPDATE( abc802 )
 //-------------------------------------------------
 
-bool abc802_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool abc802_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	// HACK expand visible area to workaround MC6845
 	screen.set_visible_area(0, 767, 0, 311);

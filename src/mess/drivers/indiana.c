@@ -19,7 +19,7 @@ public:
 };
 
 
-static ADDRESS_MAP_START(indiana_mem, ADDRESS_SPACE_PROGRAM, 32)
+static ADDRESS_MAP_START(indiana_mem, AS_PROGRAM, 32)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x0000ffff) AM_MIRROR(0x7f800000) AM_ROM AM_REGION("user1",0) // 64Kb of EPROM
 	AM_RANGE(0x00100000, 0x00107fff) AM_MIRROR(0x7f8f8000) AM_RAM // SRAM 32Kb of SRAM
@@ -45,7 +45,7 @@ static VIDEO_START( indiana )
 {
 }
 
-static VIDEO_UPDATE( indiana )
+static SCREEN_UPDATE( indiana )
 {
     return 0;
 }
@@ -64,11 +64,12 @@ static MACHINE_CONFIG_START( indiana, indiana_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(indiana)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(indiana)
-    MCFG_VIDEO_UPDATE(indiana)
 MACHINE_CONFIG_END
 
 /* ROM definition */

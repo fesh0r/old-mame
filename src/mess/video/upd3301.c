@@ -217,7 +217,7 @@ static void update_hrtc_timer(upd3301_t *upd3301, int state)
 
 	attotime duration = upd3301->screen->time_until_pos(next_y, next_x);
 
-	timer_adjust_oneshot(upd3301->hrtc_timer, duration, !state);
+	upd3301->hrtc_timer->adjust(duration, !state);
 }
 
 /*-------------------------------------------------
@@ -231,7 +231,7 @@ static void update_vrtc_timer(upd3301_t *upd3301, int state)
 
 	attotime duration = upd3301->screen->time_until_pos(next_y, 0);
 
-	timer_adjust_oneshot(upd3301->vrtc_timer, duration, !state);
+	upd3301->vrtc_timer->adjust(duration, !state);
 }
 
 /*-------------------------------------------------
@@ -607,7 +607,7 @@ void upd3301_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprec
 	}
 	else
 	{
-		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine));
+		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine()));
 	}
 }
 
@@ -627,7 +627,7 @@ static DEVICE_START( upd3301 )
 	devcb_resolve_write_line(&upd3301->out_vrtc_func, &intf->out_vrtc_func, device);
 
 	/* get the screen device */
-	upd3301->screen = downcast<screen_device *>(device->machine->device(intf->screen_tag));
+	upd3301->screen = downcast<screen_device *>(device->machine().device(intf->screen_tag));
 	assert(upd3301->screen != NULL);
 
 	/* get character width */
@@ -635,11 +635,11 @@ static DEVICE_START( upd3301 )
 	upd3301->width = intf->width;
 
 	/* create the timers */
-	upd3301->vrtc_timer = timer_alloc(device->machine, vrtc_tick, (void *)device);
-	upd3301->hrtc_timer = timer_alloc(device->machine, hrtc_tick, (void *)device);
+	upd3301->vrtc_timer = device->machine().scheduler().timer_alloc(FUNC(vrtc_tick), (void *)device);
+	upd3301->hrtc_timer = device->machine().scheduler().timer_alloc(FUNC(hrtc_tick), (void *)device);
 
 	/* register for state saving */
-//  state_save_register_device_item(device, 0, upd3301->);
+//  device->save_item(NAME(upd3301->));
 }
 
 /*-------------------------------------------------

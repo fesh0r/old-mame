@@ -13,13 +13,13 @@
 #include "machine/i8255a.h"
 #include "machine/i8257.h"
 #include "video/i8275.h"
-#include "devices/cassette.h"
-#include "devices/cartslot.h"
+#include "imagedev/cassette.h"
+#include "imagedev/cartslot.h"
 #include "formats/rk_cas.h"
 #include "includes/radio86.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(radio86_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(radio86_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0x8003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
@@ -29,17 +29,17 @@ static ADDRESS_MAP_START(radio86_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( radio86_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( radio86_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x00, 0xff ) AM_READWRITE(radio_io_r,radio_io_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( rk7007_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( rk7007_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x80, 0x83 ) AM_DEVREADWRITE("ms7007", i8255a_r, i8255a_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(radio86rom_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(radio86rom_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0x8003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
@@ -49,7 +49,7 @@ static ADDRESS_MAP_START(radio86rom_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(radio86ram_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(radio86ram_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0xdfff ) AM_RAM  // RAM
     AM_RANGE( 0xe000, 0xe7ff ) AM_ROM  // System ROM page 2
@@ -62,7 +62,7 @@ static ADDRESS_MAP_START(radio86ram_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xf800, 0xffff ) AM_ROM  // System ROM page 1
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(radio86_16_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(radio86_16_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x3fff ) AM_RAM  // RAM
@@ -75,7 +75,7 @@ static ADDRESS_MAP_START(radio86_16_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(mikron2_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(mikron2_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0xc000, 0xc003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x00fc)
@@ -85,7 +85,7 @@ static ADDRESS_MAP_START(mikron2_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(impuls03_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(impuls03_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0x8003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
@@ -363,12 +363,12 @@ static MACHINE_CONFIG_START( radio86, radio86_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(78*6, 30*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MCFG_SCREEN_UPDATE(radio86)
 	MCFG_GFXDECODE(radio86)
 	MCFG_PALETTE_LENGTH(3)
 	MCFG_PALETTE_INIT(radio86)
 
 	MCFG_VIDEO_START(generic_bitmapped)
-	MCFG_VIDEO_UPDATE(radio86)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")
@@ -520,7 +520,7 @@ ROM_START( kr03 )
 ROM_END
 
 ROM_START( impuls03 )
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )    
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "imp03bas.rom", 0xa000, 0x2000, CRC(b13b2de4) SHA1(9af8c49d72ca257bc34cad3c62e530730929702e))
 	ROM_LOAD( "imp03mon.rom", 0xf800, 0x0800, CRC(8c591ce4) SHA1(8e8e9cba6b3123d74218b92f4b4210606ba53376))
 	ROM_COPY( "maincpu", 0xf800, 0xf000, 0x0800 )

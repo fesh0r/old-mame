@@ -42,7 +42,7 @@ icq3250a-d
 #include "emu.h"
 #include "cpu/m6805/m6805.h"
 #include "includes/comquest.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 
 #ifdef UNUSED_FUNCTION
 static  READ8_HANDLER(comquest_read)
@@ -58,7 +58,7 @@ static WRITE8_HANDLER(comquest_write)
 }
 #endif
 
-static ADDRESS_MAP_START( comquest_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( comquest_mem , AS_PROGRAM, 8)
 //  { 0x0000, 0x7fff, SMH_BANK(1) },
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xffff) AM_READONLY AM_WRITENOP
@@ -205,7 +205,7 @@ GFXDECODE_END
 
 static MACHINE_RESET( comquest )
 {
-//  UINT8 *mem=machine->region("user1")->base();
+//  UINT8 *mem=machine.region("user1")->base();
 //  memory_set_bankptr(machine, 1,mem+0x00000);
 }
 
@@ -254,12 +254,13 @@ static MACHINE_CONFIG_START( comquest, comquest_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(64*4, 128)	/* 160 x 102 */
 	MCFG_SCREEN_VISIBLE_AREA(0, 64*4-1, 0, 128-1)
+	MCFG_SCREEN_UPDATE( comquest )
+
 	MCFG_GFXDECODE( comquest )
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START( comquest )
-	MCFG_VIDEO_UPDATE( comquest )
 
 	/* sound hardware */
 	/* unknown ? */

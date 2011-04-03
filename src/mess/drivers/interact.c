@@ -17,43 +17,43 @@
     This in turn gets upgraded (2HR, HRX, MX). The line is finally
     retired in about 1985.
 
-		Hector 2HR+
-		Victor
-		Hector 2HR
-		Hector HRX
-		Hector MX40c
-		Hector MX80c
-		Hector 1
-		Interact
+        Hector 2HR+
+        Victor
+        Hector 2HR
+        Hector HRX
+        Hector MX40c
+        Hector MX80c
+        Hector 1
+        Interact
 
-		12/05/2009 Skeleton driver - Micko : mmicko@gmail.com
-		31/06/2009 Video - Robbbert
+        12/05/2009 Skeleton driver - Micko : mmicko@gmail.com
+        31/06/2009 Video - Robbbert
 
-		29/10/2009 Update skeleton to functional machine
-					by yo_fr			(jj.stac @ aliceadsl.fr)
+        29/10/2009 Update skeleton to functional machine
+                    by yo_fr            (jj.stac @ aliceadsl.fr)
 
-				=> add Keyboard,
-				=> add color,
-				=> add cassette,
-				=> add sn76477 sound and 1bit sound,
-				=> add joysticks (stick, pot, fire)
-				=> add BR/HR switching
-				=> add bank switch for HRX
-				=> add device MX80c and bank switching for the ROM
+                => add Keyboard,
+                => add color,
+                => add cassette,
+                => add sn76477 sound and 1bit sound,
+                => add joysticks (stick, pot, fire)
+                => add BR/HR switching
+                => add bank switch for HRX
+                => add device MX80c and bank switching for the ROM
     Importante note : the keyboard function add been piked from
-					DChector project : http://dchector.free.fr/ made by DanielCoulom
-					(thank's Daniel)
-	TODO :	Add the cartridge function,
-			Adjust the one shot and A/D timing (sn76477)
+                    DChector project : http://dchector.free.fr/ made by DanielCoulom
+                    (thank's Daniel)
+    TODO :  Add the cartridge function,
+            Adjust the one shot and A/D timing (sn76477)
 ****************************************************************************/
 /* Mapping for joystick see hec2hrp.c*/
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8085/i8085.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/hect_tap.h"
-#include "devices/printer.h"
+#include "imagedev/printer.h"
 #include "sound/wave.h"      /* for K7 sound*/
 #include "sound/sn76477.h"   /* for sn sound*/
 #include "sound/discrete.h"  /* for 1 Bit sound*/
@@ -67,11 +67,11 @@ class interact_state : public driver_device
 public:
 	interact_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
-	UINT8 *videoram;
+	UINT8 *m_videoram;
 };
 
 
-static ADDRESS_MAP_START(interact_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(interact_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	/* Hardware address mapping*/
 /*  AM_RANGE(0x0800,0x0808) AM_WRITE( hector_switch_bank_w)// Bank management not udsed in BR machine*/
@@ -87,7 +87,7 @@ static ADDRESS_MAP_START(interact_mem, ADDRESS_SPACE_PROGRAM, 8)
 	/*   AM_RANGE(0x1000,0x3fff) AM_RAM*/
 
 	/* Video br mapping*/
-	AM_RANGE(0x4000,0x49ff) AM_RAM AM_BASE_MEMBER(interact_state, videoram)
+	AM_RANGE(0x4000,0x49ff) AM_RAM AM_BASE_MEMBER(interact_state, m_videoram)
 	/* continous RAM*/
 	AM_RANGE(0x4A00,0xffff) AM_RAM
 
@@ -124,10 +124,10 @@ static MACHINE_START(interact)
 	hector_init(machine);
 }
 
-static VIDEO_UPDATE( interact )
+static SCREEN_UPDATE( interact )
 {
-	interact_state *state = screen->machine->driver_data<interact_state>();
-	UINT8 *videoram = state->videoram;
+	interact_state *state = screen->machine().driver_data<interact_state>();
+	UINT8 *videoram = state->m_videoram;
 	screen->set_visible_area(0, 113, 0, 75);
 	hector_hr( bitmap, videoram,  77, 32);
 	return 0;
@@ -150,10 +150,11 @@ static MACHINE_CONFIG_START( interact, interact_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 79)
 	MCFG_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
+	MCFG_SCREEN_UPDATE(interact)
+
 	MCFG_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
 
 	MCFG_VIDEO_START(hec2hrp)
-	MCFG_VIDEO_UPDATE(interact)
 		/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")
@@ -191,10 +192,11 @@ static MACHINE_CONFIG_START( hector1, interact_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 79)
 	MCFG_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
+	MCFG_SCREEN_UPDATE(interact)
+
 	MCFG_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
 
 	MCFG_VIDEO_START(hec2hrp)
-	MCFG_VIDEO_UPDATE(interact)
 		/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")

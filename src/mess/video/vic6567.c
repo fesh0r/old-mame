@@ -146,7 +146,7 @@ struct _vic2_state
 
 	/* Cycles */
 	UINT64 first_ba_cycle;
-	UINT8 cpu_suspended;
+	UINT8 device_suspended;
 
 	/* DMA */
 	vic2_dma_read          dma_read;
@@ -175,7 +175,7 @@ struct _vic2_state
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", machine.time().as_double(), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -283,7 +283,7 @@ INLINE const vic2_interface *get_interface( device_t *device )
     IMPLEMENTATION
 *****************************************************************************/
 
-static void vic2_set_interrupt( running_machine *machine, int mask, vic2_state *vic2 )
+static void vic2_set_interrupt( running_machine &machine, int mask, vic2_state *vic2 )
 {
 	if (((vic2->reg[0x19] ^ mask) & vic2->reg[0x1a] & 0xf))
 	{
@@ -297,7 +297,7 @@ static void vic2_set_interrupt( running_machine *machine, int mask, vic2_state *
 	vic2->reg[0x19] |= mask;
 }
 
-static void vic2_clear_interrupt( running_machine *machine, int mask, vic2_state *vic2 )
+static void vic2_clear_interrupt( running_machine &machine, int mask, vic2_state *vic2 )
 {
 	vic2->reg[0x19] &= ~mask;
 	if ((vic2->reg[0x19] & 0x80) && !(vic2->reg[0x19] & vic2->reg[0x1a] & 0xf))
@@ -338,19 +338,19 @@ static TIMER_CALLBACK( vic2_timer_timeout )
 // modified VIC II emulation by Christian Bauer starts here...
 
 // Idle access
-INLINE void vic2_idle_access( running_machine *machine, vic2_state *vic2 )
+INLINE void vic2_idle_access( running_machine &machine, vic2_state *vic2 )
 {
 	vic2->dma_read(machine, 0x3fff);
 }
 
 // Fetch sprite data pointer
-INLINE void vic2_spr_ptr_access( running_machine *machine, vic2_state *vic2, int num )
+INLINE void vic2_spr_ptr_access( running_machine &machine, vic2_state *vic2, int num )
 {
 	vic2->spr_ptr[num] = vic2->dma_read(machine, SPRITE_ADDR(num)) << 6;
 }
 
 // Fetch sprite data, increment data counter
-INLINE void vic2_spr_data_access( running_machine *machine, vic2_state *vic2, int num, int bytenum )
+INLINE void vic2_spr_data_access( running_machine &machine, vic2_state *vic2, int num, int bytenum )
 {
 	if (vic2->spr_dma_on & (1 << num))
 	{
@@ -370,34 +370,34 @@ INLINE void vic2_display_if_bad_line( vic2_state *vic2 )
 }
 
 // Suspend CPU
-INLINE void vic2_suspend_cpu( running_machine *machine, vic2_state *vic2 )
+INLINE void vic2_suspend_cpu( running_machine &machine, vic2_state *vic2 )
 {
-	if (vic2->cpu_suspended == 0)
+	if (vic2->device_suspended == 0)
 	{
 		vic2->first_ba_cycle = vic2->cycles_counter;
 		if ((vic2->rdy_workaround_cb != NULL) && (vic2->rdy_workaround_cb(machine) != 7 ))
 		{
-//          cpu_suspend(machine->firstcpu, SUSPEND_REASON_SPIN, 0);
+//          device_suspend(machine.firstcpu, SUSPEND_REASON_SPIN, 0);
 		}
-		vic2->cpu_suspended = 1;
+		vic2->device_suspended = 1;
 	}
 }
 
 // Resume CPU
-INLINE void vic2_resume_cpu( running_machine *machine, vic2_state *vic2 )
+INLINE void vic2_resume_cpu( running_machine &machine, vic2_state *vic2 )
 {
-	if (vic2->cpu_suspended == 1)
+	if (vic2->device_suspended == 1)
 	{
 		if ((vic2->rdy_workaround_cb != NULL))
 		{
-//  cpu_resume(machine->firstcpu, SUSPEND_REASON_SPIN);
+//  device_resume(machine.firstcpu, SUSPEND_REASON_SPIN);
 		}
-		vic2->cpu_suspended = 0;
+		vic2->device_suspended = 0;
 	}
 }
 
 // Refresh access
-INLINE void vic2_refresh_access( running_machine *machine, vic2_state *vic2 )
+INLINE void vic2_refresh_access( running_machine &machine, vic2_state *vic2 )
 {
 	vic2->dma_read(machine, 0x3f00 | vic2->ref_cnt--);
 }
@@ -449,9 +449,9 @@ INLINE void vic2_check_sprite_dma( vic2_state *vic2 )
 }
 
 // Video matrix access
-INLINE void vic2_matrix_access( running_machine *machine, vic2_state *vic2 )
+INLINE void vic2_matrix_access( running_machine &machine, vic2_state *vic2 )
 {
-//  if (vic2->cpu_suspended == 1)
+//  if (vic2->device_suspended == 1)
 	{
 		if ((vic2->cycles_counter - vic2->first_ba_cycle) < 0)
 			vic2->matrix_line[vic2->ml_index] = vic2->color_line[vic2->ml_index] = 0xff;
@@ -465,7 +465,7 @@ INLINE void vic2_matrix_access( running_machine *machine, vic2_state *vic2 )
 }
 
 // Graphics data access
-INLINE void vic2_graphics_access( running_machine *machine, vic2_state *vic2 )
+INLINE void vic2_graphics_access( running_machine &machine, vic2_state *vic2 )
 {
 	if (vic2->display_state == 1)
 	{
@@ -699,7 +699,7 @@ static void vic2_draw_graphics( vic2_state *vic2 )
 	}
 }
 
-static void vic2_draw_sprites( running_machine *machine, vic2_state *vic2 )
+static void vic2_draw_sprites( running_machine &machine, vic2_state *vic2 )
 {
 	int i;
 	UINT8 snum, sbit;
@@ -1000,7 +1000,7 @@ static TIMER_CALLBACK( pal_timer_callback )
 	UINT8 mask;
 	//static int adjust[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-	UINT8 cpu_cycles = machine->device<cpu_device>("maincpu")->total_cycles() & 0xff;
+	UINT8 cpu_cycles = machine.device<cpu_device>("maincpu")->total_cycles() & 0xff;
 	UINT8 vic_cycles = (vic2->cycles_counter + 1) & 0xff;
 	vic2->cycles_counter++;
 
@@ -1046,7 +1046,7 @@ if (input_code_pressed_once(machine, KEYCODE_Z)) printf("b:%02x 1:%02x 2:%02x 3:
 //          if (LIGHTPEN_BUTTON)
 			{
 				/* lightpen timer start */
-				timer_set(machine, attotime_make(0, 0), vic2, 1, vic2_timer_timeout);
+				machine.scheduler().timer_set(attotime(0, 0), FUNC(vic2_timer_timeout), 1, vic2);
 			}
 		}
 		else
@@ -1610,12 +1610,12 @@ if (input_code_pressed_once(machine, KEYCODE_Z)) printf("b:%02x 1:%02x 2:%02x 3:
 
 	if ((cpu_cycles == vic_cycles) && (vic2->rdy_cycles > 0))
 	{
-		device_spin_until_time (machine->firstcpu, machine->device<cpu_device>("maincpu")->cycles_to_attotime(vic2->rdy_cycles));
+		device_spin_until_time (machine.firstcpu, machine.device<cpu_device>("maincpu")->cycles_to_attotime(vic2->rdy_cycles));
 		vic2->rdy_cycles = 0;
 	}
 
 	vic2->raster_x += 8;
-	timer_set(machine, machine->device<cpu_device>("maincpu")->cycles_to_attotime(1), vic2, 0, pal_timer_callback);
+	machine.scheduler().timer_set(machine.device<cpu_device>("maincpu")->cycles_to_attotime(1), FUNC(pal_timer_callback), 0, vic2);
 }
 
 static TIMER_CALLBACK( ntsc_timer_callback )
@@ -1637,7 +1637,7 @@ static TIMER_CALLBACK( ntsc_timer_callback )
 //          if (LIGHTPEN_BUTTON)
 			{
 				/* lightpen timer starten */
-				timer_set(machine, attotime_make(0, 0), vic2, 1, vic2_timer_timeout);
+				machine.scheduler().timer_set(attotime(0, 0), FUNC(vic2_timer_timeout), 1, vic2);
 			}
 		}
 		else
@@ -2194,7 +2194,7 @@ static TIMER_CALLBACK( ntsc_timer_callback )
 	}
 
 	vic2->raster_x += 8;
-	timer_set(machine, machine->device<cpu_device>("maincpu")->cycles_to_attotime(1), vic2, 0, ntsc_timer_callback);
+	machine.scheduler().timer_set(machine.device<cpu_device>("maincpu")->cycles_to_attotime(1), FUNC(ntsc_timer_callback), 0, vic2);
 }
 
 
@@ -2230,7 +2230,7 @@ int vic2e_k2_r( device_t *device )
 WRITE8_DEVICE_HANDLER( vic2_port_w )
 {
 	vic2_state *vic2 = get_safe_token(device);
-	running_machine *machine = device->machine;
+	running_machine &machine = device->machine();
 
 	DBG_LOG(2, "vic write", ("%.2x:%.2x\n", offset, data));
 	offset &= 0x3f;
@@ -2455,7 +2455,7 @@ WRITE8_DEVICE_HANDLER( vic2_port_w )
 READ8_DEVICE_HANDLER( vic2_port_r )
 {
 	vic2_state *vic2 = get_safe_token(device);
-	running_machine *machine = device->machine;
+	running_machine &machine = device->machine();
 	int val = 0;
 
 	offset &= 0x3f;
@@ -2601,13 +2601,13 @@ static DEVICE_START( vic2 )
 	int width, height;
 	int i;
 
-	vic2->cpu = device->machine->device(intf->cpu);
+	vic2->cpu = device->machine().device(intf->cpu);
 
-	vic2->screen = device->machine->device<screen_device>(intf->screen);
+	vic2->screen = device->machine().device<screen_device>(intf->screen);
 	width = vic2->screen->width();
 	height = vic2->screen->height();
 
-	vic2->bitmap = auto_bitmap_alloc(device->machine, width, height, BITMAP_FORMAT_INDEXED16);
+	vic2->bitmap = auto_bitmap_alloc(device->machine(), width, height, BITMAP_FORMAT_INDEXED16);
 
 	vic2->type = intf->type;
 
@@ -2623,9 +2623,9 @@ static DEVICE_START( vic2 )
 
 	// immediately call the timer to handle the first line
 	if (vic2->type == VIC6569 || vic2->type == VIC8566)
-		timer_set(device->machine, downcast<cpu_device *>(vic2->cpu)->cycles_to_attotime(0), vic2, 0, pal_timer_callback);
+		device->machine().scheduler().timer_set(downcast<cpu_device *>(vic2->cpu)->cycles_to_attotime(0), FUNC(pal_timer_callback), 0, vic2);
 	else
-		timer_set(device->machine, downcast<cpu_device *>(vic2->cpu)->cycles_to_attotime(0), vic2, 0, ntsc_timer_callback);
+		device->machine().scheduler().timer_set(downcast<cpu_device *>(vic2->cpu)->cycles_to_attotime(0), FUNC(ntsc_timer_callback), 0, vic2);
 
 	for (i = 0; i < 256; i++)
 	{
@@ -2669,68 +2669,68 @@ static DEVICE_START( vic2 )
 			vic2->expandx_multi[i] |= 0xa000;
 	}
 
-	state_save_register_device_item_array(device, 0, vic2->reg);
+	device->save_item(NAME(vic2->reg));
 
-	state_save_register_device_item(device, 0, vic2->on);
+	device->save_item(NAME(vic2->on));
 
-	state_save_register_device_item_bitmap(device, 0, vic2->bitmap);
+	device->save_item(NAME(*vic2->bitmap));
 
-	state_save_register_device_item(device, 0, vic2->chargenaddr);
-	state_save_register_device_item(device, 0, vic2->videoaddr);
-	state_save_register_device_item(device, 0, vic2->bitmapaddr);
+	device->save_item(NAME(vic2->chargenaddr));
+	device->save_item(NAME(vic2->videoaddr));
+	device->save_item(NAME(vic2->bitmapaddr));
 
-	state_save_register_device_item_array(device, 0, vic2->colors);
-	state_save_register_device_item_array(device, 0, vic2->spritemulti);
+	device->save_item(NAME(vic2->colors));
+	device->save_item(NAME(vic2->spritemulti));
 
-	state_save_register_device_item(device, 0, vic2->rasterline);
-	state_save_register_device_item(device, 0, vic2->cycles_counter);
-	state_save_register_device_item(device, 0, vic2->cycle);
-	state_save_register_device_item(device, 0, vic2->raster_x);
-	state_save_register_device_item(device, 0, vic2->graphic_x);
+	device->save_item(NAME(vic2->rasterline));
+	device->save_item(NAME(vic2->cycles_counter));
+	device->save_item(NAME(vic2->cycle));
+	device->save_item(NAME(vic2->raster_x));
+	device->save_item(NAME(vic2->graphic_x));
 
-	state_save_register_device_item(device, 0, vic2->dy_start);
-	state_save_register_device_item(device, 0, vic2->dy_stop);
+	device->save_item(NAME(vic2->dy_start));
+	device->save_item(NAME(vic2->dy_stop));
 
-	state_save_register_device_item(device, 0, vic2->draw_this_line);
-	state_save_register_device_item(device, 0, vic2->is_bad_line);
-	state_save_register_device_item(device, 0, vic2->bad_lines_enabled);
-	state_save_register_device_item(device, 0, vic2->display_state);
-	state_save_register_device_item(device, 0, vic2->char_data);
-	state_save_register_device_item(device, 0, vic2->gfx_data);
-	state_save_register_device_item(device, 0, vic2->color_data);
-	state_save_register_device_item(device, 0, vic2->last_char_data);
-	state_save_register_device_item_array(device, 0, vic2->matrix_line);
-	state_save_register_device_item_array(device, 0, vic2->color_line);
-	state_save_register_device_item(device, 0, vic2->vblanking);
-	state_save_register_device_item(device, 0, vic2->ml_index);
-	state_save_register_device_item(device, 0, vic2->rc);
-	state_save_register_device_item(device, 0, vic2->vc);
-	state_save_register_device_item(device, 0, vic2->vc_base);
-	state_save_register_device_item(device, 0, vic2->ref_cnt);
+	device->save_item(NAME(vic2->draw_this_line));
+	device->save_item(NAME(vic2->is_bad_line));
+	device->save_item(NAME(vic2->bad_lines_enabled));
+	device->save_item(NAME(vic2->display_state));
+	device->save_item(NAME(vic2->char_data));
+	device->save_item(NAME(vic2->gfx_data));
+	device->save_item(NAME(vic2->color_data));
+	device->save_item(NAME(vic2->last_char_data));
+	device->save_item(NAME(vic2->matrix_line));
+	device->save_item(NAME(vic2->color_line));
+	device->save_item(NAME(vic2->vblanking));
+	device->save_item(NAME(vic2->ml_index));
+	device->save_item(NAME(vic2->rc));
+	device->save_item(NAME(vic2->vc));
+	device->save_item(NAME(vic2->vc_base));
+	device->save_item(NAME(vic2->ref_cnt));
 
-	state_save_register_device_item_array(device, 0, vic2->spr_coll_buf);
-	state_save_register_device_item_array(device, 0, vic2->fore_coll_buf);
-	state_save_register_device_item(device, 0, vic2->spr_exp_y);
-	state_save_register_device_item(device, 0, vic2->spr_dma_on);
-	state_save_register_device_item(device, 0, vic2->spr_draw);
-	state_save_register_device_item(device, 0, vic2->spr_disp_on);
-	state_save_register_device_item_array(device, 0, vic2->spr_ptr);
-	state_save_register_device_item_array(device, 0, vic2->mc_base);
-	state_save_register_device_item_array(device, 0, vic2->mc);
+	device->save_item(NAME(vic2->spr_coll_buf));
+	device->save_item(NAME(vic2->fore_coll_buf));
+	device->save_item(NAME(vic2->spr_exp_y));
+	device->save_item(NAME(vic2->spr_dma_on));
+	device->save_item(NAME(vic2->spr_draw));
+	device->save_item(NAME(vic2->spr_disp_on));
+	device->save_item(NAME(vic2->spr_ptr));
+	device->save_item(NAME(vic2->mc_base));
+	device->save_item(NAME(vic2->mc));
 
 	for (i = 0; i < 8; i++)
 	{
-		state_save_register_device_item_array(device, i, vic2->spr_data[i]);
-		state_save_register_device_item_array(device, i, vic2->spr_draw_data[i]);
+		device->save_item(NAME(vic2->spr_data[i]), i);
+		device->save_item(NAME(vic2->spr_draw_data[i]), i);
 	}
 
-	state_save_register_device_item(device, 0, vic2->border_on);
-	state_save_register_device_item(device, 0, vic2->ud_border_on);
-	state_save_register_device_item_array(device, 0, vic2->border_on_sample);
-	state_save_register_device_item_array(device, 0, vic2->border_color_sample);
+	device->save_item(NAME(vic2->border_on));
+	device->save_item(NAME(vic2->ud_border_on));
+	device->save_item(NAME(vic2->border_on_sample));
+	device->save_item(NAME(vic2->border_color_sample));
 
-	state_save_register_device_item(device, 0, vic2->first_ba_cycle);
-	state_save_register_device_item(device, 0, vic2->cpu_suspended);
+	device->save_item(NAME(vic2->first_ba_cycle));
+	device->save_item(NAME(vic2->device_suspended));
 }
 
 static DEVICE_RESET( vic2 )
@@ -2779,7 +2779,7 @@ static DEVICE_RESET( vic2 )
 	vic2->ud_border_on = 0;
 
 	vic2->first_ba_cycle = 0;
-	vic2->cpu_suspended = 0;
+	vic2->device_suspended = 0;
 
 	memset(vic2->matrix_line, 0, ARRAY_LENGTH(vic2->matrix_line));
 	memset(vic2->color_line, 0, ARRAY_LENGTH(vic2->color_line));

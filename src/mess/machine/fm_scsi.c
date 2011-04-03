@@ -81,14 +81,14 @@ void fmscsi_device::device_start()
     // initialise SCSI devices, if any present
     for(x=0;x<m_config.scsidevs->devs_present;x++)
     {
-    	SCSIAllocInstance(machine, m_config.scsidevs->devices[x].scsiClass,
+    	SCSIAllocInstance(m_machine, m_config.scsidevs->devices[x].scsiClass,
 				&m_SCSIdevices[m_config.scsidevs->devices[x].scsiID],
 				m_config.scsidevs->devices[x].diskregion );
     }
 
     // allocate read timer
-    m_transfer_timer = device_timer_alloc(*this,TIMER_TRANSFER);
-    m_phase_timer = device_timer_alloc(*this,TIMER_PHASE);
+    m_transfer_timer = timer_alloc(TIMER_TRANSFER);
+    m_phase_timer = timer_alloc(TIMER_PHASE);
 }
 
 void fmscsi_device::device_reset()
@@ -141,10 +141,10 @@ void fmscsi_device::fmscsi_rescan()
 	for (i = 0; i < m_config.scsidevs->devs_present; i++)
 	{
 		// if a device wasn't already allocated
-//		if (!m_SCSIdevices[m_config.scsidevs->devices[i].scsiID])
+//      if (!m_SCSIdevices[m_config.scsidevs->devices[i].scsiID])
 		{
 			SCSIDeleteInstance( m_SCSIdevices[m_config.scsidevs->devices[i].scsiID] );
-			SCSIAllocInstance( machine,
+			SCSIAllocInstance( m_machine,
 					m_config.scsidevs->devices[i].scsiClass,
 					&m_SCSIdevices[m_config.scsidevs->devices[i].scsiID],
 					m_config.scsidevs->devices[i].diskregion );
@@ -187,8 +187,8 @@ UINT8 fmscsi_device::fmscsi_data_r(void)
 		if(m_result_index >= m_result_length)
 		{
 			// end of data transfer
-			timer_adjust_oneshot(m_transfer_timer,attotime_never,0);  // stop timer
-			timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_STATUS);
+			m_transfer_timer->adjust(attotime::never);  // stop timer
+			m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_STATUS);
 			if(m_output_lines & FMSCSI_LINE_DMAE)
 			{
 				devcb_call_write_line(&m_drq_func,0);
@@ -201,7 +201,7 @@ UINT8 fmscsi_device::fmscsi_data_r(void)
 	if(m_phase == SCSI_PHASE_MESSAGE_IN)
 	{
 		m_data = 0;  // command complete message
-		timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_BUS_FREE);
+		m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_BUS_FREE);
 		m_command_index = 0;
 		return m_data;
 	}
@@ -210,7 +210,7 @@ UINT8 fmscsi_device::fmscsi_data_r(void)
 	{
 		m_data = 0;  // GOOD status
 		// no command complete message?
-		timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_MESSAGE_IN);
+		m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_MESSAGE_IN);
 		m_command_index = 0;
 		//set_input_line(FMSCSI_LINE_REQ,1);  // raise REQ yet again
 		return m_data;
@@ -251,8 +251,8 @@ void fmscsi_device::fmscsi_data_w(UINT8 data)
 		if(m_result_index >= m_result_length)
 		{
 			// end of data transfer
-			timer_adjust_oneshot(m_transfer_timer,attotime_never,0);  // stop timer
-			timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_STATUS);
+			m_transfer_timer->adjust(attotime::never);  // stop timer
+			m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_STATUS);
 			if(m_output_lines & FMSCSI_LINE_DMAE)
 			{
 				devcb_call_write_line(&m_drq_func,0);
@@ -272,20 +272,20 @@ void fmscsi_device::fmscsi_data_w(UINT8 data)
 			SCSIExecCommand(m_SCSIdevices[m_target],&m_result_length);
 			SCSIGetPhase(m_SCSIdevices[m_target],&phase);
 			if(m_command[0] == 1)  // rezero unit command - not implemented in SCSI code
-				timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_STATUS);
+				m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_STATUS);
 			else
-				timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),phase);
+				m_phase_timer->adjust(attotime::from_usec(800),phase);
 
 			logerror("FMSCSI: Command %02x sent, result length = %i\n",m_command[0],m_result_length);
 		}
 		else
 		{
-			timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_COMMAND);
+			m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_COMMAND);
 		}
 	}
 	if(m_phase == SCSI_PHASE_MESSAGE_OUT)
 	{
-		timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_STATUS);
+		m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_STATUS);
 	}
 }
 
@@ -322,7 +322,7 @@ void fmscsi_device::set_phase(int phase)
 		set_input_line(FMSCSI_LINE_IO,1);
 		set_input_line(FMSCSI_LINE_REQ,1);
 		// start transfer timer
-		timer_adjust_periodic(m_transfer_timer,attotime_zero,0,ATTOTIME_IN_HZ(3000000));  // arbitrary value for now
+		m_transfer_timer->adjust(attotime::zero,0,attotime::from_hz(3000000));  // arbitrary value for now
 		SCSIReadData(m_SCSIdevices[m_target],m_buffer,512);
 		m_result_index = 0;
 		logerror("FMSCSI: Starting transfer (%i)\n",m_result_length);
@@ -333,7 +333,7 @@ void fmscsi_device::set_phase(int phase)
 		set_input_line(FMSCSI_LINE_IO,0);
 		set_input_line(FMSCSI_LINE_REQ,1);
 		// start transfer timer
-		timer_adjust_periodic(m_transfer_timer,attotime_zero,0,ATTOTIME_IN_HZ(3000000));  // arbitrary value for now
+		m_transfer_timer->adjust(attotime::zero,0,attotime::from_hz(3000000));  // arbitrary value for now
 		m_result_index = 0;
 		logerror("FMSCSI: Starting transfer (%i)\n",m_result_length);
 		break;
@@ -384,7 +384,7 @@ void fmscsi_device::set_input_line(UINT8 line, UINT8 state)
 		m_input_lines |= line;
 	else
 		m_input_lines &= ~line;
-//	logerror("FMSCSI: input line %02x set to %i\n",line,state);
+//  logerror("FMSCSI: input line %02x set to %i\n",line,state);
 }
 
 UINT8 fmscsi_device::get_input_line(UINT8 line)
@@ -404,12 +404,12 @@ void fmscsi_device::set_output_line(UINT8 line, UINT8 state)
 
 	if(line == FMSCSI_LINE_SEL)
 	{
-		image = dynamic_cast<device_image_interface*>(machine->device(m_config.scsidevs->devices[m_target].diskregion));
+		image = dynamic_cast<device_image_interface*>(machine().device(m_config.scsidevs->devices[m_target].diskregion));
 		if(state != 0 && !(m_output_lines & FMSCSI_LINE_SEL)) // low to high transition
 		{
 			if (image->exists())  // if device is mounted
 			{
-				timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_COMMAND);
+				m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_COMMAND);
 				m_data = 0x08;
 			}
 		}
@@ -418,14 +418,14 @@ void fmscsi_device::set_output_line(UINT8 line, UINT8 state)
 	if(line == FMSCSI_LINE_ATN)
 	{
 		if(state != 0)
-			timer_adjust_oneshot(m_phase_timer,ATTOTIME_IN_USEC(800),SCSI_PHASE_MESSAGE_OUT);
+			m_phase_timer->adjust(attotime::from_usec(800),SCSI_PHASE_MESSAGE_OUT);
 	}
 
 	if(state != 0)
 		m_output_lines |= line;
 	else
 		m_output_lines &= ~line;
-//	logerror("FMSCSI: output line %02x set to %i\n",line,state);
+//  logerror("FMSCSI: output line %02x set to %i\n",line,state);
 }
 
 UINT8 fmscsi_device::get_output_line(UINT8 line)
@@ -453,19 +453,23 @@ void fmscsi_device::fmscsi_control_w(UINT8 data)
 
 READ8_MEMBER( fmscsi_device::fmscsi_r )
 {
-	switch(offset & 0x01)
+	switch(offset & 0x03)
 	{
 	case 0x00:
 		return fmscsi_data_r();
 	case 0x01:
 		return fmscsi_status_r();
+	case 0x02:
+		return 0x80;  // Linux uses this port to detect the ability to do word transfers.  We'll tell it that it doesn't for now.
+	default:
+		logerror("FMSCSI: Unknown read at offset %i\n",offset);
 	}
 	return 0;
 }
 
 WRITE8_MEMBER( fmscsi_device::fmscsi_w )
 {
-	switch(offset & 0x01)
+	switch(offset & 0x03)
 	{
 	case 0x00:
 		fmscsi_data_w(data);
@@ -473,5 +477,7 @@ WRITE8_MEMBER( fmscsi_device::fmscsi_w )
 	case 0x01:
 		fmscsi_control_w(data);
 		break;
+	default:
+		logerror("FMSCSI: Unknown write 0x%02x at offset %i\n",data,offset);
 	}
 }

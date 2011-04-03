@@ -85,7 +85,7 @@ static TIMER_CALLBACK( cdp1861_int_tick )
 			devcb_call_write_line(&cdp1861->out_int_func, ASSERT_LINE);
 		}
 
-		timer_adjust_oneshot(cdp1861->int_timer, cdp1861->screen->time_until_pos( CDP1861_SCANLINE_INT_END, 0), 0);
+		cdp1861->int_timer->adjust(cdp1861->screen->time_until_pos( CDP1861_SCANLINE_INT_END, 0));
 	}
 	else
 	{
@@ -94,7 +94,7 @@ static TIMER_CALLBACK( cdp1861_int_tick )
 			devcb_call_write_line(&cdp1861->out_int_func, CLEAR_LINE);
 		}
 
-		timer_adjust_oneshot(cdp1861->int_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_INT_START, 0), 0);
+		cdp1861->int_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_INT_START, 0));
 	}
 }
 
@@ -113,22 +113,22 @@ static TIMER_CALLBACK( cdp1861_efx_tick )
 	{
 	case CDP1861_SCANLINE_EFX_TOP_START:
 		devcb_call_write_line(&cdp1861->out_efx_func, ASSERT_LINE);
-		timer_adjust_oneshot(cdp1861->efx_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_TOP_END, 0), 0);
+		cdp1861->efx_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_TOP_END, 0));
 		break;
 
 	case CDP1861_SCANLINE_EFX_TOP_END:
 		devcb_call_write_line(&cdp1861->out_efx_func, CLEAR_LINE);
-		timer_adjust_oneshot(cdp1861->efx_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_BOTTOM_START, 0), 0);
+		cdp1861->efx_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_BOTTOM_START, 0));
 		break;
 
 	case CDP1861_SCANLINE_EFX_BOTTOM_START:
 		devcb_call_write_line(&cdp1861->out_efx_func, ASSERT_LINE);
-		timer_adjust_oneshot(cdp1861->efx_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_BOTTOM_END, 0), 0);
+		cdp1861->efx_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_BOTTOM_END, 0));
 		break;
 
 	case CDP1861_SCANLINE_EFX_BOTTOM_END:
 		devcb_call_write_line(&cdp1861->out_efx_func, CLEAR_LINE);
-		timer_adjust_oneshot(cdp1861->efx_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_TOP_START, 0), 0);
+		cdp1861->efx_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_TOP_START, 0));
 		break;
 	}
 }
@@ -154,7 +154,7 @@ static TIMER_CALLBACK( cdp1861_dma_tick )
 			}
 		}
 
-		timer_adjust_oneshot(cdp1861->dma_timer, cdp1861->cpu->cycles_to_attotime(CDP1861_CYCLES_DMA_WAIT), 0);
+		cdp1861->dma_timer->adjust(cdp1861->cpu->cycles_to_attotime(CDP1861_CYCLES_DMA_WAIT));
 
 		cdp1861->dmaout = 0;
 	}
@@ -168,7 +168,7 @@ static TIMER_CALLBACK( cdp1861_dma_tick )
 			}
 		}
 
-		timer_adjust_oneshot(cdp1861->dma_timer, cdp1861->cpu->cycles_to_attotime(CDP1861_CYCLES_DMA_ACTIVE), 0);
+		cdp1861->dma_timer->adjust(cdp1861->cpu->cycles_to_attotime(CDP1861_CYCLES_DMA_ACTIVE));
 
 		cdp1861->dmaout = 1;
 	}
@@ -237,7 +237,7 @@ void cdp1861_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprec
 	}
 	else
 	{
-		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine));
+		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine()));
 	}
 }
 
@@ -256,26 +256,26 @@ static DEVICE_START( cdp1861 )
 	devcb_resolve_write_line(&cdp1861->out_efx_func, &intf->out_efx_func, device);
 
 	/* get the cpu */
-	cdp1861->cpu = device->machine->device<cpu_device>(intf->cpu_tag);
+	cdp1861->cpu = device->machine().device<cpu_device>(intf->cpu_tag);
 
 	/* get the screen device */
-	cdp1861->screen =  device->machine->device<screen_device>(intf->screen_tag);
+	cdp1861->screen =  device->machine().device<screen_device>(intf->screen_tag);
 	assert(cdp1861->screen != NULL);
 
 	/* allocate the temporary bitmap */
-	cdp1861->bitmap = auto_bitmap_alloc(device->machine, cdp1861->screen->width(), cdp1861->screen->height(), cdp1861->screen->format());
+	cdp1861->bitmap = auto_bitmap_alloc(device->machine(), cdp1861->screen->width(), cdp1861->screen->height(), cdp1861->screen->format());
 
 	/* create the timers */
-	cdp1861->int_timer = timer_alloc(device->machine, cdp1861_int_tick, (void *)device);
-	cdp1861->efx_timer = timer_alloc(device->machine, cdp1861_efx_tick, (void *)device);
-	cdp1861->dma_timer = timer_alloc(device->machine, cdp1861_dma_tick, (void *)device);
+	cdp1861->int_timer = device->machine().scheduler().timer_alloc(FUNC(cdp1861_int_tick), (void *)device);
+	cdp1861->efx_timer = device->machine().scheduler().timer_alloc(FUNC(cdp1861_efx_tick), (void *)device);
+	cdp1861->dma_timer = device->machine().scheduler().timer_alloc(FUNC(cdp1861_dma_tick), (void *)device);
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, cdp1861->disp);
-	state_save_register_device_item(device, 0, cdp1861->dispon);
-	state_save_register_device_item(device, 0, cdp1861->dispoff);
-	state_save_register_device_item(device, 0, cdp1861->dmaout);
-	state_save_register_device_item_bitmap(device, 0, cdp1861->bitmap);
+	device->save_item(NAME(cdp1861->disp));
+	device->save_item(NAME(cdp1861->dispon));
+	device->save_item(NAME(cdp1861->dispoff));
+	device->save_item(NAME(cdp1861->dmaout));
+	device->save_item(NAME(*cdp1861->bitmap));
 }
 
 /*-------------------------------------------------
@@ -286,9 +286,9 @@ static DEVICE_RESET( cdp1861 )
 {
 	cdp1861_t *cdp1861 = get_safe_token(device);
 
-	timer_adjust_oneshot(cdp1861->int_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_INT_START, 0), 0);
-	timer_adjust_oneshot(cdp1861->efx_timer, cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_TOP_START, 0), 0);
-	timer_adjust_oneshot(cdp1861->dma_timer, cdp1861->cpu->cycles_to_attotime(CDP1861_CYCLES_DMA_START), 0);
+	cdp1861->int_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_INT_START, 0));
+	cdp1861->efx_timer->adjust(cdp1861->screen->time_until_pos(CDP1861_SCANLINE_EFX_TOP_START, 0));
+	cdp1861->dma_timer->adjust(cdp1861->cpu->cycles_to_attotime(CDP1861_CYCLES_DMA_START));
 
 	cdp1861->disp = 0;
 	cdp1861->dmaout = 0;

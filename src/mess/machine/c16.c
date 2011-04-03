@@ -12,9 +12,9 @@
 #include "image.h"
 #include "audio/ted7360.h"
 #include "cpu/m6502/m6502.h"
-#include "devices/cassette.h"
-#include "devices/cartslot.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "imagedev/cartslot.h"
+#include "machine/ram.h"
 #include "includes/c16.h"
 #include "machine/cbmiec.h"
 #include "sound/sid6581.h"
@@ -25,7 +25,7 @@
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
+				logerror("%11.6f: %-24s", MACHINE.time().as_double(), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -70,33 +70,33 @@
 
 void c16_m7501_port_write( device_t *device, UINT8 direction, UINT8 data )
 {
-	c16_state *state = device->machine->driver_data<c16_state>();
+	c16_state *state = device->machine().driver_data<c16_state>();
 
 	/* bit zero then output 0 */
-	cbm_iec_atn_w(state->serbus, device, !BIT(data, 2));
-	cbm_iec_clk_w(state->serbus, device, !BIT(data, 1));
-	cbm_iec_data_w(state->serbus, device, !BIT(data, 0));
+	cbm_iec_atn_w(state->m_serbus, device, !BIT(data, 2));
+	cbm_iec_clk_w(state->m_serbus, device, !BIT(data, 1));
+	cbm_iec_data_w(state->m_serbus, device, !BIT(data, 0));
 
-	cassette_output(state->cassette, !BIT(data, 1) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	cassette_output(state->m_cassette, !BIT(data, 1) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
 
-	cassette_change_state(state->cassette, BIT(data, 7) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(state->m_cassette, BIT(data, 7) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 }
 
 UINT8 c16_m7501_port_read( device_t *device, UINT8 direction )
 {
-	c16_state *state = device->machine->driver_data<c16_state>();
+	c16_state *state = device->machine().driver_data<c16_state>();
 	UINT8 data = 0xff;
-	UINT8 c16_port7501 = m6510_get_port(state->maincpu);
+	UINT8 c16_port7501 = m6510_get_port(state->m_maincpu);
 
-	if (BIT(c16_port7501, 0) || !cbm_iec_data_r(state->serbus))
+	if (BIT(c16_port7501, 0) || !cbm_iec_data_r(state->m_serbus))
 		data &= ~0x80;
 
-	if (BIT(c16_port7501, 1) || !cbm_iec_clk_r(state->serbus))
+	if (BIT(c16_port7501, 1) || !cbm_iec_clk_r(state->m_serbus))
 		data &= ~0x40;
 
 //  data &= ~0x20; // port bit not in pinout
 
-	if (cassette_input(state->cassette) > +0.0)
+	if (cassette_input(state->m_cassette) > +0.0)
 		data |=  0x10;
 	else
 		data &= ~0x10;
@@ -104,13 +104,13 @@ UINT8 c16_m7501_port_read( device_t *device, UINT8 direction )
 	return data;
 }
 
-static void c16_bankswitch( running_machine *machine )
+static void c16_bankswitch( running_machine &machine )
 {
-	c16_state *state = machine->driver_data<c16_state>();
-	UINT8 *rom = machine->region("maincpu")->base();
-	memory_set_bankptr(machine, "bank9", messram_get_ptr(state->messram));
+	c16_state *state = machine.driver_data<c16_state>();
+	UINT8 *rom = machine.region("maincpu")->base();
+	memory_set_bankptr(machine, "bank9", ram_get_ptr(state->m_messram));
 
-	switch (state->lowrom)
+	switch (state->m_lowrom)
 	{
 	case 0:
 		memory_set_bankptr(machine, "bank2", rom + 0x10000);
@@ -126,7 +126,7 @@ static void c16_bankswitch( running_machine *machine )
 		break;
 	}
 
-	switch (state->highrom)
+	switch (state->m_highrom)
 	{
 	case 0:
 		memory_set_bankptr(machine, "bank3", rom + 0x14000);
@@ -150,10 +150,10 @@ static void c16_bankswitch( running_machine *machine )
 
 WRITE8_HANDLER( c16_switch_to_rom )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
 
-	ted7360_rom_switch_w(state->ted7360, 1);
-	c16_bankswitch(space->machine);
+	ted7360_rom_switch_w(state->m_ted7360, 1);
+	c16_bankswitch(space->machine());
 }
 
 /* write access to fddX load data flipflop
@@ -171,46 +171,48 @@ WRITE8_HANDLER( c16_switch_to_rom )
  * 1  1  c2 high */
 WRITE8_HANDLER( c16_select_roms )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
 
-	state->lowrom = offset & 0x03;
-	state->highrom = (offset & 0x0c) >> 2;
-	if (ted7360_rom_switch_r(state->ted7360))
-		c16_bankswitch(space->machine);
+	state->m_lowrom = offset & 0x03;
+	state->m_highrom = (offset & 0x0c) >> 2;
+	if (ted7360_rom_switch_r(state->m_ted7360))
+		c16_bankswitch(space->machine());
 }
 
 WRITE8_HANDLER( c16_switch_to_ram )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
+	UINT8 *ram = ram_get_ptr(state->m_messram);
+	UINT32 ram_size = ram_get_size(state->m_messram);
 
-	ted7360_rom_switch_w(state->ted7360, 0);
+	ted7360_rom_switch_w(state->m_ted7360, 0);
 
-	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(state->messram) + (0x8000 % messram_get_size(state->messram)));
-	memory_set_bankptr(space->machine, "bank3", messram_get_ptr(state->messram) + (0xc000 % messram_get_size(state->messram)));
-	memory_set_bankptr(space->machine, "bank4", messram_get_ptr(state->messram) + (0xfc00 % messram_get_size(state->messram)));
-	memory_set_bankptr(space->machine, "bank8", messram_get_ptr(state->messram) + (0xff20 % messram_get_size(state->messram)));
+	memory_set_bankptr(space->machine(), "bank2", ram + (0x8000 % ram_size));
+	memory_set_bankptr(space->machine(), "bank3", ram + (0xc000 % ram_size));
+	memory_set_bankptr(space->machine(), "bank4", ram + (0xfc00 % ram_size));
+	memory_set_bankptr(space->machine(), "bank8", ram + (0xff20 % ram_size));
 }
 
-UINT8 c16_read_keyboard( running_machine *machine, int databus )
+UINT8 c16_read_keyboard( running_machine &machine, int databus )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 	UINT8 value = 0xff;
 	int i;
 
 	for (i = 0; i < 8; i++)
 	{
-		if (!BIT(state->port6529, i))
-			value &= state->keyline[i];
+		if (!BIT(state->m_port6529, i))
+			value &= state->m_keyline[i];
 	}
 
 	/* looks like joy 0 needs dataline2 low
      * and joy 1 needs dataline1 low
      * write to 0xff08 (value on databus) reloads latches */
 	if (!BIT(databus, 2))
-		value &= state->keyline[8];
+		value &= state->m_keyline[8];
 
 	if (!BIT(databus, 1))
-		value &= state->keyline[9];
+		value &= state->m_keyline[9];
 
 	return value;
 }
@@ -228,14 +230,14 @@ UINT8 c16_read_keyboard( running_machine *machine, int databus )
  */
 WRITE8_HANDLER( c16_6529_port_w )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
-	state->port6529 = data;
+	c16_state *state = space->machine().driver_data<c16_state>();
+	state->m_port6529 = data;
 }
 
 READ8_HANDLER( c16_6529_port_r )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
-	return state->port6529 & (c16_read_keyboard (space->machine, 0xff /*databus */ ) | (state->port6529 ^ 0xff));
+	c16_state *state = space->machine().driver_data<c16_state>();
+	return state->m_port6529 & (c16_read_keyboard (space->machine(), 0xff /*databus */ ) | (state->m_port6529 ^ 0xff));
 }
 
 /*
@@ -254,10 +256,10 @@ WRITE8_HANDLER( plus4_6529_port_w )
 
 READ8_HANDLER( plus4_6529_port_r )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
 	int data = 0x00;
 
-	if ((cassette_get_state(state->cassette) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+	if ((cassette_get_state(state->m_cassette) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 		data &= ~0x04;
 	else
 		data |=  0x04;
@@ -267,10 +269,10 @@ READ8_HANDLER( plus4_6529_port_r )
 
 READ8_HANDLER( c16_fd1x_r )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
 	int data = 0x00;
 
-	if ((cassette_get_state(state->cassette) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+	if ((cassette_get_state(state->m_cassette) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 		data &= ~0x04;
 	else
 		data |=  0x04;
@@ -317,11 +319,11 @@ READ8_HANDLER( c16_fd1x_r )
   */
 WRITE8_HANDLER( c16_6551_port_w )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
 
 	offset &= 0x03;
-	DBG_LOG(space->machine, 3, "6551", ("port write %.2x %.2x\n", offset, data));
-	state->port6529 = data;
+	DBG_LOG(space->machine(), 3, "6551", ("port write %.2x %.2x\n", offset, data));
+	state->m_port6529 = data;
 }
 
 READ8_HANDLER( c16_6551_port_r )
@@ -329,73 +331,73 @@ READ8_HANDLER( c16_6551_port_r )
 	int data = 0x00;
 
 	offset &= 0x03;
-	DBG_LOG(space->machine, 3, "6551", ("port read %.2x %.2x\n", offset, data));
+	DBG_LOG(space->machine(), 3, "6551", ("port read %.2x %.2x\n", offset, data));
 	return data;
 }
 
-int c16_dma_read( running_machine *machine, int offset )
+int c16_dma_read( running_machine &machine, int offset )
 {
-	c16_state *state = machine->driver_data<c16_state>();
-	return messram_get_ptr(state->messram)[offset % messram_get_size(state->messram)];
+	c16_state *state = machine.driver_data<c16_state>();
+	return ram_get_ptr(state->m_messram)[offset % ram_get_size(state->m_messram)];
 }
 
-int c16_dma_read_rom( running_machine *machine, int offset )
+int c16_dma_read_rom( running_machine &machine, int offset )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 
 	/* should read real c16 system bus from 0xfd00 -ff1f */
 	if (offset >= 0xc000)
 	{								   /* rom address in rom */
 		if ((offset >= 0xfc00) && (offset < 0xfd00))
-			return state->mem10000[offset];
+			return state->m_mem10000[offset];
 
-		switch (state->highrom)
+		switch (state->m_highrom)
 		{
 			case 0:
-				return state->mem10000[offset & 0x7fff];
+				return state->m_mem10000[offset & 0x7fff];
 			case 1:
-				return state->mem18000[offset & 0x7fff];
+				return state->m_mem18000[offset & 0x7fff];
 			case 2:
-				return state->mem20000[offset & 0x7fff];
+				return state->m_mem20000[offset & 0x7fff];
 			case 3:
-				return state->mem28000[offset & 0x7fff];
+				return state->m_mem28000[offset & 0x7fff];
 		}
 	}
 
 	if (offset >= 0x8000)
 	{								   /* rom address in rom */
-		switch (state->lowrom)
+		switch (state->m_lowrom)
 		{
 			case 0:
-				return state->mem10000[offset & 0x7fff];
+				return state->m_mem10000[offset & 0x7fff];
 			case 1:
-				return state->mem18000[offset & 0x7fff];
+				return state->m_mem18000[offset & 0x7fff];
 			case 2:
-				return state->mem20000[offset & 0x7fff];
+				return state->m_mem20000[offset & 0x7fff];
 			case 3:
-				return state->mem28000[offset & 0x7fff];
+				return state->m_mem28000[offset & 0x7fff];
 		}
 	}
 
-	return messram_get_ptr(state->messram)[offset % messram_get_size(state->messram)];
+	return ram_get_ptr(state->m_messram)[offset % ram_get_size(state->m_messram)];
 }
 
-void c16_interrupt( running_machine *machine, int level )
+void c16_interrupt( running_machine &machine, int level )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 
-	if (level != state->old_level)
+	if (level != state->m_old_level)
 	{
 		DBG_LOG(machine, 3, "mos7501", ("irq %s\n", level ? "start" : "end"));
-		cpu_set_input_line(state->maincpu, M6510_IRQ_LINE, level);
-		state->old_level = level;
+		device_set_input_line(state->m_maincpu, M6510_IRQ_LINE, level);
+		state->m_old_level = level;
 	}
 }
 
-static void c16_common_driver_init( running_machine *machine )
+static void c16_common_driver_init( running_machine &machine )
 {
-	c16_state *state = machine->driver_data<c16_state>();
-	UINT8 *rom = machine->region("maincpu")->base();
+	c16_state *state = machine.driver_data<c16_state>();
+	UINT8 *rom = machine.region("maincpu")->base();
 
 	/* initial bankswitch (notice that TED7360 is init to ROM) */
 	memory_set_bankptr(machine, "bank2", rom + 0x10000);
@@ -403,81 +405,83 @@ static void c16_common_driver_init( running_machine *machine )
 	memory_set_bankptr(machine, "bank4", rom + 0x17c00);
 	memory_set_bankptr(machine, "bank8", rom + 0x17f20);
 
-	state->mem10000 = rom + 0x10000;
-	state->mem14000 = rom + 0x14000;
-	state->mem18000 = rom + 0x18000;
-	state->mem1c000 = rom + 0x1c000;
-	state->mem20000 = rom + 0x20000;
-	state->mem24000 = rom + 0x24000;
-	state->mem28000 = rom + 0x28000;
-	state->mem2c000 = rom + 0x2c000;
+	state->m_mem10000 = rom + 0x10000;
+	state->m_mem14000 = rom + 0x14000;
+	state->m_mem18000 = rom + 0x18000;
+	state->m_mem1c000 = rom + 0x1c000;
+	state->m_mem20000 = rom + 0x20000;
+	state->m_mem24000 = rom + 0x24000;
+	state->m_mem28000 = rom + 0x28000;
+	state->m_mem2c000 = rom + 0x2c000;
 }
 
 DRIVER_INIT( c16 )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 	c16_common_driver_init(machine);
 
-	state->sidcard = 0;
-	state->pal = 1;
+	state->m_sidcard = 0;
+	state->m_pal = 1;
 }
 
 DRIVER_INIT( plus4 )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 	c16_common_driver_init(machine);
 
-	state->sidcard = 0;
-	state->pal = 0;
+	state->m_sidcard = 0;
+	state->m_pal = 0;
 }
 
 DRIVER_INIT( c16sid )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 	c16_common_driver_init(machine);
 
-	state->sidcard = 1;
-	state->pal = 1;
+	state->m_sidcard = 1;
+	state->m_pal = 1;
 }
 
 DRIVER_INIT( plus4sid )
 {
-	c16_state *state = machine->driver_data<c16_state>();
+	c16_state *state = machine.driver_data<c16_state>();
 	c16_common_driver_init(machine);
 
-	state->sidcard = 1;
-	state->pal = 0;
+	state->m_sidcard = 1;
+	state->m_pal = 0;
 }
 
 MACHINE_RESET( c16 )
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	c16_state *state = machine->driver_data<c16_state>();
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	c16_state *state = machine.driver_data<c16_state>();
+	UINT8 *ram = ram_get_ptr(state->m_messram);
+	UINT32 ram_size = ram_get_size(state->m_messram);
 
-	memset(state->keyline, 0xff, ARRAY_LENGTH(state->keyline));
+	memset(state->m_keyline, 0xff, ARRAY_LENGTH(state->m_keyline));
 
-	state->lowrom = 0;
-	state->highrom = 0;
-	state->old_level = 0;
-	state->port6529 = 0;
+	state->m_lowrom = 0;
+	state->m_highrom = 0;
+	state->m_old_level = 0;
+	state->m_port6529 = 0;
 
-	if (state->pal)
+	if (state->m_pal)
 	{
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(state->messram) + (0x4000 % messram_get_size(state->messram)));
+		memory_set_bankptr(machine, "bank1", ram + (0x4000 % ram_size));
 
-		memory_set_bankptr(machine, "bank5", messram_get_ptr(state->messram) + (0x4000 % messram_get_size(state->messram)));
-		memory_set_bankptr(machine, "bank6", messram_get_ptr(state->messram) + (0x8000 % messram_get_size(state->messram)));
-		memory_set_bankptr(machine, "bank7", messram_get_ptr(state->messram) + (0xc000 % messram_get_size(state->messram)));
+		memory_set_bankptr(machine, "bank5", ram + (0x4000 % ram_size));
+		memory_set_bankptr(machine, "bank6", ram + (0x8000 % ram_size));
+		memory_set_bankptr(machine, "bank7", ram + (0xc000 % ram_size));
 
-		memory_install_write_bank(space, 0xff20, 0xff3d, 0, 0,"bank10");
-		memory_install_write_bank(space, 0xff40, 0xffff, 0, 0, "bank11");
-		memory_set_bankptr(machine, "bank10", messram_get_ptr(state->messram) + (0xff20 % messram_get_size(state->messram)));
-		memory_set_bankptr(machine, "bank11", messram_get_ptr(state->messram) + (0xff40 % messram_get_size(state->messram)));
+		space->install_write_bank(0xff20, 0xff3d,"bank10");
+		space->install_write_bank(0xff40, 0xffff, "bank11");
+		memory_set_bankptr(machine, "bank10", ram + (0xff20 % ram_size));
+		memory_set_bankptr(machine, "bank11", ram + (0xff40 % ram_size));
 	}
 	else
 	{
-		memory_install_write_bank(space, 0x4000, 0xfcff, 0, 0, "bank10");
-		memory_set_bankptr(machine, "bank10", messram_get_ptr(state->messram) + (0x4000 % messram_get_size(state->messram)));
+		space->install_write_bank(0x4000, 0xfcff, "bank10");
+		memory_set_bankptr(machine, "bank10", ram + (0x4000 % ram_size));
 	}
 }
 
@@ -487,58 +491,59 @@ MACHINE_RESET( c16 )
 // would a real SID Card allow for this? If not, this should be removed completely
 static WRITE8_HANDLER( c16_sidcart_16k )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
+	UINT8 *ram = ram_get_ptr(state->m_messram);
 
-	messram_get_ptr(state->messram)[0x1400 + offset] = data;
-	messram_get_ptr(state->messram)[0x5400 + offset] = data;
-	messram_get_ptr(state->messram)[0x9400 + offset] = data;
-	messram_get_ptr(state->messram)[0xd400 + offset] = data;
+	ram[0x1400 + offset] = data;
+	ram[0x5400 + offset] = data;
+	ram[0x9400 + offset] = data;
+	ram[0xd400 + offset] = data;
 
-	sid6581_w(state->sid, offset, data);
+	sid6581_w(state->m_sid, offset, data);
 }
 
 static WRITE8_HANDLER( c16_sidcart_64k )
 {
-	c16_state *state = space->machine->driver_data<c16_state>();
+	c16_state *state = space->machine().driver_data<c16_state>();
 
-	messram_get_ptr(state->messram)[0xd400 + offset] = data;
+	ram_get_ptr(state->m_messram)[0xd400 + offset] = data;
 
-	sid6581_w(state->sid, offset, data);
+	sid6581_w(state->m_sid, offset, data);
 }
 
 static TIMER_CALLBACK( c16_sidhack_tick )
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	c16_state *state = space->machine->driver_data<c16_state>();
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	c16_state *state = space->machine().driver_data<c16_state>();
 
 	if (input_port_read_safe(machine, "SID", 0x00) & 0x02)
 	{
-		if (state->pal)
-			memory_install_write8_handler(space, 0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
+		if (state->m_pal)
+			space->install_legacy_write_handler(0xd400, 0xd41f, FUNC(c16_sidcart_16k));
 		else
-			memory_install_write8_handler(space, 0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
+			space->install_legacy_write_handler(0xd400, 0xd41f, FUNC(c16_sidcart_64k));
 	}
 	else
 	{
-		memory_unmap_write(space, 0xd400, 0xd41f, 0, 0);
+		space->unmap_write(0xd400, 0xd41f);
 	}
 }
 #endif
 
 static TIMER_CALLBACK( c16_sidcard_tick )
 {
-	c16_state *state = machine->driver_data<c16_state>();
-	address_space *space = cpu_get_address_space(state->maincpu, ADDRESS_SPACE_PROGRAM);
+	c16_state *state = machine.driver_data<c16_state>();
+	address_space *space = state->m_maincpu->memory().space(AS_PROGRAM);
 
 	if (input_port_read_safe(machine, "SID", 0x00) & 0x01)
-		memory_install_readwrite8_device_handler(space, state->sid, 0xfe80, 0xfe9f, 0, 0, sid6581_r, sid6581_w);
+		space->install_legacy_readwrite_handler(*state->m_sid, 0xfe80, 0xfe9f, FUNC(sid6581_r), FUNC(sid6581_w));
 	else
-		memory_install_readwrite8_device_handler(space, state->sid, 0xfd40, 0xfd5f, 0, 0, sid6581_r, sid6581_w);
+		space->install_legacy_readwrite_handler(*state->m_sid, 0xfd40, 0xfd5f, FUNC(sid6581_r), FUNC(sid6581_w));
 }
 
 INTERRUPT_GEN( c16_frame_interrupt )
 {
-	c16_state *state = device->machine->driver_data<c16_state>();
+	c16_state *state = device->machine().driver_data<c16_state>();
 	int value, i;
 	static const char *const c16ports[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
 
@@ -546,67 +551,67 @@ INTERRUPT_GEN( c16_frame_interrupt )
 	for (i = 0; i < 8; i++)
 	{
 		value = 0xff;
-		value &= ~input_port_read(device->machine, c16ports[i]);
+		value &= ~input_port_read(device->machine(), c16ports[i]);
 
 		/* Shift Lock is mapped on Left/Right Shift */
-		if ((i == 1) && (input_port_read(device->machine, "SPECIAL") & 0x80))
+		if ((i == 1) && (input_port_read(device->machine(), "SPECIAL") & 0x80))
 			value &= ~0x80;
 
-		state->keyline[i] = value;
+		state->m_keyline[i] = value;
 	}
 
-	if (input_port_read(device->machine, "CTRLSEL") & 0x01)
+	if (input_port_read(device->machine(), "CTRLSEL") & 0x01)
 	{
 		value = 0xff;
-		if (input_port_read(device->machine, "JOY0") & 0x10)			/* Joypad1_Button */
+		if (input_port_read(device->machine(), "JOY0") & 0x10)			/* Joypad1_Button */
 			{
-				if (input_port_read(device->machine, "SPECIAL") & 0x40)
+				if (input_port_read(device->machine(), "SPECIAL") & 0x40)
 					value &= ~0x80;
 				else
 					value &= ~0x40;
 			}
 
-		value &= ~(input_port_read(device->machine, "JOY0") & 0x0f);	/* Other Inputs Joypad1 */
+		value &= ~(input_port_read(device->machine(), "JOY0") & 0x0f);	/* Other Inputs Joypad1 */
 
-		if (input_port_read(device->machine, "SPECIAL") & 0x40)
-			state->keyline[9] = value;
+		if (input_port_read(device->machine(), "SPECIAL") & 0x40)
+			state->m_keyline[9] = value;
 		else
-			state->keyline[8] = value;
+			state->m_keyline[8] = value;
 	}
 
-	if (input_port_read(device->machine, "CTRLSEL") & 0x10)
+	if (input_port_read(device->machine(), "CTRLSEL") & 0x10)
 	{
 		value = 0xff;
-		if (input_port_read(device->machine, "JOY1") & 0x10)			/* Joypad2_Button */
+		if (input_port_read(device->machine(), "JOY1") & 0x10)			/* Joypad2_Button */
 			{
-				if (input_port_read(device->machine, "SPECIAL") & 0x40)
+				if (input_port_read(device->machine(), "SPECIAL") & 0x40)
 					value &= ~0x40;
 				else
 					value &= ~0x80;
 			}
 
-		value &= ~(input_port_read(device->machine, "JOY1") & 0x0f);	/* Other Inputs Joypad2 */
+		value &= ~(input_port_read(device->machine(), "JOY1") & 0x0f);	/* Other Inputs Joypad2 */
 
-		if (input_port_read(device->machine, "SPECIAL") & 0x40)
-			state->keyline[8] = value;
+		if (input_port_read(device->machine(), "SPECIAL") & 0x40)
+			state->m_keyline[8] = value;
 		else
-			state->keyline[9] = value;
+			state->m_keyline[9] = value;
 	}
 
-	ted7360_frame_interrupt_gen(state->ted7360);
+	ted7360_frame_interrupt_gen(state->m_ted7360);
 
-	if (state->sidcard)
+	if (state->m_sidcard)
 	{
 		/* if we are emulating the SID card, check which memory area should be accessed */
-		timer_set(device->machine, attotime_zero, NULL, 0, c16_sidcard_tick);
+		device->machine().scheduler().timer_set(attotime::zero, FUNC(c16_sidcard_tick));
 #if 0
 		/* if we are emulating the SID card, check if writes to 0xd400 have been enabled */
-		timer_set(device->machine, attotime_zero, NULL, 0, c16_sidhack_tick);
+		device->machine().scheduler().timer_set(attotime::zero, FUNC(c16_sidhack_tick));
 #endif
 	}
 
-	set_led_status(device->machine, 1, input_port_read(device->machine, "SPECIAL") & 0x80 ? 1 : 0);		/* Shift Lock */
-	set_led_status(device->machine, 0, input_port_read(device->machine, "SPECIAL") & 0x40 ? 1 : 0);		/* Joystick Swap */
+	set_led_status(device->machine(), 1, input_port_read(device->machine(), "SPECIAL") & 0x80 ? 1 : 0);		/* Shift Lock */
+	set_led_status(device->machine(), 0, input_port_read(device->machine(), "SPECIAL") & 0x40 ? 1 : 0);		/* Joystick Swap */
 }
 
 
@@ -618,7 +623,7 @@ INTERRUPT_GEN( c16_frame_interrupt )
 
 static DEVICE_IMAGE_LOAD( c16_cart )
 {
-	UINT8 *mem = image.device().machine->region("maincpu")->base();
+	UINT8 *mem = image.device().machine().region("maincpu")->base();
 	int size = image.length(), test;
 	const char *filetype;
 	int address = 0;

@@ -6,8 +6,7 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "devices/cartslot.h"
-#include "streams.h"
+#include "imagedev/cartslot.h"
 
 
 DECLARE_LEGACY_SOUND_DEVICE(PV1000,pv1000_sound);
@@ -20,22 +19,22 @@ public:
 	d65010_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8	io_regs[8];
-	UINT8	fd_data;
+	UINT8	m_io_regs[8];
+	UINT8	m_fd_data;
 	struct
 	{
 		UINT32	count;
 		UINT16	period;
 		UINT8	val;
-	}		voice[4];
+	}		m_voice[4];
 
-	sound_stream	*sh_channel;
-	emu_timer		*irq_on_timer;
-	emu_timer		*irq_off_timer;
+	sound_stream	*m_sh_channel;
+	emu_timer		*m_irq_on_timer;
+	emu_timer		*m_irq_off_timer;
 
-	device_t *maincpu;
-	screen_device *screen;
-	UINT8 *ram;
+	device_t *m_maincpu;
+	screen_device *m_screen;
+	UINT8 *m_ram;
 };
 
 
@@ -44,14 +43,14 @@ static READ8_HANDLER( pv1000_io_r );
 static WRITE8_HANDLER( pv1000_gfxram_w );
 
 
-static ADDRESS_MAP_START( pv1000, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pv1000, AS_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x3fff ) AM_MIRROR( 0x4000 ) AM_ROM AM_REGION( "cart", 0 )
-	AM_RANGE( 0xb800, 0xbbff ) AM_RAM AM_BASE_MEMBER( d65010_state, ram )
+	AM_RANGE( 0xb800, 0xbbff ) AM_RAM AM_BASE_MEMBER( d65010_state, m_ram )
 	AM_RANGE( 0xbc00, 0xbfff ) AM_RAM_WRITE( pv1000_gfxram_w ) AM_REGION( "gfxram", 0 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( pv1000_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pv1000_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK( 0xff )
 	AM_RANGE( 0xf8, 0xff ) AM_READWRITE( pv1000_io_r, pv1000_io_w )
 ADDRESS_MAP_END
@@ -59,16 +58,16 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( pv1000_gfxram_w )
 {
-	UINT8 *gfxram = space->machine->region( "gfxram" )->base();
+	UINT8 *gfxram = space->machine().region( "gfxram" )->base();
 
 	gfxram[ offset ] = data;
-	gfx_element_mark_dirty(space->machine->gfx[1], offset/32);
+	gfx_element_mark_dirty(space->machine().gfx[1], offset/32);
 }
 
 
 static WRITE8_HANDLER( pv1000_io_w )
 {
-	d65010_state *state = space->machine->driver_data<d65010_state>();
+	d65010_state *state = space->machine().driver_data<d65010_state>();
 
 	switch ( offset )
 	{
@@ -76,7 +75,7 @@ static WRITE8_HANDLER( pv1000_io_w )
 	case 0x01:
 	case 0x02:
 		//logerror("pv1000_io_w offset=%02x, data=%02x (%03d)\n", offset, data , data);
-		state->voice[offset].period = data;
+		state->m_voice[offset].period = data;
 	break;
 
 	case 0x03:
@@ -84,18 +83,18 @@ static WRITE8_HANDLER( pv1000_io_w )
 	break;
 
 	case 0x05:
-		state->fd_data = 1;
+		state->m_fd_data = 1;
 		break;
 	}
 
-	state->io_regs[offset] = data;
+	state->m_io_regs[offset] = data;
 }
 
 
 static READ8_HANDLER( pv1000_io_r )
 {
-	d65010_state *state = space->machine->driver_data<d65010_state>();
-	UINT8 data = state->io_regs[offset];
+	d65010_state *state = space->machine().driver_data<d65010_state>();
+	UINT8 data = state->m_io_regs[offset];
 
 //  logerror("pv1000_io_r offset=%02x\n", offset );
 
@@ -104,28 +103,28 @@ static READ8_HANDLER( pv1000_io_r )
 	case 0x04:
 		/* Bit 1 = 1 => Data is available in port FD */
 		/* Bit 0 = 1 => Buffer at port FD is empty */
-		data = ( state->screen->vpos() >= 212 && state->screen->vpos() <= 220 ) ? 0x01 : 0x00;
-		data |= state->fd_data ? 0x02 : 0x00;
+		data = ( state->m_screen->vpos() >= 212 && state->m_screen->vpos() <= 220 ) ? 0x01 : 0x00;
+		data |= state->m_fd_data ? 0x02 : 0x00;
 		break;
 	case 0x05:
 		data = 0;
-		if ( state->io_regs[5] & 0x08 )
+		if ( state->m_io_regs[5] & 0x08 )
 		{
-			data = input_port_read( space->machine, "IN3" );
+			data = input_port_read( space->machine(), "IN3" );
 		}
-		if ( state->io_regs[5] & 0x04 )
+		if ( state->m_io_regs[5] & 0x04 )
 		{
-			data = input_port_read( space->machine, "IN2" );
+			data = input_port_read( space->machine(), "IN2" );
 		}
-		if ( state->io_regs[5] & 0x02 )
+		if ( state->m_io_regs[5] & 0x02 )
 		{
-			data = input_port_read( space->machine, "IN1" );
+			data = input_port_read( space->machine(), "IN1" );
 		}
-		if ( state->io_regs[5] & 0x01 )
+		if ( state->m_io_regs[5] & 0x01 )
 		{
-			data = input_port_read( space->machine, "IN0" );
+			data = input_port_read( space->machine(), "IN0" );
 		}
-		state->fd_data = 0;
+		state->m_fd_data = 0;
 		break;
 	}
 
@@ -175,7 +174,7 @@ static PALETTE_INIT( pv1000 )
 
 static DEVICE_IMAGE_LOAD( pv1000_cart )
 {
-	UINT8 *cart = image.device().machine->region("cart")->base();
+	UINT8 *cart = image.device().machine().region("cart")->base();
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -210,26 +209,26 @@ static DEVICE_IMAGE_LOAD( pv1000_cart )
 }
 
 
-static VIDEO_UPDATE( pv1000 )
+static SCREEN_UPDATE( pv1000 )
 {
-	d65010_state *state = screen->machine->driver_data<d65010_state>();
+	d65010_state *state = screen->machine().driver_data<d65010_state>();
 	int x, y;
 
 	for ( y = 0; y < 24; y++ )
 	{
 		for ( x = 0; x < 32; x++ )
 		{
-			UINT16 tile = state->ram[ y * 32 + x ];
+			UINT16 tile = state->m_ram[ y * 32 + x ];
 
 			if ( tile < 0xe0 )
 			{
-				tile += ( state->io_regs[7] * 8 );
-				drawgfx_opaque( bitmap, cliprect, screen->machine->gfx[0], tile, 0, 0, 0, x*8, y*8 );
+				tile += ( state->m_io_regs[7] * 8 );
+				drawgfx_opaque( bitmap, cliprect, screen->machine().gfx[0], tile, 0, 0, 0, x*8, y*8 );
 			}
 			else
 			{
 				tile -= 0xe0;
-				drawgfx_opaque( bitmap, cliprect, screen->machine->gfx[1], tile, 0, 0, 0, x*8, y*8 );
+				drawgfx_opaque( bitmap, cliprect, screen->machine().gfx[1], tile, 0, 0, 0, x*8, y*8 );
 			}
 		}
 	}
@@ -250,7 +249,7 @@ static VIDEO_UPDATE( pv1000 )
 
 static STREAM_UPDATE( pv1000_sound_update )
 {
-	d65010_state *state = device->machine->driver_data<d65010_state>();
+	d65010_state *state = device->machine().driver_data<d65010_state>();
 	stream_sample_t *buffer = outputs[0];
 
 	while ( samples > 0 )
@@ -260,17 +259,17 @@ static STREAM_UPDATE( pv1000_sound_update )
 
 		for (size_t i=0;i<3;i++)
 		{
-			UINT32 per = (0x3F-(state->voice[i].period & 0x3f));
+			UINT32 per = (0x3F-(state->m_voice[i].period & 0x3f));
 
 			if( per != 0)//OFF!
-				*buffer += state->voice[i].val * 8192;
+				*buffer += state->m_voice[i].val * 8192;
 
-			state->voice[i].count++;
+			state->m_voice[i].count++;
 
-			if (state->voice[i].count >= per)
+			if (state->m_voice[i].count >= per)
 			{
-			   state->voice[i].count = 0;
-			   state->voice[i].val = !state->voice[i].val;
+			   state->m_voice[i].count = 0;
+			   state->m_voice[i].val = !state->m_voice[i].val;
 			}
 		}
 
@@ -283,8 +282,8 @@ static STREAM_UPDATE( pv1000_sound_update )
 
 static DEVICE_START( pv1000_sound )
 {
-	d65010_state *state = device->machine->driver_data<d65010_state>();
-	state->sh_channel = stream_create( device, 0, 1, device->clock()/1024, 0, pv1000_sound_update );
+	d65010_state *state = device->machine().driver_data<d65010_state>();
+	state->m_sh_channel = device->machine().sound().stream_alloc(*device, 0, 1, device->clock()/1024, 0, pv1000_sound_update );
 }
 
 
@@ -306,50 +305,50 @@ DEVICE_GET_INFO( pv1000_sound )
 /* we have chosen to trigger on scanlines 195, 199, 203, 207, 211, 215, 219, 223, 227, 231, 235, 239, 243, 247, 251, 255 */
 static TIMER_CALLBACK( d65010_irq_on_cb )
 {
-	d65010_state *state = machine->driver_data<d65010_state>();
-	int vpos = state->screen->vpos();
+	d65010_state *state = machine.driver_data<d65010_state>();
+	int vpos = state->m_screen->vpos();
 	int next_vpos = vpos + 12;
 
 	/* Set IRQ line and schedule release of IRQ line */
-	cpu_set_input_line( state->maincpu, 0, ASSERT_LINE );
-	timer_adjust_oneshot( state->irq_off_timer, state->screen->time_until_pos(vpos, 380/2 ), 0 );
+	device_set_input_line( state->m_maincpu, 0, ASSERT_LINE );
+	state->m_irq_off_timer->adjust( state->m_screen->time_until_pos(vpos, 380/2 ) );
 
 	/* Schedule next IRQ trigger */
 	if ( vpos >= 255 )
 	{
 		next_vpos = 195;
 	}
-	timer_adjust_oneshot( state->irq_on_timer, state->screen->time_until_pos(next_vpos, 0 ), 0 );
+	state->m_irq_on_timer->adjust( state->m_screen->time_until_pos(next_vpos, 0 ) );
 }
 
 
 static TIMER_CALLBACK( d65010_irq_off_cb )
 {
-	d65010_state *state = machine->driver_data<d65010_state>();
+	d65010_state *state = machine.driver_data<d65010_state>();
 
-	cpu_set_input_line( state->maincpu, 0, CLEAR_LINE );
+	device_set_input_line( state->m_maincpu, 0, CLEAR_LINE );
 }
 
 
 static MACHINE_START( pv1000 )
 {
-	d65010_state *state = machine->driver_data<d65010_state>();
+	d65010_state *state = machine.driver_data<d65010_state>();
 
-	state->irq_on_timer = timer_alloc( machine, d65010_irq_on_cb, NULL );
-	state->irq_off_timer = timer_alloc( machine, d65010_irq_off_cb, NULL );
-	state->maincpu = machine->device( "maincpu" );
-	state->screen = machine->device<screen_device>("screen" );
+	state->m_irq_on_timer = machine.scheduler().timer_alloc(FUNC(d65010_irq_on_cb));
+	state->m_irq_off_timer = machine.scheduler().timer_alloc(FUNC(d65010_irq_off_cb));
+	state->m_maincpu = machine.device( "maincpu" );
+	state->m_screen = machine.device<screen_device>("screen" );
 }
 
 
 static MACHINE_RESET( pv1000 )
 {
-	d65010_state *state = machine->driver_data<d65010_state>();
+	d65010_state *state = machine.driver_data<d65010_state>();
 
-	state->io_regs[5] = 0;
-	state->fd_data = 0;
-	timer_adjust_oneshot( state->irq_on_timer, state->screen->time_until_pos(195, 0 ), 0 );
-	timer_adjust_oneshot( state->irq_off_timer, attotime_never, 0 );
+	state->m_io_regs[5] = 0;
+	state->m_fd_data = 0;
+	state->m_irq_on_timer->adjust( state->m_screen->time_until_pos(195, 0 ) );
+	state->m_irq_off_timer->adjust( attotime::never );
 }
 
 
@@ -380,16 +379,15 @@ static MACHINE_CONFIG_START( pv1000, d65010_state )
 	MCFG_MACHINE_START( pv1000 )
 	MCFG_MACHINE_RESET( pv1000 )
 
+	/* D65010G031 - Video & sound chip */
 	MCFG_SCREEN_ADD( "screen", RASTER )
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MCFG_SCREEN_RAW_PARAMS( 17897725/3, 380, 0, 256, 262, 0, 192 )
+	MCFG_SCREEN_UPDATE( pv1000 )
 
 	MCFG_PALETTE_LENGTH( 8 )
 	MCFG_PALETTE_INIT( pv1000 )
 	MCFG_GFXDECODE( pv1000 )
-
-	/* D65010G031 - Video & sound chip */
-	MCFG_VIDEO_UPDATE( pv1000 )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD( "pv1000_sound", PV1000, 17897725 )

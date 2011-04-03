@@ -359,7 +359,6 @@ Video part
    so i no exact column value reachable!
 */
 #include "emu.h"
-#include "streams.h"
 #include "audio/ted7360.h"
 
 
@@ -421,7 +420,7 @@ struct _ted7360_state
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(device->machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", device->machine().time().as_double(), (char*) M ); \
 			logerror A; \
 		} \
 	} while(0)
@@ -483,12 +482,12 @@ struct _ted7360_state
 static attotime TEDTIME_IN_CYCLES(int pal, int cycles)
 {
 	double d = (double)(cycles) / (pal ? TED7360PAL_CLOCK : TED7360NTSC_CLOCK);
-	return double_to_attotime(d);
+	return attotime::from_double(d);
 }
 
 static int TEDTIME_TO_CYCLES(int pal, attotime t)
 {
-	double d = attotime_to_double(t);
+	double d = t.as_double();
 	return (int)((d) * (pal ? TED7360PAL_CLOCK : TED7360NTSC_CLOCK));
 }
 
@@ -518,7 +517,7 @@ INLINE const ted7360_interface *get_interface( device_t *device )
 
 static void ted7360_soundport_w( device_t *device, int offset, int data );
 
-static void ted7360_set_interrupt( running_machine *machine, int mask, ted7360_state *ted7360 )
+static void ted7360_set_interrupt( running_machine &machine, int mask, ted7360_state *ted7360 )
 {
 	/* kernel itself polls for timer 2 shot (interrupt disabled!) when cassette loading */
 	ted7360->reg[9] |= mask;
@@ -543,14 +542,14 @@ static void ted7360_clear_interrupt( device_t *device, int mask )
 	{
 		DBG_LOG(1, "ted7360", ("irq end %.2x\n", mask));
 		ted7360->reg[9] &= ~0x80;
-		ted7360->interrupt(device->machine, 0);
+		ted7360->interrupt(device->machine(), 0);
 	}
 }
 
 static int ted7360_rastercolumn( device_t *device )
 {
 	ted7360_state *ted7360 = get_safe_token(device);
-	return (int) ((attotime_to_double(timer_get_time(device->machine)) - ted7360->rastertime) * TED7360_VRETRACERATE * ted7360->lines * 57 * 8 + 0.5);
+	return (int) ((device->machine().time().as_double() - ted7360->rastertime) * TED7360_VRETRACERATE * ted7360->lines * 57 * 8 + 0.5);
 }
 
 static TIMER_CALLBACK(ted7360_timer_timeout)
@@ -563,17 +562,17 @@ static TIMER_CALLBACK(ted7360_timer_timeout)
 	{
 	case 1:
 		// proved by digisound of several intros like eoroidpro
-		timer_adjust_oneshot(ted7360->timer1, TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER1), 1);
+		ted7360->timer1->adjust(TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER1), 1);
 		ted7360->timer1_active = 1;
 		ted7360_set_interrupt(machine, 0x08, ted7360);
 		break;
 	case 2:
-		timer_adjust_oneshot(ted7360->timer2, TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), 0x10000), 2);
+		ted7360->timer2->adjust(TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), 0x10000), 2);
 		ted7360->timer2_active = 1;
 		ted7360_set_interrupt(machine, 0x10, ted7360);
 		break;
 	case 3:
-		timer_adjust_oneshot(ted7360->timer3, TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), 0x10000), 3);
+		ted7360->timer3->adjust(TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), 0x10000), 3);
 		ted7360->timer3_active = 1;
 		ted7360_set_interrupt(machine, 0x40, ted7360);
 		break;
@@ -588,9 +587,9 @@ static void ted7360_draw_character( device_t *device, int ybegin, int yend, int 
 	for (y = ybegin; y <= yend; y++)
 	{
 		if (INROM)
-			code = ted7360->dma_read_rom(device->machine, ted7360->chargenaddr + ch * 8 + y);
+			code = ted7360->dma_read_rom(device->machine(), ted7360->chargenaddr + ch * 8 + y);
 		else
-			code = ted7360->dma_read(device->machine, ted7360->chargenaddr + ch * 8 + y);
+			code = ted7360->dma_read(device->machine(), ted7360->chargenaddr + ch * 8 + y);
 
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 0 + xoff) = color[code >> 7];
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 1 + xoff) = color[(code >> 6) & 1];
@@ -611,9 +610,9 @@ static void ted7360_draw_character_multi( device_t *device, int ybegin, int yend
 	for (y = ybegin; y <= yend; y++)
 	{
 		if (INROM)
-			code = ted7360->dma_read_rom(device->machine, ted7360->chargenaddr + ch * 8 + y);
+			code = ted7360->dma_read_rom(device->machine(), ted7360->chargenaddr + ch * 8 + y);
 		else
-			code = ted7360->dma_read(device->machine, ted7360->chargenaddr + ch * 8 + y);
+			code = ted7360->dma_read(device->machine(), ted7360->chargenaddr + ch * 8 + y);
 
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 0 + xoff) =
 			*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 1 + xoff) = ted7360->multi[code >> 6];
@@ -633,7 +632,7 @@ static void ted7360_draw_bitmap( device_t *device, int ybegin, int yend, int ch,
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = ted7360->dma_read(device->machine, ted7360->bitmapaddr + ch * 8 + y);
+		code = ted7360->dma_read(device->machine(), ted7360->bitmapaddr + ch * 8 + y);
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 0 + xoff) = ted7360->c16_bitmap[code >> 7];
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 1 + xoff) = ted7360->c16_bitmap[(code >> 6) & 1];
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 2 + xoff) = ted7360->c16_bitmap[(code >> 5) & 1];
@@ -652,7 +651,7 @@ static void ted7360_draw_bitmap_multi( device_t *device, int ybegin, int yend, i
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = ted7360->dma_read(device->machine, ted7360->bitmapaddr + ch * 8 + y);
+		code = ted7360->dma_read(device->machine(), ted7360->bitmapaddr + ch * 8 + y);
 
 		*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 0 + xoff) =
 			*BITMAP_ADDR16(ted7360->bitmap, y + yoff, 1 + xoff) = ted7360->bitmapmulti[code >> 6];
@@ -748,8 +747,8 @@ static void ted7360_drawlines( device_t *device, int first, int last )
 		{
 			if (HIRESON)
 			{
-				ch = ted7360->dma_read(device->machine, (ted7360->videoaddr | 0x400) + offs);
-				attr = ted7360->dma_read(device->machine, ted7360->videoaddr + offs);
+				ch = ted7360->dma_read(device->machine(), (ted7360->videoaddr | 0x400) + offs);
+				attr = ted7360->dma_read(device->machine(), ted7360->videoaddr + offs);
 				c1 = ((ch >> 4) & 0xf) | (attr << 4);
 				c2 = (ch & 0xf) | (attr & 0x70);
 				ted7360->bitmapmulti[1] = ted7360->c16_bitmap[1] = c1 & 0x7f;
@@ -765,8 +764,8 @@ static void ted7360_drawlines( device_t *device, int first, int last )
 			}
 			else
 			{
-				ch = ted7360->dma_read(device->machine, (ted7360->videoaddr | 0x400) + offs);
-				attr = ted7360->dma_read(device->machine, ted7360->videoaddr + offs);
+				ch = ted7360->dma_read(device->machine(), (ted7360->videoaddr | 0x400) + offs);
+				attr = ted7360->dma_read(device->machine(), ted7360->videoaddr + offs);
 				// levente harsfalvi's docu says cursor off in ecm and multicolor
 				if (ECMON)
 				{
@@ -859,42 +858,42 @@ WRITE8_DEVICE_HANDLER( ted7360_port_w )
 
 		if (ted7360->timer1_active)
 		{
-			ted7360->reg[1] = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer1)) >> 8;
-			timer_reset(ted7360->timer1, attotime_never);
+			ted7360->reg[1] = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer1->remaining()) >> 8;
+			ted7360->timer1->reset();
 			ted7360->timer1_active = 0;
 		}
 		break;
 	case 1:						   /* start timer 1 */
 		ted7360->reg[offset] = data;
-		timer_adjust_oneshot(ted7360->timer1, TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER1), 1);
+		ted7360->timer1->adjust(TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER1), 1);
 		ted7360->timer1_active = 1;
 		break;
 	case 2:						   /* stop timer 2 */
 		ted7360->reg[offset] = data;
 		if (ted7360->timer2_active)
 		{
-			ted7360->reg[3] = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer2)) >> 8;
-			timer_reset(ted7360->timer2, attotime_never);
+			ted7360->reg[3] = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer2->remaining()) >> 8;
+			ted7360->timer2->reset();
 			ted7360->timer2_active = 0;
 		}
 		break;
 	case 3:						   /* start timer 2 */
 		ted7360->reg[offset] = data;
-		timer_adjust_oneshot(ted7360->timer2, TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER2), 2);
+		ted7360->timer2->adjust(TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER2), 2);
 		ted7360->timer2_active = 1;
 		break;
 	case 4:						   /* stop timer 3 */
 		ted7360->reg[offset] = data;
 		if (ted7360->timer3_active)
 		{
-			ted7360->reg[5] = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer3)) >> 8;
-			timer_reset(ted7360->timer3, attotime_never);
+			ted7360->reg[5] = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer3->remaining()) >> 8;
+			ted7360->timer3->reset();
 			ted7360->timer3_active = 0;
 		}
 		break;
 	case 5:						   /* start timer 3 */
 		ted7360->reg[offset] = data;
-		timer_adjust_oneshot(ted7360->timer3, TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER3), 3);
+		ted7360->timer3->adjust(TEDTIME_IN_CYCLES((ted7360->type == TED7360_PAL), TIMER3), 3);
 		ted7360->timer3_active = 1;
 		break;
 	case 6:
@@ -935,7 +934,7 @@ WRITE8_DEVICE_HANDLER( ted7360_port_w )
 		}
 		break;
 	case 8:
-		ted7360->reg[offset] = ted7360->keyboard_cb(device->machine, data);
+		ted7360->reg[offset] = ted7360->keyboard_cb(device->machine(), data);
 		break;
 	case 9:
 		if (data & 0x08)
@@ -1068,37 +1067,37 @@ READ8_DEVICE_HANDLER( ted7360_port_r )
 	{
 	case 0:
 		if (ted7360->timer1)
-			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer1)) & 0xff;
+			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer1->remaining()) & 0xff;
 		else
 			val = ted7360->reg[offset];
 		break;
 	case 1:
 		if (ted7360->timer1)
-			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer1)) >> 8;
+			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer1->remaining()) >> 8;
 		else
 			val = ted7360->reg[offset];
 		break;
 	case 2:
 		if (ted7360->timer2)
-			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer2)) & 0xff;
+			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer2->remaining()) & 0xff;
 		else
 			val = ted7360->reg[offset];
 		break;
 	case 3:
 		if (ted7360->timer2)
-			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer2)) >> 8;
+			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer2->remaining()) >> 8;
 		else
 			val = ted7360->reg[offset];
 		break;
 	case 4:
 		if (ted7360->timer3)
-			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer3)) & 0xff;
+			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer3->remaining()) & 0xff;
 		else
 			val = ted7360->reg[offset];
 		break;
 	case 5:
 		if (ted7360->timer3)
-			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), timer_timeleft(ted7360->timer3)) >> 8;
+			val = TEDTIME_TO_CYCLES((ted7360->type == TED7360_PAL), ted7360->timer3->remaining()) >> 8;
 		else
 			val = ted7360->reg[offset];
 		break;
@@ -1184,7 +1183,7 @@ void ted7360_raster_interrupt_gen( device_t *device )
 	ted7360_state *ted7360 = get_safe_token(device);
 
 	ted7360->rasterline++;
-	ted7360->rastertime = attotime_to_double(timer_get_time(device->machine));
+	ted7360->rastertime = device->machine().time().as_double();
 	if (ted7360->rasterline >= ted7360->lines)
 	{
 		ted7360->rasterline = 0;
@@ -1195,7 +1194,7 @@ void ted7360_raster_interrupt_gen( device_t *device )
 	if (ted7360->rasterline == C16_2_RASTERLINE(RASTERLINE))
 	{
 		ted7360_drawlines(device, ted7360->lastline, ted7360->rasterline);
-		ted7360_set_interrupt(device->machine, 2, ted7360);
+		ted7360_set_interrupt(device->machine(), 2, ted7360);
 	}
 }
 
@@ -1235,7 +1234,7 @@ static void ted7360_soundport_w( device_t *device, int offset, int data )
 	ted7360_state *ted7360 = get_safe_token(device);
 
 	// int old = ted7360->reg[offset];
-	stream_update(ted7360->channel);
+	ted7360->channel->update();
 
 	switch (offset)
 	{
@@ -1246,7 +1245,7 @@ static void ted7360_soundport_w( device_t *device, int offset, int data )
 		else
 			ted7360->reg[offset] = data;
 
-		ted7360->tone1samples = device->machine->sample_rate / TONE_FREQUENCY (TONE1_VALUE);
+		ted7360->tone1samples = device->machine().sample_rate() / TONE_FREQUENCY (TONE1_VALUE);
 		DBG_LOG(1, "ted7360", ("tone1 %d %d sample:%d\n", TONE1_VALUE, TONE_FREQUENCY(TONE1_VALUE), ted7360->tone1samples));
 		break;
 
@@ -1254,10 +1253,10 @@ static void ted7360_soundport_w( device_t *device, int offset, int data )
 	case 0x10:
 		ted7360->reg[offset] = data;
 
-		ted7360->tone2samples = device->machine->sample_rate / TONE_FREQUENCY (TONE2_VALUE);
+		ted7360->tone2samples = device->machine().sample_rate() / TONE_FREQUENCY (TONE2_VALUE);
 		DBG_LOG (1, "ted7360", ("tone2 %d %d sample:%d\n", TONE2_VALUE, TONE_FREQUENCY(TONE2_VALUE), ted7360->tone2samples));
 
-		ted7360->noisesamples = (int) ((double) NOISE_FREQUENCY_MAX * device->machine->sample_rate * NOISE_BUFFER_SIZE_SEC / NOISE_FREQUENCY);
+		ted7360->noisesamples = (int) ((double) NOISE_FREQUENCY_MAX * device->machine().sample_rate() * NOISE_BUFFER_SIZE_SEC / NOISE_FREQUENCY);
 		DBG_LOG (1, "ted7360", ("noise %d sample:%d\n", NOISE_FREQUENCY, ted7360->noisesamples));
 
 		if (!NOISE_ON || ((double) ted7360->noisepos / ted7360->noisesamples >= 1.0))
@@ -1347,11 +1346,11 @@ static void ted7360_sound_start( device_t *device )
 	ted7360_state *ted7360 = get_safe_token(device);
 	int i;
 
-	ted7360->channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, ted7360_update);
+	ted7360->channel = device->machine().sound().stream_alloc(*device, 0, 1, device->machine().sample_rate(), 0, ted7360_update);
 
 	/* buffer for fastest played sample for 5 second so we have enough data for min 5 second */
 	ted7360->noisesize = NOISE_FREQUENCY_MAX * NOISE_BUFFER_SIZE_SEC;
-	ted7360->noise = auto_alloc_array(device->machine, UINT8, ted7360->noisesize);
+	ted7360->noise = auto_alloc_array(device->machine(), UINT8, ted7360->noisesize);
 
 	{
 		int noiseshift = 0x7ffff8;
@@ -1391,11 +1390,11 @@ static DEVICE_START( ted7360 )
 	const ted7360_interface *intf = (ted7360_interface *)device->baseconfig().static_config();
 	int width, height;
 
-	ted7360->screen = device->machine->device<screen_device>(intf->screen);
+	ted7360->screen = device->machine().device<screen_device>(intf->screen);
 	width = ted7360->screen->width();
 	height = ted7360->screen->height();
 
-	ted7360->bitmap = auto_bitmap_alloc(device->machine, width, height, BITMAP_FORMAT_INDEXED16);
+	ted7360->bitmap = auto_bitmap_alloc(device->machine(), width, height, BITMAP_FORMAT_INDEXED16);
 
 	ted7360->type = intf->type;
 
@@ -1405,48 +1404,48 @@ static DEVICE_START( ted7360 )
 
 	ted7360->keyboard_cb = intf->keyb_cb;
 
-	ted7360->timer1 = timer_alloc(device->machine, ted7360_timer_timeout, ted7360);
-	ted7360->timer2 = timer_alloc(device->machine, ted7360_timer_timeout, ted7360);
-	ted7360->timer3 = timer_alloc(device->machine, ted7360_timer_timeout, ted7360);
+	ted7360->timer1 = device->machine().scheduler().timer_alloc(FUNC(ted7360_timer_timeout), ted7360);
+	ted7360->timer2 = device->machine().scheduler().timer_alloc(FUNC(ted7360_timer_timeout), ted7360);
+	ted7360->timer3 = device->machine().scheduler().timer_alloc(FUNC(ted7360_timer_timeout), ted7360);
 
 	ted7360_sound_start(device);
 
-	state_save_register_device_item_array(device, 0, ted7360->reg);
+	device->save_item(NAME(ted7360->reg));
 
-	state_save_register_device_item_bitmap(device, 0, ted7360->bitmap);
+	device->save_item(NAME(*ted7360->bitmap));
 
-	state_save_register_device_item(device, 0, ted7360->rom);
-	state_save_register_device_item(device, 0, ted7360->lines);
-	state_save_register_device_item(device, 0, ted7360->chargenaddr);
-	state_save_register_device_item(device, 0, ted7360->bitmapaddr);
-	state_save_register_device_item(device, 0, ted7360->videoaddr);
-	state_save_register_device_item(device, 0, ted7360->timer1_active);
-	state_save_register_device_item(device, 0, ted7360->timer2_active);
-	state_save_register_device_item(device, 0, ted7360->timer3_active);
-	state_save_register_device_item(device, 0, ted7360->cursor1);
-	state_save_register_device_item(device, 0, ted7360->rasterline);
-	state_save_register_device_item(device, 0, ted7360->lastline);
-	state_save_register_device_item(device, 0, ted7360->rastertime);
-	state_save_register_device_item(device, 0, ted7360->frame_count);
-	state_save_register_device_item(device, 0, ted7360->x_begin);
-	state_save_register_device_item(device, 0, ted7360->x_end);
-	state_save_register_device_item(device, 0, ted7360->y_begin);
-	state_save_register_device_item(device, 0, ted7360->y_end);
+	device->save_item(NAME(ted7360->rom));
+	device->save_item(NAME(ted7360->lines));
+	device->save_item(NAME(ted7360->chargenaddr));
+	device->save_item(NAME(ted7360->bitmapaddr));
+	device->save_item(NAME(ted7360->videoaddr));
+	device->save_item(NAME(ted7360->timer1_active));
+	device->save_item(NAME(ted7360->timer2_active));
+	device->save_item(NAME(ted7360->timer3_active));
+	device->save_item(NAME(ted7360->cursor1));
+	device->save_item(NAME(ted7360->rasterline));
+	device->save_item(NAME(ted7360->lastline));
+	device->save_item(NAME(ted7360->rastertime));
+	device->save_item(NAME(ted7360->frame_count));
+	device->save_item(NAME(ted7360->x_begin));
+	device->save_item(NAME(ted7360->x_end));
+	device->save_item(NAME(ted7360->y_begin));
+	device->save_item(NAME(ted7360->y_end));
 
-	state_save_register_device_item_array(device, 0, ted7360->c16_bitmap);
-	state_save_register_device_item_array(device, 0, ted7360->bitmapmulti);
-	state_save_register_device_item_array(device, 0, ted7360->mono);
-	state_save_register_device_item_array(device, 0, ted7360->monoinversed);
-	state_save_register_device_item_array(device, 0, ted7360->multi);
-	state_save_register_device_item_array(device, 0, ted7360->ecmcolor);
-	state_save_register_device_item_array(device, 0, ted7360->colors);
+	device->save_item(NAME(ted7360->c16_bitmap));
+	device->save_item(NAME(ted7360->bitmapmulti));
+	device->save_item(NAME(ted7360->mono));
+	device->save_item(NAME(ted7360->monoinversed));
+	device->save_item(NAME(ted7360->multi));
+	device->save_item(NAME(ted7360->ecmcolor));
+	device->save_item(NAME(ted7360->colors));
 
-	state_save_register_device_item(device, 0, ted7360->tone1pos);
-	state_save_register_device_item(device, 0, ted7360->tone2pos);
-	state_save_register_device_item(device, 0, ted7360->tone1samples);
-	state_save_register_device_item(device, 0, ted7360->tone2samples);
-	state_save_register_device_item(device, 0, ted7360->noisepos);
-	state_save_register_device_item(device, 0, ted7360->noisesamples);
+	device->save_item(NAME(ted7360->tone1pos));
+	device->save_item(NAME(ted7360->tone2pos));
+	device->save_item(NAME(ted7360->tone1samples));
+	device->save_item(NAME(ted7360->tone2samples));
+	device->save_item(NAME(ted7360->noisepos));
+	device->save_item(NAME(ted7360->noisesamples));
 }
 
 static DEVICE_RESET( ted7360 )

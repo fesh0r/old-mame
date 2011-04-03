@@ -26,11 +26,11 @@ public:
 
 	void machine_reset();
 
-	WRITE8_MEMBER( digit_w );
-	WRITE8_MEMBER( segment_w );
-	READ8_MEMBER( kp_r );
+	DECLARE_WRITE8_MEMBER( digit_w );
+	DECLARE_WRITE8_MEMBER( segment_w );
+	DECLARE_READ8_MEMBER( kp_r );
 
-	UINT8 digit_sel;
+	UINT8 m_digit_sel;
 };
 
 
@@ -39,21 +39,21 @@ WRITE8_MEMBER( pro80_state::digit_w )
 	// --xx xxxx digit select
 	// -x-- ---- cassette out
 	// x--- ---- ???
-	digit_sel = data & 0x3f;
+	m_digit_sel = data & 0x3f;
 }
 
 WRITE8_MEMBER( pro80_state::segment_w )
 {
-	if (digit_sel)
+	if (m_digit_sel)
 	{
-		if (!BIT(digit_sel, 0)) output_set_digit_value(0, data);
-		if (!BIT(digit_sel, 1)) output_set_digit_value(1, data);
-		if (!BIT(digit_sel, 2)) output_set_digit_value(2, data);
-		if (!BIT(digit_sel, 3)) output_set_digit_value(3, data);
-		if (!BIT(digit_sel, 4)) output_set_digit_value(4, data);
-		if (!BIT(digit_sel, 5)) output_set_digit_value(5, data);
+		if (!BIT(m_digit_sel, 0)) output_set_digit_value(0, data);
+		if (!BIT(m_digit_sel, 1)) output_set_digit_value(1, data);
+		if (!BIT(m_digit_sel, 2)) output_set_digit_value(2, data);
+		if (!BIT(m_digit_sel, 3)) output_set_digit_value(3, data);
+		if (!BIT(m_digit_sel, 4)) output_set_digit_value(4, data);
+		if (!BIT(m_digit_sel, 5)) output_set_digit_value(5, data);
 
-		digit_sel = 0;
+		m_digit_sel = 0;
 	}
 }
 
@@ -61,24 +61,24 @@ READ8_MEMBER( pro80_state::kp_r )
 {
 	UINT8 data = 0x0f;
 
-	if (!BIT(digit_sel, 0)) data &= input_port_read(space.machine, "LINE0");
-	if (!BIT(digit_sel, 1)) data &= input_port_read(space.machine, "LINE1");
-	if (!BIT(digit_sel, 2)) data &= input_port_read(space.machine, "LINE2");
-	if (!BIT(digit_sel, 3)) data &= input_port_read(space.machine, "LINE3");
-	if (!BIT(digit_sel, 4)) data &= input_port_read(space.machine, "LINE4");
-	if (!BIT(digit_sel, 5)) data &= input_port_read(space.machine, "LINE5");
+	if (!BIT(m_digit_sel, 0)) data &= input_port_read(m_machine, "LINE0");
+	if (!BIT(m_digit_sel, 1)) data &= input_port_read(m_machine, "LINE1");
+	if (!BIT(m_digit_sel, 2)) data &= input_port_read(m_machine, "LINE2");
+	if (!BIT(m_digit_sel, 3)) data &= input_port_read(m_machine, "LINE3");
+	if (!BIT(m_digit_sel, 4)) data &= input_port_read(m_machine, "LINE4");
+	if (!BIT(m_digit_sel, 5)) data &= input_port_read(m_machine, "LINE5");
 
 	return data;
 }
 
-static ADDRESS_MAP_START(pro80_mem, ADDRESS_SPACE_PROGRAM, 8, pro80_state)
+static ADDRESS_MAP_START(pro80_mem, AS_PROGRAM, 8, pro80_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x03ff) AM_ROM
 	AM_RANGE(0x1000, 0x13ff) AM_RAM
 	AM_RANGE(0x1400, 0x17ff) AM_RAM // 2nd RAM is optional
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pro80_io , ADDRESS_SPACE_IO, 8, pro80_state)
+static ADDRESS_MAP_START( pro80_io , AS_IO, 8, pro80_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	//AM_RANGE(0x40, 0x43) Z80PIO
@@ -123,7 +123,7 @@ INPUT_PORTS_END
 
 void pro80_state::machine_reset()
 {
-	digit_sel = 0;
+	m_digit_sel = 0;
 }
 
 static MACHINE_CONFIG_START( pro80, pro80_state )

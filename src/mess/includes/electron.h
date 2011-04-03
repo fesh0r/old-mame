@@ -57,11 +57,11 @@ public:
 	electron_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	ULA ula;
-	emu_timer *tape_timer;
-	int map4[256];
-	int map16[256];
-	emu_timer *scanline_timer;
+	ULA m_ula;
+	emu_timer *m_tape_timer;
+	int m_map4[256];
+	int m_map16[256];
+	emu_timer *m_scanline_timer;
 };
 
 
@@ -75,13 +75,13 @@ READ8_HANDLER( electron_ula_r );
 WRITE8_HANDLER( electron_ula_w );
 MACHINE_START( electron );
 
-void electron_interrupt_handler(running_machine *machine, int mode, int interrupt);
+void electron_interrupt_handler(running_machine &machine, int mode, int interrupt);
 
 
 /*----------- defined in video/electron.c -----------*/
 
 VIDEO_START( electron );
-VIDEO_UPDATE( electron );
+SCREEN_UPDATE( electron );
 
 
 #endif /* ELECTRON_H_ */

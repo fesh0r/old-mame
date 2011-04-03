@@ -84,14 +84,18 @@ struct _scc8530_t
 
 INLINE scc8530_t *get_token(device_t *device)
 {
+	assert(device != NULL);
 	assert(device->type() == SCC8530);
+
 	return (scc8530_t *) downcast<legacy_device_base *>(device)->token();
 }
 
 
 INLINE const scc8530_interface *get_interface(device_t *device)
 {
+	assert(device != NULL);
 	assert(device->type() == SCC8530);
+
 	return (const scc8530_interface *) downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 }
 
@@ -179,7 +183,7 @@ static void scc8530_resetchannel(scc8530_t *scc, int ch)
 	scc->channel[ch].txUnderrun = 1;
 	scc->channel[ch].baudtimer = timersave;
 
-	timer_adjust_oneshot(scc->channel[ch].baudtimer, attotime_never, ch);
+	scc->channel[ch].baudtimer->adjust(attotime::never, ch);
 }
 
 /*-------------------------------------------------
@@ -208,7 +212,7 @@ static TIMER_CALLBACK( scc8530_baud_expire )
 	}
 
 	// reset timer according to current register values
-	timer_adjust_periodic(pChan->baudtimer, ATTOTIME_IN_HZ(rate), param, ATTOTIME_IN_HZ(rate));
+	pChan->baudtimer->adjust(attotime::from_hz(rate), param, attotime::from_hz(rate));
 }
 
 /*-------------------------------------------------
@@ -221,8 +225,8 @@ static DEVICE_START( scc8530 )
 	memset(scc, 0, sizeof(*scc));
 	scc->clock = device->clock();
 
-	scc->channel[0].baudtimer = timer_alloc(device->machine, scc8530_baud_expire, (void *)device);
-	scc->channel[1].baudtimer = timer_alloc(device->machine, scc8530_baud_expire, (void *)device);
+	scc->channel[0].baudtimer = device->machine().scheduler().timer_alloc(FUNC(scc8530_baud_expire), (void *)device);
+	scc->channel[1].baudtimer = device->machine().scheduler().timer_alloc(FUNC(scc8530_baud_expire), (void *)device);
 }
 
 
@@ -426,7 +430,7 @@ static void scc_putreg(device_t *device, int ch, int data)
 				int brconst = pChan->reg_val[13]<<8 | pChan->reg_val[14];
 				int rate = scc->clock / brconst;
 
-				timer_adjust_periodic(pChan->baudtimer, ATTOTIME_IN_HZ(rate), ch, ATTOTIME_IN_HZ(rate));
+				pChan->baudtimer->adjust(attotime::from_hz(rate), ch, attotime::from_hz(rate));
 			}
 			break;
 

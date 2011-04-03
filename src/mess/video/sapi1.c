@@ -87,13 +87,13 @@ static const UINT8 MHB2501[] = {
 
 VIDEO_START( sapi1 )
 {
-	sapi1_state *state = machine->driver_data<sapi1_state>();
-	state->refresh_counter = 0;
+	sapi1_state *state = machine.driver_data<sapi1_state>();
+	state->m_refresh_counter = 0;
 }
 
-VIDEO_UPDATE( sapi1 )
+SCREEN_UPDATE( sapi1 )
 {
-	sapi1_state *state = screen->machine->driver_data<sapi1_state>();
+	sapi1_state *state = screen->machine().driver_data<sapi1_state>();
 	int x,y,j,b;
   UINT16 addr;
   int xpos;
@@ -104,7 +104,7 @@ VIDEO_UPDATE( sapi1 )
 		xpos = 0;
 		for(x = 0; x < 40; x++ )
 		{
-			UINT8 code = state->sapi_video_ram[addr + x];
+			UINT8 code = state->m_sapi_video_ram[addr + x];
 			UINT8 attr = (code >> 6) & 3;
 			code &= 0x3f;
 			for(j = 0; j < 9; j++ )
@@ -114,14 +114,14 @@ VIDEO_UPDATE( sapi1 )
 				UINT8 val;
 				if (j==8) {
 					if (attr==2) {
-						val = (state->refresh_counter & 0x20) ? 1 : 0;
+						val = (state->m_refresh_counter & 0x20) ? 1 : 0;
 					} else {
 						val = 0;
 					}
 				} else {
 					val = (MHB2501[code*8 + j] >> (5-b)) & 1;
 					if (attr==1) {
-						val = (state->refresh_counter & 0x20) ? val : 0;
+						val = (state->m_refresh_counter & 0x20) ? val : 0;
 					}
 				}
 				if(attr==3) {
@@ -136,7 +136,7 @@ VIDEO_UPDATE( sapi1 )
 			if (xpos>=6*40) break;
 		}
 	}
-	state->refresh_counter++;
+	state->m_refresh_counter++;
 	return 0;
 }
 
@@ -145,7 +145,7 @@ VIDEO_START( sapizps3 )
 {
 }
 
-VIDEO_UPDATE( sapizps3 )
+SCREEN_UPDATE( sapizps3 )
 {
 	return 0;
 }

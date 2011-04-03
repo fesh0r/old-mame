@@ -88,7 +88,7 @@ struct _t6721_state
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(device->machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", device->machine().time().as_double(), (char*) M ); \
 			logerror A; \
 		} \
 	} while(0)
@@ -150,7 +150,7 @@ WRITE8_DEVICE_HANDLER( t6721_speech_w )
 					t6721->playing = 0;
 					break;
 				case 1: /* start */
-					timer_adjust_periodic(t6721->timer, attotime_zero, 0, ATTOTIME_IN_HZ(8000));
+					t6721->timer->adjust(attotime::zero, 0, attotime::from_hz(8000));
 					t6721->playing = 1;
 					t6721->end_of_sample = 0;
 					t6721->sample_timeindex = 0;
@@ -158,7 +158,7 @@ WRITE8_DEVICE_HANDLER( t6721_speech_w )
 				case 2:
 					t6721->end_of_sample = 0;
 					/*t6721->busy = 0; */
-					timer_reset(t6721->timer, attotime_never);
+					t6721->timer->reset();
 					t6721->playing = 0;
 					break;
 				case 5: /* set rate (in next nibble) */
@@ -237,26 +237,26 @@ static DEVICE_START( t6721 )
 {
 	t6721_state *t6721 = get_safe_token(device);
 
-	t6721->timer = timer_alloc(device->machine, t6721_speech_timer, t6721);
+	t6721->timer = device->machine().scheduler().timer_alloc(FUNC(t6721_speech_timer), t6721);
 
-	state_save_register_device_item_array(device, 0, t6721->sample_data);
-	state_save_register_device_item_array(device, 0, t6721->data);
+	device->save_item(NAME(t6721->sample_data));
+	device->save_item(NAME(t6721->data));
 
-	state_save_register_device_item(device, 0, t6721->sample_index);
-	state_save_register_device_item(device, 0, t6721->busy);
+	device->save_item(NAME(t6721->sample_index));
+	device->save_item(NAME(t6721->busy));
 
-	state_save_register_device_item(device, 0, t6721->end_of_sample);
-	state_save_register_device_item(device, 0, t6721->playing);
-	state_save_register_device_item(device, 0, t6721->rate);
+	device->save_item(NAME(t6721->end_of_sample));
+	device->save_item(NAME(t6721->playing));
+	device->save_item(NAME(t6721->rate));
 
-	state_save_register_device_item(device, 0, t6721->command_data);
-	state_save_register_device_item(device, 0, t6721->command_state);
-	state_save_register_device_item(device, 0, t6721->state);
+	device->save_item(NAME(t6721->command_data));
+	device->save_item(NAME(t6721->command_state));
+	device->save_item(NAME(t6721->state));
 
-	state_save_register_device_item(device, 0, t6721->sample_timeindex);
+	device->save_item(NAME(t6721->sample_timeindex));
 
-	state_save_register_device_item(device, 0, t6721->readindex);
-	state_save_register_device_item(device, 0, t6721->writeindex);
+	device->save_item(NAME(t6721->readindex));
+	device->save_item(NAME(t6721->writeindex));
 }
 
 

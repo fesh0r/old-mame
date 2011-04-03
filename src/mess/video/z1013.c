@@ -15,18 +15,18 @@ VIDEO_START( z1013 )
 {
 }
 
-VIDEO_UPDATE( z1013 )
+SCREEN_UPDATE( z1013 )
 {
-	z1013_state *state = screen->machine->driver_data<z1013_state>();
+	z1013_state *state = screen->machine().driver_data<z1013_state>();
 	UINT8 code, line;
 	int y, x, b,i;
-	UINT8 *gfx = screen->machine->region("gfx1")->base();
+	UINT8 *gfx = screen->machine().region("gfx1")->base();
 
 	for(y = 0; y < 32; y++ )
 	{
 		for(x = 0; x < 32; x++ )
 		{
-			code = state->video_ram[x + y*32];
+			code = state->m_video_ram[x + y*32];
 			for (i = 0; i < 8; i++)
 			{
 				line = gfx[code*8 + i];

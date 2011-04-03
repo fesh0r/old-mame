@@ -28,14 +28,14 @@ public:
 	gp2x_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT32 *ram;
-	UINT16 vidregs[0x200/2];
-	UINT32 nand_ptr;
-	UINT32 nand_cmd;
-	UINT32 nand_subword_stage;
-	UINT32 nand_stage;
-	UINT32 nand_ptr_temp;
-	UINT32 timer;
+	UINT32 *m_ram;
+	UINT16 m_vidregs[0x200/2];
+	UINT32 m_nand_ptr;
+	UINT32 m_nand_cmd;
+	UINT32 m_nand_subword_stage;
+	UINT32 m_nand_stage;
+	UINT32 m_nand_ptr_temp;
+	UINT32 m_timer;
 };
 
 
@@ -127,24 +127,24 @@ static const char *const gp2x_regnames[0x200] =
 	"YUV Source region A H",
 };
 #endif
-static VIDEO_UPDATE( gp2x )
+static SCREEN_UPDATE( gp2x )
 {
-	gp2x_state *state = screen->machine->driver_data<gp2x_state>();
+	gp2x_state *state = screen->machine().driver_data<gp2x_state>();
 	// display enabled?
-	if (state->vidregs[0] & 1)
+	if (state->m_vidregs[0] & 1)
 	{
 		// only support RGB still image layer for now
-		if (state->vidregs[0x80/2] & 4)
+		if (state->m_vidregs[0x80/2] & 4)
 		{
 			int x, y;
-			UINT16 *vram = (UINT16 *)&state->ram[0x2100000/4];
+			UINT16 *vram = (UINT16 *)&state->m_ram[0x2100000/4];
 
 /*          printf("RGB still image 1 enabled, bpp %d, size is %d %d %d %d\n",
-                (state->vidregs[(0xda/2)]>>9)&3,
-                state->vidregs[(0xe2/2)],
-                state->vidregs[(0xe4/2)],
-                state->vidregs[(0xe6/2)],
-                state->vidregs[(0xe8/2)]);*/
+                (state->m_vidregs[(0xda/2)]>>9)&3,
+                state->m_vidregs[(0xe2/2)],
+                state->m_vidregs[(0xe4/2)],
+                state->m_vidregs[(0xe6/2)],
+                state->m_vidregs[(0xe8/2)]);*/
 
 
 			for (y = 0; y < 240; y++)
@@ -166,21 +166,21 @@ static VIDEO_UPDATE( gp2x )
 
 static READ32_HANDLER( gp2x_lcdc_r )
 {
-	gp2x_state *state = space->machine->driver_data<gp2x_state>();
-	return state->vidregs[offset*2] | state->vidregs[(offset*2)+1]<<16;
+	gp2x_state *state = space->machine().driver_data<gp2x_state>();
+	return state->m_vidregs[offset*2] | state->m_vidregs[(offset*2)+1]<<16;
 }
 
 static WRITE32_HANDLER( gp2x_lcdc_w )
 {
-	gp2x_state *state = space->machine->driver_data<gp2x_state>();
+	gp2x_state *state = space->machine().driver_data<gp2x_state>();
 	if (mem_mask == 0xffff)
 	{
-		state->vidregs[offset*2] = data;
+		state->m_vidregs[offset*2] = data;
 //      printf("%x to video reg %x (%s)\n", data, offset*2, gp2x_regnames[offset*2]);
 	}
 	else if (mem_mask == 0xffff0000)
 	{
-		state->vidregs[(offset*2)+1] = data>>16;
+		state->m_vidregs[(offset*2)+1] = data>>16;
 //      printf("%x to video reg %x (%s)\n", data>>16, (offset*2)+1, gp2x_regnames[(offset*2)+1]);
 	}
 	else
@@ -191,36 +191,36 @@ static WRITE32_HANDLER( gp2x_lcdc_w )
 
 static READ32_HANDLER(nand_r)
 {
-	gp2x_state *state = space->machine->driver_data<gp2x_state>();
-	UINT32 *ROM = (UINT32 *)space->machine->region("maincpu")->base();
+	gp2x_state *state = space->machine().driver_data<gp2x_state>();
+	UINT32 *ROM = (UINT32 *)space->machine().region("maincpu")->base();
 	UINT32 ret;
 
 	if (offset == 0)
 	{
-		switch (state->nand_cmd)
+		switch (state->m_nand_cmd)
 		{
 			case 0:
 				if (mem_mask == 0xffffffff)
 				{
-					return ROM[state->nand_ptr++];
+					return ROM[state->m_nand_ptr++];
 				}
 				else if (mem_mask == 0x000000ff)	// byte-wide reads?
 				{
-					switch (state->nand_subword_stage++)
+					switch (state->m_nand_subword_stage++)
 					{
 						case 0:
-							return ROM[state->nand_ptr];
+							return ROM[state->m_nand_ptr];
 						case 1:
-							return ROM[state->nand_ptr]>>8;
+							return ROM[state->m_nand_ptr]>>8;
 						case 2:
-							return ROM[state->nand_ptr]>>16;
+							return ROM[state->m_nand_ptr]>>16;
 						case 3:
-							ret = ROM[state->nand_ptr]>>24;
-							state->nand_subword_stage = 0;
-							state->nand_ptr++;
+							ret = ROM[state->m_nand_ptr]>>24;
+							state->m_nand_subword_stage = 0;
+							state->m_nand_ptr++;
 							return ret;
 						default:
-							logerror("Bad nand_subword_stage = %d\n", state->nand_subword_stage);
+							logerror("Bad nand_subword_stage = %d\n", state->m_nand_subword_stage);
 							break;
 					}
 				}
@@ -230,7 +230,7 @@ static READ32_HANDLER(nand_r)
 				return 0xff;
 
 			case 0x90:	// read ID
-				switch (state->nand_stage++)
+				switch (state->m_nand_stage++)
 				{
 					case 0:
 						return 0xec;	// Samsung
@@ -240,7 +240,7 @@ static READ32_HANDLER(nand_r)
 				break;
 
 			default:
-				logerror("NAND: read unk command %x (PC %x)\n", state->nand_cmd, cpu_get_pc(space->cpu));
+				logerror("NAND: read unk command %x (PC %x)\n", state->m_nand_cmd, cpu_get_pc(&space->device()));
 				break;
 		}
 	}
@@ -252,42 +252,42 @@ static READ32_HANDLER(nand_r)
 
 static WRITE32_HANDLER(nand_w)
 {
-	gp2x_state *state = space->machine->driver_data<gp2x_state>();
+	gp2x_state *state = space->machine().driver_data<gp2x_state>();
 	switch (offset)
 	{
 		case 4:	// command
-			state->nand_cmd = data;
-//          printf("NAND: command %x (PC %x0)\n", data, cpu_get_pc(space->cpu));
-			state->nand_stage = 0;
-			state->nand_subword_stage = 0;
+			state->m_nand_cmd = data;
+//          printf("NAND: command %x (PC %x0)\n", data, cpu_get_pc(&space->device()));
+			state->m_nand_stage = 0;
+			state->m_nand_subword_stage = 0;
 			break;
 
 		case 6:	// address
-			if (state->nand_cmd == 0)
+			if (state->m_nand_cmd == 0)
 			{
-				switch (state->nand_stage)
+				switch (state->m_nand_stage)
 				{
 					case 0:
-						state->nand_ptr_temp &= ~0xff;
-						state->nand_ptr_temp |= data;
+						state->m_nand_ptr_temp &= ~0xff;
+						state->m_nand_ptr_temp |= data;
 						break;
 					case 1:
-						state->nand_ptr_temp &= ~0xff00;
-						state->nand_ptr_temp |= data<<8;
+						state->m_nand_ptr_temp &= ~0xff00;
+						state->m_nand_ptr_temp |= data<<8;
 						break;
 					case 2:
-						state->nand_ptr_temp &= ~0xff0000;
-						state->nand_ptr_temp |= data<<16;
+						state->m_nand_ptr_temp &= ~0xff0000;
+						state->m_nand_ptr_temp |= data<<16;
 						break;
 					case 3:
-						state->nand_ptr_temp &= ~0xff000000;
-						state->nand_ptr_temp |= data<<24;
+						state->m_nand_ptr_temp &= ~0xff000000;
+						state->m_nand_ptr_temp |= data<<24;
 
-//                      printf("NAND: ptr now %x, /2 %x, replacing %x\n", state->nand_ptr_temp, state->nand_ptr_temp/2, state->nand_ptr);
-						state->nand_ptr = state->nand_ptr_temp/2;
+//                      printf("NAND: ptr now %x, /2 %x, replacing %x\n", state->m_nand_ptr_temp, state->m_nand_ptr_temp/2, state->m_nand_ptr);
+						state->m_nand_ptr = state->m_nand_ptr_temp/2;
 						break;
 				}
-				state->nand_stage++;
+				state->m_nand_stage++;
 			}
 			break;
 
@@ -309,8 +309,8 @@ static WRITE32_HANDLER(tx_xmit_w)
 
 static READ32_HANDLER(timer_r)
 {
-	gp2x_state *state = space->machine->driver_data<gp2x_state>();
-	return state->timer++;
+	gp2x_state *state = space->machine().driver_data<gp2x_state>();
+	return state->m_timer++;
 }
 
 static READ32_HANDLER(nand_ctrl_r)
@@ -328,9 +328,9 @@ static READ32_HANDLER(sdcard_r)
 	return 0xffff<<16;	// at 3e146b0 - indicate timeout & CRC error
 }
 
-static ADDRESS_MAP_START( gp2x_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( gp2x_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x00007fff) AM_ROM
-	AM_RANGE(0x01000000, 0x04ffffff) AM_RAM	AM_BASE_MEMBER(gp2x_state, ram) // 64 MB of RAM
+	AM_RANGE(0x01000000, 0x04ffffff) AM_RAM	AM_BASE_MEMBER(gp2x_state, m_ram) // 64 MB of RAM
 	AM_RANGE(0x9c000000, 0x9c00001f) AM_READWRITE(nand_r, nand_w)
 	AM_RANGE(0xc0000a00, 0xc0000a03) AM_READ(timer_r)
 	AM_RANGE(0xc0001208, 0xc000120b) AM_READ(tx_status_r)
@@ -355,8 +355,7 @@ static MACHINE_CONFIG_START( gp2x, gp2x_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
-
-	MCFG_VIDEO_UPDATE(gp2x)
+	MCFG_SCREEN_UPDATE(gp2x)
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 MACHINE_CONFIG_END

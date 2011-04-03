@@ -9,7 +9,7 @@
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/68681.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "machine/wd17xx.h"
 #include "machine/terminal.h"
 
@@ -20,14 +20,14 @@ public:
 	ht68k_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT16* ram;
+	UINT16* m_ram;
 };
 
 
 
-static ADDRESS_MAP_START(ht68k_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(ht68k_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE_MEMBER(ht68k_state, ram) // 512 KB RAM / ROM at boot
+	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE_MEMBER(ht68k_state, m_ram) // 512 KB RAM / ROM at boot
 	//AM_RANGE(0x00080000, 0x000fffff) // Expansion
 	//AM_RANGE(0x00d80000, 0x00d8ffff) // Printer
 	AM_RANGE(0x00e00000, 0x00e00007) AM_MIRROR(0xfff8) AM_DEVREADWRITE8("wd1770", wd17xx_r, wd17xx_w, 0x00ff) // FDC WD1770
@@ -37,28 +37,27 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( ht68k )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(ht68k)
 {
-	ht68k_state *state = machine->driver_data<ht68k_state>();
-	UINT8* user1 = machine->region("user1")->base();
+	ht68k_state *state = machine.driver_data<ht68k_state>();
+	UINT8* user1 = machine.region("user1")->base();
 
-	memcpy((UINT8*)state->ram,user1,0x8000);
+	memcpy((UINT8*)state->m_ram,user1,0x8000);
 
-	machine->device("maincpu")->reset();
+	machine.device("maincpu")->reset();
 }
 
 static void duart_irq_handler(device_t *device, UINT8 vector)
 {
-	cputag_set_input_line_and_vector(device->machine, "maincpu", M68K_IRQ_3, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
+	cputag_set_input_line_and_vector(device->machine(), "maincpu", M68K_IRQ_3, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static void duart_tx(device_t *device, int channel, UINT8 data)
 {
-	device_t *devconf = device->machine->device("terminal");
+	device_t *devconf = device->machine().device(TERMINAL_TAG);
 	terminal_write(devconf,0,data);
 }
 
@@ -69,7 +68,7 @@ static UINT8 duart_input(device_t *device)
 
 static void duart_output(device_t *device, UINT8 data)
 {
-	device_t *fdc = device->machine->device("wd1770");
+	device_t *fdc = device->machine().device("wd1770");
 	wd17xx_set_side(fdc,BIT(data,3) ? 0 : 1);
 	if (BIT(data,7)==0) {
 		wd17xx_set_drive(fdc,0);
@@ -84,7 +83,7 @@ static void duart_output(device_t *device, UINT8 data)
 
 static WRITE8_DEVICE_HANDLER( ht68k_kbd_put )
 {
-	duart68681_rx_data(device->machine->device("duart68681"), 0, data);
+	duart68681_rx_data(device->machine().device("duart68681"), 0, data);
 }
 
 static GENERIC_TERMINAL_INTERFACE( ht68k_terminal_intf )
@@ -102,7 +101,7 @@ static const duart68681_config ht68k_duart68681_config =
 
 static WRITE_LINE_DEVICE_HANDLER( ht68k_fdc_intrq_w )
 {
-	//cputag_set_input_line_and_vector(device->machine, "maincpu", M68K_IRQ_4, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
+	//cputag_set_input_line_and_vector(device->machine(), "maincpu", M68K_IRQ_4, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static const wd17xx_interface ht68k_wd17xx_interface =

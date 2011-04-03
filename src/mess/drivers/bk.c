@@ -11,14 +11,14 @@
 #include "cpu/t11/t11.h"
 #include "sound/wave.h"
 #include "includes/bk.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/rk_cas.h"
 
   /* Address maps */
-static ADDRESS_MAP_START(bk0010_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(bk0010_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x3fff ) AM_RAM  // RAM
-	AM_RANGE( 0x4000, 0x7fff ) AM_RAM  AM_BASE_MEMBER(bk_state, bk0010_video_ram) // Video RAM
+	AM_RANGE( 0x4000, 0x7fff ) AM_RAM  AM_BASE_MEMBER(bk_state, m_bk0010_video_ram) // Video RAM
     AM_RANGE( 0x8000, 0x9fff ) AM_ROM  // ROM
     AM_RANGE( 0xa000, 0xbfff ) AM_ROM  // ROM
     AM_RANGE( 0xc000, 0xdfff ) AM_ROM  // ROM
@@ -29,10 +29,10 @@ static ADDRESS_MAP_START(bk0010_mem, ADDRESS_SPACE_PROGRAM, 16)
     AM_RANGE( 0xffce, 0xffcf ) AM_READWRITE (bk_key_press_r,bk_key_press_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(bk0010fd_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(bk0010fd_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x3fff ) AM_RAM  // RAM
-	AM_RANGE( 0x4000, 0x7fff ) AM_RAM  AM_BASE_MEMBER(bk_state, bk0010_video_ram) // Video RAM
+	AM_RANGE( 0x4000, 0x7fff ) AM_RAM  AM_BASE_MEMBER(bk_state, m_bk0010_video_ram) // Video RAM
     AM_RANGE( 0x8000, 0x9fff ) AM_ROM  // ROM
     AM_RANGE( 0xa000, 0xdfff ) AM_RAM  // RAM
     AM_RANGE( 0xe000, 0xfdff ) AM_ROM  // ROM
@@ -185,11 +185,12 @@ static MACHINE_CONFIG_START( bk0010, bk_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+    MCFG_SCREEN_UPDATE(bk0010)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(bk0010)
-    MCFG_VIDEO_UPDATE(bk0010)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")
@@ -214,11 +215,12 @@ static MACHINE_CONFIG_START( bk0010fd, bk_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+    MCFG_SCREEN_UPDATE(bk0010)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(bk0010)
-    MCFG_VIDEO_UPDATE(bk0010)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")

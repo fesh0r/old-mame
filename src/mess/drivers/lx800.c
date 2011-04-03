@@ -23,7 +23,7 @@ public:
 	lx800_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	device_t *speaker;
+	device_t *m_speaker;
 };
 
 
@@ -44,10 +44,10 @@ static READ8_HANDLER( lx800_porta_r )
 {
 	UINT8 result = 0;
 
-	logerror("%s: lx800_porta_r(%02x)\n", cpuexec_describe_context(space->machine), offset);
+	logerror("%s: lx800_porta_r(%02x)\n", space->machine().describe_context(), offset);
 
-	result |= input_port_read(space->machine, "LINEFEED") << 3;
-	result |= input_port_read(space->machine, "FORMFEED") << 4;
+	result |= input_port_read(space->machine(), "LINEFEED") << 3;
+	result |= input_port_read(space->machine(), "FORMFEED") << 4;
 	result |= 1 << 5;
 
 	result |= 1 << 7;
@@ -57,7 +57,7 @@ static READ8_HANDLER( lx800_porta_r )
 
 static WRITE8_HANDLER( lx800_porta_w )
 {
-	logerror("%s: lx800_porta_w(%02x): %02x\n", cpuexec_describe_context(space->machine), offset, data);
+	logerror("%s: lx800_porta_w(%02x): %02x\n", space->machine().describe_context(), offset, data);
 	logerror("--> carriage: %d, paper feed: %d\n", BIT(data, 0), BIT(data, 2));
 }
 
@@ -74,22 +74,22 @@ static READ8_HANDLER( lx800_portc_r )
 {
 	UINT8 result = 0;
 
-	logerror("%s: lx800_portc_r(%02x)\n", cpuexec_describe_context(space->machine), offset);
+	logerror("%s: lx800_portc_r(%02x)\n", space->machine().describe_context(), offset);
 
-	result |= input_port_read(space->machine, "ONLINE") << 3;
+	result |= input_port_read(space->machine(), "ONLINE") << 3;
 
 	return result;
 }
 
 static WRITE8_HANDLER( lx800_portc_w )
 {
-	lx800_state *lx800 = space->machine->driver_data<lx800_state>();
+	lx800_state *lx800 = space->machine().driver_data<lx800_state>();
 
-	logerror("%s: lx800_portc_w(%02x): %02x\n", cpuexec_describe_context(space->machine), offset, data);
+	logerror("%s: lx800_portc_w(%02x): %02x\n", space->machine().describe_context(), offset, data);
 	logerror("--> err: %d, ack: %d, fire: %d, buzzer: %d\n", BIT(data, 4), BIT(data, 5), BIT(data, 6), BIT(data, 7));
 
 	output_set_value("online_led", !BIT(data, 2));
-	beep_set_state(lx800->speaker, !BIT(data, 7));
+	beep_set_state(lx800->m_speaker, !BIT(data, 7));
 }
 
 
@@ -115,7 +115,7 @@ static WRITE_LINE_DEVICE_HANDLER( lx800_paperempty_led_w )
 
 static WRITE_LINE_DEVICE_HANDLER( lx800_reset_w )
 {
-	device->machine->device("maincpu")->reset();
+	device->machine().device("maincpu")->reset();
 }
 
 
@@ -125,12 +125,12 @@ static WRITE_LINE_DEVICE_HANDLER( lx800_reset_w )
 
 static MACHINE_START( lx800 )
 {
-	lx800_state *lx800 = machine->driver_data<lx800_state>();
+	lx800_state *lx800 = machine.driver_data<lx800_state>();
 
-	lx800->speaker = machine->device("beep");
+	lx800->m_speaker = machine.device("beep");
 
-	beep_set_state(lx800->speaker, 0);
-	beep_set_frequency(lx800->speaker, 4000); /* ? */
+	beep_set_state(lx800->m_speaker, 0);
+	beep_set_frequency(lx800->m_speaker, 4000); /* ? */
 }
 
 
@@ -138,7 +138,7 @@ static MACHINE_START( lx800 )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( lx800_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( lx800_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM /* 32k firmware */
 	AM_RANGE(0x8000, 0x9fff) AM_RAM /* 8k external RAM */
 	AM_RANGE(0xa000, 0xbfff) AM_NOP /* not used */
@@ -147,7 +147,7 @@ static ADDRESS_MAP_START( lx800_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xff00, 0xffff) AM_RAM /* internal CPU RAM */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( lx800_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( lx800_io, AS_IO, 8 )
 	AM_RANGE(UPD7810_PORTA, UPD7810_PORTA) AM_READWRITE(lx800_porta_r, lx800_porta_w)
 	AM_RANGE(UPD7810_PORTB, UPD7810_PORTB) AM_READ_PORT("DIPSW1")
 	AM_RANGE(UPD7810_PORTC, UPD7810_PORTC) AM_READWRITE(lx800_portc_r, lx800_portc_w)

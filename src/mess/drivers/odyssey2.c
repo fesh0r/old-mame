@@ -12,16 +12,16 @@
 #include "emu.h"
 #include "cpu/mcs48/mcs48.h"
 #include "includes/odyssey2.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "sound/sp0256.h"
 
-static ADDRESS_MAP_START( odyssey2_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( odyssey2_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x03FF) AM_ROM
 	AM_RANGE( 0x0400, 0x0BFF) AM_RAMBANK("bank1")
 	AM_RANGE( 0x0C00, 0x0FFF) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( odyssey2_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( odyssey2_io , AS_IO, 8)
 	AM_RANGE( 0x00,		 0xff)		AM_READWRITE( odyssey2_bus_r, odyssey2_bus_w)
 	AM_RANGE( MCS48_PORT_P1,	MCS48_PORT_P1)	AM_READWRITE( odyssey2_getp1, odyssey2_putp1 )
 	AM_RANGE( MCS48_PORT_P2,	MCS48_PORT_P2)	AM_READWRITE( odyssey2_getp2, odyssey2_putp2 )
@@ -30,7 +30,7 @@ static ADDRESS_MAP_START( odyssey2_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( MCS48_PORT_T1,	MCS48_PORT_T1)	AM_READ( odyssey2_t1_r )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( g7400_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( g7400_io , AS_IO, 8)
 	AM_RANGE( 0x00,      0xff)      AM_READWRITE( g7400_bus_r, g7400_bus_w)
 	AM_RANGE( MCS48_PORT_P1,	MCS48_PORT_P1)  AM_READWRITE( odyssey2_getp1, odyssey2_putp1 )
 	AM_RANGE( MCS48_PORT_P2,	MCS48_PORT_P2)  AM_READWRITE( odyssey2_getp2, odyssey2_putp2 )
@@ -177,7 +177,7 @@ static MACHINE_CONFIG_START( odyssey2, odyssey2_state )
 	MCFG_CPU_ADD("maincpu", I8048, ( ( XTAL_7_15909MHz * 3 ) / 4 ) )
 	MCFG_CPU_PROGRAM_MAP(odyssey2_mem)
 	MCFG_CPU_IO_MAP(odyssey2_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( odyssey2 )
 
@@ -185,13 +185,13 @@ static MACHINE_CONFIG_START( odyssey2, odyssey2_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS( XTAL_7_15909MHz/2, I824X_LINE_CLOCKS, I824X_START_ACTIVE_SCAN, I824X_END_ACTIVE_SCAN, 262, I824X_START_Y, I824X_START_Y + I824X_SCREEN_HEIGHT )
+	MCFG_SCREEN_UPDATE( odyssey2 )
 
 	MCFG_GFXDECODE( odyssey2 )
 	MCFG_PALETTE_LENGTH(24)
 	MCFG_PALETTE_INIT( odyssey2 )
 
 	MCFG_VIDEO_START( odyssey2 )
-	MCFG_VIDEO_UPDATE( odyssey2 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -211,7 +211,7 @@ static MACHINE_CONFIG_START( videopac, odyssey2_state )
 	MCFG_CPU_ADD("maincpu", I8048, ( XTAL_17_73447MHz / 3 ) )
 	MCFG_CPU_PROGRAM_MAP(odyssey2_mem)
 	MCFG_CPU_IO_MAP(odyssey2_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( odyssey2 )
 
@@ -219,13 +219,13 @@ static MACHINE_CONFIG_START( videopac, odyssey2_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS( XTAL_17_73447MHz/5, I824X_LINE_CLOCKS, I824X_START_ACTIVE_SCAN, I824X_END_ACTIVE_SCAN, 312, I824X_START_Y, I824X_START_Y + I824X_SCREEN_HEIGHT )
+	MCFG_SCREEN_UPDATE( odyssey2 )
 
 	MCFG_GFXDECODE( odyssey2 )
 	MCFG_PALETTE_LENGTH(24)
 	MCFG_PALETTE_INIT( odyssey2 )
 
 	MCFG_VIDEO_START( odyssey2 )
-	MCFG_VIDEO_UPDATE( odyssey2 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -244,7 +244,7 @@ static MACHINE_CONFIG_START( g7400, odyssey2_state )
 	MCFG_CPU_ADD("maincpu", I8048, 5911000 )
 	MCFG_CPU_PROGRAM_MAP(odyssey2_mem)
 	MCFG_CPU_IO_MAP(g7400_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( odyssey2 )
 
@@ -252,13 +252,13 @@ static MACHINE_CONFIG_START( g7400, odyssey2_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS( 3547000*2, 448, 96, 416, 312, 39, 289 )	/* EF9340 doubles the input clock into dot clocks internally */
+    MCFG_SCREEN_UPDATE( odyssey2 )
 
 	MCFG_GFXDECODE( odyssey2 )
 	MCFG_PALETTE_LENGTH(24)
 	MCFG_PALETTE_INIT( odyssey2 )
 
 	MCFG_VIDEO_START( odyssey2 )
-//  MCFG_VIDEO_UPDATE( odyssey2 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

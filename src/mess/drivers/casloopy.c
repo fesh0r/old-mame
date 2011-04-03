@@ -1,17 +1,17 @@
 /*****************************************************************************
 
-	Casio Loopy (c) 1995 Casio
+    Casio Loopy (c) 1995 Casio
 
-	skeleton driver
+    skeleton driver
 
-	TODO:
-	- Identify what actually is the NEC CDT-109 CPU, it should contain a program
-	  controller for the thermal printer device
+    TODO:
+    - Identify what actually is the NEC CDT-109 CPU, it should contain a program
+      controller for the thermal printer device
 
-	Note:
-	- just a placeholder for any HW discovery, until we decap/trojan the BIOS,
-	  the idea is to understand the HW enough to extract the SH-1 internal BIOS
-	  data via a trojan;
+    Note:
+    - just a placeholder for any HW discovery, until we decap/trojan the BIOS,
+      the idea is to understand the HW enough to extract the SH-1 internal BIOS
+      data via a trojan;
 
 ===============================================================================
 
@@ -141,7 +141,7 @@ PCB 'Z545-1 A240570-1'
 #include "emu.h"
 #include "cpu/sh2/sh2.h"
 //#include "cpu/v60/v60.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 
 
 class casloopy_state : public driver_device
@@ -150,7 +150,7 @@ public:
 	casloopy_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT32 *bios_rom;
+	UINT32 *m_bios_rom;
 };
 
 
@@ -160,20 +160,20 @@ static VIDEO_START( casloopy )
 
 }
 
-static VIDEO_UPDATE( casloopy )
+static SCREEN_UPDATE( casloopy )
 {
 	return 0;
 }
 
-static ADDRESS_MAP_START( casloopy_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x00000007) AM_RAM AM_BASE_MEMBER(casloopy_state, bios_rom)
-//	AM_RANGE(0x01000000, 0x017fffff) - i/o?
+static ADDRESS_MAP_START( casloopy_map, AS_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x00000007) AM_RAM AM_BASE_MEMBER(casloopy_state, m_bios_rom)
+//  AM_RANGE(0x01000000, 0x017fffff) - i/o?
 	AM_RANGE(0x06000000, 0x061fffff) AM_ROM AM_REGION("cart",0) // wrong?
 	AM_RANGE(0x07fff000, 0x07ffffff) AM_RAM
 ADDRESS_MAP_END
 
 #if 0
-static ADDRESS_MAP_START( casloopy_sub_map, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( casloopy_sub_map, AS_PROGRAM, 16 )
 	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("subcpu",0)
 ADDRESS_MAP_END
 #endif
@@ -193,8 +193,8 @@ static MACHINE_CONFIG_START( casloopy, casloopy_state )
 	MCFG_CPU_ADD("maincpu",SH2,8000000)
 	MCFG_CPU_PROGRAM_MAP(casloopy_map)
 
-//	MCFG_CPU_ADD("subcpu",V60,8000000)
-//	MCFG_CPU_PROGRAM_MAP(casloopy_sub_map)
+//  MCFG_CPU_ADD("subcpu",V60,8000000)
+//  MCFG_CPU_PROGRAM_MAP(casloopy_sub_map)
 
 	MCFG_MACHINE_RESET(casloopy)
 
@@ -205,14 +205,19 @@ static MACHINE_CONFIG_START( casloopy, casloopy_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MCFG_SCREEN_UPDATE(casloopy)
+
 	MCFG_PALETTE_LENGTH(512)
 
 	MCFG_VIDEO_START(casloopy)
-	MCFG_VIDEO_UPDATE(casloopy)
 
 	MCFG_CARTSLOT_ADD("cart")
-	MCFG_CARTSLOT_EXTENSION_LIST("ic1")
+	MCFG_CARTSLOT_EXTENSION_LIST("ic1,bin")
 	MCFG_CARTSLOT_MANDATORY
+	MCFG_CARTSLOT_INTERFACE("loopy_cart")
+
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("cart_list","casloopy")
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -237,10 +242,10 @@ ROM_END
 
 static DRIVER_INIT( casloopy )
 {
-	casloopy_state *state = machine->driver_data<casloopy_state>();
+	casloopy_state *state = machine.driver_data<casloopy_state>();
 	/* load hand made bios data*/
-	state->bios_rom[0/4] = 0x6000964; //SPC
-	state->bios_rom[4/4] = 0xffffff0; //SSP
+	state->m_bios_rom[0/4] = 0x6000964; //SPC
+	state->m_bios_rom[4/4] = 0xffffff0; //SSP
 }
 
 GAME( 1995, casloopy,  0,   casloopy,  casloopy,  casloopy, ROT0, "Casio", "Loopy", GAME_NOT_WORKING | GAME_NO_SOUND )

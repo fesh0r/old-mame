@@ -15,9 +15,9 @@
 #include "machine/nes_mmc.h"
 #include "includes/nes.h"
 #include "cpu/m6502/m6502.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "sound/nes_apu.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/nes_dsk.h"
 
 
@@ -38,11 +38,11 @@ static WRITE8_DEVICE_HANDLER( psg_4017_w )
 
 static WRITE8_HANDLER(nes_vh_sprite_dma_w)
 {
-	nes_state *state = space->machine->driver_data<nes_state>();
-	ppu2c0x_spriteram_dma(space, state->ppu, data);
+	nes_state *state = space->machine().driver_data<nes_state>();
+	ppu2c0x_spriteram_dma(space, state->m_ppu, data);
 }
 
-static ADDRESS_MAP_START( nes_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( nes_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800)					/* RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_DEVREADWRITE("ppu", ppu2c0x_r, ppu2c0x_w)		/* PPU registers */
 	AM_RANGE(0x4000, 0x4013) AM_DEVREADWRITE("nessound", nes_psg_r, nes_psg_w)		/* PSG primary registers */
@@ -441,7 +441,7 @@ static const nes_interface nes_apu_interface =
 
 static void ppu_nmi(device_t *device, int *ppu_regs)
 {
-	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -484,9 +484,10 @@ static MACHINE_CONFIG_START( nes, nes_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+	MCFG_SCREEN_UPDATE(nes)
+
 	MCFG_PALETTE_INIT(nes)
 	MCFG_VIDEO_START(nes)
-	MCFG_VIDEO_UPDATE(nes)
 
 	MCFG_PALETTE_LENGTH(4*16*8)
 
@@ -555,7 +556,7 @@ static MACHINE_CONFIG_DERIVED( famicom, nes )
 	MCFG_CARTSLOT_EXTENSION_LIST("nes,unf")
 	MCFG_CARTSLOT_NOT_MANDATORY
 	MCFG_CARTSLOT_LOAD(nes_cart)
-	MCFG_CARTSLOT_PARTIALHASH(nes_partialhash)
+	MCFG_CARTSLOT_PARTIALHASH(nes_partialhash)	
 
 	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, nes_floppy_config)
 MACHINE_CONFIG_END

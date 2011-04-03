@@ -11,11 +11,11 @@
 #include "cpu/rsp/rsp.h"
 #include "cpu/mips/mips3.h"
 #include "sound/dmadac.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "includes/n64.h"
 
 
-static ADDRESS_MAP_START( n64_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( n64_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_BASE(&rdram)				// RDRAM
 	AM_RANGE(0x03f00000, 0x03f00027) AM_READWRITE(n64_rdram_reg_r, n64_rdram_reg_w)
 	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE("dmem")					// RSP DMEM
@@ -34,7 +34,7 @@ static ADDRESS_MAP_START( n64_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x1fc007c0, 0x1fc007ff) AM_READWRITE(n64_pif_ram_r, n64_pif_ram_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( rsp_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( rsp_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x00000fff) AM_RAM AM_SHARE("dmem")
 	AM_RANGE(0x00001000, 0x00001fff) AM_RAM AM_SHARE("imem")
 	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_BASE(&rsp_dmem) AM_SHARE("dmem")
@@ -100,16 +100,18 @@ static const mips3_config config =
 
 static INTERRUPT_GEN( n64_vblank )
 {
-	signal_rcp_interrupt(device->machine, VI_INTERRUPT);
+	signal_rcp_interrupt(device->machine(), VI_INTERRUPT);
 }
 
 static DEVICE_IMAGE_LOAD(n64_cart)
 {
 	int i, length;
-	UINT8 *cart = image.device().machine->region("user2")->base();
+	UINT8 *cart = image.device().machine().region("user2")->base();
 
 	if (image.software_entry() == NULL)
+	{
 		length = image.fread( cart, 0x4000000);
+	}
 	else
 	{
 		length = image.get_software_region_length("rom");
@@ -163,7 +165,7 @@ static MACHINE_CONFIG_START( n64, _n64_state )
 
 	MCFG_MACHINE_START( n64 )
 	MCFG_MACHINE_RESET( n64 )
-	MCFG_QUANTUM_TIME(HZ(600))
+	MCFG_QUANTUM_TIME(attotime::from_hz(600))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -172,16 +174,17 @@ static MACHINE_CONFIG_START( n64, _n64_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(640, 525)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 239)
+	MCFG_SCREEN_UPDATE(n64)
+
 	MCFG_PALETTE_LENGTH(0x1000)
 
 	MCFG_VIDEO_START(n64)
-	MCFG_VIDEO_UPDATE(n64)
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MCFG_SOUND_ADD("dac1", DMADAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MCFG_SOUND_ADD("dac2", DMADAC, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MCFG_SOUND_ADD("dac1", DMADAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	/* cartridge */

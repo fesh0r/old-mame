@@ -12,7 +12,7 @@
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "cpu/t11/t11.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 class vt240_state : public driver_device
@@ -24,13 +24,13 @@ public:
 };
 
 
-static ADDRESS_MAP_START(vt240_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vt240_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vt240_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vt240_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
@@ -47,7 +47,7 @@ static VIDEO_START( vt240 )
 {
 }
 
-static VIDEO_UPDATE( vt240 )
+static SCREEN_UPDATE( vt240 )
 {
 	return 0;
 }
@@ -67,11 +67,12 @@ static MACHINE_CONFIG_START( vt240, vt240_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_UPDATE(vt240)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(vt240)
-	MCFG_VIDEO_UPDATE(vt240)
 MACHINE_CONFIG_END
 
 /* ROM definition */

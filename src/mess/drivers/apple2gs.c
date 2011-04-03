@@ -44,7 +44,7 @@
 #include "cpu/g65816/g65816.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/ap2_dsk.h"
 #include "formats/ap_dsk35.h"
 #include "includes/apple2gs.h"
@@ -58,8 +58,8 @@
 #include "machine/8530scc.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 #include "deprecat.h"
 
 static const gfx_layout apple2gs_text_layout =
@@ -225,7 +225,7 @@ static const cassette_config apple2gs_cassette_config =
 	NULL
 };
 
-static ADDRESS_MAP_START( apple2gs_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( apple2gs_map, AS_PROGRAM, 8 )
 	/* nothing in the address map - everything is added dynamically */
 ADDRESS_MAP_END
 
@@ -242,7 +242,7 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 	MCFG_CPU_ADD("maincpu", G65816, APPLE2GS_14M/5)
 	MCFG_CPU_PROGRAM_MAP(apple2gs_map)
 	MCFG_CPU_VBLANK_INT_HACK(apple2_interrupt, 192/8)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
@@ -250,6 +250,8 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(704, 262)	// 640+32+32 for the borders
 	MCFG_SCREEN_VISIBLE_AREA(0,703,0,230)
+	MCFG_SCREEN_UPDATE( apple2gs )
+
 	MCFG_PALETTE_LENGTH( 16+256 )
 	MCFG_GFXDECODE( apple2gs )
 
@@ -258,7 +260,6 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 
 	MCFG_PALETTE_INIT( apple2gs )
 	MCFG_VIDEO_START( apple2gs )
-	MCFG_VIDEO_UPDATE( apple2gs )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -298,13 +299,20 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 	MCFG_CASSETTE_ADD( "cassette", apple2gs_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
-	MCFG_RAM_DEFAULT_SIZE("2M")
-	MCFG_RAM_EXTRA_OPTIONS("64K")
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("2M")      // 1M on board + 1M in the expansion slot was common for ROM 03
+	MCFG_RAM_EXTRA_OPTIONS("1M,3M,4M,5M,6M,7M,8M")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END
 
+static MACHINE_CONFIG_DERIVED( apple2gsr1, apple2gs )
+	MCFG_MACHINE_START( apple2gsr1 )
 
+    MCFG_RAM_MODIFY(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("1280K")  // 256K on board + 1M in the expansion slot was common for ROM 01
+	MCFG_RAM_EXTRA_OPTIONS("256K,512K,768K,1M,2M,3M,4M,5M,6M,7M,8M")
+	MCFG_RAM_DEFAULT_VALUE(0x00)
+MACHINE_CONFIG_END
 
 /***************************************************************************
 
@@ -376,14 +384,14 @@ ROM_END
 
 static DRIVER_INIT(apple2gs)
 {
-	apple2gs_state *state = machine->driver_data<apple2gs_state>();
-	es5503_set_base(machine->device("es5503"), state->docram);
-	state_save_register_global_array(machine, state->docram);
+	apple2gs_state *state = machine.driver_data<apple2gs_state>();
+	es5503_set_base(machine.device("es5503"), state->m_docram);
+	state->save_item(NAME(state->m_docram));
 }
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT       INIT      COMPANY            FULLNAME */
 COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM03)", 0 )
 COMP( 198?, apple2gsr3p, apple2gs, 0,   apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM03 prototype)", GAME_NOT_WORKING )
 COMP( 1989, apple2gsr3lp, apple2gs, 0,  apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM03 late prototype?)", GAME_NOT_WORKING )
-COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM01)", 0 )
-COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM00)", 0 )
+COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gsr1, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM01)", 0 )
+COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gsr1, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM00)", 0 )

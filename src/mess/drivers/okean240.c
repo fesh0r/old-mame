@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
         Okean-240
 
         28/12/2011 Skeleton driver.
@@ -14,23 +14,25 @@ class okean240_state : public driver_device
 public:
 	okean240_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
-	UINT8 *videoram;
+	UINT8 *m_videoram;
 };
 
 
-static READ8_HANDLER( okean240_rand_r ) { return space->machine->rand(); } // so we can start booting
+static READ8_HANDLER( okean240_rand_r )
+{
+	return 0;  // return space->machine().rand(); // so we can start booting
+}
 
-
-static ADDRESS_MAP_START(okean240_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(okean240_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK("boot")
 	AM_RANGE(0x0800, 0x3fff) AM_RAM
-	AM_RANGE(0x4000, 0x7fff) AM_RAM AM_BASE_MEMBER(okean240_state, videoram)
+	AM_RANGE(0x4000, 0x7fff) AM_RAM AM_BASE_MEMBER(okean240_state, m_videoram)
 	AM_RANGE(0x8000, 0xbfff) AM_RAM
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( okean240_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( okean240_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xff) AM_READ(okean240_rand_r)
@@ -47,15 +49,15 @@ static TIMER_CALLBACK( okean240_boot )
 	memory_set_bank(machine, "boot", 0);
 }
 
-static MACHINE_RESET(okean240) 
-{	
-	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, okean240_boot);
+static MACHINE_RESET(okean240)
+{
+	machine.scheduler().timer_set(attotime::from_usec(10), FUNC(okean240_boot));
 	memory_set_bank(machine, "boot", 1);
 }
 
 DRIVER_INIT( okean240 )
 {
-	UINT8 *RAM = machine->region("maincpu")->base();
+	UINT8 *RAM = machine.region("maincpu")->base();
 	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0xe000);
 }
 
@@ -64,9 +66,9 @@ static VIDEO_START( okean240 )
 }
 
 // The video appears to be bitmapped, but atm this produces scrolling garbage
-static VIDEO_UPDATE( okean240 )
+static SCREEN_UPDATE( okean240 )
 {
-	okean240_state *state = screen->machine->driver_data<okean240_state>();
+	okean240_state *state = screen->machine().driver_data<okean240_state>();
 	UINT8 gfx;
 	UINT16 ma=0,x,y;
 
@@ -76,7 +78,7 @@ static VIDEO_UPDATE( okean240 )
 
 		for (x = ma; x < ma+64; x++)
 		{
-			gfx = state->videoram[x];
+			gfx = state->m_videoram[x];
 
 			*p++ = ( gfx & 0x80 ) ? 1 : 0;
 			*p++ = ( gfx & 0x40 ) ? 1 : 0;
@@ -114,10 +116,10 @@ static MACHINE_CONFIG_START( okean240, okean240_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",I8080, XTAL_12MHz / 6)
 	MCFG_CPU_PROGRAM_MAP(okean240_mem)
-	MCFG_CPU_IO_MAP(okean240_io)	
+	MCFG_CPU_IO_MAP(okean240_io)
 
 	MCFG_MACHINE_RESET(okean240)
-	
+
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
@@ -125,12 +127,13 @@ static MACHINE_CONFIG_START( okean240, okean240_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_UPDATE(okean240)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 	MCFG_GFXDECODE(okean240)
 
 	MCFG_VIDEO_START(okean240)
-	MCFG_VIDEO_UPDATE(okean240)
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -147,5 +150,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, okean240,  0,       0, 	okean240, 	okean240, okean240,  "<unknown>",   "Okean-240",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, okean240,  0,       0,	okean240,	okean240, okean240,  "<unknown>",   "Okean-240", GAME_NOT_WORKING | GAME_NO_SOUND)
 

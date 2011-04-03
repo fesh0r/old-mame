@@ -9,7 +9,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/mc6845.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 class tvc_state : public driver_device
@@ -18,61 +18,61 @@ public:
 	tvc_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 video_mode;
-	UINT8 keyline;
-	UINT8 flipflop;
-	UINT8 col[4];
+	UINT8 m_video_mode;
+	UINT8 m_keyline;
+	UINT8 m_flipflop;
+	UINT8 m_col[4];
 };
 
 
 
-static void tvc_set_mem_page(running_machine *machine, UINT8 data)
+static void tvc_set_mem_page(running_machine &machine, UINT8 data)
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	switch(data & 0x18) {
 		case 0x00 : // system ROM selected
-				memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
-				memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-				memory_set_bankptr(space->machine, "bank1", machine->region("sys")->base());
+				space->install_read_bank(0x0000, 0x3fff, "bank1");
+				space->unmap_write(0x0000, 0x3fff);
+				memory_set_bankptr(space->machine(), "bank1", machine.region("sys")->base());
 				break;
 		case 0x08 : // Cart ROM selected
-				memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
-				memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-				memory_set_bankptr(space->machine, "bank1", machine->region("cart")->base());
+				space->install_read_bank(0x0000, 0x3fff, "bank1");
+				space->unmap_write(0x0000, 0x3fff);
+				memory_set_bankptr(space->machine(), "bank1", machine.region("cart")->base());
 				break;
 		case 0x10 : // RAM selected
-				memory_install_readwrite_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
-				memory_set_bankptr(space->machine, "bank1", messram_get_ptr(machine->device("messram")));
+				space->install_readwrite_bank(0x0000, 0x3fff, "bank1");
+				memory_set_bankptr(space->machine(), "bank1", ram_get_ptr(machine.device(RAM_TAG)));
 				break;
 	}
 	// Bank 2 is always RAM
-	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x4000);
+	memory_set_bankptr(space->machine(), "bank2", ram_get_ptr(machine.device(RAM_TAG)) + 0x4000);
 	if ((data & 0x20)==0) {
 		// Video RAM
-		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x10000);
+		memory_set_bankptr(space->machine(), "bank3", ram_get_ptr(machine.device(RAM_TAG)) + 0x10000);
 	} else {
 		// System RAM page 3
-		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(machine->device("messram")) + 0x8000);
+		memory_set_bankptr(space->machine(), "bank3", ram_get_ptr(machine.device(RAM_TAG)) + 0x8000);
 	}
 	switch(data & 0xc0) {
 		case 0x00 : // Cart ROM selected
-				memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
-				memory_unmap_write(space, 0xc000, 0xffff, 0, 0);
-				memory_set_bankptr(space->machine, "bank4", machine->region("cart")->base());
+				space->install_read_bank(0xc000, 0xffff, "bank4");
+				space->unmap_write(0xc000, 0xffff);
+				memory_set_bankptr(space->machine(), "bank4", machine.region("cart")->base());
 				break;
 		case 0x40 : // System ROM selected
-				memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
-				memory_unmap_write(space, 0xc000, 0xffff, 0, 0);
-				memory_set_bankptr(space->machine, "bank4", machine->region("sys")->base());
+				space->install_read_bank(0xc000, 0xffff, "bank4");
+				space->unmap_write(0xc000, 0xffff);
+				memory_set_bankptr(space->machine(), "bank4", machine.region("sys")->base());
 				break;
 		case 0x80 : // RAM selected
-				memory_install_readwrite_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
-				memory_set_bankptr(space->machine, "bank4", messram_get_ptr(machine->device("messram"))+0xc000);
+				space->install_readwrite_bank(0xc000, 0xffff, "bank4");
+				memory_set_bankptr(space->machine(), "bank4", ram_get_ptr(machine.device(RAM_TAG))+0xc000);
 				break;
 		case 0xc0 : // External ROM selected
-				memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
-				memory_unmap_write(space, 0xc000, 0xffff, 0, 0);
-				memory_set_bankptr(space->machine, "bank4", machine->region("ext")->base());
+				space->install_read_bank(0xc000, 0xffff, "bank4");
+				space->unmap_write(0xc000, 0xffff);
+				memory_set_bankptr(space->machine(), "bank4", machine.region("ext")->base());
 				break;
 
 	}
@@ -80,52 +80,52 @@ static void tvc_set_mem_page(running_machine *machine, UINT8 data)
 
 static WRITE8_HANDLER( tvc_bank_w )
 {
-	tvc_set_mem_page(space->machine, data);
+	tvc_set_mem_page(space->machine(), data);
 }
 
 static WRITE8_HANDLER( tvc_video_mode_w )
 {
-	tvc_state *state = space->machine->driver_data<tvc_state>();
-	state->video_mode = data & 0x03;
+	tvc_state *state = space->machine().driver_data<tvc_state>();
+	state->m_video_mode = data & 0x03;
 }
 
 
 static WRITE8_HANDLER( tvc_palette_w )
 {
-	tvc_state *state = space->machine->driver_data<tvc_state>();
+	tvc_state *state = space->machine().driver_data<tvc_state>();
 	//  0 I 0 R | 0 G 0 B
 	//  0 0 0 0 | I R G B
 	int i = ((data&0x40)>>3) | ((data&0x10)>>2) | ((data&0x04)>>1) | (data&0x01);
 
-	state->col[offset] = i;
+	state->m_col[offset] = i;
 }
 
 static WRITE8_HANDLER( tvc_keyboard_w )
 {
-	tvc_state *state = space->machine->driver_data<tvc_state>();
-	state->keyline = data;
+	tvc_state *state = space->machine().driver_data<tvc_state>();
+	state->m_keyline = data;
 }
 
 static READ8_HANDLER( tvc_keyboard_r )
 {
-	tvc_state *state = space->machine->driver_data<tvc_state>();
+	tvc_state *state = space->machine().driver_data<tvc_state>();
 	static const char *const keynames[] = {
 		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
 		"LINE8", "LINE9", "LINEA", "LINEB", "LINEC", "LINED", "LINEE", "LINEF"
 	};
-	return input_port_read(space->machine, keynames[state->keyline & 0x0f]);
+	return input_port_read(space->machine(), keynames[state->m_keyline & 0x0f]);
 }
 
 static READ8_HANDLER( tvc_flipflop_r )
 {
-	tvc_state *state = space->machine->driver_data<tvc_state>();
-	return state->flipflop;
+	tvc_state *state = space->machine().driver_data<tvc_state>();
+	return state->m_flipflop;
 }
 
 static WRITE8_HANDLER( tvc_flipflop_w )
 {
-	tvc_state *state = space->machine->driver_data<tvc_state>();
-	state->flipflop |= 0x10;
+	tvc_state *state = space->machine().driver_data<tvc_state>();
+	state->m_flipflop |= 0x10;
 }
 static READ8_HANDLER( tvc_port59_r )
 {
@@ -135,14 +135,14 @@ static READ8_HANDLER( tvc_port59_r )
 static WRITE8_HANDLER( tvc_port0_w )
 {
 }
-static ADDRESS_MAP_START(tvc_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tvc_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( tvc_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( tvc_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(tvc_port0_w)
@@ -253,84 +253,84 @@ INPUT_PORTS_END
 
 static MACHINE_START(tvc)
 {
-	tvc_state *state = machine->driver_data<tvc_state>();
+	tvc_state *state = machine.driver_data<tvc_state>();
 	int i;
 
 	for (i=0; i<4; i++)
-		state->col[i] = i;
+		state->m_col[i] = i;
 
-	state->flipflop = 0xff;
+	state->m_flipflop = 0xff;
 }
 
 static MACHINE_RESET(tvc)
 {
-	tvc_state *state = machine->driver_data<tvc_state>();
-	memset(messram_get_ptr(machine->device("messram")),0,(64+14)*1024);
+	tvc_state *state = machine.driver_data<tvc_state>();
+	memset(ram_get_ptr(machine.device(RAM_TAG)),0,(64+14)*1024);
 	tvc_set_mem_page(machine, 0);
-	state->video_mode = 0;
+	state->m_video_mode = 0;
 }
 
 static VIDEO_START( tvc )
 {
 }
 
-static VIDEO_UPDATE( tvc )
+static SCREEN_UPDATE( tvc )
 {
-	device_t *mc6845 = screen->machine->device("crtc");
+	device_t *mc6845 = screen->machine().device("crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
 
 static MC6845_UPDATE_ROW( tvc_update_row )
 {
-	tvc_state *state = device->machine->driver_data<tvc_state>();
+	tvc_state *state = device->machine().driver_data<tvc_state>();
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
 
-	switch(state->video_mode) {
+	switch(state->m_video_mode) {
 		case 0 :
 				for ( i = 0; i < x_count; i++ )
 				{
 					UINT16 offset = i  + (y * 64);
-					UINT8 data = messram_get_ptr(device->machine->device("messram"))[ offset + 0x10000];
-					*p++ = state->col[(data >> 7)];
-					*p++ = state->col[(data >> 6)];
-					*p++ = state->col[(data >> 5)];
-					*p++ = state->col[(data >> 4)];
-					*p++ = state->col[(data >> 3)];
-					*p++ = state->col[(data >> 2)];
-					*p++ = state->col[(data >> 1)];
-					*p++ = state->col[(data >> 0)];
+					UINT8 data = ram_get_ptr(device->machine().device(RAM_TAG))[ offset + 0x10000];
+					*p++ = state->m_col[(data >> 7)];
+					*p++ = state->m_col[(data >> 6)];
+					*p++ = state->m_col[(data >> 5)];
+					*p++ = state->m_col[(data >> 4)];
+					*p++ = state->m_col[(data >> 3)];
+					*p++ = state->m_col[(data >> 2)];
+					*p++ = state->m_col[(data >> 1)];
+					*p++ = state->m_col[(data >> 0)];
 				}
 				break;
 		case 1 :
 				for ( i = 0; i < x_count; i++ )
 				{
 					UINT16 offset = i  + (y * 64);
-					UINT8 data = messram_get_ptr(device->machine->device("messram"))[ offset + 0x10000];
-					*p++ = state->col[BIT(data,7)*2 + BIT(data,3)];
-					*p++ = state->col[BIT(data,7)*2 + BIT(data,3)];
-					*p++ = state->col[BIT(data,6)*2 + BIT(data,2)];
-					*p++ = state->col[BIT(data,6)*2 + BIT(data,2)];
-					*p++ = state->col[BIT(data,5)*2 + BIT(data,1)];
-					*p++ = state->col[BIT(data,5)*2 + BIT(data,1)];
-					*p++ = state->col[BIT(data,4)*2 + BIT(data,0)];
-					*p++ = state->col[BIT(data,4)*2 + BIT(data,0)];
+					UINT8 data = ram_get_ptr(device->machine().device(RAM_TAG))[ offset + 0x10000];
+					*p++ = state->m_col[BIT(data,7)*2 + BIT(data,3)];
+					*p++ = state->m_col[BIT(data,7)*2 + BIT(data,3)];
+					*p++ = state->m_col[BIT(data,6)*2 + BIT(data,2)];
+					*p++ = state->m_col[BIT(data,6)*2 + BIT(data,2)];
+					*p++ = state->m_col[BIT(data,5)*2 + BIT(data,1)];
+					*p++ = state->m_col[BIT(data,5)*2 + BIT(data,1)];
+					*p++ = state->m_col[BIT(data,4)*2 + BIT(data,0)];
+					*p++ = state->m_col[BIT(data,4)*2 + BIT(data,0)];
 				}
 				break;
 		default:
 				for ( i = 0; i < x_count; i++ )
 				{
 					UINT16 offset = i  + (y * 64);
-					UINT8 data = messram_get_ptr(device->machine->device("messram"))[ offset + 0x10000];
-					*p++ = state->col[(data >> 4) & 0xf];
-					*p++ = state->col[(data >> 4) & 0xf];
-					*p++ = state->col[(data >> 4) & 0xf];
-					*p++ = state->col[(data >> 4) & 0xf];
-					*p++ = state->col[(data >> 0) & 0xf];
-					*p++ = state->col[(data >> 0) & 0xf];
-					*p++ = state->col[(data >> 0) & 0xf];
-					*p++ = state->col[(data >> 0) & 0xf];
+					UINT8 data = ram_get_ptr(device->machine().device(RAM_TAG))[ offset + 0x10000];
+					*p++ = state->m_col[(data >> 4) & 0xf];
+					*p++ = state->m_col[(data >> 4) & 0xf];
+					*p++ = state->m_col[(data >> 4) & 0xf];
+					*p++ = state->m_col[(data >> 4) & 0xf];
+					*p++ = state->m_col[(data >> 0) & 0xf];
+					*p++ = state->m_col[(data >> 0) & 0xf];
+					*p++ = state->m_col[(data >> 0) & 0xf];
+					*p++ = state->m_col[(data >> 0) & 0xf];
 				}
 				break;
 
@@ -380,9 +380,9 @@ static const mc6845_interface tvc_crtc6845_interface =
 
 static INTERRUPT_GEN( tvc_interrupt )
 {
-	tvc_state *state = device->machine->driver_data<tvc_state>();
-	state->flipflop  &= ~0x10;
-	cpu_set_input_line(device, 0, HOLD_LINE);
+	tvc_state *state = device->machine().driver_data<tvc_state>();
+	state->m_flipflop  &= ~0x10;
+	device_set_input_line(device, 0, HOLD_LINE);
 }
 
 static MACHINE_CONFIG_START( tvc, tvc_state )
@@ -403,16 +403,17 @@ static MACHINE_CONFIG_START( tvc, tvc_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(512, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 512 - 1, 0, 240 - 1)
+    MCFG_SCREEN_UPDATE(tvc)
+
 	MCFG_PALETTE_LENGTH( 16 )
 	MCFG_PALETTE_INIT(tvc)
 
 	MCFG_MC6845_ADD("crtc", MC6845, 3125000, tvc_crtc6845_interface) // clk taken from schematics
 
     MCFG_VIDEO_START(tvc)
-    MCFG_VIDEO_UPDATE(tvc)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("80K")
 MACHINE_CONFIG_END
 

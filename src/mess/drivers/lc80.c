@@ -18,20 +18,12 @@
 
 */
 
-#include "emu.h"
 #include "includes/lc80.h"
-#include "cpu/z80/z80.h"
-#include "cpu/z80/z80daisy.h"
-#include "devices/cassette.h"
-#include "machine/z80pio.h"
-#include "machine/z80ctc.h"
-#include "sound/speaker.h"
-#include "devices/messram.h"
 #include "lc80.lh"
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( lc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( lc80_mem, AS_PROGRAM, 8, lc80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x07ff) AM_ROMBANK("bank1")
 	AM_RANGE(0x0800, 0x0fff) AM_ROMBANK("bank2")
@@ -41,29 +33,29 @@ static ADDRESS_MAP_START( lc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 #if 0
-static ADDRESS_MAP_START( sc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( sc80_mem, AS_PROGRAM, 8, lc80_state )
 	AM_IMPORT_FROM(lc80_mem)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 ADDRESS_MAP_END
 #endif
 
-static ADDRESS_MAP_START( lc80_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( lc80_io, AS_IO, 8, lc80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
-	AM_RANGE(0xf4, 0xf7) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
-	AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
-	AM_RANGE(0xec, 0xef) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
+	AM_RANGE(0xf4, 0xf7) AM_DEVREADWRITE_LEGACY(Z80PIO1_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE_LEGACY(Z80PIO2_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0xec, 0xef) AM_DEVREADWRITE_LEGACY(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
 
 static INPUT_CHANGED( trigger_reset )
 {
-	cputag_set_input_line(field->port->machine, Z80_TAG, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field->port->machine(), Z80_TAG, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_CHANGED( trigger_nmi )
 {
-	cputag_set_input_line(field->port->machine, Z80_TAG, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field->port->machine(), Z80_TAG, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_PORTS_START( lc80 )
@@ -106,15 +98,15 @@ INPUT_PORTS_END
 
 /* Z80-CTC Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
+WRITE_LINE_MEMBER( lc80_state::ctc_z0_w )
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
+WRITE_LINE_MEMBER( lc80_state::ctc_z1_w )
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
+WRITE_LINE_MEMBER( lc80_state::ctc_z2_w )
 {
 }
 
@@ -122,24 +114,24 @@ static Z80CTC_INTERFACE( ctc_intf )
 {
 	0,              	/* timer disables */
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
-	DEVCB_LINE(ctc_z0_w),			/* ZC/TO0 callback */
-	DEVCB_LINE(ctc_z1_w),			/* ZC/TO1 callback */
-	DEVCB_LINE(ctc_z2_w)    		/* ZC/TO2 callback */
+	DEVCB_DRIVER_LINE_MEMBER(lc80_state, ctc_z0_w),			/* ZC/TO0 callback */
+	DEVCB_DRIVER_LINE_MEMBER(lc80_state, ctc_z1_w),			/* ZC/TO1 callback */
+	DEVCB_DRIVER_LINE_MEMBER(lc80_state, ctc_z2_w)    		/* ZC/TO2 callback */
 };
 
 /* Z80-PIO Interface */
 
-static void update_display(lc80_state *state)
+void lc80_state::update_display()
 {
 	int i;
 
 	for (i = 0; i < 6; i++)
 	{
-		if (!BIT(state->digit, i)) output_set_digit_value(5 - i, state->segment);
+		if (!BIT(m_digit, i)) output_set_digit_value(5 - i, m_segment);
 	}
 }
 
-static WRITE8_DEVICE_HANDLER( pio1_port_a_w )
+WRITE8_MEMBER( lc80_state::pio1_pa_w )
 {
 	/*
 
@@ -156,14 +148,12 @@ static WRITE8_DEVICE_HANDLER( pio1_port_a_w )
 
     */
 
-	lc80_state *state = device->machine->driver_data<lc80_state>();
+	m_segment = BITSWAP8(~data, 4, 3, 1, 6, 7, 5, 0, 2);
 
-	state->segment = BITSWAP8(~data, 4, 3, 1, 6, 7, 5, 0, 2);
-
-	update_display(state);
+	update_display();
 }
 
-static READ8_DEVICE_HANDLER( pio1_port_b_r )
+READ8_MEMBER( lc80_state::pio1_pb_r )
 {
 	/*
 
@@ -180,12 +170,10 @@ static READ8_DEVICE_HANDLER( pio1_port_b_r )
 
     */
 
-	lc80_state *state = device->machine->driver_data<lc80_state>();
-
-	return (cassette_input(state->cassette) < +0.0);
+	return (cassette_input(m_cassette) < +0.0);
 }
 
-static WRITE8_DEVICE_HANDLER( pio1_port_b_w )
+WRITE8_MEMBER( lc80_state::pio1_pb_w )
 {
 	/*
 
@@ -202,36 +190,34 @@ static WRITE8_DEVICE_HANDLER( pio1_port_b_w )
 
     */
 
-	lc80_state *state = device->machine->driver_data<lc80_state>();
-
 	/* tape output */
-	cassette_output(state->cassette, BIT(data, 1) ? +1.0 : -1.0);
+	cassette_output(m_cassette, BIT(data, 1) ? +1.0 : -1.0);
 
 	/* speaker */
-	speaker_level_w(state->speaker, !BIT(data, 1));
+	speaker_level_w(m_speaker, !BIT(data, 1));
 
 	/* OUT led */
 	output_set_led_value(0, !BIT(data, 1));
 
 	/* keyboard */
-	state->digit = data >> 2;
+	m_digit = data >> 2;
 
 	/* display */
-	update_display(state);
+	update_display();
 }
 
 static Z80PIO_INTERFACE( pio1_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_NULL,						/* port A read callback */
-	DEVCB_HANDLER(pio1_port_a_w),	/* port A write callback */
+	DEVCB_DRIVER_MEMBER(lc80_state, pio1_pa_w),	/* port A write callback */
 	DEVCB_NULL,						/* portA ready active callback */
-	DEVCB_HANDLER(pio1_port_b_r),	/* port B read callback */
-	DEVCB_HANDLER(pio1_port_b_w),	/* port B write callback */
+	DEVCB_DRIVER_MEMBER(lc80_state, pio1_pb_r),	/* port B read callback */
+	DEVCB_DRIVER_MEMBER(lc80_state, pio1_pb_w),	/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
 
-static READ8_DEVICE_HANDLER( pio2_port_b_r )
+READ8_MEMBER( lc80_state::pio2_pb_r )
 {
 	/*
 
@@ -248,18 +234,17 @@ static READ8_DEVICE_HANDLER( pio2_port_b_r )
 
     */
 
-	lc80_state *state = device->machine->driver_data<lc80_state>();
 	UINT8 data = 0xf0;
 	int i;
 
 	for (i = 0; i < 6; i++)
 	{
-		if (!BIT(state->digit, i))
+		if (!BIT(m_digit, i))
 		{
-			if (!BIT(input_port_read(device->machine, "ROW0"), i)) data &= ~0x10;
-			if (!BIT(input_port_read(device->machine, "ROW1"), i)) data &= ~0x20;
-			if (!BIT(input_port_read(device->machine, "ROW2"), i)) data &= ~0x40;
-			if (!BIT(input_port_read(device->machine, "ROW3"), i)) data &= ~0x80;
+			if (!BIT(input_port_read(m_machine, "ROW0"), i)) data &= ~0x10;
+			if (!BIT(input_port_read(m_machine, "ROW1"), i)) data &= ~0x20;
+			if (!BIT(input_port_read(m_machine, "ROW2"), i)) data &= ~0x40;
+			if (!BIT(input_port_read(m_machine, "ROW3"), i)) data &= ~0x80;
 		}
 	}
 
@@ -272,7 +257,7 @@ static Z80PIO_INTERFACE( pio2_intf )
 	DEVCB_NULL,						/* port A read callback */
 	DEVCB_NULL,						/* port A write callback */
 	DEVCB_NULL,						/* portA ready active callback */
-	DEVCB_HANDLER(pio2_port_b_r),	/* port B read callback */
+	DEVCB_DRIVER_MEMBER(lc80_state, pio2_pb_r),	/* port B read callback */
 	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
@@ -289,61 +274,55 @@ static const z80_daisy_config lc80_daisy_chain[] =
 
 /* Machine Initialization */
 
-static MACHINE_START( lc80 )
+void lc80_state::machine_start()
 {
-	lc80_state *state = machine->driver_data<lc80_state>();
-	address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-
-	/* find devices */
-	state->z80pio2 = machine->device(Z80PIO2_TAG);
-	state->speaker = machine->device(SPEAKER_TAG);
-	state->cassette = machine->device(CASSETTE_TAG);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, "bank1", 0, 1, machine->region(Z80_TAG)->base(), 0); // TODO
-	memory_configure_bank(machine, "bank1", 1, 1, machine->region(Z80_TAG)->base(), 0);
-	memory_set_bank(machine, "bank1", 1);
+	memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region(Z80_TAG)->base(), 0); // TODO
+	memory_configure_bank(m_machine, "bank1", 1, 1, m_machine.region(Z80_TAG)->base(), 0);
+	memory_set_bank(m_machine, "bank1", 1);
 
-	memory_configure_bank(machine, "bank2", 0, 1, machine->region(Z80_TAG)->base() + 0x800, 0); // TODO
-	memory_configure_bank(machine, "bank2", 1, 1, machine->region(Z80_TAG)->base() + 0x800, 0);
-	memory_set_bank(machine, "bank2", 1);
+	memory_configure_bank(m_machine, "bank2", 0, 1, m_machine.region(Z80_TAG)->base() + 0x800, 0); // TODO
+	memory_configure_bank(m_machine, "bank2", 1, 1, m_machine.region(Z80_TAG)->base() + 0x800, 0);
+	memory_set_bank(m_machine, "bank2", 1);
 
-	memory_configure_bank(machine, "bank3", 0, 1, machine->region(Z80_TAG)->base() + 0x1000, 0); // TODO
-	memory_configure_bank(machine, "bank3", 1, 1, machine->region(Z80_TAG)->base() + 0x1000, 0);
-	memory_set_bank(machine, "bank3", 1);
+	memory_configure_bank(m_machine, "bank3", 0, 1, m_machine.region(Z80_TAG)->base() + 0x1000, 0); // TODO
+	memory_configure_bank(m_machine, "bank3", 1, 1, m_machine.region(Z80_TAG)->base() + 0x1000, 0);
+	memory_set_bank(m_machine, "bank3", 1);
 
-	memory_configure_bank(machine, "bank4", 0, 1, machine->region(Z80_TAG)->base() + 0x2000, 0);
-	memory_set_bank(machine, "bank4", 0);
+	memory_configure_bank(m_machine, "bank4", 0, 1, m_machine.region(Z80_TAG)->base() + 0x2000, 0);
+	memory_set_bank(m_machine, "bank4", 0);
 
-	memory_install_readwrite_bank(program, 0x0000, 0x07ff, 0, 0, "bank1");
-	memory_install_readwrite_bank(program, 0x0800, 0x0fff, 0, 0, "bank2");
-	memory_install_readwrite_bank(program, 0x1000, 0x17ff, 0, 0, "bank3");
+	program->install_readwrite_bank(0x0000, 0x07ff, "bank1");
+	program->install_readwrite_bank(0x0800, 0x0fff, "bank2");
+	program->install_readwrite_bank(0x1000, 0x17ff, "bank3");
 
-	switch (messram_get_size(machine->device("messram")))
+	switch (ram_get_size(m_ram))
 	{
 	case 1*1024:
-		memory_install_readwrite_bank(program, 0x2000, 0x23ff, 0, 0, "bank4");
-		memory_unmap_readwrite(program, 0x2400, 0x2fff, 0, 0);
+		program->install_readwrite_bank(0x2000, 0x23ff, "bank4");
+		program->unmap_readwrite(0x2400, 0x2fff);
 		break;
 
 	case 2*1024:
-		memory_install_readwrite_bank(program, 0x2000, 0x27ff, 0, 0, "bank4");
-		memory_unmap_readwrite(program, 0x2800, 0x2fff, 0, 0);
+		program->install_readwrite_bank(0x2000, 0x27ff, "bank4");
+		program->unmap_readwrite(0x2800, 0x2fff);
 		break;
 
 	case 3*1024:
-		memory_install_readwrite_bank(program, 0x2000, 0x2bff, 0, 0, "bank4");
-		memory_unmap_readwrite(program, 0x2c00, 0x2fff, 0, 0);
+		program->install_readwrite_bank(0x2000, 0x2bff, "bank4");
+		program->unmap_readwrite(0x2c00, 0x2fff);
 		break;
 
 	case 4*1024:
-		memory_install_readwrite_bank(program, 0x2000, 0x2fff, 0, 0, "bank4");
+		program->install_readwrite_bank(0x2000, 0x2fff, "bank4");
 		break;
 	}
 
 	/* register for state saving */
-	state_save_register_global(machine, state->digit);
-	state_save_register_global(machine, state->segment);
+	save_item(NAME(m_digit));
+	save_item(NAME(m_segment));
 }
 
 /* Machine Driver */
@@ -357,13 +336,10 @@ static const cassette_config lc80_cassette_config =
 };
 
 static MACHINE_CONFIG_START( lc80, lc80_state )
-
 	/* basic machine hardware */
     MCFG_CPU_ADD(Z80_TAG, Z80, 900000) /* UD880D */
     MCFG_CPU_PROGRAM_MAP(lc80_mem)
     MCFG_CPU_IO_MAP(lc80_io)
-
-    MCFG_MACHINE_START(lc80)
 
 	/* video hardware */
 	MCFG_DEFAULT_LAYOUT( layout_lc80 )
@@ -380,19 +356,16 @@ static MACHINE_CONFIG_START( lc80, lc80_state )
 
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, lc80_cassette_config)
 
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1K")
 	MCFG_RAM_EXTRA_OPTIONS("2K,3K,4K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( lc80_2, lc80_state )
-
 	/* basic machine hardware */
     MCFG_CPU_ADD(Z80_TAG, Z80, 1800000) /* UD880D */
     MCFG_CPU_PROGRAM_MAP(lc80_mem)
     MCFG_CPU_IO_MAP(lc80_io)
-
-    MCFG_MACHINE_START(lc80)
 
 	/* video hardware */
 	MCFG_DEFAULT_LAYOUT( layout_lc80 )
@@ -410,7 +383,7 @@ static MACHINE_CONFIG_START( lc80_2, lc80_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, lc80_cassette_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("4K")
 MACHINE_CONFIG_END
 

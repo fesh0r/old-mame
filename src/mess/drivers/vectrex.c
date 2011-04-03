@@ -13,15 +13,15 @@ Bruce Tomlin (hardware info)
 #include "video/vector.h"
 #include "machine/6522via.h"
 #include "includes/vectrex.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 #include "machine/nvram.h"
 
 
-static ADDRESS_MAP_START(vectrex_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vectrex_map, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE_MEMBER(vectrex_state, gce_vectorram) AM_SIZE_MEMBER(vectrex_state, gce_vectorram_size)
+	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE_MEMBER(vectrex_state, m_gce_vectorram) AM_SIZE_MEMBER(vectrex_state, m_gce_vectorram_size)
 	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(vectrex_via_r, vectrex_via_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -101,16 +101,15 @@ static MACHINE_CONFIG_START( vectrex, vectrex_state )
 	MCFG_CPU_ADD("maincpu", M6809, XTAL_6MHz / 4)
 	MCFG_CPU_PROGRAM_MAP(vectrex_map)
 
+	/* video hardware */
 	MCFG_SCREEN_ADD("screen", VECTOR)
 	MCFG_SCREEN_REFRESH_RATE(60)
-
-	/* video hardware */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(400, 300)
 	MCFG_SCREEN_VISIBLE_AREA(0, 399, 0, 299)
+	MCFG_SCREEN_UPDATE(vectrex)
 
 	MCFG_VIDEO_START(vectrex)
-	MCFG_VIDEO_UPDATE(vectrex)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -175,11 +174,11 @@ ROM_END
 
 *****************************************************************/
 
-static ADDRESS_MAP_START(raaspec_map , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(raaspec_map , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(raaspec_led_w)
-	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE_MEMBER(vectrex_state, gce_vectorram) AM_SIZE_MEMBER(vectrex_state, gce_vectorram_size)
+	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_MIRROR(0x0400) AM_BASE_MEMBER(vectrex_state, m_gce_vectorram) AM_SIZE_MEMBER(vectrex_state, m_gce_vectorram_size)
 	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE (vectrex_via_r, vectrex_via_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END

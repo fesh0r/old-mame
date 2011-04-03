@@ -28,6 +28,8 @@ typedef struct _ti99_speech8_state
 INLINE ti99_speech8_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == TISPEECH8);
+
 	return (ti99_speech8_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -124,7 +126,7 @@ READ8Z_DEVICE_HANDLER( ti998spch_rz )
 
 	if ((offset & 0xfc01)==0x9000)
 	{
-		cpu_adjust_icount(device->machine->device("maincpu"),-(18+3));		/* this is just a minimum, it can be more */
+		device_adjust_icount(device->machine().device("maincpu"),-(18+3));		/* this is just a minimum, it can be more */
 		*value = tms5220_status_r(spsys->vsp, offset) & 0xff;
 	}
 }
@@ -138,7 +140,7 @@ WRITE8_DEVICE_HANDLER( ti998spch_w )
 
 	if ((offset & 0xfc01)==0x9400)
 	{
-		cpu_adjust_icount(device->machine->device("maincpu"),-(54+3));		/* this is just an approx. minimum, it can be much more */
+		device_adjust_icount(device->machine().device("maincpu"),-(54+3));		/* this is just an approx. minimum, it can be much more */
 
 		/* RN: the stupid design of the tms5220 core means that ready is cleared */
 		/* when there are 15 bytes in FIFO.  It should be 16.  Of course, if */
@@ -146,12 +148,12 @@ WRITE8_DEVICE_HANDLER( ti998spch_w )
 		/* which would be more complex. */
 		if (!tms5220_readyq_r(spsys->vsp))
 		{
-			attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(spsys->vsp));
-			int cycles_to_ready = device->machine->device<cpu_device>("maincpu")->attotime_to_cycles(time_to_ready);
-			logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
+			attotime time_to_ready = attotime::from_double(tms5220_time_to_ready(spsys->vsp));
+			int cycles_to_ready = device->machine().device<cpu_device>("maincpu")->attotime_to_cycles(time_to_ready);
+			logerror("time to ready: %f -> %d\n", time_to_ready.as_double(), (int) cycles_to_ready);
 
-			cpu_adjust_icount(device->machine->device("maincpu"),-cycles_to_ready);
-			timer_set(device->machine, attotime_zero, NULL, 0, NULL);
+			device_adjust_icount(device->machine().device("maincpu"),-cycles_to_ready);
+			device->machine().scheduler().timer_set(attotime::zero, FUNC(NULL));
 		}
 		tms5220_data_w(spsys->vsp, offset, data);
 	}
@@ -161,7 +163,7 @@ WRITE8_DEVICE_HANDLER( ti998spch_w )
 
 static DEVICE_START( ti99_speech8 )
 {
-	ti99_speech8_state *spsys = (ti99_speech8_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_speech8_state *spsys = get_safe_token(device);
 	/* Resolve the callbacks to the PEB */
 	spsys->vsp = device->subdevice("speechsyn");
 }
@@ -172,13 +174,13 @@ static DEVICE_STOP( ti99_speech8 )
 
 static DEVICE_RESET( ti99_speech8 )
 {
-	ti99_speech8_state *spsys = (ti99_speech8_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_speech8_state *spsys = get_safe_token(device);
 
 	astring *region = new astring();
 	astring_assemble_3(region, device->tag(), ":", speech8_region);
 
-	spsys->speechrom_data = device->machine->region(astring_c(region))->base();
-	spsys->speechROMlen = device->machine->region(astring_c(region))->bytes();
+	spsys->speechrom_data = device->machine().region(astring_c(region))->base();
+	spsys->speechROMlen = device->machine().region(astring_c(region))->bytes();
 	spsys->speechROMaddr = 0;
 	spsys->load_pointer = 0;
 	spsys->ROM_bits_count = 0;
@@ -186,7 +188,7 @@ static DEVICE_RESET( ti99_speech8 )
 
 static WRITE_LINE_DEVICE_HANDLER( speech8_ready )
 {
-//  ti99_speech8_state *spsys = (ti99_speech8_state*)downcast<legacy_device_base *>(device->owner())->token();
+	//ti99_speech8_state *spsys = get_safe_token(device->owner());
 	logerror("speech8: READY called by VSP\n");
 }
 
@@ -219,6 +221,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_speech8##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "TI-99/8 Speech Synthesizer"
+#define DEVTEMPLATE_SHORTNAME           "ti998sp"
 #define DEVTEMPLATE_FAMILY              "Internal subsystem"
 #include "devtempl.h"
 

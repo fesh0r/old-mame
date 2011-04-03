@@ -153,7 +153,8 @@ typedef struct _mapper8_state
 INLINE mapper8_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
-	assert(downcast<legacy_device_base *>(device)->token() != NULL);
+	assert(device->type() == MAPPER8);
+
 	return (mapper8_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -532,7 +533,7 @@ static DEVICE_START( mapper8 )
 	mapper8_state *mapper = get_safe_token(device);
 	mapper->sram = (UINT8*)malloc(SRAM_SIZE);
 	mapper->dram = (UINT8*)malloc(DRAM_SIZE);
-	mapper->rom = device->machine->region("maincpu")->base();
+	mapper->rom = device->machine().region("maincpu")->base();
 
 	memset(mapper->sram, 0x00, SRAM_SIZE);
 	memset(mapper->dram, 0x00, DRAM_SIZE);
@@ -573,7 +574,7 @@ static DEVICE_START( mapper8 )
 					dev = (void *)j;
 			}
 			if (dev==NULL)
-				dev = device->machine->device(cons[i].name);
+				dev = device->machine().device(cons[i].name);
 
 			if (dev!=NULL)
 			{

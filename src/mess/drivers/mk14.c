@@ -44,7 +44,7 @@ static const char *const keynames[] = {
 static READ8_HANDLER(keyboard_r)
 {
 	if (offset < 8) {
-		return input_port_read(space->machine, keynames[offset]);
+		return input_port_read(space->machine(), keynames[offset]);
 	} else {
 		return 0xff;
 	}
@@ -59,7 +59,7 @@ static WRITE8_HANDLER(display_w)
 	}
 }
 
-static ADDRESS_MAP_START(mk14_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(mk14_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0x0fff)
 	AM_RANGE(0x000, 0x1ff) AM_ROM AM_MIRROR(0x600) // ROM

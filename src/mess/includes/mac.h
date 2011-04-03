@@ -11,6 +11,7 @@
 
 #include "machine/8530scc.h"
 #include "machine/6522via.h"
+#include "machine/ram.h"
 
 /* for Egret and CUDA streaming MCU commands, command types */
 typedef enum
@@ -111,7 +112,7 @@ extern const via6522_interface mac_via6522_2_intf;
 extern const via6522_interface mac_via6522_adb_intf;
 
 void mac_scc_irq(device_t *device, int status);
-void mac_scsi_irq(running_machine *machine, int state);
+void mac_scsi_irq(running_machine &machine, int state);
 void mac_asc_irq(device_t *device, int state);
 void mac_fdc_set_enable_lines(device_t *device, int enable_mask);
 
@@ -145,20 +146,20 @@ NVRAM_HANDLER( mac );
 /*----------- defined in video/mac.c -----------*/
 
 VIDEO_START( mac );
-VIDEO_UPDATE( mac );
-VIDEO_UPDATE( macse30 );
+SCREEN_UPDATE( mac );
+SCREEN_UPDATE( macse30 );
 PALETTE_INIT( mac );
 
 VIDEO_START( macrbv );
 VIDEO_START( macv8 );
 VIDEO_START( macsonora );
-VIDEO_UPDATE( macrbv );
-VIDEO_UPDATE( macrbvvram );
+SCREEN_UPDATE( macrbv );
+SCREEN_UPDATE( macrbvvram );
 VIDEO_RESET(macrbv);
 VIDEO_RESET(maceagle);
 
 VIDEO_START( mac_cb264 );
-VIDEO_UPDATE( mac_cb264 );
+SCREEN_UPDATE( mac_cb264 );
 INTERRUPT_GEN( mac_cb264_vbl );
 
 /*----------- defined in audio/mac.c -----------*/
@@ -182,7 +183,7 @@ public:
 		m_via1(*this, "via6522_0"),
 		m_via2(*this, "via6522_1"),
 		m_asc(*this, "asc"),
-		m_ram(*this, "messram")
+		m_ram(*this, RAM_TAG)
 	 { }
 
 	required_device<cpu_device> m_maincpu;
@@ -227,8 +228,8 @@ public:
 	int m_mouse_bit_y;
 	int last_mx, last_my;
 	int count_x, count_y;
-	int last_was_x;
-	int screen_buffer;
+	int m_last_was_x;
+	int m_screen_buffer;
 
 	int irq_count, ca1_data, ca2_data;
 
@@ -358,8 +359,8 @@ private:
 	int m_adb_keybaddr;
 	int m_adb_keybinitialized, m_adb_currentkeys[2], m_adb_modifiers;
 public:
-	emu_timer *scanline_timer;
-	emu_timer *adb_timer;
+	emu_timer *m_scanline_timer;
+	emu_timer *m_adb_timer;
 };
 
 #endif /* MAC_H_ */

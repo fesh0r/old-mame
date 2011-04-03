@@ -68,12 +68,12 @@
 
 #include "emu.h"
 #include "cococart.h"
-#include "flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "includes/coco.h"
 #include "machine/wd17xx.h"
 #include "machine/ds1315.h"
 #include "machine/msm6242.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/coco_dsk.h"
 
 
@@ -184,7 +184,7 @@ INLINE rtc_type_t real_time_clock(device_t *device)
 	rtc_type_t result;
 	fdc_t *fdc = get_token(device);
 
-	result = (rtc_type_t) input_port_read_safe(device->machine, "real_time_clock", RTC_NONE);
+	result = (rtc_type_t) input_port_read_safe(device->machine(), "real_time_clock", RTC_NONE);
 
 	/* check to make sure we don't have any invalid values */
 	if (((result == RTC_DISTO) && (fdc->disto_msm6242 == NULL))

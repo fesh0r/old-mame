@@ -7,7 +7,7 @@
 #ifndef PRIMO_H_
 #define PRIMO_H_
 
-#include "devices/snapquik.h"
+#include "imagedev/snapquik.h"
 
 
 class primo_state : public driver_device
@@ -16,9 +16,9 @@ public:
 	primo_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT16 video_memory_base;
-	UINT8 port_FD;
-	int nmi;
+	UINT16 m_video_memory_base;
+	UINT8 m_port_FD;
+	int m_nmi;
 };
 
 
@@ -41,7 +41,7 @@ extern QUICKLOAD_LOAD( primo );
 
 /*----------- defined in video/primo.c -----------*/
 
-extern VIDEO_UPDATE( primo );
+extern SCREEN_UPDATE( primo );
 
 
 #endif /* PRIMO_H_ */

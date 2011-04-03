@@ -34,6 +34,8 @@ typedef struct _ti_rs232_state
 	device_t *uart0, *uart1, *serdev0, *serdev1, *piodev;
 
 	int 	selected;
+	int		select_mask;
+	int		select_value;
 
 	// PIO flags
 	int pio_direction;		// a.k.a. PIOOC pio in output mode if 0
@@ -67,6 +69,8 @@ typedef struct _ti_rs232_state
 INLINE ti_rs232_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == TIRS232);
+
 	return (ti_rs232_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -328,7 +332,7 @@ static READ8Z_DEVICE_HANDLER( data_rz )
 		// lines are there.
 		card->ila = 0;
 	}
-	if (((offset & 0xe000)==0x4000) && card->selected)
+	if (((offset & card->select_mask)==card->select_value) && card->selected)
 	{
 		if ((offset & 0x1000)==0x0000)
 		{
@@ -348,7 +352,7 @@ static WRITE8_DEVICE_HANDLER( data_w )
 {
 	ti_rs232_state *card = get_safe_token(device);
 
-	if (((offset & 0xe000)==0x4000) && card->selected)
+	if (((offset & card->select_mask)==card->select_value) && card->selected)
 	{
 		if ((offset & 0x1001)==0x1000)
 		{
@@ -411,7 +415,7 @@ static TMS9902_XMIT_CALLBACK( xmit_callback_1 )
 static WRITE_LINE_DEVICE_HANDLER( senila )
 {
 	// put the value on the data bus. We store it in a state variable.
-	ti_rs232_state *card = (ti_rs232_state*)downcast<legacy_device_base *>(device)->token();
+	ti_rs232_state *card = get_safe_token(device);
 	card->senila = state;
 }
 
@@ -499,12 +503,12 @@ DEFINE_LEGACY_IMAGE_DEVICE(TI99_PIO, ti99_piodev);
 
 static DEVICE_START( ti_rs232 )
 {
-	ti_rs232_state *card = (ti_rs232_state*)downcast<legacy_device_base *>(device)->token();
+	ti_rs232_state *card = get_safe_token(device);
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
 
 	astring *region = new astring();
 	astring_assemble_3(region, device->tag(), ":", ser_region);
-	card->rom = device->machine->region(astring_c(region))->base();
+	card->rom = device->machine().region(astring_c(region))->base();
 	devcb_resolve_write_line(&card->lines.inta, &topeb->inta, device);
 	// READY and INTB are not used
 	card->uart0 = device->subdevice("tms9902_0");
@@ -520,11 +524,11 @@ static DEVICE_STOP( ti_rs232 )
 
 static DEVICE_RESET( ti_rs232 )
 {
-	ti_rs232_state *card = (ti_rs232_state*)downcast<legacy_device_base *>(device)->token();
+	ti_rs232_state *card = get_safe_token(device);
 	/* Register the card */
 	device_t *peb = device->owner();
 
-	if (input_port_read(device->machine, "SERIAL")==SERIAL_TI)
+	if (input_port_read(device->machine(), "SERIAL")==SERIAL_TI)
 	{
 		int success = mount_card(peb, device, &tirs232_card, get_pebcard_config(device)->slot);
 		if (!success) return;
@@ -537,6 +541,16 @@ static DEVICE_RESET( ti_rs232 )
 		card->cts2 = 0;
 		card->led = 0;
 		card->pio_write = 1;
+
+		card->select_mask = 0x7e000;
+		card->select_value = 0x74000;
+
+		if (input_port_read(device->machine(), "MODE")==GENMOD)
+		{
+			// GenMod card modification
+			card->select_mask = 0x1fe000;
+			card->select_value = 0x174000;
+		}
 	}
 }
 
@@ -558,6 +572,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti_rs232##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_INLINE_CONFIG | DT_HAS_ROM_REGION | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "TI99 RS232/PIO interface card"
+#define DEVTEMPLATE_SHORTNAME           "ti99rs232"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

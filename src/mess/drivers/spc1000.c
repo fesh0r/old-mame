@@ -12,8 +12,8 @@
 #include "video/m6847.h"
 #include "sound/ay8910.h"
 #include "sound/wave.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 
 
 class spc1000_state : public driver_device
@@ -22,14 +22,14 @@ public:
 	spc1000_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 IPLK;
-	UINT8 *video_ram;
-	UINT8 GMODE;
+	UINT8 m_IPLK;
+	UINT8 *m_video_ram;
+	UINT8 m_GMODE;
 };
 
 
 
-static ADDRESS_MAP_START(spc1000_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(spc1000_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x7fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
 	AM_RANGE( 0x8000, 0xffff ) AM_READ_BANK("bank3") AM_WRITE_BANK("bank4")
@@ -37,27 +37,31 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(spc1000_iplk_w)
 {
-	spc1000_state *state = space->machine->driver_data<spc1000_state>();
-	state->IPLK = state->IPLK ? 0 : 1;
-	if (state->IPLK == 1) {
-		memory_set_bankptr(space->machine, "bank1", space->machine->region("maincpu")->base());
-		memory_set_bankptr(space->machine, "bank3", space->machine->region("maincpu")->base());
+	spc1000_state *state = space->machine().driver_data<spc1000_state>();
+	state->m_IPLK = state->m_IPLK ? 0 : 1;
+	if (state->m_IPLK == 1) {
+		UINT8 *mem = space->machine().region("maincpu")->base();
+		memory_set_bankptr(space->machine(), "bank1", mem);
+		memory_set_bankptr(space->machine(), "bank3", mem);
 	} else {
-		memory_set_bankptr(space->machine, "bank1", messram_get_ptr(space->machine->device("messram")));
-		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(space->machine->device("messram")) + 0x8000);
+		UINT8 *ram = ram_get_ptr(space->machine().device(RAM_TAG));
+		memory_set_bankptr(space->machine(), "bank1", ram);
+		memory_set_bankptr(space->machine(), "bank3", ram + 0x8000);
 	}
 }
 
 static READ8_HANDLER(spc1000_iplk_r)
 {
-	spc1000_state *state = space->machine->driver_data<spc1000_state>();
-	state->IPLK = state->IPLK ? 0 : 1;
-	if (state->IPLK == 1) {
-		memory_set_bankptr(space->machine, "bank1", space->machine->region("maincpu")->base());
-		memory_set_bankptr(space->machine, "bank3", space->machine->region("maincpu")->base());
+	spc1000_state *state = space->machine().driver_data<spc1000_state>();
+	state->m_IPLK = state->m_IPLK ? 0 : 1;
+	if (state->m_IPLK == 1) {
+		UINT8 *mem = space->machine().region("maincpu")->base();
+		memory_set_bankptr(space->machine(), "bank1", mem);
+		memory_set_bankptr(space->machine(), "bank3", mem);
 	} else {
-		memory_set_bankptr(space->machine, "bank1", messram_get_ptr(space->machine->device("messram")));
-		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(space->machine->device("messram")) + 0x8000);
+		UINT8 *ram = ram_get_ptr(space->machine().device(RAM_TAG));
+		memory_set_bankptr(space->machine(), "bank1", ram);
+		memory_set_bankptr(space->machine(), "bank3", ram + 0x8000);
 	}
 	return 0;
 }
@@ -66,14 +70,14 @@ static READ8_HANDLER(spc1000_iplk_r)
 
 static WRITE8_HANDLER(spc1000_video_ram_w)
 {
-	spc1000_state *state = space->machine->driver_data<spc1000_state>();
-	state->video_ram[offset] = data;
+	spc1000_state *state = space->machine().driver_data<spc1000_state>();
+	state->m_video_ram[offset] = data;
 }
 
 static READ8_HANDLER(spc1000_video_ram_r)
 {
-	spc1000_state *state = space->machine->driver_data<spc1000_state>();
-	return state->video_ram[offset];
+	spc1000_state *state = space->machine().driver_data<spc1000_state>();
+	return state->m_video_ram[offset];
 }
 
 static READ8_HANDLER(spc1000_keyboard_r) {
@@ -81,15 +85,15 @@ static READ8_HANDLER(spc1000_keyboard_r) {
 		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4",
 		"LINE5", "LINE6", "LINE7", "LINE8", "LINE9"
 	};
-	return input_port_read(space->machine, keynames[offset]);
+	return input_port_read(space->machine(), keynames[offset]);
 }
 
 static WRITE8_DEVICE_HANDLER(spc1000_gmode_w)
 {
-	spc1000_state *state = device->machine->driver_data<spc1000_state>();
-	state->GMODE = data;
+	spc1000_state *state = device->machine().driver_data<spc1000_state>();
+	state->m_GMODE = data;
 
-	// state->GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
+	// state->m_GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
 	//  [PS2,PS1] is used to set screen 0/1 pages
 	mc6847_gm1_w(device, BIT(data, 1));
 	mc6847_gm0_w(device, BIT(data, 2));
@@ -99,11 +103,11 @@ static WRITE8_DEVICE_HANDLER(spc1000_gmode_w)
 
 static READ8_DEVICE_HANDLER(spc1000_gmode_r)
 {
-	spc1000_state *state = device->machine->driver_data<spc1000_state>();
-	return state->GMODE;
+	spc1000_state *state = device->machine().driver_data<spc1000_state>();
+	return state->m_GMODE;
 }
 
-static ADDRESS_MAP_START( spc1000_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( spc1000_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(spc1000_video_ram_r, spc1000_video_ram_w)
 	AM_RANGE(0x2000, 0x3fff) AM_DEVREADWRITE("mc6847", spc1000_gmode_r, spc1000_gmode_w)
@@ -210,56 +214,58 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(spc1000)
 {
-	spc1000_state *state = machine->driver_data<spc1000_state>();
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	spc1000_state *state = machine.driver_data<spc1000_state>();
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	UINT8 *mem = machine.region("maincpu")->base();
+	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
 
-	memory_install_read_bank(space, 0x0000, 0x7fff, 0, 0, "bank1");
-	memory_install_read_bank(space, 0x8000, 0xffff, 0, 0, "bank3");
+	space->install_read_bank(0x0000, 0x7fff, "bank1");
+	space->install_read_bank(0x8000, 0xffff, "bank3");
 
-	memory_install_write_bank(space, 0x0000, 0x7fff, 0, 0, "bank2");
-	memory_install_write_bank(space, 0x8000, 0xffff, 0, 0, "bank4");
+	space->install_write_bank(0x0000, 0x7fff, "bank2");
+	space->install_write_bank(0x8000, 0xffff, "bank4");
 
-	memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base());
-	memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")));
-	memory_set_bankptr(machine, "bank3", machine->region("maincpu")->base());
-	memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0x8000);
+	memory_set_bankptr(machine, "bank1", mem);
+	memory_set_bankptr(machine, "bank2", ram);
+	memory_set_bankptr(machine, "bank3", mem);
+	memory_set_bankptr(machine, "bank4", ram + 0x8000);
 
-	state->IPLK = 1;
+	state->m_IPLK = 1;
 }
 
 static READ8_DEVICE_HANDLER( spc1000_mc6847_videoram_r )
 {
-	spc1000_state *state = device->machine->driver_data<spc1000_state>();
-	// state->GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
+	spc1000_state *state = device->machine().driver_data<spc1000_state>();
+	// state->m_GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
 	//  [PS2,PS1] is used to set screen 0/1 pages
-	if ( !BIT(state->GMODE, 3) ) {	// text mode (~A/G set to A)
-		unsigned int page = (BIT(state->GMODE, 5) << 1) | BIT(state->GMODE, 4);
-		mc6847_inv_w(device, BIT(state->video_ram[offset+page*0x200+0x800], 0));
-		mc6847_css_w(device, BIT(state->video_ram[offset+page*0x200+0x800], 1));
-		mc6847_as_w(device, BIT(state->video_ram[offset+page*0x200+0x800], 2));
-		mc6847_intext_w(device, BIT(state->video_ram[offset+page*0x200+0x800], 3));
-		return state->video_ram[offset+page*0x200];
+	if ( !BIT(state->m_GMODE, 3) ) {	// text mode (~A/G set to A)
+		unsigned int page = (BIT(state->m_GMODE, 5) << 1) | BIT(state->m_GMODE, 4);
+		mc6847_inv_w(device, BIT(state->m_video_ram[offset+page*0x200+0x800], 0));
+		mc6847_css_w(device, BIT(state->m_video_ram[offset+page*0x200+0x800], 1));
+		mc6847_as_w(device, BIT(state->m_video_ram[offset+page*0x200+0x800], 2));
+		mc6847_intext_w(device, BIT(state->m_video_ram[offset+page*0x200+0x800], 3));
+		return state->m_video_ram[offset+page*0x200];
 	} else {	// graphics mode: uses full 6KB of VRAM
-		return state->video_ram[offset];
+		return state->m_video_ram[offset];
 	}
 }
 
 
-static UINT8 spc1000_get_char_rom(running_machine *machine, UINT8 ch, int line)
+static UINT8 spc1000_get_char_rom(running_machine &machine, UINT8 ch, int line)
 {
-	spc1000_state *state = machine->driver_data<spc1000_state>();
-	return state->video_ram[0x1000+(ch&0x7F)*16+line];
+	spc1000_state *state = machine.driver_data<spc1000_state>();
+	return state->m_video_ram[0x1000+(ch&0x7F)*16+line];
 }
 
 static VIDEO_START( spc1000 )
 {
-	spc1000_state *state = machine->driver_data<spc1000_state>();
-	state->video_ram = auto_alloc_array(machine, UINT8, 0x2000);
+	spc1000_state *state = machine.driver_data<spc1000_state>();
+	state->m_video_ram = auto_alloc_array(machine, UINT8, 0x2000);
 }
 
-static VIDEO_UPDATE( spc1000 )
+static SCREEN_UPDATE( spc1000 )
 {
-	device_t *mc6847 = screen->machine->device("mc6847");
+	device_t *mc6847 = screen->machine().device("mc6847");
 	return mc6847_update(mc6847, bitmap, cliprect);
 }
 
@@ -308,9 +314,9 @@ static MACHINE_CONFIG_START( spc1000, spc1000_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+	MCFG_SCREEN_UPDATE(spc1000)
 
 	MCFG_VIDEO_START(spc1000)
-	MCFG_VIDEO_UPDATE(spc1000)
 
 	MCFG_MC6847_ADD("mc6847", spc1000_mc6847_intf)
 	MCFG_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC)
@@ -327,14 +333,14 @@ static MACHINE_CONFIG_START( spc1000, spc1000_state )
 	MCFG_CASSETTE_ADD( "cassette", spc1000_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( spc1000 )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "spcall.rom", 0x0000, 0x8000, CRC(19638fc9))
+	ROM_LOAD( "spcall.rom", 0x0000, 0x8000, CRC(19638fc9) SHA1(489f1baa7aebf3c8c660325fb1fd790d84203284))
 ROM_END
 
 /* Driver */

@@ -41,13 +41,13 @@ static WRITE8_HANDLER( pipbug_ctrl_w )
 // 0x80 is written here - not connected in the baby 2650
 }
 
-static ADDRESS_MAP_START(pipbug_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(pipbug_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x03ff) AM_ROM
 	AM_RANGE( 0x0400, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pipbug_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pipbug_io, AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(S2650_CTRL_PORT, S2650_CTRL_PORT) AM_WRITE(pipbug_ctrl_w)
 	//AM_RANGE(S2650_SENSE_PORT, S2650_FO_PORT) AM_READWRITE(pipbug_serial_in,pipbug_serial_out)
@@ -66,7 +66,7 @@ static VIDEO_START( pipbug )
 {
 }
 
-static VIDEO_UPDATE( pipbug )
+static SCREEN_UPDATE( pipbug )
 {
 	return 0;
 }
@@ -86,11 +86,12 @@ static MACHINE_CONFIG_START( pipbug, pipbug_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_UPDATE(pipbug)
+
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(pipbug)
-	MCFG_VIDEO_UPDATE(pipbug)
 MACHINE_CONFIG_END
 
 /* ROM definition */

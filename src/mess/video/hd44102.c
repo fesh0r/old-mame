@@ -66,6 +66,8 @@ struct _hd44102_t
 INLINE hd44102_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == HD44102);
+
 	return (hd44102_t *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -73,6 +75,7 @@ INLINE hd44102_config *get_safe_config(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == HD44102);
+
 	return (hd44102_config *)downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 }
 
@@ -286,16 +289,16 @@ static DEVICE_START( hd44102 )
 	const hd44102_config *config = get_safe_config(device);
 
 	/* get the screen device */
-	hd44102->screen = device->machine->device<screen_device>(config->screen_tag);
+	hd44102->screen = device->machine().device<screen_device>(config->screen_tag);
 	assert(hd44102->screen != NULL);
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, hd44102->cs2);
-	state_save_register_device_item(device, 0, hd44102->status);
-	state_save_register_device_item(device, 0, hd44102->output);
-	state_save_register_device_item(device, 0, hd44102->page);
-	state_save_register_device_item(device, 0, hd44102->x);
-	state_save_register_device_item(device, 0, hd44102->y);
+	device->save_item(NAME(hd44102->cs2));
+	device->save_item(NAME(hd44102->status));
+	device->save_item(NAME(hd44102->output));
+	device->save_item(NAME(hd44102->page));
+	device->save_item(NAME(hd44102->x));
+	device->save_item(NAME(hd44102->y));
 }
 
 /*-------------------------------------------------

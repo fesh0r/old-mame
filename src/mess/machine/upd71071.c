@@ -111,12 +111,20 @@ struct _upd71071_t
 	const upd71071_intf* intf;
 };
 
+INLINE upd71071_t *get_safe_token(device_t *device)
+{
+	assert(device != NULL);
+	assert(device->type() == UPD71071);
+
+	return (upd71071_t*)downcast<legacy_device_base *>(device)->token();
+}
+
 static TIMER_CALLBACK(dma_transfer_timer)
 {
 	// single byte or word transfer
 	device_t* device = (device_t*)ptr;
-	upd71071_t* dmac = (upd71071_t*)downcast<legacy_device_base *>(device)->token();
-	address_space* space = cputag_get_address_space(device->machine,dmac->intf->cputag,ADDRESS_SPACE_PROGRAM);
+	upd71071_t* dmac = get_safe_token(device);
+	address_space* space = device->machine().device(dmac->intf->cputag)->memory().space(AS_PROGRAM);
 	int channel = param;
 	UINT16 data = 0;  // data to transfer
 
@@ -126,7 +134,7 @@ static TIMER_CALLBACK(dma_transfer_timer)
 			break;
 		case 0x04:  // I/O -> memory
 			if(dmac->intf->dma_read[channel])
-				data = dmac->intf->dma_read[channel](device->machine);
+				data = dmac->intf->dma_read[channel](device->machine());
 			space->write_byte(dmac->reg.address_current[channel],data & 0xff);
 			if(dmac->reg.mode_control[channel] & 0x20)  // Address direction
 				dmac->reg.address_current[channel]--;
@@ -147,7 +155,7 @@ static TIMER_CALLBACK(dma_transfer_timer)
 		case 0x08:  // memory -> I/O
 			data = space->read_byte(dmac->reg.address_current[channel]);
 			if(dmac->intf->dma_read[channel])
-				dmac->intf->dma_write[channel](device->machine,data);
+				dmac->intf->dma_write[channel](device->machine(),data);
 			if(dmac->reg.mode_control[channel] & 0x20)  // Address direction
 				dmac->reg.address_current[channel]--;
 			else
@@ -171,7 +179,7 @@ static TIMER_CALLBACK(dma_transfer_timer)
 
 static void upd71071_soft_reset(device_t* device)
 {
-	upd71071_t* dmac = (upd71071_t*)downcast<legacy_device_base *>(device)->token();
+	upd71071_t* dmac = get_safe_token(device);
 	int x;
 
 	// Does not change base/current address, count, or buswidth
@@ -189,7 +197,7 @@ static void upd71071_soft_reset(device_t* device)
 
 int upd71071_dmarq(device_t* device, int state,int channel)
 {
-	upd71071_t* dmac = (upd71071_t*)downcast<legacy_device_base *>(device)->token();
+	upd71071_t* dmac = get_safe_token(device);
 
 	if(state != 0)
 	{
@@ -209,7 +217,7 @@ int upd71071_dmarq(device_t* device, int state,int channel)
 				// TODO
 				break;
 			case 0x40:  // Single
-				timer_adjust_oneshot(dmac->timer[channel],ATTOTIME_IN_HZ(dmac->intf->clock),channel);
+				dmac->timer[channel]->adjust(attotime::from_hz(dmac->intf->clock),channel);
 				break;
 			case 0x80:  // Block
 				// TODO
@@ -231,20 +239,20 @@ int upd71071_dmarq(device_t* device, int state,int channel)
 
 static DEVICE_START(upd71071)
 {
-	upd71071_t* dmac = (upd71071_t*)downcast<legacy_device_base *>(device)->token();
+	upd71071_t* dmac = get_safe_token(device);
 	int x;
 
 	dmac->intf = (const upd71071_intf*)device->baseconfig().static_config();
 	for(x=0;x<4;x++)
 	{
-		dmac->timer[x] = timer_alloc(device->machine,dma_transfer_timer,(void*)device);
+		dmac->timer[x] = device->machine().scheduler().timer_alloc(FUNC(dma_transfer_timer), (void*)device);
 	}
 	dmac->selected_channel = 0;
 }
 
 static READ8_DEVICE_HANDLER(upd71071_read)
 {
-	upd71071_t* dmac = (upd71071_t*)downcast<legacy_device_base *>(device)->token();
+	upd71071_t* dmac = get_safe_token(device);
 	UINT8 ret = 0;
 
 	logerror("DMA: read from register %02x\n",offset);
@@ -322,7 +330,7 @@ static READ8_DEVICE_HANDLER(upd71071_read)
 
 static WRITE8_DEVICE_HANDLER(upd71071_write)
 {
-	upd71071_t* dmac = (upd71071_t*)downcast<legacy_device_base *>(device)->token();
+	upd71071_t* dmac = get_safe_token(device);
 
 	switch(offset)
 	{

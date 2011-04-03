@@ -13,10 +13,10 @@ public:
 	sapi1_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8* sapi_video_ram;
-	UINT8 keyboard_mask;
-	UINT8 refresh_counter;
-	UINT8 zps3_25;
+	UINT8* m_sapi_video_ram;
+	UINT8 m_keyboard_mask;
+	UINT8 m_refresh_counter;
+	UINT8 m_zps3_25;
 };
 
 
@@ -34,8 +34,8 @@ extern WRITE8_HANDLER(sapi1_keyboard_w );
 /*----------- defined in video/sapi1.c -----------*/
 
 extern VIDEO_START( sapi1 );
-extern VIDEO_UPDATE( sapi1 );
+extern SCREEN_UPDATE( sapi1 );
 extern VIDEO_START( sapizps3 );
-extern VIDEO_UPDATE( sapizps3 );
+extern SCREEN_UPDATE( sapizps3 );
 
 #endif

@@ -6,7 +6,7 @@
       of the Commodore drives (designed by Chuck Peddle)
 
     Skeleton driver
-	
+
 ***************************************************************************/
 
 /*
@@ -28,8 +28,8 @@
 #include "emu.h"
 #include "cpu/i86/i86.h"
 #include "cpu/mcs48/mcs48.h"
-#include "devices/flopdrv.h"
-#include "devices/messram.h"
+#include "imagedev/flopdrv.h"
+#include "machine/ram.h"
 #include "machine/ctronics.h"
 #include "machine/6522via.h"
 #include "machine/ieee488.h"
@@ -43,7 +43,7 @@
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( victor9k_mem, ADDRESS_SPACE_PROGRAM, 8, victor9k_state )
+static ADDRESS_MAP_START( victor9k_mem, AS_PROGRAM, 8, victor9k_state )
 //  AM_RANGE(0x00000, 0xdffff) AM_RAM
 	AM_RANGE(0xe0000, 0xe0001) AM_DEVREADWRITE_LEGACY(I8259A_TAG, pic8259_r, pic8259_w)
 	AM_RANGE(0xe0020, 0xe0023) AM_DEVREADWRITE_LEGACY(I8253_TAG, pit8253_r, pit8253_w)
@@ -61,14 +61,14 @@ static ADDRESS_MAP_START( victor9k_mem, ADDRESS_SPACE_PROGRAM, 8, victor9k_state
 	AM_RANGE(0xfe000, 0xfffff) AM_ROM AM_REGION(I8088_TAG, 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( floppy_io, ADDRESS_SPACE_IO, 8, victor9k_state )
+static ADDRESS_MAP_START( floppy_io, AS_IO, 8, victor9k_state )
 //  AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1)
 //  AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2)
 //  AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1)
 //  AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( keyboard_io, ADDRESS_SPACE_IO, 8, victor9k_state )
+static ADDRESS_MAP_START( keyboard_io, AS_IO, 8, victor9k_state )
 //  AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1)
 //  AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2)
 //  AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1)
@@ -98,8 +98,8 @@ INPUT_PORTS_END
 
 static MC6845_UPDATE_ROW( victor9k_update_row )
 {
-	victor9k_state *state = device->machine->driver_data<victor9k_state>();
-	address_space *program = cpu_get_address_space(state->m_maincpu, ADDRESS_SPACE_PROGRAM);
+	victor9k_state *state = device->machine().driver_data<victor9k_state>();
+	address_space *program = state->m_maincpu->memory().space(AS_PROGRAM);
 
 	if (BIT(ma, 13))
 	{
@@ -151,7 +151,7 @@ static const mc6845_interface hd46505s_intf =
 	NULL
 };
 
-bool victor9k_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool victor9k_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	mc6845_update(m_crtc, &bitmap, &cliprect);
 
@@ -798,7 +798,7 @@ WRITE8_MEMBER( victor9k_state::via6_pb_w )
     */
 
 	/* motor speed controller reset */
-	cpu_set_input_line(m_fdc_cpu, INPUT_LINE_RESET, BIT(data, 2));
+	device_set_input_line(m_fdc_cpu, INPUT_LINE_RESET, BIT(data, 2));
 
 	/* stepper enable A */
 	m_se[0] = BIT(data, 6);
@@ -867,7 +867,7 @@ static IEEE488_DAISY( ieee488_daisy )
 
 static IRQ_CALLBACK( victor9k_irq_callback )
 {
-	victor9k_state *state = device->machine->driver_data<victor9k_state>();
+	victor9k_state *state = device->machine().driver_data<victor9k_state>();
 
 	return pic8259_acknowledge(state->m_pic);
 }
@@ -875,14 +875,14 @@ static IRQ_CALLBACK( victor9k_irq_callback )
 void victor9k_state::machine_start()
 {
 	/* set interrupt callback */
-	cpu_set_irq_callback(m_maincpu, victor9k_irq_callback);
+	device_set_irq_callback(m_maincpu, victor9k_irq_callback);
 
 	/* memory banking */
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(m_ram);
-	int ram_size = messram_get_size(m_ram);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	UINT8 *ram = ram_get_ptr(m_ram);
+	int ram_size = ram_get_size(m_ram);
 
-	memory_install_ram(program, 0x00000, ram_size - 1, 0, 0, ram);
+	program->install_ram(0x00000, ram_size - 1, ram);
 }
 
 /* Machine Driver */
@@ -932,7 +932,7 @@ static MACHINE_CONFIG_START( victor9k, victor9k_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(victor9k_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("256K,384K,512K,640K,768K,896K")
 MACHINE_CONFIG_END

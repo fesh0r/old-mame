@@ -17,13 +17,13 @@ public:
 	radio86_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 tape_value;
-	UINT8 mikrosha_font_page;
-	int keyboard_mask;
-	UINT8* radio_ram_disk;
-	UINT8 romdisk_lsb;
-	UINT8 romdisk_msb;
-	UINT8 disk_sel;
+	UINT8 m_tape_value;
+	UINT8 m_mikrosha_font_page;
+	int m_keyboard_mask;
+	UINT8* m_radio_ram_disk;
+	UINT8 m_romdisk_lsb;
+	UINT8 m_romdisk_msb;
+	UINT8 m_disk_sel;
 };
 
 
@@ -60,7 +60,7 @@ extern WRITE8_HANDLER ( radio86_pagesel );
 extern const i8257_interface radio86_dma;
 
 
-extern void radio86_init_keyboard(running_machine *machine);
+extern void radio86_init_keyboard(running_machine &machine);
 
 
 /*----------- defined in video/radio86.c -----------*/
@@ -70,7 +70,7 @@ extern I8275_DISPLAY_PIXELS(partner_display_pixels);
 extern I8275_DISPLAY_PIXELS(mikrosha_display_pixels);
 extern I8275_DISPLAY_PIXELS(apogee_display_pixels);
 
-extern VIDEO_UPDATE( radio86 );
+extern SCREEN_UPDATE( radio86 );
 extern PALETTE_INIT( radio86 );
 
 #endif /* radio86_H_ */

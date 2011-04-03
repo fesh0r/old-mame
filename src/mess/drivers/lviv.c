@@ -286,20 +286,20 @@ Timings:
 #include "sound/wave.h"
 #include "machine/i8255a.h"
 #include "includes/lviv.h"
-#include "devices/snapquik.h"
-#include "devices/cassette.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cassette.h"
 #include "formats/lviv_lvt.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* I/O ports */
 
-static ADDRESS_MAP_START(io_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(io_map, AS_IO, 8)
 	AM_RANGE(0x00, 0xff) AM_READWRITE(lviv_io_r,lviv_io_w)
 ADDRESS_MAP_END
 
 /* memory w/r functions */
 
-static ADDRESS_MAP_START(lviv_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(lviv_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
@@ -430,7 +430,7 @@ static MACHINE_CONFIG_START( lviv, lviv_state )
 	MCFG_CPU_ADD("maincpu", I8080, 2500000)
 	MCFG_CPU_PROGRAM_MAP(lviv_mem)
 	MCFG_CPU_IO_MAP(io_map)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( lviv )
 
@@ -446,11 +446,12 @@ static MACHINE_CONFIG_START( lviv, lviv_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
+	MCFG_SCREEN_UPDATE( lviv )
+
 	MCFG_PALETTE_LENGTH(sizeof (lviv_palette) / 3)
 	MCFG_PALETTE_INIT( lviv )
 
 	MCFG_VIDEO_START( lviv )
-	MCFG_VIDEO_UPDATE( lviv )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -465,7 +466,7 @@ static MACHINE_CONFIG_START( lviv, lviv_state )
 	MCFG_CASSETTE_ADD( "cassette", lviv_cassette_config )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

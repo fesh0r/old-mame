@@ -32,7 +32,7 @@ struct _hd63450_regs
 typedef struct _hd63450_t hd63450_t;
 struct _hd63450_t
 {
-    hd63450_regs reg[4];
+	hd63450_regs reg[4];
 	emu_timer* timer[4];  // for timing data reading/writing each channel
 	attotime clock[4];
 	attotime burst_clock[4];
@@ -48,9 +48,17 @@ static void dma_transfer_halt(device_t* device, int channel);
 static void dma_transfer_continue(device_t* device, int channel);
 static void dma_transfer_start(device_t* device, int channel, int dir);
 
+INLINE hd63450_t *get_safe_token(device_t *device)
+{
+	assert(device != NULL);
+	assert(device->type() == HD63450);
+
+	return (hd63450_t *)downcast<legacy_device_base *>(device)->token();
+}
+
 static DEVICE_START(hd63450)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 	int x;
 
 	dmac->intf = (const hd63450_intf*)device->baseconfig().static_config();
@@ -58,7 +66,7 @@ static DEVICE_START(hd63450)
 	// Initialise timers and registers
 	for(x=0;x<4;x++)
 	{
-		dmac->timer[x] = timer_alloc(device->machine, dma_transfer_timer, (void*)device);
+		dmac->timer[x] = device->machine().scheduler().timer_alloc(FUNC(dma_transfer_timer), (void*)device);
 		dmac->reg[x].niv = 0x0f;  // defaults?
 		dmac->reg[x].eiv = 0x0f;
 		dmac->clock[x] = dmac->intf->clock[x];
@@ -69,7 +77,7 @@ static DEVICE_START(hd63450)
 int hd63450_read(device_t* device, int offset, UINT16 mem_mask)
 {
 	int channel,reg;
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 	channel = (offset & 0x60) >> 5;
 	reg = offset & 0x1f;
@@ -120,7 +128,7 @@ void hd63450_write(device_t* device, int offset, int data, UINT16 mem_mask)
 {
 	int channel,reg;
 
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 	channel = (offset & 0x60) >> 5;
 	reg = offset & 0x1f;
@@ -231,8 +239,8 @@ void hd63450_write(device_t* device, int offset, int data, UINT16 mem_mask)
 
 static void dma_transfer_start(device_t* device, int channel, int dir)
 {
-	address_space *space = cpu_get_address_space(device->machine->firstcpu, ADDRESS_SPACE_PROGRAM);
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	address_space *space = device->machine().firstcpu->memory().space(AS_PROGRAM);
+	hd63450_t* dmac = get_safe_token(device);
 	dmac->in_progress[channel] = 1;
 	dmac->reg[channel].csr &= ~0xe0;
 	dmac->reg[channel].csr |= 0x08;  // Channel active
@@ -249,12 +257,12 @@ static void dma_transfer_start(device_t* device, int channel, int dir)
 	// Burst transfers will halt the CPU until the transfer is complete
 	if((dmac->reg[channel].dcr & 0xc0) == 0x00)  // Burst transfer
 	{
-		device_t *cpu = device->machine->device(dmac->intf->cpu_tag);
-		cpu_set_input_line(cpu, INPUT_LINE_HALT, ASSERT_LINE);
-		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->burst_clock[channel]);
+		device_t *cpu = device->machine().device(dmac->intf->cpu_tag);
+		device_set_input_line(cpu, INPUT_LINE_HALT, ASSERT_LINE);
+		dmac->timer[channel]->adjust(attotime::zero, channel, dmac->burst_clock[channel]);
 	}
 	else
-		timer_adjust_periodic(dmac->timer[channel], ATTOTIME_IN_USEC(500), channel, dmac->clock[channel]);
+		dmac->timer[channel]->adjust(attotime::from_usec(500), channel, dmac->clock[channel]);
 
 	dmac->transfer_size[channel] = dmac->reg[channel].mtc;
 
@@ -263,11 +271,11 @@ static void dma_transfer_start(device_t* device, int channel, int dir)
 
 void hd63450_set_timer(device_t* device, int channel, attotime tm)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 	dmac->clock[channel] = tm;
 	if(dmac->in_progress[channel] != 0)
-		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->clock[channel]);
+		dmac->timer[channel]->adjust(attotime::zero, channel, dmac->clock[channel]);
 }
 
 static TIMER_CALLBACK(dma_transfer_timer)
@@ -277,10 +285,10 @@ static TIMER_CALLBACK(dma_transfer_timer)
 
 static void dma_transfer_abort(device_t* device, int channel)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 	logerror("DMA#%i: Transfer aborted\n",channel);
-	timer_adjust_oneshot(dmac->timer[channel], attotime_zero, 0);
+	dmac->timer[channel]->adjust(attotime::zero);
 	dmac->in_progress[channel] = 0;
 	dmac->reg[channel].mtc = dmac->transfer_size[channel];
 	dmac->reg[channel].csr |= 0xe0;  // channel operation complete, block transfer complete
@@ -289,29 +297,29 @@ static void dma_transfer_abort(device_t* device, int channel)
 
 static void dma_transfer_halt(device_t* device, int channel)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 	dmac->halted[channel] = 1;
-	timer_adjust_oneshot(dmac->timer[channel], attotime_zero, 0);
+	dmac->timer[channel]->adjust(attotime::zero);
 }
 
 static void dma_transfer_continue(device_t* device, int channel)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 	if(dmac->halted[channel] != 0)
 	{
 		dmac->halted[channel] = 0;
-		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->clock[channel]);
+		dmac->timer[channel]->adjust(attotime::zero, channel, dmac->clock[channel]);
 	}
 }
 
 void hd63450_single_transfer(device_t* device, int x)
 {
-	address_space *space = cpu_get_address_space(device->machine->firstcpu, ADDRESS_SPACE_PROGRAM);
+	address_space *space = device->machine().firstcpu->memory().space(AS_PROGRAM);
 	int data;
 	int datasize = 1;
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 
 		if(dmac->in_progress[x] != 0)  // DMA in progress in channel x
 		{
@@ -319,7 +327,7 @@ void hd63450_single_transfer(device_t* device, int x)
 			{
 				if(dmac->intf->dma_read[x])
 				{
-					data = dmac->intf->dma_read[x](device->machine,dmac->reg[x].mar);
+					data = dmac->intf->dma_read[x](device->machine(),dmac->reg[x].mar);
 					if(data == -1)
 						return;  // not ready to recieve data
 					space->write_byte(dmac->reg[x].mar,data);
@@ -360,7 +368,7 @@ void hd63450_single_transfer(device_t* device, int x)
 				if(dmac->intf->dma_write[x])
 				{
 					data = space->read_byte(dmac->reg[x].mar);
-					dmac->intf->dma_write[x](device->machine, dmac->reg[x].mar,data);
+					dmac->intf->dma_write[x](device->machine(), dmac->reg[x].mar,data);
 					datasize = 1;
 				}
 				else
@@ -423,7 +431,7 @@ void hd63450_single_transfer(device_t* device, int x)
 					dmac->reg[x].mtc = space->read_word(dmac->reg[x].bar+4);
 					return;
 				}
-				timer_adjust_oneshot(dmac->timer[x], attotime_zero, 0);
+				dmac->timer[x]->adjust(attotime::zero);
 				dmac->in_progress[x] = 0;
 				dmac->reg[x].csr |= 0xe0;  // channel operation complete, block transfer complete
 				dmac->reg[x].csr &= ~0x08;  // channel no longer active
@@ -431,25 +439,25 @@ void hd63450_single_transfer(device_t* device, int x)
 				// Burst transfer
 				if((dmac->reg[x].dcr & 0xc0) == 0x00)
 				{
-					device_t *cpu = device->machine->device(dmac->intf->cpu_tag);
-					cpu_set_input_line(cpu, INPUT_LINE_HALT, CLEAR_LINE);
+					device_t *cpu = device->machine().device(dmac->intf->cpu_tag);
+					device_set_input_line(cpu, INPUT_LINE_HALT, CLEAR_LINE);
 				}
 
 				if(dmac->intf->dma_end)
-					dmac->intf->dma_end(device->machine,x,dmac->reg[x].ccr & 0x08);
+					dmac->intf->dma_end(device->machine(),x,dmac->reg[x].ccr & 0x08);
 			}
 		}
 }
 
 int hd63450_get_vector(device_t* device, int channel)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 	return dmac->reg[channel].niv;
 }
 
 int hd63450_get_error_vector(device_t* device, int channel)
 {
-	hd63450_t* dmac = (hd63450_t*)downcast<legacy_device_base *>(device)->token();
+	hd63450_t* dmac = get_safe_token(device);
 	return dmac->reg[channel].eiv;
 }
 

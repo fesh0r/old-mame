@@ -7,10 +7,11 @@
 #include "emu.h"
 #include "cpu/arm7/arm7.h"
 #include "machine/s3c2410.h"
+#include "rendlay.h"
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, const char *s_fmt, ...)
+INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, const char *s_fmt, ...)
 {
 	if (VERBOSE_LEVEL >= n_level)
 	{
@@ -19,7 +20,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, 
 		va_start( v, s_fmt);
 		vsprintf( buf, s_fmt, v);
 		va_end( v);
-		logerror( "%s: %s", cpuexec_describe_context( machine), buf);
+		logerror( "%s: %s", machine.describe_context( ), buf);
 	}
 }
 
@@ -37,10 +38,10 @@ public:
 	hp49gp_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT32 port[9];
-	device_t *s3c2410;
-	UINT32 *steppingstone;
-	lcd_spi_t lcd_spi;
+	UINT32 m_port[9];
+	device_t *m_s3c2410;
+	UINT32 *m_steppingstone;
+	lcd_spi_t m_lcd_spi;
 };
 
 /***************************************************************************
@@ -56,99 +57,99 @@ enum
 	LCD_SPI_LINE_3
 };
 
-static void lcd_spi_reset( running_machine *machine)
+static void lcd_spi_reset( running_machine &machine)
 {
-	hp49gp_state *hp49gp = machine->driver_data<hp49gp_state>();
+	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
 	verboselog( machine, 5, "lcd_spi_reset\n");
-	hp49gp->lcd_spi.l1 = 0;
-	hp49gp->lcd_spi.data = 0;
-	hp49gp->lcd_spi.l3 = 0;
+	hp49gp->m_lcd_spi.l1 = 0;
+	hp49gp->m_lcd_spi.data = 0;
+	hp49gp->m_lcd_spi.l3 = 0;
 }
 
-static void lcd_spi_init( running_machine *machine)
+static void lcd_spi_init( running_machine &machine)
 {
 	verboselog( machine, 5, "lcd_spi_init\n");
 	lcd_spi_reset( machine);
 }
 
-static void lcd_spi_line_w( running_machine *machine, int line, int data)
+static void lcd_spi_line_w( running_machine &machine, int line, int data)
 {
-	hp49gp_state *hp49gp = machine->driver_data<hp49gp_state>();
+	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
 	switch (line)
 	{
 		case LCD_SPI_LINE_1 :
 		{
-			if (data != hp49gp->lcd_spi.l1)
+			if (data != hp49gp->m_lcd_spi.l1)
 			{
 				if (data == 0)
 				{
-					hp49gp->lcd_spi.shift = 0;
-					hp49gp->lcd_spi.bits = 0;
+					hp49gp->m_lcd_spi.shift = 0;
+					hp49gp->m_lcd_spi.bits = 0;
 				}
 				verboselog( machine, 5, "LCD_SPI_LINE_1 <- %d\n", data);
-				hp49gp->lcd_spi.l1 = data;
+				hp49gp->m_lcd_spi.l1 = data;
 			}
 		}
 		break;
 		case LCD_SPI_LINE_DATA :
 		{
-			if (data != hp49gp->lcd_spi.data)
+			if (data != hp49gp->m_lcd_spi.data)
 			{
 				verboselog( machine, 5, "LCD_SPI_LINE_DATA <- %d\n", data);
-				hp49gp->lcd_spi.data = data;
+				hp49gp->m_lcd_spi.data = data;
 			}
 		}
 		break;
 		case LCD_SPI_LINE_3 :
 		{
-			if (data != hp49gp->lcd_spi.l3)
+			if (data != hp49gp->m_lcd_spi.l3)
 			{
-				if ((data != 0) && (hp49gp->lcd_spi.l1 == 0))
+				if ((data != 0) && (hp49gp->m_lcd_spi.l1 == 0))
 				{
-					verboselog( machine, 5, "LCD SPI write bit %d\n", hp49gp->lcd_spi.data ? 1 : 0);
-					if (hp49gp->lcd_spi.bits < 8)
+					verboselog( machine, 5, "LCD SPI write bit %d\n", hp49gp->m_lcd_spi.data ? 1 : 0);
+					if (hp49gp->m_lcd_spi.bits < 8)
 					{
-						hp49gp->lcd_spi.shift = (hp49gp->lcd_spi.shift << 1) | (hp49gp->lcd_spi.data ? 1 : 0);
+						hp49gp->m_lcd_spi.shift = (hp49gp->m_lcd_spi.shift << 1) | (hp49gp->m_lcd_spi.data ? 1 : 0);
 					}
-					hp49gp->lcd_spi.bits++;
-					if (hp49gp->lcd_spi.bits == 8)
+					hp49gp->m_lcd_spi.bits++;
+					if (hp49gp->m_lcd_spi.bits == 8)
 					{
-						verboselog( machine, 5, "LCD SPI write byte %02X\n", hp49gp->lcd_spi.shift);
+						verboselog( machine, 5, "LCD SPI write byte %02X\n", hp49gp->m_lcd_spi.shift);
 					}
-					else if (hp49gp->lcd_spi.bits == 9)
+					else if (hp49gp->m_lcd_spi.bits == 9)
 					{
-						verboselog( machine, 5, "LCD SPI write ack %d\n", (hp49gp->lcd_spi.data ? 1 : 0));
+						verboselog( machine, 5, "LCD SPI write ack %d\n", (hp49gp->m_lcd_spi.data ? 1 : 0));
 					}
 				}
 				verboselog( machine, 5, "LCD_SPI_LINE_3 <- %d\n", data);
-				hp49gp->lcd_spi.l3 = data;
+				hp49gp->m_lcd_spi.l3 = data;
 			}
 		}
 		break;
 	}
 }
 
-static int lcd_spi_line_r( running_machine *machine, int line)
+static int lcd_spi_line_r( running_machine &machine, int line)
 {
-	hp49gp_state *hp49gp = machine->driver_data<hp49gp_state>();
+	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
 	switch (line)
 	{
 		case LCD_SPI_LINE_1 :
 		{
-			verboselog( machine, 7, "LCD_SPI_LINE_1 -> %d\n", hp49gp->lcd_spi.l1);
-			return hp49gp->lcd_spi.l1;
+			verboselog( machine, 7, "LCD_SPI_LINE_1 -> %d\n", hp49gp->m_lcd_spi.l1);
+			return hp49gp->m_lcd_spi.l1;
 		}
 		break;
 		case LCD_SPI_LINE_DATA :
 		{
-			verboselog( machine, 7, "LCD_SPI_LINE_DATA -> %d\n", hp49gp->lcd_spi.data);
-			return hp49gp->lcd_spi.data;
+			verboselog( machine, 7, "LCD_SPI_LINE_DATA -> %d\n", hp49gp->m_lcd_spi.data);
+			return hp49gp->m_lcd_spi.data;
 		}
 		break;
 		case LCD_SPI_LINE_3 :
 		{
-			verboselog( machine, 7, "LCD_SPI_LINE_3 -> %d\n", hp49gp->lcd_spi.l3);
-			return hp49gp->lcd_spi.l3;
+			verboselog( machine, 7, "LCD_SPI_LINE_3 -> %d\n", hp49gp->m_lcd_spi.l3);
+			return hp49gp->m_lcd_spi.l3;
 		}
 		break;
 	}
@@ -159,8 +160,8 @@ static int lcd_spi_line_r( running_machine *machine, int line)
 
 static UINT32 s3c2410_gpio_port_r( device_t *device, int port)
 {
-	hp49gp_state *hp49gp = device->machine->driver_data<hp49gp_state>();
-	UINT32 data = hp49gp->port[port];
+	hp49gp_state *hp49gp = device->machine().driver_data<hp49gp_state>();
+	UINT32 data = hp49gp->m_port[port];
 	switch (port)
 	{
 		case S3C2410_GPIO_PORT_C :
@@ -172,9 +173,9 @@ static UINT32 s3c2410_gpio_port_r( device_t *device, int port)
 		{
 			data = data | 0x0008;
 			data = data & ~0x3200;
-			data |= (lcd_spi_line_r( device->machine, LCD_SPI_LINE_1) ? 1 : 0) << 9;
-			data |= (lcd_spi_line_r( device->machine, LCD_SPI_LINE_DATA) ? 1 : 0) << 12;
-			data |= (lcd_spi_line_r( device->machine, LCD_SPI_LINE_3) ? 1 : 0) << 13;
+			data |= (lcd_spi_line_r( device->machine(), LCD_SPI_LINE_1) ? 1 : 0) << 9;
+			data |= (lcd_spi_line_r( device->machine(), LCD_SPI_LINE_DATA) ? 1 : 0) << 12;
+			data |= (lcd_spi_line_r( device->machine(), LCD_SPI_LINE_3) ? 1 : 0) << 13;
 		}
 		break;
 		case S3C2410_GPIO_PORT_E :
@@ -190,13 +191,13 @@ static UINT32 s3c2410_gpio_port_r( device_t *device, int port)
 		case S3C2410_GPIO_PORT_G :
 		{
 			data = data & ~0xFF00;
-			if ((data & 0x02) == 0) data |= (input_port_read( device->machine, "ROW1") << 8);
-			if ((data & 0x04) == 0) data |= (input_port_read( device->machine, "ROW2") << 8);
-			if ((data & 0x08) == 0) data |= (input_port_read( device->machine, "ROW3") << 8);
-			if ((data & 0x10) == 0) data |= (input_port_read( device->machine, "ROW4") << 8);
-			if ((data & 0x20) == 0) data |= (input_port_read( device->machine, "ROW5") << 8);
-			if ((data & 0x40) == 0) data |= (input_port_read( device->machine, "ROW6") << 8);
-			if ((data & 0x80) == 0) data |= (input_port_read( device->machine, "ROW7") << 8);
+			if ((data & 0x02) == 0) data |= (input_port_read( device->machine(), "ROW1") << 8);
+			if ((data & 0x04) == 0) data |= (input_port_read( device->machine(), "ROW2") << 8);
+			if ((data & 0x08) == 0) data |= (input_port_read( device->machine(), "ROW3") << 8);
+			if ((data & 0x10) == 0) data |= (input_port_read( device->machine(), "ROW4") << 8);
+			if ((data & 0x20) == 0) data |= (input_port_read( device->machine(), "ROW5") << 8);
+			if ((data & 0x40) == 0) data |= (input_port_read( device->machine(), "ROW6") << 8);
+			if ((data & 0x80) == 0) data |= (input_port_read( device->machine(), "ROW7") << 8);
 		}
 		break;
 		case S3C2410_GPIO_PORT_H :
@@ -210,15 +211,15 @@ static UINT32 s3c2410_gpio_port_r( device_t *device, int port)
 
 static void s3c2410_gpio_port_w( device_t *device, int port, UINT32 data)
 {
-	hp49gp_state *hp49gp = device->machine->driver_data<hp49gp_state>();
-	hp49gp->port[port] = data;
+	hp49gp_state *hp49gp = device->machine().driver_data<hp49gp_state>();
+	hp49gp->m_port[port] = data;
 	switch (port)
 	{
 		case S3C2410_GPIO_PORT_D :
 		{
-			lcd_spi_line_w( device->machine, LCD_SPI_LINE_1, BIT( data, 9) ? 1 : 0);
-			lcd_spi_line_w( device->machine, LCD_SPI_LINE_DATA, BIT( data, 12) ? 1 : 0);
-			lcd_spi_line_w( device->machine, LCD_SPI_LINE_3, BIT( data, 13) ? 1 : 0);
+			lcd_spi_line_w( device->machine(), LCD_SPI_LINE_1, BIT( data, 9) ? 1 : 0);
+			lcd_spi_line_w( device->machine(), LCD_SPI_LINE_DATA, BIT( data, 12) ? 1 : 0);
+			lcd_spi_line_w( device->machine(), LCD_SPI_LINE_3, BIT( data, 13) ? 1 : 0);
 		}
 		break;
 	}
@@ -228,21 +229,21 @@ static void s3c2410_gpio_port_w( device_t *device, int port, UINT32 data)
 
 static INPUT_CHANGED( port_changed )
 {
-	hp49gp_state *hp49gp = field->port->machine->driver_data<hp49gp_state>();
-	s3c2410_request_eint( hp49gp->s3c2410, (FPTR)param + 8);
+	hp49gp_state *hp49gp = field->port->machine().driver_data<hp49gp_state>();
+	s3c2410_request_eint( hp49gp->m_s3c2410, (FPTR)param + 8);
 }
 
 // ...
 
 static MACHINE_START( hp49gp )
 {
-	hp49gp_state *hp49gp = machine->driver_data<hp49gp_state>();
-	hp49gp->s3c2410 = machine->device( "s3c2410");
+	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
+	hp49gp->m_s3c2410 = machine.device( "s3c2410");
 }
 
 static MACHINE_RESET( hp49gp )
 {
-//	hp49gp_state *hp49gp = machine->driver_data<hp49gp_state>();
+//  hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
 	devtag_reset( machine, "maincpu");
 }
 
@@ -250,12 +251,12 @@ static MACHINE_RESET( hp49gp )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( hp49gp_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( hp49gp_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_ROM
 	AM_RANGE(0x08000000, 0x0801ffff) AM_RAM
 	AM_RANGE(0x08020000, 0x0803ffff) AM_RAM
 	AM_RANGE(0x08040000, 0x0807ffff) AM_RAM
-	AM_RANGE(0x40000000, 0x40000fff) AM_RAM AM_BASE_MEMBER(hp49gp_state, steppingstone)
+	AM_RANGE(0x40000000, 0x40000fff) AM_RAM AM_BASE_MEMBER(hp49gp_state, m_steppingstone)
 ADDRESS_MAP_END
 
 /***************************************************************************
@@ -264,9 +265,9 @@ ADDRESS_MAP_END
 
 static DRIVER_INIT( hp49gp )
 {
-	hp49gp_state *hp49gp = machine->driver_data<hp49gp_state>();
-	UINT8 *rom = (UINT8 *)machine->region( "maincpu")->base();
-	memcpy( hp49gp->steppingstone, rom, 1024);
+	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
+	UINT8 *rom = (UINT8 *)machine.region( "maincpu")->base();
+	memcpy( hp49gp->m_steppingstone, rom, 1024);
 	lcd_spi_init( machine);
 }
 
@@ -298,10 +299,11 @@ static MACHINE_CONFIG_START( hp49gp, hp49gp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(160, 85)
 	MCFG_SCREEN_VISIBLE_AREA(0, 131 - 1, 0, 80 - 1)
+	MCFG_SCREEN_UPDATE(s3c2410)
+
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	MCFG_VIDEO_START(s3c2410)
-	MCFG_VIDEO_UPDATE(s3c2410)
 
 	MCFG_MACHINE_START(hp49gp)
 	MCFG_MACHINE_RESET(hp49gp)

@@ -14,13 +14,13 @@ public:
 	bk_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT16 scrool;
-	UINT16 *bk0010_video_ram;
-	UINT16 kbd_state;
-	UINT16 key_code;
-	UINT16 key_pressed;
-	UINT16 key_irq_vector;
-	UINT16 drive;
+	UINT16 m_scrool;
+	UINT16 *m_bk0010_video_ram;
+	UINT16 m_kbd_state;
+	UINT16 m_key_code;
+	UINT16 m_key_pressed;
+	UINT16 m_key_irq_vector;
+	UINT16 m_drive;
 };
 
 
@@ -45,6 +45,6 @@ extern WRITE16_HANDLER(bk_floppy_data_w);
 /*----------- defined in video/bk.c -----------*/
 
 extern VIDEO_START( bk0010 );
-extern VIDEO_UPDATE( bk0010 );
+extern SCREEN_UPDATE( bk0010 );
 
 #endif /* BK_H_ */

@@ -10,30 +10,30 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/llc.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 
 static READ8_DEVICE_HANDLER (llc1_port_b_r)
 {
-	llc_state *state = device->machine->driver_data<llc_state>();
+	llc_state *state = device->machine().driver_data<llc_state>();
 	UINT8 retVal = 0;
-	if (state->s_code!=0) {
-		if (state->llc1_key_state==0) {
-			state->llc1_key_state = 1;
+	if (state->m_s_code!=0) {
+		if (state->m_llc1_key_state==0) {
+			state->m_llc1_key_state = 1;
 			retVal = 0x5F;
 		} else {
-			if (state->llc1_key_state == 1) {
-				state->llc1_key_state = 2;
+			if (state->m_llc1_key_state == 1) {
+				state->m_llc1_key_state = 2;
 				retVal = 0;
 			} else {
-				state->llc1_key_state = 0;
-				retVal = state->s_code;
-				state->s_code =0;
+				state->m_llc1_key_state = 0;
+				retVal = state->m_s_code;
+				state->m_s_code =0;
 			}
 		}
 	} else {
-		state->llc1_key_state = 0;
+		state->m_llc1_key_state = 0;
 		retVal = 0;
 	}
 	return retVal;
@@ -65,7 +65,7 @@ Z80CTC_INTERFACE( llc2_ctc_intf )
 
 static TIMER_CALLBACK(keyboard_callback)
 {
-	llc_state *state = machine->driver_data<llc_state>();
+	llc_state *state = machine.driver_data<llc_state>();
 	int i,j;
 	UINT8 c;
 	static const char *const keynames[] = {
@@ -82,7 +82,7 @@ static TIMER_CALLBACK(keyboard_callback)
 			{
 				if (c == (1 << j))
 				{
-					state->s_code = j + i*8;
+					state->m_s_code = j + i*8;
 					break;
 				}
 			}
@@ -101,61 +101,62 @@ MACHINE_RESET( llc1 )
 
 MACHINE_START(llc1)
 {
-	timer_pulse(machine, ATTOTIME_IN_HZ(5), NULL, 0, keyboard_callback);
+	machine.scheduler().timer_pulse(attotime::from_hz(5), FUNC(keyboard_callback));
 }
 
 DRIVER_INIT(llc2)
 {
-	llc_state *state = machine->driver_data<llc_state>();
-	state->video_ram = messram_get_ptr(machine->device("messram")) + 0xc000;
+	llc_state *state = machine.driver_data<llc_state>();
+	state->m_video_ram = ram_get_ptr(machine.device(RAM_TAG)) + 0xc000;
 }
 
 MACHINE_RESET( llc2 )
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-	memory_set_bankptr(machine, "bank1", machine->region("maincpu")->base());
+	space->unmap_write(0x0000, 0x3fff);
+	memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base());
 
-	memory_unmap_write(space, 0x4000, 0x5fff, 0, 0);
-	memory_set_bankptr(machine, "bank2", machine->region("maincpu")->base() + 0x4000);
+	space->unmap_write(0x4000, 0x5fff);
+	memory_set_bankptr(machine, "bank2", machine.region("maincpu")->base() + 0x4000);
 
-	memory_unmap_write(space, 0x6000, 0xbfff, 0, 0);
-	memory_set_bankptr(machine, "bank3", machine->region("maincpu")->base() + 0x6000);
+	space->unmap_write(0x6000, 0xbfff);
+	memory_set_bankptr(machine, "bank3", machine.region("maincpu")->base() + 0x6000);
 
-	memory_install_write_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
-	memory_set_bankptr(machine, "bank4", messram_get_ptr(machine->device("messram")) + 0xc000);
+	space->install_write_bank(0xc000, 0xffff, "bank4");
+	memory_set_bankptr(machine, "bank4", ram_get_ptr(machine.device(RAM_TAG)) + 0xc000);
 
 }
 
 WRITE8_HANDLER( llc2_rom_disable_w )
 {
-	address_space *mem_space = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *mem_space = space->machine().device("maincpu")->memory().space(AS_PROGRAM);
+	UINT8 *ram = ram_get_ptr(space->machine().device(RAM_TAG));
 
-	memory_install_write_bank(mem_space, 0x0000, 0xbfff, 0, 0, "bank1");
-	memory_set_bankptr(space->machine, "bank1", messram_get_ptr(space->machine->device("messram")));
+	mem_space->install_write_bank(0x0000, 0xbfff, "bank1");
+	memory_set_bankptr(space->machine(), "bank1", ram);
 
-	memory_install_write_bank(mem_space, 0x4000, 0x5fff, 0, 0, "bank2");
-	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(space->machine->device("messram")) + 0x4000);
+	mem_space->install_write_bank(0x4000, 0x5fff, "bank2");
+	memory_set_bankptr(space->machine(), "bank2", ram + 0x4000);
 
-	memory_install_write_bank(mem_space, 0x6000, 0xbfff, 0, 0, "bank3");
-	memory_set_bankptr(space->machine, "bank3", messram_get_ptr(space->machine->device("messram")) + 0x6000);
+	mem_space->install_write_bank(0x6000, 0xbfff, "bank3");
+	memory_set_bankptr(space->machine(), "bank3", ram + 0x6000);
 
-	memory_install_write_bank(mem_space, 0xc000, 0xffff, 0, 0, "bank4");
-	memory_set_bankptr(space->machine, "bank4", messram_get_ptr(space->machine->device("messram")) + 0xc000);
+	mem_space->install_write_bank(0xc000, 0xffff, "bank4");
+	memory_set_bankptr(space->machine(), "bank4", ram + 0xc000);
 
 }
 
 WRITE8_HANDLER( llc2_basic_enable_w )
 {
 
-	address_space *mem_space = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *mem_space = space->machine().device("maincpu")->memory().space(AS_PROGRAM);
 	if (data & 0x02) {
-		memory_unmap_write(mem_space, 0x4000, 0x5fff, 0, 0);
-		memory_set_bankptr(space->machine, "bank2", space->machine->region("maincpu")->base() + 0x10000);
+		mem_space->unmap_write(0x4000, 0x5fff);
+		memory_set_bankptr(space->machine(), "bank2", space->machine().region("maincpu")->base() + 0x10000);
 	} else {
-		memory_install_write_bank(mem_space, 0x4000, 0x5fff, 0, 0, "bank2");
-		memory_set_bankptr(space->machine, "bank2", messram_get_ptr(space->machine->device("messram")) + 0x4000);
+		mem_space->install_write_bank(0x4000, 0x5fff, "bank2");
+		memory_set_bankptr(space->machine(), "bank2", ram_get_ptr(space->machine().device(RAM_TAG)) + 0x4000);
 	}
 
 }
@@ -177,20 +178,20 @@ static UINT8 key_pos(UINT8 val) {
 }
 static READ8_DEVICE_HANDLER (llc2_port_a_r)
 {
-	UINT8 *k7659 = device->machine->region("k7659")->base();
+	UINT8 *k7659 = device->machine().region("k7659")->base();
 	UINT8 retVal = 0;
-	UINT8 a1 = input_port_read(device->machine, "A1");
-	UINT8 a2 = input_port_read(device->machine, "A2");
-	UINT8 a3 = input_port_read(device->machine, "A3");
-	UINT8 a4 = input_port_read(device->machine, "A4");
-	UINT8 a5 = input_port_read(device->machine, "A5");
-	UINT8 a6 = input_port_read(device->machine, "A6");
-	UINT8 a7 = input_port_read(device->machine, "A7");
-	UINT8 a8 = input_port_read(device->machine, "A8");
-	UINT8 a9 = input_port_read(device->machine, "A9");
-	UINT8 a10 = input_port_read(device->machine, "A10");
-	UINT8 a11 = input_port_read(device->machine, "A11");
-	UINT8 a12 = input_port_read(device->machine, "A12");
+	UINT8 a1 = input_port_read(device->machine(), "A1");
+	UINT8 a2 = input_port_read(device->machine(), "A2");
+	UINT8 a3 = input_port_read(device->machine(), "A3");
+	UINT8 a4 = input_port_read(device->machine(), "A4");
+	UINT8 a5 = input_port_read(device->machine(), "A5");
+	UINT8 a6 = input_port_read(device->machine(), "A6");
+	UINT8 a7 = input_port_read(device->machine(), "A7");
+	UINT8 a8 = input_port_read(device->machine(), "A8");
+	UINT8 a9 = input_port_read(device->machine(), "A9");
+	UINT8 a10 = input_port_read(device->machine(), "A10");
+	UINT8 a11 = input_port_read(device->machine(), "A11");
+	UINT8 a12 = input_port_read(device->machine(), "A12");
 	UINT16 code = 0;
 	if (a1!=0) {
 		code = 0x10 + key_pos(a1);

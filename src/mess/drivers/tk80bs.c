@@ -22,10 +22,10 @@ public:
 	tk80bs_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *vram;
-	UINT8 keyb_press;
-	UINT8 keyb_press_flag;
-	UINT8 shift_press_flag;
+	UINT8 *m_vram;
+	UINT8 m_keyb_press;
+	UINT8 m_keyb_press_flag;
+	UINT8 m_shift_press_flag;
 };
 
 
@@ -35,25 +35,25 @@ static VIDEO_START( tk80 )
 {
 }
 
-static VIDEO_UPDATE( tk80 )
+static SCREEN_UPDATE( tk80 )
 {
-    return 0;
+	return 0;
 }
 
-static ADDRESS_MAP_START(tk80_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tk80_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x02ff) AM_ROM
 	AM_RANGE(0x0300, 0x03ff) AM_RAM // EEPROM
 	AM_RANGE(0x8000, 0x83ff) AM_RAM // RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( tk80_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( tk80_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	//AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE("ppi8255_0", i8255a_r, i8255a_w)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( tk80 )
+static INPUT_PORTS_START( tk80 )
 INPUT_PORTS_END
 
 static MACHINE_RESET(tk80)
@@ -65,9 +65,9 @@ static VIDEO_START( tk80bs )
 {
 }
 
-static VIDEO_UPDATE( tk80bs )
+static SCREEN_UPDATE( tk80bs )
 {
-	tk80bs_state *state = screen->machine->driver_data<tk80bs_state>();
+	tk80bs_state *state = screen->machine().driver_data<tk80bs_state>();
 	int x,y;
 	int count;
 
@@ -77,28 +77,28 @@ static VIDEO_UPDATE( tk80bs )
 	{
 		for(x=0;x<32;x++)
 		{
-			int tile = state->vram[count];
+			int tile = state->m_vram[count];
 
-			drawgfx_opaque(bitmap, cliprect, screen->machine->gfx[0], tile, 0, 0, 0, x*8, y*8);
+			drawgfx_opaque(bitmap, cliprect, screen->machine().gfx[0], tile, 0, 0, 0, x*8, y*8);
 
 			count++;
 		}
 	}
 
-    return 0;
+	return 0;
 }
 
 /* FIXME: current i8255 core doesn't seem to like this system at all, so we use custom code here for now */
 static READ8_HANDLER( ppi_custom_r )
 {
-	tk80bs_state *state = space->machine->driver_data<tk80bs_state>();
+	tk80bs_state *state = space->machine().driver_data<tk80bs_state>();
 //  printf("%02x\n",offset);
 
 	switch(offset+0x7dfc)
 	{
-		case 0x7dfc: state->keyb_press_flag = 0; return state->keyb_press;
+		case 0x7dfc: state->m_keyb_press_flag = 0; return state->m_keyb_press;
 		case 0x7dfd: return 0xff;
-		case 0x7dfe: return state->keyb_press_flag << 5; //keyboard flag
+		case 0x7dfe: return state->m_keyb_press_flag << 5; //keyboard flag
 	}
 
 	return 0xff;
@@ -114,14 +114,14 @@ static WRITE8_HANDLER( ppi_custom_w )
 	}
 }
 
-static ADDRESS_MAP_START(tk80bs_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(tk80bs_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 //  AM_RANGE(0x0c00, 0x7bff) AM_ROM // ext
 	AM_RANGE(0x7df8, 0x7df9) AM_NOP // i8251 sio
 //  AM_RANGE(0x7dfc, 0x7dff) AM_DEVREADWRITE("ppi8255_0", i8255a_r, i8255a_w)
 	AM_RANGE(0x7dfc, 0x7dff) AM_READWRITE(ppi_custom_r,ppi_custom_w)
-	AM_RANGE(0x7e00, 0x7fff) AM_RAM AM_BASE_MEMBER(tk80bs_state, vram) // video ram
+	AM_RANGE(0x7e00, 0x7fff) AM_RAM AM_BASE_MEMBER(tk80bs_state, m_vram) // video ram
 	AM_RANGE(0x8000, 0xcfff) AM_RAM // RAM
 	AM_RANGE(0xd000, 0xefff) AM_ROM // BASIC
 	AM_RANGE(0xf000, 0xffff) AM_ROM // BSMON
@@ -242,27 +242,27 @@ static INPUT_PORTS_START( tk80bs )
 	PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("GRPH") PORT_CODE(KEYCODE_LALT)
 INPUT_PORTS_END
 
-static TIMER_CALLBACK( keyboard_callback )
+static TIMER_DEVICE_CALLBACK( keyboard_callback )
 {
-	tk80bs_state *state = machine->driver_data<tk80bs_state>();
+	tk80bs_state *state = timer.machine().driver_data<tk80bs_state>();
 	static const char *const portnames[3] = { "key1","key2","key3" };
 	int i,port_i,scancode;
-	UINT8 keymod = input_port_read(machine,"key_modifiers") & 0x1f;
+	UINT8 keymod = input_port_read(timer.machine(),"key_modifiers") & 0x1f;
 	scancode = 0;
 
-	state->shift_press_flag = ((keymod & 0x02) >> 1);
+	state->m_shift_press_flag = ((keymod & 0x02) >> 1);
 
 	for(port_i=0;port_i<3;port_i++)
 	{
 		for(i=0;i<32;i++)
 		{
-			if((input_port_read(machine,portnames[port_i])>>i) & 1)
+			if((input_port_read(timer.machine(),portnames[port_i])>>i) & 1)
 			{
 				if(keymod & 0x04) // kana key pressed
 				{
 					scancode |= 0x80;
 				}
-				if(!state->shift_press_flag)  // shift not pressed
+				if(!state->m_shift_press_flag)  // shift not pressed
 				{
 					//if(scancode >= 0x41 && scancode < 0x5b)
 					//  scancode += 0x20;  // lowercase doesn't exist here
@@ -284,8 +284,8 @@ static TIMER_CALLBACK( keyboard_callback )
 					if(scancode == 0x3c)
 						scancode = 0x3e;
 				}
-				state->keyb_press = scancode;
-				state->keyb_press_flag = 1;
+				state->m_keyb_press = scancode;
+				state->m_keyb_press_flag = 1;
 				return;
 			}
 			scancode++;
@@ -295,7 +295,6 @@ static TIMER_CALLBACK( keyboard_callback )
 
 static MACHINE_START(tk80bs)
 {
-	timer_pulse(machine, ATTOTIME_IN_HZ(240/32), NULL, 0, keyboard_callback);
 }
 
 static MACHINE_RESET(tk80bs)
@@ -348,65 +347,69 @@ static I8255A_INTERFACE( ppi8255_intf_0 )
 
 
 static MACHINE_CONFIG_START( tk80, tk80bs_state )
-    /* basic machine hardware */
-    MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz)
-    MCFG_CPU_PROGRAM_MAP(tk80_mem)
-    MCFG_CPU_IO_MAP(tk80_io)
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz)
+	MCFG_CPU_PROGRAM_MAP(tk80_mem)
+	MCFG_CPU_IO_MAP(tk80_io)
 
-    MCFG_MACHINE_RESET(tk80)
+	MCFG_MACHINE_RESET(tk80)
 
-    /* video hardware */
-    MCFG_SCREEN_ADD("screen", RASTER)
-    MCFG_SCREEN_REFRESH_RATE(50)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MCFG_SCREEN_SIZE(640, 480)
-    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    MCFG_PALETTE_LENGTH(2)
-    MCFG_PALETTE_INIT(black_and_white)
+	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(640, 480)
+	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_UPDATE(tk80)
+
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_I8255A_ADD( "ppi8255_0", ppi8255_intf_0 )
-	
-    MCFG_VIDEO_START(tk80)
-    MCFG_VIDEO_UPDATE(tk80)
+
+	MCFG_VIDEO_START(tk80)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( tk80bs, tk80bs_state )
-    /* basic machine hardware */
-    MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz) //unknown clock
-    MCFG_CPU_PROGRAM_MAP(tk80bs_mem)
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz) //unknown clock
+	MCFG_CPU_PROGRAM_MAP(tk80bs_mem)
 
 //  MCFG_I8255A_ADD( "ppi8255_0", ppi8255_intf_0 )
 
-    MCFG_MACHINE_START(tk80bs)
-    MCFG_MACHINE_RESET(tk80bs)
+	MCFG_MACHINE_START(tk80bs)
+	MCFG_MACHINE_RESET(tk80bs)
 
-    /* video hardware */
-    MCFG_SCREEN_ADD("screen", RASTER)
-    MCFG_SCREEN_REFRESH_RATE(50)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MCFG_SCREEN_SIZE(256, 128)
-    MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 128-1)
-    MCFG_PALETTE_LENGTH(2)
-    MCFG_PALETTE_INIT(black_and_white)
+	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(256, 128)
+	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 128-1)
+	MCFG_SCREEN_UPDATE(tk80bs)
+
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 	MCFG_GFXDECODE(tk80bs)
 
-    MCFG_VIDEO_START(tk80bs)
-    MCFG_VIDEO_UPDATE(tk80bs)
+	MCFG_VIDEO_START(tk80bs)
+
+	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(240/32))
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( tk80 )
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "tk80-1.bin", 0x0000, 0x0100, CRC(897295e4) SHA1(50fb42b07252fc48044830e2f228e218fc59481c))
 	ROM_LOAD( "tk80-2.bin", 0x0100, 0x0100, CRC(d54480c3) SHA1(354962aca1710ac75b40c8c23a6c303938f9d596))
 	ROM_LOAD( "tk80-3.bin", 0x0200, 0x0100, CRC(8d4b02ef) SHA1(2b5a1ee8f97db23ffec48b96f12986461024c995))
 ROM_END
 
 ROM_START( tk80bs )
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-    /* all of these aren't taken from an original machine*/
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	/* all of these aren't taken from an original machine*/
 	ROM_SYSTEM_BIOS(0, "psedo", "Pseudo LEVEL 1")
 	ROMX_LOAD( "tk80.dummy", 0x0000, 0x0800, BAD_DUMP CRC(553b25ca) SHA1(939350d7fa56ce567ddf393c9f4b9db6ebc18a2c), ROM_BIOS(1))
 	ROMX_LOAD( "ext.l1",     0x0c00, 0x6e46, BAD_DUMP CRC(d05ed3ff) SHA1(8544aa2cb58df9edf221f5be2cdafa248dd33828), ROM_BIOS(1))
@@ -426,7 +429,7 @@ ROM_START( tk80bs )
 	ROMX_LOAD( "bsmon.11",   0xf000, 0x0ff6, BAD_DUMP CRC(fca7a609) SHA1(7c7eb5e5e4cf1e0021383bdfc192b88262aba6f5), ROM_BIOS(3))
 
 	ROM_REGION( 0x1000, "gfx", ROMREGION_ERASEFF )
-	ROM_LOAD( "font.rom", 0x0000, 0x1000, BAD_DUMP CRC(94d95199) SHA1(9fe741eab866b0c520d4108bccc6277172fa190c))
+	ROM_LOAD( "font.rom",    0x0000, 0x1000, BAD_DUMP CRC(94d95199) SHA1(9fe741eab866b0c520d4108bccc6277172fa190c))
 ROM_END
 
 /* Driver */

@@ -222,8 +222,8 @@ Notes:
 #include "emu.h"
 #include "includes/vip.h"
 #include "cpu/cosmac/cosmac.h"
-#include "devices/cassette.h"
-#include "devices/snapquik.h"
+#include "imagedev/cassette.h"
+#include "imagedev/snapquik.h"
 #include "audio/vp550.h"
 #include "audio/vp595.h"
 #include "sound/cdp1863.h"
@@ -231,7 +231,7 @@ Notes:
 #include "video/cdp1861.h"
 #include "video/cdp1862.h"
 #include "machine/rescap.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 static QUICKLOAD_LOAD( vip );
 
@@ -260,25 +260,25 @@ WRITE8_MEMBER( vip_state::keylatch_w )
 WRITE8_MEMBER( vip_state::bankswitch_w )
 {
 	/* enable RAM */
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(m_ram);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	UINT8 *ram = ram_get_ptr(m_ram);
 
-	switch (messram_get_size(m_ram))
+	switch (ram_get_size(m_ram))
 	{
 	case 1 * 1024:
-		memory_install_ram(program, 0x0000, 0x03ff, 0, 0x7c00, ram);
+		program->install_ram(0x0000, 0x03ff, 0, 0x7c00, ram);
 		break;
 
 	case 2 * 1024:
-		memory_install_ram(program, 0x0000, 0x07ff, 0, 0x7800, ram);
+		program->install_ram(0x0000, 0x07ff, 0, 0x7800, ram);
 		break;
 
 	case 4 * 1024:
-		memory_install_ram(program, 0x0000, 0x0fff, 0, 0x7000, ram);
+		program->install_ram(0x0000, 0x0fff, 0, 0x7000, ram);
 		break;
 
 	case 32 * 1024:
-		memory_install_ram(program, 0x0000, 0x7fff, 0, 0, ram);
+		program->install_ram(0x0000, 0x7fff, ram);
 		break;
 	}
 }
@@ -299,12 +299,12 @@ WRITE8_MEMBER( vip_state::dispoff_w )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( vip_map, ADDRESS_SPACE_PROGRAM, 8, vip_state )
+static ADDRESS_MAP_START( vip_map, AS_PROGRAM, 8, vip_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x01ff) AM_MIRROR(0xfe00) AM_ROM AM_REGION(CDP1802_TAG, 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vip_io_map, ADDRESS_SPACE_IO, 8, vip_state )
+static ADDRESS_MAP_START( vip_io_map, AS_IO, 8, vip_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x01, 0x01) AM_READWRITE(dispon_r, dispoff_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
@@ -317,7 +317,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( reset_w )
 {
-	vip_state *state = field->port->machine->driver_data<vip_state>();
+	vip_state *state = field->port->machine().driver_data<vip_state>();
 
 	if (oldval && !newval)
 	{
@@ -399,21 +399,21 @@ static CDP1861_INTERFACE( vip_cdp1861_intf )
 
 static READ_LINE_DEVICE_HANDLER( rd_r )
 {
-	vip_state *state = device->machine->driver_data<vip_state>();
+	vip_state *state = device->machine().driver_data<vip_state>();
 
 	return BIT(state->m_color, 1);
 }
 
 static READ_LINE_DEVICE_HANDLER( bd_r )
 {
-	vip_state *state = device->machine->driver_data<vip_state>();
+	vip_state *state = device->machine().driver_data<vip_state>();
 
 	return BIT(state->m_color, 2);
 }
 
 static READ_LINE_DEVICE_HANDLER( gd_r )
 {
-	vip_state *state = device->machine->driver_data<vip_state>();
+	vip_state *state = device->machine().driver_data<vip_state>();
 
 	return BIT(state->m_color, 3);
 }
@@ -452,9 +452,9 @@ WRITE8_MEMBER( vip_state::vip_colorram_w )
 	cdp1862_con_w(m_cgc, 0);
 }
 
-bool vip_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool vip_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	switch (input_port_read(screen.machine, "VIDEO"))
+	switch (input_port_read(m_machine, "VIDEO"))
 	{
 	case VIDEO_CDP1861:
 		cdp1861_update(m_vdc, &bitmap, &cliprect);
@@ -472,31 +472,31 @@ bool vip_state::video_update(screen_device &screen, bitmap_t &bitmap, const rect
 
 static READ_LINE_DEVICE_HANDLER( clear_r )
 {
-	return BIT(input_port_read(device->machine, "RUN"), 0);
+	return BIT(input_port_read(device->machine(), "RUN"), 0);
 }
 
 static READ_LINE_DEVICE_HANDLER( ef2_r )
 {
-	set_led_status(device->machine, LED_TAPE, (cassette_input(device) > 0));
+	set_led_status(device->machine(), LED_TAPE, (cassette_input(device) > 0));
 
 	return cassette_input(device) < 0;
 }
 
 static READ_LINE_DEVICE_HANDLER( ef3_r )
 {
-	vip_state *state = device->machine->driver_data<vip_state>();
+	vip_state *state = device->machine().driver_data<vip_state>();
 
-	return BIT(input_port_read(device->machine, "KEYPAD"), state->m_keylatch);
+	return BIT(input_port_read(device->machine(), "KEYPAD"), state->m_keylatch);
 }
 
 static READ_LINE_DEVICE_HANDLER( ef4_r )
 {
-	vip_state *state = device->machine->driver_data<vip_state>();
+	vip_state *state = device->machine().driver_data<vip_state>();
 
-	switch (input_port_read(device->machine, "KEYBOARD"))
+	switch (input_port_read(device->machine(), "KEYBOARD"))
 	{
 	case KEYBOARD_VP580:
-		return BIT(input_port_read(device->machine, "VP-580"), state->m_keylatch);
+		return BIT(input_port_read(device->machine(), "VP-580"), state->m_keylatch);
 	}
 
 	return 0;
@@ -504,24 +504,24 @@ static READ_LINE_DEVICE_HANDLER( ef4_r )
 
 static COSMAC_SC_WRITE( vip_sc_w )
 {
-	switch (input_port_read(device->machine, "SOUND"))
+	switch (input_port_read(device->machine(), "SOUND"))
 	{
 	case SOUND_VP550:
-		vp550_sc1_w(device, BIT(sc, 1)); // device = CPU since the handler calls cpu_set_input_line on it!
+		vp550_sc1_w(device, BIT(sc, 1)); // device = CPU since the handler calls device_set_input_line on it!
 		break;
-	
+
 	case SOUND_VP551:
-		vp550_sc1_w(device, BIT(sc, 1)); // device = CPU since the handler calls cpu_set_input_line on it!
+		vp550_sc1_w(device, BIT(sc, 1)); // device = CPU since the handler calls device_set_input_line on it!
 		break;
 	}
 }
 
 static WRITE_LINE_DEVICE_HANDLER( vip_q_w )
 {
-	vip_state *driver_state = device->machine->driver_data<vip_state>();
+	vip_state *driver_state = device->machine().driver_data<vip_state>();
 
 	// sound output
-	switch (input_port_read(device->machine, "SOUND"))
+	switch (input_port_read(device->machine(), "SOUND"))
 	{
 	case SOUND_SPEAKER:
 		discrete_sound_w(driver_state->m_beeper, NODE_01, state);
@@ -544,7 +544,7 @@ static WRITE_LINE_DEVICE_HANDLER( vip_q_w )
 	}
 
 	// Q led
-	set_led_status(device->machine, LED_Q, state);
+	set_led_status(device->machine(), LED_Q, state);
 
 	// tape output
 	cassette_output(driver_state->m_cassette, state ? 1.0 : -1.0);
@@ -552,9 +552,9 @@ static WRITE_LINE_DEVICE_HANDLER( vip_q_w )
 
 static WRITE8_DEVICE_HANDLER( vip_dma_w )
 {
-	vip_state *state = device->machine->driver_data<vip_state>();
+	vip_state *state = device->machine().driver_data<vip_state>();
 
-	switch (input_port_read(device->machine, "VIDEO"))
+	switch (input_port_read(device->machine(), "VIDEO"))
 	{
 	case VIDEO_CDP1861:
 		cdp1861_dma_w(state->m_vdc, offset, data);
@@ -598,19 +598,19 @@ static COSMAC_INTERFACE( cosmac_intf )
 
 void vip_state::machine_start()
 {
-	UINT8 *ram = messram_get_ptr(m_ram);
+	UINT8 *ram = ram_get_ptr(m_ram);
 
 	/* randomize RAM contents */
-	for (UINT16 addr = 0; addr < messram_get_size(m_ram); addr++)
+	for (UINT16 addr = 0; addr < ram_get_size(m_ram); addr++)
 	{
-		ram[addr] = machine->rand() & 0xff;
+		ram[addr] = m_machine.rand() & 0xff;
 	}
 
 	/* allocate color RAM */
-	m_colorram = auto_alloc_array(machine, UINT8, VP590_COLOR_RAM_SIZE);
+	m_colorram = auto_alloc_array(m_machine, UINT8, VP590_COLOR_RAM_SIZE);
 
 	/* enable power LED */
-	set_led_status(machine, LED_POWER, 1);
+	set_led_status(m_machine, LED_POWER, 1);
 
 	/* reset sound */
 	discrete_sound_w(m_beeper, NODE_01, 0);
@@ -619,15 +619,15 @@ void vip_state::machine_start()
 	vp550_q_w(m_vp551, 0);
 
 	/* register for state saving */
-	state_save_register_global_pointer(machine, m_colorram, VP590_COLOR_RAM_SIZE);
-	state_save_register_global(machine, m_color);
-	state_save_register_global(machine, m_keylatch);
+	state_save_register_global_pointer(m_machine, m_colorram, VP590_COLOR_RAM_SIZE);
+	state_save_register_global(m_machine, m_color);
+	state_save_register_global(m_machine, m_keylatch);
 }
 
 void vip_state::machine_reset()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
-	address_space *io = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_IO);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *io = m_maincpu->memory().space(AS_IO);
 
 	/* reset auxiliary chips */
 	m_vdc->reset();
@@ -639,21 +639,21 @@ void vip_state::machine_reset()
 	m_vp551->reset();
 
 	/* configure video */
-	switch (input_port_read(machine, "VIDEO"))
+	switch (input_port_read(m_machine, "VIDEO"))
 	{
 	case VIDEO_CDP1861:
-		memory_unmap_write(io, 0x05, 0x05, 0, 0);
-		memory_unmap_write(program, 0xc000, 0xdfff, 0, 0);
+		io->unmap_write(0x05, 0x05);
+		program->unmap_write(0xc000, 0xdfff);
 		break;
 
 	case VIDEO_CDP1862:
-		memory_install_write8_device_handler(io, m_cgc, 0x05, 0x05, 0, 0, cdp1862_bkg_w);
-//		memory_install_write8_handler(program, 0xc000, 0xdfff, 0, 0, vip_colorram_w);
+		io->install_legacy_write_handler(*m_cgc, 0x05, 0x05, FUNC(cdp1862_bkg_w));
+//      program->install_legacy_write_handler(0xc000, 0xdfff, FUNC(vip_colorram_w));
 		break;
 	}
 
 	/* configure audio */
-	switch (input_port_read(machine, "SOUND"))
+	switch (input_port_read(m_machine, "SOUND"))
 	{
 	case SOUND_SPEAKER:
 		vp595_install_write_handlers(m_vp595, io, 0);
@@ -681,7 +681,7 @@ void vip_state::machine_reset()
 	}
 
 	/* enable ROM all thru address space */
-	memory_install_rom(program, 0x0000, 0x01ff, 0, 0xfe00, machine->region(CDP1802_TAG)->base());
+	program->install_rom(0x0000, 0x01ff, 0, 0xfe00, m_machine.region(CDP1802_TAG)->base());
 }
 
 /* Machine Drivers */
@@ -726,14 +726,14 @@ static MACHINE_CONFIG_START( vip, vip_state )
 	MCFG_CASSETTE_ADD("cassette", vip_cassette_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2K")
 	MCFG_RAM_EXTRA_OPTIONS("4K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( vp111, vip )
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1K")
 	MCFG_RAM_EXTRA_OPTIONS("2K,4K")
 MACHINE_CONFIG_END
@@ -760,7 +760,7 @@ ROM_END
 
 static QUICKLOAD_LOAD( vip )
 {
-	UINT8 *ptr = image.device().machine->region(CDP1802_TAG)->base();
+	UINT8 *ptr = image.device().machine().region(CDP1802_TAG)->base();
 	UINT8 *chip8_ptr = NULL;
 	int chip8_size = 0;
 	int size = image.length();
@@ -768,17 +768,17 @@ static QUICKLOAD_LOAD( vip )
 	if (strcmp(image.filetype(), "c8") == 0)
 	{
 		/* CHIP-8 program */
-		chip8_ptr = image.device().machine->region("chip8")->base();
-		chip8_size = image.device().machine->region("chip8")->bytes();
+		chip8_ptr = image.device().machine().region("chip8")->base();
+		chip8_size = image.device().machine().region("chip8")->bytes();
 	}
 	else if (strcmp(image.filename(), "c8x") == 0)
 	{
 		/* CHIP-8X program */
-		chip8_ptr = image.device().machine->region("chip8x")->base();
-		chip8_size = image.device().machine->region("chip8x")->bytes();
+		chip8_ptr = image.device().machine().region("chip8x")->base();
+		chip8_size = image.device().machine().region("chip8x")->bytes();
 	}
 
-	if ((size + chip8_size) > messram_get_size(image.device().machine->device("messram")))
+	if ((size + chip8_size) > ram_get_size(image.device().machine().device(RAM_TAG)))
 	{
 		return IMAGE_INIT_FAIL;
 	}

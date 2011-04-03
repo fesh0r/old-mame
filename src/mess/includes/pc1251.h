@@ -19,10 +19,10 @@ public:
 	pc1251_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 outa;
-	UINT8 outb;
-	int power;
-	UINT8 reg[0x100];
+	UINT8 m_outa;
+	UINT8 m_outb;
+	int m_power;
+	UINT8 m_reg[0x100];
 };
 
 
@@ -45,7 +45,7 @@ NVRAM_HANDLER( pc1251 );
 
 READ8_HANDLER(pc1251_lcd_read);
 WRITE8_HANDLER(pc1251_lcd_write);
-VIDEO_UPDATE( pc1251 );
+SCREEN_UPDATE( pc1251 );
 
 
 #endif /* PC1251_H_ */

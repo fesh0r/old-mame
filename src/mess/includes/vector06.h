@@ -15,12 +15,12 @@ public:
 	vector06_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 keyboard_mask;
-	UINT8 color_index;
-	UINT8 video_mode;
-	UINT8 romdisk_msb;
-	UINT8 romdisk_lsb;
-	UINT8 vblank_state;
+	UINT8 m_keyboard_mask;
+	UINT8 m_color_index;
+	UINT8 m_video_mode;
+	UINT8 m_romdisk_msb;
+	UINT8 m_romdisk_lsb;
+	UINT8 m_vblank_state;
 };
 
 
@@ -47,6 +47,6 @@ extern WRITE8_HANDLER(vector06_disc_w);
 
 extern PALETTE_INIT( vector06 );
 extern VIDEO_START( vector06 );
-extern VIDEO_UPDATE( vector06 );
+extern SCREEN_UPDATE( vector06 );
 
 #endif /* VECTOR06_H_ */

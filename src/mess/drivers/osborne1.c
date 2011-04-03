@@ -38,18 +38,18 @@ TODO:
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "sound/beep.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "machine/wd17xx.h"
 #include "machine/6821pia.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/osborne1.h"
 
 
 #define MAIN_CLOCK	15974400
 
 
-static ADDRESS_MAP_START( osborne1_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( osborne1_mem, AS_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x0FFF ) AM_READ_BANK("bank1") AM_WRITE( osborne1_0000_w )
 	AM_RANGE( 0x1000, 0x1FFF ) AM_READ_BANK("bank2") AM_WRITE( osborne1_1000_w )
 	AM_RANGE( 0x2000, 0x2FFF ) AM_READWRITE( osborne1_2000_r, osborne1_2000_w )
@@ -59,7 +59,7 @@ static ADDRESS_MAP_START( osborne1_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( osborne1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( osborne1_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x03 ) AM_WRITE( osborne1_bankswitch_w )
@@ -251,8 +251,10 @@ static MACHINE_CONFIG_START( osborne1, osborne1_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MCFG_SCREEN_RAW_PARAMS( MAIN_CLOCK/2, 512, 0, 416, 260, 0, 240 )
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
+
 	MCFG_GFXDECODE(osborne1)
 	MCFG_PALETTE_LENGTH( 3 )
 	MCFG_PALETTE_INIT( osborne1 )
@@ -269,7 +271,7 @@ static MACHINE_CONFIG_START( osborne1, osborne1_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(osborne1_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("68K")	/* 64KB Main RAM and 4Kbit video attribute RAM */
 MACHINE_CONFIG_END
 

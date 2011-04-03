@@ -18,7 +18,7 @@
 #include "machine/z80sio.h"
 #include "machine/z80pio.h"
 #include "machine/z80dma.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "video/i8275.h"
 
 
@@ -28,8 +28,8 @@ public:
 	rt1715_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int led1_val;
-	int led2_val;
+	int m_led1_val;
+	int m_led2_val;
 };
 
 
@@ -39,7 +39,7 @@ public:
 
 static WRITE8_HANDLER( rt1715_floppy_enable )
 {
-	logerror("%s: rt1715_floppy_enable %02x\n", cpuexec_describe_context(space->machine), data);
+	logerror("%s: rt1715_floppy_enable %02x\n", space->machine().describe_context(), data);
 }
 
 
@@ -50,18 +50,18 @@ static WRITE8_HANDLER( rt1715_floppy_enable )
 /* si/so led */
 static READ8_HANDLER( k7658_led1_r )
 {
-	rt1715_state *state = space->machine->driver_data<rt1715_state>();
-	state->led1_val ^= 1;
-	logerror("%s: k7658_led1_r %02x\n", cpuexec_describe_context(space->machine), state->led1_val);
+	rt1715_state *state = space->machine().driver_data<rt1715_state>();
+	state->m_led1_val ^= 1;
+	logerror("%s: k7658_led1_r %02x\n", space->machine().describe_context(), state->m_led1_val);
 	return 0xff;
 }
 
 /* caps led */
 static READ8_HANDLER( k7658_led2_r )
 {
-	rt1715_state *state = space->machine->driver_data<rt1715_state>();
-	state->led2_val ^= 1;
-	logerror("%s: k7658_led2_r %02x\n", cpuexec_describe_context(space->machine), state->led2_val);
+	rt1715_state *state = space->machine().driver_data<rt1715_state>();
+	state->m_led2_val ^= 1;
+	logerror("%s: k7658_led2_r %02x\n", space->machine().describe_context(), state->m_led2_val);
 	return 0xff;
 }
 
@@ -70,19 +70,19 @@ static READ8_HANDLER( k7658_data_r )
 {
 	UINT8 result = 0xff;
 
-	if (BIT(offset,  0)) result &= input_port_read(space->machine, "row_00");
-	if (BIT(offset,  1)) result &= input_port_read(space->machine, "row_10");
-	if (BIT(offset,  2)) result &= input_port_read(space->machine, "row_20");
-	if (BIT(offset,  3)) result &= input_port_read(space->machine, "row_30");
-	if (BIT(offset,  4)) result &= input_port_read(space->machine, "row_40");
-	if (BIT(offset,  5)) result &= input_port_read(space->machine, "row_50");
-	if (BIT(offset,  6)) result &= input_port_read(space->machine, "row_60");
-	if (BIT(offset,  7)) result &= input_port_read(space->machine, "row_70");
-	if (BIT(offset,  8)) result &= input_port_read(space->machine, "row_08");
-	if (BIT(offset,  9)) result &= input_port_read(space->machine, "row_18");
-	if (BIT(offset, 10)) result &= input_port_read(space->machine, "row_28");
-	if (BIT(offset, 11)) result &= input_port_read(space->machine, "row_38");
-	if (BIT(offset, 12)) result &= input_port_read(space->machine, "row_48");
+	if (BIT(offset,  0)) result &= input_port_read(space->machine(), "row_00");
+	if (BIT(offset,  1)) result &= input_port_read(space->machine(), "row_10");
+	if (BIT(offset,  2)) result &= input_port_read(space->machine(), "row_20");
+	if (BIT(offset,  3)) result &= input_port_read(space->machine(), "row_30");
+	if (BIT(offset,  4)) result &= input_port_read(space->machine(), "row_40");
+	if (BIT(offset,  5)) result &= input_port_read(space->machine(), "row_50");
+	if (BIT(offset,  6)) result &= input_port_read(space->machine(), "row_60");
+	if (BIT(offset,  7)) result &= input_port_read(space->machine(), "row_70");
+	if (BIT(offset,  8)) result &= input_port_read(space->machine(), "row_08");
+	if (BIT(offset,  9)) result &= input_port_read(space->machine(), "row_18");
+	if (BIT(offset, 10)) result &= input_port_read(space->machine(), "row_28");
+	if (BIT(offset, 11)) result &= input_port_read(space->machine(), "row_38");
+	if (BIT(offset, 12)) result &= input_port_read(space->machine(), "row_48");
 
 	return result;
 }
@@ -90,7 +90,7 @@ static READ8_HANDLER( k7658_data_r )
 /* serial output on D0 */
 static WRITE8_HANDLER( k7658_data_w )
 {
-	logerror("%s: k7658_data_w %02x\n", cpuexec_describe_context(space->machine), BIT(data, 0));
+	logerror("%s: k7658_data_w %02x\n", space->machine().describe_context(), BIT(data, 0));
 }
 
 
@@ -100,32 +100,31 @@ static WRITE8_HANDLER( k7658_data_w )
 
 static MACHINE_START( rt1715 )
 {
-	memory_set_bankptr(machine, "bank2", messram_get_ptr(machine->device("messram")) + 0x0800);
-	memory_set_bankptr(machine, "bank3", messram_get_ptr(machine->device("messram")));
+	memory_set_bankptr(machine, "bank2", ram_get_ptr(machine.device(RAM_TAG)) + 0x0800);
+	memory_set_bankptr(machine, "bank3", ram_get_ptr(machine.device(RAM_TAG)));
 }
 
 static MACHINE_RESET( rt1715 )
 {
 	/* on reset, enable ROM */
-	memory_set_bankptr(machine, "bank1", machine->region("ipl")->base());
+	memory_set_bankptr(machine, "bank1", machine.region("ipl")->base());
 }
 
 static WRITE8_HANDLER( rt1715_rom_disable )
 {
-	logerror("%s: rt1715_set_bank %02x\n", cpuexec_describe_context(space->machine), data);
+	logerror("%s: rt1715_set_bank %02x\n", space->machine().describe_context(), data);
 
 	/* disable ROM, enable RAM */
-	memory_set_bankptr(space->machine, "bank1", messram_get_ptr(space->machine->device("messram")));
+	memory_set_bankptr(space->machine(), "bank1", ram_get_ptr(space->machine().device(RAM_TAG)));
 }
-
 
 /***************************************************************************
     VIDEO EMULATION
 ***************************************************************************/
 
-static VIDEO_UPDATE( rt1715 )
+static SCREEN_UPDATE( rt1715 )
 {
-	VIDEO_UPDATE_CALL(generic_bitmapped);
+	SCREEN_UPDATE_CALL(generic_bitmapped);
 	return 0;
 }
 
@@ -180,12 +179,12 @@ static PALETTE_INIT( rt1715 )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( rt1715_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( rt1715_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank3")
 	AM_RANGE(0x0800, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( rt1715_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( rt1715_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("a71", z80pio_ba_cd_r, z80pio_ba_cd_w)
@@ -197,12 +196,12 @@ static ADDRESS_MAP_START( rt1715_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x28, 0x28) AM_WRITE(rt1715_rom_disable)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( k7658_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( k7658_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_WRITE(k7658_data_w)
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0xf800) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( k7658_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( k7658_io, AS_IO, 8 )
 	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x8000) AM_READ(k7658_led1_r)
 	AM_RANGE(0x4000, 0x4000) AM_MIRROR(0x8000) AM_READ(k7658_led2_r)
 	AM_RANGE(0x8000, 0x9fff) AM_READ(k7658_data_r)
@@ -332,12 +331,13 @@ static MACHINE_CONFIG_START( rt1715, rt1715_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(78*6, 30*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MCFG_SCREEN_UPDATE(rt1715)
+
 	MCFG_GFXDECODE(rt1715)
 	MCFG_PALETTE_LENGTH(3)
 	MCFG_PALETTE_INIT(rt1715)
 
 	MCFG_VIDEO_START(generic_bitmapped)
-	MCFG_VIDEO_UPDATE(rt1715)
 
 	MCFG_I8275_ADD("a26", rt1715_i8275_intf)
 	MCFG_Z80CTC_ADD("a30", XTAL_10MHz/4 /* ? */, rt1715_ctc_intf)
@@ -348,7 +348,7 @@ static MACHINE_CONFIG_START( rt1715, rt1715_state )
 	MCFG_Z80PIO_ADD("a72", XTAL_10MHz/4 /* ? */, rt1715_pio_control_intf)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END

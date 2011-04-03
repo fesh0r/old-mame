@@ -12,46 +12,56 @@
     mainframes or applications.
 
 ****************************************************************************/
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
 
+#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
+#define VIDEO_START_MEMBER(name) void name::video_start()
+#define SCREEN_UPDATE_MEMBER(name) bool name::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 
 class univac_state : public driver_device
 {
 public:
 	univac_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+	m_maincpu(*this, "maincpu")
+	{ }
 
-	const UINT8 *FNT;
-	UINT8 uts20_screen;
-	UINT8 framecnt;
+	required_device<cpu_device> m_maincpu;
+	DECLARE_READ8_MEMBER( uts20_vram_r );
+	DECLARE_WRITE8_MEMBER( uts20_vram_w );
+	DECLARE_WRITE8_MEMBER( uts20_43_w );
+	const UINT8 *m_p_chargen;
+	bool m_screen_num;
+	UINT8 m_framecnt;
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 };
 
 
 
-static WRITE8_HANDLER( uts20_43_w )
+WRITE8_MEMBER( univac_state::uts20_43_w )
 {
-	univac_state *state = space->machine->driver_data<univac_state>();
-	state->uts20_screen = data & 1;
+	m_screen_num = data & 1;
 }
 
-static READ8_HANDLER( uts20_vram_r )
+READ8_MEMBER( univac_state::uts20_vram_r )
 {
-	univac_state *state = space->machine->driver_data<univac_state>();
-	UINT8 *RAM = space->machine->region("maincpu")->base();
-	return RAM[offset | ((state->uts20_screen) ? 0xe000 : 0xc000)];
+	UINT8 *RAM = machine().region("maincpu")->base();
+	return RAM[offset | ((m_screen_num) ? 0xe000 : 0xc000)];
 }
 
-static WRITE8_HANDLER( uts20_vram_w )
+WRITE8_MEMBER( univac_state::uts20_vram_w )
 {
-	univac_state *state = space->machine->driver_data<univac_state>();
-	UINT8 *RAM = space->machine->region("maincpu")->base();
-	RAM[offset | ((state->uts20_screen) ? 0xe000 : 0xc000)] = data;
+	UINT8 *RAM = machine().region("maincpu")->base();
+	RAM[offset | ((m_screen_num) ? 0xe000 : 0xc000)] = data;
 }
 
 
-static ADDRESS_MAP_START(uts20_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(uts20_mem, AS_PROGRAM, 8, univac_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x4fff ) AM_ROM
 	AM_RANGE( 0x5000, 0x7fff ) AM_RAM AM_REGION("maincpu", 0x5000)
@@ -59,7 +69,7 @@ static ADDRESS_MAP_START(uts20_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xa000, 0xffff ) AM_RAM AM_REGION("maincpu", 0xa000)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( uts20_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( uts20_io, AS_IO, 8, univac_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x43, 0x43 ) AM_WRITE(uts20_43_w)
@@ -70,32 +80,29 @@ static INPUT_PORTS_START( uts20 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(uts20)
+MACHINE_RESET_MEMBER(univac_state)
 {
-	univac_state *state = machine->driver_data<univac_state>();
-	state->uts20_screen = 0;
+	m_screen_num = 0;
 }
 
-static VIDEO_START( uts20 )
+VIDEO_START_MEMBER(univac_state)
 {
-	univac_state *state = machine->driver_data<univac_state>();
-	state->FNT = machine->region("chargen")->base();
+	m_p_chargen = m_machine.region("chargen")->base();
 }
 
-static VIDEO_UPDATE( uts20 )
+SCREEN_UPDATE_MEMBER(univac_state)
 {
-	univac_state *state = screen->machine->driver_data<univac_state>();
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
-	UINT8 *videoram = screen->machine->region("maincpu")->base()+((state->uts20_screen) ? 0xe000 : 0xc000);
+	UINT8 *videoram = machine().region("maincpu")->base()+((m_screen_num) ? 0xe000 : 0xc000);
 
-	state->framecnt++;
+	m_framecnt++;
 
 	for (y = 0; y < 25; y++)
 	{
 		for (ra = 0; ra < 10; ra++)
 		{
-			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16 *p = BITMAP_ADDR16(&bitmap, sy++, 0);
 
 			for (x = ma; x < ma + 80; x++)
 			{
@@ -106,23 +113,23 @@ static VIDEO_UPDATE( uts20 )
 					chr = videoram[x];
 
 					/* Take care of flashing characters */
-					if ((chr & 0x80) && (state->framecnt & 0x08))
+					if ((chr & 0x80) && (m_framecnt & 8))
 						chr = 0x20;
 
 					chr &= 0x7f;
 
-					gfx = state->FNT[(chr<<4) | ra ];
+					gfx = m_p_chargen[(chr<<4) | ra ];
 				}
 
 				/* Display a scanline of a character */
-				*p++ = ( gfx & 0x80 ) ? 1 : 0;
-				*p++ = ( gfx & 0x40 ) ? 1 : 0;
-				*p++ = ( gfx & 0x20 ) ? 1 : 0;
-				*p++ = ( gfx & 0x10 ) ? 1 : 0;
-				*p++ = ( gfx & 0x08 ) ? 1 : 0;
-				*p++ = ( gfx & 0x04 ) ? 1 : 0;
-				*p++ = ( gfx & 0x02 ) ? 1 : 0;
-				*p++ = ( gfx & 0x01 ) ? 1 : 0;
+				*p++ = BIT(gfx, 7);
+				*p++ = BIT(gfx, 6);
+				*p++ = BIT(gfx, 5);
+				*p++ = BIT(gfx, 4);
+				*p++ = BIT(gfx, 3);
+				*p++ = BIT(gfx, 2);
+				*p++ = BIT(gfx, 1);
+				*p++ = BIT(gfx, 0);
 			}
 		}
 		ma+=80;
@@ -131,25 +138,20 @@ static VIDEO_UPDATE( uts20 )
 }
 
 static MACHINE_CONFIG_START( uts20, univac_state )
-    /* basic machine hardware */
-    MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-    MCFG_CPU_PROGRAM_MAP(uts20_mem)
-    MCFG_CPU_IO_MAP(uts20_io)
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+	MCFG_CPU_PROGRAM_MAP(uts20_mem)
+	MCFG_CPU_IO_MAP(uts20_io)
 
-    MCFG_MACHINE_RESET(uts20)
-
-    /* video hardware */
-    MCFG_SCREEN_ADD("screen", RASTER)
-    MCFG_SCREEN_REFRESH_RATE(50)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MCFG_SCREEN_SIZE(640, 250)
-    MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
-    MCFG_PALETTE_LENGTH(2)
-    MCFG_PALETTE_INIT(black_and_white)
-
-    MCFG_VIDEO_START(uts20)
-    MCFG_VIDEO_UPDATE(uts20)
+	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_SIZE(640, 250)
+	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 MACHINE_CONFIG_END
 
 
@@ -164,7 +166,7 @@ ROM_START( uts20 )
 
 	/* character generator not dumped, using the one from 'c10' for now */
 	ROM_REGION( 0x2000, "chargen", 0 )
-	ROM_LOAD( "c10_char.bin", 0x0000, 0x2000, BAD_DUMP CRC(cb530b6f) SHA1(95590bbb433db9c4317f535723b29516b9b9fcbf))
+	ROM_LOAD("c10_char.bin", 0x0000, 0x2000, BAD_DUMP CRC(cb530b6f) SHA1(95590bbb433db9c4317f535723b29516b9b9fcbf) )
 ROM_END
 
 /* Driver */

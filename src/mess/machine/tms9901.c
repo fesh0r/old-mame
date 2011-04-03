@@ -277,11 +277,11 @@ static void tms9901_timer_reload(device_t *device)
 	tms9901_t *tms = get_token(device);
 	if (tms->clockinvl)
 	{	/* reset clock interval */
-		timer_adjust_periodic(tms->timer, double_to_attotime((double) tms->clockinvl / (tms->clock_rate / 64.)), 0, double_to_attotime((double) tms->clockinvl / (tms->clock_rate / 64.)));
+		tms->timer->adjust(attotime::from_double((double) tms->clockinvl / (tms->clock_rate / 64.)), 0, attotime::from_double((double) tms->clockinvl / (tms->clock_rate / 64.)));
 	}
 	else
 	{	/* clock interval == 0 -> no timer */
-		timer_enable(tms->timer, 0);
+		tms->timer->enable(0);
 	}
 }
 
@@ -404,7 +404,7 @@ WRITE8_DEVICE_HANDLER ( tms9901_cru_w )
 				/* we are switching to clock mode: latch the current value of
                 the decrementer register */
 				if (tms->clockinvl)
-					tms->latchedtimer = ceil(attotime_to_double(timer_timeleft(tms->timer)) * (tms->clock_rate / 64.));
+					tms->latchedtimer = ceil(tms->timer->remaining().as_double() * (tms->clock_rate / 64.));
 				else
 					tms->latchedtimer = 0;		/* timer inactive... */
 			}
@@ -545,7 +545,7 @@ static DEVICE_STOP( tms9901 )
 
 	if (tms->timer)
 	{
-		timer_reset(tms->timer, attotime_never);	/* FIXME - timers should only be allocated once */
+		tms->timer->reset();	/* FIXME - timers should only be allocated once */
 		tms->timer = NULL;
 	}
 }
@@ -589,7 +589,7 @@ static DEVICE_START( tms9901 )
 
 	tms->intf = (const tms9901_interface*)device->baseconfig().static_config();
 
-	tms->timer = timer_alloc(device->machine, decrementer_callback, (void *) device);
+	tms->timer = device->machine().scheduler().timer_alloc(FUNC(decrementer_callback), (void *) device);
 
 	tms->supported_int_mask = tms->intf->supported_int_mask;
 

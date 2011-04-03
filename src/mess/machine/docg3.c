@@ -1,6 +1,6 @@
 /*
 
-    M-Systems DiskOnChip G3 - Flash Disk with MLC NAND and M-Systems’ x2 Technology
+    M-Systems DiskOnChip G3 - Flash Disk with MLC NAND and M-Systems? x2 Technology
 
     (c) 2009 Tim Schuerewegen
 
@@ -11,7 +11,7 @@
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -20,7 +20,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, 
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%s: %s", cpuexec_describe_context(machine), buf );
+		logerror( "%s: %s", machine.describe_context(), buf );
 	}
 }
 
@@ -65,14 +65,14 @@ INLINE diskonchip_g3_t *get_token( device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == DISKONCHIP_G3);
-	assert(downcast<legacy_device_base *>(device)->token() != NULL);
+
 	return (diskonchip_g3_t *)downcast<legacy_device_base *>(device)->token();
 }
 
 INLINE const diskonchip_g3_config *get_config( device_t *device)
 {
 	assert(device != NULL);
-	assert(device->type() == DISKONCHIP_G3);	
+	assert(device->type() == DISKONCHIP_G3);
 	assert(downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config() != NULL);
 	return (const diskonchip_g3_config *)downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
 }
@@ -84,7 +84,7 @@ INLINE const diskonchip_g3_config *get_config( device_t *device)
 static UINT32 diskonchip_g3_offset_data_1( device_t *device)
 {
 	diskonchip_g3_t *doc = get_token( device);
-//	printf( "block %d pages %d page %d planes %d plane %d user_data_size %d extra_area_size %d\n", doc->block, doc->pages, doc->page, doc->planes, doc->plane, doc->user_data_size, doc->extra_area_size);
+//  printf( "block %d pages %d page %d planes %d plane %d user_data_size %d extra_area_size %d\n", doc->block, doc->pages, doc->page, doc->planes, doc->plane, doc->user_data_size, doc->extra_area_size);
 	return ((((doc->block * doc->pages) + doc->page) * doc->planes) + doc->plane) * (doc->user_data_size + doc->extra_area_size);
 }
 
@@ -156,7 +156,7 @@ READ16_DEVICE_HANDLER( diskonchip_g3_sec_1_r )
 	{
 		data = (diskonchip_g3_read_data( device) << 0) | (diskonchip_g3_read_data( device) << 8);
 	}
-	verboselog( device->machine, 9, "(DOC) %08X -> %04X\n", 0x0800 + (offset << 1), data);
+	verboselog( device->machine(), 9, "(DOC) %08X -> %04X\n", 0x0800 + (offset << 1), data);
 	return data;
 }
 
@@ -187,7 +187,7 @@ static void diskonchip_g3_write_data( device_t *device, UINT8 data)
 WRITE16_DEVICE_HANDLER( diskonchip_g3_sec_1_w )
 {
 	diskonchip_g3_t *doc = get_token( device);
-	verboselog( device->machine, 9, "(DOC) %08X <- %04X\n", 0x0800 + (offset << 1), data);
+	verboselog( device->machine(), 9, "(DOC) %08X <- %04X\n", 0x0800 + (offset << 1), data);
 	if (doc->sec_2[0x1B] & 0x40)
 	{
 		diskonchip_g3_write_data( device, data);
@@ -456,7 +456,7 @@ static UINT16 diskonchip_sec_2_read16( device_t *device, UINT32 offset)
 		// ?
 		case 0x1074 : data = diskonchip_sec_2_read_1074( device); break;
 	}
-	verboselog( device->machine, 9, "(DOC) %08X -> %04X\n", 0x1000 + offset, data);
+	verboselog( device->machine(), 9, "(DOC) %08X -> %04X\n", 0x1000 + offset, data);
 	return data;
 }
 
@@ -488,7 +488,7 @@ static UINT8 diskonchip_sec_2_read8( device_t *device, UINT32 offset)
 		case 0x104E : data = diskonchip_sec_2_read_104E( device); break;
 		case 0x104F : data = diskonchip_sec_2_read_104F( device); break;
 	}
-	verboselog( device->machine, 9, "(DOC) %08X -> %02X\n", 0x1000 + offset, data);
+	verboselog( device->machine(), 9, "(DOC) %08X -> %02X\n", 0x1000 + offset, data);
 	return data;
 }
 
@@ -497,7 +497,7 @@ static void diskonchip_sec_2_write_100C( device_t *device, UINT8 data)
 	diskonchip_g3_t *doc = get_token( device);
 	const char *mode_name[] = { "reset", "normal", "deep power down" };
 	UINT32 mode = data & 3;
-	verboselog( device->machine, 5, "mode %d (%s)\n", mode, mode_name[mode]);
+	verboselog( device->machine(), 5, "mode %d (%s)\n", mode, mode_name[mode]);
 	if (mode == 0)
 	{
 		doc->sec_2[0x04] = 00;
@@ -507,7 +507,7 @@ static void diskonchip_sec_2_write_100C( device_t *device, UINT8 data)
 static void diskonchip_sec_2_write_1032( device_t *device, UINT8 data)
 {
 	diskonchip_g3_t *doc = get_token( device);
-	verboselog( device->machine, 5, "flash select %02X\n", data);
+	verboselog( device->machine(), 5, "flash select %02X\n", data);
 	if ((data == 0x12) || (data == 0x27))
 	{
 		doc->transfer_offset = 0;
@@ -523,7 +523,7 @@ static void diskonchip_g3_erase_block( device_t *device)
 	UINT32 offset;
 	int i, j;
 	const UINT8 xxx[] = { 0x00, 0x00, 0x87, 0x00, 0x00, 0x00, 0xCE, 0x00, 0xCF, 0x72, 0xFC, 0x1B, 0xA9, 0xC7, 0xB9, 0x00 };
-	verboselog( device->machine, 5, "erase block %04X\n", doc->block);
+	verboselog( device->machine(), 5, "erase block %04X\n", doc->block);
 	for (i=0;i<doc->pages;i++)
 	{
 		doc->page = i;
@@ -548,7 +548,7 @@ static void diskonchip_g3_erase_block( device_t *device)
 static void diskonchip_sec_2_write_1034( device_t *device, UINT8 data)
 {
 	diskonchip_g3_t *doc = get_token( device);
-	verboselog( device->machine, 5, "flash command %02X\n", data);
+	verboselog( device->machine(), 5, "flash command %02X\n", data);
 	if ((doc->sec_2[0x32] == 0x0E) && (data == 0x00))
 	{
 		doc->test = 0;
@@ -569,60 +569,60 @@ static void diskonchip_sec_2_write_1034( device_t *device, UINT8 data)
 	}
 	else if (doc->sec_2[0x32] == 0x09)
 	{
-	 	if (data == 0x22)
-	 	{
+		if (data == 0x22)
+		{
 			// do nothing
-	 	}
-	 	else if (data == 0xA2)
-	 	{
+		}
+		else if (data == 0xA2)
+		{
 			// do nothing
-	 	}
-	 	else
-	 	{
-			verboselog( device->machine, 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
-	 	}
+		}
+		else
+		{
+			verboselog( device->machine(), 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
+		}
 	}
 	else if (doc->sec_2[0x32] == 0x12)
 	{
-	 	if (data == 0x60)
-	 	{
+		if (data == 0x60)
+		{
 			doc->data_1036 = 0;
 			doc->data_1036_count = 0;
 			doc->address_count++;
-	 	}
-	 	else if (data == 0x30)
-	 	{
+		}
+		else if (data == 0x30)
+		{
 			// do nothing
-	 	}
-	 	else if (data == 0x05)
-	 	{
+		}
+		else if (data == 0x05)
+		{
 			// do nothing
-	 	}
-	 	else if (data == 0xE0)
-	 	{
+		}
+		else if (data == 0xE0)
+		{
 			// do nothing
-	 	}
-	 	else
-	 	{
-			verboselog( device->machine, 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
-	 	}
+		}
+		else
+		{
+			verboselog( device->machine(), 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
+		}
 	}
 	else if (doc->sec_2[0x32] == 0x27)
 	{
-	 	if (data == 0x60)
-	 	{
+		if (data == 0x60)
+		{
 			doc->data_1036 = 0;
 			doc->data_1036_count = 0;
 			doc->address_count++;
-	 	}
-	 	else if (data == 0xD0)
-	 	{
+		}
+		else if (data == 0xD0)
+		{
 			diskonchip_g3_erase_block( device);
-	 	}
-	 	else
-	 	{
-			verboselog( device->machine, 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
-	 	}
+		}
+		else
+		{
+			verboselog( device->machine(), 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
+		}
 	}
 	else if ((doc->sec_2[0x32] == 0x31) && (data == 0x71))
 	{
@@ -631,24 +631,24 @@ static void diskonchip_sec_2_write_1034( device_t *device, UINT8 data)
 	}
 	else if (doc->sec_2[0x32] == 0x1D)
 	{
-	 	if (data == 0x80)
-	 	{
+		if (data == 0x80)
+		{
 			doc->data_1036 = 0;
 			doc->data_1036_count = 0;
 			doc->address_count++;
-	 	}
-	 	else if (data == 0x11)
-	 	{
+		}
+		else if (data == 0x11)
+		{
 			doc->test = 3;
-	 	}
-	 	else
-	 	{
-			verboselog( device->machine, 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
-	 	}
+		}
+		else
+		{
+			verboselog( device->machine(), 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
+		}
 	}
 	else
 	{
-		verboselog( device->machine, 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
+		verboselog( device->machine(), 0, "diskonchip_sec_2_write_1034: unknown value %02X/%02X\n", data, doc->sec_2[0x32]);
 	}
 }
 
@@ -665,7 +665,7 @@ static void diskonchip_sec_2_write_1036( device_t *device, UINT8 data)
 			if (block >= doc->blocks) fatalerror( "DOCG3: invalid block (%d)", block);
 			plane = (doc->data_1036 >> 6) & 1;
 			page = (doc->data_1036 >> 0) & 0x3F;
-			verboselog( device->machine, 5, "flash address %d - %06X (plane %d block %04X page %04X)\n", doc->address_count, doc->data_1036, plane, block, page);
+			verboselog( device->machine(), 5, "flash address %d - %06X (plane %d block %04X page %04X)\n", doc->address_count, doc->data_1036, plane, block, page);
 			if (doc->address_count == 1)
 			{
 				doc->plane = 0;
@@ -684,7 +684,7 @@ static void diskonchip_sec_2_write_1036( device_t *device, UINT8 data)
 			plane = (doc->data_1036 >> 14) & 1;
 			page = (doc->data_1036 >> 8) & 0x3F;
 			unk = (doc->data_1036 >> 0) & 0xFF;
-			verboselog( device->machine, 5, "flash address %d - %08X (plane %d block %04X page %04X unk %02X)\n", doc->address_count, doc->data_1036, plane, block, page, unk);
+			verboselog( device->machine(), 5, "flash address %d - %08X (plane %d block %04X page %04X unk %02X)\n", doc->address_count, doc->data_1036, plane, block, page, unk);
 			if (doc->address_count == 1)
 			{
 				doc->plane = 0;
@@ -697,7 +697,7 @@ static void diskonchip_sec_2_write_1036( device_t *device, UINT8 data)
 	else if (doc->sec_2[0x34] == 0x05)
 	{
 		doc->transfer_offset = data << 2;
-		verboselog( device->machine, 5, "flash transfer offset %04X\n", doc->transfer_offset);
+		verboselog( device->machine(), 5, "flash transfer offset %04X\n", doc->transfer_offset);
 	}
 }
 
@@ -705,14 +705,14 @@ static void diskonchip_sec_2_write_1040( device_t *device, UINT16 data)
 {
 	diskonchip_g3_t *doc = get_token( device);
 	doc->transfersize = (data & 0x3FF);
-	verboselog( device->machine, 5, "flash transfer size %04X\n", doc->transfersize);
+	verboselog( device->machine(), 5, "flash transfer size %04X\n", doc->transfersize);
 }
 
 static void diskonchip_sec_2_write_100A( device_t *device, UINT8 data)
 {
 	diskonchip_g3_t *doc = get_token( device);
 	doc->device = data & 3;
-	verboselog( device->machine, 5, "select device %d\n", doc->device);
+	verboselog( device->machine(), 5, "select device %d\n", doc->device);
 }
 
 static void diskonchip_sec_2_write16( device_t *device, UINT32 offset, UINT16 data)
@@ -720,7 +720,7 @@ static void diskonchip_sec_2_write16( device_t *device, UINT32 offset, UINT16 da
 	diskonchip_g3_t *doc = get_token( device);
 	doc->sec_2[offset+0] = (data >> 0) & 0xFF;
 	doc->sec_2[offset+1] = (data >> 8) & 0xFF;
-	verboselog( device->machine, 9, "(DOC) %08X <- %04X\n", 0x1000 + offset, data);
+	verboselog( device->machine(), 9, "(DOC) %08X <- %04X\n", 0x1000 + offset, data);
 	switch (0x1000 + offset)
 	{
 		// ?
@@ -742,7 +742,7 @@ static void diskonchip_sec_2_write8( device_t *device, UINT32 offset, UINT8 data
 {
 	diskonchip_g3_t *doc = get_token( device);
 	doc->sec_2[offset] = data;
-	verboselog( device->machine, 9, "(DOC) %08X <- %02X\n", 0x1000 + offset, data);
+	verboselog( device->machine(), 9, "(DOC) %08X <- %02X\n", 0x1000 + offset, data);
 	switch (0x1000 + offset)
 	{
 		// ?
@@ -774,7 +774,7 @@ READ16_DEVICE_HANDLER( diskonchip_g3_sec_2_r )
 	}
 	else
 	{
-		verboselog( device->machine, 0, "diskonchip_g3_sec_2_r: unknown mem_mask %08X\n", mem_mask);
+		verboselog( device->machine(), 0, "diskonchip_g3_sec_2_r: unknown mem_mask %08X\n", mem_mask);
 		return 0;
 	}
 }
@@ -795,30 +795,30 @@ WRITE16_DEVICE_HANDLER( diskonchip_g3_sec_2_w )
 	}
 	else
 	{
-		verboselog( device->machine, 0, "diskonchip_g3_sec_2_w: unknown mem_mask %08X\n", mem_mask);
+		verboselog( device->machine(), 0, "diskonchip_g3_sec_2_w: unknown mem_mask %08X\n", mem_mask);
 	}
 }
 
 READ16_DEVICE_HANDLER( diskonchip_g3_sec_3_r )
 {
 	UINT16 data = 0;
-	verboselog( device->machine, 9, "(DOC) %08X -> %04X\n", 0x1800 + (offset << 1), data);
+	verboselog( device->machine(), 9, "(DOC) %08X -> %04X\n", 0x1800 + (offset << 1), data);
 	return data;
 }
 
 WRITE16_DEVICE_HANDLER( diskonchip_g3_sec_3_w )
 {
-	verboselog( device->machine, 9, "(DOC) %08X <- %02X\n", 0x1800 + (offset << 1), data);
+	verboselog( device->machine(), 9, "(DOC) %08X <- %02X\n", 0x1800 + (offset << 1), data);
 }
 
 #if 0
 
-static mame_file *nvram_system_fopen( running_machine *machine, UINT32 openflags, const char *name)
+static emu_file *nvram_system_fopen( running_machine &machine, UINT32 openflags, const char *name)
 {
 	astring *fname;
 	file_error filerr;
-	mame_file *file;
-	fname = astring_assemble_4( astring_alloc(), machine->gamedrv->name, PATH_SEPARATOR, name, ".nv");
+	emu_file *file;
+	fname = astring_assemble_4( astring_alloc(), machine.system().name, PATH_SEPARATOR, name, ".nv");
 	filerr = mame_fopen( SEARCHPATH_NVRAM, astring_c( fname), openflags, &file);
 	astring_free( fname);
 	return (filerr == FILERR_NONE) ? file : NULL;
@@ -826,16 +826,16 @@ static mame_file *nvram_system_fopen( running_machine *machine, UINT32 openflags
 
 static void diskonchip_load( device_t *device, const char *name)
 {
-	mame_file *file;
-	file = nvram_system_fopen( device->machine, OPEN_FLAG_READ, name);
+	emu_file *file;
+	file = nvram_system_fopen( device->machine(), OPEN_FLAG_READ, name);
 	device_nvram_diskonchip_g3( device, file, 0);
 	if (file) mame_fclose( file);
 }
 
 static void diskonchip_save( device_t *device, const char *name)
 {
-	mame_file *file;
-	file = nvram_system_fopen( device->machine, OPEN_FLAG_CREATE | OPEN_FLAG_WRITE | OPEN_FLAG_CREATE_PATHS, name);
+	emu_file *file;
+	file = nvram_system_fopen( device->machine(), OPEN_FLAG_CREATE | OPEN_FLAG_WRITE | OPEN_FLAG_CREATE_PATHS, name);
 	device_nvram_diskonchip_g3( device, file, 1);
 	if (file) mame_fclose( file);
 }
@@ -847,7 +847,7 @@ static DEVICE_START( diskonchip_g3 )
 	diskonchip_g3_t *doc = get_token( device);
 	const diskonchip_g3_config *config = get_config( device);
 
-	verboselog( device->machine, 9, "(DOC) device start\n");
+	verboselog( device->machine(), 9, "(DOC) device start\n");
 
 	switch (config->size)
 	{
@@ -866,53 +866,53 @@ static DEVICE_START( diskonchip_g3 )
 	doc->data_size[1] = doc->planes * doc->blocks * doc->pages * 16;
 	doc->data_size[2] = doc->blocks * 8;
 
-	doc->data[0] = auto_alloc_array( device->machine, UINT8, doc->data_size[0]);
-	doc->data[1] = auto_alloc_array( device->machine, UINT8, doc->data_size[1]);
-	doc->data[2] = auto_alloc_array( device->machine, UINT8, doc->data_size[2]);
+	doc->data[0] = auto_alloc_array( device->machine(), UINT8, doc->data_size[0]);
+	doc->data[1] = auto_alloc_array( device->machine(), UINT8, doc->data_size[1]);
+	doc->data[2] = auto_alloc_array( device->machine(), UINT8, doc->data_size[2]);
 
-//	diskonchip_load( device, "diskonchip");
+//  diskonchip_load( device, "diskonchip");
 
-	state_save_register_device_item( device, 0, doc->planes);
-	state_save_register_device_item( device, 0, doc->blocks);
-	state_save_register_device_item( device, 0, doc->pages);
-	state_save_register_device_item( device, 0, doc->user_data_size);
-	state_save_register_device_item( device, 0, doc->extra_area_size);
-	state_save_register_device_item_pointer( device, 0, doc->data[0], doc->data_size[0]);
-	state_save_register_device_item_pointer( device, 0, doc->data[1], doc->data_size[1]);
-	state_save_register_device_item_pointer( device, 0, doc->data[2], doc->data_size[2]);
+	device->save_item( NAME(doc->planes));
+	device->save_item( NAME(doc->blocks));
+	device->save_item( NAME(doc->pages));
+	device->save_item( NAME(doc->user_data_size));
+	device->save_item( NAME(doc->extra_area_size));
+	device->save_pointer( NAME(doc->data[0]), doc->data_size[0]);
+	device->save_pointer( NAME(doc->data[1]), doc->data_size[1]);
+	device->save_pointer( NAME(doc->data[2]), doc->data_size[2]);
 }
 
 static DEVICE_STOP( diskonchip_g3 )
 {
-	verboselog( device->machine, 9, "(DOC) device stop\n");
-//	diskonchip_save( device, "diskonchip");
+	verboselog( device->machine(), 9, "(DOC) device stop\n");
+//  diskonchip_save( device, "diskonchip");
 }
 
 static DEVICE_RESET( diskonchip_g3 )
 {
-	verboselog( device->machine, 9, "(DOC) device reset\n");
+	verboselog( device->machine(), 9, "(DOC) device reset\n");
 }
 
 static DEVICE_NVRAM( diskonchip_g3 )
 {
 	diskonchip_g3_t *doc = get_token( device);
-	verboselog( device->machine, 9, "(DOC) nvram %s\n", read_or_write ? "write" : "read");
+	verboselog( device->machine(), 9, "(DOC) nvram %s\n", read_or_write ? "write" : "read");
 	if (read_or_write)
 	{
 		if (file)
 		{
-			mame_fwrite( file, doc->data[0], doc->data_size[0]);
-			mame_fwrite( file, doc->data[1], doc->data_size[1]);
-			mame_fwrite( file, doc->data[2], doc->data_size[2]);
+			file->write(doc->data[0], doc->data_size[0]);
+			file->write(doc->data[1], doc->data_size[1]);
+			file->write(doc->data[2], doc->data_size[2]);
 		}
 	}
 	else
 	{
-	 	if (file)
-	 	{
-			mame_fread( file, doc->data[0], doc->data_size[0]);
-			mame_fread( file, doc->data[1], doc->data_size[1]);
-			mame_fread( file, doc->data[2], doc->data_size[2]);
+		if (file)
+		{
+			file->read(doc->data[0], doc->data_size[0]);
+			file->read(doc->data[1], doc->data_size[1]);
+			file->read(doc->data[2], doc->data_size[2]);
 		}
 		else
 		{
@@ -930,7 +930,7 @@ DEVICE_GET_INFO( diskonchip_g3 )
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES: info->i = sizeof(diskonchip_g3_t); break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES: info->i = sizeof(diskonchip_g3_config); break;
-//		case DEVINFO_INT_CLASS: info->i = DEVICE_CLASS_PERIPHERAL; break;
+//      case DEVINFO_INT_CLASS: info->i = DEVICE_CLASS_PERIPHERAL; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START: info->start = DEVICE_START_NAME(diskonchip_g3); break;

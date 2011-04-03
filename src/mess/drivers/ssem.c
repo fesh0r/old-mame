@@ -6,7 +6,7 @@
 
 #include "emu.h"
 #include "cpu/ssem/ssem.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 #include <stdarg.h>
 
 
@@ -16,8 +16,8 @@ public:
 	ssem_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *store;
-	UINT8 store_line;
+	UINT8 *m_store;
+	UINT8 m_store_line;
 };
 
 
@@ -51,8 +51,8 @@ INLINE UINT32 reverse(UINT32 v)
 * Address map                                        *
 \****************************************************/
 
-static ADDRESS_MAP_START( ssem_map, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x00, 0x7f) AM_RAM AM_BASE_MEMBER(ssem_state, store)// Primary store
+static ADDRESS_MAP_START( ssem_map, AS_PROGRAM, 8 )
+    AM_RANGE(0x00, 0x7f) AM_RAM AM_BASE_MEMBER(ssem_state, m_store)// Primary store
 ADDRESS_MAP_END
 
 /****************************************************\
@@ -79,122 +79,122 @@ enum
 
 static INPUT_CHANGED( panel_check )
 {
-	ssem_state *state = field->port->machine->driver_data<ssem_state>();
-    UINT8 edit0_state = input_port_read(field->port->machine, "EDIT0");
-    UINT8 edit1_state = input_port_read(field->port->machine, "EDIT1");
-    UINT8 edit2_state = input_port_read(field->port->machine, "EDIT2");
-    UINT8 edit3_state = input_port_read(field->port->machine, "EDIT3");
-    UINT8 misc_state = input_port_read(field->port->machine, "MISC");
-    device_t *ssem_cpu = field->port->machine->device("maincpu");
+	ssem_state *state = field->port->machine().driver_data<ssem_state>();
+    UINT8 edit0_state = input_port_read(field->port->machine(), "EDIT0");
+    UINT8 edit1_state = input_port_read(field->port->machine(), "EDIT1");
+    UINT8 edit2_state = input_port_read(field->port->machine(), "EDIT2");
+    UINT8 edit3_state = input_port_read(field->port->machine(), "EDIT3");
+    UINT8 misc_state = input_port_read(field->port->machine(), "MISC");
+    device_t *ssem_cpu = field->port->machine().device("maincpu");
 
     switch( (int)(FPTR)param )
     {
         case PANEL_BIT0:
-            if(edit0_state & 0x01) state->store[(state->store_line << 2) | 0] ^= 0x80;
+            if(edit0_state & 0x01) state->m_store[(state->m_store_line << 2) | 0] ^= 0x80;
             break;
         case PANEL_BIT1:
-            if(edit0_state & 0x02) state->store[(state->store_line << 2) | 0] ^= 0x40;
+            if(edit0_state & 0x02) state->m_store[(state->m_store_line << 2) | 0] ^= 0x40;
             break;
         case PANEL_BIT2:
-            if(edit0_state & 0x04) state->store[(state->store_line << 2) | 0] ^= 0x20;
+            if(edit0_state & 0x04) state->m_store[(state->m_store_line << 2) | 0] ^= 0x20;
             break;
         case PANEL_BIT3:
-            if(edit0_state & 0x08) state->store[(state->store_line << 2) | 0] ^= 0x10;
+            if(edit0_state & 0x08) state->m_store[(state->m_store_line << 2) | 0] ^= 0x10;
             break;
         case PANEL_BIT4:
-            if(edit0_state & 0x10) state->store[(state->store_line << 2) | 0] ^= 0x08;
+            if(edit0_state & 0x10) state->m_store[(state->m_store_line << 2) | 0] ^= 0x08;
             break;
         case PANEL_BIT5:
-            if(edit0_state & 0x20) state->store[(state->store_line << 2) | 0] ^= 0x04;
+            if(edit0_state & 0x20) state->m_store[(state->m_store_line << 2) | 0] ^= 0x04;
             break;
         case PANEL_BIT6:
-            if(edit0_state & 0x40) state->store[(state->store_line << 2) | 0] ^= 0x02;
+            if(edit0_state & 0x40) state->m_store[(state->m_store_line << 2) | 0] ^= 0x02;
             break;
         case PANEL_BIT7:
-            if(edit0_state & 0x80) state->store[(state->store_line << 2) | 0] ^= 0x01;
+            if(edit0_state & 0x80) state->m_store[(state->m_store_line << 2) | 0] ^= 0x01;
             break;
         case PANEL_BIT8:
-            if(edit1_state & 0x01) state->store[(state->store_line << 2) | 1] ^= 0x80;
+            if(edit1_state & 0x01) state->m_store[(state->m_store_line << 2) | 1] ^= 0x80;
             break;
         case PANEL_BIT9:
-            if(edit1_state & 0x02) state->store[(state->store_line << 2) | 1] ^= 0x40;
+            if(edit1_state & 0x02) state->m_store[(state->m_store_line << 2) | 1] ^= 0x40;
             break;
         case PANEL_BIT10:
-            if(edit1_state & 0x04) state->store[(state->store_line << 2) | 1] ^= 0x20;
+            if(edit1_state & 0x04) state->m_store[(state->m_store_line << 2) | 1] ^= 0x20;
             break;
         case PANEL_BIT11:
-            if(edit1_state & 0x08) state->store[(state->store_line << 2) | 1] ^= 0x10;
+            if(edit1_state & 0x08) state->m_store[(state->m_store_line << 2) | 1] ^= 0x10;
             break;
         case PANEL_BIT12:
-            if(edit1_state & 0x10) state->store[(state->store_line << 2) | 1] ^= 0x08;
+            if(edit1_state & 0x10) state->m_store[(state->m_store_line << 2) | 1] ^= 0x08;
             break;
         case PANEL_BIT13:
-            if(edit1_state & 0x20) state->store[(state->store_line << 2) | 1] ^= 0x04;
+            if(edit1_state & 0x20) state->m_store[(state->m_store_line << 2) | 1] ^= 0x04;
             break;
         case PANEL_BIT14:
-            if(edit1_state & 0x40) state->store[(state->store_line << 2) | 1] ^= 0x02;
+            if(edit1_state & 0x40) state->m_store[(state->m_store_line << 2) | 1] ^= 0x02;
             break;
         case PANEL_BIT15:
-            if(edit1_state & 0x80) state->store[(state->store_line << 2) | 1] ^= 0x01;
+            if(edit1_state & 0x80) state->m_store[(state->m_store_line << 2) | 1] ^= 0x01;
             break;
         case PANEL_BIT16:
-            if(edit2_state & 0x01) state->store[(state->store_line << 2) | 2] ^= 0x80;
+            if(edit2_state & 0x01) state->m_store[(state->m_store_line << 2) | 2] ^= 0x80;
             break;
         case PANEL_BIT17:
-            if(edit2_state & 0x02) state->store[(state->store_line << 2) | 2] ^= 0x40;
+            if(edit2_state & 0x02) state->m_store[(state->m_store_line << 2) | 2] ^= 0x40;
             break;
         case PANEL_BIT18:
-            if(edit2_state & 0x04) state->store[(state->store_line << 2) | 2] ^= 0x20;
+            if(edit2_state & 0x04) state->m_store[(state->m_store_line << 2) | 2] ^= 0x20;
             break;
         case PANEL_BIT19:
-            if(edit2_state & 0x08) state->store[(state->store_line << 2) | 2] ^= 0x10;
+            if(edit2_state & 0x08) state->m_store[(state->m_store_line << 2) | 2] ^= 0x10;
             break;
         case PANEL_BIT20:
-            if(edit2_state & 0x10) state->store[(state->store_line << 2) | 2] ^= 0x08;
+            if(edit2_state & 0x10) state->m_store[(state->m_store_line << 2) | 2] ^= 0x08;
             break;
         case PANEL_BIT21:
-            if(edit2_state & 0x20) state->store[(state->store_line << 2) | 2] ^= 0x04;
+            if(edit2_state & 0x20) state->m_store[(state->m_store_line << 2) | 2] ^= 0x04;
             break;
         case PANEL_BIT22:
-            if(edit2_state & 0x40) state->store[(state->store_line << 2) | 2] ^= 0x02;
+            if(edit2_state & 0x40) state->m_store[(state->m_store_line << 2) | 2] ^= 0x02;
             break;
         case PANEL_BIT23:
-            if(edit2_state & 0x80) state->store[(state->store_line << 2) | 2] ^= 0x01;
+            if(edit2_state & 0x80) state->m_store[(state->m_store_line << 2) | 2] ^= 0x01;
             break;
         case PANEL_BIT24:
-            if(edit3_state & 0x01) state->store[(state->store_line << 2) | 3] ^= 0x80;
+            if(edit3_state & 0x01) state->m_store[(state->m_store_line << 2) | 3] ^= 0x80;
             break;
         case PANEL_BIT25:
-            if(edit3_state & 0x02) state->store[(state->store_line << 2) | 3] ^= 0x40;
+            if(edit3_state & 0x02) state->m_store[(state->m_store_line << 2) | 3] ^= 0x40;
             break;
         case PANEL_BIT26:
-            if(edit3_state & 0x04) state->store[(state->store_line << 2) | 3] ^= 0x20;
+            if(edit3_state & 0x04) state->m_store[(state->m_store_line << 2) | 3] ^= 0x20;
             break;
         case PANEL_BIT27:
-            if(edit3_state & 0x08) state->store[(state->store_line << 2) | 3] ^= 0x10;
+            if(edit3_state & 0x08) state->m_store[(state->m_store_line << 2) | 3] ^= 0x10;
             break;
         case PANEL_BIT28:
-            if(edit3_state & 0x10) state->store[(state->store_line << 2) | 3] ^= 0x08;
+            if(edit3_state & 0x10) state->m_store[(state->m_store_line << 2) | 3] ^= 0x08;
             break;
         case PANEL_BIT29:
-            if(edit3_state & 0x20) state->store[(state->store_line << 2) | 3] ^= 0x04;
+            if(edit3_state & 0x20) state->m_store[(state->m_store_line << 2) | 3] ^= 0x04;
             break;
         case PANEL_BIT30:
-            if(edit3_state & 0x40) state->store[(state->store_line << 2) | 3] ^= 0x02;
+            if(edit3_state & 0x40) state->m_store[(state->m_store_line << 2) | 3] ^= 0x02;
             break;
         case PANEL_BIT31:
-            if(edit3_state & 0x80) state->store[(state->store_line << 2) | 3] ^= 0x01;
+            if(edit3_state & 0x80) state->m_store[(state->m_store_line << 2) | 3] ^= 0x01;
             break;
         case PANEL_LNUP:
             if(misc_state & 0x01)
             {
-                state->store_line--;
+                state->m_store_line--;
             }
             break;
         case PANEL_LNDN:
             if(misc_state & 0x02)
             {
-                state->store_line++;
+                state->m_store_line++;
             }
             break;
         case PANEL_HALT:
@@ -390,12 +390,12 @@ static const UINT8 char_glyphs[0x80][8] =
     { 0xff, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xff },
 };
 
-static void glyph_print(running_machine *machine, bitmap_t *bitmap, INT32 x, INT32 y, const char *msg, ...)
+static void glyph_print(running_machine &machine, bitmap_t *bitmap, INT32 x, INT32 y, const char *msg, ...)
 {
     va_list arg_list;
     char buf[32768];
     INT32 index = 0;
-    screen_device *screen = machine->first_screen();
+    screen_device *screen = machine.first_screen();
     const rectangle &visarea = screen->visible_area();
 
     va_start( arg_list, msg );
@@ -439,30 +439,30 @@ static void glyph_print(running_machine *machine, bitmap_t *bitmap, INT32 x, INT
     }
 }
 
-static VIDEO_UPDATE( ssem )
+static SCREEN_UPDATE( ssem )
 {
-	ssem_state *state = screen->machine->driver_data<ssem_state>();
+	ssem_state *state = screen->machine().driver_data<ssem_state>();
     UINT32 line = 0;
-    device_t *ssem_cpu = screen->machine->device("maincpu");
+    device_t *ssem_cpu = screen->machine().device("maincpu");
     UINT32 accum = cpu_get_reg(ssem_cpu, SSEM_A);
     UINT32 bit = 0;
     UINT32 word = 0;
 
     for(line = 0; line < 32; line++)
     {
-        word = (state->store[(line << 2) | 0] << 24) |
-               (state->store[(line << 2) | 1] << 16) |
-               (state->store[(line << 2) | 2] <<  8) |
-               (state->store[(line << 2) | 3] <<  0);
+        word = (state->m_store[(line << 2) | 0] << 24) |
+               (state->m_store[(line << 2) | 1] << 16) |
+               (state->m_store[(line << 2) | 2] <<  8) |
+               (state->m_store[(line << 2) | 3] <<  0);
         for(bit = 0; bit < 32; bit++)
         {
             if(word & (1 << (31 - bit)))
             {
-                glyph_print(screen->machine, bitmap, bit << 3, line << 3, "%c", line == state->store_line ? 4 : 2);
+                glyph_print(screen->machine(), bitmap, bit << 3, line << 3, "%c", line == state->m_store_line ? 4 : 2);
             }
             else
             {
-                glyph_print(screen->machine, bitmap, bit << 3, line << 3, "%c", line == state->store_line ? 3 : 1);
+                glyph_print(screen->machine(), bitmap, bit << 3, line << 3, "%c", line == state->m_store_line ? 3 : 1);
             }
         }
     }
@@ -471,19 +471,19 @@ static VIDEO_UPDATE( ssem )
     {
         if(accum & (1 << bit))
         {
-            glyph_print(screen->machine, bitmap, bit << 3, 264, "%c", 2);
+            glyph_print(screen->machine(), bitmap, bit << 3, 264, "%c", 2);
         }
         else
         {
-            glyph_print(screen->machine, bitmap, bit << 3, 264, "%c", 1);
+            glyph_print(screen->machine(), bitmap, bit << 3, 264, "%c", 1);
         }
     }
 
-    word = reverse((state->store[(state->store_line << 2) | 0] << 24) |
-                   (state->store[(state->store_line << 2) | 1] << 16) |
-                   (state->store[(state->store_line << 2) | 2] <<  8) |
-                   (state->store[(state->store_line << 2) | 3] <<  0));
-    glyph_print(screen->machine, bitmap, 0, 272, "LINE:%02d  VALUE:%08x  HALT:%d", state->store_line, word, cpu_get_reg(ssem_cpu, SSEM_HALT));
+    word = reverse((state->m_store[(state->m_store_line << 2) | 0] << 24) |
+                   (state->m_store[(state->m_store_line << 2) | 1] << 16) |
+                   (state->m_store[(state->m_store_line << 2) | 2] <<  8) |
+                   (state->m_store[(state->m_store_line << 2) | 3] <<  0));
+    glyph_print(screen->machine(), bitmap, 0, 272, "LINE:%02d  VALUE:%08x  HALT:%d", state->m_store_line, word, cpu_get_reg(ssem_cpu, SSEM_HALT));
     return 0;
 }
 
@@ -512,7 +512,7 @@ static void strlower(char *buf)
 
 static DEVICE_IMAGE_LOAD(ssem_store)
 {
-	ssem_state *state = image.device().machine->driver_data<ssem_state>();
+	ssem_state *state = image.device().machine().driver_data<ssem_state>();
     const char* image_name = image.filename();
     char image_ext[5] = { 0 };
     char image_line[100] = { 0 };
@@ -553,10 +553,10 @@ static DEVICE_IMAGE_LOAD(ssem_store)
                     }
                 }
 
-                state->store[(line << 2) + 0] = (word >> 24) & 0x000000ff;
-                state->store[(line << 2) + 1] = (word >> 16) & 0x000000ff;
-                state->store[(line << 2) + 2] = (word >>  8) & 0x000000ff;
-                state->store[(line << 2) + 3] = (word >>  0) & 0x000000ff;
+                state->m_store[(line << 2) + 0] = (word >> 24) & 0x000000ff;
+                state->m_store[(line << 2) + 1] = (word >> 16) & 0x000000ff;
+                state->m_store[(line << 2) + 2] = (word >>  8) & 0x000000ff;
+                state->m_store[(line << 2) + 3] = (word >>  0) & 0x000000ff;
             }
             else if(strcmp(image_ext, ".asm") == 0)
             {
@@ -607,10 +607,10 @@ static DEVICE_IMAGE_LOAD(ssem_store)
                     word = 0x00070000 | unsigned_value;
                 }
 
-                state->store[(line << 2) + 0] = (word >> 24) & 0x000000ff;
-                state->store[(line << 2) + 1] = (word >> 16) & 0x000000ff;
-                state->store[(line << 2) + 2] = (word >>  8) & 0x000000ff;
-                state->store[(line << 2) + 3] = (word >>  0) & 0x000000ff;
+                state->m_store[(line << 2) + 0] = (word >> 24) & 0x000000ff;
+                state->m_store[(line << 2) + 1] = (word >> 16) & 0x000000ff;
+                state->m_store[(line << 2) + 2] = (word >>  8) & 0x000000ff;
+                state->m_store[(line << 2) + 3] = (word >>  0) & 0x000000ff;
             }
         }
     }
@@ -624,8 +624,8 @@ static DEVICE_IMAGE_LOAD(ssem_store)
 
 static MACHINE_RESET( ssem )
 {
-	ssem_state *state = machine->driver_data<ssem_state>();
-    state->store_line = 0;
+	ssem_state *state = machine.driver_data<ssem_state>();
+    state->m_store_line = 0;
 }
 
 static MACHINE_CONFIG_START( ssem, ssem_state )
@@ -642,16 +642,16 @@ static MACHINE_CONFIG_START( ssem, ssem_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
     MCFG_SCREEN_SIZE(256, 280)
     MCFG_SCREEN_VISIBLE_AREA(0, 255, 0, 279)
+    MCFG_SCREEN_UPDATE(ssem)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(generic_bitmapped)
-    MCFG_VIDEO_UPDATE(ssem)
 
     /* cartridge */
     MCFG_CARTSLOT_ADD("cart")
     MCFG_CARTSLOT_EXTENSION_LIST("snp,asm")
-    MCFG_CARTSLOT_MANDATORY
     MCFG_CARTSLOT_LOAD(ssem_store)
 MACHINE_CONFIG_END
 

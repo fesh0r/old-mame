@@ -9,7 +9,7 @@
 #include "ti_fdc.h"
 #include "machine/wd17xx.h"
 #include "formats/ti99_dsk.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 
 #define CRU_BASE 0x1100
 
@@ -27,6 +27,10 @@ typedef struct _ti99_fdc_state
 
 	/* When TRUE, card is accessible. Indicated by a LED. */
 	int					selected;
+
+	/* Used for GenMod. */
+	int					select_mask;
+	int					select_value;
 
 	/* When TRUE, keeps DVENA high. */
 	int					strobe_motor;
@@ -73,6 +77,8 @@ the controller. */
 INLINE ti99_fdc_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == TIFDC);
+
 	return (ti99_fdc_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -96,7 +102,7 @@ static void fdc_handle_hold(device_t *device)
 		state = CLEAR_LINE;
 
 	// TODO: use READY
-	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_HALT, state);
+	cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_HALT, state);
 }
 
 /*
@@ -114,9 +120,9 @@ static void set_geometry(device_t *drive, floppy_type_t type)
 
 static void set_all_geometries(device_t *device, floppy_type_t type)
 {
-	set_geometry(device->machine->device(PFLOPPY_0), type);
-	set_geometry(device->machine->device(PFLOPPY_1), type);
-	set_geometry(device->machine->device(PFLOPPY_2), type);
+	set_geometry(device->machine().device(PFLOPPY_0), type);
+	set_geometry(device->machine().device(PFLOPPY_1), type);
+	set_geometry(device->machine().device(PFLOPPY_2), type);
 }
 
 
@@ -173,7 +179,7 @@ static WRITE8_DEVICE_HANDLER( cru_w )
 			{	/* on rising edge, set motor_running for 4.23s */
 				card->DVENA = TRUE;
 				fdc_handle_hold(device);
-				timer_adjust_oneshot(card->motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
+				card->motor_on_timer->adjust(attotime::from_msec(4230));
 			}
 			card->strobe_motor = data;
 			break;
@@ -233,7 +239,7 @@ static READ8Z_DEVICE_HANDLER( data_r )
 
 	if (card->selected)
 	{
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & card->select_mask)==card->select_value)
 		{
 			// only use the even addresses from 1ff0 to 1ff6.
 			// Note that data is inverted.
@@ -258,7 +264,7 @@ static WRITE8_DEVICE_HANDLER( data_w )
 	ti99_fdc_state *card = get_safe_token(device);
 	if (card->selected)
 	{
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & card->select_mask)==card->select_value)
 		{
 			// only use the even addresses from 1ff8 to 1ffe.
 			// Note that data is inverted.
@@ -336,17 +342,17 @@ static const ti99_peb_card fdc_card =
 
 static DEVICE_START( ti99_fdc )
 {
-	ti99_fdc_state *card = (ti99_fdc_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_fdc_state *card = get_safe_token(device);
 
 	/* Resolve the callbacks to the PEB */
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
 	devcb_resolve_write_line(&card->lines.ready, &topeb->ready, device);
 
-	card->motor_on_timer = timer_alloc(device->machine, motor_on_timer_callback, (void *)device);
+	card->motor_on_timer = device->machine().scheduler().timer_alloc(FUNC(motor_on_timer_callback), (void *)device);
 
 	astring *region = new astring();
 	astring_assemble_3(region, device->tag(), ":", fdc_region);
-	card->rom = device->machine->region(astring_c(region))->base();
+	card->rom = device->machine().region(astring_c(region))->base();
 	card->controller = device->subdevice("fd1771");
 }
 
@@ -357,10 +363,10 @@ static DEVICE_STOP( ti99_fdc )
 
 static DEVICE_RESET( ti99_fdc )
 {
-	ti99_fdc_state *card = (ti99_fdc_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_fdc_state *card = get_safe_token(device);
 
 	/* If the card is selected in the menu, register the card */
-	if (input_port_read(device->machine, "DISKCTRL") == DISK_TIFDC)
+	if (input_port_read(device->machine(), "DISKCTRL") == DISK_TIFDC)
 	{
 		device_t *peb = device->owner();
 		int success = mount_card(peb, device, &fdc_card, get_pebcard_config(device)->slot);
@@ -370,6 +376,16 @@ static DEVICE_RESET( ti99_fdc )
 		card->SIDSEL = 0;
 		card->DVENA = 0;
 		card->strobe_motor = 0;
+
+		card->select_mask = 0x7e000;
+		card->select_value = 0x74000;
+
+		if (input_port_read(device->machine(), "MODE")==GENMOD)
+		{
+			// GenMod card modification
+			card->select_mask = 0x1fe000;
+			card->select_value = 0x174000;
+		}
 
 		ti99_set_80_track_drives(FALSE);
 
@@ -384,7 +400,7 @@ static WRITE_LINE_DEVICE_HANDLER( ti99_fdc_ready )
 {
 	// Caution: The device pointer passed to this function is the calling
 	// device. That is, if we want *this* device, we need to take the owner.
-	ti99_fdc_state *card = (ti99_fdc_state*)downcast<legacy_device_base *>(device->owner())->token();
+	ti99_fdc_state *card = get_safe_token(device->owner());
 	devcb_call_write_line( &card->lines.ready, state );
 }
 #endif
@@ -403,6 +419,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_fdc##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "TI Floppy Disk Controller Card"
+#define DEVTEMPLATE_SHORTNAME           "tifdc"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

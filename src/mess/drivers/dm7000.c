@@ -67,7 +67,7 @@ public:
  400c 000x   scp
  400d 000x   modem
 */
-static ADDRESS_MAP_START( dm7000_mem, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( dm7000_mem, AS_PROGRAM, 32 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x01ffffff) AM_RAM	// RAM page 0 - 32MB
 	AM_RANGE(0x20000000, 0x21ffffff) AM_RAM // RAM page 1 - 32MB
@@ -87,7 +87,7 @@ static VIDEO_START( dm7000 )
 {
 }
 
-static VIDEO_UPDATE( dm7000 )
+static SCREEN_UPDATE( dm7000 )
 {
     return 0;
 }
@@ -106,11 +106,12 @@ static MACHINE_CONFIG_START( dm7000, dm7000_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(dm7000)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(dm7000)
-    MCFG_VIDEO_UPDATE(dm7000)
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -134,7 +135,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 2003, dm7000,  0,       0,	dm7000, 	dm7000, 	 0,   "Dream Multimedia",   "Dreambox 7000",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 2004, dm5620,  dm7000,  0,	dm7000, 	dm7000, 	 0,   "Dream Multimedia",   "Dreambox 5620",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 2006, dm500,   dm7000,  0,	dm7000, 	dm7000, 	 0,   "Dream Multimedia",   "Dreambox 500",			GAME_NOT_WORKING | GAME_NO_SOUND)
+SYST( 2003, dm7000,  0,       0,	dm7000, 	dm7000, 	 0,   "Dream Multimedia",   "Dreambox 7000",		GAME_NOT_WORKING | GAME_NO_SOUND)
+SYST( 2004, dm5620,  dm7000,  0,	dm7000, 	dm7000, 	 0,   "Dream Multimedia",   "Dreambox 5620",		GAME_NOT_WORKING | GAME_NO_SOUND)
+SYST( 2006, dm500,   dm7000,  0,	dm7000, 	dm7000, 	 0,   "Dream Multimedia",   "Dreambox 500",			GAME_NOT_WORKING | GAME_NO_SOUND)
 

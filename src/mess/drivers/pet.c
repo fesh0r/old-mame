@@ -387,7 +387,7 @@ normal keyboards?
 #include "includes/pet.h"
 #include "machine/cbmipt.h"
 #include "video/mc6845.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "machine/c2040.h"
 
 /* devices config */
@@ -401,8 +401,8 @@ normal keyboards?
  *
  *************************************/
 
-static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_MEMBER(pet_state, videoram)
+static ADDRESS_MAP_START(pet_mem , AS_PROGRAM, 8)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_MEMBER(pet_state, m_videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -411,8 +411,8 @@ static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_MEMBER(pet_state, videoram)
+static ADDRESS_MAP_START( pet40_mem , AS_PROGRAM, 8)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_MEMBER(pet_state, m_videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -422,7 +422,7 @@ static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pet80_mem , AS_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x8fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x9000, 0x9fff) AM_RAMBANK("bank2")
 	AM_RANGE(0xa000, 0xafff) AM_RAMBANK("bank3")
@@ -458,9 +458,9 @@ ADDRESS_MAP_END
         bit 7    1=enable system latch
 
 */
-static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("share1") AM_BASE_MEMBER(pet_state, memory)
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2") AM_BASE_MEMBER(pet_state, videoram)
+static ADDRESS_MAP_START( superpet_mem , AS_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("share1") AM_BASE_MEMBER(pet_state, m_memory)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2") AM_BASE_MEMBER(pet_state, m_videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -473,7 +473,7 @@ static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( superpet_m6809_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( superpet_m6809_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("share1")	/* same memory as m6502 */
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2")	/* same memory as m6502 */
     AM_RANGE(0x9000, 0x9fff) AM_RAMBANK("bank1")	/* 64 kbyte ram turned in */
@@ -637,9 +637,9 @@ static VIDEO_START( pet_crtc )
 {
 }
 
-static VIDEO_UPDATE( pet_crtc )
+static SCREEN_UPDATE( pet_crtc )
 {
-	device_t *mc6845 = screen->machine->device("crtc");
+	device_t *mc6845 = screen->machine().device("crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
@@ -674,11 +674,11 @@ static MACHINE_CONFIG_START( pet_general, pet_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(320, 200)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320 - 1, 0, 200 - 1)
+	MCFG_SCREEN_UPDATE( pet )
+	
 	MCFG_GFXDECODE( pet )
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(pet_palette) / 3)
 	MCFG_PALETTE_INIT( pet )
-
-	MCFG_VIDEO_UPDATE( pet )
 
 	/* cassette */
 	MCFG_CASSETTE_ADD( "cassette1", cbm_cassette_config )
@@ -698,7 +698,7 @@ static MACHINE_CONFIG_DERIVED( pet, pet_general )
 	MCFG_FRAGMENT_ADD(pet_cartslot)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 	MCFG_RAM_EXTRA_OPTIONS("8K,16K")
 
@@ -717,7 +717,7 @@ static MACHINE_CONFIG_DERIVED( pet2001, pet_general )
 	MCFG_FRAGMENT_ADD(pet_cartslot)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("8K")
 	MCFG_RAM_EXTRA_OPTIONS("4K")
 
@@ -734,7 +734,8 @@ static MACHINE_CONFIG_DERIVED( pet40, pet )
 	MCFG_MC6845_ADD("crtc", MC6845, XTAL_17_73447MHz/3	/* This is a wild guess and mostly likely incorrect */, crtc_pet40)
 
 	MCFG_VIDEO_START( pet_crtc )
-	MCFG_VIDEO_UPDATE( pet_crtc )
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE( pet_crtc )
 
 	MCFG_FRAGMENT_ADD(pet4_cartslot)
 MACHINE_CONFIG_END
@@ -759,19 +760,19 @@ static MACHINE_CONFIG_DERIVED( pet80, pet_general )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 250)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 250 - 1)
+	MCFG_SCREEN_UPDATE( pet_crtc )
 
 	MCFG_MC6845_ADD("crtc", MC6845, XTAL_12MHz / 2	/* This is a wild guess and mostly likely incorrect */, crtc_pet80)
 
 	MCFG_GFXDECODE( pet80 )
 	MCFG_VIDEO_START( pet_crtc )
-	MCFG_VIDEO_UPDATE( pet_crtc )
 
 	MCFG_PIA6821_MODIFY( "pia_0", petb_pia0 )
 
 	MCFG_FRAGMENT_ADD(pet4_cartslot)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 
 	/* IEEE bus */

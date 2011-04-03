@@ -24,7 +24,7 @@ typedef ti99_pebcard_config ti99_speech_config;
 
 typedef struct _ti99_speech_state
 {
-	device_t			*vsp;
+	device_t				*vsp;
 	UINT8					*speechrom_data;		/* pointer to speech ROM data */
 	int 					load_pointer;			/* which 4-bit nibble will be affected by load address */
 	int 					ROM_bits_count;				/* current bit position in ROM */
@@ -32,11 +32,15 @@ typedef struct _ti99_speech_state
 	UINT32					speechROMlen;			/* length of data pointed by speechrom_data, from 0 to 2^18 */
 	ti99_peb_connect		lines;
 
+	int						select_mask;
+	int						select_value;
 } ti99_speech_state;
 
 INLINE ti99_speech_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == TISPEECH);
+
 	return (ti99_speech_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -131,9 +135,9 @@ static READ8Z_DEVICE_HANDLER( speech_rz )
 {
 	ti99_speech_state *adapter = get_safe_token(device);
 
-	if ((offset & 0xfc01)==0x9000)
+	if ((offset & adapter->select_mask)==adapter->select_value)
 	{
-		cpu_adjust_icount(device->machine->device("maincpu"),-(18+3));		/* this is just a minimum, it can be more */
+		device_adjust_icount(device->machine().device("maincpu"),-(18+3));		/* this is just a minimum, it can be more */
 		*value = tms5220_status_r(adapter->vsp, offset) & 0xff;
 	}
 }
@@ -145,9 +149,9 @@ static WRITE8_DEVICE_HANDLER( speech_w )
 {
 	ti99_speech_state *adapter = get_safe_token(device);
 
-	if ((offset & 0xfc01)==0x9400)
+	if ((offset & adapter->select_mask)==(adapter->select_value | 0x0400))
 	{
-		cpu_adjust_icount(device->machine->device("maincpu"),-(54+3));		/* this is just an approx. minimum, it can be much more */
+		device_adjust_icount(device->machine().device("maincpu"),-(54+3));		/* this is just an approx. minimum, it can be much more */
 
 		/* RN: the stupid design of the tms5220 core means that ready is cleared */
 		/* when there are 15 bytes in FIFO.  It should be 16.  Of course, if */
@@ -155,12 +159,12 @@ static WRITE8_DEVICE_HANDLER( speech_w )
 		/* which would be more complex. */
 		if (!tms5220_readyq_r(adapter->vsp))
 		{
-			attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(adapter->vsp));
-			int cycles_to_ready = device->machine->device<cpu_device>("maincpu")->attotime_to_cycles(time_to_ready);
-			logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
+			attotime time_to_ready = attotime::from_double(tms5220_time_to_ready(adapter->vsp));
+			int cycles_to_ready = device->machine().device<cpu_device>("maincpu")->attotime_to_cycles(time_to_ready);
+			logerror("time to ready: %f -> %d\n", time_to_ready.as_double(), (int) cycles_to_ready);
 
-			cpu_adjust_icount(device->machine->device("maincpu"),-cycles_to_ready);
-			timer_set(device->machine, attotime_zero, NULL, 0, NULL);
+			device_adjust_icount(device->machine().device("maincpu"),-cycles_to_ready);
+			device->machine().scheduler().timer_set(attotime::zero, FUNC(NULL));
 		}
 		tms5220_data_w(adapter->vsp, offset, data);
 	}
@@ -178,7 +182,7 @@ static const ti99_peb_card speech_adapter_card =
 
 static DEVICE_START( ti99_speech )
 {
-	ti99_speech_state *adapter = (ti99_speech_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_speech_state *adapter = get_safe_token(device);
 	/* Resolve the callbacks to the PEB */
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
 	devcb_resolve_write_line(&adapter->lines.ready, &topeb->ready, device);
@@ -191,11 +195,11 @@ static DEVICE_STOP( ti99_speech )
 
 static DEVICE_RESET( ti99_speech )
 {
-	ti99_speech_state *adapter = (ti99_speech_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_speech_state *adapter = get_safe_token(device);
 	/* Register the adapter */
 	device_t *peb = device->owner();
 
-	if (input_port_read(device->machine, "SPEECH"))
+	if (input_port_read(device->machine(), "SPEECH"))
 	{
 		int success = mount_card(peb, device, &speech_adapter_card, get_pebcard_config(device)->slot);
 		if (!success)
@@ -207,17 +211,27 @@ static DEVICE_RESET( ti99_speech )
 		astring *region = new astring();
 		astring_assemble_3(region, device->tag(), ":", speech_region);
 
-		adapter->speechrom_data = device->machine->region(astring_c(region))->base();
-		adapter->speechROMlen = device->machine->region(astring_c(region))->bytes();
+		adapter->speechrom_data = device->machine().region(astring_c(region))->base();
+		adapter->speechROMlen = device->machine().region(astring_c(region))->bytes();
 		adapter->speechROMaddr = 0;
 		adapter->load_pointer = 0;
 		adapter->ROM_bits_count = 0;
+
+		adapter->select_mask = 0x7fc01;
+		adapter->select_value = 0x79000;
+
+		if (input_port_read(device->machine(), "MODE")==GENMOD)
+		{
+			// GenMod card modification
+			adapter->select_mask = 0x1ffc01;
+			adapter->select_value = 0x179000;
+		}
 	}
 }
 
 static WRITE_LINE_DEVICE_HANDLER( speech_ready )
 {
-	ti99_speech_state *adapter = (ti99_speech_state*)downcast<legacy_device_base *>(device->owner())->token();
+	ti99_speech_state *adapter = get_safe_token(device->owner());
 	logerror("speech: READY called by VSP\n");
 	devcb_call_write_line( &adapter->lines.ready, state );
 }
@@ -251,6 +265,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_speech##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_INLINE_CONFIG | DT_HAS_ROM_REGION | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "TI-99 Speech Synthesizer"
+#define DEVTEMPLATE_SHORTNAME           "ti99spsyn"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

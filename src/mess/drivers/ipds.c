@@ -20,13 +20,13 @@ public:
 };
 
 
-static ADDRESS_MAP_START(ipds_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ipds_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( ipds_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( ipds_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
@@ -35,11 +35,11 @@ static INPUT_PORTS_START( ipds )
 INPUT_PORTS_END
 
 
-I8275_DISPLAY_PIXELS(ipds_display_pixels)
+static I8275_DISPLAY_PIXELS(ipds_display_pixels)
 {
 	int i;
-	bitmap_t *bitmap = device->machine->generic.tmpbitmap;
-	UINT8 *charmap = device->machine->region("gfx1")->base();
+	bitmap_t *bitmap = device->machine().generic.tmpbitmap;
+	UINT8 *charmap = device->machine().region("gfx1")->base();
 	UINT8 pixels = charmap[(linecount & 7) + (charcode << 3)] ^ 0xff;
 	if (vsp) {
 		pixels = 0;
@@ -66,14 +66,14 @@ const i8275_interface ipds_i8275_interface = {
 
 static MACHINE_RESET(ipds)
 {
-	cpu_set_reg(machine->device("maincpu"), I8085_PC, (UINT64)0x0000);
+	cpu_set_reg(machine.device("maincpu"), I8085_PC, (UINT64)0x0000);
 }
 
-static VIDEO_UPDATE( ipds )
+static SCREEN_UPDATE( ipds )
 {
-    device_t *devconf = screen->machine->device("i8275");
+    device_t *devconf = screen->machine().device("i8275");
 	i8275_update( devconf, bitmap, cliprect);
-	VIDEO_UPDATE_CALL ( generic_bitmapped );
+	SCREEN_UPDATE_CALL ( generic_bitmapped );
 	return 0;
 }
 
@@ -110,6 +110,8 @@ static MACHINE_CONFIG_START( ipds, ipds_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(ipds)
+
 	MCFG_GFXDECODE(ipds)
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
@@ -117,7 +119,6 @@ static MACHINE_CONFIG_START( ipds, ipds_state )
 	MCFG_I8275_ADD	( "i8275", ipds_i8275_interface)
 
     MCFG_VIDEO_START(generic_bitmapped)
-    MCFG_VIDEO_UPDATE(ipds)
 MACHINE_CONFIG_END
 
 /* ROM definition */

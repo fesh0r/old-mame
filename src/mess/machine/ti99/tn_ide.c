@@ -53,6 +53,10 @@ typedef struct _tn_ide_state
 {
 	int 	selected;
 
+	/* Used for GenMod */
+	int		select_mask;
+	int		select_value;
+
 	device_t		*rtc;
 	device_t		*ide;
 
@@ -78,6 +82,8 @@ typedef struct _tn_ide_state
 INLINE tn_ide_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == TNIDE);
+
 	return (tn_ide_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -157,7 +163,7 @@ static READ8Z_DEVICE_HANDLER( data_rz )
 	tn_ide_state *card = get_safe_token(device);
 	UINT8 reply = 0;
 
-	if (((offset & 0xe000)==0x4000) && card->selected)
+	if (((offset & card->select_mask)==card->select_value) && card->selected)
 	{
 		int addr = offset & 0x1fff;
 
@@ -223,7 +229,7 @@ static WRITE8_DEVICE_HANDLER( data_w )
 {
 	tn_ide_state *card = get_safe_token(device);
 
-	if (((offset & 0xe000)==0x4000) && card->selected)
+	if (((offset & card->select_mask)==card->select_value) && card->selected)
 	{
 		if (card->cru_register & cru_reg_page_switching)
 		{
@@ -346,7 +352,7 @@ static DEVICE_START( tn_ide )
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
 	devcb_resolve_write_line(&card->lines.inta, &topeb->inta, device);
 
-	card->ram = auto_alloc_array(device->machine, UINT8, 0x080000);
+	card->ram = auto_alloc_array(device->machine(), UINT8, 0x080000);
 	card->sram_enable_dip = 0;
 }
 
@@ -359,7 +365,7 @@ static DEVICE_RESET( tn_ide )
 	tn_ide_state *card = get_safe_token(device);
 	device_t *peb = device->owner();
 
-	if (input_port_read(device->machine, "HDCTRL") & HD_IDE)
+	if (input_port_read(device->machine(), "HDCTRL") & HD_IDE)
 	{
 		int success = mount_card(peb, device, &tn_ide_card, get_pebcard_config(device)->slot);
 		if (!success) return;
@@ -367,6 +373,17 @@ static DEVICE_RESET( tn_ide )
 		card->cur_page = 0;
 		card->sram_enable = 0;
 		card->cru_register = 0;
+
+		card->select_mask = 0x7e000;
+		card->select_value = 0x74000;
+
+		if (input_port_read(device->machine(), "MODE")==GENMOD)
+		{
+			// GenMod card modification
+			card->select_mask = 0x1fe000;
+			card->select_value = 0x174000;
+		}
+
 		card->tms9995_mode =  (device->type()==TMS9995);
 	}
 }

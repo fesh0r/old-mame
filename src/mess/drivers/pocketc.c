@@ -12,7 +12,7 @@
 #include "includes/pc1251.h"
 #include "includes/pc1350.h"
 #include "includes/pc1403.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* pc1430 no peek poke operations! */
 
@@ -80,42 +80,42 @@
 /* special keys
    red c-ce and reset; warm boot, program NOT lost*/
 
-static ADDRESS_MAP_START( pc1401_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1401_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x3800, 0x47ff) AM_RAM
 	AM_RANGE( 0x6000, 0x67ff) AM_READWRITE( pc1401_lcd_read, pc1401_lcd_write ) AM_MIRROR(0x1000)
 	AM_RANGE( 0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1402_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1402_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x2000, 0x47ff) AM_RAM
 	AM_RANGE( 0x6000, 0x67ff) AM_READWRITE( pc1401_lcd_read, pc1401_lcd_write ) AM_MIRROR(0x1000)
 	AM_RANGE( 0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1250_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1250_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x4000, 0x7fff) AM_ROM
 	AM_RANGE( 0xc000, 0xc7ff) AM_RAM // 2KB RAM
 	AM_RANGE( 0xf800, 0xf8ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1251_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1251_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x4000, 0x7fff) AM_ROM
 	AM_RANGE( 0xb800, 0xc7ff) AM_RAM // 4KB RAM
 	AM_RANGE( 0xf800, 0xf8ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1255_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1255_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x4000, 0x7fff) AM_ROM
 	AM_RANGE( 0xa000, 0xc7ff) AM_RAM // 10KB RAM
 	AM_RANGE( 0xf800, 0xf8ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1260_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1260_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x2000, 0x20ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
 	//AM_RANGE( 0x2800, 0x28ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
@@ -123,7 +123,7 @@ static ADDRESS_MAP_START( pc1260_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1261_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1261_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x2000, 0x20ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
 	//AM_RANGE( 0x2800, 0x28ff) AM_READWRITE( pc1251_lcd_read, pc1251_lcd_write)
@@ -132,13 +132,13 @@ static ADDRESS_MAP_START( pc1261_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( pc1350_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1350_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x7000, 0x7eff) AM_READWRITE( pc1350_lcd_read, pc1350_lcd_write )
 	AM_RANGE( 0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1403_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1403_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x3000, 0x30bf) AM_READWRITE( pc1403_lcd_read, pc1403_lcd_write )
 	AM_RANGE( 0x3800, 0x3fff) AM_READWRITE( pc1403_asic_read, pc1403_asic_write )
@@ -146,7 +146,7 @@ static ADDRESS_MAP_START( pc1403_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xe000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1403h_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1403h_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
 	AM_RANGE( 0x3000, 0x30bf) AM_READWRITE( pc1403_lcd_read, pc1403_lcd_write )
 	AM_RANGE( 0x3800, 0x3fff) AM_READWRITE( pc1403_asic_read, pc1403_asic_write )
@@ -156,13 +156,13 @@ ADDRESS_MAP_END
 
 
 #if 0
-static ADDRESS_MAP_START( pc1421_readmem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1421_readmem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_READ( SMH_ROM )
 	AM_RANGE( 0x3800, 0x47ff) AM_READ( SMH_RAM )
 	AM_RANGE( 0x8000, 0xffff) AM_READ( SMH_ROM )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pc1421_writemem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc1421_writemem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_WRITE( SMH_ROM )
 	AM_RANGE( 0x2000, 0x37ff) AM_WRITE( SMH_RAM )
 	AM_RANGE( 0x3800, 0x47ff) AM_WRITE( SMH_RAM )
@@ -716,7 +716,7 @@ static const sc61860_cpu_core pc1401_config =
 };
 
 static MACHINE_CONFIG_FRAGMENT( pocketc )
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_NVRAM_HANDLER( pc1401 )
 
@@ -749,8 +749,8 @@ static MACHINE_CONFIG_START( pc1401, pc1401_state )
 
 	MCFG_FRAGMENT_ADD(pocketc)
 
-	MCFG_VIDEO_UPDATE( pc1401 )
-
+	MCFG_SCREEN_MODIFY("screen")
+	MCFG_SCREEN_UPDATE( pc1401 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc1402, pc1401 )
@@ -779,9 +779,8 @@ static MACHINE_CONFIG_START( pc1250, pc1251_state )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(608, 300)
 	MCFG_SCREEN_VISIBLE_AREA(0, 608-1, 0, 300-1)
+	MCFG_SCREEN_UPDATE( pc1251 )	
 	MCFG_GFXDECODE( pc1251 )
-
-	MCFG_VIDEO_UPDATE( pc1251 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc1251, pc1250 )
@@ -796,19 +795,19 @@ MACHINE_CONFIG_END
 
 static NVRAM_HANDLER( pc1260 )
 {
-	device_t *main_cpu = machine->device("maincpu");
-	UINT8 *ram = machine->region("maincpu")->base() + 0x4000;
+	device_t *main_cpu = machine.device("maincpu");
+	UINT8 *ram = machine.region("maincpu")->base() + 0x4000;
 	UINT8 *cpu = sc61860_internal_ram(main_cpu);
 
 	if (read_or_write)
 	{
-		mame_fwrite(file, cpu, 96);
-		mame_fwrite(file, ram, 0x2800);
+		file->write(cpu, 96);
+		file->write(ram, 0x2800);
 	}
 	else if (file)
 	{
-		mame_fread(file, cpu, 96);
-		mame_fread(file, ram, 0x2800);
+		file->read(cpu, 96);
+		file->read(ram, 0x2800);
 	}
 	else
 	{
@@ -855,11 +854,10 @@ static MACHINE_CONFIG_START( pc1350, pc1350_state )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(640, 252)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 252-1)
-
-	MCFG_VIDEO_UPDATE( pc1350 )
+	MCFG_SCREEN_UPDATE( pc1350 )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("4K")
 	MCFG_RAM_EXTRA_OPTIONS("12K,20K")
 MACHINE_CONFIG_END
@@ -895,9 +893,9 @@ static MACHINE_CONFIG_START( pc1403, pc1403_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 848-1, 0, 320-1)
 //  MCFG_SCREEN_SIZE(848, 361)
 //  MCFG_SCREEN_VISIBLE_AREA(0, 848-1, 0, 361-1)
+	MCFG_SCREEN_UPDATE( pc1403 )
 
 	MCFG_VIDEO_START( pc1403 )
-	MCFG_VIDEO_UPDATE( pc1403 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc1403h, pc1403 )
@@ -1008,13 +1006,6 @@ ROM_END
    clone tandy pc2 look into drivers/pc1500.c
    pc1600
 */
-ROM_START( pc1500 )
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "sys1500.rom", 0x0000, 0x4000, CRC(d480b50d) SHA1(4bf748ba4d7c2b7cd7da7f3fdefcdd2e4cd41c4e))
-    ROM_REGION( 0x10000, "ce150", ROMREGION_ERASEFF )
-	ROM_LOAD( "ce-150.rom", 0x0000, 0x2000, CRC(8fa1df6d) SHA1(a3aa02a641a46c27c0d4c0dc025b0dbe9b5b79c8))
-	ROM_REGION(0x100,"gfx1",ROMREGION_ERASEFF)
-ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE INPUT   INIT         COMPANY     FULLNAME */
 /* cpu sc61860 */
@@ -1030,7 +1021,6 @@ COMP( 1982, pc1261,	pc1260,	0,	pc1261,	pc1251,	pc1251,	 "Sharp", "Pocket Compute
 /* pc1261/pc1262 */
 COMP( 1984, pc1350,	0,	0,	pc1350,	pc1350,	0,	 "Sharp", "Pocket Computer 1350", GAME_NO_SOUND )
 COMP( 198?, pc1450,	0,	0,	pc1350,	pc1350,	0,	 "Sharp", "Pocket Computer 1450", GAME_NOT_WORKING | GAME_NO_SOUND )
-COMP( 198?, pc1500,	0,	0,	pc1350,	pc1350,	0,	 "Sharp", "Pocket Computer 1500", GAME_NOT_WORKING | GAME_NO_SOUND )
 
 COMP( 1983, pc1401,	0,	0,	pc1401,	pc1401,	pc1401,	"Sharp", "Pocket Computer 1401", GAME_NO_SOUND)
 COMP( 1984, pc1402,	pc1401,	0,	pc1402,	pc1401,	pc1401,	 "Sharp", "Pocket Computer 1402", GAME_NO_SOUND)

@@ -21,6 +21,8 @@ typedef struct _ti99_samsmem_state
 INLINE ti99_samsmem_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == SAMSMEM);
+
 	return (ti99_samsmem_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -102,23 +104,23 @@ static const ti99_peb_card samsmem_card =
 
 static DEVICE_START( ti99_samsmem )
 {
-	ti99_samsmem_state *card = (ti99_samsmem_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_samsmem_state *card = get_safe_token(device);
 	card->memory=NULL;
 }
 
 static DEVICE_STOP( ti99_samsmem )
 {
-	ti99_samsmem_state *card = (ti99_samsmem_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_samsmem_state *card = get_safe_token(device);
 	if (card->memory) free(card->memory);
 }
 
 static DEVICE_RESET( ti99_samsmem )
 {
-	ti99_samsmem_state *card = (ti99_samsmem_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_samsmem_state *card = get_safe_token(device);
 	/* Register the card */
 	device_t *peb = device->owner();
 
-	if (input_port_read(device->machine, "RAM")==RAM_SUPERAMS1024)
+	if (input_port_read(device->machine(), "RAM")==RAM_SUPERAMS1024)
 	{
 		int success = mount_card(peb, device, &samsmem_card, get_pebcard_config(device)->slot);
 		if (!success) return;

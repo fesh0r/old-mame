@@ -3,14 +3,31 @@
 #ifndef __ABC800__
 #define __ABC800__
 
+#define ADDRESS_MAP_MODERN
+
+#include "emu.h"
+#include "cpu/z80/z80.h"
+#include "cpu/z80/z80daisy.h"
+#include "cpu/mcs48/mcs48.h"
+#include "imagedev/cassette.h"
+#include "imagedev/printer.h"
 #include "machine/abc77.h"
+#include "machine/abc99.h"
+#include "machine/abc830.h"
+#include "machine/abcbus.h"
+#include "machine/e0516.h"
+#include "machine/lux21046.h"
 #include "machine/z80ctc.h"
 #include "machine/z80dart.h"
+#include "machine/ram.h"
+#include "sound/discrete.h"
+#include "video/mc6845.h"
+#include "video/saa5050.h"
 
 
 
 //**************************************************************************
-//	MACROS / CONSTANTS
+//  MACROS / CONSTANTS
 //**************************************************************************
 
 #define ABC800_X01	XTAL_12MHz
@@ -35,7 +52,7 @@
 
 #define SCREEN_TAG		"screen"
 #define Z80_TAG			"z80"
-#define I8048_TAG 		"i8048"
+#define I8048_TAG		"i8048"
 #define E0516_TAG		"j13"
 #define MC6845_TAG		"b12"
 #define SAA5052_TAG		"5c"
@@ -48,7 +65,7 @@
 
 
 //**************************************************************************
-//	TYPE DEFINITIONS
+//  TYPE DEFINITIONS
 //**************************************************************************
 
 // ======================> abc800_state
@@ -63,14 +80,14 @@ public:
 		  m_dart(*this, Z80DART_TAG),
 		  m_sio(*this, Z80SIO_TAG),
 		  m_discrete(*this, "discrete"),
-		  m_ram(*this, "messram")
+		  m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_ctc;
-	required_device<device_t> m_dart;
+	required_device<z80dart_device> m_dart;
 	required_device<device_t> m_sio;
-	required_device<device_t> m_discrete;
+	optional_device<device_t> m_discrete;
 	required_device<device_t> m_ram;
 
 	virtual void machine_start();
@@ -88,6 +105,9 @@ public:
 	DECLARE_READ8_MEMBER( keyboard_t1_r );
 	DECLARE_WRITE8_MEMBER( hrs_w );
 	DECLARE_WRITE8_MEMBER( hrc_w );
+	DECLARE_WRITE_LINE_MEMBER( ctc_z0_w );
+	DECLARE_WRITE_LINE_MEMBER( ctc_z1_w );
+	DECLARE_WRITE_LINE_MEMBER( ctc_z2_w );
 
 	// cpu state
 	int m_fetch_charram;			// opcode fetched from character RAM region (0x7800-0x7fff)
@@ -96,7 +116,7 @@ public:
 	UINT8 *m_char_ram;				// character RAM
 	UINT8 *m_video_ram;				// HR video RAM
 	const UINT8 *m_char_rom;		// character generator ROM
-	const UINT8 *fgctl_prom;		// foreground control PROM
+	const UINT8 *m_fgctl_prom;		// foreground control PROM
 	UINT8 m_hrs;					// HR picture start scanline
 	UINT8 m_fgctl;					// HR foreground control
 
@@ -110,9 +130,9 @@ public:
 	int m_pling;					// pling
 
 	// serial state
+	UINT8 m_sb;
 	int m_sio_rxcb;
 	int m_sio_txcb;
-	int keylatch;
 };
 
 class abc800m_state : public abc800_state
@@ -125,7 +145,7 @@ public:
 
 	required_device<device_t> m_crtc;
 
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	void hr_update(bitmap_t *bitmap, const rectangle *cliprect);
 };
@@ -140,42 +160,30 @@ public:
 
 	required_device<device_t> m_trom;
 
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	void hr_update(bitmap_t *bitmap, const rectangle *cliprect);
 };
 
 // ======================> abc802_state
 
-class abc802_state : public driver_device
+class abc802_state : public abc800_state
 {
 public:
 	abc802_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
-		  m_maincpu(*this, Z80_TAG),
-		  m_ctc(*this, Z80CTC_TAG),
-		  m_dart(*this, Z80DART_TAG),
-		  m_sio(*this, Z80SIO_TAG),
+		: abc800_state(machine, config),
 		  m_crtc(*this, MC6845_TAG),
-		  abc77(*this, ABC77_TAG),
-		  m_discrete(*this, "discrete"),
-		  m_ram(*this, "messram")
+		  m_abc77(*this, ABC77_TAG)
 	{ }
 
-	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_ctc;
-	required_device<device_t> m_dart;
-	required_device<device_t> m_sio;
 	required_device<device_t> m_crtc;
-	optional_device<device_t> abc77;
-	required_device<device_t> m_discrete;
-	required_device<device_t> m_ram;
+	optional_device<device_t> m_abc77;
 
 	virtual void machine_start();
 	virtual void machine_reset();
 
 	virtual void video_start();
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	void bankswitch();
 
@@ -188,50 +196,39 @@ public:
 	int m_lrs;					// low RAM select
 
 	// video state
-	UINT8 *m_char_ram;			// character RAM
 	const UINT8 *m_char_rom;	// character generator ROM
 
 	int m_flshclk_ctr;			// flash clock counter
 	int m_flshclk;				// flash clock
 	int m_80_40_mux;			// 40/80 column mode
 
-	// sound state
-	int m_pling;				// pling
+	// fake keyboard state
+	int m_keylatch;
 };
 
 
 // ======================> abc806_state
 
-class abc806_state : public driver_device
+class abc806_state : public abc800_state
 {
 public:
 	abc806_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
-		  m_maincpu(*this, Z80_TAG),
-		  m_ctc(*this, Z80CTC_TAG),
-		  m_dart(*this, Z80DART_TAG),
-		  m_sio(*this, Z80SIO_TAG),
+		: abc800_state(machine, config),
 		  m_crtc(*this, MC6845_TAG),
 		  m_rtc(*this, E0516_TAG),
-		  abc77(*this, ABC77_TAG),
-		  m_ram(*this, "messram")
+		  m_abc77(*this, ABC77_TAG)
 	{ }
 
-	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_ctc;
-	required_device<device_t> m_dart;
-	required_device<device_t> m_sio;
 	required_device<device_t> m_crtc;
-	required_device<device_t> m_rtc;
-	optional_device<device_t> abc77;
-	required_device<device_t> m_ram;
-	
+	required_device<e0516_device> m_rtc;
+	optional_device<device_t> m_abc77;
+
 	virtual void machine_start();
 	virtual void machine_reset();
 
 	virtual void video_start();
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
-	
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+
 	void bankswitch();
 	void hr_update(bitmap_t *bitmap, const rectangle *cliprect);
 
@@ -258,9 +255,7 @@ public:
 	UINT8 m_map[16];			// memory page register
 
 	// video state
-	UINT8 *m_char_ram;			// character RAM
 	UINT8 *m_color_ram;			// attribute RAM
-	UINT8 *m_video_ram;			// HR video RAM
 	const UINT8 *m_rad_prom;	// line address PROM
 	const UINT8 *m_hru2_prom;	// HR palette PROM
 	const UINT8 *m_char_rom;	// character generator ROM
@@ -278,12 +273,15 @@ public:
 	UINT32 m_vsync_shift;		// vertical sync shift register
 	int m_vsync;				// vertical sync
 	int m_d_vsync;				// delayed vertical sync
+
+	// fake keyboard state
+	int m_keylatch;
 };
 
 
 
 //**************************************************************************
-//	MACHINE CONFIGURATION
+//  MACHINE CONFIGURATION
 //**************************************************************************
 
 /*----------- defined in video/abc800.c -----------*/

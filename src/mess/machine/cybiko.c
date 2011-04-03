@@ -20,7 +20,7 @@
 #include "machine/pcf8593.h"
 #include "machine/at45dbxx.h"
 #include "machine/sst39vfx.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 #ifndef _H8S2XXX_H_
 #define H8S_IO(xxxx) ((xxxx) - 0xFE40)
@@ -71,8 +71,8 @@ MACHINE_STOP( cybikov1 );
 MACHINE_STOP( cybikov2 );
 MACHINE_STOP( cybikoxt );
 
-// state->rs232
-static void cybiko_rs232_init(running_machine *machine);
+// state->m_rs232
+static void cybiko_rs232_init(running_machine &machine);
 static void cybiko_rs232_exit(void);
 static void cybiko_rs232_reset(void);
 
@@ -80,29 +80,29 @@ static void cybiko_rs232_reset(void);
 // DRIVER INIT & EXIT //
 ////////////////////////
 
-static void init_ram_handler(running_machine *machine, offs_t start, offs_t size, offs_t mirror)
+static void init_ram_handler(running_machine &machine, offs_t start, offs_t size, offs_t mirror)
 {
-	memory_install_read_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, "bank1");
-	memory_install_write_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, "bank1");
-	memory_set_bankptr( machine, "bank1", messram_get_ptr(machine->device("messram")));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_bank(start, start + size - 1, 0, mirror - size, "bank1");
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_write_bank(start, start + size - 1, 0, mirror - size, "bank1");
+	memory_set_bankptr( machine, "bank1", ram_get_ptr(machine.device(RAM_TAG)));
 }
 
 DRIVER_INIT( cybikov1 )
 {
 	_logerror( 0, ("init_cybikov1\n"));
-	init_ram_handler(machine, 0x200000, messram_get_size(machine->device("messram")), 0x200000);
+	init_ram_handler(machine, 0x200000, ram_get_size(machine.device(RAM_TAG)), 0x200000);
 }
 
 DRIVER_INIT( cybikov2 )
 {
 	_logerror( 0, ("init_cybikov2\n"));
-	init_ram_handler(machine, 0x200000, messram_get_size(machine->device("messram")), 0x200000);
+	init_ram_handler(machine, 0x200000, ram_get_size(machine.device(RAM_TAG)), 0x200000);
 }
 
 DRIVER_INIT( cybikoxt )
 {
 	_logerror( 0, ("init_cybikoxt\n"));
-	init_ram_handler(machine, 0x400000, messram_get_size(machine->device("messram")), 0x200000);
+	init_ram_handler(machine, 0x400000, ram_get_size(machine.device(RAM_TAG)), 0x200000);
 }
 
 ////////////////////
@@ -137,22 +137,21 @@ NVRAM_HANDLER( cybikoxt )
 // MACHINE START //
 ///////////////////
 
-static mame_file *nvram_system_fopen( running_machine *machine, UINT32 openflags, const char *name)
+static emu_file *nvram_system_fopen( running_machine &machine, UINT32 openflags, const char *name)
 {
-	astring *fname;
 	file_error filerr;
-	mame_file *file;
-	fname = astring_assemble_4( astring_alloc(), machine->gamedrv->name, PATH_SEPARATOR, name, ".nv");
-	filerr = mame_fopen( SEARCHPATH_NVRAM, astring_c( fname), openflags, &file);
+	astring *fname = astring_assemble_4( astring_alloc(), machine.system().name, PATH_SEPARATOR, name, ".nv");	
+	emu_file *file = global_alloc(emu_file(machine.options().nvram_directory(), openflags));
+	filerr = file->open(astring_c( fname));	
 	astring_free( fname);
 	return (filerr == FILERR_NONE) ? file : NULL;
 }
 
-typedef void (nvram_load_func)(running_machine *machine, mame_file *file);
+typedef void (nvram_load_func)(running_machine &machine, emu_file *file);
 
-static int nvram_system_load( running_machine *machine, const char *name, nvram_load_func _nvram_load, int required)
+static int nvram_system_load( running_machine &machine, const char *name, nvram_load_func _nvram_load, int required)
 {
-	mame_file *file;
+	emu_file *file;
 	file = nvram_system_fopen( machine, OPEN_FLAG_READ, name);
 	if (!file)
 	{
@@ -160,15 +159,15 @@ static int nvram_system_load( running_machine *machine, const char *name, nvram_
 		return FALSE;
 	}
 	(*_nvram_load)(machine, file);
-	mame_fclose( file);
+	global_free(file);
 	return TRUE;
 }
 
-typedef void (nvram_save_func)(running_machine *machine, mame_file *file);
+typedef void (nvram_save_func)(running_machine &machine, emu_file *file);
 
-static int nvram_system_save( running_machine *machine, const char *name, nvram_save_func _nvram_save)
+static int nvram_system_save( running_machine &machine, const char *name, nvram_save_func _nvram_save)
 {
-	mame_file *file;
+	emu_file *file;
 	file = nvram_system_fopen( machine, OPEN_FLAG_CREATE | OPEN_FLAG_WRITE | OPEN_FLAG_CREATE_PATHS, name);
 	if (!file)
 	{
@@ -176,43 +175,43 @@ static int nvram_system_save( running_machine *machine, const char *name, nvram_
 		return FALSE;
 	}
 	(*_nvram_save)(machine, file);
-	mame_fclose( file);
+	global_free(file);
 	return TRUE;
 }
 
-static void cybiko_pcf8593_load(running_machine *machine, mame_file *file)
+static void cybiko_pcf8593_load(running_machine &machine, emu_file *file)
 {
-	device_t *device = machine->device("rtc");
+	device_t *device = machine.device("rtc");
 	pcf8593_load(device, file);
 }
 
-static void cybiko_pcf8593_save(running_machine *machine, mame_file *file)
+static void cybiko_pcf8593_save(running_machine &machine, emu_file *file)
 {
-	device_t *device = machine->device("rtc");
+	device_t *device = machine.device("rtc");
 	pcf8593_save(device, file);
 }
 
-static void cybiko_at45dbxx_load(running_machine *machine, mame_file *file)
+static void cybiko_at45dbxx_load(running_machine &machine, emu_file *file)
 {
-	device_t *device = machine->device("flash1");
+	device_t *device = machine.device("flash1");
 	at45dbxx_load(device, file);
 }
 
-static void cybiko_at45dbxx_save(running_machine *machine, mame_file *file)
+static void cybiko_at45dbxx_save(running_machine &machine, emu_file *file)
 {
-	device_t *device = machine->device("flash1");
+	device_t *device = machine.device("flash1");
 	at45dbxx_save(device, file);
 }
 
-static void cybiko_sst39vfx_load(running_machine *machine, mame_file *file)
+static void cybiko_sst39vfx_load(running_machine &machine, emu_file *file)
 {
-	device_t *device = machine->device("flash2");
+	device_t *device = machine.device("flash2");
 	sst39vfx_load(device, file);
 }
 
-static void cybiko_sst39vfx_save(running_machine *machine, mame_file *file)
+static void cybiko_sst39vfx_save(running_machine &machine, emu_file *file)
 {
-	device_t *device = machine->device("flash2");
+	device_t *device = machine.device("flash2");
 	sst39vfx_save(device, file);
 }
 
@@ -226,12 +225,12 @@ MACHINE_START( cybikov1 )
 	// serial port
 	cybiko_rs232_init(machine);
 	// other
-	machine->add_notifier(MACHINE_NOTIFY_EXIT, machine_stop_cybikov1);
+	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_stop_cybikov1);
 }
 
 MACHINE_START( cybikov2 )
 {
-	device_t *flash2 = machine->device("flash2");
+	device_t *flash2 = machine.device("flash2");
 
 	_logerror( 0, ("machine_start_cybikov2\n"));
 	// real-time clock
@@ -244,12 +243,12 @@ MACHINE_START( cybikov2 )
 	// serial port
 	cybiko_rs232_init(machine);
 	// other
-	machine->add_notifier(MACHINE_NOTIFY_EXIT, machine_stop_cybikov2);
+	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_stop_cybikov2);
 }
 
 MACHINE_START( cybikoxt )
 {
-	device_t *flash2 = machine->device("flash2");
+	device_t *flash2 = machine.device("flash2");
 	_logerror( 0, ("machine_start_cybikoxt\n"));
 	// real-time clock
 	nvram_system_load( machine, "rtc", cybiko_pcf8593_load, 0);
@@ -259,7 +258,7 @@ MACHINE_START( cybikoxt )
 	// serial port
 	cybiko_rs232_init(machine);
 	// other
-	machine->add_notifier(MACHINE_NOTIFY_EXIT, machine_stop_cybikoxt);
+	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_stop_cybikoxt);
 }
 
 ///////////////////
@@ -292,9 +291,9 @@ MACHINE_STOP( cybikov1 )
 {
 	_logerror( 0, ("machine_stop_cybikov1\n"));
 	// real-time clock
-	nvram_system_save( &machine, "rtc", cybiko_pcf8593_save);
+	nvram_system_save( machine, "rtc", cybiko_pcf8593_save);
 	// serial dataflash
-	nvram_system_save( &machine, "flash1", cybiko_at45dbxx_save);
+	nvram_system_save( machine, "flash1", cybiko_at45dbxx_save);
 	// serial port
 	cybiko_rs232_exit();
 }
@@ -303,11 +302,11 @@ MACHINE_STOP( cybikov2 )
 {
 	_logerror( 0, ("machine_stop_cybikov2\n"));
 	// real-time clock
-	nvram_system_save( &machine, "rtc", cybiko_pcf8593_save);
+	nvram_system_save( machine, "rtc", cybiko_pcf8593_save);
 	// serial dataflash
-	nvram_system_save( &machine, "flash1", cybiko_at45dbxx_save);
+	nvram_system_save( machine, "flash1", cybiko_at45dbxx_save);
 	// multi-purpose flash
-	nvram_system_save( &machine, "flash2", cybiko_sst39vfx_save);
+	nvram_system_save( machine, "flash2", cybiko_sst39vfx_save);
 	// serial port
 	cybiko_rs232_exit();
 }
@@ -316,9 +315,9 @@ MACHINE_STOP( cybikoxt )
 {
 	_logerror( 0, ("machine_stop_cybikoxt\n"));
 	// real-time clock
-	nvram_system_save( &machine, "rtc", cybiko_pcf8593_save);
+	nvram_system_save( machine, "rtc", cybiko_pcf8593_save);
 	// multi-purpose flash
-	nvram_system_save( &machine, "flash1", cybiko_sst39vfx_save);
+	nvram_system_save( machine, "flash1", cybiko_sst39vfx_save);
 	// serial port
 	cybiko_rs232_exit();
 }
@@ -328,12 +327,12 @@ MACHINE_STOP( cybikoxt )
 ///////////
 
 
-static void cybiko_rs232_init(running_machine *machine)
+static void cybiko_rs232_init(running_machine &machine)
 {
-	cybiko_state *state = machine->driver_data<cybiko_state>();
+	cybiko_state *state = machine.driver_data<cybiko_state>();
 	_logerror( 0, ("cybiko_rs232_init\n"));
-	memset( &state->rs232, 0, sizeof( state->rs232));
-//  timer_pulse(machine,  TIME_IN_HZ( 10), NULL, 0, rs232_timer_callback);
+	memset( &state->m_rs232, 0, sizeof( state->m_rs232));
+//  machine.scheduler().timer_pulse(TIME_IN_HZ( 10), FUNC(rs232_timer_callback));
 }
 
 static void cybiko_rs232_exit( void)
@@ -357,40 +356,40 @@ static void cybiko_rs232_pin_sck(cybiko_state *state, int data)
 {
 	_logerror( 3, ("cybiko_rs232_pin_sck (%d)\n", data));
 	// clock high-to-low
-	if ((state->rs232.pin.sck == 1) && (data == 0))
+	if ((state->m_rs232.pin.sck == 1) && (data == 0))
 	{
 		// transmit
-		if (state->rs232.pin.txd) state->rs232.tx_byte = state->rs232.tx_byte | (1 << state->rs232.tx_bits);
-		state->rs232.tx_bits++;
-		if (state->rs232.tx_bits == 8)
+		if (state->m_rs232.pin.txd) state->m_rs232.tx_byte = state->m_rs232.tx_byte | (1 << state->m_rs232.tx_bits);
+		state->m_rs232.tx_bits++;
+		if (state->m_rs232.tx_bits == 8)
 		{
-			state->rs232.tx_bits = 0;
-			cybiko_rs232_write_byte( state->rs232.tx_byte);
-			state->rs232.tx_byte = 0;
+			state->m_rs232.tx_bits = 0;
+			cybiko_rs232_write_byte( state->m_rs232.tx_byte);
+			state->m_rs232.tx_byte = 0;
 		}
 		// receive
-		state->rs232.pin.rxd = (state->rs232.rx_byte >> state->rs232.rx_bits) & 1;
-		state->rs232.rx_bits++;
-		if (state->rs232.rx_bits == 8)
+		state->m_rs232.pin.rxd = (state->m_rs232.rx_byte >> state->m_rs232.rx_bits) & 1;
+		state->m_rs232.rx_bits++;
+		if (state->m_rs232.rx_bits == 8)
 		{
-			state->rs232.rx_bits = 0;
-			state->rs232.rx_byte = 0;
+			state->m_rs232.rx_bits = 0;
+			state->m_rs232.rx_byte = 0;
 		}
 	}
 	// save sck
-	state->rs232.pin.sck = data;
+	state->m_rs232.pin.sck = data;
 }
 
 static void cybiko_rs232_pin_txd(cybiko_state *state, int data)
 {
 	_logerror( 3, ("cybiko_rs232_pin_txd (%d)\n", data));
-	state->rs232.pin.txd = data;
+	state->m_rs232.pin.txd = data;
 }
 
 static int cybiko_rs232_pin_rxd(cybiko_state *state)
 {
 	_logerror( 3, ("cybiko_rs232_pin_rxd\n"));
-	return state->rs232.pin.rxd;
+	return state->m_rs232.pin.rxd;
 }
 
 static int cybiko_rs232_rx_queue( void)
@@ -430,7 +429,7 @@ static READ8_HANDLER( cybiko_key_r_byte )
 	for (i=1; i<10; i++)
 	{
 		if (!(offset & (1 << i)))
-			data &= input_port_read(space->machine, keynames[i-1]);
+			data &= input_port_read(space->machine(), keynames[i-1]);
 	}
 	// A0
 	if (!(offset & (1 <<  0)))
@@ -451,7 +450,7 @@ READ16_HANDLER( cybiko_key_r )
 
 static READ8_HANDLER( cybiko_io_reg_r )
 {
-	cybiko_state *state = space->machine->driver_data<cybiko_state>();
+	cybiko_state *state = space->machine().driver_data<cybiko_state>();
 	UINT8 data = 0;
 	_logerror( 2, ("cybiko_io_reg_r (%08X)\n", offset));
 	switch (offset)
@@ -459,24 +458,24 @@ static READ8_HANDLER( cybiko_io_reg_r )
 		// keyboard
 		case H8S_IO_PORT1 :
 		{
-			//if (input_port_read(space->machine, "A1") & 0x02) data = data | 0x08; else data = data & (~0x08); // "esc" key
+			//if (input_port_read(space->machine(), "A1") & 0x02) data = data | 0x08; else data = data & (~0x08); // "esc" key
 			data = data | 0x08;
 		}
 		break;
 		// serial dataflash
 		case H8S_IO_PORT3 :
 		{
-				device_t *device = space->machine->device("flash1");
+				device_t *device = space->machine().device("flash1");
 				if (at45dbxx_pin_so(device)) data = data | H8S_P3_RXD1;
 		}
 		break;
 
-		// state->rs232
+		// state->m_rs232
 		case H8S_IO_PORT5 : if (cybiko_rs232_pin_rxd(state)) data = data | H8S_P5_RXD2; break;
 		// real-time clock
 		case H8S_IO_PORTF :
 		{
-			device_t *device = space->machine->device("rtc");
+			device_t *device = space->machine().device("rtc");
 			data = H8S_PF_PF2;
 			if (pcf8593_pin_sda_r(device)) data |= H8S_PF_PF0;
 		}
@@ -493,9 +492,9 @@ static READ8_HANDLER( cybiko_io_reg_r )
 
 static WRITE8_HANDLER( cybiko_io_reg_w )
 {
-	cybiko_state *state = space->machine->driver_data<cybiko_state>();
-	device_t *rtc = space->machine->device("rtc");
-	device_t *speaker = space->machine->device("speaker");
+	cybiko_state *state = space->machine().driver_data<cybiko_state>();
+	device_t *rtc = space->machine().device("rtc");
+	device_t *speaker = space->machine().device("speaker");
 
 	_logerror( 2, ("cybiko_io_reg_w (%08X/%02X)\n", offset, data));
 	switch (offset)
@@ -505,13 +504,13 @@ static WRITE8_HANDLER( cybiko_io_reg_w )
 		// serial dataflash
 		case H8S_IO_P3DR :
 		{
-			device_t *device = space->machine->device("flash1");
+			device_t *device = space->machine().device("flash1");
 			at45dbxx_pin_cs ( device, (data & H8S_P3_SCK0) ? 0 : 1);
 			at45dbxx_pin_si ( device, (data & H8S_P3_TXD1) ? 1 : 0);
 			at45dbxx_pin_sck( device, (data & H8S_P3_SCK1) ? 1 : 0);
 		}
 		break;
-		// state->rs232
+		// state->m_rs232
 		case H8S_IO_P5DR :
 		{
 			cybiko_rs232_pin_txd(state, (data & H8S_P5_TXD2) ? 1 : 0);
@@ -538,12 +537,12 @@ READ8_HANDLER( cybikov2_io_reg_r )
 
 READ8_HANDLER( cybikoxt_io_reg_r )
 {
-	cybiko_state *state = space->machine->driver_data<cybiko_state>();
+	cybiko_state *state = space->machine().driver_data<cybiko_state>();
 	UINT8 data = 0;
 	_logerror( 2, ("cybikoxt_io_reg_r (%08X)\n", offset));
 	switch (offset)
 	{
-		// state->rs232
+		// state->m_rs232
 		case H8S_IO_PORT3 : if (cybiko_rs232_pin_rxd(state)) data = data | H8S_P3_RXD1; break;
 		// default
 		default : data = cybiko_io_reg_r(space, offset);
@@ -565,11 +564,11 @@ WRITE8_HANDLER( cybikov2_io_reg_w )
 
 WRITE8_HANDLER( cybikoxt_io_reg_w )
 {
-	cybiko_state *state = space->machine->driver_data<cybiko_state>();
+	cybiko_state *state = space->machine().driver_data<cybiko_state>();
 	_logerror( 2, ("cybikoxt_io_reg_w (%08X/%02X)\n", offset, data));
 	switch (offset)
 	{
-		// state->rs232
+		// state->m_rs232
 		case H8S_IO_P3DR :
 		{
 			cybiko_rs232_pin_txd(state, (data & H8S_P3_TXD1) ? 1 : 0);

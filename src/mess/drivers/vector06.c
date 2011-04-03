@@ -13,20 +13,20 @@
 #include "sound/wave.h"
 #include "machine/i8255a.h"
 #include "machine/wd17xx.h"
-#include "devices/cassette.h"
-#include "devices/cartslot.h"
-#include "devices/flopdrv.h"
+#include "imagedev/cassette.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "includes/vector06.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(vector06_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vector06_mem, AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x7fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
 	AM_RANGE( 0x8000, 0xffff ) AM_READ_BANK("bank3") AM_WRITE_BANK("bank4")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vector06_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vector06_io , AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x00, 0x03) AM_READWRITE(vector06_8255_1_r, vector06_8255_1_w )
@@ -189,11 +189,12 @@ static MACHINE_CONFIG_START( vector06, vector06_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256+64, 256+64)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256+64-1, 0, 256+64-1)
+	MCFG_SCREEN_UPDATE(vector06)
+
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(vector06)
 
 	MCFG_VIDEO_START(vector06)
-	MCFG_VIDEO_UPDATE(vector06)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD("wave", "cassette")
@@ -210,7 +211,7 @@ static MACHINE_CONFIG_START( vector06, vector06_state )
 	MCFG_CARTSLOT_NOT_MANDATORY
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END
@@ -231,20 +232,20 @@ ROM_START( vector06 )
     ROMX_LOAD( "bootos.rt",    0x10000, 0x0200, CRC(46bef038) SHA1(6732f4a360cd38112c53c458842d31f5b035cf59), ROM_BIOS(5))
     ROM_SYSTEM_BIOS(5, "boot512", "Boot 512")
     ROMX_LOAD( "boot512.rt",   0x10000, 0x0200, CRC(a0b1c6b2) SHA1(f6fe15cb0974aed30f9b7aa72133324a66d1ed3f), ROM_BIOS(6))
-    ROM_CART_LOAD("cart", 0x18000, 0x8000, ROM_FILL_FF | ROM_OPTIONAL)
+    ROM_CART_LOAD("cart", 0x18000, 0x8000, ROM_OPTIONAL)
 ROM_END
 
 ROM_START( vec1200 )
     ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "vec1200.bin", 0x10000, 0x2000, CRC(37349224) SHA1(060fbb2c1a89040c929521cfd58cb6f1431a8b75))
-	ROM_CART_LOAD("cart", 0x18000, 0x8000, ROM_FILL_FF | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x18000, 0x8000, ROM_OPTIONAL)
     ROM_REGION( 0x0200, "palette", 0 )
 	ROM_LOAD( "palette.bin", 0x0000, 0x0200, CRC(74b7376b) SHA1(fb56b60babd7e6ed68e5f4e791ad2800d7ef6729))
 ROM_END
 ROM_START( pk6128c )
     ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "6128.bin", 0x10000, 0x4000, CRC(d4f68433) SHA1(ef5ac75f9240ca8996689c23642d4e47e5e774d8))
-	ROM_CART_LOAD("cart", 0x18000, 0x8000, ROM_FILL_FF | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x18000, 0x8000, ROM_OPTIONAL)
 ROM_END
 
 /* Driver */

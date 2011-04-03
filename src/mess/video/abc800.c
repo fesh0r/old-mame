@@ -8,17 +8,12 @@
 
     TODO:
 
-	- convert SAA5050 to C++ device and fix its memory interface
-	- check compatibility with new MC6845
-	- ABC800C video: http://www.qsl.net/zl1vfo/teletext.htm
+    - convert SAA5050 to C++ device and fix its memory interface
+    - ABC800C video: http://www.qsl.net/zl1vfo/teletext.htm
 
 */
 
-#include "emu.h"
 #include "includes/abc80x.h"
-#include "machine/z80dart.h"
-#include "video/mc6845.h"
-#include "video/saa5050.h"
 
 
 
@@ -30,7 +25,7 @@
 
 
 //**************************************************************************
-//	HIGH RESOLUTION GRAPHICS
+//  HIGH RESOLUTION GRAPHICS
 //**************************************************************************
 
 //-------------------------------------------------
@@ -55,12 +50,12 @@ WRITE8_MEMBER( abc800_state::hrc_w )
 
 
 //**************************************************************************
-//	ABC 800 COLOR
+//  ABC 800 COLOR
 //**************************************************************************
 
 //-------------------------------------------------
 //  abc800m_hr_update - color high resolution
-//	screen update
+//  screen update
 //-------------------------------------------------
 
 void abc800c_state::hr_update(bitmap_t *bitmap, const rectangle *cliprect)
@@ -79,7 +74,7 @@ void abc800c_state::hr_update(bitmap_t *bitmap, const rectangle *cliprect)
 			for (dot = 0; dot < 4; dot++)
 			{
 				UINT16 fgctl_addr = ((m_fgctl & 0x7f) << 2) | ((data >> 6) & 0x03);
-				int color = fgctl_prom[fgctl_addr] & 0x07;
+				int color = m_fgctl_prom[fgctl_addr] & 0x07;
 
 				*BITMAP_ADDR16(bitmap, y, x++) = color;
 
@@ -97,23 +92,23 @@ void abc800c_state::hr_update(bitmap_t *bitmap, const rectangle *cliprect)
 void abc800_state::video_start()
 {
 	// find memory regions
-	m_char_rom = machine->region(MC6845_TAG)->base();
-	fgctl_prom = machine->region("hru2")->base();
+	m_char_rom = m_machine.region(MC6845_TAG)->base();
+	m_fgctl_prom = m_machine.region("hru2")->base();
 
 	// register for state saving
-	state_save_register_global(machine, m_hrs);
-	state_save_register_global(machine, m_fgctl);
+	state_save_register_global(m_machine, m_hrs);
+	state_save_register_global(m_machine, m_fgctl);
 }
 
 
 //-------------------------------------------------
-//  VIDEO_UPDATE( abc800c )
+//  SCREEN_UPDATE( abc800c )
 //-------------------------------------------------
 
-bool abc800c_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool abc800c_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	// clear screen
-	bitmap_fill(&bitmap, &cliprect, get_black_pen(machine));
+	bitmap_fill(&bitmap, &cliprect, get_black_pen(m_machine));
 
 	// draw HR graphics
 	hr_update(&bitmap, &cliprect);
@@ -137,7 +132,7 @@ static const saa5050_interface trom_intf =
 	SCREEN_TAG,
 	0,	// starting gfxnum
 	40, 24 - 1, 0x80,  // x, y, size
-	0 	// rev y order
+	0	// rev y order
 };
 
 
@@ -165,7 +160,7 @@ MACHINE_CONFIG_END
 
 
 //**************************************************************************
-//	ABC 800 MONOCHROME
+//  ABC 800 MONOCHROME
 //**************************************************************************
 
 //-------------------------------------------------
@@ -181,7 +176,7 @@ static PALETTE_INIT( abc800m )
 
 //-------------------------------------------------
 //  abc800m_hr_update - monochrome high resolution
-//	screen update
+//  screen update
 //-------------------------------------------------
 
 void abc800m_state::hr_update(bitmap_t *bitmap, const rectangle *cliprect)
@@ -200,7 +195,7 @@ void abc800m_state::hr_update(bitmap_t *bitmap, const rectangle *cliprect)
 			for (dot = 0; dot < 4; dot++)
 			{
 				UINT16 fgctl_addr = ((m_fgctl & 0x7f) << 2) | ((data >> 6) & 0x03);
-				int color = (fgctl_prom[fgctl_addr] & 0x07) ? 1 : 0;
+				int color = (m_fgctl_prom[fgctl_addr] & 0x07) ? 1 : 0;
 
 				*BITMAP_ADDR16(bitmap, y, x++) = color;
 				*BITMAP_ADDR16(bitmap, y, x++) = color;
@@ -218,7 +213,7 @@ void abc800m_state::hr_update(bitmap_t *bitmap, const rectangle *cliprect)
 
 static MC6845_UPDATE_ROW( abc800m_update_row )
 {
-	abc800m_state *state = device->machine->driver_data<abc800m_state>();
+	abc800m_state *state = device->machine().driver_data<abc800m_state>();
 
 	int column;
 
@@ -276,16 +271,16 @@ static const mc6845_interface crtc_intf =
 
 
 //-------------------------------------------------
-//  VIDEO_UPDATE( abc800m )
+//  SCREEN_UPDATE( abc800m )
 //-------------------------------------------------
 
-bool abc800m_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool abc800m_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	// HACK expand visible area to workaround MC6845
 	screen.set_visible_area(0, 767, 0, 311);
 
 	// clear screen
-	bitmap_fill(&bitmap, &cliprect, get_black_pen(machine));
+	bitmap_fill(&bitmap, &cliprect, get_black_pen(m_machine));
 
 	// draw HR graphics
 	hr_update(&bitmap, &cliprect);

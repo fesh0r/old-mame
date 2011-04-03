@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 #include "emu.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "cpu/mcs51/mcs51.h"
 
 
@@ -20,7 +20,7 @@ public:
 };
 
 
-static ADDRESS_MAP_START(vt520_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vt520_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xffff) AM_RAMBANK("bank1")
 ADDRESS_MAP_END
 
@@ -37,7 +37,7 @@ static READ8_HANDLER(vt520_some_r)
 	return 0x40;
 }
 
-static ADDRESS_MAP_START( vt520_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vt520_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x7ffb, 0x7ffb) AM_READ(vt520_some_r)
 ADDRESS_MAP_END
@@ -49,9 +49,9 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(vt520)
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 *rom = machine->region("maincpu")->base();
-	memory_unmap_write(space, 0x0000, 0xffff, 0, 0);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	UINT8 *rom = machine.region("maincpu")->base();
+	space->unmap_write(0x0000, 0xffff);
 	memory_set_bankptr(machine, "bank1", rom + 0x70000);
 }
 
@@ -59,7 +59,7 @@ static VIDEO_START( vt520 )
 {
 }
 
-static VIDEO_UPDATE( vt520 )
+static SCREEN_UPDATE( vt520 )
 {
     return 0;
 }
@@ -79,16 +79,17 @@ static MACHINE_CONFIG_START( vt520, vt520_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(802, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 802-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(vt520)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(vt520)
-    MCFG_VIDEO_UPDATE(vt520)
 
 	// On the board there are two M5M44256BJ-7 chips
 	// Which are DRAM 256K x 4bit
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("256K")
 MACHINE_CONFIG_END
 

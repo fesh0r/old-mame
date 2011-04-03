@@ -10,27 +10,11 @@
 
 */
 
-#define ADDRESS_MAP_MODERN
-
-#include "emu.h"
 #include "includes/comx35.h"
-#include "cpu/cosmac/cosmac.h"
-#include "sound/cdp1869.h"
-#include "sound/wave.h"
-#include "devices/flopdrv.h"
-#include "formats/comx35_dsk.h"
-#include "formats/comx35_comx.h"
-#include "devices/cassette.h"
-#include "devices/printer.h"
-#include "devices/snapquik.h"
-#include "machine/cdp1871.h"
-#include "machine/wd17xx.h"
-#include "devices/messram.h"
-#include "video/mc6845.h"
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( comx35_map, ADDRESS_SPACE_PROGRAM, 8, comx35_state )
+static ADDRESS_MAP_START( comx35_map, AS_PROGRAM, 8, comx35_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x1000, 0x17ff) AM_ROMBANK("bank2")
@@ -42,7 +26,7 @@ static ADDRESS_MAP_START( comx35_map, ADDRESS_SPACE_PROGRAM, 8, comx35_state )
 	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_device, page_ram_r, page_ram_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( comx35_io_map, ADDRESS_SPACE_IO, 8, comx35_state )
+static ADDRESS_MAP_START( comx35_io_map, AS_IO, 8, comx35_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x01, 0x01) AM_WRITE(bank_select_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(io_r, io_w)
@@ -200,39 +184,33 @@ INPUT_PORTS_END
 
 /* CDP1802 Interface */
 
-static READ_LINE_DEVICE_HANDLER( clear_r )
+READ_LINE_MEMBER( comx35_state::clear_r )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
-
-	return state->m_reset;
+	return m_reset;
 }
 
-static READ_LINE_DEVICE_HANDLER( ef2_r )
+READ_LINE_MEMBER( comx35_state::ef2_r )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
-
-	if (state->m_iden)
+	if (m_iden)
 	{
 		// interrupts disabled: PAL/NTSC
-		return state->m_vis->pal_ntsc_r();
+		return m_vis->pal_ntsc_r();
 	}
 	else
 	{
 		// interrupts enabled: keyboard repeat
-		return state->m_kbe->rpt_r();
+		return m_kbe->rpt_r();
 	}
 }
 
-static READ_LINE_DEVICE_HANDLER( ef4_r )
+READ_LINE_MEMBER( comx35_state::ef4_r )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
-
-	return (cassette_input(device) < 0) | state->m_cdp1802_ef4;
+	return (cassette_input(m_cassette) < 0) | m_cdp1802_ef4;
 }
 
 static COSMAC_SC_WRITE( comx35_sc_w )
 {
-	comx35_state *state = device->machine->driver_data<comx35_state>();
+	comx35_state *state = device->machine().driver_data<comx35_state>();
 
 	switch (sc)
 	{
@@ -248,7 +226,7 @@ static COSMAC_SC_WRITE( comx35_sc_w )
 
 			if (!state->m_iden)
 			{
-				cpu_set_input_line(device, COSMAC_INPUT_LINE_DMAOUT, ASSERT_LINE);
+				device_set_input_line(device, COSMAC_INPUT_LINE_DMAOUT, ASSERT_LINE);
 			}
 		}
 		else
@@ -259,41 +237,39 @@ static COSMAC_SC_WRITE( comx35_sc_w )
 
 	case COSMAC_STATE_CODE_S2_DMA:
 		// DMA acknowledge clears the DMAOUT request
-		cpu_set_input_line(device, COSMAC_INPUT_LINE_DMAOUT, CLEAR_LINE);
+		device_set_input_line(device, COSMAC_INPUT_LINE_DMAOUT, CLEAR_LINE);
 		break;
 
 	case COSMAC_STATE_CODE_S3_INTERRUPT:
 		// interrupt acknowledge clears the INT request
-		cpu_set_input_line(device, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
+		device_set_input_line(device, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
 		break;
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER( comx35_q_w )
+WRITE_LINE_MEMBER( comx35_state::q_w )
 {
-	comx35_state *driver_state = device->machine->driver_data<comx35_state>();
+	m_cdp1802_q = state;
 
-	driver_state->m_cdp1802_q = state;
-
-	if (driver_state->m_iden && state)
+	if (m_iden && state)
 	{
 		// enable interrupts
-		driver_state->m_iden = 0;
+		m_iden = 0;
 	}
 
 	// cassette output
-	cassette_output(driver_state->m_cassette, state ? +1.0 : -1.0);
+	cassette_output(m_cassette, state ? +1.0 : -1.0);
 }
 
 static COSMAC_INTERFACE( cosmac_intf )
 {
 	DEVCB_LINE_VCC,								// wait
-	DEVCB_LINE(clear_r),						// clear
+	DEVCB_DRIVER_LINE_MEMBER(comx35_state, clear_r),// clear
 	DEVCB_NULL,									// EF1
-	DEVCB_LINE(ef2_r),							// EF2
+	DEVCB_DRIVER_LINE_MEMBER(comx35_state, ef2_r),	// EF2
 	DEVCB_NULL,									// EF3
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, ef4_r),		// EF4
-	DEVCB_LINE(comx35_q_w),						// Q
+	DEVCB_DRIVER_LINE_MEMBER(comx35_state, ef4_r),	// EF4
+	DEVCB_DRIVER_LINE_MEMBER(comx35_state, q_w),	// Q
 	DEVCB_NULL,									// DMA in
 	DEVCB_NULL,									// DMA out
 	comx35_sc_w,								// SC
@@ -303,14 +279,14 @@ static COSMAC_INTERFACE( cosmac_intf )
 
 /* CDP1871 Interface */
 
-static READ_LINE_DEVICE_HANDLER( comx35_shift_r )
+READ_LINE_MEMBER( comx35_state::shift_r )
 {
-	return BIT(input_port_read(device->machine, "MODIFIERS"), 0);
+	return BIT(input_port_read(m_machine, "MODIFIERS"), 0);
 }
 
-static READ_LINE_DEVICE_HANDLER( comx35_control_r )
+READ_LINE_MEMBER( comx35_state::control_r )
 {
-	return BIT(input_port_read(device->machine, "MODIFIERS"), 1);
+	return BIT(input_port_read(m_machine, "MODIFIERS"), 1);
 }
 
 static CDP1871_INTERFACE( comx35_cdp1871_intf )
@@ -326,8 +302,8 @@ static CDP1871_INTERFACE( comx35_cdp1871_intf )
 	DEVCB_INPUT_PORT("D9"),
 	DEVCB_INPUT_PORT("D10"),
 	DEVCB_INPUT_PORT("D11"),
-	DEVCB_LINE(comx35_shift_r),
-	DEVCB_LINE(comx35_control_r),
+	DEVCB_DRIVER_LINE_MEMBER(comx35_state, shift_r),
+	DEVCB_DRIVER_LINE_MEMBER(comx35_state, control_r),
 	DEVCB_NULL,
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_EF3),
 	DEVCB_NULL // polled
@@ -373,9 +349,10 @@ static MACHINE_CONFIG_START( pal, comx35_state )
 	MCFG_PRINTER_ADD("printer")
 
 	MCFG_FLOPPY_2_DRIVES_ADD(comx35_floppy_config)
+	MCFG_COMXPL80_ADD()
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 MACHINE_CONFIG_END
 
@@ -397,9 +374,10 @@ static MACHINE_CONFIG_START( ntsc, comx35_state )
 	MCFG_PRINTER_ADD("printer")
 
 	MCFG_FLOPPY_2_DRIVES_ADD(comx35_floppy_config)
+	MCFG_COMXPL80_ADD()
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 MACHINE_CONFIG_END
 
@@ -417,8 +395,11 @@ ROM_START( comx35p )
 	ROM_SYSTEM_BIOS( 2, "fmbasic31", "F&M BASIC V3.1 with Expansion Box" )
 	ROMX_LOAD( "comx_10.u21",			0x0000, 0x4000, CRC(68d0db2d) SHA1(062328361629019ceed9375afac18e2b7849ce47), ROM_BIOS(3) )
 	ROMX_LOAD( "f&m.expansion.3.1.e5",	0xe000, 0x1000, CRC(818ca2ef) SHA1(ea000097622e7fd472d53e7899e3c83773433045), ROM_BIOS(3) )
-	ROM_SYSTEM_BIOS( 3, "basic101", "COMX BASIC V1.01" )
-	ROMX_LOAD( "comx_11.u21",			0x0000, 0x4000, CRC(609d89cd) SHA1(799646810510d8236fbfafaff7a73d5170990f16), ROM_BIOS(4) )
+	ROM_SYSTEM_BIOS( 3, "fmbasic32", "F&M BASIC V3.2 with Expansion Box" )
+	ROMX_LOAD( "comx_10.u21",			0x0000, 0x4000, CRC(68d0db2d) SHA1(062328361629019ceed9375afac18e2b7849ce47), ROM_BIOS(4) )
+	ROMX_LOAD( "f&m.expansion.3.2.e5",	0xe000, 0x1000, CRC(0f0fc960) SHA1(eb6b6e7bc9e761d13554482025d8cb5e260c0619), ROM_BIOS(4) )
+	ROM_SYSTEM_BIOS( 4, "basic101", "COMX BASIC V1.01" )
+	ROMX_LOAD( "comx_11.u21",			0x0000, 0x4000, CRC(609d89cd) SHA1(799646810510d8236fbfafaff7a73d5170990f16), ROM_BIOS(5) )
 
 	ROM_REGION( 0x2000, "fdc", 0 ) /* Disc Controller Card */
 	ROM_LOAD( "d.o.s. v1.2.f4",			0x0000, 0x2000, CRC(cf4ecd2e) SHA1(290e19bdc89e3c8059e63d5ae3cca4daa194e1fe) )
@@ -435,11 +416,16 @@ ROM_START( comx35p )
 	ROM_REGION( 0x2000, "thermal", 0 )
 	ROM_LOAD( "thermal.bin",			0x0000, 0x1000, CRC(41a72ba8) SHA1(3a8760c78bd8c7bec2dbf26657b930c9a6814803) )
 
+	ROM_REGION( 0x2000, "eprom", 0 )
+	ROM_LOAD( "f&m.eprom.board.1.1.bin",0x0000, 0x0800, CRC(a042a31a) SHA1(13831a1350aa62a87988bfcc99c4b7db8ef1cf62) )
+
 	ROM_REGION( 0x2000, "80column", 0 ) /* 80 Column Card */
-	ROM_LOAD( "p.cl1",					0x0000, 0x0800, CRC(b417d30a) SHA1(d428b0467945ecb9aec884211d0f4b1d8d56d738) )
+	ROM_LOAD( "p 1.0.cl1",				0x0000, 0x0800, CRC(b417d30a) SHA1(d428b0467945ecb9aec884211d0f4b1d8d56d738) ) // V1.0
+	ROM_LOAD( "p 1.1.cl1",				0x0000, 0x0800, CRC(0a2eaf19) SHA1(3f1f640caef964fb47aaa147cab6d215c2b30e9d) ) // V1.1
 
 	ROM_REGION( 0x800, "chargen", 0 ) /* 80 Column Card */
-	ROM_LOAD( "c.cl4",					0x0000, 0x0800, CRC(69dd7b07) SHA1(71d368adbb299103d165eab8359a97769e463e26) )
+	ROM_LOAD( "c 1.0.cl4",				0x0000, 0x0800, CRC(69dd7b07) SHA1(71d368adbb299103d165eab8359a97769e463e26) ) // V1.0
+	ROM_LOAD( "c 1.1.cl4",				0x0000, 0x0800, CRC(dc9b5046) SHA1(4e041cec03dda6dba5e2598d060c49908a4fab2a) ) // V1.1
 ROM_END
 
 #define rom_comx35n rom_comx35p

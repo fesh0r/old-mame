@@ -98,15 +98,15 @@ Some bugs left :
 #include "machine/ctronics.h"
 
 /* Devices */
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "formats/msx_dsk.h"
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 #include "formats/tzx_cas.h"
 
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 #define MANUFACTURER_NAME 0x07
 #define TV_REFRESH_RATE 0x10
@@ -160,7 +160,7 @@ static DRIVER_INIT( aleste )
 /* Memory is banked in 16k blocks. However, the multiface
 pages the memory in 8k blocks! The ROM can
 be paged into bank 0 and bank 3. */
-static ADDRESS_MAP_START(amstrad_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(amstrad_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x01fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank9")
 	AM_RANGE(0x02000, 0x03fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank10")
 	AM_RANGE(0x04000, 0x05fff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank11")
@@ -174,7 +174,7 @@ ADDRESS_MAP_END
 /* I've handled the I/O ports in this way, because the ports
 are not fully decoded by the CPC h/w. Doing it this way means
 I can decode it myself and a lot of  software should work */
-static ADDRESS_MAP_START(amstrad_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(amstrad_io, AS_IO, 8)
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE( amstrad_cpc_io_r, amstrad_cpc_io_w )
 ADDRESS_MAP_END
 
@@ -312,7 +312,7 @@ INPUT_PORTS_END
 /* Steph 2000-10-27 I remapped the 'Machine Name' Dip Switches (easier to understand) */
 static INPUT_CHANGED( cpc_monitor_changed )
 {
-	running_machine *machine = field->port->machine;
+	running_machine &machine = field->port->machine();
 	const UINT8	*color_prom = NULL;
 
 	if ( (input_port_read(machine, "green_display")) & 0x01 )
@@ -875,7 +875,7 @@ static MACHINE_CONFIG_START( amstrad, amstrad_state )
 	MCFG_CPU_PROGRAM_MAP(amstrad_mem)
 	MCFG_CPU_IO_MAP(amstrad_io)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( amstrad )
 	MCFG_MACHINE_RESET( amstrad )
@@ -886,6 +886,9 @@ static MACHINE_CONFIG_START( amstrad, amstrad_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS( XTAL_16MHz, 1024, 32, 32 + 640 + 64, 312, 56 + 15, 200 + 15 )
+	MCFG_SCREEN_UPDATE(amstrad)
+	MCFG_SCREEN_EOF(amstrad)
+
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MCFG_PALETTE_LENGTH(32)
@@ -894,8 +897,6 @@ static MACHINE_CONFIG_START( amstrad, amstrad_state )
 	MCFG_MC6845_ADD( "mc6845", MC6845, XTAL_16MHz / 16, amstrad_mc6845_intf )
 
 	MCFG_VIDEO_START(amstrad)
-	MCFG_VIDEO_UPDATE(amstrad)
-	MCFG_VIDEO_EOF(amstrad)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -918,7 +919,7 @@ static MACHINE_CONFIG_START( amstrad, amstrad_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
@@ -937,7 +938,7 @@ static MACHINE_CONFIG_START( cpcplus, amstrad_state )
 	MCFG_CPU_PROGRAM_MAP(amstrad_mem)
 	MCFG_CPU_IO_MAP(amstrad_io)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( plus )
 	MCFG_MACHINE_RESET( plus )
@@ -948,6 +949,9 @@ static MACHINE_CONFIG_START( cpcplus, amstrad_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS( ( XTAL_40MHz * 2 ) / 5, 1024, 32, 32 + 640 + 64, 312, 56 + 15, 200 + 15 )
+	MCFG_SCREEN_UPDATE(amstrad)
+	MCFG_SCREEN_EOF(amstrad)
+
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MCFG_PALETTE_LENGTH(4096)
@@ -956,8 +960,6 @@ static MACHINE_CONFIG_START( cpcplus, amstrad_state )
 	MCFG_MC6845_ADD( "mc6845", MC6845, XTAL_40MHz / 40, amstrad_plus_mc6845_intf )
 
 	MCFG_VIDEO_START(amstrad)
-	MCFG_VIDEO_UPDATE(amstrad)
-	MCFG_VIDEO_EOF(amstrad)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -982,7 +984,7 @@ static MACHINE_CONFIG_START( cpcplus, amstrad_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
@@ -993,7 +995,7 @@ static MACHINE_CONFIG_START( gx4000, amstrad_state )
 	MCFG_CPU_PROGRAM_MAP(amstrad_mem)
 	MCFG_CPU_IO_MAP(amstrad_io)
 
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( gx4000 )
 	MCFG_MACHINE_RESET( gx4000 )
@@ -1004,6 +1006,9 @@ static MACHINE_CONFIG_START( gx4000, amstrad_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS( ( XTAL_40MHz * 2 ) / 5, 1024, 32, 32 + 640 + 64, 312, 56 + 15, 200 + 15 )
+	MCFG_SCREEN_UPDATE(amstrad)
+	MCFG_SCREEN_EOF(amstrad)
+
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MCFG_PALETTE_LENGTH(4096)
@@ -1012,8 +1017,6 @@ static MACHINE_CONFIG_START( gx4000, amstrad_state )
 	MCFG_MC6845_ADD( "mc6845", MC6845, XTAL_40MHz / 40, amstrad_plus_mc6845_intf )
 
 	MCFG_VIDEO_START(amstrad)
-	MCFG_VIDEO_UPDATE(amstrad)
-	MCFG_VIDEO_EOF(amstrad)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1024,7 +1027,7 @@ static MACHINE_CONFIG_START( gx4000, amstrad_state )
 	MCFG_FRAGMENT_ADD(cpcplus_cartslot)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
@@ -1044,7 +1047,7 @@ static MACHINE_CONFIG_DERIVED( aleste, amstrad )
 	MCFG_FLOPPY_2_DRIVES_MODIFY(aleste_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2M")
 MACHINE_CONFIG_END
 

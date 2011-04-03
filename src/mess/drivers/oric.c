@@ -21,8 +21,8 @@
 #include "sound/wave.h"
 #include "includes/oric.h"
 #include "machine/ctronics.h"
-#include "devices/flopdrv.h"
-#include "devices/cassette.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/cassette.h"
 #include "formats/oric_dsk.h"
 #include "formats/ap2_dsk.h"
 #include "formats/oric_tap.h"
@@ -56,8 +56,8 @@
 */
 
 
-static ADDRESS_MAP_START(oric_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0xbfff) AM_RAM AM_BASE_MEMBER(oric_state, ram )
+static ADDRESS_MAP_START(oric_mem, AS_PROGRAM, 8)
+    AM_RANGE( 0x0000, 0xbfff) AM_RAM AM_BASE_MEMBER(oric_state, m_ram )
     AM_RANGE( 0xc000, 0xdfff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
 	AM_RANGE( 0xe000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
 	AM_RANGE( 0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
@@ -66,7 +66,7 @@ ADDRESS_MAP_END
 /*
 The telestrat has the memory regions split into 16k blocks.
 Memory region &c000-&ffff can be ram or rom. */
-static ADDRESS_MAP_START(telestrat_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(telestrat_mem, AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x02ff) AM_RAM
 	AM_RANGE( 0x0300, 0x030f) AM_DEVREADWRITE_MODERN("via6522_0", via6522_device, read, write)
 	AM_RANGE( 0x0310, 0x031b) AM_READWRITE( oric_microdisc_r, oric_microdisc_w )
@@ -388,7 +388,7 @@ static MACHINE_CONFIG_START( oric, oric_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, 1000000)
 	MCFG_CPU_PROGRAM_MAP(oric_mem)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( oric )
 	MCFG_MACHINE_RESET( oric )
@@ -400,11 +400,12 @@ static MACHINE_CONFIG_START( oric, oric_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40*6, 28*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40*6-1, 0, 28*8-1)
+	MCFG_SCREEN_UPDATE( oric )
+
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_PALETTE_INIT( oric )
 
 	MCFG_VIDEO_START( oric )
-	MCFG_VIDEO_UPDATE( oric )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

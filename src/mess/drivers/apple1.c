@@ -71,15 +71,15 @@ $F000-$FFFF:    ROM address space
 #include "cpu/m6502/m6502.h"
 #include "machine/6821pia.h"
 #include "includes/apple1.h"
-#include "devices/snapquik.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 
 /* port i/o functions */
 
 /* memory w/r functions */
 
-static ADDRESS_MAP_START( apple1_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( apple1_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_NOP
 
 	/* Cassette interface I/O space: */
@@ -224,6 +224,10 @@ static MACHINE_CONFIG_START( apple1, apple1_state )
        slows it to 960 kHz. */
 	MCFG_CPU_ADD("maincpu", M6502, 960000)        /* 1.023 MHz */
 	MCFG_CPU_PROGRAM_MAP(apple1_map)
+
+	MCFG_MACHINE_RESET( apple1 )
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+	
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	/* Video is blanked for 70 out of 262 scanlines per refresh cycle.
@@ -232,21 +236,19 @@ static MACHINE_CONFIG_START( apple1, apple1_state )
        is 2 cycles of the fundamental 14.31818 MHz oscillator.  The
        total blanking time is about 4450 microseconds. */
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((int) (70 * 65 * 7 * 2 / 14.31818)))
-	MCFG_QUANTUM_TIME(HZ(60))
-
-	MCFG_MACHINE_RESET( apple1 )
-
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* It would be nice if we could implement some sort of display
        overscan here. */
 	MCFG_SCREEN_SIZE(40 * 7, 24 * 8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40 * 7 - 1, 0, 24 * 8 - 1)
+	MCFG_SCREEN_UPDATE(apple1)
+
+	
 	MCFG_GFXDECODE(apple1)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(apple1)
-	MCFG_VIDEO_UPDATE(apple1)
 
 	MCFG_PIA6821_ADD( "pia", apple1_pia0 )
 
@@ -259,7 +261,7 @@ static MACHINE_CONFIG_START( apple1, apple1_state )
        the RAM amounts listed here will be 4K below the actual RAM
        total. */
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("48K")
 	MCFG_RAM_EXTRA_OPTIONS("4K,8K,12K,16K,20K,24K,28K,32K,36K,40K,44K")
 

@@ -8,27 +8,32 @@
   Clock Freq added - 2009-05-18 - incog
 
 ***************************************************************************/
+#define ADDRESS_MAP_MODERN
+
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/tms9928a.h"
 #include "machine/z80pio.h"
 #include "cpu/z80/z80daisy.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 
 
 class bbcbc_state : public driver_device
 {
 public:
 	bbcbc_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+		: driver_device(machine, config),
+	m_maincpu(*this, "maincpu")
+	{ }
 
+	required_device<cpu_device> m_maincpu;
 };
 
 
 #define MAIN_CLOCK XTAL_4_433619MHz
 
 
-static ADDRESS_MAP_START( bbcbc_prg, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( bbcbc_prg, AS_PROGRAM, 8, bbcbc_state )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0xbfff) AM_ROM
 	AM_RANGE(0xe000, 0xe02f) AM_RAM
@@ -47,11 +52,11 @@ static ADDRESS_MAP_START( bbcbc_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe03c, 0xe7ff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( bbcbc_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( bbcbc_io, AS_IO, 8, bbcbc_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
-	AM_RANGE(0x80, 0x80) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
-	AM_RANGE(0x81, 0x81) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
+	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0x80, 0x80) AM_READWRITE_LEGACY(TMS9928A_vram_r, TMS9928A_vram_w)
+	AM_RANGE(0x81, 0x81) AM_READWRITE_LEGACY(TMS9928A_register_r, TMS9928A_register_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( bbcbc )
@@ -92,14 +97,14 @@ static INPUT_PORTS_START( bbcbc )
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Play, No") PORT_CODE(KEYCODE_B) PORT_IMPULSE(1)
 INPUT_PORTS_END
 
-static void tms_interrupt(running_machine *machine, int dummy)
+static void tms_interrupt(running_machine &machine, int irq_state)
 {
-	cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( bbcbc_interrupt )
 {
-	TMS9928A_interrupt(device->machine);
+	TMS9928A_interrupt(device->machine());
 }
 
 static const TMS9928a_interface tms9129_interface =
@@ -131,7 +136,7 @@ static const z80_daisy_config bbcbc_daisy_chain[] =
 
 static DEVICE_START( bbcbc_cart )
 {
-	UINT8 *cart = device->machine->region("maincpu" )->base() + 0x4000;
+	UINT8 *cart = device->machine().region("maincpu" )->base() + 0x4000;
 
 	memset( cart, 0xFF, 0x8000 );
 }
@@ -139,7 +144,7 @@ static DEVICE_START( bbcbc_cart )
 
 static DEVICE_IMAGE_LOAD( bbcbc_cart )
 {
-	UINT8 *cart = image.device().machine->region("maincpu" )->base() + 0x4000;
+	UINT8 *cart = image.device().machine().region("maincpu" )->base() + 0x4000;
 
 	if ( image.software_entry() == NULL )
 	{

@@ -28,10 +28,10 @@ public:
 	ec65_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *video_ram;
+	UINT8 *m_video_ram;
 };
 
-static ADDRESS_MAP_START(ec65_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ec65_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE(PIA6821_TAG, pia6821_r, pia6821_w)
@@ -43,11 +43,11 @@ static ADDRESS_MAP_START(ec65_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe140, 0xe140) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0xe141, 0xe141) AM_DEVREADWRITE(MC6845_TAG, mc6845_register_r , mc6845_register_w)
 	AM_RANGE(0xe400, 0xe7ff) AM_RAM // 1KB on-board RAM
-	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE_MEMBER(ec65_state,video_ram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE_MEMBER(ec65_state,m_video_ram)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(ec65k_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(ec65k_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xefff) AM_RAM
 	AM_RANGE(0xf000, 0xffff) AM_ROM
@@ -148,22 +148,22 @@ static VIDEO_START( ec65 )
 {
 }
 
-static VIDEO_UPDATE( ec65 )
+static SCREEN_UPDATE( ec65 )
 {
-	device_t *mc6845 = screen->machine->device(MC6845_TAG);
+	device_t *mc6845 = screen->machine().device(MC6845_TAG);
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
 
 static MC6845_UPDATE_ROW( ec65_update_row )
 {
-	ec65_state *state = device->machine->driver_data<ec65_state>();
-	UINT8 *charrom = device->machine->region("chargen")->base();
+	ec65_state *state = device->machine().driver_data<ec65_state>();
+	UINT8 *charrom = device->machine().region("chargen")->base();
 	int column, bit;
 
 	for (column = 0; column < x_count; column++)
 	{
-		UINT8 code = state->video_ram[ma + column];
+		UINT8 code = state->m_video_ram[ma + column];
 		UINT16 addr = code << 4 | (ra & 0x0f);
 		UINT8 data = charrom[(addr & 0xfff)];
 		if (column == cursor_x)
@@ -230,6 +230,8 @@ static MACHINE_CONFIG_START( ec65, ec65_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 200)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 200 - 1)
+    MCFG_SCREEN_UPDATE(ec65)
+
 	MCFG_GFXDECODE(ec65)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
@@ -237,7 +239,6 @@ static MACHINE_CONFIG_START( ec65, ec65_state )
 	MCFG_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz / 8, ec65_crtc6845_interface)
 
     MCFG_VIDEO_START(ec65)
-    MCFG_VIDEO_UPDATE(ec65)
 
     /* devices */
 	MCFG_PIA6821_ADD( PIA6821_TAG, ec65_pia_interface )
@@ -262,6 +263,8 @@ static MACHINE_CONFIG_START( ec65k, ec65_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 200)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 200 - 1)
+    MCFG_SCREEN_UPDATE(ec65)
+
 	MCFG_GFXDECODE(ec65)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
@@ -269,7 +272,6 @@ static MACHINE_CONFIG_START( ec65k, ec65_state )
 	MCFG_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz / 8, ec65_crtc6845_interface)
 
     MCFG_VIDEO_START(ec65)
-    MCFG_VIDEO_UPDATE(ec65)
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -7,8 +7,8 @@
 #ifndef __SPECTRUM_H__
 #define __SPECTRUM_H__
 
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cartslot.h"
 
 /* Spectrum crystals */
 
@@ -68,34 +68,37 @@ public:
 	spectrum_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int port_fe_data;
-	int port_7ffd_data;
-	int port_1ffd_data;	/* scorpion and plus3 */
-	int port_ff_data; /* Display enhancement control */
-	int port_f4_data; /* Horizontal Select Register */
+	int m_port_fe_data;
+	int m_port_7ffd_data;
+	int m_port_1ffd_data;	/* scorpion and plus3 */
+	int m_port_ff_data; /* Display enhancement control */
+	int m_port_f4_data; /* Horizontal Select Register */
 
-	int floppy;
+	int m_floppy;
 
 	/* video support */
-	int frame_invert_count;
-	int frame_number;    /* Used for handling FLASH 1 */
-	int flash_invert;
-	UINT8 retrace_cycles;
-	UINT8 *video_ram;
-	UINT8 *screen_location;
+	int m_frame_invert_count;
+	int m_frame_number;    /* Used for handling FLASH 1 */
+	int m_flash_invert;
+	UINT8 m_retrace_cycles;
+	UINT8 *m_video_ram;
+	UINT8 *m_screen_location;
 
-	int ROMSelection;
+	int m_ROMSelection;
 
 	/* Last border colour output in the previous frame */
-	int CurrBorderColor;
-	int LastDisplayedBorderColor; /* Negative value indicates redraw */
+	int m_CurrBorderColor;
+	int m_LastDisplayedBorderColor; /* Negative value indicates redraw */
 
-	EVENT_LIST_ITEM *pCurrentItem;
-	int NumEvents;
-	int TotalEvents;
-	char *pEventListBuffer;
-	int LastFrameStartTime;
-	int CyclesPerFrame;
+	EVENT_LIST_ITEM *m_pCurrentItem;
+	int m_NumEvents;
+	int m_TotalEvents;
+	char *m_pEventListBuffer;
+	int m_LastFrameStartTime;
+	int m_CyclesPerFrame;
+
+	UINT8 *m_ram_0000;
+	UINT8 m_ram_disabled_by_beta;
 };
 
 
@@ -117,15 +120,15 @@ WRITE8_HANDLER(spectrum_port_fe_w);
 
 MACHINE_CONFIG_EXTERN( spectrum_128 );
 
-void spectrum_128_update_memory(running_machine *machine);
+void spectrum_128_update_memory(running_machine &machine);
 
 /*----------- defined in drivers/specpls3.c -----------*/
 
-void spectrum_plus3_update_memory(running_machine *machine);
+void spectrum_plus3_update_memory(running_machine &machine);
 
 /*----------- defined in drivers/timex.c -----------*/
 
-void ts2068_update_memory(running_machine *machine);
+void ts2068_update_memory(running_machine &machine);
 
 /*----------- defined in video/spectrum.c -----------*/
 
@@ -134,29 +137,29 @@ PALETTE_INIT( spectrum );
 VIDEO_START( spectrum );
 VIDEO_START( spectrum_128 );
 
-VIDEO_UPDATE( spectrum );
-VIDEO_EOF( spectrum );
+SCREEN_UPDATE( spectrum );
+SCREEN_EOF( spectrum );
 
-void spectrum_border_force_redraw (running_machine *machine);
-void spectrum_border_set_last_color (running_machine *machine, int NewColor);
-void spectrum_border_draw(running_machine *machine, bitmap_t *bitmap, int full_refresh,
+void spectrum_border_force_redraw (running_machine &machine);
+void spectrum_border_set_last_color (running_machine &machine, int NewColor);
+void spectrum_border_draw(running_machine &machine, bitmap_t *bitmap, int full_refresh,
                 int TopBorderLines, int ScreenLines, int BottomBorderLines,
                 int LeftBorderPixels, int ScreenPixels, int RightBorderPixels,
                 int LeftBorderCycles, int ScreenCycles, int RightBorderCycles,
                 int HorizontalRetraceCycles, int VRetraceTime, int EventID);
 
-void spectrum_EventList_Initialise(running_machine *machine, int NumEntries);
-void spectrum_EventList_Reset(running_machine *machine);
-void spectrum_EventList_SetOffsetStartTime(running_machine *machine, int StartTime);
-void spectrum_EventList_AddItemOffset(running_machine *machine, int ID, int Data,int Time);
-int spectrum_EventList_NumEvents(running_machine *machine);
-EVENT_LIST_ITEM *spectrum_EventList_GetFirstItem(running_machine *machine);
+void spectrum_EventList_Initialise(running_machine &machine, int NumEntries);
+void spectrum_EventList_Reset(running_machine &machine);
+void spectrum_EventList_SetOffsetStartTime(running_machine &machine, int StartTime);
+void spectrum_EventList_AddItemOffset(running_machine &machine, int ID, int Data,int Time);
+int spectrum_EventList_NumEvents(running_machine &machine);
+EVENT_LIST_ITEM *spectrum_EventList_GetFirstItem(running_machine &machine);
 
 /*----------- defined in video/timex.c -----------*/
 
 VIDEO_START( ts2068 );
-VIDEO_UPDATE( ts2068 );
+SCREEN_UPDATE( ts2068 );
 
-VIDEO_UPDATE( tc2048 );
+SCREEN_UPDATE( tc2048 );
 
 #endif /* __SPECTRUM_H__ */

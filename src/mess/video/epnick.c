@@ -14,7 +14,7 @@
  ****************************************************************************/
 
 #include "emu.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/enterp.h"
 
 /* given a colour index in range 0..255 gives the Red component */
@@ -968,7 +968,7 @@ READ8_HANDLER( nick_reg_r )
 
 WRITE8_HANDLER( epnick_reg_w )
 {
-	ep_state *state = space->machine->driver_data<ep_state>();
+	ep_state *state = space->machine().driver_data<ep_state>();
 	NICK_STATE *nick = state->nick;
 	//mame_printf_info("Nick write %02x %02x\r\n",offset, data);
 
@@ -1026,18 +1026,18 @@ static void Nick_DoScreen(NICK_STATE *nick, bitmap_t *bm)
 
 VIDEO_START( epnick )
 {
-	ep_state *state = machine->driver_data<ep_state>();
+	ep_state *state = machine.driver_data<ep_state>();
 	state->nick = auto_alloc_clear(machine, NICK_STATE);
 
-	state->nick->videoram = messram_get_ptr(machine->device("messram"));
+	state->nick->videoram = ram_get_ptr(machine.device(RAM_TAG));
 	Nick_Init(state->nick);
 	VIDEO_START_CALL(generic_bitmapped);
 }
 
 
-VIDEO_UPDATE( epnick )
+SCREEN_UPDATE( epnick )
 {
-	ep_state *state = screen->machine->driver_data<ep_state>();
-	Nick_DoScreen(state->nick,screen->machine->generic.tmpbitmap);
-	return VIDEO_UPDATE_CALL(generic_bitmapped);
+	ep_state *state = screen->machine().driver_data<ep_state>();
+	Nick_DoScreen(state->nick,screen->machine().generic.tmpbitmap);
+	return SCREEN_UPDATE_CALL(generic_bitmapped);
 }

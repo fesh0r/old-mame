@@ -83,7 +83,7 @@ change from 1 to 0.
 #include "cpu/m6502/m6502.h"
 #include "sound/dac.h"
 #include "machine/mos6530.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/kim1_cas.h"
 #include "kim1.lh"
 
@@ -94,17 +94,17 @@ public:
 	kim1_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 u2_port_b;
-	UINT8 _311_output;
-	UINT32 cassette_high_count;
-	UINT8 led_time[6];
+	UINT8 m_u2_port_b;
+	UINT8 m_311_output;
+	UINT32 m_cassette_high_count;
+	UINT8 m_led_time[6];
 };
 
 
 
 
 
-static ADDRESS_MAP_START ( kim1_map , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START ( kim1_map , AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0xe000) AM_RAM
 	AM_RANGE(0x1700, 0x173f) AM_MIRROR(0xe000) AM_DEVREADWRITE("miot_u3", mos6530_r, mos6530_w )
 	AM_RANGE(0x1740, 0x177f) AM_MIRROR(0xe000) AM_DEVREADWRITE("miot_u2", mos6530_r, mos6530_w )
@@ -118,7 +118,7 @@ ADDRESS_MAP_END
 static INPUT_CHANGED( kim1_reset )
 {
 	if (newval == 0)
-		field->port->machine->firstcpu->reset();
+		field->port->machine().firstcpu->reset();
 }
 
 
@@ -169,19 +169,19 @@ INPUT_PORTS_END
 
 static READ8_DEVICE_HANDLER( kim1_u2_read_a )
 {
-	kim1_state *state = device->machine->driver_data<kim1_state>();
+	kim1_state *state = device->machine().driver_data<kim1_state>();
 	UINT8	data = 0xff;
 
-	switch( ( state->u2_port_b >> 1 ) & 0x0f )
+	switch( ( state->m_u2_port_b >> 1 ) & 0x0f )
 	{
 	case 0:
-		data = input_port_read(device->machine, "LINE0");
+		data = input_port_read(device->machine(), "LINE0");
 		break;
 	case 1:
-		data = input_port_read(device->machine, "LINE1");
+		data = input_port_read(device->machine(), "LINE1");
 		break;
 	case 2:
-		data = input_port_read(device->machine, "LINE2");
+		data = input_port_read(device->machine(), "LINE2");
 		break;
 	}
 	return data;
@@ -190,38 +190,38 @@ static READ8_DEVICE_HANDLER( kim1_u2_read_a )
 
 static WRITE8_DEVICE_HANDLER( kim1_u2_write_a )
 {
-	kim1_state *state = device->machine->driver_data<kim1_state>();
-	UINT8 idx = ( state->u2_port_b >> 1 ) & 0x0f;
+	kim1_state *state = device->machine().driver_data<kim1_state>();
+	UINT8 idx = ( state->m_u2_port_b >> 1 ) & 0x0f;
 
 	if ( idx >= 4 && idx < 10 )
 	{
 		if ( data & 0x80 )
 		{
 			output_set_digit_value( idx-4, data & 0x7f );
-			state->led_time[idx - 4] = 15;
+			state->m_led_time[idx - 4] = 15;
 		}
 	}
 }
 
 static READ8_DEVICE_HANDLER( kim1_u2_read_b )
 {
-	kim1_state *state = device->machine->driver_data<kim1_state>();
+	kim1_state *state = device->machine().driver_data<kim1_state>();
 	if ( mos6530_portb_out_get(device) & 0x20 )
 		return 0xFF;
 
-	return 0x7F | ( state->_311_output ^ 0x80 );
+	return 0x7F | ( state->m_311_output ^ 0x80 );
 }
 
 
 static WRITE8_DEVICE_HANDLER( kim1_u2_write_b )
 {
-	kim1_state *state = device->machine->driver_data<kim1_state>();
-	state->u2_port_b = data;
+	kim1_state *state = device->machine().driver_data<kim1_state>();
+	state->m_u2_port_b = data;
 
 	if ( data & 0x20 )
 	{
 		/* cassette write/speaker update */
-		cassette_output( device->machine->device("cassette"), ( data & 0x80 ) ? -1.0 : 1.0 );
+		cassette_output( device->machine().device("cassette"), ( data & 0x80 ) ? -1.0 : 1.0 );
 	}
 
 	/* Set IRQ when bit 7 is cleared */
@@ -245,36 +245,36 @@ static MOS6530_INTERFACE( kim1_u3_mos6530_interface )
 };
 
 
-static TIMER_CALLBACK( kim1_cassette_input )
+static TIMER_DEVICE_CALLBACK( kim1_cassette_input )
 {
-	kim1_state *state = machine->driver_data<kim1_state>();
-	double tap_val = cassette_input( machine->device("cassette") );
+	kim1_state *state = timer.machine().driver_data<kim1_state>();
+	double tap_val = cassette_input( timer.machine().device("cassette") );
 
 	if ( tap_val <= 0 )
 	{
-		if ( state->cassette_high_count )
+		if ( state->m_cassette_high_count )
 		{
-			state->_311_output = ( state->cassette_high_count < 8 ) ? 0x80 : 0;
-			state->cassette_high_count = 0;
+			state->m_311_output = ( state->m_cassette_high_count < 8 ) ? 0x80 : 0;
+			state->m_cassette_high_count = 0;
 		}
 	}
 
 	if ( tap_val > 0 )
 	{
-		state->cassette_high_count++;
+		state->m_cassette_high_count++;
 	}
 }
 
 
-static TIMER_CALLBACK( kim1_update_leds )
+static TIMER_DEVICE_CALLBACK( kim1_update_leds )
 {
-	kim1_state *state = machine->driver_data<kim1_state>();
+	kim1_state *state = timer.machine().driver_data<kim1_state>();
 	int i;
 
 	for ( i = 0; i < 6; i++ )
 	{
-		if ( state->led_time[i] )
-			state->led_time[i]--;
+		if ( state->m_led_time[i] )
+			state->m_led_time[i]--;
 		else
 			output_set_digit_value( i, 0 );
 	}
@@ -283,28 +283,26 @@ static TIMER_CALLBACK( kim1_update_leds )
 
 static MACHINE_START( kim1 )
 {
-	kim1_state *state = machine->driver_data<kim1_state>();
-	state_save_register_item(machine, "kim1", NULL, 0, state->u2_port_b );
-	state_save_register_item(machine, "kim1", NULL, 0, state->_311_output );
-	state_save_register_item(machine, "kim1", NULL, 0, state->cassette_high_count );
-	timer_pulse(machine,  ATTOTIME_IN_HZ(60), NULL, 0, kim1_update_leds );
-	timer_pulse(machine,  ATTOTIME_IN_HZ(44100), NULL, 0, kim1_cassette_input );
+	kim1_state *state = machine.driver_data<kim1_state>();
+	state_save_register_item(machine, "kim1", NULL, 0, state->m_u2_port_b );
+	state_save_register_item(machine, "kim1", NULL, 0, state->m_311_output );
+	state_save_register_item(machine, "kim1", NULL, 0, state->m_cassette_high_count );
 }
 
 
 static MACHINE_RESET( kim1 )
 {
-	kim1_state *state = machine->driver_data<kim1_state>();
+	kim1_state *state = machine.driver_data<kim1_state>();
 	int i;
 
 
 	for ( i = 0; i < 6; i++ )
 	{
-		state->led_time[i] = 0;
+		state->m_led_time[i] = 0;
 	}
 
-	state->_311_output = 0;
-	state->cassette_high_count = 0;
+	state->m_311_output = 0;
+	state->m_cassette_high_count = 0;
 }
 
 
@@ -321,7 +319,7 @@ static MACHINE_CONFIG_START( kim1, kim1_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, 1000000)        /* 1 MHz */
 	MCFG_CPU_PROGRAM_MAP(kim1_map)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( kim1 )
 	MCFG_MACHINE_RESET( kim1 )
@@ -339,6 +337,9 @@ static MACHINE_CONFIG_START( kim1, kim1_state )
 
 	/* video */
 	MCFG_DEFAULT_LAYOUT( layout_kim1 )
+
+	MCFG_TIMER_ADD_PERIODIC("led_timer", kim1_update_leds, attotime::from_hz(60))
+	MCFG_TIMER_ADD_PERIODIC("cassette_timer", kim1_cassette_input, attotime::from_hz(44100))
 MACHINE_CONFIG_END
 
 

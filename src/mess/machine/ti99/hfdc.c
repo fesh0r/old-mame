@@ -7,8 +7,8 @@
 #include "ti_fdc.h"
 #include "machine/wd17xx.h"
 #include "formats/ti99_dsk.h"
-#include "devices/flopdrv.h"
-#include "devices/ti99_hd.h"
+#include "imagedev/flopdrv.h"
+#include "ti99_hd.h"
 #include "machine/mm58274c.h"
 #include "hfdc.h"
 
@@ -31,6 +31,12 @@ typedef struct _ti99_hfdc_state
 {
 	/* When TRUE, card is accessible. Indicated by a LED. */
 	int					selected;
+
+	/* Card select mask. Required to support Genmod. */
+	int					select_mask;
+
+	/* Card select mask. Required to support Genmod. */
+	int					select_value;
 
 	/* When TRUE, triggers motor monoflop. */
 	int					strobe_motor;
@@ -94,6 +100,8 @@ typedef struct _ti99_hfdc_state
 INLINE ti99_hfdc_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == HFDC);
+
 	return (ti99_hfdc_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -160,14 +168,13 @@ static READ8Z_DEVICE_HANDLER( cru_r )
 			/* CRU bits */
 			if (card->cru_select)
 			{
-				/* DIP switches.  Logic levels are inverted (on->0, off->1).  CRU
-                bit order is the reverse of DIP-switch order, too (dip 1 -> bit 7,
-                dip 8 -> bit 0).
-
-                MZ: 00 should not be used since there is a bug in the
-                DSR of the HFDC which causes problems with SD disks
-                (controller tries DD and then fails to fall back to SD) */
-				reply = ~(input_port_read(device->machine, "HFDCDIP"));
+				// DIP switches.  Logic levels are inverted (on->0, off->1).  CRU
+				// bit order is the reverse of DIP-switch order, too (dip 1 -> bit 7,
+				// dip 8 -> bit 0).
+				// MZ: 00 should not be used since there is a bug in the
+				// DSR of the HFDC which causes problems with SD disks
+				// (controller tries DD and then fails to fall back to SD) */
+				reply = ~(input_port_read(device->machine(), "HFDCDIP"));
 			}
 			else
 			{
@@ -236,7 +243,7 @@ static WRITE8_DEVICE_HANDLER( cru_w )
 			card->CD0 = data;
 			if (data && !card->strobe_motor)
 			{
-				timer_adjust_oneshot(card->motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
+				card->motor_on_timer->adjust(attotime::from_msec(4230));
 			}
 			card->strobe_motor = data;
 			break;
@@ -279,7 +286,7 @@ static READ8Z_DEVICE_HANDLER( data_r )
 {
 	ti99_hfdc_state *card = get_safe_token(device);
 
-	if (card->selected && (offset & 0xe000)==0x4000)
+	if (card->selected && ((offset & card->select_mask)==card->select_value))
 	{
 		/* DSR region */
 		if ((offset & 0x1000)==0x0000)
@@ -334,7 +341,7 @@ static READ8Z_DEVICE_HANDLER( data_r )
 static WRITE8_DEVICE_HANDLER( data_w )
 {
 	ti99_hfdc_state *card = get_safe_token(device);
-	if (card->selected && (offset & 0xe000)==0x4000)
+	if (card->selected && ((offset & card->select_mask)==card->select_value))
 	{
 		// Tape: 4fc0...4fcf
 		if ((offset & 0x1ff0)==TAPE_ADDR)
@@ -455,7 +462,7 @@ static int line_to_index(UINT8 line, int max)
 static device_t *current_floppy(device_t *controller)
 {
 	int disk_unit = -1;
-	ti99_hfdc_state *card = (ti99_hfdc_state*)downcast<legacy_device_base *>(controller->owner())->token();
+	ti99_hfdc_state *card = get_safe_token(controller->owner());
 
 	disk_unit = line_to_index(card->output1_latch & 0x0f, HFDC_MAX_FLOPPY);
 
@@ -481,7 +488,7 @@ static device_t *current_floppy(device_t *controller)
 
 static device_t *current_harddisk(device_t *controller)
 {
-	ti99_hfdc_state *card = (ti99_hfdc_state*)downcast<legacy_device_base *>(controller->owner())->token();
+	ti99_hfdc_state *card = get_safe_token(controller->owner());
 
 	int disk_unit = -1;
 	disk_unit = line_to_index((card->output1_latch>>4)&0x0f, HFDC_MAX_HARD);
@@ -645,41 +652,52 @@ static const ti99_peb_card hfdc_card =
 
 static DEVICE_START( ti99_hfdc )
 {
-	ti99_hfdc_state *card = (ti99_hfdc_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_hfdc_state *card = get_safe_token(device);
 
 	/* Resolve the callbacks to the PEB */
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
 	devcb_resolve_write_line(&card->lines.inta, &topeb->inta, device);
 	// The HFDC does not use READY; it has on-board RAM for DMA
 
-	card->motor_on_timer = timer_alloc(device->machine, motor_on_timer_callback, (void *)device);
+	card->motor_on_timer = device->machine().scheduler().timer_alloc(FUNC(motor_on_timer_callback), (void *)device);
 	card->ram = NULL;
 	card->ram_offset[0] = 0x2000; // static bank
 	card->controller = device->subdevice("smc92x4");
 	card->clock = device->subdevice("mm58274c");
 	astring *region = new astring();
 	astring_assemble_3(region, device->tag(), ":", hfdc_region);
-	card->rom = device->machine->region(astring_c(region))->base();
+	card->rom = device->machine().region(astring_c(region))->base();
 }
 
 static DEVICE_STOP( ti99_hfdc )
 {
-	ti99_hfdc_state *card = (ti99_hfdc_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_hfdc_state *card = get_safe_token(device);
 	if (card->ram) free(card->ram);
 }
 
 static DEVICE_RESET( ti99_hfdc )
 {
-	ti99_hfdc_state *card = (ti99_hfdc_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_hfdc_state *card = get_safe_token(device);
 	static const char *const flopname[] = {FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3};
 	static const char *const hardname[] = {MFMHD_0, MFMHD_1, MFMHD_2};
 
 	/* If the card is selected in the menu, register the card */
-	if (input_port_read(device->machine, "DISKCTRL") == DISK_HFDC)
+	if (input_port_read(device->machine(), "DISKCTRL") == DISK_HFDC)
 	{
 		device_t *peb = device->owner();
 		int success = mount_card(peb, device, &hfdc_card, get_pebcard_config(device)->slot);
 		if (!success) return;
+
+		card->select_mask = 0x7e000;
+		card->select_value = 0x74000;
+
+		if (input_port_read(device->machine(), "MODE")==GENMOD)
+		{
+			// GenMod card modification
+			logerror("HFDC: Configuring for GenMod\n");
+			card->select_mask = 0x1fe000;
+			card->select_value = 0x174000;
+		}
 
 		// Allocate 32 KiB for on-board buffer memory
 		if (card->ram==NULL)
@@ -688,12 +706,12 @@ static DEVICE_RESET( ti99_hfdc )
 //          memset(card->ram, 0, 32768);
 		}
 
-		if (input_port_read(device->machine, "HFDCDIP")&0x55)
+		if (input_port_read(device->machine(), "HFDCDIP")&0x55)
 			ti99_set_80_track_drives(TRUE);
 		else
 			ti99_set_80_track_drives(FALSE);
 
-		smc92x4_set_timing(card->controller, input_port_read(device->machine, "DRVSPD"));
+		smc92x4_set_timing(card->controller, input_port_read(device->machine(), "DRVSPD"));
 
 		// Connect floppy drives to controller. Note that *this* is the
 		// controller, not the controller chip. The pcb contains a select
@@ -753,6 +771,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_hfdc##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "Myarc Hard and Floppy Disk Controller Card"
+#define DEVTEMPLATE_SHORTNAME           "myarchfdc"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

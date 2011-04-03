@@ -136,7 +136,7 @@
 #include "emu.h"
 #include "c1541.h"
 #include "cpu/m6502/m6502.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/d64_dsk.h"
 #include "formats/g64_dsk.h"
 #include "machine/6522via.h"
@@ -269,7 +269,7 @@ static TIMER_CALLBACK( bit_tick )
 		if (!(c1541->data & 0xff))
 		{
 			/* simulate weak bits with randomness */
-			c1541->data = (c1541->data & 0xff00) | (machine->rand() & 0xff);
+			c1541->data = (c1541->data & 0xff00) | (machine.rand() & 0xff);
 		}
 	}
 
@@ -277,7 +277,7 @@ static TIMER_CALLBACK( bit_tick )
 	{
 		int byte_ready = !(byte && c1541->soe);
 
-		cpu_set_input_line(c1541->cpu, M6502_SET_OVERFLOW, byte_ready);
+		device_set_input_line(c1541->cpu, M6502_SET_OVERFLOW, byte_ready);
 		c1541->via1->write_ca1(byte_ready);
 
 		c1541->byte = byte;
@@ -328,7 +328,7 @@ static void spindle_motor(c1541_t *c1541, int mtr)
 		}
 
 		floppy_mon_w(c1541->image, !mtr);
-		timer_enable(c1541->bit_timer, mtr);
+		c1541->bit_timer->enable(mtr);
 
 		c1541->mtr = mtr;
 	}
@@ -428,7 +428,7 @@ WRITE_LINE_DEVICE_HANDLER( c2031_ieee488_ifc_w )
     ADDRESS_MAP( c1540_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c1540_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c1540_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -439,7 +439,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c1541_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c1541_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c1541_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -450,7 +450,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c1541c_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c1541c_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c1541c_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -461,7 +461,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c1541ii_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c1541ii_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c1541ii_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -472,7 +472,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( sx1541_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( sx1541_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( sx1541_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -483,7 +483,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( c2031_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( c2031_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( c2031_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -494,7 +494,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( oc118_map )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( oc118_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( oc118_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
@@ -511,7 +511,7 @@ static WRITE_LINE_DEVICE_HANDLER( via0_irq_w )
 
 	c1541->via0_irq = state;
 
-	cpu_set_input_line(c1541->cpu, INPUT_LINE_IRQ0, (c1541->via0_irq | c1541->via1_irq) ? ASSERT_LINE : CLEAR_LINE);
+	device_set_input_line(c1541->cpu, INPUT_LINE_IRQ0, (c1541->via0_irq | c1541->via1_irq) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static READ8_DEVICE_HANDLER( via0_pa_r )
@@ -848,7 +848,7 @@ static WRITE_LINE_DEVICE_HANDLER( via1_irq_w )
 
 	c1541->via1_irq = state;
 
-	cpu_set_input_line(c1541->cpu, INPUT_LINE_IRQ0, (c1541->via0_irq | c1541->via1_irq) ? ASSERT_LINE : CLEAR_LINE);
+	device_set_input_line(c1541->cpu, INPUT_LINE_IRQ0, (c1541->via0_irq | c1541->via1_irq) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static READ8_DEVICE_HANDLER( yb_r )
@@ -958,7 +958,7 @@ static WRITE8_DEVICE_HANDLER( via1_pb_w )
 
 	if (c1541->ds != ds)
 	{
-		timer_adjust_periodic(c1541->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C2040_BITRATE[ds]/4));
+		c1541->bit_timer->adjust(attotime::zero, 0, attotime::from_hz(C2040_BITRATE[ds]/4));
 		c1541->ds = ds;
 	}
 }
@@ -977,7 +977,7 @@ static WRITE_LINE_DEVICE_HANDLER( soe_w )
 
 	c1541->soe = state;
 
-	cpu_set_input_line(c1541->cpu, M6502_SET_OVERFLOW, byte_ready);	
+	device_set_input_line(c1541->cpu, M6502_SET_OVERFLOW, byte_ready);
 	c1541->via1->write_ca1(byte_ready);
 }
 
@@ -1216,7 +1216,7 @@ static DEVICE_START( c1541 )
 	/* find devices */
 	c1541->via0 = device->subdevice<via6522_device>(M6522_0_TAG);
 	c1541->via1 = device->subdevice<via6522_device>(M6522_1_TAG);
-	c1541->bus = device->machine->device(config->bus_tag);
+	c1541->bus = device->machine().device(config->bus_tag);
 	c1541->image = device->subdevice(FLOPPY_0);
 
 	/* install image callbacks */
@@ -1224,31 +1224,31 @@ static DEVICE_START( c1541 )
 	floppy_install_load_proc(c1541->image, on_disk_change);
 
 	/* allocate track buffer */
-//  c1541->track_buffer = auto_alloc_array(device->machine, UINT8, G64_BUFFER_SIZE);
+//  c1541->track_buffer = auto_alloc_array(device->machine(), UINT8, G64_BUFFER_SIZE);
 
 	/* allocate data timer */
-	c1541->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
+	c1541->bit_timer = device->machine().scheduler().timer_alloc(FUNC(bit_tick), (void *)device);
 
 	/* register for state saving */
-//  state_save_register_device_item_pointer(device, 0, c1541->track_buffer, G64_BUFFER_SIZE);
-	state_save_register_device_item(device, 0, c1541->address);
-	state_save_register_device_item(device, 0, c1541->track_len);
-	state_save_register_device_item(device, 0, c1541->buffer_pos);
-	state_save_register_device_item(device, 0, c1541->bit_pos);
-	state_save_register_device_item(device, 0, c1541->bit_count);
-	state_save_register_device_item(device, 0, c1541->data);
-	state_save_register_device_item(device, 0, c1541->yb);
-	state_save_register_device_item(device, 0, c1541->byte);
-	state_save_register_device_item(device, 0, c1541->atna);
-	state_save_register_device_item(device, 0, c1541->ds);
-	state_save_register_device_item(device, 0, c1541->stp);
-	state_save_register_device_item(device, 0, c1541->soe);
-	state_save_register_device_item(device, 0, c1541->mode);
-	state_save_register_device_item(device, 0, c1541->via0_irq);
-	state_save_register_device_item(device, 0, c1541->via1_irq);
-	state_save_register_device_item(device, 0, c1541->data_out);
-	state_save_register_device_item(device, 0, c1541->nrfd_out);
-	state_save_register_device_item(device, 0, c1541->ndac_out);
+//  device->save_pointer(NAME(c1541->track_buffer), G64_BUFFER_SIZE);
+	device->save_item(NAME(c1541->address));
+	device->save_item(NAME(c1541->track_len));
+	device->save_item(NAME(c1541->buffer_pos));
+	device->save_item(NAME(c1541->bit_pos));
+	device->save_item(NAME(c1541->bit_count));
+	device->save_item(NAME(c1541->data));
+	device->save_item(NAME(c1541->yb));
+	device->save_item(NAME(c1541->byte));
+	device->save_item(NAME(c1541->atna));
+	device->save_item(NAME(c1541->ds));
+	device->save_item(NAME(c1541->stp));
+	device->save_item(NAME(c1541->soe));
+	device->save_item(NAME(c1541->mode));
+	device->save_item(NAME(c1541->via0_irq));
+	device->save_item(NAME(c1541->via1_irq));
+	device->save_item(NAME(c1541->data_out));
+	device->save_item(NAME(c1541->nrfd_out));
+	device->save_item(NAME(c1541->ndac_out));
 }
 
 /*-------------------------------------------------
@@ -1287,6 +1287,7 @@ DEVICE_GET_INFO( c1540 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore VIC-1540");						break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "vic1540");									break;		
 		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Commodore VIC-1540");						break;
 		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
@@ -1308,7 +1309,8 @@ DEVICE_GET_INFO( c1541 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore VIC-1541");						break;
-
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "vic1541");									break;		
+		
 		default:										DEVICE_GET_INFO_CALL(c1540);								break;
 	}
 }
@@ -1327,6 +1329,7 @@ DEVICE_GET_INFO( c1541c )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 1541C");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "vic1541c");								break;		
 
 		default:										DEVICE_GET_INFO_CALL(c1540);								break;
 	}
@@ -1346,6 +1349,7 @@ DEVICE_GET_INFO( c1541ii )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 1541-II");						break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "vic1541ii");								break;		
 
 		default:										DEVICE_GET_INFO_CALL(c1540);								break;
 	}
@@ -1365,6 +1369,7 @@ DEVICE_GET_INFO( sx1541 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore SX1541");						break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "sx1541");									break;		
 
 		default:										DEVICE_GET_INFO_CALL(c1540);								break;
 	}
@@ -1384,6 +1389,7 @@ DEVICE_GET_INFO( c2031 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 2031");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "c2031");									break;		
 
 		default:										DEVICE_GET_INFO_CALL(c1540);								break;
 	}
@@ -1403,6 +1409,7 @@ DEVICE_GET_INFO( oc118 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Oceanic OC-118");							break;
+		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "oc118");									break;		
 
 		default:										DEVICE_GET_INFO_CALL(c1540);								break;
 	}

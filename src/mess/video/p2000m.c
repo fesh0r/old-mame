@@ -14,15 +14,15 @@
 
 VIDEO_START( p2000m )
 {
-	p2000t_state *state = machine->driver_data<p2000t_state>();
-	state->frame_count = 0;
+	p2000t_state *state = machine.driver_data<p2000t_state>();
+	state->m_frame_count = 0;
 }
 
 
-VIDEO_UPDATE( p2000m )
+SCREEN_UPDATE( p2000m )
 {
-	p2000t_state *state = screen->machine->driver_data<p2000t_state>();
-	UINT8 *videoram = state->videoram;
+	p2000t_state *state = screen->machine().driver_data<p2000t_state>();
+	UINT8 *videoram = state->m_videoram;
 	int offs, sx, sy, code, loop;
 
 	for (offs = 0; offs < 80 * 24; offs++)
@@ -30,7 +30,7 @@ VIDEO_UPDATE( p2000m )
 		sy = (offs / 80) * 20;
 		sx = (offs % 80) * 12;
 
-		if ((state->frame_count > 25) && (videoram[offs + 2048] & 0x40))
+		if ((state->m_frame_count > 25) && (videoram[offs + 2048] & 0x40))
 			code = 32;
 		else
 		{
@@ -44,7 +44,7 @@ VIDEO_UPDATE( p2000m )
 			if (code < 32) code = 32;
 		}
 
-		drawgfxzoom_opaque (bitmap, NULL, screen->machine->gfx[0], code,
+		drawgfxzoom_opaque (bitmap, NULL, screen->machine().gfx[0], code,
 			videoram[offs + 2048] & 0x08 ? 0 : 1, 0, 0, sx, sy, 0x20000, 0x20000);
 
 		if (videoram[offs] & 0x80)

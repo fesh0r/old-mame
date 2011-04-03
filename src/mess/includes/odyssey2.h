@@ -7,9 +7,6 @@
 #ifndef ODYSSEY2_H_
 #define ODYSSEY2_H_
 
-#include "streams.h"
-
-
 #define P1_BANK_LO_BIT            (0x01)
 #define P1_BANK_HI_BIT            (0x02)
 #define P1_KEYBOARD_SCAN_ENABLE   (0x04)  /* active low */
@@ -77,27 +74,27 @@ public:
 	odyssey2_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int the_voice_lrq_state;
-	UINT8 *ram;
-	UINT8 p1;
-	UINT8 p2;
-	size_t cart_size;
-	o2_vdc_t o2_vdc;
-	UINT32 o2_snd_shift[2];
-	UINT8 x_beam_pos;
-	UINT8 y_beam_pos;
-	UINT8 control_status;
-	UINT8 collision_status;
-	int iff;
-	emu_timer *i824x_line_timer;
-	emu_timer *i824x_hblank_timer;
-	bitmap_t *tmp_bitmap;
-	int start_vpos;
-	int start_vblank;
-	UINT8 lum;
-	UINT16 lfsr;
-	sound_stream *sh_channel;
-	UINT16 sh_count;
+	int m_the_voice_lrq_state;
+	UINT8 *m_ram;
+	UINT8 m_p1;
+	UINT8 m_p2;
+	size_t m_cart_size;
+	o2_vdc_t m_o2_vdc;
+	UINT32 m_o2_snd_shift[2];
+	UINT8 m_x_beam_pos;
+	UINT8 m_y_beam_pos;
+	UINT8 m_control_status;
+	UINT8 m_collision_status;
+	int m_iff;
+	emu_timer *m_i824x_line_timer;
+	emu_timer *m_i824x_hblank_timer;
+	bitmap_t *m_tmp_bitmap;
+	int m_start_vpos;
+	int m_start_vblank;
+	UINT8 m_lum;
+	UINT16 m_lfsr;
+	sound_stream *m_sh_channel;
+	UINT16 m_sh_count;
 	//ef9341_t ef9341;
 };
 
@@ -107,7 +104,7 @@ public:
 extern const UINT8 odyssey2_colors[];
 
 VIDEO_START( odyssey2 );
-VIDEO_UPDATE( odyssey2 );
+SCREEN_UPDATE( odyssey2 );
 PALETTE_INIT( odyssey2 );
 READ8_HANDLER ( odyssey2_t1_r );
 READ8_HANDLER ( odyssey2_video_r );
@@ -116,8 +113,8 @@ WRITE8_HANDLER ( odyssey2_lum_w );
 
 STREAM_UPDATE( odyssey2_sh_update );
 
-void odyssey2_ef9341_w( running_machine *machine, int command, int b, UINT8 data );
-UINT8 odyssey2_ef9341_r( running_machine *machine, int command, int b );
+void odyssey2_ef9341_w( running_machine &machine, int command, int b, UINT8 data );
+UINT8 odyssey2_ef9341_r( running_machine &machine, int command, int b );
 
 DECLARE_LEGACY_SOUND_DEVICE(ODYSSEY2, odyssey2_sound);
 

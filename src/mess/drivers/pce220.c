@@ -12,7 +12,7 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 class pce220_state : public driver_device
@@ -21,10 +21,10 @@ public:
 	pce220_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 bank_num;
-	UINT16 lcd_index_row;
-	UINT16 lcd_index_col;
-	UINT8 lcd_timer;
+	UINT8 m_bank_num;
+	UINT16 m_lcd_index_row;
+	UINT16 m_lcd_index_col;
+	UINT8 m_lcd_timer;
 };
 
 
@@ -33,12 +33,12 @@ static VIDEO_START( pce220 )
 {
 }
 
-static VIDEO_UPDATE( pce220 )
+static SCREEN_UPDATE( pce220 )
 {
 	int x, y, xi,yi;
 	int count = 0;
 //  static int test_x,test_y;
-	UINT8 *vram = screen->machine->region("lcd_vram")->base();
+	UINT8 *vram = screen->machine().region("lcd_vram")->base();
 
 	for (y = 0; y < 4; y++)
 	{
@@ -53,7 +53,7 @@ static VIDEO_UPDATE( pce220 )
 					color = (vram[count]) >> (yi) & 1;
 
 					//if ((x + xi) <= screen->visible_area()->max_x && (y + 0) < screen->visible_area()->max_y)
-						*BITMAP_ADDR32(bitmap, y*8 + yi, x*5 + xi) = screen->machine->pens[color ^ 1];
+						*BITMAP_ADDR32(bitmap, y*8 + yi, x*5 + xi) = screen->machine().pens[color ^ 1];
 				}
 
 				count++;
@@ -70,53 +70,53 @@ static READ8_HANDLER( lcd_status_r )
 
 static WRITE8_HANDLER( lcd_control_w )
 {
-	pce220_state *state = space->machine->driver_data<pce220_state>();
+	pce220_state *state = space->machine().driver_data<pce220_state>();
 	if((data & 0xb8) == 0xb8)
-		state->lcd_index_row = (data & 0x07);
+		state->m_lcd_index_row = (data & 0x07);
 	if((data & 0x40) == 0x40)
-		state->lcd_index_col = (data & 0x3f);
+		state->m_lcd_index_col = (data & 0x3f);
 }
 
 static WRITE8_HANDLER( lcd_data_w )
 {
-	pce220_state *state = space->machine->driver_data<pce220_state>();
-	UINT8 *vram = space->machine->region("lcd_vram")->base();
+	pce220_state *state = space->machine().driver_data<pce220_state>();
+	UINT8 *vram = space->machine().region("lcd_vram")->base();
 
-	vram[state->lcd_index_row*0x40|state->lcd_index_col] = data;
+	vram[state->m_lcd_index_row*0x40|state->m_lcd_index_col] = data;
 
-	gfx_element_mark_dirty(space->machine->gfx[0], (state->lcd_index_row*0x40|state->lcd_index_col)/5);
-	state->lcd_index_col++;
+	gfx_element_mark_dirty(space->machine().gfx[0], (state->m_lcd_index_row*0x40|state->m_lcd_index_col)/5);
+	state->m_lcd_index_col++;
 }
 
 static READ8_HANDLER( rom_bank_r )
 {
-	pce220_state *state = space->machine->driver_data<pce220_state>();
-	return state->bank_num;
+	pce220_state *state = space->machine().driver_data<pce220_state>();
+	return state->m_bank_num;
 }
 
 static WRITE8_HANDLER( rom_bank_w )
 {
-	pce220_state *state = space->machine->driver_data<pce220_state>();
+	pce220_state *state = space->machine().driver_data<pce220_state>();
 	UINT8 bank2 = data & 0x07; // bits 0,1,2
 	UINT8 bank1 = (data & 0x70) >> 4; // bits 4,5,6
 
-	state->bank_num = data;
+	state->m_bank_num = data;
 
-	memory_set_bankptr(space->machine, "bank3", space->machine->region("user1")->base() + 0x4000 * bank1);
-	memory_set_bankptr(space->machine, "bank4", space->machine->region("user1")->base() + 0x4000 * bank2);
+	memory_set_bankptr(space->machine(), "bank3", space->machine().region("user1")->base() + 0x4000 * bank1);
+	memory_set_bankptr(space->machine(), "bank4", space->machine().region("user1")->base() + 0x4000 * bank2);
 }
 
 static WRITE8_HANDLER( ram_bank_w )
 {
-	address_space *space_prg = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space_prg = space->machine().device("maincpu")->memory().space(AS_PROGRAM);
 	UINT8 bank = BIT(data,2);
-	memory_install_write_bank(space_prg, 0x0000, 0x3fff, 0, 0, "bank1");
+	space_prg->install_write_bank(0x0000, 0x3fff, "bank1");
 
-	memory_set_bankptr(space->machine, "bank1", messram_get_ptr(space->machine->device("messram"))+0x0000+bank*0x8000);
-	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(space->machine->device("messram"))+0x4000+bank*0x8000);
+	memory_set_bankptr(space->machine(), "bank1", ram_get_ptr(space->machine().device(RAM_TAG))+0x0000+bank*0x8000);
+	memory_set_bankptr(space->machine(), "bank2", ram_get_ptr(space->machine().device(RAM_TAG))+0x4000+bank*0x8000);
 }
 
-static ADDRESS_MAP_START(pce220_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(pce220_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank3")
@@ -132,13 +132,13 @@ static READ8_HANDLER( battery_status_r )
 
 static READ8_HANDLER( timer_lcd_r )
 {
-	return space->machine->rand() & 1;
+	return space->machine().rand() & 1;
 }
 
 static WRITE8_HANDLER( timer_lcd_w )
 {
-	pce220_state *state = space->machine->driver_data<pce220_state>();
-	state->lcd_timer = data & 1;
+	pce220_state *state = space->machine().driver_data<pce220_state>();
+	state->m_lcd_timer = data & 1;
 }
 
 static READ8_HANDLER( port15_r )
@@ -172,7 +172,7 @@ static READ8_HANDLER( port1f_r )
 	return 0;
 }
 
-static ADDRESS_MAP_START( pce220_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pce220_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x10) AM_READNOP //key matrix r
@@ -203,9 +203,9 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(pce220)
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-	memory_set_bankptr(machine, "bank1", machine->region("user1")->base() + 0x0000);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	space->unmap_write(0x0000, 0x3fff);
+	memory_set_bankptr(machine, "bank1", machine.region("user1")->base() + 0x0000);
 }
 
 static const gfx_layout test_decode =
@@ -240,15 +240,16 @@ static MACHINE_CONFIG_START( pce220, pce220_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
     MCFG_SCREEN_SIZE(32*8, 32*8)
     MCFG_SCREEN_VISIBLE_AREA(0, 32*8-1, 0, 32*8-1)
+    MCFG_SCREEN_UPDATE(pce220)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 	MCFG_GFXDECODE(pce220)
 
     MCFG_VIDEO_START(pce220)
-    MCFG_VIDEO_UPDATE(pce220)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K") // 32K internal + 32K external card
 MACHINE_CONFIG_END
 

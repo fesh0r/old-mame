@@ -9,10 +9,10 @@
 #include "emu.h"
 #include "cpu/i86/i86.h"
 #include "machine/wd17xx.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80ctc.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 
 class act_state : public driver_device
@@ -21,20 +21,20 @@ public:
 	act_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT16 *paletteram;
-	UINT16 *vram;
-	UINT16 *scrollram;
+	UINT16 *m_paletteram;
+	UINT16 *m_vram;
+	UINT16 *m_scrollram;
 
-	UINT8 fdrv_num;
+	UINT8 m_fdrv_num;
 };
 
 static VIDEO_START( act_f1 )
 {
 }
 
-static VIDEO_UPDATE( act_f1 )
+static SCREEN_UPDATE( act_f1 )
 {
-	act_state *state = screen->machine->driver_data<act_state>();
+	act_state *state = screen->machine().driver_data<act_state>();
 	int x,y,i;
 	int x_count;
 
@@ -48,14 +48,14 @@ static VIDEO_UPDATE( act_f1 )
 
 				for (i=0;i<8;i++)
 				{
-					pen[0] = (state->vram[state->scrollram[y]+x_count])>>(7-i) & 1;
-					pen[1] = (state->vram[state->scrollram[y]+x_count])>>(15-i) & 1;
+					pen[0] = (state->m_vram[state->m_scrollram[y]+x_count])>>(7-i) & 1;
+					pen[1] = (state->m_vram[state->m_scrollram[y]+x_count])>>(15-i) & 1;
 
 					color = pen[0]|pen[1]<<1;
 
 					const rectangle &visarea = screen->visible_area();
 					if((x+i)<=visarea.max_x && ((y)+0)<visarea.max_y)
-						*BITMAP_ADDR16(bitmap, y, x+i) = screen->machine->pens[color];
+						*BITMAP_ADDR16(bitmap, y, x+i) = screen->machine().pens[color];
 				}
 
 				x_count++;
@@ -73,13 +73,13 @@ static VIDEO_UPDATE( act_f1 )
 
 static READ8_HANDLER( act_fdc_r )
 {
-	act_state *state = space->machine->driver_data<act_state>();
-	device_t* dev = space->machine->device("fdc");
+	act_state *state = space->machine().driver_data<act_state>();
+	device_t* dev = space->machine().device("fdc");
 
 //  printf("%02x\n",offset);
 
-	floppy_mon_w(floppy_get_device(space->machine, state->fdrv_num), CLEAR_LINE);
-	floppy_drive_set_ready_state(floppy_get_device(space->machine, state->fdrv_num), 1,0);
+	floppy_mon_w(floppy_get_device(space->machine(), state->m_fdrv_num), CLEAR_LINE);
+	floppy_drive_set_ready_state(floppy_get_device(space->machine(), state->m_fdrv_num), 1,0);
 
 	switch(offset)
 	{
@@ -101,13 +101,13 @@ static READ8_HANDLER( act_fdc_r )
 
 static WRITE8_HANDLER( act_fdc_w )
 {
-	act_state *state = space->machine->driver_data<act_state>();
-	device_t* dev = space->machine->device("fdc");
+	act_state *state = space->machine().driver_data<act_state>();
+	device_t* dev = space->machine().device("fdc");
 
 //  printf("%02x %02x\n",offset,data);
 
-	floppy_mon_w(floppy_get_device(space->machine, state->fdrv_num), CLEAR_LINE);
-	floppy_drive_set_ready_state(floppy_get_device(space->machine, state->fdrv_num), 1,0);
+	floppy_mon_w(floppy_get_device(space->machine(), state->m_fdrv_num), CLEAR_LINE);
+	floppy_drive_set_ready_state(floppy_get_device(space->machine(), state->m_fdrv_num), 1,0);
 
 	switch(offset)
 	{
@@ -131,33 +131,33 @@ static WRITE8_HANDLER( act_fdc_w )
 
 static READ16_HANDLER( act_pal_r )
 {
-	act_state *state = space->machine->driver_data<act_state>();
+	act_state *state = space->machine().driver_data<act_state>();
 
-	return state->paletteram[offset];
+	return state->m_paletteram[offset];
 }
 
 static WRITE16_HANDLER( act_pal_w )
 {
-	act_state *state = space->machine->driver_data<act_state>();
+	act_state *state = space->machine().driver_data<act_state>();
 	UINT8 i,r,g,b;
-	COMBINE_DATA(&state->paletteram[offset]);
+	COMBINE_DATA(&state->m_paletteram[offset]);
 
 	if(ACCESSING_BITS_0_7 && offset) //TODO: offset 0 looks bogus
 	{
-		i = state->paletteram[offset] & 1;
-		r = ((state->paletteram[offset] & 2)>>0) | i;
-		g = ((state->paletteram[offset] & 4)>>1) | i;
-		b = ((state->paletteram[offset] & 8)>>2) | i;
+		i = state->m_paletteram[offset] & 1;
+		r = ((state->m_paletteram[offset] & 2)>>0) | i;
+		g = ((state->m_paletteram[offset] & 4)>>1) | i;
+		b = ((state->m_paletteram[offset] & 8)>>2) | i;
 
-		palette_set_color_rgb(space->machine, offset, pal2bit(r), pal2bit(g), pal2bit(b));
+		palette_set_color_rgb(space->machine(), offset, pal2bit(r), pal2bit(g), pal2bit(b));
 	}
 }
 
-static ADDRESS_MAP_START(act_f1_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(act_f1_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x01e00,0x01fff) AM_RAM AM_BASE_MEMBER(act_state,scrollram)
-	AM_RANGE(0xe0000,0xe001f) AM_READWRITE(act_pal_r,act_pal_w) AM_BASE_MEMBER(act_state,paletteram)
-	AM_RANGE(0x00000,0xeffff) AM_RAM AM_BASE_MEMBER(act_state,vram)
+	AM_RANGE(0x01e00,0x01fff) AM_RAM AM_BASE_MEMBER(act_state,m_scrollram)
+	AM_RANGE(0xe0000,0xe001f) AM_READWRITE(act_pal_r,act_pal_w) AM_BASE_MEMBER(act_state,m_paletteram)
+	AM_RANGE(0x00000,0xeffff) AM_RAM AM_BASE_MEMBER(act_state,m_vram)
 	AM_RANGE(0xf0000,0xf7fff) AM_RAM
 	AM_RANGE(0xf8000,0xfffff) AM_ROM
 ADDRESS_MAP_END
@@ -165,7 +165,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( actf1_sys_w )
 {
 //  static UINT8 cur_fdrv;
-//  device_t* dev = space->machine->device("fdc");
+//  device_t* dev = space->machine().device("fdc");
 
 	switch(offset)
 	{
@@ -177,8 +177,8 @@ static WRITE8_HANDLER( actf1_sys_w )
 //          wd17xx_set_side(dev,data ? 1 : 0);
 			break;
 		case 2:
-//          floppy_drive_set_motor_state(floppy_get_device(space->machine, cur_fdrv), data);
-//          floppy_drive_set_ready_state(floppy_get_device(space->machine, cur_fdrv), data,0);
+//          floppy_drive_set_motor_state(floppy_get_device(space->machine(), cur_fdrv), data);
+//          floppy_drive_set_ready_state(floppy_get_device(space->machine(), cur_fdrv), data,0);
 			break;
 		case 3:
 //          data ? 256 : 200 line mode
@@ -197,7 +197,7 @@ static WRITE8_HANDLER( actf1_sys_w )
 	}
 }
 
-static ADDRESS_MAP_START( act_f1_io , ADDRESS_SPACE_IO, 16)
+static ADDRESS_MAP_START( act_f1_io , AS_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x000f) AM_WRITE8(actf1_sys_w,0x00ff)
 	AM_RANGE(0x0010, 0x0017) AM_DEVREADWRITE8("ctc",z80ctc_r,z80ctc_w,0x00ff)
@@ -264,8 +264,8 @@ static const z80_daisy_config x1_daisy[] =
 
 static INTERRUPT_GEN( act_f1_irq )
 {
-	//if(input_code_pressed(device->machine, KEYCODE_C))
-	//  cpu_set_input_line_and_vector(device,0,HOLD_LINE,0x60);
+	//if(input_code_pressed(device->machine(), KEYCODE_C))
+	//  device_set_input_line_and_vector(device,0,HOLD_LINE,0x60);
 }
 
 static FLOPPY_OPTIONS_START( act )
@@ -309,6 +309,8 @@ static MACHINE_CONFIG_START( act_f1, act_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(640, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 256-1)
+	MCFG_SCREEN_UPDATE(act_f1)
+
 	MCFG_PALETTE_LENGTH(16)
 //  MCFG_PALETTE_INIT(black_and_white)
 
@@ -317,7 +319,6 @@ static MACHINE_CONFIG_START( act_f1, act_state )
 	MCFG_GFXDECODE(act_f1)
 
 	MCFG_VIDEO_START(act_f1)
-	MCFG_VIDEO_UPDATE(act_f1)
 
 	MCFG_FLOPPY_2_DRIVES_ADD(act_floppy_config)
 MACHINE_CONFIG_END

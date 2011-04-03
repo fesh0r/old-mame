@@ -49,8 +49,8 @@
 #include "machine/6821pia.h"
 #include "cpu/m6502/m6502.h"
 #include "image.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 
 static TIMER_CALLBACK(apple1_kbd_poll);
 static TIMER_CALLBACK(apple1_kbd_strobe_end);
@@ -144,10 +144,10 @@ static const UINT8 apple1_control_keymap[] =
 
 DRIVER_INIT( apple1 )
 {
-	address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space* space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	/* Set up the handlers for MESS's dynamically-sized RAM. */
-	memory_install_readwrite_bank(space,0x0000, messram_get_size(machine->device("messram")) - 1, 0, 0, "bank1");
-	memory_set_bankptr(machine,"bank1", messram_get_ptr(machine->device("messram")));
+	space->install_readwrite_bank(0x0000, ram_get_size(machine.device(RAM_TAG)) - 1, "bank1");
+	memory_set_bankptr(machine,"bank1", ram_get_ptr(machine.device(RAM_TAG)));
 
 	/* Poll the keyboard input ports periodically.  These include both
        ordinary keys and the RESET and CLEAR SCREEN pushbutton
@@ -159,7 +159,7 @@ DRIVER_INIT( apple1 )
 
        A 120-Hz poll rate seems to be fast enough to ensure no
        keystrokes are missed. */
-	timer_pulse(machine, ATTOTIME_IN_HZ(120), NULL, 0, apple1_kbd_poll);
+	machine.scheduler().timer_pulse(attotime::from_hz(120), FUNC(apple1_kbd_poll));
 }
 
 
@@ -244,7 +244,7 @@ SNAPSHOT_LOAD(apple1)
 
 	end_addr = start_addr + datasize - 1;
 
-	if ((start_addr < 0xE000 && end_addr > messram_get_size(image.device().machine->device("messram")) - 1)
+	if ((start_addr < 0xE000 && end_addr > ram_get_size(image.device().machine().device(RAM_TAG)) - 1)
 		|| end_addr > 0xEFFF)
 	{
 		logerror("apple1 - Snapshot won't fit in this memory configuration;\n"
@@ -256,7 +256,7 @@ SNAPSHOT_LOAD(apple1)
 	for (addr = start_addr, snapptr = snapbuf + SNAP_HEADER_LEN;
 		 addr <= end_addr;
 		 addr++, snapptr++)
-		cputag_get_address_space(image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM)->write_byte(addr, *snapptr);
+		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr, *snapptr);
 
 
 	return IMAGE_INIT_PASS;
@@ -280,11 +280,11 @@ SNAPSHOT_LOAD(apple1)
 *****************************************************************************/
 static TIMER_CALLBACK(apple1_kbd_poll)
 {
-	apple1_state *state = machine->driver_data<apple1_state>();
+	apple1_state *state = machine.driver_data<apple1_state>();
 	int port, bit;
 	int key_pressed;
 	UINT32 shiftkeys, ctrlkeys;
-	device_t *pia = machine->device( "pia" );
+	device_t *pia = machine.device( "pia" );
 	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	/* This holds the values of all the input ports for ordinary keys
@@ -295,40 +295,40 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 	/* The RESET switch resets the CPU and the 6820 PIA. */
 	if (input_port_read(machine, "KEY5") & 0x0001)
 	{
-		if (!state->reset_flag) {
-			state->reset_flag = 1;
+		if (!state->m_reset_flag) {
+			state->m_reset_flag = 1;
 			/* using PULSE_LINE does not allow us to press and hold key */
 			cputag_set_input_line(machine, "maincpu", INPUT_LINE_RESET, ASSERT_LINE);
 			pia->reset();
 		}
 	}
-	else if (state->reset_flag) {
+	else if (state->m_reset_flag) {
 		/* RESET released--allow the processor to continue. */
-		state->reset_flag = 0;
+		state->m_reset_flag = 0;
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	/* The CLEAR SCREEN switch clears the video hardware. */
 	if (input_port_read(machine, "KEY5") & 0x0002)
 	{
-		if (!state->vh_clrscrn_pressed)
+		if (!state->m_vh_clrscrn_pressed)
 		{
 			/* Ignore further video writes, and clear the screen. */
-			state->vh_clrscrn_pressed = 1;
+			state->m_vh_clrscrn_pressed = 1;
 			apple1_vh_dsp_clr(machine);
 		}
 	}
-	else if (state->vh_clrscrn_pressed)
+	else if (state->m_vh_clrscrn_pressed)
 	{
 		/* CLEAR SCREEN released--pay attention to video writes again. */
-		state->vh_clrscrn_pressed = 0;
+		state->m_vh_clrscrn_pressed = 0;
 	}
 
 	/* Now we scan all the input ports for ordinary keys, recording
        new keypresses while ignoring keys that were already pressed in
        the last scan. */
 
-	state->kbd_data = 0;
+	state->m_kbd_data = 0;
 	key_pressed = 0;
 
 	/* The keyboard strobe line should always be low when a scan starts. */
@@ -342,7 +342,7 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 		UINT32 portval, newkeys;
 
 		portval = input_port_read(machine, keynames[port]);
-		newkeys = portval & ~(state->kbd_last_scan[port]);
+		newkeys = portval & ~(state->m_kbd_last_scan[port]);
 
 		if (newkeys)
 		{
@@ -350,7 +350,7 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 			for (bit = 0; bit < 16; bit++) {
 				if (newkeys & 1)
 				{
-					state->kbd_data = (ctrlkeys)
+					state->m_kbd_data = (ctrlkeys)
 					  ? apple1_control_keymap[port*16 + bit]
 					  : (shiftkeys)
 					  ? apple1_shifted_keymap[port*16 + bit]
@@ -359,7 +359,7 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 				newkeys >>= 1;
 			}
 		}
-		state->kbd_last_scan[port] = portval;
+		state->m_kbd_last_scan[port] = portval;
 	}
 
 	if (key_pressed)
@@ -367,13 +367,13 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 		/* The keyboard will pulse its strobe line when a key is
            pressed.  A 10-usec pulse is typical. */
 		pia6821_ca1_w(pia, 1);
-		timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, apple1_kbd_strobe_end);
+		machine.scheduler().timer_set(attotime::from_usec(10), FUNC(apple1_kbd_strobe_end));
 	}
 }
 
 static TIMER_CALLBACK(apple1_kbd_strobe_end)
 {
-	device_t *pia = machine->device( "pia" );
+	device_t *pia = machine.device( "pia" );
 
 	/* End of the keyboard strobe pulse. */
 	pia6821_ca1_w(pia, 0);
@@ -385,16 +385,16 @@ static TIMER_CALLBACK(apple1_kbd_strobe_end)
 *****************************************************************************/
 static READ8_DEVICE_HANDLER( apple1_pia0_kbdin )
 {
-	apple1_state *state = device->machine->driver_data<apple1_state>();
+	apple1_state *state = device->machine().driver_data<apple1_state>();
 	/* Bit 7 of the keyboard input is permanently wired high.  This is
        what the ROM Monitor software expects. */
-	return state->kbd_data | 0x80;
+	return state->m_kbd_data | 0x80;
 }
 
 static WRITE8_DEVICE_HANDLER( apple1_pia0_dspout )
 {
 	/* Send an ASCII character to the video hardware. */
-	apple1_vh_dsp_w(device->machine, data);
+	apple1_vh_dsp_w(device->machine(), data);
 }
 
 static WRITE8_DEVICE_HANDLER( apple1_pia0_dsp_write_signal )
@@ -413,24 +413,24 @@ static WRITE8_DEVICE_HANDLER( apple1_pia0_dsp_write_signal )
        write.  Thus the write delay depends on the cursor position and
        where the display is in the refresh cycle. */
 	if (!data)
-		timer_set(device->machine, apple1_vh_dsp_time_to_ready(device->machine), NULL, 0, apple1_dsp_ready_start);
+		device->machine().scheduler().timer_set(apple1_vh_dsp_time_to_ready(device->machine()), FUNC(apple1_dsp_ready_start));
 }
 
 static TIMER_CALLBACK(apple1_dsp_ready_start)
 {
-	device_t *pia = machine->device( "pia" );
+	device_t *pia = machine.device( "pia" );
 
 	/* When the display asserts \RDA to signal it is ready, it
        triggers a 74123 one-shot to send a 3.5-usec low pulse to PIA
        input CB1.  The end of this pulse will tell the PIA that the
        display is ready for another write. */
 	pia6821_cb1_w(pia, 0);
-	timer_set(machine, ATTOTIME_IN_NSEC(3500), NULL, 0, apple1_dsp_ready_end);
+	machine.scheduler().timer_set(attotime::from_nsec(3500), FUNC(apple1_dsp_ready_end));
 }
 
 static TIMER_CALLBACK(apple1_dsp_ready_end)
 {
-	device_t *pia = machine->device( "pia" );
+	device_t *pia = machine.device( "pia" );
 
 	/* The one-shot pulse has ended; return CB1 to high, so we can do
        another display write. */
@@ -490,26 +490,26 @@ static TIMER_CALLBACK(apple1_dsp_ready_end)
 **  could be placed on a single tape.
 *****************************************************************************/
 
-static device_t *cassette_device_image(running_machine *machine)
+static device_t *cassette_device_image(running_machine &machine)
 {
-	return machine->device("cassette");
+	return machine.device("cassette");
 }
 
 /* The cassette output signal for writing tapes is generated by a
    flip-flop which is toggled to produce the output waveform.  Any
    access to the cassette I/O range, whether a read or a write,
    toggles this flip-flop. */
-static void cassette_toggle_output(running_machine *machine)
+static void cassette_toggle_output(running_machine &machine)
 {
-	apple1_state *state = machine->driver_data<apple1_state>();
-	state->cassette_output_flipflop = !state->cassette_output_flipflop;
+	apple1_state *state = machine.driver_data<apple1_state>();
+	state->m_cassette_output_flipflop = !state->m_cassette_output_flipflop;
 	cassette_output(cassette_device_image(machine),
-					state->cassette_output_flipflop ? 1.0 : -1.0);
+					state->m_cassette_output_flipflop ? 1.0 : -1.0);
 }
 
 READ8_HANDLER( apple1_cassette_r )
 {
-	cassette_toggle_output(space->machine);
+	cassette_toggle_output(space->machine());
 
 	if (offset <= 0x7f)
 	{
@@ -535,7 +535,7 @@ READ8_HANDLER( apple1_cassette_r )
 		/* (Don't try putting a non-zero "noise threshhold" here,
            because it can cause tape header bits on real cassette
            images to be misread as data bits.) */
-		if (cassette_input(cassette_device_image(space->machine)) > 0.0)
+		if (cassette_input(cassette_device_image(space->machine())) > 0.0)
 			return space->read_byte(0xc100 + (offset & ~1));
 		else
 			return space->read_byte(0xc100 + offset);
@@ -551,5 +551,5 @@ WRITE8_HANDLER( apple1_cassette_w )
        However, we still have to handle writes, since they may be done
        by user code. */
 
-	cassette_toggle_output(space->machine);
+	cassette_toggle_output(space->machine());
 }

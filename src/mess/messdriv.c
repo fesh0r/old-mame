@@ -70,6 +70,10 @@ const game_driver * const drivers[] =
 	DRIVER( snespal )   /* Nintendo Super Nintendo PAL */
 	DRIVER( snessfx )   /* Nintendo Super Nintendo NTSC w/SuperFX CPU*/
 	DRIVER( snespsfx )  /* Nintendo Super Nintendo PAL w/SuperFX CPU */
+	DRIVER( snesdsp )   /* Nintendo Super Nintendo NTSC w/DSP-x CPU*/
+	DRIVER( snespdsp )  /* Nintendo Super Nintendo PAL w/DSP-x CPU */
+	DRIVER( snesst10 )  /* Nintendo Super Nintendo NTSC w/ST-010 CPU*/
+	DRIVER( snesst11 )  /* Nintendo Super Nintendo NTSC w/ST-011 CPU*/
 	DRIVER( snesst )    /* Nintendo Super Nintendo NTSC w/Sufami Turbo base cart */
 	DRIVER( snesbsx )   /* Nintendo Super Nintendo NTSC w/BS-X compatible cart  */
 	DRIVER( n64 )       /* Nintendo N64   */
@@ -113,7 +117,8 @@ const game_driver * const drivers[] =
 	DRIVER( laseract )  /* 1993 Pioneer LaserActive (USA)      */
 	DRIVER( laseractj ) /* 1993 Pioneer LaserActive (Japan)  */
 	DRIVER( xeye )	  /* 1993 JVC X'eye (USA)    */
-	DRIVER( wmega )	 /* 1993 Sega Wondermega (Japan)     */
+	DRIVER( wmega )	 /* 1992 Sega Wondermega (Japan)     */
+	DRIVER( wmegam2 )	/* 1993 Victor Wondermega M2 (Japan)     */
 	DRIVER( cdx )	   /* 1994 Sega CDX (USA)     */
 	DRIVER( multmega )  /* 1994 Sega Multi-Mega (Europe)    */
 	DRIVER( 32x )	   /* 1994 Sega 32X (USA)     */
@@ -172,6 +177,10 @@ const game_driver * const drivers[] =
 	/* Casio */
 	DRIVER( pv1000 )	/* Casio PV-1000 */
 	DRIVER( pv2000 )	/* Casio PV-2000 */
+	DRIVER( pb1000 )	/* Casio PP-1000 */
+	DRIVER( pb2000c )	/* Casio PB-2000C */
+	DRIVER( ai1000 )	/* Casio AI-1000 */
+	DRIVER( cfx9850 )	/* Casio CFX-9850 */
 
 	/* Coleco */
 	DRIVER( coleco )	/* ColecoVision (Original BIOS)  */
@@ -187,6 +196,7 @@ const game_driver * const drivers[] =
 	DRIVER( tg16 )	  /* Turbo Grafix-16  NEC 1989-1993    */
 	DRIVER( sgx )	   /* SuperGrafX NEC 1989     */
 	DRIVER( pcfx )	  /* PC-FX NEC 1994    */
+	DRIVER( pcfxga )	/* PC-FX NEC 199? (PC-FX on a PC ISA Card) */
 
 	/* Arcadia 2001 family */
 	DRIVER( advsnha )		/* Advision Home Arcade  */
@@ -214,7 +224,7 @@ const game_driver * const drivers[] =
 	DRIVER( sheenhvc )		/* Sheen Home Video Centre 2001  */
 	DRIVER( soundic )		/* Soundic MPT-03    */
 	DRIVER( telefevr )		/* Tchibo Tele-Fever     */
-	DRIVER( tempest3 )		/* Tempest MPT-03    */
+	DRIVER( tempestm )		/* Tempest MPT-03    */
 	DRIVER( tbbympt3 )		/* Tobby MPT-03  */
 	DRIVER( trakcvg )		/* Trakton Computer Video Game   */
 	DRIVER( tunixha )		/* Tunix Home Arcade     */
@@ -475,7 +485,7 @@ const game_driver * const drivers[] =
 	DRIVER( tt030_fr )
 	DRIVER( tt030_pl )
 //  DRIVER( fx1 )      /* Atari FX-1 (prototype)       */
-	DRIVER( falcon )    /* Atari Falcon030    */
+	DRIVER( falcon30 )    /* Atari Falcon030    */
 	DRIVER( falcon40 )  /* Atari Falcon040 (prototype)    */
 
 	/* AT&T */
@@ -606,6 +616,8 @@ const game_driver * const drivers[] =
 
 	/* IBM PC & Clones */
 	DRIVER( ibm5150 )   /* 1981 IBM 5150    */
+	DRIVER( ibm5155 )   /* 1982 IBM 5155    */
+	DRIVER( ibm5140 )   /* 1985 IBM 5140    */
 	DRIVER( dgone )	 /* 1984 Data General/One */
 	DRIVER( pcmda )	 /* 1987 PC with MDA     */
 	DRIVER( pcherc )	/* 1987 PC with Hercules (for testing hercules)  */
@@ -615,6 +627,7 @@ const game_driver * const drivers[] =
 
 	/* PC Junior */
 	DRIVER( ibmpcjr )   /* 1984 IBM PC Jr      */
+	DRIVER( ibmpcjx )   /* 1985 IBM PC JX      */
 	DRIVER( t1000hx )   /* 1987 Tandy 1000 HX (similiar to PCJr)  */
 	DRIVER( t1000sx )   /* 1987 Tandy 1000 SX (similiar to PCJr)  */
 	DRIVER( t1000tx )	/* 1987 Tandy 1000 TX */
@@ -642,6 +655,9 @@ const game_driver * const drivers[] =
 	DRIVER( poisk2 )
 	DRIVER( mc1702 )
 	DRIVER( mc1502 )
+	DRIVER( zdsupers )
+	DRIVER( m24 )
+	DRIVER( m240 )
 
 	/* AT */
 	DRIVER( ibm5170 )   /* 1984 IBM PC/AT 5170, original 6 MHz model    */
@@ -653,12 +669,16 @@ const game_driver * const drivers[] =
 	DRIVER( neat )	  /* 1989 New Enhanced AT chipset, AMI BIOS    */
 	DRIVER( at386 )	 /* 19?? IBM AT 386   */
 	DRIVER( at486 )	 /* 19?? IBM AT 486   */
+	DRIVER( ct486 )		/* 1993? 486 with CS4031 */
+	DRIVER( ficpio2 )	/* 1995 FIC 486-PIO-2 */
 	DRIVER( at586 )	 /* 19?? AT 586   */
 	DRIVER( c386sx16 )	/* 1990 Commodore 386SX-16 */
 	DRIVER( ficvt503 )	/* 1997 FIC VT-503  */
 	DRIVER( megapc )
 	DRIVER( megapcpl )
 	DRIVER( ec1849 )
+	DRIVER( t2000sx )
+	DRIVER( cmdpc30 )
 
 	/* 3Com / Palm / USRobotics */
 	DRIVER( pilot1k )   /* Pilot 1000 */
@@ -685,6 +705,9 @@ const game_driver * const drivers[] =
 
 	/* Research Machines */
 	DRIVER( nimbus )	/* RM Nimbus 186 */
+
+	/* Sanyo */
+	DRIVER( mbc55x )	/* Sanyo MBC-550, MBC-555 */
 
 	/* Sinclair Research */
 	DRIVER( zx80 )	  /* 1980 Sinclair ZX-80      */
@@ -715,7 +738,7 @@ const game_driver * const drivers[] =
 	DRIVER( sp3e8bit )  /* 2002 ZX Spectrum +3e 8bit IDE    */
 	DRIVER( sp3ezcf )   /* 2002 ZX Spectrum +3e ZXCF    */
 	DRIVER( sp3eata )   /* 2002 ZX Spectrum +3e ZXATASP  */
-	DRIVER( scorpion )
+	DRIVER( scorpio )
 	DRIVER( profi )
 	DRIVER( kay1024 )
 	DRIVER( quorum )
@@ -754,17 +777,19 @@ const game_driver * const drivers[] =
 	DRIVER( pc1450 )	/* Pocket Computer 1450  */
 	DRIVER( pc1500 )	/* Pocket Computer 1500  */
 
-	DRIVER( mz700 )	 /* 1982 Sharp MZ700     */
+	DRIVER( mz700 )	 	/* 1982 Sharp MZ700     */
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan      */
-	DRIVER( mz800 )	 /* 1984 Sharp MZ800     */
+	DRIVER( mz800 )		/* 1984 Sharp MZ800     */
 	DRIVER( mz1500 )	/* 1984 Sharp MZ1500    */
 	DRIVER( mz2500 )	/* 1985 Sharp MZ2500    */
+	DRIVER( mz2520 )	/* 1985 Sharp MZ2520    */
 
-	DRIVER( mz80kj )	/* 1979 Sharp MZ80K  */
-	DRIVER( mz80k )	 /* 1979 Sharp MZ80K     */
-	DRIVER( mz80a )	 /* 1982 Sharp MZ80A     */
-	DRIVER( mz80b )	 /* 1981 Sharp MZ80B     */
-	DRIVER( mz2000 )	 /* 1981 Sharp MZ2000     */
+	DRIVER( mz80kj )	/* 1979 Sharp MZ80K  	*/
+	DRIVER( mz80k )	 	/* 1979 Sharp MZ80K     */
+	DRIVER( mz80a )	 	/* 1982 Sharp MZ80A     */
+	DRIVER( mz80b )	 	/* 1981 Sharp MZ80B     */
+	DRIVER( mz2000 )	/* 1981 Sharp MZ2000    */
+	DRIVER( mz2200 )	/* 1981 Sharp MZ2200    */
 
 	DRIVER( x1 )		/* 1982 Sharp X1    */
 	DRIVER( x1twin )	/* 1986 Sharp X1 Twin      */
@@ -804,7 +829,6 @@ const game_driver * const drivers[] =
 	DRIVER( tutor )	  /* 1983? Tomy Tutor    */
 	DRIVER( pyuuta )	/* 1982 Tomy Pyuuta     */
 	DRIVER( geneve )	/* 1987? Myarc Geneve 9640    */
-	DRIVER( genmod )	/* 199?? Myarc Geneve 9640    */
 	DRIVER( ti99_4p )   /* 1996 SNUG 99/4P (a.k.a. SGCPU)      */
 
 	DRIVER( avigo )	 /*   */
@@ -849,17 +873,19 @@ const game_driver * const drivers[] =
 	DRIVER( pc8801mc )
 	DRIVER( pc88va )
 
-	DRIVER( pc9801 )
+	DRIVER( pc9801f )	/* 1983 */
+	DRIVER( pc9801rs )  /* 1989 */
+
 	DRIVER( pc9821 )
 	DRIVER( pc9821ne )
 	DRIVER( pc9821a )
 
 	/* Cantab */
-	DRIVER( jupiter )   /* Jupiter Ace    */
+	DRIVER( ace )   /* Jupiter Ace    */
 
 	/* Sord */
-	DRIVER( sordm5 )
-	DRIVER( sordm5fd5 )
+	DRIVER( m5 )
+	DRIVER( m5p )
 
 	/* APF Electronics Inc. */
 	DRIVER( apfm1000 )
@@ -945,6 +971,7 @@ const game_driver * const drivers[] =
 	DRIVER( mc10 )	  /* MC-10  */
 	DRIVER( alice )	 /* Matra & Hachette Ordinateur Alice   */
 	DRIVER( alice32 ) /* Matra & Hachette Alice 32   */
+	DRIVER( alice90 ) /* Matra & Hachette Alice 90   */
 
 	/* EACA */
 	DRIVER( cgenie )	/* Colour Genie EG2000    */
@@ -1181,8 +1208,7 @@ const game_driver * const drivers[] =
 //  DRIVER( aquariu2 )  /* 1984 Aquarius II  */
 
 	/* Exidy, Inc. */
-	DRIVER( exidy )	 /* Sorcerer     */
-	DRIVER( exidyd )	/* Sorcerer (cassette only)  */
+	DRIVER( sorcerer )	 /* Sorcerer     */
 
 	/* Galaksija */
 	DRIVER( galaxy )
@@ -1232,6 +1258,7 @@ const game_driver * const drivers[] =
 	DRIVER( hp49g )
 	DRIVER( hp49gp )	/* HP 49G+ */
 	DRIVER( hp16500b )
+	DRIVER( hp9816 )
 
 	/* SpectraVideo */
 	DRIVER( svi318 )	/* SVI-318 (PAL)    */
@@ -1377,6 +1404,7 @@ const game_driver * const drivers[] =
 	DRIVER( mikrosha )
 	DRIVER( partner )
 	DRIVER( impuls03 )
+	DRIVER( m86rk )
 
 	/* Homelab */
 	DRIVER ( homelab2 )
@@ -1433,7 +1461,7 @@ const game_driver * const drivers[] =
 	DRIVER( hc128 )   /* 1991 HC-128      */
 	DRIVER( hc2000 )  /* 1992 HC-2000    */
 
-	DRIVER( cobra )
+	DRIVER( cobrasp )
 	DRIVER( cobra80 )
 
 	DRIVER( cip01 )   /* 1987 CIP-01      */
@@ -1452,7 +1480,7 @@ const game_driver * const drivers[] =
 	DRIVER( mistrum ) /* 1988 Mistrum      */
 
 	/* Russian clones */
-	DRIVER( blitz )	 /* 1990 Blic    */
+	DRIVER( blitzs )	 /* 1990 Blic    */
 	DRIVER( byte )	  /* 1990 Byte   */
 	DRIVER( orizon )	/* 199? Orizon-Micro     */
 	DRIVER( quorum48 )  /* 1993 Kvorum 48K     */
@@ -1495,9 +1523,9 @@ const game_driver * const drivers[] =
 
 	/* Grundy Business Systems Ltd */
 	DRIVER( newbrain )
-	DRIVER( newbraie )
-	DRIVER( newbraia )
-	DRIVER( newbraim )
+	DRIVER( newbraineim )
+	DRIVER( newbraina )
+	DRIVER( newbrainmd )
 
 	/* Nokia Data */
 	DRIVER( mm1m6 )
@@ -1539,6 +1567,9 @@ const game_driver * const drivers[] =
 	DRIVER( fm7740sx )
 	DRIVER( fmtowns )   /* 1989 Fujitsu FM-Towns */
 	DRIVER( fmtownsa )
+	DRIVER( fmtownsux )  /* 1991.11 FM-Towns II UX */
+	DRIVER( fmtownssj )  /* FM-Towns II SJ */
+	DRIVER( fmtownshr )  /* 1992 FM-Towns II HR */
 	DRIVER( fmtmarty )  /* 1993 Fujitsu FM-Towns Marty */
 	DRIVER( carmarty )  /* Fujitsu FM-Towns Car Marty */
 
@@ -1575,7 +1606,9 @@ const game_driver * const drivers[] =
 //  DRIVER( mephisto )  /* Mephisto  */
 	DRIVER( mm2 )       /* Mephisto 2 */
 	DRIVER( mm4 )       /* Mephisto 4       */
+//	DRIVER( mm4tk )       /* Mephisto 4 Turbo Kit  */
 	DRIVER( mm5 )       /* Mephisto 5.1 ROM   */
+	DRIVER( mm5tk )       /* Mephisto 5.1 ROM Turbo Kit Speed   */
 	DRIVER( mm50 )      /* Mephisto 5.0 ROM    */
 	DRIVER( rebel5 )    /* Mephisto 5      */
 	DRIVER( glasgow )       /* Glasgow     */
@@ -1585,10 +1618,12 @@ const game_driver * const drivers[] =
 	DRIVER( dallas32 )      /* Dallas    */
 	DRIVER( roma )      /* Roma    */
 	DRIVER( roma32 )    /* Roma  */
-        DRIVER( polgar )      /* Polgar    */
+    DRIVER( polgar )      /* Polgar    */
+	DRIVER( milano )      /* Milano    */
+
 
 	/* JAKKS Pacific, Inc. / HotGen, Ltd. */
-	DRIVER( batman )	/* The Batman, 2004 */
+	DRIVER( batmantv )	/* The Batman, 2004 */
 
 /*********** Misc ***********************************************************/
 
@@ -1723,7 +1758,7 @@ const game_driver * const drivers[] =
 	DRIVER( pimps )
 	DRIVER( sage2 )
 	DRIVER( zexall ) /* zexall z80 test suite with kevtris' preloader/serial interface at 0000-00ff */
-	DRIVER( horizon )
+	DRIVER( horizdd )
 	DRIVER( horizsd )
 	DRIVER( vector1 )
 	DRIVER( tricep )
@@ -1751,7 +1786,7 @@ const game_driver * const drivers[] =
 	DRIVER( scv )
 	DRIVER( scv_pal )
 	DRIVER( vii ) // Chintendo / KenSingTon / Jungle Soft / Siatronics Vii
-	DRIVER( vsmile )
+	//DRIVER( vsmile )
 	DRIVER( zsbc3 )
 	DRIVER( dms5000 )
 	DRIVER( dms86 )
@@ -1760,6 +1795,7 @@ const game_driver * const drivers[] =
 	DRIVER( vcc )
 	DRIVER( uvc )
 	DRIVER( abc )
+	DRIVER( vbc )
 	DRIVER( victor9k )
 	DRIVER( phc25 )
 	DRIVER( phc25j )
@@ -1799,6 +1835,7 @@ const game_driver * const drivers[] =
 	DRIVER( psionlz )
 	DRIVER( psionp464 )
 	DRIVER( rex6000 )
+	DRIVER( ds2 )
 	DRIVER( mycom )
 	DRIVER( tk80 )
 	DRIVER( tk80bs )
@@ -1829,5 +1866,23 @@ const game_driver * const drivers[] =
 	DRIVER( mikrolab )
 	DRIVER( dim68k )
 	DRIVER( okean240 )
-	
+	DRIVER( vixen )
+	DRIVER( pt68k4 )
+	DRIVER( jupiter2 )
+	DRIVER( jupiter3 )
+	DRIVER( bigboard )
+	DRIVER( bigbord2 )
+	DRIVER( savia84 )
+	DRIVER( pes )
+	DRIVER( pdp11ub )
+	DRIVER( pdp11ub2 )
+	DRIVER( pdp11qb )
+	DRIVER( terak )
+	DRIVER( sacstate )
+	DRIVER( prose2k )
+	DRIVER( eacc )
+	DRIVER( argo )
+	DRIVER( applix )
+	DRIVER( 68ksbc )
+
 #endif /* DRIVER_RECURSIVE */

@@ -19,9 +19,9 @@
 #include "cpu/z80/z80.h"
 #include "audio/dave.h"
 #include "machine/wd17xx.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/enterp.h"
 
 #define ENTERPRISE_XTAL_X1	XTAL_8MHz
@@ -44,25 +44,25 @@ static void enterprise_update_memory_page(address_space *space, offs_t page, int
 	case 0x01:
 	case 0x02:
 	case 0x03:
-		memory_install_read_bank(space, start, end, 0, 0, page_num);
-		memory_nop_write(space, start, end, 0, 0 );
-		memory_set_bankptr(space->machine, page_num, space->machine->region("exos")->base() + (index * 0x4000));
+		space->install_read_bank(start, end, page_num);
+		space->nop_write(start, end);
+		memory_set_bankptr(space->machine(), page_num, space->machine().region("exos")->base() + (index * 0x4000));
 		break;
 
 	case 0x04:
 	case 0x05:
 	case 0x06:
 	case 0x07:
-		memory_install_read_bank(space, start, end, 0, 0, page_num);
-		memory_nop_write(space, start, end, 0, 0);
-		memory_set_bankptr(space->machine, page_num, space->machine->region("cartridges")->base() + ((index - 0x04) * 0x4000));
+		space->install_read_bank(start, end, page_num);
+		space->nop_write(start, end);
+		memory_set_bankptr(space->machine(), page_num, space->machine().region("cartridges")->base() + ((index - 0x04) * 0x4000));
 		break;
 
 	case 0x20:
 	case 0x21:
-		memory_install_read_bank(space, start, end, 0, 0, page_num);
-		memory_nop_write(space, start, end, 0, 0);
-		memory_set_bankptr(space->machine, page_num, space->machine->region("exdos")->base() + ((index - 0x20) * 0x4000));
+		space->install_read_bank(start, end, page_num);
+		space->nop_write(start, end);
+		memory_set_bankptr(space->machine(), page_num, space->machine().region("exdos")->base() + ((index - 0x20) * 0x4000));
 		break;
 
 	case 0xf8:
@@ -70,14 +70,14 @@ static void enterprise_update_memory_page(address_space *space, offs_t page, int
 	case 0xfa:
 	case 0xfb:
 		/* additional 64k ram */
-		if (messram_get_size(space->machine->device("messram")) == 128*1024)
+		if (ram_get_size(space->machine().device(RAM_TAG)) == 128*1024)
 		{
-			memory_install_readwrite_bank(space, start, end, 0, 0, page_num);
-			memory_set_bankptr(space->machine, page_num, messram_get_ptr(space->machine->device("messram")) + (index - 0xf4) * 0x4000);
+			space->install_readwrite_bank(start, end, page_num);
+			memory_set_bankptr(space->machine(), page_num, ram_get_ptr(space->machine().device(RAM_TAG)) + (index - 0xf4) * 0x4000);
 		}
 		else
 		{
-			memory_unmap_readwrite(space, start, end, 0, 0);
+			space->unmap_readwrite(start, end);
 		}
 		break;
 
@@ -86,12 +86,12 @@ static void enterprise_update_memory_page(address_space *space, offs_t page, int
 	case 0xfe:
 	case 0xff:
 		/* basic 64k ram */
-		memory_install_readwrite_bank(space, start, end, 0, 0, page_num);
-		memory_set_bankptr(space->machine, page_num, messram_get_ptr(space->machine->device("messram")) + (index - 0xfc) * 0x4000);
+		space->install_readwrite_bank(start, end, page_num);
+		memory_set_bankptr(space->machine(), page_num, ram_get_ptr(space->machine().device(RAM_TAG)) + (index - 0xfc) * 0x4000);
 		break;
 
 	default:
-		memory_unmap_readwrite(space, start, end, 0, 0);
+		space->unmap_readwrite(start, end);
 	}
 }
 
@@ -99,7 +99,7 @@ static void enterprise_update_memory_page(address_space *space, offs_t page, int
 /* EP specific handling of dave register write */
 static WRITE8_DEVICE_HANDLER( enterprise_dave_reg_write )
 {
-	ep_state *ep = device->machine->driver_data<ep_state>();
+	ep_state *ep = device->machine().driver_data<ep_state>();
 
 	switch (offset)
 	{
@@ -107,7 +107,7 @@ static WRITE8_DEVICE_HANDLER( enterprise_dave_reg_write )
 	case 0x11:
 	case 0x12:
 	case 0x13:
-		enterprise_update_memory_page(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), offset - 0x0f, data);
+		enterprise_update_memory_page(device->machine().device("maincpu")->memory().space(AS_PROGRAM), offset - 0x0f, data);
 		break;
 
 	case 0x15:
@@ -125,19 +125,19 @@ static READ8_DEVICE_HANDLER( enterprise_dave_reg_read )
 		"LINE5", "LINE6", "LINE7", "LINE8", "LINE9"
 	};
 
-	ep_state *ep = device->machine->driver_data<ep_state>();
+	ep_state *ep = device->machine().driver_data<ep_state>();
 
 	switch (offset)
 	{
 		case 0x015:
 			/* read keyboard line */
-			dave_set_reg(device, 0x015, input_port_read(device->machine, keynames[ep->keyboard_line]));
+			dave_set_reg(device, 0x015, input_port_read(device->machine(), keynames[ep->keyboard_line]));
 			break;
 
 		case 0x016:
 		{
 			int ExternalJoystickInputs;
-			int ExternalJoystickPortInput = input_port_read(device->machine, "JOY1");
+			int ExternalJoystickPortInput = input_port_read(device->machine(), "JOY1");
 
 			if (ep->keyboard_line <= 4)
 			{
@@ -171,7 +171,7 @@ static const dave_interface enterprise_dave_interface =
 
 static MACHINE_RESET( enterprise )
 {
-	cpu_set_input_line_vector(machine->device("maincpu"), 0, 0xff);
+	device_set_input_line_vector(machine.device("maincpu"), 0, 0xff);
 }
 
 
@@ -181,7 +181,7 @@ static MACHINE_RESET( enterprise )
 
 static WRITE_LINE_DEVICE_HANDLER( enterp_wd1770_intrq_w )
 {
-	ep_state *ep = device->machine->driver_data<ep_state>();
+	ep_state *ep = device->machine().driver_data<ep_state>();
 
 	if (state)
 		ep->exdos_card_value |= 0x02;
@@ -191,7 +191,7 @@ static WRITE_LINE_DEVICE_HANDLER( enterp_wd1770_intrq_w )
 
 static WRITE_LINE_DEVICE_HANDLER( enterp_wd1770_drq_w )
 {
-	ep_state *ep = device->machine->driver_data<ep_state>();
+	ep_state *ep = device->machine().driver_data<ep_state>();
 
 	if (state)
 		ep->exdos_card_value |= 0x80;
@@ -211,7 +211,7 @@ static WRITE_LINE_DEVICE_HANDLER( enterp_wd1770_drq_w )
 */
 static READ8_HANDLER( exdos_card_r )
 {
-	ep_state *ep = space->machine->driver_data<ep_state>();
+	ep_state *ep = space->machine().driver_data<ep_state>();
 	return ep->exdos_card_value;
 }
 
@@ -227,7 +227,7 @@ static READ8_HANDLER( exdos_card_r )
 */
 static WRITE8_HANDLER( exdos_card_w )
 {
-	device_t *fdc = space->machine->device("wd1770");
+	device_t *fdc = space->machine().device("wd1770");
 
 	/* drive */
 	if (BIT(data, 0)) wd17xx_set_drive(fdc, 0);
@@ -243,7 +243,7 @@ static WRITE8_HANDLER( exdos_card_w )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( enterprise_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( enterprise_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
@@ -251,7 +251,7 @@ static ADDRESS_MAP_START( enterprise_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( enterprise_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( enterprise_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE("wd1770", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x18, 0x18) AM_MIRROR(0x04) AM_READWRITE(exdos_card_r, exdos_card_w)
@@ -458,12 +458,12 @@ static MACHINE_CONFIG_START( ep64, ep_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(ENTERPRISE_SCREEN_WIDTH, ENTERPRISE_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, ENTERPRISE_SCREEN_WIDTH-1, 0, ENTERPRISE_SCREEN_HEIGHT-1)
+	MCFG_SCREEN_UPDATE(epnick)
 
 	MCFG_PALETTE_LENGTH(NICK_PALETTE_SIZE)
 	MCFG_PALETTE_INIT(epnick)
 
 	MCFG_VIDEO_START(epnick)
-	MCFG_VIDEO_UPDATE(epnick)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -476,13 +476,13 @@ static MACHINE_CONFIG_START( ep64, ep_state )
 	MCFG_FLOPPY_4_DRIVES_ADD(enterprise_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ep128, ep64 )
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 

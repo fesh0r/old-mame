@@ -21,7 +21,8 @@
 #include "machine/pcf8593.h"
 #include "machine/at45dbxx.h"
 #include "machine/sst39vfx.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
+#include "rendlay.h"
 
 /* Until support for the H8Sxxxx variants used by cybiko is added, we use H8_3002 (even if opcodes differ) */
 #define H8S2241   H83002
@@ -67,7 +68,7 @@ Trying to hook up these system to a H8_3002 immediately hits an invalid
 opcode and MESS dies. */
 
 // 512 kbyte ram + no memory mapped flash
-static ADDRESS_MAP_START( cybikov1_mem, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( cybikov1_mem, AS_PROGRAM, 16 )
 #if 0
 	AM_RANGE( 0x000000, 0x007fff ) AM_ROM
 #endif
@@ -94,7 +95,7 @@ ADDRESS_MAP_END
 //  +-------------------------------------+
 
 // 256 kbyte ram + 256 kbyte memory mapped flash
-static ADDRESS_MAP_START( cybikov2_mem, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( cybikov2_mem, AS_PROGRAM, 16 )
 #if 0
 	AM_RANGE( 0x000000, 0x007fff ) AM_ROM
 #endif
@@ -105,7 +106,7 @@ static ADDRESS_MAP_START( cybikov2_mem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 // 2048? kbyte ram + 512 kbyte memory mapped flash
-static ADDRESS_MAP_START( cybikoxt_mem, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( cybikoxt_mem, AS_PROGRAM, 16 )
 #if 0
 	AM_RANGE( 0x000000, 0x007fff ) AM_ROM
 #endif
@@ -121,15 +122,15 @@ ADDRESS_MAP_END
 // ADDRESS MAP - IO //
 //////////////////////
 
-static ADDRESS_MAP_START( cybikov1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( cybikov1_io, AS_IO, 8 )
 	AM_RANGE( 0xfffe40, 0xffffff ) AM_READWRITE( cybikov1_io_reg_r, cybikov1_io_reg_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( cybikov2_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( cybikov2_io, AS_IO, 8 )
 	AM_RANGE( 0xfffe40, 0xffffff ) AM_READWRITE( cybikov2_io_reg_r, cybikov2_io_reg_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( cybikoxt_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( cybikoxt_io, AS_IO, 8 )
 	AM_RANGE( 0xfffe40, 0xffffff ) AM_READWRITE( cybikoxt_io_reg_r, cybikoxt_io_reg_w )
 ADDRESS_MAP_END
 
@@ -245,11 +246,12 @@ static MACHINE_CONFIG_START( cybikov1, cybiko_state )
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MCFG_SCREEN_SIZE( HD66421_WIDTH, HD66421_HEIGHT )
 	MCFG_SCREEN_VISIBLE_AREA( 0, HD66421_WIDTH - 1, 0, HD66421_HEIGHT - 1 )
+	MCFG_SCREEN_UPDATE(hd66421)
+
 	// video
 	MCFG_PALETTE_LENGTH(4)
 	MCFG_PALETTE_INIT(hd66421)
 	MCFG_VIDEO_START(hd66421)
-	MCFG_VIDEO_UPDATE(hd66421)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	// sound
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -265,7 +267,7 @@ static MACHINE_CONFIG_START( cybikov1, cybiko_state )
 	MCFG_AT45DB041_ADD("flash1")
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("512K")
 	MCFG_RAM_EXTRA_OPTIONS("1M")
 MACHINE_CONFIG_END
@@ -283,7 +285,7 @@ static MACHINE_CONFIG_DERIVED( cybikov2, cybikov1)
 	MCFG_SST39VF020_ADD("flash2", 16, ENDIANNESS_BIG)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("256K")
 	MCFG_RAM_EXTRA_OPTIONS("512K,1M")
 MACHINE_CONFIG_END
@@ -305,7 +307,7 @@ static MACHINE_CONFIG_DERIVED( cybikoxt, cybikov1)
 	MCFG_SST39VF020_ADD("flash2", 16, ENDIANNESS_BIG)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2M")
 MACHINE_CONFIG_END
 

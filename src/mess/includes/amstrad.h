@@ -9,7 +9,7 @@
 
 #include "machine/upd765.h"
 #include "video/mc6845.h"
-#include "devices/snapquik.h"
+#include "imagedev/snapquik.h"
 
 /****************************
  * Gate Array data (CPC) -
@@ -65,7 +65,7 @@ typedef struct
 	UINT8	addr_6845;			/* We need these to store a shadow copy of R1 of the mc6845 */
 	UINT8	horiz_disp;
 	UINT8	hscroll;
-	UINT8   de_start; 			/* flag to check if DE is been enabled this frame yet */
+	UINT8   de_start;			/* flag to check if DE is been enabled this frame yet */
 
 	/* DMA */
 	UINT8	dma_status;
@@ -84,31 +84,31 @@ public:
 	amstrad_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int system_type;
-	UINT8 aleste_mode;
-	int plus_irq_cause;
-	gate_array_t gate_array;
-	asic_t asic;
-	int GateArray_RamConfiguration;
-	unsigned char *AmstradCPC_RamBanks[4];
-	unsigned char *Aleste_RamBanks[4];
-	int aleste_active_page[4];
-	unsigned char *Amstrad_ROM_Table[256];
-	UINT8 ppi_port_inputs[3];
-	UINT8 ppi_port_outputs[3];
-	int aleste_rtc_function;
-	int aleste_fdc_int;
-	int prev_reg;
-	UINT16 GateArray_render_colours[17];
-	UINT8 mode0_lookup[256];
-	UINT8 mode1_lookup[256];
-	UINT8 mode2_lookup[256];
-	unsigned char *multiface_ram;
-	unsigned long multiface_flags;
-	int prev_data;
-	int printer_bit8_selected;
-	unsigned char Psg_FunctionSelected;
-	int previous_ppi_portc_w;
+	int m_system_type;
+	UINT8 m_aleste_mode;
+	int m_plus_irq_cause;
+	gate_array_t m_gate_array;
+	asic_t m_asic;
+	int m_GateArray_RamConfiguration;
+	unsigned char *m_AmstradCPC_RamBanks[4];
+	unsigned char *m_Aleste_RamBanks[4];
+	int m_aleste_active_page[4];
+	unsigned char *m_Amstrad_ROM_Table[256];
+	UINT8 m_ppi_port_inputs[3];
+	UINT8 m_ppi_port_outputs[3];
+	int m_aleste_rtc_function;
+	int m_aleste_fdc_int;
+	int m_prev_reg;
+	UINT16 m_GateArray_render_colours[17];
+	UINT8 m_mode0_lookup[256];
+	UINT8 m_mode1_lookup[256];
+	UINT8 m_mode2_lookup[256];
+	unsigned char *m_multiface_ram;
+	unsigned long m_multiface_flags;
+	int m_prev_data;
+	int m_printer_bit8_selected;
+	unsigned char m_Psg_FunctionSelected;
+	int m_previous_ppi_portc_w;
 };
 
 
@@ -150,8 +150,8 @@ extern const mc6845_interface amstrad_mc6845_intf;
 extern const mc6845_interface amstrad_plus_mc6845_intf;
 
 VIDEO_START( amstrad );
-VIDEO_UPDATE( amstrad );
-VIDEO_EOF( amstrad );
+SCREEN_UPDATE( amstrad );
+SCREEN_EOF( amstrad );
 
 PALETTE_INIT( amstrad_cpc );			/* For CPC464, CPC664, and CPC6128 */
 PALETTE_INIT( amstrad_cpc_green );		/* For CPC464, CPC664, and CPC6128 */

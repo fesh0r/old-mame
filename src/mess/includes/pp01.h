@@ -16,10 +16,10 @@ public:
 	pp01_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 video_scroll;
-	UINT8 memory_block[16];
-	UINT8 video_write_mode;
-	UINT8 key_line;
+	UINT8 m_video_scroll;
+	UINT8 m_memory_block[16];
+	UINT8 m_video_write_mode;
+	UINT8 m_key_line;
 };
 
 
@@ -34,7 +34,7 @@ extern WRITE8_HANDLER (pp01_video_write_mode_w);
 /*----------- defined in video/pp01.c -----------*/
 
 extern VIDEO_START( pp01 );
-extern VIDEO_UPDATE( pp01 );
+extern SCREEN_UPDATE( pp01 );
 extern PALETTE_INIT( pp01 );
 
 #endif

@@ -4,8 +4,8 @@
 
     Skeleton driver
 
-	Note: The 68k core needs restartable instruction support for this
-	to have a chance to run.
+    Note: The 68k core needs restartable instruction support for this
+    to have a chance to run.
 
 ***************************************************************************/
 
@@ -13,9 +13,9 @@
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "machine/wd17xx.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "unixpc.lh"
 
 
@@ -29,7 +29,7 @@ public:
 	unixpc_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config),
 		  m_maincpu(*this, "maincpu"),
-		  m_ram(*this, "messram"),
+		  m_ram(*this, RAM_TAG),
 		  m_wd2797(*this, "wd2797"),
 		  m_floppy(*this, FLOPPY_0)
 	{ }
@@ -39,7 +39,7 @@ public:
 	required_device<device_t> m_wd2797;
 	required_device<device_t> m_floppy;
 
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	virtual void machine_reset();
 
@@ -63,14 +63,14 @@ public:
 WRITE16_MEMBER( unixpc_state::romlmap_w )
 {
 	if (BIT(data, 15))
-		memory_install_ram(&space, 0x000000, 0x3fffff, 0, 0, messram_get_ptr(m_ram));
+		space.install_ram(0x000000, 0x3fffff, ram_get_ptr(m_ram));
 	else
-		memory_install_rom(&space, 0x000000, 0x3fffff, 0, 0, space.machine->region("bootrom")->base());
+		space.install_rom(0x000000, 0x3fffff, space.machine().region("bootrom")->base());
 }
 
 void unixpc_state::machine_reset()
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	// force ROM into lower mem on reset
 	romlmap_w(*program, 0, 0, 0xffff);
@@ -138,7 +138,7 @@ WRITE_LINE_MEMBER( unixpc_state::wd2797_drq_w )
     VIDEO
 ***************************************************************************/
 
-bool unixpc_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool unixpc_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	for (int y = 0; y < 348; y++)
 		for (int x = 0; x < 720/16; x++)
@@ -153,7 +153,7 @@ bool unixpc_state::video_update(screen_device &screen, bitmap_t &bitmap, const r
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( unixpc_mem, ADDRESS_SPACE_PROGRAM, 16, unixpc_state )
+static ADDRESS_MAP_START( unixpc_mem, AS_PROGRAM, 16, unixpc_state )
 	AM_RANGE(0x000000, 0x3fffff) AM_RAMBANK("bank1")
 	AM_RANGE(0x400000, 0x4007ff) AM_RAM AM_BASE(m_mapram)
 	AM_RANGE(0x420000, 0x427fff) AM_RAM AM_BASE(m_videoram)
@@ -215,7 +215,7 @@ static MACHINE_CONFIG_START( unixpc, unixpc_state )
 	MCFG_PALETTE_INIT(black_and_white)
 
 	// internal ram
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1M")
 	MCFG_RAM_EXTRA_OPTIONS("2M")
 

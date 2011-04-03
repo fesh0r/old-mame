@@ -286,9 +286,9 @@ PCB Layouts missing
 #include "machine/ctronics.h"
 #include "includes/msx_slot.h"
 #include "includes/msx.h"
-#include "devices/flopdrv.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
 #include "formats/fmsx_cas.h"
 #include "formats/msx_dsk.h"
 #include "sound/ay8910.h"
@@ -297,7 +297,7 @@ PCB Layouts missing
 #include "sound/k051649.h"
 #include "sound/2413intf.h"
 
-static ADDRESS_MAP_START (msx_memory_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (msx_memory_map, AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_READ_BANK("bank1") AM_WRITE( msx_page0_w )
 	AM_RANGE( 0x2000, 0x3fff) AM_READ_BANK("bank2") AM_WRITE( msx_page0_1_w )
 	AM_RANGE( 0x4000, 0x5fff) AM_READ_BANK("bank3") AM_WRITE( msx_page1_w )
@@ -322,7 +322,7 @@ static WRITE8_DEVICE_HANDLER( msx_ay8910_w )
 }
 
 
-static ADDRESS_MAP_START (msx_io_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (msx_io_map, AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x77, 0x77) AM_WRITE( msx_90in1_w )
@@ -337,7 +337,7 @@ static ADDRESS_MAP_START (msx_io_map, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START (msx2_io_map, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (msx2_io_map, AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x77, 0x77) AM_WRITE( msx_90in1_w )
@@ -998,7 +998,7 @@ static const ay8910_interface msx_ay8910_interface =
 static VIDEO_START( msx2 )
 {
 	VIDEO_START_CALL(generic_bitmapped);
-	v9938_init(machine, 0, *machine->primary_screen, machine->generic.tmpbitmap, MODEL_V9938, 0x20000, msx_vdp_interrupt);
+	v9938_init(machine, 0, *machine.primary_screen, machine.generic.tmpbitmap, MODEL_V9938, 0x20000, msx_vdp_interrupt);
 }
 
 #define MSX_XBORDER_PIXELS		15
@@ -1048,7 +1048,7 @@ static MACHINE_CONFIG_START( msx, msx_state )
 	MCFG_CPU_PROGRAM_MAP(msx_memory_map)
 	MCFG_CPU_IO_MAP(msx_io_map)
 	MCFG_CPU_VBLANK_INT("screen", msx_interrupt)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( msx )
 	MCFG_MACHINE_RESET( msx )
@@ -1108,7 +1108,7 @@ static MACHINE_CONFIG_START( msx2, msx_state )
 	MCFG_CPU_PROGRAM_MAP(msx_memory_map)
 	MCFG_CPU_IO_MAP(msx2_io_map)
 	MCFG_CPU_VBLANK_INT_HACK(msx2_interrupt, 262)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( msx2 )
 	MCFG_MACHINE_RESET( msx2 )
@@ -1123,11 +1123,12 @@ static MACHINE_CONFIG_START( msx2, msx_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(MSX2_TOTAL_XRES_PIXELS, MSX2_TOTAL_YRES_PIXELS)
 	MCFG_SCREEN_VISIBLE_AREA(MSX2_XBORDER_PIXELS - MSX2_VISIBLE_XBORDER_PIXELS, MSX2_TOTAL_XRES_PIXELS - MSX2_XBORDER_PIXELS + MSX2_VISIBLE_XBORDER_PIXELS - 1, MSX2_YBORDER_PIXELS - MSX2_VISIBLE_YBORDER_PIXELS, MSX2_TOTAL_YRES_PIXELS - MSX2_YBORDER_PIXELS + MSX2_VISIBLE_YBORDER_PIXELS - 1)
+	MCFG_SCREEN_UPDATE(generic_bitmapped)
+
 	MCFG_PALETTE_LENGTH(512)
 	MCFG_PALETTE_INIT(v9938)
 
 	MCFG_VIDEO_START(msx2)
-	MCFG_VIDEO_UPDATE(generic_bitmapped)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

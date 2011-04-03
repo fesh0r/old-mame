@@ -43,6 +43,8 @@ typedef struct _ti99_evpc_state
 INLINE ti99_evpc_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == EVPC);
+
 	return (ti99_evpc_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -51,13 +53,13 @@ static int get_evpc_switch(device_t *device, int number)
 	switch (number)
 	{
 	case 0:
-		return input_port_read(device->machine, "EVPC-SW1");
+		return input_port_read(device->machine(), "EVPC-SW1");
 	case 1:
-		return input_port_read(device->machine, "EVPC-SW3");
+		return input_port_read(device->machine(), "EVPC-SW3");
 	case 2:
-		return input_port_read(device->machine, "EVPC-SW4");
+		return input_port_read(device->machine(), "EVPC-SW4");
 	case 3:
-		return input_port_read(device->machine, "EVPC-SW8");
+		return input_port_read(device->machine(), "EVPC-SW8");
 	default:
 		logerror("evpc: Invalid switch index %02x\n", number);
 		return 0;
@@ -161,7 +163,7 @@ static READ8Z_DEVICE_HANDLER( data_rz )
 			return;
 		}
 
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & 0x7e000)==0x74000)
 		{
 			if ((offset & 0x1ff0)==0x1ff0)
 			{
@@ -245,7 +247,7 @@ static WRITE8_DEVICE_HANDLER( data_w )
 	ti99_evpc_state *card = get_safe_token(device);
 	if (card->selected)
 	{
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & 0x7e000)==0x74000)
 		{
 			if ((offset & 0x1ff0)==0x1ff0)
 			{
@@ -364,39 +366,38 @@ static DEVICE_RESET( ti99_evpc )
 
 	astring_assemble_3(region, device->tag(), ":", evpc_region);
 
-	card->dsrrom = device->machine->region(astring_c(region))->base();
+	card->dsrrom = device->machine().region(astring_c(region))->base();
 }
 
 static DEVICE_NVRAM( ti99_evpc )
 {
 	// Called between START and RESET
 	ti99_evpc_state *card = get_safe_token(device);
-	astring *hsname = astring_assemble_3(astring_alloc(), device->machine->gamedrv->name, PATH_SEPARATOR, "evpc.nv");
+	astring *hsname = astring_assemble_3(astring_alloc(), device->machine().system().name, PATH_SEPARATOR, "evpc.nv");
 	file_error filerr;
-	mame_file *nvfile;
 
 	if (read_or_write==0)
 	{
 		logerror("evpc: device nvram load %s\n", astring_c(hsname));
 
-		filerr = mame_fopen(SEARCHPATH_NVRAM, astring_c(hsname), OPEN_FLAG_READ, &nvfile);
+		emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_READ);
+		filerr = nvfile.open(astring_c(hsname));
 		if (filerr == FILERR_NONE)
 		{
-			if (mame_fread(nvfile, card->novram, 256) != 256)
+			if (nvfile.read(card->novram, 256) != 256)
 				logerror("evpc: NOVRAM load error\n");
-			mame_fclose(nvfile);
 		}
 	}
 	else
 	{
 		logerror("evpc: device nvram save %s\n", astring_c(hsname));
-		filerr = mame_fopen(SEARCHPATH_NVRAM, astring_c(hsname), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &nvfile);
+		emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+		filerr = nvfile.open(astring_c(hsname));
 
 		if (filerr == FILERR_NONE)
 		{
-			if (mame_fwrite(nvfile, card->novram, 256) != 256)
+			if (nvfile.write(card->novram, 256) != 256)
 				logerror("evpc: NOVRAM save error\n");
-			mame_fclose(nvfile);
 		}
 	}
 }
@@ -414,6 +415,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_evpc##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG | DT_HAS_NVRAM
 #define DEVTEMPLATE_NAME                "SNUG Enhanced Video Processor Card"
+#define DEVTEMPLATE_SHORTNAME           "snugvdc"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

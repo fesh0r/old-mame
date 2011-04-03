@@ -21,7 +21,7 @@
 void advision_state::video_start()
 {
 	m_video_hpos = 0;
-	m_display = auto_alloc_array(machine, UINT8, 8 * 8 * 256);
+	m_display = auto_alloc_array(m_machine, UINT8, 8 * 8 * 256);
 	memset(m_display, 0, 8 * 8 * 256);
 }
 
@@ -87,7 +87,7 @@ void advision_state::vh_update(int x)
 
 ***************************************************************************/
 
-bool advision_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool advision_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	int x, y;
 

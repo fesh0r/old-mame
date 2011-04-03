@@ -56,6 +56,8 @@ struct _mm74c922_t
 INLINE mm74c922_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert((device->type() == MM74C922) || (device->type() == MM74C923));
+
 	return (mm74c922_t *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -63,6 +65,7 @@ INLINE const mm74c922_interface *get_interface(device_t *device)
 {
 	assert(device != NULL);
 	assert((device->type() == MM74C922) || (device->type() == MM74C923));
+
 	return (const mm74c922_interface *) device->baseconfig().static_config();
 }
 
@@ -208,17 +211,17 @@ static DEVICE_START( mm74c922 )
 	}
 
 	/* create the timers */
-	mm74c922->scan_timer = timer_alloc(device->machine, mm74c922_scan_tick, (void *)device);
-	timer_adjust_periodic(mm74c922->scan_timer, attotime_zero, 0, ATTOTIME_IN_HZ(50));
+	mm74c922->scan_timer = device->machine().scheduler().timer_alloc(FUNC(mm74c922_scan_tick), (void *)device);
+	mm74c922->scan_timer->adjust(attotime::zero, 0, attotime::from_hz(50));
 
 	/* register for state saving */
-	state_save_register_device_item(device, 0, mm74c922->inhibit);
-	state_save_register_device_item(device, 0, mm74c922->x);
-	state_save_register_device_item(device, 0, mm74c922->y);
-	state_save_register_device_item(device, 0, mm74c922->max_y);
-	state_save_register_device_item(device, 0, mm74c922->data);
-	state_save_register_device_item(device, 0, mm74c922->da);
-	state_save_register_device_item(device, 0, mm74c922->next_da);
+	device->save_item(NAME(mm74c922->inhibit));
+	device->save_item(NAME(mm74c922->x));
+	device->save_item(NAME(mm74c922->y));
+	device->save_item(NAME(mm74c922->max_y));
+	device->save_item(NAME(mm74c922->data));
+	device->save_item(NAME(mm74c922->da));
+	device->save_item(NAME(mm74c922->next_da));
 }
 
 /*-------------------------------------------------

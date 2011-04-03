@@ -98,12 +98,12 @@
 #include "machine/i8243.h"
 // upd765 interface
 #include "machine/upd765.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 // pcw video hardware
 #include "includes/pcw.h"
 // pcw/pcw16 beeper
 #include "sound/beep.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 #include "pcw.lh"
 
@@ -118,11 +118,11 @@ static WRITE_LINE_DEVICE_HANDLER( pcw_fdc_interrupt );
 static void pcw_update_interrupt_counter(pcw_state *state)
 {
 	/* never increments past 15! */
-	if (state->interrupt_counter==0x0f)
+	if (state->m_interrupt_counter==0x0f)
 		return;
 
 	/* increment count */
-	state->interrupt_counter++;
+	state->m_interrupt_counter++;
 }
 
 /* PCW uses UPD765 in NON-DMA mode. FDC Ints are connected to /INT or
@@ -137,23 +137,23 @@ static const upd765_interface pcw_upd765_interface =
 };
 
 // set/reset INT and NMI lines
-static void pcw_update_irqs(running_machine *machine)
+static void pcw_update_irqs(running_machine &machine)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
+	pcw_state *state = machine.driver_data<pcw_state>();
 	// set NMI line, remains set until FDC interrupt type is changed
-	if(state->nmi_flag != 0)
+	if(state->m_nmi_flag != 0)
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 	else
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 
 	// set IRQ line, timer pulses IRQ line, all other devices hold it as necessary
-	if(state->fdc_interrupt_code == 1 && (state->system_status & 0x20))
+	if(state->m_fdc_interrupt_code == 1 && (state->m_system_status & 0x20))
 	{
 		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 		return;
 	}
 
-	if(state->timer_irq_flag != 0)
+	if(state->m_timer_irq_flag != 0)
 	{
 		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 		return;
@@ -164,33 +164,33 @@ static void pcw_update_irqs(running_machine *machine)
 
 static TIMER_CALLBACK(pcw_timer_pulse)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
-	state->timer_irq_flag = 0;
+	pcw_state *state = machine.driver_data<pcw_state>();
+	state->m_timer_irq_flag = 0;
 	pcw_update_irqs(machine);
 }
 
 /* callback for 1/300ths of a second interrupt */
-static TIMER_CALLBACK(pcw_timer_interrupt)
+static TIMER_DEVICE_CALLBACK(pcw_timer_interrupt)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
+	pcw_state *state = timer.machine().driver_data<pcw_state>();
 	pcw_update_interrupt_counter(state);
 
-	state->timer_irq_flag = 1;
-	pcw_update_irqs(machine);
-	timer_set(machine,ATTOTIME_IN_USEC(100),NULL,0,pcw_timer_pulse);
+	state->m_timer_irq_flag = 1;
+	pcw_update_irqs(timer.machine());
+	timer.machine().scheduler().timer_set(attotime::from_usec(100), FUNC(pcw_timer_pulse));
 }
 
 /* fdc interrupt callback. set/clear fdc int */
 static WRITE_LINE_DEVICE_HANDLER( pcw_fdc_interrupt )
 {
-	pcw_state *drvstate = device->machine->driver_data<pcw_state>();
+	pcw_state *drvstate = device->machine().driver_data<pcw_state>();
 	if (state == CLEAR_LINE)
-		drvstate->system_status &= ~(1<<5);
+		drvstate->m_system_status &= ~(1<<5);
 	else
 	{
-		drvstate->system_status |= (1<<5);
-		if(drvstate->fdc_interrupt_code == 0)  // NMI is held until interrupt type is changed
-			drvstate->nmi_flag = 1;
+		drvstate->m_system_status |= (1<<5);
+		if(drvstate->m_fdc_interrupt_code == 0)  // NMI is held until interrupt type is changed
+			drvstate->m_nmi_flag = 1;
 	}
 }
 
@@ -203,7 +203,7 @@ static WRITE_LINE_DEVICE_HANDLER( pcw_fdc_interrupt )
     block 3 could be paged into any bank, and this explains the
     setup of the memory below.
 */
-static ADDRESS_MAP_START(pcw_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START(pcw_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
 	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
 	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
@@ -219,22 +219,22 @@ static  READ8_HANDLER(pcw_keyboard_r)
 		"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15"
 	};
 
-	return input_port_read(space->machine, keynames[offset]);
+	return input_port_read(space->machine(), keynames[offset]);
 }
 
 static READ8_HANDLER(pcw_keyboard_data_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	return state->mcu_keyboard_data[offset];
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	return state->m_mcu_keyboard_data[offset];
 }
 
 /* -----------------------------------------------------------------------
  * PCW Banking
  * ----------------------------------------------------------------------- */
 
-static void pcw_update_read_memory_block(running_machine *machine, int block, int bank)
+static void pcw_update_read_memory_block(running_machine &machine, int block, int bank)
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	char block_name[10];
 
 	sprintf(block_name,"bank%d",block+1);
@@ -243,28 +243,28 @@ static void pcw_update_read_memory_block(running_machine *machine, int block, in
 	{
 		/* when upper 16 bytes are accessed use keyboard read
            handler */
-		memory_install_read8_handler(space,
-			block * 0x04000 + 0x3ff0, block * 0x04000 + 0x3fff, 0, 0,
-			pcw_keyboard_data_r);
+		space->install_legacy_read_handler(
+			block * 0x04000 + 0x3ff0, block * 0x04000 + 0x3fff, FUNC(
+			pcw_keyboard_data_r));
 //      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
 	else
 	{
 		/* restore bank handler across entire block */
-		memory_install_read_bank(space,block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff, 0, 0,block_name);
+		space->install_read_bank(block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff,block_name);
 //      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
-	memory_set_bankptr(machine, block_name, messram_get_ptr(machine->device("messram")) + ((bank * 0x4000) % messram_get_size(machine->device("messram"))));
+	memory_set_bankptr(machine, block_name, ram_get_ptr(machine.device(RAM_TAG)) + ((bank * 0x4000) % ram_get_size(machine.device(RAM_TAG))));
 }
 
 
 
-static void pcw_update_write_memory_block(running_machine *machine, int block, int bank)
+static void pcw_update_write_memory_block(running_machine &machine, int block, int bank)
 {
 	char block_name[10];
 
 	sprintf(block_name,"bank%d",block+5);
-	memory_set_bankptr(machine, block_name, messram_get_ptr(machine->device("messram")) + ((bank * 0x4000) % messram_get_size(machine->device("messram"))));
+	memory_set_bankptr(machine, block_name, ram_get_ptr(machine.device(RAM_TAG)) + ((bank * 0x4000) % ram_get_size(machine.device(RAM_TAG))));
 //  LOG(("MEM: write block %i -> bank %i\n",block,bank));
 }
 
@@ -274,9 +274,9 @@ static void pcw_update_write_memory_block(running_machine *machine, int block, i
 /* &F4 O  b7-b4: when set, force memory reads to access the same bank as
 writes for &C000, &0000, &8000, and &4000 respectively */
 
-static void pcw_update_mem(running_machine *machine, int block, int data)
+static void pcw_update_mem(running_machine &machine, int block, int data)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
+	pcw_state *state = machine.driver_data<pcw_state>();
 	/* expansion ram select.
         if block is 0-7, selects internal ram instead for read/write
         */
@@ -324,7 +324,7 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 			break;
 		}
 
-		if (state->bank_force & mask)
+		if (state->m_bank_force & mask)
 		{
 			read_bank = data & 0x07;
 		}
@@ -340,36 +340,36 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 	}
 
 	/* if boot is active, page in fake ROM */
-/*  if ((state->boot) && (block==0))
+/*  if ((state->m_boot) && (block==0))
     {
         unsigned char *FakeROM;
 
-        FakeROM = &machine->region("maincpu")->base()[0x010000];
+        FakeROM = &machine.region("maincpu")->base()[0x010000];
 
         memory_set_bankptr(machine, "bank1", FakeROM);
     }*/
 }
 
 /* from Jacob Nevins docs */
-static int pcw_get_sys_status(running_machine *machine)
+static int pcw_get_sys_status(running_machine &machine)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
-	return state->interrupt_counter | (input_port_read(machine, "EXTRA") & (0x040 | 0x010)) | (state->system_status & 0x20);
+	pcw_state *state = machine.driver_data<pcw_state>();
+	return state->m_interrupt_counter | (input_port_read(machine, "EXTRA") & (0x040 | 0x010)) | (state->m_system_status & 0x20);
 }
 
 static READ8_HANDLER(pcw_interrupt_counter_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
+	pcw_state *state = space->machine().driver_data<pcw_state>();
 	int data;
 
 	/* from Jacob Nevins docs */
 
 	/* get data */
-	data = pcw_get_sys_status(space->machine);
+	data = pcw_get_sys_status(space->machine());
 	/* clear int counter */
-	state->interrupt_counter = 0;
+	state->m_interrupt_counter = 0;
 	/* check interrupts */
-	pcw_update_irqs(space->machine);
+	pcw_update_irqs(space->machine());
 	/* return data */
 	//LOG(("SYS: IRQ counter read, returning %02x\n",data));
 	return data;
@@ -378,56 +378,56 @@ static READ8_HANDLER(pcw_interrupt_counter_r)
 
 static WRITE8_HANDLER(pcw_bank_select_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
+	pcw_state *state = space->machine().driver_data<pcw_state>();
 	//LOG(("BANK: %2x %x\n",offset, data));
-	state->banks[offset] = data;
+	state->m_banks[offset] = data;
 
-	pcw_update_mem(space->machine, offset, data);
-//	popmessage("RAM Banks: %02x %02x %02x %02x",state->banks[0],state->banks[1],state->banks[2],state->banks[3]);
+	pcw_update_mem(space->machine(), offset, data);
+//  popmessage("RAM Banks: %02x %02x %02x %02x",state->m_banks[0],state->m_banks[1],state->m_banks[2],state->m_banks[3]);
 }
 
 static WRITE8_HANDLER(pcw_bank_force_selection_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->bank_force = data;
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_bank_force = data;
 
-	pcw_update_mem(space->machine, 0, state->banks[0]);
-	pcw_update_mem(space->machine, 1, state->banks[1]);
-	pcw_update_mem(space->machine, 2, state->banks[2]);
-	pcw_update_mem(space->machine, 3, state->banks[3]);
+	pcw_update_mem(space->machine(), 0, state->m_banks[0]);
+	pcw_update_mem(space->machine(), 1, state->m_banks[1]);
+	pcw_update_mem(space->machine(), 2, state->m_banks[2]);
+	pcw_update_mem(space->machine(), 3, state->m_banks[3]);
 }
 
 
 static WRITE8_HANDLER(pcw_roller_ram_addr_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
+	pcw_state *state = space->machine().driver_data<pcw_state>();
 	/*
     Address of roller RAM. b7-5: bank (0-7). b4-1: address / 512. */
 
-	state->roller_ram_addr = (((data>>5) & 0x07)<<14) |
+	state->m_roller_ram_addr = (((data>>5) & 0x07)<<14) |
 							((data & 0x01f)<<9);
-	LOG(("Roller-RAM: Address set to 0x%05x\n",state->roller_ram_addr));
+	LOG(("Roller-RAM: Address set to 0x%05x\n",state->m_roller_ram_addr));
 }
 
 static WRITE8_HANDLER(pcw_pointer_table_top_scan_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->roller_ram_offset = data;
-	LOG(("Roller-RAM: offset set to 0x%05x\n",state->roller_ram_offset));
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_roller_ram_offset = data;
+	LOG(("Roller-RAM: offset set to 0x%05x\n",state->m_roller_ram_offset));
 }
 
 static WRITE8_HANDLER(pcw_vdu_video_control_register_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->vdu_video_control_register = data;
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_vdu_video_control_register = data;
 	LOG(("Roller-RAM: control reg set to 0x%02x\n",data));
 }
 
 static WRITE8_HANDLER(pcw_system_control_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	device_t *fdc = space->machine->device("upd765");
-	device_t *speaker = space->machine->device("beep");
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	device_t *fdc = space->machine().device("upd765");
+	device_t *speaker = space->machine().device("beep");
 	LOG(("SYSTEM CONTROL: %d\n",data));
 
 	switch (data)
@@ -435,15 +435,15 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* end bootstrap */
 		case 0:
 		{
-			state->boot = 0;
-			pcw_update_mem(space->machine, 0, state->banks[0]);
+			state->m_boot = 0;
+			pcw_update_mem(space->machine(), 0, state->m_banks[0]);
 		}
 		break;
 
 		/* reboot */
 		case 1:
 		{
-			cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_RESET, PULSE_LINE);
+			cputag_set_input_line(space->machine(), "maincpu", INPUT_LINE_RESET, PULSE_LINE);
 			popmessage("SYS: Reboot");
 		}
 		break;
@@ -451,16 +451,16 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* connect fdc interrupt to nmi */
 		case 2:
 		{
-			int fdc_previous_interrupt_code = state->fdc_interrupt_code;
+			int fdc_previous_interrupt_code = state->m_fdc_interrupt_code;
 
-			state->fdc_interrupt_code = 0;
+			state->m_fdc_interrupt_code = 0;
 
 			/* previously connected to INT? */
 			if (fdc_previous_interrupt_code == 1)
 			{
 				/* yes */
 
-				pcw_update_irqs(space->machine);
+				pcw_update_irqs(space->machine());
 			}
 
 		}
@@ -470,10 +470,10 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* connect fdc interrupt to interrupt */
 		case 3:
 		{
-			int fdc_previous_interrupt_code = state->fdc_interrupt_code;
+			int fdc_previous_interrupt_code = state->m_fdc_interrupt_code;
 
 			/* connect to INT */
-			state->fdc_interrupt_code = 1;
+			state->m_fdc_interrupt_code = 1;
 
 			/* previously connected to NMI? */
 			if (fdc_previous_interrupt_code == 0)
@@ -481,11 +481,11 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* clear nmi interrupt */
-				state->nmi_flag = 0;
+				state->m_nmi_flag = 0;
 			}
 
 			/* re-issue interrupt */
-			pcw_update_irqs(space->machine);
+			pcw_update_irqs(space->machine());
 		}
 		break;
 
@@ -493,9 +493,9 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* connect fdc interrupt to neither */
 		case 4:
 		{
-			int fdc_previous_interrupt_code = state->fdc_interrupt_code;
+			int fdc_previous_interrupt_code = state->m_fdc_interrupt_code;
 
-			state->fdc_interrupt_code = 2;
+			state->m_fdc_interrupt_code = 2;
 
 			/* previously connected to NMI or INT? */
 			if ((fdc_previous_interrupt_code == 0) || (fdc_previous_interrupt_code == 1))
@@ -503,9 +503,9 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* Clear NMI */
-				state->nmi_flag = 0;
+				state->m_nmi_flag = 0;
 			}
-			pcw_update_irqs(space->machine);
+			pcw_update_irqs(space->machine());
 
 		}
 		break;
@@ -542,20 +542,20 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* disc motor on */
 		case 9:
 		{
-			floppy_mon_w(floppy_get_device(space->machine, 0), CLEAR_LINE);
-			floppy_mon_w(floppy_get_device(space->machine, 1), CLEAR_LINE);
-			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1,1);
-			floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1,1);
+			floppy_mon_w(floppy_get_device(space->machine(), 0), CLEAR_LINE);
+			floppy_mon_w(floppy_get_device(space->machine(), 1), CLEAR_LINE);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine(), 0), 1,1);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine(), 1), 1,1);
 		}
 		break;
 
 		/* disc motor off */
 		case 10:
 		{
-			floppy_mon_w(floppy_get_device(space->machine, 0), ASSERT_LINE);
-			floppy_mon_w(floppy_get_device(space->machine, 1), ASSERT_LINE);
-			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 0,1);
-			floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 0,1);
+			floppy_mon_w(floppy_get_device(space->machine(), 0), ASSERT_LINE);
+			floppy_mon_w(floppy_get_device(space->machine(), 1), ASSERT_LINE);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine(), 0), 0,1);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine(), 1), 0,1);
 		}
 		break;
 
@@ -579,7 +579,7 @@ static WRITE8_HANDLER(pcw_system_control_w)
 static READ8_HANDLER(pcw_system_status_r)
 {
 	/* from Jacob Nevins docs */
-	UINT8 ret = pcw_get_sys_status(space->machine);
+	UINT8 ret = pcw_get_sys_status(space->machine());
 
 	return ret;
 }
@@ -595,9 +595,9 @@ static  READ8_HANDLER(pcw_expansion_r)
 		case 0x0e0:
 		{
 			/* spectravideo joystick */
-			if (input_port_read(space->machine, "EXTRA") & 0x020)
+			if (input_port_read(space->machine(), "EXTRA") & 0x020)
 			{
-				return input_port_read(space->machine, "SPECTRAVIDEO");
+				return input_port_read(space->machine(), "SPECTRAVIDEO");
 			}
 			else
 			{
@@ -609,7 +609,7 @@ static  READ8_HANDLER(pcw_expansion_r)
 		{
 
 			/* kempston joystick */
-			return input_port_read(space->machine, "KEMPSTON");
+			return input_port_read(space->machine(), "KEMPSTON");
 		}
 
 		case 0x0e1:
@@ -644,7 +644,7 @@ static WRITE8_HANDLER(pcw_expansion_w)
 
 static READ8_HANDLER(pcw_fdc_r)
 {
-	device_t *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine().device("upd765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
@@ -656,7 +656,7 @@ static READ8_HANDLER(pcw_fdc_r)
 
 static WRITE8_HANDLER(pcw_fdc_w)
 {
-	device_t *fdc = space->machine->device("upd765");
+	device_t *fdc = space->machine().device("upd765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
@@ -664,36 +664,36 @@ static WRITE8_HANDLER(pcw_fdc_w)
 	}
 }
 
-static void pcw_printer_fire_pins(running_machine* machine, UINT16 pins)
+static void pcw_printer_fire_pins(running_machine &machine, UINT16 pins)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
+	pcw_state *state = machine.driver_data<pcw_state>();
 	int x,line;
-	INT32 feed = (state->paper_feed / 2);
+	INT32 feed = (state->m_paper_feed / 2);
 
 	for(x=feed+PCW_PRINTER_HEIGHT-16;x<feed+PCW_PRINTER_HEIGHT-7;x++)
 	{
 		line = x % PCW_PRINTER_HEIGHT;
 		if((pins & 0x01) == 0)
-			*BITMAP_ADDR16(state->prn_output,line,state->printer_headpos) = (UINT16)(pins & 0x01);
+			*BITMAP_ADDR16(state->m_prn_output,line,state->m_printer_headpos) = (UINT16)(pins & 0x01);
 		pins >>= 1;
 	}
-//	if(state->printer_headpos < PCW_PRINTER_WIDTH)
-//		state->printer_headpos++;
+//  if(state->m_printer_headpos < PCW_PRINTER_WIDTH)
+//      state->m_printer_headpos++;
 }
 
 static WRITE8_HANDLER(pcw_printer_data_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->printer_data = data;
-	upi41_master_w(space->machine->device("printer_mcu"),0,data);
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_printer_data = data;
+	upi41_master_w(space->machine().device("printer_mcu"),0,data);
 	logerror("PRN [0xFC]: Sent command %02x\n",data);
 }
 
 static WRITE8_HANDLER(pcw_printer_command_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->printer_command = data;
-	upi41_master_w(space->machine->device("printer_mcu"),1,data);
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_printer_command = data;
+	upi41_master_w(space->machine().device("printer_mcu"),1,data);
 	logerror("PRN [0xFD]: Sent command %02x\n",data);
 }
 
@@ -706,7 +706,7 @@ static WRITE8_HANDLER(pcw_printer_command_w)
 // anything else = no printer
 static  READ8_HANDLER(pcw_printer_data_r)
 {
-	return upi41_master_r(space->machine->device("printer_mcu"),0);
+	return upi41_master_r(space->machine().device("printer_mcu"),0);
 }
 
 // printer status
@@ -720,7 +720,7 @@ static  READ8_HANDLER(pcw_printer_data_r)
 // bit 0 - controller fault
 static  READ8_HANDLER(pcw_printer_status_r)
 {
-	return upi41_master_r(space->machine->device("printer_mcu"),1);
+	return upi41_master_r(space->machine().device("printer_mcu"),1);
 }
 
 /* MCU handlers */
@@ -742,132 +742,132 @@ static  READ8_HANDLER(pcw_printer_status_r)
  */
 static TIMER_CALLBACK(pcw_stepper_callback)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
+	pcw_state *state = machine.driver_data<pcw_state>();
 
-	//popmessage("PRN: P2 bits %s %s %s\nSerial: %02x\nHeadpos: %i",state->printer_p2 & 0x40 ? " " : "6",state->printer_p2 & 0x20 ? " " : "5",state->printer_p2 & 0x10 ? " " : "4",state->printer_shift_output,state->printer_headpos);
-	if((state->printer_p2 & 0x10) == 0)  // print head motor active
+	//popmessage("PRN: P2 bits %s %s %s\nSerial: %02x\nHeadpos: %i",state->m_printer_p2 & 0x40 ? " " : "6",state->m_printer_p2 & 0x20 ? " " : "5",state->m_printer_p2 & 0x10 ? " " : "4",state->m_printer_shift_output,state->m_printer_headpos);
+	if((state->m_printer_p2 & 0x10) == 0)  // print head motor active
 	{
-		UINT8 stepper_state = (state->printer_shift_output >> 4) & 0x0f;
-		if(stepper_state == full_step_table[(state->head_motor_state + 1) & 0x03])
+		UINT8 stepper_state = (state->m_printer_shift_output >> 4) & 0x0f;
+		if(stepper_state == full_step_table[(state->m_head_motor_state + 1) & 0x03])
 		{
-			state->printer_headpos += 2;
-			state->head_motor_state++;
-			logerror("Printer head moved forward by 2 to %i\n",state->printer_headpos);
+			state->m_printer_headpos += 2;
+			state->m_head_motor_state++;
+			logerror("Printer head moved forward by 2 to %i\n",state->m_printer_headpos);
 		}
-		if(stepper_state == half_step_table[(state->head_motor_state + 1) & 0x03])
+		if(stepper_state == half_step_table[(state->m_head_motor_state + 1) & 0x03])
 		{
-			state->printer_headpos += 1;
-			state->head_motor_state++;
-			logerror("Printer head moved forward by 1 to %i\n",state->printer_headpos);
+			state->m_printer_headpos += 1;
+			state->m_head_motor_state++;
+			logerror("Printer head moved forward by 1 to %i\n",state->m_printer_headpos);
 		}
-		if(stepper_state == full_step_table[(state->head_motor_state - 1) & 0x03])
+		if(stepper_state == full_step_table[(state->m_head_motor_state - 1) & 0x03])
 		{
-			state->printer_headpos -= 2;
-			state->head_motor_state--;
-			logerror("Printer head moved back by 2 to %i\n",state->printer_headpos);
+			state->m_printer_headpos -= 2;
+			state->m_head_motor_state--;
+			logerror("Printer head moved back by 2 to %i\n",state->m_printer_headpos);
 		}
-		if(stepper_state == half_step_table[(state->head_motor_state - 1) & 0x03])
+		if(stepper_state == half_step_table[(state->m_head_motor_state - 1) & 0x03])
 		{
-			state->printer_headpos -= 1;
-			state->head_motor_state--;
-			logerror("Printer head moved back by 1 to %i\n",state->printer_headpos);
+			state->m_printer_headpos -= 1;
+			state->m_head_motor_state--;
+			logerror("Printer head moved back by 1 to %i\n",state->m_printer_headpos);
 		}
-		if(state->printer_headpos < 0)
-			state->printer_headpos = 0;
-		if(state->printer_headpos > PCW_PRINTER_WIDTH)
-			state->printer_headpos = PCW_PRINTER_WIDTH;
-		state->head_motor_state &= 0x03;
-		state->printer_p2 |= 0x10;
+		if(state->m_printer_headpos < 0)
+			state->m_printer_headpos = 0;
+		if(state->m_printer_headpos > PCW_PRINTER_WIDTH)
+			state->m_printer_headpos = PCW_PRINTER_WIDTH;
+		state->m_head_motor_state &= 0x03;
+		state->m_printer_p2 |= 0x10;
 	}
-	if((state->printer_p2 & 0x20) == 0)  // line feed motor active
+	if((state->m_printer_p2 & 0x20) == 0)  // line feed motor active
 	{
-		UINT8 stepper_state = state->printer_shift_output & 0x0f;
-		if(stepper_state == full_step_table[(state->linefeed_motor_state + 1) & 0x03])
+		UINT8 stepper_state = state->m_printer_shift_output & 0x0f;
+		if(stepper_state == full_step_table[(state->m_linefeed_motor_state + 1) & 0x03])
 		{
-			state->paper_feed++;
-			if(state->paper_feed > PCW_PRINTER_HEIGHT*2)
-				state->paper_feed = 0;
-			state->linefeed_motor_state++;
+			state->m_paper_feed++;
+			if(state->m_paper_feed > PCW_PRINTER_HEIGHT*2)
+				state->m_paper_feed = 0;
+			state->m_linefeed_motor_state++;
 		}
-		if(stepper_state == half_step_table[(state->linefeed_motor_state + 1) & 0x03])
+		if(stepper_state == half_step_table[(state->m_linefeed_motor_state + 1) & 0x03])
 		{
-			state->paper_feed++;
-			if(state->paper_feed > PCW_PRINTER_HEIGHT*2)
-				state->paper_feed = 0;
-			state->linefeed_motor_state++;
+			state->m_paper_feed++;
+			if(state->m_paper_feed > PCW_PRINTER_HEIGHT*2)
+				state->m_paper_feed = 0;
+			state->m_linefeed_motor_state++;
 		}
-		state->linefeed_motor_state &= 0x03;
-		state->printer_p2 |= 0x20;
+		state->m_linefeed_motor_state &= 0x03;
+		state->m_printer_p2 |= 0x20;
 	}
 }
 
 static TIMER_CALLBACK(pcw_pins_callback)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
+	pcw_state *state = machine.driver_data<pcw_state>();
 
-	pcw_printer_fire_pins(machine,state->printer_pins);
-	state->printer_p2 |= 0x40;
+	pcw_printer_fire_pins(machine,state->m_printer_pins);
+	state->m_printer_p2 |= 0x40;
 }
 
 static READ8_HANDLER(mcu_printer_p1_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-//	logerror("PRN: MCU reading data from P1\n");
-	return state->printer_pins & 0x00ff;
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+//  logerror("PRN: MCU reading data from P1\n");
+	return state->m_printer_pins & 0x00ff;
 }
 
 static WRITE8_HANDLER(mcu_printer_p1_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->printer_pins = (state->printer_pins & 0x0100) | data;
-	//popmessage("PRN: Print head position = %i",state->printer_headpos);
-	logerror("PRN: MCU writing %02x to P1 [%03x/%03x]\n",data,state->printer_pins,~state->printer_pins & 0x1ff);
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_printer_pins = (state->m_printer_pins & 0x0100) | data;
+	//popmessage("PRN: Print head position = %i",state->m_printer_headpos);
+	logerror("PRN: MCU writing %02x to P1 [%03x/%03x]\n",data,state->m_printer_pins,~state->m_printer_pins & 0x1ff);
 }
 
 static READ8_HANDLER(mcu_printer_p2_r)
 {
 	UINT8 ret = 0x00;
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-//	logerror("PRN: MCU reading data from P2\n");
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+//  logerror("PRN: MCU reading data from P2\n");
 	ret |= 0x80;  // make sure bail bar is in
-	ret |= (state->printer_p2 & 0x70);
-	ret |= (state->printer_pins & 0x100) ? 0x01 : 0x00;  // ninth pin
+	ret |= (state->m_printer_p2 & 0x70);
+	ret |= (state->m_printer_pins & 0x100) ? 0x01 : 0x00;  // ninth pin
 	ret |= 0x0e;
 	return ret;
 }
 
 static WRITE8_HANDLER(mcu_printer_p2_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
+	pcw_state *state = space->machine().driver_data<pcw_state>();
 
 	//logerror("PRN: MCU writing %02x to P2\n",data);
-	state->printer_p2 = data & 0x70;
+	state->m_printer_p2 = data & 0x70;
 
 	// handle shift/store
-	state->printer_serial = data & 0x04;  // data
+	state->m_printer_serial = data & 0x04;  // data
 	if((data & 0x02) != 0)  // clock
 	{
-		state->printer_shift <<= 1;
-		if(state->printer_serial == 0)
-			state->printer_shift &= ~0x01;
+		state->m_printer_shift <<= 1;
+		if(state->m_printer_serial == 0)
+			state->m_printer_shift &= ~0x01;
 		else
-			state->printer_shift |= 0x01;
+			state->m_printer_shift |= 0x01;
 	}
 	if((data & 0x08) != 0)  // strobe
 	{
-		logerror("Strobe active [%02x]\n",state->printer_shift);
-		state->printer_shift_output = state->printer_shift;
-		timer_adjust_oneshot(state->prn_stepper,PERIOD_OF_555_MONOSTABLE(22000,0.00000001),0);
+		logerror("Strobe active [%02x]\n",state->m_printer_shift);
+		state->m_printer_shift_output = state->m_printer_shift;
+		state->m_prn_stepper->adjust(PERIOD_OF_555_MONOSTABLE(22000,0.00000001));
 	}
 
 	if(data & 0x40)
-		timer_adjust_oneshot(state->prn_pins,PERIOD_OF_555_MONOSTABLE(22000,0.0000000068),0);
+		state->m_prn_pins->adjust(PERIOD_OF_555_MONOSTABLE(22000,0.0000000068));
 
 	if(data & 0x01)
-		state->printer_pins |= 0x0100;
+		state->m_printer_pins |= 0x0100;
 	else
-		state->printer_pins &= ~0x0100;
-	state->printer_p2_prev = data;
+		state->m_printer_pins &= ~0x0100;
+	state->m_printer_p2_prev = data;
 }
 
 // Paper sensor
@@ -879,9 +879,9 @@ static READ8_HANDLER(mcu_printer_t1_r)
 // Print head location (0 if at left margin, otherwise 1)
 static READ8_HANDLER(mcu_printer_t0_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
+	pcw_state *state = space->machine().driver_data<pcw_state>();
 
-	if(state->printer_headpos == 0)
+	if(state->m_printer_headpos == 0)
 		return 0;
 	else
 		return 1;
@@ -901,72 +901,72 @@ static void mcu_transmit_serial(pcw_state *state, UINT8 bit)
 	/* Keyboard data is sent in serial from the MCU through the keyboard port, to the ASIC
        Sends a string of 12-bit sequences, first 4 bits are the RAM location (from &3ff0),
        then 8 bits for the data to be written there. */
-	seq = state->mcu_transmit_count % 12;
+	seq = state->m_mcu_transmit_count % 12;
 	if(seq < 4)
 	{
 		if(bit == 0)
-			state->mcu_selected &= ~(8 >> seq);
+			state->m_mcu_selected &= ~(8 >> seq);
 		else
-			state->mcu_selected |= (8 >> seq);
+			state->m_mcu_selected |= (8 >> seq);
 	}
 	else
 	{
 		seq -= 4;
 		if(bit == 0)
-			state->mcu_buffer &= ~(128 >> seq);
+			state->m_mcu_buffer &= ~(128 >> seq);
 		else
-			state->mcu_buffer |= (128 >> seq);
+			state->m_mcu_buffer |= (128 >> seq);
 	}
-	state->mcu_transmit_count++;
-	if(state->mcu_transmit_count >= 12)
+	state->m_mcu_transmit_count++;
+	if(state->m_mcu_transmit_count >= 12)
 	{
-		state->mcu_keyboard_data[state->mcu_selected] = state->mcu_buffer;
-		state->mcu_transmit_count = 0;
+		state->m_mcu_keyboard_data[state->m_mcu_selected] = state->m_mcu_buffer;
+		state->m_mcu_transmit_count = 0;
 	}
 }
 
 static READ8_HANDLER(mcu_kb_scan_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	return state->kb_scan_row & 0xff;
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	return state->m_kb_scan_row & 0xff;
 }
 
 static WRITE8_HANDLER(mcu_kb_scan_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	state->kb_scan_row = (state->kb_scan_row & 0xff00) | data;
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	state->m_kb_scan_row = (state->m_kb_scan_row & 0xff00) | data;
 }
 
 static READ8_HANDLER(mcu_kb_scan_high_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	return (state->kb_scan_row & 0xff00) >> 8;
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	return (state->m_kb_scan_row & 0xff00) >> 8;
 }
 
 static WRITE8_HANDLER(mcu_kb_scan_high_w)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	if((state->mcu_prev & 0x02) && !(data & 0x02))  // bit is transmitted on high-to-low clock transition
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	if((state->m_mcu_prev & 0x02) && !(data & 0x02))  // bit is transmitted on high-to-low clock transition
 	{
 		mcu_transmit_serial(state, data & 0x01);
-		state->mcu_transmit_reset_seq = 0;
+		state->m_mcu_transmit_reset_seq = 0;
 	}
 
-	if((state->mcu_prev & 0x01) != (data & 0x01))  // two high->low transitions on the data pin signals the beginning of a new transfer
+	if((state->m_mcu_prev & 0x01) != (data & 0x01))  // two high->low transitions on the data pin signals the beginning of a new transfer
 	{
-		state->mcu_transmit_reset_seq++;
-		if(state->mcu_transmit_reset_seq > 3)
-			state->mcu_transmit_count = 0;
+		state->m_mcu_transmit_reset_seq++;
+		if(state->m_mcu_transmit_reset_seq > 3)
+			state->m_mcu_transmit_count = 0;
 	}
 
-	state->kb_scan_row = (state->kb_scan_row & 0x00ff) | ((data & 0xff) << 8);
-	state->mcu_prev = data;
+	state->m_kb_scan_row = (state->m_kb_scan_row & 0x00ff) | ((data & 0xff) << 8);
+	state->m_mcu_prev = data;
 }
 
 static READ8_HANDLER(mcu_kb_data_r)
 {
-	pcw_state *state = space->machine->driver_data<pcw_state>();
-	UINT16 scan_bits = ((state->kb_scan_row & 0xf000) >> 4) | (state->kb_scan_row & 0xff);
+	pcw_state *state = space->machine().driver_data<pcw_state>();
+	UINT16 scan_bits = ((state->m_kb_scan_row & 0xf000) >> 4) | (state->m_kb_scan_row & 0xff);
 	int x;
 
 	for(x=0;x<12;x++)
@@ -1007,7 +1007,7 @@ static WRITE8_HANDLER(pcw9512_parallel_w)
 	logerror("pcw9512 parallel w: offs: %04x data: %02x\n",offset,data);
 }
 
-static ADDRESS_MAP_START(pcw_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(pcw_io, AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x000, 0x07f) AM_READWRITE(pcw_fdc_r,					pcw_fdc_w)
 	AM_RANGE(0x080, 0x0ef) AM_READWRITE(pcw_expansion_r,			pcw_expansion_w)
@@ -1023,7 +1023,7 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(pcw9512_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(pcw9512_io, AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x000, 0x07f) AM_READWRITE(pcw_fdc_r,					pcw_fdc_w)
 	AM_RANGE(0x080, 0x0ef) AM_READWRITE(pcw_expansion_r,			pcw_expansion_w)
@@ -1037,14 +1037,14 @@ static ADDRESS_MAP_START(pcw9512_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* i8041 MCU */
-static ADDRESS_MAP_START(pcw_printer_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(pcw_printer_io, AS_IO, 8)
 	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(mcu_printer_p2_r,mcu_printer_p2_w)
 	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(mcu_printer_p1_r, mcu_printer_p1_w)
 	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(mcu_printer_t1_r)
 	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(mcu_printer_t0_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(pcw_keyboard_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(pcw_keyboard_io, AS_IO, 8)
 	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(mcu_kb_scan_r,mcu_kb_scan_w)
 	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(mcu_kb_scan_high_r,mcu_kb_scan_high_w)
 	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(mcu_kb_t1_r)
@@ -1055,7 +1055,7 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK(setup_beep)
 {
-	device_t *speaker = machine->device("beep");
+	device_t *speaker = machine.device("beep");
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 3750);
 }
@@ -1063,67 +1063,65 @@ static TIMER_CALLBACK(setup_beep)
 
 static MACHINE_START( pcw )
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
-	state->fdc_interrupt_code = 2;
+	pcw_state *state = machine.driver_data<pcw_state>();
+	state->m_fdc_interrupt_code = 2;
 }
 
 static MACHINE_RESET( pcw )
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
-	UINT8* code = machine->region("printer_mcu")->base();
+	pcw_state *state = machine.driver_data<pcw_state>();
+	UINT8* code = machine.region("printer_mcu")->base();
 	int x;
 	/* ram paging is actually undefined at power-on */
 
-	state->bank_force = 0x00;
+	state->m_bank_force = 0x00;
 
-	state->banks[0] = 0x80;
-	state->banks[1] = 0x81;
-	state->banks[2] = 0x82;
-	state->banks[3] = 0x83;
+	state->m_banks[0] = 0x80;
+	state->m_banks[1] = 0x81;
+	state->m_banks[2] = 0x82;
+	state->m_banks[3] = 0x83;
 
-	pcw_update_mem(machine, 0, state->banks[0]);
-	pcw_update_mem(machine, 1, state->banks[1]);
-	pcw_update_mem(machine, 2, state->banks[2]);
-	pcw_update_mem(machine, 3, state->banks[3]);
+	pcw_update_mem(machine, 0, state->m_banks[0]);
+	pcw_update_mem(machine, 1, state->m_banks[1]);
+	pcw_update_mem(machine, 2, state->m_banks[2]);
+	pcw_update_mem(machine, 3, state->m_banks[3]);
 
-	state->boot = 0;   // System starts up in bootstrap mode, disabled until it's possible to emulate it.
+	state->m_boot = 0;   // System starts up in bootstrap mode, disabled until it's possible to emulate it.
 
 	/* copy boot code into RAM - yes, it's skipping a step */
-	memset(messram_get_ptr(machine->device("messram")),0x00,messram_get_size(machine->device("messram")));
+	memset(ram_get_ptr(machine.device(RAM_TAG)),0x00,ram_get_size(machine.device(RAM_TAG)));
 	for(x=0;x<256;x++)
-		messram_get_ptr(machine->device("messram"))[x+2] = code[x+0x300];
+		ram_get_ptr(machine.device(RAM_TAG))[x+2] = code[x+0x300];
 
 	/* and hack our way past the MCU side of the boot process */
 	code[0x01] = 0x40;
 
-	state->printer_status = 0xff;
-	state->printer_command = 0xff;
-	state->printer_data = 0x00;
-	state->printer_headpos = 0x00; // bring printer head to left margin
-	state->printer_shift = 0;
-	state->printer_shift_output = 0;
+	state->m_printer_status = 0xff;
+	state->m_printer_command = 0xff;
+	state->m_printer_data = 0x00;
+	state->m_printer_headpos = 0x00; // bring printer head to left margin
+	state->m_printer_shift = 0;
+	state->m_printer_shift_output = 0;
 }
 
 static DRIVER_INIT(pcw)
 {
-	pcw_state *state = machine->driver_data<pcw_state>();
-	cpu_set_input_line_vector(machine->device("maincpu"), 0, 0x0ff);
+	pcw_state *state = machine.driver_data<pcw_state>();
+	device_set_input_line_vector(machine.device("maincpu"), 0, 0x0ff);
 
 	/* lower 4 bits are interrupt counter */
-	state->system_status = 0x000;
-	state->system_status &= ~((1<<6) | (1<<5) | (1<<4));
+	state->m_system_status = 0x000;
+	state->m_system_status &= ~((1<<6) | (1<<5) | (1<<4));
 
-	state->interrupt_counter = 0;
+	state->m_interrupt_counter = 0;
 
-	state->roller_ram_offset = 0;
+	state->m_roller_ram_offset = 0;
 
 	/* timer interrupt */
-	timer_pulse(machine, ATTOTIME_IN_HZ(300), NULL, 0, pcw_timer_interrupt);
+	machine.scheduler().timer_set(attotime::zero, FUNC(setup_beep));
 
-	timer_set(machine, attotime_zero, NULL, 0, setup_beep);
-
-	state->prn_stepper = timer_alloc(machine,pcw_stepper_callback,NULL);
-	state->prn_pins = timer_alloc(machine,pcw_pins_callback,NULL);
+	state->m_prn_stepper = machine.scheduler().timer_alloc(FUNC(pcw_stepper_callback));
+	state->m_prn_pins = machine.scheduler().timer_alloc(FUNC(pcw_pins_callback));
 }
 
 
@@ -1344,7 +1342,7 @@ static MACHINE_CONFIG_START( pcw, pcw_state )
 	MCFG_CPU_ADD("keyboard_mcu", I8048, 5000000) // 5MHz
 	MCFG_CPU_IO_MAP(pcw_keyboard_io)
 
-//	MCFG_QUANTUM_TIME(HZ(50))
+//  MCFG_QUANTUM_TIME(attotime::from_hz(50))
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
 	MCFG_MACHINE_START(pcw)
@@ -1357,11 +1355,12 @@ static MACHINE_CONFIG_START( pcw, pcw_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(PCW_SCREEN_WIDTH, PCW_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW_SCREEN_WIDTH-1, 0, PCW_SCREEN_HEIGHT-1)
+	MCFG_SCREEN_UPDATE( pcw )
+
 	MCFG_PALETTE_LENGTH(PCW_NUM_COLOURS)
 	MCFG_PALETTE_INIT( pcw )
 
 	MCFG_VIDEO_START( pcw )
-	MCFG_VIDEO_UPDATE( pcw )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1373,8 +1372,10 @@ static MACHINE_CONFIG_START( pcw, pcw_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(pcw_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("256K")
+
+	MCFG_TIMER_ADD_PERIODIC("pcw_timer", pcw_timer_interrupt, attotime::from_hz(300))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pcw8256, pcw )
@@ -1383,7 +1384,8 @@ static MACHINE_CONFIG_DERIVED( pcw8256, pcw )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE( PCW_PRINTER_WIDTH, PCW_PRINTER_HEIGHT )
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW_PRINTER_WIDTH-1, 0, PCW_PRINTER_HEIGHT-1)
-
+	MCFG_SCREEN_UPDATE( pcw_printer )
+	
 	MCFG_DEFAULT_LAYOUT( layout_pcw )
 
 MACHINE_CONFIG_END
@@ -1394,11 +1396,12 @@ static MACHINE_CONFIG_DERIVED( pcw8512, pcw )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE( PCW_PRINTER_WIDTH, PCW_PRINTER_HEIGHT )
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW_PRINTER_WIDTH-1, 0, PCW_PRINTER_HEIGHT-1)
-
+	MCFG_SCREEN_UPDATE( pcw_printer )
+	
 	MCFG_DEFAULT_LAYOUT( layout_pcw )
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("512K")
 MACHINE_CONFIG_END
 
@@ -1408,7 +1411,7 @@ static MACHINE_CONFIG_DERIVED( pcw9512, pcw )
 	MCFG_CPU_IO_MAP(pcw9512_io)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("512K")
 MACHINE_CONFIG_END
 

@@ -1,6 +1,6 @@
 #include "emu.h"
 #include "includes/pcw16.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 /* 16 colours, + 1 for border */
@@ -73,8 +73,8 @@ static void pcw16_vh_decode_mode0(pcw16_state *state, bitmap_t *bitmap, int x, i
 
 	local_byte = byte;
 
-	cols[0] = state->colour_palette[0];
-	cols[1] = state->colour_palette[1];
+	cols[0] = state->m_colour_palette[0];
+	cols[1] = state->m_colour_palette[1];
 
 	px = x;
 	for (b=0; b<8; b++)
@@ -96,7 +96,7 @@ static void pcw16_vh_decode_mode1(pcw16_state *state, bitmap_t *bitmap, int x, i
 
 	for (b=0; b<3; b++)
 	{
-		cols[b] = state->colour_palette[b];
+		cols[b] = state->m_colour_palette[b];
 	}
 
 	local_byte = byte;
@@ -125,8 +125,8 @@ static void pcw16_vh_decode_mode2(pcw16_state *state, bitmap_t *bitmap, int x, i
 	int local_byte;
 	int cols[2];
 
-	cols[0] = state->colour_palette[0];
-	cols[1] = state->colour_palette[1];
+	cols[0] = state->m_colour_palette[0];
+	cols[1] = state->m_colour_palette[1];
 	local_byte = byte;
 
 	px = x;
@@ -154,29 +154,30 @@ static void pcw16_vh_decode_mode2(pcw16_state *state, bitmap_t *bitmap, int x, i
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
-VIDEO_UPDATE( pcw16 )
+SCREEN_UPDATE( pcw16 )
 {
-	pcw16_state *state = screen->machine->driver_data<pcw16_state>();
-	unsigned char *pScanLine = (unsigned char *)messram_get_ptr(screen->machine->device("messram")) + 0x0fc00;	//0x03c00;  //0x020FC00;
+	pcw16_state *state = screen->machine().driver_data<pcw16_state>();
+	UINT8 *ram = ram_get_ptr(screen->machine().device(RAM_TAG));
+	unsigned char *pScanLine = (unsigned char *)ram + 0x0fc00;	//0x03c00;  //0x020FC00;
 
 	int y;
 	int x;
 
 	int border_colour;
 
-	border_colour = state->video_control & 31;
+	border_colour = state->m_video_control & 31;
 
 	/* reverse video? */
-	if (state->video_control & (1<<7))
+	if (state->m_video_control & (1<<7))
 	{
 		/* colour 0 and colour 1 need to be inverted? - what happens in mode 1 and 2 - ignored? or is bit 1 toggled,
         or is whole lot toggled? */
 
 		/* force border to be colour 1 */
-		border_colour = state->colour_palette[1];
+		border_colour = state->m_colour_palette[1];
 	}
 
-	if ((state->video_control & (1<<6))==0)
+	if ((state->m_video_control & (1<<6))==0)
 	{
 		/* blank */
 		rectangle rect;
@@ -240,7 +241,7 @@ VIDEO_UPDATE( pcw16 )
 			{
 				int byte;
 
-				byte = messram_get_ptr(screen->machine->device("messram"))[Addr];
+				byte = ram[Addr];
 
 				switch (mode)
 				{

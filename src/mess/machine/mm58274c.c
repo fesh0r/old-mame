@@ -76,6 +76,7 @@ enum
 INLINE mm58274c_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == MM58274C);
 
 	return (mm58274c_t *)downcast<legacy_device_base *>(device)->token();
 }
@@ -84,14 +85,14 @@ static attotime interrupt_period_table(int val)
 {
 	switch(val)
 	{
-		case 0:	return ATTOTIME_IN_MSEC(0);
-		case 1:	return ATTOTIME_IN_MSEC(100);
-		case 2:	return ATTOTIME_IN_MSEC(500);
-		case 3:	return ATTOTIME_IN_SEC(1);
-		case 4:	return ATTOTIME_IN_SEC(5);
-		case 5:	return ATTOTIME_IN_SEC(10);
-		case 6:	return ATTOTIME_IN_SEC(30);
-		case 7:	return ATTOTIME_IN_SEC(60);
+		case 0:	return attotime::from_msec(0);
+		case 1:	return attotime::from_msec(100);
+		case 2:	return attotime::from_msec(500);
+		case 3:	return attotime::from_seconds(1);
+		case 4:	return attotime::from_seconds(5);
+		case 5:	return attotime::from_seconds(10);
+		case 6:	return attotime::from_seconds(30);
+		case 7:	return attotime::from_seconds(60);
 		default: fatalerror("out of range");
 	}
 };
@@ -202,13 +203,13 @@ WRITE8_DEVICE_HANDLER (mm58274c_w)
 	case 0x0:	/* Control Register (test mode and interrupt not emulated) */
 		if ((! (mm58274c->control & ctl_intstop)) && (data & ctl_intstop))
 			/* interrupt stop */
-			timer_enable(mm58274c->interrupt_timer, 0);
+			mm58274c->interrupt_timer->enable(0);
 		else if ((mm58274c->control & ctl_intstop) && (! (data & ctl_intstop)))
 		{
 			/* interrupt run */
 			attotime period = interrupt_period_table(mm58274c->int_ctl & int_ctl_dly);
 
-			timer_adjust_periodic(mm58274c->interrupt_timer, period, 0, mm58274c->int_ctl & int_ctl_rpt ? period : attotime_zero);
+			mm58274c->interrupt_timer->adjust(period, 0, mm58274c->int_ctl & int_ctl_rpt ? period : attotime::zero);
 		}
 		if (data & ctl_clkstop)
 			/* stopping the clock clears the tenth counter */
@@ -281,7 +282,7 @@ WRITE8_DEVICE_HANDLER (mm58274c_w)
 				/* interrupt run */
 				attotime period = interrupt_period_table(mm58274c->int_ctl & int_ctl_dly);
 
-				timer_adjust_periodic(mm58274c->interrupt_timer, period, 0, mm58274c->int_ctl & int_ctl_rpt ? period : attotime_zero);
+				mm58274c->interrupt_timer->adjust(period, 0, mm58274c->int_ctl & int_ctl_rpt ? period : attotime::zero);
 			}
 		}
 		else
@@ -451,28 +452,28 @@ static DEVICE_START( mm58274c )
 
 	mm58274c->intf = (const mm58274c_interface*)device->baseconfig().static_config();
 	// register for state saving
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->status);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->control);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->clk_set);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->int_ctl);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->wday);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->years1);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->years2);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->months1);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->months2);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->days1);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->days2);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->hours1);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->hours2);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->minutes1);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->minutes2);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->seconds1);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->seconds2);
-	state_save_register_item(device->machine, "mm58274c", device->tag(), 0, mm58274c->tenths);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->status);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->control);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->clk_set);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->int_ctl);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->wday);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->years1);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->years2);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->months1);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->months2);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->days1);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->days2);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->hours1);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->hours2);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->minutes1);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->minutes2);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->seconds1);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->seconds2);
+	state_save_register_item(device->machine(), "mm58274c", device->tag(), 0, mm58274c->tenths);
 
-	mm58274c->increment_rtc = timer_alloc(device->machine, increment_rtc, ((void*)device));
-	timer_adjust_periodic(mm58274c->increment_rtc, attotime_zero, 0, ATTOTIME_IN_MSEC(100));
-	mm58274c->interrupt_timer = timer_alloc(device->machine, rtc_interrupt_callback, ((void*)device));
+	mm58274c->increment_rtc = device->machine().scheduler().timer_alloc(FUNC(increment_rtc), ((void*)device));
+	mm58274c->increment_rtc->adjust(attotime::zero, 0, attotime::from_msec(100));
+	mm58274c->interrupt_timer = device->machine().scheduler().timer_alloc(FUNC(rtc_interrupt_callback), ((void*)device));
 }
 
 
@@ -482,7 +483,7 @@ static DEVICE_RESET( mm58274c )
 	system_time systime;
 
 	/* get the current date/time from the core */
-	device->machine->current_datetime(systime);
+	device->machine().current_datetime(systime);
 
 	mm58274c->clk_set = systime.local_time.year & 3 << 2;
 	if (mm58274c->intf->mode24)

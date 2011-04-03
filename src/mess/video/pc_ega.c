@@ -444,7 +444,6 @@ located at I/O port 0x3CE, and a data register located at I/O port 0x3CF.
 #include "emu.h"
 #include "video/pc_ega.h"
 #include "video/crtc_ega.h"
-#include "video/pc_video_mess.h"
 #include "memconv.h"
 
 
@@ -502,7 +501,7 @@ static struct
     Prototypes
 */
 static VIDEO_START( pc_ega );
-static VIDEO_UPDATE( pc_ega );
+static SCREEN_UPDATE( pc_ega );
 static PALETTE_INIT( pc_ega );
 static CRTC_EGA_UPDATE_ROW( ega_update_row );
 static CRTC_EGA_ON_DE_CHANGED( ega_de_changed );
@@ -549,14 +548,14 @@ MACHINE_CONFIG_FRAGMENT( pcvideo_ega )
 	MCFG_SCREEN_ADD(EGA_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(16257000,912,0,640,262,0,200)
-	MCFG_PALETTE_LENGTH( 64 )
+	MCFG_SCREEN_UPDATE( pc_ega )
 
+	MCFG_PALETTE_LENGTH( 64 )
 	MCFG_PALETTE_INIT(pc_ega)
 
 	MCFG_CRTC_EGA_ADD(EGA_CRTC_NAME, 16257000/8, crtc_ega_ega_intf)
 
 	MCFG_VIDEO_START( pc_ega )
-	MCFG_VIDEO_UPDATE( pc_ega )
 MACHINE_CONFIG_END
 
 
@@ -575,7 +574,7 @@ static PALETTE_INIT( pc_ega )
 }
 
 
-static void pc_ega_install_banks( running_machine *machine )
+static void pc_ega_install_banks( running_machine &machine )
 {
 	switch ( ega.graphics_controller.data[6] & 0x0c )
 	{
@@ -609,49 +608,49 @@ static void pc_ega_install_banks( running_machine *machine )
 static VIDEO_START( pc_ega )
 {
 	int buswidth;
-	address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
-	address_space *spaceio = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_IO);
+	address_space *space = machine.firstcpu->memory().space(AS_PROGRAM);
+	address_space *spaceio = machine.firstcpu->memory().space(AS_IO);
 
-	buswidth = device_memory(machine->firstcpu)->space_config(AS_PROGRAM)->m_databus_width;
+	buswidth = machine.firstcpu->memory().space_config(AS_PROGRAM)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			memory_install_read_bank(space, 0xa0000, 0xaffff, 0, 0, "bank11" );
-			memory_install_read_bank(space, 0xb0000, 0xb7fff, 0, 0, "bank12" );
-			memory_install_read_bank(space, 0xb8000, 0xbffff, 0, 0, "bank13" );
-			memory_install_write8_handler(space, 0xa0000, 0xbffff, 0, 0, pc_ega_videoram_w );
-			memory_install_read8_handler(spaceio, 0x3b0, 0x3bb, 0, 0, pc_ega8_3b0_r );
-			memory_install_write8_handler(spaceio, 0x3b0, 0x3bb, 0, 0, pc_ega8_3b0_w );
-			memory_install_read8_handler(spaceio, 0x3c0, 0x3cf, 0, 0, pc_ega8_3c0_r );
-			memory_install_write8_handler(spaceio, 0x3c0, 0x3cf, 0, 0, pc_ega8_3c0_w );
-			memory_install_read8_handler(spaceio, 0x3d0, 0x3db, 0, 0, pc_ega8_3d0_r );
-			memory_install_write8_handler(spaceio, 0x3d0, 0x3db, 0, 0, pc_ega8_3d0_w );
+			space->install_read_bank(0xa0000, 0xaffff, "bank11" );
+			space->install_read_bank(0xb0000, 0xb7fff, "bank12" );
+			space->install_read_bank(0xb8000, 0xbffff, "bank13" );
+			space->install_legacy_write_handler(0xa0000, 0xbffff, FUNC(pc_ega_videoram_w) );
+			spaceio->install_legacy_read_handler(0x3b0, 0x3bb, FUNC(pc_ega8_3b0_r) );
+			spaceio->install_legacy_write_handler(0x3b0, 0x3bb, FUNC(pc_ega8_3b0_w) );
+			spaceio->install_legacy_read_handler(0x3c0, 0x3cf, FUNC(pc_ega8_3c0_r) );
+			spaceio->install_legacy_write_handler(0x3c0, 0x3cf, FUNC(pc_ega8_3c0_w) );
+			spaceio->install_legacy_read_handler(0x3d0, 0x3db, FUNC(pc_ega8_3d0_r) );
+			spaceio->install_legacy_write_handler(0x3d0, 0x3db, FUNC(pc_ega8_3d0_w) );
 			break;
 
 		case 16:
-			memory_install_read_bank(space, 0xa0000, 0xaffff, 0, 0, "bank11" );
-			memory_install_read_bank(space, 0xb0000, 0xb7fff, 0, 0, "bank12" );
-			memory_install_read_bank(space, 0xb8000, 0xbffff, 0, 0, "bank13" );
-			memory_install_write16_handler(space, 0xa0000, 0xbffff, 0, 0, pc_ega_videoram16le_w );
-			memory_install_read16_handler(spaceio, 0x3b0, 0x3bb, 0, 0, pc_ega16le_3b0_r );
-			memory_install_write16_handler(spaceio, 0x3b0, 0x3bb, 0, 0, pc_ega16le_3b0_w );
-			memory_install_read16_handler(spaceio, 0x3c0, 0x3cf, 0, 0, pc_ega16le_3c0_r );
-			memory_install_write16_handler(spaceio, 0x3c0, 0x3cf, 0, 0, pc_ega16le_3c0_w );
-			memory_install_read16_handler(spaceio, 0x3d0, 0x3db, 0, 0, pc_ega16le_3d0_r );
-			memory_install_write16_handler(spaceio, 0x3d0, 0x3db, 0, 0, pc_ega16le_3d0_w );
+			space->install_read_bank(0xa0000, 0xaffff, "bank11" );
+			space->install_read_bank(0xb0000, 0xb7fff, "bank12" );
+			space->install_read_bank(0xb8000, 0xbffff, "bank13" );
+			space->install_legacy_write_handler(0xa0000, 0xbffff, FUNC(pc_ega_videoram16le_w) );
+			spaceio->install_legacy_read_handler(0x3b0, 0x3bb, FUNC(pc_ega16le_3b0_r) );
+			spaceio->install_legacy_write_handler(0x3b0, 0x3bb, FUNC(pc_ega16le_3b0_w) );
+			spaceio->install_legacy_read_handler(0x3c0, 0x3cf, FUNC(pc_ega16le_3c0_r) );
+			spaceio->install_legacy_write_handler(0x3c0, 0x3cf, FUNC(pc_ega16le_3c0_w) );
+			spaceio->install_legacy_read_handler(0x3d0, 0x3db, FUNC(pc_ega16le_3d0_r) );
+			spaceio->install_legacy_write_handler(0x3d0, 0x3db, FUNC(pc_ega16le_3d0_w) );
 			break;
 
 		case 32:
-			memory_install_read_bank(space, 0xa0000, 0xaffff, 0, 0, "bank11" );
-			memory_install_read_bank(space, 0xb0000, 0xb7fff, 0, 0, "bank12" );
-			memory_install_read_bank(space, 0xb8000, 0xbffff, 0, 0, "bank13" );
-			memory_install_write32_handler(space, 0xa0000, 0xbffff, 0, 0, pc_ega_videoram32le_w );
-			memory_install_read32_handler(spaceio, 0x3b0, 0x3bb, 0, 0, pc_ega32le_3b0_r );
-			memory_install_write32_handler(spaceio, 0x3b0, 0x3bb, 0, 0, pc_ega32le_3b0_w );
-			memory_install_read32_handler(spaceio, 0x3c0, 0x3cf, 0, 0, pc_ega32le_3c0_r );
-			memory_install_write32_handler(spaceio, 0x3c0, 0x3cf, 0, 0, pc_ega32le_3c0_w );
-			memory_install_read32_handler(spaceio, 0x3d0, 0x3db, 0, 0, pc_ega32le_3d0_r );
-			memory_install_write32_handler(spaceio, 0x3d0, 0x3db, 0, 0, pc_ega32le_3d0_w );
+			space->install_read_bank(0xa0000, 0xaffff, "bank11" );
+			space->install_read_bank(0xb0000, 0xb7fff, "bank12" );
+			space->install_read_bank(0xb8000, 0xbffff, "bank13" );
+			space->install_legacy_write_handler(0xa0000, 0xbffff, FUNC(pc_ega_videoram32le_w) );
+			spaceio->install_legacy_read_handler(0x3b0, 0x3bb, FUNC(pc_ega32le_3b0_r) );
+			spaceio->install_legacy_write_handler(0x3b0, 0x3bb, FUNC(pc_ega32le_3b0_w) );
+			spaceio->install_legacy_read_handler(0x3c0, 0x3cf, FUNC(pc_ega32le_3c0_r) );
+			spaceio->install_legacy_write_handler(0x3c0, 0x3cf, FUNC(pc_ega32le_3c0_w) );
+			spaceio->install_legacy_read_handler(0x3d0, 0x3db, FUNC(pc_ega32le_3d0_r) );
+			spaceio->install_legacy_write_handler(0x3d0, 0x3db, FUNC(pc_ega32le_3d0_w) );
 			break;
 
 		default:
@@ -662,7 +661,7 @@ static VIDEO_START( pc_ega )
 	memset( &ega, 0, sizeof( ega ) );
 
 	/* Install 256KB Video ram on our EGA card */
-	ega.videoram = machine->region( "gfx2" )->base();
+	ega.videoram = machine.region( "gfx2" )->base();
 
 	memset( ega.videoram + 256 * 1024, 0xFF, 64 * 1024 );
 
@@ -670,7 +669,7 @@ static VIDEO_START( pc_ega )
 
 	pc_ega_install_banks(machine);
 
-	ega.crtc_ega = machine->device(EGA_CRTC_NAME);
+	ega.crtc_ega = machine.device(EGA_CRTC_NAME);
 	ega.update_row = NULL;
 	ega.misc_output = 0;
 	ega.attribute.index_write = 1;
@@ -695,7 +694,7 @@ static VIDEO_START( pc_ega )
 }
 
 
-static VIDEO_UPDATE( pc_ega )
+static SCREEN_UPDATE( pc_ega )
 {
 	crtc_ega_update( ega.crtc_ega, bitmap, cliprect);
 	return 0;
@@ -1102,7 +1101,7 @@ static WRITE8_HANDLER( pc_ega8_3c0_w )
 		{
 		case 0x06:		/* GR06 */
 			pc_ega_change_mode( ega.crtc_ega );
-			pc_ega_install_banks(space->machine);
+			pc_ega_install_banks(space->machine());
 			break;
 		}
 		break;

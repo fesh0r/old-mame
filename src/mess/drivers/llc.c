@@ -12,19 +12,19 @@
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80pio.h"
 #include "machine/z80ctc.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/llc.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(llc1_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(llc1_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM // Monitor ROM
 	AM_RANGE(0x0800, 0x13ff) AM_ROM // BASIC ROM
 	AM_RANGE(0x1400, 0x1bff) AM_RAM // RAM
-	AM_RANGE(0x1c00, 0x1fff) AM_RAM AM_BASE_MEMBER(llc_state, video_ram) // Video RAM
+	AM_RANGE(0x1c00, 0x1fff) AM_RAM AM_BASE_MEMBER(llc_state, m_video_ram) // Video RAM
 	AM_RANGE(0x2000, 0xffff) AM_RAM // RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( llc1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( llc1_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xEC, 0xEF) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
@@ -32,14 +32,14 @@ static ADDRESS_MAP_START( llc1_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xF8, 0xFB) AM_DEVREADWRITE("z80ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(llc2_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(llc2_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK("bank2")
 	AM_RANGE(0x6000, 0xbfff) AM_RAMBANK("bank3")
 	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( llc2_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( llc2_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xE0, 0xE3) AM_WRITE(llc2_rom_disable_w)
@@ -331,12 +331,13 @@ static MACHINE_CONFIG_START( llc1, llc_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(64*8, 16*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 16*8-1)
+	MCFG_SCREEN_UPDATE(llc1)
+
 	MCFG_GFXDECODE(llc1)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(llc1)
-	MCFG_VIDEO_UPDATE(llc1)
 
 	MCFG_Z80PIO_ADD( "z80pio", XTAL_3MHz, llc1_z80pio_intf )
 	MCFG_Z80CTC_ADD( "z80ctc", XTAL_3MHz, llc1_ctc_intf )
@@ -357,18 +358,19 @@ static MACHINE_CONFIG_START( llc2, llc_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 32*8-1)
+	MCFG_SCREEN_UPDATE(llc2)
+
 	MCFG_GFXDECODE(llc2)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(llc2)
-	MCFG_VIDEO_UPDATE(llc2)
 
 	MCFG_Z80PIO_ADD( "z80pio", XTAL_3MHz, llc2_z80pio_intf )
 	MCFG_Z80CTC_ADD( "z80ctc", XTAL_3MHz, llc2_ctc_intf )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 /* ROM definition */

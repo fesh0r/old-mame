@@ -908,7 +908,7 @@ ROM_END
    run-time.
  */
 
-static ADDRESS_MAP_START ( hp48, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START ( hp48, AS_PROGRAM, 8 )
 
 	AM_RANGE( 0x00000, 0xfffff ) AM_NOP /* configured at run-time */
 
@@ -957,9 +957,10 @@ static MACHINE_CONFIG_START( hp48_common, hp48_state )
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MCFG_SCREEN_SIZE ( 131, 64 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 130, 0, 63 )
+	MCFG_SCREEN_UPDATE( hp48 )
+
 	MCFG_PALETTE_LENGTH( 256 ) /* monochrome, but with varying contrast and grayscale */
 	MCFG_PALETTE_INIT( hp48 )
-	MCFG_VIDEO_UPDATE( hp48 )
 
 	/* sound */
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )

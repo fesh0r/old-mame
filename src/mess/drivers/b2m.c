@@ -9,20 +9,20 @@
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "machine/i8255a.h"
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
 #include "machine/msm8251.h"
 #include "machine/wd17xx.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 #include "includes/b2m.h"
 
 
 /* Address maps */
-static ADDRESS_MAP_START(b2m_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(b2m_mem, AS_PROGRAM, 8)
 	AM_RANGE (0x0000, 0x27ff) AM_RAMBANK("bank1")
 	AM_RANGE (0x2800, 0x2fff) AM_RAMBANK("bank2")
 	AM_RANGE (0x3000, 0x6fff) AM_RAMBANK("bank3")
@@ -30,7 +30,7 @@ static ADDRESS_MAP_START(b2m_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE (0xe000, 0xffff) AM_RAMBANK("bank5")
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( b2m_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( b2m_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("pit8253", pit8253_r,pit8253_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w)
@@ -46,7 +46,7 @@ static ADDRESS_MAP_START( b2m_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x1f, 0x1f) AM_DEVREADWRITE("wd1793", wd17xx_data_r,wd17xx_data_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( b2m_rom_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( b2m_rom_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("pit8253", pit8253_r,pit8253_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("ppi8255_3", i8255a_r, i8255a_w)
@@ -215,6 +215,8 @@ static MACHINE_CONFIG_START( b2m, b2m_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(384, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 256-1)
+    MCFG_SCREEN_UPDATE(b2m)
+
 	MCFG_PALETTE_LENGTH(4)
 	MCFG_PALETTE_INIT(b2m)
 
@@ -229,7 +231,6 @@ static MACHINE_CONFIG_START( b2m, b2m_state )
 	MCFG_PIC8259_ADD( "pic8259", b2m_pic8259_config )
 
 	MCFG_VIDEO_START(b2m)
-    MCFG_VIDEO_UPDATE(b2m)
 
 	/* sound */
     MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -244,7 +245,7 @@ static MACHINE_CONFIG_START( b2m, b2m_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(b2m_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END

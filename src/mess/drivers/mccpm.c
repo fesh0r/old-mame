@@ -18,33 +18,33 @@ public:
 	mccpm_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *ram;
-	UINT8 term_data;
+	UINT8 *m_ram;
+	UINT8 m_term_data;
 };
 
 
 
 static WRITE8_HANDLER( mccpm_f0_w )
 {
-	device_t *terminal = space->machine->device("terminal");
+	device_t *terminal = space->machine().device(TERMINAL_TAG);
 
 	terminal_write(terminal, 0, data);
 }
 
 static READ8_HANDLER( mccpm_f0_r )
 {
-	mccpm_state *state = space->machine->driver_data<mccpm_state>();
-	UINT8 ret = state->term_data;
-	state->term_data = 0;
+	mccpm_state *state = space->machine().driver_data<mccpm_state>();
+	UINT8 ret = state->m_term_data;
+	state->m_term_data = 0;
 	return ret;
 }
 
-static ADDRESS_MAP_START(mccpm_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(mccpm_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0xffff) AM_RAM AM_BASE_MEMBER(mccpm_state, ram)
+	AM_RANGE(0x0000, 0xffff) AM_RAM AM_BASE_MEMBER(mccpm_state, m_ram)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mccpm_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( mccpm_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xf0, 0xf0) AM_READWRITE(mccpm_f0_r,mccpm_f0_w)
@@ -52,22 +52,21 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( mccpm )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(mccpm)
 {
-	mccpm_state *state = machine->driver_data<mccpm_state>();
-	UINT8* bios = machine->region("maincpu")->base();
+	mccpm_state *state = machine.driver_data<mccpm_state>();
+	UINT8* bios = machine.region("maincpu")->base();
 
-	memcpy(state->ram,bios, 0x1000);
+	memcpy(state->m_ram,bios, 0x1000);
 }
 
 static WRITE8_DEVICE_HANDLER( mccpm_kbd_put )
 {
-	mccpm_state *state = device->machine->driver_data<mccpm_state>();
-	state->term_data = data;
+	mccpm_state *state = device->machine().driver_data<mccpm_state>();
+	state->m_term_data = data;
 }
 
 static GENERIC_TERMINAL_INTERFACE( mccpm_terminal_intf )
@@ -86,7 +85,7 @@ static MACHINE_CONFIG_START( mccpm, mccpm_state )
 	/* video hardware */
 	MCFG_FRAGMENT_ADD( generic_terminal )
 
-	MCFG_GENERIC_TERMINAL_ADD("terminal", mccpm_terminal_intf)
+	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, mccpm_terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */

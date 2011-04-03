@@ -9,33 +9,34 @@
 
 #include "emu.h"
 #include "includes/pp01.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 VIDEO_START( pp01 )
 {
 }
 
-VIDEO_UPDATE( pp01 )
+SCREEN_UPDATE( pp01 )
 {
-	pp01_state *state = screen->machine->driver_data<pp01_state>();
-    UINT8 code_r,code_g,code_b;
-    UINT8 col;
-    int y, x, b;
+	pp01_state *state = screen->machine().driver_data<pp01_state>();
+	UINT8 code_r,code_g,code_b;
+	UINT8 col;
+	int y, x, b;
+	UINT8 *ram = ram_get_ptr(screen->machine().device(RAM_TAG));
 
-    for (y = 0; y < 256; y++)
-    {
-	    for (x = 0; x < 32; x++)
-	    {
-            code_r = messram_get_ptr(screen->machine->device("messram"))[0x6000 + ((y+state->video_scroll)&0xff)*32 + x];
-            code_g = messram_get_ptr(screen->machine->device("messram"))[0xa000 + ((y+state->video_scroll)&0xff)*32 + x];
-            code_b = messram_get_ptr(screen->machine->device("messram"))[0xe000 + ((y+state->video_scroll)&0xff)*32 + x];
-            for (b = 0; b < 8; b++)
-            {
-                col = (((code_r >> b) & 0x01) ? 4 : 0) + (((code_g >> b) & 0x01) ? 2 : 0) + (((code_b >> b) & 0x01) ? 1 : 0);
-                *BITMAP_ADDR16(bitmap, y,  x*8+(7-b)) =  col;
-            }
-        }
-    }
+	for (y = 0; y < 256; y++)
+	{
+		for (x = 0; x < 32; x++)
+		{
+			code_r = ram[0x6000 + ((y+state->m_video_scroll)&0xff)*32 + x];
+			code_g = ram[0xa000 + ((y+state->m_video_scroll)&0xff)*32 + x];
+			code_b = ram[0xe000 + ((y+state->m_video_scroll)&0xff)*32 + x];
+			for (b = 0; b < 8; b++)
+			{
+				col = (((code_r >> b) & 0x01) ? 4 : 0) + (((code_g >> b) & 0x01) ? 2 : 0) + (((code_b >> b) & 0x01) ? 1 : 0);
+				*BITMAP_ADDR16(bitmap, y,  x*8+(7-b)) =  col;
+			}
+		}
+	}
 	return 0;
 }
 

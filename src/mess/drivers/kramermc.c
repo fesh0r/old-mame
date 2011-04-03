@@ -17,7 +17,7 @@ static GFXDECODE_START( kramermc )
 GFXDECODE_END
 
 /* Address maps */
-static ADDRESS_MAP_START(kramermc_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(kramermc_mem, AS_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x03ff ) AM_ROM  // Monitor
     AM_RANGE( 0x0400, 0x07ff ) AM_ROM  // Debugger
     AM_RANGE( 0x0800, 0x0bff ) AM_ROM  // Reassembler
@@ -29,7 +29,7 @@ static ADDRESS_MAP_START(kramermc_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xfc00, 0xffff ) AM_RAM  // Video RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( kramermc_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( kramermc_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
 ADDRESS_MAP_END
@@ -120,13 +120,14 @@ static MACHINE_CONFIG_START( kramermc, kramermc_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(64*8, 16*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 16*8-1)
+	MCFG_SCREEN_UPDATE(kramermc)
+
 	MCFG_GFXDECODE( kramermc )
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(kramermc)
-	MCFG_VIDEO_UPDATE(kramermc)
 MACHINE_CONFIG_END
 
 /* ROM definition */

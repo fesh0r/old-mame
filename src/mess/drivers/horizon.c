@@ -20,42 +20,41 @@ public:
 };
 
 
-static ADDRESS_MAP_START(horizon_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(horizon_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xe7ff) AM_RAM
 	AM_RANGE(0xe800, 0xe8ff) AM_ROM
 	AM_RANGE(0xec00, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( horizon_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( horizon_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(horizon_sd_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(horizon_sd_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xe8ff) AM_RAM
 	AM_RANGE(0xe900, 0xe9ff) AM_ROM
 	AM_RANGE(0xec00, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( horizon_sd_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( horizon_sd_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( horizon )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(horizon)
 {
-	cpu_set_reg(machine->device("maincpu"), Z80_PC, 0xe800);
+	cpu_set_reg(machine.device("maincpu"), Z80_PC, 0xe800);
 }
 
 static MACHINE_RESET(horizon_sd)
 {
-	cpu_set_reg(machine->device("maincpu"), Z80_PC, 0xe900);
+	cpu_set_reg(machine.device("maincpu"), Z80_PC, 0xe900);
 }
 
 static WRITE8_DEVICE_HANDLER( horizon_kbd_put )
@@ -89,7 +88,7 @@ static MACHINE_CONFIG_DERIVED( horizsd, horizon )
 MACHINE_CONFIG_END
 
 /* ROM definition */
-ROM_START( horizon )
+ROM_START( horizdd )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "horizon.bin", 0xe800, 0x0100, CRC(7aafa134) SHA1(bf1552c4818f30473798af4f54e65e1957e0db48))
 ROM_END
@@ -106,7 +105,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( 1979, horizon,  0,       0,	horizon,	horizon,	 0,  "NorthStar",   "Horizon (DD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1979, horizsd,  horizon, 0,	horizsd,	horizon,	 0,  "NorthStar",   "Horizon (SD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1979, vector1,  horizon, 0,	horizon,	horizon,	 0,  "Vector Graphic",   "Vector 1+ (DD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1979, horizdd,  0,       0,	horizon,	horizon,	 0,  "NorthStar",   "Horizon (DD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1979, horizsd,  horizdd, 0,	horizsd,	horizon,	 0,  "NorthStar",   "Horizon (SD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1979, vector1,  horizdd, 0,	horizon,	horizon,	 0,  "Vector Graphic",   "Vector 1+ (DD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

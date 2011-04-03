@@ -3,28 +3,25 @@
   Sony Playstaion
   ===============
   Preliminary driver by smf
-
-  todo:
-    add memcard support
-    tidy up cd controller
-    work out why bios scph1000 doesn't get past the first screen
-    add cd image support
+  Additional development by pSXAuthor and R. Belmont
 
 ***************************************************************************/
 
 #include "emu.h"
 #include "cpu/mips/psx.h"
-#include "devices/snapquik.h"
-#include "devices/chd_cd.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/chd_cd.h"
 #include "includes/psx.h"
-#include "sound/psx.h"
+#include "sound/spu.h"
 #include "debugger.h"
 #include "zlib.h"
+#include "machine/psxcd.h"
+#include "machine/psxcard.h"
 
 typedef struct
 {
-	int n_shiftin;
-	int n_shiftout;
+	UINT8 n_shiftin;
+	UINT8 n_shiftout;
 	int n_bits;
 	int n_state;
 	int n_byte;
@@ -39,25 +36,24 @@ public:
 	psx1_state(running_machine &machine, const driver_device_config_base &config)
 		: psx_state(machine, config) { }
 
-	cdrom_file *cdrom;
-	UINT8 *exe_buffer;
-	int exe_size;
+	UINT8 *m_exe_buffer;
+	int m_exe_size;
 	pad_t m_pad[ 2 ];
-	int cd_param_p;
-	int cd_result_p;
-	int cd_result_c;
-	int cd_result_ready;
-	int cd_reset;
-	UINT8 cd_stat;
-	UINT8 cd_io_status;
-	UINT8 cd_param[8];
-	UINT8 cd_result[8];
+	int m_cd_param_p;
+	int m_cd_result_p;
+	int m_cd_result_c;
+	int m_cd_result_ready;
+	int m_cd_reset;
+	UINT8 m_cd_stat;
+	UINT8 m_cd_io_status;
+	UINT8 m_cd_param[8];
+	UINT8 m_cd_result[8];
 };
 
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -66,7 +62,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, 
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%s: %s", cpuexec_describe_context(machine), buf );
+		logerror( "%s: %s", machine.describe_context(), buf );
 	}
 }
 
@@ -85,7 +81,7 @@ static void psxexe_conv32( UINT32 *p_uint32 )
 
 static int load_psxexe( device_t *cpu, unsigned char *p_n_file, int n_len )
 {
-	psx_state *state = cpu->machine->driver_data<psx_state>();
+	psx_state *state = cpu->machine().driver_data<psx_state>();
 	struct PSXEXE_HEADER
 	{
 		UINT8 id[ 8 ];
@@ -147,8 +143,8 @@ static int load_psxexe( device_t *cpu, unsigned char *p_n_file, int n_len )
 		logerror( "psx_exe_load: sp    %08x\n", psxexe_header->s_addr );
 		logerror( "psx_exe_load: len   %08x\n", psxexe_header->s_size );
 
-		p_ram = (UINT8 *)state->p_n_psxram;
-		n_ram = state->n_psxramsize;
+		p_ram = (UINT8 *)state->m_p_n_psxram;
+		n_ram = state->m_n_psxramsize;
 
 		p_psxexe = p_n_file + sizeof( struct PSXEXE_HEADER );
 
@@ -221,7 +217,7 @@ static void cpe_set_register( device_t *cpu, int n_reg, int n_value )
 
 static int load_cpe( device_t *cpu, unsigned char *p_n_file, int n_len )
 {
-	psx_state *state = cpu->machine->driver_data<psx_state>();
+	psx_state *state = cpu->machine().driver_data<psx_state>();
 	if( n_len >= 4 &&
 		memcmp( p_n_file, "CPE\001", 4 ) == 0 )
 	{
@@ -251,8 +247,8 @@ static int load_cpe( device_t *cpu, unsigned char *p_n_file, int n_len )
 						( (int)p_n_file[ n_offset + 6 ] << 16 ) |
 						( (int)p_n_file[ n_offset + 7 ] << 24 );
 
-					UINT8 *p_ram = (UINT8 *)state->p_n_psxram;
-					UINT32 n_ram = state->n_psxramsize;
+					UINT8 *p_ram = (UINT8 *)state->m_p_n_psxram;
+					UINT32 n_ram = state->m_n_psxramsize;
 
 					n_offset += 8;
 
@@ -429,11 +425,11 @@ DIRECT_UPDATE_HANDLER( psx_setopbase )
 	{
 		device_t *cpu = machine->device("maincpu");
 
-		cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(psx_default, *machine));
-		
-		if( load_psxexe( cpu, state->exe_buffer, state->exe_size ) ||
-			load_cpe( cpu, state->exe_buffer, state->exe_size ) ||
-			load_psf( cpu, state->exe_buffer, state->exe_size ) )
+		machine->device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(psx_default, *machine));
+
+		if( load_psxexe( cpu, state->m_exe_buffer, state->m_exe_size ) ||
+			load_cpe( cpu, state->m_exe_buffer, state->m_exe_size ) ||
+			load_psf( cpu, state->m_exe_buffer, state->m_exe_size ) )
 		{
 /*          DEBUGGER_BREAK; */
 
@@ -444,31 +440,31 @@ DIRECT_UPDATE_HANDLER( psx_setopbase )
 			logerror( "psx_exe_load: invalid exe\n" );
 		}
 
-		state->exe_size = 0;
-		free( state->exe_buffer );
+		state->m_exe_size = 0;
+		free( state->m_exe_buffer );
 	}
 	return address;
 }
 
 static QUICKLOAD_LOAD( psx_exe_load )
 {
-	psx1_state *state = image.device().machine->driver_data<psx1_state>();
-	address_space *space = cputag_get_address_space( image.device().machine, "maincpu", ADDRESS_SPACE_PROGRAM );
+	psx1_state *state = image.device().machine().driver_data<psx1_state>();
+	address_space *space = image.device().machine().device( "maincpu")->memory().space( AS_PROGRAM );
 
-	state->exe_size = 0;
-	state->exe_buffer = (UINT8*)malloc( quickload_size );
-	if( state->exe_buffer == NULL )
+	state->m_exe_size = 0;
+	state->m_exe_buffer = (UINT8*)malloc( quickload_size );
+	if( state->m_exe_buffer == NULL )
 	{
 		logerror( "psx_exe_load: out of memory\n" );
 		return IMAGE_INIT_FAIL;
 	}
-	if( image.fread( state->exe_buffer, quickload_size ) != quickload_size )
+	if( image.fread( state->m_exe_buffer, quickload_size ) != quickload_size )
 	{
-		free( state->exe_buffer );
+		free( state->m_exe_buffer );
 		return IMAGE_INIT_FAIL;
 	}
-	state->exe_size = quickload_size;
-	space->set_direct_update_handler(direct_update_delegate_create_static(psx_setopbase, *image.device().machine));
+	state->m_exe_size = quickload_size;
+	space->set_direct_update_handler(direct_update_delegate_create_static(psx_setopbase, image.device().machine()));
 
 	return IMAGE_INIT_PASS;
 }
@@ -480,6 +476,7 @@ static QUICKLOAD_LOAD( psx_exe_load )
 #define PAD_STATE_ACTIVE ( 2 )
 #define PAD_STATE_READ ( 3 )
 #define PAD_STATE_UNLISTEN ( 4 )
+#define PAD_STATE_MEMCARD ( 5 )
 
 #define PAD_TYPE_STANDARD ( 4 )
 #define PAD_BYTES_STANDARD ( 2 )
@@ -492,7 +489,7 @@ static QUICKLOAD_LOAD( psx_exe_load )
 
 static TIMER_CALLBACK(psx_pad_ack)
 {
-	psx1_state *state = machine->driver_data<psx1_state>();
+	psx1_state *state = machine.driver_data<psx1_state>();
 	int n_port = param;
 	pad_t *pad = &state->m_pad[ n_port ];
 
@@ -502,14 +499,14 @@ static TIMER_CALLBACK(psx_pad_ack)
 		if( !pad->b_ack )
 		{
 			pad->b_ack = 1;
-			timer_set(machine, ATTOTIME_IN_USEC( 2 ), NULL, n_port, psx_pad_ack );
+			machine.scheduler().timer_set(attotime::from_usec( 2 ), FUNC(psx_pad_ack) , n_port);
 		}
 	}
 }
 
-static void psx_pad( running_machine *machine, int n_port, int n_data )
+static void psx_pad( running_machine &machine, int n_port, int n_data )
 {
-	psx1_state *state = machine->driver_data<psx1_state>();
+	psx1_state *state = machine.driver_data<psx1_state>();
 	pad_t *pad = &state->m_pad[ n_port ];
 	int b_sel;
 	int b_clock;
@@ -517,6 +514,16 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 	int b_ack;
 	int b_ready;
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3" };
+	psxcard_device *psxcard = NULL;
+
+	if (n_port == 0)
+	{
+		psxcard = machine.device<psxcard_device>("card1");
+	}
+	else
+	{
+		psxcard = machine.device<psxcard_device>("card2");
+	}
 
 	b_sel = ( n_data & PSX_SIO_OUT_DTR ) / PSX_SIO_OUT_DTR;
 	b_clock = ( n_data & PSX_SIO_OUT_CLOCK ) / PSX_SIO_OUT_CLOCK;
@@ -534,6 +541,7 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 	case PAD_STATE_LISTEN:
 	case PAD_STATE_ACTIVE:
 	case PAD_STATE_READ:
+	case PAD_STATE_MEMCARD:
 		if( pad->b_lastclock && !b_clock )
 		{
 			psx_sio_input( machine, 0, PSX_SIO_IN_DATA, ( pad->n_shiftout & 1 ) * PSX_SIO_IN_DATA );
@@ -575,9 +583,28 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 				pad->n_shiftout = ( PAD_TYPE_STANDARD << 4 ) | ( PAD_BYTES_STANDARD >> 1 );
 				b_ack = 1;
 			}
+			else if( psxcard->transfer(pad->n_shiftin, &pad->n_shiftout) )
+			{
+				pad->n_state = PAD_STATE_MEMCARD;
+				b_ack = 1;
+			}
 			else
 			{
 				pad->n_state = PAD_STATE_UNLISTEN;
+			}
+		}
+		break;
+	case PAD_STATE_MEMCARD:
+		if( b_ready )
+		{
+			if( psxcard->transfer(pad->n_shiftin, &pad->n_shiftout) )
+			{
+				b_ack = 1;
+			}
+			else
+			{
+				b_ack = 0;
+				pad->n_state = PAD_STATE_IDLE;
 			}
 		}
 		break;
@@ -593,7 +620,6 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 			}
 			else
 			{
-				logerror( "unknown pad command %02x\n", pad->n_shiftin );
 				pad->n_state = PAD_STATE_UNLISTEN;
 			}
 		}
@@ -618,405 +644,63 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 	if( b_ack )
 	{
 		pad->b_ack = 0;
-		timer_set(machine, ATTOTIME_IN_USEC( 10 ), NULL, n_port, psx_pad_ack );
+		machine.scheduler().timer_set(attotime::from_usec( 10 ), FUNC(psx_pad_ack), n_port);
 	}
 }
 
-static void psx_mcd( int n_port, int n_data )
-{
-	/* todo */
-}
-
-static void psx_sio0( running_machine *machine, int n_data )
+static void psx_sio0( running_machine &machine, int n_data )
 {
 	/* todo: raise data & ack when nothing is driving it low */
 	psx_pad( machine, 0, n_data );
-	psx_mcd( 0, n_data );
 	psx_pad( machine, 1, n_data ^ PSX_SIO_OUT_DTR );
-	psx_mcd( 1, n_data ^ PSX_SIO_OUT_DTR );
 }
-
-/* -----------------------------------------------------------------------
- * cd_stat values
- *
- * NoIntr       0x00 No interrupt
- * DataReady    0x01 Data Ready
- * Acknowledge  0x02 Command Complete
- * Complete     0x03 Acknowledge
- * DataEnd      0x04 End of Data Detected
- * DiskError    0x05 Error Detected
- * ----------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------- */
 
-static const int cd_readed = -1;
-
-/* ----------------------------------------------------------------------- */
-
-static void psx_cdcmd_sync(running_machine *machine)
+static void cd_dma_read( running_machine &machine, UINT32 n_address, INT32 n_size )
 {
-	verboselog(machine, 0, "CD Command: Sync: Not yet implemented\n" );
+	psxcd_device *psxcd = machine.device<psxcd_device>("psxcd");
+	UINT8 *psxram = (UINT8 *)memory_get_shared(machine, "share1");
+
+	psxcd->start_dma(psxram + n_address, n_size*4);
 }
 
-static void psx_cdcmd_nop(running_machine *machine)
+static void cd_dma_write( running_machine &machine, UINT32 n_address, INT32 n_size )
 {
-	psx1_state *state = machine->driver_data<psx1_state>();
-	state->cd_stat = 0x02;
+	printf("cd_dma_write?!: addr %x, size %x\n", n_address, n_size);
 }
 
-static void psx_cdcmd_setloc(running_machine *machine)
+static READ8_HANDLER( psx_cd_r )
 {
-	verboselog(machine, 0, "CD Command: Setloc: Not yet implemented\n" );
+	psxcd_device *psxcd = space->machine().device<psxcd_device>(PSXCD_TAG);
+
+	return psxcd->read_byte(offset);
 }
 
-static void psx_cdcmd_play(running_machine *machine)
+static WRITE8_HANDLER( psx_cd_w )
 {
-	verboselog(machine, 0, "CD Command: Play: Not yet implemented\n" );
+	psxcd_device *psxcd = space->machine().device<psxcd_device>(PSXCD_TAG);
+
+	psxcd->write_byte(offset, data);
 }
 
-static void psx_cdcmd_forward(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Forward: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_backward(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Backward: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_readn(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: ReadN: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_standby(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Standby: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_stop(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Stop: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_pause(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Pause: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_init(running_machine *machine)
-{
-	psx1_state *state = machine->driver_data<psx1_state>();
-	state->cd_result_p = 0;
-	state->cd_result_c = 1;
-	state->cd_stat = 0x02;
-	state->cd_result[0] = state->cd_stat;
-	verboselog(machine, 0, "CD Command: Init: Not fully implemented\n" );
-}
-
-static void psx_cdcmd_mute(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Mute: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_demute(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Demute: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_setfilter(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Setfilter: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_setmode(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Setmode: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_getparam(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Getparam: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_getlocl(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: GetlocL: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_getlocp(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: GetlocP: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_gettn(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: GetTN: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_gettd(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: GetTD: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_seekl(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: SeekL: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_seekp(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: SeekP: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_test(running_machine *machine)
-{
-	psx1_state *state = machine->driver_data<psx1_state>();
-	static const UINT8 test20[] = { 0x98, 0x06, 0x10, 0xC3 };
-	static const UINT8 test22[] = { 0x66, 0x6F, 0x72, 0x20, 0x45, 0x75, 0x72, 0x6F };
-	static const UINT8 test23[] = { 0x43, 0x58, 0x44, 0x32, 0x39 ,0x34, 0x30, 0x51 };
-
-	switch(state->cd_param[0]) {
-	case 0x04:	/* read SCEx counter (returned in 1st byte?) */
-		break;
-	case 0x05:	/* reset SCEx counter. */
-		break;
-	case 0x20:
-		memcpy(state->cd_result, test20, sizeof(test20));
-		state->cd_result_p = 0;
-		state->cd_result_c = sizeof(test20);
-		break;
-	case 0x22:
-		memcpy(state->cd_result, test22, sizeof(test22));
-		state->cd_result_p = 0;
-		state->cd_result_c = sizeof(test22);
-		break;
-	case 0x23:
-		memcpy(state->cd_result, test23, sizeof(test23));
-		state->cd_result_p = 0;
-		state->cd_result_c = sizeof(test23);
-		break;
-	}
-	state->cd_stat = 3;
-}
-
-static void psx_cdcmd_id(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: ID: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_reads(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: ReadS: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_reset(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: Reset: Not yet implemented\n" );
-}
-
-static void psx_cdcmd_readtoc(running_machine *machine)
-{
-	verboselog(machine, 0, "CD Command: ReadTOC: Not yet implemented\n" );
-}
-
-static void (*const psx_cdcmds[])(running_machine *machine) =
-{
-	psx_cdcmd_sync,
-	psx_cdcmd_nop,
-	psx_cdcmd_setloc,
-	psx_cdcmd_play,
-	psx_cdcmd_forward,
-	psx_cdcmd_backward,
-	psx_cdcmd_readn,
-	psx_cdcmd_standby,
-	psx_cdcmd_stop,
-	psx_cdcmd_pause,
-	psx_cdcmd_init,
-	psx_cdcmd_mute,
-	psx_cdcmd_demute,
-	psx_cdcmd_setfilter,
-	psx_cdcmd_setmode,
-	psx_cdcmd_getparam,
-	psx_cdcmd_getlocl,
-	psx_cdcmd_getlocp,
-	psx_cdcmd_gettn,
-	psx_cdcmd_gettd,
-	psx_cdcmd_seekl,
-	psx_cdcmd_seekp,
-	NULL,
-	NULL,
-	NULL,
-	psx_cdcmd_test,
-	psx_cdcmd_id,
-	psx_cdcmd_reads,
-	psx_cdcmd_reset,
-	NULL,
-	psx_cdcmd_readtoc
-};
-
-/* ----------------------------------------------------------------------- */
-
-static READ32_HANDLER( psx_cd_r )
-{
-	psx1_state *state = space->machine->driver_data<psx1_state>();
-	UINT32 result = 0;
-
-	if( ACCESSING_BITS_0_7 )
-	{
-		logerror( "%08x cd0 read\n", cpu_get_pc(space->cpu) );
-
-		if (state->cd_result_ready && state->cd_result_c)
-			state->cd_io_status |= 0x20;
-		else
-			state->cd_io_status &= ~0x20;
-
-		if (cd_readed == 0)
-			result = state->cd_io_status | 0x40;
-		else
-			result = state->cd_io_status;
-
-		/* NPW 21-May-2003 - Seems to expect this on boot */
-		result |= 0x0f;
-	}
-	else if( ACCESSING_BITS_8_15 )
-	{
-		logerror( "%08x cd1 read\n", cpu_get_pc(space->cpu) );
-
-		if (state->cd_result_ready && state->cd_result_c)
-			result = ((UINT32) state->cd_result[state->cd_result_p]) << 8;
-
-		if (state->cd_result_ready)
-		{
-			state->cd_result_p++;
-			if (state->cd_result_p == state->cd_result_c)
-				state->cd_result_ready = 0;
-		}
-	}
-	else if( ACCESSING_BITS_16_23 )
-	{
-		logerror( "%08x cd2 read\n", cpu_get_pc(space->cpu) );
-	}
-	else if( ACCESSING_BITS_24_31 )
-	{
-		logerror( "%08x cd3 read\n", cpu_get_pc(space->cpu) );
-
-		result = ((UINT32) state->cd_stat) << 24;
-	}
-	else
-	{
-		logerror( "%08x cd_r( %08x, %08x ) unsupported transfer\n", cpu_get_pc(space->cpu), offset, mem_mask );
-	}
-	return result;
-}
-
-static WRITE32_HANDLER( psx_cd_w )
-{
-	psx1_state *state = space->machine->driver_data<psx1_state>();
-	void (*psx_cdcmd)(running_machine* machine);
-
-	if( ACCESSING_BITS_0_7 )
-	{
-		/* write to CD register 0 */
-		data = (data >> 0) & 0xff;
-		logerror( "%08x cd0 write %02x\n", cpu_get_pc(space->cpu), data & 0xff );
-
-		state->cd_param_p = 0;
-		if (data == 0x00)
-		{
-			state->cd_result_ready = 0;
-		}
-		else
-		{
-			if (data & 0x01)
-				state->cd_result_ready = 1;
-			if (data == 0x01)
-				state->cd_reset = 1;
-		}
-	}
-	else if( ACCESSING_BITS_8_15 )
-	{
-		/* write to CD register 1 */
-		data = (data >> 8) & 0xff;
-		logerror( "%08x cd1 write %02x\n", cpu_get_pc(space->cpu), data );
-
-		if (data <= ARRAY_LENGTH(psx_cdcmds))
-			psx_cdcmd = psx_cdcmds[data];
-		else
-			psx_cdcmd = NULL;
-
-		if (psx_cdcmd)
-			psx_cdcmd(space->machine);
-
-		psx_irq_set(space->machine, 0x0004);
-	}
-	else if( ACCESSING_BITS_16_23 )
-	{
-		/* write to CD register 2 */
-		data = (data >> 16) & 0xff;
-		logerror( "%08x cd2 write %02x\n", cpu_get_pc(space->cpu), data & 0xff );
-
-		if ((state->cd_reset == 2) && (data == 0x07))
-		{
-			/* copied from SOPE; this code is weird */
-			state->cd_param_p = 0;
-			state->cd_result_ready = 1;
-			state->cd_reset = 0;
-			state->cd_stat = 0;
-			state->cd_io_status = 0x00;
-			if (state->cd_result_ready && state->cd_result_c)
-				state->cd_io_status |= 0x20;
-			else
-				state->cd_io_status &= ~0x20;
-		}
-		else
-		{
-			/* used for sending arguments */
-			state->cd_reset = 0;
-			state->cd_param[state->cd_param_p] = data;
-			if (state->cd_param_p < 7)
-				state->cd_param_p++;
-		}
-	}
-	else if( ACCESSING_BITS_24_31 )
-	{
-		/* write to CD register 3 */
-		data = (data >> 24) & 0xff;
-		logerror( "%08x cd3 write %02x\n", cpu_get_pc(space->cpu), data & 0xff );
-
-		if ((data == 0x07) && (state->cd_reset == 1))
-		{
-			state->cd_reset = 2;
-/*          psxirq_clear(0x0004); */
-		}
-		else
-		{
-			state->cd_reset = 0;
-		}
-	}
-	else
-	{
-		logerror( "%08x cd_w( %08x, %08x, %08x ) unsupported transfer\n", cpu_get_pc(space->cpu), offset, data, mem_mask );
-	}
-}
-
-static ADDRESS_MAP_START( psx_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( psx_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_RAM	AM_SHARE("share1") /* ram */
 	AM_RANGE(0x1f800000, 0x1f8003ff) AM_RAM /* scratchpad */
 	AM_RANGE(0x1f801000, 0x1f801007) AM_WRITENOP
 	AM_RANGE(0x1f801008, 0x1f80100b) AM_RAM /* ?? */
 	AM_RANGE(0x1f80100c, 0x1f80102f) AM_WRITENOP
 	AM_RANGE(0x1f801010, 0x1f801013) AM_READNOP
-	AM_RANGE(0x1f801014, 0x1f801017) AM_DEVREAD("psxspu", psx_spu_delay_r)
+	AM_RANGE(0x1f801014, 0x1f801017) AM_RAM
 	AM_RANGE(0x1f801040, 0x1f80105f) AM_READWRITE(psx_sio_r, psx_sio_w)
 	AM_RANGE(0x1f801060, 0x1f80106f) AM_WRITENOP
 	AM_RANGE(0x1f801070, 0x1f801077) AM_READWRITE(psx_irq_r, psx_irq_w)
 	AM_RANGE(0x1f801080, 0x1f8010ff) AM_READWRITE(psx_dma_r, psx_dma_w)
 	AM_RANGE(0x1f801100, 0x1f80113f) AM_READWRITE(psx_counter_r, psx_counter_w)
-	AM_RANGE(0x1f801800, 0x1f801803) AM_READWRITE(psx_cd_r, psx_cd_w)
+	AM_RANGE(0x1f801800, 0x1f801803) AM_READWRITE8(psx_cd_r, psx_cd_w, 0xffffffff)
 	AM_RANGE(0x1f801810, 0x1f801817) AM_READWRITE(psx_gpu_r, psx_gpu_w)
 	AM_RANGE(0x1f801820, 0x1f801827) AM_READWRITE(psx_mdec_r, psx_mdec_w)
-	AM_RANGE(0x1f801c00, 0x1f801dff) AM_DEVREADWRITE("psxspu", psx_spu_r, psx_spu_w)
+	AM_RANGE(0x1f801c00, 0x1f801dff) AM_READWRITE16(spu_r, spu_w, 0xffffffff)
 	AM_RANGE(0x1f802020, 0x1f802033) AM_RAM /* ?? */
 	AM_RANGE(0x1f802040, 0x1f802043) AM_WRITENOP
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE("share2") AM_REGION("user1", 0) /* bios */
@@ -1028,17 +712,14 @@ static ADDRESS_MAP_START( psx_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xfffe0130, 0xfffe0133) AM_WRITENOP
 ADDRESS_MAP_END
 
+
 static MACHINE_RESET( psx )
 {
-	psx1_state *state = machine->driver_data<psx1_state>();
-	device_t *cdrom_dev = machine->device("cdrom");
-	if( cdrom_dev )
-	{
-		state->cdrom = mess_cd_get_cdrom_file(cdrom_dev);
-	}
-
 	psx_machine_init(machine);
 	psx_sio_install_handler( machine, 0, psx_sio0 );
+
+	psx_dma_install_read_handler(machine, 3, cd_dma_read);
+	psx_dma_install_write_handler(machine, 3, cd_dma_write);
 }
 
 static DRIVER_INIT( psx )
@@ -1090,15 +771,11 @@ INPUT_PORTS_END
 
 static void spu_irq(device_t *device, UINT32 data)
 {
-	psx_irq_set(device->machine, data);
+	if (data)
+	{
+		psx_irq_set(device->machine(), 1<<9);
+	}
 }
-
-static const psx_spu_interface psxspu_interface =
-{
-	spu_irq,
-	psx_dma_install_read_handler,
-	psx_dma_install_write_handler
-};
 
 static MACHINE_CONFIG_START( psxntsc, psx1_state )
 	/* basic machine hardware */
@@ -1116,16 +793,16 @@ static MACHINE_CONFIG_START( psxntsc, psx1_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE( 1024, 512 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
+	MCFG_SCREEN_UPDATE( psx )
+
 	MCFG_PALETTE_LENGTH( 65536 )
 
 	MCFG_PALETTE_INIT( psx )
 	MCFG_VIDEO_START( psx_type2 )
-	MCFG_VIDEO_UPDATE( psx )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MCFG_SOUND_ADD( "psxspu", PSXSPU, 0 )
-	MCFG_SOUND_CONFIG( psxspu_interface )
+	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2, &spu_irq )
 	MCFG_SOUND_ROUTE( 0, "lspeaker", 1.00 )
 	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.00 )
 
@@ -1133,6 +810,9 @@ static MACHINE_CONFIG_START( psxntsc, psx1_state )
 	MCFG_QUICKLOAD_ADD("quickload", psx_exe_load, "cpe,exe,psf,psx", 0)
 
 	MCFG_CDROM_ADD("cdrom")
+	MCFG_PSXCD_ADD("cdrom")
+	MCFG_PSXCARD_ADD("card1")
+	MCFG_PSXCARD_ADD("card2")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( psxpal, psx1_state )
@@ -1151,16 +831,15 @@ static MACHINE_CONFIG_START( psxpal, psx1_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE( 1024, 512 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 639, 0, 511 )
+	MCFG_SCREEN_UPDATE( psx )
 	MCFG_PALETTE_LENGTH( 65536 )
 
 	MCFG_PALETTE_INIT( psx )
 	MCFG_VIDEO_START( psx_type2 )
-	MCFG_VIDEO_UPDATE( psx )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MCFG_SOUND_ADD( "psxspu", PSXSPU, 0 )
-	MCFG_SOUND_CONFIG( psxspu_interface )
+	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2, &spu_irq )
 	MCFG_SOUND_ROUTE( 0, "lspeaker", 1.00 )
 	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.00 )
 
@@ -1168,6 +847,9 @@ static MACHINE_CONFIG_START( psxpal, psx1_state )
 	MCFG_QUICKLOAD_ADD("quickload", psx_exe_load, "cpe,exe,psf,psx", 0)
 
 	MCFG_CDROM_ADD("cdrom")
+	MCFG_PSXCD_ADD("cdrom")
+	MCFG_PSXCARD_ADD("card1")
+	MCFG_PSXCARD_ADD("card2")
 MACHINE_CONFIG_END
 
 ROM_START( psj )

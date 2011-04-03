@@ -96,7 +96,7 @@ WRITE_LINE_DEVICE_HANDLER( vp550_sc1_w )
 {
 	if (state)
 	{
-		cpu_set_input_line(device, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
+		device_set_input_line(device, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
 
 		if (LOG) logerror("VP550 Clear Interrupt\n");
 	}
@@ -164,21 +164,21 @@ void vp550_install_write_handlers(device_t *device, address_space *program, int 
 
 	if (enabled)
 	{
-		memory_install_write8_device_handler(program, vp550->cdp1863[CHANNEL_A], 0x8001, 0x8001, 0, 0, cdp1863_str_w);
-		memory_install_write8_device_handler(program, vp550->cdp1863[CHANNEL_B], 0x8002, 0x8002, 0, 0, cdp1863_str_w);
-		memory_install_write8_device_handler(program, device, 0x8003, 0x8003, 0, 0, vp550_octave_w);
-		memory_install_write8_device_handler(program, vp550->cdp1863[CHANNEL_A], 0x8010, 0x8010, 0, 0, vp550_vlmn_w);
-		memory_install_write8_device_handler(program, vp550->cdp1863[CHANNEL_B], 0x8020, 0x8020, 0, 0, vp550_vlmn_w);
-		memory_install_write8_device_handler(program, vp550->sync_timer, 0x8030, 0x8030, 0, 0, vp550_sync_w);
+		program->install_legacy_write_handler(*vp550->cdp1863[CHANNEL_A], 0x8001, 0x8001, FUNC(cdp1863_str_w));
+		program->install_legacy_write_handler(*vp550->cdp1863[CHANNEL_B], 0x8002, 0x8002, FUNC(cdp1863_str_w));
+		program->install_legacy_write_handler(*device, 0x8003, 0x8003, FUNC(vp550_octave_w));
+		program->install_legacy_write_handler(*vp550->cdp1863[CHANNEL_A], 0x8010, 0x8010, FUNC(vp550_vlmn_w));
+		program->install_legacy_write_handler(*vp550->cdp1863[CHANNEL_B], 0x8020, 0x8020, FUNC(vp550_vlmn_w));
+		program->install_legacy_write_handler(*vp550->sync_timer, 0x8030, 0x8030, FUNC(vp550_sync_w));
 	}
 	else
 	{
-		memory_unmap_write(program, 0x8001, 0x8001, 0, 0);
-		memory_unmap_write(program, 0x8002, 0x8002, 0, 0);
-		memory_unmap_write(program, 0x8003, 0x8003, 0, 0);
-		memory_unmap_write(program, 0x8010, 0x8010, 0, 0);
-		memory_unmap_write(program, 0x8020, 0x8020, 0, 0);
-		memory_unmap_write(program, 0x8030, 0x8030, 0, 0);
+		program->unmap_write(0x8001, 0x8001);
+		program->unmap_write(0x8002, 0x8002);
+		program->unmap_write(0x8003, 0x8003);
+		program->unmap_write(0x8010, 0x8010);
+		program->unmap_write(0x8020, 0x8020);
+		program->unmap_write(0x8030, 0x8030);
 	}
 }
 
@@ -197,7 +197,7 @@ void vp551_install_write_handlers(device_t *device, address_space *program, int 
 
 static TIMER_DEVICE_CALLBACK( sync_tick )
 {
-	cpu_set_input_line(timer.machine->firstcpu, COSMAC_INPUT_LINE_INT, ASSERT_LINE);
+	device_set_input_line(timer.machine().firstcpu, COSMAC_INPUT_LINE_INT, ASSERT_LINE);
 
 	if (LOG) logerror("VP550 Interrupt\n");
 }
@@ -207,7 +207,7 @@ static TIMER_DEVICE_CALLBACK( sync_tick )
 -------------------------------------------------*/
 
 static MACHINE_CONFIG_FRAGMENT( vp550 )
-	MCFG_TIMER_ADD_PERIODIC("sync", sync_tick, HZ(50))
+	MCFG_TIMER_ADD_PERIODIC("sync", sync_tick, attotime::from_hz(50))
 
 	MCFG_CDP1863_ADD(CDP1863_A_TAG, 0, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -239,9 +239,9 @@ static DEVICE_START( vp550 )
 	vp550_t *vp550 = get_safe_token(device);
 
 	/* look up devices */
-	vp550->cdp1863[CHANNEL_A] = device->machine->device("vp550:u1");
-	vp550->cdp1863[CHANNEL_B] = device->machine->device("vp550:u2");
-	vp550->sync_timer = device->machine->device<timer_device>("vp550:sync");
+	vp550->cdp1863[CHANNEL_A] = device->machine().device("vp550:u1");
+	vp550->cdp1863[CHANNEL_B] = device->machine().device("vp550:u2");
+	vp550->sync_timer = device->machine().device<timer_device>("vp550:sync");
 
 	/* set initial values */
 	vp550->channels = 2;
@@ -282,7 +282,7 @@ static DEVICE_RESET( vp550 )
 	vp550->sync_timer->enable(0);
 
 	/* clear interrupt */
-	cpu_set_input_line(device->machine->firstcpu, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
+	device_set_input_line(device->machine().firstcpu, COSMAC_INPUT_LINE_INT, CLEAR_LINE);
 }
 
 /*-------------------------------------------------

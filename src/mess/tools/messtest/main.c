@@ -64,13 +64,7 @@ static void messtest_fail(const char *message)
 	exit(1);
 }
 
-
-
-#ifdef _WIN32
-int CLIB_DECL utf8_main(int argc, char *argv[])
-#else
 int CLIB_DECL main(int argc, char *argv[])
-#endif
 {
 	int result = -1;
 	clock_t begin_time;
@@ -97,7 +91,7 @@ int CLIB_DECL main(int argc, char *argv[])
 	begin_time = clock();
 
 	/* parse the commandline */
-	if (options_parse_command_line(messtest_options, argc, argv, OPTION_PRIORITY_CMDLINE))
+	if (options_parse_command_line(messtest_options, argc, argv, OPTION_PRIORITY_CMDLINE,TRUE))
 	{
 		fprintf(stderr, "Error while parsing cmdline\n");
 		goto done;

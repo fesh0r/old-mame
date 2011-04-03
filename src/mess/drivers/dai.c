@@ -65,15 +65,15 @@ Timings:
 #include "includes/dai.h"
 #include "machine/pit8253.h"
 #include "machine/tms5501.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 
 /* I/O ports */
-static ADDRESS_MAP_START( dai_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( dai_io , AS_IO, 8)
 ADDRESS_MAP_END
 
 /* memory w/r functions */
-static ADDRESS_MAP_START( dai_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( dai_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE( 0xc000, 0xdfff) AM_ROM
 	AM_RANGE( 0xe000, 0xefff) AM_ROMBANK("bank2")
@@ -206,7 +206,7 @@ static MACHINE_CONFIG_START( dai, dai_state )
 	MCFG_CPU_ADD("maincpu", I8080, 2000000)
 	MCFG_CPU_PROGRAM_MAP(dai_mem)
 	MCFG_CPU_IO_MAP(dai_io)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( dai )
 	MCFG_MACHINE_RESET( dai )
@@ -222,12 +222,13 @@ static MACHINE_CONFIG_START( dai, dai_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(1056, 542)
 	MCFG_SCREEN_VISIBLE_AREA(0, 1056-1, 0, 302-1)
+	MCFG_SCREEN_UPDATE( dai )
+
 	MCFG_GFXDECODE(dai)
 	MCFG_PALETTE_LENGTH(sizeof (dai_palette) / 3)
 	MCFG_PALETTE_INIT( dai )
 
 	MCFG_VIDEO_START( dai )
-	MCFG_VIDEO_UPDATE( dai )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -245,7 +246,7 @@ static MACHINE_CONFIG_START( dai, dai_state )
 	MCFG_TMS5501_ADD( "tms5501", dai_tms5501_interface )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("48K")
 MACHINE_CONFIG_END
 

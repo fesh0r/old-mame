@@ -1,6 +1,8 @@
 #ifndef __XEROX820__
 #define __XEROX820__
 
+#include "machine/ram.h"
+
 #define SCREEN_TAG		"screen"
 
 #define Z80_TAG			"u46"
@@ -24,7 +26,7 @@ public:
 		  m_kbpio(*this, Z80KBPIO_TAG),
 		  m_ctc(*this, Z80CTC_TAG),
 		  m_fdc(*this, WD1771_TAG),
-		  m_ram(*this, "messram"),
+		  m_ram(*this, RAM_TAG),
 		  m_floppy0(*this, FLOPPY_0),
 		  m_floppy1(*this, FLOPPY_1)
 	{ }
@@ -33,7 +35,7 @@ public:
 	virtual void machine_reset();
 
 	virtual void video_start();
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_kbpio;
@@ -42,7 +44,7 @@ public:
 	required_device<device_t> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
-	
+
 	DECLARE_WRITE8_MEMBER( scroll_w );
 	//DECLARE_WRITE8_MEMBER( x120_system_w );
 	DECLARE_READ8_MEMBER( kbpio_pa_r );
@@ -82,7 +84,7 @@ public:
 	xerox820ii_state(running_machine &machine, const driver_device_config_base &config)
 		: xerox820_state(machine, config)
 	{ }
-	
+
 	virtual void machine_reset();
 
 	DECLARE_WRITE8_MEMBER( bell_w );

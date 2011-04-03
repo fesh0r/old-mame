@@ -18,32 +18,32 @@
 #include "cpu/i8085/i8085.h"
 #include "cpu/z80/z80.h"
 #include "includes/sapi1.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 /* switch out the rom shadow */
 static WRITE8_HANDLER( sapizps3_00_w )
 {
-	memory_set_bank(space->machine, "bank1", 0);
+	memory_set_bank(space->machine(), "bank1", 0);
 }
 
 /* to stop execution in random ram */
 static READ8_HANDLER( sapizps3_25_r )
 {
-	sapi1_state *state = space->machine->driver_data<sapi1_state>();
-	return state->zps3_25;
+	sapi1_state *state = space->machine().driver_data<sapi1_state>();
+	return state->m_zps3_25;
 }
 
 static WRITE8_HANDLER( sapizps3_25_w )
 {
-	sapi1_state *state = space->machine->driver_data<sapi1_state>();
-	state->zps3_25 = data & 0xfc; //??
+	sapi1_state *state = space->machine().driver_data<sapi1_state>();
+	state->m_zps3_25 = data & 0xfc; //??
 }
 
 
 
 /* Address maps */
-static ADDRESS_MAP_START(sapi1_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(sapi1_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x1fff) AM_ROM // Extension ROM
@@ -52,25 +52,25 @@ static ADDRESS_MAP_START(sapi1_mem, ADDRESS_SPACE_PROGRAM, 8)
 	//AM_RANGE(0x2800, 0x2bff) AM_NOP // PORT 1
 	//AM_RANGE(0x2c00, 0x2fff) AM_NOP // PORT 2
 	//AM_RANGE(0x3000, 0x33ff) AM_NOP // 3214
-	AM_RANGE(0x3800, 0x3fff) AM_RAM AM_BASE_MEMBER(sapi1_state, sapi_video_ram) // AND-1 (video RAM)
+	AM_RANGE(0x3800, 0x3fff) AM_RAM AM_BASE_MEMBER(sapi1_state, m_sapi_video_ram) // AND-1 (video RAM)
 	AM_RANGE(0x4000, 0x7fff) AM_RAM // REM-1
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sapi1_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sapi1_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(sapizps3_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(sapizps3_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_RAMBANK("bank1")
 	AM_RANGE(0x0800, 0xe7ff) AM_RAM
-	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE_MEMBER(sapi1_state, sapi_video_ram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE_MEMBER(sapi1_state, m_sapi_video_ram)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xfdff) AM_ROM
 	AM_RANGE(0xfe00, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sapizps3_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sapizps3_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(sapizps3_00_w)
@@ -147,15 +147,15 @@ static MACHINE_CONFIG_START( sapi1, sapi1_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40*6, 24*9)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40*6-1, 0, 24*9-1)
+	MCFG_SCREEN_UPDATE(sapi1)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(sapi1)
-	MCFG_VIDEO_UPDATE(sapi1)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
@@ -175,15 +175,15 @@ static MACHINE_CONFIG_START( sapizps3, sapi1_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(80*6, 24*9)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*6-1, 0, 24*9-1)
+	MCFG_SCREEN_UPDATE(sapizps3)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_VIDEO_START(sapizps3)
-	MCFG_VIDEO_UPDATE(sapizps3)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 

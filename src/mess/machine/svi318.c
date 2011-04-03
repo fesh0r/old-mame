@@ -14,12 +14,12 @@
 #include "machine/ins8250.h"
 #include "machine/wd17xx.h"
 #include "machine/ctronics.h"
-#include "devices/flopdrv.h"
-#include "devices/cassette.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/cassette.h"
 #include "formats/svi_cas.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 enum {
 	SVI_INTERNAL	= 0,
@@ -29,17 +29,17 @@ enum {
 };
 
 
-static void svi318_set_banks(running_machine *machine);
+static void svi318_set_banks(running_machine &machine);
 
 
 /* Serial ports */
 
 static INS8250_INTERRUPT( svi318_ins8250_interrupt )
 {
-	svi318_state *drvstate = device->machine->driver_data<svi318_state>();
-	if (drvstate->svi.bankLow != SVI_CART)
+	svi318_state *drvstate = device->machine().driver_data<svi318_state>();
+	if (drvstate->m_svi.bankLow != SVI_CART)
 	{
-		cputag_set_input_line(device->machine, "maincpu", 0, (state ? HOLD_LINE : CLEAR_LINE));
+		cputag_set_input_line(device->machine(), "maincpu", 0, (state ? HOLD_LINE : CLEAR_LINE));
 	}
 }
 
@@ -81,15 +81,15 @@ static int svi318_verify_cart (UINT8 magic[2])
 
 DEVICE_START( svi318_cart )
 {
-	svi318_state *state = device->machine->driver_data<svi318_state>();
-	state->pcart = NULL;
-	state->pcart_rom_size = 0;
+	svi318_state *state = device->machine().driver_data<svi318_state>();
+	state->m_pcart = NULL;
+	state->m_pcart_rom_size = 0;
 }
 
 DEVICE_IMAGE_LOAD( svi318_cart )
 {
-	svi318_state *state = image.device().machine->driver_data<svi318_state>();
-	UINT8 *p = image.device().machine->region("user1")->base();
+	svi318_state *state = image.device().machine().driver_data<svi318_state>();
+	UINT8 *p = image.device().machine().region("user1")->base();
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -99,7 +99,7 @@ DEVICE_IMAGE_LOAD( svi318_cart )
 
 	if (size > 0x8000)
 		logerror("Cart image %s larger than expected. Please report the issue.\n", image.filename());
-		
+
 	if (image.software_entry() == NULL)
 	{
 		if (image.fread(p, size) != size)
@@ -114,17 +114,17 @@ DEVICE_IMAGE_LOAD( svi318_cart )
 	if (svi318_verify_cart(p) == IMAGE_VERIFY_FAIL)
 		return IMAGE_INIT_FAIL;
 
-	state->pcart = p;
-	state->pcart_rom_size = size;
+	state->m_pcart = p;
+	state->m_pcart_rom_size = size;
 
 	return IMAGE_INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD( svi318_cart )
 {
-	svi318_state *state = image.device().machine->driver_data<svi318_state>();
-	state->pcart = NULL;
-	state->pcart_rom_size = 0;
+	svi318_state *state = image.device().machine().driver_data<svi318_state>();
+	state->m_pcart = NULL;
+	state->m_pcart_rom_size = 0;
 }
 
 /* PPI */
@@ -146,11 +146,11 @@ static READ8_DEVICE_HANDLER ( svi318_ppi_port_a_r )
 {
 	int data = 0x0f;
 
-	if (cassette_input(device->machine->device("cassette")) > 0.0038)
+	if (cassette_input(device->machine().device("cassette")) > 0.0038)
 		data |= 0x80;
-	if (!svi318_cassette_present(device->machine, 0))
+	if (!svi318_cassette_present(device->machine(), 0))
 		data |= 0x40;
-	data |= input_port_read(device->machine, "BUTTONS") & 0x30;
+	data |= input_port_read(device->machine(), "BUTTONS") & 0x30;
 
 	return data;
 }
@@ -170,16 +170,16 @@ static READ8_DEVICE_HANDLER ( svi318_ppi_port_a_r )
 
 static READ8_DEVICE_HANDLER ( svi318_ppi_port_b_r )
 {
-	svi318_state *state = device->machine->driver_data<svi318_state>();
+	svi318_state *state = device->machine().driver_data<svi318_state>();
 	int row;
 	static const char *const keynames[] = {
 		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5",
 		"LINE6", "LINE7", "LINE8", "LINE9", "LINE10"
 	};
 
-	row = state->svi.keyboard_row;
+	row = state->m_svi.keyboard_row;
 	if (row <= 10)
-		return input_port_read(device->machine, keynames[row]);
+		return input_port_read(device->machine(), keynames[row]);
 
 	return 0xff;
 }
@@ -199,27 +199,27 @@ static READ8_DEVICE_HANDLER ( svi318_ppi_port_b_r )
 
 static WRITE8_DEVICE_HANDLER ( svi318_ppi_port_c_w )
 {
-	svi318_state *state = device->machine->driver_data<svi318_state>();
+	svi318_state *state = device->machine().driver_data<svi318_state>();
 	int val;
 
 	/* key click */
 	val = (data & 0x80) ? 0x3e : 0;
 	val += (data & 0x40) ? 0x3e : 0;
-	dac_signed_data_w (device->machine->device("dac"), val);
+	dac_signed_data_w (device->machine().device("dac"), val);
 
 	/* cassette motor on/off */
-	if (svi318_cassette_present(device->machine, 0))
+	if (svi318_cassette_present(device->machine(), 0))
 	{
 		cassette_change_state(
-			device->machine->device("cassette"),
+			device->machine().device("cassette"),
 			(data & 0x10) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED,
 			CASSETTE_MOTOR_DISABLED);
 	}
 
 	/* cassette signal write */
-	cassette_output(device->machine->device("cassette"), (data & 0x20) ? -1.0 : +1.0);
+	cassette_output(device->machine().device("cassette"), (data & 0x20) ? -1.0 : +1.0);
 
-	state->svi.keyboard_row = data & 0x0F;
+	state->m_svi.keyboard_row = data & 0x0F;
 }
 
 I8255A_INTERFACE( svi318_ppi8255_interface )
@@ -260,7 +260,7 @@ WRITE8_DEVICE_HANDLER( svi318_ppi_w )
 
 READ8_HANDLER( svi318_psg_port_a_r )
 {
-	return input_port_read(space->machine, "JOYSTICKS");
+	return input_port_read(space->machine(), "JOYSTICKS");
 }
 
 /*
@@ -281,26 +281,26 @@ READ8_HANDLER( svi318_psg_port_a_r )
 
 WRITE8_HANDLER( svi318_psg_port_b_w )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	if ( (state->svi.bank_switch ^ data) & 0x20)
-		set_led_status (space->machine, 0, !(data & 0x20) );
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	if ( (state->m_svi.bank_switch ^ data) & 0x20)
+		set_led_status (space->machine(), 0, !(data & 0x20) );
 
-	state->svi.bank_switch = data;
-	svi318_set_banks(space->machine);
+	state->m_svi.bank_switch = data;
+	svi318_set_banks(space->machine());
 }
 
 /* Disk drives  */
 
 static WRITE_LINE_DEVICE_HANDLER( svi_fdc_intrq_w )
 {
-	svi318_state *drvstate = device->machine->driver_data<svi318_state>();
-	drvstate->fdc.irq = state;
+	svi318_state *drvstate = device->machine().driver_data<svi318_state>();
+	drvstate->m_fdc.irq = state;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( svi_fdc_drq_w )
 {
-	svi318_state *drvstate = device->machine->driver_data<svi318_state>();
-	drvstate->fdc.drq = state;
+	svi318_state *drvstate = device->machine().driver_data<svi318_state>();
+	drvstate->m_fdc.drq = state;
 }
 
 const wd17xx_interface svi_wd17xx_interface =
@@ -313,24 +313,24 @@ const wd17xx_interface svi_wd17xx_interface =
 
 static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	device_t *fdc = space->machine->device("wd179x");
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	device_t *fdc = space->machine().device("wd179x");
 	switch (data & 3)
 	{
 	case 1:
 		wd17xx_set_drive(fdc,0);
-		state->fdc.driveselect = 0;
+		state->m_fdc.driveselect = 0;
 		break;
 	case 2:
 		wd17xx_set_drive(fdc,1);
-		state->fdc.driveselect = 1;
+		state->m_fdc.driveselect = 1;
 		break;
 	}
 }
 
 static WRITE8_HANDLER( svi318_fdc_density_side_w )
 {
-	device_t *fdc = space->machine->device("wd179x");
+	device_t *fdc = space->machine().device("wd179x");
 
 	wd17xx_dden_w(fdc, BIT(data, 0));
 	wd17xx_set_side(fdc, BIT(data, 1));
@@ -338,24 +338,24 @@ static WRITE8_HANDLER( svi318_fdc_density_side_w )
 
 static READ8_HANDLER( svi318_fdc_irqdrq_r )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
+	svi318_state *state = space->machine().driver_data<svi318_state>();
 	UINT8 result = 0;
 
-	result |= state->fdc.drq << 6;
-	result |= state->fdc.irq << 7;
+	result |= state->m_fdc.drq << 6;
+	result |= state->m_fdc.irq << 7;
 
 	return result;
 }
 
 MC6845_UPDATE_ROW( svi806_crtc6845_update_row )
 {
-	svi318_state *state = device->machine->driver_data<svi318_state>();
+	svi318_state *state = device->machine().driver_data<svi318_state>();
 	int i;
 
 	for( i = 0; i < x_count; i++ )
 	{
 		int j;
-		UINT8	data = state->svi.svi806_gfx[ state->svi.svi806_ram->u8(( ma + i ) & 0x7FF) * 16 + ra ];
+		UINT8	data = state->m_svi.svi806_gfx[ state->m_svi.svi806_ram->u8(( ma + i ) & 0x7FF) * 16 + ra ];
 
 		if ( i == cursor_x )
 		{
@@ -372,23 +372,23 @@ MC6845_UPDATE_ROW( svi806_crtc6845_update_row )
 
 
 /* 80 column card init */
-static void svi318_80col_init(running_machine *machine)
+static void svi318_80col_init(running_machine &machine)
 {
-	svi318_state *state = machine->driver_data<svi318_state>();
+	svi318_state *state = machine.driver_data<svi318_state>();
 	/* 2K RAM, but allocating 4KB to make banking easier */
 	/* The upper 2KB will be set to FFs and will never be written to */
-	state->svi.svi806_ram = machine->region_alloc("gfx2", 0x1000, 0 );
-	memset( state->svi.svi806_ram->base(), 0x00, 0x800 );
-	memset( state->svi.svi806_ram->base() + 0x800, 0xFF, 0x800 );
-	state->svi.svi806_gfx = machine->region("gfx1")->base();
+	state->m_svi.svi806_ram = machine.region_alloc("gfx2", 0x1000, 1, ENDIANNESS_LITTLE );
+	memset( state->m_svi.svi806_ram->base(), 0x00, 0x800 );
+	memset( state->m_svi.svi806_ram->base() + 0x800, 0xFF, 0x800 );
+	state->m_svi.svi806_gfx = machine.region("gfx1")->base();
 }
 
 
 static WRITE8_HANDLER( svi806_ram_enable_w )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	state->svi.svi806_ram_enabled = ( data & 0x01 );
-	svi318_set_banks(space->machine);
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	state->m_svi.svi806_ram_enabled = ( data & 0x01 );
+	svi318_set_banks(space->machine());
 }
 
 VIDEO_START( svi328_806 )
@@ -396,15 +396,15 @@ VIDEO_START( svi328_806 )
 	VIDEO_START_CALL(tms9928a);
 }
 
-VIDEO_UPDATE( svi328_806 )
+SCREEN_UPDATE( svi328_806 )
 {
 	if (!strcmp(screen->tag(), "screen"))
 	{
-		VIDEO_UPDATE_CALL(tms9928a);
+		SCREEN_UPDATE_CALL(tms9928a);
 	}
 	else if (!strcmp(screen->tag(), "svi806"))
 	{
-		device_t *mc6845 = screen->machine->device("crtc");
+		device_t *mc6845 = screen->machine().device("crtc");
 		mc6845_update(mc6845, bitmap, cliprect);
 	}
 	else
@@ -416,11 +416,11 @@ VIDEO_UPDATE( svi328_806 )
 
 MACHINE_RESET( svi328_806 )
 {
-	svi318_state *state = machine->driver_data<svi318_state>();
+	svi318_state *state = machine.driver_data<svi318_state>();
 	MACHINE_RESET_CALL(svi318);
 
 	svi318_80col_init(machine);
-	state->svi.svi806_present = 1;
+	state->m_svi.svi806_present = 1;
 	svi318_set_banks(machine);
 
 	/* Set SVI-806 80 column card palette */
@@ -430,7 +430,7 @@ MACHINE_RESET( svi328_806 )
 
 /* Init functions */
 
-void svi318_vdp_interrupt(running_machine *machine, int i)
+void svi318_vdp_interrupt(running_machine &machine, int i)
 {
 	cputag_set_input_line(machine, "maincpu", 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
@@ -554,22 +554,22 @@ static const UINT8 cc_ex[0x100] = {
 
 DRIVER_INIT( svi318 )
 {
-	svi318_state *state = machine->driver_data<svi318_state>();
+	svi318_state *state = machine.driver_data<svi318_state>();
 	/* z80 stuff */
-	z80_set_cycle_tables( machine->device("maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
+	z80_set_cycle_tables( machine.device("maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
 
-	memset(&state->svi, 0, sizeof (state->svi) );
+	memset(&state->m_svi, 0, sizeof (state->m_svi) );
 
-	if ( ! strcmp( machine->gamedrv->name, "svi318" ) || ! strcmp( machine->gamedrv->name, "svi318n" ) )
+	if ( ! strcmp( machine.system().name, "svi318" ) || ! strcmp( machine.system().name, "svi318n" ) )
 	{
-		state->svi.svi318 = 1;
+		state->m_svi.svi318 = 1;
 	}
 
-	cpu_set_input_line_vector(machine->device("maincpu"), 0, 0xff);
+	device_set_input_line_vector(machine.device("maincpu"), 0, 0xff);
 
 	/* memory */
-	state->svi.empty_bank = auto_alloc_array(machine, UINT8, 0x8000);
-	memset (state->svi.empty_bank, 0xff, 0x8000);
+	state->m_svi.empty_bank = auto_alloc_array(machine, UINT8, 0x8000);
+	memset (state->m_svi.empty_bank, 0xff, 0x8000);
 }
 
 static const TMS9928a_interface svi318_tms9928a_interface =
@@ -602,7 +602,7 @@ MACHINE_START( svi318_pal )
 
 static void svi318_load_proc(device_image_interface &image)
 {
-	svi318_state *state = image.device().machine->driver_data<svi318_state>();
+	svi318_state *state = image.device().machine().driver_data<svi318_state>();
 	int size;
 	int id = floppy_get_drive(&image.device());
 
@@ -610,25 +610,25 @@ static void svi318_load_proc(device_image_interface &image)
 	switch (size)
 	{
 	case 172032:	/* SVI-328 SSDD */
-		state->fdc.heads[id] = 1;
+		state->m_fdc.heads[id] = 1;
 		break;
 	case 346112:	/* SVI-328 DSDD */
-		state->fdc.heads[id] = 2;
+		state->m_fdc.heads[id] = 2;
 		break;
 	case 348160:	/* SVI-728 DSDD CP/M */
-		state->fdc.heads[id] = 2;
+		state->m_fdc.heads[id] = 2;
 		break;
 	}
 }
 
 MACHINE_RESET( svi318 )
 {
-	svi318_state *state = machine->driver_data<svi318_state>();
+	svi318_state *state = machine.driver_data<svi318_state>();
 	int drive;
 	/* video stuff */
 	TMS9928A_reset();
 
-	state->svi.bank_switch = 0xff;
+	state->m_svi.bank_switch = 0xff;
 	svi318_set_banks(machine);
 
 	for(drive=0;drive<2;drive++)
@@ -641,176 +641,178 @@ INTERRUPT_GEN( svi318_interrupt )
 {
 	int set;
 
-	set = input_port_read(device->machine, "CONFIG");
+	set = input_port_read(device->machine(), "CONFIG");
 	TMS9928A_set_spriteslimit (set & 0x20);
-	TMS9928A_interrupt(device->machine);
+	TMS9928A_interrupt(device->machine());
 }
 
 /* Memory */
 
 WRITE8_HANDLER( svi318_writemem1 )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	if ( state->svi.bankLow_read_only )
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	if ( state->m_svi.bankLow_read_only )
 		return;
 
-	state->svi.bankLow_ptr[offset] = data;
+	state->m_svi.bankLow_ptr[offset] = data;
 }
 
 WRITE8_HANDLER( svi318_writemem2 )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	if ( state->svi.bankHigh1_read_only)
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	if ( state->m_svi.bankHigh1_read_only)
 		return;
 
-	state->svi.bankHigh1_ptr[offset] = data;
+	state->m_svi.bankHigh1_ptr[offset] = data;
 }
 
 WRITE8_HANDLER( svi318_writemem3 )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	if ( state->svi.bankHigh2_read_only)
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	if ( state->m_svi.bankHigh2_read_only)
 		return;
 
-	state->svi.bankHigh2_ptr[offset] = data;
+	state->m_svi.bankHigh2_ptr[offset] = data;
 }
 
 WRITE8_HANDLER( svi318_writemem4 )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
-	if ( state->svi.svi806_ram_enabled )
+	svi318_state *state = space->machine().driver_data<svi318_state>();
+	if ( state->m_svi.svi806_ram_enabled )
 	{
 		if ( offset < 0x800 )
 		{
-			state->svi.svi806_ram->u8(offset) = data;
+			state->m_svi.svi806_ram->u8(offset) = data;
 		}
 	}
 	else
 	{
-		if ( state->svi.bankHigh2_read_only )
+		if ( state->m_svi.bankHigh2_read_only )
 			return;
 
-		state->svi.bankHigh2_ptr[ 0x3000 + offset] = data;
+		state->m_svi.bankHigh2_ptr[ 0x3000 + offset] = data;
 	}
 }
 
-static void svi318_set_banks(running_machine *machine)
+static void svi318_set_banks(running_machine &machine)
 {
-	svi318_state *state = machine->driver_data<svi318_state>();
-	const UINT8 v = state->svi.bank_switch;
+	svi318_state *state = machine.driver_data<svi318_state>();
+	const UINT8 v = state->m_svi.bank_switch;
+	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
+	UINT32 ram_size = ram_get_size(machine.device(RAM_TAG));
 
-	state->svi.bankLow = ( v & 1 ) ? ( ( v & 2 ) ? ( ( v & 8 ) ? SVI_INTERNAL : SVI_EXPRAM3 ) : SVI_EXPRAM2 ) : SVI_CART;
-	state->svi.bankHigh1 = ( v & 4 ) ? ( ( v & 16 ) ? SVI_INTERNAL : SVI_EXPRAM3 ) : SVI_EXPRAM2;
+	state->m_svi.bankLow = ( v & 1 ) ? ( ( v & 2 ) ? ( ( v & 8 ) ? SVI_INTERNAL : SVI_EXPRAM3 ) : SVI_EXPRAM2 ) : SVI_CART;
+	state->m_svi.bankHigh1 = ( v & 4 ) ? ( ( v & 16 ) ? SVI_INTERNAL : SVI_EXPRAM3 ) : SVI_EXPRAM2;
 
-	state->svi.bankLow_ptr = state->svi.empty_bank;
-	state->svi.bankLow_read_only = 1;
+	state->m_svi.bankLow_ptr = state->m_svi.empty_bank;
+	state->m_svi.bankLow_read_only = 1;
 
-	switch( state->svi.bankLow )
+	switch( state->m_svi.bankLow )
 	{
 	case SVI_INTERNAL:
-		state->svi.bankLow_ptr = machine->region("maincpu")->base();
+		state->m_svi.bankLow_ptr = machine.region("maincpu")->base();
 		break;
 	case SVI_CART:
-		if ( state->pcart )
+		if ( state->m_pcart )
 		{
-			state->svi.bankLow_ptr = state->pcart;
+			state->m_svi.bankLow_ptr = state->m_pcart;
 		}
 		break;
 	case SVI_EXPRAM2:
-		if ( messram_get_size(machine->device("messram")) >= 64 * 1024 )
+		if ( ram_size >= 64 * 1024 )
 		{
-			state->svi.bankLow_ptr = messram_get_ptr(machine->device("messram")) + messram_get_size(machine->device("messram")) - 64 * 1024;
-			state->svi.bankLow_read_only = 0;
+			state->m_svi.bankLow_ptr = ram + ram_size - 64 * 1024;
+			state->m_svi.bankLow_read_only = 0;
 		}
 		break;
 	case SVI_EXPRAM3:
-		if ( messram_get_size(machine->device("messram")) > 128 * 1024 )
+		if ( ram_size > 128 * 1024 )
 		{
-			state->svi.bankLow_ptr = messram_get_ptr(machine->device("messram")) + messram_get_size(machine->device("messram")) - 128 * 1024;
-			state->svi.bankLow_read_only = 0;
+			state->m_svi.bankLow_ptr = ram + ram_size - 128 * 1024;
+			state->m_svi.bankLow_read_only = 0;
 		}
 		break;
 	}
 
-	state->svi.bankHigh1_ptr = state->svi.bankHigh2_ptr = state->svi.empty_bank;
-	state->svi.bankHigh1_read_only = state->svi.bankHigh2_read_only = 1;
+	state->m_svi.bankHigh1_ptr = state->m_svi.bankHigh2_ptr = state->m_svi.empty_bank;
+	state->m_svi.bankHigh1_read_only = state->m_svi.bankHigh2_read_only = 1;
 
-	switch( state->svi.bankHigh1 )
+	switch( state->m_svi.bankHigh1 )
 	{
 	case SVI_INTERNAL:
-		if ( messram_get_size(machine->device("messram")) == 16 * 1024 )
+		if ( ram_size == 16 * 1024 )
 		{
-			state->svi.bankHigh2_ptr = messram_get_ptr(machine->device("messram"));
-			state->svi.bankHigh2_read_only = 0;
+			state->m_svi.bankHigh2_ptr = ram;
+			state->m_svi.bankHigh2_read_only = 0;
 		}
 		else
 		{
-			state->svi.bankHigh1_ptr = messram_get_ptr(machine->device("messram"));
-			state->svi.bankHigh1_read_only = 0;
-			state->svi.bankHigh2_ptr = messram_get_ptr(machine->device("messram")) + 0x4000;
-			state->svi.bankHigh2_read_only = 0;
+			state->m_svi.bankHigh1_ptr = ram;
+			state->m_svi.bankHigh1_read_only = 0;
+			state->m_svi.bankHigh2_ptr = ram + 0x4000;
+			state->m_svi.bankHigh2_read_only = 0;
 		}
 		break;
 	case SVI_EXPRAM2:
-		if ( messram_get_size(machine->device("messram")) > 64 * 1024 )
+		if ( ram_size > 64 * 1024 )
 		{
-			state->svi.bankHigh1_ptr = messram_get_ptr(machine->device("messram")) + messram_get_size(machine->device("messram")) - 64 * 1024 + 32 * 1024;
-			state->svi.bankHigh1_read_only = 0;
-			state->svi.bankHigh2_ptr = messram_get_ptr(machine->device("messram")) + messram_get_size(machine->device("messram")) - 64 * 1024 + 48 * 1024;
-			state->svi.bankHigh2_read_only = 0;
+			state->m_svi.bankHigh1_ptr = ram + ram_size - 64 * 1024 + 32 * 1024;
+			state->m_svi.bankHigh1_read_only = 0;
+			state->m_svi.bankHigh2_ptr = ram + ram_size - 64 * 1024 + 48 * 1024;
+			state->m_svi.bankHigh2_read_only = 0;
 		}
 		break;
 	case SVI_EXPRAM3:
-		if ( messram_get_size(machine->device("messram")) > 128 * 1024 )
+		if ( ram_size > 128 * 1024 )
 		{
-			state->svi.bankHigh1_ptr = messram_get_ptr(machine->device("messram")) + messram_get_size(machine->device("messram")) - 128 * 1024 + 32 * 1024;
-			state->svi.bankHigh1_read_only = 0;
-			state->svi.bankHigh2_ptr = messram_get_ptr(machine->device("messram")) + messram_get_size(machine->device("messram")) - 128 * 1024 + 48 * 1024;
-			state->svi.bankHigh2_read_only = 0;
+			state->m_svi.bankHigh1_ptr = ram + ram_size - 128 * 1024 + 32 * 1024;
+			state->m_svi.bankHigh1_read_only = 0;
+			state->m_svi.bankHigh2_ptr = ram + ram_size - 128 * 1024 + 48 * 1024;
+			state->m_svi.bankHigh2_read_only = 0;
 		}
 		break;
 	}
 
 	/* Check for special CART based banking */
-	if ( state->svi.bankLow == SVI_CART && ( v & 0xc0 ) != 0xc0 )
+	if ( state->m_svi.bankLow == SVI_CART && ( v & 0xc0 ) != 0xc0 )
 	{
-		state->svi.bankHigh1_ptr = state->svi.empty_bank;
-		state->svi.bankHigh1_read_only = 1;
-		state->svi.bankHigh2_ptr = state->svi.empty_bank;
-		state->svi.bankHigh2_read_only = 1;
-		if ( state->pcart && ! ( v & 0x80 ) )
+		state->m_svi.bankHigh1_ptr = state->m_svi.empty_bank;
+		state->m_svi.bankHigh1_read_only = 1;
+		state->m_svi.bankHigh2_ptr = state->m_svi.empty_bank;
+		state->m_svi.bankHigh2_read_only = 1;
+		if ( state->m_pcart && ! ( v & 0x80 ) )
 		{
-			state->svi.bankHigh2_ptr = state->pcart + 0x4000;
+			state->m_svi.bankHigh2_ptr = state->m_pcart + 0x4000;
 		}
-		if ( state->pcart && ! ( v & 0x40 ) )
+		if ( state->m_pcart && ! ( v & 0x40 ) )
 		{
-			state->svi.bankHigh1_ptr = state->pcart;
+			state->m_svi.bankHigh1_ptr = state->m_pcart;
 		}
 	}
 
-	memory_set_bankptr(machine, "bank1", state->svi.bankLow_ptr );
-	memory_set_bankptr(machine, "bank2", state->svi.bankHigh1_ptr );
-	memory_set_bankptr(machine, "bank3", state->svi.bankHigh2_ptr );
+	memory_set_bankptr(machine, "bank1", state->m_svi.bankLow_ptr );
+	memory_set_bankptr(machine, "bank2", state->m_svi.bankHigh1_ptr );
+	memory_set_bankptr(machine, "bank3", state->m_svi.bankHigh2_ptr );
 
 	/* SVI-806 80 column card specific banking */
-	if ( state->svi.svi806_present )
+	if ( state->m_svi.svi806_present )
 	{
-		if ( state->svi.svi806_ram_enabled )
+		if ( state->m_svi.svi806_ram_enabled )
 		{
-			memory_set_bankptr(machine, "bank4", state->svi.svi806_ram );
+			memory_set_bankptr(machine, "bank4", state->m_svi.svi806_ram );
 		}
 		else
 		{
-			memory_set_bankptr(machine, "bank4", state->svi.bankHigh2_ptr + 0x3000 );
+			memory_set_bankptr(machine, "bank4", state->m_svi.bankHigh2_ptr + 0x3000 );
 		}
 	}
 }
 
 /* Cassette */
 
-int svi318_cassette_present(running_machine *machine, int id)
+int svi318_cassette_present(running_machine &machine, int id)
 {
-	device_image_interface *image = dynamic_cast<device_image_interface *>(machine->device("cassette"));
+	device_image_interface *image = dynamic_cast<device_image_interface *>(machine.device("cassette"));
 
 	if ( image == NULL )
 		return FALSE;
@@ -821,11 +823,11 @@ int svi318_cassette_present(running_machine *machine, int id)
 
 READ8_HANDLER( svi318_io_ext_r )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
+	svi318_state *state = space->machine().driver_data<svi318_state>();
 	UINT8 data = 0xff;
 	device_t *device;
 
-	if (state->svi.bankLow == SVI_CART)
+	if (state->m_svi.bankLow == SVI_CART)
 	{
 		return 0xff;
 	}
@@ -833,7 +835,7 @@ READ8_HANDLER( svi318_io_ext_r )
 	switch( offset )
 	{
 	case 0x12:
-		device = space->machine->device("centronics");
+		device = space->machine().device("centronics");
 		data = 0xfe | centronics_busy_r(device);
 		break;
 
@@ -845,7 +847,7 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x25:
 	case 0x26:
 	case 0x27:
-		device = space->machine->device("ins8250_0");
+		device = space->machine().device("ins8250_0");
 		data = ins8250_r(device, offset & 7);
 		break;
 
@@ -857,31 +859,31 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x2D:
 	case 0x2E:
 	case 0x2F:
-		device = space->machine->device("ins8250_1");
+		device = space->machine().device("ins8250_1");
 		data = ins8250_r(device, offset & 7);
 		break;
 
 	case 0x30:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		data = wd17xx_status_r(device, 0);
 		break;
 	case 0x31:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		data = wd17xx_track_r(device, 0);
 		break;
 	case 0x32:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		data = wd17xx_sector_r(device, 0);
 		break;
 	case 0x33:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		data = wd17xx_data_r(device, 0);
 		break;
 	case 0x34:
 		data = svi318_fdc_irqdrq_r(space, 0);
 		break;
 	case 0x51:
-		device = space->machine->device("crtc");
+		device = space->machine().device("crtc");
 		data = mc6845_register_r(device, 0);
 		break;
 	}
@@ -891,10 +893,10 @@ READ8_HANDLER( svi318_io_ext_r )
 
 WRITE8_HANDLER( svi318_io_ext_w )
 {
-	svi318_state *state = space->machine->driver_data<svi318_state>();
+	svi318_state *state = space->machine().driver_data<svi318_state>();
 	device_t *device;
 
-	if (state->svi.bankLow == SVI_CART)
+	if (state->m_svi.bankLow == SVI_CART)
 	{
 		return;
 	}
@@ -902,12 +904,12 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	switch( offset )
 	{
 	case 0x10:
-		device = space->machine->device("centronics");
+		device = space->machine().device("centronics");
 		centronics_data_w(device, 0, data);
 		break;
 
 	case 0x11:
-		device = space->machine->device("centronics");
+		device = space->machine().device("centronics");
 		centronics_strobe_w(device, BIT(data, 0));
 		break;
 
@@ -919,7 +921,7 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x25:
 	case 0x26:
 	case 0x27:
-		device = space->machine->device("ins8250_0");
+		device = space->machine().device("ins8250_0");
 		ins8250_w(device, offset & 7, data);
 		break;
 
@@ -931,24 +933,24 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x2D:
 	case 0x2E:
 	case 0x2F:
-		device = space->machine->device("ins8250_1");
+		device = space->machine().device("ins8250_1");
 		ins8250_w(device, offset & 7, data);
 		break;
 
 	case 0x30:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		wd17xx_command_w(device, 0, data);
 		break;
 	case 0x31:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		wd17xx_track_w(device, 0, data);
 		break;
 	case 0x32:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		wd17xx_sector_w(device, 0, data);
 		break;
 	case 0x33:
-		device = space->machine->device("wd179x");
+		device = space->machine().device("wd179x");
 		wd17xx_data_w(device, 0, data);
 		break;
 	case 0x34:
@@ -959,11 +961,11 @@ WRITE8_HANDLER( svi318_io_ext_w )
 		break;
 
 	case 0x50:
-		device = space->machine->device("crtc");
+		device = space->machine().device("crtc");
 		mc6845_address_w(device, 0, data);
 		break;
 	case 0x51:
-		device = space->machine->device("crtc");
+		device = space->machine().device("crtc");
 		mc6845_register_w(device, 0, data);
 		break;
 

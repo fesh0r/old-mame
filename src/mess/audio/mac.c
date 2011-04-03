@@ -11,8 +11,7 @@
 #include "emu.h"
 #include "sound/asc.h"
 #include "includes/mac.h"
-#include "streams.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /***************************************************************************
     MACROS / CONSTANTS
@@ -71,7 +70,7 @@ static STREAM_UPDATE( mac_sound_update )
 	INT16 last_val = 0;
 	stream_sample_t *buffer = outputs[0];
 	mac_sound *token = get_token(device);
-	mac_state *mac = device->machine->driver_data<mac_state>();
+	mac_state *mac = device->machine().driver_data<mac_state>();
 
 	if ((mac->m_model == MODEL_MAC_PORTABLE) || (mac->m_model == MODEL_MAC_PB100))
 	{
@@ -80,7 +79,7 @@ static STREAM_UPDATE( mac_sound_update )
 	}
 
 	/* if we're not enabled, just fill with 0 */
-	if (device->machine->sample_rate == 0)
+	if (device->machine().sample_rate() == 0)
 	{
 		memset(buffer, 0, samples * sizeof(*buffer));
 		return;
@@ -115,8 +114,8 @@ static DEVICE_START(mac_sound)
 
 	memset(token, 0, sizeof(*token));
 
-	token->snd_cache = auto_alloc_array(device->machine, UINT8, SND_CACHE_SIZE);
-	token->mac_stream = stream_create(device, 0, 1, MAC_SAMPLE_RATE, 0, mac_sound_update);
+	token->snd_cache = auto_alloc_array(device->machine(), UINT8, SND_CACHE_SIZE);
+	token->mac_stream = device->machine().sound().stream_alloc(*device, 0, 1, MAC_SAMPLE_RATE, 0, mac_sound_update);
 }
 
 
@@ -140,9 +139,9 @@ void mac_set_sound_buffer(device_t *device, int buffer)
 	mac_sound *token = get_token(device);
 
 	if (buffer)
-		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(device->machine->device("messram")) + messram_get_size(device->machine->device("messram")) - MAC_MAIN_SND_BUF_OFFSET);
+		token->mac_snd_buf_ptr = (UINT16 *) (ram_get_ptr(device->machine().device(RAM_TAG)) + ram_get_size(device->machine().device(RAM_TAG)) - MAC_MAIN_SND_BUF_OFFSET);
 	else
-		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(device->machine->device("messram")) + messram_get_size(device->machine->device("messram")) - MAC_ALT_SND_BUF_OFFSET);
+		token->mac_snd_buf_ptr = (UINT16 *) (ram_get_ptr(device->machine().device(RAM_TAG)) + ram_get_size(device->machine().device(RAM_TAG)) - MAC_ALT_SND_BUF_OFFSET);
 }
 
 
@@ -154,9 +153,9 @@ void mac_set_volume(device_t *device, int volume)
 {
 	mac_sound *token = get_token(device);
 
-	stream_update(token->mac_stream);
+	token->mac_stream->update();
 	volume = (100 / 7) * volume;
-	sound_set_output_gain(device, 0, volume / 100.0);
+	token->mac_stream->set_output_gain(0, volume / 100.0);
 }
 
 
@@ -175,7 +174,7 @@ void mac_sh_updatebuffer(device_t *device)
 	if (token->snd_cache_len >= SND_CACHE_SIZE)
 	{
 		/* clear buffer */
-		stream_update(token->mac_stream);
+		token->mac_stream->update();
 	}
 
 	if (token->snd_cache_len >= SND_CACHE_SIZE)

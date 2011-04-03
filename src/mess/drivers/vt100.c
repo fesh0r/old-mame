@@ -27,23 +27,23 @@ public:
 	vt100_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 *ram;
-	UINT8 keyboard_int;
-	UINT8 receiver_int;
-	UINT8 vertical_int;
-	double send_baud_rate;
-	double recv_baud_rate;
-	UINT8 key_scan;
-	UINT8 key_code;
+	UINT8 *m_ram;
+	UINT8 m_keyboard_int;
+	UINT8 m_receiver_int;
+	UINT8 m_vertical_int;
+	double m_send_baud_rate;
+	double m_recv_baud_rate;
+	UINT8 m_key_scan;
+	UINT8 m_key_code;
 };
 
 
 
 
-static ADDRESS_MAP_START(vt100_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vt100_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
     AM_RANGE( 0x0000, 0x1fff ) AM_ROM  // ROM ( 4 * 2K)
-    AM_RANGE( 0x2000, 0x2bff ) AM_RAM AM_BASE_MEMBER(vt100_state, ram) // Screen and scratch RAM
+    AM_RANGE( 0x2000, 0x2bff ) AM_RAM AM_BASE_MEMBER(vt100_state, m_ram) // Screen and scratch RAM
     AM_RANGE( 0x2c00, 0x2fff ) AM_RAM  // AVO Screen RAM
     AM_RANGE( 0x3000, 0x3fff ) AM_RAM  // AVO Attribute RAM (4 bits wide)
     // 0x4000, 0x7fff is unassigned
@@ -52,13 +52,13 @@ static ADDRESS_MAP_START(vt100_mem, ADDRESS_SPACE_PROGRAM, 8)
     // 0xc000, 0xffff is unassigned
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(vt180_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(vt180_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x1fff ) AM_ROM
 	AM_RANGE( 0x2000, 0xffff ) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vt180_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vt180_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
@@ -73,10 +73,10 @@ ADDRESS_MAP_END
 // 7 - Keyboard TBMT H
 static READ8_HANDLER(vt100_flags_r)
 {
-	vt100_state *state = space->machine->driver_data<vt100_state>();
+	vt100_state *state = space->machine().driver_data<vt100_state>();
 	UINT8 retVal = 0;
-	retVal |= vt_video_lba7_r(space->machine->device("vt100_video"),0) * 0x40;
-	retVal |= state->keyboard_int * 0x80;
+	retVal |= vt_video_lba7_r(space->machine().device("vt100_video"),0) * 0x40;
+	retVal |= state->m_keyboard_int * 0x80;
 	return retVal;
 }
 
@@ -92,9 +92,9 @@ static UINT8 bit_sel(UINT8 data) {
 	return 0;
 }
 
-static TIMER_CALLBACK(keyboard_callback)
+static TIMER_DEVICE_CALLBACK(keyboard_callback)
 {
-	vt100_state *state = machine->driver_data<vt100_state>();
+	vt100_state *state = timer.machine().driver_data<vt100_state>();
 	int i;
 	static const char *const keynames[] = {
 		"LINE0", "LINE1", "LINE2", "LINE3",
@@ -103,14 +103,14 @@ static TIMER_CALLBACK(keyboard_callback)
 		"LINEC", "LINED", "LINEE", "LINEF"
 	};
 	UINT8 code;
-	if (state->key_scan) {
+	if (state->m_key_scan) {
 		for(i = 0; i < 16; i++)
 		{
-			code =	input_port_read(machine, keynames[i]);
+			code =	input_port_read(timer.machine(), keynames[i]);
 			if (code!=0xff) {
-				state->keyboard_int = 1;
-				state->key_code = i | bit_sel(code);
-				cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+				state->m_keyboard_int = 1;
+				state->m_key_code = i | bit_sel(code);
+				cputag_set_input_line(timer.machine(), "maincpu", 0, HOLD_LINE);
 				break;
 			}
 		}
@@ -120,9 +120,9 @@ static TIMER_CALLBACK(keyboard_callback)
 
 static WRITE8_HANDLER(vt100_keyboard_w)
 {
-	vt100_state *state = space->machine->driver_data<vt100_state>();
+	vt100_state *state = space->machine().driver_data<vt100_state>();
 
-	device_t *speaker = space->machine->device("speaker");
+	device_t *speaker = space->machine().device("speaker");
 
 	output_set_value("online_led",BIT(data,5) ? 0 : 1);
 	output_set_value("local_led", BIT(data,5));
@@ -131,32 +131,32 @@ static WRITE8_HANDLER(vt100_keyboard_w)
 	output_set_value("l2_led",	  BIT(data,2) ? 0 : 1);
 	output_set_value("l3_led",	  BIT(data,1) ? 0 : 1);
 	output_set_value("l4_led",	  BIT(data,0) ? 0 : 1);
-	state->key_scan = BIT(data,6);
+	state->m_key_scan = BIT(data,6);
 	speaker_level_w(speaker, BIT(data,7));
 }
 
 static READ8_HANDLER(vt100_keyboard_r)
 {
-	vt100_state *state = space->machine->driver_data<vt100_state>();
-	return state->key_code;
+	vt100_state *state = space->machine().driver_data<vt100_state>();
+	return state->m_key_code;
 }
 static WRITE8_HANDLER(vt100_baud_rate_w)
 {
-	vt100_state *state = space->machine->driver_data<vt100_state>();
+	vt100_state *state = space->machine().driver_data<vt100_state>();
 	static const double baud_rate[] = {
 		50, 75, 110, 134.5, 150, 200, 300, 600, 1200,
 		1800, 2000, 2400, 3600, 4800, 9600, 19200
 	};
 
-	state->send_baud_rate = baud_rate[(data >>4) & 0x0f];
-	state->recv_baud_rate = baud_rate[data & 0x0f];
+	state->m_send_baud_rate = baud_rate[(data >>4) & 0x0f];
+	state->m_recv_baud_rate = baud_rate[data & 0x0f];
 }
 
 static WRITE8_HANDLER(vt100_nvr_latch_w)
 {
 }
 
-static ADDRESS_MAP_START( vt100_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( vt100_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	// 0x00, 0x01 PUSART  (Intel 8251)
 	// AM_RANGE (0x00, 0x01)
@@ -300,9 +300,9 @@ static INPUT_PORTS_START( vt100 )
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED) // Always return 0x7f on last scan line
 INPUT_PORTS_END
 
-static VIDEO_UPDATE( vt100 )
+static SCREEN_UPDATE( vt100 )
 {
-	device_t *devconf = screen->machine->device("vt100_video");
+	device_t *devconf = screen->machine().device("vt100_video");
 	vt_video_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -315,23 +315,22 @@ static VIDEO_UPDATE( vt100 )
 //          all other set to 1
 static IRQ_CALLBACK(vt100_irq_callback)
 {
-	vt100_state *state = device->machine->driver_data<vt100_state>();
-	UINT8 retVal = 0xc7 | (0x08 * state->keyboard_int) | (0x10 * state->receiver_int) | (0x20 * state->vertical_int);
-	state->receiver_int = 0;
+	vt100_state *state = device->machine().driver_data<vt100_state>();
+	UINT8 retVal = 0xc7 | (0x08 * state->m_keyboard_int) | (0x10 * state->m_receiver_int) | (0x20 * state->m_vertical_int);
+	state->m_receiver_int = 0;
 	return retVal;
 }
 
 static MACHINE_START(vt100)
 {
-	timer_pulse(machine, ATTOTIME_IN_HZ(800), NULL, 0, keyboard_callback);
 }
 
 static MACHINE_RESET(vt100)
 {
-	vt100_state *state = machine->driver_data<vt100_state>();
-	state->keyboard_int = 0;
-	state->receiver_int = 0;
-	state->vertical_int = 0;
+	vt100_state *state = machine.driver_data<vt100_state>();
+	state->m_keyboard_int = 0;
+	state->m_receiver_int = 0;
+	state->m_vertical_int = 0;
 	output_set_value("online_led",1);
 	output_set_value("local_led", 1);
 	output_set_value("locked_led",1);
@@ -340,21 +339,21 @@ static MACHINE_RESET(vt100)
 	output_set_value("l3_led",	  1);
 	output_set_value("l4_led",	  1);
 
-	state->key_scan = 0;
+	state->m_key_scan = 0;
 
-	cpu_set_irq_callback(machine->device("maincpu"), vt100_irq_callback);
+	device_set_irq_callback(machine.device("maincpu"), vt100_irq_callback);
 }
 
 static READ8_DEVICE_HANDLER (vt100_read_video_ram_r )
 {
-	vt100_state *state = device->machine->driver_data<vt100_state>();
-	return state->ram[offset];
+	vt100_state *state = device->machine().driver_data<vt100_state>();
+	return state->m_ram[offset];
 }
 
 static WRITE8_DEVICE_HANDLER (vt100_clear_video_interrupt)
 {
-	vt100_state *state = device->machine->driver_data<vt100_state>();
-	state->vertical_int = 0;
+	vt100_state *state = device->machine().driver_data<vt100_state>();
+	state->m_vertical_int = 0;
 }
 
 static const vt_video_interface vt100_video_interface = {
@@ -366,9 +365,9 @@ static const vt_video_interface vt100_video_interface = {
 
 static INTERRUPT_GEN( vt100_vertical_interrupt )
 {
-	vt100_state *state = device->machine->driver_data<vt100_state>();
-	state->vertical_int = 1;
-	cpu_set_input_line(device, 0, HOLD_LINE);
+	vt100_state *state = device->machine().driver_data<vt100_state>();
+	state->m_vertical_int = 1;
+	device_set_input_line(device, 0, HOLD_LINE);
 }
 
 /* F4 Character Displayer */
@@ -409,13 +408,14 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(80*10, 25*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*10-1, 0, 25*10-1)
+	MCFG_SCREEN_UPDATE(vt100)
+
 	MCFG_GFXDECODE(vt100)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(monochrome_green)
 
 	MCFG_DEFAULT_LAYOUT( layout_vt100 )
 	MCFG_VIDEO_START(generic_bitmapped)
-	MCFG_VIDEO_UPDATE(vt100)
 
 	MCFG_VT100_VIDEO_ADD("vt100_video", vt100_video_interface)
 
@@ -423,12 +423,14 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(800))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( vt180, vt100 )
 	MCFG_CPU_ADD("z80cpu", Z80, XTAL_24_8832MHz / 9)
 	MCFG_CPU_PROGRAM_MAP(vt180_mem)
-    MCFG_CPU_IO_MAP(vt180_io)	
+    MCFG_CPU_IO_MAP(vt180_io)
 MACHINE_CONFIG_END
 
 /* VT1xx models:
@@ -747,22 +749,22 @@ ROM_START( vt180 )
 	ROM_LOAD_OPTIONAL ( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 
 	ROM_REGION(0x10000, "z80cpu", 0) // z80 daughterboard
-	ROM_LOAD( "23-021e3-00.bin", 0x0000, 0x1000, CRC(a2a575d2) SHA1(47a2c40aaec89e8476240f25515d75ab157f2911))	
-	ROM_LOAD( "23-017e3-00.bin", 0x1000, 0x1000, CRC(4bdd2398) SHA1(84f288def6c143a2d2ed9dedf947c862c66bb18e))	
+	ROM_LOAD( "23-021e3-00.bin", 0x0000, 0x1000, CRC(a2a575d2) SHA1(47a2c40aaec89e8476240f25515d75ab157f2911))
+	ROM_LOAD( "23-017e3-00.bin", 0x1000, 0x1000, CRC(4bdd2398) SHA1(84f288def6c143a2d2ed9dedf947c862c66bb18e))
 ROM_END
 
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY FULLNAME       FLAGS */
 COMP( 1978, vt100,  0,       0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT100",		GAME_NOT_WORKING)
-//COMP( 1978, vt100wp,  vt100, 0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT100-Wx",		GAME_NOT_WORKING)
+//COMP( 1978, vt100wp,  vt100, 0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT100-Wx",     GAME_NOT_WORKING)
 //COMP( 1978, vt100stp,  vt100,       0,    vt100,   vt100,       0,     "Digital Equipment Corporation",   "VT100 w/VT1xx-AC STP",       GAME_NOT_WORKING)
-//COMP( 1981, vt101,  0,       0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT101",		GAME_NOT_WORKING)
-//COMP( 1981, vt102,  vt101,   0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT102",		GAME_NOT_WORKING)
-//COMP( 1979, vt103,  vt100,   0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT103",		GAME_NOT_WORKING)
+//COMP( 1981, vt101,  0,       0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT101",        GAME_NOT_WORKING)
+//COMP( 1981, vt102,  vt101,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT102",        GAME_NOT_WORKING)
+//COMP( 1979, vt103,  vt100,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT103",        GAME_NOT_WORKING)
 COMP( 1978, vt105,  vt100,   0,     vt100,   vt100, 	 0, 	 "Digital Equipment Corporation",   "VT105",		GAME_NOT_WORKING)
-//COMP( 1978, vt110,  vt100,   0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT110",		GAME_NOT_WORKING)
-//COMP( 1981, vt125,  vt100,   0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT125",		GAME_NOT_WORKING)
+//COMP( 1978, vt110,  vt100,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT110",        GAME_NOT_WORKING)
+//COMP( 1981, vt125,  vt100,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT125",        GAME_NOT_WORKING)
 COMP( 1981, vt131,  /*vt101*/0, 0,  vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT131",		GAME_NOT_WORKING)	// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
 //COMP( 1979, vt132,  vt100,   0,    vt100,   vt100,     0,      "Digital Equipment Corporation",   "VT132",      GAME_NOT_WORKING)
 COMP( 1983, vt180,  vt100,   0,     vt180,   vt100, 	 0, 	 "Digital Equipment Corporation",   "VT180",		GAME_NOT_WORKING)

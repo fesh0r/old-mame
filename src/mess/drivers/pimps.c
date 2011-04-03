@@ -17,7 +17,7 @@ public:
 	pimps_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 received_char;
+	UINT8 m_received_char;
 };
 
 
@@ -26,47 +26,46 @@ public:
 
 static READ8_HANDLER(pimps_terminal_status_r)
 {
-	pimps_state *state = space->machine->driver_data<pimps_state>();
-	if (state->received_char!=0) return 3; // char received
+	pimps_state *state = space->machine().driver_data<pimps_state>();
+	if (state->m_received_char!=0) return 3; // char received
 	return 1; // ready
 }
 
 static READ8_DEVICE_HANDLER(pimps_terminal_r)
 {
-	pimps_state *state = device->machine->driver_data<pimps_state>();
-	UINT8 retVal = state->received_char;
-	state->received_char = 0;
+	pimps_state *state = device->machine().driver_data<pimps_state>();
+	UINT8 retVal = state->m_received_char;
+	state->m_received_char = 0;
 	return retVal;
 }
 
-static ADDRESS_MAP_START(pimps_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(pimps_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xefff) AM_RAM
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pimps_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pimps_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0xf0, 0xf0) AM_DEVREADWRITE("terminal", pimps_terminal_r, terminal_write)
+	AM_RANGE(0xf0, 0xf0) AM_DEVREADWRITE(TERMINAL_TAG, pimps_terminal_r, terminal_write)
 	AM_RANGE(0xf1, 0xf1) AM_READ(pimps_terminal_status_r)
 ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( pimps )
-	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 
 static MACHINE_RESET(pimps)
 {
-	pimps_state *state = machine->driver_data<pimps_state>();
-	state->received_char = 0;
+	pimps_state *state = machine.driver_data<pimps_state>();
+	state->m_received_char = 0;
 }
 
 static WRITE8_DEVICE_HANDLER( pimps_kbd_put )
 {
-	pimps_state *state = device->machine->driver_data<pimps_state>();
-	state->received_char = data;
+	pimps_state *state = device->machine().driver_data<pimps_state>();
+	state->m_received_char = data;
 }
 
 static GENERIC_TERMINAL_INTERFACE( pimps_terminal_intf )

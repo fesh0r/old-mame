@@ -10,7 +10,7 @@
 #include "video/mc6845.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
 
 typedef struct
 {
@@ -25,32 +25,32 @@ public:
 	pet_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	int pet_basic1; /* basic version 1 for quickloader */
-	int superpet;
-	int cbm8096;
+	int m_pet_basic1; /* basic version 1 for quickloader */
+	int m_superpet;
+	int m_cbm8096;
 
-	int pia0_irq;
-	int pia1_irq;
-	int via_irq;
-	UINT8 *videoram;
-	int font;
-	UINT8 *memory;
-	UINT8 *supermemory;
-	UINT8 *pet80_bank1_base;
-	int keyline_select;
-	emu_timer *datasette1_timer;
-	emu_timer *datasette2_timer;
-	spet_t spet;
-	int pia_level;
+	int m_pia0_irq;
+	int m_pia1_irq;
+	int m_via_irq;
+	UINT8 *m_videoram;
+	int m_font;
+	UINT8 *m_memory;
+	UINT8 *m_supermemory;
+	UINT8 *m_pet80_bank1_base;
+	int m_keyline_select;
+	emu_timer *m_datasette1_timer;
+	emu_timer *m_datasette2_timer;
+	spet_t m_spet;
+	int m_pia_level;
 };
 
 /*----------- defined in video/pet.c -----------*/
 
 /* call to init videodriver */
-void pet_vh_init (running_machine *machine);
-void pet80_vh_init (running_machine *machine);
-void superpet_vh_init (running_machine *machine);
-VIDEO_UPDATE( pet );
+void pet_vh_init (running_machine &machine);
+void pet80_vh_init (running_machine &machine);
+void superpet_vh_init (running_machine &machine);
+SCREEN_UPDATE( pet );
 MC6845_UPDATE_ROW( pet40_update_row );
 MC6845_UPDATE_ROW( pet80_update_row );
 WRITE_LINE_DEVICE_HANDLER( pet_display_enable_changed );

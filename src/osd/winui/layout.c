@@ -43,6 +43,8 @@
 #include "mui_audit.h"
 #include "winui.h"
 #include "properties.h"
+#include "resourcems.h"
+#include "propertiesms.h"
 
 static BOOL FilterAvailable(int driver_index);
 
@@ -76,6 +78,8 @@ extern const FOLDERDATA g_folderData[] =
   	{"Samples",    	    "samples",           FOLDER_SAMPLES,      IDI_FOLDER,               0,             0,            NULL,                       DriverUsesSamples,       TRUE },
   	{"Save State",    	"savestate",         FOLDER_SAVESTATE,    IDI_FOLDER,               0,             0,            NULL,                       DriverSupportsSaveState, TRUE },
   	{"BIOS",	    	"bios",		         FOLDER_BIOS,		  IDI_FOLDER,               0,             0,            NULL,                       DriverIsBios,			  TRUE },
+	{"Mechanical",      "mechanical",        FOLDER_MECHANICAL,   IDI_FOLDER,				0,             0,  			 NULL,                       DriverIsMechanical,      TRUE },
+	{"Non Mechanical",  "nonmechanical",     FOLDER_NONMECHANICAL,IDI_FOLDER,				0,             0,  			 NULL,                       DriverIsMechanical,      FALSE },
 	{ NULL }
 };
 
@@ -92,6 +96,7 @@ extern const FILTER_ITEM g_filterList[] =
 	{ F_AVAILABLE,    IDC_FILTER_AVAILABLE,   FilterAvailable, TRUE },
 	{ F_HORIZONTAL,   IDC_FILTER_HORIZONTAL,  DriverIsVertical, FALSE },
 	{ F_VERTICAL,     IDC_FILTER_VERTICAL,    DriverIsVertical, TRUE },
+	{ F_MECHANICAL,   IDC_FILTER_MECHANICAL,  DriverIsMechanical, TRUE },
 	{ 0 }
 };
 
@@ -127,6 +132,7 @@ extern const DIRECTORYINFO g_directoryInfo[] =
 extern const SPLITTERINFO g_splitterInfo[] =
 {
 	{ 0.25,	IDC_SPLITTER,	IDC_TREE,	IDC_LIST,		AdjustSplitter1Rect },
+//	{ 0.4,	IDC_SPLITTER2,	IDC_LIST,	IDC_SWTAB,		AdjustSplitter1Rect },
 	{ 0.5,	IDC_SPLITTER2,	IDC_LIST,	IDC_SSFRAME,	AdjustSplitter2Rect },
 	{ -1 }
 };
@@ -164,9 +170,16 @@ extern const ICONDATA g_iconData[] =
 	{ IDI_WIN_UNKNOWN,			"unknown" },
 	{ IDI_WIN_CLONE,			"clone" },
 	{ IDI_WIN_REDX,				"warning" },
+	{ IDI_WIN_NOROMSNEEDED,		"noromsneeded" },
+	{ IDI_WIN_MISSINGOPTROM,	"missingoptrom" },
+	{ IDI_WIN_FLOP,				"floppy" },
+	{ IDI_WIN_CASS,				"cassette" },
+	{ IDI_WIN_SERL,				"serial" },
+	{ IDI_WIN_SNAP,				"snapshot" },
+	{ IDI_WIN_PRIN,				"printer" },
+	{ IDI_WIN_HARD,				"hard" },
 	{ 0 }
 };
-
 extern const TCHAR g_szPlayGameString[] = TEXT("&Play %s");
 extern const char g_szGameCountString[] = "%d games";
 extern const char g_szHistoryFileName[] = "history.dat";

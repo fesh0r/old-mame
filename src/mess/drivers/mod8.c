@@ -17,49 +17,49 @@ public:
 	mod8_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT16 tty_data;
-	UINT8 tty_key_data;
-	int tty_cnt;
+	UINT16 m_tty_data;
+	UINT8 m_tty_key_data;
+	int m_tty_cnt;
 };
 
 static WRITE8_HANDLER(out_w)
 {
-	mod8_state *state = space->machine->driver_data<mod8_state>();
-	device_t *devconf = space->machine->device(TELEPRINTER_TAG);
+	mod8_state *state = space->machine().driver_data<mod8_state>();
+	device_t *devconf = space->machine().device(TELEPRINTER_TAG);
 
-	state->tty_data >>= 1;
-	state->tty_data |= (data & 0x01) ? 0x8000 : 0;
-	state->tty_cnt++;
-	if (state->tty_cnt==10) {
-		teleprinter_write(devconf,0,(state->tty_data >> 7) & 0x7f);
-		state->tty_cnt = 0;
+	state->m_tty_data >>= 1;
+	state->m_tty_data |= (data & 0x01) ? 0x8000 : 0;
+	state->m_tty_cnt++;
+	if (state->m_tty_cnt==10) {
+		teleprinter_write(devconf,0,(state->m_tty_data >> 7) & 0x7f);
+		state->m_tty_cnt = 0;
 	}
 }
 
 static WRITE8_HANDLER(tty_w)
 {
-	mod8_state *state = space->machine->driver_data<mod8_state>();
+	mod8_state *state = space->machine().driver_data<mod8_state>();
 
-	state->tty_data = 0;
-	state->tty_cnt = 0;
+	state->m_tty_data = 0;
+	state->m_tty_cnt = 0;
 }
 
 static READ8_HANDLER(tty_r)
 {
-	mod8_state *state = space->machine->driver_data<mod8_state>();
-	UINT8 d = state->tty_key_data & 0x01;
+	mod8_state *state = space->machine().driver_data<mod8_state>();
+	UINT8 d = state->m_tty_key_data & 0x01;
 
-	state->tty_key_data >>= 1;
+	state->m_tty_key_data >>= 1;
 	return d;
 }
 
-static ADDRESS_MAP_START(mod8_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(mod8_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000,0x6ff) AM_ROM
 	AM_RANGE(0x700,0xfff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( mod8_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( mod8_io , AS_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00,0x00) AM_READ(tty_r)
 	AM_RANGE(0x0a,0x0a) AM_WRITE(out_w)
@@ -68,7 +68,6 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( mod8 )
-	PORT_INCLUDE(generic_teleprinter)
 INPUT_PORTS_END
 
 static IRQ_CALLBACK ( mod8_irq_callback )
@@ -78,15 +77,15 @@ static IRQ_CALLBACK ( mod8_irq_callback )
 
 static MACHINE_RESET(mod8)
 {
-	cpu_set_irq_callback(machine->device("maincpu"), mod8_irq_callback);
+	device_set_irq_callback(machine.device("maincpu"), mod8_irq_callback);
 }
 
 static WRITE8_DEVICE_HANDLER( mod8_kbd_put )
 {
-	mod8_state *state = device->machine->driver_data<mod8_state>();
+	mod8_state *state = device->machine().driver_data<mod8_state>();
 
-	state->tty_key_data = data ^ 0xff;
-	cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
+	state->m_tty_key_data = data ^ 0xff;
+	cputag_set_input_line(device->machine(), "maincpu", 0, HOLD_LINE);
 }
 
 static GENERIC_TELEPRINTER_INTERFACE( mod8_teleprinter_intf )
@@ -106,7 +105,6 @@ static MACHINE_CONFIG_START( mod8, mod8_state )
     /* video hardware */
     MCFG_FRAGMENT_ADD( generic_teleprinter )
 	MCFG_GENERIC_TELEPRINTER_ADD(TELEPRINTER_TAG,mod8_teleprinter_intf)
-
 MACHINE_CONFIG_END
 
 

@@ -1,7 +1,24 @@
+#pragma once
+
 #ifndef __KYOCERA__
 #define __KYOCERA__
 
+#define ADDRESS_MAP_MODERN
+
+#include "emu.h"
+#include "cpu/i8085/i8085.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
+#include "machine/ctronics.h"
+#include "machine/i8155.h"
+#include "machine/msm8251.h"
+#include "machine/ram.h"
+#include "machine/rp5c01a.h"
+#include "machine/upd1990a.h"
+#include "video/hd44102.h"
 #include "video/hd61830.h"
+#include "sound/speaker.h"
+#include "rendlay.h"
 
 #define SCREEN_TAG		"screen"
 #define I8085_TAG		"m19"
@@ -51,11 +68,11 @@ public:
 		  m_centronics(*this, CENTRONICS_TAG),
 		  m_speaker(*this, SPEAKER_TAG),
 		  m_cassette(*this, CASSETTE_TAG),
-		  m_ram(*this, "messram")
+		  m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_rtc;
+	required_device<upd1990a_device> m_rtc;
 	required_device<device_t> m_lcdc0;
 	required_device<device_t> m_lcdc1;
 	required_device<device_t> m_lcdc2;
@@ -73,7 +90,7 @@ public:
 
 	virtual void machine_start();
 
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	DECLARE_READ8_MEMBER( uart_status_r );
 	DECLARE_WRITE8_MEMBER( uart_ctrl_w );
@@ -145,7 +162,7 @@ public:
 		  m_centronics(*this, CENTRONICS_TAG),
 		  m_speaker(*this, SPEAKER_TAG),
 		  m_cassette(*this, CASSETTE_TAG),
-		  m_ram(*this, "messram")
+		  m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -158,7 +175,7 @@ public:
 
 	virtual void machine_start();
 
-	virtual bool video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	DECLARE_READ8_MEMBER( bank_r );
 	DECLARE_WRITE8_MEMBER( bank_w );

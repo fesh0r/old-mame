@@ -25,9 +25,9 @@
 #include "includes/mtx.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
-#include "devices/snapquik.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
+#include "imagedev/snapquik.h"
 #include "machine/ctronics.h"
 #include "machine/z80ctc.h"
 #include "machine/z80dart.h"
@@ -42,7 +42,7 @@
     ADDRESS_MAP( mtx_mem )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( mtx_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mtx_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK("bank1")
 	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK("bank2")
 	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank3")
@@ -54,7 +54,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( mtx_io )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( mtx_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( mtx_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_DEVREAD(CENTRONICS_TAG, mtx_strobe_r) AM_WRITE(mtx_bankswitch_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
@@ -81,7 +81,7 @@ ADDRESS_MAP_END
     ADDRESS_MAP( rs128_io )
 -------------------------------------------------*/
 
-static ADDRESS_MAP_START( rs128_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( rs128_io, AS_IO, 8 )
 	AM_IMPORT_FROM(mtx_io)
 	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE(Z80DART_TAG, z80dart_cd_ba_r, z80dart_cd_ba_w)
 ADDRESS_MAP_END
@@ -211,32 +211,32 @@ INPUT_PORTS_END
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	mtx_state *state = timer.machine->driver_data<mtx_state>();
+	mtx_state *state = timer.machine().driver_data<mtx_state>();
 
-	z80ctc_trg1_w(state->z80ctc, 1);
-	z80ctc_trg1_w(state->z80ctc, 0 );
-	z80ctc_trg2_w(state->z80ctc, 1);
-	z80ctc_trg2_w(state->z80ctc, 0 );
+	z80ctc_trg1_w(state->m_z80ctc, 1);
+	z80ctc_trg1_w(state->m_z80ctc, 0 );
+	z80ctc_trg2_w(state->m_z80ctc, 1);
+	z80ctc_trg2_w(state->m_z80ctc, 0 );
 }
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_trg1_w )
 {
-	mtx_state *driver_state = device->machine->driver_data<mtx_state>();
+	mtx_state *driver_state = device->machine().driver_data<mtx_state>();
 
-	if (driver_state->z80dart != NULL)
+	if (driver_state->m_z80dart != NULL)
 	{
-		z80dart_rxca_w(driver_state->z80dart, state);
-		z80dart_txca_w(driver_state->z80dart, state);
+		z80dart_rxca_w(driver_state->m_z80dart, state);
+		z80dart_txca_w(driver_state->m_z80dart, state);
 	}
 }
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_trg2_w )
 {
-	mtx_state *driver_state = device->machine->driver_data<mtx_state>();
+	mtx_state *driver_state = device->machine().driver_data<mtx_state>();
 
-	if (driver_state->z80dart != NULL)
+	if (driver_state->m_z80dart != NULL)
 	{
-		z80dart_rxtxcb_w(driver_state->z80dart, state);
+		z80dart_rxtxcb_w(driver_state->m_z80dart, state);
 	}
 }
 
@@ -304,10 +304,10 @@ static const z80_daisy_config rs128_daisy_chain[] =
 
 static TIMER_DEVICE_CALLBACK( cassette_tick )
 {
-	mtx_state *state = timer.machine->driver_data<mtx_state>();
-	int data = (cassette_input(state->cassette) > +0.0) ? 0 : 1;
+	mtx_state *state = timer.machine().driver_data<mtx_state>();
+	int data = (cassette_input(state->m_cassette) > +0.0) ? 0 : 1;
 
-	z80ctc_trg3_w(state->z80ctc, data);
+	z80ctc_trg3_w(state->m_z80ctc, data);
 }
 
 static const cassette_config mtx_cassette_config =
@@ -351,14 +351,14 @@ static MACHINE_CONFIG_START( mtx512, mtx_state )
 
 	/* devices */
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_4MHz, ctc_intf )
-	MCFG_TIMER_ADD_PERIODIC("z80ctc_timer", ctc_tick, HZ(XTAL_4MHz/13))
+	MCFG_TIMER_ADD_PERIODIC("z80ctc_timer", ctc_tick, attotime::from_hz(XTAL_4MHz/13))
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_SNAPSHOT_ADD("snapshot", mtx, "mtb", 0.5)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, mtx_cassette_config)
-	MCFG_TIMER_ADD_PERIODIC("cassette_timer", cassette_tick, HZ(44100))
+	MCFG_TIMER_ADD_PERIODIC("cassette_timer", cassette_tick, attotime::from_hz(44100))
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("96K,128K,160K,192K,224K,256K,288K,320K,352K,384K,416K,448K,480K,512K")
 MACHINE_CONFIG_END
@@ -370,7 +370,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( mtx500, mtx512 )
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
 	MCFG_RAM_EXTRA_OPTIONS("64K,96K,128K,160K,192K,224K,256K,288K,320K,352K,384K,416K,448K,480K,512K")
 MACHINE_CONFIG_END
@@ -390,7 +390,7 @@ static MACHINE_CONFIG_DERIVED( rs128, mtx512 )
 	MCFG_Z80DART_ADD(Z80DART_TAG, XTAL_4MHz, dart_intf)
 
 	/* internal ram */
-	MCFG_RAM_MODIFY("messram")
+	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("160K,192K,224K,256K,288K,320K,352K,384K,416K,448K,480K,512K")
 MACHINE_CONFIG_END

@@ -40,24 +40,24 @@ public:
 	ssystem3_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	UINT8 porta;
-	UINT8 *videoram;
-	playfield_t playfield;
-	lcd_t lcd;
+	UINT8 m_porta;
+	UINT8 *m_videoram;
+	playfield_t m_playfield;
+	lcd_t m_lcd;
 };
 
 
 /*----------- defined in drivers/ssystem3.c -----------*/
 
-void ssystem3_playfield_getfigure(running_machine *machine, int x, int y, int *figure, int *black);
+void ssystem3_playfield_getfigure(running_machine &machine, int x, int y, int *figure, int *black);
 
 /*----------- defined in video/ssystem3.c -----------*/
 
 extern PALETTE_INIT( ssystem3 );
 extern VIDEO_START( ssystem3 );
-extern VIDEO_UPDATE( ssystem3 );
+extern SCREEN_UPDATE( ssystem3 );
 
-void ssystem3_lcd_reset(running_machine *machine);
-void ssystem3_lcd_write(running_machine *machine, int clock, int data);
+void ssystem3_lcd_reset(running_machine &machine);
+void ssystem3_lcd_write(running_machine &machine, int clock, int data);
 
 #endif /* SSYSTEM3_H_ */

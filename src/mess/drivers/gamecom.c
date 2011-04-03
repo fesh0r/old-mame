@@ -18,10 +18,10 @@ Todo:
 #include "emu.h"
 #include "includes/gamecom.h"
 #include "cpu/sm8500/sm8500.h"
-#include "devices/cartslot.h"
+#include "imagedev/cartslot.h"
+#include "rendlay.h"
 
-
-static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(gamecom_mem_map, AS_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x0013 )  AM_RAM
 	AM_RANGE( 0x0014, 0x0017 )  AM_READWRITE( gamecom_pio_r, gamecom_pio_w )        // buttons
 	AM_RANGE( 0x0018, 0x001F )  AM_RAM
@@ -33,7 +33,7 @@ static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x4000, 0x5FFF )  AM_ROMBANK("bank2")                                       /* External ROM/Flash. Controlled by MMU2 */
 	AM_RANGE( 0x6000, 0x7FFF )  AM_ROMBANK("bank3")                                       /* External ROM/Flash. Controlled by MMU3 */
 	AM_RANGE( 0x8000, 0x9FFF )  AM_ROMBANK("bank4")                                       /* External ROM/Flash. Controlled by MMU4 */
-	AM_RANGE( 0xA000, 0xDFFF )  AM_RAM AM_BASE_MEMBER(gamecom_state, vram)			/* VRAM */
+	AM_RANGE( 0xA000, 0xDFFF )  AM_RAM AM_BASE_MEMBER(gamecom_state, m_vram)			/* VRAM */
 	AM_RANGE( 0xE000, 0xFFFF )  AM_RAM AM_SHARE("nvram")                  /* Extended I/O, Extended RAM */
 ADDRESS_MAP_END
 
@@ -91,7 +91,7 @@ static PALETTE_INIT( gamecom )
 
 static INTERRUPT_GEN( gamecom_interrupt )
 {
-	cputag_set_input_line(device->machine, "maincpu", LCDC_INT, ASSERT_LINE );
+	cputag_set_input_line(device->machine(), "maincpu", LCDC_INT, ASSERT_LINE );
 }
 
 static MACHINE_CONFIG_START( gamecom, gamecom_state )
@@ -101,10 +101,7 @@ static MACHINE_CONFIG_START( gamecom, gamecom_state )
 	MCFG_CPU_CONFIG( gamecom_cpu_config )
 	MCFG_CPU_VBLANK_INT("screen", gamecom_interrupt)
 
-	MCFG_SCREEN_ADD("screen", LCD)
-	MCFG_SCREEN_REFRESH_RATE( 59.732155 )
-	MCFG_SCREEN_VBLANK_TIME(500)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	//MCFG_NVRAM_ADD_0FILL("nvram")
 
@@ -112,11 +109,15 @@ static MACHINE_CONFIG_START( gamecom, gamecom_state )
 
 	/* video hardware */
 	MCFG_VIDEO_START( gamecom )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
 
+	MCFG_SCREEN_ADD("screen", LCD)
+	MCFG_SCREEN_REFRESH_RATE( 59.732155 )
+	MCFG_SCREEN_VBLANK_TIME(500)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE( 200, 200 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 199, 0, 159 )
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	MCFG_PALETTE_LENGTH( GAMECOM_PALETTE_LENGTH )
 	MCFG_PALETTE_INIT( gamecom )

@@ -52,10 +52,10 @@ public:
 	svi318_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	SVI_318 svi;
-	UINT8 *pcart;
-	UINT32 pcart_rom_size;
-	SVI318_FDC_STRUCT fdc;
+	SVI_318 m_svi;
+	UINT8 *m_pcart;
+	UINT32 m_pcart_rom_size;
+	SVI318_FDC_STRUCT m_fdc;
 };
 
 
@@ -75,7 +75,7 @@ DEVICE_IMAGE_LOAD( svi318_cart );
 DEVICE_IMAGE_UNLOAD( svi318_cart );
 
 INTERRUPT_GEN( svi318_interrupt );
-void svi318_vdp_interrupt(running_machine *machine, int i);
+void svi318_vdp_interrupt(running_machine &machine, int i);
 
 WRITE8_HANDLER( svi318_writemem1 );
 WRITE8_HANDLER( svi318_writemem2 );
@@ -91,11 +91,11 @@ WRITE8_DEVICE_HANDLER( svi318_ppi_w );
 WRITE8_HANDLER( svi318_psg_port_b_w );
 READ8_HANDLER( svi318_psg_port_a_r );
 
-int svi318_cassette_present(running_machine *machine, int id);
+int svi318_cassette_present(running_machine &machine, int id);
 
 MC6845_UPDATE_ROW( svi806_crtc6845_update_row );
 VIDEO_START( svi328_806 );
-VIDEO_UPDATE( svi328_806 );
+SCREEN_UPDATE( svi328_806 );
 MACHINE_RESET( svi328_806 );
 
 #endif /* SVI318_H_ */

@@ -40,13 +40,13 @@ public:
 };
 
 
-static ADDRESS_MAP_START(systec_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(systec_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( systec_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( systec_io, AS_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
 
@@ -62,7 +62,7 @@ static VIDEO_START( systec )
 {
 }
 
-static VIDEO_UPDATE( systec )
+static SCREEN_UPDATE( systec )
 {
 	return 0;
 }
@@ -82,12 +82,12 @@ static MACHINE_CONFIG_START( systec, systec_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 192) /* border size not accurate */
 	MCFG_SCREEN_VISIBLE_AREA(0, 256 - 1, 0, 192 - 1)
+    MCFG_SCREEN_UPDATE(systec)
 
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(systec)
-    MCFG_VIDEO_UPDATE(systec)
 MACHINE_CONFIG_END
 
 

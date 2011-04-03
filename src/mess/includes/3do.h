@@ -165,14 +165,14 @@ public:
 	_3do_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	legacy_cpu_device* maincpu;
-	UINT32 *dram;
-	UINT32 *vram;
-	SLOW2 slow2;
-	MADAM madam;
-	CLIO clio;
-	SVF svf;
-	UINT8 video_bits[512];
+	legacy_cpu_device* m_maincpu;
+	UINT32 *m_dram;
+	UINT32 *m_vram;
+	SLOW2 m_slow2;
+	MADAM m_madam;
+	CLIO m_clio;
+	SVF m_svf;
+	UINT8 m_video_bits[512];
 };
 
 /*----------- defined in machine/3do.c -----------*/
@@ -182,21 +182,21 @@ WRITE32_HANDLER( _3do_nvarea_w );
 
 READ32_HANDLER( _3do_slow2_r );
 WRITE32_HANDLER( _3do_slow2_w );
-void _3do_slow2_init( running_machine *machine );
+void _3do_slow2_init( running_machine &machine );
 
 READ32_HANDLER( _3do_svf_r );
 WRITE32_HANDLER( _3do_svf_w );
 
 READ32_HANDLER( _3do_madam_r );
 WRITE32_HANDLER( _3do_madam_w );
-void _3do_madam_init( running_machine *machine );
+void _3do_madam_init( running_machine &machine );
 
 READ32_HANDLER( _3do_clio_r );
 WRITE32_HANDLER( _3do_clio_w );
-void _3do_clio_init( running_machine *machine, screen_device *screen );
+void _3do_clio_init( running_machine &machine, screen_device *screen );
 
 
 VIDEO_START( _3do );
-VIDEO_UPDATE( _3do );
+SCREEN_UPDATE( _3do );
 
 #endif /* _3DO_H_ */

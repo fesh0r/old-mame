@@ -7,7 +7,7 @@
   Krzysztof Strzecha
 
   All video modes are emulated but not fully tested yet.
-  VIDEO_UPDATE function needs strong cleanup and optimalisation.
+  SCREEN_UPDATE function needs strong cleanup and optimalisation.
 
 
 ***************************************************************************/
@@ -56,13 +56,13 @@ VIDEO_START( dai )
 {
 }
 
-VIDEO_UPDATE( dai )
+SCREEN_UPDATE( dai )
 {
-	dai_state *state = screen->machine->driver_data<dai_state>();
-	address_space *space = cputag_get_address_space(screen->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	dai_state *state = screen->machine().driver_data<dai_state>();
+	address_space *space = screen->machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int i, j, k, l;
 
-	UINT8* char_rom = screen->machine->region("gfx1")->base();
+	UINT8* char_rom = screen->machine().region("gfx1")->base();
 
 	UINT16 dai_video_memory_start = 0xbfff;
 	UINT16 dai_scan_lines = 604;	/* scan lines of PAL tv */
@@ -111,7 +111,7 @@ VIDEO_UPDATE( dai )
 		unit_mode = (colour & 0x40) >> 6;
 
 		if (colour & 0x80)
-			state->_4_colours_palette[(colour & 0x30) >> 4] = colour & 0x0f;
+			state->m_4_colours_palette[(colour & 0x30) >> 4] = colour & 0x0f;
 
 		switch (display_mode)
 		{
@@ -133,7 +133,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<12; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -150,7 +150,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<12; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -172,7 +172,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<6; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -189,7 +189,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<6; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -211,7 +211,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<3; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -227,7 +227,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<3; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -249,7 +249,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<2; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -265,7 +265,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<2; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -294,7 +294,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<12; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -312,7 +312,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<12; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -335,7 +335,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<6; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -353,7 +353,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<6; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -376,7 +376,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<3; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -393,7 +393,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<3; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -415,7 +415,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<2; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -432,7 +432,7 @@ VIDEO_UPDATE( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<2; l++)
 									*BITMAP_ADDR16(bitmap, current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}

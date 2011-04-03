@@ -79,18 +79,7 @@ Notes:
 
 */
 
-#define ADDRESS_MAP_MODERN
-
-#include "emu.h"
-#include "machine/ctronics.h"
-#include "devices/flopdrv.h"
-#include "formats/basicdsk.h"
-#include "devices/cassette.h"
-#include "devices/snapquik.h"
-#include "cpu/cosmac/cosmac.h"
-#include "sound/cdp1869.h"
 #include "includes/tmc600.h"
-#include "devices/messram.h"
 
 /* Read/Write Handlers */
 
@@ -101,14 +90,14 @@ WRITE8_MEMBER( tmc600_state::keyboard_latch_w )
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( tmc600_map, ADDRESS_SPACE_PROGRAM, 8, tmc600_state )
+static ADDRESS_MAP_START( tmc600_map, AS_PROGRAM, 8, tmc600_state )
 	AM_RANGE(0x0000, 0x4fff) AM_ROM
 	AM_RANGE(0x6000, 0xbfff) AM_RAM
 	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_device, char_ram_r, char_ram_w)
 	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_device, page_ram_r, page_ram_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( tmc600_io_map, ADDRESS_SPACE_IO, 8, tmc600_state )
+static ADDRESS_MAP_START( tmc600_io_map, AS_IO, 8, tmc600_state )
 	AM_RANGE(0x03, 0x03) AM_WRITE(keyboard_latch_w)
 	AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY(CENTRONICS_TAG, centronics_data_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(vismac_data_w)
@@ -205,39 +194,38 @@ INPUT_PORTS_END
 
 /* CDP1802 Interface */
 
-static READ_LINE_DEVICE_HANDLER( clear_r )
+READ_LINE_MEMBER( tmc600_state::clear_r )
 {
-	return BIT(input_port_read(device->machine, "RUN"), 0);
+	return BIT(input_port_read(m_machine, "RUN"), 0);
 }
 
-static READ_LINE_DEVICE_HANDLER( ef2_r )
+READ_LINE_MEMBER( tmc600_state::ef2_r )
 {
-	return cassette_input(device) < 0;
+	return cassette_input(m_cassette) < 0;
 }
 
-static READ_LINE_DEVICE_HANDLER( ef3_r )
+READ_LINE_MEMBER( tmc600_state::ef3_r )
 {
-	tmc600_state *state = device->machine->driver_data<tmc600_state>();
 	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
-	UINT8 data = ~input_port_read(device->machine, keynames[state->m_keylatch / 8]);
+	UINT8 data = ~input_port_read(m_machine, keynames[m_keylatch / 8]);
 
-	return BIT(data, state->m_keylatch % 8);
+	return BIT(data, m_keylatch % 8);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( q_w )
+WRITE_LINE_MEMBER( tmc600_state::q_w )
 {
-	cassette_output(device, state ? +1.0 : -1.0);
+	cassette_output(m_cassette, state ? +1.0 : -1.0);
 }
 
 static COSMAC_INTERFACE( cosmac_intf )
 {
 	DEVCB_LINE_VCC,
-	DEVCB_LINE(clear_r),
+	DEVCB_DRIVER_LINE_MEMBER(tmc600_state, clear_r),
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, ef2_r),
-	DEVCB_LINE(ef3_r),
+	DEVCB_DRIVER_LINE_MEMBER(tmc600_state, ef2_r),
+	DEVCB_DRIVER_LINE_MEMBER(tmc600_state, ef3_r),
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, q_w),
+	DEVCB_DRIVER_LINE_MEMBER(tmc600_state, q_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	NULL,
@@ -249,22 +237,22 @@ static COSMAC_INTERFACE( cosmac_intf )
 
 void tmc600_state::machine_start()
 {
-	address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* configure RAM */
-	switch (messram_get_size(m_ram))
+	switch (ram_get_size(m_ram))
 	{
 	case 8*1024:
-		memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
+		program->unmap_readwrite(0x8000, 0xbfff);
 		break;
 
 	case 16*1024:
-		memory_unmap_readwrite(program, 0xa000, 0xbfff, 0, 0);
+		program->unmap_readwrite(0xa000, 0xbfff);
 		break;
 	}
 
 	/* register for state saving */
-	state_save_register_global(machine, m_keylatch);
+	state_save_register_global(m_machine, m_keylatch);
 }
 
 /* Machine Drivers */
@@ -305,7 +293,7 @@ static MACHINE_CONFIG_START( tmc600, tmc600_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(tmc600_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("8K")
 	MCFG_RAM_EXTRA_OPTIONS("16K,24K")
 MACHINE_CONFIG_END
@@ -338,5 +326,5 @@ ROM_END
 
 /* System Drivers */
 //    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT    COMPANY        FULLNAME
-//COMP( 1982, tmc600s1, 0,	0,	     tmc600,   tmc600,   0, 	   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
+//COMP( 1982, tmc600s1, 0,  0,       tmc600,   tmc600,   0,        "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
 COMP( 1982, tmc600s2, 0,	0,	     tmc600,   tmc600,   0, 	   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

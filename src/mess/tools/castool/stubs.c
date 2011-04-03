@@ -24,30 +24,30 @@ void CLIB_DECL logerror(const char *text,...)
 /* ----------------------------------------------------------------------- */
 /* total hack */
 
-file_error mame_fopen(const char *searchpath, const char *filename, UINT32 openflags, mame_file **file)
+file_error mame_fopen(const char *searchpath, const char *filename, UINT32 openflags, emu_file **file)
 {
 	char buffer[2048];
 	snprintf(buffer, sizeof(buffer), "crc/%s", filename);
-	*file = (mame_file *) fopen(buffer, "r");
+	*file = (emu_file *) fopen(buffer, "r");
 	return FILERR_NONE;
 }
 
-char *mame_fgets(char *s, int n, mame_file *file)
+char *mame_fgets(char *s, int n, emu_file *file)
 {
 	return fgets(s, n, (FILE *) file);
 }
 
-UINT32 mame_fwrite(mame_file *file, const void *buffer, UINT32 length)
+UINT32 mame_fwrite(emu_file *file, const void *buffer, UINT32 length)
 {
 	return fwrite(buffer, 1, length, (FILE *) file);
 }
 
-void mame_fclose(mame_file *file)
+void mame_fclose(emu_file *file)
 {
 	fclose((FILE *) file);
 }
 
-int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...)
+int CLIB_DECL mame_fprintf(emu_file *f, const char *fmt, ...)
 {
 	int rc;
 	va_list va;
@@ -139,7 +139,7 @@ void *restrack_register_object(object_type type, void *ptr, size_t size, const c
     freeing memory
 -------------------------------------------------*/
 
-void *auto_malloc_file_line(running_machine *machine, size_t size, const char *file, int line)
+void *auto_malloc_file_line(running_machine &machine, size_t size, const char *file, int line)
 {
 	void *result = pool_malloc_file_line(current_pool(), size, file, line);
 	return result;
@@ -151,7 +151,7 @@ void *auto_malloc_file_line(running_machine *machine, size_t size, const char *f
     freeing memory
 -------------------------------------------------*/
 
-void *auto_realloc_file_line(running_machine *machine, void *ptr, size_t size, const char *file, int line)
+void *auto_realloc_file_line(running_machine &machine, void *ptr, size_t size, const char *file, int line)
 {
 	object_pool *pool = current_pool();
 	if (ptr != NULL)
@@ -175,7 +175,7 @@ void *auto_realloc_file_line(running_machine *machine, void *ptr, size_t size, c
     string
 -------------------------------------------------*/
 
-char *auto_strdup_file_line(running_machine *machine, const char *str, const char *file, int line)
+char *auto_strdup_file_line(running_machine &machine, const char *str, const char *file, int line)
 {
 	return pool_strdup_file_line(current_pool(), str, file, line);
 }
@@ -186,7 +186,7 @@ char *auto_strdup_file_line(running_machine *machine, const char *str, const cha
     auto-freeing string if str is null
 -------------------------------------------------*/
 
-char *auto_strdup_allow_null_file_line(running_machine *machine, const char *str, const char *file, int line)
+char *auto_strdup_allow_null_file_line(running_machine &machine, const char *str, const char *file, int line)
 {
 	return (str != NULL) ? auto_strdup_file_line(machine, str, file, line) : NULL;
 }

@@ -11,16 +11,16 @@
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
 #include "machine/wd17xx.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "includes/pk8020.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /* Address maps */
-static ADDRESS_MAP_START(pk8020_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(pk8020_mem, AS_PROGRAM, 8)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pk8020_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( pk8020_io , AS_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
@@ -213,12 +213,13 @@ static MACHINE_CONFIG_START( pk8020, pk8020_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+	MCFG_SCREEN_UPDATE(pk8020)
+
 	MCFG_GFXDECODE(pk8020)
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(pk8020)
 
 	MCFG_VIDEO_START(pk8020)
-	MCFG_VIDEO_UPDATE(pk8020)
 
 	MCFG_I8255A_ADD( "ppi8255_1", pk8020_ppi8255_interface_1 )
 	MCFG_I8255A_ADD( "ppi8255_2", pk8020_ppi8255_interface_2 )
@@ -242,7 +243,7 @@ static MACHINE_CONFIG_START( pk8020, pk8020_state )
 	MCFG_FLOPPY_4_DRIVES_ADD(pk8020_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("258K")	//64 + 4*48 + 2
 	MCFG_RAM_DEFAULT_VALUE(0x00)
 MACHINE_CONFIG_END

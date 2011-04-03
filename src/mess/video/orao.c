@@ -15,9 +15,9 @@ VIDEO_START( orao )
 {
 }
 
-VIDEO_UPDATE( orao )
+SCREEN_UPDATE( orao )
 {
-	orao_state *state = screen->machine->driver_data<orao_state>();
+	orao_state *state = screen->machine().driver_data<orao_state>();
 	UINT8 code;
 	int y, x, b;
 
@@ -27,7 +27,7 @@ VIDEO_UPDATE( orao )
 		int horpos = 0;
 		for (x = 0; x < 32; x++)
 		{
-			code = state->video_ram[addr++];
+			code = state->m_video_ram[addr++];
 			for (b = 0; b < 8; b++)
 			{
 				*BITMAP_ADDR16(bitmap, y, horpos++) =  (code >> b) & 0x01;

@@ -6,53 +6,53 @@ PCB Layout
 ----------
 
 |-------------------------------------------|
-|							CN7		CN6		|
-|									PIO		|
-|							FDC				|
-|		4164 4164					CN5		|
-|		4164 4164		SW1				 CN2|
-|		4164 4164							|
-|		4164 4164					PROM	|
-|		4164 4164	4.9152MHz				|
-|		4164 4164	16MHz	DMA		CPU		|
-|		4164 4164							|
-|		4164 4164			CN4 CN3		 CN1|
-|											|
-|							DART	CTC		|
-|									CN8		|
+|                           CN7     CN6     |
+|                                   PIO     |
+|                           FDC             |
+|       4164 4164                   CN5     |
+|       4164 4164       SW1              CN2|
+|       4164 4164                           |
+|       4164 4164                   PROM    |
+|       4164 4164   4.9152MHz               |
+|       4164 4164   16MHz   DMA     CPU     |
+|       4164 4164                           |
+|       4164 4164           CN4 CN3      CN1|
+|                                           |
+|                           DART    CTC     |
+|                                   CN8     |
 |-------------------------------------------|
 
 Notes:
     Relevant IC's shown.
 
-    CPU		- SGS Z80ACPUB1 Z80A CPU
-	DMA		- Zilog Z8410APS Z80A DMA
-	PIO		- SGS Z80APIOB1 Z80A PIO
-	DART	- Zilog Z8470APS Z80A DART
-	CTC		- Zilog Z8430APS Z80A CTC
-	FDC		- Synertek SY1793-02 FDC
-	PROM	- AMD AM27S190C 32x8 TTL PROM
-	4164	- Fujitsu MB8264-15 64Kx1 RAM
-	CN1		- 2x25 PCB header, external DMA bus
-	CN2		- 2x17 PCB header, Winchester / 2x25 header, SCSI (in board revision E)
-	CN3		- 2x5 PCB header, RS-232 A (system console)
-	CN4		- 2x5 PCB header, RS-232 B
-	CN5		- 2x17 PCB header, Centronics
-	CN6		- 2x25 PCB header, 8" floppy drives
-	CN7		- 2x17 PCB header, 5.25" floppy drives
-	CN8		- 4-pin Molex
+    CPU     - SGS Z80ACPUB1 Z80A CPU
+    DMA     - Zilog Z8410APS Z80A DMA
+    PIO     - SGS Z80APIOB1 Z80A PIO
+    DART    - Zilog Z8470APS Z80A DART
+    CTC     - Zilog Z8430APS Z80A CTC
+    FDC     - Synertek SY1793-02 FDC
+    PROM    - AMD AM27S190C 32x8 TTL PROM
+    4164    - Fujitsu MB8264-15 64Kx1 RAM
+    CN1     - 2x25 PCB header, external DMA bus
+    CN2     - 2x17 PCB header, Winchester / 2x25 header, SCSI (in board revision E)
+    CN3     - 2x5 PCB header, RS-232 A (system console)
+    CN4     - 2x5 PCB header, RS-232 B
+    CN5     - 2x17 PCB header, Centronics
+    CN6     - 2x25 PCB header, 8" floppy drives
+    CN7     - 2x17 PCB header, 5.25" floppy drives
+    CN8     - 4-pin Molex
 
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	- wmb_org.imd does not load
-	- z80dart wait/ready
-	- floppy type dips
-	- Winchester hard disk
-	- revision E model
+    - wmb_org.imd does not load
+    - z80dart wait/ready
+    - floppy type dips
+    - Winchester hard disk
+    - revision E model
 
 */
 
@@ -60,8 +60,8 @@ Notes:
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "devices/flopdrv.h"
-#include "devices/messram.h"
+#include "imagedev/flopdrv.h"
+#include "machine/ram.h"
 #include "machine/ctronics.h"
 #include "machine/terminal.h"
 #include "machine/wd17xx.h"
@@ -74,7 +74,7 @@ Notes:
 
 
 //**************************************************************************
-//	MACROS / CONSTANTS
+//  MACROS / CONSTANTS
 //**************************************************************************
 
 // DMA ready sources
@@ -88,42 +88,33 @@ enum {
 };
 
 
-// DMA memory transfer
-enum {
-	MAIN_TO_MAIN = 0,
-	BUFFER_TO_BUFFER,
-	MAIN_TO_BUFFER,
-	BUFFER_TO_MAIN
-};
-
-
 //**************************************************************************
-//	READ/WRITE HANDLERS
+//  READ/WRITE HANDLERS
 //**************************************************************************
 
 //-------------------------------------------------
-//  bankswitch - 
+//  bankswitch -
 //-------------------------------------------------
 
 void bullet_state::bankswitch()
 {
 	if (m_brom)
 	{
-		memory_set_bank(machine, "bank1", 2);
+		memory_set_bank(m_machine, "bank1", 2);
 	}
 	else
 	{
-		memory_set_bank(machine, "bank1", m_segst);
+		memory_set_bank(m_machine, "bank1", m_segst);
 	}
 
-	memory_set_bank(machine, "bank2", m_segst);
-	memory_set_bank(machine, "bank3", m_segst);
-	memory_set_bank(machine, "bank4", 0);
+	memory_set_bank(m_machine, "bank2", m_segst);
+	memory_set_bank(m_machine, "bank3", m_segst);
+	memory_set_bank(m_machine, "bank4", 0);
 }
 
 
 //-------------------------------------------------
-//  update_dma_rdy - 
+//  update_dma_rdy -
 //-------------------------------------------------
 
 void bullet_state::update_dma_rdy()
@@ -156,36 +147,36 @@ void bullet_state::update_dma_rdy()
 		rdy = m_exrdy2;
 		break;
 	}
-	
+
 	z80dma_rdy_w(m_dmac, rdy);
 }
 
 
 //-------------------------------------------------
-//  info_r - 
+//  info_r -
 //-------------------------------------------------
 
 READ8_MEMBER( bullet_state::info_r )
 {
 	/*
 
-		bit		signal		description
+        bit     signal      description
 
-		0					DIP switch 1
-		1					DIP switch 2
-		2					DIP switch 3
-		3					DIP switch 4
-		4		HLDST		floppy disk head load status
-		5		*XDCG		floppy disk exchange (8" only)
-		6		FDIRQ		FDC interrupt request line
-		7		FDDRQ		FDC data request line
+        0                   DIP switch 1
+        1                   DIP switch 2
+        2                   DIP switch 3
+        3                   DIP switch 4
+        4       HLDST       floppy disk head load status
+        5       *XDCG       floppy disk exchange (8" only)
+        6       FDIRQ       FDC interrupt request line
+        7       FDDRQ       FDC data request line
 
-	*/
+    */
 
-	UINT8 data = 0;
+	UINT8 data = 0x10;
 
 	// DIP switches
-	data |= input_port_read(machine, "SW1") & 0x0f;
+	data |= input_port_read(m_machine, "SW1") & 0x0f;
 
 	// floppy interrupt
 	data |= wd17xx_intrq_r(m_fdc) << 6;
@@ -198,7 +189,7 @@ READ8_MEMBER( bullet_state::info_r )
 
 
 //-------------------------------------------------
-//  win_r - 
+//  win_r -
 //-------------------------------------------------
 
 READ8_MEMBER( bullet_state::win_r )
@@ -208,7 +199,7 @@ READ8_MEMBER( bullet_state::win_r )
 
 
 //-------------------------------------------------
-//  wstrobe_w - 
+//  wstrobe_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( bullet_state::wstrobe_w )
@@ -217,7 +208,7 @@ WRITE8_MEMBER( bullet_state::wstrobe_w )
 
 
 //-------------------------------------------------
-//  brom_r - 
+//  brom_r -
 //-------------------------------------------------
 
 READ8_MEMBER( bullet_state::brom_r )
@@ -230,7 +221,7 @@ READ8_MEMBER( bullet_state::brom_r )
 
 
 //-------------------------------------------------
-//  brom_w - 
+//  brom_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( bullet_state::brom_w )
@@ -241,25 +232,25 @@ WRITE8_MEMBER( bullet_state::brom_w )
 
 
 //-------------------------------------------------
-//  exdsk_w - 
+//  exdsk_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( bullet_state::exdsk_w )
 {
 	/*
 
-		bit		signal		description
+        bit     signal      description
 
-		0					drive select 0
-		1					drive select 1
-		2					select 8" floppy
-		3		MSE			select software control of port
-		4		SIDE		select side 2
-		5		_MOTOR		disable 5" floppy spindle motors
-		6		
-		7		WPRC		enable write precompensation
+        0                   drive select 0
+        1                   drive select 1
+        2                   select 8" floppy
+        3       MSE         select software control of port
+        4       SIDE        select side 2
+        5       _MOTOR      disable 5" floppy spindle motors
+        6
+        7       WPRC        enable write precompensation
 
-	*/
+    */
 
 	// drive select
 	wd17xx_set_drive(m_fdc, data & 0x03);
@@ -271,70 +262,59 @@ WRITE8_MEMBER( bullet_state::exdsk_w )
 	floppy_mon_w(m_floppy0, BIT(data, 5));
 	floppy_mon_w(m_floppy1, BIT(data, 5));
 	floppy_drive_set_ready_state(m_floppy0, 1, 1);
-	floppy_drive_set_ready_state(m_floppy1, 1, 1);	
+	floppy_drive_set_ready_state(m_floppy1, 1, 1);
 }
 
 
 //-------------------------------------------------
-//  exdma_w - 
+//  exdma_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( bullet_state::exdma_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		DMA ready source select 0
-		1		DMA ready source select 1
-		2		DMA ready source select 2
-		3		memory control 0
-		4		memory control 1
-		5		
-		6		
-		7		
+        0       DMA ready source select 0
+        1       DMA ready source select 1
+        2       DMA ready source select 2
+        3       memory control 0
+        4       memory control 1
+        5
+        6
+        7
 
-	*/
+    */
 
 	m_exdma = data;
 
-	switch (data >> 3)
-	{
-	case MAIN_TO_MAIN:
-	case MAIN_TO_BUFFER:
-		m_buf = 0;
-		break;
-
-	case BUFFER_TO_BUFFER:
-	case BUFFER_TO_MAIN:
-		m_buf = 1;
-		break;
-	}
+	m_buf = BIT(data, 3);
 
 	update_dma_rdy();
 }
 
 
 //-------------------------------------------------
-//  hdcon_w - 
+//  hdcon_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( bullet_state::hdcon_w )
 {
 	/*
 
-		bit		signal	description
+        bit     signal  description
 
-		0		PLO		phase lock oscillator
-		1		RCD		read clock frequency
-		2		EXC		MB8877 clock frequency
-		3		DEN		MB8877 density select
-		4				enable software control of mode
-		5		
-		6		
-		7		
+        0       PLO     phase lock oscillator
+        1       RCD     read clock frequency
+        2       EXC     MB8877 clock frequency
+        3       DEN     MB8877 density select
+        4               enable software control of mode
+        5
+        6
+        7
 
-	*/
+    */
 
 	// FDC clock
 	m_fdc->set_unscaled_clock(BIT(data, 2) ? XTAL_16MHz/16 : XTAL_16MHz/8);
@@ -345,7 +325,7 @@ WRITE8_MEMBER( bullet_state::hdcon_w )
 
 
 //-------------------------------------------------
-//  segst_w - 
+//  segst_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( bullet_state::segst_w )
@@ -357,14 +337,14 @@ WRITE8_MEMBER( bullet_state::segst_w )
 
 
 //**************************************************************************
-//	ADDRESS MAPS
+//  ADDRESS MAPS
 //**************************************************************************
 
 //-------------------------------------------------
 //  ADDRESS_MAP( bullet_mem )
 //-------------------------------------------------
 
-static ADDRESS_MAP_START( bullet_mem, ADDRESS_SPACE_PROGRAM, 8, bullet_state )
+static ADDRESS_MAP_START( bullet_mem, AS_PROGRAM, 8, bullet_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
 	AM_RANGE(0x0020, 0xbfff) AM_RAMBANK("bank3")
@@ -376,16 +356,16 @@ ADDRESS_MAP_END
 //  ADDRESS_MAP( bullet_io )
 //-------------------------------------------------
 
-static ADDRESS_MAP_START( bullet_io, ADDRESS_SPACE_IO, 8, bullet_state )
+static ADDRESS_MAP_START( bullet_io, AS_IO, 8, bullet_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-//	AM_RANGE(0x00, 0x00) AM_DEVWRITE_LEGACY(TERMINAL_TAG, terminal_write)
+//  AM_RANGE(0x00, 0x00) AM_DEVWRITE_LEGACY(TERMINAL_TAG, terminal_write)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE_LEGACY(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE_LEGACY(Z80PIO_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE_LEGACY(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x03) AM_READWRITE(win_r, wstrobe_w)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE_LEGACY(MB8877_TAG, wd17xx_r, wd17xx_w)
-	AM_RANGE(0x14, 0x14) AM_DEVREADWRITE_LEGACY(Z80DMA_TAG, z80dma_r, z80dma_w) 
+	AM_RANGE(0x14, 0x14) AM_DEVREADWRITE_LEGACY(Z80DMA_TAG, z80dma_r, z80dma_w)
 	AM_RANGE(0x15, 0x15) AM_READWRITE(brom_r, brom_w)
 	AM_RANGE(0x16, 0x16) AM_WRITE(exdsk_w)
 	AM_RANGE(0x17, 0x17) AM_WRITE(exdma_w)
@@ -397,7 +377,7 @@ ADDRESS_MAP_END
 
 
 //**************************************************************************
-//	INPUT PORTS
+//  INPUT PORTS
 //**************************************************************************
 
 //-------------------------------------------------
@@ -405,7 +385,6 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 INPUT_PORTS_START( bullet )
-	PORT_INCLUDE(generic_terminal)
 
 	PORT_START("SW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) PORT_DIPLOCATION("SW1:1")
@@ -427,7 +406,7 @@ INPUT_PORTS_END
 
 
 //**************************************************************************
-//	DEVICE CONFIGURATION
+//  DEVICE CONFIGURATION
 //**************************************************************************
 
 //-------------------------------------------------
@@ -436,7 +415,7 @@ INPUT_PORTS_END
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	bullet_state *state = timer.machine->driver_data<bullet_state>();
+	bullet_state *state = timer.machine().driver_data<bullet_state>();
 
 	z80ctc_trg0_w(state->m_ctc, 1);
 	z80ctc_trg0_w(state->m_ctc, 0);
@@ -513,15 +492,12 @@ READ8_MEMBER( bullet_state::dma_mreq_r )
 		offset |= 0x10000;
 	}
 
-	UINT8 *ram = messram_get_ptr(m_ram);
+	UINT8 *ram = ram_get_ptr(m_ram);
 	UINT8 data = ram[offset];
 
-	switch (m_exdma >> 3)
+	if (BIT(m_exdma, 4))
 	{
-	case MAIN_TO_BUFFER:
-	case BUFFER_TO_MAIN:
 		m_buf = !m_buf;
-		break;
 	}
 
 	return data;
@@ -534,15 +510,12 @@ WRITE8_MEMBER( bullet_state::dma_mreq_w )
 		offset |= 0x10000;
 	}
 
-	UINT8 *ram = messram_get_ptr(m_ram);
+	UINT8 *ram = ram_get_ptr(m_ram);
 	ram[offset] = data;
 
-	switch (m_exdma >> 3)
+	if (BIT(m_exdma, 4))
 	{
-	case MAIN_TO_BUFFER:
-	case BUFFER_TO_MAIN:
 		m_buf = !m_buf;
-		break;
 	}
 }
 
@@ -569,18 +542,18 @@ READ8_MEMBER( bullet_state::pio_pb_r )
 {
 	/*
 
-		bit		signal		description
+        bit     signal      description
 
-		0					centronics busy
-		1					centronics paper end
-		2					centronics selected
-		3		*FAULT		centronics fault
-		4					external vector
-		5		WBUSDIR		winchester bus direction
-		6		WCOMPLETE	winchester command complete
-		7		*WINRDY		winchester ready
+        0                   centronics busy
+        1                   centronics paper end
+        2                   centronics selected
+        3       *FAULT      centronics fault
+        4                   external vector
+        5       WBUSDIR     winchester bus direction
+        6       WCOMPLETE   winchester command complete
+        7       *WINRDY     winchester ready
 
-	*/
+    */
 
 	UINT8 data = 0;
 
@@ -668,7 +641,7 @@ static const z80_daisy_config daisy_chain[] =
 
 
 //**************************************************************************
-//	MACHINE INITIALIZATION
+//  MACHINE INITIALIZATION
 //**************************************************************************
 
 //-------------------------------------------------
@@ -678,25 +651,25 @@ static const z80_daisy_config daisy_chain[] =
 void bullet_state::machine_start()
 {
 	// setup memory banking
-	UINT8 *ram = messram_get_ptr(m_ram);
+	UINT8 *ram = ram_get_ptr(m_ram);
 
-	memory_configure_bank(machine, "bank1", 0, 2, ram, 0x10000);
-	memory_configure_bank(machine, "bank1", 2, 1, machine->region(Z80_TAG)->base(), 0);
-	memory_configure_bank(machine, "bank2", 0, 2, ram, 0x10000);
-	memory_configure_bank(machine, "bank3", 0, 2, ram + 0x0020, 0x10000);
-	memory_configure_bank(machine, "bank4", 0, 1, ram + 0xc000, 0);
+	memory_configure_bank(m_machine, "bank1", 0, 2, ram, 0x10000);
+	memory_configure_bank(m_machine, "bank1", 2, 1, m_machine.region(Z80_TAG)->base(), 0);
+	memory_configure_bank(m_machine, "bank2", 0, 2, ram, 0x10000);
+	memory_configure_bank(m_machine, "bank3", 0, 2, ram + 0x0020, 0x10000);
+	memory_configure_bank(m_machine, "bank4", 0, 1, ram + 0xc000, 0);
 
 	// register for state saving
-	state_save_register_global(machine, m_segst);
-	state_save_register_global(machine, m_brom);
-	state_save_register_global(machine, m_exdma);
-	state_save_register_global(machine, m_buf);
-	state_save_register_global(machine, m_fdrdy);
-	state_save_register_global(machine, m_dartardy);
-	state_save_register_global(machine, m_dartbrdy);
-	state_save_register_global(machine, m_winrdy);
-	state_save_register_global(machine, m_exrdy1);
-	state_save_register_global(machine, m_exrdy2);
+	state_save_register_global(m_machine, m_segst);
+	state_save_register_global(m_machine, m_brom);
+	state_save_register_global(m_machine, m_exdma);
+	state_save_register_global(m_machine, m_buf);
+	state_save_register_global(m_machine, m_fdrdy);
+	state_save_register_global(m_machine, m_dartardy);
+	state_save_register_global(m_machine, m_dartbrdy);
+	state_save_register_global(m_machine, m_winrdy);
+	state_save_register_global(m_machine, m_exrdy1);
+	state_save_register_global(m_machine, m_exrdy2);
 }
 
 
@@ -719,7 +692,7 @@ void bullet_state::machine_reset()
 
 
 //**************************************************************************
-//	MACHINE CONFIGURATION
+//  MACHINE CONFIGURATION
 //**************************************************************************
 
 //-------------------------------------------------
@@ -730,15 +703,15 @@ static MACHINE_CONFIG_START( bullet, bullet_state )
     // basic machine hardware
     MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
     MCFG_CPU_PROGRAM_MAP(bullet_mem)
-    MCFG_CPU_IO_MAP(bullet_io)	
+    MCFG_CPU_IO_MAP(bullet_io)
 	MCFG_CPU_CONFIG(daisy_chain)
-	
+
     // video hardware
 	MCFG_FRAGMENT_ADD( generic_terminal )
-	
+
 	// devices
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/4, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(XTAL_4_9152MHz/4))
+	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_4_9152MHz/4))
 	MCFG_Z80DART_ADD(Z80DART_TAG, XTAL_16MHz/4, dart_intf)
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_16MHz/4, pio_intf)
@@ -746,16 +719,16 @@ static MACHINE_CONFIG_START( bullet, bullet_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(bullet_floppy_config)
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
-	
+
 	// internal ram
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 MACHINE_CONFIG_END
 
 
 
 //**************************************************************************
-//	ROMS
+//  ROMS
 //**************************************************************************
 
 //-------------------------------------------------
@@ -770,9 +743,9 @@ ROM_END
 
 
 //**************************************************************************
-//	SYSTEM DRIVERS
+//  SYSTEM DRIVERS
 //**************************************************************************
 
-//    YEAR  NAME		PARENT		COMPAT	MACHINE		INPUT		INIT	COMPANY			FULLNAME				FLAGS
+//    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY         FULLNAME                FLAGS
 COMP( 1982, bullet,		0,			0,		bullet,		bullet,		0,		"Wave Mate",	"Bullet",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
-//COMP( 1982, bullete,	bullet,		0, 		bullet,		bullet,		0,		"Wave Mate",	"Bullet (Revision E)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
+//COMP( 1982, bullete,  bullet,     0,      bullet,     bullet,     0,      "Wave Mate",    "Bullet (Revision E)",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )

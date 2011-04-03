@@ -7,14 +7,14 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "sound/speaker.h"
 #include "machine/wd17xx.h"
 #include "machine/6821pia.h"
 #include "machine/z80dart.h"
 #include "machine/pit8253.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 
 #define MAIN_CLOCK	23961600
@@ -25,91 +25,120 @@ class osbexec_state : public driver_device
 public:
 	osbexec_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config),
-			maincpu( *this, "maincpu" ),
-			mb8877( *this, "mb8877" ),
-			messram( *this, "messram" ),
-			pia_0( *this, "pia_0" ),
-			pia_1( *this, "pia_1" ),
-			sio( *this, "sio" ),
-			speaker( *this, "speaker" )
+			m_maincpu( *this, "maincpu" ),
+			m_mb8877( *this, "mb8877" ),
+			m_messram( *this, RAM_TAG ),
+			m_pia_0( *this, "pia_0" ),
+			m_pia_1( *this, "pia_1" ),
+			m_sio( *this, "sio" ),
+			m_speaker( *this, "speaker" )
 	{ }
 
-	required_device<cpu_device>	maincpu;
-	required_device<device_t>	mb8877;
-	required_device<device_t>	messram;
-	required_device<pia6821_device>	pia_0;
-	required_device<pia6821_device>	pia_1;
-	required_device<z80dart_device>	sio;
-	required_device<device_t>	speaker;
+	required_device<cpu_device>	m_maincpu;
+	required_device<device_t>	m_mb8877;
+	required_device<device_t>	m_messram;
+	required_device<pia6821_device>	m_pia_0;
+	required_device<pia6821_device>	m_pia_1;
+	required_device<z80dart_device>	m_sio;
+	required_device<device_t>	m_speaker;
 
-	memory_region	*fontram_region;
-	memory_region *vram_region;
-	UINT8	*fontram;
-	UINT8	*vram;
-	UINT8	*ram_0000;
-	emu_timer *video_timer;
+	memory_region	*m_fontram_region;
+	memory_region *m_vram_region;
+	UINT8	*m_fontram;
+	UINT8	*m_vram;
+	UINT8	*m_ram_0000;
+	UINT8	*m_ram_c000;
+	UINT8	m_temp_attr;
+	emu_timer *m_video_timer;
 
 	/* PIA 0 (UD12) */
-	UINT8	pia0_porta;
-	UINT8	pia0_portb;
-	int		pia0_irq_state;
-	int		pia0_cb2;			/* 60/50 */
+	UINT8	m_pia0_porta;
+	UINT8	m_pia0_portb;
+	int		m_pia0_irq_state;
+	int		m_pia0_cb2;			/* 60/50 */
 
 	/* PIA 1 (UD8) */
-	int		pia1_irq_state;
+	int		m_pia1_irq_state;
 
 	/* Vblank counter ("RTC") */
-	UINT8	rtc;
+	UINT8	m_rtc;
 
-	void set_banks(running_machine *machine)
+	void set_banks(running_machine &machine)
 	{
-		UINT8 *messram_ptr = messram_get_ptr( messram );
+		UINT8 *ram_ptr = ram_get_ptr( m_messram );
 
-		ram_0000 = messram_ptr;
+		m_ram_0000 = ram_ptr;
 
-		if ( pia0_porta & 0x01 )
-			ram_0000 += 0x10000;
+		if ( m_pia0_porta & 0x01 )
+			m_ram_0000 += 0x10000;
 
-		memory_set_bankptr( machine, "0000", ram_0000 + 0x0000 );
-		memory_set_bankptr( machine, "2000", ram_0000 + 0x2000 );
-		memory_set_bankptr( machine, "4000", ram_0000 + 0x4000 );
-		memory_set_bankptr( machine, "c000", ram_0000 + 0xc000 );
-		memory_set_bankptr( machine, "e000", ram_0000 + 0xe000 );
+		memory_set_bankptr( machine, "0000", m_ram_0000 + 0x0000 );
+		memory_set_bankptr( machine, "2000", m_ram_0000 + 0x2000 );
+		memory_set_bankptr( machine, "4000", m_ram_0000 + 0x4000 );
+		m_ram_c000 = m_ram_0000 + 0xc000;
+		memory_set_bankptr( machine, "e000", m_ram_0000 + 0xe000 );
 
-		if ( pia0_porta & 0x80 )
+		if ( m_pia0_porta & 0x80 )
 		{
-			memory_set_bankptr( machine, "0000", machine->region("maincpu")->base());
-			/* When BIOS is enabled 2000-3FFF (or maybe 2000-2FFF) is taken from the first 64KB ) */
-			memory_set_bankptr( machine, "2000", messram_ptr + 0x2000 );
+			memory_set_bankptr( machine, "0000", machine.region("maincpu")->base());
+			/* When BIOS is enabled 2000-3FFF is set to the "ROM RAM" */
+			memory_set_bankptr( machine, "2000", ram_ptr + 0x20000 );
 		}
 
-		if ( pia0_porta & 0x40 )
-			memory_set_bankptr(machine, "c000", vram_region->base() );
+		if ( m_pia0_porta & 0x40 )
+			m_ram_c000 = m_vram_region->base();
 	}
 
-	void update_irq_state(running_machine *machine)
+	void update_irq_state(running_machine &machine)
 	{
-		if ( pia0_irq_state || pia1_irq_state )
-			cpu_set_input_line( maincpu, 0, ASSERT_LINE );
+		if ( m_pia0_irq_state || m_pia1_irq_state )
+			device_set_input_line( m_maincpu, 0, ASSERT_LINE );
 		else
-			cpu_set_input_line( maincpu, 0, CLEAR_LINE );
+			device_set_input_line( m_maincpu, 0, CLEAR_LINE );
 	}
 };
 
 
 static WRITE8_HANDLER( osbexec_0000_w )
 {
-	osbexec_state *state = space->machine->driver_data<osbexec_state>();
+	osbexec_state *state = space->machine().driver_data<osbexec_state>();
 
 	/* Font RAM writing is enabled when ROM bank is enabled */
-	if ( state->pia0_porta & 0x80 )
+	if ( state->m_pia0_porta & 0x80 )
 	{
 		if ( offset < 0x1000 )
-			state->fontram[ offset ] = data;
+			state->m_fontram[ offset ] = data;
 	}
 	else
 	{
-		state->ram_0000[ offset ] = data;
+		state->m_ram_0000[ offset ] = data;
+	}
+}
+
+
+static READ8_HANDLER( osbexec_c000_r )
+{
+	osbexec_state *state = space->machine().driver_data<osbexec_state>();
+	UINT8	data = state->m_ram_c000[offset];
+
+	if ( ( state->m_pia0_porta & 0x40 ) && offset < 0x1000 )
+	{
+		state->m_temp_attr = state->m_ram_c000[ 0x1000 + offset ];
+	}
+
+	return data;
+}
+
+
+static WRITE8_HANDLER( osbexec_c000_w )
+{
+	osbexec_state *state = space->machine().driver_data<osbexec_state>();
+
+	state->m_ram_c000[offset] = data;
+
+	if ( ( state->m_pia0_porta & 0x40 ) && offset < 0x1000 )
+	{
+		state->m_ram_c000[ 0x1000 + offset ] = state->m_temp_attr;
 	}
 }
 
@@ -119,28 +148,28 @@ static READ8_HANDLER( osbexec_kbd_r )
 	UINT8 data = 0xFF;
 
 	if ( offset & 0x0100 )
-		data &= input_port_read( space->machine, "ROW0" );
+		data &= input_port_read( space->machine(), "ROW0" );
 
 	if ( offset & 0x0200 )
-		data &= input_port_read( space->machine, "ROW1" );
+		data &= input_port_read( space->machine(), "ROW1" );
 
 	if ( offset & 0x0400 )
-		data &= input_port_read( space->machine, "ROW2" );
+		data &= input_port_read( space->machine(), "ROW2" );
 
 	if ( offset & 0x0800 )
-		data &= input_port_read( space->machine, "ROW3" );
+		data &= input_port_read( space->machine(), "ROW3" );
 
 	if ( offset & 0x1000 )
-		data &= input_port_read( space->machine, "ROW4" );
+		data &= input_port_read( space->machine(), "ROW4" );
 
 	if ( offset & 0x2000 )
-		data &= input_port_read( space->machine, "ROW5" );
+		data &= input_port_read( space->machine(), "ROW5" );
 
 	if ( offset & 0x4000 )
-		data &= input_port_read( space->machine, "ROW6" );
+		data &= input_port_read( space->machine(), "ROW6" );
 
 	if ( offset & 0x8000 )
-		data &= input_port_read( space->machine, "ROW7" );
+		data &= input_port_read( space->machine(), "ROW7" );
 
 	return data;
 }
@@ -148,23 +177,23 @@ static READ8_HANDLER( osbexec_kbd_r )
 
 static READ8_HANDLER( osbexec_rtc_r )
 {
-	osbexec_state *state = space->machine->driver_data<osbexec_state>();
+	osbexec_state *state = space->machine().driver_data<osbexec_state>();
 
-	return state->rtc;
+	return state->m_rtc;
 }
 
 
-static ADDRESS_MAP_START( osbexec_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( osbexec_mem, AS_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x1FFF ) AM_READ_BANK("0000") AM_WRITE( osbexec_0000_w )	/* ROM and maybe also banked ram */
 	AM_RANGE( 0x2000, 0x3FFF ) AM_RAMBANK("2000")								/* Banked RAM */
 	AM_RANGE( 0x4000, 0xBFFF ) AM_RAMBANK("4000")								/* Banked RAM */
-	AM_RANGE( 0xC000, 0xDFFF ) AM_RAMBANK("c000")								/* Video ram / Banked RAM */
+	AM_RANGE( 0xC000, 0xDFFF ) AM_READWRITE( osbexec_c000_r, osbexec_c000_w )	/* Video ram / Banked RAM */
 	AM_RANGE( 0xE000, 0xEFFF ) AM_RAMBANK("e000")								/* Banked RAM */
 	AM_RANGE( 0xF000, 0xFFFF ) AM_RAM											/* 4KB of non-banked RAM for system stack etc */
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( osbexec_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( osbexec_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x00, 0x03 ) AM_MIRROR( 0xff00 ) AM_DEVREADWRITE( "pia_0", pia6821_r, pia6821_w )				/* 6821 PIA @ UD12 */
 	/* 0x04 - 0x07 - 8253 @UD1 */
@@ -239,7 +268,7 @@ static INPUT_PORTS_START( osbexec )
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_UP)			PORT_CHAR(UCHAR_MAMEKEY(UP))
 
 	PORT_START("ROW6")
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)		PORT_CHAR('=') PORT_CHAR('+')	
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)		PORT_CHAR('=') PORT_CHAR('+')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_L)			PORT_CHAR('l') PORT_CHAR('L')
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR('\\') PORT_CHAR('|')
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON)		PORT_CHAR(';') PORT_CHAR(':')
@@ -300,51 +329,51 @@ static PALETTE_INIT( osbexec )
 
 static READ8_DEVICE_HANDLER( osbexec_pia0_a_r )
 {
-	osbexec_state *state = device->machine->driver_data<osbexec_state>();
+	osbexec_state *state = device->machine().driver_data<osbexec_state>();
 
-	return state->pia0_porta;
+	return state->m_pia0_porta;
 }
 
 
 static WRITE8_DEVICE_HANDLER( osbexec_pia0_a_w )
 {
-	osbexec_state *state = device->machine->driver_data<osbexec_state>();
+	osbexec_state *state = device->machine().driver_data<osbexec_state>();
 
 	logerror("osbexec_pia0_a_w: %02x\n", data );
 
-	state->pia0_porta = data;
+	state->m_pia0_porta = data;
 
-	state->set_banks( device->machine );
+	state->set_banks(device->machine());
 }
 
 
 static READ8_DEVICE_HANDLER( osbexec_pia0_b_r )
 {
-	osbexec_state *state = device->machine->driver_data<osbexec_state>();
+	osbexec_state *state = device->machine().driver_data<osbexec_state>();
 
-	return state->pia0_portb;
+	return state->m_pia0_portb;
 }
 
 
 static WRITE8_DEVICE_HANDLER( osbexec_pia0_b_w )
 {
-	osbexec_state *state = device->machine->driver_data<osbexec_state>();
+	osbexec_state *state = device->machine().driver_data<osbexec_state>();
 
-	state->pia0_portb = data;
+	state->m_pia0_portb = data;
 
-	speaker_level_w( state->speaker, ( data & 0x08 ) ? 0 : 1 );
+	speaker_level_w( state->m_speaker, ( data & 0x08 ) ? 0 : 1 );
 
 	switch ( data & 0x06 )
 	{
 	case 0x02:
-		wd17xx_set_drive( state->mb8877, 1 );
+		wd17xx_set_drive( state->m_mb8877, 1 );
 		break;
 	case 0x04:
-		wd17xx_set_drive( state->mb8877, 0 );
+		wd17xx_set_drive( state->m_mb8877, 0 );
 		break;
 	}
 
-	wd17xx_dden_w( state->mb8877, ( data & 0x01 ) ? 1 : 0 );
+	wd17xx_dden_w( state->m_mb8877, ( data & 0x01 ) ? 1 : 0 );
 }
 
 
@@ -356,18 +385,18 @@ static WRITE_LINE_DEVICE_HANDLER( osbexec_pia0_ca2_w )
 
 static WRITE_LINE_DEVICE_HANDLER( osbexec_pia0_cb2_w )
 {
-	osbexec_state *st = device->machine->driver_data<osbexec_state>();
+	osbexec_state *st = device->machine().driver_data<osbexec_state>();
 
-	st->pia0_cb2 = state;
+	st->m_pia0_cb2 = state;
 }
 
 
 static WRITE_LINE_DEVICE_HANDLER( osbexec_pia0_irq )
 {
-	osbexec_state *st = device->machine->driver_data<osbexec_state>();
+	osbexec_state *st = device->machine().driver_data<osbexec_state>();
 
-	st->pia0_irq_state = state;
-	st->update_irq_state( device->machine );
+	st->m_pia0_irq_state = state;
+	st->update_irq_state(device->machine());
 }
 
 
@@ -390,10 +419,10 @@ static const pia6821_interface osbexec_pia0_config =
 
 static WRITE_LINE_DEVICE_HANDLER( osbexec_pia1_irq )
 {
-	osbexec_state *st = device->machine->driver_data<osbexec_state>();
+	osbexec_state *st = device->machine().driver_data<osbexec_state>();
 
-	st->pia1_irq_state = state;
-	st->update_irq_state( device->machine );
+	st->m_pia1_irq_state = state;
+	st->update_irq_state(device->machine());
 }
 
 
@@ -503,40 +532,40 @@ static const floppy_config osbexec_floppy_config =
 
 static TIMER_CALLBACK( osbexec_video_callback )
 {
-	osbexec_state *state = machine->driver_data<osbexec_state>();
-	int y = machine->primary_screen->vpos();
+	osbexec_state *state = machine.driver_data<osbexec_state>();
+	int y = machine.primary_screen->vpos();
 
 	/* Start of frame */
 	if ( y == 0 )
 	{
 		/* Clear CB1 on PIA @ UD12 */
-		pia6821_cb1_w( state->pia_0, 0 );
+		pia6821_cb1_w( state->m_pia_0, 0 );
 	}
 	else if ( y == 240 )
 	{
 		/* Set CB1 on PIA @ UD12 */
-		pia6821_cb1_w( state->pia_0, 1 );
-		state->rtc++;
+		pia6821_cb1_w( state->m_pia_0, 1 );
+		state->m_rtc++;
 	}
 	if ( y < 240 )
 	{
 		UINT16 row_addr = ( y / 10 ) * 128;
-		UINT16 *p = BITMAP_ADDR16( machine->generic.tmpbitmap, y, 0 );
+		UINT16 *p = BITMAP_ADDR16( machine.generic.tmpbitmap, y, 0 );
 		UINT8 char_line = y % 10;
 
 		for ( int x = 0; x < 80; x++ )
 		{
-			UINT8 ch = state->vram[ row_addr + x ];
-			UINT8 attr = state->vram[ 0x1000 + row_addr + x ];
+			UINT8 ch = state->m_vram[ row_addr + x ];
+			UINT8 attr = state->m_vram[ 0x1000 + row_addr + x ];
 			UINT8 fg_col = ( attr & 0x80 ) ? 1 : 2;
-			UINT8 font_bits = state->fontram[ ( ( attr & 0x10 ) ? 0x800 : 0 ) + ( ch & 0x7f ) * 16 + char_line ];
+			UINT8 font_bits = state->m_fontram[ ( ( attr & 0x10 ) ? 0x800 : 0 ) + ( ch & 0x7f ) * 16 + char_line ];
 
 			/* Check for underline */
 			if ( ( attr & 0x40 ) && char_line == 9 )
 				font_bits = 0xFF;
 
 			/* Check for blink */
-			if ( ( attr & 0x20 ) && ( state->rtc & 0x10 ) )
+			if ( ( attr & 0x20 ) && ( state->m_rtc & 0x10 ) )
 				font_bits = 0;
 
 			/* Check for inverse video */
@@ -551,38 +580,38 @@ static TIMER_CALLBACK( osbexec_video_callback )
 		}
 	}
 
-	timer_adjust_oneshot( state->video_timer, machine->primary_screen->time_until_pos( y + 1, 0 ), 0 );
+	state->m_video_timer->adjust( machine.primary_screen->time_until_pos( y + 1, 0 ) );
 }
 
 
 static DRIVER_INIT( osbexec )
 {
-	osbexec_state *state = machine->driver_data<osbexec_state>();
+	osbexec_state *state = machine.driver_data<osbexec_state>();
 
-	state->fontram_region = machine->region_alloc( "fontram", 0x1000, 0 );
-	state->vram_region = machine->region_alloc( "vram", 0x2000, 0 );
-	state->vram = state->vram_region->base();
-	state->fontram = state->fontram_region->base();
+	state->m_fontram_region = machine.region_alloc( "fontram", 0x1000, 1, ENDIANNESS_LITTLE);
+	state->m_vram_region = machine.region_alloc( "vram", 0x2000, 1, ENDIANNESS_LITTLE );
+	state->m_vram = state->m_vram_region->base();
+	state->m_fontram = state->m_fontram_region->base();
 
 
-	memset( state->fontram, 0x00, 0x1000 );
-	memset( state->vram, 0x00, 0x2000 );
+	memset( state->m_fontram, 0x00, 0x1000 );
+	memset( state->m_vram, 0x00, 0x2000 );
 
-	state->video_timer = timer_alloc( machine, osbexec_video_callback, NULL );
+	state->m_video_timer = machine.scheduler().timer_alloc(FUNC(osbexec_video_callback));
 }
 
 
 static MACHINE_RESET( osbexec )
 {
-	osbexec_state *state = machine->driver_data<osbexec_state>();
+	osbexec_state *state = machine.driver_data<osbexec_state>();
 
-	state->pia0_porta = 0xC0;		/* Enable ROM and VRAM on reset */
+	state->m_pia0_porta = 0xC0;		/* Enable ROM and VRAM on reset */
 
 	state->set_banks( machine );
 
-	timer_adjust_oneshot( state->video_timer, machine->primary_screen->time_until_pos( 0, 0 ), 0 );
+	state->m_video_timer->adjust( machine.primary_screen->time_until_pos( 0, 0 ) );
 
-	state->rtc = 0;
+	state->m_rtc = 0;
 }
 
 
@@ -604,16 +633,18 @@ static MACHINE_CONFIG_START( osbexec, osbexec_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MCFG_SCREEN_RAW_PARAMS( MAIN_CLOCK/2, 768, 0, 640, 260, 0, 240 )	/* May not be correct */
-	MCFG_VIDEO_START( generic_bitmapped )
-	MCFG_VIDEO_UPDATE( generic_bitmapped )
+	MCFG_SCREEN_UPDATE( generic_bitmapped )
+
 	MCFG_PALETTE_LENGTH( 3 )
 	MCFG_PALETTE_INIT( osbexec )
+
+	MCFG_VIDEO_START( generic_bitmapped )
 
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
-//	MCFG_PIT8253_ADD( "pit", osbexec_pit_config )
+//  MCFG_PIT8253_ADD( "pit", osbexec_pit_config )
 
 	MCFG_PIA6821_ADD( "pia_0", osbexec_pia0_config )
 	MCFG_PIA6821_ADD( "pia_1", osbexec_pia1_config )
@@ -625,8 +656,8 @@ static MACHINE_CONFIG_START( osbexec, osbexec_state )
 	MCFG_FLOPPY_2_DRIVES_ADD(osbexec_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
-	MCFG_RAM_DEFAULT_SIZE("128K")	/* 128KB Main RAM */
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("136K")	/* 128KB Main RAM + RAM in ROM bank (8) */
 MACHINE_CONFIG_END
 
 

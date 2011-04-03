@@ -16,36 +16,28 @@ static CDP1861_INTERFACE( tmc1800_cdp1861_intf )
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_EF1)
 };
 
-static VIDEO_UPDATE( tmc1800 )
+bool tmc1800_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	tmc1800_state *state = screen->machine->driver_data<tmc1800_state>();
-
-	cdp1861_update(state->cdp1861, bitmap, cliprect);
+	cdp1861_update(m_vdc, &bitmap, &cliprect);
 
 	return 0;
 }
 
 /* Telmac 2000 */
 
-static READ_LINE_DEVICE_HANDLER( rdata_r )
+READ_LINE_MEMBER( tmc2000_state::rdata_r )
 {
-	tmc2000_state *state = device->machine->driver_data<tmc2000_state>();
-
-	return BIT(state->color, 2);
+	return BIT(m_color, 2);
 }
 
-static READ_LINE_DEVICE_HANDLER( bdata_r )
+READ_LINE_MEMBER( tmc2000_state::bdata_r )
 {
-	tmc2000_state *state = device->machine->driver_data<tmc2000_state>();
-
-	return BIT(state->color, 1);
+	return BIT(m_color, 1);
 }
 
-static READ_LINE_DEVICE_HANDLER( gdata_r )
+READ_LINE_MEMBER( tmc2000_state::gdata_r )
 {
-	tmc2000_state *state = device->machine->driver_data<tmc2000_state>();
-
-	return BIT(state->color, 0);
+	return BIT(m_color, 0);
 }
 
 static CDP1864_INTERFACE( tmc2000_cdp1864_intf )
@@ -53,9 +45,9 @@ static CDP1864_INTERFACE( tmc2000_cdp1864_intf )
 	CDP1802_TAG,
 	SCREEN_TAG,
 	CDP1864_INTERLACED,
-	DEVCB_LINE(rdata_r),
-	DEVCB_LINE(bdata_r),
-	DEVCB_LINE(gdata_r),
+	DEVCB_DRIVER_LINE_MEMBER(tmc2000_state, rdata_r),
+	DEVCB_DRIVER_LINE_MEMBER(tmc2000_state, bdata_r),
+	DEVCB_DRIVER_LINE_MEMBER(tmc2000_state, gdata_r),
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_INT),
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_DMAOUT),
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, COSMAC_INPUT_LINE_EF1),
@@ -65,11 +57,9 @@ static CDP1864_INTERFACE( tmc2000_cdp1864_intf )
 	RES_K(3.92)		// RL65 (also RH62 (2K pot) in series, but ignored here)
 };
 
-static VIDEO_UPDATE( tmc2000 )
+bool tmc2000_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	tmc2000_state *state = screen->machine->driver_data<tmc2000_state>();
-
-	cdp1864_update(state->cdp1864, bitmap, cliprect);
+	cdp1864_update(m_cti, &bitmap, &cliprect);
 
 	return 0;
 }
@@ -93,22 +83,16 @@ static CDP1864_INTERFACE( nano_cdp1864_intf )
 	0  // not connected
 };
 
-static VIDEO_UPDATE( nano )
+bool nano_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	nano_state *state = screen->machine->driver_data<nano_state>();
-	
-	cdp1864_update(state->cdp1864, bitmap, cliprect);
+	cdp1864_update(m_cti, &bitmap, &cliprect);
 
 	return 0;
 }
 
 /* OSM-200 */
 
-static VIDEO_START( osm200 )
-{
-}
-
-static VIDEO_UPDATE( osm200 )
+bool osc1000b_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	return 0;
 }
@@ -122,7 +106,6 @@ MACHINE_CONFIG_FRAGMENT( tmc1800_video )
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
-	MCFG_VIDEO_UPDATE(tmc1800)
 
 	MCFG_CDP1861_ADD(CDP1861_TAG, XTAL_1_75MHz, tmc1800_cdp1861_intf)
 MACHINE_CONFIG_END
@@ -136,15 +119,12 @@ MACHINE_CONFIG_FRAGMENT( osc1000b_video )
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
-	MCFG_VIDEO_START(osm200)
-	MCFG_VIDEO_UPDATE(osm200)
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_FRAGMENT( tmc2000_video )
 	MCFG_CDP1864_SCREEN_ADD(SCREEN_TAG, XTAL_1_75MHz)
 
 	MCFG_PALETTE_LENGTH(8+8)
-	MCFG_VIDEO_UPDATE(tmc2000)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_CDP1864_ADD(CDP1864_TAG, XTAL_1_75MHz, tmc2000_cdp1864_intf)
@@ -155,7 +135,6 @@ MACHINE_CONFIG_FRAGMENT( nano_video )
 	MCFG_CDP1864_SCREEN_ADD(SCREEN_TAG, XTAL_1_75MHz)
 
 	MCFG_PALETTE_LENGTH(8+8)
-	MCFG_VIDEO_UPDATE(nano)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_CDP1864_ADD(CDP1864_TAG, XTAL_1_75MHz, nano_cdp1864_intf)

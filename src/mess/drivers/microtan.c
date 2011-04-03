@@ -48,13 +48,13 @@
 #include "machine/6551.h"
 
 /* Devices */
-#include "devices/cassette.h"
+#include "imagedev/cassette.h"
 #include "formats/m65_snqk.h"
 
 
-static ADDRESS_MAP_START( microtan_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( microtan_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
-	AM_RANGE(0x0200, 0x03ff) AM_RAM_WRITE(microtan_videoram_w) AM_BASE_MEMBER(microtan_state, videoram)
+	AM_RANGE(0x0200, 0x03ff) AM_RAM_WRITE(microtan_videoram_w) AM_BASE_MEMBER(microtan_state, m_videoram)
 	AM_RANGE(0xbc00, 0xbc00) AM_DEVWRITE("ay8910.1", ay8910_address_w)
 	AM_RANGE(0xbc01, 0xbc01) AM_DEVREADWRITE("ay8910.1", ay8910_r, ay8910_data_w)
 	AM_RANGE(0xbc02, 0xbc02) AM_DEVWRITE("ay8910.2", ay8910_address_w)
@@ -230,12 +230,13 @@ static MACHINE_CONFIG_START( microtan, microtan_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(32*8, 16*16)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*16, 16*16-1)
+	MCFG_SCREEN_UPDATE(microtan)
+
 	MCFG_GFXDECODE(microtan)
 	MCFG_PALETTE_LENGTH(2)
 
 	MCFG_PALETTE_INIT(black_and_white)
 	MCFG_VIDEO_START(microtan)
-	MCFG_VIDEO_UPDATE(microtan)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

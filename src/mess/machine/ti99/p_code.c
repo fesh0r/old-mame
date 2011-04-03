@@ -107,6 +107,8 @@ typedef struct _ti99_pcoden_state
 INLINE ti99_pcoden_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
+	assert(device->type() == PCODEN);
+
 	return (ti99_pcoden_state *)downcast<legacy_device_base *>(device)->token();
 }
 
@@ -146,7 +148,7 @@ static READ8Z_DEVICE_HANDLER( data_r )
 
 	if (card->selected)
 	{
-		if ((offset & 0xe000)==0x4000)
+		if ((offset & 0x7e000)==0x74000)
 		{
 			if ((offset & 0xfffd)==GROMBASE)
 			{
@@ -155,16 +157,16 @@ static READ8Z_DEVICE_HANDLER( data_r )
 				return;
 			}
 
-			if (offset < 0x5000)
+			if ((offset & 0x1000) == 0x0000)
 			{
 				/* Accesses ROM 4732 (4K) */
-				*value = card->rom0[offset-0x4000];
+				*value = card->rom0[offset & 0x0fff];
 			}
 			else
 				// Accesses ROM 4764 (2*4K)
 			// We have two banks here which are activated according
 			// to the setting of CRU bit 4
-			*value = (card->bank_select==0)? card->rom1[offset-0x5000] : card->rom2[offset-0x5000];
+			*value = (card->bank_select==0)? card->rom1[offset & 0x0fff] : card->rom2[offset & 0x0fff];
 		}
 	}
 }
@@ -178,7 +180,7 @@ static WRITE8_DEVICE_HANDLER( data_w )
 	ti99_pcoden_state *card = get_safe_token(device);
 	if (card->selected)
 	{
-		if ((offset & 0xfffd)==(GROMBASE|0x0400))
+		if ((offset & 0x7fffd)==(GROMBASE|0x70400))
 		{
 			for (int i=0; i < 8; i++)
 				ti99grom_w(card->gromdev[i], offset, data);
@@ -198,7 +200,7 @@ static const ti99_peb_card pcode_ncard =
 
 static DEVICE_START( ti99_pcoden )
 {
-	ti99_pcoden_state *pcode = (ti99_pcoden_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_pcoden_state *pcode = get_safe_token(device);
 
 	/* Resolve the callbacks to the PEB */
 	peb_callback_if *topeb = (peb_callback_if *)device->baseconfig().static_config();
@@ -213,10 +215,10 @@ static DEVICE_STOP( ti99_pcoden )
 static DEVICE_RESET( ti99_pcoden )
 {
 	logerror("ti99_pcode: reset\n");
-	ti99_pcoden_state *pcode = (ti99_pcoden_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_pcoden_state *pcode = get_safe_token(device);
 
 	/* If the card is selected in the menu, register the card */
-	if (input_port_read(device->machine, "EXTCARD") & EXT_PCODE)
+	if (input_port_read(device->machine(), "EXTCARD") & EXT_PCODE)
 	{
 		device_t *peb = device->owner();
 		int success = mount_card(peb, device, &pcode_ncard, get_pebcard_config(device)->slot);
@@ -225,7 +227,7 @@ static DEVICE_RESET( ti99_pcoden )
 		astring *region = new astring();
 		astring_assemble_3(region, device->tag(), ":", pcode_region);
 
-		pcode->rom0 = device->machine->region(astring_c(region))->base();
+		pcode->rom0 = device->machine().region(astring_c(region))->base();
 		pcode->rom1 = pcode->rom0 + 0x1000;
 		pcode->rom2 = pcode->rom0 + 0x2000;
 		pcode->grom = pcode->rom0 + 0x3000;
@@ -245,7 +247,7 @@ static WRITE_LINE_DEVICE_HANDLER( pcode_ready )
 {
 	// Caution: The device pointer passed to this function is the calling
 	// device. That is, if we want *this* device, we need to take the owner.
-	ti99_pcoden_state *pcode = (ti99_pcoden_state*)downcast<legacy_device_base *>(device->owner())->token();
+	ti99_pcoden_state *pcode = get_safe_token(device->owner());
 	devcb_call_write_line( &pcode->lines.ready, state );
 }
 
@@ -254,7 +256,7 @@ static WRITE_LINE_DEVICE_HANDLER( pcode_ready )
 */
 static UINT8 *get_grom_ptr(device_t *device)
 {
-	ti99_pcoden_state *pcode = (ti99_pcoden_state*)downcast<legacy_device_base *>(device)->token();
+	ti99_pcoden_state *pcode = get_safe_token(device);
 	return pcode->grom;
 }
 
@@ -281,6 +283,7 @@ static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 #define DEVTEMPLATE_ID(p,s)             p##ti99_pcoden##s
 #define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "TI99 P-Code Card"
+#define DEVTEMPLATE_SHORTNAME           "ti99pcode"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 

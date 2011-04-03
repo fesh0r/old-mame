@@ -14,18 +14,18 @@ public:
 	zx_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config) { }
 
-	emu_timer *ula_nmi;
-	int ula_irq_active;
-	int ula_frame_vsync;
-	int ula_scanline_count;
-	UINT8 tape_bit;
-	UINT8 speaker_state;
-	int old_x;
-	int old_y;
-	int old_c;
-	UINT8 charline[32];
-	UINT8 charline_ptr;
-	int offs1;
+	emu_timer *m_ula_nmi;
+	int m_ula_irq_active;
+	int m_ula_frame_vsync;
+	int m_ula_scanline_count;
+	UINT8 m_tape_bit;
+	UINT8 m_speaker_state;
+	int m_old_x;
+	int m_old_y;
+	int m_old_c;
+	UINT8 m_charline[32];
+	UINT8 m_charline_ptr;
+	int m_offs1;
 };
 
 
@@ -47,10 +47,10 @@ WRITE8_HANDLER ( zx81_io_w );
 /*----------- defined in video/zx.c -----------*/
 
 VIDEO_START( zx );
-VIDEO_EOF( zx );
+SCREEN_EOF( zx );
 
-void zx_ula_bkgnd(running_machine *machine, int color);
-void zx_ula_r(running_machine *machine, int offs, const char *region, const UINT8 param);
+void zx_ula_bkgnd(running_machine &machine, int color);
+void zx_ula_r(running_machine &machine, int offs, const char *region, const UINT8 param);
 
 //extern int ula_nmi_active;
 //extern int ula_scancode_count;

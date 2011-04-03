@@ -10,10 +10,10 @@
 
 #include "emu.h"
 #include "pc_t1t.h"
-#include "video/pc_video_mess.h"
 #include "video/mc6845.h"
 #include "machine/pic8259.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
+#include "memconv.h"
 
 /***************************************************************************
 
@@ -24,7 +24,7 @@
 static PALETTE_INIT( pcjr );
 static VIDEO_START( pc_t1t );
 static VIDEO_START( pc_pcjr );
-static VIDEO_UPDATE( mc6845_t1000 );
+static SCREEN_UPDATE( mc6845_t1000 );
 static MC6845_UPDATE_ROW( t1000_update_row );
 static WRITE_LINE_DEVICE_HANDLER( t1000_de_changed );
 static WRITE_LINE_DEVICE_HANDLER( t1000_vsync_changed );
@@ -49,13 +49,14 @@ MACHINE_CONFIG_FRAGMENT( pcvideo_t1000 )
 	MCFG_SCREEN_ADD(T1000_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_14_31818MHz,912,0,640,262,0,200)
+	MCFG_SCREEN_UPDATE( mc6845_t1000 )
+
 	MCFG_PALETTE_LENGTH( 32 )
 	MCFG_PALETTE_INIT(pcjr)
 
 	MCFG_MC6845_ADD(T1000_MC6845_NAME, MC6845, XTAL_14_31818MHz/8, mc6845_t1000_intf)
 
 	MCFG_VIDEO_START(pc_t1t)
-	MCFG_VIDEO_UPDATE( mc6845_t1000 )
 MACHINE_CONFIG_END
 
 
@@ -77,13 +78,14 @@ MACHINE_CONFIG_FRAGMENT( pcvideo_pcjr )
 	MCFG_SCREEN_ADD(T1000_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_14_31818MHz,912,0,640,262,0,200)
+	MCFG_SCREEN_UPDATE( mc6845_t1000 )
+
 	MCFG_PALETTE_LENGTH( 32 )
 	MCFG_PALETTE_INIT(pcjr)
 
 	MCFG_MC6845_ADD(T1000_MC6845_NAME, MC6845, XTAL_14_31818MHz/16, mc6845_pcjr_intf)
 
 	MCFG_VIDEO_START(pc_pcjr)
-	MCFG_VIDEO_UPDATE( mc6845_t1000 )
 MACHINE_CONFIG_END
 
 
@@ -139,6 +141,7 @@ static struct
 	int pc_framecnt;
 
 	UINT8 *displayram;
+	UINT8 *t1_displayram;
 
 	UINT8 *chr_gen;
 	UINT8	chr_size;
@@ -152,31 +155,9 @@ static struct
 } pcjr = { 0 };
 
 
-static VIDEO_START( pc_t1t )
+static SCREEN_UPDATE( mc6845_t1000 )
 {
-	pcjr.chr_gen = machine->region("gfx1")->base();
-	pcjr.update_row = NULL;
-	pcjr.bank = 0;
-	pcjr.chr_size = 16;
-
-	pc_videoram_size = 0x8000;
-}
-
-
-static VIDEO_START( pc_pcjr )
-{
-	pcjr.chr_gen = machine->region("gfx1")->base();
-	pcjr.update_row = NULL;
-	pcjr.bank = 0;
-	pcjr.mode_control = 0x08;
-	pcjr.chr_size = 8;
-
-	pc_videoram_size = 0x8000;
-}
-
-static VIDEO_UPDATE( mc6845_t1000 )
-{
-	device_t *devconf = screen->machine->device(T1000_MC6845_NAME);
+	device_t *devconf = screen->machine().device(T1000_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -403,15 +384,21 @@ static MC6845_UPDATE_ROW( t1000_update_row )
 }
 
 
- READ8_HANDLER ( pc_t1t_videoram_r )
+READ8_HANDLER ( pc_t1t_videoram_r )
 {
-	UINT8 *videoram = pc_videoram;
+	UINT8 *videoram = pcjr.t1_displayram;
 	int data = 0xff;
 	if( videoram )
 		data = videoram[offset];
 	return data;
 }
 
+WRITE8_HANDLER ( pc_t1t_videoram_w )
+{
+	UINT8 *videoram = pcjr.t1_displayram;
+	if( videoram )
+		videoram[offset] = data;
+}
 
 static void pc_t1t_mode_switch( void )
 {
@@ -485,9 +472,9 @@ static void pc_t1t_mode_switch( void )
 /* bit1 - 1 = enable blink */
 /* bit3 - 1 = 2 color graphics */
 
-static void pc_pcjr_mode_switch( running_machine *machine )
+static void pc_pcjr_mode_switch( running_machine &machine )
 {
-	device_t *mc6845 = machine->device(T1000_MC6845_NAME);
+	device_t *mc6845 = machine.device(T1000_MC6845_NAME);
 
 	switch( pcjr.reg.data[0] & 0x1A )
 	{
@@ -643,7 +630,7 @@ static void pc_t1t_vga_data_w(int data)
 }
 
 
-static void pc_pcjr_vga_data_w(running_machine *machine, int data)
+static void pc_pcjr_vga_data_w(running_machine &machine, int data)
 {
 	pcjr.reg.data[pcjr.reg.index] = data;
 
@@ -716,11 +703,11 @@ static int pc_t1t_vga_data_r(void)
  *     6-7  Display mode. 0: Text, 1: 16K graphics mode (4,5,6,8)
  *          2: 32K graphics mode (9,Ah)
  */
-static void pc_t1t_bank_w(running_machine *machine, int data)
+static void pc_t1t_bank_w(running_machine &machine, int data)
 {
 	if (pcjr.bank != data)
 	{
-		UINT8 *ram = machine->region("maincpu")->base();
+		UINT8 *ram = machine.region("maincpu")->base();
 		int dram, vram;
 		pcjr.bank = data;
 	/* it seems the video ram is mapped to the last 128K of main memory */
@@ -739,14 +726,14 @@ static void pc_t1t_bank_w(running_machine *machine, int data)
 		dram = (data & 0x07) << 14;
 		vram = (data & 0x38) << (14-3);
 #endif
-		pc_videoram = &ram[vram];
+		pcjr.t1_displayram = &ram[vram];
 		pcjr.displayram = &ram[dram];
 		pc_t1t_mode_switch();
 	}
 }
 
 
-static void pc_pcjr_bank_w(running_machine *machine, int data)
+static void pc_pcjr_bank_w(running_machine &machine, int data)
 {
 	if (pcjr.bank != data)
 	{
@@ -763,8 +750,8 @@ static void pc_pcjr_bank_w(running_machine *machine, int data)
 			dram = ((data & 0x07) << 14);
 			vram = ((data & 0x38) << (14-3));
 		}
-		memory_set_bankptr( machine, "bank14", messram_get_ptr(machine->device("messram")) + vram );
-		pcjr.displayram = messram_get_ptr(machine->device("messram")) + dram;
+		memory_set_bankptr( machine, "bank14", ram_get_ptr(machine.device(RAM_TAG)) + vram );
+		pcjr.displayram = ram_get_ptr(machine.device(RAM_TAG)) + dram;
 		pc_pcjr_mode_switch(machine);
 	}
 }
@@ -789,11 +776,11 @@ WRITE8_HANDLER ( pc_T1T_w )
 	switch( offset )
 	{
 		case 0: case 2: case 4: case 6:
-			devconf = space->machine->device(T1000_MC6845_NAME);
+			devconf = space->machine().device(T1000_MC6845_NAME);
 			mc6845_address_w( devconf, offset, data );
 			break;
 		case 1: case 3: case 5: case 7:
-			devconf = space->machine->device(T1000_MC6845_NAME);
+			devconf = space->machine().device(T1000_MC6845_NAME);
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 8:
@@ -816,7 +803,7 @@ WRITE8_HANDLER ( pc_T1T_w )
 			pc_t1t_vga_data_w(data);
 			break;
 		case 15:
-			pc_t1t_bank_w(space->machine, data);
+			pc_t1t_bank_w(space->machine(), data);
 			break;
     }
 }
@@ -829,17 +816,17 @@ WRITE8_HANDLER( pc_pcjr_w )
 	switch( offset )
 	{
 		case 0: case 4:
-			devconf = space->machine->device(T1000_MC6845_NAME);
+			devconf = space->machine().device(T1000_MC6845_NAME);
 			mc6845_address_w( devconf, offset, data );
 			break;
 		case 1: case 5:
-			devconf = space->machine->device(T1000_MC6845_NAME);
+			devconf = space->machine().device(T1000_MC6845_NAME);
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 10:
 			if ( pcjr.address_data_ff & 0x01 )
 			{
-				pc_pcjr_vga_data_w( space->machine, data );
+				pc_pcjr_vga_data_w( space->machine(), data );
 			}
 			else
 			{
@@ -853,7 +840,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 		case 12:
 			break;
 		case 15:
-			pc_pcjr_bank_w(space->machine, data);
+			pc_pcjr_bank_w(space->machine(), data);
 			break;
 
 		default:
@@ -874,7 +861,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 			break;
 
 		case 1: case 3: case 5: case 7:
-			devconf = space->machine->device(T1000_MC6845_NAME);
+			devconf = space->machine().device(T1000_MC6845_NAME);
 			data = mc6845_register_r( devconf, offset );
 			break;
 
@@ -934,5 +921,66 @@ static WRITE_LINE_DEVICE_HANDLER( pcjr_vsync_changed )
 	{
 		pcjr.pc_framecnt++;
 	}
-	pic8259_ir5_w(device->machine->device("pic8259"), state);
+	pic8259_ir5_w(device->machine().device("pic8259"), state);
+}
+
+READ16_HANDLER( pc_t1t_videoram16le_r )	{ return read16le_with_read8_handler(pc_t1t_videoram_r, space, offset, mem_mask); }
+WRITE16_HANDLER( pc_t1t_videoram16le_w )	{ write16le_with_write8_handler(pc_t1t_videoram_w, space, offset, data, mem_mask); }
+
+READ16_HANDLER( pc_T1T16le_r )	{ return read16le_with_read8_handler(pc_T1T_r, space, offset, mem_mask); }
+WRITE16_HANDLER( pc_T1T16le_w )	{ write16le_with_write8_handler(pc_T1T_w, space, offset, data, mem_mask); }
+
+static VIDEO_START( pc_t1t )
+{
+	int buswidth;
+	address_space *space = machine.firstcpu->memory().space(AS_PROGRAM);
+	address_space *spaceio = machine.firstcpu->memory().space(AS_IO);
+
+	pcjr.chr_gen = machine.region("gfx1")->base();
+	pcjr.update_row = NULL;
+	pcjr.bank = 0;
+	pcjr.chr_size = 16;
+	
+	buswidth = machine.firstcpu->memory().space_config(AS_PROGRAM)->m_databus_width;
+	switch(buswidth)
+	{
+		case 8:
+			space->install_legacy_readwrite_handler(0xb8000, 0xbbfff, FUNC(pc_t1t_videoram_r), FUNC(pc_t1t_videoram_w) );
+			spaceio->install_legacy_readwrite_handler(0x3d0, 0x3df, FUNC(pc_T1T_r),FUNC(pc_T1T_w) );
+			break;
+
+		case 16:
+			space->install_legacy_readwrite_handler(0xb8000, 0xbbfff, FUNC(pc_t1t_videoram16le_r), FUNC(pc_t1t_videoram16le_w) );
+			spaceio->install_legacy_readwrite_handler(0x3d0, 0x3df, FUNC(pc_T1T16le_r),FUNC(pc_T1T16le_w) );
+			break;
+
+		default:
+			fatalerror("T1T: Bus width %d not supported", buswidth);
+			break;
+	}	
+}
+
+
+static VIDEO_START( pc_pcjr )
+{
+	int buswidth;
+	address_space *spaceio = machine.firstcpu->memory().space(AS_IO);
+
+	pcjr.chr_gen = machine.region("gfx1")->base();
+	pcjr.update_row = NULL;
+	pcjr.bank = 0;
+	pcjr.mode_control = 0x08;
+	pcjr.chr_size = 8;
+	
+	buswidth = machine.firstcpu->memory().space_config(AS_PROGRAM)->m_databus_width;
+	switch(buswidth)
+	{
+		case 8:
+			spaceio->install_legacy_readwrite_handler(0x3d0, 0x3df, FUNC(pc_T1T_r),FUNC(pc_pcjr_w) );
+			break;
+
+		default:
+			fatalerror("PCJR: Bus width %d not supported", buswidth);
+			break;
+	}	
 }

@@ -118,11 +118,11 @@ INLINE UINT8 get_timer(mos6530_state *miot)
 
 	/* if counting, return the number of ticks remaining */
 	else if (miot->timerstate == TIMER_COUNTING)
-		return attotime_to_ticks(timer_timeleft(miot->timer), miot->clock) >> miot->timershift;
+		return miot->timer->remaining().as_ticks(miot->clock) >> miot->timershift;
 
 	/* if finishing, return the number of ticks without the shift */
 	else
-		return attotime_to_ticks(timer_timeleft(miot->timer), miot->clock);
+		return miot->timer->remaining().as_ticks(miot->clock);
 }
 
 
@@ -146,7 +146,7 @@ static TIMER_CALLBACK( timer_end_callback )
 	if (miot->timerstate == TIMER_COUNTING)
 	{
 		miot->timerstate = TIMER_FINISHING;
-		timer_adjust_oneshot(miot->timer, ticks_to_attotime(256, miot->clock), 0);
+		miot->timer->adjust(attotime::from_ticks(256, miot->clock));
 
 		/* signal timer IRQ as well */
 		miot->irqstate |= TIMER_FLAG;
@@ -157,7 +157,7 @@ static TIMER_CALLBACK( timer_end_callback )
 	else if (miot->timerstate == TIMER_FINISHING)
 	{
 		miot->timerstate = TIMER_IDLE;
-		timer_adjust_oneshot(miot->timer, attotime_never, 0);
+		miot->timer->adjust(attotime::never);
 	}
 }
 
@@ -179,7 +179,7 @@ WRITE8_DEVICE_HANDLER( mos6530_w )
 	if (offset & 0x04)
 	{
 		static const UINT8 timershift[4] = { 0, 3, 6, 10 };
-		attotime curtime = timer_get_time(device->machine);
+		attotime curtime = device->machine().time();
 		INT64 target;
 
 		/* A0-A1 contain the timer divisor */
@@ -198,8 +198,8 @@ WRITE8_DEVICE_HANDLER( mos6530_w )
 
 		/* update the timer */
 		miot->timerstate = TIMER_COUNTING;
-		target = attotime_to_ticks(curtime, miot->clock) + 1 + (data << miot->timershift);
-		timer_adjust_oneshot(miot->timer, attotime_sub(ticks_to_attotime(target, miot->clock), curtime), 0);
+		target = curtime.as_ticks(miot->clock) + 1 + (data << miot->timershift);
+		miot->timer->adjust(attotime::from_ticks(target, miot->clock) - curtime);
 	}
 
 	/* if A2 == 0, we are writing to the I/O section */
@@ -227,7 +227,7 @@ WRITE8_DEVICE_HANDLER( mos6530_w )
 			if (port->out_port_func.target != NULL)
 				devcb_call_write8(&port->out_port_func, 0, data);
 			else
-				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine->firstcpu), data);
+				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine().firstcpu), data);
 		}
 	}
 }
@@ -289,7 +289,7 @@ READ8_DEVICE_HANDLER( mos6530_r )
 				port->in = devcb_call_read8(&port->in_port_func, 0);
 			}
 			else
-				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine->firstcpu));
+				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine().firstcpu));
 
 			/* apply the DDR to the result */
 			val = (out & port->ddr) | (port->in & ~port->ddr);
@@ -394,21 +394,21 @@ static DEVICE_START( mos6530 )
 	devcb_resolve_write8(&miot->port[1].out_port_func, &intf->out_pb_func, device);
 
 	/* allocate timers */
-	miot->timer = timer_alloc(device->machine, timer_end_callback, (void *)device);
+	miot->timer = device->machine().scheduler().timer_alloc(FUNC(timer_end_callback), (void *)device);
 
 	/* register for save states */
-	state_save_register_device_item(device, 0, miot->port[0].in);
-	state_save_register_device_item(device, 0, miot->port[0].out);
-	state_save_register_device_item(device, 0, miot->port[0].ddr);
-	state_save_register_device_item(device, 0, miot->port[1].in);
-	state_save_register_device_item(device, 0, miot->port[1].out);
-	state_save_register_device_item(device, 0, miot->port[1].ddr);
+	device->save_item(NAME(miot->port[0].in));
+	device->save_item(NAME(miot->port[0].out));
+	device->save_item(NAME(miot->port[0].ddr));
+	device->save_item(NAME(miot->port[1].in));
+	device->save_item(NAME(miot->port[1].out));
+	device->save_item(NAME(miot->port[1].ddr));
 
-	state_save_register_device_item(device, 0, miot->irqstate);
-	state_save_register_device_item(device, 0, miot->irqenable);
+	device->save_item(NAME(miot->irqstate));
+	device->save_item(NAME(miot->irqenable));
 
-	state_save_register_device_item(device, 0, miot->timershift);
-	state_save_register_device_item(device, 0, miot->timerstate);
+	device->save_item(NAME(miot->timershift));
+	device->save_item(NAME(miot->timerstate));
 }
 
 
@@ -430,7 +430,7 @@ static DEVICE_RESET( mos6530 )
 	/* reset timer states */
 	miot->timershift = 0;
 	miot->timerstate = TIMER_IDLE;
-	timer_adjust_oneshot(miot->timer, attotime_never, 0);
+	miot->timer->adjust(attotime::never);
 }
 
 

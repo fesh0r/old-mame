@@ -27,25 +27,11 @@
 
 ***************************************************************************/
 
-#define ADDRESS_MAP_MODERN
-
-#include "emu.h"
-#include "cpu/z80/z80.h"
-#include "devices/flopdrv.h"
-#include "devices/messram.h"
-#include "formats/basicdsk.h"
-#include "machine/serial.h"
-#include "machine/i8255a.h"
-#include "machine/ctronics.h"
-#include "machine/msm8251.h"
-#include "machine/wd17xx.h"
-#include "machine/pit8253.h"
-#include "video/msm6255.h"
 #include "includes/bw2.h"
 
 int bw2_state::get_ramdisk_size()
 {
-	return input_port_read(machine, "RAMCARD") * 256;
+	return input_port_read(m_machine, "RAMCARD") * 256;
 }
 
 /* Memory */
@@ -65,13 +51,13 @@ void bw2_state::bankswitch(UINT8 data)
 
     */
 
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	int max_ram_bank = 0;
 
 	m_bank = data & 0x07;
 
-	switch (messram_get_size(m_ram))
+	switch (ram_get_size(m_ram))
 	{
 	case 64 * 1024:
 		max_ram_bank = BANK_RAM1;
@@ -101,11 +87,11 @@ void bw2_state::bankswitch(UINT8 data)
 	switch (m_bank)
 	{
 	case BANK_RAM1:
-		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		break;
 
 	case BANK_VRAM:
-		memory_install_readwrite_bank(program, 0x0000, 0x3fff, 0, 0x4000, "bank1");
+		program->install_readwrite_bank(0x0000, 0x3fff, 0, 0x4000, "bank1");
 		break;
 
 	case BANK_RAM2:
@@ -115,21 +101,21 @@ void bw2_state::bankswitch(UINT8 data)
 	case BANK_RAM6:
 		if (m_bank > max_ram_bank)
 		{
-			memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
+			program->unmap_readwrite(0x0000, 0x7fff);
 		}
 		else
 		{
-			memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+			program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		}
 		break;
 
 	case BANK_ROM:
-		memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
-		memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
+		program->install_read_bank(0x0000, 0x7fff, "bank1");
+		program->unmap_write(0x0000, 0x7fff);
 		break;
 	}
 
-	memory_set_bank(machine, "bank1", m_bank);
+	memory_set_bank(m_machine, "bank1", m_bank);
 }
 
 void bw2_state::ramcard_bankswitch(UINT8 data)
@@ -147,13 +133,13 @@ void bw2_state::ramcard_bankswitch(UINT8 data)
 
     */
 
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	int max_ram_bank = BANK_RAM1;
 
 	m_bank = data & 0x07;
 
-	switch (messram_get_size(m_ram))
+	switch (ram_get_size(m_ram))
 	{
 	case 64 * 1024:
 	case 96 * 1024:
@@ -178,11 +164,11 @@ void bw2_state::ramcard_bankswitch(UINT8 data)
 	{
 	case BANK_RAM1:
 	case BANK_RAMCARD_RAM:
-		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		break;
 
 	case BANK_VRAM:
-		memory_install_readwrite_bank(program, 0x0000, 0x3fff, 0, 0x4000, "bank1");
+		program->install_readwrite_bank(0x0000, 0x3fff, 0, 0x4000, "bank1");
 		break;
 
 	case BANK_RAM3:
@@ -190,46 +176,46 @@ void bw2_state::ramcard_bankswitch(UINT8 data)
 	case BANK_RAM6:
 		if (m_bank > max_ram_bank)
 		{
-			memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
+			program->unmap_readwrite(0x0000, 0x7fff);
 		}
 		else
 		{
-			memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+			program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		}
 		break;
 
 	case BANK_RAMCARD_ROM:
-		memory_install_read_bank(program, 0x0000, 0x3fff, 0, 0x4000, "bank1");
-		memory_unmap_write(program, 0x0000, 0x3fff, 0, 0x4000);
+		program->install_read_bank(0x0000, 0x3fff, 0, 0x4000, "bank1");
+		program->unmap_write(0x0000, 0x3fff, 0, 0x4000);
 		break;
 
 	case BANK_ROM:
-		memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
-		memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
+		program->install_read_bank(0x0000, 0x7fff, "bank1");
+		program->unmap_write(0x0000, 0x7fff);
 		break;
 	}
 
-	memory_set_bank(machine, "bank1", m_bank);
+	memory_set_bank(m_machine, "bank1", m_bank);
 }
 
 WRITE8_MEMBER( bw2_state::ramcard_bank_w )
 {
-	address_space *program = cpu_get_address_space(m_maincpu, ADDRESS_SPACE_PROGRAM);
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	UINT8 ramcard_bank = data & 0x0f;
 	UINT32 bank_offset = ramcard_bank * 0x8000;
 
 	if ((get_ramdisk_size() == 256) && (ramcard_bank > 7))
 	{
-		memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
+		program->unmap_readwrite(0x0000, 0x7fff);
 	}
 	else
 	{
-		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 	}
 
-	memory_configure_bank(machine, "bank1", BANK_RAMCARD_RAM, 1, m_ramcard_ram + bank_offset, 0);
-	memory_set_bank(machine, "bank1", m_bank);
+	memory_configure_bank(m_machine, "bank1", BANK_RAMCARD_RAM, 1, m_ramcard_ram + bank_offset, 0);
+	memory_set_bank(m_machine, "bank1", m_bank);
 }
 
 /* Floppy */
@@ -240,91 +226,32 @@ WRITE_LINE_MEMBER( bw2_state::fdc_drq_w )
 	{
 		if (cpu_get_reg(m_maincpu, Z80_HALT))
 		{
-			cpu_set_input_line(m_maincpu, INPUT_LINE_NMI, HOLD_LINE);
+			device_set_input_line(m_maincpu, INPUT_LINE_NMI, HOLD_LINE);
 		}
 	}
 	else
 	{
-		cpu_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
 	}
 }
 
-READ8_MEMBER( bw2_state::fdc_r )
-{
-	UINT8 data = 0xff;
-
-	switch (offset & 0x03)
-	{
-	case 0:
-		data = wd17xx_status_r(m_fdc, 0);
-		break;
-	case 1:
-		data = wd17xx_track_r(m_fdc, 0);
-		break;
-	case 2:
-		data = wd17xx_sector_r(m_fdc, 0);
-		break;
-	case 3:
-		data = wd17xx_data_r(m_fdc, 0);
-		break;
-	}
-
-	return data;
-}
-
-WRITE8_MEMBER( bw2_state::fdc_w )
-{
-	switch (offset & 0x3)
-	{
-	case 0:
-		/* disk side is encoded in bit 1 of Type II/III commands */
-
-		if (BIT(data, 7))
-		{
-			if ((data & 0xf0) != 0xd0)
-			{
-				int side = BIT(data, 1);
-
-				wd17xx_set_side(m_fdc, side);
-
-				data &= ~0x02;
-			}
-		}
-
-		wd17xx_command_w(m_fdc, 0, data);
-		break;
-
-	case 1:
-		wd17xx_track_w(m_fdc, 0, data);
-		break;
-
-	case 2:
-		wd17xx_sector_w(m_fdc, 0, data);
-		break;
-
-	case 3:
-		wd17xx_data_w(m_fdc, 0, data);
-		break;
-	};
-}
-
-static ADDRESS_MAP_START( bw2_mem, ADDRESS_SPACE_PROGRAM, 8, bw2_state )
+static ADDRESS_MAP_START( bw2_mem, AS_PROGRAM, 8, bw2_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( bw2_io, ADDRESS_SPACE_IO, 8, bw2_state )
+static ADDRESS_MAP_START( bw2_io, AS_IO, 8, bw2_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE( 0x00, 0x03 ) AM_DEVREADWRITE_LEGACY(I8255A_TAG, i8255a_r, i8255a_w )
-	AM_RANGE( 0x10, 0x13 ) AM_DEVREADWRITE_LEGACY(PIT8253_TAG, pit8253_r, pit8253_w )
-	AM_RANGE( 0x20, 0x21 ) AM_DEVREADWRITE_LEGACY(MSM6255_TAG, msm6255_register_r, msm6255_register_w )
+	AM_RANGE( 0x00, 0x03 ) AM_DEVREADWRITE_LEGACY(I8255A_TAG, i8255a_r, i8255a_w)
+	AM_RANGE( 0x10, 0x13 ) AM_DEVREADWRITE_LEGACY(PIT8253_TAG, pit8253_r, pit8253_w)
+	AM_RANGE( 0x20, 0x21 ) AM_DEVREADWRITE(MSM6255_TAG, msm6255_device, read, write)
 //  AM_RANGE( 0x30, 0x3f ) SLOT
-	AM_RANGE( 0x40, 0x40 ) AM_DEVREADWRITE_LEGACY( MSM8251_TAG, msm8251_data_r, msm8251_data_w )
-	AM_RANGE( 0x41, 0x41 ) AM_DEVREADWRITE_LEGACY( MSM8251_TAG, msm8251_status_r, msm8251_control_w )
+	AM_RANGE( 0x40, 0x40 ) AM_DEVREADWRITE_LEGACY(MSM8251_TAG, msm8251_data_r, msm8251_data_w)
+	AM_RANGE( 0x41, 0x41 ) AM_DEVREADWRITE_LEGACY(MSM8251_TAG, msm8251_status_r, msm8251_control_w)
 	AM_RANGE( 0x50, 0x50 ) AM_DEVWRITE_LEGACY(CENTRONICS_TAG, centronics_data_w)
-	AM_RANGE( 0x60, 0x63 ) AM_READWRITE(fdc_r, fdc_w)
+	AM_RANGE( 0x60, 0x63 ) AM_DEVREADWRITE_LEGACY(WD2797_TAG, wd17xx_r, wd17xx_w)
 //  AM_RANGE( 0x70, 0x7f ) MODEMSEL
 ADDRESS_MAP_END
 
@@ -493,7 +420,7 @@ WRITE8_MEMBER( bw2_state::ppi_pa_w )
 	if (BIT(data, 4))
 	{
 		m_drive = 0;
-		
+
 		wd17xx_set_drive(m_fdc, m_drive);
 	}
 
@@ -528,7 +455,7 @@ READ8_MEMBER( bw2_state::ppi_pb_r )
 
 	if (m_kb_row <= 9)
 	{
-		data = input_port_read(machine, rownames[m_kb_row]);
+		data = input_port_read(m_machine, rownames[m_kb_row]);
 	}
 
 	return data;
@@ -606,7 +533,7 @@ WRITE_LINE_MEMBER( bw2_state::mtron_w )
 	floppy_drive_set_ready_state(m_floppy1, 1, 1);
 }
 
-static const struct pit8253_config bw2_pit8253_interface =
+static const struct pit8253_config pit_intf =
 {
 	{
 		{
@@ -636,21 +563,21 @@ static PALETTE_INIT( bw2 )
     palette_set_color_rgb(machine, 1, 0x31, 0x39, 0x10);
 }
 
-bool bw2_state::video_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+bool bw2_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	msm6255_update(m_lcdc, &bitmap, &cliprect);
+	m_lcdc->update_screen(&bitmap, &cliprect);
 
 	return 0;
 }
 
 static MSM6255_CHAR_RAM_READ( bw2_charram_r )
 {
-	bw2_state *state =  device->machine->driver_data<bw2_state>();
+	bw2_state *state =  device->machine().driver_data<bw2_state>();
 
 	return state->m_video_ram[ma & 0x3fff];
 }
 
-static MSM6255_INTERFACE( bw2_msm6255_intf )
+static MSM6255_INTERFACE( lcdc_intf )
 {
 	SCREEN_TAG,
 	0,
@@ -681,10 +608,10 @@ static const floppy_config bw2_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(bw2),
-	"bw2_flop"
+	"floppy_5_25"
 };
 
-static const wd17xx_interface bw2_wd17xx_interface =
+static const wd17xx_interface fdc_intf =
 {
 	DEVCB_LINE_GND,
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),
@@ -692,108 +619,65 @@ static const wd17xx_interface bw2_wd17xx_interface =
 	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
 };
 
-/* Serial */
-
-static DEVICE_IMAGE_LOAD( bw2_serial )
-{
-	bw2_state *state =  image.device().machine->driver_data<bw2_state>();
-
-	if (device_load_serial(image) == IMAGE_INIT_PASS)
-	{
-		serial_device_setup(image, 9600 >> input_port_read(image.device().machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
-
-		msm8251_connect_to_serial_device(state->m_uart, image);
-
-		serial_device_set_transmit_state(image, 1);
-
-		return IMAGE_INIT_PASS;
-	}
-
-	return IMAGE_INIT_FAIL;
-}
-
-DEVICE_GET_INFO( bw2_serial )
-{
-	switch ( state )
-	{
-		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( bw2_serial );    break;
-		case DEVINFO_STR_NAME:		                strcpy(info->s, "BW2 serial port");	                    break;
-		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                         break;
-		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                        	break;
-		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 0;                                        	break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	    	info->i = 0;                                        	break;
-		default:									DEVICE_GET_INFO_CALL(serial);	break;
-	}
-}
-
-DECLARE_LEGACY_IMAGE_DEVICE(BW2_SERIAL, bw2_serial);
-DEFINE_LEGACY_IMAGE_DEVICE(BW2_SERIAL, bw2_serial);
-
 /* Machine */
 
 void bw2_state::machine_start()
 {
 	/* allocate memory */
-	m_work_ram = auto_alloc_array(machine, UINT8, messram_get_size(m_ram));
-	m_video_ram = auto_alloc_array(machine, UINT8, BW2_VIDEORAM_SIZE);
-	m_ramcard_ram = auto_alloc_array(machine, UINT8, BW2_RAMCARD_SIZE);
+	m_work_ram = auto_alloc_array(m_machine, UINT8, ram_get_size(m_ram));
+	m_video_ram = auto_alloc_array(m_machine, UINT8, BW2_VIDEORAM_SIZE);
+	m_ramcard_ram = auto_alloc_array(m_machine, UINT8, BW2_RAMCARD_SIZE);
 
 	/* memory banking */
-	memory_configure_bank(machine, "bank1", BANK_RAM1, 1, m_work_ram, 0);
-	memory_configure_bank(machine, "bank1", BANK_VRAM, 1, m_video_ram, 0);
-	memory_configure_bank(machine, "bank1", BANK_ROM, 1, machine->region("ic1")->base(), 0);
+	memory_configure_bank(m_machine, "bank1", BANK_RAM1, 1, m_work_ram, 0);
+	memory_configure_bank(m_machine, "bank1", BANK_VRAM, 1, m_video_ram, 0);
+	memory_configure_bank(m_machine, "bank1", BANK_ROM, 1, m_machine.region("ic1")->base(), 0);
 
 	/* register for state saving */
-	state_save_register_global(machine, m_kb_row);
-	state_save_register_global_pointer(machine, m_work_ram, messram_get_size(m_ram));
-	state_save_register_global_pointer(machine, m_ramcard_ram, BW2_RAMCARD_SIZE);
-	state_save_register_global(machine, m_bank);
-	state_save_register_global(machine, m_drive);
-	state_save_register_global(machine, m_mtron);
-	state_save_register_global(machine, m_mfdbk);
-	state_save_register_global_pointer(machine, m_video_ram, BW2_VIDEORAM_SIZE);
+	state_save_register_global(m_machine, m_kb_row);
+	state_save_register_global_pointer(m_machine, m_work_ram, ram_get_size(m_ram));
+	state_save_register_global_pointer(m_machine, m_ramcard_ram, BW2_RAMCARD_SIZE);
+	state_save_register_global(m_machine, m_bank);
+	state_save_register_global(m_machine, m_drive);
+	state_save_register_global(m_machine, m_mtron);
+	state_save_register_global(m_machine, m_mfdbk);
+	state_save_register_global_pointer(m_machine, m_video_ram, BW2_VIDEORAM_SIZE);
 }
 
 void bw2_state::machine_reset()
 {
-	address_space *io = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO);
+	address_space *io = m_machine.device(Z80_TAG)->memory().space(AS_IO);
 
 	if (get_ramdisk_size() > 0)
 	{
 		// RAMCARD installed
 
-		memory_configure_bank(machine, "bank1", BANK_RAMCARD_ROM, 1, machine->region("ramcard")->base(), 0);
-		memory_configure_bank(machine, "bank1", BANK_RAM3, 2, m_work_ram + 0x8000, 0x8000);
-		memory_configure_bank(machine, "bank1", BANK_RAMCARD_RAM, 1, m_ramcard_ram, 0);
-		memory_configure_bank(machine, "bank1", BANK_RAM6, 1, m_work_ram + 0x18000, 0);
+		memory_configure_bank(m_machine, "bank1", BANK_RAMCARD_ROM, 1, m_machine.region("ramcard")->base(), 0);
+		memory_configure_bank(m_machine, "bank1", BANK_RAM3, 2, m_work_ram + 0x8000, 0x8000);
+		memory_configure_bank(m_machine, "bank1", BANK_RAMCARD_RAM, 1, m_ramcard_ram, 0);
+		memory_configure_bank(m_machine, "bank1", BANK_RAM6, 1, m_work_ram + 0x18000, 0);
 
-		io->install_handler(0x30, 0x30, 0, 0x0f, write8_delegate_create(bw2_state, ramcard_bank_w, *this), 0);
+		io->install_write_handler(0x30, 0x30, 0, 0x0f, write8_delegate_create(bw2_state, ramcard_bank_w, *this), 0);
 	}
 	else
 	{
 		// no RAMCARD
 
-		memory_configure_bank(machine, "bank1", BANK_RAM2, 5, m_work_ram + 0x8000, 0x8000);
+		memory_configure_bank(m_machine, "bank1", BANK_RAM2, 5, m_work_ram + 0x8000, 0x8000);
 
-		memory_unmap_write(io, 0x30, 0x30, 0, 0x0f);
+		io->unmap_write(0x30, 0x30, 0, 0x0f);
 	}
 
-	memory_set_bank(machine, "bank1", BANK_ROM);
+	memory_set_bank(m_machine, "bank1", BANK_ROM);
 }
 
-#define MCFG_BW2_SERIAL_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, BW2_SERIAL, 0)
-
 static MACHINE_CONFIG_START( bw2, bw2_state )
-	/* basic machine hardware */
-	MCFG_CPU_ADD( Z80_TAG, Z80, XTAL_16MHz/4 )
-	MCFG_CPU_PROGRAM_MAP( bw2_mem)
-	MCFG_CPU_IO_MAP( bw2_io)
+	// basic machine hardware
+	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
+	MCFG_CPU_PROGRAM_MAP(bw2_mem)
+	MCFG_CPU_IO_MAP(bw2_io)
 
-	MCFG_PIT8253_ADD( PIT8253_TAG, bw2_pit8253_interface )
-	MCFG_I8255A_ADD( I8255A_TAG, ppi_intf )
-
-	/* video hardware */
+	// video hardware
 	MCFG_SCREEN_ADD( SCREEN_TAG, LCD )
 	MCFG_SCREEN_REFRESH_RATE( 60 )
 	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
@@ -804,25 +688,22 @@ static MACHINE_CONFIG_START( bw2, bw2_state )
 	MCFG_PALETTE_LENGTH( 2 )
 	MCFG_PALETTE_INIT( bw2 )
 
-	MCFG_MSM6255_ADD(MSM6255_TAG, XTAL_16MHz, bw2_msm6255_intf)
-
-	/* printer */
+	// devices
+	MCFG_PIT8253_ADD(PIT8253_TAG, pit_intf)
+	MCFG_I8255A_ADD(I8255A_TAG, ppi_intf)
+	MCFG_MSM6255_ADD(MSM6255_TAG, XTAL_16MHz, lcdc_intf)
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
-
-	/* uart */
 	MCFG_MSM8251_ADD(MSM8251_TAG, default_msm8251_interface)
-
-	MCFG_WD179X_ADD(WD2797_TAG, bw2_wd17xx_interface )
-
+	MCFG_WD2797_ADD(WD2797_TAG, fdc_intf)
 	MCFG_FLOPPY_2_DRIVES_ADD(bw2_floppy_config)
+
+	// software list
 	MCFG_SOFTWARE_LIST_ADD("flop_list","bw2")
 
-	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	// internal ram
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("96K,128K,160K,192K,224K")
-
-	MCFG_BW2_SERIAL_ADD("serial")
 MACHINE_CONFIG_END
 
 /***************************************************************************

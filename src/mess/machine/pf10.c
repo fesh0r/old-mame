@@ -42,13 +42,13 @@ INLINE pf10_state *get_safe_token(device_t *device)
     ADDRESS MAPS
 *****************************************************************************/
 
-static ADDRESS_MAP_START( pf10_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pf10_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0040, 0x013f) AM_RAM /* internal ram */
 	AM_RANGE(0x0800, 0x0fff) AM_RAM /* external 2k ram */
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_REGION("pf10", 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pf10_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pf10_io, AS_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
@@ -135,28 +135,28 @@ DEVICE_GET_INFO( pf10 )
 /* serial interface in (to the host computer) */
 READ_LINE_DEVICE_HANDLER( pf10_txd1_r )
 {
-	logerror("%s: pf10_txd1_r\n", cpuexec_describe_context(device->machine));
+	logerror("%s: pf10_txd1_r\n", device->machine().describe_context());
 
 	return 0;
 }
 
 WRITE_LINE_DEVICE_HANDLER( pf10_rxd1_w )
 {
-	logerror("%s: pf10_rxd1_w %u\n", cpuexec_describe_context(device->machine), state);
+	logerror("%s: pf10_rxd1_w %u\n", device->machine().describe_context(), state);
 }
 
 
 /* serial interface out (to another floppy drive) */
 READ_LINE_DEVICE_HANDLER( pf10_txd2_r )
 {
-	logerror("%s: pf10_txd2_r\n", cpuexec_describe_context(device->machine));
+	logerror("%s: pf10_txd2_r\n", device->machine().describe_context());
 
 	return 0;
 }
 
 WRITE_LINE_DEVICE_HANDLER( pf10_rxd2_w )
 {
-	logerror("%s: pf10_rxd2_w %u\n", cpuexec_describe_context(device->machine), state);
+	logerror("%s: pf10_rxd2_w %u\n", device->machine().describe_context(), state);
 }
 
 DEFINE_LEGACY_DEVICE(PF10, pf10);

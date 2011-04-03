@@ -23,12 +23,12 @@
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
-#include "devices/printer.h"
-#include "devices/messram.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
+#include "imagedev/printer.h"
+#include "machine/ram.h"
 
 /***************************************************************************
     CONSTANTS
@@ -61,7 +61,7 @@
 */
 static READ8_HANDLER( cassette_r )
 {
-	device_t *cassette = space->machine->device("cassette");
+	device_t *cassette = space->machine().device("cassette");
 	return (cassette_input(cassette) < +0.0) ? 0 : 1;
 }
 
@@ -73,8 +73,8 @@ static READ8_HANDLER( cassette_r )
 */
 static WRITE8_HANDLER( cassette_w )
 {
-	device_t *speaker = space->machine->device("speaker");
-	device_t *cassette = space->machine->device("cassette");
+	device_t *speaker = space->machine().device("speaker");
+	device_t *cassette = space->machine().device("cassette");
 
 	speaker_level_w(speaker, BIT(data, 0));
 	cassette_output(cassette, BIT(data, 0) ? +1.0 : -1.0);
@@ -95,7 +95,7 @@ static WRITE8_HANDLER( cassette_w )
 */
 static READ8_HANDLER( vsync_r )
 {
-	screen_device *screen = space->machine->primary_screen;
+	screen_device *screen = space->machine().primary_screen;
 	return screen->vblank() ? 0 : 1;
 }
 
@@ -147,14 +147,14 @@ static READ8_HANDLER( keyboard_r )
 {
 	UINT8 result = 0xff;
 
-	if (!BIT(offset,  8)) result &= input_port_read(space->machine, "ROW0");
-	if (!BIT(offset,  9)) result &= input_port_read(space->machine, "ROW1");
-	if (!BIT(offset, 10)) result &= input_port_read(space->machine, "ROW2");
-	if (!BIT(offset, 11)) result &= input_port_read(space->machine, "ROW3");
-	if (!BIT(offset, 12)) result &= input_port_read(space->machine, "ROW4");
-	if (!BIT(offset, 13)) result &= input_port_read(space->machine, "ROW5");
-	if (!BIT(offset, 14)) result &= input_port_read(space->machine, "ROW6");
-	if (!BIT(offset, 15)) result &= input_port_read(space->machine, "ROW7");
+	if (!BIT(offset,  8)) result &= input_port_read(space->machine(), "ROW0");
+	if (!BIT(offset,  9)) result &= input_port_read(space->machine(), "ROW1");
+	if (!BIT(offset, 10)) result &= input_port_read(space->machine(), "ROW2");
+	if (!BIT(offset, 11)) result &= input_port_read(space->machine(), "ROW3");
+	if (!BIT(offset, 12)) result &= input_port_read(space->machine(), "ROW4");
+	if (!BIT(offset, 13)) result &= input_port_read(space->machine(), "ROW5");
+	if (!BIT(offset, 14)) result &= input_port_read(space->machine(), "ROW6");
+	if (!BIT(offset, 15)) result &= input_port_read(space->machine(), "ROW7");
 
 	return result;
 }
@@ -180,15 +180,15 @@ static READ8_HANDLER( keyboard_r )
 */
 static WRITE8_HANDLER( scrambler_w )
 {
-	aquarius_state *state = space->machine->driver_data<aquarius_state>();
-	state->scrambler = data;
+	aquarius_state *state = space->machine().driver_data<aquarius_state>();
+	state->m_scrambler = data;
 }
 
 static READ8_HANDLER( cartridge_r )
 {
-	aquarius_state *state = space->machine->driver_data<aquarius_state>();
-	UINT8 *rom = space->machine->region("maincpu")->base() + 0xc000;
-	return rom[offset] ^ state->scrambler;
+	aquarius_state *state = space->machine().driver_data<aquarius_state>();
+	UINT8 *rom = space->machine().region("maincpu")->base() + 0xc000;
+	return rom[offset] ^ state->m_scrambler;
 }
 
 
@@ -199,13 +199,13 @@ static READ8_HANDLER( cartridge_r )
 /* note: 0xe6-0xe7 = drive 1, 0xea-0xeb = drive 2 */
 static READ8_HANDLER( floppy_r )
 {
-	logerror("%s: floppy_r[0x%02x]\n", cpuexec_describe_context(space->machine), offset);
+	logerror("%s: floppy_r[0x%02x]\n", space->machine().describe_context(), offset);
 	return 0xff;
 }
 
 static WRITE8_HANDLER( floppy_w )
 {
-	logerror("%s: floppy_w[0x%02x] (0x%02x)\n", cpuexec_describe_context(space->machine), offset, data);
+	logerror("%s: floppy_w[0x%02x] (0x%02x)\n", space->machine().describe_context(), offset, data);
 }
 
 
@@ -216,12 +216,12 @@ static WRITE8_HANDLER( floppy_w )
 static DRIVER_INIT( aquarius )
 {
 	/* install expansion memory if available */
-	if (messram_get_size(machine->device("messram")) > 0x1000)
+	if (ram_get_size(machine.device(RAM_TAG)) > 0x1000)
 	{
-		address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+		address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-		memory_install_readwrite_bank(space, 0x4000, 0x4000 + messram_get_size(machine->device("messram")) - 0x1000 - 1, 0, 0, "bank1");
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(machine->device("messram")));
+		space->install_readwrite_bank(0x4000, 0x4000 + ram_get_size(machine.device(RAM_TAG)) - 0x1000 - 1, "bank1");
+		memory_set_bankptr(machine, "bank1", ram_get_ptr(machine.device(RAM_TAG)));
 	}
 }
 
@@ -230,16 +230,16 @@ static DRIVER_INIT( aquarius )
     ADDRESS MAPS
 ***************************************************************************/
 
-static ADDRESS_MAP_START( aquarius_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( aquarius_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x3000, 0x33ff) AM_RAM_WRITE(aquarius_videoram_w) AM_BASE_MEMBER(aquarius_state, videoram)
-	AM_RANGE(0x3400, 0x37ff) AM_RAM_WRITE(aquarius_colorram_w) AM_BASE_MEMBER(aquarius_state, colorram)
+	AM_RANGE(0x3000, 0x33ff) AM_RAM_WRITE(aquarius_videoram_w) AM_BASE_MEMBER(aquarius_state, m_videoram)
+	AM_RANGE(0x3400, 0x37ff) AM_RAM_WRITE(aquarius_colorram_w) AM_BASE_MEMBER(aquarius_state, m_colorram)
 	AM_RANGE(0x3800, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0xbfff) AM_NOP /* expansion ram */
 	AM_RANGE(0xc000, 0xffff) AM_READ(cartridge_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( aquarius_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( aquarius_io, AS_IO, 8 )
 //  AM_RANGE(0x7e, 0x7f) AM_MIRROR(0xff00) AM_READWRITE(modem_r, modem_w)
 	AM_RANGE(0xf6, 0xf6) AM_MIRROR(0xff00) AM_DEVREADWRITE("ay8910", ay8910_r, ay8910_data_w)
 	AM_RANGE(0xf7, 0xf7) AM_MIRROR(0xff00) AM_DEVWRITE("ay8910", ay8910_address_w)
@@ -249,7 +249,7 @@ static ADDRESS_MAP_START( aquarius_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xff, 0xff) AM_MIRROR(0xff00) AM_MASK(0xff00) AM_READWRITE(keyboard_r, scrambler_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( aquarius_qd_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( aquarius_qd_io, AS_IO, 8 )
 	AM_IMPORT_FROM(aquarius_io)
 	AM_RANGE(0xe0, 0xef) AM_MIRROR(0xff00) AM_READWRITE(floppy_r, floppy_w)
 ADDRESS_MAP_END
@@ -262,7 +262,7 @@ ADDRESS_MAP_END
 /* the 'reset' key is directly tied to the reset line of the cpu */
 static INPUT_CHANGED( aquarius_reset )
 {
-	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field->port->machine(), "maincpu", INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_PORTS_START( aquarius )
@@ -407,12 +407,13 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40 * 8, 25 * 8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40 * 8 - 1, 0 * 8, 25 * 8 - 1)
+	MCFG_SCREEN_UPDATE( aquarius )
+
 	MCFG_GFXDECODE( aquarius )
 	MCFG_PALETTE_LENGTH(512)
 	MCFG_PALETTE_INIT( aquarius )
 
 	MCFG_VIDEO_START( aquarius )
-	MCFG_VIDEO_UPDATE( aquarius )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -433,11 +434,15 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_INTERFACE("aquarius_cart")
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("4K")
 	MCFG_RAM_EXTRA_OPTIONS("8K,20K,36K")
+
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("cart_list","aquarius")
 MACHINE_CONFIG_END
 
 static FLOPPY_OPTIONS_START(aquarius)

@@ -106,13 +106,13 @@ typedef struct _m6847_vdg m6847_vdg;
 struct _m6847_vdg
 {
 	/* callbacks */
-	void (*horizontal_sync_callback)(running_machine *machine, int line);
-	void (*field_sync_callback)(running_machine *machine, int line);
-	UINT8 (*get_attributes)(running_machine *machine, UINT8 c,int scanline, int pos);
-	const UINT8 *(*get_video_ram)(running_machine *machine, int scanline);
-	int (*new_frame_callback)(running_machine *machine);	/* returns whether the M6847 is in charge of this frame */
-	void (*custom_prepare_scanline)(running_machine *machine, int scanline);
-	UINT8 (*get_char_rom)(running_machine *machine, UINT8 ch,int line);
+	void (*horizontal_sync_callback)(running_machine &machine, int line);
+	void (*field_sync_callback)(running_machine &machine, int line);
+	UINT8 (*get_attributes)(running_machine &machine, UINT8 c,int scanline, int pos);
+	const UINT8 *(*get_video_ram)(running_machine &machine, int scanline);
+	int (*new_frame_callback)(running_machine &machine);	/* returns whether the M6847 is in charge of this frame */
+	void (*custom_prepare_scanline)(running_machine &machine, int scanline);
+	UINT8 (*get_char_rom)(running_machine &machine, UINT8 ch,int line);
 
 	/* timers */
 	emu_timer *fs_rise_timer;
@@ -137,7 +137,7 @@ struct _m6847_vdg
 	unsigned int text_offset : 2;			/* needed for CoCo 3 */
 
 	/* video state; every scanline the video state for the scanline is copied
-     * here and only rendered in VIDEO_UPDATE */
+     * here and only rendered in SCREEN_UPDATE */
 	int dirty;
 	int using_custom;
 	UINT32 border[384];
@@ -159,7 +159,7 @@ struct _m6847_vdg
 
 
 
-static void apply_artifacts(running_machine *machine, UINT32 *line);
+static void apply_artifacts(running_machine &machine, UINT32 *line);
 
 static m6847_vdg *m6847;
 
@@ -1185,7 +1185,7 @@ static void (*const graphics_modes[8])(UINT32 *line, const m6847_pixel *video_da
 
 
 
-static void text_mode(running_machine *machine, int scanline, UINT32 *RESTRICT line, const m6847_pixel *RESTRICT video_data)
+static void text_mode(running_machine &machine, int scanline, UINT32 *RESTRICT line, const m6847_pixel *RESTRICT video_data)
 {
 	int x;
 	UINT8 byte, attr;
@@ -1229,7 +1229,7 @@ static void text_mode(running_machine *machine, int scanline, UINT32 *RESTRICT l
 
 
 
-static void render_scanline(running_machine *machine, bitmap_t *bitmap, int scanline)
+static void render_scanline(running_machine &machine, bitmap_t *bitmap, int scanline)
 {
 	UINT32 border_color;
 	UINT32 *line;
@@ -1307,7 +1307,7 @@ static UINT32 mix_color(double factor, UINT8 c0, UINT8 c1)
 
 
 
-static void apply_artifacts(running_machine *machine, UINT32 *line)
+static void apply_artifacts(running_machine &machine, UINT32 *line)
 {
 	/* Boy this code sucks; this code was adapted from the old M6847
      * artifacting implmentation.  The only reason that it didn't look as
@@ -1450,9 +1450,7 @@ static int get_scanline(void)
 	attotime duration;
 
 	/* get the time since last field sync */
-	duration = attotime_sub(
-		timer_starttime(m6847->hs_rise_timer),
-		timer_starttime(m6847->fs_rise_timer));
+	duration = m6847->hs_rise_timer->start() - m6847->fs_rise_timer->start();
 	assert_always(duration.seconds == 0, "get_scanline(): duration exceeds one second");
 
 	if (duration.attoseconds < m6847->vblank_period)
@@ -1473,25 +1471,25 @@ static int get_beamx(void)
 	attotime scanline_time;
 	int result;
 
-	scanline_time = timer_timeelapsed(m6847->hs_rise_timer);
+	scanline_time = m6847->hs_rise_timer->elapsed();
 	if (scanline_time.seconds != 0)
 		return 0;
-	assert(attotime_to_attoseconds(scanline_time) < m6847->scanline_period);
+	assert(scanline_time.as_attoseconds() < m6847->scanline_period);
 
-	if (attotime_to_attoseconds(scanline_time) < (m6847->clock_period * 42))
+	if (scanline_time.as_attoseconds() < (m6847->clock_period * 42))
 	{
 		/* hsync */
 		result = 0;
 	}
-	else if (attotime_to_attoseconds(scanline_time) < (m6847->clock_period * 95 / 2))
+	else if (scanline_time.as_attoseconds() < (m6847->clock_period * 95 / 2))
 	{
 		/* left border */
 		result = 0;
 	}
-	else if (attotime_to_attoseconds(scanline_time) < (m6847->clock_period * 351 / 2))
+	else if (scanline_time.as_attoseconds() < (m6847->clock_period * 351 / 2))
 	{
 		/* body */
-		result = (attotime_to_attoseconds(scanline_time) - (m6847->clock_period * 95 / 2))
+		result = (scanline_time.as_attoseconds() - (m6847->clock_period * 95 / 2))
 			/ m6847->clock_period * 2;
 	}
 	else
@@ -1503,7 +1501,7 @@ static int get_beamx(void)
 }
 
 
-INLINE void prepare_scanline(running_machine *machine, int xpos)
+INLINE void prepare_scanline(running_machine &machine, int xpos)
 {
 	UINT8 attrs, data, attr;
 	int scanline;
@@ -1587,36 +1585,36 @@ void coco6847_video_changed(void)
  *
  *************************************/
 
-int m6847_get_horizontal_sync(running_machine *machine)
+int m6847_get_horizontal_sync(running_machine &machine)
 {
-	attotime fire_time = timer_firetime(m6847->hs_fall_timer);
-	return attotime_compare(fire_time, timer_get_time(machine)) > 0;
+	attotime fire_time = m6847->hs_fall_timer->expire();
+	return fire_time > machine.time();
 }
 
 
 
-static void set_horizontal_sync(running_machine *machine)
+static void set_horizontal_sync(running_machine &machine)
 {
-	attotime fire_time = timer_firetime(m6847->hs_fall_timer);
-	int horizontal_sync = attotime_compare(fire_time, timer_get_time(machine)) > 0;
+	attotime fire_time = m6847->hs_fall_timer->expire();
+	int horizontal_sync = fire_time >  machine.time();
 	if (m6847->horizontal_sync_callback)
 		m6847->horizontal_sync_callback(machine, !horizontal_sync);
 }
 
 
 
-int m6847_get_field_sync(running_machine *machine)
+int m6847_get_field_sync(running_machine &machine)
 {
-	attotime fire_time = timer_firetime(m6847->fs_fall_timer);
-	return attotime_compare(fire_time, timer_get_time(machine)) > 0;
+	attotime fire_time = m6847->fs_fall_timer->expire();
+	return fire_time > machine.time();
 }
 
 
 
-static void set_field_sync(running_machine *machine)
+static void set_field_sync(running_machine &machine)
 {
-	attotime fire_time = timer_firetime(m6847->fs_fall_timer);
-	int field_sync = attotime_compare(fire_time, timer_get_time(machine)) > 0;
+	attotime fire_time = m6847->fs_fall_timer->expire();
+	int field_sync = fire_time > machine.time();
 	if (m6847->field_sync_callback)
 		m6847->field_sync_callback(machine,field_sync);
 }
@@ -1632,7 +1630,7 @@ static void set_field_sync(running_machine *machine)
 static TIMER_CALLBACK(hs_fall)
 {
 	if (LOG_HS)
-		logerror("hs_fall(): time=%s\n", attotime_string(timer_get_time(machine), ATTOTIME_STRING_PRECISION));
+		logerror("hs_fall(): time=%s\n", machine.time().as_string(ATTOTIME_STRING_PRECISION));
 
 	set_horizontal_sync(machine);
 }
@@ -1640,12 +1638,12 @@ static TIMER_CALLBACK(hs_fall)
 static TIMER_CALLBACK(hs_rise)
 {
 	if (LOG_HS)
-		logerror("hs_rise(): time=%s\n", attotime_string(timer_get_time(machine), ATTOTIME_STRING_PRECISION));
+		logerror("hs_rise(): time=%s\n", machine.time().as_string(ATTOTIME_STRING_PRECISION));
 
-	timer_adjust_oneshot(m6847->hs_rise_timer,
-		attotime_make(0, m6847->scanline_period), 0);
-	timer_adjust_oneshot(m6847->hs_fall_timer,
-		attotime_make(0, m6847->horizontal_sync_period), 0);
+	m6847->hs_rise_timer->adjust(
+		attotime(0, m6847->scanline_period), 0);
+	m6847->hs_fall_timer->adjust(
+		attotime(0, m6847->horizontal_sync_period), 0);
 
 	set_horizontal_sync(machine);
 	prepare_scanline(machine,0);
@@ -1654,7 +1652,7 @@ static TIMER_CALLBACK(hs_rise)
 static TIMER_CALLBACK(fs_fall)
 {
 	if (LOG_FS)
-		logerror("fs_fall(): time=%s scanline=%d\n", attotime_string(timer_get_time(machine), ATTOTIME_STRING_PRECISION), get_scanline());
+		logerror("fs_fall(): time=%s scanline=%d\n", machine.time().as_string(ATTOTIME_STRING_PRECISION), get_scanline());
 
 	set_field_sync(machine);
 }
@@ -1662,14 +1660,14 @@ static TIMER_CALLBACK(fs_fall)
 static TIMER_CALLBACK(fs_rise)
 {
 	if (LOG_FS)
-		logerror("fs_rise(): time=%s scanline=%d\n", attotime_string(timer_get_time(machine), ATTOTIME_STRING_PRECISION), get_scanline());
+		logerror("fs_rise(): time=%s scanline=%d\n", machine.time().as_string(ATTOTIME_STRING_PRECISION), get_scanline());
 
 	/* adjust field sync falling edge timer */
-	timer_adjust_oneshot(m6847->fs_fall_timer,
-		attotime_make(0, m6847->field_sync_period), 0);
+	m6847->fs_fall_timer->adjust(
+		attotime(0, m6847->field_sync_period), 0);
 
 	/* adjust horizontal sync rising timer */
-	timer_adjust_oneshot(m6847->hs_rise_timer, attotime_zero, 0);
+	m6847->hs_rise_timer->adjust(attotime::zero);
 
 	/* this is a hook for the CoCo 3 code to extend this stuff */
 	if (m6847->new_frame_callback)
@@ -1687,7 +1685,7 @@ static TIMER_CALLBACK(fs_rise)
  *************************************/
 
 
-static void execute_m6847_dumpscanline(running_machine *machine, int ref, int params, const char **param)
+static void execute_m6847_dumpscanline(running_machine &machine, int ref, int params, const char **param)
 {
 	int i;
 	int beamx = get_beamx() / 8;
@@ -1826,7 +1824,7 @@ static STATE_POSTLOAD( m6847_postload )
 
 
 
-void m6847_init(running_machine *machine, const m6847_config *cfg)
+void m6847_init(running_machine &machine, const m6847_config *cfg)
 {
 	const m6847_variant *v;
 	UINT32 frequency;
@@ -1871,10 +1869,10 @@ void m6847_init(running_machine *machine, const m6847_config *cfg)
 	}
 
 	/* allocate timers */
-	m6847->fs_rise_timer = timer_alloc(machine, fs_rise, NULL);
-	m6847->fs_fall_timer = timer_alloc(machine, fs_fall, NULL);
-	m6847->hs_rise_timer = timer_alloc(machine, hs_rise, NULL);
-	m6847->hs_fall_timer = timer_alloc(machine, hs_fall, NULL);
+	m6847->fs_rise_timer = machine.scheduler().timer_alloc(FUNC(fs_rise));
+	m6847->fs_fall_timer = machine.scheduler().timer_alloc(FUNC(fs_fall));
+	m6847->hs_rise_timer = machine.scheduler().timer_alloc(FUNC(hs_rise));
+	m6847->hs_fall_timer = machine.scheduler().timer_alloc(FUNC(hs_fall));
 
 	/* setup dimensions */
 	m6847->top_border_scanlines = v->top_border_scanlines;
@@ -1891,7 +1889,7 @@ void m6847_init(running_machine *machine, const m6847_config *cfg)
 	if (cfg->cpu0_timing_factor > 0)
 	{
 		cpu0_clock_period = period * 1 * GROSS_FACTOR;
-		machine->firstcpu->set_unscaled_clock( ATTOSECONDS_PER_SECOND / cpu0_clock_period);
+		machine.firstcpu->set_unscaled_clock( ATTOSECONDS_PER_SECOND / cpu0_clock_period);
 	}
 
 	/* calculate timing */
@@ -1909,10 +1907,10 @@ void m6847_init(running_machine *machine, const m6847_config *cfg)
 	/* setup timing */
 	frame_period = period *
 		(UINT32) (v->clocks_per_scanline * total_scanlines * GROSS_FACTOR);
-	timer_adjust_periodic(m6847->fs_rise_timer, attotime_zero, 0, attotime_make(0, frame_period));
+	m6847->fs_rise_timer->adjust(attotime::zero, 0, attotime(0, frame_period));
 
 	/* setup save states */
-	state_save_register_postload(machine, m6847_postload, NULL);
+	machine.state().register_postload(m6847_postload, NULL);
 
 	/* build font */
 	build_fontdata(v);
@@ -1921,25 +1919,25 @@ void m6847_init(running_machine *machine, const m6847_config *cfg)
 	if (LOG_STATS)
 	{
 		logerror("m6847_init():\n");
-		logerror("\tclock:      %30s sec\n", attotime_string(attotime_make(0, period * GROSS_FACTOR), ATTOTIME_STRING_PRECISION));
+		logerror("\tclock:      %30s sec\n", attotime(0, period * GROSS_FACTOR).as_string(ATTOTIME_STRING_PRECISION));
 		if (cpu0_clock_period > 0)
-			logerror("\tCPU0 clock: %30s sec\n", attotime_string(attotime_make(0, cpu0_clock_period), ATTOTIME_STRING_PRECISION));
-		logerror("\tscanline:   %30s sec\n", attotime_string(attotime_make(0, m6847->scanline_period), ATTOTIME_STRING_PRECISION));
-		logerror("\tfield sync: %30s sec\n", attotime_string(attotime_make(0, m6847->field_sync_period), ATTOTIME_STRING_PRECISION));
-		logerror("\thorz sync:  %30s sec\n", attotime_string(attotime_make(0, m6847->horizontal_sync_period), ATTOTIME_STRING_PRECISION));
-		logerror("\tvblank:     %30s sec\n", attotime_string(attotime_make(0, m6847->vblank_period), ATTOTIME_STRING_PRECISION));
-		logerror("\tframe:      %30s sec\n", attotime_string(attotime_make(0, frame_period), ATTOTIME_STRING_PRECISION));
+			logerror("\tCPU0 clock: %30s sec\n", attotime(0, cpu0_clock_period).as_string(ATTOTIME_STRING_PRECISION));
+		logerror("\tscanline:   %30s sec\n", attotime(0, m6847->scanline_period).as_string(ATTOTIME_STRING_PRECISION));
+		logerror("\tfield sync: %30s sec\n", attotime(0, m6847->field_sync_period).as_string(ATTOTIME_STRING_PRECISION));
+		logerror("\thorz sync:  %30s sec\n", attotime(0, m6847->horizontal_sync_period).as_string(ATTOTIME_STRING_PRECISION));
+		logerror("\tvblank:     %30s sec\n", attotime(0, m6847->vblank_period).as_string(ATTOTIME_STRING_PRECISION));
+		logerror("\tframe:      %30s sec\n", attotime(0, frame_period).as_string(ATTOTIME_STRING_PRECISION));
 		logerror("\n");
 	}
 
 	/* setup debug commands */
-	if (machine->debug_flags & DEBUG_FLAG_ENABLED)
+	if (machine.debug_flags & DEBUG_FLAG_ENABLED)
 		debug_console_register_command(machine, "m6847_dumpscanline", CMDFLAG_NONE, 0, 0, 0, execute_m6847_dumpscanline);
 }
 
 
 
-VIDEO_UPDATE(m6847)
+SCREEN_UPDATE(m6847)
 {
 	int row, i;
 	UINT32 rc = 0;
@@ -1971,7 +1969,7 @@ VIDEO_UPDATE(m6847)
 
 		/* the video RAM has been dirtied; need to draw */
 		for (row = cliprect->min_y; row <= cliprect->max_y; row++)
-			render_scanline(screen->machine, bitmap, row);
+			render_scanline(screen->machine(), bitmap, row);
 	}
 	else
 	{
@@ -1996,10 +1994,10 @@ static attotime interval(m6847_timing_type timing)
 	switch(timing)
 	{
 		case M6847_CLOCK:
-			result = attotime_make(0, m6847->clock_period);
+			result = attotime(0, m6847->clock_period);
 			break;
 		case M6847_HSYNC:
-			result = attotime_make(0, m6847->scanline_period);
+			result = attotime(0, m6847->scanline_period);
 			break;
 		default:
 			fatalerror("invalid timing type");
@@ -2010,15 +2008,15 @@ static attotime interval(m6847_timing_type timing)
 
 
 
-attotime coco6847_time_delay(running_machine *machine, m6847_timing_type timing, UINT64 time_delay)
+attotime coco6847_time_delay(running_machine &machine, m6847_timing_type timing, UINT64 time_delay)
 {
-	return attotime_mul(interval(timing), time_delay);
+	return interval(timing) * time_delay;
 }
 
 
 
 attotime coco6847_scanline_time(int scanline)
 {
-	return attotime_make(0, m6847->scanline_period *
+	return attotime(0, m6847->scanline_period *
 			(13 /* FIXME */ + scanline));
 }

@@ -613,11 +613,11 @@ INLINE void ay31015_update_rx_timer( device_t *device )
 
 	if ( ay31015->rx_clock > 0.0 )
 	{
-		timer_adjust_periodic( ay31015->rx_timer, ATTOTIME_IN_HZ( ay31015->rx_clock ), 0, ATTOTIME_IN_HZ( ay31015->rx_clock ) );
+		ay31015->rx_timer->adjust( attotime::from_hz( ay31015->rx_clock ), 0, attotime::from_hz( ay31015->rx_clock ) );
 	}
 	else
 	{
-		timer_enable( ay31015->rx_timer, 0 );
+		ay31015->rx_timer->enable( 0 );
 	}
 }
 
@@ -628,11 +628,11 @@ INLINE void ay31015_update_tx_timer( device_t *device )
 
 	if ( ay31015->tx_clock > 0.0 )
 	{
-		timer_adjust_periodic( ay31015->tx_timer, ATTOTIME_IN_HZ( ay31015->tx_clock ), 0, ATTOTIME_IN_HZ( ay31015->tx_clock ) );
+		ay31015->tx_timer->adjust( attotime::from_hz( ay31015->tx_clock ), 0, attotime::from_hz( ay31015->tx_clock ) );
 	}
 	else
 	{
-		timer_enable( ay31015->tx_timer, 0 );
+		ay31015->tx_timer->enable( 0 );
 	}
 }
 
@@ -697,8 +697,8 @@ static DEVICE_START(ay31015)
 	ay31015->tx_clock = ay31015->config->transmitter_clock;
 	ay31015->rx_clock = ay31015->config->receiver_clock;
 
-	ay31015->rx_timer = timer_alloc(device->machine, ay31015_rx_process, (void *)device );
-	ay31015->tx_timer = timer_alloc(device->machine, ay31015_tx_process, (void *)device );
+	ay31015->rx_timer = device->machine().scheduler().timer_alloc(FUNC(ay31015_rx_process), (void *)device );
+	ay31015->tx_timer = device->machine().scheduler().timer_alloc(FUNC(ay31015_tx_process), (void *)device );
 
 	ay31015_update_rx_timer( device );
 	ay31015_update_tx_timer( device );

@@ -44,9 +44,9 @@ documentation still exists.
 #include "includes/dgn_beta.h"
 #include "machine/6551.h"
 #include "formats/coco_dsk.h"
-#include "devices/flopdrv.h"
+#include "imagedev/flopdrv.h"
 #include "devices/coco_vhd.h"
-#include "devices/messram.h"
+#include "machine/ram.h"
 
 /*
  Colour codes are as below acording to os-9 headers, however the presise values
@@ -133,14 +133,14 @@ static const unsigned char dgnbeta_palette[] =
 
 */
 
-static ADDRESS_MAP_START( dgnbeta_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( dgnbeta_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0FFF)	AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x1FFF)	AM_RAMBANK("bank2")
 	AM_RANGE(0x2000, 0x2FFF)	AM_RAMBANK("bank3")
 	AM_RANGE(0x3000, 0x3FFF)	AM_RAMBANK("bank4")
 	AM_RANGE(0x4000, 0x4FFF)	AM_RAMBANK("bank5")
 	AM_RANGE(0x5000, 0x5FFF)	AM_RAMBANK("bank6")
-	AM_RANGE(0x6000, 0x6FFF)	AM_RAMBANK("bank7") AM_BASE_MEMBER(dgn_beta_state, videoram)
+	AM_RANGE(0x6000, 0x6FFF)	AM_RAMBANK("bank7") AM_BASE_MEMBER(dgn_beta_state, m_videoram)
 	AM_RANGE(0x7000, 0x7FFF)	AM_RAMBANK("bank8")
 	AM_RANGE(0x8000, 0x8FFF)	AM_RAMBANK("bank9")
 	AM_RANGE(0x9000, 0x9FFF)	AM_RAMBANK("bank10")
@@ -324,23 +324,21 @@ static MACHINE_CONFIG_START( dgnbeta, dgn_beta_state )
 	MCFG_CPU_ADD(DMACPU_TAG, M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 MHz */
 	MCFG_CPU_PROGRAM_MAP(dgnbeta_map)
 
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(DGNBETA_FRAMES_PER_SECOND)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
-
 	MCFG_MACHINE_START( dgnbeta )
 
 	/* video hardware */
-
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(DGNBETA_FRAMES_PER_SECOND)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 	MCFG_SCREEN_SIZE(700,550)
 	MCFG_SCREEN_VISIBLE_AREA(0, 699, 0, 549)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_UPDATE( dgnbeta )
+	
 	MCFG_GFXDECODE(dgnbeta)
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(dgnbeta_palette) / 3)
 	MCFG_PALETTE_INIT( dgnbeta )
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-
-	MCFG_VIDEO_UPDATE( dgnbeta )
 
 	MCFG_PIA6821_ADD( PIA_0_TAG, dgnbeta_pia_intf[0] )
 	MCFG_PIA6821_ADD( PIA_1_TAG, dgnbeta_pia_intf[1] )
@@ -351,7 +349,7 @@ static MACHINE_CONFIG_START( dgnbeta, dgn_beta_state )
 	MCFG_FLOPPY_4_DRIVES_ADD(dgnbeta_floppy_config)
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")
+	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("256K")
 	MCFG_RAM_EXTRA_OPTIONS("128K,384K,512K,640K,768K")
 	/* Ram size can now be configured, since the machine was known as either the Dragon Beta or */

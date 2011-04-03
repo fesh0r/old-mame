@@ -19,13 +19,13 @@ public:
 };
 
 
-static ADDRESS_MAP_START(uknc_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(uknc_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0xffff ) AM_ROM  // ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(uknc_sub_mem, ADDRESS_SPACE_PROGRAM, 16)
+static ADDRESS_MAP_START(uknc_sub_mem, AS_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0xffff ) AM_ROM  // ROM
@@ -44,7 +44,7 @@ static VIDEO_START( uknc )
 {
 }
 
-static VIDEO_UPDATE( uknc )
+static SCREEN_UPDATE( uknc )
 {
     return 0;
 }
@@ -74,11 +74,12 @@ static MACHINE_CONFIG_START( uknc, uknc_state )
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MCFG_SCREEN_SIZE(640, 480)
     MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+    MCFG_SCREEN_UPDATE(uknc)
+
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
 
     MCFG_VIDEO_START(uknc)
-    MCFG_VIDEO_UPDATE(uknc)
 MACHINE_CONFIG_END
 
 /* ROM definition */

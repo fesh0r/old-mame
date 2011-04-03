@@ -274,10 +274,10 @@ SamRam
 #include "sound/speaker.h"
 #include "sound/wave.h"
 #include "includes/spectrum.h"
-#include "devices/snapquik.h"
-#include "devices/cartslot.h"
-#include "devices/cassette.h"
-#include "devices/messram.h"
+#include "imagedev/snapquik.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 #include "formats/tzx_cas.h"
 #include "formats/spec_snqk.h"
 
@@ -294,17 +294,17 @@ SamRam
 
 WRITE8_HANDLER(spectrum_port_fe_w)
 {
-	spectrum_state *state = space->machine->driver_data<spectrum_state>();
-	device_t *speaker = space->machine->device("speaker");
+	spectrum_state *state = space->machine().driver_data<spectrum_state>();
+	device_t *speaker = space->machine().device("speaker");
 	unsigned char Changed;
 
-	Changed = state->port_fe_data^data;
+	Changed = state->m_port_fe_data^data;
 
 	/* border colour changed? */
 	if ((Changed & 0x07)!=0)
 	{
 		/* yes - send event */
-		spectrum_EventList_AddItemOffset(space->machine, 0x0fe, data & 0x07, space->machine->device<cpu_device>("maincpu")->attotime_to_cycles(attotime_mul(space->machine->primary_screen->scan_period(), space->machine->primary_screen->vpos())));
+		spectrum_EventList_AddItemOffset(space->machine(), 0x0fe, data & 0x07, space->machine().device<cpu_device>("maincpu")->attotime_to_cycles(space->machine().primary_screen->scan_period() * space->machine().primary_screen->vpos()));
 	}
 
 	if ((Changed & (1<<4))!=0)
@@ -316,10 +316,10 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 	if ((Changed & (1<<3))!=0)
 	{
 		/* write cassette data */
-		cassette_output(space->machine->device("cassette"), (data & (1<<3)) ? -1.0 : +1.0);
+		cassette_output(space->machine().device("cassette"), (data & (1<<3)) ? -1.0 : +1.0);
 	}
 
-	state->port_fe_data = data;
+	state->m_port_fe_data = data;
 }
 
 DIRECT_UPDATE_HANDLER(spectrum_direct)
@@ -341,16 +341,16 @@ READ8_HANDLER(spectrum_port_fe_r)
 	int lines = offset >> 8;
 	int data = 0xff;
 
-	int cs_extra1 = input_port_read_safe(space->machine, "PLUS0", 0xff) & 0x1f;
-	int cs_extra2 = input_port_read_safe(space->machine, "PLUS1", 0xff) & 0x1f;
-	int cs_extra3 = input_port_read_safe(space->machine, "PLUS2", 0xff) & 0x1f;
-	int ss_extra1 = input_port_read_safe(space->machine, "PLUS3", 0xff) & 0x1f;
-	int ss_extra2 = input_port_read_safe(space->machine, "PLUS4", 0xff) & 0x1f;
+	int cs_extra1 = input_port_read_safe(space->machine(), "PLUS0", 0xff) & 0x1f;
+	int cs_extra2 = input_port_read_safe(space->machine(), "PLUS1", 0xff) & 0x1f;
+	int cs_extra3 = input_port_read_safe(space->machine(), "PLUS2", 0xff) & 0x1f;
+	int ss_extra1 = input_port_read_safe(space->machine(), "PLUS3", 0xff) & 0x1f;
+	int ss_extra2 = input_port_read_safe(space->machine(), "PLUS4", 0xff) & 0x1f;
 
 	/* Caps - V */
 	if ((lines & 1) == 0)
 	{
-		data &= input_port_read(space->machine, "LINE0");
+		data &= input_port_read(space->machine(), "LINE0");
 		/* CAPS for extra keys */
 		if (cs_extra1 != 0x1f || cs_extra2 != 0x1f || cs_extra3 != 0x1f)
 			data &= ~0x01;
@@ -358,32 +358,32 @@ READ8_HANDLER(spectrum_port_fe_r)
 
 	/* A - G */
 	if ((lines & 2) == 0)
-		data &= input_port_read(space->machine, "LINE1");
+		data &= input_port_read(space->machine(), "LINE1");
 
 	/* Q - T */
 	if ((lines & 4) == 0)
-		data &= input_port_read(space->machine, "LINE2");
+		data &= input_port_read(space->machine(), "LINE2");
 
 	/* 1 - 5 */
 	if ((lines & 8) == 0)
-		data &= input_port_read(space->machine, "LINE3") & cs_extra1;
+		data &= input_port_read(space->machine(), "LINE3") & cs_extra1;
 
 	/* 6 - 0 */
 	if ((lines & 16) == 0)
-		data &= input_port_read(space->machine, "LINE4") & cs_extra2;
+		data &= input_port_read(space->machine(), "LINE4") & cs_extra2;
 
 	/* Y - P */
 	if ((lines & 32) == 0)
-		data &= input_port_read(space->machine, "LINE5") & ss_extra1;
+		data &= input_port_read(space->machine(), "LINE5") & ss_extra1;
 
 	/* H - Enter */
 	if ((lines & 64) == 0)
-		data &= input_port_read(space->machine, "LINE6");
+		data &= input_port_read(space->machine(), "LINE6");
 
 		/* B - Space */
 	if ((lines & 128) == 0)
 	{
-		data &= input_port_read(space->machine, "LINE7") & cs_extra3 & ss_extra2;
+		data &= input_port_read(space->machine(), "LINE7") & cs_extra3 & ss_extra2;
 		/* SYMBOL SHIFT for extra keys */
 		if (ss_extra1 != 0x1f || ss_extra2 != 0x1f)
 			data &= ~0x02;
@@ -392,14 +392,14 @@ READ8_HANDLER(spectrum_port_fe_r)
 	data |= (0xe0); /* Set bits 5-7 - as reset above */
 
 	/* cassette input from wav */
-	if (cassette_input(space->machine->device("cassette")) > 0.0038 )
+	if (cassette_input(space->machine().device("cassette")) > 0.0038 )
 	{
 		data &= ~0x40;
 	}
 
 	/* Issue 2 Spectrums default to having bits 5, 6 & 7 set.
     Issue 3 Spectrums default to having bits 5 & 7 set and bit 6 reset. */
-	if (input_port_read(space->machine, "CONFIG") & 0x80)
+	if (input_port_read(space->machine(), "CONFIG") & 0x80)
 		data ^= (0x40);
 
 	return data;
@@ -408,41 +408,41 @@ READ8_HANDLER(spectrum_port_fe_r)
 /* kempston joystick interface */
 READ8_HANDLER(spectrum_port_1f_r)
 {
-	return input_port_read(space->machine, "KEMPSTON") & 0x1f;
+	return input_port_read(space->machine(), "KEMPSTON") & 0x1f;
 }
 
 /* fuller joystick interface */
 READ8_HANDLER(spectrum_port_7f_r)
 {
-	return input_port_read(space->machine, "FULLER") | (0xff^0x8f);
+	return input_port_read(space->machine(), "FULLER") | (0xff^0x8f);
 }
 
 /* mikrogen joystick interface */
 READ8_HANDLER(spectrum_port_df_r)
 {
-	return input_port_read(space->machine, "MIKROGEN") | (0xff^0x1f);
+	return input_port_read(space->machine(), "MIKROGEN") | (0xff^0x1f);
 }
 
 static READ8_HANDLER ( spectrum_port_ula_r )
 {
-	spectrum_state *state = space->machine->driver_data<spectrum_state>();
-	int vpos = space->machine->primary_screen->vpos();
+	spectrum_state *state = space->machine().driver_data<spectrum_state>();
+	int vpos = space->machine().primary_screen->vpos();
 
-	return vpos<193 ? state->video_ram[(vpos&0xf8)<<2]:0xff;
+	return vpos<193 ? state->m_video_ram[(vpos&0xf8)<<2]:0xff;
 }
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START (spectrum_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (spectrum_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x5aff) AM_RAM AM_BASE_MEMBER(spectrum_state,video_ram)
+	AM_RANGE(0x4000, 0x5aff) AM_RAM AM_BASE_MEMBER(spectrum_state,m_video_ram)
 //  AM_RANGE(0x5b00, 0x7fff) AM_RAM
 //  AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 /* ports are not decoded full.
 The function decodes the ports appropriately */
-static ADDRESS_MAP_START (spectrum_io, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (spectrum_io, AS_IO, 8)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff)
 	AM_RANGE(0x1f, 0x1f) AM_READ(spectrum_port_1f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x7f, 0x7f) AM_READ(spectrum_port_7f_r) AM_MIRROR(0xff00)
@@ -622,26 +622,26 @@ INPUT_PORTS_END
 
 DRIVER_INIT( spectrum )
 {
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	switch (messram_get_size(machine->device("messram")))
+	switch (ram_get_size(machine.device(RAM_TAG)))
 	{
 	    case 48*1024:
-		memory_install_ram(space, 0x8000, 0xffff, 0, 0, NULL); // Fall through
+		space->install_ram(0x8000, 0xffff, NULL); // Fall through
 	    case 16*1024:
-		memory_install_ram(space, 0x5b00, 0x7fff, 0, 0, NULL);
+		space->install_ram(0x5b00, 0x7fff, NULL);
 	}
 }
 
 MACHINE_RESET( spectrum )
 {
-	spectrum_state *state = machine->driver_data<spectrum_state>();
-	address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	spectrum_state *state = machine.driver_data<spectrum_state>();
+	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	space->set_direct_update_handler(direct_update_delegate_create_static(spectrum_direct, *machine));
+	space->set_direct_update_handler(direct_update_delegate_create_static(spectrum_direct, machine));
 
-	state->port_7ffd_data = -1;
-	state->port_1ffd_data = -1;
+	state->m_port_7ffd_data = -1;
+	state->m_port_1ffd_data = -1;
 }
 
 /* F4 Character Displayer */
@@ -665,7 +665,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( spec_interrupt )
 {
-	cpu_set_input_line(device, 0, HOLD_LINE);
+	device_set_input_line(device, 0, HOLD_LINE);
 }
 
 static const cassette_config spectrum_cassette_config =
@@ -690,7 +690,7 @@ static DEVICE_IMAGE_LOAD( spectrum_cart )
 			return IMAGE_INIT_FAIL;
 		}
 
-		if (image.fread(image.device().machine->region("maincpu")->base(), filesize) != filesize)
+		if (image.fread(image.device().machine().region("maincpu")->base(), filesize) != filesize)
 		{
 			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Error loading file");
 			return IMAGE_INIT_FAIL;
@@ -699,7 +699,7 @@ static DEVICE_IMAGE_LOAD( spectrum_cart )
 	else
 	{
 		filesize = image.get_software_region_length("rom");
-		memcpy(image.device().machine->region("maincpu")->base(), image.get_software_region("rom"), filesize);
+		memcpy(image.device().machine().region("maincpu")->base(), image.get_software_region("rom"), filesize);
 	}
 	return IMAGE_INIT_PASS;
 }
@@ -711,7 +711,7 @@ MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 	MCFG_CPU_PROGRAM_MAP(spectrum_mem)
 	MCFG_CPU_IO_MAP(spectrum_io)
 	MCFG_CPU_VBLANK_INT("screen", spec_interrupt)
-	MCFG_QUANTUM_TIME(HZ(60))
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET( spectrum )
 
@@ -722,12 +722,13 @@ MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(SPEC_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, SPEC_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
+	MCFG_SCREEN_UPDATE( spectrum )
+	MCFG_SCREEN_EOF( spectrum )
+
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT( spectrum )
 	MCFG_GFXDECODE(spectrum)
 	MCFG_VIDEO_START( spectrum )
-	MCFG_VIDEO_UPDATE( spectrum )
-	MCFG_VIDEO_EOF( spectrum )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -753,7 +754,7 @@ MACHINE_CONFIG_END
 MACHINE_CONFIG_DERIVED( spectrum, spectrum_common )
 
 	/* internal ram */
-	MCFG_RAM_ADD("messram")				// This configuration is verified only for the original ZX Spectrum.
+	MCFG_RAM_ADD(RAM_TAG)				// This configuration is verified only for the original ZX Spectrum.
 	MCFG_RAM_DEFAULT_SIZE("48K")		// It's likely, but still to be checked, that many clones were produced only
 	MCFG_RAM_EXTRA_OPTIONS("16K")		// in the 48k configuration, while others have extra memory (80k, 128K, 1024K)
 	MCFG_RAM_DEFAULT_VALUE(0xff)		// available via bankswitching.
@@ -881,7 +882,7 @@ ROM_START(jet)
 	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-ROM_START( cobra )
+ROM_START( cobrasp )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_SYSTEM_BIOS(0, "v1", "V1")
 	ROMX_LOAD( "boot64k_v1.bin", 0x0000, 0x0800, CRC(a54aae6d) SHA1(8f5134ce24aea59065ed166ad79e864e17ce812f), ROM_BIOS(1))
@@ -962,7 +963,7 @@ ROM_END
 
 /* Russian clones */
 
-ROM_START(blitz)
+ROM_START(blitzs)
 	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("blitz.rom",0x0000,0x4000, CRC(91e535a8) SHA1(14f09d45dc3803cbdb05c33adb28eb12dbad9dd0))
 	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
@@ -1022,7 +1023,7 @@ COMP( 1985, hc85,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	
 COMP( 1988, hc88,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-88" , GAME_NOT_WORKING)
 COMP( 1990, hc90,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-90" , 0)
 COMP( 1991, hc91,     spectrum, 0,		spectrum,		spec_plus,	spectrum,	"ICE-Felix",	"HC-91" , 0)
-COMP( 1988, cobra,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra" , GAME_NOT_WORKING)
+COMP( 1988, cobrasp,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra" , GAME_NOT_WORKING)
 COMP( 1988, cobra80,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra 80K" , GAME_NOT_WORKING)
 COMP( 1987, cip01,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electronica",	"CIP-01" , 0)	// keyboard should be spectrum, but image was not clear
 COMP( 1988, cip03,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electronica",	"CIP-03" , 0)	// keyboard should be spectrum, but image was not clear
@@ -1035,7 +1036,7 @@ COMP( 1991, didakm91, spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Sk
 COMP( 1992, didaktk,  spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik Kompakt" , 0)
 COMP( 1993, didakm93, spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik M 93" , 0)
 COMP( 1988, mistrum,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"Amaterske RADIO",	"Mistrum" , 0)	// keyboard could be spectrum in some models (since it was a build-yourself design)
-COMP( 1990, blitz,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Blic" , 0)		// no keyboard images found
+COMP( 1990, blitzs,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Blic" , 0)		// no keyboard images found
 COMP( 1990, byte,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Byte" , 0)		// no keyboard images found
 COMP( 199?, orizon,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Orizon-Micro" , 0)		// no keyboard images found
 COMP( 1993, quorum48, spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Kvorum 48K" , GAME_NOT_WORKING)
