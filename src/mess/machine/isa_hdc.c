@@ -126,43 +126,43 @@ ROM_END
 //**************************************************************************
 //  GLOBAL VARIABLES
 //**************************************************************************
- 
+
 const device_type ISA8_HDC = isa8_hdc_device_config::static_alloc_device_config;
- 
+
 //**************************************************************************
 //  DEVICE CONFIGURATION
 //**************************************************************************
- 
+
 //-------------------------------------------------
 //  isa8_hdc_device_config - constructor
 //-------------------------------------------------
- 
+
 isa8_hdc_device_config::isa8_hdc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
         : device_config(mconfig, static_alloc_device_config, "ISA8_HDC", tag, owner, clock),
 			device_config_isa8_card_interface(mconfig, *this)
 {
 	m_shortname = "hdc";
 }
- 
+
 //-------------------------------------------------
 //  static_alloc_device_config - allocate a new
 //  configuration object
 //-------------------------------------------------
- 
+
 device_config *isa8_hdc_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
 {
         return global_alloc(isa8_hdc_device_config(mconfig, tag, owner, clock));
 }
- 
+
 //-------------------------------------------------
 //  alloc_device - allocate a new device object
 //-------------------------------------------------
- 
+
 device_t *isa8_hdc_device_config::alloc_device(running_machine &machine) const
 {
         return auto_alloc(machine, isa8_hdc_device(machine, *this));
 }
- 
+
 //-------------------------------------------------
 //  machine_config_additions - device-specific
 //  machine configurations
@@ -185,11 +185,11 @@ const rom_entry *isa8_hdc_device_config::device_rom_region() const
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
- 
+
 //-------------------------------------------------
 //  isa8_hdc_device - constructor
 //-------------------------------------------------
- 
+
 isa8_hdc_device::isa8_hdc_device(running_machine &_machine, const isa8_hdc_device_config &config) :
         device_t(_machine, config),
 		device_isa8_card_interface( _machine, config, *this ),
@@ -197,30 +197,30 @@ isa8_hdc_device::isa8_hdc_device(running_machine &_machine, const isa8_hdc_devic
 		m_isa(*owner(),config.m_isa_tag)
 {
 }
- 
+
 //-------------------------------------------------
 //  device_start - device-specific startup
 //-------------------------------------------------
- 
+
 void isa8_hdc_device::device_start()
-{        	
+{
 	m_isa->add_isa_card(this, m_config.m_isa_num);
 	m_isa->install_rom(this, 0xc8000, 0xc9fff, 0, 0, "hdc", "hdc");
-	m_isa->install_device(this, 0x0320, 0x0323, 0, 0, pc_HDC_r, pc_HDC_w );	
-	buffer = auto_alloc_array(m_machine, UINT8, 17*4*512);
-	timer = m_machine.scheduler().timer_alloc(FUNC(&pc_hdc_command), this);
+	m_isa->install_device(this, 0x0320, 0x0323, 0, 0, FUNC(pc_HDC_r), FUNC(pc_HDC_w) );
+	buffer = auto_alloc_array(machine(), UINT8, 17*4*512);
+	timer = machine().scheduler().timer_alloc(FUNC(pc_hdc_command), this);
 }
 
 //-------------------------------------------------
 //  device_reset - device-specific reset
 //-------------------------------------------------
- 
+
 void isa8_hdc_device::device_reset()
 {
 	drv = 0;
 	data_cnt = 0;
 	buffer_ptr = NULL;
-	hdc_control = 0;	
+	hdc_control = 0;
 	for (int i = 0; i < 2; i++)
 	{
 		cylinders[i] = 612;
@@ -251,13 +251,13 @@ hard_disk_file *isa8_hdc_device::pc_hdc_file(int id)
 	switch( id )
 	{
 	case 0:
-		img = dynamic_cast<device_image_interface *>(m_machine.device(subtag(tempstring,"primary")));
+		img = dynamic_cast<device_image_interface *>(machine().device(subtag(tempstring,"primary")));
 		break;
 	case 1:
-		img = dynamic_cast<device_image_interface *>(m_machine.device(subtag(tempstring,"slave")));
-		break;	
+		img = dynamic_cast<device_image_interface *>(machine().device(subtag(tempstring,"slave")));
+		break;
 	}
-	if ( img == NULL ) 
+	if ( img == NULL )
 		return NULL;
 
 	if (!img->exists())
@@ -518,7 +518,7 @@ int isa8_hdc_device::test_ready()
 	return 1;
 }
 
-void isa8_hdc_device::hdc_command() 
+void isa8_hdc_device::hdc_command()
 {
 	int set_error_info = 1;
 	int old_error = error;			/* Previous error data is needed for CMD_SENSE */
@@ -537,7 +537,7 @@ void isa8_hdc_device::hdc_command()
 	{
 		command_name = hdc_command_names[cmd] ? hdc_command_names[cmd] : "Unknown";
 		logerror("pc_hdc_command(): Executing command; pc=0x%08x cmd=0x%02x (%s) drv=%d\n",
-			(unsigned) cpu_get_reg(m_machine.firstcpu, STATE_GENPC), cmd, command_name, drv);
+			(unsigned) cpu_get_reg(machine().firstcpu, STATE_GENPC), cmd, command_name, drv);
 	}
 
 	switch (cmd)
@@ -575,7 +575,7 @@ void isa8_hdc_device::hdc_command()
 			if (LOG_HDC_STATUS)
 			{
 				logerror("hdc read pc=0x%08x D:%d C:%d H:%d S:%d N:%d CTL:$%02x\n",
-					(unsigned) cpu_get_reg(m_machine.firstcpu, STATE_GENPC), drv, cylinder[drv], head[drv], sector[drv], sector_cnt[drv], control[drv]);
+					(unsigned) cpu_get_reg(machine().firstcpu, STATE_GENPC), drv, cylinder[drv], head[drv], sector[drv], sector_cnt[drv], control[drv]);
 			}
 
 			if (test_ready())
@@ -590,7 +590,7 @@ void isa8_hdc_device::hdc_command()
 			if (LOG_HDC_STATUS)
 			{
 				logerror("hdc write pc=0x%08x  D:%d C:%d H:%d S:%d N:%d CTL:$%02x\n",
-					(unsigned) cpu_get_reg(m_machine.firstcpu, STATE_GENPC), drv, cylinder[drv], head[drv], sector[drv], sector_cnt[drv], control[drv]);
+					(unsigned) cpu_get_reg(machine().firstcpu, STATE_GENPC), drv, cylinder[drv], head[drv], sector[drv], sector_cnt[drv], control[drv]);
 			}
 
 			if (test_ready())
@@ -704,7 +704,7 @@ void isa8_hdc_device::pc_hdc_data_w(int data)
 		if (--data_cnt == 0)
 		{
 			if (LOG_HDC_STATUS)
-				logerror("pc_hdc_data_w(): Launching command; pc=0x%08x\n", (unsigned) cpu_get_reg(m_machine.firstcpu, STATE_GENPC));
+				logerror("pc_hdc_data_w(): Launching command; pc=0x%08x\n", (unsigned) cpu_get_reg(machine().firstcpu, STATE_GENPC));
 
             status &= ~STA_COMMAND;
 			status &= ~STA_REQUEST;
@@ -743,7 +743,7 @@ void isa8_hdc_device::pc_hdc_select_w(int data)
 void isa8_hdc_device::pc_hdc_control_w(int data)
 {
 	if (LOG_HDC_STATUS)
-		logerror("%s: pc_hdc_control_w(): control write %d\n", m_machine.describe_context(), data);
+		logerror("%s: pc_hdc_control_w(): control write %d\n", machine().describe_context(), data);
 
 	hdc_control = data;
 
@@ -817,10 +817,10 @@ static READ8_DEVICE_HANDLER(pc_HDC_r )
 {
 	UINT8 data = 0xff;
 	isa8_hdc_device	*hdc  = downcast<isa8_hdc_device *>(device);
-	
+
 	switch( offset )
 	{
-		case 0: data = hdc->pc_hdc_data_r(); 	 break;
+		case 0: data = hdc->pc_hdc_data_r();	 break;
 		case 1: data = hdc->pc_hdc_status_r();	 break;
 		case 2: data = hdc->pc_hdc_dipswitch_r(); break;
 		case 3: break;
@@ -854,8 +854,8 @@ UINT8 isa8_hdc_device::dack_r(int line)
 }
 
 void isa8_hdc_device::dack_w(int line,UINT8 data)
-{	
-	pc_hdc_dack_w(data);	
+{
+	pc_hdc_dack_w(data);
 }
 bool isa8_hdc_device::have_dack(int line)
 {

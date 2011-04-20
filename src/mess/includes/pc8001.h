@@ -9,8 +9,7 @@
 #include "cpu/z80/z80.h"
 #include "imagedev/cassette.h"
 #include "machine/ctronics.h"
-#include "machine/i8257.h"
-#include "machine/i8214.h"
+#include "machine/8257dma.h"
 #include "machine/i8255a.h"
 #include "machine/msm8251.h"
 #include "machine/ram.h"
@@ -47,7 +46,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<upd1990a_device> m_rtc;
 	required_device<device_t> m_dma;
-	required_device<device_t> m_crtc;
+	required_device<upd3301_device> m_crtc;
 	required_device<device_t> m_cassette;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_speaker;
@@ -59,8 +58,12 @@ public:
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	DECLARE_WRITE8_MEMBER( port30_w );
+	DECLARE_WRITE_LINE_MEMBER( crtc_drq_w );
 	DECLARE_WRITE_LINE_MEMBER( hrq_w );
-	
+	DECLARE_WRITE8_MEMBER( dma_mem_w );
+	DECLARE_READ8_MEMBER( dma_io_r );
+	DECLARE_WRITE8_MEMBER( dma_io_w );
+
 	/* video state */
 	UINT8 *m_char_rom;
 	int m_width80;

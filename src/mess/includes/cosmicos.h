@@ -55,7 +55,7 @@ public:
 
 	required_device<cosmac_device> m_maincpu;
 	required_device<device_t> m_cti;
-	required_device<device_t> m_led;
+	required_device<dm9368_device> m_led;
 	required_device<device_t> m_cassette;
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_ram;
@@ -84,12 +84,12 @@ public:
 	DECLARE_READ_LINE_MEMBER( ef4_r );
 	DECLARE_WRITE_LINE_MEMBER( q_w );
 	DECLARE_READ8_MEMBER( dma_r );
-	
+
 	void set_cdp1802_mode(int mode);
 	void clear_input_data();
 	void set_ram_mode();
-	
-	
+
+
 	/* CPU state */
 	int m_wait;
 	int m_clear;

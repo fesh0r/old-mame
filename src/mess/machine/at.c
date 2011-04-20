@@ -24,7 +24,6 @@
 #include "machine/i82439tx.h"
 
 #include "machine/pc_fdc.h"
-#include "machine/pc_hdc.h"
 #include "includes/pc_mouse.h"
 
 #include "machine/ram.h"
@@ -42,14 +41,27 @@ static int poll_delay;
  *
  *************************************************************/
 
+static READ8_DEVICE_HANDLER( get_slave_ack )
+{
+	at_state *st = device->machine().driver_data<at_state>();
+	if (offset==2) { // IRQ = 2
+		return pic8259_acknowledge(st->m_pic8259_slave);
+	}
+	return 0x00;
+}
+
 const struct pic8259_interface at_pic8259_master_config =
 {
-	DEVCB_CPU_INPUT_LINE("maincpu", 0)
+	DEVCB_CPU_INPUT_LINE("maincpu", 0),
+	DEVCB_LINE_VCC,
+	DEVCB_HANDLER(get_slave_ack)
 };
 
 const struct pic8259_interface at_pic8259_slave_config =
 {
-	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir2_w)
+	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir2_w),
+	DEVCB_LINE_GND,
+	DEVCB_NULL
 };
 
 
@@ -128,25 +140,6 @@ const struct pit8253_config at_pit8254_config =
 };
 
 
-static void at_set_irq_line(running_machine &machine,int irq, int state)
-{
-	at_state *st = machine.driver_data<at_state>();
-
-	switch (irq)
-	{
-	case 0: pic8259_ir0_w(st->m_pic8259_master, state); break;
-	case 1: pic8259_ir1_w(st->m_pic8259_master, state); break;
-	case 2: pic8259_ir2_w(st->m_pic8259_master, state); break;
-	case 3: pic8259_ir3_w(st->m_pic8259_master, state); break;
-	case 4: pic8259_ir4_w(st->m_pic8259_master, state); break;
-	case 5: pic8259_ir5_w(st->m_pic8259_master, state); break;
-	case 6: pic8259_ir6_w(st->m_pic8259_master, state); break;
-	case 7: pic8259_ir7_w(st->m_pic8259_master, state); break;
-	}
-}
-
-
-
 /*************************************************************************
  *
  *      PC DMA stuff
@@ -156,6 +149,7 @@ static void at_set_irq_line(running_machine &machine,int irq, int state)
 static int dma_channel;
 static UINT8 dma_offset[2][4];
 static UINT8 at_pages[0x10];
+static UINT16 dma_high_byte;
 
 
 READ8_HANDLER(at_page8_r)
@@ -219,8 +213,7 @@ static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 static READ8_HANDLER( pc_dma_read_byte )
 {
 	UINT8 result;
-	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
-		& 0xFF0000;
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16) & 0xFF0000;
 
 	result = space->read_byte(page_offset + offset);
 	return result;
@@ -229,10 +222,29 @@ static READ8_HANDLER( pc_dma_read_byte )
 
 static WRITE8_HANDLER( pc_dma_write_byte )
 {
-	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
-		& 0xFF0000;
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16) & 0xFF0000;
 
 	space->write_byte(page_offset + offset, data);
+}
+
+
+static READ8_HANDLER( pc_dma_read_word )
+{
+	UINT16 result;
+	offs_t page_offset = (((offs_t) dma_offset[1][dma_channel & 3]) << 16) & 0xFF0000;
+
+	result = space->read_word(page_offset + ( offset << 1 ) );
+	dma_high_byte = result & 0xFF00;
+
+	return result & 0xFF;
+}
+
+
+static WRITE8_HANDLER( pc_dma_write_word )
+{
+	offs_t page_offset = (((offs_t) dma_offset[1][dma_channel & 3]) << 16) & 0xFF0000;
+
+	space->write_word(page_offset + ( offset << 1 ), dma_high_byte | data);
 }
 
 
@@ -241,18 +253,8 @@ static READ8_DEVICE_HANDLER( at_dma8237_fdc_dack_r ) {
 }
 
 
-static READ8_DEVICE_HANDLER( at_dma8237_hdc_dack_r ) {
-	return pc_hdc_dack_r(device->machine());
-}
-
-
 static WRITE8_DEVICE_HANDLER( at_dma8237_fdc_dack_w ) {
 	pc_fdc_dack_w( device->machine(), data );
-}
-
-
-static WRITE8_DEVICE_HANDLER( at_dma8237_hdc_dack_w ) {
-	pc_hdc_dack_w( device->machine(), data );
 }
 
 
@@ -262,13 +264,23 @@ static WRITE_LINE_DEVICE_HANDLER( at_dma8237_out_eop ) {
 
 static void set_dma_channel(device_t *device, int channel, int state)
 {
-	if (!state) dma_channel = channel;
+	if (!state)
+		dma_channel = channel;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( pc_dack0_w ) { set_dma_channel(device, 0, state); }
 static WRITE_LINE_DEVICE_HANDLER( pc_dack1_w ) { set_dma_channel(device, 1, state); }
 static WRITE_LINE_DEVICE_HANDLER( pc_dack2_w ) { set_dma_channel(device, 2, state); }
 static WRITE_LINE_DEVICE_HANDLER( pc_dack3_w ) { set_dma_channel(device, 3, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack4_w )
+{
+	at_state *st = device->machine().driver_data<at_state>();
+
+	i8237_hlda_w( st->m_dma8237_1, state ? 0 : 1); // it's inverted
+}
+static WRITE_LINE_DEVICE_HANDLER( pc_dack5_w ) { set_dma_channel(device, 5, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack6_w ) { set_dma_channel(device, 6, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack7_w ) { set_dma_channel(device, 7, state); }
 
 I8237_INTERFACE( at_dma8237_1_config )
 {
@@ -276,22 +288,21 @@ I8237_INTERFACE( at_dma8237_1_config )
 	DEVCB_LINE(at_dma8237_out_eop),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(at_dma8237_fdc_dack_r), DEVCB_HANDLER(at_dma8237_hdc_dack_r) },
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(at_dma8237_fdc_dack_w), DEVCB_HANDLER(at_dma8237_hdc_dack_w) },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(at_dma8237_fdc_dack_r), DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(at_dma8237_fdc_dack_w), DEVCB_NULL },
 	{ DEVCB_LINE(pc_dack0_w), DEVCB_LINE(pc_dack1_w), DEVCB_LINE(pc_dack2_w), DEVCB_LINE(pc_dack3_w) }
 };
 
 
-/* TODO: How is this hooked up in the actual machine? */
 I8237_INTERFACE( at_dma8237_2_config )
 {
 	DEVCB_LINE(pc_dma_hrq_changed),
 	DEVCB_NULL,
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_word),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_word),
 	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
 	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
+	{ DEVCB_LINE(pc_dack4_w), DEVCB_LINE(pc_dack5_w), DEVCB_LINE(pc_dack6_w), DEVCB_LINE(pc_dack7_w) }
 };
 
 
@@ -464,9 +475,6 @@ static void init_at_common(running_machine &machine)
 		}
 	}
 
-	/* FDC/HDC hardware */
-	pc_hdc_setup(machine, at_set_irq_line);
-
 	/* serial mouse */
 	pc_mouse_initialise(machine);
 
@@ -539,29 +547,11 @@ static IRQ_CALLBACK(at_irq_callback)
 	return pic8259_acknowledge(st->m_pic8259_master);
 }
 
-static void pc_set_irq_line(running_machine &machine,int irq, int state)
-{
-	at_state *st = machine.driver_data<at_state>();;
-
-	switch (irq)
-	{
-	case 0: pic8259_ir0_w(st->m_pic8259_master, state); break;
-	case 1: pic8259_ir1_w(st->m_pic8259_master, state); break;
-	case 2: pic8259_ir2_w(st->m_pic8259_master, state); break;
-	case 3: pic8259_ir3_w(st->m_pic8259_master, state); break;
-	case 4: pic8259_ir4_w(st->m_pic8259_master, state); break;
-	case 5: pic8259_ir5_w(st->m_pic8259_master, state); break;
-	case 6: pic8259_ir6_w(st->m_pic8259_master, state); break;
-	case 7: pic8259_ir7_w(st->m_pic8259_master, state); break;
-	}
-}
-
 MACHINE_START( at )
 {
 	device_set_irq_callback(machine.device("maincpu"), at_irq_callback);
 	/* FDC/HDC hardware */
 	pc_fdc_init( machine, &fdc_interface );
-	pc_hdc_setup(machine, pc_set_irq_line);
 }
 
 
@@ -576,6 +566,5 @@ MACHINE_RESET( at )
 	st->m_dma8237_2 = machine.device("dma8237_2");
 	st->m_pit8254 = machine.device("pit8254");
 	pc_mouse_set_serial_port( machine.device("ns16450_0") );
-	pc_hdc_set_dma8237_device( st->m_dma8237_1 );
 	poll_delay = 4;
 }

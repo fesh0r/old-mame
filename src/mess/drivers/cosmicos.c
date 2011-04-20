@@ -87,7 +87,7 @@ READ8_MEMBER( cosmicos_state::hex_keyboard_r )
 	{
 		if (BIT(m_keylatch, i))
 		{
-			UINT8 keydata = input_port_read(m_machine, keynames[i]);
+			UINT8 keydata = input_port_read(machine(), keynames[i]);
 
 			if (BIT(keydata, 0)) data |= 0x01;
 			if (BIT(keydata, 1)) data |= 0x02;
@@ -414,14 +414,14 @@ READ_LINE_MEMBER( cosmicos_state::clear_r )
 
 READ_LINE_MEMBER( cosmicos_state::ef1_r )
 {
-	UINT8 special = input_port_read(m_machine, "SPECIAL");
+	UINT8 special = input_port_read(machine(), "SPECIAL");
 
 	return BIT(special, 0);
 }
 
 READ_LINE_MEMBER( cosmicos_state::ef2_r )
 {
-	UINT8 special = input_port_read(m_machine, "SPECIAL");
+	UINT8 special = input_port_read(machine(), "SPECIAL");
 	int casin = cassette_input(m_cassette) < 0.0;
 
 	output_set_led_value(LED_CASSETTE, casin);
@@ -431,14 +431,14 @@ READ_LINE_MEMBER( cosmicos_state::ef2_r )
 
 READ_LINE_MEMBER( cosmicos_state::ef3_r )
 {
-	UINT8 special = input_port_read(m_machine, "SPECIAL");
+	UINT8 special = input_port_read(machine(), "SPECIAL");
 
 	return BIT(special, 2) | BIT(special, 3);
 }
 
 READ_LINE_MEMBER( cosmicos_state::ef4_r )
 {
-	return BIT(input_port_read(m_machine, "BUTTONS"), 0);
+	return BIT(input_port_read(machine(), "BUTTONS"), 0);
 }
 
 static COSMAC_SC_WRITE( cosmicos_sc_w )
@@ -504,7 +504,7 @@ void cosmicos_state::machine_start()
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* initialize LED display */
-	dm9368_rbi_w(m_led, 1);
+	m_led->rbi_w(1);
 
 	/* setup memory banking */
 	switch (ram_get_size(m_ram))
@@ -566,6 +566,13 @@ static const cassette_config cosmicos_cassette_config =
 	NULL
 };
 
+static DM9368_INTERFACE( led_intf )
+{
+	0,
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 static MACHINE_CONFIG_START( cosmicos, cosmicos_state )
 	/* basic machine hardware */
     MCFG_CPU_ADD(CDP1802_TAG, COSMAC, XTAL_1_75MHz)
@@ -575,7 +582,7 @@ static MACHINE_CONFIG_START( cosmicos, cosmicos_state )
 
     /* video hardware */
 	MCFG_DEFAULT_LAYOUT( layout_cosmicos )
-	MCFG_DM9368_ADD(DM9368_TAG, 0, NULL)
+	MCFG_DM9368_ADD(DM9368_TAG, led_intf)
 	MCFG_TIMER_ADD_PERIODIC("digit", digit_tick, attotime::from_hz(100))
 	MCFG_TIMER_ADD_PERIODIC("interrupt", int_tick, attotime::from_hz(1000))
 
@@ -618,12 +625,12 @@ ROM_END
 
 DIRECT_UPDATE_HANDLER( cosmicos_direct_update_handler )
 {
-	cosmicos_state *state = machine->driver_data<cosmicos_state>();
+	cosmicos_state *state = machine.driver_data<cosmicos_state>();
 
 	if (state->m_boot)
 	{
 		/* force A6 and A7 high */
-		direct.explicit_configure(0x0000, 0xffff, 0x3f3f, machine->region(CDP1802_TAG)->base() + 0xc0);
+		direct.explicit_configure(0x0000, 0xffff, 0x3f3f, machine.region(CDP1802_TAG)->base() + 0xc0);
 		return ~0;
 	}
 
@@ -634,7 +641,7 @@ static DRIVER_INIT( cosmicos )
 {
 	address_space *program = machine.device(CDP1802_TAG)->memory().space(AS_PROGRAM);
 
-	program->set_direct_update_handler(direct_update_delegate_create_static(cosmicos_direct_update_handler, machine));
+	program->set_direct_update_handler(direct_update_delegate(FUNC(cosmicos_direct_update_handler), &machine));
 }
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME    FLAGS */

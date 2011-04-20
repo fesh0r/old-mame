@@ -102,24 +102,7 @@ Notes:
 
 */
 
-#define ADDRESS_MAP_MODERN
-
-#include "emu.h"
 #include "includes/v1050.h"
-#include "cpu/z80/z80.h"
-#include "cpu/m6502/m6502.h"
-#include "cpu/mcs48/mcs48.h"
-#include "imagedev/flopdrv.h"
-#include "machine/ram.h"
-#include "formats/basicdsk.h"
-#include "machine/ctronics.h"
-#include "machine/i8214.h"
-#include "machine/i8255a.h"
-#include "machine/msm58321.h"
-#include "machine/msm8251.h"
-#include "machine/wd17xx.h"
-#include "video/mc6845.h"
-#include "sound/discrete.h"
 
 void v1050_state::set_interrupt(UINT8 mask, int state)
 {
@@ -132,7 +115,7 @@ void v1050_state::set_interrupt(UINT8 mask, int state)
 		m_int_state &= ~mask;
 	}
 
-	i8214_r_w(m_pic, 0, ~(m_int_state & m_int_mask));
+	m_pic->r_w(~(m_int_state & m_int_mask));
 }
 
 void v1050_state::bankswitch()
@@ -144,16 +127,16 @@ void v1050_state::bankswitch()
 	if (BIT(m_bank, 0))
 	{
 		program->install_readwrite_bank(0x0000, 0x1fff, "bank1");
-		memory_set_bank(m_machine, "bank1", bank);
+		memory_set_bank(machine(), "bank1", bank);
 	}
 	else
 	{
 		program->install_read_bank(0x0000, 0x1fff, "bank1");
 		program->unmap_write(0x0000, 0x1fff);
-		memory_set_bank(m_machine, "bank1", 3);
+		memory_set_bank(machine(), "bank1", 3);
 	}
 
-	memory_set_bank(m_machine, "bank2", bank);
+	memory_set_bank(machine(), "bank2", bank);
 
 	if (bank == 2)
 	{
@@ -163,11 +146,11 @@ void v1050_state::bankswitch()
 	{
 		program->install_readwrite_bank(0x4000, 0x7fff, "bank3");
 		program->install_readwrite_bank(0x8000, 0xbfff, "bank4");
-		memory_set_bank(m_machine, "bank3", bank);
-		memory_set_bank(m_machine, "bank4", bank);
+		memory_set_bank(machine(), "bank3", bank);
+		memory_set_bank(machine(), "bank4", bank);
 	}
 
-	memory_set_bank(m_machine, "bank5", bank);
+	memory_set_bank(machine(), "bank5", bank);
 }
 
 /* Keyboard HACK */
@@ -241,7 +224,7 @@ void v1050_state::scan_keyboard()
 	int table = 0, row, col;
 	int keydata = 0xff;
 
-	UINT8 line_mod = input_port_read(m_machine, "ROW12");
+	UINT8 line_mod = input_port_read(machine(), "ROW12");
 
 	if((line_mod & 0x07) && (line_mod & 0x18))
 	{
@@ -259,7 +242,7 @@ void v1050_state::scan_keyboard()
 	/* scan keyboard */
 	for (row = 0; row < 12; row++)
 	{
-		UINT8 data = input_port_read(m_machine, keynames[row]);
+		UINT8 data = input_port_read(machine(), keynames[row]);
 
 		for (col = 0; col < 8; col++)
 		{
@@ -310,7 +293,8 @@ READ8_MEMBER( v1050_state::kb_status_r )
 
 WRITE8_MEMBER( v1050_state::v1050_i8214_w )
 {
-	i8214_b_w(m_pic, 0, (data >> 1) & 0x0f);
+	m_pic->b_w((data >> 1) & 0x07);
+	m_pic->sgs_w(BIT(data, 4));
 }
 
 READ8_MEMBER( v1050_state::vint_clr_r )
@@ -362,7 +346,7 @@ READ8_MEMBER( v1050_state::keyboard_r )
 {
     static const char *const KEY_ROW[] = { "X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "XA", "XB" };
 
-    return input_port_read(m_machine, KEY_ROW[m_keylatch]);
+    return input_port_read(machine(), KEY_ROW[m_keylatch]);
 }
 
 WRITE8_MEMBER( v1050_state::keyboard_w )
@@ -921,7 +905,7 @@ WRITE8_MEMBER( v1050_state::rtc_ppi_pb_w )
 	m_int_mask = data;
 }
 
-static READ8_DEVICE_HANDLER( rtc_ppi_pc_r )
+READ8_MEMBER( v1050_state::rtc_ppi_pc_r )
 {
 	/*
 
@@ -931,17 +915,17 @@ static READ8_DEVICE_HANDLER( rtc_ppi_pc_r )
         PC1
         PC2
         PC3                 clock busy
-        PC4                 clock address write
-        PC5                 clock data write
-        PC6                 clock data read
-        PC7                 clock device select
+        PC4
+        PC5
+        PC6
+        PC7
 
     */
 
-	return msm58321_busy_r(device) << 3;
+	return m_rtc->busy_r() << 3;
 }
 
-static WRITE8_DEVICE_HANDLER( rtc_ppi_pc_w )
+WRITE8_MEMBER( v1050_state::rtc_ppi_pc_w )
 {
 	/*
 
@@ -950,7 +934,7 @@ static WRITE8_DEVICE_HANDLER( rtc_ppi_pc_w )
         PC0
         PC1
         PC2
-        PC3                 clock busy
+        PC3
         PC4                 clock address write
         PC5                 clock data write
         PC6                 clock data read
@@ -958,20 +942,20 @@ static WRITE8_DEVICE_HANDLER( rtc_ppi_pc_w )
 
     */
 
-	msm58321_address_write_w(device, BIT(data, 4));
-	msm58321_write_w(device, BIT(data, 5));
-	msm58321_read_w(device, BIT(data, 6));
-	msm58321_cs2_w(device, BIT(data, 7));
+	m_rtc->address_write_w(BIT(data, 4));
+	m_rtc->write_w(BIT(data, 5));
+	m_rtc->read_w(BIT(data, 6));
+	m_rtc->cs2_w(BIT(data, 7));
 }
 
 static I8255A_INTERFACE( rtc_ppi_intf )
 {
-	DEVCB_DEVICE_HANDLER(MSM58321RS_TAG, msm58321_r),	// Port A read
-	DEVCB_NULL,							// Port B read
-	DEVCB_DEVICE_HANDLER(MSM58321RS_TAG, rtc_ppi_pc_r),		// Port C read
-	DEVCB_DEVICE_HANDLER(MSM58321RS_TAG, msm58321_w),	// Port A write
-	DEVCB_DRIVER_MEMBER(v1050_state, rtc_ppi_pb_w),		// Port B write
-	DEVCB_DEVICE_HANDLER(MSM58321RS_TAG, rtc_ppi_pc_w)			// Port C write
+	DEVCB_DEVICE_MEMBER(MSM58321RS_TAG, msm58321_device, read),
+	DEVCB_NULL,
+	DEVCB_DRIVER_MEMBER(v1050_state, rtc_ppi_pc_r),
+	DEVCB_DEVICE_MEMBER(MSM58321RS_TAG, msm58321_device, write),
+	DEVCB_DRIVER_MEMBER(v1050_state, rtc_ppi_pb_w),
+	DEVCB_DRIVER_MEMBER(v1050_state, rtc_ppi_pc_w)
 };
 
 /* Keyboard 8251A Interface */
@@ -1100,7 +1084,7 @@ static IRQ_CALLBACK( v1050_int_ack )
 {
 	v1050_state *state = device->machine().driver_data<v1050_state>();
 
-	UINT8 vector = 0xf0 | (i8214_a_r(state->m_pic, 0) << 1);
+	UINT8 vector = 0xf0 | (state->m_pic->a_r() << 1);
 
 	//logerror("Interrupt Acknowledge Vector: %02x\n", vector);
 
@@ -1114,49 +1098,49 @@ void v1050_state::machine_start()
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* initialize I8214 */
-	i8214_etlg_w(m_pic, 1);
-	i8214_inte_w(m_pic, 1);
+	m_pic->etlg_w(1);
+	m_pic->inte_w(1);
 
 	/* initialize RTC */
-	msm58321_cs1_w(m_rtc, 1);
+	m_rtc->cs1_w(1);
 
 	/* set CPU interrupt callback */
 	device_set_irq_callback(m_maincpu, v1050_int_ack);
 
 	/* setup memory banking */
-	UINT8 *ram = ram_get_ptr(m_machine.device(RAM_TAG));
+	UINT8 *ram = ram_get_ptr(machine().device(RAM_TAG));
 
-	memory_configure_bank(m_machine, "bank1", 0, 2, ram, 0x10000);
-	memory_configure_bank(m_machine, "bank1", 2, 1, ram + 0x1c000, 0);
-	memory_configure_bank(m_machine, "bank1", 3, 1, m_machine.region(Z80_TAG)->base(), 0);
+	memory_configure_bank(machine(), "bank1", 0, 2, ram, 0x10000);
+	memory_configure_bank(machine(), "bank1", 2, 1, ram + 0x1c000, 0);
+	memory_configure_bank(machine(), "bank1", 3, 1, machine().region(Z80_TAG)->base(), 0);
 
 	program->install_readwrite_bank(0x2000, 0x3fff, "bank2");
-	memory_configure_bank(m_machine, "bank2", 0, 2, ram + 0x2000, 0x10000);
-	memory_configure_bank(m_machine, "bank2", 2, 1, ram + 0x1e000, 0);
+	memory_configure_bank(machine(), "bank2", 0, 2, ram + 0x2000, 0x10000);
+	memory_configure_bank(machine(), "bank2", 2, 1, ram + 0x1e000, 0);
 
 	program->install_readwrite_bank(0x4000, 0x7fff, "bank3");
-	memory_configure_bank(m_machine, "bank3", 0, 2, ram + 0x4000, 0x10000);
+	memory_configure_bank(machine(), "bank3", 0, 2, ram + 0x4000, 0x10000);
 
 	program->install_readwrite_bank(0x8000, 0xbfff, "bank4");
-	memory_configure_bank(m_machine, "bank4", 0, 2, ram + 0x8000, 0x10000);
+	memory_configure_bank(machine(), "bank4", 0, 2, ram + 0x8000, 0x10000);
 
 	program->install_readwrite_bank(0xc000, 0xffff, "bank5");
-	memory_configure_bank(m_machine, "bank5", 0, 3, ram + 0xc000, 0);
+	memory_configure_bank(machine(), "bank5", 0, 3, ram + 0xc000, 0);
 
 	bankswitch();
 
 	/* register for state saving */
-	state_save_register_global(m_machine, m_int_mask);
-	state_save_register_global(m_machine, m_int_state);
-	state_save_register_global(m_machine, m_f_int_enb);
-	state_save_register_global(m_machine, m_keylatch);
-	state_save_register_global(m_machine, m_keydata);
-	state_save_register_global(m_machine, m_keyavail);
-	state_save_register_global(m_machine, m_kb_so);
-	state_save_register_global(m_machine, m_rxrdy);
-	state_save_register_global(m_machine, m_txrdy);
-	state_save_register_global(m_machine, m_baud_sel);
-	state_save_register_global(m_machine, m_bank);
+	state_save_register_global(machine(), m_int_mask);
+	state_save_register_global(machine(), m_int_state);
+	state_save_register_global(machine(), m_f_int_enb);
+	state_save_register_global(machine(), m_keylatch);
+	state_save_register_global(machine(), m_keydata);
+	state_save_register_global(machine(), m_keyavail);
+	state_save_register_global(machine(), m_kb_so);
+	state_save_register_global(machine(), m_rxrdy);
+	state_save_register_global(machine(), m_txrdy);
+	state_save_register_global(machine(), m_baud_sel);
+	state_save_register_global(machine(), m_bank);
 }
 
 void v1050_state::machine_reset()
@@ -1199,7 +1183,7 @@ static MACHINE_CONFIG_START( v1050, v1050_state )
 
 	/* devices */
 	MCFG_I8214_ADD(UPB8214_TAG, XTAL_16MHz/4, pic_intf)
-	MCFG_MSM58321RS_ADD(MSM58321RS_TAG, XTAL_32_768kHz, rtc_intf)
+	MCFG_MSM58321_ADD(MSM58321RS_TAG, XTAL_32_768kHz, rtc_intf)
 	MCFG_I8255A_ADD(I8255A_DISP_TAG, disp_ppi_intf)
 	MCFG_I8255A_ADD(I8255A_MISC_TAG, misc_ppi_intf)
 	MCFG_I8255A_ADD(I8255A_RTC_TAG, rtc_ppi_intf)

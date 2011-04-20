@@ -1,8 +1,8 @@
 /*
 
-	TODO:
+    TODO:
 
-	- CPU type?
+    - CPU type?
 
 */
 
@@ -173,7 +173,7 @@ const input_port_token *comxpl80_device_config::device_input_ports() const
 {
 	return INPUT_PORTS_NAME( comxpl80 );
 }
-		
+
 
 
 //**************************************************************************
@@ -219,7 +219,7 @@ void comxpl80_device::device_reset()
 
 
 //-------------------------------------------------
-//  pa_w - 
+//  pa_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( comxpl80_device::pa_w )
@@ -253,7 +253,7 @@ WRITE8_MEMBER( comxpl80_device::pa_w )
 		// read data from font ROM
 		int font_rom = (input_port_read(this, "FONT") & 0x03) * 0x2000;
 
-		m_plotter_data = m_machine.region("gfx2")->base()[font_rom | m_font_addr];
+		m_plotter_data = machine().region("gfx2")->base()[font_rom | m_font_addr];
 	}
 
 	if (!BIT(data, 6))
@@ -271,7 +271,7 @@ WRITE8_MEMBER( comxpl80_device::pa_w )
 
 
 //-------------------------------------------------
-//  pb_w - 
+//  pb_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( comxpl80_device::pb_w )
@@ -298,7 +298,7 @@ WRITE8_MEMBER( comxpl80_device::pb_w )
 
 
 //-------------------------------------------------
-//  pc_w - 
+//  pc_w -
 //-------------------------------------------------
 
 WRITE8_MEMBER( comxpl80_device::pc_w )
@@ -328,7 +328,7 @@ WRITE8_MEMBER( comxpl80_device::pc_w )
 
 
 //-------------------------------------------------
-//  pd_r - 
+//  pd_r -
 //-------------------------------------------------
 
 READ8_MEMBER( comxpl80_device::pd_r )

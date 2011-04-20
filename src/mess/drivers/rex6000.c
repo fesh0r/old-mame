@@ -20,7 +20,7 @@
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "machine/tc8521.h"
+#include "machine/rp5c01.h"
 #include "machine/ram.h"
 #include "imagedev/snapquik.h"
 #include "sound/beep.h"
@@ -36,6 +36,8 @@
 #define	IRQ_FLAG_IRQ2		0x20
 #define	IRQ_FLAG_IRQ1		0x40
 #define	IRQ_FLAG_EVENT		0x80
+
+#define TC8521_TAG	"rtc"
 
 class rex6000_state : public driver_device
 {
@@ -121,12 +123,12 @@ WRITE8_MEMBER( rex6000_state::bankswitch_w )
 		case 1:		//bank 1 high
 		{
 			//bank 1 start at 0x8000
-			UINT8 *bank_base = get_bank_ptr(m_machine, MAKE_BANK(m_bank[0], m_bank[1]&0x0f) + 4);
+			UINT8 *bank_base = get_bank_ptr(machine(), MAKE_BANK(m_bank[0], m_bank[1]&0x0f) + 4);
 
 			if (bank_base != NULL)
 			{
 				program->install_readwrite_bank(0x8000, 0x9fff, "bank1");
-				memory_set_bankptr(m_machine, "bank1", bank_base);
+				memory_set_bankptr(machine(), "bank1", bank_base);
 			}
 			else
 			{
@@ -138,12 +140,12 @@ WRITE8_MEMBER( rex6000_state::bankswitch_w )
 		case 2:		//bank 2 low
 		case 3:		//bank 2 high
 		{
-			UINT8 *bank_base = get_bank_ptr(m_machine, MAKE_BANK(m_bank[2], m_bank[3]&0x1f));
+			UINT8 *bank_base = get_bank_ptr(machine(), MAKE_BANK(m_bank[2], m_bank[3]&0x1f));
 
 			if (bank_base != NULL)
 			{
 				program->install_readwrite_bank(0xa000, 0xbfff, "bank2");
-				memory_set_bankptr(m_machine, "bank2", bank_base);
+				memory_set_bankptr(machine(), "bank2", bank_base);
 			}
 			else
 			{
@@ -274,14 +276,14 @@ WRITE8_MEMBER( rex6000_state::irq_w )
 
 READ8_MEMBER( rex6000_state::touchscreen_r )
 {
-	UINT16 x = input_port_read(m_machine, "PENX");
-	UINT16 y = input_port_read(m_machine, "PENY");
-	UINT16 battery = input_port_read(m_machine, "BATTERY");
+	UINT16 x = input_port_read(machine(), "PENX");
+	UINT16 y = input_port_read(machine(), "PENY");
+	UINT16 battery = input_port_read(machine(), "BATTERY");
 
 	switch (offset)
 	{
 		case 0x08:
-			return ((input_port_read(m_machine, "INPUT") & 0x40) ? 0x20 : 0x00) | 0X10;
+			return ((input_port_read(machine(), "INPUT") & 0x40) ? 0x20 : 0x00) | 0X10;
 		case 0x09:
 			if (m_touchscreen[4] & 0x80)
 				return (battery>>0) & 0xff;
@@ -322,7 +324,7 @@ static ADDRESS_MAP_START( rex6000_io, AS_IO, 8, rex6000_state)
 	AM_RANGE( 0x10, 0x10 ) AM_READ_PORT("INPUT")
 	AM_RANGE( 0x15, 0x19 ) AM_READWRITE(beep_r, beep_w)
 	AM_RANGE( 0x22, 0x23 ) AM_READWRITE(lcd_base_r, lcd_base_w)
-	AM_RANGE( 0x30, 0x3f ) AM_DEVREADWRITE_LEGACY("rtc", tc8521_r, tc8521_w)
+	AM_RANGE( 0x30, 0x3f ) AM_DEVREADWRITE(TC8521_TAG, rp5c01_device, read, write)
 	AM_RANGE( 0x40, 0x47 ) AM_MIRROR(0x08)	AM_NOP	//SIO
 	AM_RANGE( 0x50, 0x51 ) AM_READWRITE(lcd_io_r, lcd_io_w)
 	AM_RANGE( 0x60, 0x6f ) AM_READWRITE(touchscreen_r, touchscreen_w)
@@ -367,9 +369,9 @@ void rex6000_state::machine_reset()
 {
 	UINT8 *ram = ram_get_ptr(m_ram);
 
-	memory_set_bankptr(m_machine, "bank1", (UINT8*)m_machine.region("flash0")->base() + 0x8000);
-	memory_set_bankptr(m_machine, "bank2", (UINT8*)m_machine.region("flash0")->base());
-	memory_set_bankptr(m_machine, "ram", ram + 0x4000);
+	memory_set_bankptr(machine(), "bank1", (UINT8*)machine().region("flash0")->base() + 0x8000);
+	memory_set_bankptr(machine(), "bank2", (UINT8*)machine().region("flash0")->base());
+	memory_set_bankptr(machine(), "ram", ram + 0x4000);
 
 	memset(ram, 0, ram_get_size(m_ram));
 	memset(m_bank, 0, sizeof(m_bank));
@@ -387,7 +389,7 @@ void rex6000_state::machine_reset()
 
 bool rex6000_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	UINT8 *lcd_base = get_bank_ptr(m_machine, m_lcd_addr);
+	UINT8 *lcd_base = get_bank_ptr(machine(), m_lcd_addr);
 
 	if (m_lcd_enabled && lcd_base != NULL)
 	{
@@ -526,9 +528,9 @@ static GFXDECODE_START( rex6000 )
 GFXDECODE_END
 
 
-static const tc8521_interface rex6000_tc8521_interface =
+static RP5C01_INTERFACE( rtc_intf )
 {
-	NULL
+	DEVCB_NULL
 };
 
 static MACHINE_CONFIG_START( rex6000, rex6000_state )
@@ -556,7 +558,7 @@ static MACHINE_CONFIG_START( rex6000, rex6000_state )
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", rex6000, "rex,ds2", 0)
 
-	MCFG_TC8521_ADD("rtc", rex6000_tc8521_interface)
+	MCFG_RP5C01_ADD(TC8521_TAG, XTAL_32_768kHz, rtc_intf)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

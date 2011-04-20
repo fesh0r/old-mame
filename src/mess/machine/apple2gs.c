@@ -47,6 +47,16 @@
         bit 1 - clear if horizontal mouse data, set if vertical
         bit 0 - command register full
 
+    C029 - NEWVIDEO
+        bit 7 - 1 for Super Hi-Res mode, 0 for old Apple II video modes
+        bit 6 - 1 to enable memory linearization (2000-9D00 in banks 01/E1), 0 for physical layout
+        bit 5 - 1 to display double hi-res mode in monochrome, 0 for color
+        bit 4 - ???
+        bit 3 - ???
+        bit 2 - ???
+        bit 1 - ???
+        bit 0 - ???
+
     C02D - SLTROMSEL
 
     C031 - DISKREG
@@ -753,8 +763,8 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 	scanline = machine.primary_screen->vpos();
 	machine.primary_screen->update_partial(scanline);
 
-	/* scanline interrupt */
-	if ((state->m_newvideo & 0x80) && (state->m_vgcint & 0x02) && (scanline >= (BORDER_TOP-1)) && (scanline < (200+BORDER_TOP-1)))
+	/* check scanline interrupt bits if we're in super hi-res and the current scanline is within the active display area */
+	if ((state->m_newvideo & 0x80) && (scanline >= (BORDER_TOP-1)) && (scanline < (200+BORDER_TOP-1)))
 	{
 		UINT8 scb;
 
@@ -762,8 +772,15 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 
 		if (scb & 0x40)
 		{
-			state->m_vgcint |= 0xa0;
-			apple2gs_add_irq(machine, IRQ_VGC_SCANLINE);
+			// scanline int flag is set even when the actual interrupt is disabled
+			state->m_vgcint |= 0x20;
+
+			// see if the interrupt is also enabled and trigger it if so
+			if (state->m_vgcint & 0x02)
+			{
+				state->m_vgcint |= 0x80;
+				apple2gs_add_irq(machine, IRQ_VGC_SCANLINE);
+			}
 		}
 	}
 
@@ -1613,7 +1630,7 @@ static void apple2gs_xxCxxx_w(running_machine &machine, offs_t address, UINT8 da
 
 DIRECT_UPDATE_HANDLER( apple2gs_opbase )
 {
-	apple2gs_state *state = machine->driver_data<apple2gs_state>();
+	apple2gs_state *state = machine.driver_data<apple2gs_state>();
 	UINT8 *opptr = NULL;
 	int slot;
 
@@ -1621,19 +1638,19 @@ DIRECT_UPDATE_HANDLER( apple2gs_opbase )
 	{
 		if ((state->m_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
 		{
-			opptr = &ram_get_ptr(machine->device(RAM_TAG))[address];
+			opptr = &ram_get_ptr(machine.device(RAM_TAG))[address];
 		}
 		else if ((address & 0x000F00) == 0x000000)
 		{
 			if (((address & 0xFF) >= 0x71) && ((address & 0xFF) <= 0x7F))
-				opptr = apple2gs_getslotmem(*machine, address);
+				opptr = apple2gs_getslotmem(machine, address);
 		}
 		else
 		{
 			slot = (address & 0x000F00) / 0x100;
 
 			if ((slot > 7) || ((state->m_sltromsel & (1 << slot)) == 0))
-				opptr = apple2gs_getslotmem(*machine, address);
+				opptr = apple2gs_getslotmem(machine, address);
 		}
 
 		if (opptr != NULL)
@@ -1755,7 +1772,7 @@ static void apple2gs_setup_memory(running_machine &machine)
 	space->install_legacy_write_handler(0xe0c000, 0xe0cfff, FUNC(apple2gs_E0Cxxx_w));
 	space->install_legacy_read_handler(0xe1c000, 0xe1cfff, FUNC(apple2gs_E1Cxxx_r));
 	space->install_legacy_write_handler(0xe1c000, 0xe1cfff, FUNC(apple2gs_E1Cxxx_w));
-	space->set_direct_update_handler(direct_update_delegate_create_static(apple2gs_opbase, machine));
+	space->set_direct_update_handler(direct_update_delegate(FUNC(apple2gs_opbase), &machine));
 
 
 	/* install aux memory writes (for shadowing) */

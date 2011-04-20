@@ -54,16 +54,16 @@ $8000-$FFF ROM
 */
 
 /*  Mephisto 4 Turbo Kit 18mhz - (mm4tk)
-	This is a replacement rom combining the turbo kit initial rom with the original MM IV.
-	The Turbo Kit powers up to it's tiny rom, copies itself to ram, banks in normal rom,
-	copies that to faster SRAM, then patches the checksum and the LED blink delays.
-	If someone else wants to code up the power up banking, feel free
+    This is a replacement rom combining the turbo kit initial rom with the original MM IV.
+    The Turbo Kit powers up to it's tiny rom, copies itself to ram, banks in normal rom,
+    copies that to faster SRAM, then patches the checksum and the LED blink delays.
+    If someone else wants to code up the power up banking, feel free
 
-	There is an undumped MM V Turbo Kit, which will be the exact same except for location of
-	the patches. The mm5tk just needs the normal mm5 ROM swapped out for that one to
-	blinks the LEDs a little slower.
+    There is an undumped MM V Turbo Kit, which will be the exact same except for location of
+    the patches. The mm5tk just needs the normal mm5 ROM swapped out for that one to
+    blinks the LEDs a little slower.
 
-	-- Cowering (2011)
+    -- Cowering (2011)
 */
 
 
@@ -506,12 +506,12 @@ static DRIVER_INIT( mephisto )
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME                            FLAGS */
 
-CONS( 1984, mm2,        mm4,	0,      mm2,        mephisto,   mephisto,   "Hegener & Glaser", "Mephisto MM2 Schach Computer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1986, rebel5,     mm4,	0,      rebel5,     mephisto,   mephisto,   "Hegener & Glaser", "Mephisto Rebel 5 Schach Computer", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1987, mm4,        0,      0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schach Computer",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1987, mm4tk,      mm4,    0,      mm4tk,      mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schach Computer Turbo Kit + HG440",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1990, mm5,        mm4,	0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schach Computer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1990, mm50,       mm4,	0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.0 Schach Computer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1990, mm5tk,      mm4,    0,      mm4tk,      mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schach Computer Turbo Kit + HG550",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1984, mm2,        mm4,	0,      mm2,        mephisto,   mephisto,   "Hegener & Glaser", "Mephisto MM2 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1986, rebel5,     mm4,	0,      rebel5,     mephisto,   mephisto,   "Hegener & Glaser", "Mephisto Rebel 5 Schachcomputer", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1987, mm4,        0,      0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schachcomputer",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1987, mm4tk,      mm4,    0,      mm4tk,      mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schachcomputer Turbo Kit + HG440",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1990, mm5,        mm4,	0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1990, mm50,       mm4,	0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.0 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1990, mm5tk,      mm4,    0,      mm4tk,      mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schachcomputer Turbo Kit + HG550",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
 
 

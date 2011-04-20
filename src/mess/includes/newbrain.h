@@ -11,7 +11,7 @@
 #include "cpu/cop400/cop400.h"
 #include "machine/upd765.h"
 #include "machine/6850acia.h"
-#include "machine/adc080x.h"
+#include "machine/adc0808.h"
 #include "machine/z80ctc.h"
 #include "machine/z80sio.h"
 #include "imagedev/flopdrv.h"
@@ -78,7 +78,7 @@ public:
 
 	virtual void video_start();
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
-	
+
 	DECLARE_WRITE8_MEMBER( enrg1_w );
 	DECLARE_WRITE8_MEMBER( a_enrg1_w );
 	DECLARE_READ8_MEMBER( ust_r );
@@ -103,14 +103,14 @@ public:
 	DECLARE_WRITE8_MEMBER( tvctl_w );
 	DECLARE_READ8_MEMBER( cop_r );
 	DECLARE_WRITE8_MEMBER( cop_w );
-		
+
 	void check_interrupt();
 	void bankswitch();
 	void tvram_w(UINT8 data, int a6);
 	inline int get_reset_t();
 	inline int get_pwrup_t();
 	void screen_update(bitmap_t *bitmap, const rectangle *cliprect);
-	
+
 	// processor state
 	int m_pwrup;			// power up
 	int m_userint;			// user interrupt
@@ -172,7 +172,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_fdccpu;
-	required_device<device_t> m_ctc;
+	required_device<z80ctc_device> m_ctc;
 	required_device<device_t> m_acia;
 	required_device<device_t> m_fdc;
 	required_device<device_t> m_floppy;
@@ -203,7 +203,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( ctc_z0_w );
 	DECLARE_WRITE_LINE_MEMBER( ctc_z1_w );
 	DECLARE_WRITE_LINE_MEMBER( ctc_z2_w );
-		
+	DECLARE_WRITE_LINE_MEMBER( adc_eoc_w );
+
 	void bankswitch();
 
 	// paging state

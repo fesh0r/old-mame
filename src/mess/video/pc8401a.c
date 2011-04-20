@@ -11,15 +11,12 @@ static PALETTE_INIT( pc8401a )
 
 void pc8401a_state::video_start()
 {
-	/* allocate video memory */
-	m_video_ram = auto_alloc_array(m_machine, UINT8, PC8401A_LCD_VIDEORAM_SIZE);
-
-	/* register for state saving */
-	save_pointer(NAME(m_video_ram), PC8401A_LCD_VIDEORAM_SIZE);
 }
 
 bool pc8401a_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
+	m_lcdc->update_screen(&bitmap, &cliprect);
+
 	return 0;
 }
 
@@ -27,49 +24,37 @@ bool pc8401a_state::screen_update(screen_device &screen, bitmap_t &bitmap, const
 
 void pc8500_state::video_start()
 {
-	/* allocate video memory */
-	m_video_ram = auto_alloc_array(m_machine, UINT8, PC8500_LCD_VIDEORAM_SIZE);
-
-	/* register for state saving */
-	save_pointer(NAME(m_video_ram), PC8500_LCD_VIDEORAM_SIZE);
 }
 
 bool pc8500_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	sed1330_update(m_lcdc, &bitmap, &cliprect);
+	m_lcdc->update_screen(&bitmap, &cliprect);
 
 	/*
-	if (strcmp(screen.tag(), SCREEN_TAG) == 0)
-	{
-		sed1330_update(m_lcdc, &bitmap, &cliprect);
-	}
-	else
-	{
-		mc6845_update(m_crtc, &bitmap, &cliprect);
-	}
-	*/
+    if (strcmp(screen.tag(), SCREEN_TAG) == 0)
+    {
+        sed1330_update(m_lcdc, &bitmap, &cliprect);
+    }
+    else
+    {
+        mc6845_update(m_crtc, &bitmap, &cliprect);
+    }
+    */
 
 	return 0;
 }
 
 /* SED1330 Interface */
 
-READ8_MEMBER( pc8500_state::vd_r )
-{
-	return m_video_ram[offset & PC8500_LCD_VIDEORAM_MASK];
-}
+static ADDRESS_MAP_START( pc8401a_lcdc, AS_0, 8, pc8401a_state )
+	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
+	AM_RANGE(0x0000, 0x1fff) AM_RAM
+ADDRESS_MAP_END
 
-WRITE8_MEMBER( pc8500_state::vd_w )
-{
-	m_video_ram[offset & PC8500_LCD_VIDEORAM_MASK] = data;
-}
-
-static SED1330_INTERFACE( pc8500_sed1330_config )
-{
-	SCREEN_TAG,
-	DEVCB_DRIVER_MEMBER(pc8500_state, vd_r),
-	DEVCB_DRIVER_MEMBER(pc8500_state, vd_w)
-};
+static ADDRESS_MAP_START( pc8500_lcdc, AS_0, 8, pc8401a_state )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
+	AM_RANGE(0x0000, 0x3fff) AM_RAM
+ADDRESS_MAP_END
 
 /* MC6845 Interface */
 
@@ -77,7 +62,7 @@ static MC6845_UPDATE_ROW( pc8441a_update_row )
 {
 }
 
-static const mc6845_interface pc8441a_mc6845_interface = 
+static const mc6845_interface pc8441a_mc6845_interface =
 {
 	CRT_SCREEN_TAG,
 	6,
@@ -105,6 +90,8 @@ MACHINE_CONFIG_FRAGMENT( pc8401a_video )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(480, 128)
 	MCFG_SCREEN_VISIBLE_AREA(0, 480-1, 0, 128-1)
+
+	MCFG_SED1330_ADD(SED1330_TAG, 0, SCREEN_TAG, pc8401a_lcdc)
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_FRAGMENT( pc8500_video )
@@ -119,8 +106,8 @@ MACHINE_CONFIG_FRAGMENT( pc8500_video )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(480, 208)
 	MCFG_SCREEN_VISIBLE_AREA(0, 480-1, 0, 200-1)
-	
-	MCFG_SED1330_ADD(SED1330_TAG, 0, pc8500_sed1330_config)
+
+	MCFG_SED1330_ADD(SED1330_TAG, 0, SCREEN_TAG, pc8500_lcdc)
 
 	/* PC-8441A CRT */
 	MCFG_SCREEN_ADD(CRT_SCREEN_TAG, RASTER)
@@ -129,6 +116,6 @@ MACHINE_CONFIG_FRAGMENT( pc8500_video )
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 24*8-1)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_REFRESH_RATE(50)
-	
+
 	MCFG_MC6845_ADD(MC6845_TAG, MC6845, 400000, pc8441a_mc6845_interface)
 MACHINE_CONFIG_END

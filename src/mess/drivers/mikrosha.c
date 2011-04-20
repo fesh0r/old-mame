@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
-#include "machine/i8257.h"
+#include "machine/8257dma.h"
 #include "machine/pit8253.h"
 #include "video/i8275.h"
 #include "imagedev/cassette.h"
@@ -254,4 +254,4 @@ ROM_END
 /* Driver */
 /*    YEAR  NAME      PARENT  COMPAT    MACHINE     INPUT       INIT        COMPANY     FULLNAME        FLAGS */
 COMP( 1987, mikrosha, radio86,0,		mikrosha,	mikrosha,	radio86,	"Lianozovo Electromechanical Factory",		"Mikrosha",		0)
-COMP( 1987, m86rk, 	  radio86,0,		mikrosha,	mikrosha,	radio86,	"<unknown>",		"Mikrosha-86RK",		0)
+COMP( 1987, m86rk,	  radio86,0,		mikrosha,	mikrosha,	radio86,	"<unknown>",		"Mikrosha-86RK",		0)

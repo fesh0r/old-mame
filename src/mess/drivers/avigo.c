@@ -41,7 +41,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/avigo.h"
-#include "machine/tc8521.h"
+#include "machine/rp5c01.h"
 #include "machine/ins8250.h"
 #include "sound/speaker.h"
 #include "machine/ram.h"
@@ -72,7 +72,7 @@
 /* bits 0-5 define bank index */
 /* bits 0-5 define bank index */
 
-static void avigo_setbank(running_machine &machine, int bank, void *address, read8_space_func rh, write8_space_func wh)
+static void avigo_setbank(running_machine &machine, int bank, void *address, read8_space_func rh, char const *rh_name, write8_space_func wh, const char *wh_name)
 {
 	avigo_state *state = machine.driver_data<avigo_state>();
 	address_space* space = machine.device("maincpu")->memory().space(AS_PROGRAM);
@@ -89,13 +89,13 @@ static void avigo_setbank(running_machine &machine, int bank, void *address, rea
 	}
 	if (rh)
 	{
-		space->install_legacy_read_handler((bank * 0x4000),(bank * 0x4000) + 0x3FFF, FUNC(rh));
+		space->install_legacy_read_handler((bank * 0x4000),(bank * 0x4000) + 0x3FFF, rh, rh_name);
 	} else {
 //      space->nop_read((bank * 0x4000),(bank * 0x4000) + 0x3FFF);
 	}
 	if (wh)
 	{
-		space->install_legacy_write_handler((bank * 0x4000),(bank * 0x4000) + 0x3FFF, FUNC(wh));
+		space->install_legacy_write_handler((bank * 0x4000),(bank * 0x4000) + 0x3FFF, wh, wh_name);
 	} else {
 //      space->nop_write((bank * 0x4000),(bank * 0x4000) + 0x3FFF);
 	}
@@ -260,7 +260,7 @@ static TIMER_DEVICE_CALLBACK(avigo_dummy_timer_callback)
 }
 
 /* does not do anything yet */
-static void avigo_tc8521_alarm_int(device_t *device, int state)
+WRITE_LINE_DEVICE_HANDLER( avigo_tc8521_alarm_int )
 {
 	avigo_state *drvstate = device->machine().driver_data<avigo_state>();
 //#if 0
@@ -276,9 +276,9 @@ static void avigo_tc8521_alarm_int(device_t *device, int state)
 }
 
 
-static const tc8521_interface avigo_tc8521_interface =
+static RP5C01_INTERFACE( rtc_intf )
 {
-	avigo_tc8521_alarm_int
+	DEVCB_LINE(avigo_tc8521_alarm_int)
 };
 
 static void avigo_refresh_memory(running_machine &machine)
@@ -310,14 +310,14 @@ static void avigo_refresh_memory(running_machine &machine)
 
 	addr = (unsigned char *)state->m_flashes[state->m_flash_at_0x4000]->space()->get_read_ptr(0);
 	addr = addr + (state->m_rom_bank_l<<14);
-	avigo_setbank(machine, 1, addr, avigo_flash_0x4000_read_handler, avigo_flash_0x4000_write_handler);
+	avigo_setbank(machine, 1, addr, FUNC(avigo_flash_0x4000_read_handler), FUNC(avigo_flash_0x4000_write_handler));
 
 	switch (state->m_ram_bank_h)
 	{
 		/* %101 */
 		/* screen */
 		case 0x06:
-			avigo_setbank(machine, 2, NULL, avigo_vid_memory_r, avigo_vid_memory_w);
+			avigo_setbank(machine, 2, NULL, FUNC(avigo_vid_memory_r), FUNC(avigo_vid_memory_w));
 			break;
 
 		/* %001 */
@@ -338,7 +338,7 @@ static void avigo_refresh_memory(running_machine &machine)
 
 			addr = (unsigned char *)state->m_flashes[state->m_flash_at_0x8000]->space()->get_read_ptr(0);
 			addr = addr + (state->m_ram_bank_l<<14);
-			avigo_setbank(machine, 2, addr, avigo_flash_0x8000_read_handler, NULL /* avigo_flash_0x8000_write_handler */);
+			avigo_setbank(machine, 2, addr, FUNC(avigo_flash_0x8000_read_handler), FUNC_NULL /* avigo_flash_0x8000_write_handler */);
 			break;
 
 		case 0x07:
@@ -346,7 +346,7 @@ static void avigo_refresh_memory(running_machine &machine)
 
 			addr = (unsigned char *)state->m_flashes[state->m_flash_at_0x8000]->space()->get_read_ptr(0);
 			addr = addr + (state->m_ram_bank_l<<14);
-			avigo_setbank(machine, 2, addr, avigo_flash_0x8000_read_handler, NULL /* avigo_flash_0x8000_write_handler */);
+			avigo_setbank(machine, 2, addr, FUNC(avigo_flash_0x8000_read_handler), FUNC_NULL /* avigo_flash_0x8000_write_handler */);
 			break;
 	}
 }
@@ -422,9 +422,9 @@ static MACHINE_RESET( avigo )
 	memset(ram_get_ptr(machine.device(RAM_TAG)), 0, 128*1024);
 
 	addr = (unsigned char *)state->m_flashes[0]->space()->get_read_ptr(0);
-	avigo_setbank(machine, 0, addr, avigo_flash_0x0000_read_handler, avigo_flash_0x0000_write_handler);
+	avigo_setbank(machine, 0, addr, FUNC(avigo_flash_0x0000_read_handler), FUNC(avigo_flash_0x0000_write_handler));
 
-	avigo_setbank(machine, 3, ram_get_ptr(machine.device(RAM_TAG)), NULL, NULL);
+	avigo_setbank(machine, 3, ram_get_ptr(machine.device(RAM_TAG)), FUNC_NULL, FUNC_NULL);
 
 	/* 0x08000 is specially banked! */
 	avigo_refresh_memory(machine);
@@ -807,7 +807,7 @@ static ADDRESS_MAP_START( avigo_io, AS_IO, 8)
 	AM_RANGE(0x008, 0x008) AM_READWRITE( avigo_ram_bank_h_r, avigo_ram_bank_h_w )
 	AM_RANGE(0x009, 0x009) AM_READWRITE( avigo_ad_control_status_r, avigo_ad_control_status_w )
 	AM_RANGE(0x00a, 0x00f) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE("rtc", tc8521_r, tc8521_w )
+	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE_MODERN("rtc", rp5c01_device, read, write)
 	AM_RANGE(0x020, 0x02c) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x028, 0x028) AM_WRITE( avigo_speaker_w)
 	AM_RANGE(0x02d, 0x02d) AM_READ( avigo_ad_data_r)
@@ -972,7 +972,7 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* real time clock */
-	MCFG_TC8521_ADD("rtc", avigo_tc8521_interface)
+	MCFG_RP5C01_ADD("rtc", XTAL_32_768kHz, rtc_intf)
 
 	/* flash ROMs */
 	MCFG_INTEL_E28F008SA_ADD("flash0")

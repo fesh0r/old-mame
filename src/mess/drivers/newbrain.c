@@ -86,13 +86,13 @@ void newbrain_eim_state::bankswitch()
 		case 0:
 			/* ROM */
 			memory_install_rom_helper(program, bank_name, bank_start, bank_end);
-			memory_configure_bank(m_machine, bank_name, 0, 1, m_machine.region("eim")->base() + eim_bank_start, 0);
+			memory_configure_bank(machine(), bank_name, 0, 1, machine().region("eim")->base() + eim_bank_start, 0);
 			break;
 
 		case 2:
 			/* RAM */
 			memory_install_ram_helper(program, bank_name, bank_start, bank_end);
-			memory_configure_bank(m_machine, bank_name, 0, 1, m_eim_ram + eim_bank_start, 0);
+			memory_configure_bank(machine(), bank_name, 0, 1, m_eim_ram + eim_bank_start, 0);
 			break;
 
 		default:
@@ -118,11 +118,11 @@ void newbrain_state::bankswitch()
 		{
 			/* all banks point to ROM at 0xe000 */
 			memory_install_rom_helper(program, bank_name, bank_start, bank_end);
-			memory_configure_bank(m_machine, bank_name, 0, 1, m_machine.region(Z80_TAG)->base() + 0xe000, 0);
+			memory_configure_bank(machine(), bank_name, 0, 1, machine().region(Z80_TAG)->base() + 0xe000, 0);
 		}
 		else
 		{
-			memory_configure_bank(m_machine, bank_name, 0, 1, m_machine.region(Z80_TAG)->base() + bank_start, 0);
+			memory_configure_bank(machine(), bank_name, 0, 1, machine().region(Z80_TAG)->base() + bank_start, 0);
 
 			if (bank < 5)
 			{
@@ -132,16 +132,16 @@ void newbrain_state::bankswitch()
 			else if (bank == 5)
 			{
 				/* 0x8000-0x9fff */
-				if (m_machine.region("eim")->base())
+				if (machine().region("eim")->base())
 				{
 					/* expansion interface ROM */
 					memory_install_rom_helper(program, bank_name, bank_start, bank_end);
-					memory_configure_bank(m_machine, bank_name, 0, 1, m_machine.region("eim")->base() + 0x4000, 0);
+					memory_configure_bank(machine(), bank_name, 0, 1, machine().region("eim")->base() + 0x4000, 0);
 				}
 				else
 				{
 					/* mirror of 0xa000-0xbfff */
-					if (m_machine.region(Z80_TAG)->base()[0xa001] == 0)
+					if (machine().region(Z80_TAG)->base()[0xa001] == 0)
 					{
 						/* unmapped on the M model */
 						memory_install_unmapped(program, bank_name, bank_start, bank_end);
@@ -152,13 +152,13 @@ void newbrain_state::bankswitch()
 						memory_install_rom_helper(program, bank_name, bank_start, bank_end);
 					}
 
-					memory_configure_bank(m_machine, bank_name, 0, 1, m_machine.region(Z80_TAG)->base() + 0xa000, 0);
+					memory_configure_bank(machine(), bank_name, 0, 1, machine().region(Z80_TAG)->base() + 0xa000, 0);
 				}
 			}
 			else if (bank == 6)
 			{
 				/* 0xa000-0xbfff */
-				if (m_machine.region(Z80_TAG)->base()[0xa001] == 0)
+				if (machine().region(Z80_TAG)->base()[0xa001] == 0)
 				{
 					/* unmapped on the M model */
 					memory_install_unmapped(program, bank_name, bank_start, bank_end);
@@ -176,7 +176,7 @@ void newbrain_state::bankswitch()
 			}
 		}
 
-		memory_set_bank(m_machine, bank_name, 0);
+		memory_set_bank(machine(), bank_name, 0);
 	}
 }
 
@@ -472,7 +472,7 @@ WRITE8_MEMBER( newbrain_state::cop_d_w )
 			m_keylatch = 0;
 		}
 
-		m_keydata = input_port_read(m_machine, keynames[m_keylatch]);
+		m_keydata = input_port_read(machine(), keynames[m_keylatch]);
 
 		output_set_digit_value(m_keylatch, m_segment_data[m_keylatch]);
 	}
@@ -953,34 +953,33 @@ WRITE8_MEMBER( newbrain_eim_state::paging_w )
 
 /* A/D Converter */
 
-static ADC080X_ON_EOC_CHANGED( newbrain_adc_on_eoc_changed )
+WRITE_LINE_MEMBER( newbrain_eim_state::adc_eoc_w )
 {
-	newbrain_state *state = device->machine().driver_data<newbrain_state>();
-
-	state->m_anint = level;
+	m_anint = state;
 }
 
-static ADC080X_VREF_POSITIVE_READ( newbrain_adc_vref_pos_r )
+static ADC0808_ANALOG_READ( newbrain_adc_vref_pos_r )
 {
 	return 5.0;
 }
 
-static ADC080X_VREF_NEGATIVE_READ( newbrain_adc_vref_neg_r )
+static ADC0808_ANALOG_READ( newbrain_adc_vref_neg_r )
 {
 	return 0.0;
 }
 
-static ADC080X_INPUT_READ( newbrain_adc_input_r )
+static ADC0808_ANALOG_READ( newbrain_adc_input_r )
 {
 	return 0.0;
 }
 
-static ADC080X_INTERFACE( newbrain_adc0809_intf )
+static ADC0808_INTERFACE( adc_intf )
 {
-	newbrain_adc_on_eoc_changed,
+	DEVCB_DRIVER_LINE_MEMBER(newbrain_eim_state, adc_eoc_w),
 	newbrain_adc_vref_pos_r,
 	newbrain_adc_vref_neg_r,
-	newbrain_adc_input_r
+	{ newbrain_adc_input_r, newbrain_adc_input_r, newbrain_adc_input_r, newbrain_adc_input_r,
+	  newbrain_adc_input_r, newbrain_adc_input_r, newbrain_adc_input_r, newbrain_adc_input_r }
 };
 
 /* Memory Maps */
@@ -1174,7 +1173,7 @@ WRITE_LINE_MEMBER( newbrain_eim_state::acia_interrupt )
 	m_aciaint = state;
 }
 
-static ACIA6850_INTERFACE( newbrain_acia_intf )
+static ACIA6850_INTERFACE( acia_intf )
 {
 	0,
 	0,
@@ -1191,7 +1190,7 @@ WRITE_LINE_MEMBER( newbrain_eim_state::fdc_interrupt )
 	m_fdc_int = state;
 }
 
-static const upd765_interface newbrain_upd765_interface =
+static const upd765_interface fdc_intf =
 {
 	DEVCB_DRIVER_LINE_MEMBER(newbrain_eim_state, fdc_interrupt),
 	DEVCB_NULL,
@@ -1267,11 +1266,11 @@ void newbrain_state::machine_start()
 	m_copregint = 1;
 
 	/* allocate reset timer */
-	m_reset_timer = m_machine.scheduler().timer_alloc(FUNC(reset_tick));
+	m_reset_timer = machine().scheduler().timer_alloc(FUNC(reset_tick));
 	m_reset_timer->adjust(attotime::from_usec(get_reset_t()));
 
 	/* allocate power up timer */
-	m_pwrup_timer = m_machine.scheduler().timer_alloc(FUNC(pwrup_tick));
+	m_pwrup_timer = machine().scheduler().timer_alloc(FUNC(pwrup_tick));
 	m_pwrup_timer->adjust(attotime::from_usec(get_pwrup_t()));
 
 	/* initialize variables */
@@ -1315,7 +1314,7 @@ void newbrain_eim_state::machine_start()
 	newbrain_state::machine_start();
 
 	/* allocate expansion RAM */
-	m_eim_ram = auto_alloc_array(m_machine, UINT8, NEWBRAIN_EIM_RAM_SIZE);
+	m_eim_ram = auto_alloc_array(machine(), UINT8, NEWBRAIN_EIM_RAM_SIZE);
 
 	/* register for state saving */
 	save_pointer(NAME(m_eim_ram), NEWBRAIN_EIM_RAM_SIZE);
@@ -1433,9 +1432,9 @@ static MACHINE_CONFIG_DERIVED_CLASS( newbrain_eim, newbrain_a, newbrain_eim_stat
 	// devices
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/8, newbrain_ctc_intf)
 	MCFG_TIMER_ADD_PERIODIC("z80ctc_c2", ctc_c2_tick, attotime::from_hz(XTAL_16MHz/4/13))
-	MCFG_ADC0809_ADD(ADC0809_TAG, 500000, newbrain_adc0809_intf)
-	MCFG_ACIA6850_ADD(MC6850_TAG, newbrain_acia_intf)
-	MCFG_UPD765A_ADD(UPD765_TAG, newbrain_upd765_interface)
+	MCFG_ADC0808_ADD(ADC0809_TAG, 500000, adc_intf)
+	MCFG_ACIA6850_ADD(MC6850_TAG, acia_intf)
+	MCFG_UPD765A_ADD(UPD765_TAG, fdc_intf)
 	MCFG_FLOPPY_2_DRIVES_ADD(newbrain_floppy_config)
 
 	// internal ram

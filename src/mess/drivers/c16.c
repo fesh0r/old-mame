@@ -413,8 +413,8 @@ static const m6502_interface c16_m7501_interface =
 {
 	NULL,					/* read_indexed_func */
 	NULL,					/* write_indexed_func */
-	c16_m7501_port_read,	/* port_read_func */
-	c16_m7501_port_write	/* port_write_func */
+	DEVCB_HANDLER(c16_m7501_port_read),	/* port_read_func */
+	DEVCB_HANDLER(c16_m7501_port_write)	/* port_write_func */
 };
 
 static CBM_IEC_DAISY( c16_iec_no_drives )
@@ -512,7 +512,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( c16c, c16 )
 
-	MCFG_C1551_ADD("c1551", "maincpu", 8)
+	MCFG_C1551_ADD("c1551", 8)
 
 #ifdef CPU_SYNC
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
@@ -558,7 +558,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( plus4c, plus4 )
 
-	MCFG_C1551_ADD("c1551", "maincpu", 8)
+	MCFG_C1551_ADD("c1551", 8)
 
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */

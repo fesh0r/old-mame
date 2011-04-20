@@ -18,7 +18,7 @@
     - 8255 ports
     - MC6845 palette
     - MC6845 chargen ROM
-	- MC6845 screen update
+    - MC6845 screen update
 
     - peripherals
         * PC-8431A Dual Floppy Drive
@@ -33,9 +33,8 @@
 
 /* Fake Keyboard */
 
-static void pc8401a_keyboard_scan(running_machine &machine)
+void pc8401a_state::scan_keyboard()
 {
-	pc8401a_state *state = machine.driver_data<pc8401a_state>();
 	int row, strobe = 0;
 
 	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
@@ -43,28 +42,30 @@ static void pc8401a_keyboard_scan(running_machine &machine)
 	/* scan keyboard */
 	for (row = 0; row < 10; row++)
 	{
-		UINT8 data = input_port_read(machine, keynames[row]);
+		UINT8 data = input_port_read(machine(), keynames[row]);
 
 		if (data != 0xff)
 		{
 			strobe = 1;
-			state->m_key_latch = data;
+			m_key_latch = data;
 		}
 	}
 
-	if (!state->m_key_strobe && strobe)
+	if (!m_key_strobe && strobe)
 	{
 		/* trigger interrupt */
-		state->m_maincpu->set_input_line_and_vector(INPUT_LINE_IRQ0, ASSERT_LINE, 0x28);
+		m_maincpu->set_input_line_and_vector(INPUT_LINE_IRQ0, ASSERT_LINE, 0x28);
 		logerror("INTERRUPT\n");
 	}
 
-	if (strobe)	state->m_key_strobe = strobe;
+	if (strobe)	m_key_strobe = strobe;
 }
 
 static TIMER_DEVICE_CALLBACK( pc8401a_keyboard_tick )
 {
-	pc8401a_keyboard_scan(timer.machine());
+	pc8401a_state *state = timer.machine().driver_data<pc8401a_state>();
+
+	state->scan_keyboard();
 }
 
 /* Read/Write Handlers */
@@ -85,7 +86,7 @@ void pc8401a_state::bankswitch(UINT8 data)
 			/* internal ROM */
 			program->install_read_bank(0x0000, 0x7fff, "bank1");
 			program->unmap_write(0x0000, 0x7fff);
-			memory_set_bank(m_machine, "bank1", rombank);
+			memory_set_bank(machine(), "bank1", rombank);
 		}
 		else
 		{
@@ -97,13 +98,13 @@ void pc8401a_state::bankswitch(UINT8 data)
 
 	case 1: /* RAM 0000H to 7FFFH */
 		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
-		memory_set_bank(m_machine, "bank1", 4);
+		memory_set_bank(machine(), "bank1", 4);
 		//logerror("0x0000-0x7fff = RAM 0-7fff\n");
 		break;
 
 	case 2:	/* RAM 8000H to FFFFH */
 		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
-		memory_set_bank(m_machine, "bank1", 5);
+		memory_set_bank(machine(), "bank1", 5);
 		//logerror("0x0000-0x7fff = RAM 8000-ffff\n");
 		break;
 
@@ -116,19 +117,19 @@ void pc8401a_state::bankswitch(UINT8 data)
 	{
 	case 0: /* cell addresses 0000H to 3FFFH */
 		program->install_readwrite_bank(0x8000, 0xbfff, "bank3");
-		memory_set_bank(m_machine, "bank3", 0);
+		memory_set_bank(machine(), "bank3", 0);
 		//logerror("0x8000-0xbfff = RAM 0-3fff\n");
 		break;
 
 	case 1: /* cell addresses 4000H to 7FFFH */
 		program->install_readwrite_bank(0x8000, 0xbfff, "bank3");
-		memory_set_bank(m_machine, "bank3", 1);
+		memory_set_bank(machine(), "bank3", 1);
 		//logerror("0x8000-0xbfff = RAM 4000-7fff\n");
 		break;
 
 	case 2: /* cell addresses 8000H to BFFFH */
 		program->install_readwrite_bank(0x8000, 0xbfff, "bank3");
-		memory_set_bank(m_machine, "bank3", 2);
+		memory_set_bank(machine(), "bank3", 2);
 		//logerror("0x8000-0xbfff = RAM 8000-bfff\n");
 		break;
 
@@ -136,7 +137,7 @@ void pc8401a_state::bankswitch(UINT8 data)
 		if (ram_get_size(m_ram) > 64)
 		{
 			program->install_readwrite_bank(0x8000, 0xbfff, "bank3");
-			memory_set_bank(m_machine, "bank3", 3); // TODO or 4
+			memory_set_bank(machine(), "bank3", 3); // TODO or 4
 		}
 		else
 		{
@@ -151,14 +152,14 @@ void pc8401a_state::bankswitch(UINT8 data)
 		/* CRT video RAM */
 		program->install_readwrite_bank(0xc000, 0xdfff, "bank4");
 		program->unmap_readwrite(0xe000, 0xe7ff);
-		memory_set_bank(m_machine, "bank4", 1);
+		memory_set_bank(machine(), "bank4", 1);
 		//logerror("0xc000-0xdfff = video RAM\n");
 	}
 	else
 	{
 		/* RAM */
 		program->install_readwrite_bank(0xc000, 0xe7ff, "bank4");
-		memory_set_bank(m_machine, "bank4", 0);
+		memory_set_bank(machine(), "bank4", 0);
 		//logerror("0xc000-0e7fff = RAM c000-e7fff\n");
 	}
 }
@@ -260,7 +261,7 @@ WRITE8_MEMBER( pc8401a_state::rtc_ctrl_w )
 
 READ8_MEMBER( pc8401a_state::io_rom_data_r )
 {
-	UINT8 *iorom = m_machine.region("iorom")->base();
+	UINT8 *iorom = machine().region("iorom")->base();
 
 	//logerror("I/O ROM read from %05x\n", m_io_addr);
 
@@ -362,8 +363,8 @@ static ADDRESS_MAP_START( pc8500_io, AS_IO, 8, pc8401a_state )
 	AM_RANGE(0x40, 0x40) AM_READWRITE(rtc_r, rtc_ctrl_w)
 //  AM_RANGE(0x41, 0x41)
 //  AM_RANGE(0x50, 0x51)
-	AM_RANGE(0x60, 0x60) AM_DEVREADWRITE_LEGACY(SED1330_TAG, sed1330_status_r, sed1330_data_w)
-	AM_RANGE(0x61, 0x61) AM_DEVREADWRITE_LEGACY(SED1330_TAG, sed1330_data_r, sed1330_command_w)
+	AM_RANGE(0x60, 0x60) AM_DEVREADWRITE(SED1330_TAG, sed1330_device, status_r, data_w)
+	AM_RANGE(0x61, 0x61) AM_DEVREADWRITE(SED1330_TAG, sed1330_device, data_r, command_w)
 	AM_RANGE(0x70, 0x70) AM_READWRITE(port70_r, port70_w)
 	AM_RANGE(0x71, 0x71) AM_READWRITE(port71_r, port71_w)
 //  AM_RANGE(0x80, 0x80) modem status, set to 0xff to boot
@@ -490,27 +491,27 @@ void pc8401a_state::machine_start()
 	m_rtc->cs_w(1);
 
 	/* allocate CRT video RAM */
-	m_crt_ram = auto_alloc_array(m_machine, UINT8, PC8401A_CRT_VIDEORAM_SIZE);
+	m_crt_ram = auto_alloc_array(machine(), UINT8, PC8401A_CRT_VIDEORAM_SIZE);
 
 	UINT8 *ram = ram_get_ptr(m_ram);
 
 	/* set up A0/A1 memory banking */
-	memory_configure_bank(m_machine, "bank1", 0, 4, m_machine.region(Z80_TAG)->base(), 0x8000);
-	memory_configure_bank(m_machine, "bank1", 4, 2, ram, 0x8000);
-	memory_set_bank(m_machine, "bank1", 0);
+	memory_configure_bank(machine(), "bank1", 0, 4, machine().region(Z80_TAG)->base(), 0x8000);
+	memory_configure_bank(machine(), "bank1", 4, 2, ram, 0x8000);
+	memory_set_bank(machine(), "bank1", 0);
 
 	/* set up A2 memory banking */
-	memory_configure_bank(m_machine, "bank3", 0, 5, ram, 0x4000);
-	memory_set_bank(m_machine, "bank3", 0);
+	memory_configure_bank(machine(), "bank3", 0, 5, ram, 0x4000);
+	memory_set_bank(machine(), "bank3", 0);
 
 	/* set up A3 memory banking */
-	memory_configure_bank(m_machine, "bank4", 0, 1, ram + 0xc000, 0);
-	memory_configure_bank(m_machine, "bank4", 1, 1, m_crt_ram, 0);
-	memory_set_bank(m_machine, "bank4", 0);
+	memory_configure_bank(machine(), "bank4", 0, 1, ram + 0xc000, 0);
+	memory_configure_bank(machine(), "bank4", 1, 1, m_crt_ram, 0);
+	memory_set_bank(machine(), "bank4", 0);
 
 	/* set up A4 memory banking */
-	memory_configure_bank(m_machine, "bank5", 0, 1, ram + 0xe800, 0);
-	memory_set_bank(m_machine, "bank5", 0);
+	memory_configure_bank(machine(), "bank5", 0, 1, ram + 0xe800, 0);
+	memory_set_bank(machine(), "bank5", 0);
 
 	/* bank switch */
 	bankswitch(0);
@@ -643,7 +644,7 @@ static MACHINE_CONFIG_START( pc8500, pc8500_state )
 
 	/* video hardware */
 	MCFG_FRAGMENT_ADD(pc8500_video)
-	
+
 	/* option ROM cartridge */
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("rom,bin")

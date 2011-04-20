@@ -301,7 +301,7 @@ void abc800_state::bankswitch()
 	else
 	{
 		// BASIC ROM selected
-		program->install_rom(0x0000, 0x3fff, m_machine.region(Z80_TAG)->base());
+		program->install_rom(0x0000, 0x3fff, machine().region(Z80_TAG)->base());
 	}
 }
 
@@ -317,7 +317,7 @@ void abc802_state::bankswitch()
 	if (m_lrs)
 	{
 		// ROM and video RAM selected
-		program->install_rom(0x0000, 0x77ff, m_machine.region(Z80_TAG)->base());
+		program->install_rom(0x0000, 0x77ff, machine().region(Z80_TAG)->base());
 		program->install_ram(0x7800, 0x7fff, m_char_ram);
 	}
 	else
@@ -356,8 +356,8 @@ void abc806_state::bankswitch()
 			//logerror("%04x-%04x: Video RAM %04x (32K)\n", start_addr, end_addr, videoram_offset);
 
 			program->install_readwrite_bank(start_addr, end_addr, bank_name);
-			memory_configure_bank(m_machine, bank_name, 1, 1, m_video_ram + videoram_offset, 0);
-			memory_set_bank(m_machine, bank_name, 1);
+			memory_configure_bank(machine(), bank_name, 1, 1, m_video_ram + videoram_offset, 0);
+			memory_set_bank(machine(), bank_name, 1);
 		}
 
 		for (bank = 9; bank <= 16; bank++)
@@ -370,7 +370,7 @@ void abc806_state::bankswitch()
 			//logerror("%04x-%04x: Work RAM (32K)\n", start_addr, end_addr);
 
 			program->install_readwrite_bank(start_addr, end_addr, bank_name);
-			memory_set_bank(m_machine, bank_name, 0);
+			memory_set_bank(machine(), bank_name, 0);
 		}
 	}
 	else
@@ -390,8 +390,8 @@ void abc806_state::bankswitch()
 				//logerror("%04x-%04x: Video RAM %04x (4K)\n", start_addr, end_addr, videoram_offset);
 
 				program->install_readwrite_bank(start_addr, end_addr, bank_name);
-				memory_configure_bank(m_machine, bank_name, 1, 1, m_video_ram + videoram_offset, 0);
-				memory_set_bank(m_machine, bank_name, 1);
+				memory_configure_bank(machine(), bank_name, 1, 1, m_video_ram + videoram_offset, 0);
+				memory_set_bank(machine(), bank_name, 1);
 			}
 			else
 			{
@@ -405,7 +405,7 @@ void abc806_state::bankswitch()
 
 					program->install_read_bank(start_addr, end_addr, bank_name);
 					program->unmap_write(start_addr, end_addr);
-					memory_set_bank(m_machine, bank_name, 0);
+					memory_set_bank(machine(), bank_name, 0);
 					break;
 
 				case 8:
@@ -414,8 +414,8 @@ void abc806_state::bankswitch()
 
 					program->install_read_bank(0x7000, 0x77ff, bank_name);
 					program->unmap_write(0x7000, 0x77ff);
-					program->install_readwrite_handler(0x7800, 0x7fff, 0, 0, read8_delegate_create(abc806_state, charram_r, *this), write8_delegate_create(abc806_state, charram_w, *this));
-					memory_set_bank(m_machine, bank_name, 0);
+					program->install_readwrite_handler(0x7800, 0x7fff, 0, 0, read8_delegate(FUNC(abc806_state::charram_r),this), write8_delegate(FUNC(abc806_state::charram_w),this));
+					memory_set_bank(machine(), bank_name, 0);
 					break;
 
 				default:
@@ -423,7 +423,7 @@ void abc806_state::bankswitch()
 					//logerror("%04x-%04x: Work RAM (4K)\n", start_addr, end_addr);
 
 					program->install_readwrite_bank(start_addr, end_addr, bank_name);
-					memory_set_bank(m_machine, bank_name, 0);
+					memory_set_bank(machine(), bank_name, 0);
 					break;
 				}
 			}
@@ -449,15 +449,15 @@ void abc806_state::bankswitch()
 			if (start_addr == 0x7000)
 			{
 				program->install_readwrite_bank(0x7000, 0x77ff, bank_name);
-				program->install_readwrite_handler(0x7800, 0x7fff, 0, 0, read8_delegate_create(abc806_state, charram_r, *this), write8_delegate_create(abc806_state, charram_w, *this));
+				program->install_readwrite_handler(0x7800, 0x7fff, 0, 0, read8_delegate(FUNC(abc806_state::charram_r), this), write8_delegate(FUNC(abc806_state::charram_w), this));
 			}
 			else
 			{
 				program->install_readwrite_bank(start_addr, end_addr, bank_name);
 			}
 
-			memory_configure_bank(m_machine, bank_name, 1, 1, m_video_ram + videoram_offset, 0);
-			memory_set_bank(m_machine, bank_name, 1);
+			memory_configure_bank(machine(), bank_name, 1, 1, m_video_ram + videoram_offset, 0);
+			memory_set_bank(machine(), bank_name, 1);
 		}
 	}
 }
@@ -554,7 +554,7 @@ READ8_MEMBER( abc800_state::keyboard_col_r )
 
 	if (m_kb_stb && m_kb_row < 12)
 	{
-		data = input_port_read(m_machine, ABC800_KEY_ROW[m_kb_row]);
+		data = input_port_read(machine(), ABC800_KEY_ROW[m_kb_row]);
 	}
 
 	return data;
@@ -1271,14 +1271,14 @@ void abc800_state::machine_start()
 	m_kb_txd = 1;
 
 	// register for state saving
-	state_save_register_global(m_machine, m_fetch_charram);
-	state_save_register_global(m_machine, m_kb_row);
-	state_save_register_global(m_machine, m_kb_txd);
-	state_save_register_global(m_machine, m_kb_clk);
-	state_save_register_global(m_machine, m_kb_stb);
-	state_save_register_global(m_machine, m_pling);
-	state_save_register_global(m_machine, m_sio_rxcb);
-	state_save_register_global(m_machine, m_sio_txcb);
+	state_save_register_global(machine(), m_fetch_charram);
+	state_save_register_global(machine(), m_kb_row);
+	state_save_register_global(machine(), m_kb_txd);
+	state_save_register_global(machine(), m_kb_clk);
+	state_save_register_global(machine(), m_kb_stb);
+	state_save_register_global(machine(), m_pling);
+	state_save_register_global(machine(), m_sio_rxcb);
+	state_save_register_global(machine(), m_sio_txcb);
 }
 
 
@@ -1288,7 +1288,7 @@ void abc800_state::machine_start()
 
 void abc800_state::machine_reset()
 {
-	m_sb = input_port_read(m_machine, "SB");
+	m_sb = input_port_read(machine(), "SB");
 
 	m_fetch_charram = 0;
 	bankswitch();
@@ -1307,9 +1307,9 @@ void abc800_state::machine_reset()
 void abc802_state::machine_start()
 {
 	// register for state saving
-	state_save_register_global(m_machine, m_lrs);
-	state_save_register_global(m_machine, m_pling);
-	state_save_register_global(m_machine, m_keylatch);
+	state_save_register_global(machine(), m_lrs);
+	state_save_register_global(machine(), m_pling);
+	state_save_register_global(machine(), m_keylatch);
 }
 
 
@@ -1319,8 +1319,8 @@ void abc802_state::machine_start()
 
 void abc802_state::machine_reset()
 {
-	UINT8 config = input_port_read(m_machine, "CONFIG");
-	m_sb = input_port_read(m_machine, "SB");
+	UINT8 config = input_port_read(machine(), "CONFIG");
+	m_sb = input_port_read(machine(), "SB");
 
 	// memory banking
 	m_lrs = 1;
@@ -1346,28 +1346,28 @@ void abc802_state::machine_reset()
 
 void abc806_state::machine_start()
 {
-	UINT8 *mem = m_machine.region(Z80_TAG)->base();
+	UINT8 *mem = machine().region(Z80_TAG)->base();
 	UINT32 videoram_size = ram_get_size(m_ram) - (32 * 1024);
 	int bank;
 	char bank_name[10];
 
 	// setup memory banking
-	m_video_ram = auto_alloc_array(m_machine, UINT8, videoram_size);
+	m_video_ram = auto_alloc_array(machine(), UINT8, videoram_size);
 
 	for (bank = 1; bank <= 16; bank++)
 	{
 		sprintf(bank_name,"bank%d",bank);
-		memory_configure_bank(m_machine, bank_name, 0, 1, mem + (0x1000 * (bank - 1)), 0);
-		memory_configure_bank(m_machine, bank_name, 1, 1, m_video_ram, 0);
-		memory_set_bank(m_machine, bank_name, 0);
+		memory_configure_bank(machine(), bank_name, 0, 1, mem + (0x1000 * (bank - 1)), 0);
+		memory_configure_bank(machine(), bank_name, 1, 1, m_video_ram, 0);
+		memory_set_bank(machine(), bank_name, 0);
 	}
 
 	// register for state saving
-	state_save_register_global(m_machine, m_keydtr);
-	state_save_register_global(m_machine, m_eme);
-	state_save_register_global(m_machine, m_fetch_charram);
-	state_save_register_global_array(m_machine, m_map);
-	state_save_register_global(m_machine, m_keylatch);
+	state_save_register_global(machine(), m_keydtr);
+	state_save_register_global(machine(), m_eme);
+	state_save_register_global(machine(), m_fetch_charram);
+	state_save_register_global_array(machine(), m_map);
+	state_save_register_global(machine(), m_keylatch);
 }
 
 
@@ -1377,7 +1377,7 @@ void abc806_state::machine_start()
 
 void abc806_state::machine_reset()
 {
-	m_sb = input_port_read(m_machine, "SB");
+	m_sb = input_port_read(machine(), "SB");
 
 	// setup memory banking
 	int bank;
@@ -1386,7 +1386,7 @@ void abc806_state::machine_reset()
 	for (bank = 1; bank <= 16; bank++)
 	{
 		sprintf(bank_name,"bank%d",bank);
-		memory_set_bank(m_machine, bank_name, 0);
+		memory_set_bank(machine(), bank_name, 0);
 	}
 
 	bankswitch();
@@ -1712,15 +1712,17 @@ ROM_START( abc802 )
 	ROM_LOAD(  "abc 02-11.9f",  0x0000, 0x2000, CRC(b86537b2) SHA1(4b7731ef801f9a03de0b5acd955f1e4a1828355d) )
 	ROM_LOAD(  "abc 12-11.11f", 0x2000, 0x2000, CRC(3561c671) SHA1(f12a7c0fe5670ffed53c794d96eb8959c4d9f828) )
 	ROM_LOAD(  "abc 22-11.12f", 0x4000, 0x2000, CRC(8dcb1cc7) SHA1(535cfd66c84c0370fd022d6edf702d3d1ad1b113) )
-	ROM_SYSTEM_BIOS( 0, "v19", "UDF-DOS v6.19" )
-	ROMX_LOAD( "abc 32-21.14f", 0x6000, 0x2000, CRC(57050b98) SHA1(b977e54d1426346a97c98febd8a193c3e8259574), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "v20", "UDF-DOS v6.20" )
-	ROMX_LOAD( "abc 32-31.14f", 0x6000, 0x2000, CRC(fc8be7a8) SHA1(a1d4cb45cf5ae21e636dddfa70c99bfd2050ad60), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "mica", "MICA DOS v6.20" )
-	ROMX_LOAD( "mica820.14f",   0x6000, 0x2000, CRC(edf998af) SHA1(daae7e1ff6ef3e0ddb83e932f324c56f4a98f79b), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 0, "12", "?" )
+	ROMX_LOAD( "abc 32-12.14f", 0x6000, 0x2000, CRC(23cd0f43) SHA1(639daec4565dcdb4de408b808d0c6cd97baa35d2), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "21", "UDF-DOS v6.19" )
+	ROMX_LOAD( "abc 32-21.14f", 0x6000, 0x2000, CRC(57050b98) SHA1(b977e54d1426346a97c98febd8a193c3e8259574), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "31", "UDF-DOS v6.20" )
+	ROMX_LOAD( "abc 32-31.14f", 0x6000, 0x2000, CRC(fc8be7a8) SHA1(a1d4cb45cf5ae21e636dddfa70c99bfd2050ad60), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 3, "mica", "MICA DOS v6.20" )
+	ROMX_LOAD( "mica820.14f",   0x6000, 0x2000, CRC(edf998af) SHA1(daae7e1ff6ef3e0ddb83e932f324c56f4a98f79b), ROM_BIOS(4) )
 
-	ROM_REGION( 0x2000, MC6845_TAG, 0 )
-	ROM_LOAD( "abc t02-1.3g", 0x0000, 0x2000, CRC(e21601ee) SHA1(2e838ebd7692e5cb9ba4e80fe2aa47ea2584133a) ) // 64 90191-01
+	ROM_REGION( 0x1000, MC6845_TAG, 0 )
+	ROM_LOAD( "abc t02-1.3g", 0x0000, 0x1000, CRC(4d54eed8) SHA1(04cb5fc5f3d7ba9b9a5ae0ec94241d1fe83647f7) ) // 64 90191-01
 
 	ROM_REGION( 0x400, "plds", 0 )
 	ROM_LOAD( "abc p2-1.2g", 0x0000, 0x0400, NO_DUMP ) // PAL16R4
@@ -1784,11 +1786,11 @@ ROM_END
 
 DIRECT_UPDATE_HANDLER( abc800c_direct_update_handler )
 {
-	abc800_state *state = machine->driver_data<abc800_state>();
+	abc800_state *state = machine.driver_data<abc800_state>();
 
 	if (address >= 0x7c00 && address < 0x8000)
 	{
-		direct.explicit_configure(0x7c00, 0x7fff, 0x3ff, machine->region(Z80_TAG)->base() + 0x7c00);
+		direct.explicit_configure(0x7c00, 0x7fff, 0x3ff, machine.region(Z80_TAG)->base() + 0x7c00);
 
 		if (!state->m_fetch_charram)
 		{
@@ -1811,7 +1813,7 @@ DIRECT_UPDATE_HANDLER( abc800c_direct_update_handler )
 static DRIVER_INIT( abc800c )
 {
 	address_space *program = machine.device<cpu_device>(Z80_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate_create_static(abc800c_direct_update_handler, machine));
+	program->set_direct_update_handler(direct_update_delegate(FUNC(abc800c_direct_update_handler), &machine));
 }
 
 
@@ -1821,11 +1823,11 @@ static DRIVER_INIT( abc800c )
 
 DIRECT_UPDATE_HANDLER( abc800m_direct_update_handler )
 {
-	abc800_state *state = machine->driver_data<abc800_state>();
+	abc800_state *state = machine.driver_data<abc800_state>();
 
 	if (address >= 0x7800 && address < 0x8000)
 	{
-		direct.explicit_configure(0x7800, 0x7fff, 0x7ff, machine->region(Z80_TAG)->base() + 0x7800);
+		direct.explicit_configure(0x7800, 0x7fff, 0x7ff, machine.region(Z80_TAG)->base() + 0x7800);
 
 		if (!state->m_fetch_charram)
 		{
@@ -1848,7 +1850,7 @@ DIRECT_UPDATE_HANDLER( abc800m_direct_update_handler )
 static DRIVER_INIT( abc800m )
 {
 	address_space *program = machine.device<cpu_device>(Z80_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate_create_static(abc800m_direct_update_handler, machine));
+	program->set_direct_update_handler(direct_update_delegate(FUNC(abc800m_direct_update_handler), &machine));
 }
 
 
@@ -1858,13 +1860,13 @@ static DRIVER_INIT( abc800m )
 
 DIRECT_UPDATE_HANDLER( abc802_direct_update_handler )
 {
-	abc802_state *state = machine->driver_data<abc802_state>();
+	abc802_state *state = machine.driver_data<abc802_state>();
 
 	if (state->m_lrs)
 	{
 		if (address >= 0x7800 && address < 0x8000)
 		{
-			direct.explicit_configure(0x7800, 0x7fff, 0x7ff, machine->region(Z80_TAG)->base() + 0x7800);
+			direct.explicit_configure(0x7800, 0x7fff, 0x7ff, machine.region(Z80_TAG)->base() + 0x7800);
 			return ~0;
 		}
 	}
@@ -1875,7 +1877,7 @@ DIRECT_UPDATE_HANDLER( abc802_direct_update_handler )
 static DRIVER_INIT( abc802 )
 {
 	address_space *program = machine.device<cpu_device>(Z80_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate_create_static(abc802_direct_update_handler, machine));
+	program->set_direct_update_handler(direct_update_delegate(FUNC(abc802_direct_update_handler), &machine));
 }
 
 
@@ -1885,11 +1887,11 @@ static DRIVER_INIT( abc802 )
 
 DIRECT_UPDATE_HANDLER( abc806_direct_update_handler )
 {
-	abc806_state *state = machine->driver_data<abc806_state>();
+	abc806_state *state = machine.driver_data<abc806_state>();
 
 	if (address >= 0x7800 && address < 0x8000)
 	{
-		direct.explicit_configure(0x7800, 0x7fff, 0x7ff, machine->region(Z80_TAG)->base() + 0x7800);
+		direct.explicit_configure(0x7800, 0x7fff, 0x7ff, machine.region(Z80_TAG)->base() + 0x7800);
 
 		if (!state->m_fetch_charram)
 		{
@@ -1912,7 +1914,7 @@ DIRECT_UPDATE_HANDLER( abc806_direct_update_handler )
 static DRIVER_INIT( abc806 )
 {
 	address_space *program = machine.device<cpu_device>(Z80_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate_create_static(abc806_direct_update_handler, machine));
+	program->set_direct_update_handler(direct_update_delegate(FUNC(abc806_direct_update_handler), &machine));
 }
 
 

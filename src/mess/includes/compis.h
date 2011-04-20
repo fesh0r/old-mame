@@ -15,6 +15,7 @@
 #include "emu.h"
 #include "machine/msm8251.h"
 #include "machine/upd765.h"
+#include "video/upd7220.h"
 
 
 struct mem_state
@@ -125,9 +126,9 @@ public:
 	compis_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config),
 		  m_hgdc(*this, "upd7220")
- 		  { }
+		  { }
 
-	required_device<device_t> m_hgdc;
+	required_device<upd7220_device> m_hgdc;
 
 	virtual void video_start();
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);

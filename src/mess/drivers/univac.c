@@ -5,7 +5,7 @@
     The terminals are models UTS20, UTS30, UTS40, UTS50 and SVT1120,
     however only the UTS20 is dumped (program roms only).
 
-    25/05/2009 Skeleton driver [Robbbert].
+    25/05/2009 Skeleton driver
 
     The terminal has 2 screens selectable by the operator with the Fn + 1-2
     buttons. Thus the user can have two sessions open at once, to different
@@ -87,7 +87,7 @@ MACHINE_RESET_MEMBER(univac_state)
 
 VIDEO_START_MEMBER(univac_state)
 {
-	m_p_chargen = m_machine.region("chargen")->base();
+	m_p_chargen = machine().region("chargen")->base();
 }
 
 SCREEN_UPDATE_MEMBER(univac_state)

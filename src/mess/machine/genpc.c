@@ -69,7 +69,7 @@ WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dma_hrq_changed )
 
 
 READ8_MEMBER( ibm5160_mb_device::pc_dma_read_byte )
-{	
+{
 	address_space *spaceio = m_maincpu->space(AS_PROGRAM);
 	offs_t page_offset = (((offs_t) m_dma_offset[m_dma_channel]) << 16) & 0x0F0000;
 	return spaceio->read_byte( page_offset + offset);
@@ -142,22 +142,22 @@ I8237_INTERFACE( pc_dma8237_config )
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_out_eop),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma_read_byte),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma_write_byte),
-	
-	{ DEVCB_NULL, 						  
-	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_1_dack_r), 
-	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_2_dack_r), 
+
+	{ DEVCB_NULL,
+	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_1_dack_r),
+	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_2_dack_r),
 	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_3_dack_r) },
-	
-	
-	{ DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_0_dack_w), 
-	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_1_dack_w), 
-	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_2_dack_w), 
+
+
+	{ DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_0_dack_w),
+	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_1_dack_w),
+	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_2_dack_w),
 	  DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dma8237_3_dack_w) },
-	
+
 	// DACK's
-	{ DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack0_w), 
-	  DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack1_w), 
-	  DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack2_w), 
+	{ DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack0_w),
+	  DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack1_w),
+	  DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack2_w),
 	  DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_dack3_w) }
 };
 
@@ -174,7 +174,9 @@ WRITE_LINE_MEMBER(ibm5160_mb_device::pc_cpu_line)
 
 const struct pic8259_interface pc_pic8259_config =
 {
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_cpu_line)
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_cpu_line),
+	DEVCB_LINE_VCC,
+	DEVCB_NULL
 };
 
 
@@ -206,7 +208,7 @@ WRITE_LINE_MEMBER( ibm5160_mb_device::pc_pit8253_out1_changed )
 WRITE_LINE_MEMBER( ibm5160_mb_device::pc_pit8253_out2_changed )
 {
 	m_pc_input = state ? 1 : 0;
-	speaker_level_w( m_speaker, m_pc_spkrdata & m_pc_input );	
+	speaker_level_w( m_speaker, m_pc_spkrdata & m_pc_input );
 }
 
 
@@ -444,9 +446,9 @@ static WRITE8_DEVICE_HANDLER( nmi_enable_w )
 //**************************************************************************
 //  GLOBAL VARIABLES
 //**************************************************************************
- 
+
 const device_type IBM5160_MOTHERBOARD = ibm5160_mb_device_config::static_alloc_device_config;
- 
+
 //**************************************************************************
 //  DEVICE CONFIGURATION
 //**************************************************************************
@@ -459,7 +461,7 @@ static MACHINE_CONFIG_FRAGMENT( ibm5160_mb_config )
 	MCFG_PIC8259_ADD( "pic8259", pc_pic8259_config )
 
 	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
-		
+
 	MCFG_ISA8_BUS_ADD("isa", "maincpu", isabus_intf)
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -467,30 +469,30 @@ static MACHINE_CONFIG_FRAGMENT( ibm5160_mb_config )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mb:mono", 1.00)
 MACHINE_CONFIG_END
 
- 
+
 //-------------------------------------------------
 //  ibm5160_mb_device_config - constructor
 //-------------------------------------------------
- 
+
 ibm5160_mb_device_config::ibm5160_mb_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
         : device_config(mconfig, static_alloc_device_config, "IBM5160_MOTHERBOARD", tag, owner, clock)
 {
 }
- 
+
 //-------------------------------------------------
 //  static_alloc_device_config - allocate a new
 //  configuration object
 //-------------------------------------------------
- 
+
 device_config *ibm5160_mb_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
 {
 	return global_alloc(ibm5160_mb_device_config(mconfig, tag, owner, clock));
 }
- 
+
 //-------------------------------------------------
 //  alloc_device - allocate a new device object
 //-------------------------------------------------
- 
+
 device_t *ibm5160_mb_device_config::alloc_device(running_machine &machine) const
 {
 	return auto_alloc(machine, ibm5160_mb_device(machine, *this));
@@ -539,7 +541,7 @@ const input_port_token *ibm5160_mb_device_config::device_input_ports() const
 {
 	return INPUT_PORTS_NAME( ibm5160_mb );
 }
-	
+
 
 void ibm5160_mb_device_config::static_set_cputag(device_config *device, const char *tag)
 {
@@ -550,11 +552,11 @@ void ibm5160_mb_device_config::static_set_cputag(device_config *device, const ch
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
- 
+
 //-------------------------------------------------
 //  ibm5160_mb_device - constructor
 //-------------------------------------------------
- 
+
 ibm5160_mb_device::ibm5160_mb_device(running_machine &_machine, const ibm5160_mb_device_config &config) :
         device_t(_machine, config),
         m_config(config),
@@ -567,17 +569,17 @@ ibm5160_mb_device::ibm5160_mb_device(running_machine &_machine, const ibm5160_mb
 		m_isabus(*this, "isa")
 {
 }
- 
-void ibm5160_mb_device::install_device(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_device_func rhandler, write8_device_func whandler)
-{	
-	int buswidth = m_machine.firstcpu->memory().space_config(AS_IO)->m_databus_width;
+
+void ibm5160_mb_device::install_device(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_device_func rhandler, const char* rhandler_name, write8_device_func whandler, const char *whandler_name)
+{
+	int buswidth = machine().firstcpu->memory().space_config(AS_IO)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			m_maincpu->memory().space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, FUNC(rhandler), FUNC(whandler),0);
+			m_maincpu->memory().space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, rhandler, rhandler_name, whandler, whandler_name, 0);
 			break;
 		case 16:
-			m_maincpu->memory().space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, FUNC(rhandler), FUNC(whandler),0xffff);
+			m_maincpu->memory().space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, rhandler, rhandler_name, whandler, whandler_name,0xffff);
 			break;
 		default:
 			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
@@ -585,16 +587,16 @@ void ibm5160_mb_device::install_device(device_t *dev, offs_t start, offs_t end, 
 	}
 }
 
-void ibm5160_mb_device::install_device_write(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, write8_device_func whandler)
-{	
-	int buswidth = m_machine.firstcpu->memory().space_config(AS_IO)->m_databus_width;
+void ibm5160_mb_device::install_device_write(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, write8_device_func whandler, const char *whandler_name)
+{
+	int buswidth = machine().firstcpu->memory().space_config(AS_IO)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			m_maincpu->memory().space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, FUNC(whandler),0);
+			m_maincpu->memory().space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, whandler, whandler_name,0);
 			break;
 		case 16:
-			m_maincpu->memory().space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, FUNC(whandler),0xffff);
+			m_maincpu->memory().space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, whandler, whandler_name, 0xffff);
 			break;
 		default:
 			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
@@ -629,35 +631,35 @@ void ibm5160_mb_device_config::device_config_complete()
 //-------------------------------------------------
 //  device_start - device-specific startup
 //-------------------------------------------------
- 
+
 void ibm5160_mb_device::device_start()
 {
 	// resolve callbacks
 	devcb_resolve_write_line(&m_kb_set_clock_signal_func, &m_config.m_kb_set_clock_signal_func, this);
 	devcb_resolve_write_line(&m_kb_set_data_signal_func,  &m_config.m_kb_set_data_signal_func,  this);
 
-	install_device(m_dma8237, 0x0000, 0x000f, 0, 0, i8237_r, i8237_w );	
-	install_device(m_pic8259, 0x0020, 0x0021, 0, 0, pic8259_r, pic8259_w );	
-	install_device(m_pit8253, 0x0040, 0x0043, 0, 0, pit8253_r, pit8253_w );	
-	install_device(m_ppi8255, 0x0060, 0x0063, 0, 0, i8255a_r, i8255a_w );	
-	install_device(this,    0x0080, 0x0087, 0, 0, pc_page_r, pc_page_w );	
-	install_device_write(this,    0x00a0, 0x00a1, 0, 0, nmi_enable_w);	
+	install_device(m_dma8237, 0x0000, 0x000f, 0, 0, FUNC(i8237_r), FUNC(i8237_w) );
+	install_device(m_pic8259, 0x0020, 0x0021, 0, 0, FUNC(pic8259_r), FUNC(pic8259_w) );
+	install_device(m_pit8253, 0x0040, 0x0043, 0, 0, FUNC(pit8253_r), FUNC(pit8253_w) );
+	install_device(m_ppi8255, 0x0060, 0x0063, 0, 0, FUNC(i8255a_r), FUNC(i8255a_w) );
+	install_device(this,    0x0080, 0x0087, 0, 0, FUNC(pc_page_r), FUNC(pc_page_w) );
+	install_device_write(this,    0x00a0, 0x00a1, 0, 0, FUNC(nmi_enable_w));
 	/* MESS managed RAM */
-	if ( ram_get_ptr(m_machine.device(RAM_TAG)) )
-		memory_set_bankptr( m_machine, "bank10", ram_get_ptr(m_machine.device(RAM_TAG)) );	
+	if ( ram_get_ptr(machine().device(RAM_TAG)) )
+		memory_set_bankptr( machine(), "bank10", ram_get_ptr(machine().device(RAM_TAG)) );
 }
- 
+
 IRQ_CALLBACK(ibm5160_mb_device::pc_irq_callback)
 {
 	device_t *pic = device->machine().device("mb:pic8259");
-	return pic8259_acknowledge( pic );	
+	return pic8259_acknowledge( pic );
 }
 
 
 //-------------------------------------------------
 //  device_reset - device-specific reset
 //-------------------------------------------------
-  
+
 void ibm5160_mb_device::device_reset()
 {
 	device_set_irq_callback(m_maincpu, pc_irq_callback);
@@ -685,9 +687,9 @@ void ibm5160_mb_device::device_reset()
 //**************************************************************************
 //  GLOBAL VARIABLES
 //**************************************************************************
- 
+
 const device_type IBM5150_MOTHERBOARD = ibm5150_mb_device_config::static_alloc_device_config;
- 
+
 //**************************************************************************
 //  DEVICE CONFIGURATION
 //**************************************************************************
@@ -701,34 +703,34 @@ static const cassette_config ibm5150_cassette_config =
 
 static MACHINE_CONFIG_FRAGMENT( ibm5150_mb_config )
 	MCFG_FRAGMENT_ADD(ibm5160_mb_config)
-	
+
 	MCFG_CASSETTE_ADD( "cassette", ibm5150_cassette_config )
 MACHINE_CONFIG_END
 
- 
+
 //-------------------------------------------------
 //  ibm5150_mb_device_config - constructor
 //-------------------------------------------------
- 
+
 ibm5150_mb_device_config::ibm5150_mb_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
         : ibm5160_mb_device_config(mconfig, tag, owner, clock)
 {
 }
- 
+
 //-------------------------------------------------
 //  static_alloc_device_config - allocate a new
 //  configuration object
 //-------------------------------------------------
- 
+
 device_config *ibm5150_mb_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
 {
 	return global_alloc(ibm5150_mb_device_config(mconfig, tag, owner, clock));
 }
- 
+
 //-------------------------------------------------
 //  alloc_device - allocate a new device object
 //-------------------------------------------------
- 
+
 device_t *ibm5150_mb_device_config::alloc_device(running_machine &machine) const
 {
 	return auto_alloc(machine, ibm5150_mb_device(machine, *this));
@@ -747,17 +749,17 @@ machine_config_constructor ibm5150_mb_device_config::device_mconfig_additions() 
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
- 
+
 //-------------------------------------------------
 //  ibm5150_mb_device - constructor
 //-------------------------------------------------
- 
+
 ibm5150_mb_device::ibm5150_mb_device(running_machine &_machine, const ibm5150_mb_device_config &config) :
         ibm5160_mb_device(_machine, config),
 		m_cassette(*this, "cassette")
 {
 }
- 
+
 void ibm5150_mb_device::device_start()
 {
 	ibm5160_mb_device::device_start();
@@ -783,7 +785,7 @@ READ8_MEMBER (ibm5150_mb_device::pc_ppi_porta_r)
          * 6-7  The number of floppy disk drives
          */
 		data = input_port_read(this, "DSW0") & 0xF3;
-		switch ( ram_get_size(m_machine.device(RAM_TAG)) )
+		switch ( ram_get_size(machine().device(RAM_TAG)) )
 		{
 		case 16 * 1024:
 			data |= 0x00;
@@ -821,7 +823,7 @@ READ8_MEMBER ( ibm5150_mb_device::pc_ppi_portc_r )
 		/* read hi nibble of SW2 */
 		data = data & 0xf0;
 
-		switch ( ram_get_size(m_machine.device(RAM_TAG)) - 64 * 1024 )
+		switch ( ram_get_size(machine().device(RAM_TAG)) - 64 * 1024 )
 		{
 		case 64 * 1024:		data |= 0x00; break;
 		case 128 * 1024:	data |= 0x02; break;
@@ -839,7 +841,7 @@ READ8_MEMBER ( ibm5150_mb_device::pc_ppi_portc_r )
 		case 896 * 1024:	data |= 0x0B; break;
 		case 960 * 1024:	data |= 0x0D; break;
 		}
-		if ( ram_get_size(m_machine.device(RAM_TAG)) > 960 * 1024 )
+		if ( ram_get_size(machine().device(RAM_TAG)) > 960 * 1024 )
 			data |= 0x0D;
 
 		PIO_LOG(1,"PIO_C_r (hi)",("$%02x\n", data));

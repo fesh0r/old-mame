@@ -1,33 +1,3 @@
-#define ADDRESS_MAP_MODERN
-
-#include "emu.h"
-#include "formats/basicdsk.h"
-#include "imagedev/flopdrv.h"
-#include "cpu/i8085/i8085.h"
-#include "machine/8237dma.h"
-#include "machine/i8212.h"
-#include "machine/upd765.h"
-#include "machine/pit8253.h"
-#include "machine/upd7201.h"
-#include "video/i8275.h"
-#include "video/upd7220.h"
-#include "sound/speaker.h"
-#include "machine/ram.h"
-#include "includes/mikromik.h"
-
-/*
-
-    TODO:
-
-    - add HRTC/VRTC output to i8275
-    - NEC uPD7220 GDC
-    - accurate video timing
-    - floppy DRQ during RECALL = 0
-    - PCB layout
-    - NEC uPD7201 MPSC
-
-*/
-
 /*
 
     Nokia Elektroniikka pj
@@ -67,6 +37,21 @@
 
 */
 
+/*
+
+    TODO:
+
+    - add HRTC/VRTC output to i8275
+    - NEC uPD7220 GDC
+    - accurate video timing
+    - floppy DRQ during RECALL = 0
+    - PCB layout
+    - NEC uPD7201 MPSC
+
+*/
+
+#include "includes/mikromik.h"
+
 /* Read/Write Handlers */
 
 WRITE8_MEMBER( mm1_state::ls259_w )
@@ -78,7 +63,7 @@ WRITE8_MEMBER( mm1_state::ls259_w )
 	{
 	case 0: /* IC24 A8 */
 		//logerror("IC24 A8 %u\n", d);
-		memory_set_bank(m_machine, "bank1", d);
+		memory_set_bank(machine(), "bank1", d);
 
 		if (d)
 		{
@@ -125,7 +110,7 @@ WRITE8_MEMBER( mm1_state::ls259_w )
 		floppy_drive_set_ready_state(m_floppy0, d, 1);
 		floppy_drive_set_ready_state(m_floppy1, d, 1);
 
-		if (input_port_read(m_machine, "T5")) upd765_ready_w(m_fdc, d);
+		if (input_port_read(machine(), "T5")) upd765_ready_w(m_fdc, d);
 		break;
 	}
 }
@@ -136,7 +121,7 @@ static ADDRESS_MAP_START( mm1_map, AS_PROGRAM, 8, mm1_state )
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0xfeff) AM_RAM
 	AM_RANGE(0xff00, 0xff0f) AM_MIRROR(0x80) AM_DEVREADWRITE_LEGACY(I8237_TAG, i8237_r, i8237_w)
-	AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE_LEGACY(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
+	AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE(UPD7201_TAG, upd7201_device, cd_ba_r, cd_ba_w)
     AM_RANGE(0xff20, 0xff21) AM_MIRROR(0x8e) AM_DEVREADWRITE_LEGACY(I8275_TAG, i8275_r, i8275_w)
 	AM_RANGE(0xff30, 0xff33) AM_MIRROR(0x8c) AM_DEVREADWRITE_LEGACY(I8253_TAG, pit8253_r, pit8253_w)
 	AM_RANGE(0xff40, 0xff40) AM_MIRROR(0x8f) AM_DEVREADWRITE(I8212_TAG, i8212_device, data_r, data_w)
@@ -147,11 +132,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mm1m6_map, AS_PROGRAM, 8, mm1_state )
 	AM_IMPORT_FROM(mm1_map)
-	AM_RANGE(0xff70, 0xff71) AM_MIRROR(0x8e) AM_DEVREADWRITE_LEGACY(UPD7220_TAG, upd7220_r, upd7220_w)
+	AM_RANGE(0xff70, 0xff71) AM_MIRROR(0x8e) AM_DEVREADWRITE(UPD7220_TAG, upd7220_device, read, write)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mm1_upd7220_map, AS_0, 8, mm1_state )
-	AM_RANGE(0x00000, 0x3ffff) AM_DEVREADWRITE_LEGACY(UPD7220_TAG,upd7220_vram_r,upd7220_vram_w)
+	AM_RANGE(0x00000, 0x3ffff) AM_DEVREADWRITE(UPD7220_TAG, upd7220_device, vram_r, vram_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -338,9 +323,9 @@ static UPD7220_INTERFACE( hgdc_intf )
 void mm1_state::video_start()
 {
 	// find memory regions
-	m_char_rom = m_machine.region("chargen")->base();
+	m_char_rom = machine().region("chargen")->base();
 
-	VIDEO_START_NAME(generic_bitmapped)(m_machine);
+	VIDEO_START_NAME(generic_bitmapped)(machine());
 }
 
 bool mm1_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
@@ -350,7 +335,7 @@ bool mm1_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rec
 	copybitmap(&bitmap, screen.machine().generic.tmpbitmap, 0, 0, 0, 0, &cliprect);
 
 	/* graphics */
-	upd7220_update(m_hgdc, &bitmap, &cliprect);
+	m_hgdc->update_screen(&bitmap, &cliprect);
 
 	return 0;
 }
@@ -400,12 +385,12 @@ READ8_MEMBER( mm1_state::mpsc_dack_r )
 	/* clear data request */
 	i8237_dreq2_w(m_dmac, CLEAR_LINE);
 
-	return upd7201_dtra_r(m_mpsc);
+	return m_mpsc->dtra_r();
 }
 
 WRITE8_MEMBER( mm1_state::mpsc_dack_w )
 {
-	upd7201_hai_w(m_mpsc, data);
+	m_mpsc->hai_w(data);
 
 	/* clear data request */
 	i8237_dreq1_w(m_dmac, CLEAR_LINE);
@@ -421,7 +406,7 @@ WRITE_LINE_MEMBER( mm1_state::tc_w )
 
 	m_tc = !state;
 
-	device_set_input_line(m_maincpu, I8085_RST75_LINE, state);
+	m_maincpu->set_input_line(I8085_RST75_LINE, state);
 }
 
 WRITE_LINE_MEMBER( mm1_state::dack3_w )
@@ -466,7 +451,7 @@ WRITE_LINE_MEMBER( mm1_state::itxc_w )
 {
 	if (!m_intc)
 	{
-		upd7201_txca_w(m_mpsc, state);
+		m_mpsc->txca_w(state);
 	}
 }
 
@@ -474,14 +459,14 @@ WRITE_LINE_MEMBER( mm1_state::irxc_w )
 {
 	if (!m_intc)
 	{
-		upd7201_rxca_w(m_mpsc, state);
+		m_mpsc->rxca_w(state);
 	}
 }
 
 WRITE_LINE_MEMBER( mm1_state::auxc_w )
 {
-	upd7201_txcb_w(m_mpsc, state);
-	upd7201_rxcb_w(m_mpsc, state);
+	m_mpsc->txcb_w(state);
+	m_mpsc->rxcb_w(state);
 }
 
 static const struct pit8253_config mm1_pit8253_intf =
@@ -576,8 +561,8 @@ void mm1_state::scan_keyboard()
 {
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9" };
 
-	UINT8 data = input_port_read(m_machine, keynames[m_drive]);
-	UINT8 special = input_port_read(m_machine, "SPECIAL");
+	UINT8 data = input_port_read(machine(), keynames[m_drive]);
+	UINT8 special = input_port_read(machine(), "SPECIAL");
 	int ctrl = BIT(special, 0);
 	int shift = BIT(special, 2) & BIT(special, 1);
 	UINT8 keydata = 0xff;
@@ -673,25 +658,25 @@ void mm1_state::machine_start()
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	/* find memory regions */
-	m_key_rom = m_machine.region("keyboard")->base();
+	m_key_rom = machine().region("keyboard")->base();
 
 	/* setup memory banking */
 	program->install_read_bank(0x0000, 0x0fff, "bank1");
 	program->unmap_write(0x0000, 0x0fff);
-	memory_configure_bank(m_machine, "bank1", 0, 1, m_machine.region("bios")->base(), 0);
-	memory_configure_bank(m_machine, "bank1", 1, 1, ram_get_ptr(m_machine.device(RAM_TAG)), 0);
-	memory_set_bank(m_machine, "bank1", 0);
+	memory_configure_bank(machine(), "bank1", 0, 1, machine().region("bios")->base(), 0);
+	memory_configure_bank(machine(), "bank1", 1, 1, ram_get_ptr(machine().device(RAM_TAG)), 0);
+	memory_set_bank(machine(), "bank1", 0);
 
 	/* register for state saving */
-	state_save_register_global(m_machine, m_sense);
-	state_save_register_global(m_machine, m_drive);
-	state_save_register_global(m_machine, m_llen);
-	state_save_register_global(m_machine, m_intc);
-	state_save_register_global(m_machine, m_rx21);
-	state_save_register_global(m_machine, m_tx21);
-	state_save_register_global(m_machine, m_rcl);
-	state_save_register_global(m_machine, m_recall);
-	state_save_register_global(m_machine, m_dack3);
+	state_save_register_global(machine(), m_sense);
+	state_save_register_global(machine(), m_drive);
+	state_save_register_global(machine(), m_llen);
+	state_save_register_global(machine(), m_intc);
+	state_save_register_global(machine(), m_rx21);
+	state_save_register_global(machine(), m_tx21);
+	state_save_register_global(machine(), m_rcl);
+	state_save_register_global(machine(), m_recall);
+	state_save_register_global(machine(), m_dack3);
 }
 
 void mm1_state::machine_reset()
@@ -703,7 +688,7 @@ void mm1_state::machine_reset()
 	for (i = 0; i < 8; i++) ls259_w(*program, i, 0);
 
 	/* set FDC ready */
-	if (!input_port_read(m_machine, "T5")) upd765_ready_w(m_fdc, 1);
+	if (!input_port_read(machine(), "T5")) upd765_ready_w(m_fdc, 1);
 
 	/* reset FDC */
 	upd765_reset_w(m_fdc, 1);

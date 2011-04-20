@@ -184,7 +184,7 @@ cirrus_device::cirrus_device(running_machine &_machine, const cirrus_device_conf
 {
 }
 
-static void bebox_map_vga_memory(running_machine &machine, offs_t begin, offs_t end, read8_space_func rh, write8_space_func wh)
+static void bebox_map_vga_memory(running_machine &machine, offs_t begin, offs_t end, read8_space_func rh, const char *rh_name, write8_space_func wh, const char *wh_name )
 {
 	address_space *space = machine.device("ppc1")->memory().space(AS_PROGRAM);
 
@@ -263,7 +263,7 @@ UINT32 cirrus_device::pci_read(device_t *busdevice, int function, int offset, UI
 
 	if (LOG_PCIACCESS)
 		logerror("cirrus5430_pci_read(): function=%d offset=0x%02X result=0x%04X\n", function, offset, result);
-	return result;	
+	return result;
 }
 
 

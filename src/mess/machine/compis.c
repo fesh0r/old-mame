@@ -13,7 +13,6 @@
 /*-------------------------------------------------------------------------*/
 
 #include "emu.h"
-#include "video/i82720.h"
 #include "machine/i8255a.h"
 #include "machine/mm58274c.h"
 #include "machine/pic8259.h"
@@ -1327,9 +1326,9 @@ static void compis_cpu_init(running_machine &machine)
 	state->m_i186.timer[0].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
 	state->m_i186.timer[1].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
 	state->m_i186.timer[2].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
-	state->m_i186.timer[0].time_timer = machine.scheduler().timer_alloc(FUNC(NULL));
-	state->m_i186.timer[1].time_timer = machine.scheduler().timer_alloc(FUNC(NULL));
-	state->m_i186.timer[2].time_timer = machine.scheduler().timer_alloc(FUNC(NULL));
+	state->m_i186.timer[0].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
+	state->m_i186.timer[1].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
+	state->m_i186.timer[2].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
 	state->m_i186.dma[0].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
 	state->m_i186.dma[1].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
 }
@@ -1357,14 +1356,27 @@ static WRITE_LINE_DEVICE_HANDLER( compis_pic8259_slave_set_int_line )
 		pic8259_ir2_w(drvstate->m_devices.pic8259_master, state);
 }
 
+static READ8_DEVICE_HANDLER( get_slave_ack )
+{
+	compis_state *state = device->machine().driver_data<compis_state>();
+	if (offset==2) { // IRQ = 2
+		return pic8259_acknowledge(state->m_devices.pic8259_slave);
+	}
+	return 0x00;
+}
+
 const struct pic8259_interface compis_pic8259_master_config =
 {
-	DEVCB_LINE(compis_pic8259_master_set_int_line)
+	DEVCB_LINE(compis_pic8259_master_set_int_line),
+	DEVCB_LINE_VCC,
+	DEVCB_HANDLER(get_slave_ack)
 };
 
 const struct pic8259_interface compis_pic8259_slave_config =
 {
-	DEVCB_LINE(compis_pic8259_slave_set_int_line)
+	DEVCB_LINE(compis_pic8259_slave_set_int_line),
+	DEVCB_LINE_GND,
+	DEVCB_NULL
 };
 
 
@@ -1374,19 +1386,10 @@ static IRQ_CALLBACK( compis_irq_callback )
 	return pic8259_acknowledge(state->m_devices.pic8259_master);
 }
 
-#if 0
-static const compis_gdc_interface i82720_interface =
-{
-	GDC_MODE_HRG,
-	0x8000
-};
-#endif
-
 
 DRIVER_INIT( compis )
 {
 	compis_state *state = machine.driver_data<compis_state>();
-//	compis_init( &i82720_interface );
 
 	device_set_irq_callback(machine.device("maincpu"), compis_irq_callback);
 	memset (&state->m_compis, 0, sizeof (state->m_compis) );

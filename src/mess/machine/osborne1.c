@@ -205,12 +205,12 @@ WRITE8_HANDLER( osborne1_bankswitch_w )
 
 DIRECT_UPDATE_HANDLER( osborne1_opbase )
 {
-	osborne1_state *state = machine->driver_data<osborne1_state>();
+	osborne1_state *state = machine.driver_data<osborne1_state>();
 	if ( ( address & 0xF000 ) == 0x2000 )
 	{
 		if ( ! state->m_bank2_enabled )
 		{
-			direct.explicit_configure(0x2000, 0x2fff, 0x0fff, ram_get_ptr(machine->device(RAM_TAG)) + 0x2000);
+			direct.explicit_configure(0x2000, 0x2fff, 0x0fff, ram_get_ptr(machine.device(RAM_TAG)) + 0x2000);
 			return ~0;
 		}
 	}
@@ -458,7 +458,7 @@ MACHINE_RESET( osborne1 )
 		floppy_install_load_proc(floppy_get_device(machine, drive), osborne1_load_proc);
 	}
 
-	space->set_direct_update_handler(direct_update_delegate_create_static(osborne1_opbase, machine));
+	space->set_direct_update_handler(direct_update_delegate(FUNC(osborne1_opbase), &machine));
 }
 
 
@@ -551,7 +551,7 @@ void osborne1_daisy_device::device_start()
 
 int osborne1_daisy_device::z80daisy_irq_state()
 {
-	osborne1_state *state = m_machine.driver_data<osborne1_state>();
+	osborne1_state *state = machine().driver_data<osborne1_state>();
 	return ( state->m_pia_1_irq_state ? Z80_DAISY_INT : 0 );
 }
 
@@ -563,7 +563,7 @@ int osborne1_daisy_device::z80daisy_irq_state()
 
 int osborne1_daisy_device::z80daisy_irq_ack()
 {
-	osborne1_state *state = m_machine.driver_data<osborne1_state>();
+	osborne1_state *state = machine().driver_data<osborne1_state>();
 	/* Enable ROM and I/O when IRQ is acknowledged */
 	UINT8 old_bankswitch = state->m_bankswitch;
 	address_space* space = device().machine().device("maincpu")->memory().space(AS_PROGRAM);

@@ -13,7 +13,7 @@
 #include "machine/i8155.h"
 #include "machine/msm8251.h"
 #include "machine/ram.h"
-#include "machine/rp5c01a.h"
+#include "machine/rp5c01.h"
 #include "machine/upd1990a.h"
 #include "video/hd44102.h"
 #include "video/hd61830.h"
@@ -73,16 +73,16 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<upd1990a_device> m_rtc;
-	required_device<device_t> m_lcdc0;
-	required_device<device_t> m_lcdc1;
-	required_device<device_t> m_lcdc2;
-	required_device<device_t> m_lcdc3;
-	required_device<device_t> m_lcdc4;
-	required_device<device_t> m_lcdc5;
-	required_device<device_t> m_lcdc6;
-	required_device<device_t> m_lcdc7;
-	required_device<device_t> m_lcdc8;
-	required_device<device_t> m_lcdc9;
+	required_device<hd44102_device> m_lcdc0;
+	required_device<hd44102_device> m_lcdc1;
+	required_device<hd44102_device> m_lcdc2;
+	required_device<hd44102_device> m_lcdc3;
+	required_device<hd44102_device> m_lcdc4;
+	required_device<hd44102_device> m_lcdc5;
+	required_device<hd44102_device> m_lcdc6;
+	required_device<hd44102_device> m_lcdc7;
+	required_device<hd44102_device> m_lcdc8;
+	required_device<hd44102_device> m_lcdc9;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_cassette;
@@ -157,7 +157,7 @@ public:
 	tandy200_state(running_machine &machine, const driver_device_config_base &config)
 		: driver_device(machine, config),
 		  m_maincpu(*this, I8085_TAG),
-		  m_rtc(*this, UPD1990A_TAG),
+		  m_rtc(*this, RP5C01A_TAG),
 		  m_lcdc(*this, HD61830_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
 		  m_speaker(*this, SPEAKER_TAG),
@@ -166,7 +166,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_rtc;
+	required_device<rp5c01_device> m_rtc;
 	required_device<hd61830_device> m_lcdc;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_speaker;

@@ -93,7 +93,7 @@ static MC6845_UPDATE_ROW( abc802_update_row )
 			address |= 0x800;
 		}
 
-		data = state->m_char_rom[(address + ra_latch) & 0x1fff];
+		data = state->m_char_rom[(address + ra_latch) & 0xfff];
 
 		if (data & ABC802_ATE)
 		{
@@ -209,12 +209,12 @@ static const mc6845_interface crtc_intf =
 void abc802_state::video_start()
 {
 	// find memory regions
-	m_char_rom = m_machine.region(MC6845_TAG)->base();
+	m_char_rom = machine().region(MC6845_TAG)->base();
 
 	// register for state saving
-	state_save_register_global(m_machine, m_flshclk_ctr);
-	state_save_register_global(m_machine, m_flshclk);
-	state_save_register_global(m_machine, m_80_40_mux);
+	state_save_register_global(machine(), m_flshclk_ctr);
+	state_save_register_global(machine(), m_flshclk);
+	state_save_register_global(machine(), m_80_40_mux);
 }
 
 

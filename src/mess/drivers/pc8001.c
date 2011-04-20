@@ -97,7 +97,7 @@ static ADDRESS_MAP_START( pc8001_io, AS_IO, 8, pc8001_state )
 	AM_RANGE(0x21, 0x21) AM_MIRROR(0x0e) AM_DEVREADWRITE_LEGACY(I8251_TAG, msm8251_status_r, msm8251_control_w)
 	AM_RANGE(0x30, 0x30) AM_MIRROR(0x0f) AM_WRITE(port30_w)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x0f) AM_READ_PORT("R40") AM_WRITE_PORT("W40")
-	AM_RANGE(0x50, 0x51) AM_DEVREADWRITE_LEGACY(UPD3301_TAG, upd3301_r, upd3301_w)
+	AM_RANGE(0x50, 0x51) AM_DEVREADWRITE(UPD3301_TAG, upd3301_device, read, write)
 	AM_RANGE(0x60, 0x68) AM_DEVREADWRITE_LEGACY(I8257_TAG, i8257_r, i8257_w)
 //  AM_RANGE(0x70, 0x7f) unused
 //  AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) AM_WRITE(pc8011_ext0_w)
@@ -196,6 +196,12 @@ static READ_LINE_DEVICE_HANDLER( upd1990a_data_out_r )
 {
 	pc8001_state *state = device->machine().driver_data<pc8001_state>();
 	return state->m_rtc->data_out_r();
+}
+
+static READ_LINE_DEVICE_HANDLER( upd3301_vrtc_r )
+{
+	pc8001_state *state = device->machine().driver_data<pc8001_state>();
+	return state->m_crtc->vrtc_r();
 }
 
 static INPUT_PORTS_START( pc8001 )
@@ -297,7 +303,7 @@ static INPUT_PORTS_START( pc8001 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F4)								PORT_CHAR(UCHAR_MAMEKEY(F4))
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F5)								PORT_CHAR(UCHAR_MAMEKEY(F5))
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SPACE)							PORT_CHAR(' ')
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ESC)								PORT_CHAR(UCHAR_MAMEKEY(ESC))
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ESC)							PORT_CHAR(UCHAR_MAMEKEY(ESC))
 
 	PORT_START("DSW1")
 
@@ -338,12 +344,12 @@ static PALETTE_INIT( pc8001 )
 void pc8001_state::video_start()
 {
 	// find memory regions
-	m_char_rom = m_machine.region("chargen")->base();
+	m_char_rom = machine().region("chargen")->base();
 }
 
 bool pc8001_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	upd3301_update(m_crtc, &bitmap, &cliprect);
+	m_crtc->update_screen(&bitmap, &cliprect);
 
 	return 0;
 }
@@ -436,19 +442,37 @@ WRITE_LINE_MEMBER( pc8001_state::hrq_w )
 	i8257_hlda_w(m_dma, state);
 }
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+WRITE8_MEMBER( pc8001_state::dma_mem_w )
+{
+	//if (channel == 2)
+	{
+		m_crtc->dack_w(space, offset, data);
+	}
+}
 
-static I8257_INTERFACE( pc8001_8257_intf )
+READ8_MEMBER( pc8001_state::dma_io_r )
+{
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+
+	return program->read_byte(offset);
+}
+
+WRITE8_MEMBER( pc8001_state::dma_io_w )
+{
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+
+	program->write_byte(offset, data);
+}
+
+static I8257_INTERFACE( dmac_intf )
 {
 	DEVCB_DRIVER_LINE_MEMBER(pc8001_state, hrq_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER(UPD3301_TAG, upd3301_dack_w), DEVCB_NULL },
-	I8257_MEMORY_HANDLER(Z80_TAG, PROGRAM, memory_read_byte),
-	I8257_MEMORY_HANDLER(Z80_TAG, PROGRAM, memory_write_byte),
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
+	DEVCB_NULL,
+	DEVCB_DRIVER_MEMBER(pc8001_state, dma_mem_w),
+	{ DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_r), DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_r), DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_r), DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_r) },
+	{ DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_w), DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_w), DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_w), DEVCB_DRIVER_MEMBER(pc8001_state, dma_io_w) },
 };
 
 /* uPD1990A Interface */
@@ -474,39 +498,39 @@ void pc8001_state::machine_start()
 
 	/* setup memory banking */
 	UINT8 *ram = ram_get_ptr(m_ram);
-	
-	memory_configure_bank(m_machine, "bank1", 1, 1, m_machine.region("n80")->base(), 0);
+
+	memory_configure_bank(machine(), "bank1", 1, 1, machine().region("n80")->base(), 0);
 	program->install_read_bank(0x0000, 0x5fff, "bank1");
 	program->unmap_write(0x0000, 0x5fff);
 
 	switch (ram_get_size(m_ram))
 	{
 	case 16*1024:
-		memory_configure_bank(m_machine, "bank3", 0, 1, ram, 0);
+		memory_configure_bank(machine(), "bank3", 0, 1, ram, 0);
 		program->unmap_readwrite(0x6000, 0xbfff);
 		program->unmap_readwrite(0x8000, 0xbfff);
 		program->install_readwrite_bank(0xc000, 0xffff, "bank3");
 		break;
 
 	case 32*1024:
-		memory_configure_bank(m_machine, "bank3", 0, 1, ram, 0);
+		memory_configure_bank(machine(), "bank3", 0, 1, ram, 0);
 		program->unmap_readwrite(0x6000, 0xbfff);
 		program->install_readwrite_bank(0x8000, 0xffff, "bank3");
 		break;
 
 	case 64*1024:
-		memory_configure_bank(m_machine, "bank1", 0, 1, ram, 0);
-		memory_configure_bank(m_machine, "bank2", 0, 1, ram + 0x6000, 0);
-		memory_configure_bank(m_machine, "bank3", 0, 1, ram + 0x8000, 0);
+		memory_configure_bank(machine(), "bank1", 0, 1, ram, 0);
+		memory_configure_bank(machine(), "bank2", 0, 1, ram + 0x6000, 0);
+		memory_configure_bank(machine(), "bank3", 0, 1, ram + 0x8000, 0);
 		program->install_readwrite_bank(0x0000, 0x5fff, "bank1");
 		program->install_readwrite_bank(0x6000, 0xbfff, "bank2");
 		program->install_readwrite_bank(0x8000, 0xffff, "bank3");
-		memory_set_bank(m_machine, "bank2", 0);
+		memory_set_bank(machine(), "bank2", 0);
 		break;
 	}
 
-	memory_set_bank(m_machine, "bank1", 1);
-	memory_set_bank(m_machine, "bank3", 0);
+	memory_set_bank(machine(), "bank1", 1);
+	memory_set_bank(machine(), "bank3", 0);
 
 	/* register for state saving */
 	save_item(NAME(m_width80));
@@ -550,7 +574,7 @@ static MACHINE_CONFIG_START( pc8001, pc8001_state )
 	/* devices */
 	MCFG_MSM8251_ADD(I8251_TAG, uart_intf)
 	MCFG_I8255A_ADD(I8255A_TAG, ppi_intf)
-	MCFG_I8257_ADD(I8257_TAG, 4000000, pc8001_8257_intf)
+	MCFG_I8257_ADD(I8257_TAG, 4000000, dmac_intf)
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8001_upd1990a_intf)
 	MCFG_UPD3301_ADD(UPD3301_TAG, 14318180, pc8001_upd3301_intf)
 
@@ -587,7 +611,7 @@ static MACHINE_CONFIG_START( pc8001mk2, pc8001mk2_state )
 	/* devices */
 	MCFG_MSM8251_ADD(I8251_TAG, uart_intf)
 	MCFG_I8255A_ADD(I8255A_TAG, ppi_intf)
-	MCFG_I8257_ADD(I8257_TAG, 4000000, pc8001_8257_intf)
+	MCFG_I8257_ADD(I8257_TAG, 4000000, dmac_intf)
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8001_upd1990a_intf)
 	MCFG_UPD3301_ADD(UPD3301_TAG, 14318180, pc8001_upd3301_intf)
 

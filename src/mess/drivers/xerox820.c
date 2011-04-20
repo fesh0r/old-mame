@@ -90,13 +90,13 @@ void xerox820_state::scan_keyboard()
 	int table = 0, row, col;
 	int keydata = -1;
 
-	if (input_port_read(m_machine, "ROW9") & 0x07)
+	if (input_port_read(machine(), "ROW9") & 0x07)
 	{
 		/* shift, upper case */
 		table = 1;
 	}
 
-	if (input_port_read(m_machine, "ROW9") & 0x18)
+	if (input_port_read(machine(), "ROW9") & 0x18)
 	{
 		/* ctrl */
 		table = 2;
@@ -105,7 +105,7 @@ void xerox820_state::scan_keyboard()
 	/* scan keyboard */
 	for (row = 0; row < 9; row++)
 	{
-		UINT8 data = input_port_read(m_machine, keynames[row]);
+		UINT8 data = input_port_read(machine(), keynames[row]);
 
 		for (col = 0; col < 8; col++)
 		{
@@ -145,7 +145,7 @@ void xerox820_state::bankswitch(int bank)
 	if (bank)
 	{
 		/* ROM */
-		program->install_rom(0x0000, 0x0fff, m_machine.region("monitor")->base());
+		program->install_rom(0x0000, 0x0fff, machine().region("monitor")->base());
 		program->unmap_readwrite(0x1000, 0x1fff);
 		program->install_ram(0x3000, 0x3fff, m_video_ram);
 	}
@@ -164,7 +164,7 @@ void xerox820ii_state::bankswitch(int bank)
 	if (bank)
 	{
 		/* ROM */
-		program->install_rom(0x0000, 0x17ff, m_machine.region("monitor")->base());
+		program->install_rom(0x0000, 0x17ff, machine().region("monitor")->base());
 		program->unmap_readwrite(0x1800, 0x2fff);
 		program->install_ram(0x3000, 0x3fff, m_video_ram);
 		program->unmap_readwrite(0x4000, 0xbfff);
@@ -241,11 +241,11 @@ static ADDRESS_MAP_START( xerox820_mem, AS_PROGRAM, 8, xerox820_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( xerox820_io, AS_IO, 8, xerox820_state )
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff03) AM_DEVWRITE_LEGACY(COM8116_TAG, com8116_str_w)
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff03) AM_DEVWRITE(COM8116_TAG, com8116_device, str_w)
 	AM_RANGE(0x04, 0x04) AM_MIRROR(0xff02) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_d_r, z80dart_d_w)
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0xff02) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_c_r, z80dart_c_w)
 	AM_RANGE(0x08, 0x0b) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY(Z80GPPIO_TAG, z80pio_ba_cd_r, z80pio_ba_cd_w)
-	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff03) AM_DEVWRITE_LEGACY(COM8116_TAG, com8116_stt_w)
+	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff03) AM_DEVWRITE(COM8116_TAG, com8116_device, stt_w)
 	AM_RANGE(0x10, 0x13) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY(WD1771_TAG, wd17xx_r, wd17xx_w)
 	AM_RANGE(0x14, 0x14) AM_MIRROR(0xff03) AM_MASK(0xff00) AM_WRITE(scroll_w)
 	AM_RANGE(0x18, 0x1b) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY(Z80CTC_TAG, z80ctc_r, z80ctc_w)
@@ -614,7 +614,7 @@ static COM8116_INTERFACE( com8116_intf )
 void xerox820_state::video_start()
 {
 	/* find memory regions */
-	m_char_rom = m_machine.region("chargen")->base();
+	m_char_rom = machine().region("chargen")->base();
 }
 
 
@@ -706,14 +706,14 @@ void xerox820_state::machine_start()
 	floppy_install_load_proc(m_floppy1, xerox820_load_proc);
 
 	/* register for state saving */
-	state_save_register_global(m_machine, m_keydata);
-	state_save_register_global(m_machine, m_scroll);
-	state_save_register_global(m_machine, m_ncset2);
-	state_save_register_global(m_machine, m_vatt);
-	state_save_register_global(m_machine, m_fdc_irq);
-	state_save_register_global(m_machine, m_fdc_drq);
-	state_save_register_global(m_machine, m_8n5);
-	state_save_register_global(m_machine, m_dsdd);
+	state_save_register_global(machine(), m_keydata);
+	state_save_register_global(machine(), m_scroll);
+	state_save_register_global(machine(), m_ncset2);
+	state_save_register_global(machine(), m_vatt);
+	state_save_register_global(machine(), m_fdc_irq);
+	state_save_register_global(machine(), m_fdc_drq);
+	state_save_register_global(machine(), m_8n5);
+	state_save_register_global(machine(), m_dsdd);
 }
 
 void xerox820_state::machine_reset()

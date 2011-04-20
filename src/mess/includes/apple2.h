@@ -79,8 +79,10 @@ struct _apple2_meminfo
 {
 	UINT32 read_mem;
 	read8_space_func read_handler;
+	const char *read_handler_name;
 	UINT32 write_mem;
 	write8_space_func write_handler;
+	const char *write_handler_name;
 };
 
 typedef struct _apple2_memmap_entry apple2_memmap_entry;
@@ -139,6 +141,7 @@ public:
 	int m_alt_charset_value;
 	UINT16 *m_hires_artifact_map;
 	UINT16 *m_dhires_artifact_map;
+    bool m_monochrome_dhr;
 };
 
 
