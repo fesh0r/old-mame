@@ -101,6 +101,7 @@ EMUOBJS = \
 	$(EMUOBJ)/uigfx.o \
 	$(EMUOBJ)/uiimage.o \
 	$(EMUOBJ)/uiinput.o \
+	$(EMUOBJ)/uiswlist.o \
 	$(EMUOBJ)/uimenu.o \
 	$(EMUOBJ)/validity.o \
 	$(EMUOBJ)/video.o \
@@ -150,6 +151,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/8237dma.o		\
 	$(EMUMACHINE)/8255ppi.o		\
 	$(EMUMACHINE)/8257dma.o		\
+	$(EMUMACHINE)/adc0808.o		\
 	$(EMUMACHINE)/adc083x.o		\
 	$(EMUMACHINE)/adc1038.o		\
 	$(EMUMACHINE)/adc1213x.o	\
@@ -157,6 +159,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/at28c16.o		\
 	$(EMUMACHINE)/cdp1852.o		\
 	$(EMUMACHINE)/cdp1871.o		\
+	$(EMUMACHINE)/com8116.o		\
 	$(EMUMACHINE)/cr589.o		\
 	$(EMUMACHINE)/ds1302.o		\
 	$(EMUMACHINE)/ds2401.o		\
@@ -169,6 +172,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/i2cmem.o		\
 	$(EMUMACHINE)/i8155.o		\
 	$(EMUMACHINE)/i8212.o		\
+	$(EMUMACHINE)/i8214.o		\
 	$(EMUMACHINE)/i8243.o		\
 	$(EMUMACHINE)/i8255a.o		\
 	$(EMUMACHINE)/i8355.o		\
@@ -187,8 +191,12 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/mb3773.o		\
 	$(EMUMACHINE)/mb87078.o		\
 	$(EMUMACHINE)/mc146818.o	\
+	$(EMUMACHINE)/mc6852.o		\
 	$(EMUMACHINE)/mc68901.o		\
+	$(EMUMACHINE)/msm5832.o	\
+	$(EMUMACHINE)/msm58321.o	\
 	$(EMUMACHINE)/microtch.o	\
+	$(EMUMACHINE)/mos6529.o		\
 	$(EMUMACHINE)/msm6242.o		\
 	$(EMUMACHINE)/nmc9306.o		\
 	$(EMUMACHINE)/nvram.o		\
@@ -199,6 +207,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/pit8253.o		\
 	$(EMUMACHINE)/ram.o			\
 	$(EMUMACHINE)/roc10937.o	\
+	$(EMUMACHINE)/rp5c01.o		\
 	$(EMUMACHINE)/rp5h01.o		\
 	$(EMUMACHINE)/rtc65271.o	\
 	$(EMUMACHINE)/s3c2400.o		\
@@ -215,6 +224,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/tms6100.o		\
 	$(EMUMACHINE)/upd1990a.o	\
 	$(EMUMACHINE)/upd4701.o		\
+	$(EMUMACHINE)/upd7201.o		\
 	$(EMUMACHINE)/wd33c93.o		\
 	$(EMUMACHINE)/x2212.o		\
 	$(EMUMACHINE)/x76f041.o		\
@@ -228,10 +238,14 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/z8536.o		\
 
 EMUVIDEOOBJS = \
+	$(EMUVIDEO)/cdp1861.o		\
+	$(EMUVIDEO)/cdp1862.o		\
 	$(EMUVIDEO)/crt9007.o		\
 	$(EMUVIDEO)/crt9021.o		\
 	$(EMUVIDEO)/crt9212.o		\
+	$(EMUVIDEO)/dm9368.o		\
 	$(EMUVIDEO)/generic.o		\
+	$(EMUVIDEO)/hd44102.o		\
 	$(EMUVIDEO)/hd61830.o		\
 	$(EMUVIDEO)/hd63484.o		\
 	$(EMUVIDEO)/mc6845.o		\
@@ -243,10 +257,12 @@ EMUVIDEOOBJS = \
 	$(EMUVIDEO)/rgbutil.o		\
 	$(EMUVIDEO)/s2636.o			\
 	$(EMUVIDEO)/saa5050.o		\
+	$(EMUVIDEO)/sed1330.o		\
 	$(EMUVIDEO)/tlc34076.o		\
 	$(EMUVIDEO)/tms34061.o		\
 	$(EMUVIDEO)/tms9927.o		\
 	$(EMUVIDEO)/tms9928a.o		\
+	$(EMUVIDEO)/upd3301.o		\
 	$(EMUVIDEO)/v9938.o			\
 	$(EMUVIDEO)/vector.o		\
 	$(EMUVIDEO)/voodoo.o		\
@@ -328,5 +344,6 @@ $(EMUOBJ)/rendlay.o:	$(EMULAYOUT)/dualhovu.lh \
 						$(EMULAYOUT)/voffff20.lh \
 						$(EMULAYOUT)/lcd.lh \
 						$(EMULAYOUT)/lcd_rot.lh \
+						$(EMULAYOUT)/pinball.lh \
 
 $(EMUOBJ)/video.o:		$(EMULAYOUT)/snap.lh
