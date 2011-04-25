@@ -79,6 +79,7 @@ block of RAM instead of 8.
 #include "machine/ram.h"
 #include "machine/6522via.h"
 #include "machine/c1541.h"
+#include "machine/c2031.h"
 #include "machine/cbmiec.h"
 #include "machine/ieee488.h"
 #include "machine/vic1112.h"
@@ -188,10 +189,10 @@ static READ8_DEVICE_HANDLER( via0_pa_r )
 	UINT8 data = 0xfc;
 
 	/* serial clock in */
-	data |= cbm_iec_clk_r(state->m_iec);
+	data |= state->m_iec->clk_r();
 
 	/* serial data in */
-	data |= cbm_iec_data_r(state->m_iec) << 1;
+	data |= state->m_iec->data_r() << 1;
 
 	/* joystick */
 	data &= ~(input_port_read(device->machine(), "JOY") & 0x3c);
@@ -225,7 +226,7 @@ static WRITE8_DEVICE_HANDLER( via0_pa_w )
 	vic20_state *state = device->machine().driver_data<vic20_state>();
 
 	/* serial attention out */
-	cbm_iec_atn_w(state->m_iec, device, !BIT(data, 7));
+	state->m_iec->atn_w(!BIT(data, 7));
 }
 
 static READ8_DEVICE_HANDLER( via0_pb_r )
@@ -389,7 +390,7 @@ static WRITE_LINE_DEVICE_HANDLER( via1_ca2_w )
 	vic20_state *driver_state = device->machine().driver_data<vic20_state>();
 
 	/* serial clock out */
-	cbm_iec_clk_w(driver_state->m_iec, device, !state);
+	driver_state->m_iec->clk_w(!state);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( via1_cb2_w )
@@ -397,7 +398,7 @@ static WRITE_LINE_DEVICE_HANDLER( via1_cb2_w )
 	vic20_state *driver_state = device->machine().driver_data<vic20_state>();
 
 	/* serial data out */
-	cbm_iec_data_w(driver_state->m_iec, device, !state);
+	driver_state->m_iec->data_w(!state);
 }
 
 static const via6522_interface vic20_via1_intf =
@@ -433,26 +434,28 @@ static TIMER_DEVICE_CALLBACK( cassette_tick )
 
 static CBM_IEC_DAISY( cbm_iec_daisy )
 {
-	{ M6522_0_TAG },
-	{ M6522_1_TAG, DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb1), },
-	{ C1541_IEC(C1540_TAG) },
-	{ NULL}
+	{ C1541_TAG },
+	{ NULL }
+};
+
+static CBM_IEC_INTERFACE( cbm_iec_intf )
+{
+	DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb1),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* IEEE-488 Bus */
 
-#ifdef INCLUDE_C2031
+#ifdef INCLUDE_VIC1112
 static IEEE488_DAISY( ieee488_daisy )
 {
-	{ VIC1112_IEEE488 },
-	{ C2031_IEEE488(C2031_TAG) },
+	{ C2031_TAG },
 	{ NULL}
 };
 
-static VIC1112_INTERFACE( vic1112_intf )
-{
-	IEEE488_TAG
-};
 #endif
 
 /* MOS6560 Interface */
@@ -526,16 +529,7 @@ static MACHINE_START( vic20 )
 	address_space *program = machine.device(M6502_TAG)->memory().space(AS_PROGRAM);
 
 	/* find devices */
-	state->m_via0 = machine.device<via6522_device>(M6522_0_TAG);
-	state->m_via1 = machine.device<via6522_device>(M6522_1_TAG);
-	state->m_iec = machine.device(IEC_TAG);
-	state->m_cassette = machine.device(CASSETTE_TAG);
 	state->m_cassette_timer = machine.device<timer_device>(TIMER_C1530_TAG);
-	state->m_mos6560 = machine.device(M6560_TAG);
-
-	/* set VIA clocks */
-	state->m_via0->set_unscaled_clock(machine.device(M6502_TAG)->unscaled_clock());
-	state->m_via1->set_unscaled_clock(machine.device(M6502_TAG)->unscaled_clock());
 
 	/* memory expansions */
 	switch (ram_get_size(machine.device(RAM_TAG)))
@@ -687,7 +681,6 @@ static INTERRUPT_GEN( vic20_raster_interrupt )
 }
 
 static MACHINE_CONFIG_START( vic20_common, vic20_state )
-
 	MCFG_TIMER_ADD_PERIODIC(TIMER_C1530_TAG, cassette_tick, attotime::from_hz(44100))
 
 	/* devices */
@@ -696,12 +689,11 @@ static MACHINE_CONFIG_START( vic20_common, vic20_state )
 
 	MCFG_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_config )
-	MCFG_CBM_IEC_ADD(IEC_TAG, cbm_iec_daisy)
-	MCFG_C1540_ADD(C1540_TAG, IEC_TAG, 8)
-#ifdef INCLUDE_C2031
-    MCFG_IEEE488_ADD(IEEE488_TAG, ieee488_daisy)
-    MCFG_VIC1112_ADD(vic1112_intf)
-    MCFG_C2031_ADD(C2031_TAG, IEEE488_TAG, 9)
+	MCFG_CBM_IEC_CONFIG_ADD(cbm_iec_daisy, cbm_iec_intf)
+	MCFG_C1541_ADD(C1541_TAG, 8)
+#ifdef INCLUDE_VIC1112
+    MCFG_VIC1112_ADD(ieee488_daisy)
+    MCFG_C2031_ADD(C2031_TAG, 9)
 #endif
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("20,40,60,70,a0,b0")
@@ -719,7 +711,6 @@ static MACHINE_CONFIG_START( vic20_common, vic20_state )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( vic20_ntsc, vic20_common )
-
 	/* basic machine hardware */
 	MCFG_CPU_ADD(M6502_TAG, M6502, MOS6560_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(vic20_mem)
@@ -748,7 +739,6 @@ static MACHINE_CONFIG_DERIVED( vic20_ntsc, vic20_common )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( vic20_pal, vic20_common )
-
 	/* basic machine hardware */
 	MCFG_CPU_ADD(M6502_TAG, M6502, MOS6561_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(vic20_mem)

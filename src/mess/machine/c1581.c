@@ -7,14 +7,6 @@
 
 **********************************************************************/
 
-/*
-
-    TODO:
-
-    - C1563 device
-
-*/
-
 #include "c1581.h"
 
 
@@ -41,6 +33,7 @@ enum
 //**************************************************************************
 
 const device_type C1581 = c1581_device_config::static_alloc_device_config;
+const device_type C1563 = c1581_device_config::static_alloc_device_config;
 
 
 
@@ -48,7 +41,37 @@ const device_type C1581 = c1581_device_config::static_alloc_device_config;
 //  DEVICE CONFIGURATION
 //**************************************************************************
 
-GENERIC_DEVICE_CONFIG_SETUP(c1581, "C1581");
+
+//-------------------------------------------------
+//  c1581_device_config - constructor
+//-------------------------------------------------
+
+c1581_device_config::c1581_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
+	: device_config(mconfig, static_alloc_device_config, "C1581", tag, owner, clock),
+	  device_config_cbm_iec_interface(mconfig, *this)
+{
+}
+
+
+//-------------------------------------------------
+//  static_alloc_device_config - allocate a new
+//  configuration object
+//-------------------------------------------------
+
+device_config *c1581_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
+{
+	return global_alloc(c1581_device_config(mconfig, tag, owner, clock));
+}
+
+
+//-------------------------------------------------
+//  alloc_device - allocate a new device object
+//-------------------------------------------------
+
+device_t *c1581_device_config::alloc_device(running_machine &machine) const
+{
+	return auto_alloc(machine, c1581_device(machine, *this));
+}
 
 
 //-------------------------------------------------
@@ -59,7 +82,17 @@ GENERIC_DEVICE_CONFIG_SETUP(c1581, "C1581");
 
 void c1581_device_config::device_config_complete()
 {
-	m_shortname = "c1581";
+	switch (m_variant)
+	{
+	default:
+	case TYPE_1581:
+		m_shortname = "c1581";
+		break;
+
+	case TYPE_1563:
+		m_shortname = "c1563";
+		break;
+	}
 }
 
 
@@ -67,15 +100,14 @@ void c1581_device_config::device_config_complete()
 //  static_set_config - configuration helper
 //-------------------------------------------------
 
-void c1581_device_config::static_set_config(device_config *device, const char *bus_tag, int address)
+void c1581_device_config::static_set_config(device_config *device, int address, int variant)
 {
 	c1581_device_config *c1581 = downcast<c1581_device_config *>(device);
 
-	assert(bus_tag != NULL);
 	assert((address > 7) && (address < 12));
 
-	c1581->m_bus_tag = bus_tag;
 	c1581->m_address = address - 8;
+	c1581->m_variant = variant;
 }
 
 
@@ -84,14 +116,21 @@ void c1581_device_config::static_set_config(device_config *device, const char *b
 //-------------------------------------------------
 
 ROM_START( c1581 )
-	ROM_REGION( 0x8000, "c1581", 0 )
+	ROM_REGION( 0x8000, M6502_TAG, 0 )
 	ROM_LOAD_OPTIONAL( "jiffydos 1581.u2", 0x0000, 0x8000, CRC(98873d0f) SHA1(65bbf2be7bcd5bdcbff609d6c66471ffb9d04bfe) )
 	ROM_LOAD_OPTIONAL( "beta.u2",	       0x0000, 0x8000, CRC(ecc223cd) SHA1(a331d0d46ead1f0275b4ca594f87c6694d9d9594) )
 	ROM_LOAD_OPTIONAL( "318045-01.u2",	   0x0000, 0x8000, CRC(113af078) SHA1(3fc088349ab83e8f5948b7670c866a3c954e6164) )
 	ROM_LOAD(		   "318045-02.u2",	   0x0000, 0x8000, CRC(a9011b84) SHA1(01228eae6f066bd9b7b2b6a7fa3f667e41dad393) )
+ROM_END
 
-	ROM_REGION( 0x8000, "c1563", 0 )
-	ROM_LOAD_OPTIONAL( "1563-rom.bin",     0x0000, 0x8000, CRC(1d184687) SHA1(2c5111a9c15be7b7955f6c8775fea25ec10c0ca0) )
+
+//-------------------------------------------------
+//  ROM( c1563 )
+//-------------------------------------------------
+
+ROM_START( c1563 )
+	ROM_REGION( 0x8000, M6502_TAG, 0 )
+	ROM_LOAD( "1563-rom.bin",     0x0000, 0x8000, CRC(1d184687) SHA1(2c5111a9c15be7b7955f6c8775fea25ec10c0ca0) )
 ROM_END
 
 
@@ -101,7 +140,15 @@ ROM_END
 
 const rom_entry *c1581_device_config::device_rom_region() const
 {
-	return ROM_NAME( c1581 );
+	switch (m_variant)
+	{
+	default:
+	case TYPE_1581:
+		return ROM_NAME( c1581 );
+
+	case TYPE_1563:
+		return ROM_NAME( c1563 );
+	}
 }
 
 
@@ -113,7 +160,7 @@ static ADDRESS_MAP_START( c1581_mem, AS_PROGRAM, 8, c1581_device )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x2000) AM_RAM
 	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE_LEGACY(M8520_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x6000, 0x6003) AM_MIRROR(0x1ffc) AM_DEVREADWRITE_LEGACY(WD1770_TAG, wd17xx_r, wd17xx_w)
-	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1581:c1581", 0)
+	AM_RANGE(0x8000, 0xffff) // AM_ROM
 ADDRESS_MAP_END
 
 
@@ -224,16 +271,16 @@ READ8_MEMBER( c1581_device::cia_pb_r )
 	UINT8 data = 0;
 
 	// data in
-	data = !cbm_iec_data_r(m_bus);
+	data = !m_bus->data_r();
 
 	// clock in
-	data |= !cbm_iec_clk_r(m_bus) << 2;
+	data |= !m_bus->clk_r() << 2;
 
 	// write protect
 	data |= !floppy_wpt_r(m_image) << 6;
 
 	// attention in
-	data |= !cbm_iec_atn_r(m_bus) << 7;
+	data |= !m_bus->atn_r() << 7;
 
 	return data;
 }
@@ -260,7 +307,7 @@ WRITE8_MEMBER( c1581_device::cia_pb_w )
 	m_data_out = BIT(data, 1);
 
 	// clock out
-	cbm_iec_clk_w(m_bus, this, !BIT(data, 3));
+	m_bus->clk_w(this, !BIT(data, 3));
 
 	// attention acknowledge
 	m_atn_ack = BIT(data, 4);
@@ -322,7 +369,7 @@ static const floppy_config c1581_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_3_5_DSDD,
 	FLOPPY_OPTIONS_NAME(c1581),
-	NULL
+	"floppy_3_5"
 };
 
 
@@ -363,13 +410,13 @@ machine_config_constructor c1581_device_config::device_mconfig_additions() const
 
 inline void c1581_device::set_iec_data()
 {
-	int atn = cbm_iec_atn_r(m_bus);
+	int atn = m_bus->atn_r();
 	int data = !m_data_out & !(m_atn_ack & !atn);
 
 	// fast serial data
 	if (m_fast_ser_dir) data &= m_sp_out;
 
-	cbm_iec_data_w(m_bus, this, data);
+	m_bus->data_w(this, data);
 }
 
 
@@ -384,7 +431,7 @@ inline void c1581_device::set_iec_srq()
 	// fast serial clock
 	if (m_fast_ser_dir) srq &= m_cnt_out;
 
-	cbm_iec_srq_w(m_bus, this, srq);
+	m_bus->srq_w(this, srq);
 }
 
 
@@ -399,11 +446,12 @@ inline void c1581_device::set_iec_srq()
 
 c1581_device::c1581_device(running_machine &_machine, const c1581_device_config &_config)
     : device_t(_machine, _config),
+	  device_cbm_iec_interface(_machine, _config, *this),
 	  m_maincpu(*this, M6502_TAG),
 	  m_cia(*this, M8520_TAG),
 	  m_fdc(*this, WD1770_TAG),
 	  m_image(*this, FLOPPY_0),
-	  m_bus(machine().device(_config.m_bus_tag)),
+	  m_bus(*this->owner(), CBM_IEC_TAG),
       m_config(_config)
 {
 }
@@ -415,6 +463,10 @@ c1581_device::c1581_device(running_machine &_machine, const c1581_device_config 
 
 void c1581_device::device_start()
 {
+	// map ROM
+	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	program->install_rom(0x8000, 0xbfff, subregion(M6502_TAG)->base());
+
 	// state saving
 	save_item(NAME(m_data_out));
 	save_item(NAME(m_atn_ack));
@@ -436,22 +488,10 @@ void c1581_device::device_reset()
 
 
 //-------------------------------------------------
-//  iec_atn_w -
+//  cbm_iec_srq -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c1581_device::iec_atn_w )
-{
-	m_cia->flag_w(state);
-
-	set_iec_data();
-}
-
-
-//-------------------------------------------------
-//  iec_srq_w -
-//-------------------------------------------------
-
-WRITE_LINE_MEMBER( c1581_device::iec_srq_w )
+void c1581_device::cbm_iec_srq(int state)
 {
 	if (!m_fast_ser_dir)
 	{
@@ -461,10 +501,22 @@ WRITE_LINE_MEMBER( c1581_device::iec_srq_w )
 
 
 //-------------------------------------------------
-//  iec_data_w -
+//  cbm_iec_atn -
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( c1581_device::iec_data_w )
+void c1581_device::cbm_iec_atn(int state)
+{
+	m_cia->flag_w(state);
+
+	set_iec_data();
+}
+
+
+//-------------------------------------------------
+//  cbm_iec_data -
+//-------------------------------------------------
+
+void c1581_device::cbm_iec_data(int state)
 {
 	if (!m_fast_ser_dir)
 	{
@@ -474,9 +526,10 @@ WRITE_LINE_MEMBER( c1581_device::iec_data_w )
 
 
 //-------------------------------------------------
-//  iec_reset_w -
+//  cbm_iec_reset -
 //-------------------------------------------------
-WRITE_LINE_MEMBER( c1581_device::iec_reset_w )
+
+void c1581_device::cbm_iec_reset(int state)
 {
 	if (!state)
 	{

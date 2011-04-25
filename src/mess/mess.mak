@@ -248,6 +248,8 @@ SOUNDS += TMS5200
 #SOUNDS += TMC0281
 #SOUNDS += TMS5100
 #SOUNDS += TMS5110A
+SOUNDS += LMC1992
+
 
 #-------------------------------------------------
 # this is the list of driver libraries that
@@ -458,6 +460,8 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_MACHINE)/pcshare.o	\
 	$(MAME_MACHINE)/stvcd.o		\
 	$(MAME_MACHINE)/scudsp.o	\
+	$(MAME_DRIVERS)/stvinit.o	\
+	$(MAME_MACHINE)/stvprot.o	\
 	$(MAME_VIDEO)/stvvdp1.o		\
 	$(MAME_VIDEO)/stvvdp2.o		\
 	$(MAME_DRIVERS)/megadriv.o  \
@@ -485,7 +489,6 @@ $(MESSOBJ)/mame.a: \
 #-------------------------------------------------
 
 $(MESSOBJ)/shared.a: \
-	$(MESS_AUDIO)/lmc1992.o		\
 	$(MESS_AUDIO)/mea8000.o		\
 	$(MESS_AUDIO)/spchroms.o	\
 	$(MESS_FORMATS)/imd_dsk.o	\
@@ -513,6 +516,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/i82439tx.o	\
 	$(MESS_MACHINE)/i8271.o		\
 	$(MESS_MACHINE)/ieee488.o	\
+	$(MESS_MACHINE)/ieeestub.o	\
 	$(MESS_MACHINE)/isa.o		\
 	$(MESS_MACHINE)/kb3600.o	\
 	$(MESS_MACHINE)/kr2376.o	\
@@ -520,7 +524,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/mc6846.o	\
 	$(MESS_MACHINE)/mc6854.o	\
 	$(MESS_MACHINE)/mm58274c.o	\
-	$(MESS_MACHINE)/mm74c922.o	\
 	$(MESS_MACHINE)/mpc105.o	\
 	$(MESS_MACHINE)/msm8251.o	\
 	$(MESS_MACHINE)/mos6530.o	\
@@ -529,7 +532,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/pc_lpt.o	\
 	$(MESS_MACHINE)/pc_mouse.o	\
 	$(MESS_MACHINE)/pcf8593.o	\
-	$(MESS_MACHINE)/rp5c15.o	\
 	$(MESS_MACHINE)/rs232.o		\
 	$(MESS_MACHINE)/scsibus.o	\
 	$(MESS_MACHINE)/serial.o	\
@@ -678,7 +680,7 @@ $(MESSOBJ)/atari.a:				\
 	$(MESS_DRIVERS)/a7800.o		\
 	$(MESS_VIDEO)/a7800.o		\
 	$(MESS_DRIVERS)/a2600.o		\
-	$(MESS_DRIVERS)/jaguar.o	\
+	$(MAME_DRIVERS)/jaguar.o	\
 	$(MESS_FORMATS)/a26_cas.o	\
 	$(MESS_FORMATS)/atarist_dsk.o	\
 	$(MESS_DRIVERS)/atarist.o	\
@@ -732,8 +734,8 @@ $(MESSOBJ)/cantab.a:			\
 	$(MESS_FORMATS)/ace_tap.o	\
 
 $(MESSOBJ)/capcom.a:			\
-	$(MESS_DRIVERS)/cpschngr.o	\
-	$(MESS_VIDEO)/cpschngr.o	\
+	$(MAME_DRIVERS)/cps1.o	\
+	$(MAME_VIDEO)/cps1.o	\
 
 $(MESSOBJ)/casio.a:				\
 	$(MESS_DRIVERS)/pv1000.o	\
@@ -746,6 +748,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/pet.o		\
 	$(MESS_MACHINE)/pet.o		\
 	$(MESS_DRIVERS)/c64.o		\
+	$(MESS_MACHINE)/interpod.o	\
 	$(MESS_DRIVERS)/vic20.o		\
 	$(MESS_MACHINE)/vic1112.o	\
 	$(MESS_AUDIO)/ted7360.o		\
@@ -758,10 +761,12 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/c65.o		\
 	$(MESS_DRIVERS)/c128.o		\
 	$(MESS_MACHINE)/cbmiec.o	\
+	$(MESS_MACHINE)/iecstub.o	\
 	$(MESS_MACHINE)/c1541.o		\
 	$(MESS_MACHINE)/c1551.o		\
 	$(MESS_MACHINE)/c1571.o		\
 	$(MESS_MACHINE)/c1581.o		\
+	$(MESS_MACHINE)/c2031.o		\
 	$(MESS_MACHINE)/c2040.o		\
 	$(MESS_MACHINE)/c8280.o		\
 	$(MESS_MACHINE)/c9060.o		\
@@ -1037,7 +1042,6 @@ $(MESSOBJ)/interact.a:			\
 $(MESSOBJ)/intel.a:				\
 	$(MESS_DRIVERS)/basic52.o	\
 	$(MESS_DRIVERS)/isbc.o		\
-	$(MESS_DRIVERS)/ipb.o		\
 	$(MESS_DRIVERS)/ipc.o		\
 	$(MESS_DRIVERS)/ipds.o		\
 	$(MESS_DRIVERS)/sdk85.o		\
@@ -1352,7 +1356,7 @@ $(MESSOBJ)/sanyo.a:				\
 	$(MESS_VIDEO)/mbc55x.o  	\
 
 $(MESSOBJ)/sega.a:				\
-	$(MESS_DRIVERS)/saturn.o	\
+	$(MAME_DRIVERS)/saturn.o	\
 	$(MESS_VIDEO)/smsvdp.o		\
 	$(MESS_MACHINE)/sms.o		\
 	$(MESS_DRIVERS)/sms.o		\

@@ -21,7 +21,14 @@
 #include "machine/6526cia.h"
 #include "machine/cbmiec.h"
 #include "machine/wd17xx.h"
-#include "machine/devhelpr.h"
+
+
+
+//**************************************************************************
+//  MACROS / CONSTANTS
+//**************************************************************************
+
+#define C1581_TAG			"c1581"
 
 
 
@@ -29,18 +36,13 @@
 //  INTERFACE CONFIGURATION MACROS
 //**************************************************************************
 
-#define MCFG_C1581_ADD(_tag, _bus_tag, _address) \
+#define MCFG_C1581_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, C1581, 0) \
-	c1581_device_config::static_set_config(device, _bus_tag, _address);
+	c1581_device_config::static_set_config(device, _address, c1581_device_config::TYPE_1581);
 
-
-#define C1581_IEC(_tag) \
-	_tag, \
-	DEVCB_DEVICE_LINE_MEMBER(_tag, c1581_device, iec_srq_w), \
-	DEVCB_DEVICE_LINE_MEMBER(_tag, c1581_device, iec_atn_w), \
-	DEVCB_NULL, \
-	DEVCB_DEVICE_LINE_MEMBER(_tag, c1581_device, iec_data_w), \
-	DEVCB_DEVICE_LINE_MEMBER(_tag, c1581_device, iec_reset_w)
+#define MCFG_C1563_ADD(_tag, _address) \
+    MCFG_DEVICE_ADD(_tag, C1563, 0) \
+	c1581_device_config::static_set_config(device, _address, c1581_device_config::TYPE_1563);
 
 
 
@@ -50,20 +52,28 @@
 
 // ======================> c1581_device_config
 
-class c1581_device_config :   public device_config
+class c1581_device_config :   public device_config,
+							  public device_config_cbm_iec_interface
 {
     friend class c1581_device;
+    friend class c1563_device;
 
     // construction/destruction
     c1581_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock);
 
 public:
-    // allocators
+	enum
+	{
+		TYPE_1581 = 0,
+		TYPE_1563
+	};
+
+	// allocators
     static device_config *static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock);
     virtual device_t *alloc_device(running_machine &machine) const;
 
 	// inline configuration helpers
-	static void static_set_config(device_config *device, const char *bus_tag, int address);
+	static void static_set_config(device_config *device, int address, int variant);
 
 	// optional information overrides
 	virtual const rom_entry *device_rom_region() const;
@@ -74,14 +84,15 @@ protected:
     virtual void device_config_complete();
 
 private:
-	const char *m_bus_tag;
 	int m_address;
+	int m_variant;
 };
 
 
 // ======================> c1581_device
 
-class c1581_device :  public device_t
+class c1581_device :  public device_t,
+					  public device_cbm_iec_interface
 {
     friend class c1581_device_config;
 
@@ -89,11 +100,6 @@ class c1581_device :  public device_t
     c1581_device(running_machine &_machine, const c1581_device_config &_config);
 
 public:
-	DECLARE_WRITE_LINE_MEMBER( iec_atn_w );
-	DECLARE_WRITE_LINE_MEMBER( iec_srq_w );
-	DECLARE_WRITE_LINE_MEMBER( iec_data_w );
-	DECLARE_WRITE_LINE_MEMBER( iec_reset_w );
-
 	// not really public
 	DECLARE_WRITE_LINE_MEMBER( cnt_w );
 	DECLARE_WRITE_LINE_MEMBER( sp_w );
@@ -107,6 +113,12 @@ protected:
     virtual void device_start();
 	virtual void device_reset();
 
+	// device_cbm_iec_interface overrides
+	void cbm_iec_srq(int state);
+	void cbm_iec_atn(int state);
+	void cbm_iec_data(int state);
+	void cbm_iec_reset(int state);
+
 private:
 	inline void set_iec_data();
 	inline void set_iec_srq();
@@ -115,7 +127,7 @@ private:
 	required_device<mos6526_device> m_cia;
 	required_device<device_t> m_fdc;
 	required_device<device_t> m_image;
-	device_t *m_bus;
+	required_device<cbm_iec_device> m_bus;
 
 	int m_data_out;				// serial data out
 	int m_atn_ack;				// attention acknowledge
@@ -127,9 +139,20 @@ private:
 };
 
 
+// ======================> c1563_device
+
+class c1563_device :  public c1581_device
+{
+    friend class c1581_device_config;
+
+    // construction/destruction
+    c1563_device(running_machine &_machine, const c1581_device_config &_config);
+};
+
 
 // device type definition
 extern const device_type C1581;
+extern const device_type C1563;
 
 
 

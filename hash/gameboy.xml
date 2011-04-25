@@ -8330,6 +8330,18 @@
 
 	<software name="lemmings">
 		<!-- Serial: DMG-L8? - Release Date:  -->
+		<description>Lemmings (Euro, Rev. A)</description>
+		<year>1993</year>
+		<publisher>Ocean</publisher>
+		<part name="cart" interface="gameboy_cart">
+			<dataarea name="rom" size="131072">
+				<rom name="lemmings (europe) (rev a).bin" size="131072" crc="560d71eb" sha1="c156d7ee57860a23754e87d42f952b17077994ad" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="lemmingsa" cloneof="lemmings">
+		<!-- Serial: DMG-L8? - Release Date:  -->
 		<description>Lemmings (Euro)</description>
 		<year>1993</year>
 		<publisher>Ocean</publisher>
@@ -13372,7 +13384,7 @@
 
 	<software name="ranma">
 		<!-- Serial: DMG-RNJ - Release Date: 1990-07-28 - Alt. Title: らんま1/2 かくれんぼデスマッチ -->
-		<description>Ranma 1/2 (Jpn)</description>
+		<description>Ranma ½ (Jpn)</description>
 		<year>1990</year>
 		<publisher>Banpresto</publisher>
 		<part name="cart" interface="gameboy_cart">
@@ -13384,7 +13396,7 @@
 
 	<software name="ranmakak">
 		<!-- Serial: DMG-ROJ - Release Date: 1993-08-06 - Alt. Title: らんま1/2 格劇問答！！ -->
-		<description>Ranma 1/2 - Kakugeki Mondou!! (Jpn)</description>
+		<description>Ranma ½ - Kakugeki Mondou!! (Jpn)</description>
 		<year>1993</year>
 		<publisher>Banpresto</publisher>
 		<part name="cart" interface="gameboy_cart">
@@ -13396,7 +13408,7 @@
 
 	<software name="ranmanet">
 		<!-- Serial: DMG-R3J - Release Date: 1992-07-17 - Alt. Title: らんま1/2 2 熱烈格闘編 -->
-		<description>Ranma 1/2 - Netsuretsu Kakutou Hen (Jpn)</description>
+		<description>Ranma ½ - Netsuretsu Kakutou Hen (Jpn)</description>
 		<year>1992</year>
 		<publisher>Banpresto</publisher>
 		<part name="cart" interface="gameboy_cart">

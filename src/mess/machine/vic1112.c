@@ -1,3 +1,12 @@
+/*
+
+    TODO:
+
+    - add IEEE488 bus here, not in the driver
+    - SRQ IN -> VIA1 CB1
+
+*/
+
 #include "vic1112.h"
 
 
@@ -34,21 +43,25 @@ GENERIC_DEVICE_CONFIG_SETUP(vic1112, "VIC-1112")
 
 void vic1112_device_config::device_config_complete()
 {
-	// inherit a copy of the static data
-	const vic1112_interface *intf = reinterpret_cast<const vic1112_interface *>(static_config());
-	if (intf != NULL)
-		*static_cast<vic1112_interface *>(this) = *intf;
-
-	// or initialize to defaults if none provided
-	else
-	{
-		fatalerror("Interface not provided!");
-	}
-
-	m_bus_tag = intf->m_bus_tag;
-
 	m_shortname = "vic1112";
 }
+
+
+//-------------------------------------------------
+//  IEEE488_INTERFACE( vic1112_ieee488_intf )
+//-------------------------------------------------
+
+IEEE488_INTERFACE( vic1112_ieee488_intf )
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(VIC1112_TAG, vic1112_device, srq_w),
+	DEVCB_NULL,
+	DEVCB_NULL
+};
 
 
 //-------------------------------------------------
@@ -103,19 +116,19 @@ READ8_MEMBER( vic1112_device::via0_pb_r )
 	UINT8 data = 0;
 
 	/* end or identify */
-	data |= ieee488_eoi_r(m_bus) << 3;
+	data |= m_bus->eoi_r() << 3;
 
 	/* data valid in */
-	data |= ieee488_dav_r(m_bus) << 4;
+	data |= m_bus->dav_r() << 4;
 
 	/* not ready for data in */
-	data |= ieee488_nrfd_r(m_bus) << 5;
+	data |= m_bus->nrfd_r() << 5;
 
 	/* not data accepted in */
-	data |= ieee488_ndac_r(m_bus) << 6;
+	data |= m_bus->ndac_r() << 6;
 
 	/* attention in */
-	data |= ieee488_atn_r(m_bus) << 7;
+	data |= m_bus->atn_r() << 7;
 
 	return data;
 }
@@ -139,13 +152,13 @@ WRITE8_MEMBER( vic1112_device::via0_pb_w )
     */
 
 	/* data valid out */
-	ieee488_dav_w(m_bus, this, BIT(data, 0));
+	m_bus->dav_w(BIT(data, 0));
 
 	/* not ready for data out */
-	ieee488_nrfd_w(m_bus, this, BIT(data, 1));
+	m_bus->nrfd_w(BIT(data, 1));
 
 	/* not data accepted out */
-	ieee488_ndac_w(m_bus, this, BIT(data, 2));
+	m_bus->ndac_w(BIT(data, 2));
 }
 
 
@@ -197,7 +210,7 @@ READ8_MEMBER( vic1112_device::dio_r )
 
     */
 
-	return ieee488_dio_r(m_bus, 0);
+	return m_bus->dio_r();
 }
 
 
@@ -218,28 +231,28 @@ WRITE8_MEMBER( vic1112_device::dio_w )
 
     */
 
-	ieee488_dio_w(m_bus, this, data);
+	m_bus->dio_w(data);
 }
 
 
 WRITE_LINE_MEMBER( vic1112_device::atn_w )
 {
 	/* attention out */
-	ieee488_atn_w(m_bus, this, state);
+	m_bus->atn_w(state);
 }
 
 
 READ_LINE_MEMBER( vic1112_device::srq_r )
 {
 	/* service request in */
-	return ieee488_srq_r(m_bus);
+	return m_bus->srq_r();
 }
 
 
 WRITE_LINE_MEMBER( vic1112_device::eoi_w )
 {
 	/* end or identify out */
-	ieee488_eoi_w(m_bus, this, state);
+	m_bus->eoi_w(state);
 }
 
 
@@ -297,7 +310,7 @@ vic1112_device::vic1112_device(running_machine &_machine, const vic1112_device_c
     : device_t(_machine, _config),
 	  m_via0(*this, M6522_0_TAG),
 	  m_via1(*this, M6522_1_TAG),
-	  m_bus(machine().device(_config.m_bus_tag)),
+	  m_bus(*this->owner(), IEEE488_TAG),
       m_config(_config)
 {
 }
@@ -330,8 +343,8 @@ void vic1112_device::device_start()
 
 void vic1112_device::device_reset()
 {
-	ieee488_ifc_w(m_bus, this, 0);
-	ieee488_ifc_w(m_bus, this, 1);
+	m_bus->ifc_w(0);
+	m_bus->ifc_w(1);
 }
 
 

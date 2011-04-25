@@ -180,7 +180,7 @@ inline void c64h156_device::receive_bit()
 		// byte ready
 		m_yb = m_data & 0xff;
 		m_bit_count = 0;
-		
+
 		m_byte = 1;
 		set_byte_line();
 
@@ -210,6 +210,10 @@ c64h156_device::c64h156_device(running_machine &_machine, const c64h156_device_c
 	  m_stp(-1),
 	  m_mtr(0),
 	  m_side(0),
+	  m_track_len(0),
+	  m_buffer_pos(0),
+	  m_bit_pos(0),
+	  m_bit_count(0),
 	  m_accl(1),
 	  m_ds(-1),
 	  m_soe(0),
@@ -473,7 +477,7 @@ void c64h156_device::on_disk_changed()
 
 
 //-------------------------------------------------
-//  on_disk_changed - 
+//  on_disk_changed -
 //-------------------------------------------------
 
 void c64h156_device::set_side(int side)

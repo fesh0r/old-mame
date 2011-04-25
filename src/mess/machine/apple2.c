@@ -1375,7 +1375,18 @@ READ8_HANDLER ( apple2_c06x_r )
 		{
 			case 0x00:
 				/* Cassette input */
-				result = cassette_input(cassette_device_image(space->machine())) > 0.0 ? 0x80 : 0;
+				{
+					device_t *dev = cassette_device_image(space->machine());
+
+					if (dev)
+					{
+						result = cassette_input(dev) > 0.0 ? 0x80 : 0;
+					}
+					else
+					{
+						result = 0;
+					}
+				}
 				break;
 			case 0x01:
 				/* Open-Apple/Joystick button 0 */
@@ -1638,7 +1649,7 @@ void apple2_init_common(running_machine &machine)
 
 	/* state save registers */
 	state->save_item(NAME(state->m_flags));
-	machine.state().register_postload(apple2_update_memory_postload, NULL);
+	machine.save().register_postload(apple2_update_memory_postload, NULL);
 
 	/* --------------------------------------------- *
      * set up the softswitch mask/set                *
