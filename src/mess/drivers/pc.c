@@ -63,7 +63,7 @@ Tandy 1000 (80386) variations:
 #include "sound/speaker.h"
 #include "deprecat.h"
 
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/ins8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
@@ -148,7 +148,7 @@ static ADDRESS_MAP_START(pc8_io, AS_IO, 8)
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", i8237_r, i8237_w)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE_MODERN("ppi8255", i8255_device, read, write)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,			pc_page_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_WRITE( pc_nmi_enable_w )
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc_JOY_r,				pc_JOY_w)
@@ -169,7 +169,7 @@ static ADDRESS_MAP_START(pc16_io, AS_IO, 16)
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
-	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255a_r, i8255a_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8_MODERN("ppi8255", i8255_device, read, write, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_RAM // needed for Poisk-2
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00a1) AM_WRITE8( pc_nmi_enable_w, 0x00ff )
@@ -328,7 +328,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE_MODERN("ppi8255", i8255_device, read, write)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_READWRITE( pcjr_nmi_enable_r, pc_nmi_enable_w )
 	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496", 	sn76496_w)
@@ -1243,7 +1243,7 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1257,7 +1257,7 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -1291,7 +1291,7 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1305,7 +1305,7 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -1368,7 +1368,7 @@ static MACHINE_CONFIG_START( europc, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1382,7 +1382,7 @@ static MACHINE_CONFIG_START( europc, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( europc_rtc )
 
@@ -1431,7 +1431,7 @@ static MACHINE_CONFIG_START( pc200, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1445,7 +1445,7 @@ static MACHINE_CONFIG_START( pc200, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* printer */
 	MCFG_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1498,7 +1498,7 @@ static MACHINE_CONFIG_START( ppc512, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1512,7 +1512,7 @@ static MACHINE_CONFIG_START( ppc512, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* printer */
 	MCFG_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1552,7 +1552,7 @@ static MACHINE_CONFIG_START( pc1512, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1566,7 +1566,7 @@ static MACHINE_CONFIG_START( pc1512, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
 
@@ -1598,7 +1598,7 @@ static MACHINE_CONFIG_START( pc1640, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1612,7 +1612,7 @@ static MACHINE_CONFIG_START( pc1640, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
 
@@ -1644,7 +1644,7 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1656,9 +1656,9 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", NCR7496, 2386360)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
 
@@ -1690,7 +1690,7 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1702,9 +1702,9 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", NCR7496, 2386360)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
 
@@ -1736,7 +1736,7 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1748,9 +1748,9 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", NCR7496, 2386360)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
 
@@ -1792,7 +1792,7 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", pcjr_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", pcjr_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", pcjr_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1804,9 +1804,9 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", SN76496, 2386360)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
 
@@ -1857,7 +1857,7 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1871,7 +1871,7 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -1906,7 +1906,7 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1920,7 +1920,7 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -1954,7 +1954,7 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -1968,7 +1968,7 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -2002,7 +2002,7 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
 	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
 	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
@@ -2016,7 +2016,7 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)

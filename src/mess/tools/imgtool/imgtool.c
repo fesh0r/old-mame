@@ -8,15 +8,12 @@
 
 #include <string.h>
 #include <ctype.h>
-#include <assert.h>
 
-#include "osdepend.h"
 #include "imgtoolx.h"
-#include "imageutl.h"
+#include "formats/imageutl.h"
 #include "library.h"
 #include "modules.h"
 #include "pool.h"
-
 
 
 /***************************************************************************
@@ -183,7 +180,7 @@ char *imgtool_basename(char *filename)
 static void internal_error(const imgtool_module *module, const char *message)
 {
 #ifdef MAME_DEBUG
-	logerror("%s: %s\n", module->name, message);
+	printf("%s: %s\n", module->name, message);
 #endif
 }
 
@@ -1452,7 +1449,7 @@ imgtoolerr_t imgtool_partition_get_file_size(imgtool_partition *partition, const
 		if (err)
 			goto done;
 
-		if (!mame_stricmp(fname, ent.filename))
+		if (!core_stricmp(fname, ent.filename))
 		{
 			*filesize = ent.filesize;
 			goto done;

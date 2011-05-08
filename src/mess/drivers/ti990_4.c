@@ -38,7 +38,6 @@ TODO:
 #include "emu.h"
 #include "cpu/tms9900/tms9900.h"
 #include "machine/ti990.h"
-#include "machine/990_dk.h"
 #if VIDEO_911
 #include "video/911_vdt.h"
 #include "sound/beep.h"
@@ -46,13 +45,14 @@ TODO:
 #include "video/733_asr.h"
 #endif
 #include "imagedev/flopdrv.h"
+#include "machine/990_dk.h"
 
 
 class ti990_4_state : public driver_device
 {
 public:
-	ti990_4_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	ti990_4_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	device_t *m_terminal;
 };

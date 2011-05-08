@@ -84,44 +84,7 @@ Notes:
 //  DEVICE DEFINITIONS
 //**************************************************************************
 
-const device_type LUXOR_55_21046 = luxor_55_21046_device_config::static_alloc_device_config;
-
-
-
-//**************************************************************************
-//  DEVICE CONFIGURATION
-//**************************************************************************
-
-//-------------------------------------------------
-//  luxor_55_21046_device_config - constructor
-//-------------------------------------------------
-
-luxor_55_21046_device_config::luxor_55_21046_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-	: device_config(mconfig, static_alloc_device_config, "Luxor 55 21046", tag, owner, clock),
-	  device_config_abcbus_interface(mconfig, *this)
-{
-}
-
-
-//-------------------------------------------------
-//  static_alloc_device_config - allocate a new
-//  configuration object
-//-------------------------------------------------
-
-device_config *luxor_55_21046_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-{
-	return global_alloc(luxor_55_21046_device_config(mconfig, tag, owner, clock));
-}
-
-
-//-------------------------------------------------
-//  alloc_device - allocate a new device object
-//-------------------------------------------------
-
-device_t *luxor_55_21046_device_config::alloc_device(running_machine &machine) const
-{
-	return auto_alloc(machine, luxor_55_21046_device(machine, *this));
-}
+const device_type LUXOR_55_21046 = &device_creator<luxor_55_21046_device>;
 
 
 //-------------------------------------------------
@@ -130,7 +93,7 @@ device_t *luxor_55_21046_device_config::alloc_device(running_machine &machine) c
 //  complete
 //-------------------------------------------------
 
-void luxor_55_21046_device_config::device_config_complete()
+void luxor_55_21046_device::device_config_complete()
 {
 	// inherit a copy of the static data
 	const luxor_55_21046_interface *intf = reinterpret_cast<const luxor_55_21046_interface *>(static_config());
@@ -167,7 +130,7 @@ ROM_END
 //  rom_region - device-specific ROM region
 //-------------------------------------------------
 
-const rom_entry *luxor_55_21046_device_config::device_rom_region() const
+const rom_entry *luxor_55_21046_device::device_rom_region() const
 {
 	return ROM_NAME( luxor_55_21046 );
 }
@@ -191,12 +154,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( luxor_55_21046_io, AS_IO, 8, luxor_55_21046_device )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff0f) AM_DEVREAD(DEVICE_SELF_OWNER, luxor_55_21046_device, _3d_r)
-	AM_RANGE(0x10, 0x10) AM_MIRROR(0xff0f) AM_DEVWRITE(DEVICE_SELF_OWNER, luxor_55_21046_device, _4d_w)
-	AM_RANGE(0x20, 0x20) AM_MIRROR(0xff0f) AM_DEVWRITE(DEVICE_SELF_OWNER, luxor_55_21046_device, _4b_w)
-	AM_RANGE(0x30, 0x30) AM_MIRROR(0xff0f) AM_DEVWRITE(DEVICE_SELF_OWNER, luxor_55_21046_device, _9b_w)
-	AM_RANGE(0x40, 0x40) AM_MIRROR(0xff0f) AM_DEVWRITE(DEVICE_SELF_OWNER, luxor_55_21046_device, _8a_w)
-	AM_RANGE(0x50, 0x50) AM_MIRROR(0xff0f) AM_MASK(0xff00) AM_DEVREAD(DEVICE_SELF_OWNER, luxor_55_21046_device, _9a_r)
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff0f) AM_READ(_3d_r)
+	AM_RANGE(0x10, 0x10) AM_MIRROR(0xff0f) AM_WRITE(_4d_w)
+	AM_RANGE(0x20, 0x20) AM_MIRROR(0xff0f) AM_WRITE(_4b_w)
+	AM_RANGE(0x30, 0x30) AM_MIRROR(0xff0f) AM_WRITE(_9b_w)
+	AM_RANGE(0x40, 0x40) AM_MIRROR(0xff0f) AM_WRITE(_8a_w)
+	AM_RANGE(0x50, 0x50) AM_MIRROR(0xff0f) AM_MASK(0xff00) AM_READ(_9a_r)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0xff0c) AM_DEVREAD_LEGACY(SAB1793_TAG, wd17xx_r)
 	AM_RANGE(0x70, 0x73) AM_MIRROR(0xff0c) AM_DEVWRITE_LEGACY(SAB1793_TAG, wd17xx_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0xff0f) AM_DEVREADWRITE_LEGACY(Z80DMA_TAG, z80dma_r, z80dma_w)
@@ -327,7 +290,7 @@ MACHINE_CONFIG_END
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor luxor_55_21046_device_config::device_mconfig_additions() const
+machine_config_constructor luxor_55_21046_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( luxor_55_21046 );
 }
@@ -408,7 +371,7 @@ INPUT_PORTS_END
 //  input_ports - device-specific input ports
 //-------------------------------------------------
 
-const input_port_token *luxor_55_21046_device_config::device_input_ports() const
+const input_port_token *luxor_55_21046_device::device_input_ports() const
 {
 	return INPUT_PORTS_NAME( luxor_55_21046 );
 }
@@ -423,20 +386,19 @@ const input_port_token *luxor_55_21046_device_config::device_input_ports() const
 //  luxor_55_21046_device - constructor
 //-------------------------------------------------
 
-luxor_55_21046_device::luxor_55_21046_device(running_machine &_machine, const luxor_55_21046_device_config &_config)
-    : device_t(_machine, _config),
-	  device_abcbus_interface(_machine, _config, *this),
+luxor_55_21046_device::luxor_55_21046_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+    : device_t(mconfig, LUXOR_55_21046, "Luxor 55 21046", tag, owner, clock),
+	  device_abcbus_interface(mconfig, *this),
 	  m_maincpu(*this, Z80_TAG),
 	  m_dma(*this, Z80DMA_TAG),
 	  m_fdc(*this, SAB1793_TAG),
-	  m_image0(machine().device(FLOPPY_0)),
-	  m_image1(machine().device(FLOPPY_1)),
+	  m_image0(*this->owner(), FLOPPY_0),
+	  m_image1(*this->owner(), FLOPPY_1),
 	  m_cs(false),
 	  m_fdc_irq(0),
 	  m_dma_irq(0),
 	  m_busy(0),
-	  m_force_busy(0),
-      m_config(_config)
+	  m_force_busy(0)
 {
 }
 
@@ -491,7 +453,7 @@ void luxor_55_21046_device::device_reset()
 
 void luxor_55_21046_device::abcbus_cs(UINT8 data)
 {
-	m_cs = (data == m_config.m_sw3);
+	m_cs = (data == m_sw3);
 }
 
 
@@ -749,13 +711,13 @@ READ8_MEMBER( luxor_55_21046_device::_9a_r )
 
 	// SW1
 //  UINT8 sw1 = input_port_read(this, "SW1") & 0x0f;
-	UINT8 sw1 = m_config.m_sw1;
+	UINT8 sw1 = m_sw1;
 
 	data |= sw1 << 4;
 
 	// SW2
 //  UINT8 sw2 = input_port_read(this, "SW2") & 0x0f;
-	UINT8 sw2 = m_config.m_sw2;
+	UINT8 sw2 = m_sw2;
 
 	// TTL inputs float high so DIP switch in off position equals 1
 	int sw2_1 = BIT(sw2, 0) ? 1 : BIT(offset, 8);

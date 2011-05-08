@@ -52,8 +52,8 @@ dc = 6845 ce
 class bigbord2_state : public driver_device
 {
 public:
-	bigbord2_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	bigbord2_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, Z80_TAG),
 		  m_6845(*this, "crtc"),
 		  m_ctc_84(*this, "ctc_84"),
@@ -507,25 +507,25 @@ void bigbord2_state::machine_reset()
 }
 
 static FLOPPY_OPTIONS_START( bigbord2 )
-	FLOPPY_OPTION( sssd8, "dsk", "8\" SSSD", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION( sssd8, "dsk", "8\" SSSD", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([77])
 		SECTORS([26])
 		SECTOR_LENGTH([128])
 		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION( ssdd8, "dsk", "8\" SSDD", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION( ssdd8, "dsk", "8\" SSDD", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([77])
 		SECTORS([26])
 		SECTOR_LENGTH([256])
 		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION( sssd5, "dsk", "5.25\" SSSD", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION( sssd5, "dsk", "5.25\" SSSD", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([40])
 		SECTORS([18])
 		SECTOR_LENGTH([128])
 		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION( ssdd5, "dsk", "5.25\" SSDD", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION( ssdd5, "dsk", "5.25\" SSDD", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([2])
 		TRACKS([40])
 		SECTORS([18])

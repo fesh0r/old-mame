@@ -18,8 +18,8 @@
 class pyl601_state : public driver_device
 {
 public:
-	pyl601_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	pyl601_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	UINT8 m_rom_page;
 	UINT32 m_vdisk_addr;
@@ -497,7 +497,7 @@ static INTERRUPT_GEN( pyl601_interrupt )
 }
 
 static FLOPPY_OPTIONS_START(pyldin)
-	FLOPPY_OPTION(pyldin, "img", "Pyldin disk image", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION(pyldin, "img", "Pyldin disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([2])
 		TRACKS([80])
 		SECTORS([9])

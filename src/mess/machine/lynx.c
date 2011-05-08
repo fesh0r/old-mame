@@ -1788,10 +1788,9 @@ static void lynx_reset(running_machine &machine)
 #endif
 }
 
-static STATE_POSTLOAD( lynx_postload )
+static void lynx_postload(lynx_state *state)
 {
-	lynx_state *state = machine.driver_data<lynx_state>();
-	lynx_memory_config_w( machine.device("maincpu")->memory().space(AS_PROGRAM), 0, state->m_memory_config);
+	lynx_memory_config_w( state->machine().device("maincpu")->memory().space(AS_PROGRAM), 0, state->m_memory_config);
 }
 
 MACHINE_START( lynx )
@@ -1800,7 +1799,7 @@ MACHINE_START( lynx )
 	int i;
 	state->save_item(NAME(state->m_memory_config));
 	state->save_pointer(NAME(state->m_mem_fe00), state->m_mem_fe00_size);
-	machine.save().register_postload(lynx_postload, NULL);
+	machine.save().register_postload(save_prepost_delegate(FUNC(lynx_postload), state));
 
 	memory_configure_bank(machine, "bank3", 0, 1, machine.region("maincpu")->base() + 0x0000, 0);
 	memory_configure_bank(machine, "bank3", 1, 1, state->m_mem_fe00, 0);
@@ -1813,7 +1812,7 @@ MACHINE_START( lynx )
 
 	memset(&state->m_suzy, 0, sizeof(state->m_suzy));
 
-	machine.add_notifier(MACHINE_NOTIFY_RESET, lynx_reset);
+	machine.add_notifier(MACHINE_NOTIFY_RESET, machine_notify_delegate(FUNC(lynx_reset),&machine));
 
 	for (i = 0; i < NR_LYNX_TIMERS; i++)
 		lynx_timer_init(machine, i);

@@ -68,8 +68,8 @@ typedef struct
 class vc4000_state : public driver_device
 {
 public:
-	vc4000_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	vc4000_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	vc4000_video_t m_video;
 	UINT8 m_sprite_collision[0x20];
@@ -78,7 +78,7 @@ public:
 	UINT8 m_joy1_y;
 	UINT8 m_joy2_x;
 	UINT8 m_joy2_y;
-	UINT8 m_objects[256];
+	UINT8 m_objects[512];
 	UINT8 m_irq_pause;
 };
 

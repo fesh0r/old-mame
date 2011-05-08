@@ -8,13 +8,13 @@
 #define ORION_H_
 
 #include "includes/radio86.h"
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 
 class orion_state : public radio86_state
 {
 public:
-	orion_state(running_machine &machine, const driver_device_config_base &config)
-		: radio86_state(machine, config) { }
+	orion_state(const machine_config &mconfig, device_type type, const char *tag)
+		: radio86_state(mconfig, type, tag) { }
 
 	UINT8 m_orion128_video_mode;
 	UINT8 m_orion128_video_page;
@@ -39,7 +39,7 @@ public:
 
 /*----------- defined in machine/orion.c -----------*/
 
-extern const i8255a_interface orion128_ppi8255_interface_1;
+extern const i8255_interface orion128_ppi8255_interface_1;
 
 extern MACHINE_START( orion128 );
 extern MACHINE_RESET( orion128 );

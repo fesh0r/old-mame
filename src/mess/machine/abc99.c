@@ -87,15 +87,7 @@ enum
 //  DEVICE DEFINITIONS
 //**************************************************************************
 
-const device_type ABC99 = abc99_device_config::static_alloc_device_config;
-
-
-
-//**************************************************************************
-//  DEVICE CONFIGURATION
-//**************************************************************************
-
-GENERIC_DEVICE_CONFIG_SETUP(abc99, "Luxor ABC 99")
+const device_type ABC99 = &device_creator<abc99_device>;
 
 
 //-------------------------------------------------
@@ -104,7 +96,7 @@ GENERIC_DEVICE_CONFIG_SETUP(abc99, "Luxor ABC 99")
 //  complete
 //-------------------------------------------------
 
-void abc99_device_config::device_config_complete()
+void abc99_device::device_config_complete()
 {
 	// inherit a copy of the static data
 	const abc99_interface *intf = reinterpret_cast<const abc99_interface *>(static_config());
@@ -114,9 +106,9 @@ void abc99_device_config::device_config_complete()
 	// or initialize to defaults if none provided
 	else
 	{
-		memset(&m_out_txd_func, 0, sizeof(m_out_txd_func));
-		memset(&m_out_clock_func, 0, sizeof(m_out_clock_func));
-		memset(&m_out_keydown_func, 0, sizeof(m_out_keydown_func));
+		memset(&m_out_txd_cb, 0, sizeof(m_out_txd_cb));
+		memset(&m_out_clock_cb, 0, sizeof(m_out_clock_cb));
+		memset(&m_out_keydown_cb, 0, sizeof(m_out_keydown_cb));
 	}
 
 	m_shortname = "abc99";
@@ -144,7 +136,7 @@ ROM_END
 //  rom_region - device-specific ROM region
 //-------------------------------------------------
 
-const rom_entry *abc99_device_config::device_rom_region() const
+const rom_entry *abc99_device::device_rom_region() const
 {
 	return ROM_NAME( abc99 );
 }
@@ -164,7 +156,7 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( abc99_z2_io, AS_IO, 8, abc99_device )
-	AM_RANGE(0x21, 0x21) AM_DEVWRITE(DEVICE_SELF_OWNER, abc99_device, z2_led_w)
+	AM_RANGE(0x21, 0x21) AM_WRITE(z2_led_w)
 	AM_RANGE(0x30, 0x30) AM_READ_PORT("X0") AM_WRITENOP
 	AM_RANGE(0x31, 0x31) AM_READ_PORT("X1") AM_WRITENOP
 	AM_RANGE(0x32, 0x32) AM_READ_PORT("X2") AM_WRITENOP
@@ -181,10 +173,10 @@ static ADDRESS_MAP_START( abc99_z2_io, AS_IO, 8, abc99_device )
 	AM_RANGE(0x3d, 0x3d) AM_READ_PORT("X13") AM_WRITENOP
 	AM_RANGE(0x3e, 0x3e) AM_READ_PORT("X14") AM_WRITENOP
 	AM_RANGE(0x3f, 0x3f) AM_READ_PORT("X15") AM_WRITENOP
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_DEVWRITE(DEVICE_SELF_OWNER, abc99_device, z2_p1_w)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_DEVREAD(DEVICE_SELF_OWNER, abc99_device, z2_p2_r)
-	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_DEVREAD(DEVICE_SELF_OWNER, abc99_device, z2_t0_r)
-	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_DEVREAD(DEVICE_SELF_OWNER, abc99_device, z2_t1_r)
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_WRITE(z2_p1_w)
+	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READ(z2_p2_r)
+	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(z2_t0_r)
+	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(z2_t1_r)
 ADDRESS_MAP_END
 
 
@@ -202,10 +194,10 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( abc99_z5_io, AS_IO, 8, abc99_device )
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_DEVREAD(DEVICE_SELF_OWNER, abc99_device, z5_p1_r)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_DEVWRITE(DEVICE_SELF_OWNER, abc99_device, z5_p2_w)
-	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_DEVWRITE(DEVICE_SELF_OWNER, abc99_device, z5_t0_w)
-	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_DEVREAD(DEVICE_SELF_OWNER, abc99_device, z5_t1_r)
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READ(z5_p1_r)
+	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(z5_p2_w)
+	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_WRITE(z5_t0_w)
+	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(z5_t1_r)
 ADDRESS_MAP_END
 
 
@@ -236,7 +228,7 @@ MACHINE_CONFIG_END
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor abc99_device_config::device_mconfig_additions() const
+machine_config_constructor abc99_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( abc99 );
 }
@@ -453,7 +445,7 @@ INPUT_PORTS_END
 //  input_ports - device-specific input ports
 //-------------------------------------------------
 
-const input_port_token *abc99_device_config::device_input_ports() const
+const input_port_token *abc99_device::device_input_ports() const
 {
 	return INPUT_PORTS_NAME( abc99 );
 }
@@ -487,7 +479,7 @@ inline void abc99_device::serial_output()
 	{
 		m_so = so;
 
-		devcb_call_write_line(&m_out_txd_func, m_so);
+		m_out_txd_func(m_so);
 	}
 }
 
@@ -498,8 +490,8 @@ inline void abc99_device::serial_output()
 
 inline void abc99_device::serial_clock()
 {
-	devcb_call_write_line(&m_out_clock_func, 1);
-	devcb_call_write_line(&m_out_clock_func, 0);
+	m_out_clock_func(1);
+	m_out_clock_func(0);
 }
 
 
@@ -511,7 +503,7 @@ inline void abc99_device::key_down(int state)
 {
 	if (m_keydown != state)
 	{
-		devcb_call_write_line(&m_out_keydown_func, state);
+		m_out_keydown_func(state);
 		m_keydown = state;
 	}
 }
@@ -535,8 +527,8 @@ inline void abc99_device::scan_mouse()
 //  abc99_device - constructor
 //-------------------------------------------------
 
-abc99_device::abc99_device(running_machine &_machine, const abc99_device_config &config)
-    : device_t(_machine, config),
+abc99_device::abc99_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+    : device_t(mconfig, ABC99, "Luxor ABC 99", tag, owner, clock),
 	  m_maincpu(*this, I8035_Z2_TAG),
 	  m_mousecpu(*this, I8035_Z5_TAG),
 	  m_speaker(*this, SPEAKER_TAG),
@@ -545,8 +537,7 @@ abc99_device::abc99_device(running_machine &_machine, const abc99_device_config 
 	  m_so(1),
 	  m_so_z2(1),
 	  m_so_z5(1),
-	  m_keydown(0),
-      m_config(config)
+	  m_keydown(0)
 {
 }
 
@@ -564,9 +555,9 @@ void abc99_device::device_start()
 	m_mouse_timer = timer_alloc(TIMER_MOUSE);
 
 	// resolve callbacks
-    devcb_resolve_write_line(&m_out_txd_func, &m_config.m_out_txd_func, this);
-    devcb_resolve_write_line(&m_out_clock_func, &m_config.m_out_clock_func, this);
-    devcb_resolve_write_line(&m_out_keydown_func, &m_config.m_out_keydown_func, this);
+    m_out_txd_func.resolve(m_out_txd_cb, *this);
+    m_out_clock_func.resolve(m_out_clock_cb, *this);
+    m_out_keydown_func.resolve(m_out_keydown_cb, *this);
 
 	// state saving
 	save_item(NAME(m_si));

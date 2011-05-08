@@ -112,7 +112,7 @@ Notes:
 ******************************************************************************/
 
 #include "emu.h"
-#include "imageutl.h"
+#include "formats/imageutl.h"
 #include "cpu/z80/z80.h"
 #include "video/m6847.h"
 #include "machine/ctronics.h"
@@ -155,8 +155,8 @@ Notes:
 class vtech1_state : public driver_device
 {
 public:
-	vtech1_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	vtech1_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	/* devices */
 	device_t *m_mc6847;
@@ -260,7 +260,7 @@ static void vtech1_load_proc(device_image_interface &image)
 	vtech1_state *vtech1 = image.device().machine().driver_data<vtech1_state>();
 	int id = floppy_get_drive(&image.device());
 
-	if (image.is_writable())
+	if (!image.is_readonly())
 		vtech1->m_fdc_wrprot[id] = 0x00;
 	else
 		vtech1->m_fdc_wrprot[id] = 0x80;
@@ -467,6 +467,7 @@ FLOPPY_OPTIONS_START( vtech1_only )
 		"Laser floppy disk image",
 		vtech1_dsk_identify,
 		vtech1_dsk_construct,
+		NULL,
 		NULL
 	)
 FLOPPY_OPTIONS_END0

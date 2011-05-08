@@ -175,7 +175,7 @@ INLINE const ti99_multicart_config *get_config(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == TI99_MULTICART);
 
-	return (const ti99_multicart_config *) downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
+	return (const ti99_multicart_config *) downcast<const legacy_device_base *>(device)->inline_config();
 }
 
 INLINE ti99_pcb_t *get_safe_pcb_token(device_t *device)
@@ -206,7 +206,7 @@ static WRITE_LINE_DEVICE_HANDLER( cart_grom_ready )
 {
 	device_t *cartdev = device->owner()->owner();
 	ti99_multicart_state *cartslots = get_safe_token(cartdev);
-	devcb_call_write_line( &cartslots->ready, state );
+	cartslots->ready(state);
 }
 
 /*
@@ -363,13 +363,13 @@ static void set_pointers(device_t *pcb, int index)
 	ti99_multicart_state *cartslots = get_safe_token(cartsys);
 	ti99_pcb_t *pcb_def = get_safe_pcb_token(pcb);
 
-	pcb_def->read = (read8z_device_func)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(TI99CARTINFO_FCT_6000_R);
-	pcb_def->write = (write8_device_func)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(TI99CARTINFO_FCT_6000_W);
-	pcb_def->cruread = (read8z_device_func)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(TI99CARTINFO_FCT_CRU_R);
-	pcb_def->cruwrite = (write8_device_func)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(TI99CARTINFO_FCT_CRU_W);
+	pcb_def->read = (read8z_device_func)downcast<const legacy_cart_slot_device_base *>(pcb)->get_legacy_fct(TI99CARTINFO_FCT_6000_R);
+	pcb_def->write = (write8_device_func)downcast<const legacy_cart_slot_device_base *>(pcb)->get_legacy_fct(TI99CARTINFO_FCT_6000_W);
+	pcb_def->cruread = (read8z_device_func)downcast<const legacy_cart_slot_device_base *>(pcb)->get_legacy_fct(TI99CARTINFO_FCT_CRU_R);
+	pcb_def->cruwrite = (write8_device_func)downcast<const legacy_cart_slot_device_base *>(pcb)->get_legacy_fct(TI99CARTINFO_FCT_CRU_W);
 
-    pcb_def->assemble = (assmfct *)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(TI99CART_FCT_ASSM);
-    pcb_def->disassemble = (assmfct *)downcast<const legacy_cart_slot_device_config_base *>(&pcb->baseconfig())->get_config_fct(TI99CART_FCT_DISASSM);
+    pcb_def->assemble = (assmfct *)downcast<const legacy_cart_slot_device_base *>(pcb)->get_legacy_fct(TI99CART_FCT_ASSM);
+    pcb_def->disassemble = (assmfct *)downcast<const legacy_cart_slot_device_base *>(pcb)->get_legacy_fct(TI99CART_FCT_DISASSM);
 
 	pcb_def->cartridge = &cartslots->cartridge[index];
 	pcb_def->cartridge->pcb = pcb;
@@ -1577,7 +1577,7 @@ static DEVICE_START(ti99_multicart)
 
 	devcb_write_line ready = DEVCB_LINE(cartconf->ready);
 
-	devcb_resolve_write_line(&cartslots->ready, &ready, device);
+	cartslots->ready.resolve(ready, *device);
 
 	cartslots->gk_slot = -1;
 	cartslots->gk_guest_slot = -1;

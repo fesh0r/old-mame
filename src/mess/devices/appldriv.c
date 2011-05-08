@@ -26,7 +26,7 @@ INLINE const appledriv_config *get_config(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == FLOPPY_APPLE);
 
-	return (const appledriv_config *) downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
+	return (const appledriv_config *) downcast<const legacy_device_base *>(device)->inline_config();
 }
 
 static int apple525_enable_mask = 1;
@@ -253,7 +253,7 @@ int apple525_read_status(device_t *device)
 		if (apple525_enable_mask & (1 << i))
 		{
 			image = dynamic_cast<device_image_interface *>(floppy_get_device_by_type(device->machine(), FLOPPY_TYPE_APPLE, i));
-			if (image && !image->is_writable())
+			if (image && image->is_readonly())
 				result = 1;
 		}
 	}

@@ -16,8 +16,8 @@
 class m5_state : public driver_device
 {
 public:
-	m5_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	m5_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, Z80_TAG),
 		  m_fd5cpu(*this, Z80_FD5_TAG),
 		  m_ctc(*this, Z80CTC_TAG),
@@ -32,7 +32,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<cpu_device> m_fd5cpu;
 	required_device<device_t> m_ctc;
-	required_device<device_t> m_ppi;
+	required_device<i8255_device> m_ppi;
 	required_device<device_t> m_fdc;
 	required_device<device_t> m_cassette;
 	required_device<device_t> m_centronics;

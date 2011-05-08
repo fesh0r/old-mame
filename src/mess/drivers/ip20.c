@@ -48,8 +48,8 @@ typedef struct
 class ip20_state : public driver_device
 {
 public:
-	ip20_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	ip20_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	HPC_t m_HPC;
 	RTC_t m_RTC;
@@ -501,7 +501,7 @@ static void ip204415_exit(running_machine &machine)
 
 static DRIVER_INIT( ip204415 )
 {
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, ip204415_exit);
+	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(ip204415_exit),&machine));
 }
 
 static TIMER_CALLBACK(ip20_timer)

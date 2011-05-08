@@ -7,7 +7,7 @@
 #include "cpu/z80/z80.h"
 #include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/ctronics.h"
 #include "machine/msm8251.h"
 #include "machine/pit8253.h"
@@ -43,8 +43,8 @@ enum {
 class bw2_state : public driver_device
 {
 public:
-	bw2_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	bw2_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, Z80_TAG),
 		  m_uart(*this, MSM8251_TAG),
 		  m_fdc(*this, WD2797_TAG),

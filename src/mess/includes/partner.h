@@ -7,15 +7,15 @@
 #ifndef partner_H_
 #define partner_H_
 
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/8257dma.h"
 #include "machine/wd17xx.h"
 
 class partner_state : public radio86_state
 {
 public:
-	partner_state(running_machine &machine, const driver_device_config_base &config)
-		: radio86_state(machine, config) { }
+	partner_state(const machine_config &mconfig, device_type type, const char *tag)
+		: radio86_state(mconfig, type, tag) { }
 
 	UINT8 m_mem_page;
 	UINT8 m_win_mem_page;

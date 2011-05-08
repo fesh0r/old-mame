@@ -1263,9 +1263,337 @@ static int c64_crt_load( device_image_interface &image )
 	return IMAGE_INIT_PASS;
 }
 
+static void load_standard_c64_cartridge(device_image_interface &image)
+{
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+	UINT32 size;
+
+	// is there anything to load at 0x8000?
+	size = image.get_software_region_length("roml");
+
+	if (size)
+	{
+		memcpy(state->m_roml, image.get_software_region("roml"), MIN(0x2000, size));
+
+		if (size == 0x4000)
+		{
+			// continue loading to ROMH region
+			memcpy(state->m_romh, image.get_software_region("roml") + 0x2000, 0x2000);
+		}
+	}
+
+	// is there anything to load at 0xa000?
+	size = image.get_software_region_length("romh");
+	if (size)
+		memcpy(state->m_romh, image.get_software_region("romh"), size);
+}
+
+static TIMER_CALLBACK( vizawrite_timer )
+{
+	c64_state *state = machine.driver_data<c64_state>();
+	UINT8 *decrypted = machine.region("user1")->base();
+
+	// map cartridge ROMs
+	memcpy(state->m_roml, decrypted + 0x2000, 0x2000);
+	memset(state->m_romh, 0, 0x2000);
+
+	// set GAME line
+	state->m_game = 1;
+	c64_bankswitch(machine, 0);
+}
+
+static void load_vizawrite_cartridge(device_image_interface &image)
+{
+	#define VW64_DECRYPT_ADDRESS(_offset) \
+		BITSWAP16(_offset,15,14,13,12,7,8,6,9,5,11,4,3,2,10,1,0)
+
+	#define VW64_DECRYPT_DATA(_data) \
+		BITSWAP8(_data,7,6,0,5,1,4,2,3)
+
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+
+	UINT8 *roml = image.get_software_region("roml");
+	UINT8 *romh = image.get_software_region("romh");
+	UINT8 *decrypted = image.device().machine().region("user1")->base();
+
+	// decrypt ROMs
+	for (offs_t offset = 0; offset < 0x2000; offset++)
+	{
+		offs_t address = VW64_DECRYPT_ADDRESS(offset);
+		decrypted[address] = VW64_DECRYPT_DATA(roml[offset]);
+		decrypted[address + 0x2000] = VW64_DECRYPT_DATA(roml[offset + 0x2000]);
+		decrypted[address + 0x4000] = VW64_DECRYPT_DATA(romh[offset]);
+	}
+
+	// map cartridge ROMs
+	memcpy(state->m_roml, decrypted, 0x2000);
+	memcpy(state->m_romh, decrypted + 0x4000, 0x2000);
+
+	// allocate GAME changing timer
+	state->m_cartridge_timer = image.device().machine().scheduler().timer_alloc(FUNC(vizawrite_timer));
+	state->m_cartridge_timer->adjust(attotime::from_msec(1184), 0);
+}
+
+static WRITE8_HANDLER( hugo_bank_w )
+{
+	/*
+
+        bit     description
+
+        0
+        1
+        2
+        3
+        4       A14
+        5       A15
+        6       A16
+        7       A13
+
+    */
+
+	c64_state *state = space->machine().driver_data<c64_state>();
+
+	int bank = ((data >> 3) & 0x0e) | BIT(data, 7);
+
+	UINT8 *decrypted = space->machine().region("user1")->base();
+	memcpy(state->m_roml, decrypted + (bank * 0x2000), 0x2000);
+}
+
+static void load_hugo_cartridge(device_image_interface &image)
+{
+	#define HUGO_DECRYPT_ADDRESS(_offset) \
+		BITSWAP16(_offset,15,14,13,12,7,6,5,4,3,2,1,0,8,9,11,10)
+
+	#define HUGO_DECRYPT_DATA(_data) \
+		BITSWAP8(_data,7,6,5,4,0,1,2,3)
+
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+
+	UINT8 *roml = image.get_software_region("roml");
+	UINT8 *decrypted = image.device().machine().region("user1")->base();
+
+	// decrypt ROMs
+	for (offs_t offset = 0; offset < 0x20000; offset++)
+	{
+		offs_t address = (offset & 0x10000) | HUGO_DECRYPT_ADDRESS(offset);
+		decrypted[address] = HUGO_DECRYPT_DATA(roml[offset]);
+	}
+
+	// map cartridge ROMs
+	memcpy(state->m_roml, decrypted, 0x2000);
+
+	// install bankswitch handler
+	address_space *space = image.device().machine().device( "maincpu")->memory().space( AS_PROGRAM );
+	space->install_legacy_write_handler( 0xde00, 0xdeff, FUNC(hugo_bank_w) );
+}
+
+static WRITE8_HANDLER( easy_calc_result_bank_w )
+{
+	c64_state *state = space->machine().driver_data<c64_state>();
+
+	UINT8 *cart = space->machine().region("user1")->base();
+	memcpy(state->m_romh, cart + 0x2000 + (!offset * 0x2000), 0x2000);
+}
+
+static void load_easy_calc_result_cartridge(device_image_interface &image)
+{
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+
+	UINT8 *roml = image.get_software_region("roml");
+	UINT8 *romh = image.get_software_region("romh");
+	UINT8 *cart = image.device().machine().region("user1")->base();
+	memcpy(cart, roml, 0x2000);
+	memcpy(cart + 0x2000, romh, 0x4000);
+
+	// map cartridge ROMs
+	memcpy(state->m_roml, cart, 0x2000);
+	memcpy(state->m_romh, cart + 0x2000, 0x2000);
+
+	// install bankswitch handler
+	address_space *space = image.device().machine().device( "maincpu")->memory().space( AS_PROGRAM );
+	space->install_legacy_write_handler( 0xde00, 0xde01, FUNC(easy_calc_result_bank_w) );
+}
+
+static WRITE8_HANDLER( pagefox_bank_w )
+{
+	/*
+
+        Die 96KB des Moduls belegen in 6 16K-Banken den Modulbereich von $8000- $c000.
+        Die Umschaltung erfolgt mit einem Register in $DE80 (-$DEFF, nicht voll decodiert),
+        welches nur beschrieben und nicht gelesen werden kann. Durch Schreiben der Werte
+        $08 oder $0A selektiert man eine der beiden RAM-Banke, $FF deselektiert das Modul.
+
+        Zusatzlich muss Adresse 1 entsprechend belegt werden :$37 fur Lesezugriffe auf das
+        Modul, $35 oder $34 fur Lesezugriffe auf das Ram des C64. Schreibzugriffe lenkt
+        der C64 grundsatzlich ins eigene RAM, weshalb zum Beschreiben des Modulrams ein
+        Trick notwendig ist: Man schaltet das Ram-Modul parallel zum C64-Ram, rettet vor
+        dem Schreiben den C64-Ram-Inhalt und stellt ihn nachher wieder her...
+
+        Ldy#0
+        Lda#$35
+        Sta 1
+        Loop Lda (Ptr),y
+        Pha
+        Lda#$08
+        Sta $DE80
+        Lda (Quell),y
+        Sta (Ptr),y
+        Lda#$FF
+        Sta $DE80
+        Pla
+        Sta (Ptr),y
+        Iny
+        Bne Loop
+
+    */
+
+	c64_state *state = space->machine().driver_data<c64_state>();
+	UINT8 *cart = space->machine().region("user1")->base();
+
+	if (data == 0xff)
+	{
+		// hide cartridge
+		state->m_game = 1;
+		state->m_exrom = 1;
+		c64_bankswitch(space->machine(), 0);
+	}
+	else
+	{
+		int bank = (data >> 1) & 0x03;
+		int ram = BIT(data, 3);
+
+		offs_t address = ram ? 0x10000 + ((bank & 0x01) * 0x4000) : (bank * 0x4000);
+
+		// map cartridge ROMs
+		memcpy(state->m_roml, cart + address, 0x2000);
+		memcpy(state->m_romh, cart + address + 0x2000, 0x2000);
+
+		if (state->m_game)
+		{
+			// enable cartridge
+			state->m_game = 0;
+			state->m_exrom = 0;
+			c64_bankswitch(space->machine(), 0);
+		}
+	}
+}
+
+static void load_pagefox_cartridge(device_image_interface &image)
+{
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+
+	UINT8 *rom = image.get_software_region("rom");
+	UINT8 *cart = image.device().machine().region("user1")->base();
+	memcpy(cart, rom, 0x10000);
+
+	// map cartridge ROMs
+	memcpy(state->m_roml, cart, 0x2000);
+	memcpy(state->m_romh, cart + 0x2000, 0x2000);
+
+	// install bankswitch handler
+	address_space *space = image.device().machine().device( "maincpu")->memory().space( AS_PROGRAM );
+	space->install_legacy_write_handler( 0xde80, 0xdeff, FUNC(pagefox_bank_w) );
+}
+
+static WRITE8_HANDLER( multiscreen_bank_w )
+{
+	c64_state *state = space->machine().driver_data<c64_state>();
+
+	UINT8 *cart = space->machine().region("user1")->base();
+
+	int bank = data & 0x0f;
+	offs_t address = bank * 0x4000;
+
+	if (bank == 0x0d)
+	{
+		// RAM
+		memcpy(state->m_roml, cart + address, 0x2000);
+		memcpy(state->m_romh, cart + 0x2000, 0x2000);
+	}
+	else
+	{
+		// ROM
+		memcpy(state->m_roml, cart + address, 0x2000);
+		memcpy(state->m_romh, cart + address + 0x2000, 0x2000);
+	}
+}
+
+static void load_multiscreen_cartridge(device_image_interface &image)
+{
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+	UINT8 *cart = image.device().machine().region("user1")->base();
+	UINT8 *roml = image.get_software_region("roml");
+	memcpy(cart, roml, 0x4000);
+
+	UINT8 *rom = image.get_software_region("rom");
+	memcpy(cart + 0x4000, rom, 0x30000);
+
+	// map cartridge ROMs
+	memcpy(state->m_roml, cart, 0x2000);
+	memcpy(state->m_romh, cart + 0x2000, 0x2000);
+
+	// install bankswitch handler
+	address_space *space = image.device().machine().device( "maincpu")->memory().space( AS_PROGRAM );
+	space->install_legacy_write_handler( 0xdfff, 0xdfff, FUNC(multiscreen_bank_w) );
+}
+
+static void c64_software_list_cartridge_load(device_image_interface &image)
+{
+	c64_state *state = image.device().machine().driver_data<c64_state>();
+
+	// initialize ROML and ROMH pointers
+	state->m_roml = state->m_c64_roml;
+	state->m_romh = state->m_c64_romh;
+
+	// clear ROML and ROMH areas
+	memset(state->m_roml, 0, 0x2000);
+	memset(state->m_romh, 0, 0x2000);
+
+	// set GAME and EXROM
+	state->m_game = atol(image.get_feature("game"));
+	state->m_exrom = atol(image.get_feature("exrom"));
+
+	// determine cartridge type
+	const char *cart_type = image.get_feature("cart_type");
+
+	if (cart_type == NULL)
+	{
+		load_standard_c64_cartridge(image);
+	}
+	else
+	{
+		if (!strcmp(cart_type, "vizawrite"))
+			load_vizawrite_cartridge(image);
+
+		else if (!strcmp(cart_type, "hugo"))
+			load_hugo_cartridge(image);
+
+		else if (!strcmp(cart_type, "easy_calc_result"))
+			load_easy_calc_result_cartridge(image);
+
+		else if (!strcmp(cart_type, "pagefox"))
+			load_pagefox_cartridge(image); // TODO writing to the expanded 32KB RAM is not supported!
+
+		else if (!strcmp(cart_type, "multiscreen"))
+			load_multiscreen_cartridge(image); // TODO 8K RAM expansion test fails on boot
+
+		else
+			load_standard_c64_cartridge(image);
+	}
+}
+
 static DEVICE_IMAGE_LOAD( c64_cart )
 {
-	return c64_crt_load(image);
+	int result = IMAGE_INIT_PASS;
+
+	if (image.software_entry() != NULL)
+	{
+		c64_software_list_cartridge_load(image);
+	}
+	else
+		result = c64_crt_load(image);
+
+	return result;
 }
 
 static DEVICE_IMAGE_LOAD( max_cart )
@@ -1637,6 +1965,7 @@ MACHINE_CONFIG_FRAGMENT( c64_cartslot )
 	MCFG_CARTSLOT_ADD("cart1")
 	MCFG_CARTSLOT_EXTENSION_LIST("crt,80")
 	MCFG_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_INTERFACE("c64_cart")
 	MCFG_CARTSLOT_START(c64_cart)
 	MCFG_CARTSLOT_LOAD(c64_cart)
 	MCFG_CARTSLOT_UNLOAD(c64_cart)
@@ -1647,6 +1976,8 @@ MACHINE_CONFIG_FRAGMENT( c64_cartslot )
 	MCFG_CARTSLOT_START(c64_cart)
 	MCFG_CARTSLOT_LOAD(c64_cart)
 	MCFG_CARTSLOT_UNLOAD(c64_cart)
+
+	MCFG_SOFTWARE_LIST_ADD("cart_list_c64", "c64_cart")
 MACHINE_CONFIG_END
 
 MACHINE_CONFIG_FRAGMENT( ultimax_cartslot )

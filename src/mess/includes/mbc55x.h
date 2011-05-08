@@ -10,7 +10,7 @@
 #include "machine/wd17xx.h"
 #include "machine/msm8251.h"
 #include "machine/pit8253.h"
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/pic8259.h"
 #include "video/mc6845.h"
 
@@ -66,8 +66,8 @@ typedef struct
 class mbc55x_state : public driver_device
 {
 public:
-	mbc55x_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	mbc55x_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	device_t	*m_maincpu;
 	device_t	*m_pic8259;
@@ -127,7 +127,7 @@ extern const unsigned char mbc55x_palette[SCREEN_NO_COLOURS][3];
 
 extern const struct pit8253_config mbc55x_pit8253_config;
 extern const struct pic8259_interface mbc55x_pic8259_config;
-extern const i8255a_interface mbc55x_ppi8255_interface;
+extern const i8255_interface mbc55x_ppi8255_interface;
 extern const msm8251_interface mbc55x_msm8251a_interface;
 extern const msm8251_interface mbc55x_msm8251b_interface;
 

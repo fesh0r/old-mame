@@ -14,7 +14,7 @@
 #include "formats/basicdsk.h"
 #include "machine/ctronics.h"
 #include "machine/i8214.h"
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/msm58321.h"
 #include "machine/msm8251.h"
 #include "machine/wd17xx.h"
@@ -57,8 +57,8 @@
 class v1050_state : public driver_device
 {
 public:
-	v1050_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	v1050_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, Z80_TAG),
 		  m_subcpu(*this, M6502_TAG),
 		  m_pic(*this, UPB8214_TAG),

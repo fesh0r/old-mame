@@ -49,8 +49,8 @@ PORT A: 111xyzzz
 class mirage_state : public driver_device
 {
 public:
-    mirage_state(running_machine &machine, const driver_device_config_base &config)
-    : driver_device(machine, config) { }
+    mirage_state(const machine_config &mconfig, device_type type, const char *tag)
+    : driver_device(mconfig, type, tag) { }
 
 	virtual void machine_reset();
 
@@ -94,8 +94,8 @@ void mirage_state::machine_reset()
 static ADDRESS_MAP_START( mirage_map, AS_PROGRAM, 8, mirage_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK("sndbank")	// 32k window on 128k of wave RAM
 	AM_RANGE(0x8000, 0xbfff) AM_RAM			// main RAM
-	AM_RANGE(0xe100, 0xe100) AM_DEVREADWRITE_LEGACY("acia6850", acia6850_stat_r, acia6850_ctrl_w)
-	AM_RANGE(0xe101, 0xe101) AM_DEVREADWRITE_LEGACY("acia6850", acia6850_data_r, acia6850_data_w)
+	AM_RANGE(0xe100, 0xe100) AM_DEVREADWRITE("acia6850", acia6850_device, status_read, control_write)
+	AM_RANGE(0xe101, 0xe101) AM_DEVREADWRITE("acia6850", acia6850_device, data_read, data_write)
 	AM_RANGE(0xe200, 0xe2ff) AM_DEVREADWRITE("via6522", via6522_device, read, write)
 	AM_RANGE(0xe800, 0xe800) AM_DEVREADWRITE_LEGACY("wd177x", wd17xx_status_r,wd17xx_command_w)
 	AM_RANGE(0xe801, 0xe801) AM_DEVREADWRITE_LEGACY("wd177x", wd17xx_track_r,wd17xx_track_w)
@@ -203,7 +203,7 @@ static ACIA6850_INTERFACE( mirage_acia6850_interface )
 };
 
 static FLOPPY_OPTIONS_START(mirage)
-	FLOPPY_OPTION(mirage, "img", "Mirage disk image", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION(mirage, "img", "Mirage disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([80])
 		SECTORS([5])

@@ -45,27 +45,32 @@
 
 #define MCFG_C2040_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, C2040, 0) \
-	c2040_device_config::static_set_config(device, _address, c2040_device_config::TYPE_2040);
+	base_c2040_device::static_set_config(*device, _address);
+
 
 #define MCFG_C3040_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, C3040, 0) \
-	c2040_device_config::static_set_config(device, _address, c2040_device_config::TYPE_3040);
+	base_c2040_device::static_set_config(*device, _address);
+
 
 #define MCFG_C4040_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, C4040, 0) \
-	c2040_device_config::static_set_config(device, _address, c2040_device_config::TYPE_4040);
+	base_c2040_device::static_set_config(*device, _address);
+
 
 #define MCFG_C8050_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, C8050, 0) \
-	c2040_device_config::static_set_config(device, _address, c2040_device_config::TYPE_8050);
+	base_c2040_device::static_set_config(*device, _address);
+
 
 #define MCFG_C8250_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, C8250, 0) \
-	c2040_device_config::static_set_config(device, _address, c2040_device_config::TYPE_8250);
+	base_c2040_device::static_set_config(*device, _address);
+
 
 #define MCFG_SFD1001_ADD(_tag, _address) \
     MCFG_DEVICE_ADD(_tag, SFD1001, 0) \
-	c2040_device_config::static_set_config(device, _address, c2040_device_config::TYPE_SFD1001);
+	base_c2040_device::static_set_config(*device, _address);
 
 
 
@@ -73,63 +78,25 @@
 //  TYPE DEFINITIONS
 //**************************************************************************
 
-// ======================> c2040_device_config
+// ======================> base_c2040_device
 
-class c2040_device_config :   public device_config,
-							  public device_config_ieee488_interface
+class base_c2040_device :  public device_t,
+						   public device_ieee488_interface
 {
-    friend class c2040_device;
-    friend class c3040_device;
-    friend class c4040_device;
-    friend class c8050_device;
-    friend class c8250_device;
-    friend class sfd1001_device;
-
-    // construction/destruction
-    c2040_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock);
-
 public:
 	enum
 	{
-		TYPE_2040 = 0,
+		TYPE_2040,
 		TYPE_3040,
 		TYPE_4040,
 		TYPE_8050,
 		TYPE_8250,
-		TYPE_SFD1001,
+		TYPE_SFD1001
 	};
 
-	// allocators
-    static device_config *static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock);
-    virtual device_t *alloc_device(running_machine &machine) const;
+	// construction/destruction
+    base_c2040_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, UINT32 variant);
 
-	// inline configuration helpers
-	static void static_set_config(device_config *device, int address, int variant);
-
-	// optional information overrides
-	virtual const rom_entry *device_rom_region() const;
-	virtual machine_config_constructor device_mconfig_additions() const;
-
-protected:
-	// device_config overrides
-    virtual void device_config_complete();
-
-	int m_address;
-	int m_variant;
-};
-
-
-// ======================> c2040_device
-
-class c2040_device :  public device_t,
-					  public device_ieee488_interface
-{
-    friend class c2040_device_config;
-
-    // construction/destruction
-    c2040_device(running_machine &_machine, const c2040_device_config &_config);
-
-public:
 	// not really public
 	static void on_disk0_change(device_image_interface &image);
 	static void on_disk1_change(device_image_interface &image);
@@ -155,11 +122,19 @@ public:
 	DECLARE_READ8_MEMBER( c8050_miot_pb_r );
 	DECLARE_WRITE8_MEMBER( c8050_miot_pb_w );
 
+	// inline configuration helpers
+	static void static_set_config(device_t &device, int address);
+
+	// optional information overrides
+	virtual const rom_entry *device_rom_region() const;
+	virtual machine_config_constructor device_mconfig_additions() const;
+
 protected:
     // device-level overrides
     virtual void device_start();
 	virtual void device_reset();
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
+    virtual void device_config_complete();
 
 	// device_ieee488_interface overrides
 	void ieee488_atn(int state);
@@ -202,6 +177,7 @@ protected:
 	int m_side;							// selected side
 
 	// IEEE-488 bus
+	int m_address;						// bus address
 	int m_rfdo;							// not ready for data output
 	int m_daco;							// not data accepted output
 	int m_atna;							// attention acknowledge
@@ -224,62 +200,67 @@ protected:
 	// timers
 	emu_timer *m_bit_timer;
 
-    const c2040_device_config &m_config;
+	int m_variant;
+};
+
+
+// ======================> c2040_device
+
+class c2040_device :  public base_c2040_device
+{
+public:
+    // construction/destruction
+    c2040_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
 
 // ======================> c3040_device
 
-class c3040_device :  public c2040_device
+class c3040_device :  public base_c2040_device
 {
-    friend class c2040_device_config;
-
+public:
     // construction/destruction
-    c3040_device(running_machine &_machine, const c2040_device_config &_config);
+    c3040_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
 
 // ======================> c4040_device
 
-class c4040_device :  public c2040_device
+class c4040_device :  public base_c2040_device
 {
-    friend class c2040_device_config;
-
+public:
     // construction/destruction
-    c4040_device(running_machine &_machine, const c2040_device_config &_config);
+    c4040_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
 
 // ======================> c8050_device
 
-class c8050_device :  public c2040_device
+class c8050_device :  public base_c2040_device
 {
-    friend class c2040_device_config;
-
+public:
 	// construction/destruction
-    c8050_device(running_machine &_machine, const c2040_device_config &_config);
+    c8050_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
 
 // ======================> c8250_device
 
-class c8250_device :  public c8050_device
+class c8250_device :  public base_c2040_device
 {
-    friend class c2040_device_config;
-
+public:
     // construction/destruction
-    c8250_device(running_machine &_machine, const c2040_device_config &_config);
+    c8250_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
 
 // ======================> sfd1001_device
 
-class sfd1001_device :  public c8050_device
+class sfd1001_device :  public base_c2040_device
 {
-    friend class c2040_device_config;
-
+public:
     // construction/destruction
-    sfd1001_device(running_machine &_machine, const c2040_device_config &_config);
+    sfd1001_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
 

@@ -31,8 +31,8 @@
 class smc777_state : public driver_device
 {
 public:
-	smc777_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	smc777_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	UINT16 m_cursor_addr;
 	UINT16 m_cursor_raster;
@@ -1011,7 +1011,7 @@ static const wd17xx_interface smc777_mb8876_interface =
 };
 
 static FLOPPY_OPTIONS_START( smc777 )
-	FLOPPY_OPTION( img, "img", "SMC70 disk image", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION( img, "img", "SMC70 disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([70])
 		SECTORS([16])

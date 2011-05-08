@@ -123,8 +123,8 @@ typedef struct
 class compis_state : public driver_device
 {
 public:
-	compis_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	compis_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_hgdc(*this, "upd7220")
 		  { }
 
@@ -142,7 +142,7 @@ public:
 
 /*----------- defined in machine/compis.c -----------*/
 
-extern const i8255a_interface compis_ppi_interface;
+extern const i8255_interface compis_ppi_interface;
 extern const struct pit8253_config compis_pit8253_config;
 extern const struct pit8253_config compis_pit8254_config;
 extern const struct pic8259_interface compis_pic8259_master_config;

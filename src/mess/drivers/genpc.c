@@ -33,8 +33,8 @@
 class genpc_state : public driver_device
 {
 public:
-	genpc_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	genpc_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 };
 
@@ -99,6 +99,17 @@ static DEVICE_INPUT_DEFAULTS_START(vga)
 	DEVICE_INPUT_DEFAULTS("DSW0",0x30, 0x00)
 DEVICE_INPUT_DEFAULTS_END
 
+static SLOT_INTERFACE_START(pc_isa8_cards)
+	SLOT_INTERFACE("mda", ISA8_MDA)
+	SLOT_INTERFACE("com", ISA8_COM)
+	SLOT_INTERFACE("fdc", ISA8_FDC)
+	SLOT_INTERFACE("hdc", ISA8_HDC)
+	SLOT_INTERFACE("adlib", ISA8_ADLIB)
+	SLOT_INTERFACE("hercules", ISA8_HERCULES)
+	SLOT_INTERFACE("gblaster", ISA8_GAME_BLASTER)
+	SLOT_INTERFACE("sblaster", ISA8_SOUND_BLASTER_1_0)
+SLOT_INTERFACE_END
+
 static MACHINE_CONFIG_START( pcmda, genpc_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", V20, 4772720)
@@ -110,11 +121,12 @@ static MACHINE_CONFIG_START( pcmda, genpc_state )
 	/* video hardware */
 	MCFG_PALETTE_LENGTH( 256 )
 
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 0, "mda", ISA8_MDA)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 1, "com", ISA8_COM)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 2, "fdc", ISA8_FDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 3, "hdc", ISA8_HDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 4, "adlib", ISA8_ADLIB)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 1, "isa1", pc_isa8_cards, "mda")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 2, "isa2", pc_isa8_cards, "com")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 3, "isa3", pc_isa8_cards, "fdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 4, "isa4", pc_isa8_cards, "hdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 5, "isa5", pc_isa8_cards, "adlib")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 6, "isa6", pc_isa8_cards, NULL)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -133,11 +145,12 @@ static MACHINE_CONFIG_START( pcherc, genpc_state )
 
 	MCFG_IBM5160_MOTHERBOARD_ADD("mb","maincpu",pc_keytronic_keyboard_intf)
 
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 0, "hercules", ISA8_HERCULES)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 1, "com", ISA8_COM)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 2, "fdc", ISA8_FDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 3, "hdc", ISA8_HDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 4, "adlib", ISA8_ADLIB)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 1, "isa1", pc_isa8_cards, "hercules")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 2, "isa2", pc_isa8_cards, "com")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 3, "isa3", pc_isa8_cards, "fdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 4, "isa4", pc_isa8_cards, "hdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 5, "isa5", pc_isa8_cards, "adlib")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 6, "isa6", pc_isa8_cards, NULL)
 
 	/* video hardware */
 	MCFG_PALETTE_LENGTH( 256 )
@@ -164,10 +177,12 @@ static MACHINE_CONFIG_START( pccga, genpc_state )
 	MCFG_FRAGMENT_ADD( pcvideo_cga )
 	MCFG_PALETTE_LENGTH( 256 )
 
-    MCFG_ISA8_BUS_DEVICE("mb:isa", 1, "com", ISA8_COM)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 2, "fdc", ISA8_FDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 3, "hdc", ISA8_HDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 4, "gblaster", ISA8_GAME_BLASTER)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 1, "isa1", pc_isa8_cards, "com")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 2, "isa2", pc_isa8_cards, "fdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 3, "isa3", pc_isa8_cards, "hdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 4, "isa4", pc_isa8_cards, "sblaster")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 5, "isa5", pc_isa8_cards, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 6, "isa6", pc_isa8_cards, NULL)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -188,10 +203,12 @@ static MACHINE_CONFIG_START( xtvga, genpc_state )
 	MCFG_IBM5160_MOTHERBOARD_ADD("mb","maincpu",pc_keytronic_keyboard_intf)
 	MCFG_DEVICE_INPUT_DEFAULTS(vga)
 
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 1, "com", ISA8_COM)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 2, "fdc", ISA8_FDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 3, "hdc", ISA8_HDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 4, "sblaster", ISA8_SOUND_BLASTER_1_0)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 1, "isa1", pc_isa8_cards, "com")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 2, "isa2", pc_isa8_cards, "fdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 3, "isa3", pc_isa8_cards, "hdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 4, "isa4", pc_isa8_cards, "sblaster")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 5, "isa5", pc_isa8_cards, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 6, "isa6", pc_isa8_cards, NULL)
 
 	/* video hardware */
 	MCFG_IBM_VGA_ADD( "vga" )

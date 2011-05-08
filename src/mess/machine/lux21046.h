@@ -10,7 +10,6 @@
 #include "cpu/z80/z80daisy.h"
 #include "formats/basicdsk.h"
 #include "imagedev/flopdrv.h"
-#include "imagedev/flopimg.h"
 #include "machine/abcbus.h"
 #include "machine/devhelpr.h"
 #include "machine/wd17xx.h"
@@ -69,50 +68,21 @@ struct luxor_55_21046_interface
 	UINT8 m_sw3;				// ABC bus address
 };
 
+// ======================> luxor_55_21046_device
 
-// ======================> luxor_55_21046_device_config
-
-class luxor_55_21046_device_config :   public device_config,
-									   public device_config_abcbus_interface,
-									   public luxor_55_21046_interface
+class luxor_55_21046_device :  public device_t,
+							   public device_abcbus_interface,
+							   public luxor_55_21046_interface
 {
-    friend class luxor_55_21046_device;
-
-    // construction/destruction
-    luxor_55_21046_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock);
-
 public:
-    // allocators
-    static device_config *static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock);
-    virtual device_t *alloc_device(running_machine &machine) const;
+    // construction/destruction
+    luxor_55_21046_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
 	// optional information overrides
 	virtual const rom_entry *device_rom_region() const;
 	virtual machine_config_constructor device_mconfig_additions() const;
 	virtual const input_port_token *device_input_ports() const;
 
-protected:
-    // device_config overrides
-    virtual void device_config_complete();
-
-private:
-	UINT8 m_sw1;				// DS/DD
-	UINT8 m_sw2;				// drive type
-	UINT8 m_sw3;				// ABC bus address
-};
-
-
-// ======================> luxor_55_21046_device
-
-class luxor_55_21046_device :  public device_t,
-							   public device_abcbus_interface
-{
-    friend class luxor_55_21046_device_config;
-
-    // construction/destruction
-    luxor_55_21046_device(running_machine &_machine, const luxor_55_21046_device_config &_config);
-
-public:
 	DECLARE_READ8_MEMBER( _3d_r );
 	DECLARE_WRITE8_MEMBER( _4d_w );
 	DECLARE_WRITE8_MEMBER( _4b_w );
@@ -127,6 +97,7 @@ protected:
     // device-level overrides
     virtual void device_start();
 	virtual void device_reset();
+	virtual void device_config_complete();
 
 	// device_abcbus_interface overrides
 	virtual void abcbus_cs(UINT8 data);
@@ -141,8 +112,8 @@ private:
 	required_device<cpu_device> m_maincpu;
 	required_device<z80dma_device> m_dma;
 	required_device<device_t> m_fdc;
-	device_t *m_image0;
-	device_t *m_image1;
+	required_device<device_t> m_image0;
+	required_device<device_t> m_image1;
 
 	bool m_cs;					// card selected
 	UINT8 m_status;				// ABC BUS status
@@ -153,7 +124,9 @@ private:
 	int m_busy;					// busy bit
 	int m_force_busy;			// force busy bit
 
-    const luxor_55_21046_device_config &m_config;
+	UINT8 m_sw1;				// DS/DD
+	UINT8 m_sw2;				// drive type
+	UINT8 m_sw3;				// ABC bus address
 };
 
 

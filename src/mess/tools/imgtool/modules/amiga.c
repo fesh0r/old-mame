@@ -18,7 +18,7 @@
 
 #include "imgtool.h"
 #include "iflopimg.h"
-#include "imageutl.h"
+#include "formats/imageutl.h"
 #include "formats/ami_dsk.h"
 
 
@@ -979,7 +979,7 @@ static imgtoolerr_t walk_hash_chain(imgtool_image *img, const char *path, int st
 	char name[31];
 
 	/* choose compare function depending on intl mode */
-	int (*cmp)(const char *, const char *) = is_intl(img) ? &intl_stricmp : &mame_stricmp;
+	int (*cmp)(const char *, const char *) = is_intl(img) ? &intl_stricmp : &core_stricmp;
 
 	/* initialize filenames */
 	memset(name, 0, sizeof(name));

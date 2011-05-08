@@ -27,8 +27,8 @@
 class supercon_state : public driver_device
 {
 public:
-	supercon_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	supercon_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	UINT8 *m_ram;
 	emu_timer* m_timer_update_irq;
@@ -352,7 +352,7 @@ static READ8_HANDLER( supercon_port4_r )
 {
 	supercon_state *state = space->machine().driver_data<supercon_state>();
 	int i_18, i_AH;
-	UINT8 key_data = 0x00;;
+	UINT8 key_data = 0x00;
 
 	static const char *const board_lines[8] =
 			{ "BOARD_1", "BOARD_2", "BOARD_3", "BOARD_4", "BOARD_5", "BOARD_6", "BOARD_7", "BOARD_8" };
@@ -527,17 +527,15 @@ static TIMER_CALLBACK( update_irq )
 
 /* Save state call backs */
 
-static STATE_PRESAVE( m_board_presave )
+static void board_presave(supercon_state *state)
 {
-    supercon_state *state = machine.driver_data<supercon_state>();
     int i;
     for (i=0;i<64;i++)
         state->m_save_board[i]=state->m_board[i];
 }
 
-static STATE_POSTLOAD( m_board_postload )
+static void board_postload(supercon_state *state)
 {
-    supercon_state *state = machine.driver_data<supercon_state>();
     int i;
     for (i=0;i<64;i++)
         state->m_board[i]=state->m_save_board[i];
@@ -556,8 +554,8 @@ static MACHINE_START( supercon )
 
 
     state->save_item(NAME(state->m_save_board));
-    machine.save().register_postload(m_board_postload,NULL);
-    machine.save().register_presave(m_board_presave,NULL);
+    machine.save().register_postload(save_prepost_delegate(FUNC(board_postload),state));
+    machine.save().register_presave(save_prepost_delegate(FUNC(board_presave),state));
 
 }
 

@@ -8,7 +8,7 @@
 #include "emu.h"
 #include "includes/genpc.h"
 
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
 #include "machine/8237dma.h"
@@ -307,14 +307,14 @@ WRITE_LINE_MEMBER( ibm5160_mb_device::keyboard_clock_w )
 						pic8259_ir1_w(m_pic8259, 1);
 						m_ppi_shift_enable = 0;
 						m_ppi_clock_signal = 0;
-						devcb_call_write_line(&m_kb_set_clock_signal_func, m_ppi_clock_signal);
+						m_kb_set_clock_signal_func(m_ppi_clock_signal);
 					}
 				}
 			}
 		}
 	}
 
-	devcb_call_write_line(&m_kb_set_clock_signal_func,m_ppi_clock_signal);
+	m_kb_set_clock_signal_func(m_ppi_clock_signal);
 }
 
 
@@ -322,7 +322,7 @@ WRITE_LINE_MEMBER( ibm5160_mb_device::keyboard_data_w )
 {
 	m_ppi_data_signal = state;
 
-	devcb_call_write_line(&m_kb_set_data_signal_func,m_ppi_data_signal);
+	m_kb_set_data_signal_func(m_ppi_data_signal);
 }
 
 READ8_MEMBER (ibm5160_mb_device::pc_ppi_porta_r)
@@ -393,7 +393,7 @@ WRITE8_MEMBER( ibm5160_mb_device::pc_ppi_portb_w )
 	pc_speaker_set_spkrdata( data & 0x02 );
 
 	m_ppi_clock_signal = ( m_ppi_keyb_clock ) ? 1 : 0;
-	devcb_call_write_line(&m_kb_set_clock_signal_func,m_ppi_clock_signal);
+	m_kb_set_clock_signal_func(m_ppi_clock_signal);
 
 	/* If PB7 is set clear the shift register and reset the IRQ line */
 	if ( m_ppi_keyboard_clear )
@@ -409,9 +409,9 @@ I8255A_INTERFACE( pc_ppi8255_interface )
 {
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_ppi_porta_r),
 	DEVCB_NULL,
-	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_ppi_portc_r),
 	DEVCB_NULL,
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_ppi_portb_w),
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_ppi_portc_r),
 	DEVCB_NULL
 };
 
@@ -447,7 +447,7 @@ static WRITE8_DEVICE_HANDLER( nmi_enable_w )
 //  GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type IBM5160_MOTHERBOARD = ibm5160_mb_device_config::static_alloc_device_config;
+const device_type IBM5160_MOTHERBOARD = &device_creator<ibm5160_mb_device>;
 
 //**************************************************************************
 //  DEVICE CONFIGURATION
@@ -471,39 +471,11 @@ MACHINE_CONFIG_END
 
 
 //-------------------------------------------------
-//  ibm5160_mb_device_config - constructor
-//-------------------------------------------------
-
-ibm5160_mb_device_config::ibm5160_mb_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-        : device_config(mconfig, static_alloc_device_config, "IBM5160_MOTHERBOARD", tag, owner, clock)
-{
-}
-
-//-------------------------------------------------
-//  static_alloc_device_config - allocate a new
-//  configuration object
-//-------------------------------------------------
-
-device_config *ibm5160_mb_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-{
-	return global_alloc(ibm5160_mb_device_config(mconfig, tag, owner, clock));
-}
-
-//-------------------------------------------------
-//  alloc_device - allocate a new device object
-//-------------------------------------------------
-
-device_t *ibm5160_mb_device_config::alloc_device(running_machine &machine) const
-{
-	return auto_alloc(machine, ibm5160_mb_device(machine, *this));
-}
-
-//-------------------------------------------------
 //  machine_config_additions - device-specific
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor ibm5160_mb_device_config::device_mconfig_additions() const
+machine_config_constructor ibm5160_mb_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( ibm5160_mb_config );
 }
@@ -537,16 +509,16 @@ INPUT_PORTS_END
 //  input_ports - device-specific input ports
 //-------------------------------------------------
 
-const input_port_token *ibm5160_mb_device_config::device_input_ports() const
+const input_port_token *ibm5160_mb_device::device_input_ports() const
 {
 	return INPUT_PORTS_NAME( ibm5160_mb );
 }
 
 
-void ibm5160_mb_device_config::static_set_cputag(device_config *device, const char *tag)
+void ibm5160_mb_device::static_set_cputag(device_t &device, const char *tag)
 {
-	ibm5160_mb_device_config *board = downcast<ibm5160_mb_device_config *>(device);
-	board->m_cputag = tag;
+	ibm5160_mb_device &board = downcast<ibm5160_mb_device &>(device);
+	board.m_cputag = tag;
 }
 
 //**************************************************************************
@@ -557,10 +529,9 @@ void ibm5160_mb_device_config::static_set_cputag(device_config *device, const ch
 //  ibm5160_mb_device - constructor
 //-------------------------------------------------
 
-ibm5160_mb_device::ibm5160_mb_device(running_machine &_machine, const ibm5160_mb_device_config &config) :
-        device_t(_machine, config),
-        m_config(config),
-		m_maincpu(*(owner()), config.m_cputag),
+ibm5160_mb_device::ibm5160_mb_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+       : device_t(mconfig, IBM5160_MOTHERBOARD, "IBM5160_MOTHERBOARD", tag, owner, clock),
+		m_maincpu(*owner, "maincpu"),
 		m_pic8259(*this, "pic8259"),
 		m_dma8237(*this, "dma8237"),
 		m_pit8253(*this, "pit8253"),
@@ -611,7 +582,7 @@ void ibm5160_mb_device::install_device_write(device_t *dev, offs_t start, offs_t
 //  complete
 //-------------------------------------------------
 
-void ibm5160_mb_device_config::device_config_complete()
+void ibm5160_mb_device::device_config_complete()
 {
 	// inherit a copy of the static data
 	const motherboard_interface *intf = reinterpret_cast<const motherboard_interface *>(static_config());
@@ -623,8 +594,8 @@ void ibm5160_mb_device_config::device_config_complete()
 	// or initialize to defaults if none provided
 	else
 	{
-    	memset(&m_kb_set_clock_signal_func, 0, sizeof(m_kb_set_clock_signal_func));
-    	memset(&m_kb_set_data_signal_func, 0, sizeof(m_kb_set_data_signal_func));
+    	memset(&m_kb_set_clock_signal_cb, 0, sizeof(m_kb_set_clock_signal_cb));
+    	memset(&m_kb_set_data_signal_cb, 0, sizeof(m_kb_set_data_signal_cb));
 	}
 }
 
@@ -635,13 +606,28 @@ void ibm5160_mb_device_config::device_config_complete()
 void ibm5160_mb_device::device_start()
 {
 	// resolve callbacks
-	devcb_resolve_write_line(&m_kb_set_clock_signal_func, &m_config.m_kb_set_clock_signal_func, this);
-	devcb_resolve_write_line(&m_kb_set_data_signal_func,  &m_config.m_kb_set_data_signal_func,  this);
+	m_kb_set_clock_signal_func.resolve(m_kb_set_clock_signal_cb, *this);
+	m_kb_set_data_signal_func.resolve(m_kb_set_data_signal_cb,  *this);
 
 	install_device(m_dma8237, 0x0000, 0x000f, 0, 0, FUNC(i8237_r), FUNC(i8237_w) );
 	install_device(m_pic8259, 0x0020, 0x0021, 0, 0, FUNC(pic8259_r), FUNC(pic8259_w) );
 	install_device(m_pit8253, 0x0040, 0x0043, 0, 0, FUNC(pit8253_r), FUNC(pit8253_w) );
-	install_device(m_ppi8255, 0x0060, 0x0063, 0, 0, FUNC(i8255a_r), FUNC(i8255a_w) );
+
+	//  install_device(m_ppi8255, 0x0060, 0x0063, 0, 0, FUNC(i8255a_r), FUNC(i8255a_w) );
+	int buswidth = machine().firstcpu->memory().space_config(AS_IO)->m_databus_width;
+	switch(buswidth)
+	{
+		case 8:
+			m_maincpu->memory().space(AS_IO)->install_readwrite_handler(0x0060, 0x0063, 0, 0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi8255), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi8255), 0);
+			break;
+		case 16:
+			m_maincpu->memory().space(AS_IO)->install_readwrite_handler(0x0060, 0x0063, 0, 0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi8255), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi8255), 0xffff);
+			break;
+		default:
+			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
+			break;
+	}
+
 	install_device(this,    0x0080, 0x0087, 0, 0, FUNC(pc_page_r), FUNC(pc_page_w) );
 	install_device_write(this,    0x00a0, 0x00a1, 0, 0, FUNC(nmi_enable_w));
 	/* MESS managed RAM */
@@ -688,7 +674,7 @@ void ibm5160_mb_device::device_reset()
 //  GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type IBM5150_MOTHERBOARD = ibm5150_mb_device_config::static_alloc_device_config;
+const device_type IBM5150_MOTHERBOARD = &device_creator<ibm5150_mb_device>;
 
 //**************************************************************************
 //  DEVICE CONFIGURATION
@@ -709,39 +695,11 @@ MACHINE_CONFIG_END
 
 
 //-------------------------------------------------
-//  ibm5150_mb_device_config - constructor
-//-------------------------------------------------
-
-ibm5150_mb_device_config::ibm5150_mb_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-        : ibm5160_mb_device_config(mconfig, tag, owner, clock)
-{
-}
-
-//-------------------------------------------------
-//  static_alloc_device_config - allocate a new
-//  configuration object
-//-------------------------------------------------
-
-device_config *ibm5150_mb_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-{
-	return global_alloc(ibm5150_mb_device_config(mconfig, tag, owner, clock));
-}
-
-//-------------------------------------------------
-//  alloc_device - allocate a new device object
-//-------------------------------------------------
-
-device_t *ibm5150_mb_device_config::alloc_device(running_machine &machine) const
-{
-	return auto_alloc(machine, ibm5150_mb_device(machine, *this));
-}
-
-//-------------------------------------------------
 //  machine_config_additions - device-specific
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor ibm5150_mb_device_config::device_mconfig_additions() const
+machine_config_constructor ibm5150_mb_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( ibm5150_mb_config );
 }
@@ -754,9 +712,9 @@ machine_config_constructor ibm5150_mb_device_config::device_mconfig_additions() 
 //  ibm5150_mb_device - constructor
 //-------------------------------------------------
 
-ibm5150_mb_device::ibm5150_mb_device(running_machine &_machine, const ibm5150_mb_device_config &config) :
-        ibm5160_mb_device(_machine, config),
-		m_cassette(*this, "cassette")
+ibm5150_mb_device::ibm5150_mb_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: ibm5160_mb_device(mconfig, tag, owner, clock),
+	  m_cassette(*this, "cassette")
 {
 }
 
@@ -892,7 +850,7 @@ WRITE8_MEMBER( ibm5150_mb_device::pc_ppi_portb_w )
 	cassette_change_state( m_cassette, ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	m_ppi_clock_signal = ( m_ppi_keyb_clock ) ? 1 : 0;
-		devcb_call_write_line(&m_kb_set_clock_signal_func,m_ppi_clock_signal);
+		m_kb_set_clock_signal_func(m_ppi_clock_signal);
 
 
 	/* If PB7 is set clear the shift register and reset the IRQ line */

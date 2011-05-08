@@ -100,7 +100,7 @@ WRITE_LINE_DEVICE_HANDLER( microdrive_clk_w )
 
 		if (LOG) logerror("Microdrive '%s' COMMS OUT: %u\n", device->tag(), mdv->comms_out);
 
-		devcb_call_write_line(&mdv->out_comms_out_func, mdv->comms_out);
+		mdv->out_comms_out_func(mdv->comms_out);
 
 		mdv->bit_timer->enable(mdv->comms_out);
 	}
@@ -190,10 +190,10 @@ READ_LINE_DEVICE_HANDLER( microdrive_data2_r )
 static DEVICE_START( microdrive )
 {
 	microdrive_t *mdv = get_safe_token(device);
-	const microdrive_config *config = (const microdrive_config*) device->baseconfig().static_config();
+	const microdrive_config *config = (const microdrive_config*) device->static_config();
 
 	// resolve callbacks
-	devcb_resolve_write_line(&mdv->out_comms_out_func, &config->out_comms_out_func, device);
+	mdv->out_comms_out_func.resolve(config->out_comms_out_func, *device);
 
 	// allocate track buffers
 	mdv->left = auto_alloc_array(device->machine(), UINT8, MDV_IMAGE_LENGTH / 2);

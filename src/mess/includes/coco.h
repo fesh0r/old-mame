@@ -74,8 +74,8 @@ struct _coco3_video
 class coco_state : public driver_device
 {
 public:
-	coco_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	coco_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	device_t *m_cococart_device;
 	device_t *m_cassette_device;
@@ -83,9 +83,9 @@ public:
 	device_t *m_printer_device;
 	device_t *m_dac;
 	device_t *m_sam;
-	device_t *m_pia_0;
-	device_t *m_pia_1;
-	device_t *m_pia_2;
+	pia6821_device *m_pia_0;
+	pia6821_device *m_pia_1;
+	pia6821_device *m_pia_2;
 	UINT8 *m_rom;
 	int m_dclg_state;
 	int m_dclg_output_h;
@@ -114,8 +114,8 @@ public:
 class coco3_state : public coco_state
 {
 public:
-	coco3_state(running_machine &machine, const driver_device_config_base &config)
-		: coco_state(machine, config) { }
+	coco3_state(const machine_config &mconfig, device_type type, const char *tag)
+		: coco_state(mconfig, type, tag) { }
 
 	int m_enable_64k;
 	UINT8 m_mmu[16];

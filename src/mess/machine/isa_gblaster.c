@@ -20,9 +20,9 @@
 static MACHINE_CONFIG_FRAGMENT( game_blaster_config )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("saa1099.1", SAA1099, 4772720)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "gblaster:mono", 0.50)
+	//MCFG_SOUND_ROUTE(ALL_OUTPUTS, "gblaster:mono", 0.50)
 	MCFG_SOUND_ADD("saa1099.2", SAA1099, 4772720)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "gblaster:mono", 0.50)
+	//MCFG_SOUND_ROUTE(ALL_OUTPUTS, "gblaster:mono", 0.50)
 MACHINE_CONFIG_END
 
 static READ8_DEVICE_HANDLER( saa1099_16_r )
@@ -43,47 +43,14 @@ static WRITE8_DEVICE_HANDLER( saa1099_16_w )
 //  GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type ISA8_GAME_BLASTER = isa8_gblaster_device_config::static_alloc_device_config;
-
-//**************************************************************************
-//  DEVICE CONFIGURATION
-//**************************************************************************
-
-//-------------------------------------------------
-//  isa8_gblaster_device_config - constructor
-//-------------------------------------------------
-
-isa8_gblaster_device_config::isa8_gblaster_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-        : device_config(mconfig, static_alloc_device_config, "ISA8_GAME_BLASTER", tag, owner, clock),
-			device_config_isa8_card_interface(mconfig, *this)
-{
-}
-
-//-------------------------------------------------
-//  static_alloc_device_config - allocate a new
-//  configuration object
-//-------------------------------------------------
-
-device_config *isa8_gblaster_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-{
-        return global_alloc(isa8_gblaster_device_config(mconfig, tag, owner, clock));
-}
-
-//-------------------------------------------------
-//  alloc_device - allocate a new device object
-//-------------------------------------------------
-
-device_t *isa8_gblaster_device_config::alloc_device(running_machine &machine) const
-{
-        return auto_alloc(machine, isa8_gblaster_device(machine, *this));
-}
+const device_type ISA8_GAME_BLASTER = &device_creator<isa8_gblaster_device>;
 
 //-------------------------------------------------
 //  machine_config_additions - device-specific
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor isa8_gblaster_device_config::device_mconfig_additions() const
+machine_config_constructor isa8_gblaster_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( game_blaster_config );
 }
@@ -96,11 +63,10 @@ machine_config_constructor isa8_gblaster_device_config::device_mconfig_additions
 //  isa8_gblaster_device - constructor
 //-------------------------------------------------
 
-isa8_gblaster_device::isa8_gblaster_device(running_machine &_machine, const isa8_gblaster_device_config &config) :
-        device_t(_machine, config),
-		device_isa8_card_interface( _machine, config, *this ),
-        m_config(config),
-		m_isa(*owner(),config.m_isa_tag)
+isa8_gblaster_device::isa8_gblaster_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+        device_t(mconfig, ISA8_GAME_BLASTER, "ISA8_GAME_BLASTER", tag, owner, clock),
+		device_isa8_card_interface(mconfig, *this),
+		device_slot_card_interface(mconfig, *this)
 {
 }
 
@@ -110,7 +76,7 @@ isa8_gblaster_device::isa8_gblaster_device(running_machine &_machine, const isa8
 
 void isa8_gblaster_device::device_start()
 {
-	m_isa->add_isa_card(this, m_config.m_isa_num);
+	m_isa = machine().device<isa8_device>("mb:isa");
 	m_isa->install_device(subdevice("saa1099.1"), 0x0220, 0x0221, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
 	m_isa->install_device(subdevice("saa1099.2"), 0x0222, 0x0223, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
 }

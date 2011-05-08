@@ -102,7 +102,7 @@ INLINE const ti99grom_config *get_config(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == GROM);
 
-	return (const ti99grom_config *) downcast<const legacy_device_config_base &>(device->baseconfig()).inline_config();
+	return (const ti99grom_config *) downcast<const legacy_device_base *>(device)->inline_config();
 }
 
 /*
@@ -270,9 +270,9 @@ static DEVICE_START( ti99grom )
 	grom->rollover = gromconf->rollover;
 
 	devcb_write_line ready = DEVCB_LINE(gromconf->ready);
-	devcb_resolve_write_line(&grom->gromready, &ready, device);
+	grom->gromready.resolve(ready, *device);
 	// Test
-	// devcb_call_write_line(&grom->gromready, ASSERT_LINE);
+	// grom->gromready(ASSERT_LINE);
 }
 
 static DEVICE_STOP( ti99grom )

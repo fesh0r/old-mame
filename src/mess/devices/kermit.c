@@ -555,7 +555,7 @@ void kermit_receive_byte( device_t *device, UINT8 data )
 							/* get conf & send file name */
 							kermit_get_conf( state );
 							kermit_send_string_packet( state, KERMIT_FILE, state->image->basename() );
-							state->state = KERMIT_SEND_DATA;;
+							state->state = KERMIT_SEND_DATA;
 							break;
 
 						case KERMIT_SEND_DATA:
@@ -644,7 +644,7 @@ static DEVICE_START( kermit )
 	kermit* state = get_safe_token(device);
 	LOG(( "kermit: start\n" ));
 	state->image = NULL;
-	state->conf = (kermit_config*) device->baseconfig().static_config();
+	state->conf = (kermit_config*) device->static_config();
 	state->machine = &device->machine();
 	state->resend = device->machine().scheduler().timer_alloc(FUNC(kermit_resend_cb), state );
 	kermit_reset( state );

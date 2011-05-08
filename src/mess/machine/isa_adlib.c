@@ -20,7 +20,7 @@ static MACHINE_CONFIG_FRAGMENT( adlib_config )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
 	MCFG_SOUND_CONFIG(pc_ym3812_interface)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "adlib:mono", 1.00)
+	//MCFG_SOUND_ROUTE(ALL_OUTPUTS, "adlib:mono", 1.00)
 MACHINE_CONFIG_END
 
 static READ8_DEVICE_HANDLER( ym3812_16_r )
@@ -46,47 +46,14 @@ static WRITE8_DEVICE_HANDLER( ym3812_16_w )
 //  GLOBAL VARIABLES
 //**************************************************************************
 
-const device_type ISA8_ADLIB = isa8_adlib_device_config::static_alloc_device_config;
-
-//**************************************************************************
-//  DEVICE CONFIGURATION
-//**************************************************************************
-
-//-------------------------------------------------
-//  isa8_adlib_device_config - constructor
-//-------------------------------------------------
-
-isa8_adlib_device_config::isa8_adlib_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-        : device_config(mconfig, static_alloc_device_config, "ISA8_ADLIB", tag, owner, clock),
-			device_config_isa8_card_interface(mconfig, *this)
-{
-}
-
-//-------------------------------------------------
-//  static_alloc_device_config - allocate a new
-//  configuration object
-//-------------------------------------------------
-
-device_config *isa8_adlib_device_config::static_alloc_device_config(const machine_config &mconfig, const char *tag, const device_config *owner, UINT32 clock)
-{
-        return global_alloc(isa8_adlib_device_config(mconfig, tag, owner, clock));
-}
-
-//-------------------------------------------------
-//  alloc_device - allocate a new device object
-//-------------------------------------------------
-
-device_t *isa8_adlib_device_config::alloc_device(running_machine &machine) const
-{
-        return auto_alloc(machine, isa8_adlib_device(machine, *this));
-}
+const device_type ISA8_ADLIB = &device_creator<isa8_adlib_device>;
 
 //-------------------------------------------------
 //  machine_config_additions - device-specific
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor isa8_adlib_device_config::device_mconfig_additions() const
+machine_config_constructor isa8_adlib_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( adlib_config );
 }
@@ -99,11 +66,10 @@ machine_config_constructor isa8_adlib_device_config::device_mconfig_additions() 
 //  isa8_adlib_device - constructor
 //-------------------------------------------------
 
-isa8_adlib_device::isa8_adlib_device(running_machine &_machine, const isa8_adlib_device_config &config) :
-        device_t(_machine, config),
-		device_isa8_card_interface( _machine, config, *this ),
-        m_config(config),
-		m_isa(*owner(),config.m_isa_tag)
+isa8_adlib_device::isa8_adlib_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+      : device_t(mconfig, ISA8_ADLIB, "ISA8_ADLIB", tag, owner, clock),
+		device_isa8_card_interface( mconfig, *this ),
+		device_slot_card_interface(mconfig, *this)
 {
 }
 
@@ -113,7 +79,7 @@ isa8_adlib_device::isa8_adlib_device(running_machine &_machine, const isa8_adlib
 
 void isa8_adlib_device::device_start()
 {
-	m_isa->add_isa_card(this, m_config.m_isa_num);
+	m_isa = machine().device<isa8_device>("mb:isa");
 	m_isa->install_device(subdevice("ym3812"), 0x0388, 0x0389, 0, 0, FUNC(ym3812_16_r), FUNC(ym3812_16_w) );
 }
 

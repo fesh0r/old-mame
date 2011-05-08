@@ -18,11 +18,10 @@
 
 #include <string.h>
 #include <stdarg.h>
-#include <assert.h>
 #include <ctype.h>
 
 #include "imgtool.h"
-#include "imageutl.h"
+#include "formats/imageutl.h"
 
 
 /***************************************************************************

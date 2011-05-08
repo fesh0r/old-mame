@@ -35,8 +35,8 @@ struct _c64_cart_t {
 class c64_state : public driver_device
 {
 public:
-	c64_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	c64_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_iec(*this, CBM_IEC_TAG)
     { }
 
@@ -48,6 +48,7 @@ public:
 	int m_old_game;
 	UINT8 m_vicirq;
 	emu_timer *m_datasette_timer;
+	emu_timer *m_cartridge_timer;
 	UINT8 *m_colorram;
 	UINT8 *m_basic;
 	UINT8 *m_kernal;

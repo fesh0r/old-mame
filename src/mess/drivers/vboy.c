@@ -53,8 +53,8 @@ struct _vip_regs_t
 class vboy_state : public driver_device
 {
 public:
-	vboy_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	vboy_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	UINT16 *m_font;
 	UINT16 *m_bgmap;
@@ -527,7 +527,7 @@ static VIDEO_START( vboy )
 	state->m_screen_output = auto_bitmap_alloc(machine, 384, 224, BITMAP_FORMAT_INDEXED16);
 
 	state->m_font  = auto_alloc_array(machine, UINT16, 2048 * 8);
-	state->m_bgmap = auto_alloc_array(machine, UINT16, 0x20000 >> 1);;
+	state->m_bgmap = auto_alloc_array(machine, UINT16, 0x20000 >> 1);
 	state->m_objects = state->m_bgmap + (0x1E000 >> 1);
 	state->m_columntab1 = state->m_bgmap + (0x1dc00 >> 1);
 	state->m_columntab2 = state->m_bgmap + (0x1de00 >> 1);

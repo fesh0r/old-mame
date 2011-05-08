@@ -66,8 +66,8 @@
 class ti99_4p_state : public driver_device
 {
 public:
-	ti99_4p_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	ti99_4p_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 };
 
@@ -122,7 +122,6 @@ static INPUT_PORTS_START(ti99_4p)
 
 	PORT_START( "EXTCARD" )
 	PORT_CONFNAME( 0x03, 0x02, "HSGPL extension" )
-		PORT_CONFSETTING(    0x01, "Flash" )
 		PORT_CONFSETTING(    0x02, DEF_STR( On ) )
 
 	// We do not want to show this setting; makes only sense for Geneve

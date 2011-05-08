@@ -7,15 +7,15 @@
 #ifndef radio86_H_
 #define radio86_H_
 
-#include "machine/i8255a.h"
+#include "machine/i8255.h"
 #include "machine/8257dma.h"
 #include "video/i8275.h"
 
 class radio86_state : public driver_device
 {
 public:
-	radio86_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	radio86_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 	UINT8 m_tape_value;
 	UINT8 m_mikrosha_font_page;
@@ -44,12 +44,12 @@ extern READ8_HANDLER (radio_cpu_state_r );
 extern READ8_HANDLER (radio_io_r );
 extern WRITE8_HANDLER(radio_io_w );
 
-extern const i8255a_interface radio86_ppi8255_interface_1;
-extern const i8255a_interface radio86_ppi8255_interface_2;
-extern const i8255a_interface rk7007_ppi8255_interface;
+extern const i8255_interface radio86_ppi8255_interface_1;
+extern const i8255_interface radio86_ppi8255_interface_2;
+extern const i8255_interface rk7007_ppi8255_interface;
 
-extern const i8255a_interface mikrosha_ppi8255_interface_1;
-extern const i8255a_interface mikrosha_ppi8255_interface_2;
+extern const i8255_interface mikrosha_ppi8255_interface_1;
+extern const i8255_interface mikrosha_ppi8255_interface_2;
 
 extern const i8275_interface radio86_i8275_interface;
 extern const i8275_interface partner_i8275_interface;

@@ -40,8 +40,8 @@
 class eacc_state : public driver_device
 {
 public:
-	eacc_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	eacc_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
 	m_pia(*this, "pia")
 	{ }
@@ -75,7 +75,7 @@ static ADDRESS_MAP_START(eacc_mem, AS_PROGRAM, 8, eacc_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xc7ff) // A11,A12,A13 not connected
 	AM_RANGE(0x0000, 0x007f) AM_RAM // internal
 	AM_RANGE(0x6000, 0x67ff) AM_ROM AM_MIRROR(0x8000)
-	AM_RANGE(0x8004, 0x8007) AM_MIRROR(0x7fc) AM_DEVREADWRITE_LEGACY("pia", pia6821_r, pia6821_w)
+	AM_RANGE(0x8004, 0x8007) AM_MIRROR(0x7fc) AM_DEVREADWRITE("pia", pia6821_device, read, write)
 ADDRESS_MAP_END
 
 

@@ -10,9 +10,9 @@
 
 #include "emu.h"
 
-#include "990_dk.h"
 #include "formats/basicdsk.h"
 #include "imagedev/flopdrv.h"
+#include "990_dk.h"
 
 #define MAX_FLOPPIES 4
 
@@ -72,7 +72,7 @@ enum
 FLOPPY_OPTIONS_START(fd800)
 #if 1
 	/* SSSD 8" */
-	FLOPPY_OPTION(fd800, "dsk", "TI990 8\" SSSD disk image", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION(fd800, "dsk", "TI990 8\" SSSD disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([77])
 		SECTORS([26])
@@ -80,7 +80,7 @@ FLOPPY_OPTIONS_START(fd800)
 		FIRST_SECTOR_ID([1]))
 #elif 0
 	/* DSSD 8" */
-	FLOPPY_OPTION(fd800, "dsk", "TI990 8\" DSSD disk image", basicdsk_identify_default, basicdsk_construct_default,
+	FLOPPY_OPTION(fd800, "dsk", "TI990 8\" DSSD disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([2])
 		TRACKS([77])
 		SECTORS([26])
@@ -391,7 +391,7 @@ static void fd800_do_cmd(void)
 
 		if (!fd800.drv[unit].img->exists())
 			fd800.stat_reg |= status_drv_not_ready;	/* right??? */
-		else if (!fd800.drv[unit].img->is_writable())
+		else if (fd800.drv[unit].img->is_readonly())
 			fd800.stat_reg |= status_write_prot;
 		else
 			fd800.stat_reg |= status_OP_complete;

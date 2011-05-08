@@ -65,8 +65,8 @@
 class votrpss_state : public driver_device
 {
 public:
-	votrpss_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	votrpss_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 };
 
@@ -74,7 +74,7 @@ public:
 /* Components */
 //#include "sound/ay8910.h"
 //#include "sound/votrax.h"
-//#include "machine/i8255a.h"
+//#include "machine/i8255.h"
 //#include "machine/pit8253.h"
 //#include "machine/msm8251.h"
 

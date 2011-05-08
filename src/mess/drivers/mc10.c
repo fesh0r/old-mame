@@ -37,8 +37,8 @@ enum
 class mc10_state : public driver_device
 {
 public:
-	mc10_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	mc10_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, "maincpu"),
 		  m_mc6847(*this, "mc6847"),
 		  m_ef9345(*this, "ef9345"),
@@ -584,6 +584,10 @@ static MACHINE_CONFIG_DERIVED( alice90, alice32 )
 
     MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("32K")
+
+	/* Software lists */
+	MCFG_SOFTWARE_LIST_MODIFY("cass_list", "alice90")
+	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("alice32_cass", "alice32")
 MACHINE_CONFIG_END
 
 

@@ -11,8 +11,8 @@
 #include <commdlg.h>
 #include "winutils.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <tchar.h>
-#include "emu.h"
 #include "hexview.h"
 
 const TCHAR hexview_class[] = TEXT("hexview_class");

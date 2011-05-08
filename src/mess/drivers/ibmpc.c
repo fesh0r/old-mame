@@ -257,9 +257,13 @@ XT U44 IBM.bin: IBM 5160 PC/XT Bank-selection decoding ROM (256x4 bit). Not mapp
 #include "cpu/i86/i86.h"
 #include "machine/ram.h"
 #include "machine/isa.h"
+#include "machine/isa_adlib.h"
 #include "machine/isa_com.h"
 #include "machine/isa_fdc.h"
+#include "machine/isa_gblaster.h"
 #include "machine/isa_hdc.h"
+#include "machine/isa_sblaster.h"
+
 #include "machine/kb_keytro.h"
 #include "video/pc_cga.h"
 #include "includes/genpc.h"
@@ -267,8 +271,8 @@ XT U44 IBM.bin: IBM 5160 PC/XT Bank-selection decoding ROM (256x4 bit). Not mapp
 class ibmpc_state : public driver_device
 {
 public:
-	ibmpc_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config) { }
+	ibmpc_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag) { }
 
 };
 
@@ -311,6 +315,15 @@ static DEVICE_INPUT_DEFAULTS_START(cga)
 	DEVICE_INPUT_DEFAULTS("DSW0",0x30, 0x20)
 DEVICE_INPUT_DEFAULTS_END
 
+static SLOT_INTERFACE_START(ibm_isa8_cards)
+	SLOT_INTERFACE("com", ISA8_COM)
+	SLOT_INTERFACE("fdc", ISA8_FDC)
+	SLOT_INTERFACE("hdc", ISA8_HDC)
+	SLOT_INTERFACE("adlib", ISA8_ADLIB)
+	SLOT_INTERFACE("gblaster", ISA8_GAME_BLASTER)
+	SLOT_INTERFACE("sblaster", ISA8_SOUND_BLASTER_1_0)
+SLOT_INTERFACE_END
+
 static MACHINE_CONFIG_START( ibm5150, ibmpc_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8088, XTAL_14_31818MHz/3)
@@ -324,9 +337,12 @@ static MACHINE_CONFIG_START( ibm5150, ibmpc_state )
 	/* video hardware */
 	MCFG_FRAGMENT_ADD( pcvideo_cga )
 
-    MCFG_ISA8_BUS_DEVICE("mb:isa", 1, "com", ISA8_COM)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 2, "fdc", ISA8_FDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 3, "hdc", ISA8_HDC)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 1, "isa1", ibm_isa8_cards, "com")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 2, "isa2", ibm_isa8_cards, "fdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 3, "isa3", ibm_isa8_cards, "hdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 4, "isa4", ibm_isa8_cards, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 5, "isa5", ibm_isa8_cards, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 6, "isa6", ibm_isa8_cards, NULL)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
@@ -352,9 +368,12 @@ static MACHINE_CONFIG_START( ibm5160, ibmpc_state )
 	/* video hardware */
 	MCFG_FRAGMENT_ADD( pcvideo_cga )
 
-    MCFG_ISA8_BUS_DEVICE("mb:isa", 1, "com", ISA8_COM)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 2, "fdc", ISA8_FDC)
-	MCFG_ISA8_BUS_DEVICE("mb:isa", 3, "hdc", ISA8_HDC)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 1, "isa1", ibm_isa8_cards, "com")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 2, "isa2", ibm_isa8_cards, "fdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 3, "isa3", ibm_isa8_cards, "hdc")
+	MCFG_ISA8_SLOT_ADD("mb:isa", 4, "isa4", ibm_isa8_cards, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 5, "isa5", ibm_isa8_cards, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", 6, "isa6", ibm_isa8_cards, NULL)
 
 	/* keyboard */
 	MCFG_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)

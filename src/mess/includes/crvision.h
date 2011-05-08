@@ -32,8 +32,8 @@
 class crvision_state : public driver_device
 {
 public:
-	crvision_state(running_machine &machine, const driver_device_config_base &config)
-		: driver_device(machine, config),
+	crvision_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, M6502_TAG),
 		  m_pia(*this, PIA6821_TAG),
 		  m_psg(*this, SN76489_TAG),
@@ -43,7 +43,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_pia;
+	required_device<pia6821_device> m_pia;
 	required_device<device_t> m_psg;
 	required_device<device_t> m_cassette;
 	required_device<device_t> m_centronics;
@@ -69,8 +69,8 @@ public:
 class crvision_pal_state : public crvision_state
 {
 public:
-	crvision_pal_state(running_machine &machine, const driver_device_config_base &config)
-		: crvision_state(machine, config)
+	crvision_pal_state(const machine_config &mconfig, device_type type, const char *tag)
+		: crvision_state(mconfig, type, tag)
 	{ }
 
 	virtual void machine_start();
@@ -79,8 +79,8 @@ public:
 class laser2001_state : public crvision_state
 {
 public:
-	laser2001_state(running_machine &machine, const driver_device_config_base &config)
-		: crvision_state(machine, config)
+	laser2001_state(const machine_config &mconfig, device_type type, const char *tag)
+		: crvision_state(mconfig, type, tag)
 	{ }
 
 	virtual void machine_start();

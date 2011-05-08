@@ -11,10 +11,10 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
-#include "emu.h"
-#include "osdepend.h"
-#include "imagedev/flopimg.h"
+#include "corestr.h"
+#include "formats/flopimg.h"
 #include "opresolv.h"
 #include "library.h"
 #include "filter.h"
