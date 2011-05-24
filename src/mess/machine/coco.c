@@ -1489,8 +1489,8 @@ static WRITE8_DEVICE_HANDLER( d_pia0_pb_w )
 
 INPUT_CHANGED( coco_keyboard_changed )
 {
-	coco_state *state = field->port->machine().driver_data<coco_state>();
-	(*state->update_keyboard)(field->port->machine());
+	coco_state *state = field.machine().driver_data<coco_state>();
+	(*state->update_keyboard)(field.machine());
 }
 
 static TIMER_CALLBACK( coco_m_update_keyboard_timerproc )
@@ -2840,7 +2840,7 @@ static void generic_init_machine(running_machine &machine, const machine_init_in
 
 	/* locate devices */
 	state->m_cococart_device	= machine.device("coco_cartslot");
-	state->m_cassette_device	= machine.device("cassette");
+	state->m_cassette_device	= machine.device(CASSETTE_TAG);
 	state->m_bitbanger_device	= machine.device("bitbanger");
 	state->m_printer_device	= machine.device("printer");
 	state->m_dac				= machine.device("dac");
@@ -2913,7 +2913,7 @@ static void update_lightgun( running_machine &machine )
 
 INPUT_CHANGED( coco_joystick_mode_changed )
 {
-	update_lightgun(field->port->machine());
+	update_lightgun(field.machine());
 }
 
 static TIMER_CALLBACK( update_lightgun_timer_callback )

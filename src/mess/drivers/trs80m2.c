@@ -276,7 +276,7 @@ WRITE8_MEMBER( trs80m2_state::nmi_w )
 
 	/* 80/40 character mode */
 	m_80_40_char_en = BIT(data, 4);
-	mc6845_set_clock(m_crtc, m_80_40_char_en ? XTAL_12_48MHz/16 : XTAL_12_48MHz/8);
+	m_crtc->set_clock(m_80_40_char_en ? XTAL_12_48MHz/16 : XTAL_12_48MHz/8);
 
 	/* RTC interrupt enable */
 	m_enable_rtc_int = BIT(data, 5);
@@ -387,8 +387,8 @@ static ADDRESS_MAP_START( z80_io, AS_IO, 8, trs80m2_state )
 	AM_RANGE(0xf4, 0xf7) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_cd_ba_r, z80dart_cd_ba_w)
 	AM_RANGE(0xf8, 0xf8) AM_DEVREADWRITE_LEGACY(Z80DMA_TAG, z80dma_r, z80dma_w)
 	AM_RANGE(0xf9, 0xf9) AM_WRITE(rom_enable_w)
-	AM_RANGE(0xfc, 0xfc) AM_READ(keyboard_r) AM_DEVWRITE_LEGACY(MC6845_TAG, mc6845_address_w)
-	AM_RANGE(0xfd, 0xfd) AM_DEVREADWRITE_LEGACY(MC6845_TAG, mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0xfc, 0xfc) AM_READ(keyboard_r) AM_DEVWRITE(MC6845_TAG, mc6845_device, address_w)
+	AM_RANGE(0xfd, 0xfd) AM_DEVREADWRITE(MC6845_TAG, mc6845_device, register_r, register_w)
 	AM_RANGE(0xfe, 0xfe) AM_READ(rtc_r)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(nmi_r, nmi_w)
 ADDRESS_MAP_END
@@ -504,6 +504,7 @@ static INPUT_PORTS_START( trs80m2 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RIGHT CTRL") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
 INPUT_PORTS_END
 
+/*
 static INPUT_PORTS_START( trs80m2_real )
 	PORT_START("ROW0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -625,7 +626,7 @@ static INPUT_PORTS_START( trs80m2_real )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("TAB") PORT_CODE(KEYCODE_TAB) PORT_CHAR('\t')
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
-
+*/
 /* Video */
 
 static MC6845_UPDATE_ROW( trs80m2_update_row )
@@ -702,7 +703,7 @@ bool trs80m2_state::screen_update(screen_device &screen, bitmap_t &bitmap, const
 	}
 	else
 	{
-		mc6845_update(m_crtc, &bitmap, &cliprect);
+		m_crtc->update(&bitmap, &cliprect);
 	}
 
 	return 0;

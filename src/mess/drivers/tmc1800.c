@@ -324,7 +324,7 @@ INPUT_PORTS_END
 
 static INPUT_CHANGED( tmc2000_run_pressed )
 {
-	running_machine &machine = field->port->machine();
+	running_machine &machine = field.machine();
 	tmc2000_state *state = machine.driver_data<tmc2000_state>();
 
 	if (oldval && !newval)
@@ -420,7 +420,7 @@ INPUT_PORTS_END
 
 static INPUT_CHANGED( run_pressed )
 {
-	running_machine &machine = field->port->machine();
+	running_machine &machine = field.machine();
 	nano_state *state = machine.driver_data<nano_state>();
 
 	if (oldval && !newval)
@@ -431,7 +431,7 @@ static INPUT_CHANGED( run_pressed )
 
 static INPUT_CHANGED( monitor_pressed )
 {
-	running_machine &machine = field->port->machine();
+	running_machine &machine = field.machine();
 	nano_state *state = machine.driver_data<nano_state>();
 
 	if (oldval && !newval)
@@ -800,7 +800,7 @@ static MACHINE_CONFIG_START( tmc1800, tmc1800_state )
 
 	// devices
 	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_config )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -826,7 +826,7 @@ static MACHINE_CONFIG_START( osc1000b, osc1000b_state )
 
 	// devices
 	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_config )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -846,7 +846,7 @@ static MACHINE_CONFIG_START( tmc2000, tmc2000_state )
 
 	// devices
 	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_config )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -866,7 +866,7 @@ static MACHINE_CONFIG_START( nano, nano_state )
 
 	// devices
 	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_config )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

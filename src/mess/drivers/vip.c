@@ -303,7 +303,7 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( reset_w )
 {
-	vip_state *state = field->port->machine().driver_data<vip_state>();
+	vip_state *state = field.machine().driver_data<vip_state>();
 
 	if (oldval && !newval)
 	{
@@ -703,7 +703,7 @@ static MACHINE_CONFIG_START( vip, vip_state )
 
 	/* devices */
 	MCFG_QUICKLOAD_ADD("quickload", vip, "bin,c8,c8x", 0)
-	MCFG_CASSETTE_ADD("cassette", vip_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, vip_cassette_config)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

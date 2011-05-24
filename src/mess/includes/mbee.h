@@ -30,7 +30,7 @@ public:
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
 	m_pio(*this, "z80pio"),
-	m_cass(*this, "cassette"),
+	m_cass(*this, CASSETTE_TAG),
 	m_wave(*this, "wave"),
 	m_speaker(*this, "speaker"),
 	m_printer(*this, "centronics"),
@@ -45,7 +45,7 @@ public:
 	required_device<device_t> m_wave;
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_printer;
-	required_device<device_t> m_crtc;
+	required_device<mc6845_device> m_crtc;
 	optional_device<device_t> m_fdc;
 	optional_device<device_t> m_rtc;
 	DECLARE_WRITE8_MEMBER( mbee_04_w );

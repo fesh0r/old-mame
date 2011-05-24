@@ -23,7 +23,6 @@
 #define I8257_TAG		"i8257"
 #define UPD1990A_TAG	"upd1990a"
 #define UPD3301_TAG		"upd3301"
-#define CASSETTE_TAG	"cassette"
 #define CENTRONICS_TAG	"centronics"
 #define SCREEN_TAG		"screen"
 #define SPEAKER_TAG		"speaker"
@@ -57,6 +56,7 @@ public:
 	virtual void video_start();
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
+	DECLARE_WRITE8_MEMBER( port10_w );
 	DECLARE_WRITE8_MEMBER( port30_w );
 	DECLARE_WRITE_LINE_MEMBER( crtc_drq_w );
 	DECLARE_WRITE_LINE_MEMBER( hrq_w );

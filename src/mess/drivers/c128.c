@@ -788,7 +788,7 @@ static MACHINE_CONFIG_START( c128, c128_state )
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( "cassette", cbm_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, cbm_cassette_config )
 
 	/* cia */
 	MCFG_MOS6526R1_ADD("cia_0", VIC6567_CLOCK, c128_ntsc_cia0)
@@ -799,6 +799,8 @@ static MACHINE_CONFIG_START( c128, c128_state )
 	MCFG_C1571_ADD(C1571_TAG, 8)
 
 	MCFG_FRAGMENT_ADD(c64_cartslot)
+	MCFG_SOFTWARE_LIST_ADD("c64_disk_list", "c64_flop")
+	MCFG_SOFTWARE_LIST_ADD("c128_disk_list", "c128_flop")
 MACHINE_CONFIG_END
 
 

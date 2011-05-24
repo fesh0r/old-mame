@@ -72,7 +72,7 @@ public:
 	m_ppi0(*this, "ppi8255_0"),
 	m_ppi1(*this, "ppi8255_1"),
 	m_ppi2(*this, "ppi8255_2"),
-	m_cass(*this, "cassette"),
+	m_cass(*this, CASSETTE_TAG),
 	m_wave(*this, "wave"),
 	m_crtc(*this, "crtc"),
 	m_fdc(*this, "fdc"),
@@ -86,7 +86,7 @@ public:
 	required_device<i8255_device> m_ppi2;
 	required_device<device_t> m_cass;
 	required_device<device_t> m_wave;
-	required_device<device_t> m_crtc;
+	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_fdc;
 	required_device<device_t> m_audio;
 	required_device<msm5832_device> m_rtc;
@@ -126,7 +126,7 @@ VIDEO_START_MEMBER( mycom_state )
 
 SCREEN_UPDATE_MEMBER( mycom_state )
 {
-	mc6845_update(m_crtc, &bitmap, &cliprect);
+	m_crtc->update( &bitmap, &cliprect);
 	return 0;
 }
 
@@ -227,8 +227,8 @@ static ADDRESS_MAP_START(mycom_io, AS_IO, 8, mycom_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(mycom_00_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(vram_data_r,vram_data_w)
-	AM_RANGE(0x02, 0x02) AM_DEVREADWRITE_LEGACY("crtc", mc6845_status_r,mc6845_address_w)
-	AM_RANGE(0x03, 0x03) AM_DEVREADWRITE_LEGACY("crtc", mc6845_register_r,mc6845_register_w)
+	AM_RANGE(0x02, 0x02) AM_DEVREADWRITE("crtc", mc6845_device, status_r, address_w)
+	AM_RANGE(0x03, 0x03) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("ppi8255_0", i8255_device, read, write)
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ppi8255_1", i8255_device, read, write)
 	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("ppi8255_2", i8255_device, read, write)
@@ -430,7 +430,7 @@ WRITE8_MEMBER( mycom_state::mycom_0a_w )
 		cassette_output(m_cass, BIT(data, 2) ? -1.0 : +1.0);
 
 	if ( (BIT(data, 7)) != (BIT(m_0a, 7)) )
-		mc6845_set_clock(m_crtc, BIT(data, 7) ? 1008000 : 2016000);
+		m_crtc->set_clock(BIT(data, 7) ? 1008000 : 2016000);
 
 	m_0a = data;
 
@@ -587,14 +587,14 @@ static MACHINE_CONFIG_START( mycom, mycom_state )
 	MCFG_MC6845_ADD("crtc", MC6845, 1008000, mc6845_intf)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 	MCFG_SOUND_ADD("sn1", SN76489, 1996800) // unknown clock / divider
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* Devices */
 	MCFG_MSM5832_ADD(MSM5832RS_TAG, XTAL_32_768kHz)
-	MCFG_CASSETTE_ADD( "cassette", default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
 	MCFG_WD179X_ADD("fdc", wd1771_intf) // WD1771
 
 	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", mycom_kbd, attotime::from_hz(20))

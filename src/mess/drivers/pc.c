@@ -340,6 +340,16 @@ static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_r, ins8250_w)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START(ibmpcjx_map, AS_PROGRAM, 8 )
+	AM_RANGE(0x80000, 0x9ffff) AM_ROM AM_REGION("kanji",0)
+	AM_IMPORT_FROM( ibmpcjr_map )
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START(ibmpcjx_io, AS_IO, 8 )
+	AM_IMPORT_FROM( ibmpcjr_io )
+ADDRESS_MAP_END
+
+
 static ADDRESS_MAP_START( ppc512_map, AS_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x80000, 0xbffff) AM_NOP
@@ -544,83 +554,6 @@ static INPUT_PORTS_START( pccga )
 	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( ibm5150 )
-	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
-
-	PORT_START("DSW0") /* IN1 */
-	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
-	PORT_DIPSETTING(	0x00, "1" )
-	PORT_DIPSETTING(	0x40, "2" )
-	PORT_DIPSETTING(	0x80, "3" )
-	PORT_DIPSETTING(	0xc0, "4" )
-	PORT_DIPNAME( 0x30, 0x20, "Graphics adapter")
-	PORT_DIPSETTING(	0x00, "EGA/VGA" )
-	PORT_DIPSETTING(	0x10, "Color 40x25" )
-	PORT_DIPSETTING(	0x20, "Color 80x25" )
-	PORT_DIPSETTING(	0x30, "Monochrome" )
-	PORT_DIPNAME( 0x0c, 0x0c, "RAM banks")
-	PORT_DIPSETTING(	0x00, "1 - 16  64 256K" )
-	PORT_DIPSETTING(	0x04, "2 - 32 128 512K" )
-	PORT_DIPSETTING(	0x08, "3 - 48 192 576K" )
-	PORT_DIPSETTING(	0x0c, "4 - 64 256 640K" )
-	PORT_DIPNAME( 0x02, 0x00, "80387 installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
-
-	PORT_START("DSW1") /* IN2 */
-	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
-
-	PORT_START("DSW2") /* IN3 */
-	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
-	PORT_DIPSETTING(	0x80, "COM1" )
-	PORT_DIPSETTING(	0x40, "COM2" )
-	PORT_DIPSETTING(	0x20, "COM3" )
-	PORT_DIPSETTING(	0x10, "COM4" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
-
-	PORT_INCLUDE( kb_keytronic_pc )		/* IN4 - IN11 */
-	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
-	PORT_INCLUDE( pcvideo_cga )
-INPUT_PORTS_END
-
 static INPUT_PORTS_START( europc )
 	PORT_START("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
@@ -752,85 +685,6 @@ static INPUT_PORTS_START( bondwell )
 
 //  PORT_INCLUDE( at_keyboard )     /* IN4 - IN11 */
     PORT_INCLUDE( kb_keytronic_pc )
-	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
-	PORT_INCLUDE( pcvideo_cga )
-INPUT_PORTS_END
-
-static INPUT_PORTS_START( xtcga )
-	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
-
-	PORT_START("DSW0") /* IN1 */
-	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
-	PORT_DIPSETTING(	0x00, "1" )
-	PORT_DIPSETTING(	0x40, "2" )
-	PORT_DIPSETTING(	0x80, "3" )
-	PORT_DIPSETTING(	0xc0, "4" )
-	PORT_DIPNAME( 0x30, 0x20, "Graphics adapter")
-	PORT_DIPSETTING(	0x00, "EGA/VGA" )
-	PORT_DIPSETTING(	0x10, "Color 40x25" )
-	PORT_DIPSETTING(	0x20, "Color 80x25" )
-	PORT_DIPSETTING(	0x30, "Monochrome" )
-	PORT_DIPNAME( 0x0c, 0x0c, "RAM banks")
-	PORT_DIPSETTING(	0x00, "1 - 16  64 256K" )
-	PORT_DIPSETTING(	0x04, "2 - 32 128 512K" )
-	PORT_DIPSETTING(	0x08, "3 - 48 192 576K" )
-	PORT_DIPSETTING(	0x0c, "4 - 64 256 640K" )
-	PORT_DIPNAME( 0x02, 0x00, "80387 installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
-
-	PORT_START("DSW1") /* IN2 */
-	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
-
-	PORT_START("DSW2") /* IN3 */
-	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
-	PORT_DIPSETTING(	0x80, "COM1" )
-	PORT_DIPSETTING(	0x40, "COM2" )
-	PORT_DIPSETTING(	0x20, "COM3" )
-	PORT_DIPSETTING(	0x10, "COM4" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-//  PORT_DIPNAME( 0x02, 0x02, "Turbo Switch" )
-//  PORT_DIPSETTING(    0x00, "Off (4.77 MHz)" )
-//  PORT_DIPSETTING(    0x02, "On (12 MHz)" )
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
-
-	PORT_INCLUDE( pc_keyboard )		/* IN4 - IN11 */
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
 	PORT_INCLUDE( pcvideo_cga )
@@ -1220,6 +1074,19 @@ static const gfx_layout pc_8_charlayout =
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout kanji_layout =
+{
+	16, 16,					/* 8 x 8 characters */
+	RGN_FRAC(1,1),					/* 512 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ STEP16(0,1) },
+	/* y offsets */
+	{ STEP16(0,16) },
+	16*16					/* every char takes 8 bytes */
 };
 
 static GFXDECODE_START( ibm5150 )
@@ -1816,7 +1683,7 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	MCFG_PC_LPT_ADD("lpt_2", pc_lpt_config)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( "cassette", ibm5150_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, ibm5150_cassette_config )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
@@ -1841,6 +1708,21 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","ibmpcjr_cart")
 MACHINE_CONFIG_END
+
+static GFXDECODE_START( ibmpcjx )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_8_charlayout, 3, 1 )
+	GFXDECODE_ENTRY( "kanji", 0x0000, kanji_layout, 3, 1 )
+GFXDECODE_END
+
+
+static MACHINE_CONFIG_DERIVED( ibmpcjx, ibmpcjr )
+	MCFG_CPU_MODIFY("maincpu")
+	MCFG_CPU_PROGRAM_MAP(ibmpcjx_map)
+	MCFG_CPU_IO_MAP(ibmpcjx_io)
+
+	MCFG_GFXDECODE(ibmpcjx)
+MACHINE_CONFIG_END
+
 
 static MACHINE_CONFIG_START( iskr1031, pc_state )
 	/* basic machine hardware */
@@ -2130,10 +2012,15 @@ ROM_START( ibmpcjr )
 ROM_END
 
 ROM_START( ibmpcjx )
-	ROM_REGION(0x100000,"maincpu", 0)
+	ROM_REGION(0x100000,"maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD("5601jda.bin", 0xf0000, 0x10000, CRC(b1e12366) SHA1(751feb16b985aa4f1ec1437493ff77e2ebd5e6a6))
-	ROM_REGION(0x08100,"gfx1", 0)
-	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd)) // from an unknown clone cga card
+    ROM_LOAD("basic.rom",   0xe8000, 0x08000, NO_DUMP ) // boot fails due of this.
+
+	ROM_REGION(0x08100,"gfx1", 0) //TODO: needs a different charset
+	ROM_LOAD("cga.chr",     0x00000, 0x01000, BAD_DUMP CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd)) // from an unknown clone cga card
+
+	ROM_REGION(0x20000,"kanji", 0)
+	ROM_LOAD("kanji.rom",     0x00000, 0x20000, BAD_DUMP CRC(a313f241) SHA1(c2a4ea7eb38c5ad51e6482abca8f836a2c06e17a)) // hand-made rom
 ROM_END
 
 #ifdef UNUSED_DEFINITION
@@ -2569,7 +2456,7 @@ COMP(  1988,	europc,     ibm5150,	0,	europc, 	europc,		europc,     "Schneider Rd
 
 // pcjr (better graphics, better sound)
 COMP(  1983,	ibmpcjr,    ibm5150,	0,	ibmpcjr,	tandy1t,	pcjr,       "International Business Machines",  "IBM PC Jr", GAME_IMPERFECT_COLORS )
-COMP(  1985,	ibmpcjx,    ibm5150,	0,	ibmpcjr,    tandy1t,	pcjr,       "International Business Machines",  "IBM PC JX", GAME_IMPERFECT_COLORS | GAME_NOT_WORKING)
+COMP(  1985,	ibmpcjx,    ibm5150,	0,	ibmpcjx,    tandy1t,	pcjr,       "International Business Machines",  "IBM PC JX", GAME_IMPERFECT_COLORS | GAME_NOT_WORKING)
 
 // tandy 1000
 COMP(  1987,	t1000hx,    ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 HX", 0)

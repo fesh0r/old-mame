@@ -61,7 +61,7 @@
 */
 static READ8_HANDLER( cassette_r )
 {
-	device_t *cassette = space->machine().device("cassette");
+	device_t *cassette = space->machine().device(CASSETTE_TAG);
 	return (cassette_input(cassette) < +0.0) ? 0 : 1;
 }
 
@@ -74,7 +74,7 @@ static READ8_HANDLER( cassette_r )
 static WRITE8_HANDLER( cassette_w )
 {
 	device_t *speaker = space->machine().device("speaker");
-	device_t *cassette = space->machine().device("cassette");
+	device_t *cassette = space->machine().device(CASSETTE_TAG);
 
 	speaker_level_w(speaker, BIT(data, 0));
 	cassette_output(cassette, BIT(data, 0) ? +1.0 : -1.0);
@@ -262,7 +262,7 @@ ADDRESS_MAP_END
 /* the 'reset' key is directly tied to the reset line of the cpu */
 static INPUT_CHANGED( aquarius_reset )
 {
-	cputag_set_input_line(field->port->machine(), "maincpu", INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field.machine(), "maincpu", INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_PORTS_START( aquarius )
@@ -428,7 +428,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_PRINTER_ADD("printer")
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( "cassette", aquarius_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, aquarius_cassette_config )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")

@@ -69,10 +69,10 @@ static READ8_DEVICE_HANDLER( pia0_pa_r )
 	data |= state->m_keyline_select;
 
 	/* #1 cassette switch */
-	data |= ((cassette_get_state(device->machine().device("cassette1")) & CASSETTE_MASK_UISTATE) == CASSETTE_STOPPED) << 4;
+	data |= ((cassette_get_state(device->machine().device(CASSETTE_TAG)) & CASSETTE_MASK_UISTATE) == CASSETTE_STOPPED) << 4;
 
 	/* #2 cassette switch */
-	data |= ((cassette_get_state(device->machine().device("cassette2")) & CASSETTE_MASK_UISTATE) == CASSETTE_STOPPED) << 5;
+	data |= ((cassette_get_state(device->machine().device(CASSETTE2_TAG)) & CASSETTE_MASK_UISTATE) == CASSETTE_STOPPED) << 5;
 
 	/* end or identify in */
 	data |= state->m_ieee->eoi_r() << 6;
@@ -173,7 +173,7 @@ static READ8_DEVICE_HANDLER( petb_kin_r )
 static READ8_DEVICE_HANDLER( cass1_r )
 {
 	// cassette 1 read
-	return (cassette_input(device->machine().device("cassette1")) > +0.0) ? 1 : 0;
+	return (cassette_input(device->machine().device(CASSETTE_TAG)) > +0.0) ? 1 : 0;
 }
 
 static WRITE8_DEVICE_HANDLER( cass1_motor_w )
@@ -181,12 +181,12 @@ static WRITE8_DEVICE_HANDLER( cass1_motor_w )
 	pet_state *state = device->machine().driver_data<pet_state>();
 	if (!data)
 	{
-		cassette_change_state(device->machine().device("cassette1"),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+		cassette_change_state(device->machine().device(CASSETTE_TAG),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
 		state->m_datasette1_timer->adjust(attotime::zero, 0, attotime::from_hz(48000));	// I put 48000 because I was given some .wav with this freq
 	}
 	else
 	{
-		cassette_change_state(device->machine().device("cassette1"),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
+		cassette_change_state(device->machine().device(CASSETTE_TAG),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
 		state->m_datasette1_timer->reset();
 	}
 }
@@ -322,7 +322,7 @@ static READ8_DEVICE_HANDLER( via_pb_r )
 static READ_LINE_DEVICE_HANDLER( cass2_r )
 {
 	// cassette 2 read
-	return (cassette_input(device->machine().device("cassette2")) > +0.0) ? 1 : 0;
+	return (cassette_input(device->machine().device(CASSETTE2_TAG)) > +0.0) ? 1 : 0;
 }
 
 static WRITE8_DEVICE_HANDLER( via_pb_w )
@@ -351,18 +351,18 @@ static WRITE8_DEVICE_HANDLER( via_pb_w )
 	state->m_ieee->atn_w(BIT(data, 2));
 
 	/* cassette write */
-	cassette_output(device->machine().device("cassette1"), BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
-	cassette_output(device->machine().device("cassette2"), BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	cassette_output(device->machine().device(CASSETTE_TAG), BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	cassette_output(device->machine().device(CASSETTE2_TAG), BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
 
 	/* #2 cassette motor */
 	if (BIT(data, 4))
 	{
-		cassette_change_state(device->machine().device("cassette2"), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+		cassette_change_state(device->machine().device(CASSETTE2_TAG), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 		state->m_datasette2_timer->adjust(attotime::zero, 0, attotime::from_hz(48000));	// I put 48000 because I was given some .wav with this freq
 	}
 	else
 	{
-		cassette_change_state(device->machine().device("cassette2"), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+		cassette_change_state(device->machine().device(CASSETTE2_TAG), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 		state->m_datasette2_timer->reset();
 	}
 }
@@ -408,7 +408,7 @@ static WRITE8_HANDLER( cbm8096_io_w )
 	via6522_device *via_0 = space->machine().device<via6522_device>("via6522_0");
 	pia6821_device *pia_0 = space->machine().device<pia6821_device>("pia_0");
 	pia6821_device *pia_1 = space->machine().device<pia6821_device>("pia_1");
-	device_t *mc6845 = space->machine().device("crtc");
+	mc6845_device *mc6845 = space->machine().device<mc6845_device>("crtc");
 
 	if (offset < 0x10) ;
 	else if (offset < 0x14) pia_0->write(*space, offset & 3, data);
@@ -417,8 +417,8 @@ static WRITE8_HANDLER( cbm8096_io_w )
 	else if (offset < 0x40) ;
 	else if (offset < 0x50) via_0->write(*space, offset & 0xf, data);
 	else if (offset < 0x80) ;
-	else if (offset == 0x80) mc6845_address_w(mc6845, 0, data);
-	else if (offset == 0x81) mc6845_register_w(mc6845, 0, data);
+	else if (offset == 0x80) mc6845->address_w(*space, 0, data);
+	else if (offset == 0x81) mc6845->register_w(*space, 0, data);
 }
 
 static READ8_HANDLER( cbm8096_io_r )
@@ -426,7 +426,7 @@ static READ8_HANDLER( cbm8096_io_r )
 	via6522_device *via_0 = space->machine().device<via6522_device>("via6522_0");
 	pia6821_device *pia_0 = space->machine().device<pia6821_device>("pia_0");
 	pia6821_device *pia_1 = space->machine().device<pia6821_device>("pia_1");
-	device_t *mc6845 = space->machine().device("crtc");
+	mc6845_device *mc6845 = space->machine().device<mc6845_device>("crtc");
 
 	int data = 0xff;
 	if (offset < 0x10) ;
@@ -436,7 +436,7 @@ static READ8_HANDLER( cbm8096_io_r )
 	else if (offset < 0x40) ;
 	else if (offset < 0x50) data = via_0->read(*space, offset & 0xf);
 	else if (offset < 0x80) ;
-	else if (offset == 0x81) data = mc6845_register_r(mc6845, 0);
+	else if (offset == 0x81) data = mc6845->register_r(*space, 0);
 	return data;
 }
 
@@ -632,7 +632,7 @@ static TIMER_CALLBACK( pet_tape1_timer )
 {
 	pia6821_device *pia_0 = machine.device<pia6821_device>("pia_0");
 //  cassette 1
-	UINT8 data = (cassette_input(machine.device("cassette1")) > +0.0) ? 1 : 0;
+	UINT8 data = (cassette_input(machine.device(CASSETTE_TAG)) > +0.0) ? 1 : 0;
 	pia_0->ca1_w(data);
 }
 
@@ -640,7 +640,7 @@ static TIMER_CALLBACK( pet_tape2_timer )
 {
 	via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
 //  cassette 2
-	UINT8 data = (cassette_input(machine.device("cassette2")) > +0.0) ? 1 : 0;
+	UINT8 data = (cassette_input(machine.device(CASSETTE2_TAG)) > +0.0) ? 1 : 0;
 	via_0->write_cb1(data);
 }
 

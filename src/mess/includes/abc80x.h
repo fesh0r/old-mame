@@ -59,7 +59,6 @@
 #define Z80SIO_TAG		"z80sio"
 #define Z80DART_TAG		"z80dart"
 #define ABCBUS_TAG		"abcbus"
-#define CASSETTE_TAG	"cassette"
 
 
 
@@ -83,7 +82,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_ctc;
+	required_device<mc6845_device> m_ctc;
 	required_device<z80dart_device> m_dart;
 	required_device<device_t> m_sio;
 	optional_device<device_t> m_discrete;
@@ -142,7 +141,7 @@ public:
 		  m_crtc(*this, MC6845_TAG)
 	{ }
 
-	required_device<device_t> m_crtc;
+	required_device<mc6845_device> m_crtc;
 
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
@@ -175,7 +174,7 @@ public:
 		  m_abc77(*this, ABC77_TAG)
 	{ }
 
-	required_device<device_t> m_crtc;
+	required_device<mc6845_device> m_crtc;
 	optional_device<device_t> m_abc77;
 
 	virtual void machine_start();
@@ -218,7 +217,7 @@ public:
 		  m_abc77(*this, ABC77_TAG)
 	{ }
 
-	required_device<device_t> m_crtc;
+	required_device<mc6845_device> m_crtc;
 	required_device<e0516_device> m_rtc;
 	optional_device<device_t> m_abc77;
 

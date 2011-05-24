@@ -1617,13 +1617,6 @@ About natural keyboards: currently,
 - "Help" is mapped to 'F8'
  */
 
-static READ_LINE_DEVICE_HANDLER( upd1990a_data_out_r )
-{
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-
-	return state->m_rtc->data_out_r();
-}
-
 static INPUT_PORTS_START( pc8001 )
 	PORT_START("KEY0")
 	PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_0_PAD)		PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
@@ -1812,7 +1805,7 @@ static INPUT_PORTS_START( pc8001 )
 	PORT_DIPNAME( 0x08, 0x08, "Auto-boot floppy at start-up" )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH,IPT_SPECIAL ) PORT_READ_LINE_DEVICE("upd1990a", upd1990a_data_out_r)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH,IPT_SPECIAL ) PORT_READ_LINE_DEVICE_MEMBER("upd1990a", upd1990a_device, data_out_r)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH,IPT_VBLANK )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
@@ -2250,7 +2243,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	#endif
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8801_upd1990a_intf)
 	//MCFG_CENTRONICS_ADD("centronics", standard_centronics)
-	//MCFG_CASSETTE_ADD("cassette", pc88_cassette_config)
+	//MCFG_CASSETTE_ADD(CASSETTE_TAG, pc88_cassette_config)
 
 	MCFG_FLOPPY_2_DRIVES_ADD(pc88_floppy_config)
 	MCFG_SOFTWARE_LIST_ADD("disk_list","pc8801_flop")

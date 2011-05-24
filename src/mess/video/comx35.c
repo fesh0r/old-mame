@@ -118,7 +118,7 @@ bool comx35_state::screen_update(screen_device &screen, bitmap_t &bitmap, const 
 	}
 	else
 	{
-		mc6845_update(m_crtc, &bitmap, &cliprect);
+		m_crtc->update(&bitmap, &cliprect);
 	}
 
 	return false;
@@ -222,7 +222,7 @@ MACHINE_CONFIG_FRAGMENT( comx35_pal_video )
 	MCFG_CDP1869_ADD(CDP1869_TAG, CDP1869_DOT_CLK_PAL, pal_cdp1869_intf, cdp1869_page_ram)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_FRAGMENT_ADD(comx35_80_video)
@@ -241,7 +241,7 @@ MACHINE_CONFIG_FRAGMENT( comx35_ntsc_video )
 	MCFG_CDP1869_ADD(CDP1869_TAG, CDP1869_DOT_CLK_NTSC, ntsc_cdp1869_intf, cdp1869_page_ram)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_SOUND_WAVE_ADD("wave", "cassette")
+	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_FRAGMENT_ADD(comx35_80_video)

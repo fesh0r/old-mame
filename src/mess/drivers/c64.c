@@ -412,7 +412,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(c64_mem, AS_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE_MEMBER(c64_state, m_memory)
-	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")		/* ram or external roml */
+	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank1") AM_WRITE(c64_roml_w)		/* ram or external roml */
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK("bank3") AM_WRITEONLY				/* ram or basic rom or external romh */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(c64_ioarea_r, c64_ioarea_w)
@@ -726,7 +726,7 @@ static MACHINE_CONFIG_START( c64, c64_state )
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( "cassette", cbm_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, cbm_cassette_config )
 
 	/* cia */
 	MCFG_MOS6526R1_ADD("cia_0", VIC6567_CLOCK, c64_ntsc_cia0)
@@ -737,6 +737,7 @@ static MACHINE_CONFIG_START( c64, c64_state )
 	MCFG_C1541_ADD(C1541_TAG, 8)
 
 	MCFG_FRAGMENT_ADD(c64_cartslot)
+	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( c64pal, c64_state )
@@ -776,7 +777,7 @@ static MACHINE_CONFIG_START( c64pal, c64_state )
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( "cassette", cbm_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, cbm_cassette_config )
 
 	/* cia */
 	MCFG_MOS6526R1_ADD("cia_0", VIC6569_CLOCK, c64_pal_cia0)
@@ -791,6 +792,7 @@ static MACHINE_CONFIG_START( c64pal, c64_state )
 #endif
 
 	MCFG_FRAGMENT_ADD(c64_cartslot)
+	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ultimax, c64 )
@@ -820,7 +822,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( c64gs, c64pal )
 	MCFG_DEVICE_REMOVE( "dac" )
-	MCFG_DEVICE_REMOVE( "cassette" )
+	MCFG_DEVICE_REMOVE( CASSETTE_TAG )
 	MCFG_DEVICE_REMOVE( "quickload" )
 	MCFG_CBM_IEC_REMOVE()
 	MCFG_DEVICE_REMOVE(C1541_TAG)
@@ -833,7 +835,7 @@ static MACHINE_CONFIG_DERIVED( sx64, c64pal )
 	MCFG_SX1541_ADD(C1541_TAG, 8)
 
 	MCFG_DEVICE_REMOVE( "dac" )
-	MCFG_DEVICE_REMOVE( "cassette" )
+	MCFG_DEVICE_REMOVE( CASSETTE_TAG )
 #ifdef CPU_SYNC
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 #else

@@ -273,7 +273,7 @@ static INPUT_PORTS_START( apple2_joystick )
     PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON1)  PORT_PLAYER(2)			PORT_CODE(JOYCODE_BUTTON1)
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( apple2_paddle )
+/*static INPUT_PORTS_START( apple2_paddle )
 	PORT_START("paddle_0")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_NAME("P1 Paddle 0")
 	PORT_SENSITIVITY(PADDLE_SENSITIVITY)
@@ -308,7 +308,7 @@ static INPUT_PORTS_START( apple2_paddle )
 	PORT_MINMAX(0,0xff) PORT_PLAYER(2)
 	PORT_CODE_DEC(JOYCODE_Y_UP_SWITCH)		PORT_CODE_INC(JOYCODE_Y_DOWN_SWITCH)
 INPUT_PORTS_END
-
+*/
 static INPUT_PORTS_START( apple2_gameport )
 	PORT_INCLUDE( apple2_joystick )
 	//PORT_INCLUDE( apple2_paddle )
@@ -640,7 +640,7 @@ static MACHINE_CONFIG_DERIVED( apple2, apple2_common )
 	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
 	/* default configuration: on real machine is present also in configurations */
 	/* with less memory, provided that the language card is installed           */
-	MCFG_CASSETTE_ADD( "cassette", apple2_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_config )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( apple2p, apple2_common )
@@ -654,7 +654,7 @@ static MACHINE_CONFIG_DERIVED( apple2p, apple2_common )
 	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
 	/* default configuration: on real machine is present also in configurations */
 	/* with less memory, provided that the language card is installed           */
-	MCFG_CASSETTE_ADD( "cassette", apple2_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_config )
 MACHINE_CONFIG_END
 
 ROM_START(las3000)
@@ -673,7 +673,7 @@ static MACHINE_CONFIG_DERIVED( apple2e, apple2_common )
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
-	MCFG_CASSETTE_ADD( "cassette", apple2_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_config )
 MACHINE_CONFIG_END
 #if 0
 MACHINE_CONFIG_DERIVED( apple2e_z80, apple2_common )
@@ -899,8 +899,8 @@ ROM_START(apple2ee)
 	ROM_LOAD ( "342-0265-a.chr", 0x1000, 0x1000,CRC(2651014d) SHA1(b2b5d87f52693817fc747df087a4aa1ddcdb1f10))
 
 	ROM_REGION(0x4700,"maincpu",0)
-	ROM_LOAD ( "342-0304-a.64", 0x0000, 0x2000, CRC(443aa7c4) SHA1(3aecc56a26134df51e65e17f33ae80c1f1ac93e6))
-	ROM_LOAD ( "342-0303-a.64", 0x2000, 0x2000, CRC(95e10034) SHA1(afb09bb96038232dc757d40c0605623cae38088e))
+	ROM_LOAD ( "342-0304-a.e10", 0x0000, 0x2000, CRC(443aa7c4) SHA1(3aecc56a26134df51e65e17f33ae80c1f1ac93e6)) /* PCB: "CD ROM // 342-0304", 2364 mask rom */
+	ROM_LOAD ( "342-0303-a.e8", 0x2000, 0x2000, CRC(95e10034) SHA1(afb09bb96038232dc757d40c0605623cae38088e)) /* PCB: "EF ROM // 342-0303", 2364 mask rom */
 	ROM_LOAD ( "341-0027-a.p5", 0x4500, 0x0100, CRC(ce7144f6) SHA1(d4181c9f046aafc3fb326b381baac809d9e38d16)) /* Disk II ROM - DOS 3.3 version */
 
 	ROM_REGION(0x1000, "cffa", 0)

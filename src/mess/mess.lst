@@ -622,8 +622,9 @@ ibm5155   // 1982 IBM 5155
 ibm5140   // 1985 IBM 5140
 dgone	 // 1984 Data General/One
 pcmda	 // 1987 PC with MDA
-pcherc	// 1987 PC with Hercules (for testing hercules)
-pc	// 1987 PC with CGA
+pcherc	 // 1987 PC with Hercules (for testing hercules)
+pc	  	 // 1987 PC with CGA
+pcega    // 1987 PC with EGA
 bw230	// 1985 Bondwell (CGA)
 europc	// 1988 Schneider Euro PC (CGA or Hercules)
 
@@ -1541,6 +1542,7 @@ z80netf	   // 1980 - Z80NE + LX.388 Video Interface + LX.390 FD Controller
 
 // Talking Electronics Magazine
 tec1	  // Talking Electronics Computer
+tecjmon	  // Talking Electronics Computer
 
 // Kyocera (and clones)
 kc85
@@ -1800,6 +1802,7 @@ vcc
 uvc
 abc
 vbc
+vsc
 victor9k
 phc25
 phc25j

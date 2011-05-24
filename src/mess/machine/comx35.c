@@ -400,8 +400,8 @@ void comx35_state::set_active_bank()
 			program->unmap_readwrite(0xc800, 0xcfff);
 			program->install_ram(0xd000, 0xd7ff, m_videoram);
 			program->unmap_read(0xd800, 0xd800);
-			program->install_legacy_write_handler(*m_crtc, 0xd800, 0xd800, FUNC(mc6845_address_w));
-			program->install_legacy_readwrite_handler(*m_crtc, 0xd801, 0xd801, FUNC(mc6845_register_r), FUNC(mc6845_register_w));
+			program->install_write_handler(0xd800, 0xd800, write8_delegate(FUNC(mc6845_device::address_w), (mc6845_device*)m_crtc));
+			program->install_readwrite_handler(0xd801, 0xd801, read8_delegate(FUNC(mc6845_device::register_r), (mc6845_device*)m_crtc), write8_delegate(FUNC(mc6845_device::register_w), (mc6845_device*)m_crtc));
 			program->unmap_readwrite(0xd802, 0xdfff);
 		}
 		break;
@@ -627,9 +627,9 @@ void comx35_state::machine_reset()
 
 INPUT_CHANGED( comx35_reset )
 {
-	comx35_state *state = field->port->machine().driver_data<comx35_state>();
+	comx35_state *state = field.machine().driver_data<comx35_state>();
 
-	if (BIT(input_port_read(field->port->machine(), "RESET"), 0) && BIT(input_port_read(field->port->machine(), "D6"), 7))
+	if (BIT(input_port_read(field.machine(), "RESET"), 0) && BIT(input_port_read(field.machine(), "D6"), 7))
 	{
 		state->machine_reset();
 	}

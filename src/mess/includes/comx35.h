@@ -32,8 +32,6 @@
 #define MC6845_TAG			"mc6845"
 #define WD1770_TAG			"wd1770"
 
-#define CASSETTE_TAG		"cassette"
-
 #define COMX35_CHARRAM_SIZE 0x800
 #define COMX35_VIDEORAM_SIZE 0x800
 
@@ -69,7 +67,7 @@ public:
 
 	required_device<cosmac_device> m_maincpu;
 	required_device<cdp1869_device> m_vis;
-	required_device<device_t> m_crtc;
+	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_fdc;
 	required_device<cdp1871_device> m_kbe;
 	required_device<device_t> m_cassette;
