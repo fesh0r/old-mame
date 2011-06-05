@@ -34,7 +34,6 @@ struct VS_INPUT
 	float4 Position : POSITION;
 	float4 Color : COLOR0;
 	float2 TexCoord : TEXCOORD0;
-	float2 ExtraInfo : TEXCOORD1;
 };
 
 struct PS_INPUT
@@ -73,6 +72,8 @@ uniform float GrnRadialConvergeY;
 uniform float BluRadialConvergeX;
 uniform float BluRadialConvergeY;
 
+uniform float Prescale;
+
 VS_OUTPUT vs_main(VS_INPUT Input)
 {
 	VS_OUTPUT Output = (VS_OUTPUT)0;
@@ -99,6 +100,7 @@ VS_OUTPUT vs_main(VS_INPUT Input)
 	Output.BluCoord.y = ((((TexCoord.y / Ratios.y) - 0.5f)) * (1.0f + BluRadialConvergeY / RawHeight) + 0.5f) * Ratios.y + BluConvergeY * invDims.y;
 
 	Output.TexCoord = TexCoord;	
+
 	return Output;
 }
 
@@ -112,12 +114,37 @@ float4 ps_main(PS_INPUT Input) : COLOR
 	float2 MagnetCenter = float2(0.9f / WidthRatio, 0.9f / HeightRatio);
 	float MagnetDistance = length((MagnetCenter - Input.TexCoord) * float2(WidthRatio, HeightRatio));
 	float Deconverge = 1.0f - MagnetDistance / MagnetCenter;
-	Deconverge = clamp(Deconverge, 0.0f, 1.0f);
+	Deconverge = 1.0f;//clamp(Deconverge, 0.0f, 1.0f);
 	float Alpha = tex2D(DiffuseSampler, Input.TexCoord).a;
-	float RedTexel = tex2D(DiffuseSampler, lerp(Input.TexCoord, Input.RedCoord, Deconverge) + 0.5f / float2(RawWidth, RawHeight)).r;
-	float GrnTexel = tex2D(DiffuseSampler, lerp(Input.TexCoord, Input.GrnCoord, Deconverge) + 0.5f / float2(RawWidth, RawHeight)).g;
-	float BluTexel = tex2D(DiffuseSampler, lerp(Input.TexCoord, Input.BluCoord, Deconverge) + 0.5f / float2(RawWidth, RawHeight)).b;
 	
+	float2 TargetDims = float2(RawWidth, RawHeight);
+	float2 DimOffset = 0.0f / TargetDims;
+	float2 TexCoord = Input.TexCoord;
+	float2 RedCoord = Input.RedCoord;
+	float2 GrnCoord = Input.GrnCoord;
+	float2 BluCoord = Input.BluCoord;
+	
+	RedCoord = lerp(TexCoord, RedCoord, Deconverge);
+	GrnCoord = lerp(TexCoord, GrnCoord, Deconverge);
+	BluCoord = lerp(TexCoord, BluCoord, Deconverge);
+
+	float RedTexel = tex2D(DiffuseSampler, RedCoord - DimOffset).r;
+	float GrnTexel = tex2D(DiffuseSampler, GrnCoord - DimOffset).g;
+	float BluTexel = tex2D(DiffuseSampler, BluCoord - DimOffset).b;
+	
+	//RedTexel *= Input.RedCoord.x < (WidthRatio / RawWidth) ? 0.0f : 1.0f;
+	//RedTexel *= Input.RedCoord.y < (HeightRatio / RawHeight) ? 0.0f : 1.0f;
+	//RedTexel *= Input.RedCoord.x > (1.0f / WidthRatio + 1.0f / RawWidth) ? 0.0f : 1.0f;
+	//RedTexel *= Input.RedCoord.y > (1.0f / HeightRatio + 1.0f / RawHeight) ? 0.0f : 1.0f;
+	//GrnTexel *= Input.GrnCoord.x < (WidthRatio / RawWidth) ? 0.0f : 1.0f;
+	//GrnTexel *= Input.GrnCoord.y < (HeightRatio / RawHeight) ? 0.0f : 1.0f;
+	//GrnTexel *= Input.GrnCoord.x > (1.0f / WidthRatio + 1.0f / RawWidth) ? 0.0f : 1.0f;
+	//GrnTexel *= Input.GrnCoord.y > (1.0f / HeightRatio + 1.0f / RawHeight) ? 0.0f : 1.0f;
+	//BluTexel *= Input.BluCoord.x < (WidthRatio / RawWidth) ? 0.0f : 1.0f;
+	//BluTexel *= Input.BluCoord.y < (HeightRatio / RawHeight) ? 0.0f : 1.0f;
+	//BluTexel *= Input.BluCoord.x > (1.0f / WidthRatio + 1.0f / RawWidth) ? 0.0f : 1.0f;
+	//BluTexel *= Input.BluCoord.y > (1.0f / HeightRatio + 1.0f / RawHeight) ? 0.0f : 1.0f;
+
 	return float4(RedTexel, GrnTexel, BluTexel, Alpha);
 }
 
