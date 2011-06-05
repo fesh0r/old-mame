@@ -620,6 +620,7 @@ ehx20
 ibm5150   // 1981 IBM 5150
 ibm5155   // 1982 IBM 5155
 ibm5140   // 1985 IBM 5140
+ibm5550
 dgone	 // 1984 Data General/One
 pcmda	 // 1987 PC with MDA
 pcherc	 // 1987 PC with Hercules (for testing hercules)
@@ -794,6 +795,8 @@ mz80b		// 1981 Sharp MZ80B
 mz2000	// 1981 Sharp MZ2000
 mz2200	// 1981 Sharp MZ2200
 
+mz6500  // 198? Sharp MZ6500
+
 x1		// 1982 Sharp X1
 x1twin	// 1986 Sharp X1 Twin
 x1turbo   // 1984 Sharp X1 Turbo (Model 10)
@@ -875,6 +878,8 @@ pc8801ma
 pc8801ma2
 pc8801mc
 pc88va
+
+pc100
 
 pc9801f	// 1983
 pc9801rs  // 1989
@@ -1565,10 +1570,13 @@ wales210  // 199? Walther ES-210 (German)
 dator3k   // 199? Dator 3000 (Spanish)
 
 // Fujitsu
+fm8  // 1981
 fm7
 fm7a
 fm77av
 fm7740sx
+fm11  // 1982 FM-11 EX
+fm16beta  // 1983 FM-16 Beta
 fmtowns   // 1989 Fujitsu FM-Towns
 fmtownsa
 fmtownsux  // 1991.11 FM-Towns II UX
@@ -1660,6 +1668,7 @@ jr100
 jr100u
 jr200
 jr200u
+myb3k
 h8
 h19
 h89
@@ -1826,13 +1835,17 @@ pegasus
 pegasusm
 e01
 e01s
+pasopia
 pasopia7
+paso1600
 prestige
 smc777
 multi8
+multi16
 rx78
 bmjr
 bml3
+b16
 psioncm
 psionla
 psionp350
@@ -1856,6 +1869,8 @@ p112
 selz80
 mccpm
 casloopy
+fp1100
+fp6000
 tim011
 bullet
 pc4
@@ -1893,3 +1908,5 @@ applix
 68ksbc
 lcmate2
 cm1800
+if800
+super6

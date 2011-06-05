@@ -64,11 +64,11 @@
 #include "emu.h"
 #include "memconv.h"
 #include "cirrus.h"
-#include "pc_vga_mess.h"
+#include "video/pc_vga.h"
 
 #define LOG_PCIACCESS	0
 
-static void cirrus_update_8bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc)
+static void cirrus_update_8bpp(bitmap_t *bitmap)
 {
 	UINT16 *line;
 	const UINT8 *vram;
@@ -87,21 +87,21 @@ static void cirrus_update_8bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc)
 
 
 
-static void cirrus_update_16bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc)
+static void cirrus_update_16bpp(bitmap_t *bitmap)
 {
 	fatalerror("NYI");
 }
 
 
 
-static void cirrus_update_24bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc)
+static void cirrus_update_24bpp(bitmap_t *bitmap)
 {
 	fatalerror("NYI");
 }
 
 
 
-static void cirrus_update_32bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc)
+static void cirrus_update_32bpp(bitmap_t *bitmap)
 {
 	fatalerror("NYI");
 }

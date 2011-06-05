@@ -35,9 +35,9 @@ static device_t *cassette_device_image(running_machine &machine)
 {
 	z80ne_state *state = machine.driver_data<z80ne_state>();
 	if (state->m_lx385_ctrl & 0x08)
-		return machine.device("cassetteb");
+		return machine.device(CASSETTE2_TAG);
 	else
-		return machine.device("cassettea");
+		return machine.device(CASSETTE_TAG);
 }
 
 static TIMER_CALLBACK(z80ne_cassette_tc)
@@ -138,7 +138,7 @@ static TIMER_CALLBACK( z80ne_kbd_scan )
      */
 
 	UINT16 key_bits;
-	UINT8 ctrl, rst;
+	UINT8 ctrl; //, rst;
 	UINT8 i;
 
 	/* 4-bit counter */
@@ -149,7 +149,7 @@ static TIMER_CALLBACK( z80ne_kbd_scan )
 	{
 		state->m_lx383_downsampler = LX383_DOWNSAMPLING;
 		key_bits = (input_port_read(machine, "ROW1") << 8) | input_port_read(machine, "ROW0");
-		rst = input_port_read(machine, "RST");
+//      rst = input_port_read(machine, "RST");
 		ctrl = input_port_read(machine, "CTRL");
 
 		for ( i = 0; i<LX383_KEYS; i++)
@@ -610,10 +610,10 @@ WRITE8_HANDLER(lx385_ctrl_w)
 	/* motors */
 	if(changed_bits & 0x18)
 	{
-		cassette_change_state(space->machine().device("cassettea"),
+		cassette_change_state(space->machine().device(CASSETTE_TAG),
 			(motor_a) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
-		cassette_change_state(space->machine().device("cassetteb"),
+		cassette_change_state(space->machine().device(CASSETTE2_TAG),
 			(motor_b) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 		if (motor_a || motor_b)

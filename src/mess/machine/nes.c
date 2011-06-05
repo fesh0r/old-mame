@@ -646,7 +646,7 @@ DEVICE_IMAGE_LOAD( nes_cart )
 	if (image.software_entry() == NULL)
 	{
 		const char *mapinfo = NULL;
-		int mapint1 = 0, mapint2 = 0, mapint3 = 0, mapint4 = 0, goodcrcinfo = 0;
+		int mapint1 = 0, mapint2 = 0, mapint3 = 0, mapint4 = 0; //, goodcrcinfo = 0;
 		char magic[4], extend[5];
 		int local_options = 0;
 		char m;
@@ -709,7 +709,7 @@ DEVICE_IMAGE_LOAD( nes_cart )
 					state->m_chr_chunks = mapint4;
 					logerror("NES.HSI info: %d %d %d %d\n", mapint1, mapint2, mapint3, mapint4);
 //                  mame_printf_error("NES.HSI info: %d %d %d %d\n", mapint1, mapint2, mapint3, mapint4);
-					goodcrcinfo = 1;
+//                  goodcrcinfo = 1;
 					state->m_ines20 = 0;
 				}
 				else
@@ -1650,7 +1650,7 @@ static void nes_load_proc( device_image_interface &image )
 	state->m_fds_sides = (image.length() - header) / 65500;
 
 	if (state->m_fds_data == NULL)
-		state->m_fds_data = (UINT8*)image.image_malloc(state->m_fds_sides * 65500);	// I don't think we can arrive here ever, probably it can be removed...
+		state->m_fds_data = auto_alloc_array(image.device().machine(),UINT8,state->m_fds_sides * 65500);	// I don't think we can arrive here ever, probably it can be removed...
 
 	/* if there is an header, skip it */
 	image.fseek(header, SEEK_SET);

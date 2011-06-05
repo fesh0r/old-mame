@@ -360,7 +360,7 @@ void x07_state::t6834_cmd (running_machine &machine, UINT8 cmd)
 
 	case 0x1e:	//start program write cont
 		{
-			for(int i = (int)strlen((char*)m_t6834_ram[0x500]); i < 0x80; i++)
+			for(int i = (int)strlen((char*)&m_t6834_ram[0x500]); i < 0x80; i++)
 			{
 				UINT8 sp_char = m_in.data[m_in.read++];
 				m_t6834_ram[0x500 + i] = sp_char;
@@ -485,7 +485,7 @@ void x07_state::t6834_cmd (running_machine &machine, UINT8 cmd)
 			UINT8 pos = m_in.data[m_in.read++] - 1;
 			UINT8 udk_size = (pos != 5 && pos != 11) ? 0x2a : 0x2e;
 
-			for(int i = (int)strlen((char*)m_t6834_ram[udk_offset[pos]]); i < udk_size; i++)
+			for(int i = (int)strlen((char*)&m_t6834_ram[udk_offset[pos]]); i < udk_size; i++)
 			{
 				UINT8 udk_char = m_in.data[m_in.read++];
 				m_t6834_ram[udk_offset[pos] + i] = udk_char;
@@ -692,8 +692,8 @@ void x07_state::cassette_w(running_machine &machine)
 void x07_state::printer_w(running_machine &machine)
 {
 	UINT16 char_pos = 0;
-	UINT16 text_color = 0;
-	UINT16 text_size = 1;
+//  UINT16 text_color = 0;
+//  UINT16 text_size = 1;
 
 	if (m_regs_r[4] & 0x20)
 		m_prn_char_code |= 1;
@@ -712,17 +712,18 @@ void x07_state::printer_w(running_machine &machine)
 				{
 					for (int i = 2; i < m_prn_size - 2; i++)
 					{
-						if (m_prn_buffer[i - 1] == 0x4f && m_prn_buffer[i] == 0x3d)
-							text_color = printer_charcode[m_prn_buffer[i + 1]] - 0x30;
+/*
+                        if (m_prn_buffer[i - 1] == 0x4f && m_prn_buffer[i] == 0x3d)
+                            text_color = printer_charcode[m_prn_buffer[i + 1]] - 0x30;
 
-						if (m_prn_buffer[i - 1] == 0x4f && m_prn_buffer[i] == 0x35)
-						{
-							if (m_prn_buffer[i + 2] == 0x4f)
-								text_size = printer_charcode[m_prn_buffer[i + 1]] - 0x2f;
-							else
-								text_size = 0x0a + (printer_charcode[m_prn_buffer[i + 2]] - 0x2f);
-						}
-
+                        if (m_prn_buffer[i - 1] == 0x4f && m_prn_buffer[i] == 0x35)
+                        {
+                            if (m_prn_buffer[i + 2] == 0x4f)
+                                text_size = printer_charcode[m_prn_buffer[i + 1]] - 0x2f;
+                            else
+                                text_size = 0x0a + (printer_charcode[m_prn_buffer[i + 2]] - 0x2f);
+                        }
+*/
 						if (m_prn_buffer[i - 1] == 0x4f && m_prn_buffer[i] == 0x77)
 						{
 							char_pos = i + 1 ;

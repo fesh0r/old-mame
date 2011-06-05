@@ -1,3 +1,108 @@
+0.142u4
+
+New System Drivers Supported:
+-----------------------------
+(none)
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+(none)
+
+Skeleton drivers:
+-----------------
+(none)
+
+System Driver Changes:
+----------------------
+- c64 : Enabled writing to cartridge RAM @ 0x8000-0x9fff. [Curt Coder]
+- apple2e : Add location for the two code roms of the Apple IIe enhanced.[Lord Nightmare]
+- apple2e : Restored the rom IC type information inadvertently removed by 
+	the addition of the locations for the Apple IIe enhanced roms. [Lord Nightmare]
+- c64 : Added mapper for the "Simons' BASIC" cartridge. [Curt Coder]
+- fidelz80 : Added Sensory Chess Challenger (model VSC). [Lord Nightmare, Kevtris, Sandro Ronco]
+- bbc : removed all the old video speed hacks, getting ready to 
+	switch over to using the MC6845 in the MAME core. (GordonJ)
+- c64 : Added mapper for the "Super Explode! v5.0" cartridge. [Curt Coder]
+- bbc : Cleaning up the BBC driver in an effort to switch to MAMEs MC6845, also 
+	removed large amounts of unused code from the m6845 code in MESS [GordonJ]
+- x1 : Implemented proper Sharp X1 pixel clock divider [Angelo Salese]
+- mk90 : Fixed reset vector. [Curt Coder]
+- tec1 : added JMON (not working) [Robbbert]
+- chessmst : Added layout and input ports. [Sandro Ronco]
+
+Software Lists:
+----------------
+- c64 : Added 8/16K cartridges to the softlist. [k1w1]
+- snes.xml : verified dumps and added alt dumps [MESSfan]
+- Added floppy softlists for C64, C128, VIC-20, and Plus/4. [Curt Coder]
+- c16 : Added cartridge softlist and connected it to the driver. [Curt Coder]
+- snes.xml : Added proper dump for Super Gussun Oyoyo (Jpn, Prototype)  [MESSFan]
+- c64 : Added some cartridges to the softlist. [k1w1]
+- c64 : Cart softlist fixes. [k1w1]
+
+Source Changes:
+----------------
+- pc_fdc - added disk change signal [Carl]
+- note that with new tools there are no unicode issue with tools (wimgtool)
+
+0.142u3
+
+New System Drivers Supported:
+-----------------------------
+(none)
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+(none)
+
+Skeleton drivers:
+-----------------
+(none)
+
+System Driver Changes:
+----------------------
+- amico2k: Implemented keyboard and display. [Curt Coder]
+- amico2k: Fixed LED flickering. [Curt Coder]
+- bbc: Started cleaning up the code as it has been neglected 
+	for a long time. [GordonJ]
+- psx: Most FMVs now have fluent video, again [R. Belmont]
+- psx: Fix register readback of DMA completion, FMVs work
+	way better, SOTN gets into game [Fabio Priuli]
+- prof80: Fixed display corruption. [Curt Coder]
+- prof80: Added GripS 1.15 ROM. [Curt Coder]
+- apple2e, apple2ee: Added keyboard ROMs. [Curt Coder]
+- next: Added softlist and floppy device. [Curt Coder]
+- atom: Fixed 2400Hz timer, CPU type, and added a comment 
+	about the ERROR bug. [Curt Coder]
+- abc802, abc806: Added ROM dump for ABC55/77 keyboard. [robcfg, Curt Coder]
+- psx: fix FMV colors [Angelo Salese]
+- next: Modernized driver and connected MCCS1850 RTC. [Curt Coder]
+- c64: Connected to cartridge software list and implemented 
+	loading of simple 8K/16K cartridges. [Curt Coder]
+- ti99: Locked HSGPL mode to on for ti99_4p; HSGPL does not 
+	lock up anymore when cartridge is plugged in; SAMS 
+	address decoding fixed [Michael Zapf]
+- at: Pentium drivers boots from HDD [Miodrag Milanovic]
+- c64: Added mapper for the "VizaWrite 64" cartridge. [Curt Coder]
+- next: Added default EEPROM, system boots to ROM monitor now. [Curt Coder]
+- c64: Added mapper for the "Skaermtrolden Hugo" cartridge. [Curt Coder]
+- c64: Added mapper for the "Easy Calc Result" cartridge. [Curt Coder]
+- c64: Added mapper for the "Pagefox" cartridge. The 32KB RAM 
+	expansion is not fully supported. [Curt Coder]
+- pc: Fixed issues with XT HDC [Carl]
+
+
+Software Lists:
+----------------
+- snes.xml: verified a lot of dumps and added a few more alt dumps [MESSfan]
+- a800.xml/xegs.xml: updated to take advantage of <info> and confirmed some dumps [k1w1]
+- external contributions to lists from k1w1 (and mvrh)
+
+Source Changes:
+----------------
+- sonydriv: fix crashes when accessing drive after a 
+	software-initiated disk eject (e.g. zzcopy on apple2gs) [R. Belmont]
+
 0.142u2
 
 New System Drivers Supported:

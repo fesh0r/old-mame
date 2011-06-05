@@ -5374,7 +5374,7 @@ UINT8 get_vblank(running_machine &machine)
 	if (cur_v >= vblank)
 		return 1;
 
-	return 264;
+	return 0;
 }
 
 static UINT8 get_odd_bit(running_machine &machine)
