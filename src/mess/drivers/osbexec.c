@@ -31,7 +31,7 @@ public:
 			m_pia_0( *this, "pia_0" ),
 			m_pia_1( *this, "pia_1" ),
 			m_sio( *this, "sio" ),
-			m_speaker( *this, "speaker" )
+			m_speaker( *this, SPEAKER_TAG )
 	{ }
 
 	required_device<cpu_device>	m_maincpu;
@@ -517,7 +517,7 @@ static FLOPPY_OPTIONS_START(osbexec )
 FLOPPY_OPTIONS_END
 
 
-static const floppy_config osbexec_floppy_config =
+static const floppy_interface osbexec_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -526,6 +526,7 @@ static const floppy_config osbexec_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(osbexec),
+	NULL,
 	NULL
 };
 
@@ -641,7 +642,7 @@ static MACHINE_CONFIG_START( osbexec, osbexec_state )
 	MCFG_VIDEO_START( generic_bitmapped )
 
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
 //  MCFG_PIT8253_ADD( "pit", osbexec_pit_config )
@@ -653,7 +654,7 @@ static MACHINE_CONFIG_START( osbexec, osbexec_state )
 
 	MCFG_MB8877_ADD("mb8877", default_wd17xx_interface_2_drives )
 
-	MCFG_FLOPPY_2_DRIVES_ADD(osbexec_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(osbexec_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

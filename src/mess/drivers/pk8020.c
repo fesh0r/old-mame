@@ -140,11 +140,12 @@ static INPUT_PORTS_START( pk8020 )
 INPUT_PORTS_END
 
 /* Machine driver */
-static const cassette_config pk8020_cassette_config =
+static const cassette_interface pk8020_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
+	NULL,
 	NULL
 };
 
@@ -157,7 +158,7 @@ static FLOPPY_OPTIONS_START(pk8020)
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config pk8020_floppy_config =
+static const floppy_interface pk8020_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -166,6 +167,7 @@ static const floppy_config pk8020_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(pk8020),
+	NULL,
 	NULL
 };
 
@@ -233,14 +235,14 @@ static MACHINE_CONFIG_START( pk8020, pk8020_state )
 
 	/* audio hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, pk8020_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, pk8020_cassette_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(pk8020_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(pk8020_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

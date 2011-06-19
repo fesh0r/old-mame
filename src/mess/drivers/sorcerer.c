@@ -379,16 +379,17 @@ static const ay31015_config sorcerer_ay31015_config =
 };
 
 
-static const cassette_config sorcerer_cassette_config =
+static const cassette_interface sorcerer_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
 #if SORCERER_USING_DISKS
-static const floppy_config sorcerer_floppy_config =
+static const floppy_interface sorcerer_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -397,6 +398,7 @@ static const floppy_config sorcerer_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(sorcerer),
+	NULL,
 	NULL
 };
 #endif
@@ -425,9 +427,9 @@ static MACHINE_CONFIG_START( sorcerer, sorcerer_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave.1", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass1 speaker
-	MCFG_SOUND_WAVE_ADD("wave.2", CASSETTE2_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE2_TAG, CASSETTE2_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass2 speaker
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)	// speaker or music card on parallel port
@@ -441,8 +443,8 @@ static MACHINE_CONFIG_START( sorcerer, sorcerer_state )
 	MCFG_SNAPSHOT_ADD("snapshot", sorcerer, "snp", 2)
 	MCFG_Z80BIN_QUICKLOAD_ADD("quickload", sorcerer, 3)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, sorcerer_cassette_config )
-	MCFG_CASSETTE_ADD( CASSETTE2_TAG, sorcerer_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, sorcerer_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE2_TAG, sorcerer_cassette_interface )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
@@ -459,7 +461,7 @@ static MACHINE_CONFIG_START( sorcerer, sorcerer_state )
 
 #if SORCERER_USING_DISKS
 	MCFG_xx_ADD("micropolis", default_micropolis_interface ) // custom micropolis controller
-	MCFG_FLOPPY_4_DRIVES_ADD(sorcerer_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(sorcerer_floppy_interface)
 #endif
 MACHINE_CONFIG_END
 

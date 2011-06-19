@@ -73,8 +73,8 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<ef9345_device> m_ef9345;
 	required_device<device_t> m_dac;
-	required_device<device_t> m_printer;
-	required_device<device_t> m_cassette;
+	required_device<printer_image_device> m_printer;
+	required_device<cassette_image_device> m_cassette;
 
 	offs_t m_ef9345_offset;
 
@@ -94,13 +94,13 @@ public:
 
 READ8_MEMBER( vg5k_state::printer_r )
 {
-	return (printer_is_ready(m_printer) ? 0x00 : 0xff);
+	return (m_printer->is_ready() ? 0x00 : 0xff);
 }
 
 
 WRITE8_MEMBER( vg5k_state::printer_w )
 {
-	printer_output(m_printer, data);
+	m_printer->output(data);
 }
 
 
@@ -124,7 +124,7 @@ WRITE8_MEMBER ( vg5k_state::ef9345_io_w )
 
 READ8_MEMBER ( vg5k_state::cassette_r )
 {
-	double level = cassette_input(m_cassette);
+	double level = m_cassette->input();
 
 	return (level > 0.03) ? 0xff : 0x00;
 }
@@ -135,11 +135,11 @@ WRITE8_MEMBER ( vg5k_state::cassette_w )
 	dac_data_w(m_dac, data <<2);
 
 	if (data == 0x03)
-		cassette_output(m_cassette, +1);
+		m_cassette->output(+1);
 	else if (data == 0x02)
-		cassette_output(m_cassette, -1);
+		m_cassette->output(-1);
 	else
-		cassette_output(m_cassette, 0);
+		m_cassette->output(0);
 }
 
 
@@ -366,12 +366,13 @@ static const struct CassetteOptions vg5k_cassette_options =
 	44100	/* sample frequency */
 };
 
-static const cassette_config vg5k_cassette_config =
+static const cassette_interface vg5k_cassette_interface =
 {
 	vg5k_cassette_formats,
 	&vg5k_cassette_options,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MASK_SPEAKER),
-	"vg5k_cass"
+	"vg5k_cass",
+	NULL
 };
 
 
@@ -405,10 +406,10 @@ static MACHINE_CONFIG_START( vg5k, vg5k_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	/* cassette */
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(0, "mono", 0.1)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(0, "mono", 0.25)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, vg5k_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, vg5k_cassette_interface )
 
 	/* printer */
 	MCFG_PRINTER_ADD("printer")

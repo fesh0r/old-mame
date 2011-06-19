@@ -50,7 +50,7 @@ static WRITE8_HANDLER( jr100_via_w )
 		state->m_beep_en = ((data & 0xe0) == 0xe0);
 
 		if(!state->m_beep_en)
-			beep_set_state(space->machine().device("beeper"),0);
+			beep_set_state(space->machine().device(BEEPER_TAG),0);
 	}
 
 	/* T1L-L */
@@ -69,8 +69,8 @@ static WRITE8_HANDLER( jr100_via_w )
 		/* writing here actually enables the beeper, if above masking condition is satisfied */
 		if(state->m_beep_en)
 		{
-			beep_set_state(space->machine().device("beeper"),1);
-			beep_set_frequency(space->machine().device("beeper"),894886.25 / (double)(state->m_t1latch) / 2.0);
+			beep_set_state(space->machine().device(BEEPER_TAG),1);
+			beep_set_frequency(space->machine().device(BEEPER_TAG),894886.25 / (double)(state->m_t1latch) / 2.0);
 		}
 	}
 	via6522_device *via = space->machine().device<via6522_device>("via");
@@ -155,8 +155,8 @@ INPUT_PORTS_END
 
 static MACHINE_START(jr100)
 {
-	beep_set_frequency(machine.device("beeper"),0);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),0);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 }
 
 static MACHINE_RESET(jr100)
@@ -246,7 +246,7 @@ static WRITE8_DEVICE_HANDLER(jr100_via_write_b )
 
 static WRITE_LINE_DEVICE_HANDLER(jr100_via_write_cb2)
 {
-	cassette_output(device->machine().device(CASSETTE_TAG), state ? -1.0 : +1.0);
+	device->machine().device<cassette_image_device>(CASSETTE_TAG)->output(state ? -1.0 : +1.0);
 }
 static const via6522_interface jr100_via_intf =
 {
@@ -264,23 +264,24 @@ static const via6522_interface jr100_via_intf =
 	DEVCB_LINE(jr100_via_write_cb2),    				/* out_cb2_func */
 	DEVCB_NULL  										/* irq_func */
 };
-static const cassette_config jr100_cassette_config =
+static const cassette_interface jr100_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL,
 	NULL
 };
 
 static TIMER_DEVICE_CALLBACK( sound_tick )
 {
 	jr100_state *state = timer.machine().driver_data<jr100_state>();
-	device_t *speaker = timer.machine().device("speaker");
+	device_t *speaker = timer.machine().device(SPEAKER_TAG);
 	speaker_level_w(speaker,state->m_speaker);
 	state->m_speaker = 0;
 
 	via6522_device *via = timer.machine().device<via6522_device>("via");
-	double level = cassette_input(timer.machine().device(CASSETTE_TAG));
+	double level = (timer.machine().device<cassette_image_device>(CASSETTE_TAG)->input());
 	if (level > 0.0) {
 		via->write_ca1(0);
 		via->write_cb1(0);
@@ -372,15 +373,15 @@ static MACHINE_CONFIG_START( jr100, jr100_state )
 	MCFG_VIA6522_ADD("via", XTAL_14_31818MHz / 16, jr100_via_intf)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, jr100_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, jr100_cassette_interface )
 
 	MCFG_TIMER_ADD_PERIODIC("sound_tick", sound_tick, attotime::from_hz(XTAL_14_31818MHz / 16))
 

@@ -1063,17 +1063,17 @@ static Z80CTC_INTERFACE( ctc_intf )
 
 static READ_LINE_DEVICE_HANDLER( dfd_in_r )
 {
-	return cassette_input(device) > 0.0;
+	return dynamic_cast<cassette_image_device *>(device)->input() > 0.0;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( dfd_out_w )
 {
-	cassette_output(device, state ? +1.0 : -1.0);
+	dynamic_cast<cassette_image_device *>(device)->output(state ? +1.0 : -1.0);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( motor_control_w )
 {
-	cassette_change_state(device, state ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	dynamic_cast<cassette_image_device *>(device)->change_state(state ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 }
 
 static Z80DART_INTERFACE( sio_intf )
@@ -1221,26 +1221,34 @@ static const z80_daisy_config abc800_daisy_chain[] =
 
 
 //-------------------------------------------------
-//  cassette_config abc800_cassette_config
+//  cassette_interface abc800_cassette_interface
 //-------------------------------------------------
 
-static const cassette_config abc800_cassette_config =
+static const cassette_interface abc800_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
+	NULL,
 	NULL
 };
 
 
 //-------------------------------------------------
-//  ABCBUS_DAISY( abcbus_daisy )
+//  ABCBUS_INTERFACE( abcbus_intf )
 //-------------------------------------------------
 
-static ABCBUS_DAISY( abcbus_daisy )
+static SLOT_INTERFACE_START( abc800_abcbus_cards )
+	SLOT_INTERFACE("fast", LUXOR_55_21046)
+SLOT_INTERFACE_END
+
+
+static ABCBUS_INTERFACE( abcbus_intf )
 {
-	{ LUXOR_55_21046_TAG },
-	{ NULL }
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -1429,13 +1437,17 @@ static MACHINE_CONFIG_START( abc800c, abc800c_state )
 	MCFG_Z80SIO2_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc800_dart_intf)
 	MCFG_PRINTER_ADD("printer")
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_interface)
 	MCFG_TIMER_ADD_PERIODIC("keyboard_t1", keyboard_t1_tick, attotime::from_hz(XTAL_5_9904MHz/(3*5)/20)) // TODO correct frequency?
+	MCFG_ABC832_ADD()
 
 	// ABC bus
-	MCFG_ABCBUS_ADD(ABCBUS_TAG, abcbus_daisy)
-	MCFG_ABC830_ADD()
-	MCFG_LUXOR_55_21046_ADD(abc830_fast_intf)
+	MCFG_ABCBUS_ADD(Z80_TAG, abcbus_intf)
+	MCFG_ABCBUS_SLOT_ADD( 1, "abc1", abc800_abcbus_cards, "fast")
+	MCFG_ABCBUS_SLOT_ADD( 2, "abc2", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 3, "abc3", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 4, "abc4", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 5, "abc5", abc800_abcbus_cards, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1476,13 +1488,17 @@ static MACHINE_CONFIG_START( abc800m, abc800m_state )
 	MCFG_Z80SIO2_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc800_dart_intf)
 	MCFG_PRINTER_ADD("printer")
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_interface)
 	MCFG_TIMER_ADD_PERIODIC("keyboard_t1", keyboard_t1_tick, attotime::from_hz(XTAL_5_9904MHz/(3*5)/20)) // TODO correct frequency?
+	MCFG_ABC832_ADD()
 
 	// ABC bus
-	MCFG_ABCBUS_ADD(ABCBUS_TAG, abcbus_daisy)
-	MCFG_ABC830_ADD()
-	MCFG_LUXOR_55_21046_ADD(abc830_fast_intf)
+	MCFG_ABCBUS_ADD(Z80_TAG, abcbus_intf)
+	MCFG_ABCBUS_SLOT_ADD( 1, "abc1", abc800_abcbus_cards, "fast")
+	MCFG_ABCBUS_SLOT_ADD( 2, "abc2", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 3, "abc3", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 4, "abc4", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 5, "abc5", abc800_abcbus_cards, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1521,12 +1537,16 @@ static MACHINE_CONFIG_START( abc802, abc802_state )
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc802_dart_intf)
 	MCFG_ABC77_ADD(abc77_intf)
 	MCFG_PRINTER_ADD("printer")
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_interface)
+	MCFG_ABC834_ADD()
 
 	// ABC bus
-	MCFG_ABCBUS_ADD(ABCBUS_TAG, abcbus_daisy)
-	MCFG_ABC834_ADD()
-	MCFG_LUXOR_55_21046_ADD(abc834_fast_intf)
+	MCFG_ABCBUS_ADD(Z80_TAG, abcbus_intf)
+	MCFG_ABCBUS_SLOT_ADD( 1, "abc1", abc800_abcbus_cards, "fast")
+	MCFG_ABCBUS_SLOT_ADD( 2, "abc2", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 3, "abc3", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 4, "abc4", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 5, "abc5", abc800_abcbus_cards, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1556,12 +1576,16 @@ static MACHINE_CONFIG_START( abc806, abc806_state )
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc806_dart_intf)
 	MCFG_ABC77_ADD(abc77_intf)
 	MCFG_PRINTER_ADD("printer")
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc800_cassette_interface)
+	MCFG_ABC832_ADD()
 
 	// ABC bus
-	MCFG_ABCBUS_ADD(ABCBUS_TAG, abcbus_daisy)
-	MCFG_ABC832_ADD()
-	MCFG_LUXOR_55_21046_ADD(abc832_fast_intf)
+	MCFG_ABCBUS_ADD(Z80_TAG, abcbus_intf)
+	MCFG_ABCBUS_SLOT_ADD( 1, "abc1", abc800_abcbus_cards, "fast")
+	MCFG_ABCBUS_SLOT_ADD( 2, "abc2", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 3, "abc3", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 4, "abc4", abc800_abcbus_cards, NULL)
+	MCFG_ABCBUS_SLOT_ADD( 5, "abc5", abc800_abcbus_cards, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1686,6 +1710,9 @@ ROM_START( abc800m )
 	ROM_REGION( 0x800, "xebec", 0 )
 	ROM_LOAD_OPTIONAL( "st4038.bin",   0x0000, 0x0800, CRC(4c803b87) SHA1(1141bb51ad9200fc32d92a749460843dc6af8953) ) // Seagate ST4038 (http://stason.org/TULARC/pc/hard-drives-hdd/seagate/ST4038-1987-31MB-5-25-FH-MFM-ST412.html)
 	ROM_LOAD_OPTIONAL( "st225.bin",    0x0000, 0x0800, CRC(c9f68f81) SHA1(7ff8b2a19f71fe0279ab3e5a0a5fffcb6030360c) ) // Seagate ST225 (http://stason.org/TULARC/pc/hard-drives-hdd/seagate/ST225-21MB-5-25-HH-MFM-ST412.html)
+
+	ROM_REGION( 0x800, "slutprov", 0 )
+	ROM_LOAD_OPTIONAL( "slutprov.bin",   0x0000, 0x0800, CRC(a5bb56f4) SHA1(f97cb6526a1d10b189164f26157522e382ca6bc6) )
 ROM_END
 
 

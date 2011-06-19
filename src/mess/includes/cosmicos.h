@@ -19,7 +19,6 @@
 #define CDP1864_TAG		"ic3"
 #define DM9368_TAG		"ic10"
 #define SCREEN_TAG		"screen"
-#define SPEAKER_TAG		"speaker"
 
 enum
 {
@@ -55,7 +54,7 @@ public:
 	required_device<cosmac_device> m_maincpu;
 	required_device<cdp1864_device> m_cti;
 	required_device<dm9368_device> m_led;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_ram;
 

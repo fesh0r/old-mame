@@ -415,19 +415,21 @@ static const ay31015_config z80ne_ay31015_config =
 	NULL
 };
 
-static const cassette_config z80ne_cassettea_config =
+static const cassette_interface z80ne_cassettea_config =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
-static const cassette_config z80ne_cassetteb_config =
+static const cassette_interface z80ne_cassetteb_config =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -437,7 +439,7 @@ static const kr2376_interface lx388_kr2376_interface =
 	NULL
 };
 
-static const floppy_config z80netf_floppy_config =
+static const floppy_interface z80netf_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -446,6 +448,7 @@ static const floppy_config z80netf_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(z80ne),
+	NULL,
 	NULL
 };
 
@@ -582,7 +585,7 @@ static MACHINE_CONFIG_START( z80netf, z80ne_state )
 	MCFG_MC6847_PALETTE(lx388palette)
 
 	MCFG_WD1771_ADD("wd1771", default_wd17xx_interface)
-	MCFG_FLOPPY_4_DRIVES_ADD(z80netf_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(z80netf_floppy_interface)
 
 	MCFG_DEFAULT_LAYOUT(layout_z80netf)
 

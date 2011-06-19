@@ -585,33 +585,36 @@ static INPUT_PORTS_START ( t9000 )
      PORT_INCLUDE ( to7 )
 INPUT_PORTS_END
 
-static const floppy_config thomson_floppy_config =
+static const floppy_interface thomson_floppy_interface =
 {
-	DEVCB_NULL,
+	DEVCB_LINE(thomson_index_callback),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(thomson),
+	NULL,
 	NULL
 };
 
 
 /********************* devices ************************/
-const cassette_config to7_cassette_config =
+const cassette_interface to7_cassette_interface =
 {
 	to7_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
-const cassette_config mo5_cassette_config =
+const cassette_interface mo5_cassette_interface =
 {
 	mo5_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -654,7 +657,7 @@ static MACHINE_CONFIG_START( to7, driver_device )
      MCFG_CENTRONICS_ADD("centronics", to7_centronics_config)
 
 /* cassette */
-     MCFG_CASSETTE_ADD( CASSETTE_TAG, to7_cassette_config )
+     MCFG_CASSETTE_ADD( CASSETTE_TAG, to7_cassette_interface )
 
 /* timer */
      MCFG_MC6846_ADD( "mc6846", to7_timer )
@@ -665,7 +668,7 @@ static MACHINE_CONFIG_START( to7, driver_device )
 /* floppy */
      MCFG_MC6843_ADD( "mc6843", to7_6843_itf )
      MCFG_WD2793_ADD( "wd2793", default_wd17xx_interface )
-     MCFG_FLOPPY_4_DRIVES_ADD(thomson_floppy_config)
+     MCFG_FLOPPY_4_DRIVES_ADD(thomson_floppy_interface)
 
 /* network */
      MCFG_MC6854_ADD( "mc6854", to7_network_iface )
@@ -1049,7 +1052,7 @@ static MACHINE_CONFIG_DERIVED( mo5, to7 )
      MCFG_CPU_MODIFY( "maincpu" )
      MCFG_CPU_PROGRAM_MAP ( mo5)
 
-     MCFG_CASSETTE_MODIFY( CASSETTE_TAG, mo5_cassette_config )
+     MCFG_CASSETTE_MODIFY( CASSETTE_TAG, mo5_cassette_interface )
 
      MCFG_DEVICE_REMOVE( "mc6846" )
 

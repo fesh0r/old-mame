@@ -53,8 +53,8 @@ public:
 	optional_device<ef9345_device> m_ef9345;
 	required_device<device_t> m_dac;
 	required_device<device_t> m_ram;
-	required_device<device_t> m_cassette;
-	required_device<device_t> m_printer;
+	required_device<cassette_image_device> m_cassette;
+	required_device<printer_image_device> m_printer;
 
 	UINT8 *m_ram_base;
 	UINT32 m_ram_size;
@@ -146,12 +146,12 @@ READ8_MEMBER( mc10_state::mc10_port2_r )
 	if (!BIT(m_keyboard_strobe, 7)) result &= input_port_read(machine(), "pb7") >> 5;
 
 	/* bit 2, printer ots input */
-	result |= (printer_is_ready(m_printer) ? 0 : 4);
+	result |= (m_printer->is_ready() ? 0 : 4);
 
 	/* bit 3, rs232 input */
 
 	/* bit 4, cassette input */
-	result |= (cassette_input(m_cassette) >= 0 ? 1 : 0) << 4;
+	result |= ((m_cassette)->input() >= 0 ? 1 : 0) << 4;
 
 	return result;
 }
@@ -159,7 +159,7 @@ READ8_MEMBER( mc10_state::mc10_port2_r )
 WRITE8_MEMBER( mc10_state::mc10_port2_w )
 {
 	/* bit 0, cassette & printer output */
-	cassette_output(m_cassette, BIT(data, 0) ? +1.0 : -1.0);
+	m_cassette->output( BIT(data, 0) ? +1.0 : -1.0);
 
 	switch (m_pr_state)
 	{
@@ -179,7 +179,7 @@ WRITE8_MEMBER( mc10_state::mc10_port2_w )
 			break;
 		case PRINTER_DONE:
 			if (BIT(data,0))
-				printer_output(m_printer, m_pr_buffer);
+				m_printer->output(m_pr_buffer);
 			m_pr_state = PRINTER_WAIT;
 			break;
 	}
@@ -471,20 +471,22 @@ INPUT_PORTS_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static const cassette_config mc10_cassette_config =
+static const cassette_interface mc10_cassette_interface =
 {
 	coco_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL,
 	NULL
 };
 
-static const cassette_config alice32_cassette_config =
+static const cassette_interface alice32_cassette_interface =
 {
 	alice32_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
-	"alice32_cass"
+	"alice32_cass",
+	NULL
 };
 
 static const mc6847_interface mc10_mc6847_intf =
@@ -525,7 +527,7 @@ static MACHINE_CONFIG_START( mc10, mc10_state )
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, mc10_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, mc10_cassette_interface)
 
 	/* printer */
 	MCFG_PRINTER_ADD("printer")
@@ -564,7 +566,7 @@ static MACHINE_CONFIG_START( alice32, mc10_state )
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, alice32_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, alice32_cassette_interface)
 
 	/* printer */
 	MCFG_PRINTER_ADD("printer")

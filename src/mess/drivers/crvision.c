@@ -564,10 +564,10 @@ WRITE8_MEMBER( crvision_state::pia_pa_w )
 	m_keylatch = ~data & 0x0f;
 
 	/* cassette motor */
-	cassette_change_state(m_cassette, BIT(data, 6) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	m_cassette->change_state(BIT(data,6) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	/* cassette data output */
-	cassette_output(m_cassette, BIT(data, 7) ? +1.0 : -1.0);
+	m_cassette->output( BIT(data, 7) ? +1.0 : -1.0);
 }
 
 UINT8 crvision_state::read_keyboard(int pa)
@@ -613,7 +613,7 @@ READ8_MEMBER( crvision_state::pia_pa_r )
 
 	UINT8 data = 0x7f;
 
-	if (cassette_input(m_cassette) > -0.1469) data |= 0x80;
+	if ((m_cassette)->input() > -0.1469) data |= 0x80;
 
 	return data;
 }
@@ -744,12 +744,12 @@ WRITE8_MEMBER( laser2001_state::pia_pb_w )
 
 READ_LINE_MEMBER( laser2001_state::pia_ca1_r )
 {
-	return cassette_input(m_cassette) > -0.1469;
+	return (m_cassette)->input() > -0.1469;
 }
 
 WRITE_LINE_MEMBER( laser2001_state::pia_ca2_w )
 {
-	cassette_output(m_cassette, state ? +1.0 : -1.0);
+	m_cassette->output(state ? +1.0 : -1.0);
 }
 
 READ_LINE_MEMBER( laser2001_state::pia_cb1_r )
@@ -787,34 +787,36 @@ static const pia6821_interface lasr2001_pia_intf =
 };
 
 /*-------------------------------------------------
-    cassette_config crvision_cassette_config
+    cassette_interface crvision_cassette_interface
 -------------------------------------------------*/
 
-static const cassette_config crvision_cassette_config =
+static const cassette_interface crvision_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
 /*-------------------------------------------------
-    cassette_config lasr2001_cassette_config
+    cassette_interface lasr2001_cassette_interface
 -------------------------------------------------*/
 
-static const cassette_config lasr2001_cassette_config =
+static const cassette_interface lasr2001_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
 /*-------------------------------------------------
-    floppy_config lasr2001_floppy_config
+    floppy_interface lasr2001_floppy_interface
 -------------------------------------------------*/
 
-static const floppy_config lasr2001_floppy_config =
+static const floppy_interface lasr2001_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -823,6 +825,7 @@ static const floppy_config lasr2001_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_SSDD,
 	FLOPPY_OPTIONS_NAME(default),
+	NULL,
 	NULL
 };
 
@@ -1006,7 +1009,7 @@ static MACHINE_CONFIG_START( creativision, crvision_state )
 
 	// devices
 	MCFG_PIA6821_ADD(PIA6821_TAG, pia_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, crvision_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, crvision_cassette_interface)
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 
 	// sound hardware
@@ -1014,7 +1017,7 @@ static MACHINE_CONFIG_START( creativision, crvision_state )
 	MCFG_SOUND_ADD(SN76489_TAG, SN76489, XTAL_2MHz)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(1, "mono", 0.25)
 
 	// cartridge
@@ -1069,8 +1072,8 @@ static MACHINE_CONFIG_START( lasr2001, laser2001_state )
 
 	// devices
 	MCFG_PIA6821_ADD(PIA6821_TAG, lasr2001_pia_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, lasr2001_cassette_config)
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, lasr2001_floppy_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, lasr2001_cassette_interface)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, lasr2001_floppy_interface)
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, lasr2001_centronics_intf)
 
 	// video hardware
@@ -1084,7 +1087,7 @@ static MACHINE_CONFIG_START( lasr2001, laser2001_state )
 	MCFG_SOUND_ADD(SN76489_TAG, SN76489A, 17734470/9)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(1, "mono", 0.25)
 
 	// cartridge

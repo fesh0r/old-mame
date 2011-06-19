@@ -118,7 +118,7 @@ static WRITE8_DEVICE_HANDLER( myb3k_fdc_output_w )
 {
 	/* TODO: complete guesswork! (it just does a 0x24 -> 0x20 in there) */
 	wd17xx_set_drive(device,data & 3);
-	floppy_mon_w(floppy_get_device(device->machine(), data & 3), !data & 4);
+	floppy_mon_w(floppy_get_device(device->machine(), data & 3), (!data & 4) ? 1: 0);
 	floppy_drive_set_ready_state(floppy_get_device(device->machine(), data & 3), data & 0x4,0);
 	//wd17xx_set_side(dev,(data & 0x10)>>4);
 }
@@ -251,7 +251,7 @@ static const wd17xx_interface myb3k_wd17xx_interface =
 };
 
 
-static const floppy_config myb3k_floppy_config =
+static const floppy_interface myb3k_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -260,6 +260,7 @@ static const floppy_config myb3k_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSDD_40, //todo
 	FLOPPY_OPTIONS_NAME(default),
+	NULL,
 	NULL
 };
 
@@ -273,7 +274,7 @@ static MACHINE_CONFIG_START( myb3k, myb3k_state )
 	MCFG_MACHINE_RESET(myb3k)
 
 	MCFG_MB8877_ADD("fdc", myb3k_wd17xx_interface ) //unknown type
-	MCFG_FLOPPY_2_DRIVES_ADD(myb3k_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(myb3k_floppy_interface)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)

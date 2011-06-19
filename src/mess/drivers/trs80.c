@@ -522,11 +522,12 @@ static GFXDECODE_START(radionic)
 GFXDECODE_END
 
 
-static const cassette_config trs80l2_cassette_config =
+static const cassette_interface trs80l2_cassette_interface =
 {
 	trs80l2_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
+	NULL,
 	NULL
 };
 
@@ -540,7 +541,7 @@ static const ay31015_config trs80_ay31015_config =
 	NULL
 };
 
-static const floppy_config trs80_floppy_config =
+static const floppy_interface trs80_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -549,6 +550,7 @@ static const floppy_config trs80_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(trs80),
+	NULL,
 	NULL
 };
 
@@ -578,13 +580,13 @@ static MACHINE_CONFIG_START( trs80, trs80_state )		// the original model I, leve
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( model1, trs80 )		// model I, level II
@@ -594,10 +596,10 @@ static MACHINE_CONFIG_DERIVED( model1, trs80 )		// model I, level II
 	MCFG_CPU_PERIODIC_INT(trs80_rtc_interrupt, 40)
 
 	/* devices */
-	MCFG_CASSETTE_MODIFY( CASSETTE_TAG, trs80l2_cassette_config )
+	MCFG_CASSETTE_MODIFY( CASSETTE_TAG, trs80l2_cassette_interface )
 	MCFG_QUICKLOAD_ADD("quickload", trs80_cmd, "cmd", 0.5)
 	MCFG_WD179X_ADD("wd179x", trs80_wd17xx_interface )
-	MCFG_FLOPPY_4_DRIVES_ADD(trs80_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(trs80_floppy_interface)
 	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 	MCFG_AY31015_ADD( "tr1602", trs80_ay31015_config )
 MACHINE_CONFIG_END

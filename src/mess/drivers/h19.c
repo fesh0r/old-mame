@@ -54,7 +54,7 @@ public:
 	m_crtc(*this, "crtc"),
 	m_ace(*this, "ins8250"),
 	m_term(*this, TERMINAL_TAG),
-	m_beep(*this, "beep")
+	m_beep(*this, BEEPER_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -346,7 +346,7 @@ static MC6845_UPDATE_ROW( h19_update_row )
 	}
 }
 
-static INS8250_INTERRUPT(h19_ace_irq)
+static WRITE_LINE_DEVICE_HANDLER(h19_ace_irq)
 {
 	cputag_set_input_line(device->machine(), "maincpu", 0, (state ? HOLD_LINE : CLEAR_LINE));
 }
@@ -354,7 +354,7 @@ static INS8250_INTERRUPT(h19_ace_irq)
 static const ins8250_interface h19_ace_interface =
 {
 	XTAL_12_288MHz / 4, // 3.072mhz clock which gets divided down for the various baud rates
-	h19_ace_irq, // interrupt
+	DEVCB_LINE(h19_ace_irq), // interrupt
 	NULL, // transmit func
 	NULL, // handshake out
 	NULL // refresh func
@@ -427,7 +427,7 @@ static MACHINE_CONFIG_START( h19, h19_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_CONFIG_END
 

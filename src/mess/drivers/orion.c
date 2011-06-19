@@ -78,11 +78,12 @@ static ADDRESS_MAP_START( orionpro_io , AS_IO, 8)
     AM_RANGE( 0x0000, 0xffff) AM_READWRITE ( orionpro_io_r, orionpro_io_w )
 ADDRESS_MAP_END
 
-static const cassette_config orion_cassette_config =
+static const cassette_interface orion_cassette_interface =
 {
 	rko_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -109,7 +110,7 @@ static const wd17xx_interface orion_wd17xx_interface =
 	{ FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3 }
 };
 
-static const floppy_config orion_floppy_config =
+static const floppy_interface orion_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -118,6 +119,7 @@ static const floppy_config orion_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(orion),
+	NULL,
 	NULL
 };
 
@@ -149,14 +151,14 @@ static MACHINE_CONFIG_START( orion128, orion_state )
 	MCFG_VIDEO_START(orion128)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, orion_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, orion_cassette_interface )
 
 	MCFG_WD1793_ADD("wd1793", orion_wd17xx_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(orion_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(orion_floppy_interface)
 
 	MCFG_CARTSLOT_ADD("cart")
 
@@ -208,19 +210,19 @@ static MACHINE_CONFIG_START( orionz80, orion_state )
 	MCFG_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay8912", AY8912, 1773400)
 	MCFG_SOUND_CONFIG(orionz80_ay_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, orion_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, orion_cassette_interface )
 
 	MCFG_WD1793_ADD("wd1793", orion_wd17xx_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(orion_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(orion_floppy_interface)
 
 	MCFG_CARTSLOT_ADD("cart")
 
@@ -262,19 +264,19 @@ static MACHINE_CONFIG_START( orionpro, orion_state )
 	MCFG_VIDEO_START(orion128)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay8912", AY8912, 1773400)
 	MCFG_SOUND_CONFIG(orionz80_ay_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, orion_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, orion_cassette_interface )
 
 	MCFG_WD1793_ADD("wd1793", orion_wd17xx_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(orion_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(orion_floppy_interface)
 
 	MCFG_CARTSLOT_ADD("cart")
 

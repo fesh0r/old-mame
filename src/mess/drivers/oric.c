@@ -344,11 +344,12 @@ static const ay8910_interface oric_ay_interface =
 };
 
 
-static const cassette_config oric_cassette_config =
+static const cassette_interface oric_cassette_interface =
 {
 	oric_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED),
+	NULL,
 	NULL
 };
 
@@ -360,7 +361,7 @@ static const centronics_interface oric_centronics_config =
 	DEVCB_NULL
 };
 
-static const floppy_config oric1_floppy_config =
+static const floppy_interface oric1_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -369,10 +370,11 @@ static const floppy_config oric1_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(oric),
+	NULL,
 	NULL
 };
 
-static const floppy_config prav8d_floppy_config =
+static const floppy_interface prav8d_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -381,6 +383,7 @@ static const floppy_config prav8d_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(apple2),
+	NULL,
 	NULL
 };
 
@@ -409,8 +412,8 @@ static MACHINE_CONFIG_START( oric, oric_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay8912", AY8912, 1000000)
 	MCFG_SOUND_CONFIG(oric_ay_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -419,19 +422,19 @@ static MACHINE_CONFIG_START( oric, oric_state )
 	MCFG_CENTRONICS_ADD("centronics", oric_centronics_config)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, oric_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, oric_cassette_interface )
 
 	/* via */
 	MCFG_VIA6522_ADD( "via6522_0", 1000000, oric_6522_interface )
 
 	MCFG_WD179X_ADD("wd179x", oric_wd17xx_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(oric1_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(oric1_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( prav8d, oric )
 	MCFG_FLOPPY_4_DRIVES_REMOVE()
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, prav8d_floppy_config)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, prav8d_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( telstrat, oric )

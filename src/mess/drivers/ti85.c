@@ -187,11 +187,10 @@ TI-86 ports:
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "sound/speaker.h"
-#include "includes/ti85.h"
 #include "imagedev/snapquik.h"
 #include "machine/ti85_ser.h"
 #include "machine/nvram.h"
+#include "includes/ti85.h"
 
 /* port i/o functions */
 
@@ -529,7 +528,7 @@ static MACHINE_CONFIG_DERIVED( ti85, ti81 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_CONFIG_END
 
@@ -561,7 +560,7 @@ static MACHINE_CONFIG_DERIVED( ti82, ti81 )
 	MCFG_T6A04_ADD("t6a04", ti82_display)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MCFG_TI82SERIAL_ADD( "tiserial" )
@@ -626,7 +625,7 @@ static MACHINE_CONFIG_DERIVED( ti83p, ti81 )
 	MCFG_NVRAM_HANDLER(ti83p)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MCFG_TI83PSERIAL_ADD( "tiserial" )

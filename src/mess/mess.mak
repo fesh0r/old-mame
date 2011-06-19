@@ -342,6 +342,7 @@ DRVLIBS += \
 	$(MESSOBJ)/mit.a \
 	$(MESSOBJ)/mits.a \
 	$(MESSOBJ)/mitsubishi.a \
+	$(MESSOBJ)/morrow.a \
 	$(MESSOBJ)/mos.a \
 	$(MESSOBJ)/motorola.a \
 	$(MESSOBJ)/multitch.a \
@@ -527,6 +528,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/mpc105.o	\
 	$(MESS_MACHINE)/mos6530.o	\
 	$(MESS_MACHINE)/msm8251.o	\
+	$(MESS_MACHINE)/s100.o		\
 	$(MESS_MACHINE)/serial.o	\
 	$(MESS_MACHINE)/upd765.o	\
 	$(MESS_MACHINE)/ncr5380.o	\
@@ -593,6 +595,8 @@ $(MESSOBJ)/amiga.a:				\
 $(MESSOBJ)/amstrad.a:			\
 	$(MESS_DRIVERS)/amstrad.o	\
 	$(MESS_MACHINE)/amstrad.o	\
+	$(MESS_DRIVERS)/amstr_pc.o	\
+	$(MESS_MACHINE)/amstr_pc.o	\
 	$(MESS_VIDEO)/nc.o			\
 	$(MESS_DRIVERS)/nc.o		\
 	$(MESS_MACHINE)/nc.o		\
@@ -1114,7 +1118,12 @@ $(MESSOBJ)/mits.a:				\
 
 $(MESSOBJ)/mitsubishi.a:		\
 	$(MESS_DRIVERS)/multi8.o	\
-	$(MESS_DRIVERS)/multi16.o       \
+	$(MESS_DRIVERS)/multi16.o	\
+
+$(MESSOBJ)/morrow.a:			\
+	$(MESS_DRIVERS)/mpz80.o		\
+	$(MESS_MACHINE)/s100_mm65k16s.o		\
+	$(MESS_MACHINE)/s100_wunderbus.o	\
 
 $(MESSOBJ)/mos.a:				\
 	$(MESS_DRIVERS)/kim1.o		\
@@ -1222,7 +1231,6 @@ $(MESSOBJ)/pitronic.a:			\
 $(MESSOBJ)/pc.a:				\
 	$(MESS_VIDEO)/pc_aga.o		\
 	$(MESS_MACHINE)/tandy1t.o	\
-	$(MESS_MACHINE)/amstr_pc.o	\
 	$(MESS_MACHINE)/europc.o	\
 	$(MESS_MACHINE)/pc.o		\
 	$(MESS_DRIVERS)/pc.o		\
@@ -1380,6 +1388,7 @@ $(MESSOBJ)/sharp.a:				\
 	$(MESS_MACHINE)/x1.o		\
 	$(MESS_DRIVERS)/mz2500.o	\
 	$(MESS_DRIVERS)/pce220.o	\
+	$(MESS_MACHINE)/pce220_ser.o	\
 	$(MESS_DRIVERS)/mz6500.o	\
 
 $(MESSOBJ)/sinclair.a:			\
@@ -1807,11 +1816,11 @@ $(MESS_DRIVERS)/mikrolab.o:	$(MESS_LAYOUT)/mikrolab.lh
 $(MESS_DRIVERS)/mk1.o:		$(MESS_LAYOUT)/mk1.lh
 $(MESS_DRIVERS)/mk14.o:		$(MESS_LAYOUT)/mk14.lh
 $(MESS_DRIVERS)/mk2.o:		$(MESS_LAYOUT)/mk2.lh
-$(MESS_DRIVERS)/mpf1.o:		$(MESS_LAYOUT)/mpf1.lh \
-					$(MESS_LAYOUT)/mpf1b.lh \
-					$(MESS_LAYOUT)/mpf1p.lh
 $(MESS_DRIVERS)/mmd1.o:		$(MESS_LAYOUT)/mmd1.lh \
-					$(MESS_LAYOUT)/mmd2.lh
+							$(MESS_LAYOUT)/mmd2.lh
+$(MESS_DRIVERS)/mpf1.o:		$(MESS_LAYOUT)/mpf1.lh \
+							$(MESS_LAYOUT)/mpf1b.lh \
+							$(MESS_LAYOUT)/mpf1p.lh
 $(MESS_VIDEO)/newbrain.o:	$(MESS_LAYOUT)/newbrain.lh
 $(MESS_DRIVERS)/ng_aes.o:	$(MESS_LAYOUT)/neogeo.lh
 $(MESS_DRIVERS)/poly880.o:	$(MESS_LAYOUT)/poly880.lh
@@ -1841,9 +1850,9 @@ $(MESS_DRIVERS)/vt100.o:	$(MESS_LAYOUT)/vt100.lh
 $(MESS_DRIVERS)/x68k.o:		$(MESS_LAYOUT)/x68000.lh
 $(MESS_DRIVERS)/z80dev.o:	$(MESS_LAYOUT)/z80dev.lh
 $(MESS_DRIVERS)/z80ne.o:	$(MESS_LAYOUT)/z80ne.lh   \
-					$(MESS_LAYOUT)/z80net.lh  \
-					$(MESS_LAYOUT)/z80netb.lh \
-					$(MESS_LAYOUT)/z80netf.lh
+							$(MESS_LAYOUT)/z80net.lh  \
+							$(MESS_LAYOUT)/z80netb.lh \
+							$(MESS_LAYOUT)/z80netf.lh
 
 
 #-------------------------------------------------

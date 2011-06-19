@@ -646,7 +646,11 @@ ppc512	// 1987 Amstrad PPC512
 ppc640	// 1987 Amstrad PPC640
 pc1512	// 1986 Amstrad PC1512 v1 (CGA compatible)
 pc1512v2  // 1986 Amstrad PC1512 v2 (CGA compatible)
+pc1512v32  // 1986 Amstrad PC1512 v3.2 (CGA compatible)
 pc1640	// 1987 Amstrad PC1640 (EGA compatible)
+pc2086
+pc3086
+pc2386
 
 xtvga	 // 198? PC-XT (VGA, MF2 Keyboard)
 iskr1031
@@ -780,6 +784,8 @@ pc1403	// Pocket Computer 1403
 pc1403h   // Pocket Computer 1403H
 pc1450	// Pocket Computer 1450
 pc1500	// Pocket Computer 1500
+pce220	// Pocket Computer E220
+pcg850v	// Pocket Computer G850V
 
 mz700		// 1982 Sharp MZ700
 mz700j	// 1982 Sharp MZ700 Japan
@@ -1377,6 +1383,7 @@ specialp
 lik
 erik
 specimx
+pioner
 
 // Orion
 orion128
@@ -1755,7 +1762,6 @@ next
 nextnt
 nexttrb
 pda600
-pce220
 mod8
 k1003
 mk14
@@ -1888,6 +1894,7 @@ sm1800
 mikrolab
 dim68k
 okean240
+okean240a
 vixen
 pt68k4
 jupiter2
@@ -1910,3 +1917,4 @@ lcmate2
 cm1800
 if800
 super6
+mpz80

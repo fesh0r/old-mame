@@ -124,7 +124,7 @@ Notes:
 #include "imagedev/cassette.h"
 #include "machine/ram.h"
 #include "formats/vt_cas.h"
-
+#include "formats/vtech1_dsk.h"
 
 /***************************************************************************
     CONSTANTS & MACROS
@@ -161,7 +161,7 @@ public:
 	/* devices */
 	device_t *m_mc6847;
 	device_t *m_speaker;
-	device_t *m_cassette;
+	cassette_image_device *m_cassette;
 	device_t *m_printer;
 
 	UINT8 *m_ram;
@@ -448,31 +448,7 @@ static WRITE8_HANDLER( vtech1_fdc_w )
 	}
 }
 
-static FLOPPY_IDENTIFY( vtech1_dsk_identify )
-{
-	*vote = 100;
-	return FLOPPY_ERROR_SUCCESS;
-}
-
-
-static FLOPPY_CONSTRUCT( vtech1_dsk_construct )
-{
-	return FLOPPY_ERROR_SUCCESS;
-}
-
-FLOPPY_OPTIONS_START( vtech1_only )
-	FLOPPY_OPTION(
-		vtech1_dsk,
-		"dsk",
-		"Laser floppy disk image",
-		vtech1_dsk_identify,
-		vtech1_dsk_construct,
-		NULL,
-		NULL
-	)
-FLOPPY_OPTIONS_END0
-
-static const floppy_config vtech1_floppy_config =
+static const floppy_interface vtech1_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -481,6 +457,7 @@ static const floppy_config vtech1_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(vtech1_only),
+	NULL,
 	NULL
 };
 
@@ -555,7 +532,7 @@ static READ8_HANDLER( vtech1_keyboard_r )
 	if (!BIT(offset, 7)) result &= input_port_read(space->machine(), "keyboard_7");
 
 	/* bit 6, cassette input */
-	result |= (cassette_input(vtech1->m_cassette) > 0 ? 1 : 0) << 6;
+	result |= ((vtech1->m_cassette->input()) > 0 ? 1 : 0) << 6;
 
 	/* bit 7, field sync */
 	result |= mc6847_fs_r(vtech1->m_mc6847) << 7;
@@ -583,7 +560,7 @@ static WRITE8_HANDLER( vtech1_latch_w )
 	}
 
 	/* bit 2, cassette out */
-	cassette_output(vtech1->m_cassette, BIT(data, 2) ? +1.0 : -1.0);
+	vtech1->m_cassette->output( BIT(data, 2) ? +1.0 : -1.0);
 
 	/* bit 3 and 4, vdc mode control lines */
 	mc6847_ag_w(vtech1->m_mc6847, BIT(data, 3));
@@ -648,8 +625,8 @@ static DRIVER_INIT( vtech1 )
 
 	/* find devices */
 	vtech1->m_mc6847 = machine.device("mc6847");
-	vtech1->m_speaker = machine.device("speaker");
-	vtech1->m_cassette = machine.device(CASSETTE_TAG);
+	vtech1->m_speaker = machine.device(SPEAKER_TAG);
+	vtech1->m_cassette = machine.device<cassette_image_device>(CASSETTE_TAG);
 	vtech1->m_printer = machine.device("printer");
 
 	/* ram */
@@ -922,11 +899,12 @@ static const speaker_interface vtech1_speaker_interface =
 	speaker_levels
 };
 
-static const cassette_config laser_cassette_config =
+static const cassette_interface laser_cassette_interface =
 {
 	vtech1_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
+	NULL,
 	NULL
 };
 
@@ -983,9 +961,9 @@ static MACHINE_CONFIG_START( laser110, vtech1_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_CONFIG(vtech1_speaker_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
@@ -995,7 +973,7 @@ static MACHINE_CONFIG_START( laser110, vtech1_state )
 	/* snapshot/quickload */
 	MCFG_SNAPSHOT_ADD("snapshot", vtech1, "vz", 1.5)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, laser_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, laser_cassette_interface )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
@@ -1006,7 +984,7 @@ static MACHINE_CONFIG_START( laser110, vtech1_state )
 	MCFG_RAM_DEFAULT_SIZE("66K")
 	MCFG_RAM_EXTRA_OPTIONS("2K,18K,4098K")
 
-	MCFG_FLOPPY_2_DRIVES_ADD(vtech1_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(vtech1_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( laser200, laser110 )

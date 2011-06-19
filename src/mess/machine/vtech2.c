@@ -185,9 +185,9 @@ WRITE8_HANDLER( laser_bank_select_w )
     }
 }
 
-static device_t *vtech2_cassette_image(running_machine &machine)
+static cassette_image_device *vtech2_cassette_image(running_machine &machine)
 {
-	return machine.device(CASSETTE_TAG);
+	return machine.device<cassette_image_device>(CASSETTE_TAG);
 }
 
 /*************************************************
@@ -265,7 +265,7 @@ static int mra_bank(running_machine &machine, int bank, int offs)
 	}
 
     /* what's bit 7 good for? tape input maybe? */
-	level = cassette_input(vtech2_cassette_image(machine)) * 65536.0;
+	level = (vtech2_cassette_image(machine))->input() * 65536.0;
 	if( level < state->m_level_old - 511 )
 		state->m_cassette_bit = 0x00;
 	if( level > state->m_level_old + 511 )
@@ -292,7 +292,7 @@ static int mra_bank(running_machine &machine, int bank, int offs)
 static void mwa_bank(running_machine &machine, int bank, int offs, int data)
 {
 	vtech2_state *state = machine.driver_data<vtech2_state>();
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	offs += 0x4000 * state->m_laser_bank[bank];
     switch (state->m_laser_bank[bank])
     {

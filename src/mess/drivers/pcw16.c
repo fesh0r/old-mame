@@ -1072,7 +1072,7 @@ static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 static WRITE8_HANDLER(pcw16_system_control_w)
 {
 	pcw16_state *state = space->machine().driver_data<pcw16_state>();
-	device_t *speaker = space->machine().device("beep");
+	device_t *speaker = space->machine().device(BEEPER_TAG);
 	//logerror("0x0f8: function: %d\n",data);
 
 	/* lower 4 bits define function code */
@@ -1233,7 +1233,7 @@ static const struct pc_fdc_interface pcw16_fdc_interface=
 };
 
 
-static INS8250_INTERRUPT( pcw16_com_interrupt_1 )
+static WRITE_LINE_DEVICE_HANDLER( pcw16_com_interrupt_1 )
 {
 	pcw16_state *drvstate = device->machine().driver_data<pcw16_state>();
 	drvstate->m_system_status &= ~(1 << 4);
@@ -1246,7 +1246,7 @@ static INS8250_INTERRUPT( pcw16_com_interrupt_1 )
 }
 
 
-static INS8250_INTERRUPT( pcw16_com_interrupt_2 )
+static WRITE_LINE_DEVICE_HANDLER( pcw16_com_interrupt_2 )
 {
 	pcw16_state *drvstate = device->machine().driver_data<pcw16_state>();
 	drvstate->m_system_status &= ~(1 << 3);
@@ -1285,14 +1285,14 @@ static const ins8250_interface pcw16_com_interface[2]=
 {
 	{
 		1843200,
-		pcw16_com_interrupt_1,
+		DEVCB_LINE(pcw16_com_interrupt_1),
 		NULL,
 		pc_mouse_handshake_in,
 		pcw16_com_refresh_connected_1
 	},
 	{
 		1843200,
-		pcw16_com_interrupt_2,
+		DEVCB_LINE(pcw16_com_interrupt_2),
 		NULL,
 		NULL,
 		pcw16_com_refresh_connected_2
@@ -1356,7 +1356,7 @@ static void pcw16_reset(running_machine &machine)
 static MACHINE_START( pcw16 )
 {
 	pcw16_state *state = machine.driver_data<pcw16_state>();
-	device_t *speaker = machine.device("beep");
+	device_t *speaker = machine.device(BEEPER_TAG);
 	state->m_system_status = 0;
 	state->m_interrupt_counter = 0;
 
@@ -1396,7 +1396,7 @@ static const pc_lpt_interface pcw16_lpt_config =
 	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
-static const floppy_config pcw16_floppy_config =
+static const floppy_interface pcw16_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1405,6 +1405,7 @@ static const floppy_config pcw16_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(pc),
+	NULL,
 	NULL
 };
 
@@ -1437,13 +1438,13 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
 	MCFG_PC_LPT_ADD("lpt", pcw16_lpt_config)
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_connected_interface)
-	MCFG_FLOPPY_2_DRIVES_ADD(pcw16_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(pcw16_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

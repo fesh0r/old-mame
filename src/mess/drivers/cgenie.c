@@ -486,11 +486,12 @@ static const ay8910_interface cgenie_ay8910_interface =
 };
 
 
-static const cassette_config cgenie_cassette_config =
+static const cassette_interface cgenie_cassette_interface =
 {
 	cgenie_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED),
+	NULL,
 	NULL
 };
 
@@ -504,7 +505,7 @@ static FLOPPY_OPTIONS_START(cgenie )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config cgenie_floppy_config =
+static const floppy_interface cgenie_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -513,6 +514,7 @@ static const floppy_config cgenie_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(cgenie),
+	NULL,
 	NULL
 };
 
@@ -551,11 +553,11 @@ static MACHINE_CONFIG_START( cgenie_common, cgenie_state )
 	MCFG_SOUND_CONFIG(cgenie_ay8910_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, cgenie_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, cgenie_cassette_interface )
 
 	MCFG_WD179X_ADD("wd179x", cgenie_wd17xx_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(cgenie_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(cgenie_floppy_interface)
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("rom")

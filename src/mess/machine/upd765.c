@@ -542,11 +542,11 @@ static void upd765_seek_setup(device_t *device, int is_recalibrate)
 				signed_tracks = -77;
 			}
 
+			/* perform seek - if drive isn't present it will not do anything */
+			floppy_drive_seek(img, signed_tracks);
+
 			if (signed_tracks!=0)
 			{
-				/* perform seek - if drive isn't present it will not do anything */
-				floppy_drive_seek(img, signed_tracks);
-
 				upd765_setup_timed_int(device,signed_tracks);
 			}
 			else
@@ -565,6 +565,9 @@ static void upd765_seek_setup(device_t *device, int is_recalibrate)
 		/* get signed tracks */
 		signed_tracks = fdc->ncn - fdc->pcn[fdc->drive];
 
+		/* perform seek - if drive isn't present it will not do anything */
+		floppy_drive_seek(img, signed_tracks);
+
 		/* if no tracks to seek, or drive is not ready, seek is complete */
 		if (img == NULL || (signed_tracks==0) || (!upd765_get_rdy(device)))
 		{
@@ -572,9 +575,6 @@ static void upd765_seek_setup(device_t *device, int is_recalibrate)
 		}
 		else
 		{
-			/* perform seek - if drive isn't present it will not do anything */
-			floppy_drive_seek(img, signed_tracks);
-
 			/* seek complete - issue an interrupt */
 			upd765_setup_timed_int(device,signed_tracks);
 		}
@@ -1247,10 +1247,10 @@ static int upd765_sector_count_complete(device_t *device)
 		if (upd765_just_read_last_sector_on_track(device))
 		{
 			if (floppy_get_heads_per_disk(flopimg_get_image(current_image(device)))==1) {
-				return 1;
+				return 2;
 			} else {
 				if (fdc->side==1)
-					return 1;
+					return 2;
 			}
 		}
 
@@ -1268,7 +1268,7 @@ static int upd765_sector_count_complete(device_t *device)
 		{
 
 			/* completed */
-			return 1;
+			return 2;
 		}
 	}
 #else
@@ -1365,13 +1365,19 @@ static void	upd765_increment_sector(device_t *device)
 		/* if (fdc->upd765_command_bytes[4]==fdc->upd765_command_bytes[6])*/
 		if (upd765_just_read_last_sector_on_track(device))
 		{
+			/* reset sector id to 1 */
+			fdc->upd765_command_bytes[4] = 1;
+
 			/* yes */
+			if(fdc->side == 1) {
+				fdc->upd765_command_bytes[3] = 0;
+				fdc->upd765_command_bytes[2]++;
+				return;
+			}
 
 			/* reached EOT */
 			/* change side to 1 */
 			fdc->side = 1;
-			/* reset sector id to 1 */
-			fdc->upd765_command_bytes[4] = 1;
 			/* set head to 1 for get next sector test */
 			fdc->upd765_command_bytes[3] = 1;
 		}
@@ -1384,6 +1390,13 @@ static void	upd765_increment_sector(device_t *device)
 	}
 	else
 	{
+		if (upd765_just_read_last_sector_on_track(device))
+		{
+			fdc->upd765_command_bytes[4] = 1;
+			fdc->upd765_command_bytes[2]++;
+			return;
+		}
+
 		fdc->upd765_command_bytes[4]++;
 	}
 }
@@ -1515,7 +1528,7 @@ static TIMER_CALLBACK(upd765_continue_command)
 				{
 					if (fdc->upd765_flags & UPD765_TC)
 						upd765_write_complete(device);
-					// if TC or not set or PIO, what?
+					// if TC not set, what?
 					break;
 				}
 
@@ -1546,11 +1559,15 @@ static TIMER_CALLBACK(upd765_continue_command)
 			case 0x06:
 			{
 
+				int cause;
 				/* read all sectors? */
 
 				/* sector id == EOT */
-				if (upd765_sector_count_complete(device) || upd765_read_data_stop(device))
+				if ((cause = upd765_sector_count_complete(device)) || upd765_read_data_stop(device))
 				{
+					if (cause == 2)
+						upd765_increment_sector(device);  // advance to next cylinder if EOT
+
 					upd765_read_complete(device);
 				}
 				else

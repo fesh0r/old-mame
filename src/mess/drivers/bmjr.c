@@ -29,7 +29,7 @@ public:
 	UINT8 m_tape_switch;
 	UINT8 m_xor_display;
 	UINT8 m_key_mux;
-	device_t *m_cassette;
+	cassette_image_device *m_cassette;
 };
 
 
@@ -111,9 +111,9 @@ static READ8_HANDLER( unk_r )
 static READ8_HANDLER( tape_r )
 {
 	bmjr_state *state = space->machine().driver_data<bmjr_state>();
-	//cassette_change_state(state->m_cassette,CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
+	//state->m_cassette->change_state(CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
 
-	return (cassette_input(state->m_cassette) > 0.03) ? 0xff : 0x00;
+	return ((state->m_cassette->input()) > 0.03) ? 0xff : 0x00;
 }
 
 static WRITE8_HANDLER( tape_w )
@@ -121,12 +121,12 @@ static WRITE8_HANDLER( tape_w )
 	bmjr_state *state = space->machine().driver_data<bmjr_state>();
 	if(!state->m_tape_switch)
 	{
-		beep_set_state(space->machine().device("beeper"),!(data & 0x80));
+		beep_set_state(space->machine().device(BEEPER_TAG),!(data & 0x80));
 	}
 	else
 	{
-		//cassette_change_state(state->m_cassette,CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
-		cassette_output(state->m_cassette, (data & 0x80) ? -1.0 : +1.0);
+		//state->m_cassette->change_state(CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
+		state->m_cassette->output((data & 0x80) ? -1.0 : +1.0);
 	}
 }
 
@@ -134,8 +134,8 @@ static READ8_HANDLER( tape_stop_r )
 {
 	bmjr_state *state = space->machine().driver_data<bmjr_state>();
 	state->m_tape_switch = 0;
-	//cassette_change_state(state->m_cassette,CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
-	cassette_change_state(state->m_cassette,CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+	//state->m_cassette->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+	state->m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 	return 0x01;
 }
 
@@ -143,7 +143,7 @@ static READ8_HANDLER( tape_start_r )
 {
 	bmjr_state *state = space->machine().driver_data<bmjr_state>();
 	state->m_tape_switch = 1;
-	cassette_change_state(state->m_cassette,CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+	state->m_cassette->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
 	return 0x01;
 }
 
@@ -321,16 +321,16 @@ static PALETTE_INIT( bmjr )
 
 static MACHINE_START(bmjr)
 {
-	beep_set_frequency(machine.device("beeper"),1200); //guesswork
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),1200); //guesswork
+	beep_set_state(machine.device(BEEPER_TAG),0);
 }
 
 static MACHINE_RESET(bmjr)
 {
 	bmjr_state *state = machine.driver_data<bmjr_state>();
 	state->m_tape_switch = 0;
-	state->m_cassette = machine.device(CASSETTE_TAG);
-	cassette_change_state(state->m_cassette,CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+	state->m_cassette = machine.device<cassette_image_device>(CASSETTE_TAG);
+	state->m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 }
 
 static MACHINE_CONFIG_START( bmjr, bmjr_state )
@@ -358,15 +358,15 @@ static MACHINE_CONFIG_START( bmjr, bmjr_state )
 
     MCFG_VIDEO_START(bmjr)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
 /* ROM definition */

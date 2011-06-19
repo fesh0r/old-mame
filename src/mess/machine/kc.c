@@ -393,7 +393,7 @@ static TIMER_CALLBACK(kc_cassette_timer_callback)
 	bit = 0;
 
 	/* get data from cassette */
-	if (cassette_input(machine.device(CASSETTE_TAG)) > 0.0038)
+	if ((machine.device<cassette_image_device>(CASSETTE_TAG))->input() > 0.0038)
 		bit = 1;
 
 	/* update astb with bit */
@@ -413,7 +413,7 @@ static void	kc_cassette_set_motor(running_machine &machine, int motor_state)
 	if (((state->m_cassette_motor_state^motor_state)&0x01)!=0)
 	{
 		/* set new motor state in cassette device */
-		cassette_change_state(machine.device(CASSETTE_TAG),
+		machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(
 			motor_state ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 			CASSETTE_MASK_MOTOR);
 
@@ -1330,7 +1330,7 @@ bit 0: TRUCK */
 WRITE8_HANDLER ( kc85_4_pio_data_w )
 {
 	kc_state *state = space->machine().driver_data<kc_state>();
-	device_t *speaker = space->machine().device("speaker");
+	device_t *speaker = space->machine().device(SPEAKER_TAG);
 	state->m_kc85_pio_data[offset] = data;
 	z80pio_d_w(state->m_kc85_z80pio, offset, data);
 
@@ -1568,7 +1568,7 @@ bit 0: TRUCK */
 WRITE8_HANDLER ( kc85_3_pio_data_w )
 {
 	kc_state *state = space->machine().driver_data<kc_state>();
-	device_t *speaker = space->machine().device("speaker");
+	device_t *speaker = space->machine().device(SPEAKER_TAG);
 	state->m_kc85_pio_data[offset] = data;
 	z80pio_d_w(state->m_kc85_z80pio, offset, data);
 

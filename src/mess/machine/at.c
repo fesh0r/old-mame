@@ -83,7 +83,7 @@ static UINT8 at_speaker_get_spk(void)
 
 static void at_speaker_set_spkrdata(running_machine &machine, UINT8 data)
 {
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	at_spkrdata = data ? 1 : 0;
 	speaker_level_w( speaker, at_speaker_get_spk() );
 }
@@ -91,7 +91,7 @@ static void at_speaker_set_spkrdata(running_machine &machine, UINT8 data)
 
 static void at_speaker_set_input(running_machine &machine, UINT8 data)
 {
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	at_speaker_input = data ? 1 : 0;
 	speaker_level_w( speaker, at_speaker_get_spk() );
 }
@@ -259,7 +259,7 @@ static WRITE8_DEVICE_HANDLER( at_dma8237_fdc_dack_w ) {
 
 
 static WRITE_LINE_DEVICE_HANDLER( at_dma8237_out_eop ) {
-	pc_fdc_set_tc_state( device->machine(), state );
+	pc_fdc_set_tc_state( device->machine(), state ? CLEAR_LINE : ASSERT_LINE );
 }
 
 static void set_dma_channel(device_t *device, int channel, int state)
@@ -313,13 +313,13 @@ I8237_INTERFACE( at_dma8237_2_config )
  **********************************************************/
 
 /* called when a interrupt is set/cleared from com hardware */
-static INS8250_INTERRUPT( at_com_interrupt_1 )
+static WRITE_LINE_DEVICE_HANDLER( at_com_interrupt_1 )
 {
 	at_state *st = device->machine().driver_data<at_state>();
 	pic8259_ir4_w(st->m_pic8259_master, state);
 }
 
-static INS8250_INTERRUPT( at_com_interrupt_2 )
+static WRITE_LINE_DEVICE_HANDLER( at_com_interrupt_2 )
 {
 	at_state *st = device->machine().driver_data<at_state>();
 	pic8259_ir3_w(st->m_pic8259_master, state);
@@ -345,28 +345,28 @@ const ins8250_interface ibm5170_com_interface[4]=
 {
 	{
 		1843200,
-		at_com_interrupt_1,
+		DEVCB_LINE(at_com_interrupt_1),
 		NULL,
 		at_com_handshake_out_0,
 		NULL
 	},
 	{
 		1843200,
-		at_com_interrupt_2,
+		DEVCB_LINE(at_com_interrupt_2),
 		NULL,
 		at_com_handshake_out_1,
 		NULL
 	},
 	{
 		1843200,
-		at_com_interrupt_1,
+		DEVCB_LINE(at_com_interrupt_1),
 		NULL,
 		at_com_handshake_out_2,
 		NULL
 	},
 	{
 		1843200,
-		at_com_interrupt_2,
+		DEVCB_LINE(at_com_interrupt_2),
 		NULL,
 		at_com_handshake_out_3,
 		NULL

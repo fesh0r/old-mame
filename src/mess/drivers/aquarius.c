@@ -61,8 +61,8 @@
 */
 static READ8_HANDLER( cassette_r )
 {
-	device_t *cassette = space->machine().device(CASSETTE_TAG);
-	return (cassette_input(cassette) < +0.0) ? 0 : 1;
+	cassette_image_device *cassette = space->machine().device<cassette_image_device>(CASSETTE_TAG);
+	return ((cassette)->input() < +0.0) ? 0 : 1;
 }
 
 
@@ -73,11 +73,11 @@ static READ8_HANDLER( cassette_r )
 */
 static WRITE8_HANDLER( cassette_w )
 {
-	device_t *speaker = space->machine().device("speaker");
-	device_t *cassette = space->machine().device(CASSETTE_TAG);
+	device_t *speaker = space->machine().device(SPEAKER_TAG);
+	cassette_image_device *cassette = space->machine().device<cassette_image_device>(CASSETTE_TAG);
 
 	speaker_level_w(speaker, BIT(data, 0));
-	cassette_output(cassette, BIT(data, 0) ? +1.0 : -1.0);
+	cassette->output( BIT(data, 0) ? +1.0 : -1.0);
 }
 
 
@@ -385,11 +385,12 @@ static const ay8910_interface aquarius_ay8910_interface =
 	DEVCB_NULL
 };
 
-static const cassette_config aquarius_cassette_config =
+static const cassette_interface aquarius_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL,
 	NULL
 };
 
@@ -417,7 +418,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_SOUND_ADD("ay8910", AY8910, XTAL_3_579545MHz/2) // ??? AY-3-8914
@@ -428,7 +429,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_PRINTER_ADD("printer")
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, aquarius_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, aquarius_cassette_interface )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
@@ -449,7 +450,7 @@ static FLOPPY_OPTIONS_START(aquarius)
 	/* 128K images, 64K/side */
 FLOPPY_OPTIONS_END
 
-static const floppy_config aquarius_floppy_config =
+static const floppy_interface aquarius_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -458,6 +459,7 @@ static const floppy_config aquarius_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(aquarius),
+	NULL,
 	NULL
 };
 
@@ -469,7 +471,7 @@ static MACHINE_CONFIG_DERIVED( aquarius_qd, aquarius )
 	MCFG_DEVICE_REMOVE("cart")
 	MCFG_DEVICE_REMOVE("cart_list")
 
-	MCFG_FLOPPY_2_DRIVES_ADD(aquarius_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(aquarius_floppy_interface)
 MACHINE_CONFIG_END
 
 

@@ -15,7 +15,6 @@
 
 #define SCREEN_TAG		"screen"
 #define UB8830D_TAG		"ub8830d"
-#define SPEAKER_TAG		"speaker"
 #define CENTRONICS_TAG	"centronics"
 
 #define JTC_ES40_VIDEORAM_SIZE	0x2000
@@ -32,7 +31,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_centronics;
 

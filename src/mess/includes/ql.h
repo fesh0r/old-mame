@@ -13,7 +13,6 @@
 #define I8051_TAG	"i8051"
 #define ZX8301_TAG	"ic22"
 #define ZX8302_TAG	"ic23"
-#define SPEAKER_TAG	"speaker"
 #define WD1772_TAG	"wd1772"
 
 #define ROMBANK_TAG	"rombank"
@@ -90,7 +89,7 @@ public:
 	required_device<device_t> m_mdv2;
 	required_device<device_t> m_ram;
 	required_device<device_t> m_fdc;
-	required_device<device_t> m_printer;
+	required_device<printer_image_device> m_printer;
 
 	virtual void machine_start();
 	virtual void machine_reset();

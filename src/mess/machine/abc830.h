@@ -18,16 +18,16 @@
 //**************************************************************************
 
 #define MCFG_ABC830_ADD() \
-	MCFG_FLOPPY_2_DRIVES_ADD(abc830_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc830_floppy_interface)
 
 #define MCFG_ABC832_ADD() \
-	MCFG_FLOPPY_2_DRIVES_ADD(abc832_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc832_floppy_interface)
 
 #define MCFG_ABC834_ADD() \
-	MCFG_FLOPPY_2_DRIVES_ADD(abc832_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc832_floppy_interface)
 
 #define MCFG_ABC838_ADD() \
-	MCFG_FLOPPY_2_DRIVES_ADD(abc838_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(abc838_floppy_interface)
 
 
 
@@ -36,19 +36,19 @@
 //**************************************************************************
 
 // floppy configuration
-extern const floppy_config abc830_floppy_config;
-extern const floppy_config abc832_floppy_config;
-extern const floppy_config abc834_floppy_config;
-extern const floppy_config abc838_floppy_config;
-extern const floppy_config fd2_floppy_config;
+extern const floppy_interface abc830_floppy_interface;
+extern const floppy_interface abc832_floppy_interface;
+extern const floppy_interface abc834_floppy_interface;
+extern const floppy_interface abc838_floppy_interface;
+extern const floppy_interface fd2_floppy_interface;
 
 
 // conkort interfaces
-extern const luxor_55_10828_interface( abc830_slow_intf );
-extern const luxor_55_21046_interface( abc830_fast_intf );
-extern const luxor_55_21046_interface( abc832_fast_intf );
-extern const luxor_55_21046_interface( abc834_fast_intf );
-extern const luxor_55_21046_interface( abc838_fast_intf );
+extern const input_device_default DEVICE_INPUT_DEFAULTS_NAME( abc830_slow )[];
+extern const input_device_default DEVICE_INPUT_DEFAULTS_NAME( abc830_fast )[];
+extern const input_device_default DEVICE_INPUT_DEFAULTS_NAME( abc832_fast )[];
+extern const input_device_default DEVICE_INPUT_DEFAULTS_NAME( abc834_fast )[];
+extern const input_device_default DEVICE_INPUT_DEFAULTS_NAME( abc838_fast )[];
 
 
 #endif

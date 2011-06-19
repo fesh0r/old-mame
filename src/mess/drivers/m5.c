@@ -68,7 +68,7 @@ READ8_MEMBER( m5_state::sts_r )
 	UINT8 data = 0;
 
 	// cassette input
-	data |= cassette_input(m_cassette) >= 0 ? 1 : 0;
+	data |= (m_cassette)->input() >= 0 ? 1 : 0;
 
 	// centronics busy
 	data |= centronics_busy_r(m_centronics) << 1;
@@ -102,13 +102,13 @@ WRITE8_MEMBER( m5_state::com_w )
     */
 
 	// cassette output
-	cassette_output(m_cassette, BIT(data, 0) ? -1.0 : 1.0);
+	m_cassette->output( BIT(data, 0) ? -1.0 : 1.0);
 
 	// centronics strobe
 	centronics_strobe_w(m_centronics, BIT(data, 0));
 
 	// cassette remote
-	cassette_change_state(m_cassette, BIT(data, 1) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	m_cassette->change_state(BIT(data,1) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
 
 
@@ -417,14 +417,15 @@ static Z80CTC_INTERFACE( ctc_intf )
 
 
 //-------------------------------------------------
-//  cassette_config cassette_intf
+//  cassette_interface cassette_intf
 //-------------------------------------------------
 
-static const cassette_config cassette_intf =
+static const cassette_interface cassette_intf =
 {
 	sordm5_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
+	NULL,
 	NULL
 };
 
@@ -569,22 +570,23 @@ static I8255_INTERFACE( ppi_intf )
 
 static FLOPPY_OPTIONS_START( m5 )
 	FLOPPY_OPTION( m5, "dsk", "Sord M5 disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
-		HEADS([1])
+		HEADS([2])
 		TRACKS([40])
 		SECTORS([18])
 		SECTOR_LENGTH([256])
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config m5_floppy_config =
+static const floppy_interface m5_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_STANDARD_5_25_SSDD_40,
+	FLOPPY_STANDARD_5_25_DSDD_40,
 	FLOPPY_OPTIONS_NAME(m5),
+	NULL,
 	NULL
 };
 
@@ -690,7 +692,7 @@ static MACHINE_CONFIG_START( m5, m5_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cassette_intf)
 	MCFG_I8255_ADD(I8255A_TAG, ppi_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, fdc_intf)
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, m5_floppy_config)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, m5_floppy_interface)
 
 	// cartridge
 	MCFG_CARTSLOT_ADD("cart")
@@ -749,7 +751,7 @@ ROM_START( m5 )
 	ROM_CART_LOAD( "cart",   0x2000, 0x5000, ROM_NOMIRROR | ROM_OPTIONAL )
 
 	ROM_REGION( 0x4000, Z80_FD5_TAG, 0 )
-	ROM_LOAD( "sordfd5.rom", 0x0000, 0x4000, BAD_DUMP CRC(aa172b1b) SHA1(007cceb12528ca7f3e381578da88a8fcd5bc3a20) ) // parsed from disassembly
+	ROM_LOAD( "sordfd5.rom", 0x0000, 0x4000, CRC(7263bbc5) SHA1(b729500d3d2b2e807d384d44b76ea5ad23996f4a))
 ROM_END
 
 
@@ -763,7 +765,7 @@ ROM_START( m5p )
 	ROM_CART_LOAD( "cart",   0x2000, 0x5000, ROM_NOMIRROR | ROM_OPTIONAL )
 
 	ROM_REGION( 0x4000, Z80_FD5_TAG, 0 )
-	ROM_LOAD( "sordfd5.rom", 0x0000, 0x4000, BAD_DUMP CRC(aa172b1b) SHA1(007cceb12528ca7f3e381578da88a8fcd5bc3a20) ) // parsed from disassembly
+	ROM_LOAD( "sordfd5.rom", 0x0000, 0x4000, CRC(7263bbc5) SHA1(b729500d3d2b2e807d384d44b76ea5ad23996f4a))
 ROM_END
 
 

@@ -265,15 +265,16 @@ static const ay8910_interface svi318_ay8910_interface =
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, svi318_psg_port_b_w)
 };
 
-static const cassette_config svi318_cassette_config =
+static const cassette_interface svi318_cassette_interface =
 {
 	svi_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
-	"svi318_cass"
+	"svi318_cass",
+	NULL
 };
 
-static const floppy_config svi318_floppy_config =
+static const floppy_interface svi318_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -282,7 +283,8 @@ static const floppy_config svi318_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(svi318),
-	"floppy_5_25"
+	"floppy_5_25",
+	NULL
 };
 
 static MACHINE_CONFIG_FRAGMENT( svi318_cartslot )
@@ -324,7 +326,7 @@ static MACHINE_CONFIG_START( svi318, svi318_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay8910", AY8910, 1789773)
 	MCFG_SOUND_CONFIG(svi318_ay8910_interface)
@@ -333,11 +335,11 @@ static MACHINE_CONFIG_START( svi318, svi318_state )
 	/* printer */
 	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, svi318_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, svi318_cassette_interface )
 
 	MCFG_WD179X_ADD("wd179x", svi_wd17xx_interface )
 
-	MCFG_FLOPPY_2_DRIVES_ADD(svi318_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(svi318_floppy_interface)
 
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("cass_list","svi318_flop")
@@ -451,7 +453,7 @@ static MACHINE_CONFIG_START( svi328_806, svi318_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay8910", AY8910, 1789773)
 	MCFG_SOUND_CONFIG(svi318_ay8910_interface)
@@ -460,11 +462,11 @@ static MACHINE_CONFIG_START( svi328_806, svi318_state )
 	/* printer */
 	MCFG_CENTRONICS_ADD("centronics", standard_centronics)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, svi318_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, svi318_cassette_interface )
 
 	MCFG_WD179X_ADD("wd179x", svi_wd17xx_interface )
 
-	MCFG_FLOPPY_2_DRIVES_ADD(svi318_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(svi318_floppy_interface)
 
 	MCFG_FRAGMENT_ADD( svi318_cartslot )
 

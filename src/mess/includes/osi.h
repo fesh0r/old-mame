@@ -19,7 +19,6 @@
 #define SCREEN_TAG		"screen"
 #define M6502_TAG		"m6502"
 #define DISCRETE_TAG	"discrete"
-#define BEEP_TAG		"beep"
 
 #define X1			3932160
 #define UK101_X1	XTAL_8MHz
@@ -39,7 +38,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	optional_device<device_t> m_discrete;
 	required_device<device_t> m_ram;
 
@@ -72,7 +71,7 @@ class c1p_state : public sb2m600_state
 public:
 	c1p_state(const machine_config &mconfig, device_type type, const char *tag)
 		: sb2m600_state(mconfig, type, tag),
-		  m_beep(*this, BEEP_TAG)
+		  m_beep(*this, BEEPER_TAG)
 	{ }
 
 	required_device<device_t> m_beep;

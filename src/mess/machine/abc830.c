@@ -29,7 +29,7 @@
 //**************************************************************************
 
 //-------------------------------------------------
-//  floppy_config abc830_floppy_config
+//  floppy_interface abc830_floppy_interface
 //-------------------------------------------------
 
 static FLOPPY_OPTIONS_START( abc830 )
@@ -47,7 +47,7 @@ static FLOPPY_OPTIONS_START( abc830 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-const floppy_config abc830_floppy_config =
+const floppy_interface abc830_floppy_interface =
 {
     DEVCB_NULL,
     DEVCB_NULL,
@@ -56,12 +56,13 @@ const floppy_config abc830_floppy_config =
     DEVCB_NULL,
     FLOPPY_STANDARD_5_25_SSDD_40,
     FLOPPY_OPTIONS_NAME(abc830),
-    "abc830"
+    "abc830",
+	NULL
 };
 
 
 //-------------------------------------------------
-//  floppy_config abc832_floppy_config
+//  floppy_interface abc832_floppy_interface
 //-------------------------------------------------
 
 static FLOPPY_OPTIONS_START( abc832 )
@@ -73,7 +74,7 @@ static FLOPPY_OPTIONS_START( abc832 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-const floppy_config abc832_floppy_config =
+const floppy_interface abc832_floppy_interface =
 {
     DEVCB_NULL,
     DEVCB_NULL,
@@ -82,12 +83,13 @@ const floppy_config abc832_floppy_config =
     DEVCB_NULL,
     FLOPPY_STANDARD_5_25_DSQD,
     FLOPPY_OPTIONS_NAME(abc832),
-    "abc832"
+    "abc832",
+	NULL
 };
 
 
 //-------------------------------------------------
-//  floppy_config abc838_floppy_config
+//  floppy_interface abc838_floppy_interface
 //-------------------------------------------------
 
 static FLOPPY_OPTIONS_START( abc838 )
@@ -99,7 +101,7 @@ static FLOPPY_OPTIONS_START( abc838 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-const floppy_config abc838_floppy_config =
+const floppy_interface abc838_floppy_interface =
 {
     DEVCB_NULL,
     DEVCB_NULL,
@@ -108,12 +110,13 @@ const floppy_config abc838_floppy_config =
     DEVCB_NULL,
     FLOPPY_STANDARD_8_DSDD,
     FLOPPY_OPTIONS_NAME(abc838),
-    "abc838"
+    "abc838",
+	NULL
 };
 
 
 //-------------------------------------------------
-//  floppy_config fd2_floppy_config
+//  floppy_interface fd2_floppy_interface
 //-------------------------------------------------
 
 static FLOPPY_OPTIONS_START( fd2 )
@@ -127,7 +130,7 @@ static FLOPPY_OPTIONS_START( fd2 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-const floppy_config fd2_floppy_config =
+const floppy_interface fd2_floppy_interface =
 {
     DEVCB_NULL,
     DEVCB_NULL,
@@ -136,75 +139,70 @@ const floppy_config fd2_floppy_config =
     DEVCB_NULL,
     FLOPPY_STANDARD_5_25_SSSD,
     FLOPPY_OPTIONS_NAME(fd2),
-    "floppy_5_25"
+    "floppy_5_25",
+	NULL
 };
 
 
 
 //**************************************************************************
-//  LUXOR 55 10828 INTERFACES
+//  LUXOR 55 10828 DEVICE INPUT DEFAULTS
 //**************************************************************************
 
 //-------------------------------------------------
-//  LUXOR_55_10828_INTERFACE( abc830_slow_intf )
+//  DEVICE_INPUT_DEFAULTS( abc830_slow )
 //-------------------------------------------------
 
-LUXOR_55_10828_INTERFACE( abc830_slow_intf )
-{
-	0x03,
-	DRIVE_MPI_51,
-	ADDRESS_ABC830
-};
+DEVICE_INPUT_DEFAULTS_START( abc830_slow )
+	DEVICE_INPUT_DEFAULTS("SW1", 0x0f, 0x03)
+	DEVICE_INPUT_DEFAULTS("S1", 0x01, 0x01)
+DEVICE_INPUT_DEFAULTS_END
 
 
 
 //**************************************************************************
-//  LUXOR 55 21046 INTERFACES
+//  LUXOR 55 21046 DEVICE INPUT DEFAULTS
 //**************************************************************************
 
 //-------------------------------------------------
-//  LUXOR_55_21046_INTERFACE( abc830_fast_intf )
+//  DEVICE_INPUT_DEFAULTS( abc830_fast_intf )
 //-------------------------------------------------
 
-LUXOR_55_21046_INTERFACE( abc830_fast_intf )
-{
-	0x03,
-	DRIVE_BASF_6106_08,
-	ADDRESS_ABC830
-};
-
-
-//-------------------------------------------------
-//  LUXOR_55_21046_INTERFACE( abc832_fast_intf )
-//-------------------------------------------------
-
-LUXOR_55_21046_INTERFACE( abc832_fast_intf )
-{
-	0x03,
-	DRIVE_TEAC_FD55F,
-	ADDRESS_ABC832
-};
+DEVICE_INPUT_DEFAULTS_START( abc830_fast )
+	DEVICE_INPUT_DEFAULTS("SW1", 0x0f, 0x03)
+	DEVICE_INPUT_DEFAULTS("SW2", 0x0f, DRIVE_BASF_6106_08)
+	DEVICE_INPUT_DEFAULTS("SW3", 0x7f, ADDRESS_ABC830)
+DEVICE_INPUT_DEFAULTS_END
 
 
 //-------------------------------------------------
-//  LUXOR_55_21046_INTERFACE( abc834_fast_intf )
+//  DEVICE_INPUT_DEFAULTS( abc832_fast )
 //-------------------------------------------------
 
-LUXOR_55_21046_INTERFACE( abc834_fast_intf )
-{
-	0x03,
-	DRIVE_TEAC_FD55F,
-	ADDRESS_ABC832
-};
+DEVICE_INPUT_DEFAULTS_START( abc832_fast )
+	DEVICE_INPUT_DEFAULTS("SW1", 0x0f, 0x03)
+	DEVICE_INPUT_DEFAULTS("SW2", 0x0f, DRIVE_TEAC_FD55F)
+	DEVICE_INPUT_DEFAULTS("SW3", 0x7f, ADDRESS_ABC832)
+DEVICE_INPUT_DEFAULTS_END
 
 
 //-------------------------------------------------
-//  LUXOR_55_21046_INTERFACE( abc838_fast_intf )
+//  DEVICE_INPUT_DEFAULTS( abc834_fast )
 //-------------------------------------------------
 
-LUXOR_55_21046_INTERFACE( abc838_fast_intf )
-{
-	0x03,
-	DRIVE_BASF_6105,
-	ADDRESS_ABC838
-};
+DEVICE_INPUT_DEFAULTS_START( abc834_fast )
+	DEVICE_INPUT_DEFAULTS("SW1", 0x0f, 0x03)
+	DEVICE_INPUT_DEFAULTS("SW2", 0x0f, DRIVE_TEAC_FD55F)
+	DEVICE_INPUT_DEFAULTS("SW3", 0x7f, ADDRESS_ABC832)
+DEVICE_INPUT_DEFAULTS_END
+
+
+//-------------------------------------------------
+//  DEVICE_INPUT_DEFAULTS( abc838_fast )
+//-------------------------------------------------
+
+DEVICE_INPUT_DEFAULTS_START( abc838_fast )
+	DEVICE_INPUT_DEFAULTS("SW1", 0x0f, 0x03)
+	DEVICE_INPUT_DEFAULTS("SW2", 0x0f, DRIVE_BASF_6105)
+	DEVICE_INPUT_DEFAULTS("SW3", 0x7f, ADDRESS_ABC838)
+DEVICE_INPUT_DEFAULTS_END

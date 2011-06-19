@@ -8,7 +8,6 @@
     TODO:
     - Rewrite keyboard input hook-up and decap/dump the keyboard MCU if possible;
     - Fix the 0xe80/0xe83 kanji ROM readback;
-    - Fixe the 0xb00 RAM banking;
     - x1turbo keyboard inputs are currently broken, use x1turbo40 for now;
     - Hook-up remaining .tap image formats;
     - Implement APSS tape commands;
@@ -45,7 +44,7 @@
     - Trivia-Q: dunno what to do on the selection screen, missing inputs?
     - Turbo Alpha: has z80dma / fdc bugs, doesn't show the presentation properly and then hangs;
     - Will 2: doesn't load, fdc issue presumably (note: it's a x1turbo game ONLY);
-    - X1F Demo ("New X1 Demo"): needs partial updates to work properly (note that INDEXED16 doesn't cope at all with partial updates);
+    - X1F Demo ("New X1 Demo"): needs partial updates, but they doesn't cope well with this system;
     - Ys 2: crashes after the disclaimer screen;
     - Ys 3: missing user disk, to hack it (and play with x1turboz features): bp 81ca,pc += 2
     - Ys 3: never uploads a valid 4096 palette, probably related to the fact that we don't have an user disk
@@ -260,23 +259,23 @@ static void x1_draw_pixel(running_machine &machine, bitmap_t *bitmap,int y,int x
 
 	if(width && height)
 	{
-		*BITMAP_ADDR16(bitmap, y+0, x+0) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y+0, x+1) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y+1, x+0) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y+1, x+1) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y+0, x+0) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y+0, x+1) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y+1, x+0) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y+1, x+1) = machine.pens[pen];
 	}
 	else if(width)
 	{
-		*BITMAP_ADDR16(bitmap, y, x+0) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y, x+1) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y, x+0) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y, x+1) = machine.pens[pen];
 	}
 	else if(height)
 	{
-		*BITMAP_ADDR16(bitmap, y+0, x) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y+1, x) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y+0, x) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y+1, x) = machine.pens[pen];
 	}
 	else
-		*BITMAP_ADDR16(bitmap, y, x) = machine.pens[pen];
+		*BITMAP_ADDR32(bitmap, y, x) = machine.pens[pen];
 }
 
 #define mc6845_h_char_total 	(state->m_crtc_vreg[0])
@@ -323,7 +322,7 @@ static UINT8 check_line_valid_height(running_machine &machine,int y,int x_size,i
 	return height;
 }
 
-static void draw_fgtilemap(running_machine &machine, bitmap_t *bitmap)
+static void draw_fgtilemap(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	/*
         attribute table:
@@ -470,6 +469,9 @@ static void draw_fgtilemap(running_machine &machine, bitmap_t *bitmap)
 						res_x = x*8+xi*(width+1);
 						res_y = y*(mc6845_tile_height)+yi;
 
+						if(res_y < cliprect->min_y || res_y > cliprect->max_y) // partial update, TODO: optimize
+							continue;
+
 						x1_draw_pixel(machine,bitmap,res_y,res_x,pcg_pen,width,0);
 					}
 				}
@@ -509,7 +511,7 @@ static int priority_mixer_pri(running_machine &machine,int color)
 	return pri_mask_calc;
 }
 
-static void draw_gfxbitmap(running_machine &machine, bitmap_t *bitmap,int plane,int pri)
+static void draw_gfxbitmap(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect, int plane,int pri)
 {
 	x1_state *state = machine.driver_data<x1_state>();
 	int xi,yi,x,y;
@@ -551,6 +553,9 @@ static void draw_gfxbitmap(running_machine &machine, bitmap_t *bitmap,int plane,
 					if((color == 8 && state->m_scrn_reg.blackclip & 0x10) || (color == 9 && state->m_scrn_reg.blackclip & 0x20)) // bitmap color clip to black conditions
 						color = 0;
 
+					if(y*(mc6845_tile_height)+yi < cliprect->min_y || y*(mc6845_tile_height)+yi > cliprect->max_y) // partial update TODO: optimize
+						continue;
+
 					x1_draw_pixel(machine,bitmap,y*(mc6845_tile_height)+yi,x*8+xi,color,0,0);
 				}
 			}
@@ -564,15 +569,18 @@ static SCREEN_UPDATE( x1 )
 
 	bitmap_fill(bitmap, cliprect, MAKE_ARGB(0xff,0x00,0x00,0x00));
 
-	draw_gfxbitmap(screen->machine(),bitmap,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri);
-	draw_fgtilemap(screen->machine(),bitmap);
-	draw_gfxbitmap(screen->machine(),bitmap,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri^0xff);
+	draw_gfxbitmap(screen->machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri);
+	draw_fgtilemap(screen->machine(),bitmap,cliprect);
+	draw_gfxbitmap(screen->machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri^0xff);
 
 	return 0;
 }
 
 static SCREEN_EOF( x1 )
 {
+//  x1_state *state = screen->machine().driver_data<x1_state>();
+
+//  state->m_old_vpos = -1;
 }
 
 /*************************************
@@ -777,45 +785,45 @@ static void cmt_command( running_machine &machine, UINT8 cmd )
     */
 	state->m_cmt_current_cmd = cmd;
 
-	if(cassette_get_image(machine.device(CASSETTE_TAG)) == NULL) //avoid a crash if a disk game tries to access this
+	if(machine.device<cassette_image_device>(CASSETTE_TAG)->get_image() == NULL) //avoid a crash if a disk game tries to access this
 		return;
 
 	switch(cmd)
 	{
 		case 0x01:  // Stop
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			state->m_cmt_test = 1;
 			popmessage("CMT: Stop");
 			break;
 		case 0x02:  // Play
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Play");
 			break;
 		case 0x03:  // Fast Forward
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Fast Forward");
 			break;
 		case 0x04:  // Rewind
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Rewind");
 			break;
 		case 0x05:  // APSS Fast Forward
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: APSS Fast Forward");
 			break;
 		case 0x06:  // APSS Rewind
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: APSS Rewind");
 			break;
 		case 0x0a:  // Record
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
-			cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+			machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Record");
 			break;
 		default:
@@ -827,23 +835,23 @@ static void cmt_command( running_machine &machine, UINT8 cmd )
 static TIMER_DEVICE_CALLBACK( cmt_wind_timer )
 {
 	x1_state *state = timer.machine().driver_data<x1_state>();
-	device_t* cmt = timer.machine().device(CASSETTE_TAG);
+	cassette_image_device* cmt = timer.machine().device<cassette_image_device>(CASSETTE_TAG);
 
-	if(cassette_get_image(timer.machine().device(CASSETTE_TAG)) == NULL) //avoid a crash if a disk game tries to access this
+	if(cmt->get_image() == NULL) //avoid a crash if a disk game tries to access this
 		return;
 
 	switch(state->m_cmt_current_cmd)
 	{
 		case 0x03:
 		case 0x05:  // Fast Forwarding tape
-			cassette_seek(cmt,1,SEEK_CUR);
-			if(cassette_get_position(cmt) >= cassette_get_length(cmt))  // at end?
+			cmt->seek(1,SEEK_CUR);
+			if(cmt->get_position() >= cmt->get_length())  // at end?
 				cmt_command(timer.machine(),0x01);  // Stop tape
 			break;
 		case 0x04:
 		case 0x06:  // Rewinding tape
-			cassette_seek(cmt,-1,SEEK_CUR);
-			if(cassette_get_position(cmt) <= 0) // at beginning?
+			cmt->seek(-1,SEEK_CUR);
+			if(cmt->get_position() <= 0) // at beginning?
 				cmt_command(timer.machine(),0x01);  // Stop tape
 			break;
 	}
@@ -942,7 +950,7 @@ static WRITE8_HANDLER( sub_io_w )
 					// bit 1 = tape inserted
 					// bit 2 = record status (1=OK, 0=write protect)
 			state->m_sub_val[0] = 0x05;
-			if(cassette_get_image(space->machine().device(CASSETTE_TAG)) != NULL)
+			if(space->machine().device<cassette_image_device>(CASSETTE_TAG)->get_image() != NULL)
 				state->m_sub_val[0] |= 0x02;
 			state->m_sub_cmd_length = 1;
 			logerror("CMT: Command 0xEB received, returning 0x%02x.\n",state->m_sub_val[0]);
@@ -1281,6 +1289,11 @@ static WRITE8_HANDLER( x1_pal_r_w )
 	{
 		state->m_x_r = data;
 		set_current_palette(space->machine());
+		//if(state->m_old_vpos != space->machine().primary_screen->vpos())
+		//{
+		//  space->machine().primary_screen->update_partial(space->machine().primary_screen->vpos());
+		//  state->m_old_vpos = space->machine().primary_screen->vpos();
+		//}
 	}
 }
 
@@ -1297,6 +1310,11 @@ static WRITE8_HANDLER( x1_pal_g_w )
 	{
 		state->m_x_g = data;
 		set_current_palette(space->machine());
+		//if(state->m_old_vpos != space->machine().primary_screen->vpos())
+		//{
+			space->machine().primary_screen->update_partial(space->machine().primary_screen->vpos());
+		//  state->m_old_vpos = space->machine().primary_screen->vpos();
+		//}
 	}
 }
 
@@ -1313,6 +1331,11 @@ static WRITE8_HANDLER( x1_pal_b_w )
 	{
 		state->m_x_b = data;
 		set_current_palette(space->machine());
+		//if(state->m_old_vpos != space->machine().primary_screen->vpos())
+		//{
+		//  space->machine().primary_screen->update_partial(space->machine().primary_screen->vpos());
+		//  state->m_old_vpos = space->machine().primary_screen->vpos();
+		//}
 	}
 }
 
@@ -1581,7 +1604,6 @@ static WRITE8_HANDLER( x1_emm_w )
 
 /*
     CZ-141SF, CZ-127MF, X1turboZII, X1turboZ3 boards
-    TODO: still not quite right
 */
 static READ8_HANDLER( x1turbo_bank_r )
 {
@@ -1901,10 +1923,10 @@ static READ8_DEVICE_HANDLER( x1_portb_r )
 
 	res = state->m_ram_bank | state->m_sub_obf | state->m_vsync | state->m_vdisp;
 
-	if(cassette_input(device->machine().device(CASSETTE_TAG)) > 0.03)
+	if((device->machine().device<cassette_image_device>(CASSETTE_TAG))->input() > 0.03)
 		res |= 0x02;
 
-//  if(cassette_get_state(device->machine().device(CASSETTE_TAG)) & CASSETTE_MOTOR_DISABLED)
+//  if(cassette_get_state(device->machine().device<cassette_image_device>(CASSETTE_TAG)) & CASSETTE_MOTOR_DISABLED)
 //      res &= ~0x02;  // is zero if not playing
 
 	// CMT test bit is set low when the CMT Stop command is issued, and becomes
@@ -1958,7 +1980,7 @@ static WRITE8_DEVICE_HANDLER( x1_portc_w )
 	state->m_io_switch = data & 0x20;
 	state->m_io_sys = data & 0xff;
 
-	cassette_output(device->machine().device(CASSETTE_TAG),(data & 0x01) ? +1.0 : -1.0);
+	device->machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x01) ? +1.0 : -1.0);
 }
 
 static I8255A_INTERFACE( ppi8255_intf )
@@ -2434,12 +2456,13 @@ static const ay8910_interface ay8910_config =
  *
  *************************************/
 
-static const cassette_config x1_cassette_config =
+static const cassette_interface x1_cassette_interface =
 {
 	x1_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
-	"x1_cass"
+	"x1_cass",
+	NULL
 };
 
 
@@ -2553,7 +2576,7 @@ static MACHINE_RESET( x1 )
 
 	state->m_cmt_current_cmd = 0;
 	state->m_cmt_test = 0;
-	cassette_change_state(machine.device(CASSETTE_TAG ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+	machine.device<cassette_image_device>(CASSETTE_TAG)->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 
 	state->m_key_irq_flag = state->m_ctc_irq_flag = 0;
 	state->m_sub_cmd = 0;
@@ -2573,6 +2596,7 @@ static MACHINE_RESET( x1 )
 		palette_set_color_rgb(machine, i, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
 
 	state->m_ram_bank = 0;
+//  state->m_old_vpos = -1;
 }
 
 static MACHINE_RESET( x1turbo )
@@ -2623,7 +2647,7 @@ static FLOPPY_OPTIONS_START( x1 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config x1_floppy_config =
+static const floppy_interface x1_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -2632,7 +2656,8 @@ static const floppy_config x1_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSDD_40,
 	FLOPPY_OPTIONS_NAME(x1),
-	"floppy_5_25"
+	"floppy_5_25",
+	NULL
 };
 
 static MACHINE_CONFIG_START( x1, x1_state )
@@ -2655,7 +2680,7 @@ static MACHINE_CONFIG_START( x1, x1_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MCFG_SCREEN_UPDATE(x1)
@@ -2684,14 +2709,14 @@ static MACHINE_CONFIG_START( x1, x1_state )
 	MCFG_SOUND_ROUTE(0, "rspeaker", 0.25)
 	MCFG_SOUND_ROUTE(1, "lspeaker",  0.5)
 	MCFG_SOUND_ROUTE(2, "rspeaker", 0.5)
-	MCFG_SOUND_WAVE_ADD("wave",CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.10)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.25)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.10)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG,x1_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG,x1_cassette_interface)
 	MCFG_SOFTWARE_LIST_ADD("cass_list","x1_cass")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(x1_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(x1_floppy_interface)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","x1_flop")
 
 	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(250))

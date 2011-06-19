@@ -734,7 +734,7 @@ void x07_state::printer_w(running_machine &machine)
 
 				//send the chars to the printer, color and size are not used
 				for (int i = char_pos ;i < m_prn_size ; i++)
-					printer_output(m_printer, printer_charcode[m_prn_buffer[i]]);
+					m_printer->output(printer_charcode[m_prn_buffer[i]]);
 
 				//clears the print buffer
 				memset(m_prn_buffer, 0, sizeof(m_prn_buffer));
@@ -1445,7 +1445,7 @@ static MACHINE_CONFIG_START( x07, x07_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD( "beep", BEEP, 0 )
+	MCFG_SOUND_ADD( BEEPER_TAG, BEEP, 0 )
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
 	/* printer */

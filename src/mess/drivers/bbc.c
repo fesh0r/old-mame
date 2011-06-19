@@ -702,11 +702,12 @@ static INTERRUPT_GEN( bbcb_vsync )
 //};
 
 
-static const cassette_config bbc_cassette_config =
+static const cassette_interface bbc_cassette_interface =
 {
 	bbc_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
+	NULL,
 	NULL
 };
 
@@ -746,7 +747,7 @@ static FLOPPY_OPTIONS_START(bbc)
 		FIRST_SECTOR_ID([0]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config bbc_floppy_config =
+static const floppy_interface bbc_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -755,6 +756,7 @@ static const floppy_config bbc_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(bbc),
+	NULL,
 	NULL
 };
 
@@ -818,7 +820,7 @@ static MACHINE_CONFIG_START( bbca, bbc_state )
 //  MCFG_SOUND_ADD("tms5220", TMS5220, tms5220_interface)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, bbc_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, bbc_cassette_interface )
 
 	/* acia */
 	MCFG_ACIA6850_ADD("acia6850", bbc_acia6850_interface)
@@ -842,7 +844,7 @@ static MACHINE_CONFIG_DERIVED( bbcb, bbca )
 
 	MCFG_I8271_ADD("i8271", bbc_i8271_interface)
 	MCFG_WD177X_ADD("wd177x", bbc_wd17xx_interface )
-	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_interface)
 
 	MCFG_FRAGMENT_ADD(bbc_cartslot)
 
@@ -862,7 +864,7 @@ static MACHINE_CONFIG_DERIVED( bbcbp, bbca )
 	MCFG_CENTRONICS_ADD("centronics", bbcb_centronics_config)
 
 	MCFG_WD177X_ADD("wd177x", bbc_wd17xx_interface )
-	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_interface)
 
 	MCFG_FRAGMENT_ADD(bbc_cartslot)
 
@@ -882,7 +884,7 @@ static MACHINE_CONFIG_DERIVED( bbcbp128, bbca )
 	MCFG_CENTRONICS_ADD("centronics", bbcb_centronics_config)
 
 	MCFG_WD177X_ADD("wd177x", bbc_wd17xx_interface )
-	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_interface)
 
 	MCFG_FRAGMENT_ADD(bbc_cartslot)
 
@@ -929,7 +931,7 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_CENTRONICS_ADD("centronics", bbcb_centronics_config)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, bbc_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, bbc_cassette_interface )
 
 	/* acia */
 	MCFG_ACIA6850_ADD("acia6850", bbc_acia6850_interface)
@@ -940,7 +942,7 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_VIA6522_ADD("via6522_1", 1000000, bbcb_user_via)
 
 	MCFG_WD177X_ADD("wd177x", bbc_wd17xx_interface )
-	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(bbc_floppy_interface)
 
 	MCFG_FRAGMENT_ADD(bbc_cartslot)
 MACHINE_CONFIG_END

@@ -14,7 +14,6 @@
 #define I8255_TAG		"i8255"
 #define SP0256AL2_TAG	"ic1"
 #define Z80PIO_TAG		"z80pio"
-#define SPEAKER_TAG		"speaker"
 #define CENTRONICS_TAG	"centronics"
 #define SCREEN_TAG		"screen"
 
@@ -34,7 +33,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<i8255_device> m_ppi;
 	required_device<device_t> m_speaker;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_ram;
 

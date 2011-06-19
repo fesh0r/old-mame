@@ -44,8 +44,8 @@ public:
 		  m_maincpu(*this, "maincpu"),
 		  m_cass1(*this, CASSETTE_TAG),
 		  m_cass2(*this, CASSETTE2_TAG),
-		  m_wave1(*this, "wave.1"),
-		  m_wave2(*this, "wave.2"),
+		  m_wave1(*this, WAVE_TAG),
+		  m_wave2(*this, WAVE2_TAG),
 		  m_dac(*this, "dac"),
 		  m_uart(*this, "uart"),
 		  m_printer(*this, "centronics"),
@@ -53,8 +53,8 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_cass1;
-	required_device<device_t> m_cass2;
+	required_device<cassette_image_device> m_cass1;
+	required_device<cassette_image_device> m_cass2;
 	required_device<device_t> m_wave1;
 	required_device<device_t> m_wave2;
 	required_device<device_t> m_dac;

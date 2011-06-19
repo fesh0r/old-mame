@@ -138,11 +138,12 @@ static INPUT_PORTS_START( partner )
 INPUT_PORTS_END
 
 /* Machine driver */
-static const cassette_config partner_cassette_config =
+static const cassette_interface partner_cassette_interface =
 {
 	rkp_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -155,7 +156,7 @@ static FLOPPY_OPTIONS_START(partner)
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config partner_floppy_config =
+static const floppy_interface partner_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -164,6 +165,7 @@ static const floppy_config partner_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(partner),
+	NULL,
 	NULL
 };
 
@@ -213,16 +215,16 @@ static MACHINE_CONFIG_START( partner, partner_state )
 	MCFG_VIDEO_START(generic_bitmapped)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_I8257_ADD("dma8257", XTAL_16MHz / 9, partner_dma)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, partner_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, partner_cassette_interface )
 
 	MCFG_WD1793_ADD("wd1793", partner_wd17xx_interface )
 
-	MCFG_FLOPPY_2_DRIVES_ADD(partner_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(partner_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

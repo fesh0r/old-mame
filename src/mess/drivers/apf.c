@@ -163,7 +163,7 @@ static WRITE_LINE_DEVICE_HANDLER(apf_m1000_pia_out_ca2_func)
 
 static WRITE8_DEVICE_HANDLER(apf_m1000_pia_out_cb2_func)
 {
-	device_t *speaker = device->machine().device("speaker");
+	device_t *speaker = device->machine().device(SPEAKER_TAG);
 	speaker_level_w(speaker, data);
 }
 
@@ -246,7 +246,7 @@ static READ8_DEVICE_HANDLER(apf_imagination_pia_in_b_func)
 
 	data = 0x000;
 
-	if (cassette_input(device->machine().device(CASSETTE_TAG)) > 0.0038)
+	if (device->machine().device<cassette_image_device>(CASSETTE_TAG)->input() > 0.0038)
 		data =(1<<7);
 
 	return data;
@@ -295,13 +295,12 @@ static WRITE8_DEVICE_HANDLER(apf_imagination_pia_out_b_func)
 	state->m_keyboard_data = input_port_read(device->machine(), keynames[keyboard_line]);
 
 	/* bit 4: cassette motor control */
-	cassette_change_state(device->machine().device(CASSETTE_TAG),
+	device->machine().device<cassette_image_device>(CASSETTE_TAG)->change_state(
 		(data & 0x10) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 		CASSETTE_MASK_MOTOR);
 
 	/* bit 6: cassette write */
-	cassette_output(device->machine().device(CASSETTE_TAG),
-		(data & 0x40) ? -1.0 : 1.0);
+	device->machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x40) ? -1.0 : 1.0);
 }
 
 static WRITE8_DEVICE_HANDLER(apf_imagination_pia_out_ca2_func)
@@ -658,11 +657,12 @@ INPUT_PORTS_END
 
 
 
-static const cassette_config apf_cassette_config =
+static const cassette_interface apf_cassette_interface =
 {
 	apf_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY),
+	NULL,
 	NULL
 };
 
@@ -675,7 +675,7 @@ static FLOPPY_OPTIONS_START(apfimag)
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config apfimag_floppy_config =
+static const floppy_interface apfimag_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -684,6 +684,7 @@ static const floppy_config apfimag_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(apfimag),
+	NULL,
 	NULL
 };
 
@@ -728,14 +729,14 @@ static MACHINE_CONFIG_START( apf_imagination, apf_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, apf_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apf_cassette_interface )
 
 	MCFG_WD179X_ADD("wd179x", default_wd17xx_interface )
 
-	MCFG_FLOPPY_2_DRIVES_ADD(apfimag_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(apfimag_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( apf_m1000, apf_imagination )

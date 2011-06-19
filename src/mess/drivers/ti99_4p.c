@@ -300,8 +300,8 @@ static MACHINE_CONFIG_START( ti99_4p_60hz, ti99_4p_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("soundgen", SN76496, 3579545)	/* 3.579545 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
@@ -311,7 +311,7 @@ static MACHINE_CONFIG_START( ti99_4p_60hz, ti99_4p_state )
 	/* devices */
 	MCFG_PBOXSG_ADD( "peribox", card_extint, card_notconnected, card_ready )
 	MCFG_SGCPUB_ADD( "sgcpu_board" )
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 MACHINE_CONFIG_END
 
 

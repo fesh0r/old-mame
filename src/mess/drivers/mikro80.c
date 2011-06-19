@@ -138,11 +138,12 @@ static INPUT_PORTS_START( mikro80 )
 INPUT_PORTS_END
 
 /* Machine driver */
-static const cassette_config mikro80_cassette_config =
+static const cassette_interface mikro80_cassette_interface =
 {
 	rk8_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -190,10 +191,10 @@ static MACHINE_CONFIG_START( mikro80, mikro80_state )
 	MCFG_VIDEO_START(mikro80)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, mikro80_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, mikro80_cassette_interface )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( radio99, mikro80 )

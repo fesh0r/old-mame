@@ -828,15 +828,16 @@ speed of 3.8 MHz */
  */
 
 
-static const cassette_config amstrad_cassette_config =
+static const cassette_interface amstrad_cassette_interface =
 {
 	cdt_cassette_formats,
 	NULL,
 	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
-static const floppy_config cpc6128_floppy_config =
+static const floppy_interface cpc6128_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -845,10 +846,11 @@ static const floppy_config cpc6128_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_3_SSDD,
 	FLOPPY_OPTIONS_NAME(default),
+	NULL,
 	NULL
 };
 
-static const floppy_config aleste_floppy_config =
+static const floppy_interface aleste_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -857,6 +859,7 @@ static const floppy_config aleste_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(msx),
+	NULL,
 	NULL
 };
 
@@ -900,8 +903,8 @@ static MACHINE_CONFIG_START( amstrad, amstrad_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay", AY8912, XTAL_16MHz / 16)
 	MCFG_SOUND_CONFIG(ay8912_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -912,11 +915,11 @@ static MACHINE_CONFIG_START( amstrad, amstrad_state )
 	/* snapshot */
 	MCFG_SNAPSHOT_ADD("snapshot", amstrad, "sna", 0)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, amstrad_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, amstrad_cassette_interface )
 
 	MCFG_UPD765A_ADD("upd765", amstrad_upd765_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -963,8 +966,8 @@ static MACHINE_CONFIG_START( cpcplus, amstrad_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("ay", AY8912, XTAL_40MHz / 40)
 	MCFG_SOUND_CONFIG(ay8912_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -975,13 +978,13 @@ static MACHINE_CONFIG_START( cpcplus, amstrad_state )
 	/* snapshot */
 	MCFG_SNAPSHOT_ADD("snapshot", amstrad, "sna", 0)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, amstrad_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, amstrad_cassette_interface )
 
 	MCFG_UPD765A_ADD("upd765", amstrad_upd765_interface)
 
 	MCFG_FRAGMENT_ADD(cpcplus_cartslot)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1044,7 +1047,7 @@ static MACHINE_CONFIG_DERIVED( aleste, amstrad )
 	MCFG_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
 	MCFG_UPD765A_MODIFY("upd765", aleste_8272_interface)
 
-	MCFG_FLOPPY_2_DRIVES_MODIFY(aleste_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_MODIFY(aleste_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_MODIFY(RAM_TAG)

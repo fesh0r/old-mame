@@ -533,11 +533,12 @@ static const struct CassetteOptions pmd85_cassette_options =
 	7200	/* sample frequency */
 };
 
-static const cassette_config pmd85_cassette_config =
+static const cassette_interface pmd85_cassette_interface =
 {
 	pmd85_pmd_format,
 	&pmd85_cassette_options,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -570,11 +571,11 @@ static MACHINE_CONFIG_START( pmd85, pmd85_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, pmd85_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, pmd85_cassette_interface )
 
 	/* uart */
 	MCFG_MSM8251_ADD("uart", default_msm8251_interface)

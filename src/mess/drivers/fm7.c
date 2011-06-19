@@ -238,7 +238,7 @@ static READ8_HANDLER( fm7_irq_cause_r )
 
 static TIMER_CALLBACK( fm7_beeper_off )
 {
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 	logerror("timed beeper off\n");
 }
 
@@ -249,23 +249,23 @@ static WRITE8_HANDLER( fm7_beeper_w )
 
 	if(!state->m_speaker_active)  // speaker not active, disable all beeper sound
 	{
-		beep_set_state(space->machine().device("beeper"),0);
+		beep_set_state(space->machine().device(BEEPER_TAG),0);
 		return;
 	}
 
 	if(data & 0x80)
 	{
 		if(state->m_speaker_active)
-			beep_set_state(space->machine().device("beeper"),1);
+			beep_set_state(space->machine().device(BEEPER_TAG),1);
 	}
 	else
-		beep_set_state(space->machine().device("beeper"),0);
+		beep_set_state(space->machine().device(BEEPER_TAG),0);
 
 	if(data & 0x40)
 	{
 		if(state->m_speaker_active)
 		{
-			beep_set_state(space->machine().device("beeper"),1);
+			beep_set_state(space->machine().device(BEEPER_TAG),1);
 			logerror("timed beeper on\n");
 			space->machine().scheduler().timer_set(attotime::from_msec(205), FUNC(fm7_beeper_off));
 		}
@@ -283,7 +283,7 @@ READ8_HANDLER( fm7_sub_beeper_r )
 	fm7_state *state = space->machine().driver_data<fm7_state>();
 	if(state->m_speaker_active)
 	{
-		beep_set_state(space->machine().device("beeper"),1);
+		beep_set_state(space->machine().device(BEEPER_TAG),1);
 		logerror("timed beeper on\n");
 		space->machine().scheduler().timer_set(attotime::from_msec(205), FUNC(fm7_beeper_off));
 	}
@@ -748,7 +748,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 	// bit 1: printer error
 	// bit 0: printer busy
 	UINT8 ret = 0x00;
-	double data = cassette_input(space->machine().device(CASSETTE_TAG));
+	double data = (space->machine().device<cassette_image_device>(CASSETTE_TAG)->input());
 	device_t* printer_dev = space->machine().device("lpt");
 	UINT8 pdata;
 	int x;
@@ -756,7 +756,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 	if(data > 0.03)
 		ret |= 0x80;
 
-	if(cassette_get_state(space->machine().device(CASSETTE_TAG)) & CASSETTE_MOTOR_DISABLED)
+	if(space->machine().device<cassette_image_device>(CASSETTE_TAG)->get_state() & CASSETTE_MOTOR_DISABLED)
 		ret |= 0x80;  // cassette input is high when not in use.
 
 	ret |= 0x70;
@@ -803,9 +803,9 @@ static WRITE8_HANDLER( fm7_cassette_printer_w )
 		// bit 1: cassette motor
 		// bit 0: cassette output
 			if((data & 0x01) != (state->m_cp_prev & 0x01))
-				cassette_output(space->machine().device(CASSETTE_TAG),(data & 0x01) ? +1.0 : -1.0);
+				space->machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x01) ? +1.0 : -1.0);
 			if((data & 0x02) != (state->m_cp_prev & 0x02))
-				cassette_change_state(space->machine().device(CASSETTE_TAG),(data & 0x02) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+				space->machine().device<cassette_image_device>(CASSETTE_TAG)->change_state((data & 0x02) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 			centronics_strobe_w(space->machine().device("lpt"),!(data & 0x40));
 			state->m_cp_prev = data;
 			break;
@@ -1882,8 +1882,8 @@ static MACHINE_START(fm7)
 	memset(state->m_shared_ram,0xff,0x80);
 	state->m_type = SYS_FM7;
 
-	beep_set_frequency(machine.device("beeper"),1200);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),1200);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 }
 
 static MACHINE_START(fm77av)
@@ -1904,8 +1904,8 @@ static MACHINE_START(fm77av)
 	memory_set_bankptr(machine,"bank21",RAM+0x800);
 
 	state->m_type = SYS_FM77AV;
-	beep_set_frequency(machine.device("beeper"),1200);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),1200);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 }
 
 static MACHINE_START(fm11)
@@ -1916,8 +1916,8 @@ static MACHINE_START(fm11)
 
 	memset(state->m_shared_ram,0xff,0x80);
 	state->m_type = SYS_FM11;
-	beep_set_frequency(machine.device("beeper"),1200);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),1200);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 	// last part of Initiate ROM is visible at the end of RAM too (interrupt vectors)
 	memcpy(RAM+0x3fff0,ROM+0x0ff0,16);
 }
@@ -1927,8 +1927,8 @@ static MACHINE_START(fm16)
 	fm7_state *state = machine.driver_data<fm7_state>();
 
 	state->m_type = SYS_FM16;
-	beep_set_frequency(machine.device("beeper"),1200);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),1200);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 }
 
 static MACHINE_RESET(fm7)
@@ -2035,15 +2035,16 @@ static const ym2203_interface fm7_ym_intf =
 	fm77av_fmirq
 };
 
-static const cassette_config fm7_cassette_config =
+static const cassette_interface fm7_cassette_interface =
 {
 	fm7_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
-	"fm7_cass"
+	"fm7_cass",
+	NULL
 };
 
-static const floppy_config fm7_floppy_config =
+static const floppy_interface fm7_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -2052,7 +2053,8 @@ static const floppy_config fm7_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
-	"floppy_5_25"
+	"floppy_5_25",
+	NULL
 };
 
 static MACHINE_CONFIG_START( fm7, fm7_state )
@@ -2068,11 +2070,11 @@ static MACHINE_CONFIG_START( fm7, fm7_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("psg", AY8910, XTAL_4_9152MHz / 4)
 	MCFG_SOUND_CONFIG(fm7_psg_intf)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.20)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono", 1.0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono", 1.0)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.25)
 
 	MCFG_MACHINE_START(fm7)
 	MCFG_MACHINE_RESET(fm7)
@@ -2092,13 +2094,13 @@ static MACHINE_CONFIG_START( fm7, fm7_state )
 
 	MCFG_VIDEO_START(fm7)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_interface)
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
 	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
 	MCFG_SOFTWARE_LIST_ADD("cass_list","fm7_cass")
 	MCFG_SOFTWARE_LIST_ADD("flop_list","fm7_disk")
@@ -2115,10 +2117,10 @@ static MACHINE_CONFIG_START( fm8, fm7_state )
 	MCFG_QUANTUM_PERFECT_CPU("sub")
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.25)
 
 	MCFG_MACHINE_START(fm7)
 	MCFG_MACHINE_RESET(fm7)
@@ -2138,13 +2140,13 @@ static MACHINE_CONFIG_START( fm8, fm7_state )
 
 	MCFG_VIDEO_START(fm7)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_interface)
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
 	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
 MACHINE_CONFIG_END
 
@@ -2162,10 +2164,10 @@ static MACHINE_CONFIG_START( fm77av, fm7_state )
 	MCFG_SOUND_ADD("ym", YM2203, XTAL_4_9152MHz / 4)
 	MCFG_SOUND_CONFIG(fm7_ym_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.25)
 
 	MCFG_MACHINE_START(fm77av)
 	MCFG_MACHINE_RESET(fm7)
@@ -2184,13 +2186,13 @@ static MACHINE_CONFIG_START( fm77av, fm7_state )
 
 	MCFG_VIDEO_START(fm7)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_interface)
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
 	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
 	MCFG_SOFTWARE_LIST_ADD("av_flop_list","fm77av")
 	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("cass_list","fm7_cass")
@@ -2212,10 +2214,10 @@ static MACHINE_CONFIG_START( fm11, fm7_state )
 	MCFG_CPU_IO_MAP(fm11_x86_io)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.25)
 
 	MCFG_MACHINE_START(fm11)
 	MCFG_MACHINE_RESET(fm7)
@@ -2235,13 +2237,13 @@ static MACHINE_CONFIG_START( fm11, fm7_state )
 
 	MCFG_VIDEO_START(fm7)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_interface)
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
 	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
 MACHINE_CONFIG_END
 
@@ -2257,10 +2259,10 @@ static MACHINE_CONFIG_START( fm16beta, fm7_state )
 	MCFG_QUANTUM_PERFECT_CPU("sub")
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",1.0)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.25)
 
 	MCFG_MACHINE_START(fm16)
 	MCFG_MACHINE_RESET(fm7)
@@ -2280,13 +2282,13 @@ static MACHINE_CONFIG_START( fm16beta, fm7_state )
 
 	MCFG_VIDEO_START(fm7)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, fm7_cassette_interface)
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
 	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
 MACHINE_CONFIG_END
 

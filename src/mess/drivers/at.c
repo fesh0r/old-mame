@@ -525,7 +525,7 @@ static const pc_lpt_interface at_lpt_config =
 	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
-static const floppy_config ibmat_floppy_config =
+static const floppy_interface ibmat_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -534,7 +534,8 @@ static const floppy_config ibmat_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(pc),
-	"floppy_5_25"
+	"floppy_5_25",
+	NULL
 };
 
 static const at_keyboard_controller_interface keyboard_controller_intf =
@@ -599,7 +600,7 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
@@ -618,7 +619,7 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_interface)
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("disk_list","ibm5170")
@@ -670,7 +671,7 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
@@ -689,7 +690,7 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -726,7 +727,7 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
@@ -745,7 +746,7 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -782,7 +783,7 @@ static MACHINE_CONFIG_START( neat, at_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD("dac", DAC, 0)
@@ -806,7 +807,7 @@ static MACHINE_CONFIG_START( neat, at_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -842,7 +843,7 @@ static MACHINE_CONFIG_START( atvga, at_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD("dac", DAC, 0)
@@ -864,7 +865,7 @@ static MACHINE_CONFIG_START( atvga, at_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -901,7 +902,7 @@ static MACHINE_CONFIG_START( at386, at_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD("dac", DAC, 0)
@@ -924,7 +925,7 @@ static MACHINE_CONFIG_START( at386, at_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(ibmat_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1230,6 +1231,11 @@ ROM_START( atvga )
 	ROM_SYSTEM_BIOS(11, "amip1", "AMI P.1")
 	ROMX_LOAD( "poisk-h.bin",   0xf0001, 0x8000, CRC(83fd3f8c) SHA1(ca94850bbd949b97b11710629886b0ee69489a81),ROM_SKIP(1) | ROM_BIOS(12) )
 	ROMX_LOAD( "poisk-l.bin",   0xf0000, 0x8000, CRC(0b2ed291) SHA1(bb51a3f317cf4d429a6cfb44a46ca0ac39d9aaa7),ROM_SKIP(1) | ROM_BIOS(12) )
+	ROM_SYSTEM_BIOS(12, "ami1131", "AMI-1131")
+	ROMX_LOAD( "2hlm003h.bin",   0xf0001, 0x8000, CRC(2babb42b) SHA1(3da6538f44b434cdec0cbdddd392ccfd34666f06),ROM_SKIP(1) | ROM_BIOS(13) )
+	ROMX_LOAD( "2hlm003l.bin",   0xf0000, 0x8000, CRC(317cbcbf) SHA1(1adad6280d8b07c2921fc5fc13ecaa10e6bfebdc),ROM_SKIP(1) | ROM_BIOS(13) )
+	ROM_SYSTEM_BIOS(13, "vl82c", "VL82C311L-FC4")
+	ROMX_LOAD( "2vlm001.bin",     0xf0000, 0x10000, CRC(f34d800a) SHA1(638aca592a0e525f957beb525e95ca666a994ee8), ROM_BIOS(14) )
 ROM_END
 
 
@@ -1428,6 +1434,17 @@ ROM_START( t2000sx )
 	ROM_LOAD( "014d.ic9", 0xe0000, 0x20000, CRC(e9010b02) SHA1(75688fc8e222640fa22bcc90343c6966fe0da87f))
 ROM_END
 
+ROM_START( pc2386 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
+	ROM_LOAD( "c000.bin", 0xc0000, 0x4000, CRC(33145bbf) SHA1(c49eaec19f656482e12c8bf282cd4ee5986d227d) )
+	ROM_LOAD( "f000.bin", 0xf0000, 0x10000, CRC(f54a063c) SHA1(ce70ec493053afab662f51199ef9c9304a209b8e) )
+
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASE00 )
+
+	ROM_REGION( 0x1000, "keyboard", 0 ) // PC2286 / PC2386 102-key keyboard
+	ROM_LOAD( "40211.ic801", 0x000, 0x1000, CRC(4440d981) SHA1(a76006a929f26c178e09908c66f28abc92e7744c) )
+ROM_END
+
 
 /***************************************************************************
 
@@ -1456,3 +1473,4 @@ COMP ( 1997, ficvt503, ibm5170, 0,       at586,     atvga,  at386,      "FIC", "
 COMP ( 1993, megapc,   ibm5170, 0,       megapc,    atvga,  at386,      "Amstrad plc", "MegaPC", GAME_NOT_WORKING )
 COMP ( 199?, megapcpl, ibm5170, 0,       megapcpl,  atvga,  at386,      "Amstrad plc", "MegaPC Plus", GAME_NOT_WORKING )
 COMP ( 1991, t2000sx,  ibm5170, 0,       c386sx16,  atvga,	at386,      "Toshiba",  "T2000SX", GAME_NOT_WORKING )
+COMP ( 1989, pc2386,   ibm5170,	0,		 at386,     atvga,	at386,		"Amstrad plc",  "Amstrad PC2386", GAME_NOT_WORKING )

@@ -30,11 +30,11 @@ public:
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
 	//m_cass(*this, CASSETTE_TAG),
-	m_beep(*this, "beep")
+	m_beep(*this, BEEPER_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	//required_device<device_t> m_cass;
+	//required_device<cassette_image_device> m_cass;
 	required_device<device_t> m_beep;
 	DECLARE_READ8_MEMBER(h8_f0_r);
 	DECLARE_WRITE8_MEMBER(h8_f0_w);
@@ -234,7 +234,7 @@ static MACHINE_CONFIG_START( h8, h8_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_CONFIG_END
 

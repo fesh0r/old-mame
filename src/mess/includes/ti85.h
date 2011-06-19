@@ -9,6 +9,7 @@
 
 #include "imagedev/snapquik.h"
 #include "video/t6a04.h"
+#include "sound/speaker.h"
 
 
 class ti85_state : public driver_device
@@ -17,7 +18,7 @@ public:
 	ti85_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, "maincpu"),
-		  m_speaker(*this, "speaker"),
+		  m_speaker(*this, SPEAKER_TAG),
 		  m_serial(*this, "tiserial"),
 		  m_nvram(*this, "nvram")
 		{ }

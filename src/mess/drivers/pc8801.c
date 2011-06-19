@@ -947,14 +947,14 @@ static WRITE8_HANDLER( pc8801_ctrl_w )
 	state->m_rtc->clk_w((data & 4) >> 2);
 
 	if(((state->m_device_ctrl_data & 0x20) == 0x00) && ((data & 0x20) == 0x20))
-		beep_set_state(space->machine().device("beeper"),1);
+		beep_set_state(space->machine().device(BEEPER_TAG),1);
 
 	if(((state->m_device_ctrl_data & 0x20) == 0x20) && ((data & 0x20) == 0x00))
-		beep_set_state(space->machine().device("beeper"),0);
+		beep_set_state(space->machine().device(BEEPER_TAG),0);
 
 	/* TODO: is SING a buzzer mask? Bastard Special relies on this ... */
 	if(state->m_device_ctrl_data & 0x80)
-		beep_set_state(space->machine().device("beeper"),0);
+		beep_set_state(space->machine().device(BEEPER_TAG),0);
 
 	state->m_device_ctrl_data = data;
 }
@@ -1908,7 +1908,7 @@ static UPD1990A_INTERFACE( pc8801_upd1990a_intf )
 
 /* Floppy Configuration */
 
-static const floppy_config pc88_floppy_config =
+static const floppy_interface pc88_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1917,16 +1917,18 @@ static const floppy_config pc88_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
-	"floppy_5_25"
+	"floppy_5_25",
+	NULL
 };
 
 /* Cassette Configuration */
 
-static const cassette_config pc88_cassette_config =
+static const cassette_interface pc88_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	NULL,
 	NULL
 };
 
@@ -2101,8 +2103,8 @@ static MACHINE_RESET( pc8801 )
 		state->m_crtc.status = 0;
 	}
 
-	beep_set_frequency(machine.device("beeper"),2400);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),2400);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 
 	#ifdef USE_PROPER_I8214
 	{
@@ -2243,9 +2245,9 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	#endif
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8801_upd1990a_intf)
 	//MCFG_CENTRONICS_ADD("centronics", standard_centronics)
-	//MCFG_CASSETTE_ADD(CASSETTE_TAG, pc88_cassette_config)
+	//MCFG_CASSETTE_ADD(CASSETTE_TAG, pc88_cassette_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(pc88_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(pc88_floppy_interface)
 	MCFG_SOFTWARE_LIST_ADD("disk_list","pc8801_flop")
 
 	/* video hardware */
@@ -2269,7 +2271,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	MCFG_SOUND_CONFIG(pc88_ym2203_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MCFG_TIMER_ADD_PERIODIC("rtc_timer", pc8801_rtc_irq, attotime::from_hz(600))

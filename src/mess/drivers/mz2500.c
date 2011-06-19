@@ -1145,7 +1145,7 @@ static FLOPPY_OPTIONS_START( mz2500 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config mz2500_floppy_config =
+static const floppy_interface mz2500_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1154,7 +1154,8 @@ static const floppy_config mz2500_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_3_5_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
-	"floppy_3_5"
+	"floppy_3_5",
+	NULL
 };
 
 static ADDRESS_MAP_START(mz2500_map, AS_PROGRAM, 8)
@@ -1730,8 +1731,8 @@ static MACHINE_RESET(mz2500)
 
 	state->m_cg_clear_flag = 0;
 
-	beep_set_frequency(machine.device("beeper"),4096);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),4096);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 
 //  state->m_monitor_type = input_port_read(machine,"DSW1") & 0x40 ? 1 : 0;
 }
@@ -1868,7 +1869,7 @@ static WRITE8_DEVICE_HANDLER( mz2500_portc_w )
 
 	state->m_old_portc = data;
 
-	beep_set_state(device->machine().device("beeper"),data & 0x04);
+	beep_set_state(device->machine().device(BEEPER_TAG),data & 0x04);
 
 	if(data & ~0x0e)
 		logerror("PPI PORTC W %02x\n",data & ~0x0e);
@@ -2088,7 +2089,7 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
 	MCFG_PIT8253_ADD("pit", mz2500_pit8253_intf)
 
 	MCFG_MB8877_ADD("mb8877a",mz2500_mb8877a_interface)
-	MCFG_FLOPPY_4_DRIVES_ADD(mz2500_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(mz2500_floppy_interface)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","mz2500")
 
 	/* video hardware */
@@ -2113,7 +2114,7 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
 	MCFG_SOUND_ROUTE(2, "mono", 0.50)
 	MCFG_SOUND_ROUTE(3, "mono", 0.50)
 
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 MACHINE_CONFIG_END
 

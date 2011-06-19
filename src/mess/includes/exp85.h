@@ -5,7 +5,6 @@
 #define I8085A_TAG		"u100"
 #define I8155_TAG		"u106"
 #define I8355_TAG		"u105"
-#define SPEAKER_TAG		"speaker"
 
 class exp85_state : public driver_device
 {
@@ -20,7 +19,7 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_terminal;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	required_device<device_t> m_speaker;
 
 	virtual void machine_start();

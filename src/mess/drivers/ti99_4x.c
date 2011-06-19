@@ -833,8 +833,8 @@ static MACHINE_CONFIG_START( ti99_4_60hz, ti99_4x_state )
 	MCFG_SOUND_ADD("soundgen", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
-	MCFG_SOUND_WAVE_ADD("wave.1", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_TI994_BOARD_ADD( "ti_board" )
 
@@ -852,8 +852,8 @@ static MACHINE_CONFIG_START( ti99_4_60hz, ti99_4x_state )
 
 	MCFG_PBOX4_ADD( "peribox", console_extint, console_notconnected, console_ready )
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
-	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_interface )
 
 	MCFG_MECMOUSE_ADD( "mecmouse" )
 	MCFG_HANDSET_ADD( "handset", "tms9901" )
@@ -879,8 +879,8 @@ static MACHINE_CONFIG_START( ti99_4_50hz, ti99_4x_state )
 	MCFG_SOUND_ADD("soundgen", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
-	MCFG_SOUND_WAVE_ADD("wave.1", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_TI994_BOARD_ADD( "ti_board" )
 
@@ -898,8 +898,8 @@ static MACHINE_CONFIG_START( ti99_4_50hz, ti99_4x_state )
 
 	MCFG_PBOX4_ADD( "peribox", console_extint, console_notconnected, console_ready )
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
-	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_interface )
 
 	MCFG_MECMOUSE_ADD( "mecmouse" )
 	MCFG_HANDSET_ADD( "handset", "tms9901" )
@@ -924,8 +924,8 @@ static MACHINE_CONFIG_START( ti99_4a_60hz, ti99_4x_state )
 	MCFG_SOUND_ADD("soundgen", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
-	MCFG_SOUND_WAVE_ADD("wave.1", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_TI994A_BOARD_ADD( "ti_board" )
 
@@ -943,8 +943,8 @@ static MACHINE_CONFIG_START( ti99_4a_60hz, ti99_4x_state )
 
 	MCFG_PBOX4A_ADD( "peribox", console_extint, console_notconnected, console_ready )
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
-	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_interface )
 
 	MCFG_MECMOUSE_ADD( "mecmouse" )
 MACHINE_CONFIG_END
@@ -968,8 +968,8 @@ static MACHINE_CONFIG_START( ti99_4a_50hz, ti99_4x_state )
 	MCFG_SOUND_ADD("soundgen", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
-	MCFG_SOUND_WAVE_ADD("wave.1", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_TI994A_BOARD_ADD( "ti_board" )
 
@@ -987,8 +987,8 @@ static MACHINE_CONFIG_START( ti99_4a_50hz, ti99_4x_state )
 
 	MCFG_PBOX4A_ADD( "peribox", console_extint, console_notconnected, console_ready )
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
-	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_interface )
 
 	MCFG_MECMOUSE_ADD( "mecmouse" )
 MACHINE_CONFIG_END
@@ -1024,8 +1024,8 @@ static MACHINE_CONFIG_START( ti99_4ev_60hz, ti99_4x_state )
 	MCFG_SOUND_ADD("soundgen", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
-	MCFG_SOUND_WAVE_ADD("wave.1", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_TI994A_BOARD_ADD( "ti_board" )
 
@@ -1042,8 +1042,8 @@ static MACHINE_CONFIG_START( ti99_4ev_60hz, ti99_4x_state )
 
 	MCFG_PBOXEV_ADD( "peribox", console_extint, console_notconnected, console_ready )
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
-	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE2_TAG, default_cassette_interface )
 MACHINE_CONFIG_END
 
 /*

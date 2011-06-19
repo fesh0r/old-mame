@@ -13,9 +13,9 @@
 #include "imagedev/cassette.h"
 
 
-static device_t *cassette_device_image( running_machine &machine )
+static cassette_image_device *cassette_device_image( running_machine &machine )
 {
-	return machine.device(CASSETTE_TAG);
+	return machine.device<cassette_image_device>(CASSETTE_TAG);
 }
 
 static void electron_tape_start( electron_state *state )
@@ -47,7 +47,7 @@ static TIMER_CALLBACK(electron_tape_timer_handler)
 	if ( state->m_ula.cassette_motor_mode )
 	{
 		double tap_val;
-		tap_val = cassette_input( cassette_device_image( machine ) );
+		tap_val = cassette_device_image(machine)->input();
 		if ( tap_val < -0.5 )
 		{
 			state->m_ula.tape_value = ( state->m_ula.tape_value << 8 ) | TAPE_LOW;
@@ -180,7 +180,7 @@ static const UINT16 electron_screen_base[8] = { 0x3000, 0x3000, 0x3000, 0x4000, 
 WRITE8_HANDLER( electron_ula_w )
 {
 	electron_state *state = space->machine().driver_data<electron_state>();
-	device_t *speaker = space->machine().device("beep");
+	device_t *speaker = space->machine().device(BEEPER_TAG);
 	int i = electron_palette_offset[(( offset >> 1 ) & 0x03)];
 	logerror( "ULA: write offset %02x <- %02x\n", offset & 0x0f, data );
 	switch( offset & 0x0f )
@@ -270,7 +270,7 @@ WRITE8_HANDLER( electron_ula_w )
 		state->m_ula.vram = (UINT8 *)space->get_read_ptr(state->m_ula.screen_base );
 		logerror( "ULA: screen mode set to %d\n", state->m_ula.screen_mode );
 		state->m_ula.cassette_motor_mode = ( data >> 6 ) & 0x01;
-		cassette_change_state( cassette_device_image( space->machine() ), state->m_ula.cassette_motor_mode ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MOTOR_DISABLED );
+		cassette_device_image(space->machine())->change_state(state->m_ula.cassette_motor_mode ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MOTOR_DISABLED );
 		state->m_ula.capslock_mode = ( data >> 7 ) & 0x01;
 		break;
 	case 0x08: case 0x0A: case 0x0C: case 0x0E:
@@ -319,7 +319,7 @@ void electron_interrupt_handler(running_machine &machine, int mode, int interrup
 
 static TIMER_CALLBACK(setup_beep)
 {
-	device_t *speaker = machine.device("beep");
+	device_t *speaker = machine.device(BEEPER_TAG);
 	beep_set_state( speaker, 0 );
 	beep_set_frequency( speaker, 300 );
 }

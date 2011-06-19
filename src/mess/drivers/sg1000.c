@@ -600,7 +600,7 @@ READ8_MEMBER( sc3000_state::ppi_pb_r )
 	data |= 0x60;
 
 	/* tape input */
-	if (cassette_input(m_cassette) > +0.0) data |= 0x80;
+	if ((m_cassette)->input() > +0.0) data |= 0x80;
 
 	return data;
 }
@@ -624,7 +624,7 @@ WRITE8_MEMBER( sc3000_state::ppi_pc_w )
 	m_keylatch = data & 0x07;
 
 	/* cassette */
-	cassette_output(m_cassette, BIT(data, 4) ? +1.0 : -1.0);
+	m_cassette->output( BIT(data, 4) ? +1.0 : -1.0);
 
 	/* TODO printer */
 }
@@ -640,14 +640,15 @@ I8255_INTERFACE( sc3000_ppi_intf )
 };
 
 /*-------------------------------------------------
-    cassette_config sc3000_cassette_config
+    cassette_interface sc3000_cassette_interface
 -------------------------------------------------*/
 
-const cassette_config sc3000_cassette_config =
+const cassette_interface sc3000_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -919,35 +920,36 @@ static FLOPPY_OPTIONS_START( sf7000 )
 FLOPPY_OPTIONS_END
 
 /*-------------------------------------------------
-    floppy_config sf7000_floppy_config
+    sf7000_fdc_index_callback -
 -------------------------------------------------*/
 
-static const floppy_config sf7000_floppy_config =
+static WRITE_LINE_DEVICE_HANDLER(sf7000_fdc_index_callback)
 {
-	DEVCB_NULL,
+	sf7000_state *driver_state = device->machine().driver_data<sf7000_state>();
+
+	driver_state->m_fdc_index = state;
+}
+
+/*-------------------------------------------------
+    floppy_interface sf7000_floppy_interface
+-------------------------------------------------*/
+
+static const floppy_interface sf7000_floppy_interface =
+{
+	DEVCB_LINE(sf7000_fdc_index_callback),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(sf7000),
+	NULL,
 	NULL
 };
 
 /***************************************************************************
     MACHINE INITIALIZATION
 ***************************************************************************/
-
-/*-------------------------------------------------
-    sf7000_fdc_index_callback -
--------------------------------------------------*/
-
-static void sf7000_fdc_index_callback(device_t *controller, device_t *img, int state)
-{
-	sf7000_state *driver_state = img->machine().driver_data<sf7000_state>();
-
-	driver_state->m_fdc_index = state;
-}
 
 /*-------------------------------------------------
     TIMER_CALLBACK( lightgun_tick )
@@ -1011,9 +1013,6 @@ void sf7000_state::machine_start()
 {
 	/* configure VDP */
 	TMS9928A_configure(&tms9928a_interface);
-
-	/* configure FDC */
-	floppy_drive_set_index_pulse_callback(m_floppy0, sf7000_fdc_index_callback);
 
 	/* configure memory banking */
 	memory_configure_bank(machine(), "bank1", 0, 1, machine().region(Z80_TAG)->base(), 0);
@@ -1120,7 +1119,7 @@ static MACHINE_CONFIG_START( sc3000, sc3000_state )
 	/* devices */
 	MCFG_I8255_ADD(UPD9255_TAG, sc3000_ppi_intf)
 //  MCFG_PRINTER_ADD("sp400") /* serial printer */
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_interface)
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
@@ -1163,10 +1162,10 @@ static MACHINE_CONFIG_START( sf7000, sf7000_state )
 	MCFG_I8255_ADD(UPD9255_1_TAG, sf7000_ppi_intf)
 	MCFG_MSM8251_ADD(UPD8251_TAG, default_msm8251_interface)
 	MCFG_UPD765A_ADD(UPD765_TAG, sf7000_upd765_interface)
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, sf7000_floppy_config)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, sf7000_floppy_interface)
 //  MCFG_PRINTER_ADD("sp400") /* serial printer */
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

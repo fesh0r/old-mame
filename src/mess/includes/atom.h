@@ -31,7 +31,6 @@
 #define MC6854_TAG		"econet_ic1"
 #define SCREEN_TAG		"screen"
 #define CENTRONICS_TAG	"centronics"
-#define SPEAKER_TAG		"speaker"
 #define BASERAM_TAG		"baseram"
 #define EXTROM_TAG		"a000"
 #define DOSROM_TAG		"e000"
@@ -54,7 +53,7 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_vdg;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_speaker;
 

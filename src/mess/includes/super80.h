@@ -25,15 +25,15 @@ public:
 		  m_maincpu(*this, "maincpu"),
 		  m_pio(*this, "z80pio"),
 		  m_cass(*this, CASSETTE_TAG),
-		  m_wave(*this, "wave"),
-		  m_speaker(*this, "speaker"),
+		  m_wave(*this, WAVE_TAG),
+		  m_speaker(*this, SPEAKER_TAG),
 		  m_printer(*this, "centronics"),
 		  m_6845(*this, "crtc")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_pio;
-	required_device<device_t> m_cass;
+	required_device<cassette_image_device> m_cass;
 	required_device<device_t> m_wave;
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_printer;

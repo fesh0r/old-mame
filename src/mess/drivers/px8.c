@@ -748,14 +748,15 @@ static const msm8251_interface i8251_intf =
 };
 
 /*-------------------------------------------------
-    cassette_config px8_cassette_config
+    cassette_interface px8_cassette_interface
 -------------------------------------------------*/
 
-static const cassette_config px8_cassette_config =
+static const cassette_interface px8_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -822,7 +823,7 @@ static MACHINE_CONFIG_START( px8, px8_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(0, "mono", 0.25)
 
 	/* cartridge */
@@ -834,7 +835,7 @@ static MACHINE_CONFIG_START( px8, px8_state )
 
 	/* devices */
 	MCFG_MSM8251_ADD(I8251_TAG, i8251_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, px8_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, px8_cassette_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

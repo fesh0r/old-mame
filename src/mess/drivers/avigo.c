@@ -353,7 +353,7 @@ static void avigo_refresh_memory(running_machine &machine)
 
 
 
-static INS8250_INTERRUPT( avigo_com_interrupt )
+static WRITE_LINE_DEVICE_HANDLER( avigo_com_interrupt )
 {
 	avigo_state *drvstate = device->machine().driver_data<avigo_state>();
 	logerror("com int\r\n");
@@ -373,7 +373,7 @@ static INS8250_INTERRUPT( avigo_com_interrupt )
 static const ins8250_interface avigo_com_interface =
 {
 	1843200,
-	avigo_com_interrupt,
+	DEVCB_LINE(avigo_com_interrupt),
 	NULL,
 	NULL,
 	NULL
@@ -759,7 +759,7 @@ static  READ8_HANDLER(avigo_ad_data_r)
 static WRITE8_HANDLER(avigo_speaker_w)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	device_t *speaker = space->machine().device("speaker");
+	device_t *speaker = space->machine().device(SPEAKER_TAG);
 //  UINT8 previous_speaker;
 
 //  previous_speaker = state->m_speaker_data;
@@ -968,7 +968,7 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* real time clock */

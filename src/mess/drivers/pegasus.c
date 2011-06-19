@@ -42,6 +42,8 @@
 #include "machine/6821pia.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
+#include "sound/wave.h"
+
 
 #define MACHINE_RESET_MEMBER(name) void name::machine_reset()
 #define MACHINE_START_MEMBER(name) void name::machine_start()
@@ -60,7 +62,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_cass;
+	required_device<cassette_image_device> m_cass;
 	required_device<device_t> m_pia_s;
 	required_device<device_t> m_pia_u;
 	DECLARE_READ8_MEMBER( pegasus_keyboard_r );
@@ -132,12 +134,12 @@ READ_LINE_MEMBER( pegasus_state::pegasus_keyboard_irq )
 
 READ_LINE_MEMBER( pegasus_state::pegasus_cassette_r )
 {
-	return cassette_input(m_cass);
+	return m_cass->input();
 }
 
 WRITE_LINE_MEMBER( pegasus_state::pegasus_cassette_w )
 {
-	cassette_output(m_cass, state ? 1 : -1);
+	m_cass->output(state ? 1 : -1);
 }
 
 READ8_MEMBER( pegasus_state::pegasus_pcg_r )
@@ -306,11 +308,12 @@ static const pia6821_interface pegasus_pia_u_intf=
 	DEVCB_CPU_INPUT_LINE("maincpu", M6809_IRQ_LINE)
 };
 
-static const cassette_config pegasus_cassette_config =
+static const cassette_interface pegasus_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED|CASSETTE_MOTOR_ENABLED),
+	NULL,
 	NULL
 };
 
@@ -509,6 +512,11 @@ static MACHINE_CONFIG_START( pegasus, pegasus_state )
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
+	/* sound hardware */
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
 	/* devices */
 	MCFG_PIA6821_ADD( "pia_s", pegasus_pia_s_intf )
 	MCFG_PIA6821_ADD( "pia_u", pegasus_pia_u_intf )
@@ -527,7 +535,7 @@ static MACHINE_CONFIG_START( pegasus, pegasus_state )
 	MCFG_CARTSLOT_ADD("cart5")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_LOAD(pegasus_cart_5)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, pegasus_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, pegasus_cassette_interface )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pegasusm, pegasus )

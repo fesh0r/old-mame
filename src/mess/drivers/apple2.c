@@ -565,7 +565,7 @@ static const ay8910_interface apple2_ay8910_interface =
 	DEVCB_NULL
 };
 
-static const floppy_config apple2_floppy_config =
+static const floppy_interface apple2_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -574,14 +574,16 @@ static const floppy_config apple2_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(apple2),
-	"floppy_5_25"
+	"floppy_5_25",
+	NULL
 };
 
-static const cassette_config apple2_cassette_config =
+static const cassette_interface apple2_cassette_interface =
 {
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED),
+	NULL,
 	NULL
 };
 
@@ -628,7 +630,7 @@ static MACHINE_CONFIG_START( apple2_common, apple2_state )
 	MCFG_APPLE2_SLOT_ADD(4, "mockingboard", mockingboard_r, mockingboard_w, 0, 0, 0, 0)
 	MCFG_APPLE2_SLOT_ADD(6, "fdc", applefdc_r, applefdc_w, 0, 0, 0, 0)
 
-	MCFG_FLOPPY_APPLE_2_DRIVES_ADD(apple2_floppy_config,15,16)
+	MCFG_FLOPPY_APPLE_2_DRIVES_ADD(apple2_floppy_interface,15,16)
 
 	MCFG_SOFTWARE_LIST_ADD("flop525_list","apple2")
 MACHINE_CONFIG_END
@@ -642,7 +644,7 @@ static MACHINE_CONFIG_DERIVED( apple2, apple2_common )
 	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
 	/* default configuration: on real machine is present also in configurations */
 	/* with less memory, provided that the language card is installed           */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_interface )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( apple2p, apple2_common )
@@ -656,7 +658,7 @@ static MACHINE_CONFIG_DERIVED( apple2p, apple2_common )
 	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
 	/* default configuration: on real machine is present also in configurations */
 	/* with less memory, provided that the language card is installed           */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_interface )
 MACHINE_CONFIG_END
 
 ROM_START(las3000)
@@ -675,7 +677,7 @@ static MACHINE_CONFIG_DERIVED( apple2e, apple2_common )
 	MCFG_RAM_DEFAULT_SIZE("128K")
 	MCFG_RAM_EXTRA_OPTIONS("64K")
 	MCFG_RAM_DEFAULT_VALUE(0x00)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple2_cassette_interface )
 MACHINE_CONFIG_END
 #if 0
 MACHINE_CONFIG_DERIVED( apple2e_z80, apple2_common )

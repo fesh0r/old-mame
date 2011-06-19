@@ -353,7 +353,7 @@ static FLOPPY_OPTIONS_START(kc85)
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config kc85_floppy_config =
+static const floppy_interface kc85_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -362,6 +362,7 @@ static const floppy_config kc85_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(kc85),
+	NULL,
 	NULL
 };
 
@@ -409,15 +410,15 @@ static MACHINE_CONFIG_START( kc85_3, kc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
 	MCFG_QUICKLOAD_ADD("quickload", kc, "kcc", 0)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -445,7 +446,7 @@ static MACHINE_CONFIG_DERIVED( kc85_4d, kc85_4 )
 
 	MCFG_MACHINE_RESET( kc85_4d )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(kc85_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(kc85_floppy_interface)
 MACHINE_CONFIG_END
 
 

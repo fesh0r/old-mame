@@ -51,9 +51,9 @@ static READ8_DEVICE_HANDLER(mz80k_8255_portc_r)
 	UINT8 val = 0;
 	val |= state->m_mz80k_vertical ? 0x80 : 0x00;
 	val |= (state->m_mz80k_cursor_cnt > 31) ? 0x40 : 0x00;
-    val |= (cassette_get_state(device->machine().device(CASSETTE_TAG)) & CASSETTE_MASK_UISTATE)== CASSETTE_PLAY ? 0x10 : 0x00;
+    val |= (device->machine().device<cassette_image_device>(CASSETTE_TAG)->get_state() & CASSETTE_MASK_UISTATE)== CASSETTE_PLAY ? 0x10 : 0x00;
 
-    if (cassette_input(device->machine().device(CASSETTE_TAG)) > 0.00)
+    if ((device->machine().device<cassette_image_device>(CASSETTE_TAG))->input() > 0.00)
         val |= 0x20;
 
 	return val;
@@ -74,7 +74,7 @@ static WRITE8_DEVICE_HANDLER(mz80k_8255_portc_w)
 static WRITE_LINE_DEVICE_HANDLER( pit_out0_changed )
 {
 	mz80_state *drvstate = device->machine().driver_data<mz80_state>();
-	device_t *speaker = device->machine().device("speaker");
+	device_t *speaker = device->machine().device(SPEAKER_TAG);
 	if((drvstate->m_prev_state==0) && (state==1)) {
 		drvstate->m_speaker_level ^= 1;
 	}

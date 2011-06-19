@@ -497,8 +497,8 @@ static MACHINE_RESET(mz2000)
 	state->m_tvram_enable = 0;
 	state->m_gvram_enable = 0;
 
-	beep_set_frequency(machine.device("beeper"),4096);
-	beep_set_state(machine.device("beeper"),0);
+	beep_set_frequency(machine.device(BEEPER_TAG),4096);
+	beep_set_state(machine.device(BEEPER_TAG),0);
 
 	state->m_color_mode = input_port_read(machine,"CONFIG") & 1;
 	state->m_has_fdc = (input_port_read(machine,"CONFIG") & 2) >> 1;
@@ -565,8 +565,8 @@ static READ8_DEVICE_HANDLER( mz2000_portb_r )
     */
 	UINT8 res = 0xff ^ 0xe0;
 
-	res |= (cassette_input(device->machine().device(CASSETTE_TAG)) > 0.00) ? 0x40 : 0x00;
-	res |= ((cassette_get_state(device->machine().device(CASSETTE_TAG)) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY) ? 0x00 : 0x20;
+	res |= ((device->machine().device<cassette_image_device>(CASSETTE_TAG))->input() > 0.00) ? 0x40 : 0x00;
+	res |= (((device->machine().device<cassette_image_device>(CASSETTE_TAG))->get_state() & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY) ? 0x00 : 0x20;
 
 	popmessage("%02x",res);
 
@@ -627,7 +627,7 @@ static WRITE8_DEVICE_HANDLER( mz2000_portc_w )
 		cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_RESET, PULSE_LINE);
 	}
 
-	beep_set_state(device->machine().device("beeper"),data & 0x04);
+	beep_set_state(device->machine().device(BEEPER_TAG),data & 0x04);
 
 	state->m_old_portc = data;
 }
@@ -705,7 +705,7 @@ static FLOPPY_OPTIONS_START( mz2000 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config mz2000_floppy_config =
+static const floppy_interface mz2000_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -714,6 +714,7 @@ static const floppy_config mz2000_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_3_5_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
+	NULL,
 	NULL
 };
 
@@ -754,9 +755,9 @@ static MACHINE_CONFIG_START( mz2000, mz2000_state )
 	MCFG_PIT8253_ADD("pit", mz2000_pit8253_intf)
 
 	MCFG_MB8877_ADD("mb8877a",mz2000_mb8877a_interface)
-	MCFG_FLOPPY_4_DRIVES_ADD(mz2000_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(mz2000_floppy_interface)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -774,10 +775,10 @@ static MACHINE_CONFIG_START( mz2000, mz2000_state )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_SOUND_ADD("beeper", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.15)
 MACHINE_CONFIG_END
 

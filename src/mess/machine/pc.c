@@ -252,7 +252,7 @@ UINT8 pc_speaker_get_spk(running_machine &machine)
 
 void pc_speaker_set_spkrdata(running_machine &machine, UINT8 data)
 {
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	pc_state *st = machine.driver_data<pc_state>();
 	st->m_pc_spkrdata = data ? 1 : 0;
 	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
@@ -261,7 +261,7 @@ void pc_speaker_set_spkrdata(running_machine &machine, UINT8 data)
 
 void pc_speaker_set_input(running_machine &machine, UINT8 data)
 {
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	pc_state *st = machine.driver_data<pc_state>();
 	st->m_pc_input = data ? 1 : 0;
 	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
@@ -345,13 +345,13 @@ const struct pit8253_config pcjr_pit8253_config =
  **********************************************************/
 
 /* called when a interrupt is set/cleared from com hardware */
-static INS8250_INTERRUPT( pc_com_interrupt_1 )
+static WRITE_LINE_DEVICE_HANDLER( pc_com_interrupt_1 )
 {
 	pc_state *st = device->machine().driver_data<pc_state>();
 	pic8259_ir4_w(st->m_pic8259, state);
 }
 
-static INS8250_INTERRUPT( pc_com_interrupt_2 )
+static WRITE_LINE_DEVICE_HANDLER( pc_com_interrupt_2 )
 {
 	pc_state *st = device->machine().driver_data<pc_state>();
 	pic8259_ir3_w(st->m_pic8259, state);
@@ -377,28 +377,28 @@ const ins8250_interface ibm5150_com_interface[4]=
 {
 	{
 		1843200,
-		pc_com_interrupt_1,
+		DEVCB_LINE(pc_com_interrupt_1),
 		NULL,
 		pc_com_handshake_out_0,
 		NULL
 	},
 	{
 		1843200,
-		pc_com_interrupt_2,
+		DEVCB_LINE(pc_com_interrupt_2),
 		NULL,
 		pc_com_handshake_out_1,
 		NULL
 	},
 	{
 		1843200,
-		pc_com_interrupt_1,
+		DEVCB_LINE(pc_com_interrupt_1),
 		NULL,
 		pc_com_handshake_out_2,
 		NULL
 	},
 	{
 		1843200,
-		pc_com_interrupt_2,
+		DEVCB_LINE(pc_com_interrupt_2),
 		NULL,
 		pc_com_handshake_out_3,
 		NULL
@@ -814,7 +814,7 @@ static WRITE8_DEVICE_HANDLER ( pcjr_ppi_portb_w )
 	pit8253_gate2_w(device->machine().device("pit8253"), BIT(data, 0));
 	pc_speaker_set_spkrdata( device->machine(), data & 0x02 );
 
-	cassette_change_state( device->machine().device(CASSETTE_TAG), ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	device->machine().device<cassette_image_device>(CASSETTE_TAG)->change_state(( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
 }
 
 
@@ -856,7 +856,7 @@ static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 	data = ( data & ~0x01 ) | ( pcjr_keyb.latch ? 0x01: 0x00 );
 	if ( ! ( st->m_ppi_portb & 0x08 ) )
 	{
-		double tap_val = cassette_input( device->machine().device(CASSETTE_TAG) );
+		double tap_val = (device->machine().device<cassette_image_device>(CASSETTE_TAG)->input());
 
 		if ( tap_val < 0 )
 		{
@@ -1130,7 +1130,7 @@ MACHINE_START( pc )
 
 MACHINE_RESET( pc )
 {
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	pc_state *st = machine.driver_data<pc_state>();
 	st->m_maincpu = machine.device("maincpu" );
 	device_set_irq_callback(st->m_maincpu, pc_irq_callback);
@@ -1173,7 +1173,7 @@ MACHINE_START( pcjr )
 
 MACHINE_RESET( pcjr )
 {
-	device_t *speaker = machine.device("speaker");
+	device_t *speaker = machine.device(SPEAKER_TAG);
 	pc_state *st = machine.driver_data<pc_state>();
 	st->m_u73_q2 = 0;
 	st->m_out1 = 0;

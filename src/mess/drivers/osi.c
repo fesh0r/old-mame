@@ -332,9 +332,9 @@ WRITE8_MEMBER( c1p_state::osi630_sound_w )
     C011 ACIAIO         DISK CONTROLLER ACIA I/O PORT
 */
 
-static void osi470_index_callback(device_t *controller, device_t *img, int state)
+static WRITE_LINE_DEVICE_HANDLER(osi470_index_callback)
 {
-	sb2m600_state *driver_state = img->machine().driver_data<sb2m600_state>();
+	sb2m600_state *driver_state = device->machine().driver_data<sb2m600_state>();
 
 	driver_state->m_fdc_index = state;
 }
@@ -591,12 +591,12 @@ INPUT_PORTS_END
 
 READ_LINE_MEMBER( sb2m600_state::cassette_rx )
 {
-	return (cassette_input(m_cassette) > 0.0) ? 1 : 0;
+	return ((m_cassette)->input() > 0.0) ? 1 : 0;
 }
 
 WRITE_LINE_MEMBER( sb2m600_state::cassette_tx )
 {
-	cassette_output(m_cassette, state ? +1.0 : -1.0);
+	m_cassette->output(state ? +1.0 : -1.0);
 }
 
 static ACIA6850_INTERFACE( osi600_acia_intf )
@@ -691,9 +691,6 @@ void c1p_state::machine_start()
 void c1pmf_state::machine_start()
 {
 	c1p_state::machine_start();
-
-	/* set floppy index hole callback */
-	floppy_drive_set_index_pulse_callback(m_floppy, osi470_index_callback);
 }
 
 static FLOPPY_OPTIONS_START(osi)
@@ -705,15 +702,16 @@ static FLOPPY_OPTIONS_START(osi)
 		FIRST_SECTOR_ID([0]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config osi_floppy_config =
+static const floppy_interface osi_floppy_interface =
 {
-	DEVCB_NULL,
+	DEVCB_LINE(osi470_index_callback),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_SSDD_40,
 	FLOPPY_OPTIONS_NAME(osi),
+	NULL,
 	NULL
 };
 
@@ -756,7 +754,7 @@ static MACHINE_CONFIG_START( osi600, sb2m600_state )
 	MCFG_ACIA6850_ADD("acia_0", osi600_acia_intf)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, default_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, default_cassette_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -777,7 +775,7 @@ static MACHINE_CONFIG_START( uk101, uk101_state )
 	MCFG_ACIA6850_ADD("acia_0", uk101_acia_intf)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, default_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, default_cassette_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -799,7 +797,7 @@ static MACHINE_CONFIG_START( c1p, c1p_state )
 	MCFG_SOUND_ADD(DISCRETE_TAG, DISCRETE, 0)
 	MCFG_SOUND_CONFIG_DISCRETE(osi600c_discrete_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD(BEEP_TAG, BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_PIA6821_ADD( "pia_1", pia_dummy_intf )
@@ -810,7 +808,7 @@ static MACHINE_CONFIG_START( c1p, c1p_state )
 	MCFG_ACIA6850_ADD("acia_0", osi600_acia_intf)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, default_cassette_config)
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, default_cassette_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -827,7 +825,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( c1pmf, c1p, c1pmf_state )
 	/* floppy ACIA */
 	MCFG_ACIA6850_ADD("acia_1", osi470_acia_intf)
 
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, osi_floppy_config)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, osi_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_MODIFY(RAM_TAG)
@@ -867,7 +865,7 @@ ROM_END
 
 static TIMER_CALLBACK( setup_beep )
 {
-	device_t *speaker = machine.device(BEEP_TAG);
+	device_t *speaker = machine.device(BEEPER_TAG);
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 300);
 }

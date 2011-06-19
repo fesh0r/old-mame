@@ -303,7 +303,7 @@ static MACHINE_CONFIG_START( nascom1, nascom1_state )
 	/* devices */
 	MCFG_SNAPSHOT_ADD("snapshot", nascom1, "nas", 0.5)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -326,7 +326,7 @@ static FLOPPY_OPTIONS_START(nascom2)
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static const floppy_config nascom2_floppy_config =
+static const floppy_interface nascom2_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -335,6 +335,7 @@ static const floppy_config nascom2_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(nascom2),
+	NULL,
 	NULL
 };
 
@@ -352,7 +353,7 @@ static MACHINE_CONFIG_DERIVED( nascom2, nascom1 )
 
 	MCFG_WD1793_ADD("wd1793", nascom2_wd17xx_interface )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(nascom2_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(nascom2_floppy_interface)
 MACHINE_CONFIG_END
 
 

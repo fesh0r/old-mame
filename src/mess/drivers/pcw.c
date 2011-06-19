@@ -427,7 +427,7 @@ static WRITE8_HANDLER(pcw_system_control_w)
 {
 	pcw_state *state = space->machine().driver_data<pcw_state>();
 	device_t *fdc = space->machine().device("upd765");
-	device_t *speaker = space->machine().device("beep");
+	device_t *speaker = space->machine().device(BEEPER_TAG);
 	LOG(("SYSTEM CONTROL: %d\n",data));
 
 	switch (data)
@@ -1055,7 +1055,7 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK(setup_beep)
 {
-	device_t *speaker = machine.device("beep");
+	device_t *speaker = machine.device(BEEPER_TAG);
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 3750);
 }
@@ -1317,7 +1317,7 @@ static INPUT_PORTS_START(pcw)
 	PORT_BIT( 0xff, 0x00,	 IPT_UNUSED)
 INPUT_PORTS_END
 
-static const floppy_config pcw_floppy_config =
+static const floppy_interface pcw_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1326,6 +1326,7 @@ static const floppy_config pcw_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(default),
+	NULL,
 	NULL
 };
 
@@ -1364,12 +1365,12 @@ static MACHINE_CONFIG_START( pcw, pcw_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_UPD765A_ADD("upd765", pcw_upd765_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(pcw_floppy_config)
+	MCFG_FLOPPY_2_DRIVES_ADD(pcw_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

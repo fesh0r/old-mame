@@ -230,8 +230,7 @@ static void apple2_hires_draw(running_machine &machine, bitmap_t *bitmap, const 
 	UINT16 v;
 	UINT16 *p;
 	UINT32 w;
-	UINT16 artifact_buf[14];
-	UINT8 artifact_idx = 0;
+	UINT16 *artifact_map_ptr;
 
 	/* sanity checks */
 	if (beginrow < cliprect->min_y)
@@ -281,21 +280,12 @@ static void apple2_hires_draw(running_machine &machine, bitmap_t *bitmap, const 
 			switch(columns)
 			{
 				case 40:
-					w = vram_row[col+0];
-					artifact_idx = 0;
+					artifact_map_ptr = &state->m_hires_artifact_map[((vram_row[col+1] & 0x80) >> 7) * 16];
 					for (b = 0; b < 7; b++)
 					{
-						v = (w & 1);
-						w >>= 1;
-						artifact_buf[artifact_idx++] = v ? WHITE : BLACK;
-						artifact_buf[artifact_idx++] = v ? WHITE : BLACK;
-					}
-
-					for(int a = 0; a < 14; a++)
-					{
-						int idx = a + (14 - (vram_row[col+0] >> 7));
-						idx %= 14;
-						*(p++) = artifact_buf[idx];
+						v = artifact_map_ptr[((w >> (b + 7-1)) & 0x07) | (((b ^ col) & 0x01) << 3)];
+						*(p++) = v;
+						*(p++) = v;
 					}
 					break;
 

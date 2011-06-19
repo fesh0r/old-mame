@@ -22,7 +22,6 @@
 #define Z80PIO_TAG		"u10"
 #define I8255A_TAG		"u14"
 #define TMS5220_TAG		"tms5220"
-#define SPEAKER_TAG		"speaker"
 
 class mpf1_state : public driver_device
 {
@@ -38,7 +37,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_ctc;
 	required_device<device_t> m_speaker;
-	required_device<device_t> m_cassette;
+	required_device<cassette_image_device> m_cassette;
 
 	virtual void machine_start();
 	virtual void machine_reset();

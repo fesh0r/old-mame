@@ -730,19 +730,20 @@ static MACHINE_CONFIG_FRAGMENT( coco_sound )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_WAVE_ADD("wave", CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
-static const cassette_config coco_cassette_config =
+static const cassette_interface coco_cassette_interface =
 {
 	coco_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
+	NULL,
 	NULL
 };
 
-static const floppy_config coco_floppy_config =
+static const floppy_interface coco_floppy_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -751,6 +752,7 @@ static const floppy_config coco_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	FLOPPY_OPTIONS_NAME(coco),
+	NULL,
 	NULL
 };
 
@@ -780,7 +782,7 @@ static MACHINE_CONFIG_START( dragon32, coco_state )
 	/* snapshot/quickload */
 	MCFG_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	MCFG_PIA6821_ADD( "pia_0", dragon32_pia_intf_0 )
 	MCFG_PIA6821_ADD( "pia_1", dragon32_pia_intf_1 )
@@ -797,7 +799,7 @@ static MACHINE_CONFIG_START( dragon32, coco_state )
 	MCFG_RAM_DEFAULT_SIZE("32K")
 	MCFG_RAM_EXTRA_OPTIONS("64K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( dragon64, coco_state )
@@ -826,7 +828,7 @@ static MACHINE_CONFIG_START( dragon64, coco_state )
 	MCFG_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	/* acia */
 	MCFG_ACIA6551_ADD("acia")
@@ -845,7 +847,7 @@ static MACHINE_CONFIG_START( dragon64, coco_state )
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( d64plus, coco_state )
@@ -875,7 +877,7 @@ static MACHINE_CONFIG_START( d64plus, coco_state )
 	MCFG_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	/* acia */
 	MCFG_ACIA6551_ADD("acia")
@@ -894,7 +896,7 @@ static MACHINE_CONFIG_START( d64plus, coco_state )
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( dgnalpha, coco_state )
@@ -931,7 +933,7 @@ static MACHINE_CONFIG_START( dgnalpha, coco_state )
 	MCFG_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	/* acia */
 	MCFG_ACIA6551_ADD("acia")
@@ -947,7 +949,7 @@ static MACHINE_CONFIG_START( dgnalpha, coco_state )
 	MCFG_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MCFG_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -981,7 +983,7 @@ static MACHINE_CONFIG_START( tanodr64, coco_state )
 	MCFG_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	/* acia */
 	MCFG_ACIA6551_ADD("acia")
@@ -1000,7 +1002,7 @@ static MACHINE_CONFIG_START( tanodr64, coco_state )
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( coco, coco_state )
@@ -1031,7 +1033,7 @@ static MACHINE_CONFIG_START( coco, coco_state )
 	MCFG_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	MCFG_PIA6821_ADD( "pia_0", coco_pia_intf_0 )
 	MCFG_PIA6821_ADD( "pia_1", coco_pia_intf_1 )
@@ -1048,7 +1050,7 @@ static MACHINE_CONFIG_START( coco, coco_state )
 	MCFG_RAM_DEFAULT_SIZE("16K")
 	MCFG_RAM_EXTRA_OPTIONS("4K,32K,64K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( coco2, coco_state )
@@ -1079,7 +1081,7 @@ static MACHINE_CONFIG_START( coco2, coco_state )
 	MCFG_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	MCFG_PIA6821_ADD( "pia_0", coco2_pia_intf_0 )
 	MCFG_PIA6821_ADD( "pia_1", coco2_pia_intf_1 )
@@ -1096,7 +1098,7 @@ static MACHINE_CONFIG_START( coco2, coco_state )
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("16K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( coco2b, coco_state )
@@ -1127,7 +1129,7 @@ static MACHINE_CONFIG_START( coco2b, coco_state )
 	MCFG_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	MCFG_PIA6821_ADD( "pia_0", coco2_pia_intf_0 )
 	MCFG_PIA6821_ADD( "pia_1", coco2_pia_intf_1 )
@@ -1144,7 +1146,7 @@ static MACHINE_CONFIG_START( coco2b, coco_state )
 	MCFG_RAM_DEFAULT_SIZE("64K")
 	MCFG_RAM_EXTRA_OPTIONS("16K")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( coco3, coco3_state )
@@ -1190,7 +1192,7 @@ static MACHINE_CONFIG_START( coco3, coco3_state )
 	MCFG_COCO_VHD_ADD("vhd")
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_config )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, coco_cassette_interface )
 
 	MCFG_SAM6883_GIME_ADD("sam", coco3_sam_intf)
 
@@ -1204,7 +1206,7 @@ static MACHINE_CONFIG_START( coco3, coco3_state )
 	MCFG_RAM_DEFAULT_SIZE("512K")
 	MCFG_RAM_EXTRA_OPTIONS("128K,2M,8M")
 
-	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
+	MCFG_FLOPPY_4_DRIVES_ADD(coco_floppy_interface)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( coco3p, coco3 )
