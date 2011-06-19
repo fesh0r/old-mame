@@ -318,6 +318,7 @@ chd_error chdcd_parse_nero(const char *tocfname, cdrom_toc *outtoc, chdcd_track_
 	if (memcmp(buffer, "NER5", 4))
 	{
 		printf("ERROR: Not a Nero 5.5 or later image!\n");
+		fclose(infile);
 		return CHDERR_FILE_NOT_FOUND;
 	}
 
@@ -326,6 +327,7 @@ chd_error chdcd_parse_nero(const char *tocfname, cdrom_toc *outtoc, chdcd_track_
 	if ((buffer[7] != 0) || (buffer[6] != 0) || (buffer[5] != 0) || (buffer[4] != 0))
 	{
 		printf("ERROR: File size is > 4GB, this version of CHDMAN cannot handle it.");
+		fclose(infile);
 		return CHDERR_FILE_NOT_FOUND;
 	}
 
@@ -333,7 +335,7 @@ chd_error chdcd_parse_nero(const char *tocfname, cdrom_toc *outtoc, chdcd_track_
 
 	while (!done)
 	{
-		UINT32 toc_type, offset;
+		UINT32 offset;
 		UINT8 start, end;
 		int track;
 
@@ -350,7 +352,7 @@ chd_error chdcd_parse_nero(const char *tocfname, cdrom_toc *outtoc, chdcd_track_
 			// skip second chunk size and UPC code
 			fseek(infile, 16, SEEK_CUR);
 
-			toc_type = read_uint32(infile);
+			read_uint32(infile);
 			fread(&start, 1, 1, infile);
 			fread(&end, 1, 1, infile);
 
@@ -427,6 +429,7 @@ chd_error chdcd_parse_nero(const char *tocfname, cdrom_toc *outtoc, chdcd_track_
 		}
 	}
 
+	fclose(infile);
 
 	return CHDERR_NONE;
 }
