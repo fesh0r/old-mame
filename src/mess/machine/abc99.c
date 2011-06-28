@@ -146,7 +146,7 @@ const rom_entry *abc99_device::device_rom_region() const
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( abc99_z2_mem, AS_PROGRAM, 8, abc99_device )
-	AM_RANGE(0x0000, 0x07ff) AM_ROM AM_REGION("abc99:z2", 0)
+	AM_RANGE(0x0000, 0x07ff) AM_ROM AM_REGION(I8035_Z2_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -184,7 +184,7 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( abc99_z5_mem, AS_PROGRAM, 8, abc99_device )
-	AM_RANGE(0x0000, 0x07ff) AM_ROM AM_REGION("abc99:z5", 0)
+	AM_RANGE(0x0000, 0x07ff) AM_ROM AM_REGION(I8035_Z5_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -218,7 +218,7 @@ static MACHINE_CONFIG_FRAGMENT( abc99 )
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "abc99:mono", 0.25)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
 

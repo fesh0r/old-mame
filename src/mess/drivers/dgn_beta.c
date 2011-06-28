@@ -45,7 +45,6 @@ documentation still exists.
 #include "machine/6551.h"
 #include "formats/coco_dsk.h"
 #include "imagedev/flopdrv.h"
-#include "devices/coco_vhd.h"
 #include "machine/ram.h"
 #include "video/mc6845.h"
 
@@ -348,7 +347,7 @@ static MACHINE_CONFIG_START( dgnbeta, dgn_beta_state )
 	MCFG_PIA6821_ADD( PIA_1_TAG, dgnbeta_pia_intf[1] )
 	MCFG_PIA6821_ADD( PIA_2_TAG, dgnbeta_pia_intf[2] )
 
-	MCFG_WD179X_ADD(FDC_TAG, dgnbeta_wd17xx_interface )
+	MCFG_WD2797_ADD(FDC_TAG, dgnbeta_wd17xx_interface )
 
 	MCFG_FLOPPY_4_DRIVES_ADD(dgnbeta_floppy_interface)
 

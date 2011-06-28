@@ -1603,12 +1603,6 @@ votrpss // 1982 Votrax Personal Speech System
 
 // Conitec Datensysteme
 prof80
-prof80g115
-prof80g21
-prof80g25
-prof80g26
-prof80g31
-prof80g562
 prof180x
 prof181x
 
@@ -1798,9 +1792,10 @@ ccs2422
 ccs2810
 qtsbc
 msbc1
-ipb
-ipc
-ipds
+ipb // intel
+ipc // intel
+ipds // intel
+imds // intel
 sbc6510
 supracan
 scv

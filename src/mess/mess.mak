@@ -810,7 +810,15 @@ $(MESSOBJ)/comx.a:				\
 	$(MESS_FORMATS)/comx35_comx.o	\
 	$(MESS_MACHINE)/comxpl80.o	\
 	$(MESS_VIDEO)/comx35.o		\
-	$(MESS_MACHINE)/comx35.o	\
+	$(MESS_MACHINE)/comxexp.o	\
+	$(MESS_MACHINE)/comx_clm.o	\
+	$(MESS_MACHINE)/comx_eb.o	\
+	$(MESS_MACHINE)/comx_epr.o	\
+	$(MESS_MACHINE)/comx_fd.o	\
+	$(MESS_MACHINE)/comx_joy.o	\
+	$(MESS_MACHINE)/comx_prn.o	\
+	$(MESS_MACHINE)/comx_ram.o	\
+	$(MESS_MACHINE)/comx_thm.o	\
 
 $(MESSOBJ)/concept.a:			\
 	$(MESS_DRIVERS)/concept.o   \
@@ -819,6 +827,8 @@ $(MESSOBJ)/concept.a:			\
 
 $(MESSOBJ)/conitec.a:			\
 	$(MESS_DRIVERS)/prof80.o	\
+	$(MESS_MACHINE)/ecbbus.o	\
+	$(MESS_MACHINE)/ecb_grip.o	\
 	$(MESS_DRIVERS)/prof180x.o	\
 
 $(MESSOBJ)/cybiko.a:			\
@@ -1025,6 +1035,7 @@ $(MESSOBJ)/intel.a:				\
 	$(MESS_DRIVERS)/isbc.o		\
 	$(MESS_DRIVERS)/ipc.o		\
 	$(MESS_DRIVERS)/ipds.o		\
+	$(MESS_DRIVERS)/imds.o		\
 	$(MESS_DRIVERS)/sdk85.o		\
 	$(MESS_DRIVERS)/sdk86.o		\
 	$(MESS_DRIVERS)/rex6000.o	\
@@ -1122,6 +1133,8 @@ $(MESSOBJ)/mitsubishi.a:		\
 
 $(MESSOBJ)/morrow.a:			\
 	$(MESS_DRIVERS)/mpz80.o		\
+	$(MESS_MACHINE)/s100_dj2db.o		\
+	$(MESS_MACHINE)/s100_djdma.o		\
 	$(MESS_MACHINE)/s100_mm65k16s.o		\
 	$(MESS_MACHINE)/s100_wunderbus.o	\
 
@@ -1286,6 +1299,7 @@ $(MESSOBJ)/poly88.a:			\
 
 $(MESSOBJ)/psion.a:				\
 	$(MESS_DRIVERS)/psion.o		\
+	$(MESS_MACHINE)/psion_pack.o	\
 
 $(MESSOBJ)/radio.a:				\
 	$(MESS_DRIVERS)/radio86.o	\
@@ -1419,7 +1433,6 @@ $(MESSOBJ)/neocd.a:				\
 
 $(MESSOBJ)/snk.a:				\
 	$(MESS_DRIVERS)/ng_aes.o	\
-	$(MESS_DEVICES)/aescart.o   \
 	$(MESS_DRIVERS)/ngp.o		\
 	$(MESS_VIDEO)/k1ge.o		\
 
@@ -1593,12 +1606,13 @@ $(MESSOBJ)/trs.a:				\
 	$(MESS_DRIVERS)/coco.o		\
 	$(MESS_VIDEO)/coco3.o		\
 	$(MESS_FORMATS)/cocopak.o	\
-	$(MESS_DEVICES)/coco_vhd.o	\
-	$(MESS_DEVICES)/cococart.o	\
-	$(MESS_DEVICES)/coco_fdc.o	\
-	$(MESS_DEVICES)/coco_pak.o	\
-	$(MESS_DEVICES)/coco_232.o	\
-	$(MESS_DEVICES)/orch90.o	\
+	$(MESS_MACHINE)/coco_vhd.o	\
+	$(MESS_MACHINE)/cococart.o	\
+	$(MESS_MACHINE)/coco_232.o	\
+	$(MESS_MACHINE)/coco_orch90.o\
+	$(MESS_MACHINE)/coco_pak.o	\
+	$(MESS_MACHINE)/coco_fdc.o	\
+	$(MESS_MACHINE)/coco_multi.o	\
 	$(MESS_DRIVERS)/mc10.o		\
 	$(MESS_MACHINE)/trs80.o		\
 	$(MESS_VIDEO)/trs80.o		\
@@ -1823,17 +1837,20 @@ $(MESS_DRIVERS)/mpf1.o:		$(MESS_LAYOUT)/mpf1.lh \
 							$(MESS_LAYOUT)/mpf1p.lh
 $(MESS_VIDEO)/newbrain.o:	$(MESS_LAYOUT)/newbrain.lh
 $(MESS_DRIVERS)/ng_aes.o:	$(MESS_LAYOUT)/neogeo.lh
-$(MESS_DRIVERS)/poly880.o:	$(MESS_LAYOUT)/poly880.lh
 $(MESS_DRIVERS)/pc1500.o:	$(MESS_LAYOUT)/pc1500.lh
 $(MESS_VIDEO)/pc8401a.o:	$(MESS_LAYOUT)/pc8500.lh
 $(MESS_DRIVERS)/pcw.o:		$(MESS_LAYOUT)/pcw.lh
+$(MESS_DRIVERS)/pmi80.o:	$(MESS_LAYOUT)/pmi80.lh
+$(MESS_DRIVERS)/poly880.o:	$(MESS_LAYOUT)/poly880.lh
 $(MESS_DRIVERS)/pro80.o:	$(MESS_LAYOUT)/pro80.lh
 $(MESS_DRIVERS)/px4.o:		$(MESS_LAYOUT)/px4.lh
 $(MESS_DRIVERS)/px8.o:		$(MESS_LAYOUT)/px8.lh
-$(MESS_DRIVERS)/sc2.o:		$(MESS_LAYOUT)/sc2.lh
 $(MESS_DRIVERS)/savia84.o:	$(MESS_LAYOUT)/savia84.lh
+$(MESS_DRIVERS)/sc2.o:		$(MESS_LAYOUT)/sc2.lh
+$(MESS_DRIVERS)/sdk85.o:	$(MESS_LAYOUT)/sdk85.lh
+$(MESS_DRIVERS)/sdk86.o:	$(MESS_LAYOUT)/sdk86.lh
 $(MESS_DRIVERS)/selz80.o:	$(MESS_LAYOUT)/selz80.lh
-$(MESS_DRIVERS)/segasms.o:  $(MAME_LAYOUT)/sms1.lh
+$(MESS_DRIVERS)/segasms.o:	$(MAME_LAYOUT)/sms1.lh
 $(MESS_DRIVERS)/stopthie.o:	$(MESS_LAYOUT)/stopthie.lh
 $(MESS_DRIVERS)/super80.o:	$(MESS_LAYOUT)/super80.lh
 $(MESS_DRIVERS)/supercon.o:	$(MESS_LAYOUT)/supercon.lh

@@ -92,9 +92,9 @@ static ADDRESS_MAP_START( comxpl80_mem, AS_PROGRAM, 8, comxpl80_device )
     AM_RANGE(0x008, 0x008) AM_READWRITE(cx005_timer_ctrl_r, cx005_timer_ctrl_w)*/
 	AM_RANGE(0x00a, 0x01f) AM_NOP // Not Used
 	AM_RANGE(0x020, 0x07f) AM_RAM // Internal RAM
-	AM_RANGE(0x080, 0xf7f) AM_ROM AM_REGION("comxpl80:cx005", 0) // Internal ROM
-	AM_RANGE(0xf80, 0xff7) AM_ROM // Self-Test
-	AM_RANGE(0xff8, 0xfff) AM_ROM // Interrupt Vectors
+	AM_RANGE(0x080, 0xf7f) AM_ROM AM_REGION(CX005_TAG, 0) // Internal ROM
+	AM_RANGE(0xf80, 0xff7) AM_ROM AM_REGION(CX005_TAG, 0xf00)  // Self-Test
+	AM_RANGE(0xff8, 0xfff) AM_ROM AM_REGION(CX005_TAG, 0xf78)  // Interrupt Vectors
 ADDRESS_MAP_END
 
 
@@ -119,6 +119,7 @@ static MACHINE_CONFIG_FRAGMENT( comxpl80 )
 	MCFG_CPU_ADD(CX005_TAG, M6805, 4000000) // CX005: some kind of MC6805/MC68HC05 clone
 	MCFG_CPU_PROGRAM_MAP(comxpl80_mem)
 	MCFG_CPU_IO_MAP(comxpl80_io)
+	MCFG_DEVICE_DISABLE()
 MACHINE_CONFIG_END
 
 
