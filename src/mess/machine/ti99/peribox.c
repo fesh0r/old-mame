@@ -192,46 +192,51 @@ INLINE const ti99_peb_config *get_config(device_t *device)
 	return (const ti99_peb_config *) downcast<const legacy_device_base *>(device)->inline_config();
 }
 
-/* Callbacks */
+/*
+    Callbacks
+    /INTA is active low
+    Input lines are active low; ASSERT_LINE means LOW in this case.
+*/
 static WRITE_LINE_DEVICE_HANDLER( inta )
 {
 	int slot = get_pebcard_config(device)->slot;
 	ti99_peb_state *peb = get_safe_token(device->owner());
-	if (state==TRUE)
+	if (state==CLEAR_LINE)
 	{
 		// The flags are stored as inverted (inta_state=0 if all lines are H)
+		// Unset the L flag of this slot
 		peb->inta_state &= ~(1 << slot);
 	}
 	else
 	{
-		// 1 means: The card set it to L
+		// Set the L flag of this slot
 		peb->inta_state |= (1 << slot);
 	}
 	// Call back the main system, setting the line to L if any PEB card set it to L
 	// This is the case when inta_state is not 0
-	peb->lines.inta((peb->inta_state == 0));
+	peb->lines.inta((peb->inta_state!=0)? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( intb )
 {
 	int slot = get_pebcard_config(device)->slot;
 	ti99_peb_state *peb = get_safe_token(device->owner());
-	if (state==TRUE)
+	if (state==CLEAR_LINE)
 		peb->intb_state &= ~(1 << slot);
 	else
 		peb->intb_state |= (1 << slot);
-	peb->lines.intb((peb->intb_state == 0));
+	peb->lines.intb((peb->intb_state!=0)? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( ready )
 {
 	int slot = get_pebcard_config(device)->slot;
 	ti99_peb_state *peb = get_safe_token(device->owner());
-	if (state==TRUE)
+	if (state==CLEAR_LINE)
 		peb->ready_state &= ~(1 << slot);
 	else
 		peb->ready_state |= (1 << slot);
-	peb->lines.ready((peb->ready_state == 0));
+	peb->lines.ready((peb->ready_state!=0)? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -461,7 +466,7 @@ static MACHINE_CONFIG_FRAGMENT( ti99_peb )
 	MCFG_PBOXCARD_ADD( "hfdc",			HFDC,	  8 )
 	MCFG_PBOXCARD_ADD( "bwg",			BWG,	  8 )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
+	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
 	MCFG_MFMHD_3_DRIVES_ADD()
 MACHINE_CONFIG_END
 
@@ -479,7 +484,7 @@ static MACHINE_CONFIG_FRAGMENT( ti994a_peb )
 	MCFG_PBOXCARD_ADD( "hfdc",			HFDC,	  8 )
 	MCFG_PBOXCARD_ADD( "bwg",			BWG,	  8 )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
+	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
 	MCFG_MFMHD_3_DRIVES_ADD()
 MACHINE_CONFIG_END
 
@@ -498,7 +503,7 @@ static MACHINE_CONFIG_FRAGMENT( ti99ev_peb )
 	MCFG_PBOXCARD_ADD( "bwg",			BWG,	  8 )
 	MCFG_PBOXCARD_ADD( "evpc",			EVPC,	  9 )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
+	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
 	MCFG_MFMHD_3_DRIVES_ADD()
 MACHINE_CONFIG_END
 
@@ -511,7 +516,7 @@ static MACHINE_CONFIG_FRAGMENT( ti998_peb )
 	MCFG_PBOXCARD_ADD( "hfdc",			HFDC,	  8 )
 	MCFG_PBOXCARD_ADD( "bwg",			BWG,	  8 )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
+	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
 	MCFG_MFMHD_3_DRIVES_ADD()
 MACHINE_CONFIG_END
 
@@ -526,7 +531,7 @@ static MACHINE_CONFIG_FRAGMENT( ti99sg_peb )
 	MCFG_PBOXCARD_ADD( "bwg",			BWG,	  7 )
 	MCFG_PBOXCARD_ADD( "evpc",			EVPC,	  8 )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
+	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
 	MCFG_MFMHD_3_DRIVES_ADD()
 MACHINE_CONFIG_END
 
@@ -540,7 +545,7 @@ static MACHINE_CONFIG_FRAGMENT( geneve_peb )
 	MCFG_PBOXCARD_ADD( "hfdc",			HFDC,	  7 )
 	MCFG_PBOXCARD_ADD( "bwg",			BWG,	  7 )
 
-	MCFG_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
+	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_interface)
 	MCFG_MFMHD_3_DRIVES_ADD()
 MACHINE_CONFIG_END
 

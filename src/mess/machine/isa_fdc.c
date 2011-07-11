@@ -50,7 +50,7 @@ const upd765_interface pc_fdc_upd765_not_connected_interface =
 static MACHINE_CONFIG_FRAGMENT( fdc_config )
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 MACHINE_CONFIG_END
 
 //**************************************************************************
@@ -91,7 +91,7 @@ isa8_fdc_device::isa8_fdc_device(const machine_config &mconfig, const char *tag,
 
 void isa8_fdc_device::device_start()
 {
-	m_isa = machine().device<isa8_device>("mb:isa");
+	set_isa_device();
 	m_isa->install_device(this, 0x03f0, 0x03f7, 0, 0, FUNC(pc_fdc_r), FUNC(pc_fdc_w) );
 }
 
@@ -377,7 +377,7 @@ void isa8_fdc_device::dack_w(int line,UINT8 data)
 }
 void isa8_fdc_device::eop_w(int state)
 {
-	pc_fdc_set_tc_state( this, state ? CLEAR_LINE : ASSERT_LINE );
+	pc_fdc_set_tc_state( this, state);
 }
 
 bool isa8_fdc_device::have_dack(int line)

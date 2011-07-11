@@ -748,7 +748,7 @@ static MACHINE_CONFIG_START( osi600, sb2m600_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(DISCRETE_TAG, DISCRETE, 0)
 	MCFG_SOUND_CONFIG_DISCRETE(osi600_discrete_interface)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* cassette ACIA */
 	MCFG_ACIA6850_ADD("acia_0", osi600_acia_intf)
@@ -796,9 +796,9 @@ static MACHINE_CONFIG_START( c1p, c1p_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(DISCRETE_TAG, DISCRETE, 0)
 	MCFG_SOUND_CONFIG_DISCRETE(osi600c_discrete_interface)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MCFG_PIA6821_ADD( "pia_1", pia_dummy_intf )
 	MCFG_PIA6821_ADD( "pia_2", pia_dummy_intf )
@@ -825,7 +825,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( c1pmf, c1p, c1pmf_state )
 	/* floppy ACIA */
 	MCFG_ACIA6850_ADD("acia_1", osi470_acia_intf)
 
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, osi_floppy_interface)
+	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, osi_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_MODIFY(RAM_TAG)

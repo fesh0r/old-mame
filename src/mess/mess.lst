@@ -430,8 +430,13 @@ macclasc  // 1990 Apple Macintosh Classic
 maclc // 1990 Apple Macintosh LC
 maciisi   // 1990 Apple Macintosh IIsi
 macpb100  // 1991 Apple Macintosh PowerBook 100
+macpb140  // 1991 Apple Macintosh PowerBook 140
+macpb170  // 1991 Apple Macintosh PowerBook 140
 macclas2  // 1991 Apple Macintosh Classic II
 maclc2	// 1991 Apple Macintosh LC II
+macpb145  // 1992 Apple Macintosh PowerBook 145
+maccclas // 1993 Apple Macintosh Color Classic
+macpb145b  // 1993 Apple Macintosh PowerBook 145B
 maclc3	// 1993 Apple Macintosh LC III
 pmac6100  // 1994 Apple Power Macintosh 6100
 
@@ -636,6 +641,7 @@ t1000hx   // 1987 Tandy 1000 HX (similiar to PCJr)
 t1000sx   // 1987 Tandy 1000 SX (similiar to PCJr)
 t1000tx	// 1987 Tandy 1000 TX
 t1000rl	// 1989 Tandy 1000 RL
+t1000tl2 // 1989 Tandy 1000 TL/2
 
 // XT
 ibm5160   // 1982 IBM XT 5160
@@ -687,6 +693,7 @@ megapcpl
 ec1849
 t2000sx
 cmdpc30
+
 
 // 3Com / Palm / USRobotics
 pilot1k   // Pilot 1000
@@ -1890,6 +1897,7 @@ mikrolab
 dim68k
 okean240
 okean240a
+okean240t
 vixen
 pt68k4
 jupiter2
@@ -1913,3 +1921,4 @@ cm1800
 if800
 super6
 mpz80
+poly1

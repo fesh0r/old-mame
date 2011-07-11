@@ -12,6 +12,7 @@
 #include "machine/8530scc.h"
 #include "machine/6522via.h"
 #include "machine/ram.h"
+#include "machine/egret.h"
 
 /* for Egret and CUDA streaming MCU commands, command types */
 typedef enum
@@ -38,7 +39,8 @@ typedef enum
 	MODEL_MAC_PLUS,
 	MODEL_MAC_SE,
 	MODEL_MAC_CLASSIC,
-	MODEL_MAC_PORTABLE,
+
+    MODEL_MAC_PORTABLE, // Portable/PB100 are sort of hybrid classic and Mac IIs
 	MODEL_MAC_PB100,
 
 	MODEL_MAC_II,		// Mac II class 68020/030 machines
@@ -60,15 +62,10 @@ typedef enum
 	MODEL_MAC_TV,
 	MODEL_MAC_COLOR_CLASSIC,
 
-	MODEL_MAC_PB140,	// 68030 PowerBooks
-	MODEL_MAC_PB170,
-	MODEL_MAC_PB145,
-	MODEL_MAC_PB160,
-	MODEL_MAC_PB180,
+	MODEL_MAC_PB140,	// 68030 PowerBooks.  140/145/145B/170 all have the same machine ID
+	MODEL_MAC_PB160,    // 160/180/165 all have the same machine ID too
 	MODEL_MAC_PB165c,
 	MODEL_MAC_PB180c,
-	MODEL_MAC_PB145b,
-	MODEL_MAC_PB165,
 	MODEL_MAC_PB150,
 
 	MODEL_MAC_PBDUO_210,	// 68030 PowerBook Duos
@@ -85,6 +82,7 @@ typedef enum
 	MODEL_MAC_QUADRA_610,
 	MODEL_MAC_QUADRA_630,
 	MODEL_MAC_QUADRA_650,
+    MODEL_MAC_QUADRA_800,
 
 	MODEL_MAC_PB550c,	// 68(LC)040 PowerBooks
 	MODEL_MAC_PB520,
@@ -140,6 +138,8 @@ DRIVER_INIT(maclc3);
 DRIVER_INIT(macpm6100);
 DRIVER_INIT(macprtb);
 DRIVER_INIT(macpb100);
+DRIVER_INIT(macpb140);
+DRIVER_INIT(macpb160);
 
 NVRAM_HANDLER( mac );
 
@@ -148,6 +148,8 @@ NVRAM_HANDLER( mac );
 VIDEO_START( mac );
 SCREEN_UPDATE( mac );
 SCREEN_UPDATE( macse30 );
+SCREEN_UPDATE( macprtb );
+SCREEN_UPDATE( macpb140 );
 PALETTE_INIT( mac );
 
 VIDEO_START( macrbv );
@@ -183,6 +185,7 @@ public:
 		m_via1(*this, "via6522_0"),
 		m_via2(*this, "via6522_1"),
 		m_asc(*this, "asc"),
+        m_egret(*this, "egret"),
 		m_ram(*this, RAM_TAG)
 	 { }
 
@@ -190,6 +193,7 @@ public:
 	required_device<via6522_device> m_via1;
 	optional_device<via6522_device> m_via2;
 	optional_device<asc_device> m_asc;
+    optional_device<egret_device> m_egret;
 	required_device<device_t> m_ram;
 
 	virtual void machine_start();
@@ -268,6 +272,7 @@ public:
 
 	// Portable/PB100 Power Manager IC comms (chapter 4, "Guide to the Macintosh Family Hardware", second edition)
 	UINT8 m_pm_data_send, m_pm_data_recv, m_pm_ack, m_pm_req, m_pm_cmd[32], m_pm_out[32], m_pm_dptr, m_pm_sptr, m_pm_slen, m_pm_state;
+    UINT8 m_pmu_int_status, m_pmu_last_adb_command;
 	emu_timer *m_pmu_send_timer;
 
 	// 60.15 Hz timer for RBV/V8/Sonora/Eagle/VASP/etc.
@@ -277,10 +282,10 @@ public:
 	UINT8 m_rbv_regs[256], m_rbv_ier, m_rbv_ifr, m_rbv_type, m_rbv_montype;
 	UINT32 m_rbv_colors[3], m_rbv_count, m_rbv_clutoffs, m_rbv_immed10wr;
 	UINT32 m_rbv_palette[256];
-	UINT32 *m_rbv_vram;
 	UINT8 m_sonora_vctl[4];
 
-	UINT32 *m_se30_vram, *m_cb264_vram;
+    // this is shared among all video setups with vram
+	UINT32 *m_vram;
 
 	UINT32 m_cb264_mode, m_cb264_vbl_disable, m_cb264_toggle;
 	UINT32 m_cb264_palette[256], m_cb264_colors[3], m_cb264_count, m_cb264_clutoffs;
@@ -289,7 +294,7 @@ public:
 	UINT8 m_egregs[0x20];
 
 	// interrupts
-	int m_scc_interrupt, m_via_interrupt, m_via2_interrupt, m_scsi_interrupt, m_last_taken_interrupt;
+	int m_scc_interrupt, m_via_interrupt, m_via2_interrupt, m_scsi_interrupt, m_asc_interrupt, m_last_taken_interrupt;
 
 	// defined in machine/mac.c
 	void v8_resize();
@@ -350,6 +355,8 @@ private:
 	int adb_pollmouse();
 	void adb_accummouse( UINT8 *MouseX, UINT8 *MouseY );
 
+    // wait states for accessing the VIA
+    int m_via_cycles;
 
 	// ADB mouse state
 	int m_adb_mouseaddr;

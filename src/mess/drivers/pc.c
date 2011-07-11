@@ -767,7 +767,7 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -815,7 +815,7 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -891,7 +891,7 @@ static MACHINE_CONFIG_START( europc, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -937,7 +937,7 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -983,7 +983,7 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1029,7 +1029,7 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1089,7 +1089,7 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pcjr_fdc_upd765_interface)
 
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, ibmpc_floppy_interface)
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart1")
@@ -1167,7 +1167,7 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1216,7 +1216,7 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1264,7 +1264,7 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1312,7 +1312,7 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1360,7 +1360,7 @@ static MACHINE_CONFIG_START( ibm5550, pc_state )
 
 	MCFG_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
-	MCFG_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1588,6 +1588,15 @@ ROM_START( t1000rl )
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
 ROM_END
 
+ROM_START( t1000tl2 )
+	ROM_REGION(0x100000, "maincpu", 0)
+	ROM_LOAD( "t10000tl2.bin", 0xf0000, 0x10000, CRC(e288f12c) SHA1(9d54ccf773cd7202c9906323f1b5a68b1b3a3a67))
+	
+		ROM_REGION(0x08000,"gfx1", 0)
+	// expects 8x9 charset!
+	/* Character rom located at U3 w/label "8079027 // NCR // 609-2495004 // F841030 A9025" */
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
 
 ROM_START( dgone )
 	ROM_REGION(0x100000,"maincpu", 0)
@@ -1816,6 +1825,7 @@ COMP(  1987,	t1000hx,    ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Rad
 COMP(  1987,	t1000sx,    ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 SX", GAME_NOT_WORKING)
 COMP(  1987,	t1000tx,    ibm5150,	0,	t1000_286,  tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 TX", 0)
 COMP(  1989,	t1000rl,    ibm5150,	0,	t1000_16,   tandy1t,    t1000hx,    "Tandy Radio Shack",  "Tandy 1000 RL", 0)
+COMP ( 1989,	t1000tl2, 	ibm5150,	 0, t1000_286,	tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 TL/2", 0)
 
 COMP ( 1989,	iskr1031,   ibm5150,	0,	iskr1031,	pccga,	pccga,	"<unknown>",  "Iskra-1031" , GAME_NOT_WORKING)
 COMP ( 1989,	iskr1030m,  ibm5150,	0,	iskr1031,	pccga,	pccga,	"<unknown>",  "Iskra-1030M" , GAME_NOT_WORKING)

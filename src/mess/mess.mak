@@ -462,15 +462,10 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_VIDEO)/rdptpipe.o	\
 	$(MAME_VIDEO)/rdpspn16.o	\
 	$(MAME_MACHINE)/pcshare.o	\
-	$(MAME_MACHINE)/stvcd.o		\
-	$(MAME_MACHINE)/scudsp.o	\
-	$(MAME_DRIVERS)/stvinit.o	\
-	$(MAME_MACHINE)/stvprot.o	\
-	$(MAME_VIDEO)/stvvdp1.o		\
-	$(MAME_VIDEO)/stvvdp2.o		\
 	$(MAME_MACHINE)/megadriv.o  \
 	$(MAME_MACHINE)/dc.o		\
 	$(MAME_MACHINE)/naomibd.o	\
+	$(MAME_MACHINE)/naomim4decoder.o \
 	$(MAME_MACHINE)/gdcrypt.o	\
 	$(MAME_MACHINE)/mie.o		\
 	$(MAME_MACHINE)/maple-dc.o	\
@@ -494,6 +489,13 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_VIDEO)/vectrex.o		\
 	$(MAME_MACHINE)/vectrex.o	\
 	$(MAME_DRIVERS)/saturn.o	\
+	$(MAME_MACHINE)/stvcd.o		\
+	$(MAME_MACHINE)/scudsp.o	\
+	$(MAME_DRIVERS)/stvinit.o	\
+	$(MAME_MACHINE)/stvprot.o	\
+	$(MAME_MACHINE)/smpc.o          \
+	$(MAME_VIDEO)/stvvdp1.o		\
+	$(MAME_VIDEO)/stvvdp2.o		\
 	$(MAME_DRIVERS)/cps1.o	\
 	$(MAME_VIDEO)/cps1.o	\
 
@@ -633,6 +635,7 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_VIDEO)/apple3.o		\
 	$(MESS_MACHINE)/apple3.o	\
 	$(MESS_DRIVERS)/apple3.o	\
+    $(MESS_MACHINE)/egret.o     \
 
 $(MESSOBJ)/applied.a:			\
 	$(MESS_VIDEO)/mbee.o		\
@@ -729,6 +732,8 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/pet.o		\
 	$(MESS_MACHINE)/pet.o		\
 	$(MESS_DRIVERS)/c64.o		\
+	$(MESS_MACHINE)/c64exp.o	\
+	$(MESS_MACHINE)/c64_xl80.o	\
 	$(MESS_MACHINE)/interpod.o	\
 	$(MESS_DRIVERS)/vic20.o		\
 	$(MESS_MACHINE)/vic1112.o	\
@@ -1078,6 +1083,8 @@ $(MESSOBJ)/luxor.a:				\
 	$(MESS_VIDEO)/abc802.o		\
 	$(MESS_VIDEO)/abc806.o		\
 	$(MESS_MACHINE)/abcbus.o	\
+	$(MESS_MACHINE)/abc_uni800.o	\
+	$(MESS_MACHINE)/abc_slutprov.o	\
 	$(MESS_MACHINE)/abc77.o		\
 	$(MESS_MACHINE)/abc99.o		\
 	$(MESS_MACHINE)/lux10828.o	\
@@ -1267,6 +1274,7 @@ $(MESSOBJ)/pcshare.a:			\
 	$(MESS_MACHINE)/isa_gblaster.o	\
 	$(MESS_MACHINE)/isa_hdc.o	\
 	$(MESS_MACHINE)/isa_sblaster.o	\
+	$(MESS_MACHINE)/isa_ide.o	\
 	$(MESS_VIDEO)/isa_mda.o		\
 	$(MESS_VIDEO)/pc_cga.o		\
 	$(MESS_VIDEO)/cgapal.o		\
@@ -1725,6 +1733,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/pes.o		\
 	$(MESS_DRIVERS)/pipbug.o	\
 	$(MESS_DRIVERS)/plan80.o	\
+	$(MESS_DRIVERS)/poly.o		\
 	$(MESS_DRIVERS)/pro80.o		\
 	$(MESS_DRIVERS)/pt68k4.o	\
 	$(MESS_DRIVERS)/ptcsol.o	\
@@ -1779,16 +1788,19 @@ $(MESS_MACHINE)/nes_mmc.o:	$(MESSSRC)/machine/nes_ines.c \
 				$(MESSSRC)/machine/nes_unif.c \
 
 $(MESS_AUDIO)/mac.o:		$(MESSSRC)/audio/mac.c \
-				$(MESSSRC)/includes/mac.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
 
 $(MESS_VIDEO)/mac.o:		$(MESSSRC)/video/mac.c \
-				$(MESSSRC)/includes/mac.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
 
 $(MESS_MACHINE)/mac.o:		$(MESSSRC)/machine/mac.c \
-				$(MESSSRC)/includes/mac.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
 
 $(MESS_DRIVERS)/mac.o:		$(MESSSRC)/drivers/mac.c \
-				$(MESSSRC)/includes/mac.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
+
+$(MESS_MACHINE)/egret.o:    $(MESSSRC)/machine/egret.c\
+                $(MESSSRC)/machine/egret.h
 
 #-------------------------------------------------
 # layout dependencies
