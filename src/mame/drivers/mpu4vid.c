@@ -176,6 +176,19 @@ TODO:
       - Deal 'Em has bad tiles (apostrophe, logo, bottom corner), black should actually be transparent
         to give black on green.
 ***********************************************************************************************************/
+#include "emu.h"
+#include "machine/6821pia.h"
+#include "machine/6840ptm.h"
+#include "machine/nvram.h"
+
+#include "cpu/m6809/m6809.h"
+#include "sound/ay8910.h"
+#include "sound/okim6376.h"
+#include "sound/2413intf.h"
+#include "sound/upd7759.h"
+#include "machine/steppers.h"
+#include "machine/roc10937.h"
+#include "machine/meters.h"
 
 #include "cpu/m68000/m68000.h"
 #include "machine/6850acia.h"
@@ -185,18 +198,7 @@ TODO:
 #include "machine/nvram.h"
 #include "crmaze2p.lh"
 #include "crmaze4p.lh"
-
-#ifdef MAME_DEBUG
-#define MPU4VIDVERBOSE 1
-#else
-#define MPU4VIDVERBOSE 0
-#endif
-
-#define LOGSTUFF(x) do { if (MPU4VIDVERBOSE) logerror x; } while (0)
-#define LOG2674(x) do { if (MPU4VIDVERBOSE) logerror x; } while (0)
-
-
-#define VIDEO_MASTER_CLOCK			XTAL_10MHz
+#include "includes/mpu4.h"
 
 
 static READ16_HANDLER( characteriser16_r );
@@ -1221,79 +1223,6 @@ static const pia6821_interface pia_ic5t_intf =
 	DEVCB_LINE(cpu0_irq)			/* IRQB */
 };
 
-//Sampled sound timer
-/*
-For the video card, it appears that the standard MPU4 program card is interfaced to
-the video board. Since this uses the E clock, our formula changes to
-
-MSM6376 clock frequency:-
-freq = (1000000/((t3L+1)(t3H+1)))*[(t3H(T3L+1)+1)/(2(t1+1))]
-where [] means rounded up integer,
-t3L is the LSB of Clock 3,
-t3H is the MSB of Clock 3,
-and t1 is the initial value in clock 1.
-*/
-
-//O3 -> G1  O1 -> c2 o2 -> c1
-static WRITE8_DEVICE_HANDLER( ic3ss_vid_o1_callback )
-{
-	downcast<ptm6840_device *>(device)->set_c2(data);
-}
-
-
-static WRITE8_DEVICE_HANDLER( ic3ss_vid_o2_callback )//Generates 'beep' tone
-{
-	downcast<ptm6840_device *>(device)->set_c1(data); /* this output is the clock for timer1 */
-}
-
-
-static WRITE8_DEVICE_HANDLER( ic3ss_vid_o3_callback )
-{
-	downcast<ptm6840_device *>(device)->set_g1(data); /* this output is the clock for timer1 */
-}
-
-static WRITE8_HANDLER( ic3ss_vid_w )
-{
-	//This would seem to be right, needs checking against a PCB
-	device_t *ic3ssv = space->machine().device("ptm_ic3ss_vid");
-	mpu4_state *state = space->machine().driver_data<mpu4_state>();
-	downcast<ptm6840_device *>(ic3ssv)->write(offset,data);
-	device_t *msm6376 = space->machine().device("msm6376");
-
-	if (offset == 3)
-	{
-		state->m_t1 = data;
-	}
-	if (offset == 6)
-	{
-		state->m_t3h = data;
-	}
-	if (offset == 7)
-	{
-		state->m_t3l = data;
-	}
-
-	float num = ((VIDEO_MASTER_CLOCK / 10)/((state->m_t3l + 1)*(state->m_t3h + 1)));
-	float denom1 = ((state->m_t3h *(state->m_t3l + 1)+ 1)/(2*(state->m_t1 + 1)));
-
-	int denom2 = denom1 +0.5;//need to round up, this gives same precision as chip
-	int freq=num*denom2;
-
-	if (freq)
-	{
-		okim6376_set_frequency(msm6376, freq);
-	}
-}
-
-static const ptm6840_interface ptm_ic3ss_vid_intf =
-{
-	VIDEO_MASTER_CLOCK / 10, /* 68k E clock */
-	{ 0, 0, 0 },
-	{ DEVCB_HANDLER(ic3ss_vid_o1_callback),
-	  DEVCB_HANDLER(ic3ss_vid_o2_callback),
-	  DEVCB_HANDLER(ic3ss_vid_o3_callback) },
-	DEVCB_NULL
-};
 
 /*************************************
  *
@@ -2075,8 +2004,8 @@ static ADDRESS_MAP_START( mpu4oki_68k_map, AS_PROGRAM, 16 )
 	AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE8_MODERN("acia6850_1", acia6850_device, status_read, control_write, 0xff)
 	AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE8_MODERN("acia6850_1", acia6850_device, data_read, data_write, 0xff)
 	AM_RANGE(0xff9000, 0xff900f) AM_DEVREADWRITE8_MODERN("6840ptm_68k", ptm6840_device, read, write, 0xff)
-	AM_RANGE(0xffa040, 0xffa04f) AM_DEVREAD8_MODERN("ptm_ic3ss_vid", ptm6840_device, read,0xff)  // 6840PTM on sampled sound board
-	AM_RANGE(0xffa040, 0xffa04f) AM_WRITE8(ic3ss_vid_w,0x00ff)  // 6840PTM on sampled sound board
+	AM_RANGE(0xffa040, 0xffa04f) AM_DEVREAD8_MODERN("ptm_ic3ss", ptm6840_device, read,0xff)  // 6840PTM on sampled sound board
+	AM_RANGE(0xffa040, 0xffa04f) AM_WRITE8(ic3ss_w,0x00ff)  // 6840PTM on sampled sound board
 	AM_RANGE(0xffa060, 0xffa067) AM_DEVREADWRITE8_MODERN("pia_ic4ss", pia6821_device, read, write,0x00ff)    // PIA6821 on sampled sound board
 	AM_RANGE(0xffd000, 0xffd00f) AM_READWRITE(characteriser16_r, characteriser16_w)
 //  AM_RANGE(0xfff000, 0xffffff) AM_NOP /* Possible bug, reads and writes here */
@@ -2088,40 +2017,6 @@ static ADDRESS_MAP_START( mpu4_6809_map, AS_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0800) AM_DEVREADWRITE_MODERN("acia6850_0", acia6850_device, status_read, control_write)
 	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE_MODERN("acia6850_0", acia6850_device, data_read, data_write)
 	AM_RANGE(0x0880, 0x0881) AM_NOP //Read/write here
-	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE_MODERN("ptm_ic2", ptm6840_device, read, write)
-	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE_MODERN("pia_ic3", pia6821_device, read, write)
-	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE_MODERN("pia_ic4", pia6821_device, read, write)
-	AM_RANGE(0x0c00, 0x0c03) AM_DEVREADWRITE_MODERN("pia_ic5", pia6821_device, read, write)
-	AM_RANGE(0x0d00, 0x0d03) AM_DEVREADWRITE_MODERN("pia_ic6", pia6821_device, read, write)
-	AM_RANGE(0x0e00, 0x0e03) AM_DEVREADWRITE_MODERN("pia_ic7", pia6821_device, read, write)
-	AM_RANGE(0x0f00, 0x0f03) AM_DEVREADWRITE_MODERN("pia_ic8", pia6821_device, read, write)
-	AM_RANGE(0x4000, 0x7fff) AM_RAM
-	AM_RANGE(0xbe00, 0xbfff) AM_RAM
-	AM_RANGE(0xc000, 0xffff) AM_ROM	AM_REGION("maincpu",0)  /* 64k EPROM on board, only this region read */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( vp_68k_map, AS_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x7fffff) AM_ROM
-	AM_RANGE(0x800000, 0x80ffff) AM_RAM AM_BASE_MEMBER(mpu4_state, m_vid_mainram)
-	AM_RANGE(0x810000, 0x81ffff) AM_RAM /* ? */
-	AM_RANGE(0x900000, 0x900001) AM_DEVWRITE8("saa", saa1099_data_w, 0x00ff)
-	AM_RANGE(0x900002, 0x900003) AM_DEVWRITE8("saa", saa1099_control_w, 0x00ff)
-	AM_RANGE(0xa00000, 0xa00003) AM_READWRITE(ef9369_r, ef9369_w)
-/*  AM_RANGE(0xa00004, 0xa0000f) AM_READWRITE(mpu4_vid_unmap_r, mpu4_vid_unmap_w) */
-	AM_RANGE(0xb00000, 0xb0000f) AM_READWRITE(mpu4_vid_scn2674_r, mpu4_vid_scn2674_w)
-	AM_RANGE(0xc00000, 0xc1ffff) AM_READWRITE(mpu4_vid_vidram_r, mpu4_vid_vidram_w)
-/*  AM_RANGE(0xe05000, 0xe05001) AM_READWRITE(adpcm_r, adpcm_w) */
-	AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE8_MODERN("acia6850_1", acia6850_device, status_read, control_write, 0xff)
-	AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE8_MODERN("acia6850_1", acia6850_device, data_read, data_write, 0xff)
-	AM_RANGE(0xff9000, 0xff900f) AM_DEVREADWRITE8_MODERN("6840ptm_68k", ptm6840_device, read, write, 0xff)
-/*  AM_RANGE(0xffd000, 0xffd00f) AM_READWRITE(characteriser16_r, characteriser16_w) Word-based version of old CHR??? */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( bwbvid_6809_map, AS_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_SHARE("nvram")
-	AM_RANGE(0x0800, 0x0800) AM_DEVREADWRITE_MODERN("acia6850_0", acia6850_device, status_read, control_write)
-	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE_MODERN("acia6850_0", acia6850_device, data_read, data_write)
-	AM_RANGE(0x0880, 0x0881) //AM_NOP //Read/write here
 	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE_MODERN("ptm_ic2", ptm6840_device, read, write)
 	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE_MODERN("pia_ic3", pia6821_device, read, write)
 	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE_MODERN("pia_ic4", pia6821_device, read, write)
@@ -2166,8 +2061,8 @@ static ADDRESS_MAP_START( bwbvid5_68k_map, AS_PROGRAM, 16 )
 	AM_RANGE(0xe00002, 0xe00003) AM_DEVREADWRITE8_MODERN("acia6850_1", acia6850_device, data_read, data_write, 0xff)
 	AM_RANGE(0xe01000, 0xe0100f) AM_DEVREADWRITE8_MODERN("6840ptm_68k", ptm6840_device, read, write, 0x00ff)
 	AM_RANGE(0xe02000, 0xe02007) AM_DEVREADWRITE8_MODERN("pia_ic4ss", pia6821_device, read, write, 0xff00)
-	AM_RANGE(0xe03000, 0xe0300f) AM_DEVREAD8_MODERN("ptm_ic3ss_vid", ptm6840_device, read,0xff00)  // 6840PTM on sampled sound board
-	AM_RANGE(0xe03000, 0xe0300f) AM_WRITE8(ic3ss_vid_w,0xff00)  // 6840PTM on sampled sound board
+	AM_RANGE(0xe03000, 0xe0300f) AM_DEVREAD8_MODERN("ptm_ic3ss", ptm6840_device, read,0xff00)  // 6840PTM on sampled sound board
+	AM_RANGE(0xe03000, 0xe0300f) AM_WRITE8(ic3ss_w,0xff00)  // 6840PTM on sampled sound board
 	AM_RANGE(0xe04000, 0xe0400f) AM_READWRITE(bwb_characteriser16_r, bwb_characteriser16_w)//AM_READWRITE(adpcm_r, adpcm_w)  CHR ?
 ADDRESS_MAP_END
 
@@ -2416,7 +2311,7 @@ static TIMER_DEVICE_CALLBACK( scanline_timer_callback )
 
 	//This represents the scanline counter in the SCN2674. Note that we ignore the horizontal blanking
 
-	if ((state->m_scn2674_display_enabled_scanline)&&(!state->m_scn2674_display_enabled))
+	if (((state->m_scn2674_display_enabled_scanline) || (state->m_scn2674_display_enabled_field && (state->m_IR1_scn2674_interlace_enable == 0)))&&(!state->m_scn2674_display_enabled))
 	{
 		state->m_scn2674_display_enabled = 1;
 	}
@@ -2437,19 +2332,10 @@ static TIMER_DEVICE_CALLBACK( scanline_timer_callback )
 static MACHINE_CONFIG_START( mpu4_vid, mpu4_state )
 	MCFG_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4 )
 	MCFG_CPU_PROGRAM_MAP(mpu4_6809_map)
-	MCFG_TIMER_ADD_PERIODIC("50hz",gen_50hz, attotime::from_hz(100))
 
 	MCFG_NVRAM_ADD_0FILL("nvram")				/* confirm */
 
-	/* 6840 PTM */
-	MCFG_PTM6840_ADD("ptm_ic2", ptm_ic2_intf)
-
-	MCFG_PIA6821_ADD("pia_ic3", pia_ic3_intf)
-	MCFG_PIA6821_ADD("pia_ic4", pia_ic4_intf)
-	MCFG_PIA6821_ADD("pia_ic5", pia_ic5_intf)
-	MCFG_PIA6821_ADD("pia_ic6", pia_ic6_intf)
-	MCFG_PIA6821_ADD("pia_ic7", pia_ic7_intf)
-	MCFG_PIA6821_ADD("pia_ic8", pia_ic8_intf)
+	MCFG_FRAGMENT_ADD(mpu4_common)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -2492,100 +2378,38 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( mating, crmaze )
 	MCFG_CPU_MODIFY("video")
 	MCFG_CPU_PROGRAM_MAP(mpu4oki_68k_map)
-	MCFG_PTM6840_ADD("ptm_ic3ss_vid", ptm_ic3ss_intf)
-	MCFG_PIA6821_ADD("pia_ic4ss", pia_ic4ss_intf)
+
+	MCFG_FRAGMENT_ADD(mpu4_common2)
 
 	MCFG_SOUND_ADD("msm6376", OKIM6376, 128000) //?
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.5)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.5)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED( vgpoker, mpu4_vid )
+static MACHINE_CONFIG_DERIVED( bwbvid, mpu4_vid )
 	MCFG_CPU_MODIFY("video")
-	MCFG_CPU_PROGRAM_MAP(vp_68k_map)
-MACHINE_CONFIG_END
-
-static MACHINE_CONFIG_START( bwbvid, mpu4_state )
-	MCFG_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4 )
-	MCFG_CPU_PROGRAM_MAP(bwbvid_6809_map)
-	MCFG_TIMER_ADD_PERIODIC("50hz",gen_50hz, attotime::from_hz(100))
-
-	MCFG_NVRAM_ADD_0FILL("nvram")				/* confirm */
-
-	/* 6840 PTM */
-	MCFG_PTM6840_ADD("ptm_ic2", ptm_ic2_intf)
-
-	MCFG_PIA6821_ADD("pia_ic3", pia_ic3_intf)
-	MCFG_PIA6821_ADD("pia_ic4", pia_ic4_intf)
-	MCFG_PIA6821_ADD("pia_ic5", pia_ic5_intf)
-	MCFG_PIA6821_ADD("pia_ic6", pia_ic6_intf)
-	MCFG_PIA6821_ADD("pia_ic7", pia_ic7_intf)
-	MCFG_PIA6821_ADD("pia_ic8", pia_ic8_intf)
-
-	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MCFG_SCREEN_SIZE((63*8)+(17*8), (37*8)+17) // note this directly affects the scanline counters used below, and thus the timing of everything
-	MCFG_SCREEN_VISIBLE_AREA(0, (63*8)+(0)-1, 0, (37*8)+0-1)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_UPDATE(mpu4_vid)
-
-	MCFG_CPU_ADD("video", M68000, VIDEO_MASTER_CLOCK )
 	MCFG_CPU_PROGRAM_MAP(bwbvid_68k_map)
-
-	MCFG_QUANTUM_TIME(attotime::from_hz(960))
-
-	MCFG_MACHINE_START(mpu4_vid)
-	MCFG_MACHINE_RESET(mpu4_vid)
-	MCFG_VIDEO_START (mpu4_vid)
-
-	MCFG_PALETTE_LENGTH(16)
-
-	MCFG_PTM6840_ADD("6840ptm_68k", ptm_vid_intf)
-
-	/* Present on all video cards */
-	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MCFG_SOUND_ADD("saa", SAA1099, 8000000)
-	MCFG_SOUND_ROUTE(0, "lspeaker", 0.5)
-	MCFG_SOUND_ROUTE(1, "rspeaker", 0.5)
-
-	MCFG_ACIA6850_ADD("acia6850_0", m6809_acia_if)
-	MCFG_ACIA6850_ADD("acia6850_1", m68k_acia_if)
-
-	// for the video timing
-	MCFG_TIMER_ADD_SCANLINE("scan_timer", scanline_timer_callback, "screen", 0, 1)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( bwbvid5, bwbvid )
 	MCFG_CPU_MODIFY("video")
 	MCFG_CPU_PROGRAM_MAP(bwbvid5_68k_map)
 
-	MCFG_PTM6840_ADD("ptm_ic3ss_vid", ptm_ic3ss_intf)
-	MCFG_PIA6821_ADD("pia_ic4ss", pia_ic4ss_intf)
+	MCFG_FRAGMENT_ADD(mpu4_common2)
 
 	MCFG_SOUND_ADD("msm6376", OKIM6376, 128000) //?
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.5)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.5)
-
 MACHINE_CONFIG_END
 
 /* machine driver for Zenitone Deal 'Em board */
 static MACHINE_CONFIG_START( dealem, mpu4_state )
-	MCFG_MACHINE_START(mpu4mod2)							/* main mpu4 board initialisation */
+	MCFG_MACHINE_START(mod2)							/* main mpu4 board initialisation */
 	MCFG_MACHINE_RESET(mpu4_vid)
 	MCFG_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4)
 	MCFG_CPU_PROGRAM_MAP(dealem_memmap)
 
-	MCFG_TIMER_ADD_PERIODIC("50hz",gen_50hz, attotime::from_hz(100))
-
-	MCFG_PTM6840_ADD("ptm_ic2", ptm_ic2_intf)
-
-	MCFG_PIA6821_ADD("pia_ic3", pia_ic3_intf)
-	MCFG_PIA6821_ADD("pia_ic4", pia_ic4_intf)
-	MCFG_PIA6821_ADD("pia_ic5", pia_ic5_intf)
-	MCFG_PIA6821_ADD("pia_ic6", pia_ic6_intf)
-	MCFG_PIA6821_ADD("pia_ic7", pia_ic7_intf)
-	MCFG_PIA6821_ADD("pia_ic8", pia_ic8_intf)
+	MCFG_FRAGMENT_ADD(mpu4_common)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("ay8913",AY8913, MPU4_MASTER_CLOCK/4)
@@ -2636,7 +2460,10 @@ static WRITE16_HANDLER( characteriser16_w )
 	LOG_CHR_FULL(("%04x Characteriser write offset %02X data %02X", cpu_get_previouspc(&space->device()),offset,data));
 
 	if (!state->m_current_chr_table)
-		fatalerror("No Characteriser Table @ %04x\n", cpu_get_previouspc(&space->device()));
+	{
+		logerror("No Characteriser Table @ %04x\n", cpu_get_previouspc(&space->device()));
+		return;
+	}
 
 	for (x = state->m_prot_col; x < 64; x++)
 	{
@@ -2665,7 +2492,10 @@ static READ16_HANDLER( characteriser16_r )
 	LOG_CHR(("Characteriser read data %02X \n",state->m_current_chr_table[state->m_prot_col].response));
 
 	if (!state->m_current_chr_table)
-		fatalerror("No Characteriser Table @ %04x\n", cpu_get_previouspc(&space->device()));
+	{
+		logerror("No Characteriser Table @ %04x\n", cpu_get_previouspc(&space->device()));
+		return 0x00;
+	}
 
 
 	/* hack for 'invalid questions' error on time machine.. I guess it wants them to decode properly for startup check? */
@@ -2701,7 +2531,10 @@ static WRITE16_HANDLER( bwb_characteriser16_w )
 	int call=data &0xff;
 	LOG_CHR_FULL(("%04x Characteriser write offset %02X data %02X \n", cpu_get_previouspc(&space->device()),offset,data));
 	if (!state->m_current_chr_table)
-		fatalerror("No Characteriser Table @ %04x\n", cpu_get_previouspc(&space->device()));
+	{
+		logerror("No Characteriser Table @ %04x\n", cpu_get_previouspc(&space->device()));
+		return;
+	}
 
 	if (offset == 0)
 	{
@@ -2773,7 +2606,7 @@ static READ16_HANDLER( bwb_characteriser16_r )
 	}
 }
 
-static const mpu4_chr_table adders_data[64] = {
+static mpu4_chr_table adders_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x8C}, {0x04, 0x64}, {0x10, 0x84}, {0x18, 0x84}, {0x0F, 0xC4}, {0x13, 0x84}, {0x1B, 0x84},
 	{0x03, 0x9C}, {0x07, 0xF4}, {0x17, 0x04}, {0x1D, 0xCC}, {0x36, 0x24}, {0x35, 0x84}, {0x2B, 0xC4}, {0x28, 0x94},
 	{0x39, 0x54}, {0x21, 0x0C}, {0x22, 0x74}, {0x25, 0x0C}, {0x2C, 0x34}, {0x29, 0x04}, {0x31, 0x84}, {0x34, 0x84},
@@ -2784,7 +2617,7 @@ static const mpu4_chr_table adders_data[64] = {
 	{0x0D, 0x94}, {0x1F, 0x14}, {0x16, 0x44}, {0x05, 0x8C}, {0x13, 0x34}, {0x1C, 0x04}, {0x02, 0x9C}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table crmaze_data[64] = {
+static mpu4_chr_table crmaze_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x34}, {0x04, 0x14}, {0x10, 0x0C}, {0x18, 0x54}, {0x0F, 0x04}, {0x13, 0x24}, {0x1B, 0x34},
 	{0x03, 0x94}, {0x07, 0x94}, {0x17, 0x0C}, {0x1D, 0x5C}, {0x36, 0x6C}, {0x35, 0x44}, {0x2B, 0x24}, {0x28, 0x24},
 	{0x39, 0x3C}, {0x21, 0x6C}, {0x22, 0xCC}, {0x25, 0x4C}, {0x2C, 0xC4}, {0x29, 0xA4}, {0x31, 0x24}, {0x34, 0x24},
@@ -2795,7 +2628,7 @@ static const mpu4_chr_table crmaze_data[64] = {
 	{0x0D, 0xA4}, {0x1F, 0x24}, {0x16, 0x24}, {0x05, 0x34}, {0x13, 0x04}, {0x1C, 0x34}, {0x02, 0x94}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table crmazea_data[64] = {
+static mpu4_chr_table crmazea_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x0C}, {0x04, 0x90}, {0x10, 0xE0}, {0x18, 0xA4}, {0x0F, 0xAC}, {0x13, 0x78}, {0x1B, 0x5C},
 	{0x03, 0xDC}, {0x07, 0xD4}, {0x17, 0xA0}, {0x1D, 0xEC}, {0x36, 0x78}, {0x35, 0x54}, {0x2B, 0x48}, {0x28, 0x50},
 	{0x39, 0xC8}, {0x21, 0xF8}, {0x22, 0xDC}, {0x25, 0x94}, {0x2C, 0xE0}, {0x29, 0x24}, {0x31, 0x0C}, {0x34, 0xD8},
@@ -2806,7 +2639,7 @@ static const mpu4_chr_table crmazea_data[64] = {
 	{0x0D, 0x48}, {0x1F, 0xD8}, {0x16, 0xDC}, {0x05, 0x94}, {0x13, 0xE8}, {0x1C, 0x38}, {0x02, 0xDC}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table crmaze2_data[64] = {
+static mpu4_chr_table crmaze2_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x88}, {0x04, 0x54}, {0x10, 0x40}, {0x18, 0x88}, {0x0F, 0x54}, {0x13, 0x40}, {0x1B, 0x88},
 	{0x03, 0x74}, {0x07, 0x28}, {0x17, 0x30}, {0x1D, 0x60}, {0x36, 0x80}, {0x35, 0x84}, {0x2B, 0xC4}, {0x28, 0xA4},
 	{0x39, 0xC4}, {0x21, 0x8C}, {0x22, 0x74}, {0x25, 0x08}, {0x2C, 0x30}, {0x29, 0x00}, {0x31, 0x80}, {0x34, 0x84},
@@ -2817,7 +2650,7 @@ static const mpu4_chr_table crmaze2_data[64] = {
 	{0x0D, 0xA0}, {0x1F, 0x84}, {0x16, 0x84}, {0x05, 0x8C}, {0x13, 0x34}, {0x1C, 0x00}, {0x02, 0xA8}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table crmaze3_data[64] = {
+static mpu4_chr_table crmaze3_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x84}, {0x04, 0x94}, {0x10, 0x3C}, {0x18, 0xEC}, {0x0F, 0x5C}, {0x13, 0xEC}, {0x1B, 0x50},
 	{0x03, 0x2C}, {0x07, 0x68}, {0x17, 0x60}, {0x1D, 0xAC}, {0x36, 0x74}, {0x35, 0x00}, {0x2B, 0xAC}, {0x28, 0x58},
 	{0x39, 0xEC}, {0x21, 0x7C}, {0x22, 0xEC}, {0x25, 0x58}, {0x2C, 0xE0}, {0x29, 0x90}, {0x31, 0x18}, {0x34, 0xEC},
@@ -2828,7 +2661,7 @@ static const mpu4_chr_table crmaze3_data[64] = {
 	{0x0D, 0x20}, {0x1F, 0xAC}, {0x16, 0x74}, {0x05, 0x04}, {0x13, 0xA4}, {0x1C, 0x94}, {0x02, 0x3C}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table crmaze3a_data[64] = {
+static mpu4_chr_table crmaze3a_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x0C}, {0x04, 0x60}, {0x10, 0x84}, {0x18, 0x34}, {0x0F, 0x08}, {0x13, 0xC0}, {0x1B, 0x14},
 	{0x03, 0xA8}, {0x07, 0xF0}, {0x17, 0x10}, {0x1D, 0xA0}, {0x36, 0x1C}, {0x35, 0xE4}, {0x2B, 0x1C}, {0x28, 0xE4},
 	{0x39, 0x34}, {0x21, 0xA8}, {0x22, 0xF8}, {0x25, 0x64}, {0x2C, 0x8C}, {0x29, 0xF0}, {0x31, 0x30}, {0x34, 0x08},
@@ -2839,7 +2672,7 @@ static const mpu4_chr_table crmaze3a_data[64] = {
 	{0x0D, 0xBC}, {0x1F, 0xE4}, {0x16, 0x1C}, {0x05, 0x64}, {0x13, 0x8C}, {0x1C, 0x58}, {0x02, 0xEC}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table mating_data[64] = {
+static mpu4_chr_table mating_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x18}, {0x04, 0xC8}, {0x10, 0xA4}, {0x18, 0x0C}, {0x0F, 0x80}, {0x13, 0x0C}, {0x1B, 0x90},
 	{0x03, 0x34}, {0x07, 0x30}, {0x17, 0x00}, {0x1D, 0x58}, {0x36, 0xC8}, {0x35, 0x84}, {0x2B, 0x4C}, {0x28, 0xA0},
 	{0x39, 0x4C}, {0x21, 0xC0}, {0x22, 0x3C}, {0x25, 0xC8}, {0x2C, 0xA4}, {0x29, 0x4C}, {0x31, 0x80}, {0x34, 0x0C},
@@ -2850,7 +2683,7 @@ static const mpu4_chr_table mating_data[64] = {
 	{0x0D, 0x2C}, {0x1F, 0x90}, {0x16, 0x44}, {0x05, 0x18}, {0x13, 0xE8}, {0x1C, 0x84}, {0x02, 0x3C}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table skiltrek_data[64] = {
+static mpu4_chr_table skiltrek_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x1C}, {0x04, 0xCC}, {0x10, 0x64}, {0x18, 0x1C}, {0x0F, 0x4C}, {0x13, 0x64}, {0x1B, 0x1C},
 	{0x03, 0xEC}, {0x07, 0xE4}, {0x17, 0x0C}, {0x1D, 0xD4}, {0x36, 0x84}, {0x35, 0x0C}, {0x2B, 0x44}, {0x28, 0x2C},
 	{0x39, 0xD4}, {0x21, 0x14}, {0x22, 0x34}, {0x25, 0x14}, {0x2C, 0x24}, {0x29, 0x0C}, {0x31, 0x44}, {0x34, 0x0C},
@@ -2861,7 +2694,7 @@ static const mpu4_chr_table skiltrek_data[64] = {
 	{0x0D, 0x2C}, {0x1F, 0x54}, {0x16, 0x84}, {0x05, 0x1C}, {0x13, 0xEC}, {0x1C, 0x44}, {0x02, 0x3C}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table timemchn_data[64] = {
+static mpu4_chr_table timemchn_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x2C}, {0x04, 0x94}, {0x10, 0x14}, {0x18, 0x04}, {0x0F, 0x0C}, {0x13, 0xC4}, {0x1B, 0x0C},
 	{0x03, 0xD4}, {0x07, 0x64}, {0x17, 0x0C}, {0x1D, 0xB4}, {0x36, 0x04}, {0x35, 0x0C}, {0x2B, 0x84}, {0x28, 0x5C},
 	{0x39, 0xDC}, {0x21, 0x9C}, {0x22, 0xDC}, {0x25, 0x9C}, {0x2C, 0xDC}, {0x29, 0xCC}, {0x31, 0x84}, {0x34, 0x0C},
@@ -2872,7 +2705,7 @@ static const mpu4_chr_table timemchn_data[64] = {
 	{0x0D, 0xC4}, {0x1F, 0x0C}, {0x16, 0xC4}, {0x05, 0x2C}, {0x13, 0xC4}, {0x1C, 0x0C}, {0x02, 0xD4}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table strikeit_data[64] = {
+static mpu4_chr_table strikeit_data[64] = {
 	{0x00, 0x00}, {0x1A, 0xC4}, {0x04, 0xC4}, {0x10, 0x44}, {0x18, 0xC4}, {0x0F, 0x44}, {0x13, 0x44}, {0x1B, 0xC4},
 	{0x03, 0xCC}, {0x07, 0x3C}, {0x17, 0x5C}, {0x1D, 0x7C}, {0x36, 0x54}, {0x35, 0x24}, {0x2B, 0xC4}, {0x28, 0x4C},
 	{0x39, 0xB4}, {0x21, 0x84}, {0x22, 0xCC}, {0x25, 0x34}, {0x2C, 0x04}, {0x29, 0x4C}, {0x31, 0x14}, {0x34, 0x24},
@@ -2883,7 +2716,7 @@ static const mpu4_chr_table strikeit_data[64] = {
 	{0x0D, 0x5C}, {0x1F, 0x5C}, {0x16, 0x7C}, {0x05, 0x74}, {0x13, 0x04}, {0x1C, 0xC4}, {0x02, 0xCC}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table turnover_data[64] = {
+static mpu4_chr_table turnover_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x1C}, {0x04, 0x6C}, {0x10, 0xA4}, {0x18, 0x0C}, {0x0F, 0x24}, {0x13, 0x0C}, {0x1B, 0x34},
 	{0x03, 0x94}, {0x07, 0x94}, {0x17, 0x44}, {0x1D, 0x5C}, {0x36, 0x6C}, {0x35, 0x24}, {0x2B, 0x1C}, {0x28, 0xAC},
 	{0x39, 0x64}, {0x21, 0x1C}, {0x22, 0xEC}, {0x25, 0x64}, {0x2C, 0x0C}, {0x29, 0xA4}, {0x31, 0x0C}, {0x34, 0x24},
@@ -2894,7 +2727,7 @@ static const mpu4_chr_table turnover_data[64] = {
 	{0x0D, 0x0C}, {0x1F, 0x34}, {0x16, 0x04}, {0x05, 0x1C}, {0x13, 0xEC}, {0x1C, 0x24}, {0x02, 0x9C}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table eyesdown_data[64] = {
+static mpu4_chr_table eyesdown_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x8C}, {0x04, 0x64}, {0x10, 0x0C}, {0x18, 0xC4}, {0x0F, 0x0C}, {0x13, 0x54}, {0x1B, 0x14},
 	{0x03, 0x94}, {0x07, 0x94}, {0x17, 0x24}, {0x1D, 0xAC}, {0x36, 0x44}, {0x35, 0x0C}, {0x2B, 0x44}, {0x28, 0x1C},
 	{0x39, 0x7C}, {0x21, 0x6C}, {0x22, 0x74}, {0x25, 0x84}, {0x2C, 0x3C}, {0x29, 0x4C}, {0x31, 0x44}, {0x34, 0x0C},
@@ -2905,7 +2738,7 @@ static const mpu4_chr_table eyesdown_data[64] = {
 	{0x0D, 0x5C}, {0x1F, 0x5C}, {0x16, 0x7C}, {0x05, 0x6C}, {0x13, 0x54}, {0x1C, 0x04}, {0x02, 0x9C}, {0x00, 0x00}
 };
 
-static const mpu4_chr_table quidgrid_data[64] = {
+static mpu4_chr_table quidgrid_data[64] = {
 	{0x00, 0x00}, {0x1A, 0x64}, {0x04, 0x64}, {0x10, 0x24}, {0x18, 0x64}, {0x0F, 0x64}, {0x13, 0x24}, {0x1B, 0x64},
 	{0x03, 0x74}, {0x07, 0x54}, {0x17, 0x84}, {0x1D, 0xA4}, {0x36, 0x24}, {0x35, 0x24}, {0x2B, 0x64}, {0x28, 0x24},
 	{0x39, 0xE4}, {0x21, 0x64}, {0x22, 0x74}, {0x25, 0x44}, {0x2C, 0x34}, {0x29, 0x04}, {0x31, 0x24}, {0x34, 0x24},
@@ -2916,6 +2749,18 @@ static const mpu4_chr_table quidgrid_data[64] = {
 	{0x0D, 0x04}, {0x1F, 0x64}, {0x16, 0x24}, {0x05, 0x64}, {0x13, 0x24}, {0x1C, 0x64}, {0x02, 0x74}, {0x00, 0x00}
 };
 
+static mpu4_chr_table blank_data[72] = {
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},{-1, -1},
+};
+
 
 static const bwb_chr_table prizeinv_data1[5] = {
 //This is all wrong, but without BwB Vid booting,
@@ -2923,7 +2768,7 @@ static const bwb_chr_table prizeinv_data1[5] = {
 	{0x67},{0x17},{0x0f},{0x24},{0x3c},
 };
 
-static const mpu4_chr_table prizeinv_data[8] = {
+static mpu4_chr_table prizeinv_data[8] = {
 {0xEF, 0x02},{0x81, 0x00},{0xCE, 0x00},{0x00, 0x2e},
 {0x06, 0x20},{0xC6, 0x0f},{0xF8, 0x24},{0x8E, 0x3c},
 };
@@ -3035,7 +2880,44 @@ static DRIVER_INIT (prizeinv)
 	state->m_current_chr_table = prizeinv_data;
 }
 
-ROM_START( dealem )
+void mpu4vid_char_cheat(running_machine& machine, int address)
+{
+	mpu4_state *state = machine.driver_data<mpu4_state>();
+	UINT8* cheattable = machine.region( "video" )->base()+address;
+	state->m_current_chr_table = blank_data;
+	for (int i=0;i<72;i++)
+	{
+		state->m_current_chr_table[i].response = cheattable++[0];
+		state->m_current_chr_table[i].call = cheattable++[0];
+	}
+}
+
+static DRIVER_INIT( v4barqst )
+{
+	mpu4vid_char_cheat(machine,0x154);
+}
+
+static DRIVER_INIT( v4barqst2 )
+{
+	mpu4vid_char_cheat(machine,0x15c);
+}
+
+static DRIVER_INIT( v4wize )
+{
+	mpu4vid_char_cheat(machine,0x16c);
+}
+
+static DRIVER_INIT( v4cmazeb )
+{
+	mpu4vid_char_cheat(machine,0x4c6);
+}
+
+static DRIVER_INIT( v4opt3 )
+{
+	mpu4vid_char_cheat(machine,0x164);
+}
+
+ROM_START( v4dealem )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "zenndlem.u6",	0x8000, 0x8000,  CRC(571e5c05) SHA1(89b4c331407a04eae34bb187b036791e0a671533) )
 
@@ -3058,12 +2940,12 @@ ROM_END
 #define VID_BIOS \
 	ROM_LOAD("vid.p1",  0x00000, 0x10000,  CRC(e996bc18) SHA1(49798165640627eb31024319353da04380787b10))
 
-ROM_START( bctvidbs )
+ROM_START( v4bios )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 ROM_END
 
-ROM_START( prizeinv )
+ROM_START( v4psi )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("in220mpu4.p1",  0x00000, 0x04000,  CRC(75ff4b1f) SHA1(a3adaad9a91c30fe6ff42dc2003c34a199b28807) )
 
@@ -3074,7 +2956,7 @@ ROM_START( prizeinv )
 	ROM_LOAD16_BYTE( "in2-20p1.4",  0x020001, 0x10000, CRC(04933278) SHA1(97462aef782f7fe82b60f4bddcad0e6a6b50f3df) )
 ROM_END
 
-ROM_START( blox )
+ROM_START( v4blox )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("blxv___2.0_0",  0x00000, 0x04000, CRC(b399b85e) SHA1(d36391fee4e3126754d6a0fa5f52fe05bc676930) )
 
@@ -3087,7 +2969,7 @@ ROM_START( blox )
 	ROM_LOAD16_BYTE( "blxv___2.0_6",  0x040001, 0x10000, CRC(a3d92b5b) SHA1(1e7042d5eae4a19a01a3ef7d806c434886dc9f4d) )
 ROM_END
 
-ROM_START( bloxd )
+ROM_START( v4bloxd )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("blxv_d_2.0_0",  0x00000, 0x04000, CRC(2e0891e1) SHA1(3e8ffd0d41227a8a1e311ca0c0bde7590e06dfbd) )
 
@@ -3100,7 +2982,7 @@ ROM_START( bloxd )
 	ROM_LOAD16_BYTE( "blxv___2.0_6",  0x040001, 0x10000, CRC(a3d92b5b) SHA1(1e7042d5eae4a19a01a3ef7d806c434886dc9f4d) )
 ROM_END
 
-ROM_START( bwbtetrs )
+ROM_START( v4tetrs )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("tetris22.p0",  0x00000, 0x04000, CRC(b711c7ae) SHA1(767b17ddf9021fdf79ff6c52f04a5d8ea60cf30e) )
 
@@ -3114,7 +2996,7 @@ ROM_START( bwbtetrs )
 ROM_END
 
 /* Vegas Poker Prototype dumped by HIGHWAYMAN */
-ROM_START( vgpoker )
+ROM_START( v4vgpok )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("comms-v2.0.bin",  0x00000, 0x10000,  CRC(1717581f) SHA1(40f8cae39a2ab0c89d2bbfd8a37725aaae229c96))
 
@@ -3130,7 +3012,7 @@ ROM_START( vgpoker )
 ROM_END
 
 
-ROM_START( renoreel )
+ROM_START( v4reno )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("rr_27s__.a60",  0x00000, 0x10000,  CRC(44c9ff47) SHA1(93a3155144b233c113aa3b49bd4eb5969e400a68))
 
@@ -3144,7 +3026,9 @@ ROM_START( renoreel )
 
 ROM_END
 
-ROM_START( redhtpkr )
+
+
+ROM_START( v4redhtp )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("rp_20s__.3_0",  0x00000, 0x10000,  CRC(b7d02d22) SHA1(f9da1c6dde064bc39d0c48a165dac7acde933397))
 
@@ -3158,7 +3042,7 @@ ROM_START( redhtpkr )
 
 ROM_END
 
-ROM_START( crmaze )
+ROM_START( v4cmaze )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3175,7 +3059,7 @@ ROM_START( crmaze )
 	ROM_LOAD16_BYTE( "cry.p10", 0x400001, 0x80000,  CRC(500172fa) SHA1(d83a37612daa79ba8425fdb28f39b8324b5736b6) )
 ROM_END
 
-ROM_START( crmazed )
+ROM_START( v4cmazed )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3192,7 +3076,7 @@ ROM_START( crmazed )
 	ROM_LOAD16_BYTE( "cry.p10", 0x400001, 0x80000,  CRC(500172fa) SHA1(d83a37612daa79ba8425fdb28f39b8324b5736b6) )
 ROM_END
 
-ROM_START( crmazea )
+ROM_START( v4cmazea )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3209,8 +3093,25 @@ ROM_START( crmazea )
 	ROM_LOAD16_BYTE( "am1g.p8",  0x400001, 0x80000,  CRC(6f0f855b) SHA1(ab411d1af0f88049a6c435bafd4b1fa63f5519b1) )
 ROM_END
 
+ROM_START( v4cmazeb ) /* Was in a romset called 'Mad Money!' */
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "cm1.2p1", 0x000000, 0x040000, CRC(481f2fe2) SHA1(7bff9476dbd8c0812a51cd648acf11ca42789e54) )
+	ROM_LOAD16_BYTE( "cm1.2p2", 0x000001, 0x040000, CRC(6e6dc121) SHA1(05b29ea935d54aa97279e0a80265412747a92a10) )
+	ROM_LOAD16_BYTE( "cry.p3",  0x100000, 0x80000,  CRC(e8cf8203) SHA1(e9f42e5c18b97807f51284ad2416346578ed73c4) )
+	ROM_LOAD16_BYTE( "cry.p4",  0x100001, 0x80000,  CRC(7b036151) SHA1(7b0040c296059b1e1798ddedf0ecb4582d67ee70) )
+	ROM_LOAD16_BYTE( "cry.p5",  0x200000, 0x80000,  CRC(48f17b20) SHA1(711c46fcfd86ded8ff7da883188d70560d20e42f) )
+	ROM_LOAD16_BYTE( "cry.p6",  0x200001, 0x80000,  CRC(2b3d9a97) SHA1(7468fffd90d840d245a70475b42308f1e48c5017) )
+	ROM_LOAD16_BYTE( "cry.p7",  0x300000, 0x80000,  CRC(20f73433) SHA1(593b40ac17591ac312ad41b4d3a5772626137bba) )
+	ROM_LOAD16_BYTE( "cry.p8",  0x300001, 0x80000,  CRC(835da1f2) SHA1(f93e075916d370466832871410591570ad7b9f3b) )
+	ROM_LOAD16_BYTE( "cry.p9",  0x400000, 0x80000,  CRC(c0e442ee) SHA1(a3877b200538642fe2bc96cfe8b33f04d8a82a98) )
+	ROM_LOAD16_BYTE( "cry.p10", 0x400001, 0x80000,  CRC(500172fa) SHA1(d83a37612daa79ba8425fdb28f39b8324b5736b6) )
+ROM_END
+
 //The New Crystal Maze Featuring Ocean Zone
-ROM_START( crmaze2 )
+ROM_START( v4cmaze2 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3225,7 +3126,7 @@ ROM_START( crmaze2 )
 	ROM_LOAD16_BYTE( "cm2.p8",  0x300001, 0x80000,  CRC(bac04f5a) SHA1(130721b7abf28dea1f8162705c8bfc5a4bb78152) )
 ROM_END
 
-ROM_START( crmaze2d )
+ROM_START( v4cmaze2d )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3240,7 +3141,7 @@ ROM_START( crmaze2d )
 	ROM_LOAD16_BYTE( "cm2.p8",  0x300001, 0x80000,  CRC(bac04f5a) SHA1(130721b7abf28dea1f8162705c8bfc5a4bb78152) )
 ROM_END
 
-ROM_START( crmaze2a )
+ROM_START( v4cmaze2a )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3258,7 +3159,7 @@ ROM_START( crmaze2a )
 ROM_END
 
 //The Crystal Maze Team Challenge
-ROM_START( crmaze3 )
+ROM_START( v4cmaze3 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3275,7 +3176,7 @@ ROM_START( crmaze3 )
 	ROM_LOAD16_BYTE( "cm3.p10",  0x400001, 0x80000,  CRC(07edda81) SHA1(e94525be03f30e407051992925bb0d693f3d809b) )
 ROM_END
 
-ROM_START( crmaze3d )
+ROM_START( v4cmaze3d )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3292,7 +3193,7 @@ ROM_START( crmaze3d )
 	ROM_LOAD16_BYTE( "cm3.p10",  0x400001, 0x80000,  CRC(07edda81) SHA1(e94525be03f30e407051992925bb0d693f3d809b) )
 ROM_END
 
-ROM_START( crmaze3a )
+ROM_START( v4cmaze3a )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3309,7 +3210,7 @@ ROM_START( crmaze3a )
 	ROM_LOAD16_BYTE( "am3g.p8",  0x400001, 0x80000,  CRC(1a10c22e) SHA1(8533a5db3922b80b6e9f74e4e432a2b64bc24fc0) )
 ROM_END
 
-ROM_START( turnover )
+ROM_START( v4turnov )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3332,7 +3233,7 @@ ROM_START( turnover )
 	ROM_LOAD16_BYTE( "to.p16",  0x0e0001, 0x010000,  CRC(e635c942) SHA1(08f8b5fdb738647bc0b49938da05533be42a2d60) )
 ROM_END
 
-ROM_START( skiltrek )
+ROM_START( v4skltrk )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3353,7 +3254,7 @@ ROM_START( skiltrek )
 	ROM_LOAD16_BYTE( "st.qa",  0x0c0001, 0x010000,  CRC(3fc62a0e) SHA1(0628de4b962d3fcca3757cd4e89b3005c9bfd218) )
 ROM_END
 
-ROM_START( timemchn )
+ROM_START( v4time )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3374,7 +3275,7 @@ ROM_START( timemchn )
 	ROM_LOAD16_BYTE( "q19.p14",  0x0c0001, 0x010000,  CRC(73747644) SHA1(ae252fc95c069a3c82e155220fbfcb74dd43bf89) )
 ROM_END
 
-ROM_START( mating )
+ROM_START( v4mate )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3398,7 +3299,7 @@ ROM_START( mating )
 	ROM_LOAD( "matsnd.p4",  0x180000, 0x080000,  CRC(d7e65c5b) SHA1(5575fb9f948158f2e94c986bf4bca9c9ee66a489) )
 ROM_END
 
-ROM_START( matingd )
+ROM_START( v4mated )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3422,7 +3323,7 @@ ROM_START( matingd )
 	ROM_LOAD( "matsnd.p4",  0x180000, 0x080000,  CRC(d7e65c5b) SHA1(5575fb9f948158f2e94c986bf4bca9c9ee66a489) )
 ROM_END
 
-ROM_START( adders )
+ROM_START( v4addlad )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3444,7 +3345,7 @@ ROM_START( adders )
 ROM_END
 
 
-ROM_START( strikeit )
+ROM_START( v4strike )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3459,7 +3360,7 @@ ROM_START( strikeit )
 	ROM_LOAD( "strikeitlucky_questions",  0x0c0000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( strikeitd )
+ROM_START( v4striked )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3474,7 +3375,7 @@ ROM_START( strikeitd )
 	ROM_LOAD( "strikeitlucky_questions",  0x0c0000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( strikeit2 )
+ROM_START( v4strike2 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3489,7 +3390,7 @@ ROM_START( strikeit2 )
 	ROM_LOAD( "strikeitlucky_questions",  0x0c0000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( strikeit2d )
+ROM_START( v4strike2d )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3504,7 +3405,7 @@ ROM_START( strikeit2d )
 	ROM_LOAD( "strikeitlucky_questions",  0x0c0000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( eyesdown )
+ROM_START( v4eyedwn )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3517,7 +3418,7 @@ ROM_START( eyesdown )
 	ROM_LOAD( "eyesdown_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( eyesdownd )
+ROM_START( v4eyedwnd )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3530,7 +3431,7 @@ ROM_START( eyesdownd )
 	ROM_LOAD( "eyesdown_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( quidgrid )
+ROM_START( v4quidgr )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3543,7 +3444,7 @@ ROM_START( quidgrid )
 	ROM_LOAD( "quidgrid_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( quidgridd )
+ROM_START( v4quidgrd )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3556,7 +3457,7 @@ ROM_START( quidgridd )
 	ROM_LOAD( "quidgrid_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( quidgrid2 )
+ROM_START( v4quidgr2 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3569,7 +3470,7 @@ ROM_START( quidgrid2 )
 	ROM_LOAD( "quidgrid_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
 ROM_END
 
-ROM_START( quidgrid2d )
+ROM_START( v4quidgr2d )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
@@ -3583,67 +3484,348 @@ ROM_START( quidgrid2d )
 ROM_END
 
 
-/*Deal 'Em was a conversion kit designed to make early MPU4 machines into video games by replacing the top glass
-and reel assembly with this kit and a supplied monitor. This explains why the cabinet switch alters lamp data and buttons.
-The original Deal 'Em ran on Summit Coin hardware, and was made by someone else.
-Two further different releases were made, running on the Barcrest MPU4 Video, rather than this one. These are Deal 'Em Again and Deal 'Em 2000*/
+ROM_START( v4barqst )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
 
-GAME( 1987,  dealem,    0,        dealem,   dealem,   0,        ROT0, "Zenitone",		"Deal 'Em (MPU4 Conversion Kit, v7.0)",								GAME_IMPERFECT_GRAPHICS )
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "bqd.p1", 0x000000, 0x010000, CRC(b574ea46) SHA1(0eb446fbf4f7fcd1b30f35631b4b521730ce26b4) )
+	ROM_LOAD16_BYTE( "bq.p2", 0x000001, 0x010000, CRC(b9ce9f2e) SHA1(9407a83d1713b641dc551dd73f357d99baebbba2) )
 
-GAME( 199?,  bctvidbs,  0,        mpu4mod2, mpu4,     0,        ROT0, "Barcrest",		"MPU4 Video Firmware",												GAME_IS_BIOS_ROOT )
+	ROM_LOAD( "barquest_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
+ROM_END
+
+ROM_START( v4barqs2 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "b2qs.p1", 0x000000, 0x010000, CRC(35c1a58b) SHA1(e2d07229e7136c462c48b6c77c9d26a33deb8e34) )
+	ROM_LOAD16_BYTE( "b2q.p2", 0x000001, 0x010000, CRC(28a0064a) SHA1(3751d9f3cc93994c44927ca3f72ade6bee22b20b) )
+
+	ROM_LOAD( "barquest2_questions",  0x040000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
+ROM_END
+
+ROM_START( v4wize )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "wmd.p1", 0x000000, 0x010000, CRC(45d29045) SHA1(37911346753211801f8404d42b275f49764ba5f4) )
+	ROM_LOAD16_BYTE( "wm.p2",  0x000001, 0x010000, CRC(41b5fb2a) SHA1(e9ee484ec7445d58efa9bbfbd705202ef83656f2) )
+	ROM_LOAD16_BYTE( "wm.p3",  0x020000, 0x010000, CRC(934da7e4) SHA1(9cac87ccadbc871577640ec0bddd5e07aef139f8) )
+	ROM_LOAD16_BYTE( "wm.p4",  0x020001, 0x010000, CRC(463f6c0b) SHA1(ffee4cca73ebe7130e34118031cb16b3c42f03cb) )
+	ROM_LOAD16_BYTE( "wm.p5",  0x040000, 0x010000, CRC(eaea2502) SHA1(adeda7148ee4eee98870f4aa529b5c9f36417e2e) )
+	ROM_LOAD16_BYTE( "wm.p6",  0x040001, 0x010000, CRC(40a5e980) SHA1(e7bd49308b63a94a9ca0b138de0c48d2316d6aa0) )
+
+	ROM_LOAD( "wizemove_questions",  0x080000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
+
+
+	ROM_REGION( 0x800000, "altrevs", 0 )
+	ROM_LOAD16_BYTE( "w23.p1", 0x000000, 0x010000, CRC(a8d8fb2e) SHA1(cf5462b224a7960ade867cf76079d11084f13e4b) )
+	ROM_LOAD16_BYTE( "wm3.p1", 0x000000, 0x010000, CRC(0752f0f1) SHA1(2b0531312bf1d4b489394401c5d78c7f04e12aea) )
+	ROM_LOAD16_BYTE( "wm3d.p1", 0x000000, 0x010000, CRC(4e3ab877) SHA1(64408d1ac1f626390ffe93e024c672ba5acb42d6) )
+	ROM_LOAD16_BYTE( "wms.p1", 0x000000, 0x010000, CRC(712385c1) SHA1(075a98626eba2eae6a31b395c2a74541a31b2582) )
+ROM_END
+
+ROM_START( v4wizea )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "wzm1&2p1", 0x000000, 0x010000, CRC(629e38d0) SHA1(bbc2688635c4cb9a1712a0a0d28017d1867417a4) )
+	ROM_LOAD16_BYTE( "wzm1&2p2", 0x000001, 0x010000, CRC(96b9c484) SHA1(b02595ba5a5c7d673bdc7675708a4d8f6d907779) )
+	ROM_LOAD16_BYTE( "wzm1&2p3", 0x020000, 0x010000, CRC(e545fac0) SHA1(4a3f9e5522bd666d5a1e9ac7878d3d78f3756762) )
+	ROM_LOAD16_BYTE( "wzm1&2p4", 0x020001, 0x010000, CRC(df7d4dba) SHA1(b892cfb807421c99ba98bfd9b34d717e17345d83) )
+	ROM_LOAD16_BYTE( "wzm1&2p5", 0x040000, 0x010000, NO_DUMP )
+	ROM_LOAD16_BYTE( "wzm1&2p6", 0x040001, 0x010000, CRC(3eecbdf8) SHA1(9ecc4fe25e1c1e167aaa413eaf601b55e1a432fb) )
+
+	ROM_LOAD( "wizemove_questions",  0x080000, 0x020000,  NO_DUMP ) // no dumps of question ROMs for this game..
+
+ROM_END
+
+
+
+
+ROM_START( v4opt3 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "o3-s.p1",0x000000, 0x020000, CRC(9b825fa1) SHA1(c743bed32fa1af934f9610204a4f4062cfb85193) )
+	ROM_LOAD16_BYTE( "o3-.p2", 0x000001, 0x020000, CRC(9545a845) SHA1(24c6656c137baf74c8ea5d930220bf0d0c90b3ab) )
+	ROM_LOAD16_BYTE( "o3-.p3", 0x040000, 0x020000, CRC(2f3666cb) SHA1(94010eb56de7f3900fbe1c0b77a43752f9cf3ba6) )
+	ROM_LOAD16_BYTE( "o3-.p4", 0x040001, 0x020000, CRC(63b6aa70) SHA1(6f0bef67437caa150ee98f0349d0f6412665e36b) )
+	ROM_LOAD16_BYTE( "o3-.p5", 0x080000, 0x020000, CRC(750db328) SHA1(8442b32e2f70ba2e0849d994a1e2502634652c5e) )
+	ROM_LOAD16_BYTE( "o3-.p6", 0x080001, 0x020000, CRC(1fed469e) SHA1(351a8cd687c0e11300c498e45e4b6f3a35940615) )
+	ROM_LOAD16_BYTE( "o3-.p7", 0x0c0000, 0x020000, CRC(400e304f) SHA1(3abe30cf75990a5ce9066ccd4cfed680e5d4963c) )
+	ROM_LOAD16_BYTE( "o3-.p8", 0x0c0001, 0x020000, CRC(0fb22311) SHA1(2329520d4ce763ba10cc81314711d28b4a5fb192) )
+	ROM_LOAD16_BYTE( "o3-.p9", 0x100000, 0x020000, CRC(0d71b620) SHA1(103cf5700c876e94e2ca3b63ef71b768bd2d99a2) )
+	ROM_LOAD16_BYTE( "o3-.p10",0x100001, 0x020000, CRC(239fa03b) SHA1(c4c77ded07481746b041122a8538036a65a5abe6) )
+ROM_END
+
+ROM_START( v4opt3d )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "o3-d.p1",0x000000, 0x020000, CRC(09eef902) SHA1(2ce68fe08c5a1be7daaf3a380aa5f5fef8401944) )
+	ROM_LOAD16_BYTE( "o3-.p2", 0x000001, 0x020000, CRC(9545a845) SHA1(24c6656c137baf74c8ea5d930220bf0d0c90b3ab) )
+	ROM_LOAD16_BYTE( "o3-.p3", 0x040000, 0x020000, CRC(2f3666cb) SHA1(94010eb56de7f3900fbe1c0b77a43752f9cf3ba6) )
+	ROM_LOAD16_BYTE( "o3-.p4", 0x040001, 0x020000, CRC(63b6aa70) SHA1(6f0bef67437caa150ee98f0349d0f6412665e36b) )
+	ROM_LOAD16_BYTE( "o3-.p5", 0x080000, 0x020000, CRC(750db328) SHA1(8442b32e2f70ba2e0849d994a1e2502634652c5e) )
+	ROM_LOAD16_BYTE( "o3-.p6", 0x080001, 0x020000, CRC(1fed469e) SHA1(351a8cd687c0e11300c498e45e4b6f3a35940615) )
+	ROM_LOAD16_BYTE( "o3-.p7", 0x0c0000, 0x020000, CRC(400e304f) SHA1(3abe30cf75990a5ce9066ccd4cfed680e5d4963c) )
+	ROM_LOAD16_BYTE( "o3-.p8", 0x0c0001, 0x020000, CRC(0fb22311) SHA1(2329520d4ce763ba10cc81314711d28b4a5fb192) )
+	ROM_LOAD16_BYTE( "o3-.p9", 0x100000, 0x020000, CRC(0d71b620) SHA1(103cf5700c876e94e2ca3b63ef71b768bd2d99a2) )
+	ROM_LOAD16_BYTE( "o3-.p10",0x100001, 0x020000, CRC(239fa03b) SHA1(c4c77ded07481746b041122a8538036a65a5abe6) )
+ROM_END
+
+
+/*
+
+FRUIT FACTORY                   ID=FF_
+-------------
+
+GRAPHIC PROMS
+=============
+
+FF_GFX10.P3     4mb
+FF_GFX10.P4     4MB
+FF_GFX10.P5     4MB
+FF_GFX10.P6     4MB
+FF_GFX10.P7     4MB
+FF_GFX10.P8     4MB
+
+MPU4 PROM
+=========
+
+FFMPU416.P1 A209    27C512
+
+
+GAME PROMS
+==========
+FF_293.P1   5F95    27C040  20p/?15
+FF_293.P2   DCE6    27C040  20p/?15
+FF_293D.P2  5F95    27C040  20p/?15 data
+FF_293D.P2  DDE5    27C040  20p/?15 data
+
+FF_393.P1   5F9F    27C040  25p/?15
+FF_393.P2   DCE6    27C040  25p/?15
+FF_393D.P2  5F9F    27C040  25p/?15 data
+FF_393D.P2  DDE5    27C040  25p/?15 data
+
+FF_493.P1   5EAA    27C040  30p/?15
+FF_493.P2   DCE6    27C040  30p/?15
+FF_493D.P2  5EAA    27C040  30p/?15 data
+FF_493D.P2  DDE5    27C040  30p/?15 data
+
+---------------------------------------------------------------------
+ END
+
+ */
+
+ROM_START( v4frfact )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	VID_BIOS // should use FFMPU416.P1  A209    27C512 .. find out which that is, if it's dumped
+
+	ROM_REGION( 0x800000, "video", 0 )
+	/* p1/p2 load the wrong way around? */
+	ROM_LOAD16_BYTE( "ff_40d.p1", 0x000001, 0x080000, CRC(c91fd349) SHA1(18c36612ee9fed6f12bb3dbf08f6740cf2a463c2) )
+	ROM_LOAD16_BYTE( "ff_40d.p2", 0x000000, 0x080000, CRC(e7555936) SHA1(0af7a0be17735831eb037c4bc55d35891a608b23) )
+
+	ROM_LOAD16_BYTE( "ff_gfx10.p3", 0x100001, 0x080000, CRC(a043a1f6) SHA1(0e591f0e7ecdf8b390a20ee826705a22ed6923d5) )
+	ROM_LOAD16_BYTE( "ff_gfx10.p4", 0x100000, 0x080000, CRC(58226ff5) SHA1(f2647e43da69e8aa2f78d46f3cfc553440213c36) )
+	ROM_LOAD16_BYTE( "ff_gfx10.p5", 0x200001, 0x080000, CRC(9bfc6da8) SHA1(969c4a84392c28d61e87482e7f881bdfda79f879) )
+	ROM_LOAD16_BYTE( "ff_gfx10.p6", 0x200000, 0x080000, CRC(240cdfd3) SHA1(8ccf199aff929813df554d957e84484a482c98c6) )
+	ROM_LOAD16_BYTE( "ff_gfx10.p7", 0x300001, 0x080000, CRC(42d3bd01) SHA1(6d07875e8f251c3c9c4e7f48ae886b8069c20897) )
+	ROM_LOAD16_BYTE( "ff_gfx10.p8", 0x300000, 0x080000, CRC(1951a944) SHA1(b8eca580ae43be855d93cf9f50058b2fb9e8981b) )
+
+	ROM_REGION( 0x100000, "altrevs", 0 ) /* Alternate revision Prg ROMs, to be sorted into clones */
+	// 30p/?15
+	ROM_LOAD16_BYTE( "ff_493.p1", 0x000001, 0x080000, CRC(1a88e0e6) SHA1(198fffd0d98d557462485b1ca6e3460199e03924) )
+	ROM_LOAD16_BYTE( "ff_493.p2", 0x000000, 0x080000, CRC(1c948e83) SHA1(571f854c33a2ef68daa8633193b49486ff92d7e2) )
+	// 30p/?15 data
+	ROM_LOAD16_BYTE( "ff_493d.p1", 0x000001, 0x080000, CRC(1a88e0e6) SHA1(198fffd0d98d557462485b1ca6e3460199e03924) )
+	ROM_LOAD16_BYTE( "ff_493d.p2", 0x000000, 0x080000, CRC(86830e6c) SHA1(9510bf42a8c2f8ffeafd1f2b0e027a0a59d80b20) )
+	// 25p/?15
+	ROM_LOAD16_BYTE( "ff_393.p1", 0x000001, 0x080000, CRC(35011cab) SHA1(9e381db93dbe1f71d40b152ae6c68ea7a7b9728c) )
+	ROM_LOAD16_BYTE( "ff_393.p2", 0x000000, 0x080000, CRC(1c948e83) SHA1(571f854c33a2ef68daa8633193b49486ff92d7e2) )
+	// 25p/?15 data
+	ROM_LOAD16_BYTE( "ff_393d.p1", 0x000001, 0x080000, CRC(35011cab) SHA1(9e381db93dbe1f71d40b152ae6c68ea7a7b9728c) )
+	ROM_LOAD16_BYTE( "ff_393d.p2", 0x000000, 0x080000, CRC(86830e6c) SHA1(9510bf42a8c2f8ffeafd1f2b0e027a0a59d80b20) )
+	// 20p/?15
+	ROM_LOAD16_BYTE( "ff_293.p1", 0x000001, 0x080000, CRC(4787bc3d) SHA1(a1d53f1640c6d829c9fee8c72057b2801aac4cb2) )
+	ROM_LOAD16_BYTE( "ff_293.p2", 0x000000, 0x080000, CRC(1c948e83) SHA1(571f854c33a2ef68daa8633193b49486ff92d7e2) )
+	// 20p/?15 data
+	ROM_LOAD16_BYTE( "ff_293d.p1", 0x000001, 0x080000, CRC(4787bc3d) SHA1(a1d53f1640c6d829c9fee8c72057b2801aac4cb2) )
+	ROM_LOAD16_BYTE( "ff_293d.p2", 0x000000, 0x080000, CRC(86830e6c) SHA1(9510bf42a8c2f8ffeafd1f2b0e027a0a59d80b20) )
+ROM_END
+
+
+
+/* Nova */
+
+ROM_START( v4cybcas )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "ccd_____.6_0", 0x0000, 0x010000, CRC(93aa1a3d) SHA1(dce4cc4bfc616163ca240c417d1ef9a0a19e5901) )
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "ccd_____.6_1", 0x000001, 0x080000, CRC(58c8ae96) SHA1(9f3aea47ae014c61bb2b75664210a3609996f983) )
+	ROM_LOAD16_BYTE( "ccd_____.6_2", 0x000000, 0x080000, CRC(f0556749) SHA1(2f35a9f9672219001c2a48d7f103ac99e1b21b32) )
+	ROM_LOAD16_BYTE( "ccd_____.6_3", 0x100001, 0x080000, CRC(4d2f5485) SHA1(a8c9b5843384ce55a10531b82766f5498dc0d334) )
+	ROM_LOAD16_BYTE( "ccd_____.6_4", 0x100000, 0x080000, CRC(87b29468) SHA1(89a3855754e8a720ca76fa16b11f791ade75fb78) )
+	ROM_LOAD16_BYTE( "ccd_____.6_5", 0x200001, 0x080000, CRC(bd8be9ff) SHA1(c5d620774e476e6ec00876e513ff838af102ecc9) )
+	ROM_LOAD16_BYTE( "ccd_____.6_6", 0x200000, 0x080000, CRC(faf65e25) SHA1(f50369348740ba4c878455c108ac3e8d2262ef5e) )
+	ROM_LOAD16_BYTE( "ccd_____.6_7", 0x300001, 0x080000, CRC(4cd1461c) SHA1(00379212130d5e9c1c364191f67a35cc5eca8b72) )
+	ROM_LOAD16_BYTE( "ccd_____.6_8", 0x300000, 0x080000, CRC(08ce378f) SHA1(035b0ff4d18c09a385002db73c54b8dac92dfa8a) )
+
+	ROM_REGION( 0x200000, "msm6376", ROMREGION_ERASE00 )
+	/* none present */
+ROM_END
+
+ROM_START( v4miami )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "mdd4_0.bin", 0x0000, 0x010000, CRC(0d868466) SHA1(3cea446f094ae3b4f56163ccf01cd31c15dca03f) )
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "md41.p1", 0x000001, 0x080000, CRC(9567347f) SHA1(5188b3f359ff26c0854d5745df37575851502ae9) )
+	ROM_LOAD16_BYTE( "md42.p2", 0x000000, 0x080000, CRC(e0dad693) SHA1(9768331a4a776906935b3c5501b68cb4dd1bd41f) )
+	ROM_LOAD16_BYTE( "md43.p3", 0x100001, 0x080000, CRC(9bceb3f6) SHA1(5be84d5f1635f80a9fe8072c2d94012ed00d97be) )
+	ROM_LOAD16_BYTE( "md44.p4", 0x100000, 0x080000, CRC(54b8fbfa) SHA1(ca2fb67972507a2eb33d2800a3b2d45d3ee49289) )
+
+	ROM_REGION( 0x200000, "msm6376", ROMREGION_ERASE00 )
+	ROM_LOAD( "md41snd.p1", 0x000000, 0x080000, CRC(7a3ba770) SHA1(e620f521d16b39be9b41b934435812afff3993b2) )
+	ROM_LOAD( "md42snd.p2", 0x080000, 0x080000, CRC(8ebc7329) SHA1(82ce25c1486a8619355f363125a26d8cdeb05d33) )
+	ROM_LOAD( "md43snd.p3", 0x100000, 0x080000, CRC(14f4d838) SHA1(0508890a9884fbef0e194a38fe3afc5cf5282091) )
+ROM_END
+
+
+ROM_START( v4missis )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "mldsf___.6_0", 0x0000, 0x010000, CRC(3f0fe40e) SHA1(6fd9ddede5f11c35d47c7ddd360b0021267e7e3f) )
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "mld_____.6_1", 0x000000, 0x080000, CRC(44e26e6e) SHA1(ba96757b74e75d094b6cda340c78754f1b8f6a7c) )
+	ROM_LOAD16_BYTE( "mld_____.6_2", 0x000001, 0x080000, CRC(e9219fff) SHA1(80c0211b98c4200ad9512e89b067018ce8600494) )
+	ROM_LOAD16_BYTE( "mld_____.6_3", 0x100000, 0x080000, CRC(680bd284) SHA1(33dfd0cb396c1466c2a5cfc474756b8a2d966518) )
+	ROM_LOAD16_BYTE( "mld_____.6_4", 0x100001, 0x080000, CRC(0e21022b) SHA1(30465321a976064f7841b2c3314244b744a45092) )
+	ROM_LOAD16_BYTE( "mld_____.6_5", 0x200000, 0x080000, CRC(cd6c39d2) SHA1(c4d4b5c7a1f3dcfdc464fff29f10ccee932f265a) )
+	ROM_LOAD16_BYTE( "mld_____.6_6", 0x200001, 0x080000, CRC(5ad997a3) SHA1(0fd75b4a9b5991fda9cc3373b86f466492c3b4bb) )
+
+	ROM_REGION( 0x200000, "msm6376", ROMREGION_ERASE00 )
+	ROM_LOAD( "mld_snd_.1_1", 0x000000, 0x080000, CRC(8c26fe12) SHA1(0532126d8e283b4567a4cdf2bb807f5471c84832) )
+	ROM_LOAD( "mld_snd_.1_2", 0x080000, 0x080000, CRC(9ab841b6) SHA1(7828c6144777621859b85a3ec92760d353576527) )
+	ROM_LOAD( "mld_snd_.1_3", 0x100000, 0x080000, CRC(3f068632) SHA1(5e43da287b3aa163493c1be03ebee28ef58c44a1) )
+	ROM_LOAD( "mld_snd_.1_4", 0x180000, 0x080000, CRC(f78f7221) SHA1(dac88abee6a5fdf7b69c5d39345ee05c1ac47314) )
+ROM_END
+
+ROM_START( v4picdil )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "pcdsf___.a_0", 0x0000, 0x010000, CRC(45a15082) SHA1(d7655722c7ad9f3b1b2663d85287ae185917d677) )
+	ROM_LOAD( "pcdsf__e.a_0", 0x0000, 0x010000, CRC(0ed1c7af) SHA1(c19ff141fba7fd1f2cf0b152e3c6df61c6b27b46) )
+
+	ROM_REGION( 0x800000, "video", 0 )
+	ROM_LOAD16_BYTE( "pcd_____.a_1", 0x000001, 0x080000, CRC(0ed561d4) SHA1(899c76d2a2352988a01bece2a229deb934a00892) )
+	ROM_LOAD16_BYTE( "pcd_____.a_2", 0x000000, 0x080000, CRC(bffe3863) SHA1(ea6fdcce470e8a50c35f43fd86e39524be2db3a3) )
+	ROM_LOAD16_BYTE( "pcd_____.a_3", 0x100001, 0x080000, CRC(3b64a328) SHA1(a9fa9dc30b352388906e6021bc0d1ad7c3a28746) )
+	ROM_LOAD16_BYTE( "pcd_____.a_4", 0x100000, 0x080000, CRC(25faba03) SHA1(572aaee3af3b915294ba057b7ceb653dd135098b) )
+	ROM_LOAD16_BYTE( "pcd_____.a_5", 0x200001, 0x080000, CRC(275f3c1c) SHA1(1d0f8f7d0388d5072ae404f10b2481153979a217) )
+	ROM_LOAD16_BYTE( "pcd_____.a_6", 0x200000, 0x080000, CRC(148ecba0) SHA1(2ae0f5529fa3951025539fe19f4e8fdf10f13374) )
+
+	ROM_REGION( 0x200000, "msm6376", ROMREGION_ERASE00 )
+	/* none present */
+ROM_END
+
+
 
 /* Complete sets */
 /* Standard sets are the most common setups, while Datapak releases use a BACTA datalogger (not emulated) to record more information about the game operation, for security etc.
 AMLD versions do not pay out, and instead just feature highscore tables. These were mainly intended for locations unwilling to pay for gaming licenses.
 The AMLD versions appear to be a mixture of the original game modules and Team Challenge's scoring system. This would suggest they were all made ~1994. */
 
-GAMEL( 1993,  crmaze,    bctvidbs, crmaze,   crmaze,   crmaze,   ROT0, "Barcrest",		"The Crystal Maze (v1.3)",											GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9
-GAMEL( 1993,  crmazed,   crmaze,   crmaze,   crmaze,   crmaze,   ROT0, "Barcrest",		"The Crystal Maze (v1.3, Datapak)",									GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9D
-GAMEL( 1993,  crmazea,   crmaze,   crmaze,   crmaze,   crmazea,  ROT0, "Barcrest",		"The Crystal Maze (v0.1, AMLD)",									GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9
+GAME(  199?,v4bios,		0,			mod2,	mpu4,		0,			ROT0, "Barcrest","MPU4 Video Firmware",GAME_IS_BIOS_ROOT )
 
-GAMEL( 1993,  crmaze2,   bctvidbs, crmaze,   crmaze,   crmaze2,  ROT0, "Barcrest",		"The New Crystal Maze Featuring Ocean Zone (v2.2)",					GAME_NOT_WORKING,layout_crmaze4p )//SWP 1.0
-GAMEL( 1993,  crmaze2d,  crmaze2,  crmaze,   crmaze,   crmaze2,  ROT0, "Barcrest",		"The New Crystal Maze Featuring Ocean Zone (v2.2, Datapak)",		GAME_NOT_WORKING,layout_crmaze4p )//SWP 1.0D
-GAMEL( 1993,  crmaze2a,  crmaze2,  crmaze,   crmaze,   crmaze2a, ROT0, "Barcrest",		"The New Crystal Maze Featuring Ocean Zone (v0.1, AMLD)",			GAME_NOT_WORKING,layout_crmaze4p )//SWP 1.0 /* unprotected? proto? */
+GAMEL( 1993,v4cmaze,	v4bios,		crmaze,		crmaze,		crmaze,		ROT0, "Barcrest","The Crystal Maze (v1.3) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9
+GAMEL( 1993,v4cmazed,	v4cmaze,	crmaze,		crmaze,		crmaze,		ROT0, "Barcrest","The Crystal Maze (v1.3, Datapak) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9D
+GAMEL( 1993,v4cmazea,	v4cmaze,	crmaze,		crmaze,		crmazea,	ROT0, "Barcrest","The Crystal Maze (v0.1, AMLD) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9
+GAMEL( 1993,v4cmazeb,	v4cmaze,	crmaze,		crmaze,		v4cmazeb,	ROT0, "Barcrest","The Crystal Maze (v1.2) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze2p )//SWP 0.9
 
-GAMEL( 1994,  crmaze3,   bctvidbs, crmaze,   crmaze,   crmaze3,  ROT0, "Barcrest",		"The Crystal Maze Team Challenge (v0.9)",							GAME_NOT_WORKING,layout_crmaze4p )//SWP 0.7
-GAMEL( 1994,  crmaze3d,  crmaze3,  crmaze,   crmaze,   crmaze3,  ROT0, "Barcrest",		"The Crystal Maze Team Challenge (v0.9, Datapak)",					GAME_NOT_WORKING,layout_crmaze4p )//SWP 0.7D
-GAMEL( 1994,  crmaze3a,  crmaze3,  crmaze,   crmaze,   crmaze3a, ROT0, "Barcrest",		"The Crystal Maze Team Challenge (v1.2, AMLD)",						GAME_NOT_WORKING,layout_crmaze4p )//SWP 0.7
+GAMEL( 1993,v4cmaze2,	v4bios,		crmaze,		crmaze,		crmaze2,	ROT0, "Barcrest","The New Crystal Maze Featuring Ocean Zone (v2.2) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze4p )//SWP 1.0
+GAMEL( 1993,v4cmaze2d,	v4cmaze2,	crmaze,		crmaze,		crmaze2,	ROT0, "Barcrest","The New Crystal Maze Featuring Ocean Zone (v2.2, Datapak) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze4p )//SWP 1.0D
+GAMEL( 1993,v4cmaze2a,	v4cmaze2,	crmaze,		crmaze,		crmaze2a,	ROT0, "Barcrest","The New Crystal Maze Featuring Ocean Zone (v0.1, AMLD) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze4p )//SWP 1.0 /* unprotected? proto? */
 
-GAME( 199?,  turnover,  bctvidbs, mpu4_vid, turnover, turnover, ROT0, "Barcrest",		"Turnover (v2.3)",													GAME_NOT_WORKING )
+GAMEL( 1994,v4cmaze3,	v4bios,		crmaze,		crmaze,		crmaze3,	ROT0, "Barcrest","The Crystal Maze Team Challenge (v0.9) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze4p )//SWP 0.7
+GAMEL( 1994,v4cmaze3d,	v4cmaze3,	crmaze,		crmaze,		crmaze3,	ROT0, "Barcrest","The Crystal Maze Team Challenge (v0.9, Datapak) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze4p )//SWP 0.7D
+GAMEL( 1994,v4cmaze3a,	v4cmaze3,	crmaze,		crmaze,		crmaze3a,	ROT0, "Barcrest","The Crystal Maze Team Challenge (v1.2, AMLD) (MPU4 Video)",GAME_NOT_WORKING,layout_crmaze4p )//SWP 0.7
 
-GAME( 1990,  skiltrek,  bctvidbs, mpu4_vid, skiltrek, skiltrek, ROT0, "Barcrest",		"Skill Trek (v1.1)",												GAME_NOT_WORKING )
+GAME(  199?,v4turnov,	v4bios,		mpu4_vid,	turnover,	turnover,	ROT0, "Barcrest","Turnover (v2.3) (MPU4 Video)",GAME_NOT_WORKING )
 
-GAME( 1989,  adders,    bctvidbs, mpu4_vid, adders,   adders,   ROT0, "Barcrest",		"Adders and Ladders (v2.0)",										GAME_NOT_WORKING )
+GAME(  1990,v4skltrk,	v4bios,		mpu4_vid,	skiltrek,	skiltrek,	ROT0, "Barcrest","Skill Trek (v1.1) (MPU4 Video)",GAME_NOT_WORKING )
 
-GAME( 1989,  timemchn,  bctvidbs, mpu4_vid, skiltrek, timemchn, ROT0, "Barcrest",		"Time Machine (v2.0)",												GAME_NOT_WORKING )
+GAME(  1989,v4addlad,	v4bios,		mpu4_vid,	adders,		adders,		ROT0, "Barcrest","Adders and Ladders (v2.0) (MPU4 Video)",GAME_NOT_WORKING )
+
+GAME(  1989,v4time,		v4bios,		mpu4_vid,	skiltrek,	timemchn,	ROT0, "Barcrest","Time Machine (v2.0) (MPU4 Video)",GAME_NOT_WORKING )
 
 //Year is a guess, based on the use of the 'Coin Man' logo
-GAME( 1996?,  mating,    bctvidbs, mating,   mating,   mating,   ROT0, "Barcrest",		"The Mating Game (v0.4)",											GAME_NOT_WORKING )//SWP 0.2 /* Using crmaze controls for now, cabinet has trackball */
-GAME( 1996?,  matingd,   mating,   mating,   mating,   mating,   ROT0, "Barcrest",		"The Mating Game (v0.4, Datapak)",									GAME_NOT_WORKING )//SWP 0.2D
-
-/* Barquest */
-/* Barquest II */
-/* Wize Move */
+GAME(  1996?,v4mate,	v4bios,		mating,		mating,		mating,		ROT0, "Barcrest","The Mating Game (v0.4) (MPU4 Video)",GAME_NOT_WORKING )//SWP 0.2 /* Using crmaze controls for now, cabinet has trackball */
+GAME(  1996?,v4mated,	v4mate,		mating,		mating,		mating,		ROT0, "Barcrest","The Mating Game (v0.4, Datapak) (MPU4 Video)",GAME_NOT_WORKING )//SWP 0.2D
 
 /* Games below are missing question ROMs */
-GAME( 199?,  strikeit,  bctvidbs, mpu4_vid, mpu4,     strikeit, ROT0, "Barcrest",		"Strike it Lucky (v0.5)",											GAME_NOT_WORKING )
-GAME( 199?,  strikeitd, strikeit, mpu4_vid, mpu4,     strikeit, ROT0, "Barcrest",		"Strike it Lucky (v0.5, Datapak)",									GAME_NOT_WORKING )
-GAME( 199?,  strikeit2, strikeit, mpu4_vid, mpu4,     strikeit, ROT0, "Barcrest",		"Strike it Lucky (v0.53)",											GAME_NOT_WORKING )
-GAME( 199?,  strikeit2d,strikeit, mpu4_vid, mpu4,     strikeit, ROT0, "Barcrest",		"Strike it Lucky (v0.53, Datapak)",									GAME_NOT_WORKING )
 
-GAME( 199?,  eyesdown,  bctvidbs, mpu4_vid, mpu4,     eyesdown, ROT0, "Barcrest",		"Eyes Down (v1.3)",													GAME_NOT_WORKING )
-GAME( 199?,  eyesdownd, eyesdown, mpu4_vid, mpu4,     eyesdown, ROT0, "Barcrest",		"Eyes Down (v1.3, Datapak)",										GAME_NOT_WORKING )
+GAME(  199?,v4strike,	v4bios,		mpu4_vid,	mpu4,		strikeit,	ROT0, "Barcrest","Strike it Lucky (v0.5) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4striked,	v4strike,	mpu4_vid,	mpu4,		strikeit,	ROT0, "Barcrest","Strike it Lucky (v0.5, Datapak) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4strike2,	v4strike,	mpu4_vid,	mpu4,		strikeit,	ROT0, "Barcrest","Strike it Lucky (v0.53) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4strike2d,	v4strike,	mpu4_vid,	mpu4,		strikeit,	ROT0, "Barcrest","Strike it Lucky (v0.53, Datapak) (MPU4 Video)",GAME_NOT_WORKING )
 
-GAME( 199?,  quidgrid,  bctvidbs, mpu4_vid, mpu4,     quidgrid, ROT0, "Barcrest",		"Ten Quid Grid (v1.2)",												GAME_NOT_WORKING )
-GAME( 199?,  quidgridd, quidgrid, mpu4_vid, mpu4,     quidgrid, ROT0, "Barcrest",		"Ten Quid Grid (v1.2, Datapak)",									GAME_NOT_WORKING )
-GAME( 199?,  quidgrid2, quidgrid, mpu4_vid, mpu4,     quidgrid, ROT0, "Barcrest",		"Ten Quid Grid (v2.4)",												GAME_NOT_WORKING )
-GAME( 199?,  quidgrid2d,quidgrid, mpu4_vid, mpu4,     quidgrid, ROT0, "Barcrest",		"Ten Quid Grid (v2.4, Datapak)",									GAME_NOT_WORKING )
+GAME(  199?,v4eyedwn,	v4bios,		mpu4_vid,	mpu4,		eyesdown,	ROT0, "Barcrest","Eyes Down (v1.3) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4eyedwnd,	v4eyedwn,	mpu4_vid,	mpu4,		eyesdown,	ROT0, "Barcrest","Eyes Down (v1.3, Datapak) (MPU4 Video)",GAME_NOT_WORKING )
+
+GAME(  199?,v4quidgr,	v4bios,		mpu4_vid,	mpu4,		quidgrid,	ROT0, "Barcrest","Ten Quid Grid (v1.2) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4quidgrd,	v4quidgr,	mpu4_vid,	mpu4,		quidgrid,	ROT0, "Barcrest","Ten Quid Grid (v1.2, Datapak) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4quidgr2,	v4quidgr,	mpu4_vid,	mpu4,		quidgrid,	ROT0, "Barcrest","Ten Quid Grid (v2.4) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4quidgr2d,	v4quidgr,	mpu4_vid,	mpu4,		quidgrid,	ROT0, "Barcrest","Ten Quid Grid (v2.4, Datapak) (MPU4 Video)",GAME_NOT_WORKING )
+
+GAME(  199?,v4barqst,	v4bios, 	mpu4_vid,	mpu4,		v4barqst,	ROT0, "Barcrest","Barquest (v2.6d) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4barqs2,	v4bios, 	mpu4_vid,	mpu4,		v4barqst2,	ROT0, "Barcrest","Barquest 2 (v0.3) (MPU4 Video)",GAME_NOT_WORKING )
+
+GAME(  199?,v4wize,		v4bios, 	mpu4_vid,	mpu4,		v4wize,		ROT0, "Barcrest","Wize Move (v1.3d) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4wizea,	v4bios, 	mpu4_vid,	mpu4,		v4wize,		ROT0, "Barcrest","Wize Move (v1.2) (MPU4 Video)",GAME_NOT_WORKING )
+
+GAME(  1991,v4opt3,		v4bios, 	mpu4_vid,	mpu4,		v4opt3,		ROT0, "Barcrest","Option 3 (v1.0) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  1991,v4opt3d,	v4opt3, 	mpu4_vid,	mpu4,		v4opt3,		ROT0, "Barcrest","Option 3 (v1.0) (Datapak) (MPU4 Video)",GAME_NOT_WORKING )
+
+
+
 
 /* Games below are newer BwB games and use their own BIOS ROMs and hardware setups*/
-GAME( 199?,  vgpoker,   0,        vgpoker,  mpu4,     0,        ROT0, "BwB",			"Vegas Poker (prototype, release 2)",								GAME_NOT_WORKING )
-GAME( 199?,  prizeinv,  0,        bwbvid,	mpu4,     prizeinv, ROT0, "BwB",			"Prize Space Invaders (20\" v1.1)",									GAME_NOT_WORKING )
-GAME( 199?,  blox,      0,        bwbvid,	mpu4,     0,        ROT0, "BwB",			"Blox (v2.0)",														GAME_NOT_WORKING )
-GAME( 199?,  bloxd,     blox,     bwbvid,	mpu4,     0,        ROT0, "BwB",			"Blox (v2.0, Datapak)",												GAME_NOT_WORKING )
-GAME( 1996,  renoreel,  0,        bwbvid5,  mpu4,     prizeinv,	ROT0, "BwB",			"Reno Reels (20p/10GBP Cash, release A)",							GAME_NOT_WORKING )
-GAME( 199?,  redhtpkr,  0,        bwbvid,   mpu4,     0,	    ROT0, "BwB",			"Red Hot Poker (20p/10GBP Cash, release 3)",						GAME_NOT_WORKING )
-GAME( 199?,  bwbtetrs,  0,        bwbvid,   mpu4,     0,	    ROT0, "BwB",			"BwB Tetris v 2.2",													GAME_NOT_WORKING )
+
+GAME(  199?,v4vgpok,	0,			bwbvid,		mpu4,		0,			ROT0, "BwB","Vegas Poker (prototype, release 2) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4psi,		0,			bwbvid,		mpu4,		prizeinv,	ROT0, "BwB","Prize Space Invaders (v1.1) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4blox,		0,			bwbvid,		mpu4,		0,			ROT0, "BwB","Blox (v2.0) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4bloxd,	v4blox,		bwbvid,		mpu4,		0,			ROT0, "BwB","Blox (v2.0, Datapak) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  1996,v4reno,		0,			bwbvid5,	mpu4,		prizeinv,	ROT0, "BwB","Reno Reels (20p/10GBP Cash, release A) (MPU4 Video)",GAME_NOT_WORKING )
+
+
+
+GAME(  199?,v4redhtp,	0,			bwbvid,		mpu4,		0,			ROT0, "BwB","Red Hot Poker (20p/10GBP Cash, release 3) (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4tetrs,	0,			bwbvid,		mpu4,		0,			ROT0, "BwB","BwB Tetris v 2.2 (MPU4 Video)",GAME_NOT_WORKING )
+
+/* Uncertain BIOS */
+GAME(  199?,v4frfact,	v4bios,		crmaze,		crmaze,		crmaze,		ROT0, "Bwb","Fruit Factory (Bwb) (MPU4 Video)", GAME_NOT_WORKING )
+
+/*Deal 'Em was a conversion kit designed to make early MPU4 machines into video games by replacing the top glass
+and reel assembly with this kit and a supplied monitor. This explains why the cabinet switch alters lamp data and buttons.
+The original Deal 'Em ran on Summit Coin hardware, and was made by someone else.
+Two further different releases were made, running on the Barcrest MPU4 Video, rather than this one. These are Deal 'Em Again and Deal 'Em 2000*/
+
+GAME(  1987,v4dealem,	0,			dealem,		dealem,		0,			ROT0, "Zenitone","Deal 'Em (MPU4 Conversion Kit, v7.0)",GAME_IMPERFECT_GRAPHICS )
+
+/* Nova - is this the same video board? One of the games displays 'Resetting' but the others do nothing interesting and access strange addresses */
+/* All contain BwB video in the BIOS rom tho */
+GAME(  199?,v4cybcas,	0,			bwbvid5,	mpu4,		0,			ROT0, "Nova","Cyber Casino (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4miami,	0,			bwbvid5,	mpu4,		0,			ROT0, "Nova","Miami Dice (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4missis,	0,			bwbvid5,	mpu4,		0,			ROT0, "Nova","Mississippi Lady (MPU4 Video)",GAME_NOT_WORKING )
+GAME(  199?,v4picdil,	0,			bwbvid5,	mpu4,		0,			ROT0, "Nova","Piccadilly Nights (MPU4 Video)",GAME_NOT_WORKING )
+
+
