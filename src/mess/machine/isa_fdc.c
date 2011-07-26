@@ -30,8 +30,8 @@ static const floppy_interface ibmpc_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
-	FLOPPY_OPTIONS_NAME(pc),
-	NULL,
+	LEGACY_FLOPPY_OPTIONS_NAME(pc),
+	"floppy_5_25",
 	NULL
 };
 

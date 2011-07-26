@@ -419,6 +419,7 @@ mac512ke  // 1986 Apple Macintosh 512ke
 macplus   // 1986 Apple Macintosh Plus
 macse	 // 1987 Apple Macintosh SE
 macii	 // 1987 Apple Macintosh II
+maciihmu // 1987 Apple Macintosh II (w/o 68851 MMU)
 macsefd   // 1988 Apple Macintosh SE (FDHD)
 mac2fdhd  // 1988 Apple Macintosh II (FDHD)
 maciix	// 1988 Apple Macintosh IIx
@@ -426,6 +427,7 @@ macprtb   // 1989 Apple Macintosh Portable
 macse30   // 1989 Apple Macintosh SE/30
 maciicx   // 1989 Apple Macintosh IIcx
 maciici   // 1989 Apple Macintosh IIci
+maciifx     // 1990 Apple Macintosh IIfx
 macclasc  // 1990 Apple Macintosh Classic
 maclc // 1990 Apple Macintosh LC
 maciisi   // 1990 Apple Macintosh IIsi
@@ -435,9 +437,13 @@ macpb170  // 1991 Apple Macintosh PowerBook 140
 macclas2  // 1991 Apple Macintosh Classic II
 maclc2	// 1991 Apple Macintosh LC II
 macpb145  // 1992 Apple Macintosh PowerBook 145
+macpb160    // 1992 Apple Macintosh PowerBook 160
+macpb180    // 1992 Apple Macintosh PowerBook 180
 maccclas // 1993 Apple Macintosh Color Classic
 macpb145b  // 1993 Apple Macintosh PowerBook 145B
 maclc3	// 1993 Apple Macintosh LC III
+maciivx // 1993 Apple Macintosh IIvx
+maciivi // 1993 Apple Macintosh IIvi
 pmac6100  // 1994 Apple Power Macintosh 6100
 
 // Atari
@@ -629,10 +635,11 @@ ibm5550
 dgone	 // 1984 Data General/One
 pcmda	 // 1987 PC with MDA
 pcherc	 // 1987 PC with Hercules (for testing hercules)
-pc	  	 // 1987 PC with CGA
+pc		 // 1987 PC with CGA
 pcega    // 1987 PC with EGA
 bw230	// 1985 Bondwell (CGA)
 europc	// 1988 Schneider Euro PC (CGA or Hercules)
+pc7000  // 1985 Sharp PC-7000
 
 // PC Junior
 ibmpcjr   // 1984 IBM PC Jr
@@ -652,7 +659,7 @@ ppc512	// 1987 Amstrad PPC512
 ppc640	// 1987 Amstrad PPC640
 pc1512	// 1986 Amstrad PC1512 v1 (CGA compatible)
 pc1512v2  // 1986 Amstrad PC1512 v2 (CGA compatible)
-pc1512v32  // 1986 Amstrad PC1512 v3.2 (CGA compatible)
+pc1512v3  // 1986 Amstrad PC1512 v3.2 (CGA compatible)
 pc1640	// 1987 Amstrad PC1640 (EGA compatible)
 pc2086
 pc3086
@@ -687,7 +694,25 @@ ct486		// 1993? 486 with CS4031
 ficpio2	// 1995 FIC 486-PIO-2
 at586	 // 19?? AT 586
 c386sx16	// 1990 Commodore 386SX-16
+xb42663    // 1988 Apricot Qi 300 (Rev D,E & F Motherboard)
+qi600    // 1988 Apricot Qi 600 (Neptune Motherboard
+qi900    // 1990 Apricot Qi 900 (Scorpion Motherboard)
+aplanst // 1990 Apricot LANstation (Krypton Motherboard)
+ftsserv    // 1991 Apricot FTs (Scorpion)
+aplannb    // 1990 Apricot LANstation (Novell Remote Boot)
+apxeni  // 1987 Apricot XEN-i 386 (Leopard Motherboard)
+xb42639  // 1989 Apricot XEN-S (Venus I Motherboard 286) (Bios:3.10.17i)
+xb42639a // 1990 Apricot XEN-S (Venus II Motherboard 286) (Bios:1.02.17)
+xb42664  // 1989 Apricot XEN-S (Venus I Motherboard 386) (Bios:3.10.17i)
+xb42664a // 1990 Apricot XEN-S (Venus II Motherboard 386) (Bios:1.02.17)
+aplscar  // 1992 Apricot LS Pro (Caracal Motherboard)
+aplsbon  // 1992 Apricot LS Pro (Bonsai Motherboard)
 ficvt503	// 1997 FIC VT-503
+apxenls3  // 1991 Apricot XEN-LS (Venus IV Motherboard)
+apxlsam  // 1993 Apricot XEN-LS II (Samurai Motherboard)
+apvxft  // 1989 Apricot VX FT server
+apxena1 // 1993 Apricot XEN PC (A1 Motherboard)
+apxenp2 // 1993 Apricot XEN PC (P2 Motherboard)
 megapc
 megapcpl
 ec1849
@@ -1922,3 +1947,7 @@ if800
 super6
 mpz80
 poly1
+z100
+v6809
+tdv2324
+slc1

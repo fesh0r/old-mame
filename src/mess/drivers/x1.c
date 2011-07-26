@@ -1344,7 +1344,7 @@ static WRITE8_HANDLER( x1_ex_gfxram_w )
 	x1_state *state = space->machine().driver_data<x1_state>();
 	UINT8 ex_mask;
 
-	if     (offset >= 0x0000 && offset <= 0x3fff)	{ ex_mask = 7; }
+	if     (                    offset <= 0x3fff)	{ ex_mask = 7; }
 	else if(offset >= 0x4000 && offset <= 0x7fff)	{ ex_mask = 6; }
 	else if(offset >= 0x8000 && offset <= 0xbfff)	{ ex_mask = 5; }
 	else                                        	{ ex_mask = 3; }
@@ -2638,14 +2638,14 @@ static PALETTE_INIT(x1)
 		palette_set_color(machine, i,MAKE_RGB(0x00,0x00,0x00));
 }
 
-static FLOPPY_OPTIONS_START( x1 )
-	FLOPPY_OPTION( img2d, "2d", "2D disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
+static LEGACY_FLOPPY_OPTIONS_START( x1 )
+	LEGACY_FLOPPY_OPTION( img2d, "2d", "2D disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([2])
 		TRACKS([40])
 		SECTORS([16])
 		SECTOR_LENGTH([256])
 		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
+LEGACY_FLOPPY_OPTIONS_END
 
 static const floppy_interface x1_floppy_interface =
 {
@@ -2655,7 +2655,7 @@ static const floppy_interface x1_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSDD_40,
-	FLOPPY_OPTIONS_NAME(x1),
+	LEGACY_FLOPPY_OPTIONS_NAME(x1),
 	"floppy_5_25",
 	NULL
 };

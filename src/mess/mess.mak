@@ -250,7 +250,7 @@ SOUNDS += TMS5200
 #SOUNDS += TMS5100
 #SOUNDS += TMS5110A
 SOUNDS += LMC1992
-
+SOUNDS += AWACS
 
 #-------------------------------------------------
 # this is the list of driver libraries that
@@ -392,6 +392,7 @@ DRVLIBS += \
 	$(MESSOBJ)/svi.a \
 	$(MESSOBJ)/svision.a \
 	$(MESSOBJ)/synertec.a \
+	$(MESSOBJ)/tandberg.a \
 	$(MESSOBJ)/tangerin.a \
 	$(MESSOBJ)/tatung.a \
 	$(MESSOBJ)/teamconc.a \
@@ -597,8 +598,13 @@ $(MESSOBJ)/amiga.a:				\
 $(MESSOBJ)/amstrad.a:			\
 	$(MESS_DRIVERS)/amstrad.o	\
 	$(MESS_MACHINE)/amstrad.o	\
+	$(MESS_MACHINE)/cpcexp.o	\
+	$(MESS_MACHINE)/cpc_ssa1.o	\
+	$(MESS_MACHINE)/cpc_rom.o	\
 	$(MESS_DRIVERS)/amstr_pc.o	\
 	$(MESS_MACHINE)/amstr_pc.o	\
+	$(MESS_DRIVERS)/pc1512.o	\
+	$(MESS_MACHINE)/pc1512kb.o	\
 	$(MESS_VIDEO)/nc.o			\
 	$(MESS_DRIVERS)/nc.o		\
 	$(MESS_MACHINE)/nc.o		\
@@ -625,6 +631,7 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/a2cffa.o	\
 	$(MESS_MACHINE)/lisa.o		\
 	$(MESS_DRIVERS)/lisa.o		\
+    $(MESS_MACHINE)/nubus.o     \
 	$(MESS_AUDIO)/mac.o			\
 	$(MESS_VIDEO)/mac.o			\
 	$(MESS_MACHINE)/mac.o		\
@@ -733,6 +740,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/pet.o		\
 	$(MESS_DRIVERS)/c64.o		\
 	$(MESS_MACHINE)/c64exp.o	\
+	$(MESS_MACHINE)/c64_std.o	\
 	$(MESS_MACHINE)/c64_xl80.o	\
 	$(MESS_MACHINE)/interpod.o	\
 	$(MESS_DRIVERS)/vic20.o		\
@@ -1476,6 +1484,9 @@ $(MESSOBJ)/synertec.a:			\
 	$(MESS_MACHINE)/sym1.o		\
 	$(MESS_DRIVERS)/sym1.o		\
 
+$(MESSOBJ)/tandberg.a:			\
+	$(MESS_DRIVERS)/tdv2324.o	\
+
 $(MESSOBJ)/tangerin.a:			\
 	$(MESS_VIDEO)/microtan.o	\
 	$(MESS_MACHINE)/microtan.o	\
@@ -1744,6 +1755,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/sage2.o		\
 	$(MESS_DRIVERS)/savia84.o	\
 	$(MESS_DRIVERS)/selz80.o	\
+	$(MESS_DRIVERS)/slc1.o		\
 	$(MESS_DRIVERS)/super6.o	\
 	$(MESS_DRIVERS)/swtpc.o		\
 	$(MESS_DRIVERS)/sys2900.o	\
@@ -1755,10 +1767,12 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/tvc.o		\
 	$(MESS_DRIVERS)/unior.o		\
 	$(MESS_DRIVERS)/unistar.o	\
+	$(MESS_DRIVERS)/v6809.o		\
 	$(MESS_DRIVERS)/vector4.o	\
 	$(MESS_DRIVERS)/vii.o		\
 	$(MESS_DRIVERS)/vta2000.o	\
 	$(MESS_DRIVERS)/xor100.o	\
+	$(MESS_DRIVERS)/z100.o		\
 
 
 
@@ -1862,6 +1876,7 @@ $(MESS_DRIVERS)/sc2.o:		$(MESS_LAYOUT)/sc2.lh
 $(MESS_DRIVERS)/sdk85.o:	$(MESS_LAYOUT)/sdk85.lh
 $(MESS_DRIVERS)/sdk86.o:	$(MESS_LAYOUT)/sdk86.lh
 $(MESS_DRIVERS)/selz80.o:	$(MESS_LAYOUT)/selz80.lh
+$(MESS_DRIVERS)/slc1.o:		$(MESS_LAYOUT)/slc1.lh
 $(MESS_DRIVERS)/segasms.o:	$(MAME_LAYOUT)/sms1.lh
 $(MESS_DRIVERS)/stopthie.o:	$(MESS_LAYOUT)/stopthie.lh
 $(MESS_DRIVERS)/super80.o:	$(MESS_LAYOUT)/super80.lh

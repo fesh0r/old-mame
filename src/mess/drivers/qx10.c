@@ -254,7 +254,7 @@ static const floppy_interface qx10_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
-	FLOPPY_OPTIONS_NAME(default),
+	LEGACY_FLOPPY_OPTIONS_NAME(default),
 	NULL,
 	NULL
 };
@@ -296,7 +296,7 @@ static WRITE8_HANDLER(fdd_motor_w)
 static READ8_HANDLER(qx10_30_r)
 {
 	qx10_state *driver_state = space->machine().driver_data<qx10_state>();
-	floppy_image *floppy1,*floppy2;
+	floppy_image_legacy *floppy1,*floppy2;
 
 	floppy1 = flopimg_get_image(floppy_get_device(space->machine(), 0));
 	floppy2 = flopimg_get_image(floppy_get_device(space->machine(), 1));

@@ -97,13 +97,13 @@
 #define ADB_IS_BITBANG	((mac->m_model == MODEL_MAC_SE || mac->m_model == MODEL_MAC_CLASSIC) || (mac->m_model >= MODEL_MAC_II && mac->m_model <= MODEL_MAC_IICI) || (mac->m_model == MODEL_MAC_SE30))
 #define ADB_IS_BITBANG_CLASS	((m_model == MODEL_MAC_SE || m_model == MODEL_MAC_CLASSIC) || (m_model >= MODEL_MAC_II && m_model <= MODEL_MAC_IICI) || (m_model == MODEL_MAC_SE30))
 #define ADB_IS_EGRET	(mac->m_model >= MODEL_MAC_LC && mac->m_model <= MODEL_MAC_CLASSIC_II) || ((mac->m_model >= MODEL_MAC_IISI) && (mac->m_model <= MODEL_MAC_IIVI))
-#define ADB_IS_PM	((mac->m_model >= MODEL_MAC_PORTABLE && mac->m_model <= MODEL_MAC_PB100) || (mac->m_model >= MODEL_MAC_PB140 && mac->m_model <= MODEL_MAC_PB180c))
+#define ADB_IS_PM	((mac->m_model >= MODEL_MAC_PORTABLE && mac->m_model <= MODEL_MAC_PB100) || (mac->m_model >= MODEL_MAC_PB140 && mac->m_model <= MODEL_MAC_PBDUO_270c))
 #define ADB_IS_PM_VIA1	(mac->m_model >= MODEL_MAC_PORTABLE && mac->m_model <= MODEL_MAC_PB100)
-#define ADB_IS_PM_VIA2	(mac->m_model >= MODEL_MAC_PB140 && mac->m_model <= MODEL_MAC_PB180c)
-#define ADB_IS_PM_CLASS	((m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100) || (m_model >= MODEL_MAC_PB140 && m_model <= MODEL_MAC_PB180c)) 
+#define ADB_IS_PM_VIA2	(mac->m_model >= MODEL_MAC_PB140 && mac->m_model <= MODEL_MAC_PBDUO_270c)
+#define ADB_IS_PM_CLASS	((m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100) || (m_model >= MODEL_MAC_PB140 && m_model <= MODEL_MAC_PBDUO_270c))
 
 #define AUDIO_IS_CLASSIC (mac->m_model <= MODEL_MAC_CLASSIC)
-#define MAC_HAS_VIA2	(m_model >= MODEL_MAC_II)
+#define MAC_HAS_VIA2	((m_model >= MODEL_MAC_II) && (m_model != MODEL_MAC_IIFX))
 
 #define ASC_INTS_RBV	((mac->m_model >= MODEL_MAC_IICI) && (mac->m_model <= MODEL_MAC_IIVI)) || ((mac->m_model >= MODEL_MAC_LC) && (mac->m_model <= MODEL_MAC_COLOR_CLASSIC))
 
@@ -280,7 +280,7 @@ void mac_state::field_interrupts()
 			take_interrupt = 1;
 		}
 	}
-	else if (m_model < MODEL_MAC_POWERMAC_6100)
+	else if ((m_model < MODEL_MAC_POWERMAC_6100) && (m_model != MODEL_MAC_IIFX))
 	{
 		if (m_scc_interrupt)
 		{
@@ -341,26 +341,20 @@ void mac_asc_irq(device_t *device, int state)
 		if (state)
 		{
 			mac->m_rbv_regs[3] |= 0x10;	// any VIA 2 interrupt | sound interrupt
-
-			if (mac->m_rbv_ier & 0x10)	// ASC on RBV is CB1, bit 4 of IER/IFR
-			{
-				mac->m_rbv_ifr |= 0x90;
-				mac->set_via2_interrupt(1);
-			}
+			mac->rbv_recalc_irqs();
 		}
 		else
 		{
 			mac->m_rbv_regs[3] &= ~0x10;
-			mac->m_rbv_ifr &= ~0x10;
+			mac->rbv_recalc_irqs();
 		}
-
 	}
 	else if ((mac->m_model == MODEL_MAC_PORTABLE) || (mac->m_model == MODEL_MAC_PB100))
 	{
-//		m_asc_interrupt = state;
-//		mac->field_interrupts();
+//      m_asc_interrupt = state;
+//      mac->field_interrupts();
 	}
-	else if (mac->m_model >= MODEL_MAC_II)
+	else if ((mac->m_model >= MODEL_MAC_II) && (mac->m_model != MODEL_MAC_IIFX))
 	{
 		mac->m_via2->write_cb1(state^1);
 	}
@@ -419,7 +413,7 @@ void mac_state::v8_resize()
 		is_rom = FALSE;
 	}
 
-//  printf("mac_v8_resize: memory_size = %x, ctrl bits %02x (overlay %d = %s)\n", memory_size, mac->m_rbv_regs[1] & 0xe0, mac->m_overlay, is_rom ? "ROM" : "RAM");
+//  printf("mac_v8_resize: memory_size = %x, ctrl bits %02x (overlay %d = %s)\n", memory_size, m_rbv_regs[1] & 0xe0, m_overlay, is_rom ? "ROM" : "RAM");
 
 	if (is_rom)
 	{
@@ -434,7 +428,7 @@ void mac_state::v8_resize()
 		// force unmap of entire RAM region
 		space->unmap_write(0, 0x9fffff, 0x9fffff, 0);
 
-		// LC has 2 MB built-in, all other V8-style machines have 4 MB
+		// LC  2 MB built-in, all other V8-style machines have 4 MB
 		// we reserve the first 2 or 4 MB of mess_ram for the onboard,
 		// RAM above that mark is the SIMM
 		onboard_amt = ((m_model == MODEL_MAC_LC) || (m_model == MODEL_MAC_CLASSIC_II)) ? 2*1024*1024 : 4*1024*1024;
@@ -465,7 +459,7 @@ void mac_state::v8_resize()
 //          printf("mac_v8_resize: SIMM off, mobo RAM at 0 and top\n");
 
 			mac_install_memory(machine(), 0x000000, onboard_amt-1, onboard_amt, memory_data, is_rom, "bank1");
-			mac_install_memory(machine(), 0x800000, 0x9fffff, 0x200000, memory_data, is_rom, "bank3");
+			mac_install_memory(machine(), 0x900000, 0x9fffff, 0x200000, memory_data+0x100000, is_rom, "bank3");
 		}
 	}
 }
@@ -516,15 +510,19 @@ void mac_state::set_memory_overlay(int overlay)
 			}
 			else	// RAM: be careful not to populate ram B with a mirror or the ROM will get confused
 			{
-				mac_install_memory(machine(), 0x00000000, 0x03ffffff, memory_size, memory_data, is_rom, "bank1");
+				mac_install_memory(machine(), 0x00000000, memory_size-1, memory_size, memory_data, is_rom, "bank1");
 			}
 		}
-		else if ((m_model == MODEL_MAC_PORTABLE) || (m_model == MODEL_MAC_PB100))
+		else if ((m_model == MODEL_MAC_PORTABLE) || (m_model == MODEL_MAC_PB100) || (m_model == MODEL_MAC_IIVX) || (m_model == MODEL_MAC_IIFX))
 		{
+			address_space* space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+			space->unmap_write(0x000000, 0x9fffff, 0x9fffff, 0);
 			mac_install_memory(machine(), 0x000000, memory_size-1, memory_size, memory_data, is_rom, "bank1");
 		}
-		else if ((m_model == MODEL_MAC_PB140) || (m_model == MODEL_MAC_PB180c))
+		else if ((m_model == MODEL_MAC_PB140) || (m_model == MODEL_MAC_PB160) || ((m_model >= MODEL_MAC_PBDUO_210) && (m_model <= MODEL_MAC_PBDUO_270c)))
 		{
+			address_space* space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+			space->unmap_write(0x000000, 0xffffff, 0xffffff, 0);
 			mac_install_memory(machine(), 0x000000, memory_size-1, memory_size, memory_data, is_rom, "bank1");
 		}
 		else if ((m_model >= MODEL_MAC_II) && (m_model <= MODEL_MAC_SE30))
@@ -1419,6 +1417,8 @@ NVRAM_HANDLER( mac )
 		}
 		else
 		{
+			UINT8 *pram = &mac->m_rtc_ram[0];
+
 			if (LOG_RTC)
 				logerror("trashing PRAM\n");
 
@@ -1426,31 +1426,57 @@ NVRAM_HANDLER( mac )
 
 			// some Mac ROMs are buggy in the presence of
 			// no NVRAM, so let's initialize it right
-			mac->m_rtc_ram[0] = 0xa8;	// valid
-			mac->m_rtc_ram[4] = 0xcc;
-			mac->m_rtc_ram[5] = 0x0a;
-			mac->m_rtc_ram[6] = 0xcc;
-			mac->m_rtc_ram[7] = 0x0a;
-			mac->m_rtc_ram[0xc] = 0x42;	// XPRAM valid for Plus/SE
-			mac->m_rtc_ram[0xd] = 0x75;
-			mac->m_rtc_ram[0xe] = 0x67;
-			mac->m_rtc_ram[0xf] = 0x73;
-			mac->m_rtc_ram[0x10] = 0x18;
-			mac->m_rtc_ram[0x11] = 0x88;
-			mac->m_rtc_ram[0x12] = 0x01;
-			mac->m_rtc_ram[0x13] = 0x4c;
+			pram[0] = 0xa8;	// valid
+			pram[4] = 0xcc;
+			pram[5] = 0x0a;
+			pram[6] = 0xcc;
+			pram[7] = 0x0a;
+			pram[0xc] = 0x42;	// XPRAM valid for Plus/SE
+			pram[0xd] = 0x75;
+			pram[0xe] = 0x67;
+			pram[0xf] = 0x73;
+			pram[0x10] = 0x18;
+			pram[0x11] = 0x88;
+			pram[0x12] = 0x01;
+			pram[0x13] = 0x4c;
 
 			if (mac->m_model >= MODEL_MAC_II)
 			{
-				mac->m_rtc_ram[0xc] = 0x4e;	// XPRAM valid is different for these
-				mac->m_rtc_ram[0xd] = 0x75;
-				mac->m_rtc_ram[0xe] = 0x4d;
-				mac->m_rtc_ram[0xf] = 0x63;
-				mac->m_rtc_ram[0x77] = 0x01;
-				mac->m_rtc_ram[0x78] = 0xff;
-				mac->m_rtc_ram[0x79] = 0xff;
-				mac->m_rtc_ram[0x7a] = 0xff;
-				mac->m_rtc_ram[0x7b] = 0xdf;
+				pram[0xc] = 0x4e;	// XPRAM valid is different for these
+				pram[0xd] = 0x75;
+				pram[0xe] = 0x4d;
+				pram[0xf] = 0x63;
+				pram[0x77] = 0x01;
+				pram[0x78] = 0xff;
+				pram[0x79] = 0xff;
+				pram[0x7a] = 0xff;
+				pram[0x7b] = 0xdf;
+
+				if (mac->m_model == MODEL_MAC_IICI)
+				{
+					pram[0] = 0xa8;
+					pram[1] = 0x80;
+					pram[2] = 0x4f;
+					pram[3] = 0x48;
+					pram[4] = 0xcc;
+					pram[5] = 0x0a;
+					pram[6] = 0xcc;
+					pram[7] = 0x0a;
+					pram[0x10] = 0x18;
+					pram[0x11] = 0x88;
+					pram[0x12] = 0x03;
+					pram[0x13] = 0xec;
+					pram[0x57] = 0x1f;
+					pram[0x58] = 0x83;
+					pram[0x59] = 0x86;
+					pram[0x81] = 0x86;
+					pram[0x8a] = 0x05;
+					pram[0xb9] = 0xb0;
+					pram[0xf1] = 0x01;
+					pram[0xf3] = 0x02;
+					pram[0xf9] = 0x01;
+					pram[0xfb] = 0x8e;
+				}
 			}
 		}
 
@@ -2085,7 +2111,7 @@ static void pmu_exec(mac_state *mac)
 	mac->m_pm_slen = 0;	// and send length
 	mac->m_pm_dptr = 0;	// and recieve pointer
 
-//	printf("PMU: Command %02x\n", mac->m_pm_cmd[0]);
+	printf("PMU: Command %02x\n", mac->m_pm_cmd[0]);
 	switch (mac->m_pm_cmd[0])
 	{
 		case 0x10:	// subsystem power and clock ctrl
@@ -2093,7 +2119,7 @@ static void pmu_exec(mac_state *mac)
 
 		case 0x20:	// send ADB command (PMU must issue an IRQ on completion)
 			#if 0
-			printf("PMU: Send ADB %02x %02x cmd %02x flag %02x data %02x\n", 
+			printf("PMU: Send ADB %02x %02x cmd %02x flag %02x data %02x\n",
 				   mac->m_pm_cmd[0],
 				   mac->m_pm_cmd[1],
 				   mac->m_pm_cmd[2],
@@ -2103,7 +2129,7 @@ static void pmu_exec(mac_state *mac)
 
 			if (((mac->m_pm_cmd[2] == 0xfc) || (mac->m_pm_cmd[2] == 0x2c)) && (mac->m_pm_cmd[3] == 4))
 			{
-//				printf("PMU: request to poll ADB, returning nothing\n");
+//              printf("PMU: request to poll ADB, returning nothing\n");
 				mac->m_pm_slen = 0;
 				mac->m_pmu_int_status = 0;
 			}
@@ -2224,8 +2250,14 @@ static void pmu_exec(mac_state *mac)
 		case 0x40:  // set screen contrast
 			break;
 
+		case 0x41:
+			break;
+
 		case 0x58:	// read internal modem status
 			pmu_one_byte_reply(mac, 0);
+			break;
+
+		case 0x60:	// set low power warning and cutoff battery levels
 			break;
 
 		case 0x68:	// read battery/charger level
@@ -2236,6 +2268,20 @@ static void pmu_exec(mac_state *mac)
 			pmu_three_byte_reply(mac, 255, 255, 255);
 			break;
 
+		case 0x6b:	// read extended battery/charger level and status (wants an 8 byte reply)
+			mac->m_pm_out[0] = mac->m_pm_out[1] = 8;	// length
+			mac->m_pm_out[2] = 255;
+			mac->m_pm_out[3] = 255;
+			mac->m_pm_out[4] = 255;
+			mac->m_pm_out[5] = 255;
+			mac->m_pm_out[6] = 255;
+			mac->m_pm_out[7] = 255;
+			mac->m_pm_out[8] = 255;
+			mac->m_pm_out[9] = 255;
+			mac->m_pm_slen = 10;
+			mac->m_pmu_send_timer->adjust(attotime(0, ATTOSECONDS_IN_USEC(200)));
+			break;
+
 		case 0x78:	// read interrupt flag
 			if (ADB_IS_PM_VIA2)	// PB 140/170 use a "leaner" PMU protocol where you get the data for a PMU interrupt here
 			{
@@ -2243,7 +2289,7 @@ static void pmu_exec(mac_state *mac)
 				{
 					mac->m_pm_out[0] = mac->m_pm_out[1] = 2;
 					mac->m_pm_out[2] = mac->m_pmu_int_status; // ADB status in low nibble
-					mac->m_pm_out[3] = mac->m_pmu_last_adb_command;	  	  // ADB command that was sent OR 0x80 for extra error-ness
+					mac->m_pm_out[3] = mac->m_pmu_last_adb_command;		  // ADB command that was sent OR 0x80 for extra error-ness
 					mac->m_pm_out[4] = 0;							  // return data
 					mac->m_pm_slen = 4;
 					mac->m_pmu_send_timer->adjust(attotime(0, ATTOSECONDS_IN_USEC(1500)));
@@ -2280,7 +2326,7 @@ static void pmu_exec(mac_state *mac)
 				int i;
 
 				mac->m_pm_out[0] = mac->m_pm_out[1] = mac->m_pm_cmd[4];
-//				printf("PMU read at %x\n", mac->m_pm_cmd[2] | (mac->m_pm_cmd[3]<<8));
+//              printf("PMU read at %x\n", mac->m_pm_cmd[2] | (mac->m_pm_cmd[3]<<8));
 
 				// note: read at 0xEE00 0 = target disk mode, 0xff = normal bootup
 
@@ -2475,6 +2521,7 @@ static READ8_DEVICE_HANDLER(mac_via_in_a)
 
 		case MODEL_MAC_LC:		// apollo board is 0x38, box 0x11 (17), vid hw 0x21
 		case MODEL_MAC_LC_II:
+		case MODEL_MAC_IIVX:
 			return 0x81 | PA6 | PA4 | PA2;
 
 		case MODEL_MAC_IICI:
@@ -2484,12 +2531,13 @@ static READ8_DEVICE_HANDLER(mac_via_in_a)
 			return 0x81 | PA4 | PA2 | PA1;
 
 		case MODEL_MAC_IIFX:
-			return 0x81 | PA6 | PA1;
+			return 0x81 | PA6 | PA4 | PA1;
 
 		case MODEL_MAC_IICX:
 			return 0x81 | PA6;
 
-		case MODEL_MAC_PB140:	// since the ASICs are different, these are allowed to "collide" 
+		case MODEL_MAC_PB140:	// since the ASICs are different, these are allowed to "collide"
+		case MODEL_MAC_PB160:
 		case MODEL_MAC_CLASSIC_II:
 		case MODEL_MAC_QUADRA_800:
 			return 0x81 | PA4 | PA1;
@@ -2776,7 +2824,7 @@ READ16_MEMBER ( mac_state::mac_via2_r )
 
 	data = m_via2->read(space, offset);
 
-//  if (LOG_VIA)
+  if (LOG_VIA)
 		logerror("mac_via2_r: offset=0x%02x = %02x (PC=%x)\n", offset*2, data, cpu_get_pc(space.machine().device("maincpu")));
 
 	return (data & 0xff) | (data << 8);
@@ -2787,7 +2835,7 @@ WRITE16_MEMBER ( mac_state::mac_via2_w )
 	offset >>= 8;
 	offset &= 0x0f;
 
-//  if (LOG_VIA)
+  if (LOG_VIA)
 		logerror("mac_via2_w: offset=%x data=0x%08x (PC=%x)\n", offset, data, cpu_get_pc(space.machine().device("maincpu")));
 
 	if (ACCESSING_BITS_8_15)
@@ -2835,7 +2883,7 @@ static READ8_DEVICE_HANDLER(mac_via2_in_b)
 		return 0x4f;
 	}
 
-	if (mac->m_model == MODEL_MAC_SE30)
+	if ((mac->m_model == MODEL_MAC_SE30) || (mac->m_model == MODEL_MAC_IIX))
 	{
 		return 0x87;	// bits 3 and 6 are tied low on SE/30
 	}
@@ -2972,13 +3020,20 @@ void mac_state::machine_reset()
 	// stop 60.15 Hz timer
 	m_6015_timer->adjust(attotime::never);
 
+	m_rbv_vbltime = 0;
+
+	if (m_model >= MODEL_MAC_POWERMAC_6100 && m_model <= MODEL_MAC_POWERMAC_8100)
+	{
+		m_awacs->set_dma_base(m_maincpu->memory().space(AS_PROGRAM), 0x10000, 0x12000);
+	}
+
 	// start 60.15 Hz timer for most systems
 	if (((m_model >= MODEL_MAC_IICI) && (m_model <= MODEL_MAC_IIVI)) || (m_model >= MODEL_MAC_LC))
 	{
 		m_6015_timer->adjust(attotime::from_hz(60.15), 0, attotime::from_hz(60.15));
 	}
 
-	// we use the CPU clock divided by the VIA clock (783360 Hz) rounded up as 
+	// we use the CPU clock divided by the VIA clock (783360 Hz) rounded up as
 	// an approximation for the right number of wait states.  this yields good
 	// results - it's towards the end of the worst-case delay on h/w.
 	switch (m_maincpu->clock())
@@ -2988,19 +3043,35 @@ void mac_state::machine_reset()
 			break;
 
 		case 7833600*2:	// "16 MHz" Macs
-			m_via_cycles = -20;
+			m_via_cycles = -30;
 			break;
 
 		case 20000000:	// 20 MHz Macs
-			m_via_cycles = -25;
+			m_via_cycles = -40;
 			break;
 
 		case 25000000:	// 25 MHz Macs
-			m_via_cycles = -32;
+			m_via_cycles = -50;
 			break;
 
-		case 7833600*4:	// "33 MHz" Macs (are these C7M*4 or true 33 MHz?)
-			m_via_cycles = -40;
+		case 7833600*4:	// 32 MHz Macs (these are C7M * 4 like IIvx)
+			m_via_cycles = -60;
+			break;
+
+		case 33000000:	// 33 MHz Macs ('040s)
+			m_via_cycles = -64;
+			break;
+
+		case 40000000:	// 40 MHz Macs
+			m_via_cycles = -80;
+			break;
+
+		case 60000000:	// 60 MHz PowerMac
+			m_via_cycles = -120;
+			break;
+
+		case 66000000:	// 66 MHz PowerMac
+			m_via_cycles = -128;
 			break;
 
 		default:
@@ -3096,8 +3167,11 @@ static void mac_state_load(mac_state *mac)
 {
 	int overlay;
 	overlay = mac->m_overlay;
-	mac->m_overlay = -1;
-	mac->set_memory_overlay(overlay);
+	if (mac->m_model < MODEL_MAC_POWERMAC_6100)	// no overlay for PowerPC
+	{
+		mac->m_overlay = -1;
+		mac->set_memory_overlay(overlay);
+	}
 }
 
 
@@ -3159,13 +3233,16 @@ static void mac_driver_init(running_machine &machine, model_t model)
 	}
 
 	mac->m_overlay = -1;
-	mac->set_memory_overlay(1);
+	if (mac->m_model < MODEL_MAC_POWERMAC_6100)	// no overlay for PowerPC
+	{
+		mac->set_memory_overlay(1);
+	}
 
 	memset(ram_get_ptr(mac->m_ram), 0, ram_get_size(mac->m_ram));
 
 	if ((model == MODEL_MAC_SE) || (model == MODEL_MAC_CLASSIC) || (model == MODEL_MAC_CLASSIC_II) || (model == MODEL_MAC_LC) ||
 	    (model == MODEL_MAC_LC_II) || (model == MODEL_MAC_LC_III) || (model == MODEL_MAC_LC_III_PLUS) || ((mac->m_model >= MODEL_MAC_II) && (mac->m_model <= MODEL_MAC_SE30)) ||
-	    (model == MODEL_MAC_PORTABLE) || (model == MODEL_MAC_PB100) || (model == MODEL_MAC_PB140))
+	    (model == MODEL_MAC_PORTABLE) || (model == MODEL_MAC_PB100) || (model == MODEL_MAC_PB140) || (model == MODEL_MAC_PB160) || (model == MODEL_MAC_PBDUO_210))
 	{
 		machine.device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(overlay_opbaseoverride), &machine));
 	}
@@ -3207,6 +3284,9 @@ MAC_DRIVER_INIT(macprtb, MODEL_MAC_PORTABLE)
 MAC_DRIVER_INIT(macpb100, MODEL_MAC_PB100)
 MAC_DRIVER_INIT(macpb140, MODEL_MAC_PB140)
 MAC_DRIVER_INIT(macpb160, MODEL_MAC_PB160)
+MAC_DRIVER_INIT(maciivx, MODEL_MAC_IIVX)
+MAC_DRIVER_INIT(maciifx, MODEL_MAC_IIFX)
+MAC_DRIVER_INIT(macpbduo210, MODEL_MAC_PBDUO_210)
 
 // make the appletalk init fail instead of hanging on the II FDHD/IIx/IIcx/SE30 ROM
 static void patch_appletalk_iix(running_machine &machine)
@@ -3252,19 +3332,22 @@ void mac_state::nubus_slot_interrupt(UINT8 slot, UINT32 state)
 		mac->m_nubus_irq_state |= masks[slot];
 	}
 
-	if ((mac->m_nubus_irq_state & 0x3f) != 0x3f)
+	if (mac->m_model != MODEL_MAC_IIFX)
 	{
-		// HACK: sometimes we miss an ack (possible misbehavior in the VIA?)
-		if (m_via2->read_ca1() == 0)
+		if ((mac->m_nubus_irq_state & 0x3f) != 0x3f)
+		{
+			// HACK: sometimes we miss an ack (possible misbehavior in the VIA?)
+			if (m_via2->read_ca1() == 0)
+			{
+				m_via2->write_ca1(1);
+			}
+
+			m_via2->write_ca1(0);
+		}
+		else
 		{
 			m_via2->write_ca1(1);
 		}
-
-		m_via2->write_ca1(0);
-	}
-	else
-	{
-		m_via2->write_ca1(1);
 	}
 }
 
@@ -3333,6 +3416,17 @@ static TIMER_CALLBACK(mac_scanline_tick)
 		mac_sh_updatebuffer(machine.device("custom"));
 	}
 
+	if (mac->m_rbv_vbltime > 0)
+	{
+		mac->m_rbv_vbltime--;
+
+		if (mac->m_rbv_vbltime == 0)
+		{
+			mac->m_rbv_regs[2] |= 0x40;
+			mac->rbv_recalc_irqs();
+		}
+	}
+
 	scanline = machine.primary_screen->vpos();
 	if (scanline == MAC_V_VIS)
 		mac->vblank_irq();
@@ -3347,7 +3441,35 @@ static TIMER_CALLBACK(mac_scanline_tick)
 	mac->m_scanline_timer->adjust(machine.primary_screen->time_until_pos((scanline+1) % MAC_V_TOTAL, 0));
 }
 
+WRITE_LINE_MEMBER(mac_state::nubus_irq_9_w)
+{
+	nubus_slot_interrupt(9, state);
+}
 
+WRITE_LINE_MEMBER(mac_state::nubus_irq_a_w)
+{
+	nubus_slot_interrupt(0xa, state);
+}
+
+WRITE_LINE_MEMBER(mac_state::nubus_irq_b_w)
+{
+	nubus_slot_interrupt(0xb, state);
+}
+
+WRITE_LINE_MEMBER(mac_state::nubus_irq_c_w)
+{
+	nubus_slot_interrupt(0xc, state);
+}
+
+WRITE_LINE_MEMBER(mac_state::nubus_irq_d_w)
+{
+	nubus_slot_interrupt(0xd, state);
+}
+
+WRITE_LINE_MEMBER(mac_state::nubus_irq_e_w)
+{
+	nubus_slot_interrupt(0xe, state);
+}
 
 /* *************************************************************************
  * Trap Tracing

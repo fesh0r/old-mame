@@ -134,7 +134,7 @@ static SCREEN_UPDATE( smc777 )
 			int color = attr[count] & 7;
 			int bk_color = (attr[count] & 0x18) >> 3;
 			int blink = attr[count] & 0x40;
-			int yi,xi;
+			int xi;
 			int bk_pen;
 			//int bk_struct[4] = { -1, 0x10, 0x11, (color & 7) ^ 8 };
 
@@ -312,7 +312,7 @@ static WRITE8_HANDLER( smc777_fbuf_w )
 static void check_floppy_inserted(running_machine &machine)
 {
 	int f_num;
-	floppy_image *floppy;
+	floppy_image_legacy *floppy;
 
 	/* check if a floppy is there, automatically disconnect the ready line if so (HW doesn't control the ready line) */
 	/* FIXME: floppy drive 1 doesn't work? */
@@ -1010,14 +1010,14 @@ static const wd17xx_interface smc777_mb8876_interface =
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
-static FLOPPY_OPTIONS_START( smc777 )
-	FLOPPY_OPTION( img, "img", "SMC70 disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
+static LEGACY_FLOPPY_OPTIONS_START( smc777 )
+	LEGACY_FLOPPY_OPTION( img, "img", "SMC70 disk image", basicdsk_identify_default, basicdsk_construct_default, NULL,
 		HEADS([1])
 		TRACKS([70])
 		SECTORS([16])
 		SECTOR_LENGTH([256])
 		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
+LEGACY_FLOPPY_OPTIONS_END
 
 static const floppy_interface smc777_floppy_interface =
 {
@@ -1027,7 +1027,7 @@ static const floppy_interface smc777_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_SSDD,
-	FLOPPY_OPTIONS_NAME(smc777),
+	LEGACY_FLOPPY_OPTIONS_NAME(smc777),
 	"floppy_5_25",
 	NULL
 };

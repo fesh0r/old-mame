@@ -64,12 +64,12 @@ const device_type COMX_CLM = &device_creator<comx_clm_device>;
 
 ROM_START( comx_clm )
 	ROM_REGION( 0x2000, "c000", 0 )
-	ROM_LOAD( "p 1.0.cl1",				0x0000, 0x0800, CRC(b417d30a) SHA1(d428b0467945ecb9aec884211d0f4b1d8d56d738) ) // V1.0
-	ROM_LOAD( "p 1.1.cl1",				0x0000, 0x0800, CRC(0a2eaf19) SHA1(3f1f640caef964fb47aaa147cab6d215c2b30e9d) ) // V1.1
+	ROM_LOAD( "p 1.0.cl1", 0x0000, 0x0800, CRC(b417d30a) SHA1(d428b0467945ecb9aec884211d0f4b1d8d56d738) ) // V1.0
+	ROM_LOAD( "p 1.1.cl1", 0x0000, 0x0800, CRC(0a2eaf19) SHA1(3f1f640caef964fb47aaa147cab6d215c2b30e9d) ) // V1.1
 
 	ROM_REGION( 0x800, MC6845_TAG, 0 )
-	ROM_LOAD( "c 1.0.cl4",				0x0000, 0x0800, CRC(69dd7b07) SHA1(71d368adbb299103d165eab8359a97769e463e26) ) // V1.0
-	ROM_LOAD( "c 1.1.cl4",				0x0000, 0x0800, CRC(dc9b5046) SHA1(4e041cec03dda6dba5e2598d060c49908a4fab2a) ) // V1.1
+	ROM_LOAD( "c 1.0.cl4", 0x0000, 0x0800, CRC(69dd7b07) SHA1(71d368adbb299103d165eab8359a97769e463e26) ) // V1.0
+	ROM_LOAD( "c 1.1.cl4", 0x0000, 0x0800, CRC(dc9b5046) SHA1(4e041cec03dda6dba5e2598d060c49908a4fab2a) ) // V1.1
 ROM_END
 
 
@@ -124,6 +124,10 @@ WRITE_LINE_MEMBER( comx_clm_device::hsync_w )
 	{
 		m_slot->ef4_w(state);
 	}
+	else
+	{
+		m_slot->ef4_w(CLEAR_LINE);
+	}
 }
 
 static const mc6845_interface crtc_intf =
@@ -161,7 +165,7 @@ static MACHINE_CONFIG_FRAGMENT( comx_clm )
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 24*8-1)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_REFRESH_RATE(50)
-	
+
 	//MCFG_GFXDECODE(comx_clm)
 
 	MCFG_MC6845_ADD(MC6845_TAG, MC6845, XTAL_14_31818MHz, crtc_intf)
@@ -244,7 +248,7 @@ UINT8 comx_clm_device::comx_mrd_r(offs_t offset, int *extrom)
 	address_space *space = machine().firstcpu->memory().space(AS_PROGRAM);
 
 	UINT8 data = 0xff;
-	
+
 	if (offset >= 0xc000 && offset < 0xc800)
 	{
 		data = m_rom[offset & 0x7ff];
@@ -257,7 +261,7 @@ UINT8 comx_clm_device::comx_mrd_r(offs_t offset, int *extrom)
 	{
 		data = m_crtc->register_r(*space, 0);
 	}
-	
+
 	return data;
 }
 
@@ -269,7 +273,7 @@ UINT8 comx_clm_device::comx_mrd_r(offs_t offset, int *extrom)
 void comx_clm_device::comx_mwr_w(offs_t offset, UINT8 data)
 {
 	address_space *space = machine().firstcpu->memory().space(AS_PROGRAM);
-	
+
 	if (offset >= 0xd000 && offset < 0xd800)
 	{
 		m_video_ram[offset & 0x7ff] = data;

@@ -1167,7 +1167,7 @@ static void soundmux_update(running_machine &machine)
 		new_state = CASSETTE_SPEAKER_MUTED;
 		break;
 	}
-	
+
 	cococart_device(machine)->cart_set_line(
 		COCOCART_LINE_SOUND_ENABLE,
 		(soundmux_status == (SOUNDMUX_STATUS_ENABLE|SOUNDMUX_STATUS_SEL2)
@@ -1379,7 +1379,7 @@ static UINT8 coco_update_keyboard( running_machine &machine )
 			if ((dac >> 2) <= dclg_table[(joystick_axis ? state->m_dclg_output_h : state->m_dclg_output_v) & 0x03])
 				porta |= 0x80;
 
-			if ((state->m_dclg_state == 7))
+			if (state->m_dclg_state == 7)
 			{
 				/* While in state 7, prepare to chech next video frame for a hit */
 				dclg_time = machine.primary_screen->time_until_pos(input_port_read_safe(machine, portnames[joystick][ctrl][1], 0), 0);
@@ -2083,9 +2083,9 @@ static void setup_memory_map(running_machine &machine)
 			/* If we are in the BASIC rom area $8000-$BFFF, then we map to the bas_rom_bank */
 			/* as this may be in a different block of coco_rom, in the Dragon 64 and Alpha */
 			/* as these machines have mutiple bios roms that can ocupy this area */
-			if (block_index < 4) 
+			if (block_index < 4)
 				offset = &state->m_bas_rom_bank[0x1000*block_index];
-			else {					
+			else {
 				if (cart_rom) {
 					offset = &cart_rom[(0x1000*(block_index-4)) % 0x4000];
 				} else {
@@ -2735,7 +2735,7 @@ WRITE_LINE_DEVICE_HANDLER(coco_cart_w)
 -------------------------------------------------*/
 
 WRITE_LINE_DEVICE_HANDLER(coco3_cart_w)
-{	
+{
 	coco3_raise_interrupt(device->machine(), COCO3_INT_EI0, state ? ASSERT_LINE : CLEAR_LINE);
 	coco_cart_w(device, state);
 }
@@ -3215,7 +3215,7 @@ static offs_t coco_dasm_override(device_t &device, char *buffer, offs_t pc, cons
 	if ((oprom[0] == 0x10) && (oprom[1] == 0x3F))
 	{
 		call = oprom[2];
-		if ((call >= 0) && (call < ARRAY_LENGTH(os9syscalls)) && os9syscalls[call])
+		if ((call < ARRAY_LENGTH(os9syscalls)) && os9syscalls[call])
 		{
 			sprintf(buffer, "OS9   %s", os9syscalls[call]);
 			result = 3;

@@ -23,7 +23,7 @@
 
     TODO:
 
-    - cannot boot from floppy because terminal does not support CTRL modifier key (CTRL-C)
+    - cannot boot from floppy (at prompt press ^C, wait, it says 'Drive not ready')
     - honor jumper settings
     - CTC signal header
     - serial printer
@@ -568,7 +568,7 @@ static const floppy_interface xor100_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSDD,
-	FLOPPY_OPTIONS_NAME(default),
+	LEGACY_FLOPPY_OPTIONS_NAME(default),
 	NULL,
 	NULL
 };
@@ -609,5 +609,5 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY                 FULLNAME        FLAGS */
-COMP( 1980, xor100,		0,		0,		xor100,		xor100,		0,		"Xor Data Science",		"XOR S-100-12",	GAME_SUPPORTS_SAVE | GAME_NO_SOUND)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY                 FULLNAME        FLAGS */
+COMP( 1980, xor100, 0,      0,      xor100,     xor100,     0,   "Xor Data Science",     "XOR S-100-12", GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW)

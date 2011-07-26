@@ -588,7 +588,8 @@ static void upd765_setup_execution_phase_read(device_t *device, char *ptr, int s
 {
 	upd765_t *fdc = get_safe_token(device);
 
-	fdc->FDC_main &= ~0x040;                     /* FDC->CPU */
+//  fdc->FDC_main &= ~0x040;                     /* FDC->CPU */
+	fdc->FDC_main |= 0x040;                      /* FDC->CPU */
 
 	fdc->upd765_transfer_bytes_count = 0;
 	fdc->upd765_transfer_bytes_remaining = size;
@@ -1264,7 +1265,7 @@ static int upd765_sector_count_complete(device_t *device)
 	else
 	{
 		/* sector id == EOT? */
-		if ((fdc->upd765_command_bytes[4]==fdc->upd765_command_bytes[6]))
+		if (fdc->upd765_command_bytes[4]==fdc->upd765_command_bytes[6])
 		{
 
 			/* completed */
@@ -2271,7 +2272,7 @@ void upd765_reset(device_t *device, int offset)
 	fdc->upd765_flags |= UPD765_DMA_MODE;
 
 	/* if ready input is set during reset generate an int */
-	if (fdc->upd765_flags & UPD765_FDD_READY)
+	if (upd765_get_rdy(device))
 	{
 		int i;
 		int a_drive_is_ready;
@@ -2279,7 +2280,7 @@ void upd765_reset(device_t *device, int offset)
 		fdc->upd765_status[0] = 0x080 | 0x040;
 
 		/* for the purpose of pc-xt. If any of the drives have a disk inserted,
-        do not set not-ready - need to check with pc_fdc->c whether all drives
+        do not set not-ready - need to check with pc_fdc.c whether all drives
         are checked or only the drive selected with the drive select bits?? */
 
 		a_drive_is_ready = 0;

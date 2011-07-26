@@ -556,7 +556,7 @@ long myo;
 //      return space->machine().region("user1")->base()[offset+0x43c00];
 //  };
 
-	if ((offset>=0x000) && (offset<=0x0ff)) /* FRED */
+	if (offset<=0x0ff) /* FRED */
 	{
 		return 0xff;
 	};
@@ -1440,7 +1440,6 @@ static READ8_HANDLER( bbc_i8271_read )
 {
 	int ret;
 	device_t *i8271 = space->machine().device("i8271");
-	ret=0x0ff;
 	logerror("i8271 read %d  ",offset);
 	switch (offset)
 	{
@@ -1451,16 +1450,17 @@ static READ8_HANDLER( bbc_i8271_read )
 			/* 8271 registers */
 			ret=i8271_r(i8271, offset);
 			logerror("  %d\n",ret);
-			return ret;
+			break;
 		case 4:
 			ret=i8271_data_r(i8271, offset);
 			logerror("  %d\n",ret);
-			return ret;
+			break;
 		default:
+			ret=0x0ff;
 			break;
 	}
 	logerror("  void\n");
-	return 0x0ff;
+	return ret;
 }
 
 static WRITE8_HANDLER( bbc_i8271_write )

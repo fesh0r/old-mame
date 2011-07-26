@@ -660,7 +660,7 @@ static const floppy_interface ibmpc_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
-	FLOPPY_OPTIONS_NAME(pc),
+	LEGACY_FLOPPY_OPTIONS_NAME(pc),
 	NULL,
 	NULL
 };
@@ -1591,7 +1591,7 @@ ROM_END
 ROM_START( t1000tl2 )
 	ROM_REGION(0x100000, "maincpu", 0)
 	ROM_LOAD( "t10000tl2.bin", 0xf0000, 0x10000, CRC(e288f12c) SHA1(9d54ccf773cd7202c9906323f1b5a68b1b3a3a67))
-	
+
 		ROM_REGION(0x08000,"gfx1", 0)
 	// expects 8x9 charset!
 	/* Character rom located at U3 w/label "8079027 // NCR // 609-2495004 // F841030 A9025" */
@@ -1805,6 +1805,16 @@ ROM_START( ibm5550 )
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, BAD_DUMP CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
 ROM_END
 
+ROM_START( pc7000 )
+    ROM_REGION16_LE(0x100000,"maincpu", 0)
+    ROMX_LOAD( "mitsubishi-m5l27128k-1.bin", 0xf8000, 0x4000, CRC(9683957f) SHA1(4569eab6d88eb1bba0d553d1358e593c326978aa), ROM_SKIP(1))
+    ROMX_LOAD( "mitsubishi-m5l27128k-2.bin", 0xf8001, 0x4000, CRC(99b229a4) SHA1(5800c8bafed26873d8cfcc79a05f93a780a31c91), ROM_SKIP(1))
+
+	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
+ROM_END
+
 /***************************************************************************
 
   Game driver(s)
@@ -1825,7 +1835,7 @@ COMP(  1987,	t1000hx,    ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Rad
 COMP(  1987,	t1000sx,    ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 SX", GAME_NOT_WORKING)
 COMP(  1987,	t1000tx,    ibm5150,	0,	t1000_286,  tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 TX", 0)
 COMP(  1989,	t1000rl,    ibm5150,	0,	t1000_16,   tandy1t,    t1000hx,    "Tandy Radio Shack",  "Tandy 1000 RL", 0)
-COMP ( 1989,	t1000tl2, 	ibm5150,	 0, t1000_286,	tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 TL/2", 0)
+COMP ( 1989,	t1000tl2,	ibm5150,	 0, t1000_286,	tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000 TL/2", 0)
 
 COMP ( 1989,	iskr1031,   ibm5150,	0,	iskr1031,	pccga,	pccga,	"<unknown>",  "Iskra-1031" , GAME_NOT_WORKING)
 COMP ( 1989,	iskr1030m,  ibm5150,	0,	iskr1031,	pccga,	pccga,	"<unknown>",  "Iskra-1030M" , GAME_NOT_WORKING)
@@ -1844,3 +1854,5 @@ COMP ( 1983,	m24,        ibm5150,	0,	olivetti,	pccga,	pccga,	"Olivetti",  "M24" 
 COMP ( 1987,	m240,       ibm5150,	0,	olivetti,	pccga,	pccga,	"Olivetti",  "M240" , GAME_NOT_WORKING)
 
 COMP ( 1983,	ibm5550,    ibm5150,	0,	ibm5550,	pccga,	pccga,	"IBM",  "5550" , GAME_NOT_WORKING)
+
+COMP(  1985,	pc7000,      ibm5150,	0,	pccga,  	pccga,		pccga,	"Sharp",  "PC-7000" , GAME_NOT_WORKING)
