@@ -70,6 +70,7 @@
 #include "winutf8.h"
 #include "winutil.h"
 #include "debugger.h"
+#include "winfile.h"
 
 #define DEBUG_SLOW_LOCKS	0
 
@@ -552,7 +553,8 @@ static void winui_output_error(void *param, const char *format, va_list argptr)
 
 static void output_oslog(running_machine &machine, const char *buffer)
 {
-	win_output_debug_string_utf8(buffer);
+	if (IsDebuggerPresent())
+		win_output_debug_string_utf8(buffer);
 }
 
 
@@ -640,8 +642,10 @@ void windows_osd_interface::init(running_machine &machine)
 	astring tempstring;
 	for (win_window_info *info = win_window_list; info != NULL; info = info->next)
 	{
-		tempstring.printf("Orientation(%s)", utf8_from_tstring(info->monitor->info.szDevice));
+		char *tmp = utf8_from_tstring(info->monitor->info.szDevice);
+		tempstring.printf("Orientation(%s)", tmp);
 		output_set_value(tempstring, info->targetorient);
+		osd_free(tmp);
 	}
 
 	// hook up the debugger log
@@ -677,6 +681,9 @@ void windows_osd_interface::init(running_machine &machine)
 		profiler->start();
 	}
 
+	// initialize sockets
+	win_init_sockets();
+
 	// note the existence of a machine
 	g_current_machine = &machine;
 }
@@ -690,6 +697,9 @@ void windows_osd_interface::osd_exit(running_machine &machine)
 {
 	// no longer have a machine
 	g_current_machine = NULL;
+
+	// cleanup sockets
+	win_cleanup_sockets();
 
 	// take down the watchdog thread if it exists
 	if (watchdog_thread != NULL)
