@@ -885,7 +885,18 @@ ROM_START( cashcade )
 ROM_END
 
 
+
+
 /* Non-video */
+
+
+ROM_START( j5goldbr )
+	ROM_REGION( 0x300000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "jpmgoldenbars1.1.bin", 0x000000, 0x008000, CRC(45f91660) SHA1(1c6bc864e56c8c6ea61ebb5e181ad736aeab06cf) )
+	ROM_LOAD16_BYTE( "jpmgoldenbars1.2.bin", 0x000001, 0x008000, CRC(eb6595f0) SHA1(2b0aabb50a1d1f88249b733faf02194c0181f999) )
+	ROM_LOAD16_BYTE( "jpmgoldenbars1.3.bin", 0x020000, 0x008000, CRC(01c7dcfb) SHA1(9f00a14df5b2ea13d2bd4f3ff1ab5ee65d464709) )
+	ROM_LOAD16_BYTE( "jpmgoldenbars1.4.bin", 0x020001, 0x008000, CRC(88bf0d26) SHA1(ecbfa69ffde42dc4464f39fc641c98a8485e0218) )
+ROM_END
 
 ROM_START( j5fifth )
 	ROM_REGION( 0x300000, "maincpu", 0 )
@@ -2047,6 +2058,35 @@ ROM_START( j5movie )
 	ROM_LOAD( "mmsnd.bin", 0x0000, 0x040000, CRC(87ca1d90) SHA1(e94826ec6a3f8aa5955965af56f50ddfa087dc72) )
 ROM_END
 
+ROM_START( j5nudfic )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "nudge_fiction_alt_p1.bin", 0x0000, 0x010000, CRC(4ffc3d35) SHA1(50cce1719f1354798feb4a4fad184234d29a5f20) )
+	ROM_LOAD16_BYTE( "nudge_fiction_alt_p2.bin", 0x0001, 0x010000, CRC(c9854c0b) SHA1(7aee21ee2de5ddd74a99fc6dc176912eac6a8dd6) )
+ROM_END
+
+ROM_START( j5revo )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "revolver_5p_p1.bin", 0x00000, 0x010000, CRC(306274fd) SHA1(a43fc1d4d454e75d11bc1e1823cebc013523124c) )
+	ROM_LOAD16_BYTE( "revolver_5p_p2.bin", 0x00001, 0x010000, CRC(cb6feb77) SHA1(2e4be15366d94d01585232ce60e89e46fbad1bf0) )
+ROM_END
+
+ROM_START( j5revoa )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "revolver_v1_p1.bin", 0x00000, 0x010000, CRC(f7b819cf) SHA1(dd08972dd6c51505adec44f1bc56195315594900) )
+	ROM_LOAD16_BYTE( "revolver_v1_p2.bin", 0x00001, 0x010000, CRC(dabb1dfc) SHA1(94153fabd5fd2c2546e8b54bcc43131ebd886ed4) )
+ROM_END
+
+
+
+ROM_START( j5sizl )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "sizzling_s_1a1.bin", 0x00000, 0x008000, CRC(f28a0167) SHA1(ef09b24e65583e1cd6502afd244958bf567e6e4c) )
+	ROM_LOAD16_BYTE( "sizzling_s_1a2.bin", 0x00001, 0x008000, CRC(336f380f) SHA1(f7c8aa1afaeb4dc49f02bcff21667f9065955dcd) )
+	ROM_LOAD16_BYTE( "sizzling_s_1a3.bin", 0x10000, 0x008000, CRC(efbb7a18) SHA1(dcaf966b9383542addafe4d6c86bd9e57b48f623) )
+	ROM_LOAD16_BYTE( "sizzling_s_1a4.bin", 0x10001, 0x008000, CRC(acb7c535) SHA1(78a1fbc05f26be1cb85ed4a75d0fe91f86776557) )
+ROM_END
+
+
 
 /* Video based titles */
 GAME( 1994, monopoly	, 0			, jpmsys5v, monopoly, 0, ROT0, "JPM", "Monopoly (Jpm) (SYSTEM5 VIDEO)",         0 )
@@ -2106,6 +2146,7 @@ GAME( 199?, j5firebl	, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Fireball (Jpm) (S
 GAME( 199?, j5firebla	, j5firebl	, jpmsys5, popeye, 0, ROT0, "JPM", "Fireball (Jpm) (SYSTEM5, set 2)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME( 199?, j5fireblb	, j5firebl	, jpmsys5, popeye, 0, ROT0, "JPM", "Fireball (Jpm) (SYSTEM5, set 3)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME( 199?, j5frmag		, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Fruit Magic (Jpm) (SYSTEM5)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+GAME( 199?, j5goldbr	, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Golden Bars (Jpm) (SYSTEM5)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME( 199?, j5hagar		, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Hagar (Jpm) (SYSTEM5, set 1)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME( 199?, j5hagara	, j5hagar	, jpmsys5, popeye, 0, ROT0, "JPM", "Hagar (Jpm) (SYSTEM5, set 2)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME( 199?, j5hagarb	, j5hagar	, jpmsys5, popeye, 0, ROT0, "JPM", "Hagar (Jpm) (SYSTEM5, set 3)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
@@ -2197,7 +2238,10 @@ GAME( 199?, j5wsca		, j5wsc		, jpmsys5, popeye, 0, ROT0, "JPM", "Wall Street Clu
 
 GAME( 199?, j5movie		, 0			, jpmsys5, popeye, 0, ROT0, "Crystal", "Movie Magic Club (Crystal) (SYSTEM5)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND ) // apparently by Crystal
 
-
+GAME( 199?, j5nudfic	, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Nudge Fiction (Jpm) (SYSTEM5)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+GAME( 199?, j5revo		, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Revolver (Jpm) (SYSTEM5, set 1)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+GAME( 199?, j5revoa		, j5revo	, jpmsys5, popeye, 0, ROT0, "JPM", "Revolver (Jpm) (SYSTEM5, set 2)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+GAME( 199?, j5sizl		, 0			, jpmsys5, popeye, 0, ROT0, "JPM", "Sizzling (Jpm) (SYSTEM5)", GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 
 
 
