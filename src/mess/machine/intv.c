@@ -274,17 +274,24 @@ READ16_HANDLER( intv_gram_r )
 {
 	intv_state *state = space->machine().driver_data<intv_state>();
 	//logerror("read: %d = GRAM(%d)\n",state->m_gram[offset],offset);
+	if (state->m_bus_copy_mode || !state->m_stic_handshake)
+	{
 	return (int)state->m_gram[offset];
+	}
+	else {return offset;}
+
 }
 
 WRITE16_HANDLER( intv_gram_w )
 {
 	intv_state *state = space->machine().driver_data<intv_state>();
     data &= 0xFF;
-
+	if(state->m_bus_copy_mode || !state->m_stic_handshake)
+	{
 	state->m_gram[offset] = data;
 	state->m_gramdirtybytes[offset] = 1;
     state->m_gramdirty = 1;
+   }
 }
 
 
@@ -426,11 +433,12 @@ static int intv_load_rom_file(device_image_interface &image)
 			{
 				logerror("RAM banks not yet implemented! \n");
 			}
-
+			/* For now intellivoice always active
 			if (extra & INTELLIVOICE_MASK)
 			{
-				logerror("Intellivoice support not yet implemented! \n");
+				// tbd
 			}
+			*/
 
 			if (extra & ECS_MASK)
 			{
@@ -492,7 +500,23 @@ MACHINE_RESET( intv )
 
 static TIMER_CALLBACK(intv_interrupt_complete)
 {
+	intv_state *state = machine.driver_data<intv_state>();
 	cputag_set_input_line(machine, "maincpu", CP1610_INT_INTRM, CLEAR_LINE);
+	state->m_bus_copy_mode = 0;
+}
+
+static TIMER_CALLBACK(intv_btb_fill)
+{
+	intv_state *state = machine.driver_data<intv_state>();
+	UINT8 column;
+	UINT8 row = state->m_backtab_row;
+	//device_adjust_icount(machine.device("maincpu"), -110);
+	for(column=0; column < STIC_BACKTAB_WIDTH; column++)
+	{
+		state->m_backtab_buffer[row][column] = state->m_ram16[column + row * STIC_BACKTAB_WIDTH];
+	}
+	
+	state->m_backtab_row += 1;
 }
 
 INTERRUPT_GEN( intv_interrupt )
@@ -500,7 +524,21 @@ INTERRUPT_GEN( intv_interrupt )
 	intv_state *state = device->machine().driver_data<intv_state>();
 	cputag_set_input_line(device->machine(), "maincpu", CP1610_INT_INTRM, ASSERT_LINE);
 	state->m_sr1_int_pending = 1;
+	state->m_bus_copy_mode = 1;
+	state->m_backtab_row = 0;
+	UINT8 row;
+	device_adjust_icount(device->machine().device("maincpu"), -1416); // Acount for cycle stealing during stic backtab fetches
 	device->machine().scheduler().timer_set(device->machine().device<cpu_device>("maincpu")->cycles_to_attotime(3791), FUNC(intv_interrupt_complete));
+	for (row=0; row < STIC_BACKTAB_HEIGHT; row++)
+	{
+		device->machine().scheduler().timer_set(device->machine().device<cpu_device>("maincpu")->cycles_to_attotime(3905+114*state->m_row_delay + 798*row), FUNC(intv_btb_fill));
+	}
+	
+	if (state->m_row_delay == 0) 
+	{
+		device_adjust_icount(device->machine().device("maincpu"), -110); // extra row fetch occurs if vertical delay == 0
+	}
+	
 	intv_stic_screenrefresh(device->machine());
 }
 

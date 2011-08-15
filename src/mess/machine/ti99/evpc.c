@@ -351,7 +351,6 @@ static DEVICE_RESET( ti99_evpc )
 {
 	logerror("ti99_evpc: reset\n");
 	ti99_evpc_state *card = get_safe_token(device);
-	astring *region = new astring();
 
 	/* If the card is selected in the menu, register the card */
 	device_t *peb = device->owner();
@@ -364,24 +363,26 @@ static DEVICE_RESET( ti99_evpc )
 	card->RAMEN = 0;
 	card->dsr_page = 0;
 
-	astring_assemble_3(region, device->tag(), ":", evpc_region);
+	astring region;
+	astring_assemble_3(&region, device->tag(), ":", evpc_region);
 
-	card->dsrrom = device->machine().region(astring_c(region))->base();
+	card->dsrrom = device->machine().region(region.cstr())->base();
 }
 
 static DEVICE_NVRAM( ti99_evpc )
 {
 	// Called between START and RESET
 	ti99_evpc_state *card = get_safe_token(device);
-	astring *hsname = astring_assemble_3(astring_alloc(), device->machine().system().name, PATH_SEPARATOR, "evpc.nv");
+	astring hsname;
+	astring_assemble_3(&hsname, device->machine().system().name, PATH_SEPARATOR, "evpc.nv");
 	file_error filerr;
 
 	if (read_or_write==0)
 	{
-		logerror("evpc: device nvram load %s\n", astring_c(hsname));
+		logerror("evpc: device nvram load %s\n", hsname.cstr());
 
 		emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_READ);
-		filerr = nvfile.open(astring_c(hsname));
+		filerr = nvfile.open(hsname.cstr());
 		if (filerr == FILERR_NONE)
 		{
 			if (nvfile.read(card->novram, 256) != 256)
@@ -390,9 +391,9 @@ static DEVICE_NVRAM( ti99_evpc )
 	}
 	else
 	{
-		logerror("evpc: device nvram save %s\n", astring_c(hsname));
+		logerror("evpc: device nvram save %s\n", hsname.cstr());
 		emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-		filerr = nvfile.open(astring_c(hsname));
+		filerr = nvfile.open(hsname.cstr());
 
 		if (filerr == FILERR_NONE)
 		{

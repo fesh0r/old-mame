@@ -23,7 +23,6 @@
 #include "machine/ram.h"
 #include "sound/speaker.h"
 #include "video/mc6845.h"
-#include "video/pc_cga.h"
 
 #define I8086_TAG		"ic120"
 #define I8087_TAG		"ic119"
@@ -85,7 +84,7 @@ public:
 	required_device<mc146818_device> m_rtc;
 	required_device<device_t> m_fdc;
 	required_device<device_t> m_uart;
-	optional_device<ams40041_device> m_vdu;
+	required_device<ams40041_device> m_vdu;
 	required_device<device_t> m_centronics;
 	required_device<device_t> m_speaker;
 	required_device<pc1512_keyboard_device> m_kb;
@@ -96,15 +95,24 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 
+	virtual void video_start();
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+
 	void update_speaker();
 	void update_fdc_int();
 	void update_fdc_drq();
 	void update_fdc_tc();
 	void update_ack();
 	void set_fdc_dsr(UINT8 data);
+	int get_display_mode(UINT8 mode);
+	offs_t get_char_rom_offset();
+	int get_color(UINT8 data);
+	void draw_alpha(mc6845_device *device, bitmap_t *bitmap, const rectangle *cliprect, UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, INT8 cursor_x, void *param);
+	void draw_graphics_1(mc6845_device *device, bitmap_t *bitmap, const rectangle *cliprect, UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, INT8 cursor_x, void *param);
+	void draw_graphics_2(mc6845_device *device, bitmap_t *bitmap, const rectangle *cliprect, UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, INT8 cursor_x, void *param);
 
-//  DECLARE_READ8_MEMBER( videoram_r );
-//  DECLARE_WRITE8_MEMBER( videoram_w );
+	DECLARE_READ8_MEMBER( video_ram_r );
+	DECLARE_WRITE8_MEMBER( video_ram_w );
 	DECLARE_READ8_MEMBER( system_r );
 	DECLARE_WRITE8_MEMBER( system_w );
 	DECLARE_READ8_MEMBER( mouse_r );
@@ -115,8 +123,8 @@ public:
 	DECLARE_WRITE8_MEMBER( printer_w );
 	DECLARE_READ8_MEMBER( fdc_r );
 	DECLARE_WRITE8_MEMBER( fdc_w );
-//  DECLARE_READ8_MEMBER( vdu_r );
-//  DECLARE_WRITE8_MEMBER( vdu_w );
+	DECLARE_READ8_MEMBER( vdu_r );
+	DECLARE_WRITE8_MEMBER( vdu_w );
 	DECLARE_WRITE_LINE_MEMBER( kbdata_w );
 	DECLARE_WRITE_LINE_MEMBER( kbclk_w );
 	DECLARE_WRITE_LINE_MEMBER( pit1_w );
@@ -178,14 +186,61 @@ public:
 	UINT8 *m_video_ram;
 	UINT8 *m_char_rom;
 	int m_toggle;
+	int m_lpen;
+	int m_blink;
+	int m_cursor;
+	int m_blink_ctr;
+	UINT8 m_vdu_mode;
+	UINT8 m_vdu_color;
+	UINT8 m_vdu_plane;
+	UINT8 m_vdu_rdsel;
+	UINT8 m_vdu_border;
 
 	// sound state
 	int m_speaker_drive;
 };
 
+class pc1640_state : public pc1512_state
+{
+public:
+	pc1640_state(const machine_config &mconfig, device_type type, const char *tag)
+		: pc1512_state(mconfig, type, tag),
+		  m_opt(0)
+	{ }
+
+	virtual void machine_start();
+	virtual void machine_reset();
+
+	virtual void video_start();
+	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+
+	DECLARE_READ8_MEMBER( video_ram_r );
+	DECLARE_WRITE8_MEMBER( video_ram_w );
+	DECLARE_READ8_MEMBER( io_r );
+	DECLARE_READ8_MEMBER( iga_r );
+	DECLARE_WRITE8_MEMBER( iga_w );
+	DECLARE_READ8_MEMBER( printer_r );
+	
+	// video state
+	int m_opt;
+	UINT8 m_egc_ctrl;
+	UINT8 m_emcr;			// extended mode control register
+	UINT8 m_emcrp;			// extended mode control register protection read counter
+	UINT8 m_sar;			// sequencer address register
+	UINT8 m_sdr[8];			// sequencer data registers
+	UINT8 m_gcar;			// graphics controller address register
+	UINT8 m_gcdr[16];		// graphics controller data registers
+	UINT8 m_crtcar;			// CRT controller address register
+	UINT8 m_crtcdr[32];		// CRT controller data registers
+	UINT8 m_plr;			// Plantronics mode register
+};
 
 // ---------- defined in video/pc1512.c ----------
 
 MACHINE_CONFIG_EXTERN( pc1512_video );
+
+// ---------- defined in video/pc1640.c ----------
+
+MACHINE_CONFIG_EXTERN( pc1640_video );
 
 #endif

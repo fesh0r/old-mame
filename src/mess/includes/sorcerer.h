@@ -7,20 +7,22 @@
 #ifndef SORCERER_H_
 #define SORCERER_H_
 
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/dac.h"
 #include "sound/wave.h"
+#include "machine/ay31015.h"
 #include "machine/ctronics.h"
 #include "machine/ram.h"
+#include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
 #include "imagedev/snapquik.h"
-#include "imagedev/cartslot.h"
-#include "machine/ay31015.h"
 #include "imagedev/flopdrv.h"
 #include "formats/sorc_dsk.h"
+#include "machine/micropolis.h"
 
-#define SORCERER_USING_DISKS 0
 #define SORCERER_USING_RS232 0
+
 
 typedef struct {
 	struct {
@@ -41,15 +43,15 @@ class sorcerer_state : public driver_device
 public:
 	sorcerer_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-		  m_maincpu(*this, "maincpu"),
-		  m_cass1(*this, CASSETTE_TAG),
-		  m_cass2(*this, CASSETTE2_TAG),
-		  m_wave1(*this, WAVE_TAG),
-		  m_wave2(*this, WAVE2_TAG),
-		  m_dac(*this, "dac"),
-		  m_uart(*this, "uart"),
-		  m_printer(*this, "centronics"),
-		  m_ram(*this, RAM_TAG)
+	m_maincpu(*this, "maincpu"),
+	m_cass1(*this, CASSETTE_TAG),
+	m_cass2(*this, CASSETTE2_TAG),
+	m_wave1(*this, WAVE_TAG),
+	m_wave2(*this, WAVE2_TAG),
+	m_dac(*this, "dac"),
+	m_uart(*this, "uart"),
+	m_printer(*this, "centronics"),
+	m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -80,6 +82,7 @@ public:
 /*----------- defined in machine/sorcerer.c -----------*/
 
 
+MACHINE_START( sorcererd );
 MACHINE_START( sorcerer );
 MACHINE_RESET( sorcerer );
 Z80BIN_EXECUTE( sorcerer );

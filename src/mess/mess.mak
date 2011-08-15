@@ -601,10 +601,13 @@ $(MESSOBJ)/amstrad.a:			\
 	$(MESS_MACHINE)/cpcexp.o	\
 	$(MESS_MACHINE)/cpc_ssa1.o	\
 	$(MESS_MACHINE)/cpc_rom.o	\
+	$(MESS_MACHINE)/mface2.o	\
 	$(MESS_DRIVERS)/amstr_pc.o	\
 	$(MESS_MACHINE)/amstr_pc.o	\
 	$(MESS_DRIVERS)/pc1512.o	\
 	$(MESS_MACHINE)/pc1512kb.o	\
+	$(MESS_VIDEO)/pc1512.o		\
+	$(MESS_VIDEO)/pc1640.o		\
 	$(MESS_VIDEO)/nc.o			\
 	$(MESS_DRIVERS)/nc.o		\
 	$(MESS_MACHINE)/nc.o		\
@@ -643,6 +646,14 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/apple3.o	\
 	$(MESS_DRIVERS)/apple3.o	\
     $(MESS_MACHINE)/egret.o     \
+	$(MESS_VIDEO)/nubus_48gc.o 	\
+	$(MESS_VIDEO)/nubus_cb264.o \
+	$(MESS_VIDEO)/nubus_vikbw.o \
+	$(MESS_VIDEO)/nubus_specpdq.o \
+	$(MESS_VIDEO)/nubus_m2hires.o \
+	$(MESS_VIDEO)/nubus_spec8.o \
+    $(MESS_MACHINE)/nubus_asntmc3b.o \
+    $(MESS_MACHINE)/dp8390x.o \
 
 $(MESSOBJ)/applied.a:			\
 	$(MESS_VIDEO)/mbee.o		\
@@ -957,6 +968,7 @@ $(MESSOBJ)/exeltel.a:			\
 $(MESSOBJ)/exidy.a:				\
 	$(MESS_MACHINE)/sorcerer.o	\
 	$(MESS_DRIVERS)/sorcerer.o	\
+	$(MESS_MACHINE)/micropolis.o	\
 
 $(MESSOBJ)/fairch.a:			\
 	$(MESS_VIDEO)/channelf.o	\
@@ -1018,6 +1030,7 @@ $(MESSOBJ)/homebrew.a:			\
 	$(MESS_DRIVERS)/pimps.o		\
 	$(MESS_DRIVERS)/sbc6510.o	\
 	$(MESS_DRIVERS)/z80dev.o	\
+	$(MESS_DRIVERS)/uzebox.o	\
 
 $(MESSOBJ)/homelab.a:			\
 	$(MESS_DRIVERS)/homelab.o	\
@@ -1346,8 +1359,6 @@ $(MESSOBJ)/robotron.a:			\
 	$(MESS_DRIVERS)/k8915.o		\
 	$(MESS_DRIVERS)/rt1715.o	\
 	$(MESS_DRIVERS)/z1013.o		\
-	$(MESS_MACHINE)/z1013.o		\
-	$(MESS_VIDEO)/z1013.o		\
 	$(MESS_DRIVERS)/z9001.o		\
 
 $(MESSOBJ)/rockwell.a:			\
@@ -1714,6 +1725,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/czk80.o		\
 	$(MESS_DRIVERS)/d6800.o		\
 	$(MESS_DRIVERS)/d6809.o		\
+	$(MESS_DRIVERS)/digel804.o	\
 	$(MESS_DRIVERS)/dim68k.o	\
 	$(MESS_DRIVERS)/dm7000.o	\
 	$(MESS_DRIVERS)/dolphin.o	\
@@ -1884,6 +1896,7 @@ $(MESS_DRIVERS)/supercon.o:	$(MESS_LAYOUT)/supercon.lh
 $(MESS_DRIVERS)/svision.o:	$(MESS_LAYOUT)/svision.lh
 $(MESS_DRIVERS)/sym1.o:		$(MESS_LAYOUT)/sym1.lh
 $(MESS_DRIVERS)/tec1.o:		$(MESS_LAYOUT)/tec1.lh
+$(MESS_DRIVERS)/tk80bs.o:	$(MESS_LAYOUT)/tk80.lh
 $(MESS_DRIVERS)/unixpc.o:	$(MESS_LAYOUT)/unixpc.lh
 $(MESS_DRIVERS)/ut88.o:		$(MESS_LAYOUT)/ut88mini.lh
 $(MESS_DRIVERS)/vboy.o:		$(MESS_LAYOUT)/vboy.lh

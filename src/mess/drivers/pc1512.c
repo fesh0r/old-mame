@@ -2,14 +2,18 @@
 
     Amstrad PC1512
 
+	http://www.seasip.info/AmstradXT
+	http://stason.org/TULARC/pc/hard-drives-hdd/tandon/TM262-21MB-5-25-HH-MFM-ST506.html
+	
+*/
+
+/*
+
     TODO:
 
-    - rewrite VDU
-
-    http://git.redump.net/cgit.cgi/mess/commit/?id=94fd742c9f51970583806ed37c6b3d9815f73e1a
-    http://www.retroisle.com/amstrad/pcs/OriginalDocs/techmanual.php#1.11.2.2
-    http://www.reenigne.org/blog/crtc-emulation-for-mess/
-    http://www.seasip.info/AmstradXT/pc1512kbd.html
+	- adjust mouse speed
+	- RTC should not be y2k compliant
+	- V3 VDU check fails
 
 */
 
@@ -55,6 +59,7 @@ READ8_MEMBER( pc1512_state::system_r )
 		{
 			data = m_kbd;
 			m_kb_bits = 0;
+			m_kb->data_w(1);
 			pic8259_ir1_w(m_pic, CLEAR_LINE);
 		}
 		break;
@@ -123,7 +128,7 @@ WRITE8_MEMBER( pc1512_state::system_w )
 		m_speaker_drive = BIT(data, 1);
 		update_speaker();
 
-		m_kb->data_w(BIT(data, 6));
+		m_kb->clock_w(BIT(data, 6));
 		break;
 
 	case 4:
@@ -324,7 +329,86 @@ READ8_MEMBER( pc1512_state::printer_r )
 		break;
 
 	case 2:
+		/*
+
+            bit     description
+
+            0       Data Strobe
+            1       Select Auto Feed
+            2       Reset Printer
+            3       Select Printer
+            4       Enable Int on ACK
+            5		1
+            6
+            7
+
+        */
+
+		data = m_printer_control | 0x20;
+		break;
+	}
+
+	return data;
+}
+
+
+//-------------------------------------------------
+//  printer_r -
+//-------------------------------------------------
+
+READ8_MEMBER( pc1640_state::printer_r )
+{
+	UINT8 data = 0;
+
+	switch (offset)
+	{
+	case 2:
+		/*
+
+            bit     description
+
+            0       Data Strobe
+            1       Select Auto Feed
+            2       Reset Printer
+            3       Select Printer
+            4       Enable Int on ACK
+            5		OPT
+            6		SW6
+            7		SW7
+
+        */
+		
+		/*
+		Bit D5 is the option (OPT) bit and can return one of three different pieces of 
+		information. Although not documented as such on the PC1512, Bit D5 was always a 
+		"1", however on the PC1640 it will always be a zero if immediately prior to the 
+		read of channel 037Ah the software performs an I/O read of an I/O channel 
+		implemented on the PC1512 main board, having address line A7 high (for example, 
+		the CGA channels). This is a simple test for software to detect whether it is 
+		running on a PC1512 or a PC1640. A PC1512 will give a 1, whereas a PC1640 will 
+		give a 0.
+
+		In addition to being a test of machine type the OPT bit, D5, can also reflect 
+		the state of either SW9 or SW10. The OPT bit will reflect the state of switch
+		SW9 by an I/O read operation to an I/O channel not implemented on the main 
+		board and having address lines A14 and A7 both low (for example channel 0278h)
+		immediately prior to the reading of channel 037Ah. The OPT bit is set to the 
+		state of switch SW10 by an I/O read operation to an I/O channel not implemented
+		on the main board having address lines A14 high and A7 low (for example channel
+		4278h). Software testing OPT bit should disable interrupts before the initial 
+		(dummy) channel read and the I/O read of channel 037A in order to avoid 
+		additional (interrupt based) I/O operations between the setting and the testing
+		of the information read back in the OPT bit. For switches SW9 and SW10, a logic
+		"1" is returned when the switch is on the "on" position and a logic "0" if the
+		switch is in the "off" position.
+		*/
 		data = m_printer_control;
+		data |= m_opt << 5;
+		data |= (input_port_read(machine(), "SW") & 0x60) << 1;
+		break;
+		
+	default:
+		data = pc1512_state::printer_r(space, offset);
 		break;
 	}
 
@@ -355,13 +439,13 @@ WRITE8_MEMBER( pc1512_state::printer_w )
             2       Reset Printer
             3       Select Printer
             4       Enable Int on ACK
-            5
+            5		
             6
             7
 
         */
 
-		m_printer_control = data;
+		m_printer_control = data & 0x1f;
 
 		centronics_strobe_w(m_centronics, BIT(data, 0));
 		centronics_autofeed_w(m_centronics, BIT(data, 1));
@@ -453,6 +537,60 @@ WRITE8_MEMBER( pc1512_state::fdc_w )
 
 
 //**************************************************************************
+//  PC1640 I/O ACCESS
+//**************************************************************************
+
+//-------------------------------------------------
+//  io_r -
+//-------------------------------------------------
+
+READ8_MEMBER( pc1640_state::io_r )
+{
+	UINT8 data = 0;
+	offs_t addr = offset & 0x3ff;
+	bool decoded = false;
+	
+	if 		(addr >= 0x000 && addr <= 0x00f) { data = i8237_r(m_dmac, offset & 0x0f); decoded = true; }
+	else if (addr >= 0x020 && addr <= 0x021) { data = pic8259_r(m_pic, offset & 0x01); decoded = true; }
+	else if (addr >= 0x040 && addr <= 0x043) { data = pit8253_r(m_pit, offset & 0x03); decoded = true; }
+	else if (addr >= 0x060 && addr <= 0x06f) { data = system_r(space, offset & 0x0f); decoded = true; }
+	else if (addr >= 0x070 && addr <= 0x073) { data = m_rtc->read(space, offset & 0x01); decoded = true; }
+	else if (addr >= 0x078 && addr <= 0x07f) { data = mouse_r(space, offset & 0x07); decoded = true; }
+	else if (addr >= 0x378 && addr <= 0x37b) { data = printer_r(space, offset & 0x03); decoded = true; }
+	else if (addr >= 0x3b0 && addr <= 0x3df) { data = iga_r(space, addr - 0x3b0); decoded = true; }
+	else if (addr >= 0x3f0 && addr <= 0x3f7) { data = fdc_r(space, offset & 0x07); decoded = true; }
+	else if (addr >= 0x3f8 && addr <= 0x3ff) { data = ins8250_r(m_uart, offset & 0x07); decoded = true; }
+	
+	if (decoded)
+	{
+		if (BIT(offset, 7))
+		{ 
+			m_opt = 0;
+			//logerror("OPT 0\n");
+		}
+	}
+	else if (!BIT(offset, 7))
+	{
+		UINT16 sw = input_port_read(machine(), "SW");
+		
+		if (!BIT(offset, 14))
+		{ 
+			m_opt = BIT(sw, 8);
+			logerror("OPT SW9 %u\n", m_opt);
+		}
+		else 
+		{
+			m_opt = BIT(sw, 9);
+			logerror("OPT SW10 %u\n", m_opt);
+		}
+	}
+	
+	return data;
+}
+
+
+
+//**************************************************************************
 //  ADDRESS MAPS
 //**************************************************************************
 
@@ -462,7 +600,7 @@ WRITE8_MEMBER( pc1512_state::fdc_w )
 
 static ADDRESS_MAP_START( pc1512_mem, AS_PROGRAM, 16, pc1512_state )
 	AM_RANGE(0x00000, 0x9ffff) AM_RAM
-//  AM_RANGE(0xb8000, 0xbffff) AM_READWRITE(videoram_r, videoram_w)
+	AM_RANGE(0xb8000, 0xbbfff) AM_READWRITE8(video_ram_r, video_ram_w, 0xffff)
 	AM_RANGE(0xfc000, 0xfffff) AM_ROM AM_REGION(I8086_TAG, 0)
 ADDRESS_MAP_END
 
@@ -477,14 +615,48 @@ static ADDRESS_MAP_START( pc1512_io, AS_IO, 16, pc1512_state )
 	AM_RANGE(0x020, 0x021) AM_DEVREADWRITE8_LEGACY(I8259A2_TAG, pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x040, 0x043) AM_DEVREADWRITE8_LEGACY(I8253_TAG, pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x060, 0x06f) AM_READWRITE8(system_r, system_w, 0xffff)
-	AM_RANGE(0x070, 0x071) AM_DEVREADWRITE8(MC146818_TAG, mc146818_device, read, write, 0xffff)
+	AM_RANGE(0x070, 0x071) AM_MIRROR(0x02) AM_DEVREADWRITE8(MC146818_TAG, mc146818_device, read, write, 0xffff)
 	AM_RANGE(0x078, 0x07f) AM_READWRITE8(mouse_r, mouse_w, 0xffff)
 	AM_RANGE(0x080, 0x083) AM_WRITE8(dma_page_w, 0xffff)
 	AM_RANGE(0x0a0, 0x0a1) AM_WRITE8(nmi_mask_w, 0xff00)
 	AM_RANGE(0x378, 0x37b) AM_READWRITE8(printer_r, printer_w, 0xffff)
-//  AM_RANGE(0x3d0, 0x3df) AM_READWRITE8(vdu_r, vdu_w, 0xffff)
+	AM_RANGE(0x3d0, 0x3df) AM_READWRITE8(vdu_r, vdu_w, 0xffff)
 	AM_RANGE(0x3f0, 0x3f7) AM_READWRITE8(fdc_r, fdc_w, 0xffff)
 	AM_RANGE(0x3f8, 0x3ff) AM_DEVREADWRITE8_LEGACY(INS8250_TAG, ins8250_r, ins8250_w, 0xffff)
+ADDRESS_MAP_END
+
+
+//-------------------------------------------------
+//  ADDRESS_MAP( pc1640_mem )
+//-------------------------------------------------
+
+static ADDRESS_MAP_START( pc1640_mem, AS_PROGRAM, 16, pc1640_state )
+	AM_RANGE(0x00000, 0x9ffff) AM_RAM
+	AM_RANGE(0xa0000, 0xbffff) AM_READWRITE8(video_ram_r, video_ram_w, 0xffff)
+	AM_RANGE(0xc0000, 0xc7fff) AM_ROM AM_REGION("iga", 0)
+//	AM_RANGE(0xc8000, 0xc9fff) AM_ROM AM_REGION("hdc", 0)
+	AM_RANGE(0xf0000, 0xf3fff) AM_MIRROR(0xc000) AM_ROM AM_REGION(I8086_TAG, 0)
+ADDRESS_MAP_END
+
+
+//-------------------------------------------------
+//  ADDRESS_MAP( pc1640_io )
+//-------------------------------------------------
+
+static ADDRESS_MAP_START( pc1640_io, AS_IO, 16, pc1640_state )
+	AM_RANGE(0x0000, 0xffff) AM_READ8(io_r, 0xffff)
+	AM_RANGE(0x000, 0x00f) AM_DEVWRITE8_LEGACY(I8237A5_TAG, i8237_w, 0xffff)
+	AM_RANGE(0x020, 0x021) AM_DEVWRITE8_LEGACY(I8259A2_TAG, pic8259_w, 0xffff)
+	AM_RANGE(0x040, 0x043) AM_DEVWRITE8_LEGACY(I8253_TAG, pit8253_w, 0xffff)
+	AM_RANGE(0x060, 0x06f) AM_WRITE8(system_w, 0xffff)
+	AM_RANGE(0x070, 0x071) AM_MIRROR(0x02) AM_DEVWRITE8(MC146818_TAG, mc146818_device, write, 0xffff)
+	AM_RANGE(0x078, 0x07f) AM_WRITE8(mouse_w, 0xffff)
+	AM_RANGE(0x080, 0x083) AM_WRITE8(dma_page_w, 0xffff)
+	AM_RANGE(0x0a0, 0x0a1) AM_WRITE8(nmi_mask_w, 0xff00)
+	AM_RANGE(0x378, 0x37b) AM_WRITE8(printer_w, 0xffff)
+	AM_RANGE(0x3b0, 0x3df) AM_WRITE8(iga_w, 0xffff)
+	AM_RANGE(0x3f0, 0x3f7) AM_WRITE8(fdc_w, 0xffff)
+	AM_RANGE(0x3f8, 0x3ff) AM_DEVWRITE8_LEGACY(INS8250_TAG, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -541,17 +713,17 @@ static INPUT_CHANGED( mouse_y_changed )
 	pc1512_state *state = field.machine().driver_data<pc1512_state>();
 
 	if (newval > oldval)
-		state->m_mouse_y++;
-	else
 		state->m_mouse_y--;
+	else
+		state->m_mouse_y++;
 }
 
 
 //-------------------------------------------------
-//  INPUT_PORTS( pc1512 )
+//  INPUT_PORTS( mouse )
 //-------------------------------------------------
 
-static INPUT_PORTS_START( pc1512 )
+static INPUT_PORTS_START( mouse )
 	PORT_START("MOUSEB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("Left Mouse Button") PORT_CODE(MOUSECODE_BUTTON1) PORT_CHANGED(mouse_button_1_changed, 0)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("Right Mouse Button") PORT_CODE(MOUSECODE_BUTTON2) PORT_CHANGED(mouse_button_2_changed, 0)
@@ -561,6 +733,15 @@ static INPUT_PORTS_START( pc1512 )
 
 	PORT_START("MOUSEY")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1) PORT_CHANGED(mouse_y_changed, 0)
+INPUT_PORTS_END
+
+
+//-------------------------------------------------
+//  INPUT_PORTS( pc1512 )
+//-------------------------------------------------
+
+static INPUT_PORTS_START( pc1512 )
+	PORT_INCLUDE( mouse )
 
 	PORT_START("LK")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Language ) )
@@ -578,16 +759,71 @@ static INPUT_PORTS_START( pc1512 )
 	PORT_DIPNAME( 0x10, 0x10, "ROM Size")
 	PORT_DIPSETTING( 0x10, "16 KB" )
 	PORT_DIPSETTING( 0x00, "32 KB" )
-/*  PORT_DIPNAME( 0x60, 0x60, "Character Set")
+	PORT_DIPNAME( 0x60, 0x60, "Character Set")
     PORT_DIPSETTING( 0x60, "Default (Codepage 437)" )
     PORT_DIPSETTING( 0x40, "Portugese (Codepage 865)" )
     PORT_DIPSETTING( 0x20, "Norwegian (Codepage 860)" )
-    PORT_DIPSETTING( 0x00, "Greek")*/
+    PORT_DIPSETTING( 0x00, "Greek")
 	PORT_DIPNAME( 0x80, 0x80, "Floppy Ready Line")
 	PORT_DIPSETTING( 0x80, "Connected" )
 	PORT_DIPSETTING( 0x00, "Not connected" )
+INPUT_PORTS_END
 
-	PORT_INCLUDE( pcvideo_pc1512 )
+
+//-------------------------------------------------
+//  INPUT_PORTS( pc1640 )
+//-------------------------------------------------
+
+static INPUT_PORTS_START( pc1640 )
+	PORT_INCLUDE( mouse )
+
+	PORT_START("LK")
+	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Language ) )
+	PORT_DIPSETTING(	0x07, DEF_STR( English ) )
+	PORT_DIPSETTING(	0x06, DEF_STR( German ) )
+	PORT_DIPSETTING(	0x05, DEF_STR( French ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Spanish ) )
+	PORT_DIPSETTING(	0x03, "Danish" )
+	PORT_DIPSETTING(	0x02, "Swedish" )
+	PORT_DIPSETTING(	0x01, DEF_STR( Italian ) )
+	PORT_DIPSETTING(	0x00, "Diagnostic Mode" )
+	
+	PORT_START("SW")
+	PORT_DIPNAME( 0x0f, 0x09, "Initial Display Mode" ) PORT_DIPLOCATION("SW:1,2,3,4") PORT_CONDITION("SW", 0x200, PORTCOND_EQUALS, 0x200)
+	PORT_DIPSETTING(	0x0b, "Internal MD, External CGA80" )
+	PORT_DIPSETTING(	0x0a, "Internal MD, External CGA40" )
+	PORT_DIPSETTING(	0x09, "Internal ECD350, External MDA/HERC" )
+	PORT_DIPSETTING(	0x08, "Internal ECD200, External MDA/HERC" )
+	PORT_DIPSETTING(	0x07, "Internal CD80, External MDA/HERC" )
+	PORT_DIPSETTING(	0x06, "Internal CD40, External MDA/HERC" )
+	PORT_DIPSETTING(	0x05, "External CGA80, Internal MD" )
+	PORT_DIPSETTING(	0x04, "External CGA40, Internal MD" )
+	PORT_DIPSETTING(	0x03, "External MDA/HERC, Internal ECD350" )
+	PORT_DIPSETTING(	0x02, "External MDA/HERC, Internal ECD200" )
+	PORT_DIPSETTING(	0x01, "External MDA/HERC, Internal CD80" )
+	PORT_DIPSETTING(	0x00, "External MDA/HERC, Internal CD40" )
+	PORT_DIPNAME( 0x10, 0x10, "MC6845 Mode" ) PORT_DIPLOCATION("SW:5") PORT_CONDITION("SW", 0x200, PORTCOND_EQUALS, 0x200)
+	PORT_DIPSETTING(	0x10, "EGA" )
+	PORT_DIPSETTING(	0x00, "CGA/MDA/HERC" )
+	PORT_DIPNAME( 0x60, 0x00, "Font" ) PORT_DIPLOCATION("SW:6,7") PORT_CONDITION("SW", 0x300, PORTCOND_EQUALS, 0x300)
+	PORT_DIPSETTING(	0x00, DEF_STR( English ) )
+	PORT_DIPSETTING(	0x60, "Danish" )
+	PORT_DIPSETTING(	0x40, "Portuguese" )
+	PORT_DIPSETTING(	0x20, "Greek" )
+	PORT_DIPNAME( 0x60, 0x60, "Default Display Mode" ) PORT_DIPLOCATION("SW:6,7") PORT_CONDITION("SW", 0x200, PORTCOND_EQUALS, 0x000)
+	PORT_DIPSETTING(	0x60, "External EGA" )
+	PORT_DIPSETTING(	0x40, "External CGA in 40 Column Mode" )
+	PORT_DIPSETTING(	0x20, "External CGA in 80 Column Mode" )
+	PORT_DIPSETTING(	0x00, "External Monochrome Adapter" )
+	PORT_DIPNAME( 0x80, 0x00, "Monitor" ) PORT_DIPLOCATION("SW:8") PORT_CONDITION("SW", 0x200, PORTCOND_EQUALS, 0x200)
+	PORT_DIPSETTING(	0x80, "CD (Standard RGB)" )
+	PORT_DIPSETTING(	0x00, "ECD (Enhanced RGB)" )
+	PORT_DIPNAME( 0x100, 0x100, "Foreign Fonts" ) PORT_DIPLOCATION("SW:9") PORT_CONDITION("SW", 0x200, PORTCOND_EQUALS, 0x200)
+	PORT_DIPSETTING(	 0x100, "Enabled" )
+	PORT_DIPSETTING(	 0x000, "Disabled" )
+	PORT_DIPNAME( 0x200, 0x200, "Internal Graphics Adapter" ) PORT_DIPLOCATION("SW:10")
+	PORT_DIPSETTING(	 0x200, "Enabled" )
+	PORT_DIPSETTING(	 0x000, "Disabled" )
 INPUT_PORTS_END
 
 
@@ -607,7 +843,7 @@ WRITE_LINE_MEMBER( pc1512_state::kbdata_w )
 
 WRITE_LINE_MEMBER( pc1512_state::kbclk_w )
 {
-	if (m_kbclk && !state)
+	if (!BIT(m_port61, 7) && m_kbclk && !state)
 	{
 		m_kbd <<= 1;
 		m_kbd |= m_kbdata;
@@ -615,6 +851,7 @@ WRITE_LINE_MEMBER( pc1512_state::kbclk_w )
 
 		if (m_kb_bits == 8)
 		{
+			m_kb->data_w(0);
 			pic8259_ir1_w(m_pic, ASSERT_LINE);
 		}
 	}
@@ -977,6 +1214,15 @@ void pc1512_state::machine_start()
 	save_item(NAME(m_printer_data));
 	save_item(NAME(m_printer_control));
 	save_item(NAME(m_toggle));
+	save_item(NAME(m_lpen));
+	save_item(NAME(m_blink));
+	save_item(NAME(m_cursor));
+	save_item(NAME(m_blink_ctr));
+	save_item(NAME(m_vdu_mode));
+	save_item(NAME(m_vdu_color));
+	save_item(NAME(m_vdu_plane));
+	save_item(NAME(m_vdu_rdsel));
+	save_item(NAME(m_vdu_border));
 	save_item(NAME(m_speaker_drive));
 }
 
@@ -992,6 +1238,71 @@ void pc1512_state::machine_reset()
 	m_kb_bits = 0;
 
 	set_fdc_dsr(0);
+	
+	m_lpen = 0;
+	m_blink = 0;
+	m_cursor = 0;
+	m_blink_ctr = 0;
+	m_vdu_mode = 0;
+	m_vdu_color = 0;
+	m_vdu_rdsel = 0;
+	m_vdu_plane = 0x0f;
+	m_vdu_border = 0;
+	
+	m_kb->clock_w(0);
+}
+
+
+//-------------------------------------------------
+//  MACHINE_START( pc1640 )
+//-------------------------------------------------
+
+void pc1640_state::machine_start()
+{
+	// register CPU IRQ callback
+	device_set_irq_callback(m_maincpu, pc1512_irq_callback);
+
+	// state saving
+	save_item(NAME(m_pit1));
+	save_item(NAME(m_pit2));
+	save_item(NAME(m_status1));
+	save_item(NAME(m_status2));
+	save_item(NAME(m_port61));
+	save_item(NAME(m_nmi_enable));
+	save_item(NAME(m_kbd));
+	save_item(NAME(m_kb_bits));
+	save_item(NAME(m_kbclk));
+	save_item(NAME(m_kbdata));
+	save_item(NAME(m_mouse_x));
+	save_item(NAME(m_mouse_y));
+	save_item(NAME(m_dma_page));
+	save_item(NAME(m_dma_channel));
+	save_item(NAME(m_dreq0));
+	save_item(NAME(m_nden));
+	save_item(NAME(m_dint));
+	save_item(NAME(m_ddrq));
+	save_item(NAME(m_fdc_dsr));
+	save_item(NAME(m_neop));
+	save_item(NAME(m_ack_int_enable));
+	save_item(NAME(m_ack));
+	save_item(NAME(m_printer_data));
+	save_item(NAME(m_printer_control));
+	save_item(NAME(m_speaker_drive));
+}
+
+
+//-------------------------------------------------
+//  MACHINE_RESET( pc1640 )
+//-------------------------------------------------
+
+void pc1640_state::machine_reset()
+{
+	m_nmi_enable = 0;
+	m_kb_bits = 0;
+
+	set_fdc_dsr(0);
+
+	m_kb->clock_w(0);
 }
 
 
@@ -1010,7 +1321,7 @@ static MACHINE_CONFIG_START( pc1512, pc1512_state )
 	MCFG_CPU_IO_MAP(pc1512_io)
 
 	// video
-	MCFG_FRAGMENT_ADD( pcvideo_pc1512 )
+	MCFG_FRAGMENT_ADD(pc1512_video)
 
 	// sound
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1022,7 +1333,7 @@ static MACHINE_CONFIG_START( pc1512, pc1512_state )
 	MCFG_I8237_ADD(I8237A5_TAG, XTAL_24MHz/6, dmac_intf)
 	MCFG_PIC8259_ADD(I8259A2_TAG, pic_intf)
 	MCFG_PIT8253_ADD(I8253_TAG, pit_intf)
-	MCFG_MC146818_IRQ_ADD(MC146818_TAG, MC146818_IGNORE_CENTURY, rtc_intf)
+	MCFG_MC146818_IRQ_ADD(MC146818_TAG, MC146818_STANDARD, rtc_intf)
 	MCFG_UPD765A_ADD(UPD765AC2_TAG, fdc_intf)
 	MCFG_INS8250_ADD(INS8250_TAG, uart_intf)
 	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, centronics_intf)
@@ -1044,6 +1355,49 @@ static MACHINE_CONFIG_START( pc1512, pc1512_state )
 MACHINE_CONFIG_END
 
 
+//-------------------------------------------------
+//  MACHINE_CONFIG( pc1640 )
+//-------------------------------------------------
+
+static MACHINE_CONFIG_START( pc1640, pc1640_state )
+	MCFG_CPU_ADD(I8086_TAG, I8086, XTAL_24MHz/3)
+	MCFG_CPU_PROGRAM_MAP(pc1640_mem)
+	MCFG_CPU_IO_MAP(pc1640_io)
+
+	// video
+	MCFG_FRAGMENT_ADD(pc1640_video)
+
+	// sound
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
+
+	// devices
+	MCFG_PC1512_KEYBOARD_ADD(kb_intf)
+	MCFG_I8237_ADD(I8237A5_TAG, XTAL_24MHz/6, dmac_intf)
+	MCFG_PIC8259_ADD(I8259A2_TAG, pic_intf)
+	MCFG_PIT8253_ADD(I8253_TAG, pit_intf)
+	MCFG_MC146818_IRQ_ADD(MC146818_TAG, MC146818_STANDARD, rtc_intf)
+	MCFG_UPD765A_ADD(UPD765AC2_TAG, fdc_intf)
+	MCFG_INS8250_ADD(INS8250_TAG, uart_intf)
+	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, centronics_intf)
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(floppy_intf)
+
+	// ISA8 bus
+	MCFG_ISA8_BUS_ADD("isa", I8086_TAG, isabus_intf)
+	MCFG_ISA8_SLOT_ADD("isa", "isa1", pc1512_isa8_cards, NULL, NULL)
+	MCFG_ISA8_SLOT_ADD("isa", "isa2", pc1512_isa8_cards, NULL, NULL)
+	MCFG_ISA8_SLOT_ADD("isa", "isa3", pc1512_isa8_cards, NULL, NULL)
+
+	// internal ram
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("640K")
+
+	// software list
+	MCFG_SOFTWARE_LIST_ADD("flop_list", "pc1640")
+MACHINE_CONFIG_END
+
+
 
 //**************************************************************************
 //  ROMS
@@ -1055,11 +1409,11 @@ MACHINE_CONFIG_END
 
 ROM_START( pc1512 )
 	ROM_REGION16_LE( 0x4000, I8086_TAG, 0)
-	ROM_LOAD16_BYTE( "40043.ic129", 0x0000, 0x2000, CRC(f72f1582) SHA1(7781d4717917262805d514b331ba113b1e05a247) )
-	ROM_LOAD16_BYTE( "40044.ic132", 0x0001, 0x2000, CRC(668fcc94) SHA1(74002f5cc542df442eec9e2e7a18db3598d8c482) )
+	ROM_LOAD16_BYTE( "40044.ic132", 0x0000, 0x2000, CRC(f72f1582) SHA1(7781d4717917262805d514b331ba113b1e05a247) )
+	ROM_LOAD16_BYTE( "40043.ic129", 0x0001, 0x2000, CRC(668fcc94) SHA1(74002f5cc542df442eec9e2e7a18db3598d8c482) )
 
-	ROM_REGION( 0x08100, "gfx1", 0 )
-	ROM_LOAD( "40045.ic127", 0x00000, 0x02000, CRC(dd5e030f) SHA1(7d858bbb2e8d6143aa67ab712edf5f753c2788a7) )
+	ROM_REGION( 0x2000, AMS40041_TAG, 0 )
+	ROM_LOAD( "40045.ic127", 0x0000, 0x2000, CRC(dd5e030f) SHA1(7d858bbb2e8d6143aa67ab712edf5f753c2788a7) )
 ROM_END
 
 
@@ -1069,11 +1423,11 @@ ROM_END
 
 ROM_START( pc1512v2 )
 	ROM_REGION16_LE( 0x4000, I8086_TAG, 0)
-	ROM_LOAD16_BYTE( "40043v2.ic129", 0x0000, 0x2000, CRC(1aec54fa) SHA1(b12fd73cfc35a240ed6da4dcc4b6c9910be611e0) )
-	ROM_LOAD16_BYTE( "40044v2.ic132", 0x0001, 0x2000, CRC(d2d4d2de) SHA1(c376fd1ad23025081ae16c7949e88eea7f56e1bb) )
+	ROM_LOAD16_BYTE( "40044v2.ic132", 0x0000, 0x2000, CRC(1aec54fa) SHA1(b12fd73cfc35a240ed6da4dcc4b6c9910be611e0) )
+	ROM_LOAD16_BYTE( "40043v2.ic129", 0x0001, 0x2000, CRC(d2d4d2de) SHA1(c376fd1ad23025081ae16c7949e88eea7f56e1bb) )
 
-	ROM_REGION( 0x08100, "gfx1", 0 )
-	ROM_LOAD( "40078.ic127", 0x00000, 0x02000, CRC(ae9c0d04) SHA1(bc8dc4dcedeea5bc1c04986b1f105ad93cb2ebcd) )
+	ROM_REGION( 0x2000, AMS40041_TAG, 0 )
+	ROM_LOAD( "40078.ic127", 0x0000, 0x2000, CRC(ae9c0d04) SHA1(bc8dc4dcedeea5bc1c04986b1f105ad93cb2ebcd) )
 ROM_END
 
 
@@ -1083,11 +1437,32 @@ ROM_END
 
 ROM_START( pc1512v3 )
 	ROM_REGION16_LE( 0x4000, I8086_TAG, 0)
-	ROM_LOAD16_BYTE( "40043-2.ic129", 0x0000, 0x2000, CRC(ea527e6e) SHA1(b77fa44767a71a0b321a88bb0a394f1125b7c220) )
-	ROM_LOAD16_BYTE( "40044-2.ic130", 0x0001, 0x2000, CRC(532c3854) SHA1(18a17b710f9eb079d9d7216d07807030f904ceda) )
+	ROM_LOAD16_BYTE( "40044-2.ic132", 0x0000, 0x2000, CRC(ea527e6e) SHA1(b77fa44767a71a0b321a88bb0a394f1125b7c220) )
+	ROM_LOAD16_BYTE( "40043-2.ic129", 0x0001, 0x2000, CRC(532c3854) SHA1(18a17b710f9eb079d9d7216d07807030f904ceda) )
 
-	ROM_REGION( 0x08100, "gfx1", 0 )
-	ROM_LOAD( "40078.ic127", 0x00000, 0x02000, CRC(ae9c0d04) SHA1(bc8dc4dcedeea5bc1c04986b1f105ad93cb2ebcd) )
+	ROM_REGION( 0x2000, AMS40041_TAG, 0 )
+	ROM_LOAD( "40078.ic127", 0x0000, 0x2000, CRC(ae9c0d04) SHA1(bc8dc4dcedeea5bc1c04986b1f105ad93cb2ebcd) )
+ROM_END
+
+
+//-------------------------------------------------
+//  ROM( pc1640 )
+//-------------------------------------------------
+
+ROM_START( pc1640 )
+	ROM_REGION16_LE( 0x4000, I8086_TAG, 0)
+	ROM_SYSTEM_BIOS( 0, "unk", "unknown date code" )
+	ROMX_LOAD( "40044.ic132", 0x0000, 0x2000, CRC(f1c074f3) SHA1(a055ea7e933d137623c22fe24004e870653c7952), ROM_SKIP(1) | ROM_BIOS(1) )
+	ROMX_LOAD( "40043.ic129", 0x0001, 0x2000, CRC(e40a1513) SHA1(447eff2057e682e51b1c7593cb6fad0e53879fa8), ROM_SKIP(1) | ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "8738", "Week 38/1987" )
+	ROMX_LOAD( "40044 8738.ic132", 0x0000, 0x2000, CRC(43832ea7) SHA1(eea4a8836f966940a88c88de6c5cc14852545f7d), ROM_SKIP(1) | ROM_BIOS(2) ) // 8738 D F
+	ROMX_LOAD( "40043 8738.ic129", 0x0001, 0x2000, CRC(768498f9) SHA1(ac48cb892417d7998d604f3b79756140c554f476), ROM_SKIP(1) | ROM_BIOS(2) ) // 8738 D F
+
+	ROM_REGION16_LE( 0x8000, "iga", 0)
+	ROM_LOAD( "40100.ic913", 0x0000, 0x8000, CRC(d2d1f1ae) SHA1(98302006ee38a17c09bd75504cc18c0649174e33) ) // 8736 E
+
+	ROM_REGION16_LE( 0x2000, "hdc", 0)
+	ROM_LOAD( "3.u13", 0x0000, 0x2000, CRC(fbcb5f91) SHA1(8c22bd664177eb6126f3011eda8c5655fffe0ef2) ) // Toshiba TMM2464AP, Tandon TM262 HDD
 ROM_END
 
 
@@ -1097,6 +1472,7 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY         FULLNAME        FLAGS
-COMP( 1986, pc1512,		0,			0,		pc1512,		pc1512,		0,		"Amstrad plc",	"PC1512 (V1)",	GAME_IMPERFECT_GRAPHICS )
-COMP( 1987, pc1512v2,	pc1512,		0,		pc1512,		pc1512,		0,		"Amstrad plc",	"PC1512 (V2)",	GAME_NOT_WORKING )
+COMP( 1986, pc1512,		0,			0,		pc1512,		pc1512,		0,		"Amstrad plc",	"PC1512 (V1)",	GAME_SUPPORTS_SAVE )
+COMP( 1987, pc1512v2,	pc1512,		0,		pc1512,		pc1512,		0,		"Amstrad plc",	"PC1512 (V2)",	GAME_SUPPORTS_SAVE )
 COMP( 1989, pc1512v3,	pc1512,		0,		pc1512,		pc1512,		0,		"Amstrad plc",	"PC1512 (V3)",	GAME_NOT_WORKING )
+COMP( 1987, pc1640,		0,			0,		pc1640,		pc1640,		0,		"Amstrad plc",	"PC1640",		GAME_NOT_WORKING )

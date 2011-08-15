@@ -5,7 +5,6 @@
  *  Kyle Davis
  *
  *  TBD:
- *          Map game controllers correctly (right controller + 16 way)
  *          Add tape support (intvkbd)
  *          Add runtime tape loading
  *          Fix memory system workaround
@@ -16,7 +15,6 @@
  *            Separate stic & video better, get rid of *2 for kbd comp
  *          Add better runtime cart loading
  *          Switch to tilemap system
- *      Add IntelliVoice Support
  * Note from kevtris about IntelliVoice Hookup:
 <kevtris> the intv uses a special chip
 <kevtris> called the SPB640
@@ -38,6 +36,7 @@
 #include "includes/intv.h"
 #include "imagedev/cartslot.h"
 #include "sound/ay8910.h"
+#include "sound/sp0256.h"
 
 #ifndef VERBOSE
 #ifdef MAME_DEBUG
@@ -108,6 +107,12 @@ static const ay8910_interface intv_ay8910_interface =
 	AY8910_DEFAULT_LOADS,
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, intv_right_control_r),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, intv_left_control_r),
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
+static const sp0256_interface intellivoice_sp0256 =
+{
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -385,12 +390,14 @@ INPUT_PORTS_END
 
 static ADDRESS_MAP_START( intv_mem , AS_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x003f) AM_READWRITE( intv_stic_r, intv_stic_w )
+	AM_RANGE(0x0080, 0x0081) AM_DEVREADWRITE("sp0256_speech", spb640_r, spb640_w )
 	AM_RANGE(0x0100, 0x01ef) AM_READWRITE( intv_ram8_r, intv_ram8_w )
 	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE("ay8910", AY8914_directread_port_0_lsb_r, AY8914_directwrite_port_0_lsb_w )
 	AM_RANGE(0x0200, 0x035f) AM_READWRITE( intv_ram16_r, intv_ram16_w )
 	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_REGION("maincpu", 0x1000<<1)	/* Exec ROM, 10-bits wide */
 	AM_RANGE(0x3000, 0x37ff) AM_ROM	AM_REGION("maincpu", 0x3000<<1)	/* GROM,     8-bits wide */
 	AM_RANGE(0x3800, 0x39ff) AM_READWRITE( intv_gram_r, intv_gram_w )		/* GRAM,     8-bits wide */
+	AM_RANGE(0x3a00, 0x3bff) AM_READWRITE( intv_gram_r, intv_gram_w )		/* GRAM Alias,     8-bits wide */
 	AM_RANGE(0x4800, 0x7fff) AM_ROM		/* Cartridges? */
 	AM_RANGE(0x8000, 0xBfff) AM_ROM		/* Cartridges? */
 	AM_RANGE(0xD000, 0xFfff) AM_ROM		/* Cartridges? */
@@ -398,6 +405,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( intvkbd_mem , AS_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x003f) AM_READWRITE( intv_stic_r, intv_stic_w )
+	AM_RANGE(0x0080, 0x0081) AM_DEVREADWRITE("sp0256_speech", spb640_r, spb640_w )
 	AM_RANGE(0x0100, 0x01ef) AM_READWRITE( intv_ram8_r, intv_ram8_w )
 	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE("ay8910", AY8914_directread_port_0_lsb_r, AY8914_directwrite_port_0_lsb_w )
 	AM_RANGE(0x0200, 0x035f) AM_READWRITE( intv_ram16_r, intv_ram16_w )
@@ -444,7 +452,7 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(59.92)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	//MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2400)) /* not accurate */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE((STIC_OVERSCAN_LEFT_WIDTH+STIC_BACKTAB_WIDTH*STIC_CARD_WIDTH-1+STIC_OVERSCAN_RIGHT_WIDTH)*STIC_X_SCALE*INTV_X_SCALE, (STIC_OVERSCAN_TOP_HEIGHT+STIC_BACKTAB_HEIGHT*STIC_CARD_HEIGHT+STIC_OVERSCAN_BOTTOM_HEIGHT)*STIC_Y_SCALE*INTV_Y_SCALE)
 	MCFG_SCREEN_VISIBLE_AREA(0, (STIC_OVERSCAN_LEFT_WIDTH+STIC_BACKTAB_WIDTH*STIC_CARD_WIDTH-1+STIC_OVERSCAN_RIGHT_WIDTH)*STIC_X_SCALE*INTV_X_SCALE-1, 0, (STIC_OVERSCAN_TOP_HEIGHT+STIC_BACKTAB_HEIGHT*STIC_CARD_HEIGHT+STIC_OVERSCAN_BOTTOM_HEIGHT)*STIC_Y_SCALE*INTV_Y_SCALE-1)
@@ -462,6 +470,11 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	MCFG_SOUND_CONFIG(intv_ay8910_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
+	MCFG_SOUND_ADD("sp0256_speech", SP0256, 3120000)
+	MCFG_SOUND_CONFIG(intellivoice_sp0256)
+	/* The Intellivoice uses a speaker with its own volume control so the relative volumes to use are subjective */
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
@@ -502,12 +515,20 @@ ROM_START(intv)
 	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD16_WORD( "exec.bin", (0x1000<<1)+0, 0x2000, CRC(cbce86f7) SHA1(5a65b922b562cb1f57dab51b73151283f0e20c7a))
 	ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
+	
+	ROM_REGION( 0x10000<<1, "sp0256_speech", 0 )
+	/* SP0256-012 Speech chip w/2KiB mask rom */
+	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(8bd786ec) SHA1(f98b3024cb87b21dc3ba48ecbc0e8713e9f70219) )
 ROM_END
 
 ROM_START(intvsrs)
 	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD16_WORD( "searsexc.bin", (0x1000<<1)+0, 0x2000, CRC(ea552a22) SHA1(834339de056d42a35571cae7fd5b04d1344001e9))
 	ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
+	
+	ROM_REGION( 0x10000<<1, "sp0256_speech", 0 )
+	/* SP0256-012 Speech chip w/2KiB mask rom */
+	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(8bd786ec) SHA1(f98b3024cb87b21dc3ba48ecbc0e8713e9f70219) )
 ROM_END
 
 ROM_START(intvkbd)

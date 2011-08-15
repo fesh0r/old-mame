@@ -490,9 +490,9 @@ static DEVICE_START( ti99_bwg )
 	card->motor_on_timer = device->machine().scheduler().timer_alloc(FUNC(motor_on_timer_callback), (void *)device);
 	card->controller = device->subdevice("wd1773");
 	card->clock = device->subdevice("mm58274c");
-	astring *region = new astring();
-	astring_assemble_3(region, device->tag(), ":", bwg_region);
-	card->rom = device->machine().region(astring_c(region))->base();
+	astring region;
+	astring_assemble_3(&region, device->tag(), ":", bwg_region);
+	card->rom = device->machine().region(region.cstr())->base();
 	card->ram = NULL;
 }
 

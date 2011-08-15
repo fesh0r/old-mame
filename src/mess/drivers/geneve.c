@@ -319,6 +319,12 @@ static INPUT_PORTS_START(geneve)
 		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 		PORT_CONFSETTING(    0x01, "TI RS-232 card" )
 
+	PORT_START( "SERIALMAP" )
+	PORT_CONFNAME( 0x03, 0x00, "Serial cable pin mapping" ) PORT_CONDITION( "SERIAL", 0x03, PORTCOND_NOTEQUALS, 0x00 )
+		PORT_CONFSETTING(    0x00, "6-20" )
+		PORT_CONFSETTING(    0x01, "8-20" )
+		PORT_CONFSETTING(    0x02, "5-20" )
+
 	PORT_START( "MEMEXDIPS" )
 	PORT_DIPNAME( MDIP1, MDIP1, "MEMEX SW1" ) PORT_CONDITION( "EXTRAM", 0x01, PORTCOND_EQUALS, 0x01 )
 		PORT_DIPSETTING( 0x00, "LED half-bright for 0 WS")
@@ -529,6 +535,14 @@ static INPUT_PORTS_START(geneve)
 
 INPUT_PORTS_END
 
+static const struct tms9995reset_param geneve_processor_config =
+{
+	0,	/* disable automatic wait state generation */
+	0,	/* no IDLE callback */
+	0	/* no MP9537 mask */
+};
+
+
 static DRIVER_INIT( geneve )
 {
 }
@@ -548,6 +562,7 @@ static MACHINE_CONFIG_START( geneve_60hz, geneve_state )
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 12.0 MHz */
 	MCFG_CPU_ADD("maincpu", TMS9995, 12000000)
+	MCFG_CPU_CONFIG(geneve_processor_config)
 	MCFG_CPU_PROGRAM_MAP(memmap)
 	MCFG_CPU_IO_MAP(cru_map)
 	MCFG_CPU_VBLANK_INT_HACK(geneve_hblank_interrupt, 262)	/* 262.5 in 60Hz, 312.5 in 50Hz */

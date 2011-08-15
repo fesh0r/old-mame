@@ -246,6 +246,8 @@ void mb89352_device::set_phase(int phase)
 	{
 	case SCSI_PHASE_BUS_FREE:
 		m_line_status = 0;
+		if(m_int_enable != 0)
+			m_irq_func(1);
 		break;
 	case SCSI_PHASE_COMMAND:
 		m_line_status |= MB89352_LINE_REQ;
@@ -328,6 +330,14 @@ READ8_MEMBER( mb89352_device::mb89352_r )
 		return m_line_status;  // active low -- but Human68k expects it to be zero?
 	case 0x06:  // SSTS - SPC Status
 		return m_spc_status;
+	case 0x07:  // SERR - SPC Error Status
+		/*	#define SERR_SCSI_PAR   0x80
+			#define SERR_SPC_PAR    0x40
+			#define SERR_TC_PAR     0x08
+			#define SERR_PHASE_ERR  0x04
+			#define SERR_SHORT_XFR  0x02
+			#define SERR_OFFSET     0x01*/
+		return 0;
 	case 0x08:  // PCTL - Phase Control
 		return ((m_busfree_int_enable) ? 0x80 : 0x00);
 	case 0x0a:  // DREG - Data register (for data transfers)
@@ -421,6 +431,16 @@ WRITE8_MEMBER( mb89352_device::mb89352_w )
 		}
 		break;
 	case 0x02:  // SCMD - Command
+		/* From NetBSD source
+		#define SCMD_BUS_REL    0x00
+		#define SCMD_SELECT     0x20
+		#define SCMD_RST_ATN    0x40
+		#define SCMD_SET_ATN    0x60
+		#define SCMD_XFR        0x80
+		#define SCMD_XFR_PAUSE  0xa0
+		#define SCMD_RST_ACK    0xc0
+		#define SCMD_SET_ACK    0xe0
+		 */
 		m_scmd = data;
 		switch((data & 0xe0) >> 5)
 		{
@@ -452,12 +472,22 @@ WRITE8_MEMBER( mb89352_device::mb89352_w )
 			}
 			set_phase(SCSI_PHASE_COMMAND); // straight to command phase, may need a delay betweem selection and command phases
 			m_line_status |= MB89352_LINE_SEL;
+			if(m_int_enable != 0)
+				m_irq_func(1);
 			m_line_status |= MB89352_LINE_BSY;
 			m_spc_status &= ~SSTS_TARG_CONNECTED;
 			m_spc_status |= SSTS_INIT_CONNECTED;
 			m_spc_status |= SSTS_SPC_BSY;
 			m_ints |= INTS_COMMAND_COMPLETE;
 			logerror("mb89352: SCMD: Selection (SCSI ID%i)\n",m_target);
+			break;
+		case 0x02:	// Reset ATN
+			m_line_status &= ~MB89352_LINE_ATN;
+			logerror("mb89352: SCMD: Reset ATN\n");
+			break;
+		case 0x03:	// Set ATN
+			m_line_status |= MB89352_LINE_ATN;
+			logerror("mb89352: SCMD: Set ATN\n");
 			break;
 		case 0x04:   // Transfer
 			m_transfer_index = 0;

@@ -9,11 +9,19 @@
     - Remove the PPI hack;
     - BASIC doesn't seem to work properly;
 
+TK80 (Training Kit 80) considered to be Japan's first home computer.
+It consisted of 25 keys and 8 LED digits, and was programmed in hex.
+
+The later TK80BS (Basic Station) has a plugin keyboard, BASIC in rom,
+and plugged into a tv.
+
 ****************************************************************************/
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255.h"
+#include "tk80.lh"
 
 
 class tk80bs_state : public driver_device
@@ -22,44 +30,142 @@ public:
 	tk80bs_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag) { }
 
-	UINT8 *m_vram;
+	DECLARE_READ8_MEMBER(ppi_custom_r);
+	DECLARE_WRITE8_MEMBER(ppi_custom_w);
+	DECLARE_READ8_MEMBER(key_matrix_r);
+	DECLARE_READ8_MEMBER(serial_r);
+	DECLARE_WRITE8_MEMBER(serial_w);
+	DECLARE_READ8_MEMBER(display_r);
+	DECLARE_WRITE8_MEMBER(display_w);
+	UINT8 *m_p_videoram;
 	UINT8 m_keyb_press;
 	UINT8 m_keyb_press_flag;
 	UINT8 m_shift_press_flag;
+	UINT8 m_ppi_portc;
 };
 
+/************************************************* TK80 ******************************************/
 
-
-
-static VIDEO_START( tk80 )
+READ8_MEMBER( tk80bs_state::display_r )
 {
+	return output_get_digit_value(offset);
 }
 
-static SCREEN_UPDATE( tk80 )
+WRITE8_MEMBER( tk80bs_state::display_w )
 {
-	return 0;
+	output_set_digit_value(offset, data);
 }
 
-static ADDRESS_MAP_START(tk80_mem, AS_PROGRAM, 8)
+static ADDRESS_MAP_START(tk80_mem, AS_PROGRAM, 8, tk80bs_state)
 	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x83ff) // A10-14 not connected
 	AM_RANGE(0x0000, 0x02ff) AM_ROM
 	AM_RANGE(0x0300, 0x03ff) AM_RAM // EEPROM
-	AM_RANGE(0x8000, 0x83ff) AM_RAM // RAM
+	AM_RANGE(0x8000, 0x83f7) AM_RAM // RAM
+	AM_RANGE(0x83f8, 0x83ff) AM_RAM AM_READWRITE(display_r,display_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( tk80_io , AS_IO, 8)
+static ADDRESS_MAP_START(tk80_io, AS_IO, 8, tk80bs_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	//AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE_MODERN("ppi8255_0", i8255_device, read, write)
+	ADDRESS_MAP_GLOBAL_MASK(0xff) // possibly should be 3
+	AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE("ppi8255_0", i8255_device, read, write)
 ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( tk80 )
+	PORT_START("X0") /* KEY ROW 0 */
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0)	PORT_CHAR('0')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)	PORT_CHAR('1')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2)	PORT_CHAR('2')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)	PORT_CHAR('3')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4") PORT_CODE(KEYCODE_4)	PORT_CHAR('4')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5") PORT_CODE(KEYCODE_5)	PORT_CHAR('5')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6)	PORT_CHAR('6')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7)	PORT_CHAR('7')
+
+	PORT_START("X1") /* KEY ROW 1 */
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8)	PORT_CHAR('8')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9)	PORT_CHAR('9')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A)	PORT_CHAR('A')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)	PORT_CHAR('B')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)	PORT_CHAR('C')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)	PORT_CHAR('D')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)	PORT_CHAR('E')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F)	PORT_CHAR('F')
+
+	PORT_START("X2") /* KEY ROW 2 */
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("RUN") PORT_CODE(KEYCODE_Q)
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("RET") PORT_CODE(KEYCODE_W)
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ADRS SET") PORT_CODE(KEYCODE_R)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("READ DECR") PORT_CODE(KEYCODE_T)
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("READ INCR") PORT_CODE(KEYCODE_Y)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("WRITE INCR") PORT_CODE(KEYCODE_U)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("STORE DATA") PORT_CODE(KEYCODE_I)
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("LOAD DATA") PORT_CODE(KEYCODE_O)
 INPUT_PORTS_END
 
 static MACHINE_RESET(tk80)
 {
 }
 
+READ8_MEMBER( tk80bs_state::key_matrix_r )
+{
+// PA0-7 keyscan in
+
+	UINT8 data = 0xff;
+	if (BIT(m_ppi_portc, 4))
+		data &= input_port_read(machine(), "X0");
+	if (BIT(m_ppi_portc, 5))
+		data &= input_port_read(machine(), "X1");
+	if (BIT(m_ppi_portc, 6))
+		data &= input_port_read(machine(), "X2");
+
+	return data;
+}
+
+READ8_MEMBER( tk80bs_state::serial_r )
+{
+// PB0 - serial in
+	printf("B R\n");
+
+	return 0;
+}
+
+WRITE8_MEMBER( tk80bs_state::serial_w )
+{
+// PC0 - serial out
+// PC4-6 keyscan out
+// PC7 - display on/off
+	m_ppi_portc = data ^ 0x70;
+}
+
+static I8255_INTERFACE( ppi8255_intf_0 )
+{
+	DEVCB_DRIVER_MEMBER(tk80bs_state, key_matrix_r),		/* Port A read */
+	DEVCB_NULL,							/* Port A write */
+	DEVCB_DRIVER_MEMBER(tk80bs_state, serial_r),			/* Port B read */
+	DEVCB_NULL,							/* Port B write */
+	DEVCB_NULL,							/* Port C read */
+	DEVCB_DRIVER_MEMBER(tk80bs_state, serial_w)			/* Port C write */
+};
+
+
+static MACHINE_CONFIG_START( tk80, tk80bs_state )
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz) // 18.432 / 9
+	MCFG_CPU_PROGRAM_MAP(tk80_mem)
+	MCFG_CPU_IO_MAP(tk80_io)
+
+	MCFG_MACHINE_RESET(tk80)
+
+	/* video hardware */
+	MCFG_DEFAULT_LAYOUT(layout_tk80)
+
+	/* Devices */
+	MCFG_I8255_ADD( "ppi8255_0", ppi8255_intf_0 )
+MACHINE_CONFIG_END
+
+/************************************************* TK80BS ****************************************/
 
 static VIDEO_START( tk80bs )
 {
@@ -77,11 +183,9 @@ static SCREEN_UPDATE( tk80bs )
 	{
 		for(x=0;x<32;x++)
 		{
-			int tile = state->m_vram[count];
+			int tile = state->m_p_videoram[count++];
 
 			drawgfx_opaque(bitmap, cliprect, screen->machine().gfx[0], tile, 0, 0, 0, x*8, y*8);
-
-			count++;
 		}
 	}
 
@@ -89,22 +193,21 @@ static SCREEN_UPDATE( tk80bs )
 }
 
 /* FIXME: current i8255 core doesn't seem to like this system at all, so we use custom code here for now */
-static READ8_HANDLER( ppi_custom_r )
+READ8_MEMBER( tk80bs_state::ppi_custom_r )
 {
-	tk80bs_state *state = space->machine().driver_data<tk80bs_state>();
 //  printf("%02x\n",offset);
 
 	switch(offset+0x7dfc)
 	{
-		case 0x7dfc: state->m_keyb_press_flag = 0; return state->m_keyb_press;
+		case 0x7dfc: m_keyb_press_flag = 0; return m_keyb_press;
 		case 0x7dfd: return 0xff;
-		case 0x7dfe: return state->m_keyb_press_flag << 5; //keyboard flag
+		case 0x7dfe: return m_keyb_press_flag << 5; //keyboard flag
 	}
 
 	return 0xff;
 }
 
-static WRITE8_HANDLER( ppi_custom_w )
+WRITE8_MEMBER( tk80bs_state::ppi_custom_w )
 {
 	//printf("%02x %02x\n",offset,data);
 
@@ -114,14 +217,14 @@ static WRITE8_HANDLER( ppi_custom_w )
 	}
 }
 
-static ADDRESS_MAP_START(tk80bs_mem, AS_PROGRAM, 8)
+static ADDRESS_MAP_START(tk80bs_mem, AS_PROGRAM, 8, tk80bs_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 //  AM_RANGE(0x0c00, 0x7bff) AM_ROM // ext
 	AM_RANGE(0x7df8, 0x7df9) AM_NOP // i8251 sio
-//  AM_RANGE(0x7dfc, 0x7dff) AM_DEVREADWRITE_MODERN("ppi8255_0", i8255_device, read, write)
+//  AM_RANGE(0x7dfc, 0x7dff) AM_DEVREADWRITE("ppi8255_0", i8255_device, read, write)
 	AM_RANGE(0x7dfc, 0x7dff) AM_READWRITE(ppi_custom_r,ppi_custom_w)
-	AM_RANGE(0x7e00, 0x7fff) AM_RAM AM_BASE_MEMBER(tk80bs_state, m_vram) // video ram
+	AM_RANGE(0x7e00, 0x7fff) AM_RAM AM_BASE(m_p_videoram) // video ram
 	AM_RANGE(0x8000, 0xcfff) AM_RAM // RAM
 	AM_RANGE(0xd000, 0xefff) AM_ROM // BASIC
 	AM_RANGE(0xf000, 0xffff) AM_ROM // BSMON
@@ -314,62 +417,9 @@ static const gfx_layout tk80bs_charlayout =
 };
 
 static GFXDECODE_START( tk80bs )
-	GFXDECODE_ENTRY( "gfx", 0x0000, tk80bs_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, tk80bs_charlayout, 0, 1 )
 GFXDECODE_END
 
-static READ8_DEVICE_HANDLER( key_matrix_r )
-{
-	printf("A R\n");
-
-	return 0;
-}
-
-static READ8_DEVICE_HANDLER( serial_in_r )
-{
-	printf("B R\n");
-
-	return 0;
-}
-
-static WRITE8_DEVICE_HANDLER( serial_out_w )
-{
-}
-
-static I8255_INTERFACE( ppi8255_intf_0 )
-{
-	DEVCB_HANDLER(key_matrix_r),		/* Port A read */
-	DEVCB_NULL,							/* Port A write */
-	DEVCB_HANDLER(serial_in_r),			/* Port B read */
-	DEVCB_NULL,							/* Port B write */
-	DEVCB_NULL,							/* Port C read */
-	DEVCB_HANDLER(serial_out_w)			/* Port C write */
-};
-
-
-static MACHINE_CONFIG_START( tk80, tk80bs_state )
-	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",I8080, XTAL_1MHz)
-	MCFG_CPU_PROGRAM_MAP(tk80_mem)
-	MCFG_CPU_IO_MAP(tk80_io)
-
-	MCFG_MACHINE_RESET(tk80)
-
-	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MCFG_SCREEN_SIZE(640, 480)
-	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE(tk80)
-
-	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(black_and_white)
-
-	MCFG_I8255_ADD( "ppi8255_0", ppi8255_intf_0 )
-
-	MCFG_VIDEO_START(tk80)
-MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( tk80bs, tk80bs_state )
 	/* basic machine hardware */
@@ -388,13 +438,11 @@ static MACHINE_CONFIG_START( tk80bs, tk80bs_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(256, 128)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 128-1)
+	MCFG_VIDEO_START(tk80bs)
 	MCFG_SCREEN_UPDATE(tk80bs)
-
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 	MCFG_GFXDECODE(tk80bs)
-
-	MCFG_VIDEO_START(tk80bs)
 
 	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(240/32))
 MACHINE_CONFIG_END
@@ -428,13 +476,12 @@ ROM_START( tk80bs )
 	ROMX_LOAD( "lv2basic.11",0xd000, 0x2000, BAD_DUMP CRC(3df9a3bd) SHA1(9539409c876bce27d630fe47d07a4316d2ce09cb), ROM_BIOS(3))
 	ROMX_LOAD( "bsmon.11",   0xf000, 0x0ff6, BAD_DUMP CRC(fca7a609) SHA1(7c7eb5e5e4cf1e0021383bdfc192b88262aba6f5), ROM_BIOS(3))
 
-	ROM_REGION( 0x1000, "gfx", ROMREGION_ERASEFF )
+	ROM_REGION( 0x1000, "chargen", ROMREGION_ERASEFF )
 	ROM_LOAD( "font.rom",    0x0000, 0x1000, BAD_DUMP CRC(94d95199) SHA1(9fe741eab866b0c520d4108bccc6277172fa190c))
 ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1976, tk80,	0,      0,       tk80,      tk80,    0,       "Nippon Electronic Company",   "TK-80",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1980, tk80bs, tk80,   0,       tk80bs,    tk80bs,  0,       "Nippon Electronic Company",   "TK-80BS",		GAME_NOT_WORKING | GAME_NO_SOUND)
-
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY                        FULLNAME       FLAGS */
+COMP( 1976, tk80,   0,      0,       tk80,      tk80,    0,       "Nippon Electronic Company",   "TK-80", GAME_NO_SOUND_HW)
+COMP( 1980, tk80bs, tk80,   0,       tk80bs,    tk80bs,  0,       "Nippon Electronic Company",   "TK-80BS", GAME_NOT_WORKING | GAME_NO_SOUND_HW)
