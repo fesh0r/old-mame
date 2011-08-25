@@ -1947,9 +1947,30 @@ ROM_START( j2nbz )
 	ROM_LOAD( "nubnzdl3.bin", 0x4000, 0x004000, CRC(450d7fc9) SHA1(f82acb017e765f7188a874dade6fd1a5d6b2033e) )
 ROM_END
 
+ROM_START( j2clbbin )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "club bingo 3.1.bin", 0x0000, 0x008000, CRC(ad6d6c23) SHA1(247e2117e5285d1309a8a92be96ee67e46279aa6) )
+ROM_END
 
 
+ROM_START( j2sirich )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "strikerich1_1.bin", 0x0000, 0x008000, CRC(8b3295c5) SHA1(2f228575e96e574f28627668cb979cdd58307e12) )
+ROM_END
 
+ROM_START( j2wag )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "bwbnwagn.bin", 0x0000, 0x008000, CRC(1163559a) SHA1(9e13b23eae478fd5b5468599b1163d06e189d446) )
+
+	ROM_REGION( 0x10000, "altrevs", 0 )
+	ROM_LOAD( "winagain.bin", 0x0000, 0x004000, CRC(193e743d) SHA1(1c2d0dc8bea80c29c012a6a43d5bcd342b2b9f2a) )
+ROM_END
+
+ROM_START( j2hcash ) // was in a 'Project' 'Hot Cash' set..
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "hotcash1.bin", 0x0000, 0x008000, CRC(834a9060) SHA1(14e59e0caa85d183907843ccb8d0d6abf00c9b42) )
+	ROM_LOAD( "hotcash2.bin", 0x8000, 0x008000, CRC(ee7c082c) SHA1(2f75e20755b24e5e86bfc4d5bf2b064149224d28) )
+ROM_END
 
 GAME(198?, j2adnote	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Jpm","Add A Note (Jpm) (MPS, set 1)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME(198?, j2adnotea,j2adnote	,jpmmps,jpmmps,jpmmps,ROT0,   "Jpm","Add A Note (Jpm) (MPS, set 2)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
@@ -2083,6 +2104,7 @@ GAME(198?, j2always	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Bwb","Always Eight (Bwb)
 GAME(198?, j2coinsh	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Bwb","Coin Shoot (Bwb) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME(198?, j2nudfev	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Bwb","Nudge Fever (Bwb) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME(198?, j2trail	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Bwb","Trailblazer (Bwb) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+GAME(198?, j2wag	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Bwb","Win-A-Gain (Bwb) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 
 GAME(198?, j2cshnud	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Mdm","Cash Nudger (Mdm) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME(198?, j2fivepn	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Mdm","Fivepenny Nudger (Mdm) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
@@ -2140,3 +2162,9 @@ GAME(198?, j2nud5p	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Jpm","5p Nudger (JPM) (MP
 GAME(198?, j2b7		,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Jpm","Bar 7? (JPM) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME(198?, j2ss		,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Jpm","Supa Stepper (JPM) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
 GAME(198?, j2nbz	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Jpm","Nudge Bonanza (JPM) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+
+GAME(198?, j2clbbin	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Crystal?","Club Bingo (Crystal) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )
+
+GAME(198?, j2sirich	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Maygay?","Strike It Rich (Maygay?) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND ) // I don't think this is MayGay, it was just in a MayGay set with some actual MayGay roms
+
+GAME(198?, j2hcash	,0			,jpmmps,jpmmps,jpmmps,ROT0,   "Unknown","Hot Cash (Unk) (MPS)",						GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK|GAME_MECHANICAL|GAME_NO_SOUND )

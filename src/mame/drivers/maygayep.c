@@ -420,6 +420,11 @@ ROM_START( ep_bjclb )
 	ROM_LOAD16_BYTE( "bkjk0-1n.p0", 0x000000, 0x020000, CRC(a031107f) SHA1(ac6437824193661bffcc0cc5a29cf1d2786615ca) )
 	ROM_LOAD16_BYTE( "bkjk0-1n.p1", 0x000001, 0x020000, CRC(2db7c862) SHA1(3d729128fe93e0400fc0b683fd9189342db7cf89) )
 
+	//ROM_REGION( 0x080000, "altrevs", 0 ) /* split into clones later */
+	//ROM_LOAD16_BYTE( "blackjak.p1", 0x000000, 0x020000, BAD_DUMP CRC(31660bf5) SHA1(225c8ef7138b642cbf07a0cb8a575b1e768463ca) ) // FIXED BITS (xxxxxx1x)
+	//ROM_LOAD16_BYTE( "blackjak.p2", 0x000001, 0x020000, BAD_DUMP CRC(cacfcadb) SHA1(b6af22664abffe853007a6fa62631431220f46ac) ) // FIXED BITS (xxxxxx1x)
+
+
 	ROM_REGION( 0x100000, "ymz", 0 )
 	ROM_LOAD( "bkjksnd.p0", 0x000000, 0x0ab42c, CRC(8f574d3f) SHA1(3ce26f0bd7e88baddcf80abeebf190eb2a5f8333) )
 ROM_END
@@ -1134,6 +1139,10 @@ ROM_START( ep_mario )
 	ROM_LOAD16_BYTE( "sa990034.g0", 0x00000, 0x020000, CRC(0bba0aa7) SHA1(21850b73fa8001a31ebea2d524396c0e62e1c0ce) )
 	ROM_LOAD16_BYTE( "sa990034.g1", 0x00001, 0x020000, CRC(802cd278) SHA1(45d547790093cb98890979220b1d4efc37c200c4) )
 
+	ROM_LOAD16_BYTE( "15smg0", 0x00000, 0x020000, CRC(e66591c1) SHA1(e8c9b8ca3634d1a0847f9b243344a3bc6f2c9719) )
+	ROM_LOAD16_BYTE( "15smg1", 0x00001, 0x020000, CRC(8a8f8b5d) SHA1(850a72917046b94a800ade94d097e8262b3a49e7) )
+
+
 	ROM_REGION( 0x100000, "ymz", 0 ) // contains 'Super Mario' string
 	ROM_LOAD( "sm64snd0", 0x000000, 0x080000, CRC(1e5c350d) SHA1(1f7e0ba84b122882b82ae4edd78628cfcae92977) )
 	ROM_LOAD( "sm64snd1", 0x080000, 0x080000, CRC(5ed95303) SHA1(b58e557b56c7b943e19b9bf1229de85c3ca99fe8) )
@@ -1248,7 +1257,10 @@ ROM_START( ep_25crt )
 	ROM_LOAD16_BYTE( "mua03029.g1", 0x000000, 0x020000, CRC(77762650) SHA1(27df8772be10b0520a6ead136dd400563b697654) )
 	ROM_LOAD16_BYTE( "mua03030.g0", 0x000000, 0x020000, CRC(54d63436) SHA1(fb4cb6bc355fa53b11b34c19f5948f4a24e16ba4) )
 	ROM_LOAD16_BYTE( "mua03030.g1", 0x000000, 0x020000, CRC(6559518f) SHA1(ad8df1856b6f778a3e6cf9e71ff83861436e7a31) )
-	MISSING_SOUND
+
+	ROM_REGION( 0x100000, "ymz", 0 ) // not 100% these are right, '25.s0' isn't exactly a telling name
+	ROM_LOAD( "25.s0", 0x000000, 0x080000, CRC(fb4dd880) SHA1(4ccb92b4f14f49fef45d804671c429355cf75dcf) )
+	ROM_LOAD( "25.s1", 0x080000, 0x080000, CRC(ba09b8c7) SHA1(91141f06425e4ac7fed371768062d171e300e8f1) )
 ROM_END
 
 
@@ -4296,6 +4308,99 @@ ROM_END
 
 
 
+ROM_START( ep_bbars )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "sb980023.g0", 0x000000, 0x020000, CRC(1e586e19) SHA1(41626ca7de77fa4a4c3a7ccc91ccc3d566d1a755) )
+	ROM_LOAD16_BYTE( "sb980023.g1", 0x000001, 0x020000, CRC(8cafe00c) SHA1(2ca6f78b6752b9e4d4916063c98967342f54480c) )
+
+	ROM_REGION( 0x200000, "altrevs", 0 ) /* split into clones later */
+	ROM_LOAD16_BYTE( "sb980024.g0", 0x0000, 0x020000, CRC(fb2a3a83) SHA1(7d7603e134520b1fb55a09810780f0c4a934ea5c) )
+	ROM_LOAD16_BYTE( "sb980024.g1", 0x0000, 0x020000, CRC(cf59f55f) SHA1(14b725e41b90ab33250b710141791a4f5f547a35) )
+	ROM_LOAD16_BYTE( "sb980043.g0", 0x0000, 0x020000, CRC(04a742fd) SHA1(abc497adc230569194f8315558d39aaf80a0533d) )
+	ROM_LOAD16_BYTE( "sb980043.g1", 0x0000, 0x020000, CRC(a763298d) SHA1(dd651331acaf0e9e4a045624a14d7dcec5ec762c) )
+	ROM_LOAD16_BYTE( "sb980044.g0", 0x0000, 0x020000, CRC(e1d51667) SHA1(99416b97511d04498d5a05b469b130e5819f520e) )
+	ROM_LOAD16_BYTE( "sb980044.g1", 0x0000, 0x020000, CRC(5eaf5e1b) SHA1(e4c74f7604f1e9a468da62affa762e2916cdb664) )
+	MISSING_SOUND
+ROM_END
+
+
+ROM_START( ep_cslay )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "c_slayer.p0", 0x000000, 0x020000, CRC(599c720c) SHA1(3b7461e9591a30401374d0aa1dfcd1e6c33cebb3) )
+	ROM_LOAD16_BYTE( "c_slayer.p1", 0x000001, 0x020000, CRC(bc8942eb) SHA1(3c3d933fbf14aea81f3ec94f62c0933235170e58) )
+	ROM_LOAD16_BYTE( "c_slayer.p2", 0x040000, 0x020000, CRC(cec502db) SHA1(283c53418bafa6e20a7553278fb16a7dba34af69) )
+	ROM_LOAD16_BYTE( "c_slayer.p3", 0x040001, 0x020000, CRC(0d63b8fe) SHA1(f2b3ac2d05e7c11797b8d29062787c1d75344b87) )
+
+	ROM_REGION( 0x200000, "altrevs", 0 ) /* split into clones later */
+	// mismatched rom, the other part was a bad dump (0 bytes in size)
+	ROM_LOAD( "cash.sla", 0x0000, 0x020000, CRC(c7806f74) SHA1(6d98f6f8475bd8ef0b9e47c891c8ef1460b7c029) )
+	MISSING_SOUND
+ROM_END
+
+
+
+
+ROM_START( ep_monky )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "i03nmb03.g0", 0x000000, 0x020000, CRC(64465543) SHA1(b951e4a9052fbc5e8927e6ddddcc68f7dc77600f) )
+	ROM_LOAD16_BYTE( "i03nmb03.g1", 0x000001, 0x020000, CRC(8e2e241b) SHA1(6481e69ee8106ecbb4bcd87d65c6e9f28e23e688) )
+
+	ROM_REGION( 0x200000, "altrevs", 0 ) /* split into clones later */
+	ROM_LOAD16_BYTE( "i03pmb04.g0", 0x0000, 0x020000, CRC(c5afd11f) SHA1(eee7c00aac92868bc6a24be02e99132b33278c07) )
+	ROM_LOAD16_BYTE( "i03pmb04.g1", 0x0000, 0x020000, CRC(22a18d5e) SHA1(535466d05c17f1cd38921c5ba7f762b30577af96) )
+	MISSING_SOUND
+ROM_END
+
+
+ROM_START( ep_makmv )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "make1-1p.p1", 0x00000, 0x020000, CRC(13389695) SHA1(032aaa5053f57f06a240f8d9bdccda656e52ade2) )
+	ROM_LOAD16_BYTE( "make1-1p.p2", 0x00001, 0x020000, CRC(c0f6e421) SHA1(b254546f5062ce812736e48b04dbaceb0da85a05) )
+	/* code doesn't end.. missing other roms? */
+
+	ROM_REGION( 0x200000, "altrevs", 0 ) /* split into clones later */
+//  ROM_LOAD16_BYTE( "make1-1n.p1", 0x00000, 0x020000, CRC(09323ee2) SHA1(f853d6d27b94cb7c2a19eae1868eed0ea1541b69) ) // this is wrong, can't be the same as p2!
+	ROM_LOAD16_BYTE( "make1-1n.p2", 0x00001, 0x020000, CRC(09323ee2) SHA1(f853d6d27b94cb7c2a19eae1868eed0ea1541b69) )
+
+	MISSING_SOUND
+ROM_END
+
+
+ROM_START( ep_lug )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "lond09g0", 0x00000, 0x020000, CRC(2d3343e0) SHA1(7618ab08c23f8f0e748a7b85ec3c7a52f1f64602) )
+	ROM_LOAD16_BYTE( "lond09g1", 0x00001, 0x020000, CRC(0f36cfbb) SHA1(61c9df9247ede89734f24a2838c49f5e44884993) )
+
+	ROM_REGION( 0x200000, "altrevs", 0 ) /* split into clones later */
+	ROM_LOAD16_BYTE( "msa02176.g0", 0x00000, 0x020000, CRC(12c5414a) SHA1(a570093adb67da2c7a3bdab38a419848ee188cdc) )
+	ROM_LOAD16_BYTE( "msa02176.g1", 0x00001, 0x020000, CRC(c2aae470) SHA1(51e0523b68b0c45e80a7553ae5cadc74b7497b19) )
+	ROM_LOAD16_BYTE( "msa02177.g0", 0x00000, 0x020000, CRC(a97b9047) SHA1(362ad27401fc2ae889761349af7dcf403318a6b6) )
+	ROM_LOAD16_BYTE( "msa02177.g1", 0x00001, 0x020000, CRC(8f0d6b71) SHA1(83d81c528e72d5c0a754e47b0f0cbde7156ad908) )
+	MISSING_SOUND
+ROM_END
+
+ROM_START( ep_crzbn )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "msb01007.g0", 0x00000, 0x020000, CRC(3b3e2c4f) SHA1(6669e661fad6994a9b866aa2eb62a2eeff445831) )
+	ROM_LOAD16_BYTE( "msb01007.g1", 0x00001, 0x020000, CRC(fcf6baa3) SHA1(53d07d6146046bcef2d43806c8601671483e453c) )
+
+	ROM_REGION( 0x200000, "altrevs", 0 ) /* split into clones later */
+	ROM_LOAD16_BYTE( "msb01008.g0", 0x00000, 0x020000, CRC(17480519) SHA1(084a74f94e3ed424715e6ed2ecee57e9d8c014ee) )
+	ROM_LOAD16_BYTE( "msb01008.g1", 0x00001, 0x020000, CRC(e9bee688) SHA1(2f5a014cbe0d80e42cc94c21a3fe8095a89feb19) )
+	ROM_LOAD16_BYTE( "msb01009.g0", 0x00000, 0x020000, CRC(075fd0a3) SHA1(e8e665410d334a9a68fb65f9d5e2b948101810a4) )
+	ROM_LOAD16_BYTE( "msb01009.g1", 0x00001, 0x020000, CRC(162d469b) SHA1(8feb622b835c5cb7dcd7e528b6ae05d9c00e704b) )
+	ROM_LOAD16_BYTE( "msb01010.g0", 0x00000, 0x020000, CRC(162a795e) SHA1(b74d3b75b49791b548c2b6bcf09bb0a0ddada7b2) )
+	ROM_LOAD16_BYTE( "msb01010.g1", 0x00001, 0x020000, CRC(cba57dda) SHA1(8b2511333e0e6dd93920c9a7370a239175d528f6) )
+	MISSING_SOUND
+ROM_END
+
+
+ROM_START( ep_cascz )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "ccst0-2p.p0", 0x00000, 0x020000, CRC(b95f9d85) SHA1(00f9f568f28ffaff6bea0b8c06afb69459fff1de) )
+	ROM_LOAD16_BYTE( "ccst0-2p.p1", 0x00001, 0x020000, CRC(d348b0be) SHA1(ea41d845d92886634eba43e304acd457cba89213) )
+	MISSING_SOUND
+ROM_END
 
 
 /* These have sound roms dumped */
@@ -4487,3 +4592,11 @@ GAME( 199?, ep_wud		,  0,        maygayep,  maygayep,  0,  ROT0, "Global",      
 GAME( 199?, ep_milhr	,  0,        maygayep,  maygayep,  0,  ROT0, "Global",        "Who Wants To Be A Millionhare (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
 GAME( 199?, ep_mlhrc	,  0,        maygayep,  maygayep,  0,  ROT0, "Global",        "Who Whats To Be A Millionhare Club (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
 GAME( 199?, ep_wf		,  0,        maygayep,  maygayep,  0,  ROT0, "Global",        "Wildfire (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_bbars	,  0,        maygayep,  maygayep,  0,  ROT0, "Maygay",        "Balloon Bars (Maygay) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_cslay	,  0,        maygayep,  maygayep,  0,  ROT0, "Global",        "Cash Slayer (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_monky	,  0,        maygayep,  maygayep,  0,  ROT0, "Global",        "Monkey Business (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_makmv	,  0,		 maygayep,  maygayep,  0,  ROT0, "Global",		  "Make Your Move (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_lug		,  0,        maygayep,  maygayep,  0,  ROT0, "Maygay",        "London Underground (Maygay) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_crzbn	,  0,        maygayep,  maygayep,  0,  ROT0, "Maygay",        "Crazy Bingo (Maygay) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+GAME( 199?, ep_cascz	,  0,        maygayep,  maygayep,  0,  ROT0, "Global",        "Casino Crazy (Global) (EPOCH)",        GAME_NO_SOUND | GAME_NOT_WORKING | GAME_MECHANICAL )
+
