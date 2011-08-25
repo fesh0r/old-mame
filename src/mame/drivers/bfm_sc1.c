@@ -2403,12 +2403,6 @@ ROM_START( sc1btbc )
 	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
 ROM_END
 
-ROM_START( sc1bee )
-	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "beeint12", 0x8000, 0x008000, CRC(0a77d0be) SHA1(8e55e7b4eb85cc2521d8fdf7ede02131ed80372e) )
-	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
-ROM_END
-
 
 ROM_START( sc1boncl )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -2509,11 +2503,6 @@ ROM_START( sc1frpus )
 ROM_END
 
 
-ROM_START( sc1esc )
-	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "bfm_esc.bin", 0x8000, 0x008000, CRC(27acb5a5) SHA1(da50d650ab6456d61d0fb7f89247f2040b4bb9a8) )
-	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
-ROM_END
 
 ROM_START( sc1hipt )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -2621,6 +2610,74 @@ ROM_START( sc1s1000 )
 	ROM_LOAD( "super1000.bin", 0x8000, 0x008000, CRC(879e56e6) SHA1(5c0a08375a30213142e1d3835ea46462d882982d) )
 	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
 ROM_END
+
+ROM_START( sc1cdm )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "dd13b.bin", 0x0000, 0x008000, CRC(7a663587) SHA1(6d03a34047ba5f995b1877fc4c0ab9703aa4defc) )
+	ROM_LOAD( "dd13a.bin", 0x8000, 0x008000, CRC(e674bca9) SHA1(31481d791f3aaf1d4ba790924f0f9e4100a82da5) )
+
+	ROM_REGION( 0x10000, "altrevs", 0 )
+	ROM_LOAD( "dd13ap.bin", 0x0000, 0x008000, CRC(84a51666) SHA1(89cf10c7e732b5f77b798bf58fe8ebfc701da57b) )
+
+	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
+	ROM_LOAD( "dd_snd1.bin", 0x000000, 0x010000, CRC(c00a70ab) SHA1(c0014b3e4308281203921994f41f19e0243148e0) )
+	ROM_LOAD( "dd_snd2.bin", 0x010000, 0x010000, CRC(c03827f6) SHA1(16e844fb83d79d1e4fbb0069debaf71af5ad6814) )
+ROM_END
+
+ROM_START( sc1hfcc )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "cz14b.bin", 0x0000, 0x008000, CRC(976233ca) SHA1(554da440a0fe1d66fa95bef51ac168cec35d1636) )
+	ROM_LOAD( "cz14a.bin", 0x8000, 0x008000, CRC(34324f0b) SHA1(946ff8fa40788748a0caabd48d125f2a4f9c36c3) )
+
+	ROM_REGION( 0x10000, "altrevs", 0 )
+	ROM_LOAD( "cz14ap.bin", 0x0000, 0x008000, CRC(56e3e5c4) SHA1(3017007e03139204732f7945ded61d35499055ac) )
+
+	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
+	/* Missing? */
+ROM_END
+
+ROM_START( sc1twice )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "twiceasnice-arcstd.bin", 0x8000, 0x008000, CRC(4ba39f58) SHA1(185513023e0c87d926e0e821ed94f121182880c1) )
+	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
+ROM_END
+
+
+
+ROM_START( sc1chain )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+//  ROM_LOAD( "95717174 b.bin", 0x0000, 0x008000, CRC(6cdc8d15) SHA1(582e5e7bcefe0085917d3499b7c83e27c19662d2) )
+//  ROM_LOAD( "95717173 a.bin", 0x8000, 0x008000, CRC(4989e6c6) SHA1(17184c6a3624dfaa61bc4ddb3ac1813949eaf834) )
+	ROM_LOAD( "95717174.bin", 0x0000, 0x008000, CRC(6cdc8d15) SHA1(582e5e7bcefe0085917d3499b7c83e27c19662d2) )
+	ROM_LOAD( "95717173.bin", 0x8000, 0x008000, CRC(4989e6c6) SHA1(17184c6a3624dfaa61bc4ddb3ac1813949eaf834) )
+
+	ROM_REGION( 0x10000, "altrevs", 0 )
+	ROM_LOAD( "95716173 proto.bin", 0x0000, 0x008000, CRC(4f806f1d) SHA1(cfa8bcc2afbb47e549836d968c3390bef04c6c30) )
+	ROM_LOAD( "95717210.bin", 0x0000, 0x008000, CRC(102d2bc8) SHA1(8ed5f44e6014e21f677762e40076d648901d1ff2) )
+	ROM_LOAD( "95717211.bin", 0x0000, 0x008000, CRC(ed781e00) SHA1(67ebb58beda5123f061a22dacd008f1feb75b8d9) )
+
+	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
+	/* Missing? */
+ROM_END
+
+ROM_START( sc1potp )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "potp 95715159 2x1.bin", 0x6000, 0x002000, CRC(b47cd8f3) SHA1(bf26fdc440a111dc1326b200281c2dff5c517c67) )
+	ROM_LOAD( "potp 95717908 2x1.bin", 0x8000, 0x008000, CRC(953c3e78) SHA1(f14ab2c4337e93605be4baac51b8ad3b9bf0e155) )
+
+	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
+ROM_END
+
+ROM_START( sc1potpa )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "potp 95715146.bin", 0x6000, 0x002000, CRC(9557ebc4) SHA1(a9d3b2d901875b9d53ac9500acdb9b725b4edcb5) )
+	ROM_LOAD( "potp 95350166.bin", 0x8000, 0x008000, CRC(45f0effa) SHA1(afd7aabac7da04b5960c2cc55863b917a2692c4f) )
+
+	ROM_REGION( 0x200000, "upd", ROMREGION_ERASE00 )
+ROM_END
+
+
+
 
 
 
@@ -2740,9 +2797,7 @@ GAME( 199?, sc1strk			, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM/ELA
 GAME( 199?, sc1supfl		, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM/ELAM", "Super Flush (Bellfruit) (Dutch) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
 // are they really SC1?
 GAME( 199?, sc1btbc			, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Beat The Bank Club (Bellfruit) (Scorpion 1?)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) // behaves like sc1dyncl, but then locks up
-GAME( 199?, sc1bee			, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Bee Line (Bellfruit) (Scorpion 1?)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
 GAME( 199?, sc1frpus		, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Fruit Pursuit (Bellfruit) (Scorpion 1?)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
-GAME( 199?, sc1esc			, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Every Second Counts (Bellfruit) (Scorpion 1?)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
 GAME( 199?, sc1ofs56		, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Unknown 'ofs56cp' (Bellfruit) (Scorpion 1?)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) // OFAH - Phoenix 1
 GAME( 199?, sc1boncl		, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Bonanza Club (Bellfruit) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
 // are these really SC1? they do more here than in SC2 at least!
@@ -2764,17 +2819,21 @@ GAME( 1992, sc1s1000		, 0			, scorpion1			, scorpion1	, lotse	        , 0,	   "D
 
 
 
-GAME( 199?, sc1dip			, 0			, scorpion1			, scorpion1	, nocrypt		, 0,	   "Eurocoin", "Diplomat (Eurocoin) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) // S3 RY error (Scorpion 3?)
+GAME( 199?, sc1dip			, 0			, scorpion1			, scorpion1	, nocrypt		, 0,	   "Eurocoin", "Diplomat (Eurocoin) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) // 53 RY error
 GAME( 199?, sc1lamb			, 0			, scorpion1			, scorpion1	, nocrypt		, 0,	   "Eurocoin", "Lambada (Eurocoin) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) //
 GAME( 199?, sc1reply		, 0			, scorpion1			, scorpion1	, nocrypt		, 0,	   "Eurocoin", "Replay (Eurocoin) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) //
+
+GAME( 199?, sc1cdm		, 0			,  scorpion1		, scorpion1		, lotse_bank0		, 0,		 "Crystal",   "Club Diamond (Crystal) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
+GAME( 199?, sc1hfcc		, 0			,  scorpion1		, scorpion1		, lotse_bank0		, 0,		 "Crystal",   "Hi Flyer Club (Crystal) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
+
+GAME( 199?, sc1twice		, 0			,  scorpion1		, scorpion1		, lotse_bank0		, 0,		 "Associated Leisure",   "Twice As Nice (Associated Leisure) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) // this has valid strings in it BEFORE the bfm decode, but decodes to valid code, does it use some funky mapping, or did they just fill unused space with valid looking data?
+GAME( 199?, sc1chain			, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Chain Reaction (Bellfruit) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL)
+GAME( 199?, sc1potp			, 0			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Pick Of The Pack (Bellfruit) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) //was mixed with the sc4/5 potp roms..  System status 98
+GAME( 199?, sc1potpa			, sc1potp			, scorpion1			, scorpion1	, lotse			, 0,	   "BFM",      "Double Dealer (Bellfruit) (Scorpion 1)", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING|GAME_MECHANICAL) // ^ with above.. seems the same game, but different name
+
 
 
 //Adder 2
 GAME( 1996, m_tppokr, 0,        scorpion1_adder2	, toppoker	, toppoker		, 0,       "BFM/ELAM",    "Top Poker (Dutch, Game Card 95-750-899)", GAME_NOT_WORKING|GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-
-
-
-
-
 
 
