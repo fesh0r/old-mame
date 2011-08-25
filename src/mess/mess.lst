@@ -58,7 +58,6 @@ nes       // Nintendo Entertainment System
 nespal	// Nintendo Entertainment System PAL
 m82       // Nintendo M82 Display Unit
 famicom   // Nintendo Family Computer (a.k.a. Famicom) + Disk System add-on
-fami_key  // Nintendo Family Computer (a.k.a. Famicom) + Disk System add-on + Keyboard add-on
 famitwin  // Sharp Famicom Twin System
 drpcjr    // Bung Doctor PC Jr
 dendy     // Dendy (Classic russian famiclone)
@@ -922,10 +921,17 @@ pc100
 
 pc9801f	// 1983
 pc9801rs  // 1989
+pc9801rx  // 1988
+pc9801ux  // 1987
+pc9801vm  // 1985
 
 pc9821
+pc9821as
+pc9821ce2
 pc9821ne
-pc9821a
+pc9821v13
+pc9821v20
+pc9821xs
 
 // Cantab
 ace   // Jupiter Ace
@@ -1827,6 +1833,16 @@ basic52
 basic31
 al8800bt
 sun1
+sun2_50
+sun2_120
+sun3_50
+sun3_60
+sun3_110
+sun3_150
+sun3_260
+sun3_e
+sun3_80
+sun3_460
 micronic
 plan80
 pro80

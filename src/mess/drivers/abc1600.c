@@ -10,10 +10,26 @@
 
     TODO:
 
+    - MAC
+        - MAGIC bit (disable IFC2?)
     - floppy
-        - sector 0 not boot
+        - "rderr no /boot"
+
+            '3f' (001764): wd17xx_data_w $25
+            old track: $00 new track: $25
+            direction: +1
+            '3f' (001788): wd17xx_command_w $19 SEEK (data_reg is $25)
+            '3f' (00193E): wd17xx_status_r: $00 (data_count 0)
+            '3f' (0017A0): wd17xx_track_r: $25
+            '3f' (001844): wd17xx_sector_w $03
+            '3f' (00184C): wd17xx_command_w $8A READ_SEC (cmd=80, trk=25, sec=03, dat=25)
+            '3f' (00193E): wd17xx_status_r: $01 (data_count 0)
+            '3f' (00193E): wd17xx_status_r: $01 (data_count 0)
+            wd179x: Read Sector callback.
+            track 37 sector 3 not found!
+
+        - internal floppy is really drive 2, but wd17xx.c doesn't like having NULL drives
     - BUS0I/0X/1/2
-    - M68K bus errors
     - short/long reset (RSTBUT)
     - SCC interrupt
     - CIO (interrupt controller)
@@ -50,8 +66,11 @@
 #define A1_A2		((A1 << 1) | A2)
 #define A2_A1		((offset >> 1) & 0x03)
 
+#define CURRENT_TASK \
+	(m_ifc2 ? 0 : ((m_task ^ 0x0f) & 0x0f))
+
 #define SEGMENT_ADDRESS(_segment) \
-	(((m_task & 0x0f) << 5) | _segment)
+	((CURRENT_TASK << 5) | _segment)
 
 #define SEGMENT_DATA(_segment) \
 	m_segment_ram[SEGMENT_ADDRESS(_segment)]
@@ -68,7 +87,8 @@
 
 // task register
 #define BOOTE		BIT(m_task, 6)
-#define READ_MAGIC	BIT(m_task, 7)
+#define MAGIC		BIT(m_task, 7)
+#define READ_MAGIC	!MAGIC
 
 
 // DMA map
@@ -112,7 +132,7 @@ enum
 	IOWR2,
 	FW,
 	DMAMAP = 5,
-	SPEC_CONTR_REG = 7
+	SPEC_CONTR_REG
 };
 
 
@@ -208,9 +228,9 @@ UINT8 abc1600_state::read_io(offs_t offset)
 
 			case CRT:
 				if (A0)
-					data = m_crtc->register_r( *program, offset );
+					data = m_crtc->register_r(*program, offset);
 				else
-					data = m_crtc->status_r( *program, offset );
+					data = m_crtc->status_r(*program, offset);
 				break;
 
 			case DRT:
@@ -242,6 +262,20 @@ UINT8 abc1600_state::read_io(offs_t offset)
 	else
 	{
 		// BUS0I, BUS0X, BUS1, BUS2
+		//UINT8 cs = (m_cs7 << 7) | ((offset >> 5) & 0x3f);
+
+		switch ((offset >> 1) & 0x07)
+		{
+		case 0: // INP
+			break;
+
+		case 1: // STAT
+			break;
+
+		case 2: // OPS
+			break;
+		}
+
 		logerror("Unmapped read from virtual I/O %06x\n", offset);
 	}
 
@@ -342,6 +376,31 @@ void abc1600_state::write_io(offs_t offset, UINT8 data)
 			}
 		}
 	}
+	else
+	{
+		//UINT8 cs = (m_cs7 << 7) | ((offset >> 5) & 0x3f);
+
+		switch ((offset >> 1) & 0x07)
+		{
+		case 0: // OUT
+			break;
+
+		case 2: // C1
+			break;
+
+		case 3: // C2
+			break;
+
+		case 4: // C3
+			break;
+
+		case 5: // C4
+			break;
+		}
+
+		// BUS0I, BUS0X, BUS1, BUS2
+		logerror("Unmapped write %02x to virtual I/O %06x\n", data, offset);
+	}
 }
 
 
@@ -421,11 +480,11 @@ UINT8 abc1600_state::read_supervisor_memory(offs_t offset)
 
 	if (!A19)
 	{
-		if (!BOOTE && (offset < 0x4000))
+		if (!BOOTE && !A18 && !A17)
 		{
 			// _BOOTCE
 			UINT8 *rom = machine().region(MC68008P8_TAG)->base();
-			data = rom[offset];
+			data = rom[offset & 0x3fff];
 		}
 		else
 		{
@@ -479,7 +538,7 @@ void abc1600_state::write_supervisor_memory(offs_t offset, UINT8 data)
 			// _WES
 			segment_w(*program, offset, data);
 		}
-		else if (A2 & A1 & A0)
+		else if (A2 & !A1 & A0)
 		{
 			// W(C)
 			task_w(*program, offset, data);
@@ -499,10 +558,12 @@ READ8_MEMBER( abc1600_state::mac_r )
 
 	if (fc == M68K_FC_SUPERVISOR_DATA || fc == M68K_FC_SUPERVISOR_PROGRAM)
 	{
+		m_ifc2 = 0 ^ MAGIC;
 		data = read_supervisor_memory(offset);
 	}
 	else
 	{
+		m_ifc2 = 1 ^ MAGIC;
 		data = read_user_memory(offset);
 	}
 
@@ -520,10 +581,12 @@ WRITE8_MEMBER( abc1600_state::mac_w )
 
 	if (fc == M68K_FC_SUPERVISOR_DATA || fc == M68K_FC_SUPERVISOR_PROGRAM)
 	{
+		m_ifc2 = 0 ^ MAGIC;
 		write_supervisor_memory(offset, data);
 	}
 	else
 	{
+		m_ifc2 = 1 ^ MAGIC;
 		write_user_memory(offset, data);
 	}
 }
@@ -571,20 +634,20 @@ WRITE8_MEMBER( abc1600_state::task_w )
 
         bit     description
 
-        0       SEGA5
-        1       SEGA6
-        2       SEGA7
-        3       SEGA8
+        0       TASKD0* (inverted SEGA5)
+        1       TASKD1* (inverted SEGA6)
+        2       TASKD2* (inverted SEGA7)
+        3       TASKD3* (inverted SEGA8)
         4
         5
-        6       BOOTE
-        7       READ_MAGIC
+        6       BOOTE*
+        7       MAGIC*
 
     */
 
-	m_task = data;
+	m_task = data ^ 0xff;
 
-	if (LOG) logerror("Task %u BOOTE %u READ_MAGIC %u\n", m_task & 0x0f, BOOTE, READ_MAGIC);
+	if (LOG) logerror("Task %u BOOTE %u MAGIC %u\n", (m_task ^ 0x0f) & 0x0f, BOOTE, MAGIC);
 }
 
 
@@ -612,7 +675,7 @@ READ8_MEMBER( abc1600_state::segment_r )
 	int segment = (A8 << 4) | ((offset >> 15) & 0x0f);
 	UINT8 data = SEGMENT_DATA(segment);
 
-	return (m_task & 0x80) | (data & 0x7f);
+	return (READ_MAGIC << 7) | (data & 0x7f);
 }
 
 
@@ -640,7 +703,7 @@ WRITE8_MEMBER( abc1600_state::segment_w )
 	int segment = (A8 << 4) | ((offset >> 15) & 0x0f);
 	SEGMENT_DATA(segment) = data & 0x7f;
 
-	if (LOG) logerror("Task %u Segment %u : %02x\n", m_task & 0x0f, segment, data);
+	if (LOG) logerror("Task %u Segment %u : %02x\n", CURRENT_TASK, segment, data);
 }
 
 
@@ -724,7 +787,7 @@ WRITE8_MEMBER( abc1600_state::page_w )
 		PAGE_DATA(segment, page) = (data << 8) | (PAGE_DATA(segment, page) & 0xff);
 	}
 
-	if (LOG) logerror("Task %u Segment %u Page %u : %04x\n", m_task & 0x0f, segment, page, PAGE_DATA(segment, page));
+	if (LOG) logerror("Task %u Segment %u Page %u : %04x\n", CURRENT_TASK, segment, page, PAGE_DATA(segment, page));
 }
 
 
@@ -867,6 +930,8 @@ WRITE8_MEMBER( abc1600_state::dmamap_w )
 
     */
 
+	if (LOG) logerror("DMAMAP %u %02x\n", offset & 7, data);
+
 	m_dmamap[offset & 7] = data;
 }
 
@@ -897,7 +962,7 @@ WRITE8_MEMBER( abc1600_state::fw0_w )
 
     */
 
-	logerror("FW0 %02x\n", data);
+	if (LOG) logerror("FW0 %02x\n", data);
 
 	// drive select
 	if (BIT(data, 0)) wd17xx_set_drive(m_fdc, 0);
@@ -930,7 +995,7 @@ WRITE8_MEMBER( abc1600_state::fw1_w )
 
     */
 
-	logerror("FW1 %02x\n", data);
+	if (LOG) logerror("FW1 %02x\n", data);
 
 	// FDC master reset
 	wd17xx_mr_w(m_fdc, BIT(data, 0));
@@ -946,7 +1011,7 @@ WRITE8_MEMBER( abc1600_state::fw1_w )
 
 WRITE8_MEMBER( abc1600_state::spec_contr_reg_w )
 {
-	int state = !BIT(data, 3);
+	int state = BIT(data, 3);
 
 	switch (data & 0x07)
 	{
@@ -998,40 +1063,6 @@ WRITE8_MEMBER( abc1600_state::spec_contr_reg_w )
 static ADDRESS_MAP_START( abc1600_mem, AS_PROGRAM, 8, abc1600_state )
 	AM_RANGE(0x00000, 0xfffff) AM_READWRITE(mac_r, mac_w)
 ADDRESS_MAP_END
-
-/*
-
-    Supervisor Data map
-
-    AM_RANGE(0x00000, 0x03fff) AM_ROM AM_REGION(MC68008P8_TAG, 0)
-    AM_RANGE(0x80000, 0x80001) AM_MIRROR(0x7f800) AM_MASK(0x7f801) AM_READWRITE(page_r, page_w)
-    AM_RANGE(0x80002, 0x80002) AM_MIRROR(0x7f800) AM_NOP
-    AM_RANGE(0x80003, 0x80003) AM_MIRROR(0x7f800) AM_MASK(0x7f800) AM_READWRITE(segment_r, segment_w)
-    AM_RANGE(0x80007, 0x80007) AM_READWRITE(cause_r, task_w)
-
-    Virtual Address Map
-
-    AM_RANGE(0x000000, 0x0fffff) AM_RAM
-    AM_RANGE(0x100000, 0x17ffff) AM_RAM AM_MEMBER(m_video_ram)
-    AM_RANGE(0x1ff000, 0x1ff007) AM_DEVREADWRITE_LEGACY(SAB1797_02P_TAG, wd17xx_r, wd17xx_w) // A2,A1
-    AM_RANGE(0x1ff100, 0x1ff100) AM_DEVWRITE(SY6845E_TAG, mc6845_device, address_w)
-    AM_RANGE(0x1ff101, 0x1ff101) AM_DEVREADWRITE(SY6845E_TAG, mc6845_device, register_r, register_w)
-    AM_RANGE(0x1ff200, 0x1ff207) AM_DEVREADWRITE_LEGACY(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w) // A2,A1
-    AM_RANGE(0x1ff300, 0x1ff300) AM_DEVREADWRITE_LEGACY(Z8410AB1_0_TAG, z80dma_r, z80dma_w)
-    AM_RANGE(0x1ff400, 0x1ff400) AM_DEVREADWRITE_LEGACY(Z8410AB1_1_TAG, z80dma_r, z80dma_w)
-    AM_RANGE(0x1ff500, 0x1ff500) AM_DEVREADWRITE_LEGACY(Z8410AB1_2_TAG, z80dma_r, z80dma_w)
-    AM_RANGE(0x1ff600, 0x1ff607) AM_DEVREADWRITE(Z8530B1_TAG, scc8530_r, scc8530_w) // A2,A1
-    AM_RANGE(0x1ff700, 0x1ff707) AM_DEVREADWRITE(Z8536B1_TAG, z8536_r, z8536_w) // A2,A1
-    AM_RANGE(0x1ff800, 0x1ff800) AM_READ(iord0_w)
-    AM_RANGE(0x1ff800, 0x1ff807) AM_WRITE(iowr0_w)
-    AM_RANGE(0x1ff900, 0x1ff907) AM_WRITE(iowr1_w)
-    AM_RANGE(0x1ffa00, 0x1ffa07) AM_WRITE(iowr2_w)
-    AM_RANGE(0x1ffb00, 0x1ffb00) AM_WRITE(fw0_w)
-    AM_RANGE(0x1ffb01, 0x1ffb01) AM_WRITE(fw1_w)
-    AM_RANGE(0x1ffd00, 0x1ffd07) AM_WRITE(dmamap_w)
-    AM_RANGE(0x1ffe00, 0x1ffe00) AM_WRITE(spec_contr_reg_w)
-
-*/
 
 
 
@@ -1307,7 +1338,7 @@ WRITE8_MEMBER( abc1600_state::cio_pc_w )
 	int rtc_cs = BIT(data, 2);
 	int nvram_cs = BIT(data, 3);
 
-	logerror("CLK %u DATA %u RTC %u NVRAM %u\n", clock, data_out, rtc_cs, nvram_cs);
+	if (LOG) logerror("CLK %u DATA %u RTC %u NVRAM %u\n", clock, data_out, rtc_cs, nvram_cs);
 
 	m_rtc->cs_w(rtc_cs);
 	m_rtc->dio_w(data_out);
@@ -1334,6 +1365,15 @@ static Z8536_INTERFACE( cio_intf )
 //  wd17xx_interface fdc_intf
 //-------------------------------------------------
 
+static LEGACY_FLOPPY_OPTIONS_START( abc1600 )
+	LEGACY_FLOPPY_OPTION(abc1600, "dsk", "Luxor ABC 1600", basicdsk_identify_default, basicdsk_construct_default, NULL,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+LEGACY_FLOPPY_OPTIONS_END
+
 static const floppy_interface abc1600_floppy_interface =
 {
     DEVCB_NULL,
@@ -1341,8 +1381,8 @@ static const floppy_interface abc1600_floppy_interface =
     DEVCB_NULL,
     DEVCB_NULL,
     DEVCB_NULL,
-    FLOPPY_STANDARD_5_25_DSQD,
-    LEGACY_FLOPPY_OPTIONS_NAME(default),
+    FLOPPY_STANDARD_5_25_DSDD,
+    LEGACY_FLOPPY_OPTIONS_NAME(abc1600),
     "floppy_5_25",
 	NULL
 };
@@ -1357,7 +1397,7 @@ static const wd17xx_interface fdc_intf =
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pb7_w),
 	DEVCB_DRIVER_LINE_MEMBER(abc1600_state, drq_w),
-	{ FLOPPY_0, NULL, NULL, NULL }
+	{ FLOPPY_0, NULL, NULL, NULL } // TODO should be { NULL, NULL, FLOPPY_2, NULL }
 };
 
 
@@ -1385,6 +1425,7 @@ static ABC99_INTERFACE( abc99_intf )
 void abc1600_state::machine_start()
 {
 	// state saving
+	save_item(NAME(m_ifc2));
 	save_item(NAME(m_task));
 	save_item(NAME(m_segment_ram));
 	save_item(NAME(m_page_ram));
@@ -1501,7 +1542,7 @@ ROM_START( abc1600 )
 	ROM_LOAD( "1023 6490352-01.11e", 0x410, 0x104, CRC(a2f350ac) SHA1(77e08654a197080fa2111bc3031cd2c7699bf82b) ) // interrupt acknowledge
 	ROM_LOAD( "1024 6490353-01.12e", 0x514, 0x104, CRC(67f1328a) SHA1(b585495fe14a7ae2fbb29f722dca106d59325002) ) // expansion bus timing and control
 	ROM_LOAD( "1025 6490354-01.6e",  0x618, 0x104, CRC(9bda0468) SHA1(ad373995dcc18532274efad76fa80bd13c23df25) ) // DMA transfer
-	//ROM_LOAD( "pal16r4.10c", 0x71c, 0x104, NO_DUMP ) // SCC read/write, does this exist on the PCB?
+	//ROM_LOAD( "pal16r4.10c", 0x71c, 0x104, NO_DUMP ) // SCC read/write, mentioned in the preliminary service manual, but not present on the PCB
 ROM_END
 
 

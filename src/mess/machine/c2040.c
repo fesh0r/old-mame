@@ -18,6 +18,14 @@
 
     - Micropolis 8x50 stepper motor is same as 4040, except it takes 4 pulses to step a track instead of 1
 
+    - BASIC program to set 8250/SFD-1001 to 8050 mode:
+
+        10 OPEN 15,8,15
+        20 PRINT#15,"M-W"CHR$(172)CHR$(16)CHR$(1)CHR$(1)
+        30 PRINT#15,"M-W"CHR$(195)CHR$(16)CHR$(1)CHR$(0)
+        40 PRINT#15,"U9"
+        50 CLOSE 15
+
 */
 
 #include "c2040.h"
@@ -129,7 +137,7 @@ ROM_START( c2040 ) // schematic 320806
 	// RIOT DOS 1
 	//ROM_LOAD( "901466-02.uk3", 0x000, 0x400, BAD_DUMP /* parsed in from disassembly */ CRC(e1c86c43) SHA1(d8209c66fde3f2937688ba934ba968678a9d2ebb) )
 	ROM_LOAD( "901466-02.uk3", 0x000, 0x400, NO_DUMP)
-	
+
 	ROM_REGION( 0x800, "gcr", 0)
 	ROM_LOAD( "901467.uk6",    0x2400, 0x0800, CRC(a23337eb) SHA1(97df576397608455616331f8e837cb3404363fa2) )
 ROM_END

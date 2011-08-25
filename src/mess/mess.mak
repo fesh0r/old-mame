@@ -465,9 +465,18 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_MACHINE)/pcshare.o	\
 	$(MAME_MACHINE)/megadriv.o  \
 	$(MAME_MACHINE)/dc.o		\
+	$(MAME_DRIVERS)/naomi.o 	\
+	$(MAME_MACHINE)/dc.o		\
+	$(MAME_VIDEO)/dc.o			\
+	$(MAME_MACHINE)/naomi.o 	\
+	$(MAME_MACHINE)/naomig1.o	\
 	$(MAME_MACHINE)/naomibd.o	\
-	$(MAME_MACHINE)/naomim4decoder.o \
-	$(MAME_MACHINE)/gdcrypt.o	\
+	$(MAME_MACHINE)/naomirom.o	\
+	$(MAME_MACHINE)/naomigd.o	\
+	$(MAME_MACHINE)/naomim1.o	\
+	$(MAME_MACHINE)/naomim2.o	\
+	$(MAME_MACHINE)/naomim4.o	\
+	$(MAME_MACHINE)/awboard.o	\
 	$(MAME_MACHINE)/mie.o		\
 	$(MAME_MACHINE)/maple-dc.o	\
 	$(MAME_MACHINE)/mapledev.o	\
@@ -646,7 +655,7 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/apple3.o	\
 	$(MESS_DRIVERS)/apple3.o	\
     $(MESS_MACHINE)/egret.o     \
-	$(MESS_VIDEO)/nubus_48gc.o 	\
+	$(MESS_VIDEO)/nubus_48gc.o	\
 	$(MESS_VIDEO)/nubus_cb264.o \
 	$(MESS_VIDEO)/nubus_vikbw.o \
 	$(MESS_VIDEO)/nubus_specpdq.o \
@@ -1197,7 +1206,7 @@ $(MESSOBJ)/nec.a:				\
 	$(MESS_DRIVERS)/pc8001.o	\
 	$(MESS_DRIVERS)/pc8801.o	\
 	$(MESS_DRIVERS)/pc88va.o	\
-	$(MESS_DRIVERS)/pc100.o         \
+	$(MESS_DRIVERS)/pc100.o		\
 	$(MESS_DRIVERS)/pc9801.o	\
 	$(MESS_DRIVERS)/tk80bs.o	\
 
@@ -1207,6 +1216,8 @@ $(MESSOBJ)/netronic.a:			\
 
 $(MESSOBJ)/next.a:				\
 	$(MESS_DRIVERS)/next.o		\
+	$(MESS_MACHINE)/nextkbd.o	\
+	$(MESS_MACHINE)/n82077aa.o	\
 
 $(MESSOBJ)/nintendo.a:			\
 	$(MESS_MACHINE)/nes_mmc.o	\
@@ -1224,7 +1235,7 @@ $(MESSOBJ)/nintendo.a:			\
 	$(MESS_DRIVERS)/pokemini.o	\
 	$(MESS_DRIVERS)/vboy.o		\
 	$(MESS_DRIVERS)/gba.o		\
-	$(MESS_VIDEO)/gba.o		\
+	$(MESS_VIDEO)/gba.o			\
 
 $(MESSOBJ)/nokia.a:				\
 	$(MESS_DRIVERS)/mikromik.o	\
@@ -1389,8 +1400,8 @@ $(MESSOBJ)/sega.a:				\
 	$(MAME_MACHINE)/gdrom.o 	\
 	$(MESS_MACHINE)/dccons.o	\
 	$(MESS_VIDEO)/smsvdp.o		\
-	$(MESS_MACHINE)/segasms.o	\
-	$(MESS_DRIVERS)/segasms.o	\
+	$(MESS_MACHINE)/sms.o	\
+	$(MESS_DRIVERS)/sms.o	\
 	$(MESS_DRIVERS)/sg1000.o	\
 
 $(MESSOBJ)/sgi.a:				\
@@ -1482,6 +1493,8 @@ $(MESSOBJ)/special.a:			\
 
 $(MESSOBJ)/sun.a:				\
 	$(MESS_DRIVERS)/sun1.o		\
+	$(MESS_DRIVERS)/sun2.o		\
+	$(MESS_DRIVERS)/sun3.o		\
 
 $(MESSOBJ)/svi.a:				\
 	$(MESS_MACHINE)/svi318.o	\
@@ -1889,7 +1902,7 @@ $(MESS_DRIVERS)/sdk85.o:	$(MESS_LAYOUT)/sdk85.lh
 $(MESS_DRIVERS)/sdk86.o:	$(MESS_LAYOUT)/sdk86.lh
 $(MESS_DRIVERS)/selz80.o:	$(MESS_LAYOUT)/selz80.lh
 $(MESS_DRIVERS)/slc1.o:		$(MESS_LAYOUT)/slc1.lh
-$(MESS_DRIVERS)/segasms.o:	$(MAME_LAYOUT)/sms1.lh
+$(MESS_DRIVERS)/sms.o:		$(MAME_LAYOUT)/sms1.lh
 $(MESS_DRIVERS)/stopthie.o:	$(MESS_LAYOUT)/stopthie.lh
 $(MESS_DRIVERS)/super80.o:	$(MESS_LAYOUT)/super80.lh
 $(MESS_DRIVERS)/supercon.o:	$(MESS_LAYOUT)/supercon.lh

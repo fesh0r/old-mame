@@ -2,18 +2,18 @@
 
     Amstrad PC1512
 
-	http://www.seasip.info/AmstradXT
-	http://stason.org/TULARC/pc/hard-drives-hdd/tandon/TM262-21MB-5-25-HH-MFM-ST506.html
-	
+    http://www.seasip.info/AmstradXT
+    http://stason.org/TULARC/pc/hard-drives-hdd/tandon/TM262-21MB-5-25-HH-MFM-ST506.html
+
 */
 
 /*
 
     TODO:
 
-	- adjust mouse speed
-	- RTC should not be y2k compliant
-	- V3 VDU check fails
+    - adjust mouse speed
+    - RTC should not be y2k compliant
+    - V3 VDU check fails
 
 */
 
@@ -338,7 +338,7 @@ READ8_MEMBER( pc1512_state::printer_r )
             2       Reset Printer
             3       Select Printer
             4       Enable Int on ACK
-            5		1
+            5       1
             6
             7
 
@@ -372,41 +372,41 @@ READ8_MEMBER( pc1640_state::printer_r )
             2       Reset Printer
             3       Select Printer
             4       Enable Int on ACK
-            5		OPT
-            6		SW6
-            7		SW7
+            5       OPT
+            6       SW6
+            7       SW7
 
         */
-		
-		/*
-		Bit D5 is the option (OPT) bit and can return one of three different pieces of 
-		information. Although not documented as such on the PC1512, Bit D5 was always a 
-		"1", however on the PC1640 it will always be a zero if immediately prior to the 
-		read of channel 037Ah the software performs an I/O read of an I/O channel 
-		implemented on the PC1512 main board, having address line A7 high (for example, 
-		the CGA channels). This is a simple test for software to detect whether it is 
-		running on a PC1512 or a PC1640. A PC1512 will give a 1, whereas a PC1640 will 
-		give a 0.
 
-		In addition to being a test of machine type the OPT bit, D5, can also reflect 
-		the state of either SW9 or SW10. The OPT bit will reflect the state of switch
-		SW9 by an I/O read operation to an I/O channel not implemented on the main 
-		board and having address lines A14 and A7 both low (for example channel 0278h)
-		immediately prior to the reading of channel 037Ah. The OPT bit is set to the 
-		state of switch SW10 by an I/O read operation to an I/O channel not implemented
-		on the main board having address lines A14 high and A7 low (for example channel
-		4278h). Software testing OPT bit should disable interrupts before the initial 
-		(dummy) channel read and the I/O read of channel 037A in order to avoid 
-		additional (interrupt based) I/O operations between the setting and the testing
-		of the information read back in the OPT bit. For switches SW9 and SW10, a logic
-		"1" is returned when the switch is on the "on" position and a logic "0" if the
-		switch is in the "off" position.
-		*/
+		/*
+        Bit D5 is the option (OPT) bit and can return one of three different pieces of
+        information. Although not documented as such on the PC1512, Bit D5 was always a
+        "1", however on the PC1640 it will always be a zero if immediately prior to the
+        read of channel 037Ah the software performs an I/O read of an I/O channel
+        implemented on the PC1512 main board, having address line A7 high (for example,
+        the CGA channels). This is a simple test for software to detect whether it is
+        running on a PC1512 or a PC1640. A PC1512 will give a 1, whereas a PC1640 will
+        give a 0.
+
+        In addition to being a test of machine type the OPT bit, D5, can also reflect
+        the state of either SW9 or SW10. The OPT bit will reflect the state of switch
+        SW9 by an I/O read operation to an I/O channel not implemented on the main
+        board and having address lines A14 and A7 both low (for example channel 0278h)
+        immediately prior to the reading of channel 037Ah. The OPT bit is set to the
+        state of switch SW10 by an I/O read operation to an I/O channel not implemented
+        on the main board having address lines A14 high and A7 low (for example channel
+        4278h). Software testing OPT bit should disable interrupts before the initial
+        (dummy) channel read and the I/O read of channel 037A in order to avoid
+        additional (interrupt based) I/O operations between the setting and the testing
+        of the information read back in the OPT bit. For switches SW9 and SW10, a logic
+        "1" is returned when the switch is on the "on" position and a logic "0" if the
+        switch is in the "off" position.
+        */
 		data = m_printer_control;
 		data |= m_opt << 5;
 		data |= (input_port_read(machine(), "SW") & 0x60) << 1;
 		break;
-		
+
 	default:
 		data = pc1512_state::printer_r(space, offset);
 		break;
@@ -439,7 +439,7 @@ WRITE8_MEMBER( pc1512_state::printer_w )
             2       Reset Printer
             3       Select Printer
             4       Enable Int on ACK
-            5		
+            5
             6
             7
 
@@ -549,8 +549,8 @@ READ8_MEMBER( pc1640_state::io_r )
 	UINT8 data = 0;
 	offs_t addr = offset & 0x3ff;
 	bool decoded = false;
-	
-	if 		(addr >= 0x000 && addr <= 0x00f) { data = i8237_r(m_dmac, offset & 0x0f); decoded = true; }
+
+	if		(addr >= 0x000 && addr <= 0x00f) { data = i8237_r(m_dmac, offset & 0x0f); decoded = true; }
 	else if (addr >= 0x020 && addr <= 0x021) { data = pic8259_r(m_pic, offset & 0x01); decoded = true; }
 	else if (addr >= 0x040 && addr <= 0x043) { data = pit8253_r(m_pit, offset & 0x03); decoded = true; }
 	else if (addr >= 0x060 && addr <= 0x06f) { data = system_r(space, offset & 0x0f); decoded = true; }
@@ -560,11 +560,11 @@ READ8_MEMBER( pc1640_state::io_r )
 	else if (addr >= 0x3b0 && addr <= 0x3df) { data = iga_r(space, addr - 0x3b0); decoded = true; }
 	else if (addr >= 0x3f0 && addr <= 0x3f7) { data = fdc_r(space, offset & 0x07); decoded = true; }
 	else if (addr >= 0x3f8 && addr <= 0x3ff) { data = ins8250_r(m_uart, offset & 0x07); decoded = true; }
-	
+
 	if (decoded)
 	{
 		if (BIT(offset, 7))
-		{ 
+		{
 			m_opt = 0;
 			//logerror("OPT 0\n");
 		}
@@ -572,19 +572,19 @@ READ8_MEMBER( pc1640_state::io_r )
 	else if (!BIT(offset, 7))
 	{
 		UINT16 sw = input_port_read(machine(), "SW");
-		
+
 		if (!BIT(offset, 14))
-		{ 
+		{
 			m_opt = BIT(sw, 8);
 			logerror("OPT SW9 %u\n", m_opt);
 		}
-		else 
+		else
 		{
 			m_opt = BIT(sw, 9);
 			logerror("OPT SW10 %u\n", m_opt);
 		}
 	}
-	
+
 	return data;
 }
 
@@ -634,7 +634,7 @@ static ADDRESS_MAP_START( pc1640_mem, AS_PROGRAM, 16, pc1640_state )
 	AM_RANGE(0x00000, 0x9ffff) AM_RAM
 	AM_RANGE(0xa0000, 0xbffff) AM_READWRITE8(video_ram_r, video_ram_w, 0xffff)
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM AM_REGION("iga", 0)
-//	AM_RANGE(0xc8000, 0xc9fff) AM_ROM AM_REGION("hdc", 0)
+//  AM_RANGE(0xc8000, 0xc9fff) AM_ROM AM_REGION("hdc", 0)
 	AM_RANGE(0xf0000, 0xf3fff) AM_MIRROR(0xc000) AM_ROM AM_REGION(I8086_TAG, 0)
 ADDRESS_MAP_END
 
@@ -787,7 +787,7 @@ static INPUT_PORTS_START( pc1640 )
 	PORT_DIPSETTING(	0x02, "Swedish" )
 	PORT_DIPSETTING(	0x01, DEF_STR( Italian ) )
 	PORT_DIPSETTING(	0x00, "Diagnostic Mode" )
-	
+
 	PORT_START("SW")
 	PORT_DIPNAME( 0x0f, 0x09, "Initial Display Mode" ) PORT_DIPLOCATION("SW:1,2,3,4") PORT_CONDITION("SW", 0x200, PORTCOND_EQUALS, 0x200)
 	PORT_DIPSETTING(	0x0b, "Internal MD, External CGA80" )
@@ -1238,7 +1238,7 @@ void pc1512_state::machine_reset()
 	m_kb_bits = 0;
 
 	set_fdc_dsr(0);
-	
+
 	m_lpen = 0;
 	m_blink = 0;
 	m_cursor = 0;
@@ -1248,7 +1248,7 @@ void pc1512_state::machine_reset()
 	m_vdu_rdsel = 0;
 	m_vdu_plane = 0x0f;
 	m_vdu_border = 0;
-	
+
 	m_kb->clock_w(0);
 }
 
@@ -1451,12 +1451,15 @@ ROM_END
 
 ROM_START( pc1640 )
 	ROM_REGION16_LE( 0x4000, I8086_TAG, 0)
-	ROM_SYSTEM_BIOS( 0, "unk", "unknown date code" )
-	ROMX_LOAD( "40044.ic132", 0x0000, 0x2000, CRC(f1c074f3) SHA1(a055ea7e933d137623c22fe24004e870653c7952), ROM_SKIP(1) | ROM_BIOS(1) )
-	ROMX_LOAD( "40043.ic129", 0x0001, 0x2000, CRC(e40a1513) SHA1(447eff2057e682e51b1c7593cb6fad0e53879fa8), ROM_SKIP(1) | ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 0, "87xx", "Week ?/1987" )
+	ROMX_LOAD( "40044 87xx.ic132", 0x0000, 0x2000, CRC(f1c074f3) SHA1(a055ea7e933d137623c22fe24004e870653c7952), ROM_SKIP(1) | ROM_BIOS(1) )
+	ROMX_LOAD( "40043 87xx.ic129", 0x0001, 0x2000, CRC(e40a1513) SHA1(447eff2057e682e51b1c7593cb6fad0e53879fa8), ROM_SKIP(1) | ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "8738", "Week 38/1987" )
 	ROMX_LOAD( "40044 8738.ic132", 0x0000, 0x2000, CRC(43832ea7) SHA1(eea4a8836f966940a88c88de6c5cc14852545f7d), ROM_SKIP(1) | ROM_BIOS(2) ) // 8738 D F
 	ROMX_LOAD( "40043 8738.ic129", 0x0001, 0x2000, CRC(768498f9) SHA1(ac48cb892417d7998d604f3b79756140c554f476), ROM_SKIP(1) | ROM_BIOS(2) ) // 8738 D F
+	ROM_SYSTEM_BIOS( 2, "88xx", "Week ?/1988" )
+	ROMX_LOAD( "40044 88xx.ic132", 0x0000, 0x2000, CRC(6090f782) SHA1(e21ae524d5b4d00696d293dbd4fe4d7bca22e277), ROM_SKIP(1) | ROM_BIOS(3) )
+	ROMX_LOAD( "40043 88xx.ic129", 0x0001, 0x2000, CRC(9219d0aa) SHA1(dde1a46c8f83e413d7070f1356fc91b9f595a8b6), ROM_SKIP(1) | ROM_BIOS(3) )
 
 	ROM_REGION16_LE( 0x8000, "iga", 0)
 	ROM_LOAD( "40100.ic913", 0x0000, 0x8000, CRC(d2d1f1ae) SHA1(98302006ee38a17c09bd75504cc18c0649174e33) ) // 8736 E

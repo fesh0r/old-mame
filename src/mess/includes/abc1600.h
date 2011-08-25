@@ -7,6 +7,7 @@
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
+#include "formats/basicdsk.h"
 #include "imagedev/flopdrv.h"
 #include "imagedev/harddriv.h"
 #include "machine/ram.h"
@@ -129,8 +130,6 @@ public:
 	DECLARE_READ8_MEMBER( cio_pc_r );
 	DECLARE_WRITE8_MEMBER( cio_pc_w );
 
-	DECLARE_WRITE_LINE_MEMBER( vs_w );
-
 	UINT8 read_ram(offs_t offset);
 	void write_ram(offs_t offset, UINT8 data);
 	UINT8 read_io(offs_t offset);
@@ -170,6 +169,7 @@ public:
 	void crtc_update_row(device_t *device, bitmap_t *bitmap, const rectangle *cliprect, UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, INT8 cursor_x, void *param);
 
 	// memory access controller
+	int m_ifc2;
 	UINT8 m_task;
 	UINT8 m_segment_ram[0x400];
 	UINT16 m_page_ram[0x400];
@@ -194,7 +194,6 @@ public:
 	UINT16 *m_video_ram;		// video RAM
 	int m_endisp;				// enable display
 	int m_clocks_disabled;		// clocks disabled
-	int m_vs;					// vertical sync
 	UINT16 m_gmdi;				// video RAM data latch
 	UINT16 m_wrm;				// write mask latch
 	UINT8 m_ms[16];				// mover sequence control
