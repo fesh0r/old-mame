@@ -23,7 +23,7 @@ ToDo:
 
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
-#include "machine/6551.h"
+#include "machine/6551acia.h"
 #include "machine/terminal.h"
 
 #define MACHINE_RESET_MEMBER(name) void name::machine_reset()
@@ -68,7 +68,7 @@ READ8_MEMBER( mits680b_state::terminal_r )
 static ADDRESS_MAP_START(mits680b_mem, AS_PROGRAM, 8, mits680b_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x03ff ) AM_RAM // 1024 bytes RAM
-	//AM_RANGE( 0xf000, 0xf003 ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+	//AM_RANGE( 0xf000, 0xf003 ) AM_DEVREADWRITE("acia",  acia6551_device, read, write )
 	AM_RANGE( 0xf000, 0xf000 ) AM_READ(terminal_status_r)
 	AM_RANGE( 0xf001, 0xf001 ) AM_READ(terminal_r) AM_DEVWRITE_LEGACY(TERMINAL_TAG, terminal_write)
 	AM_RANGE( 0xf002, 0xf002 ) AM_READ(status_check_r)

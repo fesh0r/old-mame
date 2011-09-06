@@ -16,7 +16,7 @@
 #include "machine/i8214.h"
 #include "machine/i8255.h"
 #include "machine/msm58321.h"
-#include "machine/msm8251.h"
+#include "machine/i8251.h"
 #include "machine/wd17xx.h"
 #include "video/mc6845.h"
 #include "sound/discrete.h"
@@ -79,8 +79,8 @@ public:
 	required_device<cpu_device> m_subcpu;
 	required_device<i8214_device> m_pic;
 	required_device<msm58321_device> m_rtc;
-	required_device<device_t> m_uart_kb;
-	required_device<device_t> m_uart_sio;
+	required_device<i8251_device> m_uart_kb;
+	required_device<i8251_device> m_uart_sio;
 	required_device<device_t> m_fdc;
 	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_centronics;

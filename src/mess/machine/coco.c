@@ -92,7 +92,7 @@ DAC and bitbanger values written should be reflected in the read.
 #include "includes/coco.h"
 #include "includes/cococart.h"
 #include "machine/6883sam.h"
-#include "machine/6551.h"
+#include "machine/6551acia.h"
 #include "video/coco6847.h"
 #include "formats/cocopak.h"
 #include "imagedev/bitbngr.h"
@@ -1540,7 +1540,7 @@ static WRITE8_DEVICE_HANDLER ( d_pia1_pa_w )
 
 				if (state->m_dclg_state > 7)
 				{
-					/* Bit shift timer data on state 8 thru 15 */
+					/* Bit shift timer data on state 8 through 15 */
 					if (((state->m_dclg_timer >> (state->m_dclg_state - 8 + 1)) & 0x01) == 1)
 						state->m_dclg_output_v |= 0x01;
 					else

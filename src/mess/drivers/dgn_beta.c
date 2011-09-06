@@ -42,7 +42,7 @@ documentation still exists.
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "includes/dgn_beta.h"
-#include "machine/6551.h"
+#include "machine/6551acia.h"
 #include "formats/coco_dsk.h"
 #include "imagedev/flopdrv.h"
 #include "machine/ram.h"
@@ -126,7 +126,7 @@ static const unsigned char dgnbeta_palette[] =
 
     2005-11-28
 
-    The value $C0 is garanteed not to have any memory in it acording to the os9 headers,
+    The value $C0 is guaranteed not to have any memory in it acording to the os9 headers,
     quite how the MMU deals with this is still unknown to me.
 
     Bit 7 of $FCC0, sets maps in the system task which has fixed values for some pages,

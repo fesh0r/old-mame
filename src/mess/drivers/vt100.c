@@ -11,7 +11,7 @@
         TODO: finish support for the on-cpu board alternate character set rom
 
 ****************************************************************************/
-
+#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
@@ -25,40 +25,54 @@ class vt100_state : public driver_device
 {
 public:
 	vt100_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+	m_maincpu(*this, "maincpu"),
+	m_crtc(*this, "vt100_video"),
+	m_speaker(*this, SPEAKER_TAG)
+	{ }
 
-	UINT8 *m_ram;
-	UINT8 m_keyboard_int;
-	UINT8 m_receiver_int;
-	UINT8 m_vertical_int;
+	required_device<cpu_device> m_maincpu;
+	required_device<device_t> m_crtc;
+	required_device<device_t> m_speaker;
+	DECLARE_READ8_MEMBER(vt100_flags_r);
+	DECLARE_WRITE8_MEMBER(vt100_keyboard_w);
+	DECLARE_READ8_MEMBER(vt100_keyboard_r);
+	DECLARE_WRITE8_MEMBER(vt100_baud_rate_w);
+	DECLARE_WRITE8_MEMBER(vt100_nvr_latch_w);
+	DECLARE_READ8_MEMBER(vt100_read_video_ram_r);
+	DECLARE_WRITE8_MEMBER(vt100_clear_video_interrupt);
+	UINT8 *m_p_ram;
+	bool m_keyboard_int;
+	bool m_receiver_int;
+	bool m_vertical_int;
+	bool m_key_scan;
+	UINT8 m_key_code;
 	double m_send_baud_rate;
 	double m_recv_baud_rate;
-	UINT8 m_key_scan;
-	UINT8 m_key_code;
 };
 
 
 
 
-static ADDRESS_MAP_START(vt100_mem, AS_PROGRAM, 8)
+static ADDRESS_MAP_START(vt100_mem, AS_PROGRAM, 8, vt100_state)
 	ADDRESS_MAP_UNMAP_HIGH
-    AM_RANGE( 0x0000, 0x1fff ) AM_ROM  // ROM ( 4 * 2K)
-    AM_RANGE( 0x2000, 0x2bff ) AM_RAM AM_BASE_MEMBER(vt100_state, m_ram) // Screen and scratch RAM
-    AM_RANGE( 0x2c00, 0x2fff ) AM_RAM  // AVO Screen RAM
-    AM_RANGE( 0x3000, 0x3fff ) AM_RAM  // AVO Attribute RAM (4 bits wide)
-    // 0x4000, 0x7fff is unassigned
-    AM_RANGE( 0x8000, 0x9fff ) AM_ROM  // Program memory expansion ROM (4 * 2K)
-    AM_RANGE( 0xa000, 0xbfff ) AM_ROM  // Program memory expansion ROM (1 * 8K)
-    // 0xc000, 0xffff is unassigned
+	AM_RANGE( 0x0000, 0x1fff ) AM_ROM  // ROM ( 4 * 2K)
+	AM_RANGE( 0x2000, 0x2bff ) AM_RAM AM_BASE(m_p_ram) // Screen and scratch RAM
+	AM_RANGE( 0x2c00, 0x2fff ) AM_RAM  // AVO Screen RAM
+	AM_RANGE( 0x3000, 0x3fff ) AM_RAM  // AVO Attribute RAM (4 bits wide)
+	// 0x4000, 0x7fff is unassigned
+	AM_RANGE( 0x8000, 0x9fff ) AM_ROM  // Program memory expansion ROM (4 * 2K)
+	AM_RANGE( 0xa000, 0xbfff ) AM_ROM  // Program memory expansion ROM (1 * 8K)
+	// 0xc000, 0xffff is unassigned
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(vt180_mem, AS_PROGRAM, 8)
+static ADDRESS_MAP_START(vt180_mem, AS_PROGRAM, 8, vt100_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x1fff ) AM_ROM
 	AM_RANGE( 0x2000, 0xffff ) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vt180_io , AS_IO, 8)
+static ADDRESS_MAP_START(vt180_io, AS_IO, 8, vt100_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
@@ -71,16 +85,16 @@ ADDRESS_MAP_END
 // 5 - NVR data H
 // 6 - LBA 7 H
 // 7 - Keyboard TBMT H
-static READ8_HANDLER(vt100_flags_r)
+READ8_MEMBER( vt100_state::vt100_flags_r )
 {
-	vt100_state *state = space->machine().driver_data<vt100_state>();
-	UINT8 retVal = 0;
-	retVal |= vt_video_lba7_r(space->machine().device("vt100_video"),0) * 0x40;
-	retVal |= state->m_keyboard_int * 0x80;
-	return retVal;
+	UINT8 ret = 0;
+	ret |= vt_video_lba7_r(m_crtc, 0) << 6;
+	ret |= m_keyboard_int << 7;
+	return ret;
 }
 
-static UINT8 bit_sel(UINT8 data) {
+static UINT8 bit_sel(UINT8 data)
+{
 	if (!BIT(data,7)) return 0x70;
 	if (!BIT(data,6)) return 0x60;
 	if (!BIT(data,5)) return 0x50;
@@ -95,19 +109,16 @@ static UINT8 bit_sel(UINT8 data) {
 static TIMER_DEVICE_CALLBACK(keyboard_callback)
 {
 	vt100_state *state = timer.machine().driver_data<vt100_state>();
-	int i;
-	static const char *const keynames[] = {
-		"LINE0", "LINE1", "LINE2", "LINE3",
-		"LINE4", "LINE5", "LINE6", "LINE7",
-		"LINE8", "LINE9", "LINEA", "LINEB",
-		"LINEC", "LINED", "LINEE", "LINEF"
-	};
-	UINT8 code;
-	if (state->m_key_scan) {
+	UINT8 i, code;
+	char kbdrow[8];
+	if (state->m_key_scan)
+	{
 		for(i = 0; i < 16; i++)
 		{
-			code =	input_port_read(timer.machine(), keynames[i]);
-			if (code!=0xff) {
+			sprintf(kbdrow,"LINE%X", i);
+			code =	input_port_read(timer.machine(), kbdrow);
+			if (code < 0xff)
+			{
 				state->m_keyboard_int = 1;
 				state->m_key_code = i | bit_sel(code);
 				cputag_set_input_line(timer.machine(), "maincpu", 0, HOLD_LINE);
@@ -118,46 +129,43 @@ static TIMER_DEVICE_CALLBACK(keyboard_callback)
 }
 
 
-static WRITE8_HANDLER(vt100_keyboard_w)
+WRITE8_MEMBER( vt100_state::vt100_keyboard_w )
 {
-	vt100_state *state = space->machine().driver_data<vt100_state>();
-
-	device_t *speaker = space->machine().device(SPEAKER_TAG);
-
-	output_set_value("online_led",BIT(data,5) ? 0 : 1);
-	output_set_value("local_led", BIT(data,5));
-	output_set_value("locked_led",BIT(data,4) ? 0 : 1);
-	output_set_value("l1_led",	  BIT(data,3) ? 0 : 1);
-	output_set_value("l2_led",	  BIT(data,2) ? 0 : 1);
-	output_set_value("l3_led",	  BIT(data,1) ? 0 : 1);
-	output_set_value("l4_led",	  BIT(data,0) ? 0 : 1);
-	state->m_key_scan = BIT(data,6);
-	speaker_level_w(speaker, BIT(data,7));
+	output_set_value("online_led",BIT(data, 5) ? 0 : 1);
+	output_set_value("local_led", BIT(data, 5));
+	output_set_value("locked_led",BIT(data, 4) ? 0 : 1);
+	output_set_value("l1_led", BIT(data, 3) ? 0 : 1);
+	output_set_value("l2_led", BIT(data, 2) ? 0 : 1);
+	output_set_value("l3_led", BIT(data, 1) ? 0 : 1);
+	output_set_value("l4_led", BIT(data, 0) ? 0 : 1);
+	m_key_scan = BIT(data, 6);
+	speaker_level_w(m_speaker, BIT(data, 7));
 }
 
-static READ8_HANDLER(vt100_keyboard_r)
+READ8_MEMBER( vt100_state::vt100_keyboard_r )
 {
-	vt100_state *state = space->machine().driver_data<vt100_state>();
-	return state->m_key_code;
+	return m_key_code;
 }
-static WRITE8_HANDLER(vt100_baud_rate_w)
+
+WRITE8_MEMBER( vt100_state::vt100_baud_rate_w )
 {
-	vt100_state *state = space->machine().driver_data<vt100_state>();
-	static const double baud_rate[] = {
+	static const double baud_rate[] =
+	{
 		50, 75, 110, 134.5, 150, 200, 300, 600, 1200,
 		1800, 2000, 2400, 3600, 4800, 9600, 19200
 	};
 
-	state->m_send_baud_rate = baud_rate[(data >>4) & 0x0f];
-	state->m_recv_baud_rate = baud_rate[data & 0x0f];
+	m_send_baud_rate = baud_rate[(data >>4)];
+	m_recv_baud_rate = baud_rate[data & 0x0f];
 }
 
-static WRITE8_HANDLER(vt100_nvr_latch_w)
+WRITE8_MEMBER( vt100_state::vt100_nvr_latch_w )
 {
 }
 
-static ADDRESS_MAP_START( vt100_io , AS_IO, 8)
+static ADDRESS_MAP_START(vt100_io, AS_IO, 8, vt100_state)
 	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	// 0x00, 0x01 PUSART  (Intel 8251)
 	// AM_RANGE (0x00, 0x01)
 	// 0x02 Baud rate generator
@@ -167,7 +175,7 @@ static ADDRESS_MAP_START( vt100_io , AS_IO, 8)
 	// 0x42 Flags buffer
 	AM_RANGE (0x42, 0x42) AM_READ(vt100_flags_r)
 	// 0x42 Brightness D/A latch
-	AM_RANGE (0x42, 0x42) AM_DEVWRITE("vt100_video", vt_video_brightness_w)
+	AM_RANGE (0x42, 0x42) AM_DEVWRITE_LEGACY("vt100_video", vt_video_brightness_w)
 	// 0x62 NVR latch
 	AM_RANGE (0x62, 0x62) AM_WRITE(vt100_nvr_latch_w)
 	// 0x82 Keyboard UART data output
@@ -175,9 +183,9 @@ static ADDRESS_MAP_START( vt100_io , AS_IO, 8)
 	// 0x82 Keyboard UART data input
 	AM_RANGE (0x82, 0x82) AM_WRITE(vt100_keyboard_w)
 	// 0xA2 Video processor DC012
-	AM_RANGE (0xa2, 0xa2) AM_DEVWRITE("vt100_video", vt_video_dc012_w)
+	AM_RANGE (0xa2, 0xa2) AM_DEVWRITE_LEGACY("vt100_video", vt_video_dc012_w)
 	// 0xC2 Video processor DC011
-	AM_RANGE (0xc2, 0xc2) AM_DEVWRITE("vt100_video", vt_video_dc011_w)
+	AM_RANGE (0xc2, 0xc2) AM_DEVWRITE_LEGACY("vt100_video", vt_video_dc011_w)
 	// 0xE2 Graphics port
 	// AM_RANGE (0xe2, 0xe2)
 ADDRESS_MAP_END
@@ -316,9 +324,9 @@ static SCREEN_UPDATE( vt100 )
 static IRQ_CALLBACK(vt100_irq_callback)
 {
 	vt100_state *state = device->machine().driver_data<vt100_state>();
-	UINT8 retVal = 0xc7 | (0x08 * state->m_keyboard_int) | (0x10 * state->m_receiver_int) | (0x20 * state->m_vertical_int);
+	UINT8 ret = 0xc7 | (state->m_keyboard_int << 3) | (state->m_receiver_int << 4) | (state->m_vertical_int << 5);
 	state->m_receiver_int = 0;
-	return retVal;
+	return ret;
 }
 
 static MACHINE_START(vt100)
@@ -334,33 +342,32 @@ static MACHINE_RESET(vt100)
 	output_set_value("online_led",1);
 	output_set_value("local_led", 1);
 	output_set_value("locked_led",1);
-	output_set_value("l1_led",	  1);
-	output_set_value("l2_led",	  1);
-	output_set_value("l3_led",	  1);
-	output_set_value("l4_led",	  1);
+	output_set_value("l1_led", 1);
+	output_set_value("l2_led", 1);
+	output_set_value("l3_led", 1);
+	output_set_value("l4_led", 1);
 
 	state->m_key_scan = 0;
 
 	device_set_irq_callback(machine.device("maincpu"), vt100_irq_callback);
 }
 
-static READ8_DEVICE_HANDLER (vt100_read_video_ram_r )
+READ8_MEMBER( vt100_state::vt100_read_video_ram_r )
 {
-	vt100_state *state = device->machine().driver_data<vt100_state>();
-	return state->m_ram[offset];
+	return m_p_ram[offset];
 }
 
-static WRITE8_DEVICE_HANDLER (vt100_clear_video_interrupt)
+WRITE8_MEMBER( vt100_state::vt100_clear_video_interrupt )
 {
-	vt100_state *state = device->machine().driver_data<vt100_state>();
-	state->m_vertical_int = 0;
+	m_vertical_int = 0;
 }
 
-static const vt_video_interface vt100_video_interface = {
+static const vt_video_interface vt100_video_interface =
+{
 	"screen",
-	"gfx1",
-	DEVCB_HANDLER(vt100_read_video_ram_r),
-	DEVCB_HANDLER(vt100_clear_video_interrupt)
+	"chargen",
+	DEVCB_DRIVER_MEMBER(vt100_state, vt100_read_video_ram_r),
+	DEVCB_DRIVER_MEMBER(vt100_state, vt100_clear_video_interrupt)
 };
 
 static INTERRUPT_GEN( vt100_vertical_interrupt )
@@ -380,12 +387,12 @@ static const gfx_layout vt100_charlayout =
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
-	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
 	8*16					/* every char takes 16 bytes */
 };
 
 static GFXDECODE_START( vt100 )
-	GFXDECODE_ENTRY( "gfx1", 0x0000, vt100_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, vt100_charlayout, 0, 1 )
 GFXDECODE_END
 
 
@@ -401,7 +408,7 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_MACHINE_START(vt100)
 	MCFG_MACHINE_RESET(vt100)
 
-    /* video hardware */
+	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -422,7 +429,7 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	/* audio hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(800))
 MACHINE_CONFIG_END
@@ -430,7 +437,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( vt180, vt100 )
 	MCFG_CPU_ADD("z80cpu", Z80, XTAL_24_8832MHz / 9)
 	MCFG_CPU_PROGRAM_MAP(vt180_mem)
-    MCFG_CPU_IO_MAP(vt180_io)
+	MCFG_CPU_IO_MAP(vt180_io)
 MACHINE_CONFIG_END
 
 /* VT1xx models:
@@ -444,8 +451,8 @@ MACHINE_CONFIG_END
  *     VT100-WA/WB - has special LA120 AVO board preinstalled, WP romset?,
         English WP keyboard, no alt charset rom, LA120? 23-069E2 AVO rom.
        (The WA and WB variants are called the '-02' variant on the schematics)
- *    VT100-WC thru WZ: foreign language word processing series:
-      (The WC thru WK variants are called the '-03' variant on the schematics)
+ *    VT100-WC through WZ: foreign language word processing series:
+      (The WC through WK variants are called the '-03' variant on the schematics)
  *     VT100-WC/WD - has AVO board preinstalled, WP romset?, French Canadian
         WP keyboard, has 23-094E2 alt charset rom, 23-093E2 AVO rom.
  *     VT100-WE/WF - has AVO board preinstalled, WP romset?, French
@@ -543,7 +550,7 @@ MACHINE_CONFIG_END
  * No roms - normal vt100 system with AVO installed
  * 23-069E2 (location e21) - meant for vt100-wa and -wb 'LA120' 'word processing' systems (the mapping of the rom for this system is different than for the ones below)
  * 23-099E2 (location e21) and 23-100E2 (location e17) - meant for vt132
- * 23-093E2 (location e21) - meant for vt100 wc thru wz 'foreign language' word processing systems
+ * 23-093E2 (location e21) - meant for vt100 wc through wz 'foreign language' word processing systems
  * 23-184E2 and 23-185E2 - meant for vt100 with STP printer option board installed, version 1, comes with vt1xx-ac kit
  * 23-186E2 and 23-187E2 - meant for vt100 with STP printer option board installed, version 2, comes with vt1xx-ac kit
  */
@@ -562,7 +569,7 @@ ROM_START( vt100 ) // This is from the schematics at http://www.bitsavers.org/pd
 	ROM_LOAD( "23-033e2-00.e45", 0x1000, 0x0800, CRC(384dac0a) SHA1(22aaf5ab5f9555a61ec43f91d4dea3029f613e64))
 	ROM_LOAD( "23-034e2-00.e40", 0x1800, 0x0800, CRC(4643184d) SHA1(27e6c19d9932bf13fdb70305ef4d806e90d60833))
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL("23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional ?word processing? alternate character set rom
 ROM_END
@@ -577,7 +584,7 @@ ROM_START( vt100wp ) // This is from the schematics at http://www.bitsavers.org/
 	ROM_LOAD( "23-182e2-00.e45", 0x1000, 0x0800, NO_DUMP)
 	ROM_LOAD( "23-183e2-00.e40", 0x1800, 0x0800, NO_DUMP)
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional ?word processing? alternate character set rom
 ROM_END
@@ -592,7 +599,7 @@ ROM_START( vt100stp ) // This is from the VT180 technical manual at http://www.b
     ROM_LOAD( "23-096e2-00.e52", 0x0800, 0x0800, NO_DUMP)
     ROM_LOAD( "23-139e2-00.e45", 0x1000, 0x0800, NO_DUMP) // revision 2?; revision 1 is 23-097e2
     ROM_LOAD( "23-140e2-00.e40", 0x1800, 0x0800, NO_DUMP) // revision 2?; revision 1 is 23-098e2
-    ROM_REGION(0x1000, "gfx1",0)
+    ROM_REGION(0x1000, "chargen",0)
     ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
     ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional ?word processing? alternate character set rom
     ROM_REGION(0x10000, "stpcpu",ROMREGION_ERASEFF)
@@ -603,7 +610,7 @@ ROM_START( vt100stp ) // This is from the VT180 technical manual at http://www.b
     ROM_LOAD( "23-004e3-00.e4", 0x1000, 0x1000, NO_DUMP) // "EPROM 1" bank 0
     ROM_LOAD( "23-005e3-00.e9", 0x2000, 0x1000, NO_DUMP) // "EPROM 2" bank 1
     ROM_LOAD( "23-006e3-00.e3", 0x3000, 0x1000, NO_DUMP) // "EPROM 3" bank 1
-    //ROM_REGION(0x0800, "gfx1",0)
+    //ROM_REGION(0x0800, "chargen",0)
     //ROM_LOAD( "23-???e2-00.e34", 0x0000, 0x0800, NO_DUMP) // ? second gfx rom?
     ROM_REGION(0x0400, "proms",0)
     ROM_LOAD( "23-312a1-07.e26", 0x0000, 0x0200, NO_DUMP) // "PROM A"; handles 8085 i/o? mapping (usart, timer, dma, comm, etc)
@@ -622,7 +629,7 @@ ROM_START( vt103 ) // This is from the schematics at http://www.bitsavers.org/pd
 	ROM_LOAD( "23-033e2-00.e45", 0x1000, 0x0800, CRC(384dac0a) SHA1(22aaf5ab5f9555a61ec43f91d4dea3029f613e64))
 	ROM_LOAD( "23-034e2-00.e40", 0x1800, 0x0800, CRC(4643184d) SHA1(27e6c19d9932bf13fdb70305ef4d806e90d60833))
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 
@@ -643,7 +650,7 @@ ROM_START( vt105 ) // This is from anecdotal evidence and vt100.net, as the vt10
 	ROM_LOAD( "23-033e2-00.e45", 0x1000, 0x0800, CRC(384dac0a) SHA1(22aaf5ab5f9555a61ec43f91d4dea3029f613e64))
 	ROM_LOAD( "23-034e2-00.e40", 0x1800, 0x0800, CRC(4643184d) SHA1(27e6c19d9932bf13fdb70305ef4d806e90d60833))
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 ROM_END
@@ -658,7 +665,7 @@ ROM_START( vt110 )
 	ROM_LOAD( "23-033e2-00.e45", 0x1000, 0x0800, CRC(384dac0a) SHA1(22aaf5ab5f9555a61ec43f91d4dea3029f613e64))
 	ROM_LOAD( "23-034e2-00.e40", 0x1800, 0x0800, CRC(4643184d) SHA1(27e6c19d9932bf13fdb70305ef4d806e90d60833))
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL ( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 //DECDataway board roms go here!
@@ -675,7 +682,7 @@ ROM_START( vt125 ) // This is from bitsavers and vt100.net, as the vt125 schemat
 	ROM_LOAD( "23-033e2-00.e45", 0x1000, 0x0800, CRC(384dac0a) SHA1(22aaf5ab5f9555a61ec43f91d4dea3029f613e64))
 	ROM_LOAD( "23-034e2-00.e40", 0x1800, 0x0800, CRC(4643184d) SHA1(27e6c19d9932bf13fdb70305ef4d806e90d60833))
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL ( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 //GPO board roms go here!
@@ -688,7 +695,7 @@ ROM_START( vt101 ) // p/n 5414185-01 'unupgradable/low cost' vt101/vt102/vt131 m
 	ROM_LOAD( "23-???e4-00.e69", 0x0000, 0x2000, NO_DUMP)
 	ROM_LOAD( "23-???e4-00.e71", 0x2000, 0x2000, NO_DUMP)
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e3", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL( "23-094e2-00.e4", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 ROM_END
@@ -701,7 +708,7 @@ ROM_START( vt102 ) // p/n 5414185-01 'unupgradable/low cost' vt101/vt102/vt131 m
 	ROM_LOAD( "23-225e4-00.e69", 0x0000, 0x2000, BAD_DUMP CRC(7ddf75cb) SHA1(a3530bb562b5c6ea8ba23f0988b35ef404abcb93)) // is this right for vt102? A11 stuck high
 	ROM_LOAD( "23-226e4-00.e71", 0x2000, 0x2000, BAD_DUMP CRC(339d4e4e) SHA1(f1b08f2c6bbc2b234f3f43bd800a2615f6dd18d3)) // is this right for vt102? A11 stuck high
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e3", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL( "23-094e2-00.e4", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 ROM_END
@@ -715,7 +722,7 @@ ROM_START( vt131 ) // p/n 5414185-01 'unupgradable/low cost' vt101/vt131 mainboa
 	ROM_LOAD( "23-226e4-00.e71", 0x2000, 0x2000, BAD_DUMP CRC(339d4e4e) SHA1(f1b08f2c6bbc2b234f3f43bd800a2615f6dd18d3)) // A11 stuck high
 	ROM_LOAD( "23-280e2-00.e67", 0x4000, 0x0800, BAD_DUMP CRC(71b4172e) SHA1(5a82c7dc313bb92b9829eb8350840e072825a797)) // called "VT131 ROM" in the vt101 quick reference guide; CS floating/stuck low (contents are almost total garbage)
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e3", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL( "23-094e2-00.e4", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 ROM_END
@@ -730,7 +737,7 @@ ROM_START( vt132 ) // This is from anecdotal evidence and vt100.net, as the vt13
     ROM_LOAD( "23-???e2-00.e45", 0x1000, 0x0800, NO_DUMP)
     ROM_LOAD( "23-???e2-00.e40", 0x1800, 0x0800, NO_DUMP)
 
-    ROM_REGION(0x1000, "gfx1", 0)
+    ROM_REGION(0x1000, "chargen", 0)
     ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
     ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 ROM_END
@@ -744,7 +751,7 @@ ROM_START( vt180 )
 	ROM_LOAD( "23-033e2-00.e45", 0x1000, 0x0800, CRC(384dac0a) SHA1(22aaf5ab5f9555a61ec43f91d4dea3029f613e64))
 	ROM_LOAD( "23-034e2-00.e40", 0x1800, 0x0800, CRC(4643184d) SHA1(27e6c19d9932bf13fdb70305ef4d806e90d60833))
 
-	ROM_REGION(0x1000, "gfx1", 0)
+	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, BAD_DUMP CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53)) // probably correct but needs redump
 	ROM_LOAD_OPTIONAL ( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional (comes default with some models) alternate character set rom
 
@@ -755,16 +762,16 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY FULLNAME       FLAGS */
-COMP( 1978, vt100,  0,       0,     vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT100",		GAME_NOT_WORKING)
-//COMP( 1978, vt100wp,  vt100, 0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT100-Wx",     GAME_NOT_WORKING)
-//COMP( 1978, vt100stp,  vt100,       0,    vt100,   vt100,       0,     "Digital Equipment Corporation",   "VT100 w/VT1xx-AC STP",       GAME_NOT_WORKING)
-//COMP( 1981, vt101,  0,       0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT101",        GAME_NOT_WORKING)
-//COMP( 1981, vt102,  vt101,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT102",        GAME_NOT_WORKING)
-//COMP( 1979, vt103,  vt100,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT103",        GAME_NOT_WORKING)
-COMP( 1978, vt105,  vt100,   0,     vt100,   vt100, 	 0, 	 "Digital Equipment Corporation",   "VT105",		GAME_NOT_WORKING)
-//COMP( 1978, vt110,  vt100,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT110",        GAME_NOT_WORKING)
-//COMP( 1981, vt125,  vt100,   0,     vt100,     vt100,      0,      "Digital Equipment Corporation",   "VT125",        GAME_NOT_WORKING)
-COMP( 1981, vt131,  /*vt101*/0, 0,  vt100,	 vt100, 	 0, 	 "Digital Equipment Corporation",   "VT131",		GAME_NOT_WORKING)	// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
-//COMP( 1979, vt132,  vt100,   0,    vt100,   vt100,     0,      "Digital Equipment Corporation",   "VT132",      GAME_NOT_WORKING)
-COMP( 1983, vt180,  vt100,   0,     vt180,   vt100, 	 0, 	 "Digital Equipment Corporation",   "VT180",		GAME_NOT_WORKING)
+/*    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY                     FULLNAME       FLAGS */
+COMP( 1978, vt100,    0,      0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT100",GAME_NOT_WORKING)
+//COMP( 1978, vt100wp,  vt100,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT100-Wx", GAME_NOT_WORKING)
+//COMP( 1978, vt100stp, vt100,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT100 w/VT1xx-AC STP", GAME_NOT_WORKING)
+//COMP( 1981, vt101,    0,      0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT101", GAME_NOT_WORKING)
+//COMP( 1981, vt102,    vt101,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT102", GAME_NOT_WORKING)
+//COMP( 1979, vt103,    vt100,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT103", GAME_NOT_WORKING)
+COMP( 1978, vt105,    vt100,  0,       vt100,     vt100,   0,   "Digital Equipment Corporation", "VT105", GAME_NOT_WORKING)
+//COMP( 1978, vt110,    vt100,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT110", GAME_NOT_WORKING)
+//COMP( 1981, vt125,    vt100,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT125", GAME_NOT_WORKING)
+COMP( 1981, vt131,  /*vt101*/0, 0,     vt100,     vt100,   0,   "Digital Equipment Corporation", "VT131", GAME_NOT_WORKING)// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
+//COMP( 1979, vt132,    vt100,  0,       vt100,     vt100,   0,  "Digital Equipment Corporation", "VT132", GAME_NOT_WORKING)
+COMP( 1983, vt180,    vt100,  0,       vt180,     vt100,   0,   "Digital Equipment Corporation", "VT180", GAME_NOT_WORKING)

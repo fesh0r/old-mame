@@ -73,9 +73,9 @@
 #include "machine/wd17xx.h"
 #include "machine/ctronics.h"
 #include "imagedev/flopdrv.h"
+#include "imagedev/serial.h"
 #include "formats/basicdsk.h"
 #include "machine/ram.h"
-#include "machine/serial.h"
 
 
 /**************************** common *******************************/
@@ -198,26 +198,6 @@ static INPUT_PORTS_START( thom_lightpen )
 
 INPUT_PORTS_END
 
-/* ------------ serial ------------ */
-
-DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_CC90323, thom_serial_cc90323);
-DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_CC90323, thom_serial_cc90323);
-
-#define MCFG_THOM_SERIAL_CC90323_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, THOM_SERIAL_CC90323, 0)
-
-DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_RF57232, thom_serial_rf57232);
-DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_RF57232, thom_serial_rf57232);
-
-#define MCFG_THOM_SERIAL_RF57232_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, THOM_SERIAL_RF57232, 0)
-
-DECLARE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_MODEM, thom_serial_modem);
-DEFINE_LEGACY_IMAGE_DEVICE(THOM_SERIAL_MODEM, thom_serial_modem);
-
-#define MCFG_THOM_SERIAL_MODEM_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, THOM_SERIAL_MODEM, 0)
-
 /************************** T9000 / TO7 *******************************
 
 TO7 (1982)
@@ -329,7 +309,7 @@ static ADDRESS_MAP_START ( to7, AS_PROGRAM, 8 )
      AM_RANGE ( 0xe7cc, 0xe7cf ) AM_DEVREADWRITE_MODERN( "pia_1", pia6821_device, read_alt, write_alt )
      AM_RANGE ( 0xe7d0, 0xe7df ) AM_READWRITE ( to7_floppy_r, to7_floppy_w )
      AM_RANGE ( 0xe7e0, 0xe7e3 ) AM_DEVREADWRITE_MODERN( "pia_2", pia6821_device, read_alt, write_alt )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE_MODERN( "pia_3", pia6821_device, read_alt, write_alt )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
@@ -618,6 +598,21 @@ const cassette_interface mo5_cassette_interface =
 	NULL
 };
 
+const serial_image_interface to7_cc90232_config =
+{
+	2400, 7, 2, SERIAL_PARITY_NONE, 1, "to7_io"
+};
+
+const serial_image_interface to7_rf57932_config =
+{
+	2400, 7, 2, SERIAL_PARITY_NONE, 1, "acia"
+};
+
+const serial_image_interface to7_modem_config =
+{
+	2400, 7, 2, SERIAL_PARITY_NONE, 1, NULL
+};
+
 /* ------------ driver ------------ */
 
 static MACHINE_CONFIG_START( to7, driver_device )
@@ -682,6 +677,9 @@ static MACHINE_CONFIG_START( to7, driver_device )
 /* acia */
      MCFG_ACIA6551_ADD("acia")
 
+/* to7 serial io line */
+	 MCFG_TO7_IO_LINE_ADD("to7_io")
+
 /* modem */
      MCFG_ACIA6850_ADD( "acia6850", to7_modem )
 
@@ -696,9 +694,9 @@ static MACHINE_CONFIG_START( to7, driver_device )
 	MCFG_RAM_DEFAULT_SIZE("40K")
 	MCFG_RAM_EXTRA_OPTIONS("24K,48K")
 
-	MCFG_THOM_SERIAL_CC90323_ADD("cc90232")
-	MCFG_THOM_SERIAL_RF57232_ADD("rf57932")
-	MCFG_THOM_SERIAL_MODEM_ADD("modem")
+	MCFG_SERIAL_ADD("cc90232", to7_cc90232_config)
+	MCFG_SERIAL_ADD("rf57932", to7_rf57932_config)
+	MCFG_SERIAL_ADD("modem"  , to7_modem_config)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( t9000, to7 )
@@ -773,7 +771,7 @@ static ADDRESS_MAP_START ( to770, AS_PROGRAM, 8 )
      AM_RANGE ( 0xe7e0, 0xe7e3 ) AM_DEVREADWRITE_MODERN( "pia_2", pia6821_device, read_alt, write_alt )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to770_gatearray_r,
                                                 to770_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE_MODERN( "pia_3", pia6821_device, read_alt, write_alt )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
@@ -897,7 +895,7 @@ MO5 (1984)
 
 The MO5 is Thomson's attempt to provide a less costly micro-computer, using
 the same technology as the TO7/70.
-It has less memory and is less expandable. The MC6846 timer has disapeared.
+It has less memory and is less expandable. The MC6846 timer has disappeared.
 The BIOS has been throughly rewritten and uses a more compact call scheme.
 This, and the fact that the address map has changed, makes the MO5 completely
 TO7 software incompatible (except for pure BASIC programs).
@@ -961,7 +959,7 @@ static ADDRESS_MAP_START ( mo5, AS_PROGRAM, 8 )
      AM_RANGE ( 0xa7e0, 0xa7e3 ) AM_DEVREADWRITE_MODERN( "pia_2", pia6821_device, read_alt, write_alt )
      AM_RANGE ( 0xa7e4, 0xa7e7 ) AM_READWRITE ( mo5_gatearray_r,
 						mo5_gatearray_w )
-     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
      AM_RANGE ( 0xb000, 0xefff ) AM_READ_BANK ( THOM_CART_BANK) AM_WRITE( mo5_cartridge_w )
@@ -1163,7 +1161,7 @@ static ADDRESS_MAP_START ( to9, AS_PROGRAM, 8 )
      AM_RANGE ( 0xe7de, 0xe7df ) AM_READWRITE ( to9_kbd_r, to9_kbd_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to9_gatearray_r,
 						to9_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
 /*   AM_RANGE ( 0xe7f0, 0xe7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE_MODERN( "pia_3", pia6821_device, read_alt, write_alt)
@@ -1488,7 +1486,7 @@ static ADDRESS_MAP_START ( to8, AS_PROGRAM, 8 )
      AM_RANGE ( 0xe7da, 0xe7dd ) AM_READWRITE ( to8_vreg_r, to8_vreg_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to8_gatearray_r,
 						to8_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
 /*   AM_RANGE ( 0xe7f0, 0xe7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE_MODERN( "pia_3", pia6821_device, read_alt, write_alt)
@@ -1686,7 +1684,7 @@ static ADDRESS_MAP_START ( to9p, AS_PROGRAM, 8 )
      AM_RANGE ( 0xe7de, 0xe7df ) AM_READWRITE ( to9_kbd_r, to9_kbd_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to8_gatearray_r,
 						to8_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
 /*   AM_RANGE ( 0xe7f0, 0xe7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE_MODERN( "pia_3", pia6821_device, read_alt, write_alt)
@@ -1848,7 +1846,7 @@ static ADDRESS_MAP_START ( mo6, AS_PROGRAM, 8 )
      AM_RANGE ( 0xa7da, 0xa7dd ) AM_READWRITE ( mo6_vreg_r, mo6_vreg_w )
      AM_RANGE ( 0xa7e4, 0xa7e7 ) AM_READWRITE ( mo6_gatearray_r,
 						mo6_gatearray_w )
-     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
 /*   AM_RANGE ( 0xa7f0, 0xa7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w )*/
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
@@ -2162,7 +2160,7 @@ static ADDRESS_MAP_START ( mo5nr, AS_PROGRAM, 8 )
      AM_RANGE ( 0xa7e3, 0xa7e3 ) AM_READWRITE ( mo5nr_prn_r, mo5nr_prn_w )
      AM_RANGE ( 0xa7e4, 0xa7e7 ) AM_READWRITE ( mo6_gatearray_r,
 						mo6_gatearray_w )
-     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE_MODERN( "acia",  acia6551_device, read, write )
 /*   AM_RANGE ( 0xa7f0, 0xa7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7f8, 0xa7fb ) AM_DEVREADWRITE_MODERN( "pia_3", pia6821_device, read_alt, write_alt)

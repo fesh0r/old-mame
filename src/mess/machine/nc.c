@@ -6,8 +6,7 @@
 
 #include "emu.h"
 #include "includes/nc.h"
-#include "machine/serial.h"
-#include "machine/msm8251.h"
+#include "machine/i8251.h"
 #include "image.h"
 
 /*************************************************************************************************/

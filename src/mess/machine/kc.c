@@ -7,14 +7,13 @@
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
 #include "cpu/z80/z80.h"
-#include "machine/upd765.h"
 #include "sound/speaker.h"
 
 /* Devices */
 #include "imagedev/cassette.h"
 #include "machine/ram.h"
 
-#define KC_DEBUG 1
+#define KC_DEBUG 0
 #define LOG(x) do { if (KC_DEBUG) logerror x; } while (0)
 
 
@@ -129,126 +128,6 @@ QUICKLOAD_LOAD(kc)
 }
 
 
-/******************/
-/* DISK EMULATION */
-/******************/
-/* used by KC85/2, KC85/3 and KC85/4 */
-/* floppy disc interface has:
-- Z80 at 4 MHz
-- Z80 CTC
-- 1k ram
-- UPD765 floppy disc controller
-*/
-
-/* bit 7: DMA Request (DRQ from FDC) */
-/* bit 6: Interrupt (INT from FDC) */
-/* bit 5: Drive Ready */
-/* bit 4: Index pulse from disc */
-
-#if 0
-static void kc85_disc_hw_ctc_interrupt(int state)
-{
-	cputag_set_input_line(machine, "disc", 0, state);
-}
-#endif
-
-READ8_DEVICE_HANDLER(kc85_disk_hw_ctc_r)
-{
-	return z80ctc_r(device, offset);
-}
-
-WRITE8_DEVICE_HANDLER(kc85_disk_hw_ctc_w)
-{
-	z80ctc_w(device, offset, data);
-}
-
-WRITE8_HANDLER(kc85_disc_interface_ram_w)
-{
-	int addr;
-
-
-	/* bits 1,0 of i/o address define 256 byte block to access.
-    bits 15-8 define the byte offset in the 256 byte block selected */
-	addr = ((offset & 0x03)<<8) | ((offset>>8) & 0x0ff);
-
-	logerror("interface ram w: %04x %02x\n",addr,data);
-
-	space->write_byte(addr|0x0f000,data);
-}
-
-READ8_HANDLER(kc85_disc_interface_ram_r)
-{
-	int addr;
-
-
-	addr = ((offset & 0x03)<<8) | ((offset>>8) & 0x0ff);
-
-	logerror("interface ram r: %04x\n",addr);
-
-	return space->read_byte(addr|0x0f000);
-}
-
-/* 4-bit latch used to reset disc interface etc */
-WRITE8_HANDLER(kc85_disc_interface_latch_w)
-{
-	logerror("kc85 disc interface latch w\n");
-}
-
- READ8_HANDLER(kc85_disc_hw_input_gate_r)
-{
-	kc_state *state = space->machine().driver_data<kc_state>();
-	return state->m_kc85_disc_hw_input_gate;
-}
-
-WRITE8_HANDLER(kc85_disc_hw_terminal_count_w)
-{
-	device_t *fdc = space->machine().device("upd765");
-	logerror("kc85 disc hw tc w: %02x\n",data);
-	upd765_tc_w(fdc, data & 0x01);
-}
-
-
-/* callback for /INT output from FDC */
-static WRITE_LINE_DEVICE_HANDLER( kc85_fdc_interrupt )
-{
-	kc_state *drvstate = device->machine().driver_data<kc_state>();
-	drvstate->m_kc85_disc_hw_input_gate &=~(1<<6);
-	if (state)
-		drvstate->m_kc85_disc_hw_input_gate |=(1<<6);
-}
-
-/* callback for /DRQ output from FDC */
-static WRITE_LINE_DEVICE_HANDLER( kc85_fdc_dma_drq )
-{
-	kc_state *drvstate = device->machine().driver_data<kc_state>();
-	drvstate->m_kc85_disc_hw_input_gate &=~(1<<7);
-	if (state)
-		drvstate->m_kc85_disc_hw_input_gate |=(1<<7);
-}
-
-const upd765_interface kc_fdc_interface=
-{
-	DEVCB_LINE(kc85_fdc_interrupt),
-	DEVCB_LINE(kc85_fdc_dma_drq),
-	NULL,
-	UPD765_RDY_PIN_CONNECTED,
-	{FLOPPY_0, FLOPPY_1, NULL, NULL}
-};
-
-static TIMER_CALLBACK(kc85_disk_reset_timer_callback)
-{
-	cpu_set_reg(machine.device("disc"), STATE_GENPC, 0x0f000);
-	cpu_set_reg(machine.device("maincpu"), STATE_GENPC, 0x0f000);
-}
-
-static void kc_disc_interface_init(running_machine &machine)
-{
-	machine.scheduler().timer_set(attotime::zero, FUNC(kc85_disk_reset_timer_callback));
-
-	/* hold cpu at reset */
-	cputag_set_input_line(machine, "disc", INPUT_LINE_RESET, ASSERT_LINE);
-}
-
 /*****************/
 /* MODULE SYSTEM */
 /*****************/
@@ -279,97 +158,110 @@ static void kc_disc_interface_init(running_machine &machine)
     e3              M029                DAU1
 */
 
-
-
-struct kc85_module
+static void kc85_module_system_init(running_machine &machine)
 {
-	/* id of module */
-	int id;
-	/* name */
-	const char *module_name;
-	/* description */
-	const char *module_description;
-	/* enable module */
-	void (*enable)(int state);
-};
+	kc_state *state = machine.driver_data<kc_state>();
 
-#if 0
-static const struct kc85_module kc85_v24_module=
-{
-    0x0ee,
-    "M003",
-    "V24"
-};
-#endif
+	state->m_expansions[0] = machine.device<kcexp_slot_device>("m1");
+	state->m_expansions[1] = machine.device<kcexp_slot_device>("m2");
+	state->m_expansions[2] = machine.device<kcexp_slot_device>("exp");
+}
 
-static const struct kc85_module kc85_disk_interface_device=
+static READ8_HANDLER ( kc_expansion_read )
 {
-	0x0a7,
-	"D004",
-	"Disk Interface"
-};
+	kc_state *state = space->machine().driver_data<kc_state>();
+	UINT8 result = 0xff;
+
+	// assert MEI line of first slot
+	state->m_expansions[0]->mei_w(ASSERT_LINE);
+
+	for (int i=0; i<3; i++)
+		state->m_expansions[i]->read(offset, result);
+
+	return result;
+}
+
+static WRITE8_HANDLER ( kc_expansion_write )
+{
+	kc_state *state = space->machine().driver_data<kc_state>();
+
+	// assert MEI line of first slot
+	state->m_expansions[0]->mei_w(ASSERT_LINE);
+
+	for (int i=0; i<3; i++)
+		state->m_expansions[i]->write(offset, data);
+}
 
 /*
-
     port xx80
 
     - xx is module id.
-
 
     Only addressess divisible by 4 are checked.
     If module does not exist, 0x0ff is returned.
 
     When xx80 is read, if a module exists a id will be returned.
     Id's for known modules are listed above.
-  */
+*/
 
-/* bus drivers 4 */
-
- READ8_HANDLER(kc85_module_r)
+READ8_HANDLER ( kc_expansion_io_read )
 {
 	kc_state *state = space->machine().driver_data<kc_state>();
-	int port_upper;
-	int module_index;
+	UINT8 result = 0xff;
 
-	LOG(("kc85 module r: %04x\n",offset));
+	// assert MEI line of first slot
+	state->m_expansions[0]->mei_w(ASSERT_LINE);
 
-	port_upper = (offset>>8) & 0x0ff;
-
-	/* module is accessed at every 4th address. 0x00,0x04,0x08,0x0c etc */
-	if ((port_upper & 0x03)!=0)
+	if ((offset & 0xff) == 0x80)
 	{
-		return 0x0ff;
+		UINT8 slot_id = (offset>>8) & 0xff;
+
+		if (slot_id == 0x08 || slot_id == 0x0c)
+			result = state->m_expansions[(slot_id - 8) >> 2]->module_id_r();
+		else
+			state->m_expansions[2]->io_read(offset, result);
+	}
+	else
+	{
+		for (int i=0; i<3; i++)
+			state->m_expansions[i]->io_read(offset, result);
 	}
 
-	module_index = (port_upper>>2) & 0x03f;
-
-	if (state->m_modules[module_index])
-	{
-		return state->m_modules[module_index]->id;
-	}
-
-	return 0x0ff;
+	return result;
 }
 
-WRITE8_HANDLER(kc85_module_w)
+WRITE8_HANDLER ( kc_expansion_io_write )
 {
-	logerror("kc85 module w: %04x %02x\n",offset,data);
-}
+	kc_state *state = space->machine().driver_data<kc_state>();
 
+	// assert MEI line of first slot
+	state->m_expansions[0]->mei_w(ASSERT_LINE);
 
-static void kc85_module_system_init(kc_state *state)
-{
-	int i;
-
-	state->m_kc85_module_rom = NULL;
-	for (i=0; i<64; i++)
+	if ((offset & 0xff) == 0x80)
 	{
-		state->m_modules[i] = NULL;
-	}
+		UINT8 slot_id = (offset>>8) & 0xff;
 
-	state->m_modules[30] = &kc85_disk_interface_device;
+		if (slot_id == 0x08 || slot_id == 0x0c)
+			state->m_expansions[(slot_id - 8) >> 2]->control_w(data);
+		else
+			state->m_expansions[2]->io_write(offset, data);
+	}
+	else
+	{
+		for (int i=0; i<3; i++)
+			state->m_expansions[i]->io_write(offset, data);
+	}
 }
 
+// module read/write handlers
+static READ8_HANDLER ( kc_expansion_4000_r ){ return kc_expansion_read(space, offset + 0x4000); }
+static WRITE8_HANDLER( kc_expansion_4000_w ){ kc_expansion_write(space, offset + 0x4000, data); }
+static READ8_HANDLER ( kc_expansion_8000_r ){ return kc_expansion_read(space, offset + 0x8000); }
+static WRITE8_HANDLER( kc_expansion_8000_w ){ kc_expansion_write(space, offset + 0x8000, data); }
+static READ8_HANDLER ( kc_expansion_c000_r ){ return kc_expansion_read(space, offset + 0xc000); }
+static WRITE8_HANDLER( kc_expansion_c000_w ){ kc_expansion_write(space, offset + 0xc000, data); }
+static READ8_HANDLER ( kc_expansion_e000_r ){ return kc_expansion_read(space, offset + 0xe000); }
+static WRITE8_HANDLER( kc_expansion_e000_w ){ kc_expansion_write(space, offset + 0xe000, data); }
 
 
 /**********************/
@@ -841,6 +733,9 @@ static TIMER_CALLBACK(kc_keyboard_transmit_timer_callback)
 		/* set pulse */
 		z80pio_bstb_w(state->m_kc85_z80pio,pulse_state & state->m_brdy);
 
+		/* FIXME: understand why the PIO fail to acknowledge the irq on kc85_2/3 */
+		z80pio_d_w(state->m_kc85_z80pio, 1, state->m_kc85_pio_data[1]);
+
 		/* update counts */
 		state->m_keyboard_data.transmit_pulse_count_remaining--;
 		state->m_keyboard_data.transmit_pulse_count++;
@@ -1141,10 +1036,10 @@ static void kc85_4_update_0x08000(running_machine &machine)
     }
     else
     {
-		LOG(("no memory at ram8\n"));
+		LOG(("Module at ram8\n"));
 
-		space->nop_readwrite(0x8000, 0xa7ff);
-		space->nop_readwrite(0xa800, 0xbfff);
+		space->install_legacy_read_handler (0x8000, 0xbfff, FUNC(kc_expansion_8000_r));
+		space->install_legacy_write_handler(0x8000, 0xbfff, FUNC(kc_expansion_8000_w));
     }
 
 	/* if IRM is enabled override block 3/9 settings */
@@ -1202,11 +1097,10 @@ static void kc85_4_update_0x00000(running_machine &machine)
 	}
 	else
 	{
-		LOG(("no memory at ram0!\n"));
+		LOG(("Module at ram0!\n"));
 
-//      memory_set_bankptr(machine, 1,machine.region("maincpu")->base() + 0x013000);
-		/* ram is disabled */
-		space->nop_readwrite(0x0000, 0x3fff);
+		space->install_legacy_read_handler (0x0000, 0x3fff, FUNC(kc_expansion_read));
+		space->install_legacy_write_handler(0x0000, 0x3fff, FUNC(kc_expansion_write));
 	}
 }
 
@@ -1249,10 +1143,10 @@ static void kc85_4_update_0x04000(running_machine &machine)
 	}
 	else
 	{
-		LOG(("no memory at ram4!\n"));
+		LOG(("Module at ram4!\n"));
 
-		/* ram is disabled */
-		space->nop_readwrite(0x4000, 0x7fff);
+		space->install_legacy_read_handler (0x4000, 0x7fff, FUNC(kc_expansion_4000_r));
+		space->install_legacy_write_handler(0x4000, 0x7fff, FUNC(kc_expansion_4000_w));
 	}
 
 }
@@ -1271,6 +1165,7 @@ static void kc85_4_update_0x0c000(running_machine &machine)
 
 		memory_set_bankptr(machine, "bank5",machine.region("caos")->base());
 		space->install_read_bank(0xc000, 0xdfff, "bank5");
+		space->unmap_write(0xc000, 0xdfff);
 	}
 	else if (state->m_kc85_pio_data[0] & (1<<7))
 	{
@@ -1279,22 +1174,14 @@ static void kc85_4_update_0x0c000(running_machine &machine)
 
         memory_set_bankptr(machine, "bank5", machine.region("basic")->base());
 		space->install_read_bank(0xc000, 0xdfff, "bank5");
+		space->unmap_write(0xc000, 0xdfff);
 	}
 	else
 	{
-		if (state->m_kc85_module_rom)
-		{
-			LOG(("module rom at 0xc000\n"));
+		LOG(("Module at 0x0c000\n"));
 
-			memory_set_bankptr(machine, "bank5", state->m_kc85_module_rom);
-			space->install_read_bank(0xc000, 0xdfff, "bank5");
-		}
-		else
-		{
-
-			LOG(("No roms 0x0c000\n"));
-			space->nop_read(0xc000, 0xdfff);
-		}
+		space->install_legacy_read_handler (0xc000, 0xdfff, FUNC(kc_expansion_c000_r));
+		space->install_legacy_write_handler(0xc000, 0xdfff, FUNC(kc_expansion_c000_w));
 	}
 }
 
@@ -1310,11 +1197,14 @@ static void kc85_4_update_0x0e000(running_machine &machine)
 		/* read will access the rom */
 		memory_set_bankptr(machine, "bank6",machine.region("caos")->base() + 0x2000);
 		space->install_read_bank(0xe000, 0xffff,"bank6");
+		space->unmap_write(0xe000, 0xffff);
 	}
 	else
 	{
-		LOG(("no rom 0x0e000\n"));
-		space->nop_read(0xe000, 0xffff);
+		LOG(("Module at 0x0e000\n"));
+
+		space->install_legacy_read_handler (0xe000, 0xffff, FUNC(kc_expansion_e000_r));
+		space->install_legacy_write_handler(0xe000, 0xffff, FUNC(kc_expansion_e000_w));
 	}
 }
 
@@ -1329,6 +1219,12 @@ bit 2: IRM
 bit 1: ACCESS RAM 0
 bit 0: CAOS ROM E
 */
+
+static READ8_DEVICE_HANDLER ( kc85_4_pio_porta_r )
+{
+	kc_state *state = device->machine().driver_data<kc_state>();
+	return state->m_kc85_pio_data[0];
+}
 
 static WRITE8_DEVICE_HANDLER ( kc85_4_pio_porta_w )
 {
@@ -1352,6 +1248,12 @@ bit 3: TONE 3
 bit 2: TONE 2
 bit 1: TONE 1
 bit 0: TRUCK */
+
+static READ8_DEVICE_HANDLER ( kc85_4_pio_portb_r )
+{
+	kc_state *state = device->machine().driver_data<kc_state>();
+	return state->m_kc85_pio_data[1];
+}
 
 static WRITE8_DEVICE_HANDLER ( kc85_4_pio_portb_w )
 {
@@ -1415,19 +1317,21 @@ static void kc85_3_update_0x0c000(running_machine &machine)
 	kc_state *state = machine.driver_data<kc_state>();
 	address_space *space = machine.device( "maincpu")->memory().space( AS_PROGRAM );
 
-	if (state->m_kc85_pio_data[0] & (1<<7))
+	if (state->m_kc85_pio_data[0] & (1<<7) && machine.region("basic")->base() != NULL)
 	{
 		/* BASIC takes next priority */
 		LOG(("BASIC rom 0x0c000\n"));
 
 		memory_set_bankptr(machine, "bank4", machine.region("basic")->base());
 		space->install_read_bank(0xc000, 0xdfff, "bank4");
+		space->unmap_write(0xc000, 0xdfff);
 	}
 	else
 	{
-		LOG(("No roms 0x0c000\n"));
+		LOG(("Module at 0x0c000\n"));
 
-		space->nop_read(0xc000, 0xdfff);
+		space->install_legacy_read_handler (0xc000, 0xdfff, FUNC(kc_expansion_c000_r));
+		space->install_legacy_write_handler(0xc000, 0xdfff, FUNC(kc_expansion_c000_w));
 	}
 }
 
@@ -1444,11 +1348,14 @@ static void kc85_3_update_0x0e000(running_machine &machine)
 
 		memory_set_bankptr(machine, "bank5",machine.region("caos")->base());
 		space->install_read_bank(0xe000, 0xffff, "bank5");
+		space->unmap_write(0xe000, 0xffff);
 	}
 	else
 	{
-		LOG(("no rom 0x0e000\n"));
-		space->nop_read(0xe000, 0xffff);
+		LOG(("Module at 0x0e000\n"));
+
+		space->install_legacy_read_handler (0xe000, 0xffff, FUNC(kc_expansion_e000_r));
+		space->install_legacy_write_handler(0xe000, 0xffff, FUNC(kc_expansion_e000_w));
 	}
 }
 
@@ -1491,10 +1398,10 @@ static void kc85_3_update_0x00000(running_machine &machine)
 	}
 	else
 	{
-		LOG(("no memory at ram0!\n"));
+		LOG(("Module at ram0!\n"));
 
-		/* ram is disabled */
-		space->nop_readwrite(0x0000, 0x3fff);
+		space->install_legacy_read_handler (0x0000, 0x3fff, FUNC(kc_expansion_read));
+		space->install_legacy_write_handler(0x0000, 0x3fff, FUNC(kc_expansion_write));
 	}
 }
 
@@ -1543,8 +1450,10 @@ static void kc85_3_update_0x08000(running_machine &machine)
     }
     else
     {
-		LOG(("no memory at ram8!\n"));
-		space->nop_readwrite(0x8000, 0xbfff);
+		LOG(("Module at ram8!\n"));
+
+		space->install_legacy_read_handler (0x8000, 0xbfff, FUNC(kc_expansion_8000_r));
+		space->install_legacy_write_handler(0x8000, 0xbfff, FUNC(kc_expansion_8000_w));
     }
 }
 
@@ -1560,6 +1469,13 @@ bit 2: IRM
 bit 1: ACCESS RAM 0
 bit 0: CAOS ROM E
 */
+
+static READ8_DEVICE_HANDLER ( kc85_3_pio_porta_r )
+{
+	kc_state *state = device->machine().driver_data<kc_state>();
+
+	return state->m_kc85_pio_data[0];
+}
 
 static WRITE8_DEVICE_HANDLER ( kc85_3_pio_porta_w )
 {
@@ -1583,6 +1499,13 @@ bit 3: TONE 3
 bit 2: TONE 2
 bit 1: TONE 1
 bit 0: TRUCK */
+
+static READ8_DEVICE_HANDLER ( kc85_3_pio_portb_r )
+{
+	kc_state *state = device->machine().driver_data<kc_state>();
+
+	return state->m_kc85_pio_data[1];
+}
 
 static WRITE8_DEVICE_HANDLER ( kc85_3_pio_portb_w )
 {
@@ -1662,10 +1585,10 @@ static void kc85_pio_brdy_callback(device_t *device, int state)
 Z80PIO_INTERFACE( kc85_2_pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", 0),						/* callback when change interrupt status */
-	DEVCB_NULL,												/* port A read callback */
+	DEVCB_HANDLER(kc85_3_pio_porta_r),						/* port A read callback */
 	DEVCB_HANDLER(kc85_3_pio_porta_w),						/* port A write callback */
 	DEVCB_LINE(kc85_pio_ardy_callback),						/* portA ready active callback */
-	DEVCB_NULL,												/* port B read callback */
+	DEVCB_HANDLER(kc85_3_pio_portb_r),						/* port B read callback */
 	DEVCB_HANDLER(kc85_3_pio_portb_w),						/* port B write callback */
 	DEVCB_LINE(kc85_pio_brdy_callback)						/* portB ready active callback */
 };
@@ -1673,10 +1596,10 @@ Z80PIO_INTERFACE( kc85_2_pio_intf )
 Z80PIO_INTERFACE( kc85_4_pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", 0),						/* callback when change interrupt status */
-	DEVCB_NULL,												/* port A read callback */
+	DEVCB_HANDLER(kc85_4_pio_porta_r),						/* port A read callback */
 	DEVCB_HANDLER(kc85_4_pio_porta_w),						/* port A write callback */
 	DEVCB_LINE(kc85_pio_ardy_callback),						/* portA ready active callback */
-	DEVCB_NULL,												/* port B read callback */
+	DEVCB_HANDLER(kc85_4_pio_portb_r),						/* port B read callback */
 	DEVCB_HANDLER(kc85_4_pio_portb_w),						/* port B write callback */
 	DEVCB_LINE(kc85_pio_brdy_callback)						/* portB ready active callback */
 };
@@ -1771,7 +1694,7 @@ static void	kc85_common_init(running_machine &machine)
 	state->m_kc85_50hz_state = 0;
 	state->m_kc85_15khz_state = 0;
 	state->m_kc85_15khz_count = 0;
-	kc85_module_system_init(state);
+	kc85_module_system_init(machine);
 }
 
 /*****************************************************************/
@@ -1806,12 +1729,6 @@ MACHINE_RESET( kc85_4 )
     here will be a override */
 	memory_set_direct_update_handler(0, kc85_4_opbaseoverride);
 #endif
-}
-
-MACHINE_RESET( kc85_4d )
-{
-	MACHINE_RESET_CALL(kc85_4);
-	kc_disc_interface_init(machine);
 }
 
 MACHINE_RESET( kc85_3 )

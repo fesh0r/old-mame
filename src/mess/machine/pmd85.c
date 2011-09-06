@@ -14,7 +14,7 @@
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255.h"
 #include "includes/pmd85.h"
-#include "machine/msm8251.h"
+#include "machine/i8251.h"
 #include "machine/pit8253.h"
 #include "machine/ram.h"
 
@@ -419,7 +419,7 @@ static WRITE8_DEVICE_HANDLER ( pmd85_ppi_2_portc_w )
         CLK0    - external interfaces connector (K2)
         GATE0   - external interfaces connector (K2), default = 1
     Timer 1:
-        OUT0    - external interfaces connector (K2), msm8251 (for V24 only)
+        OUT0    - external interfaces connector (K2), i8251 (for V24 only)
         CLK0    - hardwired to 2 MHz system clock
         GATE0   - external interfaces connector (K2), default = 1
     Timer 2:
@@ -519,6 +519,7 @@ static WRITE8_DEVICE_HANDLER ( pmd85_ppi_3_portc_w )
 READ8_HANDLER ( pmd85_io_r )
 {
 	pmd85_state *state = space->machine().driver_data<pmd85_state>();
+	i8251_device *uart = space->machine().device<i8251_device>("uart");
 	if (state->m_startup_mem_map)
 	{
 		return 0xff;
@@ -561,8 +562,8 @@ READ8_HANDLER ( pmd85_io_r )
 								case 0x10:	/* 8251 (casette recorder, V24) */
 										switch (offset & 0x01)
 										{
-											case 0x00: return msm8251_data_r(space->machine().device("uart"), offset & 0x01);
-											case 0x01: return msm8251_status_r(space->machine().device("uart"), offset & 0x01);
+											case 0x00: return uart->data_r(*space, offset & 0x01);
+											case 0x01: return uart->status_r(*space, offset & 0x01);
 										}
 										break;
 								case 0x40:      /* 8255 (GPIO/0, GPIO/1) */
@@ -586,6 +587,7 @@ READ8_HANDLER ( pmd85_io_r )
 WRITE8_HANDLER ( pmd85_io_w )
 {
 	pmd85_state *state = space->machine().driver_data<pmd85_state>();
+	i8251_device *uart = space->machine().device<i8251_device>("uart");
 	if (state->m_startup_mem_map)
 	{
 		state->m_startup_mem_map = 0;
@@ -637,8 +639,8 @@ WRITE8_HANDLER ( pmd85_io_w )
 								case 0x10:	/* 8251 (casette recorder, V24) */
 										switch (offset & 0x01)
 										{
-											case 0x00: msm8251_data_w(space->machine().device("uart"), offset & 0x01, data); break;
-											case 0x01: msm8251_control_w(space->machine().device("uart"), offset & 0x01, data); break;
+											case 0x00: uart->data_w(*space, offset & 0x01, data); break;
+											case 0x01: uart->control_w(*space, offset & 0x01, data); break;
 										}
 										break;
 								case 0x40:      /* 8255 (GPIO/0, GPIO/0) */
@@ -790,15 +792,11 @@ I8255_INTERFACE( mato_ppi8255_interface )
 };
 
 
-static void pmd85_cassette_write(running_machine &machine, int id, unsigned long state)
-{
-	pmd85_state *drvstate = machine.driver_data<pmd85_state>();
-	drvstate->m_cassette_serial_connection.input_state = state;
-}
-
 static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 {
 	pmd85_state *state = machine.driver_data<pmd85_state>();
+	i8251_device *uart = machine.device<i8251_device>("uart");
+	serial_source_device *ser = machine.device<serial_source_device>("sercas");
 	int data;
 	int current_level;
 
@@ -823,9 +821,8 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 						{
 							data = (!state->m_previous_level && current_level) ? 1 : 0;
 
-							set_out_data_bit(state->m_cassette_serial_connection.State, data);
-							serial_connection_out(machine, &state->m_cassette_serial_connection);
-							msm8251_receive_clock(machine.device("uart"));
+							ser->send_bit(data);
+							uart->receive_clock();
 
 							state->m_clk_level_tape = 1;
 						}
@@ -844,12 +841,12 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 		/* tape writing */
 		if (machine.device<cassette_image_device>(CASSETTE_TAG)->get_state()&CASSETTE_RECORD)
 		{
-			data = get_in_data_bit(state->m_cassette_serial_connection.input_state);
+			data = ser->get_in_data_bit();
 			data ^= state->m_clk_level_tape;
 			machine.device<cassette_image_device>(CASSETTE_TAG)->output(data&0x01 ? 1 : -1);
 
 			if (!state->m_clk_level_tape)
-				msm8251_transmit_clock(machine.device("uart"));
+				uart->transmit_clock();
 
 			state->m_clk_level_tape = state->m_clk_level_tape ? 0 : 1;
 
@@ -859,7 +856,7 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 		state->m_clk_level_tape = 1;
 
 		if (!state->m_clk_level)
-			msm8251_transmit_clock(machine.device("uart"));
+			uart->transmit_clock();
 		state->m_clk_level = state->m_clk_level ? 0 : 1;
 	}
 }
@@ -883,9 +880,6 @@ static void pmd85_common_driver_init (running_machine &machine)
 	state->m_clk_level = state->m_clk_level_tape = 1;
 	state->m_cassette_timer = machine.scheduler().timer_alloc(FUNC(pmd85_cassette_timer_callback));
 	state->m_cassette_timer->adjust(attotime::zero, 0, attotime::from_hz(2400));
-
-	serial_connection_init(machine, &state->m_cassette_serial_connection);
-	serial_connection_set_in_callback(machine, &state->m_cassette_serial_connection, pmd85_cassette_write);
 }
 
 DRIVER_INIT ( pmd851 )
@@ -940,7 +934,9 @@ static TIMER_CALLBACK( setup_machine_state )
 	pmd85_state *state = machine.driver_data<pmd85_state>();
 	if (state->m_model != MATO)
 	{
-		msm8251_connect(machine.device("uart"), &state->m_cassette_serial_connection);
+		i8251_device *uart = machine.device<i8251_device>("uart");
+		serial_source_device *ser = machine.device<serial_source_device>("sercas");
+		uart->connect(ser);
 	}
 }
 

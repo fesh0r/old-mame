@@ -48,7 +48,7 @@ The source code there implies that *maybe* ff7e and ff7f are also open bus.
 #include "includes/aim65_40.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
-#include "machine/6551.h"
+#include "machine/6551acia.h"
 #include "aim65_40.lh"
 
 /***************************************************************************
@@ -61,7 +61,7 @@ static ADDRESS_MAP_START( aim65_40_mem, AS_PROGRAM, 8 )
 	AM_RANGE(0xffa0, 0xffaf) AM_DEVREADWRITE_MODERN(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0xffb0, 0xffbf) AM_DEVREADWRITE_MODERN(M6522_1_TAG, via6522_device, read, write)
 	AM_RANGE(0xffc0, 0xffcf) AM_DEVREADWRITE_MODERN(M6522_2_TAG, via6522_device, read, write)
-	AM_RANGE(0xffd0, 0xffd3) AM_DEVREADWRITE(M6551_TAG, acia_6551_r, acia_6551_w)
+	AM_RANGE(0xffd0, 0xffd3) AM_DEVREADWRITE_MODERN(M6551_TAG, acia6551_device, read, write)
 	AM_RANGE(0xffe0, 0xffff) AM_ROM
 ADDRESS_MAP_END
 

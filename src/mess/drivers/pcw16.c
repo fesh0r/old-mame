@@ -97,7 +97,7 @@ TODO:
 #include "machine/pckeybrd.h"	/* PC-AT keyboard */
 #include "machine/pc_fdc.h"		/* change to superio later */
 #include "machine/ins8250.h"	/* pc com port */
-#include "includes/pc_mouse.h"	/* pc serial mouse */
+#include "machine/pc_mouse.h"	/* pc serial mouse */
 #include "sound/beep.h"			/* pcw/pcw16 beeper */
 #include "machine/intelfsh.h"
 
@@ -1364,8 +1364,8 @@ static MACHINE_START( pcw16 )
 	pc_fdc_init(machine, &pcw16_fdc_interface);
 
 	/* initialise mouse */
-	pc_mouse_initialise(machine);
-	pc_mouse_set_serial_port( machine.device("ns16550_0") );
+	//pc_mouse_initialise(machine);
+	//pc_mouse_set_serial_port( machine.device("ns16550_0") );
 
 	/* initialise keyboard */
 	at_keyboard_init(machine, AT_KEYBOARD_TYPE_AT);

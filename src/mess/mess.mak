@@ -518,7 +518,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_AUDIO)/mea8000.o		\
 	$(MESS_AUDIO)/spchroms.o	\
 	$(MESS_DEVICES)/microdrv.o	\
-	$(MESS_MACHINE)/6551.o		\
 	$(MESS_MACHINE)/74145.o		\
 	$(MESS_MACHINE)/8530scc.o	\
 	$(MESS_MACHINE)/at45dbxx.o	\
@@ -539,9 +538,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/mm58274c.o	\
 	$(MESS_MACHINE)/mpc105.o	\
 	$(MESS_MACHINE)/mos6530.o	\
-	$(MESS_MACHINE)/msm8251.o	\
 	$(MESS_MACHINE)/s100.o		\
-	$(MESS_MACHINE)/serial.o	\
 	$(MESS_MACHINE)/upd765.o	\
 	$(MESS_MACHINE)/ncr5380.o	\
 	$(MESS_MACHINE)/pc_lpt.o	\
@@ -1673,6 +1670,11 @@ $(MESSOBJ)/veb.a:				\
 	$(MESS_VIDEO)/kc.o			\
 	$(MESS_DRIVERS)/kc.o		\
 	$(MESS_MACHINE)/kc.o		\
+	$(MESS_MACHINE)/kcexp.o		\
+	$(MESS_MACHINE)/kc_ram.o	\
+	$(MESS_MACHINE)/kc_rom.o	\
+	$(MESS_MACHINE)/kc_d002.o	\
+	$(MESS_MACHINE)/kc_d004.o	\
 	$(MESS_DRIVERS)/lc80.o		\
 	$(MESS_DRIVERS)/mc80.o		\
 	$(MESS_VIDEO)/mc80.o		\

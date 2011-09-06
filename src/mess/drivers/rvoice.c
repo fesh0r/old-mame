@@ -10,7 +10,7 @@
 /* Core includes */
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
-#include "machine/6551.h"
+#include "machine/6551acia.h"
 //#include "dectalk.lh" //  hack to avoid screenless system crash
 #include "machine/terminal.h"
 
@@ -108,7 +108,7 @@ static MACHINE_RESET( rvoicepc )
 	state->m_hd63701y0.TCSR2 = 0x10;
 	state->m_hd63701y0.RMCR = 0xC0;
 	state->m_hd63701y0.TRCSR1 = 0x20;
-	state->m_hd63701y0.RDR = 0x00; // Recieve Data Reg, R
+	state->m_hd63701y0.RDR = 0x00; // Receive Data Reg, R
 	state->m_hd63701y0.TDR = 0x00; // Transmit Data Reg, W
 	state->m_hd63701y0.RP5CR = 0x78; // or 0xF8; Ram/Port5 Control Reg, R/W
 	state->m_hd63701y0.PORT5 = 0x00; // port 5, R/W
@@ -327,7 +327,7 @@ static ADDRESS_MAP_START(hd63701_main_mem, AS_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0027) AM_READWRITE(main_hd63701_internal_registers_r, main_hd63701_internal_registers_w) // INTERNAL REGS
 	AM_RANGE(0x0040, 0x013f) AM_RAM // INTERNAL RAM (overlaps acia)
-	AM_RANGE(0x0060, 0x007f) AM_DEVREADWRITE( "acia65c51", acia_6551_r, acia_6551_w) // ACIA 65C51
+	AM_RANGE(0x0060, 0x007f) AM_DEVREADWRITE_MODERN("acia65c51", acia6551_device, read, write) // ACIA 65C51
 	AM_RANGE(0x2000, 0x7fff) AM_RAM // EXTERNAL SRAM
 	AM_RANGE(0x8000, 0xffff) AM_ROM // 27512 EPROM
 ADDRESS_MAP_END

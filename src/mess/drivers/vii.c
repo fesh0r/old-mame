@@ -81,6 +81,9 @@ public:
 	UINT16 m_uart_rx_count;
 	UINT8 m_controller_input[8];
 	UINT32 m_spg243_mode;
+
+	emu_timer *m_tmb1;
+	emu_timer *m_tmb2;
 };
 
 enum
@@ -398,6 +401,7 @@ static void vii_do_dma(running_machine &machine, UINT32 len)
 	}
 
 	state->m_video_regs[0x72] = 0;
+	state->m_video_regs[0x63] |= 4;
 }
 
 static READ16_HANDLER( vii_video_r )
@@ -427,6 +431,20 @@ static WRITE16_HANDLER( vii_video_w )
 
 	switch(offset)
 	{
+		case 0x10: case 0x16:	// page 1,2 X scroll
+			data &= 0x01ff;
+			COMBINE_DATA(&state->m_video_regs[offset]);
+			break;
+
+		case 0x11: case 0x17:	// page 1,2 Y scroll
+			data &= 0x00ff;
+			COMBINE_DATA(&state->m_video_regs[offset]);
+			break;
+		case 0x36:		// IRQ pos V
+		case 0x37:		// IRQ pos H
+			data &= 0x01ff;
+			COMBINE_DATA(&state->m_video_regs[offset]);
+			break;
 		case 0x62: // Video IRQ Enable
 			verboselog(space->machine(), 0, "vii_video_w: Video IRQ Enable = %04x (%04x)\n", data, mem_mask);
 			COMBINE_DATA(&VII_VIDEO_IRQ_ENABLE);
@@ -572,9 +590,9 @@ static READ16_HANDLER( vii_io_r )
 	static const char gpioports[] = { 'A', 'B', 'C' };
 
 	vii_state *state = space->machine().driver_data<vii_state>();
-	UINT16 val = state->m_io_regs[offset];
-
 	offset -= 0x500;
+
+	UINT16 val = state->m_io_regs[offset];
 
 	switch(offset)
 	{
@@ -595,8 +613,11 @@ static READ16_HANDLER( vii_io_r )
 			verboselog(space->machine(), 3, "vii_io_r: Random = %04x (%04x)\n", val, mem_mask);
 			break;
 
+		case 0x21: // IRQ Control
+			verboselog(space->machine(), 3, "vii_io_r: Controller IRQ Control = %04x (%04x)\n", val, mem_mask);
+			break;
+
 		case 0x22: // IRQ Status
-			val = state->m_io_regs[0x21];
 			verboselog(space->machine(), 3, "vii_io_r: Controller IRQ Status = %04x (%04x)\n", val, mem_mask);
 			break;
 
@@ -630,7 +651,7 @@ static READ16_HANDLER( vii_io_r )
 			break;
 
 		default:
-			verboselog(space->machine(), 3, "vii_io_r: Unknown register %04x\n", 0x3800 + offset);
+			verboselog(space->machine(), 3, "vii_io_r: Unknown register %04x\n", 0x3d00 + offset);
 			break;
 	}
 
@@ -666,8 +687,21 @@ static WRITE16_HANDLER( vii_io_w )
 			vii_do_gpio(space->machine(), offset);
 			break;
 
+		case 0x10:		// timebase control
+			if ((state->m_io_regs[offset] & 0x0003) != (data & 0x0003)) {
+				UINT16 hz = 8 << (data & 0x0003);
+				verboselog(space->machine(), 3, "*** TMB1 FREQ set to %dHz\n", hz);
+				state->m_tmb1->adjust(attotime::zero, 0, attotime::from_hz( hz ));
+			}
+			if ((state->m_io_regs[offset] & 0x000c) != (data & 0x000c)) {
+				UINT16 hz = 128 << ((data & 0x000c) >> 2);
+				verboselog(space->machine(), 3, "*** TMB2 FREQ set to %dHz\n", hz);
+				state->m_tmb2->adjust(attotime::zero, 0, attotime::from_hz( hz ));
+			}
+			COMBINE_DATA(&state->m_io_regs[offset]);
+			break;
 		case 0x21: // IRQ Enable
-			verboselog(space->machine(), 3, "vii_io_w: Controller IRQ Enable = %04x (%04x)\n", data, mem_mask);
+			verboselog(space->machine(), 3, "vii_io_w: Controller IRQ Control = %04x (%04x)\n", data, mem_mask);
 			COMBINE_DATA(&VII_CTLR_IRQ_ENABLE);
 			if(!VII_CTLR_IRQ_ENABLE)
 			{
@@ -761,7 +795,7 @@ static WRITE16_HANDLER( vii_io_w )
 			break;
 
 		default:
-			verboselog(space->machine(), 3, "vii_io_w: Unknown register %04x = %04x (%04x)\n", 0x3800 + offset, data, mem_mask);
+			verboselog(space->machine(), 3, "vii_io_w: Unknown register %04x = %04x (%04x)\n", 0x3d00 + offset, data, mem_mask);
 			COMBINE_DATA(&state->m_io_regs[offset]);
 			break;
 	}
@@ -903,6 +937,18 @@ static DEVICE_IMAGE_LOAD( vsmile_cart )
 	return IMAGE_INIT_PASS;
 }
 
+static TIMER_CALLBACK( tmb1_tick )
+{
+	vii_state *state = machine.driver_data<vii_state>();
+	state->m_io_regs[0x22] |= 1;
+}
+
+static TIMER_CALLBACK( tmb2_tick )
+{
+	vii_state *state = machine.driver_data<vii_state>();
+	state->m_io_regs[0x22] |= 2;
+}
+
 static MACHINE_START( vii )
 {
 	vii_state *state = machine.driver_data<vii_state>();
@@ -920,6 +966,14 @@ static MACHINE_START( vii )
 	if (rom) { // to prevent batman crash
 		memcpy(state->m_cart, rom + 0x4000*2, (0x400000 - 0x4000) * 2);
 	}
+
+	state->m_video_regs[0x36] = 0xffff;
+	state->m_video_regs[0x37] = 0xffff;
+
+	state->m_tmb1 = machine.scheduler().timer_alloc(FUNC(tmb1_tick));
+	state->m_tmb2 = machine.scheduler().timer_alloc(FUNC(tmb2_tick));
+	state->m_tmb1->reset();
+	state->m_tmb2->reset();
 }
 
 static MACHINE_RESET( vii )
@@ -933,12 +987,6 @@ static INTERRUPT_GEN( vii_vblank )
 	UINT32 y = device->machine().rand() & 0x3ff;
 	UINT32 z = device->machine().rand() & 0x3ff;
 
-	VII_VIDEO_IRQ_STATUS = VII_VIDEO_IRQ_ENABLE & 1;
-	if(VII_VIDEO_IRQ_STATUS)
-	{
-		verboselog(device->machine(), 0, "Video IRQ\n");
-		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ0_LINE, ASSERT_LINE);
-	}
 
 	state->m_controller_input[0] = input_port_read(device->machine(), "P1");
 	state->m_controller_input[1] = (UINT8)x;
@@ -954,11 +1002,51 @@ static INTERRUPT_GEN( vii_vblank )
 
 	state->m_uart_rx_count = 0;
 
+	VII_VIDEO_IRQ_STATUS = VII_VIDEO_IRQ_ENABLE & 1;
+	if(VII_VIDEO_IRQ_STATUS)
+	{
+		verboselog(device->machine(), 0, "Video IRQ\n");
+		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ0_LINE, ASSERT_LINE);
+	}
+
+//  {
+//      verboselog(device->machine(), 0, "audio 1 IRQ\n");
+//      cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ1_LINE, ASSERT_LINE);
+//  }
+	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x0c00)
+	{
+		verboselog(device->machine(), 0, "timerA, timer B IRQ\n");
+		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ2_LINE, ASSERT_LINE);
+	}
+
+	//if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x2100)
+	// For now trigger always if any enabled
 	if(VII_CTLR_IRQ_ENABLE)
 	{
-		verboselog(device->machine(), 0, "Controller IRQ\n");
+		verboselog(device->machine(), 0, "UART, ADC IRQ\n");
 		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ3_LINE, ASSERT_LINE);
 	}
+//  {
+//      verboselog(device->machine(), 0, "audio 4 IRQ\n");
+//      cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ4_LINE, ASSERT_LINE);
+//  }
+
+	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x1200)
+	{
+		verboselog(device->machine(), 0, "External IRQ\n");
+		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ5_LINE, ASSERT_LINE);
+	}
+	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x0070)
+	{
+		verboselog(device->machine(), 0, "1024Hz, 2048HZ, 4096HZ IRQ\n");
+		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ6_LINE, ASSERT_LINE);
+	}
+	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x008b)
+	{
+		verboselog(device->machine(), 0, "TMB1, TMB2, 4Hz, key change IRQ\n");
+		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ7_LINE, ASSERT_LINE);
+	}
+
 }
 
 static MACHINE_CONFIG_START( vii, vii_state )
@@ -1080,6 +1168,7 @@ ROM_START( vii )
 
 	ROM_REGION( 0x2000000, "cart", ROMREGION_ERASE00 )
 	ROM_LOAD( "vii.bin", 0x0000, 0x2000000, CRC(04627639) SHA1(f883a92d31b53c9a5b0cdb112d07cd793c95fc43))
+	ROM_CART_LOAD("cart", 0x0000, 0x2000000, ROM_MIRROR)
 ROM_END
 
 ROM_START( batmantv )
@@ -1091,6 +1180,7 @@ ROM_START( vsmile )
 	ROM_REGION( 0x800000, "maincpu", ROMREGION_ERASEFF )      /* dummy region for u'nSP */
 
 	ROM_REGION( 0x2000000, "cart", ROMREGION_ERASE00 )
+	ROM_CART_LOAD("cart", 0x0000, 0x2000000, ROM_MIRROR)
 ROM_END
 
 ROM_START( walle )
