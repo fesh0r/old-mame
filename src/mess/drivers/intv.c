@@ -26,6 +26,12 @@
 <kevtris> it's just a single serial stream.  the intv simply watches the buffer state and refills it periodically.  there's enough buffer to keep it full for 1 frame
 <kevtris> that's about it
 <kevtris> the samples are stored in the game ROMs, and are easy to extract
+
+RO-3-9503 = 2k self decoding address mask rom without external address decoder & bus
+RO-3-9504 = 2k self decoding address mask rom with external address decoder & bus
+RO-3-9505 = 8k self decoding address mask rom without external address decoder & bus
+RO-3-9506 = 8k self decoding address mask rom with external address decoder & bus
+
  *
  ************************************************************************/
 
@@ -390,24 +396,24 @@ INPUT_PORTS_END
 
 static ADDRESS_MAP_START( intv_mem , AS_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x003f) AM_READWRITE( intv_stic_r, intv_stic_w )
-	AM_RANGE(0x0080, 0x0081) AM_DEVREADWRITE("sp0256_speech", spb640_r, spb640_w )
+	AM_RANGE(0x0080, 0x0081) AM_DEVREADWRITE("sp0256_speech", spb640_r, spb640_w ) /* Intellivoice */
 	AM_RANGE(0x0100, 0x01ef) AM_READWRITE( intv_ram8_r, intv_ram8_w )
-	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE("ay8910", AY8914_directread_port_0_lsb_r, AY8914_directwrite_port_0_lsb_w )
+	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE8("ay8914", ay8914_r, ay8914_w, 0x00ff )
 	AM_RANGE(0x0200, 0x035f) AM_READWRITE( intv_ram16_r, intv_ram16_w )
-	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_REGION("maincpu", 0x1000<<1)	/* Exec ROM, 10-bits wide */
+	AM_RANGE(0x1000, 0x1fff) AM_ROM AM_REGION("maincpu", 0x1000<<1)	/* Exec ROM, 10-bits wide */
 	AM_RANGE(0x3000, 0x37ff) AM_ROM	AM_REGION("maincpu", 0x3000<<1)	/* GROM,     8-bits wide */
 	AM_RANGE(0x3800, 0x39ff) AM_READWRITE( intv_gram_r, intv_gram_w )		/* GRAM,     8-bits wide */
 	AM_RANGE(0x3a00, 0x3bff) AM_READWRITE( intv_gram_r, intv_gram_w )		/* GRAM Alias,     8-bits wide */
-	AM_RANGE(0x4800, 0x7fff) AM_ROM		/* Cartridges? */
-	AM_RANGE(0x8000, 0xBfff) AM_ROM		/* Cartridges? */
-	AM_RANGE(0xD000, 0xFfff) AM_ROM		/* Cartridges? */
+	AM_RANGE(0x4800, 0x7fff) AM_ROM AM_REGION("maincpu", 0x4800<<1)
+	AM_RANGE(0x9000, 0xBfff) AM_ROM AM_REGION("maincpu", 0x9000<<1)
+	AM_RANGE(0xD000, 0xFfff) AM_ROM AM_REGION("maincpu", 0xD000<<1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( intvkbd_mem , AS_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x003f) AM_READWRITE( intv_stic_r, intv_stic_w )
 	AM_RANGE(0x0080, 0x0081) AM_DEVREADWRITE("sp0256_speech", spb640_r, spb640_w )
 	AM_RANGE(0x0100, 0x01ef) AM_READWRITE( intv_ram8_r, intv_ram8_w )
-	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE("ay8910", AY8914_directread_port_0_lsb_r, AY8914_directwrite_port_0_lsb_w )
+	AM_RANGE(0x01f0, 0x01ff) AM_DEVREADWRITE8("ay8914", ay8914_r, ay8914_w, 0x00ff )
 	AM_RANGE(0x0200, 0x035f) AM_READWRITE( intv_ram16_r, intv_ram16_w )
 	AM_RANGE(0x1000, 0x1fff) AM_ROM	AM_REGION("maincpu", 0x1000<<1)	/* Exec ROM, 10-bits wide */
 	AM_RANGE(0x3000, 0x37ff) AM_ROM	AM_REGION("maincpu", 0x3000<<1)	/* GROM,     8-bits wide */
@@ -466,7 +472,7 @@ static MACHINE_CONFIG_START( intv, intv_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("ay8910", AY8910, XTAL_3_579545MHz/2)
+	MCFG_SOUND_ADD("ay8914", AY8914, XTAL_3_579545MHz/2)
 	MCFG_SOUND_CONFIG(intv_ay8910_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
@@ -479,6 +485,9 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
 	MCFG_CARTSLOT_LOAD(intv_cart)
+	MCFG_CARTSLOT_INTERFACE("intv_cart")
+	/* software lists */
+	MCFG_SOFTWARE_LIST_ADD("cart_list","intv")
 MACHINE_CONFIG_END
 
 
@@ -511,30 +520,42 @@ static MACHINE_CONFIG_DERIVED( intvkbd, intv )
 	MCFG_CARTSLOT_LOAD(intvkbd_cart)
 MACHINE_CONFIG_END
 
-ROM_START(intv)
+ROM_START(intv) // the intv1 exec rom should properly be two roms, one ro-3-9503 and one ro-3-9504
 	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD16_WORD( "exec.bin", (0x1000<<1)+0, 0x2000, CRC(cbce86f7) SHA1(5a65b922b562cb1f57dab51b73151283f0e20c7a))
-	ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
+	ROM_LOAD16_BYTE( "ro-3-9503-003.u5", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
 
 	ROM_REGION( 0x10000<<1, "sp0256_speech", 0 )
 	/* SP0256-012 Speech chip w/2KiB mask rom */
-	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(8bd786ec) SHA1(f98b3024cb87b21dc3ba48ecbc0e8713e9f70219) )
+	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(0de7579d) SHA1(618563e512ff5665183664f52270fa9606c9d289) )
+ROM_END
+
+// the later intellivision 2's exec rom is a single ro-3-9506-010 at location ic6 holding 8k plus 512 bytes; the 1st 512 bytes are at 0x400 and the 8k at 0x1000
+ROM_START(intv2)
+	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)
+	ROM_LOAD16_WORD_SWAP( "ro-3-9506-010.ic6", (0x400<<1)+0, 0x200, CRC(DD7E1237) SHA1(FB821A643B7714ED4C812553CD3F668766FD44AB))
+	ROM_CONTINUE( (0x1000<<1)+0, 0x2000 )
+	ROM_LOAD16_BYTE( "ro-3-9503-003.u5", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917)) // needs verification
+
+	ROM_REGION( 0x10000<<1, "sp0256_speech", 0 )
+	/* SP0256-012 Speech chip w/2KiB mask rom */
+	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(0de7579d) SHA1(618563e512ff5665183664f52270fa9606c9d289) )
 ROM_END
 
 ROM_START(intvsrs)
 	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD16_WORD( "searsexc.bin", (0x1000<<1)+0, 0x2000, CRC(ea552a22) SHA1(834339de056d42a35571cae7fd5b04d1344001e9))
-	ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
+	ROM_LOAD16_BYTE( "ro-3-9503-003.u5", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
 
 	ROM_REGION( 0x10000<<1, "sp0256_speech", 0 )
 	/* SP0256-012 Speech chip w/2KiB mask rom */
-	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(8bd786ec) SHA1(f98b3024cb87b21dc3ba48ecbc0e8713e9f70219) )
+	ROM_LOAD( "sp0256-012.bin",   0x1000, 0x0800, CRC(0de7579d) SHA1(618563e512ff5665183664f52270fa9606c9d289) )
 ROM_END
 
 ROM_START(intvkbd)
 	ROM_REGION(0x10000<<1,"maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD16_WORD( "exec.bin", 0x1000<<1, 0x2000, CRC(cbce86f7) SHA1(5a65b922b562cb1f57dab51b73151283f0e20c7a))
-	ROM_LOAD16_BYTE( "grom.bin", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
+	ROM_LOAD16_BYTE( "ro-3-9503-003.u5", (0x3000<<1)+1, 0x0800, CRC(683a4158) SHA1(f9608bb4ad1cfe3640d02844c7ad8e0bcd974917))
 	ROM_LOAD16_WORD( "024.u60",  0x7000<<1, 0x1000, CRC(4f7998ec) SHA1(ec006d0ae9002e9d56d83a71f5f2eddd6a456a40))
 	ROM_LOAD16_BYTE( "4d72.u62", 0x7800<<1, 0x0800, CRC(aa57c594) SHA1(741860d489d90f5882ca53daa3169b6abacdf130))
 	ROM_LOAD16_BYTE( "4d71.u63", (0x7800<<1)+1, 0x0800, CRC(069b2f0b) SHA1(070850bb32f8474107cc52c5183cfaa32d640f9a))
@@ -593,6 +614,7 @@ static DRIVER_INIT( intvkbd )
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME */
-CONS( 1979,	intv,		0,		0,		intv,		intv,		intv,		"Mattel",	"Intellivision", 0 )
-CONS( 1981,	intvsrs,	intv,	0,		intv,		intv,		intv,		"Mattel",	"Intellivision (Sears)", 0 )
-COMP( 1981,	intvkbd,	intv,	0,		intvkbd,	intvkbd,	intvkbd,	"Mattel",	"Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+CONS( 1979, intv,       0,      0,      intv,       intv,       intv,       "Mattel", "Intellivision", 0 )
+CONS( 1981, intvsrs,    intv,   0,      intv,       intv,       intv,       "Mattel", "Intellivision (Sears)", 0 )
+COMP( 1981, intvkbd,    intv,   0,      intvkbd,    intvkbd,    intvkbd,    "Mattel", "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+CONS( 1982, intv2,      intv,   0,      intv,       intv,       intv,       "Mattel", "Intellivision II", 0 )

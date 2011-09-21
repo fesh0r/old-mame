@@ -465,7 +465,6 @@ int projectEyeCoordToScreen(float* projectionMatrix,
 							 INT16* eyePoint3d,
 							 int type)
 {
-	int res;
 	/* Return (-1, -1) if the eye point is behind camera */
 	int res = -10000;
 	if (eyePoint3d[2] <= 0.0 && eyePoint3d[0] <= 0.0)

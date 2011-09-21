@@ -502,9 +502,7 @@ static UINT8 m37710_internal_r(m37710i_cpu_struct *cpustate, int offset)
 			return cpustate->m37710_regs[offset];
 	}
 
-		default:
-			return cpustate->m37710_regs[offset];
-	}
+	return cpustate->m37710_regs[offset];
 }
 
 static void m37710_internal_w(m37710i_cpu_struct *cpustate, int offset, UINT8 data)

@@ -2037,18 +2037,11 @@ INLINE uint EA_SIY(m37710i_cpu_struct *cpustate)   {return MAKE_UINT_16(read_16_
 			FLAG_Z = REG_A = MAKE_UINT_8(REG);								\
 			FLAG_N = NFLAG_8(FLAG_Z)
 #else
-#if FLAG_SET_X
-#define OP_TXA(REG)															\
-			CLK(CLK_OP + CLK_IMPLIED);										\
-			FLAG_Z = REG_A = MAKE_UINT_8(REG);								\
-			FLAG_N = NFLAG_16(FLAG_Z)
-#else
 #define OP_TXA(REG)															\
 			CLK(CLK_OP + CLK_IMPLIED);										\
 			FLAG_Z = REG_A = REG;											\
 			FLAG_N = NFLAG_16(FLAG_Z)
 #endif
-#endif /* FLAG_SET_M */
 
 /* M37710   Transfer index to accumulator B */
 #undef OP_TXB
@@ -2058,18 +2051,11 @@ INLINE uint EA_SIY(m37710i_cpu_struct *cpustate)   {return MAKE_UINT_16(read_16_
 			FLAG_Z = REG_BA = MAKE_UINT_8(REG);								\
 			FLAG_N = NFLAG_8(FLAG_Z)
 #else
-#if FLAG_SET_X
-#define OP_TXB(REG)															\
-			CLK(CLK_OP + CLK_IMPLIED);										\
-			FLAG_Z = REG_BA = MAKE_UINT_8(REG);								\
-			FLAG_N = NFLAG_16(FLAG_Z)
-#else
 #define OP_TXB(REG)															\
 			CLK(CLK_OP + CLK_IMPLIED);										\
 			FLAG_Z = REG_BA = REG;											\
 			FLAG_N = NFLAG_16(FLAG_Z)
 #endif
-#endif /* FLAG_SET_M */
 
 /* M37710  Transfer accumulator to direct register */
 #undef OP_TAD

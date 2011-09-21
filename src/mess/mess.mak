@@ -562,6 +562,10 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/applefdc.o	\
 	$(MESS_DEVICES)/sonydriv.o	\
 	$(MESS_DEVICES)/appldriv.o	\
+	$(MESS_MACHINE)/dp8390.o	\
+	$(MESS_MACHINE)/ne1000.o	\
+	$(MESS_MACHINE)/ne2000.o	\
+	$(MESS_MACHINE)/wd1772.o	\
 
 
 
@@ -658,8 +662,8 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_VIDEO)/nubus_specpdq.o \
 	$(MESS_VIDEO)/nubus_m2hires.o \
 	$(MESS_VIDEO)/nubus_spec8.o \
+	$(MESS_VIDEO)/nubus_radiustpd.o \
     $(MESS_MACHINE)/nubus_asntmc3b.o \
-    $(MESS_MACHINE)/dp8390x.o \
 
 $(MESSOBJ)/applied.a:			\
 	$(MESS_VIDEO)/mbee.o		\
@@ -1086,7 +1090,6 @@ $(MESSOBJ)/intv.a:				\
 	$(MESS_VIDEO)/intv.o		\
 	$(MESS_VIDEO)/stic.o		\
 	$(MESS_MACHINE)/intv.o		\
-	$(MESS_AUDIO)/intv.o		\
 	$(MESS_DRIVERS)/intv.o		\
 
 $(MESSOBJ)/kaypro.a:			\
@@ -1427,6 +1430,8 @@ $(MESSOBJ)/sharp.a:				\
 	$(MESS_MACHINE)/mz700.o		\
 	$(MESS_DRIVERS)/x68k.o		\
 	$(MESS_VIDEO)/x68k.o		\
+	$(MESS_MACHINE)/x68kexp.o	\
+	$(MESS_MACHINE)/x68k_neptunex.o	\
 	$(MESS_MACHINE)/x68k_hdc.o	\
 	$(MESS_MACHINE)/mb89352.o	\
 	$(MESS_DRIVERS)/mz80.o		\
@@ -1670,6 +1675,7 @@ $(MESSOBJ)/veb.a:				\
 	$(MESS_VIDEO)/kc.o			\
 	$(MESS_DRIVERS)/kc.o		\
 	$(MESS_MACHINE)/kc.o		\
+	$(MESS_MACHINE)/kc_keyb.o	\
 	$(MESS_MACHINE)/kcexp.o		\
 	$(MESS_MACHINE)/kc_ram.o	\
 	$(MESS_MACHINE)/kc_rom.o	\

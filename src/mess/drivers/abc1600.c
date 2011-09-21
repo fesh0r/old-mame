@@ -10,31 +10,21 @@
 
     TODO:
 
-    - MAC
-        - MAGIC bit (disable IFC2?)
+    - keyboard
+        - "Bad command" on first enter after boot
     - floppy
-        - "rderr no /boot"
-
-            '3f' (001764): wd17xx_data_w $25
-            old track: $00 new track: $25
-            direction: +1
-            '3f' (001788): wd17xx_command_w $19 SEEK (data_reg is $25)
-            '3f' (00193E): wd17xx_status_r: $00 (data_count 0)
-            '3f' (0017A0): wd17xx_track_r: $25
-            '3f' (001844): wd17xx_sector_w $03
-            '3f' (00184C): wd17xx_command_w $8A READ_SEC (cmd=80, trk=25, sec=03, dat=25)
-            '3f' (00193E): wd17xx_status_r: $01 (data_count 0)
-            '3f' (00193E): wd17xx_status_r: $01 (data_count 0)
-            wd179x: Read Sector callback.
-            track 37 sector 3 not found!
-
         - internal floppy is really drive 2, but wd17xx.c doesn't like having NULL drives
     - BUS0I/0X/1/2
     - short/long reset (RSTBUT)
     - SCC interrupt
-    - CIO (interrupt controller)
-        - RTC
-        - NVRAM
+    - CIO
+        - vectored interrupts with status
+        - port A bit mode, OR-PEVM, interrupt when bit=1
+        - port B bit mode, OR-PEVM, interrupt when bit=1
+        - port C, open drain output bit PC1 (RTC, NVRAM)
+        - counter 1 disabled
+        - counter 2 enabled, TC=000d, IE=0, output to PB0
+        - counter 3 enabled, TC=9c40, IE=1
     - hard disk (Xebec S1410)
 
 */
@@ -66,20 +56,9 @@
 #define A1_A2		((A1 << 1) | A2)
 #define A2_A1		((offset >> 1) & 0x03)
 
-#define CURRENT_TASK \
-	(m_ifc2 ? 0 : ((m_task ^ 0x0f) & 0x0f))
-
-#define SEGMENT_ADDRESS(_segment) \
-	((CURRENT_TASK << 5) | _segment)
-
-#define SEGMENT_DATA(_segment) \
-	m_segment_ram[SEGMENT_ADDRESS(_segment)]
-
-#define PAGE_ADDRESS(_segment, _page) \
-	((SEGMENT_DATA(_segment) << 4) | _page)
-
-#define PAGE_DATA(_segment, _page) \
-	m_page_ram[PAGE_ADDRESS(_segment, _page)]
+#define FC0			BIT(fc, 0)
+#define FC1			BIT(fc, 1)
+#define FC2			BIT(fc, 2)
 
 #define PAGE_WP		BIT(page_data, 14)
 #define PAGE_NONX	BIT(page_data, 15)
@@ -405,23 +384,82 @@ void abc1600_state::write_io(offs_t offset, UINT8 data)
 
 
 //-------------------------------------------------
-//  read_user_memory -
+//  get_current_task -
 //-------------------------------------------------
 
-UINT8 abc1600_state::read_user_memory(offs_t offset)
+int abc1600_state::get_current_task(offs_t offset)
 {
-	int segment = (offset >> 15) & 0x1f;
-	int page = (offset >> 11) & 0x0f;
-	UINT16 page_data = PAGE_DATA(segment, page);
+	int force_task0 = !(m_ifc2 | A19);
+	int t0 = !(BIT(m_task, 0) | force_task0);
+	int t1 = !(BIT(m_task, 1) | force_task0);
+	int t2 = !(BIT(m_task, 2) | force_task0);
+	int t3 = !(BIT(m_task, 3) | force_task0);
+
+	return (t3 << 3) | (t2 << 2) | (t1 << 1) | t0;
+}
+
+
+//-------------------------------------------------
+//  get_segment_address -
+//-------------------------------------------------
+
+offs_t abc1600_state::get_segment_address(offs_t offset)
+{
+	int sega19 = !(!(A8 | m_ifc2) | !A19);
+	int task = get_current_task(offset);
+
+	return (task << 5) | (sega19 << 4) | ((offset >> 15) & 0x0f);
+}
+
+
+//-------------------------------------------------
+//  get_page_address -
+//-------------------------------------------------
+
+offs_t abc1600_state::get_page_address(offs_t offset, UINT8 segd)
+{
+	return ((segd & 0x3f) << 4) | ((offset >> 11) & 0x0f);
+}
+
+
+//-------------------------------------------------
+//  translate_address -
+//-------------------------------------------------
+
+offs_t abc1600_state::translate_address(offs_t offset, int *nonx, int *wp)
+{
+	// segment
+	offs_t sega = get_segment_address(offset);
+	UINT8 segd = m_segment_ram[sega];
+
+	// page
+	offs_t pga = get_page_address(offset, segd);
+	UINT16 page_data = m_page_ram[pga];
 
 	offs_t virtual_offset = ((page_data & 0x3ff) << 11) | (offset & 0x7ff);
 
 	if (PAGE_NONX)
 	{
+		logerror("Bus error %06x : %06x\n", offset, virtual_offset);
 		m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
 		m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 	}
 
+	*nonx = PAGE_NONX;
+	*wp = PAGE_WP;
+
+	return virtual_offset;
+}
+
+
+//-------------------------------------------------
+//  read_user_memory -
+//-------------------------------------------------
+
+UINT8 abc1600_state::read_user_memory(offs_t offset)
+{
+	int nonx = 0, wp = 0;
+	offs_t virtual_offset = translate_address(offset, &nonx, &wp);
 	UINT8 data = 0;
 
 	if (virtual_offset < 0x1fe000)
@@ -443,20 +481,10 @@ UINT8 abc1600_state::read_user_memory(offs_t offset)
 
 void abc1600_state::write_user_memory(offs_t offset, UINT8 data)
 {
-	int segment = (offset >> 15) & 0x1f;
-	int page = (offset >> 11) & 0x0f;
-	UINT16 page_data = PAGE_DATA(segment, page);
+	int nonx = 0, wp = 0;
+	offs_t virtual_offset = translate_address(offset, &nonx, &wp);
 
-	offs_t virtual_offset = ((page_data & 0x3ff) << 11) | (offset & 0x7ff);
-
-	if (!PAGE_WP) return;
-
-	if (PAGE_NONX)
-	{
-		m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
-		m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
-		return;
-	}
+	if (nonx || !wp) return;
 
 	if (virtual_offset < 0x1fe000)
 	{
@@ -480,16 +508,7 @@ UINT8 abc1600_state::read_supervisor_memory(offs_t offset)
 
 	if (!A19)
 	{
-		if (!BOOTE && !A18 && !A17)
-		{
-			// _BOOTCE
-			UINT8 *rom = machine().region(MC68008P8_TAG)->base();
-			data = rom[offset & 0x3fff];
-		}
-		else
-		{
-			data = read_user_memory(offset);
-		}
+		data = read_user_memory(offset);
 	}
 	else
 	{
@@ -548,22 +567,41 @@ void abc1600_state::write_supervisor_memory(offs_t offset, UINT8 data)
 
 
 //-------------------------------------------------
+//  get_fc -
+//-------------------------------------------------
+
+int abc1600_state::get_fc()
+{
+	UINT16 fc = m68k_get_fc(m_maincpu);
+
+	m_ifc2 = !(!(MAGIC | FC0) | FC2);
+
+	return fc;
+}
+
+
+//-------------------------------------------------
 //  mac_r -
 //-------------------------------------------------
 
 READ8_MEMBER( abc1600_state::mac_r )
 {
-	UINT16 fc = m68k_get_fc(m_maincpu);
+	int fc = get_fc();
+
 	UINT8 data = 0;
 
-	if (fc == M68K_FC_SUPERVISOR_DATA || fc == M68K_FC_SUPERVISOR_PROGRAM)
+	if (!BOOTE && !A19 && !A18 && !A17)
 	{
-		m_ifc2 = 0 ^ MAGIC;
+		// _BOOTCE
+		UINT8 *rom = machine().region(MC68008P8_TAG)->base();
+		data = rom[offset & 0x3fff];
+	}
+	else if (!m_ifc2 && !FC1)
+	{
 		data = read_supervisor_memory(offset);
 	}
 	else
 	{
-		m_ifc2 = 1 ^ MAGIC;
 		data = read_user_memory(offset);
 	}
 
@@ -577,16 +615,14 @@ READ8_MEMBER( abc1600_state::mac_r )
 
 WRITE8_MEMBER( abc1600_state::mac_w )
 {
-	UINT16 fc = m68k_get_fc(m_maincpu);
+	int fc = get_fc();
 
-	if (fc == M68K_FC_SUPERVISOR_DATA || fc == M68K_FC_SUPERVISOR_PROGRAM)
+	if (!m_ifc2 && !FC1)
 	{
-		m_ifc2 = 0 ^ MAGIC;
 		write_supervisor_memory(offset, data);
 	}
 	else
 	{
-		m_ifc2 = 1 ^ MAGIC;
 		write_user_memory(offset, data);
 	}
 }
@@ -647,7 +683,7 @@ WRITE8_MEMBER( abc1600_state::task_w )
 
 	m_task = data ^ 0xff;
 
-	if (LOG) logerror("Task %u BOOTE %u MAGIC %u\n", (m_task ^ 0x0f) & 0x0f, BOOTE, MAGIC);
+	if (LOG) logerror("%s: %06x Task %u BOOTE %u MAGIC %u\n", machine().describe_context(), offset, get_current_task(offset), BOOTE, MAGIC);
 }
 
 
@@ -672,10 +708,10 @@ READ8_MEMBER( abc1600_state::segment_r )
 
     */
 
-	int segment = (A8 << 4) | ((offset >> 15) & 0x0f);
-	UINT8 data = SEGMENT_DATA(segment);
+	offs_t sega = get_segment_address(offset);
+	UINT8 segd = m_segment_ram[sega];
 
-	return (READ_MAGIC << 7) | (data & 0x7f);
+	return (READ_MAGIC << 7) | (segd & 0x7f);
 }
 
 
@@ -700,10 +736,11 @@ WRITE8_MEMBER( abc1600_state::segment_w )
 
     */
 
-	int segment = (A8 << 4) | ((offset >> 15) & 0x0f);
-	SEGMENT_DATA(segment) = data & 0x7f;
+	offs_t sega = get_segment_address(offset);
 
-	if (LOG) logerror("Task %u Segment %u : %02x\n", CURRENT_TASK, segment, data);
+	m_segment_ram[sega] = data & 0x7f;
+
+	if (LOG) logerror("%s: %06x Task %u Segment %03x : %02x\n", machine().describe_context(), offset, get_current_task(offset), sega, data);
 }
 
 
@@ -737,9 +774,13 @@ READ8_MEMBER( abc1600_state::page_r )
 
     */
 
-	int segment = (A8 << 4) | ((offset >> 15) & 0x0f);
-	int page = (offset >> 11) & 0x0f;
-	UINT16 data = PAGE_DATA(segment, page);
+	// segment
+	offs_t sega = get_segment_address(offset);
+	UINT8 segd = m_segment_ram[sega];
+
+	// page
+	offs_t pga = get_page_address(offset, segd);
+	UINT16 data = m_page_ram[pga];
 
 	return A0 ? (data & 0xff) : (data >> 8);
 }
@@ -775,19 +816,23 @@ WRITE8_MEMBER( abc1600_state::page_w )
 
     */
 
-	int segment = (A8 << 4) | ((offset >> 15) & 0x0f);
-	int page = (offset >> 11) & 0x0f;
+	// segment
+	offs_t sega = get_segment_address(offset);
+	UINT8 segd = m_segment_ram[sega];
+
+	// page
+	offs_t pga = get_page_address(offset, segd);
 
 	if (A0)
 	{
-		PAGE_DATA(segment, page) = (PAGE_DATA(segment, page) & 0xff00) | data;
+		m_page_ram[pga] = (m_page_ram[pga] & 0xff00) | data;
 	}
 	else
 	{
-		PAGE_DATA(segment, page) = (data << 8) | (PAGE_DATA(segment, page) & 0xff);
+		m_page_ram[pga] = (data << 8) | (m_page_ram[pga] & 0xff);
 	}
 
-	if (LOG) logerror("Task %u Segment %u Page %u : %04x\n", CURRENT_TASK, segment, page, PAGE_DATA(segment, page));
+	if (LOG) logerror("%s: %06x Task %u Segment %03x Page %03x : %02x -> %04x\n", machine().describe_context(), offset, get_current_task(offset), sega, pga, data, m_page_ram[pga]);
 }
 
 
@@ -1090,10 +1135,7 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER( abc1600_state::dbrq_w )
 {
-	if (!m_dmadis)
-	{
-		// TODO
-	}
+	m_maincpu->set_input_line(INPUT_LINE_HALT, state & m_dmadis);
 }
 
 READ8_MEMBER( abc1600_state::dma0_mreq_r )
@@ -1381,7 +1423,7 @@ static const floppy_interface abc1600_floppy_interface =
     DEVCB_NULL,
     DEVCB_NULL,
     DEVCB_NULL,
-    FLOPPY_STANDARD_5_25_DSDD,
+    FLOPPY_STANDARD_5_25_DSQD,
     LEGACY_FLOPPY_OPTIONS_NAME(abc1600),
     "floppy_5_25",
 	NULL
@@ -1419,11 +1461,37 @@ static ABC99_INTERFACE( abc99_intf )
 //**************************************************************************
 
 //-------------------------------------------------
+//  IRQ_CALLBACK( abc1600_int_ack )
+//-------------------------------------------------
+
+static IRQ_CALLBACK( abc1600_int_ack )
+{
+	abc1600_state *state = device->machine().driver_data<abc1600_state>();
+	UINT8 data = 0;
+
+	switch (irqline)
+	{
+	case M68K_IRQ_2:
+		data = state->m_cio->intack_r();
+		break;
+	}
+
+	return data;
+}
+
+
+//-------------------------------------------------
 //  MACHINE_START( abc1600 )
 //-------------------------------------------------
 
 void abc1600_state::machine_start()
 {
+	// interrupt callback
+	device_set_irq_callback(m_maincpu, abc1600_int_ack);
+
+	// fill segment RAM with non-zero values or no boot
+	memset(m_segment_ram, 0xcd, 0x400);
+
 	// state saving
 	save_item(NAME(m_ifc2));
 	save_item(NAME(m_task));
