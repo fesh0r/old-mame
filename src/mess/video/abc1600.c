@@ -2,9 +2,7 @@
 
     TODO:
 
-    - FRAME POL
     - landscape/portrait mode
-    - position image based on vsync/hsync
 
 */
 
@@ -34,6 +32,11 @@
 #define HOLD_FX		BIT(m_flag, 5)
 #define COMP_MOVE	BIT(m_flag, 6)
 #define REPLACE		BIT(m_flag, 7)
+
+
+// image position
+#define HFP			96
+#define VFP			23
 
 
 // IOWR0 registers
@@ -228,6 +231,8 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
 
         */
 
+		if (LOG) logerror("%s LDSX HB: %02x\n", machine().describe_context(), data);
+
 		m_xsize = ((data & 0x03) << 8) | (m_xsize & 0xff);
 		m_udy = BIT(data, 2);
 		m_udx = BIT(data, 3);
@@ -249,6 +254,8 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
 
         */
 
+		if (LOG) logerror("%s LDSX LB: %02x\n", machine().describe_context(), data);
+
 		m_xsize = (m_xsize & 0x300) | data;
 		break;
 
@@ -267,6 +274,8 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
             7
 
         */
+
+		if (LOG) logerror("%s LDSY HB: %02x\n", machine().describe_context(), data);
 
 		m_ysize = ((data & 0x0f) << 8) | (m_ysize & 0xff);
 		break;
@@ -287,6 +296,8 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
 
         */
 
+		if (LOG) logerror("%s LDSX LB: %02x\n", machine().describe_context(), data);
+
 		m_ysize = (m_ysize & 0xf00) | data;
 		break;
 
@@ -305,6 +316,8 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
             7
 
         */
+
+		if (LOG) logerror("%s LDTX HB: %02x\n", machine().describe_context(), data);
 
 		m_xto = ((data & 0x03) << 8) | (m_xto & 0xff);
 		m_mta = (m_mta & 0x3ffcf) | ((data & 0x03) << 4);
@@ -326,6 +339,8 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
 
         */
 
+		if (LOG) logerror("%s LDTX LB: %02x\n", machine().describe_context(), data);
+
 		m_xto = (m_xto & 0x300) | data;
 		m_mta = (m_mta & 0x3fff0) | (data >> 4);
 		break;
@@ -346,7 +361,10 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
 
         */
 
-		m_yto = (data << 8) | (m_yto & 0xff);
+		if (LOG) logerror("%s LDTY HB: %02x\n", machine().describe_context(), data);
+
+		m_ty = ((data & 0x0f) << 8) | (m_yto & 0xff);
+		m_yto = ((data & 0x0f) << 8) | (m_yto & 0xff);
 		m_mta = ((data & 0x0f) << 14) | (m_mta & 0x3fff);
 		break;
 
@@ -366,6 +384,9 @@ WRITE8_MEMBER( abc1600_state::iowr0_w )
 
         */
 
+		if (LOG) logerror("%s LDTY LB: %02x\n", machine().describe_context(), data);
+
+		m_ty = (m_ty & 0xf00) | data;
 		m_yto = (m_yto & 0xf00) | data;
 		m_mta = (m_mta & 0x3c03f) | (data << 6);
 		break;
@@ -397,6 +418,8 @@ WRITE8_MEMBER( abc1600_state::iowr1_w )
 
         */
 
+		if (LOG) logerror("%s LDFX HB: %02x\n", machine().describe_context(), data);
+
 		m_xfrom = ((data & 0x03) << 8) | (m_xfrom & 0xff);
 		m_mfa = (m_mfa & 0x3ffcf) | ((data & 0x03) << 4);
 		break;
@@ -416,6 +439,8 @@ WRITE8_MEMBER( abc1600_state::iowr1_w )
             7       XFROM7, MFA3
 
         */
+
+		if (LOG) logerror("%s LDFX LB: %02x\n", machine().describe_context(), data);
 
 		m_xfrom = (m_xfrom & 0x300) | data;
 		m_mfa = (m_mfa & 0x3fff0) | (data >> 4);
@@ -437,6 +462,8 @@ WRITE8_MEMBER( abc1600_state::iowr1_w )
 
         */
 
+		if (LOG) logerror("%s LDFY HB: %02x\n", machine().describe_context(), data);
+
 		m_mfa = ((data & 0x0f) << 14) | (m_mfa & 0x3fff);
 		break;
 
@@ -455,6 +482,8 @@ WRITE8_MEMBER( abc1600_state::iowr1_w )
             7       MFA13
 
         */
+
+		if (LOG) logerror("%s LDFY LB: %02x\n", machine().describe_context(), data);
 
 		m_mfa = (m_mfa & 0x3c03f) | (data << 6);
 
@@ -685,6 +714,22 @@ inline void abc1600_state::load_mta_x()
 
 
 //-------------------------------------------------
+//  load_xy_reg -
+//-------------------------------------------------
+
+inline void abc1600_state::load_xy_reg()
+{
+	if (L_P) return;
+
+	UINT16 sum = m_xto + m_xsize;
+
+	m_xto = sum & 0x3ff;
+	m_yto = m_ty & 0xfff;
+	m_mta = (m_ty << 6) | (sum >> 4);
+}
+
+
+//-------------------------------------------------
 //  compare_mta_x -
 //-------------------------------------------------
 
@@ -903,6 +948,8 @@ void abc1600_state::mover()
 	}
 	while (m_rmc);
 
+	load_xy_reg();
+
 	m_amm = 0;
 }
 
@@ -949,7 +996,9 @@ inline UINT16 abc1600_state::get_crtca(UINT16 ma, UINT8 ra, UINT8 column)
 
 void abc1600_state::crtc_update_row(device_t *device, bitmap_t *bitmap, const rectangle *cliprect, UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, INT8 cursor_x, void *param)
 {
-	int x = 0;
+	if (y > 0x3ff) return;
+
+	int x = HFP;
 
 	for (int column = 0; column < x_count; column += 2)
 	{
@@ -964,7 +1013,7 @@ void abc1600_state::crtc_update_row(device_t *device, bitmap_t *bitmap, const re
 			{
 				int color = (BIT(data, 15) ^ PIX_POL) & !BLANK;
 
-				*BITMAP_ADDR16(bitmap, y, x++) = color;
+				*BITMAP_ADDR16(bitmap, y + VFP, x++) = color;
 
 				data <<= 1;
 			}
@@ -1032,6 +1081,7 @@ void abc1600_state::video_start()
 	save_item(NAME(m_xfrom));
 	save_item(NAME(m_xto));
 	save_item(NAME(m_yto));
+	save_item(NAME(m_ty));
 	save_item(NAME(m_mfa));
 	save_item(NAME(m_mta));
 	save_item(NAME(m_sh));
@@ -1050,8 +1100,12 @@ void abc1600_state::video_start()
 
 bool abc1600_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
+	// HACK expand visible area to workaround MC6845
+	screen.set_visible_area(0, 958, 0, 1067);
+
 	if (m_endisp)
 	{
+		bitmap_fill(&bitmap, &cliprect, FRAME_POL);
 		m_crtc->update(&bitmap, &cliprect);
 	}
 	else
@@ -1072,8 +1126,8 @@ MACHINE_CONFIG_FRAGMENT( abc1600_video )
     MCFG_SCREEN_REFRESH_RATE(60)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // not accurate
     MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MCFG_SCREEN_SIZE(768, 1024)
-    MCFG_SCREEN_VISIBLE_AREA(0, 768-1, 0, 1024-1)
+    MCFG_SCREEN_SIZE(958, 1067)
+    MCFG_SCREEN_VISIBLE_AREA(0, 958-1, 0, 1067-1)
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(monochrome_green)
 	MCFG_MC6845_ADD(SY6845E_TAG, SY6845E, XTAL_64MHz/32, crtc_intf)

@@ -10,13 +10,11 @@
 
     TODO:
 
-    - keyboard
-        - "Bad command" on first enter after boot
+    - login root fails with incorrect password
     - floppy
         - internal floppy is really drive 2, but wd17xx.c doesn't like having NULL drives
     - BUS0I/0X/1/2
     - short/long reset (RSTBUT)
-    - SCC interrupt
     - CIO
         - vectored interrupts with status
         - port A bit mode, OR-PEVM, interrupt when bit=1
@@ -1086,11 +1084,13 @@ WRITE8_MEMBER( abc1600_state::spec_contr_reg_w )
 	case 6: // SYSSCC
 		m_sysscc = state;
 		update_drdy1();
+		m_cio->pb5_w(!m_sysscc);
 		break;
 
 	case 7: // SYSFS
 		m_sysfs = state;
 		update_drdy0();
+		m_cio->pb6_w(!m_sysfs);
 		break;
 	}
 }
@@ -1269,6 +1269,18 @@ static Z80DART_INTERFACE( dart_intf )
 
 
 //-------------------------------------------------
+//  SCC8530_INTERFACE( sc_intf )
+//-------------------------------------------------
+
+static void scc_irq(device_t *device, int status)
+{
+	abc1600_state *state = device->machine().driver_data<abc1600_state>();
+
+	state->m_maincpu->set_input_line(M68K_IRQ_5, status);
+}
+
+
+//-------------------------------------------------
 //  Z8536_INTERFACE( cio_intf )
 //-------------------------------------------------
 
@@ -1310,6 +1322,9 @@ READ8_MEMBER( abc1600_state::cio_pb_r )
     */
 
 	UINT8 data = 0;
+
+	data |= !m_sysscc << 5;
+	data |= !m_sysfs << 6;
 
 	// floppy interrupt
 	data |= wd17xx_intrq_r(m_fdc) << 7;
@@ -1474,6 +1489,10 @@ static IRQ_CALLBACK( abc1600_int_ack )
 	case M68K_IRQ_2:
 		data = state->m_cio->intack_r();
 		break;
+
+	case M68K_IRQ_5:
+		data = state->m_dart->m1_r();
+		break;
 	}
 
 	return data;
@@ -1549,7 +1568,7 @@ static MACHINE_CONFIG_START( abc1600, abc1600_state )
 	// basic machine hardware
 	MCFG_CPU_ADD(MC68008P8_TAG, M68008, XTAL_64MHz/8)
 	MCFG_CPU_PROGRAM_MAP(abc1600_mem)
-	MCFG_WATCHDOG_TIME_INIT(attotime::from_hz((float)XTAL_64MHz/8/10/20000/8/8))
+	MCFG_WATCHDOG_TIME_INIT(attotime::from_msec(1600)) // XTAL_64MHz/8/10/20000/8/8
 
 	// video hardware
 	MCFG_FRAGMENT_ADD(abc1600_video)
@@ -1560,6 +1579,7 @@ static MACHINE_CONFIG_START( abc1600, abc1600_state )
 	MCFG_Z80DMA_ADD(Z8410AB1_2_TAG, XTAL_64MHz/16, dma2_intf)
 	MCFG_Z80DART_ADD(Z8470AB1_TAG, XTAL_64MHz/16, dart_intf)
 	MCFG_SCC8530_ADD(Z8530B1_TAG, XTAL_64MHz/16)
+	MCFG_SCC8530_IRQ(scc_irq)
 	MCFG_Z8536_ADD(Z8536B1_TAG, XTAL_64MHz/16, cio_intf)
 	MCFG_NMC9306_ADD(NMC9306_TAG)
 	MCFG_E0516_ADD(E050_C16PC_TAG, XTAL_32_768kHz)

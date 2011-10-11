@@ -25,6 +25,20 @@
             - 128k ram
             - stylus pen
             - touch-pad screen
+
+        Flash:
+            The following flash ID are checked by Avigo OS, if the returned
+            ID is different the PDA doesn't boot.
+
+            Maker ID    Device ID   Description
+            0xb0        0x21        Sharp LH28F004
+            0x89        0xa6        Sharp LH28F008
+            0x89        0xaa        Sharp LH28F016
+            0xb0        0x88        Sharp LH28F032
+            0x01        0xa4        AMD AM29F040
+            0x01        0xd5        AMD AM29F080
+            0x01        0xad        AMD AM29F016
+
         TODO:
                 Dissassemble the rom a bit and find out exactly
                 how memory paging works!
@@ -45,6 +59,12 @@
 #include "machine/ins8250.h"
 #include "sound/speaker.h"
 #include "machine/ram.h"
+#include "rendlay.h"
+
+
+#define AVIGO_LOG 0
+#define LOG(x) do { if (AVIGO_LOG) logerror x; } while (0)
+
 
 /*
     bit 7:                      ?? high priority. When it occurs, clear this bit.
@@ -166,8 +186,6 @@ static TIMER_DEVICE_CALLBACK(avigo_dummy_timer_callback)
 	int i;
 	int current_input_port_data[4];
 	int changed;
-	int nx,ny;
-	int dx, dy;
 	static const char *const linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
 
 	for (i = 0; i < 4; i++)
@@ -176,25 +194,6 @@ static TIMER_DEVICE_CALLBACK(avigo_dummy_timer_callback)
 	}
 
 	changed = current_input_port_data[3]^state->m_previous_input_port_data[3];
-
-	if ((changed & 0x01)!=0)
-	{
-		if ((current_input_port_data[3] & 0x01)!=0)
-		{
-			/* pen pressed to screen */
-
-			logerror("pen pressed interrupt\n");
-			state->m_stylus_press_x = state->m_stylus_marker_x;
-			state->m_stylus_press_y = state->m_stylus_marker_y;
-			/* set pen interrupt */
-			state->m_irq |= (1<<6);
-		}
-		else
-		{
-			state->m_stylus_press_x = 0;
-			state->m_stylus_press_y = 0;
-		}
-	}
 
 	if ((changed & 0x02)!=0)
 	{
@@ -210,24 +209,6 @@ static TIMER_DEVICE_CALLBACK(avigo_dummy_timer_callback)
 		state->m_previous_input_port_data[i] = current_input_port_data[i];
 	}
 
-	nx = input_port_read(timer.machine(), "POSX");
-	if (nx>=0x800) nx-=0x1000;
-	else if (nx<=-0x800) nx+=0x1000;
-
-	dx = nx - state->m_ox;
-	state->m_ox = nx;
-
-	ny = input_port_read(timer.machine(), "POSY");
-	if (ny>=0x800) ny-=0x1000;
-	else if (ny<=-0x800) ny+=0x1000;
-
-	dy = ny - state->m_oy;
-	state->m_oy = ny;
-
-	state->m_stylus_marker_x +=dx;
-	state->m_stylus_marker_y +=dy;
-
-	avigo_vh_set_stylus_marker_position(timer.machine(), state->m_stylus_marker_x, state->m_stylus_marker_y);
 #if 0
 	/* not sure if keyboard generates an interrupt, or if something
     is plugged in for synchronisation! */
@@ -356,7 +337,7 @@ static void avigo_refresh_memory(running_machine &machine)
 static WRITE_LINE_DEVICE_HANDLER( avigo_com_interrupt )
 {
 	avigo_state *drvstate = device->machine().driver_data<avigo_state>();
-	logerror("com int\r\n");
+	LOG(("com int\r\n"));
 
 	drvstate->m_irq &= ~(1<<3);
 
@@ -395,14 +376,8 @@ static MACHINE_RESET( avigo )
 	state->m_flashes[2] = machine.device<intelfsh8_device>("flash2");
 
 	/* initialize flash contents */
-	memcpy(state->m_flashes[0]->space()->get_read_ptr(0), machine.region("maincpu")->base()+0x10000, 0x100000);
-	memcpy(state->m_flashes[1]->space()->get_read_ptr(0), machine.region("maincpu")->base()+0x110000, 0x100000);
-
-	state->m_stylus_marker_x = AVIGO_SCREEN_WIDTH>>1;
-	state->m_stylus_marker_y = AVIGO_SCREEN_HEIGHT>>1;
-	state->m_stylus_press_x = 0;
-	state->m_stylus_press_y = 0;
-	avigo_vh_set_stylus_marker_position(machine, state->m_stylus_marker_x, state->m_stylus_marker_y);
+	memcpy(state->m_flashes[0]->space()->get_read_ptr(0), machine.region("bios")->base() + 0x000000, 0x100000);
+	memcpy(state->m_flashes[1]->space()->get_read_ptr(0), machine.region("bios")->base() + 0x100000, 0x100000);
 
 	/* initialise settings for port data */
 	for (i = 0; i < 4; i++)
@@ -525,7 +500,7 @@ static  READ8_HANDLER(avigo_ram_bank_h_r)
 static WRITE8_HANDLER(avigo_rom_bank_l_w)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	logerror("rom bank l w: %04x\n", data);
+	LOG(("rom bank l w: %04x\n", data));
 
         state->m_rom_bank_l = data & 0x03f;
 
@@ -535,7 +510,7 @@ static WRITE8_HANDLER(avigo_rom_bank_l_w)
 static WRITE8_HANDLER(avigo_rom_bank_h_w)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	logerror("rom bank h w: %04x\n", data);
+	LOG(("rom bank h w: %04x\n", data));
 
 
         /* 000 = flash 0
@@ -556,7 +531,7 @@ static WRITE8_HANDLER(avigo_rom_bank_h_w)
 static WRITE8_HANDLER(avigo_ram_bank_l_w)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	logerror("ram bank l w: %04x\n", data);
+	LOG(("ram bank l w: %04x\n", data));
 
         state->m_ram_bank_l = data & 0x03f;
 
@@ -566,7 +541,7 @@ static WRITE8_HANDLER(avigo_ram_bank_l_w)
 static WRITE8_HANDLER(avigo_ram_bank_h_w)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	logerror("ram bank h w: %04x\n", data);
+	LOG(("ram bank h w: %04x\n", data));
 
 	state->m_ram_bank_h = data;
 
@@ -576,7 +551,7 @@ static WRITE8_HANDLER(avigo_ram_bank_h_w)
 static  READ8_HANDLER(avigo_ad_control_status_r)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	logerror("avigo ad control read %02x\n", (int) state->m_ad_control_status);
+	LOG(("avigo ad control read %02x\n", (int) state->m_ad_control_status));
 	return state->m_ad_control_status;
 }
 
@@ -584,7 +559,7 @@ static  READ8_HANDLER(avigo_ad_control_status_r)
 static WRITE8_HANDLER(avigo_ad_control_status_w)
 {
 	avigo_state *state = space->machine().driver_data<avigo_state>();
-	logerror("avigo ad control w %02x\n",data);
+	LOG(("avigo ad control w %02x\n",data));
 
 	if ((data & 0x070)==0x070)
 	{
@@ -592,27 +567,22 @@ static WRITE8_HANDLER(avigo_ad_control_status_w)
 		/* when 6,5,4 = 1 */
 		if ((data & 0x08)!=0)
 		{
-			logerror("a/d select x coordinate\n");
-			logerror("x coord: %d\n",state->m_stylus_press_x);
+			LOG(("a/d select x coordinate\n"));
+			LOG(("x coord: %d\n", input_port_read(space->machine(), "POSX")));
 
 			/* on screen range 0x060->0x03a0 */
-			/* 832 is on-screen range */
-			/* 5.2 a/d units per pixel */
-
-			if (state->m_stylus_press_x!=0)
+			if (input_port_read(space->machine(), "LINE3") & 0x01)
 			{
 				/* this might not be totally accurate because hitable screen
                 area may include the border around the screen! */
-				state->m_ad_value = ((int)(state->m_stylus_press_x * 5.2f))+0x060;
-				state->m_ad_value &= 0x03fc;
+				state->m_ad_value = input_port_read(space->machine(), "POSX");
 			}
 			else
 			{
 				state->m_ad_value = 0;
 			}
 
-			logerror("ad value: %d\n",state->m_ad_value);
-			state->m_stylus_press_x = 0;
+			LOG(("ad value: %d\n",state->m_ad_value));
 
 		}
 		else
@@ -627,25 +597,19 @@ static WRITE8_HANDLER(avigo_ad_control_status_w)
 			/* assumption 0x044->0x0350 is screen area and
             0x0350->0x036a is panel at bottom */
 
-			/* 780 is therefore on-screen range */
-			/* 3.25 a/d units per pixel */
-			/* a/d unit * a/d range = total height */
-			/* 3.25 * 1024.00 = 315.07 */
+			LOG(("a/d select y coordinate\n"));
+			LOG(("y coord: %d\n", input_port_read(space->machine(), "POSY")));
 
-			logerror("a/d select y coordinate\n");
-			logerror("y coord: %d\n",state->m_stylus_press_y);
-
-			if (state->m_stylus_press_y!=0)
+			if (input_port_read(space->machine(), "LINE3") & 0x01)
 			{
-				state->m_ad_value = 1024 - (((state->m_stylus_press_y)*3.25f) + 0x040);
+				state->m_ad_value = input_port_read(space->machine(), "POSY");
 			}
 			else
 			{
 				state->m_ad_value = 0;
 			}
 
-			logerror("ad value: %d\n",state->m_ad_value);
-			state->m_stylus_press_y = 0;
+			LOG(("ad value: %d\n",state->m_ad_value));
 		}
 	}
 
@@ -676,7 +640,7 @@ static  READ8_HANDLER(avigo_ad_data_r)
 			/* bit 0 must be 0, bit 1 must be 0 */
 			/* bit 3 must be 1. bit 2 can have any value */
 
-			logerror("a/d read upper 4 bits\n");
+			LOG(("a/d read upper 4 bits\n"));
 			data = ((state->m_ad_value>>6) & 0x0f)<<4;
 			data |= 8;
 		}
@@ -688,7 +652,7 @@ static  READ8_HANDLER(avigo_ad_data_r)
 			/* lower 6 bits of 10-bit A/D number in bits 7-2 of data */
 			/* bit 0 must be 1, bit 1 must be 0 */
 
-			logerror("a/d lower 6-bits\n");
+			LOG(("a/d lower 6-bits\n"));
 			data = ((state->m_ad_value & 0x03f)<<2);
 			data |= 1;
 		}
@@ -750,7 +714,7 @@ static  READ8_HANDLER(avigo_ad_data_r)
 
 	/* 1111x00 */
 
-	logerror("avigo ad read %02x\n",data);
+	LOG(("avigo ad read %02x\n",data));
 
 	return data;
 }
@@ -773,11 +737,6 @@ static WRITE8_HANDLER(avigo_speaker_w)
 	}
 }
 
-static  READ8_HANDLER(avigo_unmapped_r)
-{
-	logerror("read unmapped port\n");
-	return 0x0ff;
-}
 
 /* port 0x04:
 
@@ -794,11 +753,9 @@ static  READ8_HANDLER(avigo_04_r)
 
 
 static ADDRESS_MAP_START( avigo_io, AS_IO, 8)
+	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-
-	AM_RANGE(0x000, 0x000) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x001, 0x001) AM_READWRITE( avigo_key_data_read_r, avigo_set_key_line_w )
-	AM_RANGE(0x002, 0x002) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x003, 0x003) AM_READWRITE( avigo_irq_r, avigo_irq_w )
 	AM_RANGE(0x004, 0x004) AM_READ( avigo_04_r)
 	AM_RANGE(0x005, 0x005) AM_READWRITE( avigo_rom_bank_l_r, avigo_rom_bank_l_w )
@@ -806,17 +763,22 @@ static ADDRESS_MAP_START( avigo_io, AS_IO, 8)
 	AM_RANGE(0x007, 0x007) AM_READWRITE( avigo_ram_bank_l_r, avigo_ram_bank_l_w )
 	AM_RANGE(0x008, 0x008) AM_READWRITE( avigo_ram_bank_h_r, avigo_ram_bank_h_w )
 	AM_RANGE(0x009, 0x009) AM_READWRITE( avigo_ad_control_status_r, avigo_ad_control_status_w )
-	AM_RANGE(0x00a, 0x00f) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE_MODERN("rtc", rp5c01_device, read, write)
-	AM_RANGE(0x020, 0x02c) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x028, 0x028) AM_WRITE( avigo_speaker_w)
 	AM_RANGE(0x02d, 0x02d) AM_READ( avigo_ad_data_r)
-	AM_RANGE(0x02e, 0x02f) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x030, 0x037) AM_DEVREADWRITE("ns16550", ins8250_r, ins8250_w )
-	AM_RANGE(0x038, 0x0ff) AM_READ( avigo_unmapped_r)
 ADDRESS_MAP_END
 
 
+static INPUT_CHANGED( pen_irq )
+{
+	avigo_state *state = field.machine().driver_data<avigo_state>();
+
+	LOG(("pen pressed interrupt\n"));
+	state->m_irq |= (1<<6);
+
+	avigo_refresh_ints(field.machine());
+}
 
 static INPUT_PORTS_START(avigo)
 	PORT_START("LINE0")
@@ -836,17 +798,15 @@ static INPUT_PORTS_START(avigo)
 	PORT_BIT(0x0fe, 0xfe, IPT_UNUSED)
 
 	PORT_START("LINE3")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Pen/Stylus pressed") PORT_CODE(KEYCODE_Q) PORT_CODE(JOYCODE_BUTTON1)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Pen/Stylus pressed") PORT_CODE(KEYCODE_ENTER) PORT_CODE(MOUSECODE_BUTTON1)  PORT_CHANGED( pen_irq, NULL )
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("?? Causes a NMI") PORT_CODE(KEYCODE_W) PORT_CODE(JOYCODE_BUTTON2)
 
 	/* these two ports are used to emulate the position of the pen/stylus on the screen */
-	/* a cursor is drawn to indicate the position, so when a click is done, it will occur in the correct place */
-	/* To be converted to crosshair code? */
 	PORT_START("POSX") /* Mouse - X AXIS */
-	PORT_BIT(0xfff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
+	PORT_BIT(0x3ff, 0x060, IPT_LIGHTGUN_X) PORT_SENSITIVITY(100) PORT_CROSSHAIR(X, 1, 0, 0) PORT_MINMAX(0x060, 0x3a0) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
 	PORT_START("POSY") /* Mouse - Y AXIS */
-	PORT_BIT(0xfff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
+	PORT_BIT(0x3ff, 0x044, IPT_LIGHTGUN_Y) PORT_SENSITIVITY(100) PORT_CROSSHAIR(Y, 1, 0, 0) PORT_MINMAX(0x044, 0x350) PORT_INVERT PORT_KEYDELTA(10) PORT_PLAYER(1)
 INPUT_PORTS_END
 
 /* F4 Character Displayer */
@@ -929,15 +889,32 @@ static const gfx_layout avigo_6_by_8 =
 };
 
 static GFXDECODE_START( avigo )
-	GFXDECODE_ENTRY( "maincpu", 0x00000, avigo_charlayout, 0, 3 )
-	GFXDECODE_ENTRY( "maincpu", 0x18992, avigo_charlayout, 0, 1 )
-	GFXDECODE_ENTRY( "maincpu", 0x1c020, avigo_8_by_14, 0, 1 )
-	GFXDECODE_ENTRY( "maincpu", 0x1c020, avigo_16_by_15, 0, 1 )
-	GFXDECODE_ENTRY( "maincpu", 0x24020, avigo_15_by_16, 0, 1 )
-	GFXDECODE_ENTRY( "maincpu", 0x2c020, avigo_8_by_8, 0, 1 )
-	GFXDECODE_ENTRY( "maincpu", 0x2e020, avigo_6_by_8, 0, 1 )
+	GFXDECODE_ENTRY( "bios", 0x08992, avigo_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "bios", 0x0c020, avigo_8_by_14, 0, 1 )
+	GFXDECODE_ENTRY( "bios", 0x0c020, avigo_16_by_15, 0, 1 )
+	GFXDECODE_ENTRY( "bios", 0x14020, avigo_15_by_16, 0, 1 )
+	GFXDECODE_ENTRY( "bios", 0x1c020, avigo_8_by_8, 0, 1 )
+	GFXDECODE_ENTRY( "bios", 0x1e020, avigo_6_by_8, 0, 1 )
 GFXDECODE_END
 
+
+static TIMER_DEVICE_CALLBACK( avigo_scan_timer )
+{
+	avigo_state *state = timer.machine().driver_data<avigo_state>();
+
+	state->m_irq |= (1<<1);
+
+	avigo_refresh_ints(timer.machine());
+}
+
+static TIMER_DEVICE_CALLBACK( avigo_1hz_timer )
+{
+	avigo_state *state = timer.machine().driver_data<avigo_state>();
+
+	state->m_irq |= (1<<4);
+
+	avigo_refresh_ints(timer.machine());
+}
 
 static MACHINE_CONFIG_START( avigo, avigo_state )
 	/* basic machine hardware */
@@ -956,8 +933,9 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MCFG_SCREEN_SIZE(640, 480)
-	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_SIZE(AVIGO_SCREEN_WIDTH, AVIGO_SCREEN_HEIGHT)
+	MCFG_SCREEN_VISIBLE_AREA(0, AVIGO_SCREEN_WIDTH-1, 0, AVIGO_SCREEN_HEIGHT-1)
+	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	MCFG_SCREEN_UPDATE( avigo )
 
 	MCFG_GFXDECODE(avigo)
@@ -975,13 +953,19 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_RP5C01_ADD("rtc", XTAL_32_768kHz, rtc_intf)
 
 	/* flash ROMs */
-	MCFG_INTEL_E28F008SA_ADD("flash0")
-	MCFG_INTEL_E28F008SA_ADD("flash1")
-	MCFG_INTEL_E28F008SA_ADD("flash2")
+	MCFG_AMD_29F080_ADD("flash0")
+	MCFG_AMD_29F080_ADD("flash1")
+	MCFG_AMD_29F080_ADD("flash2")
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
+
+	// IRQ 1 is used for scan the pen and for cursor blinking
+	MCFG_TIMER_ADD_PERIODIC("scan_timer", avigo_scan_timer, attotime::from_hz(50))
+
+	// IRQ 4 is generated every second, used for auto power off
+	MCFG_TIMER_ADD_PERIODIC("1hz_timer", avigo_1hz_timer, attotime::from_hz(1))
 
 	/* a timer used to check status of pen */
 	/* an interrupt is generated when the pen is pressed to the screen */
@@ -995,10 +979,93 @@ MACHINE_CONFIG_END
 
 ***************************************************************************/
 ROM_START(avigo)
-	ROM_REGION(0x210000, "maincpu",0)
-	ROM_LOAD("avigo.rom", 0x010000, 0x0150000, CRC(160ee4a6) SHA1(4d09201a3876de16808bd92989f3d8d7182d72b3))
+	ROM_REGION(0x200000, "bios", ROMREGION_ERASEFF)
+
+	ROM_SYSTEM_BIOS( 0, "v1004", "v1.004" )
+	ROMX_LOAD("os_1004.rom", 0x000000, 0x0100000, CRC(62acd55c) SHA1(b2be12f5cc1053b6026bff2a265146ba831a7ffa), ROM_BIOS(1))
+	ROMX_LOAD("english_1004.rom", 0x100000, 0x050000, CRC(c9c3a225) SHA1(7939993a5615ca59ff2047e69b6d85122d437dca), ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS( 1, "v1002", "v1.002" )
+	ROMX_LOAD("os_1002.rom", 0x000000, 0x0100000, CRC(484bb95c) SHA1(ddc28f22f8cbc99f60f91c58ee0e2d15170024fb), ROM_BIOS(2))
+	ROMX_LOAD("english_1002.rom", 0x100000, 0x050000, CRC(31cab0ac) SHA1(87d337830506a12514a4beb9a8502a0de94816f2), ROM_BIOS(2))
+
+	ROM_SYSTEM_BIOS( 2, "v100", "v1.00" )
+	ROMX_LOAD("os_100.rom", 0x000000, 0x0100000, CRC(13ea7b38) SHA1(85566ff142d86d504ac72613f169d8758e2daa09), ROM_BIOS(3))
+	ROMX_LOAD("english_100.rom", 0x100000, 0x050000, CRC(e2824b44) SHA1(3252454b05c3d3a4d7df1cb48dc3441ae82f2b1c), ROM_BIOS(3))
+
+ROM_END
+
+ROM_START(avigo_de)
+	ROM_REGION(0x200000, "bios", ROMREGION_ERASEFF)
+
+	ROM_SYSTEM_BIOS( 0, "v1004", "v1.004" )
+	ROMX_LOAD("os_1004.rom", 0x000000, 0x0100000, CRC(62acd55c) SHA1(b2be12f5cc1053b6026bff2a265146ba831a7ffa), ROM_BIOS(1))
+	ROMX_LOAD("german_1004.rom", 0x100000, 0x060000, CRC(0fa437b3) SHA1(e9352aa8fee6d93b898412bd129452b82baa9a21), ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS( 1, "v1002", "v1.002" )
+	ROMX_LOAD("os_1002.rom", 0x000000, 0x0100000, CRC(484bb95c) SHA1(ddc28f22f8cbc99f60f91c58ee0e2d15170024fb), ROM_BIOS(2))
+	ROMX_LOAD("german_1002.rom", 0x100000, 0x060000, CRC(c6bf07ba) SHA1(d3185687aa510f6c3b3ab3baaabe7e8ce1a79e3b), ROM_BIOS(2))
+
+	ROM_SYSTEM_BIOS( 2, "v100", "v1.00" )
+	ROMX_LOAD("os_100.rom", 0x000000, 0x0100000, CRC(13ea7b38) SHA1(85566ff142d86d504ac72613f169d8758e2daa09), ROM_BIOS(3))
+	ROMX_LOAD("german_100.rom", 0x100000, 0x060000, CRC(117d9189) SHA1(7e959ab1381ba831821fcf87973b25d87f12d34e), ROM_BIOS(3))
+
+ROM_END
+
+ROM_START(avigo_fr)
+	ROM_REGION(0x200000, "bios", ROMREGION_ERASEFF)
+
+	ROM_SYSTEM_BIOS( 0, "v1004", "v1.004" )
+	ROMX_LOAD("os_1004.rom", 0x000000, 0x0100000, CRC(62acd55c) SHA1(b2be12f5cc1053b6026bff2a265146ba831a7ffa), ROM_BIOS(1))
+	ROMX_LOAD("french_1004.rom", 0x100000, 0x050000, CRC(5e4d90f7) SHA1(07df3af8a431ba65e079d6c987fb5d544f6541d8), ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS( 1, "v1002", "v1.002" )
+	ROMX_LOAD("os_1002.rom", 0x000000, 0x0100000, CRC(484bb95c) SHA1(ddc28f22f8cbc99f60f91c58ee0e2d15170024fb), ROM_BIOS(2))
+	ROMX_LOAD("french_1002.rom", 0x100000, 0x050000,CRC(caa3eb91) SHA1(ab199986de301d933f069a5e1f5150967e1d7f59), ROM_BIOS(2))
+
+	ROM_SYSTEM_BIOS( 2, "v100", "v1.00" )
+	ROMX_LOAD("os_100.rom", 0x000000, 0x0100000, CRC(13ea7b38) SHA1(85566ff142d86d504ac72613f169d8758e2daa09), ROM_BIOS(3))
+	ROMX_LOAD("french_100.rom", 0x100000, 0x050000, CRC(fffa2345) SHA1(399447cede3cdd0be768952cb24f7e4431147e3d), ROM_BIOS(3))
+
+ROM_END
+
+ROM_START(avigo_es)
+	ROM_REGION(0x200000, "bios", ROMREGION_ERASEFF)
+
+	ROM_SYSTEM_BIOS( 0, "v1004", "v1.004" )
+	ROMX_LOAD("os_1004.rom", 0x000000, 0x0100000, CRC(62acd55c) SHA1(b2be12f5cc1053b6026bff2a265146ba831a7ffa), ROM_BIOS(1))
+	ROMX_LOAD("spanish_1004.rom", 0x100000, 0x060000, CRC(235a7f8d) SHA1(94da4ecafb54dcd5d80bc5063cb4024e66e6a21f), ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS( 1, "v1002", "v1.002" )
+	ROMX_LOAD("os_1002.rom", 0x000000, 0x0100000, CRC(484bb95c) SHA1(ddc28f22f8cbc99f60f91c58ee0e2d15170024fb), ROM_BIOS(2))
+	ROMX_LOAD("spanish_1002.rom", 0x100000, 0x060000, CRC(a6e80cc4) SHA1(e741657558c11f7bce646ba3d7b5f845bfa275b7), ROM_BIOS(2))
+
+	ROM_SYSTEM_BIOS( 2, "v100", "v1.00" )
+	ROMX_LOAD("os_100.rom", 0x000000, 0x0100000, CRC(13ea7b38) SHA1(85566ff142d86d504ac72613f169d8758e2daa09), ROM_BIOS(3))
+	ROMX_LOAD("spanish_100.rom", 0x100000, 0x060000, CRC(953a5276) SHA1(b9ba1dbdc2127b1ef419c911ef66313024a7351a), ROM_BIOS(3))
+
+ROM_END
+
+ROM_START(avigo_it)
+	ROM_REGION(0x200000, "bios", ROMREGION_ERASEFF)
+
+	ROM_SYSTEM_BIOS( 0, "v1004", "v1.004" )
+	ROMX_LOAD("os_1004.rom", 0x000000, 0x0100000, CRC(62acd55c) SHA1(b2be12f5cc1053b6026bff2a265146ba831a7ffa), ROM_BIOS(1))
+	ROMX_LOAD("italian_1004.rom", 0x100000, 0x050000, CRC(fb7941ec) SHA1(230e8346a3b0da1ee24568ec090ce6860ebfe995), ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS( 1, "v1002", "v1.002" )
+	ROMX_LOAD("os_1002.rom", 0x000000, 0x0100000, CRC(484bb95c) SHA1(ddc28f22f8cbc99f60f91c58ee0e2d15170024fb), ROM_BIOS(2))
+	ROMX_LOAD("italian_1002.rom", 0x100000, 0x050000, CRC(093bc032) SHA1(2c75d950d356a7fd1d058808e5f0be8e15b8ea2a), ROM_BIOS(2))
+
+	ROM_SYSTEM_BIOS( 2, "v100", "v1.00" )
+	ROMX_LOAD("os_100.rom", 0x000000, 0x0100000, CRC(13ea7b38) SHA1(85566ff142d86d504ac72613f169d8758e2daa09), ROM_BIOS(3))
+	ROMX_LOAD("italian_100.rom", 0x100000, 0x050000, CRC(de359218) SHA1(6185727aba8ffc98723f2df74dda388fd0d70cc9), ROM_BIOS(3))
 ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY   FULLNAME */
-COMP(1997,	avigo,	0,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 100 PDA",GAME_NOT_WORKING)
+COMP(1997,	avigo,  	0,  		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA",         	GAME_NOT_WORKING)
+COMP(1997,	avigo_de,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (German)",	GAME_NOT_WORKING)
+COMP(1997,	avigo_fr,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (French)",	GAME_NOT_WORKING)
+COMP(1997,	avigo_es,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Spanish)",	GAME_NOT_WORKING)
+COMP(1997,	avigo_it,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Italian)",	GAME_NOT_WORKING)
 

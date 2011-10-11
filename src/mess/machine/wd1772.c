@@ -116,7 +116,6 @@ void wd1772_t::command_end()
 	status &= ~S_BUSY;
 	intrq = true;
 	motor_timeout = 0;
-	//  fprintf(stderr, "%s: command status %02x\n", ttsn().cstr(), status);
 	if(!intrq_cb.isnull())
 		intrq_cb(intrq);
 }
@@ -283,15 +282,20 @@ void wd1772_t::read_sector_continue()
 			return;
 
 		case SPINUP_DONE:
-			sub_state = SCAN_ID;
-			counter = 0;
-			live_start(SEARCH_ADDRESS_MARK);
+			if(command & 4) {
+				sub_state = SETTLE_WAIT;
+				delay_cycles(t_gen, 120000);
+			} else {
+				sub_state = SCAN_ID;
+				counter = 0;
+				live_start(SEARCH_ADDRESS_MARK);
+			}
+			return;
+
+		case SETTLE_WAIT:
 			return;
 
 		case SCAN_ID:
-			if(cur_live.state != IDLE)
-				return;
-
 			if(cur_live.idbuf[0] != track || cur_live.idbuf[2] != sector) {
 				live_start(SEARCH_ADDRESS_MARK);
 				return;
@@ -301,7 +305,7 @@ void wd1772_t::read_sector_continue()
 				live_start(SEARCH_ADDRESS_MARK);
 				return;
 			}
-			sector_size = cur_live.idbuf[3] < 4 ? size_codes[cur_live.idbuf[3]] : 512;
+			sector_size = size_codes[cur_live.idbuf[3] & 3];
 			sub_state = SECTOR_READ;
 			live_start(SEARCH_ADDRESS_MARK);
 			return;
@@ -331,6 +335,118 @@ void wd1772_t::read_sector_continue()
 	}
 }
 
+void wd1772_t::read_track_start()
+{
+	main_state = READ_TRACK;
+	status = (status & ~(S_LOST|S_RNF)) | S_BUSY;
+	drop_drq();
+	sub_state = SPINUP;
+	status_type_1 = false;
+	read_track_continue();
+}
+
+void wd1772_t::read_track_continue()
+{
+	for(;;) {
+		switch(sub_state) {
+		case SPINUP:
+			if(!(status & S_MON)) {
+				spinup();
+				return;
+			}
+			sub_state = SPINUP_DONE;
+			break;
+
+		case SPINUP_WAIT:
+			return;
+
+		case SPINUP_DONE:
+			sub_state = WAIT_INDEX;
+			return;
+
+		case SETTLE_WAIT:
+			return;
+
+		case WAIT_INDEX:
+			return;
+
+		case WAIT_INDEX_DONE:
+			sub_state = TRACK_DONE;
+			live_start(READ_TRACK_DATA);
+			return;
+
+		case TRACK_DONE:
+			command_end();
+			return;
+
+		default:
+			logerror("%s: read track unknown sub-state %d\n", ttsn().cstr(), sub_state);
+			return;
+		}
+	}
+}
+
+void wd1772_t::read_id_start()
+{
+	main_state = READ_ID;
+	status = (status & ~(S_WP|S_DDM|S_LOST|S_RNF)) | S_BUSY;
+	drop_drq();
+	sub_state = SPINUP;
+	status_type_1 = false;
+	read_id_continue();
+}
+
+void wd1772_t::read_id_continue()
+{
+	for(;;) {
+		switch(sub_state) {
+		case SPINUP:
+			if(!(status & S_MON)) {
+				spinup();
+				return;
+			}
+			sub_state = SPINUP_DONE;
+			break;
+
+		case SPINUP_WAIT:
+			return;
+
+		case SPINUP_DONE:
+			if(command & 4) {
+				sub_state = SETTLE_WAIT;
+				delay_cycles(t_gen, 120000);
+			} else {
+				sub_state = SCAN_ID;
+				counter = 0;
+				live_start(SEARCH_ADDRESS_MARK);
+			}
+			return;
+
+		case SETTLE_WAIT:
+			return;
+
+		case SETTLE_DONE:
+			sub_state = SCAN_ID;
+			counter = 0;
+			live_start(SEARCH_ADDRESS_MARK);
+			return;
+
+		case SCAN_ID:
+			command_end();
+			return;
+
+		case SCAN_ID_FAILED:
+			status |= S_RNF;
+			command_end();
+			return;
+
+		default:
+			logerror("%s: read track unknown sub-state %d\n", ttsn().cstr(), sub_state);
+			return;
+		}
+	}
+}
+
 void wd1772_t::interrupt_start()
 {
 	if(status & S_BUSY) {
@@ -341,7 +457,7 @@ void wd1772_t::interrupt_start()
 		motor_timeout = 0;
 	}
 	if(command & 0x0f) {
-		logerror("%s: unhandled interrupt generation\n", ttsn().cstr());
+		logerror("%s: unhandled interrupt generation (%02x)\n", ttsn().cstr(), command);
 	}
 }
 
@@ -361,6 +477,12 @@ void wd1772_t::general_continue()
 	case READ_SECTOR:
 		read_sector_continue();
 		break;
+	case READ_TRACK:
+		read_track_continue();
+		break;
+	case READ_ID:
+		read_id_continue();
+		break;
 	default:
 		logerror("%s: general_continue on unknown main-state %d\n", ttsn().cstr(), main_state);
 		break;
@@ -373,6 +495,10 @@ void wd1772_t::do_generic()
 	case IDLE:
 	case SCAN_ID:
 	case SECTOR_READ:
+		break;
+
+	case SETTLE_WAIT:
+		sub_state = SETTLE_DONE;
 		break;
 
 	case SEEK_WAIT_STEP_TIME:
@@ -403,13 +529,15 @@ void wd1772_t::do_cmd_w()
 	cmd_buffer = -1;
 
 	switch(command & 0xf0) {
-	case 0x00: last_dir = 1; seek_start(RESTORE); break;
-	case 0x10: last_dir = data > track ? 0 : 1; seek_start(SEEK); break;
-	case 0x20: case 0x30: seek_start(STEP); break;
-	case 0x40: case 0x50: last_dir = 0; seek_start(STEP); break;
-	case 0x60: case 0x70: last_dir = 1; seek_start(STEP); break;
-	case 0x80: case 0x90: read_sector_start(); break;
-	case 0xd0: interrupt_start(); break;
+	case 0x00: logerror("wd1772: restore\n"); last_dir = 1; seek_start(RESTORE); break;
+	case 0x10: logerror("wd1772: seek %d\n", data); last_dir = data > track ? 0 : 1; seek_start(SEEK); break;
+	case 0x20: case 0x30: logerror("wd1772: step\n"); seek_start(STEP); break;
+	case 0x40: case 0x50: logerror("wd1772: step +\n"); last_dir = 0; seek_start(STEP); break;
+	case 0x60: case 0x70: logerror("wd1772: step -\n"); last_dir = 1; seek_start(STEP); break;
+	case 0x80: case 0x90: logerror("wd1772: read sector%s %d, %d\n", command & 0x10 ? " multiple" : "", track, sector); read_sector_start(); break;
+	case 0xc0: logerror("wd1772: read id\n"); read_id_start(); break;
+	case 0xd0: logerror("wd1772: interrupt\n"); interrupt_start(); break;
+	case 0xe0: logerror("wd1772: read track %d\n", track); read_track_start(); break;
 
 	default:
 		logerror("%s: Unhandled command %02x\n", ttsn().cstr(), command);
@@ -594,12 +722,15 @@ void wd1772_t::index_callback(floppy_image_device *floppy, int state)
 		break;
 
 	case SPINUP_DONE:
+	case SETTLE_WAIT:
+	case SETTLE_DONE:
 	case SEEK_MOVE:
 	case SEEK_WAIT_STEP_TIME:
 	case SEEK_WAIT_STEP_TIME_DONE:
 	case SEEK_WAIT_STABILIZATION_TIME:
 	case SEEK_WAIT_STABILIZATION_TIME_DONE:
 	case SEEK_DONE:
+	case WAIT_INDEX_DONE:
 	case SCAN_ID_FAILED:
 	case SECTOR_READ:
 		break;
@@ -608,6 +739,14 @@ void wd1772_t::index_callback(floppy_image_device *floppy, int state)
 		counter++;
 		if(counter == 5)
 			sub_state = SCAN_ID_FAILED;
+		break;
+
+	case WAIT_INDEX:
+		sub_state = WAIT_INDEX_DONE;
+		break;
+
+	case TRACK_DONE:
+		live_abort();
 		break;
 
 	default:
@@ -680,6 +819,13 @@ void wd1772_t::live_sync()
 	}
 }
 
+void wd1772_t::live_abort()
+{
+	cur_live.tm = attotime::never;
+	cur_live.state = IDLE;
+	cur_live.next_state = -1;
+}
+
 bool wd1772_t::read_one_bit(attotime limit)
 {
 	int bit = cur_live.pll.get_next_bit(cur_live.tm, floppy, limit);
@@ -704,12 +850,14 @@ void wd1772_t::live_run(attotime limit)
 		return;
 
 	if(limit == attotime::never) {
-		limit = floppy->time_next_index();
+		if(floppy)
+			limit = floppy->time_next_index();
 		if(limit == attotime::never) {
-			// Happens when there's no disk, hence no index pulse
-			// Force a sync from time to time in that case, so that
-			// the main cpu timeout isn't too painful.  Avoid looping
-			// into infinity looking for data too.
+			// Happens when there's no disk or if the wd is not
+			// connected to a drive, hence no index pulse. Force a
+			// sync from time to time in that case, so that the main
+			// cpu timeout isn't too painful.  Avoids looping into
+			// infinity looking for data too.
 
 			limit = machine().time() + attotime::from_msec(1);
 			t_gen->adjust(attotime::from_msec(1));
@@ -785,12 +933,14 @@ void wd1772_t::live_run(attotime limit)
 				break;
 
 			case 0xfe: // ID
+				if(main_state == READ_ID) {
+					cur_live.state = READ_ID_BLOCK_TO_DMA;
+					break;
+				}
 				if(sub_state == SCAN_ID) {
 					cur_live.state = READ_ID_BLOCK_TO_LOCAL;
 					break;
 				}
-				cur_live.state = SEARCH_ADDRESS_MARK;
-				break;
 
 			default:
 				cur_live.state = SEARCH_ADDRESS_MARK;
@@ -812,6 +962,31 @@ void wd1772_t::live_run(attotime limit)
 			}
 			break;
 		}
+
+		case READ_ID_BLOCK_TO_DMA: {
+			if(read_one_bit(limit))
+				return;
+			if(cur_live.bit_counter & 15)
+				break;
+			live_delay(READ_ID_BLOCK_TO_DMA_BYTE);
+			return;
+		}
+
+		case READ_ID_BLOCK_TO_DMA_BYTE:
+			data = cur_live.data_reg;
+			if(cur_live.bit_counter == 16)
+				sector = data;
+			set_drq();
+
+			if(cur_live.bit_counter == 16*6) {
+				// Already synchronous
+				cur_live.state = IDLE;
+				return;
+			}
+
+			cur_live.state = READ_ID_BLOCK_TO_DMA;
+			checkpoint();
+			break;
 
 		case READ_SECTOR_DATA: {
 			if(read_one_bit(limit))
@@ -839,6 +1014,37 @@ void wd1772_t::live_run(attotime limit)
 			data = cur_live.data_reg;
 			set_drq();
 			cur_live.state = READ_SECTOR_DATA;
+			checkpoint();
+			break;
+
+		case READ_TRACK_DATA: {
+			if(read_one_bit(limit))
+				return;
+			if(cur_live.bit_counter != 16
+			   && cur_live.shift_reg != 0x4489
+			   && cur_live.shift_reg != 0x5224)
+				break;
+
+			// Incorrect, hmmm
+			// Probably >2 + not just after a sync if <16
+			bool output_byte = cur_live.bit_counter > 5;
+
+			cur_live.data_separator_phase = false;
+			cur_live.bit_counter = 0;
+
+			if(output_byte) {
+				live_delay(READ_TRACK_DATA_BYTE);
+				return;
+			}
+
+			break;
+		}
+
+		case READ_TRACK_DATA_BYTE:
+			data = cur_live.data_reg;
+			set_drq();
+			cur_live.state = READ_TRACK_DATA;
+			checkpoint();
 			break;
 
 		default:
@@ -890,7 +1096,7 @@ void wd1772_t::pll_t::reset(attotime when)
 
 int wd1772_t::pll_t::get_next_bit(attotime &tm, floppy_image_device *floppy, attotime limit)
 {
-	attotime when = floppy->get_next_transition(ctime);
+	attotime when = floppy ? floppy->get_next_transition(ctime) : attotime::never;
 #if 0
 	if(!when.is_never())
 		fprintf(stderr, "transition_time=%s\n", tts(when).cstr());

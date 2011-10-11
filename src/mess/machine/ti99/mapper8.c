@@ -573,7 +573,7 @@ static DEVICE_START( mapper8 )
 			done = TRUE;
 		else
 		{
-			for (long j=1; (j < 7) && (dev == NULL); j++)
+			for (long long j=1; (j < 7) && (dev == NULL); j++)
 			{
 				// Pseudo devices are enumerated as 1 ... 6 (see MAP8_SRAM etc.)
 				if (strcmp(cons[i].name, list[j-1])==0)

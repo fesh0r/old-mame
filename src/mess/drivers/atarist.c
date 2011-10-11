@@ -24,6 +24,7 @@
 
 #include "formats/st_dsk.h"
 #include "formats/mfi_dsk.h"
+#include "formats/ipf_dsk.h"
 
 
 //**************************************************************************
@@ -61,19 +62,27 @@ void st_state::toggle_dma_fifo()
 
 void st_state::flush_dma_fifo()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
-
 	if (m_fdc_fifo_empty[m_fdc_fifo_sel]) return;
 
-	for (int i = 0; i < 8; i++)
-	{
-		UINT16 data = m_fdc_fifo[m_fdc_fifo_sel][i];
+	if (m_fdc_dmabytes) {
+		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		for (int i = 0; i < 8; i++) {
+			UINT16 data = m_fdc_fifo[m_fdc_fifo_sel][i];
 
-		if (LOG) logerror("Flushing DMA FIFO %u data %04x to address %06x\n", m_fdc_fifo_sel, data, m_dma_base);
+			if (LOG) logerror("Flushing DMA FIFO %u data %04x to address %06x\n", m_fdc_fifo_sel, data, m_dma_base);
 
-		program->write_word(m_dma_base, data);
-		m_dma_base += 2;
-	}
+			program->write_word(m_dma_base, data);
+			m_dma_base += 2;
+		}
+		m_fdc_dmabytes -= 16;
+		if (!m_fdc_dmabytes) {
+			m_fdc_sectors--;
+
+			if (m_fdc_sectors)
+				m_fdc_dmabytes = DMA_SECTOR_SIZE;
+		}
+	} else
+		m_dma_error = 0;
 
 	m_fdc_fifo_empty[m_fdc_fifo_sel] = 1;
 }
@@ -85,17 +94,25 @@ void st_state::flush_dma_fifo()
 
 void st_state::fill_dma_fifo()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	if (m_fdc_dmabytes) {
+		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		for (int i = 0; i < 8; i++) {
+			UINT16 data = program->read_word(m_dma_base);
 
-	for (int i = 0; i < 8; i++)
-	{
-		UINT16 data = program->read_word(m_dma_base);
+			if (LOG) logerror("Filling DMA FIFO %u with data %04x from memory address %06x\n", m_fdc_fifo_sel, data, m_dma_base);
 
-		if (LOG) logerror("Filling DMA FIFO %u with data %04x from memory address %06x\n", m_fdc_fifo_sel, data, m_dma_base);
+			m_fdc_fifo[m_fdc_fifo_sel][i] = data;
+			m_dma_base += 2;
+		}
+		m_fdc_dmabytes -= 16;
+		if (!m_fdc_dmabytes) {
+			m_fdc_sectors--;
 
-		m_fdc_fifo[m_fdc_fifo_sel][i] = data;
-		m_dma_base += 2;
-	}
+			if (m_fdc_sectors)
+				m_fdc_dmabytes = DMA_SECTOR_SIZE;
+		}
+	} else
+		m_dma_error = 0;
 
 	m_fdc_fifo_empty[m_fdc_fifo_sel] = 0;
 }
@@ -107,8 +124,6 @@ void st_state::fill_dma_fifo()
 
 void st_state::fdc_dma_transfer()
 {
-	if (!m_fdc_dmabytes) return;
-
 	if (m_fdc_mode & DMA_MODE_READ_WRITE)
 	{
 		UINT16 data = m_fdc_fifo[m_fdc_fifo_sel][m_fdc_fifo_index];
@@ -174,18 +189,6 @@ void st_state::fdc_dma_transfer()
 		{
 			flush_dma_fifo();
 			toggle_dma_fifo();
-		}
-	}
-
-	m_fdc_dmabytes--;
-
-	if (m_fdc_dmabytes == 0)
-	{
-		m_fdc_sectors--;
-
-		if (m_fdc_sectors)
-		{
-			m_fdc_dmabytes = DMA_SECTOR_SIZE;
 		}
 	}
 }
@@ -302,6 +305,7 @@ WRITE16_MEMBER( st_state::dma_mode_w )
 		m_fdc_sectors = 0;
 		m_fdc_fifo_sel = 0;
 		m_fdc_fifo_msb = 0;
+		m_fdc_fifo_index = 0;
 	}
 
 	m_fdc_mode = data;
@@ -390,6 +394,15 @@ WRITE16_MEMBER( st_state::berr_w )
 {
 	m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
 	m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
+}
+
+READ16_MEMBER( st_state::berr_r )
+{
+	if(!space.debugger_access()) {
+		m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+		m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
+	}
+	return 0xffff;
 }
 
 
@@ -1190,6 +1203,7 @@ static ADDRESS_MAP_START( st_map, AS_PROGRAM, 16, st_state )
 	AM_RANGE(0x000000, 0x000007) AM_ROM AM_REGION(M68000_TAG, 0) AM_WRITE(berr_w)
 	AM_RANGE(0x000008, 0x1fffff) AM_RAM
 	AM_RANGE(0x200000, 0x3fffff) AM_RAM
+	AM_RANGE(0x400000, 0xf9ffff) AM_READWRITE(berr_r, berr_w)
 	AM_RANGE(0xfa0000, 0xfbffff) AM_ROM AM_REGION("cart", 0)
 	AM_RANGE(0xfc0000, 0xfeffff) AM_ROM AM_REGION(M68000_TAG, 0) AM_WRITE(berr_w)
 	AM_RANGE(0xff8000, 0xff8001) AM_READWRITE8(mmu_r, mmu_w, 0x00ff)
@@ -1556,19 +1570,19 @@ static INPUT_PORTS_START( st )
 	PORT_INCLUDE( ikbd )
 
 	PORT_START("IKBD_JOY0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(1) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // XB
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // XA
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(1) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // YA
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // YB
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // XB
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // XA
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // YA
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(2) PORT_8WAY PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01) // YB
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1) PORT_8WAY
 
 	PORT_START("IKBD_JOY1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x00)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x01)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 
 	PORT_START("IKBD_MOUSEX")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1) PORT_CONDITION("config", 0x01, PORTCOND_EQUALS, 0x00)
@@ -2086,9 +2100,7 @@ void st_state::fdc_intrq_w(bool state)
 void st_state::fdc_drq_w(bool state)
 {
 	if (state && (!(m_fdc_mode & DMA_MODE_ENABLED)) && (m_fdc_mode & DMA_MODE_FDC_HDC_ACK))
-	{
 		fdc_dma_transfer();
-	}
 }
 
 
@@ -2315,7 +2327,7 @@ void stbook_state::machine_start()
 }
 
 const floppy_format_type st_state::floppy_formats[] = {
-	FLOPPY_ST_FORMAT, FLOPPY_MSA_FORMAT, FLOPPY_MFI_FORMAT,
+	FLOPPY_ST_FORMAT, FLOPPY_MSA_FORMAT, FLOPPY_IPF_FORMAT, FLOPPY_MFI_FORMAT,
 	NULL
 };
 
@@ -2332,7 +2344,7 @@ static MACHINE_CONFIG_START( st, st_state )
 	MCFG_CPU_ADD(M68000_TAG, M68000, Y2/4)
 	MCFG_CPU_PROGRAM_MAP(st_map)
 
-	MCFG_CPU_ADD(HD6301V1_TAG, HD6301, XTAL_4MHz)
+	MCFG_CPU_ADD(HD6301V1_TAG, HD6301, Y2/8)
 	MCFG_CPU_PROGRAM_MAP(ikbd_map)
 	MCFG_CPU_IO_MAP(ikbd_io_map)
 
@@ -2383,7 +2395,7 @@ static MACHINE_CONFIG_START( megast, megast_state )
 	MCFG_CPU_ADD(M68000_TAG, M68000, Y2/4)
 	MCFG_CPU_PROGRAM_MAP(megast_map)
 
-	MCFG_CPU_ADD(HD6301V1_TAG, HD6301, XTAL_4MHz)
+	MCFG_CPU_ADD(HD6301V1_TAG, HD6301, Y2/8)
 	MCFG_CPU_PROGRAM_MAP(ikbd_map)
 	MCFG_CPU_IO_MAP(ikbd_io_map)
 
@@ -2435,7 +2447,7 @@ static MACHINE_CONFIG_START( ste, ste_state )
 	MCFG_CPU_ADD(M68000_TAG, M68000, Y2/4)
 	MCFG_CPU_PROGRAM_MAP(ste_map)
 
-	MCFG_CPU_ADD(HD6301V1_TAG, HD6301, XTAL_4MHz)
+	MCFG_CPU_ADD(HD6301V1_TAG, HD6301, Y2/8)
 	MCFG_CPU_PROGRAM_MAP(ikbd_map)
 	MCFG_CPU_IO_MAP(ikbd_io_map)
 

@@ -213,8 +213,7 @@ void st_state::glue_tick()
 
 	int de = h && v;
 
-	if (x < m_shifter_x_start && y < m_shifter_y_start)
-	{
+	if(!x) {
 		m_shifter_bitplane = 0;
 		m_shifter_shift = 0;
 	}
@@ -450,7 +449,7 @@ WRITE8_MEMBER( st_state::shifter_mode_w )
 
 READ16_MEMBER( st_state::shifter_palette_r )
 {
-	return m_shifter_palette[offset];
+	return m_shifter_palette[offset] | 0xf888;
 }
 
 
