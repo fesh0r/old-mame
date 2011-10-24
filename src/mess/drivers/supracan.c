@@ -1332,7 +1332,7 @@ static INPUT_PORTS_START( supracan )
 	PORT_DIPNAME( 0x1000, 0x0000, "SYSTEM" )
 	PORT_DIPSETTING(    0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x1000, DEF_STR( On ) )
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_START2 )
+	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_START4 )
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(4) PORT_NAME("P4 Button B")
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(4) PORT_NAME("P4 Button A")
 INPUT_PORTS_END
@@ -1489,6 +1489,8 @@ READ16_MEMBER( supracan_state::supracan_video_r )
 static TIMER_CALLBACK( supracan_hbl_callback )
 {
 	supracan_state *state = machine.driver_data<supracan_state>();
+
+	device_set_input_line(state->m_maincpu, 3, HOLD_LINE);
 
 	state->m_hbl_timer->adjust(attotime::never);
 }

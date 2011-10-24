@@ -13,7 +13,9 @@
 #include "machine/ram.h"
 #include "machine/8530scc.h"
 #include "machine/abc99.h"
+#include "machine/abc1600_bus.h"
 #include "machine/e0516.h"
+#include "machine/lux4105.h"
 #include "machine/nmc9306.h"
 #include "machine/s1410.h"
 #include "machine/wd17xx.h"
@@ -31,7 +33,7 @@
 #define MC68008P8_TAG		"3f"
 #define Z8410AB1_0_TAG		"5g"
 #define Z8410AB1_1_TAG		"7g"
-#define Z8410AB1_2_TAG		"8g"
+#define Z8410AB1_2_TAG		"9g"
 #define Z8470AB1_TAG		"17b"
 #define Z8530B1_TAG			"2a"
 #define Z8536B1_TAG			"15b"
@@ -41,6 +43,10 @@
 #define NMC9306_TAG			"14c"
 #define SY6845E_TAG			"sy6845e"
 #define SCREEN_TAG			"screen"
+#define BUS0I_TAG			"bus0i"
+#define BUS0X_TAG			"bus0x"
+#define BUS1_TAG			"bus1"
+#define BUS2_TAG			"bus2"
 
 
 
@@ -66,7 +72,11 @@ public:
 		  m_nvram(*this, NMC9306_TAG),
 		  m_crtc(*this, SY6845E_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_floppy(*this, FLOPPY_0)
+		  m_floppy(*this, FLOPPY_0),
+		  m_bus0i(*this, BUS0I_TAG),
+		  m_bus0x(*this, BUS0X_TAG),
+		  m_bus1(*this, BUS1_TAG),
+		  m_bus2(*this, BUS2_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -82,6 +92,10 @@ public:
 	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_ram;
 	required_device<device_t> m_floppy;
+	required_device<abc1600bus_slot_device> m_bus0i;
+	required_device<abc1600bus_slot_device> m_bus0x;
+	required_device<abc1600bus_slot_device> m_bus1;
+	required_device<abc1600bus_slot_device> m_bus2;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -129,6 +143,8 @@ public:
 	DECLARE_WRITE8_MEMBER( cio_pb_w );
 	DECLARE_READ8_MEMBER( cio_pc_r );
 	DECLARE_WRITE8_MEMBER( cio_pc_w );
+	
+	DECLARE_WRITE_LINE_MEMBER( nmi_w );
 
 	int get_current_task(offs_t offset);
 	offs_t get_segment_address(offs_t offset);
@@ -190,6 +206,8 @@ public:
 
 	// peripherals
 	int m_cs7;					// card select address bit 7
+	int m_bus0;					// BUS 0 selected
+	UINT8 m_csb;				// card select 
 	int m_atce;					// V.24 channel A external clock enable
 	int m_btce;					// V.24 channel B external clock enable
 

@@ -25431,6 +25431,30 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
+	<software name="kof99">
+		<description>The King of Fighters 99</description>
+		<year>199?</year>
+		<publisher>&lt;unlicensed&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<feature name="pcb_type" value="KOF99" />
+			<dataarea name="rom" size="3145728">
+				<rom name="the king of fighters 99 (unl).bin" size="3145728" crc="54638c11" sha1="cdef3008dec2ce1a214af8b9cb000053671a3c36" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+<!-- Different PCB type needed? -->
+	<software name="kof99a" cloneof="kof99" supported="partial">
+		<description>The King of Fighters '99</description>
+		<year>199?</year>
+		<publisher>&lt;unlicensed&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="3145728">
+				<rom name="king of fighters 99 (unl).bin" size="3145728" crc="ab82afbe" sha1="3947f8b784eb00fba6a9fdd0584c9f70fdff5944" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="supmagic">
 		<description>Linghuan Daoshi Super Magician (Chi)</description>
 		<year>199?</year>
@@ -25480,6 +25504,18 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
+	<software name="majiana" cloneof="majian">
+		<description>Ma Jiang Qing Ren - Ji Ma Jiang Zhi (Chi, Alt)</description>
+		<year>199?</year>
+		<publisher>&lt;unlicensed&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<feature name="pcb_type" value="MJLOVER" />
+			<dataarea name="rom" size="1048576">
+				<rom name="mahjong lover (unl).bin" size="1048576" crc="f6c2cff2" sha1="80d0635083351f62e708538d4b31278d07170a73" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="pokestad">
 		<description>Pokemon Stadium</description>
 		<year>199?</year>
@@ -25512,6 +25548,18 @@ better to use names related to the actual pcb, possibly even reverting to use th
 			<feature name="pcb_type" value="SOULBLAD" />
 			<dataarea name="rom" size="4194304">
 				<rom name="soul blade (unl).bin" size="4194304" crc="f26f88d1" sha1="7714e01819ab4a0f424d7e306e9f891031d053a8" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="soulblada" cloneof="soulblad">
+		<description>Soul Blade (Alt)</description>
+		<year>199?</year>
+		<publisher>&lt;unlicensed&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<feature name="pcb_type" value="SOULBLAD" />
+			<dataarea name="rom" size="3145728">
+				<rom name="soul blade (unl)[p].bin" size="3145728" crc="dd1c7a79" sha1="4bb00b8b42fb50e8d3be092516370fdf1bfc49e1" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -25639,18 +25687,6 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="kof99">
-		<description>The King of Fighters 99</description>
-		<year>199?</year>
-		<publisher>&lt;unlicensed&gt;</publisher>
-		<part name="cart" interface="megadriv_cart">
-			<feature name="pcb_type" value="KOF99" />
-			<dataarea name="rom" size="3145728">
-				<rom name="the king of fighters 99 (unl).bin" size="3145728" crc="54638c11" sha1="cdef3008dec2ce1a214af8b9cb000053671a3c36" offset="000000" loadflag="load16_word_swap" />
-			</dataarea>
-		</part>
-	</software>
-
 	<!-- //[!] -->
 	<software name="topfight">
 		<description>Top Fighter 2000 MK VIII</description>
@@ -25660,6 +25696,18 @@ better to use names related to the actual pcb, possibly even reverting to use th
 			<feature name="pcb_type" value="TOPFIGHTER" />
 			<dataarea name="rom" size="20971520">
 				<rom name="top fighter 2000 mk viii (unl).bin" size="2097152" crc="f75519dc" sha1="617be8de1444ae0c6610d73967f3f0e67541b05a" offset="00000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="topf2k5">
+		<description>Top Fighter 2005</description>
+		<year>199?</year>
+		<publisher>&lt;unlicensed&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<feature name="pcb_type" value="TOPFIGHTER" />
+			<dataarea name="rom" size="20971520">
+				<rom name="top fighter 2005 (unl).bin" size="2097152" crc="174defe6" sha1="e2b8ee109d2302778f7a77563045613b0636d470" offset="00000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -25823,6 +25871,17 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
+	<software name="kof2k">
+		<description>K. O. F. 2000</description>
+		<year>199?</year>
+		<publisher>&lt;unlicensed&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="king of fighters 2000 (unl).bin" size="2097152" crc="34cbac5d" sha1="2073b1e14cbb8433abcbf356ea1831cc5f61c42e" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="lionkin3a" cloneof="lionkin3">
 		<description>Lion King 3 (Alt?)</description>
 		<year>199?</year>
@@ -25853,6 +25912,18 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="magic_bubble.bin" size="524288" crc="ce4a0c46" sha1="d7e3a79064f12b953b2dec9db4d14f8bc9b2a441" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+<!-- This is the System Cart of the Magistr 16 computer, needs emulation of the system -->
+	<software name="magist16" supported="no">
+		<description>Magistr 16 (Rus)</description>
+		<year>199?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="4194304">
+				<rom name="magistr 16.bin" size="4194304" crc="2488e685" sha1="6568b3a4e096159776ef8687a80d43589741fd60" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -26128,6 +26199,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
+<!-- There is also an alt bin available, with crc d3a65907 (size 2176698), which is the same image without the final 0xff padding -->
 	<software name="iceage" cloneof="awepossm">
 		<description>Ice Age (Rus)</description>
 		<year>199?</year>
@@ -26233,12 +26305,24 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="lotr" cloneof="strmlord">
-		<description>Lord of the Rings (Rus)</description>
+		<description>Lord of the Rings (Rus, Hack of Stormlord)</description>
 		<year>199?</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="lord of the rings (unl).bin" size="524288" crc="e2a2342a" sha1="a91ed84344ebf685f9a13d28b6a2053279e1f61a" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+<!-- What is the relation with Chinese Fighter? -->
+	<software name="lotrgs">
+		<description>Lord of the Rings (Rus)</description>
+		<year>199?</year>
+		<publisher>Glorysun</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="lord of the rings (unl).bin" size="2097152" crc="513ea675" sha1="314fde51223fd2d315cf9c74318a1fc8470d5382" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -26294,6 +26378,17 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="mighty morphin power ranger - the fighting edition (unl).bin" size="2097152" crc="b53ff16c" sha1="9443e7879133d891abebe9b01302e8e6e96360e4" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="monstinc" cloneof="decapatt">
+		<description>Monsters, Inc. (Rus)</description>
+		<year>199?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="524288">
+				<rom name="monsters inc. (unl).bin" size="524288" crc="3f4657d5" sha1="71aa22e910d629d8bd7666e85e9b10dc6ec7f795" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -26420,7 +26515,20 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="huntsea3" cloneof="rolo">
+<!-- There is also an alt bin available, with crc 8bba0d40 (size 524534), which is the same image without the final 0xff padding -->
+	<software name="opensea" cloneof="rolo">
+	<!-- Alt. Title: Сезон охоты -->
+		<description>Sezon Ohoty (Rus)</description>
+		<year>199?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="open season (unl).bin" size="1048576" crc="06eb2472" sha1="f45aa22ccffbdc631c9b4b0106e682ae180befec" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="opensea3" cloneof="rolo">
 	<!-- Alt. Title: Сезон охоты 3 -->
 		<description>Sezon Ohoty 3 (Rus)</description>
 		<year>199?</year>
@@ -26499,6 +26607,18 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
+	<software name="cars" cloneof="sskid">
+	<!-- Alt. Title: Тачки 2 -->
+		<description>Tachki (Rus)</description>
+		<year>199?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="disney's cars (r).bin" size="2097152" crc="6c5f2530" sha1="654024f969e4b1ee0df4bf88d46f66f5301918ce" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="cars2" cloneof="cproam">
 	<!-- Alt. Title: Тачки 2 -->
 		<description>Tachki 2 (Rus)</description>
@@ -26524,7 +26644,8 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="ttoon3">
-		<description>Tiny Toon Adventures 3 (Rus)</description>
+	<!-- Serial: MT-601 -->
+		<description>Tiny Toon Adventures 3 (Tw)</description>
 		<year>199?</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -26541,6 +26662,17 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="1117472">
 				<rom name="transformers 3 (unl).bin" size="1117472" crc="8632246d" sha1="e1e5f66329bffedc245a31db50cefd575fecd16b" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="wario3" cloneof="puggsy">
+		<description>Wario Land 3 (Rus)</description>
+		<year>199?</year>
+		<publisher>Glorysun</publisher>
+		<part name="cart" interface="megadriv_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="wario land 3 (unl).bin" size="1048576" crc="cd5c93a5" sha1="3ace8ce26aab6fb5d47e690aa74e989c45fbcb75" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>

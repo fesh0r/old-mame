@@ -24,6 +24,10 @@
       setted to off
     - fix CPU for some clones;
 
+	TODO: (PC-486MU)
+	- Dies on ARTIC check;
+	- Presumably one ROM is undumped?
+
 ========================================================================================
 
     This series features a huge number of models released between 1982 and 1997. They
@@ -237,6 +241,7 @@
 #include "machine/pic8259.h"
 #include "machine/upd765.h"
 #include "machine/upd1990a.h"
+#include "machine/i8251.h"
 #include "sound/beep.h"
 #include "sound/2203intf.h"
 #include "video/upd7220.h"
@@ -244,6 +249,7 @@
 #include "machine/ram.h"
 
 #define UPD1990A_TAG "upd1990a"
+#define UPD8251_TAG  "upd8251"
 
 class pc9801_state : public driver_device
 {
@@ -251,11 +257,13 @@ public:
 	pc9801_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		  m_rtc(*this, UPD1990A_TAG),
+		  m_sio(*this, UPD8251_TAG),
 		  m_hgdc1(*this, "upd7220_chr"),
 		  m_hgdc2(*this, "upd7220_btm")
 	{ }
 
 	required_device<upd1990a_device> m_rtc;
+	required_device<i8251_device> m_sio;
 	required_device<upd7220_device> m_hgdc1;
 	required_device<upd7220_device> m_hgdc2;
 
@@ -932,6 +940,8 @@ static WRITE8_HANDLER( pc9801_a0_w )
 
 static READ8_HANDLER( pc9801_fdc_2hd_r )
 {
+	pc9801_state *state = space->machine().driver_data<pc9801_state>();
+
 	if((offset & 1) == 0)
 	{
 		switch(offset & 6)
@@ -943,6 +953,11 @@ static READ8_HANDLER( pc9801_fdc_2hd_r )
 	}
 	else
 	{
+		switch((offset & 6) + 1)
+		{
+			case 1: return state->m_sio->data_r(*space, 0);
+			case 3: return state->m_sio->status_r(*space, 0);
+		}
 		printf("Read to undefined port [%02x]\n",offset+0x90);
 		return 0xff;
 	}
@@ -977,6 +992,11 @@ static WRITE8_HANDLER( pc9801_fdc_2hd_w )
 	}
 	else
 	{
+		switch((offset & 6) + 1)
+		{
+			case 1: state->m_sio->data_w(*space, 0, data); return;
+			case 3: state->m_sio->control_w(*space, 0, data); return;
+		}
 		printf("Write to undefined port [%02x] <- %02x\n",offset+0x90,data);
 	}
 }
@@ -1586,6 +1606,11 @@ static WRITE8_HANDLER( pc9821_a0_w )
 	pc9801rs_a0_w(space,offset,data);
 }
 
+static READ8_HANDLER( ide_status_r )
+{
+	return 0x50; // status
+}
+
 static ADDRESS_MAP_START( pc9821_map, AS_PROGRAM, 32)
 	AM_RANGE(0x00000000, 0xffffffff) AM_READWRITE8(pc9801rs_memory_r,pc9801rs_memory_w,0xffffffff)
 ADDRESS_MAP_END
@@ -1620,7 +1645,7 @@ static ADDRESS_MAP_START( pc9821_io, AS_IO, 32)
 //  AM_RANGE(0x04a0, 0x04af) EGC
 //  AM_RANGE(0x04be, 0x04be) FDC "RPM" register
 //  AM_RANGE(0x0642, 0x064f) IDE registers / <undefined>
-//  AM_RANGE(0x074c, 0x074f) IDE status (r) - IDE control registers (w) / <undefined>
+	AM_RANGE(0x074c, 0x074f) AM_READ8( ide_status_r, 0x000000ff) // IDE status (r) - IDE control registers (w) / <undefined>
 //  AM_RANGE(0x08e0, 0x08ea) <undefined> / EMM SIO registers
 //  AM_RANGE(0x09a0, 0x09a0) GDC extended register r/w
 //  AM_RANGE(0x09a8, 0x09a8) GDC 31KHz register r/w
@@ -2305,6 +2330,19 @@ static UPD1990A_INTERFACE( pc9801_upd1990a_intf )
 	DEVCB_NULL
 };
 
+static const i8251_interface pc9801_uart_interface =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 /****************************************
 *
 * Init emulation status
@@ -2426,6 +2464,8 @@ static INTERRUPT_GEN(pc9801_vrtc_irq)
 	}
 }
 
+
+
 static MACHINE_CONFIG_START( pc9801, pc9801_state )
 	MCFG_CPU_ADD("maincpu", I8086, 5000000) //unknown clock
 	MCFG_CPU_PROGRAM_MAP(pc9801_map)
@@ -2443,6 +2483,7 @@ static MACHINE_CONFIG_START( pc9801, pc9801_state )
 	MCFG_I8255_ADD( "ppi8255_prn", ppi_printer_intf )
 	MCFG_I8255_ADD( "ppi8255_fdd", ppi_fdd_intf )
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc9801_upd1990a_intf)
+	MCFG_I8251_ADD(UPD8251_TAG, pc9801_uart_interface)
 
 	MCFG_UPD765A_ADD("upd765_2hd", upd765_2hd_intf)
 	MCFG_UPD765A_ADD("upd765_2dd", upd765_2dd_intf)
@@ -2504,6 +2545,7 @@ static MACHINE_CONFIG_START( pc9801rs, pc9801_state )
 	MCFG_I8255_ADD( "ppi8255_prn", ppi_printer_intf )
 	MCFG_I8255_ADD( "ppi8255_fdd", ppi_fdd_intf )
 	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, pc9801_upd1990a_intf)
+	MCFG_I8251_ADD(UPD8251_TAG, pc9801_uart_interface)
 
 	MCFG_UPD765A_ADD("upd765_2hd", pc9801rs_upd765_intf)
 	//"upd765_2dd"
@@ -2563,6 +2605,7 @@ static MACHINE_CONFIG_START( pc9821, pc9801_state )
 	MCFG_I8255_ADD( "ppi8255_prn", ppi_printer_intf )
 	MCFG_I8255_ADD( "ppi8255_fdd", ppi_fdd_intf )
 	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, pc9801_upd1990a_intf)
+	MCFG_I8251_ADD(UPD8251_TAG, pc9801_uart_interface)
 
 	MCFG_UPD765A_ADD("upd765_2hd", pc9801rs_upd765_intf)
 	//"upd765_2dd"
@@ -2841,13 +2884,38 @@ ROM_START( pc9821ne )
 ROM_END
 
 /*
+Epson PC-486MU - 486 based, unknown clock
+*/
+
+ROM_START( pc486mu )
+	ROM_REGION( 0x60000, "ipl", ROMREGION_ERASEFF )
+	ROM_LOAD( "bios_486mu.rom", 0x08000, 0x18000, BAD_DUMP CRC(57b5d701) SHA1(15029800842e93e07615b0fd91fb9f2bfe3e3c24))
+	ROM_RELOAD( 				0x28000, 0x18000 ) // missing rom?
+
+	ROM_REGION( 0x0a0000, "wram", ROMREGION_ERASE00 )
+
+	ROM_REGION( 0x700000, "ex_wram", ROMREGION_ERASE00 )
+
+	ROM_REGION( 0x10000, "soundcpu", 0 )
+	ROM_LOAD( "sound_486mu.rom", 0x0000, 0x4000, CRC(6cdfa793) SHA1(4b8250f9b9db66548b79f961d61010558d6d6e1c))
+
+	ROM_REGION( 0x50000, "chargen", 0 )
+	ROM_LOAD( "font_486mu.rom", 0x0000, 0x46800, CRC(456d9fc7) SHA1(78ba9960f135372825ab7244b5e4e73a810002ff))
+
+	ROM_REGION( 0x45000, "kanji", ROMREGION_ERASEFF )
+	//ROM_COPY("chargen", 0x1800, 0x0000, 0x45000 )
+
+	ROM_REGION( 0x80000, "pcg", ROMREGION_ERASEFF )
+ROM_END
+
+/*
 98MULTi Ce2 - 80486SX 25
 */
 
 ROM_START( pc9821ce2 )
 	ROM_REGION( 0x60000, "ipl", ROMREGION_ERASEFF )
 	ROM_LOAD( "itf_ce2.rom",  0x18000, 0x08000, CRC(273e9e88) SHA1(9bca7d5116788776ed0f297bccb4dfc485379b41) )
-    ROM_LOAD( "bios_ce2.rom",     0x000000, 0x018000, BAD_DUMP CRC(76affd90) SHA1(910fae6763c0cd59b3957b6cde479c72e21f33c1) )
+    ROM_LOAD( "bios_ce2.rom",     0x28000, 0x018000, BAD_DUMP CRC(76affd90) SHA1(910fae6763c0cd59b3957b6cde479c72e21f33c1) )
 
 	ROM_REGION( 0x0a0000, "wram", ROMREGION_ERASE00 )
 
@@ -2872,7 +2940,7 @@ ROM_END
 ROM_START( pc9821xs )
 	ROM_REGION( 0x60000, "ipl", ROMREGION_ERASEFF )
 	ROM_LOAD( "itf.rom",  0x18000, 0x08000, BAD_DUMP CRC(dd4c7bb8) SHA1(cf3aa193df2722899066246bccbed03f2e79a74a) )
-    ROM_LOAD( "bios_xs.rom",     0x000000, 0x018000, BAD_DUMP CRC(0a682b93) SHA1(76a7360502fa0296ea93b4c537174610a834d367) )
+    ROM_LOAD( "bios_xs.rom",     0x28000, 0x018000, BAD_DUMP CRC(0a682b93) SHA1(76a7360502fa0296ea93b4c537174610a834d367) )
 
 	ROM_REGION( 0x0a0000, "wram", ROMREGION_ERASE00 )
 
@@ -2923,7 +2991,7 @@ ROM_END
 ROM_START( pc9821v20 )
 	ROM_REGION( 0x60000, "ipl", ROMREGION_ERASEFF )
 	ROM_LOAD( "itf_v20.rom",  0x18000, 0x08000, CRC(10e52302) SHA1(f95b8648e3f5a23e507a9fbda8ab2e317d8e5151) )
-	ROM_LOAD( "bios_v20.rom",     0x000000, 0x018000, BAD_DUMP CRC(d5d1f13b) SHA1(bf44b5f4e138e036f1b848d6616fbd41b5549764) )
+	ROM_LOAD( "bios_v20.rom",     0x28000, 0x018000, BAD_DUMP CRC(d5d1f13b) SHA1(bf44b5f4e138e036f1b848d6616fbd41b5549764) )
 
 	ROM_REGION( 0x0a0000, "wram", ROMREGION_ERASE00 )
 
@@ -2954,5 +3022,6 @@ COMP( 1993, pc9821as,  pc9821,  0,     pc9821,   pc9801rs, 0, "Nippon Electronic
 COMP( 1994, pc9821xs,  pc9821,  0,     pc9821,   pc9801rs, 0, "Nippon Electronic Company",   "PC-9821 (98MATE Xs)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 COMP( 1994, pc9821ce2, pc9821,  0,     pc9821,   pc9801rs, 0, "Nippon Electronic Company",   "PC-9821 (98MULTi Ce2)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 COMP( 1994, pc9821ne,  pc9821,  0,     pc9821,   pc9801rs, 0, "Nippon Electronic Company",   "PC-9821 (98NOTE)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1994, pc486mu,   pc9821,  0,     pc9821,   pc9801rs, 0, "Epson",                       "PC-486MU",  GAME_NOT_WORKING | GAME_NO_SOUND)
 COMP( 1998, pc9821v13, pc9821,  0,     pc9821,   pc9801rs, 0, "Nippon Electronic Company",   "PC-9821 (98MATE VALUESTAR 13)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 COMP( 1998, pc9821v20, pc9821,  0,     pc9821v20,pc9801rs, 0, "Nippon Electronic Company",   "PC-9821 (98MATE VALUESTAR 20)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)

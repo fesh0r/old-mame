@@ -3,27 +3,54 @@
     Luxor ABC 1600
 
     Skeleton driver
+*/
 
+/*
+
+	How to create HDD image:
+	------------------------
+	chdman -createblankhd necd5126a.chd 615 4 17 512
+
+	How to format HDD:
+	------------------
+	mf(2,0)
+	mf(2,0)
+	abcenix
+	sas/format/format
+	sa(40,0)
+	y
+	5
+	necd5126a
+	
+	How to install OS:
+	------------------
+	mf(2,0)
+	mf(2,0)
+	abcenix
+	loadsys1
+	<enter>
+	<enter>
+	
 */
 
 /*
 
     TODO:
 
-    - login root fails with incorrect password
+	- segment/page RAM addresses are not correctly decoded, "sas/format/format" can't find the SASI interface because of this
+		forcetask0 1 t0 0 t1 0 t2 0 t3 0
+		sega19 0 task 0
+		sega 000 segd 00 pga 008 pgd 4058 virtual 02c730 (should be 004730)
+		
     - floppy
         - internal floppy is really drive 2, but wd17xx.c doesn't like having NULL drives
-    - BUS0I/0X/1/2
     - short/long reset (RSTBUT)
     - CIO
-        - vectored interrupts with status
-        - port A bit mode, OR-PEVM, interrupt when bit=1
-        - port B bit mode, OR-PEVM, interrupt when bit=1
-        - port C, open drain output bit PC1 (RTC, NVRAM)
-        - counter 1 disabled
-        - counter 2 enabled, TC=000d, IE=0, output to PB0
-        - counter 3 enabled, TC=9c40, IE=1
-    - hard disk (Xebec S1410)
+		- optimize timers!
+        - port C, open drain output bit PC1 (RTC/NVRAM data)
+    - hard disk
+		- 4105 SASI interface card
+		- SASI interface (scsibus.c)
 
 */
 
@@ -35,12 +62,14 @@
 //  CONSTANTS / MACROS
 //**************************************************************************
 
-#define LOG 0
+#define LOG 1
+
 
 // MAC
 #define A0			BIT(offset, 0)
 #define A1			BIT(offset, 1)
 #define A2			BIT(offset, 2)
+#define A4			BIT(offset, 4)
 #define A7			BIT(offset, 7)
 #define A8			BIT(offset, 8)
 #define X11			BIT(offset, 11)
@@ -140,7 +169,7 @@ UINT8 abc1600_state::read_ram(offs_t offset)
 	}
 	else
 	{
-		if (LOG) logerror("Unmapped read from virtual memory %06x\n", offset);
+		logerror("%s Unmapped read from virtual memory %06x\n", machine().describe_context(), offset);
 	}
 
 	return data;
@@ -167,7 +196,7 @@ void abc1600_state::write_ram(offs_t offset, UINT8 data)
 	}
 	else
 	{
-		if (LOG) logerror("Unmapped write to virtual memory %06x : %02x\n", offset, data);
+		logerror("%s Unmapped write to virtual memory %06x : %02x\n", machine().describe_context(), offset, data);
 	}
 }
 
@@ -192,7 +221,7 @@ UINT8 abc1600_state::read_io(offs_t offset)
 				break;
 
 			default:
-				logerror("Unmapped read from virtual I/O %06x\n", offset);
+				logerror("%s Unmapped read from virtual I/O %06x\n", machine().describe_context(), offset);
 			}
 		}
 		else
@@ -238,22 +267,135 @@ UINT8 abc1600_state::read_io(offs_t offset)
 	}
 	else
 	{
-		// BUS0I, BUS0X, BUS1, BUS2
-		//UINT8 cs = (m_cs7 << 7) | ((offset >> 5) & 0x3f);
-
-		switch ((offset >> 1) & 0x07)
+		// card select pulse
+		UINT8 cs = (m_cs7 << 7) | ((offset >> 5) & 0x3f);
+		
+		m_bus0i->cs_w(cs);
+		m_bus0x->cs_w(cs);
+		m_bus1->cs_w(cs);
+		m_bus2->cs_w(cs);
+		
+		// card select b?
+		m_csb = m_bus2->csb_r();
+		m_csb |= m_bus1->csb_r() << 1;
+		m_csb |= m_bus0x->xcsb2_r() << 2;
+		m_csb |= m_bus0x->xcsb3_r() << 3;
+		m_csb |= m_bus0x->xcsb4_r() << 4;
+		m_csb |= m_bus0x->xcsb5_r() << 5;
+		m_csb |= m_bus0x->csb_r() << 6;
+		m_csb |= m_bus0i->csb_r() << 7;
+		
+		m_bus0 = !((m_csb & 0xfc) == 0xfc);
+		
+		if (X11)
 		{
-		case 0: // INP
-			break;
+			if (A4)
+			{
+				// EXP
+				data = m_bus0x->exp_r();
 
-		case 1: // STAT
-			break;
+				logerror("%s EXP %02x: %02x\n", machine().describe_context(), cs, data);
+			}
+			else
+			{
+				// RCSB
+				if (m_bus0)
+				{
+					/*
+						
+						bit		description
+						
+						0		1
+						1		1
+						2		LXCSB2*
+						3		LXCSB3*
+						4		LXCSB4*
+						5		LXCSB5*
+						6		LCSB*-0
+						7		LCSB*-0I
+						
+					*/
+					
+					data = (m_csb & 0xfc) | 0x03;
+				}
+				else
+				{
+					/*
+						
+						bit		description
+						
+						0		LCSB*-2
+						1		LCSB*-1
+						2		1
+						3		1
+						4		1
+						5		1
+						6		1
+						7		1
+						
+					*/
 
-		case 2: // OPS
-			break;
+					data = 0xfc | (m_csb & 0x03);
+				}
+
+				logerror("%s RCSB %02x\n", machine().describe_context(), data);
+			}
 		}
+		else
+		{
+			data = 0xff;
+			
+			switch ((offset >> 1) & 0x07)
+			{
+			case 0: // INP
+				if (m_bus0)
+				{
+					data &= m_bus0i->inp_r();
+					data &= m_bus0x->inp_r();
+				}
+				else
+				{
+					data &= m_bus1->inp_r();
+					data &= m_bus2->inp_r();
+				}
 
-		logerror("Unmapped read from virtual I/O %06x\n", offset);
+				logerror("%s INP %02x: %02x\n", machine().describe_context(), cs, data);
+				break;
+
+			case 1: // STAT
+				if (m_bus0)
+				{
+					data &= m_bus0i->stat_r();
+					data &= m_bus0x->stat_r();
+				}
+				else
+				{
+					data &= m_bus1->stat_r();
+					data &= m_bus2->stat_r();
+				}
+
+				logerror("%s STAT %02x: %02x\n", machine().describe_context(), cs, data);
+				break;
+
+			case 2: // OPS
+				if (m_bus0)
+				{
+					data &= m_bus0i->ops_r();
+					data &= m_bus0x->ops_r();
+				}
+				else
+				{
+					data &= m_bus1->ops_r();
+					data &= m_bus2->ops_r();
+				}
+
+				logerror("%s OPS %02x: %02x\n", machine().describe_context(), cs, data);
+				break;
+				
+			default:
+				logerror("%s Unmapped read from virtual I/O %06x\n", machine().describe_context(), offset);
+			}
+		}
 	}
 
 	return data;
@@ -296,7 +438,7 @@ void abc1600_state::write_io(offs_t offset, UINT8 data)
 				}
 				else
 				{
-					logerror("Unmapped write to virtual I/O %06x : %02x\n", offset, data);
+					logerror("%s Unmapped write to virtual I/O %06x : %02x\n", machine().describe_context(), offset, data);
 				}
 				break;
 
@@ -309,7 +451,7 @@ void abc1600_state::write_io(offs_t offset, UINT8 data)
 				break;
 
 			default:
-				logerror("Unmapped write to virtual I/O %06x : %02x\n", offset, data);
+				logerror("%s Unmapped write to virtual I/O %06x : %02x\n", machine().describe_context(), offset, data);
 			}
 		}
 		else
@@ -355,28 +497,93 @@ void abc1600_state::write_io(offs_t offset, UINT8 data)
 	}
 	else
 	{
-		//UINT8 cs = (m_cs7 << 7) | ((offset >> 5) & 0x3f);
-
+		UINT8 cs = (m_cs7 << 7) | ((offset >> 5) & 0x3f);
+		
+		m_bus0i->cs_w(cs);
+		m_bus0x->cs_w(cs);
+		m_bus1->cs_w(cs);
+		m_bus2->cs_w(cs);
+		
 		switch ((offset >> 1) & 0x07)
 		{
 		case 0: // OUT
+			logerror("%s OUT %02x: %02x\n", machine().describe_context(), cs, data);
+		
+			if (m_bus0)
+			{
+				m_bus0i->out_w(data);
+				m_bus0x->out_w(data);
+			}
+			else
+			{
+				m_bus1->out_w(data);
+				m_bus2->out_w(data);
+			}
 			break;
 
 		case 2: // C1
+			logerror("%s C1 %02x: %02x\n", machine().describe_context(), cs, data);
+		
+			if (m_bus0)
+			{
+				m_bus0i->c1_w(data);
+				m_bus0x->c1_w(data);
+			}
+			else
+			{
+				m_bus1->c1_w(data);
+				m_bus2->c1_w(data);
+			}			
 			break;
 
 		case 3: // C2
+			logerror("%s C2 %02x: %02x\n", machine().describe_context(), cs, data);
+		
+			if (m_bus0)
+			{
+				m_bus0i->c2_w(data);
+				m_bus0x->c2_w(data);
+			}
+			else
+			{
+				m_bus1->c2_w(data);
+				m_bus2->c2_w(data);
+			}			
 			break;
 
 		case 4: // C3
+			logerror("%s C3 %02x: %02x\n", machine().describe_context(), cs, data);
+		
+			if (m_bus0)
+			{
+				m_bus0i->c3_w(data);
+				m_bus0x->c3_w(data);
+			}
+			else
+			{
+				m_bus1->c3_w(data);
+				m_bus2->c3_w(data);
+			}			
 			break;
 
 		case 5: // C4
+			logerror("%s C4 %02x: %02x\n", machine().describe_context(), cs, data);
+		
+			if (m_bus0)
+			{
+				m_bus0i->c4_w(data);
+				m_bus0x->c4_w(data);
+			}
+			else
+			{
+				m_bus1->c4_w(data);
+				m_bus2->c4_w(data);
+			}			
 			break;
+			
+		default:
+			logerror("%s Unmapped write %02x to virtual I/O %06x\n", machine().describe_context(), data, offset);
 		}
-
-		// BUS0I, BUS0X, BUS1, BUS2
-		logerror("Unmapped write %02x to virtual I/O %06x\n", data, offset);
 	}
 }
 
@@ -435,12 +642,12 @@ offs_t abc1600_state::translate_address(offs_t offset, int *nonx, int *wp)
 	UINT16 page_data = m_page_ram[pga];
 
 	offs_t virtual_offset = ((page_data & 0x3ff) << 11) | (offset & 0x7ff);
-
+	
 	if (PAGE_NONX)
 	{
-		logerror("Bus error %06x : %06x\n", offset, virtual_offset);
-		m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
-		m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
+		//logerror("Bus error %06x : %06x\n", offset, virtual_offset);
+		//m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+		//m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 	}
 
 	*nonx = PAGE_NONX;
@@ -504,27 +711,20 @@ UINT8 abc1600_state::read_supervisor_memory(offs_t offset)
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 	UINT8 data = 0;
 
-	if (!A19)
+	if (!A2 & !A1)
 	{
-		data = read_user_memory(offset);
+		// _EP
+		data = page_r(*program, offset);
 	}
-	else
+	else if (!A2 & A1 & A0)
 	{
-		if (!A2 & !A1)
-		{
-			// _EP
-			data = page_r(*program, offset);
-		}
-		else if (!A2 & A1 & A0)
-		{
-			// _ES
-			data = segment_r(*program, offset);
-		}
-		else if (A2 & A1 & A0)
-		{
-			// _CAUSE
-			data = cause_r(*program, offset);
-		}
+		// _ES
+		data = segment_r(*program, offset);
+	}
+	else if (A2 & A1 & A0)
+	{
+		// _CAUSE
+		data = cause_r(*program, offset);
 	}
 
 	return data;
@@ -539,27 +739,20 @@ void abc1600_state::write_supervisor_memory(offs_t offset, UINT8 data)
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
-	if (!A19)
+	if (!A2 & !A1)
 	{
-		write_user_memory(offset, data);
+		// _WEP
+		page_w(*program, offset, data);
 	}
-	else
+	else if (!A2 & A1 & A0)
 	{
-		if (!A2 & !A1)
-		{
-			// _WEP
-			page_w(*program, offset, data);
-		}
-		else if (!A2 & A1 & A0)
-		{
-			// _WES
-			segment_w(*program, offset, data);
-		}
-		else if (A2 & !A1 & A0)
-		{
-			// W(C)
-			task_w(*program, offset, data);
-		}
+		// _WES
+		segment_w(*program, offset, data);
+	}
+	else if (A2 & !A1 & A0)
+	{
+		// W(C)
+		task_w(*program, offset, data);
 	}
 }
 
@@ -594,7 +787,7 @@ READ8_MEMBER( abc1600_state::mac_r )
 		UINT8 *rom = machine().region(MC68008P8_TAG)->base();
 		data = rom[offset & 0x3fff];
 	}
-	else if (!m_ifc2 && !FC1)
+	else if (A19 && !m_ifc2 && !FC1)
 	{
 		data = read_supervisor_memory(offset);
 	}
@@ -615,7 +808,7 @@ WRITE8_MEMBER( abc1600_state::mac_w )
 {
 	int fc = get_fc();
 
-	if (!m_ifc2 && !FC1)
+	if (A19 && !m_ifc2 && !FC1)
 	{
 		write_supervisor_memory(offset, data);
 	}
@@ -853,7 +1046,9 @@ inline void abc1600_state::update_drdy0()
 	else
 	{
 		// BUS0I/BUS0X
-		m_dma0->rdy_w(1);
+		int trrq0 = m_bus0i->trrq_r() & m_bus0x->trrq_r();
+		
+		m_dma0->rdy_w(trrq0);
 	}
 }
 
@@ -872,7 +1067,7 @@ inline void abc1600_state::update_drdy1()
 	else
 	{
 		// BUS1
-		m_dma1->rdy_w(1);
+		m_dma1->rdy_w(m_bus1->trrq_r());
 	}
 }
 
@@ -1083,14 +1278,21 @@ WRITE8_MEMBER( abc1600_state::spec_contr_reg_w )
 
 	case 6: // SYSSCC
 		m_sysscc = state;
+		
+		m_cio->pb5_w(!state);
+		m_bus1->pren_w(!state);
+		
 		update_drdy1();
-		m_cio->pb5_w(!m_sysscc);
 		break;
 
 	case 7: // SYSFS
 		m_sysfs = state;
+
+		m_cio->pb6_w(!state);
+		m_bus0i->pren_w(!state);
+		m_bus0x->pren_w(!state);
+
 		update_drdy0();
-		m_cio->pb6_w(!m_sysfs);
 		break;
 	}
 }
@@ -1301,7 +1503,18 @@ READ8_MEMBER( abc1600_state::cio_pa_r )
 
     */
 
-	return 0;
+	UINT8 data = 0;
+	
+	data |= m_bus2->int_r();
+	data |= m_bus1->int_r() << 1;
+	data |= m_bus0x->xint2_r() << 2;
+	data |= m_bus0x->xint3_r() << 3;
+	data |= m_bus0x->xint4_r() << 4;
+	data |= m_bus0x->xint5_r() << 5;
+	data |= m_bus0x->int_r() << 6;
+	data |= m_bus0i->int_r() << 7;
+	
+	return data;
 }
 
 READ8_MEMBER( abc1600_state::cio_pb_r )
@@ -1470,6 +1683,58 @@ static ABC99_INTERFACE( abc99_intf )
 };
 
 
+//-------------------------------------------------
+//  ABC1600BUS_INTERFACE( abcbus_intf )
+//-------------------------------------------------
+
+static SLOT_INTERFACE_START( abc1600bus_cards )
+	SLOT_INTERFACE("4105", LUXOR_4105) // SASI interface
+//	SLOT_INTERFACE("4077", LUXOR_4077) // Winchester controller
+//	SLOT_INTERFACE("4004", LUXOR_4004) // ICOM I/O (Z80, Z80PIO, Z80SIO/2, Z80CTC, 2 Z80DMAs, 2 PROMs, 64KB RAM)
+SLOT_INTERFACE_END
+
+static ABC1600BUS_INTERFACE( bus0i_intf )
+{
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa7_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
+WRITE_LINE_MEMBER( abc1600_state::nmi_w )
+{
+	if (state == ASSERT_LINE)
+	{
+		m_maincpu->set_input_line(M68K_IRQ_7, ASSERT_LINE);
+	}
+}
+
+static ABC1600BUS_INTERFACE( bus0x_intf )
+{
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa6_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DRIVER_LINE_MEMBER(abc1600_state, nmi_w),
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa2_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa3_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa4_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa5_w) // really inverted but ASSERT_LINE takes care of that
+};
+
+static ABC1600BUS_INTERFACE( bus1_intf )
+{
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa1_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
+static ABC1600BUS_INTERFACE( bus2_intf )
+{
+	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa0_w), // really inverted but ASSERT_LINE takes care of that
+	DEVCB_NULL, // DEVCB_DEVICE_LINE_MEMBER(Z8410AB1_2_TAG, z80dma_device, iei_w) inverted
+	DEVCB_DEVICE_LINE_MEMBER(Z8410AB1_2_TAG, z80dma_device, rdy_w)
+};
+
+
 
 //**************************************************************************
 //  MACHINE INITIALIZATION
@@ -1482,7 +1747,7 @@ static ABC99_INTERFACE( abc99_intf )
 static IRQ_CALLBACK( abc1600_int_ack )
 {
 	abc1600_state *state = device->machine().driver_data<abc1600_state>();
-	UINT8 data = 0;
+	int data = 0;
 
 	switch (irqline)
 	{
@@ -1492,6 +1757,12 @@ static IRQ_CALLBACK( abc1600_int_ack )
 
 	case M68K_IRQ_5:
 		data = state->m_dart->m1_r();
+		break;
+		
+	case M68K_IRQ_7:
+		state->m_maincpu->set_input_line(M68K_IRQ_7, CLEAR_LINE);
+		
+		data = M68K_INT_ACK_AUTOVECTOR;
 		break;
 	}
 
@@ -1508,7 +1779,7 @@ void abc1600_state::machine_start()
 	// interrupt callback
 	device_set_irq_callback(m_maincpu, abc1600_int_ack);
 
-	// fill segment RAM with non-zero values or no boot
+	// HACK fill segment RAM with non-zero values or no boot
 	memset(m_segment_ram, 0xcd, 0x400);
 
 	// state saving
@@ -1523,6 +1794,8 @@ void abc1600_state::machine_start()
 	save_item(NAME(m_cause));
 	save_item(NAME(m_partst));
 	save_item(NAME(m_cs7));
+	save_item(NAME(m_bus0));
+	save_item(NAME(m_csb));
 	save_item(NAME(m_atce));
 	save_item(NAME(m_btce));
 }
@@ -1552,6 +1825,9 @@ void abc1600_state::machine_reset()
 	// disable display
 	m_clocks_disabled = 1;
 	m_endisp = 0;
+	
+	// clear NMI
+	m_maincpu->set_input_line(M68K_IRQ_7, CLEAR_LINE);
 }
 
 
@@ -1588,6 +1864,11 @@ static MACHINE_CONFIG_START( abc1600, abc1600_state )
 	MCFG_HARDDISK_ADD("harddisk0")
 	MCFG_ABC99_ADD(abc99_intf)
 	MCFG_S1410_ADD()
+
+	MCFG_ABC1600BUS_SLOT_ADD("bus0i", bus0i_intf, abc1600bus_cards, NULL, NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus0x", bus0x_intf, abc1600bus_cards, NULL, NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus1", bus1_intf, abc1600bus_cards, NULL, NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus2", bus2_intf, abc1600bus_cards, "4105", NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

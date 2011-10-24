@@ -1024,7 +1024,8 @@ $(MESSOBJ)/hegener.a:			\
 	$(MESS_MACHINE)/mboard.o	\
 	$(MESS_DRIVERS)/glasgow.o	\
 	$(MESS_DRIVERS)/mephisto.o	\
-        $(MESS_DRIVERS)/polgar.o	\
+        $(MESS_DRIVERS)/mmodular.o	\
+	
 
 $(MESSOBJ)/hitachi.a:			\
 	$(MESS_DRIVERS)/bmjr.o		\
@@ -1122,6 +1123,8 @@ $(MESSOBJ)/luxor.a:				\
 	$(MESS_MACHINE)/lux21046.o	\
 	$(MESS_MACHINE)/abc830.o	\
 	$(MESS_DRIVERS)/abc1600.o	\
+	$(MESS_MACHINE)/abc1600_bus.o	\
+	$(MESS_MACHINE)/lux4105.o	\
 	$(MESS_VIDEO)/abc1600.o		\
 	$(MESS_MACHINE)/s1410.o		\
 
@@ -1736,6 +1739,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/alesis.o	\
 	$(MESS_DRIVERS)/amico2k.o	\
 	$(MESS_DRIVERS)/applix.o	\
+	$(MESS_DRIVERS)/babbage.o	\
 	$(MESS_DRIVERS)/beehive.o	\
 	$(MESS_DRIVERS)/bob85.o		\
 	$(MESS_DRIVERS)/busicom.o	\
@@ -1744,6 +1748,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/cd2650.o	\
 	$(MESS_DRIVERS)/codata.o	\
 	$(MESS_DRIVERS)/cosmicos.o	\
+	$(MESS_DRIVERS)/cvicny.o	\
 	$(MESS_DRIVERS)/czk80.o		\
 	$(MESS_DRIVERS)/d6800.o		\
 	$(MESS_DRIVERS)/d6809.o		\
@@ -1767,10 +1772,10 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/mes.o		\
 	$(MESS_DRIVERS)/microdec.o	\
 	$(MESS_DRIVERS)/micronic.o	\
-	$(MESS_DRIVERS)/mikrolab.o	\
 	$(MESS_DRIVERS)/mk14.o		\
 	$(MESS_DRIVERS)/mmd1.o		\
 	$(MESS_DRIVERS)/mod8.o		\
+	$(MESS_DRIVERS)/mstation.o	\
 	$(MESS_DRIVERS)/mycom.o		\
 	$(MESS_DRIVERS)/okean240.o	\
 	$(MESS_DRIVERS)/p8k.o		\
@@ -1860,10 +1865,12 @@ $(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 $(MESS_DRIVERS)/aim65_40.o:	$(MESS_LAYOUT)/aim65_40.lh
 $(MESS_DRIVERS)/amico2k.o:	$(MESS_LAYOUT)/amico2k.lh
+$(MESS_DRIVERS)/babbage.o:	$(MESS_LAYOUT)/babbage.lh
 $(MESS_DRIVERS)/beta.o:		$(MESS_LAYOUT)/beta.lh
 $(MESS_DRIVERS)/bob85.o:	$(MESS_LAYOUT)/bob85.lh
 $(MAME_DRIVERS)/cdi.o:		$(MAME_LAYOUT)/cdi.lh
 $(MESS_DRIVERS)/chessmst.o:	$(MESS_LAYOUT)/chessmst.lh
+$(MESS_DRIVERS)/cvicny.o:	$(MESS_LAYOUT)/cvicny.lh
 $(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/cosmicos.o:	$(MESS_LAYOUT)/cosmicos.lh
 $(MESS_DRIVERS)/c80.o:		$(MESS_LAYOUT)/c80.lh

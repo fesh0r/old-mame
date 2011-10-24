@@ -15,8 +15,7 @@
 
 class coco_232_device :
 		public device_t,
-		public device_cococart_interface,
-		public device_slot_card_interface
+		public device_cococart_interface
 {
 public:
 		// construction/destruction
@@ -31,7 +30,7 @@ protected:
 		virtual DECLARE_WRITE8_MEMBER(write);
 private:
         // internal state
-		acia6551_device *m_uart;
+		required_device<acia6551_device> m_uart;
 };
 
 

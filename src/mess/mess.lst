@@ -625,7 +625,6 @@ px4	   // 1985 Epson PX-4
 px4p	  // 1985 Epson PX-4+
 px8
 qx10
-qc10
 ehx20
 
 // IBM PC & Clones
@@ -874,6 +873,7 @@ ti99_8e   // 1983 TI-99/8 with 50Hz video
 // TI 99 clones
 tutor	  // 1983? Tomy Tutor
 pyuuta	// 1982 Tomy Pyuuta
+pyuutajr	// 1982 Tomy Pyuuta Jr.
 geneve	// 1987? Myarc Geneve 9640
 ti99_4p   // 1996 SNUG 99/4P (a.k.a. SGCPU)
 
@@ -922,6 +922,7 @@ pc8801ma
 pc8801ma2
 pc8801mc
 pc88va
+pc88va2
 
 pc100
 
@@ -1691,6 +1692,14 @@ mk2	   // Chess Champion MK II
 // Novag
 ssystem3  // Chess Champion Super System III / MK III
 supercon
+sfortea  // 1987 Novag Super Forte A Chess Computer
+sforteb  // 1988 Novag Super Forte B Chess Computer
+sforteba // 1988 Novag Super Forte B Chess Computer (ALT)
+sexpertb // 1988 Novag Expert B Chess Computer
+sfortec  // 1989 Novag Super Forte C Chess Computer
+sexpertc // 1989 Novag Super Expert C Chess Computer
+diablo68 // 1991 Novag Diablo 68000 Chess Computer
+
 
 // Hegener & Glaser Munich
 //  mephisto  // Mephisto
@@ -1708,9 +1717,30 @@ dallas16      // Dallas
 dallas32      // Dallas
 roma      // Roma
 roma32    // Roma
-polgar      // Polgar
-milano      // Milano
+polgar   // 1986 Mephisto Polgar Schachcomputer
+alm16    // 1988 Mephisto Almeria 68000
+alm32    // 1988 Mephisto Alimera 68020
+academy  // 1989 Mephisto Academy Schachcomputer
+megaiv   // 1989 Mephisto Mega IV Schachcomputer
+milano   // 1989 Mephisto Milano Schachcomputer
+//montec4  // 1989 Mephisto Monte Carlo IV
+lyon16   // 1990 Mephisto Lyon 68000
+lyon32   // 1990 Mephisto Lyon 68020
+monteciv // 1990 Mephisto Monte Carlo IV LE Schachcomputer
+van16    // 1991 Mephisto Vancouver 68000
+van32    // 1991 Mephisto Vancouver 68020
+gen32    // 1993 Mephisto Genius030 V4.00
+gen32_41 // 1993 Mephisto Genius030 V4.01
+berlinp  // 1994 Mephisto Berlin Pro 68020
+bpl32    // 1996 Mephisto Berlin Pro London Upgrade V5.00
+lond020  // 1996 Mephisto London 68020 32 Bit
+lond030  // 1996 Mephisto Genius030 London Upgrade V5.00
 
+// Saitek
+risc // Saitek 2500 14MHZ (skeleton)
+
+// TASC Final Chess Card
+finalchs // skeleton
 
 // JAKKS Pacific, Inc. / HotGen, Ltd.
 batmantv	// The Batman, 2004
@@ -2011,3 +2041,7 @@ digel804
 ep804
 uzebox
 sitcom
+babbage
+cvicny
+pc486mu
+mstation
