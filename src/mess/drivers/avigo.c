@@ -55,7 +55,7 @@
 			- Found a way to emulate the touchscreen panel out of the screen
     		  area (the six buttons at the bottom)
 			- Alarm doesn't work
-			- Add the facility to load app file into flash memory
+			- Load app files causes the NVRAM corruption.
 			- Serial communications and IR port.
 
             I don't have any documentation on the hardware, so a lot of this
@@ -71,6 +71,7 @@
 
 #include "emu.h"
 #include "includes/avigo.h"
+#include "avigo.lh"
 
 
 #define AVIGO_LOG 0
@@ -678,7 +679,7 @@ static INPUT_PORTS_START(avigo)
 	PORT_BIT(0x3ff, 0x060, IPT_LIGHTGUN_X) PORT_SENSITIVITY(100) PORT_CROSSHAIR(X, 1, 0, 0) PORT_MINMAX(0x060, 0x3a0) PORT_KEYDELTA(10) PORT_PLAYER(1)				PORT_CHANGED_MEMBER( DEVICE_SELF, avigo_state, pen_move_irq, NULL )
 
 	PORT_START("POSY") /* Mouse - Y AXIS */
-	PORT_BIT(0x3ff, 0x044, IPT_LIGHTGUN_Y) PORT_SENSITIVITY(100) PORT_CROSSHAIR(Y, 1, 0, 0) PORT_MINMAX(0x044, 0x350) PORT_INVERT PORT_KEYDELTA(10) PORT_PLAYER(1)	PORT_CHANGED_MEMBER( DEVICE_SELF, avigo_state, pen_move_irq, NULL )
+	PORT_BIT(0x3ff, 0x044, IPT_LIGHTGUN_Y) PORT_SENSITIVITY(100) PORT_CROSSHAIR(Y, 1, 0, 0) PORT_MINMAX(0x044, 0x3a6) PORT_INVERT PORT_KEYDELTA(10) PORT_PLAYER(1)	PORT_CHANGED_MEMBER( DEVICE_SELF, avigo_state, pen_move_irq, NULL )
 INPUT_PORTS_END
 
 /* F4 Character Displayer */
@@ -812,6 +813,53 @@ static NVRAM_HANDLER(avigo)
 	}
 }
 
+
+static QUICKLOAD_LOAD(avigo)
+{
+	avigo_state *state = image.device().machine().driver_data<avigo_state>();
+	address_space* flash1 = state->m_flashes[1]->memory().space(0);
+	int app_page;
+
+	// search the first empty page
+	for (app_page = (0x60000>>14) + 1; app_page<0x40; app_page++)
+	{
+		bool empty_page = true;
+
+		for (int offset=0; offset<0x4000; offset++)
+		{
+			if (flash1->read_byte((app_page<<14) + offset) != 0xff)
+			{
+				empty_page = false;
+				break;
+			}
+		}
+
+		if (empty_page)
+			break;
+	}
+
+	// if there is the required free space installs the application
+	if ((app_page + (image.length()>>14)) < 0x40)
+	{
+		logerror("Application loaded at 0x%05x-0x%05x\n", app_page<<14, (app_page<<14) + (UINT32)image.length());
+
+		// copy app file into flash memory
+		image.fread((UINT8*)state->m_flashes[1]->space()->get_read_ptr(app_page<<14), image.length());
+
+		// update the application ID
+		flash1->write_byte((app_page<<14) + 0x1a5, 0x80 + (app_page - 0x18));
+
+		// reset the CPU for allow at the Avigo OS to recognize the installed app
+		state->m_warm_start = 1;
+		state->m_maincpu->reset();
+
+		return IMAGE_INIT_PASS;
+	}
+
+	return IMAGE_INIT_FAIL;
+}
+
+
 static MACHINE_CONFIG_START( avigo, avigo_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 4000000)
@@ -826,9 +874,9 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MCFG_SCREEN_SIZE(AVIGO_SCREEN_WIDTH, AVIGO_SCREEN_HEIGHT)
-	MCFG_SCREEN_VISIBLE_AREA(0, AVIGO_SCREEN_WIDTH-1, 0, AVIGO_SCREEN_HEIGHT-1)
-	MCFG_DEFAULT_LAYOUT(layout_lcd)
+	MCFG_SCREEN_SIZE(AVIGO_SCREEN_WIDTH, AVIGO_SCREEN_HEIGHT + AVIGO_PANEL_HEIGHT)
+	MCFG_SCREEN_VISIBLE_AREA(0, AVIGO_SCREEN_WIDTH-1, 0, AVIGO_SCREEN_HEIGHT + AVIGO_PANEL_HEIGHT -1)
+	MCFG_DEFAULT_LAYOUT(layout_avigo)
 
 	MCFG_GFXDECODE(avigo)
 	MCFG_PALETTE_LENGTH(AVIGO_NUM_COLOURS)
@@ -858,6 +906,9 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 
 	// IRQ 4 is generated every second, used for auto power off
 	MCFG_TIMER_ADD_PERIODIC("1hz_timer", avigo_1hz_timer, attotime::from_hz(1))
+
+	/* quickload */
+	MCFG_QUICKLOAD_ADD("quickload", avigo, "app", 0)
 MACHINE_CONFIG_END
 
 

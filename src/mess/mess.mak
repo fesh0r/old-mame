@@ -566,6 +566,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/ne1000.o	\
 	$(MESS_MACHINE)/ne2000.o	\
 	$(MESS_MACHINE)/wd1772.o	\
+	$(MESS_MACHINE)/3c503.o		\
 
 
 
@@ -1136,6 +1137,8 @@ $(MESSOBJ)/magnavox.a:			\
 $(MESSOBJ)/mattel.a:			\
 	$(MESS_DRIVERS)/aquarius.o	\
 	$(MESS_VIDEO)/aquarius.o	\
+	$(MESS_DRIVERS)/juicebox.o	\
+	$(MESS_MACHINE)/s3c44b0.o	\
 
 $(MESSOBJ)/matsushi.a:			\
 	$(MESS_DRIVERS)/jr100.o		\
@@ -1865,6 +1868,7 @@ $(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 $(MESS_DRIVERS)/aim65_40.o:	$(MESS_LAYOUT)/aim65_40.lh
 $(MESS_DRIVERS)/amico2k.o:	$(MESS_LAYOUT)/amico2k.lh
+$(MESS_DRIVERS)/avigo.o:	$(MESS_LAYOUT)/avigo.lh
 $(MESS_DRIVERS)/babbage.o:	$(MESS_LAYOUT)/babbage.lh
 $(MESS_DRIVERS)/beta.o:		$(MESS_LAYOUT)/beta.lh
 $(MESS_DRIVERS)/bob85.o:	$(MESS_LAYOUT)/bob85.lh

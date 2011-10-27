@@ -115,6 +115,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="bustamovep" cloneof="pbobble">
+		<description>Bust-A-Move Pocket (Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="bustmove.bin" size="1048576" crc="4c2160bc" sha1="fdef7891c5d5b211b6f7a4da4830c42d86d98d74" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<!-- Id: NeoP00750 - Developer: UEP Systems - Releases: 2000-02-24 (JPN) - Alt Title: クールボーダーズ ポケット -->
 	<software name="coolboar">
 	<!-- NGPC only -->
@@ -216,6 +227,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="darkarmsp" cloneof="darkarms">
+		<description>Dark Arms - Beast Buster 1999 (Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="beastbust.bin" size="2097152" crc="1bab21a4" sha1="2909cf69b42474547726b3e30f1a22ae17f76773" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<!-- Id: NeoP01030 - Developer: IOSYS - Releases: 2000-08-10 (JPN) - Alt Title: デルタワープ -->
 	<software name="deltawrp">
 		<description>Delta Warp (Jpn)</description>
@@ -293,6 +315,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		<part name="cart" interface="ngp_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="dive alert - burn hen (japan).bin" size="2097152" crc="c213941d" sha1="66624028ec986084a95237c74173849a8a729398" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="divealrmjp" cloneof="divealrm">
+		<description>Dive Alert - Barn Hen (Jpn, Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="divealert.bin" size="2097152" crc="d9817a88" sha1="03e1f5b60c4fdc7665932c1c51e965788d4895f5" offset="000000" />
 			</dataarea>
 		</part>
 	</software>
@@ -413,6 +446,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="fatfuryd" cloneof="fatfury">
+		<description>Pocket Fighting Series - Garou Densetsu First Contact ~ Fatal Fury F-Contact (World, Demo)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="fatal fury f-contact (world) (en,ja) (demo).bin" size="2097152" crc="e7e5d6e8" sha1="d33da5587a27344221a4f925867047addaafa97c" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<!-- Id: NeoP00970 - Developer: SNK - Releases: 2000-06-08 (JPN) - Alt Title: ガンバレねおぽけくん(仮) -->
 	<software name="ganbaren">
 	<!-- NGPC only -->
@@ -492,13 +536,25 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
-	<software name="kofr2p" cloneof="kofr2">
-		<description>Pocket Fighting Series - King of Fighters R-2 (World, Prototype)</description>
+	<software name="kofr2d" cloneof="kofr2">
+		<description>Pocket Fighting Series - King of Fighters R-2 (World, Demo)</description>
 		<year>1999</year>
 		<publisher>SNK</publisher>
 		<part name="cart" interface="ngp_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="king of fighters r-2 (world) (en,ja) (beta).bin" size="2097152" crc="e3ae79c0" sha1="6d138c34f3dc3c7f1b943c1f57f885007edfb12a" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="kofr2d2" cloneof="kofr2">
+    <!-- This has a Version 2 on the cart label, but it probably refers to Demo Version 2, rather than KOFR2 Version 2, given the title screen is unchanged -->
+		<description>Pocket Fighting Series - King of Fighters R-2 (World, Demo Version 2)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="king of fighters r-2 version 2 (world) (en,ja) (demo).bin" size="2097152" crc="76544c97" sha1="6b4414ebc99c72cc6c79aa7a01c38378b9ccd058" offset="000000" />
 			</dataarea>
 		</part>
 	</software>
@@ -544,6 +600,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="magdropp" cloneof="magdrop">
+		<description>Magical Drop Pocket (Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="magicaldrop.bin" size="1048576" crc="9fe98b78" sha1="46e41662e5f1102d9800fb5499a51b0bd48e708c" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<!-- Id: NeoP00480 - Developer: Sakata SAS - Releases: 1999-06-24 (JPN) - Alt Title: マジカルドロップ ポケット -->
 	<software name="magdropj" cloneof="magdrop">
 		<description>Magical Drop Pocket (Jpn)</description>
@@ -559,13 +626,13 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
-	<software name="magdropjt" cloneof="magdrop">
-		<description>Magical Drop Pocket Taikenban (Jpn)</description>
+	<software name="magdropjd" cloneof="magdrop">
+		<description>Magical Drop Pocket (Demo)</description>
 		<year>1999</year>
 		<publisher>Data East</publisher>
 		<part name="cart" interface="ngp_cart">
 			<dataarea name="rom" size="1048576">
-				<rom name="magical drop pocket taikenban (japan).bin" size="1048576" crc="8d4bda47" sha1="6d01298497ec1776b8d27123eff866c1cf25b744" offset="000000" />
+				<rom name="magical drop pocket (japan) (demo).bin" size="1048576" crc="d76f1a47" sha1="8e8da9345c37800d6f78619b096b65ee88dfe30d" offset="000000" />
 			</dataarea>
 		</part>
 	</software>
@@ -649,6 +716,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="mslug2ndd" cloneof="mslug2nd">
+		<description>Metal Slug - 2nd Mission (Demo)</description>
+		<year>2000</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="metal slug - 2nd mission (world) (en,ja) (demo).bin" size="2097152" crc="8b1647d4" sha1="099a835930209a6ec15b7e9092c086b6e7a4ad9e" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="neo21">
 		<description>Pocket Casino Series - Neo 21 (Euro, USA)</description>
 		<year>2000</year>
@@ -669,6 +747,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		<part name="cart" interface="ngp_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="neo baccarat - real casino series (world).bin" size="1048576" crc="22aab454" sha1="80218804eb591e50831d098b5bd213a3586849a5" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="neobaccap" cloneof="neobacca">
+		<description>Pocket Casino Series - Neo Baccarat (Prototype)</description>
+		<year>2000</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="baccarat.bin" size="1048576" crc="2a63b5a5" sha1="c19b992a91b1020e8f3b6c24fac97ec9d73f52b8" offset="000000" />
 			</dataarea>
 		</part>
 	</software>
@@ -996,6 +1085,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="prtymailp" cloneof="prtymail">
+		<description>Party Mail (Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="partymail.bin" size="2097152" crc="f2284a95" sha1="d781a1a1e74ba822249d38dbe60e160a29ec2824" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<!-- Id: NeoP00740 - Developer: Aruze - Releases: 2000-02-10 (JPN) - Alt Title: パチスロ アルゼ王国ポケット アステカ -->
 	<software name="pslotazt">
 	<!-- NGPC only -->
@@ -1205,6 +1305,17 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		</part>
 	</software>
 
+	<software name="puzzlnk2p" cloneof="puzzlnk2">
+		<description>Puzzle Link 2 (Prototype)</description>
+		<year>2000</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="puzzlelnk2.bin" size="1048576" crc="3ba84cc0" sha1="715aa0a18260c5e498f84f23febc607d6a73eff4" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<!-- Id: NeoP00290 - Developer: Yumekobo - Releases: 1999-03-19 (JPN) - Alt Title: 連結パズル つなげてポンッ！ Color -->
 	<software name="tsunapnc" cloneof="puzzlink">
 		<description>Renketsu Puzzle Tsunagete Pon! Color (Jpn)</description>
@@ -1261,6 +1372,28 @@ NEOP00220 NeoGeo Cup '98 Plus (Euro) [confirmed?]
 		<part name="cart" interface="ngp_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="shanghai mini (world) (en,ja).bin" size="1048576" crc="90732d53" sha1="3e3e625852ac4997d3e3739e59c16e9a74f40f19" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="shanghaipu" cloneof="shanghai">
+		<description>Shanghai Mini (USA, Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="shminiusp.bin" size="1048576" crc="920af0ed" sha1="83955172d78b5dc855b651e574132cfdf8d3d675" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="shanghaipj" cloneof="shanghai">
+		<description>Shanghai Mini (Jpn, Prototype)</description>
+		<year>1999</year>
+		<publisher>SNK</publisher>
+		<part name="cart" interface="ngp_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="shminijpp.bin" size="1048576" crc="79620c3f" sha1="cd72fc48d6981d3b521d9ef2a339664d0c229f3c" offset="000000" />
 			</dataarea>
 		</part>
 	</software>
