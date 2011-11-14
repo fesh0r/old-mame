@@ -1,3 +1,122 @@
+0.144
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 04526: [Documentation] m4bigapl and clones: The correct description
+         is "The Big Apple (Mdm)".
+- 04525: [Documentation] ep_smoke: The correct description is "Holy
+         Smoke! (Impulse) (EPOCH)".
+- 04527: [Documentation] m4uuaw: The correct description is "Up Up and
+         Away (Barcrest) (MPU4)".
+- 04522: [Documentation] m5bwaves: The correct description is "Brain
+         Waves (Barcrest) (MPU5)".
+- 04523: [Documentation] m4click: The correct description is "Clickity
+         Click (Barcrest) (MPU4)".
+- 04524: [Documentation] j6rh6: The correct year is 2002.
+- 04520: [Documentation] j2supsft: The correct description is
+         "Supashifta (Jpm) (MPS)".
+- 04519: [Documentation] nudgeit: The correct description is "Nudge-
+         It".
+- 04521: [Documentation] j6cas5: The correct description is "Casino
+         5ive Liner (Jpm) (IMPACT)".
+- 04500: [Documentation] ep_simbg: The correct description is
+         "SIMPSONS - Duff Beer Guide"
+- 04517: [Documentation] j2cshfil: The correct description is "Cash-
+         Filla (Pcp (MPS)".
+- 04516: [Documentation] j5suphi: The correct description is "Super
+         Hi-Lo (Jpm) (SYSTEM5)."
+- 04515: [Documentation] megaaton: The correct name is "Meg Aaton".
+- 04514: [Documentation] mousn_l1, mousn_l4, mousn_lu, mousn_lx: The
+         correct description is "Mousin' Around!".
+- 00504: [Graphics] hharryu, dkgensan: They have some background
+         misplacement. (Roberto Zandonà)
+
+Source Changes
+--------------
+Fixed up the flicky and clones (system1.c) Dip Switches after a fair
+amount of playtesting.  Also, added some specific set notes related to
+oddness/differences observed. [Tafoid]
+
+Start of input ports cleanup in the Toaplan drivers:
+[Alex Jackson, kanikani]
+ * Removed some unused macros from toaplipt.h
+ * Fixed polarity of DIPLOCATIONs in toaplan2.c
+ * Added some missing inputs
+
+Fixed tms99xx STCR command [Michael Zapf]
+
+xmultipl: fixed tilemaps offsets [Roberto Zandona']
+
+SDL: Add TAP/TUN networking capability and shell script for
+configuration [Carl]
+
+Added some common country and language names to the default strings,
+and removed some unused and/or redundant strings [Alex Jackson]
+
+Various improvement to Amiga FDC system [O. Galibert]
+
+ipf: Describe the remaining fields [O. Galibert, SPS]
+
+Rewrote NCR539x SCSI emulation from scratch [R. Belmont]
+
+More Toaplan input fixes: [Alex Jackson, kanikani]
+ * Added DIPLOCATIONs and missing inputs to twincobr.c, wardner.c,
+    toaplan2.c
+ * Added information about ingame test/debug features to comments in
+    toaplan2.c
+* Unified toaplan2.c inputs with the other Toaplan drivers
+
+Converted neogeo MVS driver to use software lists in preparation for
+multislot support [David Haywood]
+
+neogeo.c: fixed kof98 on non-Windows builds [Alex Jackson]
+
+Added per-channel volume control to ES5505/ES5506 sound chip, and
+hooked it up to the Taito F3 driver [Angelo Salese]
+
+Added a preliminary ES5510 DSP DRAM input/output latches support in
+Taito F3 driver, fixes sound in Ring Rage and Riding Fight
+[Angelo Salese]
+
+Implemented FRC hook-up to Sega System 24 HW, fixes missing SFXs to
+Bonanza Bros. [Angelo Salese, Phil Bennett, Charles MacDonald]
+
+6522VIA: Implemented CA2 pulse output mode, and output interrupt state
+only when it changes. [Curt Coder]
+
+6532RIOT: Output interrupt state only when it changes. [Curt Coder]
+
+hikaru: added 0.84 BIOS [Arzeno Fabrice]
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Dirt Dash [Phil Bennett, hap]
+Galaxy Game [Mariusz Wojcieszek, hap, Quantum Leaper]
+
+
+New clones added
+----------------
+King of the Monsters 2 - The Next Thing (prototype)
+  [Tormod, Kevin Eshbach, f205v, Smitdogg, The Dumping Union]
+Alien Front (Rev T) [Arzeno Fabrice]
+House of the Dead 2 (prototype) [Arzeno Fabrice]
+18 Wheeler (Rev. A) [Arzeno Fabrice]
+Zero Team (set 5, Korea, Dream Soft license) [Guru, gp-lee]
+
+
+New games marked as GAME_NOT_WORKING
+------------------------------------
+Gunbalina (GNN1 Ver.A)
+  [Yohji, hap, Krusty, B. Munger, Brian Troha, D. Edwardson, Kevin
+  Eshbach, R. Weidinger, J. Kretschmer, Smitdogg, The Dumping Union]
+Arcana Heart Full [Tormod, Smitdogg, The Dumping Union]
+Melty Blood Actress Again [The Dumping Union]
+
+
+
 0.143u9
 -------
 
@@ -140,6 +259,11 @@ Card: Added PIAs connections layout, added 'Allow Autohold' DIP
 switch. [Roberto Fresca, Rob Ragon]
 
 Various improvements to Magic the Gathering: Armageddon [Phil Bennett]
+
+NVRAM devices each have their own files, when applicable.  The output
+of such will be "NVRAM\setname\devicefile.".  Some cases will still use
+the old "NVRAM\setname.NV" method until they have been converted
+properly. [smf]
 
 Made some fixes/additions to the input system [kanikani]
  * Added the possibility to press contradictory direction digital
@@ -291,7 +415,7 @@ Burning Fight (prototype) [Brian Hargrove]
 New games marked as GAME_NOT_WORKING
 ------------------------------------
 Unknown TMS9980 Poker Game [Roberto Fresca, Team Europe]
-Jyunai 2 - White Love Story [alien_mame, The Dumping Union]
+Junai 2 - White Love Story [alien_mame, The Dumping Union]
 Namco Stars [Yasuhiro Ogawa]
 Sega's Golden Poker Series "Joker's Wild" [Yasuhiro Ogawa]
 Real Puncher [Phil Bennett, Chris Hardy]
@@ -430,6 +554,7 @@ Cruis'n Exotica v1.0 [Brian Troha, The Dumping Union]
 NBA Jam T.E. Nani Edition (rev 5.2 8/11/95) [TerryMasters]
 Muroge Monaco (set 3) [Roberto Fresca, EMMA Italian Dumping Team]
 Butasan - Pig's & Bomber's (Japan, English) [Bensonrad]
+Aqua Jack (US) [ShouTime]
 
 
 New games marked as GAME_NOT_WORKING
@@ -1013,7 +1138,8 @@ Various core and tools memory leaks fixes [Oliver Stoneberg]
 taito_b.c: Major input port restructure. Fixed several incorrect dip
 switches and coinage settings. Made use of PORT_INCLUDE and
 PORT_MODIFY for regional sets to add correct regional coinage as
-needed.  Added dipswitch locations all sets in the driver. [Brian Troha]
+needed.  Added dipswitch locations to all sets in the driver.
+[Brian Troha]
 
 flower.c: further improved interrupts [hap]
 
@@ -1025,8 +1151,8 @@ OS/2 build fixes [K.O. Myung-Hun]
 
 taito_f2.c: Fixed some incorrect dip switches. Made use of
 PORT_INCLUDE and PORT_MODIFY for regional sets to add correct regional
-coinage as needed.  Added dipswitch locations all sets in the driver.
-[Brian Troha]
+coinage as needed.  Added dipswitch locations to all sets in the
+driver. [Brian Troha]
 
 Updated romload so devices are loaded from separate files 
 [Miodrag Milanovic]
@@ -1089,7 +1215,7 @@ galspnbl.c: Corrected dipswitches and added dipswitch locations to
 Gals Pinball & Hot Pinball [Brian Troha]
 
 fuukifg3.c: Corrected dipswitches and added dipswitch locations to
-Asura Blade & Asura Blaster [Brian Troha]
+Asura Blade & Asura Buster [Brian Troha]
 
 Update Dwarf's Den/Electrocoin hardware pcb diagram and notes; Renamed
 "Dwarf's den" to "Draw Poker III / Dwarf's den", as that is the set
