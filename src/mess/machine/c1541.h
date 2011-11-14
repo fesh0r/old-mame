@@ -34,36 +34,6 @@
 
 
 //**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_C1540_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, C1540, 0) \
-	c1541_device::static_set_config(*device, _address);
-
-#define MCFG_C1541_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, C1541, 0) \
-	c1541_device::static_set_config(*device, _address);
-
-#define MCFG_C1541C_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, C1541C, 0) \
-	c1541_device::static_set_config(*device, _address);
-
-#define MCFG_C1541II_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, C1541II, 0) \
-	c1541_device::static_set_config(*device, _address);
-
-#define MCFG_SX1541_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, SX1541, 0) \
-	c1541_device::static_set_config(*device, _address);
-
-#define MCFG_OC118_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, OC118, 0) \
-	c1541_device::static_set_config(*device, _address);
-
-
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -102,9 +72,6 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( atn_w );
 	DECLARE_WRITE_LINE_MEMBER( byte_w );
 
-	// inline configuration helpers
-	static void static_set_config(device_t &device, int address);
-
 	// optional information overrides
 	virtual const rom_entry *device_rom_region() const;
 	virtual machine_config_constructor device_mconfig_additions() const;
@@ -126,7 +93,6 @@ protected:
 	required_device<via6522_device> m_via1;
 	required_device<c64h156_device> m_ga;
 	required_device<device_t> m_image;
-	cbm_iec_device *m_bus;
 
 	// IEC bus
 	int m_data_out;							// serial data out
@@ -135,7 +101,6 @@ protected:
 	int m_via0_irq;							// VIA #0 interrupt request
 	int m_via1_irq;							// VIA #1 interrupt request
 
-	int m_address;
 	int m_variant;
 };
 

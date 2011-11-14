@@ -24,7 +24,7 @@
 #include "machine/pit8253.h"
 #include "video/pc_vga.h"
 #include "video/pc_cga.h"
-#include "video/pc_ega.h"
+#include "video/isa_ega.h"
 
 #include "machine/idectrl.h"
 #include "machine/at_keybc.h"
@@ -157,7 +157,6 @@ extern const i8237_interface at_dma8237_2_config;
 
 
 DRIVER_INIT( atcga );
-DRIVER_INIT( atega );
 DRIVER_INIT( atvga );
 
 MACHINE_START( at );

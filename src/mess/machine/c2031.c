@@ -36,6 +36,7 @@ enum
 
 const device_type C2031 = &device_creator<c2031_device>;
 
+
 //-------------------------------------------------
 //  device_config_complete - perform any
 //  operations now that the configuration is
@@ -45,20 +46,6 @@ const device_type C2031 = &device_creator<c2031_device>;
 void c2031_device::device_config_complete()
 {
 	m_shortname = "c2031";
-}
-
-
-//-------------------------------------------------
-//  static_set_config - configuration helper
-//-------------------------------------------------
-
-void c2031_device::static_set_config(device_t &device, int address)
-{
-	c2031_device &c2031 = downcast<c2031_device &>(device);
-
-	assert((address > 7) && (address < 12));
-
-	c2031.m_address = address;
 }
 
 
@@ -91,7 +78,7 @@ static ADDRESS_MAP_START( c2031_mem, AS_PROGRAM, 8, c2031_device )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_0_TAG, via6522_device, read, write)
 	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_1_TAG, via6522_device, read, write)
-	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) // AM_ROM
+	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) AM_ROM AM_REGION(M6502_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -476,7 +463,6 @@ c2031_device::c2031_device(const machine_config &mconfig, const char *tag, devic
 	  m_via1(*this, M6522_1_TAG),
 	  m_ga(*this, C64H156_TAG),
 	  m_image(*this, FLOPPY_0),
-	  m_bus(*this->owner(), IEEE488_TAG),
 	  m_nrfd_out(1),
 	  m_ndac_out(1),
 	  m_atna(1),
@@ -492,10 +478,6 @@ c2031_device::c2031_device(const machine_config &mconfig, const char *tag, devic
 
 void c2031_device::device_start()
 {
-	// map ROM
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
-	program->install_rom(0x8000, 0xbfff, 0, 0x4000, subregion(M6502_TAG)->base());
-
 	// install image callbacks
 	floppy_install_unload_proc(m_image, c2031_device::on_disk_change);
 	floppy_install_load_proc(m_image, c2031_device::on_disk_change);

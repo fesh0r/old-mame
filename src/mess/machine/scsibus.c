@@ -32,7 +32,7 @@ struct _scsibus_t
 {
 	SCSIInstance            *devices[8];
 	const SCSIBus_interface *interface;
-	
+
 	devcb_resolved_write_line out_bsy_func;
 	devcb_resolved_write_line out_sel_func;
 	devcb_resolved_write_line out_cd_func;
@@ -181,8 +181,13 @@ UINT8 scsi_data_r(device_t *device)
             break;
     }
 
-    LOG(2,"scsi_data_r : phase=%s, data_idx=%d, cmd_idx=%d\n",phasenames[bus->phase],bus->data_idx,bus->cmd_idx);
+    LOG(2,"scsi_data_r : %02x phase=%s, data_idx=%d, cmd_idx=%d\n",result,phasenames[bus->phase],bus->data_idx,bus->cmd_idx);
     return result;
+}
+
+READ8_DEVICE_HANDLER( scsi_data_r )
+{
+	return scsi_data_r(device);
 }
 
 void scsi_data_w(device_t *device, UINT8 data)
@@ -240,6 +245,11 @@ void scsi_data_w(device_t *device, UINT8 data)
     }
 }
 
+WRITE8_DEVICE_HANDLER( scsi_data_w )
+{
+	scsi_data_w(device, data);
+}
+
 /* Get/Set lines */
 
 UINT8 get_scsi_lines(device_t *device)
@@ -271,6 +281,15 @@ UINT8 get_scsi_line(device_t *device, UINT8 lineno)
     return result;
 }
 
+READ_LINE_DEVICE_HANDLER( scsi_bsy_r ) { return get_scsi_line(device, SCSI_LINE_BSY); }
+READ_LINE_DEVICE_HANDLER( scsi_sel_r ) { return get_scsi_line(device, SCSI_LINE_SEL); }
+READ_LINE_DEVICE_HANDLER( scsi_cd_r ) { return get_scsi_line(device, SCSI_LINE_CD); }
+READ_LINE_DEVICE_HANDLER( scsi_io_r ) { return get_scsi_line(device, SCSI_LINE_IO); }
+READ_LINE_DEVICE_HANDLER( scsi_msg_r ) { return get_scsi_line(device, SCSI_LINE_MSG); }
+READ_LINE_DEVICE_HANDLER( scsi_req_r ) { return get_scsi_line(device, SCSI_LINE_REQ); }
+READ_LINE_DEVICE_HANDLER( scsi_ack_r ) { return get_scsi_line(device, SCSI_LINE_RESET); }
+READ_LINE_DEVICE_HANDLER( scsi_rst_r ) { return get_scsi_line(device, SCSI_LINE_ACK); }
+
 void set_scsi_line(device_t *device, UINT8 line, UINT8 state)
 {
     scsibus_t   *bus = get_token(device);
@@ -288,6 +307,15 @@ void set_scsi_line(device_t *device, UINT8 line, UINT8 state)
             set_scsi_line_now(device,line,state);
     }
 }
+
+WRITE_LINE_DEVICE_HANDLER( scsi_bsy_w ) { return set_scsi_line(device, SCSI_LINE_BSY, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_sel_w ) { return set_scsi_line(device, SCSI_LINE_SEL, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_cd_w ) { return set_scsi_line(device, SCSI_LINE_CD, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_io_w ) { return set_scsi_line(device, SCSI_LINE_IO, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_msg_w ) { return set_scsi_line(device, SCSI_LINE_MSG, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_req_w ) { return set_scsi_line(device, SCSI_LINE_REQ, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_ack_w ) { return set_scsi_line(device, SCSI_LINE_ACK, state); }
+WRITE_LINE_DEVICE_HANDLER( scsi_rst_w ) { return set_scsi_line(device, SCSI_LINE_RESET, state); }
 
 static void set_scsi_line_now(device_t *device, UINT8 line, UINT8 state)
 {
@@ -740,7 +768,7 @@ static void scsi_out_line_change_now(device_t *device, UINT8 line, UINT8 state)
 
     if(bus->interface->line_change_cb!=NULL)
         bus->interface->line_change_cb(device,line,state);
-	
+
 	switch (line)
 	{
 	case SCSI_LINE_BSY: bus->out_bsy_func(state); break;
@@ -923,7 +951,7 @@ static DEVICE_START( scsibus )
     bus->interface = (const SCSIBus_interface*)device->static_config();
 
 	memset(bus->devices, 0, sizeof(bus->devices));
-	
+
 	bus->out_bsy_func.resolve(bus->interface->out_bsy_func, *device);
 	bus->out_sel_func.resolve(bus->interface->out_sel_func, *device);
 	bus->out_cd_func.resolve(bus->interface->out_cd_func, *device);

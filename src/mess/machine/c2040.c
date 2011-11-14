@@ -11,6 +11,8 @@
 
     TODO:
 
+    - 8050/8250 only work when debugger is active!?
+
     - 2040 DOS 1 FDC rom (jumps to 104d while getting block header)
 
         FE70: jsr  $104D
@@ -86,8 +88,11 @@ void base_c2040_device::device_config_complete()
 	{
 	default:
 	case TYPE_2040:
-	case TYPE_3040:
 		m_shortname = "c2040";
+		break;
+
+	case TYPE_3040:
+		m_shortname = "c3040";
 		break;
 
 	case TYPE_4040:
@@ -110,20 +115,6 @@ void base_c2040_device::device_config_complete()
 
 
 //-------------------------------------------------
-//  static_set_config - configuration helper
-//-------------------------------------------------
-
-void base_c2040_device::static_set_config(device_t &device, int address)
-{
-	base_c2040_device &c2040 = downcast<base_c2040_device &>(device);
-
-	assert((address > 7) && (address < 12));
-
-	c2040.m_address = address - 8;
-}
-
-
-//-------------------------------------------------
 //  ROM( c2040 )
 //-------------------------------------------------
 
@@ -135,11 +126,10 @@ ROM_START( c2040 ) // schematic 320806
 
 	ROM_REGION( 0x400, M6504_TAG, 0 )
 	// RIOT DOS 1
-	//ROM_LOAD( "901466-02.uk3", 0x000, 0x400, BAD_DUMP /* parsed in from disassembly */ CRC(e1c86c43) SHA1(d8209c66fde3f2937688ba934ba968678a9d2ebb) )
-	ROM_LOAD( "901466-02.uk3", 0x000, 0x400, NO_DUMP)
+	ROM_LOAD( "901466-02.uk3", 0x000, 0x400, NO_DUMP )// BAD_DUMP CRC(e1c86c43) SHA1(d8209c66fde3f2937688ba934ba968678a9d2ebb) ) // parsed in from disassembly
 
 	ROM_REGION( 0x800, "gcr", 0)
-	ROM_LOAD( "901467.uk6",    0x2400, 0x0800, CRC(a23337eb) SHA1(97df576397608455616331f8e837cb3404363fa2) )
+	ROM_LOAD( "901467.uk6",    0x000, 0x800, CRC(a23337eb) SHA1(97df576397608455616331f8e837cb3404363fa2) )
 ROM_END
 
 
@@ -268,7 +258,7 @@ static ADDRESS_MAP_START( c2040_main_mem, AS_PROGRAM, 8, base_c2040_device )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x5000, 0x7fff) // AM_ROM
+	AM_RANGE(0x5000, 0x7fff) AM_ROM AM_REGION(M6502_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -285,7 +275,7 @@ static ADDRESS_MAP_START( c2040_fdc_mem, AS_PROGRAM, 8, base_c2040_device )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1c00, 0x1fff) // AM_ROM 6530
+	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION(M6504_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -302,7 +292,7 @@ static ADDRESS_MAP_START( c8050_main_mem, AS_PROGRAM, 8, base_c2040_device )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0c00) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0xc000, 0xffff) // AM_ROM
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(M6502_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -319,7 +309,7 @@ static ADDRESS_MAP_START( c8050_fdc_mem, AS_PROGRAM, 8, base_c2040_device )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1c00, 0x1fff) // AM_ROM 6530
+	AM_RANGE(0x1c00, 0x1fff) AM_ROM AM_REGION(M6504_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -336,7 +326,7 @@ static ADDRESS_MAP_START( sfd1001_fdc_mem, AS_PROGRAM, 8, base_c2040_device )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_SHARE("share4")
-	AM_RANGE(0x1800, 0x1fff) // AM_ROM
+	AM_RANGE(0x1800, 0x1fff) AM_ROM AM_REGION(M6504_TAG, 0)
 ADDRESS_MAP_END
 
 
@@ -488,7 +478,7 @@ READ8_MEMBER( base_c2040_device::riot1_pb_r )
 	UINT8 data = 0;
 
 	// device number selection
-	data |= m_address;
+	data |= m_address - 8;
 
 	// data accepted in
 	data |= m_bus->ndac_r() << 6;
@@ -1465,7 +1455,6 @@ base_c2040_device::base_c2040_device(const machine_config &mconfig, device_type 
 	  m_via(*this, M6522_TAG),
 	  m_image0(*this, FLOPPY_0),
 	  m_image1(*this, FLOPPY_1),
-	  m_bus(*this->owner(), IEEE488_TAG),
 	  m_drive(0),
 	  m_side(0),
 	  m_rfdo(1),
@@ -1544,32 +1533,15 @@ sfd1001_device::sfd1001_device(const machine_config &mconfig, const char *tag, d
 
 void base_c2040_device::device_start()
 {
-	address_space *main = m_maincpu->memory().space(AS_PROGRAM);
-	address_space *fdc = m_fdccpu->memory().space(AS_PROGRAM);
-
 	m_bit_timer = timer_alloc();
 
 	switch (m_variant)
 	{
 	default:
-		main->install_rom(0x5000, 0x7fff, subregion(M6502_TAG)->base());
-		fdc->install_rom(0x1c00, 0x1fff, subregion(M6504_TAG)->base());
-
-		initialize(2);
-		break;
-
-	case base_c2040_device::TYPE_8050:
-	case base_c2040_device::TYPE_8250:
-		main->install_rom(0xc000, 0xffff, subregion(M6502_TAG)->base());
-		fdc->install_rom(0x1c00, 0x1fff, subregion(M6504_TAG)->base());
-
 		initialize(2);
 		break;
 
 	case base_c2040_device::TYPE_SFD1001:
-		main->install_rom(0xc000, 0xffff, subregion(M6502_TAG)->base());
-		fdc->install_rom(0x1800, 0x1fff, subregion(M6504_TAG)->base());
-
 		initialize(1);
 		break;
 	}

@@ -20,7 +20,10 @@
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
 #include "machine/ieee488.h"
-#include "machine/devhelpr.h"
+#include "machine/c2031.h"
+#include "machine/c2040.h"
+#include "machine/c8280.h"
+#include "machine/d9060.h"
 
 
 
@@ -36,12 +39,8 @@
 //  INTERFACE CONFIGURATION MACROS
 //**************************************************************************
 
-#define MCFG_VIC1112_ADD(_daisy) \
-    MCFG_DEVICE_ADD(VIC1112_TAG, VIC1112, 0) \
-	MCFG_IEEE488_CONFIG_ADD(_daisy, vic1112_ieee488_intf)
-
-#define VIC1112_INTERFACE(name) \
-	const vic1112_interface (name) =
+#define MCFG_VIC1112_ADD() \
+    MCFG_DEVICE_ADD(VIC1112_TAG, VIC1112, 0)
 
 
 
@@ -65,9 +64,7 @@ public:
     // construction/destruction
     vic1112_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
-	DECLARE_WRITE_LINE_MEMBER( srq_w );
-
-	// not really public, but won't compile otherwise
+	// not really public
 	DECLARE_WRITE_LINE_MEMBER( via0_irq_w );
 	DECLARE_READ8_MEMBER( via0_pb_r );
 	DECLARE_WRITE8_MEMBER( via0_pb_w );
@@ -85,7 +82,7 @@ protected:
     // device-level overrides
     virtual void device_start();
 	virtual void device_reset();
-    virtual void device_config_complete();
+    virtual void device_config_complete() { m_shortname = "vic1112"; }
 
 private:
 	required_device<via6522_device> m_via0;
@@ -101,10 +98,6 @@ private:
 
 // device type definition
 extern const device_type VIC1112;
-
-
-// IEEE-488 interface
-extern const ieee488_stub_interface vic1112_ieee488_intf;
 
 
 

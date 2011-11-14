@@ -317,7 +317,7 @@ static const mos6526_interface cia_1_intf =
 	DEVCB_DEVICE_HANDLER("centronics", amiga_cia_1_porta_r),
 	DEVCB_NULL,												/* port A */
 	DEVCB_NULL,
-	DEVCB_DEVICE_MEMBER("fdc", amiga_fdc, control_w)		/* port B */
+	DEVCB_DEVICE_MEMBER("fdc", amiga_fdc, ciaaprb_w)		/* port B */
 };
 
 static const mos6526_interface cia_0_cdtv_intf =
@@ -359,6 +359,9 @@ static const tpi6525_interface cdtv_tpi_intf =
 	DEVCB_NULL
 };
 
+static SLOT_INTERFACE_START( amiga_floppies )
+	SLOT_INTERFACE( "35dd", FLOPPY_35_DD )
+SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_FRAGMENT( amiga_cartslot )
 	MCFG_CARTSLOT_ADD("cart")
@@ -373,6 +376,7 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 
 	MCFG_CPU_ADD("keyboard", M6502, XTAL_1MHz) /* 1 MHz? */
 	MCFG_CPU_PROGRAM_MAP(keyboard_mem)
+	MCFG_DEVICE_DISABLE()
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(59.997)
@@ -409,7 +413,12 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 	MCFG_MOS8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, cia_0_ntsc_intf)
 	MCFG_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK, cia_1_intf)
 
-	MCFG_AMIGA_FDC_ADD("fdc")
+	/* fdc */
+	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68000_NTSC_CLOCK)
+	MCFG_FLOPPY_DRIVE_ADD("fd0", amiga_floppies, "35dd", 0, amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fd1", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fd2", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fd3", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( a1000n, ntsc )
@@ -460,6 +469,10 @@ static MACHINE_CONFIG_DERIVED( cdtv, ntsc )
 	MCFG_DEVICE_REMOVE("cia_1")
 	MCFG_MOS8520_ADD("cia_0", CDTV_CLOCK_X1 / 40, cia_0_cdtv_intf)
 	MCFG_MOS8520_ADD("cia_1", CDTV_CLOCK_X1 / 4, cia_1_cdtv_intf)
+
+	/* fdc */
+	MCFG_DEVICE_MODIFY("fdc")
+	MCFG_DEVICE_CLOCK(CDTV_CLOCK_X1 / 4)
 MACHINE_CONFIG_END
 
 
@@ -469,6 +482,8 @@ static MACHINE_CONFIG_DERIVED( pal, ntsc )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_CLOCK( AMIGA_68000_PAL_CLOCK)
 
+	// Change the FDC clock too?
+
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_SIZE(228*4, 312)
@@ -477,6 +492,10 @@ static MACHINE_CONFIG_DERIVED( pal, ntsc )
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_MOS8520_ADD("cia_0", AMIGA_68000_PAL_CLOCK / 10, cia_0_pal_intf)
+
+	/* fdc */
+	MCFG_DEVICE_MODIFY("fdc")
+	MCFG_DEVICE_CLOCK(AMIGA_68000_PAL_CLOCK)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( a500p, pal )
@@ -498,7 +517,7 @@ MACHINE_CONFIG_END
 static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r )
 {
 	UINT8 ret = input_port_read(device->machine(), "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= device->machine().device<amiga_fdc>("fdc")->status_r();
+	ret |= device->machine().device<amiga_fdc>("fdc")->ciaapra_r();
 	return ret;
 }
 
@@ -566,21 +585,6 @@ static UINT16 amiga_read_joy1dat(running_machine &machine)
 	}
 }
 
-static UINT16 amiga_read_dskbytr(running_machine &machine)
-{
-	return machine.device<amiga_fdc>("fdc")->get_byte();
-}
-
-static void amiga_write_dsklen(running_machine &machine, UINT16 data)
-{
-	amiga_state *state = machine.driver_data<amiga_state>();
-	if ( data & 0x8000 ) {
-		if ( CUSTOM_REG(REG_DSKLEN) & 0x8000 )
-			machine.device<amiga_fdc>("fdc")->setup_dma();
-	}
-}
-
-
 static void amiga_reset(running_machine &machine)
 {
 	if (input_port_read(machine, "hardware") & 0x08)
@@ -603,7 +607,6 @@ static DRIVER_INIT( amiga )
 		ANGUS_CHIP_RAM_MASK,
 		amiga_read_joy0dat,	amiga_read_joy1dat,  /* joy0dat_r & joy1dat_r */
 		NULL,                                    /* potgo_w */
-		amiga_read_dskbytr,	amiga_write_dsklen,  /* dskbytr_r & dsklen_w */
 		NULL,                                    /* serdat_w */
 		NULL,                                    /* scanline0_callback */
 		amiga_reset,                             /* reset_callback */
@@ -636,7 +639,6 @@ static DRIVER_INIT( amiga_ecs )
 		NULL, amiga_fdc_control_w,               /* CIA1 port A & B write */
 		amiga_read_joy0dat,	amiga_read_joy1dat,  /* joy0dat_r & joy1dat_r */
 		NULL,                                    /* potgo_w */
-		amiga_read_dskbytr,	amiga_write_dsklen,  /* dskbytr_r & dsklen_w */
 		NULL,                                    /* serdat_w */
 		NULL,                                    /* scanline0_callback */
 		amiga_reset,                             /* reset_callback */
@@ -666,7 +668,6 @@ static DRIVER_INIT( cdtv )
 		ECS_CHIP_RAM_MASK,
 		amiga_read_joy0dat,	amiga_read_joy1dat,  /* joy0dat_r & joy1dat_r */
 		NULL,                                    /* potgo_w */
-		amiga_read_dskbytr,	amiga_write_dsklen,  /* dskbytr_r & dsklen_w */
 		NULL,                                    /* serdat_w */
 		NULL,                                    /* scanline0_callback */
 		NULL,                                    /* reset_callback */

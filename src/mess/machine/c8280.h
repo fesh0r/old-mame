@@ -23,24 +23,6 @@
 
 
 //**************************************************************************
-//  MACROS / CONSTANTS
-//**************************************************************************
-
-#define C8280_TAG			"c8280"
-
-
-
-//**************************************************************************
-//  INTERFACE CONFIGURATION MACROS
-//**************************************************************************
-
-#define MCFG_C8280_ADD(_tag, _address) \
-    MCFG_DEVICE_ADD(_tag, C8280, 0) \
-	c8280_device::static_set_config(*device, _address);
-
-
-
-//**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
 
@@ -53,12 +35,17 @@ public:
     // construction/destruction
     c8280_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
-	// inline configuration helpers
-	static void static_set_config(device_t &device, int address);
-
 	// optional information overrides
 	virtual const rom_entry *device_rom_region() const;
 	virtual machine_config_constructor device_mconfig_additions() const;
+
+	// not really public
+	DECLARE_READ8_MEMBER( dio_r );
+	DECLARE_WRITE8_MEMBER( dio_w );
+	DECLARE_READ8_MEMBER( riot1_pa_r );
+	DECLARE_WRITE8_MEMBER( riot1_pa_w );
+	DECLARE_READ8_MEMBER( riot1_pb_r );
+	DECLARE_WRITE8_MEMBER( riot1_pb_w );
 
 protected:
     // device-level overrides
@@ -71,15 +58,20 @@ protected:
 	void ieee488_atn(int state);
 	void ieee488_ifc(int state);
 
+private:
+	inline void update_ieee_signals();
+
 	required_device<cpu_device> m_maincpu;
 	required_device<cpu_device> m_fdccpu;
 	required_device<riot6532_device> m_riot0;
 	required_device<riot6532_device> m_riot1;
 	required_device<device_t> m_image0;
 	required_device<device_t> m_image1;
-	required_device<ieee488_device> m_bus;
 
-	int m_address;
+	// IEEE-488 bus
+	int m_rfdo;							// not ready for data output
+	int m_daco;							// not data accepted output
+	int m_atna;							// attention acknowledge
 };
 
 

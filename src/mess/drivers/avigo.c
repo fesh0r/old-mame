@@ -13,22 +13,22 @@
 
 
         MEMORY MAP:
-			0x0000-0x03fff: flash 0 block 0
-			0x4000-0x07fff: bank 1
-			0x8000-0x0bfff: bank 2
-			0xc000-0x0ffff: ram block 0
+            0x0000-0x03fff: flash 0 block 0
+            0x4000-0x07fff: bank 1
+            0x8000-0x0bfff: bank 2
+            0xc000-0x0ffff: ram block 0
 
-		Bankswitch:
-			Bank 1 is controlled by ports 5 and 6, port 5 is the bank select
-			and port 6 is the chip select, the known chip select are:
-			- 0: flash 0
-			- 1: RAM
-			- 3: flash 1
-			- 5: flash 2 (optional)
-			- 6: VideoRAM
-			- 7: flash 0
+        Bankswitch:
+            Bank 1 is controlled by ports 5 and 6, port 5 is the bank select
+            and port 6 is the chip select, the known chip select are:
+            - 0: flash 0
+            - 1: RAM
+            - 3: flash 1
+            - 5: flash 2 (optional)
+            - 6: VideoRAM
+            - 7: flash 0
 
-			Bank 2 have the same behavior but is controlled by ports 7 and 8
+            Bank 2 have the same behavior but is controlled by ports 7 and 8
 
         Hardware:
             - Z80 CPU
@@ -52,18 +52,17 @@
             0x01        0xad        AMD AM29F016
 
         TODO:
-			- Found a way to emulate the touchscreen panel out of the screen
-    		  area (the six buttons at the bottom)
-			- Alarm doesn't work
-			- Load app files causes the NVRAM corruption.
-			- Serial communications and IR port.
+            - Found a better way to emulate the touchscreen panel out of the screen
+              area (the six buttons at the bottom)
+            - Alarm doesn't work
+            - Serial communications and IR port.
 
             I don't have any documentation on the hardware, so a lot of this
             driver has been written using educated guesswork and a lot of help
             from an existing emulation written by Hans Pufal. Hans's emulator
             is also written from educated guesswork.
 
-        Kevin Thacker [MESS driver]
+        MESS Driver by Kevin Thacker and Sandro Ronco
 
  ******************************************************************************/
 
@@ -332,8 +331,8 @@ WRITE8_MEMBER(avigo_state::irq_w)
 WRITE8_MEMBER(avigo_state::port2_w)
 {
 	/*
-		bit 4     LCD backlight on/off
-		bit 5-6   source select for a/d converter
+        bit 4     LCD backlight on/off
+        bit 5-6   source select for a/d converter
     */
 
 	if ((m_port2 ^ data) & 0x10)
@@ -423,7 +422,7 @@ WRITE8_MEMBER(avigo_state::ad_control_status_w)
 					if (input_port_read(machine(), "LINE3") & 0x01)
 					{
 						/* this might not be totally accurate because hitable screen
-						area may include the border around the screen! */
+                        area may include the border around the screen! */
 						m_ad_value = input_port_read(machine(), "POSX");
 					}
 					else
@@ -438,13 +437,13 @@ WRITE8_MEMBER(avigo_state::ad_control_status_w)
 				{
 					/* in the avigo rom, the y coordinate is inverted! */
 					/* therefore a low value would be near the bottom of the display,
-					and a high value at the top */
+                    and a high value at the top */
 
 					/* total valid range 0x044->0x03a6 */
 					/* 0x0350 is also checked */
 
 					/* assumption 0x044->0x0350 is screen area and
-					0x0350->0x03a6 is panel at bottom */
+                    0x0350->0x03a6 is panel at bottom */
 
 					LOG(("a/d select y coordinate\n"));
 					LOG(("y coord: %d\n", input_port_read(machine(), "POSY")));
@@ -818,10 +817,16 @@ static QUICKLOAD_LOAD(avigo)
 {
 	avigo_state *state = image.device().machine().driver_data<avigo_state>();
 	address_space* flash1 = state->m_flashes[1]->memory().space(0);
+	const char *systemname = image.device().machine().system().name;
+	UINT32 first_app_page = (0x50000>>14);
 	int app_page;
 
+	// german and spanish language are 4 pages bigger than other
+	if ( strcmp( systemname, "avigo_de" ) == 0 || strcmp( systemname, "avigo_es" ) == 0 )
+		first_app_page += 4;
+
 	// search the first empty page
-	for (app_page = (0x60000>>14) + 1; app_page<0x40; app_page++)
+	for (app_page = first_app_page + 1; app_page<0x40; app_page++)
 	{
 		bool empty_page = true;
 
@@ -847,7 +852,7 @@ static QUICKLOAD_LOAD(avigo)
 		image.fread((UINT8*)state->m_flashes[1]->space()->get_read_ptr(app_page<<14), image.length());
 
 		// update the application ID
-		flash1->write_byte((app_page<<14) + 0x1a5, 0x80 + (app_page - 0x18));
+		flash1->write_byte((app_page<<14) + 0x1a5, 0x80 + (app_page - (first_app_page>>14)));
 
 		// reset the CPU for allow at the Avigo OS to recognize the installed app
 		state->m_warm_start = 1;
@@ -1002,9 +1007,9 @@ ROM_START(avigo_it)
 ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY   FULLNAME */
-COMP(1997,	avigo,  	0,  		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA",         	GAME_NOT_WORKING)
-COMP(1997,	avigo_de,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (German)",	GAME_NOT_WORKING)
-COMP(1997,	avigo_fr,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (French)",	GAME_NOT_WORKING)
-COMP(1997,	avigo_es,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Spanish)",	GAME_NOT_WORKING)
-COMP(1997,	avigo_it,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Italian)",	GAME_NOT_WORKING)
+COMP(1997,	avigo,  	0,  		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA",         	0)
+COMP(1997,	avigo_de,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (German)",	0)
+COMP(1997,	avigo_fr,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (French)",	0)
+COMP(1997,	avigo_es,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Spanish)",	0)
+COMP(1997,	avigo_it,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Italian)",	0)
 

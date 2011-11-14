@@ -1,8 +1,8 @@
 /*******************************************************************************
 
-	Mattel Juice Box
+    Mattel Juice Box
 
-	(C) 2011 Tim Schuerewegen
+    (C) 2011 Tim Schuerewegen
 
 *******************************************************************************/
 
@@ -12,6 +12,9 @@
 #include "machine/smartmed.h"
 #include "sound/dac.h"
 #include "rendlay.h"
+
+//#define JUICEBOX_ENTER_DEBUG_MENU
+//#define JUICEBOX_DISPLAY_ROM_ID
 
 #define VERBOSE_LEVEL ( 0 )
 
@@ -48,6 +51,9 @@ public:
 	device_t *s3c44b0;
 	smc_t smc;
 	device_t *dac;
+	#if defined(JUICEBOX_ENTER_DEBUG_MENU) || defined(JUICEBOX_DISPLAY_ROM_ID)
+	int port_g_read_count;
+	#endif
 };
 
 /***************************************************************************
@@ -76,7 +82,7 @@ static UINT8 smc_read( running_machine &machine)
 	device_t *smartmedia = machine.device( "smartmedia");
 	UINT8 data;
 	if (smartmedia_present( smartmedia))
-	{	
+	{
 		data = smartmedia_data_r( smartmedia);
 	}
 	else
@@ -93,7 +99,7 @@ static void smc_write( running_machine &machine, UINT8 data)
 	device_t *smartmedia = machine.device( "smartmedia");
 	verboselog( machine, 5, "smc_write %08X\n", data);
 	if (smartmedia_present( smartmedia))
-	{	
+	{
 		if (state->smc.cmd_latch)
 		{
 			verboselog( machine, 5, "smartmedia_command_w %08X\n", data);
@@ -159,14 +165,23 @@ static UINT32 s3c44b0_gpio_port_r( device_t *device, int port)
 		break;
 		case S3C44B0_GPIO_PORT_G :
 		{
-//			static int xxx = 0;
 			data = 0x0000009F;
 			data = (data & ~0x1F) | (input_port_read( device->machine(), "PORTG") & 0x1F);
-//			if (xxx++ < 1) data = 0x00000095; // TEST MENU
+			#if defined(JUICEBOX_ENTER_DEBUG_MENU)
+			if (juicebox->port_g_read_count++ < 1)
+			{
+				data = 0x00000095; // PLAY + REVERSE
+			}
+			#elif defined(JUICEBOX_DISPLAY_ROM_ID)
+			if (juicebox->port_g_read_count++ < 3)
+			{
+				data = 0x0000008A; // RETURN + FORWARD + STAR
+			}
+			#endif
 		}
 		break;
 	}
-//	data = ((rand() & 0xFF) << 24) | ((rand() & 0xFF) << 16) | ((rand() & 0xFF) << 8) | ((rand() & 0xFF) << 0);
+//  data = ((rand() & 0xFF) << 24) | ((rand() & 0xFF) << 16) | ((rand() & 0xFF) << 8) | ((rand() & 0xFF) << 0);
 	return data;
 }
 
@@ -212,17 +227,9 @@ static WRITE32_HANDLER( juicebox_nand_w )
 
 // I2S
 
-#if 0
-static FILE *file_iis = NULL;
-#endif
-
 static WRITE16_DEVICE_HANDLER( s3c44b0_i2s_data_w )
 {
 	juicebox_state *juicebox = device->machine().driver_data<juicebox_state>();
-#if 0
-	if (!file_iis) file_iis = fopen( "iis.bin", "wb");
-	fwrite( &data, 2, 1, file_iis);
-#endif
 	dac_signed_data_16_w( juicebox->dac, data ^ 0x8000);
 }
 
@@ -258,7 +265,7 @@ static MACHINE_RESET( juicebox )
 static ADDRESS_MAP_START( juicebox_map, AS_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x007fffff) AM_ROM
 	AM_RANGE(0x04000000, 0x04ffffff) AM_READWRITE( juicebox_nand_r, juicebox_nand_w )
-	AM_RANGE(0x0c000000, 0x0c1fffff) AM_RAM
+	AM_RANGE(0x0c000000, 0x0c1fffff) AM_RAM AM_MIRROR(0x00600000)
 ADDRESS_MAP_END
 
 /***************************************************************************
@@ -309,11 +316,11 @@ static MACHINE_CONFIG_START( juicebox, juicebox_state )
 	MCFG_MACHINE_RESET(juicebox)
 
 	MCFG_S3C44B0_ADD("s3c44b0", 10000000, juicebox_s3c44b0_intf)
-	
+
 	MCFG_SMARTMEDIA_ADD("smartmedia")
 	MCFG_SMARTMEDIA_INTERFACE("smartmedia")
 	/* software lists */
-	MCFG_SOFTWARE_LIST_ADD("cart_list","juicebox")	
+	MCFG_SOFTWARE_LIST_ADD("cart_list","juicebox")
 MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( juicebox )
@@ -331,8 +338,12 @@ INPUT_PORTS_END
 
 ROM_START( juicebox )
 	ROM_REGION( 0x800000, "maincpu", 0 )
-	ROM_SYSTEM_BIOS( 0, "juicebox", "juicebox" )
+	ROM_SYSTEM_BIOS( 0, "juicebox", "Juice Box v.28 08242004" )
 	ROMX_LOAD( "juicebox.rom", 0, 0x800000, CRC(ac731197) SHA1(8278891c3531b3b6b5fec2a97a3ef6f0de1ac81d), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "uclinuxp", "uClinux 2.4.24-uc0 (patched)" )
+	ROMX_LOAD( "newboot.rom", 0, 0x1A0800, CRC(443f48b7) SHA1(38f0dc07b5cf02b972a851aa9e87f5d93d03f629), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "uclinux", "uClinux 2.4.24-uc0" )
+	ROMX_LOAD( "image.rom", 0, 0x19E400, CRC(6c0308bf) SHA1(5fe21a38a4cd0d86bb60920eb100138b0e924d90), ROM_BIOS(3) )
 ROM_END
 
-COMP(2004, juicebox, 0, 0, juicebox, juicebox, juicebox, "Mattel", "Juice Box", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP(2004, juicebox, 0, 0, juicebox, juicebox, juicebox, "Mattel", "Juice Box", 0)

@@ -11,6 +11,7 @@
 #include "includes/lynx.h"
 
 #include "imagedev/snapquik.h"
+#include "lynx.lh"
 
 static QUICKLOAD_LOAD( lynx );
 
@@ -38,13 +39,6 @@ static INPUT_PORTS_START( lynx )
 	PORT_START("PAUSE")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_3)
 	// power on and power off buttons
-
-	PORT_START("ROTATION")
-	PORT_CONFNAME ( 0x03, 0x03, "90 Degree Rotation" )
-	PORT_CONFSETTING(	  0x00, DEF_STR( None ) )
-	PORT_CONFSETTING(	  0x01, "Clockwise" )
-	PORT_CONFSETTING(	  0x02, "Counterclockwise" )
-	PORT_CONFSETTING(	  0x03, "Crcfile" )
 INPUT_PORTS_END
 
 static PALETTE_INIT( lynx )
@@ -65,20 +59,20 @@ static MACHINE_CONFIG_START( lynx, lynx_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MCFG_CPU_PROGRAM_MAP(lynx_mem)
-	MCFG_CPU_VBLANK_INT("screen", lynx_frame_int)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( lynx )
+	MCFG_MACHINE_RESET( lynx )
 
     /* video hardware */
 	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	/*MCFG_SCREEN_SIZE(160, 102)*/
-	MCFG_SCREEN_SIZE(160, 160)
+	MCFG_SCREEN_SIZE(160, 102)
 	MCFG_SCREEN_VISIBLE_AREA(0, 160-1, 0, 102-1)
 	MCFG_SCREEN_UPDATE( generic_bitmapped )
+	MCFG_DEFAULT_LAYOUT(layout_lynx)
 
 	MCFG_PALETTE_LENGTH(0x1000)
 	MCFG_PALETTE_INIT( lynx )
