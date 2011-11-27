@@ -2,7 +2,7 @@
 //
 //  sdlmain.c - main file for SDLMAME.
 //
-//  Copyright (c) 1996-2011, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2012, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //  SDLMAME by Olivier Galibert and R. Belmont
@@ -24,9 +24,10 @@
 #endif
 
 // standard includes
-#ifdef MESS
+#if !defined(SDLMAME_WIN32) && !defined(SDLMAME_OS2)
 #include <unistd.h>
 #endif
+
 #ifdef SDLMAME_OS2
 #define INCL_DOS
 #include <os2.h>
@@ -64,11 +65,7 @@
 #if defined(SDLMAME_WIN32) || defined(SDLMAME_MACOSX) || defined(SDLMAME_OS2)
 	#define INI_PATH ".;ini"
 #else
-#ifdef MESS
-	#define INI_PATH "$HOME/.mess;.;ini"
-#else
-	#define INI_PATH "$HOME/.mame;.;ini"
-#endif // MESS
+	#define INI_PATH "$HOME/.APP_NAME;.;ini"
 #endif // MACOSX
 #endif // INI_PATH
 
@@ -196,13 +193,11 @@ const options_entry sdl_options::s_option_entries[] =
 	{ NULL, 		                          NULL,  OPTION_HEADER,     "SDL KEYBOARD MAPPING" },
 	{ SDLOPTION_KEYMAP,                      "0",    OPTION_BOOLEAN,    "enable keymap" },
 	{ SDLOPTION_KEYMAP_FILE,                 "keymap.dat", OPTION_STRING, "keymap filename" },
-#ifdef MESS
 #ifdef SDLMAME_MACOSX
-	{ SDLOPTION_UIMODEKEY,					 "DELETE", OPTION_STRING,   "Key to toggle MESS keyboard mode" },
+	{ SDLOPTION_UIMODEKEY,					 "DELETE", OPTION_STRING,   "Key to toggle keyboard mode" },
 #else
-	{ SDLOPTION_UIMODEKEY,			         "SCRLOCK", OPTION_STRING,  "Key to toggle MESS keyboard mode" },
+	{ SDLOPTION_UIMODEKEY,			         "SCRLOCK", OPTION_STRING,  "Key to toggle keyboard mode" },
 #endif	// SDLMAME_MACOSX
-#endif	// MESS
 
 	// joystick mapping
 	{ NULL, 		                         NULL,   OPTION_HEADER,     "SDL JOYSTICK MAPPING" },
@@ -275,7 +270,10 @@ void MorphToPM()
 
 sdl_options::sdl_options()
 {
+	astring ini_path(INI_PATH);
 	add_entries(s_option_entries);
+	ini_path.replace(0, "APP_NAME", emulator_info::get_appname_lower());
+	set_default_value(SDLOPTION_INIPATH, ini_path.cstr());
 }
 
 
@@ -413,6 +411,9 @@ sdl_osd_interface::~sdl_osd_interface()
 
 void sdl_osd_interface::osd_exit(running_machine &machine)
 {
+	#ifdef SDLMAME_NETWORK
+		sdlnetdev_deinit(machine);
+	#endif
 
 	if (!SDLMAME_INIT_IN_WORKER_THREAD)
 		SDL_Quit();
