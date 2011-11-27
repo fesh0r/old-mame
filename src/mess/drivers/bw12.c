@@ -67,7 +67,7 @@ void bw12_state::bankswitch()
 
 	case 2: /* BK1 */
 	case 3: /* BK2 */
-		if (ram_get_size(m_ram) > 64*1024)
+		if (m_ram->size() > 64*1024)
 		{
 			program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		}
@@ -643,20 +643,20 @@ void bw12_state::machine_start()
 {
 	/* setup memory banking */
 	memory_configure_bank(machine(), "bank1", 0, 1, machine().region(Z80_TAG)->base(), 0);
-	memory_configure_bank(machine(), "bank1", 1, 1, ram_get_ptr(m_ram), 0);
-	memory_configure_bank(machine(), "bank1", 2, 2, ram_get_ptr(m_ram) + 0x10000, 0x8000);
+	memory_configure_bank(machine(), "bank1", 1, 1, m_ram->pointer(), 0);
+	memory_configure_bank(machine(), "bank1", 2, 2, m_ram->pointer() + 0x10000, 0x8000);
 
 	/* register for state saving */
-	state_save_register_global(machine(), m_bank);
-	state_save_register_global(machine(), m_pit_out2);
-	state_save_register_global_array(machine(), m_key_data);
-	state_save_register_global(machine(), m_key_sin);
-	state_save_register_global(machine(), m_key_stb);
-	state_save_register_global(machine(), m_key_shift);
-	state_save_register_global(machine(), m_fdc_int);
-	state_save_register_global(machine(), m_motor_on);
-	state_save_register_global(machine(), m_motor0);
-	state_save_register_global(machine(), m_motor1);
+	save_item(NAME(m_bank));
+	save_item(NAME(m_pit_out2));
+	save_item(NAME(m_key_data));
+	save_item(NAME(m_key_sin));
+	save_item(NAME(m_key_stb));
+	save_item(NAME(m_key_shift));
+	save_item(NAME(m_fdc_int));
+	save_item(NAME(m_motor_on));
+	save_item(NAME(m_motor0));
+	save_item(NAME(m_motor1));
 }
 
 void bw12_state::machine_reset()

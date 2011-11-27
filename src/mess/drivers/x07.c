@@ -1071,7 +1071,7 @@ WRITE8_MEMBER( x07_state::x07_io_w )
 			beep_set_state(m_beep, 1);
 			beep_set_frequency(m_beep, 192000 / ((m_regs_w[2] | (m_regs_w[3] << 8)) & 0x0fff));
 
-			m_beep_stop->adjust(attotime::from_msec(ram_get_ptr(m_ram)[0x450] * 0x20));
+			m_beep_stop->adjust(attotime::from_msec(m_ram->pointer()[0x450] * 0x20));
 		}
 		else
 			beep_set_state(m_beep, 0);
@@ -1259,20 +1259,20 @@ static NVRAM_HANDLER( x07 )
 	if (read_or_write)
 	{
 		file->write(state->m_t6834_ram, sizeof(state->m_t6834_ram));
-		file->write(ram_get_ptr(state->m_ram), ram_get_size(state->m_ram));
+		file->write(state->m_ram->pointer(), state->m_ram->size());
 	}
 	else
 	{
 		if (file)
 		{
 			file->read(state->m_t6834_ram, sizeof(state->m_t6834_ram));
-			file->read(ram_get_ptr(state->m_ram), ram_get_size(state->m_ram));
+			file->read(state->m_ram->pointer(), state->m_ram->size());
 			state->m_warm_start = 1;
 		}
 		else
 		{
 			memset(state->m_t6834_ram, 0, sizeof(state->m_t6834_ram));
-			memset(ram_get_ptr(state->m_ram), 0, ram_get_size(state->m_ram));
+			memset(state->m_ram->pointer(), 0, state->m_ram->size());
 
 			for(int i = 0; i < 12; i++)
 				strcpy((char*)state->m_t6834_ram + udk_offset[i], udk_ini[i]);
@@ -1346,48 +1346,48 @@ void x07_state::machine_start()
 	m_k7irq = machine().scheduler().timer_alloc(FUNC(k7_irq));
 
 	/* Save State */
-	state_save_register_global(machine(), m_sleep);
-	state_save_register_global(machine(), m_warm_start);
-	state_save_register_global(machine(), m_udk_on);
-	state_save_register_global(machine(), m_draw_udk);
-	state_save_register_global(machine(), m_sp_on);
-	state_save_register_global(machine(), m_font_code);
-	state_save_register_global(machine(), m_lcd_on);
-	state_save_register_global(machine(), m_scroll_min);
-	state_save_register_global(machine(), m_scroll_max);
-	state_save_register_global(machine(), m_blink);
-	state_save_register_global(machine(), m_kb_on);
-	state_save_register_global(machine(), m_repeat_key);
-	state_save_register_global(machine(), m_kb_size);
-	state_save_register_global(machine(), m_prn_sendbit);
-	state_save_register_global(machine(), m_prn_char_code);
-	state_save_register_global(machine(), m_prn_size);
-	state_save_register_global(machine(), m_k7on);
-	state_save_register_global(machine(), m_k7size);
-	state_save_register_global(machine(), m_k7pos);
-	state_save_register_global_array(machine(), m_t6834_ram);
-	state_save_register_global_array(machine(), m_regs_r);
-	state_save_register_global_array(machine(), m_regs_w);
-	state_save_register_global_array(machine(), m_alarm);
-	state_save_register_global_2d_array(machine(), m_lcd_map);
-	state_save_register_global_array(machine(), m_prn_buffer);
-	state_save_register_global_pointer(machine(), m_k7data, m_k7size);
-	state_save_register_global(machine(), m_in.read);
-	state_save_register_global(machine(), m_in.write);
-	state_save_register_global_array(machine(), m_in.data);
-	state_save_register_global(machine(), m_out.read);
-	state_save_register_global(machine(), m_out.write);
-	state_save_register_global_array(machine(), m_out.data);
-	state_save_register_global(machine(), m_locate.x);
-	state_save_register_global(machine(), m_locate.y);
-	state_save_register_global(machine(), m_locate.on);
-	state_save_register_global(machine(), m_cursor.x);
-	state_save_register_global(machine(), m_cursor.y);
-	state_save_register_global(machine(), m_cursor.on);
+	save_item(NAME(m_sleep));
+	save_item(NAME(m_warm_start));
+	save_item(NAME(m_udk_on));
+	save_item(NAME(m_draw_udk));
+	save_item(NAME(m_sp_on));
+	save_item(NAME(m_font_code));
+	save_item(NAME(m_lcd_on));
+	save_item(NAME(m_scroll_min));
+	save_item(NAME(m_scroll_max));
+	save_item(NAME(m_blink));
+	save_item(NAME(m_kb_on));
+	save_item(NAME(m_repeat_key));
+	save_item(NAME(m_kb_size));
+	save_item(NAME(m_prn_sendbit));
+	save_item(NAME(m_prn_char_code));
+	save_item(NAME(m_prn_size));
+	save_item(NAME(m_k7on));
+	save_item(NAME(m_k7size));
+	save_item(NAME(m_k7pos));
+	save_item(NAME(m_t6834_ram));
+	save_item(NAME(m_regs_r));
+	save_item(NAME(m_regs_w));
+	save_item(NAME(m_alarm));
+	save_item(NAME(m_lcd_map));
+	save_item(NAME(m_prn_buffer));
+	save_pointer(NAME(m_k7data), m_k7size);
+	save_item(NAME(m_in.read));
+	save_item(NAME(m_in.write));
+	save_item(NAME(m_in.data));
+	save_item(NAME(m_out.read));
+	save_item(NAME(m_out.write));
+	save_item(NAME(m_out.data));
+	save_item(NAME(m_locate.x));
+	save_item(NAME(m_locate.y));
+	save_item(NAME(m_locate.on));
+	save_item(NAME(m_cursor.x));
+	save_item(NAME(m_cursor.y));
+	save_item(NAME(m_cursor.on));
 
 	/* install RAM */
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
-	program->install_ram(0x0000, ram_get_size(m_ram) - 1, ram_get_ptr(m_ram));
+	program->install_ram(0x0000, m_ram->size() - 1, m_ram->pointer());
 }
 
 void x07_state::machine_reset()

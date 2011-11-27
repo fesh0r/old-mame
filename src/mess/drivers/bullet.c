@@ -492,7 +492,7 @@ READ8_MEMBER( bullet_state::dma_mreq_r )
 		offset |= 0x10000;
 	}
 
-	UINT8 *ram = ram_get_ptr(m_ram);
+	UINT8 *ram = m_ram->pointer();
 	UINT8 data = ram[offset];
 
 	if (BIT(m_exdma, 4))
@@ -510,7 +510,7 @@ WRITE8_MEMBER( bullet_state::dma_mreq_w )
 		offset |= 0x10000;
 	}
 
-	UINT8 *ram = ram_get_ptr(m_ram);
+	UINT8 *ram = m_ram->pointer();
 	ram[offset] = data;
 
 	if (BIT(m_exdma, 4))
@@ -657,7 +657,7 @@ static const z80_daisy_config daisy_chain[] =
 void bullet_state::machine_start()
 {
 	// setup memory banking
-	UINT8 *ram = ram_get_ptr(m_ram);
+	UINT8 *ram = m_ram->pointer();
 
 	memory_configure_bank(machine(), "bank1", 0, 2, ram, 0x10000);
 	memory_configure_bank(machine(), "bank1", 2, 1, machine().region(Z80_TAG)->base(), 0);
@@ -666,16 +666,16 @@ void bullet_state::machine_start()
 	memory_configure_bank(machine(), "bank4", 0, 1, ram + 0xc000, 0);
 
 	// register for state saving
-	state_save_register_global(machine(), m_segst);
-	state_save_register_global(machine(), m_brom);
-	state_save_register_global(machine(), m_exdma);
-	state_save_register_global(machine(), m_buf);
-	state_save_register_global(machine(), m_fdrdy);
-	state_save_register_global(machine(), m_dartardy);
-	state_save_register_global(machine(), m_dartbrdy);
-	state_save_register_global(machine(), m_winrdy);
-	state_save_register_global(machine(), m_exrdy1);
-	state_save_register_global(machine(), m_exrdy2);
+	save_item(NAME(m_segst));
+	save_item(NAME(m_brom));
+	save_item(NAME(m_exdma));
+	save_item(NAME(m_buf));
+	save_item(NAME(m_fdrdy));
+	save_item(NAME(m_dartardy));
+	save_item(NAME(m_dartbrdy));
+	save_item(NAME(m_winrdy));
+	save_item(NAME(m_exrdy1));
+	save_item(NAME(m_exrdy2));
 }
 
 
@@ -741,7 +741,7 @@ MACHINE_CONFIG_END
 //  ROM( bullet )
 //-------------------------------------------------
 
-ROM_START( bullet )
+ROM_START( wmbullet )
     ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASEFF )
 	ROM_LOAD( "sr70x.u8", 0x0000, 0x0020, CRC(d54b8a30) SHA1(65ff8753dd63c9dd1899bc9364a016225585d050) )
 ROM_END
@@ -753,5 +753,5 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY         FULLNAME                FLAGS
-COMP( 1982, bullet,		0,			0,		bullet,		bullet,		0,		"Wave Mate",	"Bullet",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
-//COMP( 1982, bullete,  bullet,     0,      bullet,     bullet,     0,      "Wave Mate",    "Bullet (Revision E)",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
+COMP( 1982, wmbullet,		0,			0,		bullet,		bullet,		0,		"Wave Mate",	"Bullet",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
+//COMP( 1982, wmbullete,  bullet,     0,      bullet,     bullet,     0,      "Wave Mate",    "Bullet (Revision E)",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )

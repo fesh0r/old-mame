@@ -200,6 +200,9 @@ void abc80_state::update_screen(bitmap_t *bitmap, const rectangle *cliprect)
 
 void abc80_state::video_start()
 {
+	// allocate memory
+	m_video_ram = auto_alloc_array(machine(), UINT8, 0x400);
+
 	// find memory regions
 	m_char_rom = machine().region("chargen")->base();
 	m_hsync_prom = machine().region("hsync")->base();
@@ -208,8 +211,8 @@ void abc80_state::video_start()
 	m_attr_prom = machine().region("attr")->base();
 
 	// register for state saving
-	state_save_register_global(machine(), m_blink);
-	state_save_register_global(machine(), m_latch);
+	save_item(NAME(m_blink));
+	save_item(NAME(m_latch));
 }
 
 

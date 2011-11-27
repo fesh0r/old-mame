@@ -62,7 +62,7 @@ public:
 	required_device<device_t> m_dac;
 	required_device<device_t> m_uart;
 	required_device<device_t> m_printer;
-	required_device<device_t> m_ram;
+	required_device<ram_device> m_ram;
 	DECLARE_READ8_MEMBER(sorcerer_fc_r);
 	DECLARE_READ8_MEMBER(sorcerer_fd_r);
 	DECLARE_READ8_MEMBER(sorcerer_fe_r);
@@ -85,7 +85,6 @@ public:
 MACHINE_START( sorcererd );
 MACHINE_START( sorcerer );
 MACHINE_RESET( sorcerer );
-Z80BIN_EXECUTE( sorcerer );
 SNAPSHOT_LOAD( sorcerer );
 
 #endif /* SORCERER_H_ */

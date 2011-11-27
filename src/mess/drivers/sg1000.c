@@ -984,7 +984,7 @@ void sg1000_state::machine_start()
 	machine().scheduler().timer_set(attotime::zero, FUNC(lightgun_tick));
 
 	/* register for state saving */
-	state_save_register_global(machine(), m_tvdraw_data);
+	save_item(NAME(m_tvdraw_data));
 }
 
 /*-------------------------------------------------
@@ -997,8 +997,8 @@ void sc3000_state::machine_start()
 	machine().scheduler().timer_set(attotime::zero, FUNC(lightgun_tick));
 
 	/* register for state saving */
-	state_save_register_global(machine(), m_tvdraw_data);
-	state_save_register_global(machine(), m_keylatch);
+	save_item(NAME(m_tvdraw_data));
+	save_item(NAME(m_keylatch));
 }
 
 
@@ -1010,13 +1010,13 @@ void sf7000_state::machine_start()
 {
 	/* configure memory banking */
 	memory_configure_bank(machine(), "bank1", 0, 1, machine().region(Z80_TAG)->base(), 0);
-	memory_configure_bank(machine(), "bank1", 1, 1, ram_get_ptr(m_ram), 0);
-	memory_configure_bank(machine(), "bank2", 0, 1, ram_get_ptr(m_ram), 0);
+	memory_configure_bank(machine(), "bank1", 1, 1, m_ram->pointer(), 0);
+	memory_configure_bank(machine(), "bank2", 0, 1, m_ram->pointer(), 0);
 
 	/* register for state saving */
-	state_save_register_global(machine(), m_keylatch);
-	state_save_register_global(machine(), m_fdc_irq);
-	state_save_register_global(machine(), m_fdc_index);
+	save_item(NAME(m_keylatch));
+	save_item(NAME(m_fdc_irq));
+	save_item(NAME(m_fdc_index));
 }
 
 /*-------------------------------------------------

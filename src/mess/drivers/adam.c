@@ -250,7 +250,7 @@ enum
 void adam_state::bankswitch()
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
-	UINT8 *ram = ram_get_ptr(m_ram);
+	UINT8 *ram = m_ram->pointer();
 
 	switch (m_mioc & 0x03)
 	{
@@ -271,7 +271,7 @@ void adam_state::bankswitch()
 		break;
 
 	case LO_RAM_EXPANSION:
-		if (ram_get_size(m_ram) > 64 * 1024)
+		if (m_ram->size() > 64 * 1024)
 			program->install_ram(0x0000, 0x7fff, ram + 0x10000);
 		else
 			program->unmap_readwrite(0x0000, 0x7fff);
@@ -300,7 +300,7 @@ void adam_state::bankswitch()
 		}
 		else
 		{
-			if (ram_get_size(m_ram) > 64 * 1024)
+			if (m_ram->size() > 64 * 1024)
 				program->install_ram(0x8000, 0xffff, ram + 0x18000);
 			else
 				program->unmap_readwrite(0x8000, 0xffff);
@@ -1580,7 +1580,7 @@ WRITE_LINE_MEMBER( adam_state::os3_w )
 {
 	if (state && !m_dma)
 	{
-		UINT8 *ram = ram_get_ptr(m_ram);
+		UINT8 *ram = m_ram->pointer();
 
 		if (!m_bwr)
 		{
@@ -1618,25 +1618,25 @@ static M6801_INTERFACE( master6801_intf )
 void adam_state::machine_start()
 {
 	// register for state saving
-	state_save_register_global(machine(), m_mioc);
-	state_save_register_global(machine(), m_game);
-	state_save_register_global(machine(), m_adamnet);
-	state_save_register_global_array(machine(), m_txd);
-	state_save_register_global(machine(), m_rxd);
-	state_save_register_global(machine(), m_reset);
-	state_save_register_global(machine(), m_ba);
-	state_save_register_global(machine(), m_dma);
-	state_save_register_global(machine(), m_bwr);
-	state_save_register_global(machine(), m_data_in);
-	state_save_register_global(machine(), m_data_out);
-	state_save_register_global(machine(), m_key_y);
-	state_save_register_global(machine(), m_joy_mode);
-	state_save_register_global(machine(), m_joy_status0);
-	state_save_register_global(machine(), m_joy_status1);
-	state_save_register_global(machine(), m_vdp_nmi);
-	state_save_register_global(machine(), m_wr0);
-	state_save_register_global(machine(), m_wr1);
-	state_save_register_global(machine(), m_track);
+	save_item(NAME(m_mioc));
+	save_item(NAME(m_game));
+	save_item(NAME(m_adamnet));
+	save_item(NAME(m_txd));
+	save_item(NAME(m_rxd));
+	save_item(NAME(m_reset));
+	save_item(NAME(m_ba));
+	save_item(NAME(m_dma));
+	save_item(NAME(m_bwr));
+	save_item(NAME(m_data_in));
+	save_item(NAME(m_data_out));
+	save_item(NAME(m_key_y));
+	save_item(NAME(m_joy_mode));
+	save_item(NAME(m_joy_status0));
+	save_item(NAME(m_joy_status1));
+	save_item(NAME(m_vdp_nmi));
+	save_item(NAME(m_wr0));
+	save_item(NAME(m_wr1));
+	save_item(NAME(m_track));
 }
 
 

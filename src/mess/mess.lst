@@ -41,6 +41,7 @@
 // 3DO
 3do	   // 3DO consoles
 3do_pal
+3do_m2
 
 // Atari
 a2600	 // Atari 2600
@@ -164,7 +165,7 @@ apollo80
 d6800		// Dream 6800
 
 // Ensoniq
-mirage // 1985 Mirage Digital Multi-Sampler
+enmirage // 1985 Mirage Digital Multi-Sampler
 esq1	// 1986 ESQ-1 Digital Wave Synthesizer
 
 // Fairchild
@@ -674,12 +675,20 @@ mc1502
 zdsupers
 m24
 m240
+olivm15
 
 // AT
 ibm5170   // 1984 IBM PC/AT 5170, original 6 MHz model
 ibm5170a  // 1985 IBM PC/AT 5170, enhanced 8 MHz model
-i8530286  // 1988 IBM PS/2 Model 30-286 (VGA)
-i8555081  // 1988 IBM PS/2 Model 55SX (VGA)
+i8530h31  // IBM PS/2 8530-H31 (Model 30/286)
+i8530286  // IBM PS/2 Model 30-286
+i8535043  // IBM PS/2 8535-043 (Model 35)
+i8550021  // IBM PS/2 8550-021 (Model 50)
+i8550061  // IBM PS/2 8550-061 (Model 50Z)
+i8555081  // IBM PS/2 8550-081 (Model 55SX)
+i8580071  // IBM PS/2 8580-071 (Model 80)
+i8580111  // IBM PS/2 8580-111 (Model 80)
+
 at	// 1987 AMI Bios and Diagnostics
 atvga	 // 19?? AT VGA
 neat	  // 1989 New Enhanced AT chipset, AMI BIOS
@@ -935,7 +944,7 @@ pc9821v20
 pc9821xs
 
 // Cantab
-ace   // Jupiter Ace
+jupace   // Jupiter Ace
 
 // Sord
 m5
@@ -1681,9 +1690,9 @@ prof181x
 
 //***************Games******************************************************
 // Computer Electronic
-mk1	   // Chess Champion MK I
+ccmk1	   // Chess Champion MK I
 // Quelle International
-mk2	   // Chess Champion MK II
+ccmk2	   // Chess Champion MK II
 
 // Novag
 ssystem3  // Chess Champion Super System III / MK III
@@ -1779,6 +1788,7 @@ h89
 hec2hrp
 hec2hr
 hec2hrx
+hec2mdhrx
 hec2mx80
 hec2mx40
 hector1
@@ -1880,6 +1890,14 @@ sun3_260
 sun3_e
 sun3_80
 sun3_460
+sun4_300
+sun4_40
+sun4_50
+sun4_20
+sun4_60
+sun4_75
+sun_s10
+sun_s20
 micronic
 plan80
 pro80
@@ -1943,7 +1961,7 @@ cd2650
 pipbug
 elektor
 instruct
-dolphin
+dolphunk
 chaos
 z80dev
 pegasus
@@ -1988,7 +2006,7 @@ casloopy
 fp1100
 fp6000
 tim011
-bullet
+wmbullet
 pc4
 pofo
 homez80

@@ -769,7 +769,7 @@ void portfolio_state::machine_start()
 	device_set_irq_callback(m_maincpu, portfolio_int_ack);
 
 	/* memory expansions */
-	switch (ram_get_size(machine().device(RAM_TAG)))
+	switch (machine().device<ram_device>(RAM_TAG)->size())
 	{
 	case 128 * 1024:
 		program->unmap_readwrite(0x1f000, 0x9efff);
@@ -786,13 +786,13 @@ void portfolio_state::machine_start()
 	m_pid = 0xff;
 
 	/* register for state saving */
-	state_save_register_global(machine(), m_ip);
-	state_save_register_global(machine(), m_ie);
-	state_save_register_global(machine(), m_sivr);
-	state_save_register_global(machine(), m_counter);
-	state_save_register_global(machine(), m_keylatch);
-	state_save_register_global(machine(), m_contrast);
-	state_save_register_global(machine(), m_pid);
+	save_item(NAME(m_ip));
+	save_item(NAME(m_ie));
+	save_item(NAME(m_sivr));
+	save_item(NAME(m_counter));
+	save_item(NAME(m_keylatch));
+	save_item(NAME(m_contrast));
+	save_item(NAME(m_pid));
 }
 
 //-------------------------------------------------

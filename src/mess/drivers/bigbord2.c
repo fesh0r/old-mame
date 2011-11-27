@@ -75,7 +75,7 @@ public:
 	required_device<device_t> m_ctc_84;
 	required_device<device_t> m_ctc_88;
 	required_device<device_t> m_fdc;
-	//required_device<device_t> m_ram;
+	//required_device<ram_device> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
 
@@ -176,7 +176,7 @@ static WRITE8_DEVICE_HANDLER( bigbord2_sio_w )
 void bigbord2_state::bankswitch(int bank)
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
-	UINT8 *ram = ram_get_ptr(m_ram);
+	UINT8 *ram = m_ram->pointer();
 
 	if (bank)
 	{
@@ -491,14 +491,14 @@ void bigbord2_state::machine_start()
 	floppy_install_load_proc(m_floppy1, bigbord2_load_proc);
 
 	/* register for state saving */
-	state_save_register_global(machine(), m_term_data);
-	state_save_register_global(machine(), m_scroll);
-	state_save_register_global(machine(), m_ncset2);
-	state_save_register_global(machine(), m_vatt);
-	state_save_register_global(machine(), m_fdc_irq);
-	state_save_register_global(machine(), m_fdc_drq);
-	state_save_register_global(machine(), m_8n5);
-	state_save_register_global(machine(), m_dsdd);
+	save_item(NAME(m_term_data));
+	save_item(NAME(m_scroll));
+	save_item(NAME(m_ncset2));
+	save_item(NAME(m_vatt));
+	save_item(NAME(m_fdc_irq));
+	save_item(NAME(m_fdc_drq));
+	save_item(NAME(m_8n5));
+	save_item(NAME(m_dsdd));
 }
 
 void bigbord2_state::machine_reset()

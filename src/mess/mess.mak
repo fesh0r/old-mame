@@ -7,33 +7,6 @@
 ###########################################################################
 
 
-
-###########################################################################
-#################   BEGIN USER-CONFIGURABLE OPTIONS   #####################
-###########################################################################
-
-# uncomment next line to build imgtool
-BUILD_IMGTOOL = 1
-
-# uncomment next line to build castool
-BUILD_CASTOOL = 1
-
-# uncomment next line to build wimgtool
-BUILD_WIMGTOOL = 1
-
-# uncomment next line to build messtest
-BUILD_MESSTEST = 1
-
-# uncomment next line to build dat2html
-BUILD_DAT2HTML = 1
-
-
-###########################################################################
-##################   END USER-CONFIGURABLE OPTIONS   ######################
-###########################################################################
-
-
-
 # include MESS core defines
 include $(SRC)/mess/messcore.mak
 
@@ -421,11 +394,7 @@ DRVLIBS += \
 	$(MESSOBJ)/zpa.a \
 	$(MESSOBJ)/zvt.a \
 	$(MESSOBJ)/shared.a \
-
-ifeq ($(TARGET),mess)
-DRVLIBS += \
 	$(MESSOBJ)/mame.a
-endif
 
 #-------------------------------------------------
 # the following files are MAME components and
@@ -502,13 +471,13 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_DRIVERS)/saturn.o	\
 	$(MAME_MACHINE)/stvcd.o		\
 	$(MAME_MACHINE)/scudsp.o	\
-	$(MAME_DRIVERS)/stvinit.o	\
 	$(MAME_MACHINE)/stvprot.o	\
-	$(MAME_MACHINE)/smpc.o          \
+	$(MAME_MACHINE)/smpc.o		\
 	$(MAME_VIDEO)/stvvdp1.o		\
 	$(MAME_VIDEO)/stvvdp2.o		\
 	$(MAME_DRIVERS)/cps1.o	\
 	$(MAME_VIDEO)/cps1.o	\
+	$(MAME_DRIVERS)/konamim2.o \
 
 #-------------------------------------------------
 # the following files are general components and
@@ -557,7 +526,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_VIDEO)/dl1416.o		\
 	$(MESS_VIDEO)/hd44780.o		\
 	$(MESS_VIDEO)/hd66421.o		\
-	$(MESS_VIDEO)/m6847.o		\
+	$(MESS_VIDEO)/mc6847.o		\
 	$(MESS_VIDEO)/saa505x.o		\
 	$(MESS_VIDEO)/tms3556.o		\
 	$(MESS_VIDEO)/upd7220.o		\
@@ -569,6 +538,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/ne2000.o	\
 	$(MESS_MACHINE)/wd1772.o	\
 	$(MESS_MACHINE)/3c503.o		\
+	$(MESS_FORMATS)/z80bin.o	\
 
 
 
@@ -1117,7 +1087,9 @@ $(MESSOBJ)/luxor.a:				\
 	$(MESS_VIDEO)/abc802.o		\
 	$(MESS_VIDEO)/abc806.o		\
 	$(MESS_MACHINE)/abcbus.o	\
+	$(MESS_MACHINE)/abc_fd2.o	\
 	$(MESS_MACHINE)/abc_uni800.o	\
+	$(MESS_MACHINE)/abc_sio.o	\
 	$(MESS_MACHINE)/abc_slutprov.o	\
 	$(MESS_MACHINE)/abc77.o		\
 	$(MESS_MACHINE)/abc99.o		\
@@ -1247,6 +1219,7 @@ $(MESSOBJ)/nintendo.a:			\
 
 $(MESSOBJ)/nokia.a:				\
 	$(MESS_DRIVERS)/mikromik.o	\
+	$(MESS_VIDEO)/mikromik.o	\
 
 $(MESSOBJ)/novag.a:				\
 	$(MESS_DRIVERS)/mk1.o		\
@@ -1504,6 +1477,7 @@ $(MESSOBJ)/sun.a:				\
 	$(MESS_DRIVERS)/sun1.o		\
 	$(MESS_DRIVERS)/sun2.o		\
 	$(MESS_DRIVERS)/sun3.o		\
+	$(MESS_DRIVERS)/sun4.o		\
 
 $(MESSOBJ)/svi.a:				\
 	$(MESS_MACHINE)/svi318.o	\
@@ -1654,24 +1628,27 @@ $(MESSOBJ)/trs.a:				\
 	$(MESS_MACHINE)/6883sam.o	\
 	$(MESS_MACHINE)/ds1315.o	\
 	$(MESS_MACHINE)/coco.o		\
-	$(MESS_VIDEO)/coco.o		\
-	$(MESS_DRIVERS)/coco.o		\
-	$(MESS_VIDEO)/coco3.o		\
-	$(MESS_FORMATS)/cocopak.o	\
-	$(MESS_MACHINE)/coco_vhd.o	\
-	$(MESS_MACHINE)/cococart.o	\
-	$(MESS_MACHINE)/coco_232.o	\
+	$(MESS_MACHINE)/coco12.o		\
+	$(MESS_DRIVERS)/coco12.o		\
+	$(MESS_MACHINE)/coco3.o		\
+	$(MESS_DRIVERS)/coco3.o		\
+	$(MESS_VIDEO)/gime.o			\
+	$(MESS_MACHINE)/dragon.o		\
+	$(MESS_DRIVERS)/dragon.o		\
+	$(MESS_MACHINE)/dgnalpha.o		\
+	$(MESS_MACHINE)/coco_vhd.o      \
+	$(MESS_MACHINE)/cococart.o      \
+	$(MESS_MACHINE)/coco_232.o      \
 	$(MESS_MACHINE)/coco_orch90.o\
-	$(MESS_MACHINE)/coco_pak.o	\
-	$(MESS_MACHINE)/coco_fdc.o	\
-	$(MESS_MACHINE)/coco_multi.o	\
+	$(MESS_MACHINE)/coco_pak.o      \
+	$(MESS_MACHINE)/coco_fdc.o      \
+	$(MESS_MACHINE)/coco_multi.o    \
 	$(MESS_DRIVERS)/mc10.o		\
 	$(MESS_MACHINE)/trs80.o		\
 	$(MESS_VIDEO)/trs80.o		\
 	$(MESS_FORMATS)/trs_cmd.o	\
 	$(MESS_DRIVERS)/trs80.o		\
 	$(MESS_DRIVERS)/trs80m2.o	\
-	$(MESS_VIDEO)/coco6847.o	\
 	$(MESS_DRIVERS)/tandy2k.o	\
 
 $(MESSOBJ)/unisys.a:			\
@@ -1889,6 +1866,7 @@ $(MAME_DRIVERS)/cdi.o:		$(MAME_LAYOUT)/cdi.lh
 $(MESS_DRIVERS)/chessmst.o:	$(MESS_LAYOUT)/chessmst.lh
 $(MESS_DRIVERS)/cvicny.o:	$(MESS_LAYOUT)/cvicny.lh
 $(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
+$(MESS_DRIVERS)/coco3.o:	$(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/cosmicos.o:	$(MESS_LAYOUT)/cosmicos.lh
 $(MESS_DRIVERS)/c80.o:		$(MESS_LAYOUT)/c80.lh
 $(MESS_DRIVERS)/dectalk.o:	$(MESS_LAYOUT)/dectalk.lh
@@ -1924,7 +1902,6 @@ $(MESS_DRIVERS)/mpf1.o:		$(MESS_LAYOUT)/mpf1.lh \
 							$(MESS_LAYOUT)/mpf1p.lh
 $(MESS_VIDEO)/newbrain.o:	$(MESS_LAYOUT)/newbrain.lh
 $(MAME_DRIVERS)/neogeo.o:	$(MAME_LAYOUT)/neogeo.lh
-$(MESS_DRIVERS)/ng_aes.o:	$(MAME_LAYOUT)/neogeo.lh
 $(MESS_DRIVERS)/pc1500.o:	$(MESS_LAYOUT)/pc1500.lh
 $(MESS_VIDEO)/pc8401a.o:	$(MESS_LAYOUT)/pc8500.lh
 $(MESS_DRIVERS)/pcw.o:		$(MESS_LAYOUT)/pcw.lh
@@ -1970,9 +1947,3 @@ $(MESS_DRIVERS)/z80ne.o:	$(MESS_LAYOUT)/z80ne.lh   \
 
 include $(MESSSRC)/tools/tools.mak
 
-
-#-------------------------------------------------
-# MESS special OSD rules
-#-------------------------------------------------
-
-include $(MESSSRC)/osd/$(OSD)/$(OSD).mak

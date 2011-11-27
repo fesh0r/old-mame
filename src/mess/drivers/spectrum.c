@@ -624,7 +624,7 @@ DRIVER_INIT( spectrum )
 {
 	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	switch (ram_get_size(machine.device(RAM_TAG)))
+	switch (machine.device<ram_device>(RAM_TAG)->size())
 	{
 	    case 48*1024:
 		space->install_ram(0x8000, 0xffff, NULL); // Fall through
@@ -1024,8 +1024,8 @@ COMP( 1985, hc85,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	
 COMP( 1988, hc88,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-88" , GAME_NOT_WORKING)
 COMP( 1990, hc90,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-90" , 0)
 COMP( 1991, hc91,     spectrum, 0,		spectrum,		spec_plus,	spectrum,	"ICE-Felix",	"HC-91" , 0)
-COMP( 1988, cobrasp,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra" , GAME_NOT_WORKING)
-COMP( 1988, cobra80,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra 80K" , GAME_NOT_WORKING)
+COMP( 1988, cobrasp,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra (ITCI)" , GAME_NOT_WORKING)
+COMP( 1988, cobra80,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra 80K (ITCI)" , GAME_NOT_WORKING)
 COMP( 1987, cip01,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electronica",	"CIP-01" , 0)	// keyboard should be spectrum, but image was not clear
 COMP( 1988, cip03,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electronica",	"CIP-03" , 0)	// keyboard should be spectrum, but image was not clear
 COMP( 1990, jet,      spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electromagnetica",	"JET" , 0)	// keyboard should be spectrum, but image was not clear

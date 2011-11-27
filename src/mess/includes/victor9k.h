@@ -23,7 +23,7 @@
 #define SCREEN_TAG		"screen"
 #define I8088_TAG		"8l"
 #define I8048_TAG		"5d"
-#define I8022_TAG		"i8022"
+#define I8021_TAG		"z3"
 #define I8253_TAG		"13h"
 #define I8259A_TAG		"7l"
 #define UPD7201_TAG		"16e"
@@ -64,7 +64,7 @@ public:
 	required_device<device_t> m_via1;
 	required_device<device_t> m_cvsd;
 	required_device<mc6845_device> m_crtc;
-	required_device<device_t> m_ram;
+	required_device<ram_device> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
 

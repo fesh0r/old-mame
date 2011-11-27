@@ -725,7 +725,7 @@ void ste_state::dmasound_tick()
 {
 	if (m_dmasnd_samples == 0)
 	{
-		UINT8 *RAM = ram_get_ptr(machine().device(RAM_TAG));
+		UINT8 *RAM = machine().device<ram_device>(RAM_TAG)->pointer();
 
 		for (int i = 0; i < 8; i++)
 		{
@@ -2169,7 +2169,7 @@ void st_state::configure_memory()
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
-	switch (ram_get_size(m_ram))
+	switch (m_ram->size())
 	{
 	case 256 * 1024:
 		program->unmap_readwrite(0x040000, 0x3fffff);
@@ -2197,26 +2197,26 @@ void st_state::state_save()
 {
 	m_dma_error = 1;
 
-	state_save_register_global(machine(), m_mmu);
-	state_save_register_global(machine(), m_dma_base);
-	state_save_register_global(machine(), m_dma_error);
-	state_save_register_global(machine(), m_fdc_mode);
-	state_save_register_global(machine(), m_fdc_sectors);
-	state_save_register_global(machine(), m_fdc_dmabytes);
-	state_save_register_global(machine(), m_ikbd_keylatch);
-	state_save_register_global(machine(), m_ikbd_mouse);
-	state_save_register_global(machine(), m_ikbd_mouse_x);
-	state_save_register_global(machine(), m_ikbd_mouse_y);
-	state_save_register_global(machine(), m_ikbd_mouse_px);
-	state_save_register_global(machine(), m_ikbd_mouse_py);
-	state_save_register_global(machine(), m_ikbd_mouse_pc);
-	state_save_register_global(machine(), m_ikbd_rx);
-	state_save_register_global(machine(), m_ikbd_tx);
-	state_save_register_global(machine(), m_ikbd_joy);
-	state_save_register_global(machine(), m_midi_rx);
-	state_save_register_global(machine(), m_midi_tx);
-	state_save_register_global(machine(), m_acia_ikbd_irq);
-	state_save_register_global(machine(), m_acia_midi_irq);
+	save_item(NAME(m_mmu));
+	save_item(NAME(m_dma_base));
+	save_item(NAME(m_dma_error));
+	save_item(NAME(m_fdc_mode));
+	save_item(NAME(m_fdc_sectors));
+	save_item(NAME(m_fdc_dmabytes));
+	save_item(NAME(m_ikbd_keylatch));
+	save_item(NAME(m_ikbd_mouse));
+	save_item(NAME(m_ikbd_mouse_x));
+	save_item(NAME(m_ikbd_mouse_y));
+	save_item(NAME(m_ikbd_mouse_px));
+	save_item(NAME(m_ikbd_mouse_py));
+	save_item(NAME(m_ikbd_mouse_pc));
+	save_item(NAME(m_ikbd_rx));
+	save_item(NAME(m_ikbd_tx));
+	save_item(NAME(m_ikbd_joy));
+	save_item(NAME(m_midi_rx));
+	save_item(NAME(m_midi_tx));
+	save_item(NAME(m_acia_ikbd_irq));
+	save_item(NAME(m_acia_midi_irq));
 }
 
 
@@ -2261,19 +2261,19 @@ void ste_state::state_save()
 {
 	st_state::state_save();
 
-	state_save_register_global(machine(), m_dmasnd_base);
-	state_save_register_global(machine(), m_dmasnd_end);
-	state_save_register_global(machine(), m_dmasnd_cntr);
-	state_save_register_global(machine(), m_dmasnd_baselatch);
-	state_save_register_global(machine(), m_dmasnd_endlatch);
-	state_save_register_global(machine(), m_dmasnd_ctrl);
-	state_save_register_global(machine(), m_dmasnd_mode);
-	state_save_register_global_array(machine(), m_dmasnd_fifo);
-	state_save_register_global(machine(), m_dmasnd_samples);
-	state_save_register_global(machine(), m_dmasnd_active);
-	state_save_register_global(machine(), m_mw_data);
-	state_save_register_global(machine(), m_mw_mask);
-	state_save_register_global(machine(), m_mw_shift);
+	save_item(NAME(m_dmasnd_base));
+	save_item(NAME(m_dmasnd_end));
+	save_item(NAME(m_dmasnd_cntr));
+	save_item(NAME(m_dmasnd_baselatch));
+	save_item(NAME(m_dmasnd_endlatch));
+	save_item(NAME(m_dmasnd_ctrl));
+	save_item(NAME(m_dmasnd_mode));
+	save_item(NAME(m_dmasnd_fifo));
+	save_item(NAME(m_dmasnd_samples));
+	save_item(NAME(m_dmasnd_active));
+	save_item(NAME(m_mw_data));
+	save_item(NAME(m_mw_mask));
+	save_item(NAME(m_mw_shift));
 }
 
 
@@ -2306,7 +2306,7 @@ void megaste_state::machine_start()
 {
 	ste_state::machine_start();
 
-	state_save_register_global(machine(), m_cache);
+	save_item(NAME(m_cache));
 }
 
 
@@ -2319,7 +2319,7 @@ void stbook_state::machine_start()
 	/* configure RAM banking */
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
-	switch (ram_get_size(m_ram))
+	switch (m_ram->size())
 	{
 	case 1024 * 1024:
 		program->unmap_readwrite(0x100000, 0x3fffff);

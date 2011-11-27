@@ -414,8 +414,8 @@ void mac_state::v8_resize()
 	else
 	{
 		/* RAM */
-		memory_size = ram_get_size(m_ram);
-		memory_data = ram_get_ptr(m_ram);
+		memory_size = m_ram->size();
+		memory_data = m_ram->pointer();
 		is_rom = FALSE;
 	}
 
@@ -492,8 +492,8 @@ void mac_state::set_memory_overlay(int overlay)
 		else
 		{
 			/* RAM */
-			memory_size = ram_get_size(m_ram);
-			memory_data = ram_get_ptr(m_ram);
+			memory_size = m_ram->size();
+			memory_data = m_ram->pointer();
 			is_rom = FALSE;
 		}
 
@@ -3194,7 +3194,7 @@ void mac_state::machine_reset()
 		mac_set_sound_buffer(machine().device("custom"), 1);
 
 		// classic will fail RAM test and try to boot appletalk if RAM is not all zero
-		memset(ram_get_ptr(m_ram), 0, ram_get_size(m_ram));
+		memset(m_ram->pointer(), 0, m_ram->size());
 	}
 
 	m_scsi_interrupt = 0;
@@ -3292,7 +3292,7 @@ static void mac_driver_init(running_machine &machine, model_t model)
 	if (model < MODEL_MAC_PORTABLE)
 	{
 		/* set up RAM mirror at 0x600000-0x6fffff (0x7fffff ???) */
-		mac_install_memory(machine, 0x600000, 0x6fffff, ram_get_size(mac->m_ram), ram_get_ptr(mac->m_ram), FALSE, "bank2");
+		mac_install_memory(machine, 0x600000, 0x6fffff, mac->m_ram->size(), mac->m_ram->pointer(), FALSE, "bank2");
 
 		/* set up ROM at 0x400000-0x43ffff (-0x5fffff for mac 128k/512k/512ke) */
 		mac_install_memory(machine, 0x400000, (model >= MODEL_MAC_PLUS) ? 0x43ffff : 0x5fffff,
@@ -3305,7 +3305,7 @@ static void mac_driver_init(running_machine &machine, model_t model)
 		mac->set_memory_overlay(1);
 	}
 
-	memset(ram_get_ptr(mac->m_ram), 0, ram_get_size(mac->m_ram));
+	memset(mac->m_ram->pointer(), 0, mac->m_ram->size());
 
 	if ((model == MODEL_MAC_SE) || (model == MODEL_MAC_CLASSIC) || (model == MODEL_MAC_CLASSIC_II) || (model == MODEL_MAC_LC) ||
 	    (model == MODEL_MAC_LC_II) || (model == MODEL_MAC_LC_III) || (model == MODEL_MAC_LC_III_PLUS) || ((mac->m_model >= MODEL_MAC_II) && (mac->m_model <= MODEL_MAC_SE30)) ||

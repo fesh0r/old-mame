@@ -304,7 +304,7 @@ READ8_MEMBER( ql_state::trump_card_rom_r )
 {
 	// If we have more than 640K them map extra ram into top 256K
 	// else just map to unmap.
-	if (ram_get_size(m_ram)>(640*1024))
+	if (m_ram->size()>(640*1024))
 		space.install_ram(0x0c0000, 0x0fffff, NULL);
 	else
 		space.unmap_readwrite(0x0c0000, 0x0fffff);
@@ -928,12 +928,12 @@ static MICRODRIVE_CONFIG( mdv2_config )
 void ql_state::machine_start()
 {
 	// register for state saving
-	state_save_register_global(machine(), m_keylatch);
-	state_save_register_global(machine(), m_ipl);
-	state_save_register_global(machine(), m_comdata);
-	state_save_register_global(machine(), m_baudx4);
-	state_save_register_global(machine(), m_printer_char);
-	state_save_register_global(machine(), m_disk_io_byte);
+	save_item(NAME(m_keylatch));
+	save_item(NAME(m_ipl));
+	save_item(NAME(m_comdata));
+	save_item(NAME(m_baudx4));
+	save_item(NAME(m_printer_char));
+	save_item(NAME(m_disk_io_byte));
 }
 
 void ql_state::machine_reset()
@@ -948,7 +948,7 @@ void ql_state::machine_reset()
 
 	logerror("Configuring RAM\n");
 	// configure RAM
-	switch (ram_get_size(m_ram))
+	switch (m_ram->size())
 	{
 		case 128*1024:
 			program->unmap_readwrite(0x040000, 0x0fffff);

@@ -60,7 +60,7 @@ public:
 	required_device<device_t> m_fdc;
 	required_device<msm6255_device> m_lcdc;
 	required_device<device_t> m_centronics;
-	required_device<device_t> m_ram;
+	required_device<ram_device> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
 
@@ -82,23 +82,20 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( mtron_w );
 	DECLARE_WRITE_LINE_MEMBER( fdc_drq_w );
 
-	/* keyboard state */
+	// keyboard state
 	UINT8 m_kb_row;
 
-	/* memory state */
-	UINT8 *m_work_ram;
+	// memory state
 	UINT8 *m_ramcard_ram;
 	UINT8 m_bank;
 
-	/* floppy state */
+	// floppy state
 	int m_drive;
 	int m_mtron;
 	int m_mfdbk;
 
-	/* video state */
+	// video state
 	UINT8 *m_video_ram;
-
-	/* devices */
 };
 
 #endif

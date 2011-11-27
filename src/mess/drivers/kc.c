@@ -117,6 +117,15 @@ const kc_keyb_interface kc85_keyboard_interface =
 	DEVCB_DRIVER_LINE_MEMBER(kc_state, keyboard_cb)
 };
 
+static const cassette_interface kc_cassette_interface =
+{
+	kc_cassette_formats,
+	NULL,
+	CASSETTE_PLAY,
+	"kc_cass",
+	NULL
+};
+
 static MACHINE_CONFIG_START( kc85_3, kc_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, KC85_3_CLOCK)
@@ -125,8 +134,8 @@ static MACHINE_CONFIG_START( kc85_3, kc_state )
 	MCFG_CPU_CONFIG(kc85_daisy_chain)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_Z80PIO_ADD( "z80pio", 1379310.344828, kc85_pio_intf )
-	MCFG_Z80CTC_ADD( "z80ctc", 1379310.344828, kc85_ctc_intf )
+	MCFG_Z80PIO_ADD( "z80pio", KC85_3_CLOCK, kc85_pio_intf )
+	MCFG_Z80CTC_ADD( "z80ctc", KC85_3_CLOCK, kc85_ctc_intf )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -152,7 +161,7 @@ static MACHINE_CONFIG_START( kc85_3, kc_state )
 	/* devices */
 	MCFG_QUICKLOAD_ADD("quickload", kc, "kcc", 2)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, kc_cassette_interface )
 
 	/* cartridge slot */
 	MCFG_KC85_CARTRIDGE_ADD("m1", "m2", kc85_exp_interface, kc85_cart, NULL, NULL)
@@ -178,8 +187,8 @@ static MACHINE_CONFIG_START( kc85_4, kc85_4_state )
 	MCFG_CPU_CONFIG(kc85_daisy_chain)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_Z80PIO_ADD( "z80pio", 1379310.344828, kc85_pio_intf )
-	MCFG_Z80CTC_ADD( "z80ctc", 1379310.344828, kc85_ctc_intf )
+	MCFG_Z80PIO_ADD( "z80pio", KC85_4_CLOCK, kc85_pio_intf )
+	MCFG_Z80CTC_ADD( "z80ctc", KC85_4_CLOCK, kc85_ctc_intf )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -205,7 +214,7 @@ static MACHINE_CONFIG_START( kc85_4, kc85_4_state )
 	/* devices */
 	MCFG_QUICKLOAD_ADD("quickload", kc, "kcc", 2)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, kc_cassette_interface )
 
 	/* cartridge slot */
 	MCFG_KC85_CARTRIDGE_ADD("m1", "m2", kc85_exp_interface, kc85_cart, NULL, NULL)
@@ -225,7 +234,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( kc85_5, kc85_4 )
 	/* internal ram */
 	MCFG_RAM_MODIFY(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("224K")
+	MCFG_RAM_DEFAULT_SIZE("256K")
 MACHINE_CONFIG_END
 
 

@@ -29,14 +29,6 @@
 #include "machine/maple-dc.h"
 #define CPU_CLOCK (200000000)
 
-#ifdef MESS
-UINT16 actel_id;
-int jvsboard_type;
-#else
-extern UINT16 actel_id;
-extern int jvsboard_type;
-#endif
-
 // things from mess/machine/dc.c
 void dreamcast_atapi_init(running_machine &machine);
 void dreamcast_atapi_reset(running_machine &machine);

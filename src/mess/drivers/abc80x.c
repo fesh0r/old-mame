@@ -296,7 +296,7 @@ void abc802_state::bankswitch()
 	else
 	{
 		// low RAM selected
-		program->install_ram(0x0000, 0x7fff, ram_get_ptr(m_ram));
+		program->install_ram(0x0000, 0x7fff, m_ram->pointer());
 	}
 }
 
@@ -308,7 +308,7 @@ void abc802_state::bankswitch()
 void abc806_state::bankswitch()
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
-	UINT32 videoram_mask = ram_get_size(m_ram) - (32 * 1024) - 1;
+	UINT32 videoram_mask = m_ram->size() - (32 * 1024) - 1;
 	int bank;
 	char bank_name[10];
 
@@ -1242,14 +1242,14 @@ void abc800_state::machine_start()
 	m_kb_txd = 1;
 
 	// register for state saving
-	state_save_register_global(machine(), m_fetch_charram);
-	state_save_register_global(machine(), m_kb_row);
-	state_save_register_global(machine(), m_kb_txd);
-	state_save_register_global(machine(), m_kb_clk);
-	state_save_register_global(machine(), m_kb_stb);
-	state_save_register_global(machine(), m_pling);
-	state_save_register_global(machine(), m_sio_rxcb);
-	state_save_register_global(machine(), m_sio_txcb);
+	save_item(NAME(m_fetch_charram));
+	save_item(NAME(m_kb_row));
+	save_item(NAME(m_kb_txd));
+	save_item(NAME(m_kb_clk));
+	save_item(NAME(m_kb_stb));
+	save_item(NAME(m_pling));
+	save_item(NAME(m_sio_rxcb));
+	save_item(NAME(m_sio_txcb));
 }
 
 
@@ -1278,9 +1278,9 @@ void abc800_state::machine_reset()
 void abc802_state::machine_start()
 {
 	// register for state saving
-	state_save_register_global(machine(), m_lrs);
-	state_save_register_global(machine(), m_pling);
-	state_save_register_global(machine(), m_keylatch);
+	save_item(NAME(m_lrs));
+	save_item(NAME(m_pling));
+	save_item(NAME(m_keylatch));
 }
 
 
@@ -1318,7 +1318,7 @@ void abc802_state::machine_reset()
 void abc806_state::machine_start()
 {
 	UINT8 *mem = machine().region(Z80_TAG)->base();
-	UINT32 videoram_size = ram_get_size(m_ram) - (32 * 1024);
+	UINT32 videoram_size = m_ram->size() - (32 * 1024);
 	int bank;
 	char bank_name[10];
 
@@ -1334,11 +1334,11 @@ void abc806_state::machine_start()
 	}
 
 	// register for state saving
-	state_save_register_global(machine(), m_keydtr);
-	state_save_register_global(machine(), m_eme);
-	state_save_register_global(machine(), m_fetch_charram);
-	state_save_register_global_array(machine(), m_map);
-	state_save_register_global(machine(), m_keylatch);
+	save_item(NAME(m_keydtr));
+	save_item(NAME(m_eme));
+	save_item(NAME(m_fetch_charram));
+	save_item(NAME(m_map));
+	save_item(NAME(m_keylatch));
 }
 
 

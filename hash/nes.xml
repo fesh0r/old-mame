@@ -9,8 +9,8 @@
 	0.prg and 0.chr (alternatively, 1.prg and 1.chr for later revisions of a game). If you own one of these carts and they have a label
 	we don't have, please let us know (or contact Bootgod: he's always interested in new verifications) -->
 
-<!-- Note on the pcb values: for dumps which hasn't been documented from a cart (e.g. the ones obtained by splitting PRG and CHR 
-	banks from a iNES or UNIF files), we have chosen the pcb name as follows. For UNIF files we have used the one used by the dumper 
+<!-- Note on the pcb values: for dumps which hasn't been documented from a cart (e.g. the ones obtained by splitting PRG and CHR
+	banks from a iNES or UNIF files), we have chosen the pcb name as follows. For UNIF files we have used the one used by the dumper
 	in the header, in the hope it is accurate. For iNES files we have tried to use a unique pcb for each mapper, namely:
 	- mapper 0 with 16k PRG: NES-NROM-128
 	- mapper 0 with 32k PRG: NES-NROM-256
@@ -20,6 +20,15 @@
 	- mapper 4: NES-TLROM
 	- mapper 5: NES-EKROM
 	etc. Proper PCB should be used when the cart is documented. -->
+
+<!-- Note on Waixing dumps: many roms are assigned to the wrong mapper. Common mistakes:
+	- HENGGEDIANZI-XJZB carts use mapper 176
+	- a few WAIXING-A carts use mapper 4
+	Also, a few images are not proper dumps:
+	- the Decrypted SmyNES ones have been ripped from SmyNES encrypted files and decrypted (by CaH4e3?)
+	- the Decrypted WXN ones have been found as encrypted exes for a famiclone and decrypted (by Byemu?)
+	In both cases it would be better to confirm them from real carts
+-->
 
 	<software name="89denku">
 		<!-- Serial: IPC-J1-01 - Release Date: 1988-12-10 - Alternative Title: 神宮館’８９電脳九星占い -->
@@ -82,11 +91,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-NROM-256" />
 			<feature name="mirroring" value="horizontal" />
+			<feature name="pcb_model" value="NES-NROM-256-02" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="cart_back_label" value="" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-ty-0 prg" size="32768" crc="df58fc5a" sha1="7cc69b39ece2168574599d45ab8452edd4f5a3a1" offset="00000" />
+				<rom name="nes-ty-0 prg.u1" size="32768" crc="df58fc5a" sha1="7cc69b39ece2168574599d45ab8452edd4f5a3a1" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="8192">
-				<rom name="nes-ty-0 chr" size="8192" crc="2b8336ee" sha1="6b40a3b7ad6214abf9c35bcbf89d9c1da06f47a0" offset="00000" />
+				<rom name="nes-ty-0 chr.u2" size="8192" crc="2b8336ee" sha1="6b40a3b7ad6214abf9c35bcbf89d9c1da06f47a0" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -557,6 +571,7 @@
 		</part>
 	</software>
 
+<!-- glitches on NTSC -->
 	<software name="bayoubil">
 		<!-- Serial: NES-MU-EEC - Release Date: 1991-01-24 -->
 		<description>The Adventures of Bayou Billy (Euro)</description>
@@ -1101,6 +1116,7 @@
 		</part>
 	</software>
 
+<!-- glitches on NTSC -->
 	<software name="aladdin">
 		<!-- Serial: NES-AJ (FRA/SCN) - Release Date: 1994-12-27 -->
 		<description>Disney's Aladdin (Euro)</description>
@@ -1741,6 +1757,7 @@
 		</part>
 	</software>
 
+<!-- glitches on NTSC -->
 	<software name="asterix">
 		<!-- Serial: NES-AX (UKV/ESP) - Release Date: 1993 -->
 		<description>Astérix (Euro)</description>
@@ -2264,7 +2281,7 @@
 		<publisher>Victor Ongaku Sangyou</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="HVC-CNROM" />
-			<feature name="mirroring" value="horizontal" />	<!-- Also found as vertical -->
+			<feature name="mirroring" value="vertical" />	<!-- CHECK! Also found as horizontal? does it resume fine after pressing Select when is horizontal? -->
 			<dataarea name="prg" size="32768">
 				<rom name="vfr-b1-0 prg" size="32768" crc="9cf17fab" sha1="73f05a931ad15639979907bc3ac4300138a7000e" offset="00000" />
 			</dataarea>
@@ -2729,11 +2746,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-l2-0 prg" size="262144" crc="f2a6ace1" sha1="77b37fbb4dff83a2ff803e58e261849ee160c964" offset="00000" />
+				<rom name="nes-l2-0 prg.u1" size="262144" crc="f2a6ace1" sha1="77b37fbb4dff83a2ff803e58e261849ee160c964" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-l2-0 chr" size="131072" crc="11683dca" sha1="d4646a114b02b08c93c8e87ac9d79758fa4e40e8" offset="00000" />
+				<rom name="nes-l2-0 chr.u2" size="131072" crc="11683dca" sha1="d4646a114b02b08c93c8e87ac9d79758fa4e40e8" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -2841,7 +2863,8 @@
 		</part>
 	</software>
 
-	<software name="batmanrj">
+<!-- glitches on NTSC -->
+	<software name="batmanrj" supported="partial">
 		<!-- Serial: NES-48 (NOE/SCN/ESP) - Release Date: 1992-08-15 -->
 		<description>Batman: Return of the Joker (Euro)</description>
 		<year>1992</year>
@@ -3097,8 +3120,14 @@
 		<publisher>Tradewest</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-AOROM" />
+			<feature name="pcb_model" value="NES-AOROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-8t-0 prg" size="262144" crc="279710dc" sha1="d85c9ff489672534fbf61a15f8fa56fff489a34b" offset="00000" />
+				<rom name="nes-8t-0 prg.u1" size="262144" crc="279710dc" sha1="d85c9ff489672534fbf61a15f8fa56fff489a34b" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -3106,7 +3135,8 @@
 		</part>
 	</software>
 
-	<software name="btoads">
+<!-- glitches on NTSC -->
+	<software name="btoads" supported="partial">
 		<!-- Serial: NES-8T (SCN/ESP) - Release Date: 1993-02-18 -->
 		<description>Battletoads (Euro)</description>
 		<year>1993</year>
@@ -3330,6 +3360,7 @@
 		</part>
 	</software>
 
+<!-- glitches on NTSC -->
 	<software name="bestof">
 		<!-- Serial: NES-BB-ESP - Release Date: 1993-03-01 -->
 		<description>Best of the Best: Championship Karate (Euro)</description>
@@ -3653,8 +3684,14 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SGROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SGROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 MMC1" />
+			<feature name="u4" value="U4 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-cm-0 prg" size="262144" crc="d2574720" sha1="c82e29639e2dffa2754149025c6784eb2587b09d" offset="00000" />
+				<rom name="nes-cm-0 prg.u1" size="262144" crc="d2574720" sha1="c82e29639e2dffa2754149025c6784eb2587b09d" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -3716,14 +3753,14 @@
 		</part>
 	</software>
 
-	<software name="blackbas">
+	<software name="blackbas" supported="partial">
 		<!-- Serial: NES-BO-USA - Release Date: 1989-09 -->
 		<description>The Black Bass (USA)</description>
 		<year>1989</year>
 		<publisher>Hot-B</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
-			<feature name="mirroring" value="vertical" />
+			<feature name="mirroring" value="horizontal" /> <!-- CHECK! vertical according to bootgod... -->
 			<dataarea name="prg" size="131072">
 				<rom name="nes-bo-0 prg" size="131072" crc="1d0f4d6b" sha1="9c3bcd2bf8224b158b6ff2e47b67cda66cb4ac39" offset="00000" />
 			</dataarea>
@@ -4430,11 +4467,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SBROM" />
 			<feature name="mmc1_type" value="MMC1B1-H" />
+			<feature name="pcb_model" value="NES-SBROM-01" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 MMC1" />
+			<feature name="u4" value="U4 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="65536">
-				<rom name="nes-c1-0 prg" size="65536" crc="b10429aa" sha1="43609481c4453fee018abeda7ec832af5bb9c7b8" offset="00000" />
+				<rom name="nes-c1-0 prg.u1" size="65536" crc="b10429aa" sha1="43609481c4453fee018abeda7ec832af5bb9c7b8" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="32768">
-				<rom name="nes-c1-0 chr" size="32768" crc="c4ce2887" sha1="d928f2b58084aa64aa8310eb05cbd2318c0cd82b" offset="00000" />
+				<rom name="nes-c1-0 chr.u2" size="32768" crc="c4ce2887" sha1="d928f2b58084aa64aa8310eb05cbd2318c0cd82b" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -5081,11 +5124,16 @@
 		<publisher>Konami</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-ELROM" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 MMC5" />
+			<feature name="u6" value="U6 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-vn-0 prg" size="262144" crc="95ca9ec7" sha1="91a93f59a92955af2448a2f519ee254ce49c679d" offset="00000" />
+				<rom name="nes-vn-0 prg.u1" size="262144" crc="95ca9ec7" sha1="91a93f59a92955af2448a2f519ee254ce49c679d" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-vn-0 chr" size="131072" crc="1b448e0a" sha1="0ce93c7e536ba5ef3b09d2255af093e95622dee2" offset="00000" />
+				<rom name="nes-vn-0 chr.u2" size="131072" crc="1b448e0a" sha1="0ce93c7e536ba5ef3b09d2255af093e95622dee2" offset="00000" />
 			</dataarea>
 			<!-- 1k Internal RAM in the MMC5 chip (ExRAM) -->
 			<dataarea name="mapper_ram" size="1024">
@@ -5430,11 +5478,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SLROM-06" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="cart_back_label" value="NES-USA/CAN-1" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-dv-0 prg" size="131072" crc="2f97d456" sha1="cc9dcddc871036032d9ed6714f30ae8b2986b1f6" offset="00000" />
+				<rom name="nes-dv-0 prg.u1" size="131072" crc="2f97d456" sha1="cc9dcddc871036032d9ed6714f30ae8b2986b1f6" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-dv-0 chr" size="131072" crc="a0c30578" sha1="c49107f8280c56fc3ac72d4e8c80e20b4ed4ad58" offset="00000" />
+				<rom name="nes-dv-0 chr.u2" size="131072" crc="a0c30578" sha1="c49107f8280c56fc3ac72d4e8c80e20b4ed4ad58" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -5447,11 +5501,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SLROM-06" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-ru-0 prg" size="131072" crc="02931525" sha1="28ddca5d299e7894e3c3aa0a193684ca3e384ee9" offset="00000" />
+				<rom name="nes-ru-0 prg.u1" size="131072" crc="02931525" sha1="28ddca5d299e7894e3c3aa0a193684ca3e384ee9" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-ru-0 chr" size="131072" crc="218d4224" sha1="37a729021173bec08a8497ad03fd58379b0fce39" offset="00000" />
+				<rom name="nes-ru-0 chr.u2" size="131072" crc="218d4224" sha1="37a729021173bec08a8497ad03fd58379b0fce39" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -6310,11 +6370,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-CNROM-06" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-yn-0 prg" size="32768" crc="34d5fc6e" sha1="2b2dacd2dd74a6be31dafad273fa4a34c5785fe7" offset="00000" />
+				<rom name="nes-yn-0 prg.u1" size="32768" crc="34d5fc6e" sha1="2b2dacd2dd74a6be31dafad273fa4a34c5785fe7" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="32768">
-				<rom name="nes-yn-0 chr" size="32768" crc="89e13d77" sha1="3068209fb2641eab2a71ea71864af41ddeabb0fb" offset="00000" />
+				<rom name="nes-yn-0 chr.u2" size="32768" crc="89e13d77" sha1="3068209fb2641eab2a71ea71864af41ddeabb0fb" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -6972,11 +7038,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-CNROM-07" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-vw-0 prg" size="32768" crc="86cbc595" sha1="7927ea0047c314f3417dab3f639d40c46dc35ccb" offset="00000" />
+				<rom name="nes-vw-0 prg.u1" size="32768" crc="86cbc595" sha1="7927ea0047c314f3417dab3f639d40c46dc35ccb" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="32768">
-				<rom name="nes-vw-0 chr" size="32768" crc="9c82f4e4" sha1="2887d4471f1d5bae4f28dd934c5d3ccb4d08ef0d" offset="00000" />
+				<rom name="nes-vw-0 chr.u2" size="32768" crc="9c82f4e4" sha1="2887d4471f1d5bae4f28dd934c5d3ccb4d08ef0d" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -7600,11 +7672,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SLROM-05" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-wd-0 prg" size="131072" crc="79149ebf" sha1="91b3b33a4e24d5dd1a5afa480b8c44fac503e926" offset="00000" />
+				<rom name="nes-wd-0 prg.u1" size="131072" crc="79149ebf" sha1="91b3b33a4e24d5dd1a5afa480b8c44fac503e926" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-wd-0 chr" size="131072" crc="5ebe0fd0" sha1="4a948c9784433e051f1015a6b6e985a98b81b80d" offset="00000" />
+				<rom name="nes-wd-0 chr.u2" size="131072" crc="5ebe0fd0" sha1="4a948c9784433e051f1015a6b6e985a98b81b80d" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -8709,8 +8787,15 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-UNROM-08" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="u5" value="U5 HC32" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-uk-0 prg" size="131072" crc="efb09075" sha1="6e700e8f72f767918b096f6a5f17f8cd1e2d0866" offset="00000" />
+				<rom name="nes-uk-0 prg.u1" size="131072" crc="efb09075" sha1="6e700e8f72f767918b096f6a5f17f8cd1e2d0866" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -9181,12 +9266,18 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="HVC-NROM-128" /> <!-- also found with HVC-RROM, NES-NROM-128 pcb -->
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-NROM-128-03" />
+			<!-- Alt pcb_models: NES-NROM-04 -->
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="hvc-eb-0 prg" size="16384" crc="3a94fa0b" sha1="6239e91ccefdc017d233cbae388c6568a17ed04b" offset="00000" />
+				<rom name="hvc-eb-0 prg.u1" size="16384" crc="3a94fa0b" sha1="6239e91ccefdc017d233cbae388c6568a17ed04b" offset="00000" />
 				<rom size="16384" offset="0x4000" loadflag="reload" />
 			</dataarea>
 			<dataarea name="chr" size="8192">
-				<rom name="hvc-eb-0 chr" size="8192" crc="e5f72401" sha1="a8bf028e1a62677e48e88cf421bb2a8051eb800c" offset="00000" />
+				<rom name="hvc-eb-0 chr.u2" size="8192" crc="e5f72401" sha1="a8bf028e1a62677e48e88cf421bb2a8051eb800c" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -9272,11 +9363,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="COLORDREAMS-74*377" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="BC6" />
+			<feature name="u1" value="_PRG_" />
+			<feature name="u2" value="_CHR_" />
+			<feature name="u3" value="_LS377_" />
+			<feature name="u4" value="_7660_" />
 			<dataarea name="prg" size="131072">
-				<rom name="journey ver 4.0 prg." size="131072" crc="3ced963a" sha1="1b4152dcd6f75fbcc3e2336f4039dcb19299ae2e" offset="00000" />
+				<rom name="journey ver 4.0 prg.u1" size="131072" crc="3ced963a" sha1="1b4152dcd6f75fbcc3e2336f4039dcb19299ae2e" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="journey ver 4.0 vid." size="131072" crc="ab344905" sha1="fdfa0a231ad714adf966e4a612fa3fe4cce5ab0a" offset="00000" />
+				<rom name="journey ver 4.0 vid.u2" size="131072" crc="ab344905" sha1="fdfa0a231ad714adf966e4a612fa3fe4cce5ab0a" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -9289,11 +9385,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="COLORDREAMS-74*377" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="BC5" />
+			<feature name="u1" value="_PRG_" />
+			<feature name="u2" value="_CHR_" />
+			<feature name="u3" value="_LS377_" />
+			<feature name="u4" value="_4051_" />
 			<dataarea name="prg" size="131072">
-				<rom name="0.prg" size="131072" crc="653f7cd2" sha1="19f3db18a0b8501b77b9b979667cb686efe5c8ca" offset="00000" />
+				<rom name="0.u1" size="131072" crc="653f7cd2" sha1="19f3db18a0b8501b77b9b979667cb686efe5c8ca" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="journey ver 4.0 vid." size="131072" crc="ab344905" sha1="fdfa0a231ad714adf966e4a612fa3fe4cce5ab0a" offset="00000" />
+				<rom name="journey ver 4.0 vid.u2" size="131072" crc="ab344905" sha1="fdfa0a231ad714adf966e4a612fa3fe4cce5ab0a" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -11924,8 +12025,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-UN-ROM-07" />
+			<!-- Alt pcb_models: NES-UN-ROM-04 (no back label code) -->
+			<feature name="u1" value="U1 PRG ROM" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 LS161N" />
+			<feature name="u5" value="U5 LS32" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-gg-0 prg" size="131072" crc="b4e4879e" sha1="ca03c76b65f0fe5b1d05149d7e9a97b4d5f44a27" offset="00000" />
+				<rom name="nes-gg-0 prg.u1" size="131072" crc="b4e4879e" sha1="ca03c76b65f0fe5b1d05149d7e9a97b4d5f44a27" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -14363,11 +14472,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-NROM-256" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-NROM-256-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-hy-0 prg" size="32768" crc="82dff13d" sha1="4edbf555d319dfe1c2a08dc28f484d4344a228ba" offset="00000" />
+				<rom name="nes-hy-0 prg.u1" size="32768" crc="82dff13d" sha1="4edbf555d319dfe1c2a08dc28f484d4344a228ba" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="8192">
-				<rom name="nes-hy-0 chr" size="8192" crc="f10fc90a" sha1="1a2a657267de1f5bdf284d1b69ed7d4895dfb281" offset="00000" />
+				<rom name="nes-hy-0 chr.u2" size="8192" crc="f10fc90a" sha1="1a2a657267de1f5bdf284d1b69ed7d4895dfb281" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -14938,8 +15052,14 @@
 		<publisher>Acclaim Entertainment</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-AOROM" />
+			<feature name="pcb_model" value="NES-AOROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-ir-0 prg" size="262144" crc="2328046e" sha1="03130f8464b3f4418427bf124eb15fbaeb86e09d" offset="00000" />
+				<rom name="nes-ir-0 prg.u1" size="262144" crc="2328046e" sha1="03130f8464b3f4418427bf124eb15fbaeb86e09d" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -15016,11 +15136,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TLROM" />
 			<feature name="mmc3_type" value="MMC3B" />
+			<feature name="pcb_model" value="NES-TLROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC3" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-w6-0 prg" size="131072" crc="ef0c9672" sha1="ec27ee3bd803bb8357e481dd77f2fe0ed3c593cd" offset="00000" />
+				<rom name="nes-w6-0 prg.u1" size="131072" crc="ef0c9672" sha1="ec27ee3bd803bb8357e481dd77f2fe0ed3c593cd" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-w6-0 chr" size="131072" crc="230349c9" sha1="1527860f7c3005bc543696eaa72dd1a2c12a944c" offset="00000" />
+				<rom name="nes-w6-0 chr.u2" size="131072" crc="230349c9" sha1="1527860f7c3005bc543696eaa72dd1a2c12a944c" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -17775,8 +17901,15 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-UN-ROM-07" />
+			<feature name="u1" value="PRG ROM" />
+			<feature name="u2" value="CHR RAM" />
+			<feature name="u3" value="CIC" />
+			<feature name="u4" value="LS161N" />
+			<feature name="u5" value="LS32" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-le-0 prg" size="131072" crc="a2194cad" sha1="9035459e43d13fccc244fca0fdaea4ec335b34dc" offset="00000" />
+				<rom name="nes-le-0 prg.u1" size="131072" crc="a2194cad" sha1="9035459e43d13fccc244fca0fdaea4ec335b34dc" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -17962,8 +18095,15 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-UNROM-09" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="u5" value="U5 HC32" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-3u-0 prg" size="131072" crc="3be244ef" sha1="ea07509f4bdd45603f98126e66bf9f16291e7b4c" offset="00000" />
+				<rom name="nes-3u-0 prg.u1" size="131072" crc="3be244ef" sha1="ea07509f4bdd45603f98126e66bf9f16291e7b4c" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -18962,8 +19102,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SNROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SNROM-05" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="u5" value="U5 W-RAM" />
+			<feature name="battery" value="BATT" />
+			<feature name="cart_back_label" value="NES-ZL871104" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-jm-0 prg" size="262144" crc="0d9f5bd1" sha1="8a8bbecc77fdf59826257754f357d38a7f825971" offset="00000" />
+				<rom name="nes-jm-0 prg.u1" size="262144" crc="0d9f5bd1" sha1="8a8bbecc77fdf59826257754f357d38a7f825971" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -19488,8 +19636,14 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SGROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SGROM-02" />
+			<feature name="ic1" value="PRG-ROM" />
+			<feature name="ic2" value="CHR-RAM" />
+			<feature name="ic3" value="MMC" />
+			<feature name="ic4" value="CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-xr-0 prg" size="262144" crc="0fcfc04d" sha1="2ec08f9341003ded125458df8697ca5ef09d2209" offset="00000" />
+				<rom name="nes-xr-0 prg.ic1" size="262144" crc="0fcfc04d" sha1="2ec08f9341003ded125458df8697ca5ef09d2209" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -19522,11 +19676,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TLROM" />
 			<feature name="mmc3_type" value="MMC3B" />
+			<feature name="pcb_model" value="NES-TLROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC3" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-xu-0 prg" size="262144" crc="6b999aaf" sha1="5cb19c7cccf9dedb73dad69a39b047a24b1be50d" offset="00000" />
+				<rom name="nes-xu-0 prg.u1" size="262144" crc="6b999aaf" sha1="5cb19c7cccf9dedb73dad69a39b047a24b1be50d" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-xu-0 chr" size="131072" crc="4028916e" sha1="f986f72ba5284129620d31c0779ac6d50638e6f1" offset="00000" />
+				<rom name="nes-xu-0 chr.u2" size="131072" crc="4028916e" sha1="f986f72ba5284129620d31c0779ac6d50638e6f1" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -19590,8 +19750,14 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TGROM" />
 			<feature name="mmc3_type" value="MMC3C" />
+			<feature name="pcb_model" value="NES-TGROM-01" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC3" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="524288">
-				<rom name="nes-4v-1 prg" size="524288" crc="18a2e74f" sha1="c70db279964e0f835427ca0a406d54a45ae7783a" offset="00000" />
+				<rom name="nes-4v-1 prg.u1" size="524288" crc="18a2e74f" sha1="c70db279964e0f835427ca0a406d54a45ae7783a" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -20190,8 +20356,13 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="CAMERICA-ALGN" />
 			<feature name="peripheral" value="aladdin" />
+			<feature name="pcb_model" value="ALGNV1-1" />
+			<feature name="u1_cart" value="U1 PRG" />
+			<feature name="u1_aladdin" value="U1 VRAM" />
+			<feature name="u2_aladdin" value="U2 CIC" />
+			<feature name="u3_aladdin" value="U3 MMC" />
 			<dataarea name="prg" size="262144">
-				<rom name="micro machine mmd27f" size="262144" crc="24ba12dd" sha1="c7fd43041fc139dc8440c95c28a0115dc79e2691" offset="00000" />
+				<rom name="micro machine mmd27f.u1" size="262144" crc="24ba12dd" sha1="c7fd43041fc139dc8440c95c28a0115dc79e2691" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -21344,8 +21515,14 @@
 		<publisher>Acclaim Entertainment</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-AMROM" />
+			<feature name="pcb_model" value="NES-AMROM-01" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR-RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-nq-0 prg" size="131072" crc="0537322a" sha1="40f7287b34a8b9a5729685a58c65df3078664db8" offset="00000" />
+				<rom name="nes-nq-0 prg.u1" size="131072" crc="0537322a" sha1="40f7287b34a8b9a5729685a58c65df3078664db8" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -21402,11 +21579,17 @@
 			<feature name="pcb" value="NES-TLSROM" />
 			<feature name="mmc3_type" value="MMC3B" />
 			<feature name="peripheral" value="4p_adapter" />
+			<feature name="pcb_model" value="NES-TLSROM-01" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC3" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-nb-0 prg" size="131072" crc="17f72ec8" sha1="204c1bc2d59b410d87a1728e128e059496673243" offset="00000" />
+				<rom name="nes-nb-0 prg.u1" size="131072" crc="17f72ec8" sha1="204c1bc2d59b410d87a1728e128e059496673243" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-nb-0 chr" size="131072" crc="6e8cae8d" sha1="5a1c0c0d0b60bd09d7bbd33f96ef5fd39b3b3046" offset="00000" />
+				<rom name="nes-nb-0 chr.u2" size="131072" crc="6e8cae8d" sha1="5a1c0c0d0b60bd09d7bbd33f96ef5fd39b3b3046" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -23467,12 +23650,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="HVC-NROM-128" /> <!-- also found with HVC-SROM, NES-NROM-128 -->
 			<feature name="mirroring" value="horizontal" />
+			<feature name="pcb_model" value="NES-NROM-128-04" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="hvc-pn-0 prg" size="16384" crc="91d33e3c" sha1="607c5954e5c577ac78db3234987f8fe62f86f068" offset="00000" />
+				<rom name="hvc-pn-0 prg.u1" size="16384" crc="91d33e3c" sha1="607c5954e5c577ac78db3234987f8fe62f86f068" offset="00000" />
 				<rom size="16384" offset="0x4000" loadflag="reload" />
 			</dataarea>
 			<dataarea name="chr" size="8192">
-				<rom name="hvc-pn-0 chr" size="8192" crc="f2a53b3d" sha1="0d2a521fd984c76cbf9b3cbd47e68c6ce4c6eeae" offset="00000" />
+				<rom name="hvc-pn-0 chr.u2" size="8192" crc="f2a53b3d" sha1="0d2a521fd984c76cbf9b3cbd47e68c6ce4c6eeae" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -24644,11 +24832,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SEROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SEROM-02 (SCDOROM)" />
+			<feature name="u1" value="U1 PRG-ROM" />
+			<feature name="u2" value="U2 CHR-ROM" />
+			<feature name="u3" value="U3 MMC1" />
+			<feature name="u4" value="U4 CIC" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-pm-1 prg" size="32768" crc="82cfde25" sha1="4eb9abe896e597f8ecabb4f044d8c4b545a51b11" offset="00000" />
+				<rom name="nes-pm-1 prg.u1" size="32768" crc="82cfde25" sha1="4eb9abe896e597f8ecabb4f044d8c4b545a51b11" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="32768">
-				<rom name="nes-pm-0 chr" size="32768" crc="83c90d47" sha1="26917e1e016d2be0fa48d766d332779aae12b053" offset="00000" />
+				<rom name="nes-pm-0 chr.u2" size="32768" crc="83c90d47" sha1="26917e1e016d2be0fa48d766d332779aae12b053" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -27973,11 +28167,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SLROM-06" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-q5-0 prg" size="131072" crc="f0df311e" sha1="67009f66696ff08bd912d063a4345f7df4cd7dcf" offset="00000" />
+				<rom name="nes-q5-0 prg.u1" size="131072" crc="f0df311e" sha1="67009f66696ff08bd912d063a4345f7df4cd7dcf" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-q5-0 chr" size="131072" crc="3349cb80" sha1="0f3780b25ba491725a2db93de9d9e3c28d244eab" offset="00000" />
+				<rom name="nes-q5-0 chr.u2" size="131072" crc="3349cb80" sha1="0f3780b25ba491725a2db93de9d9e3c28d244eab" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -28515,8 +28715,14 @@
 		<publisher>Tradewest</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-AOROM" />
+			<feature name="pcb_model" value="NES-AOROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-lj-0 prg" size="262144" crc="8111ba08" sha1="caa4d1ab710bd766f8505ef24f5702dac6e988af" offset="00000" />
+				<rom name="nes-lj-0 prg.u1" size="262144" crc="8111ba08" sha1="caa4d1ab710bd766f8505ef24f5702dac6e988af" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -28997,11 +29203,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CNROM" />
 			<feature name="mirroring" value="horizontal" />
+			<feature name="pcb_model" value="NES-CN-ROM-256-05" />
+			<feature name="u1" value="PRG ROM" />
+			<feature name="u2" value="CHR ROM" />
+			<feature name="u3" value="CIC" />
+			<feature name="u4" value="LS161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-hu-0 prg" size="32768" crc="fe2dab28" sha1="768e4267abf1e60353d16b34ecfc4c66f7665d4a" offset="00000" />
+				<rom name="nes-hu-0 prg.u1" size="32768" crc="fe2dab28" sha1="768e4267abf1e60353d16b34ecfc4c66f7665d4a" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="32768">
-				<rom name="nes-hu-0 chr" size="32768" crc="b87c4d93" sha1="63f93397ff3f48465924b533ac87dde6d86d746a" offset="00000" />
+				<rom name="nes-hu-0 chr.u2" size="32768" crc="b87c4d93" sha1="63f93397ff3f48465924b533ac87dde6d86d746a" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -29472,11 +29684,18 @@
 		<publisher>Nintendo</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-HKROM" />
+			<feature name="pcb_model" value="NES-HKROM-01" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC6" />
+			<feature name="battery" value="BATT" />
+			<feature name="cart_back_label" value="NES-ZL871104" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-oc-0 prg" size="262144" crc="beb88304" sha1="224d96bf55391c7e9b651eb4d6a8f06faf6e29da" offset="00000" />
+				<rom name="nes-oc-0 prg.u1" size="262144" crc="beb88304" sha1="224d96bf55391c7e9b651eb4d6a8f06faf6e29da" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="262144">
-				<rom name="nes-oc-0 chr" size="262144" crc="42236f71" sha1="a6038c0785be19c1215351e5f053272bf231b78f" offset="00000" />
+				<rom name="nes-oc-0 chr.u2" size="262144" crc="42236f71" sha1="a6038c0785be19c1215351e5f053272bf231b78f" offset="00000" />
 			</dataarea>
 			<!-- 1k Internal RAM (battery backed up) in the MMC6 chip -->
 			<dataarea name="mapper_bram" size="1024">
@@ -29957,11 +30176,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="HVC-NROM-256" /> <!-- also found with NES-NROM-256 pcb -->
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-NROM-256-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="cart_back_label" value="" />
 			<dataarea name="prg" size="32768">
-				<rom name="hvc-sm-0 prg" size="32768" crc="5cf548d3" sha1="fefa1097449a3a11ebf8c6199e905996c5dc8fbd" offset="00000" />
+				<rom name="hvc-sm-0 prg.u1" size="32768" crc="5cf548d3" sha1="fefa1097449a3a11ebf8c6199e905996c5dc8fbd" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="8192">
-				<rom name="hvc-sm-0 chr" size="8192" crc="867b51ad" sha1="394badaf0b0bdd0ea279a1bca89a9d9ddc00b1b5" offset="00000" />
+				<rom name="hvc-sm-0 chr.u2" size="8192" crc="867b51ad" sha1="394badaf0b0bdd0ea279a1bca89a9d9ddc00b1b5" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -29992,11 +30216,17 @@
 			<feature name="pcb" value="NES-MHROM" />
 			<feature name="mirroring" value="vertical" />
 			<feature name="peripheral" value="zapper" />
+			<feature name="pcb_model" value="NES-MH" />
+			<feature name="u1" value="U1 512P" />
+			<feature name="u2" value="U2 128C" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 LS161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="65536">
-				<rom name="nes-mh-0 prg" size="65536" crc="81069812" sha1="a557d61664bc5b4015a07a2d66e0651a86909aac" offset="00000" />
+				<rom name="nes-mh-0 prg.u1" size="65536" crc="81069812" sha1="a557d61664bc5b4015a07a2d66e0651a86909aac" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="16384">
-				<rom name="nes-mh-0 chr" size="16384" crc="7ecda8b3" sha1="a32c0819d1b6a6669dfa8b1aa1490d04d4c86f0a" offset="00000" />
+				<rom name="nes-mh-0 chr.u2" size="16384" crc="7ecda8b3" sha1="a32c0819d1b6a6669dfa8b1aa1490d04d4c86f0a" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -30198,11 +30428,18 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TSROM" />
 			<feature name="mmc3_type" value="MMC3B" />
+			<feature name="pcb_model" value="NES-TSROM-06" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC3" />
+			<feature name="u5" value="U5 W-RAM" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-um-0 prg" size="262144" crc="c78d17d3" sha1="7e54f2a2ee6af721cb57ba4dc39c388b06533594" offset="00000" />
+				<rom name="nes-um-0 prg.u1" size="262144" crc="c78d17d3" sha1="7e54f2a2ee6af721cb57ba4dc39c388b06533594" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-um-0 chr" size="131072" crc="c2928c49" sha1="2697d1f21b72a6d8e7d2a2d2c51c9c5550f68b56" offset="00000" />
+				<rom name="nes-um-0 chr.u2" size="131072" crc="c2928c49" sha1="2697d1f21b72a6d8e7d2a2d2c51c9c5550f68b56" offset="00000" />
 			</dataarea>
 			<!-- 8k WRAM on cartridge -->
 			<dataarea name="wram" size="8192">
@@ -30218,11 +30455,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TSROM" />
 			<feature name="mmc3_type" value="MMC3B" />
+			<feature name="pcb_model" value="NES-TSROM-07" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC3" />
+			<feature name="u5" value="U5 W-RAM" />
 			<dataarea name="prg" size="262144">
-				<rom name="nes-um-1 prg" size="262144" crc="a0ed7d20" sha1="46a9acfc0b2f7c891a90a104d0ea803f96330ced" offset="00000" />
+				<rom name="nes-um-1 prg.u1" size="262144" crc="a0ed7d20" sha1="46a9acfc0b2f7c891a90a104d0ea803f96330ced" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-um-0 chr" size="131072" crc="c2928c49" sha1="2697d1f21b72a6d8e7d2a2d2c51c9c5550f68b56" offset="00000" />
+				<rom name="nes-um-0 chr.u2" size="131072" crc="c2928c49" sha1="2697d1f21b72a6d8e7d2a2d2c51c9c5550f68b56" offset="00000" />
 			</dataarea>
 			<!-- 8k WRAM on cartridge -->
 			<dataarea name="wram" size="8192">
@@ -30983,9 +31226,9 @@
 		</part>
 	</software>
 
-	<software name="aztec2" cloneof="tombtres">
+	<software name="asteca2" cloneof="tombtres">
 		<!-- Serial: TKS-G5 - Release Date: 1988-08-03 - Alternative Title: 太陽の神殿 アステカ２ -->
-		<description>Taiyou no Shinden: Aztec 2 (Jpn)</description>
+		<description>Taiyou no Shinden: Asteka II (Jpn)</description>
 		<year>1988</year>
 		<publisher>Tokyo Shoseki</publisher>
 		<part name="cart" interface="nes_cart">
@@ -31696,13 +31939,21 @@
 		<year>1989</year>
 		<publisher>Ultra Games</publisher>
 		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="KONAMI-SLROM" /> <!-- also found with NES-SLROM pcb -->
+			<feature name="pcb" value="KONAMI-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="351908" />
+			<!-- Alt pcb_models: NES-SLROM-05 (with no U5) -->
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="u5" value="U5 HC32" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-u2-0 prg" size="131072" crc="0ccd28d5" sha1="05606cafba838eeb36198b5e5e9d11c3729971b3" offset="00000" /> <!-- alt label rd019n2p -->
+				<rom name="nes-u2-0 prg.u1" size="131072" crc="0ccd28d5" sha1="05606cafba838eeb36198b5e5e9d11c3729971b3" offset="00000" /> <!-- alt label rd019n2p -->
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-u2-0 chr" size="131072" crc="91f01f53" sha1="171ed0792f3ca3f195145000d96b91aa57898773" offset="00000" /> <!-- alt label rd019n0c -->
+				<rom name="nes-u2-0 chr.u2" size="131072" crc="91f01f53" sha1="171ed0792f3ca3f195145000d96b91aa57898773" offset="00000" /> <!-- alt label rd019n0c -->
 			</dataarea>
 		</part>
 	</software>
@@ -32296,11 +32547,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CNROM" />
 			<feature name="mirroring" value="horizontal" />
+			<feature name="pcb_model" value="NES-CN-ROM-256-04" />
+			<feature name="u1" value="PRG ROM" />
+			<feature name="u2" value="CHR ROM" />
+			<feature name="u3" value="CIC" />
+			<feature name="u4" value="LS161" />
+			<feature name="cart_back_label" value="" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-ti-0 prg" size="32768" crc="ddf29542" sha1="b80b4bf8a0771cd0184af91c583dfa8a8affeca2" offset="00000" />
+				<rom name="nes-ti-0 prg.u1" size="32768" crc="ddf29542" sha1="b80b4bf8a0771cd0184af91c583dfa8a8affeca2" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="32768">
-				<rom name="nes-ti-0 chr" size="32768" crc="e1daa15c" sha1="3a81d05fed3015eb8fd0ceacefd6fe2445c786fe" offset="00000" />
+				<rom name="nes-ti-0 chr.u2" size="32768" crc="e1daa15c" sha1="3a81d05fed3015eb8fd0ceacefd6fe2445c786fe" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -33228,8 +33485,15 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-UNROM-09" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="u5" value="U5 HC32" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-4a-0 prg" size="131072" crc="ee6892eb" sha1="29ca7cc398b855472c9d94e7581be8288468382b" offset="00000" />
+				<rom name="nes-4a-0 prg.u1" size="131072" crc="ee6892eb" sha1="29ca7cc398b855472c9d94e7581be8288468382b" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -34017,8 +34281,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CPROM" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-CPROM-02" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR-RAM" />
+			<feature name="u3" value="U3 CHR-RAM" />
+			<feature name="u4" value="U4 CIC" />
+			<feature name="u5" value="U5 _HC161_" />
+			<feature name="u6" value="U6 _HC08_" />
+			<feature name="u7" value="U7 _HC04_" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-v8-0 prg" size="32768" crc="5e66eaea" sha1="3e24edd8c06713b775eaa66f3468f71693a542a9" offset="00000" />
+				<rom name="nes-v8-0 prg.u1" size="32768" crc="5e66eaea" sha1="3e24edd8c06713b775eaa66f3468f71693a542a9" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -34091,11 +34364,16 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-NROM-256" />
 			<feature name="mirroring" value="vertical" />
+			<feature name="pcb_model" value="NES-NROM-256-02" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="cart_back_label" value="" />
 			<dataarea name="prg" size="32768">
-				<rom name="nes-vb-0 prg" size="32768" crc="0a2490af" sha1="3cc766a7c760ec394ec43a4414718022cf9d99ce" offset="00000" />
+				<rom name="nes-vb-0 prg.u1" size="32768" crc="0a2490af" sha1="3cc766a7c760ec394ec43a4414718022cf9d99ce" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="8192">
-				<rom name="nes-vb-0 chr" size="8192" crc="2415dce2" sha1="fd89b4a542989a89c2d0467257dca57518bfa96b" offset="00000" />
+				<rom name="nes-vb-0 chr.u2" size="8192" crc="2415dce2" sha1="fd89b4a542989a89c2d0467257dca57518bfa96b" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -34174,8 +34452,15 @@
 		<publisher>Acclaim Entertainment</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-ANROM" />
+			<feature name="pcb_model" value="NES-ANROM-02" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="u5" value="U5 HC02" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-hn-0 prg" size="131072" crc="37138039" sha1="d55e8202929d922a84122921ef5c9671135b3e77" offset="00000" />
+				<rom name="nes-hn-0 prg.u1" size="131072" crc="37138039" sha1="d55e8202929d922a84122921ef5c9671135b3e77" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -34611,8 +34896,14 @@
 		<publisher>GameTek</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-AOROM" />
+			<feature name="pcb_model" value="NES-AOROM-03" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR RAM" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 HC161" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-y6-0 prg" size="131072" crc="4220c170" sha1="a5c723f5b532623dcecbf5195acdd822f093d1e2" offset="00000" />
+				<rom name="nes-y6-0 prg.u1" size="131072" crc="4220c170" sha1="a5c723f5b532623dcecbf5195acdd822f093d1e2" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -35026,8 +35317,15 @@
 		<publisher>Acclaim Entertainment</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-ANROM" />
+			<feature name="pcb_model" value="NES-ANROM-01" />
+			<feature name="u1" value="PRG" />
+			<feature name="u2" value="CHR-RAM" />
+			<feature name="u3" value="CIC" />
+			<feature name="u4" value="HC161" />
+			<feature name="u5" value="HC02" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-ww-0 prg" size="131072" crc="505f9715" sha1="0305a626acdc6523ff168725c402c6f81ec5b106" offset="00000" />
+				<rom name="nes-ww-0 prg.u1" size="131072" crc="505f9715" sha1="0305a626acdc6523ff168725c402c6f81ec5b106" offset="00000" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -35511,11 +35809,17 @@
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-SLROM" />
 			<feature name="mmc1_type" value="MMC1B2" />
+			<feature name="pcb_model" value="NES-SLROM-06" />
+			<feature name="u1" value="U1 PRG" />
+			<feature name="u2" value="U2 CHR" />
+			<feature name="u3" value="U3 CIC" />
+			<feature name="u4" value="U4 MMC1" />
+			<feature name="cart_back_label" value="REV-A" />
 			<dataarea name="prg" size="131072">
-				<rom name="nes-yc-0 prg" size="131072" crc="4affeee7" sha1="54da2aa7ca56d9b593c8bcabf0bb1d701439013d" offset="00000" />
+				<rom name="nes-yc-0 prg.u1" size="131072" crc="4affeee7" sha1="54da2aa7ca56d9b593c8bcabf0bb1d701439013d" offset="00000" />
 			</dataarea>
 			<dataarea name="chr" size="131072">
-				<rom name="nes-yc-0 chr" size="131072" crc="868f7343" sha1="acb6f6eb9e8beb0636c59a999c8f5920ef7786a3" offset="00000" />
+				<rom name="nes-yc-0 chr.u2" size="131072" crc="868f7343" sha1="acb6f6eb9e8beb0636c59a999c8f5920ef7786a3" offset="00000" />
 			</dataarea>
 		</part>
 	</software>
@@ -36604,7 +36908,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Airball (Earlier Prototype)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Tengen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
@@ -36621,7 +36925,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Airball (Later Prototype)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Tengen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
@@ -36822,7 +37126,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		<publisher>Victor</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="HVC-CNROM" />
-			<feature name="mirroring" value="horizontal" />
+			<feature name="mirroring" value="vertical" />
 			<dataarea name="chr" size="16384">
 				<rom name="banana (japan) (beta).chr" size="16384" crc="7de787cb" sha1="7a149e548aebc0d4ed2b9fee0a8b8fe7173924ef" offset="00000" status="baddump" />
 			</dataarea>
@@ -36987,6 +37291,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
+<!-- glitches on NTSC -->
 	<software name="beauty">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Beauty and the Beast (Euro)</description>
@@ -37075,7 +37380,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-	<software name="blackbs2" cloneof="blackbas">
+	<software name="blackbs2" cloneof="blackbas" supported="partial">
 		<!-- Serial:  - Release Date: 1988-10-01 - Alternative Title:  -->
 		<description>The Black Bass II (Jpn)</description>
 		<year>1988</year>
@@ -37384,7 +37689,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	</software>
 
 	<software name="chestfldp" cloneof="chestfld">
-		<description>Chester Field - Ankoku Shin E no Chousen (Jpn, Prototype)</description>
+		<description>Chester Field: Ankoku Shin e no Chousen (Jpn, Prototype)</description>
 		<year>1987</year>
 		<publisher>Vic Tokai</publisher>
 		<part name="cart" interface="nes_cart">
@@ -37611,7 +37916,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="crackoutup" cloneof="crackout">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Crackout (USA, Prototype)</description>
+		<description>CrackOut (USA, Prototype)</description>
 		<year>1991</year>
 		<publisher>Konami</publisher>
 		<part name="cart" interface="nes_cart">
@@ -38291,12 +38596,12 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		<publisher>Taito</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="TAITO-NROM-256" />
-			<dataarea name="prg" size="32768">
-				<rom name="elevator action (japan, rev a).prg" size="32768" crc="a6de7024" sha1="2070d3241f5f29de74b004c9a6237cec17951f9a" offset="00000" />
-			</dataarea> <!-- real label: elevatoraction -->
 			<dataarea name="chr" size="8192">
 				<rom name="elevator action (japan, rev a).chr" size="8192" crc="fac01d0f" sha1="f4c30bb45e92398088baabab04bc5650066781fc" offset="00000" />
-			</dataarea> <!-- real label: elevatoraction -->
+			</dataarea>
+			<dataarea name="prg" size="32768">
+				<rom name="elevator action (japan, rev a).prg" size="32768" crc="298587a9" sha1="f1b529ae293951f079e2f7b75c12fc8b187a1206" offset="00000" />
+			</dataarea>
 		</part>
 	</software>
 
@@ -43509,7 +43814,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 <!-- ORIGINAL & HACK PIRATE CARTS -->
 
-	<software name="crimebst" supported="partial">
+	<software name="crimebst" supported="no">
 		<!-- Serial: UNL-GRA-CB - Release Date: 1989 - Alternative Title:  -->
 		<description>Crime Busters</description>
 		<year>1989</year>
@@ -43944,7 +44249,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mastrchub" cloneof="mastrchu">
 		<!-- Serial: TC-007 - Release Date:  - Alternative Title:  -->
-		<description>Master Chu &amp; Drunkard Hu (Asia, Pal)</description>
+		<description>Master Chu &amp; Drunkard Hu (Tw, Pal)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44065,7 +44370,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="bokuksk">
 		<!-- Serial: TC-012 - Release Date:  - Alternative Title: The World Of Card Game -->
-		<description>Boku Koku Shuu Kin (Asia)</description>
+		<description>Boku Koku Shuu Kin (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44083,7 +44388,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="bokukska" cloneof="bokuksk">
 		<!-- Serial: TC-012 - Release Date:  - Alternative Title: The World Of Card Game -->
-		<description>Boku Koku Shuu Kin (Asia, Alt)</description>
+		<description>Boku Koku Shuu Kin (Tw, Alt)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44100,7 +44405,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="bokukskb" cloneof="bokuksk">
 		<!-- Serial:  - Release Date:  - Alternative Title: The World Of Card Game -->
-		<description>Boku Koku Shuu Kin (Asia, Pirate?)</description>
+		<description>Boku Koku Shuu Kin (Tw, Pirate?)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44118,9 +44423,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="poker2">
 		<!-- Serial: TC-013 - Release Date:  - Alternative Title:  -->
-		<description>Poker II (Asia)</description>
+		<description>Poker II (Tw)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SACHEN-74LS374N" />
 			<feature name="mirroring" value="horizontal" />
@@ -44135,9 +44440,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="strateg">
 		<!-- Serial: TC-014 - Release Date:  - Alternative Title:  -->
-		<description>Strategist (Asia, Ntsc)</description>
+		<description>Strategist (Tw, Ntsc)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SACHEN-74LS374N" />
 			<feature name="mirroring" value="horizontal" />
@@ -44152,9 +44457,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="stratega" cloneof="strateg">
 		<!-- Serial: TC-014 - Release Date:  - Alternative Title:  -->
-		<description>Strategist (Asia, Pal, w/Intro)</description>
+		<description>Strategist (Tw, Pal, w/Intro)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SACHEN-74LS374N" />
 			<feature name="mirroring" value="horizontal" />
@@ -44271,11 +44576,11 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="poker3">
 		<!-- Serial: TC-020 - Release Date:  - Alternative Title:  -->
-		<description>Poker III 5 in 1 (Asia)</description>
+		<description>Poker III 5 in 1 (Tw)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="UNL-SACHEN-74LS374N-A" /> <!-- Mapper 243 variant -->
+			<feature name="pcb" value="UNL-SACHEN-74LS374N" /> <!-- Mapper 243 variant -->
 			<feature name="mirroring" value="vertical" />
 			<dataarea name="chr" size="65536">
 				<rom name="poker iii 5 in 1 (asia) (unl).chr" size="65536" crc="d74e9ff2" sha1="5066c2d12ff2ac45ef395d3a4353e897fce19f78" offset="00000" status="baddump" />
@@ -44288,9 +44593,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="poker3a" cloneof="poker3">
 		<!-- Serial: TC-020 - Release Date:  - Alternative Title:  -->
-		<description>Poker III 5 in 1 (Asia, Alt)</description>
+		<description>Poker III 5 in 1 (Tw, Alt)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SACHEN-74LS374N-A" /> <!-- Mapper 243 variant -->
 			<feature name="mirroring" value="horizontal" />
@@ -44305,9 +44610,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="poker3b" cloneof="poker3">
 		<!-- Serial: TC-020 - Release Date:  - Alternative Title:  -->
-		<description>Poker III 5 in 1 (Asia, Alt 2)</description>
+		<description>Poker III 5 in 1 (Tw, Alt 2)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SACHEN-74LS374N-A" /> <!-- Mapper 243 variant -->
 			<feature name="mirroring" value="horizontal" />
@@ -44354,9 +44659,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="popoteam">
 		<!-- Serial: TC-023 - Release Date:  - Alternative Title:  -->
-		<description>Po Po Team (Asia)</description>
+		<description>Po Po Team (Tw)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="SACHEN-8259A" />
 			<dataarea name="chr" size="65536">
@@ -44418,7 +44723,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="shero" supported="no">
 		<!-- Serial: TC-027 - Release Date:  - Alternative Title:  -->
-		<description>Street Heroes (Asia)</description>
+		<description>Street Heroes (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44438,9 +44743,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="jboy2">
 		<!-- Serial: TC-028 - Release Date:  - Alternative Title: Jurassic Boy (on the cart label) -->
-		<description>Jurassic Boy 2 (Asia)</description>
+		<description>Jurassic Boy 2 (Tw)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TLROM" />
 			<dataarea name="chr" size="131072">
@@ -44504,7 +44809,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="chuugokt" supported="no">
 		<!-- Serial: TC-032 - Release Date:  - Alternative Title: 中國大亨 -->
-		<description>Chuugoku Taitei (Asia)</description>
+		<description>Chuugoku Taitei (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44664,7 +44969,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="tai16mj">
 		<!-- Serial: SA-001 - Release Date:  - Alternative Title: 台灣麻將 -->
-		<description>Taiwan Mahjong - Tai Wan Ma Que 16 (Asia)</description>
+		<description>Taiwan Mahjong - Tai Wan Ma Que 16 (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44680,7 +44985,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	</software>
 
 	<software name="tai16mjb" cloneof="tai16mj">
-		<description>Taiwan Mahjong - Tai Wan Ma Que 16 (Asia, Alt 2)</description>
+		<description>Taiwan Mahjong - Tai Wan Ma Que 16 (Tw, Alt 2)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44696,7 +45001,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	</software>
 
 	<software name="tai16mja" cloneof="tai16mj">
-		<description>Taiwan Mahjong - Tai Wan Ma Que 16 (Asia, Alt)</description>
+		<description>Taiwan Mahjong - Tai Wan Ma Que 16 (Tw, Alt)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44714,7 +45019,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	<!-- SA-002 is Penguin and Seal, and its dump coincide with the HES version -->
 	<software name="pengseal">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>The Penguin &amp; Seal (Asia, Aus)</description>
+		<description>The Penguin &amp; Seal (Tw, Aus)</description>
 		<year>19??</year>
 		<publisher>Sachen ~ HES</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44731,7 +45036,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="dongdng2">
 		<!-- Serial: SA-003 - Release Date:  - Alternative Title:  -->
-		<description>Middle School English - Dong Dong Nao II (Asia)</description>
+		<description>Middle School English - Dong Dong Nao II (Tw)</description>
 		<!-- check title: Dong Dong Nao Ii - Guo Zhong Ying Wen in GoodNES, Middle School English - Dong Dong Nao - Guo Zhong Ying Wen in TOSEC -->
 		<year>1989</year>
 		<publisher>Sachen</publisher>
@@ -44784,7 +45089,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mnq">
 		<!-- Serial: SA-006 - Release Date:  - Alternative Title: Honey Peach -->
-		<description>Mei Nu Quan (Asia)</description>
+		<description>Mei Nu Quan (Tw)</description>
 		<year>1990</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44802,7 +45107,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 <!-- These have wrong CHR order, probably. Bad dump or different board? I have to investigate....  -->
 	<software name="mnq1" cloneof="mnq">
 		<!-- Serial: SA-006 - Release Date:  - Alternative Title: Honey Peach -->
-		<description>Mei Nu Quan (Asia, Alt)</description>
+		<description>Mei Nu Quan (Tw, Alt)</description>
 		<year>1990</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44819,7 +45124,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mnq2" cloneof="mnq">
 		<!-- Serial: SA-006 - Release Date:  - Alternative Title: Honey Peach -->
-		<description>Mei Nu Quan (Asia, Alt 2)</description>
+		<description>Mei Nu Quan (Tw, Alt 2)</description>
 		<year>1990</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44836,7 +45141,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mnq3" cloneof="mnq">
 		<!-- Serial: SA-006 - Release Date:  - Alternative Title: Honey Peach -->
-		<description>Mei Nu Quan (Asia, Alt 3)</description>
+		<description>Mei Nu Quan (Tw, Alt 3)</description>
 		<year>1990</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -44942,9 +45247,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="pyramid2">
 		<!-- Serial: SA-010 - Release Date:  - Alternative Title:  -->
-		<description>Pyramid II (Asia, NES cart)</description>
+		<description>Pyramid II (Tw, NES cart)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SA-016-1M" />
 			<feature name="mirroring" value="vertical" />
@@ -44959,9 +45264,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="pipe5">
 		<!-- Serial: SA-011 - Release Date:  - Alternative Title:  -->
-		<description>Pipe 5 (Asia)</description>
+		<description>Pipe 5 (Tw)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SA-009" />
 			<feature name="mirroring" value="vertical" />
@@ -45098,7 +45403,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="pokermj">
 		<!-- Serial: SA-018 - Release Date:  - Alternative Title: 撲克麻雀 -->
-		<description>Poker Mahjong - Pu Ke Mao Que (Asia)</description>
+		<description>Poker Mahjong - Pu Ke Mao Que (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -45162,7 +45467,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="tasac">
 		<!-- Serial: SA-021 - Release Date:  - Alternative Title:  -->
-		<description>Tasac (Asia)</description>
+		<description>Tasac (Tw)</description>
 		<year>1992</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -45230,7 +45535,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="tai16mj2">
 		<!-- Serial: SA-025 - Release Date:  - Alternative Title: 台湾麻将二代 -->
-		<description>Taiwan Mahjong 2 (Asia)</description>
+		<description>Taiwan Mahjong 2 (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -45247,9 +45552,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mjacad">
 		<!-- Serial: SA-026 - Release Date:  - Alternative Title:  -->
-		<description>Mahjong Academy (Asia)</description>
+		<description>Mahjong Academy (Tw)</description>
 		<year>1992</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="UNL-SACHEN-74LS374N" />
 			<feature name="mirroring" value="horizontal" />
@@ -45264,9 +45569,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mjcompana" cloneof="mjcompan">
 		<!-- Serial: SA-027 - Release Date:  - Alternative Title:  -->
-		<description>Mahjang Companion (Asia, Sachen)</description>
+		<description>Mahjang Companion (Tw, Sachen)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="SACHEN-8259C" />
 			<dataarea name="chr" size="65536">
@@ -45280,7 +45585,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="chinkngf">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Chinese KungFu (Asia)</description>
+		<description>Chinese KungFu (Tw)</description>
 		<year>19??</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -45298,9 +45603,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 <!-- nointro -->
 	<software name="dongdong">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Dong Dong Nao 1 (Asia)</description>
+		<description>Dong Dong Nao 1 (Tw)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-NROM-128" />
 			<feature name="mirroring" value="vertical" />
@@ -45474,7 +45779,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		<!-- Serial: CN-09 - Release Date:  - Alternative Title:  -->
 		<description>Cosmos Cop (Asia)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Mega Soft</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CNROM" />
 			<feature name="mirroring" value="horizontal" />
@@ -45938,7 +46243,21 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-<!-- ES-1008 San Shi Liu Ji, see below between the smynes decrypted entries -->
+	<software name="sanshilj">
+		<!-- Serial: ES-1008 - Release Date:  - Alternative Title: 三十六计 -->
+		<description>San Shi Liu Ji (Chi, Decrypted SmyNES)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-SEC" />
+			<dataarea name="chr" size="262144">
+				<rom name="san shi liu ji (as) [decrypted].chr" size="262144" crc="3986eee0" sha1="f42daf681c5fa1ca753e6e913c55b489f648ffbb" offset="00000" status="baddump" />
+			</dataarea>
+            <dataarea name="prg" size="262144">
+				<rom name="san shi liu ji (as) [decrypted].prg" size="262144" crc="c4372b5a" sha1="2d6b77733cada368aab5ad27340e403cba222b52" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
 
 	<software name="didaoz">
 		<!-- Serial: ES-1010 - Release Date:  - Alternative Title: 地道战 -->
@@ -45952,6 +46271,22 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 			</dataarea>
 			<dataarea name="prg" size="262144">
 				<rom name="di dao zhan (ch).prg" size="262144" crc="cc803d4f" sha1="2d7e89fe87353e1bb2711d514f1065ee17ec93e2" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="didaoza" cloneof="didaoz">
+		<!-- Serial: ES-1010 - Release Date:  - Alternative Title: 地道战 -->
+		<description>Di Dao Zhan (Chi, Newer, Decrypted WXN)</description>
+		<year>1997</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" />
+			<dataarea name="chr" size="262144">
+				<rom name="[es-1010] di dao zhan (c) (wxn decrypted).chr" size="262144" crc="849e6ee0" sha1="80a084d2fe14e3ae0696cd1803ab3e5f367adc96" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="[es-1010] di dao zhan (c) (wxn decrypted).prg" size="262144" crc="c897ca33" sha1="f73c7b4838a89cb4aa7cd1c2a046ad31af819b4d" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -46070,15 +46405,47 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 			<dataarea name="prg" size="131072">
 				<rom name="[es-1018] shen mi jin san jiao (c).prg" size="131072" crc="2c3ad058" sha1="ff1f47a1c8565c834475f584b872c7faaff3634d" offset="00000" status="baddump" />
 			</dataarea>
- 			<!-- 8k VRAM on cartridge -->
+			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="smjsja" cloneof="smjsj" supported="partial">
+		<!-- Serial: ES-1018 - Release Date:  - Alternative Title: 神密金三角 -->
+		<description>Shen Mi Jin San Jiao (Chi, Fixed?)</description>
+		<year>199?</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-H" /> <!-- Header says mapper 245 -->
+			<dataarea name="prg" size="131072">
+				<rom name="[es-1018] shen mi jin san jiao (c)_fix.prg" size="131072" crc="f07c21e3" sha1="5df0c221d5e5e1cac2ef41097b930d16050333fe" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="duobaoxy" supported="partial">
+		<!-- Serial: ES-1021 - Release Date:  - Alternative Title: 夺宝小英豪 -->
+		<description>Duo Bao Xiao Ying Hao - Guang Ming Yu An Hei Chuan Shuo (Chi, Decrypted SmyNES)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-SEC" />
+			<dataarea name="chr" size="262144">
+				<rom name="duo bao xiao ying hao - guang ming yu an hei chuan shuo (as) [decrypted].chr" size="262144" crc="a9a2e7ab" sha1="5ad8181f7d05bb0faf7fd2fd03b6fdc2b4843948" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="duo bao xiao ying hao - guang ming yu an hei chuan shuo (as) [decrypted].prg" size="262144" crc="a98f1b42" sha1="c5039f774198443e9d0ef452b59ff63f3ec50cce" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
 
 	<software name="duobaoxya" cloneof="duobaoxy" supported="partial">
 		<!-- Serial: ES-1021 - Release Date:  - Alternative Title:  -->
-		<description>Duo Bao Xiao Ying Hao - Guang Ming Yu An Hei Chuan Shuo (Asia)</description>
+		<description>Duo Bao Xiao Ying Hao - Guang Ming Yu An Hei Chuan Shuo (Chi)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -46140,6 +46507,22 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
+	<software name="shuihuzh">
+		<!-- Serial: ES-1030 - Release Date:  - Alternative Title: 水浒传 -->
+		<description>Shui Hu Zhuan (Chi, Decrypted SmyNES)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-SEC" />
+			<dataarea name="chr" size="262144">
+				<rom name="shui hu zhuan (as) [decrypted].chr" size="262144" crc="8043f13b" sha1="ee7e7ae3899b022262bdd3eafba21decedbfd715" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="shui hu zhuan (as) [decrypted].prg" size="262144" crc="024a0f5f" sha1="12afcc2fed62cd8b33197d2c63ce6a607ec871c7" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="shuihuzha" cloneof="shuihuzh">
 		<!-- Serial: ES-1030 - Release Date:  - Alternative Title:  -->
 		<description>Shui Hu Zhuan (Chi)</description>
@@ -46189,6 +46572,22 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
+	<software name="zhengbas">
+		<!-- Serial: ES-1042 - Release Date:  - Alternative Title: 争霸世纪 -->
+		<description>Zheng Ba ShiJi (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" /> <!-- Header says mapper 4 but there are tons of unmapped read/writes -->
+			<dataarea name="chr" size="262144">
+				<rom name="[es-1042] zheng ba shiji (c) (wxn decrypted).chr" size="262144" crc="7dcfbcd3" sha1="e9317993a143c68ae33cd93e0fe6426fbeb68316" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="[es-1042] zheng ba shiji (c) (wxn decrypted).prg" size="262144" crc="d2204ec0" sha1="9d7ba28013eff283cd16aee4a05b97eef8c24425" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="jafy">
 		<!-- Serial: ES-1045 - Release Date:  - Alternative Title: 甲A -->
 		<description>Jia A Fung Yun (Chi)</description>
@@ -46201,6 +46600,25 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 			</dataarea>
 			<dataarea name="prg" size="524288">
 				<rom name="jia a fung yun (ch).prg" size="524288" crc="78fb3ed6" sha1="ec0a2baf8d20c6aa1c2928db28bbf5eebe0c6f96" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="fengyun">
+		<!-- Serial: ES-1046 - Release Date:  - Alternative Title: 风云 -->
+		<description>FengYun - Traitor Legend (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-A" />
+			<dataarea name="chr" size="262144">
+				<rom name="[es-1046] fengyun (c) (wxn decrypted).chr" size="262144" crc="e86c090c" sha1="10c0381980766d06b78b75ff5c19d02a17404e92" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="524288">
+				<rom name="[es-1046] fengyun (c) (wxn decrypted).prg" size="524288" crc="370808c3" sha1="d2d4c37715c7a066f53f7e38577f6ae4850b3560" offset="00000" status="baddump" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -46291,7 +46709,21 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-<!-- ES-1052 Yang Jia Xiang (Yang's Troops), see below between the smynes decrypted entries -->
+	<software name="yangjiaj" supported="no">
+		<!-- Serial: ES-1052 - Release Date:  - Alternative Title: 杨家将 -->
+		<description>Yang Jia Jiang - Yang's Troops (Chi, Decrypted SmyNES)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" />
+			<dataarea name="chr" size="262144">
+				<rom name="yang jia jiang - yang's troops [decrypted].chr" size="262144" crc="8d37f83b" sha1="e794ae05639a0902b5306f9a0fff3a429589e8f7" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="yang jia jiang - yang's troops [decrypted].prg" size="262144" crc="5daa7856" sha1="730d37edf7bcc57e27383727e5a3eec7632b3571" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
 
 	<software name="snyx" cloneof="youling">
 		<!-- Serial: ES-1054 - Release Date:  - Alternative Title: 少年游侠 - Notes: AKA Young Chivalry -->
@@ -46346,7 +46778,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="napolwar" supported="no">
 		<!-- Serial: ES-1060 - Release Date:  - Alternative Title: 帝国风暴 -->
-		<description>Di Guo Feng Bao - Napoleon's War (Asia)</description>
+		<description>Di Guo Feng Bao - Napoleon's War (Chi)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -46398,6 +46830,22 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
+	<software name="xichubw" supported="partial">
+		<!-- Serial: ES-1066 - Release Date:  - Alternative Title: 西楚霸王 -->
+		<description>Xi Chu BaWang (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="HENGGEDIANZI-XJZB" /> <!-- Header says mapper 176, but shows gray screen, this PCB is not precise (glitches) but it's closer! -->
+			<dataarea name="prg" size="1048576">
+				<rom name="[es-1066] xi chu bawang (c) (wxn decrypted).prg" size="1048576" crc="f1d803f3" sha1="db92a34e6941d99b796fbe6c6c26f7d09c2bc2ee" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
 <!-- ES-1067? Shen Guo Hui Zhang II Dai - Chinese translation of Fire Emblem: Ankoku Ryu to Hikari no Ken - same as firembc?? -->
 
 	<software name="babaoqiz" supported="no">
@@ -46428,6 +46876,54 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="sanxiawy" supported="no">
+		<!-- Serial: ES-1071 - Release Date:  - Alternative Title: 三侠五义 -->
+		<description>San Xia Wu Yi (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="HENGGEDIANZI-XJZB" /> <!-- Header says mapper 176, but shows gray screen, this PCB is not precise (glitched sprites) but it's closer! -->
+			<dataarea name="prg" size="1048576">
+				<rom name="[es-1071] san xia wu yi (c) (wxn decrypted).prg" size="1048576" crc="c768098b" sha1="fd3c0c3662d4e2fa3f8a8082b2a65e45c188a640" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="sanxiawya" cloneof="sanxiawy"	supported="no">
+		<!-- Serial: ES-1071 - Release Date:  - Alternative Title: 三侠五义 -->
+		<description>San Xia Wu Yi (Chi, Alt?)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="BMC-1200IN1" /> <!-- Header says mapper 227, but mirroring issues are present! -->
+			<dataarea name="prg" size="1048576">
+				<rom name="[es-1071] san xia wu yi (c).prg" size="1048576" crc="a76b8d4f" sha1="fb44a1cc74c062dd928d2d811d58517827e420c3" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="dongzlgz" supported="no">
+		<!-- Serial: ES-1072 - Release Date:  - Alternative Title: 东周列国志 -->
+		<description>DongZhou Lie GuoZhi (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" /> <!-- Header says mapper 4 but there are tons of unmapped read/writes -->
+			<dataarea name="chr" size="262144">
+				<rom name="[es-1072] dongzhou lie guozhi (c) (wxn decrypted).chr" size="262144" crc="87d28eec" sha1="0ec8c927b7cf0845fd154f02906079270068d65d" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="[es-1072] dongzhou lie guozhi (c) (wxn decrypted).prg" size="262144" crc="b4797007" sha1="a9fc250344c88531ef89e7655dd2bfc6917c2b62" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -46530,11 +47026,41 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-<!-- ES-1087 Shui Hu Shen Shou -->
+	<software name="shuihuss">
+		<!-- Serial: ES-1087 - Release Date:  - Alternative Title: 水浒神兽 -->
+		<description>Shui Hu Shen Shou (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="HENGGEDIANZI-XJZB" />
+			<dataarea name="prg" size="1048576">
+				<rom name="[es-1087] shui hu shen shou (c) (wxn decrypted).prg" size="1048576" crc="1923a8c5" sha1="91e51788e980a8ad5a8a829e270504c9571b72cf" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="koudaijl">
+		<!-- Serial: ES-1088 - Release Date:  - Alternative Title: 口袋精灵.金 -->
+		<description>KouDai JingLing - Jin (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="HENGGEDIANZI-XJZB" />
+			<dataarea name="prg" size="1048576">
+				<rom name="[es-1088] koudai jingling - jin (c) (wxn decrypted).prg" size="1048576" crc="85dd49b6" sha1="a8010b1ee3c5362f606a47604cc49e5d7eac9e46" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
 
 	<software name="pokeszs">
 		<!-- Serial: ES-1090 - Release Date:  - Alternative Title: 口袋妖怪钻石 (Pokemon Diamond) -->
-		<description>KouDai YaoGuai - ZuanShi Ban (Asia)</description>
+		<description>KouDai YaoGuai - ZuanShi Ban (Chi)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -46549,7 +47075,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	</software>
 
 	<software name="commands" supported="no">
-		<!-- Serial: ES-1092 - Release Date:  - Alternative Title: 盟军赶死队 ? (méng jūn gǎn sǐ duì)? -->
+		<!-- Serial: ES-1092 - Release Date:  - Alternative Title: 盟军赶死队 ? -->
 		<description>Commandos (Chi)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
@@ -46564,9 +47090,9 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-	<software name="commandsa" cloneof="commands">
-		<!-- Serial: ES-1092 - Release Date:  - Alternative Title:  -->
-		<description>Commandos (Chi, Fixed?)</description>
+	<software name="mjgsd" cloneof="commands">
+		<!-- Serial: ES-1092 - Release Date:  - Alternative Title: 盟军赶死队 -->
+		<description>Meng Jun Gan Si Dui - Commandos (Chi, Fixed?)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -46580,9 +47106,25 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
+	<software name="pfcz" cloneof="commands">
+		<!-- Serial: ES-1092 - Release Date:  - Alternative Title: 破釜沉舟 -->
+		<description>Po Fu Chen Zhou (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="HENGGEDIANZI-XJZB" />
+			<dataarea name="prg" size="524288">
+				<rom name="[es-1092] pofuchenzhou (c) (wxn decrypted).prg" size="524288" crc="977d22c3" sha1="2fa7c0e60634c12ef54d857bf7af45d4971066fe" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="chongwu">
 		<!-- Serial: ES-1093 - Release Date:  - Alternative Title: 宠物·翡翠 (title screen), 口袋精灵·翡翠 ~ Kou Dai Jing Ling - Fei Cui (cart label?) -->
-		<description>Chong Wu - Fei Cui Ban (Asia)</description>
+		<description>Chong Wu - Fei Cui Ban (Chi)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -46761,6 +47303,25 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
+	<software name="longzz3" supported="partial">
+		<!-- Serial: ES-1130 - Release Date:  - Alternative Title:  -->
+		<description>Long Zhu Z3 Ren Zao Ren Lie Zhuan (Chi, Fixed?)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-G" /> <!-- header says mapper 74, but it's wrong. the mapper is a variant of this (but glitchy sprites -->
+			<dataarea name="chr" size="262144">
+				<rom name="[es-1130] long zhu z3 ren zao ren lie zhuan (c)_fix.chr" size="262144" crc="6df9f2cc" sha1="62e3c83ec5500a717c62deb4b31441a08052a3e3" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="524288">
+				<rom name="[es-1130] long zhu z3 ren zao ren lie zhuan (c)_fix.prg" size="524288" crc="b9c8bb09" sha1="22a0c8782a78170f7b790717f9e81672b44e1ec9" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="longzg" cloneof="watarug">
 		<!-- Serial: ES-1137 - Release Date:  - Alternative Title: 龙之谷 -->
 		<description>Long Zhi Gu (Chi, Fixed?)</description>
@@ -46878,7 +47439,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="cjjq">
 		<!-- Serial: NJ012 - Release Date:  - Alternative Title: 超级机器人大战Ａ ~ Super Robot Wars A -->
-		<description>Chao Ji Ji Qi Ren Da Zhan A (Chi)</description>
+		<description>Chaoji Ji Qi Ren Da Zhan A (Chi)</description>
 		<year>19??</year>
 		<publisher>Nanjing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -48075,7 +48636,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	<!-- Same as Galactic Crusader -->
 	<software name="chouhen">
 		<!-- Serial:  - Release Date:  - Alternative Title: Incantation -->
-		<description>Chou Hen (Asia)</description>
+		<description>Chou Hen (Tw)</description>
 		<year>1989</year>
 		<publisher>Sachen</publisher>
 		<part name="cart" interface="nes_cart">
@@ -50038,7 +50599,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	</software>
 
 <!-- nointro -->
-	<software name="3dblocka" cloneof="3dblock" supported="partial">
+	<software name="3dblocka" cloneof="3dblock" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>3-D Block (Asia, Hwang Shinwei)</description>
 		<year>1990</year>
@@ -50089,7 +50650,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-	<software name="2002pk">
+	<software name="2002pk" supported="partial">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>2002 World Cup PK (Asia)</description>
 		<year>200?</year>
@@ -50334,13 +50895,14 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 	</software>
 
 <!-- nointro & cah4e3 -->
-	<software name="bbcar">
+	<software name="bbcar" supported="partial">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>BB Car (Asia)</description>
 		<year>1991</year>
 		<publisher>Hwang Shinwey?</publisher>
 		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="NES-ANROM" />
+			<feature name="pcb" value="NES-CNROM" /> <!-- not correct, there are issues with mirroring (mapper commanded?)! -->
+			<feature name="mirroring" value="vertical" />
 			<dataarea name="chr" size="8192">
 				<rom name="bb car (unknown) (unl).chr" size="8192" crc="01366b4b" sha1="b46dbff5047cf83815b6c134c4843dcf1dc84e92" offset="00000" status="baddump" />
 			</dataarea>
@@ -50645,7 +51207,23 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 		</part>
 	</software>
 
-	<software name="tulongd">
+	<software name="dknife">
+		<!-- Serial:  - Release Date:  - Alternative Title:  -->
+		<description>Dragon Knife (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" />
+			<dataarea name="chr" size="262144">
+				<rom name="[waixing] dragon knife (english title) (unl) (wxn decrypted).chr" size="262144" crc="fa765dca" sha1="d41bf2136924bf046270861b82ea0ce2976c5b40" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="[waixing] dragon knife (english title) (unl) (wxn decrypted).prg" size="262144" crc="1f3f740e" sha1="8bcdd6bf5f1920b45e4d9ce49192cd51d1c842e6" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="tulongd" cloneof="dknife">
 		<!-- Serial:  - Release Date:  - Alternative Title: 屠龙刀 (Dragon Knife) -->
 		<description>Tu Long Dao (Chi)</description>
 		<year>198?</year>
@@ -50867,7 +51445,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 <!-- was this ever released on real carts? -->
 	<software name="famikan">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Famikan (Japan, Unl)</description>
+		<description>Famikan (Jpn, Unl)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -50918,7 +51496,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 <!-- Does it come from an original cart or has it been ripped from sunday (Sunday Funday)?? -->
 	<software name="fishfall">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Fish Fall (Asia)</description>
+		<description>Fish Fall (USA?)</description>
 		<year>19??</year>
 		<publisher>Color Dreams</publisher>
 		<part name="cart" interface="nes_cart">
@@ -50967,7 +51545,7 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 
 	<software name="mc_dance">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>FengLi Dance 12 in 1 &amp; 24 in 1(Chi)</description>
+		<description>FengLi Dance 12 in 1 &amp; 24 in 1 (Chi)</description>
 		<year>19??</year>
 		<publisher>FengLi</publisher>
 		<part name="cart" interface="nes_cart">
@@ -51139,6 +51717,27 @@ Also notice that VRAM, WRAM & mirror are probably incorrect for some of these se
 			</dataarea>
 			<dataarea name="prg" size="262144">
 				<rom name="jurassic park - the lost world (unl)[!].prg" size="262144" crc="fc573ae3" sha1="14f02aac7f3eaa1cc0d90a7fce7890e234c2920f" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
+<!-- This was included in the DVD release of a 2008 Japanese TV show describing the creation of a Famicom game
+It was also distributed in form of Famicom carts, whose checksums (according to the developer websit) match this set
+Also available (in form of IPS patches from the dev) some hacks featuring alt. levels: Mondo21 hack, gg version & Meteor version
+We don't include these hacks because they were not burned into real carts nor sold!  -->
+	<software name="mrsplash">
+		<!-- Serial:  - Release Date:  - Alternative Title:  -->
+		<description>Mr. Splash! (Jpn)</description>
+		<year>2007</year>
+		<publisher>Hiroshi "Polygon" Inukai</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-NROM-256" />
+			<feature name="mirroring" value="horizontal" />
+			<dataarea name="chr" size="32768">
+				<rom name="mr. splash (japan) (unl).chr" size="32768" crc="5f9319fe" sha1="64e05f9a7ab82511f06cec55c81b74f7210b8d52" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="32768">
+				<rom name="mr. splash (japan) (unl).prg" size="32768" crc="dea39fa7" sha1="6927f20370214b5a1fdc029a6c63155bdd87de1c" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -52430,13 +53029,32 @@ from the NEStopia source, hence they would require confirmation. -->
 
 	<software name="biohazrd">
 		<!-- Serial:  - Release Date:  - Alternative Title: 生化危机 -->
-		<description>Bio Hazard (Asia)</description>
-		<year>19??</year>
+		<description>Bio Hazard (Chi)</description>
+		<year>2003?</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="WAIXING-PS2" />
 			<dataarea name="prg" size="1048576">
 				<rom name="bio hazard (unl).prg" size="1048576" crc="babe5c1c" sha1="8e79bdd5f79bb6d16991b45a23475c35403b02a9" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="chaojidz" supported="partial">
+		<!-- Serial:  - Release Date:  - Alternative Title: 超级大战略 / Super Daisenryaku? -->
+		<description>Chaoji Da Zhan Lue (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="WAIXING-A" /> <!-- Header says mapper 4 but there glitches, this seems to work better (but not perfectly) -->
+			<dataarea name="chr" size="262144">
+				<rom name="[waixing] chaoji da zhanlue (unl) (wxn decrypted).chr" size="262144" crc="bcb042fc" sha1="65977c35b7ff5c612aeaedd95bff919527c94e74" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="[waixing] chaoji da zhanlue (unl) (wxn decrypted).prg" size="262144" crc="fd9d6a8b" sha1="f2e5697a2639e95fe7003d520b679108622f4f87" offset="00000" status="baddump" />
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
@@ -52774,6 +53392,22 @@ from the NEStopia source, hence they would require confirmation. -->
 		</part>
 	</software>
 
+	<software name="goldnaxe" supported="no">
+		<!-- Serial:  - Release Date:  - Alternative Title: 战斧 (Zhan Fu) -->
+		<description>Golden Axe (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" /> <!-- Header says mapper 4 but there are glitches -->
+			<dataarea name="chr" size="262144">
+				<rom name="[waixing] golden axe (unl) (wxn decrypted).chr" size="262144" crc="74553f5e" sha1="bb5e516e3dd31ec344c23dd932535582afad0378" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="262144">
+				<rom name="[waixing] golden axe (unl) (wxn decrypted).prg" size="262144" crc="8516a6dc" sha1="1e24c0b0b205d7952d3509831abb774a1458f438" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="gbzsxha" cloneof="gwar">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Gu Ba Zhan Shi Xi Hua (Chi, Alt)</description>
@@ -52806,18 +53440,18 @@ from the NEStopia source, hence they would require confirmation. -->
 		</part>
 	</software>
 
-	<software name="happybiq">
-		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Happy Biqi III - World Fighter (Chi)</description>
+	<software name="happybiq" supported="no">
+		<!-- Serial:  - Release Date:  - Alternative Title:  快乐比奇Ⅲ-地球战士 -->
+		<description>Happy Biqi III - World Fighter (Chi, Decrypted WXN)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="NES-TLROM" />
+			<feature name="pcb" value="NES-TLROM" /> <!-- Header says mapper 4 but there are glitches -->
 			<dataarea name="chr" size="262144">
-				<rom name="happy biqi iii (ch).chr" size="262144" crc="672a6032" sha1="e36c89485316c946e39656aaba4e9e12a09f4437" offset="00000" status="baddump" />
+				<rom name="[waixing] happy biqi iii (c) (wxn decrypted).chr" size="262144" crc="672a6032" sha1="e36c89485316c946e39656aaba4e9e12a09f4437" offset="00000" status="baddump" />
 			</dataarea>
 			<dataarea name="prg" size="262144">
-				<rom name="happy biqi iii (ch).prg" size="262144" crc="ac5c3a2a" sha1="a751a848653849a69bda304baa8de99c6af9869d" offset="00000" status="baddump" />
+				<rom name="[waixing] happy biqi iii (c) (wxn decrypted).prg" size="262144" crc="ac5c3a2a" sha1="a751a848653849a69bda304baa8de99c6af9869d" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -52834,6 +53468,22 @@ from the NEStopia source, hence they would require confirmation. -->
 			</dataarea>
 			<!-- 8k VRAM on cartridge -->
 			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="impjudge" supported="partial">
+		<!-- Serial:  - Release Date:  - Alternative Title: 新包青天Ⅱ (Xin Bao QingTian II) -->
+		<description>Impartial Judge (Chi, Decrypted WXN)</description>
+		<year>19??</year>
+		<publisher>Waixing</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-TLROM" /> <!-- Header says mapper 4 but there glitches -->
+			<dataarea name="chr" size="262144">
+				<rom name="[waixing] impartial judge (unl) (wxn decrypted).chr" size="262144" crc="2ba01492" sha1="14ea596a6c31b106d50dbb8f008e313be0c154cc" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="131072">
+				<rom name="[waixing] impartial judge (unl) (wxn decrypted).prg" size="131072" crc="019bcfd8" sha1="5cbade134f2ec78d25517847460d468ccfeb3da6" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -53084,7 +53734,7 @@ from the NEStopia source, hence they would require confirmation. -->
 		</part>
 	</software>
 
-	<software name="misstank">
+	<software name="misstank" cloneof="batlcity">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Missile Tank (Chi)</description>
 		<year>1994</year>
@@ -53100,7 +53750,7 @@ from the NEStopia source, hence they would require confirmation. -->
 		</part>
 	</software>
 
-	<software name="misstank1" cloneof="misstank">
+	<software name="misstank1" cloneof="batlcity">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Missile Tank (Chi, Alt with 6 enemies)</description>
 		<year>1994</year>
@@ -53116,11 +53766,11 @@ from the NEStopia source, hence they would require confirmation. -->
 		</part>
 	</software>
 
-	<software name="misstank2" cloneof="misstank">
-		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Missile Tank (Chi, Alt 2)</description>
+	<software name="tank1990" cloneof="batlcity">
+		<!-- Serial:  - Release Date:  - Alternative Title: Tank 1990 -->
+		<description>Tank 1990 (Chi)</description>
 		<year>1990</year>
-		<publisher>Y.S</publisher>
+		<publisher>Yanshan RuanJian</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-NROM-256" />
 			<dataarea name="chr" size="8192">
@@ -53128,6 +53778,23 @@ from the NEStopia source, hence they would require confirmation. -->
 			</dataarea>
 			<dataarea name="prg" size="32768">
 				<rom name="tank 1990 (ch).prg" size="32768" crc="3b5b221a" sha1="777bd27ac91fc5f3ffd3d2639fbc2011f31f6121" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="ddtank" cloneof="batlcity">
+		<!-- Serial:  - Release Date:  - Alternative Title:  -->
+		<description>DaoDan TanKe (Chi)</description>
+		<year>1994</year>
+		<publisher>Yanshan RuanJian</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="NES-CNROM" />
+			<feature name="mirroring" value="horizontal" />
+			<dataarea name="chr" size="16384">
+				<rom name="daodan tanke (unl) (yanshan).chr" size="16384" crc="1c370fa6" sha1="2b14e218060bebe5d4eeaf480394104f97ce0ad1" offset="00000" status="baddump" />
+			</dataarea>
+			<dataarea name="prg" size="32768">
+				<rom name="daodan tanke (unl) (yanshan).prg" size="32768" crc="c4d3b9dd" sha1="7a4275cffcb2d2b632662e21d9f237efab51e602" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -53366,7 +54033,7 @@ from the NEStopia source, hence they would require confirmation. -->
 
 	<software name="dafuwen2" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title: 大富翁2-上海大亨 (Shanghai Tycoon) -->
-		<description>Da Fu Weng 2 - Shanghai Da Heng (Asia)</description>
+		<description>Da Fu Weng 2 - Shanghai Da Heng (Chi)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
@@ -53695,16 +54362,16 @@ from the NEStopia source, hence they would require confirmation. -->
 
 	<software name="twxmz">
 		<!-- Serial:  - Release Date:  - Alternative Title: 天王降魔传 -->
-		<description>Tian Wang Xiang Mo Zhuan (Chi)</description>
+		<description>Tian Wang Xiang Mo Zhuan (Chi, Decrypted WXN)</description>
 		<year>19??</year>
 		<publisher>Waixing</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-TLROM" />
 			<dataarea name="chr" size="262144">
-				<rom name="tian wang xiang mo zhuan (c).chr" size="262144" crc="70327804" sha1="67db8c49dd1601002adaf9ec1ab65eaabb892206" offset="00000" status="baddump" />
+				<rom name="[waixing] tian wang xiang mo zhuan (c) (wxn decrypted).chr" size="262144" crc="70327804" sha1="67db8c49dd1601002adaf9ec1ab65eaabb892206" offset="00000" status="baddump" />
 			</dataarea>
 			<dataarea name="prg" size="262144">
-				<rom name="tian wang xiang mo zhuan (c).prg" size="262144" crc="72d817f9" sha1="10c9abf1236ec49cd7a08a200a7db18ddd6e7345" offset="00000" status="baddump" />
+				<rom name="[waixing] tian wang xiang mo zhuan (c) (wxn decrypted).prg" size="262144" crc="72d817f9" sha1="10c9abf1236ec49cd7a08a200a7db18ddd6e7345" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -54606,7 +55273,7 @@ Also notice that VRAM & WRAM are probably incorrect for some of these sets, at t
 		<publisher>FMG</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-CNROM" />
-			<feature name="mirroring" value="horizontal" />
+			<feature name="mirroring" value="vertical" />
 			<dataarea name="chr" size="16384">
 				<rom name="banana (1987)(fmg)(jp)[h][p][mapper 3].chr" size="16384" crc="940018f3" sha1="036243540ff9b992d0b056fdd10eeb864a91f482" offset="00000" status="baddump" />
 			</dataarea>
@@ -56950,7 +57617,7 @@ Also notice that VRAM & WRAM are probably incorrect for some of these sets, at t
 		</part>
 	</software>
 
-	<software name="abm5">
+	<software name="abm5" supported="partial">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>ABM Study Card V5.0 (Chi)</description>
 		<year>19??</year>
@@ -57465,7 +58132,7 @@ Also notice that VRAM & WRAM are probably incorrect for some of these sets, at t
 
 	<software name="connorsr" cloneof="connors">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Jimmy Connor's Tennis (Rus)</description>
+		<description>Jimmy Connors Tennis (Rus)</description>
 		<year>199?</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -57651,14 +58318,14 @@ Games by A.Tchudov (from Ulyanovsk)
 		</part>
 	</software>
 
-	<software name="morskoya" cloneof="morskoy">
+	<software name="bshipr" cloneof="bship">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Morskoy Boy (Rus, Alt?)</description>
+		<description>Morskoy Boy ~ Battleship (Rus, Battleship pirate)</description>
 		<year>1996</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="NES-NROM-256" />
-			<feature name="mirroring" value="vertical" />
+			<feature name="pcb" value="NES-CNROM" />
+			<feature name="mirroring" value="horizontal" />
 			<dataarea name="chr" size="32768">
 				<rom name="morskoy boy (russian) (a).chr" size="32768" crc="91f1c836" sha1="802bb631707112dbb8b6aeb6d7fd34015a31a9e2" offset="00000" status="baddump" />
 			</dataarea>
@@ -58017,9 +58684,10 @@ Other
 		</part>
 	</software>
 
+<!-- This seems to have infinite lives! -->
 	<software name="1945">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>1945 (Sky Shark pirate)</description>
+		<description>1945 (Sky Shark pirate, Hacked?)</description>
 		<year>19??</year>
 		<publisher>&lt;pirate&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -58114,7 +58782,7 @@ Other
 	</software>
 
 <!-- FIXME: which board should use this game?? -->
-	<software name="batman4" cloneof="batmanrj">
+	<software name="batman4" cloneof="batmanrj" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>Batman 4 (Batman: Return of the Joker pirate)</description>
 		<year>19??</year>
@@ -58186,6 +58854,7 @@ Other
 		<publisher>&lt;pirate&gt;</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-NROM-256" />
+			<feature name="mirroring" value="vertical" />
 			<dataarea name="chr" size="8192">
 				<rom name="bomberman collection [p1].chr" size="8192" crc="a775822e" sha1="b0584f9f4172b9e111ae275d8de6644b76372b32" offset="00000" status="baddump" />
 			</dataarea>
@@ -58391,8 +59060,8 @@ Other
 		</part>
 	</software>
 
-<!-- This needs more investigations: is it ripped from a multicart? was it from a standalone cart?  does it really use mapper 0 
-(and if so why the invalid code)?  is it the same fancy bros of a lot of multicarts (where the game have the wrong mirroring, 
+<!-- This needs more investigations: is it ripped from a multicart? was it from a standalone cart?  does it really use mapper 0
+(and if so why the invalid code)?  is it the same fancy bros of a lot of multicarts (where the game have the wrong mirroring,
 resulting in tons of glitches? -->
 	<software name="fancybro" cloneof="smb" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
@@ -58656,7 +59325,7 @@ resulting in tons of glitches? -->
 
 	<software name="connorsh" cloneof="connors">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Jimmy Connor's Tennis (Pirate)</description>
+		<description>Jimmy Connors Tennis (Pirate)</description>
 		<year>19??</year>
 		<publisher>&lt;pirate&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -59974,10 +60643,10 @@ resulting in tons of glitches? -->
 	</software>
 
 	<software name="93contra" cloneof="probot">
-		<!-- Serial:  - Release Date:  - Alternative Title: Super Contra II -->
-		<description>'93 Contra (Chi, Contra pirate)</description>
+		<!-- Serial:  - Release Date:  - Alternative Title: Super Contra II (cart label?) / 93超级魂 -->
+		<description>'93 Chaoji Hun (Chi, Contra pirate)</description>
 		<year>1993</year>
-		<publisher>&lt;pirate&gt;</publisher>
+		<publisher>Yanshan RuanJian</publisher>
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="NES-UNROM" />
 			<feature name="mirroring" value="vertical" />
@@ -60871,6 +61540,9 @@ We include them here as reference if they should coincide with later revisions o
 			<dataarea name="prg" size="262144">
 				<rom name="castlevania iii - dracula's curse (2002)(konami)(us)[h buddha][ripped from konami classics for pc].prg" size="262144" crc="40dbc815" sha1="97ead1a57f822196d809ffc72fd1a1c571fcfd5b" offset="00000" status="baddump" />
 			</dataarea>
+			<!-- 1k Internal RAM in the MMC5 chip (ExRAM) -->
+			<dataarea name="mapper_ram" size="1024">
+			</dataarea>
 		</part>
 	</software>
 
@@ -60928,7 +61600,7 @@ be better to redump them properly. -->
 
 	<software name="fengkuan">
 		<!-- Serial:  - Release Date:  - Alternative Title: 疯狂鸡蛋仔 -->
-		<description>Feng Kuang Ji Dan Zi - Flighty Chicken (Asia, Decrypted)</description>
+		<description>Feng Kuang Ji Dan Zi - Flighty Chicken (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -60944,7 +61616,7 @@ be better to redump them properly. -->
 
 	<software name="chuhanzb" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title: 楚汉争霸 -->
-		<description>Chu Han Zheng Ba - The War Between Chu &amp; Han (Asia, Decrypted)</description>
+		<description>Chu Han Zheng Ba - The War Between Chu &amp; Han (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -60960,7 +61632,7 @@ be better to redump them properly. -->
 
 	<software name="dragon">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>The Dragon (Asia, Decrypted)</description>
+		<description>The Dragon (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -60974,25 +61646,9 @@ be better to redump them properly. -->
 		</part>
 	</software>
 
-	<software name="duobaoxy" supported="partial">
-		<!-- Serial: ES-1021 - Release Date:  - Alternative Title: 夺宝小英豪 -->
-		<description>Duo Bao Xiao Ying Hao - Guang Ming Yu An Hei Chuan Shuo (Asia, Decrypted)</description>
-		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
-		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="WAIXING-SEC" />
-			<dataarea name="chr" size="262144">
-				<rom name="duo bao xiao ying hao - guang ming yu an hei chuan shuo (as) [decrypted].chr" size="262144" crc="a9a2e7ab" sha1="5ad8181f7d05bb0faf7fd2fd03b6fdc2b4843948" offset="00000" status="baddump" />
-			</dataarea>
-			<dataarea name="prg" size="262144">
-				<rom name="duo bao xiao ying hao - guang ming yu an hei chuan shuo (as) [decrypted].prg" size="262144" crc="a98f1b42" sha1="c5039f774198443e9d0ef452b59ff63f3ec50cce" offset="00000" status="baddump" />
-			</dataarea>
-		</part>
-	</software>
-
 	<software name="jijiazs">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Ji Jia Zhan Shi (Asia, Decrypted)</description>
+		<description>Ji Jia Zhan Shi (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -61011,7 +61667,7 @@ be better to redump them properly. -->
 
 	<software name="pikay2k" cloneof="felix">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Pikachu Y2k (Felix the Cat pirate, Decrypted)</description>
+		<description>Pikachu Y2k (Felix the Cat pirate, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -61030,7 +61686,7 @@ be better to redump them properly. -->
 
 	<software name="sanguoa" cloneof="sangochu" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>San Guo Zhi (Asia, Decrypted)</description>
+		<description>San Guo Zhi (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -61044,41 +61700,9 @@ be better to redump them properly. -->
 		</part>
 	</software>
 
-	<software name="sanshilj">
-		<!-- Serial: ES-1008 - Release Date:  - Alternative Title: 三十六计 -->
-		<description>San Shi Liu Ji (Asia, Decrypted)</description>
-		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
-		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="WAIXING-SEC" />
-			<dataarea name="chr" size="262144">
-				<rom name="san shi liu ji (as) [decrypted].chr" size="262144" crc="3986eee0" sha1="f42daf681c5fa1ca753e6e913c55b489f648ffbb" offset="00000" status="baddump" />
-			</dataarea>
-            <dataarea name="prg" size="262144">
-				<rom name="san shi liu ji (as) [decrypted].prg" size="262144" crc="c4372b5a" sha1="2d6b77733cada368aab5ad27340e403cba222b52" offset="00000" status="baddump" />
-			</dataarea>
-		</part>
-	</software>
-
-	<software name="shuihuzh">
-		<!-- Serial: ES-1030 - Release Date:  - Alternative Title: 水浒传 -->
-		<description>Shui Hu Zhuan (Asia, Decrypted)</description>
-		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
-		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="WAIXING-SEC" />
-			<dataarea name="chr" size="262144">
-				<rom name="shui hu zhuan (as) [decrypted].chr" size="262144" crc="8043f13b" sha1="ee7e7ae3899b022262bdd3eafba21decedbfd715" offset="00000" status="baddump" />
-			</dataarea>
-			<dataarea name="prg" size="262144">
-				<rom name="shui hu zhuan (as) [decrypted].prg" size="262144" crc="024a0f5f" sha1="12afcc2fed62cd8b33197d2c63ce6a607ec871c7" offset="00000" status="baddump" />
-			</dataarea>
-		</part>
-	</software>
-
 	<software name="sonic3d6">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Sonic 3d Blast 6 (Asia, Decrypted)</description>
+		<description>Sonic 3d Blast 6 (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -61094,7 +61718,7 @@ be better to redump them properly. -->
 
 	<software name="sonic3d6h" cloneof="sonic3d6">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Sonic 3d Blast 6 (Asia, Decrypted + Hacked)</description>
+		<description>Sonic 3d Blast 6 (Asia, Decrypted SmyNES + Hacked)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -61110,7 +61734,7 @@ be better to redump them properly. -->
 
 	<software name="xingjiws">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>Xing Ji Wu Shi - Super Fighter (Asia, Decrypted)</description>
+		<description>Xing Ji Wu Shi - Super Fighter (Asia, Decrypted SmyNES)</description>
 		<year>1996</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -61124,25 +61748,9 @@ be better to redump them properly. -->
 		</part>
 	</software>
 
-	<software name="yangjiaj" supported="no">
-		<!-- Serial: ES-1052 - Release Date:  - Alternative Title: 杨家将 -->
-		<description>Yang Jia Jiang - Yang's Troops (Asia, Decrypted)</description>
-		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
-		<part name="cart" interface="nes_cart">
-			<feature name="pcb" value="NES-TLROM" />
-			<dataarea name="chr" size="262144">
-				<rom name="yang jia jiang - yang's troops [decrypted].chr" size="262144" crc="8d37f83b" sha1="e794ae05639a0902b5306f9a0fff3a429589e8f7" offset="00000" status="baddump" />
-			</dataarea>
-			<dataarea name="prg" size="262144">
-				<rom name="yang jia jiang - yang's troops [decrypted].prg" size="262144" crc="5daa7856" sha1="730d37edf7bcc57e27383727e5a3eec7632b3571" offset="00000" status="baddump" />
-			</dataarea>
-		</part>
-	</software>
-
 	<software name="zhanguoq">
 		<!-- Serial:  - Release Date:  - Alternative Title: 战国群雄传 -->
-		<description>Zhan Guo Qun Xiong Zhuan (Asia, Decrypted)</description>
+		<description>Zhan Guo Qun Xiong Zhuan (Asia, Decrypted SmyNES)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -62815,10 +63423,10 @@ be better to redump them properly. -->
 		<part name="cart" interface="nes_cart">
 			<feature name="pcb" value="BMC-110IN1" />
 			<dataarea name="chr" size="1048576">
-				<rom name="110-in-1 [p1].chr" size="1048576" crc="122d2157" sha1="46f495db08201250de51f7a4ac3ab7b09089b7b9" offset="00000" status="baddump" />
+				<rom name="110-in-1.chr" size="1048576" crc="122d2157" sha1="46f495db08201250de51f7a4ac3ab7b09089b7b9" offset="00000" status="baddump" />
 			</dataarea>
 			<dataarea name="prg" size="2097152">
-				<rom name="110-in-1 [p1].prg" size="2097152" crc="8763c67e" sha1="322ce15684ec4620eb6a3dc1f085d341b8089541" offset="00000" status="baddump" />
+				<rom name="110-in-1.prg" size="2097152" crc="8763c67e" sha1="322ce15684ec4620eb6a3dc1f085d341b8089541" offset="00000" status="baddump" />
 			</dataarea>
 		</part>
 	</software>
@@ -63027,6 +63635,22 @@ be better to redump them properly. -->
 			</dataarea>
 			<dataarea name="prg" size="131072">
 				<rom name="150-in-1 [p1].prg" size="131072" crc="74a91246" sha1="8fffe4681171070208c494657de90ac979edba45" offset="00000" status="baddump" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="mc_150h" supported="no">
+		<!-- Serial:  - Release Date:  - Alternative Title:  -->
+		<description>He Jin Zhuang Bei 150-in-1 Real Game</description>
+		<year>19??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="BMC-FK23CA" />
+			<dataarea name="prg" size="16777216">
+				<rom name="he jin zhuang bei 150-in-1 real game (unl)[u][!].prg" size="16777216" crc="d14617d7" sha1="5052b5566d2dc7840464bcf6668b1905669e2aec" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
 			</dataarea>
 		</part>
 	</software>
@@ -64320,7 +64944,7 @@ be better to redump them properly. -->
 
 	<software name="mc_76a" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
-		<description>76 in 1(Alt Games)</description>
+		<description>76 in 1 (Alt Games)</description>
 		<year>19??</year>
 		<publisher>&lt;pirate&gt;</publisher>
 		<part name="cart" interface="nes_cart">
@@ -65737,7 +66361,7 @@ that the real dumps might surface -->
 
 <!-- These are dumps from famiclones (of plug-and-play type) which are based on the famicom hw but with a slightly more powerful PPU. Hence it needs to be supported separately. We document here the dumps, in the meanwhile, but these do not belong to this list!! -->
 
-	<software name="mc_dgear">
+	<software name="mc_dgear" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>DreamGEAR 75-in-1</description>
 		<year>19??</year>
@@ -65755,21 +66379,25 @@ that the real dumps might surface -->
 
 <!-- The following iNES roms are ripped from mc_dgear, so we don't include them (crc is from headerless file):
 	* Deformable	[b0716cc2]
+	* Diamond	[a207bd12]
 	* Difference	[3c201dcc]
+	* Escapeway	[0086ea7c]
 	* Fish Story	[9334de5b]
 	* Goblet Tower	[d1b91f24]
 	* Island	[fb9496cc]
 	* Metro Mania [7981c762]
 	* Mirror Devil World	[2ec1bed7]
 	* Police vs Thief	[02bc030e]
+	* Pulveration	[d903b9f2]
 	* Rabbit Village	[2a561f41]
 	* Road Worker	[44a6ca07]
 	* Super Hero	[c46eda12]
+	* Twin Fish	[92324d59]
 	* Vigilant	[c042b605]
 	* Wonder Rabbit	[49fd2867]
  -->
 
-	<software name="mc_aa2">
+	<software name="mc_aa2" supported="no">
 		<!-- Serial:  - Release Date:  - Alternative Title:  -->
 		<description>100 in 1 Arcade Action II (AT-103)</description>
 		<year>19??</year>
@@ -65799,5 +66427,21 @@ that the real dumps might surface -->
 	* Van-1	[a4928409]
 	* X-Plan	[77da46e1]
  -->
+
+	<software name="mc_105te" supported="no">
+		<!-- Serial:  - Release Date:  - Alternative Title:  -->
+		<description>2011 Super HiK 105-in-1 Turbo Edition</description>
+		<year>19??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="nes_cart">
+			<feature name="pcb" value="UNL-OneBus" />
+			<dataarea name="prg" size="8388608">
+				<rom name="2011 super hik 105-in-1 turbo edition.prg" size="8388608" crc="c0f85771" sha1="8c4182b1de3be10dd895089823cc67a9d12589ef" offset="00000" status="baddump" />
+			</dataarea>
+			<!-- 8k VRAM on cartridge -->
+			<dataarea name="vram" size="8192">
+			</dataarea>
+		</part>
+	</software>
 
 </softwarelist>

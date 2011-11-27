@@ -509,7 +509,7 @@ static void amstrad_plus_dma_parse(running_machine &machine, int channel)
 		}
 		return;
 	}
-	command = (ram_get_ptr(machine.device(RAM_TAG))[state->m_asic.dma_addr[channel]+1] << 8) + ram_get_ptr(machine.device(RAM_TAG))[state->m_asic.dma_addr[channel]];
+	command = (machine.device<ram_device>(RAM_TAG)->pointer()[state->m_asic.dma_addr[channel]+1] << 8) + machine.device<ram_device>(RAM_TAG)->pointer()[state->m_asic.dma_addr[channel]];
 //  logerror("DMA #%i: address %04x: command %04x\n",channel,state->m_asic.dma_addr[channel],command);
 	switch (command & 0xf000)
 	{
@@ -617,7 +617,7 @@ INLINE void amstrad_gate_array_get_video_data( running_machine &machine )
 		state->m_gate_array.address = ( ( state->m_gate_array.ma & 0x2000 ) << 2 ) | ( ( state->m_gate_array.ra & 0x06 ) << 11 ) | ( ( state->m_gate_array.ra & 0x01 ) << 14 ) | ( ( state->m_gate_array.ma & 0x7ff ) << 1 );
 	else
 		state->m_gate_array.address = ( ( state->m_gate_array.ma & 0x3000 ) << 2 ) | ( ( state->m_gate_array.ra & 0x07 ) << 11 ) | ( ( state->m_gate_array.ma & 0x3ff ) << 1 );
-	state->m_gate_array.data = ram_get_ptr(machine.device(RAM_TAG))[ state->m_gate_array.address ];
+	state->m_gate_array.data = machine.device<ram_device>(RAM_TAG)->pointer()[ state->m_gate_array.address ];
 	state->m_gate_array.colour = state->m_GateArray_render_colours[ state->m_gate_array.mode_lookup[state->m_gate_array.data] ];
 	state->m_gate_array.colour_ticks = state->m_gate_array.max_colour_ticks;
 	state->m_gate_array.ticks = 0;
@@ -653,7 +653,7 @@ INLINE void amstrad_update_video( running_machine &machine )
 				switch( state->m_gate_array.ticks)
 				{
 				case 8:
-					state->m_gate_array.data = ram_get_ptr(machine.device(RAM_TAG))[ state->m_gate_array.address + 1 ];
+					state->m_gate_array.data = machine.device<ram_device>(RAM_TAG)->pointer()[ state->m_gate_array.address + 1 ];
 					state->m_gate_array.colour = state->m_GateArray_render_colours[ state->m_gate_array.mode_lookup[state->m_gate_array.data] ];
 					break;
 				case 16:
@@ -689,7 +689,7 @@ INLINE void amstrad_plus_gate_array_get_video_data( running_machine &machine )
 		ma += state->m_asic.horiz_disp;
 	}
 	state->m_gate_array.address = ( ( ma & 0x3000 ) << 2 ) | ( ( state->m_gate_array.ra & 0x07 ) << 11 ) | ( ( ma & 0x3ff ) << 1 );
-	state->m_gate_array.data = ram_get_ptr(machine.device(RAM_TAG))[ state->m_gate_array.address ];
+	state->m_gate_array.data = machine.device<ram_device>(RAM_TAG)->pointer()[ state->m_gate_array.address ];
 	caddr = 0x2400 + state->m_gate_array.mode_lookup[state->m_gate_array.data] * 2;
 	state->m_gate_array.colour = state->m_asic.ram[caddr] + ( state->m_asic.ram[caddr+1] << 8 );
 	state->m_gate_array.colour_ticks = state->m_gate_array.max_colour_ticks;
@@ -741,7 +741,7 @@ INLINE void amstrad_plus_update_video( running_machine &machine )
 						{
 							UINT16 caddr;
 
-							state->m_gate_array.data = ram_get_ptr(machine.device(RAM_TAG))[ state->m_gate_array.address + 1 ];
+							state->m_gate_array.data = machine.device<ram_device>(RAM_TAG)->pointer()[ state->m_gate_array.address + 1 ];
 							caddr = 0x2400 + state->m_gate_array.mode_lookup[state->m_gate_array.data] * 2;
 							state->m_gate_array.colour = state->m_asic.ram[caddr] + ( state->m_asic.ram[caddr+1] << 8 );
 						}
@@ -1101,6 +1101,41 @@ const mc6845_interface amstrad_plus_mc6845_intf =
 	NULL
 };
 
+/* traverses the daisy-chain of expansion devices, looking for the specified device */
+static device_t* get_expansion_device(running_machine &machine, const char* tag)
+{
+	cpc_expansion_slot_device* exp_port = machine.device<cpc_expansion_slot_device>("exp");
+
+	while(exp_port != NULL)
+	{
+		device_t* temp;
+
+		// first, check if this expansion port has the device we want attached
+		temp = exp_port->subdevice(tag);
+		if(temp != NULL)
+			return temp;
+
+		// if it's not what we're looking for, then check the expansion port on this expansion device. if it exists.
+		temp = dynamic_cast<device_t*>(exp_port->get_card_device());
+		if(temp == NULL)
+			return NULL; // no device attached
+		exp_port = temp->subdevice<cpc_expansion_slot_device>("exp");
+		if(exp_port == NULL)
+			return NULL;  // we're at the end of the chain
+	}
+	return NULL;
+}
+
+WRITE_LINE_DEVICE_HANDLER(cpc_irq_w)
+{
+	cputag_set_input_line(device->machine(), "maincpu", 0, state);
+}
+
+WRITE_LINE_DEVICE_HANDLER(cpc_nmi_w)
+{
+	cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_NMI, state);
+}
+
 WRITE_LINE_DEVICE_HANDLER(cpc_romdis)
 {
 	amstrad_state *tstate = device->machine().driver_data<amstrad_state>();
@@ -1280,7 +1315,7 @@ static void AmstradCPC_GA_SetRamConfiguration(running_machine &machine)
 		for (i=0;i<4;i++)
 		{
 			BankIndex = RamConfigurations[(ConfigurationIndex << 2) + i];
-			BankAddr = ram_get_ptr(machine.device(RAM_TAG)) + (BankIndex << 14);
+			BankAddr = machine.device<ram_device>(RAM_TAG)->pointer() + (BankIndex << 14);
 			state->m_Aleste_RamBanks[i] = BankAddr;
 			state->m_AmstradCPC_RamBanks[i] = BankAddr;
 		}
@@ -1676,7 +1711,7 @@ static WRITE8_HANDLER( aleste_msx_mapper )
 	int ramptr = (data & 0x1f) * 0x4000;
 	int rampage = data & 0x1f;
 	int function = (data & 0xc0) >> 6;
-	UINT8 *ram = ram_get_ptr(space->machine().device(RAM_TAG));
+	UINT8 *ram = space->machine().device<ram_device>(RAM_TAG)->pointer();
 
 	// It is assumed that functions are all mapped to each port &7cff-&7fff, and b8 and b9 are only used for RAM bank location
 	switch(function)
@@ -2097,7 +2132,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 		mc6845->set_clock( ( state->m_aleste_mode & 0x02 ) ? ( XTAL_16MHz / 8 ) : ( XTAL_16MHz / 16 ) );
 	}
 
-	mface2 = space->machine().device<cpc_multiface2_device>("exp:multiface2");
+	mface2 = dynamic_cast<cpc_multiface2_device*>(get_expansion_device(space->machine(),"multiface2"));
 	if(mface2 != NULL)
 	{
 		if(mface2->multiface_io_write(offset, data) != 0)
@@ -2240,7 +2275,7 @@ static void amstrad_handle_snapshot(running_machine &machine, unsigned char *pSn
 			MemorySize = 64*1024;
 		}
 
-		memcpy(ram_get_ptr(machine.device(RAM_TAG)), &pSnapshot[0x0100], MemorySize);
+		memcpy(machine.device<ram_device>(RAM_TAG)->pointer(), &pSnapshot[0x0100], MemorySize);
 	}
 	amstrad_rethinkMemory(machine);
 }
@@ -2331,7 +2366,7 @@ static void amstrad_rethinkMemory(running_machine &machine)
 	}
 
 	/* multiface hardware enabled? */
-	mface2 = machine.device<cpc_multiface2_device>("exp:multiface2");
+	mface2 = dynamic_cast<cpc_multiface2_device*>(get_expansion_device(machine,"multiface2"));
 	if(mface2 != NULL)
 	{
 		if (mface2->multiface_hardware_enabled())
@@ -2355,7 +2390,8 @@ static void kccomp_reset_machine(running_machine &machine)
 
 SCREEN_EOF( amstrad )
 {
-	cpc_multiface2_device* mface2 = machine.device<cpc_multiface2_device>("exp:multiface2");
+	cpc_multiface2_device* mface2 = dynamic_cast<cpc_multiface2_device*>(get_expansion_device(screen->machine(),"multiface2"));
+
 	if(mface2 != NULL)
 	{
 		mface2->check_button_state();
@@ -2759,31 +2795,6 @@ static const UINT8 amstrad_cycle_table_ex[256]=
 	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,
 	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0
 };
-
-/* traverses the daisy-chain of expansion devices, looking for the specified device */
-static device_t* get_expansion_device(running_machine &machine, const char* tag)
-{
-	cpc_expansion_slot_device* exp_port = machine.device<cpc_expansion_slot_device>("exp");
-
-	while(exp_port != NULL)
-	{
-		device_t* temp;
-
-		// first, check if this expansion port has the device we want attached
-		temp = exp_port->subdevice("rom");
-		if(temp != NULL)
-			return temp;
-
-		// if it's not what we're looking for, then check the expansion port on this expansion device. if it exists.
-		temp = dynamic_cast<device_t*>(exp_port->get_card_device());
-		if(temp == NULL)
-			return NULL; // no device attached
-		exp_port = temp->subdevice<cpc_expansion_slot_device>("exp");
-		if(exp_port == NULL)
-			return NULL;  // we're at the end of the chain
-	}
-	return NULL;
-}
 
 static void amstrad_common_init(running_machine &machine)
 {

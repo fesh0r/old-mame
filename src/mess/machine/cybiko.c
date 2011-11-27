@@ -52,25 +52,25 @@ static void init_ram_handler(running_machine &machine, offs_t start, offs_t size
 {
 	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_bank(start, start + size - 1, 0, mirror - size, "bank1");
 	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_write_bank(start, start + size - 1, 0, mirror - size, "bank1");
-	memory_set_bankptr( machine, "bank1", ram_get_ptr(machine.device(RAM_TAG)));
+	memory_set_bankptr( machine, "bank1", machine.device<ram_device>(RAM_TAG)->pointer());
 }
 
 DRIVER_INIT( cybikov1 )
 {
 	_logerror( 0, ("init_cybikov1\n"));
-	init_ram_handler(machine, 0x200000, ram_get_size(machine.device(RAM_TAG)), 0x200000);
+	init_ram_handler(machine, 0x200000, machine.device<ram_device>(RAM_TAG)->size(), 0x200000);
 }
 
 DRIVER_INIT( cybikov2 )
 {
 	_logerror( 0, ("init_cybikov2\n"));
-	init_ram_handler(machine, 0x200000, ram_get_size(machine.device(RAM_TAG)), 0x200000);
+	init_ram_handler(machine, 0x200000, machine.device<ram_device>(RAM_TAG)->size(), 0x200000);
 }
 
 DRIVER_INIT( cybikoxt )
 {
 	_logerror( 0, ("init_cybikoxt\n"));
-	init_ram_handler(machine, 0x400000, ram_get_size(machine.device(RAM_TAG)), 0x200000);
+	init_ram_handler(machine, 0x400000, machine.device<ram_device>(RAM_TAG)->size(), 0x200000);
 }
 
 ////////////////////
@@ -183,7 +183,7 @@ static void cybiko_sst39vfx_save(running_machine &machine, emu_file *file)
 
 static void cybiko_ramdisk_load(running_machine &machine, emu_file *file)
 {
-	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
+	UINT8 *ram = machine.device<ram_device>(RAM_TAG)->pointer();
 	#ifdef LSB_FIRST
 	UINT8 *temp = (UINT8*)malloc( RAMDISK_SIZE);
 	file->read( temp, RAMDISK_SIZE);
@@ -200,7 +200,7 @@ static void cybiko_ramdisk_load(running_machine &machine, emu_file *file)
 
 static void cybiko_ramdisk_save(running_machine &machine, emu_file *file)
 {
-	UINT8 *ram = ram_get_ptr(machine.device(RAM_TAG));
+	UINT8 *ram = machine.device<ram_device>(RAM_TAG)->pointer();
 	#ifdef LSB_FIRST
 	UINT8 *temp = (UINT8*)malloc( RAMDISK_SIZE);
 	for (int i = 0; i < RAMDISK_SIZE; i += 2)
@@ -405,16 +405,18 @@ static int cybiko_rs232_rx_queue( void)
 
 READ16_HANDLER( cybiko_lcd_r )
 {
+	hd66421_device *hd66421 = space->machine().device<hd66421_device>( "hd66421" );
 	UINT16 data = 0;
-	if (ACCESSING_BITS_8_15) data = data | (hd66421_reg_idx_r() << 8);
-	if (ACCESSING_BITS_0_7) data = data | (hd66421_reg_dat_r() << 0);
+	if (ACCESSING_BITS_8_15) data = data | (hd66421->reg_idx_r(*space, offset) << 8);
+	if (ACCESSING_BITS_0_7) data = data | (hd66421->reg_dat_r(*space, offset) << 0);
 	return data;
 }
 
 WRITE16_HANDLER( cybiko_lcd_w )
 {
-	if (ACCESSING_BITS_8_15) hd66421_reg_idx_w( (data >> 8) & 0xFF);
-	if (ACCESSING_BITS_0_7) hd66421_reg_dat_w( (data >> 0) & 0xFF);
+	hd66421_device *hd66421 = space->machine().device<hd66421_device>( "hd66421" );
+	if (ACCESSING_BITS_8_15) hd66421->reg_idx_w(*space, offset, (data >> 8) & 0xff);
+	if (ACCESSING_BITS_0_7) hd66421->reg_dat_w(*space, offset, (data >> 0) & 0xff);
 }
 
 static READ16_HANDLER( cybiko_key_r )

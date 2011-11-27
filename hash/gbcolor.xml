@@ -12660,7 +12660,7 @@ Undumped Pirates:
 
 	<software name="roxj" cloneof="rox">
 		<!-- Serial: DMG-ARXJ - Release Date: 1999-03-05 - Alt. Title: ロックス 6=Six - Notes: GBC only -->
-		<description>Rox - 6=Six(Jpn)</description>
+		<description>Rox - 6=Six (Jpn)</description>
 		<year>1999</year>
 		<publisher>Altron</publisher>
 		<part name="cart" interface="gameboy_cart">
@@ -15598,7 +15598,7 @@ Undumped Pirates:
 	</software>
 
 	<software name="vip">
-		<!-- The US box of V.I.P usually contains the european cart. This was also shown on a youtube unboxing video with a sealed copy. Therefore the dump is labeled USA + Europe. 
+		<!-- The US box of V.I.P usually contains the european cart. This was also shown on a youtube unboxing video with a sealed copy. Therefore the dump is labeled USA + Europe.
 		But recently it was discovered some boxes also contain a real US shaped cart (see vipu below). -->
 		<!-- Serial: CGB-BVIE / CGB-BVIP - Release Date:  - Notes: GBC only -->
 		<description>VIP (Euro, USA)</description>

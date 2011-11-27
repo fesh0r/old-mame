@@ -619,7 +619,7 @@ void m5_state::machine_start()
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
 	// configure RAM
-	switch (ram_get_size(m_ram))
+	switch (m_ram->size())
 	{
 	case 4*1024:
 		program->unmap_readwrite(0x8000, 0xffff);
@@ -633,11 +633,11 @@ void m5_state::machine_start()
 	}
 
 	// register for state saving
-	state_save_register_global(machine(), m_fd5_data);
-	state_save_register_global(machine(), m_fd5_com);
-	state_save_register_global(machine(), m_intra);
-	state_save_register_global(machine(), m_ibfa);
-	state_save_register_global(machine(), m_obfa);
+	save_item(NAME(m_fd5_data));
+	save_item(NAME(m_fd5_com));
+	save_item(NAME(m_intra));
+	save_item(NAME(m_ibfa));
+	save_item(NAME(m_obfa));
 }
 
 
