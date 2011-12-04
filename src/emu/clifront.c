@@ -1309,6 +1309,7 @@ void cli_frontend::execute_commands(const char *exename)
 	if (strcmp(m_options.command(), CLICOMMAND_VALIDATE) == 0)
 	{
 		validate_drivers(m_options);
+		validate_softlists(m_options);
 		return;
 	}
 
