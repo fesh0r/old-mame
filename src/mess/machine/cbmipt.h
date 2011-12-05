@@ -1,6 +1,34 @@
 #ifndef CBMIPT_H_
 #define CBMIPT_H_
 
+#include "machine/c64_std.h"
+#include "machine/c64_xl80.h"
+#include "machine/c1541.h"
+#include "machine/c1571.h"
+#include "machine/c1581.h"
+#include "machine/c2031.h"
+#include "machine/c2040.h"
+#include "machine/c8280.h"
+#include "machine/d9060.h"
+#include "machine/interpod.h"
+
+
+#define MCFG_CBM_IEC_ADD(_intf, _default_drive) \
+	MCFG_CBM_IEC_BUS_ADD(_intf) \
+	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL) \
+	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, cbm_iec_devices, _default_drive, NULL) \
+	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL) \
+	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL) \
+	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+
+
+#define MCFG_CBM_IEEE488_ADD(_intf, _default_drive) \
+	MCFG_IEEE488_BUS_ADD(_intf) \
+	MCFG_IEEE488_SLOT_ADD("ieee8", 8, cbm_ieee488_devices, _default_drive, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee9", 9, cbm_ieee488_devices, NULL, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee10", 10, cbm_ieee488_devices, NULL, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL, NULL)
+
 
 /* Commodore 64 */
 
@@ -44,6 +72,13 @@ INPUT_PORTS_EXTERN( cbmb_special );
 INPUT_PORTS_EXTERN( vic_keyboard );
 INPUT_PORTS_EXTERN( vic_special );
 INPUT_PORTS_EXTERN( vic_controls );
+
+
+
+extern const slot_interface slot_interface_cbm_iec_devices[];
+extern const slot_interface slot_interface_cbm_ieee488_devices[];
+extern const slot_interface slot_interface_c64_expansion_cards[];
+
 
 
 #endif /* CBMIPT_H_ */

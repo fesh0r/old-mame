@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "corestr.h"
 
@@ -22,7 +23,10 @@
 
 #include "formats/hxcmfm_dsk.h"
 #include "formats/ami_dsk.h"
+
 #include "formats/st_dsk.h"
+#include "formats/pasti_dsk.h"
+
 #include "formats/dsk_dsk.h"
 
 static floppy_format_type floppy_formats[] = {
@@ -34,9 +38,18 @@ static floppy_format_type floppy_formats[] = {
 
 	FLOPPY_ST_FORMAT,
 	FLOPPY_MSA_FORMAT,
+	FLOPPY_PASTI_FORMAT,
 
 	FLOPPY_DSK_FORMAT
 };
+
+void CLIB_DECL logerror(const char *format, ...)
+{
+	va_list arg;
+	va_start(arg, format);
+	printf(format, arg);
+	va_end(arg);
+}
 
 enum { FORMAT_COUNT = sizeof(floppy_formats)/sizeof(floppy_formats[0]) };
 

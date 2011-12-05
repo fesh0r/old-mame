@@ -78,14 +78,10 @@ block of RAM instead of 8.
 #include "imagedev/cartslot.h"
 #include "machine/ram.h"
 #include "machine/6522via.h"
-#include "machine/c1541.h"
-#include "machine/c1571.h"
-#include "machine/c1581.h"
-#include "machine/c2031.h"
 #include "machine/cbmiec.h"
+#include "machine/cbmipt.h"
 #include "machine/ieee488.h"
 #include "machine/vic1112.h"
-#include "machine/cbmipt.h"
 #include "sound/mos6560.h"
 #include "sound/dac.h"
 
@@ -434,17 +430,6 @@ static TIMER_DEVICE_CALLBACK( cassette_tick )
 
 /* IEC Serial Bus */
 
-static SLOT_INTERFACE_START( cbm_iec_devices )
-	SLOT_INTERFACE("c1540", C1540)
-	SLOT_INTERFACE("c1541", C1541)
-	SLOT_INTERFACE("c1541c", C1541C)
-	SLOT_INTERFACE("c1541ii", C1541II)
-	SLOT_INTERFACE("oc118", OC118)
-	SLOT_INTERFACE("c1570", C1570)
-	SLOT_INTERFACE("c1571", C1571)
-	SLOT_INTERFACE("c1581", C1581)
-SLOT_INTERFACE_END
-
 static CBM_IEC_INTERFACE( cbm_iec_intf )
 {
 	DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb1),
@@ -592,35 +577,35 @@ static DEVICE_IMAGE_LOAD( vic20_cart )
 	}
 	else
 	{
-		size = image.get_software_region_length("2000");
+		size = image.get_software_region_length("blk1");
 		if (size)
 		{
 			address = 0x2000;
-			memcpy(ptr + address, image.get_software_region("2000"), size);
+			memcpy(ptr + address, image.get_software_region("blk1"), size);
 			program->install_rom(address, (address + size) - 1, ptr + address);
 		}
 
-		size = image.get_software_region_length("4000");
+		size = image.get_software_region_length("blk2");
 		if (size)
 		{
 			address = 0x4000;
-			memcpy(ptr + address, image.get_software_region("4000"), size);
+			memcpy(ptr + address, image.get_software_region("blk2"), size);
 			program->install_rom(address, (address + size) - 1, ptr + address);
 		}
 
-		size = image.get_software_region_length("6000");
+		size = image.get_software_region_length("blk3");
 		if (size)
 		{
 			address = 0x6000;
-			memcpy(ptr + address, image.get_software_region("6000"), size);
+			memcpy(ptr + address, image.get_software_region("blk3"), size);
 			program->install_rom(address, (address + size) - 1, ptr + address);
 		}
 
-		size = image.get_software_region_length("a000");
+		size = image.get_software_region_length("blk5");
 		if (size)
 		{
 			address = 0xa000;
-			memcpy(ptr + address, image.get_software_region("a000"), size);
+			memcpy(ptr + address, image.get_software_region("blk5"), size);
 			program->install_rom(address, (address + size) - 1, ptr + address);
 		}
 
@@ -686,12 +671,7 @@ static MACHINE_CONFIG_START( vic20_common, vic20_state )
 	MCFG_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface )
 
-	MCFG_CBM_IEC_BUS_ADD(cbm_iec_intf)
-	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, cbm_iec_devices, "c1541", NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+	MCFG_CBM_IEC_ADD(cbm_iec_intf, "c1541")
 #ifdef INCLUDE_VIC1112
     MCFG_VIC1112_ADD()
 #endif

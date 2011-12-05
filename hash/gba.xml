@@ -23114,6 +23114,18 @@
 		</part>
 	</software>
 
+	<software name="pokerubygp" cloneof="pokeruby">
+		<description>Pokémon - Rubin-Edition (Ger, Prototype)</description>
+		<year>2003</year>
+		<publisher>Nintendo</publisher>
+		<part name="cart" interface="gba_cart">
+			<feature name="pcb_type" value="GBA-FLASH-1M" />
+			<dataarea name="rom" size="16777216">
+				<rom name="pokemon_ruby_german_final_d.bin" size="16777216" crc="40686c47" sha1="ca5e3d415c4b47353a73a616878ba833f3648b7a" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="pokerubys" cloneof="pokeruby">
 		<description>Pokémon - Edición Rubí (Spa, Rev. 1)</description>
 		<year>2003</year>
@@ -32190,7 +32202,7 @@
 	</software>
 
 	<software name="whowant">
-		<description>Who Wants to Be a Millionaire? (Euro)</description>
+		<description>Who Wants to Be a Millionaire (UK)</description>
 		<year>2002</year>
 		<publisher>Zoo Digital Publishing</publisher>
 		<part name="cart" interface="gba_cart">
@@ -32201,7 +32213,7 @@
 	</software>
 
 	<software name="whowanta" cloneof="whowant">
-		<description>Who Wants to Be a Millionaire? (Aus)</description>
+		<description>Who Wants to Be a Millionaire (Aus)</description>
 		<year>2002</year>
 		<publisher>Zoo Digital Publishing</publisher>
 		<part name="cart" interface="gba_cart">
@@ -32267,7 +32279,7 @@
 	</software>
 
 	<software name="whowant2">
-		<description>Who Wants to Be a Millionaire - 2nd Edition (Euro)</description>
+		<description>Who Wants to Be a Millionaire - 2nd Edition (UK)</description>
 		<year>2004</year>
 		<publisher>Zoo Digital Publishing</publisher>
 		<part name="cart" interface="gba_cart">
@@ -32278,7 +32290,7 @@
 	</software>
 
 	<software name="whowanjr">
-		<description>Who Wants to Be a Millionaire? Junior (Euro)</description>
+		<description>Who Wants to Be a Millionaire - Junior (UK)</description>
 		<year>2005</year>
 		<publisher>Zoo Digital Publishing</publisher>
 		<part name="cart" interface="gba_cart">

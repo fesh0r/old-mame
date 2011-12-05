@@ -54,9 +54,6 @@ bus serial (available in all modes), a Fast and a Burst serial bus
 #include "cpu/m6502/m4510.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
-#include "machine/c1541.h"
-#include "machine/c1571.h"
-#include "machine/c1581.h"
 #include "machine/cbmipt.h"
 #include "video/vic4567.h"
 #include "includes/cbm.h"
@@ -198,17 +195,6 @@ static const sid6581_interface c65_sound_interface =
 };
 
 
-static SLOT_INTERFACE_START( cbm_iec_devices )
-	SLOT_INTERFACE("c1540", C1540)
-	SLOT_INTERFACE("c1541", C1541)
-	SLOT_INTERFACE("c1541c", C1541C)
-	SLOT_INTERFACE("c1541ii", C1541II)
-	SLOT_INTERFACE("oc118", OC118)
-	SLOT_INTERFACE("c1570", C1570)
-	SLOT_INTERFACE("c1571", C1571)
-	SLOT_INTERFACE("c1581", C1581)
-SLOT_INTERFACE_END
-
 static CBM_IEC_INTERFACE( cbm_iec_intf )
 {
 	DEVCB_NULL,
@@ -334,12 +320,7 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_MOS6526R1_ADD("cia_1", 3500000, c65_ntsc_cia1)
 
 	/* floppy from serial bus */
-	MCFG_CBM_IEC_BUS_ADD(cbm_iec_intf)
-	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+	MCFG_CBM_IEC_ADD(cbm_iec_intf, NULL)
 
 	MCFG_FRAGMENT_ADD(c64_cartslot)
 

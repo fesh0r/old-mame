@@ -388,10 +388,6 @@ normal keyboards?
 #include "machine/cbmipt.h"
 #include "video/mc6845.h"
 #include "machine/ram.h"
-#include "machine/c2031.h"
-#include "machine/c2040.h"
-#include "machine/c8280.h"
-#include "machine/d9060.h"
 
 /* devices config */
 #include "includes/cbm.h"
@@ -647,20 +643,6 @@ static SCREEN_UPDATE( pet_crtc )
 	return 0;
 }
 
-static SLOT_INTERFACE_START( cbm_ieee488_devices )
-	SLOT_INTERFACE("c2040", C2040)
-	SLOT_INTERFACE("c3040", C3040)
-	SLOT_INTERFACE("c4040", C4040)
-	SLOT_INTERFACE("c8050", C8050)
-	SLOT_INTERFACE("c8250", C8250)
-	SLOT_INTERFACE("c8250lp", C8250LP)
-	SLOT_INTERFACE("sfd1001", SFD1001)
-	SLOT_INTERFACE("c2031", C2031)
-	SLOT_INTERFACE("c8280", C8280)
-	SLOT_INTERFACE("d9060", D9060)
-	SLOT_INTERFACE("d9090", D9090)
-SLOT_INTERFACE_END
-
 static IEEE488_INTERFACE( ieee488_intf )
 {
 	DEVCB_NULL,
@@ -724,11 +706,7 @@ static MACHINE_CONFIG_DERIVED( pet, pet_general )
 	MCFG_RAM_EXTRA_OPTIONS("8K,16K")
 
 	/* IEEE bus */
-	MCFG_IEEE488_BUS_ADD(ieee488_intf)
-	MCFG_IEEE488_SLOT_ADD("ieee8", 8, cbm_ieee488_devices, "c4040", NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee9", 9, cbm_ieee488_devices, NULL, NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee10", 10, cbm_ieee488_devices, NULL, NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL, NULL)
+	MCFG_CBM_IEEE488_ADD(ieee488_intf, "c4040")
 MACHINE_CONFIG_END
 
 
@@ -746,11 +724,7 @@ static MACHINE_CONFIG_DERIVED( pet2001, pet_general )
 	MCFG_RAM_EXTRA_OPTIONS("4K")
 
 	/* IEEE bus */
-	MCFG_IEEE488_BUS_ADD(ieee488_intf)
-	MCFG_IEEE488_SLOT_ADD("ieee8", 8, cbm_ieee488_devices, "c4040", NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee9", 9, cbm_ieee488_devices, NULL, NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee10", 10, cbm_ieee488_devices, NULL, NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL, NULL)
+	MCFG_CBM_IEEE488_ADD(ieee488_intf, "c4040")
 MACHINE_CONFIG_END
 
 
@@ -803,11 +777,7 @@ static MACHINE_CONFIG_DERIVED( pet80, pet_general )
 	MCFG_RAM_DEFAULT_SIZE("32K")
 
 	/* IEEE bus */
-	MCFG_IEEE488_BUS_ADD(ieee488_intf)
-	MCFG_IEEE488_SLOT_ADD("ieee8", 8, cbm_ieee488_devices, "c8050", NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee9", 9, cbm_ieee488_devices, NULL, NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee10", 10, cbm_ieee488_devices, NULL, NULL)
-	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL, NULL)
+	MCFG_CBM_IEEE488_ADD(ieee488_intf, "c8050")
 MACHINE_CONFIG_END
 
 

@@ -64,7 +64,7 @@ static const floppy_interface kc_d004_floppy_interface =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	LEGACY_FLOPPY_OPTIONS_NAME(kc_d004),
-	NULL,
+	"floppy_5_25",
 	NULL
 };
 
@@ -130,7 +130,7 @@ const device_type KC_D004 = &device_creator<kc_d004_device>;
 //-------------------------------------------------
 
 kc_d004_device::kc_d004_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-      : device_t(mconfig, KC_D004, "D004", tag, owner, clock),
+      : device_t(mconfig, KC_D004, "D004 Floppy Disk Interface", tag, owner, clock),
 		device_kcexp_interface( mconfig, *this ),
 		m_cpu(*this, Z80_TAG),
 		m_fdc(*this, UPD765_TAG)
