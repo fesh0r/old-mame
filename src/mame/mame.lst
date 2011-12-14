@@ -397,6 +397,7 @@ swimmer			// (c) 1982 Tehkan
 swimmera		// (c) 1982 Tehkan
 swimmerb		// (c) 1982 Tehkan
 guzzler			// (c) 1983 Tehkan
+guzzlers		// (c) 1983 Tehkan (Swimmer Conversion)
 cannonb			// (c) 1985 Soft
 cannonb2		// (c) 1985 TV Game Gruenberg
 cannonb3		// (c) 1985 Soft
@@ -1963,6 +1964,7 @@ pbillian		// (c) 1986 Taito
 hotsmash		// B18 (c) 1987 Taito
 exzisus			// B12 (c) 1987 Taito Corporation (Japan)
 exzisusa		// B23 (c) 1987 Taito Corporation (Japan)
+exzisust		// B23 (c) 1987 TAD Corp (based on Japan Conversion)
 minivadr		// D26 cabinet test board
 volfied			// C04 (c) 1989 Taito Corporation Japan (World)
 volfiedu		// C04 (c) 1989 Taito America Corporation (US)
@@ -2877,9 +2879,10 @@ varth			// 14/07/1992 (c) 1992 (World)
 varthr1			// 12/06/1992 (c) 1992 (World)
 varthu			// 12/06/1992 (c) 1992 (USA)
 varthj			// 14/07/1992 (c) 1992 (Japan)
-qad				// 01/07/1992 (c) 1992 (USA)
+qad			// 01/07/1992 (c) 1992 (USA)
 qadj			// 21/09/1994 (c) 1994 (Japan)
-wof				// 02/10/1992 (c) 1992 (World) (CPS1 + QSound)
+wof			// 31/10/1992 (c) 1992 (World) (CPS1 + QSound)
+wofr1			// 02/10/1992 (c) 1992 (World) (CPS1 + QSound)
 wofu			// 31/10/1992 (c) 1992 (USA) (CPS1 + QSound)
 wofa			// 05/10/1992 (c) 1992 (Asia)  (CPS1 + QSound)
 wofj			// 31/10/1992 (c) 1992 (Japan) (CPS1 + QSound)
@@ -4931,7 +4934,7 @@ illvelo			// 2008.06 Illvelo (Illmatic Envelope)
 				// 2008.07 Mamoru-kun wa Norowarete Shimatta!
 mbaa			// 2008.09 Melty Blood Actress Again
 				// 2008.12 Melty Blood Actress Again ver.A
-				// 2009.06 Radirgy Noah
+				// 2009.06 Radirgy Noa
 				// 2009.?? Project Cerberus (planned to be released in 2009)
 ngdup23a		// DIMM Firmware Updater (Rev A)
 ngdup23c        // DIMM Firmware Updater (Rev C)
@@ -10607,6 +10610,9 @@ drw80pkr		// (c) 1982 IGT
 drw80pk2		// (c) 1983 IGT
 fortune1		// (c) 1984 IGT
 blazlaz			// (c) 1989 Hudson Soft
+keith			// (c) 1989 Hudson Soft
+aliencr			// (c) 1989 Hudson Soft
+paclandp		// (c) 1989 Namco
 ggconnie		// (c) ???? Capcom
 paranoia		// (c) 1990 Naxat Soft
 vcombat			// (c) 1993 VR8 Inc.
