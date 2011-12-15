@@ -1162,12 +1162,9 @@ static TIMER_DEVICE_CALLBACK( paddle_tick )
 {
 	adam_state *state = timer.machine().driver_data<adam_state>();
 
-	coleco_scan_paddles(timer.machine(), &state->m_joy_status0, &state->m_joy_status1);
-
-    if (state->m_joy_status0 || state->m_joy_status1)
-	{
+	// TODO: improve irq behaviour (see drivers/coleco.c)
+	if (coleco_scan_paddles(timer.machine(), &state->m_joy_status0, &state->m_joy_status1))
 		device_set_input_line(state->m_maincpu, INPUT_LINE_IRQ0, HOLD_LINE);
-	}
 }
 
 
@@ -1197,7 +1194,7 @@ WRITE8_MEMBER( adam_state::joystick_w )
 
 READ8_MEMBER( adam_state::input1_r )
 {
-	return coleco_paddle1_read(machine(), m_joy_mode, m_joy_status0);
+	return coleco_paddle_read(machine(), 0, m_joy_mode, m_joy_status0);
 }
 
 
@@ -1207,7 +1204,7 @@ READ8_MEMBER( adam_state::input1_r )
 
 READ8_MEMBER( adam_state::input2_r )
 {
-	return coleco_paddle1_read(machine(), m_joy_mode, m_joy_status1);
+	return coleco_paddle_read(machine(), 1, m_joy_mode, m_joy_status1);
 }
 
 

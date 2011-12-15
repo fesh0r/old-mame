@@ -324,7 +324,6 @@ PCB Layouts missing
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
-#include "deprecat.h"
 #include "machine/i8255.h"
 #include "machine/rp5c01.h"
 #include "machine/wd17xx.h"
@@ -1191,7 +1190,7 @@ static MACHINE_CONFIG_START( msx2, msx_state )
 	MCFG_CPU_ADD("maincpu", Z80, 3579545)		  /* 3.579545 MHz */
 	MCFG_CPU_PROGRAM_MAP(msx_memory_map)
 	MCFG_CPU_IO_MAP(msx2_io_map)
-	MCFG_CPU_VBLANK_INT_HACK(msx2_interrupt, 262)
+	MCFG_TIMER_ADD_SCANLINE("scantimer", msx2_interrupt, "screen", 0, 1)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START( msx2 )
@@ -4435,15 +4434,15 @@ COMP(1984, cf3000,   msx,	0,  msx_ntsc, msxjp,    msx,     "National / Matsushit
 COMP(1985, cf3300,   msx,	0,  msx_ntsc, msxjp,    msx,     "National / Matsushita", "CF-3300 (Japan)", 0 )
 COMP(1985, fs1300,   msx,	0,  msx_ntsc, msxjp,    msx,     "National / Matsushita", "FS-1300 (Japan)" , 0)
 COMP(1985, fs4000,   msx,	0,  msx_ntsc, msxjp,    msx,     "National / Matsushita", "FS-4000 (Japan)" , 0)
-COMP(1983, phc2,	 msx,	0,  msx_ntsc, msxjp,    msx,     "Olympia", "PHC-2" , 0)
-COMP(19??, phc28,    msx,   0,  msx_ntsc, msxjp,    msx,     "Olympia", "PHC-28", GAME_NOT_WORKING)
-COMP(1984, cf2700g,  msx,   0,  msx_ntsc, msxjp,    msx,     "Panasonic", "CF-2700G", GAME_NOT_WORKING)
-COMP(1983, nms801,	  msx,	0,	msx_pal,  msx,      msx,     "Philips", "NMS-801" , 0)
-COMP(1984, vg8000,  msx,	0,	msx_ntsc, msx,      msx,     "Philips",	 "VG-8000" , GAME_NOT_WORKING)
-COMP(1984, vg8010,  msx,	0,	msx_ntsc, msx,      msx,     "Philips",	 "VG-8010" , GAME_NOT_WORKING)
-COMP(1984, vg8010f,  msx,	0,	msx_ntsc, msx,      msx,     "Philips",	 "VG-8010F" , GAME_NOT_WORKING)
-COMP(1985, vg802000,  msx,	0,	msx_ntsc, msx,      msx,     "Philips",	 "VG-8020-00" , 0)
-COMP(1985, vg802020, msx,	0,	msx_ntsc, msx,      msx,     "Philips",	 "VG-8020-20" , 0)
+COMP(1983, phc2,     msx,	0,  msx_pal,  msx,      msx,     "Olympia", "PHC-2" , 0)
+COMP(19??, phc28,    msx,       0,  msx_pal,  msx,      msx,     "Olympia", "PHC-28", GAME_NOT_WORKING)
+COMP(1984, cf2700g,  msx,       0,  msx_pal,  msx,      msx,     "Panasonic", "CF-2700G (Germany)", GAME_NOT_WORKING)
+COMP(1983, nms801,   msx,	0,  msx_pal,  msx,      msx,     "Philips", "NMS-801" , 0)
+COMP(1984, vg8000,  msx,	0,  msx_pal,  msx,      msx,     "Philips",	 "VG-8000" , GAME_NOT_WORKING)
+COMP(1984, vg8010,  msx,	0,  msx_pal,  msx,      msx,     "Philips",	 "VG-8010" , GAME_NOT_WORKING)
+COMP(1984, vg8010f,  msx,	0,  msx_pal,  msx,      msx,     "Philips",	 "VG-8010F" , GAME_NOT_WORKING)
+COMP(1985, vg802000,  msx,	0,  msx_pal,  msx,      msx,     "Philips",	 "VG-8020-00" , 0)
+COMP(1985, vg802020, msx,	0,  msx_pal,  msx,      msx,     "Philips",	 "VG-8020-20" , 0)
 COMP(19??, vg8020f,  msx,   0,  msx_pal,  msx,      msx,     "Philips",  "VG-8020F", GAME_NOT_WORKING)
 COMP(1985, piopx7,	  msx,	0,	msx_pal,  msx,      msx,     "Pioneer",	 "PX-07" , 0)
 COMP(19??, spc800,    msx,  0,  msx_ntsc, msx,      msx,     "Samsung",  "SPC-800", GAME_NOT_WORKING)

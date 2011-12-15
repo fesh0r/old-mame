@@ -192,9 +192,4 @@ private:
 	static void render_triangle(bitmap_t &dest, const bitmap_t &source, const rectangle &sbounds, void *param);
 };
 
-/* ----- core menu management ----- */
-
-/* allocate a new menu */
-ui_menu *ui_menu_alloc(running_machine &machine, render_container *container, ui_menu_handler_func handler, void *parameter);
-
 #endif	/* __UIMENU_H__ */

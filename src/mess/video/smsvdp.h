@@ -16,11 +16,6 @@
     CONSTANTS
 ***************************************************************************/
 
-
-#define MODEL_315_5124			0x0001
-#define MODEL_315_5246			0x0002
-#define MODEL_315_5378			0x0004
-
 #define SMS_X_PIXELS			342		/* 342 pixels */
 #define SMS_NTSC_Y_PIXELS			262		/* 262 lines */
 #define SMS_PAL_Y_PIXELS			313		/* 313 lines */
@@ -67,7 +62,8 @@ extern const device_type SEGA315_5378;		/* Gamegear vdp */
 
 
 class sega315_5124_device : public device_t,
-                            public smsvdp_interface
+                            public smsvdp_interface,
+                            public device_memory_interface
 {
 public:
 	// construction/destruction
@@ -91,20 +87,22 @@ public:
 protected:
 	virtual void set_display_settings();
 	virtual void update_palette();
-	virtual void refresh_line( int pixel_offset_x, int pixel_plot_y, int line );
+	virtual void draw_scanline( int pixel_offset_x, int pixel_plot_y, int line );
 	virtual UINT16 get_name_table_address();
 	void process_line_timer();
-	void refresh_line_mode4( int *line_buffer, int *priority_selected, int line );
-	void refresh_mode4_sprites( int *line_buffer, int *priority_selected, int pixel_plot_y, int line );
-	void refresh_tms9918_sprites( int *line_buffer, int pixel_plot_y, int line );
-	void refresh_line_mode2( int *line_buffer, int line );
-	void refresh_line_mode0( int *line_buffer, int line );
+	void draw_scanline_mode4( int *line_buffer, int *priority_selected, int line );
+	void draw_sprites_mode4( int *line_buffer, int *priority_selected, int pixel_plot_y, int line );
+	void draw_sprites_tms9918_mode( int *line_buffer, int pixel_plot_y, int line );
+	void draw_scanline_mode2( int *line_buffer, int line );
+	void draw_scanline_mode0( int *line_buffer, int line );
 
 	// device-level overrides
 	virtual void device_config_complete();
 	virtual void device_start();
 	virtual void device_reset();
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
+
+	virtual const address_space_config *memory_space_config(address_spacenum spacenum = AS_0) const { return (spacenum == AS_0) ? &m_space_config : NULL; }
 
 	UINT8            m_reg[16];                  /* All the registers */
 	UINT8            m_status;                   /* Status register */
@@ -122,11 +120,11 @@ protected:
 	int              m_y_pixels;                 /* 192, 224, 240 */
 	UINT8            m_line_counter;
 	UINT8            m_hcounter;
-	memory_region    *m_VRAM;                    /* Pointer to VRAM */
 	memory_region    *m_CRAM;                    /* Pointer to CRAM */
 	const UINT8      *m_frame_timing;
 	bitmap_t         *m_tmpbitmap;
-	UINT8            *m_collision_buffer;
+	bitmap_t         *m_y1_bitmap;
+	UINT8            m_collision_buffer[SMS_X_PIXELS];
 	UINT8            m_palette_offset;
 
 	/* line_buffer will be used to hold 5 lines of line data. Line #0 is the regular blitting area.
@@ -139,9 +137,12 @@ protected:
 	emu_timer        *m_smsvdp_display_timer;
 	emu_timer        *m_set_status_vint_timer;
 	emu_timer        *m_set_status_sprovr_timer;
+	emu_timer        *m_set_status_sprcol_timer;
 	emu_timer        *m_check_hint_timer;
 	emu_timer        *m_check_vint_timer;
 	screen_device    *m_screen;
+
+	const address_space_config  m_space_config;
 
 	/* Timers */
 	static const device_timer_id TIMER_LINE = 0;
@@ -149,6 +150,7 @@ protected:
 	static const device_timer_id TIMER_SET_STATUS_SPROVR = 2;
 	static const device_timer_id TIMER_CHECK_HINT = 3;
 	static const device_timer_id TIMER_CHECK_VINT = 4;
+	static const device_timer_id TIMER_SET_STATUS_SPRCOL = 5;
 };
 
 
@@ -173,7 +175,7 @@ public:
 protected:
 	virtual void set_display_settings();
 	virtual void update_palette();
-	virtual void refresh_line( int pixel_offset_x, int pixel_plot_y, int line );
+	virtual void draw_scanline( int pixel_offset_x, int pixel_plot_y, int line );
 	virtual UINT16 get_name_table_address();
 };
 

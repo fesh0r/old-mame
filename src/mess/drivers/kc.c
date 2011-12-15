@@ -59,11 +59,11 @@ static INPUT_PORTS_START( kc85 )
 INPUT_PORTS_END
 
 
-/* pio is last in chain and therefore has highest priority */
+/* priority derived from schematics */
 static const z80_daisy_config kc85_daisy_chain[] =
 {
-	{ "z80pio" },
 	{ "z80ctc" },
+	{ "z80pio" },
 	{ NULL }
 };
 
@@ -164,7 +164,7 @@ static MACHINE_CONFIG_START( kc85_3, kc_state )
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, kc_cassette_interface )
 
 	/* cartridge slot */
-	MCFG_KC85_CARTRIDGE_ADD("m8", "mc", kc85_exp_interface, kc85_cart, NULL, NULL)
+	MCFG_KC85_CARTRIDGE_ADD("m8", "mc", kc85_exp_interface, kc85_cart, "m011", NULL)
 	MCFG_KC85_CARTRIDGE_ADD("mc", "exp", kc85_exp_interface, kc85_cart, NULL, NULL)
 
 	/* expansion interface */
@@ -173,7 +173,7 @@ static MACHINE_CONFIG_START( kc85_3, kc_state )
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list", "kc_cart")
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "kc_flop")
-//  MCFG_SOFTWARE_LIST_ADD("cass_list", "kc_cass")
+	MCFG_SOFTWARE_LIST_ADD("cass_list", "kc_cass")
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -228,7 +228,7 @@ static MACHINE_CONFIG_START( kc85_4, kc85_4_state )
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list", "kc_cart")
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "kc_flop")
-//  MCFG_SOFTWARE_LIST_ADD("cass_list", "kc_cass")
+	MCFG_SOFTWARE_LIST_ADD("cass_list", "kc_cass")
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

@@ -116,8 +116,8 @@ public:
 
 	// paddle state
 	int m_joy_mode;
-	int m_joy_status0;
-	int m_joy_status1;
+	UINT8 m_joy_status0;
+	UINT8 m_joy_status1;
 
 	// video state
 	int m_vdp_nmi;
