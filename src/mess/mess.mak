@@ -567,6 +567,8 @@ $(MESSOBJ)/acorn.a:				\
 $(MESSOBJ)/act.a:				\
 	$(MESS_DRIVERS)/apricot.o	\
 	$(MESS_DRIVERS)/apricotf.o	\
+	$(MESS_DRIVERS)/apricotp.o	\
+	$(MESS_MACHINE)/apricotkb.o	\
 	$(MESS_DRIVERS)/victor9k.o	\
 
 $(MESSOBJ)/amiga.a:				\
@@ -621,6 +623,8 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_AUDIO)/mac.o			\
 	$(MESS_VIDEO)/mac.o			\
 	$(MESS_MACHINE)/mac.o		\
+	$(MESS_MACHINE)/macrtc.o	\
+	$(MESS_MACHINE)/macadb.o	\
 	$(MESS_DRIVERS)/mac.o		\
 	$(MESS_VIDEO)/apple1.o		\
 	$(MESS_MACHINE)/apple1.o	\
@@ -629,6 +633,7 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/apple3.o	\
 	$(MESS_DRIVERS)/apple3.o	\
 	$(MESS_MACHINE)/egret.o     \
+	$(MESS_MACHINE)/cuda.o      \
 	$(MESS_VIDEO)/nubus_48gc.o	\
 	$(MESS_VIDEO)/nubus_cb264.o \
 	$(MESS_VIDEO)/nubus_vikbw.o \
@@ -1421,6 +1426,7 @@ $(MESSOBJ)/sharp.a:				\
 	$(MESS_DRIVERS)/mz2000.o	\
 	$(MESS_DRIVERS)/x1.o		\
 	$(MESS_MACHINE)/x1.o		\
+	$(MESS_DRIVERS)/x1twin.o	\
 	$(MESS_DRIVERS)/mz2500.o	\
 	$(MESS_DRIVERS)/pce220.o	\
 	$(MESS_MACHINE)/pce220_ser.o	\
@@ -1729,6 +1735,7 @@ $(MESSOBJ)/test.a:				\
 
 $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/alesis.o	\
+	$(MESS_DRIVERS)/alphatro.o	\
 	$(MESS_DRIVERS)/amico2k.o	\
 	$(MESS_DRIVERS)/applix.o	\
 	$(MESS_DRIVERS)/babbage.o	\
@@ -1737,9 +1744,11 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/busicom.o	\
 	$(MESS_VIDEO)/busicom.o		\
 	$(MESS_DRIVERS)/chaos.o 	\
+	$(MESS_DRIVERS)/chesstrv.o	\
 	$(MESS_DRIVERS)/cd2650.o	\
 	$(MESS_DRIVERS)/codata.o	\
 	$(MESS_DRIVERS)/cosmicos.o	\
+	$(MESS_DRIVERS)/csc.o		\
 	$(MESS_DRIVERS)/cvicny.o	\
 	$(MESS_DRIVERS)/czk80.o		\
 	$(MESS_DRIVERS)/d6800.o		\
@@ -1834,16 +1843,22 @@ $(MESS_MACHINE)/nes_mmc.o:	$(MESSSRC)/machine/nes_ines.c \
 				$(MESSSRC)/machine/nes_unif.c \
 
 $(MESS_AUDIO)/mac.o:		$(MESSSRC)/audio/mac.c \
-				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h $(MESSSRC)/machine/cuda.h
 
 $(MESS_VIDEO)/mac.o:		$(MESSSRC)/video/mac.c \
-				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h $(MESSSRC)/machine/cuda.h
 
 $(MESS_MACHINE)/mac.o:		$(MESSSRC)/machine/mac.c \
-				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h $(MESSSRC)/machine/cuda.h
+
+$(MESS_MACHINE)/macadb.o:	$(MESSSRC)/machine/macadb.c \
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h $(MESSSRC)/machine/cuda.h
+
+$(MESS_MACHINE)/macrtc.o:	$(MESSSRC)/machine/macrtc.c \
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h $(MESSSRC)/machine/cuda.h
 
 $(MESS_DRIVERS)/mac.o:		$(MESSSRC)/drivers/mac.c \
-				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h
+				$(MESSSRC)/includes/mac.h $(MESSSRC)/machine/egret.h $(MESSSRC)/machine/cuda.h
 
 $(MESS_MACHINE)/egret.o:	$(MESSSRC)/machine/egret.c\
                         	$(MESSSRC)/machine/egret.h
@@ -1858,12 +1873,14 @@ $(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 $(MESS_DRIVERS)/aim65_40.o:	$(MESS_LAYOUT)/aim65_40.lh
 $(MESS_DRIVERS)/amico2k.o:	$(MESS_LAYOUT)/amico2k.lh
+$(MESS_DRIVERS)/apricotp.o:	$(MESS_LAYOUT)/apricotp.lh
 $(MESS_DRIVERS)/avigo.o:	$(MESS_LAYOUT)/avigo.lh
 $(MESS_DRIVERS)/babbage.o:	$(MESS_LAYOUT)/babbage.lh
 $(MESS_DRIVERS)/beta.o:		$(MESS_LAYOUT)/beta.lh
 $(MESS_DRIVERS)/bob85.o:	$(MESS_LAYOUT)/bob85.lh
 $(MAME_DRIVERS)/cdi.o:		$(MAME_LAYOUT)/cdi.lh
 $(MESS_DRIVERS)/chessmst.o:	$(MESS_LAYOUT)/chessmst.lh
+$(MESS_DRIVERS)/chesstrv.o:	$(MESS_LAYOUT)/chesstrv.lh
 $(MESS_DRIVERS)/cvicny.o:	$(MESS_LAYOUT)/cvicny.lh
 $(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/coco3.o:	$(MESS_LAYOUT)/coco3.lh

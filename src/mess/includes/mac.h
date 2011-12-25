@@ -13,13 +13,26 @@
 #include "machine/6522via.h"
 #include "machine/ram.h"
 #include "machine/egret.h"
+#include "machine/cuda.h"
 #include "machine/nubus.h"
 #include "machine/ncr539x.h"
+#include "sound/asc.h"
 #include "sound/awacs.h"
 
 #define MAC_SCREEN_NAME "screen"
 #define MAC_539X_1_TAG "539x_1"
 #define MAC_539X_2_TAG "539x_2"
+
+// model helpers
+#define ADB_IS_BITBANG	((mac->m_model == MODEL_MAC_SE || mac->m_model == MODEL_MAC_CLASSIC) || (mac->m_model >= MODEL_MAC_II && mac->m_model <= MODEL_MAC_IICI) || (mac->m_model == MODEL_MAC_SE30) || (mac->m_model == MODEL_MAC_QUADRA_700))
+#define ADB_IS_BITBANG_CLASS	((m_model == MODEL_MAC_SE || m_model == MODEL_MAC_CLASSIC) || (m_model >= MODEL_MAC_II && m_model <= MODEL_MAC_IICI) || (m_model == MODEL_MAC_SE30) || (m_model == MODEL_MAC_QUADRA_700))
+#define ADB_IS_EGRET	(mac->m_model >= MODEL_MAC_LC && mac->m_model <= MODEL_MAC_CLASSIC_II) || ((mac->m_model >= MODEL_MAC_IISI) && (mac->m_model <= MODEL_MAC_IIVI))
+#define ADB_IS_CUDA	    ((mac->m_model >= MODEL_MAC_TV && mac->m_model <= MODEL_MAC_COLOR_CLASSIC) || ((mac->m_model >= MODEL_MAC_QUADRA_660AV) && (mac->m_model <= MODEL_MAC_QUADRA_630)) || (mac->m_model >= MODEL_MAC_POWERMAC_6100))
+#define ADB_IS_PM_VIA1	(mac->m_model >= MODEL_MAC_PORTABLE && mac->m_model <= MODEL_MAC_PB100)
+#define ADB_IS_PM_VIA2	(mac->m_model >= MODEL_MAC_PB140 && mac->m_model <= MODEL_MAC_PBDUO_270c)
+#define ADB_IS_PM_VIA1_CLASS	(m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100)
+#define ADB_IS_PM_VIA2_CLASS	(m_model >= MODEL_MAC_PB140 && m_model <= MODEL_MAC_PBDUO_270c)
+#define ADB_IS_PM_CLASS	((m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100) || (m_model >= MODEL_MAC_PB140 && m_model <= MODEL_MAC_PBDUO_270c))
 
 /* for Egret and CUDA streaming MCU commands, command types */
 typedef enum
@@ -82,15 +95,15 @@ typedef enum
 	MODEL_MAC_PBDUO_270c,
 
 	MODEL_MAC_QUADRA_700,	// 68(LC)040 desktops
+	MODEL_MAC_QUADRA_610,
+	MODEL_MAC_QUADRA_650,
+    MODEL_MAC_QUADRA_800,
 	MODEL_MAC_QUADRA_900,
 	MODEL_MAC_QUADRA_950,
 	MODEL_MAC_QUADRA_660AV,
 	MODEL_MAC_QUADRA_840AV,
 	MODEL_MAC_QUADRA_605,
-	MODEL_MAC_QUADRA_610,
 	MODEL_MAC_QUADRA_630,
-	MODEL_MAC_QUADRA_650,
-    MODEL_MAC_QUADRA_800,
 
 	MODEL_MAC_PB550c,	// 68(LC)040 PowerBooks
 	MODEL_MAC_PB520,
@@ -150,7 +163,7 @@ DRIVER_INIT(macpb140);
 DRIVER_INIT(macpb160);
 DRIVER_INIT(maciivx);
 DRIVER_INIT(maciifx);
-DRIVER_INIT(macpbduo210);
+DRIVER_INIT(macpd210);
 DRIVER_INIT(macquadra700);
 
 NVRAM_HANDLER( mac );
@@ -203,7 +216,8 @@ public:
 		m_via2(*this, "via6522_1"),
 		m_asc(*this, "asc"),
         m_awacs(*this, "awacs"),
-        m_egret(*this, "egret"),
+        m_egret(*this, EGRET_TAG),
+        m_cuda(*this, CUDA_TAG),
 		m_ram(*this, RAM_TAG),
         m_screen(*this, MAC_SCREEN_NAME),
         m_539x_1(*this, MAC_539X_1_TAG),
@@ -216,6 +230,7 @@ public:
 	optional_device<asc_device> m_asc;
 	optional_device<awacs_device> m_awacs;
     optional_device<egret_device> m_egret;
+    optional_device<cuda_device> m_cuda;
 	required_device<ram_device> m_ram;
     optional_device<screen_device> m_screen;
     optional_device<ncr539x_device> m_539x_1;
@@ -318,9 +333,6 @@ public:
     // this is shared among all video setups with vram
 	UINT32 *m_vram;
 
-	// Egret/Caboose/Cuda stuff
-	UINT8 m_egregs[0x20];
-
 	// interrupts
 	int m_scc_interrupt, m_via_interrupt, m_via2_interrupt, m_scsi_interrupt, m_asc_interrupt, m_last_taken_interrupt;
 
@@ -340,6 +352,8 @@ public:
 	void adb_talk();
 	void mouse_callback();
     void rbv_recalc_irqs();
+	void pmu_exec();
+	void mac_adb_newaction(int state);
 
 	DECLARE_READ16_MEMBER ( mac_via_r );
 	DECLARE_WRITE16_MEMBER ( mac_via_w );
@@ -419,6 +433,8 @@ private:
 	int adb_pollkbd(int update);
 	int adb_pollmouse();
 	void adb_accummouse( UINT8 *MouseX, UINT8 *MouseY );
+	void pmu_one_byte_reply(UINT8 result);
+	void pmu_three_byte_reply(UINT8 result1, UINT8 result2, UINT8 result3);
 
     // wait states for accessing the VIA
     int m_via_cycles;
