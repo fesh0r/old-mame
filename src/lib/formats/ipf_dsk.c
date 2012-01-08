@@ -27,7 +27,7 @@ bool ipf_format::supports_save() const
 	return false;
 }
 
-int ipf_format::identify(io_generic *io)
+int ipf_format::identify(io_generic *io, UINT32 form_factor)
 {
 	static const UINT8 refh[12] = { 0x43, 0x41, 0x50, 0x53, 0x00, 0x00, 0x00, 0x0c, 0x1c, 0xd5, 0x73, 0xba };
 	UINT8 h[12];
@@ -39,7 +39,7 @@ int ipf_format::identify(io_generic *io)
 	return 0;
 }
 
-bool ipf_format::load(io_generic *io, floppy_image *image)
+bool ipf_format::load(io_generic *io, UINT32 form_factor, floppy_image *image)
 {
 	UINT32 size = io_generic_size(io);
 	UINT8 *data = global_alloc_array(UINT8, size);
@@ -80,6 +80,7 @@ UINT32 ipf_format::crc32r(const UINT8 *data, UINT32 size)
 
 bool ipf_format::parse(UINT8 *data, UINT32 size, floppy_image *image)
 {
+	image->set_variant(floppy_image::DSDD); // Not handling anything else yet
 	tcount = 84*2+1; // Usual max
 	tinfos = global_alloc_array_clear(track_info, tcount);
 	bool res = scan_all_tags(data, size);
@@ -601,15 +602,21 @@ bool ipf_format::generate_gap_from_description(const UINT8 *&data, const UINT8 *
 }
 
 
-bool ipf_format::generate_block_gap_1(UINT32 gap_cells, UINT32 &spos, const UINT8 *data, const UINT8 *dlimit, UINT32 *track, bool &context)
+bool ipf_format::generate_block_gap_1(UINT32 gap_cells, UINT32 &spos, UINT32 ipos, const UINT8 *data, const UINT8 *dlimit, UINT32 *track, bool &context)
 {
-	spos = 0;
+	if(ipos >= 16 && ipos < gap_cells-16)
+		spos = ipos;
+	else
+		spos = 0;
 	return generate_gap_from_description(data, dlimit, track, gap_cells, true, context);
 }
 
-bool ipf_format::generate_block_gap_2(UINT32 gap_cells, UINT32 &spos, const UINT8 *data, const UINT8 *dlimit, UINT32 *track, bool &context)
+bool ipf_format::generate_block_gap_2(UINT32 gap_cells, UINT32 &spos, UINT32 ipos, const UINT8 *data, const UINT8 *dlimit, UINT32 *track, bool &context)
 {
-	spos = gap_cells;
+	if(ipos >= 16 && ipos < gap_cells-16)
+		spos = ipos;
+	else
+		spos = gap_cells;
 	return generate_gap_from_description(data, dlimit, track, gap_cells, false, context);
 }
 
@@ -646,9 +653,9 @@ bool ipf_format::generate_block_gap(UINT32 gap_type, UINT32 gap_cells, UINT8 pat
 	case 0:
 		return generate_block_gap_0(gap_cells, pattern, spos, ipos, track, context);
 	case 1:
-		return generate_block_gap_1(gap_cells, spos, data, dlimit, track, context);
+		return generate_block_gap_1(gap_cells, spos, ipos, data, dlimit, track, context);
 	case 2:
-		return generate_block_gap_2(gap_cells, spos, data, dlimit, track, context);
+		return generate_block_gap_2(gap_cells, spos, ipos, data, dlimit, track, context);
 	case 3:
 		return generate_block_gap_3(gap_cells, spos, ipos, data, dlimit, track, context);
 	default:

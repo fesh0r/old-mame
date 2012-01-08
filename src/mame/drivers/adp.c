@@ -162,7 +162,6 @@ public:
 
 	required_device<h63484_device> m_h63484;
 
-	virtual void video_start();
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	/* misc */
@@ -175,23 +174,18 @@ public:
 	device_t *m_duart;
 };
 
-void adp_state::video_start()
-{
-	VIDEO_START_NAME(generic_bitmapped)(machine());
-}
-
 
 static H63484_DISPLAY_PIXELS( acrtc_display_pixels )
 {
-	*BITMAP_ADDR16(bitmap, y, x) = data & 0xf;
+	bitmap.pix16(y, x) = data & 0xf;
 }
 
 bool adp_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
-	bitmap_fill(&bitmap, &cliprect, 0);
+	bitmap.fill(0, cliprect);
 
 	/* graphics */
-	m_h63484->update_screen(&bitmap, &cliprect);
+	m_h63484->update_screen(bitmap, cliprect);
 
 	return 0;
 }
@@ -200,12 +194,12 @@ bool adp_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rec
 #if 0
 static SCREEN_UPDATE( adp )
 {
-	adp_state *state = screen->machine().driver_data<adp_state>();
+	adp_state *state = screen.machine().driver_data<adp_state>();
 
 	state->m_h63484->update_screen(bitmap, cliprect);
 
 	#if 0
-	adp_state *state = screen->machine().driver_data<adp_state>();
+	adp_state *state = screen.machine().driver_data<adp_state>();
 	int x, y, b, src;
 
 	b = ((hd63484_regs_r(state->m_hd63484, 0xcc/2, 0xffff) & 0x000f) << 16) + hd63484_regs_r(state->m_hd63484, 0xce/2, 0xffff);
@@ -216,14 +210,14 @@ static SCREEN_UPDATE( adp )
 		{
 			b &= (HD63484_RAM_SIZE - 1);
 			src = hd63484_ram_r(state->m_hd63484, b, 0xffff);
-			*BITMAP_ADDR16(bitmap, y, x    ) = ((src & 0x000f) >>  0) << 0;
-			*BITMAP_ADDR16(bitmap, y, x + 1) = ((src & 0x00f0) >>  4) << 0;
-			*BITMAP_ADDR16(bitmap, y, x + 2) = ((src & 0x0f00) >>  8) << 0;
-			*BITMAP_ADDR16(bitmap, y, x + 3) = ((src & 0xf000) >> 12) << 0;
+			bitmap.pix16(y, x    ) = ((src & 0x000f) >>  0) << 0;
+			bitmap.pix16(y, x + 1) = ((src & 0x00f0) >>  4) << 0;
+			bitmap.pix16(y, x + 2) = ((src & 0x0f00) >>  8) << 0;
+			bitmap.pix16(y, x + 3) = ((src & 0xf000) >> 12) << 0;
 			b++;
 		}
 	}
-if (!screen->machine().input().code_pressed(KEYCODE_O)) // debug: toggle window
+if (!screen.machine().input().code_pressed(KEYCODE_O)) // debug: toggle window
 	if ((hd63484_regs_r(state->m_hd63484, 0x06/2, 0xffff) & 0x0300) == 0x0300)
 	{
 		int sy = (hd63484_regs_r(state->m_hd63484, 0x94/2, 0xffff) & 0x0fff) - (hd63484_regs_r(state->m_hd63484, 0x88/2, 0xffff) >> 8);
@@ -243,10 +237,10 @@ if (!screen->machine().input().code_pressed(KEYCODE_O)) // debug: toggle window
 
 				if (x <= w && x + sx >= 0 && x + sx < (hd63484_regs_r(state->m_hd63484, 0xca/2, 0xffff) & 0x0fff) * 4)
 				{
-					*BITMAP_ADDR16(bitmap, y, x + sx    ) = ((src & 0x000f) >>  0) << 0;
-					*BITMAP_ADDR16(bitmap, y, x + sx + 1) = ((src & 0x00f0) >>  4) << 0;
-					*BITMAP_ADDR16(bitmap, y, x + sx + 2) = ((src & 0x0f00) >>  8) << 0;
-					*BITMAP_ADDR16(bitmap, y, x + sx + 3) = ((src & 0xf000) >> 12) << 0;
+					bitmap.pix16(y, x + sx    ) = ((src & 0x000f) >>  0) << 0;
+					bitmap.pix16(y, x + sx + 1) = ((src & 0x00f0) >>  4) << 0;
+					bitmap.pix16(y, x + sx + 2) = ((src & 0x0f00) >>  8) << 0;
+					bitmap.pix16(y, x + sx + 3) = ((src & 0xf000) >> 12) << 0;
 				}
 				b++;
 			}
@@ -679,7 +673,6 @@ static MACHINE_CONFIG_START( quickjac, adp_state )
 	MCFG_PALETTE_LENGTH(0x10)
 
 	MCFG_PALETTE_INIT(adp)
-//  MCFG_VIDEO_START(adp)
 
 	MCFG_H63484_ADD("h63484", 0, adp_h63484_intf, adp_h63484_map)
 
@@ -712,7 +705,6 @@ static MACHINE_CONFIG_START( skattv, adp_state )
 	MCFG_PALETTE_LENGTH(0x10)
 
 	MCFG_PALETTE_INIT(adp)
-//  MCFG_VIDEO_START(adp)
 
 	MCFG_H63484_ADD("h63484", 0, adp_h63484_intf, adp_h63484_map)
 
@@ -744,7 +736,6 @@ static MACHINE_CONFIG_START( backgamn, adp_state )
 	MCFG_PALETTE_LENGTH(0x10)
 
 //  MCFG_PALETTE_INIT(adp)
-//  MCFG_VIDEO_START(adp)
 
 	MCFG_H63484_ADD("h63484", 0, adp_h63484_intf, adp_h63484_map)
 
