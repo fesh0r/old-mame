@@ -21,15 +21,15 @@ TIMER_DEVICE_CALLBACK( beezer_interrupt )
 
 SCREEN_UPDATE( beezer )
 {
-	beezer_state *state = screen->machine().driver_data<beezer_state>();
+	beezer_state *state = screen.machine().driver_data<beezer_state>();
 	UINT8 *videoram = state->m_videoram;
 	int x,y;
 
-	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
-		for (x = cliprect->min_x; x <= cliprect->max_x; x+=2)
+	for (y = cliprect.min_y; y <= cliprect.max_y; y++)
+		for (x = cliprect.min_x; x <= cliprect.max_x; x+=2)
 		{
-			*BITMAP_ADDR16(bitmap, y,   x+1) = videoram[0x80*x+y] & 0x0f;
-			*BITMAP_ADDR16(bitmap, y,   x+0) = videoram[0x80*x+y] >> 4;
+			bitmap.pix16(y, x+1) = videoram[0x80*x+y] & 0x0f;
+			bitmap.pix16(y, x+0) = videoram[0x80*x+y] >> 4;
 		}
 
 	return 0;
