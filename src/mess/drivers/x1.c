@@ -252,30 +252,30 @@ VIDEO_START( x1 )
 	state->m_pal_4096 = auto_alloc_array_clear(machine, UINT8, 0x1000*3);
 }
 
-static void x1_draw_pixel(running_machine &machine, bitmap_t *bitmap,int y,int x,UINT16	pen,UINT8 width,UINT8 height)
+static void x1_draw_pixel(running_machine &machine, bitmap_t &bitmap,int y,int x,UINT16	pen,UINT8 width,UINT8 height)
 {
 	if((x)>machine.primary_screen->visible_area().max_x || (y)>machine.primary_screen->visible_area().max_y)
 		return;
 
 	if(width && height)
 	{
-		*BITMAP_ADDR32(bitmap, y+0, x+0) = machine.pens[pen];
-		*BITMAP_ADDR32(bitmap, y+0, x+1) = machine.pens[pen];
-		*BITMAP_ADDR32(bitmap, y+1, x+0) = machine.pens[pen];
-		*BITMAP_ADDR32(bitmap, y+1, x+1) = machine.pens[pen];
+		bitmap.pix32(y+0, x+0) = machine.pens[pen];
+		bitmap.pix32(y+0, x+1) = machine.pens[pen];
+		bitmap.pix32(y+1, x+0) = machine.pens[pen];
+		bitmap.pix32(y+1, x+1) = machine.pens[pen];
 	}
 	else if(width)
 	{
-		*BITMAP_ADDR32(bitmap, y, x+0) = machine.pens[pen];
-		*BITMAP_ADDR32(bitmap, y, x+1) = machine.pens[pen];
+		bitmap.pix32(y, x+0) = machine.pens[pen];
+		bitmap.pix32(y, x+1) = machine.pens[pen];
 	}
 	else if(height)
 	{
-		*BITMAP_ADDR32(bitmap, y+0, x) = machine.pens[pen];
-		*BITMAP_ADDR32(bitmap, y+1, x) = machine.pens[pen];
+		bitmap.pix32(y+0, x) = machine.pens[pen];
+		bitmap.pix32(y+1, x) = machine.pens[pen];
 	}
 	else
-		*BITMAP_ADDR32(bitmap, y, x) = machine.pens[pen];
+		bitmap.pix32(y, x) = machine.pens[pen];
 }
 
 #define mc6845_h_char_total 	(state->m_crtc_vreg[0])
@@ -322,7 +322,7 @@ static UINT8 check_line_valid_height(running_machine &machine,int y,int x_size,i
 	return height;
 }
 
-static void draw_fgtilemap(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect)
+static void draw_fgtilemap(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect)
 {
 	/*
         attribute table:
@@ -469,7 +469,7 @@ static void draw_fgtilemap(running_machine &machine, bitmap_t *bitmap,const rect
 						res_x = x*8+xi*(width+1);
 						res_y = y*(mc6845_tile_height)+yi;
 
-						if(res_y < cliprect->min_y || res_y > cliprect->max_y) // partial update, TODO: optimize
+						if(res_y < cliprect.min_y || res_y > cliprect.max_y) // partial update, TODO: optimize
 							continue;
 
 						x1_draw_pixel(machine,bitmap,res_y,res_x,pcg_pen,width,0);
@@ -511,7 +511,7 @@ static int priority_mixer_pri(running_machine &machine,int color)
 	return pri_mask_calc;
 }
 
-static void draw_gfxbitmap(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect, int plane,int pri)
+static void draw_gfxbitmap(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect, int plane,int pri)
 {
 	x1_state *state = machine.driver_data<x1_state>();
 	int xi,yi,x,y;
@@ -553,7 +553,7 @@ static void draw_gfxbitmap(running_machine &machine, bitmap_t *bitmap,const rect
 					if((color == 8 && state->m_scrn_reg.blackclip & 0x10) || (color == 9 && state->m_scrn_reg.blackclip & 0x20)) // bitmap color clip to black conditions
 						color = 0;
 
-					if(y*(mc6845_tile_height)+yi < cliprect->min_y || y*(mc6845_tile_height)+yi > cliprect->max_y) // partial update TODO: optimize
+					if(y*(mc6845_tile_height)+yi < cliprect.min_y || y*(mc6845_tile_height)+yi > cliprect.max_y) // partial update TODO: optimize
 						continue;
 
 					x1_draw_pixel(machine,bitmap,y*(mc6845_tile_height)+yi,x*8+xi,color,0,0);
@@ -565,13 +565,13 @@ static void draw_gfxbitmap(running_machine &machine, bitmap_t *bitmap,const rect
 
 SCREEN_UPDATE( x1 )
 {
-	x1_state *state = screen->machine().driver_data<x1_state>();
+	x1_state *state = screen.machine().driver_data<x1_state>();
 
-	bitmap_fill(bitmap, cliprect, MAKE_ARGB(0xff,0x00,0x00,0x00));
+	bitmap.fill(MAKE_ARGB(0xff,0x00,0x00,0x00), cliprect);
 
-	draw_gfxbitmap(screen->machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri);
-	draw_fgtilemap(screen->machine(),bitmap,cliprect);
-	draw_gfxbitmap(screen->machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri^0xff);
+	draw_gfxbitmap(screen.machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri);
+	draw_fgtilemap(screen.machine(),bitmap,cliprect);
+	draw_gfxbitmap(screen.machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri^0xff);
 
 	return 0;
 }

@@ -129,8 +129,8 @@ PALETTE_INIT ( hp48 )
 
 SCREEN_UPDATE ( hp48 )
 {
-	hp48_state *state = screen->machine().driver_data<hp48_state>();
-	address_space *space = screen->machine().device("maincpu")->memory().space(AS_PROGRAM);
+	hp48_state *state = screen.machine().driver_data<hp48_state>();
+	address_space *space = screen.machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int x, y, xp, i, addr;
 	int display       = HP48_IO_4(0) >> 3;           /* 1=on, 0=off */
 	int left_margin   = HP48_IO_4(0) & 7;            /* 0..7 pixels for main bitmap */
@@ -142,12 +142,12 @@ SCREEN_UPDATE ( hp48 )
 	int menu_start    = HP48_IO_20(0x30) & ~1;       /* menu bitmap address */
 	int fg = contrast + 2;
 
-	LOG(( "%f hp48 video_update called: ", screen->machine().time().as_double()));
+	LOG(( "%f hp48 video_update called: ", screen.machine().time().as_double()));
 
 	if ( !display || refresh )
 	{
 		LOG(( "display off\n" ));
-		bitmap_fill( bitmap, NULL, 0 );
+		bitmap.fill(0 );
 		return 0;
 	}
 
@@ -192,7 +192,7 @@ SCREEN_UPDATE ( hp48 )
 				acc += state->m_screens[ i ][ y ][ x+8 ];
 			}
 			acc = (acc * 255) / (33 * HP48_NB_SCREENS);
-			*BITMAP_ADDR16( bitmap, y, x ) = acc;
+			bitmap.pix16(y, x ) = acc;
 		}
 	}
 

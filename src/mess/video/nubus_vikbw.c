@@ -127,7 +127,7 @@ static SCREEN_UPDATE( vikbw )
 {
 	UINT32 *scanline;
 	int x, y;
-	nubus_vikbw_device *card = downcast<nubus_vikbw_device *>(screen->owner());
+	nubus_vikbw_device *card = downcast<nubus_vikbw_device *>(screen.owner());
 	UINT8 pixels;
 
 	if (!card->m_vbl_disable)
@@ -137,7 +137,7 @@ static SCREEN_UPDATE( vikbw )
 
 	for (y = 0; y < 768; y++)
 	{
-		scanline = BITMAP_ADDR32(bitmap, y, 0);
+		scanline = &bitmap.pix32(y);
 		for (x = 0; x < 1024/8; x++)
 		{
 			pixels = card->m_vram[(y * 128) + (BYTE4_XOR_BE(x))];

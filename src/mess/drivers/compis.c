@@ -83,16 +83,9 @@ static PALETTE_INIT( compis )
 	palette_set_color(machine, 2, MAKE_RGB(0x00, 0xff, 0x00)); // highlight
 }
 
-void compis_state::video_start()
-{
-	// find memory regions
-
-	VIDEO_START_NAME(generic_bitmapped)(machine());
-}
-
 static SCREEN_UPDATE( compis )
 {
-	compis_state *state = screen->machine().driver_data<compis_state>();
+	compis_state *state = screen.machine().driver_data<compis_state>();
 	/* graphics */
 	state->m_crtc->update_screen(bitmap, cliprect);
 
@@ -101,9 +94,9 @@ static SCREEN_UPDATE( compis )
 
 static SCREEN_UPDATE( compis2 ) // temporary
 {
-	compis_state *state = screen->machine().driver_data<compis_state>();
+	compis_state *state = screen.machine().driver_data<compis_state>();
 	UINT8 *m_p_chargen;
-	m_p_chargen = screen->machine().region("maincpu")->base()+0xca70; //bios0
+	m_p_chargen = screen.machine().region("maincpu")->base()+0xca70; //bios0
 	if (m_p_chargen[0x214] != 0x08) m_p_chargen+= 0x10; //bios1
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
@@ -112,7 +105,7 @@ static SCREEN_UPDATE( compis2 ) // temporary
 	{
 		for (ra = 0; ra < 16; ra++)
 		{
-			UINT16 *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16 *p = &bitmap.pix16(sy++);
 
 			for (x = ma; x < ma + 240; x+=3)
 			{
@@ -145,7 +138,7 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 	UINT8 i,gfx = state->m_video_ram[address & 0x1ffff];
 
 	for(i=0; i<8; i++)
-		*BITMAP_ADDR16(bitmap, y, x + i) = BIT((gfx >> i), 0);
+		bitmap.pix16(y, x + i) = BIT((gfx >> i), 0);
 }
 
 

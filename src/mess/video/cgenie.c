@@ -25,9 +25,7 @@ VIDEO_START( cgenie )
 	int width = screen->width();
 	int height = screen->height();
 
-	VIDEO_START_CALL(generic_bitmapped);
-
-	state->m_dlybitmap = auto_bitmap_alloc(machine, width, height, BITMAP_FORMAT_INDEXED16);
+	state->m_dlybitmap.allocate(width, height, BITMAP_FORMAT_INDEXED16);
 }
 
 /***************************************************************************
@@ -240,14 +238,14 @@ void cgenie_mode_select(running_machine &machine, int mode)
 }
 
 
-static void cgenie_refresh_monitor(running_machine &machine, bitmap_t * bitmap, const rectangle *cliprect)
+static void cgenie_refresh_monitor(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	cgenie_state *state = machine.driver_data<cgenie_state>();
 	UINT8 *videoram = state->m_videoram;
 	int i, address, offset, cursor, size, code, x, y;
     rectangle r;
 
-	bitmap_fill(bitmap, cliprect, get_black_pen(machine));
+	bitmap.fill(get_black_pen(machine), cliprect);
 
 	if(state->m_crt.vertical_displayed || state->m_crt.horizontal_displayed)
 	{
@@ -274,7 +272,7 @@ static void cgenie_refresh_monitor(running_machine &machine, bitmap_t * bitmap, 
 			{
 				/* get graphics code */
 				code = videoram[i];
-				drawgfx_opaque(bitmap, &r, machine.gfx[1], code, 0,
+				drawgfx_opaque(bitmap, r, machine.gfx[1], code, 0,
 					0, 0, r.min_x, r.min_y);
 			}
 			else
@@ -284,7 +282,7 @@ static void cgenie_refresh_monitor(running_machine &machine, bitmap_t * bitmap, 
 
 				/* translate defined character sets */
 				code += state->m_font_offset[(code >> 6) & 3];
-				drawgfx_opaque(bitmap, &r, machine.gfx[0], code, state->m_colorram[i&0x3ff],
+				drawgfx_opaque(bitmap, r, machine.gfx[0], code, state->m_colorram[i&0x3ff],
 					0, 0, r.min_x, r.min_y);
 			}
 
@@ -313,22 +311,22 @@ static void cgenie_refresh_monitor(running_machine &machine, bitmap_t * bitmap, 
 				rc.max_x = r.max_x;
 				rc.min_y = r.min_y + (state->m_crt.cursor_top & 15);
 				rc.max_y = r.min_y + (state->m_crt.cursor_bottom & 15);
-				drawgfx_opaque(bitmap, &rc, machine.gfx[0], 0x7f, state->m_colorram[i&0x3ff],
+				drawgfx_opaque(bitmap, rc, machine.gfx[0], 0x7f, state->m_colorram[i&0x3ff],
 					0, 0, rc.min_x, rc.min_y);
 			}
 		}
 	}
 }
 
-static void cgenie_refresh_tv_set(running_machine &machine, bitmap_t * bitmap, const rectangle *cliprect)
+static void cgenie_refresh_tv_set(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	cgenie_state *state = machine.driver_data<cgenie_state>();
 	UINT8 *videoram = state->m_videoram;
 	int i, address, offset, cursor, size, code, x, y;
 	rectangle r;
 
-	bitmap_fill(machine.generic.tmpbitmap, cliprect, get_black_pen(machine));
-	bitmap_fill(state->m_dlybitmap, cliprect, get_black_pen(machine));
+	machine.primary_screen->default_bitmap().fill(get_black_pen(machine), cliprect);
+	state->m_dlybitmap.fill(get_black_pen(machine), cliprect);
 
 	if(state->m_crt.vertical_displayed || state->m_crt.horizontal_displayed)
 	{
@@ -355,9 +353,9 @@ static void cgenie_refresh_tv_set(running_machine &machine, bitmap_t * bitmap, c
 			{
 				/* get graphics code */
 				code = videoram[i];
-				drawgfx_opaque(machine.generic.tmpbitmap, &r, machine.gfx[1], code, 1,
+				drawgfx_opaque(machine.primary_screen->default_bitmap(), r, machine.gfx[1], code, 1,
 					0, 0, r.min_x, r.min_y);
-				drawgfx_opaque(state->m_dlybitmap, &r, machine.gfx[1], code, 2,
+				drawgfx_opaque(state->m_dlybitmap, r, machine.gfx[1], code, 2,
 					0, 0, r.min_x, r.min_y);
 			}
 			else
@@ -367,9 +365,9 @@ static void cgenie_refresh_tv_set(running_machine &machine, bitmap_t * bitmap, c
 
 				/* translate defined character sets */
 				code += state->m_font_offset[(code >> 6) & 3];
-				drawgfx_opaque(machine.generic.tmpbitmap, &r, machine.gfx[0], code, state->m_colorram[i&0x3ff] + 16,
+				drawgfx_opaque(machine.primary_screen->default_bitmap(), r, machine.gfx[0], code, state->m_colorram[i&0x3ff] + 16,
 					0, 0, r.min_x, r.min_y);
-				drawgfx_opaque(state->m_dlybitmap, &r, machine.gfx[0], code, state->m_colorram[i&0x3ff] + 32,
+				drawgfx_opaque(state->m_dlybitmap, r, machine.gfx[0], code, state->m_colorram[i&0x3ff] + 32,
 					0, 0, r.min_x, r.min_y);
 			}
 
@@ -399,15 +397,15 @@ static void cgenie_refresh_tv_set(running_machine &machine, bitmap_t * bitmap, c
 				rc.min_y = r.min_y + (state->m_crt.cursor_top & 15);
 				rc.max_y = r.min_y + (state->m_crt.cursor_bottom & 15);
 
-				drawgfx_opaque(machine.generic.tmpbitmap, &rc, machine.gfx[0], 0x7f, state->m_colorram[i&0x3ff] + 16,
+				drawgfx_opaque(machine.primary_screen->default_bitmap(), rc, machine.gfx[0], 0x7f, state->m_colorram[i&0x3ff] + 16,
 					0, 0, rc.min_x, rc.min_y);
-				drawgfx_opaque(state->m_dlybitmap, &rc, machine.gfx[0], 0x7f, state->m_colorram[i&0x3ff] + 32,
+				drawgfx_opaque(state->m_dlybitmap, rc, machine.gfx[0], 0x7f, state->m_colorram[i&0x3ff] + 32,
 					0, 0, rc.min_x, rc.min_y);
 			}
 		}
 	}
 
-	copybitmap(bitmap, machine.generic.tmpbitmap, 0, 0, 0, 0, cliprect);
+	copybitmap(bitmap, machine.primary_screen->default_bitmap(), 0, 0, 0, 0, cliprect);
 	copybitmap_trans(bitmap, state->m_dlybitmap, 0, 0, 1, 0, cliprect, 0);
 }
 
@@ -416,10 +414,10 @@ static void cgenie_refresh_tv_set(running_machine &machine, bitmap_t * bitmap, c
 ***************************************************************************/
 SCREEN_UPDATE( cgenie )
 {
-	cgenie_state *state = screen->machine().driver_data<cgenie_state>();
+	cgenie_state *state = screen.machine().driver_data<cgenie_state>();
     if( state->m_tv_mode )
-		cgenie_refresh_tv_set(screen->machine(), bitmap, cliprect);
+		cgenie_refresh_tv_set(screen.machine(), bitmap, cliprect);
 	else
-		cgenie_refresh_monitor(screen->machine(), bitmap, cliprect);
+		cgenie_refresh_monitor(screen.machine(), bitmap, cliprect);
 	return 0;
 }

@@ -68,14 +68,14 @@ static void Init_Hector_Palette( running_machine &machine)
 	palette_set_color( machine,15,MAKE_RGB(128,128,128));//Blanc
 }
 
-void hector_hr(running_machine &machine, bitmap_t *bitmap, UINT8 *page, int ymax, int yram)
+void hector_hr(running_machine &machine, bitmap_t &bitmap, UINT8 *page, int ymax, int yram)
 {
 	hec2hrp_state *state = machine.driver_data<hec2hrp_state>();
 	UINT8 *hector_color = state->m_hector_color;
 	UINT8 gfx,y;
 	UINT16 sy=0,ma=0,x;
 	for (y = 0; y <= ymax; y++) {  //224
-		UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+		UINT16  *p = &bitmap.pix16(sy++);
 		for (x = ma; x < ma + yram; x++) {  // 64
 			gfx = *(page+x);
 			/* Display a scanline of a character (4 pixels !) */
@@ -88,12 +88,12 @@ void hector_hr(running_machine &machine, bitmap_t *bitmap, UINT8 *page, int ymax
 	}
 }
 
-void hector_80c(running_machine &machine, bitmap_t *bitmap, UINT8 *page, int ymax, int yram)
+void hector_80c(running_machine &machine, bitmap_t &bitmap, UINT8 *page, int ymax, int yram)
 {
 	UINT8 gfx,y;
 	UINT16 sy=0,ma=0,x;
 	for (y = 0; y <= ymax; y++) {  //224
-		UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+		UINT16  *p = &bitmap.pix16(sy++);
 		for (x = ma; x < ma + yram; x++) {  // 64
 			gfx = *(page+x);
 			/* Display a scanline of a character (8 pixels !) */
@@ -118,26 +118,26 @@ VIDEO_START( hec2hrp )
 
 SCREEN_UPDATE( hec2hrp )
 {
-	hec2hrp_state *state = screen->machine().driver_data<hec2hrp_state>();
+	hec2hrp_state *state = screen.machine().driver_data<hec2hrp_state>();
 	UINT8 *videoram = state->m_videoram;
 	UINT8 *videoram_HR = state->m_hector_videoram;
 	if (state->m_hector_flag_hr==1)
 		{
 		if (state->m_hector_flag_80c==0)
 			{
-				screen->set_visible_area(0, 243, 0, 227);
-				hector_hr( screen->machine(), bitmap , &videoram_HR[0], 227, 64);
+				screen.set_visible_area(0, 243, 0, 227);
+				hector_hr( screen.machine(), bitmap , &videoram_HR[0], 227, 64);
 			}
 		else
 			{
-				screen->set_visible_area(0, 243*2, 0, 227);
-				hector_80c( screen->machine(), bitmap , &videoram_HR[0], 227, 64);
+				screen.set_visible_area(0, 243*2, 0, 227);
+				hector_80c( screen.machine(), bitmap , &videoram_HR[0], 227, 64);
 			}
 		}
 	else
 		{
-			screen->set_visible_area(0, 113, 0, 75);
-			hector_hr( screen->machine(), bitmap, videoram,  77, 32);
+			screen.set_visible_area(0, 113, 0, 75);
+			hector_hr( screen.machine(), bitmap, videoram,  77, 32);
 		}
 	return 0;
 }

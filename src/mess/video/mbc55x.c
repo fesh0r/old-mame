@@ -142,7 +142,7 @@ static MC6845_UPDATE_ROW( vid_update_row )
 
 			colour=(rb<<2) | (gb<<1) | (bb<<0);
 
-			*BITMAP_ADDR16(bitmap, y, (x_pos*8)+pixelno)=colour;
+			bitmap.pix16(y, (x_pos*8)+pixelno)=colour;
 			//logerror("set pixel (%d,%d)=%d\n",y, ((x_pos*8)+pixelno),colour);
 			bitno=bitno>>1;
 			shifts--;
@@ -201,7 +201,7 @@ SCREEN_EOF( mbc55x )
 
 SCREEN_UPDATE( mbc55x )
 {
-	mbc55x_state *state = screen->machine().driver_data<mbc55x_state>();
+	mbc55x_state *state = screen.machine().driver_data<mbc55x_state>();
 	state->m_crtc->update(bitmap, cliprect);
 	return 0;
 }

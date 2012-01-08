@@ -4,12 +4,42 @@
 
         12/05/2009 Skeleton driver.
 
+ToDo:
+- speaker
+- LEDs
+- 7seg sometimes flashes
+
+Port 80-83 could be a device
+
+This happens at the start:
+'maincpu' (04EF): unmapped i/o memory write to 0081 = 0F & FF
+'maincpu' (04F3): unmapped i/o memory write to 0083 = CF & FF
+'maincpu' (04F7): unmapped i/o memory write to 0083 = BB & FF
+'maincpu' (04FB): unmapped i/o memory write to 0082 = 01 & FF
+'maincpu' (0523): unmapped i/o memory write to 00FC = 02 & FF  **
+'maincpu' (0523): unmapped i/o memory write to 00FC = 04 & FF  **
+
+** These two happen for a while (making a tone from a speaker?)
+
+Then:
+'maincpu' (0523): unmapped i/o memory write to 00FC = 00 & FF
+'maincpu' (0075): unmapped i/o memory write to 0080 = 02 & FF
+'maincpu' (0523): unmapped i/o memory write to 00FC = 20 & FF
+
+Then this happens continuously:
+Port 80 out - 00, 02, FF
+Port FC out - 00, 01, 02, 04, 08, 10, 20, 40, 80 (selecting rows?)
+Port 80 in - upper byte = 20 thru 26
+Port 82 in - upper byte = 0 thru 7
+
 ****************************************************************************/
 #define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
+#include "machine/z80pio.h"
+#include "sc1.lh"
 
 
 class sc1_state : public driver_device
@@ -23,58 +53,131 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_speaker;
-	DECLARE_WRITE8_MEMBER(sc1_fc_w);
-	DECLARE_WRITE8_MEMBER(sc1v2_07_w);
+
+	DECLARE_WRITE8_MEMBER( matrix_w );
+	DECLARE_WRITE8_MEMBER( pio_port_a_w );
+	DECLARE_READ8_MEMBER( pio_port_b_r );
+
+	UINT8 m_matrix;
 };
 
-WRITE8_MEMBER( sc1_state::sc1_fc_w )
+/***************************************************************************
+
+    Display
+
+***************************************************************************/
+
+WRITE8_MEMBER( sc1_state::pio_port_a_w )
 {
-//  if (BIT(data, 3))
-//      speaker_level_w(m_speaker, BIT(data, 1));
+	UINT8 digit = BITSWAP8( data,3,4,6,0,1,2,7,5 );
+
+	if (m_matrix & 0x04)
+		output_set_digit_value(3, digit & 0x7f);
+	if (m_matrix & 0x08)
+		output_set_digit_value(2, digit & 0x7f);
+	if (m_matrix & 0x10)
+		output_set_digit_value(1, digit & 0x7f);
+	if (m_matrix & 0x20)
+		output_set_digit_value(0, digit & 0x7f);
 }
 
-WRITE8_MEMBER( sc1_state::sc1v2_07_w )
+
+/***************************************************************************
+
+    Keyboard
+
+***************************************************************************/
+
+WRITE8_MEMBER( sc1_state::matrix_w )
 {
-	if (BIT(data, 3))
-		speaker_level_w(m_speaker, BIT(data, 1));
+	m_matrix = data;
+}
+
+READ8_MEMBER( sc1_state::pio_port_b_r )
+{
+	UINT8 data = 0;
+
+	if (m_matrix & 0x01)
+		data |= input_port_read(machine(), "LINE1");
+	if (m_matrix & 0x02)
+		data |= input_port_read(machine(), "LINE2");
+	if (m_matrix & 0x04)
+		data |= input_port_read(machine(), "LINE3");
+	if (m_matrix & 0x08)
+		data |= input_port_read(machine(), "LINE4");
+	if (m_matrix & 0x10)
+		data |= input_port_read(machine(), "LINE5");
+	if (m_matrix & 0x20)
+		data |= input_port_read(machine(), "LINE6");
+	if (m_matrix & 0x40)
+		data |= input_port_read(machine(), "LINE7");
+	if (m_matrix & 0x80)
+		data |= input_port_read(machine(), "LINE8");
+
+	return data;
 }
 
 
 static ADDRESS_MAP_START(sc1_mem, AS_PROGRAM, 8, sc1_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0x0fff ) AM_ROM
-	AM_RANGE( 0x4000, 0x5fff ) AM_RAM
+	AM_RANGE( 0x4000, 0x43ff ) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(sc1_io, AS_IO, 8, sc1_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE( 0xfc, 0xfc ) AM_WRITE(sc1_fc_w)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START(sc1v2_io, AS_IO, 8, sc1_state)
-	ADDRESS_MAP_UNMAP_HIGH
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE( 0x07, 0x07) AM_WRITE(sc1v2_07_w)
+	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xfc, 0xfc) AM_WRITE(matrix_w)
 ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( sc1 )
+	PORT_START("LINE1")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_UNUSED) PORT_UNUSED
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("D4") PORT_CODE(KEYCODE_4) PORT_CODE(KEYCODE_D)
+
+	PORT_START("LINE2")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("B2") PORT_CODE(KEYCODE_2) PORT_CODE(KEYCODE_B)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("F6") PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_F)
+
+	PORT_START("LINE3")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("C3") PORT_CODE(KEYCODE_3) PORT_CODE(KEYCODE_C)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("G7") PORT_CODE(KEYCODE_7) PORT_CODE(KEYCODE_G)
+
+	PORT_START("LINE4")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("A1") PORT_CODE(KEYCODE_1) PORT_CODE(KEYCODE_A)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("E5") PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_E)
+
+	PORT_START("LINE5")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("H8") PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_H)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("CE") PORT_CODE(KEYCODE_DEL)
+
+	PORT_START("LINE6")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("K") PORT_CODE(KEYCODE_K)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("ENT") PORT_CODE(KEYCODE_ENTER)
+
+	PORT_START("LINE7")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("P") PORT_CODE(KEYCODE_O)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("W/S") PORT_CODE(KEYCODE_W)
+
+	PORT_START("LINE8")
+		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("T") PORT_CODE(KEYCODE_T)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_NAME("C") PORT_CODE(KEYCODE_M)
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(sc1)
+static Z80PIO_INTERFACE( pio_intf )
 {
-}
+	DEVCB_NULL,										/* callback when change interrupt status */
+	DEVCB_NULL,										/* port A read callback */
+	DEVCB_DRIVER_MEMBER(sc1_state, pio_port_a_w),	/* port A write callback */
+	DEVCB_NULL,										/* portA ready active callback */
+	DEVCB_DRIVER_MEMBER(sc1_state, pio_port_b_r),	/* port B read callback */
+	DEVCB_NULL,										/* port B write callback */
+	DEVCB_NULL										/* portB ready active callback */
+};
 
-static VIDEO_START( sc1 )
-{
-}
-
-static SCREEN_UPDATE( sc1 )
-{
-	return 0;
-}
 
 static MACHINE_CONFIG_START( sc1, sc1_state )
 	/* basic machine hardware */
@@ -82,19 +185,11 @@ static MACHINE_CONFIG_START( sc1, sc1_state )
 	MCFG_CPU_PROGRAM_MAP(sc1_mem)
 	MCFG_CPU_IO_MAP(sc1_io)
 
-	MCFG_MACHINE_RESET(sc1)
-
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MCFG_SCREEN_SIZE(640, 480)
-	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_VIDEO_START(sc1)
-	MCFG_SCREEN_UPDATE(sc1)
-	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(black_and_white)
+	MCFG_DEFAULT_LAYOUT(layout_sc1)
+
+	/* devices */
+	MCFG_Z80PIO_ADD("z80pio", XTAL_4MHz, pio_intf)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -102,25 +197,13 @@ static MACHINE_CONFIG_START( sc1, sc1_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED( sc1v2, sc1 )
-	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_IO_MAP(sc1v2_io)
-MACHINE_CONFIG_END
-
-
 /* ROM definition */
 ROM_START( sc1 )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "sc1.rom", 0x0000, 0x1000, CRC(26965b23) SHA1(01568911446eda9f05ec136df53da147b7c6f2bf))
 ROM_END
 
-ROM_START( sc1v2 )
-	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "sc1-v2.bin", 0x0000, 0x1000, CRC(1f122a85) SHA1(d60f89f8b59d04f4cecd6e3ecfe0a24152462a36))
-ROM_END
-
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                           FULLNAME       FLAGS */
-COMP( 19??, sc1,    0,      0,       sc1,       sc1,     0,  "VEB Mikroelektronik Erfurt", "Schachcomputer SC1", GAME_NOT_WORKING )
-COMP( 19??, sc1v2,  sc1,    0,       sc1v2,     sc1,     0,  "VEB Mikroelektronik Erfurt", "Schachcomputer SC1 (v2)", GAME_NOT_WORKING )
+COMP( 1989, sc1,    0,      0,       sc1,       sc1,     0,  "VEB Mikroelektronik Erfurt", "Schachcomputer SC1", GAME_NOT_WORKING | GAME_NO_SOUND )

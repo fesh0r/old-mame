@@ -103,14 +103,14 @@ VIDEO_START(concept)
 SCREEN_UPDATE(concept)
 {
 	/* resolution is 720*560 */
-	concept_state *state = screen->machine().driver_data<concept_state>();
+	concept_state *state = screen.machine().driver_data<concept_state>();
 	UINT16 *videoram = state->m_videoram;
 	int x, y;
 	UINT16 *line;
 
 	for (y = 0; y < 560; y++)
 	{
-		line = BITMAP_ADDR16(bitmap, 560-1-y, 0);
+		line = &bitmap.pix16(560-1-y);
 		for (x = 0; x < 720; x++)
 			line[720-1-x] = (videoram[(x+48+y*768)>>4] & (0x8000 >> ((x+48+y*768) & 0xf))) ? 0 : 1;
 	}

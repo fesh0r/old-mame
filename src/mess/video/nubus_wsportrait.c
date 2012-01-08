@@ -145,13 +145,13 @@ static SCREEN_UPDATE( wsportrait )
 {
 	UINT32 *scanline;
 	int x, y;
-	nubus_wsportrait_device *card = downcast<nubus_wsportrait_device *>(screen->owner());
+	nubus_wsportrait_device *card = downcast<nubus_wsportrait_device *>(screen.owner());
 	UINT8 pixels, *vram;
 
 	// first time?  kick off the VBL timer
 	if (!card->m_screen)
 	{
-		card->m_screen = screen;
+		card->m_screen = &screen;
 		card->m_timer->adjust(card->m_screen->time_until_pos(869, 0), 0);
 	}
 
@@ -162,7 +162,7 @@ static SCREEN_UPDATE( wsportrait )
 		case 0: // 1 bpp?
 			for (y = 0; y < 870; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 				for (x = 0; x < 640/8; x++)
 				{
 					pixels = vram[(y * 128) + (BYTE4_XOR_BE(x))];
@@ -182,7 +182,7 @@ static SCREEN_UPDATE( wsportrait )
 		case 1: // 2 bpp
 			for (y = 0; y < 480; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 				for (x = 0; x < 640/4; x++)
 				{
 					pixels = vram[(y * 256) + (BYTE4_XOR_BE(x))];
@@ -198,7 +198,7 @@ static SCREEN_UPDATE( wsportrait )
 		case 2: // 4 bpp
 			for (y = 0; y < 480; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 
 				for (x = 0; x < 640/2; x++)
 				{

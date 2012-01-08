@@ -179,7 +179,7 @@ WRITE8_DEVICE_HANDLER( vt_video_brightness_w )
 	//palette_set_color_rgb(device->machine(), 1, data, data, data);
 }
 
-static void vt_video_display_char(device_t *device,bitmap_t *bitmap, UINT8 code,
+static void vt_video_display_char(device_t *device,bitmap_t &bitmap, UINT8 code,
 	int x, int y,UINT8 scroll_region,UINT8 display_type)
 {
 	UINT8 line=0;
@@ -214,26 +214,26 @@ static void vt_video_display_char(device_t *device,bitmap_t *bitmap, UINT8 code,
 		{
 			bit = ((line << b) & 0x80) ? 1 : 0;
 			if (double_width) {
-				*BITMAP_ADDR16(bitmap, y*10+i, x*20+b*2)   =  bit;
-				*BITMAP_ADDR16(bitmap, y*10+i, x*20+b*2+1) =  bit;
+				bitmap.pix16(y*10+i, x*20+b*2)   =  bit;
+				bitmap.pix16(y*10+i, x*20+b*2+1) =  bit;
 			} else {
-				*BITMAP_ADDR16(bitmap, y*10+i, x*10+b) =  bit;
+				bitmap.pix16(y*10+i, x*10+b) =  bit;
 			}
 		}
 		// char interleave is filled with last bit
 		if (double_width) {
-			*BITMAP_ADDR16(bitmap, y*10+i, x*20+16) =  bit;
-			*BITMAP_ADDR16(bitmap, y*10+i, x*20+17) =  bit;
-			*BITMAP_ADDR16(bitmap, y*10+i, x*20+18) =  bit;
-			*BITMAP_ADDR16(bitmap, y*10+i, x*20+19) =  bit;
+			bitmap.pix16(y*10+i, x*20+16) =  bit;
+			bitmap.pix16(y*10+i, x*20+17) =  bit;
+			bitmap.pix16(y*10+i, x*20+18) =  bit;
+			bitmap.pix16(y*10+i, x*20+19) =  bit;
 		} else {
-			*BITMAP_ADDR16(bitmap, y*10+i, x*10+8) =  bit;
-			*BITMAP_ADDR16(bitmap, y*10+i, x*10+9) =  bit;
+			bitmap.pix16(y*10+i, x*10+8) =  bit;
+			bitmap.pix16(y*10+i, x*10+9) =  bit;
 		}
 	}
 }
 
-void vt_video_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprect)
+void vt_video_update(device_t *device, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	vt_video_t *vt = get_safe_token(device);
 
@@ -286,6 +286,112 @@ void vt_video_update(device_t *device, bitmap_t *bitmap, const rectangle *clipre
 
 }
 
+static void rainbow_video_display_char(device_t *device,bitmap_t &bitmap, UINT8 code,
+	int x, int y,UINT8 scroll_region,UINT8 display_type)
+{
+	UINT8 line=0;
+	int i,b,bit=0,j;
+	int double_width = (display_type==2) ? 1 : 0;
+	vt_video_t *vt = get_safe_token(device);
+
+	for (i = 0; i < 10; i++)
+	{
+
+		switch(display_type) {
+			case 0 : // bottom half, double height
+					 j = (i >> 1)+5; break;
+			case 1 : // top half, double height
+					 j = (i >> 1); break;
+			case 2 : // double width
+			case 3 : // normal
+					 j = i;	break;
+			default : j = 0; break;
+		}
+		// modify line since that is how it is stored in rom
+		if (j==0) j=15; else j=j-1;
+
+		line = vt->gfx[code*16 + j];
+		if (vt->basic_attribute==1) {
+			if ((code & 0x80)==0x80) {
+				line = line ^ 0xff;
+			}
+		}
+
+		for (b = 0; b < 8; b++)
+		{
+			bit = ((line << b) & 0x80) ? 1 : 0;
+			if (double_width) {
+				bitmap.pix16(y*10+i, x*20+b*2)   =  bit;
+				bitmap.pix16(y*10+i, x*20+b*2+1) =  bit;
+			} else {
+				bitmap.pix16(y*10+i, x*10+b) =  bit;
+			}
+		}
+		// char interleave is filled with last bit
+		if (double_width) {
+			bitmap.pix16(y*10+i, x*20+16) =  bit;
+			bitmap.pix16(y*10+i, x*20+17) =  bit;
+			bitmap.pix16(y*10+i, x*20+18) =  bit;
+			bitmap.pix16(y*10+i, x*20+19) =  bit;
+		} else {
+			bitmap.pix16(y*10+i, x*10+8) =  bit;
+			bitmap.pix16(y*10+i, x*10+9) =  bit;
+		}
+	}
+}
+void rainbow_video_update(device_t *device, bitmap_t &bitmap, const rectangle &cliprect)
+{
+	vt_video_t *vt = get_safe_token(device);
+
+	UINT16 addr = 0;
+	UINT16 attr_addr = 0;
+	int line = 0;
+	int xpos = 0;
+	int ypos = 0;
+	UINT8 code;
+	int x = 0;
+	UINT8 scroll_region = 1; // binary 1
+	UINT8 display_type = 3;  // binary 11
+	UINT16 temp =0;
+
+	while(line < (vt->height + vt->skip_lines)) {
+		code =  vt->in_ram_func(addr + xpos);
+		if (code == 0xff) {
+			// end of line, fill empty till end of line
+			if (line >= vt->skip_lines) {
+				for(x = xpos; x < ((display_type==2) ? (vt->columns / 2) : vt->columns); x++ )
+				{
+					rainbow_video_display_char(device,bitmap,code,x,ypos,scroll_region,display_type);
+				}
+			}
+			// move to new data
+			temp = vt->in_ram_func(addr+xpos+2)*256 + vt->in_ram_func(addr+xpos+1);
+			addr = (temp) & 0x0fff;
+			attr_addr = ((temp) & 0x1fff) - 2;
+			// if A12 is 1 then it is 0x2000 block, if 0 then 0x4000 (AVO)
+			if (temp & 0x1000) attr_addr &= 0xfff; else attr_addr |= 0x1000;
+			temp = vt->in_ram_func(attr_addr);
+			scroll_region = (temp) & 1;
+			display_type  = (temp>> 1) & 3;
+			if (line >= vt->skip_lines) {
+				ypos++;
+			}
+			xpos=0;
+			line++;
+		} else {
+			// display regular char
+			if (line >= vt->skip_lines) {
+				rainbow_video_display_char(device,bitmap,code,xpos,ypos,scroll_region,display_type);
+			}
+			xpos++;
+			if (xpos > vt->columns) {
+				line++;
+				xpos=0;
+			}
+		}
+	}
+
+}
 /*-------------------------------------------------
     DEVICE_START( vt_video )
 -------------------------------------------------*/

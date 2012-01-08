@@ -143,7 +143,7 @@ static const char *const gp2x_regnames[0x200] =
 #endif
 static SCREEN_UPDATE( gp2x )
 {
-	gp2x_state *state = screen->machine().driver_data<gp2x_state>();
+	gp2x_state *state = screen.machine().driver_data<gp2x_state>();
 	// display enabled?
 	if (state->m_vidregs[0] & 1)
 	{
@@ -163,7 +163,7 @@ static SCREEN_UPDATE( gp2x )
 
 			for (y = 0; y < 240; y++)
 			{
-				UINT32 *scanline = BITMAP_ADDR32(bitmap, y, 0);
+				UINT32 *scanline = &bitmap.pix32(y);
 
 				for (x = 0; x < 320; x++)
 				{

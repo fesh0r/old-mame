@@ -202,7 +202,7 @@ static void vii_set_pixel(vii_state *state, UINT32 offset, UINT16 rgb)
 	state->m_screen[offset].b = expand_rgb5_to_rgb8(rgb);
 }
 
-static void vii_blit(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, UINT32 xoff, UINT32 yoff, UINT32 attr, UINT32 ctrl, UINT32 bitmap_addr, UINT16 tile)
+static void vii_blit(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, UINT32 xoff, UINT32 yoff, UINT32 attr, UINT32 ctrl, UINT32 bitmap_addr, UINT16 tile)
 {
 	vii_state *state = machine.driver_data<vii_state>();
 	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
@@ -271,7 +271,7 @@ static void vii_blit(running_machine &machine, bitmap_t *bitmap, const rectangle
 	}
 }
 
-static void vii_blit_page(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, int depth, UINT32 bitmap_addr, UINT16 *regs)
+static void vii_blit_page(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int depth, UINT32 bitmap_addr, UINT16 *regs)
 {
 	UINT32 x0, y0;
 	UINT32 xscroll = regs[0];
@@ -340,7 +340,7 @@ static void vii_blit_page(running_machine &machine, bitmap_t *bitmap, const rect
 	}
 }
 
-static void vii_blit_sprite(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, int depth, UINT32 base_addr)
+static void vii_blit_sprite(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int depth, UINT32 base_addr)
 {
 	vii_state *state = machine.driver_data<vii_state>();
 	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
@@ -382,7 +382,7 @@ static void vii_blit_sprite(running_machine &machine, bitmap_t *bitmap, const re
 	vii_blit(machine, bitmap, cliprect, x, y, attr, 0, bitmap_addr, tile);
 }
 
-static void vii_blit_sprites(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, int depth)
+static void vii_blit_sprites(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int depth)
 {
 	vii_state *state = machine.driver_data<vii_state>();
 	UINT32 n;
@@ -403,25 +403,25 @@ static void vii_blit_sprites(running_machine &machine, bitmap_t *bitmap, const r
 
 static SCREEN_UPDATE( vii )
 {
-	vii_state *state = screen->machine().driver_data<vii_state>();
+	vii_state *state = screen.machine().driver_data<vii_state>();
 	int i, x, y;
 
-	bitmap_fill(bitmap, cliprect, 0);
+	bitmap.fill(0, cliprect);
 
 	memset(state->m_screen, 0, sizeof(state->m_screen));
 
 	for(i = 0; i < 4; i++)
 	{
-		vii_blit_page(screen->machine(), bitmap, cliprect, i, 0x40 * state->m_video_regs[0x20], state->m_video_regs + 0x10);
-		vii_blit_page(screen->machine(), bitmap, cliprect, i, 0x40 * state->m_video_regs[0x21], state->m_video_regs + 0x16);
-		vii_blit_sprites(screen->machine(), bitmap, cliprect, i);
+		vii_blit_page(screen.machine(), bitmap, cliprect, i, 0x40 * state->m_video_regs[0x20], state->m_video_regs + 0x10);
+		vii_blit_page(screen.machine(), bitmap, cliprect, i, 0x40 * state->m_video_regs[0x21], state->m_video_regs + 0x16);
+		vii_blit_sprites(screen.machine(), bitmap, cliprect, i);
 	}
 
 	for(y = 0; y < 240; y++)
 	{
 		for(x = 0; x < 320; x++)
 		{
-			*BITMAP_ADDR32(bitmap, y, x) = (state->m_screen[x + 320*y].r << 16) | (state->m_screen[x + 320*y].g << 8) | state->m_screen[x + 320*y].b;
+			bitmap.pix32(y, x) = (state->m_screen[x + 320*y].r << 16) | (state->m_screen[x + 320*y].g << 8) | state->m_screen[x + 320*y].b;
 		}
 	}
 

@@ -146,13 +146,13 @@ static SCREEN_UPDATE( radiustpd )
 {
 	UINT32 *scanline;
 	int x, y;
-	nubus_radiustpd_device *card = downcast<nubus_radiustpd_device *>(screen->owner());
+	nubus_radiustpd_device *card = downcast<nubus_radiustpd_device *>(screen.owner());
 	UINT8 pixels, *vram;
 
 	// first time?  kick off the VBL timer
 	if (!card->m_screen)
 	{
-		card->m_screen = screen;
+		card->m_screen = &screen;
 		card->m_timer->adjust(card->m_screen->time_until_pos(479, 0), 0);
 	}
 
@@ -160,7 +160,7 @@ static SCREEN_UPDATE( radiustpd )
 
 	for (y = 0; y < 880; y++)
 	{
-		scanline = BITMAP_ADDR32(bitmap, y, 0);
+		scanline = &bitmap.pix32(y);
 		for (x = 0; x < 1152/8; x++)
 		{
 			pixels = vram[(y * (1152/8)) + (BYTE4_XOR_BE(x))];

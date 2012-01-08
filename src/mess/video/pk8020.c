@@ -17,10 +17,10 @@ VIDEO_START( pk8020 )
 
 SCREEN_UPDATE( pk8020 )
 {
-	pk8020_state *state = screen->machine().driver_data<pk8020_state>();
+	pk8020_state *state = screen.machine().driver_data<pk8020_state>();
 	int y, x, b, j;
-	UINT8 *gfx = screen->machine().region("gfx1")->base();
-	UINT8 *ram = screen->machine().device<ram_device>(RAM_TAG)->pointer();
+	UINT8 *gfx = screen.machine().region("gfx1")->base();
+	UINT8 *ram = screen.machine().device<ram_device>(RAM_TAG)->pointer();
 
 	for (y = 0; y < 16; y++)
 	{
@@ -41,7 +41,7 @@ SCREEN_UPDATE( pk8020 )
 					col |= (((code3 >> b) & 0x01) ? 0x04 : 0x00);
 					col |= (((code2 >> b) & 0x01) ? 0x02 : 0x00);
 					col |= (((code1 >> b) & 0x01) ? 0x01 : 0x00);
-					*BITMAP_ADDR16(bitmap, (y*16)+j, x*8+(7-b)) =  col;
+					bitmap.pix16((y*16)+j, x*8+(7-b)) =  col;
 				}
 			}
 		}

@@ -192,7 +192,7 @@ MC6845_UPDATE_ROW( v6809_update_row )
 	v6809_state *state = device->machine().driver_data<v6809_state>();
 	UINT8 chr,gfx,col,bg,fg;
 	UINT16 mem,x;
-	UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+	UINT16 *p = &bitmap.pix16(y);
 
 	ma &= 0x7ff;
 
@@ -235,7 +235,7 @@ static VIDEO_START( v6809 )
 
 static SCREEN_UPDATE( v6809 )
 {
-	v6809_state *state = screen->machine().driver_data<v6809_state>();
+	v6809_state *state = screen.machine().driver_data<v6809_state>();
 	state->m_crtc->update( bitmap, cliprect);
 	return 0;
 }

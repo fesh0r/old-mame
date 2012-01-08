@@ -17,10 +17,10 @@ VIDEO_START( llc1 )
 
 SCREEN_UPDATE( llc1 )
 {
-	llc_state *state = screen->machine().driver_data<llc_state>();
+	llc_state *state = screen.machine().driver_data<llc_state>();
 	UINT8 code,disp;
 	int y, x, b,c,inv;
-	UINT8 *gfx = screen->machine().region("gfx1")->base();
+	UINT8 *gfx = screen.machine().region("gfx1")->base();
 
 	for (x = 0; x < 64; x++)
 	{
@@ -35,7 +35,7 @@ SCREEN_UPDATE( llc1 )
 				{
 					disp = gfx[code + b*0x80];
 					if (inv==0x80) disp = disp ^ 0xff;
-					*BITMAP_ADDR16(bitmap, y*8+b, x*8+c) =  ((disp<< c) & 0x80) ? 1 : 0;
+					bitmap.pix16(y*8+b, x*8+c) =  ((disp<< c) & 0x80) ? 1 : 0;
 				}
 			}
 		}
@@ -49,10 +49,10 @@ VIDEO_START( llc2 )
 
 SCREEN_UPDATE( llc2 )
 {
-	llc_state *state = screen->machine().driver_data<llc_state>();
+	llc_state *state = screen.machine().driver_data<llc_state>();
 	UINT8 code,disp;
 	int y, x, b,c;
-	UINT8 *gfx = screen->machine().region("gfx1")->base();
+	UINT8 *gfx = screen.machine().region("gfx1")->base();
 
 	for (x = 0; x < 64; x++)
 	{
@@ -64,7 +64,7 @@ SCREEN_UPDATE( llc2 )
 				disp = gfx[code * 8 + b];
 				for (c = 0; c < 8; c++)
 				{
-					*BITMAP_ADDR16(bitmap, y*8+b, x*8+c) =  ((disp<< c) & 0x80) ? 1 : 0;
+					bitmap.pix16(y*8+b, x*8+c) =  ((disp<< c) & 0x80) ? 1 : 0;
 				}
 			}
 		}

@@ -423,20 +423,20 @@ static TIMER_CALLBACK( scv_vb_callback )
 }
 
 
-INLINE void plot_sprite_part( bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 pat, UINT8 col )
+INLINE void plot_sprite_part( bitmap_t &bitmap, UINT8 x, UINT8 y, UINT8 pat, UINT8 col )
 {
 	if ( pat & 0x08 )
-		*BITMAP_ADDR16( bitmap, y, x ) = col;
+		bitmap.pix16(y, x ) = col;
 	if ( pat & 0x04 && x < 255 )
-		*BITMAP_ADDR16( bitmap, y, x + 1 ) = col;
+		bitmap.pix16(y, x + 1 ) = col;
 	if ( pat & 0x02 && x < 254 )
-		*BITMAP_ADDR16( bitmap, y, x + 2 ) = col;
+		bitmap.pix16(y, x + 2 ) = col;
 	if ( pat & 0x01 && x < 253 )
-		*BITMAP_ADDR16( bitmap, y, x + 3 ) = col;
+		bitmap.pix16(y, x + 3 ) = col;
 }
 
 
-INLINE void draw_sprite( scv_state *state, bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 tile_idx, UINT8 col, UINT8 left, UINT8 right, UINT8 top, UINT8 bottom, UINT8 clip_y )
+INLINE void draw_sprite( scv_state *state, bitmap_t &bitmap, UINT8 x, UINT8 y, UINT8 tile_idx, UINT8 col, UINT8 left, UINT8 right, UINT8 top, UINT8 bottom, UINT8 clip_y )
 {
 	int j;
 
@@ -478,7 +478,7 @@ INLINE void draw_sprite( scv_state *state, bitmap_t *bitmap, UINT8 x, UINT8 y, U
 }
 
 
-INLINE void draw_text( bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 *char_data, UINT8 fg, UINT8 bg )
+INLINE void draw_text( bitmap_t &bitmap, UINT8 x, UINT8 y, UINT8 *char_data, UINT8 fg, UINT8 bg )
 {
 	int i;
 
@@ -486,32 +486,32 @@ INLINE void draw_text( bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 *char_data, UIN
 	{
 		UINT8 d = char_data[i];
 
-		*BITMAP_ADDR16( bitmap, y + i, x + 0 ) = ( d & 0x80 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 1 ) = ( d & 0x40 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 2 ) = ( d & 0x20 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 3 ) = ( d & 0x10 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 4 ) = ( d & 0x08 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 5 ) = ( d & 0x04 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 6 ) = ( d & 0x02 ) ? fg : bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 7 ) = ( d & 0x01 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 0 ) = ( d & 0x80 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 1 ) = ( d & 0x40 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 2 ) = ( d & 0x20 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 3 ) = ( d & 0x10 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 4 ) = ( d & 0x08 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 5 ) = ( d & 0x04 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 6 ) = ( d & 0x02 ) ? fg : bg;
+		bitmap.pix16(y + i, x + 7 ) = ( d & 0x01 ) ? fg : bg;
 	}
 
 	for ( i = 8; i < 16; i++ )
 	{
-		*BITMAP_ADDR16( bitmap, y + i, x + 0 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 1 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 2 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 3 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 4 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 5 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 6 ) = bg;
-		*BITMAP_ADDR16( bitmap, y + i, x + 7 ) = bg;
+		bitmap.pix16(y + i, x + 0 ) = bg;
+		bitmap.pix16(y + i, x + 1 ) = bg;
+		bitmap.pix16(y + i, x + 2 ) = bg;
+		bitmap.pix16(y + i, x + 3 ) = bg;
+		bitmap.pix16(y + i, x + 4 ) = bg;
+		bitmap.pix16(y + i, x + 5 ) = bg;
+		bitmap.pix16(y + i, x + 6 ) = bg;
+		bitmap.pix16(y + i, x + 7 ) = bg;
 	}
 
 }
 
 
-INLINE void draw_semi_graph( bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 data, UINT8 fg )
+INLINE void draw_semi_graph( bitmap_t &bitmap, UINT8 x, UINT8 y, UINT8 data, UINT8 fg )
 {
 	int i;
 
@@ -520,35 +520,35 @@ INLINE void draw_semi_graph( bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 data, UIN
 
 	for ( i = 0; i < 4; i++ )
 	{
-		*BITMAP_ADDR16(bitmap, y + i, x + 0) = fg;
-		*BITMAP_ADDR16(bitmap, y + i, x + 1) = fg;
-		*BITMAP_ADDR16(bitmap, y + i, x + 2) = fg;
-		*BITMAP_ADDR16(bitmap, y + i, x + 3) = fg;
+		bitmap.pix16(y + i, x + 0) = fg;
+		bitmap.pix16(y + i, x + 1) = fg;
+		bitmap.pix16(y + i, x + 2) = fg;
+		bitmap.pix16(y + i, x + 3) = fg;
 	}
 }
 
 
-INLINE void draw_block_graph( bitmap_t *bitmap, UINT8 x, UINT8 y, UINT8 col )
+INLINE void draw_block_graph( bitmap_t &bitmap, UINT8 x, UINT8 y, UINT8 col )
 {
 	int i;
 
 	for ( i = 0; i < 8; i++ )
 	{
-		*BITMAP_ADDR16(bitmap, y + i, x + 0) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 1) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 2) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 3) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 4) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 5) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 6) = col;
-		*BITMAP_ADDR16(bitmap, y + i, x + 7) = col;
+		bitmap.pix16(y + i, x + 0) = col;
+		bitmap.pix16(y + i, x + 1) = col;
+		bitmap.pix16(y + i, x + 2) = col;
+		bitmap.pix16(y + i, x + 3) = col;
+		bitmap.pix16(y + i, x + 4) = col;
+		bitmap.pix16(y + i, x + 5) = col;
+		bitmap.pix16(y + i, x + 6) = col;
+		bitmap.pix16(y + i, x + 7) = col;
 	}
 }
 
 
 static SCREEN_UPDATE( scv )
 {
-	scv_state *state = screen->machine().driver_data<scv_state>();
+	scv_state *state = screen.machine().driver_data<scv_state>();
 	int x, y;
 	UINT8 fg = state->m_p_videoram[0x1403] >> 4;
 	UINT8 bg = state->m_p_videoram[0x1403] & 0x0f;
@@ -558,7 +558,7 @@ static SCREEN_UPDATE( scv )
 	int clip_y = state->m_p_videoram[0x1402] >> 4;
 
 	/* Clear the screen */
-	bitmap_fill( bitmap, cliprect, gr_bg );
+	bitmap.fill(gr_bg , cliprect);
 
 	/* Draw background */
 	for ( y = 0; y < 16; y++ )
@@ -583,7 +583,7 @@ static SCREEN_UPDATE( scv )
 			if ( text_x && text_y )
 			{
 				/* Text mode */
-				UINT8 *char_data = screen->machine().region( "charrom" )->base() + ( d & 0x7f ) * 8;
+				UINT8 *char_data = screen.machine().region( "charrom" )->base() + ( d & 0x7f ) * 8;
 				draw_text( bitmap, x * 8, y * 16, char_data, fg, bg );
 			}
 			else

@@ -122,14 +122,14 @@ static MC6845_UPDATE_ROW( einstein_6845_update_row )
 		char_code = einstein->m_crtc_ram[(ma + i) & 0x07ff];
 		data_byte = data[(char_code << 3) + (ra & 0x07) + ((ra & 0x08) << 8)];
 
-		*BITMAP_ADDR16(bitmap, y, x + 0) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 7);
-		*BITMAP_ADDR16(bitmap, y, x + 1) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 6);
-		*BITMAP_ADDR16(bitmap, y, x + 2) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 5);
-		*BITMAP_ADDR16(bitmap, y, x + 3) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 4);
-		*BITMAP_ADDR16(bitmap, y, x + 4) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 3);
-		*BITMAP_ADDR16(bitmap, y, x + 5) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 2);
-		*BITMAP_ADDR16(bitmap, y, x + 6) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 1);
-		*BITMAP_ADDR16(bitmap, y, x + 7) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 0);
+		bitmap.pix16(y, x + 0) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 7);
+		bitmap.pix16(y, x + 1) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 6);
+		bitmap.pix16(y, x + 2) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 5);
+		bitmap.pix16(y, x + 3) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 4);
+		bitmap.pix16(y, x + 4) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 3);
+		bitmap.pix16(y, x + 5) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 2);
+		bitmap.pix16(y, x + 6) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 1);
+		bitmap.pix16(y, x + 7) = TMS9928A_PALETTE_SIZE + BIT(data_byte, 0);
 	}
 }
 
@@ -426,7 +426,7 @@ static TMS9928A_INTERFACE(einstein_tms9929a_interface)
 
 static SCREEN_UPDATE( einstein )
 {
-	tms9929a_device *tms9929a = screen->machine().device<tms9929a_device>( "tms9929a" );
+	tms9929a_device *tms9929a = screen.machine().device<tms9929a_device>( "tms9929a" );
 
 	tms9929a->update( bitmap, cliprect );
 	return 0;
@@ -502,14 +502,14 @@ static MACHINE_START( einstein2 )
 
 static SCREEN_UPDATE( einstein2 )
 {
-	einstein_state *einstein = screen->machine().driver_data<einstein_state>();
+	einstein_state *einstein = screen.machine().driver_data<einstein_state>();
 
-	if (screen == einstein->m_color_screen)
+	if (&screen == einstein->m_color_screen)
 		SCREEN_UPDATE_CALL(einstein);
-	else if (screen == einstein->m_crtc_screen)
+	else if (&screen == einstein->m_crtc_screen)
 		einstein->m_mc6845->update( bitmap, cliprect);
 	else
-		fatalerror("Unknown screen '%s'", screen->tag());
+		fatalerror("Unknown screen '%s'", screen.tag());
 
 	return 0;
 }

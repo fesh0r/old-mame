@@ -78,7 +78,7 @@ static VIDEO_START( pasopia )
 
 static SCREEN_UPDATE( pasopia )
 {
-	pasopia_state *state = screen->machine().driver_data<pasopia_state>();
+	pasopia_state *state = screen.machine().driver_data<pasopia_state>();
 	state->m_crtc->update(bitmap, cliprect);
 	return 0;
 }
@@ -88,7 +88,7 @@ MC6845_UPDATE_ROW( pasopia_update_row )
 	pasopia_state *state = device->machine().driver_data<pasopia_state>();
 	UINT8 chr,gfx,fg=7,bg=0; // colours need to be determined
 	UINT16 mem,x;
-	UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+	UINT16 *p = &bitmap.pix16(y);
 
 	for (x = 0; x < x_count; x++)
 	{

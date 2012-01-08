@@ -9,9 +9,9 @@
 #include "includes/z88.h"
 
 
-INLINE void z88_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
+INLINE void z88_plot_pixel(bitmap_t &bitmap, int x, int y, UINT32 color)
 {
-	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
+	bitmap.pix16(y, x) = (UINT16)color;
 }
 
 /***************************************************************************
@@ -41,7 +41,7 @@ PALETTE_INIT( z88 )
 
 /* temp - change to gfxelement structure */
 
-static void z88_vh_render_8x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
+static void z88_vh_render_8x8(bitmap_t &bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
 {
 	int h,b;
 
@@ -70,7 +70,7 @@ static void z88_vh_render_8x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1
 	}
 }
 
-static void z88_vh_render_6x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
+static void z88_vh_render_6x8(bitmap_t &bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
 {
 	int h,b;
 
@@ -102,7 +102,7 @@ static void z88_vh_render_6x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1
 	}
 }
 
-static void z88_vh_render_line(bitmap_t *bitmap, int x, int y,int pen)
+static void z88_vh_render_line(bitmap_t &bitmap, int x, int y,int pen)
 {
 	z88_plot_pixel(bitmap, x, y+7, pen);
 	z88_plot_pixel(bitmap, x+1, y+7, pen);
@@ -123,7 +123,7 @@ static unsigned char *z88_convert_address(running_machine &machine, unsigned lon
 
 SCREEN_EOF( z88 )
 {
-	z88_state *state = machine.driver_data<z88_state>();
+	z88_state *state = screen.machine().driver_data<z88_state>();
 	state->m_frame_number++;
 	if (state->m_frame_number >= 50)
 	{
@@ -141,9 +141,9 @@ SCREEN_EOF( z88 )
 ***************************************************************************/
 SCREEN_UPDATE( z88 )
 {
-	z88_state *state = screen->machine().driver_data<z88_state>();
+	z88_state *state = screen.machine().driver_data<z88_state>();
 	int x,y;
-	unsigned char *ptr = z88_convert_address(screen->machine(), state->m_blink.sbf);
+	unsigned char *ptr = z88_convert_address(screen.machine(), state->m_blink.sbf);
 	unsigned char *stored_ptr = ptr;
 	int pen0, pen1;
 
@@ -208,12 +208,12 @@ SCREEN_UPDATE( z88 )
 					if (ch & 0x0100)
 					{
 						ch_index =ch & 0x0ff;	//(~0x0100);
-						pCharGfx = z88_convert_address(screen->machine(), state->m_blink.hires1);
+						pCharGfx = z88_convert_address(screen.machine(), state->m_blink.hires1);
 					}
 					else
 					{
 						ch_index = ch & 0x0ff;
-						pCharGfx = z88_convert_address(screen->machine(), state->m_blink.hires0);
+						pCharGfx = z88_convert_address(screen.machine(), state->m_blink.hires0);
 					}
 
 					pCharGfx += (ch_index<<3);
@@ -231,13 +231,13 @@ SCREEN_UPDATE( z88 )
 				{
 				   ch_index = ch & (~0x01c0);
 
-				   pCharGfx = z88_convert_address(screen->machine(), state->m_blink.lores0);
+				   pCharGfx = z88_convert_address(screen.machine(), state->m_blink.lores0);
 				}
 				else
 				{
 				   ch_index = ch;
 
-				   pCharGfx = z88_convert_address(screen->machine(), state->m_blink.lores1);
+				   pCharGfx = z88_convert_address(screen.machine(), state->m_blink.lores1);
 				}
 
 				pCharGfx += (ch_index<<3);

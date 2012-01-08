@@ -17,11 +17,11 @@ VIDEO_START( pp01 )
 
 SCREEN_UPDATE( pp01 )
 {
-	pp01_state *state = screen->machine().driver_data<pp01_state>();
+	pp01_state *state = screen.machine().driver_data<pp01_state>();
 	UINT8 code_r,code_g,code_b;
 	UINT8 col;
 	int y, x, b;
-	UINT8 *ram = screen->machine().device<ram_device>(RAM_TAG)->pointer();
+	UINT8 *ram = screen.machine().device<ram_device>(RAM_TAG)->pointer();
 
 	for (y = 0; y < 256; y++)
 	{
@@ -33,7 +33,7 @@ SCREEN_UPDATE( pp01 )
 			for (b = 0; b < 8; b++)
 			{
 				col = (((code_r >> b) & 0x01) ? 4 : 0) + (((code_g >> b) & 0x01) ? 2 : 0) + (((code_b >> b) & 0x01) ? 1 : 0);
-				*BITMAP_ADDR16(bitmap, y,  x*8+(7-b)) =  col;
+				bitmap.pix16(y, x*8+(7-b)) =  col;
 			}
 		}
 	}

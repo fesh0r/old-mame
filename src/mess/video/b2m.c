@@ -17,12 +17,12 @@ VIDEO_START( b2m )
 
 SCREEN_UPDATE( b2m )
 {
-	b2m_state *state = screen->machine().driver_data<b2m_state>();
+	b2m_state *state = screen.machine().driver_data<b2m_state>();
 	UINT8 code1;
 	UINT8 code2;
 	UINT8 col;
 	int y, x, b;
-	UINT8 *ram = screen->machine().device<ram_device>(RAM_TAG)->pointer();
+	UINT8 *ram = screen.machine().device<ram_device>(RAM_TAG)->pointer();
 
 	for (x = 0; x < 48; x++)
 	{
@@ -38,7 +38,7 @@ SCREEN_UPDATE( b2m )
 			for (b = 7; b >= 0; b--)
 			{
 				col = (((code2 >> b) & 0x01)<<1) + ((code1 >> b) & 0x01);
-				*BITMAP_ADDR16(bitmap, y, x*8+b) =  col;
+				bitmap.pix16(y, x*8+b) =  col;
 			}
 		}
 	}

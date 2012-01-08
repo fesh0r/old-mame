@@ -48,9 +48,9 @@ void wd177x_t::device_reset()
 	counter = 0;
 	status_type_1 = true;
 	last_dir = 1;
-	cur_live.tm = attotime::never;
 	intrq = false;
 	drq = false;
+	live_abort();
 }
 
 void wd177x_t::set_floppy(floppy_image_device *_floppy)
@@ -280,8 +280,6 @@ void wd177x_t::read_sector_start()
 
 void wd177x_t::read_sector_continue()
 {
-	static int size_codes[4] = { 128, 256, 512, 1024 };
-
 	for(;;) {
 		switch(sub_state) {
 		case SPINUP:
@@ -324,7 +322,7 @@ void wd177x_t::read_sector_continue()
 				live_start(SEARCH_ADDRESS_MARK_HEADER);
 				return;
 			}
-			sector_size = size_codes[cur_live.idbuf[3] & 3];
+			sector_size = 128 << (cur_live.idbuf[3] & 3);
 			sub_state = SECTOR_READ;
 			live_start(SEARCH_ADDRESS_MARK_DATA);
 			return;
@@ -565,8 +563,6 @@ void wd177x_t::write_sector_start()
 
 void wd177x_t::write_sector_continue()
 {
-	static int size_codes[4] = { 128, 256, 512, 1024 };
-
 	for(;;) {
 		switch(sub_state) {
 		case SPINUP:
@@ -609,7 +605,7 @@ void wd177x_t::write_sector_continue()
 				live_start(SEARCH_ADDRESS_MARK_HEADER);
 				return;
 			}
-			sector_size = size_codes[cur_live.idbuf[3] & 3];
+			sector_size = 128 << (cur_live.idbuf[3] & 3);
 			sub_state = SECTOR_WRITE;
 			live_start(WRITE_SECTOR_PRE);
 			return;
@@ -1020,8 +1016,10 @@ void wd177x_t::live_sync()
 		} else {
 			//          fprintf(stderr, "%s: Committing (%s)\n", ttsn().cstr(), tts(cur_live.tm).cstr());
 			cur_live.pll.commit(floppy, cur_live.tm);
-			if(cur_live.next_state != -1)
+			if(cur_live.next_state != -1) {
 				cur_live.state = cur_live.next_state;
+				cur_live.next_state = -1;
+			}
 			if(cur_live.state == IDLE) {
 				cur_live.pll.stop_writing(floppy, cur_live.tm);
 				cur_live.tm = attotime::never;
@@ -1034,7 +1032,7 @@ void wd177x_t::live_sync()
 
 void wd177x_t::live_abort()
 {
-	if(cur_live.tm > machine().time()) {
+	if(!cur_live.tm.is_never() && cur_live.tm > machine().time()) {
 		rollback();
 		live_run(machine().time());
 	}
@@ -1649,7 +1647,7 @@ void wd177x_t::pll_t::stop_writing(floppy_image_device *floppy, attotime tm)
 
 bool wd177x_t::pll_t::write_next_bit(bool bit, attotime &tm, floppy_image_device *floppy, attotime limit)
 {
-	if(write_start_time == attotime::never) {
+	if(write_start_time.is_never()) {
 		write_start_time = ctime;
 		write_position = 0;
 	}
@@ -1679,7 +1677,7 @@ bool wd177x_t::pll_t::write_next_bit(bool bit, attotime &tm, floppy_image_device
 
 void wd177x_t::pll_t::commit(floppy_image_device *floppy, attotime tm)
 {
-	if(write_start_time == attotime::never || tm == write_start_time)
+	if(write_start_time.is_never() || tm == write_start_time)
 		return;
 
 	if(floppy)

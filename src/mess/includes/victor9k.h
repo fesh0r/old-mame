@@ -17,13 +17,13 @@
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
 #include "machine/upd7201.h"
+#include "machine/victor9kb.h"
 #include "sound/hc55516.h"
 #include "video/mc6845.h"
 
 #define SCREEN_TAG		"screen"
 #define I8088_TAG		"8l"
 #define I8048_TAG		"5d"
-#define I8021_TAG		"z3"
 #define I8253_TAG		"13h"
 #define I8259A_TAG		"7l"
 #define UPD7201_TAG		"16e"
@@ -49,11 +49,13 @@ public:
 		  m_pic(*this, I8259A_TAG),
 		  m_ssda(*this, MC6852_TAG),
 		  m_via1(*this, M6522_1_TAG),
+		  m_via2(*this, M6522_2_TAG),
 		  m_cvsd(*this, HC55516_TAG),
 		  m_crtc(*this, HD46505S_TAG),
 		  m_ram(*this, RAM_TAG),
 		  m_floppy0(*this, FLOPPY_0),
-		  m_floppy1(*this, FLOPPY_1)
+		  m_floppy1(*this, FLOPPY_1),
+		  m_kb(*this, VICTOR9K_KEYBOARD_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -61,12 +63,14 @@ public:
 	required_device<ieee488_device> m_ieee488;
 	required_device<device_t> m_pic;
 	required_device<mc6852_device> m_ssda;
-	required_device<device_t> m_via1;
+	required_device<via6522_device> m_via1;
+	required_device<via6522_device> m_via2;
 	required_device<device_t> m_cvsd;
 	required_device<mc6845_device> m_crtc;
 	required_device<ram_device> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
+	required_device<victor9k_keyboard_device> m_kb;
 
 	virtual void machine_start();
 
@@ -101,6 +105,7 @@ public:
 	DECLARE_WRITE8_MEMBER( via6_pb_w );
 	DECLARE_WRITE_LINE_MEMBER( drw_w );
 	DECLARE_WRITE_LINE_MEMBER( erase_w );
+	DECLARE_WRITE_LINE_MEMBER( kbrdy_w );
 
 	/* video state */
 	UINT8 *m_video_ram;

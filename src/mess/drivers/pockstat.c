@@ -923,12 +923,12 @@ static MACHINE_RESET( pockstat )
 
 static SCREEN_UPDATE( pockstat )
 {
-	pockstat_state *state = screen->machine().driver_data<pockstat_state>();
+	pockstat_state *state = screen.machine().driver_data<pockstat_state>();
 	int x = 0;
 	int y = 0;
 	for(y = 0; y < 32; y++)
 	{
-		UINT32 *scanline = BITMAP_ADDR32(bitmap, y, 0);
+		UINT32 *scanline = &bitmap.pix32(y);
 		for(x = 0; x < 32; x++)
 		{
 			if(state->m_lcd_control != 0) // Hack
@@ -996,8 +996,6 @@ static MACHINE_CONFIG_START( pockstat, pockstat_state )
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
-
-	MCFG_VIDEO_START(generic_bitmapped)
 
     MCFG_SPEAKER_STANDARD_MONO("mono")
     MCFG_SOUND_ADD("dac", DAC, 0)

@@ -149,13 +149,13 @@ static SCREEN_UPDATE( spec8s3 )
 {
 	UINT32 *scanline;
 	int x, y;
-	nubus_spec8s3_device *card = downcast<nubus_spec8s3_device *>(screen->owner());
+	nubus_spec8s3_device *card = downcast<nubus_spec8s3_device *>(screen.owner());
 	UINT8 pixels, *vram;
 
 	// first time?  kick off the VBL timer
 	if (!card->m_screen)
 	{
-		card->m_screen = screen;
+		card->m_screen = &screen;
 		card->m_timer->adjust(card->m_screen->time_until_pos(767, 0), 0);
 	}
 	vram = card->m_vram + 0x400;
@@ -165,7 +165,7 @@ static SCREEN_UPDATE( spec8s3 )
 		case 0: // 1 bpp
 			for (y = 0; y < 768; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 				for (x = 0; x < 1024/8; x++)
 				{
 					pixels = vram[(y * 512) + (BYTE4_XOR_BE(x))];
@@ -185,7 +185,7 @@ static SCREEN_UPDATE( spec8s3 )
 		case 1: // 2 bpp
 			for (y = 0; y < 768; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 				for (x = 0; x < 1024/4; x++)
 				{
 					pixels = vram[(y * 512) + (BYTE4_XOR_BE(x))];
@@ -201,7 +201,7 @@ static SCREEN_UPDATE( spec8s3 )
 		case 2: // 4 bpp
 			for (y = 0; y < 768; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 
 				for (x = 0; x < 1024/2; x++)
 				{
@@ -216,7 +216,7 @@ static SCREEN_UPDATE( spec8s3 )
 		case 3: // 8 bpp
 			for (y = 0; y < 768; y++)
 			{
-				scanline = BITMAP_ADDR32(bitmap, y, 0);
+				scanline = &bitmap.pix32(y);
 
 				for (x = 0; x < 1024; x++)
 				{

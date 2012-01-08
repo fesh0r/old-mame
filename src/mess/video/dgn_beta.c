@@ -100,7 +100,7 @@ static MC6845_UPDATE_ROW( dgnbeta_update_row )
 {
 	dgn_beta_state *state = device->machine().driver_data<dgn_beta_state>();
 	UINT8 *videoram = state->m_videoram;
-	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
+	UINT16  *p = &bitmap.pix16(y);
 	int i;
 	if(IsTextMode)
 	{
@@ -296,7 +296,7 @@ void dgnbeta_vid_set_gctrl(running_machine &machine, int data)
 /* Update video screen, calls either text or graphics update routine as needed */
 SCREEN_UPDATE( dgnbeta )
 {
-	dgn_beta_state *state = screen->machine().driver_data<dgn_beta_state>();
+	dgn_beta_state *state = screen.machine().driver_data<dgn_beta_state>();
 	state->m_mc6845->update(bitmap, cliprect);
 	return 0;
 }

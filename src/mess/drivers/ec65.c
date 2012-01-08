@@ -159,7 +159,7 @@ static VIDEO_START( ec65 )
 
 static SCREEN_UPDATE( ec65 )
 {
-	mc6845_device *mc6845 = screen->machine().device<mc6845_device>(MC6845_TAG);
+	mc6845_device *mc6845 = screen.machine().device<mc6845_device>(MC6845_TAG);
 	mc6845->update( bitmap, cliprect);
 	return 0;
 }
@@ -169,7 +169,7 @@ static MC6845_UPDATE_ROW( ec65_update_row )
 	ec65_state *state = device->machine().driver_data<ec65_state>();
 	UINT8 chr,gfx,inv;
 	UINT16 mem,x;
-	UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+	UINT16 *p = &bitmap.pix16(y);
 
 	for (x = 0; x < x_count; x++)
 	{

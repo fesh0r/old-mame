@@ -1,11 +1,28 @@
 #ifndef __TANDY2K__
 #define __TANDY2K__
 
+#define ADDRESS_MAP_MODERN
+
+#include "emu.h"
+#include "cpu/i86/i86.h"
+#include "cpu/mcs48/mcs48.h"
+#include "imagedev/flopdrv.h"
+#include "imagedev/harddriv.h"
+#include "machine/ctronics.h"
+#include "machine/i8255.h"
+#include "machine/i8251.h"
+#include "machine/pit8253.h"
+#include "machine/pic8259.h"
 #include "machine/ram.h"
+#include "machine/tandy2kb.h"
+#include "machine/upd765.h"
+#include "sound/speaker.h"
+#include "video/crt9007.h"
+#include "video/crt9021.h"
+#include "video/crt9212.h"
 
 #define SCREEN_TAG		"screen"
 #define I80186_TAG		"u76"
-#define I8048_TAG		"m1"
 #define I8255A_TAG		"u75"
 #define I8251A_TAG		"u41"
 #define I8253_TAG		"u40"
@@ -17,6 +34,7 @@
 #define CRT9212_1_TAG	"u15"
 #define CRT9021B_TAG	"u14"
 #define WD1010_TAG		"u18"
+#define WD1100_11_TAG	"u12"
 #define CENTRONICS_TAG	"centronics"
 
 class tandy2k_state : public driver_device
@@ -38,7 +56,9 @@ public:
 		  m_speaker(*this, SPEAKER_TAG),
 		  m_ram(*this, RAM_TAG),
 		  m_floppy0(*this, FLOPPY_0),
-		  m_floppy1(*this, FLOPPY_1)
+		  m_floppy1(*this, FLOPPY_1),
+		  m_kb(*this, TANDY2K_KEYBOARD_TAG),
+		  m_kbdclk(0)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -56,6 +76,7 @@ public:
 	required_device<ram_device> m_ram;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
+	required_device<tandy2k_keyboard_device> m_kb;
 
 	virtual void machine_start();
 
@@ -68,12 +89,10 @@ public:
 	DECLARE_READ8_MEMBER( enable_r );
 	DECLARE_WRITE8_MEMBER( enable_w );
 	DECLARE_WRITE8_MEMBER( dma_mux_w );
+	DECLARE_READ8_MEMBER( kbint_clr_r );
 	DECLARE_READ16_MEMBER( vpac_r );
 	DECLARE_WRITE16_MEMBER( vpac_w );
 	DECLARE_WRITE8_MEMBER( addr_ctrl_w );
-	DECLARE_READ8_MEMBER( keyboard_x0_r );
-	DECLARE_WRITE8_MEMBER( keyboard_y0_w );
-	DECLARE_WRITE8_MEMBER( keyboard_y8_w );
 	DECLARE_WRITE_LINE_MEMBER( busdmarq0_w );
 	DECLARE_WRITE_LINE_MEMBER( rxrdy_w );
 	DECLARE_WRITE_LINE_MEMBER( txrdy_w );
@@ -85,13 +104,16 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( vpac_vlt_w );
 	DECLARE_WRITE_LINE_MEMBER( vpac_drb_w );
 	DECLARE_WRITE_LINE_MEMBER( vac_ld_ht_w );
+	DECLARE_WRITE_LINE_MEMBER( kbdclk_w );
+	DECLARE_WRITE_LINE_MEMBER( kbddat_w );
 
 	/* DMA state */
 	UINT8 m_dma_mux;
 
 	/* keyboard state */
-	int m_kben;
-	UINT16 m_keylatch;
+	int m_kbdclk;
+	int m_kbddat;
+	UINT8 m_kbdin;
 
 	/* serial state */
 	int m_extclk;

@@ -26,10 +26,10 @@ VIDEO_START( mc68328 )
 /* THIS IS PRETTY MUCH TOTALLY WRONG AND DOESN'T REFLECT THE MC68328'S INTERNAL FUNCTIONALITY AT ALL! */
 SCREEN_UPDATE( mc68328 )
 {
-    device_t *mc68328_device = screen->machine().device(MC68328_TAG);
+    device_t *mc68328_device = screen.machine().device(MC68328_TAG);
     mc68328_t* mc68328 = mc68328_get_safe_token( mc68328_device );
 
-    const UINT16 *video_ram = (const UINT16 *)(screen->machine().device<ram_device>(RAM_TAG)->pointer() + (mc68328->regs.lssa & 0x00ffffff));
+    const UINT16 *video_ram = (const UINT16 *)(screen.machine().device<ram_device>(RAM_TAG)->pointer() + (mc68328->regs.lssa & 0x00ffffff));
     UINT16 word;
     UINT16 *line;
     int y, x, b;
@@ -38,7 +38,7 @@ SCREEN_UPDATE( mc68328 )
     {
         for (y = 0; y < 160; y++)
         {
-            line = BITMAP_ADDR16(bitmap, y, 0);
+            line = &bitmap.pix16(y);
 
             for (x = 0; x < 160; x += 16)
             {
@@ -54,7 +54,7 @@ SCREEN_UPDATE( mc68328 )
     {
         for (y = 0; y < 160; y++)
         {
-            line = BITMAP_ADDR16(bitmap, y, 0);
+            line = &bitmap.pix16(y);
 
             for (x = 0; x < 160; x++)
             {

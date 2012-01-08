@@ -182,7 +182,7 @@ VIDEO_START_MEMBER( homelab_state )
 
 static SCREEN_UPDATE( homelab )
 {
-	homelab_state *state = screen->machine().driver_data<homelab_state>();
+	homelab_state *state = screen.machine().driver_data<homelab_state>();
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
 
@@ -190,7 +190,7 @@ static SCREEN_UPDATE( homelab )
 	{
 		for (ra = 0; ra < 8; ra++)
 		{
-			UINT16 *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16 *p = &bitmap.pix16(sy++);
 
 			for (x = ma; x < ma + 40; x++)
 			{
@@ -215,7 +215,7 @@ static SCREEN_UPDATE( homelab )
 
 static SCREEN_UPDATE( homelab3 )
 {
-	homelab_state *state = screen->machine().driver_data<homelab_state>();
+	homelab_state *state = screen.machine().driver_data<homelab_state>();
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
 
@@ -223,7 +223,7 @@ static SCREEN_UPDATE( homelab3 )
 	{
 		for (ra = 0; ra < 8; ra++)
 		{
-			UINT16 *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16 *p = &bitmap.pix16(sy++);
 
 			for (x = ma; x < ma + 64; x++)
 			{

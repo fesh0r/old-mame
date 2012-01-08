@@ -1078,7 +1078,7 @@ static MACHINE_RESET( academy )
 
 SCREEN_UPDATE( chess_lcd )
 {
-    hd44780_device * hd44780 = screen->machine().device<hd44780_device>("hd44780");
+    hd44780_device * hd44780 = screen.machine().device<hd44780_device>("hd44780");
     return hd44780->video_update(bitmap, cliprect );
 }
 
@@ -1626,7 +1626,7 @@ static MACHINE_CONFIG_DERIVED( milano, polgar )
 MACHINE_CONFIG_END
 
 
-static MACHINE_CONFIG_START( monteciv, driver_device )
+static MACHINE_CONFIG_START( monteciv, polgar_state )
 	MCFG_CPU_ADD("maincpu",M65C02,8000000)
 	MCFG_CPU_PROGRAM_MAP( monteciv_mem )
 	MCFG_MACHINE_START( polgar )

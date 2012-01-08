@@ -64,14 +64,14 @@ static UINT32 compute_video_address(int col, int row)
     adjust_begin_and_end_row - processes the cliprect
 -------------------------------------------------*/
 
-static void adjust_begin_and_end_row(const rectangle *cliprect, int *beginrow, int *endrow)
+static void adjust_begin_and_end_row(const rectangle &cliprect, int *beginrow, int *endrow)
 {
 	/* assumptions of the code */
 	assert((*beginrow % 8) == 0);
 	assert((*endrow % 8) == 7);
 
-	*beginrow = MAX(*beginrow, cliprect->min_y - (cliprect->min_y % 8));
-	*endrow = MIN(*endrow, cliprect->max_y - (cliprect->max_y % 8) + 7);
+	*beginrow = MAX(*beginrow, cliprect.min_y - (cliprect.min_y % 8));
+	*endrow = MIN(*endrow, cliprect.max_y - (cliprect.max_y % 8) + 7);
 
 	/* sanity check again */
 	assert((*beginrow % 8) == 0);
@@ -89,7 +89,7 @@ static void adjust_begin_and_end_row(const rectangle *cliprect, int *beginrow, i
     textual character
 -------------------------------------------------*/
 
-INLINE void apple2_plot_text_character(running_machine &machine, bitmap_t *bitmap, int xpos, int ypos, int xscale, UINT32 code,
+INLINE void apple2_plot_text_character(running_machine &machine, bitmap_t &bitmap, int xpos, int ypos, int xscale, UINT32 code,
 	const UINT8 *textgfx_data, UINT32 textgfx_datalen, UINT32 my_a2)
 {
 	apple2_state *state = machine.driver_data<apple2_state>();
@@ -124,7 +124,7 @@ INLINE void apple2_plot_text_character(running_machine &machine, bitmap_t *bitma
 
 			for (i = 0; i < xscale; i++)
 			{
-				*BITMAP_ADDR16(bitmap, ypos + y, xpos + (x * xscale) + i) = color;
+				bitmap.pix16(ypos + y, xpos + (x * xscale) + i) = color;
 			}
 		}
 	}
@@ -137,7 +137,7 @@ INLINE void apple2_plot_text_character(running_machine &machine, bitmap_t *bitma
     column or 80 column)
 -------------------------------------------------*/
 
-static void apple2_text_draw(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
+static void apple2_text_draw(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int page, int beginrow, int endrow)
 {
 	apple2_state *state = machine.driver_data<apple2_state>();
 	int row, col;
@@ -178,7 +178,7 @@ static void apple2_text_draw(running_machine &machine, bitmap_t *bitmap, const r
     apple2_lores_draw - renders lo-res text
 -------------------------------------------------*/
 
-static void apple2_lores_draw(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
+static void apple2_lores_draw(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int page, int beginrow, int endrow)
 {
 	apple2_state *state = machine.driver_data<apple2_state>();
 	int row, col, y, x;
@@ -203,12 +203,12 @@ static void apple2_lores_draw(running_machine &machine, bitmap_t *bitmap, const 
 			for (y = 0; y < 4; y++)
 			{
 				for (x = 0; x < 14; x++)
-					*BITMAP_ADDR16(bitmap, row + y, col * 14 + x) = (code >> 0) & 0x0F;
+					bitmap.pix16(row + y, col * 14 + x) = (code >> 0) & 0x0F;
 			}
 			for (y = 4; y < 8; y++)
 			{
 				for (x = 0; x < 14; x++)
-					*BITMAP_ADDR16(bitmap, row + y, col * 14 + x) = (code >> 4) & 0x0F;
+					bitmap.pix16(row + y, col * 14 + x) = (code >> 4) & 0x0F;
 			}
 		}
 	}
@@ -219,7 +219,7 @@ static void apple2_lores_draw(running_machine &machine, bitmap_t *bitmap, const 
     HIGH RESOLUTION GRAPHICS
 ***************************************************************************/
 
-static void apple2_hires_draw(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
+static void apple2_hires_draw(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int page, int beginrow, int endrow)
 {
 	apple2_state *state = machine.driver_data<apple2_state>();
 	const UINT8 *vram;
@@ -233,10 +233,10 @@ static void apple2_hires_draw(running_machine &machine, bitmap_t *bitmap, const 
 	UINT16 *artifact_map_ptr;
 
 	/* sanity checks */
-	if (beginrow < cliprect->min_y)
-		beginrow = cliprect->min_y;
-	if (endrow > cliprect->max_y)
-		endrow = cliprect->max_y;
+	if (beginrow < cliprect.min_y)
+		beginrow = cliprect.min_y;
+	if (endrow > cliprect.max_y)
+		endrow = cliprect.max_y;
 	if (endrow < beginrow)
 		return;
 
@@ -269,7 +269,7 @@ static void apple2_hires_draw(running_machine &machine, bitmap_t *bitmap, const 
 			}
 		}
 
-		p = BITMAP_ADDR16(bitmap, row, 0);
+		p = &bitmap.pix16(row);
 
 		for (col = 0; col < columns; col++)
 		{
@@ -452,13 +452,13 @@ VIDEO_START( apple2e )
 
 SCREEN_UPDATE( apple2 )
 {
-	apple2_state *state = screen->machine().driver_data<apple2_state>();
+	apple2_state *state = screen.machine().driver_data<apple2_state>();
 	int page;
 	UINT32 new_a2;
-	running_machine &machine = screen->machine();
+	running_machine &machine = screen.machine();
 
 	/* calculate the state->m_flash value */
-	state->m_flash = ((screen->machine().time() * 4).seconds & 1) ? 1 : 0;
+	state->m_flash = ((screen.machine().time() * 4).seconds & 1) ? 1 : 0;
 
 	/* read out relevant softswitch variables; to see what has changed */
 	new_a2 = effective_a2(state);

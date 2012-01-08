@@ -361,7 +361,7 @@ static VIDEO_START( pyl601 )
 
 static SCREEN_UPDATE( pyl601 )
 {
-	mc6845_device *mc6845 = screen->machine().device<mc6845_device>("crtc");
+	mc6845_device *mc6845 = screen.machine().device<mc6845_device>("crtc");
 	mc6845->update( bitmap, cliprect);
 	return 0;
 }
@@ -392,7 +392,7 @@ static MC6845_UPDATE_ROW( pyl601_update_row )
 				int x = (column * 8) + bit;
 				int color = BIT(data, 7) ? 1 : 0;
 
-				*BITMAP_ADDR16(bitmap, y, x) = color;
+				bitmap.pix16(y, x) = color;
 
 				data <<= 1;
 			}
@@ -405,7 +405,7 @@ static MC6845_UPDATE_ROW( pyl601_update_row )
 			data = device->machine().device<ram_device>(RAM_TAG)->pointer()[(((ma + i) << 3) | (ra & 0x07)) & 0xffff];
 			for (bit = 0; bit < 8; bit++)
 			{
-				*BITMAP_ADDR16(bitmap, y, (i * 8) + bit) = BIT(data, 7) ? 1 : 0;
+				bitmap.pix16(y, (i * 8) + bit) = BIT(data, 7) ? 1 : 0;
 				data <<= 1;
 			}
 		}
@@ -435,7 +435,7 @@ static MC6845_UPDATE_ROW( pyl601a_update_row )
 				int x = (column * 8) + bit;
 				int color = BIT(data, 7) ? 1 : 0;
 
-				*BITMAP_ADDR16(bitmap, y, x) = color;
+				bitmap.pix16(y, x) = color;
 
 				data <<= 1;
 			}
@@ -448,7 +448,7 @@ static MC6845_UPDATE_ROW( pyl601a_update_row )
 			data = device->machine().device<ram_device>(RAM_TAG)->pointer()[(((ma + i) << 3) | (ra & 0x07)) & 0xffff];
 			for (bit = 0; bit < 8; bit++)
 			{
-				*BITMAP_ADDR16(bitmap, y, (i * 8) + bit) = BIT(data, 7) ? 1 : 0;
+				bitmap.pix16(y, (i * 8) + bit) = BIT(data, 7) ? 1 : 0;
 				data <<= 1;
 			}
 		}

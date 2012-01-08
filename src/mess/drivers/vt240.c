@@ -24,7 +24,6 @@
 #include "machine/ram.h"
 #include "video/upd7220.h"
 
-#define VIDEO_START_MEMBER(name) void name::video_start()
 #define SCREEN_UPDATE_MEMBER(name) bool name::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 
 class vt240_state : public driver_device
@@ -46,7 +45,6 @@ public:
 	//UINT8 m_pcg_internal_addr;
 	//UINT8 *m_char_rom;
 
-	virtual void video_start();
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	UINT8 *m_video_ram;
@@ -87,7 +85,7 @@ static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 				if(res_x > screen_max_x || res_y > screen_max_y)
 					continue;
 
-				*BITMAP_ADDR16(bitmap, res_y, res_x) = pen;
+				bitmap.pix16(res_y, res_x) = pen;
 			}
 		}
 	}
@@ -95,18 +93,10 @@ static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 }
 
 
-VIDEO_START_MEMBER( vt240_state )
-{
-	// find memory regions
-	//m_char_rom = machine().region("pcg")->base();
-
-	VIDEO_START_NAME(generic_bitmapped)(machine());
-}
-
 SCREEN_UPDATE_MEMBER( vt240_state )
 {
 	/* graphics */
-	m_hgdc->update_screen(&bitmap, &cliprect);
+	m_hgdc->update_screen(bitmap, cliprect);
 
 	return 0;
 }

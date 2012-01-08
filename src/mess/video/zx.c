@@ -44,7 +44,7 @@ void zx_state::zx_ula_bkgnd(UINT8 color)
 	{
 		int y, new_x, new_y;
 		rectangle r;
-		bitmap_t *bitmap = machine().generic.tmpbitmap;
+		bitmap_t &bitmap = machine().primary_screen->default_bitmap();
 
 		new_y = machine().primary_screen->vpos();
 		new_x = machine().primary_screen->hpos();
@@ -57,7 +57,7 @@ void zx_state::zx_ula_bkgnd(UINT8 color)
 				r.min_x = m_old_x;
 				r.max_x = new_x;
 				r.min_y = r.max_y = y;
-				bitmap_fill(bitmap, &r, color);
+				bitmap.fill(color, r);
 				break;
 			}
 			else
@@ -65,7 +65,7 @@ void zx_state::zx_ula_bkgnd(UINT8 color)
 				r.min_x = m_old_x;
 				r.max_x = visarea.max_x;
 				r.min_y = r.max_y = y;
-				bitmap_fill(bitmap, &r, color);
+				bitmap.fill(color, r);
 				m_old_x = 0;
 			}
 			if (++y == height)
@@ -100,11 +100,11 @@ static TIMER_CALLBACK(zx_ula_nmi)
 	const rectangle r1 = screen->visible_area();
 	rectangle r;
 
-	bitmap_t *bitmap = machine.generic.tmpbitmap;
+	bitmap_t &bitmap = machine.primary_screen->default_bitmap();
 	r.min_x = r1.min_x;
 	r.max_x = r1.max_x;
 	r.min_y = r.max_y = state->m_ula_scanline_count;
-	bitmap_fill(bitmap, &r, 1);
+	bitmap.fill(1, r);
 //  logerror("ULA %3d[%d] NMI, R:$%02X, $%04x\n", machine.primary_screen->vpos(), ula_scancode_count, (unsigned) cpu_get_reg(machine.device("maincpu"), Z80_R), (unsigned) cpu_get_reg(machine.device("maincpu"), Z80_PC));
 	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 	if (++state->m_ula_scanline_count == height)
@@ -139,7 +139,7 @@ void zx_ula_r(running_machine &machine, int offs, const char *region, const UINT
 
 	if ((!state->m_ula_irq_active) && (chr == 0x76))
 	{
-		bitmap_t *bitmap = machine.generic.tmpbitmap;
+		bitmap_t &bitmap = machine.primary_screen->default_bitmap();
 		UINT16 y, *scanline;
 		UINT16 ireg = cpu_get_reg(machine.device("maincpu"), Z80_I) << 8;
 		UINT8 data, *chrgen, creg;
@@ -172,7 +172,7 @@ void zx_ula_r(running_machine &machine, int offs, const char *region, const UINT
 		machine.scheduler().timer_set(machine.device<cpu_device>("maincpu")->cycles_to_attotime(((32 - state->m_charline_ptr) << 2)), FUNC(zx_ula_irq));
 		state->m_ula_irq_active++;
 
-		scanline = BITMAP_ADDR16(bitmap, state->m_ula_scanline_count, 0);
+		scanline = &bitmap.pix16(state->m_ula_scanline_count);
 		y = 0;
 
 		for (state->m_charline_ptr = 0; state->m_charline_ptr < ARRAY_LENGTH(state->m_charline); state->m_charline_ptr++)
@@ -201,12 +201,11 @@ VIDEO_START( zx )
 	zx_state *state = machine.driver_data<zx_state>();
 	state->m_ula_nmi = machine.scheduler().timer_alloc(FUNC(zx_ula_nmi));
 	state->m_ula_irq_active = 0;
-	VIDEO_START_CALL(generic_bitmapped);
 }
 
 SCREEN_EOF( zx )
 {
-	zx_state *state = machine.driver_data<zx_state>();
+	zx_state *state = screen.machine().driver_data<zx_state>();
 	/* decrement video synchronization counter */
 	if (state->m_ula_frame_vsync)
 		--state->m_ula_frame_vsync;

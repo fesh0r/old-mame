@@ -41,7 +41,7 @@ static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 
 		int color = hlt_in ? 2 : (video_in ^ compl_in);
 
-		*BITMAP_ADDR16(device->machine().generic.tmpbitmap, y, x + i) = color;
+		device->machine().primary_screen->default_bitmap().pix16(y, x + i) = color;
 	}
 }
 
@@ -77,7 +77,7 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 
 	for (int i = 0; i < 8; i++)
 	{
-		if (BIT(data, i)) *BITMAP_ADDR16(bitmap, y, x + i) = 1;
+		if (BIT(data, i)) bitmap.pix16(y, x + i) = 1;
 	}
 }
 
@@ -100,8 +100,6 @@ void mm1_state::video_start()
 {
 	// find memory regions
 	m_char_rom = machine().region("chargen")->base();
-
-	VIDEO_START_NAME(generic_bitmapped)(machine());
 }
 
 
@@ -112,11 +110,11 @@ void mm1_state::video_start()
 bool mm1_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	/* text */
-	i8275_update(m_crtc, &bitmap, &cliprect);
-	copybitmap(&bitmap, screen.machine().generic.tmpbitmap, 0, 0, 0, 0, &cliprect);
+	i8275_update(m_crtc, bitmap, cliprect);
+	copybitmap(bitmap, screen.default_bitmap(), 0, 0, 0, 0, cliprect);
 
 	/* graphics */
-	m_hgdc->update_screen(&bitmap, &cliprect);
+	m_hgdc->update_screen(bitmap, cliprect);
 
 	return 0;
 }

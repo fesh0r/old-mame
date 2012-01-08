@@ -57,6 +57,7 @@ struct _scsibus_t
 	int         xfer_count;
 	int         bytes_left;
 	int         data_last;
+	int			sectorbytes;
 
 	emu_timer   *req_timer;
 	emu_timer   *ack_timer;
@@ -127,7 +128,7 @@ static void dump_data_bytes(scsibus_t   *bus, int count)
 
 static void scsibus_read_data(scsibus_t   *bus)
 {
-    bus->data_last = (bus->bytes_left >= DATA_BLOCK_SIZE) ? DATA_BLOCK_SIZE : bus->bytes_left;
+    bus->data_last = (bus->bytes_left >= bus->sectorbytes) ? bus->sectorbytes : bus->bytes_left;
 
     LOG(2,"SCSIBUS:scsibus_read_data bus->bytes_left=%04X, bus->data_last=%04X, bus->xfer_count=%04X\n",bus->bytes_left,bus->data_last,bus->xfer_count);
 
@@ -141,11 +142,11 @@ static void scsibus_read_data(scsibus_t   *bus)
 
 static void scsibus_write_data(scsibus_t   *bus)
 {
-    if(bus->bytes_left >= DATA_BLOCK_SIZE)
+    if(bus->bytes_left >= bus->sectorbytes)
     {
-        SCSIWriteData(bus->devices[bus->last_id], bus->data, DATA_BLOCK_SIZE);
+        SCSIWriteData(bus->devices[bus->last_id], bus->data, bus->sectorbytes);
 
-        bus->bytes_left-=DATA_BLOCK_SIZE;
+        bus->bytes_left-=bus->sectorbytes;
         bus->data_idx=0;
     }
 }
@@ -164,7 +165,7 @@ UINT8 scsi_data_r(device_t *device)
 
             // check to see if we have reached the end of the block buffer
             // and that there is more data to read from the scsi disk
-            if((bus->data_idx==DATA_BLOCK_SIZE) && (bus->bytes_left>0) && IS_READ_COMMAND())
+            if((bus->data_idx==bus->sectorbytes) && (bus->bytes_left>0) && IS_READ_COMMAND())
             {
                 scsibus_read_data(bus);
             }
@@ -172,12 +173,10 @@ UINT8 scsi_data_r(device_t *device)
 
         case SCSI_PHASE_STATUS :
             result=bus->status;		// return command status
-            bus->cmd_idx++;
             break;
 
         case SCSI_PHASE_MESSAGE_IN :
             result=0;              // no errors for the time being !
-            bus->cmd_idx++;
             break;
     }
 
@@ -239,7 +238,7 @@ void scsi_data_w(device_t *device, UINT8 data)
 			}
 
             // If the data buffer is full, and we are writing blocks flush it to the SCSI disk
-            if((bus->data_idx == DATA_BLOCK_SIZE) && IS_WRITE_COMMAND())
+            if((bus->data_idx == bus->sectorbytes) && IS_WRITE_COMMAND())
                 scsibus_write_data(bus);
             break;
     }
@@ -287,8 +286,8 @@ READ_LINE_DEVICE_HANDLER( scsi_cd_r ) { return get_scsi_line(device, SCSI_LINE_C
 READ_LINE_DEVICE_HANDLER( scsi_io_r ) { return get_scsi_line(device, SCSI_LINE_IO); }
 READ_LINE_DEVICE_HANDLER( scsi_msg_r ) { return get_scsi_line(device, SCSI_LINE_MSG); }
 READ_LINE_DEVICE_HANDLER( scsi_req_r ) { return get_scsi_line(device, SCSI_LINE_REQ); }
-READ_LINE_DEVICE_HANDLER( scsi_ack_r ) { return get_scsi_line(device, SCSI_LINE_RESET); }
-READ_LINE_DEVICE_HANDLER( scsi_rst_r ) { return get_scsi_line(device, SCSI_LINE_ACK); }
+READ_LINE_DEVICE_HANDLER( scsi_ack_r ) { return get_scsi_line(device, SCSI_LINE_ACK); }
+READ_LINE_DEVICE_HANDLER( scsi_rst_r ) { return get_scsi_line(device, SCSI_LINE_RESET); }
 
 void set_scsi_line(device_t *device, UINT8 line, UINT8 state)
 {
@@ -540,6 +539,16 @@ static void scsibus_exec_command(device_t *device)
             bus->bytes_left=0;
 			SCSISetPhase(bus->devices[bus->last_id],SCSI_PHASE_STATUS);
 			break;
+
+		// Commodore D9060/9090
+		case SCSI_CMD_PHYSICAL_DEVICE_ID :
+			LOG(1,"SCSIBUS: physical device ID\n");
+            command_local=1;
+			bus->xfer_count=0;
+            bus->data_last=bus->xfer_count;
+            bus->bytes_left=0;
+			SCSISetPhase(bus->devices[bus->last_id],SCSI_PHASE_STATUS);
+			break;
 	}
 
 
@@ -720,8 +729,11 @@ static void scsi_in_line_changed(device_t *device, UINT8 line, UINT8 state)
                     else
                         scsi_out_line_change(device,SCSI_LINE_REQ,0);
                 }
-                else
+				else
+				{
+					bus->cmd_idx++;
                     scsi_out_line_change(device,SCSI_LINE_REQ,1);
+				}
             }
             break;
 
@@ -741,7 +753,10 @@ static void scsi_in_line_changed(device_t *device, UINT8 line, UINT8 state)
                         scsi_out_line_change(device,SCSI_LINE_REQ,0);
                 }
                 else
+				{
+					bus->cmd_idx++;
                     scsi_out_line_change(device,SCSI_LINE_REQ,1);
+				}
             }
             break;
     }
@@ -915,7 +930,7 @@ int get_scsi_cmd_len(int cbyte)
 
 	group = (cbyte>>5) & 7;
 
-	if (group == 0 || group == 7 || group == 3) return 6;
+	if (group == 0 || group == 3 || group == 6 || group == 7) return 6;
 	if (group == 1 || group == 2) return 10;
 	if (group == 5) return 12;
 
@@ -924,7 +939,7 @@ int get_scsi_cmd_len(int cbyte)
 	return 6;
 }
 
-void init_scsibus(device_t *device)
+void init_scsibus(device_t *device, int sectorbytes)
 {
     scsibus_t               *bus = get_token(device);
     const SCSIConfigTable   *scsidevs = bus->interface->scsidevs;
@@ -941,6 +956,8 @@ void init_scsibus(device_t *device)
 
         bus->initialised=1;
     }
+
+	bus->sectorbytes = sectorbytes;
 }
 
 static DEVICE_START( scsibus )

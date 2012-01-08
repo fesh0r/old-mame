@@ -211,9 +211,9 @@ static INTERRUPT_GEN( p2000_interrupt )
 
 static SCREEN_UPDATE( p2000t )
 {
-	device_t *saa5050 = screen->machine().device("saa5050");
+	device_t *saa5050 = screen.machine().device("saa5050");
 
-	saa5050_update(saa5050, bitmap, NULL);
+	saa5050_update(saa5050, bitmap, cliprect);
 	return 0;
 }
 

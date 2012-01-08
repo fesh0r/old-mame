@@ -574,7 +574,7 @@ static CBM_IEC_INTERFACE( cbm_iec_intf )
 
 static SCREEN_UPDATE( c64 )
 {
-	device_t *vic2 = screen->machine().device("vic2");
+	device_t *vic2 = screen.machine().device("vic2");
 
 	vic2_video_update(vic2, bitmap, cliprect);
 	return 0;
@@ -880,6 +880,8 @@ static MACHINE_CONFIG_START( c64gs, c64_state )
 	/* cia */
 	MCFG_MOS6526R1_ADD("cia_0", VIC6569_CLOCK, c64_pal_cia0)
 	MCFG_MOS6526R1_ADD("cia_1", VIC6569_CLOCK, c64_pal_cia1)
+
+	MCFG_CBM_IEC_BUS_ADD(cbm_iec_intf)
 
 	MCFG_FRAGMENT_ADD(c64_cartslot)
 

@@ -68,13 +68,12 @@
      344S0100 - 0x0100 (1.00) - Some (early production?) IIsi
 
      Cuda version spotting:
+     341S0262 - 0x0003f200 (3.02) - some PMac 6500, Bondi blue iMac
+     341S0285 - No version (x.xx) - PMac 4400 + Mac clones ("Cuda Lite" with 768 bytes more ROM + PS/2 keyboard/mouse support)
      341S0060 - 0x00020028 (2.40) - Performa/Quadra 6xx, PMac 6200, x400, some x500, Pippin, "Gossamer" G3, others?
                                     (verified found in PMac 5500-225, G3-333)
-     341S0262 - 0x???????? (?.??) - some PMac 6500
-     341S0285 - 0x???????? (?.??) - PMac 4400 + Mac clones
      341S0417 - 0x???????? (?.??) - Color Classic
      341S0788 - 0x00020025 (2.37) - LC 475/575/Quadra 605, Quadra 660AV/840AV, PMac 7200
-     343S0788 - 0x???????? (?.??) - PMac x100 (typo - actually 341S0788?)
 
      Caboose version spotting:
      341S0853 - 0x0100 (1.00) - Quadra 950
@@ -403,7 +402,7 @@ void mac_state::v8_resize()
 		is_rom = FALSE;
 	}
 
-//  printf("mac_v8_resize: memory_size = %x, ctrl bits %02x (overlay %d = %s)\n", memory_size, m_rbv_regs[1] & 0xe0, m_overlay, is_rom ? "ROM" : "RAM");
+//    printf("mac_v8_resize: memory_size = %x, ctrl bits %02x (overlay %d = %s)\n", memory_size, m_rbv_regs[1] & 0xe0, m_overlay, is_rom ? "ROM" : "RAM");
 
 	if (is_rom)
 	{
@@ -418,7 +417,7 @@ void mac_state::v8_resize()
 		// force unmap of entire RAM region
 		space->unmap_write(0, 0x9fffff, 0x9fffff, 0);
 
-		// LC  2 MB built-in, all other V8-style machines have 4 MB
+		// LC and Classic II have 2 MB built-in, all other V8-style machines have 4 MB
 		// we reserve the first 2 or 4 MB of mess_ram for the onboard,
 		// RAM above that mark is the SIMM
 		onboard_amt = ((m_model == MODEL_MAC_LC) || (m_model == MODEL_MAC_CLASSIC_II)) ? 2*1024*1024 : 4*1024*1024;
@@ -485,7 +484,7 @@ void mac_state::set_memory_overlay(int overlay)
 		if (((m_model >= MODEL_MAC_LC) && (m_model <= MODEL_MAC_COLOR_CLASSIC) && ((m_model != MODEL_MAC_LC_III) && (m_model != MODEL_MAC_LC_III_PLUS))) || (m_model == MODEL_MAC_CLASSIC_II))
 		{
 			m_overlay = overlay;
-			this->v8_resize();
+			v8_resize();
 		}
 		else if ((m_model >= MODEL_MAC_POWERMAC_6100) && (m_model >= MODEL_MAC_POWERMAC_8100))
 		{
@@ -519,7 +518,7 @@ void mac_state::set_memory_overlay(int overlay)
 		{
 			mac_install_memory(machine(), 0x00000000, 0x3fffffff, memory_size, memory_data, is_rom, "bank1");
 		}
-		else if ((m_model == MODEL_MAC_LC_III) || (m_model == MODEL_MAC_LC_III_PLUS))	// up to 36 MB
+		else if ((m_model == MODEL_MAC_LC_III) || (m_model == MODEL_MAC_LC_III_PLUS) || (m_model >= MODEL_MAC_LC_475 && m_model <= MODEL_MAC_LC_580))	// up to 36 MB
 		{
 			mac_install_memory(machine(), 0x00000000, memory_size-1, memory_size, memory_data, is_rom, "bank1");
 		}
@@ -1101,33 +1100,24 @@ WRITE_LINE_MEMBER(mac_state::drq_539x_1_w)
  * Serial Communications Controller
  * *************************************************************************/
 
-void mac_scc_irq(device_t *device, int status)
-{
-	mac_state *mac = device->machine().driver_data<mac_state>();
-
-	mac->set_scc_interrupt(status);
-}
-
-
-
 void mac_state::scc_mouse_irq(int x, int y)
 {
-	device_t *scc = machine().device("scc");
+	scc8530_t *scc = machine().device<scc8530_t>("scc");
 	if (x && y)
 	{
 		if (m_last_was_x)
-			scc8530_set_status(scc, 0x0a);
+			scc->set_status(0x0a);
 		else
-			scc8530_set_status(scc, 0x02);
+			scc->set_status(0x02);
 
 		m_last_was_x ^= 1;
 	}
 	else
 	{
 		if (x)
-			scc8530_set_status(scc, 0x0a);
+			scc->set_status(0x0a);
 		else
-			scc8530_set_status(scc, 0x02);
+			scc->set_status(0x02);
 	}
 
 	this->set_scc_interrupt(1);
@@ -1137,10 +1127,10 @@ void mac_state::scc_mouse_irq(int x, int y)
 
 READ16_MEMBER ( mac_state::mac_scc_r )
 {
-	device_t *scc = space.machine().device("scc");
+	scc8530_t *scc = space.machine().device<scc8530_t>("scc");
 	UINT16 result;
 
-	result = scc8530_r(scc, offset);
+	result = scc->reg_r(space, offset);
 	return (result << 8) | result;
 }
 
@@ -1148,15 +1138,14 @@ READ16_MEMBER ( mac_state::mac_scc_r )
 
 WRITE16_MEMBER ( mac_state::mac_scc_w )
 {
-	device_t *scc = space.machine().device("scc");
-	scc8530_w(scc, offset, (UINT8) data);
+	scc8530_t *scc = space.machine().device<scc8530_t>("scc");
+	scc->reg_w(space, offset, data);
 }
 
 WRITE16_MEMBER ( mac_state::mac_scc_2_w )
 {
-	device_t *scc = space.machine().device("scc");
-	UINT8 wdata = data>>8;
-	scc8530_w(scc, offset, wdata);
+	scc8530_t *scc = space.machine().device<scc8530_t>("scc");
+	scc->reg_w(space, offset, data >> 8);
 }
 
 /* ********************************** *
@@ -1971,7 +1960,16 @@ void mac_state::machine_reset()
 	m_last_taken_interrupt = 0;
 }
 
+WRITE_LINE_MEMBER(mac_state::cuda_reset_w)
+{
+    if (state == ASSERT_LINE)
+    {
+        set_memory_overlay(0);
+        set_memory_overlay(1);
+    }
 
+    cputag_set_input_line(machine(), "maincpu", INPUT_LINE_RESET, state);
+}
 
 static void mac_state_load(mac_state *mac)
 {
@@ -2005,9 +2003,9 @@ DIRECT_UPDATE_HANDLER (overlay_opbaseoverride)
 				mac->set_memory_overlay(0);		// kill the overlay
 			}
 		}
-		else if ((mac->m_model == MODEL_MAC_LC) || (mac->m_model == MODEL_MAC_LC_II) || (mac->m_model == MODEL_MAC_CLASSIC_II))
+		else if ((mac->m_model == MODEL_MAC_LC) || (mac->m_model == MODEL_MAC_LC_II) || (mac->m_model == MODEL_MAC_CLASSIC_II) || (mac->m_model == MODEL_MAC_COLOR_CLASSIC))
 		{
-			if ((address >= 0xa00000) && (address <= 0xafffff))
+			if (((address >= 0xa00000) && (address <= 0xafffff)) || ((address >= 0x40a00000) && (address <= 0x40afffff)))
 			{
 				mac->set_memory_overlay(0);		// kill the overlay
 			}
@@ -2036,6 +2034,18 @@ READ32_MEMBER(mac_state::mac_read_id)
 		case MODEL_MAC_LC_III_PLUS:
 			return 0xa55a0003;	// 33 MHz LC III+
 
+        case MODEL_MAC_LC_475:
+            return 0xa55a2221;
+
+        case MODEL_MAC_LC_520:
+            return 0xa55a0100;
+
+        case MODEL_MAC_LC_550:
+            return 0xa55a0101;
+
+        case MODEL_MAC_LC_575:
+            return 0xa55a222e;
+
 		case MODEL_MAC_POWERMAC_6100:
 			return 0xa55a3011;
 
@@ -2053,6 +2063,18 @@ READ32_MEMBER(mac_state::mac_read_id)
 
 		case MODEL_MAC_PBDUO_250:
 			return 0xa55a1006;
+
+        case MODEL_MAC_QUADRA_605:
+            return 0xa55a2225;
+
+        case MODEL_MAC_QUADRA_610:
+        case MODEL_MAC_QUADRA_650:
+        case MODEL_MAC_QUADRA_800:
+            return 0xa55a2bad;
+
+        case MODEL_MAC_QUADRA_660AV:
+        case MODEL_MAC_QUADRA_840AV:
+            return 0xa55a2830;
 
 		default:
 			return 0;
@@ -2085,9 +2107,9 @@ static void mac_driver_init(running_machine &machine, model_t model)
 
 	memset(mac->m_ram->pointer(), 0, mac->m_ram->size());
 
-	if ((model == MODEL_MAC_SE) || (model == MODEL_MAC_CLASSIC) || (model == MODEL_MAC_CLASSIC_II) || (model == MODEL_MAC_LC) ||
+	if ((model == MODEL_MAC_SE) || (model == MODEL_MAC_CLASSIC) || (model == MODEL_MAC_CLASSIC_II) || (model == MODEL_MAC_LC) || (model == MODEL_MAC_COLOR_CLASSIC) || (model >= MODEL_MAC_LC_475 && model <= MODEL_MAC_LC_580) ||
 	    (model == MODEL_MAC_LC_II) || (model == MODEL_MAC_LC_III) || (model == MODEL_MAC_LC_III_PLUS) || ((mac->m_model >= MODEL_MAC_II) && (mac->m_model <= MODEL_MAC_SE30)) ||
-	    (model == MODEL_MAC_PORTABLE) || (model == MODEL_MAC_PB100) || (model == MODEL_MAC_PB140) || (model == MODEL_MAC_PB160) || (model == MODEL_MAC_PBDUO_210) || (mac->m_model >= MODEL_MAC_QUADRA_700 && mac->m_model <= MODEL_MAC_QUADRA_800))
+	    (model == MODEL_MAC_PORTABLE) || (model == MODEL_MAC_PB100) || (model == MODEL_MAC_PB140) || (model == MODEL_MAC_PB160) || (model == MODEL_MAC_PBDUO_210) || (model >= MODEL_MAC_QUADRA_700 && model <= MODEL_MAC_QUADRA_800))
 	{
 		machine.device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(overlay_opbaseoverride), &machine));
 	}
@@ -2136,6 +2158,7 @@ MAC_DRIVER_INIT(macquadra700, MODEL_MAC_QUADRA_700)
 MAC_DRIVER_INIT(maciicx, MODEL_MAC_IICX)
 MAC_DRIVER_INIT(maciifdhd, MODEL_MAC_II_FDHD)
 MAC_DRIVER_INIT(maciix, MODEL_MAC_IIX);
+MAC_DRIVER_INIT(maclc520, MODEL_MAC_LC_520)
 
 void mac_state::nubus_slot_interrupt(UINT8 slot, UINT32 state)
 {

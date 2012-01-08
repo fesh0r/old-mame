@@ -19,7 +19,7 @@ VIDEO_START( special )
 
 SCREEN_UPDATE( special )
 {
-	special_state *state = screen->machine().driver_data<special_state>();
+	special_state *state = screen.machine().driver_data<special_state>();
   UINT8 code;
 	int y, x, b;
 
@@ -30,7 +30,7 @@ SCREEN_UPDATE( special )
 			code = state->m_specialist_video_ram[y + x*256];
 			for (b = 7; b >= 0; b--)
 			{
-				*BITMAP_ADDR16(bitmap, y, x*8+(7-b)) =  (code >> b) & 0x01;
+				bitmap.pix16(y, x*8+(7-b)) =  (code >> b) & 0x01;
 			}
 		}
 	}
@@ -42,7 +42,7 @@ VIDEO_START( specialp )
 
 SCREEN_UPDATE( specialp )
 {
-	special_state *state = screen->machine().driver_data<special_state>();
+	special_state *state = screen.machine().driver_data<special_state>();
   UINT8 code;
 	int y, x, b;
 
@@ -53,7 +53,7 @@ SCREEN_UPDATE( specialp )
 			code = state->m_specialist_video_ram[y + x*256];
 			for (b = 7; b >= 0; b--)
 			{
-				*BITMAP_ADDR16(bitmap, y, x*8+(7-b)) =  (code >> b) & 0x01;
+				bitmap.pix16(y, x*8+(7-b)) =  (code >> b) & 0x01;
 			}
 		}
 	}
@@ -95,7 +95,7 @@ VIDEO_START( specimx )
 
 SCREEN_UPDATE( specimx )
 {
-	special_state *state = screen->machine().driver_data<special_state>();
+	special_state *state = screen.machine().driver_data<special_state>();
 	UINT8 code,color;
 	int y, x, b;
 
@@ -103,12 +103,12 @@ SCREEN_UPDATE( specimx )
 	{
 		for (y = 0; y < 256; y++)
 		{
-			code = screen->machine().device<ram_device>(RAM_TAG)->pointer()[0x9000 + y + x*256];
+			code = screen.machine().device<ram_device>(RAM_TAG)->pointer()[0x9000 + y + x*256];
 			color = state->m_specimx_colorram[y + x*256];
 			for (b = 7; b >= 0; b--)
 			{
 
-				*BITMAP_ADDR16(bitmap, y, x*8+(7-b)) =  ((code >> b) & 0x01)==0 ? color & 0x0f : (color >> 4)& 0x0f ;
+				bitmap.pix16(y, x*8+(7-b)) =  ((code >> b) & 0x01)==0 ? color & 0x0f : (color >> 4)& 0x0f ;
 			}
 		}
 	}
@@ -138,7 +138,7 @@ VIDEO_START( erik )
 
 SCREEN_UPDATE( erik )
 {
-	special_state *state = screen->machine().driver_data<special_state>();
+	special_state *state = screen.machine().driver_data<special_state>();
   UINT8 code1;
   UINT8 code2;
   UINT8 color1,color2;
@@ -146,8 +146,8 @@ SCREEN_UPDATE( erik )
 	UINT8 *erik_video_ram_p1;
 	UINT8 *erik_video_ram_p2;
 
-	erik_video_ram_p1 =  screen->machine().device<ram_device>(RAM_TAG)->pointer() + 0x9000;
-	erik_video_ram_p2 =  screen->machine().device<ram_device>(RAM_TAG)->pointer() + 0xd000;
+	erik_video_ram_p1 =  screen.machine().device<ram_device>(RAM_TAG)->pointer() + 0x9000;
+	erik_video_ram_p2 =  screen.machine().device<ram_device>(RAM_TAG)->pointer() + 0xd000;
 
 	for (x = 0; x < 48; x++)
 	{
@@ -160,7 +160,7 @@ SCREEN_UPDATE( erik )
 			{
 				color1 = ((code1 >> b) & 0x01)==0 ? state->m_erik_background : state->m_erik_color_1;
 				color2 = ((code2 >> b) & 0x01)==0 ? state->m_erik_background : state->m_erik_color_2;
-				*BITMAP_ADDR16(bitmap, y, x*8+(7-b)) =  color1 | color2;
+				bitmap.pix16(y, x*8+(7-b)) =  color1 | color2;
 			}
 		}
 	}

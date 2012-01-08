@@ -22,24 +22,15 @@ public:
 
 	required_device<upd7220_device> m_hgdc;
 
-	virtual void video_start();
 	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 
 	UINT8 *m_video_ram;
 };
 
-void if800_state::video_start()
-{
-	// find memory regions
-//  m_char_rom = machine.region("pcg")->base();
-
-	VIDEO_START_NAME(generic_bitmapped)(machine());
-}
-
 bool if800_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	/* graphics */
-	m_hgdc->update_screen(&bitmap, &cliprect);
+	m_hgdc->update_screen(bitmap, cliprect);
 
 	return 0;
 }
@@ -57,7 +48,7 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 	{
 		pen = ((gfx >> xi) & 1) ? 1 : 0;
 
-		*BITMAP_ADDR16(bitmap, y, x + xi) = pen;
+		bitmap.pix16(y, x + xi) = pen;
 	}
 }
 

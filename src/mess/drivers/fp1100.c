@@ -121,7 +121,7 @@ static VIDEO_START( fp1100 )
 
 static SCREEN_UPDATE( fp1100 )
 {
-	fp1100_state *state = screen->machine().driver_data<fp1100_state>();
+	fp1100_state *state = screen.machine().driver_data<fp1100_state>();
 	state->m_crtc->update( bitmap, cliprect);
 	return 0;
 }
@@ -131,7 +131,7 @@ static MC6845_UPDATE_ROW( fp1100_update_row )
 	fp1100_state *state = device->machine().driver_data<fp1100_state>();
 	UINT8 r,g,b,col,i;
 	UINT16 mem,x;
-	UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+	UINT16 *p = &bitmap.pix16(y);
 
 	for (x = 0; x < x_count; x++)
 	{

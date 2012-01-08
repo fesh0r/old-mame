@@ -8,7 +8,6 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6502/m6502.h"
-#include "cpu/mcs48/mcs48.h"
 #include "imagedev/flopdrv.h"
 #include "imagedev/harddriv.h"
 #include "formats/basicdsk.h"
@@ -19,9 +18,9 @@
 #include "machine/msm58321.h"
 #include "machine/ram.h"
 #include "machine/scsibus.h"
+#include "machine/v1050kb.h"
 #include "machine/wd17xx.h"
 #include "video/mc6845.h"
-#include "sound/discrete.h"
 
 #define SCREEN_TAG				"screen"
 
@@ -38,11 +37,11 @@
 #define M6502_TAG				"u76"
 #define I8255A_M6502_TAG		"u101"
 #define H46505_TAG				"u75"
-#define I8049_TAG				"z5"
 #define CENTRONICS_TAG			"centronics"
 #define TIMER_KB_TAG			"timer_kb"
 #define TIMER_SIO_TAG			"timer_sio"
-#define DISCRETE_TAG			"ls1"
+#define TIMER_ACK_TAG			"timer_ack"
+#define TIMER_RST_TAG			"timer_rst"
 #define SASIBUS_TAG				"sasi"
 
 #define V1050_VIDEORAM_SIZE		0x8000
@@ -72,10 +71,11 @@ public:
 		  m_crtc(*this, H46505_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_discrete(*this, DISCRETE_TAG),
 		  m_floppy0(*this, FLOPPY_0),
 		  m_floppy1(*this, FLOPPY_1),
 		  m_timer_sio(*this, TIMER_SIO_TAG),
+		  m_timer_ack(*this, TIMER_ACK_TAG),
+		  m_timer_rst(*this, TIMER_RST_TAG),
 		  m_sasibus(*this, SASIBUS_TAG)
 	{ }
 
@@ -89,10 +89,11 @@ public:
 	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_centronics;
 	required_device<ram_device> m_ram;
-	required_device<device_t> m_discrete;
 	required_device<device_t> m_floppy0;
 	required_device<device_t> m_floppy1;
 	required_device<timer_device> m_timer_sio;
+	required_device<timer_device> m_timer_ack;
+	required_device<timer_device> m_timer_rst;
 	required_device<device_t> m_sasibus;
 
 	virtual void machine_start();
@@ -129,8 +130,8 @@ public:
 	DECLARE_READ8_MEMBER( videoram_r );
 	DECLARE_WRITE8_MEMBER( videoram_w );
 	DECLARE_WRITE_LINE_MEMBER( crtc_vs_w );
-	DECLARE_READ8_MEMBER( sasi_r );
-	DECLARE_WRITE8_MEMBER( sasi_w );
+	DECLARE_READ8_MEMBER( sasi_status_r );
+	DECLARE_WRITE8_MEMBER( sasi_ctrl_w );
 
 	void bankswitch();
 	void set_interrupt(UINT8 mask, int state);
@@ -145,7 +146,6 @@ public:
 	UINT8 m_keylatch;			// keyboard row select
 	UINT8 m_keydata;
 	int m_keyavail;
-	int m_kb_so;				// keyboard serial output
 
 	// serial state
 	int m_rxrdy;				// receiver ready

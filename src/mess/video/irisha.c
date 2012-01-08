@@ -20,7 +20,7 @@ SCREEN_UPDATE( irisha )
 	UINT8 code1; //, code2;
 	UINT8 col;
 	int y, x, b;
-	address_space *space = screen->machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space *space = screen.machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	// draw image
 	for (y = 0; y < 200; y++)
@@ -32,7 +32,7 @@ SCREEN_UPDATE( irisha )
 			for (b = 0; b < 8; b++)
 			{
 				col = ((code1 >> b) & 0x01);
-				*BITMAP_ADDR16(bitmap, y, x * 8 + (7 - b)) =  col;
+				bitmap.pix16(y, x * 8 + (7 - b)) =  col;
 			}
 		}
 	}

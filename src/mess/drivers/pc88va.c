@@ -80,7 +80,7 @@ static VIDEO_START( pc88va )
 
 }
 
-static void draw_sprites(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	pc88va_state *state = machine.driver_data<pc88va_state>();
 	UINT16 *tvram = (UINT16 *)machine.region("tvram")->base();
@@ -141,7 +141,7 @@ static void draw_sprites(running_machine &machine, bitmap_t *bitmap, const recta
 						pen = pen & 1 ? fg_col : (bc) ? 8 : -1;
 
 						if(pen != -1) //transparent pen
-							*BITMAP_ADDR32(bitmap, yp+y_i, xp+x_i+(x_s)) = machine.pens[pen];
+							bitmap.pix32(yp+y_i, xp+x_i+(x_s)) = machine.pens[pen];
 					}
 					spr_count+=2;
 				}
@@ -166,7 +166,7 @@ static void draw_sprites(running_machine &machine, bitmap_t *bitmap, const recta
 						pen = (BITSWAP16(tvram[(spda+spr_count) / 2],7,6,5,4,3,2,1,0,15,14,13,12,11,10,9,8)) >> (16-(x_s*8)) & 0xf;
 
 						//if(bc != -1) //transparent pen
-						*BITMAP_ADDR32(bitmap, yp+y_i, xp+x_i+(x_s)) = machine.pens[pen];
+						bitmap.pix32(yp+y_i, xp+x_i+(x_s)) = machine.pens[pen];
 					}
 					spr_count+=2;
 				}
@@ -190,7 +190,7 @@ static UINT32 calc_kanji_rom_addr(UINT8 jis1,UINT8 jis2,int x,int y)
 	return 0;
 }
 
-static void draw_text(running_machine &machine, bitmap_t *bitmap, const rectangle *cliprect)
+static void draw_text(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	pc88va_state *state = machine.driver_data<pc88va_state>();
 	UINT8 *tvram = machine.region("tvram")->base();
@@ -361,7 +361,7 @@ static void draw_text(running_machine &machine, bitmap_t *bitmap, const rectangl
 					if(secret) { pen = 0; } //hide text
 
 					if(pen != -1) //transparent
-						*BITMAP_ADDR32(bitmap, res_y, res_x) = machine.pens[pen];
+						bitmap.pix32(res_y, res_x) = machine.pens[pen];
 				}
 			}
 
@@ -373,10 +373,10 @@ static void draw_text(running_machine &machine, bitmap_t *bitmap, const rectangl
 
 static SCREEN_UPDATE( pc88va )
 {
-	pc88va_state *state = screen->machine().driver_data<pc88va_state>();
+	pc88va_state *state = screen.machine().driver_data<pc88va_state>();
 	UINT8 pri,cur_pri_lv;
 	UINT32 screen_pri;
-	bitmap_fill(bitmap, cliprect, 0);
+	bitmap.fill(0, cliprect);
 
 	if(state->m_tsp.disp_on == 0) // don't bother if we are under DSPOFF command
 		return 0;
@@ -416,8 +416,8 @@ static SCREEN_UPDATE( pc88va )
 			{
 				switch(cur_pri_lv & 3) // (palette color mode)
 				{
-					case 0: draw_text(screen->machine(),bitmap,cliprect); break;
-					case 1: if(state->m_tsp.spr_on) { draw_sprites(screen->machine(),bitmap,cliprect); } break;
+					case 0: draw_text(screen.machine(),bitmap,cliprect); break;
+					case 1: if(state->m_tsp.spr_on) { draw_sprites(screen.machine(),bitmap,cliprect); } break;
 					case 2: /* A = graphic 0 */ break;
 					case 3: /* B = graphic 1 */ break;
 				}

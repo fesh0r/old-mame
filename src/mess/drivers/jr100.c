@@ -169,10 +169,10 @@ static VIDEO_START( jr100 )
 
 static SCREEN_UPDATE( jr100 )
 {
-	jr100_state *state = screen->machine().driver_data<jr100_state>();
+	jr100_state *state = screen.machine().driver_data<jr100_state>();
 	int x,y,xi,yi;
 
-	UINT8 *rom_pcg = screen->machine().region("maincpu")->base() + 0xe000;
+	UINT8 *rom_pcg = screen.machine().region("maincpu")->base() + 0xe000;
 	for (y = 0; y < 24; y++)
 	{
 		for (x = 0; x < 32; x++)
@@ -191,7 +191,7 @@ static SCREEN_UPDATE( jr100 )
 				for(xi=0;xi<8;xi++)
 				{
 					UINT8 pen = (gfx_data[(tile*8)+yi]>>(7-xi) & 1);
-					*BITMAP_ADDR16(bitmap, y*8+yi, x*8+xi) = attr ^ pen;
+					bitmap.pix16(y*8+yi, x*8+xi) = attr ^ pen;
 				}
 			}
 		}

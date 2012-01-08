@@ -1,63 +1,54 @@
 /***************************************************************************
 
-        Bandai Pippin
+  macpci.c: second-generation Old World PowerMacs based on PCI instead of NuBus
 
-        17/07/2009 Skeleton driver.
+  Preliminary driver by R. Belmont (based on pippin.c skeleton by Angelo Salese)
 
-    Apple ASICs identified:
-    -----------------------
-    343S1125    Grand Central (SWIM III, Sound, VIA)
-    341S0060    Cuda (68HC05 MCU, handles ADB and parameter ("CMOS") RAM)
-    343S1146    ??? (likely SCSI due to position on board)
-    343S1191(x2) Athens Prime PLL Clock Generator
+  Pippin:
 
+  Apple ASICs identified:
+  -----------------------
+  343S1125    Grand Central (SWIM III, Sound, VIA)
+  341S0060    Cuda (68HC05 MCU, handles ADB and parameter ("CMOS") RAM)
+  343S1146    ??? (likely SCSI due to position on board)
+  343S1191(x2) Athens Prime PLL Clock Generator
 
-    Other chips
-    -----------
-    Z8530 SCC
-    CS4217 audio DAC
-    Bt856 video DAC
+  Other chips
+  -----------
+  Z8530 SCC
+  CS4217 audio DAC
+  Bt856 video DAC
 
-    PowerMac 6500 partial memory map (Pippin should be similar)
-    These are base addresses; Apple typically mirrors each chip over at least a 0x1000 byte range
+  Pippin-type map
+  F3000000 : Grand Central DMA/IRQ controller
+  F3012000 : SCC
+  F3013000 : Grand Central system controller
+  F3014000 : AWACS audio
+  F3015000 : SWIM III
+  F3016000 : VIA1
+  F3018000 : SCSI (53C96)
 
-    F3010000 : SCSI
-    F3012000 : 8530 SCC
-    F3015000 : SWIM III (Apple custom NEC765 derivative with GCR support, supposedly)
-    F3016000 : 6522 VIA (look at machine/mac.c for Apple's unique register mapping)
+  NOTE: the PowerPC starts off disabled; the Cuda 68HC05 starts it up once it's booted.
+
+  NOTE 2: goes off into the weeds in the subroutine at fff05010
 
 ****************************************************************************/
 #define ADDRESS_MAP_MODERN
 
 #include "emu.h"
+#include "includes/macpci.h"
 #include "cpu/powerpc/ppc.h"
 #include "imagedev/chd_cd.h"
 #include "sound/cdda.h"
 
-
-class pippin_state : public driver_device
-{
-public:
-	pippin_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
-
-	DECLARE_READ64_MEMBER(unk1_r);
-	DECLARE_READ64_MEMBER(unk2_r);
-	DECLARE_READ64_MEMBER(adb_portb_r);
-	DECLARE_WRITE64_MEMBER(adb_portb_w);
-	UINT16 m_unk1_test;
-	UINT8 m_portb_data;
-};
-
-
-READ64_MEMBER( pippin_state::unk1_r )
+READ64_MEMBER( macpci_state::unk1_r )
 {
 	m_unk1_test ^= 0x0400; //PC=ff808760
 
 	return m_unk1_test << 16;
 }
 
-READ64_MEMBER( pippin_state::unk2_r )
+READ64_MEMBER( macpci_state::unk2_r )
 {
 	if (ACCESSING_BITS_32_47)
 		return (UINT64)0xe1 << 32; //PC=fff04810
@@ -65,34 +56,7 @@ READ64_MEMBER( pippin_state::unk2_r )
 	return 0;
 }
 
-
-READ64_MEMBER( pippin_state::adb_portb_r )
-{
-	if (ACCESSING_BITS_56_63)
-	{
-		if (m_portb_data == 0x10)
-			return (UINT64)0x08 << 56;
-
-		if (m_portb_data == 0x38)	//fff04c80
-			return (UINT64)0x20 << 56; //almost sure this is wrong
-
-		//printf("PORTB R %02x\n", m_portb_data);
-
-		return 0;
-	}
-	return 0;
-}
-
-WRITE64_MEMBER( pippin_state::adb_portb_w )
-{
-	if (ACCESSING_BITS_56_63)
-	{
-		m_portb_data = (UINT64)data >> 56;
-	}
-}
-
-static ADDRESS_MAP_START(pippin_mem, AS_PROGRAM, 64, pippin_state)
-	ADDRESS_MAP_UNMAP_HIGH
+static ADDRESS_MAP_START(pippin_mem, AS_PROGRAM, 64, macpci_state)
 	AM_RANGE(0x00000000, 0x005fffff) AM_RAM
 
 	/* writes at 0x0*c01000 the string "Mr. Kesh" and wants it to be read back, true color VRAMs perhaps? */
@@ -101,22 +65,14 @@ static ADDRESS_MAP_START(pippin_mem, AS_PROGRAM, 64, pippin_state)
 	AM_RANGE(0x02c00000, 0x02c01007) AM_RAM
 	AM_RANGE(0x03c00000, 0x03c01007) AM_RAM
 
-	AM_RANGE(0xf00dfff8, 0xf00dffff) AM_READ(unk2_r)
+	AM_RANGE(0x40000000, 0x403fffff) AM_ROM AM_REGION("bootrom", 0) AM_MIRROR(0x0fc00000)   // mirror of ROM for 680x0 emulation
 
+	AM_RANGE(0xf00dfff8, 0xf00dffff) AM_READ(unk2_r)
 	AM_RANGE(0xf3008800, 0xf3008807) AM_READ(unk1_r)
-	AM_RANGE(0xf3016000, 0xf3016007) AM_READWRITE(adb_portb_r,adb_portb_w) // ADB PORTB
-	AM_RANGE(0xf3016400, 0xf3016407) AM_NOP // ADB DDRB
-	AM_RANGE(0xf3016600, 0xf3016607) AM_NOP // ?
-	AM_RANGE(0xf3016800, 0xf3016807) AM_NOP // ?
-	AM_RANGE(0xf3016a00, 0xf3016a07) AM_NOP // ?
-	AM_RANGE(0xf3016c00, 0xf3016c07) AM_NOP // ?
-	AM_RANGE(0xf3017400, 0xf3017407) AM_NOP // ADB SHR
-	AM_RANGE(0xf3017600, 0xf3017607) AM_NOP // ADB ACR
-	AM_RANGE(0xf3017800, 0xf3017807) AM_NOP // ADB PCR
-	AM_RANGE(0xf3017a00, 0xf3017a07) AM_NOP // ADB IFR
-	AM_RANGE(0xf3017c00, 0xf3017c07) AM_NOP // ADB IER
-	AM_RANGE(0xf3017e00, 0xf3017e07) AM_NOP // ?
-	AM_RANGE(0xffc00000, 0xffffffff) AM_ROM AM_REGION("user1",0)
+
+	AM_RANGE(0xf3016000, 0xf3017fff) AM_READWRITE16(mac_via_r, mac_via_w, U64(0xffffffffffffffff))
+
+	AM_RANGE(0xffc00000, 0xffffffff) AM_ROM AM_REGION("bootrom",0)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -143,9 +99,14 @@ struct cdrom_interface pippin_cdrom =
 	NULL
 };
 
-static MACHINE_CONFIG_START( pippin, pippin_state )
+static const cuda_interface mac_cuda_interface =
+{
+    DEVCB_DRIVER_LINE_MEMBER(macpci_state, cuda_reset_w)
+};
+
+static MACHINE_CONFIG_START( pippin, macpci_state )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",PPC603, 66000000)
+	MCFG_CPU_ADD("maincpu", PPC603, 66000000)
 	MCFG_CPU_PROGRAM_MAP(pippin_mem)
 
 	MCFG_MACHINE_RESET(pippin)
@@ -172,6 +133,14 @@ static MACHINE_CONFIG_START( pippin, pippin_state )
 	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.00 )
 
 	MCFG_CDROM_ADD("cdrom",pippin_cdrom)
+
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("32M")
+
+	MCFG_VIA6522_ADD("via6522_0", C7M/10, pcimac_via6522_intf)
+//  MCFG_SCC8530_ADD("scc", C7M, scc8530_t::intrq_cb_t(FUNC(mac_state::set_scc_interrupt), static_cast<mac_state *>(owner)))
+    MCFG_CUDA_ADD(CUDA_341S0060, mac_cuda_interface)
+	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -188,7 +157,7 @@ MACHINE_CONFIG_END
 */
 
 ROM_START( pippin )
-	ROM_REGION( 0x400000, "user1",  ROMREGION_64BIT | ROMREGION_BE )
+	ROM_REGION( 0x400000, "bootrom",  ROMREGION_64BIT | ROMREGION_BE )
 	ROM_SYSTEM_BIOS(0, "v1", "Kinka v 1.0")
 	ROMX_LOAD( "341s0251.u1", 0x000006, 0x100000, CRC(aaea2449) SHA1(2f63e215260a42fb7c5f2364682d5e8c0604646f),ROM_GROUPWORD | ROM_REVERSE | ROM_SKIP(6) | ROM_BIOS(1))
 	ROMX_LOAD( "341s0252.u2", 0x000004, 0x100000, CRC(3d584419) SHA1(e29c764816755662693b25f1fb3c24faef4e9470),ROM_GROUPWORD | ROM_REVERSE | ROM_SKIP(6) | ROM_BIOS(1))

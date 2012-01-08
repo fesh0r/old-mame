@@ -10,7 +10,7 @@
 
 /* initialized to non-zero, because we divide by it */
 
-INLINE void intv_set_pixel(intv_state *state, bitmap_t *bitmap, int x, int y, UINT32 color)
+INLINE void intv_set_pixel(intv_state *state, bitmap_t &bitmap, int x, int y, UINT32 color)
 {
 	int w, h;
 
@@ -21,17 +21,17 @@ INLINE void intv_set_pixel(intv_state *state, bitmap_t *bitmap, int x, int y, UI
 
 	for (h = 0; h < state->m_y_scale; h++)
 		for (w = 0; w < state->m_x_scale; w++)
-			*BITMAP_ADDR16(bitmap, y + h, x + w) = color;
+			bitmap.pix16(y + h, x + w) = color;
 }
 
-INLINE UINT32 intv_get_pixel(intv_state *state, bitmap_t *bitmap, int x, int y)
+INLINE UINT32 intv_get_pixel(intv_state *state, bitmap_t &bitmap, int x, int y)
 {
-	return GET_COLOR(*BITMAP_ADDR16(bitmap, y * state->m_y_scale, x * state->m_x_scale));
+	return GET_COLOR(bitmap.pix16(y * state->m_y_scale, x * state->m_x_scale));
 }
 
-INLINE void intv_plot_box(intv_state *state, bitmap_t *bm, int x, int y, int w, int h, int color)
+INLINE void intv_plot_box(intv_state *state, bitmap_t &bm, int x, int y, int w, int h, int color)
 {
-	plot_box(bm, x * state->m_x_scale, y * state->m_y_scale, w * state->m_x_scale, h * state->m_y_scale, SET_COLOR(color));
+	bm.plot_box(x * state->m_x_scale, y * state->m_y_scale, w * state->m_x_scale, h * state->m_y_scale, SET_COLOR(color));
 }
 
 VIDEO_START( intv )
@@ -40,7 +40,6 @@ VIDEO_START( intv )
 	//int i,j,k;
 
 	state->m_tms9927_num_rows = 25;
-	VIDEO_START_CALL(generic_bitmapped);
 
 #if 0
 	for (i = 0; i < STIC_MOBS; i++)
@@ -207,7 +206,7 @@ static void render_sprites(running_machine &machine)
 	}
 }
 
-static void render_line(running_machine &machine, bitmap_t *bitmap,
+static void render_line(running_machine &machine, bitmap_t &bitmap,
 	UINT8 nextByte, UINT16 x, UINT16 y, UINT8 fgcolor, UINT8 bgcolor)
 {
 	intv_state *state = machine.driver_data<intv_state>();
@@ -222,7 +221,7 @@ static void render_line(running_machine &machine, bitmap_t *bitmap,
 	}
 }
 
-static void render_colored_squares(running_machine &machine, bitmap_t *bitmap,
+static void render_colored_squares(running_machine &machine, bitmap_t &bitmap,
 	UINT16 x, UINT16 y, UINT8 color0, UINT8 color1, UINT8 color2, UINT8 color3)
 {
 	intv_state *state = machine.driver_data<intv_state>();
@@ -233,7 +232,7 @@ static void render_colored_squares(running_machine &machine, bitmap_t *bitmap,
 	intv_plot_box(state, bitmap, x + STIC_CSQM_WIDTH * STIC_X_SCALE, y + STIC_CSQM_HEIGHT * STIC_Y_SCALE, STIC_CSQM_WIDTH * STIC_X_SCALE, STIC_CSQM_HEIGHT * STIC_Y_SCALE, color3);
 }
 
-static void render_color_stack_mode(running_machine &machine, bitmap_t *bitmap)
+static void render_color_stack_mode(running_machine &machine, bitmap_t &bitmap)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 	INT16 w, h, nextx, nexty;
@@ -303,7 +302,7 @@ static void render_color_stack_mode(running_machine &machine, bitmap_t *bitmap)
 	}
 }
 
-static void render_fg_bg_mode(running_machine &machine, bitmap_t *bitmap)
+static void render_fg_bg_mode(running_machine &machine, bitmap_t &bitmap)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 	INT16 w, h, nextx, nexty;
@@ -346,7 +345,7 @@ static void render_fg_bg_mode(running_machine &machine, bitmap_t *bitmap)
 	}
 }
 
-static void copy_sprites_to_background(running_machine &machine, bitmap_t *bitmap)
+static void copy_sprites_to_background(running_machine &machine, bitmap_t &bitmap)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 	UINT8 width, currentPixel;
@@ -423,7 +422,7 @@ static void copy_sprites_to_background(running_machine &machine, bitmap_t *bitma
 	}
 }
 
-static void render_background(running_machine &machine, bitmap_t *bitmap)
+static void render_background(running_machine &machine, bitmap_t &bitmap)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 	if (state->m_color_stack_mode)
@@ -433,7 +432,7 @@ static void render_background(running_machine &machine, bitmap_t *bitmap)
 }
 
 #ifdef UNUSED_CODE
-static void draw_background(running_machine &machine, bitmap_t *bitmap, int transparency)
+static void draw_background(running_machine &machine, bitmap_t &bitmap, int transparency)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 	// First, draw the background
@@ -587,7 +586,7 @@ static void draw_background(running_machine &machine, bitmap_t *bitmap, int tran
 
 /* TBD: need to handle sprites behind foreground? */
 #ifdef UNUSED_FUNCTION
-static void draw_sprites(running_machine &machine, bitmap_t *bitmap, int behind_foreground)
+static void draw_sprites(running_machine &machine, bitmap_t &bitmap, int behind_foreground)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 	int i;
@@ -685,7 +684,7 @@ static void draw_sprites(running_machine &machine, bitmap_t *bitmap, int behind_
 }
 #endif
 
-static void draw_borders(running_machine &machine, bitmap_t *bm)
+static void draw_borders(running_machine &machine, bitmap_t &bm)
 {
 	intv_state *state = machine.driver_data<intv_state>();
 
@@ -705,21 +704,21 @@ void intv_stic_screenrefresh(running_machine &machine)
 	{
 		state->m_stic_handshake = 0;
 		// Render the background
-		render_background(machine, machine.generic.tmpbitmap);
+		render_background(machine, machine.primary_screen->default_bitmap());
 		// Render the sprites into their buffers
 		render_sprites(machine);
 		for (i = 0; i < STIC_MOBS; i++) state->m_sprite[i].collision = 0;
 		// Copy the sprites to the background
-		copy_sprites_to_background(machine, machine.generic.tmpbitmap);
+		copy_sprites_to_background(machine, machine.primary_screen->default_bitmap());
 		determine_sprite_collisions(state);
 		for (i = 0; i < STIC_MOBS; i++) state->m_stic_registers[STIC_MCR + i] |= state->m_sprite[i].collision;
 		/* draw the screen borders if enabled */
-		draw_borders(machine, machine.generic.tmpbitmap);
+		draw_borders(machine, machine.primary_screen->default_bitmap());
 	}
 	else
 	{
 		/* STIC disabled, just fill with border color */
-		bitmap_fill(machine.generic.tmpbitmap, NULL, SET_COLOR(state->m_border_color));
+		machine.primary_screen->default_bitmap().fill(SET_COLOR(state->m_border_color));
 	}
 }
 
@@ -776,14 +775,14 @@ WRITE8_MEMBER( intv_state::intvkbd_tms9927_w )
 
 SCREEN_UPDATE( intvkbd )
 {
-	intv_state *state = screen->machine().driver_data<intv_state>();
+	intv_state *state = screen.machine().driver_data<intv_state>();
 	UINT8 *videoram = state->m_videoram;
 	int x,y,offs;
 	int current_row;
 //  char c;
 
 	/* Draw the underlying INTV screen first */
-	SCREEN_UPDATE_CALL(generic_bitmapped);
+	copybitmap(bitmap, screen.default_bitmap(), 0, 0, 0, 0, cliprect);
 
 	/* if the intvkbd text is not blanked, overlay it */
 	if (!state->m_intvkbd_text_blanked)
@@ -794,8 +793,8 @@ SCREEN_UPDATE( intvkbd )
 			for(x=0;x<40;x++)
 			{
 				offs = current_row*64+x;
-				drawgfx_transpen(bitmap, NULL,
-					screen->machine().gfx[1],
+				drawgfx_transpen(bitmap, cliprect,
+					screen.machine().gfx[1],
 					videoram[offs],
 					7, /* white */
 					0,0,
@@ -805,8 +804,8 @@ SCREEN_UPDATE( intvkbd )
 			{
 				/* draw the cursor as a solid white block */
 				/* (should use a filled rect here!) */
-				drawgfx_transpen(bitmap, NULL,
-					screen->machine().gfx[1],
+				drawgfx_transpen(bitmap, cliprect,
+					screen.machine().gfx[1],
 					191, /* a block */
 					7,   /* white   */
 					0,0,

@@ -50,14 +50,14 @@ static int recalc_palette_offset(int reg1, int reg2)
 
 SCREEN_UPDATE( channelf )
 {
-	channelf_state *state = screen->machine().driver_data<channelf_state>();
+	channelf_state *state = screen.machine().driver_data<channelf_state>();
 	UINT8 y,col;
 	UINT16 ma=0,x;
 	int palette_offset;
 
 	for(y = 0; y < 64; y++ )
 	{
-		UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+		UINT16 *p = &bitmap.pix16(y);
 		palette_offset = recalc_palette_offset(state->m_p_videoram[y*128+125]&3, state->m_p_videoram[y*128+126]&3);
 
 		for (x = ma; x < ma + 128; x++)

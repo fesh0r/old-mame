@@ -566,7 +566,7 @@ GFXDECODE_END
 
 static SCREEN_UPDATE( bigbord2 )
 {
-	bigbord2_state *state = screen->machine().driver_data<bigbord2_state>();
+	bigbord2_state *state = screen.machine().driver_data<bigbord2_state>();
 	state->m_framecnt++;
 	state->m_6845->update( bitmap, cliprect);
 	return 0;
@@ -577,7 +577,7 @@ MC6845_UPDATE_ROW( bigbord2_update_row )
 	bigbord2_state *state = device->machine().driver_data<bigbord2_state>();
 	UINT8 chr,gfx,inv;
 	UINT16 mem,x;
-	UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+	UINT16 *p = &bitmap.pix16(y);
 
 	for (x = 0; x < x_count; x++)				// for each character
 	{

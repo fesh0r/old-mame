@@ -143,30 +143,30 @@ static VIDEO_START( mz2500 )
 */
 
 /* helper function, to draw stuff without getting crazy with height / width conditions :) */
-static void mz2500_draw_pixel(running_machine &machine, bitmap_t *bitmap,int x,int y,UINT16	 pen,UINT8 width,UINT8 height)
+static void mz2500_draw_pixel(running_machine &machine, bitmap_t &bitmap,int x,int y,UINT16	 pen,UINT8 width,UINT8 height)
 {
 	if(width && height)
 	{
-		*BITMAP_ADDR16(bitmap, y*2+0, x*2+0) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y*2+0, x*2+1) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y*2+1, x*2+0) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y*2+1, x*2+1) = machine.pens[pen];
+		bitmap.pix16(y*2+0, x*2+0) = machine.pens[pen];
+		bitmap.pix16(y*2+0, x*2+1) = machine.pens[pen];
+		bitmap.pix16(y*2+1, x*2+0) = machine.pens[pen];
+		bitmap.pix16(y*2+1, x*2+1) = machine.pens[pen];
 	}
 	else if(width)
 	{
-		*BITMAP_ADDR16(bitmap, y, x*2+0) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y, x*2+1) = machine.pens[pen];
+		bitmap.pix16(y, x*2+0) = machine.pens[pen];
+		bitmap.pix16(y, x*2+1) = machine.pens[pen];
 	}
 	else if(height)
 	{
-		*BITMAP_ADDR16(bitmap, y*2+0, x) = machine.pens[pen];
-		*BITMAP_ADDR16(bitmap, y*2+1, x) = machine.pens[pen];
+		bitmap.pix16(y*2+0, x) = machine.pens[pen];
+		bitmap.pix16(y*2+1, x) = machine.pens[pen];
 	}
 	else
-		*BITMAP_ADDR16(bitmap, y, x) = machine.pens[pen];
+		bitmap.pix16(y, x) = machine.pens[pen];
 }
 
-static void draw_80x25(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect,UINT16 map_addr)
+static void draw_80x25(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect,UINT16 map_addr)
 {
 	mz2500_state *state = machine.driver_data<mz2500_state>();
 	UINT8 *vram = machine.region("maincpu")->base();
@@ -257,7 +257,7 @@ static void draw_80x25(running_machine &machine, bitmap_t *bitmap,const rectangl
 	}
 }
 
-static void draw_40x25(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect,int plane,UINT16 map_addr)
+static void draw_40x25(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect,int plane,UINT16 map_addr)
 {
 	mz2500_state *state = machine.driver_data<mz2500_state>();
 	UINT8 *vram = machine.region("maincpu")->base();
@@ -348,7 +348,7 @@ static void draw_40x25(running_machine &machine, bitmap_t *bitmap,const rectangl
 	}
 }
 
-static void draw_cg4_screen(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect,int pri)
+static void draw_cg4_screen(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect,int pri)
 {
 	//mz2500_state *state = machine.driver_data<mz2500_state>();
 	UINT32 count;
@@ -390,7 +390,7 @@ static void draw_cg4_screen(running_machine &machine, bitmap_t *bitmap,const rec
 	}
 }
 
-static void draw_cg16_screen(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect,int plane,int x_size,int pri)
+static void draw_cg16_screen(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect,int plane,int x_size,int pri)
 {
 	mz2500_state *state = machine.driver_data<mz2500_state>();
 	UINT32 count;
@@ -448,7 +448,7 @@ static void draw_cg16_screen(running_machine &machine, bitmap_t *bitmap,const re
 	}
 }
 
-static void draw_cg256_screen(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect,int plane,int pri)
+static void draw_cg256_screen(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect,int plane,int pri)
 {
 	mz2500_state *state = machine.driver_data<mz2500_state>();
 	UINT32 count;
@@ -506,7 +506,7 @@ static void draw_cg256_screen(running_machine &machine, bitmap_t *bitmap,const r
 	}
 }
 
-static void draw_tv_screen(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect)
+static void draw_tv_screen(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect)
 {
 	mz2500_state *state = machine.driver_data<mz2500_state>();
 	UINT16 base_addr;
@@ -544,7 +544,7 @@ static void draw_tv_screen(running_machine &machine, bitmap_t *bitmap,const rect
 	}
 }
 
-static void draw_cg_screen(running_machine &machine, bitmap_t *bitmap,const rectangle *cliprect,int pri)
+static void draw_cg_screen(running_machine &machine, bitmap_t &bitmap,const rectangle &cliprect,int pri)
 {
 	mz2500_state *state = machine.driver_data<mz2500_state>();
 	//popmessage("%02x %02x",state->m_cg_reg[0x0e],state->m_cg_reg[0x18]);
@@ -581,12 +581,12 @@ static void draw_cg_screen(running_machine &machine, bitmap_t *bitmap,const rect
 
 static SCREEN_UPDATE( mz2500 )
 {
-	//mz2500_state *state = screen->machine().driver_data<mz2500_state>();
-	bitmap_fill(bitmap, cliprect, screen->machine().pens[0]); //TODO: correct?
+	//mz2500_state *state = screen.machine().driver_data<mz2500_state>();
+	bitmap.fill(screen.machine().pens[0], cliprect); //TODO: correct?
 
-	draw_cg_screen(screen->machine(),bitmap,cliprect,0);
-	draw_tv_screen(screen->machine(),bitmap,cliprect);
-	draw_cg_screen(screen->machine(),bitmap,cliprect,1);
+	draw_cg_screen(screen.machine(),bitmap,cliprect,0);
+	draw_tv_screen(screen.machine(),bitmap,cliprect);
+	draw_cg_screen(screen.machine(),bitmap,cliprect,1);
 	//  popmessage("%02x (%02x %02x) (%02x %02x) (%02x %02x) (%02x %02x)",state->m_cg_reg[0x0f],state->m_cg_reg[0x10],state->m_cg_reg[0x11],state->m_cg_reg[0x12],state->m_cg_reg[0x13],state->m_cg_reg[0x14],state->m_cg_reg[0x15],state->m_cg_reg[0x16],state->m_cg_reg[0x17]);
 	//  popmessage("%02x",state->m_text_reg[0x0f]);
 

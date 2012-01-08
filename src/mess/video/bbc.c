@@ -226,7 +226,7 @@ static MC6845_UPDATE_ROW( vid_update_row )
 			{
 				int col=returned_pixels[pixelno];
 
-					*BITMAP_ADDR16(bitmap, y, (x_pos*state->m_pixels_per_byte)+pixelno)=col;
+					bitmap.pix16(y, (x_pos*state->m_pixels_per_byte)+pixelno)=col;
 			}
 
 
@@ -247,7 +247,7 @@ static MC6845_UPDATE_ROW( vid_update_row )
 				for(int pixelno=0;pixelno<state->m_pixels_per_byte;pixelno++)
 				{
 					int col=state->m_videoULA_pallet_lookup[state->m_pixel_bits[i]];
-					*BITMAP_ADDR16(bitmap, y, (x_pos*state->m_pixels_per_byte)+pixelno)=col;
+					bitmap.pix16(y, (x_pos*state->m_pixels_per_byte)+pixelno)=col;
 					i=(i<<1)|1;
 				}
 			}
@@ -258,7 +258,7 @@ static MC6845_UPDATE_ROW( vid_update_row )
 			{
 				for(int pixelno=0;pixelno<state->m_pixels_per_byte;pixelno++)
 				{
-					*BITMAP_ADDR16(bitmap, y, (x_pos*state->m_pixels_per_byte)+pixelno)=7;
+					bitmap.pix16(y, (x_pos*state->m_pixels_per_byte)+pixelno)=7;
 				}
 			}
 		}
@@ -341,7 +341,7 @@ READ8_HANDLER (bbc_6845_r)
 SCREEN_UPDATE( bbc )
 {
 
-	mc6845_device *mc6845 = screen->machine().device<mc6845_device>("mc6845");
+	mc6845_device *mc6845 = screen.machine().device<mc6845_device>("mc6845");
 	mc6845->update( bitmap, cliprect);
 
     return 0;
@@ -538,11 +538,11 @@ static void BBC_Set_HSync(running_machine &machine, int offset, int data)
 
         if ((state->m_y_screen_pos>=0) && (state->m_y_screen_pos<300))
         {
-            state->m_BBC_display_left = BITMAP_ADDR16(state->m_BBC_bitmap, state->m_y_screen_pos, 0);
+            state->m_BBC_display_left = &state->m_BBC_bitmap->pix16(state->m_y_screen_pos);
             state->m_BBC_display_right = state->m_BBC_display_left + 800;
 
         } else {
-            state->m_BBC_display_left = BITMAP_ADDR16(state->m_BBC_bitmap, 0, 0);
+            state->m_BBC_display_left = &state->m_BBC_bitmap->pix16(0);
             state->m_BBC_display_right = state->m_BBC_display_left;
         }
 
@@ -563,11 +563,11 @@ static void BBC_Set_VSync(running_machine &machine, int offset, int data)
 
         if ((state->m_y_screen_pos>=0) && (state->m_y_screen_pos<300))
         {
-            state->m_BBC_display_left = BITMAP_ADDR16(state->m_BBC_bitmap, state->m_y_screen_pos, 0);
+            state->m_BBC_display_left = &state->m_BBC_bitmap->pix16(state->m_y_screen_pos);
             state->m_BBC_display_right = state->m_BBC_display_left + 800;
 
         } else {
-            state->m_BBC_display_left = BITMAP_ADDR16(state->m_BBC_bitmap, 0, 0);
+            state->m_BBC_display_left = &state->m_BBC_bitmap->pix16(0);
             state->m_BBC_display_right = state->m_BBC_display_left;
         }
 
@@ -653,24 +653,24 @@ WRITE8_HANDLER ( bbc_6845_w )
 SCREEN_UPDATE( bbc )
 {
 
-    mc6845_device *mc6845 = screen->machine().device<mc6845_device>("mc6845");
+    mc6845_device *mc6845 = screen.machine().device<mc6845_device>("mc6845");
     mc6845->update( bitmap, cliprect);
 
     return 0;
 
 
 
-    bbc_state *state = screen->machine().driver_data<bbc_state>();
+    bbc_state *state = screen.machine().driver_data<bbc_state>();
     long c;
 
-    //logerror ("Box %d by %d \n",cliprect->min_y,cliprect->max_y);
+    //logerror ("Box %d by %d \n",cliprect.min_y,cliprect.max_y);
 
     c = 0; // this is used to time out the screen redraw, in the case that the 6845 is in some way out state.
 
 
     state->m_BBC_bitmap=bitmap;
 
-    state->m_BBC_display_left=BITMAP_ADDR16(state->m_BBC_bitmap, 0, 0);
+    state->m_BBC_display_left=&state->m_BBC_bitmap->pix16(0);
     state->m_BBC_display_right=state->m_BBC_display_left;
     state->m_BBC_display=state->m_BBC_display_left;
 
@@ -679,7 +679,7 @@ SCREEN_UPDATE( bbc )
     while((state->m_BBC_VSync)&&(c<60000))
     {
         // Clock the 6845
-        m6845_clock(screen->machine());
+        m6845_clock(screen.machine());
         c++;
     }
 
@@ -688,13 +688,13 @@ SCREEN_UPDATE( bbc )
     // or until a timeout (this catches the 6845 with silly register values that would not give a VSYNC signal)
     while((!state->m_BBC_VSync)&&(c<60000))
     {
-        if ((state->m_y_screen_pos>=cliprect->min_y) && (state->m_y_screen_pos<=cliprect->max_y)) (state->m_draw_function)(screen->machine());
+        if ((state->m_y_screen_pos>=cliprect.min_y) && (state->m_y_screen_pos<=cliprect.max_y)) (state->m_draw_function)(screen.machine());
 
         // and check the cursor
         if (state->m_VideoULA_CR) BBC_Clock_CR(state);
 
         // Clock the 6845
-        m6845_clock(screen->machine());
+        m6845_clock(screen.machine());
         c++;
     }
 

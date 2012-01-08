@@ -35,9 +35,9 @@
 
 static void x68k_crtc_refresh_mode(running_machine &machine);
 
-INLINE void x68k_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
+INLINE void x68k_plot_pixel(bitmap_t &bitmap, int x, int y, UINT32 color)
 {
-	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
+	bitmap.pix16(y, x) = (UINT16)color;
 }
 /*
 static bitmap_t* x68k_get_gfx_page(int pri,int type)
@@ -771,7 +771,7 @@ READ16_HANDLER( x68k_spriteram_r )
 	return state->m_spriteram[offset];
 }
 
-static void x68k_draw_text(running_machine &machine,bitmap_t* bitmap, int xscr, int yscr, rectangle rect)
+static void x68k_draw_text(running_machine &machine,bitmap_t &bitmap, int xscr, int yscr, rectangle rect)
 {
 	x68k_state *state = machine.driver_data<x68k_state>();
 	unsigned int line,pixel; // location on screen
@@ -796,10 +796,10 @@ static void x68k_draw_text(running_machine &machine,bitmap_t* bitmap, int xscr, 
 			{
 				// Colour 0 is displayable if the text layer is at the priority level 2
 				if(colour == 0 && (state->m_video.reg[1] & 0x0c00) == 0x0800)
-					*BITMAP_ADDR16(bitmap,line,pixel) = 512 + (state->m_video.text_pal[colour] >> 1);
+					bitmap.pix16(line, pixel) = 512 + (state->m_video.text_pal[colour] >> 1);
 				else
 					if(colour != 0)
-						*BITMAP_ADDR16(bitmap,line,pixel) = 512 + (state->m_video.text_pal[colour] >> 1);
+						bitmap.pix16(line, pixel) = 512 + (state->m_video.text_pal[colour] >> 1);
 			}
 			bit--;
 			if(bit < 0)
@@ -812,7 +812,7 @@ static void x68k_draw_text(running_machine &machine,bitmap_t* bitmap, int xscr, 
 	}
 }
 
-static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t* bitmap, rectangle cliprect, UINT8 priority)
+static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t &bitmap, rectangle cliprect, UINT8 priority)
 {
 	x68k_state *state = machine.driver_data<x68k_state>();
 	int pixel;
@@ -853,7 +853,7 @@ static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t* bitmap, r
 						break;
 					}
 					if(colour != 0)
-						*BITMAP_ADDR16(bitmap,scanline,pixel) = 512 + (state->m_video.gfx_pal[colour] >> 1);
+						bitmap.pix16(scanline, pixel) = 512 + (state->m_video.gfx_pal[colour] >> 1);
 					loc++;
 					loc &= 0x3ff;
 				}
@@ -877,7 +877,7 @@ static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t* bitmap, r
 					{
 						colour = ((state->m_gvram[lineoffset + loc] >> page*shift) & 0x000f);
 						if(colour != 0)
-							*BITMAP_ADDR16(bitmap,scanline,pixel) = 512 + (state->m_video.gfx_pal[colour & 0x0f] >> 1);
+							bitmap.pix16(scanline, pixel) = 512 + (state->m_video.gfx_pal[colour & 0x0f] >> 1);
 						loc++;
 						loc &= 0x1ff;
 					}
@@ -894,7 +894,7 @@ static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t* bitmap, r
 						{
 							colour = ((state->m_gvram[lineoffset + loc] >> page*shift) & 0x00ff);
 							if(colour != 0)
-								*BITMAP_ADDR16(bitmap,scanline,pixel) = 512 + (state->m_video.gfx_pal[colour & 0xff] >> 1);
+								bitmap.pix16(scanline, pixel) = 512 + (state->m_video.gfx_pal[colour & 0xff] >> 1);
 							loc++;
 							loc &= 0x1ff;
 						}
@@ -909,7 +909,7 @@ static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t* bitmap, r
 					{
 						colour = state->m_gvram[lineoffset + loc];
 						if(colour != 0)
-							*BITMAP_ADDR16(bitmap,scanline,pixel) = 512 + (colour >> 1);
+							bitmap.pix16(scanline, pixel) = 512 + (colour >> 1);
 						loc++;
 						loc &= 0x1ff;
 					}
@@ -920,7 +920,7 @@ static void x68k_draw_gfx_scanline(running_machine &machine, bitmap_t* bitmap, r
 	}
 }
 
-static void x68k_draw_gfx(running_machine &machine, bitmap_t* bitmap,rectangle cliprect)
+static void x68k_draw_gfx(running_machine &machine, bitmap_t &bitmap,rectangle cliprect)
 {
 	x68k_state *state = machine.driver_data<x68k_state>();
 	int priority;
@@ -938,7 +938,7 @@ static void x68k_draw_gfx(running_machine &machine, bitmap_t* bitmap,rectangle c
 }
 
 // Sprite controller "Cynthia" at 0xeb0000
-static void x68k_draw_sprites(running_machine &machine, bitmap_t* bitmap, int priority, rectangle cliprect)
+static void x68k_draw_sprites(running_machine &machine, bitmap_t &bitmap, int priority, rectangle cliprect)
 {
 	x68k_state *state = machine.driver_data<x68k_state>();
 	/*
@@ -996,9 +996,9 @@ static void x68k_draw_sprites(running_machine &machine, bitmap_t* bitmap, int pr
 			sx += state->m_sprite_shift;
 
 			if(state->m_crtc.interlace != 0)
-				drawgfxzoom_transpen(bitmap,&cliprect,machine.gfx[1],code,colour+0x10,xflip,yflip,state->m_crtc.hbegin+sx,state->m_crtc.vbegin+(sy*2),0x10000,0x20000,0x00);
+				drawgfxzoom_transpen(bitmap,cliprect,machine.gfx[1],code,colour+0x10,xflip,yflip,state->m_crtc.hbegin+sx,state->m_crtc.vbegin+(sy*2),0x10000,0x20000,0x00);
 			else
-				drawgfx_transpen(bitmap,&cliprect,machine.gfx[1],code,colour+0x10,xflip,yflip,state->m_crtc.hbegin+sx,state->m_crtc.vbegin+sy,0x00);
+				drawgfx_transpen(bitmap,cliprect,machine.gfx[1],code,colour+0x10,xflip,yflip,state->m_crtc.hbegin+sx,state->m_crtc.vbegin+sy,0x00);
 		}
 	}
 }
@@ -1116,8 +1116,8 @@ VIDEO_START( x68000 )
 
 SCREEN_UPDATE( x68000 )
 {
-	x68k_state *state = screen->machine().driver_data<x68k_state>();
-	rectangle rect = {0,0,0,0};
+	x68k_state *state = screen.machine().driver_data<x68k_state>();
+	rectangle rect(0,0,0,0);
 	int priority;
 	int xscr,yscr;
 	int x;
@@ -1137,7 +1137,7 @@ SCREEN_UPDATE( x68000 )
 	}
 //  rect.max_x=state->m_crtc.width;
 //  rect.max_y=state->m_crtc.height;
-	bitmap_fill(bitmap,cliprect,0);
+	bitmap.fill(0, cliprect);
 
 	if(state->m_sysport.contrast == 0)  // if monitor contrast is 0, then don't bother displaying anything
 		return 0;
@@ -1149,23 +1149,23 @@ SCREEN_UPDATE( x68000 )
 	rect.max_x=state->m_crtc.hend;
 	rect.max_y=state->m_crtc.vend;
 
-	if(rect.min_y < cliprect->min_y)
-		rect.min_y = cliprect->min_y;
-	if(rect.max_y > cliprect->max_y)
-		rect.max_y = cliprect->max_y;
+	if(rect.min_y < cliprect.min_y)
+		rect.min_y = cliprect.min_y;
+	if(rect.max_y > cliprect.max_y)
+		rect.max_y = cliprect.max_y;
 
 	// update tiles
-	//rom = screen->machine().region("user1")->base();
+	//rom = screen.machine().region("user1")->base();
 	for(x=0;x<256;x++)
 	{
 		if(state->m_video.tile16_dirty[x] != 0)
 		{
-			gfx_element_mark_dirty(screen->machine().gfx[1], x);
+			gfx_element_mark_dirty(screen.machine().gfx[1], x);
 			state->m_video.tile16_dirty[x] = 0;
 		}
 		if(state->m_video.tile8_dirty[x] != 0)
 		{
-			gfx_element_mark_dirty(screen->machine().gfx[0], x);
+			gfx_element_mark_dirty(screen.machine().gfx[0], x);
 			state->m_video.tile8_dirty[x] = 0;
 		}
 	}
@@ -1174,44 +1174,44 @@ SCREEN_UPDATE( x68000 )
 	{
 		// Graphics screen(s)
 		if(priority == state->m_video.gfx_pri)
-			x68k_draw_gfx(screen->machine(),bitmap,rect);
+			x68k_draw_gfx(screen.machine(),bitmap,rect);
 
 		// Sprite / BG Tiles
 		if(priority == state->m_video.sprite_pri /*&& (state->m_spritereg[0x404] & 0x0200)*/ && (state->m_video.reg[2] & 0x0040))
 		{
-			x68k_draw_sprites(screen->machine(), bitmap,1,rect);
+			x68k_draw_sprites(screen.machine(), bitmap,1,rect);
 			if((state->m_spritereg[0x404] & 0x0008))
 			{
 				if((state->m_spritereg[0x404] & 0x0030) == 0x10)  // BG1 TXSEL
 				{
 					tilemap_set_scrollx(x68k_bg0,0,(state->m_spritereg[0x402] - state->m_crtc.hbegin) & 0x3ff);
 					tilemap_set_scrolly(x68k_bg0,0,(state->m_spritereg[0x403] - state->m_crtc.vbegin) & 0x3ff);
-					tilemap_draw(bitmap,&rect,x68k_bg0,0,0);
+					tilemap_draw(bitmap,rect,x68k_bg0,0,0);
 				}
 				else
 				{
 					tilemap_set_scrollx(x68k_bg1,0,(state->m_spritereg[0x402] - state->m_crtc.hbegin) & 0x3ff);
 					tilemap_set_scrolly(x68k_bg1,0,(state->m_spritereg[0x403] - state->m_crtc.vbegin) & 0x3ff);
-					tilemap_draw(bitmap,&rect,x68k_bg1,0,0);
+					tilemap_draw(bitmap,rect,x68k_bg1,0,0);
 				}
 			}
-			x68k_draw_sprites(screen->machine(),bitmap,2,rect);
+			x68k_draw_sprites(screen.machine(),bitmap,2,rect);
 			if((state->m_spritereg[0x404] & 0x0001))
 			{
 				if((state->m_spritereg[0x404] & 0x0006) == 0x02)  // BG0 TXSEL
 				{
 					tilemap_set_scrollx(x68k_bg0,0,(state->m_spritereg[0x400] - state->m_crtc.hbegin) & 0x3ff);
 					tilemap_set_scrolly(x68k_bg0,0,(state->m_spritereg[0x401] - state->m_crtc.vbegin) & 0x3ff);
-					tilemap_draw(bitmap,&rect,x68k_bg0,0,0);
+					tilemap_draw(bitmap,rect,x68k_bg0,0,0);
 				}
 				else
 				{
 					tilemap_set_scrollx(x68k_bg1,0,(state->m_spritereg[0x400] - state->m_crtc.hbegin) & 0x3ff);
 					tilemap_set_scrolly(x68k_bg1,0,(state->m_spritereg[0x401] - state->m_crtc.vbegin) & 0x3ff);
-					tilemap_draw(bitmap,&rect,x68k_bg1,0,0);
+					tilemap_draw(bitmap,rect,x68k_bg1,0,0);
 				}
 			}
-			x68k_draw_sprites(screen->machine(),bitmap,3,rect);
+			x68k_draw_sprites(screen.machine(),bitmap,3,rect);
 		}
 
 		// Text screen
@@ -1220,24 +1220,24 @@ SCREEN_UPDATE( x68000 )
 			xscr = (state->m_crtc.reg[10] & 0x3ff);
 			yscr = (state->m_crtc.reg[11] & 0x3ff);
 			if(!(state->m_crtc.reg[20] & 0x1000))  // if text layer is set to buffer, then it's not visible
-				x68k_draw_text(screen->machine(),bitmap,xscr,yscr,rect);
+				x68k_draw_text(screen.machine(),bitmap,xscr,yscr,rect);
 		}
 	}
 
 #ifdef MAME_DEBUG
-	if(screen->machine().input().code_pressed(KEYCODE_I))
+	if(screen.machine().input().code_pressed(KEYCODE_I))
 	{
 		state->m_mfp.isra = 0;
 		state->m_mfp.isrb = 0;
 //      mfp_trigger_irq(MFP_IRQ_GPIP6);
 //      cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x43);
 	}
-	if(screen->machine().input().code_pressed(KEYCODE_9))
+	if(screen.machine().input().code_pressed(KEYCODE_9))
 	{
 		state->m_sprite_shift--;
 		popmessage("Sprite shift = %i",state->m_sprite_shift);
 	}
-	if(screen->machine().input().code_pressed(KEYCODE_0))
+	if(screen.machine().input().code_pressed(KEYCODE_0))
 	{
 		state->m_sprite_shift++;
 		popmessage("Sprite shift = %i",state->m_sprite_shift);

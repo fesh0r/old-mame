@@ -65,7 +65,7 @@ VIDEO_START( lviv )
 
 SCREEN_UPDATE( lviv )
 {
-	lviv_state *state = screen->machine().driver_data<lviv_state>();
+	lviv_state *state = screen.machine().driver_data<lviv_state>();
 	int x,y;
 	int pen;
 	UINT8 data;
@@ -76,16 +76,16 @@ SCREEN_UPDATE( lviv )
 			data = state->m_video_ram[y*64+x/4];
 
 			pen = state->m_colortable[0][((data & 0x08) >> 3) | ((data & 0x80) >> (3+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 0) = pen;
+			bitmap.pix16(y, x + 0) = pen;
 
 			pen = state->m_colortable[0][((data & 0x04) >> 2) | ((data & 0x40) >> (2+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 1) = pen;
+			bitmap.pix16(y, x + 1) = pen;
 
 			pen = state->m_colortable[0][((data & 0x02) >> 1) | ((data & 0x20) >> (1+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 2) = pen;
+			bitmap.pix16(y, x + 2) = pen;
 
 			pen = state->m_colortable[0][((data & 0x01) >> 0) | ((data & 0x10) >> (0+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 3) = pen;
+			bitmap.pix16(y, x + 3) = pen;
 		}
 	return 0;
 }

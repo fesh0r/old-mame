@@ -313,7 +313,7 @@ WRITE8_DEVICE_HANDLER ( terminal_write )
 /***************************************************************************
     VIDEO HARDWARE
 ***************************************************************************/
-static void generic_terminal_update(device_t *device, bitmap_t *bitmap, const rectangle *cliprect)
+static void generic_terminal_update(device_t *device, bitmap_t &bitmap, const rectangle &cliprect)
 {
 	terminal_state *term = get_safe_token(device);
 	UINT8 options = input_port_read(device, "TERM_CONF");
@@ -327,7 +327,7 @@ static void generic_terminal_update(device_t *device, bitmap_t *bitmap, const re
 	{
 		for (ra = 0; ra < 10; ra++)
 		{
-			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16  *p = &bitmap.pix16(sy++);
 
 			for (x = ma; x < ma + TERMINAL_WIDTH; x++)
 			{
@@ -492,7 +492,7 @@ static VIDEO_START( terminal )
 
 static SCREEN_UPDATE(terminal )
 {
-	device_t *devconf = screen->machine().device(TERMINAL_TAG);
+	device_t *devconf = screen.machine().device(TERMINAL_TAG);
 	generic_terminal_update( devconf, bitmap, cliprect);
 	return 0;
 }

@@ -591,7 +591,7 @@ static VIDEO_START( socrates )
 
 static SCREEN_UPDATE( socrates )
 {
-	socrates_state *state = screen->machine().driver_data<socrates_state>();
+	socrates_state *state = screen.machine().driver_data<socrates_state>();
 	static const UINT8 fixedcolors[8] =
 	{
 	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0xF7
@@ -610,7 +610,7 @@ static SCREEN_UPDATE( socrates )
 				colidx &= 0xF;
 				if (colidx > 7) color=state->m_videoram[0xF000+(colidx<<8)+((y+state->m_scroll_offset)&0xFF)];
 				else color=fixedcolors[colidx];
-				*BITMAP_ADDR16(bitmap, y,  x) = color;
+				bitmap.pix16(y, x) = color;
 			}
 			else
 			{
@@ -619,7 +619,7 @@ static SCREEN_UPDATE( socrates )
 				colidx &= 0xF;
 				if (colidx > 7) color=state->m_videoram[0xF000+(colidx<<8)+((y+state->m_scroll_offset)&0xFF)];
 				else color=fixedcolors[colidx];
-				*BITMAP_ADDR16(bitmap, y,  x) = color;
+				bitmap.pix16(y, x) = color;
 			}
 		}
 	}

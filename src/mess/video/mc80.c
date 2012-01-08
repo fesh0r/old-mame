@@ -98,7 +98,7 @@ VIDEO_START( mc8020 )
 
 SCREEN_UPDATE( mc8020 )
 {
-	mc80_state *state = screen->machine().driver_data<mc80_state>();
+	mc80_state *state = screen.machine().driver_data<mc80_state>();
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
 
@@ -106,7 +106,7 @@ SCREEN_UPDATE( mc8020 )
 	{
 		for (ra = 0; ra < 16; ra++)
 		{
-			UINT16 *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16 *p = &bitmap.pix16(sy++);
 
 			for (x = ma; x < ma + 32; x++)
 			{
@@ -145,13 +145,13 @@ VIDEO_START( mc8030 )
 
 SCREEN_UPDATE( mc8030 )
 {
-	mc80_state *state = screen->machine().driver_data<mc80_state>();
+	mc80_state *state = screen.machine().driver_data<mc80_state>();
 	UINT8 gfx;
 	UINT16 y=0,ma=0,x;
 
 	for(y = 0; y < 256; y++ )
 	{
-		UINT16 *p = BITMAP_ADDR16(bitmap, y, 0);
+		UINT16 *p = &bitmap.pix16(y);
 		{
 			for (x = ma; x < ma + 64; x++)
 			{

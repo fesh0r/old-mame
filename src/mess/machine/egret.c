@@ -119,7 +119,7 @@ void egret_device::send_port(address_space &space, UINT8 offset, UINT8 data)
 
 			if ((data & 0x80) != last_adb)
 			{
-/*              if (data & 0x80)
+/*                if (data & 0x80)
                 {
                     printf("EG ADB: 1->0 time %lld\n", m_maincpu->total_cycles()-last_adb_time);
                 }
@@ -129,6 +129,7 @@ void egret_device::send_port(address_space &space, UINT8 offset, UINT8 data)
                 }*/
 				last_adb = data & 0x80;
 				last_adb_time = m_maincpu->total_cycles();
+                adb_in = (data & 0x80) ? true : false;
 			}
 			break;
 
@@ -212,11 +213,11 @@ READ8_MEMBER( egret_device::ports_r )
 	switch (offset)
 	{
 		case 0: 	// port A
-//          incoming |= adb_in ? 0x40 : 0;
+          incoming |= adb_in ? 0x40 : 0;
 
 			if (egret_controls_power)
 			{
-				incoming |= 0x40 | 0x02;	// indicate soft power, indicate chassis switch on
+				incoming |= 0x02;	// indicate soft power, indicate chassis switch on
 			}
 			else
 			{
@@ -306,11 +307,9 @@ READ8_MEMBER( egret_device::onesec_r )
 
 WRITE8_MEMBER( egret_device::onesec_w )
 {
-	static const float rates[4] = { 0.5f, 1.0f, 2.0f, 4.0f };
-
 //  printf("%02x to one-second control\n", data);
 
-	m_timer->adjust(attotime::from_hz(rates[data&3]), 0, attotime::from_hz(rates[data&3]));
+	m_timer->adjust(attotime::from_seconds(1), 0, attotime::from_seconds(1));
 
 	if ((onesec & 0x40) && !(data & 0x40))
 	{
@@ -450,7 +449,7 @@ void egret_device::nvram_default()
 	pram[0x16] = 0xcc;
 	pram[0x17] = 0x0a;
 	pram[0x1d] = 0x02;
-	pram[0x17] = 0x63;
+	pram[0x1e] = 0x63;
 	pram[0x6f] = 0x28;
 	pram[0x70] = 0x83;
 	pram[0x71] = 0x26;

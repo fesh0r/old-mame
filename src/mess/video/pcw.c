@@ -10,9 +10,9 @@
 #include "includes/pcw.h"
 #include "machine/ram.h"
 
-INLINE void pcw_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
+INLINE void pcw_plot_pixel(bitmap_t &bitmap, int x, int y, UINT32 color)
 {
-	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
+	bitmap.pix16(y, x) = (UINT16)color;
 }
 
 /***************************************************************************
@@ -28,7 +28,7 @@ VIDEO_START( pcw )
 	rect.max_y = PCW_PRINTER_HEIGHT - 1;
 
 	state->m_prn_output = auto_bitmap_alloc(machine,PCW_PRINTER_WIDTH,PCW_PRINTER_HEIGHT,BITMAP_FORMAT_INDEXED16);
-	bitmap_fill(state->m_prn_output,&rect,1);
+	state->m_prn_output->fill(1, rect);
 }
 
 /* two colours */
@@ -58,7 +58,7 @@ PALETTE_INIT( pcw )
 ***************************************************************************/
 SCREEN_UPDATE( pcw )
 {
-	pcw_state *state = screen->machine().driver_data<pcw_state>();
+	pcw_state *state = screen.machine().driver_data<pcw_state>();
 	int x,y,b;
 	unsigned short roller_ram_offs;
 	unsigned char *roller_ram_ptr;
@@ -85,14 +85,14 @@ SCREEN_UPDATE( pcw )
 		rect.min_y = 0;
 		rect.max_x = PCW_SCREEN_WIDTH;
 		rect.max_y = PCW_BORDER_HEIGHT;
-		bitmap_fill(bitmap, &rect, pen0);
+		bitmap.fill(pen0, rect);
 
 		/* render bottom border */
 		rect.min_x = 0;
 		rect.min_y = PCW_BORDER_HEIGHT + PCW_DISPLAY_HEIGHT;
 		rect.max_x = PCW_SCREEN_WIDTH;
 		rect.max_y = rect.min_y + PCW_BORDER_HEIGHT;
-		bitmap_fill(bitmap, &rect, pen0);
+		bitmap.fill(pen0, rect);
 
 		/* offset to start in table */
 		roller_ram_offs = (state->m_roller_ram_offset<<1);
@@ -105,14 +105,14 @@ SCREEN_UPDATE( pcw )
 
 			x = PCW_BORDER_WIDTH;
 
-			roller_ram_ptr = screen->machine().device<ram_device>(RAM_TAG)->pointer() + state->m_roller_ram_addr + roller_ram_offs;
+			roller_ram_ptr = screen.machine().device<ram_device>(RAM_TAG)->pointer() + state->m_roller_ram_addr + roller_ram_offs;
 
 			/* get line address */
 			/* b16-14 control which bank the line is to be found in, b13-3 the address in the bank (in 16-byte units), and b2-0 the offset. Thus a roller RAM address bbbxxxxxxxxxxxyyy indicates bank bbb, address 00xxxxxxxxxxx0yyy. */
 			line_data = ((unsigned char *)roller_ram_ptr)[0] | (((unsigned char *)roller_ram_ptr)[1]<<8);
 
 			/* calculate address of pixel data */
-			line_ptr = screen->machine().device<ram_device>(RAM_TAG)->pointer() + ((line_data & 0x0e000)<<1) + ((line_data & 0x01ff8)<<1) + (line_data & 0x07);
+			line_ptr = screen.machine().device<ram_device>(RAM_TAG)->pointer() + ((line_data & 0x0e000)<<1) + ((line_data & 0x01ff8)<<1) + (line_data & 0x07);
 
 			for (by=0; by<90; by++)
 			{
@@ -180,14 +180,14 @@ SCREEN_UPDATE( pcw )
 		rect.max_x = PCW_SCREEN_WIDTH;
 		rect.max_y = PCW_SCREEN_HEIGHT;
 
-		bitmap_fill(bitmap, &rect, pen0);
+		bitmap.fill(pen0, rect);
 	}
 	return 0;
 }
 
 SCREEN_UPDATE( pcw_printer )
 {
-	pcw_state *state = screen->machine().driver_data<pcw_state>();
+	pcw_state *state = screen.machine().driver_data<pcw_state>();
 
 	// printer output
 	rectangle rect;
@@ -196,14 +196,14 @@ SCREEN_UPDATE( pcw_printer )
 	rect.max_x = PCW_PRINTER_WIDTH - 1;
 	rect.max_y = PCW_PRINTER_HEIGHT - 1;
 	feed = -(state->m_paper_feed / 2);
-	copyscrollbitmap(bitmap,state->m_prn_output,0,NULL,1,&feed,&rect);
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-1,state->m_printer_headpos) = 0;
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-2,state->m_printer_headpos) = 0;
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-3,state->m_printer_headpos) = 0;
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-1,state->m_printer_headpos-1) = 0;
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-2,state->m_printer_headpos-1) = 0;
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-1,state->m_printer_headpos+1) = 0;
-	*BITMAP_ADDR16(bitmap,PCW_PRINTER_HEIGHT-2,state->m_printer_headpos+1) = 0;
+	copyscrollbitmap(bitmap,*state->m_prn_output,0,NULL,1,&feed,rect);
+	bitmap.pix16(PCW_PRINTER_HEIGHT-1, state->m_printer_headpos) = 0;
+	bitmap.pix16(PCW_PRINTER_HEIGHT-2, state->m_printer_headpos) = 0;
+	bitmap.pix16(PCW_PRINTER_HEIGHT-3, state->m_printer_headpos) = 0;
+	bitmap.pix16(PCW_PRINTER_HEIGHT-1, state->m_printer_headpos-1) = 0;
+	bitmap.pix16(PCW_PRINTER_HEIGHT-2, state->m_printer_headpos-1) = 0;
+	bitmap.pix16(PCW_PRINTER_HEIGHT-1, state->m_printer_headpos+1) = 0;
+	bitmap.pix16(PCW_PRINTER_HEIGHT-2, state->m_printer_headpos+1) = 0;
 	return 0;
 }
 

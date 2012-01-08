@@ -392,7 +392,7 @@ static const UINT8 char_glyphs[0x80][8] =
 	{ 0xff, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xff },
 };
 
-static void glyph_print(running_machine &machine, bitmap_t *bitmap, INT32 x, INT32 y, const char *msg, ...)
+static void glyph_print(running_machine &machine, bitmap_t &bitmap, INT32 x, INT32 y, const char *msg, ...)
 {
 	va_list arg_list;
 	char buf[32768];
@@ -412,7 +412,7 @@ static void glyph_print(running_machine &machine, bitmap_t *bitmap, INT32 x, INT
 			INT32 line = 0;
 			for(line = 0; line < 8; line++)
 			{
-				UINT32 *d = BITMAP_ADDR32(bitmap, y + line, 0);
+				UINT32 *d = &bitmap.pix32(y + line);
 				INT32 bit = 0;
 				for(bit = 0; bit < 8; bit++)
 				{
@@ -443,9 +443,9 @@ static void glyph_print(running_machine &machine, bitmap_t *bitmap, INT32 x, INT
 
 static SCREEN_UPDATE( ssem )
 {
-	ssem_state *state = screen->machine().driver_data<ssem_state>();
+	ssem_state *state = screen.machine().driver_data<ssem_state>();
 	UINT32 line = 0;
-	device_t *ssem_cpu = screen->machine().device("maincpu");
+	device_t *ssem_cpu = screen.machine().device("maincpu");
 	UINT32 accum = cpu_get_reg(ssem_cpu, SSEM_A);
 	UINT32 bit = 0;
 	UINT32 word = 0;
@@ -460,11 +460,11 @@ static SCREEN_UPDATE( ssem )
 		{
 			if(word & (1 << (31 - bit)))
 			{
-				glyph_print(screen->machine(), bitmap, bit << 3, line << 3, "%c", line == state->m_store_line ? 4 : 2);
+				glyph_print(screen.machine(), bitmap, bit << 3, line << 3, "%c", line == state->m_store_line ? 4 : 2);
 			}
 			else
 			{
-				glyph_print(screen->machine(), bitmap, bit << 3, line << 3, "%c", line == state->m_store_line ? 3 : 1);
+				glyph_print(screen.machine(), bitmap, bit << 3, line << 3, "%c", line == state->m_store_line ? 3 : 1);
 			}
 		}
 	}
@@ -473,11 +473,11 @@ static SCREEN_UPDATE( ssem )
 	{
 		if(accum & (1 << bit))
 		{
-			glyph_print(screen->machine(), bitmap, bit << 3, 264, "%c", 2);
+			glyph_print(screen.machine(), bitmap, bit << 3, 264, "%c", 2);
 		}
 		else
 		{
-			glyph_print(screen->machine(), bitmap, bit << 3, 264, "%c", 1);
+			glyph_print(screen.machine(), bitmap, bit << 3, 264, "%c", 1);
 		}
 	}
 
@@ -485,7 +485,7 @@ static SCREEN_UPDATE( ssem )
 				   (state->m_store[(state->m_store_line << 2) | 1] << 16) |
 				   (state->m_store[(state->m_store_line << 2) | 2] <<  8) |
 				   (state->m_store[(state->m_store_line << 2) | 3] <<  0));
-	glyph_print(screen->machine(), bitmap, 0, 272, "LINE:%02d  VALUE:%08x  HALT:%d", state->m_store_line, word, cpu_get_reg(ssem_cpu, SSEM_HALT));
+	glyph_print(screen.machine(), bitmap, 0, 272, "LINE:%02d  VALUE:%08x  HALT:%d", state->m_store_line, word, cpu_get_reg(ssem_cpu, SSEM_HALT));
 	return 0;
 }
 
@@ -644,7 +644,6 @@ static MACHINE_CONFIG_START( ssem, ssem_state )
 	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MCFG_SCREEN_SIZE(256, 280)
 	MCFG_SCREEN_VISIBLE_AREA(0, 255, 0, 279)
-	MCFG_VIDEO_START(generic_bitmapped)
 	MCFG_SCREEN_UPDATE(ssem)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

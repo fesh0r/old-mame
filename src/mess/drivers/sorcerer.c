@@ -347,13 +347,13 @@ static SCREEN_UPDATE( sorcerer )
 {
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0xf080,x;
-	UINT8 *RAM = screen->machine().region("maincpu")->base();
+	UINT8 *RAM = screen.machine().region("maincpu")->base();
 
 	for (y = 0; y < 30; y++)
 	{
 		for (ra = 0; ra < 8; ra++)
 		{
-			UINT16 *p = BITMAP_ADDR16(bitmap, sy++, 0);
+			UINT16 *p = &bitmap.pix16(sy++);
 
 			for (x = ma; x < ma+64; x++)
 			{

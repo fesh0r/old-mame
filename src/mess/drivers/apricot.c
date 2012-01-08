@@ -183,12 +183,12 @@ static const wd17xx_interface apricot_wd17xx_intf =
 
 static SCREEN_UPDATE( apricot )
 {
-	apricot_state *state = screen->machine().driver_data<apricot_state>();
+	apricot_state *state = screen.machine().driver_data<apricot_state>();
 
 	if (!state->m_display_on)
 		state->m_crtc->update( bitmap, cliprect);
 	else
-		bitmap_fill(bitmap, cliprect, 0);
+		bitmap.fill(0, cliprect);
 
 	return 0;
 }
@@ -217,7 +217,7 @@ static MC6845_UPDATE_ROW( apricot_update_row )
 			{
 				int color = fill ? 1 : BIT(data, x);
 				if (BIT(code, 15)) color = !color; /* reverse? */
-				*BITMAP_ADDR16(bitmap, y, x + i*10) = color ? 1 + BIT(code, 14) : 0;
+				bitmap.pix16(y, x + i*10) = color ? 1 + BIT(code, 14) : 0;
 			}
 		}
 	}

@@ -7,15 +7,6 @@
 
 **********************************************************************/
 
-/*
-
-    TODO:
-
-    - scsihd.c wants the harddisk device to be at the driver level
-    - scsihd.c/scsibus.c have a fixed block size of 512
-
-*/
-
 #include "d9060.h"
 
 
@@ -30,6 +21,8 @@
 
 #define M6502_HDC_TAG	"4a"
 #define M6522_TAG		"4b"
+
+#define AM2910_TAG		"9d"
 
 #define SASIBUS_TAG		"sasi"
 
@@ -87,6 +80,13 @@ ROM_START( d9060 )
 	ROM_REGION( 0x800, M6502_HDC_TAG, 0 )
 	ROM_LOAD_OPTIONAL( "300515-reva.4c", 0x000, 0x800, CRC(99e096f7) SHA1(a3d1deb27bf5918b62b89c27fa3e488eb8f717a4) )
 	ROM_LOAD( "300515-revb.4c", 0x000, 0x800, CRC(49adf4fb) SHA1(59dafbd4855083074ba8dc96a04d4daa5b76e0d6) )
+
+	ROM_REGION( 0x5000, AM2910_TAG, 0 )
+	ROM_LOAD( "441.5b", 0x0000, 0x1000, NO_DUMP ) // 82S137
+	ROM_LOAD( "442.6b", 0x1000, 0x1000, NO_DUMP ) // 82S137
+	ROM_LOAD( "573.7b", 0x2000, 0x1000, NO_DUMP ) // 82S137
+	ROM_LOAD( "444.8b", 0x3000, 0x1000, NO_DUMP ) // 82S137
+	ROM_LOAD( "445.9b", 0x4000, 0x1000, NO_DUMP ) // 82S137
 ROM_END
 
 
@@ -243,13 +243,13 @@ READ8_MEMBER( base_d9060_device::riot1_pa_r )
 
 	UINT8 data = 0;
 
-	/* end or identify in */
+	// end or identify in
 	data |= m_bus->eoi_r() << 5;
 
-	/* data valid in */
+	// data valid in
 	data |= m_bus->dav_r() << 6;
 
-	/* attention */
+	// attention
 	data |= !m_bus->atn_r() << 7;
 
 	return data;
@@ -272,19 +272,19 @@ WRITE8_MEMBER( base_d9060_device::riot1_pa_w )
 
     */
 
-	/* attention acknowledge */
+	// attention acknowledge
 	m_atna = BIT(data, 0);
 
-	/* data accepted out */
+	// data accepted out
 	m_daco = BIT(data, 1);
 
-	/* not ready for data out */
+	// not ready for data out
 	m_rfdo = BIT(data, 2);
 
-	/* end or identify out */
+	// end or identify out
 	m_bus->eoi_w(this, BIT(data, 3));
 
-	/* data valid out */
+	// data valid out
 	m_bus->dav_w(this, BIT(data, 4));
 
 	update_ieee_signals();
@@ -467,7 +467,7 @@ static MACHINE_CONFIG_FRAGMENT( d9060 )
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_4MHz/4, via_intf)
 
 	MCFG_SCSIBUS_ADD(SASIBUS_TAG, sasi_intf)
-	//MCFG_HARDDISK_ADD("harddisk0") this needs to be in pet.c for now
+	MCFG_HARDDISK_ADD("harddisk0")
 MACHINE_CONFIG_END
 
 
@@ -565,7 +565,7 @@ void base_d9060_device::device_start()
 
 void base_d9060_device::device_reset()
 {
-	init_scsibus(m_sasibus);
+	init_scsibus(m_sasibus, 256);
 
 	m_maincpu->set_input_line(M6502_SET_OVERFLOW, ASSERT_LINE);
 	m_maincpu->set_input_line(M6502_SET_OVERFLOW, CLEAR_LINE);
@@ -575,7 +575,7 @@ void base_d9060_device::device_reset()
 
 
 //-------------------------------------------------
-//  m_bus->atn -
+//  ieee488_atn - attention
 //-------------------------------------------------
 
 void base_d9060_device::ieee488_atn(int state)
@@ -588,7 +588,7 @@ void base_d9060_device::ieee488_atn(int state)
 
 
 //-------------------------------------------------
-//  m_bus->ifc -
+//  ieee488_ifc - interface clear
 //-------------------------------------------------
 
 void base_d9060_device::ieee488_ifc(int state)

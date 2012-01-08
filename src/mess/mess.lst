@@ -450,6 +450,7 @@ macpb145b  // 1993 Apple Macintosh PowerBook 145B
 maclc3	// 1993 Apple Macintosh LC III
 maciivx // 1993 Apple Macintosh IIvx
 maciivi // 1993 Apple Macintosh IIvi
+maclc520	// 1993 Apple Macintosh LC 520
 pmac6100  // 1994 Apple Power Macintosh 6100
 
 // Atari
@@ -639,6 +640,7 @@ pcega    // 1987 PC with EGA
 bw230	// 1985 Bondwell (CGA)
 europc	// 1988 Schneider Euro PC (CGA or Hercules)
 pc7000  // 1985 Sharp PC-7000
+pcd		// Siemens PC-D
 
 // PC Junior
 ibmpcjr   // 1984 IBM PC Jr
@@ -741,6 +743,7 @@ palmm100  // Palm m100
 palmm130  // Palm m130
 palmm505  // Palm m505
 palmm515  // Palm m515
+palmz22   // Palm Z22
 visor	 // Palm Visor Edge
 spt1500   // Symbol SPT 1500
 spt1700   // Symbol SPT 1700
@@ -1288,6 +1291,7 @@ vt520 // 1994 Digital Equipment Corporation
 vk100 // 1980 Digital Equipment Corporation
 dectalk // 1982 Digital Equipment Corporation
 mc7105 // Elektronika MC7105
+rainbow // DEC Rainbow 100B
 
 // Memotech
 mtx512	// 1983 Memotech MTX 512
@@ -1573,6 +1577,7 @@ dgama88  // 1988 Didaktik Gama 88
 dgama89  // 1989 Didaktik Gama 89
 didakt90 // 1990 Didaktik Skalica 90
 didakm91 // 1991 Didaktik M 91
+didakm92 // 1992 Didaktik M 92
 didaktk  // 1992 Didaktik Kompakt
 didakm93 // 1993 Didaktik M 93
 
@@ -1799,7 +1804,6 @@ hector1
 victor
 poly880
 sc1
-sc1v2
 sc2
 chessmst
 sys2900
@@ -2069,3 +2073,11 @@ mbc200
 csc
 chesstrv
 alphatro
+ax20
+mini2440
+meritum
+meritum_net
+konin
+m79152pc
+dmv
+rm380z
