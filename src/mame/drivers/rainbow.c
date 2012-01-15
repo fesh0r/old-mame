@@ -176,8 +176,8 @@ Notes on Rainbow Islands Extra by Robert Gallagher
    Green - Protection Fairy, gives you the protection fairy for about 8 seconds at the beginning
            of each round, or after you die. (NOT perm. like RI, code at $C528 in RIE handles this,
            and is distinctly different from the code at $BC8C in RI)
-   Blue - Yellow Potion, gives you perm. fast rbisland power
-   Indigo - Red Potion, gives you perm. 2X rbisland power
+   Blue - Yellow Potion, gives you perm. fast rainbow power
+   Indigo - Red Potion, gives you perm. 2X rainbow power
    Violet - Shoes, gives you perm. fast feet.
 
    Unlike the secret rooms in Rainbow Islands, in Rainbow Islands Extra, only 2 letters of the code
@@ -194,10 +194,10 @@ Notes on Rainbow Islands Extra by Robert Gallagher
    If you enter all 10 secret rooms in Rainbow Islands Extra, and do NOT collect the powerups in
    _any_ of the rooms, you will receive "SPECIAL BIG BONUS !! 50000000 PTS."
 
-   If you enter all 10 secret rooms, and do NOT collect the bubble-rbisland power in secret room 10,
+   If you enter all 10 secret rooms, and do NOT collect the bubble-rainbow power in secret room 10,
    (though you may collect them in others) you will receive "SPECIAL BIG BONUS !! 10000000 PTS."
 
-   If you collect the bubble-rbisland power in secret room 10, you will receive "ALL ROOM CLEAR
+   If you collect the bubble-rainbow power in secret room 10, you will receive "ALL ROOM CLEAR
    5000000" bonus instead.
 
    In Rainbow Islands Extra (as in Rainbow Islands), if you collect 2 of any colour 'cane'...
@@ -260,7 +260,7 @@ that can be entered on the copyright screen:
     L -> left
     R -> right
     J -> jump
-    B -> rbisland
+    B -> rainbow
     S -> start
 
                   |  regular   |  extra
@@ -692,10 +692,9 @@ static MACHINE_CONFIG_START( rbisland, rbisland_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE(rbisland)
+	MCFG_SCREEN_UPDATE_STATIC(rainbow)
 
 	MCFG_GFXDECODE(rbisland)
 	MCFG_PALETTE_LENGTH(8192)
@@ -734,10 +733,9 @@ static MACHINE_CONFIG_START( jumping, rbisland_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE(jumping)
+	MCFG_SCREEN_UPDATE_STATIC(jumping)
 
 	MCFG_GFXDECODE(jumping)
 	MCFG_PALETTE_LENGTH(8192)

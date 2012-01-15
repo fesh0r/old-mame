@@ -278,6 +278,12 @@ static void I386OP(cld)(i386_state *cpustate)				// Opcode 0xfc
 
 static void I386OP(cli)(i386_state *cpustate)				// Opcode 0xfa
 {
+	if(PROTECTED_MODE)
+	{
+		UINT8 IOPL = cpustate->IOP1 | (cpustate->IOP2 << 1);
+		if(cpustate->CPL > IOPL)
+			FAULT(FAULT_GP,0);
+	}
 	cpustate->IF = 0;
 	CYCLES(cpustate,CYCLES_CLI);
 }
@@ -910,7 +916,7 @@ static void I386OP(arpl)(i386_state *cpustate)           // Opcode 0x63
 	UINT8 modrm = FETCH(cpustate);
 	UINT8 flag = 0;
 
-	if(PROTECTED_MODE)
+	if(PROTECTED_MODE && !V8086_MODE)
 	{
 		 if( modrm >= 0xc0 ) {
 			src = LOAD_REG16(modrm);
@@ -1578,6 +1584,12 @@ static void I386OP(std)(i386_state *cpustate)				// Opcode 0xfd
 
 static void I386OP(sti)(i386_state *cpustate)				// Opcode 0xfb
 {
+	if(PROTECTED_MODE)
+	{
+		UINT8 IOPL = cpustate->IOP1 | (cpustate->IOP2 << 1);
+		if(cpustate->CPL > IOPL)
+			FAULT(FAULT_GP,0);
+	}
 	cpustate->delayed_interrupt_enable = 1;  // IF is set after the next instruction.
 	CYCLES(cpustate,CYCLES_STI);
 }
@@ -2207,13 +2219,21 @@ static void I386OP(segment_SS)(i386_state *cpustate)		// Opcode 0x36
 
 static void I386OP(operand_size)(i386_state *cpustate)		// Opcode 0x66
 {
-	cpustate->operand_size ^= 1;
+	if(cpustate->operand_prefix == 0)
+	{
+		cpustate->operand_size ^= 1;
+		cpustate->operand_prefix = 1;
+	}
 	I386OP(decode_opcode)(cpustate);
 }
 
 static void I386OP(address_size)(i386_state *cpustate)		// Opcode 0x67
 {
-	cpustate->address_size ^= 1;
+	if(cpustate->address_prefix == 0)
+	{
+		cpustate->address_size ^= 1;
+		cpustate->address_prefix = 1;
+	}
 	I386OP(decode_opcode)(cpustate);
 }
 
@@ -2225,20 +2245,26 @@ static void I386OP(nop)(i386_state *cpustate)				// Opcode 0x90
 static void I386OP(int3)(i386_state *cpustate)				// Opcode 0xcc
 {
 	CYCLES(cpustate,CYCLES_INT3);
+	cpustate->ext = 0; // not an external interrupt
 	i386_trap(cpustate,3, 1, 0);
+	cpustate->ext = 1;
 }
 
 static void I386OP(int)(i386_state *cpustate)				// Opcode 0xcd
 {
 	int interrupt = FETCH(cpustate);
 	CYCLES(cpustate,CYCLES_INT);
+	cpustate->ext = 0; // not an external interrupt
 	i386_trap(cpustate,interrupt, 1, 0);
+	cpustate->ext = 1;
 }
 
 static void I386OP(into)(i386_state *cpustate)				// Opcode 0xce
 {
 	if( cpustate->OF ) {
+		cpustate->ext = 0;
 		i386_trap(cpustate,4, 1, 0);
+		cpustate->ext = 1;
 		CYCLES(cpustate,CYCLES_INTO_OF1);
 	}
 	else
@@ -2261,8 +2287,8 @@ static void I386OP(escape)(i386_state *cpustate)			// Opcodes 0xd8 - 0xdf
 
 static void I386OP(hlt)(i386_state *cpustate)				// Opcode 0xf4
 {
-	// TODO: We need to raise an exception in protected mode and when
-	// the current privilege level is not zero
+	if(PROTECTED_MODE && cpustate->CPL != 0)
+		FAULT(FAULT_GP,0);
 	cpustate->halted = 1;
 	CYCLES(cpustate,CYCLES_HLT);
 	if (cpustate->cycles > 0)
@@ -2378,6 +2404,12 @@ static void I386OP(wait)(i386_state *cpustate)				// Opcode 0x9B
 
 static void I386OP(lock)(i386_state *cpustate)				// Opcode 0xf0
 {
+	if(PROTECTED_MODE)
+	{
+		UINT8 IOPL = cpustate->IOP1 | (cpustate->IOP2 << 1);
+		if(cpustate->CPL > IOPL)
+			FAULT(FAULT_GP,0);
+	}
 	CYCLES(cpustate,CYCLES_LOCK);		// TODO: Determine correct cycle count
 	I386OP(decode_opcode)(cpustate);
 }

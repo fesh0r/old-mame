@@ -2,6 +2,11 @@
 
 Taxi Driver  (c) 1984 Graphic Techno
 
+XTAL:  10MHz, 8MHz
+CPU:   3 * NEC D780C (clocks unknown)
+SOUND: 2 * AY-3-8910 (clocks unknown)
+OTHER: 5 * M5L8255AP
+
 ***************************************************************************/
 
 #include "emu.h"
@@ -394,10 +399,9 @@ static MACHINE_CONFIG_START( taxidriv, taxidriv_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 27*8-1)
-	MCFG_SCREEN_UPDATE(taxidriv)
+	MCFG_SCREEN_UPDATE_STATIC(taxidriv)
 
 	MCFG_GFXDECODE(taxidriv)
 	MCFG_PALETTE_LENGTH(16)
@@ -454,6 +458,9 @@ ROM_START( taxidriv )
 	ROM_REGION( 0x4000, "gfx5", 0 )	/* not used?? */
     ROM_LOAD( "12.21.ic88",   0x0000, 0x2000, CRC(684b7bb0) SHA1(d83c45ff3adf94c649340227794020482231399f) )
     ROM_LOAD( "13.20.ic89",   0x2000, 0x2000, CRC(d1ef110e) SHA1(e34b6b4b70c783a8cf1296a05d3cec6af5820d0c) )
+
+	ROM_REGION( 0x0100, "proms", 0 )
+	ROM_LOAD( "prom.ic2",  0x0000, 0x0100, NO_DUMP ) // color prom located at edge of pcb
 ROM_END
 
 

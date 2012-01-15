@@ -93,7 +93,7 @@ public:
 	device_t	*m_dma8237_2;
 };
 
-static SCREEN_UPDATE( tetriskr )
+static SCREEN_UPDATE_RGB32( tetriskr )
 {
 	pcxt_state *state = screen.machine().driver_data<pcxt_state>();
 	int x,y;
@@ -102,7 +102,7 @@ static SCREEN_UPDATE( tetriskr )
 
 	//popmessage("%04x",m_start_offs);
 
-	bitmap.fill(get_black_pen(screen.machine()), cliprect);
+	bitmap.fill(RGB_BLACK, cliprect);
 
 	for(y=0;y<200/8;y++)
 	{
@@ -121,13 +121,13 @@ static SCREEN_UPDATE( tetriskr )
 						color |= ((bg_rom[y*320/8+x+(pen_i*0x20000)+yi*0x400+state->m_bg_bank*0x2000+1] >> (7-xi)) & 1) << pen_i;
 
 					if((x+xi)<screen.visible_area().max_x && ((y)+yi)<screen.visible_area().max_y)
-						bitmap.pix16(y*8+yi, x*8+xi) = screen.machine().pens[color];
+						bitmap.pix32(y*8+yi, x*8+xi) = screen.machine().pens[color];
 				}
 			}
 		}
 	}
 
-	SCREEN_UPDATE_CALL(mc6845_cga);
+	SCREEN_UPDATE32_CALL(mc6845_cga);
 	return 0;
 }
 
@@ -202,34 +202,33 @@ static WRITE8_HANDLER( disk_iobank_w )
 Pit8253
 *********************************/
 
-UINT8 pc_speaker_get_spk(running_machine &machine)
+// pc_speaker_get_spk, pc_speaker_set_spkrdata, and pc_speaker_set_input already exists in MESS, can the implementations be merged?
+UINT8 pcxt_speaker_get_spk(running_machine &machine)
 {
 	pcxt_state *state = machine.driver_data<pcxt_state>();
 	return state->m_pc_spkrdata & state->m_pc_input;
 }
 
-
-void pc_speaker_set_spkrdata(running_machine &machine, UINT8 data)
+void pcxt_speaker_set_spkrdata(running_machine &machine, UINT8 data)
 {
 	device_t *speaker = machine.device("speaker");
 	pcxt_state *state = machine.driver_data<pcxt_state>();
 	state->m_pc_spkrdata = data ? 1 : 0;
-	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
+	speaker_level_w( speaker, pcxt_speaker_get_spk(machine) );
 }
 
-
-void pc_speaker_set_input(running_machine &machine, UINT8 data)
+void pcxt_speaker_set_input(running_machine &machine, UINT8 data)
 {
 	device_t *speaker = machine.device("speaker");
 	pcxt_state *state = machine.driver_data<pcxt_state>();
 	state->m_pc_input = data ? 1 : 0;
-	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
+	speaker_level_w( speaker, pcxt_speaker_get_spk(machine) );
 }
 
 
 static WRITE_LINE_DEVICE_HANDLER( ibm5150_pit8253_out2_changed )
 {
-	pc_speaker_set_input( device->machine(), state );
+	pcxt_speaker_set_input( device->machine(), state );
 }
 
 
@@ -304,7 +303,7 @@ static WRITE8_DEVICE_HANDLER( port_b_w )
 
 	/* PPI controller port B*/
 	pit8253_gate2_w(state->m_pit8253, BIT(data, 0));
-	pc_speaker_set_spkrdata( device->machine(), data & 0x02 );
+	pcxt_speaker_set_spkrdata( device->machine(), data & 0x02 );
 	state->m_port_b_data = data;
 // device_t *beep = device->machine().device("beep");
 // device_t *cvsd = device->machine().device("cvsd");
@@ -759,7 +758,7 @@ static MACHINE_CONFIG_DERIVED( tetriskr, filetto )
 
 	MCFG_DEVICE_MODIFY("screen")
 	MCFG_VIDEO_START(pc_cga_superimpose)
-	MCFG_SCREEN_UPDATE(tetriskr)
+	MCFG_SCREEN_UPDATE_STATIC(tetriskr)
 
 	MCFG_DEVICE_REMOVE("voice")
 MACHINE_CONFIG_END
