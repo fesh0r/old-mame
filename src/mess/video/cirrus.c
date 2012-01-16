@@ -68,9 +68,9 @@
 
 #define LOG_PCIACCESS	0
 
-static void cirrus_update_8bpp(bitmap_t &bitmap)
+static void cirrus_update_8bpp(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	UINT16 *line;
+	UINT32 *line;
 	const UINT8 *vram;
 	int y, x;
 
@@ -78,41 +78,39 @@ static void cirrus_update_8bpp(bitmap_t &bitmap)
 
 	for (y = 0; y < 480; y++)
 	{
-		line = &bitmap.pix16(y);
+		line = &bitmap.pix32(y);
 
 		for (x = 0; x < 640; x++)
-			*line++ = *vram++;
+			*line++ = machine.pens[*vram++];
 	}
 }
 
 
 
-static void cirrus_update_16bpp(bitmap_t &bitmap)
+static void cirrus_update_16bpp(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	fatalerror("NYI");
 }
 
 
 
-static void cirrus_update_24bpp(bitmap_t &bitmap)
+static void cirrus_update_24bpp(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	fatalerror("NYI");
 }
 
 
 
-static void cirrus_update_32bpp(bitmap_t &bitmap)
+static void cirrus_update_32bpp(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	fatalerror("NYI");
 }
 
 
 
-static pc_video_update_proc cirrus_choosevideomode(const UINT8 *sequencer,
+static void cirrus_choosevideomode(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, const UINT8 *sequencer,
 	const UINT8 *crtc, const UINT8 *gc, int *width, int *height)
 {
-	pc_video_update_proc proc = NULL;
-
 	if ((sequencer[0x06] == 0x12) && (sequencer[0x07] & 0x01))
 	{
 		*width = 640;
@@ -120,14 +118,13 @@ static pc_video_update_proc cirrus_choosevideomode(const UINT8 *sequencer,
 
 		switch(sequencer[0x07] & 0x0E)
 		{
-			case 0x00:	proc = cirrus_update_8bpp; break;
-			case 0x02:	proc = cirrus_update_16bpp; break;
-			case 0x04:	proc = cirrus_update_24bpp; break;
-			case 0x06:	proc = cirrus_update_16bpp; break;
-			case 0x08:	proc = cirrus_update_32bpp; break;
+			case 0x00:	cirrus_update_8bpp(machine, bitmap, cliprect); break;
+			case 0x02:	cirrus_update_16bpp(machine, bitmap, cliprect); break;
+			case 0x04:	cirrus_update_24bpp(machine, bitmap, cliprect); break;
+			case 0x06:	cirrus_update_16bpp(machine, bitmap, cliprect); break;
+			case 0x08:	cirrus_update_32bpp(machine, bitmap, cliprect); break;
 		}
 	}
-	return proc;
 }
 
 //**************************************************************************
@@ -149,20 +146,8 @@ cirrus_device::cirrus_device(const machine_config &mconfig, const char *tag, dev
 {
 }
 
-static void bebox_map_vga_memory(running_machine &machine, offs_t begin, offs_t end, read8_space_func rh, const char *rh_name, write8_space_func wh, const char *wh_name )
-{
-	address_space *space = machine.device("ppc1")->memory().space(AS_PROGRAM);
-
-	space->nop_readwrite(0xC00A0000, 0xC00BFFFF);
-
-	space->install_readwrite_bank(0xC0000000 + begin, 0xC0000000 + end, "bank4");
-}
-
 static const struct pc_vga_interface bebox_vga_interface =
 {
-	"bank4",
-	bebox_map_vga_memory,
-
 	NULL,
 	AS_PROGRAM,
 	0xC00A0000,

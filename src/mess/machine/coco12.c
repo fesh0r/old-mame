@@ -122,14 +122,13 @@ void coco12_state::pia1_pb_changed(void)
 
 
 //-------------------------------------------------
-//  screen_update
+//  update_cart_base
 //-------------------------------------------------
 
-bool coco12_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+void coco12_state::update_cart_base(UINT8 *cart_base)
 {
-	return m_vdg->update(bitmap, cliprect);
+	m_sam->configure_bank(3, cart_base, 0x4000, true);		// $C000-$FEFF
 }
-
 
 
 

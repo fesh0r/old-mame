@@ -625,6 +625,8 @@ WRITE8_HANDLER(lx385_ctrl_w)
 READ8_DEVICE_HANDLER( lx388_mc6847_videoram_r )
 {
 	z80ne_state *state = device->machine().driver_data<z80ne_state>();
+	if (offset == ~0) return 0xff;
+
 	UINT8 *videoram = state->m_videoram;
 	int d6 = BIT(videoram[offset], 6);
 	int d7 = BIT(videoram[offset], 7);
@@ -634,14 +636,6 @@ READ8_DEVICE_HANDLER( lx388_mc6847_videoram_r )
 	state->m_vdg->intext_w(!d6 && d7);
 
 	return videoram[offset];
-}
-
-bool z80ne_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
-{
-	if (m_vdg != NULL)
-		return m_vdg->update(bitmap, cliprect);
-	else
-		return 0;
 }
 
 READ8_HANDLER(lx388_data_r)

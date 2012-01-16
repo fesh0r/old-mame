@@ -131,8 +131,8 @@ void gime_base_device::device_start(void)
 		throw device_missing_dependencies();
 
 	/* find the CART device - make sure that it is started */
-	cococart_slot_device *cart_device = machine().device<cococart_slot_device>(config->m_ext_tag);
-	if (!cart_device->started())
+	m_cart_device = machine().device<cococart_slot_device>(config->m_ext_tag);
+	if (!m_cart_device->started())
 		throw device_missing_dependencies();
 
 	/* find the CPU device - make sure that it is started */
@@ -161,7 +161,7 @@ void gime_base_device::device_start(void)
 
 	/* set up ROM/RAM pointers */
 	m_rom = machine().region(config->m_maincpu_tag)->base();
-	m_cart_rom = cart_device->get_cart_base();
+	m_cart_rom = m_cart_device->get_cart_base();
 
 	/* populate palettes */
 	for (int color = 0; color < 64; color++)
@@ -617,6 +617,18 @@ void gime_base_device::update_memory(int bank)
 UINT8 *gime_base_device::memory_pointer(UINT32 address)
 {
 	return &m_ram->pointer()[address % m_ram->size()];
+}
+
+
+
+//-------------------------------------------------
+//  update_cart_rom
+//-------------------------------------------------
+
+void gime_base_device::update_cart_rom(void)
+{
+	m_cart_rom = m_cart_device->get_cart_base();
+	update_memory();
 }
 
 
@@ -1692,7 +1704,7 @@ template<int sample_count, gime_base_device::emit_samples_proc emit_samples>
 ATTR_FORCE_INLINE void gime_base_device::render_scanline(const scanline_record *scanline, pixel_t *pixels, int min_x, int max_x, palette_resolver *resolver)
 {
 	int left_border, right_border;
-	int x, x2;
+	int x, x2, pixel_position;
 	pixel_t border_color = resolver->lookup(scanline->m_border);
 	const pixel_t *resolved_palette = NULL;
 
@@ -1728,6 +1740,7 @@ ATTR_FORCE_INLINE void gime_base_device::render_scanline(const scanline_record *
 
 	/* body */
 	x = 0;
+	pixel_position = 0;
 	while(x < sample_count)
 	{
 		/* determine how many bytes exist for which the mode is identical */
@@ -1738,7 +1751,7 @@ ATTR_FORCE_INLINE void gime_base_device::render_scanline(const scanline_record *
 		resolved_palette = resolver->get_palette(scanline->m_palette[x]);
 
 		/* emit the samples, with a (hopefully) aggressively inlined function */
-		pixels += ((*this).*(emit_samples))(scanline, x, x2 - x, pixels, resolved_palette);
+		pixel_position += ((*this).*(emit_samples))(scanline, x, x2 - x, &pixels[pixel_position], resolved_palette);
 
 		/* update x */
 		x = x2;
@@ -1757,7 +1770,7 @@ ATTR_FORCE_INLINE void gime_base_device::render_scanline(const scanline_record *
 //  update_screen
 //-------------------------------------------------
 
-bool gime_base_device::update_screen(bitmap_t &bitmap, const rectangle &cliprect, const pixel_t *RESTRICT palette)
+bool gime_base_device::update_screen(bitmap_rgb32 &bitmap, const rectangle &cliprect, const pixel_t *RESTRICT palette)
 {
 	int base_x = 64;
 	int min_x = USE_HORIZONTAL_CLIP ? cliprect.min_x : 0;
@@ -1858,7 +1871,7 @@ bool gime_base_device::update_screen(bitmap_t &bitmap, const rectangle &cliprect
 //  update_composite
 //-------------------------------------------------
 
-bool gime_base_device::update_composite(bitmap_t &bitmap, const rectangle &cliprect)
+bool gime_base_device::update_composite(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	update_value(&m_displayed_rgb, false);
 	const pixel_t *palette = (m_gime_registers[0x08] & 0x10)
@@ -1873,7 +1886,7 @@ bool gime_base_device::update_composite(bitmap_t &bitmap, const rectangle &clipr
 //  update_rgb
 //-------------------------------------------------
 
-bool gime_base_device::update_rgb(bitmap_t &bitmap, const rectangle &cliprect)
+bool gime_base_device::update_rgb(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	update_value(&m_displayed_rgb, true);
 	return update_screen(bitmap, cliprect, m_rgb_palette);

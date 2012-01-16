@@ -31,12 +31,13 @@ public:
 	virtual void machine_start();
 
 	virtual void video_start();
-	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
+	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 /* Memory Maps */
 
 static ADDRESS_MAP_START( tek4107a_mem, AS_PROGRAM, 8, tek4107a_state )
+	AM_RANGE(0x00000, 0xbffff) AM_RAM
 	AM_RANGE(0xc0000, 0xfffff) AM_ROM AM_REGION(I80188_TAG, 0)
 ADDRESS_MAP_END
 
@@ -54,7 +55,7 @@ void tek4107a_state::video_start()
 {
 }
 
-bool tek4107a_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+UINT32 tek4107a_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	return 0;
 }
@@ -83,25 +84,25 @@ void tek4107a_state::machine_start()
 /* Machine Driver */
 
 static MACHINE_CONFIG_START( tek4107a, tek4107a_state )
-    /* basic machine hardware */
+	/* basic machine hardware */
 	MCFG_CPU_ADD(I80188_TAG, I80188, 21000000)
-    MCFG_CPU_PROGRAM_MAP(tek4107a_mem)
-    MCFG_CPU_IO_MAP(tek4107a_io)
+	MCFG_CPU_PROGRAM_MAP(tek4107a_mem)
+	MCFG_CPU_IO_MAP(tek4107a_io)
 
-    /* video hardware */
-    MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-    MCFG_SCREEN_REFRESH_RATE(50)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-    MCFG_SCREEN_SIZE(640, 480)
-    MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	/* video hardware */
+	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
+	MCFG_SCREEN_REFRESH_RATE(50)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_UPDATE_DRIVER(tek4107a_state, screen_update)
+	MCFG_SCREEN_SIZE(640, 480)
+	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 
 	MCFG_PALETTE_LENGTH(64)
 	MCFG_GFXDECODE(tek4107a)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( tek4109a, tek4107a )
-    /* video hardware */
+	/* video hardware */
 	MCFG_PALETTE_LENGTH(4096)
 MACHINE_CONFIG_END
 
@@ -141,5 +142,5 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY         FULLNAME            FLAGS */
-COMP( 1983, tek4107a,	0,			0,		tek4107a,	tek4107a,	0,		"Tektronix",	"Tektronix 4107A",	GAME_NOT_WORKING | GAME_NO_SOUND )
-COMP( 1983, tek4109a,	tek4107a,	0,		tek4109a,	tek4107a,	0,		"Tektronix",	"Tektronix 4109A",	GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1983, tek4107a,   0,          0,      tek4107a,   tek4107a,   0,    "Tektronix", "Tektronix 4107A", GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1983, tek4109a,   tek4107a,   0,      tek4109a,   tek4107a,   0,    "Tektronix", "Tektronix 4109A", GAME_NOT_WORKING | GAME_NO_SOUND )

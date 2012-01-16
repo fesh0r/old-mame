@@ -265,14 +265,11 @@ WRITE_LINE_MEMBER( mc1000_state::hs_w )
 
 READ8_MEMBER( mc1000_state::videoram_r )
 {
+	if (offset == ~0) return 0xff;
+
 	m_vdg->inv_w(BIT(m_mc6847_video_ram[offset], 7));
 
 	return m_mc6847_video_ram[offset];
-}
-
-bool mc1000_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
-{
-	return m_vdg->update(bitmap, cliprect);
 }
 
 /* AY-3-8910 Interface */
@@ -455,7 +452,7 @@ static MACHINE_CONFIG_START( mc1000, mc1000_state )
 	MCFG_TIMER_PARAM(ASSERT_LINE)
 
 	/* video hardware */
-    MCFG_SCREEN_MC6847_PAL_ADD(SCREEN_TAG)
+    MCFG_SCREEN_MC6847_PAL_ADD(SCREEN_TAG, MC6847_TAG)
 	MCFG_MC6847_ADD(MC6847_TAG, MC6847_NTSC, XTAL_3_579545MHz, mc1000_mc6847_intf)
 
 	/* sound hardware */

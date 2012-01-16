@@ -59,29 +59,33 @@ INLINE unsigned char get_display_color (unsigned char color, int invert)
 
 /* Code to change the FLASH status every 25 frames. Note this must be
    independent of frame skip etc. */
-SCREEN_EOF( spectrum )
+SCREEN_VBLANK( spectrum )
 {
-	spectrum_state *state = screen.machine().driver_data<spectrum_state>();
-	EVENT_LIST_ITEM *pItem;
-	int NumItems;
-
-	state->m_frame_number++;
-	if (state->m_frame_number >= state->m_frame_invert_count)
+	// rising edge
+	if (vblank_on)
 	{
-		state->m_frame_number = 0;
-		state->m_flash_invert = !state->m_flash_invert;
-	}
+		spectrum_state *state = screen.machine().driver_data<spectrum_state>();
+		EVENT_LIST_ITEM *pItem;
+		int NumItems;
 
-	/* Empty event buffer for undisplayed frames noting the last border
-       colour (in case colours are not changed in the next frame). */
-	NumItems = spectrum_EventList_NumEvents(screen.machine());
-	if (NumItems)
-	{
-		pItem = spectrum_EventList_GetFirstItem(screen.machine());
-		spectrum_border_set_last_color ( screen.machine(), pItem[NumItems-1].Event_Data );
-		spectrum_EventList_Reset(screen.machine());
-		spectrum_EventList_SetOffsetStartTime ( screen.machine(), screen.machine().firstcpu->attotime_to_cycles(screen.scan_period() * screen.vpos()) );
-		logerror ("Event log reset in callback fn.\n");
+		state->m_frame_number++;
+		if (state->m_frame_number >= state->m_frame_invert_count)
+		{
+			state->m_frame_number = 0;
+			state->m_flash_invert = !state->m_flash_invert;
+		}
+
+		/* Empty event buffer for undisplayed frames noting the last border
+	       colour (in case colours are not changed in the next frame). */
+		NumItems = spectrum_EventList_NumEvents(screen.machine());
+		if (NumItems)
+		{
+			pItem = spectrum_EventList_GetFirstItem(screen.machine());
+			spectrum_border_set_last_color ( screen.machine(), pItem[NumItems-1].Event_Data );
+			spectrum_EventList_Reset(screen.machine());
+			spectrum_EventList_SetOffsetStartTime ( screen.machine(), screen.machine().firstcpu->attotime_to_cycles(screen.scan_period() * screen.vpos()) );
+			logerror ("Event log reset in callback fn.\n");
+		}
 	}
 }
 
@@ -110,12 +114,12 @@ SCREEN_EOF( spectrum )
 
 ***************************************************************************/
 
-INLINE void spectrum_plot_pixel(bitmap_t &bitmap, int x, int y, UINT32 color)
+INLINE void spectrum_plot_pixel(bitmap_ind16 &bitmap, int x, int y, UINT32 color)
 {
 	bitmap.pix16(y, x) = (UINT16)color;
 }
 
-SCREEN_UPDATE( spectrum )
+SCREEN_UPDATE_IND16( spectrum )
 {
 	/* for now do a full-refresh */
 	spectrum_state *state = screen.machine().driver_data<spectrum_state>();
@@ -221,7 +225,7 @@ void spectrum_border_set_last_color(running_machine &machine, int NewColor)
 	state->m_CurrBorderColor = NewColor;
 }
 
-void spectrum_border_draw(running_machine &machine, bitmap_t &bitmap,
+void spectrum_border_draw(running_machine &machine, bitmap_ind16 &bitmap,
 	int full_refresh,               /* Full refresh flag */
 	int TopBorderLines,             /* Border lines before actual screen */
 	int ScreenLines,                /* Screen height in pixels */

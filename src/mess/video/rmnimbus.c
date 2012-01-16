@@ -658,13 +658,13 @@ VIDEO_RESET( nimbus )
     logerror("Video reset\n");
 }
 
-SCREEN_EOF( nimbus )
+SCREEN_VBLANK( nimbus )
 {
 
-//    logerror("SCREEN_EOF( nimbus )\n");
+//    logerror("SCREEN_VBLANK( nimbus )\n");
 }
 
-SCREEN_UPDATE( nimbus )
+SCREEN_UPDATE_IND16( nimbus )
 {
 	rmnimbus_state *state = screen.machine().driver_data<rmnimbus_state>();
     int     XCoord;

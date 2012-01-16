@@ -108,8 +108,8 @@ public:
 /*----------- defined in video/z88.c -----------*/
 
 extern PALETTE_INIT( z88 );
-extern SCREEN_UPDATE( z88 );
-extern SCREEN_EOF( z88 );
+extern SCREEN_UPDATE_IND16( z88 );
+extern SCREEN_VBLANK( z88 );
 
 
 #endif /* Z88_H_ */

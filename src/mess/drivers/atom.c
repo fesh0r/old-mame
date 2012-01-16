@@ -339,19 +339,6 @@ static INPUT_PORTS_START( atom )
 INPUT_PORTS_END
 
 /***************************************************************************
-    VIDEO
-***************************************************************************/
-
-/*-------------------------------------------------
-    SCREEN_UPDATE( atom )
--------------------------------------------------*/
-
-bool atom_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
-{
-	return m_vdg->update(bitmap, cliprect);
-}
-
-/***************************************************************************
     DEVICE CONFIGURATION
 ***************************************************************************/
 
@@ -632,6 +619,8 @@ static const cassette_interface atom_cassette_interface =
 
 READ8_MEMBER( atom_state::vdg_videoram_r )
 {
+	if (offset == ~0) return 0xff;
+
 	m_vdg->as_w(BIT(m_video_ram[offset], 6));
 	m_vdg->intext_w(BIT(m_video_ram[offset], 6));
 	m_vdg->inv_w(BIT(m_video_ram[offset], 7));
@@ -787,7 +776,7 @@ static MACHINE_CONFIG_START( atom, atom_state )
 	MCFG_CPU_PROGRAM_MAP(atom_mem)
 
 	/* video hardware */
-    MCFG_SCREEN_MC6847_PAL_ADD(SCREEN_TAG)
+    MCFG_SCREEN_MC6847_PAL_ADD(SCREEN_TAG, MC6847_TAG)
 	MCFG_MC6847_ADD(MC6847_TAG, MC6847_PAL, XTAL_4_433619MHz, vdg_intf)
 
 	/* sound hardware */

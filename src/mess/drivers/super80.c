@@ -617,13 +617,6 @@ static const cassette_interface super80_cassette_interface =
 };
 
 
-static DEVICE_IMAGE_LOAD( super80_cart )
-{
-	image.fread( image.device().machine().region("maincpu")->base() + 0xc000, 0x3000);
-
-	return IMAGE_INIT_PASS;
-}
-
 static const mc6845_interface super80v_crtc = {
 	"screen",			/* name of screen */
 	SUPER80V_DOTS,			/* number of dots per character */
@@ -637,12 +630,6 @@ static const mc6845_interface super80v_crtc = {
 	NULL
 };
 
-static MACHINE_CONFIG_FRAGMENT( super80_cartslot )
-	MCFG_CARTSLOT_ADD("cart")
-	MCFG_CARTSLOT_EXTENSION_LIST("rom")
-	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_LOAD(super80_cart)
-MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( super80, super80_state )
 	/* basic machine hardware */
@@ -655,9 +642,8 @@ static MACHINE_CONFIG_START( super80, super80_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(48.8)
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MCFG_SCREEN_UPDATE(super80)
+	MCFG_SCREEN_UPDATE_STATIC(super80)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(monochrome_green)
@@ -681,15 +667,12 @@ static MACHINE_CONFIG_START( super80, super80_state )
 
 	/* cassette */
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, super80_cassette_interface )
-
-	/* cartridge */
-	MCFG_FRAGMENT_ADD(super80_cartslot)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80d, super80 )
 	MCFG_GFXDECODE(super80d)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE(super80d)
+	MCFG_SCREEN_UPDATE_STATIC(super80d)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80e, super80 )
@@ -697,7 +680,7 @@ static MACHINE_CONFIG_DERIVED( super80e, super80 )
 	MCFG_CPU_IO_MAP(super80e_io)
 	MCFG_GFXDECODE(super80e)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE(super80e)
+	MCFG_SCREEN_UPDATE_STATIC(super80e)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80m, super80 )
@@ -709,8 +692,8 @@ static MACHINE_CONFIG_DERIVED( super80m, super80 )
 	MCFG_PALETTE_INIT(super80m)
 
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE(super80m)
-	MCFG_SCREEN_EOF(super80m)
+	MCFG_SCREEN_UPDATE_STATIC(super80m)
+	MCFG_SCREEN_VBLANK_STATIC(super80m)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( super80v, super80_state )
@@ -724,11 +707,10 @@ static MACHINE_CONFIG_START( super80v, super80_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(SUPER80V_SCREEN_WIDTH, SUPER80V_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, SUPER80V_SCREEN_WIDTH-1, 0, SUPER80V_SCREEN_HEIGHT-1)
-	MCFG_SCREEN_UPDATE(super80v)
-	MCFG_SCREEN_EOF(super80m)
+	MCFG_SCREEN_UPDATE_STATIC(super80v)
+	MCFG_SCREEN_VBLANK_STATIC(super80m)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(super80m)
@@ -754,9 +736,6 @@ static MACHINE_CONFIG_START( super80v, super80_state )
 
 	/* cassette */
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, super80_cassette_interface )
-
-	/* cartridge */
-	MCFG_FRAGMENT_ADD(super80_cartslot)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( super80r, super80v )

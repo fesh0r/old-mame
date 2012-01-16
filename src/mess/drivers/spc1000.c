@@ -33,9 +33,6 @@ public:
 		spc1000_state *state = machine.driver_data<spc1000_state>();
 		return state->m_video_ram[0x1000+(ch&0x7F)*16+line];
 	}
-
-protected:
-	virtual bool screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect);
 };
 
 
@@ -247,6 +244,8 @@ static MACHINE_RESET(spc1000)
 static READ8_DEVICE_HANDLER( spc1000_mc6847_videoram_r )
 {
 	spc1000_state *state = device->machine().driver_data<spc1000_state>();
+	if (offset == ~0) return 0xff;
+
 	// state->m_GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
 	//  [PS2,PS1] is used to set screen 0/1 pages
 	if ( !BIT(state->m_GMODE, 3) ) {	// text mode (~A/G set to A)
@@ -259,11 +258,6 @@ static READ8_DEVICE_HANDLER( spc1000_mc6847_videoram_r )
 	} else {	// graphics mode: uses full 6KB of VRAM
 		return state->m_video_ram[offset];
 	}
-}
-
-bool spc1000_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
-{
-	return m_vdg->update(bitmap, cliprect);
 }
 
 static const ay8910_interface spc1000_ay_interface =
@@ -310,7 +304,7 @@ static MACHINE_CONFIG_START( spc1000, spc1000_state )
 	MCFG_MACHINE_RESET(spc1000)
 
     /* video hardware */
-    MCFG_SCREEN_MC6847_NTSC_ADD("screen")
+    MCFG_SCREEN_MC6847_NTSC_ADD("screen", "mc6847")
 	MCFG_MC6847_ADD("mc6847", MC6847_NTSC, XTAL_3_579545MHz, spc1000_mc6847_intf)
 
 	/* sound hardware */

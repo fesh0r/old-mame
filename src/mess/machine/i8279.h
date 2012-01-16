@@ -80,14 +80,11 @@ public:
 	// construction/destruction
 	i8279_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
-	/* read data register */
-	DECLARE_READ8_MEMBER(read);
-	DECLARE_WRITE8_MEMBER(write);
-	DECLARE_READ8_MEMBER(i8279_status_r);
-	DECLARE_READ8_MEMBER(i8279_data_r);
-	DECLARE_WRITE8_MEMBER(i8279_ctrl_w);
-	DECLARE_WRITE8_MEMBER(i8279_data_w);
-
+	// read & write handlers
+	DECLARE_READ8_MEMBER(status_r);
+	DECLARE_READ8_MEMBER(data_r);
+	DECLARE_WRITE8_MEMBER(cmd_w);
+	DECLARE_WRITE8_MEMBER(data_w);
 	void timer_mainloop();
 
 protected:
@@ -109,10 +106,6 @@ private:
 	UINT8 get_segments();
 	void set_irq(bool state);
 	void set_display_mode(UINT8 data);
-	void ctrl_w(UINT8 data);
-	void data_w(UINT8 data);
-	UINT8 status_r();
-	UINT8 data_r();
 
 	devcb_resolved_write_line	m_out_irq_func;
 	devcb_resolved_write8		m_out_sl_func;
@@ -124,13 +117,12 @@ private:
 
 	emu_timer *m_timer;
 
-	//UINT8 *m_p_ram;
 	UINT8 m_d_ram[16];		// display ram
 	UINT8 m_d_ram_ptr;
 	UINT8 m_s_ram[8]; // might be same as fifo ram
 	UINT8 m_s_ram_ptr;
 	UINT8 m_fifo[8];    // queued keystrokes
-	UINT8 m_ctrls[8];   // Device settings
+	UINT8 m_cmd[8];   // Device settings
 	UINT8 m_status;     // Returned via status_r
 	UINT32 m_clock;     // Internal scan clock
 	UINT8 m_scanner;    // next output on SL lines

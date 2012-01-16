@@ -23,7 +23,6 @@
 
     TODO:
 
-    - floppy broken once again
     - modem card
 
 ***************************************************************************/
@@ -538,7 +537,7 @@ static const struct pit8253_config pit_intf =
 {
 	{
 		{
-			XTAL_4MHz,	/* 8251 USART TXC, RXC */
+			XTAL_16MHz/4,	/* 8251 USART TXC, RXC */
 			DEVCB_LINE_VCC,
 			DEVCB_DRIVER_LINE_MEMBER(bw2_state, pit_out0_w)
 		},
@@ -562,13 +561,6 @@ static PALETTE_INIT( bw2 )
 {
     palette_set_color_rgb(machine, 0, 0xa5, 0xad, 0xa5);
     palette_set_color_rgb(machine, 1, 0x31, 0x39, 0x10);
-}
-
-bool bw2_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
-{
-	m_lcdc->update_screen(bitmap, cliprect);
-
-	return 0;
 }
 
 static MSM6255_CHAR_RAM_READ( bw2_charram_r )
@@ -607,9 +599,9 @@ static const floppy_interface bw2_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_STANDARD_5_25_DSHD,
+	FLOPPY_STANDARD_3_5_SSDD, // Teac FD-35
 	LEGACY_FLOPPY_OPTIONS_NAME(bw2),
-	"floppy_5_25",
+	"floppy_3_5",
 	NULL
 };
 
@@ -680,7 +672,7 @@ static MACHINE_CONFIG_START( bw2, bw2_state )
 	// video hardware
 	MCFG_SCREEN_ADD( SCREEN_TAG, LCD )
 	MCFG_SCREEN_REFRESH_RATE( 60 )
-	MCFG_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
+	MCFG_SCREEN_UPDATE_DEVICE( MSM6255_TAG, msm6255_device, screen_update )
 	MCFG_SCREEN_SIZE( 640, 200 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 640-1, 0, 200-1 )
 	MCFG_DEFAULT_LAYOUT( layout_lcd )

@@ -525,10 +525,11 @@ http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
 		</part>
 	</software>
 
-	<software name="chasehq2" supported="no">
+    <!-- commented out until dumped -->
+	<!--software name="chasehq2" supported="no">
 		<description>Chase H.Q. 2: Special Criminal Investigation</description>
 		<year>1990</year>
-		<publisher>Ocean</publisher>
+		<publisher>Ocean</publisher-->
 		<!--
 		|===========================|
 		|=|                   LS02  |
@@ -544,7 +545,7 @@ http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
 		ROM0,1 - 28-pin ROM (Toshiba TC531000 pinout, markings scratched off)
 		bankswitch latch @ I/O1: D3-D0 = A16-A13
 		-->
-		<part name="cart" interface="c64_cart">
+		<!--part name="cart" interface="c64_cart">
 			<feature name="cart_type" value="ocean" />
 			<feature name="game" value="0" />
 			<feature name="exrom" value="0" />
@@ -558,7 +559,7 @@ http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
 				<rom name="h.u2" size="0x20000" status="nodump" offset="0x0000" />
 			</dataarea>
 		</part>
-	</software>
+	</software-->
 
 	<software name="xl80" supported="no">
 		<description>XL 80</description>
@@ -1316,6 +1317,62 @@ http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
 		</part>
 	</software>
 
+	<software name="c64anblt" supported="no">
+		<description>C64anabalt (Encore)</description>
+		<year>2012</year>
+		<publisher>RGCD</publisher>
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="0" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x4000">
+				<rom name="c64anabalt_encore.bin" size="0x4000" crc="3569502b" sha1="99fdeb4a4d51a7455e8922f82c99940169404a20" offset="0x0000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="c64anbltg" cloneof="c64anblt" supported="no">
+		<description>C64anabalt (Gharmak)</description>
+		<year>2012</year>
+		<publisher>RGCD</publisher>
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="0" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x4000">
+				<rom name="c64anabalt_ghormak.bin" size="0x4000" crc="b5a86ee0" sha1="a870a3feab469917e01892fbb587392e48b0b844" offset="0x0000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="blokcopy" supported="no">
+		<description>Blok Copy</description>
+		<year>2011</year>
+		<publisher>RGCD</publisher>
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="0" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x4000">
+				<rom name="blok_copy.bin" size="0x4000" crc="99ef3840" sha1="81c779c0fd748ce90666d1bcfaa110a16c99ab61" offset="0x0000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="edgegrnd" supported="no">
+		<description>Edge Grinder</description>
+		<year>2011</year>
+		<publisher>RGCD</publisher>
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="0" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x4000">
+				<rom name="edge_grinder.bin" size="0x4000" crc="e5a73b59" sha1="febd424843c19d862dd9d31469a4225da160d097" offset="0x0000" />
+			</dataarea>
+		</part>
+	</software>
+	
 	<!-- Games Added by k1w1 -->
 
 	<software name="advcrtor">
@@ -5356,8 +5413,8 @@ http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
 			<feature name="exrom" value="1" />
 			<feature name="game" value="1" />
 			<dataarea name="rom" size="0x6000">
-				<rom name="final_cartridge_internal_27128_eprom.bin" size="0x4000" crc="b648329a" sha1="daa1c5bf42773ee0e187a2063d459955889b033b" offset="0x4000"/>
-				<rom name="final_cartridge_internal_2764_eprom.bin" size="0x2000" crc="03c5e7f9" sha1="b20138182c920ba5c4fce7a58151482094e8c4d1" offset="0x0000"/>
+				<rom name="final_cartridge_internal_27128_eprom.bin" size="0x4000" crc="b648329a" sha1="daa1c5bf42773ee0e187a2063d459955889b033b" offset="0x0000"/>
+				<rom name="final_cartridge_internal_2764_eprom.bin" size="0x2000" crc="03c5e7f9" sha1="b20138182c920ba5c4fce7a58151482094e8c4d1" offset="0x4000"/>
 			</dataarea>
 		</part>
 	</software>

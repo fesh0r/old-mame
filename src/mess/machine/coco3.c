@@ -144,10 +144,21 @@ void coco3_state::cart_w(bool state)
 
 
 //-------------------------------------------------
+//  update_cart_base
+//-------------------------------------------------
+
+void coco3_state::update_cart_base(UINT8 *cart_base)
+{
+	m_gime->update_cart_rom();
+}
+
+
+
+//-------------------------------------------------
 //  screen_update
 //-------------------------------------------------
 
-bool coco3_state::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
+UINT32 coco3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	bool result;
 	if (!strcmp(screen.tag(), COMPOSITE_SCREEN_TAG))
