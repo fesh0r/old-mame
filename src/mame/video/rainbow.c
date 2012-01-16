@@ -42,7 +42,7 @@ WRITE16_HANDLER( jumping_spritectrl_w )
 
 /***************************************************************************/
 
-SCREEN_UPDATE( rbisland )
+SCREEN_UPDATE_IND16( rainbow )
 {
 	rbisland_state *state = screen.machine().driver_data<rbisland_state>();
 	int layer[2];
@@ -65,7 +65,7 @@ SCREEN_UPDATE( rbisland )
 /***************************************************************************
 
 Jumping uses different sprite controller
-than rbisland island. - values are remapped
+than Rainbow Island. - values are remapped
 at address 0x2EA in the code. Apart from
 physical layout, the main change is that
 the Y settings are active low.
@@ -87,7 +87,7 @@ VIDEO_START( jumping )
 }
 
 
-SCREEN_UPDATE( jumping )
+SCREEN_UPDATE_IND16( jumping )
 {
 	rbisland_state *state = screen.machine().driver_data<rbisland_state>();
 	UINT16 *spriteram = state->m_spriteram;

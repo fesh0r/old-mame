@@ -189,7 +189,7 @@ WRITE8_HANDLER( bosco_starclr_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect )
+static void draw_sprites(running_machine &machine, bitmap_ind16 &bitmap, const rectangle &cliprect )
 {
 	UINT8 *spriteram = machine.generic.spriteram.u8;
 	UINT8 *spriteram_2 = machine.generic.spriteram2.u8;
@@ -219,7 +219,7 @@ static void draw_sprites(running_machine &machine, bitmap_t &bitmap, const recta
 }
 
 
-static void draw_bullets(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect )
+static void draw_bullets(running_machine &machine, bitmap_ind16 &bitmap, const rectangle &cliprect )
 {
 	bosco_state *state =  machine.driver_data<bosco_state>();
 	int offs;
@@ -244,7 +244,7 @@ static void draw_bullets(running_machine &machine, bitmap_t &bitmap, const recta
 }
 
 
-static void draw_stars(running_machine &machine, bitmap_t &bitmap, const rectangle &cliprect, int flip)
+static void draw_stars(running_machine &machine, bitmap_ind16 &bitmap, const rectangle &cliprect, int flip)
 {
 	bosco_state *state = machine.driver_data<bosco_state>();
 
@@ -280,7 +280,7 @@ static void draw_stars(running_machine &machine, bitmap_t &bitmap, const rectang
 }
 
 
-SCREEN_UPDATE( bosco )
+SCREEN_UPDATE_IND16( bosco )
 {
 	bosco_state *state =  screen.machine().driver_data<bosco_state>();
 
@@ -317,12 +317,16 @@ SCREEN_UPDATE( bosco )
 }
 
 
-SCREEN_EOF( bosco )
+SCREEN_VBLANK( bosco )
 {
-	bosco_state *state =  screen.machine().driver_data<bosco_state>();
-	static const int speedsx[8] = { -1, -2, -3, 0, 3, 2, 1, 0 };
-	static const int speedsy[8] = { 0, -1, -2, -3, 0, 3, 2, 1 };
+	// rising edge
+	if (vblank_on)
+	{
+		bosco_state *state =  screen.machine().driver_data<bosco_state>();
+		static const int speedsx[8] = { -1, -2, -3, 0, 3, 2, 1, 0 };
+		static const int speedsy[8] = { 0, -1, -2, -3, 0, 3, 2, 1 };
 
-	state->m_stars_scrollx += speedsx[state->m_bosco_starcontrol[0] & 0x07];
-	state->m_stars_scrolly += speedsy[(state->m_bosco_starcontrol[0] & 0x38) >> 3];
+		state->m_stars_scrollx += speedsx[state->m_bosco_starcontrol[0] & 0x07];
+		state->m_stars_scrolly += speedsy[(state->m_bosco_starcontrol[0] & 0x38) >> 3];
+	}
 }

@@ -299,10 +299,9 @@ static MACHINE_CONFIG_START( exzisus, exzisus_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE(exzisus)
+	MCFG_SCREEN_UPDATE_STATIC(exzisus)
 
 	MCFG_GFXDECODE(exzisus)
 	MCFG_PALETTE_LENGTH(1024)
@@ -448,4 +447,4 @@ ROM_END
 
 GAME( 1987, exzisus,  0,       exzisus, exzisus, 0, ROT0, "Taito Corporation", "Exzisus (Japan, dedicated)",  0 )
 GAME( 1987, exzisusa, exzisus, exzisus, exzisus, 0, ROT0, "Taito Corporation", "Exzisus (Japan, conversion)", 0 )
-GAME( 1987, exzisust, exzisus, exzisus, exzisus, 0, ROT0, "Taito Corporation", "Exzisus (TAD License)", 0 )
+GAME( 1987, exzisust, exzisus, exzisus, exzisus, 0, ROT0, "Taito Corporation (TAD license)", "Exzisus (TAD license)", 0 )

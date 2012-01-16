@@ -28,7 +28,7 @@ public:
 	tilemap_t       *m_bg_tilemap;
 	tilemap_t     *m_tx_tilemap;
 	UINT16        *m_sprite_temp_render;
-	bitmap_t      *m_tmppgmbitmap;
+	bitmap_rgb32      m_tmppgmbitmap;
 
 	/* misc */
 	// kov2
@@ -88,6 +88,11 @@ public:
 	cpu_device *m_prot;
 	device_t *m_ics;
 
+	/* used by rendering */
+	UINT8 *m_bdata;
+	size_t  m_bdatasize;
+	int m_aoffset;
+	int m_boffset;
 
 	/* hack */
 	int m_irq4_disabled;
@@ -157,6 +162,8 @@ READ16_HANDLER( oldsplus_protram_r );
 READ16_HANDLER( oldsplus_r );
 WRITE16_HANDLER( oldsplus_w );
 
+MACHINE_RESET( kov );
+void install_protection_asic_sim_kov(running_machine &machine);
 
 /*----------- defined in video/pgm.c -----------*/
 
@@ -164,5 +171,5 @@ WRITE16_HANDLER( pgm_tx_videoram_w );
 WRITE16_HANDLER( pgm_bg_videoram_w );
 
 VIDEO_START( pgm );
-SCREEN_EOF( pgm );
-SCREEN_UPDATE( pgm );
+SCREEN_VBLANK( pgm );
+SCREEN_UPDATE_IND16( pgm );

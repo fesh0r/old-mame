@@ -450,6 +450,10 @@ int running_machine::run(bool firstrun)
 		error = MAMERR_FATALERROR;
 	}
 
+	// make sure our phase is set properly before cleaning up,
+	// in case we got here via exception
+	m_current_phase = MACHINE_PHASE_EXIT;
+
 	// call all exit callbacks registered
 	call_notifiers(MACHINE_NOTIFY_EXIT);
 	zip_file_cache_clear();
@@ -1106,19 +1110,6 @@ void driver_device::video_reset()
 {
 	if (m_callbacks[CB_VIDEO_RESET] != NULL)
 		(*m_callbacks[CB_VIDEO_RESET])(machine());
-}
-
-
-//-------------------------------------------------
-//  video_update - default implementation which
-//  calls to the legacy video_update function
-//-------------------------------------------------
-
-bool driver_device::screen_update(screen_device &screen, bitmap_t &bitmap, const rectangle &cliprect)
-{
-	// if nothing provided, just copy the screen's generic bitmap
-	copybitmap(bitmap, screen.default_bitmap(), 0, 0, 0, 0, cliprect);
-	return 0;
 }
 
 

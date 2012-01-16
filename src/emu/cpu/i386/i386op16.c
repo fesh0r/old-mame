@@ -1587,7 +1587,9 @@ static void I386OP(pop_ss16)(i386_state *cpustate)			// Opcode 0x17
 static void I386OP(pop_rm16)(i386_state *cpustate)			// Opcode 0x8f
 {
 	UINT8 modrm = FETCH(cpustate);
-	UINT16 value = POP16(cpustate);
+	UINT16 value;
+
+	value = POP16(cpustate);
 
 	if( modrm >= 0xc0 ) {
 		STORE_RM16(modrm, value);
@@ -1613,8 +1615,31 @@ static void I386OP(popa)(i386_state *cpustate)				// Opcode 0x61
 
 static void I386OP(popf)(i386_state *cpustate)				// Opcode 0x9d
 {
-	UINT16 value = POP16(cpustate);
-	set_flags(cpustate,value);
+	UINT32 value;
+	UINT32 current = get_flags(cpustate);
+	UINT8 IOPL = (current >> 12) & 0x03;
+	UINT32 mask = 0x7fd5;
+
+	// IOPL can only change if CPL is 0
+	if(cpustate->CPL != 0)
+		mask &= ~0x00003000;
+
+	// IF can only change if CPL is at least as privileged as IOPL
+	if(cpustate->CPL > IOPL)
+		mask &= ~0x00000200;
+
+	if(V8086_MODE)
+	{
+		if(IOPL < 3)
+		{
+			logerror("POPFD(%08x): IOPL < 3 while in V86 mode.\n",cpustate->pc);
+			FAULT(FAULT_GP,0)  // #GP(0)
+		}
+		mask &= ~0x00003000;  // IOPL cannot be changed while in V8086 mode
+	}
+
+	value = POP16(cpustate);
+	set_flags(cpustate,(current & ~mask) | (value & mask));  // mask out reserved bits
 	CYCLES(cpustate,CYCLES_POPF);
 }
 
@@ -3330,7 +3355,7 @@ static void I386OP(lsl_r16_rm16)(i386_state *cpustate)  // Opcode 0x0f 0x03
 	UINT32 limit;
 	I386_SREG seg;
 
-	if(PROTECTED_MODE)
+	if(PROTECTED_MODE && !V8086_MODE)
 	{
 		memset(&seg, 0, sizeof(seg));
 		if(modrm >= 0xc0)
