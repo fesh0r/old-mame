@@ -55,6 +55,8 @@ public:
 	int         m_sprite_xoffs;
 	int         m_sprite_yoffs;
 
+	UINT8 *		m_expanded_gfx1;
+
 	/* blitter */
 	int         m_blitter_bit;
 
