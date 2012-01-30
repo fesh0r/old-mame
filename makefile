@@ -410,6 +410,10 @@ ifdef USE_NETWORK
 DEFS += -DUSE_NETWORK
 endif
 
+# need to ensure FLAC functions are statically linked
+DEFS += -DFLAC__NO_DLL
+
+
 
 #-------------------------------------------------
 # compile flags
@@ -490,6 +494,9 @@ CONLYFLAGS += \
 COBJFLAGS += \
 	-Wpointer-arith 
 
+# warnings only applicable to C++ compiles
+CPPONLYFLAGS += \
+	-Woverloaded-virtual
 
 
 #-------------------------------------------------
@@ -621,7 +628,7 @@ SOFTFLOAT = $(OBJ)/libsoftfloat.a
 # add formats emulation library
 FORMATS_LIB = $(OBJ)/libformats.a
 
-
+JPEG_LIB = $(OBJ)/libjpeg.a
 
 #-------------------------------------------------
 # 'default' target needs to go here, before the 
@@ -632,6 +639,7 @@ default: maketree buildtools emulator
 
 all: default tools
 
+FLAC_LIB = $(OBJ)/libflac.a $(OBJ)/libflac++.a
 
 
 #-------------------------------------------------
@@ -725,7 +733,7 @@ ifndef EXECUTABLE_DEFINED
 # always recompile the version string
 $(VERSIONOBJ): $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(SOFTFLOAT) $(FORMATS_LIB) $(LIBOCORE) $(RESFILE)
 
-$(EMULATOR): $(VERSIONOBJ) $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DEVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(FORMATS_LIB) $(ZLIB) $(LIBOCORE) $(RESFILE)
+$(EMULATOR): $(VERSIONOBJ) $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DEVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(FORMATS_LIB) $(ZLIB) $(LIBOCORE) $(RESFILE)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $^ $(LIBS) -o $@
 ifeq ($(TARGETOS),win32)
