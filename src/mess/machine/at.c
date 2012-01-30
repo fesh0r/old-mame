@@ -319,19 +319,6 @@ static void init_at_common(running_machine &machine)
 	st->m_at_offset1 = 0xff;
 }
 
-
-static READ8_HANDLER( input_port_0_r ) { return input_port_read(space->machine(), "IN0"); }
-
-static const struct pc_vga_interface vga_interface =
-{
-	input_port_0_r,
-	AS_PROGRAM,
-	0xa0000,
-	AS_IO,
-	0x0000
-};
-
-
 DRIVER_INIT( atcga )
 {
 	init_at_common(machine);
@@ -340,7 +327,6 @@ DRIVER_INIT( atcga )
 DRIVER_INIT( atvga)
 {
 	init_at_common(machine);
-	pc_vga_init(machine, &vga_interface, NULL);
 }
 
 static IRQ_CALLBACK(at_irq_callback)

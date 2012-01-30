@@ -3,11 +3,9 @@
   ISA 8 bit Creative Labs Sound Blaster Sound Card
 
   TODO:
-  - DSP type is unknown at current time, and probably has an internal ROM
-    that needs decapping;
-  - joystick port;
+  - implement DAC
+  - DSP type is a MCS-51 family, it has an internal ROM that needs decapping;
   - implement jumpers DIP-SWs;
-  - state machine + read/write members
 
 ***************************************************************************/
 
@@ -37,11 +35,31 @@
 */
 #define ym3812_StdClock XTAL_3_579545MHz
 
+static INPUT_PORTS_START( sblaster )
+	PORT_START("pc_joy")
+	PORT_BIT( 0x0f, IP_ACTIVE_LOW,	 IPT_UNUSED ) // x/y ad stick to digital converters
+	PORT_BIT( 0x10, IP_ACTIVE_LOW,   IPT_BUTTON1) PORT_NAME("SB: Joystick Button 1")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW,   IPT_BUTTON2) PORT_NAME("SB: Joystick Button 2")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW,   IPT_BUTTON3) PORT_NAME("SB: Joystick Button 3")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW,   IPT_BUTTON4) PORT_NAME("SB: Joystick Button 4")
+
+	PORT_START("pc_joy_1")
+	PORT_BIT(0xff,0x80,IPT_AD_STICK_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_MINMAX(1,0xff) PORT_CODE_DEC(KEYCODE_LEFT) PORT_CODE_INC(KEYCODE_RIGHT) PORT_CODE_DEC(JOYCODE_X_LEFT_SWITCH) PORT_CODE_INC(JOYCODE_X_RIGHT_SWITCH)
+
+	PORT_START("pc_joy_2")
+	PORT_BIT(0xff,0x80,IPT_AD_STICK_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_MINMAX(1,0xff) PORT_CODE_DEC(KEYCODE_UP) PORT_CODE_INC(KEYCODE_DOWN) PORT_CODE_DEC(JOYCODE_Y_UP_SWITCH) PORT_CODE_INC(JOYCODE_Y_DOWN_SWITCH)
+INPUT_PORTS_END
+
+ioport_constructor sb8_device::device_input_ports() const
+{
+	return INPUT_PORTS_NAME( sblaster );
+}
+
 static const int m_cmd_fifo_length[256] =
 {
 /*   0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F        */
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* 0x */
-	 2, -1, -1, -1,  3, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* 1x */
+	 2, -1, -1, -1,  3, -1, -1, -1, -1, -1, -1,	-1,  1, -1, -1, -1, /* 1x */
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* 2x */
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* 3x */
 	 2, -1, -1, -1, -1, -1, -1, -1,  3, -1, -1,	-1, -1, -1, -1, -1, /* 4x */
@@ -53,7 +71,7 @@ static const int m_cmd_fifo_length[256] =
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* Ax */
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* Bx */
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	-1, -1, -1, -1, -1, /* Cx */
-	-1,  1, -1,  1, -1, -1, -1, -1,  1, -1, -1,	-1, -1, -1, -1, -1, /* Dx */
+	 1,  1, -1,  1, -1, -1, -1, -1,  1, -1, -1,	-1, -1, -1, -1, -1, /* Dx */
 	 2,  1,  2, -1,  2, -1, -1, -1,  1, -1, -1,	-1, -1, -1, -1, -1, /* Ex */
 	-1, -1,  1, -1, -1, -1, -1, -1,  1, -1, -1,	-1, -1, -1, -1, -1  /* Fx */
 };
@@ -272,21 +290,34 @@ void sb8_device::process_fifo(UINT8 cmd)
             case 0x10:  // Direct DAC
                 break;
 
-            case 0x14:  // 8-bit DMA
+            case 0x14:  // 8-bit DMA, no autoinit
                 m_dsp.dma_length = (m_dsp.fifo[1] + (m_dsp.fifo[2]<<8)) + 1;
-//                printf("Start DMA (not autoinit, size = %x)\n", m_dsp.dma_length);
+                printf("Start DMA (not autoinit, size = %x)\n", m_dsp.dma_length);
                 m_dsp.dma_transferred = 0;
+                m_dsp.dma_autoinit = 0;
                 m_isa->drq1_w(1);
                 break;
 
+            case 0x1c:  // 8-bit DMA with autoinit
+            	printf("Start DMA (autoinit, size = %x)\n", m_dsp.dma_length);
+                m_dsp.dma_transferred = 0;
+                m_dsp.dma_autoinit = 1;
+                m_isa->drq1_w(1);
+            	break;
+
             case 0x40:  // set time constant
                 m_dsp.frequency = (1000000 / (256 - m_dsp.fifo[1]));
-//                printf("Set time constant: %02x -> %d\n", m_dsp.fifo[1], m_dsp.frequency);
+                printf("Set time constant: %02x -> %d\n", m_dsp.fifo[1], m_dsp.frequency);
                 break;
 
 			case 0x48:	// set DMA block size (for auto-init)
                 m_dsp.dma_length = (m_dsp.fifo[1] + (m_dsp.fifo[2]<<8)) + 1;
 				break;
+
+            case 0xd0:  // halt 8-bit DMA
+                m_timer->adjust(attotime::never, 0);
+                m_isa->drq1_w(0);   // drop DRQ
+                break;
 
             case 0xd1: // speaker on
 				// ...
@@ -361,6 +392,35 @@ WRITE8_MEMBER(sb8_device::dsp_cmd_w)
 	process_fifo(m_dsp.fifo[0]);
 }
 
+
+READ8_MEMBER ( sb8_device::joy_port_r )
+{
+	UINT8 data = 0;
+	int delta;
+	attotime new_time = machine().time();
+
+	{
+		data = input_port_read(*this, "pc_joy") | 0x0f;
+
+		{
+			delta = ((new_time - m_joy_time) * 256 * 1000).seconds;
+
+			if (input_port_read(*this, "pc_joy_1") < delta) data &= ~0x01;
+			if (input_port_read(*this, "pc_joy_2") < delta) data &= ~0x02;
+		}
+	}
+
+	return data;
+}
+
+
+
+WRITE8_MEMBER ( sb8_device::joy_port_w )
+{
+	m_joy_time = machine().time();
+}
+
+
 //**************************************************************************
 //  GLOBAL VARIABLES
 //**************************************************************************
@@ -414,33 +474,33 @@ isa8_sblaster1_5_device::isa8_sblaster1_5_device(const machine_config &mconfig, 
 
 void sb8_device::device_start()
 {
-}
-
-void isa8_sblaster1_0_device::device_start()
-{
-    set_isa_device();
-	m_isa->install_device(subdevice("saa1099.1"), 0x0220, 0x0221, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
-	m_isa->install_device(subdevice("saa1099.2"), 0x0222, 0x0223, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
+	m_isa->install_device(                   0x0200, 0x0207, 0, 0, read8_delegate(FUNC(sb8_device::joy_port_r), this), write8_delegate(FUNC(sb8_device::joy_port_w), this));
 	m_isa->install_device(                   0x0226, 0x0227, 0, 0, read8_delegate(FUNC(sb8_device::dsp_reset_r), this), write8_delegate(FUNC(sb8_device::dsp_reset_w), this));
 	m_isa->install_device(subdevice("ym3812"),    0x0228, 0x0229, 0, 0, FUNC(ym3812_16_r), FUNC(ym3812_16_w) );
 	m_isa->install_device(                   0x022a, 0x022b, 0, 0, read8_delegate(FUNC(sb8_device::dsp_data_r), this), write8_delegate(FUNC(sb8_device::dsp_data_w), this) );
 	m_isa->install_device(                   0x022c, 0x022d, 0, 0, read8_delegate(FUNC(sb8_device::dsp_wbuf_status_r), this), write8_delegate(FUNC(sb8_device::dsp_cmd_w), this) );
 	m_isa->install_device(                   0x022e, 0x022f, 0, 0, read8_delegate(FUNC(sb8_device::dsp_rbuf_status_r), this), write8_delegate(FUNC(sb8_device::dsp_rbuf_status_w), this) );
 	m_isa->install_device(subdevice("ym3812"),    0x0388, 0x0389, 0, 0, FUNC(ym3812_16_r), FUNC(ym3812_16_w) );
+
+    m_timer = timer_alloc(0, NULL);
+}
+
+void isa8_sblaster1_0_device::device_start()
+{
+    set_isa_device();
+    // 1.0 always has the SAA1099s for CMS back-compatibility
+	m_isa->install_device(subdevice("saa1099.1"), 0x0220, 0x0221, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
+	m_isa->install_device(subdevice("saa1099.2"), 0x0222, 0x0223, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
 	m_dsp.version = 0x0105;
+    sb8_device::device_start();
 }
 
 void isa8_sblaster1_5_device::device_start()
 {
     set_isa_device();
 	/* 1.5 makes CM/S support optional (empty sockets, but they work if the user populates them!) */
-	m_isa->install_device(                   0x0226, 0x0227, 0, 0, read8_delegate(FUNC(sb8_device::dsp_reset_r), this), write8_delegate(FUNC(sb8_device::dsp_reset_w), this));
-	m_isa->install_device(subdevice("ym3812"),    0x0228, 0x0229, 0, 0, FUNC(ym3812_16_r), FUNC(ym3812_16_w) );
-	m_isa->install_device(                   0x022a, 0x022b, 0, 0, read8_delegate(FUNC(sb8_device::dsp_data_r), this), write8_delegate(FUNC(sb8_device::dsp_data_w), this) );
-	m_isa->install_device(                   0x022c, 0x022d, 0, 0, read8_delegate(FUNC(sb8_device::dsp_wbuf_status_r), this), write8_delegate(FUNC(sb8_device::dsp_cmd_w), this) );
-	m_isa->install_device(                   0x022e, 0x022f, 0, 0, read8_delegate(FUNC(sb8_device::dsp_rbuf_status_r), this), write8_delegate(FUNC(sb8_device::dsp_rbuf_status_w), this) );
-	m_isa->install_device(subdevice("ym3812"),    0x0388, 0x0389, 0, 0, FUNC(ym3812_16_r), FUNC(ym3812_16_w) );
 	m_dsp.version = 0x0200;
+    sb8_device::device_start();
 }
 
 //-------------------------------------------------
@@ -469,15 +529,42 @@ UINT8 sb8_device::dack_r(int line)
     return m_dack_out;
 }
 
+/* TODO: this mustn't be instant! */
 void sb8_device::dack_w(int line, UINT8 data)
 {
 //    printf("dack_w: line %x data %02x\n", line, data);
+//  if(data != 0x80)
+//      printf("%02x\n",data);
+
+    // set the transfer over timer on the 1st byte
+    if (m_dsp.dma_transferred == 0)
+    {
+        double time_constant = (double)m_dsp.frequency;
+
+        time_constant /= (double)m_dsp.dma_length;
+//        printf("DMA timer set for %f Hz\n", time_constant);
+
+        m_timer->adjust(attotime::from_hz(time_constant), 0);
+    }
+
     m_dsp.dma_transferred++;
     if (m_dsp.dma_transferred >= m_dsp.dma_length)
     {
-//        printf("DMA completed\n");
-        m_isa->drq1_w(0);	// drop DRQ?
-        m_isa->irq5_w(1);	// definitely raise IRQ as per the Creative manual
+//        printf("DMA fill completed (%d out of %d)\n", m_dsp.dma_transferred, m_dsp.dma_length);
+        m_isa->drq1_w(0);	// drop DRQ here
     }
 }
 
+void sb8_device::device_timer(emu_timer &timer, device_timer_id tid, int param, void *ptr)
+{
+    printf("DMA timer expire\n");
+    if(m_dsp.dma_autoinit)
+    {
+        m_dsp.dma_transferred = 0;
+        m_isa->drq1_w(1);   // raise DRQ again (page 3-15 of the Creative manual indicates auto-init will keep going until you stop it)
+    }
+
+    m_isa->irq5_w(1);	// raise IRQ as per the Creative manual
+
+    m_timer->adjust(attotime::never, 0);
+}

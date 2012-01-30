@@ -14,10 +14,11 @@
 #include "cpu/nec/nec.h"
 #include "cpu/i86/i86.h"
 
-#include "video/ibm_vga.h"
 #include "video/pc_cga.h"
 #include "video/isa_ega.h"
 #include "video/isa_mda.h"
+#include "video/isa_vga.h"
+#include "video/isa_svga_s3.h"
 
 #include "machine/ram.h"
 #include "machine/isa.h"
@@ -25,9 +26,11 @@
 #include "machine/isa_adlib.h"
 #include "machine/isa_com.h"
 #include "machine/isa_fdc.h"
+#include "machine/isa_finalchs.h"
 #include "machine/isa_gblaster.h"
 #include "machine/isa_hdc.h"
 #include "machine/isa_sblaster.h"
+#include "machine/isa_mpu401.h"
 #include "machine/3c503.h"
 #include "machine/ne1000.h"
 
@@ -109,14 +112,18 @@ DEVICE_INPUT_DEFAULTS_END
 static SLOT_INTERFACE_START(pc_isa8_cards)
 	SLOT_INTERFACE("mda", ISA8_MDA)
 	SLOT_INTERFACE("ega", ISA8_EGA)
+	SLOT_INTERFACE("vga", ISA8_VGA)
+	SLOT_INTERFACE("svga",ISA8_SVGA_S3)
 	SLOT_INTERFACE("com", ISA8_COM)
 	SLOT_INTERFACE("fdc", ISA8_FDC)
+	SLOT_INTERFACE("finalchs", ISA8_FINALCHS)
 	SLOT_INTERFACE("hdc", ISA8_HDC)
 	SLOT_INTERFACE("adlib", ISA8_ADLIB)
 	SLOT_INTERFACE("hercules", ISA8_HERCULES)
 	SLOT_INTERFACE("gblaster", ISA8_GAME_BLASTER)
 	SLOT_INTERFACE("sblaster1_0", ISA8_SOUND_BLASTER_1_0)
 	SLOT_INTERFACE("sblaster1_5", ISA8_SOUND_BLASTER_1_5)
+	SLOT_INTERFACE("mpu401", ISA8_MPU401)
 	SLOT_INTERFACE("ne1000", NE1000)
 	SLOT_INTERFACE("3c503", EL2_3C503)
 SLOT_INTERFACE_END
@@ -247,11 +254,10 @@ static MACHINE_CONFIG_START( xtvga, genpc_state )
 	MCFG_ISA8_SLOT_ADD("mb:isa","isa2", pc_isa8_cards, "fdc", NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa","isa3", pc_isa8_cards, "hdc", NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa","isa4", pc_isa8_cards, "sblaster1_0", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa","isa5", pc_isa8_cards, NULL, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa","isa5", pc_isa8_cards, "vga", NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa","isa6", pc_isa8_cards, NULL, NULL)
 
 	/* video hardware */
-	MCFG_IBM_VGA_ADD( "vga" )
 	MCFG_PALETTE_LENGTH( 256 )
 
 	/* keyboard */

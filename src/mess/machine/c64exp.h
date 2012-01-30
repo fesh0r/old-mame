@@ -45,7 +45,7 @@
 //  CONSTANTS
 //**************************************************************************
 
-#define C64_EXPANSION_SLOT_TAG		"c64exp"
+#define C64_EXPANSION_SLOT_TAG		"exp"
 
 
 
@@ -76,8 +76,6 @@ struct c64_expansion_slot_interface
     devcb_write_line	m_out_nmi_cb;
     devcb_write_line	m_out_dma_cb;
     devcb_write_line	m_out_reset_cb;
-    devcb_write_line	m_out_game_cb;
-    devcb_write_line	m_out_exrom_cb;
 };
 
 
@@ -134,8 +132,6 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( nmi_w );
 	DECLARE_WRITE_LINE_MEMBER( dma_w );
 	DECLARE_WRITE_LINE_MEMBER( reset_w );
-	DECLARE_WRITE_LINE_MEMBER( game_w );
-	DECLARE_WRITE_LINE_MEMBER( exrom_w );
 
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -161,7 +157,7 @@ protected:
 	virtual const option_guide *create_option_guide() const { return NULL; }
 
 	// slot interface overrides
-	virtual const char * get_default_card_software(const device_list &devlist, emu_options &options) const;
+	virtual const char * get_default_card_software(const machine_config &config, emu_options &options) const;
 
 	virtual UINT8* get_cart_base();
 
@@ -169,8 +165,6 @@ protected:
 	devcb_resolved_write_line	m_out_nmi_func;
 	devcb_resolved_write_line	m_out_dma_func;
 	devcb_resolved_write_line	m_out_reset_func;
-	devcb_resolved_write_line	m_out_game_func;
-	devcb_resolved_write_line	m_out_exrom_func;
 
 	device_c64_expansion_card_interface *m_cart;
 };

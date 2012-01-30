@@ -22,9 +22,10 @@
 #include "machine/cs4031.h"
 #include "machine/cs8221.h"
 #include "machine/pit8253.h"
-#include "video/pc_vga.h"
 #include "video/pc_cga.h"
 #include "video/isa_ega.h"
+#include "video/isa_vga.h"
+#include "video/isa_svga_s3.h"
 
 #include "machine/idectrl.h"
 #include "machine/at_keybc.h"
@@ -52,6 +53,7 @@
 #include "machine/ne1000.h"
 #include "machine/ne2000.h"
 #include "video/isa_mda.h"
+#include "machine/isa_mpu401.h"
 
 #include "machine/isa_ide.h"
 

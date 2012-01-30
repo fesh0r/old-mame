@@ -238,7 +238,7 @@ static const wd17xx_interface fdc_intf =
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, luxor_55_21046_device, fdc_intrq_w),
 	DEVCB_DEVICE_LINE(Z80DMA_TAG, z80dma_rdy_w),
-	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
+	{ ":"FLOPPY_0, ":"FLOPPY_1, NULL, NULL }
 };
 
 
@@ -428,7 +428,7 @@ void luxor_55_21046_device::device_reset()
 
 void luxor_55_21046_device::abcbus_cs(UINT8 data)
 {
-	m_cs = (data == input_port_read(this, "SW3"));
+	m_cs = (data == input_port_read(*this, "SW3"));
 }
 
 
@@ -685,12 +685,12 @@ READ8_MEMBER( luxor_55_21046_device::_9a_r )
 	data |= m_busy;
 
 	// SW1
-	UINT8 sw1 = input_port_read(this, "SW1") & 0x0f;
+	UINT8 sw1 = input_port_read(*this, "SW1") & 0x0f;
 
 	data |= sw1 << 4;
 
 	// SW2
-	UINT8 sw2 = input_port_read(this, "SW2") & 0x0f;
+	UINT8 sw2 = input_port_read(*this, "SW2") & 0x0f;
 
 	// TTL inputs float high so DIP switch in off position equals 1
 	int sw2_1 = BIT(sw2, 0) ? 1 : BIT(offset, 8);

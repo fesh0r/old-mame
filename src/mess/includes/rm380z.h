@@ -42,7 +42,7 @@ private:
 	void put_point(int charnum,int x,int y,int col);
 	void init_graphic_chars();
 
-	void putChar(int charnum,int attribs,int x,int y,UINT16* pscr,unsigned char* chsb,int vmode);
+	void putChar(int charnum,int attribs,int x,int y,bitmap_ind16 &bitmap,unsigned char* chsb,int vmode);
 	void decode_videoram_char(int pos,UINT8& chr,UINT8& attrib);
 	void scroll_videoram();
 	void config_videomode();
@@ -70,13 +70,13 @@ public:
 
 	int m_rasterlineCtr;
 	emu_timer* m_vblankTimer;
-	
+
 	int m_old_fbfd;
 	int m_old_old_fbfd;
-	
+
 	int m_videomode;
 	int m_old_videomode;
-	
+
 	required_device<cpu_device> m_maincpu;
 	required_device<ram_device> m_messram;
 	optional_device<device_t> m_fdc;

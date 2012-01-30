@@ -2265,7 +2265,7 @@ static void i386_protected_mode_iret(i386_state* cpustate, int operand32)
 	{
 		if(newflags & 0x00020000) // if returning to virtual 8086 mode
 		{
-//			UINT8 SSRPL,SSDPL;
+//          UINT8 SSRPL,SSDPL;
 			memset(&desc, 0, sizeof(desc));
 			desc.selector = newCS;
 			i386_load_protected_mode_segment(cpustate,&desc);
@@ -2396,7 +2396,7 @@ static void i386_protected_mode_iret(i386_state* cpustate, int operand32)
 			cpustate->eip = POP32(cpustate) & 0xffff;  // high 16 bits are ignored
 			cpustate->sreg[CS].selector = POP32(cpustate) & 0xffff;
 			POP32(cpustate);  // already set flags
-//			if(RPL > CPL)
+//          if(RPL > CPL)
 			{
 				newESP = POP32(cpustate);
 				newSS = POP32(cpustate) & 0xffff;
@@ -2673,10 +2673,10 @@ static void i386_protected_mode_iret(i386_state* cpustate, int operand32)
 					FAULT(FAULT_GP,0)
 				}
 
-//				if(operand32 == 0)
-//					REG16(SP) += 10;
-//				else
-//					REG32(ESP) += 20;
+//              if(operand32 == 0)
+//                  REG16(SP) += 10;
+//              else
+//                  REG32(ESP) += 20;
 
 				// IOPL can only change if CPL is zero
 				if(CPL != 0)

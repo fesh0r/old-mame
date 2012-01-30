@@ -494,9 +494,6 @@ CONLYFLAGS += \
 COBJFLAGS += \
 	-Wpointer-arith 
 
-# warnings only applicable to C++ compiles
-CPPONLYFLAGS += \
-	-Woverloaded-virtual
 
 
 #-------------------------------------------------

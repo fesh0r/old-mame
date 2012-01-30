@@ -1287,7 +1287,7 @@ const floppy_image_format_t::desc_e dc42_format::mac_gcr[] = {
 	{ SECTOR_LOOP_END },
 	{ END },
 };
-	
+
 
 bool dc42_format::load(io_generic *io, UINT32 form_factor, floppy_image *image)
 {
@@ -1350,7 +1350,7 @@ UINT8 dc42_format::gb(const UINT8 *buf, int ts, int &pos, int &wrap)
 		if(pos == ts) {
 			pos = 0;
 			wrap++;
-		}		
+		}
 	}
 	return v;
 }
@@ -1430,8 +1430,8 @@ bool dc42_format::save(io_generic *io, floppy_image *image)
 					UINT8 tr = gcr6bw_tb[h[0]] | (v2 & 1 ? 0x40 : 0x00);
 					UINT8 se = gcr6bw_tb[h[1]];
 					UINT8 si = v2 & 0x20 ? 1 : 0;
-					//					UINT8 ds = v3 & 0x20 ? 1 : 0;
-					//					UINT8 fmt = v3 & 0x1f;
+					//                  UINT8 ds = v3 & 0x20 ? 1 : 0;
+					//                  UINT8 fmt = v3 & 0x1f;
 					UINT8 c1 = (tr^se^v2^v3) & 0x3f;
 					UINT8 chk = gcr6bw_tb[h[4]];
 					if(chk == c1 && tr == track && si == head && se < nsect) {

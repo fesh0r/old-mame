@@ -90,9 +90,10 @@ void c64_expansion_slot_device::device_config_complete()
     	memset(&m_out_nmi_cb, 0, sizeof(m_out_nmi_cb));
     	memset(&m_out_dma_cb, 0, sizeof(m_out_dma_cb));
     	memset(&m_out_reset_cb, 0, sizeof(m_out_reset_cb));
-    	memset(&m_out_game_cb, 0, sizeof(m_out_game_cb));
-    	memset(&m_out_exrom_cb, 0, sizeof(m_out_exrom_cb));
 	}
+
+	// set brief and instance name
+	update_names();	
 }
 
 
@@ -109,8 +110,6 @@ void c64_expansion_slot_device::device_start()
 	m_out_nmi_func.resolve(m_out_nmi_cb, *this);
 	m_out_dma_func.resolve(m_out_dma_cb, *this);
 	m_out_reset_func.resolve(m_out_reset_cb, *this);
-	m_out_game_func.resolve(m_out_game_cb, *this);
-	m_out_exrom_func.resolve(m_out_exrom_cb, *this);
 }
 
 
@@ -177,9 +176,9 @@ bool c64_expansion_slot_device::call_softlist_load(char *swlist, char *swname, r
 //  get_default_card_software -
 //-------------------------------------------------
 
-const char * c64_expansion_slot_device::get_default_card_software(const device_list &devlist, emu_options &options) const
+const char * c64_expansion_slot_device::get_default_card_software(const machine_config &config, emu_options &options) const
 {
-	return software_get_default_slot(devlist, options, this, "standard");
+	return software_get_default_slot(config, options, this, "standard");
 }
 
 
@@ -342,5 +341,3 @@ WRITE_LINE_MEMBER( c64_expansion_slot_device::irq_w ) { m_out_irq_func(state); }
 WRITE_LINE_MEMBER( c64_expansion_slot_device::nmi_w ) { m_out_nmi_func(state); }
 WRITE_LINE_MEMBER( c64_expansion_slot_device::dma_w ) { m_out_dma_func(state); }
 WRITE_LINE_MEMBER( c64_expansion_slot_device::reset_w ) { m_out_reset_func(state); }
-WRITE_LINE_MEMBER( c64_expansion_slot_device::game_w ) { m_out_game_func(state); }
-WRITE_LINE_MEMBER( c64_expansion_slot_device::exrom_w ) { m_out_exrom_func(state); }

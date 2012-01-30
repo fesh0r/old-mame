@@ -24,6 +24,7 @@ struct sb8_dsp_state
     INT32 prot_value;
     UINT32 frequency;
     UINT32 dma_length, dma_transferred;
+    UINT8 dma_autoinit;
 };
 
 // ======================> sb8_device (parent)
@@ -49,18 +50,25 @@ public:
         DECLARE_READ8_MEMBER(dsp_wbuf_status_r);
         DECLARE_WRITE8_MEMBER(dsp_rbuf_status_w);
         DECLARE_WRITE8_MEMBER(dsp_cmd_w);
+        DECLARE_READ8_MEMBER(joy_port_r);
+        DECLARE_WRITE8_MEMBER(joy_port_w);
+		virtual ioport_constructor device_input_ports() const;
 
 protected:
         // device-level overrides
         virtual void device_start();
         virtual void device_reset();
-	virtual bool have_dack(int line);
+        virtual bool have_dack(int line);
         virtual UINT8 dack_r(int line);
         virtual void dack_w(int line, UINT8 data);
+        virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 
         struct sb8_dsp_state m_dsp;
         UINT8 m_dack_out;
+        attotime m_joy_time;
+
 private:
+        emu_timer *m_timer;
 };
 
 class isa8_sblaster1_0_device : public sb8_device

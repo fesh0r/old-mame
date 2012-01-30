@@ -172,13 +172,13 @@ static WRITE_LINE_DEVICE_HANDLER( pc_dack3_w ) { set_dma_channel(device, 3, stat
 
 I8237_INTERFACE( ibm5150_dma8237_config )
 {
-	DEVCB_LINE(pc_dma_hrq_changed),
-	DEVCB_LINE(pc_dma8237_out_eop),
+	DEVCB_DEVICE_LINE("dma8237", pc_dma_hrq_changed),
+	DEVCB_DEVICE_LINE("dma8237", pc_dma8237_out_eop),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(pc_dma8237_fdc_dack_r), DEVCB_HANDLER(pc_dma8237_hdc_dack_r) },
-	{ DEVCB_HANDLER(pc_dma8237_0_dack_w), DEVCB_NULL, DEVCB_HANDLER(pc_dma8237_fdc_dack_w), DEVCB_HANDLER(pc_dma8237_hdc_dack_w) },
-	{ DEVCB_LINE(pc_dack0_w), DEVCB_LINE(pc_dack1_w), DEVCB_LINE(pc_dack2_w), DEVCB_LINE(pc_dack3_w) }
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER("dma8237", pc_dma8237_fdc_dack_r), DEVCB_DEVICE_HANDLER("dma8237", pc_dma8237_hdc_dack_r) },
+	{ DEVCB_DEVICE_HANDLER("dma8237", pc_dma8237_0_dack_w), DEVCB_NULL, DEVCB_DEVICE_HANDLER("dma8237", pc_dma8237_fdc_dack_w), DEVCB_DEVICE_HANDLER("dma8237", pc_dma8237_hdc_dack_w) },
+	{ DEVCB_DEVICE_LINE("dma8237", pc_dack0_w), DEVCB_DEVICE_LINE("dma8237", pc_dack1_w), DEVCB_DEVICE_LINE("dma8237", pc_dack2_w), DEVCB_DEVICE_LINE("dma8237", pc_dack3_w) }
 };
 
 
@@ -1080,17 +1080,6 @@ DRIVER_INIT( pcjr )
 
 static READ8_HANDLER( input_port_0_r ) { return input_port_read(space->machine(), "IN0"); }
 
-static const struct pc_vga_interface vga_interface =
-{
-	input_port_0_r,
-	AS_PROGRAM,
-	0xa0000,
-	AS_IO,
-	0x0000
-};
-
-
-
 DRIVER_INIT( pc1640 )
 {
 	address_space *io_space = machine.firstcpu->memory().space( AS_IO );
@@ -1105,7 +1094,8 @@ DRIVER_INIT( pc_vga )
 {
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 
-	pc_vga_init(machine, &vga_interface, NULL);
+	pc_vga_init(machine, input_port_0_r, NULL);
+	pc_vga_io_init(machine, machine.device("maincpu")->memory().space(AS_PROGRAM), 0xa0000, machine.device("maincpu")->memory().space(AS_IO), 0x0000);
 }
 
 static IRQ_CALLBACK(pc_irq_callback)
@@ -1200,7 +1190,7 @@ DEVICE_IMAGE_LOAD( pcjr_cartridge )
 	UINT32	address;
 	UINT32	size;
 
-	address = ( ! strcmp( "cart2", image.device().tag() ) ) ? 0xd0000 : 0xe0000;
+	address = ( ! strcmp( ":cart2", image.device().tag() ) ) ? 0xd0000 : 0xe0000;
 
 	if ( image.software_entry() )
 	{

@@ -9,7 +9,16 @@
 #ifndef AIM65_H_
 #define AIM65_H_
 
+#include "emu.h"
+#include "cpu/m6502/m6502.h"
+#include "video/dl1416.h"
 #include "machine/6522via.h"
+#include "machine/6532riot.h"
+#include "machine/6821pia.h"
+#include "machine/ram.h"
+#include "imagedev/cartslot.h"
+#include "imagedev/cassette.h"
+#include "sound/wave.h"
 
 
 /** R6502 Clock.
@@ -25,18 +34,28 @@ class aim65_state : public driver_device
 {
 public:
 	aim65_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+	m_maincpu(*this, "maincpu"),
+	m_cass1(*this, CASSETTE_TAG),
+	m_cass2(*this, CASSETTE2_TAG)
+	{ }
 
+	DECLARE_WRITE8_MEMBER(aim65_pia_a_w);
+	DECLARE_WRITE8_MEMBER(aim65_pia_b_w);
+	DECLARE_READ8_MEMBER(aim65_riot_b_r);
+	DECLARE_WRITE8_MEMBER(aim65_riot_a_w);
+	DECLARE_WRITE8_MEMBER(aim65_pa_w);
+	DECLARE_WRITE8_MEMBER(aim65_pb_w);
+	DECLARE_WRITE8_MEMBER(aim65_printer_on);
+	DECLARE_READ8_MEMBER(aim65_pb_r);
 	UINT8 m_pia_a;
 	UINT8 m_pia_b;
 	UINT8 m_riot_port_a;
-	int m_printer_x;
-	int m_printer_y;
-	int m_printer_dir;
-	int m_flag_a;
-	int m_flag_b;
-	emu_timer *m_print_timer;
-	int m_printer_level;
+	UINT8 m_pb_save;
+
+	required_device<cpu_device> m_maincpu;
+	required_device<cassette_image_device> m_cass1;
+	required_device<cassette_image_device> m_cass2;
 };
 
 
@@ -48,24 +67,7 @@ void aim65_update_ds3(device_t *device, int digit, int data);
 void aim65_update_ds4(device_t *device, int digit, int data);
 void aim65_update_ds5(device_t *device, int digit, int data);
 
-WRITE8_DEVICE_HANDLER(aim65_pia_a_w);
-WRITE8_DEVICE_HANDLER(aim65_pia_b_w);
-
-READ8_DEVICE_HANDLER(aim65_riot_b_r);
-WRITE8_DEVICE_HANDLER(aim65_riot_a_w);
-WRITE_LINE_DEVICE_HANDLER(aim65_riot_irq);
 
 MACHINE_START( aim65 );
-
-
-/*----------- defined in video/aim65.c -----------*/
-
-VIDEO_START( aim65 );
-
-/* Printer */
-WRITE8_DEVICE_HANDLER( aim65_printer_data_a );
-WRITE8_DEVICE_HANDLER( aim65_printer_data_b );
-WRITE8_DEVICE_HANDLER( aim65_printer_on );
-
 
 #endif /* AIM65_H_ */

@@ -260,14 +260,18 @@ XT U44 IBM.bin: IBM 5160 PC/XT Bank-selection decoding ROM (256x4 bit). Not mapp
 #include "machine/isa_adlib.h"
 #include "machine/isa_com.h"
 #include "machine/isa_fdc.h"
+#include "machine/isa_finalchs.h"
 #include "machine/isa_gblaster.h"
 #include "machine/isa_hdc.h"
 #include "machine/isa_sblaster.h"
 #include "machine/3c503.h"
+#include "video/isa_cga.h"
+#include "video/isa_ega.h"
+#include "video/isa_mda.h"
 #include "machine/ne1000.h"
+#include "machine/isa_mpu401.h"
 
 #include "machine/kb_keytro.h"
-#include "video/pc_cga.h"
 #include "includes/genpc.h"
 
 class ibmpc_state : public driver_device
@@ -296,7 +300,6 @@ static INPUT_PORTS_START( ibm5150 )
 	PORT_INCLUDE( kb_keytronic_pc )		/* IN4 - IN11 */
 //  PORT_INCLUDE( pc_mouse_microsoft )  /* IN12 - IN14 */
 //  PORT_INCLUDE( pc_joystick )         /* IN15 - IN19 */
-	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static const unsigned i86_address_mask = 0x000fffff;
@@ -317,9 +320,17 @@ static DEVICE_INPUT_DEFAULTS_START(cga)
 	DEVICE_INPUT_DEFAULTS("DSW0",0x30, 0x20)
 DEVICE_INPUT_DEFAULTS_END
 
+//static DEVICE_INPUT_DEFAULTS_START(ega)
+//  DEVICE_INPUT_DEFAULTS("DSW0",0x30, 0x00)
+//DEVICE_INPUT_DEFAULTS_END
+
 static SLOT_INTERFACE_START(ibm_isa8_cards)
+	SLOT_INTERFACE("cga", ISA8_CGA)
+//  SLOT_INTERFACE("ega", ISA8_EGA)
+	SLOT_INTERFACE("mda", ISA8_MDA)
 	SLOT_INTERFACE("com", ISA8_COM)
 	SLOT_INTERFACE("fdc", ISA8_FDC)
+	SLOT_INTERFACE("finalchs", ISA8_FINALCHS)
 	SLOT_INTERFACE("hdc", ISA8_HDC)
 	SLOT_INTERFACE("adlib", ISA8_ADLIB)
 	SLOT_INTERFACE("gblaster", ISA8_GAME_BLASTER)
@@ -327,6 +338,7 @@ static SLOT_INTERFACE_START(ibm_isa8_cards)
 	SLOT_INTERFACE("sblaster1_5", ISA8_SOUND_BLASTER_1_5)
 	SLOT_INTERFACE("ne1000", NE1000)
 	SLOT_INTERFACE("3c503", EL2_3C503)
+	SLOT_INTERFACE("mpu401", ISA8_MPU401)
 SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_START( ibm5150, ibmpc_state )
@@ -339,13 +351,10 @@ static MACHINE_CONFIG_START( ibm5150, ibmpc_state )
 	MCFG_IBM5150_MOTHERBOARD_ADD("mb","maincpu",pc_keytronic_keyboard_intf)
 	MCFG_DEVICE_INPUT_DEFAULTS(cga)
 
-	/* video hardware */
-	MCFG_FRAGMENT_ADD( pcvideo_cga )
-
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa1", ibm_isa8_cards, "com", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa2", ibm_isa8_cards, "fdc", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa3", ibm_isa8_cards, "hdc", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa4", ibm_isa8_cards, NULL, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa1", ibm_isa8_cards, "cga", NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa2", ibm_isa8_cards, "com", NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa3", ibm_isa8_cards, "fdc", NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa4", ibm_isa8_cards, "hdc", NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa", "isa5", ibm_isa8_cards, NULL, NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa", "isa6", ibm_isa8_cards, NULL, NULL)
 
@@ -370,13 +379,10 @@ static MACHINE_CONFIG_START( ibm5160, ibmpc_state )
 	MCFG_IBM5160_MOTHERBOARD_ADD("mb","maincpu",pc_keytronic_keyboard_intf)
 	MCFG_DEVICE_INPUT_DEFAULTS(cga)
 
-	/* video hardware */
-	MCFG_FRAGMENT_ADD( pcvideo_cga )
-
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa1", ibm_isa8_cards, "com", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa2", ibm_isa8_cards, "fdc", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa3", ibm_isa8_cards, "hdc", NULL)
-	MCFG_ISA8_SLOT_ADD("mb:isa", "isa4", ibm_isa8_cards, NULL, NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa1", ibm_isa8_cards, "cga", NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa2", ibm_isa8_cards, "com", NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa3", ibm_isa8_cards, "fdc", NULL)
+	MCFG_ISA8_SLOT_ADD("mb:isa", "isa4", ibm_isa8_cards, "hdc", NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa", "isa5", ibm_isa8_cards, NULL, NULL)
 	MCFG_ISA8_SLOT_ADD("mb:isa", "isa6", ibm_isa8_cards, NULL, NULL)
 

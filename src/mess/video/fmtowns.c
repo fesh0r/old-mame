@@ -99,28 +99,25 @@ static void draw_sprites(running_machine &machine, const rectangle* rect);
 static void towns_crtc_refresh_mode(running_machine &machine)
 {
 	towns_state* state = machine.driver_data<towns_state>();
-	rectangle scr;
 	unsigned int width,height;
 
-	scr.min_x = scr.min_y = 0;
-	scr.max_x = state->m_video.towns_crtc_reg[4];
-	scr.max_y = state->m_video.towns_crtc_reg[8] / 2;
+	rectangle scr(0, state->m_video.towns_crtc_reg[4], 0, state->m_video.towns_crtc_reg[8] / 2);
 
 	// layer 0
 	width = state->m_video.towns_crtc_reg[10] - state->m_video.towns_crtc_reg[9];
 	height = (state->m_video.towns_crtc_reg[14] - state->m_video.towns_crtc_reg[13]) / 2;
-	state->m_video.towns_crtc_layerscr[0].min_x = (scr.max_x / 2) - (width / 2);
-	state->m_video.towns_crtc_layerscr[0].min_y = (scr.max_y / 2) - (height / 2);
-	state->m_video.towns_crtc_layerscr[0].max_x = (scr.max_x / 2) + (width / 2);
-	state->m_video.towns_crtc_layerscr[0].max_y = (scr.max_y / 2) + (height / 2);
+	state->m_video.towns_crtc_layerscr[0].min_x = scr.xcenter() - (width / 2);
+	state->m_video.towns_crtc_layerscr[0].min_y = scr.ycenter() - (height / 2);
+	state->m_video.towns_crtc_layerscr[0].max_x = scr.xcenter() + (width / 2);
+	state->m_video.towns_crtc_layerscr[0].max_y = scr.ycenter() + (height / 2);
 
 	// layer 1
 	width = state->m_video.towns_crtc_reg[12] - state->m_video.towns_crtc_reg[11];
 	height = (state->m_video.towns_crtc_reg[16] - state->m_video.towns_crtc_reg[15]) / 2;
-	state->m_video.towns_crtc_layerscr[1].min_x = (scr.max_x / 2) - (width / 2);
-	state->m_video.towns_crtc_layerscr[1].min_y = (scr.max_y / 2) - (height / 2);
-	state->m_video.towns_crtc_layerscr[1].max_x = (scr.max_x / 2) + (width / 2);
-	state->m_video.towns_crtc_layerscr[1].max_y = (scr.max_y / 2) + (height / 2);
+	state->m_video.towns_crtc_layerscr[1].min_x = scr.xcenter() - (width / 2);
+	state->m_video.towns_crtc_layerscr[1].min_y = scr.ycenter() - (height / 2);
+	state->m_video.towns_crtc_layerscr[1].max_x = scr.xcenter() + (width / 2);
+	state->m_video.towns_crtc_layerscr[1].max_y = scr.ycenter() + (height / 2);
 
 	// sanity checks
 	if(scr.max_x == 0 || scr.max_y == 0)
@@ -268,10 +265,10 @@ READ8_MEMBER( towns_state::towns_video_cff80_r )
 			else
 				return 0x00;
 		case 0x06:
-			if(m_video.towns_vblank_flag != 0)
-				return 0x10;
-			else
-				return 0x00;
+//          if(m_video.towns_vblank_flag != 0)
+//              return 0x10;
+//          else
+//              return 0x00;
 		case 0x16:  // Kanji character data
 			return ROM[(m_video.towns_kanji_offset << 1) + 0x180000];
 		case 0x17:  // Kanji character data
@@ -575,6 +572,11 @@ WRITE8_MEMBER(towns_state::towns_video_ff81_w)
 	m_video.towns_vram_rplane = (data & 0xc0) >> 6;
 	towns_update_video_banks(space);
 	logerror("VGA: VRAM wplane select (I/O) = 0x%02x\n",m_video.towns_vram_wplane);
+}
+
+READ32_MEMBER(towns_state::towns_video_unknown_r)
+{
+	return 0x00000000;
 }
 
 /*
