@@ -278,22 +278,26 @@ static READ8_HANDLER( samcoupe_attributes_r )
 
 static READ8_DEVICE_HANDLER( samcoupe_lpt1_busy_r )
 {
-	return centronics_busy_r(device);
+	centronics_device *centronics = device->machine().device<centronics_device>("lpt1");
+	return centronics->busy_r();
 }
 
 static WRITE8_DEVICE_HANDLER( samcoupe_lpt1_strobe_w )
 {
-	centronics_strobe_w(device, data);
+	centronics_device *centronics = device->machine().device<centronics_device>("lpt1");
+	centronics->strobe_w(data);
 }
 
 static READ8_DEVICE_HANDLER( samcoupe_lpt2_busy_r )
 {
-	return centronics_busy_r(device);
+	centronics_device *centronics = device->machine().device<centronics_device>("lpt2");
+	return centronics->busy_r();
 }
 
 static WRITE8_DEVICE_HANDLER( samcoupe_lpt2_strobe_w )
 {
-	centronics_strobe_w(device, data);
+	centronics_device *centronics = device->machine().device<centronics_device>("lpt2");
+	centronics->strobe_w(data);
 }
 
 
@@ -311,9 +315,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( samcoupe_io, AS_IO, 8 )
 	AM_RANGE(0x0080, 0x0081) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_WRITE(samcoupe_ext_mem_w)
 	AM_RANGE(0x00e0, 0x00e7) AM_MIRROR(0xff10) AM_MASK(0xffff) AM_READWRITE(samcoupe_disk_r, samcoupe_disk_w)
-	AM_RANGE(0x00e8, 0x00e8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("lpt1", centronics_data_w)
+	AM_RANGE(0x00e8, 0x00e8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE_MODERN("lpt1", centronics_device, write)
 	AM_RANGE(0x00e9, 0x00e9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVREADWRITE("lpt1", samcoupe_lpt1_busy_r, samcoupe_lpt1_strobe_w)
-	AM_RANGE(0x00ea, 0x00ea) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("lpt2", centronics_data_w)
+	AM_RANGE(0x00ea, 0x00ea) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE_MODERN("lpt2", centronics_device, write)
 	AM_RANGE(0x00eb, 0x00eb) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVREADWRITE("lpt2", samcoupe_lpt2_busy_r, samcoupe_lpt2_strobe_w)
 	AM_RANGE(0x00f8, 0x00f8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_pen_r, samcoupe_clut_w)
 	AM_RANGE(0x00f9, 0x00f9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_status_r, samcoupe_line_int_w)
@@ -551,8 +555,8 @@ static MACHINE_CONFIG_START( samcoupe, samcoupe_state )
 	MCFG_PALETTE_INIT(samcoupe)
 
 	/* devices */
-	MCFG_CENTRONICS_ADD("lpt1", standard_centronics)
-	MCFG_CENTRONICS_ADD("lpt2", standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt1", standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt2", standard_centronics)
 	MCFG_MSM6242_ADD("sambus_clock", samcoupe_rtc_intf)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, samcoupe_cassette_interface)
 	MCFG_WD1772x_ADD("wd1772", SAMCOUPE_XTAL_X1/3)

@@ -54,7 +54,7 @@ static ADDRESS_MAP_START( at586_map, AS_PROGRAM, 32, at_state )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
 	AM_RANGE(0x00800000, 0x00800bff) AM_RAM AM_SHARE("nvram")
-	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION("user1", 0x20000)
+	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION("isa", 0x20000)
 ADDRESS_MAP_END
 
 
@@ -350,6 +350,7 @@ static const isa16bus_interface isabus_intf =
 static SLOT_INTERFACE_START(pc_isa16_cards)
 	// ISA 8 bit
 	SLOT_INTERFACE("mda", ISA8_MDA)
+	SLOT_INTERFACE("cga", ISA8_CGA)
 	SLOT_INTERFACE("ega", ISA8_EGA)
 	SLOT_INTERFACE("vga", ISA8_VGA)
 	SLOT_INTERFACE("svga",ISA8_SVGA_S3)
@@ -365,9 +366,12 @@ static SLOT_INTERFACE_START(pc_isa16_cards)
 	SLOT_INTERFACE("ne1000", NE1000)
 	SLOT_INTERFACE("3c503", EL2_3C503)
 	SLOT_INTERFACE("mpu401", ISA8_MPU401)
+	SLOT_INTERFACE("lpt", ISA8_LPT)
+	SLOT_INTERFACE("ibm_mfc", ISA8_IBM_MFC)
 	// ISA 16 bit
 	SLOT_INTERFACE("ide", ISA16_IDE)
 	SLOT_INTERFACE("ne2000", NE2000)
+	SLOT_INTERFACE("aha1542", AHA1542)
 SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_FRAGMENT( at_motherboard )
@@ -391,6 +395,9 @@ static MACHINE_CONFIG_FRAGMENT( at_motherboard )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* video hardware */
+	MCFG_PALETTE_LENGTH( 256 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( ibm5170, at_state )
@@ -549,6 +556,7 @@ static MACHINE_CONFIG_START( at386, at_state )
 	MCFG_ISA_ONBOARD_ADD("isabus", "fdc", ISA8_FDC, NULL)
 	MCFG_ISA_ONBOARD_ADD("isabus", "com", ISA8_COM_AT, NULL)
 	MCFG_ISA_ONBOARD_ADD("isabus", "ide", ISA16_IDE, NULL)
+	MCFG_ISA_ONBOARD_ADD("isabus", "lpt", ISA8_LPT, NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "vga", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, NULL, NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, NULL, NULL)
@@ -597,7 +605,7 @@ static MACHINE_CONFIG_DERIVED( at586, at386 )
 	MCFG_CPU_IO_MAP(at586_io)
 
 	MCFG_I82371AB_ADD("i82371ab")
-	MCFG_I82439TX_ADD("i82439tx", "maincpu", "user1")
+	MCFG_I82439TX_ADD("i82439tx", "maincpu", "isa")
 
 	MCFG_PCI_BUS_ADD("pcibus", 0)
 	MCFG_PCI_BUS_DEVICE(0, "i82439tx", i82439tx_pci_read, i82439tx_pci_write)
@@ -1123,9 +1131,7 @@ ROM_END
 
 // Unknown 486 board with Chips & Technologies CS4031 chipset
 ROM_START( ct486 )
-	ROM_REGION(0x100000, "isa", 0)
-	ROM_LOAD("et4000.bin", 0xc0000, 0x8000, CRC(f1e817a8) SHA1(945d405b0fb4b8f26830d495881f8587d90e5ef9) )
-
+	ROM_REGION(0x40000, "isa", ROMREGION_ERASEFF)
 	ROM_REGION(0x100000, "bios", 0)
 	ROM_LOAD("chips_1.ami", 0xf0000, 0x10000, CRC(a14a7511) SHA1(b88d09be66905ed2deddc26a6f8522e7d2d6f9a8))
 ROM_END
@@ -1147,7 +1153,7 @@ ROM_END
 
 
 ROM_START( at586 )
-	ROM_REGION32_LE(0x40000, "user1", 0)
+	ROM_REGION32_LE(0x40000, "isa", 0)
 	ROM_SYSTEM_BIOS(0, "sptx", "SP-586TX")
 	ROMX_LOAD("sp586tx.bin",   0x20000, 0x20000, CRC(1003d72c) SHA1(ec9224ff9b0fdfd6e462cb7bbf419875414739d6), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "unisys", "Unisys 586") // probably bad dump due to need of hack in i82439tx to work
@@ -1282,7 +1288,7 @@ ROM_END
 
 /* FIC VT-503 (Intel TX chipset, ITE 8679 Super I/O) */
 ROM_START( ficvt503 )
-	ROM_REGION32_LE(0x40000, "user1", 0)
+	ROM_REGION32_LE(0x40000, "isa", 0)
 	ROM_SYSTEM_BIOS(0, "109gi13", "1.09GI13") /* 1997-10-02 */
 	ROMX_LOAD("109gi13.bin", 0x20000, 0x20000, CRC(0c32af48) SHA1(2cce40a98598f1ed1f398975f7a90c8be4200667), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "109gi14", "1.09GI14") /* 1997-11-07 */

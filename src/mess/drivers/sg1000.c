@@ -832,7 +832,7 @@ READ8_MEMBER( sf7000_state::ppi_pa_r )
 	UINT8 data = 0;
 
 	data |= m_fdc_irq;
-	data |= centronics_busy_r(m_centronics) << 1;
+	data |= m_centronics->busy_r() << 1;
 	data |= m_fdc_index << 2;
 
 	return data;
@@ -870,7 +870,7 @@ WRITE8_MEMBER( sf7000_state::ppi_pc_w )
 	memory_set_bank(machine(), "bank1", BIT(data, 6));
 
 	/* printer strobe */
-	centronics_strobe_w(m_centronics, BIT(data, 7));
+	m_centronics->strobe_w(BIT(data, 7));
 }
 
 static I8255_INTERFACE( sf7000_ppi_intf )
@@ -878,7 +878,7 @@ static I8255_INTERFACE( sf7000_ppi_intf )
 	DEVCB_DRIVER_MEMBER(sf7000_state, ppi_pa_r),				// Port A read
 	DEVCB_NULL,													// Port A write
 	DEVCB_NULL,													// Port B read
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, centronics_data_w),	// Port B write
+	DEVCB_DEVICE_MEMBER(CENTRONICS_TAG, centronics_device, write),	// Port B write
 	DEVCB_NULL,													// Port C read
 	DEVCB_DRIVER_MEMBER(sf7000_state, ppi_pc_w)					// Port C write
 };
@@ -1144,7 +1144,7 @@ static MACHINE_CONFIG_START( sf7000, sf7000_state )
 	MCFG_UPD765A_ADD(UPD765_TAG, sf7000_upd765_interface)
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, sf7000_floppy_interface)
 //  MCFG_PRINTER_ADD("sp400") /* serial printer */
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_interface)
 
 	/* internal ram */

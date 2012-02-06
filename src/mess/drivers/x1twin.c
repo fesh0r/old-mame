@@ -11,31 +11,14 @@
     - Needs video mods
 
 ************************************************************************************************/
+#define ADDRESS_MAP_MODERN
 
-#include "emu.h"
 #include "includes/x1.h"
-#include "cpu/z80/z80.h"
-#include "cpu/z80/z80daisy.h"
-#include "machine/z80ctc.h"
-//#include "machine/z80sio.h"
-#include "machine/z80dart.h"
-#include "machine/i8255.h"
-#include "machine/z80dma.h"
-#include "sound/ay8910.h"
-#include "video/mc6845.h"
-#include "sound/2151intf.h"
-#include "sound/wave.h"
-#include "machine/wd17xx.h"
-#include "imagedev/cassette.h"
-#include "imagedev/flopdrv.h"
-#include "formats/basicdsk.h"
-#include "formats/x1_tap.h"
-#include "imagedev/cartslot.h"
 
 #include "includes/pce.h"
 #include "video/vdc.h"
-#include "cpu/h6280/h6280.h"
-#include "sound/c6280.h"
+//#include "cpu/h6280/h6280.h"
+//#include "sound/c6280.h"
 #include "machine/pcecommn.h"
 
 #include "rendlay.h"
@@ -45,7 +28,7 @@ class x1twin_state : public x1_state
 	public:
 		x1twin_state(const machine_config &mconfig, device_type type, const char *tag)
 		: x1_state(mconfig, type, tag)
-		{ }
+	{ }
 };
 
 
@@ -53,29 +36,23 @@ class x1twin_state : public x1_state
 #define VDP_CLOCK  XTAL_42_9545MHz
 #define MCU_CLOCK  XTAL_6MHz
 
-static SCREEN_UPDATE_RGB32( x1twin )
+static SCREEN_UPDATE_RGB32( x1pce )
 {
-	device_t *left_screen  = screen.machine().device("x1_screen");
-	//device_t *right_screen = screen.machine().device("pce_screen");
-
-	if (&screen==left_screen)
-		SCREEN_UPDATE16_CALL( x1 );
-
 	return 0;
 }
 
-static ADDRESS_MAP_START( x1_mem, AS_PROGRAM, 8 )
+static ADDRESS_MAP_START( x1_mem, AS_PROGRAM, 8, x1twin_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(x1_mem_r,x1_mem_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( x1_io , AS_IO, 8 )
+static ADDRESS_MAP_START( x1_io, AS_IO, 8, x1twin_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(x1_io_r, x1_io_w)
 ADDRESS_MAP_END
 
 #if 0
-static ADDRESS_MAP_START( pce_mem , AS_PROGRAM, 8)
+static ADDRESS_MAP_START( pce_mem , AS_PROGRAM, 8, x1twin_state )
 	AM_RANGE( 0x000000, 0x09FFFF) AM_ROM
 	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000) AM_BASE( &pce_user_ram )
 	AM_RANGE( 0x1FE000, 0x1FE3FF) AM_READWRITE( vdc_0_r, vdc_0_w )
@@ -86,7 +63,7 @@ static ADDRESS_MAP_START( pce_mem , AS_PROGRAM, 8)
 	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_READWRITE( h6280_irq_status_r, h6280_irq_status_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pce_io , AS_IO, 8)
+static ADDRESS_MAP_START( pce_io, AS_IO, 8, x1twin_state )
 	AM_RANGE( 0x00, 0x03) AM_READWRITE( vdc_0_r, vdc_0_w )
 ADDRESS_MAP_END
 #endif
@@ -101,12 +78,12 @@ static const wd17xx_interface x1_mb8877a_interface =
 
 static I8255A_INTERFACE( ppi8255_intf )
 {
-	DEVCB_HANDLER(x1_porta_r),						/* Port A read */
-	DEVCB_HANDLER(x1_porta_w),						/* Port A write */
-	DEVCB_HANDLER(x1_portb_r),						/* Port B read */
-	DEVCB_HANDLER(x1_portb_w),						/* Port B write */
-	DEVCB_HANDLER(x1_portc_r),						/* Port C read */
-	DEVCB_HANDLER(x1_portc_w)						/* Port C write */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_porta_r),						/* Port A read */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_porta_w),						/* Port A write */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portb_r),						/* Port B read */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portb_w),						/* Port B write */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_r),						/* Port C read */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_w)						/* Port C write */
 };
 
 static const mc6845_interface mc6845_intf =
@@ -338,7 +315,7 @@ INPUT_PORTS_START( x1twin )
 	PORT_BIT(0x00000008,IP_ACTIVE_LOW,IPT_KEYBOARD) PORT_NAME("CAPS") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
 	PORT_BIT(0x00000010,IP_ACTIVE_LOW,IPT_KEYBOARD) PORT_NAME("GRPH") PORT_CODE(KEYCODE_LALT)
 
-	#if 0
+#if 0
 	PORT_BIT(0x00020000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',')
 	PORT_BIT(0x00040000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_STOP) PORT_CHAR('.')
 	PORT_BIT(0x00080000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("/") PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/')
@@ -380,7 +357,7 @@ INPUT_PORTS_START( x1twin )
 	PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF9") PORT_CODE(KEYCODE_F9)
 	PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF10") PORT_CODE(KEYCODE_F10)
 
-	#endif
+#endif
 INPUT_PORTS_END
 
 
@@ -446,9 +423,9 @@ static Z80CTC_INTERFACE( ctc_intf )
 {
 	0,					// timer disables
 	DEVCB_CPU_INPUT_LINE("x1_cpu", INPUT_LINE_IRQ0),		// interrupt handler
-	DEVCB_LINE(z80ctc_trg3_w),		// ZC/TO0 callback
-	DEVCB_LINE(z80ctc_trg1_w),		// ZC/TO1 callback
-	DEVCB_LINE(z80ctc_trg2_w),		// ZC/TO2 callback
+	DEVCB_DEVICE_LINE("ctc", z80ctc_trg3_w),		// ZC/TO0 callback
+	DEVCB_DEVICE_LINE("ctc", z80ctc_trg1_w),		// ZC/TO1 callback
+	DEVCB_DEVICE_LINE("ctc", z80ctc_trg2_w),		// ZC/TO2 callback
 };
 
 #if 0
@@ -488,7 +465,7 @@ static Z80DART_INTERFACE( sio_intf )
 
 static const z80_daisy_config x1_daisy[] =
 {
-    { "x1kb" },
+	{ "x1kb" },
 	{ "ctc" },
 	{ NULL }
 };
@@ -572,13 +549,13 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_STATIC(x1twin)
+	MCFG_SCREEN_UPDATE_STATIC(x1)
 
-	//MCFG_SCREEN_ADD("pce_screen", RASTER)
-	//MCFG_SCREEN_REFRESH_RATE(60)
-	//MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	//MCFG_SCREEN_UPDATE_DEVICE("crtc", h46505_device, screen_update)
-	//MCFG_SCREEN_RAW_PARAMS(PCE_MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
+	MCFG_SCREEN_ADD("pce_screen", RASTER)
+	MCFG_SCREEN_REFRESH_RATE(60)
+	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MCFG_SCREEN_RAW_PARAMS(PCE_MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
+	MCFG_SCREEN_UPDATE_STATIC(x1pce)
 
 	MCFG_MC6845_ADD("crtc", H46505, (VDP_CLOCK/48), mc6845_intf) //unknown divider
 	MCFG_PALETTE_LENGTH(0x10+0x1000)
@@ -618,12 +595,12 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(x1_floppy_interface)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","x1_flop")
 
-	#if 0
+#if 0
 	MCFG_SOUND_ADD("c6280", C6280, PCE_MAIN_CLOCK/6)
 //  MCFG_SOUND_CONFIG(c6280_config)
 	MCFG_SOUND_ROUTE(0, "pce_l", 0.5)
 	MCFG_SOUND_ROUTE(1, "pce_r", 0.5)
-	#endif
+#endif
 
 	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", x1_keyboard_callback, attotime::from_hz(250))
 	MCFG_TIMER_ADD_PERIODIC("cmt_wind_timer", x1_cmt_wind_timer, attotime::from_hz(16))

@@ -27,7 +27,7 @@ WRITE8_MEMBER( jtc_state::p2_w )
 
     */
 
-	centronics_strobe_w(m_centronics, BIT(data, 5));
+	m_centronics->strobe_w(BIT(data, 5));
 }
 
 READ8_MEMBER( jtc_state::p3_r )
@@ -50,7 +50,7 @@ READ8_MEMBER( jtc_state::p3_r )
 	UINT8 data = 0;
 
 	data |= ((m_cassette)->input() < 0.0) ? 1 : 0;
-	data |= centronics_busy_r(m_centronics) << 3;
+	data |= m_centronics->busy_r() << 3;
 
 	return data;
 }
@@ -651,7 +651,7 @@ static MACHINE_CONFIG_START( basic, jtc_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, jtc_cassette_interface)
 
 	/* printer */
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( jtc, basic )

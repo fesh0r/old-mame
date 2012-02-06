@@ -62,8 +62,65 @@ $E000-$EFFF:    Extra RAM space available for a program in an 8 KB system
                 modified to use cassette BASIC
                 (The system simulated here always includes this RAM.)
 
+If you wanted to load the BASIC as rom, here are the details:
+ROM_LOAD("basic.bin", 0xE000, 0x1000, CRC(d5e86efc) SHA1(04269c1c66e7d5b4aa5035462c6e612bf2ae9b91) )
+
+
 $F000-$FFFF:    ROM address space
     $FF00-$FFFF:    Apple Monitor ROM
+
+
+How to use cassettes:
+The system has no error checking or checksums, and the cassette
+has no header.
+Therefore, you must know the details, and pass these to the
+interface yourself.
+BASIC has no cassette handling. You must enter the monitor
+with: CALL -151
+then when finished, re-enter BASIC with: E2B3R
+
+
+Examples:
+
+A machine-language program will typically be like this:
+C100R    (enter the interface)
+0300.0FFFR  (enter the load and end addresses, then load the tape)
+You start the tape.
+When the prompt returns you stop the tape.
+0300R  (run your program)
+
+
+To Load Tape Basic:
+C100R
+E000.EFFFR
+You start the tape.
+When the prompt returns you stop the tape.
+E000R  (It must say 4C - if not, your tape is no good).
+The BASIC prompt will appear
+>@
+
+
+A BASIC program is split into two areas, one for the scratch pad,
+and one for the program proper.
+In BASIC you may have to adjust the allowed memory area, such as
+LOMEM = 768
+Then, go to the monitor: CALL -151
+C100R    (enter the interface)
+00A4.00FFR 0300.0FFFR   (load the 2 parts)
+You start the tape.
+When the prompt returns you stop the tape.
+E2B3R    (back to BASIC)
+You can LIST or RUN now.
+
+
+Saving is almost the same, when you specify the address range, enter
+W instead of R. The difficulty is finding out how long your program is.
+
+Insert a blank tape
+C100R
+0300.0FFFW
+Quickly press Record.
+When the prompt returns, press Stop.
 
 **********************************************************************/
 
@@ -139,27 +196,27 @@ GFXDECODE_END
 
 static INPUT_PORTS_START( apple1 )
 	PORT_START("KEY0")	/* first sixteen keys */
-	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0)		PORT_CHAR('0')
-	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1)		PORT_CHAR('1')
-	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2)		PORT_CHAR('2')
-	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)		PORT_CHAR('3')
-	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4)		PORT_CHAR('4')
-	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5)		PORT_CHAR('5')
-	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)		PORT_CHAR('6')
-	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)		PORT_CHAR('7')
-	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8)		PORT_CHAR('8')
-	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9)		PORT_CHAR('9')
-	PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS)	PORT_CHAR('-')
-	PORT_BIT( 0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)	PORT_CHAR('=')
+	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0)		PORT_CHAR('0') PORT_CHAR(')')
+	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1)		PORT_CHAR('1') PORT_CHAR('!')
+	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2)		PORT_CHAR('2') PORT_CHAR('@')
+	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)		PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4)		PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5)		PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)		PORT_CHAR('6') PORT_CHAR('^')
+	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)		PORT_CHAR('7') PORT_CHAR('&')
+	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8)		PORT_CHAR('8') PORT_CHAR('*')
+	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9)		PORT_CHAR('9') PORT_CHAR('(')
+	PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS)	PORT_CHAR('-') PORT_CHAR('_')
+	PORT_BIT( 0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)	PORT_CHAR('=') PORT_CHAR('+')
 	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('[')
 	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']')
-	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON)	PORT_CHAR(';')
-	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE)	PORT_CHAR('\'')
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON)	PORT_CHAR(';') PORT_CHAR(':')
+	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE)	PORT_CHAR('\'') PORT_CHAR('"')
 
 	PORT_START("KEY1")	/* second sixteen keys */
-	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)	PORT_CHAR(',')
-	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)		PORT_CHAR('.')
-	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)	PORT_CHAR('/')
+	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)	PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)		PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)	PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('\\')
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A)		PORT_CHAR('A')
 	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)		PORT_CHAR('B')
@@ -214,7 +271,7 @@ static const cassette_interface apple1_cassette_interface =
 	cassette_default_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED),
-	NULL,
+	"apple1_cass",
 	NULL
 };
 
@@ -255,7 +312,8 @@ static MACHINE_CONFIG_START( apple1, apple1_state )
 	/* snapshot */
 	MCFG_SNAPSHOT_ADD("snapshot", apple1, "snp", 0)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, apple1_cassette_interface )
+	MCFG_CASSETTE_ADD(CASSETTE_TAG, apple1_cassette_interface)
+	MCFG_SOFTWARE_LIST_ADD("cass_list","apple1")
 
 	/* Note that because we always include 4K of RAM at $E000-$EFFF,
        the RAM amounts listed here will be 4K below the actual RAM

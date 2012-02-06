@@ -770,13 +770,13 @@ READ8_MEMBER( trs80m2_state::pio_pa_r )
 	data |= floppy_dskchg_r(m_floppy) << 2;
 
 	/* printer fault */
-	data |= centronics_fault_r(m_centronics) << 4;
+	data |= m_centronics->fault_r() << 4;
 
 	/* paper empty */
-	data |= !centronics_pe_r(m_centronics) << 6;
+	data |= !m_centronics->pe_r() << 6;
 
 	/* printer busy */
-	data |= centronics_busy_r(m_centronics) << 7;
+	data |= m_centronics->busy_r() << 7;
 
 	return data;
 }
@@ -799,12 +799,12 @@ WRITE8_MEMBER( trs80m2_state::pio_pa_w )
     */
 
 	/* prime */
-	centronics_prime_w(m_centronics, BIT(data, 3));
+	m_centronics->init_prime_w(BIT(data, 3));
 }
 
 WRITE_LINE_MEMBER( trs80m2_state::strobe_w )
 {
-	centronics_strobe_w(m_centronics, !state);
+	m_centronics->strobe_w(!state);
 }
 
 static Z80PIO_INTERFACE( pio_intf )
@@ -814,7 +814,7 @@ static Z80PIO_INTERFACE( pio_intf )
 	DEVCB_DRIVER_MEMBER(trs80m2_state, pio_pa_w),				/* port A write callback */
 	DEVCB_NULL,													/* port A ready callback */
 	DEVCB_NULL,													/* port B read callback */
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, centronics_data_w),	/* port B write callback */
+	DEVCB_DEVICE_MEMBER(CENTRONICS_TAG, centronics_device, write),	/* port B write callback */
 	DEVCB_DRIVER_LINE_MEMBER(trs80m2_state, strobe_w)			/* port B ready callback */
 };
 
@@ -822,7 +822,6 @@ static Z80PIO_INTERFACE( pio_intf )
 
 static const centronics_interface centronics_intf =
 {
-	0,												/* is IBM PC? */
 	DEVCB_DEVICE_LINE(Z80PIO_TAG, z80pio_bstb_w),	/* ACK output */
 	DEVCB_NULL,										/* BUSY output */
 	DEVCB_NULL										/* NOT BUSY output */
@@ -987,7 +986,7 @@ static MACHINE_CONFIG_START( trs80m2, trs80m2_state )
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_8MHz/2, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_8MHz/2, pio_intf)
 	MCFG_Z80SIO0_ADD(Z80SIO_TAG, XTAL_8MHz/2, sio_intf)
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, centronics_intf)
+	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, trs80m2_floppy_interface)
 
 	MCFG_TIMER_ADD_PERIODIC("keyboard", trs80m2_keyboard_tick,attotime::from_hz(60))

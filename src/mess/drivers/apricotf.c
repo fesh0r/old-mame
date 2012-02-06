@@ -118,7 +118,7 @@ WRITE8_MEMBER( f1_state::system_w )
 	switch(offset)
 	{
 	case 0: // centronics data port
-		centronics_data_w(m_centronics, 0, data);
+		m_centronics->write(space, 0, data);
 		break;
 
 	case 1: // drive select
@@ -147,7 +147,7 @@ WRITE8_MEMBER( f1_state::system_w )
 		break;
 
 	case 0x0f: // centronics strobe output
-		centronics_strobe_w(m_centronics, !BIT(data, 0));
+		m_centronics->strobe_w(!BIT(data, 0));
 		break;
 	}
 }
@@ -321,7 +321,6 @@ static const wd17xx_interface fdc_intf =
 
 static const centronics_interface centronics_intf =
 {
-	0,
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE(Z80SIO2_TAG, z80dart_ctsa_w),
 	DEVCB_NULL
@@ -359,7 +358,7 @@ static MACHINE_CONFIG_START( act_f1, f1_state )
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, 2500000, ctc_intf)
 	MCFG_WD2797_ADD(WD2797_TAG, fdc_intf)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(act_floppy_interface)
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, centronics_intf)
+	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
 MACHINE_CONFIG_END
 
 

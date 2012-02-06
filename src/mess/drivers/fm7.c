@@ -749,7 +749,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 	// bit 0: printer busy
 	UINT8 ret = 0x00;
 	double data = (space->machine().device<cassette_image_device>(CASSETTE_TAG)->input());
-	device_t* printer_dev = space->machine().device("lpt");
+	centronics_device* centronics = space->machine().device<centronics_device>("lpt");
 	UINT8 pdata;
 	int x;
 
@@ -764,7 +764,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 	if(input_port_read(space->machine(),"config") & 0x01)
 	{
 		ret |= 0x0f;
-		pdata = centronics_data_r(printer_dev,0);
+		pdata = centronics->read(*space, 0);
 		for(x=0;x<6;x++)
 		{
 			if(~pdata & (1<<x))
@@ -777,13 +777,13 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 		device_image_interface *image = dynamic_cast<device_image_interface *>(space->machine().device("lpt:printer"));
 		if(image->exists())
 		{
-			if(centronics_pe_r(printer_dev))
+			if(centronics->pe_r())
 				ret |= 0x08;
-			if(centronics_ack_r(printer_dev))
+			if(centronics->ack_r())
 				ret |= 0x04;
-			if(centronics_fault_r(printer_dev))
+			if(centronics->fault_r())
 				ret |= 0x02;
-			if(centronics_busy_r(printer_dev))
+			if(centronics->busy_r())
 				ret |= 0x01;
 		}
 		else
@@ -795,6 +795,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 static WRITE8_HANDLER( fm7_cassette_printer_w )
 {
 	fm7_state *state = space->machine().driver_data<fm7_state>();
+	centronics_device* centronics = space->machine().device<centronics_device>("lpt");
 	switch(offset)
 	{
 		case 0:
@@ -806,12 +807,12 @@ static WRITE8_HANDLER( fm7_cassette_printer_w )
 				space->machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x01) ? +1.0 : -1.0);
 			if((data & 0x02) != (state->m_cp_prev & 0x02))
 				space->machine().device<cassette_image_device>(CASSETTE_TAG)->change_state((data & 0x02) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			centronics_strobe_w(space->machine().device("lpt"),!(data & 0x40));
+			centronics->strobe_w(!(data & 0x40));
 			state->m_cp_prev = data;
 			break;
 		case 1:
 		// Printer data
-			centronics_data_w(space->machine().device("lpt"),0,data);
+			centronics->write(*space,0,data);
 			break;
 	}
 }
@@ -2097,7 +2098,7 @@ static MACHINE_CONFIG_START( fm7, fm7_state )
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
-	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt",standard_centronics)
 
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
@@ -2142,7 +2143,7 @@ static MACHINE_CONFIG_START( fm8, fm7_state )
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
-	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt",standard_centronics)
 
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
@@ -2187,7 +2188,7 @@ static MACHINE_CONFIG_START( fm77av, fm7_state )
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
-	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt",standard_centronics)
 
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
@@ -2237,7 +2238,7 @@ static MACHINE_CONFIG_START( fm11, fm7_state )
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
-	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt",standard_centronics)
 
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 
@@ -2281,7 +2282,7 @@ static MACHINE_CONFIG_START( fm16beta, fm7_state )
 
 	MCFG_MB8877_ADD("fdc",fm7_mb8877a_interface)
 
-	MCFG_CENTRONICS_ADD("lpt",standard_centronics)
+	MCFG_CENTRONICS_PRINTER_ADD("lpt",standard_centronics)
 
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(fm7_floppy_interface)
 

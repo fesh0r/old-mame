@@ -547,23 +547,23 @@ vic20	 // Commodore VIC 20 (NTSC)
 vic20p	// Commodore VIC 20 (PAL)
 vic20s	// Commodore VIC 20 (Swedish Expanson Kit)
 
-max	   // Commodore Max Machine (Japan)
-c64	   // Commodore 64 (NTSC)
-c64pal	// Commodore 64 (PAL)
-c64jpn	// Commodore 64 (Japan)
-c64swe	// Commodore 64 (Sweden)
-vic64s	// Commodore VIC 64S (Sweden)
+vic10	   // Commodore Max Machine (Japan)
+c64n
+c64p	// Commodore 64 (PAL)
+c64j	// Commodore 64 (Japan)
+c64sw	// Commodore 64 (Sweden)
 pet64	 // Commodore PET 64
-cbm4064   // Commodore CBM 4064
 edu64	 // Commodore Educator 64
 //  clipper  // C64 in a briefcase with 3" floppy, electroluminescent flat screen, thermal printer
 //  tesa6240  //  modified SX64 with label printer
-sx64	  // Commodore SX-64 Executive Machine (PAL)
+sx64n
+sx64p
+
 vip64	 // Commodore VIP64 (SX64, PAL, Swedish)
-//  dx64    // Commodore DX-64 - Prototype
-c64c	  // Commodore 64C (NTSC)
-c64cpal   // Commodore 64C (PAL)
-c64csfi
+dx64    // Commodore DX-64 - Prototype
+c64cn	  // Commodore 64C (NTSC)
+c64cp   // Commodore 64C (PAL)
+c64csw
 c64g	  // Commodore 64G (PAL)
 c64gs	 // Commodore 64 Games System
 c64dtv	 // Commodore 64 Direct-to-TV
@@ -641,6 +641,7 @@ bw230	// 1985 Bondwell (CGA)
 europc	// 1988 Schneider Euro PC (CGA or Hercules)
 pc7000  // 1985 Sharp PC-7000
 pcd		// Siemens PC-D
+olypeopl // Olympia People PC
 
 // PC Junior
 ibmpcjr   // 1984 IBM PC Jr

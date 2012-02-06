@@ -170,29 +170,28 @@ static void elwro800jr_mmu_w(running_machine &machine, UINT8 data)
 
 static READ8_DEVICE_HANDLER(i8255_port_c_r)
 {
-	device_t *printer = device->machine().device("centronics");
-	return (centronics_ack_r(printer) << 2);
+	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	return (centronics->ack_r() << 2);
 }
 
 static WRITE8_DEVICE_HANDLER(i8255_port_c_w)
 {
-	device_t *printer = device->machine().device("centronics");
-	centronics_strobe_w(printer, (data >> 7) & 0x01);
+	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	centronics->strobe_w((data >> 7) & 0x01);
 }
 
 static I8255_INTERFACE(elwro800jr_ppi8255_interface)
 {
 	DEVCB_INPUT_PORT("JOY"),
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER("centronics", centronics_data_r),
-	DEVCB_DEVICE_HANDLER("centronics", centronics_data_w),
+	DEVCB_DEVICE_MEMBER("centronics", centronics_device, read),
+	DEVCB_DEVICE_MEMBER("centronics", centronics_device, write),
 	DEVCB_HANDLER(i8255_port_c_r),
 	DEVCB_HANDLER(i8255_port_c_w)
 };
 
 static const centronics_interface elwro800jr_centronics_interface =
 {
-	FALSE,
 	DEVCB_DEVICE_LINE_MEMBER("ppi8255", i8255_device, pc2_w),
 	DEVCB_NULL,
 	DEVCB_NULL
@@ -599,7 +598,7 @@ static MACHINE_CONFIG_START( elwro800, elwro800_state )
 	MCFG_I8255A_ADD( "ppi8255", elwro800jr_ppi8255_interface)
 
 	/* printer */
-	MCFG_CENTRONICS_ADD("centronics", elwro800jr_centronics_interface)
+	MCFG_CENTRONICS_PRINTER_ADD("centronics", elwro800jr_centronics_interface)
 
 	MCFG_I8251_ADD("i8251", default_i8251_interface)
 

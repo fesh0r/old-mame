@@ -367,40 +367,40 @@ static DEVICE_RESET( ti99_evpc )
 
 	card->dsrrom = device->machine().region(region.cstr())->base();
 }
-
+/*
 static DEVICE_NVRAM( ti99_evpc )
 {
-	// Called between START and RESET
-	ti99_evpc_state *card = get_safe_token(device);
-	astring hsname(device->machine().system().name, PATH_SEPARATOR, "evpc.nv");
-	file_error filerr;
+    // Called between START and RESET
+    ti99_evpc_state *card = get_safe_token(device);
+    astring hsname(device->machine().system().name, PATH_SEPARATOR, "evpc.nv");
+    file_error filerr;
 
-	if (read_or_write==0)
-	{
-		logerror("evpc: device nvram load %s\n", hsname.cstr());
+    if (read_or_write==0)
+    {
+        logerror("evpc: device nvram load %s\n", hsname.cstr());
 
-		emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_READ);
-		filerr = nvfile.open(hsname.cstr());
-		if (filerr == FILERR_NONE)
-		{
-			if (nvfile.read(card->novram, 256) != 256)
-				logerror("evpc: NOVRAM load error\n");
-		}
-	}
-	else
-	{
-		logerror("evpc: device nvram save %s\n", hsname.cstr());
-		emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-		filerr = nvfile.open(hsname.cstr());
+        emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_READ);
+        filerr = nvfile.open(hsname.cstr());
+        if (filerr == FILERR_NONE)
+        {
+            if (nvfile.read(card->novram, 256) != 256)
+                logerror("evpc: NOVRAM load error\n");
+        }
+    }
+    else
+    {
+        logerror("evpc: device nvram save %s\n", hsname.cstr());
+        emu_file nvfile(device->machine().options().nvram_directory(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+        filerr = nvfile.open(hsname.cstr());
 
-		if (filerr == FILERR_NONE)
-		{
-			if (nvfile.write(card->novram, 256) != 256)
-				logerror("evpc: NOVRAM save error\n");
-		}
-	}
+        if (filerr == FILERR_NONE)
+        {
+            if (nvfile.write(card->novram, 256) != 256)
+                logerror("evpc: NOVRAM save error\n");
+        }
+    }
 }
-
+*/
 MACHINE_CONFIG_FRAGMENT( ti99_evpc )
 MACHINE_CONFIG_END
 
@@ -412,10 +412,10 @@ ROM_END
 static const char DEVTEMPLATE_SOURCE[] = __FILE__;
 
 #define DEVTEMPLATE_ID(p,s)             p##ti99_evpc##s
-#define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG | DT_HAS_NVRAM
+#define DEVTEMPLATE_FEATURES            DT_HAS_START | DT_HAS_STOP | DT_HAS_RESET | DT_HAS_ROM_REGION | DT_HAS_INLINE_CONFIG | DT_HAS_MACHINE_CONFIG
 #define DEVTEMPLATE_NAME                "SNUG Enhanced Video Processor Card"
 #define DEVTEMPLATE_SHORTNAME           "snugvdc"
 #define DEVTEMPLATE_FAMILY              "Peripheral expansion"
 #include "devtempl.h"
 
-DEFINE_LEGACY_NVRAM_DEVICE(EVPC, ti99_evpc);
+DEFINE_LEGACY_DEVICE(EVPC, ti99_evpc);

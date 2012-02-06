@@ -293,11 +293,11 @@ MACHINE_START( nes )
 {
 	nes_state *state = machine.driver_data<nes_state>();
 
+	state->m_ppu = machine.device<ppu2c0x_device>("ppu");
 	init_nes_core(machine);
 	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nes_machine_stop),&machine));
 
 	state->m_maincpu = machine.device("maincpu");
-	state->m_ppu = machine.device<ppu2c0x_device>("ppu");
 	state->m_sound = machine.device("nessound");
 	state->m_cart = machine.device("cart");
 
@@ -1570,7 +1570,13 @@ static READ8_HANDLER( nes_fds_r )
 			if (state->m_fds_data == NULL)
 				ret = 0;
 			else if (state->m_fds_current_side)
+			{
+				// a bunch of games (e.g. bshashsc and fairypin) keep reading beyond the last track
+				// what is the expected behavior?
+				if (state->m_fds_head_position > 65500)
+					state->m_fds_head_position = 0;
 				ret = state->m_fds_data[(state->m_fds_current_side - 1) * 65500 + state->m_fds_head_position++];
+			}
 			else
 				ret = 0;
 			break;

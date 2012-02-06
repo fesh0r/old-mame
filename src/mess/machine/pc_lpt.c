@@ -7,6 +7,7 @@
 #include "emu.h"
 #include "pc_lpt.h"
 #include "machine/ctronics.h"
+#include "cntr_covox.h"
 
 
 /***************************************************************************
@@ -23,9 +24,11 @@ static WRITE_LINE_DEVICE_HANDLER( pc_lpt_ack_w );
 typedef struct _pc_lpt_state pc_lpt_state;
 struct _pc_lpt_state
 {
-	device_t *centronics;
+	centronics_device *centronics;
 
 	devcb_resolved_write_line out_irq_func;
+
+	UINT8 data;
 
 	int ack;
 
@@ -44,14 +47,19 @@ struct _pc_lpt_state
 
 static const centronics_interface pc_centronics_config =
 {
-	TRUE,
 	DEVCB_LINE(pc_lpt_ack_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
 
+static SLOT_INTERFACE_START(pc_centronics)
+	SLOT_INTERFACE("printer", CENTRONICS_PRINTER)
+	SLOT_INTERFACE("covox", CENTRONICS_COVOX)
+	SLOT_INTERFACE("covox_stereo", CENTRONICS_COVOX_STEREO)
+SLOT_INTERFACE_END
+
 static MACHINE_CONFIG_FRAGMENT( pc_lpt )
-	MCFG_CENTRONICS_ADD("centronics", pc_centronics_config)
+	MCFG_CENTRONICS_ADD("centronics", pc_centronics_config, pc_centronics, "printer", NULL)
 MACHINE_CONFIG_END
 
 
@@ -80,7 +88,7 @@ static DEVICE_START( pc_lpt )
 	assert(device->static_config() != NULL);
 
 	/* get centronics device */
-	lpt->centronics = device->subdevice("centronics");
+	lpt->centronics = device->subdevice<centronics_device>("centronics");
 	assert(lpt->centronics != NULL);
 
 	/* resolve callbacks */
@@ -104,6 +112,7 @@ static DEVICE_RESET( pc_lpt )
 	lpt->init = FALSE;
 	lpt->select = TRUE;
 	lpt->irq_enabled = FALSE;
+	lpt->data = 0xff;
 }
 
 DEVICE_GET_INFO( pc_lpt )
@@ -154,14 +163,16 @@ static WRITE_LINE_DEVICE_HANDLER( pc_lpt_ack_w )
 READ8_DEVICE_HANDLER( pc_lpt_data_r )
 {
 	pc_lpt_state *lpt = get_safe_token(device);
-	return centronics_data_r(lpt->centronics, 0);
+	// pull up mechanism for input lines, zeros are provided by pheripherial
+	return lpt->data & ~lpt->centronics->read(*memory_nonspecific_space(device->machine()), 0);
 }
 
 
 WRITE8_DEVICE_HANDLER( pc_lpt_data_w )
 {
 	pc_lpt_state *lpt = get_safe_token(device);
-	centronics_data_w(lpt->centronics, 0, data);
+	lpt->data = data;
+	lpt->centronics->write(*memory_nonspecific_space(device->machine()), 0, data);
 }
 
 
@@ -170,11 +181,11 @@ READ8_DEVICE_HANDLER( pc_lpt_status_r )
 	pc_lpt_state *lpt = get_safe_token(device);
 	UINT8 result = 0;
 
-	result |= centronics_fault_r(lpt->centronics) << 3;
-	result |= centronics_vcc_r(lpt->centronics) << 4; /* SELECT is connected to VCC */
-	result |= !centronics_pe_r(lpt->centronics) << 5;
-	result |= centronics_ack_r(lpt->centronics) << 6;
-	result |= !centronics_busy_r(lpt->centronics) << 7;
+	result |= lpt->centronics->fault_r() << 3;
+	result |= lpt->centronics->vcc_r() << 4; /* SELECT is connected to VCC */
+	result |= !lpt->centronics->pe_r() << 5;
+	result |= lpt->centronics->ack_r() << 6;
+	result |= !lpt->centronics->busy_r() << 7;
 
 	return result;
 }
@@ -200,7 +211,7 @@ WRITE8_DEVICE_HANDLER( pc_lpt_control_w )
 {
 	pc_lpt_state *lpt = get_safe_token(device);
 
-	logerror("pc_lpt_control_w: 0x%02x\n", data);
+//  logerror("pc_lpt_control_w: 0x%02x\n", data);
 
 	/* save to latch */
 	lpt->strobe = BIT(data, 0);
@@ -210,9 +221,9 @@ WRITE8_DEVICE_HANDLER( pc_lpt_control_w )
 	lpt->irq_enabled = BIT(data, 4);
 
 	/* output to centronics */
-	centronics_strobe_w(lpt->centronics, lpt->strobe);
-	centronics_autofeed_w(lpt->centronics, lpt->autofd);
-	centronics_init_w(lpt->centronics, lpt->init);
+	lpt->centronics->strobe_w(lpt->strobe);
+	lpt->centronics->autofeed_w(lpt->autofd);
+	lpt->centronics->init_prime_w(lpt->init);
 }
 
 
@@ -243,3 +254,89 @@ WRITE8_DEVICE_HANDLER( pc_lpt_w )
 }
 
 DEFINE_LEGACY_DEVICE(PC_LPT, pc_lpt);
+
+static WRITE_LINE_DEVICE_HANDLER(pc_cpu_line)
+{
+	isa8_lpt_device	*lpt  = downcast<isa8_lpt_device *>(device->owner());
+	if (lpt->is_primary())
+		lpt->m_isa->irq7_w(state);
+	else
+		lpt->m_isa->irq5_w(state);
+}
+static const pc_lpt_interface pc_lpt_config =
+{
+	DEVCB_LINE(pc_cpu_line)
+};
+
+static MACHINE_CONFIG_FRAGMENT( lpt_config )
+	MCFG_PC_LPT_ADD("lpt", pc_lpt_config)
+MACHINE_CONFIG_END
+
+static INPUT_PORTS_START( lpt_dsw )
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x01, 0x00, "Base address")
+	PORT_DIPSETTING(	0x00, "0x378" )
+	PORT_DIPSETTING(	0x01, "0x278" )
+INPUT_PORTS_END
+
+//**************************************************************************
+//  GLOBAL VARIABLES
+//**************************************************************************
+
+const device_type ISA8_LPT = &device_creator<isa8_lpt_device>;
+
+//-------------------------------------------------
+//  machine_config_additions - device-specific
+//  machine configurations
+//-------------------------------------------------
+
+machine_config_constructor isa8_lpt_device::device_mconfig_additions() const
+{
+	return MACHINE_CONFIG_NAME( lpt_config );
+}
+
+//-------------------------------------------------
+//  input_ports - device-specific input ports
+//-------------------------------------------------
+
+ioport_constructor isa8_lpt_device::device_input_ports() const
+{
+	return INPUT_PORTS_NAME( lpt_dsw );
+}
+
+//**************************************************************************
+//  LIVE DEVICE
+//**************************************************************************
+
+//-------------------------------------------------
+//  isa8_lpt_device - constructor
+//-------------------------------------------------
+
+isa8_lpt_device::isa8_lpt_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+        device_t(mconfig, ISA8_LPT, "ISA8_LPT", tag, owner, clock),
+		device_isa8_card_interface(mconfig, *this)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void isa8_lpt_device::device_start()
+{
+	set_isa_device();
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void isa8_lpt_device::device_reset()
+{
+	m_is_primary = (input_port_read(*this, "DSW") & 1) ? false : true;
+	if (m_is_primary) {
+		m_isa->install_device(subdevice("lpt"), 0x0378, 0x037b, 0, 0, FUNC(pc_lpt_r), FUNC(pc_lpt_w) );
+	} else {
+		m_isa->install_device(subdevice("lpt"), 0x0278, 0x027b, 0, 0, FUNC(pc_lpt_r), FUNC(pc_lpt_w) );
+	}
+}

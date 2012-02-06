@@ -93,7 +93,7 @@ static MACHINE_CONFIG_FRAGMENT( sblaster1_0_config )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
 	MCFG_SOUND_CONFIG(pc_ym3812_interface)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 3.00)
 	MCFG_SOUND_ADD("saa1099.1", SAA1099, 4772720)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_ADD("saa1099.2", SAA1099, 4772720)
@@ -491,6 +491,7 @@ void isa8_sblaster1_0_device::device_start()
     // 1.0 always has the SAA1099s for CMS back-compatibility
 	m_isa->install_device(subdevice("saa1099.1"), 0x0220, 0x0221, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
 	m_isa->install_device(subdevice("saa1099.2"), 0x0222, 0x0223, 0, 0, FUNC(saa1099_16_r), FUNC(saa1099_16_w) );
+	m_isa->set_dma_channel(1, this, FALSE);
 	m_dsp.version = 0x0105;
     sb8_device::device_start();
 }
@@ -514,12 +515,6 @@ void sb8_device::device_reset()
     m_dack_out = 0;
     m_dsp.fifo_ptr = 0;
     m_dsp.fifo_r_ptr = 0;
-}
-
-bool sb8_device::have_dack(int line)
-{
-	if (line==1) return TRUE;
-	return FALSE;
 }
 
 UINT8 sb8_device::dack_r(int line)

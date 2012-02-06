@@ -418,6 +418,7 @@ static const i8251_interface terminal_8251_intf =
 
 static READ8_DEVICE_HANDLER( i8255_pc_r )
 {
+	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
 	/*
 
         bit     description
@@ -436,10 +437,10 @@ static READ8_DEVICE_HANDLER( i8255_pc_r )
 	UINT8 data = 0;
 
 	/* on line */
-	data |= centronics_vcc_r(device) << 4;
+	data |= centronics->vcc_r() << 4;
 
 	/* busy */
-	data |= centronics_busy_r(device) << 5;
+	data |= centronics->busy_r() << 5;
 
 	return data;
 }
@@ -447,16 +448,15 @@ static READ8_DEVICE_HANDLER( i8255_pc_r )
 static I8255A_INTERFACE( printer_8255_intf )
 {
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, centronics_data_w),
+	DEVCB_DEVICE_MEMBER(CENTRONICS_TAG, centronics_device, write),
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(CENTRONICS_TAG, centronics_strobe_w),
+	DEVCB_DEVICE_LINE_MEMBER(CENTRONICS_TAG, centronics_device, strobe_w),
 	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, i8255_pc_r),
 	DEVCB_NULL
 };
 
 static const centronics_interface xor100_centronics_intf =
 {
-	0,
 	DEVCB_DEVICE_LINE_MEMBER(I8255A_TAG, i8255_device, pc4_w),
 	DEVCB_NULL,
 	DEVCB_NULL
@@ -593,7 +593,7 @@ static MACHINE_CONFIG_START( xor100, xor100_state )
 	MCFG_COM8116_ADD(COM5016_TAG, 5000000, com5016_intf)
 	MCFG_FD1795_ADD(WD1795_TAG, /*XTAL_8MHz/8,*/ fdc_intf)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(xor100_floppy_interface)
-	MCFG_CENTRONICS_ADD(CENTRONICS_TAG, xor100_centronics_intf)
+	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, xor100_centronics_intf)
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, xor100_terminal_intf)
 
 	/* internal ram */
