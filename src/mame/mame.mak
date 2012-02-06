@@ -525,6 +525,7 @@ $(MAMEOBJ)/bmc.a: \
 	$(DRIVERS)/bmcbowl.o \
 	$(DRIVERS)/koftball.o \
 	$(DRIVERS)/popobear.o \
+	$(DRIVERS)/bmcpokr.o \
 
 $(MAMEOBJ)/capcom.a: \
 	$(DRIVERS)/1942.o $(VIDEO)/1942.o \
@@ -1197,6 +1198,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/megaplay.o \
 	$(DRIVERS)/megatech.o \
 	$(DRIVERS)/model1.o $(MACHINE)/model1.o $(VIDEO)/model1.o \
+    $(AUDIO)/dsbz80.o \
 	$(DRIVERS)/model2.o $(VIDEO)/model2.o \
 	$(DRIVERS)/model3.o $(VIDEO)/model3.o $(MACHINE)/model3.o \
 	$(DRIVERS)/naomi.o $(MACHINE)/dc.o $(VIDEO)/dc.o $(MACHINE)/naomi.o \
@@ -1206,6 +1208,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/puckpkmn.o \
 	$(DRIVERS)/segac2.o \
 	$(DRIVERS)/segae.o $(MACHINE)/segamsys.o \
+	$(DRIVERS)/shtzone.o \
 	$(DRIVERS)/segag80r.o $(MACHINE)/segag80.o $(AUDIO)/segag80r.o $(VIDEO)/segag80r.o \
 	$(DRIVERS)/segag80v.o $(AUDIO)/segag80v.o $(VIDEO)/segag80v.o \
 	$(DRIVERS)/segahang.o $(VIDEO)/segahang.o \
@@ -1686,6 +1689,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/coinmstr.o \
 	$(DRIVERS)/coinmvga.o \
 	$(DRIVERS)/comebaby.o \
+	$(DRIVERS)/bntyhunt.o \
 	$(DRIVERS)/coolpool.o \
 	$(DRIVERS)/corona.o \
 	$(DRIVERS)/crystal.o $(VIDEO)/vrender0.o \
@@ -2172,6 +2176,9 @@ $(MACHINE)/nes_mmc.o:	$(MAMESRC)/machine/nes_ines.c \
 			$(MAMESRC)/machine/nes_unif.c
 $(VIDEO)/jaguar.o:	$(MAMESRC)/video/jagobj.c \
 			$(MAMESRC)/video/jagblit.c
+$(DRIVERS)/model1.o: $(MAMESRC)/includes/model1.h $(MAMESRC)/audio/dsbz80.h
+$(VIDEO)/model1.o: $(MAMESRC)/includes/model1.h $(MAMESRC)/audio/dsbz80.h
+$(MACHINE)/model1.o: $(MAMESRC)/includes/model1.h $(MAMESRC)/audio/dsbz80.h
 $(VIDEO)/model2.o:	$(MAMESRC)/video/model2rd.c
 $(VIDEO)/model3.o:	$(MAMESRC)/video/m3raster.c
 $(VIDEO)/n64.o:		$(MAMESRC)/video/rdpfiltr.c
