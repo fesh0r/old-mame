@@ -59,7 +59,6 @@
 #include "profiler.h"
 
 // commonly-referenecd utilities imported from lib/util
-#include "chd.h"
 #include "palette.h"
 #include "unicode.h"
 
@@ -68,7 +67,6 @@
 #include "hash.h"
 #include "fileio.h" // remove me once NVRAM is implemented as device
 #include "delegate.h"
-//#include "cothread.h"
 
 // memory and address spaces
 #include "memory.h"
