@@ -41,6 +41,8 @@ WRITE8_HANDLER(vga_port_03d0_w);
 WRITE8_HANDLER(vga_mem_w);
 
 /* per-device implementations */
+READ8_HANDLER(tseng_et4k_03b0_r);
+WRITE8_HANDLER(tseng_et4k_03b0_w);
 READ8_HANDLER(tseng_et4k_03c0_r);
 WRITE8_HANDLER(tseng_et4k_03c0_w);
 READ8_HANDLER(tseng_et4k_03d0_r);
@@ -54,6 +56,17 @@ READ8_HANDLER(trident_03d0_r);
 WRITE8_HANDLER(trident_03d0_w);
 READ8_HANDLER(trident_mem_r);
 WRITE8_HANDLER(trident_mem_w);
+
+READ8_HANDLER(s3_port_03b0_r);
+WRITE8_HANDLER(s3_port_03b0_w);
+READ8_HANDLER(s3_port_03c0_r);
+WRITE8_HANDLER(s3_port_03c0_w);
+READ8_HANDLER(s3_port_03d0_r);
+WRITE8_HANDLER(s3_port_03d0_w);
+READ8_HANDLER(s3_port_9ae8_r);
+WRITE8_HANDLER(s3_port_9ae8_w);
+READ8_HANDLER(s3_mem_r);
+WRITE8_HANDLER(s3_mem_w);
 
 /*
   pega notes (paradise)
