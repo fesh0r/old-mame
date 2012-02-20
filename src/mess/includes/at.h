@@ -25,8 +25,9 @@
 #include "video/pc_cga.h"
 #include "video/isa_cga.h"
 #include "video/isa_ega.h"
-#include "video/isa_vga.h"
+#include "video/isa_svga_cirrus.h"
 #include "video/isa_svga_s3.h"
+#include "video/isa_svga_tseng.h"
 
 #include "machine/idectrl.h"
 #include "machine/isa_aha1542.h"
@@ -51,6 +52,7 @@
 #include "machine/isa_gblaster.h"
 #include "machine/isa_hdc.h"
 #include "machine/isa_sblaster.h"
+#include "machine/isa_gus.h"
 #include "machine/3c503.h"
 #include "machine/ne1000.h"
 #include "machine/ne2000.h"
@@ -60,7 +62,6 @@
 
 #include "machine/isa_ide.h"
 
-#include "machine/pc_mouse.h"
 #include "machine/pc_lpt.h"
 
 
@@ -81,7 +82,8 @@ public:
 	m_keybc(*this, "keybc"),
 	m_isabus(*this, "isabus"),
 	m_speaker(*this, SPEAKER_TAG),
-	m_ram(*this, RAM_TAG)
+	m_ram(*this, RAM_TAG),
+	m_mc146818(*this, "rtc")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -97,6 +99,7 @@ public:
 	optional_device<isa16_device> m_isabus;
 	required_device<device_t> m_speaker;
 	optional_device<device_t> m_ram;
+	optional_device<mc146818_device> m_mc146818;
 	DECLARE_READ8_MEMBER(at_page8_r);
 	DECLARE_WRITE8_MEMBER(at_page8_w);
 	DECLARE_READ8_MEMBER(at_portb_r);
@@ -139,6 +142,7 @@ public:
 	DECLARE_READ32_MEMBER(ct486_chipset_r);
 	DECLARE_WRITE32_MEMBER(ct486_chipset_w);
 	DECLARE_WRITE_LINE_MEMBER(at_mc146818_irq);
+	DECLARE_WRITE8_MEMBER(write_rtc);
 	int m_poll_delay;
 	UINT8 m_at_spkrdata;
 	UINT8 m_at_speaker_input;
@@ -150,6 +154,9 @@ public:
 	UINT8 m_at_offset1;
 	void at_speaker_set_spkrdata(UINT8 data);
 	void at_speaker_set_input(UINT8 data);
+
+	UINT8 m_channel_check;
+	UINT8 m_nmi_enabled;
 };
 
 

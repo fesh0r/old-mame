@@ -431,12 +431,15 @@ public:
 				}
 
 				// assemble the data into final form
-				avhuff_error averr = avhuff_encoder::assemble_data(m_rawdata, m_rawdata.count(), subbitmap, channels, samples, samplesptr);
+				avhuff_error averr = avhuff_encoder::assemble_data(m_rawdata, subbitmap, channels, samples, samplesptr);
 				if (averr != AVHERR_NONE)
 					report_error(1, "Error assembling data for frame %d", framenum);
-				UINT32 rawsize = avhuff_encoder::raw_data_size(m_rawdata);
-				if (rawsize < m_rawdata.count())
-					memset(&m_rawdata[rawsize], 0, m_rawdata.count() - rawsize);
+				if (m_rawdata.count() < m_info.bytes_per_frame)
+				{
+					UINT32 delta = m_info.bytes_per_frame - m_rawdata.count();
+					m_rawdata.resize(m_info.bytes_per_frame, true);
+					memset(&m_rawdata[m_info.bytes_per_frame - delta], 0, delta);
+				}
 
 				// copy to the destination
 				UINT64 start_offset = UINT64(framenum) * UINT64(m_info.bytes_per_frame);
@@ -1608,9 +1611,10 @@ static void do_create_hd(parameters_t &params)
 	parse_hunk_size(params, sector_size, hunk_size);
 
 	// process input start/end (needs to know hunk_size)
-	UINT64 input_start;
-	UINT64 input_end;
-	parse_input_start_end(params, core_fsize(input_file), hunk_size, hunk_size, input_start, input_end);
+	UINT64 input_start = 0;
+	UINT64 input_end = 0;
+	if (input_file != NULL)
+		parse_input_start_end(params, core_fsize(input_file), hunk_size, hunk_size, input_start, input_end);
 
 	// process compression
 	chd_codec_type compression[4];
@@ -1756,7 +1760,7 @@ static void do_create_cd(parameters_t &params)
 	{
 		chd_error err = chdcd_parse_toc(*input_file_str, toc, track_info);
 		if (err != CHDERR_NONE)
-			report_error(1, "Error parsing input file (%s: %s\n", input_file_str->cstr(), chd_file::error_string(err));
+			report_error(1, "Error parsing input file (%s: %s)\n", input_file_str->cstr(), chd_file::error_string(err));
 	}
 
 	// process output CHD

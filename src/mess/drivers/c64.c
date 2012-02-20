@@ -3,7 +3,13 @@
     TODO:
 
     - 64C PLA dump
-    - cartridge loading
+    - clean up inputs
+    - Multiscreen crashes on boot
+
+        805A: lda  $01
+        805C: and  #$FE
+        805E: sta  $01
+        8060: m6502_brk#$00 <-- BOOM!
 
 */
 
@@ -54,7 +60,7 @@ void c64_state::check_interrupts()
 
 void c64_state::bankswitch(offs_t offset, offs_t va, int rw, int aec, int ba, int cas, int *casram, int *basic, int *kernal, int *charom, int *grw, int *io, int *roml, int *romh)
 {
-	int game = m_exp->game_r();
+	int game = m_exp->game_r(offset, rw, ba, m_hiram);
 	int exrom = m_exp->exrom_r();
 
 	UINT16 input = VA12 << 15 | VA13 << 14 | game << 13 | exrom << 12 | rw << 11 | aec << 10 | ba << 9 | A12 << 8 | A13 << 7 | A14 << 6 | A15 << 5 | m_va14 << 4 | m_charen << 3 | m_hiram << 2 | m_loram << 1 | cas;
@@ -77,6 +83,9 @@ void c64_state::bankswitch(offs_t offset, offs_t va, int rw, int aec, int ba, in
 
 UINT8 c64_state::read_memory(address_space &space, offs_t offset, int casram, int basic, int kernal, int charom, int io, int roml, int romh)
 {
+	int io1 = 1;
+	int io2 = 1;
+
 	UINT8 data = 0;
 
 	if (!casram)
@@ -128,24 +137,18 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int casram, in
 				break;
 
 			case 2: // I/O1
-				data = m_exp->io1_r(space, offset);
+				io1 = 0;
 				break;
 
 			case 3: // I/O2
-				data = m_exp->io2_r(space, offset);
+				io2 = 0;
 				break;
 			}
 			break;
 		}
 	}
-	else if (!roml)
-	{
-		data = m_exp->roml_r(space, offset);
-	}
-	else if (!romh)
-	{
-		data = m_exp->romh_r(space, offset);
-	}
+
+	data |= m_exp->cd_r(space, offset, roml, romh, io1, io2);
 
 	return data;
 }
@@ -171,6 +174,9 @@ READ8_MEMBER( c64_state::read )
 
 WRITE8_MEMBER( c64_state::write )
 {
+	int io1 = 1;
+	int io2 = 1;
+
 	int casram, basic, kernal, charom, grw, io, roml, romh;
 
 	bankswitch(offset, 0, 0, 0, 1, 0, &casram, &basic, &kernal, &charom, &grw, &io, &roml, &romh);
@@ -207,16 +213,18 @@ WRITE8_MEMBER( c64_state::write )
 				break;
 
 			case 2: // I/O1
-				m_exp->io1_w(space, offset, data);
+				io1 = 0;
 				break;
 
 			case 3: // I/O2
-				m_exp->io2_w(space, offset, data);
+				io2 = 0;
 				break;
 			}
 			break;
 		}
 	}
+
+	m_exp->cd_w(space, offset, data, roml, romh, io1, io2);
 }
 
 
@@ -999,6 +1007,8 @@ static C64_USER_PORT_INTERFACE( user_intf )
 
 void c64_state::machine_start()
 {
+	cbm_common_init();
+
 	// find memory regions
 	m_basic = machine().region("basic")->base();
 	m_kernal = machine().region("kernal")->base();

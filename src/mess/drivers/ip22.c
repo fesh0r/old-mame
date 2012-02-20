@@ -43,7 +43,6 @@
 #include "sound/cdda.h"
 #include "machine/sgi.h"
 #include "machine/pckeybrd.h"
-#include "machine/pc_mouse.h"
 #include "machine/pc_lpt.h"
 #include "includes/at.h"
 #include "machine/8042kbdc.h"
@@ -55,7 +54,7 @@
 #include "imagedev/harddriv.h"
 #include "imagedev/chd_cd.h"
 #include "sound/dac.h"
-
+#include "machine/nvram.h"
 
 typedef struct
 {
@@ -146,24 +145,6 @@ static const struct pit8253_config ip22_pit8254_config =
 		}
 	}
 };
-
-static NVRAM_HANDLER( ip22 )
-{
-	ip22_state *state = machine.driver_data<ip22_state>();
-	if (read_or_write)
-	{
-		file->write(state->m_RTC.nUserRAM, 0x200);
-		file->write(state->m_RTC.nRAM, 0x200);
-	}
-	else
-	{
-		if (file)
-		{
-			file->read(state->m_RTC.nUserRAM, 0x200);
-			file->read(state->m_RTC.nRAM, 0x200);
-		}
-	}
-}
 
 #define RTC_DAY		state->m_RTC.nRAM[0x09]
 #define RTC_HOUR	state->m_RTC.nRAM[0x08]
@@ -1231,11 +1212,6 @@ static TIMER_CALLBACK(ip22_timer)
 	machine.scheduler().timer_set(attotime::from_msec(1), FUNC(ip22_timer));
 }
 
-static MACHINE_START( ip225015 )
-{
-	sgi_mc_init(machine);
-}
-
 static MACHINE_RESET( ip225015 )
 {
 	ip22_state *state = machine.driver_data<ip22_state>();
@@ -1538,13 +1514,17 @@ static int ip22_get_out2(running_machine &machine) {
 	return pit8253_get_output(machine.device("pit8254"), 2 );
 }
 
-static MACHINE_START( ip22 )
+static MACHINE_START( ip225015 )
 {
+	ip22_state *state = machine.driver_data<ip22_state>();
 	sgi_mc_init(machine);
 
 	// SCSI init
 	wd33c93_init(machine, &scsi_intf);
 	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(ip225015_exit),&machine));
+
+	machine.device<nvram_device>("nvram_user")->set_base(state->m_RTC.nUserRAM, 0x200);
+	machine.device<nvram_device>("nvram")->set_base(state->m_RTC.nRAM, 0x200);
 }
 
 static DRIVER_INIT( ip225015 )
@@ -1569,7 +1549,6 @@ static INPUT_PORTS_START( ip225015 )
 	PORT_START("DSW1")	// unused IN2
 	PORT_START("DSW2")	// unused IN3
 	PORT_INCLUDE( at_keyboard )		/* IN4 - IN11 */
-	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 INPUT_PORTS_END
 
 static void rtc_update(ip22_state *state)
@@ -1686,7 +1665,9 @@ static MACHINE_CONFIG_START( ip225015, ip22_state )
 
 	MCFG_MACHINE_START( ip225015 )
 	MCFG_MACHINE_RESET( ip225015 )
-	MCFG_NVRAM_HANDLER( ip22 )
+
+	MCFG_NVRAM_ADD_0FILL("nvram")
+	MCFG_NVRAM_ADD_0FILL("nvram_user")
 
 	MCFG_PIT8254_ADD( "pit8254", ip22_pit8254_config )
 
@@ -1699,8 +1680,6 @@ static MACHINE_CONFIG_START( ip225015, ip22_state )
 	MCFG_SCREEN_UPDATE_STATIC( newport )
 
 	MCFG_PALETTE_LENGTH(65536)
-
-	MCFG_MACHINE_START( ip22 )
 
 	MCFG_VIDEO_START( newport )
 

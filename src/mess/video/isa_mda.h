@@ -30,25 +30,26 @@ public:
 
 		DECLARE_WRITE_LINE_MEMBER(hsync_changed);
 		DECLARE_WRITE_LINE_MEMBER(vsync_changed);
-		DECLARE_READ8_MEMBER(io_read);
-		DECLARE_WRITE8_MEMBER(io_write);
-		DECLARE_READ8_MEMBER(status_r);
-		DECLARE_WRITE8_MEMBER(mode_control_w);
+		virtual DECLARE_READ8_MEMBER(io_read);
+		virtual DECLARE_WRITE8_MEMBER(io_write);
+		virtual DECLARE_READ8_MEMBER(status_r);
+		virtual DECLARE_WRITE8_MEMBER(mode_control_w);
 
 protected:
         // device-level overrides
         virtual void device_start();
         virtual void device_reset();
 public:
-		int  framecnt;
+		int	m_framecnt;
 
-		UINT8 mode_control;
+		UINT8	m_mode_control;
 
-		mc6845_update_row_func  update_row;
-		UINT8   *chr_gen;
-		UINT8   vsync;
-		UINT8   hsync;
-		UINT8  *videoram;
+		mc6845_update_row_func  m_update_row;
+		UINT8   *m_chr_gen;
+		UINT8   m_vsync;
+		UINT8   m_hsync;
+		UINT8	*m_videoram;
+		UINT8	m_pixel;
 };
 
 
@@ -67,6 +68,11 @@ public:
 		virtual machine_config_constructor device_mconfig_additions() const;
 		virtual const rom_entry *device_rom_region() const;
 
+		virtual DECLARE_READ8_MEMBER(io_read);
+		virtual DECLARE_WRITE8_MEMBER(io_write);
+		virtual DECLARE_READ8_MEMBER(status_r);
+		virtual DECLARE_WRITE8_MEMBER(mode_control_w);
+
 protected:
         // device-level overrides
         virtual void device_start();
@@ -75,7 +81,7 @@ protected:
 private:
         // internal state
 public:
-		UINT8 configuration_switch; //hercules
+		UINT8 m_configuration_switch; //hercules
 };
 
 

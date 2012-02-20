@@ -701,6 +701,8 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 	sg1000_state *state = machine.driver_data<sg1000_state>();
 	address_space *program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
 	UINT8 *ptr = machine.region(Z80_TAG)->base();
+	UINT32 ram_size = 0x400;
+	bool install_2000_ram = false;
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -713,13 +715,92 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 	{
 		size = image.get_software_region_length("rom");
 		memcpy(ptr, image.get_software_region("rom"), size);
+
+		const char *needs_addon = image.get_feature("needs_addon");
+
+		//
+		// The Dahjee (Type A) RAM cartridge had 9KB of RAM. 1KB replaces
+		// the main unit's system ram (0xC000-0xC3FF) and 8K which appears
+		// at 0x2000-0x3FFF in the memory map.
+		//
+		if ( needs_addon && ! strcmp( needs_addon, "dahjee_type_a" ) )
+		{
+			install_2000_ram = true;
+		}
+
+		//
+		// The Dahjee (Type B) RAM cartridge had 8KB of RAM which
+		// replaces the main unit RAM in the memory map. (0xC000-0xDFFF area)
+		//
+		if ( needs_addon && ! strcmp( needs_addon, "dahjee_type_b" ) )
+		{
+			ram_size = 0x2000;
+		}
+	}
+
+	// Try to auto-detect special features
+	if ( ! install_2000_ram && ram_size == 0x400 )
+	{
+		if ( size >= 0x8000 )
+		{
+			int x2000_3000 = 0, xd000_e000_f000 = 0, x2000_ff = 0;
+
+			for ( int i = 0; i < 0x8000; i++ )
+			{
+				if ( ptr[i] == 0x32 )
+				{
+					UINT16 addr = ptr[i+1] | ( ptr[i+2] << 8 );
+
+					switch ( addr & 0xF000 )
+					{
+					case 0x2000:
+					case 0x3000:
+						i += 2;
+						x2000_3000++;
+						break;
+
+					case 0xD000:
+					case 0xE000:
+					case 0xF000:
+						i += 2;
+						xd000_e000_f000++;
+						break;
+					}
+				}
+			}
+			for ( int i = 0x2000; i < 0x4000; i++ )
+			{
+				if ( ptr[i] == 0xFF )
+				{
+					x2000_ff++;
+				}
+			}
+			if ( x2000_ff == 0x2000 && ( xd000_e000_f000 > 10 || x2000_3000 > 10 ) )
+			{
+				if ( xd000_e000_f000 > x2000_3000 )
+				{
+					// Type B
+					ram_size = 0x2000;
+				}
+				else
+				{
+					// Type A
+					install_2000_ram = true;
+				}
+			}
+		}
 	}
 
 	/* cartridge ROM banking */
 	state->install_cartridge(ptr, size);
 
+	if ( install_2000_ram )
+	{
+		program->install_ram(0x2000, 0x3FFF);
+	}
+
 	/* work RAM banking */
-	program->install_readwrite_bank(0xc000, 0xc3ff, 0, 0x3c00, "bank2");
+	program->install_readwrite_bank(0xc000, 0xc000 + ram_size - 1, 0, 0x4000 - ram_size, "bank2");
 
 	return IMAGE_INIT_PASS;
 }

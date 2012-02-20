@@ -140,7 +140,7 @@ static int msf_to_frames( char *token )
     length in bytes of the data and the offset in
     bytes to where the data starts in the file.
 -------------------------------------------------*/
-static UINT32 parse_wav_sample(char *filename, UINT32 *dataoffs)
+static UINT32 parse_wav_sample(const char *filename, UINT32 *dataoffs)
 {
 	unsigned long offset = 0;
 	UINT32 length, rate, filesize;
@@ -388,7 +388,7 @@ chd_error chdcd_parse_nero(const char *tocfname, cdrom_toc &outtoc, chdcd_track_
 				index2 = read_uint64(infile);
 
 //              printf("Track %d: sector size %d mode %x index0 %llx index1 %llx index2 %llx (pregap %d sectors, length %d sectors)\n", track, size, mode, index0, index1, index2, (UINT32)(index1-index0)/size, (UINT32)(index2-index1)/size);
-				outinfo.track[track-1].fname.cpy(path.cstr()).cat(tocfname);
+				outinfo.track[track-1].fname.cpy(path).cat(tocfname);
 				outinfo.track[track-1].offset = offset + (UINT32)(index1-index0);
 				outinfo.track[track-1].idx0offs = 0;
 				outinfo.track[track-1].idx1offs = 0;
@@ -538,7 +538,7 @@ static chd_error chdcd_parse_gdi(const char *tocfname, cdrom_toc &outtoc, chdcd_
 			} while(tok!=NULL && (strrchr(tok,'"')-tok !=(strlen(tok)-1)));
 			name = name.delchr('"');
 		}
-		outinfo.track[trknum].fname.cpy(path.cstr()).cat(name);
+		outinfo.track[trknum].fname.cpy(path).cat(name);
 
 		sz=get_file_size(outinfo.track[trknum].fname);
 
@@ -587,7 +587,7 @@ chd_error chdcd_parse_cue(const char *tocfname, cdrom_toc &outtoc, chdcd_track_i
 	FILE *infile;
 	int i, trknum;
 	static char token[512];
-	static char lastfname[256];
+	astring lastfname;
 	UINT32 wavlen, wavoffs;
 	astring path = astring(tocfname);
 
@@ -623,8 +623,7 @@ chd_error chdcd_parse_cue(const char *tocfname, cdrom_toc &outtoc, chdcd_track_i
 				TOKENIZE
 
 				/* keep the filename */
-				strncpy(lastfname, path.cstr(), 256);
-				strncat(lastfname, token, 256);
+				lastfname.cpy(path).cat(token);
 
 				/* get the file type */
 				TOKENIZE
@@ -649,7 +648,7 @@ chd_error chdcd_parse_cue(const char *tocfname, cdrom_toc &outtoc, chdcd_track_i
 						if (err != FILERR_NONE) printf("holy moley!\n");
 						else core_fclose(fhand);
 
-						printf("ERROR: couldn't read [%s] or not a valid .WAV\n", lastfname);
+						printf("ERROR: couldn't read [%s] or not a valid .WAV\n", lastfname.cstr());
 						return CHDERR_FILE_NOT_FOUND;
 					}
 				}
@@ -688,6 +687,7 @@ chd_error chdcd_parse_cue(const char *tocfname, cdrom_toc &outtoc, chdcd_track_i
 				outinfo.track[trknum].idx1offs = 0;
 
 				outinfo.track[trknum].fname.cpy(lastfname); // default filename to the last one
+
 //              printf("trk %d: fname %s offset %d\n", trknum, outinfo.track[trknum].fname.cstr(), outinfo.track[trknum].offset);
 
 				cdrom_convert_type_string_to_track_info(token, &outtoc.tracks[trknum]);
@@ -774,9 +774,9 @@ chd_error chdcd_parse_cue(const char *tocfname, cdrom_toc &outtoc, chdcd_track_i
 			if (trknum == (outtoc.numtrks-1))
 			{
 				/* if we have the same filename as the last track, do it that way */
-				if (outinfo.track[trknum].fname == outinfo.track[trknum-1].fname)
+				if (trknum != 0 && outinfo.track[trknum].fname == outinfo.track[trknum-1].fname)
 				{
-					tlen = get_file_size(outinfo.track[trknum].fname);
+					tlen = get_file_size(outinfo.track[trknum].fname.cstr());
 					if (tlen == 0)
 					{
 						printf("ERROR: couldn't find bin file [%s]\n", outinfo.track[trknum-1].fname.cstr());
@@ -908,7 +908,7 @@ chd_error chdcd_parse_toc(const char *tocfname, cdrom_toc &outtoc, chdcd_track_i
 				TOKENIZE
 
 				/* keep the filename */
-				outinfo.track[trknum].fname.cpy(path.cstr()).cat(token);
+				outinfo.track[trknum].fname.cpy(path).cat(token);
 
 				/* get either the offset or the length */
 				TOKENIZE

@@ -89,6 +89,19 @@ WRITE8_MEMBER( at_state::at_keybc_w )
 	}
 }
 
+
+WRITE8_MEMBER( at_state::write_rtc )
+{
+	if (offset==0) {
+		m_nmi_enabled = BIT(data,7);
+		m_isabus->set_nmi_state((m_nmi_enabled==0) && (m_channel_check==0));
+		m_mc146818->write(space,0,data);
+	}
+	else {
+		m_mc146818->write(space,offset,data);
+	}
+}
+
 static ADDRESS_MAP_START( at16_io, AS_IO, 16, at_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8_LEGACY("dma8237_1", i8237_r, i8237_w, 0xffff)
@@ -96,7 +109,7 @@ static ADDRESS_MAP_START( at16_io, AS_IO, 16, at_state )
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8_LEGACY("pit8254", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
 	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
-	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8("rtc", mc146818_device, read, write , 0xffff)
+	AM_RANGE(0x0070, 0x007f) AM_DEVREAD8("rtc", mc146818_device, read, 0xffff) AM_WRITE8(write_rtc , 0xffff)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r, at_page8_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8_LEGACY("pic8259_slave", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x00c0, 0x00df) AM_READWRITE8(at_dma8237_2_r, at_dma8237_2_w, 0xffff)
@@ -247,7 +260,6 @@ static INPUT_PORTS_START( atcga )
 
 	PORT_INCLUDE( kb_keytronic_at )		/* IN4 - IN11 */
 	PORT_INCLUDE( pcvideo_cga )
-	PORT_INCLUDE( pc_mouse_microsoft )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( atvga )
@@ -289,7 +301,6 @@ static INPUT_PORTS_START( atvga )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
 
 	PORT_INCLUDE( kb_keytronic_at )
-	PORT_INCLUDE( pc_mouse_microsoft )
 INPUT_PORTS_END
 
 static const unsigned i286_address_mask = 0x00ffffff;
@@ -352,8 +363,9 @@ static SLOT_INTERFACE_START(pc_isa16_cards)
 	SLOT_INTERFACE("mda", ISA8_MDA)
 	SLOT_INTERFACE("cga", ISA8_CGA)
 	SLOT_INTERFACE("ega", ISA8_EGA)
-	SLOT_INTERFACE("vga", ISA8_VGA)
-	SLOT_INTERFACE("svga",ISA8_SVGA_S3)
+	SLOT_INTERFACE("svga_et4k", ISA8_SVGA_ET4K)
+	SLOT_INTERFACE("svga_s3",ISA8_SVGA_S3)
+	SLOT_INTERFACE("svga_dm",ISA8_SVGA_CIRRUS)
 	SLOT_INTERFACE("com", ISA8_COM)
 	SLOT_INTERFACE("comat", ISA8_COM_AT)
 	SLOT_INTERFACE("fdc", ISA8_FDC)
@@ -372,6 +384,7 @@ static SLOT_INTERFACE_START(pc_isa16_cards)
 	SLOT_INTERFACE("ide", ISA16_IDE)
 	SLOT_INTERFACE("ne2000", NE2000)
 	SLOT_INTERFACE("aha1542", AHA1542)
+	SLOT_INTERFACE("gus",ISA16_GUS)
 SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_FRAGMENT( at_motherboard )
@@ -472,7 +485,7 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "vga", NULL)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", NULL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -517,7 +530,7 @@ static MACHINE_CONFIG_START( atvga, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ne2000", NULL)
-	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "vga", NULL)
+	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "svga_et4k", NULL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -537,7 +550,7 @@ static MACHINE_CONFIG_START( xb42639, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "vga", NULL)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", NULL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -557,7 +570,7 @@ static MACHINE_CONFIG_START( at386, at_state )
 	MCFG_ISA_ONBOARD_ADD("isabus", "com", ISA8_COM_AT, NULL)
 	MCFG_ISA_ONBOARD_ADD("isabus", "ide", ISA16_IDE, NULL)
 	MCFG_ISA_ONBOARD_ADD("isabus", "lpt", ISA8_LPT, NULL)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "vga", NULL)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "svga_et4k", NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, NULL, NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, NULL, NULL)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, NULL, NULL)

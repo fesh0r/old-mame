@@ -150,6 +150,7 @@ isa8_device::isa8_device(const machine_config &mconfig, const char *tag, device_
 		m_dma_device[i] = NULL;
 		m_dma_eop[i] = false;
 	}
+	m_nmi_enabled = false;
 }
 
 isa8_device::isa8_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock) :
@@ -160,6 +161,7 @@ isa8_device::isa8_device(const machine_config &mconfig, device_type type, const 
 		m_dma_device[i] = NULL;
 		m_dma_eop[i] = false;
 	}
+	m_nmi_enabled = false;
 }
 
 void isa8_device::set_dma_channel(UINT8 channel, device_isa8_card_interface *dev, bool do_eop)
@@ -344,6 +346,15 @@ void isa8_device::unmap_rom(offs_t start, offs_t end, offs_t mask, offs_t mirror
 	space->unmap_read(start, end, mask, mirror);
 }
 
+bool isa8_device::is_option_rom_space_available(offs_t start, int size)
+{
+	m_maincpu = machine().device(m_cputag);
+	address_space *space = m_maincpu->memory().space(AS_PROGRAM);
+	for(int i = 0; i < size; i += 4096) // 4KB granularity should be enough
+		if(space->get_read_ptr(start + i)) return false;
+	return true;
+}
+
 // interrupt request from isa card
 WRITE_LINE_MEMBER( isa8_device::irq2_w ) { m_out_irq2_func(state); }
 WRITE_LINE_MEMBER( isa8_device::irq3_w ) { m_out_irq3_func(state); }
@@ -378,7 +389,13 @@ void isa8_device::eop_w(int state)
 	}
 }
 
-
+void isa8_device::nmi()
+{
+	if (m_nmi_enabled)
+	{
+		device_set_input_line( m_maincpu, INPUT_LINE_NMI, PULSE_LINE );
+	}
+}
 //**************************************************************************
 //  DEVICE CONFIG ISA8 CARD INTERFACE
 //**************************************************************************

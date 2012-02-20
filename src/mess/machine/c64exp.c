@@ -10,13 +10,83 @@
 #include "emu.h"
 #include "emuopts.h"
 #include "machine/c64exp.h"
+#include "formats/cbm_crt.h"
+#include "formats/imageutl.h"
+
 
 
 //**************************************************************************
-//  GLOBAL VARIABLES
+//  MACROS/CONSTANTS
+//**************************************************************************
+
+#define LOG 0
+
+
+// slot names for the C64 cartridge types
+const char *CRT_C64_SLOT_NAMES[_CRT_C64_COUNT] =
+{
+	"standard",
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	"simons_basic",
+	"ocean",
+	UNSUPPORTED,
+	"fun_play",
+	"super_games",
+	UNSUPPORTED,
+	"epyxfastload",
+	"westermann",
+	"rex",
+	UNSUPPORTED,
+	"magic_formel",
+	"system3",
+	"warp_speed",
+	"dinamic",
+	"zaxxon",
+	"magic desk",
+	UNSUPPORTED,
+	"comal80",
+	"struct_basic",
+	"ross",
+	"ep64",
+	"ep7x8",
+	"dela_ep256",
+	"rex_ep256",
+	"mikroasm",
+	UNSUPPORTED,
+	UNSUPPORTED,
+	"stardos",
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	"ieee488",
+	UNSUPPORTED,
+	UNSUPPORTED,
+	"exos",
+	UNSUPPORTED,
+	UNSUPPORTED,
+	UNSUPPORTED,
+	"super_explode",
+	UNSUPPORTED,
+	UNSUPPORTED,
+	"mach5"
+};
+
+
+
+//**************************************************************************
+//  DEVICE DEFINITIONS
 //**************************************************************************
 
 const device_type C64_EXPANSION_SLOT = &device_creator<c64_expansion_slot_device>;
+
 
 
 //**************************************************************************
@@ -29,6 +99,12 @@ const device_type C64_EXPANSION_SLOT = &device_creator<c64_expansion_slot_device
 
 device_c64_expansion_card_interface::device_c64_expansion_card_interface(const machine_config &mconfig, device_t &device)
 	: device_slot_card_interface(mconfig, device),
+	  m_roml(NULL),
+	  m_romh(NULL),
+	  m_ram(NULL),
+	  m_roml_mask(0),
+	  m_romh_mask(0),
+	  m_ram_mask(0),
 	  m_game(1),
 	  m_exrom(1)
 {
@@ -42,6 +118,54 @@ device_c64_expansion_card_interface::device_c64_expansion_card_interface(const m
 
 device_c64_expansion_card_interface::~device_c64_expansion_card_interface()
 {
+}
+
+
+//-------------------------------------------------
+//  c64_roml_pointer - get low ROM pointer
+//-------------------------------------------------
+
+UINT8* device_c64_expansion_card_interface::c64_roml_pointer(running_machine &machine, size_t size)
+{
+	if (m_roml == NULL)
+	{
+		m_roml = auto_alloc_array(machine, UINT8, size);
+		m_roml_mask = size - 1;
+	}
+
+	return m_roml;
+}
+
+
+//-------------------------------------------------
+//  c64_romh_pointer - get high ROM pointer
+//-------------------------------------------------
+
+UINT8* device_c64_expansion_card_interface::c64_romh_pointer(running_machine &machine, size_t size)
+{
+	if (m_romh == NULL)
+	{
+		m_romh = auto_alloc_array(machine, UINT8, size);
+		m_romh_mask = size - 1;
+	}
+
+	return m_romh;
+}
+
+
+//-------------------------------------------------
+//  c64_ram_pointer - get RAM pointer
+//-------------------------------------------------
+
+UINT8* device_c64_expansion_card_interface::c64_ram_pointer(running_machine &machine, size_t size)
+{
+	if (m_ram == NULL)
+	{
+		m_ram = auto_alloc_array(machine, UINT8, size);
+		m_ram_mask = size - 1;
+	}
+
+	return m_ram;
 }
 
 
@@ -132,53 +256,129 @@ bool c64_expansion_slot_device::call_load()
 
 			if (!mame_stricmp(filetype(), "80"))
 			{
-				fread(m_cart->c64_roml_pointer(), 0x2000);
+				fread(m_cart->c64_roml_pointer(machine(), 0x2000), 0x2000);
 				m_cart->c64_exrom_w(0);
 
 				if (size == 0x4000)
 				{
-					fread(m_cart->c64_romh_pointer(), 0x2000);
+					fread(m_cart->c64_romh_pointer(machine(), 0x2000), 0x2000);
 					m_cart->c64_game_w(0);
 				}
 			}
 			else if (!mame_stricmp(filetype(), "a0"))
 			{
-				fread(m_cart->c64_romh_pointer(), size);
+				fread(m_cart->c64_romh_pointer(machine(), 0x2000), 0x2000);
 
-				m_cart->c64_game_w(0);
 				m_cart->c64_exrom_w(0);
+				m_cart->c64_game_w(0);
 			}
 			else if (!mame_stricmp(filetype(), "e0"))
 			{
-				fread(m_cart->c64_romh_pointer(), size);
+				fread(m_cart->c64_romh_pointer(machine(), 0x2000), 0x2000);
 
 				m_cart->c64_game_w(0);
+			}
+			else if (!mame_stricmp(filetype(), "crt"))
+			{
+				// read the header
+				cbm_crt_header header;
+				fread(&header, CRT_HEADER_LENGTH);
+
+				if (memcmp(header.signature, CRT_SIGNATURE, 16) != 0)
+					return IMAGE_INIT_FAIL;
+
+				UINT16 hardware = pick_integer_be(header.hardware, 0, 2);
+
+				// TODO support other cartridge hardware
+				if (hardware != CRT_C64_STANDARD)
+					return IMAGE_INIT_FAIL;
+
+				if (LOG)
+				{
+					logerror("Name: %s\n", header.name);
+					logerror("Hardware: %04x\n", hardware);
+					logerror("Slot device: %s\n", CRT_C64_SLOT_NAMES[hardware]);
+					logerror("EXROM: %u\n", header.exrom);
+					logerror("GAME: %u\n", header.game);
+				}
+
+				// determine ROM region lengths
+				size_t roml_size = 0;
+				size_t romh_size = 0;
+
+				while (!image_feof())
+				{
+					cbm_crt_chip chip;
+					fread(&chip, CRT_CHIP_LENGTH);
+
+					UINT16 address = pick_integer_be(chip.start_address, 0, 2);
+					UINT16 size = pick_integer_be(chip.image_size, 0, 2);
+					UINT16 type = pick_integer_be(chip.chip_type, 0, 2);
+
+					if (LOG)
+					{
+						logerror("CHIP Address: %04x\n", address);
+						logerror("CHIP Size: %04x\n", size);
+						logerror("CHIP Type: %04x\n", type);
+					}
+
+					switch (address)
+					{
+					case 0x8000: roml_size += size; break;
+					case 0xa000: romh_size += size; break;
+					case 0xe000: romh_size += size; break;
+					default: logerror("Invalid CHIP loading address!\n"); break;
+					}
+
+					fseek(size, SEEK_CUR);
+				}
+
+				// allocate cartridge memory
+				UINT8 *roml = NULL;
+				UINT8 *romh = NULL;
+
+				if (roml_size) roml = m_cart->c64_roml_pointer(machine(), roml_size);
+				if (romh_size) romh = m_cart->c64_romh_pointer(machine(), romh_size);
+
+				// read the data
+				offs_t roml_offset = 0;
+				offs_t romh_offset = 0;
+
+				fseek(CRT_HEADER_LENGTH, SEEK_SET);
+
+				while (!image_feof())
+				{
+					cbm_crt_chip chip;
+					fread(&chip, CRT_CHIP_LENGTH);
+
+					UINT16 address = pick_integer_be(chip.start_address, 0, 2);
+					UINT16 size = pick_integer_be(chip.image_size, 0, 2);
+
+					switch (address)
+					{
+					case 0x8000: fread(roml + roml_offset, size); roml_offset += size; break;
+					case 0xa000: fread(romh + romh_offset, size); romh_offset += size; break;
+					case 0xe000: fread(romh + romh_offset, size); romh_offset += size; break;
+					}
+				}
+
+				m_cart->c64_exrom_w(header.exrom);
+				m_cart->c64_game_w(header.game);
 			}
 		}
 		else
 		{
 			size = get_software_region_length("roml");
+			if (size) memcpy(m_cart->c64_roml_pointer(machine(), size), get_software_region("roml"), size);
 
-			switch (size)
-			{
-			case 0x2000:
-				memcpy(m_cart->c64_roml_pointer(), get_software_region("roml"), size);
+			size = get_software_region_length("romh");
+			if (size) memcpy(m_cart->c64_romh_pointer(machine(), size), get_software_region("romh"), size);
 
-				size = get_software_region_length("romh");
-				if (size) memcpy(m_cart->c64_romh_pointer(), get_software_region("romh"), size);
-				break;
+			size = get_software_region_length("ram");
+			if (size) memset(m_cart->c64_ram_pointer(machine(), size), 0, size);
 
-			case 0x4000:
-				memcpy(m_cart->c64_roml_pointer(), get_software_region("roml"), 0x2000);
-				memcpy(m_cart->c64_romh_pointer(), get_software_region("roml") + 0x2000, 0x2000);
-				break;
-
-			default:
-				return IMAGE_INIT_FAIL;
-			}
-
-			m_cart->c64_game_w(atol(get_feature("game")));
 			m_cart->c64_exrom_w(atol(get_feature("exrom")));
+			m_cart->c64_game_w(atol(get_feature("game")));
 		}
 	}
 
@@ -202,23 +402,23 @@ bool c64_expansion_slot_device::call_softlist_load(char *swlist, char *swname, r
 //  get_default_card_software -
 //-------------------------------------------------
 
-const char * c64_expansion_slot_device::get_default_card_software(const machine_config &config, emu_options &options) const
+const char * c64_expansion_slot_device::get_default_card_software(const machine_config &config, emu_options &options)
 {
 	return software_get_default_slot(config, options, this, "standard");
 }
 
 
 //-------------------------------------------------
-//  roml_r - low ROM read
+//  cd_r -
 //-------------------------------------------------
 
-READ8_MEMBER( c64_expansion_slot_device::roml_r )
+UINT8 c64_expansion_slot_device::cd_r(address_space &space, offs_t offset, int roml, int romh, int io1, int io2)
 {
 	UINT8 data = 0;
 
 	if (m_cart != NULL)
 	{
-		data = m_cart->c64_cd_r(offset, 0, 1, 1, 1);
+		data = m_cart->c64_cd_r(space, offset, roml, romh, io1, io2);
 	}
 
 	return data;
@@ -226,78 +426,14 @@ READ8_MEMBER( c64_expansion_slot_device::roml_r )
 
 
 //-------------------------------------------------
-//  romh_r - high ROM read
+//  cd_w -
 //-------------------------------------------------
 
-READ8_MEMBER( c64_expansion_slot_device::romh_r )
-{
-	UINT8 data = 0;
-
-	if (m_cart != NULL)
-	{
-		data = m_cart->c64_cd_r(offset, 1, 0, 1, 1);
-	}
-
-	return data;
-}
-
-
-//-------------------------------------------------
-//  io1_r - I/O 1 read
-//-------------------------------------------------
-
-READ8_MEMBER( c64_expansion_slot_device::io1_r )
-{
-	UINT8 data = 0;
-
-	if (m_cart != NULL)
-	{
-		data = m_cart->c64_cd_r(offset, 1, 1, 0, 1);
-	}
-
-	return data;
-}
-
-
-//-------------------------------------------------
-//  io1_w - low ROM write
-//-------------------------------------------------
-
-WRITE8_MEMBER( c64_expansion_slot_device::io1_w )
+void c64_expansion_slot_device::cd_w(address_space &space, offs_t offset, UINT8 data, int roml, int romh, int io1, int io2)
 {
 	if (m_cart != NULL)
 	{
-		m_cart->c64_cd_w(offset, data, 1, 1, 0, 1);
-	}
-}
-
-
-//-------------------------------------------------
-//  io2_r - I/O 2 read
-//-------------------------------------------------
-
-READ8_MEMBER( c64_expansion_slot_device::io2_r )
-{
-	UINT8 data = 0;
-
-	if (m_cart != NULL)
-	{
-		data = m_cart->c64_cd_r(offset, 1, 1, 1, 0);
-	}
-
-	return data;
-}
-
-
-//-------------------------------------------------
-//  io2_w - low ROM write
-//-------------------------------------------------
-
-WRITE8_MEMBER( c64_expansion_slot_device::io2_w )
-{
-	if (m_cart != NULL)
-	{
-		m_cart->c64_cd_w(offset, data, 1, 1, 1, 0);
+		m_cart->c64_cd_w(space, offset, data, roml, romh, io1, io2);
 	}
 }
 
@@ -306,13 +442,13 @@ WRITE8_MEMBER( c64_expansion_slot_device::io2_w )
 //  game_r - GAME read
 //-------------------------------------------------
 
-READ_LINE_MEMBER( c64_expansion_slot_device::game_r )
+int c64_expansion_slot_device::game_r(offs_t offset, int ba, int rw, int hiram)
 {
 	int state = 1;
 
 	if (m_cart != NULL)
 	{
-		state = m_cart->c64_game_r();
+		state = m_cart->c64_game_r(offset, ba, rw, hiram);
 	}
 
 	return state;

@@ -5,6 +5,8 @@
 
 #include "emu.h"
 #include "machine/isa.h"
+#include "machine/serial.h"
+#include "machine/ins8250.h"
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -23,7 +25,9 @@ public:
 
 		// optional information overrides
 		virtual machine_config_constructor device_mconfig_additions() const;
-		virtual ioport_constructor device_input_ports() const;
+
+		rs232_port_device *get_port(int port) { return m_serport[port]; }
+		ins8250_uart_device *get_uart(int dev) { return m_uart[dev]; }
 protected:
         // device-level overrides
         virtual void device_start();
@@ -31,6 +35,8 @@ protected:
 
 private:
         // internal state
+	ins8250_uart_device *m_uart[4];
+	rs232_port_device *m_serport[4];
 };
 
 

@@ -79,7 +79,7 @@
 		</part>
 	</software>
 
-	<software name="jupiter">
+	<software name="jlander">
 		<description>Jupiter Lander (World, v.02)</description>
 		<year>1982</year>
 		<publisher>Commodore / HAL Laboratory</publisher>
@@ -133,10 +133,10 @@
 			<feature name="exrom" value="1" />
 
 			<dataarea name="lorom" size="0x2000">
-				<rom name="basic.80" size="0x2000" crc="489aab86" sha1="448e0403baed7fcdc3be6ce8497958beaf3b4566" offset="0x0000" />
+				<rom name="901230-01" size="0x2000" crc="489aab86" sha1="448e0403baed7fcdc3be6ce8497958beaf3b4566" offset="0x0000" />
 			</dataarea>
 			<dataarea name="uprom" size="0x2000">
-				<rom name="basic.e0" size="0x2000" crc="caac20ff" sha1="f31ba36a5f8fca7722d4b482716166b578301ed4" offset="0x0000" />
+				<rom name="901231-01" size="0x2000" crc="caac20ff" sha1="f31ba36a5f8fca7722d4b482716166b578301ed4" offset="0x0000" />
 			</dataarea>
 			<dataarea name="exram" size="0x800" />
 		</part>
@@ -156,7 +156,7 @@
 		</part>
 	</software>
 
-	<software name="moleatck">
+	<software name="moleattk">
 		<description>Mole Attack (Jpn, v.01)</description>
 		<year>1982</year>
 		<publisher>Commodore / HAL Laboratory</publisher>
@@ -215,7 +215,7 @@
 		</part>
 	</software>
 
-	<software name="omegar">
+	<software name="omegrace">
 		<description>Omega Race (Jpn, v.02)</description>
 		<year>1982</year>
 		<publisher>Commodore</publisher>
@@ -230,7 +230,7 @@
 		</part>
 	</software>
 
-	<software name="pinball">
+	<software name="pinspec">
 		<description>Pinball Spectacular (World)</description>
 		<year>1983</year>
 		<publisher>Commodore / HAL Laboratory</publisher>

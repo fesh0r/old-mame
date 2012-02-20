@@ -227,11 +227,12 @@ WRITE_LINE_MEMBER( avigo_state::com_interrupt )
 
 static const ins8250_interface avigo_com_interface =
 {
-	1843200,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_DRIVER_LINE_MEMBER(avigo_state, com_interrupt),
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -267,6 +268,39 @@ void avigo_state::machine_start()
 	m_flashes[0] = machine().device<intelfsh8_device>("flash0");
 	m_flashes[1] = machine().device<intelfsh8_device>("flash1");
 	m_flashes[2] = machine().device<intelfsh8_device>("flash2");
+
+	machine().device<nvram_device>("nvram")->set_base(m_ram_base, m_ram->size());
+	m_warm_start = 1;
+
+	// register for state saving
+	save_item(NAME(m_key_line));
+	save_item(NAME(m_irq));
+	save_item(NAME(m_port2));
+	save_item(NAME(m_bank2_l));
+	save_item(NAME(m_bank2_h));
+	save_item(NAME(m_bank1_l));
+	save_item(NAME(m_bank1_h));
+	save_item(NAME(m_ad_control_status));
+	save_item(NAME(m_flash_at_0x4000));
+	save_item(NAME(m_flash_at_0x8000));
+	save_item(NAME(m_ad_value));
+	save_item(NAME(m_screen_column));
+	save_item(NAME(m_warm_start));
+
+	// save all flash contents
+	save_pointer(NAME((UINT8*)m_flashes[0]->space()->get_read_ptr(0)), 0x100000);
+	save_pointer(NAME((UINT8*)m_flashes[1]->space()->get_read_ptr(0)), 0x100000);
+	save_pointer(NAME((UINT8*)m_flashes[2]->space()->get_read_ptr(0)), 0x100000);
+
+	// register postload callback
+	machine().save().register_postload(save_prepost_delegate(FUNC(avigo_state::postload), this));
+}
+
+void avigo_state::postload()
+{
+	// refresh the bankswitch
+	refresh_memory(1, m_bank1_h & 0x07);
+	refresh_memory(2, m_bank2_h & 0x07);
 }
 
 static ADDRESS_MAP_START( avigo_mem , AS_PROGRAM, 8, avigo_state)
@@ -602,7 +636,7 @@ static ADDRESS_MAP_START( avigo_io, AS_IO, 8, avigo_state)
 	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE("rtc", rp5c01_device, read, write)
 	AM_RANGE(0x028, 0x028) AM_WRITE( speaker_w )
 	AM_RANGE(0x02d, 0x02d) AM_READ( ad_data_r )
-	AM_RANGE(0x030, 0x037) AM_DEVREADWRITE_LEGACY("ns16550", ins8250_r, ins8250_w )
+	AM_RANGE(0x030, 0x037) AM_DEVREADWRITE("ns16550", ns16550_device, ins8250_r, ins8250_w )
 ADDRESS_MAP_END
 
 
@@ -788,31 +822,6 @@ static TIMER_DEVICE_CALLBACK( avigo_1hz_timer )
 	state->refresh_ints();
 }
 
-static NVRAM_HANDLER(avigo)
-{
-	avigo_state *state = machine.driver_data<avigo_state>();
-	UINT32 ram_size = state->m_ram->size();
-
-	if (read_or_write)
-	{
-		file->write(state->m_ram_base, ram_size);
-	}
-	else
-	{
-		if (file)
-		{
-			file->read(state->m_ram_base, ram_size);
-			state->m_warm_start = 1;
-		}
-		else
-		{
-			memset(state->m_ram_base, 0, ram_size);
-			state->m_warm_start = 0;
-		}
-	}
-}
-
-
 static QUICKLOAD_LOAD(avigo)
 {
 	avigo_state *state = image.device().machine().driver_data<avigo_state>();
@@ -864,6 +873,11 @@ static QUICKLOAD_LOAD(avigo)
 	return IMAGE_INIT_FAIL;
 }
 
+void avigo_state::nvram_init(nvram_device &nvram, void *base, size_t size)
+{
+	m_warm_start = 0;
+	memset(base, 0x00, size);
+}
 
 static MACHINE_CONFIG_START( avigo, avigo_state )
 	/* basic machine hardware */
@@ -872,7 +886,7 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_CPU_IO_MAP(avigo_io)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_NS16550_ADD( "ns16550", avigo_com_interface )
+	MCFG_NS16550_ADD( "ns16550", avigo_com_interface, XTAL_1_8432MHz )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", LCD)
@@ -904,7 +918,7 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("128K")
 
-	MCFG_NVRAM_HANDLER(avigo)
+	MCFG_NVRAM_ADD_CUSTOM_DRIVER("nvram", avigo_state, nvram_init)
 
 	// IRQ 1 is used for scan the pen and for cursor blinking
 	MCFG_TIMER_ADD_PERIODIC("scan_timer", avigo_scan_timer, attotime::from_hz(50))
@@ -1007,9 +1021,9 @@ ROM_START(avigo_it)
 ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY   FULLNAME */
-COMP(1997,	avigo,  	0,  		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA",         	0)
-COMP(1997,	avigo_de,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (German)",	0)
-COMP(1997,	avigo_fr,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (French)",	0)
-COMP(1997,	avigo_es,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Spanish)",	0)
-COMP(1997,	avigo_it,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Italian)",	0)
+COMP(1997,	avigo,  	0,  		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA",         	GAME_SUPPORTS_SAVE)
+COMP(1997,	avigo_de,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (German)",	GAME_SUPPORTS_SAVE)
+COMP(1997,	avigo_fr,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (French)",	GAME_SUPPORTS_SAVE)
+COMP(1997,	avigo_es,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Spanish)",	GAME_SUPPORTS_SAVE)
+COMP(1997,	avigo_it,	avigo,		0,		avigo,	avigo,	0,		"Texas Instruments", "TI Avigo 10 PDA (Italian)",	GAME_SUPPORTS_SAVE)
 
