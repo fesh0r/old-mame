@@ -1,3 +1,18 @@
+0.145u3
+-------
+
+
+
+Source Changes
+--------------
+Fixed listxml and validation. [Fabio Priuli]
+
+chdman: Properly handle and warn on bin/cue output of images with
+subcode data [R. Belmont]
+
+
+
+
 0.145u2
 -------
 
