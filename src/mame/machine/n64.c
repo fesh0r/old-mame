@@ -2034,7 +2034,7 @@ void n64_periphs::handle_pif()
 			}
 		}
 
-		//pif_ram[0x3f] = 0;
+		pif_ram[0x3f] = 0;
 	}
 
 	/*printf("After:\n"); fflush(stdout);

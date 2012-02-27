@@ -61,7 +61,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_terminal;
+	required_device<generic_terminal_device> m_terminal;
 	//required_device<device_t> m_acia;
 	required_device<votrax_device> m_votrax;
 	DECLARE_READ8_MEMBER( votrtnt_acia_status_r );
@@ -103,7 +103,7 @@ static ADDRESS_MAP_START(6802_mem, AS_PROGRAM, 8, votrtnt_state)
 	//AM_RANGE(0x2000, 0x2000) AM_NOP AM_MIRROR(0xffe)//AM_DEVREADWRITE("acia_0",aciastat_r,aciactrl_w)/* 6850 ACIA */
 	//AM_RANGE(0x2001, 0x2001) AM_NOP AM_MIRROR(0xffe)//AM_DEVREADWRITE("acia_0",aciadata_r,aciadata_w)/* 6850 ACIA */
 	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0xffe) AM_READ(votrtnt_acia_status_r) AM_WRITENOP// temp testing
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0xffe) AM_READ(votrtnt_acia_data_r) AM_DEVWRITE_LEGACY(TERMINAL_TAG, terminal_write) // temp testing
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0xffe) AM_READ(votrtnt_acia_data_r) AM_DEVWRITE(TERMINAL_TAG, generic_terminal_device, write) // temp testing
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(votrtnt_votrax_w) /* low 6 bits write to 6 bit input of sc-01-a; high 2 bits are ignored (but by adding a buffer chip could be made to control the inflection bits of the sc-01-a which are normally grounded on the tnt) */
 	AM_RANGE(0x6000, 0x6fff) AM_ROM /* ROM in potted block */
 ADDRESS_MAP_END
@@ -152,6 +152,16 @@ static TIMER_DEVICE_CALLBACK( votrtnt_poll_votrax )
 	device_set_input_line(timer.machine().device("maincpu"), INPUT_LINE_IRQ0, status ? ASSERT_LINE : CLEAR_LINE);
 }
 
+static struct votrax_map dummy =
+{
+	NULL,
+	NULL
+};
+
+static struct votrax_interface votrtnt_votrax_interface =
+{
+	&dummy
+};
 
 /******************************************************************************
  Machine Drivers
@@ -171,7 +181,7 @@ static MACHINE_CONFIG_START( votrtnt, votrtnt_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("votrax", VOTRAX, 1700000) /* 1.70 MHz? needs verify */
+	MCFG_VOTRAX_ADD("votrax", 1700000, votrtnt_votrax_interface ) /* 1.70 MHz? needs verify */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, votrtnt_terminal_intf)

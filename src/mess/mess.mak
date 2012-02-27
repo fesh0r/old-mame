@@ -132,7 +132,7 @@ SOUNDS += YM2610B
 SOUNDS += YM2612
 #SOUNDS += YM3438
 SOUNDS += YM3812
-#SOUNDS += YM3526
+SOUNDS += YM3526
 #SOUNDS += Y8950
 #SOUNDS += YMF262
 #SOUNDS += YMF271
@@ -570,6 +570,7 @@ $(MESSOBJ)/acorn.a:				\
 	$(MESS_DRIVERS)/electron.o	\
 	$(MESS_DRIVERS)/z88.o		\
 	$(MESS_VIDEO)/z88.o			\
+	$(MESS_MACHINE)/upd65031.o	\
 
 $(MESSOBJ)/act.a:				\
 	$(MESS_DRIVERS)/apricot.o	\
@@ -771,10 +772,12 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_dela_ep64.o	\
 	$(MESS_MACHINE)/c64_dela_ep7x8.o	\
 	$(MESS_MACHINE)/c64_dinamic.o	\
+	$(MESS_MACHINE)/c64_dqbb.o	\
 	$(MESS_MACHINE)/c64_easy_calc_result.o	\
 	$(MESS_MACHINE)/c64_easyflash.o	\
 	$(MESS_MACHINE)/c64_epyx_fast_load.o	\
 	$(MESS_MACHINE)/c64_exos.o	\
+	$(MESS_MACHINE)/c64_final.o	\
 	$(MESS_MACHINE)/c64_fun_play.o	\
 	$(MESS_MACHINE)/c64_georam.o	\
 	$(MESS_MACHINE)/c64_ieee488.o	\
@@ -785,9 +788,11 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_multiscreen.o	\
 	$(MESS_MACHINE)/c64_ocean.o	\
 	$(MESS_MACHINE)/c64_pagefox.o	\
+	$(MESS_MACHINE)/c64_prophet64.o	\
 	$(MESS_MACHINE)/c64_rex.o	\
 	$(MESS_MACHINE)/c64_rex_ep256.o	\
 	$(MESS_MACHINE)/c64_ross.o	\
+	$(MESS_MACHINE)/c64_sfx_sound_expander.o	\
 	$(MESS_MACHINE)/c64_silverrock.o	\
 	$(MESS_MACHINE)/c64_simons_basic.o	\
 	$(MESS_MACHINE)/c64_stardos.o	\
@@ -1378,7 +1383,6 @@ $(MESSOBJ)/pcshare.a:			\
 	$(MESS_VIDEO)/isa_svga_tseng.o		\
 	$(MESS_VIDEO)/isa_svga_s3.o	\
 	$(MESS_VIDEO)/isa_svga_cirrus.o	\
-	$(MESS_VIDEO)/ibm_vga.o		\
 
 $(MESSOBJ)/pdp1.a:				\
 	$(MESS_VIDEO)/pdp1.o		\
@@ -1672,6 +1676,7 @@ $(MESSOBJ)/ti.a:				\
 	$(MESS_MACHINE)/ti99/mapper8.o	\
 	$(MESS_MACHINE)/ti99/genboard.o	\
 	$(MESS_MACHINE)/ti99/memex.o	\
+	$(MESS_MACHINE)/ti99/horizon.o	\
 	$(MESS_MACHINE)/strata.o	\
 	$(MESS_MACHINE)/990_dk.o	\
 	$(MESS_DRIVERS)/ti990_4.o	\
@@ -1733,6 +1738,7 @@ $(MESSOBJ)/trs.a:				\
 	$(MESS_FORMATS)/trs_cmd.o	\
 	$(MESS_DRIVERS)/trs80.o		\
 	$(MESS_DRIVERS)/trs80m2.o	\
+	$(MESS_MACHINE)/trs80m2kb.o	\
 	$(MESS_DRIVERS)/tandy2k.o	\
 	$(MESS_MACHINE)/tandy2kb.o	\
 

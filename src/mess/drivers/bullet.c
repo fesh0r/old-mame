@@ -719,8 +719,8 @@ static Z80DART_INTERFACE( dart_intf )
 {
 	0, 0, 0, 0,
 
-	DEVCB_DEVICE_LINE(TERMINAL_TAG, terminal_serial_r),
-	DEVCB_DEVICE_LINE(TERMINAL_TAG, terminal_serial_w),
+	DEVCB_DEVICE_LINE_MEMBER(TERMINAL_TAG, serial_terminal_device, tx_r),
+	DEVCB_DEVICE_LINE_MEMBER(TERMINAL_TAG, serial_terminal_device, rx_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DRIVER_LINE_MEMBER(bullet_state, dartardy_w),
@@ -1059,18 +1059,9 @@ static const SCSIBus_interface scsi_intf =
 };
 
 
-//-------------------------------------------------
-//  GENERIC_TERMINAL_INTERFACE( terminal_intf )
-//-------------------------------------------------
-
-static WRITE8_DEVICE_HANDLER( dummy_w )
+static serial_terminal_interface terminal_intf =
 {
-	// handled in Z80DART_INTERFACE
-}
-
-static GENERIC_TERMINAL_INTERFACE( terminal_intf )
-{
-	DEVCB_HANDLER(dummy_w)
+	DEVCB_NULL
 };
 
 
@@ -1191,7 +1182,7 @@ static MACHINE_CONFIG_START( bullet, bullet_state )
 	MCFG_MB8877_ADD(MB8877_TAG, fdc_intf)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(bullet_floppy_interface)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
-	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
+	MCFG_SERIAL_TERMINAL_ADD(TERMINAL_TAG, terminal_intf, 4800)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1219,7 +1210,7 @@ static MACHINE_CONFIG_START( bulletf, bulletf_state )
 	MCFG_MB8877_ADD(MB8877_TAG, bulletf_fdc_intf)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(bullet_floppy_interface)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
-	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
+	MCFG_SERIAL_TERMINAL_ADD(TERMINAL_TAG, terminal_intf, 4800)
     MCFG_SCSIBUS_ADD(SCSIBUS_TAG, scsi_intf)
 	MCFG_HARDDISK_ADD("harddisk0")
 
@@ -1238,13 +1229,13 @@ MACHINE_CONFIG_END
 //  ROM( bullet )
 //-------------------------------------------------
 
-ROM_START( bullet )
+ROM_START( wmbullet )
     ROM_REGION( 0x10000, Z80_TAG, 0 )
 	ROM_LOAD( "sr70x.u8", 0x00, 0x20, CRC(d54b8a30) SHA1(65ff8753dd63c9dd1899bc9364a016225585d050) )
 ROM_END
 
 
-#define rom_bulletf rom_bullet
+#define rom_wmbulletf rom_wmbullet
 
 
 
@@ -1253,5 +1244,6 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY         FULLNAME                FLAGS
-COMP( 1982, bullet,		0,			0,		bullet,		bullet,		0,		"Wave Mate",	"Bullet",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
-COMP( 1984, bulletf,	bullet,		0,		bulletf,	bulletf,	0,		"Wave Mate",	"Bullet (Revision F)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
+// the setname 'bullet' is used by Sega's Bullet in MAME.
+COMP( 1982, wmbullet,		0,			0,		bullet,		bullet,		0,		"Wave Mate",	"Bullet",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )
+COMP( 1984, wmbulletf,	wmbullet,		0,		bulletf,	bulletf,	0,		"Wave Mate",	"Bullet (Revision F)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE | GAME_NO_SOUND_HW )

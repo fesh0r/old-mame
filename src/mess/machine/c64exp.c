@@ -8,7 +8,6 @@
 **********************************************************************/
 
 #include "emu.h"
-#include "emuopts.h"
 #include "machine/c64exp.h"
 #include "formats/cbm_crt.h"
 #include "formats/imageutl.h"
@@ -256,12 +255,11 @@ bool c64_expansion_slot_device::call_load()
 
 			if (!mame_stricmp(filetype(), "80"))
 			{
-				fread(m_cart->c64_roml_pointer(machine(), 0x2000), 0x2000);
+				fread(m_cart->c64_roml_pointer(machine(), size), size);
 				m_cart->c64_exrom_w(0);
 
 				if (size == 0x4000)
 				{
-					fread(m_cart->c64_romh_pointer(machine(), 0x2000), 0x2000);
 					m_cart->c64_game_w(0);
 				}
 			}
@@ -288,10 +286,6 @@ bool c64_expansion_slot_device::call_load()
 					return IMAGE_INIT_FAIL;
 
 				UINT16 hardware = pick_integer_be(header.hardware, 0, 2);
-
-				// TODO support other cartridge hardware
-				if (hardware != CRT_C64_STANDARD)
-					return IMAGE_INIT_FAIL;
 
 				if (LOG)
 				{
@@ -404,6 +398,22 @@ bool c64_expansion_slot_device::call_softlist_load(char *swlist, char *swname, r
 
 const char * c64_expansion_slot_device::get_default_card_software(const machine_config &config, emu_options &options)
 {
+	if (open_image_file(options))
+	{
+		if (!mame_stricmp(filetype(), "crt"))
+		{
+			// read the header
+			cbm_crt_header header;
+			fread(&header, CRT_HEADER_LENGTH);
+
+			if (memcmp(header.signature, CRT_SIGNATURE, 16) == 0)
+			{
+				UINT16 hardware = pick_integer_be(header.hardware, 0, 2);
+				return CRT_C64_SLOT_NAMES[hardware];
+			}
+		}
+		clear();
+	}
 	return software_get_default_slot(config, options, this, "standard");
 }
 

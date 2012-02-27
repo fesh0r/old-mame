@@ -130,12 +130,6 @@ private:
 	INT64						m_islope;
 };
 
-	// internal state
-	chd_file &					m_source;
-	movie_info &				m_info;
-	INT64						m_ioffset;
-	INT64						m_islope;
-};
 
 
 //**************************************************************************
