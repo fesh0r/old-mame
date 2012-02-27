@@ -736,7 +736,10 @@ static void I386OP(mov_rm16_sreg)(i386_state *cpustate)		// Opcode 0x8c
 	int s = (modrm >> 3) & 0x7;
 
 	if( modrm >= 0xc0 ) {
-		STORE_RM16(modrm, cpustate->sreg[s].selector);
+		if(cpustate->operand_size)
+			STORE_RM32(modrm, cpustate->sreg[s].selector);
+		else
+			STORE_RM16(modrm, cpustate->sreg[s].selector);
 		CYCLES(cpustate,CYCLES_MOV_SREG_REG);
 	} else {
 		UINT32 ea = GetEA(cpustate,modrm,1);
@@ -2408,12 +2411,8 @@ static void I386OP(wait)(i386_state *cpustate)				// Opcode 0x9B
 
 static void I386OP(lock)(i386_state *cpustate)				// Opcode 0xf0
 {
-	if(PROTECTED_MODE)
-	{
-		UINT8 IOPL = cpustate->IOP1 | (cpustate->IOP2 << 1);
-		if(cpustate->CPL > IOPL)
-			FAULT(FAULT_GP,0);
-	}
+	// lock doesn't depend on iopl on 386
+	// TODO: lock causes UD on unlockable opcodes
 	CYCLES(cpustate,CYCLES_LOCK);		// TODO: Determine correct cycle count
 	I386OP(decode_opcode)(cpustate);
 }
