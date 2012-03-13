@@ -13,7 +13,7 @@
 
     TODO:
     - coma and snooze mode
-    - speaker controlled by constant tone or txd
+    - speaker controlled by txd
     - EPROM programming
     - UART
 
@@ -31,7 +31,9 @@ const device_type UPD65031 = &device_creator<upd65031_device>;
 //  MACROS / CONSTANTS
 //**************************************************************************
 
-#define LOG 1
+#define LOG 0
+
+#define SPEAKER_ALARM_FREQ	 attotime::from_hz(3200)
 
 // internal registers
 enum
@@ -154,7 +156,7 @@ inline void upd65031_device::interrupt_refresh()
 inline void upd65031_device::update_rtc_interrupt()
 {
 	// any ints occurred?
-	if ((m_int & INT_TIME) && (m_tsta & (TSTA_MIN | TSTA_SEC | TSTA_TICK)))
+	if ((m_int & INT_GINT) && (m_int & INT_TIME) && (m_tsta & (TSTA_MIN | TSTA_SEC | TSTA_TICK)))
 		m_sta |= STA_TIME;
 	else
 		m_sta &= ~STA_TIME;
@@ -238,7 +240,11 @@ void upd65031_device::device_start()
 
 	// allocate timers
 	m_rtc_timer = timer_alloc(TIMER_RTC);
+	m_flash_timer = timer_alloc(TIMER_FLASH);
+	m_speaker_timer = timer_alloc(TIMER_SPEAKER);
 	m_rtc_timer->adjust(attotime::from_msec(5), 0, attotime::from_msec(5));
+	m_flash_timer->adjust(attotime::from_hz(2), 0, attotime::from_hz(2));
+	m_speaker_timer->reset();
 
 	// state saving
 	save_item(NAME(m_mode));
@@ -252,6 +258,7 @@ void upd65031_device::device_start()
 	save_item(NAME(m_tmk));
 	save_item(NAME(m_tack));
 	save_item(NAME(m_com));
+	save_item(NAME(m_flash));
 }
 
 
@@ -271,6 +278,7 @@ void upd65031_device::device_reset()
 	m_tmk = TSTA_TICK | TSTA_SEC | TSTA_MIN;
 	m_tack = 0;
 	m_com = 0;
+	m_flash = 0;
 	set_mode(STATE_AWAKE);
 
 	if (m_out_mem_cb)
@@ -368,7 +376,7 @@ void upd65031_device::device_timer(emu_timer &timer, device_timer_id id, int par
 				}
 			}
 
-			if (irq_change && !(m_sta & STA_FLAPOPEN))
+			if ((m_int & INT_GINT) && (m_int & INT_TIME) && irq_change && !(m_sta & STA_FLAPOPEN))
 			{
 				set_mode(STATE_AWAKE);
 
@@ -378,6 +386,13 @@ void upd65031_device::device_timer(emu_timer &timer, device_timer_id id, int par
 			// refresh interrupt
 			interrupt_refresh();
 		}
+		break;
+	case TIMER_FLASH:
+		m_flash = !m_flash;
+		break;
+	case TIMER_SPEAKER:
+		m_speaker_state = !m_speaker_state;
+		m_out_spkr_func(m_speaker_state ? 1 : 0);
 		break;
 	}
 }
@@ -389,8 +404,10 @@ void upd65031_device::device_timer(emu_timer &timer, device_timer_id id, int par
 
 UINT32 upd65031_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	if (m_screen_update_cb)
-		(m_screen_update_cb)(*this, bitmap, m_lcd_regs[4], m_lcd_regs[2], m_lcd_regs[3], m_lcd_regs[0], m_lcd_regs[1]);
+	if (m_screen_update_cb && (m_com & COM_LCDON))
+		(m_screen_update_cb)(*this, bitmap, m_lcd_regs[4], m_lcd_regs[2], m_lcd_regs[3], m_lcd_regs[0], m_lcd_regs[1], m_flash);
+	else
+		bitmap.fill(0, cliprect);
 
 	return 0;
 }
@@ -487,16 +504,26 @@ WRITE8_MEMBER( upd65031_device::write )
 			if (data & COM_RESTIM)
 				m_tim[0] = m_tim[1] = m_tim[2] = m_tim[3] = m_tim[4] = 0;
 
-			// SBIT controls speaker direct?
-			if (!(data & COM_SRUN))
+			if ((data & COM_SRUN) && !(data & COM_SBIT))
 			{
-				// speaker controlled by SBIT
-				m_out_spkr_func(BIT(data, 6));
+				// constant tone used for keyclick and alarm
+				m_speaker_timer->adjust(SPEAKER_ALARM_FREQ, 0, SPEAKER_ALARM_FREQ);
 			}
 			else
 			{
-				// speaker under control of continuous tone, or txd
-				// TODO
+				if (!(data & COM_SRUN))
+				{
+					// speaker controlled by SBIT
+					m_speaker_state = BIT(data, 6);
+					m_out_spkr_func(m_speaker_state);
+				}
+				else
+				{
+					// speaker controlled by txd line
+					// TODO
+				}
+
+				m_speaker_timer->reset();
 			}
 
 			// bit 2 controls the lower 8kb of memory
@@ -543,7 +570,7 @@ WRITE8_MEMBER( upd65031_device::write )
 			if (LOG) logerror("uPD65031 '%s': ack w: %02x\n", tag(), data);
 
 			m_ack = data;
-			m_sta &= ~(data & 0x7c);
+			m_sta &= ~(data & 0x7f);
 
 			// refresh ints
 			interrupt_refresh();
@@ -574,4 +601,37 @@ WRITE8_MEMBER( upd65031_device::write )
 			logerror("uPD65031 '%s': blink w: %04x %02x\n", tag(), offset, data);
 			break;
 	}
+}
+
+
+//-------------------------------------------------
+//  flp line
+//-------------------------------------------------
+
+WRITE_LINE_MEMBER( upd65031_device::flp_w )
+{
+	if (!(m_sta & STA_FLAPOPEN) && state)
+	{
+		// set interrupt on rising edge
+		m_sta |= STA_FLAP;
+
+		interrupt_refresh();
+	}
+
+	if (state)
+		m_sta |= STA_FLAPOPEN;
+	else
+		m_sta &= ~STA_FLAPOPEN;
+}
+
+//-------------------------------------------------
+//  battery low line
+//-------------------------------------------------
+
+WRITE_LINE_MEMBER( upd65031_device::btl_w )
+{
+	if (state)
+		m_sta |= STA_BTL;
+	else
+		m_sta &= ~STA_BTL;
 }

@@ -71,7 +71,7 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 static MACHINE_CONFIG_FRAGMENT( trs80m2_keyboard )
-	MCFG_CPU_ADD(I8021_TAG, I8021, 100000) // TODO 10K resistor connected across the XTAL inputs
+	MCFG_CPU_ADD(I8021_TAG, I8021, 3000000) // 1000uH inductor connected across the XTAL inputs
 	MCFG_CPU_IO_MAP(trs80m2_keyboard_io)
 	MCFG_DEVICE_DISABLE() // TODO
 MACHINE_CONFIG_END
@@ -94,7 +94,7 @@ machine_config_constructor trs80m2_keyboard_device::device_mconfig_additions() c
 
 INPUT_PORTS_START( trs80m2_keyboard )
 /*
-	PORT_START("X0")
+    PORT_START("X0")
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
     PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
@@ -352,13 +352,13 @@ WRITE8_MEMBER( trs80m2_keyboard_device::kb_p1_w )
 
 	m_data = BIT(data, 0);
 	int clk = BIT(data, 1);
-	
+
 	if (m_clk != clk)
 	{
 		m_out_clock_func(clk);
 		m_clk = clk;
 	}
-	
+
 	output_set_led_value(LED_0, BIT(data, 2));
 	output_set_led_value(LED_1, BIT(data, 4));
 }

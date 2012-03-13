@@ -7,8 +7,7 @@
         system driver
 
         TODO:
-        - screen should be 640x64
-        - speaker controlled by constant tone or txd
+        - speaker controlled by txd
         - Facility to load games
         - expansion interface
 
@@ -35,7 +34,7 @@ explains why the extra checks are done
     bank 2      0x8000-0xBFFF
     bank 3      0xC000-0xFFFF
 
-    pages 0x00 - 0x1f   internal ROM (mirrored?)
+    pages 0x00 - 0x1f   internal ROM
     pages 0x20 - 0x3f   512KB internal RAM
     pages 0x40 - 0x7f   Slot 1
     pages 0x80 - 0xbf   Slot 2
@@ -43,36 +42,70 @@ explains why the extra checks are done
 
 */
 
+// cartridges read
+READ8_MEMBER(z88_state::bank0_cart_r) { return m_carts[m_bank[0].slot]->read(space, (m_bank[0].page<<14) + offset); }
+READ8_MEMBER(z88_state::bank1_cart_r) { return m_carts[m_bank[1].slot]->read(space, (m_bank[1].page<<14) + offset); }
+READ8_MEMBER(z88_state::bank2_cart_r) { return m_carts[m_bank[2].slot]->read(space, (m_bank[2].page<<14) + offset); }
+READ8_MEMBER(z88_state::bank3_cart_r) { return m_carts[m_bank[3].slot]->read(space, (m_bank[3].page<<14) + offset); }
+
+// cartridges write
+WRITE8_MEMBER(z88_state::bank0_cart_w) { m_carts[m_bank[0].slot]->write(space, (m_bank[0].page<<14) + offset, data); }
+WRITE8_MEMBER(z88_state::bank1_cart_w) { m_carts[m_bank[1].slot]->write(space, (m_bank[1].page<<14) + offset, data); }
+WRITE8_MEMBER(z88_state::bank2_cart_w) { m_carts[m_bank[2].slot]->write(space, (m_bank[2].page<<14) + offset, data); }
+WRITE8_MEMBER(z88_state::bank3_cart_w) { m_carts[m_bank[3].slot]->write(space, (m_bank[3].page<<14) + offset, data); }
+
+
 void z88_state::bankswitch_update(int bank, UINT16 page, int rams)
 {
 	char bank_tag[6];
 	sprintf(bank_tag, "bank%d", bank + 2);
 
-	if (page < 0x40)	// internal memory
+	// bank 0 is always even
+	if (bank == 0)	page &= 0xfe;
+
+	if (page < 0x20)	// internal ROM
 	{
 		// install read bank
 		m_maincpu->memory().space(AS_PROGRAM)->install_read_bank(bank<<14, (bank<<14) + 0x3fff, bank_tag);
+		m_maincpu->memory().space(AS_PROGRAM)->unmap_write(bank<<14, (bank<<14) + 0x3fff);
 
-		// install write bank
-		if (page > 0x1f)
+		memory_set_bank(machine(), bank_tag, page);
+	}
+	else if (page < 0x40)	// internal RAM
+	{
+		if((page & 0x1f) < (m_ram->size()>>14))
 		{
-			 // 512KB internal RAM
-			m_maincpu->memory().space(AS_PROGRAM)->install_write_bank(bank<<14, (bank<<14) + 0x3fff, bank_tag);
+			// install readwrite bank
+			m_maincpu->memory().space(AS_PROGRAM)->install_readwrite_bank(bank<<14, (bank<<14) + 0x3fff, bank_tag);
+
+			// set the bank
+			memory_set_bank(machine(), bank_tag, page);
 		}
 		else
 		{
-			// internal ROM
-			page &= 7;
-			m_maincpu->memory().space(AS_PROGRAM)->unmap_write(bank<<14, (bank<<14) + 0x3fff);
+			m_maincpu->memory().space(AS_PROGRAM)->unmap_readwrite(bank<<14, (bank<<14) + 0x3fff);
 		}
-
-		// set the bank
-		memory_set_bank(machine(), bank_tag, page);
 	}
-	else
+	else	// cartridges
 	{
-		// TODO: expansion slots
-		m_maincpu->memory().space(AS_PROGRAM)->unmap_readwrite(bank<<14, (bank<<14) + 0x3fff);
+		m_bank[bank].slot = (page >> 6) & 3;
+		m_bank[bank].page = page & 0x3f;
+
+		switch (bank)
+		{
+			case 0:
+				m_maincpu->memory().space(AS_PROGRAM)->install_readwrite_handler(bank<<14, (bank<<14) + 0x3fff, 0, 0, read8_delegate(FUNC(z88_state::bank0_cart_r), this), write8_delegate(FUNC(z88_state::bank0_cart_w), this));
+				break;
+			case 1:
+				m_maincpu->memory().space(AS_PROGRAM)->install_readwrite_handler(bank<<14, (bank<<14) + 0x3fff, 0, 0, read8_delegate(FUNC(z88_state::bank1_cart_r), this), write8_delegate(FUNC(z88_state::bank1_cart_w), this));
+				break;
+			case 2:
+				m_maincpu->memory().space(AS_PROGRAM)->install_readwrite_handler(bank<<14, (bank<<14) + 0x3fff, 0, 0, read8_delegate(FUNC(z88_state::bank2_cart_r), this), write8_delegate(FUNC(z88_state::bank2_cart_w), this));
+				break;
+			case 3:
+				m_maincpu->memory().space(AS_PROGRAM)->install_readwrite_handler(bank<<14, (bank<<14) + 0x3fff, 0, 0, read8_delegate(FUNC(z88_state::bank3_cart_r), this), write8_delegate(FUNC(z88_state::bank3_cart_w), this));
+				break;
+		}
 	}
 
 
@@ -213,13 +246,24 @@ INPUT_PORTS_END
 
 void z88_state::machine_start()
 {
+	m_bios = (UINT8*)machine().region("bios")->base();
+	m_ram_base = (UINT8*)m_ram->pointer();
+
 	// configure the memory banks
-	memory_configure_bank(machine(), "bank1", 0, 1, machine().region("maincpu")->base(), 0);
-	memory_configure_bank(machine(), "bank1", 1, 1, machine().region("maincpu")->base() + (32<<14), 0);
-	memory_configure_bank(machine(), "bank2", 0, 64, machine().region("maincpu")->base(), 0x4000);
-	memory_configure_bank(machine(), "bank3", 0, 64, machine().region("maincpu")->base(), 0x4000);
-	memory_configure_bank(machine(), "bank4", 0, 64, machine().region("maincpu")->base(), 0x4000);
-	memory_configure_bank(machine(), "bank5", 0, 64, machine().region("maincpu")->base(), 0x4000);
+	memory_configure_bank(machine(), "bank1", 0, 1, m_bios, 0);
+	memory_configure_bank(machine(), "bank1", 1, 1, m_ram_base,  0);
+	memory_configure_bank(machine(), "bank2", 0, 32, m_bios, 0x4000);
+	memory_configure_bank(machine(), "bank3", 0, 32, m_bios, 0x4000);
+	memory_configure_bank(machine(), "bank4", 0, 32, m_bios, 0x4000);
+	memory_configure_bank(machine(), "bank5", 0, 32, m_bios, 0x4000);
+	memory_configure_bank(machine(), "bank2", 32, m_ram->size()>>14, m_ram_base, 0x4000);
+	memory_configure_bank(machine(), "bank3", 32, m_ram->size()>>14, m_ram_base, 0x4000);
+	memory_configure_bank(machine(), "bank4", 32, m_ram->size()>>14, m_ram_base, 0x4000);
+	memory_configure_bank(machine(), "bank5", 32, m_ram->size()>>14, m_ram_base, 0x4000);
+
+	m_carts[1] = machine().device<z88cart_slot_device>("slot1");
+	m_carts[2] = machine().device<z88cart_slot_device>("slot2");
+	m_carts[3] = machine().device<z88cart_slot_device>("slot3");
 }
 
 READ8_MEMBER(z88_state::kb_r)
@@ -259,6 +303,11 @@ static UPD65031_MEMORY_UPDATE(z88_bankswitch_update)
 	state->bankswitch_update(bank, page, rams);
 }
 
+static UPD65031_SCREEN_UPDATE(z88_screen_update)
+{
+	z88_state *state = device.machine().driver_data<z88_state>();
+	state->lcd_update(bitmap, sbf, hires0, hires1, lores0, lores1, flash);
+}
 
 static UPD65031_INTERFACE( z88_blink_intf )
 {
@@ -267,16 +316,30 @@ static UPD65031_INTERFACE( z88_blink_intf )
 	DEVCB_DRIVER_MEMBER(z88_state, kb_r),       			// kb read input
 	DEVCB_CPU_INPUT_LINE("maincpu", 0),         			// INT line out
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_NMI),        // NMI line out
-	DEVCB_NULL												// Speaker line out
+	DEVCB_DEVICE_LINE(SPEAKER_TAG, speaker_level_w)			// Speaker line out
 };
 
+static const z88cart_interface z88_cart_interface =
+{
+	DEVCB_DEVICE_LINE_MEMBER("blink", upd65031_device, flp_w)
+};
+
+static SLOT_INTERFACE_START(z88_cart)
+	SLOT_INTERFACE("32krom",  Z88_32K_ROM)			// 32KB ROM cart
+	SLOT_INTERFACE("128krom", Z88_128K_ROM)			// 128KB ROM cart
+	SLOT_INTERFACE("256krom", Z88_256K_ROM)			// 256KB ROM cart
+	SLOT_INTERFACE("32kram",  Z88_32K_RAM)			// 32KB RAM cart
+	SLOT_INTERFACE("128kram", Z88_128K_RAM)			// 128KB RAM cart
+	SLOT_INTERFACE("512kram", Z88_512K_RAM)			// 512KB RAM cart
+	SLOT_INTERFACE("1024kram",Z88_1024K_RAM)		// 1024KB RAM cart
+	SLOT_INTERFACE("1024kflash",Z88_1024K_FLASH)	// 1024KB Flash cart
+SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_START( z88, z88_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_9_8304MHz/3)	// divided by 3 through the uPD65031
 	MCFG_CPU_PROGRAM_MAP(z88_mem)
 	MCFG_CPU_IO_MAP(z88_io)
-	//MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", LCD)
@@ -285,7 +348,6 @@ static MACHINE_CONFIG_START( z88, z88_state )
 	MCFG_SCREEN_SIZE(Z88_SCREEN_WIDTH, Z88_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, (Z88_SCREEN_WIDTH - 1), 0, (Z88_SCREEN_HEIGHT - 1))
 	MCFG_SCREEN_UPDATE_DEVICE("blink", upd65031_device, screen_update)
-	MCFG_SCREEN_VBLANK_STATIC( z88 )
 
 	MCFG_PALETTE_LENGTH(Z88_NUM_COLOURS)
 	MCFG_PALETTE_INIT( z88 )
@@ -298,6 +360,16 @@ static MACHINE_CONFIG_START( z88, z88_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	// internal ram
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_EXTRA_OPTIONS("32K,64K,256K,512k")
+
+	// cartridges
+	MCFG_Z88_CARTRIDGE_ADD("slot1", z88_cart_interface, z88_cart, NULL, NULL)
+	MCFG_Z88_CARTRIDGE_ADD("slot2", z88_cart_interface, z88_cart, NULL, NULL)
+	MCFG_Z88_CARTRIDGE_ADD("slot3", z88_cart_interface, z88_cart, NULL, NULL)
 MACHINE_CONFIG_END
 
 
@@ -308,14 +380,34 @@ MACHINE_CONFIG_END
 ***************************************************************************/
 
 ROM_START(z88)
-	ROM_REGION(0x400000, "maincpu", ROMREGION_ERASE00)
-	ROM_DEFAULT_BIOS("ver4")
-	ROM_SYSTEM_BIOS( 0, "ver3", "Version 3.0 UK")
-	ROMX_LOAD("z88v300.rom" ,  0x00000, 0x20000, CRC(802cb9aa) SHA1(ceb688025b79454cf229cae4dbd0449df2747f79), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "ver4", "Version 4.0 UK")
-	ROMX_LOAD("z88v400.rom",   0x00000, 0x20000, CRC(1356d440) SHA1(23c63ceced72d0a9031cba08d2ebc72ca336921d), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "ver41fi", "Version 4.1 Finnish")
-	ROMX_LOAD("z88v401fi.rom", 0x00000, 0x20000, CRC(ecd7f3f6) SHA1(bf8d3e083f1959e5a0d7e9c8d2ad0c14abd46381), ROM_BIOS(3) )
+	ROM_REGION(0x80000, "bios", ROMREGION_ERASE00)
+	ROM_DEFAULT_BIOS("v40uk")
+	ROM_SYSTEM_BIOS( 0, "v220uk", "Version 2.20 UK")
+	ROMX_LOAD("z88v220.rom", 0x00000, 0x20000, CRC(0ae7d0fc) SHA1(5d89e8d98d2cc0acb8cd42dbfca601b7bd09c51e), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "v250sw", "Version 2.50 Swedish")
+	ROMX_LOAD("z88v250sw.rom", 0x00000, 0x20000, CRC(dad01338) SHA1(3825eee346b692b16215a500250cc0c76d2d8f0b), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "v260nr", "Version 2.60 Norwegian")
+	ROMX_LOAD("z88v260nr.rom", 0x00000, 0x20000, CRC(293f35c8) SHA1(b68b8f5bb1f69fe7a24897933b1464dc79e96d80), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 3, "v30uk", "Version 3.0 UK")
+	ROMX_LOAD("z88v300.rom" ,  0x00000, 0x20000, CRC(802cb9aa) SHA1(ceb688025b79454cf229cae4dbd0449df2747f79), ROM_BIOS(4) )
+	ROM_SYSTEM_BIOS( 4, "v313he", "Version 3.13 Swiss")
+	ROMX_LOAD("z88v313he.rom", 0x00000, 0x20000, CRC(a56d732c) SHA1(c2276a12d457f01a8fd2e2ac238aff2b5c3559d8), ROM_BIOS(5) )
+	ROM_SYSTEM_BIOS( 5, "v317tk", "Version 3.17 Turkish")
+	ROMX_LOAD("z88v317tk.rom", 0x00000, 0x20000, CRC(9468d677) SHA1(8d76e94f43846c736bf257d15d531c2df1e20fae), ROM_BIOS(6) )
+	ROM_SYSTEM_BIOS( 6, "v318de", "Version 3.18 German")
+	ROMX_LOAD("z88v318de.rom", 0x00000, 0x20000, CRC(d7eaf937) SHA1(5acbfa324e2a6582ffd1af5f2e28086318d2ed27), ROM_BIOS(7) )
+	ROM_SYSTEM_BIOS( 7, "v319es", "Version 3.19 Spanish")
+	ROMX_LOAD("z88v319es.rom", 0x00000, 0x20000, CRC(7a08af73) SHA1(a99a7581f47a032e1ec3b4f534c06f00f67647df), ROM_BIOS(8) )
+	ROM_SYSTEM_BIOS( 8, "v321dk", "Version 3.21 Danish")
+	ROMX_LOAD("z88v321dk.rom", 0x00000, 0x20000, CRC(baa80408) SHA1(7b0d44af2688d0fe47667e0424860aafa0948dae), ROM_BIOS(9) )
+	ROM_SYSTEM_BIOS( 9, "v323it", "Version 3.23 Italian")
+	ROMX_LOAD("z88v323it.rom", 0x00000, 0x20000, CRC(13f54308) SHA1(29bda04ae803f2dff6357d81b3894db669d12dbf), ROM_BIOS(10) )
+	ROM_SYSTEM_BIOS( 10, "v326fr", "Version 3.26 French")
+	ROMX_LOAD("z88v326fr.rom", 0x00000, 0x20000, CRC(218fbb72) SHA1(6e4c590f40f5b14d66e6559807f538fb5fa91474), ROM_BIOS(11) )
+	ROM_SYSTEM_BIOS( 11, "v40uk", "Version 4.0 UK")
+	ROMX_LOAD("z88v400.rom",   0x00000, 0x20000, CRC(1356d440) SHA1(23c63ceced72d0a9031cba08d2ebc72ca336921d), ROM_BIOS(12) )
+	ROM_SYSTEM_BIOS( 12, "v401fi", "Version 4.01 Finnish")
+	ROMX_LOAD("z88v401fi.rom", 0x00000, 0x20000, CRC(ecd7f3f6) SHA1(bf8d3e083f1959e5a0d7e9c8d2ad0c14abd46381), ROM_BIOS(13) )
 ROM_END
 
 /*    YEAR     NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY         FULLNAME */

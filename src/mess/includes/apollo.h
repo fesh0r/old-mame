@@ -16,6 +16,14 @@
 
 #include "emu.h"
 
+#include "cpu/m68000/m68000.h"
+#include "machine/terminal.h"
+#include "machine/ram.h"
+#include "machine/omti8621.h"
+#include "machine/sc499.h"
+#include "machine/3c505.h"
+#include "machine/68681.h"
+
 #ifndef VERBOSE
 #define VERBOSE 0
 #endif
@@ -35,7 +43,19 @@
 
 #define  MAINCPU "maincpu"
 
-/*----------- debug/apollo.c -----------*/
+// Note: defining APOLLO_FOR_LINUX will provide following unportable extensions:
+// * a real Apollo keyboard may be attached at /dev/ttyS0
+// * SIO1 of the DSP3x00 will be connected with stdout and stdin
+// * the 3c505 emulation will be connected with the real ethernet at ETH0
+//
+// Enabling this is >NOT< supported by MESSdev and this code will be removed.
+// Do *not* report any issues on MESS Bugzilla if this is enabled!
+
+#if defined(__linux__)
+//#define APOLLO_FOR_LINUX
+#endif
+
+/*----------- machine/apollo_dbg.c -----------*/
 
 int apollo_debug_instruction_hook(device_t *device, offs_t curpc);
 
@@ -89,16 +109,18 @@ void apollo_terminal_write(UINT8 data);
 class apollo_state : public driver_device
 {
 public:
-//  apollo_state(running_machine &machine, const driver_device_config_base &config)
-//      : driver_device(machine, config) { }
-
 	apollo_state(const machine_config &mconfig, device_type type, const char *tag)
-			: driver_device(mconfig, type, tag) { }
+			: driver_device(mconfig, type, tag),
+            m_ctape(*this, APOLLO_CTAPE_TAG)
+            { }
+
+    required_device<sc499_device> m_ctape;
 
 	device_t *dma8237_1;
 	device_t *dma8237_2;
 	device_t *pic8259_master;
 	device_t *pic8259_slave;
+
 };
 
 MACHINE_CONFIG_EXTERN( apollo );

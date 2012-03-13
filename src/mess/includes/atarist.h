@@ -17,7 +17,6 @@
 #include "machine/mc68901.h"
 #include "machine/rescap.h"
 #include "machine/rp5c15.h"
-#include "machine/rs232.h"
 #include "machine/wd1772.h"
 #include "sound/ay8910.h"
 #include "sound/lmc1992.h"
@@ -79,7 +78,7 @@ public:
 		  m_fdc(*this, WD1772_TAG),
 		  m_mfp(*this, MC68901_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
-		  m_rs232(*this, RS232_TAG),
+		  //m_rs232(*this, RS232_TAG),
 		  m_ram(*this, RAM_TAG),
 		  m_acia_ikbd_irq(1),
 		  m_acia_midi_irq(1),
@@ -95,7 +94,7 @@ public:
 	required_device<wd1772_t> m_fdc;
 	required_device<mc68901_device> m_mfp;
 	required_device<centronics_device> m_centronics;
-	required_device<device_t> m_rs232;
+	//required_device<device_t> m_rs232;
 	required_device<ram_device> m_ram;
 
 	void machine_start();
@@ -185,7 +184,6 @@ public:
 
 	DECLARE_READ8_MEMBER( mfp_gpio_r );
 	DECLARE_WRITE_LINE_MEMBER( mfp_tdo_w );
-	DECLARE_WRITE_LINE_MEMBER( mfp_so_w );
 
 	void toggle_dma_fifo();
 	void flush_dma_fifo();

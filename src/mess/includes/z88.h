@@ -10,12 +10,17 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/upd65031.h"
+#include "machine/ram.h"
+#include "machine/z88cart.h"
+#include "machine/z88_flash.h"
+#include "machine/z88_ram.h"
+#include "machine/z88_rom.h"
 #include "sound/speaker.h"
 #include "rendlay.h"
 
 #define Z88_NUM_COLOURS 3
 
-#define Z88_SCREEN_WIDTH        856
+#define Z88_SCREEN_WIDTH        640
 #define Z88_SCREEN_HEIGHT       64
 
 #define Z88_SCR_HW_REV  (1<<4)
@@ -23,6 +28,8 @@
 #define Z88_SCR_HW_UND  (1<<1)
 #define Z88_SCR_HW_FLS  (1<<3)
 #define Z88_SCR_HW_GRY  (1<<2)
+#define Z88_SCR_HW_CURS (Z88_SCR_HW_HRS|Z88_SCR_HW_FLS|Z88_SCR_HW_REV)
+#define Z88_SCR_HW_NULL (Z88_SCR_HW_HRS|Z88_SCR_HW_GRY|Z88_SCR_HW_REV)
 
 class z88_state : public driver_device
 {
@@ -30,26 +37,49 @@ public:
 	z88_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, "maincpu"),
-		  m_speaker(*this, SPEAKER_TAG)
+		  m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	required_device<device_t> m_speaker;
-
-	UINT8 m_frame_number;
-	bool m_flash_invert;
+	required_device<ram_device> m_ram;
 
 	virtual void machine_start();
 	void bankswitch_update(int bank, UINT16 page, int rams);
 	DECLARE_READ8_MEMBER(kb_r);
+
+	// cartridges read/write
+	DECLARE_READ8_MEMBER(bank0_cart_r);
+	DECLARE_READ8_MEMBER(bank1_cart_r);
+	DECLARE_READ8_MEMBER(bank2_cart_r);
+	DECLARE_READ8_MEMBER(bank3_cart_r);
+	DECLARE_WRITE8_MEMBER(bank0_cart_w);
+	DECLARE_WRITE8_MEMBER(bank1_cart_w);
+	DECLARE_WRITE8_MEMBER(bank2_cart_w);
+	DECLARE_WRITE8_MEMBER(bank3_cart_w);
+
+	// defined in video/z88.c
+	inline void plot_pixel(bitmap_ind16 &bitmap, int x, int y, UINT16 color);
+	inline UINT8* convert_address(UINT32 offset);
+	void vh_render_8x8(bitmap_ind16 &bitmap, int x, int y, UINT16 pen0, UINT16 pen1, UINT8 *gfx);
+	void vh_render_6x8(bitmap_ind16 &bitmap, int x, int y, UINT16 pen0, UINT16 pen1, UINT8 *gfx);
+	void vh_render_line(bitmap_ind16 &bitmap, int x, int y, UINT16 pen);
+	void lcd_update(bitmap_ind16 &bitmap, UINT16 sbf, UINT16 hires0, UINT16 hires1, UINT16 lores0, UINT16 lores1, int flash);
+
+	struct
+	{
+		UINT8 slot;
+		UINT8 page;
+	} m_bank[4];
+
+	UINT8 *				  m_bios;
+	UINT8 *				  m_ram_base;
+	z88cart_slot_device * m_carts[4];
 };
 
 
 /*----------- defined in video/z88.c -----------*/
 
 extern PALETTE_INIT( z88 );
-extern UPD65031_SCREEN_UPDATE(z88_screen_update);
-extern SCREEN_VBLANK( z88 );
 
 
 #endif /* Z88_H_ */

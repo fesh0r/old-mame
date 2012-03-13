@@ -496,6 +496,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/er59256.o	\
 	$(MESS_MACHINE)/hd63450.o	\
 	$(MESS_MACHINE)/i82371ab.o	\
+	$(MESS_MACHINE)/i82371sb.o	\
 	$(MESS_MACHINE)/i82439tx.o	\
 	$(MESS_MACHINE)/i8271.o		\
 	$(MESS_MACHINE)/i8279.o		\
@@ -517,7 +518,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/pc_lpt.o	\
 	$(MESS_MACHINE)/cntr_covox.o \
 	$(MESS_MACHINE)/pcf8593.o	\
-	$(MESS_MACHINE)/rs232.o		\
 	$(MESS_MACHINE)/scsibus.o	\
 	$(MESS_MACHINE)/smartmed.o	\
 	$(MESS_MACHINE)/smc92x4.o	\
@@ -570,6 +570,10 @@ $(MESSOBJ)/acorn.a:				\
 	$(MESS_DRIVERS)/electron.o	\
 	$(MESS_DRIVERS)/z88.o		\
 	$(MESS_VIDEO)/z88.o			\
+	$(MESS_MACHINE)/z88cart.o	\
+	$(MESS_MACHINE)/z88_flash.o	\
+	$(MESS_MACHINE)/z88_ram.o	\
+	$(MESS_MACHINE)/z88_rom.o	\
 	$(MESS_MACHINE)/upd65031.o	\
 
 $(MESSOBJ)/act.a:				\
@@ -1104,8 +1108,6 @@ $(MESSOBJ)/hp.a:				\
 	$(MESS_MACHINE)/hp48.o		\
 	$(MESS_VIDEO)/hp48.o		\
 	$(MESS_DRIVERS)/hp48.o		\
-	$(MESS_DEVICES)/xmodem.o	\
-	$(MESS_DEVICES)/kermit.o	\
 	$(MESS_DRIVERS)/hp16500.o	\
 	$(MESS_DRIVERS)/hp49gp.o	\
 	$(MESS_DRIVERS)/hp9k.o	\
@@ -1359,7 +1361,6 @@ $(MESSOBJ)/pcm.a:				\
 
 $(MESSOBJ)/pcshare.a:			\
 	$(MESS_MACHINE)/pc_turbo.o	\
-	$(MESS_AUDIO)/sblaster.o	\
 	$(MESS_MACHINE)/pc_fdc.o	\
 	$(MESS_MACHINE)/pc_joy.o	\
 	$(MESS_MACHINE)/kb_keytro.o	\
@@ -1375,6 +1376,7 @@ $(MESSOBJ)/pcshare.a:			\
 	$(MESS_MACHINE)/isa_mpu401.o	\
 	$(MESS_MACHINE)/isa_sblaster.o	\
 	$(MESS_MACHINE)/isa_ide.o	\
+	$(MESS_MACHINE)/isa_ide_cd.o	\
 	$(MESS_MACHINE)/isa_aha1542.o	\
 	$(MESS_VIDEO)/isa_cga.o		\
 	$(MESS_VIDEO)/isa_mda.o		\
@@ -1640,7 +1642,6 @@ $(MESSOBJ)/thomson.a:			\
 
 $(MESSOBJ)/ti.a:				\
 	$(MESS_DRIVERS)/ti85.o		\
-	$(MESS_MACHINE)/ti85_ser.o	\
 	$(MESS_VIDEO)/ti85.o		\
 	$(MESS_VIDEO)/t6a04.o		\
 	$(MESS_MACHINE)/ti85.o		\
@@ -1841,6 +1842,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/cd2650.o	\
 	$(MESS_DRIVERS)/codata.o	\
 	$(MESS_DRIVERS)/cosmicos.o	\
+	$(MESS_DRIVERS)/cp1.o		\
 	$(MESS_DRIVERS)/csc.o		\
 	$(MESS_DRIVERS)/cvicny.o	\
 	$(MESS_DRIVERS)/czk80.o		\

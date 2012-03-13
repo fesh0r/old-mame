@@ -4,8 +4,6 @@
 
     TODO:
 
-    - Find what the sleeping threads are waiting for
-
     - Hook up the mouse (not before the system boots though, see the first problem)
 
     - Find why the kernel doesn't manage to change the nvram at boot (readback error)
@@ -150,6 +148,8 @@ WRITE32_MEMBER( next_state::scr2_w )
 	rtc->ce_w(BIT(scr2, 8));
 	rtc->sdi_w(BIT(scr2, 10));
 	rtc->sck_w(BIT(scr2, 9));
+	irq_set(0, scr2 & 0x01000000);
+	irq_set(1, scr2 & 0x02000000);
 }
 
 READ32_MEMBER( next_state::scr1_r )
@@ -420,6 +420,7 @@ void next_state::dma_end(int slot)
 		ds.limit = ds.chain_limit;
 		ds.restart = true;
 		ds.supdate = false;
+		ds.state &= ~DMA_SUPDATE;
 	}
 	ds.state |= DMA_COMPLETE;
 	if(dma_irqs[slot] >= 0)
@@ -660,10 +661,11 @@ WRITE32_MEMBER( next_state::phy_w )
 void next_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
 {
 	irq_set(29, true);
-	if(timer_ctrl & 0x40000000) {
-		timer_data = 0xffff0000; // Old value instead?  Hard to know, since the kernel uses 0xffff
+	timer_data = timer_next_data;
+	if(timer_ctrl & 0x40000000)
 		timer_start();
-	}
+	else
+		timer_ctrl &= 0x7fffffff;
 }
 
 READ32_MEMBER( next_state::timer_data_r )
@@ -675,12 +677,13 @@ READ32_MEMBER( next_state::timer_data_r )
 
 WRITE32_MEMBER( next_state::timer_data_w )
 {
-	if(timer_ctrl & 0x80000000)
-		timer_update();
-	COMBINE_DATA(&timer_data);
-	timer_data &= 0xffff0000;
-	if(timer_ctrl & 0x80000000)
-		timer_start();
+	if(timer_ctrl & 0x80000000) {
+		COMBINE_DATA(&timer_next_data);
+		timer_next_data &= 0xffff0000;
+	} else {
+		COMBINE_DATA(&timer_data);
+		timer_data &= 0xffff0000;
+	}
 }
 
 READ32_MEMBER( next_state::timer_ctrl_r )
@@ -698,8 +701,10 @@ WRITE32_MEMBER( next_state::timer_ctrl_w )
 		if(oldact) {
 			timer_update();
 			irq_set(29, false);
-		} else
+		} else {
+			timer_next_data = timer_data;
 			timer_start();
+		}
 	}
 }
 
@@ -831,6 +836,7 @@ void next_state::machine_reset()
 	eventc_latch = 0;
 	timer_vbase = 0;
 	timer_data = 0;
+	timer_next_data = 0;
 	timer_ctrl = 0;
 	dma_drq_w(4, true); // soundout
 }
@@ -854,7 +860,7 @@ static ADDRESS_MAP_START( next_mem, AS_PROGRAM, 32, next_state )
 //  AM_RANGE(0x02010000, 0x02010003) AM_MIRROR(0x300000) brightness
 	AM_RANGE(0x02012000, 0x0201201f) AM_MIRROR(0x300000) AM_DEVICE8("mo", nextmo_device, map, 0xffffffff)
 	AM_RANGE(0x02014000, 0x0201400f) AM_MIRROR(0x300000) AM_DEVICE8("scsibus:7:ncr5390", ncr5390_device, map, 0xffffffff)
-	AM_RANGE(0x02114020, 0x02114023) AM_MIRROR(0x300000) AM_READWRITE(scsictrl_r, scsictrl_w)
+	AM_RANGE(0x02014020, 0x02014023) AM_MIRROR(0x300000) AM_READWRITE(scsictrl_r, scsictrl_w)
 	AM_RANGE(0x02016000, 0x02016003) AM_MIRROR(0x300000) AM_READWRITE(timer_data_r, timer_data_w)
 	AM_RANGE(0x02016004, 0x02016007) AM_MIRROR(0x300000) AM_READWRITE(timer_ctrl_r, timer_ctrl_w)
 	AM_RANGE(0x02018000, 0x02018003) AM_MIRROR(0x300000) AM_DEVREADWRITE8("scc", scc8530_t, reg_r, reg_w, 0xffffffff)

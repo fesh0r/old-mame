@@ -333,6 +333,8 @@ bbcm	   // 198? BBC Master
 bbcbc	 // 1985 BBC Bridge Companion
 electron  // 1983 Acorn Electron
 a310	  // 1988 Acorn Archimedes 310
+a3010	  // 1988 Acorn Archimedes 3010
+a3020	  // 1988 Acorn Archimedes 3020
 a7000	  // 1995 Acorn Archimedes 7000
 a7000p	  // 1997 Acorn Archimedes 7000+
 a6809
@@ -502,7 +504,7 @@ ste_fr
 ste_it
 ste_se
 ste_sg
-stbook	// Atari STBook
+//stbook	// Atari STBook
 megaste   // Atari Mega STe
 megaste_uk
 megaste_de
@@ -717,6 +719,7 @@ at486	 // 19?? IBM AT 486
 ct486		// 1993? 486 with CS4031
 ficpio2	// 1995 FIC 486-PIO-2
 at586	 // 19?? AT 586
+at586x3	 // 19?? AT 586
 c386sx16	// 1990 Commodore 386SX-16
 xb42663    // 1988 Apricot Qi 300 (Rev D,E & F Motherboard)
 qi600    // 1988 Apricot Qi 600 (Neptune Motherboard
@@ -2102,3 +2105,4 @@ dmv
 rm380z
 wangpc
 borisdpl
+cp1
