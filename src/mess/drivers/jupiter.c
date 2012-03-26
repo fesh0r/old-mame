@@ -25,6 +25,7 @@ ToDo:
 #include "cpu/z80/z80.h"
 #include "imagedev/flopdrv.h"
 #include "machine/ram.h"
+#include "machine/keyboard.h"
 #include "machine/terminal.h"
 #include "machine/wd17xx.h"
 #include "includes/jupiter.h"
@@ -122,7 +123,8 @@ READ8_MEMBER( jupiter3_state::status_r )
 
 WRITE8_MEMBER( jupiter3_state::kbd_put )
 {
-	m_term_data = data ^ 0x80;
+	if (data)
+		m_term_data = data ^ 0x80;
 }
 
 
@@ -213,7 +215,7 @@ static GENERIC_TERMINAL_INTERFACE( jupiter2_terminal_intf )
 	DEVCB_NULL
 };
 
-static GENERIC_TERMINAL_INTERFACE( jupiter3_terminal_intf )
+static ASCII_KEYBOARD_INTERFACE( jupiter3_keyboard_intf )
 {
 	DEVCB_DRIVER_MEMBER(jupiter3_state, kbd_put)
 };
@@ -292,7 +294,7 @@ static MACHINE_CONFIG_START( jupiter3, jupiter3_state )
 
 	// devices
 	MCFG_FD1771_ADD(INS1771N1_TAG, fdc_intf)
-	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, jupiter3_terminal_intf)
+	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, jupiter3_keyboard_intf)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

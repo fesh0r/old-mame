@@ -242,7 +242,7 @@ ROM_END
 //-------------------------------------------------
 
 ROM_START( c1541 )
-	ROM_REGION( 0x6000, M6502_TAG, 0 )
+	ROM_REGION( 0x8000, M6502_TAG, 0 )
 	ROM_LOAD( "325302-01.uab4", 0x0000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11) )
 	ROM_LOAD_OPTIONAL( "901229-01.uab5", 0x2000, 0x2000, CRC(9a48d3f0) SHA1(7a1054c6156b51c25410caec0f609efb079d3a77) )
 	ROM_LOAD_OPTIONAL( "901229-02.uab5", 0x2000, 0x2000, CRC(b29bab75) SHA1(91321142e226168b1139c30c83896933f317d000) )
@@ -251,6 +251,7 @@ ROM_START( c1541 )
 	ROM_LOAD_OPTIONAL( "901229-05 ae.uab5", 0x2000, 0x2000, CRC(361c9f37) SHA1(f5d60777440829e46dc91285e662ba072acd2d8b) )
 	ROM_LOAD( "901229-06 aa.uab5", 0x2000, 0x2000, CRC(3a235039) SHA1(c7f94f4f51d6de4cdc21ecbb7e57bb209f0530c0) )
 	ROM_LOAD_OPTIONAL( "jiffydos 1541.uab5", 0x4000, 0x2000, CRC(bc7e4aeb) SHA1(db6cfaa6d9b78d58746c811de29f3b1f44d99ddf) )
+    ROM_LOAD_OPTIONAL( "speed-dosplus.uab5", 0x4000, 0x4000, CRC(f9db1eac) SHA1(95407e59a9c1d26a0e4bcf2c244cfe8942576e2c) )
 ROM_END
 
 
@@ -359,7 +360,16 @@ WRITE_LINE_MEMBER( c1541_device::via0_irq_w )
 READ8_MEMBER( c1541_device::via0_pa_r )
 {
 	// dummy read to acknowledge ATN IN interrupt
-	return 0;
+	return m_parallel_data;
+}
+
+
+WRITE8_MEMBER( c1541_device::via0_pa_w )
+{
+    if (m_other != NULL)
+    {
+        m_other->parallel_data_w(data);
+    }
 }
 
 
@@ -432,6 +442,15 @@ READ_LINE_MEMBER( c1541_device::atn_in_r )
 }
 
 
+WRITE_LINE_MEMBER( c1541_device::via0_ca2_w )
+{
+    if (m_other != NULL)
+    {
+        m_other->parallel_strobe_w(state);
+    }
+}
+
+
 static const via6522_interface c1541_via0_intf =
 {
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1541_device, via0_pa_r),
@@ -441,11 +460,11 @@ static const via6522_interface c1541_via0_intf =
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_NULL,
+    DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1541_device, via0_pa_w),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1541_device, via0_pb_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c1541_device, via0_ca2_w),
 	DEVCB_NULL,
 
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c1541_device, via0_irq_w)
@@ -636,7 +655,7 @@ static const floppy_interface c1541_floppy_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	FLOPPY_STANDARD_5_25_DSDD,
+	FLOPPY_STANDARD_5_25_SSDD,
 	LEGACY_FLOPPY_OPTIONS_NAME(c1541),
 	"floppy_5_25",
 	NULL
@@ -722,6 +741,7 @@ inline void c1541_device::set_iec_data()
 c1541_device::c1541_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
     : device_t(mconfig, C1541, "C1541", tag, owner, clock),
 	  device_cbm_iec_interface(mconfig, *this),
+      device_c64_floppy_parallel_interface(mconfig, *this),
 	  m_maincpu(*this, M6502_TAG),
 	  m_via0(*this, M6522_0_TAG),
 	  m_via1(*this, M6522_1_TAG),
@@ -738,6 +758,7 @@ c1541_device::c1541_device(const machine_config &mconfig, const char *tag, devic
 c1541_device::c1541_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
     : device_t(mconfig, type, name, tag, owner, clock),
 	  device_cbm_iec_interface(mconfig, *this),
+      device_c64_floppy_parallel_interface(mconfig, *this),
 	  m_maincpu(*this, M6502_TAG),
 	  m_via0(*this, M6522_0_TAG),
 	  m_via1(*this, M6522_1_TAG),
@@ -799,6 +820,26 @@ void c1541_device::cbm_iec_reset(int state)
 	{
 		device_reset();
 	}
+}
+
+
+//-------------------------------------------------
+//  parallel_data_w -
+//-------------------------------------------------
+
+void c1541_device::parallel_data_w(UINT8 data)
+{
+    m_parallel_data = data;
+}
+
+
+//-------------------------------------------------
+//  parallel_strobe_w -
+//-------------------------------------------------
+
+void c1541_device::parallel_strobe_w(int state)
+{
+    m_via0->write_cb1(state);
 }
 
 

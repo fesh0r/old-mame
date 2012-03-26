@@ -5,12 +5,7 @@ RM 380Z machine
 
 */
 
-#include "emu.h"
-#include "cpu/z80/z80.h"
-#include "machine/ram.h"
-#include "imagedev/flopdrv.h"
-#include "machine/terminal.h"
-#include "machine/wd17xx.h"
+
 #include "includes/rm380z.h"
 
 
@@ -195,8 +190,11 @@ static TIMER_CALLBACK(static_vblank_timer)
 
 WRITE8_MEMBER( rm380z_state::keyboard_put )
 {
-	m_port0_kbd = data;
-	m_port1|=0x01;
+	if (data)
+	{
+		m_port0_kbd = data;
+		m_port1 |= 1;
+	}
 }
 
 //
@@ -249,6 +247,11 @@ WRITE8_MEMBER( rm380z_state::disk_0_control )
 	}
 }
 
+void rm380z_state::machine_start()
+{
+	machine().scheduler().timer_pulse(attotime::from_hz(TIMER_SPEED), FUNC(static_vblank_timer));
+}
+
 void rm380z_state::machine_reset()
 {
 	m_port0=0x00;
@@ -272,7 +275,6 @@ void rm380z_state::machine_reset()
 	memset(m_vram,0,RM380Z_SCREENSIZE);
 
 	config_memory_map();
-	machine().scheduler().timer_pulse(attotime::from_hz(TIMER_SPEED), FUNC(static_vblank_timer));
 	wd17xx_reset(machine().device("wd1771"));
 
 	init_graphic_chars();

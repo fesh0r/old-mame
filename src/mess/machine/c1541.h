@@ -22,6 +22,7 @@
 #include "machine/64h156.h"
 #include "machine/6522via.h"
 #include "machine/cbmiec.h"
+#include "machine/c64_bn1541.h"
 
 
 
@@ -40,7 +41,8 @@
 // ======================> c1541_device
 
 class c1541_device :  public device_t,
-					  public device_cbm_iec_interface
+					  public device_cbm_iec_interface,
+					  public device_c64_floppy_parallel_interface
 {
 public:
     // construction/destruction
@@ -65,6 +67,7 @@ public:
 	DECLARE_WRITE8_MEMBER( via0_pa_w );
 	DECLARE_READ8_MEMBER( via0_pb_r );
 	DECLARE_WRITE8_MEMBER( via0_pb_w );
+	DECLARE_WRITE_LINE_MEMBER( via0_ca2_w );
 	DECLARE_READ_LINE_MEMBER( atn_in_r );
 	DECLARE_WRITE_LINE_MEMBER( via1_irq_w );
 	DECLARE_READ8_MEMBER( via1_pb_r );
@@ -85,6 +88,10 @@ protected:
 	// device_cbm_iec_interface overrides
 	void cbm_iec_atn(int state);
 	void cbm_iec_reset(int state);
+
+	// device_c64_floppy_parallel_interface overrides
+	void parallel_data_w(UINT8 data);
+	void parallel_strobe_w(int state);
 
 	inline void set_iec_data();
 

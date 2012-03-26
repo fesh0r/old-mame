@@ -17,7 +17,7 @@
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "video/mc6845.h"
-#include "machine/terminal.h"
+#include "machine/keyboard.h"
 
 class pasopia_state : public driver_device
 {
@@ -269,12 +269,12 @@ WRITE_LINE_MEMBER( pasopia_state::testb_w )
 static Z80PIO_INTERFACE( z80pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0), //doesn't work?
-	DEVCB_DRIVER_MEMBER(pasopia_state, testa_r),
-	DEVCB_NULL,
-	DEVCB_DRIVER_LINE_MEMBER(pasopia_state, testa_w),
-	DEVCB_DRIVER_MEMBER(pasopia_state, testb_r),
-	DEVCB_NULL,
-	DEVCB_DRIVER_LINE_MEMBER(pasopia_state, testb_w)
+	DEVCB_DRIVER_MEMBER(pasopia_state, testa_r), // port A read
+	DEVCB_NULL, // port A write
+	DEVCB_DRIVER_LINE_MEMBER(pasopia_state, testa_w), // ready A
+	DEVCB_DRIVER_MEMBER(pasopia_state, testb_r), // port B read
+	DEVCB_NULL, // port B write
+	DEVCB_DRIVER_LINE_MEMBER(pasopia_state, testb_w) // ready B
 };
 
 static const mc6845_interface mc6845_intf =
@@ -321,7 +321,7 @@ WRITE8_MEMBER( pasopia_state::kbd_put )
 	mem->write_byte(0xfe79, data);
 }
 
-static GENERIC_TERMINAL_INTERFACE( terminal_intf )
+static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
 {
 	DEVCB_DRIVER_MEMBER(pasopia_state, kbd_put)
 };
@@ -368,7 +368,7 @@ static MACHINE_CONFIG_START( pasopia, pasopia_state )
 	MCFG_Z80PIO_ADD( "z80pio", XTAL_4MHz, z80pio_intf )
 
 	// temporary hack
-	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
+	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, keyboard_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */

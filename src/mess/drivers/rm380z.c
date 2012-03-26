@@ -62,16 +62,30 @@ TODO:
 - Understand why ctrl-U (blinking cursor) in COS 4.0 stops keyboard input from working
 - Get a reliable ROM dump and charset ROM dump
 
+
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_param
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_enabled
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_period.attoseconds
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_period.seconds
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_start.attoseconds
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_start.seconds
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_expire.attoseconds
+Attempt to register save state entry after state registration is closed!
+Module timer tag static_vblank_timer name m_expire.seconds
+':maincpu' (E48B): unmapped program memory write to E000 = C1 & FF
+':maincpu' (E48E): unmapped program memory write to E000 = 3E & FF
+
 */
 
 #define ADDRESS_MAP_MODERN
 
-#include "emu.h"
-#include "cpu/z80/z80.h"
-#include "machine/ram.h"
-#include "imagedev/flopdrv.h"
-#include "machine/terminal.h"
-#include "machine/wd17xx.h"
 #include "includes/rm380z.h"
 
 
@@ -95,7 +109,7 @@ static ADDRESS_MAP_START( rm380z_io , AS_IO, 8, rm380z_state)
 	AM_RANGE(0xc5, 0xff) AM_READWRITE(rm380z_porthi_r, rm380z_porthi_w)
 ADDRESS_MAP_END
 
-static GENERIC_TERMINAL_INTERFACE( terminal_intf )
+static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
 {
 	DEVCB_DRIVER_MEMBER(rm380z_state, keyboard_put)
 };
@@ -157,8 +171,7 @@ static MACHINE_CONFIG_START( rm380z, rm380z_state )
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(rm380z_floppy_interface)
 
 	/* keyboard */
-	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
-
+	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, keyboard_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -170,7 +183,7 @@ ROM_START( rm380z )
 	ROM_LOAD( "cos40b-m_f600-f9ff.bin", 0x1000, 0x400, BAD_DUMP CRC(e3397d9d) SHA1(490a0c834b0da392daf782edc7d51ca8f0668b1a))
 	ROM_LOAD( "cos40b-m_1c00-1dff.bin", 0x1400, 0x200, BAD_DUMP CRC(0f759f44) SHA1(9689c1c1faa62c56def999cbedbbb0c8d928dcff))
 	// chargen ROM is undumped, afaik
-	ROM_REGION( 0x1680, "gfx", 0 )
+	ROM_REGION( 0x1680, "chargen", 0 )
 	ROM_LOAD( "ch3.raw", 0x0000, 0x1680, BAD_DUMP CRC(c223622b) SHA1(185ef24896419d7ff46f71a760ac217de3811684))
 ROM_END
 

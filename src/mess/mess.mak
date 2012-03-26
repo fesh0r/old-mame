@@ -503,6 +503,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/ieee488.o	\
 	$(MESS_MACHINE)/isa.o		\
 	$(MESS_MACHINE)/kb3600.o	\
+	$(MESS_MACHINE)/keyboard.o	\
 	$(MESS_MACHINE)/kr2376.o	\
 	$(MESS_MACHINE)/mc6843.o	\
 	$(MESS_MACHINE)/mc6846.o	\
@@ -639,9 +640,9 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/apple2gs.o	\
 	$(MESS_DRIVERS)/apple2gs.o	\
 	$(MESS_MACHINE)/ay3600.o	\
+    $(MESS_MACHINE)/a2bus.o     \
 	$(MESS_MACHINE)/ap2_slot.o	\
 	$(MESS_MACHINE)/ap2_lang.o	\
-	$(MESS_MACHINE)/mockngbd.o	\
 	$(MESS_MACHINE)/a2cffa.o	\
 	$(MESS_MACHINE)/lisa.o		\
 	$(MESS_DRIVERS)/lisa.o		\
@@ -771,7 +772,13 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/c64dtv.o	\
 	$(MESS_MACHINE)/c64exp.o	\
 	$(MESS_MACHINE)/c64user.o	\
+	$(MESS_MACHINE)/c64_4cga.o	\
+	$(MESS_MACHINE)/c64_4dxh.o	\
+	$(MESS_MACHINE)/c64_4ksa.o	\
+	$(MESS_MACHINE)/c64_4tba.o	\
+	$(MESS_MACHINE)/c64_bn1541.o	\
 	$(MESS_MACHINE)/c64_comal80.o	\
+	$(MESS_MACHINE)/c64_cpm.o	\
 	$(MESS_MACHINE)/c64_dela_ep256.o	\
 	$(MESS_MACHINE)/c64_dela_ep64.o	\
 	$(MESS_MACHINE)/c64_dela_ep7x8.o	\
@@ -782,9 +789,12 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_epyx_fast_load.o	\
 	$(MESS_MACHINE)/c64_exos.o	\
 	$(MESS_MACHINE)/c64_final.o	\
+	$(MESS_MACHINE)/c64_final3.o	\
 	$(MESS_MACHINE)/c64_fun_play.o	\
+	$(MESS_MACHINE)/c64_geocable.o	\
 	$(MESS_MACHINE)/c64_georam.o	\
 	$(MESS_MACHINE)/c64_ieee488.o	\
+	$(MESS_MACHINE)/c64_kingsoft.o	\
 	$(MESS_MACHINE)/c64_mach5.o	\
 	$(MESS_MACHINE)/c64_magic_desk.o	\
 	$(MESS_MACHINE)/c64_magic_formel.o	\
@@ -851,6 +861,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_VIDEO)/vdc8563.o		\
 	$(MESS_VIDEO)/vic6567.o		\
 	$(MESS_VIDEO)/vic4567.o		\
+	$(MESS_DRIVERS)/c900.o		\
 	$(MESS_FORMATS)/cbm_snqk.o	\
 	$(MESS_FORMATS)/cbm_crt.o	\
 

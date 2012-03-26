@@ -8,6 +8,13 @@ Research Machines RM 380Z
 #ifndef RM380Z_H_
 #define RM380Z_H_
 
+#include "emu.h"
+#include "cpu/z80/z80.h"
+#include "machine/ram.h"
+#include "imagedev/flopdrv.h"
+#include "machine/wd17xx.h"
+#include "machine/keyboard.h"
+
 //
 //
 //
@@ -52,6 +59,7 @@ private:
 
 protected:
 	virtual void machine_reset();
+	virtual void machine_start();
 
 public:
 

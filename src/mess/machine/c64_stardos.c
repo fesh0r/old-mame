@@ -31,14 +31,19 @@ const device_type C64_STARDOS = &device_creator<c64_stardos_cartridge_device>;
 //  INPUT_PORTS( c64_stardos )
 //-------------------------------------------------
 
-INPUT_CHANGED( c64_stardos_cartridge_device::reset )
+INPUT_CHANGED_MEMBER( c64_stardos_cartridge_device::reset )
 {
-	// TODO
+	if (!newval)
+	{
+		device_reset();
+	}
+
+	m_slot->reset_w(newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_PORTS_START( c64_stardos )
 	PORT_START("RESET")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("Reset") PORT_CHANGED(c64_stardos_cartridge_device::reset, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Reset") PORT_CODE(KEYCODE_F11) PORT_CHANGED_MEMBER(DEVICE_SELF, c64_stardos_cartridge_device, reset, 0)
 INPUT_PORTS_END
 
 

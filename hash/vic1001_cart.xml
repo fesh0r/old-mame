@@ -576,6 +576,7 @@
 		<year>1981</year>
 		<publisher>Commodore</publisher>
 		<info name="serial" value="VIC-1907" />
+		<info name="assy" value="326173-01" />
 		<sharedfeat name="compatibility" value="NTSC"/>
 		<part name="cart" interface="vic1001_cart">
 			<dataarea name="blk5" size="0x2000">

@@ -50,6 +50,7 @@ Usage of terminal:
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
+#include "machine/keyboard.h"
 #include "machine/terminal.h"
 
 #define MACHINE_RESET_MEMBER(name) void name::machine_reset()
@@ -62,8 +63,7 @@ public:
 		: driver_device(mconfig, type, tag),
 	m_term_data(0),
 	m_j(0),
-	m_scroll(0),
-	m_terminal(*this, TERMINAL_TAG)
+	m_scroll(0)
 	{ }
 
 	DECLARE_READ8_MEMBER(okean240_kbd_status_r);
@@ -81,8 +81,6 @@ public:
 	UINT8 m_scroll;
 	virtual void machine_reset();
 	virtual void video_start();
-
-	required_device<generic_terminal_device> m_terminal;
 };
 
 // okean240 requires bit 4 to change
@@ -409,14 +407,14 @@ static SCREEN_UPDATE_IND16( okean240 )
 			gfx = state->m_p_videoram[x|ma] | state->m_p_videoram[x|ma|0x100];
 
 			/* Display a scanline of a character */
-			*p++ = BIT(gfx, 0) + 2;
-			*p++ = BIT(gfx, 1) + 2;
-			*p++ = BIT(gfx, 2) + 2;
-			*p++ = BIT(gfx, 3) + 2;
-			*p++ = BIT(gfx, 4) + 2;
-			*p++ = BIT(gfx, 5) + 2;
-			*p++ = BIT(gfx, 6) + 2;
-			*p++ = BIT(gfx, 7) + 2;
+			*p++ = BIT(gfx, 0);
+			*p++ = BIT(gfx, 1);
+			*p++ = BIT(gfx, 2);
+			*p++ = BIT(gfx, 3);
+			*p++ = BIT(gfx, 4);
+			*p++ = BIT(gfx, 5);
+			*p++ = BIT(gfx, 6);
+			*p++ = BIT(gfx, 7);
 		}
 	}
 	return 0;
@@ -438,25 +436,19 @@ static const gfx_layout okean240_charlayout =
 };
 
 static GFXDECODE_START( okean240 )
-	GFXDECODE_ENTRY( "maincpu", 0xec08, okean240_charlayout, 2, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0xec08, okean240_charlayout, 0, 1 )
 GFXDECODE_END
 
 static GFXDECODE_START( okean240a )
-	GFXDECODE_ENTRY( "maincpu", 0xef63, okean240_charlayout, 2, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0xef63, okean240_charlayout, 0, 1 )
 GFXDECODE_END
 
-// Palette 0 & 1 are for terminal and are defined in terminal.c
-static PALETTE_INIT( okean240 )
-{
-	palette_set_color(machine, 2, RGB_BLACK); /* black */
-	palette_set_color(machine, 3, RGB_WHITE); /* white */
-}
 
-static MACHINE_CONFIG_START( okean240, okean240_state )
+static MACHINE_CONFIG_START( okean240t, okean240_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",I8080, XTAL_12MHz / 6)
 	MCFG_CPU_PROGRAM_MAP(okean240_mem)
-	MCFG_CPU_IO_MAP(okean240_io)
+	MCFG_CPU_IO_MAP(okean240t_io)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -464,23 +456,27 @@ static MACHINE_CONFIG_START( okean240, okean240_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 255, 0, 255)
-	MCFG_PALETTE_LENGTH(4)
-	MCFG_PALETTE_INIT(okean240)
+	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_INIT(black_and_white)
 	MCFG_SCREEN_UPDATE_STATIC(okean240)
-	MCFG_GFXDECODE(okean240)
 
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED( okean240a, okean240 )
+static MACHINE_CONFIG_DERIVED( okean240a, okean240t )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_IO_MAP(okean240a_io)
 	MCFG_GFXDECODE(okean240a)
+	MCFG_DEVICE_REMOVE(TERMINAL_TAG)
+	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, terminal_intf)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED( okean240t, okean240 )
+static MACHINE_CONFIG_DERIVED( okean240, okean240t )
 	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_IO_MAP(okean240t_io)
+	MCFG_CPU_IO_MAP(okean240_io)
+	MCFG_GFXDECODE(okean240)
+	MCFG_DEVICE_REMOVE(TERMINAL_TAG)
+	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, terminal_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */
