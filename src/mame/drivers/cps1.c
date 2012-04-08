@@ -244,48 +244,44 @@ Stephh's log (2006.09.20) :
 
 
 
-READ16_HANDLER( cps1_dsw_r )
+READ16_MEMBER(cps_state::cps1_dsw_r)
 {
 	static const char *const dswname[] = { "IN0", "DSWA", "DSWB", "DSWC" };
-	int in = input_port_read(space->machine(), dswname[offset]);
+	int in = input_port_read(machine(), dswname[offset]);
 	return (in << 8) | 0xff;
 }
 
-static READ16_HANDLER( cps1_hack_dsw_r )
+READ16_MEMBER(cps_state::cps1_hack_dsw_r)
 {
 	static const char *const dswname[] = { "IN0", "DSWA", "DSWB", "DSWC" };
-	int in = input_port_read(space->machine(), dswname[offset]);
+	int in = input_port_read(machine(), dswname[offset]);
 	return (in << 8) | in;
 }
 
-static READ16_HANDLER( forgottn_dial_0_r )
+READ16_MEMBER(cps_state::forgottn_dial_0_r)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
-	return ((input_port_read(space->machine(), "DIAL0") - state->m_dial[0]) >> (8 * offset)) & 0xff;
+	return ((input_port_read(machine(), "DIAL0") - m_dial[0]) >> (8 * offset)) & 0xff;
 }
 
-static READ16_HANDLER( forgottn_dial_1_r )
+READ16_MEMBER(cps_state::forgottn_dial_1_r)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
-	return ((input_port_read(space->machine(), "DIAL1") - state->m_dial[1]) >> (8 * offset)) & 0xff;
+	return ((input_port_read(machine(), "DIAL1") - m_dial[1]) >> (8 * offset)) & 0xff;
 }
 
-static WRITE16_HANDLER( forgottn_dial_0_reset_w )
+WRITE16_MEMBER(cps_state::forgottn_dial_0_reset_w)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
-	state->m_dial[0] = input_port_read(space->machine(), "DIAL0");
+	m_dial[0] = input_port_read(machine(), "DIAL0");
 }
 
-static WRITE16_HANDLER( forgottn_dial_1_reset_w )
+WRITE16_MEMBER(cps_state::forgottn_dial_1_reset_w)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
-	state->m_dial[1] = input_port_read(space->machine(), "DIAL1");
+	m_dial[1] = input_port_read(machine(), "DIAL1");
 }
 
 
-static WRITE8_HANDLER( cps1_snd_bankswitch_w )
+WRITE8_MEMBER(cps_state::cps1_snd_bankswitch_w)
 {
-	memory_set_bank(space->machine(), "bank1", data & 0x01);
+	memory_set_bank(machine(), "bank1", data & 0x01);
 }
 
 static WRITE8_DEVICE_HANDLER( cps1_oki_pin7_w )
@@ -293,39 +289,39 @@ static WRITE8_DEVICE_HANDLER( cps1_oki_pin7_w )
 	downcast<okim6295_device *>(device)->set_pin7(data & 1);
 }
 
-static WRITE16_HANDLER( cps1_soundlatch_w )
+WRITE16_MEMBER(cps_state::cps1_soundlatch_w)
 {
 	if (ACCESSING_BITS_0_7)
 		soundlatch_w(space, 0, data & 0xff);
 }
 
-static WRITE16_HANDLER( cps1_soundlatch2_w )
+WRITE16_MEMBER(cps_state::cps1_soundlatch2_w)
 {
 	if (ACCESSING_BITS_0_7)
 		soundlatch2_w(space, 0, data & 0xff);
 }
 
-WRITE16_HANDLER( cps1_coinctrl_w )
+WRITE16_MEMBER(cps_state::cps1_coinctrl_w)
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		coin_counter_w(space->machine(), 0, data & 0x0100);
-		coin_counter_w(space->machine(), 1, data & 0x0200);
-		coin_lockout_w(space->machine(), 0, ~data & 0x0400);
-		coin_lockout_w(space->machine(), 1, ~data & 0x0800);
+		coin_counter_w(machine(), 0, data & 0x0100);
+		coin_counter_w(machine(), 1, data & 0x0200);
+		coin_lockout_w(machine(), 0, ~data & 0x0400);
+		coin_lockout_w(machine(), 1, ~data & 0x0800);
 
 		// bit 15 = CPS-A custom reset?
 	}
 }
 
-static WRITE16_HANDLER( cpsq_coinctrl2_w )
+WRITE16_MEMBER(cps_state::cpsq_coinctrl2_w)
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		coin_counter_w(space->machine(), 2, data & 0x01);
-		coin_lockout_w(space->machine(), 2, ~data & 0x02);
-		coin_counter_w(space->machine(), 3, data & 0x04);
-		coin_lockout_w(space->machine(), 3, ~data & 0x08);
+		coin_counter_w(machine(), 2, data & 0x01);
+		coin_lockout_w(machine(), 2, ~data & 0x02);
+		coin_counter_w(machine(), 3, data & 0x04);
+		coin_lockout_w(machine(), 3, ~data & 0x08);
     }
 }
 
@@ -350,58 +346,54 @@ static INTERRUPT_GEN( cps1_qsound_interrupt )
 }
 
 
-static READ16_HANDLER( qsound_rom_r )
+READ16_MEMBER(cps_state::qsound_rom_r)
 {
-	UINT8 *rom = space->machine().region("user1")->base();
+	UINT8 *rom = machine().region("user1")->base();
 
 	if (rom)
 		return rom[offset] | 0xff00;
 	else
 	{
-		popmessage("%06x: read sound ROM byte %04x", cpu_get_pc(&space->device()), offset);
+		popmessage("%06x: read sound ROM byte %04x", cpu_get_pc(&space.device()), offset);
 		return 0;
 	}
 }
 
-READ16_HANDLER( qsound_sharedram1_r )
+READ16_MEMBER(cps_state::qsound_sharedram1_r)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
-	return state->m_qsound_sharedram1[offset] | 0xff00;
+	return m_qsound_sharedram1[offset] | 0xff00;
 }
 
-WRITE16_HANDLER( qsound_sharedram1_w )
+WRITE16_MEMBER(cps_state::qsound_sharedram1_w)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
 
 	if (ACCESSING_BITS_0_7)
-		state->m_qsound_sharedram1[offset] = data;
+		m_qsound_sharedram1[offset] = data;
 }
 
-static READ16_HANDLER( qsound_sharedram2_r )
+READ16_MEMBER(cps_state::qsound_sharedram2_r)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
-	return state->m_qsound_sharedram2[offset] | 0xff00;
+	return m_qsound_sharedram2[offset] | 0xff00;
 }
 
-static WRITE16_HANDLER( qsound_sharedram2_w )
+WRITE16_MEMBER(cps_state::qsound_sharedram2_w)
 {
-	cps_state *state = space->machine().driver_data<cps_state>();
 
 	if (ACCESSING_BITS_0_7)
-		state->m_qsound_sharedram2[offset] = data;
+		m_qsound_sharedram2[offset] = data;
 }
 
-static WRITE8_HANDLER( qsound_banksw_w )
+WRITE8_MEMBER(cps_state::qsound_banksw_w)
 {
 	/* Z80 bank register for music note data. It's odd that it isn't encrypted though. */
 	int bank = data & 0x0f;
-	if ((0x10000 + (bank * 0x4000)) >= space->machine().region("audiocpu")->bytes())
+	if ((0x10000 + (bank * 0x4000)) >= machine().region("audiocpu")->bytes())
 	{
 		logerror("WARNING: Q sound bank overflow (%02x)\n", data);
 		bank = 0;
 	}
 
-	memory_set_bank(space->machine(), "bank1", bank);
+	memory_set_bank(machine(), "bank1", bank);
 }
 
 
@@ -541,7 +533,7 @@ All PRGx go to B-board. Provision for up to 4MB of ROM space, which was never us
 
 */
 
-static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16 )
+static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16, cps_state )
 	AM_RANGE(0x000000, 0x3fffff) AM_ROM
 	AM_RANGE(0x800000, 0x800007) AM_READ_PORT("IN1")			/* Player input ports */
 	/* forgottn, willow, cawing, nemo, varth read from 800010. Probably debug input leftover from development */
@@ -549,13 +541,13 @@ static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16 )
 	AM_RANGE(0x800020, 0x800021) AM_READNOP						/* ? Used by Rockman ? not mapped according to PAL */
 	AM_RANGE(0x800030, 0x800037) AM_WRITE(cps1_coinctrl_w)
 	/* Forgotten Worlds has dial controls on B-board mapped at 800040-80005f. See DRIVER_INIT */
-	AM_RANGE(0x800100, 0x80013f) AM_WRITE(cps1_cps_a_w) AM_BASE_MEMBER(cps_state, m_cps_a_regs)	/* CPS-A custom */
+	AM_RANGE(0x800100, 0x80013f) AM_WRITE(cps1_cps_a_w) AM_BASE(m_cps_a_regs)	/* CPS-A custom */
 	/* CPS-B custom is mapped by the PAL IOB2 on the B-board. SF2 revision "E" World and USA 910228 has it a a different
        address, see DRIVER_INIT */
-	AM_RANGE(0x800140, 0x80017f) AM_READWRITE(cps1_cps_b_r, cps1_cps_b_w) AM_BASE_MEMBER(cps_state, m_cps_b_regs)
+	AM_RANGE(0x800140, 0x80017f) AM_READWRITE(cps1_cps_b_r, cps1_cps_b_w) AM_BASE(m_cps_b_regs)
 	AM_RANGE(0x800180, 0x800187) AM_WRITE(cps1_soundlatch_w)	/* Sound command */
 	AM_RANGE(0x800188, 0x80018f) AM_WRITE(cps1_soundlatch2_w)	/* Sound timer fade */
-	AM_RANGE(0x900000, 0x92ffff) AM_RAM_WRITE(cps1_gfxram_w) AM_BASE_SIZE_MEMBER(cps_state, m_gfxram, m_gfxram_size)	/* SF2CE executes code from here */
+	AM_RANGE(0x900000, 0x92ffff) AM_RAM_WRITE(cps1_gfxram_w) AM_BASE_SIZE(m_gfxram, m_gfxram_size)	/* SF2CE executes code from here */
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -582,26 +574,26 @@ SOUNDA15   = pin13 =   (  I1 )
 /SOUNDCE   = pin12 = ! ( !I0 & (!I1 | ( I1 & !I2)) )
 */
 
-static ADDRESS_MAP_START( sub_map, AS_PROGRAM, 8 )
+static ADDRESS_MAP_START( sub_map, AS_PROGRAM, 8, cps_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
-	AM_RANGE(0xf000, 0xf001) AM_DEVREADWRITE("2151", ym2151_r, ym2151_w)
-	AM_RANGE(0xf002, 0xf002) AM_DEVREADWRITE_MODERN("oki", okim6295_device, read, write)
+	AM_RANGE(0xf000, 0xf001) AM_DEVREADWRITE_LEGACY("2151", ym2151_r, ym2151_w)
+	AM_RANGE(0xf002, 0xf002) AM_DEVREADWRITE("oki", okim6295_device, read, write)
 	AM_RANGE(0xf004, 0xf004) AM_WRITE(cps1_snd_bankswitch_w)
-	AM_RANGE(0xf006, 0xf006) AM_DEVWRITE("oki", cps1_oki_pin7_w) /* controls pin 7 of OKI chip */
+	AM_RANGE(0xf006, 0xf006) AM_DEVWRITE_LEGACY("oki", cps1_oki_pin7_w) /* controls pin 7 of OKI chip */
 	AM_RANGE(0xf008, 0xf008) AM_READ(soundlatch_r)	/* Sound command */
 	AM_RANGE(0xf00a, 0xf00a) AM_READ(soundlatch2_r) /* Sound timer fade */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( qsound_main_map, AS_PROGRAM, 16 )
+static ADDRESS_MAP_START( qsound_main_map, AS_PROGRAM, 16, cps_state )
 	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 	AM_RANGE(0x800000, 0x800007) AM_READ_PORT("IN1")			/* Player input ports */
 	AM_RANGE(0x800018, 0x80001f) AM_READ(cps1_dsw_r)			/* System input ports / Dip Switches */
 	AM_RANGE(0x800030, 0x800037) AM_WRITE(cps1_coinctrl_w)
-	AM_RANGE(0x800100, 0x80013f) AM_WRITE(cps1_cps_a_w) AM_BASE_MEMBER(cps_state, m_cps_a_regs)	/* CPS-A custom */
-	AM_RANGE(0x800140, 0x80017f) AM_READWRITE(cps1_cps_b_r, cps1_cps_b_w) AM_BASE_MEMBER(cps_state, m_cps_b_regs)	/* CPS-B custom (mapped by LWIO/IOB1 PAL on B-board) */
-	AM_RANGE(0x900000, 0x92ffff) AM_RAM_WRITE(cps1_gfxram_w) AM_BASE_SIZE_MEMBER(cps_state, m_gfxram, m_gfxram_size)	/* SF2CE executes code from here */
+	AM_RANGE(0x800100, 0x80013f) AM_WRITE(cps1_cps_a_w) AM_BASE(m_cps_a_regs)	/* CPS-A custom */
+	AM_RANGE(0x800140, 0x80017f) AM_READWRITE(cps1_cps_b_r, cps1_cps_b_w) AM_BASE(m_cps_b_regs)	/* CPS-B custom (mapped by LWIO/IOB1 PAL on B-board) */
+	AM_RANGE(0x900000, 0x92ffff) AM_RAM_WRITE(cps1_gfxram_w) AM_BASE_SIZE(m_gfxram, m_gfxram_size)	/* SF2CE executes code from here */
 	AM_RANGE(0xf00000, 0xf0ffff) AM_READ(qsound_rom_r)			/* Slammasters protection */
 	AM_RANGE(0xf18000, 0xf19fff) AM_READWRITE(qsound_sharedram1_r, qsound_sharedram1_w)  /* Q RAM */
 	AM_RANGE(0xf1c000, 0xf1c001) AM_READ_PORT("IN2")			/* Player 3 controls (later games) */
@@ -612,14 +604,14 @@ static ADDRESS_MAP_START( qsound_main_map, AS_PROGRAM, 16 )
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( qsound_sub_map, AS_PROGRAM, 8 )	// used by cps2.c too
+ADDRESS_MAP_START( qsound_sub_map, AS_PROGRAM, 8, cps_state )	// used by cps2.c too
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")	/* banked (contains music data) */
-	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_BASE_MEMBER(cps_state, m_qsound_sharedram1)
-	AM_RANGE(0xd000, 0xd002) AM_DEVWRITE("qsound", qsound_w)
+	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_BASE(m_qsound_sharedram1)
+	AM_RANGE(0xd000, 0xd002) AM_DEVWRITE_LEGACY("qsound", qsound_w)
 	AM_RANGE(0xd003, 0xd003) AM_WRITE(qsound_banksw_w)
-	AM_RANGE(0xd007, 0xd007) AM_DEVREAD("qsound", qsound_r)
-	AM_RANGE(0xf000, 0xffff) AM_RAM AM_BASE_MEMBER(cps_state, m_qsound_sharedram2)
+	AM_RANGE(0xd007, 0xd007) AM_DEVREAD_LEGACY("qsound", qsound_r)
+	AM_RANGE(0xf000, 0xffff) AM_RAM AM_BASE(m_qsound_sharedram2)
 ADDRESS_MAP_END
 
 /***********************************************************
@@ -3182,7 +3174,7 @@ static MACHINE_CONFIG_DERIVED( wofhfh, cps1_12MHz )
 MACHINE_CONFIG_END
 
 /* incomplete */
-static ADDRESS_MAP_START( sf2mdt_z80map, AS_PROGRAM, 8 )
+static ADDRESS_MAP_START( sf2mdt_z80map, AS_PROGRAM, 8, cps_state )
 	AM_RANGE(0x0000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
 ADDRESS_MAP_END
@@ -10707,10 +10699,10 @@ static DRIVER_INIT( forgottn )
 
 	/* Forgotten Worlds has a NEC uPD4701AC on the B-board handling dial inputs from the CN-MOWS connector. */
 	/* The memory mapping is handled by PAL LWIO */
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_write_handler(0x800040, 0x800041, FUNC(forgottn_dial_0_reset_w));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_write_handler(0x800048, 0x800049, FUNC(forgottn_dial_1_reset_w));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x800052, 0x800055, FUNC(forgottn_dial_0_r));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x80005a, 0x80005d, FUNC(forgottn_dial_1_r));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x800040, 0x800041, write16_delegate(FUNC(cps_state::forgottn_dial_0_reset_w),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x800048, 0x800049, write16_delegate(FUNC(cps_state::forgottn_dial_1_reset_w),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x800052, 0x800055, read16_delegate(FUNC(cps_state::forgottn_dial_0_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x80005a, 0x80005d, read16_delegate(FUNC(cps_state::forgottn_dial_1_r),state));
 
 	state->save_item(NAME(state->m_dial));
 
@@ -10722,18 +10714,20 @@ static DRIVER_INIT( forgottn )
 
 static DRIVER_INIT( sf2ee )
 {
+	cps_state *state = machine.driver_data<cps_state>();
 	/* This specific revision of SF2 has the CPS-B custom mapped at a different address. */
 	/* The mapping is handled by the PAL IOB2 on the B-board */
 	machine.device("maincpu")->memory().space(AS_PROGRAM)->unmap_readwrite(0x800140, 0x80017f);
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_readwrite_handler(0x8001c0, 0x8001ff, FUNC(cps1_cps_b_r), FUNC(cps1_cps_b_w));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0x8001c0, 0x8001ff, read16_delegate(FUNC(cps_state::cps1_cps_b_r),state), write16_delegate(FUNC(cps_state::cps1_cps_b_w),state));
 
 	DRIVER_INIT_CALL(cps1);
 }
 
 static DRIVER_INIT( sf2thndr )
 {
+	cps_state *state = machine.driver_data<cps_state>();
 	/* This particular hack uses a modified B-board PAL which mirrors the CPS-B registers at an alternate address */
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_readwrite_handler(0x8001c0, 0x8001ff, FUNC(cps1_cps_b_r), FUNC(cps1_cps_b_w));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0x8001c0, 0x8001ff, read16_delegate(FUNC(cps_state::cps1_cps_b_r),state), write16_delegate(FUNC(cps_state::cps1_cps_b_w),state));
 
 	DRIVER_INIT_CALL(cps1);
 }
@@ -10741,7 +10735,8 @@ static DRIVER_INIT( sf2thndr )
 static DRIVER_INIT( sf2hack )
 {
 	/* some SF2 hacks have some inputs wired to the LSB instead of MSB */
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x800018, 0x80001f, FUNC(cps1_hack_dsw_r));
+	cps_state *state = machine.driver_data<cps_state>();
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x800018, 0x80001f, read16_delegate(FUNC(cps_state::cps1_hack_dsw_r),state));
 
 	DRIVER_INIT_CALL(cps1);
 }
@@ -10803,7 +10798,7 @@ static DRIVER_INIT( pang3 )
 	DRIVER_INIT_CALL(pang3b);
 }
 
-static READ16_HANDLER( sf2mdt_r )
+READ16_MEMBER(cps_state::sf2mdt_r)
 {
 	return 0xffff;
 }
@@ -10824,11 +10819,12 @@ static DRIVER_INIT( sf2mdt )
 		rom[i + 3] = rom[i + 6];
 		rom[i + 6] = tmp;
 	}
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x70c01a, 0x70c01b, FUNC(sf2mdt_r));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x70c01c, 0x70c01d, FUNC(sf2mdt_r));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x70c01e, 0x70c01f, FUNC(sf2mdt_r));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x70c010, 0x70c011, FUNC(sf2mdt_r));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0x70c018, 0x70c019, FUNC(sf2mdt_r));
+	cps_state *state = machine.driver_data<cps_state>();
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x70c01a, 0x70c01b, read16_delegate(FUNC(cps_state::sf2mdt_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x70c01c, 0x70c01d, read16_delegate(FUNC(cps_state::sf2mdt_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x70c01e, 0x70c01f, read16_delegate(FUNC(cps_state::sf2mdt_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x70c010, 0x70c011, read16_delegate(FUNC(cps_state::sf2mdt_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x70c018, 0x70c019, read16_delegate(FUNC(cps_state::sf2mdt_r),state));
 
 	DRIVER_INIT_CALL(cps1);
 }

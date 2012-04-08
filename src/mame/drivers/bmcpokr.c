@@ -56,7 +56,7 @@ public:
 
 
 
-static ADDRESS_MAP_START( bmcpokr_mem, AS_PROGRAM, 16 )
+static ADDRESS_MAP_START( bmcpokr_mem, AS_PROGRAM, 16, bmcpokr_state )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -232,4 +232,4 @@ ROM_END
 
 
 
-GAME( 1999, bmcpokr,    0, bmcpokr,    bmcpokr,    0, ROT0,  "BMC", "Unknown BMC Poker Game", GAME_NOT_WORKING | GAME_IS_SKELETON )
+GAME( 1999, bmcpokr,    0, bmcpokr,    bmcpokr,    0, ROT0,  "BMC", "unknown BMC poker game", GAME_NOT_WORKING | GAME_IS_SKELETON )

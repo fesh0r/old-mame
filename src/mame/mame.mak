@@ -456,6 +456,7 @@ $(MAMEOBJ)/atari.a: \
 	$(DRIVERS)/orbit.o $(AUDIO)/orbit.o $(VIDEO)/orbit.o \
 	$(DRIVERS)/poolshrk.o $(AUDIO)/poolshrk.o $(VIDEO)/poolshrk.o \
 	$(DRIVERS)/quantum.o \
+	$(DRIVERS)/quizshow.o \
 	$(DRIVERS)/rampart.o $(VIDEO)/rampart.o \
 	$(DRIVERS)/relief.o $(VIDEO)/relief.o \
 	$(DRIVERS)/runaway.o $(VIDEO)/runaway.o \
@@ -515,6 +516,7 @@ $(MAMEOBJ)/bfm.a: \
 	$(DRIVERS)/bfm_sc1.o \
 	$(DRIVERS)/bfm_sc2.o $(VIDEO)/bfm_adr2.o \
 	$(DRIVERS)/bfm_sc4.o \
+	$(DRIVERS)/bfm_sc4h.o \
 	$(DRIVERS)/bfm_sc5.o \
 	$(DRIVERS)/bfm_swp.o \
 	$(DRIVERS)/bfmsys83.o \
@@ -573,6 +575,7 @@ $(MAMEOBJ)/comad.a: \
 
 $(MAMEOBJ)/cvs.a: \
 	$(DRIVERS)/cvs.o $(VIDEO)/cvs.o \
+	$(DRIVERS)/galaxia.o $(VIDEO)/galaxia.o \
 	$(DRIVERS)/quasar.o $(VIDEO)/quasar.o \
 
 $(MAMEOBJ)/dataeast.a: \
@@ -1570,7 +1573,6 @@ $(MAMEOBJ)/yunsung.a: \
 	$(DRIVERS)/yunsun16.o $(VIDEO)/yunsun16.o \
 
 $(MAMEOBJ)/zaccaria.a: \
-	$(DRIVERS)/galaxia.o \
 	$(DRIVERS)/laserbat.o $(AUDIO)/laserbat.o \
 	$(DRIVERS)/zac2650.o $(VIDEO)/zac2650.o \
 	$(DRIVERS)/zaccaria.o $(VIDEO)/zaccaria.o \
@@ -1860,6 +1862,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/tugboat.o \
 	$(DRIVERS)/umipoker.o \
 	$(DRIVERS)/unkfr.o \
+	$(DRIVERS)/unkhorse.o \
 	$(DRIVERS)/unkpcp.o \
 	$(DRIVERS)/usgames.o $(VIDEO)/usgames.o \
 	$(DRIVERS)/vamphalf.o \
@@ -1941,6 +1944,10 @@ $(DRIVERS)/bfm_sc2.o:	$(LAYOUT)/bfm_sc2.lh \
 			$(LAYOUT)/slots.lh \
 			$(LAYOUT)/sltblgpo.lh \
 			$(LAYOUT)/sltblgtk.lh
+
+$(DRIVERS)/bfm_sc4.o:	$(LAYOUT)/bfm_sc4.lh
+
+$(DRIVERS)/bfm_sc4h.o:	$(LAYOUT)/bfm_sc4.lh
 
 $(DRIVERS)/blockade.o:	$(LAYOUT)/blockade.lh
 
@@ -2078,6 +2085,8 @@ $(DRIVERS)/polepos.o:	$(LAYOUT)/polepos.lh \
 
 $(DRIVERS)/qix.o:	$(LAYOUT)/elecyoyo.lh
 
+$(DRIVERS)/quizshow.o:	$(LAYOUT)/quizshow.lh
+
 $(DRIVERS)/re900.o:	$(LAYOUT)/re900.lh
 
 $(DRIVERS)/roul.o:	$(LAYOUT)/roul.lh
@@ -2197,3 +2206,6 @@ $(MACHINE)/model1.o: $(MAMESRC)/includes/model1.h $(MAMESRC)/audio/dsbz80.h
 $(VIDEO)/model2.o:	$(MAMESRC)/video/model2rd.c
 $(VIDEO)/model3.o:	$(MAMESRC)/video/m3raster.c
 $(VIDEO)/n64.o:		$(MAMESRC)/video/rdpfiltr.c
+$(DRIVERS)/bfm_sc4.o: $(MAMESRC)/includes/bfm_sc45.h
+
+
