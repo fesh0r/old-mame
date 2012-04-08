@@ -39,7 +39,6 @@
       not the case here, so the emulation hangs.
 */
 
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
@@ -84,7 +83,7 @@ public:
 
 static ADDRESS_MAP_START( d6800_map, AS_PROGRAM, 8, d6800_state )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM
-	AM_RANGE(0x0100, 0x01ff) AM_RAM AM_BASE( m_videoram )
+	AM_RANGE(0x0100, 0x01ff) AM_RAM AM_BASE(m_videoram )
 	AM_RANGE(0x0200, 0x07ff) AM_RAM
 	AM_RANGE(0x8010, 0x8013) AM_DEVREADWRITE("pia", pia6821_device, read, write)
 	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3c00) AM_ROM

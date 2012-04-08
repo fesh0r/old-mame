@@ -998,16 +998,16 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( newbrain_ei_io_map, AS_IO, 8, newbrain_eim_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE_BASE(newbrain_state, clusr_r, clusr_w)
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE(clusr_r, clusr_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0xff00) AM_WRITE(enrg2_w)
 	AM_RANGE(0x02, 0x02) AM_MIRROR(0xff00) AM_MASK(0xff00) AM_WRITE(pr_w)
 	AM_RANGE(0x03, 0x03) AM_MIRROR(0xff00) AM_READWRITE(user_r, user_w)
-	AM_RANGE(0x04, 0x04) AM_MIRROR(0xff00) AM_READWRITE_BASE(newbrain_state, clclk_r, clclk_w)
+	AM_RANGE(0x04, 0x04) AM_MIRROR(0xff00) AM_READWRITE(clclk_r, clclk_w)
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0xff00) AM_READWRITE(anout_r, anout_w)
-	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_READWRITE_BASE(newbrain_state, cop_r, cop_w)
-	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_WRITE_BASE(newbrain_state, enrg1_w)
-	AM_RANGE(0x08, 0x09) AM_MIRROR(0xff02) AM_READWRITE_BASE(newbrain_state, tvl_r, tvl_w)
-	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff03) AM_WRITE_BASE(newbrain_state, tvctl_w)
+	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_READWRITE(cop_r, cop_w)
+	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_WRITE(enrg1_w)
+	AM_RANGE(0x08, 0x09) AM_MIRROR(0xff02) AM_READWRITE(tvl_r, tvl_w)
+	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff03) AM_WRITE(tvctl_w)
 	AM_RANGE(0x10, 0x13) AM_MIRROR(0xff00) AM_READWRITE(anin_r, anio_w)
 	AM_RANGE(0x14, 0x14) AM_MIRROR(0xff00) AM_READ(st0_r)
 	AM_RANGE(0x15, 0x15) AM_MIRROR(0xff00) AM_READ(st1_r)
@@ -1240,38 +1240,37 @@ inline int newbrain_state::get_reset_t()
 	return RES_K(220) * CAP_U(10) * 1000; // t = R128 * C125 = 2.2s
 }
 
-static TIMER_CALLBACK( reset_tick )
-{
-	newbrain_state *state = machine.driver_data<newbrain_state>();
-
-	state->m_maincpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
-	state->m_copcpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
-}
-
 inline int newbrain_state::get_pwrup_t()
 {
 	return RES_K(560) * CAP_U(10) * 1000; // t = R129 * C127 = 5.6s
 }
 
-static TIMER_CALLBACK( pwrup_tick )
-{
-	newbrain_state *state = machine.driver_data<newbrain_state>();
+//-------------------------------------------------
+//  device_timer - handler timer events
+//-------------------------------------------------
 
-	state->m_pwrup = 0;
-	state->bankswitch();
+void newbrain_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_ID_RESET:
+		m_maincpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
+		m_copcpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
+		break;
+
+	case TIMER_ID_PWRUP:
+		m_pwrup = 0;
+		bankswitch();
+		break;
+	}
 }
 
 void newbrain_state::machine_start()
 {
 	m_copregint = 1;
 
-	/* allocate reset timer */
-	m_reset_timer = machine().scheduler().timer_alloc(FUNC(reset_tick));
-	m_reset_timer->adjust(attotime::from_usec(get_reset_t()));
-
-	/* allocate power up timer */
-	m_pwrup_timer = machine().scheduler().timer_alloc(FUNC(pwrup_tick));
-	m_pwrup_timer->adjust(attotime::from_usec(get_pwrup_t()));
+	/* set power up timer */
+	timer_set(attotime::from_usec(get_pwrup_t()), TIMER_ID_PWRUP);
 
 	/* initialize variables */
 	m_pwrup = 1;
@@ -1328,7 +1327,7 @@ void newbrain_eim_state::machine_start()
 
 void newbrain_state::machine_reset()
 {
-	m_reset_timer->adjust(attotime::from_msec(get_reset_t()));
+	timer_set(attotime::from_usec(get_reset_t()), TIMER_ID_RESET);
 }
 
 static INTERRUPT_GEN( newbrain_interrupt )

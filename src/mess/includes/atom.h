@@ -3,7 +3,6 @@
 #ifndef __ATOM__
 #define __ATOM__
 
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/m6502/m6502.h"
@@ -71,6 +70,7 @@ public:
 	DECLARE_READ8_MEMBER( printer_busy );
 	DECLARE_WRITE8_MEMBER( printer_data );
 	DECLARE_READ8_MEMBER( vdg_videoram_r );
+	DECLARE_INPUT_CHANGED_MEMBER( trigger_reset );
 
 	/* eprom state */
 	int m_eprom;

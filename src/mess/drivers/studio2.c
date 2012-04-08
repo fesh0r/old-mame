@@ -238,8 +238,8 @@ static ADDRESS_MAP_START( visicom_map, AS_PROGRAM, 8, visicom_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( visicom_io_map, AS_IO, 8, visicom_state )
-	AM_RANGE(0x01, 0x01) AM_WRITE_BASE(studio2_state, dispon_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE_BASE(studio2_state, keylatch_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(dispon_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpt02_map, AS_PROGRAM, 8, mpt02_state )
@@ -251,19 +251,17 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpt02_io_map, AS_IO, 8, mpt02_state )
 	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE(CDP1864_TAG, cdp1864_device, dispon_r, step_bgcolor_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE_BASE(studio2_state, keylatch_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 	AM_RANGE(0x04, 0x04) AM_DEVREADWRITE(CDP1864_TAG, cdp1864_device, dispoff_r, tone_latch_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
 
-static INPUT_CHANGED( reset_w )
+INPUT_CHANGED_MEMBER( studio2_state::reset_w )
 {
-	studio2_state *state = field.machine().driver_data<studio2_state>();
-
 	if (oldval && !newval)
 	{
-		state->machine_reset();
+		machine_reset();
 	}
 }
 
@@ -293,7 +291,7 @@ static INPUT_PORTS_START( studio2 )
 	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 9") PORT_CODE(KEYCODE_3_PAD)
 
 	PORT_START("CLEAR")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("Clear") PORT_CODE(KEYCODE_F3) PORT_CHAR(UCHAR_MAMEKEY(F3)) PORT_CHANGED(reset_w, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("Clear") PORT_CODE(KEYCODE_F3) PORT_CHAR(UCHAR_MAMEKEY(F3)) PORT_CHANGED_MEMBER(DEVICE_SELF, studio2_state, reset_w, 0)
 INPUT_PORTS_END
 
 /* Video */

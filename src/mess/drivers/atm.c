@@ -1,3 +1,14 @@
+/*******************************************************************************************
+
+MicroART ATM (clone of Spectrum)
+
+Not working because of banking issues.
+
+The direct_update_handler needs rewriting, because removing it allows the
+computer to boot up (with keyboard problems).
+
+*******************************************************************************************/
+
 #include "emu.h"
 #include "includes/spectrum.h"
 #include "imagedev/snapquik.h"
@@ -10,12 +21,13 @@
 #include "machine/ram.h"
 
 
-class atm_state : public driver_device
+class atm_state : public spectrum_state
 {
 public:
 	atm_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: spectrum_state(mconfig, type, tag) { }
 
+	DECLARE_WRITE8_MEMBER(atm_port_7ffd_w);
 };
 
 
@@ -77,32 +89,31 @@ static void atm_update_memory(running_machine &machine)
 	memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base() + 0x010000 + (state->m_ROMSelection<<14));
 }
 
-static WRITE8_HANDLER(atm_port_7ffd_w)
+WRITE8_MEMBER(atm_state::atm_port_7ffd_w)
 {
-	spectrum_state *state = space->machine().driver_data<spectrum_state>();
 
 	/* disable paging */
-	if (state->m_port_7ffd_data & 0x20)
+	if (m_port_7ffd_data & 0x20)
 		return;
 
 	/* store new state */
-	state->m_port_7ffd_data = data;
+	m_port_7ffd_data = data;
 
 	/* update memory */
-	atm_update_memory(space->machine());
+	atm_update_memory(machine());
 }
 
-static ADDRESS_MAP_START (atm_io, AS_IO, 8)
+static ADDRESS_MAP_START (atm_io, AS_IO, 8, atm_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x001f, 0x001f) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_status_r,betadisk_command_w) AM_MIRROR(0xff00)
-	AM_RANGE(0x003f, 0x003f) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_track_r,betadisk_track_w) AM_MIRROR(0xff00)
-	AM_RANGE(0x005f, 0x005f) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_sector_r,betadisk_sector_w) AM_MIRROR(0xff00)
-	AM_RANGE(0x007f, 0x007f) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_data_r,betadisk_data_w) AM_MIRROR(0xff00)
-	AM_RANGE(0x00fe, 0x00fe) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xff00) AM_MASK(0xffff)
-	AM_RANGE(0x00ff, 0x00ff) AM_DEVREADWRITE(BETA_DISK_TAG, betadisk_state_r, betadisk_param_w) AM_MIRROR(0xff00)
+	AM_RANGE(0x001f, 0x001f) AM_DEVREADWRITE_LEGACY(BETA_DISK_TAG, betadisk_status_r,betadisk_command_w) AM_MIRROR(0xff00)
+	AM_RANGE(0x003f, 0x003f) AM_DEVREADWRITE_LEGACY(BETA_DISK_TAG, betadisk_track_r,betadisk_track_w) AM_MIRROR(0xff00)
+	AM_RANGE(0x005f, 0x005f) AM_DEVREADWRITE_LEGACY(BETA_DISK_TAG, betadisk_sector_r,betadisk_sector_w) AM_MIRROR(0xff00)
+	AM_RANGE(0x007f, 0x007f) AM_DEVREADWRITE_LEGACY(BETA_DISK_TAG, betadisk_data_r,betadisk_data_w) AM_MIRROR(0xff00)
+	AM_RANGE(0x00fe, 0x00fe) AM_READWRITE_LEGACY(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xff00) AM_MASK(0xffff)
+	AM_RANGE(0x00ff, 0x00ff) AM_DEVREADWRITE_LEGACY(BETA_DISK_TAG, betadisk_state_r, betadisk_param_w) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(atm_port_7ffd_w)  AM_MIRROR(0x3ffd)
-	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE("ay8912", ay8910_data_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0xc000, 0xc000) AM_DEVREADWRITE("ay8912", ay8910_r, ay8910_address_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE_LEGACY("ay8912", ay8910_data_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0xc000, 0xc000) AM_DEVREADWRITE_LEGACY("ay8912", ay8910_r, ay8910_address_w) AM_MIRROR(0x3ffd)
 ADDRESS_MAP_END
 
 static MACHINE_RESET( atm )
@@ -158,7 +169,7 @@ static GFXDECODE_START( atmtb2 )
 GFXDECODE_END
 
 
-static MACHINE_CONFIG_DERIVED( atm, spectrum_128 )
+static MACHINE_CONFIG_DERIVED_CLASS( atm, spectrum_128, atm_state )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_IO_MAP(atm_io)
 	MCFG_MACHINE_RESET( atm )

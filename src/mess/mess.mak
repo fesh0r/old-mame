@@ -642,8 +642,12 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/ay3600.o	\
     $(MESS_MACHINE)/a2bus.o     \
 	$(MESS_MACHINE)/ap2_slot.o	\
-	$(MESS_MACHINE)/ap2_lang.o	\
+	$(MESS_MACHINE)/a2lang.o	\
+	$(MESS_MACHINE)/a2diskii.o	\
+	$(MESS_MACHINE)/a2mockingboard.o	\
 	$(MESS_MACHINE)/a2cffa.o	\
+    $(MESS_MACHINE)/a2memexp.o  \
+    $(MESS_MACHINE)/a2scsi.o    \
 	$(MESS_MACHINE)/lisa.o		\
 	$(MESS_DRIVERS)/lisa.o		\
 	$(MESS_MACHINE)/nubus.o     \
@@ -827,6 +831,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/vic20.o		\
 	$(MESS_MACHINE)/vic20exp.o	\
 	$(MESS_MACHINE)/vic20std.o	\
+	$(MESS_MACHINE)/vic20_megacart.o	\
 	$(MESS_MACHINE)/vic1010.o	\
 	$(MESS_MACHINE)/vic1110.o	\
 	$(MESS_MACHINE)/vic1111.o	\
@@ -843,6 +848,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c65.o		\
 	$(MESS_DRIVERS)/c128.o		\
 	$(MESS_MACHINE)/c128.o		\
+	$(MESS_MACHINE)/c128_comal80.o		\
 	$(MESS_MACHINE)/cbmiec.o	\
 	$(MESS_MACHINE)/c1541.o		\
 	$(MESS_MACHINE)/c1551.o		\
@@ -854,6 +860,8 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/d9060.o		\
 	$(MESS_MACHINE)/softbox.o	\
 	$(MESS_MACHINE)/serialbox.o	\
+	$(MESS_MACHINE)/cmdhd.o	\
+	$(MESS_MACHINE)/fd2000.o	\
 	$(MESS_DRIVERS)/clcd.o		\
 	$(MESS_MACHINE)/cbm.o		\
 	$(MESS_MACHINE)/cbmipt.o	\
@@ -1178,6 +1186,7 @@ $(MESSOBJ)/luxor.a:				\
 	$(MESS_VIDEO)/abc80.o		\
 	$(MESS_DRIVERS)/abc80x.o	\
 	$(MESS_VIDEO)/abc800.o		\
+	$(MESS_MACHINE)/abc800kb.o	\
 	$(MESS_VIDEO)/abc802.o		\
 	$(MESS_VIDEO)/abc806.o		\
 	$(MESS_MACHINE)/abcbus.o	\

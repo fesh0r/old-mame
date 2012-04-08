@@ -3,7 +3,6 @@
 #ifndef __MPF1__
 #define __MPF1__
 
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "audio/spchroms.h"
@@ -45,6 +44,8 @@ public:
 	DECLARE_READ8_MEMBER( ppi_pa_r );
 	DECLARE_WRITE8_MEMBER( ppi_pb_w );
 	DECLARE_WRITE8_MEMBER( ppi_pc_w );
+	DECLARE_INPUT_CHANGED_MEMBER( trigger_nmi );
+	DECLARE_INPUT_CHANGED_MEMBER( trigger_irq );
 
 	int m_break;
 	int m_m1;

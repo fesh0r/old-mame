@@ -9,6 +9,7 @@
 #ifndef APPLE2_H_
 #define APPLE2_H_
 
+#include "machine/a2bus.h"
 #include "machine/applefdc.h"
 
 
@@ -108,9 +109,15 @@ class apple2_state : public driver_device
 {
 public:
 	apple2_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+        m_maincpu(*this, "maincpu"),
+        m_a2bus(*this, "a2bus")
+    { }
 
-	UINT32 m_flags;
+	required_device<cpu_device> m_maincpu;
+    required_device<a2bus_device> m_a2bus;
+
+	UINT32 m_flags, m_flags_mask;
 	INT32 m_a2_cnxx_slot;
 	UINT32 m_a2_mask;
 	UINT32 m_a2_set;
@@ -160,6 +167,7 @@ UINT8 apple2_iwm_getdiskreg(running_machine &machine);
 
 void apple2_init_common(running_machine &machine);
 MACHINE_START( apple2 );
+MACHINE_START( apple2orig );
 UINT8 apple2_getfloatingbusvalue(running_machine &machine);
 READ8_HANDLER( apple2_c0xx_r );
 WRITE8_HANDLER( apple2_c0xx_w );

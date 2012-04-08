@@ -12,7 +12,6 @@
 #ifndef __VIC10_STD__
 #define __VIC10_STD__
 
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "machine/vic10exp.h"
@@ -42,14 +41,6 @@ protected:
 	virtual void vic10_exram_w(address_space &space, offs_t offset, UINT8 data);
 	virtual UINT8 vic10_lorom_r(address_space &space, offs_t offset);
 	virtual UINT8 vic10_uprom_r(address_space &space, offs_t offset);
-	virtual UINT8* vic10_lorom_pointer();
-	virtual UINT8* vic10_uprom_pointer();
-	virtual UINT8* vic10_exram_pointer();
-
-private:
-	UINT8 *m_exram;
-	UINT8 *m_lorom;
-	UINT8 *m_uprom;
 };
 
 

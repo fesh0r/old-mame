@@ -12,7 +12,6 @@
 #ifndef __EASYFLASH__
 #define __EASYFLASH__
 
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "machine/c64exp.h"
@@ -37,7 +36,7 @@ public:
 	virtual machine_config_constructor device_mconfig_additions() const;
 	virtual ioport_constructor device_input_ports() const;
 
-	static INPUT_CHANGED( reset );
+	DECLARE_INPUT_CHANGED_MEMBER( reset );
 
 protected:
 	// device-level overrides

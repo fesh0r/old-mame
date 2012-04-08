@@ -22,7 +22,6 @@ W
 X (. to escape)
 
 ****************************************************************************/
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
@@ -60,7 +59,7 @@ static ADDRESS_MAP_START(ht68k_mem, AS_PROGRAM, 16, ht68k_state)
 	//AM_RANGE(0x00080000, 0x000fffff) // Expansion
 	//AM_RANGE(0x00d80000, 0x00d8ffff) // Printer
 	AM_RANGE(0x00e00000, 0x00e00007) AM_MIRROR(0xfff8) AM_DEVREADWRITE8_LEGACY("wd1770", wd17xx_r, wd17xx_w, 0x00ff) // FDC WD1770
-	AM_RANGE(0x00e80000, 0x00e800ff) AM_MIRROR(0xff00) AM_DEVREADWRITE8_LEGACY( "duart68681", duart68681_r, duart68681_w, 0xff )
+	AM_RANGE(0x00e80000, 0x00e800ff) AM_MIRROR(0xff00) AM_DEVREADWRITE8_LEGACY("duart68681", duart68681_r, duart68681_w, 0xff )
 	AM_RANGE(0x00f00000, 0x00f07fff) AM_ROM AM_MIRROR(0xf8000) AM_REGION("user1",0)
 ADDRESS_MAP_END
 
@@ -87,7 +86,7 @@ static void duart_irq_handler(device_t *device, UINT8 vector)
 static void duart_tx(device_t *device, int channel, UINT8 data)
 {
 	ht68k_state *state = device->machine().driver_data<ht68k_state>();
-	state->m_terminal->write(*memory_nonspecific_space(device->machine()), 0, data);
+	state->m_terminal->write(*device->machine().memory().first_space(), 0, data);
 }
 
 static UINT8 duart_input(device_t *device)

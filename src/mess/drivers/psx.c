@@ -660,7 +660,7 @@ static void psx_sio0( running_machine &machine, int n_data )
 
 static void cd_dma_read( psxcd_device *psxcd, UINT32 n_address, INT32 n_size )
 {
-	UINT8 *psxram = (UINT8 *)memory_get_shared(psxcd->machine(), "share1");
+	UINT8 *psxram = (UINT8 *)psxcd->machine().memory().shared("share1")->ptr();
 
 	psxcd->start_dma(psxram + n_address, n_size*4);
 }
@@ -684,9 +684,9 @@ static WRITE8_HANDLER( psx_cd_w )
 	psxcd->write_byte(offset, data);
 }
 
-static ADDRESS_MAP_START( psx_map, AS_PROGRAM, 32 )
+static ADDRESS_MAP_START( psx_map, AS_PROGRAM, 32, psx1_state )
 	AM_RANGE(0x00000000, 0x001fffff) AM_RAM	AM_SHARE("share1") /* ram */
-	AM_RANGE(0x1f801800, 0x1f801803) AM_READWRITE8(psx_cd_r, psx_cd_w, 0xffffffff)
+	AM_RANGE(0x1f801800, 0x1f801803) AM_READWRITE8_LEGACY(psx_cd_r, psx_cd_w, 0xffffffff)
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE("share2") AM_REGION("user1", 0) /* bios */
 	AM_RANGE(0x80000000, 0x801fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
 	AM_RANGE(0x80600000, 0x807fffff) AM_RAM AM_SHARE("share1") /* ram mirror */

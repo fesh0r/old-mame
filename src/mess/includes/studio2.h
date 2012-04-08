@@ -3,7 +3,6 @@
 #ifndef __STUDIO2__
 #define __STUDIO2__
 
-#define ADDRESS_MAP_MODERN
 
 #include "emu.h"
 #include "cpu/cosmac/cosmac.h"
@@ -45,6 +44,7 @@ public:
 	READ_LINE_MEMBER( ef3_r );
 	READ_LINE_MEMBER( ef4_r );
 	WRITE_LINE_MEMBER( q_w );
+	DECLARE_INPUT_CHANGED_MEMBER( reset_w );
 
 	/* keyboard state */
 	UINT8 m_keylatch;

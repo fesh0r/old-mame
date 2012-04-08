@@ -483,10 +483,11 @@ static MEMCARD_HANDLER( neogeo )
 
 static WRITE16_HANDLER( audio_command_w )
 {
+	ng_aes_state *state = space->machine().driver_data<ng_aes_state>();
 	/* accessing the LSB only is not mapped */
 	if (mem_mask != 0x00ff)
 	{
-		soundlatch_w(space, 0, data >> 8);
+		state->soundlatch_w(*space, 0, data >> 8);
 
 		audio_cpu_assert_nmi(space->machine());
 
@@ -500,7 +501,8 @@ static WRITE16_HANDLER( audio_command_w )
 
 static READ8_HANDLER( audio_command_r )
 {
-	UINT8 ret = soundlatch_r(space, 0);
+	ng_aes_state *state = space->machine().driver_data<ng_aes_state>();
+	UINT8 ret = state->soundlatch_r(*space, 0);
 
 	if (LOG_CPU_COMM) logerror(" AUD CPU PC   %04x: audio_command_r %02x\n", cpu_get_pc(&space->device()), ret);
 
@@ -1271,58 +1273,58 @@ static MACHINE_RESET( neogeo )
  *
  *************************************/
 
-static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16 )
+static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16, ng_aes_state )
 	AM_RANGE(0x000000, 0x00007f) AM_ROMBANK(NEOGEO_BANK_VECTORS)
 	AM_RANGE(0x000080, 0x0fffff) AM_ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_MIRROR(0x0f0000) AM_RAM
 	/* some games have protection devices in the 0x200000 region, it appears to map to cart space, not surprising, the ROM is read here too */
 	AM_RANGE(0x200000, 0x2fffff) AM_ROMBANK(NEOGEO_BANK_CARTRIDGE)
-	AM_RANGE(0x2ffff0, 0x2fffff) AM_WRITE(main_cpu_bank_select_w)
-	AM_RANGE(0x300000, 0x300001) AM_MIRROR(0x01ff7e) AM_READ(aes_in0_r)
+	AM_RANGE(0x2ffff0, 0x2fffff) AM_WRITE_LEGACY(main_cpu_bank_select_w)
+	AM_RANGE(0x300000, 0x300001) AM_MIRROR(0x01ff7e) AM_READ_LEGACY(aes_in0_r)
 	AM_RANGE(0x300080, 0x300081) AM_MIRROR(0x01ff7e) AM_READ_PORT("IN4")
 	AM_RANGE(0x300000, 0x300001) AM_MIRROR(0x01ffe0) AM_READ(neogeo_unmapped_r) AM_WRITENOP	// AES has no watchdog
-	AM_RANGE(0x320000, 0x320001) AM_MIRROR(0x01fffe) AM_READ_PORT("IN3") AM_WRITE(audio_command_w)
-	AM_RANGE(0x340000, 0x340001) AM_MIRROR(0x01fffe) AM_READ(aes_in1_r)
+	AM_RANGE(0x320000, 0x320001) AM_MIRROR(0x01fffe) AM_READ_PORT("IN3") AM_WRITE_LEGACY(audio_command_w)
+	AM_RANGE(0x340000, 0x340001) AM_MIRROR(0x01fffe) AM_READ_LEGACY(aes_in1_r)
 	AM_RANGE(0x360000, 0x37ffff) AM_READ(neogeo_unmapped_r)
-	AM_RANGE(0x380000, 0x380001) AM_MIRROR(0x01fffe) AM_READ(aes_in2_r)
-	AM_RANGE(0x380000, 0x38007f) AM_MIRROR(0x01ff80) AM_WRITE(io_control_w)
-	AM_RANGE(0x3a0000, 0x3a001f) AM_MIRROR(0x01ffe0) AM_READWRITE(neogeo_unmapped_r, system_control_w)
+	AM_RANGE(0x380000, 0x380001) AM_MIRROR(0x01fffe) AM_READ_LEGACY(aes_in2_r)
+	AM_RANGE(0x380000, 0x38007f) AM_MIRROR(0x01ff80) AM_WRITE_LEGACY(io_control_w)
+	AM_RANGE(0x3a0000, 0x3a001f) AM_MIRROR(0x01ffe0) AM_READ(neogeo_unmapped_r) AM_WRITE_LEGACY(system_control_w)
 	AM_RANGE(0x3c0000, 0x3c0007) AM_MIRROR(0x01fff8) AM_READ(neogeo_video_register_r)
 	AM_RANGE(0x3c0000, 0x3c000f) AM_MIRROR(0x01fff0) AM_WRITE(neogeo_video_register_w)
 	AM_RANGE(0x3e0000, 0x3fffff) AM_READ(neogeo_unmapped_r)
 	AM_RANGE(0x400000, 0x401fff) AM_MIRROR(0x3fe000) AM_READWRITE(neogeo_paletteram_r, neogeo_paletteram_w)
-	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(memcard_r, memcard_w)
+	AM_RANGE(0x800000, 0x800fff) AM_READWRITE_LEGACY(memcard_r, memcard_w)
 	AM_RANGE(0xc00000, 0xc1ffff) AM_MIRROR(0x0e0000) AM_ROMBANK(NEOGEO_BANK_BIOS)
-	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READ(neogeo_unmapped_r) //AM_RAM_WRITE(save_ram_w) AM_BASE(&save_ram)
+	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READ(neogeo_unmapped_r) //AM_RAM_WRITE_LEGACY(save_ram_w) AM_BASE_LEGACY(&save_ram)
 	AM_RANGE(0xe00000, 0xffffff) AM_READ(neogeo_unmapped_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( neocd_main_map, AS_PROGRAM, 16 )
+static ADDRESS_MAP_START( neocd_main_map, AS_PROGRAM, 16, ng_aes_state )
 	AM_RANGE(0x000000, 0x00007f) AM_RAMBANK(NEOGEO_BANK_VECTORS)
 	AM_RANGE(0x000080, 0x0fffff) AM_RAM
-	AM_RANGE(0x100000, 0x10ffff) AM_MIRROR(0x0f0000) AM_RAM AM_BASE(&neocd_work_ram)
+	AM_RANGE(0x100000, 0x10ffff) AM_MIRROR(0x0f0000) AM_RAM AM_BASE_LEGACY(&neocd_work_ram)
 	/* some games have protection devices in the 0x200000 region, it appears to map to cart space, not surprising, the ROM is read here too */
 	AM_RANGE(0x200000, 0x2fffff) AM_ROMBANK(NEOGEO_BANK_CARTRIDGE)
-	AM_RANGE(0x2ffff0, 0x2fffff) AM_WRITE(main_cpu_bank_select_w)
-	AM_RANGE(0x300000, 0x300001) AM_MIRROR(0x01ff7e) AM_READ(aes_in0_r)
+	AM_RANGE(0x2ffff0, 0x2fffff) AM_WRITE_LEGACY(main_cpu_bank_select_w)
+	AM_RANGE(0x300000, 0x300001) AM_MIRROR(0x01ff7e) AM_READ_LEGACY(aes_in0_r)
 	AM_RANGE(0x300080, 0x300081) AM_MIRROR(0x01ff7e) AM_READ_PORT("IN4")
 	AM_RANGE(0x300000, 0x300001) AM_MIRROR(0x01ffe0) AM_READ(neogeo_unmapped_r) AM_WRITENOP	// AES has no watchdog
-	AM_RANGE(0x320000, 0x320001) AM_MIRROR(0x01fffe) AM_READ_PORT("IN3") AM_WRITE(audio_command_w)
-	AM_RANGE(0x340000, 0x340001) AM_MIRROR(0x01fffe) AM_READ(aes_in1_r)
+	AM_RANGE(0x320000, 0x320001) AM_MIRROR(0x01fffe) AM_READ_PORT("IN3") AM_WRITE_LEGACY(audio_command_w)
+	AM_RANGE(0x340000, 0x340001) AM_MIRROR(0x01fffe) AM_READ_LEGACY(aes_in1_r)
 	AM_RANGE(0x360000, 0x37ffff) AM_READ(neogeo_unmapped_r)
-	AM_RANGE(0x380000, 0x380001) AM_MIRROR(0x01fffe) AM_READ(aes_in2_r)
-	AM_RANGE(0x380000, 0x38007f) AM_MIRROR(0x01ff80) AM_WRITE(io_control_w)
-	AM_RANGE(0x3a0000, 0x3a001f) AM_MIRROR(0x01ffe0) AM_READWRITE(neogeo_unmapped_r, system_control_w)
+	AM_RANGE(0x380000, 0x380001) AM_MIRROR(0x01fffe) AM_READ_LEGACY(aes_in2_r)
+	AM_RANGE(0x380000, 0x38007f) AM_MIRROR(0x01ff80) AM_WRITE_LEGACY(io_control_w)
+	AM_RANGE(0x3a0000, 0x3a001f) AM_MIRROR(0x01ffe0) AM_READ(neogeo_unmapped_r) AM_WRITE_LEGACY(system_control_w)
 	AM_RANGE(0x3c0000, 0x3c0007) AM_MIRROR(0x01fff8) AM_READ(neogeo_video_register_r)
 	AM_RANGE(0x3c0000, 0x3c000f) AM_MIRROR(0x01fff0) AM_WRITE(neogeo_video_register_w)
 	AM_RANGE(0x3e0000, 0x3fffff) AM_READ(neogeo_unmapped_r)
 	AM_RANGE(0x400000, 0x401fff) AM_MIRROR(0x3fe000) AM_READWRITE(neogeo_paletteram_r, neogeo_paletteram_w)
-	AM_RANGE(0x800000, 0x803fff) AM_READWRITE(neocd_memcard_r, neocd_memcard_w)
+	AM_RANGE(0x800000, 0x803fff) AM_READWRITE_LEGACY(neocd_memcard_r, neocd_memcard_w)
 	AM_RANGE(0xc00000, 0xcfffff) AM_ROMBANK(NEOGEO_BANK_BIOS)
-	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READ(neogeo_unmapped_r) //AM_RAM_WRITE(save_ram_w) AM_BASE(&save_ram)
-	AM_RANGE(0xe00000, 0xefffff) AM_READWRITE(neocd_transfer_r,neocd_transfer_w)
+	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READ(neogeo_unmapped_r) //AM_RAM_WRITE_LEGACY(save_ram_w) AM_BASE_LEGACY(&save_ram)
+	AM_RANGE(0xe00000, 0xefffff) AM_READWRITE_LEGACY(neocd_transfer_r,neocd_transfer_w)
 	AM_RANGE(0xf00000, 0xfeffff) AM_READ(neogeo_unmapped_r)
-	AM_RANGE(0xff0000, 0xff01ff) AM_READWRITE(neocd_control_r, neocd_control_w) // CDROM / DMA
+	AM_RANGE(0xff0000, 0xff01ff) AM_READWRITE_LEGACY(neocd_control_r, neocd_control_w) // CDROM / DMA
 	AM_RANGE(0xff0200, 0xffffff) AM_READ(neogeo_unmapped_r)
 ADDRESS_MAP_END
 
@@ -1333,7 +1335,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( audio_map, AS_PROGRAM, 8 )
+static ADDRESS_MAP_START( audio_map, AS_PROGRAM, 8, ng_aes_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK(NEOGEO_BANK_AUDIO_CPU_MAIN_BANK)
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(NEOGEO_BANK_AUDIO_CPU_CART_BANK + 3)
 	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(NEOGEO_BANK_AUDIO_CPU_CART_BANK + 2)
@@ -1350,16 +1352,16 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( audio_io_map, AS_IO, 8 )
-  /*AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE(audio_command_r, audio_cpu_clear_nmi_w);*/  /* may not and NMI clear */
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READ(audio_command_r)
-	AM_RANGE(0x04, 0x07) AM_MIRROR(0xff00) AM_DEVREADWRITE("ymsnd", ym2610_r, ym2610_w)
+static ADDRESS_MAP_START( audio_io_map, AS_IO, 8, ng_aes_state )
+  /*AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE_LEGACY(audio_command_r, audio_cpu_clear_nmi_w);*/  /* may not and NMI clear */
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READ_LEGACY(audio_command_r)
+	AM_RANGE(0x04, 0x07) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY("ymsnd", ym2610_r, ym2610_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xff00) /* write - NMI enable / acknowledge? (the data written doesn't matter) */
-	AM_RANGE(0x08, 0x08) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_f000_f7ff_r)
-	AM_RANGE(0x09, 0x09) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_e000_efff_r)
-	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_c000_dfff_r)
-	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_8000_bfff_r)
-	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff00) AM_WRITE(audio_result_w)
+	AM_RANGE(0x08, 0x08) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ_LEGACY(audio_cpu_bank_select_f000_f7ff_r)
+	AM_RANGE(0x09, 0x09) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ_LEGACY(audio_cpu_bank_select_e000_efff_r)
+	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ_LEGACY(audio_cpu_bank_select_c000_dfff_r)
+	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ_LEGACY(audio_cpu_bank_select_8000_bfff_r)
+	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff00) AM_WRITE_LEGACY(audio_result_w)
 	AM_RANGE(0x18, 0x18) AM_MIRROR(0xff00) /* write - NMI disable? (the data written doesn't matter) */
 ADDRESS_MAP_END
 

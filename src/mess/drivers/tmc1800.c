@@ -322,14 +322,11 @@ static INPUT_PORTS_START( tmc1800 )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 INPUT_PORTS_END
 
-static INPUT_CHANGED( tmc2000_run_pressed )
+INPUT_CHANGED_MEMBER( tmc2000_state::run_pressed )
 {
-	running_machine &machine = field.machine();
-	tmc2000_state *state = machine.driver_data<tmc2000_state>();
-
 	if (oldval && !newval)
 	{
-		state->machine_reset();
+		machine_reset();
 	}
 }
 
@@ -355,7 +352,7 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
 
 	PORT_START("RUN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE PORT_CHANGED(tmc2000_run_pressed, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE PORT_CHANGED_MEMBER(DEVICE_SELF, tmc2000_state, run_pressed, 0)
 
 	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('G')
@@ -418,33 +415,27 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )
 INPUT_PORTS_END
 
-static INPUT_CHANGED( run_pressed )
+INPUT_CHANGED_MEMBER( nano_state::run_pressed )
 {
-	running_machine &machine = field.machine();
-	nano_state *state = machine.driver_data<nano_state>();
-
 	if (oldval && !newval)
 	{
-		state->machine_reset();
+		machine_reset();
 	}
 }
 
-static INPUT_CHANGED( monitor_pressed )
+INPUT_CHANGED_MEMBER( nano_state::monitor_pressed )
 {
-	running_machine &machine = field.machine();
-	nano_state *state = machine.driver_data<nano_state>();
-
 	if (oldval && !newval)
 	{
-		state->machine_reset();
+		machine_reset();
 
-		state->m_maincpu->set_input_line(COSMAC_INPUT_LINE_EF4, CLEAR_LINE);
+		m_maincpu->set_input_line(COSMAC_INPUT_LINE_EF4, CLEAR_LINE);
 	}
 	else if (!oldval && newval)
 	{
 		// TODO: what are the correct values?
 		int t = RES_K(27) * CAP_U(1) * 1000; // t = R26 * C1
-		state->m_ef4_timer->adjust(attotime::from_msec(t));
+		timer_set(attotime::from_msec(t), TIMER_ID_EF4);
 	}
 }
 
@@ -470,10 +461,10 @@ static INPUT_PORTS_START( nano )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
 
 	PORT_START("RUN")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("RUN") PORT_CODE(KEYCODE_R) PORT_CHANGED(run_pressed, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("RUN") PORT_CODE(KEYCODE_R) PORT_CHANGED_MEMBER(DEVICE_SELF, nano_state, run_pressed, 0)
 
 	PORT_START("MONITOR")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("MONITOR") PORT_CODE(KEYCODE_M) PORT_CHANGED(monitor_pressed, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("MONITOR") PORT_CODE(KEYCODE_M) PORT_CHANGED_MEMBER(DEVICE_SELF, nano_state, monitor_pressed, 0)
 INPUT_PORTS_END
 
 /* CDP1802 Interfaces */
@@ -618,11 +609,6 @@ static COSMAC_INTERFACE( tmc2000_config )
 
 // OSCOM Nano
 
-static TIMER_CALLBACK( nano_ef4_tick )
-{
-	cputag_set_input_line(machine, CDP1802_TAG, COSMAC_INPUT_LINE_EF4, ASSERT_LINE);
-}
-
 READ_LINE_MEMBER( nano_state::clear_r )
 {
 	int run = BIT(input_port_read(machine(), "RUN"), 0);
@@ -734,11 +720,18 @@ void tmc2000_state::machine_reset()
 
 // OSCOM Nano
 
+void nano_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_ID_EF4:
+		m_maincpu->set_input_line(COSMAC_INPUT_LINE_EF4, ASSERT_LINE);
+		break;
+	}
+}
+
 void nano_state::machine_start()
 {
-	/* allocate monitor timer */
-	m_ef4_timer = machine().scheduler().timer_alloc(FUNC(nano_ef4_tick));
-
 	/* register for state saving */
 	save_item(NAME(m_keylatch));
 }
