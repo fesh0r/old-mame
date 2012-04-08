@@ -378,7 +378,7 @@ cclimberj		// (c) 1980 Nichibutsu
 ccboot			// bootleg
 ccboot2			// bootleg
 
-ckong			// (c) 1981 (Falcon?)
+ckong			// (c) 1981 (Kyoei)
 ckongo			// bootleg (Orca)
 ckongalc		// bootleg (Alca)
 bigkong			// bootleg
@@ -1922,11 +1922,12 @@ dariusj			// A96 (c) 1986 Taito Corporation (Japan)
 dariuso			// A96 (c) 1986 Taito Corporation (Japan)
 dariuse			// A96 (c) 1986 Taito Corporation (Japan)
 rastan			// B04 (c) 1987 Taito Corporation Japan (World)
-rastan2 		// B04 (c) 1987 Taito Corporation Japan (World)
+rastana 		// B04 (c) 1987 Taito Corporation Japan (World)
 rastanu			// B04 (c) 1987 Taito America Corporation (US)
-rastanu2		// B04 (c) 1987 Taito America Corporation (US)
+rastanua		// B04 (c) 1987 Taito America Corporation (US)
+rastanub		// B04 (c) 1987 Taito America Corporation (US)
 rastsaga		// B04 (c) 1987 Taito Corporation (Japan)
-rastsaga1		// B04 (c) 1987 Taito Corporation (Japan)
+rastsagaa		// B04 (c) 1987 Taito Corporation (Japan)
 topspeed		// B14 (c) 1987 Taito Corporation Japan (World)
 topspeedu		// B14 (c) 1987 Taito America Corporation (US)
 fullthrl		// B14 (c) 1987 Taito Corporation (Japan)
@@ -6217,6 +6218,7 @@ mf_flip			// (c) 1983 Exidy / First Star Software
 mf_bdash		// (c) 1984 Exidy / First Star Software
 
 // Atari b/w games
+quizshow		// 005464           1976/04 [2650]
 tank8			// ??????           1976/04 [6800]
 tank8a			// ??????           1976/04 [6800]
 tank8b			// ??????           1976/04 [6800]
@@ -6714,6 +6716,7 @@ pballoonr		// (c) 1982 SNK (Rock-Ola license)
 nibbler			// (c) 1982 Rock-ola (version 9)
 nibbler8		// (c) 1982 Rock-ola (version 8)
 nibbler6		// (c) 1982 Rock-ola (vresion 6)
+nibblerp		// (c) 1982 Rock-ola (pballoon conversion)
 nibblero		// (c) 1983 Olympia/Rock-Ola (version 8)
 
 // later SNK games, each game can be identified by PCB code and ROM
@@ -7012,7 +7015,7 @@ kof99k			// 0152 (c) 1999 SNK
 kof99p			// 0251 (c) 1999 SNK
 ganryu			// 0252 (c) 1999 Visco
 garou			// 0253 (c) 1999 SNK
-garouo			// 0253 (c) 1999 SNK
+garouh			// 0253 (c) 1999 SNK
 garoup			// 0253 (c) 1999 SNK
 garoubl			// bootleg
 s1945p			// 0254 (c) 1999 Psikyo
@@ -8989,6 +8992,7 @@ theglad			// (c) 2001
 theglada		// (c) 2001
 thegladpcb
 dw2001			// (c) 2001
+dwpc			// (c) 2001
 py2k2			// (c) 2001
 dmnfrnt			// (c) 2002
 dmnfrnta		// (c) 2002
@@ -10456,6 +10460,7 @@ sigma2k			// (c) 2000 Sigma
 
 
 attckufo		// (c) 1980 Ryoto Electric Co.
+unkhorse
 fortecar
 fortecrd
 jackpool		// (c) 1997 Electronic Projects
@@ -11214,6 +11219,7 @@ bugfeverd		// (c) 2006 Amcoe
 bugfeverv		// (c) 2006 Amcoe
 bugfeverv2		// (c) 2006 Amcoe
 funriver		// (c) 2005 Amcoe - Fun River
+funriverd1		// (c) 2005 Amcoe
 funriverv		// (c) 2005 Amcoe
 dvisland		// (c) 2006 Amcoe - Devil's Island
 dvislando		// (c) 2006 Amcoe
@@ -18806,9 +18812,45 @@ m5clr		// MPU 5 Ram & Meter Clear (Barcrest)
 m5tst		// MPU 5 Test Rom (Barcrest)
 
 m5addams	// Addams Family (Barcrest)
+m5addamsa	//
+m5addamsb	//
+m5addamsc	//
+m5addamsd	//
+m5addamse	//
+m5addamsf	//
+m5addamsg	//
+m5addamsh	//
+m5addamsi	//
+m5addamsj	//
+m5addamsk	//
+m5addamsl	//
+m5addamsm	//
+m5addamsn	//
+m5addamso	//
+m5addamsp	//
+m5addamsq	//
+m5addamsr	//
+m5addamss	//
 m5addlad	// Adders & Ladders (Barcrest)
 m5addlada	//
 m5addladb	//
+m5addladc	//
+m5addladd	//
+m5addlade	//
+m5addladf	//
+m5addladg	//
+m5addladh	//
+m5addladi	//
+m5addladj	//
+m5addladk	//
+m5addladl	//
+m5addladm	//
+m5addladn	//
+m5addlado	//
+m5addladp	//
+m5addladq	//
+m5addladr	//
+m5addlads	//
 m5fire		// All Fired Up (Barcrest)
 m5arab		// Arabian Nights (Barcrest)
 m5austin	// Austin Powers (Barcrest)
@@ -18946,6 +18988,7 @@ m5hotrk		// Hot Rocks (Barcrest)
 /* Barcrest / Red Gaming */
 
 m5ashock	// Aftershock (Barcrest - Red Gaming)
+m5ashocka	//
 m5bigsht	// Big Shot (Barcrest - Red Gaming)
 m5bnkrs		// Bonkers (Barcrest - Red Gaming)
 m5bbank		// Break The Bank (Barcrest - Red Gaming)
@@ -18986,9 +19029,35 @@ m5slide		// Slider (Barcrest - Red Gaming)
 
 m5sixsht	// 6 Shooter (Vivid)
 m5sixshta	//
+m5sixshtb	//
+m5sixshtc	//
+m5sixshtd	//
+m5sixshte	//
+m5sixshtf	//
+m5sixshtg	//
+m5sixshth	//
+m5sixshti	//
+m5sixshtj	//
+m5sixshtk	//
+m5sixshtl	//
+m5sixshtm	//
+m5sixshtn	//
 m5all41		// All 4 One (Vivid)
-m5all41v	//
+m5all41a	//
+m5all41b	//
+m5all41c	//
+m5all41d	//
+m5all41e	//
+m5all41f	//
+m5all41g	//
+m5all41h	//
+m5all41i	//
+m5all41j	//
+m5all41k	//
+m5all41l	//
+m5all41m	//
 m5atlan		// Atlantic (Vivid)
+m5atlana	//
 m5bttf		// Back To The Features (Vivid)
 m5btlbnk	// Bottle Bank (Vivid)
 m5caesc		// Caesar's Cash (Vivid)
@@ -19042,6 +19111,9 @@ m5rawin		// Reel A Win (Vivid)
 /* Empire */
 
 m5fewmor	// A Few Dollars More (Empire)
+m5fewmora	//
+m5fewmorb	//
+m5fewmorc	//
 m5wonga		// A Fish Called Wonga (Empire)
 m5aceclb	// Ace Of Clubs (Empire)
 m5aceclba	//
@@ -19144,7 +19216,7 @@ m5xena		// Xena Warrior Princess (Bwb)
 
 
 /* Lowen */
-m5all41l	// All 4 One (Lowen)
+m5all41low	// All 4 One (Lowen)
 m5dblfun	// Double Fun (Lowen)
 m5jakjok	// Jackpot Jokers (Lowen)
 m5roundl	// Round & Round (Lowen)
