@@ -110,7 +110,6 @@ EMUOBJS = \
 	$(EMUOBJ)/uimenu.o \
 	$(EMUOBJ)/validity.o \
 	$(EMUOBJ)/video.o \
-	$(EMUOBJ)/watchdog.o \
 	$(EMUOBJ)/debug/debugcmd.o \
 	$(EMUOBJ)/debug/debugcon.o \
 	$(EMUOBJ)/debug/debugcpu.o \
@@ -134,7 +133,6 @@ EMUSOUNDOBJS = \
 	$(EMUOBJ)/sound/wavwrite.o \
 
 EMUAUDIOOBJS = \
-	$(EMUAUDIO)/generic.o \
 
 EMUDRIVEROBJS = \
 	$(EMUDRIVERS)/empty.o \
@@ -187,6 +185,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/i8243.o		\
 	$(EMUMACHINE)/i8251.o		\
 	$(EMUMACHINE)/i8255.o		\
+	$(EMUMACHINE)/i8279.o		\
 	$(EMUMACHINE)/i8355.o		\
 	$(EMUMACHINE)/idectrl.o		\
 	$(EMUMACHINE)/im6402.o		\
