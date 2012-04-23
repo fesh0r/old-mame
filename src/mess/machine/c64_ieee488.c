@@ -106,7 +106,7 @@ READ8_MEMBER( c64_ieee488_device::tpi_pc_r )
 	data |= m_bus->ifc_r();
 	data |= m_bus->srq_r() << 1;
 
-	data |= m_exp->exrom_r() << 7;
+	data |= m_exp->exrom_r(offset, 1, 1, 0) << 7;
 
 	return data;
 }
@@ -219,7 +219,7 @@ static C64_EXPANSION_INTERFACE( expansion_intf )
 static MACHINE_CONFIG_FRAGMENT( c64_ieee488 )
 	MCFG_TPI6525_ADD(MOS6525_TAG, tpi_intf)
 	MCFG_CBM_IEEE488_ADD(ieee488_intf, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, 0, expansion_intf, c64_expansion_cards, NULL, NULL)
 MACHINE_CONFIG_END
 
 

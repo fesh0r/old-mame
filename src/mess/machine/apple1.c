@@ -143,10 +143,11 @@ static const UINT8 apple1_control_keymap[] =
 
 DRIVER_INIT( apple1 )
 {
+	apple1_state *state = machine.driver_data<apple1_state>();
 	address_space* space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	/* Set up the handlers for MESS's dynamically-sized RAM. */
 	space->install_readwrite_bank(0x0000, machine.device<ram_device>(RAM_TAG)->size() - 1, "bank1");
-	memory_set_bankptr(machine,"bank1", machine.device<ram_device>(RAM_TAG)->pointer());
+	state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer());
 
 	/* Poll the keyboard input ports periodically.  These include both
        ordinary keys and the RESET and CLEAR SCREEN pushbutton
@@ -506,9 +507,9 @@ static void cassette_toggle_output(running_machine &machine)
 	cassette_device_image(machine)->output(state->m_cassette_output_flipflop ? 1.0 : -1.0);
 }
 
-READ8_HANDLER( apple1_cassette_r )
+READ8_MEMBER(apple1_state::apple1_cassette_r)
 {
-	cassette_toggle_output(space->machine());
+	cassette_toggle_output(machine());
 
 	if (offset <= 0x7f)
 	{
@@ -517,7 +518,7 @@ READ8_HANDLER( apple1_cassette_r )
            always comes from the corresponding cassette ROM location
            in $C100-$C17F. */
 
-		return space->read_byte(0xc100 + offset);
+		return space.read_byte(0xc100 + offset);
 	}
     else
 	{
@@ -534,14 +535,14 @@ READ8_HANDLER( apple1_cassette_r )
 		/* (Don't try putting a non-zero "noise threshhold" here,
            because it can cause tape header bits on real cassette
            images to be misread as data bits.) */
-		if (cassette_device_image(space->machine())->input() > 0.0)
-			return space->read_byte(0xc100 + (offset & ~1));
+		if (cassette_device_image(machine())->input() > 0.0)
+			return space.read_byte(0xc100 + (offset & ~1));
 		else
-			return space->read_byte(0xc100 + offset);
+			return space.read_byte(0xc100 + offset);
 	}
 }
 
-WRITE8_HANDLER( apple1_cassette_w )
+WRITE8_MEMBER(apple1_state::apple1_cassette_w)
 {
 	/* Writes toggle the output flip-flop in the same way that reads
        do; other than that they have no effect.  Any repeated accesses
@@ -550,5 +551,5 @@ WRITE8_HANDLER( apple1_cassette_w )
        However, we still have to handle writes, since they may be done
        by user code. */
 
-	cassette_toggle_output(space->machine());
+	cassette_toggle_output(machine());
 }

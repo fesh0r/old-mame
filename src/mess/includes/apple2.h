@@ -11,6 +11,7 @@
 
 #include "machine/a2bus.h"
 #include "machine/applefdc.h"
+#include "machine/ram.h"
 
 
 /***************************************************************************
@@ -104,17 +105,18 @@ struct _apple2_memmap_config
 	const apple2_memmap_entry *memmap;
 };
 
-
 class apple2_state : public driver_device
 {
 public:
 	apple2_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
         m_maincpu(*this, "maincpu"),
+        m_ram(*this, RAM_TAG),
         m_a2bus(*this, "a2bus")
     { }
 
 	required_device<cpu_device> m_maincpu;
+    required_device<ram_device> m_ram;
     required_device<a2bus_device> m_a2bus;
 
 	UINT32 m_flags, m_flags_mask;
@@ -149,6 +151,21 @@ public:
 	UINT16 *m_hires_artifact_map;
 	UINT16 *m_dhires_artifact_map;
     bool m_monochrome_dhr;
+    int m_inh_slot;
+
+    READ8_MEMBER ( apple2_c00x_r );
+    READ8_MEMBER ( apple2_c01x_r );
+    READ8_MEMBER ( apple2_c02x_r );
+    READ8_MEMBER ( apple2_c03x_r );
+    READ8_MEMBER ( apple2_c05x_r );
+    READ8_MEMBER ( apple2_c06x_r );
+    READ8_MEMBER ( apple2_c07x_r );
+    WRITE8_MEMBER ( apple2_c00x_w );
+    WRITE8_MEMBER ( apple2_c01x_w );
+    WRITE8_MEMBER ( apple2_c02x_w );
+    WRITE8_MEMBER ( apple2_c03x_w );
+    WRITE8_MEMBER ( apple2_c05x_w );
+    WRITE8_MEMBER ( apple2_c07x_w );
 };
 
 
@@ -171,6 +188,8 @@ MACHINE_START( apple2orig );
 UINT8 apple2_getfloatingbusvalue(running_machine &machine);
 READ8_HANDLER( apple2_c0xx_r );
 WRITE8_HANDLER( apple2_c0xx_w );
+READ8_HANDLER( apple2_c080_r );
+WRITE8_HANDLER( apple2_c080_w );
 
 TIMER_DEVICE_CALLBACK( apple2_interrupt );
 

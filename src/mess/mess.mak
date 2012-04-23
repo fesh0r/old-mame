@@ -480,6 +480,7 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_VIDEO)/cps1.o	\
 	$(MAME_DRIVERS)/konamim2.o \
 
+
 #-------------------------------------------------
 # the following files are general components and
 # shared across a number of drivers
@@ -499,7 +500,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/i82371sb.o	\
 	$(MESS_MACHINE)/i82439tx.o	\
 	$(MESS_MACHINE)/i8271.o		\
-	$(MESS_MACHINE)/i8279.o		\
 	$(MESS_MACHINE)/ieee488.o	\
 	$(MESS_MACHINE)/isa.o		\
 	$(MESS_MACHINE)/kb3600.o	\
@@ -640,14 +640,18 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_MACHINE)/apple2gs.o	\
 	$(MESS_DRIVERS)/apple2gs.o	\
 	$(MESS_MACHINE)/ay3600.o	\
-    $(MESS_MACHINE)/a2bus.o     \
-	$(MESS_MACHINE)/ap2_slot.o	\
+	$(MESS_MACHINE)/a2bus.o     \
 	$(MESS_MACHINE)/a2lang.o	\
 	$(MESS_MACHINE)/a2diskii.o	\
 	$(MESS_MACHINE)/a2mockingboard.o	\
 	$(MESS_MACHINE)/a2cffa.o	\
-    $(MESS_MACHINE)/a2memexp.o  \
-    $(MESS_MACHINE)/a2scsi.o    \
+	$(MESS_MACHINE)/a2memexp.o  \
+	$(MESS_MACHINE)/a2scsi.o    \
+	$(MESS_MACHINE)/a2thunderclock.o    \
+	$(MESS_MACHINE)/a2softcard.o \
+	$(MESS_MACHINE)/a2videoterm.o \
+    $(MESS_MACHINE)/a2ssc.o \
+    $(MESS_MACHINE)/a2swyft.o \
 	$(MESS_MACHINE)/lisa.o		\
 	$(MESS_DRIVERS)/lisa.o		\
 	$(MESS_MACHINE)/nubus.o     \
@@ -783,6 +787,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_bn1541.o	\
 	$(MESS_MACHINE)/c64_comal80.o	\
 	$(MESS_MACHINE)/c64_cpm.o	\
+	$(MESS_MACHINE)/c64_currah_speech.o	\
 	$(MESS_MACHINE)/c64_dela_ep256.o	\
 	$(MESS_MACHINE)/c64_dela_ep64.o	\
 	$(MESS_MACHINE)/c64_dela_ep7x8.o	\
@@ -797,6 +802,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_fun_play.o	\
 	$(MESS_MACHINE)/c64_geocable.o	\
 	$(MESS_MACHINE)/c64_georam.o	\
+	$(MESS_MACHINE)/c64_ide64.o	\
 	$(MESS_MACHINE)/c64_ieee488.o	\
 	$(MESS_MACHINE)/c64_kingsoft.o	\
 	$(MESS_MACHINE)/c64_mach5.o	\
@@ -804,9 +810,11 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_magic_formel.o	\
 	$(MESS_MACHINE)/c64_mikro_assembler.o	\
 	$(MESS_MACHINE)/c64_multiscreen.o	\
+	$(MESS_MACHINE)/c64_neoram.o	\
 	$(MESS_MACHINE)/c64_ocean.o	\
 	$(MESS_MACHINE)/c64_pagefox.o	\
 	$(MESS_MACHINE)/c64_prophet64.o	\
+	$(MESS_MACHINE)/c64_ps64.o	\
 	$(MESS_MACHINE)/c64_rex.o	\
 	$(MESS_MACHINE)/c64_rex_ep256.o	\
 	$(MESS_MACHINE)/c64_ross.o	\
@@ -818,7 +826,9 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_structured_basic.o	\
 	$(MESS_MACHINE)/c64_super_explode.o	\
 	$(MESS_MACHINE)/c64_super_games.o	\
+	$(MESS_MACHINE)/c64_sw8k.o	\
 	$(MESS_MACHINE)/c64_system3.o	\
+	$(MESS_MACHINE)/c64_tdos.o	\
 	$(MESS_MACHINE)/c64_vw64.o	\
 	$(MESS_MACHINE)/c64_warp_speed.o	\
 	$(MESS_MACHINE)/c64_westermann.o	\
@@ -1184,6 +1194,7 @@ $(MESSOBJ)/kyocera.a:			\
 $(MESSOBJ)/luxor.a:				\
 	$(MESS_DRIVERS)/abc80.o		\
 	$(MESS_VIDEO)/abc80.o		\
+	$(MESS_MACHINE)/abc80kb.o	\
 	$(MESS_DRIVERS)/abc80x.o	\
 	$(MESS_VIDEO)/abc800.o		\
 	$(MESS_MACHINE)/abc800kb.o	\
@@ -1861,6 +1872,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/chesstrv.o	\
 	$(MESS_DRIVERS)/cd2650.o	\
 	$(MESS_DRIVERS)/codata.o	\
+	$(MESS_DRIVERS)/cortex.o	\
 	$(MESS_DRIVERS)/cosmicos.o	\
 	$(MESS_DRIVERS)/cp1.o		\
 	$(MESS_DRIVERS)/csc.o		\
@@ -1981,6 +1993,14 @@ $(MESS_DRIVERS)/mac.o:		$(MESSSRC)/drivers/mac.c \
 
 $(MESS_MACHINE)/egret.o:	$(MESSSRC)/machine/egret.c\
                         	$(MESSSRC)/machine/egret.h
+
+$(MESS_DRIVERS)/apple2.o:   $(MESSSRC)/includes/apple2.h
+$(MESS_MACHINE)/apple2.o:   $(MESSSRC)/includes/apple2.h
+$(MESS_VIDEO)/apple2.o:     $(MESSSRC)/includes/apple2.h
+$(MESS_DRIVERS)/apple2gs.o: $(MESSSRC)/includes/apple2.h $(MESSSRC)/includes/apple2gs.h
+$(MESS_MACHINE)/apple2gs.o: $(MESSSRC)/includes/apple2.h $(MESSSRC)/includes/apple2gs.h
+$(MESS_VIDEO)/apple2gs.o:   $(MESSSRC)/includes/apple2.h $(MESSSRC)/includes/apple2gs.h
+
 
 # $(MESSSRC)/drivers/apollo.c includes m68kcpu.h and m68kcpu.h now includes m68kops.h
 $(MESS_DRIVERS)/apollo.o:	$(EMUSRC)/cpu/m68000/m68kcpu.h

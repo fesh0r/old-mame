@@ -83,7 +83,7 @@ static MACHINE_CONFIG_FRAGMENT( c64_sfx_sound_expander )
 	MCFG_SOUND_CONFIG(ym3526_config)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.70)
 
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, 0, expansion_intf, c64_expansion_cards, NULL, NULL)
 MACHINE_CONFIG_END
 
 
@@ -294,7 +294,7 @@ int c64_sfx_sound_expander_cartridge_device::c64_game_r(offs_t offset, int ba, i
 //  c64_exrom_r - EXROM read
 //-------------------------------------------------
 
-int c64_sfx_sound_expander_cartridge_device::c64_exrom_r()
+int c64_sfx_sound_expander_cartridge_device::c64_exrom_r(offs_t offset, int ba, int rw, int hiram)
 {
-	return m_exp->exrom_r();
+	return m_exp->exrom_r(offset, ba, rw, hiram);
 }

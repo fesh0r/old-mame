@@ -64,6 +64,7 @@
 #include "machine/a2cffa.h"
 #include "machine/a2memexp.h"
 #include "machine/a2scsi.h"
+#include "machine/a2softcard.h"
 
 static const gfx_layout apple2gs_text_layout =
 {
@@ -179,22 +180,50 @@ static ADDRESS_MAP_START( apple2gs_map, AS_PROGRAM, 8, apple2gs_state )
 	/* nothing in the address map - everything is added dynamically */
 ADDRESS_MAP_END
 
+static WRITE8_DEVICE_HANDLER(a2bus_irq_w)
+{
+    if (data)
+    {
+        apple2gs_add_irq(device->machine(), IRQ_SLOT);
+    }
+    else
+    {
+        apple2gs_remove_irq(device->machine(), IRQ_SLOT);
+    }
+}
+
+static WRITE8_DEVICE_HANDLER(a2bus_nmi_w)
+{
+    apple2gs_state *a2 = device->machine().driver_data<apple2gs_state>();
+
+    device_set_input_line(a2->m_maincpu, INPUT_LINE_NMI, data);
+}
+
+static WRITE8_DEVICE_HANDLER(a2bus_inh_w)
+{
+    apple2_state *a2 = device->machine().driver_data<apple2_state>();
+
+    a2->m_inh_slot = data;
+    apple2_update_memory(device->machine());
+}
+
 static const struct a2bus_interface a2bus_intf =
 {
-	// interrupt lines
-//  DEVCB_HANDLER(a2bus_irq_w),
-//  DEVCB_HANDLER(a2bus_nmi_w)
-    DEVCB_NULL,
-    DEVCB_NULL
+    // interrupt lines
+    DEVCB_HANDLER(a2bus_irq_w),
+    DEVCB_HANDLER(a2bus_nmi_w),
+    DEVCB_HANDLER(a2bus_inh_w)
 };
 
 static SLOT_INTERFACE_START(apple2_cards)
     SLOT_INTERFACE("diskii", A2BUS_DISKII)  /* Disk II Controller Card */
     SLOT_INTERFACE("mockingboard", A2BUS_MOCKINGBOARD)  /* Sweet Micro Systems Mockingboard */
+    SLOT_INTERFACE("phasor", A2BUS_PHASOR)  /* Applied Engineering Phasor */
     SLOT_INTERFACE("cffa2", A2BUS_CFFA2)  /* CFFA2000 Compact Flash for Apple II (www.dreher.net), 65C02/65816 firmware */
     SLOT_INTERFACE("cffa202", A2BUS_CFFA2_6502)  /* CFFA2000 Compact Flash for Apple II (www.dreher.net), 6502 firmware */
     SLOT_INTERFACE("memexp", A2BUS_MEMEXP)  /* Apple II Memory Expansion Card */
     SLOT_INTERFACE("ramfactor", A2BUS_RAMFACTOR)    /* Applied Engineering RamFactor */
+//    SLOT_INTERFACE("softcard", A2BUS_SOFTCARD)  /* Microsoft SoftCard */  // appears not to be IIgs compatible?
 //    SLOT_INTERFACE("scsi", A2BUS_SCSI)  /* Apple II SCSI Card */
 SLOT_INTERFACE_END
 

@@ -24,11 +24,14 @@ class jr200_state : public driver_device
 {
 public:
 	jr200_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_vram(*this, "vram"),
+		m_cram(*this, "cram"),
+		m_mn1271_ram(*this, "mn1271_ram"){ }
 
-	UINT8 *m_vram;
-	UINT8 *m_cram;
-	UINT8 *m_mn1271_ram;
+	required_shared_ptr<UINT8> m_vram;
+	required_shared_ptr<UINT8> m_cram;
+	required_shared_ptr<UINT8> m_mn1271_ram;
 	UINT8 m_border_col;
 	UINT8 m_old_keydata;
 	UINT8 m_freq_reg[2];
@@ -151,7 +154,7 @@ static SCREEN_UPDATE_IND16( jr200 )
 					}
 					else // tile mode
 					{
-						gfx_data = screen.machine().region(attr & 0x40 ? "pcg" : "gfx_ram")->base();
+						gfx_data = screen.machine().root_device().memregion(attr & 0x40 ? "pcg" : "gfx_ram")->base();
 
 						pen = (gfx_data[(tile*8)+yi]>>(7-xi) & 1) ? (attr & 0x7) : ((attr & 0x38) >> 3);
 					}
@@ -167,21 +170,21 @@ static SCREEN_UPDATE_IND16( jr200 )
 
 READ8_MEMBER(jr200_state::jr200_pcg_1_r)
 {
-	UINT8 *pcg = machine().region("pcg")->base();
+	UINT8 *pcg = memregion("pcg")->base();
 
 	return pcg[offset+0x000];
 }
 
 READ8_MEMBER(jr200_state::jr200_pcg_2_r)
 {
-	UINT8 *pcg = machine().region("pcg")->base();
+	UINT8 *pcg = memregion("pcg")->base();
 
 	return pcg[offset+0x400];
 }
 
 WRITE8_MEMBER(jr200_state::jr200_pcg_1_w)
 {
-	UINT8 *pcg = machine().region("pcg")->base();
+	UINT8 *pcg = memregion("pcg")->base();
 
 	pcg[offset+0x000] = data;
 	gfx_element_mark_dirty(machine().gfx[1], (offset+0x000) >> 3);
@@ -189,7 +192,7 @@ WRITE8_MEMBER(jr200_state::jr200_pcg_1_w)
 
 WRITE8_MEMBER(jr200_state::jr200_pcg_2_w)
 {
-	UINT8 *pcg = machine().region("pcg")->base();
+	UINT8 *pcg = memregion("pcg")->base();
 
 	pcg[offset+0x400] = data;
 	gfx_element_mark_dirty(machine().gfx[1], (offset+0x400) >> 3);
@@ -197,7 +200,7 @@ WRITE8_MEMBER(jr200_state::jr200_pcg_2_w)
 
 READ8_MEMBER(jr200_state::jr200_bios_char_r)
 {
-	UINT8 *gfx = machine().region("gfx_ram")->base();
+	UINT8 *gfx = memregion("gfx_ram")->base();
 
 	return gfx[offset];
 }
@@ -205,7 +208,7 @@ READ8_MEMBER(jr200_state::jr200_bios_char_r)
 
 WRITE8_MEMBER(jr200_state::jr200_bios_char_w)
 {
-//  UINT8 *gfx = machine().region("gfx_ram")->base();
+//  UINT8 *gfx = memregion("gfx_ram")->base();
 
 	/* TODO: writing is presumably controlled by an I/O bit */
 //  gfx[offset] = data;
@@ -335,12 +338,12 @@ static ADDRESS_MAP_START(jr200_mem, AS_PROGRAM, 8, jr200_state )
 	AM_RANGE(0xa000, 0xbfff) AM_ROM
 
 	AM_RANGE(0xc000, 0xc0ff) AM_READWRITE(jr200_pcg_1_r,jr200_pcg_1_w) //PCG area (1)
-	AM_RANGE(0xc100, 0xc3ff) AM_RAM AM_BASE(m_vram)
+	AM_RANGE(0xc100, 0xc3ff) AM_RAM AM_SHARE("vram")
 	AM_RANGE(0xc400, 0xc4ff) AM_READWRITE(jr200_pcg_2_r,jr200_pcg_2_w) //PCG area (2)
-	AM_RANGE(0xc500, 0xc7ff) AM_RAM AM_BASE(m_cram)
+	AM_RANGE(0xc500, 0xc7ff) AM_RAM AM_SHARE("cram")
 
 //  0xc800 - 0xcfff I / O area
-	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(mn1271_io_r,mn1271_io_w) AM_BASE(m_mn1271_ram)
+	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(mn1271_io_r,mn1271_io_w) AM_SHARE("mn1271_ram")
 
 	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(jr200_bios_char_r,jr200_bios_char_w) //BIOS PCG RAM area
 	AM_RANGE(0xd800, 0xdfff) AM_ROM // cart space (header 0x7e)
@@ -484,8 +487,8 @@ static MACHINE_START(jr200)
 static MACHINE_RESET(jr200)
 {
 	jr200_state *state = machine.driver_data<jr200_state>();
-	UINT8 *gfx_rom = machine.region("gfx_rom")->base();
-	UINT8 *gfx_ram = machine.region("gfx_ram")->base();
+	UINT8 *gfx_rom = machine.root_device().memregion("gfx_rom")->base();
+	UINT8 *gfx_ram = state->memregion("gfx_ram")->base();
 	int i;
 	memset(state->m_mn1271_ram,0,0x800);
 

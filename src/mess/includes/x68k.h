@@ -38,22 +38,17 @@ enum
 	MFP_IRQ_GPIP7
 };  // MC68901 IRQ priority levels
 
-class x68k_state : public driver_device
+class x68k_base_state : public driver_device
 {
 public:
-	x68k_state(const machine_config &mconfig, device_type type, const char *tag)
+	x68k_base_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		  m_mfpdev(*this, MC68901_TAG),
-		  m_rtc(*this, RP5C15_TAG),
-		  m_nvram(*this, "nvram")
+		  m_rtc(*this, RP5C15_TAG)
 	{ }
 
 	required_device<mc68901_device> m_mfpdev;
 	required_device<rp5c15_device> m_rtc;
-	required_shared_ptr<UINT32>	m_nvram;
-
-	DECLARE_WRITE_LINE_MEMBER( mfp_tdo_w );
-	DECLARE_READ8_MEMBER( mfp_gpio_r );
 
 	struct
 	{
@@ -231,8 +226,6 @@ public:
 	emu_timer* m_scanline_timer;
 	emu_timer* m_raster_irq;
 	emu_timer* m_vblank_irq;
-	UINT16* m_gvram;
-	UINT16* m_tvram;
 	UINT16* m_spriteram;
 	UINT16* m_spritereg;
 	tilemap_t* m_bg0_8;
@@ -243,6 +236,41 @@ public:
 	int m_oddscanline;
 };
 
+class x68k_state : public x68k_base_state
+{
+public:
+	x68k_state(const machine_config &mconfig, device_type type, const char *tag)
+		: x68k_base_state(mconfig,type,tag),
+		  m_nvram(*this, "nvram"),
+		  m_gvram(*this, "gvram"),
+		  m_tvram(*this, "tvram")
+	{ }
+
+	required_shared_ptr<UINT16>	m_nvram;
+	required_shared_ptr<UINT16> m_gvram;
+	required_shared_ptr<UINT16> m_tvram;
+
+	DECLARE_WRITE_LINE_MEMBER( mfp_tdo_w );
+	DECLARE_READ8_MEMBER( mfp_gpio_r );
+};
+
+class x68030_state : public x68k_base_state
+{
+public:
+	x68030_state(const machine_config &mconfig, device_type type, const char *tag)
+		: x68k_base_state(mconfig,type,tag),
+		  m_nvram(*this, "nvram"),
+		  m_gvram(*this, "gvram"),
+		  m_tvram(*this, "tvram")
+	{ }
+
+	required_shared_ptr<UINT32>	m_nvram;
+	required_shared_ptr<UINT32> m_gvram;
+	required_shared_ptr<UINT32> m_tvram;
+
+	DECLARE_WRITE_LINE_MEMBER( mfp_tdo_w );
+	DECLARE_READ8_MEMBER( mfp_gpio_r );
+};
 
 /*----------- defined in drivers/x68k.c -----------*/
 

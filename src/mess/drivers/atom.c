@@ -125,7 +125,7 @@ void atom_state::bankswitch()
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
-	UINT8 *eprom = machine().region(EXTROM_TAG)->base() + (m_eprom << 12);
+	UINT8 *eprom = memregion(EXTROM_TAG)->base() + (m_eprom << 12);
 
 	program->install_rom(0xa000, 0xafff, eprom);
 }
@@ -181,7 +181,7 @@ static ADDRESS_MAP_START( atom_mem, AS_PROGRAM, 8, atom_state )
 	AM_RANGE(0x0a00, 0x0a03) AM_MIRROR(0x1f8) AM_DEVREADWRITE_LEGACY(I8271_TAG, i8271_r, i8271_w)
 	AM_RANGE(0x0a04, 0x0a04) AM_MIRROR(0x1f8) AM_DEVREADWRITE_LEGACY(I8271_TAG, i8271_data_r, i8271_data_w)
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(m_video_ram)
+	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_SHARE("video_ram")
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xafff) AM_ROM AM_REGION(EXTROM_TAG, 0)
 	AM_RANGE(0xb000, 0xb003) AM_MIRROR(0x3fc) AM_DEVREADWRITE(INS8255_TAG, i8255_device, read, write)
@@ -750,7 +750,7 @@ static DEVICE_IMAGE_LOAD( atom_cart )
 
 	/* With the following, we mirror the cart in the whole memory region */
 	for (i = 0; i < mirror; i++)
-		memcpy(image.device().machine().region(this_cart->region)->base() + this_cart->offset + i * size, temp_copy, size);
+		memcpy(image.device().machine().root_device().memregion(this_cart->region)->base() + this_cart->offset + i * size, temp_copy, size);
 
 	auto_free(image.device().machine(), temp_copy);
 

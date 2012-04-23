@@ -113,14 +113,14 @@ static READ64_HANDLER( dc_arm_r )
 {
 	dc_state *state = space->machine().driver_data<dc_state>();
 
-	return *((UINT64 *)state->dc_sound_ram+offset);
+	return *((UINT64 *)state->dc_sound_ram.target()+offset);
 }
 
 static WRITE64_HANDLER( dc_arm_w )
 {
 	dc_state *state = space->machine().driver_data<dc_state>();
 
-	COMBINE_DATA((UINT64 *)state->dc_sound_ram + offset);
+	COMBINE_DATA((UINT64 *)state->dc_sound_ram.target() + offset);
 }
 
 
@@ -174,8 +174,8 @@ static ADDRESS_MAP_START( dc_map, AS_PROGRAM, 64, dc_state )
 	AM_RANGE(0x00800000, 0x009fffff) AM_READWRITE_LEGACY(dc_arm_r, dc_arm_w )
 
 	/* Area 1 */
-	AM_RANGE(0x04000000, 0x04ffffff) AM_RAM	AM_BASE(dc_texture_ram )      // texture memory 64 bit access
-	AM_RANGE(0x05000000, 0x05ffffff) AM_RAM AM_BASE(dc_framebuffer_ram ) // apparently this actually accesses the same memory as the 64-bit texture memory access, but in a different format, keep it apart for now
+	AM_RANGE(0x04000000, 0x04ffffff) AM_RAM	AM_SHARE("dc_texture_ram")      // texture memory 64 bit access
+	AM_RANGE(0x05000000, 0x05ffffff) AM_RAM AM_SHARE("frameram") // apparently this actually accesses the same memory as the 64-bit texture memory access, but in a different format, keep it apart for now
 
 	/* Area 3 */
 	AM_RANGE(0x0c000000, 0x0cffffff) AM_RAM AM_SHARE("share4") AM_BASE_LEGACY(&dc_ram)
@@ -202,7 +202,7 @@ static ADDRESS_MAP_START( dc_port, AS_IO, 64, dc_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dc_audio_map, AS_PROGRAM, 32, dc_state )
-	AM_RANGE(0x00000000, 0x001fffff) AM_RAM AM_BASE(dc_sound_ram)		/* shared with SH-4 */
+	AM_RANGE(0x00000000, 0x001fffff) AM_RAM AM_SHARE("dc_sound_ram")		/* shared with SH-4 */
 	AM_RANGE(0x00800000, 0x00807fff) AM_DEVREADWRITE_LEGACY("aica", dc_arm_aica_r, dc_arm_aica_w)
 ADDRESS_MAP_END
 

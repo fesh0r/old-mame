@@ -86,14 +86,17 @@ class ti99_2_state : public driver_device
 {
 public:
 	ti99_2_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_videoram(*this, "videoram"){ }
 
-	UINT8 *m_videoram;
+	required_shared_ptr<UINT8> m_videoram;
 	int m_ROM_paged;
 	int m_irq_state;
 	int m_KeyRow;
 	DECLARE_WRITE8_MEMBER(ti99_2_write_kbd);
 	DECLARE_WRITE8_MEMBER(ti99_2_write_misc_cru);
+	DECLARE_READ8_MEMBER(ti99_2_read_kbd);
+	DECLARE_READ8_MEMBER(ti99_2_read_misc_cru);
 };
 
 
@@ -112,17 +115,17 @@ static DRIVER_INIT( ti99_2_32 )
 	state->m_ROM_paged = 1;
 }
 
-#define TI99_2_32_ROMPAGE0 (machine().region("maincpu")->base()+0x4000)
-#define TI99_2_32_ROMPAGE1 (machine().region("maincpu")->base()+0x10000)
+#define TI99_2_32_ROMPAGE0 (machine().root_device().memregion("maincpu")->base()+0x4000)
+#define TI99_2_32_ROMPAGE1 (machine().root_device().memregion("maincpu")->base()+0x10000)
 
 static MACHINE_RESET( ti99_2 )
 {
 	ti99_2_state *state = machine.driver_data<ti99_2_state>();
 	state->m_irq_state = ASSERT_LINE;
 	if (! state->m_ROM_paged)
-		memory_set_bankptr(machine, "bank1", machine.region("maincpu")->base()+0x4000);
+		state->membank("bank1")->set_base(machine.root_device().memregion("maincpu")->base()+0x4000);
 	else
-		memory_set_bankptr(machine, "bank1", (machine.region("maincpu")->base()+0x4000));
+		state->membank("bank1")->set_base((state->memregion("maincpu")->base()+0x4000));
 }
 
 static INTERRUPT_GEN( ti99_2_vblank_interrupt )
@@ -206,7 +209,7 @@ static ADDRESS_MAP_START( ti99_2_memmap, AS_PROGRAM, 8, ti99_2_state )
 	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank1")	/* system ROM, banked on 32kb ROMs protos */
 	AM_RANGE(0x6000, 0xdfff) AM_NOP		    /* free for expansion */
 	AM_RANGE(0xe000, 0xebff) AM_RAM		    /* system RAM */
-	AM_RANGE(0xec00, 0xeeff) AM_RAM AM_BASE(m_videoram)
+	AM_RANGE(0xec00, 0xeeff) AM_RAM AM_SHARE("videoram")
 	AM_RANGE(0xef00, 0xefff) AM_RAM		    /* system RAM */
 	AM_RANGE(0xf000, 0xffff) AM_NOP		    /* free for expansion (and internal processor RAM) */
 ADDRESS_MAP_END
@@ -234,7 +237,7 @@ WRITE8_MEMBER(ti99_2_state::ti99_2_write_kbd)
 	/* now, we handle ROM paging */
 	if (m_ROM_paged)
 	{	/* if we have paged ROMs, page according to S0 keyboard interface line */
-		memory_set_bankptr(machine(), "bank1", (m_KeyRow == 0) ? TI99_2_32_ROMPAGE1 : TI99_2_32_ROMPAGE0);
+		membank("bank1")->set_base((m_KeyRow == 0) ? TI99_2_32_ROMPAGE1 : TI99_2_32_ROMPAGE0);
 	}
 }
 
@@ -266,22 +269,21 @@ WRITE8_MEMBER(ti99_2_state::ti99_2_write_misc_cru)
 }
 
 /* read keys in the current row */
-static  READ8_HANDLER ( ti99_2_read_kbd )
+READ8_MEMBER(ti99_2_state::ti99_2_read_kbd)
 {
-	ti99_2_state *state = space->machine().driver_data<ti99_2_state>();
 	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
-	return input_port_read(space->machine(), keynames[state->m_KeyRow]);
+	return input_port_read(machine(), keynames[m_KeyRow]);
 }
 
-static  READ8_HANDLER ( ti99_2_read_misc_cru )
+READ8_MEMBER(ti99_2_state::ti99_2_read_misc_cru)
 {
 	return 0;
 }
 
 static ADDRESS_MAP_START(ti99_2_io, AS_IO, 8, ti99_2_state )
-	AM_RANGE(0x0E00, 0x0E7f) AM_READ_LEGACY(ti99_2_read_kbd)
-	AM_RANGE(0x0E80, 0x0Eff) AM_READ_LEGACY(ti99_2_read_misc_cru)
+	AM_RANGE(0x0E00, 0x0E7f) AM_READ(ti99_2_read_kbd)
+	AM_RANGE(0x0E80, 0x0Eff) AM_READ(ti99_2_read_misc_cru)
 	AM_RANGE(0x7000, 0x73ff) AM_WRITE(ti99_2_write_kbd)
 	AM_RANGE(0x7400, 0x77ff) AM_WRITE(ti99_2_write_misc_cru)
 ADDRESS_MAP_END

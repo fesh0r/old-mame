@@ -31,13 +31,13 @@ static void lviv_update_memory (running_machine &machine)
 
 	if (state->m_ppi_port_outputs[0][2] & 0x02)
 	{
-		memory_set_bankptr(machine,"bank1", ram);
-		memory_set_bankptr(machine,"bank2", ram + 0x4000);
+		state->membank("bank1")->set_base(ram);
+		state->membank("bank2")->set_base(ram + 0x4000);
 	}
 	else
 	{
-		memory_set_bankptr(machine,"bank1", ram + 0x8000);
-		memory_set_bankptr(machine,"bank2", ram + 0xc000);
+		state->membank("bank1")->set_base(ram + 0x8000);
+		state->membank("bank2")->set_base(ram + 0xc000);
 	}
 }
 
@@ -46,10 +46,10 @@ static TIMER_CALLBACK( lviv_reset )
 	machine.schedule_soft_reset();
 }
 
-DIRECT_UPDATE_HANDLER(lviv_directoverride)
+DIRECT_UPDATE_MEMBER(lviv_state::lviv_directoverride)
 {
-	if (input_port_read(machine, "RESET") & 0x01)
-		machine.scheduler().timer_set(attotime::from_usec(10), FUNC(lviv_reset));
+	if (input_port_read(machine(), "RESET") & 0x01)
+		machine().scheduler().timer_set(attotime::from_usec(10), FUNC(lviv_reset));
 	return address;
 }
 
@@ -145,10 +145,9 @@ static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 
 
 /* I/O */
- READ8_HANDLER ( lviv_io_r )
+READ8_MEMBER(lviv_state::lviv_io_r)
 {
-	lviv_state *state = space->machine().driver_data<lviv_state>();
-	if (state->m_startup_mem_map)
+	if (m_startup_mem_map)
 	{
 		return 0;	/* ??? */
 	}
@@ -157,10 +156,10 @@ static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 		switch ((offset >> 4) & 0x3)
 		{
 		case 0:
-			return space->machine().device<i8255_device>("ppi8255_0")->read(*space, offset & 3);
+			return machine().device<i8255_device>("ppi8255_0")->read(space, offset & 3);
 
 		case 1:
-			return space->machine().device<i8255_device>("ppi8255_1")->read(*space, offset & 3);
+			return machine().device<i8255_device>("ppi8255_1")->read(space, offset & 3);
 
 		case 2:
 		case 3:
@@ -171,36 +170,35 @@ static WRITE8_DEVICE_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 	}
 }
 
-WRITE8_HANDLER ( lviv_io_w )
+WRITE8_MEMBER(lviv_state::lviv_io_w)
 {
-	lviv_state *state = space->machine().driver_data<lviv_state>();
-	address_space *cpuspace = space->machine().device("maincpu")->memory().space(AS_PROGRAM);
-	if (state->m_startup_mem_map)
+	address_space *cpuspace = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	if (m_startup_mem_map)
 	{
-		UINT8 *ram = space->machine().device<ram_device>(RAM_TAG)->pointer();
+		UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
 
-		state->m_startup_mem_map = 0;
+		m_startup_mem_map = 0;
 
 		cpuspace->install_write_bank(0x0000, 0x3fff, "bank1");
 		cpuspace->install_write_bank(0x4000, 0x7fff, "bank2");
 		cpuspace->install_write_bank(0x8000, 0xbfff, "bank3");
 		cpuspace->unmap_write(0xC000, 0xffff);
 
-		memory_set_bankptr(space->machine(),"bank1", ram);
-		memory_set_bankptr(space->machine(),"bank2", ram + 0x4000);
-		memory_set_bankptr(space->machine(),"bank3", ram + 0x8000);
-		memory_set_bankptr(space->machine(),"bank4", space->machine().region("maincpu")->base() + 0x010000);
+		membank("bank1")->set_base(ram);
+		membank("bank2")->set_base(ram + 0x4000);
+		membank("bank3")->set_base(ram + 0x8000);
+		membank("bank4")->set_base(machine().root_device().memregion("maincpu")->base() + 0x010000);
 	}
 	else
 	{
 		switch ((offset >> 4) & 0x3)
 		{
 		case 0:
-			space->machine().device<i8255_device>("ppi8255_0")->write(*space, offset & 3, data);
+			machine().device<i8255_device>("ppi8255_0")->write(space, offset & 3, data);
 			break;
 
 		case 1:
-			space->machine().device<i8255_device>("ppi8255_1")->write(*space, offset & 3, data);
+			machine().device<i8255_device>("ppi8255_1")->write(space, offset & 3, data);
 			break;
 
 		case 2:
@@ -238,7 +236,7 @@ MACHINE_RESET( lviv )
 	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	UINT8 *mem;
 
-	space->set_direct_update_handler(direct_update_delegate(FUNC(lviv_directoverride), &machine));
+	space->set_direct_update_handler(direct_update_delegate(FUNC(lviv_state::lviv_directoverride), state));
 
 	state->m_video_ram = machine.device<ram_device>(RAM_TAG)->pointer() + 0xc000;
 
@@ -249,11 +247,11 @@ MACHINE_RESET( lviv )
 	space->unmap_write(0x8000, 0xbfff);
 	space->unmap_write(0xC000, 0xffff);
 
-	mem = machine.region("maincpu")->base();
-	memory_set_bankptr(machine,"bank1", mem + 0x010000);
-	memory_set_bankptr(machine,"bank2", mem + 0x010000);
-	memory_set_bankptr(machine,"bank3", mem + 0x010000);
-	memory_set_bankptr(machine,"bank4", mem + 0x010000);
+	mem = state->memregion("maincpu")->base();
+	state->membank("bank1")->set_base(mem + 0x010000);
+	state->membank("bank2")->set_base(mem + 0x010000);
+	state->membank("bank3")->set_base(mem + 0x010000);
+	state->membank("bank4")->set_base(mem + 0x010000);
 
 	/*machine.scheduler().timer_pulse(TIME_IN_NSEC(200), FUNC(lviv_draw_pixel));*/
 

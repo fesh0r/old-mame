@@ -64,8 +64,8 @@ public:
 	m_fdc(*this, "upd765"),
 	m_hgdc(*this, "upd7220"),
 	m_rtc(*this, "rtc"),
-	m_vram_bank(0)
-	{ }
+	m_vram_bank(0),
+	m_video_ram(*this, "video_ram"){ }
 
 	required_device<device_t> m_pit_1;
 	required_device<device_t> m_pit_2;
@@ -78,6 +78,8 @@ public:
 	required_device<device_t> m_fdc;
 	required_device<upd7220_device> m_hgdc;
 	required_device<mc146818_device> m_rtc;
+	UINT8 m_vram_bank;
+	required_shared_ptr<UINT8> m_video_ram;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -108,7 +110,6 @@ public:
 	DECLARE_READ8_MEMBER( vram_r );
 	DECLARE_WRITE8_MEMBER( vram_w );
 
-	UINT8 *m_video_ram;
 	UINT8 *m_char_rom;
 
 	int		m_mc146818_offset;
@@ -137,7 +138,6 @@ public:
 		UINT8 rx;
 	}m_rs232c;
 
-	UINT8 m_vram_bank;
 };
 
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
@@ -248,19 +248,19 @@ void qx10_state::update_memory_mapping()
 
 	if (!m_memprom)
 	{
-		memory_set_bankptr(machine(), "bank1", machine().region("maincpu")->base());
+		membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base());
 	}
 	else
 	{
-		memory_set_bankptr(machine(), "bank1", machine().device<ram_device>(RAM_TAG)->pointer() + drambank*64*1024);
+		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + drambank*64*1024);
 	}
 	if (m_memcmos)
 	{
-		memory_set_bankptr(machine(), "bank2", m_cmosram);
+		membank("bank2")->set_base(m_cmosram);
 	}
 	else
 	{
-		memory_set_bankptr(machine(), "bank2", machine().device<ram_device>(RAM_TAG)->pointer() + drambank*64*1024 + 32*1024);
+		membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + drambank*64*1024 + 32*1024);
 	}
 }
 
@@ -955,10 +955,10 @@ GFXDECODE_END
 void qx10_state::video_start()
 {
 	// allocate memory
-	m_video_ram = auto_alloc_array_clear(machine(), UINT8, 0x60000);
+	//m_video_ram = auto_alloc_array_clear(machine(), UINT8, 0x60000);
 
 	// find memory regions
-	m_char_rom = machine().region("chargen")->base();
+	m_char_rom = memregion("chargen")->base();
 }
 
 static UPD7220_INTERFACE( hgdc_intf )
@@ -1000,7 +1000,7 @@ WRITE8_MEMBER( qx10_state::vram_w )
 
 static ADDRESS_MAP_START( upd7220_map, AS_0, 8, qx10_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x1ffff)
-	AM_RANGE(0x00000, 0x1ffff) AM_RAM AM_BASE(m_video_ram)
+	AM_RANGE(0x00000, 0x1ffff) AM_RAM AM_SHARE("video_ram")
 ADDRESS_MAP_END
 
 

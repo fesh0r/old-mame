@@ -94,7 +94,7 @@ READ8_MEMBER( amu880_state::keyboard_r )
 static ADDRESS_MAP_START( amu880_mem, AS_PROGRAM, 8, amu880_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xe7ff) AM_RAM
-	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(m_video_ram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM AM_SHARE("video_ram")
 	AM_RANGE(0xf000, 0xfbff) AM_ROM
 	AM_RANGE(0xfc00, 0xffff) AM_RAM
 ADDRESS_MAP_END
@@ -222,7 +222,7 @@ INPUT_PORTS_END
 void amu880_state::video_start()
 {
 	// find memory regions
-	m_char_rom = machine().region("chargen")->base();
+	m_char_rom = memregion("chargen")->base();
 }
 
 UINT32 amu880_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
@@ -350,7 +350,7 @@ static const z80_daisy_config amu880_daisy_chain[] =
 void amu880_state::machine_start()
 {
 	/* find memory regions */
-	m_kb_rom = machine().region("keyboard")->base();
+	m_kb_rom = memregion("keyboard")->base();
 
 	/* register for state saving */
 	save_item(NAME(m_key_d6));

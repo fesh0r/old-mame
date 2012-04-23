@@ -41,7 +41,7 @@ c64_georam_cartridge_device::c64_georam_cartridge_device(const machine_config &m
 void c64_georam_cartridge_device::device_start()
 {
 	// allocate memory
-	m_ram = auto_alloc_array(machine(), UINT8, 0x80000);
+	c64_ram_pointer(machine(), 0x80000);
 
 	// state saving
 	save_item(NAME(m_bank));

@@ -79,8 +79,9 @@ public:
 		  m_dart(*this, Z80DART_TAG),
 		  m_sio(*this, Z80SIO_TAG),
 		  m_discrete(*this, "discrete"),
-		  m_ram(*this, RAM_TAG)
-	{ }
+		  m_ram(*this, RAM_TAG),
+		m_video_ram(*this, "video_ram"),
+		m_char_ram(*this, "char_ram"){ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<z80ctc_device> m_ctc;
@@ -112,8 +113,8 @@ public:
 	int m_fetch_charram;			// opcode fetched from character RAM region (0x7800-0x7fff)
 
 	// video state
-	UINT8 *m_char_ram;				// character RAM
-	UINT8 *m_video_ram;				// HR video RAM
+	optional_shared_ptr<UINT8> m_video_ram; 				// HR video RAM
+	optional_shared_ptr<UINT8> m_char_ram;				// character RAM
 	const UINT8 *m_char_rom;		// character generator ROM
 	const UINT8 *m_fgctl_prom;		// foreground control PROM
 	UINT8 m_hrs;					// HR picture start scanline
@@ -141,6 +142,8 @@ public:
 	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	void hr_update(bitmap_rgb32 &bitmap, const rectangle &cliprect);
+
+	DECLARE_DIRECT_UPDATE_MEMBER(abc800m_direct_update_handler);
 };
 
 class abc800c_state : public abc800_state
@@ -156,6 +159,8 @@ public:
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
 	void hr_update(bitmap_ind16 &bitmap, const rectangle &cliprect);
+
+	DECLARE_DIRECT_UPDATE_MEMBER(abc800c_direct_update_handler);
 };
 
 // ======================> abc802_state
@@ -184,6 +189,7 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( lrs_w );
 	DECLARE_WRITE_LINE_MEMBER( mux80_40_w );
 	DECLARE_WRITE_LINE_MEMBER( vs_w );
+	DECLARE_DIRECT_UPDATE_MEMBER(abc802_direct_update_handler);
 
 	// cpu state
 	int m_lrs;					// low RAM select
@@ -240,6 +246,7 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( keydtr_w );
 	DECLARE_WRITE_LINE_MEMBER( hs_w );
 	DECLARE_WRITE_LINE_MEMBER( vs_w );
+	DECLARE_DIRECT_UPDATE_MEMBER(abc806_direct_update_handler);
 
 	// memory state
 	int m_keydtr;				// keyboard DTR

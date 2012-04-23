@@ -61,7 +61,7 @@ void c64_state::check_interrupts()
 void c64_state::bankswitch(offs_t offset, offs_t va, int rw, int aec, int ba, int cas, int *casram, int *basic, int *kernal, int *charom, int *grw, int *io, int *roml, int *romh)
 {
 	int game = m_exp->game_r(offset, rw, ba, m_hiram);
-	int exrom = m_exp->exrom_r();
+	int exrom = m_exp->exrom_r(offset, rw, ba, m_hiram);
 
 	UINT16 input = VA12 << 15 | VA13 << 14 | game << 13 | exrom << 12 | rw << 11 | aec << 10 | ba << 9 | A12 << 8 | A13 << 7 | A14 << 6 | A15 << 5 | m_va14 << 4 | m_charen << 3 | m_hiram << 2 | m_loram << 1 | cas;
 	UINT8 data = m_pla->read(input);
@@ -1022,9 +1022,9 @@ void c64_state::machine_start()
 	cbm_common_init();
 
 	// find memory regions
-	m_basic = machine().region("basic")->base();
-	m_kernal = machine().region("kernal")->base();
-	m_charom = machine().region("charom")->base();
+	m_basic = memregion("basic")->base();
+	m_kernal = memregion("kernal")->base();
+	m_charom = memregion("charom")->base();
 
 	// allocate memory
 	m_color_ram = auto_alloc_array(machine(), UINT8, 0x400);
@@ -1055,8 +1055,8 @@ void c64c_state::machine_start()
 	c64_state::machine_start();
 
 	// find memory regions
-	m_basic = machine().region(M6510_TAG)->base();
-	m_kernal = machine().region(M6510_TAG)->base() + 0x2000;
+	m_basic = memregion(M6510_TAG)->base();
+	m_kernal = memregion(M6510_TAG)->base() + 0x2000;
 }
 
 
@@ -1116,7 +1116,7 @@ static MACHINE_CONFIG_START( ntsc, c64_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1186,7 +1186,7 @@ static MACHINE_CONFIG_START( ntsc_sx, sx64_state )
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1247,7 +1247,7 @@ static MACHINE_CONFIG_START( ntsc_dx, sx64_state )
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, sx1541_iec_devices, "sx1541", NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1305,7 +1305,7 @@ static MACHINE_CONFIG_START( ntsc_c, c64c_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1363,7 +1363,7 @@ static MACHINE_CONFIG_START( pal, c64_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1424,7 +1424,7 @@ static MACHINE_CONFIG_START( pal_sx, sx64_state )
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1482,7 +1482,7 @@ static MACHINE_CONFIG_START( pal_c, c64c_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list
@@ -1537,7 +1537,7 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, cia1_intf)
 	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, cia2_intf)
 	MCFG_CBM_IEC_BUS_ADD(iec_intf)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
 	// software list

@@ -270,10 +270,9 @@ const mos6526_interface cbmb_cia =
 	DEVCB_NULL
 };
 
-WRITE8_HANDLER( cbmb_colorram_w )
+WRITE8_MEMBER(cbmb_state::cbmb_colorram_w)
 {
-	cbmb_state *state = space->machine().driver_data<cbmb_state>();
-	state->m_colorram[offset] = data | 0xf0;
+	m_colorram[offset] = data | 0xf0;
 }
 
 WRITE_LINE_DEVICE_HANDLER( cbmb_change_font )
@@ -284,7 +283,7 @@ WRITE_LINE_DEVICE_HANDLER( cbmb_change_font )
 static void cbmb_common_driver_init( running_machine &machine )
 {
 	cbmb_state *state = machine.driver_data<cbmb_state>();
-	state->m_chargen = machine.region("maincpu")->base() + 0x100000;
+	state->m_chargen = state->memregion("maincpu")->base() + 0x100000;
 	/*    memset(c64_memory, 0, 0xfd00); */
 
 	machine.scheduler().timer_pulse(attotime::from_msec(10), FUNC(cbmb_frame_interrupt));
@@ -473,7 +472,7 @@ static DEVICE_IMAGE_LOAD(cbmb_cart)
 {
 	UINT32 size = image.length();
 	const char *filetype = image.filetype();
-	UINT8 *cbmb_memory = image.device().machine().region("maincpu")->base();
+	UINT8 *cbmb_memory = image.device().machine().root_device().memregion("maincpu")->base();
 	int address = 0;
 
 	/* Assign loading address according to extension */

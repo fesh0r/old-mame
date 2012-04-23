@@ -136,7 +136,8 @@ public:
 	m_cass2(*this, CASSETTE2_TAG),
 	m_uart(*this, "uart"),
 	m_uart_s(*this, "uart_s")
-	{ }
+	,
+		m_p_videoram(*this, "p_videoram"){ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<cassette_image_device> m_cass1;
@@ -160,7 +161,7 @@ public:
 	UINT8 m_sol20_fc;
 	UINT8 m_sol20_fe;
 	const UINT8 *m_p_chargen;
-	const UINT8 *m_p_videoram;
+	required_shared_ptr<const UINT8> m_p_videoram;
 	UINT8 m_framecnt;
 	emu_timer *m_cassette_timer;
 	cass_data_t m_cass_data;
@@ -396,7 +397,7 @@ static ADDRESS_MAP_START( sol20_mem, AS_PROGRAM, 8, sol20_state)
 	AM_RANGE(0X0800, 0Xbfff) AM_RAM	// optional s100 ram
 	AM_RANGE(0xc000, 0xc7ff) AM_ROM
 	AM_RANGE(0Xc800, 0Xcbff) AM_RAM	// system ram
-	AM_RANGE(0Xcc00, 0Xcfff) AM_RAM	AM_BASE(m_p_videoram)
+	AM_RANGE(0Xcc00, 0Xcfff) AM_RAM	AM_SHARE("p_videoram")
 	AM_RANGE(0Xd000, 0Xffff) AM_RAM	// optional s100 ram
 ADDRESS_MAP_END
 
@@ -528,7 +529,8 @@ static const cassette_interface sol20_cassette_interface =
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( sol20_boot )
 {
-	memory_set_bank(machine, "boot", 0);
+	sol20_state *state = machine.driver_data<sol20_state>();
+	state->membank("boot")->set_entry(0);
 }
 
 MACHINE_START_MEMBER( sol20_state )
@@ -584,19 +586,20 @@ MACHINE_RESET_MEMBER( sol20_state )
 	ay31015_set_transmitter_clock( m_uart_s, s_clock);
 
 	// boot-bank
-	memory_set_bank(machine(), "boot", 1);
+	membank("boot")->set_entry(1);
 	machine().scheduler().timer_set(attotime::from_usec(9), FUNC(sol20_boot));
 }
 
 static DRIVER_INIT( sol20 )
 {
-	UINT8 *RAM = machine.region("maincpu")->base();
-	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0xc000);
+	sol20_state *state = machine.driver_data<sol20_state>();
+	UINT8 *RAM = state->memregion("maincpu")->base();
+	state->membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xc000);
 }
 
 VIDEO_START_MEMBER( sol20_state )
 {
-	m_p_chargen = machine().region("chargen")->base();
+	m_p_chargen = memregion("chargen")->base();
 }
 
 SCREEN_UPDATE16_MEMBER( sol20_state )

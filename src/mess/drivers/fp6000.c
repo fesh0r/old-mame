@@ -25,11 +25,13 @@ class fp6000_state : public driver_device
 {
 public:
 	fp6000_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_gvram(*this, "gvram"),
+		m_vram(*this, "vram"){ }
 
 	UINT8 *m_char_rom;
-	UINT16 *m_vram;
-	UINT16 *m_gvram;
+	required_shared_ptr<UINT16> m_gvram;
+	required_shared_ptr<UINT16> m_vram;
 	UINT8 m_crtc_vreg[0x100],m_crtc_index;
 
 	mc6845_device *m_mc6845;
@@ -75,7 +77,7 @@ static SCREEN_UPDATE_IND16( fp6000 )
 	fp6000_state *state = screen.machine().driver_data<fp6000_state>();
 	int x,y;
 	int xi,yi;
-	UINT8 *gfx_rom = screen.machine().region("pcg")->base();
+	UINT8 *gfx_rom = state->memregion("pcg")->base();
 	UINT32 count;
 
 	count = 0;
@@ -165,8 +167,8 @@ WRITE8_MEMBER(fp6000_state::fp6000_6845_data_w)
 static ADDRESS_MAP_START(fp6000_map, AS_PROGRAM, 16, fp6000_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000,0xbffff) AM_RAM
-	AM_RANGE(0xc0000,0xdffff) AM_RAM AM_BASE(m_gvram)//gvram
-	AM_RANGE(0xe0000,0xe0fff) AM_RAM AM_BASE(m_vram)
+	AM_RANGE(0xc0000,0xdffff) AM_RAM AM_SHARE("gvram")//gvram
+	AM_RANGE(0xe0000,0xe0fff) AM_RAM AM_SHARE("vram")
 	AM_RANGE(0xe7000,0xe7fff) AM_READWRITE8(fp6000_pcg_r,fp6000_pcg_w,0xffff)
 	AM_RANGE(0xf0000,0xfffff) AM_ROM AM_REGION("ipl", 0)
 ADDRESS_MAP_END
@@ -275,7 +277,7 @@ static MACHINE_START(fp6000)
 {
 	fp6000_state *state = machine.driver_data<fp6000_state>();
 
-	state->m_char_rom = machine.region("pcg")->base();
+	state->m_char_rom = state->memregion("pcg")->base();
 	state->m_mc6845 = machine.device<mc6845_device>("crtc");
 }
 

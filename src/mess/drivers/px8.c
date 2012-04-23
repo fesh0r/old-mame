@@ -77,7 +77,7 @@ void px8_state::bankswitch()
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
-	UINT8 *ipl_rom = machine().region(UPD70008_TAG)->base();
+	UINT8 *ipl_rom = memregion(UPD70008_TAG)->base();
 
 	if (!m_bank0)
 	{
@@ -531,7 +531,7 @@ static ADDRESS_MAP_START( px8_slave_mem, AS_PROGRAM, 8, px8_state )
 	AM_RANGE(0x0020, 0x0023) AM_READWRITE(gah40s_r, gah40s_w)
 //  AM_RANGE(0x0024, 0x0027) AM_DEVREADWRITE_LEGACY(SED1320_TAG, )
 	AM_RANGE(0x0028, 0x0028) AM_WRITE(gah40s_ier_w)
-	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(m_video_ram)
+	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_SHARE("video_ram")
 	AM_RANGE(0x9800, 0xefff) AM_NOP
 	AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION(HD6303_TAG, 0) /* internal mask rom */
 ADDRESS_MAP_END

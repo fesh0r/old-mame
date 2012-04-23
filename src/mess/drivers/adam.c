@@ -193,6 +193,7 @@
 #include "cpu/z80/z80.h"
 #include "cpu/m6800/m6800.h"
 #include "formats/basicdsk.h"
+#include "formats/adam_cas.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
 #include "imagedev/flopdrv.h"
@@ -257,11 +258,11 @@ void adam_state::bankswitch()
 		if (BIT(m_adamnet, 1))
 		{
 			program->unmap_readwrite(0x0000, 0x5fff);
-			program->install_rom(0x6000, 0x7fff, machine().region("wp")->base() + 0x8000);
+			program->install_rom(0x6000, 0x7fff, memregion("wp")->base() + 0x8000);
 		}
 		else
 		{
-			program->install_rom(0x0000, 0x7fff, machine().region("wp")->base());
+			program->install_rom(0x0000, 0x7fff, memregion("wp")->base());
 		}
 		break;
 
@@ -277,7 +278,7 @@ void adam_state::bankswitch()
 		break;
 
 	case LO_OS7_ROM_INTERNAL_RAM:
-		program->install_rom(0x0000, 0x1fff, machine().region("os7")->base());
+		program->install_rom(0x0000, 0x1fff, memregion("os7")->base());
 		program->install_ram(0x2000, 0x7fff, ram + 0x2000);
 		break;
 	}
@@ -289,13 +290,13 @@ void adam_state::bankswitch()
 		break;
 
 	case HI_ROM_EXPANSION:
-		program->install_rom(0x8000, 0xffff, machine().region("xrom")->base());
+		program->install_rom(0x8000, 0xffff, memregion("xrom")->base());
 		break;
 
 	case HI_RAM_EXPANSION:
 		if (m_game)
 		{
-			program->install_rom(0x8000, 0xffff, machine().region("cart")->base());
+			program->install_rom(0x8000, 0xffff, memregion("cart")->base());
 		}
 		else
 		{
@@ -307,7 +308,7 @@ void adam_state::bankswitch()
 		break;
 
 	case HI_CARTRIDGE_ROM:
-		program->install_rom(0x8000, 0xffff, machine().region("cart")->base());
+		program->install_rom(0x8000, 0xffff, memregion("cart")->base());
 		break;
 	}
 }
@@ -762,15 +763,21 @@ WRITE8_MEMBER( adam_state::ddp6801_p1_w )
 
     */
 
-	// speed select
-//  cassette_set_speed(m_ddp0, BIT(data, 0) ? 80 : 20);
-//  cassette_set_speed(m_ddp1, BIT(data, 0) ? 80 : 20);
+	if(m_ddp0->exists())
+	{
+		m_ddp0->set_speed(BIT(data, 0) ? (double) 80/1.875 : 20/1.875); // speed select
+		if(!(data & 0x08)) m_ddp0->go_forward();
+		if(!(data & 0x10)) m_ddp0->go_reverse();
+		m_ddp0->change_state(BIT(data, 1) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR); // motor control
+	}
 
-	// motor stop 0
-	m_ddp0->set_state(BIT(data, 1) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED);
-
-	// motor stop 1
-	m_ddp1->set_state(BIT(data, 2) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED);
+	if(m_ddp1->exists())
+	{
+		m_ddp1->set_speed(BIT(data, 0) ? (double) 80/1.875 : 20/1.875); // speed select
+		if(!(data & 0x08)) m_ddp1->go_forward();
+		if(!(data & 0x10)) m_ddp1->go_reverse();
+		m_ddp1->change_state(BIT(data, 2) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR); // motor control
+	}
 
 	// data write 0
 	m_wr0 = BIT(data, 6);
@@ -798,14 +805,12 @@ READ8_MEMBER( adam_state::ddp6801_p2_r )
 
     */
 
-	UINT8 data = M6801_MODE_6;
+	UINT8 data = 0;
 
-	if (!m_reset)
-	{
-		// cassette in place 1
-		data &= ~0x01;
-		//data |= dynamic_cast<device_image_interface *>(&m_ddp1)->exists() << 1;
-	}
+	if (m_reset)
+		data |= M6801_MODE_6;
+	else
+		data |= m_ddp1->exists() << 1; // Cassette in place 1
 
 	// NET RXD
 	data |= m_rxd << 3;
@@ -832,17 +837,21 @@ WRITE8_MEMBER( adam_state::ddp6801_p2_w )
 
     */
 
-	// track
-	m_track = !BIT(data, 2);
+	if(m_ddp0->exists())
+	{
+		m_ddp0->set_channel(!BIT(data, 2)); // Track select
+		if (!m_wr0) m_ddp0->output(BIT(data, 0) ? 1.0 : -1.0); // write data
+	}
 
-	// write data
-	if (!m_wr0) m_ddp0->output(BIT(data, 0) ? 1.0 : -1.0);
-	if (!m_wr1) m_ddp1->output(BIT(data, 0) ? 1.0 : -1.0);
+	if(m_ddp1->exists())
+	{
+		m_ddp1->set_channel(!BIT(data, 2));
+		if (!m_wr1) m_ddp1->output(BIT(data, 0) ? 1.0 : -1.0);
+	}
 
 	// NET TXD
 	adamnet_txd_w(ADAMNET_DDP, BIT(data, 4));
 }
-
 
 //-------------------------------------------------
 //  ddp6801_p4_r -
@@ -867,20 +876,23 @@ READ8_MEMBER( adam_state::ddp6801_p4_r )
 
 	UINT8 data = 0;
 
-	// motion sense 0
-	data |= ((m_ddp0->get_state() & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED) << 3;
+	// drive 0
+	if(m_ddp0->exists())
+	{
+		data |= ((m_ddp0->get_state() & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED) << 3; // motion sense
+		data |= 1 << 5; // cassette in place
+		data |= (m_ddp0->input() < 0) << 7; // read data
+	}
 
-	// motion sense 1
-	data |= ((m_ddp1->get_state() & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED) << 4;
+	// drive 1
+	if(m_ddp1->exists())
+	{
+		data |= ((m_ddp1->get_state() & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED) << 4; // motion sense
+		data |= (m_ddp1->input() < 0) << 7; // read data
+	}
 
-	// cassette in place 0
-//  data |= dynamic_cast<device_image_interface *>(&m_ddp0)->exists() << 5;
-
-	// read data 0
+	// read data 0 (always 1)
 	data |= 0x40;
-
-	// read data 1
-	data |= ((m_ddp0->input() < 0) || (m_ddp1->input() < 0)) << 7;
 
 	return data;
 }
@@ -1514,11 +1526,18 @@ static TMS9928A_INTERFACE(adam_tms9928a_interface)
 //  cassette_interface adam_cassette_interface
 //-------------------------------------------------
 
+static const struct CassetteOptions adam_cassette_options =
+{
+	2,		/* channels */
+	16,		/* bits per sample */
+	44100	/* sample frequency */
+};
+
 static const cassette_interface adam_cassette_interface =
 {
-	cassette_default_formats,
-	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
+	coleco_adam_cassette_formats,
+	&adam_cassette_options,
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
 	NULL,
 	NULL
 };
@@ -1681,7 +1700,6 @@ static MACHINE_CONFIG_START( adam, adam_state )
 	MCFG_CPU_ADD(M6801_DDP_TAG, M6801, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(ddp6801_mem)
 	MCFG_CPU_IO_MAP(ddp6801_io)
-	MCFG_DEVICE_DISABLE()
 
 	MCFG_CPU_ADD(M6801_PRN_TAG, M6801, XTAL_4MHz)
 	MCFG_CPU_PROGRAM_MAP(printer6801_mem)

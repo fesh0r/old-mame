@@ -2,7 +2,7 @@
 
     a2scsi.h
 
-    Implementation of the Apple II Memory Expansion Card
+    Implementation of the Apple II SCSI Card
 
 *********************************************************************/
 
@@ -41,6 +41,8 @@ protected:
     virtual void write_cnxx(address_space &space, UINT8 offset, UINT8 data);
     virtual UINT8 read_c800(address_space &space, UINT16 offset);
     virtual void write_c800(address_space &space, UINT16 offset, UINT8 data);
+
+    required_device<device_t> m_ncr5380;
 
 private:
     UINT8 *m_rom;

@@ -134,23 +134,9 @@
 #define LOG_ADB				0
 #define LOG_IRQ				0
 
-#define IRQ_KBD_SRQ			0x01
-#define IRQ_ADB_DATA		0x02
-#define IRQ_ADB_MOUSE		0x04
-#define IRQ_VGC_SCANLINE	0x08
-#define IRQ_VGC_SECOND		0x10
-#define IRQ_INTEN_QSECOND	0x20
-#define IRQ_INTEN_VBL		0x40
-#define IRQ_DOC			0x80
-
-
-
-
 /* -----------------------------------------------------------------------
  * Apple IIgs clock
  * ----------------------------------------------------------------------- */
-
-
 
 static void process_clock(running_machine &machine)
 {
@@ -249,7 +235,7 @@ static void process_clock(running_machine &machine)
  * Interrupts
  * ----------------------------------------------------------------------- */
 
-static const char *apple2gs_irq_name(UINT8 irq_mask)
+static const char *apple2gs_irq_name(UINT16 irq_mask)
 {
 	switch(irq_mask)
 	{
@@ -260,17 +246,18 @@ static const char *apple2gs_irq_name(UINT8 irq_mask)
 		case IRQ_VGC_SECOND:		return "IRQ_VGC_SECOND";
 		case IRQ_INTEN_QSECOND:		return "IRQ_INTEN_QSECOND";
 		case IRQ_INTEN_VBL:			return "IRQ_INTEN_VBL";
-		case IRQ_DOC:				return "IRQ_DOC";
+        case IRQ_DOC:				return "IRQ_DOC";
+		case IRQ_SLOT:				return "IRQ_SLOT";
 	}
 	return NULL;
 }
 
-static void apple2gs_add_irq(running_machine &machine, UINT8 irq_mask)
+void apple2gs_add_irq(running_machine &machine, UINT16 irq_mask)
 {
 	apple2gs_state *state = machine.driver_data<apple2gs_state>();
 	if ((state->m_pending_irqs & irq_mask) == 0x00)
 	{
-		if (LOG_IRQ)
+    	if (LOG_IRQ)
 			logerror("apple2gs_add_irq(): adding %s\n", apple2gs_irq_name(irq_mask));
 
 		state->m_pending_irqs |= irq_mask;
@@ -280,7 +267,7 @@ static void apple2gs_add_irq(running_machine &machine, UINT8 irq_mask)
 
 
 
-static void apple2gs_remove_irq(running_machine &machine, UINT8 irq_mask)
+void apple2gs_remove_irq(running_machine &machine, UINT16 irq_mask)
 {
 	apple2gs_state *state = machine.driver_data<apple2gs_state>();
 	if (state->m_pending_irqs & irq_mask)
@@ -552,7 +539,7 @@ static void adb_write_datareg(running_machine &machine, UINT8 data)
 					break;
 
 				case 0x07:	/* synchronize */
-					if (machine.region("maincpu")->bytes() == 0x40000)	/* HACK */
+					if (state->memregion("maincpu")->bytes() == 0x40000)	/* HACK */
 						state->m_adb_command_length = 8;
 					else
 						state->m_adb_command_length = 4;
@@ -827,7 +814,7 @@ static READ8_HANDLER( gssnd_r )
 
 			if (state->m_sndglu_ctrl & 0x40)	// docram access
 			{
-				UINT8 *docram = space->machine().region("es5503")->base();
+				UINT8 *docram = state->memregion("es5503")->base();
 				state->m_sndglu_dummy_read = docram[state->m_sndglu_addr];
 			}
 			else
@@ -868,7 +855,7 @@ static WRITE8_HANDLER( gssnd_w )
 		case 1:	// data write
 			if (state->m_sndglu_ctrl & 0x40)	// docram access
 			{
-				UINT8 *docram = space->machine().region("es5503")->base();
+				UINT8 *docram = space->machine().root_device().memregion("es5503")->base();
 				docram[state->m_sndglu_addr] = data;
 			}
 			else
@@ -928,6 +915,11 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 	apple2gs_state *state = space->machine().driver_data<apple2gs_state>();
 	UINT8 result;
 	scc8530_t *scc;
+
+	if(space->debugger_access())
+    {
+        return 0;
+    }
 
 	offset &= 0xFF;
 
@@ -1047,8 +1039,8 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x74: case 0x75: case 0x76: case 0x77:
 		case 0x78: case 0x79: case 0x7a: case 0x7b:
 		case 0x7c: case 0x7d: case 0x7e: case 0x7f:
-			offset |= (space->machine().region("maincpu")->bytes() - 1) & ~0x3FFF;
-			result = space->machine().region("maincpu")->base()[offset];
+			offset |= (space->machine().root_device().memregion("maincpu")->bytes() - 1) & ~0x3FFF;
+			result = space->machine().root_device().memregion("maincpu")->base()[offset];
 			break;
 
 		case 0x21:	/* C021 - MONOCOLOR */
@@ -1069,8 +1061,15 @@ static READ8_HANDLER( apple2gs_c0xx_r )
             }
             break;
 
-		default:
-			result = apple2_c0xx_r(space, offset);
+        default:
+            if (offset < 0x80)
+            {
+                result = apple2_c0xx_r(space, offset);
+            }
+            else
+            {
+                result = apple2_c080_r(space, offset);
+            }
 			break;
 	}
 
@@ -1220,7 +1219,14 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
             break;
 
 		default:
-			apple2_c0xx_w(space, offset, data);
+            if (offset < 0x80)
+            {
+                apple2_c0xx_w(space, offset, data);
+            }
+            else
+            {
+                apple2_c080_w(space, offset, data);
+            }
 			break;
 	}
 }
@@ -1537,8 +1543,8 @@ static UINT8 *apple2gs_getslotmem(running_machine &machine, offs_t address)
 	assert(address >= 0xC000);
 	assert(address <= 0xCFFF);
 
-	rom = machine.region("maincpu")->base();
-	rom += 0x030000 % machine.region("maincpu")->bytes();
+	rom = machine.root_device().memregion("maincpu")->base();
+	rom += 0x030000 % machine.root_device().memregion("maincpu")->bytes();
 	return &rom[address];
 }
 
@@ -1578,14 +1584,13 @@ static UINT8 apple2gs_xxCxxx_r(address_space &space, running_machine &machine, o
 			else
 			{
 				// accessing a slot mapped to "Your Card", C800 should belong to that card
-				if (1) //state->m_a2_cnxx_slot == -1)
-				{
-					state->m_a2_cnxx_slot = slot;
-                    apple2_update_memory(space.machine());
-				}
-
 				if (slotdevice != NULL)
 				{
+					if (slotdevice->take_c800())
+					{
+						state->m_a2_cnxx_slot = slot;
+						apple2_update_memory(space.machine());
+					}
 					result = slotdevice->read_cnxx(space, address&0xff);
 				}
 				else
@@ -1599,11 +1604,14 @@ static UINT8 apple2gs_xxCxxx_r(address_space &space, running_machine &machine, o
 			slotdevice = NULL;
 
 			// if CFFF accessed, reset C800 area to internal ROM
-			if ((address & 0xfff) == 0xfff)
-			{
-				state->m_a2_cnxx_slot = -1;
-                apple2_update_memory(space.machine());
-			}
+            if(!space.debugger_access())
+            {
+                if ((address & 0xfff) == 0xfff)
+                {
+                    state->m_a2_cnxx_slot = -1;
+                    apple2_update_memory(space.machine());
+                }
+            }
 
 			if ( state->m_a2_cnxx_slot >= 0 && state->m_a2_cnxx_slot <= 7 )
 			{
@@ -1631,11 +1639,14 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 	int slot;
 
 	// if CFFF accessed, reset C800 area to internal ROM
-	if ((address & 0xfff) == 0xfff)
-	{
-		state->m_a2_cnxx_slot = -1;
-        apple2_update_memory(space.machine());
-	}
+    if(!space.debugger_access())
+    {
+    	if ((address & 0xfff) == 0xfff)
+    	{
+    		state->m_a2_cnxx_slot = -1;
+            apple2_update_memory(space.machine());
+    	}
+    }
 
 	if ((state->m_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
 	{
@@ -1647,38 +1658,89 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 	}
 	else
 	{
+		device_a2bus_card_interface *slotdevice;
+
 		slot = (address & 0x000F00) / 0x100;
 
-		if ((slot > 7) || ((state->m_sltromsel & (1 << slot)) == 0))
-			*apple2gs_getslotmem(machine, address) = data;
+		if (slot <= 7)	// slots 1-7, it's the slot
+		{
+			slotdevice = state->m_a2bus->get_a2bus_card(slot);
+
+			// is this slot internal or "Your Card"?
+			if ((state->m_sltromsel & (1 << slot)) == 0)
+			{
+				// accessing a slot mapped to internal, let's put back the internal ROM
+				state->m_a2_cnxx_slot = -1;
+                apple2_update_memory(space.machine());
+				*apple2gs_getslotmem(machine, address) = data;
+			}
+			else
+			{
+				// accessing a slot mapped to "Your Card", C800 should belong to that card if it can take it
+				if (slotdevice != NULL)
+				{
+					if (slotdevice->take_c800())
+					{
+						state->m_a2_cnxx_slot = slot;
+						apple2_update_memory(space.machine());
+					}
+					slotdevice->write_cnxx(space, address&0xff, data);
+				}
+				// (else slot is your card but there's no card inserted so the write goes nowhere)
+			}
+		}
+		else	// C800-CFFF, not cards
+		{
+			slotdevice = NULL;
+
+			// if CFFF accessed, reset C800 area to internal ROM
+			if ((address & 0xfff) == 0xfff)
+			{
+				state->m_a2_cnxx_slot = -1;
+                apple2_update_memory(space.machine());
+			}
+
+			if ( state->m_a2_cnxx_slot >= 0 && state->m_a2_cnxx_slot <= 7 )
+			{
+				slotdevice = state->m_a2bus->get_a2bus_card(state->m_a2_cnxx_slot);
+			}
+
+			if (slotdevice)
+			{
+				slotdevice->write_c800(space, address&0x7ff, data);
+			}
+			else
+			{
+				*apple2gs_getslotmem(machine, address) = data;
+			}
+		}
 	}
 }
 
 
 
-DIRECT_UPDATE_HANDLER( apple2gs_opbase )
+DIRECT_UPDATE_MEMBER(apple2gs_state::apple2gs_opbase)
 {
-	apple2gs_state *state = machine.driver_data<apple2gs_state>();
 	UINT8 *opptr = NULL;
 	int slot;
 
 	if (((address & 0xFEF000) == 0x00C000) || ((address & 0xFEF000) == 0xE0C000))
 	{
-		if ((state->m_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
+		if ((m_shadow & 0x40) && ((address & 0xF00000) == 0x000000))
 		{
-			opptr = &machine.device<ram_device>(RAM_TAG)->pointer()[address];
+			opptr = &machine().device<ram_device>(RAM_TAG)->pointer()[address];
 		}
 		else if ((address & 0x000F00) == 0x000000)
 		{
 			if (((address & 0xFF) >= 0x71) && ((address & 0xFF) <= 0x7F))
-				opptr = apple2gs_getslotmem(machine, address);
+				opptr = apple2gs_getslotmem(machine(), address);
 		}
 		else
 		{
 			slot = (address & 0x000F00) / 0x100;
 
-			if ((slot > 7) || ((state->m_sltromsel & (1 << slot)) == 0))
-				opptr = apple2gs_getslotmem(machine, address);
+			if ((slot > 7) || ((m_sltromsel & (1 << slot)) == 0))
+				opptr = apple2gs_getslotmem(machine(), address);
 		}
 
 		if (opptr != NULL)
@@ -1759,7 +1821,7 @@ static void apple2gs_setup_memory(running_machine &machine)
 
 		// ROM 03 hardware: the quoted "1 MB" for a base machine doesn't include banks e0/e1, so map accordingly
 		space->install_readwrite_bank(0x010000, ramsize - 1, "bank1");
-		memory_set_bankptr(machine,"bank1", machine.device<ram_device>(RAM_TAG)->pointer() + 0x010000);
+		state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + 0x010000);
 
 		space->install_legacy_read_handler( ramsize, 0xdfffff, FUNC(apple2gs_bank_echo_r));
 		state->m_echo_bank = (ramsize >> 16);
@@ -1770,7 +1832,7 @@ static void apple2gs_setup_memory(running_machine &machine)
 
 		// ROM 00/01 hardware: the quoted "256K" for a base machine *does* include banks e0/e1.
 		space->install_readwrite_bank(0x010000, ramsize - 1 + 0x10000, "bank1");
-		memory_set_bankptr(machine,"bank1", machine.device<ram_device>(RAM_TAG)->pointer() + 0x010000);
+		state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + 0x010000);
 
 		space->install_legacy_read_handler( ramsize + 0x10000, 0xdfffff, FUNC(apple2gs_bank_echo_r));
 		state->m_echo_bank = (ramsize+0x10000) >> 16;
@@ -1783,13 +1845,13 @@ static void apple2gs_setup_memory(running_machine &machine)
 	space->install_legacy_write_handler(0xe02000, 0xe03fff, FUNC(apple2gs_E02xxx_w));
 	space->install_legacy_write_handler(0xe10400, 0xe107ff, FUNC(apple2gs_E104xx_w));
 	space->install_legacy_write_handler(0xe12000, 0xe13fff, FUNC(apple2gs_E12xxx_w));
-	memory_set_bankptr(machine,"bank2", state->m_slowmem);
+	state->membank("bank2")->set_base(state->m_slowmem);
 
 	/* install alternate ROM bank */
-	begin = 0x1000000 - machine.region("maincpu")->bytes();
+	begin = 0x1000000 - machine.root_device().memregion("maincpu")->bytes();
 	end = 0xffffff;
 	space->install_read_bank(begin, end, "bank3");
-	memory_set_bankptr(machine,"bank3", machine.region("maincpu")->base());
+	state->membank("bank3")->set_base(machine.root_device().memregion("maincpu")->base());
 
 	/* install new xxC000-xxCFFF handlers */
 	space->install_legacy_read_handler(0x00c000, 0x00cfff, FUNC(apple2gs_00Cxxx_r));
@@ -1800,7 +1862,7 @@ static void apple2gs_setup_memory(running_machine &machine)
 	space->install_legacy_write_handler(0xe0c000, 0xe0cfff, FUNC(apple2gs_E0Cxxx_w));
 	space->install_legacy_read_handler(0xe1c000, 0xe1cfff, FUNC(apple2gs_E1Cxxx_r));
 	space->install_legacy_write_handler(0xe1c000, 0xe1cfff, FUNC(apple2gs_E1Cxxx_w));
-	space->set_direct_update_handler(direct_update_delegate(FUNC(apple2gs_opbase), &machine));
+	space->set_direct_update_handler(direct_update_delegate(FUNC(apple2gs_state::apple2gs_opbase), state));
 
 
 	/* install aux memory writes (for shadowing) */

@@ -1016,8 +1016,6 @@ GFXDECODE_END
 static MACHINE_START( psikyo )
 {
 	psikyo_state *state = machine.driver_data<psikyo_state>();
-	
-	state->m_generic_paletteram_16.allocate(0x1000);
 
 	state->m_audiocpu = machine.device("audiocpu");
 

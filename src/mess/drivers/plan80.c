@@ -34,12 +34,13 @@ public:
 	plan80_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu")
-	{ }
+	,
+		m_p_videoram(*this, "p_videoram"){ }
 
 	required_device<cpu_device> m_maincpu;
 	DECLARE_READ8_MEMBER(plan80_04_r);
 	DECLARE_WRITE8_MEMBER(plan80_09_w);
-	UINT8* m_p_videoram;
+	required_shared_ptr<UINT8> m_p_videoram;
 	const UINT8* m_p_chargen;
 	UINT8 m_kbd_row;
 	virtual void machine_reset();
@@ -79,7 +80,7 @@ static ADDRESS_MAP_START(plan80_mem, AS_PROGRAM, 8, plan80_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK("boot")
 	AM_RANGE(0x0800, 0xefff) AM_RAM
-	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(m_p_videoram)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_SHARE("p_videoram")
 	AM_RANGE(0xf800, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -143,24 +144,26 @@ INPUT_PORTS_END
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( plan80_boot )
 {
-	memory_set_bank(machine, "boot", 0);
+	plan80_state *state = machine.driver_data<plan80_state>();
+	state->membank("boot")->set_entry(0);
 }
 
 MACHINE_RESET_MEMBER( plan80_state )
 {
-	memory_set_bank(machine(), "boot", 1);
+	membank("boot")->set_entry(1);
 	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(plan80_boot));
 }
 
 DRIVER_INIT( plan80 )
 {
-	UINT8 *RAM = machine.region("maincpu")->base();
-	memory_configure_bank(machine, "boot", 0, 2, &RAM[0x0000], 0xf800);
+	plan80_state *state = machine.driver_data<plan80_state>();
+	UINT8 *RAM = state->memregion("maincpu")->base();
+	state->membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xf800);
 }
 
 VIDEO_START_MEMBER( plan80_state )
 {
-	m_p_chargen = machine().region("chargen")->base();
+	m_p_chargen = memregion("chargen")->base();
 }
 
 SCREEN_UPDATE16_MEMBER( plan80_state )

@@ -58,9 +58,10 @@ class oric_state : public driver_device
 {
 public:
 	oric_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		  m_ram(*this, "ram") { }
 
-	UINT8 *m_ram;
+	optional_shared_ptr<UINT8> m_ram;
 	int m_is_telestrat;
 	unsigned char m_irqs;
 	char *m_ram_0x0c000;
@@ -81,6 +82,14 @@ public:
 	unsigned char m_telestrat_via2_port_b_data;
 	telestrat_mem_block m_telestrat_blocks[8];
 	oric_vh_state m_vh_state;
+	DECLARE_WRITE8_MEMBER(oric_psg_porta_write);
+	DECLARE_WRITE8_MEMBER(apple2_v2_interface_w);
+	DECLARE_READ8_MEMBER(oric_jasmin_r);
+	DECLARE_WRITE8_MEMBER(oric_jasmin_w);
+	DECLARE_READ8_MEMBER(oric_microdisc_r);
+	DECLARE_WRITE8_MEMBER(oric_microdisc_w);
+	DECLARE_READ8_MEMBER(oric_IO_r);
+	DECLARE_WRITE8_MEMBER(oric_IO_w);
 };
 
 
@@ -92,12 +101,7 @@ extern const wd17xx_interface oric_wd17xx_interface;
 
 MACHINE_START( oric );
 MACHINE_RESET( oric );
-READ8_HANDLER( oric_IO_r );
-WRITE8_HANDLER( oric_IO_w );
-READ8_HANDLER( oric_microdisc_r );
-WRITE8_HANDLER( oric_microdisc_w );
 
-WRITE8_HANDLER(oric_psg_porta_write);
 
 /* Telestrat specific */
 MACHINE_START( telestrat );

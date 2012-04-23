@@ -75,6 +75,8 @@ public:
 
 	DECLARE_WRITE8_MEMBER(kbd_put);
 
+	DECLARE_DIRECT_UPDATE_MEMBER(sage2_direct_update_handler);
+
 	int m_reset;
 
 	// floppy state

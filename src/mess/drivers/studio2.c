@@ -233,8 +233,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( visicom_map, AS_PROGRAM, 8, visicom_state )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x1000, 0x10ff) AM_RAM
-	AM_RANGE(0x1100, 0x11ff) AM_RAM AM_BASE(m_color_ram)
-	AM_RANGE(0x1300, 0x13ff) AM_RAM AM_BASE(m_color_ram1)
+	AM_RANGE(0x1100, 0x11ff) AM_RAM AM_SHARE("color_ram")
+	AM_RANGE(0x1300, 0x13ff) AM_RAM AM_SHARE("color_ram1")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( visicom_io_map, AS_IO, 8, visicom_state )
@@ -245,7 +245,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mpt02_map, AS_PROGRAM, 8, mpt02_state )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
-	AM_RANGE(0x0b00, 0x0b3f) AM_RAM AM_BASE(m_color_ram)
+	AM_RANGE(0x0b00, 0x0b3f) AM_RAM AM_SHARE("color_ram")
 	AM_RANGE(0x0c00, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
@@ -437,7 +437,7 @@ DEVICE_IMAGE_LOAD( studio2_cart_load )
 		// WARNING: list code currently assume that cart mapping starts at 0x400.
 		// the five dumps currently available work like this, but the .st2 format
 		// allows for more freedom... how was the content of a real cart mapped?
-		UINT8 *ptr = ((UINT8 *) image.device().machine().region(CDP1802_TAG)->base()) + 0x400;
+		UINT8 *ptr = ((UINT8 *) image.device().machine().root_device().memregion(CDP1802_TAG)->base()) + 0x400;
 		memcpy(ptr, image.get_software_region("rom"), image.get_software_region_length("rom"));
 		return IMAGE_INIT_PASS;
 	}

@@ -108,7 +108,8 @@ c64_easyflash_cartridge_device::c64_easyflash_cartridge_device(const machine_con
 
 void c64_easyflash_cartridge_device::device_start()
 {
-	m_ram = auto_alloc_array(machine(), UINT8, 0x100);
+	// allocate memory
+	c64_ram_pointer(machine(), 0x100);
 
 	// state saving
 	save_item(NAME(m_bank));
@@ -222,7 +223,7 @@ void c64_easyflash_cartridge_device::c64_cd_w(address_space &space, offs_t offse
 //  c64_exrom_r - EXROM read
 //-------------------------------------------------
 
-int c64_easyflash_cartridge_device::c64_exrom_r()
+int c64_easyflash_cartridge_device::c64_exrom_r(offs_t offset, int ba, int rw, int hiram)
 {
 	return !BIT(m_mode, 1);
 }

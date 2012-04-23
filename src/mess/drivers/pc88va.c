@@ -50,9 +50,10 @@ class pc88va_state : public driver_device
 {
 public:
 	pc88va_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_palram(*this, "palram"){ }
 
-	UINT16 *m_palram;
+	required_shared_ptr<UINT16> m_palram;
 	UINT16 m_bank_reg;
 	UINT16 m_screen_ctrl_reg;
 	UINT8 m_timer3_io_reg;
@@ -109,7 +110,7 @@ static VIDEO_START( pc88va )
 static void draw_sprites(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	pc88va_state *state = machine.driver_data<pc88va_state>();
-	UINT16 *tvram = (UINT16 *)(*machine.region("tvram"));
+	UINT16 *tvram = (UINT16 *)(*state->memregion("tvram"));
 	int offs,i;
 
 	offs = state->m_tsp.spr_offset;
@@ -219,8 +220,8 @@ static UINT32 calc_kanji_rom_addr(UINT8 jis1,UINT8 jis2,int x,int y)
 static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	pc88va_state *state = machine.driver_data<pc88va_state>();
-	UINT8 *tvram = machine.region("tvram")->base();
-	UINT8 *kanji = machine.region("kanji")->base();
+	UINT8 *tvram = machine.root_device().memregion("tvram")->base();
+	UINT8 *kanji = state->memregion("kanji")->base();
 	int xi,yi;
 	int x,y;
 	int res_x,res_y;
@@ -462,7 +463,7 @@ READ16_MEMBER(pc88va_state::sys_mem_r)
 			return 0xffff;
 		case 1: // TVRAM
 		{
-			UINT16 *tvram = (UINT16 *)(*machine().region("tvram"));
+			UINT16 *tvram = (UINT16 *)(*machine().root_device().memregion("tvram"));
 
 			if(((offset*2) & 0x30000) == 0)
 				return tvram[offset];
@@ -471,14 +472,14 @@ READ16_MEMBER(pc88va_state::sys_mem_r)
 		}
 		case 4:
 		{
-			UINT16 *gvram = (UINT16 *)(*machine().region("gvram"));
+			UINT16 *gvram = (UINT16 *)(*machine().root_device().memregion("gvram"));
 
 			return gvram[offset];
 		}
 		case 8: // kanji ROM
 		case 9:
 		{
-			UINT16 *knj_ram = (UINT16 *)(*machine().region("kanji"));
+			UINT16 *knj_ram = (UINT16 *)(*machine().root_device().memregion("kanji"));
 			UINT32 knj_offset;
 
 			knj_offset = (offset + (((m_bank_reg & 0x100) >> 8)*0x20000));
@@ -494,7 +495,7 @@ READ16_MEMBER(pc88va_state::sys_mem_r)
 		case 0xc: // Dictionary ROM
 		case 0xd:
 		{
-			UINT16 *dic_rom = (UINT16 *)(*machine().region("dictionary"));
+			UINT16 *dic_rom = (UINT16 *)(*machine().root_device().memregion("dictionary"));
 			UINT32 dic_offset;
 
 			dic_offset = (offset + (((m_bank_reg & 0x100) >> 8)*0x20000));
@@ -514,7 +515,7 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 			break;
 		case 1: // TVRAM
 		{
-			UINT16 *tvram = (UINT16 *)(*machine().region("tvram"));
+			UINT16 *tvram = (UINT16 *)(*machine().root_device().memregion("tvram"));
 
 			if(((offset*2) & 0x30000) == 0)
 				COMBINE_DATA(&tvram[offset]);
@@ -522,7 +523,7 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 		break;
 		case 4: // TVRAM
 		{
-			UINT16 *gvram = (UINT16 *)(*machine().region("gvram"));
+			UINT16 *gvram = (UINT16 *)(*machine().root_device().memregion("gvram"));
 
 			COMBINE_DATA(&gvram[offset]);
 		}
@@ -530,7 +531,7 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 		case 8: // kanji ROM, backup RAM at 0xb0000 - 0xb3fff
 		case 9:
 		{
-			UINT16 *knj_ram = (UINT16 *)(*machine().region("kanji"));
+			UINT16 *knj_ram = (UINT16 *)(*machine().root_device().memregion("kanji"));
 			UINT32 knj_offset;
 
 			knj_offset = ((offset) + (((m_bank_reg & 0x100) >> 8)*0x20000));
@@ -885,17 +886,17 @@ WRITE16_MEMBER(pc88va_state::bios_bank_w)
 
 	/* RBC1 */
 	{
-		UINT8 *ROM10 = machine().region("rom10")->base();
+		UINT8 *ROM10 = memregion("rom10")->base();
 
 		if((m_bank_reg & 0xe0) == 0x00)
-			memory_set_bankptr(machine(), "rom10_bank", &ROM10[(m_bank_reg & 0x10) ? 0x10000 : 0x00000]);
+			membank("rom10_bank")->set_base(&ROM10[(m_bank_reg & 0x10) ? 0x10000 : 0x00000]);
 	}
 
 	/* RBC0 */
 	{
-		UINT8 *ROM00 = machine().region("rom00")->base();
+		UINT8 *ROM00 = memregion("rom00")->base();
 
-		memory_set_bankptr(machine(), "rom00_bank", &ROM00[(m_bank_reg & 0xf)*0x10000]); // TODO: docs says that only 0 - 5 are used, dunno why ...
+		membank("rom00_bank")->set_base(&ROM00[(m_bank_reg & 0xf)*0x10000]); // TODO: docs says that only 0 - 5 are used, dunno why ...
 	}
 }
 
@@ -1063,7 +1064,7 @@ WRITE16_MEMBER(pc88va_state::video_pri_w)
 
 READ8_MEMBER(pc88va_state::backupram_dsw_r)
 {
-	UINT16 *knj_ram = (UINT16 *)(*machine().region("kanji"));
+	UINT16 *knj_ram = (UINT16 *)(*machine().root_device().memregion("kanji"));
 
 	if(offset == 0)
 		return knj_ram[(0x50000 + 0x1fc2) / 2] & 0xff;
@@ -1140,7 +1141,7 @@ static ADDRESS_MAP_START( pc88va_io_map, AS_IO, 16, pc88va_state )
 	AM_RANGE(0x0220, 0x023f) AM_RAM // Frame buffer 1 control parameter
 	AM_RANGE(0x0240, 0x025f) AM_RAM // Frame buffer 2 control parameter
 	AM_RANGE(0x0260, 0x027f) AM_RAM // Frame buffer 3 control parameter
-	AM_RANGE(0x0300, 0x033f) AM_RAM_WRITE(palette_ram_w) AM_BASE(m_palram) // Palette RAM (xBBBBxRRRRxGGGG format)
+	AM_RANGE(0x0300, 0x033f) AM_RAM_WRITE(palette_ram_w) AM_SHARE("palram") // Palette RAM (xBBBBxRRRRxGGGG format)
 
 //  AM_RANGE(0x0500, 0x05ff) GVRAM
 //  AM_RANGE(0x1000, 0xfeff) user area (???)
@@ -1532,11 +1533,11 @@ static MACHINE_START( pc88va )
 static MACHINE_RESET( pc88va )
 {
 	pc88va_state *state = machine.driver_data<pc88va_state>();
-	UINT8 *ROM00 = machine.region("rom00")->base();
-	UINT8 *ROM10 = machine.region("rom10")->base();
+	UINT8 *ROM00 = machine.root_device().memregion("rom00")->base();
+	UINT8 *ROM10 = state->memregion("rom10")->base();
 
-	memory_set_bankptr(machine, "rom10_bank", &ROM10[0x00000]);
-	memory_set_bankptr(machine, "rom00_bank", &ROM00[0x00000]);
+	state->membank("rom10_bank")->set_base(&ROM10[0x00000]);
+	state->membank("rom00_bank")->set_base(&ROM00[0x00000]);
 
 	state->m_bank_reg = 0x4100;
 	state->m_backupram_wp = 1;
