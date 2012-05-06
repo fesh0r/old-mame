@@ -72,8 +72,8 @@
      341S0285 - No version (x.xx) - PMac 4400 + Mac clones ("Cuda Lite" with 768 bytes more ROM + PS/2 keyboard/mouse support)
      341S0060 - 0x00020028 (2.40) - Performa/Quadra 6xx, PMac 6200, x400, some x500, Pippin, "Gossamer" G3, others?
                                     (verified found in PMac 5500-225, G3-333)
-     341S0417 - 0x???????? (?.??) - Color Classic
      341S0788 - 0x00020025 (2.37) - LC 475/575/Quadra 605, Quadra 660AV/840AV, PMac 7200
+     341S0417 - 0x00020023 (2.35) - Color Classic
 
      Caboose version spotting:
      341S0853 - 0x0100 (1.00) - Quadra 950
@@ -585,7 +585,7 @@ static int scan_keyboard(running_machine &machine)
 
 	for (i=0; i<7; i++)
 	{
-		keybuf = input_port_read(machine, keynames[i]);
+		keybuf = machine.root_device().ioport(keynames[i])->read();
 
 		if (keybuf != mac->m_key_matrix[i])
 		{
@@ -856,8 +856,8 @@ void mac_state::mouse_callback()
 	int		x_needs_update = 0, y_needs_update = 0;
 	mac_state *mac = machine().driver_data<mac_state>();
 
-	new_mx = input_port_read(machine(), "MOUSE1");
-	new_my = input_port_read(machine(), "MOUSE2");
+	new_mx = ioport("MOUSE1")->read();
+	new_my = ioport("MOUSE2")->read();
 
 	/* see if it moved in the x coord */
 	if (new_mx != last_mx)
@@ -1380,7 +1380,7 @@ static READ8_DEVICE_HANDLER(mac_via_in_b)
 				val |= 0x20;
 			if (mac->m_mouse_bit_x)	/* Mouse X2 */
 				val |= 0x10;
-			if ((input_port_read(device->machine(), "MOUSE0") & 0x01) == 0)
+			if ((device->machine().root_device().ioport("MOUSE0")->read() & 0x01) == 0)
 				val |= 0x08;
 		}
 		if (mac->m_rtc_data_out)

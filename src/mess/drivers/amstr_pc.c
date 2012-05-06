@@ -59,7 +59,6 @@ More information can be found at http://www.seasip.info/AmstradXT/1640tech/index
 #include "machine/8237dma.h"
 #include "sound/sn76496.h"
 
-#include "machine/kb_keytro.h"
 #include "machine/ram.h"
 
 static ADDRESS_MAP_START( ppc512_map, AS_PROGRAM, 16, pc_state )
@@ -132,7 +131,7 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START( pc200 )
 	PORT_START("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
+	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */

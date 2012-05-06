@@ -235,9 +235,9 @@ void c64_sfx_sound_expander_cartridge_device::device_reset()
 //  c64_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c64_sfx_sound_expander_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int roml, int romh, int io1, int io2)
+UINT8 c64_sfx_sound_expander_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int ba, int roml, int romh, int io1, int io2)
 {
-	UINT8 data = m_exp->cd_r(space, offset, roml, romh, io1, io2);
+	UINT8 data = m_exp->cd_r(space, offset, ba, roml, romh, io1, io2);
 
 	if (!io2)
 	{
@@ -245,14 +245,14 @@ UINT8 c64_sfx_sound_expander_cartridge_device::c64_cd_r(address_space &space, of
 		{
 			switch (offset & 0x07)
 			{
-			case 0: data |= input_port_read(*this, "KB0"); break;
-			case 1: data |= input_port_read(*this, "KB1"); break;
-			case 2: data |= input_port_read(*this, "KB2"); break;
-			case 3: data |= input_port_read(*this, "KB3"); break;
-			case 4: data |= input_port_read(*this, "KB4"); break;
-			case 5: data |= input_port_read(*this, "KB5"); break;
-			case 6: data |= input_port_read(*this, "KB6"); break;
-			case 7: data |= input_port_read(*this, "KB7"); break;
+			case 0: data |= ioport("KB0")->read(); break;
+			case 1: data |= ioport("KB1")->read(); break;
+			case 2: data |= ioport("KB2")->read(); break;
+			case 3: data |= ioport("KB3")->read(); break;
+			case 4: data |= ioport("KB4")->read(); break;
+			case 5: data |= ioport("KB5")->read(); break;
+			case 6: data |= ioport("KB6")->read(); break;
+			case 7: data |= ioport("KB7")->read(); break;
 			}
 		}
 		else if (BIT(offset, 5))
@@ -269,14 +269,14 @@ UINT8 c64_sfx_sound_expander_cartridge_device::c64_cd_r(address_space &space, of
 //  c64_cd_w - cartridge data write
 //-------------------------------------------------
 
-void c64_sfx_sound_expander_cartridge_device::c64_cd_w(address_space &space, offs_t offset, UINT8 data, int roml, int romh, int io1, int io2)
+void c64_sfx_sound_expander_cartridge_device::c64_cd_w(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
 {
 	if (!io2 && BIT(offset, 5))
 	{
 		ym3526_w(m_opl, BIT(offset, 4), data);
 	}
 
-	m_exp->cd_w(space, offset, data, roml, romh, io1, io2);
+	m_exp->cd_w(space, offset, data, ba, roml, romh, io1, io2);
 }
 
 

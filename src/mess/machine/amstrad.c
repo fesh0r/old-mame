@@ -577,6 +577,13 @@ static void amstrad_plus_handle_dma(running_machine &machine)
 		amstrad_plus_dma_parse( machine, 2 );
 }
 
+static TIMER_CALLBACK(amstrad_video_update_timer)
+{
+	if(param == 1)
+		amstrad_plus_update_video(machine);
+	else
+		amstrad_update_video(machine);
+}
 
 /* Set the new colour from the GateArray */
 static void amstrad_vh_update_colour(running_machine &machine, int PenIndex, UINT16 hw_colour_index)
@@ -586,7 +593,7 @@ static void amstrad_vh_update_colour(running_machine &machine, int PenIndex, UIN
 	{
 		int val;
 
-		amstrad_plus_update_video( machine );
+		machine.scheduler().timer_set( attotime::from_usec(1), FUNC(amstrad_video_update_timer),1);
 
 		/* CPC+/GX4000 - normal palette changes through the Gate Array also makes the corresponding change in the ASIC palette */
 		val = (amstrad_palette[hw_colour_index] & 0xf00000) >> 16; /* red */
@@ -597,7 +604,7 @@ static void amstrad_vh_update_colour(running_machine &machine, int PenIndex, UIN
 	}
 	else
 	{
-		amstrad_update_video( machine );
+		machine.scheduler().timer_set( attotime::from_usec(1), FUNC(amstrad_video_update_timer),0);
 	}
 	state->m_GateArray_render_colours[PenIndex] = hw_colour_index;
 }
@@ -606,7 +613,7 @@ static void amstrad_vh_update_colour(running_machine &machine, int PenIndex, UIN
 static void aleste_vh_update_colour(running_machine &machine, int PenIndex, UINT16 hw_colour_index)
 {
 	amstrad_state *state = machine.driver_data<amstrad_state>();
-	amstrad_update_video( machine );
+	machine.scheduler().timer_set( attotime::from_usec(1), FUNC(amstrad_video_update_timer),0);
 	state->m_GateArray_render_colours[PenIndex] = hw_colour_index+32;
 }
 
@@ -629,6 +636,7 @@ INLINE void amstrad_update_video( running_machine &machine )
 {
 	amstrad_state *state = machine.driver_data<amstrad_state>();
 	attotime now = machine.time();
+
 
 	if ( state->m_gate_array.draw_p )
 	{
@@ -1509,19 +1517,19 @@ READ8_MEMBER(amstrad_state::amstrad_plus_asic_6000_r)
 	// Analogue ports
 	if(offset == 0x0808)
 	{
-		return (input_port_read(machine(), "analog1") & 0x3f);
+		return (ioport("analog1")->read() & 0x3f);
 	}
 	if(offset == 0x0809)
 	{
-		return (input_port_read(machine(), "analog2") & 0x3f);
+		return (ioport("analog2")->read() & 0x3f);
 	}
 	if(offset == 0x080a)
 	{
-		return (input_port_read(machine(), "analog3") & 0x3f);
+		return (ioport("analog3")->read() & 0x3f);
 	}
 	if(offset == 0x080b)
 	{
-		return (input_port_read(machine(), "analog4") & 0x3f);
+		return (ioport("analog4")->read() & 0x3f);
 	}
 	if(offset == 0x080c || offset == 0x080e)
 	{
@@ -1837,7 +1845,7 @@ READ8_MEMBER(amstrad_state::amstrad_cpc_io_r)
 //  m6845_personality_t crtc_type;
 	int page;
 
-//  crtc_type = input_port_read_safe(machine(), "crtc", 0);
+//  crtc_type = ioport("crtc"->read_safe(0));
 //  m6845_set_personality(crtc_type);
 
 	if(m_aleste_mode & 0x04)
@@ -1962,7 +1970,6 @@ void amstrad_state::amstrad_plus_seqcheck(int data)
 	m_prev_data = data;
 }
 
-
 /* Offset handler for write */
 WRITE8_MEMBER(amstrad_state::amstrad_cpc_io_w)
 {
@@ -2006,9 +2013,9 @@ WRITE8_MEMBER(amstrad_state::amstrad_cpc_io_w)
 			break;
 		case 0x01:		/* Write to selected internal 6845 register Write Only */
 			if ( m_system_type == SYSTEM_PLUS || m_system_type == SYSTEM_GX4000 )
-				amstrad_plus_update_video(machine());
+				machine().scheduler().timer_set( attotime::from_usec(1), FUNC(amstrad_video_update_timer),1);
 			else
-				amstrad_update_video(machine());
+				machine().scheduler().timer_set( attotime::from_usec(1), FUNC(amstrad_video_update_timer),0);
 			mc6845->register_w( space, 0, data );
 
 			/* printer port bit 8 */
@@ -2289,7 +2296,7 @@ static void amstrad_reset_machine(running_machine &machine)
 	amstrad_GateArray_write(machine, 0x0c0);
 
 	// Get manufacturer name and TV refresh rate from PCB link (dipswitch for mess emulation)
-	state->m_ppi_port_inputs[amstrad_ppi_PortB] = (((input_port_read(machine, "solder_links")&MANUFACTURER_NAME)<<1) | (input_port_read(machine, "solder_links")&TV_REFRESH_RATE));
+	state->m_ppi_port_inputs[amstrad_ppi_PortB] = (((machine.root_device().ioport("solder_links")->read()&MANUFACTURER_NAME)<<1) | (machine.root_device().ioport("solder_links")->read()&TV_REFRESH_RATE));
 
 	if ( state->m_system_type == SYSTEM_PLUS || state->m_system_type == SYSTEM_GX4000 )
 		memset(state->m_asic.ram,0,16384);  // clear ASIC RAM
@@ -2638,7 +2645,7 @@ READ8_MEMBER(amstrad_state::amstrad_psg_porta_read)
 		if(m_aleste_mode == 0x08 && ( m_ppi_port_outputs[amstrad_ppi_PortC] & 0x0F ) == 10)
 			return 0xff;
 
-		return input_port_read_safe(machine(), keynames[m_ppi_port_outputs[amstrad_ppi_PortC] & 0x0F], 0) & 0xFF;
+		return machine().root_device().ioport(keynames[m_ppi_port_outputs[amstrad_ppi_PortC] & 0x0F])->read_safe(0) & 0xFF;
 	}
 }
 
@@ -2884,7 +2891,7 @@ static TIMER_CALLBACK( cb_set_resolution )
 	attoseconds_t refresh;
 	int height;
 
-	if ( input_port_read( machine, "solder_links" ) & 0x10 )
+	if ( machine.root_device().ioport( "solder_links" )->read() & 0x10 )
 	{
 		/* PAL */
 		visarea.set(0, 64 + 640 + 64 - 1, 34, 34 + 15 + 242 + 15 - 1);

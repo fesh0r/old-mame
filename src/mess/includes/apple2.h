@@ -10,9 +10,11 @@
 #define APPLE2_H_
 
 #include "machine/a2bus.h"
+#include "machine/a2eauxslot.h"
 #include "machine/applefdc.h"
 #include "machine/ram.h"
 
+#define AUXSLOT_TAG "auxbus"
 
 /***************************************************************************
     SOFTSWITCH VALUES
@@ -80,11 +82,9 @@ typedef struct _apple2_meminfo apple2_meminfo;
 struct _apple2_meminfo
 {
 	UINT32 read_mem;
-	read8_space_func read_handler;
-	const char *read_handler_name;
+	read8_delegate *read_handler;
 	UINT32 write_mem;
-	write8_space_func write_handler;
-	const char *write_handler_name;
+	write8_delegate *write_handler;
 };
 
 typedef struct _apple2_memmap_entry apple2_memmap_entry;
@@ -112,12 +112,14 @@ public:
 		: driver_device(mconfig, type, tag),
         m_maincpu(*this, "maincpu"),
         m_ram(*this, RAM_TAG),
-        m_a2bus(*this, "a2bus")
+        m_a2bus(*this, "a2bus"),
+        m_a2eauxslot(*this, AUXSLOT_TAG)
     { }
 
 	required_device<cpu_device> m_maincpu;
     required_device<ram_device> m_ram;
     required_device<a2bus_device> m_a2bus;
+    optional_device<a2eauxslot_device> m_a2eauxslot;
 
 	UINT32 m_flags, m_flags_mask;
 	INT32 m_a2_cnxx_slot;
@@ -153,6 +155,13 @@ public:
     bool m_monochrome_dhr;
     int m_inh_slot;
 
+    UINT8 *m_rambase;
+
+    READ8_MEMBER(apple2_c0xx_r);
+    WRITE8_MEMBER(apple2_c0xx_w);
+    READ8_MEMBER(apple2_c080_r);
+    WRITE8_MEMBER(apple2_c080_w);
+
     READ8_MEMBER ( apple2_c00x_r );
     READ8_MEMBER ( apple2_c01x_r );
     READ8_MEMBER ( apple2_c02x_r );
@@ -166,6 +175,34 @@ public:
     WRITE8_MEMBER ( apple2_c03x_w );
     WRITE8_MEMBER ( apple2_c05x_w );
     WRITE8_MEMBER ( apple2_c07x_w );
+
+    WRITE8_MEMBER ( apple2_mainram0400_w );
+    WRITE8_MEMBER ( apple2_mainram2000_w );
+    WRITE8_MEMBER ( apple2_auxram0400_w );
+    WRITE8_MEMBER ( apple2_auxram2000_w );
+
+    READ8_MEMBER ( apple2_c1xx_r );
+    WRITE8_MEMBER ( apple2_c1xx_w );
+    READ8_MEMBER ( apple2_c3xx_r );
+    WRITE8_MEMBER ( apple2_c3xx_w );
+    READ8_MEMBER ( apple2_c4xx_r );
+    WRITE8_MEMBER ( apple2_c4xx_w );
+
+    READ8_MEMBER ( apple2_c800_r );
+    WRITE8_MEMBER ( apple2_c800_w );
+    READ8_MEMBER ( apple2_ce00_r );
+    WRITE8_MEMBER ( apple2_ce00_w );
+
+    READ8_MEMBER ( apple2_inh_d000_r );
+    WRITE8_MEMBER ( apple2_inh_d000_w );
+    READ8_MEMBER ( apple2_inh_e000_r );
+    WRITE8_MEMBER ( apple2_inh_e000_w );
+
+    READ8_MEMBER(read_floatingbus);
+
+    READ8_MEMBER(apple2_cfff_r);
+    WRITE8_MEMBER(apple2_cfff_w);
+
 };
 
 

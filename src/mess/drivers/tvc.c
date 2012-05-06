@@ -4,12 +4,19 @@
 
         12/05/2009 Skeleton driver.
 
+        TODO:
+        - add sound
+        - cassette load/save
+        - floppy interface
+        - expansion ports
+
 ****************************************************************************/
 
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/mc6845.h"
 #include "machine/ram.h"
+#include "imagedev/cartslot.h"
 
 
 class tvc_state : public driver_device
@@ -101,9 +108,9 @@ WRITE8_MEMBER(tvc_state::tvc_video_mode_w)
 
 WRITE8_MEMBER(tvc_state::tvc_palette_w)
 {
-	//  0 I 0 R | 0 G 0 B
+	//  0 I 0 G | 0 R 0 B
 	//  0 0 0 0 | I R G B
-	int i = ((data&0x40)>>3) | ((data&0x10)>>2) | ((data&0x04)>>1) | (data&0x01);
+	int i = ((data&0x40)>>3) | ((data&0x10)>>3) | (data&0x04) | (data&0x01);
 
 	m_col[offset] = i;
 }
@@ -119,7 +126,7 @@ READ8_MEMBER(tvc_state::tvc_keyboard_r)
 		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
 		"LINE8", "LINE9", "LINEA", "LINEB", "LINEC", "LINED", "LINEE", "LINEF"
 	};
-	return input_port_read(machine(), keynames[m_keyline & 0x0f]);
+	return ioport(keynames[m_keyline & 0x0f])->read();
 }
 
 READ8_MEMBER(tvc_state::tvc_flipflop_r)
@@ -157,7 +164,7 @@ static ADDRESS_MAP_START( tvc_io , AS_IO, 8, tvc_state )
 	AM_RANGE(0x58, 0x58) AM_READ(tvc_keyboard_r)
 	AM_RANGE(0x59, 0x59) AM_READ(tvc_flipflop_r)
 	AM_RANGE(0x5a, 0x5a) AM_READ(tvc_port59_r)
-	AM_RANGE(0x60, 0x64) AM_WRITE(tvc_palette_w)
+	AM_RANGE(0x60, 0x63) AM_WRITE(tvc_palette_w)
 	AM_RANGE(0x70, 0x70) AM_DEVWRITE("crtc", mc6845_device, address_w)
 	AM_RANGE(0x71, 0x71) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 ADDRESS_MAP_END
@@ -237,7 +244,14 @@ static INPUT_PORTS_START( tvc )
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("=") PORT_CODE(KEYCODE_EQUALS)
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M)
 	PORT_START("LINE8")
-		PORT_BIT(0xFF, IP_ACTIVE_LOW, IPT_UNUSED)
+		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Insert")  PORT_CODE(KEYCODE_INSERT)
+		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Up") 	 PORT_CODE(KEYCODE_UP)
+		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Down")	 PORT_CODE(KEYCODE_DOWN)
+		PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Fire")	 PORT_CODE(KEYCODE_F1)
+		PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Acc")	 PORT_CODE(KEYCODE_F2)
+		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Right")   PORT_CODE(KEYCODE_RIGHT)
+		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Left")	 PORT_CODE(KEYCODE_LEFT)
+		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_START("LINE9")
 		PORT_BIT(0xFF, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_START("LINEA")
@@ -287,48 +301,55 @@ static MC6845_UPDATE_ROW( tvc_update_row )
 
 	switch(state->m_video_mode) {
 		case 0 :
+				//  2 colors mode
 				for ( i = 0; i < x_count; i++ )
 				{
 					UINT16 offset = i  + (y * 64);
 					UINT8 data = device->machine().device<ram_device>(RAM_TAG)->pointer()[ offset + 0x10000];
-					*p++ = palette[state->m_col[(data >> 7)]];
-					*p++ = palette[state->m_col[(data >> 6)]];
-					*p++ = palette[state->m_col[(data >> 5)]];
-					*p++ = palette[state->m_col[(data >> 4)]];
-					*p++ = palette[state->m_col[(data >> 3)]];
-					*p++ = palette[state->m_col[(data >> 2)]];
-					*p++ = palette[state->m_col[(data >> 1)]];
-					*p++ = palette[state->m_col[(data >> 0)]];
+					*p++ = palette[state->m_col[BIT(data,7)]];
+					*p++ = palette[state->m_col[BIT(data,6)]];
+					*p++ = palette[state->m_col[BIT(data,5)]];
+					*p++ = palette[state->m_col[BIT(data,4)]];
+					*p++ = palette[state->m_col[BIT(data,3)]];
+					*p++ = palette[state->m_col[BIT(data,2)]];
+					*p++ = palette[state->m_col[BIT(data,1)]];
+					*p++ = palette[state->m_col[BIT(data,0)]];
 				}
 				break;
 		case 1 :
+				// 4 colors mode
+				// a0 b0 c0 d0 a1 b1 c1 d1
 				for ( i = 0; i < x_count; i++ )
 				{
 					UINT16 offset = i  + (y * 64);
 					UINT8 data = device->machine().device<ram_device>(RAM_TAG)->pointer()[ offset + 0x10000];
-					*p++ = palette[state->m_col[BIT(data,7)*2 + BIT(data,3)]];
-					*p++ = palette[state->m_col[BIT(data,7)*2 + BIT(data,3)]];
-					*p++ = palette[state->m_col[BIT(data,6)*2 + BIT(data,2)]];
-					*p++ = palette[state->m_col[BIT(data,6)*2 + BIT(data,2)]];
-					*p++ = palette[state->m_col[BIT(data,5)*2 + BIT(data,1)]];
-					*p++ = palette[state->m_col[BIT(data,5)*2 + BIT(data,1)]];
-					*p++ = palette[state->m_col[BIT(data,4)*2 + BIT(data,0)]];
-					*p++ = palette[state->m_col[BIT(data,4)*2 + BIT(data,0)]];
+					*p++ = palette[state->m_col[BIT(data,3)*2 + BIT(data,7)]];
+					*p++ = palette[state->m_col[BIT(data,3)*2 + BIT(data,7)]];
+					*p++ = palette[state->m_col[BIT(data,2)*2 + BIT(data,6)]];
+					*p++ = palette[state->m_col[BIT(data,2)*2 + BIT(data,6)]];
+					*p++ = palette[state->m_col[BIT(data,1)*2 + BIT(data,5)]];
+					*p++ = palette[state->m_col[BIT(data,1)*2 + BIT(data,5)]];
+					*p++ = palette[state->m_col[BIT(data,0)*2 + BIT(data,4)]];
+					*p++ = palette[state->m_col[BIT(data,0)*2 + BIT(data,4)]];
 				}
 				break;
 		default:
+				// 16 colors mode
+				// IGRB IGRB
 				for ( i = 0; i < x_count; i++ )
 				{
 					UINT16 offset = i  + (y * 64);
 					UINT8 data = device->machine().device<ram_device>(RAM_TAG)->pointer()[ offset + 0x10000];
-					*p++ = palette[state->m_col[(data >> 4) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 4) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 4) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 4) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 0) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 0) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 0) & 0xf]];
-					*p++ = palette[state->m_col[(data >> 0) & 0xf]];
+					UINT8 col0 = ((data & 0x80)>>4) | ((data & 0x20)>>4) | ((data & 0x08)>>1) | ((data & 0x02)>>1);
+					UINT8 col1 = ((data & 0x40)>>3) | ((data & 0x10)>>3) | (data & 0x04) | (data & 0x01);
+					*p++ = palette[col0];
+					*p++ = palette[col0];
+					*p++ = palette[col0];
+					*p++ = palette[col0];
+					*p++ = palette[col1];
+					*p++ = palette[col1];
+					*p++ = palette[col1];
+					*p++ = palette[col1];
 				}
 				break;
 
@@ -412,6 +433,14 @@ static MACHINE_CONFIG_START( tvc, tvc_state )
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("80K")
+
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("crt,rom,bin")
+	MCFG_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_INTERFACE("tvc_cart")
+
+	/* Software lists */
+	MCFG_SOFTWARE_LIST_ADD("cart_list", "tvc_cart")
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -420,6 +449,7 @@ ROM_START( tvc64 )
 	ROM_LOAD( "tvc12_d4.64k", 0x0000, 0x2000, CRC(834ca9be) SHA1(c333318c1c6185aae2d3dfb86d55e3a4a3071a73))
 	ROM_LOAD( "tvc12_d3.64k", 0x2000, 0x2000, CRC(71753d02) SHA1(d9a1905cf55c532b3380c83158fb5254ee503829))
 	ROM_REGION( 0x4000, "cart", ROMREGION_ERASEFF )
+	ROM_CART_LOAD( "cart", 0, 0x4000, 0 )
 	ROM_REGION( 0x4000, "ext", ROMREGION_ERASEFF )
 	ROM_LOAD( "tvc12_d7.64k", 0x2000, 0x2000, CRC(1cbbeac6) SHA1(54b29c9ca9942f04620fbf3edab3b8e3cd21c194))
 ROM_END
@@ -429,6 +459,7 @@ ROM_START( tvc64p )
 	ROM_LOAD( "tvc22_d6.64k", 0x0000, 0x2000, CRC(05ac3a34) SHA1(bdc7eda5fd53f806dca8c4929ee498e8e59eb787))
 	ROM_LOAD( "tvc22_d4.64k", 0x2000, 0x2000, CRC(ba6ad589) SHA1(e5c8a6db506836a327d901387a8dc8c681a272db))
 	ROM_REGION( 0x4000, "cart", ROMREGION_ERASEFF )
+	ROM_CART_LOAD( "cart", 0, 0x4000, 0 )
 	ROM_REGION( 0x4000, "ext", ROMREGION_ERASEFF )
 	ROM_LOAD( "tvc22_d7.64k", 0x2000, 0x2000, CRC(05e1c3a8) SHA1(abf119cf947ea32defd08b29a8a25d75f6bd4987))
 /*
@@ -444,6 +475,7 @@ ROM_START( tvc64pru )
 	ROM_LOAD( "tvcru_d6.bin", 0x0000, 0x2000, CRC(1e0fa0b8) SHA1(9bebb6c8f03f9641bd35c9fd45ffc13a48e5c572))
 	ROM_LOAD( "tvcru_d4.bin", 0x2000, 0x2000, CRC(bac5dd4f) SHA1(665a1b8c80b6ad82090803621f0c73ef9243c7d4))
 	ROM_REGION( 0x4000, "cart", ROMREGION_ERASEFF )
+	ROM_CART_LOAD( "cart", 0, 0x4000, 0 )
 	ROM_REGION( 0x4000, "ext", ROMREGION_ERASEFF )
 	ROM_LOAD( "tvcru_d7.bin", 0x2000, 0x2000, CRC(70cde756) SHA1(c49662af9f6653347ead641e85777c3463cc161b))
 ROM_END

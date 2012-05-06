@@ -94,7 +94,7 @@ void c64_switchable_8k_cartridge_device::device_start()
 
 void c64_switchable_8k_cartridge_device::device_reset()
 {
-	m_bank = input_port_read(*this, "SW");
+	m_bank = ioport("SW")->read();
 }
 
 
@@ -102,7 +102,7 @@ void c64_switchable_8k_cartridge_device::device_reset()
 //  c64_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c64_switchable_8k_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int roml, int romh, int io1, int io2)
+UINT8 c64_switchable_8k_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int ba, int roml, int romh, int io1, int io2)
 {
 	UINT8 data = 0;
 

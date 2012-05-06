@@ -132,7 +132,7 @@ void c64_easyflash_cartridge_device::device_reset()
 //  c64_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c64_easyflash_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int roml, int romh, int io1, int io2)
+UINT8 c64_easyflash_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int ba, int roml, int romh, int io1, int io2)
 {
 	UINT8 data = 0;
 
@@ -159,7 +159,7 @@ UINT8 c64_easyflash_cartridge_device::c64_cd_r(address_space &space, offs_t offs
 //  c64_cd_w - cartridge data write
 //-------------------------------------------------
 
-void c64_easyflash_cartridge_device::c64_cd_w(address_space &space, offs_t offset, UINT8 data, int roml, int romh, int io1, int io2)
+void c64_easyflash_cartridge_device::c64_cd_w(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
 {
 	if (!roml)
 	{
@@ -235,5 +235,5 @@ int c64_easyflash_cartridge_device::c64_exrom_r(offs_t offset, int ba, int rw, i
 
 int c64_easyflash_cartridge_device::c64_game_r(offs_t offset, int ba, int rw, int hiram)
 {
-	return !(BIT(m_mode, 0) | !(BIT(m_mode, 2) | input_port_read(device(), "JP1")));
+	return !(BIT(m_mode, 0) | !(BIT(m_mode, 2) | device().ioport("JP1")->read()));
 }
