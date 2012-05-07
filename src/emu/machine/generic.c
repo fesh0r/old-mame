@@ -286,8 +286,8 @@ static astring &nvram_filename(astring &result, device_t &device)
 
 	// start with either basename or basename_biosnum
 	result.cpy(machine.basename());
-	if (rom_system_bios(machine) != 0 && rom_default_bios(machine) != rom_system_bios(machine))
-		result.catprintf("_%d", rom_system_bios(machine) - 1);
+	if (device.machine().root_device().system_bios() != 0 && device.machine().root_device().default_bios() != device.machine().root_device().system_bios())
+		result.catprintf("_%d", device.machine().root_device().system_bios() - 1);
 
 	// device-based NVRAM gets its own name in a subdirectory
 	if (&device != &device.machine().root_device())
@@ -528,7 +528,7 @@ void set_led_status(running_machine &machine, int num, int on)
 CUSTOM_INPUT_MEMBER( driver_device::custom_port_read )
 {
 	const char *tag = (const char *)param;
-	return input_port_read(machine(), tag);
+	return ioport(tag)->read();
 }
 
 

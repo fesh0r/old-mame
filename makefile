@@ -163,9 +163,10 @@ endif
 
 # uncomment and specify architecture-specific optimizations here
 # some examples:
-#   optimize for I686:   ARCHOPTS = -march=pentiumpro
-#   optimize for Core 2: ARCHOPTS = -march=core2
-#   optimize for G4:     ARCHOPTS = -mcpu=G4
+#   ARCHOPTS = -march=pentiumpro  # optimize for I686
+#   ARCHOPTS = -march=core2       # optimize for Core 2
+#   ARCHOPTS = -march=native      # optimize for local machine (auto detect)
+#   ARCHOPTS = -mcpu=G4           # optimize for G4
 # note that we leave this commented by default so that you can
 # configure this in your environment and never have to think about it
 # ARCHOPTS =
@@ -473,18 +474,14 @@ endif
 # add the optimization flag
 CCOMFLAGS += -O$(OPTIMIZE)
 
-# if we are optimizing, include optimization options
-# and make all errors into warnings
-ifneq ($(OPTIMIZE),0)
-ifneq ($(TARGETOS),os2)
+# add the error warning flag
 ifndef NOWERROR
-CCOMFLAGS += -Werror -fno-strict-aliasing $(ARCHOPTS)
-else
-CCOMFLAGS += -fno-strict-aliasing $(ARCHOPTS)
+CCOMFLAGS += -Werror
 endif
-else
+
+# if we are optimizing, include optimization options
+ifneq ($(OPTIMIZE),0)
 CCOMFLAGS += -fno-strict-aliasing $(ARCHOPTS)
-endif
 endif
 
 # add a basic set of warnings
