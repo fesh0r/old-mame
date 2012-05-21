@@ -992,23 +992,33 @@ natural_keyboard::natural_keyboard(running_machine &machine)
 	  m_timer(NULL),
 	  m_current_rate(attotime::zero)
 {
+	m_queue_chars = ioport_queue_chars_delegate();
+	m_accept_char = ioport_accept_char_delegate();
+	m_charqueue_empty = ioport_charqueue_empty_delegate();
+
 	// reigster debugger commands
 	if (machine.debug_flags & DEBUG_FLAG_ENABLED)
 	{
 		debug_console_register_command(machine, "input", CMDFLAG_NONE, 0, 1, 1, execute_input);
 		debug_console_register_command(machine, "dumpkbd", CMDFLAG_NONE, 0, 0, 1, execute_dumpkbd);
 	}
-
-	// posting keys directly only makes sense for a computer
-	if (machine.ioport().has_keyboard())
-	{
-		m_buffer.resize(KEY_BUFFER_SIZE);
-		m_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(natural_keyboard::timer), this));
-		build_codes(machine.ioport());
-	}
 }
 
+//-------------------------------------------------
+//  initialize - initialize natural keyboard
+//  support
+//-------------------------------------------------
 
+void natural_keyboard::initialize()
+{
+	// posting keys directly only makes sense for a computer
+	if (machine().ioport().has_keyboard())
+	{
+		m_buffer.resize(KEY_BUFFER_SIZE);
+		m_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(natural_keyboard::timer), this));
+		build_codes(machine().ioport());
+	}
+}
 //-------------------------------------------------
 //  configure - configure callbacks for full-
 //  featured keyboard support
@@ -1236,7 +1246,10 @@ void natural_keyboard::build_codes(ioport_manager &manager)
 						{
 							keycode_map_entry newcode;
 							if (curshift == 0)
+							{
 								newcode.field[0] = field;
+								newcode.field[1] = 0;
+							}
 							else
 							{
 								newcode.field[0] = shift[curshift - 1];
@@ -1420,9 +1433,11 @@ const char *natural_keyboard::unicode_to_string(astring &buffer, unicode_char ch
 
 const natural_keyboard::keycode_map_entry *natural_keyboard::find_code(unicode_char ch) const
 {
-	for (int code = 0; m_keycode_map[code].ch != 0; code++)
-		if (m_keycode_map[code].ch == ch)
-			return &m_keycode_map[code];
+	for (int index = 0; index < m_keycode_map.count(); index++)
+	{
+		if (m_keycode_map[index].ch == ch)
+			return &m_keycode_map[index];
+	}
 	return NULL;
 }
 
@@ -1645,7 +1660,7 @@ ioport_field::ioport_field(ioport_port &port, ioport_type type, ioport_value def
 	// reset sequences and chars
 	for (input_seq_type seqtype = SEQ_TYPE_STANDARD; seqtype < SEQ_TYPE_TOTAL; seqtype++)
 		m_seq[seqtype].set_default();
-	m_chars[0] = m_chars[1] = m_chars[2] = unicode_char(0);
+	m_chars[0] = m_chars[1] = m_chars[2] = m_chars[3] = unicode_char(0);
 
 	// for DIP switches and configs, look for a default value from the owner
 	if (type == IPT_DIPSWITCH || type == IPT_CONFIG)
@@ -1817,7 +1832,12 @@ ioport_type_class ioport_field::type_class() const
 
 unicode_char ioport_field::keyboard_code(int which) const
 {
-	unicode_char ch = m_chars[which];
+	unicode_char ch;
+
+	if (which >= ARRAY_LENGTH(m_chars))
+		throw emu_fatalerror("Tried to access keyboard_code with out-of-range index %d\n", which);
+
+	ch = m_chars[which];
 
 	// special hack to allow for PORT_CODE('\xA3')
 	if (ch >= 0xffffff80 && ch <= 0xffffffff)
@@ -2435,7 +2455,7 @@ void ioport_port::write(ioport_value data, ioport_value mem_mask)
 	COMBINE_DATA(&m_live->outputvalue);
 	for (dynamic_field *dynfield = m_live->writelist.first(); dynfield != NULL; dynfield = dynfield->next())
 		if (dynfield->field().type() == IPT_OUTPUT)
-			dynfield->write(m_live->outputvalue);
+			dynfield->write(m_live->outputvalue ^ dynfield->field().defvalue());
 }
 
 
@@ -2657,6 +2677,7 @@ time_t ioport_manager::initialize()
 					break;
 				}
 
+	m_natkeyboard.initialize();
 	// register callbacks for when we load configurations
 	config_register(machine(), "input", config_saveload_delegate(FUNC(ioport_manager::load_config), this), config_saveload_delegate(FUNC(ioport_manager::save_config), this));
 
@@ -3826,8 +3847,10 @@ void ioport_configurer::field_add_char(unicode_char ch)
 		if (m_curfield->m_chars[index] == 0)
 		{
 			m_curfield->m_chars[index] = ch;
-			break;
+			return;
 		}
+
+	throw emu_fatalerror("PORT_CHAR(%d) could not be added - maximum amount exceeded\n", ch);
 }
 
 
@@ -3851,8 +3874,9 @@ void ioport_configurer::setting_alloc(ioport_value value, const char *name)
 	if (m_curfield == NULL)
 		throw emu_fatalerror("alloc_setting called with no active field (value=%X name=%s)\n", value, name);
 
+	m_cursetting = global_alloc(ioport_setting(*m_curfield, value & m_curfield->mask(), string_from_token(name)));
 	// append a new setting
-	m_curfield->m_settinglist.append(*global_alloc(ioport_setting(*m_curfield, value & m_curfield->mask(), string_from_token(name))));
+	m_curfield->m_settinglist.append(*m_cursetting);
 }
 
 
@@ -3891,6 +3915,8 @@ void ioport_configurer::onoff_alloc(const char *name, ioport_value defval, iopor
 	// allocate settings
 	setting_alloc(defval & mask, DEF_STR(Off));
 	setting_alloc(~defval & mask, DEF_STR(On));
+	// clear cursettings set by setting_alloc
+	m_cursetting = NULL;
 }
 
 
@@ -3973,7 +3999,7 @@ void dynamic_field::write(ioport_value newval)
 		return;
 
 	// if the bits have changed, call the handler
-	newval = ((newval ^ m_field.defvalue()) & m_field.mask()) >> m_shift;
+	newval = (newval & m_field.mask()) >> m_shift;
 	if (m_oldval != newval)
 	{
 		m_field.m_write(m_field, m_field.m_write_param, m_oldval, newval);
