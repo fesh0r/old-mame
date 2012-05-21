@@ -183,8 +183,8 @@ SOUNDS += QSOUND
 SOUNDS += SAA1099
 #SOUNDS += IREMGA20
 SOUNDS += ES5503
-#SOUNDS += ES5505
-#SOUNDS += ES5506
+SOUNDS += ES5505
+SOUNDS += ES5506
 #SOUNDS += BSMT2000
 #SOUNDS += GAELCO_CG1V
 #SOUNDS += GAELCO_GAE1
@@ -387,6 +387,7 @@ DRVLIBS += \
 	$(MESSOBJ)/unisys.a \
 	$(MESSOBJ)/veb.a \
 	$(MESSOBJ)/vidbrain.a \
+	$(MESSOBJ)/videoton.a \
 	$(MESSOBJ)/visual.a \
 	$(MESSOBJ)/votrax.a \
 	$(MESSOBJ)/vtech.a \
@@ -435,6 +436,10 @@ $(MESSOBJ)/mame.a: \
 	$(MAME_VIDEO)/rdpspn16.o	\
 	$(MAME_MACHINE)/pcshare.o	\
 	$(MAME_MACHINE)/megadriv.o  \
+	$(MAME_MACHINE)/megacd.o \
+	$(MAME_MACHINE)/mega32x.o \
+	$(MAME_MACHINE)/megasvp.o \
+	$(MAME_MACHINE)/megavdp.o \
 	$(MAME_MACHINE)/dc.o		\
 	$(MAME_DRIVERS)/naomi.o 	\
 	$(MAME_MACHINE)/dc.o		\
@@ -844,6 +849,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/vic20.o		\
 	$(MESS_MACHINE)/vic20exp.o	\
 	$(MESS_MACHINE)/vic20std.o	\
+	$(MESS_MACHINE)/vic20user.o	\
 	$(MESS_MACHINE)/vic20_megacart.o	\
 	$(MESS_MACHINE)/vic1010.o	\
 	$(MESS_MACHINE)/vic1110.o	\
@@ -1039,6 +1045,7 @@ $(MESSOBJ)/elektor.a:			\
 $(MESSOBJ)/ensoniq.a:			\
 	$(MESS_DRIVERS)/esq1.o		\
 	$(MESS_DRIVERS)/mirage.o    \
+	$(MESS_DRIVERS)/esq5505.o   \
 
 $(MESSOBJ)/entex.a:				\
 	$(MESS_VIDEO)/advision.o	\
@@ -1399,6 +1406,7 @@ $(MESSOBJ)/pcshare.a:			\
 	$(MESS_MACHINE)/pc_joy.o	\
 	$(MESS_MACHINE)/pc_keyboards.o \
 	$(MESS_MACHINE)/kb_keytro.o	\
+	$(MESS_MACHINE)/kb_msnat.o \
 	$(MESS_MACHINE)/isa_adlib.o	\
 	$(MESS_MACHINE)/ser_mouse.o	\
 	$(MESS_MACHINE)/isa_com.o	\
@@ -1802,7 +1810,13 @@ $(MESSOBJ)/veb.a:				\
 
 $(MESSOBJ)/vidbrain.a:			\
 	$(MESS_DRIVERS)/vidbrain.o	\
-	$(MESS_VIDEO)/vidbrain.o	\
+	$(MESS_VIDEO)/uv201.o		\
+
+$(MESSOBJ)/videoton.a:			\
+	$(MESS_DRIVERS)/tvc.o		\
+	$(MESS_AUDIO)/tvc.o			\
+	$(MESS_MACHINE)/tvcexp.o	\
+	$(MESS_MACHINE)/tvc_hbf.o	\
 
 $(MESSOBJ)/visual.a:			\
 	$(MESS_DRIVERS)/v1050.o		\
@@ -1859,6 +1873,7 @@ $(MESSOBJ)/zvt.a:				\
 	$(MESS_VIDEO)/pp01.o		\
 
 $(MESSOBJ)/test.a:				\
+	$(MESS_DRIVERS)/test_t400.o	\
 	$(MESS_DRIVERS)/zexall.o	\
 
 $(MESSOBJ)/skeleton.a:			\
@@ -1881,6 +1896,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/cp1.o		\
 	$(MESS_DRIVERS)/csc.o		\
 	$(MESS_DRIVERS)/cvicny.o	\
+	$(MESS_DRIVERS)/cxhumax.o	\
 	$(MESS_DRIVERS)/czk80.o		\
 	$(MESS_DRIVERS)/d6800.o		\
 	$(MESS_DRIVERS)/d6809.o		\
@@ -1888,7 +1904,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/dim68k.o	\
 	$(MESS_DRIVERS)/dm7000.o	\
 	$(MESS_DRIVERS)/dmv.o		\
-	$(MESS_DRIVERS)/dolphin.o	\
+	$(MESS_DRIVERS)/dolphunk.o	\
 	$(MESS_DRIVERS)/dual68.o	\
 	$(MESS_DRIVERS)/eacc.o		\
 	$(MESS_DRIVERS)/elwro800.o	\
@@ -1940,7 +1956,6 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/tim011.o	\
 	$(MESS_DRIVERS)/tricep.o	\
 	$(MESS_DRIVERS)/tsispch.o	\
-	$(MESS_DRIVERS)/tvc.o		\
 	$(MESS_DRIVERS)/unior.o		\
 	$(MESS_DRIVERS)/unistar.o	\
 	$(MESS_DRIVERS)/v6809.o		\
@@ -2047,7 +2062,7 @@ $(MESS_DRIVERS)/coco3.o:	$(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/cosmicos.o:	$(MESS_LAYOUT)/cosmicos.lh
 $(MESS_DRIVERS)/c80.o:		$(MESS_LAYOUT)/c80.lh
 $(MESS_DRIVERS)/dectalk.o:	$(MESS_LAYOUT)/dectalk.lh
-$(MESS_DRIVERS)/dolphin.o:	$(MESS_LAYOUT)/dolphin.lh
+$(MESS_DRIVERS)/dolphunk.o:	$(MESS_LAYOUT)/dolphunk.lh
 $(MESS_DRIVERS)/e01.o:		$(MESS_LAYOUT)/e01.lh
 $(MESS_DRIVERS)/eacc.o:		$(MESS_LAYOUT)/eacc.lh
 $(MESS_DRIVERS)/elf.o:		$(MESS_LAYOUT)/elf2.lh
@@ -2059,6 +2074,7 @@ $(MESS_DRIVERS)/fidelz80.o:	$(MESS_LAYOUT)/fidelz80.lh \
 							$(MESS_LAYOUT)/vsc.lh
 $(MESS_DRIVERS)/glasgow.o:	$(MESS_LAYOUT)/glasgow.lh
 $(MESS_DRIVERS)/h8.o:		$(MESS_LAYOUT)/h8.lh
+$(MESS_DRIVERS)/instruct.o:	$(MESS_LAYOUT)/instruct.lh
 $(MESS_DRIVERS)/k1003.o:	$(MESS_LAYOUT)/k1003.lh
 $(MESS_DRIVERS)/kim1.o:		$(MESS_LAYOUT)/kim1.lh
 $(MESS_DRIVERS)/junior.o:	$(MESS_LAYOUT)/junior.lh

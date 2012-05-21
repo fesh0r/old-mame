@@ -748,14 +748,33 @@ static CRTC_EGA_ON_VBLANK_CHANGED( ega_vblank_changed )
 
 static CRTC_EGA_UPDATE_ROW( pc_ega_graphics )
 {
+	isa8_ega_device *ega = dynamic_cast<isa8_ega_device*>(device->owner());
 	UINT16	*p = &bitmap.pix16(y);
 	int	i;
 
 //  logerror( "pc_ega_graphics: y = %d, x_count = %d, ma = %d, ra = %d\n", y, x_count, ma, ra );
 
-	for ( i = 0; i < x_count; i++ )
+	switch ( ega->m_attribute.data[ 0x12 ] & 0x0f )
 	{
-		*p = 0;
+	case 0x03:
+		for ( i = 0; i < x_count; i++ )
+		{
+			UINT16 offset = ( ( ( ma + i ) << 1 ) & 0x1fff ) | ( ( y & 1 ) << 13 );
+			UINT8 data = ega->m_videoram[ offset ];
+
+			*p = ega->m_attribute.data[ ( data >> 6 )        ]; p++;
+			*p = ega->m_attribute.data[ ( data >> 4 ) & 0x03 ]; p++;
+			*p = ega->m_attribute.data[ ( data >> 2 ) & 0x03 ]; p++;
+			*p = ega->m_attribute.data[   data        & 0x03 ]; p++;
+
+			data = ega->m_videoram[ offset + 1 ];
+
+			*p = ega->m_attribute.data[ ( data >> 6 )        ]; p++;
+			*p = ega->m_attribute.data[ ( data >> 4 ) & 0x03 ]; p++;
+			*p = ega->m_attribute.data[ ( data >> 2 ) & 0x03 ]; p++;
+			*p = ega->m_attribute.data[   data        & 0x03 ]; p++;
+		}
+		break;
 	}
 }
 
@@ -773,13 +792,37 @@ static CRTC_EGA_UPDATE_ROW( pc_ega_text )
 		UINT16	offset = ( ma + i ) << 1;
 		UINT8	chr = ega->m_videoram[ offset ];
 		UINT8	attr = ega->m_videoram[ offset + 1 ];
-		UINT8	data = ( attr & 0x08 ) ? ega->m_charA[ chr * 32 + ra ] : ega->m_charB[ chr * 32 + ra ];
-		UINT16	fg = ega->m_attribute.data[ attr & 0x0F ];
-		UINT16	bg = ega->m_attribute.data[ attr >> 4 ];
+		UINT8	data = 0;
+		UINT16	fg = ega->m_attribute.data[ attr & 0x07 ];
+		UINT16	bg = ega->m_attribute.data[ ( attr >> 4 ) & 0x07 ];
 
-		if ( i == cursor_x && ega->m_frame_cnt & 0x08 )
+		/* Is attribute bit 3 used as intensity or as character set selector? */
+		if ( ega->m_attribute.data[ 0x12 ] & 0x08 )
 		{
-			data = 0xFF;
+			/* intensity selector */
+			data = ega->m_charB[ chr * 32 + ra ];
+			fg += ( attr & 0x08 ) ? 0x38 : 0x00;
+		}
+		else
+		{
+			/* character set selector */
+			data = ( attr & 0x08 ) ? ega->m_charA[ chr * 32 + ra ] : ega->m_charB[ chr * 32 + ra ];
+		}
+
+		if ( i == cursor_x )
+		{
+			if ( ega->m_frame_cnt & 0x08 )
+			{
+				data = 0xFF;
+			}
+		}
+		else
+		{
+			/* Check for blinking */
+			if ( ( ega->m_attribute.data[0x10] & 0x08 ) && ( attr & 0x80 ) && ( ega->m_frame_cnt & 0x10 ) )
+			{
+				data = 0x00;
+			}
 		}
 
 		*p = ( data & 0x80 ) ? fg : bg; p++;

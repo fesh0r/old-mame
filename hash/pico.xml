@@ -81,6 +81,17 @@
 		</part>
 	</software>
 
+	<software name="donaldts">
+		<description>Donald no Terebi Shou (Jpn)</description>
+		<year>1995</year>
+		<publisher>Sega</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="donald no terebi shou (japan).bin" size="1048576" crc="c11a2b37" sha1="9d3d17c0ec4798730bba4670bef1723ed6a46b98" offset="0" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="doranmdt">
 		<description>Doraemon - Nobita no Machinaka Dokidoki Tanken! (Jpn)</description>
 		<year>1994</year>
@@ -111,6 +122,28 @@
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="ecco jr. et la chasse au tresor sous-marine! (france).bin" size="524288" crc="1b7b3825" sha1="64706b5f1240941a4989db96dab432aed6009e0a" offset="0" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="gakkehir">
+		<description>Gakken no Obenkyou Soft - Hiragana (Jpn)</description>
+		<year>199?</year>
+		<publisher>Gakken</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="gakken no obenkyou soft - hiragana (japan).bin" size="1048576" crc="1eb0ba1c" sha1="8ab5239a99ce2c97cfe0c4ec786538c8a153a71d" offset="0" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="carrangr">
+		<description>Gekisou Sentai CarRanger (Jpn)</description>
+		<year>19??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="524288">
+				<rom name="gekisou sentai carranger (japan).bin" size="524288" crc="8ed536bc" sha1="b4f276d4ecc300b38b73bf1d7030f6820786fe55" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -149,6 +182,28 @@
 		</part>
 	</software>
 
+	<software name="hkittymo">
+		<description>Hello Kitty no Machi he Odekake (Jpn)</description>
+		<year>1995</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="hello kitty no machiheodekake (japan).bin" size="1048576" crc="3f336747" sha1="28e866688fed6e7c0a82c3f1e91f205600afcf68" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="kanshuno">
+		<description>Kanshuu Unou Image Training - Hiragana - Katakana (Jpn)</description>
+		<year>2004</year>
+		<publisher>Sega Toys</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="shichi ta makoto kanshuu unou imeejitoreeningu hiragana - katakana kajino de mojabegasudoriimu (japan).bin" size="1048576" crc="8e12c06d" sha1="88d1f8ce5ef824f1a989bed02f4dbf9b7861ee05" offset="0" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="kawai3s">
 		<description>Kawaii Nakama wo Sodate you! 3-tsu no Shippo (Jpn)</description>
 		<year>1998</year>
@@ -156,6 +211,17 @@
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="kawaii nakama wo sodate you! 3-tsu no shippo (japan).bin" size="2097152" crc="a6dea807" sha1="0a5cb3a917880b755465d3bd9d110dffcb52a2a3" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="kitereda">
+		<description>Kiteretsu Daihyakka - Edo ni Itte Kiteretsu Saisamaniau Nari (Jpn)</description>
+		<year>1994</year>
+		<publisher>Sega</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="524288">
+				<rom name="kiteretsu daihyakka edoniitte kiteretsu saisamaniau nari (japan).bin" size="524288" crc="85f80871" sha1="e13ad62f7dbd270f74a4dbbe881d1ca619899d31" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -178,6 +244,39 @@
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="the lion king - adventures at pride rock (europe).bin" size="1048576" crc="a7b92dc1" sha1="7f20cd3bec73624f93c8235887ad82f33a78077e"  offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="mickbmt">
+		<description>Mickey no Boku wa Meitantei (Jpn)</description>
+		<year>2000</year>
+		<publisher>Disney</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="mickey no boku wa meitantei (japan).bin" size="2097152" crc="2eb957b3" sha1="b11e35b71a3d24fddad746b60c1f79ea011d39c1" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="mickybk">
+		<description>Mickey no Yukai na Bouken (Jpn)</description>
+		<year>1993</year>
+		<publisher>Sega</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="524288">
+				<rom name="mickey no yukai na bouken (japan).bin" size="524288" crc="5a6767a9" sha1="bb35a699c883121dbe5b16877531c2ba8e1d2242" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="mickuts">
+		<description>Mickey to Utau Tori no Shima (Jpn)</description>
+		<year>1998</year>
+		<publisher>Disney</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="mickey toutautorino shima minnie wo sagashite wakuwaku daibouken! (japan).bin" size="1048576" crc="643700aa" sha1="d47298e7dab451218cede56fd758401e356e6b2b" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -305,6 +404,17 @@
 		</part>
 	</software>
 
+	<software name="shimayum">
+		<description>Shimajirou to Yume no Kunihe Daibouken! (Jpn)</description>
+		<year>19??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="4194304">
+				<rom name="shimajirou to yume no kunihe daibouken! (japan).bin" size="4194304" crc="00239298" sha1="606f6794cc18120684eff36f06e29a3d2f373b93" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="anpanman">
 		<description>Soreike! Anpanman - Anpanman to Denwa de Asobou! (Jpn)</description>
 		<year>19??</year>
@@ -382,6 +492,7 @@
 			</dataarea>
 		</part>
 	</software>
+
 	<software name="tokyosea">
 		<description>Tokyo Disney Sea Mickey to Asobou! (Jpn)</description>
 		<year>2002</year>
@@ -649,7 +760,7 @@
 		</part>
 	</software>
 
-	<software name="gakkoben">
+	<software name="gakkohik">
 		<description>Gakken no Obenkyou Soft Tasizan Hikizan (Jpn, Prototype)</description>
 		<year>1995</year>
 		<publisher>Gakken</publisher>
@@ -1683,17 +1794,6 @@ Notice that most of these will become parent, when the dumps surface
 		</part>
 	</software>
 
-	<software name="donald">
-		<description>Donald no Terebi Shou (Jpn, Rev. 2)</description>
-		<year>199?</year>
-		<publisher>Sega?</publisher>
-		<part name="cart" interface="pico_cart">
-			<dataarea name="rom" size="????">
-				<rom name="Donald no Terebi Shou (J) (REV02).bin" size="????" crc="c11a2b37" sha1="9d3d17c0ec4798730bba4670bef1723ed6a46b98" offset="000000" >
-			</dataarea>
-		</part>
-	</software>
-
 	<software name="doraland">
 		<description>Doraemon - Chiiku Asobi Dora-Land (Jpn)</description>
 		<year>199?</year>
@@ -1778,17 +1878,6 @@ Notice that most of these will become parent, when the dumps surface
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="????">
 				<rom name="Exciting! Hataraku Norimono-tachi (J).bin" size="????" crc="eaf2b204" sha1="3d572469af1e38b748452894a55566ac23892523" offset="000000" >
-			</dataarea>
-		</part>
-	</software>
-
-	<software name="gakkenos">
-		<description>Gakken no O-benkyou Soft - Hiragana (Jpn, Rev. 1)</description>
-		<year>199?</year>
-		<publisher>Sega?</publisher>
-		<part name="cart" interface="pico_cart">
-			<dataarea name="rom" size="????">
-				<rom name="Gakken no O-benkyou Soft - Hiragana (J) (REV01).bin" size="????" crc="1eb0ba1c" sha1="8ab5239a99ce2c97cfe0c4ec786538c8a153a71d" offset="000000" >
 			</dataarea>
 		</part>
 	</software>

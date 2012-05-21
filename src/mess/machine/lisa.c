@@ -230,18 +230,8 @@ INLINE void set_VTIR(running_machine &machine, int value)
 
 
 /*
-    keyboard interface
+    keyboard interface (COPS simulation; our COPS CPU core is too broken and too esoteric to emulate this correctly, I tried)
 */
-
-
-
-
-
-
-
-
-
-
 
 INLINE void COPS_send_data_if_possible(running_machine &machine)
 {
@@ -251,7 +241,7 @@ INLINE void COPS_send_data_if_possible(running_machine &machine)
 
 	if ((! state->m_hold_COPS_data) && state->m_fifo_size && (! state->m_COPS_Ready))
 	{
-		logerror("Pushing one byte of data to VIA\n");
+//        printf("COPsim: sending %02x to VIA\n", state->m_fifo_data[state->m_fifo_head]);
 
 		via_0->write_porta(*space, 0, state->m_fifo_data[state->m_fifo_head]);	/* output data */
 		if (state->m_fifo_head == state->m_mouse_data_offset)
@@ -281,7 +271,7 @@ static void COPS_queue_data(running_machine &machine, const UINT8 *data, int len
 #endif
 
 	{
-		logerror("Adding %d bytes of data to FIFO\n", len);
+//      printf("Adding %d bytes of data to FIFO\n", len);
 
 		while (len--)
 		{
@@ -446,6 +436,8 @@ static TIMER_CALLBACK(read_COPS_command)
 
 	/* some pull-ups allow the COPS to read 1s when the VIA port is not set as output */
 	command = (state->m_COPS_command | (~ via_0->read(*space, VIA_DDRA))) & 0xff;
+
+//    printf("Dropping Ready, command = %02x\n", command);
 
 	if (command & 0x80)
 		return;	/* NOP */
@@ -690,7 +682,8 @@ static void init_COPS(running_machine &machine)
 static WRITE8_DEVICE_HANDLER(COPS_via_out_a)
 {
 	lisa_state *state = device->machine().driver_data<lisa_state>();
-	state->m_COPS_command = data;
+//    printf("VIA A = %02x\n", data);
+    state->m_COPS_command = data;
 }
 
 static WRITE8_DEVICE_HANDLER(COPS_via_out_ca2)
@@ -723,7 +716,7 @@ static READ8_DEVICE_HANDLER(COPS_via_in_b)
 	lisa_state *state = device->machine().driver_data<lisa_state>();
 	int val = 0;
 
-	if (! state->m_COPS_Ready)
+	if (state->m_COPS_Ready)
 		val |= 0x40;
 
 	if (state->m_FDIR)
@@ -1394,7 +1387,7 @@ READ16_MEMBER(lisa_state::lisa_r)
 	{	/* special setup mode */
 		if (offset & 0x002000)
 		{
-//          the_seg = 0;    /* correct ??? */
+            the_seg = 0;        // TRUSTED by Lisa Hardware Manual section 2.3.3 and MMU startup test
 		}
 		else
 		{
@@ -1565,7 +1558,7 @@ WRITE16_MEMBER(lisa_state::lisa_w)
 	{
 		if (offset & 0x002000)
 		{
-//          the_seg = 0;    /* correct ??? */
+            the_seg = 0;        // TRUSTED by Lisa Hardware Manual section 2.3.3 and MMU startup test
 		}
 		else
 		{
@@ -1867,10 +1860,8 @@ READ16_MEMBER(lisa_state::lisa_IO_r)
 			/* I/O Board Devices */
 			switch ((offset & 0x0600) >> 9)
 			{
-			case 0:	/* serial ports control */
-				/*SCCBCTL           .EQU    $FCD241         ;SCC channel B control
-                ACTL            .EQU    2           ;offset to SCC channel A control
-                SCCDATA         .EQU    4           ;offset to SCC data regs*/
+            case 0:	/* serial ports control */
+                return m_scc->reg_r(space, offset&7);
 				break;
 
 			case 2:	/* parallel port */
@@ -1996,7 +1987,8 @@ WRITE16_MEMBER(lisa_state::lisa_IO_w)
 			/* I/O Board Devices */
 			switch ((offset & 0x0600) >> 9)
 			{
-			case 0:	/* serial ports control */
+            case 0:	/* serial ports control */
+                m_scc->reg_w(space, offset&7, data);
 				break;
 
 			case 2:	/* paralel port */
@@ -2032,4 +2024,7 @@ WRITE16_MEMBER(lisa_state::lisa_IO_w)
 	}
 }
 
+void lisa_state::set_scc_interrupt(bool value)
+{
+}
 

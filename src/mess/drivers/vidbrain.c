@@ -5,7 +5,8 @@
     http://www.atariprotos.com/othersystems/videobrain/videobrain.htm
     http://www.seanriddle.com/vbinfo.html
     http://www.seanriddle.com/videobrain.html
-    http://www.google.com/patents?q=4232374
+    http://www.google.com/patents/US4232374
+    http://www.google.com/patents/US4177462
 
     07/04/2009 Skeleton driver.
 
@@ -15,23 +16,26 @@
 
     TODO:
 
+    - video interrupts
+    - R-2R ladder DAC
+    - reset on cartridge unload
     - use machine/f3853.h
-    - discrete sound
     - joystick scan timer 555
-    - reset on cartridge eject
     - expander 1 (cassette, RS-232)
     - expander 2 (modem)
 
 */
 
 
-#include "emu.h"
 #include "includes/vidbrain.h"
-#include "cpu/f8/f8.h"
-#include "imagedev/cartslot.h"
-#include "imagedev/cassette.h"
-#include "machine/ram.h"
-#include "sound/discrete.h"
+
+
+
+//**************************************************************************
+//  MACROS / CONSTANTS
+//**************************************************************************
+
+#define LOG 		1
 
 
 
@@ -60,6 +64,8 @@ WRITE8_MEMBER( vidbrain_state::keyboard_w )
 
     */
 
+    if (LOG) logerror("Keyboard %02x\n", data);
+
 	m_keylatch = data;
 }
 
@@ -74,10 +80,10 @@ READ8_MEMBER( vidbrain_state::keyboard_r )
 
         bit     description
 
-        0       keyboard row 0
-        1       keyboard row 1
-        2       keyboard row 2
-        3       keyboard row 3
+        0       keyboard row 0, joystick 1 fire
+        1       keyboard row 1, joystick 2 fire
+        2       keyboard row 2, joystick 3 fire
+        3       keyboard row 3, joystick 4 fire
         4
         5
         6
@@ -85,7 +91,7 @@ READ8_MEMBER( vidbrain_state::keyboard_r )
 
     */
 
-	UINT8 data = 0;//machine.root_device().ioport("JOY-R")->read();
+	UINT8 data = ioport("JOY-R")->read();
 
 	if (BIT(m_keylatch, 0)) data |= ioport("IO00")->read();
 	if (BIT(m_keylatch, 1)) data |= ioport("IO01")->read();
@@ -95,7 +101,7 @@ READ8_MEMBER( vidbrain_state::keyboard_r )
 	if (BIT(m_keylatch, 5)) data |= ioport("IO05")->read();
 	if (BIT(m_keylatch, 6)) data |= ioport("IO06")->read();
 	if (BIT(m_keylatch, 7)) data |= ioport("IO07")->read();
-	if (!BIT(m_cmd, 4)) data |= ioport("UV201-31")->read();
+	if (!m_uv->kbd_r()) data |= ioport("UV201-31")->read();
 
 	return data;
 }
@@ -111,24 +117,25 @@ WRITE8_MEMBER( vidbrain_state::sound_w )
 
         bit     description
 
-        0       sound Q0
-        1       sound Q1
+        0
+        1
         2
         3
         4       sound clock
-        5
-        6
+        5       accessory jack pin 5
+        6       accessory jack pin 1
         7       joystick enable
 
     */
 
+    if (LOG) logerror("Sound %02x\n", data);
+
 	// sound clock
-	int sound_clk = BIT(data, 7);
+	int sound_clk = BIT(data, 4);
 
 	if (!m_sound_clk && sound_clk)
 	{
-		discrete_sound_w(m_discrete, NODE_01, BIT(m_keylatch, 0));
-		discrete_sound_w(m_discrete, NODE_02, BIT(m_keylatch, 1));
+		discrete_sound_w(m_discrete, NODE_01, m_keylatch & 0x03);
 	}
 
 	m_sound_clk = sound_clk;
@@ -157,7 +164,7 @@ void vidbrain_state::interrupt_check()
 		break;
 	}
 
-	device_set_input_line(m_maincpu, F8_INPUT_LINE_INT_REQ, interrupt);
+	m_maincpu->set_input_line(F8_INPUT_LINE_INT_REQ, interrupt);
 }
 
 
@@ -172,19 +179,19 @@ WRITE8_MEMBER( vidbrain_state::f3853_w )
 	case 0:
 		// interrupt vector address high
 		m_vector = (data << 8) | (m_vector & 0xff);
-		logerror("F3853 Interrupt Vector %04x\n", m_vector);
+		logerror("%s: F3853 Interrupt Vector %04x\n", machine().describe_context(), m_vector);
 		break;
 
 	case 1:
 		// interrupt vector address low
 		m_vector = (m_vector & 0xff00) | data;
-		logerror("F3853 Interrupt Vector %04x\n", m_vector);
+		logerror("%s: F3853 Interrupt Vector %04x\n", machine().describe_context(), m_vector);
 		break;
 
 	case 2:
 		// interrupt control
 		m_int_enable = data & 0x03;
-		logerror("F3853 Interrupt Control %u\n", m_int_enable);
+		logerror("%s: F3853 Interrupt Control %u\n", machine().describe_context(), m_int_enable);
 		interrupt_check();
 
 		if (m_int_enable == 0x03) fatalerror("F3853 Timer not supported!");
@@ -192,7 +199,7 @@ WRITE8_MEMBER( vidbrain_state::f3853_w )
 
 	case 3:
 		// timer 8-bit polynomial counter
-		fatalerror("F3853 Timer not supported!");
+		fatalerror("%s: F3853 Timer not supported!", machine().describe_context());
 		break;
 	}
 }
@@ -209,7 +216,7 @@ WRITE8_MEMBER( vidbrain_state::f3853_w )
 
 static ADDRESS_MAP_START( vidbrain_mem, AS_PROGRAM, 8, vidbrain_state )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0xc000) AM_ROM
-	AM_RANGE(0x0800, 0x08ff) AM_READWRITE(vlsi_r, vlsi_w)
+	AM_RANGE(0x0800, 0x08ff) AM_MIRROR(0x0300) AM_DEVREADWRITE(UV201_TAG, uv201_device, read, write)
 	AM_RANGE(0x0c00, 0x0fff) AM_MIRROR(0xe000) AM_RAM
 	AM_RANGE(0x1000, 0x1fff) AM_MIRROR(0xe000) AM_ROM
 	AM_RANGE(0x2000, 0x27ff) AM_MIRROR(0xc000) AM_ROM
@@ -306,34 +313,34 @@ static INPUT_PORTS_START( vidbrain )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("MASTER CONTROL") PORT_CODE(KEYCODE_F5) PORT_CHAR(UCHAR_MAMEKEY(F5)) PORT_CHANGED_MEMBER(DEVICE_SELF, vidbrain_state, trigger_reset, 0)
 
 	PORT_START("JOY1-X")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(25) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_X ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(1)
 
 	PORT_START("JOY1-Y")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(25) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_Y ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(1)
 
 	PORT_START("JOY2-X")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(25) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_X ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(2)
 
 	PORT_START("JOY2-Y")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(25) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_Y ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(2)
 
 	PORT_START("JOY3-X")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(25) PORT_PLAYER(3)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_X ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(3)
 
 	PORT_START("JOY3-Y")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(25) PORT_PLAYER(3)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_Y ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(3)
 
 	PORT_START("JOY4-X")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(25) PORT_PLAYER(4)
+	PORT_BIT( 0xff, 50, IPT_AD_STICK_X ) PORT_MINMAX(0, 99) PORT_SENSITIVITY(25) PORT_PLAYER(4)
 
 	PORT_START("JOY4-Y")
-	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(25) PORT_PLAYER(4)
+	PORT_BIT( 0xff, 70, IPT_AD_STICK_Y ) PORT_MINMAX(0, 139) PORT_SENSITIVITY(25) PORT_PLAYER(4)
 
 	PORT_START("JOY-R")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(3)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(4)
 INPUT_PORTS_END
 
 
@@ -346,9 +353,16 @@ INPUT_PORTS_END
 //  DISCRETE_SOUND( vidbrain )
 //-------------------------------------------------
 
+static const discrete_dac_r1_ladder vidbrain_dac =
+{
+	2,
+	{ RES_K(120), RES_K(120) }, // R=56K, 2R=120K
+	0, 0, RES_K(120), 0
+};
+
 static DISCRETE_SOUND_START( vidbrain )
-	DISCRETE_INPUT_LOGIC(NODE_01)
-	DISCRETE_INPUT_LOGIC(NODE_02)
+	DISCRETE_INPUT_DATA(NODE_01)
+	DISCRETE_DAC_R1(NODE_02, NODE_01, DEFAULT_TTL_V_LOGIC_1, &vidbrain_dac)
 	DISCRETE_OUTPUT(NODE_02, 5000)
 DISCRETE_SOUND_END
 
@@ -361,33 +375,69 @@ DISCRETE_SOUND_END
 //-------------------------------------------------
 //  f3853_interface smi_intf
 //-------------------------------------------------
-/*
+
 static void f3853_int_req_w(device_t *device, UINT16 addr, int level)
 {
-    device_set_input_line_vector(device->machine().device(F3850_TAG), 0, addr);
+	vidbrain_state *state = device->machine().driver_data<vidbrain_state>();
 
-    cputag_set_input_line(device->machine(), F3850_TAG, F8_INPUT_LINE_INT_REQ, level);
+	state->m_vector = addr;
+    state->m_maincpu->set_input_line(F8_INPUT_LINE_INT_REQ, level);
 }
 
 static const f3853_interface smi_intf =
 {
     f3853_int_req_w
 };
-*/
 
 
 //-------------------------------------------------
-//  cassette_interface vidbrain_cassette_interface
+//  UV201_INTERFACE( uv_intf )
 //-------------------------------------------------
 
-static const cassette_interface vidbrain_cassette_interface =
+WRITE_LINE_MEMBER( vidbrain_state::ext_int_w )
 {
-	cassette_default_formats,
-	NULL,
-	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
-	NULL,
-	NULL
+	if (state)
+	{
+		m_ext_int_latch = state;
+		interrupt_check();
+	}
+}
+
+WRITE_LINE_MEMBER( vidbrain_state::hblank_w )
+{
+	if (state && m_joy_enable && !m_timer_ne555->enabled())
+	{
+		UINT8 joydata = 0;
+
+		if (!BIT(m_keylatch, 0)) joydata = ioport("JOY1-X")->read();
+		if (!BIT(m_keylatch, 1)) joydata = ioport("JOY1-Y")->read();
+		if (!BIT(m_keylatch, 2)) joydata = ioport("JOY2-X")->read();
+		if (!BIT(m_keylatch, 3)) joydata = ioport("JOY2-Y")->read();
+		if (!BIT(m_keylatch, 4)) joydata = ioport("JOY3-X")->read();
+		if (!BIT(m_keylatch, 5)) joydata = ioport("JOY3-Y")->read();
+		if (!BIT(m_keylatch, 6)) joydata = ioport("JOY4-X")->read();
+		if (!BIT(m_keylatch, 7)) joydata = ioport("JOY4-Y")->read();
+
+		// NE555 in monostable mode
+		// R = 3K9 + 100K linear pot
+		// C = 0.003uF
+		// t = 1.1 * R * C
+		double t = 1.1 * (RES_K(3.9) + RES_K(joydata)) * 3;
+
+		timer_set(attotime::from_nsec(t), TIMER_JOYSTICK);
+	}
+}
+
+static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+
+static UV201_INTERFACE( uv_intf )
+{
+	SCREEN_TAG,
+	DEVCB_DRIVER_LINE_MEMBER(vidbrain_state, ext_int_w),
+	DEVCB_DRIVER_LINE_MEMBER(vidbrain_state, hblank_w),
+	DEVCB_MEMORY_HANDLER(F3850_TAG, PROGRAM, memory_read_byte)
 };
+
 
 
 //**************************************************************************
@@ -402,20 +452,37 @@ static IRQ_CALLBACK( vidbrain_int_ack )
 {
 	vidbrain_state *state = device->machine().driver_data<vidbrain_state>();
 
+	UINT16 vector = state->m_vector;
+
 	switch (state->m_int_enable)
 	{
 	case 1:
+		vector |= 0x80;
 		state->m_ext_int_latch = 0;
 		break;
 
 	case 3:
+		vector &= ~0x80;
 		state->m_timer_int_latch = 0;
 		break;
 	}
 
 	state->interrupt_check();
 
-	return state->m_vector;
+	return vector;
+}
+
+
+//-------------------------------------------------
+//  device_timer - handler timer events
+//-------------------------------------------------
+
+void vidbrain_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	m_uv->ext_int_w(0);
+
+	m_ext_int_latch = 1;
+	interrupt_check();
 }
 
 
@@ -428,6 +495,9 @@ void vidbrain_state::machine_start()
 	// register IRQ callback
 	device_set_irq_callback(m_maincpu, vidbrain_int_ack);
 
+	// allocate timers
+	m_timer_ne555 = timer_alloc(TIMER_JOYSTICK);
+
 	// register for state saving
 	save_item(NAME(m_vector));
 	save_item(NAME(m_int_enable));
@@ -438,6 +508,17 @@ void vidbrain_state::machine_start()
 	save_item(NAME(m_sound_clk));
 }
 
+
+//-------------------------------------------------
+//  MACHINE_RESET( vidbrain )
+//-------------------------------------------------
+
+void vidbrain_state::machine_reset()
+{
+	m_int_enable = 0;
+	m_ext_int_latch = 0;
+	m_timer_int_latch = 0;
+}
 
 
 //**************************************************************************
@@ -455,7 +536,7 @@ static MACHINE_CONFIG_START( vidbrain, vidbrain_state )
     MCFG_CPU_IO_MAP(vidbrain_io)
 
 	// video hardware
-	MCFG_FRAGMENT_ADD(vidbrain_video)
+	MCFG_UV201_ADD(UV201_TAG, SCREEN_TAG, XTAL_14_31818MHz, uv_intf)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -465,8 +546,7 @@ static MACHINE_CONFIG_START( vidbrain, vidbrain_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	// devices
-//  MCFG_F3853_ADD(F3853_TAG, XTAL_14_31818MHz/8, smi_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, vidbrain_cassette_interface)
+	MCFG_F3853_ADD(F3853_TAG, XTAL_14_31818MHz/8, smi_intf)
 
 	// cartridge
 	MCFG_CARTSLOT_ADD("cart")
@@ -505,4 +585,4 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY                         FULLNAME                        FLAGS
-COMP( 1977, vidbrain,	0,		0,		vidbrain,	vidbrain,	0,		"VideoBrain Computer Company",	"VideoBrain FamilyComputer",	GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1977, vidbrain,	0,		0,		vidbrain,	vidbrain,	0,		"VideoBrain Computer Company",	"VideoBrain FamilyComputer",	GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )

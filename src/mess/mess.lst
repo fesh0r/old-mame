@@ -107,6 +107,8 @@ smssdisp  // Sega Master System Store Display Unit
 megadrij  // 1988 Sega Mega Drive (Japan)
 genesis   // 1989 Sega Genesis (USA)
 gensvp	// 1993 Sega Genesis (USA w/SVP chip)
+mdsvp
+mdsvpj
 megadriv  // 1990 Sega Mega Drive (Europe)
 pico	  // 1994 Sega Pico (Europe)
 picou	 // 1994 Sega Pico (USA)
@@ -126,6 +128,8 @@ wmegam2	// 1993 Victor Wondermega M2 (Japan)
 cdx	   // 1994 Sega CDX (USA)
 multmega  // 1994 Sega Multi-Mega (Europe)
 32x	   // 1994 Sega 32X (USA)
+32xe
+32xj
 32x_scd   // 1994 Sega Sega CD (USA w/32X addon)
 
 saturnjp  // 1994 Sega Saturn (Japan)
@@ -167,8 +171,12 @@ apollo80
 d6800		// Dream 6800
 
 // Ensoniq
-enmirage // 1985 Mirage Digital Multi-Sampler
-esq1	// 1986 ESQ-1 Digital Wave Synthesizer
+enmirage    // 1985 Mirage Digital Multi-Sampler
+esq1        // 1986 ESQ-1 Digital Wave Synthesizer
+//sq80        // 1988 SQ-80 Digital Wave Synthesizer
+vfx         // 1989 VFX
+eps16       // 1990 EPS-16 Plus
+sq1         // 1990 SQ-1
 
 // Fairchild
 channelf  // Fairchild Channel F VES - 1976
@@ -1482,6 +1490,7 @@ ut88mini
 // Mikro-80
 mikro80
 radio99
+kristall2
 
 // Specialist
 special
@@ -1545,6 +1554,9 @@ bk8t
 
 // Vector-06c
 vector06
+vec1200
+pk6128c
+krista2
 
 // Robotron 1715
 rt1715
@@ -1850,8 +1862,6 @@ vesta
 hobby
 pk8002
 unior
-vec1200
-pk6128c
 tvc64
 tvc64p
 tvc64pru
@@ -2109,3 +2119,6 @@ borisdpl
 cp1
 c900
 cortex
+test410
+test420
+hxhdci2k
