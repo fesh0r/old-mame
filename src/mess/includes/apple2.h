@@ -40,6 +40,7 @@
 #define VAR_LCRAM2		0x020000
 #define VAR_LCWRITE		0x040000
 #define VAR_ROMSWITCH	0x080000
+#define VAR_TK2000RAM   0x100000        // ROM/RAM switch for TK2000
 
 #define VAR_DHIRES		VAR_AN3
 
@@ -70,6 +71,15 @@
 #define APPLE2_MEM_ROM		0xC0000000
 #define APPLE2_MEM_FLOATING	0xFFFFFFFF
 #define APPLE2_MEM_MASK		0x00FFFFFF
+
+typedef enum
+{
+    APPLE_II,           // Apple II/II+
+    APPLE_IIEPLUS,      // Apple IIe/IIc/IIgs/IIc+
+    TK2000,             // Microdigital TK2000
+    LASER128,           // Laser 128/128EX/128EX2
+    SPACE84             // "Space 84" with flipped text mode
+} machine_type_t;
 
 typedef enum
 {
@@ -157,6 +167,8 @@ public:
 
     UINT8 *m_rambase;
 
+    machine_type_t m_machinetype;
+
     READ8_MEMBER(apple2_c0xx_r);
     WRITE8_MEMBER(apple2_c0xx_w);
     READ8_MEMBER(apple2_c080_r);
@@ -203,6 +215,26 @@ public:
     READ8_MEMBER(apple2_cfff_r);
     WRITE8_MEMBER(apple2_cfff_w);
 
+    void apple2_refresh_delegates();
+
+    read8_delegate read_delegates_master[4];
+    write8_delegate write_delegates_master[3];
+    write8_delegate write_delegates_0400[2];
+    write8_delegate write_delegates_2000[2];
+    read8_delegate rd_c000;
+    write8_delegate wd_c000;
+    read8_delegate rd_c080;
+    write8_delegate wd_c080;
+    read8_delegate rd_cfff;
+    write8_delegate wd_cfff;
+    read8_delegate rd_c800;
+    write8_delegate wd_c800;
+    read8_delegate rd_ce00;
+    write8_delegate wd_ce00;
+    read8_delegate rd_inh_d000;
+    write8_delegate wd_inh_d000;
+    read8_delegate rd_inh_e000;
+    write8_delegate wd_inh_e000;
 };
 
 
@@ -222,6 +254,9 @@ UINT8 apple2_iwm_getdiskreg(running_machine &machine);
 void apple2_init_common(running_machine &machine);
 MACHINE_START( apple2 );
 MACHINE_START( apple2orig );
+MACHINE_START( tk2000 );
+MACHINE_START( laser128 );
+MACHINE_START( space84 );
 UINT8 apple2_getfloatingbusvalue(running_machine &machine);
 READ8_HANDLER( apple2_c0xx_r );
 WRITE8_HANDLER( apple2_c0xx_w );

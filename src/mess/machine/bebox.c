@@ -514,12 +514,8 @@ static device_t *ide_device(running_machine &machine)
 	return machine.device("ide");
 }
 
-static READ8_HANDLER( bebox_800001F0_8_r ) { return ide_controller_r(ide_device(space->machine()), offset + 0x1F0, 1); }
-static WRITE8_HANDLER( bebox_800001F0_8_w ) { ide_controller_w(ide_device(space->machine()), offset + 0x1F0, 1, data); }
-
-READ64_HANDLER( bebox_800001F0_r ) { return read64be_with_read8_handler(bebox_800001F0_8_r, space, offset, mem_mask); }
-WRITE64_HANDLER( bebox_800001F0_w ) { write64be_with_write8_handler(bebox_800001F0_8_w, space, offset, data, mem_mask); }
-
+READ8_HANDLER( bebox_800001F0_r ) { return ide_controller_r(ide_device(space->machine()), offset + 0x1F0, 1); }
+WRITE8_HANDLER( bebox_800001F0_w ) { ide_controller_w(ide_device(space->machine()), offset + 0x1F0, 1, data); }
 
 READ64_HANDLER( bebox_800003F0_r )
 {
@@ -590,7 +586,7 @@ static WRITE64_HANDLER( bebox_video_w )
  *************************************/
 
 
-static READ8_HANDLER(at_page8_r)
+READ8_HANDLER(bebox_page_r)
 {
 	bebox_state *state = space->machine().driver_data<bebox_state>();
 	UINT8 data = state->m_at_pages[offset % 0x10];
@@ -614,7 +610,7 @@ static READ8_HANDLER(at_page8_r)
 }
 
 
-static WRITE8_HANDLER(at_page8_w)
+WRITE8_HANDLER(bebox_page_w)
 {
 	bebox_state *state = space->machine().driver_data<bebox_state>();
 	state->m_at_pages[offset % 0x10] = data;
@@ -641,19 +637,7 @@ static WRITE8_HANDLER(at_page8_w)
 }
 
 
-READ64_HANDLER(bebox_page_r)
-{
-	return read64be_with_read8_handler(at_page8_r, space, offset, mem_mask);
-}
-
-
-WRITE64_HANDLER(bebox_page_w)
-{
-	write64be_with_write8_handler(at_page8_w, space, offset, data, mem_mask);
-}
-
-
-static WRITE8_HANDLER(at_hipage8_w)
+WRITE8_HANDLER(bebox_80000480_w)
 {
 	bebox_state *state = space->machine().driver_data<bebox_state>();
 	switch(offset % 8)
@@ -678,15 +662,9 @@ static WRITE8_HANDLER(at_hipage8_w)
 }
 
 
-READ64_HANDLER(bebox_80000480_r)
+READ8_HANDLER(bebox_80000480_r)
 {
 	fatalerror("NYI");
-}
-
-
-WRITE64_HANDLER(bebox_80000480_w)
-{
-	write64be_with_write8_handler(at_hipage8_w, space, offset, data, mem_mask);
 }
 
 
@@ -809,7 +787,7 @@ const struct pit8253_config bebox_pit8254_config =
  *
  *************************************/
 
-static READ8_HANDLER( bebox_flash8_r )
+READ8_HANDLER( bebox_flash_r )
 {
 	fujitsu_29f016a_device *flash = space->machine().device<fujitsu_29f016a_device>("flash");
 	offset = (offset & ~7) | (7 - (offset & 7));
@@ -817,25 +795,12 @@ static READ8_HANDLER( bebox_flash8_r )
 }
 
 
-static WRITE8_HANDLER( bebox_flash8_w )
+WRITE8_HANDLER( bebox_flash_w )
 {
 	fujitsu_29f016a_device *flash = space->machine().device<fujitsu_29f016a_device>("flash");
 	offset = (offset & ~7) | (7 - (offset & 7));
 	flash->write(offset, data);
 }
-
-
-READ64_HANDLER( bebox_flash_r )
-{
-	return read64be_with_read8_handler(bebox_flash8_r, space, offset, mem_mask);
-}
-
-
-WRITE64_HANDLER( bebox_flash_w )
-{
-	write64be_with_write8_handler(bebox_flash8_w, space, offset, data, mem_mask);
-}
-
 
 /*************************************
  *
@@ -1029,8 +994,8 @@ static const SCSIConfigTable dev_table =
 {
 	2, /* 2 SCSI devices */
 	{
-		{ SCSI_ID_0, "harddisk1", SCSI_DEVICE_HARDDISK },	/* SCSI ID 0, using HD 0, HD */
-		{ SCSI_ID_3, "cdrom", SCSI_DEVICE_CDROM }	/* SCSI ID 3, using CHD 0, CD-ROM */
+		{ SCSI_ID_0, "harddisk1" },	/* SCSI ID 0, using HD 0, HD */
+		{ SCSI_ID_3, "cdrom" }	/* SCSI ID 3, using CHD 0, CD-ROM */
 	}
 };
 
@@ -1074,17 +1039,11 @@ MACHINE_RESET( bebox )
 	memcpy(machine.device<fujitsu_29f016a_device>("flash")->space()->get_read_ptr(0),state->memregion("user1")->base(),0x200000);
 }
 
-static void bebox_exit(running_machine &machine)
-{
-	lsi53c810_exit(&scsi53c810_intf);
-}
-
 MACHINE_START( bebox )
 {
 	pc_fdc_init(machine, &bebox_fdc_interface);
 	/* SCSI */
 	lsi53c810_init(machine, &scsi53c810_intf);
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(bebox_exit),&machine));
 }
 
 DRIVER_INIT( bebox )

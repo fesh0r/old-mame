@@ -173,9 +173,12 @@ d6800		// Dream 6800
 // Ensoniq
 enmirage    // 1985 Mirage Digital Multi-Sampler
 esq1        // 1986 ESQ-1 Digital Wave Synthesizer
-//sq80        // 1988 SQ-80 Digital Wave Synthesizer
+sq80        // 1988 SQ-80 Digital Wave Synthesizer
+eps         // 1988 EPS
 vfx         // 1989 VFX
-eps16       // 1990 EPS-16 Plus
+vfxsd       // 1989 VFX-SD
+sd1         // 1990 SD-1
+sd132       // 1991 SD-1 32
 sq1         // 1990 SQ-1
 
 // Fairchild
@@ -403,6 +406,7 @@ mprof3	// Microprofessor III
 apple2ee  // Mar 1985 Apple //e Enhanced
 apple2ep  // Jan 1987 Apple //e Platinum
 apple2c   // Apr 1984 Apple //c
+tk2000      // Microdigital TK2000
 prav8c	// Pravetz 8C
 apple2c0  // ??? 1985 Apple //c (3.5 ROM)
 apple2c3  // Sep 1986 Apple //c (Original Mem. Exp.)
@@ -417,11 +421,12 @@ apple3	// May 1980 Apple ///
 // Dec 1983 Apple ///+
 ace100	// ??? 1982 Franklin Ace 100
 laser128  // ??? 1987 Laser 128
-las128ex  // ??? 1987 Laser 128 EX
+las128ex  // ??? 1988 Laser 128 EX
 las3000   // ??? 1983 Laser 3000
 ivelultr  // Ivasim Ivel Ultra
 agat7	 // Agat-7
 agat9	 // Agat-9
+space84 // 1985 IBS/ComputerTechnik Space 84
 
 //  Lisa   January    1983
 //  Lisa 2   January  1984
@@ -442,6 +447,7 @@ macxl	 // 1985 Apple Macintosh XL
 mac128k   // 1984 Apple Macintosh
 mac512k   // 1985 Apple Macintosh 512k
 mac512ke  // 1986 Apple Macintosh 512ke
+unitron     // 1985 Unitron
 macplus   // 1986 Apple Macintosh Plus
 macse	 // 1987 Apple Macintosh SE
 macii	 // 1987 Apple Macintosh II
@@ -1101,6 +1107,7 @@ laser500  // 1984? Laser 500
 laser700  // 1984? Laser 700
 socrates  // 1988 Socrates Educational Video System
 socratfc  // 1988 Socrates SAITOUT
+geniusiq // 1997 Genius PC (France) / Genius IQ 128 (Germany)
 
 // Tangerine
 microtan  // 1979 Microtan 65
@@ -2006,8 +2013,6 @@ chaos
 z80dev
 pegasus
 pegasusm
-e01
-e01s
 pasopia
 pasopia7
 pasopia7lcd
@@ -2122,3 +2127,5 @@ cortex
 test410
 test420
 hxhdci2k
+hpz80unk
+itt3030

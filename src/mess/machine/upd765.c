@@ -136,6 +136,8 @@ struct _upd765_t
 
 	int command;
 
+	UINT8			ready_changed;
+
 	emu_timer *seek_timer;
 	emu_timer *timer;
 	int timer_type;
@@ -144,6 +146,8 @@ struct _upd765_t
 
 	char *data_buffer;
 	const upd765_interface *intf;
+
+	bool pool;
 };
 
 //static void upd765_setup_data_request(unsigned char Data);
@@ -2055,8 +2059,12 @@ static void upd765_setup_command(device_t *device)
 			/* interrupt pending? */
 			if (fdc->upd765_flags & UPD765_INT)
 			{
-				/* yes. Clear int */
-				upd765_set_int(device, CLEAR_LINE);
+				/* clear ready changed bit */
+				fdc->ready_changed &= ~(1 << fdc->drive);
+
+				if (!fdc->pool) {
+					fdc->ready_changed = 0;
+				}
 
 				/* clear drive seek bits */
 				fdc->FDC_main &= ~(1 | 2 | 4 | 8);
@@ -2068,6 +2076,17 @@ static void upd765_setup_command(device_t *device)
 
 				/* return result */
 				upd765_setup_result_phase(device,2);
+
+				if (fdc->ready_changed)
+				{
+					fdc->drive++;
+					fdc->upd765_status[0] = 0xc0 | fdc->drive;
+				}
+				else
+				{
+					/* Clear int */
+					upd765_set_int(device, CLEAR_LINE);
+				}
 			}
 			else
 			{
@@ -2211,6 +2230,7 @@ static void upd765_setup_command(device_t *device)
 							break;
 
 						case 0x13:		/* configure */
+							fdc->pool = fdc->upd765_command_bytes[1] & 0x10;
 							upd765_idle(device);
 							break;
 
@@ -2291,6 +2311,10 @@ void upd765_reset(device_t *device, int offset)
 		int a_drive_is_ready;
 
 		fdc->upd765_status[0] = 0x080 | 0x040;
+
+		// HACK signal ready changed for all drives
+		fdc->ready_changed = 0x0f;
+		fdc->drive = 0;
 
 		/* for the purpose of pc-xt. If any of the drives have a disk inserted,
         do not set not-ready - need to check with pc_fdc.c whether all drives
@@ -2401,6 +2425,8 @@ static void common_start(device_t *device, int device_type)
 	fdc->out_int_func.resolve(fdc->intf->out_int_func, *device);
 	fdc->out_drq_func.resolve(fdc->intf->out_drq_func, *device);
 
+	// plain upd765 is doing pooling
+	fdc->pool = true;
 	// register for state saving
 	//state_save_register_item(device->machine(), "upd765", device->tag(), 0, upd765->number);
 }
@@ -2418,6 +2444,9 @@ static DEVICE_START( upd765b )
 static DEVICE_START( smc37c78 )
 {
 	common_start(device, TYPE_SMC37C78);
+	// specified in documentation that by default is off
+	upd765_t *fdc = get_safe_token(device);
+	fdc->pool = false;
 }
 
 static DEVICE_START( upd72065 )

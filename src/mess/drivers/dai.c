@@ -59,14 +59,7 @@ Timings:
 *******************************************************************************/
 
 #include "emu.h"
-#include "cpu/i8085/i8085.h"
-#include "sound/wave.h"
-#include "machine/i8255.h"
 #include "includes/dai.h"
-#include "machine/pit8253.h"
-#include "machine/tms5501.h"
-#include "imagedev/cassette.h"
-#include "machine/ram.h"
 
 /* I/O ports */
 static ADDRESS_MAP_START( dai_io , AS_IO, 8, dai_state )
@@ -80,10 +73,10 @@ static ADDRESS_MAP_START( dai_mem , AS_PROGRAM, 8, dai_state )
 	AM_RANGE( 0xf000, 0xf7ff) AM_WRITE(dai_stack_interrupt_circuit_w )
 	AM_RANGE( 0xf800, 0xf8ff) AM_RAM
 	AM_RANGE( 0xfb00, 0xfbff) AM_READWRITE(dai_amd9511_r, dai_amd9511_w )
-	AM_RANGE( 0xfc00, 0xfcff) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w )
+	AM_RANGE( 0xfc00, 0xfcff) AM_READWRITE(dai_pit_r, dai_pit_w) // AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w )
 	AM_RANGE( 0xfd00, 0xfdff) AM_READWRITE(dai_io_discrete_devices_r, dai_io_discrete_devices_w )
 	AM_RANGE( 0xfe00, 0xfeff) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
-	AM_RANGE( 0xff00, 0xffff) AM_DEVREADWRITE_LEGACY("tms5501", tms5501_r, tms5501_w )
+	AM_RANGE( 0xff00, 0xffff) AM_DEVREADWRITE("tms5501", tms5501_device, read, write )
 ADDRESS_MAP_END
 
 
@@ -235,7 +228,7 @@ static MACHINE_CONFIG_START( dai, dai_state )
 	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MCFG_SOUND_ADD("custom", DAI, 0)
+	MCFG_SOUND_ADD("custom", DAI_SOUND, 0)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.50)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.50)
 
@@ -243,7 +236,7 @@ static MACHINE_CONFIG_START( dai, dai_state )
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, dai_cassette_interface )
 
 	/* tms5501 */
-	MCFG_TMS5501_ADD( "tms5501", dai_tms5501_interface )
+	MCFG_TMS5501_ADD( "tms5501", 2000000, dai_tms5501_interface )
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

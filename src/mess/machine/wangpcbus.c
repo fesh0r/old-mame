@@ -162,7 +162,7 @@ READ16_MEMBER( wangpcbus_device::mrdc_r )
 
 	while (entry)
 	{
-		data |= entry->wangpcbus_mrdc_r(space, offset, mem_mask);
+		data &= entry->wangpcbus_mrdc_r(space, offset + 0x40000/2, mem_mask);
 		entry = entry->next();
 	}
 
@@ -180,7 +180,7 @@ WRITE16_MEMBER( wangpcbus_device::amwc_w )
 
 	while (entry)
 	{
-		entry->wangpcbus_amwc_w(space, offset, mem_mask, data);
+		entry->wangpcbus_amwc_w(space, offset + 0x40000/2, mem_mask, data);
 		entry = entry->next();
 	}
 }
@@ -198,7 +198,7 @@ READ16_MEMBER( wangpcbus_device::sad_r )
 
 	while (entry)
 	{
-		data |= entry->wangpcbus_iorc_r(space, offset + 0x880, mem_mask);
+		data &= entry->wangpcbus_iorc_r(space, offset + 0x1100/2, mem_mask);
 		entry = entry->next();
 	}
 
@@ -216,7 +216,7 @@ WRITE16_MEMBER( wangpcbus_device::sad_w )
 
 	while (entry)
 	{
-		entry->wangpcbus_aiowc_w(space, offset + 0x880, mem_mask, data);
+		entry->wangpcbus_aiowc_w(space, offset + 0x1100/2, mem_mask, data);
 		entry = entry->next();
 	}
 }
@@ -238,7 +238,7 @@ WRITE_LINE_MEMBER( wangpcbus_device::ioerror_w ) { m_out_ioerror_func(state); }
 //  dack_r - DMA read
 //-------------------------------------------------
 
-UINT8 wangpcbus_device::dack_r(int line)
+UINT8 wangpcbus_device::dack_r(address_space &space, int line)
 {
 	UINT8 retVal = 0xff;
 	device_wangpcbus_card_interface *entry = m_device_list.first();
@@ -247,7 +247,7 @@ UINT8 wangpcbus_device::dack_r(int line)
 	{
 		if (entry->wangpcbus_have_dack(line))
 		{
-			retVal = entry->wangpcbus_dack_r(line);
+			retVal = entry->wangpcbus_dack_r(space, line);
 			break;
 		}
 
@@ -262,7 +262,7 @@ UINT8 wangpcbus_device::dack_r(int line)
 //  dack_w - DMA write
 //-------------------------------------------------
 
-void wangpcbus_device::dack_w(int line,UINT8 data)
+void wangpcbus_device::dack_w(address_space &space, int line, UINT8 data)
 {
 	device_wangpcbus_card_interface *entry = m_device_list.first();
 
@@ -270,19 +270,28 @@ void wangpcbus_device::dack_w(int line,UINT8 data)
 	{
 		if (entry->wangpcbus_have_dack(line))
 		{
-			entry->wangpcbus_dack_w(line,data);
+			entry->wangpcbus_dack_w(space, line, data);
 		}
 
 		entry = entry->next();
 	}
 }
 
+READ8_MEMBER( wangpcbus_device::dack0_r ) { return dack_r(space, 0); }
+WRITE8_MEMBER( wangpcbus_device::dack0_w ) { dack_w(space, 0, data); }
+READ8_MEMBER( wangpcbus_device::dack1_r ) { return dack_r(space, 1); }
+WRITE8_MEMBER( wangpcbus_device::dack1_w ) { dack_w(space, 1, data); }
+READ8_MEMBER( wangpcbus_device::dack2_r ) { return dack_r(space, 2); }
+WRITE8_MEMBER( wangpcbus_device::dack2_w ) { dack_w(space, 2, data); }
+READ8_MEMBER( wangpcbus_device::dack3_r ) { return dack_r(space, 3); }
+WRITE8_MEMBER( wangpcbus_device::dack3_w ) { dack_w(space, 3, data); }
+
 
 //-------------------------------------------------
 //  tc_w - terminal count
 //-------------------------------------------------
 
-void wangpcbus_device::tc_w(int state)
+WRITE_LINE_MEMBER( wangpcbus_device::tc_w )
 {
 	device_wangpcbus_card_interface *entry = m_device_list.first();
 
@@ -294,8 +303,9 @@ void wangpcbus_device::tc_w(int state)
 }
 
 
+
 //**************************************************************************
-//  DEVICE S100 CARD INTERFACE
+//  DEVICE WANG PC BUS CARD INTERFACE
 //**************************************************************************
 
 //-------------------------------------------------
@@ -305,6 +315,7 @@ void wangpcbus_device::tc_w(int state)
 device_wangpcbus_card_interface::device_wangpcbus_card_interface(const machine_config &mconfig, device_t &device)
 	: device_slot_card_interface(mconfig, device)
 {
+	m_slot = dynamic_cast<wangpcbus_slot_device *>(device.owner());
 }
 
 

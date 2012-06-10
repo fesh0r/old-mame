@@ -9,15 +9,8 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "emu.h"
-#include "imagedev/cassette.h"
-#include "cpu/i8085/i8085.h"
-#include "machine/i8255.h"
 #include "includes/dai.h"
-#include "machine/pit8253.h"
-#include "machine/tms5501.h"
-#include "machine/ram.h"
 
 #define DEBUG_DAI_PORTS	0
 
@@ -31,8 +24,8 @@
 
 WRITE8_MEMBER(dai_state::dai_stack_interrupt_circuit_w)
 {
-	tms5501_sensor (m_tms5501, 1);
-	tms5501_sensor (m_tms5501, 0);
+	m_tms5501->set_sensor(1);
+	m_tms5501->set_sensor(0);
 }
 
 static void dai_update_memory(running_machine &machine, int dai_rom_bank)
@@ -47,41 +40,38 @@ static TIMER_CALLBACK(dai_bootstrap_callback)
 }
 
 
-static UINT8 dai_keyboard_read (device_t *device)
+READ8_MEMBER(dai_state::dai_keyboard_r)
 {
-	dai_state *state = device->machine().driver_data<dai_state>();
 	UINT8 data = 0x00;
-	int i;
 	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
-	for (i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
-		if (state->m_keyboard_scan_mask & (1 << i))
-			data |= device->machine().root_device().ioport(keynames[i])->read();
+		if (m_keyboard_scan_mask & (1 << i))
+			data |= ioport(keynames[i])->read();
 	}
+
 	return data;
 }
 
-static void dai_keyboard_write (device_t *device, UINT8 data)
+WRITE8_MEMBER(dai_state::dai_keyboard_w)
 {
-	dai_state *state = device->machine().driver_data<dai_state>();
-	state->m_keyboard_scan_mask = data;
+	m_keyboard_scan_mask = data;
 }
 
-static void dai_interrupt_callback(device_t *device, int intreq, UINT8 vector)
+static TMS5501_IRQ_CALLBACK(dai_interrupt_callback)
 {
 	if (intreq)
-		cputag_set_input_line_and_vector(device->machine(), "maincpu", 0, HOLD_LINE, vector);
+		cputag_set_input_line_and_vector(device.machine(), "maincpu", 0, HOLD_LINE, vector);
 	else
-		cputag_set_input_line(device->machine(), "maincpu", 0, CLEAR_LINE);
+		cputag_set_input_line(device.machine(), "maincpu", 0, CLEAR_LINE);
 }
 
-const tms5501_interface dai_tms5501_interface =
+TMS5501_INTERFACE( dai_tms5501_interface )
 {
-	dai_keyboard_read,
-	dai_keyboard_write,
-	dai_interrupt_callback,
-	2000000.
+	DEVCB_DRIVER_MEMBER(dai_state, dai_keyboard_r),
+	DEVCB_DRIVER_MEMBER(dai_state, dai_keyboard_w),
+	dai_interrupt_callback
 };
 
 I8255A_INTERFACE( dai_ppi82555_intf )
@@ -94,44 +84,23 @@ I8255A_INTERFACE( dai_ppi82555_intf )
 	DEVCB_NULL	/* Port C write */
 };
 
-static WRITE_LINE_DEVICE_HANDLER( dai_pit_out0 )
-{
-	dai_state *drvstate = device->machine().driver_data<dai_state>();
-	dai_set_input(drvstate->m_sound, 0, state);
-}
-
-
-static WRITE_LINE_DEVICE_HANDLER( dai_pit_out1 )
-{
-	dai_state *drvstate = device->machine().driver_data<dai_state>();
-	dai_set_input(drvstate->m_sound, 1, state);
-}
-
-
-static WRITE_LINE_DEVICE_HANDLER( dai_pit_out2 )
-{
-	dai_state *drvstate = device->machine().driver_data<dai_state>();
-	dai_set_input(drvstate->m_sound, 2, state);
-}
-
-
 const struct pit8253_config dai_pit8253_intf =
 {
 	{
 		{
 			2000000,
 			DEVCB_NULL,
-			DEVCB_LINE(dai_pit_out0)
+			DEVCB_DEVICE_LINE_MEMBER("custom", dai_sound_device, set_input_ch0),
 		},
 		{
 			2000000,
 			DEVCB_NULL,
-			DEVCB_LINE(dai_pit_out1)
+			DEVCB_DEVICE_LINE_MEMBER("custom", dai_sound_device, set_input_ch1),
 		},
 		{
 			2000000,
 			DEVCB_NULL,
-			DEVCB_LINE(dai_pit_out2)
+			DEVCB_DEVICE_LINE_MEMBER("custom", dai_sound_device, set_input_ch2),
 		}
 	}
 };
@@ -139,18 +108,18 @@ const struct pit8253_config dai_pit8253_intf =
 static TIMER_CALLBACK( dai_timer )
 {
 	dai_state *state = machine.driver_data<dai_state>();
-	tms5501_set_pio_bit_7 (state->m_tms5501, (machine.root_device().ioport("IN8")->read() & 0x04) ? 1:0);
+	state->m_tms5501->set_pio_bit_7((state->ioport("IN8")->read() & 0x04) ? 1:0);
 }
 
 MACHINE_START( dai )
 {
 	dai_state *state = machine.driver_data<dai_state>();
-	state->m_sound = machine.device("custom");
-	state->m_tms5501 = machine.device("tms5501");
 
 	state->membank("bank2")->configure_entries(0, 4, state->memregion("maincpu")->base() + 0x010000, 0x1000);
 	machine.scheduler().timer_set(attotime::zero, FUNC(dai_bootstrap_callback));
 	machine.scheduler().timer_pulse(attotime::from_hz(100), FUNC(dai_timer));	/* timer for tms5501 */
+
+	memset(machine.device<ram_device>(RAM_TAG)->pointer(), 0, machine.device<ram_device>(RAM_TAG)->size());
 }
 
 MACHINE_RESET( dai )
@@ -215,13 +184,13 @@ WRITE8_MEMBER(dai_state::dai_io_discrete_devices_w)
 {
 	switch(offset & 0x000f) {
 	case 0x04:
-		dai_set_volume(m_sound, offset, data);
+		m_sound->set_volume(space, offset, data);
 		LOG_DAI_PORT_W (offset, data&0x0f, "discrete devices - osc. 0 volume");
 		LOG_DAI_PORT_W (offset, (data&0xf0)>>4, "discrete devices - osc. 1 volume");
 		break;
 
 	case 0x05:
-		dai_set_volume(m_sound, offset, data);
+		m_sound->set_volume(space, offset, data);
 		LOG_DAI_PORT_W (offset, data&0x0f, "discrete devices - osc. 2 volume");
 		LOG_DAI_PORT_W (offset, (data&0xf0)>>4, "discrete devices - noise volume");
 		break;
@@ -245,6 +214,25 @@ WRITE8_MEMBER(dai_state::dai_io_discrete_devices_w)
 		LOG_DAI_PORT_W (offset, data, "discrete devices - unmapped");
 		break;
 	}
+}
+
+/***************************************************************************
+
+    PIT8253
+
+    Offset need to be shifted by 1 to right, because the PIT is
+    connected to A1 and A2
+
+***************************************************************************/
+
+READ8_MEMBER(dai_state::dai_pit_r)
+{
+	return pit8253_r(m_pit, (offset>>1) & 3);
+}
+
+WRITE8_MEMBER(dai_state::dai_pit_w)
+{
+	pit8253_w(m_pit, (offset>>1) & 3, data);
 }
 
 /***************************************************************************

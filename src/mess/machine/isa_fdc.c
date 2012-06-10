@@ -9,7 +9,7 @@
 #include "machine/upd765.h"
 #include "imagedev/flopdrv.h"
 #include "formats/pc_dsk.h"
-#include "memconv.h"
+#include "machine/idectrl.h"
 
 static READ8_DEVICE_HANDLER ( pc_fdc_r );
 static WRITE8_DEVICE_HANDLER ( pc_fdc_w );
@@ -37,12 +37,13 @@ static const floppy_interface ibmpc_floppy_interface =
 
 static WRITE_LINE_DEVICE_HANDLER( pc_fdc_hw_interrupt );
 static WRITE_LINE_DEVICE_HANDLER( pc_fdc_hw_dma_drq );
+static UPD765_GET_IMAGE ( pc_fdc_get_image );
 
 const upd765_interface pc_fdc_upd765_not_connected_interface =
 {
 	DEVCB_LINE(pc_fdc_hw_interrupt),
 	DEVCB_LINE(pc_fdc_hw_dma_drq),
-	NULL,
+	pc_fdc_get_image,
 	UPD765_RDY_PIN_NOT_CONNECTED,
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
@@ -79,6 +80,13 @@ machine_config_constructor isa8_fdc_device::device_mconfig_additions() const
 
 isa8_fdc_device::isa8_fdc_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
         device_t(mconfig, ISA8_FDC, "Diskette Drive Adapter", tag, owner, clock),
+		device_isa8_card_interface(mconfig, *this),
+		m_upd765(*this, "upd765")
+{
+}
+
+isa8_fdc_device::isa8_fdc_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock) :
+        device_t(mconfig, type, name, tag, owner, clock),
 		device_isa8_card_interface(mconfig, *this),
 		m_upd765(*this, "upd765")
 {
@@ -129,6 +137,12 @@ static device_t *get_floppy_subdevice(device_t *device, int drive)
 	return NULL;
 }
 
+static UPD765_GET_IMAGE ( pc_fdc_get_image )
+{
+	isa8_fdc_device	*fdc  = downcast<isa8_fdc_device *>(device->owner());
+
+	return get_floppy_subdevice(fdc, fdc->digital_output_register & 0x03);
+}
 
 static WRITE_LINE_DEVICE_HANDLER( pc_fdc_set_tc_state)
 {
@@ -326,7 +340,7 @@ static READ8_DEVICE_HANDLER ( pc_fdc_r )
 	UINT8 data = 0xff;
 
 	isa8_fdc_device	*fdc  = downcast<isa8_fdc_device *>(device);
-
+	device_t *hdd = NULL;
 	switch(offset)
 	{
 		case 0: /* status register a */
@@ -344,6 +358,9 @@ static READ8_DEVICE_HANDLER ( pc_fdc_r )
 			data = upd765_data_r(fdc->m_upd765, offset);
 			break;
 		case 6: /* FDC reserved */
+			hdd = device->machine().device(":board3:ide:ide");
+			if (hdd)
+				data = ide_controller16_r(hdd, 0x3f6/2, 0x00ff);
 			break;
 		case 7:
 			device_t *dev = get_floppy_subdevice(device, fdc->digital_output_register & 0x03);
@@ -366,6 +383,7 @@ static WRITE8_DEVICE_HANDLER ( pc_fdc_w )
 	if (LOG_FDC)
 		logerror("pc_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) cpu_get_reg(device->machine().firstcpu,STATE_GENPC), offset, data);
 	pc_fdc_check_data_rate(fdc,device->machine());  // check every time a command may start
+	device_t *hdd = NULL;
 
 	switch(offset)
 	{
@@ -386,6 +404,9 @@ static WRITE8_DEVICE_HANDLER ( pc_fdc_w )
 			break;
 		case 6:
 			/* FDC reserved */
+			hdd = device->machine().device(":board3:ide:ide");
+			if (hdd)
+				ide_controller16_w(hdd, 0x3f6/2, data, 0x00ff);
 			break;
 		case 7:
 			/* Configuration Control Register
@@ -428,5 +449,36 @@ void isa8_fdc_device::dack_w(int line,UINT8 data)
 void isa8_fdc_device::eop_w(int state)
 {
 	pc_fdc_set_tc_state( this, state);
+}
+
+static MACHINE_CONFIG_FRAGMENT( fdc_smc_config )
+	MCFG_SMC37C78_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_interface)
+MACHINE_CONFIG_END
+
+//**************************************************************************
+//  GLOBAL VARIABLES
+//**************************************************************************
+
+const device_type ISA8_FDC_SMC = &device_creator<isa8_fdc_smc_device>;
+
+//-------------------------------------------------
+//  machine_config_additions - device-specific
+//  machine configurations
+//-------------------------------------------------
+
+machine_config_constructor isa8_fdc_smc_device::device_mconfig_additions() const
+{
+	return MACHINE_CONFIG_NAME( fdc_smc_config );
+}
+
+//-------------------------------------------------
+//  isa8_fdc_smc_device - constructor
+//-------------------------------------------------
+
+isa8_fdc_smc_device::isa8_fdc_smc_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+        isa8_fdc_device(mconfig, ISA8_FDC_SMC, "Diskette Drive Adapter (SMC37C78)", tag, owner, clock)
+{
 }
 

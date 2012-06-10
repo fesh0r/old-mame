@@ -42,7 +42,7 @@
 
 #define MCFG_WANGPC_BUS_SLOT_ADD(_tag, _sid, _slot_intf, _def_slot, _def_inp) \
     MCFG_DEVICE_ADD(_tag, WANGPC_BUS_SLOT, 0) \
-	MCFG_DEVICE_SLOT_INTERFACE(_slot_intf, _def_slot, _def_inp) \
+	MCFG_DEVICE_SLOT_INTERFACE(_slot_intf, _def_slot, _def_inp, false) \
 	wangpcbus_slot_device::static_set_wangpcbus_slot(*device, _sid);
 
 
@@ -109,12 +109,28 @@ public:
 
 	void add_wangpcbus_card(device_wangpcbus_card_interface *card, int sid);
 
+	// computer interface
 	DECLARE_READ16_MEMBER( mrdc_r );
 	DECLARE_WRITE16_MEMBER( amwc_w );
 
 	DECLARE_READ16_MEMBER( sad_r );
 	DECLARE_WRITE16_MEMBER( sad_w );
 
+	UINT8 dack_r(address_space &space, int line);
+	void dack_w(address_space &space, int line, UINT8 data);
+
+	DECLARE_READ8_MEMBER( dack0_r );
+	DECLARE_WRITE8_MEMBER( dack0_w );
+	DECLARE_READ8_MEMBER( dack1_r );
+	DECLARE_WRITE8_MEMBER( dack1_w );
+	DECLARE_READ8_MEMBER( dack2_r );
+	DECLARE_WRITE8_MEMBER( dack2_w );
+	DECLARE_READ8_MEMBER( dack3_r );
+	DECLARE_WRITE8_MEMBER( dack3_w );
+
+	DECLARE_WRITE_LINE_MEMBER( tc_w );
+
+	// peripheral interface
 	DECLARE_WRITE_LINE_MEMBER( irq2_w );
 	DECLARE_WRITE_LINE_MEMBER( irq3_w );
 	DECLARE_WRITE_LINE_MEMBER( irq4_w );
@@ -125,10 +141,6 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( drq2_w );
 	DECLARE_WRITE_LINE_MEMBER( drq3_w );
 	DECLARE_WRITE_LINE_MEMBER( ioerror_w );
-
-	UINT8 dack_r(int line);
-	void dack_w(int line, UINT8 data);
-	void tc_w(int state);
 
 protected:
 	// device-level overrides
@@ -180,12 +192,14 @@ public:
 	bool sad(offs_t offset) { return ((offset & 0xf80) == (0x800 | (m_sid << 7))) ? true : false; }
 
 	// DMA
-	virtual UINT8 wangpcbus_dack_r(int line) { return 0; }
-	virtual void wangpcbus_dack_w(int line, UINT8 data) { }
+	virtual UINT8 wangpcbus_dack_r(address_space &space, int line) { return 0; }
+	virtual void wangpcbus_dack_w(address_space &space, int line, UINT8 data) { }
 	virtual void wangpcbus_tc_w(int state) { }
 	virtual bool wangpcbus_have_dack(int line) { return false; }
 
 	wangpcbus_device  *m_bus;
+	wangpcbus_slot_device *m_slot;
+
 	int m_sid;
 	device_wangpcbus_card_interface *m_next;
 };

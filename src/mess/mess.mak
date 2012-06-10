@@ -37,6 +37,9 @@ CPUS += T11
 CPUS += S2650
 CPUS += TMS340X0
 CPUS += TMS9900
+CPUS += TMS9995
+CPUS += TMS9900L
+CPUS += TMS9995L
 CPUS += Z8000
 #CPUS += Z8001
 CPUS += TMS32010
@@ -571,7 +574,8 @@ $(MESSOBJ)/acorn.a:				\
 	$(MESS_MACHINE)/bbc.o		\
 	$(MESS_DRIVERS)/bbc.o		\
 	$(MESS_DRIVERS)/bbcbc.o		\
-	$(MESS_DRIVERS)/e01.o		\
+	$(MESS_MACHINE)/econet.o	\
+	$(MESS_MACHINE)/e01.o		\
 	$(MESS_VIDEO)/electron.o	\
 	$(MESS_MACHINE)/electron.o	\
 	$(MESS_DRIVERS)/electron.o	\
@@ -660,6 +664,10 @@ $(MESSOBJ)/apple.a:				\
     $(MESS_MACHINE)/a2swyft.o \
     $(MESS_MACHINE)/a2eauxslot.o \
     $(MESS_MACHINE)/a2themill.o \
+    $(MESS_MACHINE)/a2sam.o \
+    $(MESS_MACHINE)/a2alfam2.o \
+    $(MESS_MACHINE)/laser128.o \
+    $(MESS_MACHINE)/a2echoii.o \
 	$(MESS_MACHINE)/lisa.o		\
 	$(MESS_DRIVERS)/lisa.o		\
 	$(MESS_MACHINE)/nubus.o     \
@@ -792,6 +800,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_4dxh.o	\
 	$(MESS_MACHINE)/c64_4ksa.o	\
 	$(MESS_MACHINE)/c64_4tba.o	\
+	$(MESS_MACHINE)/c64_16kb.o	\
 	$(MESS_MACHINE)/c64_bn1541.o	\
 	$(MESS_MACHINE)/c64_comal80.o	\
 	$(MESS_MACHINE)/c64_cpm.o	\
@@ -1039,13 +1048,13 @@ $(MESSOBJ)/elektrka.a:			\
 $(MESSOBJ)/elektor.a:			\
 	$(MESS_DRIVERS)/ec65.o		\
 	$(MESS_DRIVERS)/elekscmp.o	\
-	$(MESS_DRIVERS)/elektor.o	\
 	$(MESS_DRIVERS)/junior.o	\
 
 $(MESSOBJ)/ensoniq.a:			\
 	$(MESS_DRIVERS)/esq1.o		\
 	$(MESS_DRIVERS)/mirage.o    \
 	$(MESS_DRIVERS)/esq5505.o   \
+    $(MESS_MACHINE)/esqvfd.o    \
 
 $(MESSOBJ)/entex.a:				\
 	$(MESS_VIDEO)/advision.o	\
@@ -1548,6 +1557,7 @@ $(MESSOBJ)/sharp.a:				\
 	$(MESS_VIDEO)/x68k.o		\
 	$(MESS_MACHINE)/x68kexp.o	\
 	$(MESS_MACHINE)/x68k_neptunex.o	\
+	$(MESS_MACHINE)/x68k_scsiext.o	\
 	$(MESS_MACHINE)/x68k_hdc.o	\
 	$(MESS_MACHINE)/mb89352.o	\
 	$(MESS_DRIVERS)/mz80.o		\
@@ -1840,12 +1850,20 @@ $(MESSOBJ)/vtech.a:				\
 	$(MESS_DRIVERS)/socrates.o	\
 	$(MESS_DRIVERS)/pc2000.o	\
 	$(MESS_DRIVERS)/prestige.o	\
+	$(MESS_DRIVERS)/geniusiq.o	\
 
 $(MESSOBJ)/wang.a:				\
 	$(MESS_DRIVERS)/wangpc.o	\
 	$(MESS_MACHINE)/wangpcbus.o	\
 	$(MESS_MACHINE)/wangpckb.o	\
-	$(MESS_MACHINE)/wangpc_lores.o	\
+	$(MESS_MACHINE)/wangpc_emb.o	\
+	$(MESS_MACHINE)/wangpc_lic.o	\
+	$(MESS_MACHINE)/wangpc_lvc.o	\
+	$(MESS_MACHINE)/wangpc_mcc.o	\
+	$(MESS_MACHINE)/wangpc_mvc.o	\
+	$(MESS_MACHINE)/wangpc_rtc.o	\
+	$(MESS_MACHINE)/wangpc_tig.o	\
+	$(MESS_MACHINE)/wangpc_wdc.o	\
 
 $(MESSOBJ)/wavemate.a:			\
 	$(MESS_DRIVERS)/bullet.o	\
@@ -1912,10 +1930,12 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/fk1.o		\
 	$(MESS_DRIVERS)/fidelz80.o	\
 	$(MESS_DRIVERS)/horizon.o	\
+	$(MESS_DRIVERS)/hpz80unk.o	\
 	$(MESS_DRIVERS)/ht68k.o		\
 	$(MESS_DRIVERS)/if800.o		\
 	$(MESS_DRIVERS)/indiana.o	\
 	$(MESS_DRIVERS)/instruct.o	\
+	$(MESS_DRIVERS)/itt3030.o	\
 	$(MESS_DRIVERS)/konin.o		\
 	$(MESS_DRIVERS)/m79152pc.o	\
 	$(MESS_DRIVERS)/mbc200.o	\
@@ -2063,10 +2083,11 @@ $(MESS_DRIVERS)/cosmicos.o:	$(MESS_LAYOUT)/cosmicos.lh
 $(MESS_DRIVERS)/c80.o:		$(MESS_LAYOUT)/c80.lh
 $(MESS_DRIVERS)/dectalk.o:	$(MESS_LAYOUT)/dectalk.lh
 $(MESS_DRIVERS)/dolphunk.o:	$(MESS_LAYOUT)/dolphunk.lh
-$(MESS_DRIVERS)/e01.o:		$(MESS_LAYOUT)/e01.lh
 $(MESS_DRIVERS)/eacc.o:		$(MESS_LAYOUT)/eacc.lh
 $(MESS_DRIVERS)/elf.o:		$(MESS_LAYOUT)/elf2.lh
 $(MESS_DRIVERS)/elekscmp.o:	$(MESS_LAYOUT)/elekscmp.lh
+$(MESS_MACHINE)/esqvfd.o:   $(MESS_LAYOUT)/esq2by40.lh \
+                            $(MESS_LAYOUT)/esq1by22.lh
 $(MESS_DRIVERS)/et3400.o:	$(MESS_LAYOUT)/et3400.lh
 $(MESS_DRIVERS)/ex800.o:	$(MESS_LAYOUT)/ex800.lh
 $(MESS_DRIVERS)/fidelz80.o:	$(MESS_LAYOUT)/fidelz80.lh \

@@ -34,6 +34,10 @@
 //**************************************************************************
 
 const device_type A2BUS_VIDEOTERM = &device_creator<a2bus_videoterm_device>;
+const device_type A2BUS_IBSAP16 = &device_creator<a2bus_ap16_device>;
+const device_type A2BUS_IBSAP16ALT = &device_creator<a2bus_ap16alt_device>;
+const device_type A2BUS_VTC1 = &device_creator<a2bus_vtc1_device>;
+const device_type A2BUS_VTC2 = &device_creator<a2bus_vtc2_device>;
 
 #define VIDEOTERM_ROM_REGION  "vterm_rom"
 #define VIDEOTERM_GFX_REGION  "vterm_gfx"
@@ -54,7 +58,7 @@ static const mc6845_interface mc6845_mda_intf =
 	DEVCB_NULL,				/* on_de_changed */
 	DEVCB_NULL,				/* on_cur_changed */
     DEVCB_NULL,         /* on hsync changed */
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, a2bus_videoterm_device, vsync_changed),	/* on_vsync_changed */
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, a2bus_videx80_device, vsync_changed),	/* on_vsync_changed */
 	NULL
 };
 
@@ -83,6 +87,40 @@ ROM_START( a2videoterm )
     ROM_LOAD( "videx videoterm character rom symbol.bin", 0x004800, 0x000800, CRC(82bce582) SHA1(29dfa8c5257dbf25651c6bffa9cdb453482aa70e) )
 ROM_END
 
+ROM_START( a2ap16 )
+	ROM_REGION(0x2000, VIDEOTERM_ROM_REGION, 0)
+    ROM_LOAD( "space 84 video ap16.bin", 0x000000, 0x002000, CRC(0e188da2) SHA1(9a29250b6cc7b576fdc67769944de35e6f54b9d5) )
+
+	ROM_REGION(0x4000, VIDEOTERM_GFX_REGION, 0)
+    ROM_LOAD( "space 84 video chargen ap16.bin", 0x000000, 0x002000, CRC(b9447088) SHA1(19c95f91a67b948fc00a14621d574d629479d451) )
+ROM_END
+
+ROM_START( a2ap16alt )
+	ROM_REGION(0x1000, VIDEOTERM_ROM_REGION, 0)
+    ROM_LOAD( "unknown apple ii clone video 3.bin", 0x000000, 0x001000, CRC(af1226d2) SHA1(18a569f417a47f54a17bd9046d306a54b46ed049) )
+
+	ROM_REGION(0x4000, VIDEOTERM_GFX_REGION, 0)
+    ROM_LOAD( "unknown apple ii clone video 1.bin", 0x000000, 0x001000, CRC(cf84811c) SHA1(135f4f35607dd74941f0a3cae813227bf8a8a020) )
+ROM_END
+
+ROM_START( vtc1 )
+	ROM_REGION(0x800, VIDEOTERM_ROM_REGION, 0)
+    ROM_LOAD( "10.ic10.bin",  0x000000, 0x000800, CRC(ddbbc2fb) SHA1(15d6142b177b47c016f2745e1d95767b440d77c7) )
+
+	ROM_REGION(0x1000, VIDEOTERM_GFX_REGION, 0)
+    ROM_LOAD( "9.ic9.bin",    0x000000, 0x000800, CRC(094670f1) SHA1(aefae76fb07740d042cf294f01424efa7cc7a199) )
+    ROM_LOAD( "8.ic8.bin",    0x000800, 0x000800, CRC(fbd98d77) SHA1(0d9b1c3917e23ca35d5fbd405f05ff6e87122b92) )
+ROM_END
+
+ROM_START( vtc2 )
+	ROM_REGION(0x800, VIDEOTERM_ROM_REGION, 0)
+    ROM_LOAD( "6.ic6.bin",    0x000000, 0x000800, CRC(5776fa24) SHA1(19f69011ed7d2551c39d5c1cac1f5a2defc8f8fb) )
+
+	ROM_REGION(0x1000, VIDEOTERM_GFX_REGION, 0)
+    ROM_LOAD( "5.ic5.bin",    0x000000, 0x000800, CRC(aafa7085) SHA1(54d7c358f1927ba8f3b61145215a806d8cb6b673) )
+    ROM_LOAD( "4.ic4.bin",    0x000800, 0x000800, CRC(8a497a48) SHA1(50c3df528109c65491a001ec74e50351a652c1fd) )
+ROM_END
+
 /***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
@@ -92,7 +130,7 @@ ROM_END
 //  machine configurations
 //-------------------------------------------------
 
-machine_config_constructor a2bus_videoterm_device::device_mconfig_additions() const
+machine_config_constructor a2bus_videx80_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( a2videoterm );
 }
@@ -106,31 +144,72 @@ const rom_entry *a2bus_videoterm_device::device_rom_region() const
 	return ROM_NAME( a2videoterm );
 }
 
+const rom_entry *a2bus_ap16_device::device_rom_region() const
+{
+	return ROM_NAME( a2ap16 );
+}
+
+const rom_entry *a2bus_ap16alt_device::device_rom_region() const
+{
+	return ROM_NAME( a2ap16alt );
+}
+
+const rom_entry *a2bus_vtc1_device::device_rom_region() const
+{
+	return ROM_NAME( vtc1 );
+}
+
+const rom_entry *a2bus_vtc2_device::device_rom_region() const
+{
+	return ROM_NAME( vtc2 );
+}
+
 //**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
 
-a2bus_videoterm_device::a2bus_videoterm_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock) :
+a2bus_videx80_device::a2bus_videx80_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock) :
     device_t(mconfig, type, name, tag, owner, clock),
     device_a2bus_card_interface(mconfig, *this),
     m_crtc(*this, VIDEOTERM_MC6845_NAME)
 {
-	m_shortname = "a2vidtrm";
 }
 
 a2bus_videoterm_device::a2bus_videoterm_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
-    device_t(mconfig, A2BUS_VIDEOTERM, "Videx VideoTerm", tag, owner, clock),
-    device_a2bus_card_interface(mconfig, *this),
-    m_crtc(*this, VIDEOTERM_MC6845_NAME)
+    a2bus_videx80_device(mconfig, A2BUS_VIDEOTERM, "Videx VideoTerm", tag, owner, clock)
 {
 	m_shortname = "a2vidtrm";
+}
+
+a2bus_ap16_device::a2bus_ap16_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+    a2bus_videx80_device(mconfig, A2BUS_IBSAP16, "IBS AP-16 80 column card", tag, owner, clock)
+{
+	m_shortname = "a2ap16";
+}
+
+a2bus_ap16alt_device::a2bus_ap16alt_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+    a2bus_videx80_device(mconfig, A2BUS_IBSAP16ALT, "IBS AP-16 80 column card (alt. version)", tag, owner, clock)
+{
+	m_shortname = "a2ap16a";
+}
+
+a2bus_vtc1_device::a2bus_vtc1_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+    a2bus_videx80_device(mconfig, A2BUS_VTC1, "Unknown VideoTerm clone #1", tag, owner, clock)
+{
+	m_shortname = "a2vtc1";
+}
+
+a2bus_vtc2_device::a2bus_vtc2_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
+    a2bus_videx80_device(mconfig, A2BUS_VTC2, "Unknown VideoTerm clone #2", tag, owner, clock)
+{
+	m_shortname = "a2vtc2";
 }
 
 //-------------------------------------------------
 //  device_start - device-specific startup
 //-------------------------------------------------
 
-void a2bus_videoterm_device::device_start()
+void a2bus_videx80_device::device_start()
 {
 	// set_a2bus_device makes m_slot valid
 	set_a2bus_device();
@@ -148,7 +227,7 @@ void a2bus_videoterm_device::device_start()
     save_item(NAME(m_rambank));
 }
 
-void a2bus_videoterm_device::device_reset()
+void a2bus_videx80_device::device_reset()
 {
     m_rambank = 0;
     m_framecnt = 0;
@@ -159,7 +238,7 @@ void a2bus_videoterm_device::device_reset()
     read_c0nx - called for reads from this card's c0nx space
 -------------------------------------------------*/
 
-UINT8 a2bus_videoterm_device::read_c0nx(address_space &space, UINT8 offset)
+UINT8 a2bus_videx80_device::read_c0nx(address_space &space, UINT8 offset)
 {
 //    printf("Read c0n%x (PC=%x)\n", offset, cpu_get_pc(&space.device()));
 
@@ -178,7 +257,7 @@ UINT8 a2bus_videoterm_device::read_c0nx(address_space &space, UINT8 offset)
     write_c0nx - called for writes to this card's c0nx space
 -------------------------------------------------*/
 
-void a2bus_videoterm_device::write_c0nx(address_space &space, UINT8 offset, UINT8 data)
+void a2bus_videx80_device::write_c0nx(address_space &space, UINT8 offset, UINT8 data)
 {
 //    printf("Write %02x to c0n%x (PC=%x)\n", data, offset, cpu_get_pc(&space.device()));
 
@@ -198,17 +277,26 @@ void a2bus_videoterm_device::write_c0nx(address_space &space, UINT8 offset, UINT
     read_cnxx - called for reads from this card's cnxx space
 -------------------------------------------------*/
 
-UINT8 a2bus_videoterm_device::read_cnxx(address_space &space, UINT8 offset)
+UINT8 a2bus_videx80_device::read_cnxx(address_space &space, UINT8 offset)
 {
-    // one slot image at the start of the ROM, it appears
     return m_rom[offset+0x300];
+}
+
+UINT8 a2bus_ap16_device::read_cnxx(address_space &space, UINT8 offset)
+{
+    return m_rom[offset+0x1f00];
+}
+
+UINT8 a2bus_ap16alt_device::read_cnxx(address_space &space, UINT8 offset)
+{
+    return m_rom[offset+0xb00];
 }
 
 /*-------------------------------------------------
     write_cnxx - called for writes to this card's cnxx space
     the firmware writes here to switch in our $C800 a lot
 -------------------------------------------------*/
-void a2bus_videoterm_device::write_cnxx(address_space &space, UINT8 offset, UINT8 data)
+void a2bus_videx80_device::write_cnxx(address_space &space, UINT8 offset, UINT8 data)
 {
 }
 
@@ -216,7 +304,7 @@ void a2bus_videoterm_device::write_cnxx(address_space &space, UINT8 offset, UINT
     read_c800 - called for reads from this card's c800 space
 -------------------------------------------------*/
 
-UINT8 a2bus_videoterm_device::read_c800(address_space &space, UINT16 offset)
+UINT8 a2bus_videx80_device::read_c800(address_space &space, UINT16 offset)
 {
     // ROM at c800-cbff
     // bankswitched RAM at cc00-cdff
@@ -234,7 +322,7 @@ UINT8 a2bus_videoterm_device::read_c800(address_space &space, UINT16 offset)
 /*-------------------------------------------------
     write_c800 - called for writes to this card's c800 space
 -------------------------------------------------*/
-void a2bus_videoterm_device::write_c800(address_space &space, UINT16 offset, UINT8 data)
+void a2bus_videx80_device::write_c800(address_space &space, UINT16 offset, UINT8 data)
 {
     if (offset >= 0x400)
     {
@@ -245,7 +333,7 @@ void a2bus_videoterm_device::write_c800(address_space &space, UINT16 offset, UIN
 
 static MC6845_UPDATE_ROW( videoterm_update_row )
 {
-	a2bus_videoterm_device	*vterm  = downcast<a2bus_videoterm_device *>(device->owner());
+	a2bus_videx80_device	*vterm  = downcast<a2bus_videx80_device *>(device->owner());
 	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	UINT32	*p = &bitmap.pix32(y);
 	UINT16	chr_base = ra; //( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
@@ -278,7 +366,7 @@ static MC6845_UPDATE_ROW( videoterm_update_row )
 	}
 }
 
-WRITE_LINE_MEMBER( a2bus_videoterm_device::vsync_changed )
+WRITE_LINE_MEMBER( a2bus_videx80_device::vsync_changed )
 {
 	if ( state )
 	{

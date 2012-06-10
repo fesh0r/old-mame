@@ -108,7 +108,6 @@
       Pacmania:      Black squares on the maze (transparency?).
       Salamander:    System error when using keys in-game.  No error if a joystick is used.
                      Some text is drawn incorrectly.
-      Kyukyoku Tiger:Sprites offset by a looooong way.
       Dragon Buster: Text is black and unreadable. (Text layer actually covers it)
       Tetris:        Black dots over screen (text layer).
       Parodius Da!:  Black squares in areas.
@@ -140,6 +139,8 @@
 #include "machine/nvram.h"
 #include "machine/x68kexp.h"
 #include "machine/x68k_neptunex.h"
+#include "machine/x68k_scsiext.h"
+#include "machine/scsihd.h"
 #include "x68000.lh"
 
 
@@ -2532,13 +2533,13 @@ static const SCSIConfigTable x68k_scsi_devtable =
 {
 	7,                                      /* 7 SCSI devices */
 	{
-		{ SCSI_ID_0, "harddisk0", SCSI_DEVICE_HARDDISK },
-		{ SCSI_ID_1, "harddisk1", SCSI_DEVICE_HARDDISK },
-		{ SCSI_ID_2, "harddisk2", SCSI_DEVICE_HARDDISK },
-		{ SCSI_ID_3, "harddisk3", SCSI_DEVICE_HARDDISK },
-		{ SCSI_ID_4, "harddisk4", SCSI_DEVICE_HARDDISK },
-		{ SCSI_ID_5, "harddisk5", SCSI_DEVICE_HARDDISK },
-		{ SCSI_ID_6, "harddisk6", SCSI_DEVICE_HARDDISK },
+		{ SCSI_ID_0, "harddisk0" },
+		{ SCSI_ID_1, "harddisk1" },
+		{ SCSI_ID_2, "harddisk2" },
+		{ SCSI_ID_3, "harddisk3" },
+		{ SCSI_ID_4, "harddisk4" },
+		{ SCSI_ID_5, "harddisk5" },
+		{ SCSI_ID_6, "harddisk6" },
 	}
 };
 
@@ -2558,7 +2559,8 @@ static X68K_EXPANSION_INTERFACE(x68k_exp_intf)
 };
 
 static SLOT_INTERFACE_START(x68000_exp_cards)
-	SLOT_INTERFACE("neptunex",X68K_NEPTUNEX)
+	SLOT_INTERFACE("neptunex",X68K_NEPTUNEX) // Neptune-X ethernet adapter (ISA NE2000 bridge)
+	SLOT_INTERFACE("cz6bs1",X68K_SCSIEXT)  // Sharp CZ-6BS1 SCSI-1 controller
 SLOT_INTERFACE_END
 
 static MACHINE_RESET( x68000 )
@@ -2835,13 +2837,13 @@ static MACHINE_CONFIG_START( x68ksupr, x68k_state )
 	MCFG_CPU_PROGRAM_MAP(x68kxvi_map)
 
 	MCFG_MB89352A_ADD("mb89352_int",x68k_scsi_intf)
-	MCFG_HARDDISK_ADD("harddisk0")
-	MCFG_HARDDISK_ADD("harddisk1")
-	MCFG_HARDDISK_ADD("harddisk2")
-	MCFG_HARDDISK_ADD("harddisk3")
-	MCFG_HARDDISK_ADD("harddisk4")
-	MCFG_HARDDISK_ADD("harddisk5")
-	MCFG_HARDDISK_ADD("harddisk6")
+	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk5", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk6", SCSIHD, 0)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( x68kxvi, x68k_state )
@@ -2855,13 +2857,13 @@ static MACHINE_CONFIG_START( x68kxvi, x68k_state )
 	MCFG_CPU_PROGRAM_MAP(x68kxvi_map)
 
 	MCFG_MB89352A_ADD("mb89352_int",x68k_scsi_intf)
-	MCFG_HARDDISK_ADD("harddisk0")
-	MCFG_HARDDISK_ADD("harddisk1")
-	MCFG_HARDDISK_ADD("harddisk2")
-	MCFG_HARDDISK_ADD("harddisk3")
-	MCFG_HARDDISK_ADD("harddisk4")
-	MCFG_HARDDISK_ADD("harddisk5")
-	MCFG_HARDDISK_ADD("harddisk6")
+	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk5", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk6", SCSIHD, 0)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( x68030, x68k_state )
@@ -2876,13 +2878,13 @@ static MACHINE_CONFIG_START( x68030, x68k_state )
 	MCFG_NVRAM_ADD_0FILL("nvram32")
 
 	MCFG_MB89352A_ADD("mb89352_int",x68k_scsi_intf)
-	MCFG_HARDDISK_ADD("harddisk0")
-	MCFG_HARDDISK_ADD("harddisk1")
-	MCFG_HARDDISK_ADD("harddisk2")
-	MCFG_HARDDISK_ADD("harddisk3")
-	MCFG_HARDDISK_ADD("harddisk4")
-	MCFG_HARDDISK_ADD("harddisk5")
-	MCFG_HARDDISK_ADD("harddisk6")
+	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk5", SCSIHD, 0)
+	MCFG_DEVICE_ADD("harddisk6", SCSIHD, 0)
 MACHINE_CONFIG_END
 
 ROM_START( x68000 )
