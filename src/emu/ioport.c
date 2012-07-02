@@ -2474,12 +2474,6 @@ void ioport_port::frame_update(ioport_field *mouse_field)
 
 	// hook for MESS's natural keyboard support
 	manager().natkeyboard().frame_update(*this, m_live->digital);
-
-	// call device line write handlers
-	ioport_value newvalue = read();
-	for (dynamic_field *dynfield = m_live->writelist.first(); dynfield != NULL; dynfield = dynfield->next())
-		if (dynfield->field().type() != IPT_OUTPUT)
-			dynfield->write(newvalue);
 }
 
 
@@ -2650,6 +2644,26 @@ time_t ioport_manager::initialize()
 		m_portlist.append(*device, errors);
 		if (errors)
 			mame_printf_error("Input port errors:\n%s", errors.cstr());
+	}
+
+	// renumber player numbers for controller ports
+	int player_offset = 0;
+	for (device_t *device = iter.first(); device != NULL; device = iter.next())
+	{
+		int players = 0;
+		for (ioport_port *port = first_port(); port != NULL; port = port->next())
+		{
+			if (&port->device()==device)
+			{
+				for (ioport_field *field = port->first_field(); field != NULL; field = field->next())
+					if (field->type_class()==INPUT_CLASS_CONTROLLER)
+					{
+						if (players < field->player() + 1) players = field->player() + 1;
+						field->set_player(field->player() + player_offset);
+					}
+			}
+		}
+		player_offset += players;
 	}
 
 	// allocate live structures to mirror the configuration
@@ -3045,6 +3059,12 @@ g_profiler.start(PROFILER_INPUT);
 		// handle playback/record
 		playback_port(*port);
 		record_port(*port);
+
+		// call device line write handlers
+		ioport_value newvalue = port->read();
+		for (dynamic_field *dynfield = port->live().writelist.first(); dynfield != NULL; dynfield = dynfield->next())
+			if (dynfield->field().type() != IPT_OUTPUT)
+				dynfield->write(newvalue);
 	}
 
 g_profiler.stop();
