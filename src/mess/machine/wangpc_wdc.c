@@ -20,7 +20,6 @@
 
 #define Z80_TAG			"l53"
 #define MK3882_TAG		"l07"
-#define SASIBUS_TAG		"sasi"
 
 #define OPTION_DREQ1	BIT(m_option, 1)
 #define OPTION_DREQ2	BIT(m_option, 2)
@@ -78,12 +77,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wangpc_wdc_io, AS_IO, 8, wangpc_wdc_device )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	//AM_RANGE(0x01, 0x01) AM_READ() should return 0x72 during self-test
+	AM_RANGE(0x01, 0x01) AM_READ(port_r)
 	AM_RANGE(0x03, 0x03) AM_WRITE(status_w)
-	//AM_RANGE(0x10, 0x10) AM_WRITE()
-	//AM_RANGE(0x14, 0x14) AM_WRITE()
-	//AM_RANGE(0x18, 0x18) AM_WRITE()
-	//AM_RANGE(0x1c, 0x1c) AM_WRITE()
+	AM_RANGE(0x10, 0x10) AM_READWRITE(ctc_ch0_r, ctc_ch0_w)
+	AM_RANGE(0x14, 0x14) AM_READWRITE(ctc_ch1_r, ctc_ch1_w)
+	AM_RANGE(0x18, 0x18) AM_READWRITE(ctc_ch2_r, ctc_ch2_w)
+	AM_RANGE(0x1c, 0x1c) AM_READWRITE(ctc_ch3_r, ctc_ch3_w)
 ADDRESS_MAP_END
 
 
@@ -102,32 +101,6 @@ static Z80CTC_INTERFACE( ctc_intf )
 
 
 //-------------------------------------------------
-//  SCSIBus_interface sasi_intf
-//-------------------------------------------------
-
-static const SCSIConfigTable sasi_dev_table =
-{
-	1,
-	{
-		{ SCSI_ID_0, "harddisk0" }
-	}
-};
-
-static const SCSIBus_interface sasi_intf =
-{
-    &sasi_dev_table,
-    NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
-
-//-------------------------------------------------
 //  MACHINE_CONFIG_FRAGMENT( wangpc_wdc )
 //-------------------------------------------------
 
@@ -139,7 +112,6 @@ static MACHINE_CONFIG_FRAGMENT( wangpc_wdc )
 
 	MCFG_Z80CTC_ADD(MK3882_TAG, 2000000, ctc_intf)
 
-	MCFG_SCSIBUS_ADD(SASIBUS_TAG, sasi_intf)
 	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
 MACHINE_CONFIG_END
 
@@ -187,8 +159,7 @@ wangpc_wdc_device::wangpc_wdc_device(const machine_config &mconfig, const char *
 	device_t(mconfig, WANGPC_WDC, "Wang PC-PM001", tag, owner, clock),
 	device_wangpcbus_card_interface(mconfig, *this),
 	m_maincpu(*this, Z80_TAG),
-	m_ctc(*this, MK3882_TAG),
-	m_sasibus(*this, SASIBUS_TAG)
+	m_ctc(*this, MK3882_TAG)
 {
 }
 
@@ -340,10 +311,47 @@ bool wangpc_wdc_device::wangpcbus_have_dack(int line)
 
 
 //-------------------------------------------------
+//  port_r -
+//-------------------------------------------------
+
+READ8_MEMBER( wangpc_wdc_device::port_r )
+{
+	/*
+
+        bit     description
+
+        0
+        1
+        2
+        3
+        4
+        5
+        6
+        7
+
+    */
+
+	return 0x72; // TODO
+}
+
+
+//-------------------------------------------------
 //  status_w - status register write
 //-------------------------------------------------
 
 WRITE8_MEMBER( wangpc_wdc_device::status_w )
 {
+	logerror("WDC status %02x\n", data);
+
 	m_status = data;
 }
+
+
+READ8_MEMBER( wangpc_wdc_device::ctc_ch0_r ) { return m_ctc->read(0); };
+WRITE8_MEMBER( wangpc_wdc_device::ctc_ch0_w ) { m_ctc->write(0, data); };
+READ8_MEMBER( wangpc_wdc_device::ctc_ch1_r ) { return m_ctc->read(1); };
+WRITE8_MEMBER( wangpc_wdc_device::ctc_ch1_w ) { m_ctc->write(1, data); };
+READ8_MEMBER( wangpc_wdc_device::ctc_ch2_r ) { return m_ctc->read(2); };
+WRITE8_MEMBER( wangpc_wdc_device::ctc_ch2_w ) { m_ctc->write(2, data); };
+READ8_MEMBER( wangpc_wdc_device::ctc_ch3_r ) { return m_ctc->read(3); };
+WRITE8_MEMBER( wangpc_wdc_device::ctc_ch3_w ) { m_ctc->write(3, data); };

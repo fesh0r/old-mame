@@ -62,8 +62,8 @@ static ADDRESS_MAP_START( bebox_mem, AS_PROGRAM, 64, bebox_state )
 	AM_RANGE(0x800003F0, 0x800003F7) AM_READWRITE_LEGACY(bebox_800003F0_r, bebox_800003F0_w )
 	AM_RANGE(0x800003F8, 0x800003FF) AM_DEVREADWRITE8( "ns16550_0",ns16550_device,  ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000480, 0x8000048F) AM_READWRITE8_LEGACY(bebox_80000480_r, bebox_80000480_w, U64(0xffffffffffffffff) )
-	AM_RANGE(0x80000CF8, 0x80000CFF) AM_DEVREADWRITE_LEGACY("pcibus", pci_64be_r, pci_64be_w )
-	AM_RANGE(0x800042E8, 0x800042EF) AM_DEVWRITE8_LEGACY("cirrus", cirrus_42E8_w, U64(0xffffffffffffffff) )
+	AM_RANGE(0x80000CF8, 0x80000CFF) AM_DEVREADWRITE("pcibus", pci_bus_device, read_64be, write_64be )
+	//AM_RANGE(0x800042E8, 0x800042EF) AM_DEVWRITE8_LEGACY("cirrus", cirrus_42E8_w, U64(0xffffffffffffffff) )
 
 	AM_RANGE(0xBFFFFFF0, 0xBFFFFFFF) AM_READ_LEGACY(bebox_interrupt_ack_r )
 
@@ -76,7 +76,7 @@ ADDRESS_MAP_END
 
 static READ64_HANDLER(bb_slave_64be_r)
 {
-	device_t *device = space->machine().device("pcibus");
+	pci_bus_device *device = space->machine().device<pci_bus_device>("pcibus");
 
 	// 2e94 is the real address, 2e84 is where the PC appears to be under full DRC
 	if ((cpu_get_pc(&space->device()) == 0xfff02e94) || (cpu_get_pc(&space->device()) == 0xfff02e84))
@@ -84,12 +84,12 @@ static READ64_HANDLER(bb_slave_64be_r)
 		return 0x108000ff;	// indicate slave CPU
 	}
 
-	return pci_64be_r(device, offset, mem_mask);
+	return device->read_64be(*space, offset, mem_mask);
 }
 
 static ADDRESS_MAP_START( bebox_slave_mem, AS_PROGRAM, 64, bebox_state )
 	AM_RANGE(0x80000cf8, 0x80000cff) AM_READ_LEGACY(bb_slave_64be_r)
-	AM_RANGE(0x80000cf8, 0x80000cff) AM_DEVWRITE_LEGACY("pcibus", pci_64be_w )
+	AM_RANGE(0x80000cf8, 0x80000cff) AM_DEVWRITE("pcibus", pci_bus_device, write_64be )
 	AM_IMPORT_FROM(bebox_mem)
 ADDRESS_MAP_END
 
@@ -105,6 +105,17 @@ static const floppy_interface bebox_floppy_interface =
 	NULL,
 	NULL
 };
+
+const struct mpc105_interface mpc105_config =
+{
+	"ppc1",
+	0
+};
+
+static SLOT_INTERFACE_START( pci_devices )
+	SLOT_INTERFACE_INTERNAL("mpc105", MPC105)
+	SLOT_INTERFACE("cirrus", CIRRUS)
+SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_START( bebox, bebox_state )
 	/* basic machine hardware */
@@ -148,12 +159,11 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 
 	MCFG_IDE_CONTROLLER_ADD( "ide", bebox_ide_interrupt, ide_image_devices, "hdd", NULL, false )	/* FIXME */
 
-	MCFG_MPC105_ADD("mpc105","ppc1",0)
-	MCFG_CIRRUS_ADD("cirrus")
 	/* pci */
 	MCFG_PCI_BUS_ADD("pcibus", 0)
-	MCFG_PCI_BUS_DEVICE(0, "mpc105", mpc105_pci_read, mpc105_pci_write)
-	MCFG_PCI_BUS_DEVICE(1, "cirrus", cirrus5430_pci_read, cirrus5430_pci_write)
+	MCFG_PCI_BUS_DEVICE("pcibus:0", pci_devices, "mpc105", NULL, &mpc105_config, 0, true)
+	MCFG_PCI_BUS_DEVICE("pcibus:1", pci_devices, "cirrus", NULL, NULL,	   0, true)
+
 	/*MCFG_PCI_BUS_DEVICE(12, NULL, scsi53c810_pci_read, scsi53c810_pci_write)*/
 
 	MCFG_SMC37C78_ADD("smc37c78", pc_fdc_upd765_connected_1_drive_interface)

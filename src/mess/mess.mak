@@ -504,9 +504,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/ay31015.o	\
 	$(MESS_MACHINE)/er59256.o	\
 	$(MESS_MACHINE)/hd63450.o	\
-	$(MESS_MACHINE)/i82371ab.o	\
-	$(MESS_MACHINE)/i82371sb.o	\
-	$(MESS_MACHINE)/i82439tx.o	\
 	$(MESS_MACHINE)/i8271.o		\
 	$(MESS_MACHINE)/ieee488.o	\
 	$(MESS_MACHINE)/isa.o		\
@@ -556,6 +553,8 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/n82077aa.o	\
 	$(MESS_MACHINE)/mb8795.o	\
 	$(MESS_MACHINE)/null_modem.o	\
+	$(MESS_MACHINE)/vcsctrl.o	\
+	$(MESS_MACHINE)/vcs_joy.o	\
 
 
 
@@ -708,7 +707,7 @@ $(MESSOBJ)/arcadia.a:			\
 	$(MESS_AUDIO)/arcadia.o		\
 	$(MESS_VIDEO)/arcadia.o		\
 
-$(MESSOBJ)/ascii.a:                     \
+$(MESSOBJ)/ascii.a:				\
 	$(MESS_DRIVERS)/msx.o		\
 	$(MESS_MACHINE)/msx.o		\
 	$(MESS_MACHINE)/msx_slot.o	\
@@ -736,10 +735,10 @@ $(MESSOBJ)/atari.a:				\
 	$(MESS_MACHINE)/lynx.o		\
 	$(MESS_DRIVERS)/portfoli.o	\
 
-$(MESSOBJ)/att.a:			\
+$(MESSOBJ)/att.a:				\
 	$(MESS_DRIVERS)/unixpc.o	\
 
-$(MESSOBJ)/bally.a:                     \
+$(MESSOBJ)/bally.a:				\
 	$(MESS_DRIVERS)/astrocde.o	\
 
 $(MESSOBJ)/bandai.a:			\
@@ -897,6 +896,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_VIDEO)/vdc8563.o		\
 	$(MESS_VIDEO)/vic6567.o		\
 	$(MESS_VIDEO)/vic4567.o		\
+	$(MESS_VIDEO)/mos6566.o		\
 	$(MESS_DRIVERS)/c900.o		\
 	$(MESS_FORMATS)/cbm_snqk.o	\
 	$(MESS_FORMATS)/cbm_crt.o	\
@@ -1437,6 +1437,11 @@ $(MESSOBJ)/pcshare.a:			\
 	$(MESS_VIDEO)/isa_svga_tseng.o		\
 	$(MESS_VIDEO)/isa_svga_s3.o	\
 	$(MESS_VIDEO)/isa_svga_cirrus.o	\
+	$(MESS_MACHINE)/i82371ab.o	\
+	$(MESS_MACHINE)/i82371sb.o	\
+	$(MESS_MACHINE)/i82439tx.o	\
+	$(MESS_MACHINE)/northbridge.o \
+	$(MESS_MACHINE)/southbridge.o \
 
 $(MESSOBJ)/pdp1.a:				\
 	$(MESS_VIDEO)/pdp1.o		\
@@ -1709,6 +1714,7 @@ $(MESSOBJ)/ti.a:				\
 	$(MESS_MACHINE)/ti99/videowrp.o \
 	$(MESS_MACHINE)/ti99/grom.o	\
 	$(MESS_MACHINE)/ti99/gromport.o  \
+	$(MESS_MACHINE)/ti99/joyport.o  \
 	$(MESS_MACHINE)/ti99/mecmouse.o  \
 	$(MESS_MACHINE)/ti99/handset.o  \
 	$(MESS_MACHINE)/ti99/peribox.o  \

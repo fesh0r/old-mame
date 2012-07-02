@@ -2,6 +2,13 @@
 
     TODO:
 
+    - tsuit215 test failures
+
+        - CPUPORT (0=FF 1=FF 0=00 1=FF 1=FF 1=FF, AFTER 00 17, RIGHT 00 DF)
+        - IRQ (WRONG $DC0D)
+        - NMI (WRONG $DD0D)
+        - all CIA tests
+
     - 64C PLA dump
     - clean up inputs
     - Multiscreen crashes on boot
@@ -109,7 +116,7 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int ba, int ca
 		switch ((offset >> 10) & 0x03)
 		{
 		case 0: // VIC
-			data = vic2_port_r(m_vic, offset & 0x3f);
+			data = m_vic->read(space, offset & 0x3f);
 			break;
 
 		case 1: // SID
@@ -190,7 +197,7 @@ WRITE8_MEMBER( c64_state::write )
 		switch ((offset >> 10) & 0x03)
 		{
 		case 0: // VIC
-			vic2_port_w(m_vic, offset & 0x3f, data);
+			m_vic->write(space, offset & 0x3f, data);
 			break;
 
 		case 1: // SID
@@ -228,6 +235,31 @@ WRITE8_MEMBER( c64_state::write )
 }
 
 
+//-------------------------------------------------
+//  vic_videoram_r -
+//-------------------------------------------------
+
+READ8_MEMBER( c64_state::vic_videoram_r )
+{
+	offset = (!m_va15 << 15) | (!m_va14 << 14) | offset;
+
+	int casram, basic, kernal, charom, grw, io, roml, romh;
+	bankswitch(0, offset, 1, 1, 0, 0, &casram, &basic, &kernal, &charom, &grw, &io, &roml, &romh);
+
+	return read_memory(space, offset, 0, casram, basic, kernal, charom, io, roml, romh);
+}
+
+
+//-------------------------------------------------
+//  vic_colorram_r -
+//-------------------------------------------------
+
+READ8_MEMBER( c64_state::vic_colorram_r )
+{
+	return m_color_ram[offset];
+}
+
+
 
 //**************************************************************************
 //  ADDRESS MAPS
@@ -239,6 +271,24 @@ WRITE8_MEMBER( c64_state::write )
 
 static ADDRESS_MAP_START( c64_mem, AS_PROGRAM, 8, c64_state )
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(read, write)
+ADDRESS_MAP_END
+
+
+//-------------------------------------------------
+//  ADDRESS_MAP( vic_videoram_map )
+//-------------------------------------------------
+
+static ADDRESS_MAP_START( vic_videoram_map, AS_0, 8, c64_state )
+	AM_RANGE(0x0000, 0x3fff) AM_READ(vic_videoram_r)
+ADDRESS_MAP_END
+
+
+//-------------------------------------------------
+//  ADDRESS_MAP( vic_colorram_map )
+//-------------------------------------------------
+
+static ADDRESS_MAP_START( vic_colorram_map, AS_1, 8, c64_state )
+	AM_RANGE(0x000, 0x3ff) AM_READ(vic_colorram_r)
 ADDRESS_MAP_END
 
 
@@ -335,28 +385,11 @@ static const unsigned char c64_palette[] =
 	0x70, 0x74, 0x6f,  0x59, 0xfe, 0x59,  0x5f, 0x53, 0xfe,  0xa4, 0xa7, 0xa2
 };
 
-static PALETTE_INIT( c64 )
-{
-	int i;
-
-	for (i = 0; i < sizeof(c64_palette) / 3; i++)
-	{
-		palette_set_color_rgb(machine, i, c64_palette[i * 3], c64_palette[i * 3 + 1], c64_palette[i * 3 + 2]);
-	}
-}
-
 static PALETTE_INIT( pet64 )
 {
 	int i;
 	for (i = 0; i < 16; i++)
 		palette_set_color_rgb(machine, i, 0, c64_palette[i * 3 + 1], 0);
-}
-
-UINT32 c64_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	vic2_video_update(m_vic, bitmap, cliprect);
-
-	return 0;
 }
 
 static INTERRUPT_GEN( c64_frame_interrupt )
@@ -365,6 +398,13 @@ static INTERRUPT_GEN( c64_frame_interrupt )
 
 	state->check_interrupts();
 	cbm_common_interrupt(device);
+}
+
+WRITE_LINE_MEMBER( c64_state::vic_irq_w )
+{
+	m_vic_irq = state;
+
+	check_interrupts();
 }
 
 READ8_MEMBER( c64_state::vic_lightpen_x_cb )
@@ -382,59 +422,20 @@ READ8_MEMBER( c64_state::vic_lightpen_button_cb )
 	return ioport("OTHER")->read() & 0x04;
 }
 
-READ8_MEMBER( c64_state::vic_dma_read )
-{
-	int casram, basic, kernal, charom, grw, io, roml, romh;
-
-	offset = (!m_va15 << 15) | (!m_va14 << 14) | offset;
-
-	bankswitch(0, offset, 1, 1, 0, 0, &casram, &basic, &kernal, &charom, &grw, &io, &roml, &romh);
-
-	return read_memory(space, offset, 0, casram, basic, kernal, charom, io, roml, romh);
-}
-
-READ8_MEMBER( c64_state::vic_dma_read_color )
-{
-	return m_color_ram[offset & 0x3ff];
-}
-
-WRITE_LINE_MEMBER( c64_state::vic_irq_w )
-{
-	m_vic_irq = state;
-
-	check_interrupts();
-}
-
 READ8_MEMBER( c64_state::vic_rdy_cb )
 {
 	return ioport("CYCLES")->read() & 0x07;
 }
 
-static const vic2_interface vic_ntsc_intf =
+static MOS6567_INTERFACE( vic_intf )
 {
 	SCREEN_TAG,
 	M6510_TAG,
-	VIC6567,
+	DEVCB_DRIVER_LINE_MEMBER(c64_state, vic_irq_w),
+	DEVCB_NULL, // RDY
 	DEVCB_DRIVER_MEMBER(c64_state, vic_lightpen_x_cb),
 	DEVCB_DRIVER_MEMBER(c64_state, vic_lightpen_y_cb),
 	DEVCB_DRIVER_MEMBER(c64_state, vic_lightpen_button_cb),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_dma_read),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_dma_read_color),
-	DEVCB_DRIVER_LINE_MEMBER(c64_state, vic_irq_w),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_rdy_cb)
-};
-
-static const vic2_interface vic_pal_intf =
-{
-	SCREEN_TAG,
-	M6510_TAG,
-	VIC6569,
-	DEVCB_DRIVER_MEMBER(c64_state, vic_lightpen_x_cb),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_lightpen_y_cb),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_lightpen_button_cb),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_dma_read),
-	DEVCB_DRIVER_MEMBER(c64_state, vic_dma_read_color),
-	DEVCB_DRIVER_LINE_MEMBER(c64_state, vic_irq_w),
 	DEVCB_DRIVER_MEMBER(c64_state, vic_rdy_cb)
 };
 
@@ -637,7 +638,7 @@ WRITE8_MEMBER( c64_state::cia1_pb_w )
 
     */
 
-	vic2_lightpen_write(m_vic, BIT(data, 4));
+	m_vic->lp_w(BIT(data, 4));
 }
 
 static const mos6526_interface cia1_intf =
@@ -1085,20 +1086,10 @@ static MACHINE_CONFIG_START( ntsc, c64_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(c64_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6567_TAG, vic_ntsc_intf)
+	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1116,6 +1107,8 @@ static MACHINE_CONFIG_START( ntsc, c64_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1152,20 +1145,10 @@ static MACHINE_CONFIG_START( ntsc_sx, sx64_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(sx64_cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(sx64_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6567_TAG, vic_ntsc_intf)
+	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1186,6 +1169,8 @@ static MACHINE_CONFIG_START( ntsc_sx, sx64_state )
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1213,20 +1198,10 @@ static MACHINE_CONFIG_START( ntsc_dx, sx64_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(sx64_cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(sx64_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6567_TAG, vic_ntsc_intf)
+	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1247,6 +1222,8 @@ static MACHINE_CONFIG_START( ntsc_dx, sx64_state )
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, sx1541_iec_devices, "sx1541", NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1274,20 +1251,10 @@ static MACHINE_CONFIG_START( ntsc_c, c64c_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(c64c_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6567_TAG, vic_ntsc_intf)
+	MCFG_MOS8562_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1305,6 +1272,8 @@ static MACHINE_CONFIG_START( ntsc_c, c64c_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1332,20 +1301,10 @@ static MACHINE_CONFIG_START( pal, c64_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(50))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(c64_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6569_TAG, vic_pal_intf)
+	MCFG_MOS6569_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1363,6 +1322,8 @@ static MACHINE_CONFIG_START( pal, c64_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1390,20 +1351,10 @@ static MACHINE_CONFIG_START( pal_sx, sx64_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(sx64_cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(50))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(sx64_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6569_TAG, vic_pal_intf)
+	MCFG_MOS6569_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1424,6 +1375,8 @@ static MACHINE_CONFIG_START( pal_sx, sx64_state )
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
 	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1451,20 +1404,10 @@ static MACHINE_CONFIG_START( pal_c, c64c_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(50))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(c64c_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6569_TAG, vic_pal_intf)
+	MCFG_MOS8565_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1482,6 +1425,8 @@ static MACHINE_CONFIG_START( pal_c, c64c_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
 	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1509,20 +1454,10 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(c64gs_cpu_intf)
 	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_TIME(attotime::from_hz(50))
+	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
-	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_DRIVER(c64gs_state, screen_update)
-
-	MCFG_PALETTE_INIT(c64)
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(c64_palette) / 3)
-
-	MCFG_VIC2_ADD(MOS6569_TAG, vic_pal_intf)
+	MCFG_MOS8565_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1537,6 +1472,8 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, cia1_intf)
 	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, cia2_intf)
 	MCFG_CBM_IEC_BUS_ADD(iec_intf)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 

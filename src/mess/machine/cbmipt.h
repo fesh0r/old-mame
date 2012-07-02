@@ -79,6 +79,7 @@
 #include "machine/vic10std.h"
 #include "machine/vic20std.h"
 #include "machine/vic20_megacart.h"
+#include "machine/vcs_joy.h"
 
 
 #define MCFG_CBM_IEC_ADD(_intf, _default_drive) \
@@ -146,6 +147,7 @@ INPUT_PORTS_EXTERN( vic_controls );
 SLOT_INTERFACE_EXTERN( cbm_iec_devices );
 SLOT_INTERFACE_EXTERN( sx1541_iec_devices );
 SLOT_INTERFACE_EXTERN( cbm_ieee488_devices );
+SLOT_INTERFACE_EXTERN( vic20_control_port_devices );
 SLOT_INTERFACE_EXTERN( vic20_expansion_cards );
 SLOT_INTERFACE_EXTERN( vic20_user_port_cards );
 SLOT_INTERFACE_EXTERN( vic10_expansion_cards );

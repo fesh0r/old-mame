@@ -97,7 +97,6 @@ Published by Sega/Sega Toys (HPC-6*** serial codes)
 * コスメピコ もっとかわいくなりたいな - Kosume Pico Motto Kawai Kunaritaina! (Sega Toys - 20020604 - HPC-6112)
 * ポケットモンスター すうじをつかまえよう！ - Pocket Monsters Suuji wo Tsukamaeyou! (Sega Toys - 200208xx - HPC-6113)
 * トミカ・ピコ レスキューパーキング きんきゅうしゅつどう！ はたらくのりもの <初回･トミカ付属> - Tomica Pico Rescue Parking Kinkyuushutsudou! Hataraku Norimono ~Shokai-Tomica Fuzoku~ (Sega Toys - 200207xx - HPC-6114)
-* 学研 アンパンマンと知能アップ！ - Gakken Anpanman to Chinou Appu! (Sega Toys - 200209xx - HPC-6115)
 * ハローキティのたのしいおみせやさん - Hello Kitty no Tanoshii Omiseyasan (Sega Toys - 200211xx - HPC-6117)
 * ダンスピコ はしっておどって超ハッピー! - Dance Pico with Hashitte Odotte Chou Happy! (Sega Toys - 200302xx - HPC-6118)
 * 学研 ピコで学習 1年生 - Gakken Pico de Gakushuu 1-nensei (Sega Toys - ???? - HPC-????)
@@ -460,6 +459,20 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
+	<software name="anpanchi">
+		<description>Gakken Anpanman to Chinou Up! (Jpn)</description>
+		<year>2002</year>
+		<publisher>Sega Toys</publisher>
+		<info name="serial" value="HPC-6115"/>
+		<info name="release" value="200209xx"/>
+		<info name="alt_title" value="学研 アンパンマンと知能アップ！"/>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="gakken anpanman to chinou up! (japan).bin" size="2097152" crc="2a8da73b" sha1="eff1447d20fa7532af948df8267261e51d14589c" offset="0" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="gakkehir">
 		<description>Gakken no Obenkyou Soft - Hiragana (Jpn)</description>
 		<year>199?</year>
@@ -541,7 +554,20 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlfr" cloneof="hucklowl">
+<!-- This was also released together with many prototypes as Proto build 19940510-D, meaning that probably after that date development was complete.
+But how do later protos fit with this theory? Maybe the later protos were from the Euro or Jpn versions? -->
+	<software name="hucklowl">
+		<description>Richard Scarry's - Huckle and Lowly's Busiest Day Ever (USA)</description>
+		<year>1994</year>
+		<publisher>Sega?</publisher>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="huckle and lowly's busiest day ever (usa).bin" size="1048576" crc="42007e92" sha1="ce0b387427226baa4067d6eacebe90cef760a18e" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="hucklowlf" cloneof="hucklowl">
 		<description>Richard Scarry's - Une Journee Bien Remplie pour Cassis et Asticot (Fra)</description>
 		<year>199?</year>
 		<publisher>Sega?</publisher>
@@ -553,7 +579,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlit" cloneof="hucklowl">
+	<software name="hucklowli" cloneof="hucklowl">
 		<description>Richard Scarry's - La Giornata Indaffaratissima di Sandrino e Zigo-Zago (Ita)</description>
 		<year>199?</year>
 		<publisher>Sega?</publisher>
@@ -652,6 +678,18 @@ Games for the MIXT BOOK PLAYER COPERA
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="the lion king - adventures at pride rock (europe).bin" size="1048576" crc="a7b92dc1" sha1="7f20cd3bec73624f93c8235887ad82f33a78077e"  offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="magiccra">
+		<description>Magic Crayons (USA)</description>
+		<year>1994</year>
+		<publisher>Sega</publisher>
+		<info name="serial" value="49026-00"/>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="magic crayons (usa).bin" size="1048576" crc="a443512b" sha1="08a3236fa54a6a4993baf5cf4c1ffbd77739c6bf" offset="000000" loadflag="load16_word_swap" />
 			</dataarea>
 		</part>
 	</software>
@@ -1016,6 +1054,20 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
+<!-- This was also released together with many prototypes as Proto build 701b-19940702-1716, meaning that probably after that date development was complete.
+But how do later protos fit with this theory? Maybe the later protos were from the Euro or Jpn versions? -->
+	<software name="tailsmm">
+		<description>Tails and the Music Maker (USA)</description>
+		<year>1994</year>
+		<publisher>Sega</publisher>
+		<info name="serial" value="49023-00"/>
+		<part name="cart" interface="pico_cart">
+			<dataarea name="rom" size="524288">
+				<rom name="tails and the music maker (usa).bin" size="524288" crc="982154ab" sha1="807ee1ed88ffdd780754043d836a848864155844" offset="000000" loadflag="load16_word_swap" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="tailsmmg" cloneof="tailsmm">
 		<description>Tails und der Musikant (Ger)</description>
 		<year>19??</year>
@@ -1370,7 +1422,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowl">
+	<software name="hucklowlp" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19941004)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1381,7 +1433,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowla" cloneof="hucklowl">
+	<software name="hucklowlpa" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940919)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1392,7 +1444,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlb" cloneof="hucklowl">
+	<software name="hucklowlpb" cloneof="hucklowl">
 		<description>La Journee La Plus Occupee de Huckle et Lowly (Fra, Prototype, 19940721)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1403,19 +1455,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlc" cloneof="hucklowl">
-	<!-- is this the released version too? -->
-		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940510-D)</description>
-		<year>1994</year>
-		<publisher>Sega</publisher>
-		<part name="cart" interface="pico_cart">
-			<dataarea name="rom" size="1048576">
-				<rom name="huckle and lowly's busiest day ever rev 19940510 (1994)(realtime associates - sega)(beta).bin" size="1048576" crc="42007e92" sha1="ce0b387427226baa4067d6eacebe90cef760a18e" offset="000000" loadflag="load16_word_swap" />
-			</dataarea>
-		</part>
-	</software>
-
-	<software name="hucklowld" cloneof="hucklowl">
+	<software name="hucklowlpd" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940509-D)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1426,7 +1466,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowle" cloneof="hucklowl">
+	<software name="hucklowlpe" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940509-C)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1437,7 +1477,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlf" cloneof="hucklowl">
+	<software name="hucklowlpf" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940509-B)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1448,7 +1488,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlg" cloneof="hucklowl">
+	<software name="hucklowlpg" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940509)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1459,7 +1499,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlh" cloneof="hucklowl">
+	<software name="hucklowlph" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940506-B)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1470,7 +1510,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowli" cloneof="hucklowl">
+	<software name="hucklowlpi" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940506-A)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1481,7 +1521,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlj" cloneof="hucklowl">
+	<software name="hucklowlpj" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940503-D)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1492,7 +1532,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlk" cloneof="hucklowl">
+	<software name="hucklowlpk" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940503-C)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1503,7 +1543,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowll" cloneof="hucklowl">
+	<software name="hucklowlpl" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940503-B)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1514,7 +1554,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlm" cloneof="hucklowl">
+	<software name="hucklowlpm" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940503-A)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1525,7 +1565,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowln" cloneof="hucklowl">
+	<software name="hucklowlpn" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940427)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1536,7 +1576,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlo" cloneof="hucklowl">
+	<software name="hucklowlpo" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940426-E)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1547,7 +1587,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlp" cloneof="hucklowl">
+	<software name="hucklowlpp" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940426-D, Lower Half Broken)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1558,7 +1598,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlq" cloneof="hucklowl">
+	<software name="hucklowlpq" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940426-B)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1569,7 +1609,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlr" cloneof="hucklowl">
+	<software name="hucklowlpr" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940426-A)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1580,7 +1620,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowls" cloneof="hucklowl">
+	<software name="hucklowlps" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940424)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1591,7 +1631,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlt" cloneof="hucklowl">
+	<software name="hucklowlpt" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940422)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1602,7 +1642,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="hucklowlu" cloneof="hucklowl">
+	<software name="hucklowlpu" cloneof="hucklowl">
 		<description>Huckle and Lowly's Busiest Day Ever (Prototype, 19940302)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1712,7 +1752,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra">
+	<software name="magiccrap" cloneof="magiccra">
 		<description>Magic Crayons (Prototype)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1723,7 +1763,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra1" cloneof="magiccra">
+	<software name="magiccrap1" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19940614)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1734,7 +1774,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra2" cloneof="magiccra">
+	<software name="magiccrap2" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19940623)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1745,7 +1785,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra3" cloneof="magiccra">
+	<software name="magiccrap3" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19940630)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1756,7 +1796,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra4" cloneof="magiccra">
+	<software name="magiccrap4" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19940926)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1767,7 +1807,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra5" cloneof="magiccra">
+	<software name="magiccrap5" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19941006)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1778,7 +1818,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra6" cloneof="magiccra">
+	<software name="magiccrap6" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19941011)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -1789,7 +1829,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="magiccra7" cloneof="magiccra">
+	<software name="magiccrap7" cloneof="magiccra">
 		<description>Magic Crayons (Prototype, 19941012)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2198,7 +2238,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="tailsmm">
+	<software name="tailsmmp" cloneof="tailsmm">
 		<description>Tails and the Music Maker (Prototype 1004, 19941005, 12.55)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2209,7 +2249,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="tailsmm1" cloneof="tailsmm">
+	<software name="tailsmmp1" cloneof="tailsmm">
 		<description>Tails and the Music Maker (Prototype 0927, 19940927, 14.20)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2221,7 +2261,7 @@ Games for the MIXT BOOK PLAYER COPERA
 	</software>
 
 	<!-- the file below came with the wrong name: it should either be "proto 0725, 19940726" or be "proto 0625, 19940626"... -->
-	<software name="tailsmm2" cloneof="tailsmm">
+	<software name="tailsmmp2" cloneof="tailsmm">
 		<description>Tails and the Music Maker (Prototype 0725, 19940626, 10.44)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2232,7 +2272,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="tailsmm3" cloneof="tailsmm">
+	<software name="tailsmmp3" cloneof="tailsmm">
 		<description>Tails and the Music Maker (Prototype 0722, 19940722, 21.49)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2243,19 +2283,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="tailsmm4" cloneof="tailsmm">
-	<!-- is this the released version too? -->
-		<description>Tails and the Music Maker (Prototype 701B, 19940702, 17.16)</description>
-		<year>1994</year>
-		<publisher>Sega</publisher>
-		<part name="cart" interface="pico_cart">
-			<dataarea name="rom" size="524288">
-				<rom name="tails and the music maker rev 701b-19940702-1716 (1994)(sega)(beta).bin" size="524288" crc="982154ab" sha1="807ee1ed88ffdd780754043d836a848864155844" offset="000000" loadflag="load16_word_swap" />
-			</dataarea>
-		</part>
-	</software>
-
-	<software name="tailsmm5" cloneof="tailsmm">
+	<software name="tailsmmp5" cloneof="tailsmm">
 		<description>Tails and the Music Maker (Prototype 0623, 19940624, 07.55)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2266,7 +2294,7 @@ Games for the MIXT BOOK PLAYER COPERA
 		</part>
 	</software>
 
-	<software name="tailsmm6" cloneof="tailsmm">
+	<software name="tailsmmp6" cloneof="tailsmm">
 		<description>Tails and the Music Maker (Prototype 0608, 19940608, 16.55)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -2301,17 +2329,6 @@ Notice that most of these will become parent, when the dumps surface
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="????">
 				<rom  name="Adventures in Letterland with Jack &amp; Jill (U).bin" size="????" crc="e846858b" sha1="fe4412ba81673894167841f47780a3f67d93c4e7" offset="000000" >
-			</dataarea>
-		</part>
-	</software>
-
-	<software name="anpanman">
-		<description>Anpanman to Chinou Up (Jpn)</description>
-		<year>199?</year>
-		<publisher>Sega?</publisher>
-		<part name="cart" interface="pico_cart">
-			<dataarea name="rom" size="????">
-				<rom name="Anpanman to Chinou Up (J).bin" size="????" crc="2a8da73b" sha1="eff1447d20fa7532af948df8267261e51d14589c"  offset="000000" >
 			</dataarea>
 		</part>
 	</software>
@@ -2510,17 +2527,6 @@ Notice that most of these will become parent, when the dumps surface
 		<part name="cart" interface="pico_cart">
 			<dataarea name="rom" size="????">
 				<rom name="Lion King - Adventure at Pride Rock (U).bin" size="????" crc="2c0db3b9" sha1="2da72b5ab41d95675163850bab11e38d7e8a098d" offset="000000" >
-			</dataarea>
-		</part>
-	</software>
-
-	<software name="magiccrn">
-		<description>Magic Crayons (USA)</description>
-		<year>199?</year>
-		<publisher>Sega?</publisher>
-		<part name="cart" interface="pico_cart">
-			<dataarea name="rom" size="????">
-				<rom name="Magic Crayons (U).bin" size="????" crc="a443512b" sha1="08a3236fa54a6a4993baf5cf4c1ffbd77739c6bf" offset="000000" >
 			</dataarea>
 		</part>
 	</software>

@@ -16,7 +16,6 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "imagedev/harddriv.h"
-#include "machine/scsibus.h"
 #include "machine/wangpcbus.h"
 #include "machine/z80ctc.h"
 
@@ -40,7 +39,16 @@ public:
 	virtual machine_config_constructor device_mconfig_additions() const;
 
 	// not really public
+	DECLARE_READ8_MEMBER( port_r );
 	DECLARE_WRITE8_MEMBER( status_w );
+	DECLARE_READ8_MEMBER( ctc_ch0_r );
+	DECLARE_WRITE8_MEMBER( ctc_ch0_w );
+	DECLARE_READ8_MEMBER( ctc_ch1_r );
+	DECLARE_WRITE8_MEMBER( ctc_ch1_w );
+	DECLARE_READ8_MEMBER( ctc_ch2_r );
+	DECLARE_WRITE8_MEMBER( ctc_ch2_w );
+	DECLARE_READ8_MEMBER( ctc_ch3_r );
+	DECLARE_WRITE8_MEMBER( ctc_ch3_w );
 
 protected:
 	// device-level overrides
@@ -62,7 +70,6 @@ private:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<z80ctc_device> m_ctc;
-	required_device<device_t> m_sasibus;
 
 	UINT8 m_status;
 	UINT8 m_option;
