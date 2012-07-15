@@ -539,7 +539,7 @@ WRITE_LINE_MEMBER( geneve::video_wait_states )
 WRITE8_MEMBER( geneve::tms9901_interrupt )
 {
 	/* INTREQ is connected to INT1. */
-	device_execute(m_cpu)->set_input_line(1, data);
+	device_execute(m_cpu)->set_input_line(INPUT_LINE_99XX_INT1, data);
 }
 
 /* tms9901 setup */
@@ -583,7 +583,7 @@ WRITE_LINE_MEMBER( geneve::inta )
 {
 	m_inta = (state!=0)? ASSERT_LINE : CLEAR_LINE;
 	m_tms9901->set_single_int(1, state);
-	device_execute(m_cpu)->set_input_line(4, state);
+	device_execute(m_cpu)->set_input_line(INPUT_LINE_99XX_INT4, state);
 }
 
 /*
@@ -635,7 +635,7 @@ TIMER_DEVICE_CALLBACK( geneve_hblank_interrupt )
 	int scanline = param;
 	geneve *driver = timer.machine().driver_data<geneve>();
 
-	timer.machine().device<v9938_device>(V9938_TAG)->interrupt();
+	timer.machine().device<v9938_device>(VDP_TAG)->interrupt();
 
 	if (scanline == 0) // was 262
 	{
@@ -652,7 +652,8 @@ TIMER_DEVICE_CALLBACK( geneve_hblank_interrupt )
 WRITE8_MEMBER( geneve::external_operation )
 {
 	static const char* extop[8] = { "inv1", "inv2", "IDLE", "RSET", "inv3", "CKON", "CKOF", "LREX" };
-	if (VERBOSE>1) LOG("External operation %s not implemented on Geneve board\n", extop[offset]);
+	if (VERBOSE>1)
+		if (offset != IDLE_OP) LOG("geneve: External operation %s not implemented on Geneve board\n", extop[offset]);
 }
 
 /*

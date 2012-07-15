@@ -74,6 +74,7 @@ public:
 	// Forwarding interrupts to the CPU or CRU
 	DECLARE_WRITE_LINE_MEMBER( console_ready );
 	DECLARE_WRITE_LINE_MEMBER( console_ready_dmux );
+	DECLARE_WRITE_LINE_MEMBER( console_reset );
 
 	DECLARE_WRITE_LINE_MEMBER( set_tms9901_INT2 );
 	DECLARE_WRITE_LINE_MEMBER( set_tms9901_INT12 );
@@ -94,6 +95,7 @@ public:
 	peribox_device*		m_peribox;
 	joyport_device* 	m_joyport;
 	ti99_datamux_device* m_datamux;
+	ti_video_device*	m_video;
 
 	int		m_ready_line, m_ready_line_dmux;
 
@@ -319,7 +321,8 @@ static GROM_CONFIG(grom2_config)
 
 static GROMPORT_CONFIG(console_cartslot)
 {
-	DEVCB_DRIVER_LINE_MEMBER(ti99_4x, console_ready)
+	DEVCB_DRIVER_LINE_MEMBER(ti99_4x, console_ready),
+	DEVCB_DRIVER_LINE_MEMBER(ti99_4x, console_reset)
 };
 
 static PERIBOX_CONFIG( peribox_conf )
@@ -566,7 +569,7 @@ WRITE8_MEMBER( ti99_4x::tms9901_interrupt )
 	// offset contains the interrupt level (0-15)
 	// However, the TI board just ignores that level and hardwires it to 1
 	// See below (interrupt_level)
-	m_cpu->set_input_line(0, data);
+	m_cpu->set_input_line(INPUT_LINE_99XX_INTREQ, data);
 }
 
 READ8_MEMBER( ti99_4x::interrupt_level )
@@ -638,6 +641,18 @@ WRITE_LINE_MEMBER( ti99_4x::console_ready )
 	}
 	m_ready_prev = combined;
 	m_cpu->set_ready(combined);
+}
+
+/*
+    The RESET line leading to a reset of the CPU.
+*/
+WRITE_LINE_MEMBER( ti99_4x::console_reset )
+{
+	if (machine().phase() != MACHINE_PHASE_INIT)
+	{
+		m_cpu->set_input_line(INPUT_LINE_99XX_RESET, state);
+		m_video->reset_vdp(state);
+	}
 }
 
 /*
@@ -764,7 +779,7 @@ static const dmux_device_list_entry dmux_devices[] =
 
 static const dmux_device_list_entry dmux_devices_ev[] =
 {
-	{ V9938_SYSTEM_TAG, 0x8800, 0xfc01, 0x0400, NULL, 0, 0 },
+	{ VIDEO_SYSTEM_TAG, 0x8800, 0xfc01, 0x0400, NULL, 0, 0 },
 	{ GROM0_TAG,     0x9800, 0xfc01, 0x0400, "GROMENA", 0x01, 0x00 },
 	{ GROM1_TAG,     0x9800, 0xfc01, 0x0400, "GROMENA", 0x01, 0x00 },
 	{ GROM2_TAG,     0x9800, 0xfc01, 0x0400, "GROMENA", 0x01, 0x00 },
@@ -839,6 +854,8 @@ MACHINE_START( ti99_4 )
 	driver->m_datamux = static_cast<ti99_datamux_device*>(machine.device(DATAMUX_TAG));
 
 	driver->m_joyport = static_cast<joyport_device*>(machine.device(JOYPORT_TAG));
+
+	driver->m_video = static_cast<ti_video_device*>(machine.device(VIDEO_SYSTEM_TAG));
 
 	driver->m_peribox->senila(CLEAR_LINE);
 	driver->m_peribox->senilb(CLEAR_LINE);
@@ -956,6 +973,7 @@ MACHINE_START( ti99_4a )
 
 	driver->m_datamux = static_cast<ti99_datamux_device*>(machine.device(DATAMUX_TAG));
 	driver->m_joyport = static_cast<joyport_device*>(machine.device(JOYPORT_TAG));
+	driver->m_video = static_cast<ti_video_device*>(machine.device(VIDEO_SYSTEM_TAG));
 	driver->m_firstjoy = 6;
 
 	driver->m_peribox->senila(CLEAR_LINE);
@@ -1057,7 +1075,7 @@ MACHINE_CONFIG_END
 
 TIMER_DEVICE_CALLBACK( ti99_4ev_hblank_interrupt )
 {
-	timer.machine().device<v9938_device>(V9938_TAG)->interrupt();
+	timer.machine().device<v9938_device>(VDP_TAG)->interrupt();
 }
 
 /*
@@ -1076,7 +1094,7 @@ static MACHINE_CONFIG_START( ti99_4ev_60hz, ti99_4x )
 	// interlace mode, but in non-interlace modes only half of the lines are
 	// painted. Accordingly, the full set of lines is refreshed at 30 Hz,
 	// not 60 Hz. This should be fixed in the v9938 emulation.
-	MCFG_TI_V9938_ADD(V9938_SYSTEM_TAG, 30, SCREEN_TAG, 2500, 512+32, (212+28)*2, DEVICE_SELF, ti99_4x, set_tms9901_INT2_from_v9938)
+	MCFG_TI_V9938_ADD(VIDEO_SYSTEM_TAG, 30, SCREEN_TAG, 2500, 512+32, (212+28)*2, DEVICE_SELF, ti99_4x, set_tms9901_INT2_from_v9938)
 	MCFG_TIMER_ADD_SCANLINE("scantimer", ti99_4ev_hblank_interrupt, SCREEN_TAG, 0, 1)
 
 	/* Main board */
@@ -1111,7 +1129,6 @@ static MACHINE_CONFIG_START( ti99_4ev_60hz, ti99_4x )
 
 MACHINE_CONFIG_END
 
-
 /*****************************************************************************
     ROM loading
     Note that we use the same ROMset for 50Hz and 60Hz versions.
@@ -1121,12 +1138,12 @@ MACHINE_CONFIG_END
 #define rom_ti99_4ae rom_ti99_4a
 
 ROM_START(ti99_4)
-	/*CPU memory space*/
+	// CPU memory space
 	ROM_REGION16_BE(0x2000, "maincpu", 0)
 	ROM_LOAD16_BYTE("u610.bin", 0x0000, 0x1000, CRC(6fcf4b15) SHA1(d085213c64701d429ae535f9a4ac8a50427a8343)) /* CPU ROMs high */
 	ROM_LOAD16_BYTE("u611.bin", 0x0001, 0x1000, CRC(491c21d1) SHA1(7741ae9294c51a44a78033d1b77c01568a6bbfb9)) /* CPU ROMs low */
 
-	/*GROM memory space*/
+	// GROM memory space
 	ROM_REGION(0x10000, region_grom, 0)
 	ROM_LOAD("u500.bin", 0x0000, 0x1800, CRC(aa757e13) SHA1(4658d3d01c0131c283a30cebd12e76754d41a84a)) /* system GROM 0 */
 	ROM_LOAD("u501.bin", 0x2000, 0x1800, CRC(c863e460) SHA1(6d849a76011273a069a98ed0c3feaf13831c942f)) /* system GROM 1 */
@@ -1134,11 +1151,11 @@ ROM_START(ti99_4)
 ROM_END
 
 ROM_START(ti99_4a)
-	/*CPU memory space*/
+	// CPU memory space
 	ROM_REGION16_BE(0x2000, "maincpu", 0)
 	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5) SHA1(6541705116598ab462ea9403c00656d6353ceb85)) /* system ROMs */
 
-	/*GROM memory space*/
+	// GROM memory space
 	ROM_REGION(0x10000, region_grom, 0)
 	ROM_LOAD("994agrom.bin", 0x0000, 0x6000, CRC(af5c2449) SHA1(0c5eaad0093ed89e9562a2c0ee6a370bdc9df439)) /* system GROMs */
 ROM_END

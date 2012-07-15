@@ -9,11 +9,16 @@
 
 #include "machine/upd765.h"
 #include "video/mc6845.h"
+#include "machine/i8255.h"
+#include "machine/mc146818.h"
 #include "imagedev/snapquik.h"
 #include "machine/cpcexp.h"
 #include "machine/cpc_ssa1.h"
 #include "machine/cpc_rom.h"
 #include "machine/mface2.h"
+#include "machine/ram.h"
+#include "imagedev/cassette.h"
+#include "machine/ctronics.h"
 
 /****************************
  * Gate Array data (CPC) -
@@ -87,7 +92,31 @@ class amstrad_state : public driver_device
 {
 public:
 	amstrad_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		  m_maincpu(*this, "maincpu"),
+		  m_ay(*this, "ay"),
+		  m_fdc(*this, "upd765"),
+		  m_crtc(*this, "mc6845"),
+		  m_screen(*this, "screen"),
+		  m_ppi(*this, "ppi8255"),
+		  m_centronics(*this, "centronics"),
+		  m_cassette(*this, CASSETTE_TAG),
+		  m_ram(*this, RAM_TAG),
+		  m_exp(*this, "exp"),
+		  m_rtc(*this, "rtc")
+		{ }
+
+	required_device<cpu_device> m_maincpu;
+	required_device<device_t> m_ay;
+	optional_device<device_t> m_fdc;  // not on a GX4000
+	required_device<mc6845_device> m_crtc;
+	required_device<screen_device> m_screen;
+	required_device<i8255_device> m_ppi;
+	optional_device<centronics_device> m_centronics;  // not on a GX4000
+	optional_device<cassette_image_device> m_cassette; // not on a GX4000, (or technically, the 6128+)
+	required_device<ram_device> m_ram;
+	optional_device<cpc_expansion_slot_device> m_exp; // not on a GX4000
+	optional_device<mc146818_device> m_rtc;  // Aleste 520EX only
 
 	int m_system_type;
 	UINT8 m_aleste_mode;

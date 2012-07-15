@@ -868,6 +868,8 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_AUDIO)/t6721.o		\
 	$(MESS_DRIVERS)/c16.o		\
 	$(MESS_MACHINE)/c16.o		\
+	$(MESS_MACHINE)/plus4exp.o	\
+	$(MESS_MACHINE)/plus4user.o	\
 	$(MESS_DRIVERS)/cbmb.o		\
 	$(MESS_MACHINE)/cbmb.o		\
 	$(MESS_VIDEO)/cbmb.o		\
@@ -1483,8 +1485,12 @@ $(MESSOBJ)/rca.a:				\
 	$(MESS_DRIVERS)/studio2.o	\
 	$(MESS_FORMATS)/studio2_st2.o	\
 	$(MESS_DRIVERS)/vip.o		\
-	$(MESS_AUDIO)/vp550.o		\
-	$(MESS_AUDIO)/vp595.o		\
+	$(MESS_MACHINE)/vip_byteio.o	\
+	$(MESS_MACHINE)/vip_exp.o	\
+	$(MESS_MACHINE)/vp550.o		\
+	$(MESS_MACHINE)/vp585.o		\
+	$(MESS_MACHINE)/vp590.o		\
+	$(MESS_MACHINE)/vp595.o		\
 
 $(MESSOBJ)/rm.a:				\
 	$(MESS_DRIVERS)/rm380z.o	\
@@ -2151,6 +2157,7 @@ $(MESS_DRIVERS)/unixpc.o:	$(MESS_LAYOUT)/unixpc.lh
 $(MESS_DRIVERS)/ut88.o:		$(MESS_LAYOUT)/ut88mini.lh
 $(MESS_DRIVERS)/vboy.o:		$(MESS_LAYOUT)/vboy.lh
 $(MESS_DRIVERS)/vcs80.o:	$(MESS_LAYOUT)/vcs80.lh
+$(MESS_DRIVERS)/vidbrain.o:	$(MESS_LAYOUT)/vidbrain.lh
 $(MESS_DRIVERS)/votrpss.o:	$(MESS_LAYOUT)/votrpss.lh
 $(MESS_DRIVERS)/votrtnt.o:	$(MESS_LAYOUT)/votrtnt.lh
 $(MESS_DRIVERS)/vt100.o:	$(MESS_LAYOUT)/vt100.lh
