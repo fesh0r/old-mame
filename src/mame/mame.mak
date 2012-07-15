@@ -1300,8 +1300,8 @@ $(MAMEOBJ)/seibu.a: \
 
 $(MAMEOBJ)/seta.a: \
 	$(DRIVERS)/aleck64.o $(MACHINE)/n64.o $(VIDEO)/n64.o $(VIDEO)/rdpblend.o $(VIDEO)/rdpspn16.o $(VIDEO)/rdptpipe.o \
-	$(DRIVERS)/darkhors.o \
 	$(DRIVERS)/hanaawas.o $(VIDEO)/hanaawas.o \
+	$(DRIVERS)/jclub2.o \
 	$(DRIVERS)/macs.o \
 	$(DRIVERS)/seta.o $(VIDEO)/seta.o \
 	$(DRIVERS)/seta2.o $(VIDEO)/seta2.o \
@@ -1901,6 +1901,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/manohman.o \
 	$(DRIVERS)/jankenmn.o \
 	$(DRIVERS)/wildpkr.o \
+	$(DRIVERS)/globalvr.o \
 
 
 #-------------------------------------------------
@@ -2163,6 +2164,8 @@ $(DRIVERS)/sfbonus.o:	$(LAYOUT)/pirpok2.lh
 $(DRIVERS)/taito_z.o:	$(LAYOUT)/contcirc.lh \
 			$(LAYOUT)/dblaxle.lh
 
+$(DRIVERS)/taitojc.o:	$(LAYOUT)/dendego.lh
+
 $(DRIVERS)/tatsumi.o:	$(LAYOUT)/roundup5.lh
 
 $(DRIVERS)/tceptor.o:	$(LAYOUT)/tceptor2.lh
@@ -2239,5 +2242,4 @@ $(VIDEO)/model3.o:	$(MAMESRC)/video/m3raster.c
 $(VIDEO)/n64.o:		$(MAMESRC)/video/rdpfiltr.c
 $(DRIVERS)/bfm_sc4.o: $(MAMESRC)/includes/bfm_sc45.h
 $(DRIVERS)/bfm_sc5.o: $(MAMESRC)/includes/bfm_sc45.h
-
 
