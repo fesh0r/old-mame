@@ -1710,8 +1710,6 @@ $(MESSOBJ)/ti.a:				\
 	$(MESS_VIDEO)/t6a04.o		\
 	$(MESS_MACHINE)/ti85.o		\
 	$(MESS_DRIVERS)/ti89.o		\
-	$(MESS_MACHINE)/tms9901.o	\
-	$(MESS_MACHINE)/tms9902.o	\
 	$(MESS_MACHINE)/990_hd.o	\
 	$(MESS_MACHINE)/990_tap.o	\
 	$(MESS_MACHINE)/ti990.o		\
@@ -2112,9 +2110,12 @@ $(MESS_DRIVERS)/k1003.o:	$(MESS_LAYOUT)/k1003.lh
 $(MESS_DRIVERS)/kim1.o:		$(MESS_LAYOUT)/kim1.lh
 $(MESS_DRIVERS)/junior.o:	$(MESS_LAYOUT)/junior.lh
 $(MESS_DRIVERS)/lc80.o:		$(MESS_LAYOUT)/lc80.lh
+$(MESS_DRIVERS)/llc.o:		$(MESS_LAYOUT)/llc1.lh
 $(MESS_DRIVERS)/lynx.o:		$(MESS_LAYOUT)/lynx.lh
 $(MESS_DRIVERS)/lx800.o:	$(MESS_LAYOUT)/lx800.lh
 $(MESS_DRIVERS)/mac.o:		$(MESS_LAYOUT)/mac.lh
+$(MAME_MACHINE)/megadriv.o:	$(MAME_LAYOUT)/megacd.lh
+$(MESS_DRIVERS)/megadriv.o:	$(MAME_LAYOUT)/megacd.lh
 $(MESS_DRIVERS)/mekd2.o:	$(MESS_LAYOUT)/mekd2.lh
 $(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
 $(MESS_DRIVERS)/mikrolab.o:	$(MESS_LAYOUT)/mikrolab.lh
@@ -2160,6 +2161,7 @@ $(MESS_DRIVERS)/vcs80.o:	$(MESS_LAYOUT)/vcs80.lh
 $(MESS_DRIVERS)/vidbrain.o:	$(MESS_LAYOUT)/vidbrain.lh
 $(MESS_DRIVERS)/votrpss.o:	$(MESS_LAYOUT)/votrpss.lh
 $(MESS_DRIVERS)/votrtnt.o:	$(MESS_LAYOUT)/votrtnt.lh
+$(MESS_DRIVERS)/vk100.o:	$(MESS_LAYOUT)/vk100.lh
 $(MESS_DRIVERS)/vt100.o:	$(MESS_LAYOUT)/vt100.lh
 $(MESS_DRIVERS)/wswan.o:	$(MESS_LAYOUT)/wswan.lh
 $(MESS_DRIVERS)/x68k.o:		$(MESS_LAYOUT)/x68000.lh
