@@ -21,11 +21,16 @@ public:
 		: driver_device(mconfig, type, tag),
 		  m_spriteram(*this, "spriteram"),
 		  m_vram_data(*this, "vram_data"),
-		  m_spritecontrol(*this, "spritecontrol") { }
+		  m_spritecontrol(*this, "spritecontrol"),
+		  m_maincpu(*this, "maincpu"),
+		  m_soundcpu(*this, "soundcpu")
+	{ }
 
 	required_device<buffered_spriteram16_device> m_spriteram;
 	required_shared_ptr<UINT16> m_vram_data;
 	required_shared_ptr<UINT16> m_spritecontrol;
+	required_device<cpu_device> m_maincpu;
+	optional_device<cpu_device> m_soundcpu;
 
 	UINT16 m_sound_status;
 	UINT8 m_irq_vectorbase;
@@ -59,6 +64,12 @@ public:
 	DECLARE_WRITE16_MEMBER(m92_master_control_w);
 	DECLARE_CUSTOM_INPUT_MEMBER(m92_sprite_busy_r);
 	DECLARE_WRITE16_MEMBER(oki_bank_w);
+	DECLARE_DRIVER_INIT(majtitl2);
+	DECLARE_DRIVER_INIT(ppan);
+	DECLARE_DRIVER_INIT(m92_alt);
+	DECLARE_DRIVER_INIT(lethalth);
+	DECLARE_DRIVER_INIT(m92);
+	DECLARE_DRIVER_INIT(m92_bank);
 };
 
 
