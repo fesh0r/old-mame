@@ -69,6 +69,7 @@
 #include "emu.h"
 #include "cpu/t11/t11.h"
 #include "machine/terminal.h"
+#include "machine/rx01.h"
 
 class pdp11_state : public driver_device
 {
@@ -119,6 +120,8 @@ static ADDRESS_MAP_START(pdp11_mem, AS_PROGRAM, 16, pdp11_state)
 	AM_RANGE( 0xff72, 0xff73 ) AM_READ(term_r)
 	AM_RANGE( 0xff74, 0xff75 ) AM_READ(term_tx_status_r)
 	AM_RANGE( 0xff76, 0xff77 ) AM_WRITE(term_w)
+
+	AM_RANGE( 0xfe78, 0xfe7b ) AM_DEVREADWRITE("rx01", rx01_device, read, write)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pdp11qb_mem, AS_PROGRAM, 16, pdp11_state)
@@ -327,6 +330,8 @@ static MACHINE_CONFIG_START( pdp11, pdp11_state )
 
 	/* video hardware */
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
+
+	MCFG_RX01_ADD("rx01")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pdp11ub2, pdp11 )
@@ -401,7 +406,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, pdp11ub,  0,       0,	pdp11,	  pdp11,	 0,   "Digital Equipment Corporation",   "PDP-11 [Unibus](M9301-YA)",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( ????, pdp11ub2, pdp11ub, 0,	pdp11ub2, pdp11,	 0,   "Digital Equipment Corporation",   "PDP-11 [Unibus](M9312)",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( ????, pdp11qb,  pdp11ub, 0,	pdp11qb,  pdp11,	 0,   "Digital Equipment Corporation",   "PDP-11 [Q-BUS] (M7195 - MXV11)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, pdp11ub,  0,       0,	pdp11,	  pdp11, driver_device,	 0,   "Digital Equipment Corporation",   "PDP-11 [Unibus](M9301-YA)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, pdp11ub2, pdp11ub, 0,	pdp11ub2, pdp11, driver_device,	 0,   "Digital Equipment Corporation",   "PDP-11 [Unibus](M9312)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, pdp11qb,  pdp11ub, 0,	pdp11qb,  pdp11, driver_device,	 0,   "Digital Equipment Corporation",   "PDP-11 [Q-BUS] (M7195 - MXV11)",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

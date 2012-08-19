@@ -1094,65 +1094,57 @@ ROM_START(nextctc)
 	ROM_NEXT_V3
 ROM_END
 
-static DRIVER_INIT(next)
+DRIVER_INIT_MEMBER(next_state,next)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00010002, 1120, 832, 2, false);
+	setup(0x00010002, 1120, 832, 2, false);
 }
 
-static DRIVER_INIT(nexts)
+DRIVER_INIT_MEMBER(next_state,nexts)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00011002, 1120, 832, 2, false);
+	setup(0x00011002, 1120, 832, 2, false);
 }
 
-static DRIVER_INIT(nexts2)
+DRIVER_INIT_MEMBER(next_state,nexts2)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00012102, 1120, 832, 2, false);
+	setup(0x00012102, 1120, 832, 2, false);
 }
 
-static DRIVER_INIT(nextsc)
+DRIVER_INIT_MEMBER(next_state,nextsc)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00013102, 1120, 832, 16, true);
+	setup(0x00013102, 1120, 832, 16, true);
 }
 
-static DRIVER_INIT(nextst)
+DRIVER_INIT_MEMBER(next_state,nextst)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00014103, 1120, 832, 2, false);
+	setup(0x00014103, 1120, 832, 2, false);
 }
 
-static DRIVER_INIT(nextstc)
+DRIVER_INIT_MEMBER(next_state,nextstc)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00015103,  832, 624, 0, true);
+	setup(0x00015103,  832, 624, 0, true);
 }
 
-static DRIVER_INIT(nextct)
+DRIVER_INIT_MEMBER(next_state,nextct)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00018103, 1120, 832, 0, false);
+	setup(0x00018103, 1120, 832, 0, false);
 }
 
-static DRIVER_INIT(nextctc)
+DRIVER_INIT_MEMBER(next_state,nextctc)
 {
-	next_state *state = machine.driver_data<next_state>();
-	state->setup(0x00019103,  832, 624, 0, true);
+	setup(0x00019103,  832, 624, 0, true);
 }
 
 /* Driver */
 
 /*    YEAR  NAME     PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                 FULLNAME                      FLAGS */
-COMP( 1987, next,    0,      0,       next,      next,    next,    "Next Software Inc",   "NeXT Cube",					GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1990, nexts,   0,      0,       nexts,     next,    nexts,   "Next Software Inc",   "NeXTstation",				GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1990, nexts2,  nexts,  0,       nexts2,    next,    nexts2,  "Next Software Inc",   "NeXTstation (X15 variant)",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1990, nextsc,  nexts,  0,       nextsc,    next,    nextsc,  "Next Software Inc",   "NeXTstation color",			GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1990, nextst,  0,      0,       nextst,    next,    nextst,  "Next Software Inc",   "NeXTstation turbo",			GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1990, nextstc, nextst, 0,       nextstc,   next,    nextstc, "Next Software Inc",   "NeXTstation turbo color",	GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( ????, nextct,  nextst, 0,       nextct,    next,    nextct,  "Next Software Inc",   "NeXT Cube turbo",			GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( ????, nextctc, nextst, 0,       nextctc,   next,    nextctc, "Next Software Inc",   "NeXT Cube turbo color",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1987, next,    0,      0,       next,      next, next_state,    next,    "Next Software Inc",   "NeXT Cube",					GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1990, nexts,   0,      0,       nexts,     next, next_state,    nexts,   "Next Software Inc",   "NeXTstation",				GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1990, nexts2,  nexts,  0,       nexts2,    next, next_state,    nexts2,  "Next Software Inc",   "NeXTstation (X15 variant)",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1990, nextsc,  nexts,  0,       nextsc,    next, next_state,    nextsc,  "Next Software Inc",   "NeXTstation color",			GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1990, nextst,  0,      0,       nextst,    next, next_state,    nextst,  "Next Software Inc",   "NeXTstation turbo",			GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1990, nextstc, nextst, 0,       nextstc,   next, next_state,    nextstc, "Next Software Inc",   "NeXTstation turbo color",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, nextct,  nextst, 0,       nextct,    next, next_state,    nextct,  "Next Software Inc",   "NeXT Cube turbo",			GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, nextctc, nextst, 0,       nextctc,   next, next_state,    nextctc, "Next Software Inc",   "NeXT Cube turbo color",		GAME_NOT_WORKING | GAME_NO_SOUND)
 
 		/*
 

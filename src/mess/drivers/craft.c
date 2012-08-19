@@ -71,6 +71,7 @@ public:
 	INT32 m_timer2_increment;
 	DECLARE_READ8_MEMBER(avr8_read);
 	DECLARE_WRITE8_MEMBER(avr8_write);
+	DECLARE_DRIVER_INIT(craft);
 };
 
 void craft_state::machine_start()
@@ -958,7 +959,7 @@ static SCREEN_UPDATE_RGB32( craft )
 * Machine definition                                 *
 \****************************************************/
 
-static DRIVER_INIT( craft )
+DRIVER_INIT_MEMBER(craft_state,craft)
 {
 }
 
@@ -976,7 +977,7 @@ static MACHINE_RESET( craft )
     AVR8_TCNT1H = 0;
     AVR8_TCNT1L = 0;
 
-    dac_data_w(machine.device("dac"), 0x00);
+    machine.device<dac_device>("dac")->write_unsigned8(0x00);
 }
 
 static MACHINE_CONFIG_START( craft, craft_state )
@@ -1013,4 +1014,4 @@ ROM_START( craft )
 ROM_END
 
 /*   YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY          FULLNAME */
-CONS(2008, craft,    0,        0,        craft,    craft,    craft,    "Linus Akesson", "Craft", GAME_NO_SOUND | GAME_NOT_WORKING)
+CONS(2008, craft,    0,        0,        craft,    craft, craft_state,    craft,    "Linus Akesson", "Craft", GAME_NO_SOUND | GAME_NOT_WORKING)

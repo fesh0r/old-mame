@@ -14,16 +14,14 @@
 
 
 /* Driver initialization */
-DRIVER_INIT(orao)
+DRIVER_INIT_MEMBER(orao_state,orao)
 {
-	orao_state *state = machine.driver_data<orao_state>();
-	memset(state->m_memory,0xff,0x6000);
+	memset(m_memory,0xff,0x6000);
 }
 
-DRIVER_INIT(orao103)
+DRIVER_INIT_MEMBER(orao_state,orao103)
 {
-	orao_state *state = machine.driver_data<orao_state>();
-	memset(state->m_memory,0xff,0x6000);
+	memset(m_memory,0xff,0x6000);
 }
 
 MACHINE_RESET( orao )
@@ -74,7 +72,7 @@ WRITE8_MEMBER(orao_state::orao_io_w)
 {
 	if (offset == 0x0800)
 	{
-		device_t *dac_device = machine().device("dac");
-		dac_data_w(dac_device, data); //beeper
+		dac_device *dac = machine().device<dac_device>("dac");
+		dac->write_unsigned8(data); //beeper
 	}
 }

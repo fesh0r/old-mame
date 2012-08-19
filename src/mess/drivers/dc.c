@@ -60,21 +60,21 @@ static READ64_HANDLER( dcjp_idle_skip_r )
 	return dc_ram[0x2302f8/8];
 }
 
-static DRIVER_INIT(dc)
+DRIVER_INIT_MEMBER(dc_state,dc)
 {
-	dreamcast_atapi_init(machine);
+	dreamcast_atapi_init(machine());
 }
 
-static DRIVER_INIT(dcus)
+DRIVER_INIT_MEMBER(dc_state,dcus)
 {
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0xc2303b0, 0xc2303b7, FUNC(dcus_idle_skip_r));
+	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0xc2303b0, 0xc2303b7, FUNC(dcus_idle_skip_r));
 
 	DRIVER_INIT_CALL(dc);
 }
 
-static DRIVER_INIT(dcjp)
+DRIVER_INIT_MEMBER(dc_state,dcjp)
 {
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0xc2302f8, 0xc2302ff, FUNC(dcjp_idle_skip_r));
+	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_read_handler(0xc2302f8, 0xc2302ff, FUNC(dcjp_idle_skip_r));
 
 	DRIVER_INIT_CALL(dc);
 }
@@ -387,9 +387,9 @@ INPUT_PORTS_END
 
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT      COMPANY FULLNAME */
-CONS( 1999, dc,     dcjp,   0,      dc,     dc,     dcus,   "Sega", "Dreamcast (USA, NTSC)", GAME_NOT_WORKING )
-CONS( 1998, dcjp,   0,      0,      dc,     dc,     dcjp,   "Sega", "Dreamcast (Japan, NTSC)", GAME_NOT_WORKING )
-CONS( 1999, dceu,   dcjp,   0,      dc,     dc,     dcus,   "Sega", "Dreamcast (Europe, PAL)", GAME_NOT_WORKING )
-CONS( 1998, dcdev,  dcjp,   0,      dc,     dc,     dc,     "Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
-CONS( 1998, dcprt,  dcjp,   0,      dc,     dc,     dcjp,   "Sega", "Katana Set 5 Prototype", GAME_NOT_WORKING )
+CONS( 1999, dc,     dcjp,   0,      dc,     dc, dc_state,     dcus,   "Sega", "Dreamcast (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1998, dcjp,   0,      0,      dc,     dc, dc_state,     dcjp,   "Sega", "Dreamcast (Japan, NTSC)", GAME_NOT_WORKING )
+CONS( 1999, dceu,   dcjp,   0,      dc,     dc, dc_state,     dcus,   "Sega", "Dreamcast (Europe, PAL)", GAME_NOT_WORKING )
+CONS( 1998, dcdev,  dcjp,   0,      dc,     dc, dc_state,     dc,     "Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
+CONS( 1998, dcprt,  dcjp,   0,      dc,     dc, dc_state,     dcjp,   "Sega", "Katana Set 5 Prototype", GAME_NOT_WORKING )
 

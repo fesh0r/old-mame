@@ -304,10 +304,9 @@ ROM_END
  *
  *************************************/
 
-static DRIVER_INIT( astrocde )
+DRIVER_INIT_MEMBER(astrocde_state,astrocde)
 {
-	astrocde_state *state = machine.driver_data<astrocde_state>();
-	state->m_video_config = AC_SOUND_PRESENT | AC_LIGHTPEN_INTS;
+	m_video_config = AC_SOUND_PRESENT | AC_LIGHTPEN_INTS;
 }
 
 MACHINE_RESET( astrocde )
@@ -391,6 +390,6 @@ void get_ram_expansion_settings(address_space *space, int &ram_expansion_install
  *************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY                FULLNAME                     FLAGS */
-CONS( 1978, astrocde, 0,        0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Professional Arcade", GAME_SUPPORTS_SAVE )
-CONS( 1977, astrocdl, astrocde, 0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Home Library Computer", GAME_SUPPORTS_SAVE )
-CONS( 1977, astrocdw, astrocde, 0,        astrocde, astrocde, astrocde, "Bally Manufacturing", "Bally Computer System", GAME_SUPPORTS_SAVE )
+CONS( 1978, astrocde, 0,        0,        astrocde, astrocde, astrocde_state, astrocde, "Bally Manufacturing", "Bally Professional Arcade", GAME_SUPPORTS_SAVE )
+CONS( 1977, astrocdl, astrocde, 0,        astrocde, astrocde, astrocde_state, astrocde, "Bally Manufacturing", "Bally Home Library Computer", GAME_SUPPORTS_SAVE )
+CONS( 1977, astrocdw, astrocde, 0,        astrocde, astrocde, astrocde_state, astrocde, "Bally Manufacturing", "Bally Computer System", GAME_SUPPORTS_SAVE )

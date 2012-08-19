@@ -236,7 +236,7 @@ static ADDRESS_MAP_START( super80_io, AS_IO, 8, super80_state )
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80e_io, AS_IO, 8, super80_state )
@@ -246,7 +246,7 @@ static ADDRESS_MAP_START( super80e_io, AS_IO, 8, super80_state )
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80r_io, AS_IO, 8, super80_state )
@@ -258,7 +258,7 @@ static ADDRESS_MAP_START( super80r_io, AS_IO, 8, super80_state )
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80r_f0_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80v_io, AS_IO, 8, super80_state )
@@ -270,7 +270,7 @@ static ADDRESS_MAP_START( super80v_io, AS_IO, 8, super80_state )
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 ADDRESS_MAP_END
 
 /**************************** DIPSWITCHES, KEYBOARD, HARDWARE CONFIGURATION ****************************************/
@@ -839,9 +839,9 @@ ROM_START( super80v )
 ROM_END
 
 /*    YEAR  NAME      PARENT COMPAT MACHINE INPUT     INIT      COMPANY       FULLNAME */
-COMP( 1981, super80,  0,       0, super80,  super80,  super80,  "Dick Smith Electronics","Super-80 (V1.2)" , 0)
-COMP( 1981, super80d, super80, 0, super80d, super80d, super80,  "Dick Smith Electronics","Super-80 (V2.2)" , 0)
-COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  "Dick Smith Electronics","Super-80 (El Graphix 4)" , GAME_UNOFFICIAL)
-COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  "Dick Smith Electronics","Super-80 (with colour)" , GAME_UNOFFICIAL)
-COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, "Dick Smith Electronics","Super-80 (with VDUEB)" , GAME_UNOFFICIAL)
-COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , GAME_UNOFFICIAL)
+COMP( 1981, super80,  0,       0, super80,  super80, super80_state,  super80,  "Dick Smith Electronics","Super-80 (V1.2)" , 0)
+COMP( 1981, super80d, super80, 0, super80d, super80d, super80_state, super80,  "Dick Smith Electronics","Super-80 (V2.2)" , 0)
+COMP( 1981, super80e, super80, 0, super80e, super80d, super80_state, super80,  "Dick Smith Electronics","Super-80 (El Graphix 4)" , GAME_UNOFFICIAL)
+COMP( 1981, super80m, super80, 0, super80m, super80m, super80_state, super80,  "Dick Smith Electronics","Super-80 (with colour)" , GAME_UNOFFICIAL)
+COMP( 1981, super80r, super80, 0, super80r, super80r, super80_state, super80v, "Dick Smith Electronics","Super-80 (with VDUEB)" , GAME_UNOFFICIAL)
+COMP( 1981, super80v, super80, 0, super80v, super80v, super80_state, super80v, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , GAME_UNOFFICIAL)

@@ -202,11 +202,10 @@ void lcmate2_state::machine_start()
 	membank("rombank")->configure_entries(0, 0x10, (UINT8*)machine().root_device().memregion("maincpu")->base(), 0x4000);
 }
 
-static const hd44780_interface lcmate2_display =
+static HD44780_INTERFACE( lcmate2_display )
 {
 	2,					// number of lines
-	20,					// chars for line
-	NULL				// custom display layout
+	20					// chars for line
 };
 
 static const gfx_layout lcmate2_charlayout =
@@ -275,4 +274,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1984, lcmate2,  0,       0,	lcmate2,	lcmate2,	 0,   "Vtech",   "Laser Compumate 2", GAME_NOT_WORKING )
+COMP( 1984, lcmate2,  0,       0,	lcmate2,	lcmate2, driver_device,	 0,   "Vtech",   "Laser Compumate 2", GAME_NOT_WORKING )

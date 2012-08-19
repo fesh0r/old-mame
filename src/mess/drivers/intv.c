@@ -986,20 +986,18 @@ static void intvkbd_cassette_getinfo(const mess_device_class *devclass, UINT32 s
 }
 #endif
 
-static DRIVER_INIT( intv )
+DRIVER_INIT_MEMBER(intv_state,intv)
 {
-	intv_state *state = machine.driver_data<intv_state>();
 
-	state->m_x_scale = INTV_X_SCALE;
-	state->m_y_scale = INTV_Y_SCALE;
+	m_x_scale = INTV_X_SCALE;
+	m_y_scale = INTV_Y_SCALE;
 }
 
-static DRIVER_INIT( intvkbd )
+DRIVER_INIT_MEMBER(intv_state,intvkbd)
 {
-	intv_state *state = machine.driver_data<intv_state>();
 
-	state->m_x_scale = INTVKBD_X_SCALE;
-	state->m_y_scale = INTVKBD_Y_SCALE;
+	m_x_scale = INTVKBD_X_SCALE;
+	m_y_scale = INTVKBD_Y_SCALE;
 }
 
 /***************************************************************************
@@ -1009,8 +1007,8 @@ static DRIVER_INIT( intvkbd )
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME */
-CONS( 1979, intv,       0,      0,      intv,       intv,       intv,       "Mattel", "Intellivision", 0 )
-CONS( 1981, intvsrs,    intv,   0,      intv,       intv,       intv,       "Sears", "Super Video Arcade", 0 )
-COMP( 1981, intvkbd,    intv,   0,      intvkbd,    intvkbd,    intvkbd,    "Mattel", "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
-CONS( 1982, intv2,      intv,   0,      intv2,      intv,       intv,       "Mattel", "Intellivision II", 0 )
-COMP( 1983, intvecs,    intv,   0,      intvecs,    intvecs,    intv,       "Mattel", "Intellivision Entertainment Computer System", 0)
+CONS( 1979, intv,       0,      0,      intv,       intv, intv_state,       intv,       "Mattel", "Intellivision", 0 )
+CONS( 1981, intvsrs,    intv,   0,      intv,       intv, intv_state,       intv,       "Sears", "Super Video Arcade", 0 )
+COMP( 1981, intvkbd,    intv,   0,      intvkbd,    intvkbd, intv_state,    intvkbd,    "Mattel", "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+CONS( 1982, intv2,      intv,   0,      intv2,      intv, intv_state,       intv,       "Mattel", "Intellivision II", 0 )
+COMP( 1983, intvecs,    intv,   0,      intvecs,    intvecs, intv_state,    intv,       "Mattel", "Intellivision Entertainment Computer System", 0)

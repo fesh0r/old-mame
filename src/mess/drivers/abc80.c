@@ -57,59 +57,14 @@ Notes:
     DIPSW1  -
     DIPSW2  -
 
-
-DOS PCB Layout
---------------
-
-55 10762-01
-
-|-----------------------------------|
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|   ROM3        ROM2                |
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|               ROM1        ROM0    |
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|           LS02            LS139   |
-|                                   |
-|                                   |
-|                                   |
-|   LS367   LS241   LS241           |
-|                                   |
-|                                   |
-|                                   |
-|                                   |
-|--|-----------------------------|--|
-   |------------CON1-------------|
-
-Notes:
-    All IC's shown.
-
-    ROM0    - Synertek C55022 4Kx8 ROM "DOSDD80"
-    ROM1    - Motorola MCM2708C 1Kx8 EPROM "9704"
-    ROM2    - empty socket
-    ROM3    - empty socket
-    CON1    - ABC bus connector
-
 */
 
 /*
 
     TODO:
 
+    - cassette interrupt routine samples the latch too soon
     - proper keyboard controller emulation
-    - get BASIC v1 dump
     - MyAB 80-column card
     - GeJo 80-column card
     - Mikrodatorn 64K expansion
@@ -260,39 +215,30 @@ static const UINT8 abc80_keycodes[7*4][8] =
 	{ 0x5f, 0x09, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 }
 };
 
-static TIMER_CALLBACK( keyboard_data_clear )
+void abc80_state::scan_keyboard()
 {
-	abc80_state *state = machine.driver_data<abc80_state>();
-
-	state->m_key_data = 0;
-}
-
-static void abc80_keyboard_scan(running_machine &machine)
-{
-	abc80_state *state = machine.driver_data<abc80_state>();
-
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
 	int table = 0, row, col;
 
-	if (machine.root_device().ioport("ROW7")->read() & 0x07)
+	if (ioport("ROW7")->read() & 0x07)
 	{
 		/* shift, upper case */
 		table |= 0x01;
 	}
 
-	if (machine.root_device().ioport("ROW7")->read() & 0x08)
+	if (ioport("ROW7")->read() & 0x08)
 	{
 		/* ctrl */
 		table |= 0x02;
 	}
 
 	/* clear key strobe */
-	state->m_key_strobe = 0;
+	m_key_strobe = 0;
 
 	/* scan keyboard */
 	for (row = 0; row < 7; row++)
 	{
-		UINT8 data = machine.root_device().ioport(keynames[row])->read();
+		UINT8 data = ioport(keynames[row])->read();
 
 		for (col = 0; col < 8; col++)
 		{
@@ -301,32 +247,28 @@ static void abc80_keyboard_scan(running_machine &machine)
 				UINT8 keydata = abc80_keycodes[row + (table * 7)][col];
 
 				/* set key strobe */
-				state->m_key_strobe = 1;
+				m_key_strobe = 1;
 
-				if (state->m_key_data != keydata)
+				if (m_key_data != keydata)
 				{
 					UINT8 pio_data = 0x80 | keydata;
 
 					/* latch key data */
-					state->m_key_data = keydata;
+					m_key_data = keydata;
 
-					z80pio_pa_w(state->m_pio, 0, pio_data);
+					m_pio->port_a_write(pio_data);
 					return;
 				}
 			}
 		}
 	}
 
-	if (!state->m_key_strobe && state->m_key_data)
+	if (!m_key_strobe && m_key_data)
 	{
-		z80pio_pa_w(state->m_pio, 0, state->m_key_data);
-		machine.scheduler().timer_set(attotime::from_msec(50), FUNC(keyboard_data_clear));
-	}
-}
+		m_pio->port_a_write(m_key_data);
 
-static TIMER_DEVICE_CALLBACK( abc80_keyboard_tick )
-{
-	abc80_keyboard_scan(timer.machine());
+		timer_set(attotime::from_msec(50), TIMER_ID_FAKE_KEYBOARD_CLEAR);
+	}
 }
 
 
@@ -433,7 +375,7 @@ static ADDRESS_MAP_START( abc80_io, AS_IO, 8, abc80_state )
 	AM_RANGE(0x05, 0x05) AM_DEVWRITE(ABCBUS_TAG, abcbus_slot_device, c4_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE_PORT("SN76477")
 	AM_RANGE(0x07, 0x07) AM_DEVREAD(ABCBUS_TAG, abcbus_slot_device, rst_r)
-	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY(Z80PIO_TAG, z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_device, read_alt, write_alt)
 ADDRESS_MAP_END
 
 
@@ -448,6 +390,58 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( abc80 )
 	PORT_INCLUDE(fake_keyboard)
+
+	PORT_START("SW1")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START("SW2")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START("SN76477")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_SPECIAL) PORT_WRITE_LINE_DEVICE(SN76477_TAG, sn76477_enable_w)
@@ -495,16 +489,6 @@ static const sn76477_interface csg_intf =
 //  Z80PIO_INTERFACE( pio_intf )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
-{
-	abc80_state *state = timer.machine().driver_data<abc80_state>();
-
-	/* toggle ASTB every other video line */
-	state->m_pio_astb = !state->m_pio_astb;
-
-	z80pio_astb_w(state->m_pio, state->m_pio_astb);
-}
-
 READ8_MEMBER( abc80_state::pio_pa_r )
 {
 	/*
@@ -524,7 +508,13 @@ READ8_MEMBER( abc80_state::pio_pa_r )
 
     */
 
-	return (m_key_strobe << 7) | m_key_data;
+    UINT8 data = 0;
+
+    //data |= m_kb->data_r();
+    data |= m_key_data;
+    data |= (m_key_strobe << 7);
+
+	return data;
 };
 
 READ8_MEMBER( abc80_state::pio_pb_r )
@@ -546,14 +536,19 @@ READ8_MEMBER( abc80_state::pio_pb_r )
 
 	UINT8 data = 0;
 
-	/* serial receive */
+	// receive data
+	data |= m_rs232->rx();
 
-	/* clear to send */
+	// clear to send
+	data |= m_rs232->cts_r() << 1;
 
-	/* data connection detect */
+	// data carrier detect
+	data |= m_rs232->dcd_r() << 2;
 
-	/* cassette data */
-	data |= ((m_cassette)->input() > +1.0) << 7;
+	// cassette data
+	data |= m_tape_in_latch << 7;
+
+	//logerror("read tape latch %u\n", m_tape_in_latch);
 
 	return data;
 };
@@ -575,15 +570,36 @@ WRITE8_MEMBER( abc80_state::pio_pb_w )
 
     */
 
-	/* transmit */
+    // transmit data
+    m_rs232->tx(BIT(data, 3));
 
-	/* request to send */
+    // request to send
+    m_rs232->rts_w(BIT(data, 4));
 
-	/* cassette motor */
-	m_cassette->change_state(BIT(data,5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	// cassette motor
+	if (BIT(data, 5))
+	{
+		m_cassette->change_state(CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+		m_cassette_timer->enable(true);
+	}
+	else
+	{
+		m_cassette->change_state(CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+		m_cassette_timer->enable(false);
+	}
 
-	/* cassette data */
-	m_cassette->output( BIT(data, 6) ? -1.0 : +1.0);
+	// cassette data
+	m_cassette->output(BIT(data, 6) ? -1.0 : +1.0);
+
+	// cassette input latch
+	if (BIT(data, 6))
+	{
+		//logerror("clear tape in latch\n");
+
+		m_tape_in_latch = 1;
+
+		m_pio->port_b_write(m_tape_in_latch << 7);
+	}
 };
 
 static Z80PIO_INTERFACE( pio_intf )
@@ -624,14 +640,25 @@ static const cassette_interface abc80_cassette_interface =
 
 
 //-------------------------------------------------
-//  ABCBUS_INTERFACE( abcbus_intf )
+//  ABC80_KEYBOARD_INTERFACE( kb_intf )
 //-------------------------------------------------
 
-static SLOT_INTERFACE_START( abc80_abcbus_cards )
-	SLOT_INTERFACE("fd2", ABC_FD2)
-	SLOT_INTERFACE("slow", LUXOR_55_10828)
-	SLOT_INTERFACE("sio", ABC_SIO)
-SLOT_INTERFACE_END
+WRITE_LINE_MEMBER( abc80_state::keydown_w )
+{
+	m_key_strobe = state;
+
+	m_pio->port_a_write(m_key_strobe << 7);
+}
+
+static ABC80_KEYBOARD_INTERFACE( kb_intf )
+{
+	DEVCB_DRIVER_LINE_MEMBER(abc80_state, keydown_w)
+};
+
+
+//-------------------------------------------------
+//  ABCBUS_INTERFACE( abcbus_intf )
+//-------------------------------------------------
 
 static ABCBUS_INTERFACE( abcbus_intf )
 {
@@ -643,11 +670,18 @@ static ABCBUS_INTERFACE( abcbus_intf )
 
 
 //-------------------------------------------------
-//  ABC80_KEYBOARD_INTERFACE( kb_intf )
+//  rs232_port_interface rs232_intf
 //-------------------------------------------------
 
-static ABC80_KEYBOARD_INTERFACE( kb_intf )
+static SLOT_INTERFACE_START( rs232_devices )
+SLOT_INTERFACE_END
+
+static const rs232_port_interface rs232_intf =
 {
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -658,11 +692,73 @@ static ABC80_KEYBOARD_INTERFACE( kb_intf )
 //**************************************************************************
 
 //-------------------------------------------------
+//  device_timer - handler timer events
+//-------------------------------------------------
+
+void abc80_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_ID_PIO:
+		m_pio_astb = !m_pio_astb;
+
+		m_pio->strobe_a(m_pio_astb);
+		break;
+
+	case TIMER_ID_CASSETTE:
+		{
+			int tape_in = m_cassette->input() > 0;
+			//logerror("tape bit %u\n", tape_in);
+
+			if (m_tape_in_latch && !m_tape_in && tape_in)
+			{
+				//logerror("-------- set tape in latch\n");
+				m_tape_in_latch = 0;
+
+				m_pio->port_b_write(m_tape_in_latch << 7);
+			}
+
+			m_tape_in = tape_in;
+		}
+		break;
+
+	case TIMER_ID_BLINK:
+		m_blink = !m_blink;
+		break;
+
+	case TIMER_ID_VSYNC_ON:
+		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+		break;
+
+	case TIMER_ID_VSYNC_OFF:
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+		break;
+
+	case TIMER_ID_FAKE_KEYBOARD_SCAN:
+		scan_keyboard();
+		break;
+
+	case TIMER_ID_FAKE_KEYBOARD_CLEAR:
+		m_key_data = 0;
+		break;
+	}
+}
+
+
+//-------------------------------------------------
 //  MACHINE_START( abc80 )
 //-------------------------------------------------
 
 void abc80_state::machine_start()
 {
+	// start timers
+	m_cassette_timer = timer_alloc(TIMER_ID_CASSETTE);
+	m_cassette_timer->adjust(attotime::from_hz(44100), 0, attotime::from_hz(44100));
+	m_cassette_timer->enable(false);
+
+	m_kb_timer = timer_alloc(TIMER_ID_FAKE_KEYBOARD_SCAN);
+	m_kb_timer->adjust(attotime::from_usec(2500), 0, attotime::from_usec(2500));
+
 	// find memory regions
 	m_mmu_rom = memregion("mmu")->base();
 
@@ -670,6 +766,8 @@ void abc80_state::machine_start()
 	save_item(NAME(m_key_data));
 	save_item(NAME(m_key_strobe));
 	save_item(NAME(m_pio_astb));
+	save_item(NAME(m_tape_in));
+	save_item(NAME(m_tape_in_latch));
 }
 
 
@@ -683,36 +781,29 @@ void abc80_state::machine_start()
 //-------------------------------------------------
 
 static MACHINE_CONFIG_START( abc80, abc80_state )
-	/* basic machine hardware */
-	MCFG_CPU_ADD(Z80_TAG, Z80, ABC80_XTAL/2/2)	// 2.9952 MHz
+	// basic machine hardware
+	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_11_9808MHz/2/2)	// 2.9952 MHz
 	MCFG_CPU_PROGRAM_MAP(abc80_mem)
 	MCFG_CPU_IO_MAP(abc80_io)
 	MCFG_CPU_CONFIG(abc80_daisy_chain)
 
-	/* video hardware */
+	// video hardware
 	MCFG_FRAGMENT_ADD(abc80_video)
 
-	/* sound hardware */
+	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SN76477_TAG, SN76477, 0)
 	MCFG_SOUND_CONFIG(csg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	/* keyboard */
-	MCFG_TIMER_ADD_PERIODIC("keyboard", abc80_keyboard_tick, attotime::from_usec(2500))
-
-	/* devices */
-	MCFG_TIMER_ADD_SCANLINE("pio_astb", z80pio_astb_tick, SCREEN_TAG, 0, 1)
-	MCFG_Z80PIO_ADD(Z80PIO_TAG, ABC80_XTAL/2/2, pio_intf)
-	MCFG_PRINTER_ADD("printer")
+	// devices
+	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_11_9808MHz/2/2, pio_intf)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, abc80_cassette_interface)
-	MCFG_ABC830_ADD()
 	MCFG_ABC80_KEYBOARD_ADD(kb_intf)
+	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_intf, abcbus_cards, NULL, NULL) // "slow", abc830_slow)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, rs232_devices, NULL, NULL)
 
-	// ABC bus
-	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_intf, abc80_abcbus_cards, "slow", NULL)
-
-	/* internal ram */
+	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("16K")
 
@@ -731,20 +822,18 @@ MACHINE_CONFIG_END
 //-------------------------------------------------
 
 ROM_START( abc80 )
-	ROM_REGION( 0x10000, Z80_TAG, 0 )
-	ROM_LOAD( "3506_3.a5", 0x0000, 0x1000, CRC(e2afbf48) SHA1(9883396edd334835a844dcaa792d29599a8c67b9) )
-	ROM_LOAD( "3507_3.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1) )
-	ROM_LOAD( "3508_3.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b) )
-	ROM_LOAD( "3509_3.a2", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710) )
-	ROM_SYSTEM_BIOS( 0, "default", "No DOS" )
-	ROM_SYSTEM_BIOS( 1, "abcdos", "ABC-DOS" ) // Scandia Metric FD2
-	ROMX_LOAD( "abcdos",   0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "dosdd80", "ABC-DOS DD" ) // ABC 830
-	ROMX_LOAD( "dosdd80",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(3) )
-	ROM_SYSTEM_BIOS( 3, "ufd20", "UFD-DOS v.20" ) // ABC 830
-	ROMX_LOAD( "ufddos20", 0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(4) )
-	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
-	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
+	ROM_REGION( 0x4000, Z80_TAG, 0 )
+	ROM_DEFAULT_BIOS("v2")
+	ROM_SYSTEM_BIOS( 0, "v1", "V1" )
+	ROMX_LOAD( "3506_3.a5", 0x0000, 0x1000, CRC(7c004fb6) SHA1(9aee1d085122f4537c3e6ecdab9d799bd429ef52), ROM_BIOS(1) )
+	ROMX_LOAD( "3507_3.a3", 0x1000, 0x1000, CRC(d1850a84) SHA1(f7719f3af9173601a2aa23ae38ae00de1a387ad8), ROM_BIOS(1) )
+	ROMX_LOAD( "3508_3.a4", 0x2000, 0x1000, CRC(b55528e9) SHA1(3e5017e8cacad1f13215242f1bbd89d1d3eee131), ROM_BIOS(1) )
+	ROMX_LOAD( "3509_3.a2", 0x3000, 0x1000, CRC(659cab1e) SHA1(181db748cef22cdcccd311a60aa6189c85343db7), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "v2", "V2" )
+	ROMX_LOAD( "3506_3_v2.a5", 0x0000, 0x1000, CRC(e2afbf48) SHA1(9883396edd334835a844dcaa792d29599a8c67b9), ROM_BIOS(2) )
+	ROMX_LOAD( "3507_3_v2.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1), ROM_BIOS(2) )
+	ROMX_LOAD( "3508_3_v2.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b), ROM_BIOS(2) )
+	ROMX_LOAD( "3509_3_v2.a2", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710), ROM_BIOS(2) )
 
 	ROM_REGION( 0xa00, "chargen", 0 )
 	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, BAD_DUMP CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) ) // created by hand
@@ -771,5 +860,5 @@ ROM_END
 //  SYSTEM DRIVERS
 //**************************************************************************
 
-//    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME    FLAGS
-COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      "Luxor Datorer AB",					"ABC 80",	GAME_SUPPORTS_SAVE )
+//    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT  INIT                  COMPANY                FULLNAME    FLAGS
+COMP( 1978, abc80,  0,      0,      abc80,  abc80, driver_device,  0,      "Luxor Datorer AB",	"ABC 80",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_KEYBOARD )

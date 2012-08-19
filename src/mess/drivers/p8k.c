@@ -79,6 +79,7 @@ public:
 	UINT8 m_term_data;
 	required_device<cpu_device> m_maincpu;
 	required_device<generic_terminal_device> m_terminal;
+	DECLARE_DRIVER_INIT(p8k);
 };
 
 /***************************************************************************
@@ -109,16 +110,16 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(p8k_iomap, AS_IO, 8, p8k_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x07) AM_READWRITE(p8k_port0_r,p8k_port0_w) // MH7489
-	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE_LEGACY("z80ctc_0", z80ctc_r, z80ctc_w)
-	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE_LEGACY("z80pio_0", z80pio_ba_cd_r, z80pio_ba_cd_w)
-	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE_LEGACY("z80pio_1", z80pio_ba_cd_r, z80pio_ba_cd_w)
-	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE_LEGACY("z80pio_2", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80ctc_0", z80ctc_device, read, write)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80pio_0", z80pio_device, read_alt, write_alt)
+	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE("z80pio_1", z80pio_device, read_alt, write_alt)
+	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_2", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x20, 0x20) AM_DEVREADWRITE_LEGACY("i8272", upd765_data_r, upd765_data_w)
 	AM_RANGE(0x21, 0x21) AM_DEVREAD_LEGACY("i8272", upd765_status_r)
-	//AM_RANGE(0x24, 0x27) AM_DEVREADWRITE_LEGACY("z80sio_0", z80sio_ba_cd_r, z80sio_ba_cd_w)
+	//AM_RANGE(0x24, 0x27) AM_DEVREADWRITE("z80sio_0", z80sio_device, read_alt, write_alt)
 	AM_RANGE(0x24, 0x27) AM_READWRITE(p8k_port24_r,p8k_port24_w)
-	AM_RANGE(0x28, 0x2b) AM_DEVREADWRITE_LEGACY("z80sio_1", z80sio_ba_cd_r, z80sio_ba_cd_w)
-	AM_RANGE(0x2c, 0x2f) AM_DEVREADWRITE_LEGACY("z80ctc_1", z80ctc_r, z80ctc_w)
+	AM_RANGE(0x28, 0x2b) AM_DEVREADWRITE("z80sio_1", z80sio_device, read_alt, write_alt)
+	AM_RANGE(0x2c, 0x2f) AM_DEVREADWRITE("z80ctc_1", z80ctc_device, read, write)
 	AM_RANGE(0x3c, 0x3c) AM_DEVREADWRITE_LEGACY("z80dma", z80dma_r, z80dma_w)
 ADDRESS_MAP_END
 
@@ -237,7 +238,6 @@ static Z80DMA_INTERFACE( p8k_dma_intf )
 
 static Z80CTC_INTERFACE( p8k_ctc_0_intf )
 {
-	0,			/* timer disables */
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* interrupt handler */
 	DEVCB_NULL,			/* ZC/TO0 callback */
 	DEVCB_NULL,			/* ZC/TO1 callback */
@@ -251,7 +251,6 @@ static Z80CTC_INTERFACE( p8k_ctc_0_intf )
 
 static Z80CTC_INTERFACE( p8k_ctc_1_intf )
 {
-	0,			/* timer disables */
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* interrupt handler */
 	DEVCB_NULL,			/* ZC/TO0 callback */
 	DEVCB_NULL,			/* ZC/TO1 callback */
@@ -350,9 +349,9 @@ static const z80_daisy_config p8k_daisy_chain[] =
 
 static WRITE_LINE_DEVICE_HANDLER( p8k_i8272_irq_w )
 {
-	device_t *z80pio = device->machine().device("z80pio_2");
+	z80pio_device *z80pio = device->machine().device<z80pio_device>("z80pio_2");
 
-	z80pio_pb_w(z80pio, 0, (state) ? 0x10 : 0x00);
+	z80pio->port_b_write((state) ? 0x10 : 0x00);
 }
 
 static const struct upd765_interface p8k_i8272_intf =
@@ -408,26 +407,25 @@ static MACHINE_RESET( p8k )
 	state->membank("bank15")->set_entry(0);
 }
 
-static DRIVER_INIT( p8k )
+DRIVER_INIT_MEMBER(p8k_state,p8k)
 {
-	p8k_state *state = machine.driver_data<p8k_state>();
-	UINT8 *RAM = state->memregion("maincpu")->base();
-	state->membank("bank0")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank1")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank2")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank3")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank4")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank5")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank6")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank7")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank8")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank9")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank10")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank11")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank12")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank13")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank14")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
-	state->membank("bank15")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	UINT8 *RAM = memregion("maincpu")->base();
+	membank("bank0")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank1")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank2")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank3")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank4")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank5")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank6")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank7")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank8")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank9")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank10")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank11")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank12")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank13")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank14")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
+	membank("bank15")->configure_entries(0, 48, &RAM[0x0000], 0x1000);
 }
 
 
@@ -467,13 +465,13 @@ static READ16_DEVICE_HANDLER( p8k_16_sio_r )
 	switch (offset & 0x06)
 	{
 	case 0x00:
-		return (UINT16)z80sio_d_r(device, 0);
+		return (UINT16)dynamic_cast<z80sio_device*>(device)->data_read(0);
 	case 0x02:
-		return (UINT16)z80sio_d_r(device, 1);
+		return (UINT16)dynamic_cast<z80sio_device*>(device)->data_read(1);
 	case 0x04:
-		return (UINT16)z80sio_c_r(device, 0);
+		return (UINT16)dynamic_cast<z80sio_device*>(device)->control_read(0);
 	case 0x06:
-		return (UINT16)z80sio_c_r(device, 1);
+		return (UINT16)dynamic_cast<z80sio_device*>(device)->control_read(1);
 	}
 
 	return 0;
@@ -486,16 +484,16 @@ static WRITE16_DEVICE_HANDLER( p8k_16_sio_w )
 	switch (offset & 0x06)
 	{
 	case 0x00:
-		z80sio_d_w(device, 0, (UINT8)data);
+		dynamic_cast<z80sio_device*>(device)->data_write(0, (UINT8)data);
 		break;
 	case 0x02:
-		z80sio_d_w(device, 1, (UINT8)data);
+		dynamic_cast<z80sio_device*>(device)->data_write(1, (UINT8)data);
 		break;
 	case 0x04:
-		z80sio_c_w(device, 0, (UINT8)data);
+		dynamic_cast<z80sio_device*>(device)->control_write(0, (UINT8)data);
 		break;
 	case 0x06:
-		z80sio_c_w(device, 1, (UINT8)data);
+		dynamic_cast<z80sio_device*>(device)->control_write(1, (UINT8)data);
 		break;
 	}
 }
@@ -512,12 +510,12 @@ static WRITE16_DEVICE_HANDLER( p8k_16_pio_w )
 
 static READ16_DEVICE_HANDLER( p8k_16_ctc_r )
 {
-	return (UINT16)z80ctc_r(device, (offset & 0x06) >> 1);
+	return (UINT16)downcast<z80ctc_device *>(device)->read(*device->machine().memory().first_space(),(offset & 0x06) >> 1);
 }
 
 static WRITE16_DEVICE_HANDLER( p8k_16_ctc_w )
 {
-	z80ctc_w(device, (offset & 0x06) >> 1, (UINT8)(data & 0xff));
+	downcast<z80ctc_device *>(device)->write(*device->machine().memory().first_space(), (offset & 0x06) >> 1, (UINT8)(data & 0xff));
 }
 
 READ16_MEMBER( p8k_state::portff82_r )
@@ -578,7 +576,6 @@ static void p8k_16_daisy_interrupt(device_t *device, int state)
 
 static Z80CTC_INTERFACE( p8k_16_ctc_0_intf )
 {
-	0,				/* timer disables */
 	DEVCB_LINE(p8k_16_daisy_interrupt),	/* interrupt handler */
 	DEVCB_NULL,				/* ZC/TO0 callback */
 	DEVCB_NULL,				/* ZC/TO1 callback */
@@ -589,7 +586,6 @@ static Z80CTC_INTERFACE( p8k_16_ctc_0_intf )
 
 static Z80CTC_INTERFACE( p8k_16_ctc_1_intf )
 {
-	0,				/* timer disables */
 	DEVCB_LINE(p8k_16_daisy_interrupt),	/* interrupt handler */
 	DEVCB_NULL,				/* ZC/TO0 callback */
 	DEVCB_NULL,				/* ZC/TO1 callback */
@@ -794,5 +790,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME        PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                   FULLNAME       FLAGS */
-COMP( 1989, p8000,      0,      0,       p8k,       p8k,     p8k,    "EAW electronic Treptow", "P8000 (8bit Board)",  GAME_NOT_WORKING)
-COMP( 1989, p8000_16,   p8000,  0,       p8k_16,    p8k,     0,      "EAW electronic Treptow", "P8000 (16bit Board)",  GAME_NOT_WORKING)
+COMP( 1989, p8000,      0,      0,       p8k,       p8k, p8k_state,     p8k,    "EAW electronic Treptow", "P8000 (8bit Board)",  GAME_NOT_WORKING)
+COMP( 1989, p8000_16,   p8000,  0,       p8k_16,    p8k, driver_device,     0,      "EAW electronic Treptow", "P8000 (16bit Board)",  GAME_NOT_WORKING)

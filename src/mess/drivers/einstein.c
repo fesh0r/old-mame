@@ -278,8 +278,8 @@ static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
 	/* toggle line status */
 	einstein->m_ctc_trigger ^= 1;
 
-	z80ctc_trg0_w(einstein->m_ctc, einstein->m_ctc_trigger);
-	z80ctc_trg1_w(einstein->m_ctc, einstein->m_ctc_trigger);
+	einstein->m_ctc->trg0(einstein->m_ctc_trigger);
+	einstein->m_ctc->trg1(einstein->m_ctc_trigger);
 }
 
 
@@ -427,7 +427,7 @@ static MACHINE_RESET( einstein )
 
 	/* save pointers to our devices */
 	state->m_color_screen = machine.device("screen");
-	state->m_ctc = machine.device(IC_I058);
+	state->m_ctc = machine.device<z80ctc_device>(IC_I058);
 
 	/* initialize memory mapping */
 	state->membank("bank2")->set_base(machine.device<ram_device>(RAM_TAG)->pointer());
@@ -534,9 +534,9 @@ static ADDRESS_MAP_START( einstein_io, AS_IO, 8, einstein_state )
 	AM_RANGE(0x24, 0x24) AM_MIRROR(0xff00) AM_WRITE(einstein_rom_w)
 	AM_RANGE(0x25, 0x25) AM_MIRROR(0xff00) AM_WRITE(einstein_fire_int_w)
 	/* block 5, z80ctc */
-	AM_RANGE(0x28, 0x2b) AM_MIRROR(0xff04) AM_DEVREADWRITE_LEGACY(IC_I058, z80ctc_r, z80ctc_w)
+	AM_RANGE(0x28, 0x2b) AM_MIRROR(0xff04) AM_DEVREADWRITE(IC_I058, z80ctc_device, read, write)
 	/* block 6, z80pio */
-	AM_RANGE(0x30, 0x33) AM_MIRROR(0xff04) AM_DEVREADWRITE_LEGACY(IC_I063, z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0x30, 0x33) AM_MIRROR(0xff04) AM_DEVREADWRITE(IC_I063, z80pio_device, read, write)
 #if 0
 	/* block 7, adc */
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0xff07) AM_DEVREADWRITE_LEGACY(IC_I050, adc0844_r, adc0844_w)
@@ -700,11 +700,10 @@ INPUT_PORTS_END
 
 static Z80CTC_INTERFACE( einstein_ctc_intf )
 {
-	0,
 	DEVCB_NULL,
 	DEVCB_LINE(einstein_serial_transmit_clock),
 	DEVCB_LINE(einstein_serial_receive_clock),
-	DEVCB_LINE(z80ctc_trg3_w)
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF, z80ctc_device, trg3)
 };
 
 
@@ -731,7 +730,7 @@ static const ay8910_interface einstein_ay_interface =
 
 static const centronics_interface einstein_centronics_config =
 {
-	DEVCB_DEVICE_LINE(IC_I063, z80pio_astb_w),
+	DEVCB_DEVICE_LINE_MEMBER(IC_I063, z80pio_device, strobe_a),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -905,6 +904,6 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT           INIT  COMPANY   FULLNAME                             FLAGS */
-COMP( 1984, einstein, 0,        0,		einstein, einstein,       0,    "Tatung", "Einstein TC-01",                    0 )
-COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, 0,    "Tatung", "Einstein TC-01 + 80 column device", 0 )
-COMP( 1984, einst256, 0,        0,		einstein, einstein,       0,    "Tatung", "Einstein 256",						 GAME_NOT_WORKING )
+COMP( 1984, einstein, 0,        0,		einstein, einstein, driver_device,       0,    "Tatung", "Einstein TC-01",                    0 )
+COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, driver_device, 0,    "Tatung", "Einstein TC-01 + 80 column device", 0 )
+COMP( 1984, einst256, 0,        0,		einstein, einstein, driver_device,       0,    "Tatung", "Einstein 256",						 GAME_NOT_WORKING )

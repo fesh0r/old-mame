@@ -79,6 +79,7 @@ public:
 	required_device<device_t> m_speaker;
 	required_device<device_t> m_fdc;
 	required_device<ram_device> m_ram;
+	DECLARE_DRIVER_INIT(pyl601);
 };
 
 
@@ -508,9 +509,9 @@ static const mc6845_interface pyl601a_crtc6845_interface =
 	NULL
 };
 
-static DRIVER_INIT(pyl601)
+DRIVER_INIT_MEMBER(pyl601_state,pyl601)
 {
-	memset(machine.device<ram_device>(RAM_TAG)->pointer(), 0, 64 * 1024);
+	memset(machine().device<ram_device>(RAM_TAG)->pointer(), 0, 64 * 1024);
 }
 
 static INTERRUPT_GEN( pyl601_interrupt )
@@ -666,5 +667,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME     PARENT   COMPAT   MACHINE    INPUT    INIT        COMPANY           FULLNAME    FLAGS */
-COMP( 1989, pyl601,  0,       0,       pyl601,    pyl601,  pyl601, "Mikroelektronika", "Pyldin-601", 0 )
-COMP( 1989, pyl601a, pyl601,  0,       pyl601a,   pyl601,  pyl601, "Mikroelektronika", "Pyldin-601A", 0 )
+COMP( 1989, pyl601,  0,       0,       pyl601,    pyl601, pyl601_state,  pyl601, "Mikroelektronika", "Pyldin-601", 0 )
+COMP( 1989, pyl601a, pyl601,  0,       pyl601a,   pyl601, pyl601_state,  pyl601, "Mikroelektronika", "Pyldin-601A", 0 )

@@ -132,6 +132,10 @@ public:
 	void vii_switch_bank(UINT32 bank);
 	void vii_do_i2c();
 	void spg_do_dma(UINT32 len);
+	DECLARE_DRIVER_INIT(vsmile);
+	DECLARE_DRIVER_INIT(walle);
+	DECLARE_DRIVER_INIT(vii);
+	DECLARE_DRIVER_INIT(batman);
 };
 
 enum
@@ -1048,13 +1052,13 @@ static INTERRUPT_GEN( vii_vblank )
 //      verboselog(device->machine(), 0, "audio 1 IRQ\n");
 //      cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ1_LINE, ASSERT_LINE);
 //  }
-	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x0c00)
+    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x0c00)
 	{
 		verboselog(device->machine(), 0, "timerA, timer B IRQ\n");
 		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ2_LINE, ASSERT_LINE);
 	}
 
-	//if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x2100)
+    //if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x2100)
 	// For now trigger always if any enabled
 	if(state->VII_CTLR_IRQ_ENABLE)
 	{
@@ -1066,17 +1070,17 @@ static INTERRUPT_GEN( vii_vblank )
 //      cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ4_LINE, ASSERT_LINE);
 //  }
 
-	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x1200)
+    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x1200)
 	{
 		verboselog(device->machine(), 0, "External IRQ\n");
 		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ5_LINE, ASSERT_LINE);
 	}
-	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x0070)
+    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x0070)
 	{
 		verboselog(device->machine(), 0, "1024Hz, 2048HZ, 4096HZ IRQ\n");
 		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ6_LINE, ASSERT_LINE);
 	}
-	if(state->m_io_regs[0x22] & state->m_io_regs[0x22] & 0x008b)
+    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x008b)
 	{
 		verboselog(device->machine(), 0, "TMB1, TMB2, 4Hz, key change IRQ\n");
 		cputag_set_input_line(device->machine(), "maincpu", UNSP_IRQ7_LINE, ASSERT_LINE);
@@ -1157,36 +1161,32 @@ static MACHINE_CONFIG_START( batman, vii_state )
 	MCFG_PALETTE_LENGTH(32768)
 MACHINE_CONFIG_END
 
-static DRIVER_INIT( vii )
+DRIVER_INIT_MEMBER(vii_state,vii)
 {
-	vii_state *state = machine.driver_data<vii_state>();
 
-	state->m_spg243_mode = SPG243_VII;
-	state->m_centered_coordinates = 1;
+	m_spg243_mode = SPG243_VII;
+	m_centered_coordinates = 1;
 }
 
-static DRIVER_INIT( batman )
+DRIVER_INIT_MEMBER(vii_state,batman)
 {
-	vii_state *state = machine.driver_data<vii_state>();
 
-	state->m_spg243_mode = SPG243_BATMAN;
-	state->m_centered_coordinates = 1;
+	m_spg243_mode = SPG243_BATMAN;
+	m_centered_coordinates = 1;
 }
 
-static DRIVER_INIT( vsmile )
+DRIVER_INIT_MEMBER(vii_state,vsmile)
 {
-	vii_state *state = machine.driver_data<vii_state>();
 
-	state->m_spg243_mode = SPG243_VSMILE;
-	state->m_centered_coordinates = 1;
+	m_spg243_mode = SPG243_VSMILE;
+	m_centered_coordinates = 1;
 }
 
-static DRIVER_INIT( walle )
+DRIVER_INIT_MEMBER(vii_state,walle)
 {
-	vii_state *state = machine.driver_data<vii_state>();
 
-	state->m_spg243_mode = SPG243_BATMAN;
-	state->m_centered_coordinates = 0;
+	m_spg243_mode = SPG243_BATMAN;
+	m_centered_coordinates = 0;
 }
 
 ROM_START( vii )
@@ -1217,7 +1217,7 @@ ROM_START( walle )
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY                                              FULLNAME      FLAGS */
-CONS( 2004, batmantv, vii,      0,        batman,   batman,   batman,   "JAKKS Pacific Inc / HotGen Ltd",                    "The Batman", GAME_NO_SOUND )
-CONS( 2005, vsmile,   0,        0,        vsmile,   vsmile,   vsmile,   "V-Tech",                                            "V-Smile",    GAME_NO_SOUND | GAME_NOT_WORKING )
-CONS( 2007, vii,      0,        0,        vii,      vii,      vii,      "Jungle Soft / KenSingTon / Chintendo / Siatronics", "Vii",        GAME_NO_SOUND )
-CONS( 2008, walle,    vii,      0,        batman,   walle,    walle,    "JAKKS Pacific Inc",                                 "Wall-E",     GAME_NO_SOUND )
+CONS( 2004, batmantv, vii,      0,        batman,   batman, vii_state,   batman,   "JAKKS Pacific Inc / HotGen Ltd",                    "The Batman", GAME_NO_SOUND )
+CONS( 2005, vsmile,   0,        0,        vsmile,   vsmile, vii_state,   vsmile,   "V-Tech",                                            "V-Smile",    GAME_NO_SOUND | GAME_NOT_WORKING )
+CONS( 2007, vii,      0,        0,        vii,      vii, vii_state,      vii,      "Jungle Soft / KenSingTon / Chintendo / Siatronics", "Vii",        GAME_NO_SOUND )
+CONS( 2008, walle,    vii,      0,        batman,   walle, vii_state,    walle,    "JAKKS Pacific Inc",                                 "Wall-E",     GAME_NO_SOUND )

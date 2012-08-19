@@ -30,8 +30,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c80_io, AS_IO, 8, c80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7c, 0x7f) AM_DEVREADWRITE_LEGACY(Z80PIO2_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
-	AM_RANGE(0xbc, 0xbf) AM_DEVREADWRITE_LEGACY(Z80PIO1_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0x7c, 0x7f) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_device, read, write)
+	AM_RANGE(0xbc, 0xbf) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_device, read, write)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -183,8 +183,8 @@ WRITE_LINE_MEMBER( c80_state::pio1_brdy_w )
 			m_digit++;
 		}
 
-		z80pio_bstb_w(m_pio1, 1);
-		z80pio_bstb_w(m_pio1, 0);
+		m_pio1->strobe_b(1);
+		m_pio1->strobe_b(0);
 	}
 }
 
@@ -272,4 +272,4 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT  COMPANY      FULLNAME    FLAGS */
-COMP( 1986, c80,    0,      0,      c80,    c80,    0, "Joachim Czepa", "C-80", GAME_SUPPORTS_SAVE | GAME_NO_SOUND)
+COMP( 1986, c80,    0,      0,      c80,    c80, driver_device,    0, "Joachim Czepa", "C-80", GAME_SUPPORTS_SAVE | GAME_NO_SOUND)

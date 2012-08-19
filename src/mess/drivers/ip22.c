@@ -127,6 +127,7 @@ public:
 	DECLARE_WRITE32_MEMBER(hpc3_pbusdma_w);
 	DECLARE_READ32_MEMBER(hpc3_unkpbus0_r);
 	DECLARE_WRITE32_MEMBER(hpc3_unkpbus0_w);
+	DECLARE_DRIVER_INIT(ip225015);
 };
 
 
@@ -1078,7 +1079,7 @@ static TIMER_CALLBACK(ip22_dma)
 		UINT16 temp16 = ( state->m_mainram[(state->m_PBUS_DMA.nCurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
 		INT16 stemp16 = (INT16)((temp16 >> 8) | (temp16 << 8));
 
-		dac_signed_data_16_w(machine.device("dac"), stemp16 ^ 0x8000);
+		machine.device<dac_device>("dac")->write_signed16(stemp16 ^ 0x8000);
 
 		state->m_PBUS_DMA.nCurPtr += 4;
 
@@ -1530,9 +1531,8 @@ static MACHINE_START( ip225015 )
 	machine.device<nvram_device>("nvram")->set_base(state->m_RTC.nRAM, 0x200);
 }
 
-static DRIVER_INIT( ip225015 )
+DRIVER_INIT_MEMBER(ip22_state,ip225015)
 {
-	ip22_state *state = machine.driver_data<ip22_state>();
 	static const struct kbdc8042_interface at8042 =
 	{
 		KBDC8042_STANDARD, NULL, NULL, NULL, ip22_get_out2
@@ -1540,10 +1540,10 @@ static DRIVER_INIT( ip225015 )
 
 	// IP22 uses 2 pieces of PC-compatible hardware: the 8042 PS/2 keyboard/mouse
 	// interface and the 8254 PIT.  Both are licensed cores embedded in the IOC custom chip.
-	init_pc_common(machine, PCCOMMON_KEYBOARD_AT, NULL);
-	kbdc8042_init(machine, &at8042);
+	init_pc_common(machine(), PCCOMMON_KEYBOARD_AT, NULL);
+	kbdc8042_init(machine(), &at8042);
 
-	state->m_nIOC_ParReadCnt = 0;
+	m_nIOC_ParReadCnt = 0;
 }
 
 static INPUT_PORTS_START( ip225015 )
@@ -1725,6 +1725,6 @@ ROM_START( ip244415 )
 ROM_END
 
 /*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT     COMPANY   FULLNAME */
-COMP( 1993, ip225015, 0,        0,        ip225015, ip225015, ip225015, "Silicon Graphics Inc", "Indy (R5000, 150MHz)", GAME_NOT_WORKING )
-COMP( 1993, ip224613, 0,        0,        ip224613, ip225015, ip225015, "Silicon Graphics Inc", "Indy (R4600, 133MHz)", GAME_NOT_WORKING )
-COMP( 1994, ip244415, 0,        0,        ip244415, ip225015, ip225015, "Silicon Graphics Inc", "Indigo2 (R4400, 150MHz)", GAME_NOT_WORKING )
+COMP( 1993, ip225015, 0,        0,        ip225015, ip225015, ip22_state, ip225015, "Silicon Graphics Inc", "Indy (R5000, 150MHz)", GAME_NOT_WORKING )
+COMP( 1993, ip224613, 0,        0,        ip224613, ip225015, ip22_state, ip225015, "Silicon Graphics Inc", "Indy (R4600, 133MHz)", GAME_NOT_WORKING )
+COMP( 1994, ip244415, 0,        0,        ip244415, ip225015, ip22_state, ip225015, "Silicon Graphics Inc", "Indigo2 (R4400, 150MHz)", GAME_NOT_WORKING )

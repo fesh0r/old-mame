@@ -77,7 +77,7 @@ Notes:
 
 void vixen_state::update_interrupt()
 {
-	int state = (m_cmd_d1 & m_fdint) | m_vsync | (!m_enb_srq_int & !m_srq) | (!m_enb_atn_int & !m_atn) | (!m_enb_xmt_int & m_txrdy) | (!m_enb_rcv_int & m_rxrdy);
+	int state = (m_cmd_d1 && m_fdint) || m_vsync || (!m_enb_srq_int && !m_srq) || (!m_enb_atn_int && !m_atn) || (!m_enb_xmt_int && m_txrdy) || (!m_enb_rcv_int && m_rxrdy);
 
 	device_set_input_line(m_maincpu, INPUT_LINE_IRQ0, state ? ASSERT_LINE : CLEAR_LINE);
 }
@@ -929,11 +929,10 @@ DIRECT_UPDATE_MEMBER(vixen_state::vixen_direct_update_handler)
 	return address;
 }
 
-static DRIVER_INIT( vixen )
+DRIVER_INIT_MEMBER(vixen_state,vixen)
 {
-	vixen_state *state = machine.driver_data<vixen_state>();
-	address_space *program = machine.device<cpu_device>(Z8400A_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate(FUNC(vixen_state::vixen_direct_update_handler), state));
+	address_space *program = machine().device<cpu_device>(Z8400A_TAG)->space(AS_PROGRAM);
+	program->set_direct_update_handler(direct_update_delegate(FUNC(vixen_state::vixen_direct_update_handler), this));
 }
 
 
@@ -943,4 +942,4 @@ static DRIVER_INIT( vixen )
 //**************************************************************************
 
 //    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS
-COMP( 1984, vixen,  0,       0, 	vixen,	vixen,	 vixen,  "Osborne",   "Vixen",		GAME_NOT_WORKING )
+COMP( 1984, vixen,  0,       0, 	vixen,	vixen, vixen_state,	 vixen,  "Osborne",   "Vixen",		GAME_NOT_WORKING )

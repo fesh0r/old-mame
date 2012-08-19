@@ -15,14 +15,15 @@
 *  hook up leds on front panel (done to stderr for now)
 *  hook up r6551 serial and attach terminal for sending to ep804
 *  /nmi is emulated correctly (i.e. its tied to +5v. that was easy!)
+*  hook up keypad via 74C923 and mode buttons via logic gate mess
 *
 *  TODO:
 *  minor finishing touches to i/o map
-*  figure out why banked ram on 4.x causes glitches/sys errors; it works on 2.2
-*  actually hook up interrupts: they should fire on keypresses and 6551/ACIA receives
+*  hook up 6551/ACIA interrupt (currently ACIA device doesn't have a callback for /IRQ line)
 *  attach terminal to 6551/ACIA serial for recieving from ep804
 *  correctly hook up 10937 vfd controller: por is not hooked up (relates to /MEMEN)
-*  hook up keypad via 74C923 and mode buttons via logic gate mess
+*  SCLK line should be handled inside the 10937 device
+*  EPROM socket stuff (ports 0x40, 0x41, 0x42 and 0x47)
 *  artwork
 *
 ******************************************************************************/
@@ -52,9 +53,6 @@
 
 // port 47 write is tim0-tim7
 
-// collated serial data sent to vfd
-#undef VFD_VERBOSE
-
 
 /* Core includes */
 #include "emu.h"
@@ -63,6 +61,9 @@
 #include "sound/speaker.h"
 #include "machine/roc10937.h"
 #include "machine/6551acia.h"
+#include "machine/mm74c922.h"
+#include "machine/ram.h"
+#include "digel804.lh"
 
 
 class digel804_state : public driver_device
@@ -74,7 +75,9 @@ public:
 		  m_terminal(*this, TERMINAL_TAG),
 		  m_speaker(*this, "speaker"),
 		  m_acia(*this, "acia"),
-		  m_vfd(*this, "vfd")
+		  m_vfd(*this, "vfd"),
+		  m_kb(*this, "74c923"),
+		  m_ram(*this, RAM_TAG)
 		//, m_main_ram(*this, "main_ram")
 		{ }
 
@@ -83,12 +86,19 @@ public:
 	required_device<device_t> m_speaker;
 	required_device<acia6551_device> m_acia;
 	required_device<roc10937_t> m_vfd;
+	required_device<mm74c922_device> m_kb;
+	required_device<ram_device> m_ram;
+
+	virtual void machine_reset();
+	DECLARE_DRIVER_INIT(digel804);
+	DECLARE_WRITE8_MEMBER( op00 );
 	DECLARE_READ8_MEMBER( ip40 );
 	DECLARE_WRITE8_MEMBER( op40 );
 	DECLARE_WRITE8_MEMBER( op41 );
 	DECLARE_WRITE8_MEMBER( op42 );
 	DECLARE_READ8_MEMBER( ip43 );
 	DECLARE_WRITE8_MEMBER( op43 );
+	DECLARE_WRITE8_MEMBER( op43_1_4 );
 	DECLARE_WRITE8_MEMBER( op44 );
 	DECLARE_WRITE8_MEMBER( op45 );
 	DECLARE_READ8_MEMBER( ip46 );
@@ -102,111 +112,55 @@ public:
 	DECLARE_WRITE8_MEMBER( acia_command_w );
 	DECLARE_READ8_MEMBER( acia_control_r );
 	DECLARE_WRITE8_MEMBER( acia_control_w );
-	UINT8 digel804_convert_col_to_bin( UINT8 col, UINT8 row );
+	DECLARE_WRITE_LINE_MEMBER( da_w );
+	DECLARE_INPUT_CHANGED_MEMBER(mode_change);
 	// vfd helper stuff for port 44, should be unnecessary after 10937 gets a proper device
-	UINT8 vfd_data;
-	UINT8 vfd_old;
-	UINT8 vfd_count;
+	UINT8 m_vfd_sclk;
 	// current speaker state for port 45
 	UINT8 m_speaker_state;
 	// ram stuff for banking
 	UINT8 m_ram_bank;
 	//required_shared_ptr<UINT8> m_main_ram;
 	// states
-	UINT8 m_kbd;
-	UINT8 m_kbd_row;
 	UINT8 m_acia_intq;
 	UINT8 m_overload_state;
-	UINT8 m_debug_x5_state;
 	UINT8 m_key_intq;
 	UINT8 m_remote_mode;
 	UINT8 m_key_mode;
 	UINT8 m_sim_mode;
 	UINT8 m_powerfail_state;
 	UINT8 m_chipinsert_state;
+	UINT8 m_keyen_state;
 	UINT8 m_op41;
 };
 
-/*
- 74c923 handler by Robbbert copied more or less from tec1.c
-*/
-static TIMER_CALLBACK( ep804_kbd_callback )
+
+enum { MODE_OFF, MODE_KEY, MODE_REM, MODE_SIM };
+
+
+DRIVER_INIT_MEMBER(digel804_state,digel804)
 {
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
-	digel804_state *state = machine.driver_data<digel804_state>();
+	m_speaker_state = 0;
+	//port43_rtn = 0xEE;//0xB6;
+	m_acia_intq = 1; // /INT source 1
+	m_overload_state = 0; // OVLD
+	m_key_intq = 1; // /INT source 2
+	m_remote_mode = 1; // /REM
+	m_key_mode = 0; // /KEY
+	m_sim_mode = 1; // /SIM
+	m_powerfail_state = 1; // "O11"
+	m_chipinsert_state = 0; // PIN
+	m_ram_bank = 0;
+	m_op41 = 0;
+	m_keyen_state = 1; // /KEYEN
 
-	machine.scheduler().timer_set(attotime::from_hz(10000), FUNC(ep804_kbd_callback));
-    // 74C923 4 by 5 key encoder.
-    // if previous key is still held, bail out
-	if (machine.root_device().ioport(keynames[state->m_kbd_row])->read())
-		if (state->digel804_convert_col_to_bin(machine.root_device().ioport(keynames[state->m_kbd_row])->read(), state->m_kbd_row) == state->m_kbd)
-			return;
-
-	state->m_kbd_row++;
-	state->m_kbd_row &= 3;
-
-	/* see if a key pressed */
-	if (machine.root_device().ioport(keynames[state->m_kbd_row])->read())
-	{
-		fprintf(stderr,"DEBUG: key was pressed!\n");
-		state->m_kbd = state->digel804_convert_col_to_bin(machine.root_device().ioport(keynames[state->m_kbd_row])->read(), state->m_kbd_row);
-		state->m_key_intq = 0;
-		cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);//ASSERT_LINE);
-	}
-	else
-	{
-		state->m_key_intq = 1;
-		//if (state->m_acia_intq == 1) cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
-	}
+	membank( "bankedram" )->set_base(m_ram->pointer());
 }
 
-static DRIVER_INIT( digel804 )
+void digel804_state::machine_reset()
 {
-	digel804_state *state = machine.driver_data<digel804_state>();
-	state->vfd_old = state->vfd_data = state->vfd_count = 0;
-	state->m_speaker_state = 0;
-	//state->port43_rtn = 0xEE;//0xB6;
-	state->m_kbd = 0;
-	state->m_kbd_row = 0;
-	state->m_acia_intq = 1; // /INT source 1
-	state->m_overload_state = 0; // OVLD
-	state->m_debug_x5_state = 1; // "/DEBUG"
-	state->m_key_intq = 1; // /INT source 2
-	state->m_remote_mode = 1; // /REM
-	state->m_key_mode = 0; // /KEY
-	state->m_sim_mode = 1; // /SIM
-	state->m_powerfail_state = 1; // "O11"
-	state->m_chipinsert_state = 0; // PIN
-	state->m_ram_bank = 0;
-	state->m_op41 = 0;
-	state->membank( "bankedram" )->set_base( state->memregion("user_ram")->base() + ( state->m_ram_bank * 0x10000 ));
-	machine.scheduler().timer_set(attotime::from_hz(10000), FUNC(ep804_kbd_callback));
-}
-
-static MACHINE_RESET( digel804 )
-{
-	digel804_state *state = machine.driver_data<digel804_state>();
-	state->m_vfd->reset();
-	state->vfd_old = state->vfd_data = state->vfd_count = 0;
-}
-
-UINT8 digel804_state::digel804_convert_col_to_bin( UINT8 col, UINT8 row )
-{
-	UINT8 data = row;
-
-	if (BIT(col, 1))
-		data |= 4;
-	else
-	if (BIT(col, 2))
-		data |= 8;
-	else
-	if (BIT(col, 3))
-		data |= 12;
-	else
-	if (BIT(col, 4))
-		data |= 16;
-
-	return data;
+	m_vfd->reset();
+	m_vfd_sclk = 0;
 }
 
 READ8_MEMBER( digel804_state::ip40 ) // eprom data bus read
@@ -225,7 +179,7 @@ WRITE8_MEMBER( digel804_state::op41 ) // eprom address low write AND SIM write, 
 {
 	// TODO: would be nice to have a 'fake eprom' here
 	logerror("Digel804: port 41, eprom address low/sim/memorybank had %02X written to it!\n", data);
-	fprintf(stderr,"op41 write of %02X, ram mapper bit is %d\n", data, (data&0x40)?1:0);
+	//fprintf(stderr,"op41 write of %02X, ram mapper bit is %d\n", data, (data&0x40)?1:0);
 	m_op41 = data;
 }
 
@@ -263,21 +217,25 @@ READ8_MEMBER( digel804_state::ip43 )
      0xFE 11111110
 
     */
-	// HACK to dump display contents to stderr
-//  FIXME : not sure what to do here with the new device! 201207
-//  fprintf(stderr,"%s\n",ROC10937_get_string(0));
+
 #ifdef PORT43_R_VERBOSE
 	logerror("Digel804: returning %02X for port 43 status read\n", port43_rtn);
 #endif
-	return ((m_overload_state<<7)
-		|(m_debug_x5_state<<6)
-		|((m_key_intq&m_acia_intq)<<5)
-		|(m_remote_mode<<4)
-		|(m_key_mode<<3)
-		|(m_sim_mode<<2)
-		|(m_powerfail_state<<1)
-		|(m_chipinsert_state));
+	return ((m_overload_state<<0)
+		|((ioport("DEBUG")->read()&1)<<1)
+		|((m_key_intq&m_acia_intq)<<2)
+		|(m_remote_mode<<3)
+		|(m_key_mode<<4)
+		|(m_sim_mode<<5)
+		|(m_powerfail_state<<6)
+		|(m_chipinsert_state<<7));
 
+}
+
+WRITE8_MEMBER( digel804_state::op00 )
+{
+	m_ram_bank = data;
+	membank( "bankedram" )->set_base(m_ram->pointer() + ((m_ram_bank * 0x8000) & m_ram->mask()));
 }
 
 WRITE8_MEMBER( digel804_state::op43 )
@@ -297,8 +255,13 @@ WRITE8_MEMBER( digel804_state::op43 )
 	m_ram_bank = data&7;
 	if ((data&0xF8)!=0)
 		logerror("Digel804: port 0x43 ram bank had unexpected data %02x written to it!\n", data);
-	membank( "bankedram" )->set_base( memregion("user_ram")->base() + ( m_ram_bank * 0x10000 ));
 
+	membank( "bankedram" )->set_base(m_ram->pointer() + ((m_ram_bank * 0x8000) & m_ram->mask()));
+}
+
+WRITE8_MEMBER( digel804_state::op43_1_4 )
+{
+	m_overload_state = 0; // writes to port 43 clear overload state
 }
 
 WRITE8_MEMBER( digel804_state::op44 ) // state write
@@ -317,26 +280,16 @@ WRITE8_MEMBER( digel804_state::op44 ) // state write
      * all writes to port 44 will reset the powerfail state
      */
 	m_powerfail_state = 0; // writes to port 44 clear powerfail state
+	m_keyen_state = BIT(data, 1);
 #ifdef PORT44_W_VERBOSE
 	logerror("Digel804: port 0x44 vfd/state control had %02x written to it!\n", data);
 #endif
 	// latch vfd data on falling edge of clock only; this should really be part of the 10937 device, not here!
-	if ((vfd_old&1) && ((data&1)==0))
+	if (m_vfd_sclk && ((data&1)==0))
 	{
-		vfd_data <<= 1;
-		vfd_data |= (data&0x80)?1:0;
-		vfd_count++;
-		if (vfd_count == 8)
-		{
-#ifdef VFD_VERBOSE
-			logerror("Digel804: Full byte written to port 44 vfd: %02X '%c'\n", vfd_data, vfd_data);
-#endif
-			m_vfd->shift_data(vfd_data? 1 : 0);
-			vfd_data = 0;
-			vfd_count = 0;
-		}
+		m_vfd->shift_data((data & 0x80) ? 0 : 1);
 	}
-	vfd_old = data;
+	m_vfd_sclk = data & 1;
 }
 
 WRITE8_MEMBER( digel804_state::op45 ) // speaker write
@@ -361,10 +314,12 @@ READ8_MEMBER( digel804_state::ip46 ) // keypad read
      * this value auto-latches on a key press and remains through multiple reads
      * this is done by a 74C923 integrated circuit
     */
+	UINT8 kbd = m_kb->data_out_r();
 #ifdef PORT46_R_VERBOSE
-	logerror("Digel804: returning %02X for port 46 keypad read\n", m_kbd);
+	logerror("Digel804: returning %02X for port 46 keypad read\n", kbd);
 #endif
-	return m_kbd;
+
+	return BITSWAP8(kbd,7,6,5,4,1,0,3,2);	// verified from schematics
 }
 
 WRITE8_MEMBER( digel804_state::op46 )
@@ -380,8 +335,15 @@ WRITE8_MEMBER( digel804_state::op46 )
 #ifdef PORT46_W_VERBOSE
 	 logerror("Digel804: port 0x46 LED control had %02x written to it!\n", data);
 #endif
-	 popmessage("LEDS: %s %s %s Func: %s%d\n", (data&0x80)?"INPUT":"-----", (data&0x40)?"BUSY":"----", (data&0x20)?"ERROR":"-----", (data&0x10)?"None":"", (data&0x10)?-1:(~data&0xF));
+	 //popmessage("LEDS: %s %s %s Func: %s%d\n", (data&0x80)?"INPUT":"-----", (data&0x40)?"BUSY":"----", (data&0x20)?"ERROR":"-----", (data&0x10)?"None":"", (data&0x10)?-1:(~data&0xF));
 	 //fprintf("LEDS: %s %s %s Func: %s%d\n", (data&0x80)?"INPUT":"-----", (data&0x40)?"BUSY":"----", (data&0x20)?"ERROR":"-----", (data&0x10)?"None":"", (data&0x10)?-1:(~data&0xF));
+
+	output_set_value("input_led", BIT(data,7));
+	output_set_value("busy_led",  BIT(data,6));
+	output_set_value("error_led", BIT(data,5));
+
+	for(int i=0; i<16; i++)
+		output_set_indexed_value("func_led", i, (!(data & 0x10) && ((~data & 0x0f) == i)) ? 1 : 0);
 }
 
 WRITE8_MEMBER( digel804_state::op47 ) // eprom timing/power and control write
@@ -390,6 +352,33 @@ WRITE8_MEMBER( digel804_state::op47 ) // eprom timing/power and control write
 	logerror("Digel804: port 47, eprom timing/power and control had %02X written to it!\n", data);
 }
 
+INPUT_CHANGED_MEMBER( digel804_state::mode_change )
+{
+	if (!newval && !m_keyen_state)
+	{
+		switch ((int)(FPTR)param)
+		{
+			case MODE_OFF:
+				m_key_mode = m_remote_mode = m_sim_mode = 1;
+				break;
+			case MODE_KEY:
+				m_remote_mode = m_sim_mode = 1;
+				m_key_mode = 0;
+				break;
+			case MODE_REM:
+				m_key_mode = m_sim_mode = 1;
+				m_remote_mode = 0;
+				break;
+			case MODE_SIM:
+				m_remote_mode = m_key_mode = 1;
+				m_sim_mode = 0;
+				break;
+		}
+	}
+
+	// press one of those keys reset the Z80
+	m_maincpu->set_input_line(INPUT_LINE_RESET, (!newval && !m_keyen_state) ? ASSERT_LINE : CLEAR_LINE);
+}
 
 /* ACIA Trampolines */
 READ8_MEMBER( digel804_state::acia_rxd_r )
@@ -466,7 +455,35 @@ static ADDRESS_MAP_START(z80_mem_804_1_2, AS_PROGRAM, 8, digel804_state)
 	// d800-ffff is open bus in mapper, 7f
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(z80_io, AS_IO, 8, digel804_state)
+static ADDRESS_MAP_START(z80_io_1_4, AS_IO, 8, digel804_state)
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	// io bits: x 1 x x x * * *
+	// writes to 47, 4e, 57, 5e, 67, 6e, 77, 7e, c7, ce, d7, de, e7, ee, f7, fe all go to 47, same with reads
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xB8) AM_WRITE(op00) // W, banked ram
+	AM_RANGE(0x40, 0x40) AM_MIRROR(0xB8) AM_READWRITE(ip40, op40) // RW, eprom socket data bus input/output value
+	AM_RANGE(0x41, 0x41) AM_MIRROR(0xB8) AM_WRITE(op41) // W, eprom socket address low out
+	AM_RANGE(0x42, 0x42) AM_MIRROR(0xB8) AM_WRITE(op42) // W, eprom socket address hi/control out
+	AM_RANGE(0x43, 0x43) AM_MIRROR(0xB8) AM_READWRITE(ip43, op43_1_4) // RW, mode and status register, also checks if keypad is pressed; write is unknown
+	AM_RANGE(0x44, 0x44) AM_MIRROR(0xB8) AM_WRITE(op44) // W, 10937 vfd controller, z80 power and state control reg
+	AM_RANGE(0x45, 0x45) AM_MIRROR(0xB8) AM_WRITE(op45) // W, speaker bit; every write inverts state
+	AM_RANGE(0x46, 0x46) AM_MIRROR(0xB8) AM_READWRITE(ip46, op46) // RW, reads keypad, writes controls the front panel leds.
+	AM_RANGE(0x47, 0x47) AM_MIRROR(0xB8) AM_WRITE(op47) // W eprom socket power and timing control
+	// io bits: 1 0 x x x * * *
+	// writes to 80, 88, 90, 98, a0, a8, b0, b8 all go to 80, same with reads
+	AM_RANGE(0x80, 0x80) AM_MIRROR(0x38) AM_WRITE(acia_txd_w) // (ACIA xmit reg)
+	AM_RANGE(0x81, 0x81) AM_MIRROR(0x38) AM_READ(acia_rxd_r) // (ACIA rcv reg)
+	AM_RANGE(0x82, 0x82) AM_MIRROR(0x38) AM_WRITE(acia_reset_w) // (ACIA reset reg)
+	AM_RANGE(0x83, 0x83) AM_MIRROR(0x38) AM_READ(acia_status_r) // (ACIA status reg)
+	AM_RANGE(0x84, 0x84) AM_MIRROR(0x38) AM_WRITE(acia_command_w) // (ACIA command reg)
+	AM_RANGE(0x85, 0x85) AM_MIRROR(0x38) AM_READ(acia_command_r) // (ACIA command reg)
+	AM_RANGE(0x86, 0x86) AM_MIRROR(0x38) AM_WRITE(acia_control_w) // (ACIA control reg)
+	AM_RANGE(0x87, 0x87) AM_MIRROR(0x38) AM_READ(acia_control_r) // (ACIA control reg)
+	//AM_RANGE(0x80,0x87) AM_MIRROR(0x38) AM_SHIFT(-1) AM_DEVREADWRITE("acia", acia6551_device, read, write) // this doesn't work since we lack an AM_SHIFT command
+
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START(z80_io_1_2, AS_IO, 8, digel804_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	// io bits: x 1 x x x * * *
@@ -499,35 +516,43 @@ ADDRESS_MAP_END
 ******************************************************************************/
 static INPUT_PORTS_START( digel804 )
 	PORT_START("LINE0") /* KEY ROW 0, 'X1' */
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0)	PORT_CHAR('0')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)	PORT_CHAR('1')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2)	PORT_CHAR('2')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)	PORT_CHAR('3')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ENTR/INCR") PORT_CODE(KEYCODE_ENTER)	PORT_CHAR('^')
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0)	PORT_CHAR('0')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)	PORT_CHAR('1')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2)	PORT_CHAR('2')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)	PORT_CHAR('3')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ENTR/INCR") PORT_CODE(KEYCODE_ENTER)	PORT_CHAR('^')
 
 	PORT_START("LINE1") /* KEY ROW 1, 'X2' */
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4") PORT_CODE(KEYCODE_4)	PORT_CHAR('4')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5") PORT_CODE(KEYCODE_5)	PORT_CHAR('5')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6)	PORT_CHAR('6')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7)	PORT_CHAR('7')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("NEXT/DECR") PORT_CODE(KEYCODE_DOWN)	PORT_CHAR('V')
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4") PORT_CODE(KEYCODE_4)	PORT_CHAR('4')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5") PORT_CODE(KEYCODE_5)	PORT_CHAR('5')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6)	PORT_CHAR('6')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7)	PORT_CHAR('7')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("NEXT/DECR") PORT_CODE(KEYCODE_DOWN)	PORT_CHAR('V')
 
 	PORT_START("LINE2") /* KEY ROW 2, 'X3' */
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8)	PORT_CHAR('8')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9)	PORT_CHAR('9')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A)	PORT_CHAR('A')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)	PORT_CHAR('B')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("REPT") PORT_CODE(KEYCODE_X)	PORT_CHAR('X')
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8)	PORT_CHAR('8')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9)	PORT_CHAR('9')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A)	PORT_CHAR('A')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)	PORT_CHAR('B')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("REPT") PORT_CODE(KEYCODE_X)	PORT_CHAR('X')
 
 	PORT_START("LINE3") /* KEY ROW 3, 'X4' */
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)	PORT_CHAR('C')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)	PORT_CHAR('D')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)	PORT_CHAR('E')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F)	PORT_CHAR('F')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CLR") PORT_CODE(KEYCODE_MINUS)	PORT_CHAR('-')
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)	PORT_CHAR('C')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)	PORT_CHAR('D')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)	PORT_CHAR('E')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F)	PORT_CHAR('F')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CLR") PORT_CODE(KEYCODE_MINUS)	PORT_CHAR('-')
 
 	PORT_START("MODE") // TODO, connects entirely separately from the keypad through some complicated latching logic
-	PORT_BIT(0xFF, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("KEY") PORT_CODE(KEYCODE_K)	PORT_CHANGED_MEMBER( DEVICE_SELF, digel804_state, mode_change, MODE_KEY )
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("REM") PORT_CODE(KEYCODE_R)	PORT_CHANGED_MEMBER( DEVICE_SELF, digel804_state, mode_change, MODE_REM )
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SIM") PORT_CODE(KEYCODE_S)	PORT_CHANGED_MEMBER( DEVICE_SELF, digel804_state, mode_change, MODE_SIM )
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("OFF") PORT_CODE(KEYCODE_O)	PORT_CHANGED_MEMBER( DEVICE_SELF, digel804_state, mode_change, MODE_OFF )
+
+	PORT_START("DEBUG")	// debug jumper on the board
+	PORT_DIPNAME( 0x01, 0x01, "Debug Mode" )
+	PORT_DIPSETTING( 0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 /******************************************************************************
@@ -544,19 +569,45 @@ static GENERIC_TERMINAL_INTERFACE( digel804_terminal_intf )
 	DEVCB_HANDLER(digel804_serial_put)
 };
 
+WRITE_LINE_MEMBER( digel804_state::da_w )
+{
+	m_maincpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_key_intq = state ? 0 : 1;
+}
+static MM74C923_INTERFACE( digel804_keypad_intf )
+{
+	0,	// FIXME
+	0,	// FIXME
+	DEVCB_DRIVER_LINE_MEMBER(digel804_state, da_w),
+	DEVCB_INPUT_PORT("LINE0"),
+	DEVCB_INPUT_PORT("LINE1"),
+	DEVCB_INPUT_PORT("LINE2"),
+	DEVCB_INPUT_PORT("LINE3"),
+	DEVCB_NULL
+};
+
 static MACHINE_CONFIG_START( digel804, digel804_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_3_6864MHz/2) /* Z80A, X1(aka E0 on schematics): 3.6864Mhz */
 	MCFG_CPU_PROGRAM_MAP(z80_mem_804_1_4)
-	MCFG_CPU_IO_MAP(z80_io)
+	MCFG_CPU_IO_MAP(z80_io_1_4)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
-	MCFG_MACHINE_RESET(digel804)
+
+	MCFG_ROC10937_ADD("vfd",0,RIGHT_TO_LEFT)
 
 	/* video hardware */
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, digel804_terminal_intf)
 
+	MCFG_DEFAULT_LAYOUT(layout_digel804)
+
+	MCFG_MM74C923_ADD("74c923", digel804_keypad_intf)
+
 	/* acia */
 	MCFG_ACIA6551_ADD("acia")
+
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("256K")
+	MCFG_RAM_EXTRA_OPTIONS("32K,64K,128K")
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -564,26 +615,15 @@ static MACHINE_CONFIG_START( digel804, digel804_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 
-/* TODO: make this copy the digel804 machine config and modify the program map! */
-static MACHINE_CONFIG_START( ep804, digel804_state )
+static MACHINE_CONFIG_DERIVED( ep804, digel804 )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", Z80, XTAL_3_6864MHz/2) /* Z80, X1(aka E0 on schematics): 3.6864Mhz */
+	MCFG_CPU_MODIFY("maincpu")	/* Z80, X1(aka E0 on schematics): 3.6864Mhz */
 	MCFG_CPU_PROGRAM_MAP(z80_mem_804_1_2)
-	MCFG_CPU_IO_MAP(z80_io)
-	MCFG_QUANTUM_TIME(attotime::from_hz(60))
-	MCFG_MACHINE_RESET(digel804)
-	MCFG_ROC10937_ADD("vfd",0,RIGHT_TO_LEFT)
+	MCFG_CPU_IO_MAP(z80_io_1_2)
 
-	/* video hardware */
-	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, digel804_terminal_intf)
-
-	/* acia */
-	MCFG_ACIA6551_ADD("acia")
-
-	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_RAM_MODIFY(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("32K")
+	MCFG_RAM_EXTRA_OPTIONS("64K")
 MACHINE_CONFIG_END
 
 
@@ -635,7 +675,6 @@ If the ram expansion is not installed (i.e. only 32k of base ram on the mainboar
 */
 
 ROM_START(digel804) // address mapper 804-1-4
-	ROM_REGION(0x80000, "user_ram", ROMREGION_ERASEFF)
 	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_LOAD("1-04__76f1.27128.d41", 0x0000, 0x4000, CRC(61b50b61) SHA1(ad717fcbf3387b0a8fb0546025d3c527792eb3f0))
 	// the second rom here is loaded bizarrely: the first 3/4 appears at e000-f7ff and the last 1/4 appears at d800-dfff
@@ -646,7 +685,6 @@ ROM_START(digel804) // address mapper 804-1-4
 ROM_END
 
 ROM_START(ep804) // address mapper 804-1-2
-	ROM_REGION(0x80000, "user_ram", ROMREGION_ERASEFF)
 	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_DEFAULT_BIOS("ep804_v1.6")
 	ROM_SYSTEM_BIOS( 0, "ep804_v1.6", "Wavetek/Digelec EP804 FWv1.6") // hardware 1.1
@@ -670,5 +708,5 @@ ROM_END
 ******************************************************************************/
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT      COMPANY                     FULLNAME                                                    FLAGS */
-COMP( 1985, digel804,   0,          0,      digel804,   digel804, digel804,      "Digelec, Inc",   "Digelec 804 EPROM Programmer", GAME_NOT_WORKING )
-COMP( 1982, ep804,   digel804,          0,      ep804,   digel804, digel804,      "Wavetek/Digelec, Inc",   "EP804 EPROM Programmer", GAME_NOT_WORKING )
+COMP( 1985, digel804,   0,          0,      digel804,   digel804, digel804_state, digel804,      "Digelec, Inc",   "Digelec 804 EPROM Programmer", GAME_NOT_WORKING )
+COMP( 1982, ep804,   digel804,          0,      ep804,   digel804, digel804_state, digel804,      "Wavetek/Digelec, Inc",   "EP804 EPROM Programmer", GAME_NOT_WORKING )

@@ -101,7 +101,7 @@ void trs80m2_state::scan_keyboard()
 
 				// trigger keyboard interrupt
 				m_kbirq = 0;
-				z80ctc_trg3_w(m_ctc, m_kbirq);
+				m_ctc->trg3(m_kbirq);
 
 				return;
 			}
@@ -241,7 +241,7 @@ READ8_MEMBER( trs80m2_state::keyboard_r )
 	if (!m_kbirq)
 	{
 		m_kbirq = 1;
-		z80ctc_trg3_w(m_ctc, m_kbirq);
+		m_ctc->trg3(m_kbirq);
 		m_kb->busy_w(m_kbirq);
 	}
 
@@ -410,10 +410,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_io, AS_IO, 8, trs80m2_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE_LEGACY(Z80PIO_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_device, read, write)
 	AM_RANGE(0xe4, 0xe7) AM_READWRITE(fdc_r, fdc_w)
 	AM_RANGE(0xef, 0xef) AM_WRITE(drvslt_w)
-	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE_LEGACY(Z80CTC_TAG, z80ctc_r, z80ctc_w)
+	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_device, read, write)
 	AM_RANGE(0xf4, 0xf7) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_cd_ba_r, z80dart_cd_ba_w)
 	AM_RANGE(0xf8, 0xf8) AM_DEVREADWRITE_LEGACY(Z80DMA_TAG, z80dma_r, z80dma_w)
 	AM_RANGE(0xf9, 0xf9) AM_WRITE(rom_enable_w)
@@ -665,7 +665,7 @@ WRITE_LINE_MEMBER( trs80m2_state::kb_clock_w )
 		{
 			// trigger keyboard interrupt
 			m_kbirq = 0;
-			z80ctc_trg3_w(m_ctc, m_kbirq);
+			m_ctc->trg3(m_kbirq);
 			m_kb->busy_w(m_kbirq);
 		}
 	}
@@ -797,7 +797,7 @@ static Z80PIO_INTERFACE( pio_intf )
 
 static const centronics_interface centronics_intf =
 {
-	DEVCB_DEVICE_LINE(Z80PIO_TAG, z80pio_bstb_w),	// ACK output
+	DEVCB_DEVICE_LINE_MEMBER(Z80PIO_TAG, z80pio_device, strobe_b),	// ACK output
 	DEVCB_NULL,										// BUSY output
 	DEVCB_NULL										// NOT BUSY output
 };
@@ -837,19 +837,18 @@ static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
 	trs80m2_state *state = timer.machine().driver_data<trs80m2_state>();
 
-	z80ctc_trg0_w(state->m_ctc, 1);
-	z80ctc_trg0_w(state->m_ctc, 0);
+	state->m_ctc->trg0(1);
+	state->m_ctc->trg0(0);
 
-	z80ctc_trg1_w(state->m_ctc, 1);
-	z80ctc_trg1_w(state->m_ctc, 0);
+	state->m_ctc->trg1(1);
+	state->m_ctc->trg1(0);
 
-	z80ctc_trg2_w(state->m_ctc, 1);
-	z80ctc_trg2_w(state->m_ctc, 0);
+	state->m_ctc->trg2(1);
+	state->m_ctc->trg2(0);
 }
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
-	0,              								// timer disables
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	// interrupt handler
 	DEVCB_DEVICE_LINE(Z80SIO_TAG, z80dart_rxca_w),	// ZC/TO0 callback
 	DEVCB_DEVICE_LINE(Z80SIO_TAG, z80dart_txca_w),	// ZC/TO1 callback
@@ -876,7 +875,7 @@ static const floppy_interface trs80m2_floppy_interface =
 
 WRITE_LINE_MEMBER( trs80m2_state::fdc_intrq_w )
 {
-	z80pio_pa_w(m_pio, 0, state);
+	m_pio->port_a_write(state);
 }
 
 static const wd17xx_interface fdc_intf =
@@ -974,7 +973,7 @@ void trs80m2_state::machine_reset()
 {
 	// clear keyboard interrupt
 	m_kbirq = 1;
-	z80ctc_trg3_w(m_ctc, m_kbirq);
+	m_ctc->trg3(m_kbirq);
 	m_kb->busy_w(m_kbirq);
 
 	// enable boot ROM
@@ -1168,8 +1167,8 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT     COMPANY             FULLNAME        FLAGS
-COMP( 1979, trs80m2,	0,			0,		trs80m2,	trs80m2,	0,		"Tandy Radio Shack",	"TRS-80 Model II",	GAME_NO_SOUND_HW )
-COMP( 1982, trs80m16,	trs80m2,	0,		trs80m16,	trs80m2,	0,		"Tandy Radio Shack",	"TRS-80 Model 16",	GAME_NO_SOUND_HW | GAME_NOT_WORKING )
-//COMP( 1983, trs80m12, trs80m2,    0,      trs80m16,   trs80m2,    0,      "Tandy Radio Shack",    "TRS-80 Model 12",  GAME_NO_SOUND_HW | GAME_NOT_WORKING )
-//COMP( 1984, trs80m16b,trs80m2,    0,      trs80m16,   trs80m2,    0,      "Tandy Radio Shack",    "TRS-80 Model 16B", GAME_NO_SOUND_HW | GAME_NOT_WORKING )
-//COMP( 1985, tandy6k,  trs80m2,    0,      tandy6k,    trs80m2,    0,      "Tandy Radio Shack",    "Tandy 6000 HD",    GAME_NO_SOUND_HW | GAME_NOT_WORKING )
+COMP( 1979, trs80m2,	0,			0,		trs80m2,	trs80m2, driver_device,		0,		"Tandy Radio Shack",	"TRS-80 Model II",	GAME_NO_SOUND_HW | GAME_IMPERFECT_KEYBOARD )
+COMP( 1982, trs80m16,	trs80m2,	0,		trs80m16,	trs80m2, driver_device,	0,		"Tandy Radio Shack",	"TRS-80 Model 16",	GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+//COMP( 1983, trs80m12, trs80m2,    0,      trs80m16,   trs80m2, driver_device,    0,      "Tandy Radio Shack",    "TRS-80 Model 12",  GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+//COMP( 1984, trs80m16b,trs80m2,    0,      trs80m16,   trs80m2, driver_device,    0,      "Tandy Radio Shack",    "TRS-80 Model 16B", GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+//COMP( 1985, tandy6k,  trs80m2,    0,      tandy6k,    trs80m2, driver_device,         0,      "Tandy Radio Shack",    "Tandy 6000 HD",    GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )

@@ -57,6 +57,7 @@ public:
 	DECLARE_WRITE32_MEMBER(hpc_w);
 	DECLARE_READ32_MEMBER(int_r);
 	DECLARE_WRITE32_MEMBER(int_w);
+	DECLARE_DRIVER_INIT(ip204415);
 };
 
 
@@ -492,7 +493,7 @@ static const struct WD33C93interface scsi_intf =
 	&scsi_irq,		/* command completion IRQ */
 };
 
-static DRIVER_INIT( ip204415 )
+DRIVER_INIT_MEMBER(ip20_state,ip204415)
 {
 }
 
@@ -623,4 +624,4 @@ ROM_START( ip204415 )
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, "Silicon Graphics Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip20_state, ip204415, "Silicon Graphics Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )

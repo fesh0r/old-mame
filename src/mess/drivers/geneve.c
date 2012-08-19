@@ -257,6 +257,8 @@ public:
 	WRITE_LINE_MEMBER( ext_ready );
 	WRITE_LINE_MEMBER( mapper_ready );
 
+	DECLARE_DRIVER_INIT(geneve);
+
 	void	set_tms9901_INT2_from_v9938(v99x8_device &vdp, int state);
 
 	line_state	m_inta;
@@ -710,7 +712,7 @@ static JOYPORT_CONFIG( joyport_60 )
 	60
 };
 
-static DRIVER_INIT( geneve )
+DRIVER_INIT_MEMBER(geneve,geneve)
 {
 }
 
@@ -802,4 +804,4 @@ ROM_START(geneve)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE      INPUT    INIT       COMPANY     FULLNAME */
-COMP( 1987,geneve,   0,		0,		geneve_60hz,  geneve,  geneve,		"Myarc",	"Geneve 9640" , 0)
+COMP( 1987,geneve,   0,		0,		geneve_60hz,  geneve, geneve,  geneve,		"Myarc",	"Geneve 9640" , 0)

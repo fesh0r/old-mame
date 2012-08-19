@@ -94,7 +94,7 @@ typedef enum
 	MODEL_MAC_PB160,    // 160/180/165 all have the same machine ID too
 	MODEL_MAC_PB165c,
 	MODEL_MAC_PB180c,
-	MODEL_MAC_PB150,
+	MODEL_MAC_PB150,    // 150 is fairly radically different from the other 1x0s
 
 	MODEL_MAC_PBDUO_210,	// 68030 PowerBook Duos
 	MODEL_MAC_PBDUO_230,
@@ -120,7 +120,7 @@ typedef enum
 	MODEL_MAC_PB190,
 	MODEL_MAC_PB190cs,
 
-	MODEL_MAC_POWERMAC_6100,	// original-series PowerMacs
+	MODEL_MAC_POWERMAC_6100,	// NuBus PowerMacs
 	MODEL_MAC_POWERMAC_7100,
 	MODEL_MAC_POWERMAC_8100
 } model_t;
@@ -145,33 +145,6 @@ MACHINE_START( macscsi );
 MACHINE_START( mac );
 MACHINE_RESET( mac );
 
-DRIVER_INIT(mac128k512k);
-DRIVER_INIT(mac512ke);
-DRIVER_INIT(macplus);
-DRIVER_INIT(macse);
-DRIVER_INIT(macclassic);
-DRIVER_INIT(maclrcclassic);
-DRIVER_INIT(maclc);
-DRIVER_INIT(macii);
-DRIVER_INIT(maciifdhd);
-DRIVER_INIT(maciix);
-DRIVER_INIT(maciicx);
-DRIVER_INIT(maciici);
-DRIVER_INIT(maciisi);
-DRIVER_INIT(macse30);
-DRIVER_INIT(macclassic2);
-DRIVER_INIT(maclc2);
-DRIVER_INIT(maclc3);
-DRIVER_INIT(macpm6100);
-DRIVER_INIT(macprtb);
-DRIVER_INIT(macpb100);
-DRIVER_INIT(macpb140);
-DRIVER_INIT(macpb160);
-DRIVER_INIT(maciivx);
-DRIVER_INIT(maciifx);
-DRIVER_INIT(macpd210);
-DRIVER_INIT(macquadra700);
-DRIVER_INIT(maclc520);
 
 NVRAM_HANDLER( mac );
 
@@ -473,6 +446,36 @@ private:
 public:
 	emu_timer *m_scanline_timer;
 	emu_timer *m_adb_timer;
+	DECLARE_DRIVER_INIT(maclc2);
+	DECLARE_DRIVER_INIT(maciifdhd);
+	DECLARE_DRIVER_INIT(macse30);
+	DECLARE_DRIVER_INIT(macprtb);
+	DECLARE_DRIVER_INIT(maciivx);
+	DECLARE_DRIVER_INIT(macpd210);
+	DECLARE_DRIVER_INIT(macii);
+	DECLARE_DRIVER_INIT(macclassic);
+	DECLARE_DRIVER_INIT(macquadra700);
+	DECLARE_DRIVER_INIT(macclassic2);
+	DECLARE_DRIVER_INIT(maciifx);
+	DECLARE_DRIVER_INIT(maclc);
+	DECLARE_DRIVER_INIT(macpb160);
+	DECLARE_DRIVER_INIT(macplus);
+	DECLARE_DRIVER_INIT(macse);
+	DECLARE_DRIVER_INIT(macpb140);
+	DECLARE_DRIVER_INIT(mac128k512k);
+	DECLARE_DRIVER_INIT(macpm6100);
+	DECLARE_DRIVER_INIT(mac512ke);
+	DECLARE_DRIVER_INIT(maclc520);
+	DECLARE_DRIVER_INIT(maciici);
+	DECLARE_DRIVER_INIT(maciix);
+	DECLARE_DRIVER_INIT(maclrcclassic);
+	DECLARE_DRIVER_INIT(maciisi);
+	DECLARE_DRIVER_INIT(maciicx);
+	DECLARE_DRIVER_INIT(maclc3);
+	DECLARE_DRIVER_INIT(maclc3plus);
+	DECLARE_DRIVER_INIT(macpm7100);
+	DECLARE_DRIVER_INIT(macpm8100);
+	DECLARE_DRIVER_INIT(macpb100);
 };
 
 #endif /* MAC_H_ */

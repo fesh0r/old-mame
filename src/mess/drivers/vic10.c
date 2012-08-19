@@ -590,6 +590,19 @@ void vic10_state::machine_start()
 }
 
 
+//-------------------------------------------------
+//  MACHINE_RESET( vic10 )
+//-------------------------------------------------
+
+void vic10_state::machine_reset()
+{
+	m_maincpu->reset();
+
+	m_exp->reset();
+}
+
+
+
 //**************************************************************************
 //  MACHINE DRIVERS
 //**************************************************************************
@@ -648,4 +661,4 @@ ROM_END
 //  GAME DRIVERS
 //**************************************************************************
 
-COMP( 1982, vic10,		0,    0,    vic10, vic10,     0, "Commodore Business Machines", "VIC-10 / Max Machine / UltiMax (NTSC)", GAME_NOT_WORKING )
+COMP( 1982, vic10,		0,    0,    vic10, vic10, driver_device,     0, "Commodore Business Machines", "VIC-10 / Max Machine / UltiMax (NTSC)", GAME_NOT_WORKING )

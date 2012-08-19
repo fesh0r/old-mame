@@ -1495,7 +1495,7 @@ static ADDRESS_MAP_START(mz2500_io, AS_IO, 8, mz2500_state )
 //  AM_RANGE(0x60, 0x63) AM_WRITE_LEGACY(w3100a_w)
 //  AM_RANGE(0x63, 0x63) AM_READ_LEGACY(w3100a_r)
 //  AM_RANGE(0x98, 0x99) ADPCM, unknown type, custom?
-	AM_RANGE(0xa0, 0xa3) AM_DEVREADWRITE_LEGACY("z80sio",z80sio_ba_cd_r,z80sio_ba_cd_w)
+	AM_RANGE(0xa0, 0xa3) AM_DEVREADWRITE("z80sio",z80sio_device, read_alt, write_alt)
 //  AM_RANGE(0xa4, 0xa5) AM_READWRITE_LEGACY(sasi_r, sasi_w)
 	AM_RANGE(0xa8, 0xa8) AM_WRITE(mz2500_rom_w)
 	AM_RANGE(0xa9, 0xa9) AM_READ(mz2500_rom_r)
@@ -1523,7 +1523,7 @@ static ADDRESS_MAP_START(mz2500_io, AS_IO, 8, mz2500_state )
 	AM_RANGE(0xde, 0xde) AM_WRITENOP
 	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE("i8255_0", i8255_device, read, write)
     AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE_LEGACY("pit", pit8253_r, pit8253_w)
-	AM_RANGE(0xe8, 0xeb) AM_DEVREADWRITE_LEGACY("z80pio_1", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xe8, 0xeb) AM_DEVREADWRITE("z80pio_1", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0xef, 0xef) AM_READWRITE(mz2500_joystick_r,mz2500_joystick_w)
     AM_RANGE(0xf0, 0xf3) AM_WRITE(timer_w)
 	AM_RANGE(0xf4, 0xf7) AM_READ(mz2500_crtc_hvblank_r) AM_WRITE(mz2500_tv_crtc_w)
@@ -1994,7 +1994,7 @@ static const ym2203_interface ym2203_interface_1 =
 		DEVCB_DEVICE_HANDLER("ym", opn_porta_w),	// write A
 		DEVCB_NULL					// write B
 	},
-	NULL
+	DEVCB_NULL
 };
 
 static PALETTE_INIT( mz2500 )
@@ -2199,6 +2199,6 @@ ROM_END
 
 /* Driver */
 
-COMP( 1985, mz2500,   0,        	 0,      mz2500,   mz2500,        0,      "Sharp",     "MZ-2500", 0 )
-COMP( 1985, mz2520,   mz2500,        0,      mz2500,   mz2500,        0,      "Sharp",     "MZ-2520", 0 ) // looks a stripped down version of the regular MZ-2500, with only two floppies drives and no cassette interface
+COMP( 1985, mz2500,   0,        	 0,      mz2500,   mz2500, driver_device,        0,      "Sharp",     "MZ-2500", GAME_IMPERFECT_GRAPHICS )
+COMP( 1985, mz2520,   mz2500,        0,      mz2500,   mz2500, driver_device,        0,      "Sharp",     "MZ-2520", GAME_IMPERFECT_GRAPHICS ) // looks a stripped down version of the regular MZ-2500, with only two floppies drives and no cassette interface
 

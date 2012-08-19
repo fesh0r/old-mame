@@ -70,6 +70,7 @@ public:
 	void clear_pieces();
 	void update_leds();
 	virtual void machine_reset();
+	DECLARE_DRIVER_INIT(supercon);
 };
 
 
@@ -240,17 +241,16 @@ static void mouse_update(running_machine &machine)
 
 /* Driver initialization */
 
-static DRIVER_INIT(supercon)
+DRIVER_INIT_MEMBER(supercon_state,supercon)
 {
-	supercon_state *state = machine.driver_data<supercon_state>();
-	state->m_LED_18=0;
-	state->m_LED_AH=0;
-	state->m_LED_ST=0;
+	m_LED_18=0;
+	m_LED_AH=0;
+	m_LED_ST=0;
 
-	state->m_wait_time = attotime::from_hz(4);
-	state->m_save_key_data = 0xff;
+	m_wait_time = attotime::from_hz(4);
+	m_save_key_data = 0xff;
 
-	state->m_moving_piece=0;
+	m_moving_piece=0;
 }
 
 /* Read 1C000 */
@@ -757,4 +757,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME          PARENT  COMPAT  MACHINE    INPUT       INIT      COMPANY  FULLNAME                     FLAGS */
-CONS( 1983, supercon,     0,      0,      supercon,  supercon,   supercon, "Novag", "SuperConstellation", GAME_SUPPORTS_SAVE)
+CONS( 1983, supercon,     0,      0,      supercon,  supercon, supercon_state,   supercon, "Novag", "SuperConstellation", GAME_SUPPORTS_SAVE)

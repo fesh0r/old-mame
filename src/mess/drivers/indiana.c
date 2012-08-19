@@ -20,6 +20,7 @@ class indiana_state : public driver_device
 public:
 	indiana_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag) { }
+	DECLARE_DRIVER_INIT(indiana);
 };
 
 
@@ -80,10 +81,10 @@ READ8_HANDLER( indiana_vga_setting )
 	return 0xff;	// TODO
 }
 
-static DRIVER_INIT( indiana )
+DRIVER_INIT_MEMBER(indiana_state,indiana)
 {
-	pc_vga_init(machine, indiana_vga_setting, NULL);
-	pc_vga_io_init(machine, machine.device("maincpu")->memory().space(AS_PROGRAM), 0x7f7a0000, machine.device("maincpu")->memory().space(AS_PROGRAM), 0x7f600000);
+	pc_vga_init(machine(), indiana_vga_setting, NULL);
+	pc_vga_io_init(machine(), machine().device("maincpu")->memory().space(AS_PROGRAM), 0x7f7a0000, machine().device("maincpu")->memory().space(AS_PROGRAM), 0x7f600000);
 }
 
 /* ROM definition */
@@ -100,4 +101,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                  FULLNAME                               FLAGS */
-COMP( 1993, indiana,  0,       0,    indiana,   indiana,  indiana,  "Indiana University", "Indiana University 68030 board", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1993, indiana,  0,       0,    indiana,   indiana, indiana_state,  indiana,  "Indiana University", "Indiana University 68030 board", GAME_NOT_WORKING | GAME_NO_SOUND)

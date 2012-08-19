@@ -434,7 +434,7 @@ static void draw_fgtilemap(running_machine &machine, bitmap_rgb32 &bitmap,const 
 
 						pcg_pen = pen[2]<<2|pen[1]<<1|pen[0]<<0;
 
-						if(color & 0x10 &&	machine.primary_screen->frame_number() & 0x10) //reverse flickering
+						if(color & 0x10 && machine.primary_screen->frame_number() & 0x10) //reverse flickering
 							pcg_pen^=7;
 
 						if(pcg_pen == 0 && (!(color & 8)))
@@ -1623,8 +1623,8 @@ READ8_MEMBER( x1_state::x1_io_r )
 //  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { return z80dma_r(machine().device("dma"), 0); }
 //  else if(offset >= 0x1f90 && offset <= 0x1f91)   { return z80sio_c_r(machine().device("sio"), (offset-0x1f90) & 1); }
 //  else if(offset >= 0x1f92 && offset <= 0x1f93)   { return z80sio_d_r(machine().device("sio"), (offset-0x1f92) & 1); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return z80ctc_r(m_ctc, offset-0x1fa0); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return z80ctc_r(m_ctc, offset-0x1fa8); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return m_ctc->read(space,offset-0x1fa0); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return m_ctc->read(space,offset-0x1fa8); }
 //  else if(offset >= 0x1fd0 && offset <= 0x1fdf)   { return x1_scrn_r(space,offset-0x1fd0); }
 //  else if(offset == 0x1fe0)                       { return x1turboz_blackclip_r(space,0); }
 	else if(offset >= 0x2000 && offset <= 0x2fff)	{ return m_avram[offset & 0x7ff]; }
@@ -1662,8 +1662,8 @@ WRITE8_MEMBER( x1_state::x1_io_w )
 //  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { z80dma_w(machine().device("dma"), 0,data); }
 //  else if(offset >= 0x1f90 && offset <= 0x1f91)   { z80sio_c_w(machine().device("sio"), (offset-0x1f90) & 1,data); }
 //  else if(offset >= 0x1f92 && offset <= 0x1f93)   { z80sio_d_w(machine().device("sio"), (offset-0x1f92) & 1,data); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ z80ctc_w(m_ctc, offset-0x1fa0,data); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ z80ctc_w(m_ctc, offset-0x1fa8,data); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ m_ctc->write(space,offset-0x1fa0,data); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ m_ctc->write(space,offset-0x1fa8,data); }
 //  else if(offset == 0x1fb0)                       { x1turbo_pal_w(space,0,data); }
 //  else if(offset >= 0x1fb9 && offset <= 0x1fbf)   { x1turbo_txpal_w(space,offset-0x1fb9,data); }
 //  else if(offset == 0x1fc0)                       { x1turbo_txdisp_w(space,0,data); }
@@ -1688,7 +1688,7 @@ READ8_MEMBER( x1_state::x1turbo_io_r )
 	if(offset == 0x0700)							{ return (ym2151_r(machine().device("ym"), offset-0x0700) & 0x7f) | (ioport("SOUND_SW")->read() & 0x80); }
 	else if(offset == 0x0701)		                { return ym2151_r(machine().device("ym"), offset-0x0700); }
 	//0x704 is FM sound detection port on X1 turboZ
-	else if(offset >= 0x0704 && offset <= 0x0707)   { return z80ctc_r(m_ctc, offset-0x0704); }
+	else if(offset >= 0x0704 && offset <= 0x0707)   { return m_ctc->read(space,offset-0x0704); }
 	else if(offset == 0x0801)						{ printf("Color image board read\n"); return 0xff; } // *
 	else if(offset == 0x0803)						{ printf("Color image board 2 read\n"); return 0xff; } // *
 	else if(offset >= 0x0a00 && offset <= 0x0a07)	{ printf("Stereoscopic board read %04x\n",offset); return 0xff; } // *
@@ -1707,8 +1707,8 @@ READ8_MEMBER( x1_state::x1turbo_io_r )
 	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ return z80dma_r(machine().device("dma"), 0); }
 	else if(offset >= 0x1f90 && offset <= 0x1f93)	{ return z80dart_ba_cd_r(machine().device("sio"), (offset-0x1f90) & 3); }
 	else if(offset >= 0x1f98 && offset <= 0x1f9f)	{ printf("Extended SIO/CTC read %04x\n",offset); return 0xff; }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return z80ctc_r(m_ctc, offset-0x1fa0); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return z80ctc_r(m_ctc, offset-0x1fa8); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return m_ctc->read(space,offset-0x1fa0); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return m_ctc->read(space,offset-0x1fa8); }
 	else if(offset == 0x1fb0)						{ return x1turbo_pal_r(space,0); } // Z only!
 	else if(offset >= 0x1fb8 && offset <= 0x1fbf)	{ return x1turbo_txpal_r(space,offset-0x1fb8); } //Z only!
 	else if(offset == 0x1fc0)						{ return x1turbo_txdisp_r(space,0); } // Z only!
@@ -1733,7 +1733,7 @@ WRITE8_MEMBER( x1_state::x1turbo_io_w )
 	if(m_io_bank_mode == 1)                    { x1_ex_gfxram_w(space, offset, data); }
 	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(machine().device("ym"), offset-0x0700,data); }
 	//0x704 is FM sound detection port on X1 turboZ
-	else if(offset >= 0x0704 && offset <= 0x0707)	{ z80ctc_w(m_ctc, offset-0x0704,data); }
+	else if(offset >= 0x0704 && offset <= 0x0707)	{ m_ctc->write(space,offset-0x0704,data); }
 	else if(offset == 0x0800)						{ printf("Color image board write %02x\n",data); } // *
 	else if(offset == 0x0802)						{ printf("Color image board 2 write %02x\n",data); } // *
 	else if(offset >= 0x0a00 && offset <= 0x0a07)	{ printf("Stereoscopic board write %04x %02x\n",offset,data); } // *
@@ -1760,8 +1760,8 @@ WRITE8_MEMBER( x1_state::x1turbo_io_w )
 	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ z80dma_w(machine().device("dma"), 0,data); }
 	else if(offset >= 0x1f90 && offset <= 0x1f93)	{ z80dart_ba_cd_w(machine().device("sio"), (offset-0x1f90) & 3,data); }
 	else if(offset >= 0x1f98 && offset <= 0x1f9f)	{ printf("Extended SIO/CTC write %04x %02x\n",offset,data); }
-	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ z80ctc_w(m_ctc, offset-0x1fa0,data); }
-	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ z80ctc_w(m_ctc, offset-0x1fa8,data); }
+	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ m_ctc->write(space,offset-0x1fa0,data); }
+	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ m_ctc->write(space,offset-0x1fa8,data); }
 	else if(offset == 0x1fb0)						{ x1turbo_pal_w(space,0,data); } // Z only!
 	else if(offset >= 0x1fb8 && offset <= 0x1fbf)	{ x1turbo_txpal_w(space,offset-0x1fb8,data); } //Z only!
 	else if(offset == 0x1fc0)						{ x1turbo_txdisp_w(space,0,data); } //Z only!
@@ -1884,7 +1884,7 @@ WRITE8_MEMBER( x1_state::x1_portc_w )
 	/* set up the pixel clock according to the above divider */
 	m_crtc->set_clock(VDP_CLOCK/((m_hres_320) ? 48 : 24));
 
-	if(!BIT(data, 5) & BIT(m_io_switch, 5))
+	if(!BIT(data, 5) && BIT(m_io_switch, 5))
 		m_io_bank_mode = 1;
 
 	m_io_switch = data & 0x20;
@@ -2287,11 +2287,10 @@ GFXDECODE_END
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
-	0,					// timer disables
 	DEVCB_CPU_INPUT_LINE("x1_cpu", INPUT_LINE_IRQ0),		// interrupt handler
-	DEVCB_DEVICE_LINE("ctc", z80ctc_trg3_w),		// ZC/TO0 callback
-	DEVCB_DEVICE_LINE("ctc", z80ctc_trg1_w),		// ZC/TO1 callback
-	DEVCB_DEVICE_LINE("ctc", z80ctc_trg2_w),		// ZC/TO2 callback
+	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg3),		// ZC/TO0 callback
+	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg1),		// ZC/TO1 callback
+	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg2),		// ZC/TO2 callback
 };
 
 #if 0
@@ -2761,11 +2760,11 @@ ROM_END
 
 
 /* Convert the ROM interleaving into something usable by the write handlers */
-DRIVER_INIT( x1_kanji )
+DRIVER_INIT_MEMBER(x1_state,x1_kanji)
 {
 	UINT32 i,j,k,l;
-	UINT8 *kanji = machine.root_device().memregion("kanji")->base();
-	UINT8 *raw_kanji = machine.root_device().memregion("raw_kanji")->base();
+	UINT8 *kanji = machine().root_device().memregion("kanji")->base();
+	UINT8 *raw_kanji = machine().root_device().memregion("raw_kanji")->base();
 
 	k = 0;
 	for(l=0;l<2;l++)
@@ -2784,8 +2783,8 @@ DRIVER_INIT( x1_kanji )
 
 
 /*    YEAR  NAME       PARENT  COMPAT   MACHINE  INPUT       INIT      COMPANY    FULLNAME      FLAGS */
-COMP( 1982, x1,        0,      0,       x1,      x1,         0,        "Sharp", "X1 (CZ-800C)", 0 )
+COMP( 1982, x1,        0,      0,       x1,      x1, driver_device,         0,        "Sharp", "X1 (CZ-800C)", 0 )
 // x1twin in x1twin.c
-COMP( 1984, x1turbo,   x1,     0,       x1turbo, x1turbo,    x1_kanji, "Sharp", "X1 Turbo (CZ-850C)", GAME_NOT_WORKING ) //model 10
-COMP( 1985, x1turbo40, x1,     0,       x1turbo, x1turbo,    x1_kanji, "Sharp", "X1 Turbo (CZ-862C)", 0 ) //model 40
+COMP( 1984, x1turbo,   x1,     0,       x1turbo, x1turbo, x1_state,    x1_kanji, "Sharp", "X1 Turbo (CZ-850C)", GAME_NOT_WORKING ) //model 10
+COMP( 1985, x1turbo40, x1,     0,       x1turbo, x1turbo, x1_state,    x1_kanji, "Sharp", "X1 Turbo (CZ-862C)", 0 ) //model 40
 // x1turboz  /* 1986 Sharp X1 TurboZ  */

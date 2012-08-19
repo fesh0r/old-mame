@@ -229,10 +229,10 @@ void pes_state::machine_reset()
     machine.scheduler().timer_set(attotime::from_hz(10000), FUNC(outfifo_read_cb));
 }*/
 
-DRIVER_INIT( pes )
+DRIVER_INIT_MEMBER(pes_state,pes)
 {
-	i8051_set_serial_tx_callback(machine.device("maincpu"), data_from_i8031);
-	i8051_set_serial_rx_callback(machine.device("maincpu"), data_to_i8031);
+	i8051_set_serial_tx_callback(machine().device("maincpu"), data_from_i8031);
+	i8051_set_serial_rx_callback(machine().device("maincpu"), data_to_i8031);
 }
 
 /******************************************************************************
@@ -292,4 +292,4 @@ ROM_END
 ******************************************************************************/
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY                        FULLNAME            FLAGS */
-COMP( 1987, pes,    0,      0,      pes,        pes,    pes, "Pacific Educational Systems", "VPU-01 Speech box", GAME_NOT_WORKING )
+COMP( 1987, pes,    0,      0,      pes,        pes, pes_state,    pes, "Pacific Educational Systems", "VPU-01 Speech box", GAME_NOT_WORKING )

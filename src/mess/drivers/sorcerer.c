@@ -485,11 +485,10 @@ static MACHINE_CONFIG_DERIVED( sorcererd, sorcerer )
 MACHINE_CONFIG_END
 
 
-static DRIVER_INIT( sorcerer )
+DRIVER_INIT_MEMBER(sorcerer_state,sorcerer)
 {
-	sorcerer_state *state = machine.driver_data<sorcerer_state>();
-	UINT8 *RAM = state->memregion("maincpu")->base();
-	state->membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xe000);
+	UINT8 *RAM = memregion("maincpu")->base();
+	membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xe000);
 }
 
 /***************************************************************************
@@ -518,5 +517,5 @@ ROM_START(sorcererd)
 ROM_END
 
 /*   YEAR  NAME       PARENT    COMPAT    MACHINE    INPUT     INIT        COMPANY     FULLNAME */
-COMP(1979, sorcerer,  0,        0,        sorcerer,  sorcerer, sorcerer, "Exidy Inc", "Sorcerer", 0 )
-COMP(1979, sorcererd, sorcerer, 0,        sorcererd, sorcerer, sorcerer, "Exidy Inc", "Sorcerer (with floppy disks)", 0 )
+COMP(1979, sorcerer,  0,        0,        sorcerer,  sorcerer, sorcerer_state, sorcerer, "Exidy Inc", "Sorcerer", 0 )
+COMP(1979, sorcererd, sorcerer, 0,        sorcererd, sorcerer, sorcerer_state, sorcerer, "Exidy Inc", "Sorcerer (with floppy disks)", 0 )

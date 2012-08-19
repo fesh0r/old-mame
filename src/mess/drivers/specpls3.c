@@ -366,16 +366,14 @@ static MACHINE_RESET( spectrum_plus3 )
 	spectrum_plus3_update_memory(machine);
 }
 
-static DRIVER_INIT( plus3 )
+DRIVER_INIT_MEMBER(spectrum_state,plus3)
 {
-	spectrum_state *state = machine.driver_data<spectrum_state>();
-	state->m_floppy = 1;
+	m_floppy = 1;
 }
 
-static DRIVER_INIT( plus2 )
+DRIVER_INIT_MEMBER(spectrum_state,plus2)
 {
-	spectrum_state *state = machine.driver_data<spectrum_state>();
-	state->m_floppy = 0;
+	m_floppy = 0;
 }
 
 static const floppy_interface specpls3_floppy_interface =
@@ -499,9 +497,9 @@ ROM_START(sp3eata)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE         INPUT       INIT    COMPANY     FULLNAME */
-COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus,	plus2,	"Amstrad plc",          "ZX Spectrum +2a" , 0 )
-COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus,	plus3,	"Amstrad plc",          "ZX Spectrum +3" , 0 )
-COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus,	plus3,	"Amstrad plc",          "ZX Spectrum +3e" , GAME_UNOFFICIAL )
-COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_UNOFFICIAL )
-COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_UNOFFICIAL )
-COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_UNOFFICIAL )
+COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus2,	"Amstrad plc",          "ZX Spectrum +2a" , 0 )
+COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3" , 0 )
+COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e" , GAME_UNOFFICIAL )
+COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_UNOFFICIAL )
+COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_UNOFFICIAL )
+COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_UNOFFICIAL )

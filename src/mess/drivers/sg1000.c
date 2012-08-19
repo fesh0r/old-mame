@@ -151,7 +151,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sg1000_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489an_device, write)
+	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0x81, 0x81) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xdc, 0xdc) AM_READ_PORT("PA7")
@@ -176,7 +176,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( omv_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489an_device, write)
+	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0x81, 0x81) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x38) AM_READ_PORT("C0")
@@ -203,7 +203,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sc3000_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489an_device, write)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
 	AM_RANGE(0xbe, 0xbe) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0xbf, 0xbf) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(UPD9255_TAG, i8255_device, read, write)
@@ -213,7 +213,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sc3000_io_map, AS_IO, 8, sg1000_state )
     ADDRESS_MAP_GLOBAL_MASK(0xff)
     AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE(UPD9255_TAG, i8255_device, read, write)
-    AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489an_device, write)
+    AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
     AM_RANGE(0x00, 0x00) AM_MIRROR(0xae) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
     AM_RANGE(0x01, 0x01) AM_MIRROR(0xae) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
     AM_RANGE(0x60, 0x60) AM_MIRROR(0x9f) AM_READ(sc3000_r_r)
@@ -235,7 +235,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sf7000_io_map, AS_IO, 8, sf7000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489an_device, write)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
 	AM_RANGE(0xbe, 0xbe) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0xbf, 0xbf) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(UPD9255_0_TAG, i8255_device, read, write)
@@ -1117,7 +1117,7 @@ static MACHINE_CONFIG_START( sg1000, sg1000_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489AN, XTAL_10_738635MHz/3)
+	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A_NEW, XTAL_10_738635MHz/3)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_CONFIG(psg_intf)
 
@@ -1171,7 +1171,7 @@ static MACHINE_CONFIG_START( sc3000, sc3000_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489AN, XTAL_10_738635MHz/3)
+	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A_NEW, XTAL_10_738635MHz/3)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_CONFIG(psg_intf)
 
@@ -1212,7 +1212,7 @@ static MACHINE_CONFIG_START( sf7000, sf7000_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489AN, XTAL_10_738635MHz/3)
+	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A_NEW, XTAL_10_738635MHz/3)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_CONFIG(psg_intf)
 
@@ -1268,10 +1268,10 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT      COMPAT      MACHINE     INPUT       INIT    COMPANY             FULLNAME                                    FLAGS */
-CONS( 1983,	sg1000,     0,          0,          sg1000,     sg1000,     0,      "Sega",             "SG-1000",                                  GAME_SUPPORTS_SAVE )
-CONS( 1984,	sg1000m2,   sg1000,     0,          sc3000,     sc3000,     0,      "Sega",             "SG-1000 II",                               GAME_SUPPORTS_SAVE )
-COMP( 1983,	sc3000,     0,          sg1000,     sc3000,     sc3000,     0,      "Sega",             "SC-3000",                                  GAME_SUPPORTS_SAVE )
-COMP( 1983,	sc3000h,    sc3000,     0,          sc3000,     sc3000,     0,      "Sega",             "SC-3000H",                                 GAME_SUPPORTS_SAVE )
-COMP( 1983,	sf7000,     sc3000,     0,          sf7000,     sf7000,     0,      "Sega",             "SC-3000/Super Control Station SF-7000",    GAME_SUPPORTS_SAVE )
-CONS( 1984,	omv1000,    sg1000,     0,          omv,        omv,        0,      "Tsukuda Original", "Othello Multivision FG-1000",              GAME_SUPPORTS_SAVE )
-CONS( 1984,	omv2000,    sg1000,     0,          omv,        omv,        0,      "Tsukuda Original", "Othello Multivision FG-2000",              GAME_SUPPORTS_SAVE )
+CONS( 1983,	sg1000,     0,          0,          sg1000,     sg1000, driver_device,     0,      "Sega",             "SG-1000",                                  GAME_SUPPORTS_SAVE )
+CONS( 1984,	sg1000m2,   sg1000,     0,          sc3000,     sc3000, driver_device,     0,      "Sega",             "SG-1000 II",                               GAME_SUPPORTS_SAVE )
+COMP( 1983,	sc3000,     0,          sg1000,     sc3000,     sc3000, driver_device,     0,      "Sega",             "SC-3000",                                  GAME_SUPPORTS_SAVE )
+COMP( 1983,	sc3000h,    sc3000,     0,          sc3000,     sc3000, driver_device,     0,      "Sega",             "SC-3000H",                                 GAME_SUPPORTS_SAVE )
+COMP( 1983,	sf7000,     sc3000,     0,          sf7000,     sf7000, driver_device,     0,      "Sega",             "SC-3000/Super Control Station SF-7000",    GAME_SUPPORTS_SAVE )
+CONS( 1984,	omv1000,    sg1000,     0,          omv,        omv, driver_device,        0,      "Tsukuda Original", "Othello Multivision FG-1000",              GAME_SUPPORTS_SAVE )
+CONS( 1984,	omv2000,    sg1000,     0,          omv,        omv, driver_device,        0,      "Tsukuda Original", "Othello Multivision FG-2000",              GAME_SUPPORTS_SAVE )

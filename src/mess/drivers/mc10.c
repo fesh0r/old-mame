@@ -50,7 +50,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	optional_device<mc6847_base_device> m_mc6847;
 	optional_device<ef9345_device> m_ef9345;
-	required_device<device_t> m_dac;
+	required_device<dac_device> m_dac;
 	required_device<ram_device> m_ram;
 	required_device<cassette_image_device> m_cassette;
 	required_device<printer_image_device> m_printer;
@@ -65,8 +65,6 @@ public:
 	UINT8 m_pr_counter;
 	UINT8 m_pr_state;
 
-	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-
 	DECLARE_READ8_MEMBER( mc10_bfff_r );
 	DECLARE_WRITE8_MEMBER( mc10_bfff_w );
 	DECLARE_READ8_MEMBER( alice90_bfff_r );
@@ -76,6 +74,7 @@ public:
 	DECLARE_READ8_MEMBER( mc10_port2_r );
 	DECLARE_WRITE8_MEMBER( mc10_port2_w );
 	DECLARE_READ8_MEMBER( mc10_mc6847_videoram_r );
+	DECLARE_DRIVER_INIT(mc10);
 };
 
 
@@ -133,13 +132,13 @@ WRITE8_MEMBER( mc10_state::mc10_bfff_w )
 	m_mc6847->css_w(BIT(data, 6));
 
 	/* bit 7, dac output */
-	dac_data_w(m_dac, BIT(data, 7));
+	m_dac->write_unsigned8(BIT(data, 7));
 }
 
 WRITE8_MEMBER( mc10_state::alice32_bfff_w )
 {
 	/* bit 7, dac output */
-	dac_data_w(m_dac, BIT(data, 7));
+	m_dac->write_unsigned8(BIT(data, 7));
 }
 
 
@@ -224,16 +223,6 @@ READ8_MEMBER( mc10_state::mc10_mc6847_videoram_r )
 	return m_ram_base[offset];
 }
 
-UINT32 mc10_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
-{
-	if (m_mc6847)		//mc10, alice
-		return m_mc6847->screen_update(screen, bitmap, cliprect);
-	else if (m_ef9345)	//alice32
-		return m_ef9345->screen_update(screen, bitmap, cliprect);
-
-	return 0;
-}
-
 static TIMER_DEVICE_CALLBACK( alice32_scanline )
 {
 	mc10_state *state = timer.machine().driver_data<mc10_state>();
@@ -245,34 +234,33 @@ static TIMER_DEVICE_CALLBACK( alice32_scanline )
     DRIVER INIT
 ***************************************************************************/
 
-static DRIVER_INIT( mc10 )
+DRIVER_INIT_MEMBER(mc10_state,mc10)
 {
-	mc10_state *state = machine.driver_data<mc10_state>();
-	address_space *prg = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space *prg = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	/* initialize keyboard strobe */
-	state->m_keyboard_strobe = 0x00;
+	m_keyboard_strobe = 0x00;
 
 	/* initialize memory */
-	state->m_ram_base = state->m_ram->pointer();
-	state->m_ram_size = state->m_ram->size();
-	state->m_pr_state = PRINTER_WAIT;
+	m_ram_base = m_ram->pointer();
+	m_ram_size = m_ram->size();
+	m_pr_state = PRINTER_WAIT;
 
-	state->membank("bank1")->set_base(state->m_ram_base);
+	membank("bank1")->set_base(m_ram_base);
 
 	/* initialize memory expansion */
-	if (state->m_ram_size == 20*1024)
-		state->membank("bank2")->set_base(state->m_ram_base + 0x1000);
-	else if (state->m_ram_size == 24*1024)
-		state->membank("bank2")->set_base(state->m_ram_base + 0x2000);
-	else  if (state->m_ram_size != 32*1024)		//ensure that is not alice90
+	if (m_ram_size == 20*1024)
+		membank("bank2")->set_base(m_ram_base + 0x1000);
+	else if (m_ram_size == 24*1024)
+		membank("bank2")->set_base(m_ram_base + 0x2000);
+	else  if (m_ram_size != 32*1024)		//ensure that is not alice90
 		prg->nop_readwrite(0x5000, 0x8fff);
 
 	/* register for state saving */
-	state_save_register_global(machine, state->m_keyboard_strobe);
+	state_save_register_global(machine(), m_keyboard_strobe);
 
 	//for alice32 force port4 DDR to 0xff at startup
-	if (!strcmp(machine.system().name, "alice32") || !strcmp(machine.system().name, "alice90"))
+	if (!strcmp(machine().system().name, "alice32") || !strcmp(machine().system().name, "alice90"))
 		m6801_io_w(prg, 0x05, 0xff);
 }
 
@@ -557,7 +545,7 @@ static MACHINE_CONFIG_START( alice32, mc10_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_UPDATE_DRIVER(mc10_state, screen_update)
+	MCFG_SCREEN_UPDATE_DEVICE("ef9345", ef9345_device, screen_update)
 	MCFG_SCREEN_SIZE(336, 270)
 	MCFG_SCREEN_VISIBLE_AREA(00, 336-1, 00, 270-1)
 	MCFG_PALETTE_LENGTH(8)
@@ -632,7 +620,7 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  COMPANY              FULLNAME  FLAGS */
-COMP( 1983, mc10,  0,      0,      mc10,    mc10,  mc10, "Tandy Radio Shack", "MC-10",  GAME_SUPPORTS_SAVE )
-COMP( 1983, alice, mc10,   0,      mc10,    alice, mc10, "Matra & Hachette",  "Alice",  GAME_SUPPORTS_SAVE )
-COMP( 1984, alice32,       0, 0,   alice32, alice, mc10, "Matra & Hachette",  "Alice 32",  GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
-COMP( 1985, alice90, alice32, 0,   alice90, alice, mc10, "Matra & Hachette",  "Alice 90",  GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+COMP( 1983, mc10,  0,      0,      mc10,    mc10, mc10_state,  mc10, "Tandy Radio Shack", "MC-10",  GAME_SUPPORTS_SAVE )
+COMP( 1983, alice, mc10,   0,      mc10,    alice, mc10_state, mc10, "Matra & Hachette",  "Alice",  GAME_SUPPORTS_SAVE )
+COMP( 1984, alice32,       0, 0,   alice32, alice, mc10_state, mc10, "Matra & Hachette",  "Alice 32",  GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+COMP( 1985, alice90, alice32, 0,   alice90, alice, mc10_state, mc10, "Matra & Hachette",  "Alice 90",  GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )

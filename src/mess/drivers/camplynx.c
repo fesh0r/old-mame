@@ -103,6 +103,7 @@ public:
 	DECLARE_WRITE8_MEMBER(lynx48k_bank_w);
 	DECLARE_WRITE8_MEMBER(lynx128k_bank_w);
 	DECLARE_WRITE8_MEMBER(lynx128k_irq);
+	DECLARE_DRIVER_INIT(lynx48k);
 };
 
 /* These bankswitch handlers are very incomplete, just enough to get the
@@ -212,7 +213,7 @@ static ADDRESS_MAP_START( lynx48k_io , AS_IO, 8, camplynx_state )
 	AM_RANGE(0x0780,0x0780) AM_READ_PORT("LINE7")
 	AM_RANGE(0x0880,0x0880) AM_READ_PORT("LINE8")
 	AM_RANGE(0x0980,0x0980) AM_READ_PORT("LINE9")
-	AM_RANGE(0x0084,0x0084) AM_MIRROR(0xff00) AM_DEVWRITE_LEGACY("dac", dac_w)	/* 6-bit dac */
+	AM_RANGE(0x0084,0x0084) AM_MIRROR(0xff00) AM_DEVWRITE("dac", dac_device, write_unsigned8)	/* 6-bit dac */
 	AM_RANGE(0x0086,0x0086) AM_MIRROR(0xff00) AM_DEVWRITE("crtc", mc6845_device, address_w)
 	AM_RANGE(0x0087,0x0087) AM_MIRROR(0xff00) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 ADDRESS_MAP_END
@@ -238,7 +239,7 @@ static ADDRESS_MAP_START( lynx128k_io , AS_IO, 8, camplynx_state )
 	AM_RANGE(0x0880,0x0880) AM_READ_PORT("LINE8")
 	AM_RANGE(0x0980,0x0980) AM_READ_PORT("LINE9")
 	AM_RANGE(0x0082,0x0082) AM_MIRROR(0xff00) AM_WRITE(lynx128k_bank_w)	// read=serial buffer
-	AM_RANGE(0x0084,0x0084) AM_MIRROR(0xff00) AM_DEVWRITE_LEGACY("dac", dac_w)	/* 6-bit dac. Read="single-step", causes a NMI */
+	AM_RANGE(0x0084,0x0084) AM_MIRROR(0xff00) AM_DEVWRITE("dac", dac_device, write_unsigned8)	/* 6-bit dac. Read="single-step", causes a NMI */
 	AM_RANGE(0x0086,0x0086) AM_MIRROR(0xff00) AM_DEVREADWRITE("crtc", mc6845_device, status_r, address_w)
 	AM_RANGE(0x0087,0x0087) AM_MIRROR(0xff00) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 ADDRESS_MAP_END
@@ -512,11 +513,10 @@ static MACHINE_CONFIG_START( lynx128k, camplynx_state )
 	MCFG_MC6845_ADD("crtc", MC6845, XTAL_12MHz / 8 /*? dot clock divided by dots per char */, lynx128k_crtc6845_interface)
 MACHINE_CONFIG_END
 
-static DRIVER_INIT( lynx48k )
+DRIVER_INIT_MEMBER(camplynx_state,lynx48k)
 {
-	camplynx_state *state = machine.driver_data<camplynx_state>();
-	UINT8 *RAM = state->memregion("maincpu")->base();
-	state->membank("bank1")->configure_entries(0, 3, &RAM[0x8000],  0x8000);
+	UINT8 *RAM = memregion("maincpu")->base();
+	membank("bank1")->configure_entries(0, 3, &RAM[0x8000],  0x8000);
 }
 
 
@@ -550,6 +550,6 @@ ROM_END
 
 /* Driver */
 /*    YEAR  NAME       PARENT     COMPAT   MACHINE    INPUT     INIT         COMPANY     FULLNAME     FLAGS */
-COMP( 1983, lynx48k,   0,         0,       lynx48k,   lynx48k,  lynx48k,  "Camputers",  "Lynx 48k",   GAME_NOT_WORKING)
-COMP( 1983, lynx96k,   lynx48k,   0,       lynx48k,   lynx48k,  lynx48k,  "Camputers",  "Lynx 96k",   GAME_NOT_WORKING)
-COMP( 1983, lynx128k,  lynx48k,   0,       lynx128k,  lynx48k,  0,        "Camputers",  "Lynx 128k",  GAME_NOT_WORKING)
+COMP( 1983, lynx48k,   0,         0,       lynx48k,   lynx48k, camplynx_state,  lynx48k,  "Camputers",  "Lynx 48k",   GAME_NOT_WORKING)
+COMP( 1983, lynx96k,   lynx48k,   0,       lynx48k,   lynx48k, camplynx_state,  lynx48k,  "Camputers",  "Lynx 96k",   GAME_NOT_WORKING)
+COMP( 1983, lynx128k,  lynx48k,   0,       lynx128k,  lynx48k, driver_device,  0,        "Camputers",  "Lynx 128k",  GAME_NOT_WORKING)

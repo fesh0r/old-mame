@@ -62,9 +62,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lc80_io, AS_IO, 8, lc80_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
-	AM_RANGE(0xf4, 0xf7) AM_DEVREADWRITE_LEGACY(Z80PIO1_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
-	AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE_LEGACY(Z80PIO2_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
-	AM_RANGE(0xec, 0xef) AM_DEVREADWRITE_LEGACY(Z80CTC_TAG, z80ctc_r, z80ctc_w)
+	AM_RANGE(0xf4, 0xf7) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_device, read, write)
+	AM_RANGE(0xf8, 0xfb) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_device, read, write)
+	AM_RANGE(0xec, 0xef) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_device, read, write)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -133,7 +133,6 @@ WRITE_LINE_MEMBER( lc80_state::ctc_z2_w )
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
-	0,              	/* timer disables */
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
 	DEVCB_DRIVER_LINE_MEMBER(lc80_state, ctc_z0_w),			/* ZC/TO0 callback */
 	DEVCB_DRIVER_LINE_MEMBER(lc80_state, ctc_z1_w),			/* ZC/TO1 callback */
@@ -444,6 +443,6 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                 FULLNAME                FLAGS */
-COMP( 1984, lc80,   0,      0,      lc80,   lc80,   0, "VEB Mikroelektronik", "Lerncomputer LC 80", GAME_SUPPORTS_SAVE )
-COMP( 1984, lc80_2, lc80,   0,      lc80_2, lc80,   0, "VEB Mikroelektronik", "Lerncomputer LC 80.2", GAME_SUPPORTS_SAVE )
-COMP( 1984, sc80,   lc80,   0,      lc80_2, lc80,   0, "VEB Mikroelektronik", "Schachcomputer SC-80", GAME_SUPPORTS_SAVE )
+COMP( 1984, lc80,   0,      0,      lc80,   lc80, driver_device,   0, "VEB Mikroelektronik", "Lerncomputer LC 80", GAME_SUPPORTS_SAVE )
+COMP( 1984, lc80_2, lc80,   0,      lc80_2, lc80, driver_device,   0, "VEB Mikroelektronik", "Lerncomputer LC 80.2", GAME_SUPPORTS_SAVE )
+COMP( 1984, sc80,   lc80,   0,      lc80_2, lc80, driver_device,   0, "VEB Mikroelektronik", "Schachcomputer SC-80", GAME_SUPPORTS_SAVE )

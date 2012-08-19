@@ -496,14 +496,13 @@ DIRECT_UPDATE_MEMBER(mc1000_state::mc1000_direct_update_handler)
 	return address;
 }
 
-static DRIVER_INIT( mc1000 )
+DRIVER_INIT_MEMBER(mc1000_state,mc1000)
 {
-	mc1000_state *state = machine.driver_data<mc1000_state>();
 
-	machine.device(Z80_TAG)->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(mc1000_state::mc1000_direct_update_handler), state));
+	machine().device(Z80_TAG)->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(mc1000_state::mc1000_direct_update_handler), this));
 }
 
 /* System Drivers */
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME        FLAGS */
-COMP( 1985,	mc1000,		0,			0,		mc1000,		mc1000,		mc1000,		"CCE",				"MC-1000",		GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+COMP( 1985,	mc1000,		0,			0,		mc1000,		mc1000, mc1000_state,		mc1000,		"CCE",				"MC-1000",		GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )

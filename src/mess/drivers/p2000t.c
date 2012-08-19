@@ -213,6 +213,8 @@ static SCREEN_UPDATE_IND16( p2000t )
 	device_t *saa5050 = screen.machine().device("saa5050");
 
 	saa5050_update(saa5050, bitmap, cliprect);
+	saa5050_frame_advance(saa5050);
+
 	return 0;
 }
 
@@ -297,5 +299,5 @@ ROM_START(p2000m)
 ROM_END
 
 /*      YEAR    NAME    PARENT  COMPAT  MACHINE     INPUT       INIT      COMPANY     FULLNAME */
-COMP ( 1980,    p2000t, 0,      0,      p2000t,     p2000t,     0,       "Philips", "Philips P2000T", 0)
-COMP ( 1980,    p2000m, p2000t, 0,      p2000m,     p2000t,     0,       "Philips", "Philips P2000M", 0)
+COMP ( 1980,    p2000t, 0,      0,      p2000t,     p2000t, driver_device,     0,       "Philips", "Philips P2000T", 0)
+COMP ( 1980,    p2000m, p2000t, 0,      p2000m,     p2000t, driver_device,     0,       "Philips", "Philips P2000M", 0)

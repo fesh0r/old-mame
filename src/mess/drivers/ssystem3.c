@@ -229,10 +229,10 @@ static const via6522_interface ssystem3_via_config=
 	DEVCB_NULL,//void (*irq_func)(int state);
 };
 
-static DRIVER_INIT( ssystem3 )
+DRIVER_INIT_MEMBER(ssystem3_state,ssystem3)
 {
-	ssystem3_playfield_reset(machine);
-	ssystem3_lcd_reset(machine);
+	ssystem3_playfield_reset(machine());
+	ssystem3_lcd_reset(machine());
 }
 
 static ADDRESS_MAP_START( ssystem3_map , AS_PROGRAM, 8, ssystem3_state )
@@ -346,5 +346,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT        COMPANY     FULLNAME */
-CONS( 1979,	ssystem3, 0,		0,		ssystem3, ssystem3,	ssystem3,	"NOVAG Industries Ltd",  "Chess Champion Super System III", GAME_NOT_WORKING | GAME_NO_SOUND)
+CONS( 1979,	ssystem3, 0,		0,		ssystem3, ssystem3, ssystem3_state,	ssystem3,	"NOVAG Industries Ltd",  "Chess Champion Super System III", GAME_NOT_WORKING | GAME_NO_SOUND)
 //chess champion MK III in germany

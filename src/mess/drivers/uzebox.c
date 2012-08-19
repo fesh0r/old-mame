@@ -16,6 +16,7 @@ public:
 		: driver_device(mconfig, type, tag)
 	{
 	}
+	DECLARE_DRIVER_INIT(uzebox);
 };
 /****************************************************\
 * Address maps                                       *
@@ -50,7 +51,7 @@ static SCREEN_UPDATE_RGB32( uzebox )
 * Machine definition                                 *
 \****************************************************/
 
-static DRIVER_INIT( uzebox )
+DRIVER_INIT_MEMBER(uzebox_state,uzebox)
 {
 }
 
@@ -94,4 +95,4 @@ ROM_START( uzebox )
 ROM_END
 
 /*   YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-CONS(2010, uzebox,   0,        0,        uzebox,   uzebox,   uzebox,  "Belogic", "Uzebox", GAME_NO_SOUND | GAME_NOT_WORKING)
+CONS(2010, uzebox,   0,        0,        uzebox,   uzebox, uzebox_state,   uzebox,  "Belogic", "Uzebox", GAME_NO_SOUND | GAME_NOT_WORKING)

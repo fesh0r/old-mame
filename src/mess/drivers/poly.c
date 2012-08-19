@@ -146,6 +146,8 @@ static SCREEN_UPDATE_IND16( poly )
 	device_t *saa5050 = screen.machine().device("saa5050");
 
 	saa5050_update(saa5050, bitmap, cliprect);
+	saa5050_frame_advance(saa5050);
+
 	return 0;
 }
 
@@ -229,4 +231,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR   NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1981,  poly1,  0,      0,       poly,      poly,    0,      "Polycorp",  "Poly-1 Educational Computer", GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1981,  poly1,  0,      0,       poly,      poly, driver_device,    0,      "Polycorp",  "Poly-1 Educational Computer", GAME_NOT_WORKING | GAME_NO_SOUND )

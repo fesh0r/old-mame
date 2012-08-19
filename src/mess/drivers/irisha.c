@@ -181,7 +181,7 @@ static MACHINE_CONFIG_START( irisha, irisha_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_CONFIG_END
 
 /* ROM definition */
@@ -194,4 +194,4 @@ ROM_END
 
 /* Driver */
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY  FULLNAME   FLAGS */
-COMP( 1983, irisha, 	 0, 	 0,	irisha, 	irisha, 	irisha, "MGU",    "Irisha",	 GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1983, irisha, 	 0, 	 0,	irisha, 	irisha, irisha_state,	irisha, "MGU",    "Irisha",	 GAME_NOT_WORKING | GAME_NO_SOUND)

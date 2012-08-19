@@ -60,6 +60,7 @@ public:
 
 	UINT32 m_port[9];
 	device_t *m_s3c2440;
+	DECLARE_DRIVER_INIT(gizmondo);
 };
 
 /*******************************************************************************
@@ -164,7 +165,7 @@ ADDRESS_MAP_END
     MACHINE DRIVERS
 *******************************************************************************/
 
-static DRIVER_INIT( gizmondo )
+DRIVER_INIT_MEMBER(gizmondo_state,gizmondo)
 {
 	// do nothing
 }
@@ -251,4 +252,4 @@ ROM_START( gizmondo )
 	ROMX_LOAD( "fboot.bin", 0, 0x800, CRC(28887c29) SHA1(e625caaa63b9db74cb6d7499dce12ac758c5fe76), ROM_BIOS(1) )
 ROM_END
 
-CONS(2005, gizmondo, 0, 0, gizmondo, gizmondo, gizmondo, "Tiger Telematics", "Gizmondo", GAME_NOT_WORKING | GAME_NO_SOUND)
+CONS(2005, gizmondo, 0, 0, gizmondo, gizmondo, gizmondo_state, gizmondo, "Tiger Telematics", "Gizmondo", GAME_NOT_WORKING | GAME_NO_SOUND)

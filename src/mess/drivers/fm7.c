@@ -811,7 +811,7 @@ READ8_MEMBER(fm7_state::fm77av_boot_mode_r)
 	if(ioport("DSW")->read() & 0x02)
 		ret &= ~0x01;
 
-	return 0xff;
+	return ret;
 }
 
 /*
@@ -1064,7 +1064,7 @@ static void fm7_update_bank(address_space* space, int bank, UINT8 physical)
 	}
 	if(physical == 0x36 || physical == 0x37)
 	{
-		if(state->m_init_rom_en && (state->m_type != SYS_FM11 || state->m_type != SYS_FM16))
+		if(state->m_init_rom_en && (state->m_type != SYS_FM11 && state->m_type != SYS_FM16))
 		{
 			RAM = space->machine().root_device().memregion("init")->base();
 			space->install_read_bank(bank*0x1000,(bank*0x1000)+size,bank_name);
@@ -1075,7 +1075,7 @@ static void fm7_update_bank(address_space* space, int bank, UINT8 physical)
 	}
 	if(physical > 0x37 && physical <= 0x3f)
 	{
-		if(state->m_basic_rom_en && (state->m_type != SYS_FM11 || state->m_type != SYS_FM16))
+		if(state->m_basic_rom_en && (state->m_type != SYS_FM11 && state->m_type != SYS_FM16))
 		{
 			RAM = space->machine().root_device().memregion("fbasic")->base();
 			space->install_read_bank(bank*0x1000,(bank*0x1000)+size,bank_name);
@@ -1521,8 +1521,10 @@ static ADDRESS_MAP_START( fm11_sub_mem, AS_PROGRAM, 8, fm7_state )
 	AM_RANGE(0x8000,0x8fff) AM_RAM // Console RAM(?)
 	AM_RANGE(0x9000,0x9f7f) AM_RAM // Work RAM(?)
 	AM_RANGE(0x9f80,0x9fff) AM_RAM AM_SHARE("shared_ram")
-	AM_RANGE(0xafe4,0xafe4) AM_READWRITE(fm7_sub_busyflag_r,fm7_sub_busyflag_w)
+	AM_RANGE(0xafe0,0xafe3) AM_RAM
+//  AM_RANGE(0xafe4,0xafe4) AM_READWRITE(fm7_sub_busyflag_r,fm7_sub_busyflag_w)
 	AM_RANGE(0xafe6,0xafe6) AM_READWRITE(fm77av_video_flags_r,fm77av_video_flags_w)
+	AM_RANGE(0xaff0,0xaff0) AM_READWRITE(fm7_sub_busyflag_r,fm7_sub_busyflag_w)
 	AM_RANGE(0xc000,0xffff) AM_ROM // sybsystem ROM
 ADDRESS_MAP_END
 
@@ -1828,17 +1830,16 @@ static INPUT_PORTS_START( fm8 )
 	PORT_CONFSETTING(0x01,"Dempa Shinbunsha Joystick")
 INPUT_PORTS_END
 
-static DRIVER_INIT(fm7)
+DRIVER_INIT_MEMBER(fm7_state,fm7)
 {
-	fm7_state *state = machine.driver_data<fm7_state>();
-//  state->m_shared_ram = auto_alloc_array(machine,UINT8,0x80);
-	state->m_video_ram = auto_alloc_array(machine,UINT8,0x18000);  // 2 pages on some systems
-	state->m_timer = machine.scheduler().timer_alloc(FUNC(fm7_timer_irq));
-	state->m_subtimer = machine.scheduler().timer_alloc(FUNC(fm7_subtimer_irq));
-	state->m_keyboard_timer = machine.scheduler().timer_alloc(FUNC(fm7_keyboard_poll));
-	state->m_fm77av_vsync_timer = machine.scheduler().timer_alloc(FUNC(fm77av_vsync));
-	device_set_irq_callback(machine.device("maincpu"),fm7_irq_ack);
-	device_set_irq_callback(machine.device("sub"),fm7_sub_irq_ack);
+//  m_shared_ram = auto_alloc_array(machine(),UINT8,0x80);
+	m_video_ram = auto_alloc_array(machine(),UINT8,0x18000);  // 2 pages on some systems
+	m_timer = machine().scheduler().timer_alloc(FUNC(fm7_timer_irq));
+	m_subtimer = machine().scheduler().timer_alloc(FUNC(fm7_subtimer_irq));
+	m_keyboard_timer = machine().scheduler().timer_alloc(FUNC(fm7_keyboard_poll));
+	m_fm77av_vsync_timer = machine().scheduler().timer_alloc(FUNC(fm77av_vsync));
+	device_set_irq_callback(machine().device("maincpu"),fm7_irq_ack);
+	device_set_irq_callback(machine().device("sub"),fm7_sub_irq_ack);
 }
 
 static MACHINE_START(fm7)
@@ -2004,7 +2005,7 @@ static const ym2203_interface fm7_ym_intf =
 		DEVCB_NULL,					/* portA write */
 		DEVCB_NULL					/* portB write */
 	},
-	fm77av_fmirq
+	DEVCB_LINE(fm77av_fmirq)
 };
 
 static const cassette_interface fm7_cassette_interface =
@@ -2422,12 +2423,12 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE  INPUT   INIT  COMPANY      FULLNAME        FLAGS */
-COMP( 1981, fm8,      0,      0,      fm8,     fm8,    fm7,  "Fujitsu",   "FM-8",         0)
-COMP( 1982, fm7,      0,      0,      fm7,     fm7,    fm7,  "Fujitsu",   "FM-7",         0)
-COMP( 1982, fm7a,     fm7,    0,      fm7,     fm7,    fm7,  "Fujitsu",   "FM-7 (alternate)", 0)
-COMP( 1985, fm77av,   fm7,    0,      fm77av,  fm7,    fm7,  "Fujitsu",   "FM-77AV",      GAME_IMPERFECT_GRAPHICS)
-COMP( 1985, fm7740sx, fm7,    0,      fm77av,  fm7,    fm7,  "Fujitsu",   "FM-77AV40SX",  GAME_NOT_WORKING)
+COMP( 1981, fm8,      0,      0,      fm8,     fm8, fm7_state,    fm7,  "Fujitsu",   "FM-8",         0)
+COMP( 1982, fm7,      0,      0,      fm7,     fm7, fm7_state,    fm7,  "Fujitsu",   "FM-7",         0)
+COMP( 1982, fm7a,     fm7,    0,      fm7,     fm7, fm7_state,    fm7,  "Fujitsu",   "FM-7 (alternate)", 0)
+COMP( 1985, fm77av,   fm7,    0,      fm77av,  fm7, fm7_state,    fm7,  "Fujitsu",   "FM-77AV",      GAME_IMPERFECT_GRAPHICS)
+COMP( 1985, fm7740sx, fm7,    0,      fm77av,  fm7, fm7_state,    fm7,  "Fujitsu",   "FM-77AV40SX",  GAME_NOT_WORKING)
 
 // These may be separated into a separate driver, depending on how different they are to the FM-8/FM-7
-COMP( 1982, fm11,     0,      0,      fm11,     fm7,    fm7,       "Fujitsu",   "FM-11 EX",      GAME_NOT_WORKING)
-COMP( 1982, fm16beta, 0,      0,      fm16beta, fm7,    fm7,       "Fujitsu",   "FM-16\xCE\xB2", GAME_NOT_WORKING)
+COMP( 1982, fm11,     0,      0,      fm11,     fm7, fm7_state,    fm7,       "Fujitsu",   "FM-11 EX",      GAME_NOT_WORKING)
+COMP( 1982, fm16beta, 0,      0,      fm16beta, fm7, fm7_state,    fm7,       "Fujitsu",   "FM-16\xCE\xB2", GAME_NOT_WORKING)

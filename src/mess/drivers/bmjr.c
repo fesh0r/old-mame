@@ -47,6 +47,7 @@ public:
 	UINT8 *m_p_chargen;
 	UINT8 m_xor_display;
 	UINT8 m_key_mux;
+	DECLARE_DRIVER_INIT(bmjr);
 };
 
 
@@ -385,10 +386,10 @@ ROM_START( bmjr )
 ROM_END
 
 /* Driver */
-static DRIVER_INIT( bmjr )
+DRIVER_INIT_MEMBER(bmjr_state,bmjr)
 {
 
 }
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY        FULLNAME       FLAGS */
-COMP( 1982, bmjr,   0,      0,       bmjr,      bmjr,    bmjr,  "Hitachi", "Basic Master Jr", GAME_NOT_WORKING)
+COMP( 1982, bmjr,   0,      0,       bmjr,      bmjr, bmjr_state,    bmjr,  "Hitachi", "Basic Master Jr", GAME_NOT_WORKING)

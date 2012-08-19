@@ -73,6 +73,7 @@ public:
 
 	DECLARE_READ32_MEMBER(a310_psy_wram_r);
 	DECLARE_WRITE32_MEMBER(a310_psy_wram_w);
+	DECLARE_DRIVER_INIT(a310);
 };
 
 
@@ -103,15 +104,14 @@ WRITE32_MEMBER(a310_state::a310_psy_wram_w)
 }
 
 
-static DRIVER_INIT(a310)
+DRIVER_INIT_MEMBER(a310_state,a310)
 {
-	UINT32 ram_size = machine.device<ram_device>(RAM_TAG)->size();
-	a310_state *state = machine.driver_data<a310_state>();
-	archimedes_memc_physmem = auto_alloc_array(machine, UINT32, 0x01000000);
+	UINT32 ram_size = machine().device<ram_device>(RAM_TAG)->size();
+	archimedes_memc_physmem = auto_alloc_array(machine(), UINT32, 0x01000000);
 
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x02000000, 0x02000000+(ram_size-1), read32_delegate(FUNC(a310_state::a310_psy_wram_r), state), write32_delegate(FUNC(a310_state::a310_psy_wram_w), state));
+	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x02000000, 0x02000000+(ram_size-1), read32_delegate(FUNC(a310_state::a310_psy_wram_r), this), write32_delegate(FUNC(a310_state::a310_psy_wram_w), this));
 
-	archimedes_driver_init(machine);
+	archimedes_driver_init(machine());
 }
 
 static MACHINE_START( a310 )
@@ -119,7 +119,7 @@ static MACHINE_START( a310 )
 	archimedes_init(machine);
 
 	// reset the DAC to centerline
-	//dac_signed_data_w(machine.device("dac"), 0x80);
+	//machine.device<dac_device>("dac")->write_signed8(0x80);
 }
 
 static MACHINE_RESET( a310 )
@@ -351,6 +351,6 @@ ROM_START( a3020 )
 ROM_END
 
 /*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  INIT   COMPANY  FULLNAME */
-COMP( 1988, a310, 0,      0,      a310,    a310,  a310,   "Acorn", "Archimedes 310", GAME_NOT_WORKING)
-COMP( 1988, a3010, a310,  0,      a310,    a310,  a310,   "Acorn", "Archimedes 3010", GAME_NOT_WORKING)
-COMP( 1988, a3020, a310,  0,      a310,    a310,  a310,   "Acorn", "Archimedes 3020", GAME_NOT_WORKING)
+COMP( 1988, a310, 0,      0,      a310,    a310, a310_state,  a310,   "Acorn", "Archimedes 310", GAME_NOT_WORKING)
+COMP( 1988, a3010, a310,  0,      a310,    a310, a310_state,  a310,   "Acorn", "Archimedes 3010", GAME_NOT_WORKING)
+COMP( 1988, a3020, a310,  0,      a310,    a310, a310_state,  a310,   "Acorn", "Archimedes 3020", GAME_NOT_WORKING)

@@ -43,6 +43,7 @@ public:
 	sys2900_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag) { }
 
+	DECLARE_DRIVER_INIT(sys2900);
 };
 
 
@@ -78,11 +79,10 @@ static MACHINE_RESET(sys2900)
 	machine.scheduler().timer_set(attotime::from_usec(5), FUNC(sys2900_boot));
 }
 
-DRIVER_INIT( sys2900 )
+DRIVER_INIT_MEMBER(sys2900_state,sys2900)
 {
-	sys2900_state *state = machine.driver_data<sys2900_state>();
-	UINT8 *RAM = state->memregion("maincpu")->base();
-	state->membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xf000);
+	UINT8 *RAM = memregion("maincpu")->base();
+	membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xf000);
 }
 
 static VIDEO_START( sys2900 )
@@ -125,5 +125,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME     PARENT  COMPAT   MACHINE    INPUT    INIT        COMPANY          FULLNAME       FLAGS */
-COMP( 1981, sys2900, 0,      0,       sys2900,   sys2900, sys2900, "Systems Group", "System 2900", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1981, sys2900, 0,      0,       sys2900,   sys2900, sys2900_state, sys2900, "Systems Group", "System 2900", GAME_NOT_WORKING | GAME_NO_SOUND)
 

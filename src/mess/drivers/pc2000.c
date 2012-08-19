@@ -316,11 +316,10 @@ static GFXDECODE_START( pc2000 )
 	GFXDECODE_ENTRY( "hd44780", 0x0000, hd44780_charlayout, 0, 1 )
 GFXDECODE_END
 
-static const hd44780_interface pc2000_display =
+static HD44780_INTERFACE( pc2000_display )
 {
 	2,					// number of lines
-	20,					// chars for line
-	NULL				// custom display layout
+	20					// chars for line
 };
 
 static MACHINE_CONFIG_START( pc2000, pc2000_state )
@@ -370,4 +369,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1993, pc2000,  0,       0,	pc2000, 	pc2000, 	 0,  "Video Technology",   "PreComputer 2000",		GAME_NOT_WORKING)
+COMP( 1993, pc2000,  0,       0,	pc2000, 	pc2000, driver_device,	 0,  "Video Technology",   "PreComputer 2000",		GAME_NOT_WORKING)

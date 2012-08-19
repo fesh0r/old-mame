@@ -50,7 +50,7 @@
                  _SYNC  17 |             | 26  ATN
                    TED  18 |             | 25  ATNI
                     OE  19 |             | 24  ATNA
-                 _ACCL  20 |             | 23  ATNA
+                 _ACCL  20 |             | 23  OSC
                    Vcc  21 |_____________| 22  Vss
 
 **********************************************************************/
@@ -97,6 +97,7 @@ struct c64h156_interface
 // ======================> c64h156_device
 
 class c64h156_device :  public device_t,
+						public device_execute_interface,
 						public c64h156_interface
 {
 public:
@@ -120,21 +121,23 @@ public:
 	void ds_w(int data);
 	void set_side(int side);
 
-	void on_disk_changed();
+	void on_disk_changed(int wp);
 
 protected:
     // device-level overrides
-    virtual void device_start();
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
     virtual void device_config_complete();
+    virtual void device_start();
+
+    // device_execute_interface overrides
+	virtual void execute_run();
+
+    int m_icount;
 
 	inline void set_atn_line();
-	inline void set_sync_line();
-	inline void set_byte_line();
 	inline void read_current_track();
-	inline void spindle_motor(int mtr);
-	inline void step_motor(int mtr, int stp);
+	inline void update_cycles_until_next_bit();
 	inline void receive_bit();
+	inline void decode_bit();
 
 private:
 	devcb_resolved_write_line	m_out_atn_func;
@@ -143,35 +146,52 @@ private:
 
 	required_device<device_t> m_image;
 
-	// motors
-	int m_stp;								// stepper motor phase
-	int m_mtr;								// spindle motor on
-
 	// track
+	UINT16 m_shift;
 	int m_side;								// disk side
-	UINT8 m_track_buffer[G64_BUFFER_SIZE];	// track data buffer
+	UINT8 *m_track_buffer;					// track data buffer
+	UINT8 *m_speed_buffer;					// speed block buffer
 	int m_track_len;						// track length
 	offs_t m_buffer_pos;					// current byte position within track buffer
 	int m_bit_pos;							// current bit position within track buffer byte
 	int m_bit_count;						// current data byte bit counter
-	UINT16 m_data;							// data shift register
-	UINT8 m_yb;								// GCR data byte
+	int m_cycles_until_next_bit;
+	int m_zero_count;
+	int m_cycles_until_random_flux;
+
+	// motors
+	int m_stp;								// stepper motor phase
+	int m_mtr;								// spindle motor on
 
 	// signals
 	int m_accl;								// 1/2 MHz select
 	int m_ds;								// density select
 	int m_soe;								// s? output enable
-	int m_byte;								// byte ready
 	int m_oe;								// output enable (0 = write, 1 = read)
-	int m_sync;								// sync character found
 
 	// IEC
 	int m_atni;								// attention input
 	int m_atna;								// attention acknowledge
 
-	// timers
-	emu_timer *m_bit_timer;
+	// read logic
+	int m_last_bit_sync;
+	int m_bit_sync;
+	int m_byte_sync;
+	int m_block_sync;
+	int m_ue7;
+	int m_ue7_tc;
+	int m_uf4;
+	int m_uf4_qb;
+	UINT8 m_ud2;
+	int m_u4a;
+	int m_u4b;
+	int m_ue3;
+	int m_uc1b;
 
+	// write logic
+	UINT8 m_via_pa;
+	UINT8 m_ud3;
+	int m_wp;
 };
 
 

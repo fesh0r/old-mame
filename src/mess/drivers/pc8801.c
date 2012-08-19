@@ -2,7 +2,7 @@
 
     PC-8801 (c) 1981 NEC
 
-    preliminary driver by Angelo Salese, original MESS PC-88SR driver by ???
+    driver by Angelo Salese, original MESS PC-88SR driver by ???
 
     TODO:
     - implement proper i8214 routing, also add irq latch mechanism;
@@ -10,62 +10,147 @@
 
     - add differences between various models;
     - implement proper upd3301 / i8257 support;
-    - mouse support;
-    - RTC support;
+    - fix "jumps" in mouse support pointer (noticeable in Balance of Power);
     - Add limits for extend work RAM;
     - What happens to the palette contents when the analog/digital palette mode changes?
     - waitstates;
     - dipswitches needs to be controlled;
     - below notes states that plain PC-8801 doesn't have a disk CPU, but the BIOS clearly checks the floppy ports. Wrong info?
-    - PC-8801MC disk shows that bitmap and text colors mixes with additive blending (basically if the tv charset has white then the bitmap draws
-      with inverted color output).
+    - clean-ups, banking and video in particular (i.e. hook-ups with memory region should go away and device models should be used instead)
 
     per-game specific TODO:
+    - 100yen Soft 8 Revival Special: tight loop with vblank bit, but vblank irq takes too much time to execute its code;
     - 177: gameplay is too fast (parent pc8801 only);
+    - 1942: missing sound, enables a masked irq;
     - Acro Jet: hangs waiting for an irq (floppy issue);
     - Advanced Fantasian: wants an irq that can't happen (I is equal to 0x3f)
     - American Success: reads the light pen?
-    - Alpha (demo): stuck note in title screen, doesn't seem to go further;
-    - Balance of Power: uses the SIO port for mouse polling;
-    - Battle Entry: moans with a JP msg then dies if you try to press either numpad 1 or 2 (asks if the user wants to use the sound board (yes 1 / no 2)
+    - Balance of Power: uses the SIO port for something ...
     - Bishoujo Baseball Gakuen: checks ym2608 after intro screen;
-    - The Black Onyx: writes a katakana msg: "rino kata ha koko ni orimasen" then doesn't show up anything.
-    - Blue Moon Story: moans with a kanji msg;.
-    - Bubblegum Crisis: crashes due of a spurious irq (works if you soft reset the emulation when it triggers the halt opcode);
-    - Can Can Bunny: bitmap artifacts on intro, could be either ALU or floppy issues;
-    - Carrot: gfxs are messed up
+    - The Black Onyx: writes a katakana msg: "sono kata ha koko ni orimasen" then doesn't show up anything. (Needs user disk?)
+    - Campaign Ban Daisenryaku 2: Hangs at title screen?
+    - Carigraph: inputs doesn't work?
+    - Can Can Bunny: bitmap artifacts on intro, caused by a fancy usage of the attribute vram;
+    - Can Can Bunny: no sound (regression);
+    - Chou Bishoujo Densetsu CROQUIS: accesses ports 0xa0-0xa3 and 0xc2-0xc3
     - Combat: mono gfx mode enabled, but I don't see any noticeable quirk?
+    - Cranston Manor (actually N88-Basic demo): no sound
+    - Datenshi Kyouko: gfx garbage on the right edge?
+    - Final Crisis: sound stuck with OPNA?
     - Fire Hawk: tries to r/w the opn ports (probably crashed due to floppy?)
+    - Gegege no Kitarou: title screen text/bitmap contrast is pretty ugly (BTANB?);
     - Grobda: palette is ugly (parent pc8801 only);
-    - Hang-On: typical busted attributes for a N-BASIC game
+    - Music Collection Vol. 2 - Final Fantasy Tokushuu: sound irq dies pretty soon
+    - N-BASIC: cursor doesn't show up;
+    - Star Cruiser: bad kanji data?
+    - Star Cruiser: reads at i/o 0x8e?
     - Wanderers from Ys: user data disk looks screwed? It loads with everything as maximum as per now ...
     - Xevious: game is too fast (parent pc8801 only)
 
-    list of games that crashes due of floppy issues:
+    list of games/apps that crashes due of floppy issues:
     - Agni no Ishi
+    - Amazoness no Hihou (takes invalid data from floppy)
     - American Truck / American Truck SR (polls read deleted data command)
-    - Bersekers Front Gaiden 3
+    - Ankokujou
+    - Ao No Sekizou (fdc CPU irq doesn't fire anymore)
+    - Arcus
+    - Attacker
+    - Autumn Park (BASIC error)
+    - Battle Gorilla
+    - Belloncho Shintai Kensa
+    - Bishoujo Noriko Part I (writes to FDC CPU ROM then expects some strict values, taken from floppy image)
+    - Blassty (attempts to read at 0x801b)
     - Bokosuka Wars (polls read ID command)
-    - Bouken Roman
-    - Bruce Lee
-    - Burning Point
-    - Burunet
-    - Castle Excellent (sets sector 0xf4?)
+    - Boukenshatachi
+    - Can Can Bunny Superior
+    - Carmine
+    - Castle Excellent (sets sector 0xf4? Jumps to 0xa100 and it shouldn't)
     - Card Game Pro 8.8k Plus Unit 1 (prints Disk i/o error 135 in vram, not visible for whatever reason)
+    - Championship Lode Runner (fdc CPU irq doesn't fire anymore)
+    - Change Vol. 1 (fdc CPU irq doesn't fire anymore)
+    - Chikyuu Boueigun (disk i/o error during "ESDF SYSTEM LOADING")
+    - Chikyuu Senshi Rayieza (fdc CPU crashes)
+    - Choplifter
+    - Columns (code at 0x28c8, copy protection)
+    - Corridor ("THIS SYSTEM NOT KOEI SYSTEM" printed on screen)
+    - Craze (returns to basic after logo pops up, tries to self-modify program data via the window offset?)
+    - Crimson
+    - Crimson 3
     - Cuby Panic (copy protection routine at 0x911A)
-    - Combat
+    - Daidasso (prints "BOOT dekimasen" on screen, can't boot)
+    - Daikoukai Jidai
+    - Databox (app)
+    - Day Dream (hangs at the CrossMedia Soft logo)
+    - Demons Ring
+    - Dennou Tsuushin
+    - Door Door MK-2 (sets up TC in the middle of execution phase read then wants status bit 6 to be low PC=0x7050 of fdc cpu)
+    - Dragon Slayer - The Legend of Heroes 2
+    - Dungeon Buster
+    - El Dorado Denki
+    - Elevator Action
+    - Emerald Densetsu
+    - Emerald Dragon (it seems to miss a timer)
+    - Emmy
+    - Explosion (fails to load ADPCM data?)
+    - F-15 Strike Eagle
+    - F2 Grand Prix ("Boot dekimasen")
+    - Fangs - The Saga of Wolf Blood (Crashes at the first random battle)
+    - Fantasian
+    - Final Zone
+    - Final Zone (demo)
+    - Fruit Panic
+    - FSD Sample Ongaku Shuu Vol. 1-7
+    - Gaia no Kiba
+    - Gaiflame
+    - Gambler Jiko Chuushin ha
+    - Gambler Jiko Chuushin ha 2
+    - Gambler Jiko Chuushin ha 3
+    - Gambler Jiko Chuushin ha 3 (demo)
+    - Gambler Jiko Chuushin ha Mahjong Puzzle Collection
+    - Gambler Jiko Chuushin ha Mahjong Puzzle Collection (demo)
+    - Game Music Library
+    - Gaudi - Barcelona no Kaze (bad Wolfteam logo then black screen)
+    - GC-clusterz Music Disk Vol. 1-7
+    - Genji
+    - Gokuraku Tengoku
+    - Grodius 3 (might not be floppy)
+    - Gun Ship (at gameplay)
+    (Hacker)
+
     - Harakiri
-    - Kuronekosou Souzoku Satsujin Jiken ("Illegal function call in 105")
-    - Jark (needs PC-8801MC)
+    - Kaseijin (app) (code snippet is empty at some point)
     - MakaiMura (attempts to r/w the sio ports, but it's clearly crashed)
     - Mr. Pro Yakyuu
-    - Space Harrier
+    - PC-8034 (app)
+    - PC-8037SR (app)
+    - P1 (app)
+    - Pattern Editor 88 (app)
+    - Super Shunbo II (app) (Load error)
+    - Super TII (app)
     - The Return of Ishtar
     - Tobira wo Akete (random crashes in parent pc8801 only)
 
+    list of games that doesn't like i8214_irq_level == 5 in sound irq
+    - 100yen Disk 2 / Jumper 2: Sound BGM dies pretty soon;
+    - Alpha (demo): stuck note in title screen, doesn't seem to go further;
+    - Ayumi: black screen after new game / load game screen;
+    - Brunette: No sound, eventually hangs at gameplay;
+    - Digital Devil Story Megami Tensei: hangs at gameplay (sound irq issue)
+    - Double Face: hangs at logo (sound irq issue)
+
     games that needs to NOT have write-protect floppies (BTANBs):
     - Balance of Power
+    - Blue Moon Story: moans with a kanji msg;
+    - Mahjong Clinic Zoukangou
     - Tobira wo Akete (hangs at title screen)
+
+    games that needs to HAVE write-protect floppies (BTANBs):
+    - 100 Yen Disk 7: (doesn't boot in V2 mode)
+
+    other BTANBs
+    - Attack Hirokochan: returns to BASIC after an initial animation, needs BASIC V1:
+    - Jark (needs PC-8801MC)
+    - Kuronekosou Souzoku Satsujin Jiken: "Illegal function call in 105", needs BASIC V1;
 
     Notes:
     - BIOS disk ROM defines what kind of floppies you could load:
@@ -73,7 +158,9 @@
       * with 0x2000 ROM size you can load 2d and 2hd floppies;
     - Later models have palette bugs with some games (Alphos, Tokyo Nampa Street).
       This is because you have to set up the V1 / V2 DIP-SW to V1 for those games (it's the BIOS that sets up to analog and never changes back otherwise).
-    - password for "AY-1: Fortress Solomon" is "123" then press enter, any other key pressed makes it to fail the check (you must soft reset the machine)
+    - Password for "AY-1: Fortress Solomon" is "123" then press enter, any other key pressed makes it to fail the check (you must soft reset the machine)
+    - Pressing Home in Dennou Gakuen during gameplay makes it to show a fake DASM screen. That's supposed to be a panic button and it's also in the
+      sequels (with different screens);
 
     Bankswitch Notes:
     - 0x31 - graphic banking
@@ -164,6 +251,7 @@
 #include "machine/i8214.h"
 #include "machine/i8251.h"
 #include "sound/2203intf.h"
+#include "sound/2608intf.h"
 #include "sound/beep.h"
 //#include "includes/pc8801.h"
 
@@ -174,6 +262,9 @@
 #define IRQ_LOG(x) do { if (IRQ_DEBUG) printf x; } while (0)
 
 #define MASTER_CLOCK XTAL_4MHz
+/* TODO: clocks of this */
+#define PIXEL_CLOCK_15KHz XTAL_14_31818MHz
+#define PIXEL_CLOCK_24KHz XTAL_21_4772MHz
 
 #define I8214_TAG		"i8214"
 #define UPD1990A_TAG	"upd1990a"
@@ -183,18 +274,28 @@ typedef struct
 {
 	UINT8 cmd,param_count,cursor_on,status,irq_mask;
 	UINT8 param[8][5];
+	UINT8 inverse;
 } crtc_t;
+
+typedef struct
+{
+	UINT8 phase;
+	UINT8 x,y;
+	attotime time;
+} mouse_t;
 
 class pc8801_state : public driver_device
 {
 public:
 	pc8801_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
+		  m_fdccpu(*this, "fdccpu"),
 		  m_pic(*this, I8214_TAG),
 		  m_rtc(*this, UPD1990A_TAG),
 		  m_cassette(*this, CASSETTE_TAG)
 	{ }
 
+	required_device<cpu_device> m_fdccpu;
 	optional_device<i8214_device> m_pic;
 	required_device<upd1990a_device> m_rtc;
 	required_device<cassette_image_device> m_cassette;
@@ -231,6 +332,7 @@ public:
 	UINT8 m_timer_irq_latch;
 	UINT8 m_sound_irq_mask;
 	UINT8 m_sound_irq_latch;
+	UINT8 m_sound_irq_pending;
 #endif
 	UINT8 m_has_clock_speed;
 	UINT8 m_clock_setting;
@@ -241,9 +343,13 @@ public:
 	UINT8 m_has_cdrom;
 	UINT8 m_cdrom_reg[0x10];
 	crtc_t m_crtc;
+	mouse_t m_mouse;
 	struct { UINT8 r, g, b; } m_palram[8];
 	UINT8 m_dmac_ff;
 	UINT32 m_knj_addr[2];
+	UINT32 m_extram_size;
+	UINT8 m_has_opna;
+
 	DECLARE_READ8_MEMBER(pc8801_alu_r);
 	DECLARE_WRITE8_MEMBER(pc8801_alu_w);
 	DECLARE_READ8_MEMBER(pc8801_wram_r);
@@ -283,7 +389,9 @@ public:
 	DECLARE_WRITE8_MEMBER(pc88_crtc_param_w);
 	DECLARE_READ8_MEMBER(pc8801_crtc_status_r);
 	DECLARE_WRITE8_MEMBER(pc88_crtc_cmd_w);
+	DECLARE_READ8_MEMBER(pc8801_dmac_r);
 	DECLARE_WRITE8_MEMBER(pc8801_dmac_w);
+	DECLARE_READ8_MEMBER(pc8801_dmac_status_r);
 	DECLARE_WRITE8_MEMBER(pc8801_dmac_mode_w);
 	DECLARE_READ8_MEMBER(pc8801_extram_mode_r);
 	DECLARE_WRITE8_MEMBER(pc8801_extram_mode_w);
@@ -292,7 +400,6 @@ public:
 	DECLARE_WRITE8_MEMBER(pc8801_alu_ctrl1_w);
 	DECLARE_WRITE8_MEMBER(pc8801_alu_ctrl2_w);
 	DECLARE_WRITE8_MEMBER(pc8801_pcg8100_w);
-	DECLARE_READ8_MEMBER(sio_status_r);
 	DECLARE_WRITE8_MEMBER(pc8801_txt_cmt_ctrl_w);
 	DECLARE_READ8_MEMBER(pc8801_kanji_r);
 	DECLARE_WRITE8_MEMBER(pc8801_kanji_w);
@@ -314,19 +421,48 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(txdata_callback);
 	DECLARE_READ_LINE_MEMBER(dsr_r);
 	DECLARE_WRITE_LINE_MEMBER(rxrdy_w);
+	DECLARE_READ8_MEMBER(pc8801_sound_board_r);
+	DECLARE_WRITE8_MEMBER(pc8801_sound_board_w);
+	DECLARE_READ8_MEMBER(pc8801_opna_r);
+	DECLARE_WRITE8_MEMBER(pc8801_opna_w);
+	DECLARE_READ8_MEMBER(pc8801_unk_r);
+	DECLARE_WRITE8_MEMBER(pc8801_unk_w);
 
+	UINT8 pc8801_pixel_clock(void);
+	void pc8801_dynamic_res_change(void);
+	void draw_bitmap_3bpp(bitmap_ind16 &bitmap,const rectangle &cliprect);
+	void draw_bitmap_1bpp(bitmap_ind16 &bitmap,const rectangle &cliprect);
+	UINT8 calc_cursor_pos(int x,int y,int yi);
+	UINT8 extract_text_attribute(UINT32 address,int x, UINT8 width, UINT8 &non_special);
+	void pc8801_draw_char(bitmap_ind16 &bitmap,int x,int y,int pal,UINT8 gfx_mode,UINT8 reverse,UINT8 secret,
+	                       UINT8 blink,UINT8 upper,UINT8 lower,int y_size,int width, UINT8 non_special);
+	void draw_text(bitmap_ind16 &bitmap,int y_size, UINT8 width);
+
+	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+
+protected:
+
+	virtual void video_start();
 };
+
 
 /*
 CRTC command params:
 0. CRTC reset
 
+[0] *--- ---- <unknown>
 [0] -xxx xxxx screen columns (+2)
+
 [1] xx-- ---- blink speed (in frame unit) (+1, << 3)
 [1] --xx xxxx screen lines (+1)
+
 [2] x--- ---- "skip line"
 [2] -x-- ---- cursor style (reverse on / underscore off)
 [2] --x- ---- cursor blink on/off
+[2] ---x xxxx lines per character (+1)
+
+[3] xxx- ---- Vertical Retrace (+1)
+[3] ---x xxxx Horizontal Retrace (+2)
 
 [4] x--- ---- attribute not separate flag
 [4] -x-- ---- attribute color flag
@@ -334,24 +470,38 @@ CRTC command params:
 [4] ---x xxxx attribute size (+1)
 */
 
-#define blink_speed ((((state->m_crtc.param[0][1] & 0xc0) >> 6) + 1) << 3)
-#define text_color_flag (state->m_crtc.param[0][4] & 0x40)
-#define monitor_24KHz ((state->m_gfx_ctrl & 0x19) == 0x08)
+#define screen_width ((m_crtc.param[0][0] & 0x7f) + 2) * 8
 
-static VIDEO_START( pc8801 )
+#define blink_speed ((((m_crtc.param[0][1] & 0xc0) >> 6) + 1) << 3)
+#define screen_height ((m_crtc.param[0][1] & 0x3f) + 1)
+
+#define lines_per_char ((m_crtc.param[0][2] & 0x1f) + 1)
+
+#define vretrace (((m_crtc.param[0][3] & 0xe0) >> 5) + 1)
+#define hretrace ((m_crtc.param[0][3] & 0x1f) + 2) * 8
+
+#define text_color_flag ((m_crtc.param[0][4] & 0xe0) == 0x40)
+//#define monitor_24KHz ((m_gfx_ctrl & 0x19) == 0x08) /* TODO: this is most likely to be WRONG */
+
+void pc8801_state::video_start()
 {
 
 }
 
-static void draw_bitmap_3bpp(running_machine &machine, bitmap_ind16 &bitmap)
+void pc8801_state::draw_bitmap_3bpp(bitmap_ind16 &bitmap,const rectangle &cliprect)
 {
 	int x,y,xi;
 	UINT32 count;
-	UINT8 *gvram = machine.root_device().memregion("gvram")->base();
+	UINT8 *gvram = machine().root_device().memregion("gvram")->base();
+	UINT16 y_size;
+	UINT16 y_double;
 
 	count = 0;
 
-	for(y=0;y<200;y++)
+	y_double = (pc8801_pixel_clock());
+	y_size = (y_double+1) * 200;
+
+	for(y=0;y<y_size;y+=(y_double+1))
 	{
 		for(x=0;x<640;x+=8)
 		{
@@ -366,7 +516,19 @@ static void draw_bitmap_3bpp(running_machine &machine, bitmap_ind16 &bitmap)
 				pen |= ((gvram[count+0x4000] >> (7-xi)) & 1) << 1;
 				pen |= ((gvram[count+0x8000] >> (7-xi)) & 1) << 2;
 
-				bitmap.pix16(y, x+xi) = machine.pens[pen & 7];
+				if(y_double)
+				{
+					if(cliprect.contains(x+xi, y+0))
+						bitmap.pix16(y+0, x+xi) = machine().pens[pen & 7];
+
+					if(cliprect.contains(x+xi, y+1))
+						bitmap.pix16(y+1, x+xi) = machine().pens[pen & 7];
+				}
+				else
+				{
+					if(cliprect.contains(x+xi, y+0))
+						bitmap.pix16(y, x+xi) = machine().pens[pen & 7];
+				}
 			}
 
 			count++;
@@ -374,78 +536,97 @@ static void draw_bitmap_3bpp(running_machine &machine, bitmap_ind16 &bitmap)
 	}
 }
 
-static void draw_bitmap_1bpp(running_machine &machine, bitmap_ind16 &bitmap)
+void pc8801_state::draw_bitmap_1bpp(bitmap_ind16 &bitmap,const rectangle &cliprect)
 {
-	pc8801_state *state = machine.driver_data<pc8801_state>();
 	int x,y,xi;
 	UINT32 count;
-	UINT8 *gvram = state->memregion("gvram")->base();
+	UINT8 *gvram = machine().root_device().memregion("gvram")->base();
+	UINT8 color;
+	UINT8 is_cursor;
 
 	count = 0;
+	color = (m_gfx_ctrl & 1) ? 7 & ((m_layer_mask ^ 0xe) >> 1) : 7;
+	is_cursor = 0;
 
 	for(y=0;y<200;y++)
 	{
 		for(x=0;x<640;x+=8)
 		{
+			if(!(m_gfx_ctrl & 1))
+				is_cursor = calc_cursor_pos(x/8,y/lines_per_char,y & (lines_per_char-1));
+
 			for(xi=0;xi<8;xi++)
 			{
 				int pen;
 
-				pen = 0;
-				/* TODO: dunno if state->m_layer_mask is correct here */
-				if(!(state->m_layer_mask & 2)) { pen = ((gvram[count+0x0000] >> (7-xi)) & 1) << 0; }
+				pen = ((gvram[count+0x0000] >> (7-xi)) & 1);
+				if(is_cursor)
+					pen^=1;
 
-				bitmap.pix16(y, x+xi) = machine.pens[pen ? 7 : 0];
+				if((m_gfx_ctrl & 1))
+				{
+					if(cliprect.contains(x+xi, y*2+0))
+						bitmap.pix16(y*2+0, x+xi) = machine().pens[pen ? color : 0];
+
+					if(cliprect.contains(x+xi, y*2+1))
+						bitmap.pix16(y*2+1, x+xi) = machine().pens[pen ? color : 0];
+				}
+				else
+				{
+					if(cliprect.contains(x+xi, y))
+						bitmap.pix16(y, x+xi) = machine().pens[pen ? color : 0];
+				}
 			}
 
 			count++;
 		}
 	}
 
-	count = 0;
-
-	if(!(state->m_gfx_ctrl & 1)) // 400 lines
+	if(!(m_gfx_ctrl & 1)) // 400 lines
 	{
+		count = 0;
+
 		for(y=200;y<400;y++)
 		{
 			for(x=0;x<640;x+=8)
 			{
+				if(!(m_gfx_ctrl & 1))
+					is_cursor = calc_cursor_pos(x/8,y/lines_per_char,y & (lines_per_char-1));
+
 				for(xi=0;xi<8;xi++)
 				{
 					int pen;
 
-					pen = 0;
-					/* TODO: dunno if state->m_layer_mask is correct here */
-					if(!(state->m_layer_mask & 4)) { pen = ((gvram[count+0x4000] >> (7-xi)) & 1) << 0; }
+					pen = ((gvram[count+0x4000] >> (7-xi)) & 1);
+					if(is_cursor)
+						pen^=1;
 
-					bitmap.pix16(y, x+xi) = machine.pens[pen ? 7 : 0];
+					if(cliprect.contains(x+xi, y))
+						bitmap.pix16(y, x+xi) = machine().pens[pen ? 7 : 0];
 				}
 
 				count++;
 			}
 		}
 	}
-	else
-		popmessage("200 lines B/W mode selected, check me");
 }
 
-static UINT8 calc_cursor_pos(running_machine &machine,int x,int y,int yi)
+UINT8 pc8801_state::calc_cursor_pos(int x,int y,int yi)
 {
-	pc8801_state *state = machine.driver_data<pc8801_state>();
-	if(!(state->m_crtc.cursor_on)) // don't bother if cursor is off
+	if(!(m_crtc.cursor_on)) // don't bother if cursor is off
 		return 0;
 
-	if(x == state->m_crtc.param[4][0] && y == state->m_crtc.param[4][1]) /* check if position matches */
+	if(x == m_crtc.param[4][0] && y == m_crtc.param[4][1]) /* check if position matches */
 	{
 		/* don't pass through if we are using underscore */
-		if((!(state->m_crtc.param[0][2] & 0x40)) && yi != 7)
+		if((!(m_crtc.param[0][2] & 0x40)) && yi != 7)
 			return 0;
 
 		/* finally check if blinking is currently active high */
-		if(!(state->m_crtc.param[0][2] & 0x20))
+		if(!(m_crtc.param[0][2] & 0x20))
 			return 1;
 
-		if(((machine.primary_screen->frame_number() / blink_speed) & 1) == 0)
+		if(((machine().primary_screen->frame_number() / blink_speed) & 1) == 0)
 			return 1;
 
 		return 0;
@@ -456,25 +637,34 @@ static UINT8 calc_cursor_pos(running_machine &machine,int x,int y,int yi)
 
 
 
-static UINT8 extract_text_attribute(running_machine &machine,UINT32 address,int x)
+UINT8 pc8801_state::extract_text_attribute(UINT32 address,int x, UINT8 width, UINT8 &non_special)
 {
-	pc8801_state *state = machine.driver_data<pc8801_state>();
-	UINT8 *vram = state->memregion("wram")->base();
+	UINT8 *vram = machine().root_device().memregion("wram")->base();
 	int i;
 	int fifo_size;
+	int offset;
 
-	if(state->m_crtc.param[0][4] & 0x80)
+	non_special = 0;
+	if(m_crtc.param[0][4] & 0x80)
 	{
 		popmessage("Using non-separate mode for text tilemap, contact MESSdev");
 		return 0;
 	}
 
-	fifo_size = (state->m_crtc.param[0][4] & 0x20) ? 0 : ((state->m_crtc.param[0][4] & 0x1f) + 1);
+	fifo_size = (m_crtc.param[0][4] & 0x20) ? 0 : ((m_crtc.param[0][4] & 0x1f) + 1);
+
+	if(fifo_size == 0)
+	{
+		non_special = 1;
+		return (text_color_flag) ? 0xe8 : 0;
+	}
+
+	/* TODO: correct or hack-ish? Certainly having 0 as a attribute X is weird in any case. */
+	offset = (vram[address] == 0) ? 2 : 0;
 
 	for(i=0;i<fifo_size;i++)
 	{
-		/* TODO: DMA timing bug? N-BASIC attributes doesn't work without +2 here ... */
-		if(x < vram[address])
+		if(x < vram[address+offset])
 		{
 			return vram[address+1];
 		}
@@ -482,22 +672,27 @@ static UINT8 extract_text_attribute(running_machine &machine,UINT32 address,int 
 			address+=2;
 	}
 
-	return 0;
+	return vram[address-3+offset];
 }
 
-static void pc8801_draw_char(running_machine &machine,bitmap_ind16 &bitmap,int x,int y,int pal,UINT8 gfx_mode,UINT8 reverse,UINT8 secret,UINT8 blink,UINT8 upper,UINT8 lower,int y_size,int height,int width)
+void pc8801_state::pc8801_draw_char(bitmap_ind16 &bitmap,int x,int y,int pal,UINT8 gfx_mode,UINT8 reverse,UINT8 secret,UINT8 blink,UINT8 upper,UINT8 lower,int y_size,int width, UINT8 non_special)
 {
-	pc8801_state *state = machine.driver_data<pc8801_state>();
 	int xi,yi;
-	UINT8 *vram = state->memregion("wram")->base();
+	UINT8 *vram = machine().root_device().memregion("wram")->base();
+	UINT8 *gfx_rom = machine().root_device().memregion("gfx1")->base();
 	UINT8 is_cursor;
-	UINT8 y_height;
+	UINT8 y_height, y_double;
+	UINT8 y_step;
 
-	y_height = y_size == 20 ? 10 : 8;
+	y_height = lines_per_char;
+	y_double = (pc8801_pixel_clock());
+	y_step = (non_special) ? 80 : 120; // trusted by Elthlead
+	is_cursor = 0;
 
 	for(yi=0;yi<y_height;yi++)
 	{
-		is_cursor = calc_cursor_pos(machine,x,y,yi);
+		if(m_gfx_ctrl & 1)
+			is_cursor = calc_cursor_pos(x,y,yi);
 
 		for(xi=0;xi<8;xi++)
 		{
@@ -506,28 +701,35 @@ static void pc8801_draw_char(running_machine &machine,bitmap_ind16 &bitmap,int x
 			int color;
 
 			{
-				tile = vram[x+(y*120)+state->m_dma_address[2]];
+				tile = vram[x+(y*y_step)+m_dma_address[2]];
 
 				res_x = x*8+xi*(width+1);
-				res_y = y*y_height*(height+1)+yi*(height+1);
+				res_y = y*y_height+yi;
+
+				if(!machine().primary_screen->visible_area().contains(res_x, res_y))
+					continue;
 
 				if(gfx_mode)
 				{
 					UINT8 mask;
 
 					mask = (xi & 4) ? 0x10 : 0x01;
-					mask <<= ((yi & 6) >> 1);
+					mask <<= ((yi & (0x6 << y_double)) >> (1+y_double));
 					color = (tile & mask) ? pal : -1;
 				}
 				else
 				{
 					UINT8 char_data;
-					UINT8 *gfx_rom = machine.root_device().memregion("gfx1")->base();
+					UINT8 blink_mask;
 
-					if(yi >= 8 || secret)
+					blink_mask = 0;
+					if(blink && ((machine().primary_screen->frame_number() / blink_speed) & 3) == 1)
+						blink_mask = 1;
+
+					if(yi >= (1 << (y_double+3)) || secret || blink_mask)
 						char_data = 0;
 					else
-						char_data = (gfx_rom[tile*8+yi] >> (7-xi)) & 1;
+						char_data = (gfx_rom[tile*8+(yi >> y_double)] >> (7-xi)) & 1;
 
 					if(yi == 0 && upper)
 						char_data = 1;
@@ -535,48 +737,33 @@ static void pc8801_draw_char(running_machine &machine,bitmap_ind16 &bitmap,int x
 					if(yi == y_height && lower)
 						char_data = 1;
 
-					if(is_cursor || reverse)
-						color = char_data ? -1 : pal;
-					else
-						color = char_data ? pal : -1;
-				}
+					if(is_cursor)
+						char_data^=1;
 
-				if(!machine.primary_screen->visible_area().contains(res_x, res_y))
-					continue;
+					if(reverse)
+						char_data^=1;
+
+					color = char_data ? pal : -1;
+				}
 
 				if(color != -1)
-					bitmap.pix16(res_y, res_x) = machine.pens[color];
-
-				if(width)
 				{
-					if(!machine.primary_screen->visible_area().contains(res_x+1, res_y))
-						continue;
+					bitmap.pix16(res_y, res_x) = machine().pens[color];
+					if(width)
+					{
+						if(!machine().primary_screen->visible_area().contains(res_x+1, res_y))
+							continue;
 
-					if(color != -1)
-						bitmap.pix16(res_y, res_x+1) = machine.pens[color];
-				}
-				if(height)
-				{
-					if(!machine.primary_screen->visible_area().contains(res_x, res_y+1))
-						continue;
-
-					if(color != -1)
-						bitmap.pix16(res_y+1, res_x) = machine.pens[color];
-
-					if(!machine.primary_screen->visible_area().contains(res_x+1, res_y+1))
-						continue;
-
-					if(color != -1)
-						bitmap.pix16(res_y+1, res_x+1) = machine.pens[color];
+						bitmap.pix16(res_y, res_x+1) = machine().pens[color];
+					}
 				}
 			}
 		}
 	}
 }
 
-static void draw_text(running_machine &machine, bitmap_ind16 &bitmap,int y_size, UINT8 width)
+void pc8801_state::draw_text(bitmap_ind16 &bitmap,int y_size, UINT8 width)
 {
-	pc8801_state *state = machine.driver_data<pc8801_state>();
 	int x,y;
 	UINT8 attr;
 	UINT8 reverse;
@@ -586,6 +773,7 @@ static void draw_text(running_machine &machine, bitmap_ind16 &bitmap,int y_size,
 	UINT8 lower;
 	UINT8 blink;
 	int pal;
+	UINT8 non_special;
 
 	for(y=0;y<y_size;y++)
 	{
@@ -594,11 +782,11 @@ static void draw_text(running_machine &machine, bitmap_ind16 &bitmap,int y_size,
 			if(x & 1 && !width)
 				continue;
 
-			attr = extract_text_attribute(machine,(((y*120)+80+state->m_dma_address[2]) & 0xffff),(x));
+			attr = extract_text_attribute((((y*120)+80+m_dma_address[2]) & 0xffff),(x),width,non_special);
 
-			if(text_color_flag) // color mode
+			if(text_color_flag && (attr & 8)) // color mode
 			{
-				pal = (attr & 8) ? ((attr & 0xe0) >> 5) : 7;  // Alpha behaves on this
+				pal =  ((attr & 0xe0) >> 5);
 				gfx_mode = (attr & 0x10) >> 4;
 				reverse = 0;
 				secret = 0;
@@ -609,51 +797,47 @@ static void draw_text(running_machine &machine, bitmap_ind16 &bitmap,int y_size,
 			}
 			else // monochrome
 			{
-				pal = (state->m_txt_color) ? 7 : 0;
-				gfx_mode = 0;
+				pal = 7; /* TODO: Bishoujo Baseball Gakuen Pasoket logo wants this to be black somehow ... */
+				gfx_mode = (attr & 0x80) >> 7;
 				reverse = (attr & 4) >> 2;
 				secret = (attr & 1);
 				upper = (attr & 0x10) >> 4;
 				lower = (attr & 0x20) >> 5;
 				blink = (attr & 2) >> 1;
 				pal|=8; //text pal bank
+				reverse ^= m_crtc.inverse;
 
 				if(attr & 0x80)
 					popmessage("Warning: mono gfx mode enabled, contact MESSdev");
+
 			}
 
-			pc8801_draw_char(machine,bitmap,x,y,pal,gfx_mode,reverse,secret,upper,lower,blink,y_size,monitor_24KHz,!width);
+			pc8801_draw_char(bitmap,x,y,pal,gfx_mode,reverse,secret,blink,upper,lower,y_size,!width,non_special);
 		}
 	}
 }
 
-static SCREEN_UPDATE_IND16( pc8801 )
+UINT32 pc8801_state::screen_update( screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect )
 {
-	pc8801_state *state = screen.machine().driver_data<pc8801_state>();
 	bitmap.fill(screen.machine().pens[0], cliprect);
 
-	if(state->m_gfx_ctrl & 8)
+//  popmessage("%04x %04x %02x",m_dma_address[2],m_dma_counter[2],m_dmac_mode);
+
+	if(m_gfx_ctrl & 8)
 	{
-		if(state->m_gfx_ctrl & 0x10)
-			draw_bitmap_3bpp(screen.machine(),bitmap);
+		if(m_gfx_ctrl & 0x10)
+			draw_bitmap_3bpp(bitmap,cliprect);
 		else
-			draw_bitmap_1bpp(screen.machine(),bitmap);
+			draw_bitmap_1bpp(bitmap,cliprect);
 	}
 
 	//popmessage("%02x %02x %02x %02x %02x",state->m_layer_mask,state->m_dmac_mode,state->m_crtc.status,state->m_crtc.irq_mask,state->m_gfx_ctrl);
 
-	if(!(state->m_layer_mask & 1) && state->m_dmac_mode & 4 && state->m_crtc.status & 0x10 && state->m_crtc.irq_mask == 3)
+	if(!(m_layer_mask & 1) && m_dmac_mode & 4 && m_crtc.status & 0x10 && m_crtc.irq_mask == 3)
 	{
-		int y_size;
+		//popmessage("%02x %02x",m_crtc.param[0][0],m_crtc.param[0][4]);
 
-		//popmessage("%02x %02x",state->m_crtc.param[0][0],state->m_crtc.param[0][4]);
-
-		y_size = (state->m_crtc.param[0][1] & 0x3f) + 1;
-
-		if(y_size < 20) y_size = 20;
-		if(y_size > 25) y_size = 25;
-
-		draw_text(screen.machine(),bitmap,y_size,state->m_txt_width);
+		draw_text(bitmap,screen_height,m_txt_width);
 	}
 
 	return 0;
@@ -741,18 +925,18 @@ READ8_MEMBER(pc8801_state::pc8801_ext_wram_r)
 {
 	UINT8 *ext_work_ram = memregion("ewram")->base();
 
-	/* TODO: check max range here */
+	if(offset < m_extram_size)
+		return ext_work_ram[offset];
 
-	return ext_work_ram[offset];
+	return 0xff;
 }
 
 WRITE8_MEMBER(pc8801_state::pc8801_ext_wram_w)
 {
 	UINT8 *ext_work_ram = memregion("ewram")->base();
 
-	/* TODO: check max range here */
-
-	ext_work_ram[offset] = data;
+	if(offset < m_extram_size)
+		ext_work_ram[offset] = data;
 }
 
 READ8_MEMBER(pc8801_state::pc8801_nbasic_rom_r)
@@ -841,7 +1025,7 @@ READ8_MEMBER(pc8801_state::pc8801_mem_r)
 
 		window_offset = (offset & 0x3ff) + (m_window_offset_bank << 8);
 
-		if((window_offset & 0xf000) == 0xf000)
+		if(((window_offset & 0xf000) == 0xf000) && (m_misc_ctrl & 0x10))
 			printf("Read from 0xf000 - 0xffff window offset\n"); //accessed by Castle Excellent, no noticeable quirk
 
 		if(((window_offset & 0xf000) == 0xf000) && (m_misc_ctrl & 0x10))
@@ -860,7 +1044,9 @@ READ8_MEMBER(pc8801_state::pc8801_mem_r)
 
 		if(m_misc_ctrl & 0x40)
 		{
-			m_vram_sel = 3;
+			if(!space.debugger_access())
+				m_vram_sel = 3;
+
 			if(m_alu_ctrl2 & 0x80)
 				return pc8801_alu_r(space,offset & 0x3fff);
 		}
@@ -900,7 +1086,7 @@ WRITE8_MEMBER(pc8801_state::pc8801_mem_w)
 
 			window_offset = (offset & 0x3ff) + (m_window_offset_bank << 8);
 
-			if((window_offset & 0xf000) == 0xf000)
+			if(((window_offset & 0xf000) == 0xf000) && (m_misc_ctrl & 0x10))
 				printf("Write to 0xf000 - 0xffff window offset\n"); //accessed by Castle Excellent, no noticeable quirk
 
 			if(((window_offset & 0xf000) == 0xf000) && (m_misc_ctrl & 0x10))
@@ -920,7 +1106,9 @@ WRITE8_MEMBER(pc8801_state::pc8801_mem_w)
 	{
 		if(m_misc_ctrl & 0x40)
 		{
-			m_vram_sel = 3;
+			if(!space.debugger_access())
+				m_vram_sel = 3;
+
 			if(m_alu_ctrl2 & 0x80)
 			{
 				pc8801_alu_w(space,offset & 0x3fff,data);
@@ -969,10 +1157,12 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
     x--- ---- SING (buzzer mask?)
     -x-- ---- mouse latch (JOP1, routes on OPN sound port A)
     --x- ---- beeper
+    ---x ---- ghs mode
+    ---- x--- crtc i/f sync mode
     ---- -x-- upd1990a clock bit
     ---- --x- upd1990a strobe bit
+    ---- ---x printer strobe
     */
-
 
 	m_rtc->stb_w((data & 2) >> 1);
 	m_rtc->clk_w((data & 4) >> 2);
@@ -982,6 +1172,29 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
 
 	if(((m_device_ctrl_data & 0x20) == 0x20) && ((data & 0x20) == 0x00))
 		beep_set_state(machine().device(BEEPER_TAG),0);
+
+	if((m_device_ctrl_data & 0x40) != (data & 0x40))
+	{
+		attotime new_time = machine().time();
+
+		if(m_mouse.phase == 0)
+		{
+			m_mouse.x = machine().root_device().ioport("MOUSEX")->read();
+			m_mouse.y = machine().root_device().ioport("MOUSEY")->read();
+		}
+
+		if(data & 0x40 && (new_time - m_mouse.time) > attotime::from_hz(900))
+		{
+			m_mouse.phase = 0;
+		}
+		else
+		{
+			m_mouse.phase++;
+			m_mouse.phase &= 3;
+		}
+
+		m_mouse.time = machine().time();
+	}
 
 	/* TODO: is SING a buzzer mask? Bastard Special relies on this ... */
 	if(m_device_ctrl_data & 0x80)
@@ -1000,30 +1213,53 @@ WRITE8_MEMBER(pc8801_state::pc8801_ext_rom_bank_w)
 	m_ext_rom_bank = data;
 }
 
-static void pc8801_dynamic_res_change(running_machine &machine)
+UINT8 pc8801_state::pc8801_pixel_clock(void)
 {
-	pc8801_state *state = machine.driver_data<pc8801_state>();
+	int ysize = machine().primary_screen->height(); /* TODO: correct condition*/
+
+	return (ysize >= 400);
+}
+
+void pc8801_state::pc8801_dynamic_res_change(void)
+{
 	rectangle visarea;
+	int xsize,ysize,xvis,yvis;
+	attoseconds_t refresh;;
 
-	visarea.set(0, 640 - 1, 0, ((monitor_24KHz) ? 400 : 200) - 1);
+	/* bail out if screen params aren't valid */
+	if(!m_crtc.param[0][0] || !m_crtc.param[0][1] || !m_crtc.param[0][2] || !m_crtc.param[0][3])
+		return;
 
-	machine.primary_screen->configure(640, 480, visarea, machine.primary_screen->frame_period().attoseconds);
+	xvis = screen_width;
+	yvis = screen_height * lines_per_char;
+	xsize = screen_width + hretrace;
+	ysize = screen_height * lines_per_char + vretrace * lines_per_char;
+
+//  popmessage("H %d V %d (%d x %d) HR %d VR %d (%d %d)\n",xvis,yvis,screen_height,lines_per_char,hretrace,vretrace, xsize,ysize);
+
+	visarea.set(0, xvis - 1, 0, yvis - 1);
+	if(pc8801_pixel_clock())
+		refresh = HZ_TO_ATTOSECONDS(PIXEL_CLOCK_24KHz) * (xsize) * ysize;
+	else
+		refresh = HZ_TO_ATTOSECONDS(PIXEL_CLOCK_15KHz) * (xsize) * ysize;
+
+	machine().primary_screen->configure(xsize, ysize, visarea, refresh);
 }
 
 WRITE8_MEMBER(pc8801_state::pc8801_gfx_ctrl_w)
 {
 	/*
-    --x- ---- VRAM y 25 (1) / 20 (0)
+    --x- ---- ???
     ---x ---- graphic color yes (1) / no (0)
     ---- x--- graphic display yes (1) / no (0)
     ---- -x-- Basic N (1) / N88 (0)
     ---- --x- RAM select yes (1) / no (0)
-    ---- ---x VRAM 200 lines (1) / 400 lines (0), 15 KHz / 24 KHz
+    ---- ---x VRAM 200 lines (1) / 400 lines (0) in 1bpp mode
     */
 
 	m_gfx_ctrl = data;
 
-	pc8801_dynamic_res_change(machine());
+	pc8801_dynamic_res_change();
 }
 
 READ8_MEMBER(pc8801_state::pc8801_vram_select_r)
@@ -1061,7 +1297,7 @@ WRITE8_MEMBER(pc8801_state::pc8801_irq_level_w)
 	else
 		m_i8214_irq_level = data & 7;
 
-	//IRQ_LOG(("%02x LV\n",m_i8214_irq_level));
+//  IRQ_LOG(("%02x LV\n",m_i8214_irq_level));
 }
 
 
@@ -1076,10 +1312,10 @@ WRITE8_MEMBER(pc8801_state::pc8801_irq_mask_w)
 	if(m_vrtc_irq_mask == 0)
 		m_vrtc_irq_latch = 0;
 
-	if(m_timer_irq_mask == 0 && m_vrtc_irq_mask == 0)
+	if(m_timer_irq_latch == 0 && m_vrtc_irq_latch == 0 && m_sound_irq_latch == 0)
 		cputag_set_input_line(machine(),"maincpu",0,CLEAR_LINE);
 
-	//IRQ_LOG(("%02x MASK\n",data));
+//  IRQ_LOG(("%02x MASK (%02x %02x)\n",data,m_timer_irq_latch,m_vrtc_irq_latch));
 
 	//if(data & 4)
 	//  printf("IRQ mask %02x\n",data);
@@ -1109,6 +1345,11 @@ READ8_MEMBER(pc8801_state::pc8801_misc_ctrl_r)
 
 WRITE8_MEMBER(pc8801_state::pc8801_misc_ctrl_w)
 {
+	/*
+    x--- ---- sound irq mask, active low
+    --x- ---- analog (1) / digital (0) palette select
+    */
+
 	m_misc_ctrl = data;
 
 	#ifdef USE_PROPER_I8214
@@ -1118,6 +1359,17 @@ WRITE8_MEMBER(pc8801_state::pc8801_misc_ctrl_w)
 
 	if(m_sound_irq_mask == 0)
 		m_sound_irq_latch = 0;
+
+	if(m_timer_irq_latch == 0 && m_vrtc_irq_latch == 0 && m_sound_irq_latch == 0)
+		cputag_set_input_line(machine(),"maincpu",0,CLEAR_LINE);
+
+	if(m_sound_irq_mask && m_sound_irq_pending)
+	{
+		cputag_set_input_line(machine(),"maincpu",0,HOLD_LINE);
+		m_sound_irq_latch = 1;
+		m_sound_irq_pending = 0;
+	}
+
 	#endif
 }
 
@@ -1129,7 +1381,6 @@ WRITE8_MEMBER(pc8801_state::pc8801_bgpal_w)
 
 WRITE8_MEMBER(pc8801_state::pc8801_palram_w)
 {
-
 	if(m_misc_ctrl & 0x20) //analog palette
 	{
 		if((data & 0x40) == 0)
@@ -1166,6 +1417,7 @@ WRITE8_MEMBER(pc8801_state::pc8801_layer_masking_w)
 
 READ8_MEMBER(pc8801_state::pc8801_crtc_param_r)
 {
+	printf("CRTC param reading\n");
 	return 0xff;
 }
 
@@ -1174,6 +1426,9 @@ WRITE8_MEMBER(pc8801_state::pc88_crtc_param_w)
 	if(m_crtc.param_count < 5)
 	{
 		m_crtc.param[m_crtc.cmd][m_crtc.param_count] = data;
+		if(m_crtc.cmd == 0)
+			pc8801_dynamic_res_change();
+
 		m_crtc.param_count++;
 	}
 }
@@ -1216,8 +1471,10 @@ WRITE8_MEMBER(pc8801_state::pc88_crtc_cmd_w)
 		case 1:  // start display
 			m_crtc.status |= 0x10;
 			m_crtc.status &= (~0x08);
-			if(data & 1)
-				printf("CRTC reverse display ON\n");
+			m_crtc.inverse = data & 1;
+
+			if(data & 1) /* Ink Pot uses it, but I want another test case before removing this log */
+				printf("CRTC inverse mode ON\n");
 			break;
 		case 2:  // set irq mask
 			m_crtc.irq_mask = data & 3;
@@ -1235,12 +1492,17 @@ WRITE8_MEMBER(pc8801_state::pc88_crtc_cmd_w)
 	}
 
 	//if((data >> 5) != 4)
-	//  printf("CRTC cmd %s polled\n",crtc_command[data >> 5]);
+	//  printf("CRTC cmd %s polled %02x\n",crtc_command[data >> 5],data & 0x1f);
+}
+
+READ8_MEMBER(pc8801_state::pc8801_dmac_r)
+{
+	printf("DMAC R %08x\n",offset);
+	return 0xff;
 }
 
 WRITE8_MEMBER(pc8801_state::pc8801_dmac_w)
 {
-
 	if(offset & 1)
 		m_dma_counter[offset >> 1] = (m_dmac_ff) ? (m_dma_counter[offset >> 1]&0xff)|(data<<8) : (m_dma_counter[offset >> 1]&0xff00)|(data&0xff);
 	else
@@ -1249,9 +1511,19 @@ WRITE8_MEMBER(pc8801_state::pc8801_dmac_w)
 	m_dmac_ff ^= 1;
 }
 
+READ8_MEMBER(pc8801_state::pc8801_dmac_status_r)
+{
+	printf("DMAC R STATUS\n");
+	return 0xff;
+}
+
 WRITE8_MEMBER(pc8801_state::pc8801_dmac_mode_w)
 {
 	m_dmac_mode = data;
+	m_dmac_ff = 0;
+
+	if(data != 0xe4 && data != 0xa0 && data != 0xc4 && data != 0x80 && data != 0x00)
+		printf("%02x DMAC mode\n",data);
 }
 
 READ8_MEMBER(pc8801_state::pc8801_extram_mode_r)
@@ -1293,12 +1565,6 @@ WRITE8_MEMBER(pc8801_state::pc8801_pcg8100_w)
 {
 	if(data)
 		printf("Write to PCG-8100 %02x %02x\n",offset,data);
-}
-
-/* Balance of Power temp work-around */
-READ8_MEMBER(pc8801_state::sio_status_r)
-{
-	return 0;
 }
 
 WRITE8_MEMBER(pc8801_state::pc8801_txt_cmt_ctrl_w)
@@ -1411,6 +1677,64 @@ WRITE8_MEMBER(pc8801_state::pc8801_rtc_w)
 	/* TODO: remaining bits */
 }
 
+READ8_MEMBER(pc8801_state::pc8801_sound_board_r)
+{
+	if(m_has_opna)
+		return ym2608_r(machine().device("opna"), offset);
+
+	return (offset & 2) ? 0xff : ym2203_r(machine().device("opn"), offset);
+}
+
+WRITE8_MEMBER(pc8801_state::pc8801_sound_board_w)
+{
+	if(m_has_opna)
+		ym2608_w(machine().device("opna"), offset,data);
+	else if((offset & 2) == 0)
+		ym2203_w(machine().device("opn"), offset,data);
+}
+
+READ8_MEMBER(pc8801_state::pc8801_opna_r)
+{
+	if(m_has_opna && (offset & 2) == 0)
+		return ym2608_r(machine().device("opna"), (offset & 1) | ((offset & 4) >> 1));
+
+	return 0xff;
+}
+
+WRITE8_MEMBER(pc8801_state::pc8801_opna_w)
+{
+	if(m_has_opna && (offset & 2) == 0)
+		ym2608_w(machine().device("opna"), (offset & 1) | ((offset & 4) >> 1),data);
+	else if(m_has_opna && offset == 2)
+	{
+		m_sound_irq_mask = ((data & 0x80) == 0);
+
+		if(m_sound_irq_mask == 0)
+			m_sound_irq_latch = 0;
+
+		if(m_timer_irq_latch == 0 && m_vrtc_irq_latch == 0 && m_sound_irq_latch == 0)
+			cputag_set_input_line(machine(),"maincpu",0,CLEAR_LINE);
+
+		if(m_sound_irq_mask && m_sound_irq_pending)
+		{
+			cputag_set_input_line(machine(),"maincpu",0,HOLD_LINE);
+			m_sound_irq_latch = 1;
+			m_sound_irq_pending = 0;
+		}
+	}
+}
+
+READ8_MEMBER(pc8801_state::pc8801_unk_r)
+{
+	printf("Read port 0x33\n");
+	return 0xff;
+}
+
+WRITE8_MEMBER(pc8801_state::pc8801_unk_w)
+{
+	printf("Write port 0x33\n");
+}
+
 static ADDRESS_MAP_START( pc8801_io, AS_IO, 8, pc8801_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
@@ -1437,12 +1761,11 @@ static ADDRESS_MAP_START( pc8801_io, AS_IO, 8, pc8801_state )
 	AM_RANGE(0x30, 0x30) AM_READ_PORT("DSW1") AM_WRITE(pc8801_txt_cmt_ctrl_w)
 	AM_RANGE(0x31, 0x31) AM_READ_PORT("DSW2") AM_WRITE(pc8801_gfx_ctrl_w)
 	AM_RANGE(0x32, 0x32) AM_READWRITE(pc8801_misc_ctrl_r, pc8801_misc_ctrl_w)
-	//0x33, 0x33 sets something kanji related
+	AM_RANGE(0x33, 0x33) AM_READWRITE(pc8801_unk_r,pc8801_unk_w)
 	AM_RANGE(0x34, 0x34) AM_WRITE(pc8801_alu_ctrl1_w)
 	AM_RANGE(0x35, 0x35) AM_WRITE(pc8801_alu_ctrl2_w)
 	AM_RANGE(0x40, 0x40) AM_READWRITE(pc8801_ctrl_r, pc8801_ctrl_w)
-	AM_RANGE(0x44, 0x45) AM_DEVREADWRITE_LEGACY("opn", ym2203_r,ym2203_w)
-//  AM_RANGE(0x46, 0x47) AM_NOP                                     /* OPNA extra port */
+	AM_RANGE(0x44, 0x47) AM_READWRITE(pc8801_sound_board_r,pc8801_sound_board_w) /* OPN / OPNA ports */
 	AM_RANGE(0x50, 0x50) AM_READWRITE(pc8801_crtc_param_r, pc88_crtc_param_w)
 	AM_RANGE(0x51, 0x51) AM_READWRITE(pc8801_crtc_status_r, pc88_crtc_cmd_w)
 	AM_RANGE(0x52, 0x52) AM_WRITE(pc8801_bgpal_w)
@@ -1450,8 +1773,8 @@ static ADDRESS_MAP_START( pc8801_io, AS_IO, 8, pc8801_state )
 	AM_RANGE(0x54, 0x5b) AM_WRITE(pc8801_palram_w)
 	AM_RANGE(0x5c, 0x5c) AM_READ(pc8801_vram_select_r)
 	AM_RANGE(0x5c, 0x5f) AM_WRITE(pc8801_vram_select_w)
-	AM_RANGE(0x60, 0x67) AM_WRITE(pc8801_dmac_w)
-	AM_RANGE(0x68, 0x68) AM_WRITE(pc8801_dmac_mode_w)
+	AM_RANGE(0x60, 0x67) AM_READWRITE(pc8801_dmac_r,pc8801_dmac_w)
+	AM_RANGE(0x68, 0x68) AM_READWRITE(pc8801_dmac_status_r,pc8801_dmac_mode_w)
 	AM_RANGE(0x6e, 0x6e) AM_READ(pc8801_cpuclock_r)
 	AM_RANGE(0x6f, 0x6f) AM_READWRITE(pc8801_baudrate_r,pc8801_baudrate_w)
 	AM_RANGE(0x70, 0x70) AM_READWRITE(pc8801_window_bank_r, pc8801_window_bank_w)
@@ -1459,7 +1782,7 @@ static ADDRESS_MAP_START( pc8801_io, AS_IO, 8, pc8801_state )
 	AM_RANGE(0x78, 0x78) AM_WRITE(pc8801_window_bank_inc_w)
 	AM_RANGE(0x90, 0x9f) AM_READWRITE(pc8801_cdrom_r,pc8801_cdrom_w)
 //  AM_RANGE(0xa0, 0xa3) AM_NOP                                     /* music & network */
-//  AM_RANGE(0xa8, 0xad) AM_NOP                                     /* second sound board */
+	AM_RANGE(0xa8, 0xad) AM_READWRITE(pc8801_opna_r,pc8801_opna_w)  /* second sound board */
 //  AM_RANGE(0xb4, 0xb5) AM_NOP                                     /* Video art board */
 //  AM_RANGE(0xc1, 0xc1) AM_NOP                                     /* (unknown) */
 //  AM_RANGE(0xc2, 0xcf) AM_NOP                                     /* music */
@@ -1489,7 +1812,7 @@ ADDRESS_MAP_END
 static READ8_DEVICE_HANDLER( cpu_8255_c_r )
 {
 	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	device->machine().scheduler().synchronize(); // force resync
+//  device->machine().scheduler().synchronize(); // force resync
 
 	return state->m_i8255_1_pc >> 4;
 }
@@ -1497,16 +1820,17 @@ static READ8_DEVICE_HANDLER( cpu_8255_c_r )
 static WRITE8_DEVICE_HANDLER( cpu_8255_c_w )
 {
 	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	device->machine().scheduler().synchronize(); // force resync
+//  device->machine().scheduler().synchronize(); // force resync
 
 	state->m_i8255_0_pc = data;
 }
+
 
 static I8255A_INTERFACE( master_fdd_intf )
 {
 	DEVCB_DEVICE_MEMBER("d8255_slave", i8255_device, pb_r),	// Port A read
 	DEVCB_NULL,							// Port A write
-	DEVCB_NULL,							// Port B read
+	DEVCB_DEVICE_MEMBER("d8255_slave", i8255_device, pa_r), // Port B read
 	DEVCB_NULL,							// Port B write
 	DEVCB_HANDLER(cpu_8255_c_r),		// Port C read
 	DEVCB_HANDLER(cpu_8255_c_w)			// Port C write
@@ -1515,7 +1839,7 @@ static I8255A_INTERFACE( master_fdd_intf )
 static READ8_DEVICE_HANDLER( fdc_8255_c_r )
 {
 	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	device->machine().scheduler().synchronize(); // force resync
+//  device->machine().scheduler().synchronize(); // force resync
 
 	return state->m_i8255_0_pc >> 4;
 }
@@ -1523,7 +1847,7 @@ static READ8_DEVICE_HANDLER( fdc_8255_c_r )
 static WRITE8_DEVICE_HANDLER( fdc_8255_c_w )
 {
 	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	device->machine().scheduler().synchronize(); // force resync
+//  device->machine().scheduler().synchronize(); // force resync
 
 	state->m_i8255_1_pc = data;
 }
@@ -1532,11 +1856,12 @@ static I8255A_INTERFACE( slave_fdd_intf )
 {
 	DEVCB_DEVICE_MEMBER("d8255_master", i8255_device, pb_r),	// Port A read
 	DEVCB_NULL,							// Port A write
-	DEVCB_NULL,							// Port B read
+	DEVCB_DEVICE_MEMBER("d8255_master", i8255_device, pa_r),	// Port B read
 	DEVCB_NULL,							// Port B write
 	DEVCB_HANDLER(fdc_8255_c_r),		// Port C read
 	DEVCB_HANDLER(fdc_8255_c_w)			// Port C write
 };
+
 
 static ADDRESS_MAP_START( pc8801fdc_mem, AS_PROGRAM, 8, pc8801_state )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
@@ -1545,8 +1870,9 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK( pc8801fd_upd765_tc_to_zero )
 {
-//  pc88va_state *state = machine.driver_data<pc88va_state>();
+//  pc8801_state *state = machine.driver_data<pc8801_state>();
 
+	//printf("0\n");
 	upd765_tc_w(machine.device("upd765"), 0);
 }
 
@@ -1560,6 +1886,7 @@ WRITE8_MEMBER(pc8801_state::upd765_mc_w)
 
 READ8_MEMBER(pc8801_state::upd765_tc_r)
 {
+	//printf("%04x 1\n",cpu_get_pc(m_fdccpu));
 
 	upd765_tc_w(machine().device("upd765"), 1);
 	 //TODO: I'm not convinced that this works correctly with current hook-up ... 1000 usec is needed by Aploon, a bigger value breaks Alpha.
@@ -1569,6 +1896,7 @@ READ8_MEMBER(pc8801_state::upd765_tc_r)
 
 WRITE8_MEMBER(pc8801_state::fdc_irq_vector_w)
 {
+	popmessage("Write to FDC IRQ vector I/O %02x, contact MESSdev\n",data);
 	m_fdc_irq_opcode = data;
 }
 
@@ -1787,13 +2115,11 @@ static INPUT_PORTS_START( pc8001 )
 	PORT_DIPNAME( 0x20, 0x20, "Duplex" )
 	PORT_DIPSETTING(    0x20, "Half" )
 	PORT_DIPSETTING(    0x00, "Full" )
-/*  PORT_DIPNAME( 0x80, 0x80, "Disable floppy" )
-    PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( On ) )*/
 	PORT_DIPNAME( 0xc0, 0x40, "Basic mode" )
-	PORT_DIPSETTING(    0x80, "N-BASIC" )
-	PORT_DIPSETTING(    0xc0, "N88-BASIC (V1)" )
+	PORT_DIPSETTING(    0x80, "N88-BASIC (V1L)" )
+	PORT_DIPSETTING(    0xc0, "N88-BASIC (V1H)" )
 	PORT_DIPSETTING(    0x40, "N88-BASIC (V2)" )
+//  PORT_DIPSETTING(    0x00, "N88-BASIC (V2)" )
 
 	PORT_START("CTRL")
 	PORT_DIPNAME( 0x02, 0x02, "Monitor Type" )
@@ -1827,19 +2153,27 @@ static INPUT_PORTS_START( pc8001 )
 	PORT_DIPSETTING(    0x00, "8MHz" )
 
 	PORT_START("OPN_PA")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1) PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x00)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1) PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x00)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1) PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x00)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1) PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x00)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("OPN_PB")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("P1 Joystick Button 1") PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x00)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_NAME("P1 Joystick Button 2") PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x00)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("P1 Mouse Button 1") PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x02)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_NAME("P1 Mouse Button 2") PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x02)
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 
+	PORT_START("MOUSEX")
+	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X ) PORT_RESET PORT_REVERSE PORT_SENSITIVITY(20) PORT_KEYDELTA(20) PORT_PLAYER(1) PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x02)
+
+	PORT_START("MOUSEY")
+	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y ) PORT_RESET PORT_REVERSE PORT_SENSITIVITY(20) PORT_KEYDELTA(20) PORT_PLAYER(1) PORT_CONDITION("BOARD_CONFIG", 0x02, EQUALS, 0x02)
+
 	PORT_START("MEM")
-	PORT_CONFNAME( 0x1f, 0x00, "Extension memory" )
+	PORT_CONFNAME( 0x0f, 0x0a, "Extension memory" )
 	PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 	PORT_CONFSETTING(    0x01, "32KB (PC-8012-02 x 1)" )
 	PORT_CONFSETTING(    0x02, "64KB (PC-8012-02 x 2)" )
@@ -1854,6 +2188,14 @@ static INPUT_PORTS_START( pc8001 )
 	PORT_CONFSETTING(    0x0b, "1.1M (PIO-8234H-1M x 1 + PC-8801-02N x 1)" )
 	PORT_CONFSETTING(    0x0c, "2.1M (PIO-8234H-2M x 1 + PC-8801-02N x 1)" )
 	PORT_CONFSETTING(    0x0d, "4.1M (PIO-8234H-2M x 2 + PC-8801-02N x 1)" )
+
+	PORT_START("BOARD_CONFIG")
+	PORT_CONFNAME( 0x01, 0x01, "Sound Board" ) /* TODO: is it possible to have BOTH sound chips in there? */
+	PORT_CONFSETTING(    0x00, "OPN (YM2203)" )
+	PORT_CONFSETTING(    0x01, "OPNA (YM2608)" )
+	PORT_CONFNAME( 0x02, 0x00, "Port 1 Connection" )
+	PORT_CONFSETTING(    0x00, "Joystick" )
+	PORT_CONFSETTING(    0x02, "Mouse" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pc88sr )
@@ -1922,10 +2264,10 @@ static const floppy_interface pc88_floppy_interface =
 
 static const cassette_interface pc88_cassette_interface =
 {
-	cassette_default_formats,
+	cassette_default_formats,	// we need T88 format support!
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED),
-	NULL,
+	"pc8801_cass",
 	NULL
 };
 
@@ -2033,11 +2375,20 @@ static IRQ_CALLBACK( pc8801_irq_callback )
 static void pc8801_sound_irq( device_t *device, int irq )
 {
 	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	if(state->m_sound_irq_mask && state->m_i8214_irq_level >= 5 && irq)
+
+//  printf("%02x %02x %02x\n",state->m_sound_irq_mask,state->m_i8214_irq_level,irq);
+	/* TODO: correct i8214 irq level? */
+	if(irq)
 	{
-		state->m_sound_irq_latch = 1;
-		//IRQ_LOG(("sound\n"));
-		cputag_set_input_line(device->machine(),"maincpu",0,HOLD_LINE);
+		if(state->m_sound_irq_mask)
+		{
+			state->m_sound_irq_latch = 1;
+			state->m_sound_irq_pending = 0;
+			//IRQ_LOG(("sound\n"));
+			cputag_set_input_line(device->machine(),"maincpu",0,HOLD_LINE);
+		}
+		else
+			state->m_sound_irq_pending = 1;
 	}
 }
 
@@ -2077,6 +2428,12 @@ static MACHINE_START( pc8801 )
 static MACHINE_RESET( pc8801 )
 {
 	pc8801_state *state = machine.driver_data<pc8801_state>();
+	#define kB 1024
+	#define MB 1024*1024
+	const UINT32 extram_type[] = { 0*kB, 32*kB,64*kB,128*kB,128*kB,256*kB,512*kB,1*MB,2*MB,4*MB,8*MB,1*MB+128*kB,2*MB+128*kB,4*MB+128*kB, 0*kB, 0*kB };
+	#undef kB
+	#undef MB
+
 	state->m_ext_rom_bank = 0xff;
 	state->m_gfx_ctrl = 0x31;
 	state->m_window_offset_bank = 0x80;
@@ -2084,9 +2441,10 @@ static MACHINE_RESET( pc8801 )
 	state->m_layer_mask = 0x00;
 	state->m_vram_sel = 3;
 
-	pc8801_dynamic_res_change(machine);
+//  pc8801_dynamic_res_change(machine);
 
 	state->m_fdc_irq_opcode = 0; //TODO: copied from PC-88VA, could be wrong here ... should be 0x7f ld a,a in the latter case
+	state->m_mouse.phase = 0;
 
 	device_set_input_line_vector(machine.device("fdccpu"), 0, 0);
 
@@ -2125,6 +2483,7 @@ static MACHINE_RESET( pc8801 )
 		state->m_sound_irq_mask = 0;
 		state->m_sound_irq_latch = 0;
 		state->m_i8214_irq_level = 0;
+		state->m_sound_irq_pending = 0;
 	}
 	#endif
 
@@ -2148,6 +2507,8 @@ static MACHINE_RESET( pc8801 )
 	state->m_has_dictionary = 0;
 	state->m_has_cdrom = 0;
 
+	state->m_extram_size = extram_type[machine.root_device().ioport("MEM")->read() & 0x0f];
+	state->m_has_opna = machine.root_device().ioport("BOARD_CONFIG")->read() & 1;
 }
 
 static MACHINE_RESET( pc8801_clock_speed )
@@ -2204,14 +2565,43 @@ static const struct upd765_interface pc8801_upd765_interface =
 
 /* YM2203 Interface */
 
-/* TODO: mouse routing (that's why I don't use DEVCB_INPUT_PORT here) */
-static READ8_DEVICE_HANDLER( opn_porta_r ) { return device->machine().root_device().ioport("OPN_PA")->read(); }
+static READ8_DEVICE_HANDLER( opn_porta_r )
+{
+	pc8801_state *state = device->machine().driver_data<pc8801_state>();
+
+	if(device->machine().root_device().ioport("BOARD_CONFIG")->read() & 2)
+	{
+		UINT8 shift,res;
+
+		shift = (state->m_mouse.phase & 1) ? 0 : 4;
+		res = (state->m_mouse.phase & 2) ? state->m_mouse.y : state->m_mouse.x;
+
+//      printf("%d\n",state->m_mouse.phase);
+
+		return ((res >> shift) & 0x0f) | 0xf0;
+	}
+
+	return device->machine().root_device().ioport("OPN_PA")->read();
+}
 static READ8_DEVICE_HANDLER( opn_portb_r ) { return device->machine().root_device().ioport("OPN_PB")->read(); }
 
 static const ym2203_interface pc88_ym2203_intf =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		DEVCB_HANDLER(opn_porta_r),
+		DEVCB_HANDLER(opn_portb_r),
+		DEVCB_NULL,
+		DEVCB_NULL
+	},
+	DEVCB_LINE(pc8801_sound_irq)
+};
+
+static const ym2608_interface pc88_ym2608_intf =
+{
+	{
+		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
 		AY8910_DEFAULT_LOADS,
 		DEVCB_HANDLER(opn_porta_r),
 		DEVCB_HANDLER(opn_portb_r),
@@ -2278,6 +2668,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	MCFG_CPU_IO_MAP(pc8801fdc_io)
 
 	//MCFG_QUANTUM_TIME(attotime::from_hz(300000))
+	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
 	MCFG_MACHINE_START( pc8801 )
 	MCFG_MACHINE_RESET( pc8801 )
@@ -2292,6 +2683,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8801_upd1990a_intf)
 	//MCFG_CENTRONICS_PRINTER_ADD("centronics", standard_centronics)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, pc8801_cassette_interface)
+	MCFG_SOFTWARE_LIST_ADD("tape_list","pc8801_cass")
 
 	MCFG_I8251_ADD(I8251_TAG, uart_intf)
 
@@ -2300,23 +2692,24 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_SIZE(640, 480)
-	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
-	MCFG_SCREEN_UPDATE_STATIC(pc8801)
+	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK_24KHz,848,0,640,448,0,400)
+	MCFG_SCREEN_UPDATE_DRIVER(pc8801_state, screen_update)
 
 	MCFG_GFXDECODE( pc8801 )
 	MCFG_PALETTE_LENGTH(0x10)
 	MCFG_PALETTE_INIT( pc8801 )
 
-	MCFG_VIDEO_START(pc8801)
+//  MCFG_VIDEO_START(pc8801)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("opn", YM2203, MASTER_CLOCK)
 	MCFG_SOUND_CONFIG(pc88_ym2203_intf)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MCFG_SOUND_ADD("opna", YM2608, MASTER_CLOCK*2)
+	MCFG_SOUND_CONFIG(pc88_ym2608_intf)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
@@ -2342,8 +2735,9 @@ MACHINE_CONFIG_END
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF ) \
 	ROM_REGION( 0x10000, "wram", ROMREGION_ERASE00 ) \
 	ROM_REGION( 0x1000, "hiwram", ROMREGION_ERASE00 ) \
-	ROM_REGION( 0x40000, "ewram", ROMREGION_ERASE00 ) \
-	ROM_REGION( 0xc000, "gvram", ROMREGION_ERASE00 )
+	ROM_REGION( 0x8000*0x100, "ewram", ROMREGION_ERASE00 ) \
+	ROM_REGION( 0xc000, "gvram", ROMREGION_ERASE00 ) \
+	ROM_REGION( 0x100000, "opna", ROMREGION_ERASE00 )
 
 
 ROM_START( pc8801 )
@@ -2628,21 +3022,21 @@ ROM_END
 
 /*    YEAR  NAME            PARENT  COMPAT  MACHINE   INPUT   INIT  COMPANY FULLNAME */
 
-COMP( 1981, pc8801,         0,		0,     pc8801,  	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801", GAME_NOT_WORKING )
-COMP( 1983, pc8801mk2,      pc8801, 0,     pc8801,  	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801mkII", GAME_NOT_WORKING )
-COMP( 1985, pc8801mk2sr,    pc8801,	0,     pc8801,  	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801mkIISR", GAME_NOT_WORKING )
-//COMP( 1985, pc8801mk2tr,  pc8801, 0,     pc8801,      pc88sr,  0,    "Nippon Electronic Company",  "PC-8801mkIITR", GAME_NOT_WORKING )
-COMP( 1985, pc8801mk2fr,    pc8801,	0,     pc8801,  	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801mkIIFR", GAME_NOT_WORKING )
-COMP( 1985, pc8801mk2mr,    pc8801,	0,     pc8801,  	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801mkIIMR", GAME_NOT_WORKING )
+COMP( 1981, pc8801,         0,		0,     pc8801,  	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801", GAME_NOT_WORKING )
+COMP( 1983, pc8801mk2,      pc8801, 0,     pc8801,  	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801mkII", GAME_NOT_WORKING )
+COMP( 1985, pc8801mk2sr,    pc8801,	0,     pc8801,  	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801mkIISR", GAME_NOT_WORKING )
+//COMP( 1985, pc8801mk2tr,  pc8801, 0,     pc8801,      pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801mkIITR", GAME_NOT_WORKING )
+COMP( 1985, pc8801mk2fr,    pc8801,	0,     pc8801,  	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801mkIIFR", GAME_NOT_WORKING )
+COMP( 1985, pc8801mk2mr,    pc8801,	0,     pc8801,  	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801mkIIMR", GAME_NOT_WORKING )
 
-//COMP( 1986, pc8801fh,     0,      0,     pc8801,      pc88sr,  0,    "Nippon Electronic Company",  "PC-8801FH", GAME_NOT_WORKING )
-COMP( 1986, pc8801mh,       pc8801,	0,     pc8801fh,	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801MH", GAME_NOT_WORKING )
-COMP( 1987, pc8801fa,       pc8801,	0,     pc8801fh,	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801FA", GAME_NOT_WORKING )
-COMP( 1987, pc8801ma,       pc8801,	0,     pc8801ma,    pc88sr,  0,    "Nippon Electronic Company",  "PC-8801MA", GAME_NOT_WORKING )
-//COMP( 1988, pc8801fe,     pc8801, 0,     pc8801,      pc88sr,  0,    "Nippon Electronic Company",  "PC-8801FE", GAME_NOT_WORKING )
-COMP( 1988, pc8801ma2,      pc8801,	0,     pc8801ma,    pc88sr,  0,    "Nippon Electronic Company",  "PC-8801MA2", GAME_NOT_WORKING )
-//COMP( 1989, pc8801fe2,    pc8801, 0,     pc8801,      pc88sr,  0,    "Nippon Electronic Company",  "PC-8801FE2", GAME_NOT_WORKING )
-COMP( 1989, pc8801mc,       pc8801,	0,     pc8801mc,	pc88sr,  0,    "Nippon Electronic Company",  "PC-8801MC", GAME_NOT_WORKING )
+//COMP( 1986, pc8801fh,     0,      0,     pc8801,      pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801FH", GAME_NOT_WORKING )
+COMP( 1986, pc8801mh,       pc8801,	0,     pc8801fh,	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801MH", GAME_NOT_WORKING )
+COMP( 1987, pc8801fa,       pc8801,	0,     pc8801fh,	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801FA", GAME_NOT_WORKING )
+COMP( 1987, pc8801ma,       pc8801,	0,     pc8801ma,    pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801MA", GAME_NOT_WORKING )
+//COMP( 1988, pc8801fe,     pc8801, 0,     pc8801,      pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801FE", GAME_NOT_WORKING )
+COMP( 1988, pc8801ma2,      pc8801,	0,     pc8801ma,    pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801MA2", GAME_NOT_WORKING )
+//COMP( 1989, pc8801fe2,    pc8801, 0,     pc8801,      pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801FE2", GAME_NOT_WORKING )
+COMP( 1989, pc8801mc,       pc8801,	0,     pc8801mc,	pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-8801MC", GAME_NOT_WORKING )
 
-//COMP( 1989, pc98do,       0,      0,     pc88va,   pc88sr,  0,    "Nippon Electronic Company",  "PC-98DO", GAME_NOT_WORKING )
-//COMP( 1990, pc98dop,      0,      0,     pc88va,   pc88sr,  0,    "Nippon Electronic Company",  "PC-98DO+", GAME_NOT_WORKING )
+//COMP( 1989, pc98do,       0,      0,     pc88va,   pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-98DO", GAME_NOT_WORKING )
+//COMP( 1990, pc98dop,      0,      0,     pc88va,   pc88sr, driver_device,  0,    "Nippon Electronic Company",  "PC-98DO+", GAME_NOT_WORKING )

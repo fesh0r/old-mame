@@ -101,6 +101,8 @@ public:
 	UINT8 m_screen_type;
 	int m_addr_latch;
 	void pasopia_nmi_trap();
+	DECLARE_DRIVER_INIT(p7_lcd);
+	DECLARE_DRIVER_INIT(p7_raster);
 };
 
 #define VDP_CLOCK XTAL_3_579545MHz/4
@@ -674,10 +676,10 @@ READ8_MEMBER( pasopia7_state::pasopia7_io_r )
 	}
 	else
 	if(io_port >= 0x28 && io_port <= 0x2b)
-		return z80ctc_r(m_ctc, io_port & 3);
+		return m_ctc->read(space,io_port & 3);
 	else
 	if(io_port >= 0x30 && io_port <= 0x33)
-		return z80pio_cd_ba_r(m_pio, io_port & 3);
+		return m_pio->read_alt(space, io_port & 3);
 //  else if(io_port == 0x3a)                    { SN1 }
 //  else if(io_port == 0x3b)                    { SN2 }
 //  else if(io_port == 0x3c)                    { bankswitch }
@@ -728,10 +730,10 @@ WRITE8_MEMBER( pasopia7_state::pasopia7_io_w )
 	}
 	else
 	if(io_port >= 0x28 && io_port <= 0x2b)
-		z80ctc_w(m_ctc, io_port & 3, data);
+		m_ctc->write(space, io_port & 3, data);
 	else
 	if(io_port >= 0x30 && io_port <= 0x33)
-		z80pio_cd_ba_w(m_pio, io_port & 3, data);
+		m_pio->write_alt(space, io_port & 3, data);
 	else
 	if(io_port == 0x3a)
 		sn76496_w(m_sn1, 0, data);
@@ -811,11 +813,10 @@ static const mc6845_interface mc6845_intf =
 
 static Z80CTC_INTERFACE( z80ctc_intf )
 {
-	0,					// timer disables
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),		// interrupt handler
-	DEVCB_DEVICE_LINE("z80ctc", z80ctc_trg1_w),		// ZC/TO0 callback
-	DEVCB_DEVICE_LINE("z80ctc", z80ctc_trg2_w),		// ZC/TO1 callback, beep interface
-	DEVCB_DEVICE_LINE("z80ctc", z80ctc_trg3_w)		// ZC/TO2 callback
+	DEVCB_DEVICE_LINE_MEMBER("z80ctc", z80ctc_device, trg1),		// ZC/TO0 callback
+	DEVCB_DEVICE_LINE_MEMBER("z80ctc", z80ctc_device, trg2),		// ZC/TO1 callback, beep interface
+	DEVCB_DEVICE_LINE_MEMBER("z80ctc", z80ctc_device, trg3)		// ZC/TO2 callback
 };
 
 READ8_MEMBER( pasopia7_state::test_r )
@@ -1147,22 +1148,20 @@ ROM_START( pasopia7lcd )
 ROM_END
 
 
-static DRIVER_INIT( p7_raster )
+DRIVER_INIT_MEMBER(pasopia7_state,p7_raster)
 {
-	pasopia7_state *state = machine.driver_data<pasopia7_state>();
 
-	state->m_screen_type = 1;
+	m_screen_type = 1;
 }
 
-static DRIVER_INIT( p7_lcd )
+DRIVER_INIT_MEMBER(pasopia7_state,p7_lcd)
 {
-	pasopia7_state *state = machine.driver_data<pasopia7_state>();
 
-	state->m_screen_type = 0;
+	m_screen_type = 0;
 }
 
 
 /* Driver */
 
-COMP( 1983, pasopia7,    0,              0,       p7_raster,     pasopia7,   p7_raster,  "Toshiba", "Pasopia 7 (Raster)", GAME_NOT_WORKING )
-COMP( 1983, pasopia7lcd, pasopia7,       0,       p7_lcd,        pasopia7,   p7_lcd,     "Toshiba", "Pasopia 7 (LCD)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )
+COMP( 1983, pasopia7,    0,              0,       p7_raster,     pasopia7, pasopia7_state,   p7_raster,  "Toshiba", "Pasopia 7 (Raster)", GAME_NOT_WORKING )
+COMP( 1983, pasopia7lcd, pasopia7,       0,       p7_lcd,        pasopia7, pasopia7_state,   p7_lcd,     "Toshiba", "Pasopia 7 (LCD)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )

@@ -89,6 +89,7 @@ public:
 	//UINT8 *m_p_ram;
 	UINT8 m_led7;
 	UINT8 m_allowNMI;
+	DECLARE_DRIVER_INIT(mephisto);
 };
 
 
@@ -115,7 +116,6 @@ READ8_MEMBER( mephisto_state::read_keys )
 				{ "KEY2_0", "KEY2_1", "KEY2_2", "KEY2_3", "KEY2_4", "KEY2_5", "KEY2_6", "KEY2_7" }
 			};
 
-	data = 0xff;
 	if (((m_led_status & 0x80) == 0x00))
 		data=ioport(keynames[0][offset])->read();
 	else
@@ -492,10 +492,9 @@ ROM_START(mm50)
 ROM_END
 
 
-static DRIVER_INIT( mephisto )
+DRIVER_INIT_MEMBER(mephisto_state,mephisto)
 {
-	mephisto_state *state = machine.driver_data<mephisto_state>();
-	state->m_lcd_shift_counter = 3;
+	m_lcd_shift_counter = 3;
 }
 
 /***************************************************************************
@@ -506,10 +505,10 @@ static DRIVER_INIT( mephisto )
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME                            FLAGS */
 
-CONS( 1984, mm2,        mm4,	0,      mm2,        mephisto,   mephisto,   "Hegener & Glaser", "Mephisto MM2 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1986, rebel5,     mm4,	0,      rebel5,     mephisto,   mephisto,   "Hegener & Glaser", "Mephisto Rebel 5 Schachcomputer", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1987, mm4,        0,      0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schachcomputer",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1987, mm4tk,      mm4,    0,      mm4tk,      mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schachcomputer Turbo Kit + HG440",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1990, mm5,        mm4,	0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1990, mm50,       mm4,	0,      mephisto,   mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.0 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
-CONS( 1990, mm5tk,      mm4,    0,      mm4tk,      mephisto,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schachcomputer Turbo Kit + HG550",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK )
+CONS( 1984, mm2,        mm4,	0,      mm2,        mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto MM2 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
+CONS( 1986, rebel5,     mm4,	0,      rebel5,     mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto Rebel 5 Schachcomputer", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
+CONS( 1987, mm4,        0,      0,      mephisto,   mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schachcomputer",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
+CONS( 1987, mm4tk,      mm4,    0,      mm4tk,      mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto 4 Schachcomputer Turbo Kit + HG440",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
+CONS( 1990, mm5,        mm4,	0,      mephisto,   mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
+CONS( 1990, mm50,       mm4,	0,      mephisto,   mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto 5.0 Schachcomputer",     GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
+CONS( 1990, mm5tk,      mm4,    0,      mm4tk,      mephisto, mephisto_state,   mephisto,   "Hegener & Glaser", "Mephisto 5.1 Schachcomputer Turbo Kit + HG550",       GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )

@@ -836,7 +836,7 @@ WRITE32_MEMBER(pockstat_state::ps_audio_w)
 
 WRITE32_MEMBER(pockstat_state::ps_dac_w)
 {
-	dac_data_16_w(machine().device("dac"), (UINT16)((data + 0x8000) & 0x0000ffff));
+	machine().device<dac_device>("dac")->write_unsigned16((UINT16)((data + 0x8000) & 0x0000ffff));
 }
 
 static ADDRESS_MAP_START(pockstat_mem, AS_PROGRAM, 32, pockstat_state )
@@ -1022,4 +1022,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE    INPUT     INIT  COMPANY                             FULLNAME       FLAGS */
-CONS( 1999, pockstat, 0,      0,      pockstat,  pockstat, 0,    "Sony Computer Entertainment Inc", "Sony PocketStation", GAME_SUPPORTS_SAVE )
+CONS( 1999, pockstat, 0,      0,      pockstat,  pockstat, driver_device, 0,    "Sony Computer Entertainment Inc", "Sony PocketStation", GAME_SUPPORTS_SAVE )

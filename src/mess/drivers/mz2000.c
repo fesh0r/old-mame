@@ -345,7 +345,7 @@ static ADDRESS_MAP_START(mz2000_io, AS_IO, 8, mz2000_state )
 	AM_RANGE(0xdc, 0xdd) AM_WRITE(mz2000_fdc_w)
 	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE("i8255_0", i8255_device, read, write)
     AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE_LEGACY("pit", pit8253_r, pit8253_w)
-	AM_RANGE(0xe8, 0xeb) AM_DEVREADWRITE_LEGACY("z80pio_1", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0xe8, 0xeb) AM_DEVREADWRITE("z80pio_1", z80pio_device, read_alt, write_alt)
     AM_RANGE(0xf0, 0xf3) AM_WRITE(timer_w)
 //  AM_RANGE(0xf4, 0xf7) CRTC
 	AM_RANGE(0xf5, 0xf5) AM_WRITE(mz2000_tvram_attr_w)
@@ -836,5 +836,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE     INPUT    INIT    COMPANY           FULLNAME       FLAGS */
-COMP( 1982, mz2000,   mz80b,    0,   mz2000,   mz2000,  0, "Sharp",   "MZ-2000", GAME_NOT_WORKING )
-COMP( 1982, mz2200,   mz80b,    0,   mz2000,   mz2000,  0, "Sharp",   "MZ-2200", GAME_NOT_WORKING )
+COMP( 1982, mz2000,   mz80b,    0,   mz2000,   mz2000, driver_device,  0, "Sharp",   "MZ-2000", GAME_NOT_WORKING )
+COMP( 1982, mz2200,   mz80b,    0,   mz2000,   mz2000, driver_device,  0, "Sharp",   "MZ-2200", GAME_NOT_WORKING )

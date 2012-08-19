@@ -40,10 +40,10 @@ READ8_MEMBER( vcs80_state::pio_r )
 {
 	switch (offset)
 	{
-	case 0: return z80pio_c_r(m_pio, 1);
-	case 1: return z80pio_c_r(m_pio, 0);
-	case 2: return z80pio_d_r(m_pio, 1);
-	case 3: return z80pio_d_r(m_pio, 0);
+	case 0: return m_pio->control_read();
+	case 1: return m_pio->control_read();
+	case 2: return m_pio->data_read(1);
+	case 3: return m_pio->data_read(0);
 	}
 
 	return 0;
@@ -53,10 +53,10 @@ WRITE8_MEMBER( vcs80_state::pio_w )
 {
 	switch (offset)
 	{
-	case 0: z80pio_c_w(m_pio, 1, data); break;
-	case 1: z80pio_c_w(m_pio, 0, data); break;
-	case 2: z80pio_d_w(m_pio, 1, data); break;
-	case 3: z80pio_d_w(m_pio, 0, data); break;
+	case 0: m_pio->control_write(1, data); break;
+	case 1: m_pio->control_write(0, data); break;
+	case 2: m_pio->data_write(1, data); break;
+	case 3: m_pio->data_write(0, data); break;
 	}
 }
 
@@ -118,7 +118,7 @@ static TIMER_DEVICE_CALLBACK( vcs80_keyboard_tick )
 		state->m_keylatch &= 7;
 	}
 
-	z80pio_pa_w(state->m_pio, 0, state->m_keyclk << 7);
+	state->m_pio->port_a_write(state->m_keyclk << 7);
 
 	state->m_keyclk = !state->m_keyclk;
 }
@@ -205,8 +205,8 @@ static const z80_daisy_config vcs80_daisy_chain[] =
 
 void vcs80_state::machine_start()
 {
-	z80pio_astb_w(m_pio, 1);
-	z80pio_bstb_w(m_pio, 1);
+	m_pio->strobe_a(1);
+	m_pio->strobe_b(1);
 
 	/* register for state saving */
 	save_item(NAME(m_keylatch));
@@ -248,19 +248,18 @@ ROM_END
 DIRECT_UPDATE_MEMBER(vcs80_state::vcs80_direct_update_handler)
 {
 	/* _A0 is connected to PIO PB7 */
-	z80pio_pb_w(m_pio, 0, (!BIT(address, 0)) << 7);
+	m_pio->port_b_write((!BIT(address, 0)) << 7);
 
 	return address;
 }
 
-static DRIVER_INIT( vcs80 )
+DRIVER_INIT_MEMBER(vcs80_state,vcs80)
 {
-	vcs80_state *state = machine.driver_data<vcs80_state>();
-	machine.device(Z80_TAG)->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(vcs80_state::vcs80_direct_update_handler), state));
-	machine.device(Z80_TAG)->memory().space(AS_IO)->set_direct_update_handler(direct_update_delegate(FUNC(vcs80_state::vcs80_direct_update_handler), state));
+	machine().device(Z80_TAG)->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(vcs80_state::vcs80_direct_update_handler), this));
+	machine().device(Z80_TAG)->memory().space(AS_IO)->set_direct_update_handler(direct_update_delegate(FUNC(vcs80_state::vcs80_direct_update_handler), this));
 }
 
 /* System Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY             FULLNAME    FLAGS */
-COMP( 1983, vcs80,  0,      0,      vcs80,  vcs80,  vcs80, "Eckhard Schiller", "VCS-80", GAME_SUPPORTS_SAVE | GAME_NO_SOUND)
+COMP( 1983, vcs80,  0,      0,      vcs80,  vcs80, vcs80_state,  vcs80, "Eckhard Schiller", "VCS-80", GAME_SUPPORTS_SAVE | GAME_NO_SOUND)

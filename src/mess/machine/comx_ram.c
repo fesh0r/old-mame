@@ -47,8 +47,6 @@ comx_ram_device::comx_ram_device(const machine_config &mconfig, const char *tag,
 
 void comx_ram_device::device_start()
 {
-	m_slot = dynamic_cast<comx_expansion_slot_device *>(owner());
-
 	m_ram = auto_alloc_array(machine(), UINT8, RAM_SIZE);
 
 	// state saving
@@ -75,7 +73,7 @@ UINT8 comx_ram_device::comx_mrd_r(offs_t offset, int *extrom)
 
 	if (offset >= 0xc000 && offset < 0xd000)
 	{
-		data = (m_ram_bank << 12) | m_ram[offset & 0xfff];
+		data = m_ram[(m_ram_bank << 12) | (offset & 0xfff)];
 	}
 
 	return data;
@@ -90,7 +88,7 @@ void comx_ram_device::comx_mwr_w(offs_t offset, UINT8 data)
 {
 	if (offset >= 0xc000 && offset < 0xd000)
 	{
-		data = (m_ram_bank << 12) | m_ram[offset & 0xfff];
+		m_ram[(m_ram_bank << 12) | (offset & 0xfff)] = data;
 	}
 }
 

@@ -53,7 +53,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bbcbc_io, AS_IO, 8, bbcbc_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("z80pio", z80pio_device, read, write)
 	AM_RANGE(0x80, 0x80) AM_DEVREADWRITE("tms9129", tms9129_device, vram_read, vram_write)
 	AM_RANGE(0x81, 0x81) AM_DEVREADWRITE("tms9129", tms9129_device, register_read, register_write)
 ADDRESS_MAP_END
@@ -207,4 +207,4 @@ ROM_END
 ***************************************************************************/
 
 /*   YEAR  NAME  PARENT  COMPAT  MACHINE INPUT  INIT  COMPANY  FULLNAME  FLAGS */
-CONS(1985, bbcbc,     0, 0,      bbcbc,  bbcbc, 0,    "BBC",   "Bridge Companion", GAME_NO_SOUND_HW )
+CONS(1985, bbcbc,     0, 0,      bbcbc,  bbcbc, driver_device, 0,    "BBC",   "Bridge Companion", GAME_NO_SOUND_HW )

@@ -55,7 +55,6 @@
 */
 
 #include "includes/abc1600.h"
-#include "machine/scsihd.h"
 
 
 
@@ -657,11 +656,11 @@ void abc1600_state::write_external_io(offs_t offset, UINT8 data)
 
 int abc1600_state::get_current_task(offs_t offset)
 {
-	int force_task0 = !(m_ifc2 | A19);
-	int t0 = !(BIT(m_task, 0) | force_task0);
-	int t1 = !(BIT(m_task, 1) | force_task0);
-	int t2 = !(BIT(m_task, 2) | force_task0);
-	int t3 = !(BIT(m_task, 3) | force_task0);
+	int force_task0 = !(m_ifc2 || A19);
+	int t0 = !(BIT(m_task, 0) || force_task0);
+	int t1 = !(BIT(m_task, 1) || force_task0);
+	int t2 = !(BIT(m_task, 2) || force_task0);
+	int t3 = !(BIT(m_task, 3) || force_task0);
 
 	return (t3 << 3) | (t2 << 2) | (t1 << 1) | t0;
 }
@@ -673,7 +672,7 @@ int abc1600_state::get_current_task(offs_t offset)
 
 offs_t abc1600_state::get_segment_address(offs_t offset)
 {
-	int sega19 = !(!(A8 | m_ifc2) | !A19);
+	int sega19 = !(!(A8 || m_ifc2) || !A19);
 	int task = get_current_task(offset);
 
 	return (task << 5) | (sega19 << 4) | ((offset >> 15) & 0x0f);
@@ -774,17 +773,17 @@ UINT8 abc1600_state::read_supervisor_memory(offs_t offset)
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 	UINT8 data = 0;
 
-	if (!A2 & !A1)
+	if (!A2 && !A1)
 	{
 		// _EP
 		data = page_r(*program, offset);
 	}
-	else if (!A2 & A1 & A0)
+	else if (!A2 && A1 && A0)
 	{
 		// _ES
 		data = segment_r(*program, offset);
 	}
-	else if (A2 & A1 & A0)
+	else if (A2 && A1 && A0)
 	{
 		// _CAUSE
 		data = cause_r(*program, offset);
@@ -802,17 +801,17 @@ void abc1600_state::write_supervisor_memory(offs_t offset, UINT8 data)
 {
 	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
 
-	if (!A2 & !A1)
+	if (!A2 && !A1)
 	{
 		// _WEP
 		page_w(*program, offset, data);
 	}
-	else if (!A2 & A1 & A0)
+	else if (!A2 && A1 && A0)
 	{
 		// _WES
 		segment_w(*program, offset, data);
 	}
-	else if (A2 & !A1 & A0)
+	else if (A2 && !A1 && A0)
 	{
 		// W(C)
 		task_w(*program, offset, data);
@@ -828,7 +827,7 @@ int abc1600_state::get_fc()
 {
 	UINT16 fc = m68k_get_fc(m_maincpu);
 
-	m_ifc2 = !(!(MAGIC | FC0) | FC2);
+	m_ifc2 = !(!(MAGIC || FC0) || FC2);
 
 	return fc;
 }
@@ -1046,7 +1045,7 @@ READ8_MEMBER( abc1600_state::page_r )
 	{
 		int x20 = BIT(pgd, 9);
 
-		data = (pgd >> 8) | x20 << 2 | x20 << 3 | x20 << 4 | x20 << 5;
+		data = (pgd >> 8) | (x20 << 2) | (x20 << 3) | (x20 << 4) | (x20 << 5);
 	}
 
 	return data;
@@ -1122,7 +1121,7 @@ inline void abc1600_state::update_drdy0()
 	else
 	{
 		// BUS0I/BUS0X
-		int trrq0 = m_bus0i->trrq_r() & m_bus0x->trrq_r();
+		int trrq0 = m_bus0i->trrq_r() && m_bus0x->trrq_r();
 
 		m_dma0->rdy_w(trrq0);
 	}
@@ -1413,7 +1412,7 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER( abc1600_state::dbrq_w )
 {
-	m_maincpu->set_input_line(INPUT_LINE_HALT, state & m_dmadis);
+	m_maincpu->set_input_line(INPUT_LINE_HALT, state && m_dmadis);
 }
 
 READ8_MEMBER( abc1600_state::dma0_mreq_r )
@@ -1552,7 +1551,7 @@ static Z80DART_INTERFACE( dart_intf )
 
 void abc1600_state::scc_irq(bool status)
 {
-	m_maincpu->set_input_line(M68K_IRQ_5, status);
+	m_maincpu->set_input_line(M68K_IRQ_5, status ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -1659,7 +1658,7 @@ READ8_MEMBER( abc1600_state::cio_pc_r )
 	UINT8 data = 0x0d;
 
 	// data in
-	data |= (m_rtc->dio_r() | m_nvram->do_r()) << 1;
+	data |= (m_rtc->dio_r() || m_nvram->do_r()) << 1;
 
 	return data;
 }
@@ -1751,7 +1750,6 @@ static const wd17xx_interface fdc_intf =
 
 static ABC99_INTERFACE( abc99_intf )
 {
-	DEVCB_NULL,
 	DEVCB_DEVICE_LINE(Z8470AB1_TAG, z80dart_rxtxcb_w),
 	DEVCB_DEVICE_LINE(Z8470AB1_TAG, z80dart_dcdb_w)
 };
@@ -1994,4 +1992,4 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  COMPANY     FULLNAME     FLAGS
-COMP( 1985, abc1600, 0,      0,      abc1600, abc1600, 0,    "Luxor", "ABC 1600", GAME_NOT_WORKING )
+COMP( 1985, abc1600, 0,      0,      abc1600, abc1600, driver_device, 0,    "Luxor", "ABC 1600", GAME_NOT_WORKING )

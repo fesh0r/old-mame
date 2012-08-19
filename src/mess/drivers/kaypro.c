@@ -51,10 +51,10 @@ static ADDRESS_MAP_START( kayproii_io, AS_IO, 8, kaypro_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x03) AM_DEVWRITE("brg", com8116_device, stt_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE_LEGACY("z80sio", kaypro_sio_r, kaypro_sio_w)
-	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE_LEGACY("z80pio_g", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80pio_g", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0c, 0x0f) AM_DEVWRITE("brg", com8116_device, str_w)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE_LEGACY("wd1793", wd17xx_r, wd17xx_w)
-	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE_LEGACY("z80pio_s", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_s", z80pio_device, read_alt, write_alt)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kaypro2x_io, AS_IO, 8, kaypro_state )
@@ -63,7 +63,7 @@ static ADDRESS_MAP_START( kaypro2x_io, AS_IO, 8, kaypro_state )
 	AM_RANGE(0x00, 0x03) AM_DEVWRITE("brg", com8116_device, str_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE_LEGACY("z80sio", kaypro_sio_r, kaypro_sio_w)
 	AM_RANGE(0x08, 0x0b) AM_DEVWRITE("brg", com8116_device, stt_w)
-	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE_LEGACY("z80sio_2x", z80sio_cd_ba_r, z80sio_cd_ba_w)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80sio_2x", z80sio_device, read, write)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE_LEGACY("wd1793", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x14, 0x17) AM_READWRITE(kaypro2x_system_port_r,kaypro2x_system_port_w)
 	AM_RANGE(0x18, 0x1b) AM_DEVWRITE("centronics", centronics_device, write)
@@ -413,11 +413,11 @@ ROM_START(kaypro10)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT    INIT         COMPANY                 FULLNAME */
-COMP( 1982, kayproii,   0,        0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro II - 2/83" , 0 )
-COMP( 1983, kaypro4,    kayproii, 0,    kaypro4,  kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/83" , 0 ) // model 81-004
-COMP( 1983, kaypro4p88, kayproii, 0,    kaypro4,  kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 plus88 - 4/83" , GAME_NOT_WORKING ) // model 81-004 with an added 8088 daughterboard and rom
-COMP( 198?, omni2,      kayproii, 0,    omni2,    kay_kbd, 0,      "Non Linear Systems",  "Omni II" , 0 )
-COMP( 1984, kaypro2x,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING ) // model 81-025
-COMP( 1984, kaypro4a,   kaypro2x, 0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/84" , GAME_NOT_WORKING ) // model 81-015
+COMP( 1982, kayproii,   0,        0,    kayproii, kay_kbd, driver_device, 0,      "Non Linear Systems",  "Kaypro II - 2/83" , 0 )
+COMP( 1983, kaypro4,    kayproii, 0,    kaypro4,  kay_kbd, driver_device, 0,      "Non Linear Systems",  "Kaypro 4 - 4/83" , 0 ) // model 81-004
+COMP( 1983, kaypro4p88, kayproii, 0,    kaypro4,  kay_kbd, driver_device, 0,      "Non Linear Systems",  "Kaypro 4 plus88 - 4/83" , GAME_NOT_WORKING ) // model 81-004 with an added 8088 daughterboard and rom
+COMP( 198?, omni2,      kayproii, 0,    omni2,    kay_kbd, driver_device, 0,      "Non Linear Systems",  "Omni II" , 0 )
+COMP( 1984, kaypro2x,   0,        0,    kaypro2x, kay_kbd, driver_device, 0,      "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING ) // model 81-025
+COMP( 1984, kaypro4a,   kaypro2x, 0,    kaypro2x, kay_kbd, driver_device, 0,      "Non Linear Systems",  "Kaypro 4 - 4/84" , GAME_NOT_WORKING ) // model 81-015
 // Kaypro 4/84 plus 88 goes here, model 81-015 with an added 8088 daughterboard and rom
-COMP( 1983, kaypro10,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 10" , GAME_NOT_WORKING ) // model 81-005
+COMP( 1983, kaypro10,   0,        0,    kaypro2x, kay_kbd, driver_device, 0,      "Non Linear Systems",  "Kaypro 10" , GAME_NOT_WORKING ) // model 81-005

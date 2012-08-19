@@ -191,7 +191,6 @@ C64 SERIAL BUS
 */
 
 #include "cbmiec.h"
-#include "machine/devhelpr.h"
 
 
 
@@ -455,6 +454,17 @@ void cbm_iec_device::device_start()
     m_out_clk_func.resolve(m_out_clk_cb, *this);
     m_out_data_func.resolve(m_out_data_cb, *this);
     m_out_reset_func.resolve(m_out_reset_cb, *this);
+}
+
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void cbm_iec_device::device_reset()
+{
+	reset_w(0);
+	reset_w(1);
 }
 
 //-------------------------------------------------

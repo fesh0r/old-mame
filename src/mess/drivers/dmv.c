@@ -14,6 +14,7 @@
 #include "machine/8237dma.h"
 #include "video/upd7220.h"
 #include "formats/basicdsk.h"
+#include "dmv.lh"
 
 class dmv_state : public driver_device
 {
@@ -24,9 +25,9 @@ public:
 		  m_hgdc(*this, "upd7220"),
 		  m_dmac(*this, "dma8237"),
 		  m_floppy0(*this, FLOPPY_0),
-		  m_floppy1(*this, FLOPPY_1)
-		,
-		m_video_ram(*this, "video_ram"){ }
+		  m_floppy1(*this, FLOPPY_1),
+		  m_video_ram(*this, "video_ram")
+		{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<upd7220_device> m_hgdc;
@@ -37,15 +38,38 @@ public:
 	virtual void video_start();
 	virtual void machine_reset();
 
+	DECLARE_WRITE8_MEMBER(leds_w);
 	DECLARE_WRITE_LINE_MEMBER(fdc_irq_w);
 	DECLARE_WRITE_LINE_MEMBER(dma_hrq_changed);
 	DECLARE_WRITE8_MEMBER(fdd_motor_w);
 	DECLARE_READ8_MEMBER(sys_status_r);
+	DECLARE_READ8_MEMBER(kb_ctrl_mcu_r);
+	DECLARE_WRITE8_MEMBER(kb_ctrl_mcu_w);
 
 	required_shared_ptr<UINT8> m_video_ram;
 	int 		m_fdc_int_line;
 };
 
+
+WRITE8_MEMBER(dmv_state::leds_w)
+{
+	/*
+        LEDs    Value       Significance
+        ---------------------------------------
+        None    0xFF        Check complete
+        1+8     0x7E        Sumcheck error
+        2+8     0xBE        GDC error
+        3+8     0xDE        Disk drive error
+        4+8     0xEE        16-bit processor error
+        5+8     0xF6        Keyboard error
+        6+8     0xFA        DMA error
+        7+8     0xFC        Memory error
+        All     0x00        Processor error
+    */
+
+	for(int i=0; i<8; i++)
+		output_set_led_value(8-i, BIT(data, i));
+}
 
 WRITE_LINE_MEMBER(dmv_state::fdc_irq_w)
 {
@@ -64,7 +88,21 @@ WRITE8_MEMBER(dmv_state::fdd_motor_w)
 
 READ8_MEMBER(dmv_state::sys_status_r)
 {
+	/*
+        Main system status
+        x--- ---- FDD index
+        -x--- --- IRQ 2
+        --x--- -- IRQ 3
+        ---x--- - IRQ 4
+        ---- x--- FDC interrupt
+        ---- -x-- FDD ready
+        ---- --x- 16-bit CPU available (active low)
+        ---- ---x FDD motor (active low)
+    */
 	UINT8 data = 0x00;
+
+	// 16-bit CPU not available
+	data |= 0x02;
 
 	if (m_fdc_int_line)
 		data |= 0x08;
@@ -72,7 +110,15 @@ READ8_MEMBER(dmv_state::sys_status_r)
 	return data;
 }
 
+READ8_MEMBER(dmv_state::kb_ctrl_mcu_r)
+{
+	return upi41_master_r(machine().device("kb_ctrl_mcu"), offset);
+}
 
+WRITE8_MEMBER(dmv_state::kb_ctrl_mcu_w)
+{
+	upi41_master_w(machine().device("kb_ctrl_mcu"), offset, data);
+}
 
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 {
@@ -123,17 +169,17 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( dmv_io , AS_IO, 8, dmv_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_WRITE(leds_w)
 	AM_RANGE(0x13, 0x13) AM_READ(sys_status_r)
 	AM_RANGE(0x14, 0x14) AM_WRITE(fdd_motor_w)
 	AM_RANGE(0x20, 0x2f) AM_DEVREADWRITE_LEGACY("dma8237", i8237_r, i8237_w)
+	AM_RANGE(0x40, 0x41) AM_READWRITE(kb_ctrl_mcu_r, kb_ctrl_mcu_w)
 	AM_RANGE(0x50, 0x50) AM_DEVREAD_LEGACY("upd765", upd765_status_r)
 	AM_RANGE(0x51, 0x51) AM_DEVREADWRITE_LEGACY("upd765", upd765_data_r, upd765_data_w)
 	AM_RANGE(0xa0, 0xa1) AM_DEVREADWRITE("upd7220", upd7220_device, read, write)
 
-	//AM_RANGE(0x00, 0x00) panel LEDs
 	//AM_RANGE(0x10, 0x11) boot ROM bankswitch (0x0000-0x1fff)
 	//AM_RANGE(0x12, 0x12) pulse FDC TC line
-	//AM_RANGE(0x40, 0x41) Keyboard
 	//AM_RANGE(0x80, 0x83) PIT8253
 	//AM_RANGE(0xe0, 0xe7) RAM bankswitch
 ADDRESS_MAP_END
@@ -141,6 +187,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( dmv_keyboard_io, AS_IO, 8, dmv_state )
 	//AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) keyboard rows input
 	//AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) bits 0-3 kb cols out
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( dmv_kb_ctrl_io, AS_IO, 8, dmv_state )
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_NOP	// bit 0 data from kb, bit 1 data to kb
+	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_NOP
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( upd7220_map, AS_0, 8, dmv_state )
@@ -246,6 +298,9 @@ static MACHINE_CONFIG_START( dmv, dmv_state )
     MCFG_CPU_PROGRAM_MAP(dmv_mem)
     MCFG_CPU_IO_MAP(dmv_io)
 
+	MCFG_CPU_ADD("kb_ctrl_mcu", I8741, XTAL_6MHz)
+	MCFG_CPU_IO_MAP(dmv_kb_ctrl_io)
+
 	MCFG_CPU_ADD("keyboard_mcu", I8741, XTAL_6MHz)
 	MCFG_CPU_IO_MAP(dmv_keyboard_io)
 	MCFG_DEVICE_DISABLE()
@@ -261,6 +316,7 @@ static MACHINE_CONFIG_START( dmv, dmv_state )
 	MCFG_GFXDECODE(dmv)
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)
+	MCFG_DEFAULT_LAYOUT(layout_dmv)
 
 	// devices
 	MCFG_UPD7220_ADD( "upd7220", XTAL_4MHz, hgdc_intf, upd7220_map )
@@ -274,6 +330,9 @@ ROM_START( dmv )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "dmv_norm.bin", 0x0000, 0x2000, CRC(bf25f3f0) SHA1(0c7dd37704db4799e340cc836f887cd543e5c964))
 
+	ROM_REGION(0x400, "kb_ctrl_mcu", ROMREGION_ERASEFF)
+	ROM_LOAD( "dmv_kb_ctrl_mcu.bin", 0x0000, 0x0400, CRC(a03af298) SHA1(144cba41294c46f5ca79b7ad8ced0e4408168775))
+
 	 // i8741/8041 microcontroller inside the Keyboard
     ROM_REGION(0x400, "keyboard_mcu", ROMREGION_ERASEFF)
     ROM_LOAD( "dmv_kbmcu.bin", 0x0000, 0x0400, CRC(14e376de) SHA1 (ed09048ef03c602dba17ad6fcfe125c082c9bb17))
@@ -282,5 +341,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME             FLAGS */
-COMP( 1984, dmv,	0,       0, 		dmv,	dmv,	 0, 	 "NCR",   "Decision Mate V",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1984, dmv,	0,       0, 		dmv,	dmv, driver_device,	 0, 	 "NCR",   "Decision Mate V",	GAME_NOT_WORKING | GAME_NO_SOUND)
 

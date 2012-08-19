@@ -873,56 +873,51 @@ ROM_START( meritum_net )
 	ROM_LOAD( "char.bin", 0x0000, 0x1000, CRC(2c09a5a7) SHA1(146891b3ddfc2de95e6a5371536394a657880054))
 ROM_END
 
-static DRIVER_INIT( trs80 )
+DRIVER_INIT_MEMBER(trs80_state,trs80)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_mode = 0;
-	state->m_model4 = 0;
+	m_mode = 0;
+	m_model4 = 0;
 }
 
-static DRIVER_INIT( trs80l2 )
+DRIVER_INIT_MEMBER(trs80_state,trs80l2)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_mode = 2;
-	state->m_model4 = 0;
+	m_mode = 2;
+	m_model4 = 0;
 }
 
-static DRIVER_INIT( trs80m4 )
+DRIVER_INIT_MEMBER(trs80_state,trs80m4)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_mode = 0;
-	state->m_model4 = 2;
-	state->m_p_videoram.set_target(state->memregion("maincpu")->base()+0x4000,state->m_p_videoram.bytes());
+	m_mode = 0;
+	m_model4 = 2;
+	m_p_videoram.set_target(memregion("maincpu")->base()+0x4000,m_p_videoram.bytes());
 }
 
-static DRIVER_INIT( trs80m4p )
+DRIVER_INIT_MEMBER(trs80_state,trs80m4p)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_mode = 0;
-	state->m_model4 = 4;
-	state->m_p_videoram.set_target(state->memregion("maincpu")->base()+0x4000,state->m_p_videoram.bytes());
+	m_mode = 0;
+	m_model4 = 4;
+	m_p_videoram.set_target(memregion("maincpu")->base()+0x4000,m_p_videoram.bytes());
 }
 
-static DRIVER_INIT( lnw80 )
+DRIVER_INIT_MEMBER(trs80_state,lnw80)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_mode = 0;
-	state->m_model4 = 0;
-	state->m_p_gfxram = machine.root_device().memregion("gfx2")->base();
-	state->m_p_videoram.set_target(state->memregion("maincpu")->base()+0x4000,state->m_p_videoram.bytes());
+	m_mode = 0;
+	m_model4 = 0;
+	m_p_gfxram = machine().root_device().memregion("gfx2")->base();
+	m_p_videoram.set_target(memregion("maincpu")->base()+0x4000,m_p_videoram.bytes());
 }
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT         COMPANY           FULLNAME */
-COMP( 1977, trs80,    0,      0,      trs80,      trs80,   trs80,    "Tandy Radio Shack", "TRS-80 Model I (Level I Basic)", 0 )
-COMP( 1978, trs80l2,  trs80,  0,      model1,     trs80,   trs80l2,  "Tandy Radio Shack", "TRS-80 Model I (Level II Basic)", 0 )
-COMP( 1983, radionic, trs80,  0,      radionic,   trs80,   trs80,    "Komtek", "Radionic", 0 )
-COMP( 1980, sys80,    trs80,  0,      sys80,      trs80,   trs80l2,  "EACA Computers Ltd", "System-80", 0 )
-COMP( 1981, lnw80,    trs80,  0,      lnw80,      trs80m3, lnw80,    "LNW Research", "LNW-80", 0 )
-COMP( 1980, trs80m3,  trs80,  0,      model3,     trs80m3, trs80m4,  "Tandy Radio Shack", "TRS-80 Model III", 0 )
-COMP( 1980, trs80m4,  trs80,  0,      model4,     trs80m3, trs80m4,  "Tandy Radio Shack", "TRS-80 Model 4", 0 )
-COMP( 1983, trs80m4p, trs80,  0,      model4p,    trs80m3, trs80m4p, "Tandy Radio Shack", "TRS-80 Model 4P", 0 )
-COMP( 1983, ht1080z,  trs80,  0,      ht1080z,    trs80,   trs80l2,  "Hiradastechnika Szovetkezet", "HT-1080Z Series I", 0 )
-COMP( 1984, ht1080z2, trs80,  0,      ht1080z,    trs80,   trs80l2,  "Hiradastechnika Szovetkezet", "HT-1080Z Series II", 0 )
-COMP( 1985, ht108064, trs80,  0,      ht1080z,    trs80,   trs80,    "Hiradastechnika Szovetkezet", "HT-1080Z/64", 0 )
-COMP( 1985, meritum,  trs80,  0,      meritum,    trs80,   trs80l2,  "Mera-Elzab", "Meritum I (Model 2)", 0 )
-COMP( 1985, meritum_net, trs80,  0,   meritum,    trs80,   trs80l2,  "Mera-Elzab", "Meritum I (Model 2) (network)", 0 )
+COMP( 1977, trs80,    0,      0,      trs80,      trs80, trs80_state,   trs80,    "Tandy Radio Shack", "TRS-80 Model I (Level I Basic)", 0 )
+COMP( 1978, trs80l2,  trs80,  0,      model1,     trs80, trs80_state,   trs80l2,  "Tandy Radio Shack", "TRS-80 Model I (Level II Basic)", 0 )
+COMP( 1983, radionic, trs80,  0,      radionic,   trs80, trs80_state,   trs80,    "Komtek", "Radionic", 0 )
+COMP( 1980, sys80,    trs80,  0,      sys80,      trs80, trs80_state,   trs80l2,  "EACA Computers Ltd", "System-80", 0 )
+COMP( 1981, lnw80,    trs80,  0,      lnw80,      trs80m3, trs80_state, lnw80,    "LNW Research", "LNW-80", 0 )
+COMP( 1980, trs80m3,  trs80,  0,      model3,     trs80m3, trs80_state, trs80m4,  "Tandy Radio Shack", "TRS-80 Model III", 0 )
+COMP( 1980, trs80m4,  trs80,  0,      model4,     trs80m3, trs80_state, trs80m4,  "Tandy Radio Shack", "TRS-80 Model 4", 0 )
+COMP( 1983, trs80m4p, trs80,  0,      model4p,    trs80m3, trs80_state, trs80m4p, "Tandy Radio Shack", "TRS-80 Model 4P", 0 )
+COMP( 1983, ht1080z,  trs80,  0,      ht1080z,    trs80, trs80_state,   trs80l2,  "Hiradastechnika Szovetkezet", "HT-1080Z Series I", 0 )
+COMP( 1984, ht1080z2, trs80,  0,      ht1080z,    trs80, trs80_state,   trs80l2,  "Hiradastechnika Szovetkezet", "HT-1080Z Series II", 0 )
+COMP( 1985, ht108064, trs80,  0,      ht1080z,    trs80, trs80_state,   trs80,    "Hiradastechnika Szovetkezet", "HT-1080Z/64", 0 )
+COMP( 1985, meritum,  trs80,  0,      meritum,    trs80, trs80_state,   trs80l2,  "Mera-Elzab", "Meritum I (Model 2)", 0 )
+COMP( 1985, meritum_net, trs80,  0,   meritum,    trs80, trs80_state,   trs80l2,  "Mera-Elzab", "Meritum I (Model 2) (network)", 0 )

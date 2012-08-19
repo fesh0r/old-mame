@@ -56,10 +56,10 @@ Notes:
 
     TODO:
 
+    - Tiny BASIC
     - cassette loading
     - 20K RAM for Floating Point BASIC
     - VP-111 has 1K RAM, no byte I/O, no expansion
-    - VP-551 Super Sound Board (4 channel sound)
     - VP-601/611 ASCII Keyboard (VP-601 58 keys, VP611 58 keys + 16 keys numerical keypad)
     - VP-700 Expanded Tiny Basic Board (4 KB ROM expansion)
 
@@ -266,13 +266,16 @@ READ8_MEMBER( vip_state::read )
 
     UINT8 data = m_exp->program_r(space, offset, cs, cdef, &minh);
 
-    if (cs)
+    if (!minh)
     {
-        data = memregion(CDP1802_TAG)->base()[offset & 0x1ff];
-    }
-    else if (!minh)
-    {
-        data = m_ram->pointer()[offset & (m_ram->size() - 1)];
+        if (cs)
+        {
+            data = memregion(CDP1802_TAG)->base()[offset & 0x1ff];
+        }
+        else
+        {
+            data = m_ram->pointer()[offset & m_ram->mask()];
+        }
     }
 
     return data;
@@ -293,7 +296,7 @@ WRITE8_MEMBER( vip_state::write )
 
     if (!cs && !minh)
     {
-        m_ram->pointer()[offset & (m_ram->size() - 1)] = data;
+        m_ram->pointer()[offset & m_ram->mask()] = data;
     }
 }
 
@@ -464,7 +467,7 @@ READ_LINE_MEMBER( vip_state::ef2_r )
 
 READ_LINE_MEMBER( vip_state::ef3_r )
 {
-	return !BIT(ioport("KEYPAD")->read(), m_keylatch) | m_byteio_ef3 | m_exp_ef3;
+	return !BIT(ioport("KEYPAD")->read(), m_keylatch) || m_byteio_ef3 || m_exp_ef3;
 }
 
 READ_LINE_MEMBER( vip_state::ef4_r )
@@ -601,11 +604,6 @@ static const cassette_interface vip_cassette_interface =
 //  VIP_BYTEIO_PORT_INTERFACE( byteio_intf )
 //-------------------------------------------------
 
-static SLOT_INTERFACE_START( vip_byteio_cards )
-    // VP576
-    // VP620
-SLOT_INTERFACE_END
-
 WRITE_LINE_MEMBER( vip_state::byteio_inst_w )
 {
     if (!state)
@@ -623,20 +621,6 @@ static VIP_BYTEIO_PORT_INTERFACE( byteio_intf )
 //-------------------------------------------------
 //  VIP_EXPANSION_INTERFACE( expansion_intf )
 //-------------------------------------------------
-
-static SLOT_INTERFACE_START( vip_expansion_cards )
-    SLOT_INTERFACE("vp550", VP550)
-    // VP551
-    // VP560
-    // VP565
-    // VP570
-    // VP575
-    // VP576
-    // VP700
-    SLOT_INTERFACE("vp585", VP585)
-    SLOT_INTERFACE("vp590", VP590)
-    SLOT_INTERFACE("vp595", VP595)
-SLOT_INTERFACE_END
 
 WRITE_LINE_MEMBER( vip_state::exp_int_w )
 {
@@ -844,9 +828,6 @@ ROM_START( vip )
 	ROM_REGION( 0x200, CDP1802_TAG, 0 )
 	ROM_LOAD( "cdpr566.u10", 0x0000, 0x0200, CRC(5be0a51f) SHA1(40266e6d13e3340607f8b3dcc4e91d7584287c06) )
 
-	ROM_REGION( 0x1000, "vp700", 0)
-	ROM_LOAD( "vp700.bin", 0x0000, 0x1000, NO_DUMP )
-
 	ROM_REGION( 0x200, "chip8", 0 )
 	ROM_LOAD( "chip8.bin", 0x0000, 0x0200, CRC(438ec5d5) SHA1(8aa634c239004ff041c9adbf9144bd315ab5fc77) )
 
@@ -868,5 +849,5 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME    FLAGS
-COMP( 1977, vip,	0,		0,		vip,		vip,	0,		"RCA",	"Cosmac VIP (VP-711)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )
-COMP( 1977, vp111,	vip,	0,		vp111,		vip,	0,		"RCA",	"Cosmac VIP (VP-111)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )
+COMP( 1977, vip,	0,		0,		vip,		vip, driver_device,	0,		"RCA",	"Cosmac VIP (VP-711)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )
+COMP( 1977, vp111,	vip,	0,		vp111,		vip, driver_device,	0,		"RCA",	"Cosmac VIP (VP-111)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )

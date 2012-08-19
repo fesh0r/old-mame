@@ -126,7 +126,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(sc1_io, AS_IO, 8, sc1_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0xfc, 0xfc) AM_WRITE(matrix_w)
 ADDRESS_MAP_END
 
@@ -205,4 +205,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                           FULLNAME       FLAGS */
-COMP( 1989, sc1,    0,      0,       sc1,       sc1,     0,  "VEB Mikroelektronik Erfurt", "Schachcomputer SC1", GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1989, sc1,    0,      0,       sc1,       sc1, driver_device,     0,  "VEB Mikroelektronik Erfurt", "Schachcomputer SC1", GAME_NOT_WORKING | GAME_NO_SOUND )

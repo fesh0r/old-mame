@@ -13,7 +13,7 @@
 /*
     driver init function
 */
-static DRIVER_INIT( tx0 )
+DRIVER_INIT_MEMBER(tx0_state,tx0)
 {
 	UINT8 *dst;
 
@@ -70,7 +70,7 @@ static DRIVER_INIT( tx0 )
 	};
 
 	/* set up our font */
-	dst = machine.root_device().memregion("gfx1")->base();
+	dst = machine().root_device().memregion("gfx1")->base();
 
 	memcpy(dst, fontdata6x8, tx0_fontdata_size);
 }
@@ -1671,5 +1671,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT INIT     COMPANY                   FULLNAME */
-COMP( 1956, tx0_64kw, 0,	0,	tx0_64kw, tx0,	tx0,			"MIT", "TX-0 original demonstrator (64 kWords of RAM)" , GAME_NO_SOUND_HW | GAME_NOT_WORKING)
-COMP( 1962, tx0_8kw,  tx0_64kw,	0,	tx0_8kw,  tx0,	tx0,		"MIT", "TX-0 upgraded system (8 kWords of RAM)" , GAME_NO_SOUND_HW | GAME_NOT_WORKING)
+COMP( 1956, tx0_64kw, 0,	0,	tx0_64kw, tx0, tx0_state,	tx0,			"MIT", "TX-0 original demonstrator (64 kWords of RAM)" , GAME_NO_SOUND_HW | GAME_NOT_WORKING)
+COMP( 1962, tx0_8kw,  tx0_64kw,	0,	tx0_8kw,  tx0, tx0_state,	tx0,		"MIT", "TX-0 upgraded system (8 kWords of RAM)" , GAME_NO_SOUND_HW | GAME_NOT_WORKING)

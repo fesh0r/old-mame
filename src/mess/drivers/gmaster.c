@@ -252,11 +252,10 @@ ROM_START(gmaster)
 	ROM_CART_LOAD("cart", 0x8000, 0x8000, 0)
 ROM_END
 
-static DRIVER_INIT( gmaster )
+DRIVER_INIT_MEMBER(gmaster_state,gmaster)
 {
-	gmaster_state *state = machine.driver_data<gmaster_state>();
-	memset(&state->m_video, 0, sizeof(state->m_video));
+	memset(&m_video, 0, sizeof(m_video));
 }
 
 /*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT  COMPANY                 FULLNAME */
-CONS( 1990, gmaster,       0,          0, gmaster,  gmaster,    gmaster,    "Hartung", "Game Master", GAME_IMPERFECT_SOUND)
+CONS( 1990, gmaster,       0,          0, gmaster,  gmaster, gmaster_state,    gmaster,    "Hartung", "Game Master", GAME_IMPERFECT_SOUND)

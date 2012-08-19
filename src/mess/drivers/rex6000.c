@@ -241,10 +241,7 @@ WRITE8_MEMBER( rex6000_state::beep_w )
 
 			m_beep_mode = BIT(data, 0);
 			break;
-		break;
 	}
-
-
 }
 
 READ8_MEMBER( rex6000_state::lcd_base_r )
@@ -553,7 +550,7 @@ static TIMER_DEVICE_CALLBACK( sec_timer )
 
 WRITE_LINE_MEMBER( rex6000_state::alarm_irq )
 {
-	if (!(m_irq_mask & IRQ_FLAG_ALARM) & state)
+	if (!(m_irq_mask & IRQ_FLAG_ALARM) && state)
 	{
 		m_irq_flag |= IRQ_FLAG_ALARM;
 		device_set_input_line(m_maincpu, 0, HOLD_LINE);
@@ -727,5 +724,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 2000, rex6000,  0,       0,	rex6000,	rex6000,	 0,   "Xircom / Intel",   "REX 6000",		GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 2000, ds2,	  rex6000, 0,	rex6000,	rex6000,	 0,   "Citizen",		  "DataSlim 2",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 2000, rex6000,  0,       0,	rex6000,	rex6000, driver_device,	 0,   "Xircom / Intel",   "REX 6000",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 2000, ds2,	  rex6000, 0,	rex6000,	rex6000, driver_device,	 0,   "Citizen",		  "DataSlim 2",		GAME_NOT_WORKING | GAME_NO_SOUND)

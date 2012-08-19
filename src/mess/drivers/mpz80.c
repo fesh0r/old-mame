@@ -838,11 +838,10 @@ DIRECT_UPDATE_MEMBER(mpz80_state::mpz80_direct_update_handler)
 	return address;
 }
 
-static DRIVER_INIT( mpz80 )
+DRIVER_INIT_MEMBER(mpz80_state,mpz80)
 {
-	mpz80_state *state = machine.driver_data<mpz80_state>();
-	address_space *program = machine.device<cpu_device>(Z80_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate(FUNC(mpz80_state::mpz80_direct_update_handler), state));
+	address_space *program = machine().device<cpu_device>(Z80_TAG)->space(AS_PROGRAM);
+	program->set_direct_update_handler(direct_update_delegate(FUNC(mpz80_state::mpz80_direct_update_handler), this));
 }
 
 
@@ -852,4 +851,4 @@ static DRIVER_INIT( mpz80 )
 //**************************************************************************
 
 //    YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT    INIT    COMPANY                          FULLNAME        FLAGS
-COMP( 1980, mpz80,  0,      0,      mpz80,  mpz80,  mpz80,      "Morrow Designs",	"MPZ80",	GAME_NOT_WORKING | GAME_NO_SOUND_HW )
+COMP( 1980, mpz80,  0,      0,      mpz80,  mpz80, mpz80_state,  mpz80,      "Morrow Designs",	"MPZ80",	GAME_NOT_WORKING | GAME_NO_SOUND_HW )

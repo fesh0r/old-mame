@@ -46,7 +46,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ac1_io, AS_IO, 8, ac1_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80pio", z80pio_device, read, write)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -210,6 +210,6 @@ ROM_END
 
 /* Driver */
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT   INIT  COMPANY                 FULLNAME   FLAGS */
-COMP( 1984, ac1,     0,      0, 	ac1,	ac1,	ac1,  "Frank Heyder", "Amateurcomputer AC1 Berlin", 0 )
-COMP( 1984, ac1_32,  ac1,    0, 	ac1_32,	ac1,	ac1,  "Frank Heyder", "Amateurcomputer AC1 Berlin (32 lines)", 0 )
-COMP( 1984, ac1scch, ac1,    0, 	ac1_32,	ac1,	ac1,  "Frank Heyder", "Amateurcomputer AC1 SCCH", 0 )
+COMP( 1984, ac1,     0,      0, 	ac1,	ac1, ac1_state,	ac1,  "Frank Heyder", "Amateurcomputer AC1 Berlin", 0 )
+COMP( 1984, ac1_32,  ac1,    0, 	ac1_32,	ac1, ac1_state,	ac1,  "Frank Heyder", "Amateurcomputer AC1 Berlin (32 lines)", 0 )
+COMP( 1984, ac1scch, ac1,    0, 	ac1_32,	ac1, ac1_state,	ac1,  "Frank Heyder", "Amateurcomputer AC1 SCCH", 0 )

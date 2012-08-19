@@ -28,7 +28,7 @@ public:
 
 	required_device<cassette_image_device> m_cass;
 	optional_device<i8255_device> m_ppi;
-	optional_device<device_t> m_dac;
+	optional_device<dac_device> m_dac;
 	DECLARE_READ8_MEMBER(ut88_keyboard_r);
 	DECLARE_WRITE8_MEMBER(ut88_keyboard_w);
 	DECLARE_WRITE8_MEMBER(ut88_sound_w);
@@ -41,6 +41,8 @@ public:
 	optional_shared_ptr<UINT8> m_p_videoram;
 	int m_keyboard_mask;
 	int m_lcd_digit[6];
+	DECLARE_DRIVER_INIT(ut88);
+	DECLARE_DRIVER_INIT(ut88mini);
 };
 
 
@@ -48,11 +50,9 @@ public:
 
 extern const i8255_interface ut88_ppi8255_interface;
 
-extern DRIVER_INIT( ut88 );
 extern MACHINE_RESET( ut88 );
 extern MACHINE_START( ut88mini );
 extern MACHINE_RESET( ut88mini );
-extern DRIVER_INIT( ut88mini );
 
 /*----------- defined in video/ut88.c -----------*/
 

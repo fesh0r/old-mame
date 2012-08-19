@@ -71,7 +71,7 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<ef9345_device> m_ef9345;
-	required_device<device_t> m_dac;
+	required_device<dac_device> m_dac;
 	required_device<printer_image_device> m_printer;
 	required_device<cassette_image_device> m_cassette;
 
@@ -87,6 +87,7 @@ public:
 	DECLARE_WRITE8_MEMBER ( ef9345_io_w );
 	DECLARE_READ8_MEMBER ( cassette_r );
 	DECLARE_WRITE8_MEMBER ( cassette_w );
+	DECLARE_DRIVER_INIT(vg5k);
 };
 
 
@@ -130,7 +131,7 @@ READ8_MEMBER ( vg5k_state::cassette_r )
 
 WRITE8_MEMBER ( vg5k_state::cassette_w )
 {
-	dac_data_w(m_dac, data <<2);
+	m_dac->write_unsigned8(data <<2);
 
 	if (data == 0x03)
 		m_cassette->output(+1);
@@ -322,9 +323,9 @@ static GFXDECODE_START( vg5k )
 	GFXDECODE_ENTRY( "ef9345", 0x2000, vg5k_charlayout, 0, 4 )
 GFXDECODE_END
 
-static DRIVER_INIT( vg5k )
+DRIVER_INIT_MEMBER(vg5k_state,vg5k)
 {
-	UINT8 *FNT = machine.root_device().memregion("ef9345")->base();
+	UINT8 *FNT = machine().root_device().memregion("ef9345")->base();
 	UINT16 a,b,c,d,dest=0x2000;
 
 	/* Unscramble the chargen rom as the format is too complex for gfxdecode to handle unaided */
@@ -336,9 +337,9 @@ static DRIVER_INIT( vg5k )
 
 
 	/* install expansion memory*/
-	address_space *program = machine.device("maincpu")->memory().space(AS_PROGRAM);
-	UINT8 *ram = machine.device<ram_device>(RAM_TAG)->pointer();
-	UINT16 ram_size = machine.device<ram_device>(RAM_TAG)->size();
+	address_space *program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
+	UINT16 ram_size = machine().device<ram_device>(RAM_TAG)->size();
 
 	if (ram_size > 0x4000)
 		program->install_ram(0x8000, 0x3fff + ram_size, ram);
@@ -430,4 +431,4 @@ ROM_END
 
 /* Driver */
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  INIT   COMPANY     FULLNAME   FLAGS */
-COMP( 1984, vg5k,   0,      0,      vg5k,    vg5k,  vg5k, "Philips",  "VG-5000", GAME_SUPPORTS_SAVE | GAME_NOT_WORKING )
+COMP( 1984, vg5k,   0,      0,      vg5k,    vg5k, vg5k_state,  vg5k, "Philips",  "VG-5000", GAME_SUPPORTS_SAVE | GAME_NOT_WORKING )

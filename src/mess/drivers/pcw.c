@@ -1085,24 +1085,23 @@ static MACHINE_RESET( pcw )
 	state->m_printer_shift_output = 0;
 }
 
-static DRIVER_INIT(pcw)
+DRIVER_INIT_MEMBER(pcw_state,pcw)
 {
-	pcw_state *state = machine.driver_data<pcw_state>();
-	device_set_input_line_vector(machine.device("maincpu"), 0, 0x0ff);
+	device_set_input_line_vector(machine().device("maincpu"), 0, 0x0ff);
 
 	/* lower 4 bits are interrupt counter */
-	state->m_system_status = 0x000;
-	state->m_system_status &= ~((1<<6) | (1<<5) | (1<<4));
+	m_system_status = 0x000;
+	m_system_status &= ~((1<<6) | (1<<5) | (1<<4));
 
-	state->m_interrupt_counter = 0;
+	m_interrupt_counter = 0;
 
-	state->m_roller_ram_offset = 0;
+	m_roller_ram_offset = 0;
 
 	/* timer interrupt */
-	machine.scheduler().timer_set(attotime::zero, FUNC(setup_beep));
+	machine().scheduler().timer_set(attotime::zero, FUNC(setup_beep));
 
-	state->m_prn_stepper = machine.scheduler().timer_alloc(FUNC(pcw_stepper_callback));
-	state->m_prn_pins = machine.scheduler().timer_alloc(FUNC(pcw_pins_callback));
+	m_prn_stepper = machine().scheduler().timer_alloc(FUNC(pcw_stepper_callback));
+	m_prn_pins = machine().scheduler().timer_alloc(FUNC(pcw_pins_callback));
 }
 
 
@@ -1451,8 +1450,8 @@ ROM_END
 /* these are all variants on the pcw design */
 /* major difference is memory configuration and drive type */
 /*     YEAR NAME        PARENT  COMPAT  MACHINE   INPUT INIT    COMPANY        FULLNAME */
-COMP( 1985, pcw8256,   0,		0,		pcw8256,  pcw,	pcw,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
-COMP( 1985, pcw8512,   pcw8256,	0,		pcw8512,  pcw,	pcw,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
-COMP( 1987, pcw9256,   pcw8256,	0,		pcw8256,  pcw,	pcw,		"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
-COMP( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw,	pcw,		"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
-COMP( 1993, pcw10,	   pcw8256,	0,		pcw8512,  pcw,	pcw,		"Amstrad plc", "PCW10",			GAME_NOT_WORKING)
+COMP( 1985, pcw8256,   0,		0,		pcw8256,  pcw, pcw_state,	pcw,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
+COMP( 1985, pcw8512,   pcw8256,	0,		pcw8512,  pcw, pcw_state,	pcw,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
+COMP( 1987, pcw9256,   pcw8256,	0,		pcw8256,  pcw, pcw_state,	pcw,		"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
+COMP( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw, pcw_state,	pcw,		"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
+COMP( 1993, pcw10,	   pcw8256,	0,		pcw8512,  pcw, pcw_state,	pcw,		"Amstrad plc", "PCW10",			GAME_NOT_WORKING)

@@ -596,7 +596,7 @@ static TIMER_DEVICE_CALLBACK( cassette_output_tick )
 {
 	atom_state *state = timer.machine().driver_data<atom_state>();
 
-	int level = !(!(!state->m_hz2400 & state->m_pc1) & state->m_pc0);
+	int level = !(!(!state->m_hz2400 && state->m_pc1) && state->m_pc0);
 
 	state->m_cassette->output(level ? -1.0 : +1.0);
 
@@ -875,6 +875,6 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      COMPANY   FULLNAME */
-COMP( 1979, atom,     0,        0,		atom,     atom,     0,        "Acorn",  "Atom" , 0)
-COMP( 1979, atomeb,   atom,     0,		atomeb,   atom,     0,        "Acorn",  "Atom with Eprom Box" , 0)
-//COMP( 1983, prophet2, atom,     0,        atom,     atom,     0,        "Busicomputers",  "Prophet 2" , 0)
+COMP( 1979, atom,     0,        0,		atom,     atom, driver_device,     0,        "Acorn",  "Atom" , 0)
+COMP( 1979, atomeb,   atom,     0,		atomeb,   atom, driver_device,     0,        "Acorn",  "Atom with Eprom Box" , 0)
+//COMP( 1983, prophet2, atom,     0,        atom,     atom, driver_device,     0,        "Busicomputers",  "Prophet 2" , 0)

@@ -200,13 +200,13 @@ void kc_state::update_cassette(int state)
 	// if state is changed updates the /ASTB line
 	if (m_astb ^ astb)
 	{
-		z80pio_astb_w(m_z80pio, astb);
+		m_z80pio->strobe_a(astb);
 
 		m_astb = astb;
 
 		// FIXME: temporary for allow kc85_2-3 to load cassette
 		if ((m_cassette->get_state() & 0x03) == CASSETTE_PLAY)
-			z80pio_d_w(m_z80pio, 0, m_pio_data[0]);
+			m_z80pio->data_write(0, m_pio_data[0]);
 	}
 }
 
@@ -726,18 +726,18 @@ TIMER_DEVICE_CALLBACK( kc_scanline )
 	int scanline = (int)param;
 
 	/* set clock input for channel 0 and 1 to ctc */
-	z80ctc_trg0_w(state->m_z80ctc, 1);
-	z80ctc_trg0_w(state->m_z80ctc, 0);
-	z80ctc_trg1_w(state->m_z80ctc, 1);
-	z80ctc_trg1_w(state->m_z80ctc, 0);
+	state->m_z80ctc->trg0(1);
+	state->m_z80ctc->trg0(0);
+	state->m_z80ctc->trg1(1);
+	state->m_z80ctc->trg1(0);
 
 	if (scanline == 256)
 	{
 		/* set clock input for channel 2 and 3 to ctc */
-		z80ctc_trg2_w(state->m_z80ctc, 1);
-		z80ctc_trg2_w(state->m_z80ctc, 0);
-		z80ctc_trg3_w(state->m_z80ctc, 1);
-		z80ctc_trg3_w(state->m_z80ctc, 0);
+		state->m_z80ctc->trg2(1);
+		state->m_z80ctc->trg2(0);
+		state->m_z80ctc->trg3(1);
+		state->m_z80ctc->trg3(0);
 	}
 }
 
@@ -750,10 +750,10 @@ void kc_state::speaker_update()
 /* keyboard callback */
 WRITE_LINE_MEMBER( kc_state::keyboard_cb )
 {
-	z80pio_bstb_w(m_z80pio, state & m_brdy);
+	m_z80pio->strobe_b(state & m_brdy);
 
 	// FIXME: understand why the PIO fail to acknowledge the irq on kc85_2/3
-	z80pio_d_w(m_z80pio, 1, m_pio_data[1]);
+	m_z80pio->data_write(1, m_pio_data[1]);
 }
 
 

@@ -84,6 +84,7 @@ public:
 	virtual void machine_start();
 	virtual void video_start();
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	DECLARE_DRIVER_INIT(pegasus);
 };
 
 static TIMER_DEVICE_CALLBACK( pegasus_firq )
@@ -487,9 +488,9 @@ MACHINE_RESET_MEMBER( pegasus_state )
 	m_control_bits = 0;
 }
 
-static DRIVER_INIT( pegasus )
+DRIVER_INIT_MEMBER(pegasus_state,pegasus)
 {
-	pegasus_decrypt_rom( machine, 0xf000 );
+	pegasus_decrypt_rom( machine(), 0xf000 );
 }
 
 static MACHINE_CONFIG_START( pegasus, pegasus_state )
@@ -573,5 +574,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1981, pegasus,  0,     0,      pegasus,   pegasus, pegasus, "Technosys",   "Aamber Pegasus", GAME_NO_SOUND_HW )
-COMP( 1981, pegasusm, pegasus, 0,    pegasusm,  pegasus, pegasus, "Technosys",   "Aamber Pegasus with RAM expansion unit", GAME_NO_SOUND_HW )
+COMP( 1981, pegasus,  0,     0,      pegasus,   pegasus, pegasus_state, pegasus, "Technosys",   "Aamber Pegasus", GAME_NO_SOUND_HW )
+COMP( 1981, pegasusm, pegasus, 0,    pegasusm,  pegasus, pegasus_state, pegasus, "Technosys",   "Aamber Pegasus with RAM expansion unit", GAME_NO_SOUND_HW )

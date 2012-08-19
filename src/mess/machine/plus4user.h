@@ -43,13 +43,8 @@
 //  INTERFACE CONFIGURATION MACROS
 //**************************************************************************
 
-#define PLUS4_USER_PORT_INTERFACE(_name) \
-	const plus4_user_port_interface (_name) =
-
-
-#define MCFG_PLUS4_USER_PORT_ADD(_tag, _config, _slot_intf, _def_slot, _def_inp) \
+#define MCFG_PLUS4_USER_PORT_ADD(_tag, _slot_intf, _def_slot, _def_inp) \
     MCFG_DEVICE_ADD(_tag, PLUS4_USER_PORT, 0) \
-    MCFG_DEVICE_CONFIG(_config) \
 	MCFG_DEVICE_SLOT_INTERFACE(_slot_intf, _def_slot, _def_inp, false)
 
 
@@ -58,20 +53,11 @@
 //  TYPE DEFINITIONS
 //**************************************************************************
 
-// ======================> plus4_user_port_interface
-
-struct plus4_user_port_interface
-{
-    devcb_write_line	m_out_reset_cb;
-};
-
-
 // ======================> plus4_user_port_device
 
 class device_plus4_user_port_interface;
 
 class plus4_user_port_device : public device_t,
-						       public plus4_user_port_interface,
 						       public device_slot_interface
 {
 public:
@@ -89,17 +75,14 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( dtr_w );
 	DECLARE_WRITE_LINE_MEMBER( rts_w );
 	DECLARE_WRITE_LINE_MEMBER( rxc_w );
-
-	// cartridge interface
-	DECLARE_WRITE_LINE_MEMBER( reset_w );
+	DECLARE_WRITE_LINE_MEMBER( atn_w );
+	DECLARE_WRITE_LINE_MEMBER( breset_w );
 
 protected:
 	// device-level overrides
+	virtual void device_config_complete() { };
 	virtual void device_start();
 	virtual void device_reset();
-	virtual void device_config_complete();
-
-    devcb_resolved_write_line	m_out_reset_func;
 
 	device_plus4_user_port_interface *m_cart;
 };
@@ -115,8 +98,8 @@ public:
 	device_plus4_user_port_interface(const machine_config &mconfig, device_t &device);
 	virtual ~device_plus4_user_port_interface();
 
-	virtual UINT8 plus4_p_r(address_space &space, offs_t offset) { return 0xff; };
-	virtual void plus4_p_w(address_space &space, offs_t offset, UINT8 data) { };
+	virtual UINT8 plus4_p_r() { return 0xff; };
+	virtual void plus4_p_w(UINT8 data) { };
 
 	virtual int plus4_rxd_r() { return 1; };
 	virtual int plus4_dcd_r() { return 0; };
@@ -125,9 +108,10 @@ public:
 	virtual void plus4_dtr_w(int level) { };
 	virtual void plus4_rts_w(int level) { };
 	virtual void plus4_rxc_w(int level) { };
+	virtual void plus4_atn_w(int level) { };
 
 	// reset
-	virtual void plus4_reset_w(int level) { };
+	virtual void plus4_breset_w(int level) { };
 
 protected:
 	plus4_user_port_device *m_slot;

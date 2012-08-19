@@ -31,7 +31,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kramermc_io, AS_IO, 8, kramermc_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE("z80pio", z80pio_device, read, write)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -145,4 +145,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT   INIT                 COMPANY                 FULLNAME   FLAGS */
-COMP( 1987, kramermc,     0,      0,	kramermc,	kramermc,	kramermc,"Manfred Kramer", "Kramer MC",		 GAME_NO_SOUND)
+COMP( 1987, kramermc,     0,      0,	kramermc,	kramermc, kramermc_state,	kramermc,"Manfred Kramer", "Kramer MC",		 GAME_NO_SOUND)

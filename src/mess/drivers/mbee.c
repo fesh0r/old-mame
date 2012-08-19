@@ -192,7 +192,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbee_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_0b_r, mbee_0b_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
 	AM_RANGE(0x0d, 0x0d) AM_MIRROR(0x10) AM_READWRITE(m6545_data_r, m6545_data_w)
@@ -201,7 +201,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbeeic_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0x10) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x09, 0x09) AM_MIRROR(0x10) AM_NOP /* Listed as "Colour Wait Off" or "USART 2651" but doesn't appear in the schematics */
 	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0x10) AM_READWRITE(mbeeic_0a_r, mbeeic_0a_w)
@@ -212,7 +212,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeepc_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0008, 0x0008) AM_MIRROR(0xff10) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x000a, 0x000a) AM_MIRROR(0xfe10) AM_READWRITE(mbeepc_telcom_low_r, mbeeic_0a_w)
 	AM_RANGE(0x000b, 0x000b) AM_MIRROR(0xff10) AM_READWRITE(mbee_0b_r, mbee_0b_w)
@@ -223,7 +223,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeepc85_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0008, 0x0008) AM_MIRROR(0xff10) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x000a, 0x000a) AM_MIRROR(0xfe10) AM_READWRITE(mbeepc_telcom_low_r, mbeeic_0a_w)
 	AM_RANGE(0x000b, 0x000b) AM_MIRROR(0xff10) AM_READWRITE(mbee_0b_r, mbee_0b_w)
@@ -234,7 +234,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeeppc_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0008, 0x0008) AM_MIRROR(0xff10) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x000a, 0x000a) AM_MIRROR(0xfe10) AM_READWRITE(mbeepc_telcom_low_r, mbeeic_0a_w)
 	AM_RANGE(0x000b, 0x000b) AM_MIRROR(0xff10) AM_READWRITE(mbee_0b_r, mbee_0b_w)
@@ -247,7 +247,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbee56_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0x10) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_0b_r, mbee_0b_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
@@ -259,7 +259,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbee64_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0x10) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_0b_r, mbee_0b_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
@@ -272,7 +272,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbee128_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x08, 0x08) AM_READWRITE(mbeeic_08_r, mbeeic_08_w)
 	AM_RANGE(0x0b, 0x0b) AM_READWRITE(mbee_0b_r, mbee_0b_w)
 	AM_RANGE(0x0c, 0x0c) AM_READWRITE(m6545_status_r, m6545_index_w)
@@ -285,7 +285,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbee256_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff00) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0004, 0x0004) AM_MIRROR(0xff00) AM_WRITE(mbee_04_w)
 	AM_RANGE(0x0006, 0x0006) AM_MIRROR(0xff00) AM_WRITE(mbee_06_w)
 	AM_RANGE(0x0007, 0x0007) AM_MIRROR(0xff00) AM_READ(mbee_07_r)
@@ -308,7 +308,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeett_io, AS_IO, 8, mbee_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x0000, 0x0003) AM_MIRROR(0xff00) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0004, 0x0004) AM_MIRROR(0xff00) AM_WRITE(mbee_04_w)
 	AM_RANGE(0x0006, 0x0006) AM_MIRROR(0xff00) AM_WRITE(mbee_06_w)
 	AM_RANGE(0x0007, 0x0007) AM_MIRROR(0xff00) AM_READ(mbee_07_r)
@@ -1133,16 +1133,16 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT       COMPANY         FULLNAME */
-COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,   		"Applied Technology",  "Microbee 16 Standard" , 0 )
-COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbeeic, 		"Applied Technology",  "Microbee 32 IC" , 0 )
-COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc, 		"Applied Technology",  "Microbee Personal Communicator" , 0 )
-COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85,		"Applied Technology",  "Microbee PC85" , 0 )
-COMP( 1985, mbeepc85b,mbee,	0,	mbeepc85b,mbee,     mbeepc85,		"Applied Technology",  "Microbee PC85 (New version)" , 0 )
-COMP( 1985, mbeepc85s,mbee,	0,	mbeepc85, mbee,     mbeepc85,		"Applied Technology",  "Microbee PC85 (Swedish)" , 0 )
-COMP( 1986, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,		"Applied Technology",  "Microbee Premium PC85" , 0 )
-COMP( 1986, mbeett,   mbee,	0,	mbeett,   mbee256,  mbeett,		"Applied Technology",  "Microbee Teleterm" , GAME_NOT_WORKING )
-COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee,     mbee56, 		"Applied Technology",  "Microbee 56k" , GAME_NOT_WORKING )
-COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee,     mbee64, 		"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING )
-COMP( 1986, mbee128,  mbee,	0,	mbee128,  mbee,     mbee128,		"Applied Technology",  "Microbee 128k" , GAME_NOT_WORKING )
-COMP( 1987, mbee256,  mbee,	0,	mbee256,  mbee256,  mbee256,		"Applied Technology",  "Microbee 256TC" , GAME_NOT_WORKING )
+COMP( 1982, mbee,     0,	0,	mbee,     mbee, mbee_state,     mbee,   		"Applied Technology",  "Microbee 16 Standard" , 0 )
+COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee, mbee_state,     mbeeic, 		"Applied Technology",  "Microbee 32 IC" , 0 )
+COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee, mbee_state,     mbeepc, 		"Applied Technology",  "Microbee Personal Communicator" , 0 )
+COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee, mbee_state,     mbeepc85,		"Applied Technology",  "Microbee PC85" , 0 )
+COMP( 1985, mbeepc85b,mbee,	0,	mbeepc85b,mbee, mbee_state,     mbeepc85,		"Applied Technology",  "Microbee PC85 (New version)" , 0 )
+COMP( 1985, mbeepc85s,mbee,	0,	mbeepc85, mbee, mbee_state,     mbeepc85,		"Applied Technology",  "Microbee PC85 (Swedish)" , 0 )
+COMP( 1986, mbeeppc,  mbee,	0,	mbeeppc,  mbee, mbee_state,     mbeeppc,		"Applied Technology",  "Microbee Premium PC85" , 0 )
+COMP( 1986, mbeett,   mbee,	0,	mbeett,   mbee256, mbee_state,  mbeett,		"Applied Technology",  "Microbee Teleterm" , GAME_NOT_WORKING )
+COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee, mbee_state,     mbee56, 		"Applied Technology",  "Microbee 56k" , GAME_NOT_WORKING )
+COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee, mbee_state,     mbee64, 		"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING )
+COMP( 1986, mbee128,  mbee,	0,	mbee128,  mbee, mbee_state,     mbee128,		"Applied Technology",  "Microbee 128k" , GAME_NOT_WORKING )
+COMP( 1987, mbee256,  mbee,	0,	mbee256,  mbee256, mbee_state,  mbee256,		"Applied Technology",  "Microbee 256TC" , GAME_NOT_WORKING )
 

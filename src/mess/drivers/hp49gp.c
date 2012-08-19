@@ -43,6 +43,7 @@ public:
 	device_t *m_s3c2410;
 	required_shared_ptr<UINT32> m_steppingstone;
 	lcd_spi_t m_lcd_spi;
+	DECLARE_DRIVER_INIT(hp49gp);
 };
 
 /***************************************************************************
@@ -264,12 +265,11 @@ ADDRESS_MAP_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static DRIVER_INIT( hp49gp )
+DRIVER_INIT_MEMBER(hp49gp_state,hp49gp)
 {
-	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
-	UINT8 *rom = (UINT8 *)machine.root_device().memregion( "maincpu")->base();
-	memcpy( hp49gp->m_steppingstone, rom, 1024);
-	lcd_spi_init( machine);
+	UINT8 *rom = (UINT8 *)machine().root_device().memregion( "maincpu")->base();
+	memcpy( m_steppingstone, rom, 1024);
+	lcd_spi_init( machine());
 }
 
 static S3C2410_INTERFACE( hp49gp_s3c2410_intf )
@@ -349,4 +349,4 @@ ROM_START( hp49gp )
 	ROMX_LOAD( "31504.bin", 0x0000, 0x4000, CRC(9c71825e) SHA1(0a12b2b70a8573bc90ab5be06e6b2f814b8544ae), ROM_BIOS(2) )
 ROM_END
 
-COMP(2009, hp49gp, 0, 0, hp49gp, hp49gp, hp49gp, "Hewlett Packard", "HP49G+", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP(2009, hp49gp, 0, 0, hp49gp, hp49gp, hp49gp_state, hp49gp, "Hewlett Packard", "HP49G+", GAME_NOT_WORKING | GAME_NO_SOUND)

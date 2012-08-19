@@ -62,6 +62,7 @@ public:
 	bool m_display_on;
 	bool m_display_enabled;
 	required_shared_ptr<UINT16> m_screen_buffer;
+	DECLARE_DRIVER_INIT(apricot);
 };
 
 
@@ -253,21 +254,20 @@ static const mc6845_interface apricot_mc6845_intf =
     DRIVER INIT
 ***************************************************************************/
 
-static DRIVER_INIT( apricot )
+DRIVER_INIT_MEMBER(apricot_state,apricot)
 {
-	apricot_state *state = machine.driver_data<apricot_state>();
-	address_space *prg = state->m_maincpu->memory().space(AS_PROGRAM);
+	address_space *prg = m_maincpu->memory().space(AS_PROGRAM);
 
-	UINT8 *ram = state->m_ram->pointer();
-	UINT32 ram_size = state->m_ram->size();
+	UINT8 *ram = m_ram->pointer();
+	UINT32 ram_size = m_ram->size();
 
 	prg->unmap_readwrite(0x40000, 0xeffff);
 	prg->install_ram(0x00000, ram_size - 1, ram);
 
-	device_set_irq_callback(state->m_maincpu, apricot_irq_ack);
+	device_set_irq_callback(m_maincpu, apricot_irq_ack);
 
-	state->m_video_mode = 0;
-	state->m_display_on = 1;
+	m_video_mode = 0;
+	m_display_on = 1;
 }
 
 
@@ -288,7 +288,7 @@ static ADDRESS_MAP_START( apricot_io, AS_IO, 16, apricot_state )
 	AM_RANGE(0x48, 0x4f) AM_DEVREADWRITE8("ic17", i8255_device, read, write, 0x00ff)
 	AM_RANGE(0x50, 0x51) AM_MIRROR(0x06) AM_DEVWRITE8_LEGACY("ic7", sn76496_w, 0x00ff)
 	AM_RANGE(0x58, 0x5f) AM_DEVREADWRITE8_LEGACY("ic16", pit8253_r, pit8253_w, 0x00ff)
-	AM_RANGE(0x60, 0x67) AM_DEVREADWRITE8_LEGACY("ic15", z80sio_ba_cd_r, z80sio_ba_cd_w, 0x00ff)
+	AM_RANGE(0x60, 0x67) AM_DEVREADWRITE8("ic15", z80sio_device, read_alt, write_alt, 0x00ff)
 	AM_RANGE(0x68, 0x69) AM_MIRROR(0x04) AM_DEVWRITE8("ic30", mc6845_device, address_w, 0x00ff)
 	AM_RANGE(0x6a, 0x6b) AM_MIRROR(0x04) AM_DEVREADWRITE8("ic30", mc6845_device, register_r, register_w, 0x00ff)
 //  AM_RANGE(0x70, 0x71) AM_MIRROR(0x04) 8089 channel attention 1
@@ -412,5 +412,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME       PARENT   COMPAT  MACHINE    INPUT    INIT     COMPANY  FULLNAME      FLAGS */
-COMP( 1983, apricot,   0,       0,      apricot,   apricot, apricot, "ACT",   "Apricot PC", GAME_NOT_WORKING )
-COMP( 1984, apricotxi, apricot, 0,      apricotxi, apricot, apricot, "ACT",   "Apricot Xi", GAME_NOT_WORKING )
+COMP( 1983, apricot,   0,       0,      apricot,   apricot, apricot_state, apricot, "ACT",   "Apricot PC", GAME_NOT_WORKING )
+COMP( 1984, apricotxi, apricot, 0,      apricotxi, apricot, apricot_state, apricot, "ACT",   "Apricot Xi", GAME_NOT_WORKING )

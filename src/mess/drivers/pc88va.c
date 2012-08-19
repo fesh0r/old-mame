@@ -231,7 +231,8 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 	UINT32 tile_num;
 	UINT16 attr;
 	UINT8 attr_mode;
-	UINT8 fg_col,bg_col,secret,reverse,blink,dwidc,dwid,uline,hline;
+	UINT8 fg_col,bg_col,secret,reverse;
+	//UINT8 blink,dwidc,dwid,uline,hline;
 	UINT8 screen_fg_col,screen_bg_col;
 
 	count = (tvram[state->m_tsp.tvram_vreg_offset+0] | tvram[state->m_tsp.tvram_vreg_offset+1] << 8);
@@ -253,7 +254,7 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 
 			attr = (tvram[count+state->m_tsp.attr_offset] & 0x00ff);
 
-			fg_col = bg_col = reverse = blink = secret = dwidc = dwid = uline = hline = 0;
+			fg_col = bg_col = reverse = secret = 0; //blink = dwidc = dwid = uline = hline = 0;
 
 			switch(attr_mode)
 			{
@@ -276,9 +277,9 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 				case 1:
 					fg_col = (attr & 0xf0) >> 4;
 					bg_col = screen_bg_col;
-					hline = (attr & 0x08) >> 3;
+					//hline = (attr & 0x08) >> 3;
 					reverse = (attr & 0x04) >> 2;
-					blink = (attr & 0x02) >> 1;
+					//blink = (attr & 0x02) >> 1;
 					secret = (attr & 0x01) >> 0;
 					break;
 				/*
@@ -294,12 +295,12 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 				case 2:
 					fg_col = screen_fg_col;
 					bg_col = screen_bg_col;
-					dwidc = (attr & 0x80) >> 7;
-					dwid = (attr & 0x40) >> 6;
-					uline = (attr & 0x20) >> 5;
-					hline = (attr & 0x10) >> 4;
+					//dwidc = (attr & 0x80) >> 7;
+					//dwid = (attr & 0x40) >> 6;
+					//uline = (attr & 0x20) >> 5;
+					//hline = (attr & 0x10) >> 4;
 					reverse = (attr & 0x04) >> 2;
-					blink = (attr & 0x02) >> 1;
+					//blink = (attr & 0x02) >> 1;
 					secret = (attr & 0x01) >> 0;
 					break;
 				/*
@@ -328,12 +329,12 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 						{
 							fg_col = screen_fg_col;
 							bg_col = screen_bg_col;
-							dwidc = (attr & 0x80) >> 7;
-							dwid = (attr & 0x40) >> 6;
-							uline = (attr & 0x20) >> 5;
-							hline = (attr & 0x10) >> 4;
+							//dwidc = (attr & 0x80) >> 7;
+							//dwid = (attr & 0x40) >> 6;
+							//uline = (attr & 0x20) >> 5;
+							//hline = (attr & 0x10) >> 4;
 							reverse = (attr & 0x04) >> 2;
-							blink = (attr & 0x02) >> 1;
+							//blink = (attr & 0x02) >> 1;
 							secret = (attr & 0x01) >> 0;
 						}
 					}
@@ -346,7 +347,7 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 				case 4:
 					fg_col = (attr & 0x0f) >> 0;
 					bg_col = (attr & 0x70) >> 4;
-					blink = (attr & 0x80) >> 7;
+					//blink = (attr & 0x80) >> 7;
 					break;
 				/*
                 x--- ---- blink
@@ -357,9 +358,9 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 				case 5:
 					fg_col = (attr & 0x0f) >> 0;
 					bg_col = (attr & 0x70) >> 4;
-					blink = (attr & 0x80) >> 7;
-					if((fg_col & 7) == 1)
-						hline = 1;
+					//blink = (attr & 0x80) >> 7;
+					//if((fg_col & 7) == 1)
+						//hline = 1;
 					break;
 				default:
 					popmessage("Illegal text tilemap attribute mode %02x, contact MESSdev",attr_mode);
@@ -1644,7 +1645,7 @@ static const ym2203_interface pc88va_ym2203_intf =
 		DEVCB_NULL,
 		DEVCB_NULL
 	},
-	NULL
+	DEVCB_NULL
 };
 
 static MACHINE_CONFIG_START( pc88va, pc88va_state )
@@ -1756,6 +1757,6 @@ ROM_END
 
 
 
-COMP( 1987, pc88va,         0,		0,     pc88va,   pc88va,  0,    "Nippon Electronic Company",  "PC-88VA", GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1988, pc88va2,        pc88va, 0,     pc88va,   pc88va,  0,    "Nippon Electronic Company",  "PC-88VA2", GAME_NOT_WORKING | GAME_NO_SOUND )
-//COMP( 1988, pc88va3,      pc88va, 0,     pc88va,   pc88va,  0,    "Nippon Electronic Company",  "PC-88VA3", GAME_NOT_WORKING )
+COMP( 1987, pc88va,         0,		0,     pc88va,   pc88va, driver_device,  0,    "Nippon Electronic Company",  "PC-88VA", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1988, pc88va2,        pc88va, 0,     pc88va,   pc88va, driver_device,  0,    "Nippon Electronic Company",  "PC-88VA2", GAME_NOT_WORKING | GAME_NO_SOUND )
+//COMP( 1988, pc88va3,      pc88va, 0,     pc88va,   pc88va, driver_device,  0,    "Nippon Electronic Company",  "PC-88VA3", GAME_NOT_WORKING )

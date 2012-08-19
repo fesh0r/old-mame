@@ -207,7 +207,7 @@ static WRITE8_DEVICE_HANDLER ( svi318_ppi_port_c_w )
 	/* key click */
 	val = (data & 0x80) ? 0x3e : 0;
 	val += (data & 0x40) ? 0x3e : 0;
-	dac_signed_data_w (device->machine().device("dac"), val);
+	device->machine().device<dac_device>("dac")->write_signed8(val);
 
 	/* cassette motor on/off */
 	if (svi318_cassette_present(device->machine(), 0))
@@ -528,24 +528,23 @@ static const UINT8 cc_ex[0x100] = {
 };
 
 
-DRIVER_INIT( svi318 )
+DRIVER_INIT_MEMBER(svi318_state,svi318)
 {
-	svi318_state *state = machine.driver_data<svi318_state>();
 	/* z80 stuff */
-	z80_set_cycle_tables( machine.device("maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
+	z80_set_cycle_tables( machine().device("maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
 
-	memset(&state->m_svi, 0, sizeof (state->m_svi) );
+	memset(&m_svi, 0, sizeof (m_svi) );
 
-	if ( ! strcmp( machine.system().name, "svi318" ) || ! strcmp( machine.system().name, "svi318n" ) )
+	if ( ! strcmp( machine().system().name, "svi318" ) || ! strcmp( machine().system().name, "svi318n" ) )
 	{
-		state->m_svi.svi318 = 1;
+		m_svi.svi318 = 1;
 	}
 
-	device_set_input_line_vector(machine.device("maincpu"), 0, 0xff);
+	device_set_input_line_vector(machine().device("maincpu"), 0, 0xff);
 
 	/* memory */
-	state->m_svi.empty_bank = auto_alloc_array(machine, UINT8, 0x8000);
-	memset (state->m_svi.empty_bank, 0xff, 0x8000);
+	m_svi.empty_bank = auto_alloc_array(machine(), UINT8, 0x8000);
+	memset (m_svi.empty_bank, 0xff, 0x8000);
 }
 
 MACHINE_START( svi318_ntsc )

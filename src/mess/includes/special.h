@@ -74,10 +74,12 @@ public:
 	required_device<cpu_device> m_maincpu;
 	optional_device<i8255_device> m_ppi;
 	optional_device<device_t> m_fdc;
-	optional_device<device_t> m_dac;
+	optional_device<dac_device> m_dac;
 	optional_device<cassette_image_device> m_cass;
 	optional_device<ram_device> m_ram;
 	optional_shared_ptr<UINT8> m_p_videoram;
+	DECLARE_DRIVER_INIT(erik);
+	DECLARE_DRIVER_INIT(special);
 };
 
 
@@ -86,13 +88,11 @@ public:
 extern const struct pit8253_config specimx_pit8253_intf;
 extern const i8255_interface specialist_ppi8255_interface;
 
-DRIVER_INIT( special );
 MACHINE_RESET( special );
 
 MACHINE_RESET( specimx );
 MACHINE_START ( specimx );
 
-DRIVER_INIT( erik );
 MACHINE_RESET( erik );
 
 /*----------- defined in video/special.c -----------*/

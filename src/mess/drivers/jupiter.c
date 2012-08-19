@@ -346,9 +346,9 @@ ROM_END
 //  DRIVER_INIT( jupiter )
 //-------------------------------------------------
 
-static DRIVER_INIT( jupiter )
+DRIVER_INIT_MEMBER(jupiter2_state,jupiter)
 {
-	UINT8 *rom = machine.root_device().memregion(MCM6571AP_TAG)->base();
+	UINT8 *rom = machine().root_device().memregion(MCM6571AP_TAG)->base();
 	UINT8 inverted[0x1000];
 
 	memcpy(inverted, rom, 0x1000);
@@ -368,9 +368,9 @@ static DRIVER_INIT( jupiter )
 //  DRIVER_INIT( jupiter3 )
 //-------------------------------------------------
 
-static DRIVER_INIT( jupiter3 )
+DRIVER_INIT_MEMBER(jupiter3_state,jupiter3)
 {
-	UINT8 *rom = machine.root_device().memregion(Z80_TAG)->base();
+	UINT8 *rom = machine().root_device().memregion(Z80_TAG)->base();
 	UINT8 inverted[0x1000];
 
 	memcpy(inverted, rom, 0x1000);
@@ -390,5 +390,5 @@ static DRIVER_INIT( jupiter3 )
 //**************************************************************************
 
 //    YEAR  NAME      PARENT  COMPAT   MACHINE    INPUT    INIT      COMPANY          FULLNAME       FLAGS
-COMP( 1976, jupiter2, 0,      0,       jupiter,   jupiter, jupiter, "Wave Mate",   "Jupiter II",  GAME_NOT_WORKING | GAME_NO_SOUND_HW )
-COMP( 1976, jupiter3, 0,      0,       jupiter3,  jupiter, jupiter3,"Wave Mate",   "Jupiter III", GAME_NOT_WORKING | GAME_NO_SOUND_HW )
+COMP( 1976, jupiter2, 0,      0,       jupiter,   jupiter, jupiter2_state, jupiter, "Wave Mate",   "Jupiter II",  GAME_NOT_WORKING | GAME_NO_SOUND_HW )
+COMP( 1976, jupiter3, 0,      0,       jupiter3,  jupiter, jupiter3_state, jupiter3,"Wave Mate",   "Jupiter III", GAME_NOT_WORKING | GAME_NO_SOUND_HW )

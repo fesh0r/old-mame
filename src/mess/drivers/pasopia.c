@@ -64,6 +64,7 @@ public:
 	bool m_video_wl;
 	bool m_ram_bank;
 	UINT8 *m_p_vram;
+	DECLARE_DRIVER_INIT(pasopia);
 };
 
 static VIDEO_START( pasopia )
@@ -123,8 +124,8 @@ static ADDRESS_MAP_START(pasopia_io, AS_IO, 8, pasopia_state)
 //  0x18 - 0x1b pac2
 //  0x1c - 0x1f something
 	AM_RANGE(0x20,0x23) AM_DEVREADWRITE("ppi8255_2", i8255_device, read, write)
-	AM_RANGE(0x28,0x2b) AM_DEVREADWRITE_LEGACY("z80ctc", z80ctc_r, z80ctc_w)
-	AM_RANGE(0x30,0x33) AM_DEVREADWRITE_LEGACY("z80pio", z80pio_ba_cd_r, z80pio_cd_ba_w)
+	AM_RANGE(0x28,0x2b) AM_DEVREADWRITE("z80ctc", z80ctc_device, read, write)
+	AM_RANGE(0x30,0x33) AM_DEVREADWRITE("z80pio", z80pio_device, read_alt, write_alt)
 //  0x38 printer
 	AM_RANGE(0x3c,0x3c) AM_WRITE(pasopia_ctrl_w)
 ADDRESS_MAP_END
@@ -236,11 +237,10 @@ static I8255A_INTERFACE( ppi8255_intf_2 )
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
-	0,					// timer disables
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),		// interrupt handler
-	DEVCB_DEVICE_LINE("z80ctc", z80ctc_trg1_w),		// ZC/TO0 callback
-	DEVCB_DEVICE_LINE("z80ctc", z80ctc_trg2_w),		// ZC/TO1 callback, beep interface
-	DEVCB_DEVICE_LINE("z80ctc", z80ctc_trg3_w)		// ZC/TO2 callback
+	DEVCB_DEVICE_LINE_MEMBER("z80ctc", z80ctc_device, trg1),		// ZC/TO0 callback
+	DEVCB_DEVICE_LINE_MEMBER("z80ctc", z80ctc_device, trg2),		// ZC/TO1 callback, beep interface
+	DEVCB_DEVICE_LINE_MEMBER("z80ctc", z80ctc_device, trg3)		// ZC/TO2 callback
 };
 
 READ8_MEMBER( pasopia_state::testa_r )
@@ -325,16 +325,15 @@ static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
 	DEVCB_DRIVER_MEMBER(pasopia_state, kbd_put)
 };
 
-DRIVER_INIT( pasopia )
+DRIVER_INIT_MEMBER(pasopia_state,pasopia)
 {
 /*
 We preset all banks here, so that bankswitching will incur no speed penalty.
 0000 indicates ROMs, 10000 indicates RAM.
 */
-	pasopia_state *state = machine.driver_data<pasopia_state>();
-	UINT8 *p_ram = state->memregion("maincpu")->base();
-	state->membank("bank1")->configure_entries(0, 2, &p_ram[0x00000], 0x10000);
-	state->membank("bank2")->configure_entry(0, &p_ram[0x10000]);
+	UINT8 *p_ram = memregion("maincpu")->base();
+	membank("bank1")->configure_entries(0, 2, &p_ram[0x00000], 0x10000);
+	membank("bank2")->configure_entry(0, &p_ram[0x10000]);
 }
 
 static MACHINE_CONFIG_START( pasopia, pasopia_state )
@@ -384,4 +383,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME     PARENT  COMPAT   MACHINE    INPUT    INIT      COMPANY      FULLNAME       FLAGS */
-COMP( 1986, pasopia, 0,      0,       pasopia,   pasopia, pasopia, "Toshiba",   "Pasopia", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1986, pasopia, 0,      0,       pasopia,   pasopia, pasopia_state, pasopia, "Toshiba",   "Pasopia", GAME_NOT_WORKING | GAME_NO_SOUND)

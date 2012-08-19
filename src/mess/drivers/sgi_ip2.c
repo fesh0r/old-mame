@@ -99,6 +99,7 @@ public:
 	DECLARE_WRITE16_MEMBER(sgi_ip2_stkbase_w);
 	DECLARE_READ16_MEMBER(sgi_ip2_stklmt_r);
 	DECLARE_WRITE16_MEMBER(sgi_ip2_stklmt_w);
+	DECLARE_DRIVER_INIT(sgi_ip2);
 };
 
 
@@ -540,14 +541,13 @@ static INPUT_PORTS_START( sgi_ip2 )
 
 INPUT_PORTS_END
 
-static DRIVER_INIT( sgi_ip2 )
+DRIVER_INIT_MEMBER(sgi_ip2_state,sgi_ip2)
 {
-	sgi_ip2_state *state = machine.driver_data<sgi_ip2_state>();
-	UINT32 *src = (UINT32*)(*state->memregion("user1"));
-	UINT32 *dst = state->m_mainram;
+	UINT32 *src = (UINT32*)(*memregion("user1"));
+	UINT32 *dst = m_mainram;
 	memcpy(dst, src, 8);
 
-	machine.device("maincpu")->reset();
+	machine().device("maincpu")->reset();
 }
 
 /***************************************************************************
@@ -564,4 +564,4 @@ ROM_START( sgi_ip2 )
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT    MACHINE  INPUT     INIT     COMPANY                   FULLNAME */
-COMP( 1985, sgi_ip2,  0,        0,        sgi_ip2, sgi_ip2,  sgi_ip2, "Silicon Graphics Inc", "IRIS 3130 (IP2)", GAME_NOT_WORKING )
+COMP( 1985, sgi_ip2,  0,        0,        sgi_ip2, sgi_ip2, sgi_ip2_state,  sgi_ip2, "Silicon Graphics Inc", "IRIS 3130 (IP2)", GAME_NOT_WORKING )
