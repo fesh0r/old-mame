@@ -43,7 +43,6 @@ void fmscsi_device::device_config_complete()
     // otherwise, initialize it to defaults
     else
     {
-		scsidevs = NULL;
 		memset(&irq_callback,0,sizeof(irq_callback));
 		memset(&drq_callback,0,sizeof(drq_callback));
     }
@@ -60,8 +59,6 @@ fmscsi_device::fmscsi_device(const machine_config &mconfig, const char *tag, dev
 
 void fmscsi_device::device_start()
 {
-	int x;
-
     m_input_lines = 0;
     m_output_lines = 0;
     m_data = 0;
@@ -75,11 +72,15 @@ void fmscsi_device::device_start()
 
     memset(m_SCSIdevices,0,sizeof(m_SCSIdevices));
 
-    // initialise SCSI devices, if any present
-    for(x=0;x<scsidevs->devs_present;x++)
-    {
-		m_SCSIdevices[scsidevs->devices[x].scsiID] = machine().device<scsidev_device>( scsidevs->devices[x].tag );
-    }
+	// try to open the devices
+	for( device_t *device = owner()->first_subdevice(); device != NULL; device = device->next() )
+	{
+		scsidev_device *scsidev = dynamic_cast<scsidev_device *>(device);
+		if( scsidev != NULL )
+		{
+			m_SCSIdevices[scsidev->GetDeviceID()] = scsidev;
+		}
+	}
 
     // allocate read timer
     m_transfer_timer = timer_alloc(TIMER_TRANSFER);
@@ -111,7 +112,7 @@ int fmscsi_device::get_scsi_cmd_len(UINT8 cbyte)
 	if (group == 1 || group == 2) return 10;
 	if (group == 5) return 12;
 
-	fatalerror("fmscsi: Unknown SCSI command group %d", group);
+	fatalerror("fmscsi: Unknown SCSI command group %d\n", group);
 
 	return 6;
 }

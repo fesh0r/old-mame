@@ -202,6 +202,14 @@ void c64_expansion_slot_device::device_start()
 	m_out_nmi_func.resolve(m_out_nmi_cb, *this);
 	m_out_dma_func.resolve(m_out_dma_cb, *this);
 	m_out_reset_func.resolve(m_out_reset_cb, *this);
+
+	// inherit bus clock
+	if (clock() == 0)
+	{
+		c64_expansion_slot_device *root = machine().device<c64_expansion_slot_device>(C64_EXPANSION_SLOT_TAG);
+		assert(root);
+		set_unscaled_clock(root->clock());
+	}
 }
 
 
@@ -351,13 +359,11 @@ const char * c64_expansion_slot_device::get_default_card_software(const machine_
 //  cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c64_expansion_slot_device::cd_r(address_space &space, offs_t offset, int ba, int roml, int romh, int io1, int io2)
+UINT8 c64_expansion_slot_device::cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
 {
-	UINT8 data = 0;
-
 	if (m_cart != NULL)
 	{
-		data = m_cart->c64_cd_r(space, offset, ba, roml, romh, io1, io2);
+		data = m_cart->c64_cd_r(space, offset, data, ba, roml, romh, io1, io2);
 	}
 
 	return data;
@@ -410,22 +416,6 @@ int c64_expansion_slot_device::exrom_r(offs_t offset, int ba, int rw, int hiram)
 	return state;
 }
 
-
-//-------------------------------------------------
-//  screen_update -
-//-------------------------------------------------
-
-UINT32 c64_expansion_slot_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	bool value = false;
-
-	if (m_cart != NULL)
-	{
-		value = m_cart->c64_screen_update(screen, bitmap, cliprect);
-	}
-
-	return value;
-}
 
 WRITE_LINE_MEMBER( c64_expansion_slot_device::port_reset_w ) { if (m_cart != NULL) m_cart->c64_reset_w(state); }
 

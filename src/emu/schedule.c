@@ -343,7 +343,6 @@ device_scheduler::device_scheduler(running_machine &machine) :
 	m_executing_device(NULL),
 	m_execute_list(NULL),
 	m_basetime(attotime::zero),
-//  m_cothread(co_active()),
 	m_timer_list(NULL),
 	m_timer_allocator(machine.respool()),
 	m_callback_timer(NULL),
@@ -765,11 +764,11 @@ void device_scheduler::rebuild_execute_list()
 		{
 			device_t *device = machine().device(machine().config().m_perfect_cpu_quantum);
 			if (device == NULL)
-				fatalerror("Device '%s' specified for perfect interleave is not present!", machine().config().m_perfect_cpu_quantum.cstr());
+				fatalerror("Device '%s' specified for perfect interleave is not present!\n", machine().config().m_perfect_cpu_quantum.cstr());
 
 			device_execute_interface *exec;
 			if (!device->interface(exec))
-				fatalerror("Device '%s' specified for perfect interleave is not an executing device!", machine().config().m_perfect_cpu_quantum.cstr());
+				fatalerror("Device '%s' specified for perfect interleave is not an executing device!\n", machine().config().m_perfect_cpu_quantum.cstr());
 
 			min_quantum = min(attotime(0, exec->minimum_quantum()), min_quantum);
 		}

@@ -8,6 +8,9 @@
 *********************************************************************/
 
 #include "abc_hdc.h"
+#include "machine/scsibus.h"
+#include "machine/scsicb.h"
+#include "machine/scsihd.h"
 
 
 
@@ -85,20 +88,11 @@ static const z80_daisy_config daisy_chain[] =
 
 
 //-------------------------------------------------
-//  SCSIBus_interface sasi_intf
+//  SCSICB_interface sasi_intf
 //-------------------------------------------------
 
-static const SCSIConfigTable sasi_dev_table =
+static const SCSICB_interface sasi_intf =
 {
-	1,
-	{
-		{ SCSI_ID_0, "harddisk0" }
-	}
-};
-
-static const SCSIBus_interface sasi_intf =
-{
-	&sasi_dev_table,
 	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -120,8 +114,9 @@ static MACHINE_CONFIG_FRAGMENT( abc_hdc )
 	MCFG_CPU_IO_MAP(abc_hdc_io)
 	MCFG_CPU_CONFIG(daisy_chain)
 
-	MCFG_SCSIBUS_ADD(SASIBUS_TAG, sasi_intf)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD(SASIBUS_TAG)
+	MCFG_SCSIDEV_ADD(SASIBUS_TAG ":harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSICB_ADD(SASIBUS_TAG ":host", sasi_intf)
 MACHINE_CONFIG_END
 
 

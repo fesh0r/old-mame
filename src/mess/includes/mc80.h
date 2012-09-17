@@ -18,7 +18,7 @@ class mc80_state : public driver_device
 public:
 	mc80_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag) ,
-		m_p_videoram(*this, "p_videoram"){ }
+		m_p_videoram(*this, "videoram"){ }
 
 	DECLARE_WRITE8_MEMBER(mc8030_zve_write_protect_w);
 	DECLARE_WRITE8_MEMBER(mc8030_vis_w);
@@ -38,6 +38,10 @@ public:
 	DECLARE_WRITE8_MEMBER(asp_port_a_w);
 	DECLARE_WRITE8_MEMBER(asp_port_b_w);
 	optional_shared_ptr<UINT8> m_p_videoram;
+	DECLARE_MACHINE_RESET(mc8020);
+	DECLARE_VIDEO_START(mc8020);
+	DECLARE_MACHINE_RESET(mc8030);
+	DECLARE_VIDEO_START(mc8030);
 };
 
 

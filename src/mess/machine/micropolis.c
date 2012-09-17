@@ -62,8 +62,7 @@ static const UINT8 track_SD[][2] = {
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _micropolis_state micropolis_state;
-struct _micropolis_state
+struct micropolis_state
 {
 	/* register */
 	UINT8 data;
@@ -113,7 +112,7 @@ INLINE micropolis_state *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == MICROPOLIS);
 
-	return (micropolis_state *)downcast<legacy_device_base *>(device)->token();
+	return (micropolis_state *)downcast<micropolis_device *>(device)->token();
 }
 
 
@@ -377,19 +376,40 @@ void micropolis_reset(device_t *device)
 	DEVICE_RESET_CALL( micropolis );
 }
 
+const device_type MICROPOLIS = &device_creator<micropolis_device>;
 
-/***************************************************************************
-    DEVICE GETINFO
-***************************************************************************/
+micropolis_device::micropolis_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, MICROPOLIS, "MICROPOLIS", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(micropolis_state));
+}
 
-static const char DEVTEMPLATE_SOURCE[] = __FILE__;
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-#define DEVTEMPLATE_ID(p,s)				p##micropolis##s
-#define DEVTEMPLATE_FEATURES			DT_HAS_START | DT_HAS_RESET
-#define DEVTEMPLATE_NAME				"MICROPOLIS"
-#define DEVTEMPLATE_FAMILY				"MICROPOLIS"
-#define DEVTEMPLATE_VERSION				"0.1"
-#define DEVTEMPLATE_CREDITS				"Copyright MESS Team"
-#include "devtempl.h"
+void micropolis_device::device_config_complete()
+{
+}
 
-DEFINE_LEGACY_DEVICE(MICROPOLIS, micropolis);
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void micropolis_device::device_start()
+{
+	DEVICE_START_NAME( micropolis )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void micropolis_device::device_reset()
+{
+	DEVICE_RESET_NAME( micropolis )(this);
+}
+
+

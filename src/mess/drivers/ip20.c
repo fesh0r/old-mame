@@ -22,12 +22,11 @@
 #include "machine/8530scc.h"
 #include "machine/sgi.h"
 #include "machine/eeprom.h"
-#include "machine/wd33c93.h"
+#include "machine/scsibus.h"
 #include "machine/scsicd.h"
-#include "imagedev/harddriv.h"
-#include "imagedev/chd_cd.h"
+#include "machine/wd33c93.h"
 
-typedef struct
+struct HPC_t
 {
 	UINT8 nMiscStatus;
 	UINT32 nParBufPtr;
@@ -37,19 +36,22 @@ typedef struct
 	UINT32 nVMEIntMask1;
 	UINT32 nSCSI0Descriptor;
 	UINT32 nSCSI0DMACtrl;
-} HPC_t;
+};
 
-typedef struct
+struct RTC_t
 {
 	UINT8 nRAM[32];
 	UINT8 nTemp;
-} RTC_t;
+};
 
 class ip20_state : public driver_device
 {
 public:
 	ip20_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_wd33c93(*this, "scsi:wd33c93"){ }
+
+	required_device<wd33c93_device> m_wd33c93;
 
 	HPC_t m_HPC;
 	RTC_t m_RTC;
@@ -58,6 +60,8 @@ public:
 	DECLARE_READ32_MEMBER(int_r);
 	DECLARE_WRITE32_MEMBER(int_w);
 	DECLARE_DRIVER_INIT(ip204415);
+	virtual void machine_start();
+	virtual void video_start();
 };
 
 
@@ -72,11 +76,11 @@ INLINE void ATTR_PRINTF(3,4) verboselog(running_machine &machine, int n_level, c
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", cpu_get_pc(machine.device("maincpu")), buf );
+		logerror( "%08x: %s", machine.device("maincpu")->safe_pc(), buf );
 	}
 }
 
-static VIDEO_START( ip204415 )
+void ip20_state::video_start()
 {
 }
 
@@ -131,7 +135,7 @@ READ32_MEMBER(ip20_state::hpc_r)
 	case 0x0120:
 		if (ACCESSING_BITS_8_15)
 		{
-			return ( wd33c93_r( &space, 0 ) << 8 );
+			return ( m_wd33c93->read( space, 0 ) << 8 );
 		}
 		else
 		{
@@ -140,7 +144,7 @@ READ32_MEMBER(ip20_state::hpc_r)
 	case 0x0124:
 		if (ACCESSING_BITS_8_15)
 		{
-			return ( wd33c93_r( &space, 1 ) << 8 );
+			return ( m_wd33c93->read( space, 1 ) << 8 );
 		}
 		else
 		{
@@ -288,7 +292,7 @@ WRITE32_MEMBER(ip20_state::hpc_w)
 		if (ACCESSING_BITS_8_15)
 		{
 			verboselog(machine(), 2, "HPC SCSI Controller Register Write: %08x\n", ( data >> 8 ) & 0x000000ff );
-			wd33c93_w( &space, 0, ( data >> 8 ) & 0x000000ff );
+			m_wd33c93->write( space, 0, ( data >> 8 ) & 0x000000ff );
 		}
 		else
 		{
@@ -299,7 +303,7 @@ WRITE32_MEMBER(ip20_state::hpc_w)
 		if (ACCESSING_BITS_8_15)
 		{
 			verboselog(machine(), 2, "HPC SCSI Controller Data Write: %08x\n", ( data >> 8 ) & 0x000000ff );
-			wd33c93_w( &space, 1, ( data >> 8 ) & 0x000000ff );
+			m_wd33c93->write( space, 1, ( data >> 8 ) & 0x000000ff );
 		}
 		else
 		{
@@ -441,13 +445,13 @@ WRITE32_MEMBER(ip20_state::hpc_w)
 // INT/INT2/INT3 interrupt controllers
 READ32_MEMBER(ip20_state::int_r)
 {
-	mame_printf_info("INT: read @ ofs %x (mask %x) (PC=%x)\n", offset, mem_mask, cpu_get_pc(&space.device()));
+	mame_printf_info("INT: read @ ofs %x (mask %x) (PC=%x)\n", offset, mem_mask, space.device().safe_pc());
 	return 0;
 }
 
 WRITE32_MEMBER(ip20_state::int_w)
 {
-	mame_printf_info("INT: write %x to ofs %x (mask %x) (PC=%x)\n", data, offset, mem_mask, cpu_get_pc(&space.device()));
+	mame_printf_info("INT: write %x to ofs %x (mask %x) (PC=%x)\n", data, offset, mem_mask, space.device().safe_pc());
 }
 
 static ADDRESS_MAP_START( ip204415_map, AS_PROGRAM, 32, ip20_state )
@@ -481,15 +485,8 @@ static void scsi_irq(running_machine &machine, int state)
 {
 }
 
-static const SCSIConfigTable dev_table =
+static const struct WD33C93interface wd33c93_intf =
 {
-        1,                                      /* 1 SCSI device */
-        { { SCSI_ID_6, "cdrom" } } /* SCSI ID 6, CD-ROM */
-};
-
-static const struct WD33C93interface scsi_intf =
-{
-	&dev_table,		/* SCSI device table */
 	&scsi_irq,		/* command completion IRQ */
 };
 
@@ -556,24 +553,21 @@ static TIMER_CALLBACK(ip20_timer)
 	machine.scheduler().timer_set(attotime::from_msec(1), FUNC(ip20_timer));
 }
 
-static MACHINE_START( ip204415 )
+void ip20_state::machine_start()
 {
-	ip20_state *state = machine.driver_data<ip20_state>();
 
-	wd33c93_init(machine, &scsi_intf);
+	sgi_mc_init(machine());
 
-	sgi_mc_init(machine);
+	m_HPC.nMiscStatus = 0;
+	m_HPC.nParBufPtr = 0;
+	m_HPC.nLocalIOReg0Mask = 0;
+	m_HPC.nLocalIOReg1Mask = 0;
+	m_HPC.nVMEIntMask0 = 0;
+	m_HPC.nVMEIntMask1 = 0;
 
-	state->m_HPC.nMiscStatus = 0;
-	state->m_HPC.nParBufPtr = 0;
-	state->m_HPC.nLocalIOReg0Mask = 0;
-	state->m_HPC.nLocalIOReg1Mask = 0;
-	state->m_HPC.nVMEIntMask0 = 0;
-	state->m_HPC.nVMEIntMask1 = 0;
+	m_RTC.nTemp = 0;
 
-	state->m_RTC.nTemp = 0;
-
-	machine.scheduler().timer_set(attotime::from_msec(1), FUNC(ip20_timer));
+	machine().scheduler().timer_set(attotime::from_msec(1), FUNC(ip20_timer));
 }
 
 static INPUT_PORTS_START( ip204415 )
@@ -592,7 +586,6 @@ static MACHINE_CONFIG_START( ip204415, ip20_state )
 	MCFG_CPU_CONFIG( config )
 	MCFG_CPU_PROGRAM_MAP( ip204415_map)
 
-	MCFG_MACHINE_START( ip204415 )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -604,7 +597,6 @@ static MACHINE_CONFIG_START( ip204415, ip20_state )
 
 	MCFG_PALETTE_LENGTH(65536)
 
-	MCFG_VIDEO_START( ip204415 )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
@@ -613,7 +605,9 @@ static MACHINE_CONFIG_START( ip204415, ip20_state )
 
 	MCFG_SCC8530_ADD("scc", 7000000, line_cb_t())
 
-	MCFG_DEVICE_ADD("cdrom", SCSICD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:cdrom", SCSICD, SCSI_ID_6)
+	MCFG_WD33C93_ADD("scsi:wd33c93", wd33c93_intf)
 
 	MCFG_EEPROM_ADD("eeprom", eeprom_interface_93C56)
 MACHINE_CONFIG_END

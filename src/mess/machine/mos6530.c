@@ -38,8 +38,7 @@ enum
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _mos6530_port mos6530_port;
-struct _mos6530_port
+struct mos6530_port
 {
 	devcb_resolved_read8		in_port_func;
 	devcb_resolved_write8		out_port_func;
@@ -50,8 +49,7 @@ struct _mos6530_port
 };
 
 
-typedef struct _mos6530_state mos6530_state;
-struct _mos6530_state
+struct mos6530_state
 {
 	devcb_resolved_write_line	out_irq_func;
 
@@ -82,7 +80,7 @@ INLINE mos6530_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == MOS6530);
-	return (mos6530_state *)downcast<legacy_device_base *>(device)->token();
+	return (mos6530_state *)downcast<mos6530_device *>(device)->token();
 }
 
 
@@ -227,7 +225,7 @@ WRITE8_DEVICE_HANDLER( mos6530_w )
 			if (!port->out_port_func.isnull())
 				port->out_port_func(0, data);
 			else
-				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine().firstcpu), data);
+				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag(), 'A' + (offset & 1), device->machine().firstcpu->pc(), data);
 		}
 	}
 }
@@ -289,7 +287,7 @@ READ8_DEVICE_HANDLER( mos6530_r )
 				port->in = port->in_port_func(0);
 			}
 			else
-				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine().firstcpu));
+				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag(), 'A' + (offset & 1), device->machine().firstcpu->pc());
 
 			/* apply the DDR to the result */
 			val = (out & port->ddr) | (port->in & ~port->ddr);
@@ -434,26 +432,40 @@ static DEVICE_RESET( mos6530 )
 }
 
 
-DEVICE_GET_INFO( mos6530 )
+const device_type MOS6530 = &device_creator<mos6530_device>;
+
+mos6530_device::mos6530_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, MOS6530, "MOS6530", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(mos6530_state);			break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(mos6530);	break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(mos6530);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "MOS6530");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "MOS6500");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");		break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(mos6530_state));
 }
 
-DEFINE_LEGACY_DEVICE(MOS6530, mos6530);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void mos6530_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void mos6530_device::device_start()
+{
+	DEVICE_START_NAME( mos6530 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void mos6530_device::device_reset()
+{
+	DEVICE_RESET_NAME( mos6530 )(this);
+}
+
+

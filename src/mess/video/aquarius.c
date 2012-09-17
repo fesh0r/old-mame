@@ -51,17 +51,17 @@ static const unsigned short aquarius_palette[] =
     0,15, 1,15, 2,15, 3,15, 4,15, 5,15, 6,15, 7,15, 8,15, 9,15,10,15,11,15,12,15,13,15,14,15,15,15,
 };
 
-PALETTE_INIT( aquarius )
+void aquarius_state::palette_init()
 {
 	int i;
 
-	machine.colortable = colortable_alloc(machine, 16);
+	machine().colortable = colortable_alloc(machine(), 16);
 
 	for (i = 0; i < 16; i++)
-		colortable_palette_set_color(machine.colortable, i, aquarius_colors[i]);
+		colortable_palette_set_color(machine().colortable, i, aquarius_colors[i]);
 
 	for (i = 0; i < 512; i++)
-		colortable_entry_set_value(machine.colortable, i, aquarius_palette[i]);
+		colortable_entry_set_value(machine().colortable, i, aquarius_palette[i]);
 }
 
 WRITE8_MEMBER(aquarius_state::aquarius_videoram_w)
@@ -77,22 +77,20 @@ WRITE8_MEMBER(aquarius_state::aquarius_colorram_w)
 	m_tilemap->mark_tile_dirty(offset);
 }
 
-static TILE_GET_INFO(aquarius_gettileinfo)
+TILE_GET_INFO_MEMBER(aquarius_state::aquarius_gettileinfo)
 {
-	aquarius_state *state = machine.driver_data<aquarius_state>();
-	UINT8 *videoram = state->m_videoram;
+	UINT8 *videoram = m_videoram;
 	int bank = 0;
 	int code = videoram[tile_index];
-	int color = state->m_colorram[tile_index];
+	int color = m_colorram[tile_index];
 	int flags = 0;
 
-	SET_TILE_INFO(bank, code, color, flags);
+	SET_TILE_INFO_MEMBER(bank, code, color, flags);
 }
 
-VIDEO_START( aquarius )
+void aquarius_state::video_start()
 {
-	aquarius_state *state = machine.driver_data<aquarius_state>();
-	state->m_tilemap = tilemap_create(machine, aquarius_gettileinfo, tilemap_scan_rows, 8, 8, 40, 25);
+	m_tilemap = &machine().tilemap().create(tilemap_get_info_delegate(FUNC(aquarius_state::aquarius_gettileinfo),this), TILEMAP_SCAN_ROWS, 8, 8, 40, 25);
 }
 
 SCREEN_UPDATE_IND16( aquarius )

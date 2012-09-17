@@ -18,8 +18,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _pf10_state pf10_state;
-struct _pf10_state
+struct pf10_state
 {
 	UINT8 dummy;
 };
@@ -34,7 +33,7 @@ INLINE pf10_state *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == PF10);
 
-	return (pf10_state *)downcast<legacy_device_base *>(device)->token();
+	return (pf10_state *)downcast<pf10_device *>(device)->token();
 }
 
 
@@ -101,33 +100,6 @@ static DEVICE_RESET( pf10 )
 {
 }
 
-DEVICE_GET_INFO( pf10 )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(pf10_state);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0;									break;
-
-		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:		info->machine_config = MACHINE_CONFIG_NAME(pf10);	break;
-		case DEVINFO_PTR_ROM_REGION:			info->romregion = ROM_NAME(pf10);				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(pf10);			break;
-		case DEVINFO_FCT_STOP:					/* Nothing */									break;
-		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(pf10);			break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					strcpy(info->s, "PF-10");						break;
-		case DEVINFO_STR_FAMILY:				strcpy(info->s, "Floppy drive");				break;
-		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright MESS Team");			break;
-	}
-}
-
-
 /***************************************************************************
     IMPLEMENTATION
 ***************************************************************************/
@@ -159,4 +131,60 @@ WRITE_LINE_DEVICE_HANDLER( pf10_rxd2_w )
 	logerror("%s: pf10_rxd2_w %u\n", device->machine().describe_context(), state);
 }
 
-DEFINE_LEGACY_DEVICE(PF10, pf10);
+const device_type PF10 = &device_creator<pf10_device>;
+
+pf10_device::pf10_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, PF10, "PF-10", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(pf10_state));
+}
+
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void pf10_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void pf10_device::device_start()
+{
+	DEVICE_START_NAME( pf10 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void pf10_device::device_reset()
+{
+	DEVICE_RESET_NAME( pf10 )(this);
+}
+
+//-------------------------------------------------
+//  device_mconfig_additions - return a pointer to
+//  the device's machine fragment
+//-------------------------------------------------
+
+machine_config_constructor pf10_device::device_mconfig_additions() const
+{
+	return MACHINE_CONFIG_NAME( pf10  );
+}
+
+//-------------------------------------------------
+//  device_rom_region - return a pointer to the
+//  the device's ROM definitions
+//-------------------------------------------------
+
+const rom_entry *pf10_device::device_rom_region() const
+{
+	return ROM_NAME(pf10 );
+}
+
+

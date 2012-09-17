@@ -63,22 +63,22 @@
 
 /***** Video Modes *****/
 
-typedef enum
+enum BETA_VID_MODES
 {
 	TEXT_40x25,				/* Text mode 40x25 */
 	TEXT_80x25,				/* Text mode 80x25 */
 	GRAPH_320x256x4,		/* Graphics 320x256x4 */
 	GRAPH_320x256x16,		/* Graphics 320x256x16 */
 	GRAPH_640x512x2			/* Graphics 640X512X2 */
-} BETA_VID_MODES;
+};
 
 #define iosize	(0xfEFF-0xfc00)
 
-typedef struct
+struct PageReg
 {
 	int	    value;			/* Value of the page register */
 	UINT8	*memory;		/* The memory it actually points to */
-} PageReg;
+};
 
 
 class dgn_beta_state : public driver_device
@@ -142,6 +142,8 @@ public:
 	int m_ColourRAM[4];
 	int m_Field;
 	int m_DrawInterlace;
+	virtual void machine_start();
+	virtual void palette_init();
 };
 
 
@@ -150,8 +152,8 @@ public:
 extern const wd17xx_interface dgnbeta_wd17xx_interface;
 extern const pia6821_interface dgnbeta_pia_intf[];
 
-MACHINE_START( dgnbeta );
-MACHINE_RESET( dgnbeta );
+
+
 
 // Page IO at FE00
 READ8_HANDLER( dgn_beta_page_r );

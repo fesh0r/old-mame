@@ -129,9 +129,9 @@ WRITE8_MEMBER(avigo_state::flash_0x8000_write_handler)
 void avigo_state::refresh_ints()
 {
 	if (m_irq!=0)
-		device_set_input_line(m_maincpu, 0, HOLD_LINE);
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	else
-		device_set_input_line(m_maincpu, 0, CLEAR_LINE);
+		m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
 /* does not do anything yet */
@@ -158,7 +158,7 @@ static RP5C01_INTERFACE( rtc_intf )
 
 void avigo_state::refresh_memory(UINT8 bank, UINT8 chip_select)
 {
-	address_space* space = m_maincpu->memory().space(AS_PROGRAM);
+	address_space* space = m_maincpu->space(AS_PROGRAM);
 	int &active_flash = (bank == 1 ? m_flash_at_0x4000 : m_flash_at_0x8000);
 	char bank_tag[6];
 
@@ -830,7 +830,7 @@ static TIMER_DEVICE_CALLBACK( avigo_1hz_timer )
 static QUICKLOAD_LOAD(avigo)
 {
 	avigo_state *state = image.device().machine().driver_data<avigo_state>();
-	address_space* flash1 = state->m_flashes[1]->memory().space(0);
+	address_space* flash1 = state->m_flashes[1]->space(0);
 	const char *systemname = image.device().machine().system().name;
 	UINT32 first_app_page = (0x50000>>14);
 	int app_page;
@@ -909,7 +909,6 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 
 	MCFG_GFXDECODE(avigo)
 	MCFG_PALETTE_LENGTH(AVIGO_NUM_COLOURS)
-	MCFG_PALETTE_INIT( avigo )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

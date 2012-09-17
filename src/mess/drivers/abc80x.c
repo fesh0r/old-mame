@@ -192,7 +192,7 @@ READ8_MEMBER( abc802_state::pling_r )
 
 void abc800_state::bankswitch()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	if (m_fetch_charram)
 	{
@@ -213,7 +213,7 @@ void abc800_state::bankswitch()
 
 void abc802_state::bankswitch()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	if (m_lrs)
 	{
@@ -235,7 +235,7 @@ void abc802_state::bankswitch()
 
 void abc806_state::bankswitch()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT32 videoram_mask = m_ram->size() - (32 * 1024) - 1;
 	int bank;
 	char bank_name[10];
@@ -418,7 +418,7 @@ static ADDRESS_MAP_START( abc800c_mem, AS_PROGRAM, 8, abc800c_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_RAM AM_SHARE("video_ram")
 	AM_RANGE(0x4000, 0x7bff) AM_ROM
-	AM_RANGE(0x7c00, 0x7fff) AM_READWRITE(char_ram_r, char_ram_w)
+	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_SHARE("char_ram")
 	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 

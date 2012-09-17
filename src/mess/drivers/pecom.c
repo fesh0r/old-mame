@@ -49,7 +49,7 @@ mappings, this is another situation where natural keyboard comes very handy!    
 
 static INPUT_CHANGED( ef_w )
 {
-	cputag_set_input_line(field.machine(), CDP1802_TAG, (int)(FPTR)param, newval);
+	field.machine().device(CDP1802_TAG)->execute().set_input_line((int)(FPTR)param, newval);
 }
 
 static INPUT_PORTS_START( pecom )
@@ -182,8 +182,6 @@ static MACHINE_CONFIG_START( pecom64, pecom_state )
 	MCFG_CPU_IO_MAP(pecom64_io)
 	MCFG_CPU_CONFIG(pecom64_cdp1802_config)
 
-	MCFG_MACHINE_START( pecom )
-	MCFG_MACHINE_RESET( pecom )
 
 	// sound and video hardware
 

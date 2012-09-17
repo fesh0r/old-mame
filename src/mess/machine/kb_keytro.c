@@ -81,8 +81,7 @@ are attached to two switches. The keys appear twice in the keyboard matrix.
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _kb_keytr_state kb_keytr_state;
-struct _kb_keytr_state
+struct kb_keytr_state
 {
 	device_t *cpu;
 
@@ -468,13 +467,13 @@ const rom_entry *pc_kbd_keytronic_pc3270_device::device_rom_region() const
 
 WRITE_LINE_MEMBER( pc_kbd_keytronic_pc3270_device::clock_write )
 {
-	device_set_input_line( m_cpu, MCS51_INT0_LINE, state );
+	m_cpu->set_input_line(MCS51_INT0_LINE, state );
 }
 
 
 WRITE_LINE_MEMBER( pc_kbd_keytronic_pc3270_device::data_write )
 {
-	device_set_input_line( m_cpu, MCS51_T0_LINE, state);
+	m_cpu->set_input_line(MCS51_T0_LINE, state);
 }
 
 

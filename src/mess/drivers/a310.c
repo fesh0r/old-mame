@@ -69,11 +69,16 @@ class a310_state : public driver_device
 {
 public:
 	a310_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		  m_physram(*this, "physicalram") { }
+
+	required_shared_ptr<UINT32> m_physram;
 
 	DECLARE_READ32_MEMBER(a310_psy_wram_r);
 	DECLARE_WRITE32_MEMBER(a310_psy_wram_w);
 	DECLARE_DRIVER_INIT(a310);
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 
@@ -95,41 +100,40 @@ static WRITE_LINE_DEVICE_HANDLER( a310_wd177x_drq_w )
 
 READ32_MEMBER(a310_state::a310_psy_wram_r)
 {
-	return archimedes_memc_physmem[offset];
+	return m_physram[offset];
 }
 
 WRITE32_MEMBER(a310_state::a310_psy_wram_w)
 {
-	COMBINE_DATA(&archimedes_memc_physmem[offset]);
+	COMBINE_DATA(&m_physram[offset]);
 }
 
 
 DRIVER_INIT_MEMBER(a310_state,a310)
 {
 	UINT32 ram_size = machine().device<ram_device>(RAM_TAG)->size();
-	archimedes_memc_physmem = auto_alloc_array(machine(), UINT32, 0x01000000);
 
 	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x02000000, 0x02000000+(ram_size-1), read32_delegate(FUNC(a310_state::a310_psy_wram_r), this), write32_delegate(FUNC(a310_state::a310_psy_wram_w), this));
 
 	archimedes_driver_init(machine());
 }
 
-static MACHINE_START( a310 )
+void a310_state::machine_start()
 {
-	archimedes_init(machine);
+	archimedes_init(machine());
 
 	// reset the DAC to centerline
-	//machine.device<dac_device>("dac")->write_signed8(0x80);
+	//machine().device<dac_device>("dac")->write_signed8(0x80);
 }
 
-static MACHINE_RESET( a310 )
+void a310_state::machine_reset()
 {
-	archimedes_reset(machine);
+	archimedes_reset(machine());
 }
 
 static ADDRESS_MAP_START( a310_mem, AS_PROGRAM, 32, a310_state )
 	AM_RANGE(0x00000000, 0x01ffffff) AM_READWRITE_LEGACY(archimedes_memc_logical_r, archimedes_memc_logical_w)
-//  AM_RANGE(0x02000000, 0x02ffffff) AM_RAM AM_BASE_LEGACY(&archimedes_memc_physmem) /* physical RAM - 16 MB for now, should be 512k for the A310 */
+	AM_RANGE(0x02000000, 0x02ffffff) AM_RAM AM_SHARE("physicalram") /* physical RAM - 16 MB for now, should be 512k for the A310 */
 	AM_RANGE(0x03000000, 0x033fffff) AM_READWRITE_LEGACY(archimedes_ioc_r, archimedes_ioc_w)
 	AM_RANGE(0x03400000, 0x035fffff) AM_READWRITE_LEGACY(archimedes_vidc_r, archimedes_vidc_w)
 	AM_RANGE(0x03600000, 0x037fffff) AM_READWRITE_LEGACY(archimedes_memc_r, archimedes_memc_w)
@@ -266,8 +270,6 @@ static MACHINE_CONFIG_START( a310, a310_state )
 	MCFG_CPU_ADD("maincpu", ARM, 8000000)        /* 8 MHz */
 	MCFG_CPU_PROGRAM_MAP(a310_mem)
 
-	MCFG_MACHINE_START( a310 )
-	MCFG_MACHINE_RESET( a310 )
 
 	MCFG_I2CMEM_ADD("i2cmem",i2cmem_interface)
 

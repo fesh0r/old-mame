@@ -604,7 +604,7 @@ static TIMER_CALLBACK(lynx_blitter_timer)
 {
 	lynx_state *state = machine.driver_data<lynx_state>();
 	state->m_blitter.busy=0; // blitter finished
-	cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
+	machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 /*
@@ -1409,8 +1409,8 @@ static void lynx_timer_signal_irq(running_machine &machine, int which)
 	if ( ( state->m_timer[which].cntrl1 & 0x80 ) && ( which != 4 ) ) // if interrupts are enabled and timer != 4
 	{
 		state->m_mikey.data[0x81] |= ( 1 << which ); // set interupt poll register
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
-		cputag_set_input_line(machine, "maincpu", M65SC02_IRQ_LINE, ASSERT_LINE);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+		machine.device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, ASSERT_LINE);
 	}
 	switch ( which ) // count down linked timers
 	{
@@ -1502,7 +1502,7 @@ static UINT32 lynx_time_factor(int val)
 		case 4: return 62500;
 		case 5: return 31250;
 		case 6: return 15625;
-		default: fatalerror("invalid value");
+		default: fatalerror("invalid value\n");
 	}
 }
 
@@ -1640,16 +1640,16 @@ static TIMER_CALLBACK(lynx_uart_timer)
 		if (state->m_uart.serctl & 0x40)
 		{
 			state->m_mikey.data[0x81] |= 0x10;
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
-			cputag_set_input_line(machine, "maincpu", M65SC02_IRQ_LINE, ASSERT_LINE);
+			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+			machine.device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, ASSERT_LINE);
 		}
 	}
 
 	if (state->m_uart.serctl & 0x80)
 	{
 		state->m_mikey.data[0x81] |= 0x10;
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
-		cputag_set_input_line(machine, "maincpu", M65SC02_IRQ_LINE, ASSERT_LINE);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+		machine.device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, ASSERT_LINE);
 	}
 }
 
@@ -1806,7 +1806,7 @@ WRITE8_MEMBER(lynx_state::mikey_write)
 		m_mikey.data[0x81] &= ~data; // clear interrupt source
 		// logerror("mikey write %.2x %.2x\n", offset, data);
 		if (!m_mikey.data[0x81])
-			cputag_set_input_line(machine(), "maincpu", M65SC02_IRQ_LINE, CLEAR_LINE);
+			machine().device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, CLEAR_LINE);
 		break;
 
 	/* Is this correct? */ // Notes say writing to register will result in interupt being triggered.
@@ -1814,8 +1814,8 @@ WRITE8_MEMBER(lynx_state::mikey_write)
 		m_mikey.data[0x81] |= data;
 		if (data)
 		{
-			cputag_set_input_line(machine(), "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
-			cputag_set_input_line(machine(), "maincpu", M65SC02_IRQ_LINE, ASSERT_LINE);
+			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+			machine().device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, ASSERT_LINE);
 			logerror("direct write to interupt register\n");
 		}
 		break;
@@ -1869,7 +1869,7 @@ WRITE8_MEMBER(lynx_state::mikey_write)
 		m_mikey.data[offset] = data;
 		if (!data && m_blitter.busy)
 		{
-			cputag_set_input_line(machine(), "maincpu", INPUT_LINE_HALT, ASSERT_LINE);
+			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 			/* A write of '0' to this address will reset the CPU bus request flip flop */
 		}
 		break;
@@ -1929,8 +1929,8 @@ static void lynx_reset(running_machine &machine)
 	lynx_state *state = machine.driver_data<lynx_state>();
 	state->lynx_memory_config_w(*machine.device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
 
-	cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
-	cputag_set_input_line(machine, "maincpu", M65SC02_IRQ_LINE, CLEAR_LINE);
+	machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+	machine.device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, CLEAR_LINE);
 
 	memset(&state->m_suzy, 0, sizeof(state->m_suzy));
 	memset(&state->m_mikey, 0, sizeof(state->m_mikey));
@@ -1962,36 +1962,34 @@ static void lynx_postload(lynx_state *state)
 	state->lynx_memory_config_w( *state->machine().device("maincpu")->memory().space(AS_PROGRAM), 0, state->m_memory_config);
 }
 
-MACHINE_START( lynx )
+void lynx_state::machine_start()
 {
-	lynx_state *state = machine.driver_data<lynx_state>();
-	state->m_bitmap_temp.allocate(160,102,0,0);
+	m_bitmap_temp.allocate(160,102,0,0);
 
 	int i;
-	state->save_item(NAME(state->m_memory_config));
-	state->save_pointer(NAME(state->m_mem_fe00.target()), state->m_mem_fe00.bytes());
-	machine.save().register_postload(save_prepost_delegate(FUNC(lynx_postload), state));
+	save_item(NAME(m_memory_config));
+	save_pointer(NAME(m_mem_fe00.target()), m_mem_fe00.bytes());
+	machine().save().register_postload(save_prepost_delegate(FUNC(lynx_postload), this));
 
-	state->membank("bank3")->configure_entry(0, machine.root_device().memregion("maincpu")->base() + 0x0000);
-	state->membank("bank3")->configure_entry(1, state->m_mem_fe00);
-	state->membank("bank4")->configure_entry(0, state->memregion("maincpu")->base() + 0x01fa);
-	state->membank("bank4")->configure_entry(1, state->m_mem_fffa);
+	membank("bank3")->configure_entry(0, machine().root_device().memregion("maincpu")->base() + 0x0000);
+	membank("bank3")->configure_entry(1, m_mem_fe00);
+	membank("bank4")->configure_entry(0, memregion("maincpu")->base() + 0x01fa);
+	membank("bank4")->configure_entry(1, m_mem_fffa);
 
-	state->m_audio = machine.device("custom");
+	m_audio = machine().device("custom");
 
-	memset(&state->m_suzy, 0, sizeof(state->m_suzy));
+	memset(&m_suzy, 0, sizeof(m_suzy));
 
-	machine.add_notifier(MACHINE_NOTIFY_RESET, machine_notify_delegate(FUNC(lynx_reset),&machine));
+	machine().add_notifier(MACHINE_NOTIFY_RESET, machine_notify_delegate(FUNC(lynx_reset),&machine()));
 
 	for (i = 0; i < NR_LYNX_TIMERS; i++)
-		lynx_timer_init(machine, i);
+		lynx_timer_init(machine(), i);
 }
 
-MACHINE_RESET( lynx )
+void lynx_state::machine_reset()
 {
-	lynx_state *state = machine.driver_data<lynx_state>();
-	render_target *target = machine.render().first_target();
-	target->set_view(state->m_rotate);
+	render_target *target = machine().render().first_target();
+	target->set_view(m_rotate);
 }
 
 /****************************************

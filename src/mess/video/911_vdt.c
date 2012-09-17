@@ -79,7 +79,7 @@ static const unsigned short vdt911_palette[] =
 	2, 1	/* low intensity, reverse */
 };
 
-typedef struct vdt_t
+struct vdt_t
 {
 	vdt911_screen_size_t screen_size;	/* char_960 for 960-char, 12-line model; char_1920 for 1920-char, 24-line model */
 	vdt911_model_t model;				/* country code */
@@ -110,7 +110,7 @@ typedef struct vdt_t
 	UINT8 last_key_pressed;
 	int last_modifier_state;
 	char foreign_mode;
-} vdt_t;
+};
 
 /*
     Macros for model features
@@ -239,7 +239,7 @@ INLINE vdt_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == VDT911);
 
-	return (vdt_t *)downcast<legacy_device_base *>(device)->token();
+	return (vdt_t *)downcast<vdt911_device *>(device)->token();
 }
 
 /*
@@ -268,26 +268,34 @@ static DEVICE_START( vdt911 )
 	vdt->beep_timer = device->machine().scheduler().timer_alloc(FUNC(beep_callback));
 }
 
-DEVICE_GET_INFO( vdt911 )
+const device_type VDT911 = &device_creator<vdt911_device>;
+
+vdt911_device::vdt911_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, VDT911, "911 VDT", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(vdt_t);					break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(vdt911);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "911 VDT");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "911 VDT Video");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(vdt_t));
 }
 
-DEFINE_LEGACY_DEVICE(VDT911, vdt911);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void vdt911_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void vdt911_device::device_start()
+{
+	DEVICE_START_NAME( vdt911 )(this);
+}
+
+
 
 /*
     timer callback to toggle blink state
@@ -497,7 +505,7 @@ WRITE8_DEVICE_HANDLER( vdt911_cru_w )
 void vdt911_refresh(device_t *device, bitmap_ind16 &bitmap, const rectangle &cliprect, int x, int y)
 {
 	vdt_t *vdt = get_safe_token(device);
-	const gfx_element *gfx = device->machine().gfx[vdt->model];
+	gfx_element *gfx = device->machine().gfx[vdt->model];
 	int height = (vdt->screen_size == char_960) ? 12 : /*25*/24;
 	int use_8bit_charcodes = USES_8BIT_CHARCODES(vdt);
 	int address = 0;
@@ -568,7 +576,7 @@ void vdt911_keyboard(device_t *device)
 {
 	vdt_t *vdt = get_safe_token(device);
 
-	typedef enum
+	enum modifier_state_t
 	{
 		/* states for western keyboards and katakana/arabic keyboards in romaji/latin mode */
 		lower_case = 0, upper_case, shift, control,
@@ -576,7 +584,7 @@ void vdt911_keyboard(device_t *device)
 		foreign, foreign_shift,
 		/* special value to stop repeat if the modifier state changes */
 		special_debounce = -1
-	} modifier_state_t;
+	};
 
 	static unsigned char repeat_timer;
 	enum { repeat_delay = 5 /* approx. 1/10s */ };

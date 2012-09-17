@@ -221,15 +221,14 @@
  *
  *************************************/
 
-VIDEO_START( x1 )
+VIDEO_START_MEMBER(x1_state,x1)
 {
-	x1_state *state = machine.driver_data<x1_state>();
 
-	state->m_avram = auto_alloc_array_clear(machine, UINT8, 0x800);
-	state->m_tvram = auto_alloc_array_clear(machine, UINT8, 0x800);
-	state->m_kvram = auto_alloc_array_clear(machine, UINT8, 0x800);
-	state->m_gfx_bitmap_ram = auto_alloc_array_clear(machine, UINT8, 0xc000*2);
-	state->m_pal_4096 = auto_alloc_array_clear(machine, UINT8, 0x1000*3);
+	m_avram = auto_alloc_array_clear(machine(), UINT8, 0x800);
+	m_tvram = auto_alloc_array_clear(machine(), UINT8, 0x800);
+	m_kvram = auto_alloc_array_clear(machine(), UINT8, 0x800);
+	m_gfx_bitmap_ram = auto_alloc_array_clear(machine(), UINT8, 0xc000*2);
+	m_pal_4096 = auto_alloc_array_clear(machine(), UINT8, 0x1000*3);
 }
 
 static void x1_draw_pixel(running_machine &machine, bitmap_rgb32 &bitmap,int y,int x,UINT16 pen,UINT8 width,UINT8 height)
@@ -1171,7 +1170,7 @@ WRITE8_MEMBER( x1_state::x1_pcg_w )
 
 			pcg_offset &= 0x7ff;
 
-			gfx_element_mark_dirty(machine().gfx[1], pcg_offset >> 3);
+			machine().gfx[1]->mark_dirty(pcg_offset >> 3);
 		}
 		else // Compatible Mode
 		{
@@ -1188,7 +1187,7 @@ WRITE8_MEMBER( x1_state::x1_pcg_w )
 
 			pcg_offset &= 0x7ff;
 
-			gfx_element_mark_dirty(machine().gfx[1], pcg_offset >> 3);
+			machine().gfx[1]->mark_dirty(pcg_offset >> 3);
 		}
 	}
 }
@@ -1632,7 +1631,7 @@ READ8_MEMBER( x1_state::x1_io_r )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ return m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)]; }
 	else
 	{
-		//logerror("(PC=%06x) Read i/o address %04x\n",cpu_get_pc(&space->device()),offset);
+		//logerror("(PC=%06x) Read i/o address %04x\n",space->device().safe_pc(),offset);
 	}
 	return 0xff;
 }
@@ -1675,7 +1674,7 @@ WRITE8_MEMBER( x1_state::x1_io_w )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)] = data; }
 	else
 	{
-		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",cpu_get_pc(&space->device()),data,offset);
+		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",space->device().safe_pc(),data,offset);
 	}
 }
 
@@ -1722,7 +1721,7 @@ READ8_MEMBER( x1_state::x1turbo_io_r )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ return m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)]; }
 	else
 	{
-		//logerror("(PC=%06x) Read i/o address %04x\n",cpu_get_pc(&space->device()),offset);
+		//logerror("(PC=%06x) Read i/o address %04x\n",space->device().safe_pc(),offset);
 	}
 	return 0xff;
 }
@@ -1778,7 +1777,7 @@ WRITE8_MEMBER( x1_state::x1turbo_io_w )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)] = data; }
 	else
 	{
-		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",cpu_get_pc(&space->device()),data,offset);
+		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",space->device().safe_pc(),data,offset);
 	}
 }
 
@@ -1942,7 +1941,7 @@ static INPUT_CHANGED( ipl_reset )
 	//address_space *space = field.machine().device("x1_cpu")->memory().space(AS_PROGRAM);
 	x1_state *state = field.machine().driver_data<x1_state>();
 
-	device_set_input_line(state->m_x1_cpu, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 
 	state->m_ram_bank = 0x00;
 	if(state->m_is_turbo) { state->m_ex_bank = 0x10; }
@@ -1954,7 +1953,7 @@ static INPUT_CHANGED( nmi_reset )
 {
 	x1_state *state = field.machine().driver_data<x1_state>();
 
-	device_set_input_line(state->m_x1_cpu, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 INPUT_PORTS_START( x1 )
@@ -2391,14 +2390,14 @@ static IRQ_CALLBACK(x1_irq_callback)
     {
         state->m_ctc_irq_flag = 0;
         if(state->m_key_irq_flag == 0)  // if no other devices are pulling the IRQ line high
-            device_set_input_line(device, 0, CLEAR_LINE);
+            device->execute().set_input_line(0, CLEAR_LINE);
         return state->m_irq_vector;
     }
     if(state->m_key_irq_flag != 0)
     {
         state->m_key_irq_flag = 0;
         if(state->m_ctc_irq_flag == 0)  // if no other devices are pulling the IRQ line high
-            device_set_input_line(device, 0, CLEAR_LINE);
+            device->execute().set_input_line(0, CLEAR_LINE);
         return state->m_key_irq_vector;
     }
     return state->m_irq_vector;
@@ -2426,7 +2425,7 @@ TIMER_DEVICE_CALLBACK(x1_keyboard_callback)
 			state->x1_sub_io_w(*space,0,0xe6);
 			state->m_irq_vector = state->m_key_irq_vector;
 			state->m_key_irq_flag = 1;
-			cputag_set_input_line(timer.machine(),"x1_cpu",0,ASSERT_LINE);
+			timer.machine().device("x1_cpu")->execute().set_input_line(0,ASSERT_LINE);
 			state->m_old_key1 = key1;
 			state->m_old_key2 = key2;
 			state->m_old_key3 = key3;
@@ -2464,89 +2463,86 @@ TIMER_CALLBACK(x1_rtc_increment)
 	if((state->m_rtc.year & 0xf0) >= 0xa0)				{ state->m_rtc.year = 0; } //roll over
 }
 
-MACHINE_RESET( x1 )
+MACHINE_RESET_MEMBER(x1_state,x1)
 {
-	x1_state *state = machine.driver_data<x1_state>();
-	//UINT8 *ROM = machine.root_device().memregion("x1_cpu")->base();
-	UINT8 *PCG_RAM = state->memregion("pcg")->base();
+	//UINT8 *ROM = machine().root_device().memregion("x1_cpu")->base();
+	UINT8 *PCG_RAM = memregion("pcg")->base();
 	int i;
 
-	memset(state->m_gfx_bitmap_ram,0x00,0xc000*2);
+	memset(m_gfx_bitmap_ram,0x00,0xc000*2);
 
 	for(i=0;i<0x1800;i++)
 	{
 		PCG_RAM[i] = 0;
-		gfx_element_mark_dirty(machine.gfx[1], i >> 3);
+		machine().gfx[1]->mark_dirty(i >> 3);
 	}
 
-	state->m_is_turbo = 0;
+	m_is_turbo = 0;
 
-	state->m_io_bank_mode = 0;
+	m_io_bank_mode = 0;
 
-	//device_set_irq_callback(machine.device("x1_cpu"), x1_irq_callback);
+	//machine().device("x1_cpu")->execute().set_irq_acknowledge_callback(x1_irq_callback);
 
-	state->m_cmt_current_cmd = 0;
-	state->m_cmt_test = 0;
-	state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+	m_cmt_current_cmd = 0;
+	m_cmt_test = 0;
+	m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 
-	state->m_key_irq_flag = state->m_ctc_irq_flag = 0;
-	state->m_sub_cmd = 0;
-	state->m_key_irq_vector = 0;
-	state->m_sub_cmd_length = 0;
-	state->m_sub_val[0] = 0;
-	state->m_sub_val[1] = 0;
-	state->m_sub_val[2] = 0;
-	state->m_sub_val[3] = 0;
-	state->m_sub_val[4] = 0;
-	state->m_sub_obf = (state->m_sub_cmd_length) ? 0x00 : 0x20;
+	m_key_irq_flag = m_ctc_irq_flag = 0;
+	m_sub_cmd = 0;
+	m_key_irq_vector = 0;
+	m_sub_cmd_length = 0;
+	m_sub_val[0] = 0;
+	m_sub_val[1] = 0;
+	m_sub_val[2] = 0;
+	m_sub_val[3] = 0;
+	m_sub_val[4] = 0;
+	m_sub_obf = (m_sub_cmd_length) ? 0x00 : 0x20;
 
-	state->m_rtc_timer->adjust(attotime::zero, 0, attotime::from_seconds(1));
+	m_rtc_timer->adjust(attotime::zero, 0, attotime::from_seconds(1));
 
 	/* Reinitialize palette here if there's a soft reset for the Turbo PAL stuff*/
 	for(i=0;i<0x10;i++)
-		palette_set_color_rgb(machine, i, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
+		palette_set_color_rgb(machine(), i, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
 
-	state->m_ram_bank = 0;
-//  state->m_old_vpos = -1;
+	m_ram_bank = 0;
+//  m_old_vpos = -1;
 }
 
-MACHINE_RESET( x1turbo )
+MACHINE_RESET_MEMBER(x1_state,x1turbo)
 {
-	x1_state *state = machine.driver_data<x1_state>();
-	MACHINE_RESET_CALL( x1 );
-	state->m_is_turbo = 1;
-	state->m_ex_bank = 0x10;
+	MACHINE_RESET_CALL_MEMBER( x1 );
+	m_is_turbo = 1;
+	m_ex_bank = 0x10;
 
-	state->m_scrn_reg.blackclip = 0;
+	m_scrn_reg.blackclip = 0;
 }
 
-MACHINE_START( x1 )
+MACHINE_START_MEMBER(x1_state,x1)
 {
-	x1_state *state = machine.driver_data<x1_state>();
 
 	/* set up RTC */
 	{
 		system_time systime;
-		machine.base_datetime(systime);
+		machine().base_datetime(systime);
 
-		state->m_rtc.day = ((systime.local_time.mday / 10)<<4) | ((systime.local_time.mday % 10) & 0xf);
-		state->m_rtc.month = ((systime.local_time.month+1));
-		state->m_rtc.wday = ((systime.local_time.weekday % 10) & 0xf);
-		state->m_rtc.year = (((systime.local_time.year % 100)/10)<<4) | ((systime.local_time.year % 10) & 0xf);
-		state->m_rtc.hour = ((systime.local_time.hour / 10)<<4) | ((systime.local_time.hour % 10) & 0xf);
-		state->m_rtc.min = ((systime.local_time.minute / 10)<<4) | ((systime.local_time.minute % 10) & 0xf);
-		state->m_rtc.sec = ((systime.local_time.second / 10)<<4) | ((systime.local_time.second % 10) & 0xf);
+		m_rtc.day = ((systime.local_time.mday / 10)<<4) | ((systime.local_time.mday % 10) & 0xf);
+		m_rtc.month = ((systime.local_time.month+1));
+		m_rtc.wday = ((systime.local_time.weekday % 10) & 0xf);
+		m_rtc.year = (((systime.local_time.year % 100)/10)<<4) | ((systime.local_time.year % 10) & 0xf);
+		m_rtc.hour = ((systime.local_time.hour / 10)<<4) | ((systime.local_time.hour % 10) & 0xf);
+		m_rtc.min = ((systime.local_time.minute / 10)<<4) | ((systime.local_time.minute % 10) & 0xf);
+		m_rtc.sec = ((systime.local_time.second / 10)<<4) | ((systime.local_time.second % 10) & 0xf);
 
-		state->m_rtc_timer = machine.scheduler().timer_alloc(FUNC(x1_rtc_increment));
+		m_rtc_timer = machine().scheduler().timer_alloc(FUNC(x1_rtc_increment));
 	}
 }
 
-PALETTE_INIT(x1)
+PALETTE_INIT_MEMBER(x1_state,x1)
 {
 	int i;
 
 	for(i=0;i<(0x10+0x1000);i++)
-		palette_set_color(machine, i,MAKE_RGB(0x00,0x00,0x00));
+		palette_set_color(machine(), i,MAKE_RGB(0x00,0x00,0x00));
 }
 
 static LEGACY_FLOPPY_OPTIONS_START( x1 )
@@ -2584,8 +2580,8 @@ static MACHINE_CONFIG_START( x1, x1_state )
 
 	MCFG_I8255A_ADD( "ppi8255_0", ppi8255_intf )
 
-	MCFG_MACHINE_START(x1)
-	MCFG_MACHINE_RESET(x1)
+	MCFG_MACHINE_START_OVERRIDE(x1_state,x1)
+	MCFG_MACHINE_RESET_OVERRIDE(x1_state,x1)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -2597,11 +2593,11 @@ static MACHINE_CONFIG_START( x1, x1_state )
 
 	MCFG_MC6845_ADD("crtc", H46505, (VDP_CLOCK/48), mc6845_intf) //unknown divider
 	MCFG_PALETTE_LENGTH(0x10+0x1000)
-	MCFG_PALETTE_INIT(x1)
+	MCFG_PALETTE_INIT_OVERRIDE(x1_state,x1)
 
 	MCFG_GFXDECODE(x1)
 
-	MCFG_VIDEO_START(x1)
+	MCFG_VIDEO_START_OVERRIDE(x1_state,x1)
 
 	MCFG_MB8877_ADD("fdc",x1_mb8877a_interface)
 
@@ -2637,7 +2633,7 @@ static MACHINE_CONFIG_DERIVED( x1turbo, x1 )
 	MCFG_CPU_PROGRAM_MAP(x1turbo_mem)
 	MCFG_CPU_IO_MAP(x1turbo_io)
 	MCFG_CPU_CONFIG(x1turbo_daisy)
-	MCFG_MACHINE_RESET(x1turbo)
+	MCFG_MACHINE_RESET_OVERRIDE(x1_state,x1turbo)
 
 //  MCFG_Z80SIO_ADD( "sio", MAIN_CLOCK/4 , sio_intf )
 	MCFG_Z80SIO0_ADD("sio", MAIN_CLOCK/4 , sio_intf )

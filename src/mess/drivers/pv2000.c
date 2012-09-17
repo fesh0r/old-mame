@@ -60,6 +60,8 @@ public:
 	UINT8 m_key_pressed;
 	UINT8 m_keyb_column;
 	UINT8 m_cass_conf;
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 
@@ -82,7 +84,7 @@ WRITE8_MEMBER( pv2000_state::pv2000_keys_w )
 
 	m_keyb_column = data & 0x0f;
 
-	cputag_set_input_line(machine(), "maincpu", INPUT_LINE_IRQ0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 
@@ -188,7 +190,7 @@ static ADDRESS_MAP_START( pv2000_io_map, AS_IO, 8, pv2000_state )
 	AM_RANGE(0x20, 0x20) AM_READWRITE(pv2000_keys_lo_r, pv2000_keys_w)
 
 	//sn76489a
-	AM_RANGE(0x40, 0x40) AM_READ(pv2000_keys_mod_r) AM_DEVWRITE_LEGACY("sn76489a", sn76496_w)
+	AM_RANGE(0x40, 0x40) AM_READ(pv2000_keys_mod_r) AM_DEVWRITE("sn76489a", sn76489a_new_device, write)
 
 	/* Cassette input. Gets hit a lot after a GLOAD command */
 	AM_RANGE(0x60, 0x60) AM_READWRITE(cass_in,cass_out)
@@ -305,7 +307,7 @@ WRITE_LINE_MEMBER( pv2000_state::pv2000_vdp_interrupt )
 {
     // only if it goes up
 	if (state && !m_last_state)
-		cputag_set_input_line(machine(), "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 
 	m_last_state = state;
 
@@ -326,7 +328,7 @@ WRITE_LINE_MEMBER( pv2000_state::pv2000_vdp_interrupt )
 			| ioport( "IN8" )->read();
 
 		if ( key_pressed && m_key_pressed != key_pressed )
-			cputag_set_input_line(machine(), "maincpu", INPUT_LINE_IRQ0, ASSERT_LINE);
+			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 
 		m_key_pressed = key_pressed;
 	}
@@ -343,20 +345,37 @@ static TMS9928A_INTERFACE(pv2000_tms9928a_interface)
 	DEVCB_DRIVER_LINE_MEMBER(pv2000_state, pv2000_vdp_interrupt)
 };
 
-static MACHINE_START( pv2000 )
+
+/*************************************
+ *
+ *  Sound interface
+ *
+ *************************************/
+
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
+
+
+void pv2000_state::machine_start()
 {
 }
 
-static MACHINE_RESET( pv2000 )
+void pv2000_state::machine_reset()
 {
-	pv2000_state *state = machine.driver_data<pv2000_state>();
 
-	state->m_last_state = 0;
-	state->m_key_pressed = 0;
-	state->m_keyb_column = 0;
+	m_last_state = 0;
+	m_key_pressed = 0;
+	m_keyb_column = 0;
 
-	device_set_input_line_vector(machine.device("maincpu"), INPUT_LINE_IRQ0, 0xff);
-	memset(&state->memregion("maincpu")->base()[0x7000], 0xff, 0x1000);	// initialize RAM
+	machine().device("maincpu")->execute().set_input_line_vector(INPUT_LINE_IRQ0, 0xff);
+	memset(&memregion("maincpu")->base()[0x7000], 0xff, 0x1000);	// initialize RAM
 }
 
 static DEVICE_IMAGE_LOAD( pv2000_cart )
@@ -407,8 +426,6 @@ static MACHINE_CONFIG_START( pv2000, pv2000_state )
 	MCFG_CPU_PROGRAM_MAP(pv2000_map)
 	MCFG_CPU_IO_MAP(pv2000_io_map)
 
-	MCFG_MACHINE_START(pv2000)
-	MCFG_MACHINE_RESET(pv2000)
 
 	// video hardware
 	MCFG_TMS9928A_ADD( "tms9928a", TMS9928A, pv2000_tms9928a_interface )
@@ -417,7 +434,8 @@ static MACHINE_CONFIG_START( pv2000, pv2000_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("sn76489a", SN76489A, XTAL_7_15909MHz/2)	/* 3.579545 MHz */
+	MCFG_SOUND_ADD("sn76489a", SN76489A_NEW, XTAL_7_15909MHz/2)	/* 3.579545 MHz */
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)

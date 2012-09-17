@@ -104,7 +104,7 @@ void pda600_state::machine_reset()
 {
 	// the PDA600 soon after start waits for something from the Z180 CSIO, I do not know exactly for what
 	// the CSIO is used and for now I forced the CNTR End-Flag bit to 1 for allow the emulation to continue.
-	cpu_set_reg(m_maincpu, Z180_CNTR, cpu_get_reg(m_maincpu, Z180_CNTR) | 0x80);
+	m_maincpu->set_state_int(Z180_CNTR, m_maincpu->state_int(Z180_CNTR) | 0x80);
 }
 
 void pda600_state::video_start()
@@ -205,7 +205,7 @@ static MACHINE_CONFIG_START( pda600, pda600_state )
 	MCFG_CPU_IO_MAP(pda600_io)
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(240, 320)

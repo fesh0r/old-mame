@@ -22,8 +22,7 @@
 it is from cpu to fdc */
 #define I8271_FLAGS_DATA_DIRECTION 0x02
 
-typedef struct _i8271_t i8271_t;
-struct _i8271_t
+struct i8271_t
 {
 	int flags;
 	int state;
@@ -90,11 +89,11 @@ struct _i8271_t
 	emu_timer *command_complete_timer;
 };
 
-typedef enum
+enum I8271_STATE_t
 {
 	I8271_STATE_EXECUTION_READ = 0,
 	I8271_STATE_EXECUTION_WRITE
-} I8271_STATE_t;
+};
 
 /* commands accepted */
 #define I8271_COMMAND_SPECIFY										0x035
@@ -183,7 +182,7 @@ INLINE i8271_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == I8271);
 
-	return (i8271_t *)downcast<legacy_device_base *>(device)->token();
+	return (i8271_t *)downcast<i8271_device *>(device)->token();
 }
 
 
@@ -1575,26 +1574,40 @@ static DEVICE_RESET( i8271 )
 
 }
 
-DEVICE_GET_INFO( i8271 )
+const device_type I8271 = &device_creator<i8271_device>;
+
+i8271_device::i8271_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, I8271, "Intel 8271", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(i8271_t);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(i8271);		break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(i8271);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Intel 8271");						break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Intel 8271");						break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(i8271_t));
 }
 
-DEFINE_LEGACY_DEVICE(I8271, i8271);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void i8271_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void i8271_device::device_start()
+{
+	DEVICE_START_NAME( i8271 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void i8271_device::device_reset()
+{
+	DEVICE_RESET_NAME( i8271 )(this);
+}
+
+

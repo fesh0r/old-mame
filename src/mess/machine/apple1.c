@@ -166,10 +166,10 @@ DRIVER_INIT_MEMBER(apple1_state,apple1)
 **  MACHINE_RESET:  actions to perform on each cold boot.
 *****************************************************************************/
 
-MACHINE_RESET( apple1 )
+void apple1_state::machine_reset()
 {
 	/* Reset the display hardware. */
-	apple1_vh_dsp_clr(machine);
+	apple1_vh_dsp_clr(machine());
 }
 
 
@@ -297,14 +297,14 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 		if (!state->m_reset_flag) {
 			state->m_reset_flag = 1;
 			/* using PULSE_LINE does not allow us to press and hold key */
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_RESET, ASSERT_LINE);
+			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 			pia->reset();
 		}
 	}
 	else if (state->m_reset_flag) {
 		/* RESET released--allow the processor to continue. */
 		state->m_reset_flag = 0;
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_RESET, CLEAR_LINE);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	/* The CLEAR SCREEN switch clears the video hardware. */

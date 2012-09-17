@@ -13,7 +13,7 @@
 #include "machine/ins8250.h"
 #include "machine/wd17xx.h"
 
-typedef struct
+struct SVI_318
 {
 	/* general */
 	UINT8	svi318;		/* Are we dealing with an SVI-318 or a SVI-328 model. 0 = 328, 1 = 318 */
@@ -35,15 +35,15 @@ typedef struct
 	UINT8	svi806_ram_enabled;
 	memory_region	*svi806_ram;
 	UINT8	*svi806_gfx;
-} SVI_318;
+};
 
-typedef struct
+struct SVI318_FDC_STRUCT
 {
 	UINT8 driveselect;
 	int drq;
 	int irq;
 	UINT8 heads[2];
-} SVI318_FDC_STRUCT;
+};
 
 
 class svi318_state : public driver_device
@@ -70,6 +70,11 @@ public:
 	DECLARE_READ8_MEMBER(svi318_io_ext_r);
 	DECLARE_WRITE8_MEMBER(svi318_io_ext_w);
 	DECLARE_DRIVER_INIT(svi318);
+	DECLARE_MACHINE_START(svi318_pal);
+	DECLARE_MACHINE_RESET(svi318);
+	DECLARE_MACHINE_RESET(svi328_806);
+	DECLARE_VIDEO_START(svi328_806);
+	DECLARE_MACHINE_START(svi318_ntsc);
 };
 
 
@@ -79,9 +84,9 @@ extern const i8255_interface svi318_ppi8255_interface;
 extern const ins8250_interface svi318_ins8250_interface[2];
 extern const wd17xx_interface svi_wd17xx_interface;
 
-MACHINE_START( svi318_pal );
-MACHINE_START( svi318_ntsc );
-MACHINE_RESET( svi318 );
+
+
+
 
 DEVICE_START( svi318_cart );
 DEVICE_IMAGE_LOAD( svi318_cart );
@@ -93,7 +98,7 @@ DEVICE_IMAGE_UNLOAD( svi318_cart );
 int svi318_cassette_present(running_machine &machine, int id);
 
 MC6845_UPDATE_ROW( svi806_crtc6845_update_row );
-VIDEO_START( svi328_806 );
-MACHINE_RESET( svi328_806 );
+
+
 
 #endif /* SVI318_H_ */

@@ -8,6 +8,7 @@
 #include "includes/cbm.h"
 #include "machine/6526cia.h"
 #include "machine/cbmipt.h"
+#include "machine/petcass.h"
 #include "machine/ram.h"
 #include "sound/dac.h"
 #include "sound/sid6581.h"
@@ -31,8 +32,7 @@ public:
 		  m_cia(*this, MOS6526_TAG),
 		  m_exp(*this, VIC10_EXPANSION_SLOT_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_cassette(*this, CASSETTE_TAG),
-		  m_cassette_timer(*this, TIMER_C1531_TAG),
+		  m_cassette(*this, PET_DATASSETTE_PORT_TAG),
 		  m_cia_irq(CLEAR_LINE),
 		  m_vic_irq(CLEAR_LINE),
 		  m_exp_irq(CLEAR_LINE)
@@ -40,17 +40,17 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<mos6566_device> m_vic;
-	required_device<device_t> m_sid;
+	required_device<sid6581_device> m_sid;
 	required_device<mos6526_device> m_cia;
 	required_device<vic10_expansion_slot_device> m_exp;
 	required_device<ram_device> m_ram;
-	optional_device<cassette_image_device> m_cassette;
-	optional_device<timer_device> m_cassette_timer;
+	optional_device<pet_datassette_port_device> m_cassette;
 
 	virtual void machine_start();
 	virtual void machine_reset();
 
 	void check_interrupts();
+	UINT8 paddle_read(int which);
 
 	DECLARE_READ8_MEMBER( read );
 	DECLARE_WRITE8_MEMBER( write );
@@ -62,12 +62,18 @@ public:
 	DECLARE_READ8_MEMBER( vic_lightpen_y_cb );
 	DECLARE_READ8_MEMBER( vic_lightpen_button_cb );
 	DECLARE_READ8_MEMBER( vic_rdy_cb );
+
+	DECLARE_READ8_MEMBER( sid_potx_r );
+	DECLARE_READ8_MEMBER( sid_poty_r );
+
 	DECLARE_WRITE_LINE_MEMBER( cia_irq_w );
 	DECLARE_READ8_MEMBER( cia_pa_r );
 	DECLARE_READ8_MEMBER( cia_pb_r );
 	DECLARE_WRITE8_MEMBER( cia_pb_w );
+
 	DECLARE_READ8_MEMBER( cpu_r );
 	DECLARE_WRITE8_MEMBER( cpu_w );
+
 	DECLARE_WRITE_LINE_MEMBER( exp_irq_w );
 
 	// video state

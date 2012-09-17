@@ -12,17 +12,17 @@
 ***************************************************************************/
 
 
-typedef enum
+enum ay31015_type_t
 {
 	/* For AY-3-1014A, AY-3-1015(D) and HD6402 variants */
 	AY_3_1015,
 
 	/* For AY-3-1014, AY-5-1013 and AY-6-1013 variants */
 	AY_5_1013
-} ay31015_type_t;
+};
 
 
-typedef enum
+enum ay31015_input_pin_t
 {
 	AY31015_SWE=16,			/* -SWE  - Pin 16 - Status word enable */
 	AY31015_RDAV=18,		/* -RDAV - Pin 18 - Reset data available */
@@ -34,10 +34,10 @@ typedef enum
 	AY31015_NB1=37,			/*  NB1  - Pin 37 - Number of bits #1 */
 	AY31015_NB2=38,			/*  NB2  - Pin 38 - Number of bits #2 */
 	AY31015_EPS=39			/*  EPS  - Pin 39 - Odd/Even parity select */
-} ay31015_input_pin_t;
+};
 
 
-typedef enum
+enum ay31015_output_pin_t
 {
 	AY31015_PE=13,			/* PE   - Pin 13 - Parity error */
 	AY31015_FE=14,			/* FE   - Pin 14 - Framing error */
@@ -46,11 +46,10 @@ typedef enum
 	AY31015_TBMT=22,		/* TBMT - Pin 22 - Transmit buffer empty */
 	AY31015_EOC=24,			/* EOC  - Pin 24 - End of character */
 	AY31015_SO=25			/* SO   - Pin 25 - Serial output */
-} ay31015_output_pin_t;
+};
 
 
-typedef struct _ay31015_config	ay31015_config;
-struct _ay31015_config
+struct	ay31015_config
 {
 	ay31015_type_t		type;					/* Type of chip */
 	double				transmitter_clock;		/* TCP - pin 40 */
@@ -104,5 +103,24 @@ void ay31015_set_transmit_data( device_t *device, UINT8 data );
     DEVICE INTERFACE
 ***************************************************************************/
 
-DECLARE_LEGACY_DEVICE(AY31015, ay31015);
+class ay31015_device : public device_t
+{
+public:
+	ay31015_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~ay31015_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type AY31015;
+
 #endif

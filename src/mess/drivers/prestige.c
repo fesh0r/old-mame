@@ -110,6 +110,7 @@ public:
 	DECLARE_WRITE8_MEMBER( kb_w );
 	DECLARE_READ8_MEMBER( mouse_r );
 	DECLARE_WRITE8_MEMBER( mouse_w );
+	virtual void palette_init();
 };
 
 
@@ -120,7 +121,7 @@ READ8_MEMBER( prestige_state::bankswitch_r )
 
 WRITE8_MEMBER( prestige_state::bankswitch_w )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	switch (offset)
 	{
@@ -396,7 +397,7 @@ static IRQ_CALLBACK( prestige_int_ack )
 	UINT32 vector;
 	prestige_state *state = device->machine().driver_data<prestige_state>();
 
-	device_set_input_line(state->m_maincpu, 0, CLEAR_LINE);
+	state->m_maincpu->set_input_line(0, CLEAR_LINE);
 
 	if (state->m_irq_counter == 0x02)
 	{
@@ -417,7 +418,7 @@ void prestige_state::machine_start()
 	UINT8 *ram = m_ram->pointer();
 	memset(ram, 0x00, m_ram->size());
 
-	device_set_irq_callback(m_maincpu, prestige_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(prestige_int_ack);
 
 	membank("bank1")->configure_entries(0, 64, memregion("maincpu")->base(), 0x4000);
 	membank("bank2")->configure_entries(0, 64, memregion("maincpu")->base(), 0x4000);
@@ -438,10 +439,10 @@ void prestige_state::machine_start()
 	m_vram = ram;
 }
 
-static PALETTE_INIT( prestige )
+void prestige_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(39, 108, 51));
-	palette_set_color(machine, 1, MAKE_RGB(16, 37, 84));
+	palette_set_color(machine(), 0, MAKE_RGB(39, 108, 51));
+	palette_set_color(machine(), 1, MAKE_RGB(16, 37, 84));
 }
 
 UINT32 prestige_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
@@ -470,7 +471,7 @@ UINT32 prestige_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 
 static TIMER_DEVICE_CALLBACK( irq_timer )
 {
-	cputag_set_input_line(timer.machine(), "maincpu", 0, ASSERT_LINE);
+	timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 }
 
 static MACHINE_CONFIG_START( prestige, prestige_state )
@@ -492,7 +493,6 @@ static MACHINE_CONFIG_START( prestige, prestige_state )
 	MCFG_DEFAULT_LAYOUT( layout_lcd )
 
     MCFG_PALETTE_LENGTH(2)
-    MCFG_PALETTE_INIT(prestige)
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")

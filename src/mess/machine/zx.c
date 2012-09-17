@@ -72,25 +72,22 @@ DIRECT_UPDATE_MEMBER(zx_state::pow3000_setdirect)
 	return address;
 }
 
-MACHINE_RESET( zx80 )
+void zx_state::machine_reset()
 {
-	zx_state *state = machine.driver_data<zx_state>();
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(zx_state::zx_setdirect), state));
-	state->m_tape_bit = 0x80;
+	machine().device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(zx_state::zx_setdirect), this));
+	m_tape_bit = 0x80;
 }
 
-MACHINE_RESET( pow3000 )
+MACHINE_RESET_MEMBER(zx_state,pow3000)
 {
-	zx_state *state = machine.driver_data<zx_state>();
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(zx_state::pow3000_setdirect), state));
-	state->m_tape_bit = 0x80;
+	machine().device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(zx_state::pow3000_setdirect), this));
+	m_tape_bit = 0x80;
 }
 
-MACHINE_RESET( pc8300 )
+MACHINE_RESET_MEMBER(zx_state,pc8300)
 {
-	zx_state *state = machine.driver_data<zx_state>();
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(zx_state::pc8300_setdirect), state));
-	state->m_tape_bit = 0x80;
+	machine().device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(zx_state::pc8300_setdirect), this));
+	m_tape_bit = 0x80;
 }
 
 static TIMER_CALLBACK(zx_tape_pulse)
@@ -388,7 +385,7 @@ WRITE8_MEMBER( zx_state::zx81_io_w )
 		zx_ula_bkgnd(1);
 		if (m_ula_frame_vsync == 2)
 		{
-			device_spin_until_time(&mem->device(),machine().primary_screen->time_until_pos(height - 1, 0));
+			mem->device().execute().spin_until_time(machine().primary_screen->time_until_pos(height - 1, 0));
 			m_ula_scanline_count = height - 1;
 			logerror ("S: %d B: %d\n", machine().primary_screen->vpos(), machine().primary_screen->hpos());
 		}

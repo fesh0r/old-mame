@@ -125,11 +125,11 @@ void pcw16_state::pcw16_refresh_ints()
 	/* any bits set excluding vsync */
 	if ((m_system_status & (~0x04))!=0)
 	{
-		cputag_set_input_line(machine(), "maincpu", 0, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 	}
 	else
 	{
-		cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+		machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	}
 }
 
@@ -347,7 +347,7 @@ static const struct { write8_space_func func; const char *name; } pcw16_flash1_b
 	{ FUNC(pcw16_flash1_bank_handler3_w) }
 };
 
-typedef enum
+enum PCW16_RAM_TYPE
 {
 	/* rom which is really first block of flash0 */
 	PCW16_MEM_ROM,
@@ -359,7 +359,7 @@ typedef enum
 	PCW16_MEM_DRAM,
 	/* no mem. i.e. unexpanded pcw16 */
 	PCW16_MEM_NONE
-} PCW16_RAM_TYPE;
+};
 
 READ8_MEMBER(pcw16_state::pcw16_no_mem_r)
 {
@@ -1108,7 +1108,7 @@ static void pcw16_trigger_fdc_int(running_machine &machine)
 				{
 					/* I'll pulse it because if I used hold-line I'm not sure
                     it would clear - to be checked */
-					cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+					machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 				}
 			}
 		}
@@ -1423,20 +1423,19 @@ static void pcw16_reset(running_machine &machine)
 }
 
 
-static MACHINE_START( pcw16 )
+void pcw16_state::machine_start()
 {
-	pcw16_state *state = machine.driver_data<pcw16_state>();
-	device_t *speaker = machine.device(BEEPER_TAG);
-	state->m_system_status = 0;
-	state->m_interrupt_counter = 0;
+	device_t *speaker = machine().device(BEEPER_TAG);
+	m_system_status = 0;
+	m_interrupt_counter = 0;
 
-	pc_fdc_init(machine, &pcw16_fdc_interface);
+	pc_fdc_init(machine(), &pcw16_fdc_interface);
 
 	/* initialise keyboard */
-	at_keyboard_init(machine, AT_KEYBOARD_TYPE_AT);
+	at_keyboard_init(machine(), AT_KEYBOARD_TYPE_AT);
 	at_keyboard_set_scan_code_set(3);
 
-	pcw16_reset(machine);
+	pcw16_reset(machine());
 
 	beep_set_state(speaker,0);
 	beep_set_frequency(speaker,3750);
@@ -1480,7 +1479,6 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_CPU_IO_MAP(pcw16_io)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( pcw16 )
 
 	MCFG_NS16550_ADD( "ns16550_1", pcw16_com_interface[0], XTAL_1_8432MHz )		/* TODO: Verify uart model */
 
@@ -1495,9 +1493,7 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_SCREEN_UPDATE_STATIC( pcw16 )
 
 	MCFG_PALETTE_LENGTH(PCW16_NUM_COLOURS)
-	MCFG_PALETTE_INIT( pcw16 )
 
-	MCFG_VIDEO_START( pcw16 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

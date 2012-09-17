@@ -16,13 +16,14 @@
 #include "machine/cuda.h"
 #include "machine/nubus.h"
 #include "machine/ncr539x.h"
+#include "machine/ncr5380.h"
 #include "machine/mackbd.h"
 #include "sound/asc.h"
 #include "sound/awacs.h"
 
 #define MAC_SCREEN_NAME "screen"
-#define MAC_539X_1_TAG "539x_1"
-#define MAC_539X_2_TAG "539x_2"
+#define MAC_539X_1_TAG "scsi:539x_1"
+#define MAC_539X_2_TAG "scsi:539x_2"
 
 // model helpers
 #define ADB_IS_BITBANG	((mac->m_model == MODEL_MAC_SE || mac->m_model == MODEL_MAC_CLASSIC) || (mac->m_model >= MODEL_MAC_II && mac->m_model <= MODEL_MAC_IICI) || (mac->m_model == MODEL_MAC_SE30) || (mac->m_model == MODEL_MAC_QUADRA_700))
@@ -36,14 +37,14 @@
 #define ADB_IS_PM_CLASS	((m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100) || (m_model >= MODEL_MAC_PB140 && m_model <= MODEL_MAC_PBDUO_270c))
 
 /* for Egret and CUDA streaming MCU commands, command types */
-typedef enum
+enum mac_streaming_t
 {
 	MCU_STREAMING_NONE = 0,
 	MCU_STREAMING_PRAMRD,
 	MCU_STREAMING_PRAMWR,
 	MCU_STREAMING_WRAMRD,
 	MCU_STREAMING_WRAMWR
-} mac_streaming_t;
+};
 
 enum
 {
@@ -54,7 +55,7 @@ enum
 };
 
 /* tells which model is being emulated (set by macxxx_init) */
-typedef enum
+enum model_t
 {
 	MODEL_MAC_128K512K,	// 68000 machines
 	MODEL_MAC_512KE,
@@ -123,7 +124,7 @@ typedef enum
 	MODEL_MAC_POWERMAC_6100,	// NuBus PowerMacs
 	MODEL_MAC_POWERMAC_7100,
 	MODEL_MAC_POWERMAC_8100
-} model_t;
+};
 
 // video parameters for classic Macs
 #define MAC_H_VIS	(512)
@@ -141,25 +142,25 @@ void mac_scsi_irq(running_machine &machine, int state);
 void mac_asc_irq(device_t *device, int state);
 void mac_fdc_set_enable_lines(device_t *device, int enable_mask);
 
-MACHINE_START( macscsi );
-MACHINE_START( mac );
-MACHINE_RESET( mac );
+
+
+
 
 
 NVRAM_HANDLER( mac );
 
 /*----------- defined in video/mac.c -----------*/
 
-VIDEO_START( mac );
-VIDEO_START( macrbv );
-VIDEO_START( macv8 );
-VIDEO_START( macsonora );
-VIDEO_START( macdafb );
 
-VIDEO_RESET(macrbv);
-VIDEO_RESET(macdafb);
-VIDEO_RESET(maceagle);
-VIDEO_RESET(macsonora);
+
+
+
+
+
+
+
+
+
 
 SCREEN_UPDATE_IND16( mac );
 SCREEN_UPDATE_IND16( macse30 );
@@ -171,12 +172,34 @@ SCREEN_UPDATE_RGB32( macrbvvram );
 SCREEN_UPDATE_RGB32( macdafb );
 SCREEN_UPDATE_RGB32( macpbwd );
 
-PALETTE_INIT( mac );
-PALETTE_INIT( macgsc );
+
+
 
 /*----------- defined in audio/mac.c -----------*/
 
-DECLARE_LEGACY_SOUND_DEVICE(MAC_SOUND, mac_sound);
+class mac_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	mac_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~mac_sound_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type MAC_SOUND;
+
 
 void mac_enable_sound( device_t *device, int on );
 void mac_set_sound_buffer( device_t *device, int buffer );
@@ -202,6 +225,7 @@ public:
         m_screen(*this, MAC_SCREEN_NAME),
         m_539x_1(*this, MAC_539X_1_TAG),
         m_539x_2(*this, MAC_539X_2_TAG),
+		m_ncr5380(*this, "scsi:ncr5380"),
         m_mackbd(*this, MACKBD_TAG),
 		m_vram(*this,"vram"),
 		m_vram16(*this,"vram16")
@@ -218,6 +242,7 @@ public:
     optional_device<screen_device> m_screen;
     optional_device<ncr539x_device> m_539x_1;
     optional_device<ncr539x_device> m_539x_2;
+    optional_device<ncr5380_device> m_ncr5380;
     optional_device<mackbd_device> m_mackbd;
 
 	virtual void machine_start();
@@ -476,6 +501,18 @@ public:
 	DECLARE_DRIVER_INIT(macpm7100);
 	DECLARE_DRIVER_INIT(macpm8100);
 	DECLARE_DRIVER_INIT(macpb100);
+	DECLARE_VIDEO_START(mac);
+	DECLARE_PALETTE_INIT(mac);
+	DECLARE_VIDEO_START(macprtb);
+	DECLARE_PALETTE_INIT(macgsc);
+	DECLARE_VIDEO_START(macsonora);
+	DECLARE_VIDEO_RESET(macrbv);
+	DECLARE_VIDEO_START(macdafb);
+	DECLARE_VIDEO_RESET(macdafb);
+	DECLARE_VIDEO_START(macv8);
+	DECLARE_VIDEO_RESET(macsonora);
+	DECLARE_VIDEO_RESET(maceagle);
+	DECLARE_VIDEO_START(macrbv);
 };
 
 #endif /* MAC_H_ */

@@ -51,7 +51,7 @@ void bw2_state::bankswitch(UINT8 data)
 
     */
 
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	int max_ram_bank = 0;
 
@@ -133,7 +133,7 @@ void bw2_state::ramcard_bankswitch(UINT8 data)
 
     */
 
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	int max_ram_bank = BANK_RAM1;
 
@@ -200,7 +200,7 @@ void bw2_state::ramcard_bankswitch(UINT8 data)
 
 WRITE8_MEMBER( bw2_state::ramcard_bank_w )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	UINT8 ramcard_bank = data & 0x0f;
 	UINT32 bank_offset = ramcard_bank * 0x8000;
@@ -224,14 +224,14 @@ WRITE_LINE_MEMBER( bw2_state::fdc_drq_w )
 {
 	if (state)
 	{
-		if (cpu_get_reg(m_maincpu, Z80_HALT))
+		if (m_maincpu->state_int(Z80_HALT))
 		{
-			device_set_input_line(m_maincpu, INPUT_LINE_NMI, HOLD_LINE);
+			m_maincpu->set_input_line(INPUT_LINE_NMI, HOLD_LINE);
 		}
 	}
 	else
 	{
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	}
 }
 
@@ -557,10 +557,10 @@ static const struct pit8253_config pit_intf =
 
 /* Video */
 
-static PALETTE_INIT( bw2 )
+void bw2_state::palette_init()
 {
-    palette_set_color_rgb(machine, 0, 0xa5, 0xad, 0xa5);
-    palette_set_color_rgb(machine, 1, 0x31, 0x39, 0x10);
+    palette_set_color_rgb(machine(), 0, 0xa5, 0xad, 0xa5);
+    palette_set_color_rgb(machine(), 1, 0x31, 0x39, 0x10);
 }
 
 static MSM6255_CHAR_RAM_READ( bw2_charram_r )
@@ -678,7 +678,6 @@ static MACHINE_CONFIG_START( bw2, bw2_state )
 	MCFG_DEFAULT_LAYOUT( layout_lcd )
 
 	MCFG_PALETTE_LENGTH( 2 )
-	MCFG_PALETTE_INIT( bw2 )
 
 	// devices
 	MCFG_PIT8253_ADD(PIT8253_TAG, pit_intf)

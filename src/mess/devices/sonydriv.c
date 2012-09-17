@@ -60,7 +60,7 @@ enum
     Structure that describes the state of a floppy drive, and the associated
     disk image
 */
-typedef struct
+struct floppy_t
 {
 	device_t *img;
 	emu_file *fd;
@@ -78,9 +78,9 @@ typedef struct
 
 	int is_fdhd;				/* is drive an FDHD? */
     int is_400k;                /* drive is single-sided, which means 400K */
-} floppy_t;
+};
 
-typedef struct
+struct sonydriv_t
 {
 	int lines;				/* four lines SONY_CA0 - SONY_LSTRB */
 
@@ -91,7 +91,7 @@ typedef struct
 
 	unsigned int rotation_speed;		/* drive rotation speed - ignored if ext_speed_control == 0 */
 	floppy_t floppy[2];			/* data for two floppy disk units */
-} sonydriv_t;
+};
 static sonydriv_t sony;
 
 /* bit of code used in several places - I am unsure why it is here */
@@ -271,7 +271,7 @@ int sony_read_status(device_t *device)
 	if (LOG_SONY_EXTRA)
 	{
 		printf("sony.status(): action=%x pc=0x%08x%s\n",
-			action, (int) cpu_get_pc(device->machine().firstcpu), sony.floppy_enable ? "" : " (no drive enabled)");
+			action, (int) device->machine().firstcpu->pc(), sony.floppy_enable ? "" : " (no drive enabled)");
 	}
 
 	if ((! sony_enable2()) && sony.floppy_enable)
@@ -333,7 +333,7 @@ int sony_read_status(device_t *device)
 			}
 			break;
 		case 0x0a:	/* At track 0: 0=track zero 1=not track zero */
-			logerror("sony.status(): reading Track 0 pc=0x%08x\n", (int) cpu_get_pc(device->machine().firstcpu));
+			logerror("sony.status(): reading Track 0 pc=0x%08x\n", (int) device->machine().firstcpu->pc());
 			if (cur_image)
 				result = floppy_tk00_r(&cur_image->device());
 			else
@@ -407,7 +407,7 @@ static void sony_doaction(device_t *device)
 	if (LOG_SONY)
 	{
 		logerror("sony_doaction(): action=%d pc=0x%08x%s\n",
-			action, (int) cpu_get_pc(device->machine().firstcpu), (sony.floppy_enable) ? "" : " (MOTOR OFF)");
+			action, (int) device->machine().firstcpu->pc(), (sony.floppy_enable) ? "" : " (MOTOR OFF)");
 	}
 
 	if (sony.floppy_enable)

@@ -7,25 +7,25 @@
 #ifndef SVISION_H_
 #define SVISION_H_
 
-typedef struct
+struct svision_t
 {
 	emu_timer *timer1;
 	int timer_shot;
-} svision_t;
+};
 
-typedef struct
+struct svision_pet_t
 {
 	int state;
 	int on, clock, data;
 	UINT8 input;
 	emu_timer *timer;
-} svision_pet_t;
+};
 
-typedef struct
+struct tvlink_t
 {
 	UINT32 palette[4/*0x40?*/]; /* rgb8 */
 	int palette_on;
-} tvlink_t;
+};
 
 
 class svision_state : public driver_device
@@ -49,6 +49,11 @@ public:
 	DECLARE_WRITE8_MEMBER(tvlink_w);
 	DECLARE_DRIVER_INIT(svisions);
 	DECLARE_DRIVER_INIT(svision);
+	virtual void machine_reset();
+	virtual void palette_init();
+	DECLARE_PALETTE_INIT(svisionp);
+	DECLARE_PALETTE_INIT(svisionn);
+	DECLARE_MACHINE_RESET(tvlink);
 };
 
 
@@ -59,7 +64,29 @@ void svision_irq( running_machine &machine );
 
 /*----------- defined in audio/svision.c -----------*/
 
-DECLARE_LEGACY_SOUND_DEVICE(SVISION, svision_sound);
+class svision_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	svision_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~svision_sound_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type SVISION;
+
 
 int *svision_dma_finished(device_t *device);
 void svision_sound_decrement(device_t *device);

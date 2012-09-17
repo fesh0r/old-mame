@@ -9,8 +9,7 @@
 
 #include "includes/special.h"
 
-typedef struct _specimx_sound_state specimx_sound_state;
-struct _specimx_sound_state
+struct specimx_sound_state
 {
 	sound_stream *mixer_channel;
 	int specimx_input[3];
@@ -22,7 +21,7 @@ INLINE specimx_sound_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == SPECIMX);
-	return (specimx_sound_state *)downcast<legacy_device_base *>(device)->token();
+	return (specimx_sound_state *)downcast<specimx_sound_device *>(device)->token();
 }
 
 static DEVICE_START(specimx_sound)
@@ -72,20 +71,42 @@ void specimx_set_input(device_t *device, int index, int state)
 }
 
 
-DEVICE_GET_INFO( specimx_sound )
+const device_type SPECIMX = &device_creator<specimx_sound_device>;
+
+specimx_sound_device::specimx_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, SPECIMX, "Specialist MX Custom", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(specimx_sound_state);			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(specimx_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Specialist MX Custom");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(specimx_sound_state));
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(SPECIMX, specimx_sound);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void specimx_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void specimx_sound_device::device_start()
+{
+	DEVICE_START_NAME( specimx_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void specimx_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

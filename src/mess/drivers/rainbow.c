@@ -129,6 +129,7 @@ private:
     UINT8 m_z80_mailbox, m_8088_mailbox;
 
     void update_kbd_irq();
+	virtual void machine_reset();
 };
 
 void rainbow_state::machine_start()
@@ -190,17 +191,16 @@ static INPUT_PORTS_START( rainbow )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET( rainbow )
+void rainbow_state::machine_reset()
 {
-    rainbow_state *state = machine.driver_data<rainbow_state>();
 
-    device_set_input_line(state->m_z80, INPUT_LINE_HALT, ASSERT_LINE);
+    m_z80->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 
-    state->m_zflip = true;
-    state->m_z80_halted = true;
-    state->m_kbd_tx_ready = state->m_kbd_rx_ready = false;
+    m_zflip = true;
+    m_z80_halted = true;
+    m_kbd_tx_ready = m_kbd_rx_ready = false;
 
-    state->m_kbd8251->input_callback(SERIAL_STATE_CTS); // raise clear to send
+    m_kbd8251->input_callback(SERIAL_STATE_CTS); // raise clear to send
 }
 
 static SCREEN_UPDATE_IND16( rainbow )
@@ -274,28 +274,28 @@ WRITE8_MEMBER(rainbow_state::share_z80_w)
 READ8_MEMBER(rainbow_state::i8088_latch_r)
 {
 //    printf("Read %02x from 8088 mailbox\n", m_8088_mailbox);
-    device_set_input_line(m_i8088, INPUT_LINE_INT1, CLEAR_LINE);
+    m_i8088->execute().set_input_line(INPUT_LINE_INT1, CLEAR_LINE);
     return m_8088_mailbox;
 }
 
 WRITE8_MEMBER(rainbow_state::i8088_latch_w)
 {
 //    printf("%02x to Z80 mailbox\n", data);
-    device_set_input_line_and_vector(m_z80, 0, ASSERT_LINE, 0xf7);
+    m_z80->execute().set_input_line_and_vector(0, ASSERT_LINE, 0xf7);
     m_z80_mailbox = data;
 }
 
 READ8_MEMBER(rainbow_state::z80_latch_r)
 {
 //    printf("Read %02x from Z80 mailbox\n", m_z80_mailbox);
-    device_set_input_line(m_z80, 0, CLEAR_LINE);
+    m_z80->execute().set_input_line(0, CLEAR_LINE);
     return m_z80_mailbox;
 }
 
 WRITE8_MEMBER(rainbow_state::z80_latch_w)
 {
 //    printf("%02x to 8088 mailbox\n", data);
-    device_set_input_line_and_vector(m_i8088, INPUT_LINE_INT1, ASSERT_LINE, 0x27);
+    m_i8088->execute().set_input_line_and_vector(INPUT_LINE_INT1, ASSERT_LINE, 0x27);
     m_8088_mailbox = data;
 }
 
@@ -316,12 +316,12 @@ READ8_MEMBER( rainbow_state::read_video_ram_r )
 
 static INTERRUPT_GEN( vblank_irq )
 {
-    device_set_input_line_and_vector(device, INPUT_LINE_INT0, ASSERT_LINE, 0x20);
+    device->execute().set_input_line_and_vector(INPUT_LINE_INT0, ASSERT_LINE, 0x20);
 }
 
 WRITE8_MEMBER( rainbow_state::clear_video_interrupt )
 {
-    device_set_input_line(m_i8088, INPUT_LINE_INT0, CLEAR_LINE);
+    m_i8088->execute().set_input_line(INPUT_LINE_INT0, CLEAR_LINE);
 }
 
 READ8_MEMBER( rainbow_state::diagnostic_r )
@@ -331,11 +331,11 @@ READ8_MEMBER( rainbow_state::diagnostic_r )
 
 WRITE8_MEMBER( rainbow_state::diagnostic_w )
 {
-//    printf("%02x to diag port (PC=%x)\n", data, cpu_get_pc(&space.device()));
+//    printf("%02x to diag port (PC=%x)\n", data, space.device().safe_pc());
 
     if (!(data & 1))
     {
-        device_set_input_line(m_z80, INPUT_LINE_HALT, ASSERT_LINE);
+        m_z80->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
         m_z80_halted = true;
     }
 
@@ -343,7 +343,7 @@ WRITE8_MEMBER( rainbow_state::diagnostic_w )
     {
         m_zflip = true;
         m_z80_halted = false;
-        device_set_input_line(m_z80, INPUT_LINE_HALT, CLEAR_LINE);
+        m_z80->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
         m_z80->reset();
     }
 
@@ -354,11 +354,11 @@ void rainbow_state::update_kbd_irq()
 {
     if ((m_kbd_rx_ready) || (m_kbd_tx_ready))
     {
-        device_set_input_line_and_vector(m_i8088, INPUT_LINE_INT2, ASSERT_LINE, 0x26);
+        m_i8088->execute().set_input_line_and_vector(INPUT_LINE_INT2, ASSERT_LINE, 0x26);
     }
     else
     {
-        device_set_input_line(m_i8088, INPUT_LINE_INT2, CLEAR_LINE);
+        m_i8088->execute().set_input_line(INPUT_LINE_INT2, CLEAR_LINE);
     }
 }
 
@@ -467,7 +467,6 @@ static MACHINE_CONFIG_START( rainbow, rainbow_state )
 	MCFG_CPU_PROGRAM_MAP(rainbowz80_mem)
 	MCFG_CPU_IO_MAP(rainbowz80_io)
 
-	MCFG_MACHINE_RESET(rainbow)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -483,6 +482,7 @@ static MACHINE_CONFIG_START( rainbow, rainbow_state )
 
 	MCFG_FD1793_ADD("wd1793", rainbow_wd17xx_interface )
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(floppy_intf)
+	MCFG_SOFTWARE_LIST_ADD("flop_list","rainbow")
 
 	MCFG_I8251_ADD("kbdser", i8251_intf)
 	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, attotime::from_hz(4800))

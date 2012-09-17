@@ -18,8 +18,7 @@ to make the standard pc driver one level more complex, so own driver
   rtc interrupt irq 2
  */
 
-typedef struct _vg230_t vg230_t;
-struct _vg230_t
+struct vg230_t
 {
 	UINT8 index;
 	UINT8 data[0x100];
@@ -40,8 +39,7 @@ struct _vg230_t
 	} pmu;
 };
 
-typedef struct _ems_t ems_t;
-struct _ems_t
+struct ems_t
 {
 	UINT8 data;
 	int index;
@@ -66,9 +64,11 @@ public:
 	DECLARE_WRITE8_MEMBER(ems_w);
 	DECLARE_READ8_MEMBER(vg230_io_r);
 	DECLARE_WRITE8_MEMBER(vg230_io_w);
-	struct _vg230_t m_vg230;
-	struct _ems_t m_ems;
+	vg230_t m_vg230;
+	ems_t m_ems;
 	DECLARE_DRIVER_INIT(pasogo);
+	virtual void machine_reset();
+	virtual void palette_init();
 };
 
 
@@ -177,7 +177,7 @@ READ8_MEMBER( pasogo_state::vg230_io_r )
 		}
 
 		if (log)
-			logerror("%.5x vg230 %02x read %.2x\n",(int) cpu_get_pc(m_maincpu),vg230->index,data);
+			logerror("%.5x vg230 %02x read %.2x\n",(int) m_maincpu->pc(),vg230->index,data);
       //    data=machine.root_device().memregion("maincpu")->base()[0x4000+offset];
 	}
 	else
@@ -221,7 +221,7 @@ WRITE8_MEMBER( pasogo_state::vg230_io_w )
 		}
 
 		if (log)
-			logerror("%.5x vg230 %02x write %.2x\n",(int)cpu_get_pc(m_maincpu),vg230->index,data);
+			logerror("%.5x vg230 %02x write %.2x\n",(int)m_maincpu->pc(),vg230->index,data);
 	}
 	else
 		vg230->index=data;
@@ -288,7 +288,7 @@ WRITE8_MEMBER( pasogo_state::ems_w )
 		ems->mapper[ems->index].address=(ems->mapper[ems->index].data[0]<<14)|((ems->mapper[ems->index].data[1]&0xf)<<22);
 		ems->mapper[ems->index].on=ems->mapper[ems->index].data[1]&0x80;
 		ems->mapper[ems->index].type=(ems->mapper[ems->index].data[1]&0x70)>>4;
-		logerror("%.5x ems mapper %d(%05x)on:%d type:%d address:%07x\n",(int)cpu_get_pc(m_maincpu),ems->index, ems->data<<12,
+		logerror("%.5x ems mapper %d(%05x)on:%d type:%d address:%07x\n",(int)m_maincpu->pc(),ems->index, ems->data<<12,
 			ems->mapper[ems->index].on, ems->mapper[ems->index].type, ems->mapper[ems->index].address );
 
 		switch (ems->mapper[ems->index].type)
@@ -380,13 +380,13 @@ static const unsigned char pasogo_palette[][3] =
 	{ 255,255,255 }
 };
 
-static PALETTE_INIT( pasogo )
+void pasogo_state::palette_init()
 {
 	int i;
 
 	for ( i = 0; i < ARRAY_LENGTH(pasogo_palette); i++ )
 	{
-		palette_set_color_rgb(machine, i, pasogo_palette[i][0], pasogo_palette[i][1], pasogo_palette[i][2]);
+		palette_set_color_rgb(machine(), i, pasogo_palette[i][0], pasogo_palette[i][1], pasogo_palette[i][2]);
 	}
 }
 
@@ -450,7 +450,7 @@ static SCREEN_UPDATE_IND16( pasogo )
 
 static INTERRUPT_GEN( pasogo_interrupt )
 {
-//  cputag_set_input_line(machine, "maincpu", UPD7810_INTFE1, PULSE_LINE);
+//  machine.device("maincpu")->execute().set_input_line(UPD7810_INTFE1, PULSE_LINE);
 }
 
 static IRQ_CALLBACK(pasogo_irq_callback)
@@ -458,14 +458,14 @@ static IRQ_CALLBACK(pasogo_irq_callback)
 	return pic8259_acknowledge( device->machine().device("pic8259"));
 }
 
-static MACHINE_RESET( pasogo )
+void pasogo_state::machine_reset()
 {
-	device_set_irq_callback(machine.device("maincpu"), pasogo_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pasogo_irq_callback);
 }
 
 //static const unsigned i86_address_mask = 0x000fffff;
 
-static const struct pit8253_config pc_pit8254_config =
+static const pit8253_config pc_pit8254_config =
 {
 	{
 		{
@@ -487,10 +487,10 @@ static const struct pit8253_config pc_pit8254_config =
 
 static WRITE_LINE_DEVICE_HANDLER( pasogo_pic8259_set_int_line )
 {
-	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
-static const struct pic8259_interface pasogo_pic8259_config =
+static const pic8259_interface pasogo_pic8259_config =
 {
 	DEVCB_LINE(pasogo_pic8259_set_int_line),
 	DEVCB_LINE_VCC,
@@ -505,7 +505,6 @@ static MACHINE_CONFIG_START( pasogo, pasogo_state )
 	MCFG_CPU_IO_MAP( pasogo_io)
 	MCFG_CPU_VBLANK_INT("screen", pasogo_interrupt)
 //  MCFG_CPU_CONFIG(i86_address_mask)
-	MCFG_MACHINE_RESET( pasogo )
 
 	MCFG_PIT8254_ADD( "pit8254", pc_pit8254_config )
 
@@ -518,7 +517,6 @@ static MACHINE_CONFIG_START( pasogo, pasogo_state )
 	MCFG_SCREEN_UPDATE_STATIC(pasogo)
 
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(pasogo_palette))
-	MCFG_PALETTE_INIT(pasogo)
 #if 0
 	MCFG_SPEAKER_STANDARD_MONO("gmaster")
 	MCFG_SOUND_ADD("custom", CUSTOM, 0)

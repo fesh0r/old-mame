@@ -30,8 +30,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _tf20_state tf20_state;
-struct _tf20_state
+struct tf20_state
 {
 	ram_device *ram;
 	device_t *upd765a;
@@ -50,7 +49,7 @@ INLINE tf20_state *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == TF20);
 
-	return (tf20_state *)downcast<legacy_device_base *>(device)->token();
+	return (tf20_state *)downcast<tf20_device *>(device)->token();
 }
 
 
@@ -330,7 +329,7 @@ static DEVICE_START( tf20 )
 	device_t *cpu = device->subdevice("tf20");
 	address_space *prg = cpu->memory().space(AS_PROGRAM);
 
-	device_set_irq_callback(cpu, tf20_irq_ack);
+	cpu->execute().set_irq_acknowledge_callback(tf20_irq_ack);
 
 	/* ram device */
 	tf20->ram = device->subdevice<ram_device>("ram");
@@ -358,31 +357,61 @@ static DEVICE_RESET( tf20 )
 	prg->install_rom(0x0000, 0x07ff, 0, 0x7800, cpu->region()->base());
 }
 
-DEVICE_GET_INFO( tf20 )
+const device_type TF20 = &device_creator<tf20_device>;
+
+tf20_device::tf20_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, TF20, "TF-20", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(tf20_state);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0;									break;
-
-		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:		info->machine_config = MACHINE_CONFIG_NAME(tf20);	break;
-		case DEVINFO_PTR_ROM_REGION:			info->romregion = ROM_NAME(tf20);				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(tf20);			break;
-		case DEVINFO_FCT_STOP:					/* Nothing */									break;
-		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(tf20);			break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					strcpy(info->s, "TF-20");						break;
-		case DEVINFO_STR_SHORTNAME:				strcpy(info->s, "tf20");						break;
-		case DEVINFO_STR_FAMILY:				strcpy(info->s, "Floppy drive");				break;
-		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(tf20_state));
 }
 
-DEFINE_LEGACY_DEVICE(TF20, tf20);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void tf20_device::device_config_complete()
+{
+	m_shortname = "tf20";
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void tf20_device::device_start()
+{
+	DEVICE_START_NAME( tf20 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void tf20_device::device_reset()
+{
+	DEVICE_RESET_NAME( tf20 )(this);
+}
+
+//-------------------------------------------------
+//  device_mconfig_additions - return a pointer to
+//  the device's machine fragment
+//-------------------------------------------------
+
+machine_config_constructor tf20_device::device_mconfig_additions() const
+{
+	return MACHINE_CONFIG_NAME( tf20  );
+}
+
+//-------------------------------------------------
+//  device_rom_region - return a pointer to the
+//  the device's ROM definitions
+//-------------------------------------------------
+
+const rom_entry *tf20_device::device_rom_region() const
+{
+	return ROM_NAME(tf20 );
+}
+
+

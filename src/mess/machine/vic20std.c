@@ -47,25 +47,23 @@ void vic20_standard_cartridge_device::device_start()
 //  vic20_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 vic20_standard_cartridge_device::vic20_cd_r(address_space &space, offs_t offset, int ram1, int ram2, int ram3, int blk1, int blk2, int blk3, int blk5, int io2, int io3)
+UINT8 vic20_standard_cartridge_device::vic20_cd_r(address_space &space, offs_t offset, UINT8 data, int ram1, int ram2, int ram3, int blk1, int blk2, int blk3, int blk5, int io2, int io3)
 {
-	UINT8 data = 0;
-
 	if (!blk1 && (m_blk1 != NULL))
 	{
-		data = m_blk1[offset & 0x1fff];
+		data = m_blk1[offset];
 	}
 	else if (!blk2 && (m_blk2 != NULL))
 	{
-		data = m_blk2[offset & 0x1fff];
+		data = m_blk2[offset];
 	}
 	else if (!blk3 && (m_blk3 != NULL))
 	{
-		data = m_blk3[offset & 0x1fff];
+		data = m_blk3[offset];
 	}
 	else if (!blk5 && (m_blk5 != NULL))
 	{
-		data = m_blk5[offset & 0x1fff];
+		data = m_blk5[offset];
 	}
 
 	return data;

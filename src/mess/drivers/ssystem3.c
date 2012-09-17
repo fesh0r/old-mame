@@ -92,7 +92,7 @@ static void ssystem3_playfield_write(running_machine &machine, int reset, int si
       if (d) state->m_playfield.data|=1<<(state->m_playfield.bit^7);
       state->m_playfield.bit++;
       if (state->m_playfield.bit==8) {
-	logerror("%.4x playfield wrote %d %02x\n", (int)cpu_get_pc(machine.device("maincpu")), state->m_playfield.count, state->m_playfield.data);
+	logerror("%.4x playfield wrote %d %02x\n", (int)machine.device("maincpu")->safe_pc(), state->m_playfield.count, state->m_playfield.data);
 	state->m_playfield.u.data[state->m_playfield.count]=state->m_playfield.data;
 	state->m_playfield.bit=0;
 	state->m_playfield.count=(state->m_playfield.count+1)%ARRAY_LENGTH(state->m_playfield.u.data);
@@ -317,9 +317,7 @@ static MACHINE_CONFIG_START( ssystem3, ssystem3_state )
 	MCFG_SCREEN_UPDATE_STATIC( ssystem3 )
 
 	MCFG_PALETTE_LENGTH(242 + 32768)
-	MCFG_PALETTE_INIT( ssystem3 )
 
-	MCFG_VIDEO_START( ssystem3 )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

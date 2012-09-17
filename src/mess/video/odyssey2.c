@@ -132,13 +132,13 @@ static const UINT8 o2_shape[0x40][8]={
 
 
 
-PALETTE_INIT( odyssey2 )
+void odyssey2_state::palette_init()
 {
 	int i;
 
 	for ( i = 0; i < 24; i++ )
 	{
-		palette_set_color_rgb( machine, i, odyssey2_colors[i*3], odyssey2_colors[i*3+1], odyssey2_colors[i*3+2] );
+		palette_set_color_rgb( machine(), i, odyssey2_colors[i*3], odyssey2_colors[i*3+1], odyssey2_colors[i*3+2] );
 	}
 }
 
@@ -151,7 +151,7 @@ READ8_MEMBER(odyssey2_state::odyssey2_video_r)
         case 0xa1:
 			data = m_control_status;
 			m_iff = 0;
-			cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+			machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 			m_control_status &= ~ 0x08;
 			if ( machine().primary_screen->hpos() < I824X_START_ACTIVE_SCAN || machine().primary_screen->hpos() > I824X_END_ACTIVE_SCAN )
 			{
@@ -538,7 +538,7 @@ static TIMER_CALLBACK( i824x_scanline_callback )
 		state->m_control_status |= 0x08;
 		if ( ! state->m_iff )
 		{
-			cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
+			machine.device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			state->m_iff = 1;
 		}
 	}
@@ -564,38 +564,37 @@ static TIMER_CALLBACK( i824x_hblank_callback )
 
 ***************************************************************************/
 
-VIDEO_START( odyssey2 )
+void odyssey2_state::video_start()
 {
-	odyssey2_state *state = machine.driver_data<odyssey2_state>();
-	screen_device *screen = machine.first_screen();
+	screen_device *screen = machine().first_screen();
 
-	memset(state->m_o2_vdc.reg, 0, 0x100);
+	memset(m_o2_vdc.reg, 0, 0x100);
 
-	state->m_o2_snd_shift[0] = state->m_o2_snd_shift[1] = 0;
-	state->m_x_beam_pos = 0;
-	state->m_y_beam_pos = 0;
-	state->m_control_status = 0;
-	state->m_collision_status = 0;
-	state->m_iff = 0;
-	state->m_start_vpos = 0;
-	state->m_start_vblank = 0;
-	state->m_lum = 0;
+	m_o2_snd_shift[0] = m_o2_snd_shift[1] = 0;
+	m_x_beam_pos = 0;
+	m_y_beam_pos = 0;
+	m_control_status = 0;
+	m_collision_status = 0;
+	m_iff = 0;
+	m_start_vpos = 0;
+	m_start_vblank = 0;
+	m_lum = 0;
 
-	state->m_o2_snd_shift[0] = machine.sample_rate() / 983;
-	state->m_o2_snd_shift[1] = machine.sample_rate() / 3933;
+	m_o2_snd_shift[0] = machine().sample_rate() / 983;
+	m_o2_snd_shift[1] = machine().sample_rate() / 3933;
 
-	state->m_start_vpos = I824X_START_Y;
-	state->m_start_vblank = I824X_START_Y + I824X_SCREEN_HEIGHT;
-	state->m_control_status = 0;
-	state->m_iff = 0;
+	m_start_vpos = I824X_START_Y;
+	m_start_vblank = I824X_START_Y + I824X_SCREEN_HEIGHT;
+	m_control_status = 0;
+	m_iff = 0;
 
-	screen->register_screen_bitmap(state->m_tmp_bitmap);
+	screen->register_screen_bitmap(m_tmp_bitmap);
 
-	state->m_i824x_line_timer = machine.scheduler().timer_alloc(FUNC(i824x_scanline_callback));
-	state->m_i824x_line_timer->adjust( machine.primary_screen->time_until_pos(1, I824X_START_ACTIVE_SCAN ), 0,  machine.primary_screen->scan_period() );
+	m_i824x_line_timer = machine().scheduler().timer_alloc(FUNC(i824x_scanline_callback));
+	m_i824x_line_timer->adjust( machine().primary_screen->time_until_pos(1, I824X_START_ACTIVE_SCAN ), 0,  machine().primary_screen->scan_period() );
 
-	state->m_i824x_hblank_timer = machine.scheduler().timer_alloc(FUNC(i824x_hblank_callback));
-	state->m_i824x_hblank_timer->adjust( machine.primary_screen->time_until_pos(1, I824X_END_ACTIVE_SCAN + 18 ), 0, machine.primary_screen->scan_period() );
+	m_i824x_hblank_timer = machine().scheduler().timer_alloc(FUNC(i824x_hblank_callback));
+	m_i824x_hblank_timer->adjust( machine().primary_screen->time_until_pos(1, I824X_END_ACTIVE_SCAN + 18 ), 0, machine().primary_screen->scan_period() );
 }
 
 /***************************************************************************
@@ -618,19 +617,6 @@ static DEVICE_START( odyssey2_sound )
 	state->m_sh_channel = device->machine().sound().stream_alloc(*device, 0, 1, device->clock()/(I824X_LINE_CLOCKS*4), 0, odyssey2_sh_update );
 }
 
-
-DEVICE_GET_INFO( odyssey2_sound )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(odyssey2_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "P8244/P8245");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
-}
 
 STREAM_UPDATE( odyssey2_sh_update )
 {
@@ -672,7 +658,7 @@ STREAM_UPDATE( odyssey2_sh_update )
 			/* Throw an interrupt if enabled */
 			if( state->m_o2_vdc.s.control & 0x4 )
 			{
-				cputag_set_input_line(device->machine(), "maincpu", 1, HOLD_LINE); /* Is this right? */
+				device->machine().device("maincpu")->execute().set_input_line(1, HOLD_LINE); /* Is this right? */
 			}
 
 			/* Adjust volume */
@@ -824,4 +810,41 @@ UINT8 odyssey2_ef9341_r( running_machine &machine, int command, int b )
 }
 #endif
 
-DEFINE_LEGACY_SOUND_DEVICE(ODYSSEY2, odyssey2_sound);
+const device_type ODYSSEY2 = &device_creator<odyssey2_sound_device>;
+
+odyssey2_sound_device::odyssey2_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, ODYSSEY2, "P8244/P8245", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
+{
+}
+
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void odyssey2_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void odyssey2_sound_device::device_start()
+{
+	DEVICE_START_NAME( odyssey2_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void odyssey2_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

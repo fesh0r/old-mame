@@ -10,7 +10,7 @@
 #include "emu.h"
 #include "socrates.h"
 
-typedef struct
+struct SocratesASIC
 {
 	sound_stream *stream;
 	UINT8 freq[2]; /* channel 1,2 frequencies */
@@ -20,14 +20,14 @@ typedef struct
 	UINT8 state[3]; /* output states for channels 1,2,3 */
 	UINT8 accum[3]; /* accumulators for channels 1,2,3 */
 	UINT16 DAC_output; /* output */
-} SocratesASIC;
+};
 
 
 INLINE SocratesASIC *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == SOCRATES);
-	return (SocratesASIC *)downcast<legacy_device_base *>(device)->token();
+	return (SocratesASIC *)downcast<socrates_snd_device *>(device)->token();
 }
 
 static const UINT8 volumeLUT[16] =
@@ -143,23 +143,42 @@ void socrates_snd_reg4_w(device_t *device, int data)
  * Generic get_info
  **************************************************************************/
 
-DEVICE_GET_INFO( socrates_snd )
+const device_type SOCRATES = &device_creator<socrates_snd_device>;
+
+socrates_snd_device::socrates_snd_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, SOCRATES, "Socrates Sound", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(SocratesASIC);				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( socrates_snd );	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Socrates Sound");					break;
-		case DEVINFO_STR_FAMILY:					strcpy(info->s, "Socrates Sound");					break;
-		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");						break;
-		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);					break;
-		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright Jonathan Gevaryahu and The MESS Team"); break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(SocratesASIC));
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(SOCRATES, socrates_snd);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void socrates_snd_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void socrates_snd_device::device_start()
+{
+	DEVICE_START_NAME( socrates_snd )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void socrates_snd_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

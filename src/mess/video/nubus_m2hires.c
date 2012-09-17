@@ -223,9 +223,8 @@ static SCREEN_UPDATE_RGB32( m2hires )
 			break;
 
 		default:
-			fatalerror("m2hires: unknown video mode %d", card->m_mode);
+			fatalerror("m2hires: unknown video mode %d\n", card->m_mode);
 			break;
-
 	}
 	return 0;
 }
@@ -258,7 +257,7 @@ WRITE32_MEMBER( nubus_m2hires_device::m2hires_w )
 			break;
 
 		case 0x5038:	// DAC control
-//          printf("%08x to DAC control (PC=%x)\n", data, cpu_get_pc(&space.device()));
+//          printf("%08x to DAC control (PC=%x)\n", data, space.device().safe_pc());
 			m_clutoffs = (data>>24)&0xff;
 			break;
 
@@ -267,7 +266,7 @@ WRITE32_MEMBER( nubus_m2hires_device::m2hires_w )
 
 			if (m_count == 3)
 			{
-//              printf("RAMDAC: color %d = %02x %02x %02x (PC=%x)\n", m_clutoffs, m_colors[0], m_colors[1], m_colors[2], cpu_get_pc(&space.device()) );
+//              printf("RAMDAC: color %d = %02x %02x %02x (PC=%x)\n", m_clutoffs, m_colors[0], m_colors[1], m_colors[2], space.device().safe_pc() );
 				m_palette[m_clutoffs] = MAKE_RGB(m_colors[0], m_colors[1], m_colors[2]);
 				m_clutoffs++;
 				if (m_clutoffs > 255)
@@ -288,7 +287,7 @@ WRITE32_MEMBER( nubus_m2hires_device::m2hires_w )
 			break;
 
 		default:
-//          printf("m2hires_w: %08x @ %x, mask %08x (PC=%x)\n", data, offset, mem_mask, cpu_get_pc(&space.device()));
+//          printf("m2hires_w: %08x @ %x, mask %08x (PC=%x)\n", data, offset, mem_mask, space.device().safe_pc());
 			break;
 	}
 }
@@ -302,7 +301,7 @@ READ32_MEMBER( nubus_m2hires_device::m2hires_r )
 	}
 /*  else
     {
-        printf("m2hires_r: @ %x, mask %08x (PC=%x)\n", offset, mem_mask, cpu_get_pc(&space.device()));
+        printf("m2hires_r: @ %x, mask %08x (PC=%x)\n", offset, mem_mask, space.device().safe_pc());
     }*/
 
 	return 0;

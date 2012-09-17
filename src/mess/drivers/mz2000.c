@@ -8,8 +8,10 @@
     Basically a simpler version of Sharp MZ-2500
 
     TODO:
-    - cassette interface;
+    - cassette interface, basically any program that's bigger than 8kb fails to load;
     - implement remaining video capabilities
+    - add 80b compatibility support;
+    - Vosque (color): keyboard doesn't work properly;
 
 ****************************************************************************/
 
@@ -27,21 +29,27 @@
 #include "imagedev/cassette.h"
 #include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
+#include "formats/mz_cas.h"
 
+#define MASTER_CLOCK XTAL_17_73447MHz/5  /* TODO: was 4 MHz, but otherwise cassette won't work due of a bug with MZF support ... */
 
 
 class mz2000_state : public driver_device
 {
 public:
 	mz2000_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		  m_cass(*this, CASSETTE_TAG)
+		{ }
+
+	required_device<cassette_image_device> m_cass;
 
 	UINT8 m_ipl_enable;
 	UINT8 m_tvram_enable;
 	UINT8 m_gvram_enable;
 	UINT8 m_gvram_bank;
 
-	UINT8 m_key_mux,m_pio_latchb;
+	UINT8 m_key_mux;
 
 	UINT8 m_old_portc;
 	UINT8 m_width80;
@@ -51,6 +59,9 @@ public:
 	UINT8 m_color_mode;
 	UINT8 m_has_fdc;
 	UINT8 m_hi_mode;
+
+	UINT8 m_porta_latch;
+	UINT8 m_tape_ctrl;
 	DECLARE_READ8_MEMBER(mz2000_ipl_r);
 	DECLARE_READ8_MEMBER(mz2000_wram_r);
 	DECLARE_WRITE8_MEMBER(mz2000_wram_w);
@@ -65,9 +76,11 @@ public:
 	DECLARE_WRITE8_MEMBER(timer_w);
 	DECLARE_WRITE8_MEMBER(mz2000_tvram_attr_w);
 	DECLARE_WRITE8_MEMBER(mz2000_gvram_mask_w);
+	virtual void machine_reset();
+	virtual void video_start();
 };
 
-static VIDEO_START( mz2000 )
+void mz2000_state::video_start()
 {
 }
 
@@ -272,7 +285,6 @@ WRITE8_MEMBER(mz2000_state::mz2000_mem_w)
 
 WRITE8_MEMBER(mz2000_state::mz2000_gvram_bank_w)
 {
-
 	m_gvram_bank = data & 3;
 }
 
@@ -496,20 +508,19 @@ static INPUT_PORTS_START( mz2000 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(mz2000)
+void mz2000_state::machine_reset()
 {
-	mz2000_state *state = machine.driver_data<mz2000_state>();
 
-	state->m_ipl_enable = 1;
-	state->m_tvram_enable = 0;
-	state->m_gvram_enable = 0;
+	m_ipl_enable = 1;
+	m_tvram_enable = 0;
+	m_gvram_enable = 0;
 
-	beep_set_frequency(machine.device(BEEPER_TAG),4096);
-	beep_set_state(machine.device(BEEPER_TAG),0);
+	beep_set_frequency(machine().device(BEEPER_TAG),4096);
+	beep_set_state(machine().device(BEEPER_TAG),0);
 
-	state->m_color_mode = machine.root_device().ioport("CONFIG")->read() & 1;
-	state->m_has_fdc = (machine.root_device().ioport("CONFIG")->read() & 2) >> 1;
-	state->m_hi_mode = (machine.root_device().ioport("CONFIG")->read() & 4) >> 2;
+	m_color_mode = machine().root_device().ioport("CONFIG")->read() & 1;
+	m_has_fdc = (machine().root_device().ioport("CONFIG")->read() & 2) >> 1;
+	m_hi_mode = (machine().root_device().ioport("CONFIG")->read() & 4) >> 2;
 
 	{
 		int i;
@@ -517,11 +528,11 @@ static MACHINE_RESET(mz2000)
 
 		for(i=0;i<8;i++)
 		{
-			r = (state->m_color_mode) ? (i & 2)>>1 : 0;
-			g = (state->m_color_mode) ? (i & 4)>>2 : ((i) ? 1 : 0);
-			b = (state->m_color_mode) ? (i & 1)>>0 : 0;
+			r = (m_color_mode) ? (i & 2)>>1 : 0;
+			g = (m_color_mode) ? (i & 4)>>2 : ((i) ? 1 : 0);
+			b = (m_color_mode) ? (i & 1)>>0 : 0;
 
-			palette_set_color_rgb(machine, i,pal1bit(r),pal1bit(g),pal1bit(b));
+			palette_set_color_rgb(machine(), i,pal1bit(r),pal1bit(g),pal1bit(b));
 		}
 	}
 }
@@ -562,6 +573,7 @@ static READ8_DEVICE_HANDLER( mz2000_porta_r )
 
 static READ8_DEVICE_HANDLER( mz2000_portb_r )
 {
+	mz2000_state *state = device->machine().driver_data<mz2000_state>();
 	/*
     x--- ---- break key
     -x-- ---- read tape data
@@ -570,12 +582,18 @@ static READ8_DEVICE_HANDLER( mz2000_portb_r )
     ---- x--- end of tape reached
     ---- ---x "blank" control
     */
-	UINT8 res = 0xff ^ 0xe0;
+	UINT8 res = 0x80;
 
-	res |= ((device->machine().device<cassette_image_device>(CASSETTE_TAG))->input() > 0.00) ? 0x40 : 0x00;
-	res |= (((device->machine().device<cassette_image_device>(CASSETTE_TAG))->get_state() & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY) ? 0x00 : 0x20;
+	if(state->m_cass->get_image() != NULL)
+	{
+		res |= (state->m_cass->input() > 0.0038) ? 0x40 : 0x00;
+		res |= ((state->m_cass->get_state() & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY) ? 0x00 : 0x20;
+		res |= (state->m_cass->get_position() >= state->m_cass->get_length()) ? 0x08 : 0x00;
+	}
+	else
+		res |= 0x20;
 
-	popmessage("%02x",res);
+	res |= (device->machine().primary_screen->vblank()) ? 0x00 : 0x01;
 
 	return res;
 }
@@ -589,6 +607,7 @@ static READ8_DEVICE_HANDLER( mz2000_portc_r )
 static WRITE8_DEVICE_HANDLER( mz2000_porta_w )
 {
 	/*
+    These are enabled thru a 0->1 transition
     x--- ---- tape "APSS"
     -x-- ---- tape "APLAY"
     --x- ---- tape "AREW"
@@ -598,14 +617,56 @@ static WRITE8_DEVICE_HANDLER( mz2000_porta_w )
     ---- --x- tape ff
     ---- ---x tape rewind
     */
-	//printf("A W %02x\n",data);
+	mz2000_state *state = device->machine().driver_data<mz2000_state>();
 
-	// ...
+	if((state->m_tape_ctrl & 0x80) == 0 && data & 0x80)
+	{
+		//printf("Tape APSS control\n");
+	}
+
+	if((state->m_tape_ctrl & 0x40) == 0 && data & 0x40)
+	{
+		//printf("Tape APLAY control\n");
+	}
+
+	if((state->m_tape_ctrl & 0x20) == 0 && data & 0x20)
+	{
+		//printf("Tape AREW control\n");
+	}
+
+	if((state->m_tape_ctrl & 0x10) == 0 && data & 0x10)
+	{
+		//printf("reverse video control\n");
+	}
+
+	if((state->m_tape_ctrl & 0x08) == 0 && data & 0x08) // stop
+	{
+		state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+		state->m_cass->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+	}
+
+	if((state->m_tape_ctrl & 0x04) == 0 && data & 0x04) // play
+	{
+		state->m_cass->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+		state->m_cass->change_state(CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
+	}
+
+	if((state->m_tape_ctrl & 0x02) == 0 && data & 0x02)
+	{
+		//printf("Tape FF control\n");
+	}
+
+	if((state->m_tape_ctrl & 0x01) == 0 && data & 0x01)
+	{
+		//printf("Tape Rewind control\n");
+	}
+
+	state->m_tape_ctrl = data;
 }
 
 static WRITE8_DEVICE_HANDLER( mz2000_portb_w )
 {
-	printf("B W %02x\n",data);
+	//printf("B W %02x\n",data);
 
 	// ...
 }
@@ -622,7 +683,7 @@ static WRITE8_DEVICE_HANDLER( mz2000_portc_w )
         ---- -x-- beeper state
         ---- --x- 0->1 transition = Work RAM reset
     */
-	printf("C W %02x\n",data);
+	//printf("C W %02x\n",data);
 
 	if(((state->m_old_portc & 8) == 0) && data & 8)
 		state->m_ipl_enable = 1;
@@ -631,7 +692,7 @@ static WRITE8_DEVICE_HANDLER( mz2000_portc_w )
 	{
 		state->m_ipl_enable = 0;
 		/* correct? */
-		cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_RESET, PULSE_LINE);
+		device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	beep_set_state(device->machine().device(BEEPER_TAG),data & 0x04);
@@ -656,9 +717,11 @@ static WRITE8_DEVICE_HANDLER( mz2000_pio1_porta_w )
 	state->m_gvram_enable = ((data & 0xc0) == 0x80);
 	state->m_width80 = ((data & 0x20) >> 5);
 	state->m_key_mux = data & 0x1f;
+
+	state->m_porta_latch = data;
 }
 
-static READ8_DEVICE_HANDLER( mz2000_pio1_porta_r )
+static READ8_DEVICE_HANDLER( mz2000_pio1_portb_r )
 {
 	mz2000_state *state = device->machine().driver_data<mz2000_state>();
 	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3",
@@ -674,14 +737,17 @@ static READ8_DEVICE_HANDLER( mz2000_pio1_porta_r )
 		for(i=0;i<0xe;i++)
 			res &= device->machine().root_device().ioport(keynames[i])->read();
 
-		state->m_pio_latchb = res;
-
 		return res;
 	}
 
-	state->m_pio_latchb = device->machine().root_device().ioport(keynames[state->m_key_mux & 0xf])->read();
-
 	return device->machine().root_device().ioport(keynames[state->m_key_mux & 0xf])->read();
+}
+
+static READ8_DEVICE_HANDLER( mz2000_pio1_porta_r )
+{
+	mz2000_state *state = device->machine().driver_data<mz2000_state>();
+
+	return state->m_porta_latch;
 }
 
 static Z80PIO_INTERFACE( mz2000_pio1_intf )
@@ -690,7 +756,7 @@ static Z80PIO_INTERFACE( mz2000_pio1_intf )
 	DEVCB_HANDLER( mz2000_pio1_porta_r ),
 	DEVCB_HANDLER( mz2000_pio1_porta_w ),
 	DEVCB_NULL,
-	DEVCB_HANDLER( mz2000_pio1_porta_r ),
+	DEVCB_HANDLER( mz2000_pio1_portb_r ),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -749,22 +815,33 @@ static const struct pit8253_config mz2000_pit8253_intf =
 	}
 };
 
+
+static const cassette_interface mz2000_cassette_interface =
+{
+	mz700_cassette_formats,
+	NULL,
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
+	"mz_cass",
+	NULL
+};
+
 static MACHINE_CONFIG_START( mz2000, mz2000_state )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+	MCFG_CPU_ADD("maincpu",Z80, MASTER_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(mz2000_map)
 	MCFG_CPU_IO_MAP(mz2000_io)
 
-	MCFG_MACHINE_RESET(mz2000)
 
 	MCFG_I8255_ADD( "i8255_0", ppi8255_intf )
-	MCFG_Z80PIO_ADD( "z80pio_1", 4000000, mz2000_pio1_intf )
+	MCFG_Z80PIO_ADD( "z80pio_1", MASTER_CLOCK, mz2000_pio1_intf )
 	MCFG_PIT8253_ADD("pit", mz2000_pit8253_intf)
 
 	MCFG_MB8877_ADD("mb8877a",mz2000_mb8877a_interface)
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(mz2000_floppy_interface)
+	MCFG_SOFTWARE_LIST_ADD("flop_list","mz2000_flop")
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, mz2000_cassette_interface )
+	MCFG_SOFTWARE_LIST_ADD("cass_list","mz2000_cass")
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -776,7 +853,6 @@ static MACHINE_CONFIG_START( mz2000, mz2000_state )
 	MCFG_GFXDECODE(mz2000)
 	MCFG_PALETTE_LENGTH(8)
 
-	MCFG_VIDEO_START(mz2000)
 	MCFG_SCREEN_UPDATE_STATIC(mz2000)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")

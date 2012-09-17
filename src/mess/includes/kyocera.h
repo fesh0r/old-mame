@@ -113,6 +113,8 @@ public:
 	/* sound state */
 	int m_buzzer;				/* buzzer select */
 	int m_bell;				/* bell output */
+
+	DECLARE_PALETTE_INIT(kc85);
 };
 
 class trsm100_state : public kc85_state
@@ -185,6 +187,8 @@ public:
 	DECLARE_WRITE8_MEMBER( i8155_pb_w );
 	DECLARE_READ8_MEMBER( i8155_pc_r );
 	DECLARE_WRITE_LINE_MEMBER( i8155_to_w );
+
+	DECLARE_PALETTE_INIT(tandy200);
 
 	void bankswitch(UINT8 data);
 

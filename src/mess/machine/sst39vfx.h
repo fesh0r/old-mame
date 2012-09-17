@@ -18,8 +18,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _sst39vfx_config sst39vfx_config;
-struct _sst39vfx_config
+struct sst39vfx_config
 {
 	int cpu_datawidth;
 	int cpu_endianess;
@@ -29,22 +28,49 @@ struct _sst39vfx_config
     MACROS
 ***************************************************************************/
 
-DECLARE_LEGACY_DEVICE(SST39VF020, sst39vf020);
+class sst39vf020_device : public device_t
+{
+public:
+	sst39vf020_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	sst39vf020_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock);
+	~sst39vf020_device() { global_free(m_token); }
 
-#define MCFG_SST39VF020_ADD(_tag,_cpu_datawidth,_cpu_endianess) \
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type SST39VF020;
+
+
+#define MCFG_SST39VF020_ADD(_tag, _config) \
 	MCFG_DEVICE_ADD(_tag, SST39VF020, 0) \
-	MCFG_DEVICE_CONFIG_DATA32(sst39vfx_config, cpu_datawidth, _cpu_datawidth) \
-	MCFG_DEVICE_CONFIG_DATA32(sst39vfx_config, cpu_endianess, _cpu_endianess)
+	MCFG_DEVICE_CONFIG(_config)
 
 #define MCFG_SST39VF020_REMOVE(_tag) \
 	MCFG_DEVICE_REMOVE(_tag)
 
-DECLARE_LEGACY_DEVICE(SST39VF400A, sst39vf400a);
+class sst39vf400a_device : public sst39vf020_device
+{
+public:
+	sst39vf400a_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+protected:
+	// device-level overrides
+	virtual void device_start();
+};
 
-#define MCFG_SST39VF400A_ADD(_tag,_cpu_datawidth,_cpu_endianess) \
+extern const device_type SST39VF400A;
+
+
+#define MCFG_SST39VF400A_ADD(_tag,_config) \
 	MCFG_DEVICE_ADD(_tag, SST39VF400A, 0) \
-	MCFG_DEVICE_CONFIG_DATA32(sst39vfx_config, cpu_datawidth, _cpu_datawidth) \
-	MCFG_DEVICE_CONFIG_DATA32(sst39vfx_config, cpu_endianess, _cpu_endianess)
+	MCFG_DEVICE_CONFIG(_config)
 
 #define MCFG_SST39VF400A_REMOVE(_tag) \
 	MCFG_DEVICE_REMOVE(_tag)

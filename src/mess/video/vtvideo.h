@@ -20,7 +20,26 @@
     MACROS / CONSTANTS
 ***************************************************************************/
 
-DECLARE_LEGACY_DEVICE(VT100_VIDEO, vt100_video);
+class vt100_video_device : public device_t
+{
+public:
+	vt100_video_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~vt100_video_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type VT100_VIDEO;
+
 
 #define MCFG_VT100_VIDEO_ADD(_tag, _intrf) \
 	MCFG_DEVICE_ADD(_tag, VT100_VIDEO, 0) \
@@ -29,8 +48,7 @@ DECLARE_LEGACY_DEVICE(VT100_VIDEO, vt100_video);
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _vt_video_interface vt_video_interface;
-struct _vt_video_interface
+struct vt_video_interface
 {
 	const char *screen_tag;		/* screen we are acting on */
 	const char *char_rom_region_tag; /* character rom region */

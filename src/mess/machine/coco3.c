@@ -43,20 +43,6 @@
 
 #include "includes/coco3.h"
 
-
-
-//-------------------------------------------------
-//  ctor
-//-------------------------------------------------
-
-coco3_state::coco3_state(const machine_config &mconfig, device_type type, const char *tag)
-	: coco_state(mconfig, type, tag),
-	  m_gime(*this, GIME_TAG)
-{
-}
-
-
-
 //-------------------------------------------------
 //  ff20_write
 //-------------------------------------------------
@@ -173,7 +159,7 @@ UINT32 coco3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 	}
 	else
 	{
-		fatalerror("Called screen_update() with invalid tag '%s'", screen.tag());
+		fatalerror("Called screen_update() with invalid tag '%s'\n", screen.tag());
 	}
 	return result;
 }

@@ -19,7 +19,6 @@
 #include "machine/i8251.h"
 #include "video/i8275.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
 
 class sm1800_state : public driver_device
 {
@@ -44,6 +43,7 @@ public:
 	UINT8 m_irq_state;
 	virtual void machine_reset();
 	virtual void video_start();
+	virtual void palette_init();
 };
 
 static ADDRESS_MAP_START(sm1800_mem, AS_PROGRAM, 8, sm1800_state)
@@ -72,9 +72,9 @@ static IRQ_CALLBACK(sm1800_irq_callback)
 	return 0xff;
 }
 
-MACHINE_RESET_MEMBER(sm1800_state)
+void sm1800_state::machine_reset()
 {
-	device_set_irq_callback(m_maincpu, sm1800_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(sm1800_irq_callback);
 }
 
 void sm1800_state::video_start()
@@ -95,7 +95,7 @@ static SCREEN_UPDATE_IND16( sm1800 )
 static INTERRUPT_GEN( sm1800_vblank_interrupt )
 {
 	sm1800_state *state = device->machine().driver_data<sm1800_state>();
-	cputag_set_input_line(device->machine(), "maincpu", 0, state->m_irq_state ?  HOLD_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(0, state->m_irq_state ?  HOLD_LINE : CLEAR_LINE);
 	state->m_irq_state ^= 1;
 }
 
@@ -157,11 +157,11 @@ I8255A_INTERFACE( sm1800_ppi8255_interface )
 	DEVCB_DRIVER_MEMBER(sm1800_state, sm1800_8255_portc_w)
 };
 
-static PALETTE_INIT( sm1800 )
+void sm1800_state::palette_init()
 {
-	palette_set_color(machine, 0, RGB_BLACK); // black
-	palette_set_color_rgb(machine, 1, 0xa0, 0xa0, 0xa0); // white
-	palette_set_color(machine, 2, RGB_WHITE); // highlight
+	palette_set_color(machine(), 0, RGB_BLACK); // black
+	palette_set_color_rgb(machine(), 1, 0xa0, 0xa0, 0xa0); // white
+	palette_set_color(machine(), 2, RGB_WHITE); // highlight
 }
 
 
@@ -200,7 +200,6 @@ static MACHINE_CONFIG_START( sm1800, sm1800_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MCFG_SCREEN_UPDATE_STATIC(sm1800)
 	MCFG_PALETTE_LENGTH(3)
-	MCFG_PALETTE_INIT(sm1800)
 
 	/* Devices */
 	MCFG_I8255_ADD ("i8255", sm1800_ppi8255_interface )

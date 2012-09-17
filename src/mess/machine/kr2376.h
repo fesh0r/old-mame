@@ -36,7 +36,25 @@
 typedef void (*kr2376_on_strobe_changed_func) (device_t *device, int level);
 #define KR2376_ON_STROBE_CHANGED(name) void name(device_t *device, int level)
 
-DECLARE_LEGACY_DEVICE(KR2376, kr2376);
+class kr2376_device : public device_t
+{
+public:
+	kr2376_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~kr2376_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type KR2376;
+
 
 #define MCFG_KR2376_ADD(_tag, _intrf) \
 	MCFG_DEVICE_ADD(_tag, KR2376, 0) \
@@ -48,21 +66,20 @@ DECLARE_LEGACY_DEVICE(KR2376, kr2376);
 /*
  * Input pins
  */
-typedef enum
+enum kr2376_input_pin_t
 {
 	KR2376_DSII=20,			/* DSII  - Pin 20 - Data & Strobe Invert Input */
 	KR2376_PII=6			/* PII   - Pin  6 - Parity Invert Input */
-} kr2376_input_pin_t;
+};
 
-typedef enum
+enum kr2376_output_pin_t
 {
 	KR2376_SO=16,			/* SO    - Pin 16 - Strobe Output */
 	KR2376_PO=7			/* PO    - Pin  7 - Parity Output */
-} kr2376_output_pin_t;
+};
 
 /* interface */
-typedef struct _kr2376_interface kr2376_interface;
-struct _kr2376_interface
+struct kr2376_interface
 {
 	/* The clock of the chip (Typical 50 kHz) */
 	int clock;

@@ -18,7 +18,7 @@
 
 /* Components */
 
-typedef struct
+struct hd63701y0_t
 {
 	UINT8 data[8];
 	UINT8 P1DDR;
@@ -55,9 +55,9 @@ typedef struct
 	UINT8 TSTREG;
 	UINT8 P5DDR;
 	UINT8 P6CSR;
-} hd63701y0_t;
+};
 
-typedef struct
+struct rvoicepc_t
 {
 	UINT8 data[8];
 	UINT8 port1;
@@ -67,7 +67,7 @@ typedef struct
 	UINT8 port5;
 	UINT8 port6;
 	UINT8 port7;
-} rvoicepc_t;
+};
 
 class rvoice_state : public driver_device
 {
@@ -80,6 +80,7 @@ public:
 	DECLARE_READ8_MEMBER(main_hd63701_internal_registers_r);
 	DECLARE_WRITE8_MEMBER(main_hd63701_internal_registers_w);
 	DECLARE_DRIVER_INIT(rvoicepc);
+	virtual void machine_reset();
 };
 
 
@@ -89,50 +90,49 @@ DRIVER_INIT_MEMBER(rvoice_state,rvoicepc)
 {
 }
 
-static MACHINE_RESET( rvoicepc )
+void rvoice_state::machine_reset()
 {
-	rvoice_state *state = machine.driver_data<rvoice_state>();
 	/* following is from datasheet at http://datasheets.chipdb.org/Hitachi/63701/HD63701Y0.pdf */
-	state->m_hd63701y0.P1DDR = 0xFE; // port 1 ddr, W
-	state->m_hd63701y0.P2DDR = 0x00; // port 2 ddr, W
-	state->m_hd63701y0.PORT1 = 0x00; // port 1, R/W
-	state->m_hd63701y0.PORT2 = 0x00; // port 2, R/W
-	state->m_hd63701y0.P3DDR = 0xFE; // port 3 ddr, W
-	state->m_hd63701y0.P4DDR = 0x00; // port 4 ddr, W
-	state->m_hd63701y0.PORT3 = 0x00; // port 3, R/W
-	state->m_hd63701y0.PORT4 = 0x00; // port 4, R/W
-	state->m_hd63701y0.TCSR1 = 0x00; // timer control/status, R/W
-	state->m_hd63701y0.FRCH = 0x00;
-	state->m_hd63701y0.FRCL = 0x00;
-	state->m_hd63701y0.OCR1H = 0xFF;
-	state->m_hd63701y0.OCR1L = 0xFF;
-	state->m_hd63701y0.ICRH = 0x00;
-	state->m_hd63701y0.ICRL = 0x00;
-	state->m_hd63701y0.TCSR2 = 0x10;
-	state->m_hd63701y0.RMCR = 0xC0;
-	state->m_hd63701y0.TRCSR1 = 0x20;
-	state->m_hd63701y0.RDR = 0x00; // Receive Data Reg, R
-	state->m_hd63701y0.TDR = 0x00; // Transmit Data Reg, W
-	state->m_hd63701y0.RP5CR = 0x78; // or 0xF8; Ram/Port5 Control Reg, R/W
-	state->m_hd63701y0.PORT5 = 0x00; // port 5, R/W
-	state->m_hd63701y0.P6DDR = 0x00; // port 6 ddr, W
-	state->m_hd63701y0.PORT6 = 0x00; // port 6, R/W
-	state->m_hd63701y0.PORT7 = 0x00; // port 7, R/W
-	state->m_hd63701y0.OCR2H = 0xFF;
-	state->m_hd63701y0.OCR2L = 0xFF;
-	state->m_hd63701y0.TCSR3 = 0x20;
-	state->m_hd63701y0.TCONR = 0xFF;
-	state->m_hd63701y0.T2CNT = 0x00;
-	state->m_hd63701y0.TRCSR2 = 0x28;
-	state->m_hd63701y0.TSTREG = 0x00;
-	state->m_hd63701y0.P5DDR = 0x00; // port 5 ddr, W
-	state->m_hd63701y0.P6CSR = 0x00;
+	m_hd63701y0.P1DDR = 0xFE; // port 1 ddr, W
+	m_hd63701y0.P2DDR = 0x00; // port 2 ddr, W
+	m_hd63701y0.PORT1 = 0x00; // port 1, R/W
+	m_hd63701y0.PORT2 = 0x00; // port 2, R/W
+	m_hd63701y0.P3DDR = 0xFE; // port 3 ddr, W
+	m_hd63701y0.P4DDR = 0x00; // port 4 ddr, W
+	m_hd63701y0.PORT3 = 0x00; // port 3, R/W
+	m_hd63701y0.PORT4 = 0x00; // port 4, R/W
+	m_hd63701y0.TCSR1 = 0x00; // timer control/status, R/W
+	m_hd63701y0.FRCH = 0x00;
+	m_hd63701y0.FRCL = 0x00;
+	m_hd63701y0.OCR1H = 0xFF;
+	m_hd63701y0.OCR1L = 0xFF;
+	m_hd63701y0.ICRH = 0x00;
+	m_hd63701y0.ICRL = 0x00;
+	m_hd63701y0.TCSR2 = 0x10;
+	m_hd63701y0.RMCR = 0xC0;
+	m_hd63701y0.TRCSR1 = 0x20;
+	m_hd63701y0.RDR = 0x00; // Receive Data Reg, R
+	m_hd63701y0.TDR = 0x00; // Transmit Data Reg, W
+	m_hd63701y0.RP5CR = 0x78; // or 0xF8; Ram/Port5 Control Reg, R/W
+	m_hd63701y0.PORT5 = 0x00; // port 5, R/W
+	m_hd63701y0.P6DDR = 0x00; // port 6 ddr, W
+	m_hd63701y0.PORT6 = 0x00; // port 6, R/W
+	m_hd63701y0.PORT7 = 0x00; // port 7, R/W
+	m_hd63701y0.OCR2H = 0xFF;
+	m_hd63701y0.OCR2L = 0xFF;
+	m_hd63701y0.TCSR3 = 0x20;
+	m_hd63701y0.TCONR = 0xFF;
+	m_hd63701y0.T2CNT = 0x00;
+	m_hd63701y0.TRCSR2 = 0x28;
+	m_hd63701y0.TSTREG = 0x00;
+	m_hd63701y0.P5DDR = 0x00; // port 5 ddr, W
+	m_hd63701y0.P6CSR = 0x00;
 }
 
 READ8_MEMBER(rvoice_state::main_hd63701_internal_registers_r)
 {
 	UINT8 data = 0;
-	logerror("main hd637B01Y0: %04x: read from 0x%02X: ", cpu_get_pc(&space.device()), offset);
+	logerror("main hd637B01Y0: %04x: read from 0x%02X: ", space.device().safe_pc(), offset);
 	switch(offset)
 	{
 		case 0x00: // Port 1 DDR
@@ -214,7 +214,7 @@ READ8_MEMBER(rvoice_state::main_hd63701_internal_registers_r)
 
 WRITE8_MEMBER(rvoice_state::main_hd63701_internal_registers_w)
 {
-	logerror("main hd637B01Y0: %04x: write to 0x%02X: ", cpu_get_pc(&space.device()), offset);
+	logerror("main hd637B01Y0: %04x: write to 0x%02X: ", space.device().safe_pc(), offset);
 	switch(offset)
 	{
 		case 0x00: // Port 1 DDR
@@ -366,7 +366,6 @@ static MACHINE_CONFIG_START( rvoicepc, rvoice_state )
 	//MCFG_CPU_PROGRAM_MAP(hd63701_slave_mem)
 	//MCFG_CPU_IO_MAP(hd63701_slave_io)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
-	MCFG_MACHINE_RESET(rvoicepc)
 
 	MCFG_ACIA6551_ADD("acia65c51")
 

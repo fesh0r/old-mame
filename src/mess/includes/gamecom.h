@@ -149,7 +149,7 @@ enum
 	SM8521_SG1W15	= 0x7F
 };
 
-typedef struct
+struct GAMECOM_DMA
 {
 	int enabled;
 	int transfer_mode;
@@ -180,17 +180,17 @@ typedef struct
 	unsigned int dest_current;
 	unsigned int dest_line;
 	unsigned int dest_mask;
-} GAMECOM_DMA;
+};
 
-typedef struct
+struct GAMECOM_TIMER
 {
 	int enabled;
 	int state_count;
 	int state_limit;
 	int check_value;
-} GAMECOM_TIMER;
+};
 
-typedef struct
+struct gamecom_sound_t
 {
 	UINT8 sgc;
 	UINT8 sg0l;
@@ -202,7 +202,7 @@ typedef struct
 	UINT8 sgda;
 	UINT8 sg0w[16];
 	UINT8 sg1w[16];
-} gamecom_sound_t;
+};
 
 
 class gamecom_state : public driver_device
@@ -240,6 +240,9 @@ public:
 
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	DECLARE_DRIVER_INIT(gamecom);
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
@@ -255,7 +258,7 @@ extern void gamecom_update_timers( device_t *device, int cycles );
 
 /*----------- defined in video/gamecom.c -----------*/
 
-VIDEO_START( gamecom );
+
 
 
 #endif /* GAMECOM_H_ */

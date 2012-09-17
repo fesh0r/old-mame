@@ -74,8 +74,7 @@
 #include "emu.h"
 #include "video/vic6567.h"
 
-typedef struct _vic2_state  vic2_state;
-struct _vic2_state
+struct vic2_state
 {
 	vic2_type  type;
 
@@ -269,7 +268,7 @@ INLINE vic2_state *get_safe_token( device_t *device )
 	assert(device != NULL);
 	assert(device->type() == VIC2);
 
-	return (vic2_state *)downcast<legacy_device_base *>(device)->token();
+	return (vic2_state *)downcast<vic2_device *>(device)->token();
 }
 
 INLINE const vic2_interface *get_interface( device_t *device )
@@ -377,7 +376,7 @@ INLINE void vic2_suspend_cpu( running_machine &machine, vic2_state *vic2 )
 		vic2->first_ba_cycle = vic2->cycles_counter;
 		if (vic2->in_rdy_workaround_func(0) != 7 )
 		{
-//          device_suspend(machine.firstcpu, SUSPEND_REASON_SPIN, 0);
+//          machine.firstcpu->suspend(SUSPEND_REASON_SPIN, 0);
 		}
 		vic2->device_suspended = 1;
 	}
@@ -388,7 +387,7 @@ INLINE void vic2_resume_cpu( running_machine &machine, vic2_state *vic2 )
 {
 	if (vic2->device_suspended == 1)
 	{
-	//  device_resume(machine.firstcpu, SUSPEND_REASON_SPIN);
+	//  machine.firstcpu->resume(SUSPEND_REASON_SPIN);
 		vic2->device_suspended = 0;
 	}
 }
@@ -1607,7 +1606,7 @@ if (machine.input().code_pressed_once(KEYCODE_Z)) printf("b:%02x 1:%02x 2:%02x 3
 
 	if ((cpu_cycles == vic_cycles) && (vic2->rdy_cycles > 0))
 	{
-		device_spin_until_time (machine.firstcpu, vic2->cpu->cycles_to_attotime(vic2->rdy_cycles));
+		machine.firstcpu->spin_until_time(vic2->cpu->cycles_to_attotime(vic2->rdy_cycles));
 		vic2->rdy_cycles = 0;
 	}
 
@@ -2800,16 +2799,40 @@ static DEVICE_RESET( vic2 )
 }
 
 
-/*-------------------------------------------------
-    device definition
--------------------------------------------------*/
+const device_type VIC2 = &device_creator<vic2_device>;
 
-static const char DEVTEMPLATE_SOURCE[] = __FILE__;
+vic2_device::vic2_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, VIC2, "6567 / 6569 VIC II", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(vic2_state));
+}
 
-#define DEVTEMPLATE_ID(p,s)				p##vic2##s
-#define DEVTEMPLATE_FEATURES			DT_HAS_START | DT_HAS_RESET
-#define DEVTEMPLATE_NAME				"6567 / 6569 VIC II"
-#define DEVTEMPLATE_FAMILY				"6567 / 6569 VIC II"
-#include "devtempl.h"
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-DEFINE_LEGACY_DEVICE(VIC2, vic2);
+void vic2_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void vic2_device::device_start()
+{
+	DEVICE_START_NAME( vic2 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void vic2_device::device_reset()
+{
+	DEVICE_RESET_NAME( vic2 )(this);
+}
+
+

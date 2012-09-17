@@ -26,16 +26,16 @@
 
 /* Nimbus sub-bios structures for debugging */
 
-typedef struct
+struct t_area_params
 {
 	UINT16  ofs_brush;
 	UINT16  seg_brush;
 	UINT16  ofs_data;
 	UINT16  seg_data;
 	UINT16  count;
-} t_area_params;
+};
 
-typedef struct
+struct t_plot_string_params
 {
 	UINT16  ofs_font;
 	UINT16  seg_font;
@@ -44,9 +44,9 @@ typedef struct
 	UINT16  x;
 	UINT16  y;
 	UINT16  length;
-} t_plot_string_params;
+};
 
-typedef struct
+struct t_nimbus_brush
 {
 	UINT16  style;
 	UINT16  style_index;
@@ -56,7 +56,7 @@ typedef struct
 	UINT16  boundary_spec;
 	UINT16  boundary_colour;
 	UINT16  save_colour;
-} t_nimbus_brush;
+};
 
 #define SCREEN_WIDTH_PIXELS     640
 #define SCREEN_HEIGHT_LINES     250
@@ -110,25 +110,25 @@ struct intr_state
 	UINT16  ext_vector[2]; // external vectors, when in cascade mode
 };
 
-typedef struct
+struct i186_state
 {
 	struct timer_state	timer[3];
 	struct dma_state	dma[2];
 	struct intr_state	intr;
 	struct mem_state	mem;
-} i186_state;
+};
 
-typedef struct
+struct keyboard_t
 {
 	UINT8       keyrows[NIMBUS_KEYROWS];
 	emu_timer   *keyscan_timer;
 	UINT8       queue[KEYBOARD_QUEUE_SIZE];
 	UINT8       head;
 	UINT8       tail;
-}  keyboard_t;
+};
 
 // Static data related to Floppy and SCSI hard disks
-typedef struct
+struct nimbus_drives_t
 {
 	UINT8   reg400;
 	UINT8   reg410_in;
@@ -137,10 +137,10 @@ typedef struct
 
 	UINT8   drq_ff;
 	UINT8   int_ff;
-} nimbus_drives_t;
+};
 
 /* 8031 Peripheral controler */
-typedef struct
+struct ipc_interface_t
 {
 	UINT8   ipc_in;
 	UINT8   ipc_out;
@@ -149,10 +149,10 @@ typedef struct
 	UINT8   int_8c_pending;
 	UINT8   int_8e_pending;
 	UINT8   int_8f_pending;
-} ipc_interface_t;
+};
 
 /* Mouse/Joystick */
-typedef struct
+struct mouse_joy_state
 {
 	UINT8   m_mouse_px;
 	UINT8   m_mouse_py;
@@ -169,7 +169,7 @@ typedef struct
 	UINT8   m_reg0a4;
 
 	emu_timer   *m_mouse_timer;
-} _mouse_joy_state;
+};
 
 
 class rmnimbus_state : public driver_device
@@ -186,7 +186,7 @@ public:
 	UINT8 m_mcu_reg080;
 	UINT8 m_iou_reg092;
 	UINT8 m_last_playmode;
-	_mouse_joy_state m_nimbus_mouse;
+	mouse_joy_state m_nimbus_mouse;
 	UINT8 m_ay8910_a;
 	UINT16 m_IOPorts[num_ioports];
 	UINT8 m_sio_int_state;
@@ -221,6 +221,11 @@ public:
 	DECLARE_READ16_MEMBER(nimbus_video_io_r);
 	DECLARE_WRITE16_MEMBER(nimbus_video_io_w);
 	DECLARE_DRIVER_INIT(nimbus);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void video_reset();
+	virtual void palette_init();
 };
 
 
@@ -231,8 +236,8 @@ extern const unsigned char nimbus_palette[SCREEN_NO_COLOURS][3];
 
 /*----------- defined in machine/rmnimbus.c -----------*/
 
-MACHINE_RESET(nimbus);
-MACHINE_START(nimbus);
+
+
 
 /* 80186 Internal */
 
@@ -314,11 +319,6 @@ extern const wd17xx_interface nimbus_wd17xx_interface;
 #define NO_DRIVE_SELECTED   0xFF
 
 /* SASI harddisk interface */
-#define HARDDISK0_TAG           "harddisk0"
-#define HARDDISK1_TAG           "harddisk1"
-#define HARDDISK2_TAG           "harddisk2"
-#define HARDDISK3_TAG           "harddisk3"
-
 #define SCSIBUS_TAG             "scsibus"
 
 void nimbus_scsi_linechange(device_t *device, UINT8 line, UINT8 state);
@@ -336,7 +336,7 @@ void nimbus_scsi_linechange(device_t *device, UINT8 line, UINT8 state);
 
 #define FDC_SIDE()          ((state->m_nimbus_drives.reg400 & FDC_SIDE_MASK) >> 4)
 #define FDC_MOTOR()         ((state->m_nimbus_drives.reg400 & FDC_MOTOR_MASKO) >> 5)
-#define FDC_DRIVE()         (scsibus_driveno(state->m_nimbus_drives.reg400 & FDC_DRIVE_MASK))
+#define FDC_DRIVE()         (fdc_driveno(state->m_nimbus_drives.reg400 & FDC_DRIVE_MASK))
 #define HDC_DRQ_ENABLED()   ((state->m_nimbus_drives.reg400 & HDC_DRQ_MASK) ? 1 : 0)
 #define FDC_DRQ_ENABLED(state)   ((state->m_nimbus_drives.reg400 & FDC_DRQ_MASK) ? 1 : 0)
 
@@ -435,10 +435,10 @@ WRITE_LINE_DEVICE_HANDLER(nimbus_ack_w);
 /*----------- defined in video/rmnimbus.c -----------*/
 
 
-VIDEO_START( nimbus );
+
 SCREEN_VBLANK( nimbus );
 SCREEN_UPDATE_IND16( nimbus );
-VIDEO_RESET( nimbus );
+
 
 #define RED                     0
 #define GREEN                   1

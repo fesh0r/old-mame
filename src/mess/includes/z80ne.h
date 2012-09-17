@@ -26,14 +26,14 @@
 #define LX385_TAPE_SAMPLE_FREQ 38400
 
 /* wave duration threshold */
-typedef enum
+enum z80netape_speed
 {
 	TAPE_300BPS  = 300, /*  300 bps */
 	TAPE_600BPS  = 600, /*  600 bps */
 	TAPE_1200BPS = 1200 /* 1200 bps */
-} z80netape_speed;
+};
 
-typedef struct {
+struct cass_data_t {
 	struct {
 		int length;		/* time cassette level is at input.level */
 		int level;		/* cassette level */
@@ -49,14 +49,14 @@ typedef struct {
 	int wave_length;
 	int wave_short;
 	int wave_long;
-} cass_data_t;
+};
 
-typedef struct {
+struct wd17xx_state_t {
 	int drq;
 	int intrq;
 	UINT8 drive; /* current drive */
 	UINT8 head;  /* current head */
-} wd17xx_state_t;
+};
 
 
 class z80ne_state : public driver_device
@@ -95,6 +95,15 @@ public:
 	DECLARE_DRIVER_INIT(z80net);
 	DECLARE_DRIVER_INIT(z80netb);
 	DECLARE_DRIVER_INIT(z80ne);
+	DECLARE_MACHINE_START(z80ne);
+	DECLARE_MACHINE_RESET(z80ne);
+	DECLARE_MACHINE_START(z80netb);
+	DECLARE_MACHINE_RESET(z80netb);
+	DECLARE_MACHINE_START(z80netf);
+	DECLARE_MACHINE_RESET(z80netf);
+	DECLARE_MACHINE_START(z80net);
+	DECLARE_MACHINE_RESET(z80net);
+	DECLARE_MACHINE_RESET(z80ne_base);
 };
 
 
@@ -107,14 +116,14 @@ READ8_DEVICE_HANDLER(lx390_reset_bank);
 WRITE8_DEVICE_HANDLER(lx390_motor_w);
 
 
-MACHINE_RESET(z80ne);
-MACHINE_RESET(z80net);
-MACHINE_RESET(z80netb);
-MACHINE_RESET(z80netf);
-MACHINE_START(z80ne);
-MACHINE_START(z80net);
-MACHINE_START(z80netb);
-MACHINE_START(z80netf);
+
+
+
+
+
+
+
+
 
 INPUT_CHANGED(z80ne_reset);
 INPUT_CHANGED(z80ne_nmi);

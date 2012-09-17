@@ -27,13 +27,13 @@
 #include "machine/idectrl.h"
 #include "machine/mpc105.h"
 #include "machine/intelfsh.h"
+#include "machine/scsibus.h"
+#include "machine/53c810.h"
 
 /* Devices */
 #include "machine/scsicd.h"
 #include "machine/scsihd.h"
 #include "imagedev/flopdrv.h"
-#include "imagedev/chd_cd.h"
-#include "imagedev/harddriv.h"
 #include "formats/pc_dsk.h"
 #include "machine/ram.h"
 
@@ -79,7 +79,7 @@ static READ64_HANDLER(bb_slave_64be_r)
 	pci_bus_device *device = space->machine().device<pci_bus_device>("pcibus");
 
 	// 2e94 is the real address, 2e84 is where the PC appears to be under full DRC
-	if ((cpu_get_pc(&space->device()) == 0xfff02e94) || (cpu_get_pc(&space->device()) == 0xfff02e84))
+	if ((space->device().safe_pc() == 0xfff02e94) || (space->device().safe_pc() == 0xfff02e84))
 	{
 		return 0x108000ff;	// indicate slave CPU
 	}
@@ -92,6 +92,38 @@ static ADDRESS_MAP_START( bebox_slave_mem, AS_PROGRAM, 64, bebox_state )
 	AM_RANGE(0x80000cf8, 0x80000cff) AM_DEVWRITE("pcibus", pci_bus_device, write_64be )
 	AM_IMPORT_FROM(bebox_mem)
 ADDRESS_MAP_END
+
+#define BYTE_REVERSE32(x)		(((x >> 24) & 0xff) | \
+								((x >> 8) & 0xff00) | \
+								((x << 8) & 0xff0000) | \
+								((x << 24) & 0xff000000))
+
+static UINT32 scsi53c810_fetch(running_machine &machine, UINT32 dsp)
+{
+	UINT32 result;
+	result = machine.device("ppc1")->memory().space(AS_PROGRAM)->read_dword(dsp & 0x7FFFFFFF);
+	return BYTE_REVERSE32(result);
+}
+
+
+static void scsi53c810_irq_callback(running_machine &machine, int value)
+{
+	bebox_set_irq_bit(machine, 21, value);
+}
+
+
+static void scsi53c810_dma_callback(running_machine &machine, UINT32 src, UINT32 dst, int length, int byteswap)
+{
+}
+
+
+static const struct LSI53C810interface lsi53c810_intf =
+{
+	&scsi53c810_irq_callback,
+	&scsi53c810_dma_callback,
+	&scsi53c810_fetch,
+};
+
 
 static const floppy_interface bebox_floppy_interface =
 {
@@ -116,6 +148,13 @@ static SLOT_INTERFACE_START( pci_devices )
 	SLOT_INTERFACE_INTERNAL("mpc105", MPC105)
 	SLOT_INTERFACE("cirrus", CIRRUS)
 SLOT_INTERFACE_END
+
+static const ide_config ide_intf =
+{
+	bebox_ide_interrupt,
+	NULL,
+	0
+};
 
 static MACHINE_CONFIG_START( bebox, bebox_state )
 	/* basic machine hardware */
@@ -145,8 +184,6 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 	/* video hardware */
 	MCFG_FRAGMENT_ADD( pcvideo_vga )
 
-	MCFG_MACHINE_START( bebox )
-	MCFG_MACHINE_RESET( bebox )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("ym3812", YM3812, 3579545)
@@ -154,10 +191,12 @@ static MACHINE_CONFIG_START( bebox, bebox_state )
 
 	MCFG_FUJITSU_29F016A_ADD("flash")
 
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("cdrom", SCSICD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD("scsi:cdrom", SCSICD, SCSI_ID_3)
+	MCFG_LSI53C810_ADD( "scsi:lsi53c810", lsi53c810_intf)
 
-	MCFG_IDE_CONTROLLER_ADD( "ide", bebox_ide_interrupt, ide_image_devices, "hdd", NULL, false )	/* FIXME */
+	MCFG_IDE_CONTROLLER_ADD( "ide", ide_intf, ide_image_devices, "hdd", NULL, false )	/* FIXME */
 
 	/* pci */
 	MCFG_PCI_BUS_ADD("pcibus", 0)

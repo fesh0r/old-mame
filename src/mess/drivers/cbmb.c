@@ -107,7 +107,7 @@ Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction
 #include "includes/cbmb.h"
 #include "machine/ieee488.h"
 #include "machine/cbmipt.h"
-#include "video/vic6567.h"
+#include "video/mos6566.h"
 #include "video/mc6845.h"
 
 #include "includes/cbmb.h"
@@ -137,7 +137,7 @@ static ADDRESS_MAP_START(cbmb_mem , AS_PROGRAM, 8, cbmb_state )
 	AM_RANGE(0xfd800, 0xfd800) AM_MIRROR(0xfe) AM_DEVWRITE("crtc", mc6845_device, address_w)
 	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR(0xfe) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 	/* disk units */
-	AM_RANGE(0xfda00, 0xfdaff) AM_DEVREADWRITE_LEGACY("sid6581", sid6581_r, sid6581_w)
+	AM_RANGE(0xfda00, 0xfdaff) AM_DEVREADWRITE("sid6581", sid6581_device, read, write)
 	/* db00 coprocessor */
 	AM_RANGE(0xfdc00, 0xfdcff) AM_DEVREADWRITE_LEGACY("cia", mos6526_r, mos6526_w)
 	/* dd00 acia */
@@ -162,9 +162,9 @@ static ADDRESS_MAP_START(p500_mem , AS_PROGRAM, 8, cbmb_state )
 	AM_RANGE(0xf8000, 0xfbfff) AM_ROM AM_SHARE("basic")
 	AM_RANGE(0xfd000, 0xfd3ff) AM_RAM AM_SHARE("videoram")		/* videoram */
 	AM_RANGE(0xfd400, 0xfd7ff) AM_RAM_WRITE(cbmb_colorram_w) AM_SHARE("colorram")		/* colorram */
-	AM_RANGE(0xfd800, 0xfd8ff) AM_DEVREADWRITE_LEGACY("vic6567", vic2_port_r, vic2_port_w)
+	AM_RANGE(0xfd800, 0xfd8ff) AM_DEVREADWRITE("vic6567", mos6566_device, read, write)
 	/* disk units */
-	AM_RANGE(0xfda00, 0xfdaff) AM_DEVREADWRITE_LEGACY("sid6581", sid6581_r, sid6581_w)
+	AM_RANGE(0xfda00, 0xfdaff) AM_DEVREADWRITE("sid6581", sid6581_device, read, write)
 	/* db00 coprocessor */
 	AM_RANGE(0xfdc00, 0xfdcff) AM_DEVREADWRITE_LEGACY("cia", mos6526_r, mos6526_w)
 	/* dd00 acia */
@@ -275,12 +275,12 @@ static GFXDECODE_START( cbm700 )
 	GFXDECODE_ENTRY( "gfx1", 0x1000, cbm700_charlayout, 0, 1 )
 GFXDECODE_END
 
-static PALETTE_INIT( cbm700 )
+PALETTE_INIT_MEMBER(cbmb_state,cbm700)
 {
 	int i;
 
 	for ( i = 0; i < 2; i++ ) {
-		palette_set_color_rgb(machine, i, cbm700_palette[i*3], cbm700_palette[i*3+1], cbm700_palette[i*3+2]);
+		palette_set_color_rgb(machine(), i, cbm700_palette[i*3], cbm700_palette[i*3+1], cbm700_palette[i*3+2]);
 	}
 }
 
@@ -312,37 +312,6 @@ static const mc6845_interface cbm700_crtc = {
 };
 
 /* p500 uses a VIC II chip */
-
-static const unsigned char p500_palette[] =
-{
-/* black, white, red, cyan */
-/* purple, green, blue, yellow */
-/* orange, brown, light red, dark gray, */
-/* medium gray, light green, light blue, light gray */
-/* taken from the vice emulator */
-	0x00, 0x00, 0x00,  0xfd, 0xfe, 0xfc,  0xbe, 0x1a, 0x24,  0x30, 0xe6, 0xc6,
-	0xb4, 0x1a, 0xe2,  0x1f, 0xd2, 0x1e,  0x21, 0x1b, 0xae,  0xdf, 0xf6, 0x0a,
-	0xb8, 0x41, 0x04,  0x6a, 0x33, 0x04,  0xfe, 0x4a, 0x57,  0x42, 0x45, 0x40,
-	0x70, 0x74, 0x6f,  0x59, 0xfe, 0x59,  0x5f, 0x53, 0xfe,  0xa4, 0xa7, 0xa2
-};
-
-static PALETTE_INIT( p500 )
-{
-	int i;
-
-	for (i = 0; i < sizeof(p500_palette) / 3; i++)
-	{
-		palette_set_color_rgb(machine, i, p500_palette[i * 3], p500_palette[i * 3 + 1], p500_palette[i * 3 + 2]);
-	}
-}
-
-static SCREEN_UPDATE_IND16( p500 )
-{
-	device_t *vic2 = screen.machine().device("vic6567");
-
-	vic2_video_update(vic2, bitmap, cliprect);
-	return 0;
-}
 
 READ8_MEMBER( cbmb_state::vic_lightpen_x_cb )
 {
@@ -377,19 +346,32 @@ READ8_MEMBER( cbmb_state::vic_rdy_cb )
 	return ioport("CTRLSEL")->read() & 0x08;
 }
 
+static ADDRESS_MAP_START( vic_videoram_map, AS_0, 8, cbmb_state )
+	AM_RANGE(0x0000, 0x3fff) AM_READ(vic_dma_read)
+ADDRESS_MAP_END
 
-static const vic2_interface p500_vic2_intf = {
+static ADDRESS_MAP_START( vic_colorram_map, AS_1, 8, cbmb_state )
+	AM_RANGE(0x000, 0x3ff) AM_READ(vic_dma_read_color)
+ADDRESS_MAP_END
+
+static MOS6567_INTERFACE( vic_intf )
+{
 	"screen",
 	"maincpu",
-	VIC6567,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(cbmb_state, vic_lightpen_x_cb),
 	DEVCB_DRIVER_MEMBER(cbmb_state, vic_lightpen_y_cb),
 	DEVCB_DRIVER_MEMBER(cbmb_state, vic_lightpen_button_cb),
-	DEVCB_DRIVER_MEMBER(cbmb_state, vic_dma_read),
-	DEVCB_DRIVER_MEMBER(cbmb_state, vic_dma_read_color),
-	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(cbmb_state, vic_rdy_cb)
 };
+
+static const sid6581_interface sid_intf =
+{
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 
 /*************************************
  *
@@ -440,7 +422,7 @@ static MACHINE_CONFIG_START( cbm600, cbmb_state )
 	MCFG_CPU_ADD("maincpu", M6509, 7833600)        /* 7.8336 MHz */
 	MCFG_CPU_PROGRAM_MAP(cbmb_mem)
 
-	MCFG_MACHINE_RESET( cbmb )
+	MCFG_MACHINE_RESET_OVERRIDE(cbmb_state, cbmb )
 
     /* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -452,22 +434,23 @@ static MACHINE_CONFIG_START( cbm600, cbmb_state )
 
 	MCFG_GFXDECODE( cbm600 )
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(cbm700_palette) / 3)
-	MCFG_PALETTE_INIT( cbm700 )
+	MCFG_PALETTE_INIT_OVERRIDE(cbmb_state, cbm700 )
 
 	MCFG_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 8 /*?*/ /*  I do not know if this is correct, please verify */, cbm600_crtc)
 
-	MCFG_VIDEO_START( cbmb_crtc )
+	MCFG_VIDEO_START_OVERRIDE(cbmb_state, cbmb_crtc )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("sid6581", SID6581, 1000000)
+	MCFG_SOUND_CONFIG(sid_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", cbmb, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cia */
-	MCFG_MOS6526R1_ADD("cia", 7833600, cbmb_cia)
+	MCFG_MOS6526R1_ADD("cia", 7833600, 60, cbmb_cia)
 
 	/* tpi */
 	MCFG_TPI6525_ADD("tpi6525_0", cbmb_tpi_0_intf)
@@ -495,7 +478,7 @@ static MACHINE_CONFIG_DERIVED( cbm700, cbm600 )
 	MCFG_DEVICE_REMOVE("crtc")
 	MCFG_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 8 /*? I do not know if this is correct, please verify */, cbm700_crtc)
 
-	MCFG_VIDEO_START( cbm700 )
+	MCFG_VIDEO_START_OVERRIDE(cbmb_state, cbm700 )
 MACHINE_CONFIG_END
 
 
@@ -517,31 +500,22 @@ static MACHINE_CONFIG_START( p500, cbmb_state )
 	MCFG_CPU_PROGRAM_MAP(p500_mem)
 	//MCFG_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
-	MCFG_MACHINE_RESET( cbmb )
+	MCFG_MACHINE_RESET_OVERRIDE(cbmb_state, cbmb )
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES)
-	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1)
-	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_UPDATE_STATIC( p500 )
-
-	MCFG_PALETTE_INIT( p500 )
-	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(p500_palette) / 3)
-
-	MCFG_VIC2_ADD("vic6567", p500_vic2_intf)
+	MCFG_MOS6567_ADD("vic6567", "screen", VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("sid6581", SID6581, 1000000)
+	MCFG_SOUND_CONFIG(sid_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
 	MCFG_QUICKLOAD_ADD("quickload", p500, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cia */
-	MCFG_MOS6526R1_ADD("cia", VIC6567_CLOCK, cbmb_cia)
+	MCFG_MOS6526R1_ADD("cia", VIC6567_CLOCK, 60, cbmb_cia)
 
 	/* tpi */
 	MCFG_TPI6525_ADD("tpi6525_0", cbmb_tpi_0_intf)
@@ -573,6 +547,9 @@ ROM_START( b500 )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901237-01.u25", 0x0000, 0x1000, CRC(1acf5098) SHA1(e63bf18da48e5a53c99ef127c1ae721333d1d102) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-04.bin", 0x00, 0xf5, CRC(ae3ec265) SHA1(334e0bc4b2c957ecb240c051d84372f7b47efba3) )
 ROM_END
 
 ROM_START( b128 )
@@ -588,6 +565,9 @@ ROM_START( b128 )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901237-01.u25", 0x0000, 0x1000, CRC(1acf5098) SHA1(e63bf18da48e5a53c99ef127c1ae721333d1d102) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-04.bin", 0x00, 0xf5, CRC(ae3ec265) SHA1(334e0bc4b2c957ecb240c051d84372f7b47efba3) )
 ROM_END
 
 ROM_START( b256 )
@@ -601,6 +581,9 @@ ROM_START( b256 )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901237-01.u25", 0x0000, 0x1000, CRC(1acf5098) SHA1(e63bf18da48e5a53c99ef127c1ae721333d1d102) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-04.bin", 0x00, 0xf5, CRC(ae3ec265) SHA1(334e0bc4b2c957ecb240c051d84372f7b47efba3) )
 ROM_END
 
 
@@ -615,6 +598,9 @@ ROM_START( cbm620hu )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "charhun.bin", 0x0000, 0x2000, CRC(1fb5e596) SHA1(3254e069f8691b30679b19a9505b6afdfedce6ac) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-04.bin", 0x00, 0xf5, CRC(ae3ec265) SHA1(334e0bc4b2c957ecb240c051d84372f7b47efba3) )
 ROM_END
 
 
@@ -634,6 +620,9 @@ ROM_START( b128hp )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901232-01.u25", 0x0000, 0x1000, CRC(3a350bc3) SHA1(e7f3cbc8e282f79a00c3e95d75c8d725ee3c6287) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-05.bin", 0x00, 0xf5, CRC(ff6ba6b6) SHA1(45808c570eb2eda7091c51591b3dbd2db1ac646a) )
 ROM_END
 
 ROM_START( b256hp )
@@ -647,6 +636,9 @@ ROM_START( b256hp )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901232-01.u25", 0x0000, 0x1000, CRC(3a350bc3) SHA1(e7f3cbc8e282f79a00c3e95d75c8d725ee3c6287) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-05.bin", 0x00, 0xf5, CRC(ff6ba6b6) SHA1(45808c570eb2eda7091c51591b3dbd2db1ac646a) )
 ROM_END
 
 #define rom_cbm710	rom_b128hp
@@ -668,6 +660,9 @@ ROM_START( bx256hp )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901232-01.u25", 0x0000, 0x1000, CRC(3a350bc3) SHA1(e7f3cbc8e282f79a00c3e95d75c8d725ee3c6287) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-05.bin", 0x00, 0xf5, CRC(ff6ba6b6) SHA1(45808c570eb2eda7091c51591b3dbd2db1ac646a) )
 ROM_END
 
 ROM_START( cbm720se )
@@ -678,6 +673,9 @@ ROM_START( cbm720se )
 
 	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD( "901233-03.u25", 0x0000, 0x1000, CRC(09518b19) SHA1(2e28491e31e2c0a3b6db388055216140a637cd09) )
+
+	ROM_REGION( 0xf5, "pla", 0 )
+	ROM_LOAD( "906114-05.bin", 0x00, 0xf5, CRC(ff6ba6b6) SHA1(45808c570eb2eda7091c51591b3dbd2db1ac646a) )
 ROM_END
 
 ROM_START( p500 )
@@ -692,6 +690,12 @@ ROM_START( p500 )
 	ROMX_LOAD( "901234-01.bin", 0xfe000, 0x2000, CRC(67962025) SHA1(24b41b65c85bf30ab4e2911f677ce9843845b3b1), ROM_BIOS(2) )
 
 	ROM_LOAD( "901225-01.bin", 0x100000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
+
+	ROM_REGION( 0xf5, "pla1", 0 )
+	ROM_LOAD( "906114-02.bin", 0x00, 0xf5, CRC(6436b20b) SHA1(57ebebe771791288051afd1abe9b7500bd2df847) )
+
+	ROM_REGION( 0xf5, "pla2", 0 )
+	ROM_LOAD( "906114-03.bin", 0x00, 0xf5, CRC(668c073e) SHA1(1115858bb2dc91ea9e2016ba2e23ec94239358b4) )
 ROM_END
 
 

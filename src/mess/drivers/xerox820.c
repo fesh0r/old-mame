@@ -143,7 +143,7 @@ static TIMER_DEVICE_CALLBACK( xerox820_keyboard_tick )
 
 void xerox820_state::bankswitch(int bank)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	if (bank)
@@ -162,7 +162,7 @@ void xerox820_state::bankswitch(int bank)
 
 void xerox820ii_state::bankswitch(int bank)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	if (bank)
@@ -594,26 +594,26 @@ static const z80_daisy_config xerox820_daisy_chain[] =
 
 WRITE_LINE_MEMBER( xerox820_state::intrq_w )
 {
-	int halt = cpu_get_reg(m_maincpu, Z80_HALT);
+	int halt = m_maincpu->state_int(Z80_HALT);
 
 	m_fdc_irq = state;
 
 	if (halt && state)
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, ASSERT_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 	else
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 WRITE_LINE_MEMBER( xerox820_state::drq_w )
 {
-	int halt = cpu_get_reg(m_maincpu, Z80_HALT);
+	int halt = m_maincpu->state_int(Z80_HALT);
 
 	m_fdc_drq = state;
 
 	if (halt && state)
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, ASSERT_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 	else
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static const wd17xx_interface fdc_intf =

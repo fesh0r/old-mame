@@ -384,33 +384,32 @@ DRIVER_INIT_MEMBER(mbc55x_state,mbc55x)
 {
 }
 
-MACHINE_RESET( mbc55x )
+void mbc55x_state::machine_reset()
 {
-	set_ram_size(machine);
-	keyboard_reset(machine);
-	device_set_irq_callback(machine.device(MAINCPU_TAG), mbc55x_irq_callback);
+	set_ram_size(machine());
+	keyboard_reset(machine());
+	machine().device(MAINCPU_TAG)->execute().set_irq_acknowledge_callback(mbc55x_irq_callback);
 }
 
-MACHINE_START( mbc55x )
+void mbc55x_state::machine_start()
 {
-	mbc55x_state *state = machine.driver_data<mbc55x_state>();
 	/* init cpu */
-//  mbc55x_cpu_init(machine);
+//  mbc55x_cpu_init(machine());
 
 
 	/* setup debug commands */
-	if (machine.debug_flags & DEBUG_FLAG_ENABLED)
+	if (machine().debug_flags & DEBUG_FLAG_ENABLED)
 	{
-		debug_console_register_command(machine, "mbc55x_debug", CMDFLAG_NONE, 0, 0, 1, mbc55x_debug);
+		debug_console_register_command(machine(), "mbc55x_debug", CMDFLAG_NONE, 0, 0, 1, mbc55x_debug);
 
 		/* set up the instruction hook */
-		machine.device(MAINCPU_TAG)->debug()->set_instruction_hook(instruction_hook);
+		machine().device(MAINCPU_TAG)->debug()->set_instruction_hook(instruction_hook);
 	}
 
-	state->m_debug_machine=DEBUG_NONE;
+	m_debug_machine=DEBUG_NONE;
 
 	// Allocate keyscan timer
-	state->m_keyboard.keyscan_timer=machine.scheduler().timer_alloc(FUNC(keyscan_callback));
+	m_keyboard.keyscan_timer=machine().scheduler().timer_alloc(FUNC(keyscan_callback));
 }
 
 
@@ -455,18 +454,18 @@ static void decode_dos21(device_t *device,offs_t pc)
 {
 	device_t *cpu = device->machine().device(MAINCPU_TAG);
 
-	UINT16  ax = cpu_get_reg(cpu,I8086_AX);
-	UINT16  bx = cpu_get_reg(cpu,I8086_BX);
-	UINT16  cx = cpu_get_reg(cpu,I8086_CX);
-	UINT16  dx = cpu_get_reg(cpu,I8086_DX);
-	UINT16  cs = cpu_get_reg(cpu,I8086_CS);
-	UINT16  ds = cpu_get_reg(cpu,I8086_DS);
-	UINT16  es = cpu_get_reg(cpu,I8086_ES);
-	UINT16  ss = cpu_get_reg(cpu,I8086_SS);
+	UINT16  ax = cpu->state().state_int(I8086_AX);
+	UINT16  bx = cpu->state().state_int(I8086_BX);
+	UINT16  cx = cpu->state().state_int(I8086_CX);
+	UINT16  dx = cpu->state().state_int(I8086_DX);
+	UINT16  cs = cpu->state().state_int(I8086_CS);
+	UINT16  ds = cpu->state().state_int(I8086_DS);
+	UINT16  es = cpu->state().state_int(I8086_ES);
+	UINT16  ss = cpu->state().state_int(I8086_SS);
 
-	UINT16  si = cpu_get_reg(cpu,I8086_SI);
-	UINT16  di = cpu_get_reg(cpu,I8086_DI);
-	UINT16  bp = cpu_get_reg(cpu,I8086_BP);
+	UINT16  si = cpu->state().state_int(I8086_SI);
+	UINT16  di = cpu->state().state_int(I8086_DI);
+	UINT16  bp = cpu->state().state_int(I8086_BP);
 
 	logerror("=======================================================================\n");
 	logerror("DOS Int 0x21 call at %05X\n",pc);

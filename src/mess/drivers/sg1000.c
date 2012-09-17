@@ -519,7 +519,7 @@ INPUT_PORTS_END
 
 static WRITE_LINE_DEVICE_HANDLER(sg1000_vdp_interrupt)
 {
-	cputag_set_input_line(device->machine(), Z80_TAG, INPUT_LINE_IRQ0, state);
+	device->machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_IRQ0, state);
 }
 
 static TMS9928A_INTERFACE(sg1000_tms9918a_interface)
@@ -642,7 +642,7 @@ const cassette_interface sc3000_cassette_interface =
 
 void sg1000_state::install_cartridge(UINT8 *ptr, int size)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	switch (size)
 	{
@@ -825,7 +825,7 @@ static DEVICE_IMAGE_LOAD( omv_cart )
 
 void sc3000_state::install_cartridge(UINT8 *ptr, int size)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	/* include SG-1000 mapping */
 	sg1000_state::install_cartridge(ptr, size);

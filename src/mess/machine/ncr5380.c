@@ -60,7 +60,7 @@ static int get_cmd_len(int cbyte)
 	if (group == 1 || group == 2) return 10;
 	if (group == 5) return 12;
 
-	fatalerror("NCR5380: Unknown SCSI command group %d", group);
+	fatalerror("NCR5380: Unknown SCSI command group %d\n", group);
 
 	return 6;
 }
@@ -81,7 +81,6 @@ void ncr5380_device::device_config_complete()
 	// or initialize to defaults if none provided
 	else
 	{
-		scsidevs = NULL;
 		irq_callback = NULL;
 	}
 }
@@ -122,12 +121,14 @@ void ncr5380_device::device_start()
 	save_item(NAME(m_d_limit));
 	save_item(NAME(m_next_req_flag));
 
-	int i;
-
 	// try to open the devices
-	for (i = 0; i < scsidevs->devs_present; i++)
+	for( device_t *device = owner()->first_subdevice(); device != NULL; device = device->next() )
 	{
-		m_scsi_devices[scsidevs->devices[i].scsiID] = machine().device<scsidev_device>( scsidevs->devices[i].tag );
+		scsidev_device *scsidev = dynamic_cast<scsidev_device *>(device);
+		if( scsidev != NULL )
+		{
+			m_scsi_devices[scsidev->GetDeviceID()] = scsidev;
+		}
 	}
 }
 
@@ -157,7 +158,7 @@ void ncr5380_device::device_stop()
 //-------------------------------------------------
 //  Public API
 //-------------------------------------------------
-READ8_DEVICE_HANDLER_TRAMPOLINE(ncr5380, ncr5380_read_reg)
+UINT8 ncr5380_device::ncr5380_read_reg(UINT32 offset)
 {
 	int reg = offset & 7;
 	UINT8 rv = 0;
@@ -236,17 +237,17 @@ READ8_DEVICE_HANDLER_TRAMPOLINE(ncr5380, ncr5380_read_reg)
 	}
 
 	if (VERBOSE)
-		logerror("NCR5380: read %s (reg %d) = %02x [PC=%x]\n", rnames[reg], reg, rv, cpu_get_pc(machine().firstcpu));
+		logerror("NCR5380: read %s (reg %d) = %02x [PC=%x]\n", rnames[reg], reg, rv, machine().firstcpu->pc());
 
 	return rv;
 }
 
-WRITE8_DEVICE_HANDLER_TRAMPOLINE(ncr5380, ncr5380_write_reg)
+void ncr5380_device::ncr5380_write_reg(UINT32 offset, UINT8 data)
 {
 	int reg = offset & 7;
 
 	if (VERBOSE)
-		logerror("NCR5380: %02x to %s (reg %d) [PC=%x]\n", data, wnames[reg], reg, cpu_get_pc(machine().firstcpu));
+		logerror("NCR5380: %02x to %s (reg %d) [PC=%x]\n", data, wnames[reg], reg, machine().firstcpu->pc());
 
 	switch( reg )
 	{
@@ -333,7 +334,7 @@ WRITE8_DEVICE_HANDLER_TRAMPOLINE(ncr5380, ncr5380_write_reg)
 					if (get_cmd_len(m_5380_Command[0]) == m_cmd_ptr)
 					{
 						if (VERBOSE)
-							logerror("NCR5380: Command (to ID %d): %x %x %x %x %x %x %x %x %x %x (PC %x)\n", m_last_id, m_5380_Command[0], m_5380_Command[1], m_5380_Command[2], m_5380_Command[3], m_5380_Command[4], m_5380_Command[5], m_5380_Command[6], m_5380_Command[7], m_5380_Command[8], m_5380_Command[9], cpu_get_pc(machine().firstcpu));
+							logerror("NCR5380: Command (to ID %d): %x %x %x %x %x %x %x %x %x %x (PC %x)\n", m_last_id, m_5380_Command[0], m_5380_Command[1], m_5380_Command[2], m_5380_Command[3], m_5380_Command[4], m_5380_Command[5], m_5380_Command[6], m_5380_Command[7], m_5380_Command[8], m_5380_Command[9], machine().firstcpu->pc());
 
 						m_scsi_devices[m_last_id]->SetCommand(&m_5380_Command[0], 16);
 						m_scsi_devices[m_last_id]->ExecCommand(&m_d_limit);
@@ -472,14 +473,4 @@ void ncr5380_device::ncr5380_write_data(int bytes, UINT8 *pData)
 	{
 		logerror("ncr5380: write to unknown device SCSI ID %d\n", m_last_id);
 	}
-}
-
-void ncr5380_read_data(device_t *dev, UINT8 bytes, UINT8 *pData)
-{
-	return downcast<ncr5380_device*>(dev)->ncr5380_read_data(bytes, pData);
-}
-
-void ncr5380_write_data(device_t *dev, UINT8 bytes, UINT8 *pData)
-{
-	downcast<ncr5380_device*>(dev)->ncr5380_write_data(bytes, pData);
 }

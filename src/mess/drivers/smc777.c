@@ -32,8 +32,11 @@ class smc777_state : public driver_device
 {
 public:
 	smc777_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+	m_sn(*this, "sn1")
+	{ }
 
+	optional_device<sn76489a_new_device> m_sn;
 	UINT16 m_cursor_addr;
 	UINT16 m_cursor_raster;
 	UINT8 m_keyb_press;
@@ -79,6 +82,10 @@ public:
 	DECLARE_WRITE8_MEMBER(smc777_irq_mask_w);
 	DECLARE_READ8_MEMBER(smc777_io_r);
 	DECLARE_WRITE8_MEMBER(smc777_io_w);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
@@ -86,7 +93,7 @@ public:
 #define CRTC_MIN_X 10
 #define CRTC_MIN_Y 10
 
-static VIDEO_START( smc777 )
+void smc777_state::video_start()
 {
 }
 
@@ -309,7 +316,7 @@ WRITE8_MEMBER(smc777_state::smc777_pcg_w)
 
 	pcg[vram_index] = data;
 
-    gfx_element_mark_dirty(machine().gfx[0], vram_index >> 3);
+    machine().gfx[0]->mark_dirty(vram_index >> 3);
 }
 
 READ8_MEMBER(smc777_state::smc777_fbuf_r)
@@ -496,7 +503,7 @@ WRITE8_MEMBER(smc777_state::system_output_w)
 	{
 		case 0x00:
 			m_raminh_pending_change = ((data & 0x10) >> 4) ^ 1;
-			m_raminh_prefetch = (UINT8)(cpu_get_reg(&space.device(), Z80_R)) & 0x7f;
+			m_raminh_prefetch = (UINT8)(space.device().state().state_int(Z80_R)) & 0x7f;
 			break;
 		case 0x02: printf("Interlace %s\n",data & 0x10 ? "on" : "off"); break;
 		case 0x05: beep_set_state(machine().device(BEEPER_TAG),data & 0x10); break;
@@ -576,7 +583,7 @@ READ8_MEMBER(smc777_state::smc777_mem_r)
 
 	if(m_raminh_prefetch != 0xff) //do the bankswitch AFTER that the prefetch instruction is executed (FIXME: this is an hackish implementation)
 	{
-		z80_r = (UINT8)cpu_get_reg(&space.device(), Z80_R);
+		z80_r = (UINT8)space.device().state().state_int(Z80_R);
 
 		if(z80_r == ((m_raminh_prefetch+2) & 0x7f))
 		{
@@ -630,11 +637,11 @@ READ8_MEMBER(smc777_state::smc777_io_r)
 	else if(low_offs >= 0x18 && low_offs <= 0x19) { logerror("6845 read %02x",low_offs & 1); }
 	else if(low_offs >= 0x1a && low_offs <= 0x1b) { return key_r(space,low_offs & 1); }
 	else if(low_offs == 0x1c)					  { return system_input_r(space,0); }
-	else if(low_offs == 0x1d)					  { logerror("System and control data R PC=%04x\n",cpu_get_pc(&space.device())); return 0xff; }
+	else if(low_offs == 0x1d)					  { logerror("System and control data R PC=%04x\n",space.device().safe_pc()); return 0xff; }
 	else if(low_offs == 0x20)					  { return display_reg_r(space,0); }
 	else if(low_offs == 0x21)					  { return smc777_irq_mask_r(space,0); }
-	else if(low_offs == 0x25)					  { logerror("RTC read PC=%04x\n",cpu_get_pc(&space.device())); return 0xff; }
-	else if(low_offs == 0x26)					  { logerror("RS-232c RX %04x\n",cpu_get_pc(&space.device())); return 0xff; }
+	else if(low_offs == 0x25)					  { logerror("RTC read PC=%04x\n",space.device().safe_pc()); return 0xff; }
+	else if(low_offs == 0x26)					  { logerror("RS-232c RX %04x\n",space.device().safe_pc()); return 0xff; }
 	else if(low_offs >= 0x28 && low_offs <= 0x2c) { logerror("FDC 2 read %02x\n",low_offs & 7); return 0xff; }
 	else if(low_offs >= 0x2d && low_offs <= 0x2f) { logerror("RS-232c no. 2 read %02x\n",low_offs & 3); return 0xff; }
 	else if(low_offs >= 0x30 && low_offs <= 0x34) { return smc777_fdc1_r(space,low_offs & 7); }
@@ -652,7 +659,7 @@ READ8_MEMBER(smc777_state::smc777_io_r)
 	else if(low_offs == 0x7e || low_offs == 0x7f) { logerror("Kanji ROM read %02x\n",low_offs & 1); }
 	else if(low_offs >= 0x80)					  { return smc777_fbuf_r(space,offset & 0xff7f); }
 
-	logerror("Undefined read at %04x offset = %02x\n",cpu_get_pc(&space.device()),low_offs);
+	logerror("Undefined read at %04x offset = %02x\n",space.device().safe_pc(),low_offs);
 	return 0xff;
 }
 
@@ -686,7 +693,7 @@ WRITE8_MEMBER(smc777_state::smc777_io_w)
 	else if(low_offs >= 0x48 && low_offs <= 0x4f) { logerror("HDD (Winchester) write %02x %02x\n",low_offs & 1,data); } //might be 0x48 - 0x50
 	else if(low_offs == 0x51)					  { smc777_color_mode_w(space,0,data); }
 	else if(low_offs == 0x52)					  { smc777_ramdac_w(space,offset & 0xff00,data); }
-	else if(low_offs == 0x53)					  { sn76496_w(machine().device("sn1"),0,data); }
+	else if(low_offs == 0x53)					  { m_sn->write(space,0,data); }
 	else if(low_offs >= 0x54 && low_offs <= 0x59) { logerror("VTR Controller write [%02x] %02x\n",low_offs & 7,data); }
 	else if(low_offs == 0x5a || low_offs == 0x5b) { logerror("RAM Banking write [%02x] %02x\n",low_offs & 1,data); }
 	else if(low_offs == 0x70)					  { logerror("Auto-start ROM write %02x\n",data); }
@@ -694,7 +701,7 @@ WRITE8_MEMBER(smc777_state::smc777_io_w)
 	else if(low_offs == 0x75)					  { logerror("VTR Controller ROM write %02x\n",data); }
 	else if(low_offs == 0x7e || low_offs == 0x7f) { logerror("Kanji ROM write [%02x] %02x\n",low_offs & 1,data); }
 	else if(low_offs >= 0x80)					  { smc777_fbuf_w(space,offset & 0xff7f,data); }
-	else										  { logerror("Undefined write at %04x offset = %02x data = %02x\n",cpu_get_pc(&space.device()),low_offs,data); }
+	else										  { logerror("Undefined write at %04x offset = %02x data = %02x\n",space.device().safe_pc(),low_offs,data); }
 }
 
 static ADDRESS_MAP_START( smc777_io , AS_IO, 8, smc777_state )
@@ -948,22 +955,20 @@ static TIMER_DEVICE_CALLBACK( keyboard_callback )
 	}
 }
 
-static MACHINE_START(smc777)
+void smc777_state::machine_start()
 {
-	//smc777_state *state = machine.driver_data<smc777_state>();
 
 
-	beep_set_frequency(machine.device(BEEPER_TAG),300); //guesswork
-	beep_set_state(machine.device(BEEPER_TAG),0);
+	beep_set_frequency(machine().device(BEEPER_TAG),300); //guesswork
+	beep_set_state(machine().device(BEEPER_TAG),0);
 }
 
-static MACHINE_RESET(smc777)
+void smc777_state::machine_reset()
 {
-	smc777_state *state = machine.driver_data<smc777_state>();
 
-	state->m_raminh = 1;
-	state->m_raminh_pending_change = 1;
-	state->m_raminh_prefetch = 0xff;
+	m_raminh = 1;
+	m_raminh_pending_change = 1;
+	m_raminh_prefetch = 0xff;
 }
 
 static const gfx_layout smc777_charlayout =
@@ -995,7 +1000,7 @@ static const mc6845_interface mc6845_intf =
 	NULL		/* update address callback */
 };
 
-static PALETTE_INIT( smc777 )
+void smc777_state::palette_init()
 {
 	int i;
 
@@ -1007,7 +1012,7 @@ static PALETTE_INIT( smc777 )
 		g = (i & 2) >> 1;
 		b = (i & 1) >> 0;
 
-		palette_set_color_rgb(machine, i, pal1bit(r),pal1bit(g),pal1bit(b));
+		palette_set_color_rgb(machine(), i, pal1bit(r),pal1bit(g),pal1bit(b));
 	}
 }
 
@@ -1046,8 +1051,26 @@ static INTERRUPT_GEN( smc777_vblank_irq )
 	smc777_state *state = device->machine().driver_data<smc777_state>();
 
 	if(state->m_irq_mask)
-		device_set_input_line(device,0,HOLD_LINE);
+		device->execute().set_input_line(0,HOLD_LINE);
 }
+
+
+/*************************************
+ *
+ *  Sound interface
+ *
+ *************************************/
+
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
+
 
 #define MASTER_CLOCK XTAL_4_028MHz
 
@@ -1058,8 +1081,6 @@ static MACHINE_CONFIG_START( smc777, smc777_state )
     MCFG_CPU_IO_MAP(smc777_io)
 	MCFG_CPU_VBLANK_INT("screen",smc777_vblank_irq)
 
-    MCFG_MACHINE_START(smc777)
-    MCFG_MACHINE_RESET(smc777)
 
     /* video hardware */
     MCFG_SCREEN_ADD("screen", RASTER)
@@ -1070,12 +1091,10 @@ static MACHINE_CONFIG_START( smc777, smc777_state )
     MCFG_SCREEN_UPDATE_STATIC(smc777)
 
     MCFG_PALETTE_LENGTH(0x10+8) //16 palette entries + 8 special colors
-    MCFG_PALETTE_INIT(smc777)
 	MCFG_GFXDECODE(smc777)
 
 	MCFG_MC6845_ADD("crtc", H46505, MASTER_CLOCK/2, mc6845_intf)	/* unknown clock, hand tuned to get ~60 fps */
 
-    MCFG_VIDEO_START(smc777)
 
 	MCFG_MB8876_ADD("fdc",smc777_mb8876_interface)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(smc777_floppy_interface)
@@ -1083,8 +1102,9 @@ static MACHINE_CONFIG_START( smc777, smc777_state )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("sn1", SN76489A, MASTER_CLOCK) // unknown clock / divider
+	MCFG_SOUND_ADD("sn1", SN76489A_NEW, MASTER_CLOCK) // unknown clock / divider
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MCFG_SOUND_CONFIG(psg_intf)
 
 	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)

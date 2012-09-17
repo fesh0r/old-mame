@@ -13,8 +13,6 @@
 #include "machine/i8251.h"
 #include "machine/ram.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 class fk1_state : public driver_device
 {
@@ -295,7 +293,7 @@ WRITE8_MEMBER( fk1_state::fk1_intr_w )
 
 READ8_MEMBER( fk1_state::fk1_bank_ram_r )
 {
-	address_space *space_mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space_mem = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
 
 	space_mem->install_write_bank(0x0000, 0x3fff, "bank1");
@@ -306,7 +304,7 @@ READ8_MEMBER( fk1_state::fk1_bank_ram_r )
 
 READ8_MEMBER( fk1_state::fk1_bank_rom_r )
 {
-	address_space *space_mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space_mem = m_maincpu->space(AS_PROGRAM);
 	space_mem->unmap_write(0x0000, 0x3fff);
 	membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base());
 	membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x10000);
@@ -391,7 +389,7 @@ static TIMER_DEVICE_CALLBACK(keyboard_callback)
 	if (timer.machine().root_device().ioport("LINE0")->read())
 	{
 		state->m_int_vector = 6;
-		cputag_set_input_line(timer.machine(), "maincpu", 0, HOLD_LINE);
+		timer.machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -419,13 +417,13 @@ static TIMER_DEVICE_CALLBACK( vsync_callback )
 	fk1_state *state = timer.machine().driver_data<fk1_state>();
 
 	state->m_int_vector = 3;
-	cputag_set_input_line(timer.machine(), "maincpu", 0, HOLD_LINE);
+	timer.machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 }
 
 
-MACHINE_RESET_MEMBER( fk1_state )
+void fk1_state::machine_reset()
 {
-	address_space *space = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
 
 	space->unmap_write(0x0000, 0x3fff);
@@ -434,10 +432,10 @@ MACHINE_RESET_MEMBER( fk1_state )
 	membank("bank3")->set_base(ram + 0x8000);
 	membank("bank4")->set_base(ram + 0xc000);
 
-	device_set_irq_callback(machine().device("maincpu"), fk1_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(fk1_irq_callback);
 }
 
-SCREEN_UPDATE16_MEMBER( fk1_state )
+UINT32 fk1_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	UINT8 code;
 	int y, x, b;

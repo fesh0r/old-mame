@@ -28,18 +28,18 @@
 #include "machine/sst39vfx.h"
 #include "machine/ram.h"
 
-typedef struct
+struct CYBIKO_RS232_PINS
 {
 	int sck; // serial clock
 	int txd; // transmit data
 	int rxd; // receive data
-} CYBIKO_RS232_PINS;
+};
 
-typedef struct
+struct CYBIKO_RS232
 {
 	CYBIKO_RS232_PINS pin;
 	UINT8 rx_bits, rx_byte, tx_byte, tx_bits;
-} CYBIKO_RS232;
+};
 
 class cybiko_state : public driver_device
 {
@@ -79,6 +79,13 @@ public:
 	DECLARE_DRIVER_INIT(cybikoxt);
 	DECLARE_DRIVER_INIT(cybikov1);
 	DECLARE_DRIVER_INIT(cybikov2);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void palette_init();
+	DECLARE_MACHINE_START(cybikov2);
+	DECLARE_MACHINE_RESET(cybikov2);
+	DECLARE_MACHINE_START(cybikoxt);
+	DECLARE_MACHINE_RESET(cybikoxt);
 };
 
 
@@ -87,14 +94,14 @@ public:
 // driver init
 
 // machine start
-MACHINE_START( cybikov1 );
-MACHINE_START( cybikov2 );
-MACHINE_START( cybikoxt );
+
+
+
 
 // machine reset
-MACHINE_RESET( cybikov1 );
-MACHINE_RESET( cybikov2 );
-MACHINE_RESET( cybikoxt );
+
+
+
 
 
 #endif /* CYBIKO_H_ */

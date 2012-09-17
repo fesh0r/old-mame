@@ -14,7 +14,30 @@
     MACROS / CONSTANTS
 ***************************************************************************/
 
-DECLARE_LEGACY_SOUND_DEVICE(DAVE, dave_sound);
+class dave_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	dave_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~dave_sound_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type DAVE;
+
 
 #define DAVE_INT_SELECTABLE		0
 #define DAVE_INT_1KHZ_50HZ_TG	1
@@ -37,8 +60,7 @@ enum
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _dave_interface dave_interface;
-struct _dave_interface
+struct dave_interface
 {
 	devcb_read8 reg_r;
 	devcb_write8 reg_w;

@@ -234,6 +234,14 @@ void plus4_expansion_slot_device::device_start()
 	m_out_dma_cd_func.resolve(m_out_dma_cd_cb, *this);
 	m_out_irq_func.resolve(m_out_irq_cb, *this);
 	m_out_aec_func.resolve(m_out_aec_cb, *this);
+
+	// inherit bus clock
+	if (clock() == 0)
+	{
+		plus4_expansion_slot_device *root = machine().device<plus4_expansion_slot_device>(PLUS4_EXPANSION_SLOT_TAG);
+		assert(root);
+		set_unscaled_clock(root->clock());
+	}
 }
 
 
@@ -314,13 +322,11 @@ const char * plus4_expansion_slot_device::get_default_card_software(const machin
 //  cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 plus4_expansion_slot_device::cd_r(address_space &space, offs_t offset, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
+UINT8 plus4_expansion_slot_device::cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
 {
-	UINT8 data = 0;
-
 	if (m_cart != NULL)
 	{
-		data = m_cart->plus4_cd_r(space, offset, ba, cs0, c1l, c1h, cs1, c2l, c2h);
+		data = m_cart->plus4_cd_r(space, offset, data, ba, cs0, c1l, c1h, cs1, c2l, c2h);
 	}
 
 	return data;
@@ -337,23 +343,6 @@ void plus4_expansion_slot_device::cd_w(address_space &space, offs_t offset, UINT
 	{
 		m_cart->plus4_cd_w(space, offset, data, ba, cs0, c1l, c1h, cs1, c2l, c2h);
 	}
-}
-
-
-//-------------------------------------------------
-//  screen_update -
-//-------------------------------------------------
-
-UINT32 plus4_expansion_slot_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	bool value = false;
-
-	if (m_cart != NULL)
-	{
-		value = m_cart->plus4_screen_update(screen, bitmap, cliprect);
-	}
-
-	return value;
 }
 
 

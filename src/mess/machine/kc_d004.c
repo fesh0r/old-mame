@@ -122,6 +122,12 @@ static MACHINE_CONFIG_FRAGMENT(kc_d004)
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(kc_d004_floppy_interface)
 MACHINE_CONFIG_END
 
+static const ide_config ide_intf =
+{
+	NULL,
+	NULL,
+	0
+};
 
 static MACHINE_CONFIG_FRAGMENT(kc_d004_gide)
 	MCFG_FRAGMENT_ADD(kc_d004)
@@ -129,7 +135,7 @@ static MACHINE_CONFIG_FRAGMENT(kc_d004_gide)
 	MCFG_CPU_MODIFY(Z80_TAG)
 	MCFG_CPU_IO_MAP(kc_d004_gide_io)
 
-	MCFG_IDE_CONTROLLER_ADD(IDE_TAG, NULL, ide_image_devices, "hdd", "hdd", false)
+	MCFG_IDE_CONTROLLER_ADD(IDE_TAG, ide_intf, ide_image_devices, "hdd", "hdd", false)
 MACHINE_CONFIG_END
 
 
@@ -140,11 +146,16 @@ ROM_END
 
 ROM_START( kc_d004_gide )
 	ROM_REGION(0x2000, Z80_TAG, 0)
-	ROM_LOAD_OPTIONAL("d004v33_3.bin",	0x0000, 0x2000, CRC(945f3e4b) SHA1(cce5d9eea82582270660c8275336b15bf9906253))	// KC85/3
-	ROM_LOAD_OPTIONAL("d004v33_4.bin",	0x0000, 0x2000, CRC(1451efd7) SHA1(9db201af408adb02254094dc7aa7185bf5a7b9b1))	// KC85/4-5
-	ROM_LOAD_OPTIONAL("d004v30.bin",	0x0000, 0x2000, CRC(6fe0a283) SHA1(5582b2541a34a90c7a9516a6a222d4961fc54fcf))	// KC85/4-5
-	ROM_LOAD_OPTIONAL("d004v31.bin",	0x0000, 0x2000, CRC(712547de) SHA1(38b3164dce23573375fc0237f348d9a699fc6f9f))	// KC85/4-5
-	ROM_LOAD_OPTIONAL("d004v32.bin",	0x0000, 0x2000, CRC(9a3d3511) SHA1(8232adb5e5f0b25b52f9873cff14831da3a0398a))	// KC85/4-5
+	ROM_SYSTEM_BIOS(0, "v33_4", "ver 3.3 (KC 85/4)")
+	ROMX_LOAD("d004v33_4.bin",	0x0000, 0x2000, CRC(1451efd7) SHA1(9db201af408adb02254094dc7aa7185bf5a7b9b1), ROM_BIOS(1) )	// KC85/4-5
+	ROM_SYSTEM_BIOS(1, "v33_3", "ver 3.3 (KC 85/3)")
+	ROMX_LOAD( "d004v33_3.bin",	0x0000, 0x2000, CRC(945f3e4b) SHA1(cce5d9eea82582270660c8275336b15bf9906253), ROM_BIOS(2) )	// KC85/3
+	ROM_SYSTEM_BIOS(2, "v30", "ver 3.0")
+	ROMX_LOAD("d004v30.bin",	0x0000, 0x2000, CRC(6fe0a283) SHA1(5582b2541a34a90c7a9516a6a222d4961fc54fcf), ROM_BIOS(3) )	// KC85/4-5
+	ROM_SYSTEM_BIOS(3, "v31", "ver 3.1")
+	ROMX_LOAD("d004v31.bin",	0x0000, 0x2000, CRC(712547de) SHA1(38b3164dce23573375fc0237f348d9a699fc6f9f), ROM_BIOS(4) )	// KC85/4-5
+	ROM_SYSTEM_BIOS(4, "v32", "ver 3.2")
+	ROMX_LOAD("d004v32.bin",	0x0000, 0x2000, CRC(9a3d3511) SHA1(8232adb5e5f0b25b52f9873cff14831da3a0398a), ROM_BIOS(5) )	// KC85/4-5
 ROM_END
 
 
@@ -234,7 +245,7 @@ void kc_d004_device::device_timer(emu_timer &timer, device_timer_id id, int para
 	switch(id)
 	{
 		case TIMER_RESET:
-			device_set_input_line(m_cpu, INPUT_LINE_RESET, ASSERT_LINE);
+			m_cpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 			break;
 		case TIMER_TC_CLEAR:
 			upd765_tc_w(m_fdc, 0x00);
@@ -320,21 +331,21 @@ void kc_d004_device::io_write(offs_t offset, UINT8 data)
 				break;
 			case 0xf4:
 				if (data & 0x01)
-					device_set_input_line(m_cpu, INPUT_LINE_RESET, CLEAR_LINE);
+					m_cpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
 
 				if (data & 0x02)
 				{
 					for (int i=0; i<0xfc00; i++)
-						m_cpu->memory().space(AS_PROGRAM)->write_byte(i, 0);
+						m_cpu->space(AS_PROGRAM)->write_byte(i, 0);
 
-					device_set_input_line(m_cpu, INPUT_LINE_RESET, ASSERT_LINE);
+					m_cpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 				}
 
 				if (data & 0x04)
-					device_set_input_line(m_cpu, INPUT_LINE_RESET, HOLD_LINE);
+					m_cpu->set_input_line(INPUT_LINE_RESET, HOLD_LINE);
 
 				if (data & 0x08)
-					device_set_input_line(m_cpu, INPUT_LINE_NMI, HOLD_LINE);
+					m_cpu->set_input_line(INPUT_LINE_NMI, HOLD_LINE);
 
 				//printf("D004 CPU state: %x\n", data & 0x0f);
 				break;

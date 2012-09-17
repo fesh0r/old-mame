@@ -7,13 +7,13 @@
 #include "emu.h"
 #include "includes/svision.h"
 
-typedef enum
+enum SVISION_NOISE_Type
 {
 	SVISION_NOISE_Type7Bit,
 	SVISION_NOISE_Type14Bit
-} SVISION_NOISE_Type;
+};
 
-typedef struct
+struct SVISION_NOISE
 {
 	UINT8 reg[3];
 	int on, right, left, play;
@@ -23,9 +23,9 @@ typedef struct
 	int count;
 	double step, pos;
 	int value; // currently simple random function
-} SVISION_NOISE;
+};
 
-typedef struct
+struct SVISION_DMA
 {
 	UINT8 reg[5];
 	int on, right, left;
@@ -33,9 +33,9 @@ typedef struct
 	int start,size;
 	double pos, step;
 	int finished;
-} SVISION_DMA;
+};
 
-typedef struct
+struct SVISION_CHANNEL
 {
 	UINT8 reg[4];
 	int on;
@@ -43,10 +43,9 @@ typedef struct
 	int pos;
 	int size;
 	int count;
-} SVISION_CHANNEL;
+};
 
-typedef struct _svision_sound_state svision_sound_state;
-struct _svision_sound_state
+struct svision_sound_state
 {
 	sound_stream *mixer_channel;
 	SVISION_DMA dma;
@@ -59,7 +58,7 @@ INLINE svision_sound_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == SVISION);
-	return (svision_sound_state *)downcast<legacy_device_base *>(device)->token();
+	return (svision_sound_state *)downcast<svision_sound_device *>(device)->token();
 }
 
 int *svision_dma_finished(device_t *device)
@@ -298,21 +297,42 @@ static DEVICE_START( svision_sound )
 	state->mixer_channel = device->machine().sound().stream_alloc(*device, 0, 2, device->machine().sample_rate(), 0, svision_update);
 }
 
+const device_type SVISION = &device_creator<svision_sound_device>;
 
-DEVICE_GET_INFO( svision_sound )
+svision_sound_device::svision_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, SVISION, "Super Vision Custom", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(svision_sound_state);			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(svision_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Super Vision Custom");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(svision_sound_state));
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(SVISION, svision_sound);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void svision_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void svision_sound_device::device_start()
+{
+	DEVICE_START_NAME( svision_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void svision_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

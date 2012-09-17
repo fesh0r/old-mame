@@ -7,7 +7,7 @@
 #ifndef INTV_H_
 #define INTV_H_
 
-typedef struct
+struct intv_sprite_type
 {
 	int visible;
 	int xpos;
@@ -25,7 +25,7 @@ typedef struct
 	int color;
 	int doubleyres;
 	int dirty;
-} intv_sprite_type;
+};
 
 class intv_state : public driver_device
 {
@@ -126,6 +126,10 @@ public:
 	int m_tape_motor_mode;
 	DECLARE_DRIVER_INIT(intvkbd);
 	DECLARE_DRIVER_INIT(intv);
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
+	DECLARE_MACHINE_RESET(intvecs);
 };
 
 /*----------- defined in video/intv.c -----------*/

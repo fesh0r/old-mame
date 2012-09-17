@@ -107,9 +107,6 @@ static UINT32 node_id = DEFAULT_NODE_ID;
 static UINT32 ram_base_address;
 static UINT32 ram_end_address;
 
-static generic_ptr messram_ptr;
-static size_t messram_size = 0;
-
 static int node_type;
 
 // FIXME: value of ram_config_byte must match with default/selected RAM size
@@ -132,7 +129,7 @@ const char *apollo_cpu_context(device_t *cpu) {
 		int s = t / osd_ticks_per_second();
 		int ms = (t % osd_ticks_per_second()) / 1000;
 
-		sprintf(statebuf, "%d.%03d %s pc=%08x", s, ms, cpu->tag(), cpu_get_previouspc(cpu));
+		sprintf(statebuf, "%d.%03d %s pc=%08x", s, ms, cpu->tag(), cpu->safe_pcbase());
 	} else {
 		strcpy(statebuf, "(no context)");
 	}
@@ -274,8 +271,8 @@ int apollo_instruction_hook(device_t *device, offs_t curpc)
 
 static void apollo_bus_error(running_machine &machine)
 {
-    cputag_set_input_line(machine, MAINCPU, M68K_LINE_BUSERROR, ASSERT_LINE);
-    cputag_set_input_line(machine, MAINCPU, M68K_LINE_BUSERROR, CLEAR_LINE);
+    machine.device(MAINCPU)->execute().set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+    machine.device(MAINCPU)->execute().set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 
     apollo_csr_set_status_register(APOLLO_CSR_SR_CPU_TIMEOUT, APOLLO_CSR_SR_CPU_TIMEOUT);
 }
@@ -283,7 +280,7 @@ static void apollo_bus_error(running_machine &machine)
 static IRQ_CALLBACK(apollo_irq_acknowledge) {
 	int result = M68K_INT_ACK_AUTOVECTOR;
 
-	cputag_set_input_line(device->machine(), MAINCPU, irqline, CLEAR_LINE);
+	device->machine().device(MAINCPU)->execute().set_input_line(irqline, CLEAR_LINE);
 
 	DLOG2(("apollo_irq_acknowledge: interrupt level=%d", irqline));
 
@@ -445,7 +442,7 @@ READ16_MEMBER(apollo_state::selective_clear_locations_r){
  ***************************************************************************/
 
 READ32_MEMBER(apollo_state::ram_with_parity_r){
-	UINT32 data = messram_ptr.u32[parity_error_offset+offset];
+	UINT32 data = m_messram_ptr[parity_error_offset+offset];
 
 	SLOG2(("memory dword read with parity error at %08x = %08x & %08x parity_byte=%04x",
 			ram_base_address + parity_error_offset*4 + offset*4,data, mem_mask, parity_error_byte_mask));
@@ -458,7 +455,7 @@ READ32_MEMBER(apollo_state::ram_with_parity_r){
 		if (apollo_csr_get_control_register() & APOLLO_CSR_CR_INTERRUPT_ENABLE) {
 			// force parity error (if NMI is enabled)
 //          cpu_set_input_line_and_vector(&space.device(), 7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-			cputag_set_input_line_and_vector(machine(), MAINCPU, 7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+			machine().device(MAINCPU)->execute().set_input_line_and_vector(7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 
 		}
 	}
@@ -467,7 +464,7 @@ READ32_MEMBER(apollo_state::ram_with_parity_r){
 
 WRITE32_MEMBER(apollo_state::ram_with_parity_w){
 
-	COMBINE_DATA(messram_ptr.u32+offset);
+	COMBINE_DATA(m_messram_ptr+offset);
 
 	if (apollo_csr_get_control_register() & APOLLO_CSR_CR_FORCE_BAD_PARITY) {
 		parity_error_byte_mask = (apollo_csr_get_control_register()
@@ -499,7 +496,7 @@ WRITE32_MEMBER(apollo_state::ram_with_parity_w){
 		// uninstall not supported, reinstall previous read handler instead
 
 		// memory_install_rom(&space, ram_base_address, ram_end_address, 0xffffffff, 0, messram_ptr.v);
-		space.install_rom(ram_base_address,ram_end_address,0xffffffff,0,messram_ptr.v);
+		space.install_rom(ram_base_address,ram_end_address,0xffffffff,0,&m_messram_ptr[0]);
 
 		parity_error_handler_is_installed = 0;
 		parity_error_byte_mask = 0;
@@ -554,7 +551,7 @@ WRITE32_MEMBER(apollo_state::apollo_unmapped_w)
 WRITE32_MEMBER(apollo_state::apollo_rom_w)
 {
 	offs_t address =  offset * 4;
-	offs_t pc = cpu_get_previouspc(&space.device());
+	offs_t pc = space.device().safe_pcbase();
 
 	if (pc == 0x00002c1c && address == 0x00000004 && VERBOSE < 2) {
 		// don't log invalid code in 3500_boot_12191_7.bin
@@ -764,8 +761,8 @@ static ADDRESS_MAP_START(dn3500_map, AS_PROGRAM, 32, apollo_state )
 		AM_RANGE(0x080000, 0x081fff) AM_ROM /* 3C505 boot ROM  */
 
 		// FIXME: must match with RAM size in driver/apollo_sio.c
-		// AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM  AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size) /* 8MB RAM */
-		AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size)
+		// AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM /* 8MB RAM */
+		AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_SHARE("messram")
 
 		AM_RANGE(ATBUS_MEMORY_BASE, ATBUS_MEMORY_END) AM_READWRITE(apollo_atbus_memory_r, apollo_atbus_memory_w)
 
@@ -812,8 +809,8 @@ static ADDRESS_MAP_START(dsp3500_map, AS_PROGRAM, 32, apollo_state )
 		AM_RANGE(0x080000, 0x081fff) AM_ROM /* 3C505 boot ROM  */
 
 		// FIXME: must match with RAM size in driver/apollo_sio.c
-		// AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM  AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size) /* 8MB RAM */
-		AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size)
+		// AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM  /* 8MB RAM */
+		AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_SHARE("messram")
 
 		AM_RANGE(ATBUS_MEMORY_BASE, ATBUS_MEMORY_END) AM_READWRITE(apollo_atbus_memory_r, apollo_atbus_memory_w)
 
@@ -851,8 +848,8 @@ static ADDRESS_MAP_START(dn3000_map, AS_PROGRAM, 32, apollo_state )
 		AM_RANGE(0x080000, 0x081fff) AM_ROM /* 3C505 boot ROM  */
 
 		// FIXME: must match with RAM size in driver/apollo_sio.c
-		// AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM  AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size) /* 8MB RAM */
-		AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size)
+		// AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM  /* 8MB RAM */
+		AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_SHARE("messram")
 
 		AM_RANGE(ATBUS_MEMORY_BASE, ATBUS_MEMORY_END) AM_READWRITE(apollo_atbus_memory_r, apollo_atbus_memory_w)
 
@@ -889,8 +886,8 @@ static ADDRESS_MAP_START(dsp3000_map, AS_PROGRAM, 32, apollo_state )
 		AM_RANGE(0x080000, 0x081fff) AM_ROM /* 3C505 boot ROM  */
 
 		// FIXME: must match with RAM size in driver/apollo_sio.c
-		// AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM  AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size) /* 8MB RAM */
-		AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size)
+		// AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM  /* 8MB RAM */
+		AM_RANGE(DN3000_RAM_BASE, DN3000_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_SHARE("messram")
 
 		AM_RANGE(ATBUS_MEMORY_BASE, ATBUS_MEMORY_END) AM_READWRITE(apollo_atbus_memory_r, apollo_atbus_memory_w)
 
@@ -935,8 +932,8 @@ static ADDRESS_MAP_START(dn5500_map, AS_PROGRAM, 32, apollo_state )
 		AM_RANGE(0x080000, 0x081fff) AM_ROM /* 3C505 boot ROM  */
 
 		// FIXME: must match with RAM size in driver/apollo_sio.c
-		// AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM  AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size) /* 8MB RAM */
-		AM_RANGE(DN5500_RAM_BASE, DN5500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size)
+		// AM_RANGE(DN3500_RAM_BASE, DN3500_RAM_END) AM_RAM  /* 8MB RAM */
+		AM_RANGE(DN5500_RAM_BASE, DN5500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_SHARE("messram")
 
 		AM_RANGE(ATBUS_MEMORY_BASE, ATBUS_MEMORY_END) AM_READWRITE(apollo_atbus_memory_r, apollo_atbus_memory_w)
 
@@ -987,7 +984,7 @@ static ADDRESS_MAP_START(dsp5500_map, AS_PROGRAM, 32, apollo_state )
 		AM_RANGE(0x080000, 0x081fff) AM_ROM /* 3C505 boot ROM  */
 
 		// FIXME: must match with RAM size in driver/apollo_sio.c
-		AM_RANGE(DN5500_RAM_BASE, DN5500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_BASE_LEGACY(&messram_ptr.u32) AM_SIZE_LEGACY(&messram_size)
+		AM_RANGE(DN5500_RAM_BASE, DN5500_RAM_END) AM_RAM_WRITE(ram_with_parity_w) AM_SHARE("messram")
 
 		AM_RANGE(ATBUS_MEMORY_BASE, ATBUS_MEMORY_END) AM_READWRITE(apollo_atbus_memory_r, apollo_atbus_memory_w)
 
@@ -1000,13 +997,13 @@ ADDRESS_MAP_END
  Machine Reset
  ***************************************************************************/
 
-static MACHINE_RESET( dn3500 )
+void apollo_state::machine_reset()
 {
-	device_t *cpu = machine.device(MAINCPU);
+	device_t *cpu = machine().device(MAINCPU);
 
-	MLOG1(("machine_reset_dn3500"));
+	//MLOG1(("machine_reset_dn3500"));
 
-	MACHINE_RESET_CALL(apollo);
+	MACHINE_RESET_CALL_MEMBER(apollo);
 
 	// set configuration
 	omti8621_set_verbose(apollo_config(APOLLO_CONF_DISK_TRACE));
@@ -1019,16 +1016,16 @@ static MACHINE_RESET( dn3500 )
 
 		// check label of physical volume and get sector data of logical volume 1
 		// Note: sector data starts with 32 byte block header
-		if (omti8621_get_sector(machine.device(APOLLO_WDC_TAG), 0, db,	sizeof(db), 0) == sizeof(db) &&
+		if (omti8621_get_sector(machine().device(APOLLO_WDC_TAG), 0, db,	sizeof(db), 0) == sizeof(db) &&
 			memcmp (db+0x22, "APOLLO", 6) == 0 &&
-			omti8621_get_sector(machine.device(APOLLO_WDC_TAG), sector1, db,	sizeof(db), 0) == sizeof(db))
+			omti8621_get_sector(machine().device(APOLLO_WDC_TAG), sector1, db,	sizeof(db), 0) == sizeof(db))
 		{
-			MLOG2(("machine_reset_dn3500: node ID is %06X (from ROM)", node_id));
+//          MLOG2(("machine_reset_dn3500: node ID is %06X (from ROM)", node_id));
 
 			// set node_id from UID of logical volume 1 of logical unit 0
 			node_id = (((db[0x49] << 8) | db[0x4a]) << 8) | db[0x4b];
 
-			MLOG2(("machine_reset_dn3500: node ID is %06X (from disk)", node_id));
+//          MLOG2(("machine_reset_dn3500: node ID is %06X (from disk)", node_id));
 		}
 	}
 
@@ -1043,7 +1040,7 @@ static void apollo_reset_instr_callback(device_t *device)
 	DLOG1(("apollo_reset_instr_callback"));
 
 	// reset the CPU board devices
-	MACHINE_RESET_CALL(apollo);
+	apollo->MACHINE_RESET_CALL_MEMBER(apollo);
 	apollo->dma8237_1->reset();
 	apollo->dma8237_2->reset();
 	apollo->pic8259_master->reset();
@@ -1065,13 +1062,14 @@ static void apollo_reset_instr_callback(device_t *device)
  Machine Start
  ***************************************************************************/
 
-static MACHINE_START( dn3500 ) {
-	MLOG1(("machine_start_dn3500: ram size is %d MB", (int)messram_size/(1024*1024)));
+void apollo_state::machine_start(){
+	memory_share *messram = machine().root_device().memshare("messram");
+	//MLOG1(("machine_start_dn3500: ram size is %d MB", (int)messram->bytes()/(1024*1024)));
 
 	// clear ram
-	memset(messram_ptr.u8, 0x55, messram_size);
+	memset(messram->ptr(), 0x55, messram->bytes());
 
-	MACHINE_START_CALL(apollo);
+	MACHINE_START_CALL_MEMBER(apollo);
 }
 
 /***************************************************************************
@@ -1082,7 +1080,7 @@ DRIVER_INIT_MEMBER(apollo_state,dn3500)
 {
 //  MLOG1(("driver_init_dn3500"));
 
-	device_set_irq_callback(machine().device(MAINCPU), apollo_irq_acknowledge);
+	machine().device(MAINCPU)->execute().set_irq_acknowledge_callback(apollo_irq_acknowledge);
 
 	/* hook the RESET line, which resets a slew of other components */
 	m68k_set_reset_callback(machine().device(MAINCPU), apollo_reset_instr_callback);
@@ -1208,8 +1206,6 @@ static MACHINE_CONFIG_START( dn3500, apollo_state )
 	MCFG_CPU_PROGRAM_MAP(dn3500_map)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( dn3500 )
-	MCFG_MACHINE_RESET( dn3500 )
 
 	MCFG_FRAGMENT_ADD( apollo )
 
@@ -1251,8 +1247,6 @@ static MACHINE_CONFIG_DERIVED( dn3000, dn3500 )
 	MCFG_CPU_PROGRAM_MAP(dn3000_map)
 	MCFG_DEVICE_REMOVE( APOLLO_SIO2_TAG )
 
-	MCFG_MACHINE_START( dn3500 )
-	MCFG_MACHINE_RESET( dn3500 )
 
 	MCFG_RAM_MODIFY("messram")
 	MCFG_RAM_DEFAULT_SIZE("8M")
@@ -1285,8 +1279,6 @@ static MACHINE_CONFIG_DERIVED( dn5500, dn3500 )
 	MCFG_CPU_REPLACE(MAINCPU, M68040, 25000000) /* 25 MHz */
 	MCFG_CPU_PROGRAM_MAP(dn5500_map)
 
-	MCFG_MACHINE_START( dn3500 )
-	MCFG_MACHINE_RESET( dn3500 )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( dsp5500, dn5500 )

@@ -81,7 +81,6 @@ const rom_entry *c64_xl80_device::device_rom_region() const
 
 void c64_xl80_device::crtc_update_row(mc6845_device *device, bitmap_rgb32 &bitmap, const rectangle &cliprect, UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, INT8 cursor_x, void *param)
 {
-	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	for (int column = 0; column < x_count; column++)
 	{
 		UINT8 code = m_ram[((ma + column) & 0x7ff)];
@@ -96,9 +95,9 @@ void c64_xl80_device::crtc_update_row(mc6845_device *device, bitmap_rgb32 &bitma
 		for (int bit = 0; bit < 8; bit++)
 		{
 			int x = (column * 8) + bit;
-			int color = BIT(data, 7) ? 7 : 0;
+			int color = BIT(data, 7);
 
-			bitmap.pix32(y, x) = palette[color];
+			bitmap.pix32(y, x) = RGB_MONOCHROME_WHITE[color];
 
 			data <<= 1;
 		}
@@ -209,10 +208,8 @@ void c64_xl80_device::device_reset()
 //  c64_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c64_xl80_device::c64_cd_r(address_space &space, offs_t offset, int ba, int roml, int romh, int io1, int io2)
+UINT8 c64_xl80_device::c64_cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
 {
-	UINT8 data = 0;
-
 	if (!io2 && BIT(offset, 2))
 	{
 		if (offset & 0x01)

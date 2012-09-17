@@ -50,9 +50,6 @@
 #include "sound/wave.h"
 #include "machine/ram.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define VIDEO_START_MEMBER(name) void name::video_start()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 class rx78_state : public driver_device
 {
@@ -109,11 +106,11 @@ READ8_MEMBER( rx78_state::rx78_f0_r )
 }
 
 
-VIDEO_START_MEMBER( rx78_state )
+void rx78_state::video_start()
 {
 }
 
-SCREEN_UPDATE16_MEMBER( rx78_state )
+UINT32 rx78_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	UINT8 *vram = memregion("vram")->base();
 	int x,y,count;
@@ -281,7 +278,7 @@ static ADDRESS_MAP_START(rx78_io, AS_IO, 8, rx78_state)
 	AM_RANGE(0xf5, 0xfb) AM_WRITE(vdp_reg_w) //vdp
 	AM_RANGE(0xfc, 0xfc) AM_WRITE(vdp_bg_reg_w) //vdp
 	AM_RANGE(0xfe, 0xfe) AM_WRITE(vdp_pri_mask_w)
-	AM_RANGE(0xff, 0xff) AM_DEVWRITE_LEGACY("sn1",sn76496_w) //psg
+	AM_RANGE(0xff, 0xff) AM_DEVWRITE("sn1", sn76489a_new_device, write) //psg
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -411,7 +408,7 @@ static INPUT_PORTS_START( rx78 )
 INPUT_PORTS_END
 
 
-MACHINE_RESET_MEMBER(rx78_state)
+void rx78_state::machine_reset()
 {
 }
 
@@ -463,6 +460,17 @@ static GFXDECODE_START( rx78 )
 	GFXDECODE_ENTRY( "maincpu", 0x1a27, rx78_charlayout, 0, 8 )
 GFXDECODE_END
 
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
+
+
 static MACHINE_CONFIG_START( rx78, rx78_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",Z80, MASTER_CLOCK/7)	// unknown divider
@@ -495,7 +503,8 @@ static MACHINE_CONFIG_START( rx78, rx78_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("sn1", SN76489A, XTAL_28_63636MHz/8) // unknown divider
+	MCFG_SOUND_ADD("sn1", SN76489A_NEW, XTAL_28_63636MHz/8) // unknown divider
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* Software lists */

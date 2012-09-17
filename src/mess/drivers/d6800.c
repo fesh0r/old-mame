@@ -76,6 +76,8 @@ public:
 private:
 	UINT8 m_kbd_s;
 	UINT8 m_portb;
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 
@@ -183,7 +185,7 @@ static TIMER_DEVICE_CALLBACK( d6800_p )
 {
 	d6800_state *state = timer.machine().driver_data<d6800_state>();
 	state->m_rtc++;
-	device_set_input_line(state->m_maincpu, M6800_IRQ_LINE, (state->m_rtc > 0xf8) ? ASSERT_LINE : CLEAR_LINE);
+	state->m_maincpu->set_input_line(M6800_IRQ_LINE, (state->m_rtc > 0xf8) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -296,11 +298,11 @@ static const pia6821_interface d6800_mc6821_intf =
 
 /* Machine Initialization */
 
-static MACHINE_START( d6800 )
+void d6800_state::machine_start()
 {
 }
 
-static MACHINE_RESET( d6800 )
+void d6800_state::machine_reset()
 {
 }
 
@@ -350,7 +352,7 @@ static QUICKLOAD_LOAD( d6800 )
 	image.message(" Quickload: size=%04X : start=%04X : end=%04X : exec=%04X",quick_length,quick_addr,quick_addr+quick_length,exec_addr);
 
 	// Start the quickload
-	cpu_set_reg(image.device().machine().device("maincpu"), STATE_GENPC, exec_addr);
+	image.device().machine().device("maincpu")->state().set_pc(exec_addr);
 	return IMAGE_INIT_PASS;
 }
 
@@ -359,8 +361,6 @@ static MACHINE_CONFIG_START( d6800, d6800_state )
 	MCFG_CPU_ADD("maincpu",M6800, XTAL_4MHz/4)
 	MCFG_CPU_PROGRAM_MAP(d6800_map)
 
-	MCFG_MACHINE_START(d6800)
-	MCFG_MACHINE_RESET(d6800)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)

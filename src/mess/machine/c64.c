@@ -55,7 +55,7 @@ static void c64_nmi( running_machine &machine )
 
 	if (state->m_nmilevel != (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq)	/* KEY_RESTORE */
 	{
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq);
 
 		state->m_nmilevel = (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq;
 	}
@@ -104,7 +104,7 @@ static void c64_irq( running_machine &machine, int level )
 	if (level != state->m_old_level)
 	{
 		DBG_LOG(machine, 3, "mos6510", ("irq %s\n", level ? "start" : "end"));
-		cputag_set_input_line(machine, "maincpu", M6510_IRQ_LINE, level);
+		machine.device("maincpu")->execute().set_input_line(M6510_IRQ_LINE, level);
 		state->m_old_level = level;
 	}
 }
@@ -129,7 +129,6 @@ WRITE_LINE_MEMBER( legacy_c64_state::c64_vic_interrupt )
 
 const mos6526_interface c64_ntsc_cia0 =
 {
-	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia0_interrupt),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -142,7 +141,6 @@ const mos6526_interface c64_ntsc_cia0 =
 
 const mos6526_interface c64_pal_cia0 =
 {
-	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia0_interrupt),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -210,7 +208,6 @@ static void c64_cia1_interrupt( device_t *device, int level )
 
 const mos6526_interface c64_ntsc_cia1 =
 {
-	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -223,7 +220,6 @@ const mos6526_interface c64_ntsc_cia1 =
 
 const mos6526_interface c64_pal_cia1 =
 {
-	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -255,14 +251,14 @@ WRITE8_HANDLER( c64_write_io )
 	legacy_c64_state *state = space->machine().driver_data<legacy_c64_state>();
 	device_t *cia_0 = space->machine().device("cia_0");
 	device_t *cia_1 = space->machine().device("cia_1");
-	device_t *sid = space->machine().device("sid6581");
+	sid6581_device *sid = space->machine().device<sid6581_device>("sid6581");
 	device_t *vic2 = space->machine().device("vic2");
 
 	state->m_io_mirror[offset] = data;
 	if (offset < 0x400)
 		vic2_port_w(vic2, offset & 0x3ff, data);
 	else if (offset < 0x800)
-		sid6581_w(sid, offset & 0x3ff, data);
+		sid->write(*space, offset & 0x3ff, data);
 	else if (offset < 0xc00)
 		state->m_colorram[offset & 0x3ff] = data | 0xf0;
 	else if (offset < 0xd00)
@@ -294,14 +290,14 @@ READ8_HANDLER( c64_read_io )
 	legacy_c64_state *state = space->machine().driver_data<legacy_c64_state>();
 	device_t *cia_0 = space->machine().device("cia_0");
 	device_t *cia_1 = space->machine().device("cia_1");
-	device_t *sid = space->machine().device("sid6581");
+	sid6581_device *sid = space->machine().device<sid6581_device>("sid6581");
 	device_t *vic2 = space->machine().device("vic2");
 
 	if (offset < 0x400)
 		return vic2_port_r(vic2, offset & 0x3ff);
 
 	else if (offset < 0x800)
-		return sid6581_r(sid, offset & 0x3ff);
+		return sid->read(*space, offset & 0x3ff);
 
 	else if (offset < 0xc00)
 		return state->m_colorram[offset & 0x3ff];
@@ -1264,13 +1260,13 @@ static int c64_crt_load( device_image_interface &image )
 ***************************************************************************/
 
 #define install_write_handler(_start, _end, _handler) \
-	image.device().machine().firstcpu->memory().space(AS_PROGRAM)->install_legacy_write_handler(_start, _end, FUNC(_handler));
+	image.device().machine().firstcpu->space(AS_PROGRAM)->install_legacy_write_handler(_start, _end, FUNC(_handler));
 
 #define install_io1_handler(_handler) \
-	image.device().machine().firstcpu->memory().space(AS_PROGRAM)->install_legacy_write_handler(0xde00, 0xde00, 0, 0xff, FUNC(_handler));
+	image.device().machine().firstcpu->space(AS_PROGRAM)->install_legacy_write_handler(0xde00, 0xde00, 0, 0xff, FUNC(_handler));
 
 #define install_io2_handler(_handler) \
-	image.device().machine().firstcpu->memory().space(AS_PROGRAM)->install_legacy_write_handler(0xdf00, 0xdf00, 0, 0xff, FUNC(_handler));
+	image.device().machine().firstcpu->space(AS_PROGRAM)->install_legacy_write_handler(0xdf00, 0xdf00, 0, 0xff, FUNC(_handler));
 
 #define allocate_cartridge_timer(_period, _func) \
 	legacy_c64_state *state = image.device().machine().driver_data<legacy_c64_state>(); \
@@ -1581,7 +1577,7 @@ static void load_super_explode_cartridge(device_image_interface &image)
 
 	map_cartridge_roml(image.device().machine(), 0x0000);
 
-	address_space *space = image.device().machine().firstcpu->memory().space(AS_PROGRAM);
+	address_space *space = image.device().machine().firstcpu->space(AS_PROGRAM);
 	space->install_legacy_read_handler(0xdf00, 0xdfff, FUNC(super_explode_r));
 
 	install_io2_handler(super_explode_bank_w);

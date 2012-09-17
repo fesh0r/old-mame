@@ -44,7 +44,7 @@ enum fm_mode_t
 	FM_CONFPART1,	// first half of configuration, awaiting second
 	FM_WRPROTPART1	// first half of protection program, awaiting second
 };
-typedef struct
+struct strata_t
 {
 	fm_mode_t mode;				// current operation mode
 	int hard_unlock;	// 1 if RP* pin is at Vhh (not fully implemented)
@@ -57,7 +57,7 @@ typedef struct
 	UINT8 *data_ptr;	// main FEEPROM area
 	UINT8 *blocklock;	// block lock flags
 	UINT8 *prot_regs;	// protection registers
-} strata_t;
+};
 
 /* accessors for individual block lock flags */
 #define READ_BLOCKLOCK(strata, block) (((strata)->blocklock[(block) >> 3] >> ((block) & 7)) & 1)
@@ -74,7 +74,7 @@ INLINE strata_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == STRATAFLASH);
 
-	return (strata_t *)downcast<legacy_device_base *>(device)->token();
+	return (strata_t *)downcast<strataflash_device *>(device)->token();
 }
 
 static DEVICE_START( strataflash )
@@ -99,26 +99,34 @@ static DEVICE_START( strataflash )
 		strata->prot_regs[i] = device->machine().rand();
 }
 
-DEVICE_GET_INFO( strataflash )
+const device_type STRATAFLASH = &device_creator<strataflash_device>;
+
+strataflash_device::strataflash_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, STRATAFLASH, "Intel 28F640J5", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(strata_t);					break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(strataflash);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Intel 28F640J5");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Intel 28F640J5");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(strata_t));
 }
 
-DEFINE_LEGACY_DEVICE(STRATAFLASH, strataflash);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void strataflash_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void strataflash_device::device_start()
+{
+	DEVICE_START_NAME( strataflash )(this);
+}
+
+
 
 /*
     load the FEEPROM contents from file
@@ -221,11 +229,11 @@ int strataflash_save(device_t *device, emu_file *file)
 }
 
 /* bus width for 8/16-bit handlers */
-typedef enum bus_width_t
+enum bus_width_t
 {
 	bw_8,
 	bw_16
-} bus_width_t;
+};
 
 /*
     read a 8/16-bit word from FEEPROM

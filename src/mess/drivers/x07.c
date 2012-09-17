@@ -579,7 +579,7 @@ void x07_state::t6834_r ()
 		m_regs_r[0]  = 0x40;
 		m_regs_r[1] = m_out.data[m_out.read];
 		m_regs_r[2] |= 0x01;
-		device_set_input_line(m_maincpu, NSC800_RSTA, ASSERT_LINE);
+		m_maincpu->set_input_line(NSC800_RSTA, ASSERT_LINE);
 		m_rsta_clear->adjust(attotime::from_msec(50));
 	}
 }
@@ -648,7 +648,7 @@ void x07_state::t6834_w ()
 				m_regs_r[0]  = 0x40;
 				m_regs_r[1] = m_out.data[m_out.read];
 				m_regs_r[2] |= 0x01;
-				device_set_input_line(m_maincpu, NSC800_RSTA, ASSERT_LINE);
+				m_maincpu->set_input_line(NSC800_RSTA, ASSERT_LINE);
 				m_rsta_clear->adjust(attotime::from_msec(50));
 			}
 		}
@@ -805,7 +805,7 @@ void x07_state::receive_bit(int bit)
 		m_cass_data = 0;
 		m_bit_count = 0;
 
-		device_set_input_line(m_maincpu, NSC800_RSTB, ASSERT_LINE);
+		m_maincpu->set_input_line(NSC800_RSTB, ASSERT_LINE);
 		m_rstb_clear->adjust(attotime::from_usec(200));
 
 	}
@@ -975,14 +975,14 @@ INPUT_CHANGED_MEMBER( x07_state::kb_break )
 		if (!m_lcd_on)
 		{
 			m_lcd_on = 1;
-			cpu_set_reg(m_maincpu, Z80_PC, 0xc3c3);
+			m_maincpu->set_state_int(Z80_PC, 0xc3c3);
 		}
 		else
 		{
 			m_regs_r[0] = 0x80;
 			m_regs_r[1] = 0x05;
 			m_regs_r[2] |= 0x01;
-			device_set_input_line(m_maincpu, NSC800_RSTA, ASSERT_LINE );
+			m_maincpu->set_input_line(NSC800_RSTA, ASSERT_LINE );
 			m_rsta_clear->adjust(attotime::from_msec(50));
 		}
 	}
@@ -998,7 +998,7 @@ void x07_state::kb_irq()
 		memcpy(m_t6834_ram + 0x400, m_t6834_ram + 0x401, 0xff);
 		m_kb_size--;
 		m_regs_r[2] |= 0x01;
-		device_set_input_line(m_maincpu, NSC800_RSTA, ASSERT_LINE);
+		m_maincpu->set_input_line(NSC800_RSTA, ASSERT_LINE);
 		m_rsta_clear->adjust(attotime::from_msec(50));
 	}
 }
@@ -1042,7 +1042,7 @@ static DEVICE_IMAGE_LOAD( x07_card )
 {
 	running_machine &machine = image.device().machine();
 	x07_state *state = machine.driver_data<x07_state>();
-	address_space *space = state->m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = state->m_maincpu->space( AS_PROGRAM );
 	UINT16 ram_size = state->m_ram->size();
 
 	if (image.software_entry() == NULL)
@@ -1073,10 +1073,10 @@ static DEVICE_IMAGE_LOAD( x07_card )
 	return IMAGE_INIT_PASS;
 }
 
-static PALETTE_INIT( x07 )
+void x07_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 
@@ -1370,7 +1370,7 @@ static TIMER_DEVICE_CALLBACK( blink_timer )
 static TIMER_CALLBACK( rsta_clear )
 {
 	x07_state *state = machine.driver_data<x07_state>();
-	device_set_input_line(state->m_maincpu, NSC800_RSTA, CLEAR_LINE);
+	state->m_maincpu->set_input_line(NSC800_RSTA, CLEAR_LINE);
 
 	if (state->m_kb_size)
 		state->kb_irq();
@@ -1379,7 +1379,7 @@ static TIMER_CALLBACK( rsta_clear )
 static TIMER_CALLBACK( rstb_clear )
 {
 	x07_state *state = machine.driver_data<x07_state>();
-	device_set_input_line(state->m_maincpu, NSC800_RSTB, CLEAR_LINE);
+	state->m_maincpu->set_input_line(NSC800_RSTB, CLEAR_LINE);
 }
 
 static TIMER_CALLBACK( beep_stop )
@@ -1454,7 +1454,7 @@ void x07_state::machine_start()
 	save_item(NAME(m_cursor.on));
 
 	/* install RAM */
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	program->install_ram(0x0000, m_ram->size() - 1, m_ram->pointer());
 }
 
@@ -1489,7 +1489,7 @@ void x07_state::machine_reset()
 
 	m_regs_r[2] = ioport("CARDBATTERY")->read();
 
-	cpu_set_reg(m_maincpu, Z80_PC, 0xc3c3);
+	m_maincpu->set_state_int(Z80_PC, 0xc3c3);
 }
 
 static const cassette_interface x07_cassette_interface =
@@ -1516,7 +1516,6 @@ static MACHINE_CONFIG_START( x07, x07_state )
 	MCFG_SCREEN_SIZE(120, 32)
 	MCFG_SCREEN_VISIBLE_AREA(0, 120-1, 0, 32-1)
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(x07)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	MCFG_GFXDECODE(x07)
 

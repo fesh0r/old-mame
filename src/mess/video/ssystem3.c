@@ -18,7 +18,7 @@ void ssystem3_lcd_write(running_machine &machine, int clock, int data)
 		state->m_lcd.data[state->m_lcd.count/8]&=~(1<<(state->m_lcd.count&7));
 		if (data) state->m_lcd.data[state->m_lcd.count/8]|=1<<(state->m_lcd.count&7);
 		if (state->m_lcd.count+1==40) {
-			logerror("%.4x lcd %02x%02x%02x%02x%02x\n",(int)cpu_get_pc(machine.device("maincpu")),
+			logerror("%.4x lcd %02x%02x%02x%02x%02x\n",(int)machine.device("maincpu")->safe_pc(),
 				state->m_lcd.data[0], state->m_lcd.data[1], state->m_lcd.data[2], state->m_lcd.data[3], state->m_lcd.data[4]);
 		}
 		state->m_lcd.count=(state->m_lcd.count+1)%40;
@@ -36,21 +36,20 @@ static const unsigned char ssystem3_palette[] =
 };
 
 
-PALETTE_INIT( ssystem3 )
+void ssystem3_state::palette_init()
 {
 	int i;
 
 	for ( i = 0; i < sizeof(ssystem3_palette) / 3; i++ ) {
-		palette_set_color_rgb(machine, i, ssystem3_palette[i*3], ssystem3_palette[i*3+1], ssystem3_palette[i*3+2]);
+		palette_set_color_rgb(machine(), i, ssystem3_palette[i*3], ssystem3_palette[i*3+1], ssystem3_palette[i*3+2]);
 	}
 }
 
 
-VIDEO_START( ssystem3 )
+void ssystem3_state::video_start()
 {
-	ssystem3_state *state = machine.driver_data<ssystem3_state>();
 	// artwork seams to need this
-	state->m_videoram = auto_alloc_array(machine, UINT8, 6 * 2 + 24);
+	m_videoram = auto_alloc_array(machine(), UINT8, 6 * 2 + 24);
 }
 
 

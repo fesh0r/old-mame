@@ -21,8 +21,7 @@
 //**************************************************************************
 
 /* interface */
-typedef struct _gime_interface gime_interface;
-struct _gime_interface
+struct gime_interface
 {
 	const char *m_screen_tag;	/* screen we are acting on */
 	const char *m_maincpu_tag;	/* tag of main CPU */
@@ -142,11 +141,11 @@ private:
 		INTERRUPT_EI0		= 0x01
 	};
 
-	typedef enum
+	enum timer_type_t
 	{
 		GIME_TIMER_HBORD,
 		GIME_TIMER_CLOCK
-	} timer_type_t;
+	};
 
 	// timer constants
 	static const device_timer_id TIMER_GIME_CLOCK = 4;

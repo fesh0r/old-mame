@@ -12,8 +12,7 @@
 #include "upd7002.h"
 
 
-typedef struct _uPD7002_t uPD7002_t;
-struct _uPD7002_t
+struct uPD7002_t
 {
 	/* Pointer to our interface */
 	const uPD7002_interface *intf;
@@ -60,7 +59,7 @@ INLINE uPD7002_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == UPD7002);
 
-	return (uPD7002_t *)downcast<legacy_device_base *>(device)->token();
+	return (uPD7002_t *)downcast<uPD7002_device *>(device)->token();
 }
 
 READ8_DEVICE_HANDLER ( uPD7002_EOC_r )
@@ -209,26 +208,40 @@ static DEVICE_RESET( uPD7002 )
 	uPD7002->conversion_counter = 0;
 }
 
-DEVICE_GET_INFO( uPD7002 )
+const device_type UPD7002 = &device_creator<uPD7002_device>;
+
+uPD7002_device::uPD7002_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, UPD7002, "uPD7002", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(uPD7002_t);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(uPD7002);		break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(uPD7002);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "uPD7002");						break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "uPD7002");						break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(uPD7002_t));
 }
 
-DEFINE_LEGACY_DEVICE(UPD7002, uPD7002);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void uPD7002_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void uPD7002_device::device_start()
+{
+	DEVICE_START_NAME( uPD7002 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void uPD7002_device::device_reset()
+{
+	DEVICE_RESET_NAME( uPD7002 )(this);
+}
+
+

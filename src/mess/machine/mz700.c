@@ -102,15 +102,14 @@ DRIVER_INIT_MEMBER(mz_state,mz800)
 	m_cgram = auto_alloc_array(machine(), UINT8, 0x1000);
 }
 
-MACHINE_START( mz700 )
+void mz_state::machine_start()
 {
-	mz_state *mz = machine.driver_data<mz_state>();
 
-	mz->m_pit = machine.device("pit8253");
-	mz->m_ppi = machine.device<i8255_device>("ppi8255");
+	m_pit = machine().device("pit8253");
+	m_ppi = machine().device<i8255_device>("ppi8255");
 
 	/* reset memory map to defaults */
-	mz->mz700_bank_4_w(*machine.device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
+	mz700_bank_4_w(*machine().device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
 }
 
 
@@ -425,7 +424,7 @@ static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 )
 	mz_state *mz = device->machine().driver_data<mz_state>();
 
 	if (!mz->m_intmsk)
-		cputag_set_input_line(device->machine(), "maincpu", 0, state);
+		device->machine().device("maincpu")->execute().set_input_line(0, state);
 }
 
 
@@ -436,23 +435,17 @@ static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 )
 static READ8_DEVICE_HANDLER( pio_port_b_r )
 {
 	int key_line = dynamic_cast<ttl74145_device *>(device)->read();
+	const char *const keynames[10] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9" };
+	int i;
+	UINT8 res = 0;
 
-	switch (key_line)
+	for(i=0;i<10;i++)
 	{
-	case 1 << 0: return device->machine().root_device().ioport("ROW0")->read();
-	case 1 << 1: return device->machine().root_device().ioport("ROW1")->read();
-	case 1 << 2: return device->machine().root_device().ioport("ROW2")->read();
-	case 1 << 3: return device->machine().root_device().ioport("ROW3")->read();
-	case 1 << 4: return device->machine().root_device().ioport("ROW4")->read();
-	case 1 << 5: return device->machine().root_device().ioport("ROW5")->read();
-	case 1 << 6: return device->machine().root_device().ioport("ROW6")->read();
-	case 1 << 7: return device->machine().root_device().ioport("ROW7")->read();
-	case 1 << 8: return device->machine().root_device().ioport("ROW8")->read();
-	case 1 << 9: return device->machine().root_device().ioport("ROW9")->read();
+		if(key_line & (1 << i))
+			res |= device->machine().root_device().ioport(keynames[i])->read();
 	}
 
-	/* should never reach this */
-    return 0xff;
+    return res;
 }
 
 /*
@@ -547,7 +540,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_c_w )
 
 static void mz800_z80pio_irq(device_t *device, int which)
 {
-	cputag_set_input_line(device->machine(), "maincpu", 0, which);
+	device->machine().device("maincpu")->execute().set_input_line(0, which);
 }
 
 static READ8_DEVICE_HANDLER( mz800_z80pio_port_a_r )
@@ -657,7 +650,7 @@ WRITE8_MEMBER(mz_state::mz800_ramdisk_w)
 /* port EB */
 WRITE8_MEMBER(mz_state::mz800_ramaddr_w)
 {
-	m_mz800_ramaddr = (cpu_get_reg(machine().device("maincpu"), Z80_BC) & 0xff00) | (data & 0xff);
+	m_mz800_ramaddr = (machine().device("maincpu")->state().state_int(Z80_BC) & 0xff00) | (data & 0xff);
 	LOG(1,"mz800_ramaddr_w",("%04X\n", m_mz800_ramaddr),machine());
 }
 

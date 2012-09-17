@@ -57,9 +57,6 @@
 #include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define MACHINE_START_MEMBER(name) void name::machine_start()
-#define VIDEO_START_MEMBER(name) void name::video_start()
 #define MSM5832RS_TAG "rtc"
 
 class mycom_state : public driver_device
@@ -87,7 +84,7 @@ public:
 	required_device<device_t> m_wave;
 	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_fdc;
-	required_device<device_t> m_audio;
+	required_device<sn76489_new_device> m_audio;
 	required_device<msm5832_device> m_rtc;
 	DECLARE_READ8_MEMBER( mycom_upper_r );
 	DECLARE_WRITE8_MEMBER( mycom_upper_w );
@@ -117,7 +114,7 @@ public:
 
 
 
-VIDEO_START_MEMBER( mycom_state )
+void mycom_state::video_start()
 {
 	m_p_videoram = memregion("vram")->base();
 	m_p_chargen = memregion("chargen")->base();
@@ -418,7 +415,7 @@ WRITE8_MEMBER( mycom_state::mycom_0a_w )
 
 	// if WE & CE are low, pass sound command to audio chip
 	if ((data & 0x30)==0)
-		sn76496_w(m_audio, 0, m_sn_we);
+		m_audio->write(space, 0, m_sn_we);
 }
 
 static WRITE8_DEVICE_HANDLER( mycom_rtc_w )
@@ -549,12 +546,29 @@ static const wd17xx_interface wd1771_intf =
 };
 
 
-MACHINE_START_MEMBER(mycom_state)
+/*************************************
+ *
+ *  Sound interface
+ *
+ *************************************/
+
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
+
+
+void mycom_state::machine_start()
 {
 	m_p_ram = memregion("maincpu")->base();
 }
 
-MACHINE_RESET_MEMBER(mycom_state)
+void mycom_state::machine_reset()
 {
 	membank("boot")->set_entry(1);
 	m_upper_sw = 0x10000;
@@ -595,8 +609,9 @@ static MACHINE_CONFIG_START( mycom, mycom_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("sn1", SN76489, XTAL_10MHz / 4)
+	MCFG_SOUND_ADD("sn1", SN76489_NEW, XTAL_10MHz / 4)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.50)
+	MCFG_SOUND_CONFIG(psg_intf)
 
 	/* Devices */
 	MCFG_MSM5832_ADD(MSM5832RS_TAG, XTAL_32_768kHz)

@@ -291,13 +291,13 @@ void mac_state::field_interrupts()
 
 	if (m_last_taken_interrupt > -1)
 	{
-		cputag_set_input_line(machine(), "maincpu", m_last_taken_interrupt, CLEAR_LINE);
+		machine().device("maincpu")->execute().set_input_line(m_last_taken_interrupt, CLEAR_LINE);
 		m_last_taken_interrupt = -1;
 	}
 
 	if (take_interrupt > -1)
 	{
-		cputag_set_input_line(machine(), "maincpu", take_interrupt, ASSERT_LINE);
+		machine().device("maincpu")->execute().set_input_line(take_interrupt, ASSERT_LINE);
 		m_last_taken_interrupt = take_interrupt;
 	}
 }
@@ -974,7 +974,6 @@ Note:  Asserting the DACK signal applies only to write operations to
 READ16_MEMBER ( mac_state::macplus_scsi_r )
 {
 	int reg = (offset>>3) & 0xf;
-	device_t *ncr = space.machine().device("ncr5380");
 
 //  logerror("macplus_scsi_r: offset %x mask %x\n", offset, mem_mask);
 
@@ -983,23 +982,21 @@ READ16_MEMBER ( mac_state::macplus_scsi_r )
 		reg = R5380_CURDATA_DTACK;
 	}
 
-	return ncr5380_read_reg(ncr, reg)<<8;
+	return m_ncr5380->ncr5380_read_reg(reg)<<8;
 }
 
 READ32_MEMBER (mac_state::macii_scsi_drq_r)
 {
-	device_t *ncr = space.machine().device("ncr5380");
-
 	switch (mem_mask)
 	{
 		case 0xff000000:
-			return ncr5380_read_reg(ncr, R5380_CURDATA_DTACK)<<24;
+			return m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK)<<24;
 
 		case 0xffff0000:
-			return (ncr5380_read_reg(ncr, R5380_CURDATA_DTACK)<<24) | (ncr5380_read_reg(ncr, R5380_CURDATA_DTACK)<<16);
+			return (m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK)<<24) | (m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK)<<16);
 
 		case 0xffffffff:
-			return (ncr5380_read_reg(ncr, R5380_CURDATA_DTACK)<<24) | (ncr5380_read_reg(ncr, R5380_CURDATA_DTACK)<<16) | (ncr5380_read_reg(ncr, R5380_CURDATA_DTACK)<<8) | ncr5380_read_reg(ncr, R5380_CURDATA_DTACK);
+			return (m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK)<<24) | (m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK)<<16) | (m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK)<<8) | m_ncr5380->ncr5380_read_reg(R5380_CURDATA_DTACK);
 
 		default:
 			logerror("macii_scsi_drq_r: unknown mem_mask %08x\n", mem_mask);
@@ -1010,24 +1007,22 @@ READ32_MEMBER (mac_state::macii_scsi_drq_r)
 
 WRITE32_MEMBER (mac_state::macii_scsi_drq_w)
 {
-	device_t *ncr = space.machine().device("ncr5380");
-
 	switch (mem_mask)
 	{
 		case 0xff000000:
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data>>24);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data>>24);
 			break;
 
 		case 0xffff0000:
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data>>24);
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data>>16);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data>>24);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data>>16);
 			break;
 
 		case 0xffffffff:
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data>>24);
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data>>16);
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data>>8);
-			ncr5380_write_reg(ncr, R5380_OUTDATA_DTACK, data&0xff);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data>>24);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data>>16);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data>>8);
+			m_ncr5380->ncr5380_write_reg(R5380_OUTDATA_DTACK, data&0xff);
 			break;
 
 		default:
@@ -1039,7 +1034,6 @@ WRITE32_MEMBER (mac_state::macii_scsi_drq_w)
 WRITE16_MEMBER ( mac_state::macplus_scsi_w )
 {
 	int reg = (offset>>3) & 0xf;
-	device_t *ncr = space.machine().device("ncr5380");
 
 //  logerror("macplus_scsi_w: data %x offset %x mask %x\n", data, offset, mem_mask);
 
@@ -1048,22 +1042,21 @@ WRITE16_MEMBER ( mac_state::macplus_scsi_w )
 		reg = R5380_OUTDATA_DTACK;
 	}
 
-	ncr5380_write_reg(ncr, reg, data);
+	m_ncr5380->ncr5380_write_reg(reg, data);
 }
 
 WRITE16_MEMBER ( mac_state::macii_scsi_w )
 {
 	int reg = (offset>>3) & 0xf;
-	device_t *ncr = space.machine().device("ncr5380");
 
-//  logerror("macplus_scsi_w: data %x offset %x mask %x (PC=%x)\n", data, offset, mem_mask, cpu_get_pc(&space->device()));
+//  logerror("macplus_scsi_w: data %x offset %x mask %x (PC=%x)\n", data, offset, mem_mask, space->device().safe_pc());
 
 	if ((reg == 0) && (offset == 0x100))
 	{
 		reg = R5380_OUTDATA_DTACK;
 	}
 
-	ncr5380_write_reg(ncr, reg, data>>8);
+	m_ncr5380->ncr5380_write_reg(reg, data>>8);
 }
 
 void mac_scsi_irq(running_machine &machine, int state)
@@ -1165,7 +1158,7 @@ READ16_MEMBER ( mac_state::mac_iwm_r )
 	result = applefdc_r(fdc, (offset >> 8));
 
 	if (LOG_MAC_IWM)
-		printf("mac_iwm_r: offset=0x%08x mem_mask %04x = %02x (PC %x)\n", offset, mem_mask, result, cpu_get_pc(m_maincpu));
+		printf("mac_iwm_r: offset=0x%08x mem_mask %04x = %02x (PC %x)\n", offset, mem_mask, result, m_maincpu->pc());
 
 	return (result << 8) | result;
 }
@@ -1175,7 +1168,7 @@ WRITE16_MEMBER ( mac_state::mac_iwm_w )
 	device_t *fdc = space.machine().device("fdc");
 
 	if (LOG_MAC_IWM)
-		printf("mac_iwm_w: offset=0x%08x data=0x%04x mask %04x (PC=%x)\n", offset, data, mem_mask, cpu_get_pc(m_maincpu));
+		printf("mac_iwm_w: offset=0x%08x data=0x%04x mask %04x (PC=%x)\n", offset, data, mem_mask, m_maincpu->pc());
 
 	if (ACCESSING_BITS_0_7)
 		applefdc_w(fdc, (offset >> 8), data & 0xff);
@@ -1273,7 +1266,7 @@ static READ8_DEVICE_HANDLER(mac_via_in_a)
 {
 	mac_state *mac = device->machine().driver_data<mac_state>();
 
-//  printf("VIA1 IN_A (PC %x)\n", cpu_get_pc(device->machine().device("maincpu")));
+//  printf("VIA1 IN_A (PC %x)\n", device->machine().device("maincpu")->safe_pc());
 
 	switch (mac->m_model)
 	{
@@ -1383,7 +1376,7 @@ static READ8_DEVICE_HANDLER(mac_via_in_b)
 			val |= 1;
 	}
 
-//  printf("VIA1 IN_B = %02x (PC %x)\n", val, cpu_get_pc(device->machine().device("maincpu")));
+//  printf("VIA1 IN_B = %02x (PC %x)\n", val, device->machine().device("maincpu")->safe_pc());
 
 	return val;
 }
@@ -1394,7 +1387,7 @@ static WRITE8_DEVICE_HANDLER(mac_via_out_a)
 	device_t *fdc = device->machine().device("fdc");
 	mac_state *mac = device->machine().driver_data<mac_state>();
 
-//  printf("VIA1 OUT A: %02x (PC %x)\n", data, cpu_get_pc(device->machine().device("maincpu")));
+//  printf("VIA1 OUT A: %02x (PC %x)\n", data, device->machine().device("maincpu")->safe_pc());
 
 	if (ADB_IS_PM_VIA1)
 	{
@@ -1438,7 +1431,7 @@ static WRITE8_DEVICE_HANDLER(mac_via_out_b)
 	int new_rtc_rTCClk;
 	mac_state *mac = device->machine().driver_data<mac_state>();
 
-//  printf("VIA1 OUT B: %02x (PC %x)\n", data, cpu_get_pc(device->machine().device("maincpu")));
+//  printf("VIA1 OUT B: %02x (PC %x)\n", data, device->machine().device("maincpu")->safe_pc());
 
 	if (ADB_IS_PM_VIA1)
 	{
@@ -1541,7 +1534,7 @@ static WRITE8_DEVICE_HANDLER(mac_via_out_b)
 	else if (ADB_IS_EGRET)
 	{
 		#if LOG_ADB
-		printf("68K: New Egret state: SS %d VF %d (PC %x)\n", (data>>5)&1, (data>>4)&1, cpu_get_pc(mac->m_maincpu));
+		printf("68K: New Egret state: SS %d VF %d (PC %x)\n", (data>>5)&1, (data>>4)&1, mac->m_maincpu->pc());
 		#endif
         mac->m_egret->set_via_full((data&0x10) ? 1 : 0);
         mac->m_egret->set_sys_session((data&0x20) ? 1 : 0);
@@ -1549,7 +1542,7 @@ static WRITE8_DEVICE_HANDLER(mac_via_out_b)
 	else if (ADB_IS_CUDA)
 	{
 		#if LOG_ADB
-		printf("68K: New Cuda state: TIP %d BYTEACK %d (PC %x)\n", (data>>5)&1, (data>>4)&1, cpu_get_pc(mac->m_maincpu));
+		printf("68K: New Cuda state: TIP %d BYTEACK %d (PC %x)\n", (data>>5)&1, (data>>4)&1, mac->m_maincpu->pc());
 		#endif
         mac->m_cuda->set_byteack((data&0x10) ? 1 : 0);
         mac->m_cuda->set_tip((data&0x20) ? 1 : 0);
@@ -1575,7 +1568,7 @@ READ16_MEMBER ( mac_state::mac_via_r )
 		logerror("mac_via_r: offset=0x%02x\n", offset);
 	data = m_via1->read(space, offset);
 
-	device_adjust_icount(m_maincpu, m_via_cycles);
+	m_maincpu->adjust_icount(m_via_cycles);
 
 	return (data & 0xff) | (data << 8);
 }
@@ -1593,7 +1586,7 @@ WRITE16_MEMBER ( mac_state::mac_via_w )
 	if (ACCESSING_BITS_8_15)
 		m_via1->write(space, offset, (data >> 8) & 0xff);
 
-	device_adjust_icount(m_maincpu, m_via_cycles);
+	m_maincpu->adjust_icount(m_via_cycles);
 }
 
 /* *************************************************************************
@@ -1616,7 +1609,7 @@ READ16_MEMBER ( mac_state::mac_via2_r )
 	data = m_via2->read(space, offset);
 
 	if (LOG_VIA)
-		logerror("mac_via2_r: offset=0x%02x = %02x (PC=%x)\n", offset*2, data, cpu_get_pc(space.machine().device("maincpu")));
+		logerror("mac_via2_r: offset=0x%02x = %02x (PC=%x)\n", offset*2, data, space.machine().device("maincpu")->safe_pc());
 
 	return (data & 0xff) | (data << 8);
 }
@@ -1627,7 +1620,7 @@ WRITE16_MEMBER ( mac_state::mac_via2_w )
 	offset &= 0x0f;
 
 	if (LOG_VIA)
-		logerror("mac_via2_w: offset=%x data=0x%08x mask=%x (PC=%x)\n", offset, data, mem_mask, cpu_get_pc(space.machine().device("maincpu")));
+		logerror("mac_via2_w: offset=%x data=0x%08x mask=%x (PC=%x)\n", offset, data, mem_mask, space.machine().device("maincpu")->safe_pc());
 
 	if (ACCESSING_BITS_0_7)
 		m_via2->write(space, offset, data & 0xff);
@@ -1661,7 +1654,7 @@ static READ8_DEVICE_HANDLER(mac_via2_in_b)
 {
 	mac_state *mac =device->machine().driver_data<mac_state>();
 
-//  logerror("VIA2 IN B (PC %x)\n", cpu_get_pc(device->machine().device("maincpu")));
+//  logerror("VIA2 IN B (PC %x)\n", device->machine().device("maincpu")->safe_pc());
 
 	if (ADB_IS_PM_VIA2)
 	{
@@ -1692,7 +1685,7 @@ static WRITE8_DEVICE_HANDLER(mac_via2_out_a)
 {
 	mac_state *mac = device->machine().driver_data<mac_state>();
 
-//  logerror("VIA2 OUT A: %02x (PC %x)\n", data, cpu_get_pc(device->machine().device("maincpu")));
+//  logerror("VIA2 OUT A: %02x (PC %x)\n", data, device->machine().device("maincpu")->safe_pc());
 	if (ADB_IS_PM_VIA2)
 	{
 		mac->m_pm_data_send = data;
@@ -1704,7 +1697,7 @@ static WRITE8_DEVICE_HANDLER(mac_via2_out_b)
 {
 	mac_state *mac = device->machine().driver_data<mac_state>();
 
-//  logerror("VIA2 OUT B: %02x (PC %x)\n", data, cpu_get_pc(device->machine().device("maincpu")));
+//  logerror("VIA2 OUT B: %02x (PC %x)\n", data, device->machine().device("maincpu")->safe_pc());
 
 	if (ADB_IS_PM_VIA2)
 	{
@@ -1821,7 +1814,7 @@ void mac_state::machine_reset()
 
 	if (m_model >= MODEL_MAC_POWERMAC_6100 && m_model <= MODEL_MAC_POWERMAC_8100)
 	{
-		m_awacs->set_dma_base(m_maincpu->memory().space(AS_PROGRAM), 0x10000, 0x12000);
+		m_awacs->set_dma_base(m_maincpu->space(AS_PROGRAM), 0x10000, 0x12000);
 	}
 
 	// start 60.15 Hz timer for most systems
@@ -1959,13 +1952,13 @@ void mac_state::machine_reset()
 
 WRITE_LINE_MEMBER(mac_state::cuda_reset_w)
 {
-    if (state == ASSERT_LINE)
+    if ((state == ASSERT_LINE) && (m_model < MODEL_MAC_POWERMAC_6100))
     {
         set_memory_overlay(0);
         set_memory_overlay(1);
     }
 
-    cputag_set_input_line(machine(), "maincpu", INPUT_LINE_RESET, state);
+    machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, state);
 }
 
 static void mac_state_load(mac_state *mac)
@@ -2019,7 +2012,7 @@ DIRECT_UPDATE_MEMBER(mac_state::overlay_opbaseoverride)
 
 READ32_MEMBER(mac_state::mac_read_id)
 {
-//    printf("Mac read ID reg @ PC=%x\n", cpu_get_pc(m_maincpu));
+//    printf("Mac read ID reg @ PC=%x\n", m_maincpu->pc());
 
 	switch (m_model)
 	{
@@ -3173,11 +3166,11 @@ static offs_t mac_dasm_override(device_t &device, char *buffer, offs_t pc, const
 #ifdef MAC_TRACETRAP
 static void mac_tracetrap(const char *cpu_name_local, int addr, int trap)
 {
-	typedef struct
+	struct sonycscodeentry
 	{
 		int csCode;
 		const char *name;
-	} sonycscodeentry;
+	};
 
 	static const sonycscodeentry cscodes[] =
 	{
@@ -3223,7 +3216,7 @@ static void mac_tracetrap(const char *cpu_name_local, int addr, int trap)
 
 	s = &buf[strlen(buf)];
 	mem = mac_ram_ptr;
-	a0 = cpu_get_reg(M68K_A0);
+	a0 = M68K_A0);
 	a7 = cpu_get_reg(M68K_A7);
 	d0 = cpu_get_reg(M68K_D0);
 	d1 = cpu_get_reg(M68K_D1);
@@ -3234,7 +3227,7 @@ static void mac_tracetrap(const char *cpu_name_local, int addr, int trap)
 		ioVRefNum = *((INT16*) (mem + a0 + 22));
 		ioCRefNum = *((INT16*) (mem + a0 + 24));
 		csCode = *((UINT16*) (mem + a0 + 26));
-		sprintf(s, " ioVRefNum=%i ioCRefNum=%i csCode=%i", ioVRefNum, ioCRefNum, csCode);
+		sprintf(s->state().state_int(" ioVRefNum=%i ioCRefNum=%i csCode=%i", ioVRefNum, ioCRefNum, csCode);
 
 		for (i = 0; i < ARRAY_LENGTH(cscodes); i++)
 		{

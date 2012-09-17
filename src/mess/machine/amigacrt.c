@@ -24,12 +24,12 @@ enum
 	ACTION_REPLAY_MKIII
 };
 
-typedef struct
+struct amigacrt_t
 {
 	int cart_type;
 	int ar1_spurious;
 	UINT16 ar23_mode;
-} amigacrt_t;
+};
 static amigacrt_t amigacrt;
 
 /***************************************************************************
@@ -87,7 +87,7 @@ static IRQ_CALLBACK(amiga_ar1_irqack)
 static TIMER_CALLBACK( amiga_ar1_delayed_nmi )
 {
 	(void)param;
-	cputag_set_input_line(machine, "maincpu", 7, PULSE_LINE);
+	machine.device("maincpu")->execute().set_input_line(7, PULSE_LINE);
 }
 
 static void amiga_ar1_nmi( running_machine &machine )
@@ -113,7 +113,7 @@ static void amiga_ar1_nmi( running_machine &machine )
 static WRITE16_HANDLER( amiga_ar1_chipmem_w )
 {
 	amiga_state *state = space->machine().driver_data<amiga_state>();
-	int pc = cpu_get_pc(&space->device());
+	int pc = space->device().safe_pc();
 
 	/* see if we're inside the AR1 rom */
 	if ( ((pc >> 16) & 0xff ) != 0xf0 )
@@ -166,7 +166,7 @@ static void amiga_ar1_init( running_machine &machine )
 	amigacrt.ar1_spurious = 0;
 
 	/* Install IRQ ACK callback */
-	device_set_irq_callback(machine.device("maincpu"), amiga_ar1_irqack);
+	machine.device("maincpu")->execute().set_irq_acknowledge_callback(amiga_ar1_irqack);
 }
 
 /***************************************************************************
@@ -192,7 +192,7 @@ static void amiga_ar23_freeze( running_machine &machine );
 
 static READ16_HANDLER( amiga_ar23_cia_r )
 {
-	int pc = cpu_get_pc(&space->device());
+	int pc = space->device().safe_pc();
 
 	if ( ACCESSING_BITS_0_7 && offset == 2048 && pc >= 0x40 && pc < 0x120 )
 	{
@@ -263,7 +263,7 @@ static WRITE16_HANDLER( amiga_ar23_chipmem_w )
 static void amiga_ar23_freeze( running_machine &machine )
 {
 	amiga_state *state = machine.driver_data<amiga_state>();
-	int pc = cpu_get_pc(machine.device("maincpu"));
+	int pc = machine.device("maincpu")->safe_pc();
 
 	/* only freeze if we're not inside the cart's ROM */
 	if ( ((pc >> 16) & 0xfe ) != 0x40 )
@@ -286,7 +286,7 @@ static void amiga_ar23_freeze( running_machine &machine )
 		machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_write_handler(0x000000, state->m_chip_ram.bytes() - 1, FUNC(amiga_ar23_chipmem_w));
 
 		/* trigger NMI irq */
-		cputag_set_input_line(machine, "maincpu", 7, PULSE_LINE);
+		machine.device("maincpu")->execute().set_input_line(7, PULSE_LINE);
 	}
 }
 
@@ -299,7 +299,7 @@ static void amiga_ar23_nmi( running_machine &machine )
 #if 0
 static WRITE16_HANDLER( amiga_ar23_custom_w )
 {
-	int pc = cpu_get_pc(&space->device());
+	int pc = space->device().safe_pc();
 
 	/* see if we're inside the AR2 rom */
 	if ( ((pc >> 16) & 0xfe ) != 0x40 )
@@ -320,7 +320,7 @@ static READ16_HANDLER( amiga_ar23_custom_r )
 {
 	UINT16 data = amiga_custom_r( offset, mem_mask );
 
-	int pc = cpu_get_pc(&space->device());
+	int pc = space->device().safe_pc();
 
 	/* see if we're inside the AR2 rom */
 	if ( ((pc >> 16) & 0xfe ) != 0x40 )

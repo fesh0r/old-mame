@@ -19,12 +19,11 @@
 
 #define C64_MAX_ROMBANK 64 // .crt files contain multiple 'CHIPs', i.e. rom banks (of variable size) with headers. Known carts have at most 64 'CHIPs'.
 
-typedef struct {
+struct C64_ROM {
 	int addr, size, index, start;
-} C64_ROM;
+};
 
-typedef struct _c64_cart_t c64_cart_t;
-struct _c64_cart_t {
+struct c64_cart_t {
 	C64_ROM     bank[C64_MAX_ROMBANK];
 	INT8        game;
 	INT8        exrom;

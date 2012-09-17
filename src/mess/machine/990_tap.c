@@ -36,16 +36,15 @@ static void update_interrupt(device_t *device);
 
 #define MAX_TAPE_UNIT 4
 
-typedef struct tape_unit_t
+struct tape_unit_t
 {
 	device_image_interface *img;		/* image descriptor */
 	unsigned int bot : 1;	/* TRUE if we are at the beginning of tape */
 	unsigned int eot : 1;	/* TRUE if we are at the end of tape */
 	unsigned int wp : 1;	/* TRUE if tape is write-protected */
-} tape_unit_t;
+};
 
-typedef struct _tap_990_t tap_990_t;
-struct _tap_990_t
+struct tap_990_t
 {
 	UINT16 w[8];
 
@@ -54,8 +53,7 @@ struct _tap_990_t
 	tape_unit_t t[MAX_TAPE_UNIT];
 };
 
-typedef struct _ti990_tape_t ti990_tape_t;
-struct _ti990_tape_t
+struct ti990_tape_t
 {
 	int dummy;
 };
@@ -127,7 +125,7 @@ INLINE tap_990_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == TI990_TAPE_CTRL);
 
-	return (tap_990_t *)downcast<legacy_device_base *>(device)->token();
+	return (tap_990_t *)downcast<tap_990_device *>(device)->token();
 }
 
 
@@ -1066,28 +1064,41 @@ static DEVICE_START(tap_990)
 }
 
 
-DEVICE_GET_INFO( tap_990 )
+const device_type TI990_TAPE_CTRL = &device_creator<tap_990_device>;
+
+tap_990_device::tap_990_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, TI990_TAPE_CTRL, "Generic TI990 Tape Controller", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(tap_990_t);								break;
-
-		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(tap_990);		break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(tap_990);					break;
-		case DEVINFO_FCT_STOP:							/* Nothing */												break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Generic TI990 Tape Controller");								break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "TI990 Tape Controller");								break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(tap_990_t));
 }
 
-DEFINE_LEGACY_DEVICE(TI990_TAPE_CTRL, tap_990);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void tap_990_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void tap_990_device::device_start()
+{
+	DEVICE_START_NAME( tap_990 )(this);
+}
+
+//-------------------------------------------------
+//  device_mconfig_additions - return a pointer to
+//  the device's machine fragment
+//-------------------------------------------------
+
+machine_config_constructor tap_990_device::device_mconfig_additions() const
+{
+	return MACHINE_CONFIG_NAME( tap_990  );
+}
+
+

@@ -78,7 +78,7 @@ Known undumped pirates
   * Shizen Mahjong / Competition Mahjong (by Sachen, apparently dumped but hoarded)
   * Thunderbolt II - 雷電伝説II
   * Magic 7 Block - 百変七巧板
-  * Chinese Battle Chess (?) - 戦　棊
+  * Chinese Battle Chess (?) - 戦 棊
   * Bomboy (by Gamtek)
   * 16 Tile Mahjong II (by Gamtek)
 
@@ -996,7 +996,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 <!-- This board contains no SRAM, despite the header reporting 16k of battery -->
-	<software name="espnnflp" cloneof="espnnfl">
+	<software name="espnnflp" cloneof="espnnfl" supported="no"> <!-- it freezes after head/tail -->
 		<description>ESPN Sunday Night NFL (USA, Prototype)</description>
 		<year>1994</year>
 		<publisher>Sony Imagesoft</publisher>
@@ -1141,7 +1141,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4023 (JPN)"/>
 		<info name="release" value="19900113 (JPN)"/>
-		<info name="alt_title" value="ズーム！"/>
+		<info name="alt_title" value="ズーム!"/>
 		<part name="cart" interface="megadriv_cart">
 			<feature name="pcb" value="171-5703" />
 			<feature name="ic1" value="MPR-12807 T05" />
@@ -1436,7 +1436,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<description>13 Ma Jiang - 98 Mei Shao Nu Pian (Chi)</description>
 		<year>1998</year>
 		<publisher>BBD</publisher>
-		<info name="alt_title" value="十三張麻將　98’美少女篇"/>
+		<info name="alt_title" value="十三張麻將 98'美少女篇"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="655360">
 				<rom name="13 mahjong 98 (unl).bin" size="655360" crc="68b372f6" sha1="af19eb952bff78178ae3d31ed48b3fc5c7010dea" offset="000000" loadflag="load16_word_swap" />
@@ -1630,7 +1630,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="addfamp2" cloneof="addfam">
+	<software name="addfamp2" cloneof="addfam" supported="no">
 		<description>The Addams Family (USA, Prototype, Alt)</description>
 		<year>1994</year>
 		<publisher>Flying Edge</publisher>
@@ -1647,7 +1647,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-5505"/>
 		<info name="release" value="19910617"/>
-		<info name="alt_title" value="アドバンスド大戦略 －ドイツ電撃作戦－"/>
+		<info name="alt_title" value="アドバンスド大戦略 -ドイツ電撃作戦-"/>
 		<part name="cart" interface="megadriv_cart">
 			<feature name="pcb_type" value="SEGA-SRAM" />
 			<dataarea name="rom" size="1048576">
@@ -3298,7 +3298,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="beavisup" cloneof="beavis">
+	<software name="beavisup" cloneof="beavis" supported="no">
 		<description>Beavis and Butt-Head (USA, Prototype)</description>
 		<year>1994</year>
 		<publisher>Viacom New Media</publisher>
@@ -3706,7 +3706,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="blockb">
+	<software name="blockb" supported="no">
 		<description>Blockbuster World Video Game Championship II (USA)</description>
 		<year>1995</year>
 		<publisher>Acclaim Entertainment</publisher>
@@ -3782,7 +3782,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bodycop4" cloneof="bodyco">
-		<description>Body Count (Prototype, 19940208)</description>
+		<description>Body Count (USA, Prototype, 19940208)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3805,7 +3805,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software-->
 
 	<software name="bodycop5" cloneof="bodyco">
-		<description>Body Count (Prototype, 19940127)</description>
+		<description>Body Count (USA, Prototype, 19940127)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3816,7 +3816,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bodycop3" cloneof="bodyco">
-		<description>Body Count (Prototype, 19940303)</description>
+		<description>Body Count (USA, Prototype, 19940303)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3839,7 +3839,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software-->
 
 	<software name="bodycop2" cloneof="bodyco">
-		<description>Body Count (Prototype, 19940308)</description>
+		<description>Body Count (USA, Prototype, 19940308)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3850,7 +3850,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bodycop1" cloneof="bodyco">
-		<description>Body Count (Prototype, 19940309)</description>
+		<description>Body Count (USA, Prototype, 19940309)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3909,7 +3909,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bonkersp5" cloneof="bonkers">
-		<description>Bonkers (Prototype, 19940328)</description>
+		<description>Bonkers (USA, Prototype, 19940328)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3920,7 +3920,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bonkersp4" cloneof="bonkers">
-		<description>Bonkers (Prototype, 19940503)</description>
+		<description>Bonkers (USA, Prototype, 19940503)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3931,7 +3931,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bonkersp3" cloneof="bonkers">
-		<description>Bonkers (Prototype, 19941004)</description>
+		<description>Bonkers (USA, Prototype, 19941004)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3942,7 +3942,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bonkersp2" cloneof="bonkers">
-		<description>Bonkers (Prototype, 19941025)</description>
+		<description>Bonkers (USA, Prototype, 19941025)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -3953,7 +3953,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="bonkersp1" cloneof="bonkers">
-		<description>Bonkers (Prototype, 19941029)</description>
+		<description>Bonkers (USA, Prototype, 19941029)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -4007,7 +4007,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="dracula">
+	<software name="dracula" supported="no">
 		<description>Bram Stoker's Dracula (Euro)</description>
 		<year>1993</year>
 		<publisher>Sony Imagesoft</publisher>
@@ -4018,7 +4018,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="draculau" cloneof="dracula">
+	<software name="draculau" cloneof="dracula" supported="no">
 		<description>Bram Stoker's Dracula (USA)</description>
 		<year>1993</year>
 		<publisher>Sony Imagesoft</publisher>
@@ -5293,7 +5293,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4108"/>
 		<info name="release" value="19931015"/>
-		<info name="alt_title" value="コラムスIII 対決！コラムスワールド"/>
+		<info name="alt_title" value="コラムスIII 対決!コラムスワールド"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="columns iii - taiketsu! columns world (jpn, kor).bin" size="524288" crc="cd07462f" sha1="2e850c2b737098b9926ac0fc9b8b2116fc5aa48a" offset="000000" loadflag="load16_word_swap" />
@@ -5372,7 +5372,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software-->
 
 	<software name="comixup01" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950712)</description>
+		<description>Comix Zone (Euro, Prototype, 19950712)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5383,7 +5383,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup08" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950601-B)</description>
+		<description>Comix Zone (USA, Prototype, 19950601-B)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5394,7 +5394,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup07" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950601-C)</description>
+		<description>Comix Zone (USA, Prototype, 19950601-C)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5405,7 +5405,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup06" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950601-D)</description>
+		<description>Comix Zone (USA, Prototype, 19950601-D)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5416,7 +5416,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup05" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950601)</description>
+		<description>Comix Zone (USA, Prototype, 19950601)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5427,7 +5427,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup04" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950602-B)</description>
+		<description>Comix Zone (USA, Prototype, 19950602-B)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5438,7 +5438,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup03" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950602)</description>
+		<description>Comix Zone (USA, Prototype, 19950602)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5449,7 +5449,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="comixup02" cloneof="comix">
-		<description>Comix Zone (Prototype, 19950603)</description>
+		<description>Comix Zone (USA, Prototype, 19950603)</description>
 		<year>1995</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5740,7 +5740,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp06" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940701)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940701)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5751,7 +5751,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp05" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940702)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940702)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5762,7 +5762,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp04" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940703)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940703)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5773,7 +5773,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp03" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940712-B)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940712-B)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5784,7 +5784,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp02" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940712)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940712)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5795,7 +5795,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp01" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940713)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940713)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5806,7 +5806,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp12" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940601)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940601)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5817,7 +5817,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp11" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940606)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940606)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5828,7 +5828,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp10" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940610)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940610)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5839,7 +5839,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp09" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940623)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940623)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5850,7 +5850,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp08" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940628)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940628)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5861,7 +5861,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp07" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940630)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940630)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5872,7 +5872,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp15" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940511)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940511)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5883,7 +5883,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp14" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940519)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940519)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -5894,7 +5894,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="crystlptp13" cloneof="crystlpt">
-		<description>Crystal's Pony Tale (Prototype, 19940526)</description>
+		<description>Crystal's Pony Tale (USA, Prototype, 19940526)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6088,7 +6088,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="dashdesp1" cloneof="dashdes">
-		<description>Dashin' Desperadoes (USA, Prototype)</description>
+		<description>Dashin' Desperadoes (Euro, Prototype)</description>
 		<year>1993</year>
 		<publisher>Data East</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6099,7 +6099,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="dashdesp2" cloneof="dashdes">
-		<description>Dashin' Desperadoes (USA, Prototype, Alt)</description>
+		<description>Dashin' Desperadoes (USA, Prototype)</description>
 		<year>1993</year>
 		<publisher>Data East</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6303,7 +6303,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="desrtdemp9" cloneof="desrtdem">
+	<software name="desrtdemp9" cloneof="desrtdem" supported="no">
 		<description>Desert Demolition (Prototype, 19941206)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -6336,7 +6336,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="desrtdemp6" cloneof="desrtdem">
+	<software name="desrtdemp6" cloneof="desrtdem" supported="no">
 		<description>Desert Demolition (Prototype, 19941212)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
@@ -6536,7 +6536,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="dinohire">
-		<description>Dinosaurs for Hire (USA)</description>
+		<description>Tom Mason's Dinosaurs for Hire (USA)</description>
 		<year>1993</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6547,7 +6547,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="dinohirep3" cloneof="dinohire">
-		<description>Dinosaurs for Hire (Prototype, 19930426)</description>
+		<description>Tom Mason's Dinosaurs for Hire (Prototype, 19930426)</description>
 		<year>1993</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6558,7 +6558,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="dinohirep2" cloneof="dinohire">
-		<description>Dinosaurs for Hire (Prototype, 19930427)</description>
+		<description>Tom Mason's Dinosaurs for Hire (Prototype, 19930427)</description>
 		<year>1993</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6569,7 +6569,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="dinohirep1" cloneof="dinohire">
-		<description>Dinosaurs for Hire (Prototype, 19930502)</description>
+		<description>Tom Mason's Dinosaurs for Hire (Prototype, 19930502)</description>
 		<year>1993</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -6778,7 +6778,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		</part>
 	</software>
 
-	<software name="drrobotn1" cloneof="drrobotn">
+	<software name="drrobotnup" cloneof="drrobotn">
 		<description>Dr. Robotnik's Mean Bean Machine (USA, Prototype)</description>
 		<year>1993</year>
 		<publisher>Sega</publisher>
@@ -7318,7 +7318,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="ecco2p" cloneof="ecco2">
-		<description>Ecco - The Tides of Time (Prototype)</description>
+		<description>Ecco - The Tides of Time (USA, Prototype)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -7329,7 +7329,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="ecco2p1" cloneof="ecco2">
-		<description>Ecco - The Tides of Time (Prototype, Alt)</description>
+		<description>Ecco - The Tides of Time (USA, Prototype, Alt)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -7340,7 +7340,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="ecco2p2" cloneof="ecco2">
-		<description>Ecco - The Tides of Time (Prototype, 19940429)</description>
+		<description>Ecco - The Tides of Time (USA, Prototype, 19940429)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -7365,7 +7365,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="ecco2px11" cloneof="ecco2">
-		<description>Ecco - The Tides of Time (Prototype X11, 19940413)</description>
+		<description>Ecco - The Tides of Time (USA, Prototype X11, 19940413)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -7946,7 +7946,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Electronic Arts Victor</publisher>
 		<info name="serial" value="EM20029"/>
 		<info name="release" value="19940527"/>
-		<info name="alt_title" value="F-117ステルスオペレーション：ナイトストーム"/>
+		<info name="alt_title" value="F-117ステルスオペレーション:ナイトストーム"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="f-117 stealth - operation night storm (jpn).bin" size="2097152" crc="ea6e421a" sha1="ded62d63676664c5b9e8a38e36ce1d2659d1c8d6" offset="000000" loadflag="load16_word_swap" />
@@ -8226,7 +8226,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Takara</publisher>
 		<info name="serial" value="T-146023"/>
 		<info name="release" value="19940624"/>
-		<info name="alt_title" value="餓狼伝説2 —新たなる闘い—"/>
+		<info name="alt_title" value="餓狼伝説2 -新たなる闘い-"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="3145728">
 				<rom name="mpr-16704+mpr-16710.bin" size="3145728" crc="2af4427f" sha1="08eadaf6177d884b8e1fb66c5949850f10c5d77c" offset="000000" loadflag="load16_word_swap" />
@@ -8564,7 +8564,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Toaplan</publisher>
 		<info name="serial" value="T-40013"/>
 		<info name="release" value="19901102"/>
-		<info name="alt_title" value="鮫！鮫！鮫！"/>
+		<info name="alt_title" value="鮫!鮫!鮫!"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="mpr-13301.bin" size="524288" crc="77bbd841" sha1="b0d2552c5aae75dbe2d63600c0dbd64868c2f2c5" offset="000000" loadflag="load16_word_swap" />
@@ -9309,7 +9309,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	<software name="goofy">
 		<description>Goofy's Hysterical History Tour (USA)</description>
 		<year>1993</year>
-		<publisher>	Absolute Entertainment</publisher>
+		<publisher>Absolute Entertainment</publisher>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="goofy's hysterical history tour (usa).bin" size="1048576" crc="4e1cc833" sha1="caaeebc269b3b68e2a279864c44d518976d67d8b" offset="000000" loadflag="load16_word_swap" />
@@ -9910,7 +9910,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4075"/>
 		<info name="release" value="19920807"/>
-		<info name="alt_title" value="ひょっこりひょうたん島 大統領をめざせ！"/>
+		<info name="alt_title" value="ひょっこりひょうたん島 大統領をめざせ!"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="hyokkori hyoutanjima - daitouryou o mezase! (jpn).bin" size="524288" crc="72253bdb" sha1="32a73559f84dbab5460bfd1e266acfc8f4391ae4" offset="000000" loadflag="load16_word_swap" />
@@ -10107,7 +10107,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 	</software>
 
 	<software name="instchp1" cloneof="instch">
-		<description>Instruments of Chaos Starring Young Indiana Jones (USA, Prototype)</description>
+		<description>Instruments of Chaos Starring Young Indiana Jones (Prototype)</description>
 		<year>1994</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="megadriv_cart">
@@ -11106,7 +11106,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Ma-Ba</publisher>
 		<info name="serial" value="T-16013"/>
 		<info name="release" value="19921023"/>
-		<info name="alt_title" value="機動警察パトレイバー 98式起動せよ！"/>
+		<info name="alt_title" value="機動警察パトレイバー 98式起動せよ!"/>
 		<part name="cart" interface="megadriv_cart">
 			<feature name="pcb_type" value="SEGA-SRAM" />
 			<dataarea name="rom" size="524288">
@@ -12116,7 +12116,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4041"/>
 		<info name="release" value="19901215"/>
-		<info name="alt_title" value="まじかるハットのぶっとびターボ！大冒険"/>
+		<info name="alt_title" value="まじかるハットのぶっとびターボ!大冒険"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="magical hat no buttobi turbo! daibouken (jpn).bin" size="524288" crc="e43e853d" sha1="1a741125a80ba9207c74a32e5b21dbb347c3c34a" offset="000000" loadflag="load16_word_swap" />
@@ -12158,7 +12158,7 @@ better to use names related to the actual pcb, possibly even reverting to use th
 		<publisher>NCS</publisher>
 		<info name="serial" value="T-25053"/>
 		<info name="release" value="19910322"/>
-		<info name="alt_title" value="魔物ハンター妖子 －第7の警鐘－"/>
+		<info name="alt_title" value="魔物ハンター妖子 -第7の警鐘-"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="mamono hunter youko - dai 7 no keishou (jpn).bin" size="524288" crc="10bb359b" sha1="5c8c600ca7468871b0ef301fd82a1909aa8b3b10" offset="000000" loadflag="load16_word_swap" />
@@ -14147,6 +14147,47 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		</part>
 	</software>
 
+	<software name="nbajamjp" cloneof="nbajam">
+		<description>NBA Jam (Jpn, Prototype)</description>
+		<year>1994</year>
+		<publisher>Acclaim Japan</publisher>
+		<info name="alt_title" value="NBA ジャム"/>
+		<part name="cart" interface="megadriv_cart">
+			<feature name="pcb_type" value="NBAJAM" />
+			<feature name="pcb" value="171-6568C" />
+			<feature name="pcb2" value="837-9952" />
+			<feature name="ic1" value="27c4000" />
+			<feature name="ic2" value="27c4000" />
+			<feature name="ic3" value="27c4000" />
+			<feature name="ic4" value="27c4000" />
+			<feature name="ic5" value="Empty Socket" />
+			<feature name="ic6" value="Empty Socket" />
+			<feature name="ic7" value="Empty Socket" />
+			<feature name="ic8" value="Empty Socket" />
+			<feature name="ic9" value="Km62256bgl-10L SRAM" />
+			<feature name="ic10" value="Fm1208s-250sc FM RAM" />
+			<feature name="ic11" value="Sega 315-5557" />
+			<feature name="ic12" value="x24c01 eeprom" />
+			<feature name="ic13" value="74ls245" />
+			<feature name="ic14" value="74ls245" />
+			<feature name="ic15" value="74hc02" />
+			<feature name="ic16" value="74hc74" />
+			<feature name="ic17" value="74hc32" />
+			<feature name="ic18" value="74hc139" />
+			<feature name="ic19" value="74hc139" />
+			<feature name="ic20" value="74hc157" />
+			<feature name="ic21" value="74hc157" />
+			<feature name="ic22" value="33726B battery controller?" />
+			<feature name="ic23" value="74hc32" />
+			<dataarea name="rom" size="2097152">
+				<rom name="jamod0.ic1" size="524288" crc="8506240d" sha1="d452094ef243df6acb1cc4b6d579fa4cae0907be" offset="0x000000" loadflag="load16_byte" />
+				<rom name="jamev0.ic2" size="524288" crc="2e597f94" sha1="6b08454f1dd88e71ca67ebd7d9616151b8ab20cf" offset="0x000001" loadflag="load16_byte" />
+				<rom name="jamod1.ic3" size="524288" crc="762c4fac" sha1="fd3d4eef44a5792bc864baad72ac6c51c4c36e9b" offset="0x100000" loadflag="load16_byte" />
+				<rom name="jamev1.ic4" size="524288" crc="8735b9f6" sha1="480346cc0980c183f70c674b8ef7d89a4d603cc3" offset="0x100001" loadflag="load16_byte" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="nbajamte">
 		<description>NBA Jam Tournament Edition (World)</description>
 		<year>1995</year>
@@ -15145,7 +15186,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4522"/>
 		<info name="release" value="19910406"/>
-		<info name="alt_title" value="日刊スポーツ プロ野球ＶＡＮ"/>
+		<info name="alt_title" value="日刊スポーツ プロ野球VAN"/>
 		<part name="cart" interface="megadriv_cart">
 			<feature name="pcb_type" value="SEGA-SRAM" />
 			<dataarea name="rom" size="524288">
@@ -18100,7 +18141,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Electronic Arts Victor</publisher>
 		<info name="serial" value="EM20008"/>
 		<info name="release" value="19930429"/>
-		<info name="alt_title" value="ゾウ！ゾウ！ゾウ！ レスキュー大作戦"/>
+		<info name="alt_title" value="ゾウ!ゾウ!ゾウ! レスキュー大作戦"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="524288">
 				<rom name="zou! zou! zou! rescue daisakusen (jpn).bin" size="524288" crc="1a761e67" sha1="0cf2e2a7f00fb3d7a1a6424152693138ece586f1" offset="000000" loadflag="load16_word_swap" />
@@ -18878,7 +18919,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-5506"/>
 		<info name="release" value="19910329"/>
-		<info name="alt_title" value="シャイニング＆ザ・ダクネス"/>
+		<info name="alt_title" value="シャイニング&amp;ザ・ダクネス"/>
 		<part name="cart" interface="megadriv_cart">
 			<feature name="pcb_type" value="SEGA-SRAM" />
 			<dataarea name="rom" size="1048576">
@@ -19143,7 +19184,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Bandai</publisher>
 		<info name="serial" value="T-133023"/>
 		<info name="release" value="19950428"/>
-		<info name="alt_title" value="テレビアニメ・スラムダンク強豪真っ向対決！"/>
+		<info name="alt_title" value="テレビアニメ・スラムダンク強豪真っ向対決!"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="from tv animation slam dunk - kyougou makkou taiketsu! (jpn).bin" size="2097152" crc="cdf5678f" sha1="7161a12c2a477cff8e29fa51403eea12c03180c7" offset="000000" loadflag="load16_word_swap" />
@@ -19350,7 +19391,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4124 (JPN)"/>
 		<info name="release" value="19941018 (JPN)"/>
-		<info name="alt_title" value="ソニック＆ナックルズ"/>
+		<info name="alt_title" value="ソニック&amp;ナックルズ"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="sonic &amp; knuckles (world).bin" size="2097152" crc="0658f691" sha1="88d6499d874dcb5721ff58d76fe1b9af811192e3" offset="000000" loadflag="load16_word_swap" />
@@ -20187,7 +20228,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Acclaim Entertainment</publisher>
 		<info name="serial" value="T-81256-50"/>
 		<info name="release" value="19950526 (JPN)"/>
-		<info name="alt_title" value="スパイダーマン＆ベノム カーネイジの逆襲"/>
+		<info name="alt_title" value="スパイダーマン&amp;ベノム カーネイジの逆襲"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="spider-man and venom - maximum carnage (world).bin" size="2097152" crc="8fa0b6e6" sha1="43624536cbebd65232abe4af042c0fa4b0d9e3b7" offset="000000" loadflag="load16_word_swap" />
@@ -22784,7 +22825,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4066 (JPN)"/>
 		<info name="release" value="19920313 (JPN)"/>
-		<info name="alt_title" value="トージャム＆アール"/>
+		<info name="alt_title" value="トージャム&amp;アール"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="mpr-14236a.bin" size="1048576" crc="7a588f4b" sha1="85e8d0a4fac591b25b77c35680ac4175976f251b" offset="000000" loadflag="load16_word_swap" />
@@ -22798,7 +22839,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4066 (JPN)"/>
 		<info name="release" value="19920313 (JPN)"/>
-		<info name="alt_title" value="トージャム＆アール"/>
+		<info name="alt_title" value="トージャム&amp;アール"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="toe jam &amp; earl (world).bin" size="1048576" crc="d1b36786" sha1="7f82d8b57fff88bdca5d8aff85b01e231dc1239a" offset="000000" loadflag="load16_word_swap" />
@@ -25033,7 +25074,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<publisher>Sega</publisher>
 		<info name="serial" value="G-4080"/>
 		<info name="release" value="19921218"/>
-		<info name="alt_title" value="ワールド オブ イリュージョン アイラブ ミッキー＆ドナルド - ふしぎなマジックボックス"/>
+		<info name="alt_title" value="ワールド オブ イリュージョン アイラブ ミッキー&amp;ドナルド - ふしぎなマジックボックス"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="world of illusion - fushigi na magic box (jpn).bin" size="1048576" crc="cb9ee238" sha1="c79935fdeb680a1a2e76db1aef2c6897e6ee8e4d" offset="000000" loadflag="load16_word_swap" />
@@ -25045,7 +25086,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		<description>World of Illusion - Fushigi na Magic Box (Jpn, Prototype)</description>
 		<year>1992</year>
 		<publisher>Sega</publisher>
-		<info name="alt_title" value="ワールド オブ イリュージョン アイラブ ミッキー＆ドナルド - ふしぎなマジックボックス"/>
+		<info name="alt_title" value="ワールド オブ イリュージョン アイラブ ミッキー&amp;ドナルド - ふしぎなマジックボックス"/>
 		<part name="cart" interface="megadriv_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="world of illusion - fushigi na magic box (jpn) (beta).bin" size="1048576" crc="577f680f" sha1="c3d721dc3d6660156f28728d729a2c0d4bb23fdf" offset="000000" loadflag="load16_word_swap" />
@@ -28069,7 +28110,7 @@ Notice that these are not working on real hardware due to bugged code with VDP i
 		</part>
 	</software>
 
-	<software name="arttool">
+	<software name="arttool" supported="no">
 		<description>Art Tool</description>
 		<year>199?</year>
 		<publisher>&lt;unknown&gt;</publisher>

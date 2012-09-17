@@ -83,7 +83,7 @@ public:
     m_fdc(*this, "wd1772")
     { }
 
-    required_device<device_t> m_maincpu;
+    required_device<m6809e_device> m_maincpu;
     required_device<wd1772_t> m_fdc;
 
 	virtual void machine_reset();
@@ -94,6 +94,7 @@ public:
 
     void fdc_intrq_w(bool state);
 	DECLARE_DRIVER_INIT(mirage);
+	virtual void video_start();
 };
 
 const floppy_format_type mirage_state::floppy_formats[] = {
@@ -107,7 +108,7 @@ SLOT_INTERFACE_END
 
 void mirage_state::fdc_intrq_w(bool state)
 {
-    device_set_input_line(m_maincpu, INPUT_LINE_NMI, state);
+    m_maincpu->set_input_line(INPUT_LINE_NMI, state);
 }
 
 static void mirage_doc_irq(device_t *device, int state)
@@ -119,7 +120,7 @@ static UINT8 mirage_adc_read(device_t *device)
 	return 0x80;
 }
 
-static VIDEO_START( mirage )
+void mirage_state::video_start()
 {
 }
 
@@ -249,7 +250,6 @@ static MACHINE_CONFIG_START( mirage, mirage_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_VIDEO_START(mirage)
 	MCFG_SCREEN_UPDATE_STATIC(mirage)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)

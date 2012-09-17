@@ -160,6 +160,9 @@ public:
 	UINT8 mz2500_cg_latch_compare();
 	UINT8 mz2500_ram_read(UINT16 offset, UINT8 bank_num);
 	void mz2500_ram_write(UINT16 offset, UINT8 data, UINT8 bank_num);
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
@@ -177,7 +180,7 @@ static const UINT8 bank_reset_val[2][8] =
 
 /* video stuff*/
 
-static VIDEO_START( mz2500 )
+void mz2500_state::video_start()
 {
 }
 
@@ -901,9 +904,9 @@ void mz2500_state::mz2500_ram_write(UINT16 offset, UINT8 data, UINT8 bank_num)
 				UINT8 *pcg_ram = memregion("pcg")->base();
 				pcg_ram[offset] = data;
 				if((offset & 0x1800) == 0x0000)
-					gfx_element_mark_dirty(machine().gfx[3], (offset) >> 3);
+					machine().gfx[3]->mark_dirty((offset) >> 3);
 				else
-					gfx_element_mark_dirty(machine().gfx[4], (offset & 0x7ff) >> 3);
+					machine().gfx[4]->mark_dirty((offset & 0x7ff) >> 3);
 			}
 			break;
 		}
@@ -1210,7 +1213,7 @@ READ8_MEMBER(mz2500_state::mz2500_rom_r)
 	UINT8 *rom = memregion("rom")->base();
 	UINT8 res;
 
-	m_lrom_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	m_lrom_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	m_rom_index = (m_rom_index & 0xffff00) | (m_lrom_index & 0xff);
 
@@ -1221,7 +1224,7 @@ READ8_MEMBER(mz2500_state::mz2500_rom_r)
 
 WRITE8_MEMBER(mz2500_state::mz2500_rom_w)
 {
-	m_hrom_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	m_hrom_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	m_rom_index = (data << 8) | (m_rom_index & 0x0000ff) | ((m_hrom_index & 0xff)<<16);
 	//printf("%02x\n",data);
@@ -1233,7 +1236,7 @@ WRITE8_MEMBER(mz2500_state::palette4096_io_w)
 	UINT8 pal_index;
 	UINT8 pal_entry;
 
-	pal_index = cpu_get_reg(machine().device("maincpu"), Z80_B);
+	pal_index = machine().device("maincpu")->state().state_int(Z80_B);
 	pal_entry = (pal_index & 0x1e) >> 1;
 
 	if(pal_index & 1)
@@ -1440,14 +1443,14 @@ WRITE8_MEMBER(mz2500_state::mz2500_kanji_w)
 
 READ8_MEMBER(mz2500_state::rp5c15_8_r)
 {
-	UINT8 rtc_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	UINT8 rtc_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	return m_rtc->read(space, rtc_index);
 }
 
 WRITE8_MEMBER(mz2500_state::rp5c15_8_w)
 {
-	UINT8 rtc_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	UINT8 rtc_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	m_rtc->write(space, rtc_index, data);
 }
@@ -1458,7 +1461,7 @@ READ8_MEMBER(mz2500_state::mz2500_emm_data_r)
 	UINT8 *emm_ram = memregion("emm")->base();
 	UINT8 emm_lo_index;
 
-	emm_lo_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	emm_lo_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	m_emm_offset = (m_emm_offset & 0xffff00) | (emm_lo_index & 0xff);
 
@@ -1472,7 +1475,7 @@ WRITE8_MEMBER(mz2500_state::mz2500_emm_addr_w)
 {
 	UINT8 emm_hi_index;
 
-	emm_hi_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	emm_hi_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	m_emm_offset = ((emm_hi_index & 0xff) << 16) | ((data & 0xff) << 8) | (m_emm_offset & 0xff);
 }
@@ -1482,7 +1485,7 @@ WRITE8_MEMBER(mz2500_state::mz2500_emm_data_w)
 	UINT8 *emm_ram = memregion("emm")->base();
 	UINT8 emm_lo_index;
 
-	emm_lo_index = (cpu_get_reg(machine().device("maincpu"), Z80_B));
+	emm_lo_index = (machine().device("maincpu")->state().state_int(Z80_B));
 
 	m_emm_offset = (m_emm_offset & 0xffff00) | (emm_lo_index & 0xff);
 
@@ -1715,19 +1718,18 @@ static void mz2500_reset(mz2500_state *state, UINT8 type)
 		state->m_bank_val[i] = bank_reset_val[type][i];
 }
 
-static MACHINE_RESET(mz2500)
+void mz2500_state::machine_reset()
 {
-	mz2500_state *state = machine.driver_data<mz2500_state>();
-	UINT8 *RAM = machine.root_device().memregion("maincpu")->base();
-	UINT8 *IPL = state->memregion("ipl")->base();
+	UINT8 *RAM = machine().root_device().memregion("maincpu")->base();
+	UINT8 *IPL = memregion("ipl")->base();
 	UINT32 i;
 
-	mz2500_reset(state, IPL_RESET);
+	mz2500_reset(this, IPL_RESET);
 
-	//state->m_irq_vector[0] = 0xef; /* RST 28h - vblank */
+	//m_irq_vector[0] = 0xef; /* RST 28h - vblank */
 
-	state->m_text_col_size = 0;
-	state->m_text_font_reg = 0;
+	m_text_col_size = 0;
+	m_text_font_reg = 0;
 
 	/* copy IPL to its natural bank ROM/RAM position */
 	for(i=0;i<0x8000;i++)
@@ -1742,16 +1744,16 @@ static MACHINE_RESET(mz2500)
 
 	/* disable IRQ */
 	for(i=0;i<4;i++)
-		state->m_irq_mask[i] = 0;
+		m_irq_mask[i] = 0;
 
-	state->m_kanji_bank = 0;
+	m_kanji_bank = 0;
 
-	state->m_cg_clear_flag = 0;
+	m_cg_clear_flag = 0;
 
-	beep_set_frequency(machine.device(BEEPER_TAG),4096);
-	beep_set_state(machine.device(BEEPER_TAG),0);
+	beep_set_frequency(machine().device(BEEPER_TAG),4096);
+	beep_set_state(machine().device(BEEPER_TAG),0);
 
-//  state->m_monitor_type = machine.root_device().ioport("DSW1")->read() & 0x40 ? 1 : 0;
+//  m_monitor_type = machine().root_device().ioport("DSW1")->read() & 0x40 ? 1 : 0;
 }
 
 static const gfx_layout mz2500_cg_layout =
@@ -1823,7 +1825,7 @@ static INTERRUPT_GEN( mz2500_vbl )
 {
 	mz2500_state *state = device->machine().driver_data<mz2500_state>();
 	if(state->m_irq_mask[0])
-		device_set_input_line_and_vector(device, 0, HOLD_LINE, state->m_irq_vector[0]);
+		device->execute().set_input_line_and_vector(0, HOLD_LINE, state->m_irq_vector[0]);
 
 	state->m_cg_clear_flag = 0;
 }
@@ -1875,7 +1877,7 @@ static WRITE8_DEVICE_HANDLER( mz2500_portc_w )
 	{
 		mz2500_reset(state, WRAM_RESET);
 		/* correct? */
-		cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_RESET, PULSE_LINE);
+		device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	/* bit 2 is speaker */
@@ -1997,16 +1999,16 @@ static const ym2203_interface ym2203_interface_1 =
 	DEVCB_NULL
 };
 
-static PALETTE_INIT( mz2500 )
+void mz2500_state::palette_init()
 {
 	int i;
 
 	for(i=0;i<0x200;i++)
-		palette_set_color_rgb(machine, i,pal1bit(0),pal1bit(0),pal1bit(0));
+		palette_set_color_rgb(machine(), i,pal1bit(0),pal1bit(0),pal1bit(0));
 
 	/* set up 8 colors (PCG) */
 	for(i=0;i<8;i++)
-		palette_set_color_rgb(machine, i+8,pal1bit((i & 2)>>1),pal1bit((i & 4)>>2),pal1bit((i & 1)>>0));
+		palette_set_color_rgb(machine(), i+8,pal1bit((i & 2)>>1),pal1bit((i & 4)>>2),pal1bit((i & 1)>>0));
 
 	/* set up 16 colors (PCG / CG) */
 
@@ -2031,7 +2033,7 @@ static PALETTE_INIT( mz2500 )
 			bit2 = i & 0x40 ? 4 : 0;
 			g = bit0|bit1|bit2;
 
-			palette_set_color_rgb(machine, i+0x100,pal3bit(r),pal3bit(g),pal3bit(b));
+			palette_set_color_rgb(machine(), i+0x100,pal3bit(r),pal3bit(g),pal3bit(b));
 		}
 	}
 }
@@ -2042,7 +2044,7 @@ static WRITE_LINE_DEVICE_HANDLER( pit8253_clk0_irq )
 {
 	mz2500_state *drvstate = device->machine().driver_data<mz2500_state>();
 	if(drvstate->m_irq_mask[1]/* && state & 1*/)
-		cputag_set_input_line_and_vector(device->machine(), "maincpu", 0, HOLD_LINE,drvstate->m_irq_vector[1]);
+		device->machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,drvstate->m_irq_vector[1]);
 }
 
 static const struct pit8253_config mz2500_pit8253_intf =
@@ -2071,7 +2073,7 @@ static WRITE_LINE_DEVICE_HANDLER( mz2500_rtc_alarm_irq )
 	//mz2500_state *drvstate = device->machine().driver_data<mz2500_state>();
 	/* TODO: doesn't work yet */
 //  if(drvstate->m_irq_mask[3] && state & 1)
-//      cputag_set_input_line_and_vector(device, "maincpu", 0, HOLD_LINE,drvstate->m_irq_vector[3]);
+//      device.device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,drvstate->m_irq_vector[3]);
 }
 
 static RP5C15_INTERFACE( rtc_intf )
@@ -2097,7 +2099,6 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
     MCFG_CPU_IO_MAP(mz2500_io)
 	MCFG_CPU_VBLANK_INT("screen", mz2500_vbl)
 
-    MCFG_MACHINE_RESET(mz2500)
 
 	MCFG_I8255_ADD( "i8255_0", ppi8255_intf )
 	MCFG_Z80PIO_ADD( "z80pio_1", 6000000, mz2500_pio1_intf )
@@ -2115,11 +2116,9 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
     MCFG_SCREEN_UPDATE_STATIC(mz2500)
 
 	MCFG_PALETTE_LENGTH(0x200)
-	MCFG_PALETTE_INIT(mz2500)
 
 	MCFG_GFXDECODE(mz2500)
 
-    MCFG_VIDEO_START(mz2500)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 

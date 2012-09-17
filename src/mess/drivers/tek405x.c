@@ -64,7 +64,7 @@ void tek4051_state::update_irq()
 {
 	int state = m_kb_pia_irqa | m_kb_pia_irqb | m_x_pia_irqa | m_x_pia_irqb | m_gpib_pia_irqa | m_gpib_pia_irqb | m_com_pia_irqa | m_com_pia_irqb | m_acia_irq;
 
-	device_set_input_line(m_maincpu, INPUT_LINE_IRQ0, state);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, state);
 }
 
 
@@ -76,7 +76,7 @@ void tek4051_state::update_nmi()
 {
 	int state = m_y_pia_irqa | m_y_pia_irqb | m_tape_pia_irqa | m_tape_pia_irqb;
 
-	device_set_input_line(m_maincpu, INPUT_LINE_NMI, state);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, state);
 }
 
 
@@ -117,7 +117,7 @@ static TIMER_DEVICE_CALLBACK( keyboard_tick )
 
 void tek4051_state::bankswitch(UINT8 data)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	//int d = data & 0x07;
 	int lbs = (data >> 3) & 0x07;
@@ -1167,7 +1167,7 @@ static IEEE488_INTERFACE( ieee488_intf )
 
 void tek4051_state::machine_start()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	// configure RAM
 	switch (m_ram->size())

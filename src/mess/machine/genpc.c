@@ -60,7 +60,7 @@ WRITE8_DEVICE_HANDLER(pc_page_w)
 
 WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dma_hrq_changed )
 {
-	device_set_input_line(m_maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
 	m_dma8237->hack_w(state);
@@ -69,6 +69,8 @@ WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dma_hrq_changed )
 
 READ8_MEMBER( ibm5160_mb_device::pc_dma_read_byte )
 {
+	if(m_dma_channel == -1)
+		return 0xff;
 	address_space *spaceio = m_maincpu->space(AS_PROGRAM);
 	offs_t page_offset = (((offs_t) m_dma_offset[m_dma_channel]) << 16) & 0x0F0000;
 	return spaceio->read_byte( page_offset + offset);
@@ -77,6 +79,8 @@ READ8_MEMBER( ibm5160_mb_device::pc_dma_read_byte )
 
 WRITE8_MEMBER( ibm5160_mb_device::pc_dma_write_byte )
 {
+	if(m_dma_channel == -1)
+		return;
 	address_space *spaceio = m_maincpu->space(AS_PROGRAM);
 	offs_t page_offset = (((offs_t) m_dma_offset[m_dma_channel]) << 16) & 0x0F0000;
 
@@ -127,13 +131,29 @@ WRITE8_MEMBER( ibm5160_mb_device::pc_dma8237_0_dack_w )
 
 WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dma8237_out_eop )
 {
-	return m_isabus->eop_w(state == ASSERT_LINE ? 0 : 1 );
+	m_cur_eop = state == ASSERT_LINE;
+	if(m_dma_channel != -1 && m_cur_eop)
+		m_isabus->eop_w(m_dma_channel, m_cur_eop ? ASSERT_LINE : CLEAR_LINE );
 }
 
-WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack0_w ) { if (!state) m_dma_channel = 0; }
-WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack1_w ) { if (!state) m_dma_channel = 1; }
-WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack2_w ) { if (!state) m_dma_channel = 2; }
-WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack3_w ) { if (!state) m_dma_channel = 3; }
+void ibm5160_mb_device::pc_select_dma_channel(int channel, bool state)
+{
+	if(!state) {
+		m_dma_channel = channel;
+		if(m_cur_eop)
+			m_isabus->eop_w(channel, ASSERT_LINE );
+
+	} else if(m_dma_channel == channel) {
+		m_dma_channel = -1;
+		if(m_cur_eop)
+			m_isabus->eop_w(channel, CLEAR_LINE );
+	}
+}
+
+WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack0_w ) { pc_select_dma_channel(0, state); }
+WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack1_w ) { pc_select_dma_channel(1, state); }
+WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack2_w ) { pc_select_dma_channel(2, state); }
+WRITE_LINE_MEMBER( ibm5160_mb_device::pc_dack3_w ) { pc_select_dma_channel(3, state); }
 
 I8237_INTERFACE( pc_dma8237_config )
 {
@@ -550,51 +570,51 @@ ibm5160_mb_device::ibm5160_mb_device(const machine_config &mconfig, const char *
 
 void ibm5160_mb_device::install_device(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_device_func rhandler, const char* rhandler_name, write8_device_func whandler, const char *whandler_name)
 {
-	int buswidth = machine().firstcpu->memory().space_config(AS_IO)->m_databus_width;
+	int buswidth = machine().firstcpu->space_config(AS_IO)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			m_maincpu->memory().space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, rhandler, rhandler_name, whandler, whandler_name, 0);
+			m_maincpu->space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, rhandler, rhandler_name, whandler, whandler_name, 0);
 			break;
 		case 16:
-			m_maincpu->memory().space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, rhandler, rhandler_name, whandler, whandler_name,0xffff);
+			m_maincpu->space(AS_IO)->install_legacy_readwrite_handler(*dev, start, end, mask, mirror, rhandler, rhandler_name, whandler, whandler_name,0xffff);
 			break;
 		default:
-			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
+			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported\n", buswidth);
 			break;
 	}
 }
 
 void ibm5160_mb_device::install_device_write(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, write8_device_func whandler, const char *whandler_name)
 {
-	int buswidth = machine().firstcpu->memory().space_config(AS_IO)->m_databus_width;
+	int buswidth = machine().firstcpu->space_config(AS_IO)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			m_maincpu->memory().space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, whandler, whandler_name,0);
+			m_maincpu->space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, whandler, whandler_name,0);
 			break;
 		case 16:
-			m_maincpu->memory().space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, whandler, whandler_name, 0xffff);
+			m_maincpu->space(AS_IO)->install_legacy_write_handler(*dev, start, end, mask, mirror, whandler, whandler_name, 0xffff);
 			break;
 		default:
-			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
+			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported\n", buswidth);
 			break;
 	}
 }
 
 void ibm5160_mb_device::install_device(offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_delegate rhandler, write8_delegate whandler)
 {
-	int buswidth = m_maincpu->memory().space_config(AS_IO)->m_databus_width;
+	int buswidth = m_maincpu->space_config(AS_IO)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			m_maincpu->memory().space(AS_IO)->install_readwrite_handler(start, end, mask, mirror, rhandler, whandler, 0);
+			m_maincpu->space(AS_IO)->install_readwrite_handler(start, end, mask, mirror, rhandler, whandler, 0);
 			break;
 		case 16:
-			m_maincpu->memory().space(AS_IO)->install_readwrite_handler(start, end, mask, mirror, rhandler, whandler, 0xffff);
+			m_maincpu->space(AS_IO)->install_readwrite_handler(start, end, mask, mirror, rhandler, whandler, 0xffff);
 			break;
 		default:
-			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
+			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported\n", buswidth);
 			break;
 	}
 }
@@ -611,17 +631,17 @@ void ibm5160_mb_device::device_start()
 	install_device(m_pit8253, 0x0040, 0x0043, 0, 0, FUNC(pit8253_r), FUNC(pit8253_w) );
 
 	//  install_device(m_ppi8255, 0x0060, 0x0063, 0, 0, FUNC(i8255a_r), FUNC(i8255a_w) );
-	int buswidth = machine().firstcpu->memory().space_config(AS_IO)->m_databus_width;
+	int buswidth = machine().firstcpu->space_config(AS_IO)->m_databus_width;
 	switch(buswidth)
 	{
 		case 8:
-			m_maincpu->memory().space(AS_IO)->install_readwrite_handler(0x0060, 0x0063, 0, 0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi8255), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi8255), 0);
+			m_maincpu->space(AS_IO)->install_readwrite_handler(0x0060, 0x0063, 0, 0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi8255), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi8255), 0);
 			break;
 		case 16:
-			m_maincpu->memory().space(AS_IO)->install_readwrite_handler(0x0060, 0x0063, 0, 0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi8255), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi8255), 0xffff);
+			m_maincpu->space(AS_IO)->install_readwrite_handler(0x0060, 0x0063, 0, 0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi8255), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi8255), 0xffff);
 			break;
 		default:
-			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported", buswidth);
+			fatalerror("IBM5160_MOTHERBOARD: Bus width %d not supported\n", buswidth);
 			break;
 	}
 
@@ -645,13 +665,14 @@ IRQ_CALLBACK(ibm5160_mb_device::pc_irq_callback)
 
 void ibm5160_mb_device::device_reset()
 {
-	device_set_irq_callback(m_maincpu, pc_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(pc_irq_callback);
 
 	m_u73_q2 = 0;
 	m_out1 = 2; // initial state of pit output is undefined
 	m_pc_spkrdata = 0;
 	m_pc_input = 0;
-	m_dma_channel = 0;
+	m_dma_channel = -1;
+	m_cur_eop = false;
 	memset(m_dma_offset,0,sizeof(m_dma_offset));
 	m_ppi_portc_switch_high = 0;
 	m_ppi_speaker = 0;

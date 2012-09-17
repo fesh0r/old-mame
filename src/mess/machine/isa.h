@@ -173,12 +173,12 @@ public:
 
 	UINT8 dack_r(int line);
 	void dack_w(int line,UINT8 data);
-	void eop_w(int state);
+	void eop_w(int channels, int state);
 
 	void nmi();
 	void set_nmi_state(bool enabled) { m_nmi_enabled = enabled; }
 
-	void set_dma_channel(UINT8 channel, device_isa8_card_interface *dev, bool do_eop);
+	virtual void set_dma_channel(UINT8 channel, device_isa8_card_interface *dev, bool do_eop);
 protected:
 	void install_space(address_spacenum spacenum, device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_device_func rhandler, const char* rhandler_name, write8_device_func whandler, const char *whandler_name);
 	void install_space(address_spacenum spacenum, offs_t start, offs_t end, offs_t mask, offs_t mirror, read8_space_func rhandler, const char* rhandler_name, write8_space_func whandler, const char *whandler_name);
@@ -190,7 +190,7 @@ protected:
 	virtual void device_config_complete();
 
 	// internal state
-	device_t   *m_maincpu;
+	cpu_device   *m_maincpu;
 
 	devcb_resolved_write_line	m_out_irq2_func;
 	devcb_resolved_write_line	m_out_irq3_func;
@@ -294,6 +294,7 @@ public:
 
 	void install16_device(device_t *dev, offs_t start, offs_t end, offs_t mask, offs_t mirror, read16_device_func rhandler, const char* rhandler_name, write16_device_func whandler, const char *whandler_name);
 	void install16_device(offs_t start, offs_t end, offs_t mask, offs_t mirror, read16_delegate rhandler, write16_delegate whandler);
+	void install16_device(offs_t start, offs_t end, offs_t mask, offs_t mirror, read16_space_func rhandler, const char* rhandler_name, write16_space_func whandler, const char *whandler_name);
 
 	DECLARE_WRITE_LINE_MEMBER( irq10_w );
 	DECLARE_WRITE_LINE_MEMBER( irq11_w );
@@ -305,6 +306,9 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( drq5_w );
 	DECLARE_WRITE_LINE_MEMBER( drq6_w );
 	DECLARE_WRITE_LINE_MEMBER( drq7_w );
+
+	UINT16 dack16_r(int line);
+	void dack16_w(int line,UINT16 data);
 
 protected:
 	// device-level overrides
@@ -339,6 +343,8 @@ public:
 	// construction/destruction
 	device_isa16_card_interface(const machine_config &mconfig, device_t &device);
 	virtual ~device_isa16_card_interface();
+	virtual UINT16 dack16_r(int line);
+	virtual void dack16_w(int line,UINT16 data);
 
 	void set_isa_device();
 	isa16_device  *m_isa;

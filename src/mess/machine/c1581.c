@@ -260,15 +260,22 @@ WRITE8_MEMBER( base_c1581_device::cia_pb_w )
 	m_atn_ack = BIT(data, 4);
 
 	// fast serial direction
-	m_fast_ser_dir = BIT(data, 5);
+	int fast_ser_dir = BIT(data, 5);
 
-	set_iec_data();
-	set_iec_srq();
+	if (m_fast_ser_dir != fast_ser_dir)
+	{
+		m_fast_ser_dir = fast_ser_dir;
+
+		set_iec_data();
+		set_iec_srq();
+
+		m_cia->cnt_w(m_fast_ser_dir || m_bus->srq_r());
+		m_cia->sp_w(m_fast_ser_dir || m_bus->data_r());
+	}
 }
 
 static MOS8520_INTERFACE( cia_intf )
 {
-	XTAL_16MHz/8,
 	DEVCB_CPU_INPUT_LINE(M6502_TAG, INPUT_LINE_IRQ0),
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_c1581_device, cnt_w),
@@ -328,7 +335,7 @@ static MACHINE_CONFIG_FRAGMENT( c1581 )
 	MCFG_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
 	MCFG_CPU_PROGRAM_MAP(c1581_mem)
 
-	MCFG_MOS8520_ADD(M8520_TAG, XTAL_16MHz/8, cia_intf)
+	MCFG_MOS8520_ADD(M8520_TAG, XTAL_16MHz/8, 0, cia_intf)
 	MCFG_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ fdc_intf)
 
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, c1581_floppy_interface)
@@ -458,10 +465,7 @@ void base_c1581_device::device_reset()
 
 void base_c1581_device::cbm_iec_srq(int state)
 {
-	if (!m_fast_ser_dir)
-	{
-		m_cia->cnt_w(state);
-	}
+	m_cia->cnt_w(m_fast_ser_dir || state);
 }
 
 
@@ -483,10 +487,7 @@ void base_c1581_device::cbm_iec_atn(int state)
 
 void base_c1581_device::cbm_iec_data(int state)
 {
-	if (!m_fast_ser_dir)
-	{
-		m_cia->sp_w(state);
-	}
+	m_cia->sp_w(m_fast_ser_dir || state);
 }
 
 

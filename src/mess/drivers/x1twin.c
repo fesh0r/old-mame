@@ -53,7 +53,7 @@ ADDRESS_MAP_END
 #if 0
 static ADDRESS_MAP_START( pce_mem , AS_PROGRAM, 8, x1twin_state )
 	AM_RANGE( 0x000000, 0x09FFFF) AM_ROM
-	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000) AM_BASE(&pce_user_ram )
+	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000)
 	AM_RANGE( 0x1FE000, 0x1FE3FF) AM_READWRITE( vdc_0_r, vdc_0_w )
 	AM_RANGE( 0x1FE400, 0x1FE7FF) AM_READWRITE( vce_r, vce_w )
 	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_DEVREADWRITE( "c6280", c6280_r, c6280_w )
@@ -110,7 +110,7 @@ static INPUT_CHANGED( ipl_reset )
 	//address_space *space = field.machine().device("x1_cpu")->memory().space(AS_PROGRAM);
 	x1twin_state *state = field.machine().driver_data<x1twin_state>();
 
-	device_set_input_line(state->m_x1_cpu, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 
 	state->m_ram_bank = 0x00;
 	if(state->m_is_turbo) { state->m_ex_bank = 0x10; }
@@ -122,7 +122,7 @@ static INPUT_CHANGED( nmi_reset )
 {
 	x1twin_state *state = field.machine().driver_data<x1twin_state>();
 
-	device_set_input_line(state->m_x1_cpu, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 INPUT_PORTS_START( x1twin )
@@ -530,8 +530,8 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 
 	MCFG_I8255A_ADD( "ppi8255_0", ppi8255_intf )
 
-	MCFG_MACHINE_START(x1)
-	MCFG_MACHINE_RESET(x1)
+	MCFG_MACHINE_START_OVERRIDE(x1twin_state,x1)
+	MCFG_MACHINE_RESET_OVERRIDE(x1twin_state,x1)
 
 	#if 0
 	MCFG_CPU_ADD("pce_cpu", H6280, PCE_MAIN_CLOCK/3)
@@ -557,11 +557,11 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 
 	MCFG_MC6845_ADD("crtc", H46505, (VDP_CLOCK/48), mc6845_intf) //unknown divider
 	MCFG_PALETTE_LENGTH(0x10+0x1000)
-	MCFG_PALETTE_INIT(x1)
+	MCFG_PALETTE_INIT_OVERRIDE(x1twin_state,x1)
 
 	MCFG_GFXDECODE(x1)
 
-	MCFG_VIDEO_START(x1)
+	MCFG_VIDEO_START_OVERRIDE(x1twin_state,x1)
 
 	MCFG_MB8877_ADD("fdc",x1_mb8877a_interface)
 

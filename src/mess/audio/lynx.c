@@ -81,7 +81,7 @@ AUD_A_RIGHT EQU %00000001
 
 #define LYNX_AUDIO_CHANNELS 4
 
-typedef struct {
+struct LYNX_AUDIO {
     struct {
 		INT8 volume;
 		UINT8 feedback;
@@ -97,10 +97,9 @@ typedef struct {
     UINT16 shifter; // 12-bit
     float ticks;
     int count;
-} LYNX_AUDIO;
+};
 
-typedef struct _lynx_sound_state lynx_sound_state;
-struct _lynx_sound_state
+struct lynx_sound_state
 {
 	sound_stream *mixer_channel;
 	float usec_per_sample;
@@ -115,7 +114,7 @@ INLINE lynx_sound_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == LYNX || device->type() == LYNX2);
-	return (lynx_sound_state *)downcast<legacy_device_base *>(device)->token();
+	return (lynx_sound_state *)downcast<lynx_sound_device *>(device)->token();
 }
 
 static void lynx_audio_reset_channel(LYNX_AUDIO *This)
@@ -501,40 +500,81 @@ static DEVICE_START(lynx2_sound)
 }
 
 
-DEVICE_GET_INFO( lynx_sound )
+const device_type LYNX = &device_creator<lynx_sound_device>;
+
+lynx_sound_device::lynx_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, LYNX, "Mikey", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(lynx_sound_state);			break;
+	m_token = global_alloc_array_clear(UINT8, sizeof(lynx_sound_state));
+}
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(lynx_sound);	break;
-		case DEVINFO_FCT_RESET:							info->start = DEVICE_RESET_NAME(lynx_sound);	break;
+lynx_sound_device::lynx_sound_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, type, name, tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(lynx_sound_state));
+}
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Mikey");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void lynx_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void lynx_sound_device::device_start()
+{
+	DEVICE_START_NAME( lynx_sound )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void lynx_sound_device::device_reset()
+{
+	DEVICE_RESET_NAME( lynx_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void lynx_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
 }
 
 
-DEVICE_GET_INFO( lynx2_sound )
+const device_type LYNX2 = &device_creator<lynx2_sound_device>;
+
+lynx2_sound_device::lynx2_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: lynx_sound_device(mconfig, LYNX2, "Mikey (Lynx II)", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(lynx_sound_state);			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(lynx2_sound);	break;
-		case DEVINFO_FCT_RESET:							info->start = DEVICE_RESET_NAME(lynx_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Mikey (Lynx II)");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(LYNX, lynx_sound);
-DEFINE_LEGACY_SOUND_DEVICE(LYNX2, lynx2_sound);
+void lynx2_sound_device::device_start()
+{
+	DEVICE_START_NAME( lynx2_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void lynx2_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

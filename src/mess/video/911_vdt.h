@@ -19,8 +19,8 @@ enum
 
 GFXDECODE_EXTERN( vdt911 );
 
-typedef enum { char_960, char_1920 } vdt911_screen_size_t;
-typedef enum
+enum vdt911_screen_size_t { char_960, char_1920 };
+enum vdt911_model_t
 {
 	vdt911_model_US,
 	vdt911_model_UK,
@@ -31,19 +31,37 @@ typedef enum
 	vdt911_model_Japanese,	/* Katakana Japanese */
 	/*vdt911_model_Arabic,*//* Arabic */
 	vdt911_model_FrenchWP	/* French word processing */
-} vdt911_model_t;
+};
 
-typedef struct vdt911_init_params_t
+struct vdt911_init_params_t
 {
 	vdt911_screen_size_t screen_size;
 	vdt911_model_t model;
 	void (*int_callback)(running_machine &machine, int state);
-} vdt911_init_params_t;
+};
 
 PALETTE_INIT( vdt911 );
 
 void vdt911_init(running_machine &machine);
-DECLARE_LEGACY_DEVICE(VDT911, vdt911);
+class vdt911_device : public device_t
+{
+public:
+	vdt911_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~vdt911_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type VDT911;
+
 
 #define MCFG_VDT911_VIDEO_ADD(_tag, _intf) \
 	MCFG_DEVICE_ADD(_tag, VDT911, 0) \

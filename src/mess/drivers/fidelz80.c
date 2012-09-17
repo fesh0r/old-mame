@@ -1010,7 +1010,7 @@ void fidelz80_state::machine_reset()
 
 static TIMER_DEVICE_CALLBACK( nmi_timer )
 {
-	cputag_set_input_line(timer.machine(), "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+	timer.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /******************************************************************************
@@ -1087,15 +1087,15 @@ static INPUT_CHANGED( fidelz80_trigger_reset )
 {
 	fidelz80_state *state = field.machine().driver_data<fidelz80_state>();
 
-	device_set_input_line(state->m_maincpu, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_CHANGED( abc_trigger_reset )
 {
 	fidelz80_state *state = field.machine().driver_data<fidelz80_state>();
 
-	device_set_input_line(state->m_maincpu, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
-	device_set_input_line(state->m_i8041, INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	state->m_i8041->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_PORTS_START( fidelz80 )
@@ -1443,5 +1443,5 @@ COMP( 1979, vcc,        0,          0,      vcc,   fidelz80, driver_device, 0,  
 COMP( 1979, vbc,        0,          0,      abc,   abc, driver_device,      0,      "Fidelity Electronics",   "Bridge Challenger (model VBC)",	GAME_NOT_WORKING )
 COMP( 1980, uvc,        vcc,        0,      vcc,   fidelz80, driver_device, 0,      "Fidelity Electronics",   "Advanced Talking Chess Challenger (model UVC)", GAME_NOT_WORKING )
 COMP( 1980, abc,        vbc,        0,      abc,   abc, driver_device,      0,      "Fidelity Electronics",   "Advanced Bridge Challenger (model ABC)", GAME_NOT_WORKING )
-COMP( 1980, vsc,        0,          0,      vsc,   vsc, driver_device,      0,      "Fidelity Electronics",   "Sensory Chess Challenger (model VSC)", GAME_NOT_WORKING )
+COMP( 1980, vsc,        0,          0,      vsc,   vsc, driver_device,      0,      "Fidelity Electronics",   "Sensory Chess Challenger (model VSC)", GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
 

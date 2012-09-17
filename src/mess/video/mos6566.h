@@ -80,16 +80,16 @@
 
 #pragma once
 
-#ifndef __MOS656X__
-#define __MOS656X__
+#ifndef __MOS6566__
+#define __MOS6566__
 
 #include "emu.h"
 
 
 
-/***************************************************************************
-    DEVICE CONFIGURATION MACROS
-***************************************************************************/
+//***************************************************************************
+// DEVICE CONFIGURATION MACROS
+//***************************************************************************
 
 #define MCFG_MOS6566_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
 	MCFG_DEVICE_ADD(_tag, MOS6566, _clock) \
@@ -100,8 +100,7 @@
 	MCFG_SCREEN_REFRESH_RATE(VIC6566_VRETRACERATE) \
 	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES) \
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1) \
-	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos6566_device, screen_update) \
-	MCFG_PALETTE_LENGTH(16)
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos6566_device, screen_update)
 
 #define MCFG_MOS6567_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
 	MCFG_DEVICE_ADD(_tag, MOS6567, _clock) \
@@ -112,8 +111,7 @@
 	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE) \
 	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES) \
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1) \
-	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos6567_device, screen_update) \
-	MCFG_PALETTE_LENGTH(16)
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos6567_device, screen_update)
 
 #define MCFG_MOS8562_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
 	MCFG_DEVICE_ADD(_tag, MOS8562, _clock) \
@@ -124,8 +122,18 @@
 	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE) \
 	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES) \
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1) \
-	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos8562_device, screen_update) \
-	MCFG_PALETTE_LENGTH(16)
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos8562_device, screen_update)
+
+#define MCFG_MOS8564_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
+	MCFG_DEVICE_ADD(_tag, MOS8564, _clock) \
+	MCFG_DEVICE_CONFIG(_config) \
+	MCFG_DEVICE_ADDRESS_MAP(AS_0, _videoram_map) \
+	MCFG_DEVICE_ADDRESS_MAP(AS_1, _colorram_map) \
+	MCFG_SCREEN_ADD(_screen_tag, RASTER) \
+	MCFG_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE) \
+	MCFG_SCREEN_SIZE(VIC6567_COLUMNS, VIC6567_LINES) \
+	MCFG_SCREEN_VISIBLE_AREA(0, VIC6567_VISIBLECOLUMNS - 1, 0, VIC6567_VISIBLELINES - 1) \
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos8564_device, screen_update)
 
 #define MCFG_MOS6569_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
 	MCFG_DEVICE_ADD(_tag, MOS6569, _clock) \
@@ -136,8 +144,7 @@
 	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE) \
 	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES) \
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1) \
-	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos6569_device, screen_update) \
-	MCFG_PALETTE_LENGTH(16)
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos6569_device, screen_update)
 
 #define MCFG_MOS8565_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
 	MCFG_DEVICE_ADD(_tag, MOS8565, _clock) \
@@ -148,8 +155,18 @@
 	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE) \
 	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES) \
 	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1) \
-	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos8565_device, screen_update) \
-	MCFG_PALETTE_LENGTH(16)
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos8565_device, screen_update)
+
+#define MCFG_MOS8566_ADD(_tag, _screen_tag, _clock, _config, _videoram_map, _colorram_map) \
+	MCFG_DEVICE_ADD(_tag, MOS8566, _clock) \
+	MCFG_DEVICE_CONFIG(_config) \
+	MCFG_DEVICE_ADDRESS_MAP(AS_0, _videoram_map) \
+	MCFG_DEVICE_ADDRESS_MAP(AS_1, _colorram_map) \
+	MCFG_SCREEN_ADD(_screen_tag, RASTER) \
+	MCFG_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE) \
+	MCFG_SCREEN_SIZE(VIC6569_COLUMNS, VIC6569_LINES) \
+	MCFG_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1) \
+	MCFG_SCREEN_UPDATE_DEVICE(_tag, mos8566_device, screen_update)
 
 
 #define MOS6566_INTERFACE(_name) \
@@ -158,7 +175,13 @@
 #define MOS6567_INTERFACE(_name) \
 	const mos6566_interface (_name) =
 
+#define MOS8564_INTERFACE(_name) \
+	const mos6566_interface (_name) =
+
 #define MOS6569_INTERFACE(_name) \
+	const mos6566_interface (_name) =
+
+#define MOS8566_INTERFACE(_name) \
 	const mos6566_interface (_name) =
 
 
@@ -254,9 +277,9 @@
 
 
 
-/***************************************************************************
-    TYPE DEFINITIONS
-***************************************************************************/
+//***************************************************************************
+//  TYPE DEFINITIONS
+//***************************************************************************
 
 // ======================> mos6566_interface
 
@@ -295,7 +318,9 @@ public:
 
 	DECLARE_WRITE_LINE_MEMBER( lp_w );
 
-	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT8 bus_r();
+
+	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 protected:
 	enum
@@ -358,7 +383,7 @@ protected:
 
 	UINT16 m_chargenaddr, m_videoaddr, m_bitmapaddr;
 
-	bitmap_ind16 *m_bitmap;
+	bitmap_rgb32 m_bitmap;
 
 	UINT16 m_colors[4], m_spritemulti[4];
 
@@ -367,6 +392,7 @@ protected:
 	UINT8 m_cycle;
 	UINT16 m_raster_x;
 	UINT16 m_graphic_x;
+	UINT8 m_last_data;
 
 	/* convert multicolor byte to background/foreground for sprite collision */
 	UINT16 m_expandx[256];
@@ -451,6 +477,31 @@ public:
     mos8562_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 };
 
+class vic2e_device_interface
+{
+public:
+	vic2e_device_interface() {}
+	virtual ~vic2e_device_interface() {}
+
+    virtual DECLARE_READ_LINE_MEMBER( k0_r ) { return 1; }
+    virtual DECLARE_READ_LINE_MEMBER( k1_r ) { return 1; }
+    virtual DECLARE_READ_LINE_MEMBER( k2_r ) { return 1; }
+};
+
+
+// ======================> mos8564_device
+
+class mos8564_device :  public mos6567_device, public vic2e_device_interface
+{
+public:
+    // construction/destruction
+    mos8564_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+
+    DECLARE_READ_LINE_MEMBER( k0_r );
+    DECLARE_READ_LINE_MEMBER( k1_r );
+    DECLARE_READ_LINE_MEMBER( k2_r );
+};
+
 
 // ======================> mos6569_device
 
@@ -476,12 +527,28 @@ public:
 };
 
 
-// device type definition
+// ======================> mos8566_device
+
+class mos8566_device :  public mos6569_device, public vic2e_device_interface
+{
+public:
+    // construction/destruction
+    mos8566_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+
+    DECLARE_READ_LINE_MEMBER( k0_r );
+    DECLARE_READ_LINE_MEMBER( k1_r );
+    DECLARE_READ_LINE_MEMBER( k2_r );
+};
+
+
+// device type definitions
 extern const device_type MOS6566;
 extern const device_type MOS6567;
 extern const device_type MOS8562;
+extern const device_type MOS8564;
 extern const device_type MOS6569;
 extern const device_type MOS8565;
+extern const device_type MOS8566;
 
 
 

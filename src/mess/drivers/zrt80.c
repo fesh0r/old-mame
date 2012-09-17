@@ -21,8 +21,6 @@
 #include "machine/keyboard.h"
 #include "sound/beep.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define VIDEO_START_MEMBER(name) void name::video_start()
 
 class zrt80_state : public driver_device
 {
@@ -53,7 +51,7 @@ public:
 READ8_MEMBER( zrt80_state::zrt80_10_r )
 {
 	UINT8 ret = m_term_data;
-	cputag_set_input_line(machine(), "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	return ret;
 }
 
@@ -181,13 +179,13 @@ static INPUT_PORTS_START( zrt80 )
 INPUT_PORTS_END
 
 
-MACHINE_RESET_MEMBER( zrt80_state )
+void zrt80_state::machine_reset()
 {
 	beep_set_frequency(m_beep, 800);
 	m_term_data = 0;
 }
 
-VIDEO_START_MEMBER( zrt80_state )
+void zrt80_state::video_start()
 {
 	m_p_chargen = memregion("chargen")->base();
 }
@@ -255,7 +253,7 @@ static const ins8250_interface zrt80_com_interface =
 WRITE8_MEMBER( zrt80_state::kbd_put )
 {
 	m_term_data = data;
-	cputag_set_input_line(machine(), "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static ASCII_KEYBOARD_INTERFACE( keyboard_intf )

@@ -19,6 +19,10 @@ public:
 	a51xx_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag) { }
 
+	virtual void machine_reset();
+	virtual void video_start();
+	DECLARE_MACHINE_RESET(a5130);
+	DECLARE_VIDEO_START(a5130);
 };
 
 
@@ -50,11 +54,11 @@ static INPUT_PORTS_START( a5120 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(a5120)
+void a51xx_state::machine_reset()
 {
 }
 
-static VIDEO_START( a5120 )
+void a51xx_state::video_start()
 {
 }
 
@@ -69,11 +73,11 @@ static INPUT_PORTS_START( a5130 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(a5130)
+MACHINE_RESET_MEMBER(a51xx_state,a5130)
 {
 }
 
-static VIDEO_START( a5130 )
+VIDEO_START_MEMBER(a51xx_state,a5130)
 {
 }
 
@@ -106,7 +110,6 @@ static MACHINE_CONFIG_START( a5120, a51xx_state )
 	MCFG_CPU_PROGRAM_MAP(a5120_mem)
 	MCFG_CPU_IO_MAP(a5120_io)
 
-	MCFG_MACHINE_RESET(a5120)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -120,30 +123,21 @@ static MACHINE_CONFIG_START( a5120, a51xx_state )
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
-	MCFG_VIDEO_START(a5120)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( a5130, a51xx_state )
+static MACHINE_CONFIG_DERIVED( a5130, a5120 )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(a5130_mem)
 	MCFG_CPU_IO_MAP(a5130_io)
 
-	MCFG_MACHINE_RESET(a5130)
+	MCFG_MACHINE_RESET_OVERRIDE(a51xx_state,a5130)
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_SIZE(640, 480)
-	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_UPDATE_STATIC(a5130)
 
-	MCFG_GFXDECODE(a51xx)
-	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(black_and_white)
-
-	MCFG_VIDEO_START(a5130)
+	MCFG_VIDEO_START_OVERRIDE(a51xx_state,a5130)
 MACHINE_CONFIG_END
 
 /* ROM definition */

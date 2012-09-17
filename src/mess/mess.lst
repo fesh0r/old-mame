@@ -624,7 +624,8 @@ p500	  // Commodore P500 (proto, a.k.a. C128-40, PET-II)
 c264
 plus4n
 plus4p
-c16
+c16n
+c16p
 c16h
 c116
 c232
@@ -2142,3 +2143,4 @@ hpz80unk
 itt3030
 vax785
 ms0515
+alphasma

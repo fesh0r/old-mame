@@ -26,6 +26,8 @@
 #include "video/pc_cga.h"
 #include "video/isa_cga.h"
 #include "video/isa_ega.h"
+#include "video/isa_vga.h"
+#include "video/isa_vga_ati.h"
 #include "video/isa_svga_cirrus.h"
 #include "video/isa_svga_s3.h"
 #include "video/isa_svga_tseng.h"
@@ -52,6 +54,7 @@
 #include "machine/isa_gblaster.h"
 #include "machine/isa_hdc.h"
 #include "machine/isa_sblaster.h"
+#include "machine/isa_stereo_fx.h"
 #include "machine/isa_gus.h"
 #include "machine/3c503.h"
 #include "machine/ne1000.h"
@@ -158,6 +161,7 @@ public:
 	UINT8 m_at_spkrdata;
 	UINT8 m_at_speaker_input;
 	int m_dma_channel;
+	bool m_cur_eop;
 	UINT8 m_dma_offset[2][4];
 	UINT8 m_at_pages[0x10];
 	UINT16 m_dma_high_byte;
@@ -175,6 +179,9 @@ public:
 
 	DECLARE_DRIVER_INIT(atcga);
 	DECLARE_DRIVER_INIT(atvga);
+	DECLARE_MACHINE_START(at);
+	DECLARE_MACHINE_RESET(at);
+	void pc_set_dma_channel(int channel, int state);
 };
 
 
@@ -188,8 +195,8 @@ extern const am9517a_interface at_dma8237_2_config;
 
 
 
-MACHINE_START( at );
-MACHINE_RESET( at );
+
+
 
 
 #endif /* AT_H_ */

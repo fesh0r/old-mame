@@ -153,6 +153,7 @@ public:
 	DECLARE_WRITE8_MEMBER(ex800_iosel_w);
 	DECLARE_READ8_MEMBER(ex800_gate7a_r);
 	DECLARE_WRITE8_MEMBER(ex800_gate7a_w);
+	virtual void machine_start();
 };
 
 
@@ -196,17 +197,16 @@ static INPUT_CHANGED( online_switch )
 	ex800_state *state = field.machine().driver_data<ex800_state>();
 	if (newval)
 	{
-		cputag_set_input_line(field.machine(), "maincpu", UPD7810_INTF1, state->m_irq_state);
+		field.machine().device("maincpu")->execute().set_input_line(UPD7810_INTF1, state->m_irq_state);
 		state->m_irq_state = (state->m_irq_state == ASSERT_LINE) ? CLEAR_LINE : ASSERT_LINE;
 	}
 }
 
 
-static MACHINE_START(ex800)
+void ex800_state::machine_start()
 {
-	ex800_state *state = machine.driver_data<ex800_state>();
-	state->m_irq_state = ASSERT_LINE;
-	device_t *speaker = machine.device(BEEPER_TAG);
+	m_irq_state = ASSERT_LINE;
+	device_t *speaker = machine().device(BEEPER_TAG);
 	/* Setup beep */
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 4000); /* measured at 4000 Hz */
@@ -215,19 +215,19 @@ static MACHINE_START(ex800)
 
 READ8_MEMBER(ex800_state::ex800_porta_r)
 {
-	logerror("PA R @%x\n", cpu_get_pc(&space.device()));
+	logerror("PA R @%x\n", space.device().safe_pc());
 	return machine().rand();
 }
 
 READ8_MEMBER(ex800_state::ex800_portb_r)
 {
-	logerror("PB R @%x\n", cpu_get_pc(&space.device()));
+	logerror("PB R @%x\n", space.device().safe_pc());
 	return machine().rand();
 }
 
 READ8_MEMBER(ex800_state::ex800_portc_r)
 {
-	logerror("PC R @%x\n", cpu_get_pc(&space.device()));
+	logerror("PC R @%x\n", space.device().safe_pc());
 	return machine().rand();
 }
 
@@ -236,31 +236,31 @@ WRITE8_MEMBER(ex800_state::ex800_porta_w)
 	if (PA6) logerror("BNK0 selected.\n");
 	if (PA7) logerror("BNK1 selected.\n");
 
-	logerror("PA W %x @%x\n", data, cpu_get_pc(&space.device()));
+	logerror("PA W %x @%x\n", data, space.device().safe_pc());
 }
 
 WRITE8_MEMBER(ex800_state::ex800_portb_w)
 {
 	if (data & 3)
-		logerror("PB0/1 Line feed @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB0/1 Line feed @%x\n", space.device().safe_pc());
 	if (!(data & 4))
-		logerror("PB2 Line feed @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB2 Line feed @%x\n", space.device().safe_pc());
 	if (data & 8)
-		logerror("PB3 Online LED on @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB3 Online LED on @%x\n", space.device().safe_pc());
 	else
-		logerror("PB3 Online LED off @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB3 Online LED off @%x\n", space.device().safe_pc());
 	if (data & 16)
-		logerror("PB4 Serial @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB4 Serial @%x\n", space.device().safe_pc());
 	if (data & 32)
-		logerror("PB4 Serial @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB4 Serial @%x\n", space.device().safe_pc());
 	if (data & 64)
-		logerror("PB4 Serial @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB4 Serial @%x\n", space.device().safe_pc());
 	if (data & 128)
-		logerror("PB3 Paper empty LED on @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB3 Paper empty LED on @%x\n", space.device().safe_pc());
 	else
-		logerror("PB3 Paper empty LED off @%x\n", cpu_get_pc(&space.device()));
+		logerror("PB3 Paper empty LED off @%x\n", space.device().safe_pc());
 
-//  logerror("PB W %x @%x\n", data, cpu_get_pc(&space.device()));
+//  logerror("PB W %x @%x\n", data, space.device().safe_pc());
 }
 
 WRITE8_MEMBER(ex800_state::ex800_portc_w)
@@ -271,7 +271,7 @@ WRITE8_MEMBER(ex800_state::ex800_portc_w)
 	else
 		beep_set_state(speaker, 1);
 
-	logerror("PC W %x @%x\n", data, cpu_get_pc(&space.device()));
+	logerror("PC W %x @%x\n", data, space.device().safe_pc());
 }
 
 
@@ -279,46 +279,46 @@ WRITE8_MEMBER(ex800_state::ex800_portc_w)
 
 READ8_MEMBER(ex800_state::ex800_devsel_r)
 {
-	logerror("DEVSEL R @%x with offset %x\n", cpu_get_pc(&space.device()), offset);
+	logerror("DEVSEL R @%x with offset %x\n", space.device().safe_pc(), offset);
 	return machine().rand();
 }
 
 WRITE8_MEMBER(ex800_state::ex800_devsel_w)
 {
-	logerror("DEVSEL W %x @%x with offset %x\n", data, cpu_get_pc(&space.device()), offset);
+	logerror("DEVSEL W %x @%x with offset %x\n", data, space.device().safe_pc(), offset);
 }
 
 READ8_MEMBER(ex800_state::ex800_gate5a_r)
 {
-	logerror("GATE5A R @%x with offset %x\n", cpu_get_pc(&space.device()), offset);
+	logerror("GATE5A R @%x with offset %x\n", space.device().safe_pc(), offset);
 	return machine().rand();
 }
 
 WRITE8_MEMBER(ex800_state::ex800_gate5a_w)
 {
-	logerror("GATE5A W %x @%x with offset %x\n", data, cpu_get_pc(&space.device()), offset);
+	logerror("GATE5A W %x @%x with offset %x\n", data, space.device().safe_pc(), offset);
 }
 
 READ8_MEMBER(ex800_state::ex800_iosel_r)
 {
-	logerror("IOSEL R @%x with offset %x\n", cpu_get_pc(&space.device()), offset);
+	logerror("IOSEL R @%x with offset %x\n", space.device().safe_pc(), offset);
 	return machine().rand();
 }
 
 WRITE8_MEMBER(ex800_state::ex800_iosel_w)
 {
-	logerror("IOSEL W %x @%x with offset %x\n", data, cpu_get_pc(&space.device()), offset);
+	logerror("IOSEL W %x @%x with offset %x\n", data, space.device().safe_pc(), offset);
 }
 
 READ8_MEMBER(ex800_state::ex800_gate7a_r)
 {
-	logerror("GATE7A R @%x with offset %x\n", cpu_get_pc(&space.device()), offset);
+	logerror("GATE7A R @%x with offset %x\n", space.device().safe_pc(), offset);
 	return machine().rand();
 }
 
 WRITE8_MEMBER(ex800_state::ex800_gate7a_w)
 {
-	logerror("GATE7A W %x @%x with offset %x\n", data, cpu_get_pc(&space.device()), offset);
+	logerror("GATE7A W %x @%x with offset %x\n", data, space.device().safe_pc(), offset);
 }
 
 
@@ -451,7 +451,6 @@ static MACHINE_CONFIG_START( ex800, ex800_state )
     MCFG_CPU_PROGRAM_MAP(ex800_mem)
 	MCFG_CPU_IO_MAP(ex800_io)
 
-	MCFG_MACHINE_START(ex800)
 
 	MCFG_DEFAULT_LAYOUT(layout_ex800)
 

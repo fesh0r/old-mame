@@ -38,7 +38,7 @@ static TIMER_CALLBACK( cassette_data_callback )
 		{
 			state->m_cassette_data = 0;
 			state->m_irq |= CASS_FALL;
-			cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+			machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 		}
 	}
 	else
@@ -48,7 +48,7 @@ static TIMER_CALLBACK( cassette_data_callback )
 		{
 			state->m_cassette_data = 1;
 			state->m_irq |= CASS_RISE;
-			cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+			machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 		}
 	}
 
@@ -79,7 +79,7 @@ READ8_MEMBER( trs80_state::trs80m4_e0_r )
     d1 Cass 1500 baud Falling
     d0 Cass 1500 baud Rising */
 
-	cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	return ~(m_mask & m_irq);
 }
 
@@ -95,7 +95,7 @@ READ8_MEMBER( trs80_state::trs80m4_e4_r )
     d6 status of Motor Timeout (0=true)
     d5 status of Reset signal (0=true - this will reboot the computer) */
 
-	cputag_set_input_line(machine(), "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 
 	return ~(m_nmi_mask & m_nmi_data);
 }
@@ -216,7 +216,7 @@ WRITE8_MEMBER( trs80_state::trs80m4_84_w )
     d0 Select bit 0 */
 
 	/* get address space instead of io space */
-	address_space *mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
 	UINT8 *base = memregion("maincpu")->base();
 
 	m_mode = (m_mode & 0x73) | (data & 0x8c);
@@ -561,7 +561,7 @@ WRITE8_MEMBER( trs80_state::lnw80_fe_w )
     d0 inverse video (entire screen) */
 
 	/* get address space instead of io space */
-	address_space *mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
 
 	m_mode = (m_mode & 0x87) | ((data & 0x0f) << 3);
 
@@ -636,13 +636,13 @@ INTERRUPT_GEN( trs80_rtc_interrupt )
 		if (state->m_mask & IRQ_M4_RTC)
 		{
 			state->m_irq |= IRQ_M4_RTC;
-			device_set_input_line(device, 0, HOLD_LINE);
+			device->execute().set_input_line(0, HOLD_LINE);
 		}
 	}
 	else		// Model 1
 	{
 		state->m_irq |= IRQ_M1_RTC;
-		device_set_input_line(device, 0, HOLD_LINE);
+		device->execute().set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -654,13 +654,13 @@ static void trs80_fdc_interrupt_internal(running_machine &machine)
 		if (state->m_nmi_mask & 0x80)	// Model 4 does a NMI
 		{
 			state->m_nmi_data = 0x80;
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 	else		// Model 1 does a IRQ
 	{
 		state->m_irq |= IRQ_M1_FDC;
-		cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+		machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -752,7 +752,7 @@ READ8_MEMBER( trs80_state::trs80_irq_status_r )
     which is dealt with by the DOS. We take the opportunity to reset the cpu INT line. */
 
 	int result = m_irq;
-	cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	m_irq = 0;
 	return result;
 }
@@ -847,28 +847,25 @@ READ8_MEMBER( trs80_state::trs80_keyboard_r )
  *  Machine              *
  *************************************/
 
-MACHINE_START( trs80 )
+void trs80_state::machine_start()
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_tape_unit=1;
-	state->m_reg_load=1;
-	state->m_nmi_data=0xff;
+	m_tape_unit=1;
+	m_reg_load=1;
+	m_nmi_data=0xff;
 
-	state->m_cassette_data_timer = machine.scheduler().timer_alloc(FUNC(cassette_data_callback));
-	state->m_cassette_data_timer->adjust( attotime::zero, 0, attotime::from_hz(11025) );
+	m_cassette_data_timer = machine().scheduler().timer_alloc(FUNC(cassette_data_callback));
+	m_cassette_data_timer->adjust( attotime::zero, 0, attotime::from_hz(11025) );
 }
 
-MACHINE_RESET( trs80 )
+void trs80_state::machine_reset()
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	state->m_cassette_data = 0;
+	m_cassette_data = 0;
 }
 
-MACHINE_RESET( trs80m4 )
+MACHINE_RESET_MEMBER(trs80_state,trs80m4)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	address_space *mem = state->m_maincpu->memory().space(AS_PROGRAM);
-	state->m_cassette_data = 0;
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
+	m_cassette_data = 0;
 
 	mem->install_read_bank (0x0000, 0x0fff, "bank1");
 	mem->install_read_bank (0x1000, 0x37e7, "bank2");
@@ -889,16 +886,15 @@ MACHINE_RESET( trs80m4 )
 	mem->install_write_bank (0x4000, 0xf3ff, "bank17");
 	mem->install_write_bank (0xf400, 0xf7ff, "bank18");
 	mem->install_write_bank (0xf800, 0xffff, "bank19");
-	state->trs80m4p_9c_w(*mem, 0, 1);	/* Enable the ROM */
-	state->trs80m4_84_w(*mem, 0, 0);	/* switch in devices at power-on */
+	trs80m4p_9c_w(*mem, 0, 1);	/* Enable the ROM */
+	trs80m4_84_w(*mem, 0, 0);	/* switch in devices at power-on */
 }
 
-MACHINE_RESET( lnw80 )
+MACHINE_RESET_MEMBER(trs80_state,lnw80)
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	address_space *space = state->m_maincpu->memory().space(AS_PROGRAM);
-	state->m_cassette_data = 0;
-	state->m_reg_load = 1;
-	state->lnw80_fe_w(*space, 0, 0);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
+	m_cassette_data = 0;
+	m_reg_load = 1;
+	lnw80_fe_w(*space, 0, 0);
 }
 

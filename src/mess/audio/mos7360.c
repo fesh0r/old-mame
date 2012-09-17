@@ -96,7 +96,7 @@ static int TEDTIME_TO_CYCLES(attotime t)
 	return (int)(d * clock());
 }
 
-static const UINT8 PALETTE[] =
+static const rgb_t PALETTE[] =
 {
 /* black, white, red, cyan */
 /* purple, green, blue, yellow */
@@ -104,45 +104,45 @@ static const UINT8 PALETTE[] =
 /* light violett, light green, light blue, light yellow */
 /* these 16 colors are 8 times here in different luminance (dark..light) */
 /* taken from digitized tv screenshot */
-  0x06, 0x01, 0x03, 0x2b, 0x2b, 0x2b, 0x67, 0x0e, 0x0f, 0x00, 0x3f, 0x42,
-  0x57, 0x00, 0x6d, 0x00, 0x4e, 0x00, 0x19, 0x1c, 0x94, 0x38, 0x38, 0x00,
-  0x56, 0x20, 0x00, 0x4b, 0x28, 0x00, 0x16, 0x48, 0x00, 0x69, 0x07, 0x2f,
-  0x00, 0x46, 0x26, 0x06, 0x2a, 0x80, 0x2a, 0x14, 0x9b, 0x0b, 0x49, 0x00,
+  MAKE_RGB(0x06, 0x01, 0x03), MAKE_RGB(0x2b, 0x2b, 0x2b), MAKE_RGB(0x67, 0x0e, 0x0f), MAKE_RGB(0x00, 0x3f, 0x42),
+  MAKE_RGB(0x57, 0x00, 0x6d), MAKE_RGB(0x00, 0x4e, 0x00), MAKE_RGB(0x19, 0x1c, 0x94), MAKE_RGB(0x38, 0x38, 0x00),
+  MAKE_RGB(0x56, 0x20, 0x00), MAKE_RGB(0x4b, 0x28, 0x00), MAKE_RGB(0x16, 0x48, 0x00), MAKE_RGB(0x69, 0x07, 0x2f),
+  MAKE_RGB(0x00, 0x46, 0x26), MAKE_RGB(0x06, 0x2a, 0x80), MAKE_RGB(0x2a, 0x14, 0x9b), MAKE_RGB(0x0b, 0x49, 0x00),
 
-  0x00, 0x03, 0x02, 0x3d, 0x3d, 0x3d, 0x75, 0x1e, 0x20, 0x00, 0x50, 0x4f,
-  0x6a, 0x10, 0x78, 0x04, 0x5c, 0x00, 0x2a, 0x2a, 0xa3, 0x4c, 0x47, 0x00,
-  0x69, 0x2f, 0x00, 0x59, 0x38, 0x00, 0x26, 0x56, 0x00, 0x75, 0x15, 0x41,
-  0x00, 0x58, 0x3d, 0x15, 0x3d, 0x8f, 0x39, 0x22, 0xae, 0x19, 0x59, 0x00,
+  MAKE_RGB(0x00, 0x03, 0x02), MAKE_RGB(0x3d, 0x3d, 0x3d), MAKE_RGB(0x75, 0x1e, 0x20), MAKE_RGB(0x00, 0x50, 0x4f),
+  MAKE_RGB(0x6a, 0x10, 0x78), MAKE_RGB(0x04, 0x5c, 0x00), MAKE_RGB(0x2a, 0x2a, 0xa3), MAKE_RGB(0x4c, 0x47, 0x00),
+  MAKE_RGB(0x69, 0x2f, 0x00), MAKE_RGB(0x59, 0x38, 0x00), MAKE_RGB(0x26, 0x56, 0x00), MAKE_RGB(0x75, 0x15, 0x41),
+  MAKE_RGB(0x00, 0x58, 0x3d), MAKE_RGB(0x15, 0x3d, 0x8f), MAKE_RGB(0x39, 0x22, 0xae), MAKE_RGB(0x19, 0x59, 0x00),
 
-  0x00, 0x03, 0x04, 0x42, 0x42, 0x42, 0x7b, 0x28, 0x20, 0x02, 0x56, 0x59,
-  0x6f, 0x1a, 0x82, 0x0a, 0x65, 0x09, 0x30, 0x34, 0xa7, 0x50, 0x51, 0x00,
-  0x6e, 0x36, 0x00, 0x65, 0x40, 0x00, 0x2c, 0x5c, 0x00, 0x7d, 0x1e, 0x45,
-  0x01, 0x61, 0x45, 0x1c, 0x45, 0x99, 0x42, 0x2d, 0xad, 0x1d, 0x62, 0x00,
+  MAKE_RGB(0x00, 0x03, 0x04), MAKE_RGB(0x42, 0x42, 0x42), MAKE_RGB(0x7b, 0x28, 0x20), MAKE_RGB(0x02, 0x56, 0x59),
+  MAKE_RGB(0x6f, 0x1a, 0x82), MAKE_RGB(0x0a, 0x65, 0x09), MAKE_RGB(0x30, 0x34, 0xa7), MAKE_RGB(0x50, 0x51, 0x00),
+  MAKE_RGB(0x6e, 0x36, 0x00), MAKE_RGB(0x65, 0x40, 0x00), MAKE_RGB(0x2c, 0x5c, 0x00), MAKE_RGB(0x7d, 0x1e, 0x45),
+  MAKE_RGB(0x01, 0x61, 0x45), MAKE_RGB(0x1c, 0x45, 0x99), MAKE_RGB(0x42, 0x2d, 0xad), MAKE_RGB(0x1d, 0x62, 0x00),
 
-  0x05, 0x00, 0x02, 0x56, 0x55, 0x5a, 0x90, 0x3c, 0x3b, 0x17, 0x6d, 0x72,
-  0x87, 0x2d, 0x99, 0x1f, 0x7b, 0x15, 0x46, 0x49, 0xc1, 0x66, 0x63, 0x00,
-  0x84, 0x4c, 0x0d, 0x73, 0x55, 0x00, 0x40, 0x72, 0x00, 0x91, 0x33, 0x5e,
-  0x19, 0x74, 0x5c, 0x32, 0x59, 0xae, 0x59, 0x3f, 0xc3, 0x32, 0x76, 0x00,
+  MAKE_RGB(0x05, 0x00, 0x02), MAKE_RGB(0x56, 0x55, 0x5a), MAKE_RGB(0x90, 0x3c, 0x3b), MAKE_RGB(0x17, 0x6d, 0x72),
+  MAKE_RGB(0x87, 0x2d, 0x99), MAKE_RGB(0x1f, 0x7b, 0x15), MAKE_RGB(0x46, 0x49, 0xc1), MAKE_RGB(0x66, 0x63, 0x00),
+  MAKE_RGB(0x84, 0x4c, 0x0d), MAKE_RGB(0x73, 0x55, 0x00), MAKE_RGB(0x40, 0x72, 0x00), MAKE_RGB(0x91, 0x33, 0x5e),
+  MAKE_RGB(0x19, 0x74, 0x5c), MAKE_RGB(0x32, 0x59, 0xae), MAKE_RGB(0x59, 0x3f, 0xc3), MAKE_RGB(0x32, 0x76, 0x00),
 
-  0x02, 0x01, 0x06, 0x84, 0x7e, 0x85, 0xbb, 0x67, 0x68, 0x45, 0x96, 0x96,
-  0xaf, 0x58, 0xc3, 0x4a, 0xa7, 0x3e, 0x73, 0x73, 0xec, 0x92, 0x8d, 0x11,
-  0xaf, 0x78, 0x32, 0xa1, 0x80, 0x20, 0x6c, 0x9e, 0x12, 0xba, 0x5f, 0x89,
-  0x46, 0x9f, 0x83, 0x61, 0x85, 0xdd, 0x84, 0x6c, 0xef, 0x5d, 0xa3, 0x29,
+  MAKE_RGB(0x02, 0x01, 0x06), MAKE_RGB(0x84, 0x7e, 0x85), MAKE_RGB(0xbb, 0x67, 0x68), MAKE_RGB(0x45, 0x96, 0x96),
+  MAKE_RGB(0xaf, 0x58, 0xc3), MAKE_RGB(0x4a, 0xa7, 0x3e), MAKE_RGB(0x73, 0x73, 0xec), MAKE_RGB(0x92, 0x8d, 0x11),
+  MAKE_RGB(0xaf, 0x78, 0x32), MAKE_RGB(0xa1, 0x80, 0x20), MAKE_RGB(0x6c, 0x9e, 0x12), MAKE_RGB(0xba, 0x5f, 0x89),
+  MAKE_RGB(0x46, 0x9f, 0x83), MAKE_RGB(0x61, 0x85, 0xdd), MAKE_RGB(0x84, 0x6c, 0xef), MAKE_RGB(0x5d, 0xa3, 0x29),
 
-  0x02, 0x00, 0x0a, 0xb2, 0xac, 0xb3, 0xe9, 0x92, 0x92, 0x6c, 0xc3, 0xc1,
-  0xd9, 0x86, 0xf0, 0x79, 0xd1, 0x76, 0x9d, 0xa1, 0xff, 0xbd, 0xbe, 0x40,
-  0xdc, 0xa2, 0x61, 0xd1, 0xa9, 0x4c, 0x93, 0xc8, 0x3d, 0xe9, 0x8a, 0xb1,
-  0x6f, 0xcd, 0xab, 0x8a, 0xb4, 0xff, 0xb2, 0x9a, 0xff, 0x88, 0xcb, 0x59,
+  MAKE_RGB(0x02, 0x00, 0x0a), MAKE_RGB(0xb2, 0xac, 0xb3), MAKE_RGB(0xe9, 0x92, 0x92), MAKE_RGB(0x6c, 0xc3, 0xc1),
+  MAKE_RGB(0xd9, 0x86, 0xf0), MAKE_RGB(0x79, 0xd1, 0x76), MAKE_RGB(0x9d, 0xa1, 0xff), MAKE_RGB(0xbd, 0xbe, 0x40),
+  MAKE_RGB(0xdc, 0xa2, 0x61), MAKE_RGB(0xd1, 0xa9, 0x4c), MAKE_RGB(0x93, 0xc8, 0x3d), MAKE_RGB(0xe9, 0x8a, 0xb1),
+  MAKE_RGB(0x6f, 0xcd, 0xab), MAKE_RGB(0x8a, 0xb4, 0xff), MAKE_RGB(0xb2, 0x9a, 0xff), MAKE_RGB(0x88, 0xcb, 0x59),
 
-  0x02, 0x00, 0x0a, 0xc7, 0xca, 0xc9, 0xff, 0xac, 0xac, 0x85, 0xd8, 0xe0,
-  0xf3, 0x9c, 0xff, 0x92, 0xea, 0x8a, 0xb7, 0xba, 0xff, 0xd6, 0xd3, 0x5b,
-  0xf3, 0xbe, 0x79, 0xe6, 0xc5, 0x65, 0xb0, 0xe0, 0x57, 0xff, 0xa4, 0xcf,
-  0x89, 0xe5, 0xc8, 0xa4, 0xca, 0xff, 0xca, 0xb3, 0xff, 0xa2, 0xe5, 0x7a,
+  MAKE_RGB(0x02, 0x00, 0x0a), MAKE_RGB(0xc7, 0xca, 0xc9), MAKE_RGB(0xff, 0xac, 0xac), MAKE_RGB(0x85, 0xd8, 0xe0),
+  MAKE_RGB(0xf3, 0x9c, 0xff), MAKE_RGB(0x92, 0xea, 0x8a), MAKE_RGB(0xb7, 0xba, 0xff), MAKE_RGB(0xd6, 0xd3, 0x5b),
+  MAKE_RGB(0xf3, 0xbe, 0x79), MAKE_RGB(0xe6, 0xc5, 0x65), MAKE_RGB(0xb0, 0xe0, 0x57), MAKE_RGB(0xff, 0xa4, 0xcf),
+  MAKE_RGB(0x89, 0xe5, 0xc8), MAKE_RGB(0xa4, 0xca, 0xff), MAKE_RGB(0xca, 0xb3, 0xff), MAKE_RGB(0xa2, 0xe5, 0x7a),
 
-  0x01, 0x01, 0x01, 0xff, 0xff, 0xff, 0xff, 0xf6, 0xf2, 0xd1, 0xff, 0xff,
-  0xff, 0xe9, 0xff, 0xdb, 0xff, 0xd3, 0xfd, 0xff, 0xff, 0xff, 0xff, 0xa3,
-  0xff, 0xff, 0xc1, 0xff, 0xff, 0xb2, 0xfc, 0xff, 0xa2, 0xff, 0xee, 0xff,
-  0xd1, 0xff, 0xff, 0xeb, 0xff, 0xff, 0xff, 0xf8, 0xff, 0xed, 0xff, 0xbc
+  MAKE_RGB(0x01, 0x01, 0x01), MAKE_RGB(0xff, 0xff, 0xff), MAKE_RGB(0xff, 0xf6, 0xf2), MAKE_RGB(0xd1, 0xff, 0xff),
+  MAKE_RGB(0xff, 0xe9, 0xff), MAKE_RGB(0xdb, 0xff, 0xd3), MAKE_RGB(0xfd, 0xff, 0xff), MAKE_RGB(0xff, 0xff, 0xa3),
+  MAKE_RGB(0xff, 0xff, 0xc1), MAKE_RGB(0xff, 0xff, 0xb2), MAKE_RGB(0xfc, 0xff, 0xa2), MAKE_RGB(0xff, 0xee, 0xff),
+  MAKE_RGB(0xd1, 0xff, 0xff), MAKE_RGB(0xeb, 0xff, 0xff), MAKE_RGB(0xff, 0xf8, 0xff), MAKE_RGB(0xed, 0xff, 0xbc)
 };
 
 
@@ -172,6 +172,27 @@ static const UINT8 PALETTE[] =
 
 // device type definition
 const device_type MOS7360 = &device_creator<mos7360_device>;
+
+
+// default address maps
+static ADDRESS_MAP_START( mos7360_videoram_map, AS_0, 8, mos7360_device )
+	AM_RANGE(0x0000, 0xffff) AM_RAM
+ADDRESS_MAP_END
+
+
+//-------------------------------------------------
+//  memory_space_config - return a description of
+//  any address spaces owned by this device
+//-------------------------------------------------
+
+const address_space_config *mos7360_device::memory_space_config(address_spacenum spacenum) const
+{
+	switch (spacenum)
+	{
+		case AS_0: return &m_videoram_space_config;
+		default: return NULL;
+	}
+}
 
 
 
@@ -211,6 +232,30 @@ inline int mos7360_device::rastercolumn()
 	return (int) ((machine().time().as_double() - m_rastertime) * TED7360_VRETRACERATE * m_lines * 57 * 8 + 0.5);
 }
 
+inline UINT8 mos7360_device::read_ram(offs_t offset)
+{
+	int rom = m_rom;
+	m_rom = 0;
+
+	m_last_data = space(AS_0)->read_byte(offset);
+
+	m_rom = rom;
+
+	return m_last_data;
+}
+
+inline UINT8 mos7360_device::read_rom(offs_t offset)
+{
+	int rom = m_rom;
+	m_rom = 1;
+
+	m_last_data = space(AS_0)->read_byte(offset);
+
+	m_rom = rom;
+
+	return m_last_data;
+}
+
 
 
 //**************************************************************************
@@ -223,7 +268,9 @@ inline int mos7360_device::rastercolumn()
 
 mos7360_device::mos7360_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, MOS7360, "MOS7360", tag, owner, clock),
+	  device_memory_interface(mconfig, *this),
 	  device_sound_interface(mconfig, *this),
+	  m_videoram_space_config("videoram", ENDIANNESS_LITTLE, 8, 16, 0, NULL, *ADDRESS_MAP_NAME(mos7360_videoram_map)),
 	  m_stream(NULL)
 {
 }
@@ -246,8 +293,6 @@ void mos7360_device::device_config_complete()
 	else
 	{
 		memset(&m_out_irq_cb, 0, sizeof(m_out_irq_cb));
-		memset(&m_in_ram_cb, 0, sizeof(m_in_ram_cb));
-		memset(&m_in_rom_cb, 0, sizeof(m_in_rom_cb));
 		memset(&m_in_k_cb, 0, sizeof(m_in_k_cb));
 	}
 }
@@ -269,17 +314,12 @@ void mos7360_device::device_start()
 
 	// resolve callbacks
 	m_out_irq_func.resolve(m_out_irq_cb, *this);
-	m_in_ram_func.resolve(m_in_ram_cb, *this);
-	m_in_rom_func.resolve(m_in_rom_cb, *this);
 	m_in_k_func.resolve(m_in_k_cb, *this);
 
 	// allocate timers
 	m_timer1 = timer_alloc(TIMER_ID_1);
 	m_timer2 = timer_alloc(TIMER_ID_2);
 	m_timer3 = timer_alloc(TIMER_ID_3);
-
-	// initialize palette
-	initialize_palette();
 
 	// allocate screen bitmap
 	m_screen->register_screen_bitmap(m_bitmap);
@@ -402,19 +442,6 @@ void mos7360_device::device_timer(emu_timer &timer, device_timer_id id, int para
 
 
 //-------------------------------------------------
-//  initialize_palette - initialize palette
-//-------------------------------------------------
-
-void mos7360_device::initialize_palette()
-{
-	int i;
-
-	for (i = 0; i < sizeof(PALETTE) / 3; i++)
-		palette_set_color_rgb(machine(), i, PALETTE[i * 3], PALETTE[i * 3 + 1], PALETTE[i * 3 + 2]);
-}
-
-
-//-------------------------------------------------
 //  sound_stream_update - handle update requests for
 //  our sound stream
 //-------------------------------------------------
@@ -479,18 +506,18 @@ void mos7360_device::draw_character(int ybegin, int yend, int ch, int yoff, int 
 	for (y = ybegin; y <= yend; y++)
 	{
 		if (INROM)
-			code = m_in_rom_func(m_chargenaddr + ch * 8 + y);
+			code = read_rom(m_chargenaddr + ch * 8 + y);
 		else
-			code = m_in_ram_func(m_chargenaddr + ch * 8 + y);
+			code = read_ram(m_chargenaddr + ch * 8 + y);
 
-		m_bitmap.pix16(y + yoff, 0 + xoff) = color[code >> 7];
-		m_bitmap.pix16(y + yoff, 1 + xoff) = color[(code >> 6) & 1];
-		m_bitmap.pix16(y + yoff, 2 + xoff) = color[(code >> 5) & 1];
-		m_bitmap.pix16(y + yoff, 3 + xoff) = color[(code >> 4) & 1];
-		m_bitmap.pix16(y + yoff, 4 + xoff) = color[(code >> 3) & 1];
-		m_bitmap.pix16(y + yoff, 5 + xoff) = color[(code >> 2) & 1];
-		m_bitmap.pix16(y + yoff, 6 + xoff) = color[(code >> 1) & 1];
-		m_bitmap.pix16(y + yoff, 7 + xoff) = color[code & 1];
+		m_bitmap.pix32(y + yoff, 0 + xoff) = PALETTE[color[code >> 7]];
+		m_bitmap.pix32(y + yoff, 1 + xoff) = PALETTE[color[(code >> 6) & 1]];
+		m_bitmap.pix32(y + yoff, 2 + xoff) = PALETTE[color[(code >> 5) & 1]];
+		m_bitmap.pix32(y + yoff, 3 + xoff) = PALETTE[color[(code >> 4) & 1]];
+		m_bitmap.pix32(y + yoff, 4 + xoff) = PALETTE[color[(code >> 3) & 1]];
+		m_bitmap.pix32(y + yoff, 5 + xoff) = PALETTE[color[(code >> 2) & 1]];
+		m_bitmap.pix32(y + yoff, 6 + xoff) = PALETTE[color[(code >> 1) & 1]];
+		m_bitmap.pix32(y + yoff, 7 + xoff) = PALETTE[color[code & 1]];
 	}
 }
 
@@ -501,18 +528,18 @@ void mos7360_device::draw_character_multi(int ybegin, int yend, int ch, int yoff
 	for (y = ybegin; y <= yend; y++)
 	{
 		if (INROM)
-			code = m_in_rom_func(m_chargenaddr + ch * 8 + y);
+			code = read_rom(m_chargenaddr + ch * 8 + y);
 		else
-			code = m_in_ram_func(m_chargenaddr + ch * 8 + y);
+			code = read_ram(m_chargenaddr + ch * 8 + y);
 
-		m_bitmap.pix16(y + yoff, 0 + xoff) =
-			m_bitmap.pix16(y + yoff, 1 + xoff) = m_multi[code >> 6];
-		m_bitmap.pix16(y + yoff, 2 + xoff) =
-			m_bitmap.pix16(y + yoff, 3 + xoff) = m_multi[(code >> 4) & 3];
-		m_bitmap.pix16(y + yoff, 4 + xoff) =
-			m_bitmap.pix16(y + yoff, 5 + xoff) = m_multi[(code >> 2) & 3];
-		m_bitmap.pix16(y + yoff, 6 + xoff) =
-			m_bitmap.pix16(y + yoff, 7 + xoff) = m_multi[code & 3];
+		m_bitmap.pix32(y + yoff, 0 + xoff) =
+			m_bitmap.pix32(y + yoff, 1 + xoff) = PALETTE[m_multi[code >> 6]];
+		m_bitmap.pix32(y + yoff, 2 + xoff) =
+			m_bitmap.pix32(y + yoff, 3 + xoff) = PALETTE[m_multi[(code >> 4) & 3]];
+		m_bitmap.pix32(y + yoff, 4 + xoff) =
+			m_bitmap.pix32(y + yoff, 5 + xoff) = PALETTE[m_multi[(code >> 2) & 3]];
+		m_bitmap.pix32(y + yoff, 6 + xoff) =
+			m_bitmap.pix32(y + yoff, 7 + xoff) = PALETTE[m_multi[code & 3]];
 	}
 }
 
@@ -522,15 +549,16 @@ void mos7360_device::draw_bitmap(int ybegin, int yend, int ch, int yoff, int xof
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = m_in_ram_func(m_bitmapaddr + ch * 8 + y);
-		m_bitmap.pix16(y + yoff, 0 + xoff) = m_c16_bitmap[code >> 7];
-		m_bitmap.pix16(y + yoff, 1 + xoff) = m_c16_bitmap[(code >> 6) & 1];
-		m_bitmap.pix16(y + yoff, 2 + xoff) = m_c16_bitmap[(code >> 5) & 1];
-		m_bitmap.pix16(y + yoff, 3 + xoff) = m_c16_bitmap[(code >> 4) & 1];
-		m_bitmap.pix16(y + yoff, 4 + xoff) = m_c16_bitmap[(code >> 3) & 1];
-		m_bitmap.pix16(y + yoff, 5 + xoff) = m_c16_bitmap[(code >> 2) & 1];
-		m_bitmap.pix16(y + yoff, 6 + xoff) = m_c16_bitmap[(code >> 1) & 1];
-		m_bitmap.pix16(y + yoff, 7 + xoff) = m_c16_bitmap[code & 1];
+		code = read_ram(m_bitmapaddr + ch * 8 + y);
+
+		m_bitmap.pix32(y + yoff, 0 + xoff) = PALETTE[m_c16_bitmap[code >> 7]];
+		m_bitmap.pix32(y + yoff, 1 + xoff) = PALETTE[m_c16_bitmap[(code >> 6) & 1]];
+		m_bitmap.pix32(y + yoff, 2 + xoff) = PALETTE[m_c16_bitmap[(code >> 5) & 1]];
+		m_bitmap.pix32(y + yoff, 3 + xoff) = PALETTE[m_c16_bitmap[(code >> 4) & 1]];
+		m_bitmap.pix32(y + yoff, 4 + xoff) = PALETTE[m_c16_bitmap[(code >> 3) & 1]];
+		m_bitmap.pix32(y + yoff, 5 + xoff) = PALETTE[m_c16_bitmap[(code >> 2) & 1]];
+		m_bitmap.pix32(y + yoff, 6 + xoff) = PALETTE[m_c16_bitmap[(code >> 1) & 1]];
+		m_bitmap.pix32(y + yoff, 7 + xoff) = PALETTE[m_c16_bitmap[code & 1]];
 	}
 }
 
@@ -540,29 +568,18 @@ void mos7360_device::draw_bitmap_multi(int ybegin, int yend, int ch, int yoff, i
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = m_in_ram_func(m_bitmapaddr + ch * 8 + y);
+		code = read_ram(m_bitmapaddr + ch * 8 + y);
 
-		m_bitmap.pix16(y + yoff, 0 + xoff) =
-			m_bitmap.pix16(y + yoff, 1 + xoff) = m_bitmapmulti[code >> 6];
-		m_bitmap.pix16(y + yoff, 2 + xoff) =
-			m_bitmap.pix16(y + yoff, 3 + xoff) = m_bitmapmulti[(code >> 4) & 3];
-		m_bitmap.pix16(y + yoff, 4 + xoff) =
-			m_bitmap.pix16(y + yoff, 5 + xoff) = m_bitmapmulti[(code >> 2) & 3];
-		m_bitmap.pix16(y + yoff, 6 + xoff) =
-			m_bitmap.pix16(y + yoff, 7 + xoff) = m_bitmapmulti[code & 3];
+		m_bitmap.pix32(y + yoff, 0 + xoff) =
+			m_bitmap.pix32(y + yoff, 1 + xoff) = PALETTE[m_bitmapmulti[code >> 6]];
+		m_bitmap.pix32(y + yoff, 2 + xoff) =
+			m_bitmap.pix32(y + yoff, 3 + xoff) = PALETTE[m_bitmapmulti[(code >> 4) & 3]];
+		m_bitmap.pix32(y + yoff, 4 + xoff) =
+			m_bitmap.pix32(y + yoff, 5 + xoff) = PALETTE[m_bitmapmulti[(code >> 2) & 3]];
+		m_bitmap.pix32(y + yoff, 6 + xoff) =
+			m_bitmap.pix32(y + yoff, 7 + xoff) = PALETTE[m_bitmapmulti[code & 3]];
 	}
 }
-
-#ifndef memset16
-static void *memset16 (void *dest, int value, size_t size)
-{
-	register int i;
-
-	for (i = 0; i < size; i++)
-		((short *) dest)[i] = value;
-	return dest;
-}
-#endif
 
 void mos7360_device::draw_cursor(int ybegin, int yend, int yoff, int xoff, int color)
 {
@@ -570,7 +587,10 @@ void mos7360_device::draw_cursor(int ybegin, int yend, int yoff, int xoff, int c
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		memset16(&m_bitmap.pix16(yoff + y, xoff), color, 8);
+		for (int x = 0; x < 8; x++)
+		{
+			m_bitmap.pix32(y + yoff, x + xoff) = PALETTE[color];
+		}
 	}
 }
 
@@ -594,7 +614,12 @@ void mos7360_device::drawlines(int first, int last)
 	if (!SCREENON)
 	{
 		for (line = first; (line < last) && (line < m_bitmap.height()); line++)
-			memset16(&m_bitmap.pix16(line), 0, m_bitmap.width());
+		{
+			for (int x = 0; x < m_bitmap.width(); x++)
+			{
+				m_bitmap.pix32(line, x) = PALETTE[0];
+			}
+		}
 		return;
 	}
 
@@ -609,7 +634,12 @@ void mos7360_device::drawlines(int first, int last)
 		end = m_y_begin + YPOS;
 	{
 		for (line = first; line < end; line++)
-			memset16(&m_bitmap.pix16(line), FRAMECOLOR, m_bitmap.width());
+		{
+			for (int x = 0; x < m_bitmap.width(); x++)
+			{
+				m_bitmap.pix32(line, x) = PALETTE[FRAMECOLOR];
+			}
+		}
 	}
 	if (LINES25)
 		vline = line - m_y_begin - YPOS;
@@ -634,8 +664,8 @@ void mos7360_device::drawlines(int first, int last)
 		{
 			if (HIRESON)
 			{
-				ch = m_in_ram_func((m_videoaddr | 0x400) + offs);
-				attr = m_in_ram_func(m_videoaddr + offs);
+				ch = read_ram((m_videoaddr | 0x400) + offs);
+				attr = read_ram(m_videoaddr + offs);
 				c1 = ((ch >> 4) & 0xf) | (attr << 4);
 				c2 = (ch & 0xf) | (attr & 0x70);
 				m_bitmapmulti[1] = m_c16_bitmap[1] = c1 & 0x7f;
@@ -651,8 +681,8 @@ void mos7360_device::drawlines(int first, int last)
 			}
 			else
 			{
-				ch = m_in_ram_func((m_videoaddr | 0x400) + offs);
-				attr = m_in_ram_func(m_videoaddr + offs);
+				ch = read_ram((m_videoaddr | 0x400) + offs);
+				attr = read_ram(m_videoaddr + offs);
 				// levente harsfalvi's docu says cursor off in ecm and multicolor
 				if (ECMON)
 				{
@@ -701,8 +731,15 @@ void mos7360_device::drawlines(int first, int last)
 
 		for (i = ybegin; i <= yend; i++)
 		{
-			memset16(&m_bitmap.pix16(yoff + i), FRAMECOLOR, xbegin);
-			memset16(&m_bitmap.pix16(yoff + i, xend), FRAMECOLOR, m_bitmap.width() - xend);
+			for (int x = 0; x < xbegin; x++)
+			{
+				m_bitmap.pix32(yoff + i, x) = PALETTE[FRAMECOLOR];
+			}
+
+			for (int x = xend; x < m_bitmap.width(); x++)
+			{
+				m_bitmap.pix32(yoff + i, x) = PALETTE[FRAMECOLOR];
+			}
 		}
 	}
 
@@ -713,7 +750,10 @@ void mos7360_device::drawlines(int first, int last)
 
 	for (; line < end; line++)
 	{
-		memset16(&m_bitmap.pix16(line), FRAMECOLOR, m_bitmap.width());
+		for (int x = 0; x < m_bitmap.width(); x++)
+		{
+			m_bitmap.pix32(line, x) = PALETTE[FRAMECOLOR];
+		}
 	}
 }
 
@@ -1094,7 +1134,7 @@ WRITE8_MEMBER( mos7360_device::write )
 //  update_screen - update screen
 //-------------------------------------------------
 
-UINT32 mos7360_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+UINT32 mos7360_device::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	copybitmap(bitmap, m_bitmap, 0, 0, 0, 0, cliprect);
 
@@ -1140,4 +1180,44 @@ void mos7360_device::raster_interrupt_gen()
 		drawlines(m_lastline, m_rasterline);
 		set_interrupt(2);
 	}
+}
+
+
+//-------------------------------------------------
+//  bus_r - data bus read
+//-------------------------------------------------
+
+UINT8 mos7360_device::bus_r()
+{
+	return m_last_data;
+}
+
+
+//-------------------------------------------------
+//  cs0_r - chip select 0 read
+//-------------------------------------------------
+
+int mos7360_device::cs0_r(offs_t offset)
+{
+	if (m_rom && offset >= 0x8000 && offset < 0xc000)
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+
+//-------------------------------------------------
+//  cs0_r - chip select 1 read
+//-------------------------------------------------
+
+int mos7360_device::cs1_r(offs_t offset)
+{
+	if (m_rom && ((offset >= 0xc000 && offset < 0xfd00) || (offset >= 0xff20)))
+	{
+		return 0;
+	}
+
+	return 1;
 }

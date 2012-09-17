@@ -287,12 +287,12 @@ static void nc_update_interrupts(running_machine &machine)
 	{
 		logerror("int set %02x\n", state->m_irq_status & state->m_irq_mask);
 		/* set int */
-		cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+		machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 	}
 	else
 	{
 		/* clear int */
-		cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
+		machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	}
 }
 
@@ -515,7 +515,7 @@ static TIMER_DEVICE_CALLBACK(dummy_timer_callback)
 				case NC_TYPE_1xx:
 				{
 			        LOG(("nmi triggered\n"));
-				    cputag_set_input_line(timer.machine(), "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+				    timer.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 				}
 				break;
 
@@ -786,7 +786,7 @@ WRITE8_MEMBER(nc_state::nc_uart_control_w)
 		/* changed uart from off to on */
 		if ((data & (1<<3))==0)
 		{
-			devtag_reset(machine(), "uart");
+			machine().device("uart")->reset();
 		}
 	}
 
@@ -919,24 +919,23 @@ static const centronics_interface nc100_centronics_config =
 };
 
 
-static MACHINE_RESET( nc100 )
+void nc_state::machine_reset()
 {
-	nc_state *state = machine.driver_data<nc_state>();
 	/* 256k of rom */
-	state->m_membank_rom_mask = 0x0f;
+	m_membank_rom_mask = 0x0f;
 
-	state->m_membank_internal_ram_mask = 3;
+	m_membank_internal_ram_mask = 3;
 
-	state->m_membank_card_ram_mask = 0x03f;
+	m_membank_card_ram_mask = 0x03f;
 
-	nc_common_init_machine(machine);
+	nc_common_init_machine(machine());
 
-	nc_common_open_stream_for_reading(machine);
-	nc_common_restore_memory_from_stream(machine);
-	nc_common_close_stream(machine);
+	nc_common_open_stream_for_reading(machine());
+	nc_common_restore_memory_from_stream(machine());
+	nc_common_close_stream(machine());
 
 	/* serial */
-	state->m_irq_latch_mask = (1<<0) | (1<<1);
+	m_irq_latch_mask = (1<<0) | (1<<1);
 }
 
 static void nc100_machine_stop(running_machine &machine)
@@ -946,19 +945,18 @@ static void nc100_machine_stop(running_machine &machine)
 	nc_common_close_stream(machine);
 }
 
-static MACHINE_START( nc100 )
+void nc_state::machine_start()
 {
-	nc_state *state = machine.driver_data<nc_state>();
-    state->m_type = NC_TYPE_1xx;
+    m_type = NC_TYPE_1xx;
 
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc100_machine_stop),&machine));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc100_machine_stop),&machine()));
 
 	/* keyboard timer */
-	state->m_keyboard_timer = machine.scheduler().timer_alloc(FUNC(nc_keyboard_timer_callback));
-	state->m_keyboard_timer->adjust(attotime::from_msec(10));
+	m_keyboard_timer = machine().scheduler().timer_alloc(FUNC(nc_keyboard_timer_callback));
+	m_keyboard_timer->adjust(attotime::from_msec(10));
 
 	/* serial timer */
-	state->m_serial_timer = machine.scheduler().timer_alloc(FUNC(nc_serial_timer_callback));
+	m_serial_timer = machine().scheduler().timer_alloc(FUNC(nc_serial_timer_callback));
 }
 
 
@@ -1307,28 +1305,27 @@ static void nc200_floppy_drive_index_callback(int drive_id)
 }
 #endif
 
-static MACHINE_RESET( nc200 )
+MACHINE_RESET_MEMBER(nc_state,nc200)
 {
-	nc_state *state = machine.driver_data<nc_state>();
 	/* 512k of rom */
-	state->m_membank_rom_mask = 0x1f;
+	m_membank_rom_mask = 0x1f;
 
-	state->m_membank_internal_ram_mask = 7;
+	m_membank_internal_ram_mask = 7;
 
-	state->m_membank_card_ram_mask = 0x03f;
+	m_membank_card_ram_mask = 0x03f;
 
-	nc_common_init_machine(machine);
+	nc_common_init_machine(machine());
 
-	state->m_nc200_uart_interrupt_irq = 0;
+	m_nc200_uart_interrupt_irq = 0;
 
-	nc_common_open_stream_for_reading(machine);
-	nc_common_restore_memory_from_stream(machine);
-	nc_common_close_stream(machine);
+	nc_common_open_stream_for_reading(machine());
+	nc_common_restore_memory_from_stream(machine());
+	nc_common_close_stream(machine());
 
 	/* fdc, serial */
-	state->m_irq_latch_mask = /*(1<<5) |*/ (1<<2);
+	m_irq_latch_mask = /*(1<<5) |*/ (1<<2);
 
-	nc200_video_set_backlight(machine, 0);
+	nc200_video_set_backlight(machine(), 0);
 }
 
 static void nc200_machine_stop(running_machine &machine)
@@ -1338,19 +1335,18 @@ static void nc200_machine_stop(running_machine &machine)
 	nc_common_close_stream(machine);
 }
 
-static MACHINE_START( nc200 )
+MACHINE_START_MEMBER(nc_state,nc200)
 {
-	nc_state *state = machine.driver_data<nc_state>();
-	state->m_type = NC_TYPE_200;
+	m_type = NC_TYPE_200;
 
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc200_machine_stop),&machine));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc200_machine_stop),&machine()));
 
 	/* keyboard timer */
-	state->m_keyboard_timer = machine.scheduler().timer_alloc(FUNC(nc_keyboard_timer_callback));
-	state->m_keyboard_timer->adjust(attotime::from_msec(10));
+	m_keyboard_timer = machine().scheduler().timer_alloc(FUNC(nc_keyboard_timer_callback));
+	m_keyboard_timer->adjust(attotime::from_msec(10));
 
 	/* serial timer */
-	state->m_serial_timer = machine.scheduler().timer_alloc(FUNC(nc_serial_timer_callback));
+	m_serial_timer = machine().scheduler().timer_alloc(FUNC(nc_serial_timer_callback));
 }
 
 /*
@@ -1426,7 +1422,7 @@ WRITE8_MEMBER(nc_state::nc200_uart_control_w)
 	}
 
 	/* bit 5 is used in disk interface */
-	LOG_DEBUG(("bit 5: PC: %04x %02x\n", cpu_get_pc(machine().device("maincpu")), data & (1 << 5)));
+	LOG_DEBUG(("bit 5: PC: %04x %02x\n", machine().device("maincpu")->safe_pc(), data & (1 << 5)));
 }
 
 
@@ -1445,7 +1441,7 @@ WRITE8_MEMBER(nc_state::nc200_uart_control_w)
 WRITE8_MEMBER(nc_state::nc200_memory_card_wait_state_w)
 {
 	device_t *fdc = machine().device("upd765");
-	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n", cpu_get_pc(machine().device("maincpu")), data));
+	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n", machine().device("maincpu")->safe_pc(), data));
 #if 0
 	floppy_drive_set_motor_state(0, 1);
 	floppy_drive_set_ready_state(0, 1, 1);
@@ -1458,7 +1454,7 @@ WRITE8_MEMBER(nc_state::nc200_memory_card_wait_state_w)
 /* bit 0 seems to be the same as nc100 */
 WRITE8_MEMBER(nc_state::nc200_poweroff_control_w)
 {
-	LOG_DEBUG(("nc200 power off: PC: %04x %02x\n", cpu_get_pc(machine().device("maincpu")), data));
+	LOG_DEBUG(("nc200 power off: PC: %04x %02x\n", machine().device("maincpu")->safe_pc(), data));
 
 	nc200_video_set_backlight(machine(), ((data ^ (1 << 2)) >> 2) & 0x01);
 }
@@ -1603,8 +1599,6 @@ static MACHINE_CONFIG_START( nc100, nc_state )
 	MCFG_CPU_IO_MAP(nc100_io)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( nc100 )
-	MCFG_MACHINE_RESET( nc100 )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", LCD)
@@ -1615,10 +1609,8 @@ static MACHINE_CONFIG_START( nc100, nc_state )
 	MCFG_SCREEN_UPDATE_STATIC( nc )
 
 	MCFG_PALETTE_LENGTH(NC_NUM_COLOURS)
-	MCFG_PALETTE_INIT( nc )
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
-	MCFG_VIDEO_START( nc )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1670,8 +1662,8 @@ static MACHINE_CONFIG_DERIVED( nc200, nc100 )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_IO_MAP(nc200_io)
 
-	MCFG_MACHINE_START( nc200 )
-	MCFG_MACHINE_RESET( nc200 )
+	MCFG_MACHINE_START_OVERRIDE(nc_state, nc200 )
+	MCFG_MACHINE_RESET_OVERRIDE(nc_state, nc200 )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")

@@ -67,7 +67,7 @@ void st_state::flush_dma_fifo()
 	if (m_fdc_fifo_empty[m_fdc_fifo_sel]) return;
 
 	if (m_fdc_dmabytes) {
-		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *program = m_maincpu->space(AS_PROGRAM);
 		for (int i = 0; i < 8; i++) {
 			UINT16 data = m_fdc_fifo[m_fdc_fifo_sel][i];
 
@@ -98,7 +98,7 @@ void st_state::flush_dma_fifo()
 void st_state::fill_dma_fifo()
 {
 	if (m_fdc_dmabytes) {
-		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *program = m_maincpu->space(AS_PROGRAM);
 		for (int i = 0; i < 8; i++) {
 			UINT16 data = program->read_word(m_dma_base);
 
@@ -2142,7 +2142,7 @@ static IRQ_CALLBACK( atarist_int_ack )
 
 void st_state::configure_memory()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	switch (m_ram->size())
 	{
@@ -2205,7 +2205,7 @@ void st_state::machine_start()
 	configure_memory();
 
 	// set CPU interrupt callback
-	device_set_irq_callback(m_maincpu, atarist_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
 
 	// allocate timers
 	m_mouse_timer = machine().scheduler().timer_alloc(FUNC(st_mouse_tick));
@@ -2262,7 +2262,7 @@ void ste_state::machine_start()
 	configure_memory();
 
 	/* set CPU interrupt callback */
-	device_set_irq_callback(m_maincpu, atarist_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
 
 	/* allocate timers */
 	m_dmasound_timer = machine().scheduler().timer_alloc(FUNC(atariste_dmasound_tick));
@@ -2292,7 +2292,7 @@ void megaste_state::machine_start()
 void stbook_state::machine_start()
 {
 	/* configure RAM banking */
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	switch (m_ram->size())
 	{
@@ -2302,7 +2302,7 @@ void stbook_state::machine_start()
 	}
 
 	/* set CPU interrupt callback */
-	device_set_irq_callback(m_maincpu, atarist_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
 
 	/* register for state saving */
 	ste_state::state_save();

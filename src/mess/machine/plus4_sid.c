@@ -62,14 +62,10 @@ const rom_entry *plus4_sid_cartridge_device::device_rom_region() const
 //  sid6581_interface sid_intf
 //-------------------------------------------------
 
-static int paddle_read( device_t *device, int which )
+static MOS6581_INTERFACE( sid_intf )
 {
-	return 0;
-}
-
-static const sid6581_interface sid_intf =
-{
-	paddle_read
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -85,7 +81,7 @@ static MACHINE_CONFIG_FRAGMENT( plus4_sid )
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
 MACHINE_CONFIG_END
 
 
@@ -141,13 +137,11 @@ void plus4_sid_cartridge_device::device_reset()
 //  plus4_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 plus4_sid_cartridge_device::plus4_cd_r(address_space &space, offs_t offset, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
+UINT8 plus4_sid_cartridge_device::plus4_cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
 {
-	UINT8 data = 0;
-
 	if ((offset >= 0xfe80 && offset < 0xfea0) || (offset >= 0xfd40 && offset < 0xfd60))
 	{
-		data = sid6581_r(m_sid, offset & 0x1f);
+		data = m_sid->read(space, offset & 0x1f);
 	}
 	else if (offset >= 0xfd80 && offset < 0xfd90)
 	{
@@ -166,7 +160,7 @@ void plus4_sid_cartridge_device::plus4_cd_w(address_space &space, offs_t offset,
 {
 	if ((offset >= 0xfe80 && offset < 0xfea0) || (offset >= 0xfd40 && offset < 0xfd60))
 	{
-		sid6581_w(m_sid, offset & 0x1f, data);
+		m_sid->write(space, offset & 0x1f, data);
 	}
 }
 

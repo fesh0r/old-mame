@@ -57,7 +57,7 @@
 /******************* internal chip data structure ******************/
 
 
-typedef struct
+struct mc6854_t
 {
 	devcb_resolved_write_line	out_irq_func;
 	devcb_resolved_read_line	in_rxd_func;
@@ -91,7 +91,7 @@ typedef struct
 	UINT8  frame[MAX_FRAME_LENGTH];
 	UINT32 flen, fpos;
 
-} mc6854_t;
+};
 
 /* meaning of tstate / rtate:
    0 = idle / waiting for frame flag
@@ -225,7 +225,7 @@ INLINE mc6854_t* get_safe_token( device_t *device )
 {
 	assert( device != NULL );
 	assert( device->type() == MC6854 );
-	return (mc6854_t*) downcast<legacy_device_base *>(device)->token();
+	return (mc6854_t*) downcast<mc6854_device *>(device)->token();
 }
 
 
@@ -808,7 +808,7 @@ READ8_DEVICE_HANDLER ( mc6854_r )
 	case 0: /* status register 1 */
 		mc6854_update_sr1( mc6854 );
 		LOG(( "%f $%04x mc6854_r: get SR1=$%02X (rda=%i,s2rq=%i,fd=%i,cts=%i,tu=%i,tdra=%i,irq=%i)\n",
-		      device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), mc6854->sr1,
+		      device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), mc6854->sr1,
 		      ( mc6854->sr1 & RDA) ? 1 : 0, ( mc6854->sr1 & S2RQ) ? 1 : 0,
 		      ( mc6854->sr1 & FD ) ? 1 : 0, ( mc6854->sr1 & CTS ) ? 1 : 0,
 		      ( mc6854->sr1 & TU ) ? 1 : 0, ( mc6854->sr1 & TDRA) ? 1 : 0,
@@ -818,7 +818,7 @@ READ8_DEVICE_HANDLER ( mc6854_r )
 	case 1: /* status register 2 */
 		mc6854_update_sr2( mc6854 );
 		LOG(( "%f $%04x mc6854_r: get SR2=$%02X (ap=%i,fv=%i,ridle=%i,rabt=%i,err=%i,dcd=%i,ovrn=%i,rda2=%i)\n",
-		      device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), mc6854->sr2,
+		      device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), mc6854->sr2,
 		      ( mc6854->sr2 & AP   ) ? 1 : 0, ( mc6854->sr2 & FV  ) ? 1 : 0,
 		      ( mc6854->sr2 & RIDLE) ? 1 : 0, ( mc6854->sr2 & RABT) ? 1 : 0,
 		      ( mc6854->sr2 & ERR  ) ? 1 : 0, ( mc6854->sr2 & DCD ) ? 1 : 0,
@@ -830,12 +830,12 @@ READ8_DEVICE_HANDLER ( mc6854_r )
 	{
 		UINT8 data = mc6854_rfifo_pop( device );
 		LOG(( "%f $%04x mc6854_r: get data $%02X\n",
-		      device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), data ));
+		      device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), data ));
 		return data;
 	}
 
 	default:
-		logerror( "$%04x mc6854 invalid read offset %i\n", cpu_get_previouspc( device->machine().firstcpu ), offset );
+		logerror( "$%04x mc6854 invalid read offset %i\n", device->machine().firstcpu->pcbase( ), offset );
 	}
 	return 0;
 }
@@ -851,7 +851,7 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 	case 0: /* control register 1 */
 		mc6854->cr1 = data;
 		LOG(( "%f $%04x mc6854_w: set CR1=$%02X (ac=%i,irq=%c%c,%sreset=%c%c)\n",
-		      device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr1,
+		      device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), mc6854->cr1,
 		      AC ? 1 : 0,
 		      RIE ? 'r' : '-', TIE ? 't' : '-',
 		      DISCONTINUE ? "discontinue," : "",
@@ -859,7 +859,7 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 			    ));
 		if ( mc6854->cr1 & 0xc )
 			logerror( "$%04x mc6854 DMA not handled (CR1=$%02X)\n",
-				  cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr1 );
+				  device->machine().firstcpu->pcbase( ), mc6854->cr1 );
 		if ( DISCONTINUE )
 		{
 			/* abort receive FIFO but keeps shift register & synchro */
@@ -888,15 +888,15 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 			/* control register 3 */
 			mc6854->cr3 = data;
 			LOG(( "%f $%04x mc6854_w: set CR3=$%02X (lcf=%i,aex=%i,idl=%i,fdse=%i,loop=%i,tst=%i,dtr=%i)\n",
-			      device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr3,
+			      device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), mc6854->cr3,
 			      LCF ? (CEX ? 16 : 8) : 0,  AEX ? 1 : 0,
 			      IDL0 ? 0 : 1, FDSE ? 1 : 0, LOOP ? 1 : 0,
 			      TST ? 1 : 0, DTR ? 1 : 0
 				    ));
 			if ( LOOP )
-				logerror( "$%04x mc6854 loop mode not handled (CR3=$%02X)\n", cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr3 );
+				logerror( "$%04x mc6854 loop mode not handled (CR3=$%02X)\n", device->machine().firstcpu->pcbase( ), mc6854->cr3 );
 			if ( TST )
-				logerror( "$%04x mc6854 test mode not handled (CR3=$%02X)\n", cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr3 );
+				logerror( "$%04x mc6854 test mode not handled (CR3=$%02X)\n", device->machine().firstcpu->pcbase( ), mc6854->cr3 );
 
 			mc6854->out_dtr_func( DTR ? 1 : 0 );
 
@@ -906,13 +906,13 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 			/* control register 2 */
 			mc6854->cr2 = data;
 			LOG(( "%f $%04x mc6854_w: set CR2=$%02X (pse=%i,bytes=%i,fmidle=%i,%s,tlast=%i,clr=%c%c,rts=%i)\n",
-			      device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr2,
+			      device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), mc6854->cr2,
 			      PSE ? 1 : 0,  TWOBYTES ? 2 : 1,  FMIDLE ? 1 : 0,
 			      FCTDRA ? "fc" : "tdra", TLAST ? 1 : 0,
 			      data & 0x20 ? 'r' : '-',  data & 0x40 ? 't' : '-',
 			      RTS ? 1 : 0 ));
 			if ( PSE )
-				logerror( "$%04x mc6854 status prioritization not handled (CR2=$%02X)\n", cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr2 );
+				logerror( "$%04x mc6854 status prioritization not handled (CR2=$%02X)\n", device->machine().firstcpu->pcbase( ), mc6854->cr2 );
 			if ( TLAST )
 				mc6854_tfifo_terminate( device );
 			if ( data & 0x20 )
@@ -936,7 +936,7 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 		break;
 
 	case 2: /* transmitter data: continue data */
-		LOG(( "%f $%04xmc6854_w: push data=$%02X\n", device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), data ));
+		LOG(( "%f $%04xmc6854_w: push data=$%02X\n", device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), data ));
 		mc6854_tfifo_push( device, data );
 		break;
 
@@ -945,7 +945,7 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 		{
 			/* control register 4 */
 			mc6854->cr4 = data;
-			LOG(( "%f $%04x mc6854_w: set CR4=$%02X (interframe=%i,tlen=%i,rlen=%i,%s%s)\n", device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), mc6854->cr4,
+			LOG(( "%f $%04x mc6854_w: set CR4=$%02X (interframe=%i,tlen=%i,rlen=%i,%s%s)\n", device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), mc6854->cr4,
 			      TWOINTER ? 2 : 1,
 			      TWL, RWL,
 			      ABT ? ( ABTEX ? "abort-ext," : "abort,") : "",
@@ -960,14 +960,14 @@ WRITE8_DEVICE_HANDLER ( mc6854_w )
 		else
 		{
 			/* transmitter data: last data */
-			LOG(( "%f $%04x mc6854_w: push last-data=$%02X\n", device->machine().time().as_double(), cpu_get_previouspc( device->machine().firstcpu ), data ));
+			LOG(( "%f $%04x mc6854_w: push last-data=$%02X\n", device->machine().time().as_double(), device->machine().firstcpu->pcbase( ), data ));
 			mc6854_tfifo_push( device, data );
 			mc6854_tfifo_terminate( device );
 		}
 		break;
 
 	default:
-		logerror( "$%04x mc6854 invalid write offset %i (data=$%02X)\n", cpu_get_previouspc( device->machine().firstcpu ), offset, data );
+		logerror( "$%04x mc6854 invalid write offset %i (data=$%02X)\n", device->machine().firstcpu->pcbase( ), offset, data );
 	}
 }
 
@@ -1039,27 +1039,40 @@ static DEVICE_START( mc6854 )
 
 
 
-/************************** configuration ****************************/
+const device_type MC6854 = &device_creator<mc6854_device>;
 
-
-DEVICE_GET_INFO( mc6854 ) {
-	switch ( state ) {
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(mc6854_t);			break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = 0;					break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:				info->start = DEVICE_START_NAME(mc6854);	break;
-		case DEVINFO_FCT_STOP:				/* nothing */					break;
-		case DEVINFO_FCT_RESET:				info->reset = DEVICE_RESET_NAME(mc6854);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:				strcpy(info->s, "Motorola MC6854 ADLC");		break;
-		case DEVINFO_STR_FAMILY:			strcpy(info->s, "MC6854");				break;
-		case DEVINFO_STR_VERSION:			strcpy(info->s, "1.00");				break;
-		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);				break;
-		case DEVINFO_STR_CREDITS:			strcpy(info->s, "Copyright the MAME and MESS Teams");  break;
-	}
+mc6854_device::mc6854_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, MC6854, "Motorola MC6854 ADLC", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(mc6854_t));
 }
 
-DEFINE_LEGACY_DEVICE(MC6854, mc6854);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void mc6854_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void mc6854_device::device_start()
+{
+	DEVICE_START_NAME( mc6854 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void mc6854_device::device_reset()
+{
+	DEVICE_RESET_NAME( mc6854 )(this);
+}
+
+

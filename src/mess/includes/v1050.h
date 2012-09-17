@@ -8,7 +8,6 @@
 #include "cpu/z80/z80.h"
 #include "cpu/m6502/m6502.h"
 #include "imagedev/flopdrv.h"
-#include "imagedev/harddriv.h"
 #include "formats/basicdsk.h"
 #include "machine/ctronics.h"
 #include "machine/i8214.h"
@@ -94,7 +93,7 @@ public:
 	required_device<timer_device> m_timer_sio;
 	required_device<timer_device> m_timer_ack;
 	required_device<timer_device> m_timer_rst;
-	required_device<device_t> m_sasibus;
+	required_device<scsibus_device> m_sasibus;
 
 	virtual void machine_start();
 	virtual void machine_reset();

@@ -256,7 +256,6 @@ static READ8_DEVICE_HANDLER( a1200_cia_0_portA_r )
 
 static const mos6526_interface a1200_cia_0_intf =
 {
-	0,													/* tod_clock */
 	DEVCB_DEVICE_LINE("cia_0", amiga_cia_0_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -269,7 +268,6 @@ static const mos6526_interface a1200_cia_0_intf =
 
 static const mos6526_interface a1200_cia_1_intf =
 {
-	0,													/* tod_clock */
 	DEVCB_DEVICE_LINE("cia_1", amiga_cia_1_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -293,7 +291,7 @@ static MACHINE_CONFIG_START( a1200n, ami1200_state )
 
 //  MCFG_CPU_ADD("keyboard_mpu", MC68HC05)
 
-	MCFG_MACHINE_RESET(amiga)
+	MCFG_MACHINE_RESET_OVERRIDE(ami1200_state,amiga)
 
 	/* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -305,7 +303,7 @@ static MACHINE_CONFIG_START( a1200n, ami1200_state )
 	MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
 	MCFG_SCREEN_UPDATE_STATIC(amiga_aga)
 
-	MCFG_VIDEO_START(amiga_aga)
+	MCFG_VIDEO_START_OVERRIDE(ami1200_state,amiga_aga)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -317,8 +315,8 @@ static MACHINE_CONFIG_START( a1200n, ami1200_state )
 	MCFG_SOUND_ROUTE(3, "lspeaker", 0.25)
 
 	/* cia */
-	MCFG_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_0_intf)
-	MCFG_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_1_intf)
+	MCFG_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, 0, a1200_cia_0_intf)
+	MCFG_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, 0, a1200_cia_1_intf)
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68EC020_NTSC_CLOCK/2)

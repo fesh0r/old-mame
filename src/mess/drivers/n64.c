@@ -20,10 +20,10 @@ static READ32_HANDLER( dd_null_r )
 }
 
 static ADDRESS_MAP_START( n64_map, AS_PROGRAM, 32, n64_state )
-	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_BASE_LEGACY(&rdram)				// RDRAM
+	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_SHARE("rdram")					// RDRAM
 	AM_RANGE(0x03f00000, 0x03f00027) AM_DEVREADWRITE("rcp", n64_periphs, rdram_reg_r, rdram_reg_w)
-	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE("dmem")					// RSP DMEM
-	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_SHARE("imem")					// RSP IMEM
+	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE("rsp_dmem")					// RSP DMEM
+	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_SHARE("rsp_imem")					// RSP IMEM
 	AM_RANGE(0x04040000, 0x040fffff) AM_DEVREADWRITE_LEGACY("rsp", n64_sp_reg_r, n64_sp_reg_w)	// RSP
 	AM_RANGE(0x04100000, 0x041fffff) AM_DEVREADWRITE_LEGACY("rsp", n64_dp_reg_r, n64_dp_reg_w)	// RDP
 	AM_RANGE(0x04300000, 0x043fffff) AM_DEVREADWRITE("rcp", n64_periphs, mi_reg_r, mi_reg_w)	// MIPS Interface
@@ -33,17 +33,17 @@ static ADDRESS_MAP_START( n64_map, AS_PROGRAM, 32, n64_state )
 	AM_RANGE(0x04700000, 0x047fffff) AM_DEVREADWRITE("rcp", n64_periphs, ri_reg_r, ri_reg_w)	// RDRAM Interface
 	AM_RANGE(0x04800000, 0x048fffff) AM_DEVREADWRITE("rcp", n64_periphs, si_reg_r, si_reg_w)	// Serial Interface
 	AM_RANGE(0x05000508, 0x0500050b) AM_READ_LEGACY(dd_null_r);
-	AM_RANGE(0x08000000, 0x0801ffff) AM_RAM AM_BASE_LEGACY(&n64_sram)										// Cartridge SRAM
+	AM_RANGE(0x08000000, 0x0801ffff) AM_RAM AM_SHARE("sram")										// Cartridge SRAM
 	AM_RANGE(0x10000000, 0x13ffffff) AM_ROM AM_REGION("user2", 0)									// Cartridge
 	AM_RANGE(0x1fc00000, 0x1fc007bf) AM_ROM AM_REGION("user1", 0)									// PIF ROM
 	AM_RANGE(0x1fc007c0, 0x1fc007ff) AM_DEVREADWRITE("rcp", n64_periphs, pif_ram_r, pif_ram_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( n64dd_map, AS_PROGRAM, 32, n64_state )
-	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_BASE_LEGACY(&rdram)				// RDRAM
+	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_SHARE("rdram")				// RDRAM
 	AM_RANGE(0x03f00000, 0x03f00027) AM_DEVREADWRITE("rcp", n64_periphs, rdram_reg_r, rdram_reg_w)
-	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE("dmem")					// RSP DMEM
-	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_SHARE("imem")					// RSP IMEM
+	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE("rsp_dmem")					// RSP DMEM
+	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_SHARE("rsp_imem")					// RSP IMEM
 	AM_RANGE(0x04040000, 0x040fffff) AM_DEVREADWRITE_LEGACY("rsp", n64_sp_reg_r, n64_sp_reg_w)	// RSP
 	AM_RANGE(0x04100000, 0x041fffff) AM_DEVREADWRITE_LEGACY("rsp", n64_dp_reg_r, n64_dp_reg_w)	// RDP
 	AM_RANGE(0x04300000, 0x043fffff) AM_DEVREADWRITE("rcp", n64_periphs, mi_reg_r, mi_reg_w)	// MIPS Interface
@@ -54,17 +54,17 @@ static ADDRESS_MAP_START( n64dd_map, AS_PROGRAM, 32, n64_state )
 	AM_RANGE(0x04800000, 0x048fffff) AM_DEVREADWRITE("rcp", n64_periphs, si_reg_r, si_reg_w)	// Serial Interface
 	AM_RANGE(0x05000000, 0x05ffffff) AM_DEVREADWRITE("rcp", n64_periphs, dd_reg_r, dd_reg_w) // 64DD Interface
 	AM_RANGE(0x06000000, 0x063fffff) AM_ROM AM_REGION("ddipl", 0)									// 64DD IPL ROM
-	AM_RANGE(0x08000000, 0x0801ffff) AM_RAM AM_BASE_LEGACY(&n64_sram)										// Cartridge SRAM
+	AM_RANGE(0x08000000, 0x0801ffff) AM_RAM AM_SHARE("sram")										// Cartridge SRAM
 	AM_RANGE(0x10000000, 0x13ffffff) AM_ROM AM_REGION("user2", 0)									// Cartridge
 	AM_RANGE(0x1fc00000, 0x1fc007bf) AM_ROM AM_REGION("user1", 0)									// PIF ROM
 	AM_RANGE(0x1fc007c0, 0x1fc007ff) AM_DEVREADWRITE("rcp", n64_periphs, pif_ram_r, pif_ram_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rsp_map, AS_PROGRAM, 32, n64_state )
-	AM_RANGE(0x00000000, 0x00000fff) AM_RAM AM_SHARE("dmem")
-	AM_RANGE(0x00001000, 0x00001fff) AM_RAM AM_SHARE("imem")
-	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_BASE_LEGACY(&rsp_dmem) AM_SHARE("dmem")
-	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_BASE_LEGACY(&rsp_imem) AM_SHARE("imem")
+	AM_RANGE(0x00000000, 0x00000fff) AM_RAM AM_SHARE("rsp_dmem")
+	AM_RANGE(0x00001000, 0x00001fff) AM_RAM AM_SHARE("rsp_imem")
+	AM_RANGE(0x04000000, 0x04000fff) AM_RAM AM_SHARE("rsp_dmem")
+	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_SHARE("rsp_imem")
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( n64 )
@@ -215,7 +215,8 @@ static DEVICE_IMAGE_LOAD(n64_cart)
 		//printf("Loading\n");
 		UINT8 data[0x30800];
 		battery_image->battery_load(data, 0x30800, 0x00);
-		memcpy(n64_sram, data, 0x20000);
+		//memcpy(n64_sram, data, 0x20000);
+		memcpy(image.device().machine().root_device().memshare("sram")->ptr(), data, 0x20000);
 		memcpy(periphs->m_save_data.eeprom, data + 0x20000, 0x800);
 		memcpy(periphs->m_save_data.mempak[0], data + 0x20800, 0x8000);
 		memcpy(periphs->m_save_data.mempak[1], data + 0x28800, 0x8000);
@@ -233,7 +234,8 @@ static DEVICE_IMAGE_LOAD(n64_cart)
 
 MACHINE_START( n64dd )
 {
-	MACHINE_START_CALL( n64 );
+	n64_state *state = machine.driver_data<n64_state>();
+	state->machine_start();
 
 	UINT8 *ipl = machine.root_device().memregion("ddipl")->base();
 
@@ -268,8 +270,6 @@ static MACHINE_CONFIG_START( n64, n64_state )
 	MCFG_CPU_CONFIG(n64_rsp_config)
 	MCFG_CPU_PROGRAM_MAP(rsp_map)
 
-	MCFG_MACHINE_START( n64 )
-	MCFG_MACHINE_RESET( n64 )
 	//MCFG_QUANTUM_TIME(attotime::from_hz(1000000))
 	MCFG_QUANTUM_TIME(attotime::from_hz(1200))
 
@@ -283,7 +283,6 @@ static MACHINE_CONFIG_START( n64, n64_state )
 
 	MCFG_PALETTE_LENGTH(0x1000)
 
-	MCFG_VIDEO_START(n64)
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 

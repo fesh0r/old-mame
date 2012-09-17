@@ -29,7 +29,7 @@
 #include "sound/2203intf.h"
 #include "formats/basicdsk.h"
 
-typedef struct
+struct tsp_t
 {
 	UINT16 tvram_vreg_offset;
 	UINT16 attr_offset;
@@ -43,7 +43,7 @@ typedef struct
 	UINT16 cur_pos_x,cur_pos_y;
 	UINT8 curn;
 	UINT8 curn_blink;
-} tsp_t;
+};
 
 
 class pc88va_state : public driver_device
@@ -98,11 +98,14 @@ public:
 	DECLARE_READ8_MEMBER(backupram_dsw_r);
 	DECLARE_WRITE8_MEMBER(sys_port1_w);
 	DECLARE_WRITE8_MEMBER(fdc_irq_vector_w);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
 };
 
 
 
-static VIDEO_START( pc88va )
+void pc88va_state::video_start()
 {
 
 }
@@ -540,8 +543,8 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 			if(knj_offset >= 0x50000/2 && knj_offset <= 0x53fff/2) // TODO: there's an area that can be write protected
 			{
 				COMBINE_DATA(&knj_ram[knj_offset]);
-				gfx_element_mark_dirty(machine().gfx[0], (knj_offset * 2) / 8);
-				gfx_element_mark_dirty(machine().gfx[1], (knj_offset * 2) / 32);
+				machine().gfx[0]->mark_dirty((knj_offset * 2) / 8);
+				machine().gfx[1]->mark_dirty((knj_offset * 2) / 32);
 			}
 		}
 		break;
@@ -641,7 +644,7 @@ WRITE8_MEMBER(pc88va_state::idp_command_w)
 		case SPROV:  m_cmd = SPROV; /* TODO: where it returns the info? */ break;
 
 		/* TODO: 0x89 shouldn't trigger, should be one of the above commands */
-		default:   m_cmd = 0x00; printf("PC=%05x: Unknown IDP %02x cmd set\n",cpu_get_pc(&space.device()),data); break;
+		default:   m_cmd = 0x00; printf("PC=%05x: Unknown IDP %02x cmd set\n",space.device().safe_pc(),data); break;
 	}
 }
 
@@ -957,6 +960,8 @@ READ8_MEMBER(pc88va_state::upd765_tc_r)
 
 READ8_MEMBER(pc88va_state::pc88va_fdc_r)
 {
+	printf("%08x\n",offset);
+
 	switch(offset*2)
 	{
 		case 0x00: return 0; // FDC mode register
@@ -974,6 +979,7 @@ READ8_MEMBER(pc88va_state::pc88va_fdc_r)
 
 WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
 {
+	printf("%08x %02x\n",offset,data);
 	switch(offset*2)
 	{
 		/*
@@ -981,7 +987,7 @@ WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
         */
 		case 0x00: // FDC mode register
 			m_fdc_mode = data & 1;
-			cputag_set_input_line(machine(), "fdccpu", INPUT_LINE_HALT, (m_fdc_mode) ? ASSERT_LINE : CLEAR_LINE);
+			machine().device("fdccpu")->execute().set_input_line(INPUT_LINE_HALT, (m_fdc_mode) ? ASSERT_LINE : CLEAR_LINE);
 			break;
 		/*
         --x- ---- CLK: FDC clock selection (0) 4.8MHz (1) 8 MHz
@@ -1407,7 +1413,7 @@ static I8255A_INTERFACE( master_fdd_intf )
 {
 	DEVCB_DEVICE_MEMBER("d8255_2s", i8255_device, pb_r),	// Port A read
 	DEVCB_NULL,							// Port A write
-	DEVCB_NULL,							// Port B read
+	DEVCB_DEVICE_MEMBER("d8255_2s", i8255_device, pa_r), // Port B read
 	DEVCB_NULL,							// Port B write
 	DEVCB_HANDLER(cpu_8255_c_r),		// Port C read
 	DEVCB_HANDLER(cpu_8255_c_w)			// Port C write
@@ -1431,7 +1437,7 @@ static I8255A_INTERFACE( slave_fdd_intf )
 {
 	DEVCB_DEVICE_MEMBER("d8255_2", i8255_device, pb_r),	// Port A read
 	DEVCB_NULL,							// Port A write
-	DEVCB_NULL,							// Port B read
+	DEVCB_DEVICE_MEMBER("d8255_2", i8255_device, pa_r), // Port B read
 	DEVCB_NULL,							// Port B write
 	DEVCB_HANDLER(fdc_8255_c_r),		// Port C read
 	DEVCB_HANDLER(fdc_8255_c_w)			// Port C write
@@ -1496,7 +1502,7 @@ static IRQ_CALLBACK(pc88va_irq_callback)
 
 static WRITE_LINE_DEVICE_HANDLER( pc88va_pic_irq )
 {
-	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 //  logerror("PIC#1: set IRQ line to %i\n",interrupt);
 }
 
@@ -1522,40 +1528,38 @@ static const struct pic8259_interface pc88va_pic8259_slave_config =
 	DEVCB_NULL
 };
 
-static MACHINE_START( pc88va )
+void pc88va_state::machine_start()
 {
-	pc88va_state *state = machine.driver_data<pc88va_state>();
-	device_set_irq_callback(machine.device("maincpu"), pc88va_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pc88va_irq_callback);
 
-	state->m_t3_mouse_timer = machine.scheduler().timer_alloc(FUNC(t3_mouse_callback));
-	state->m_t3_mouse_timer->adjust(attotime::never);
+	m_t3_mouse_timer = machine().scheduler().timer_alloc(FUNC(t3_mouse_callback));
+	m_t3_mouse_timer->adjust(attotime::never);
 }
 
-static MACHINE_RESET( pc88va )
+void pc88va_state::machine_reset()
 {
-	pc88va_state *state = machine.driver_data<pc88va_state>();
-	UINT8 *ROM00 = machine.root_device().memregion("rom00")->base();
-	UINT8 *ROM10 = state->memregion("rom10")->base();
+	UINT8 *ROM00 = machine().root_device().memregion("rom00")->base();
+	UINT8 *ROM10 = memregion("rom10")->base();
 
-	state->membank("rom10_bank")->set_base(&ROM10[0x00000]);
-	state->membank("rom00_bank")->set_base(&ROM00[0x00000]);
+	membank("rom10_bank")->set_base(&ROM10[0x00000]);
+	membank("rom00_bank")->set_base(&ROM00[0x00000]);
 
-	state->m_bank_reg = 0x4100;
-	state->m_backupram_wp = 1;
+	m_bank_reg = 0x4100;
+	m_backupram_wp = 1;
 
 	/* default palette */
 	{
 		UINT8 i;
 		for(i=0;i<32;i++)
-			palette_set_color_rgb(machine,i,pal1bit((i & 2) >> 1),pal1bit((i & 4) >> 2),pal1bit(i & 1));
+			palette_set_color_rgb(machine(),i,pal1bit((i & 2) >> 1),pal1bit((i & 4) >> 2),pal1bit(i & 1));
 	}
 
-	state->m_tsp.tvram_vreg_offset = 0;
+	m_tsp.tvram_vreg_offset = 0;
 
-	state->m_fdc_mode = 0;
-	state->m_fdc_irq_opcode = 0x00; //0x7f ld a,a !
+	m_fdc_mode = 0;
+	m_fdc_irq_opcode = 0x00; //0x7f ld a,a !
 
-	device_set_input_line_vector(machine.device("fdccpu"), 0, 0);
+	machine().device("fdccpu")->execute().set_input_line_vector(0, 0);
 }
 
 static INTERRUPT_GEN( pc88va_vrtc_irq )
@@ -1623,7 +1627,7 @@ static WRITE_LINE_DEVICE_HANDLER(pc88va_upd765_interrupt)
 	if(drvstate->m_fdc_mode)
 		pic8259_ir3_w(device->machine().device( "pic8259_slave"), state);
 	else
-		cputag_set_input_line(device->machine(), "fdccpu", 0, HOLD_LINE);
+		device->machine().device("fdccpu")->execute().set_input_line(0, HOLD_LINE);
 };
 
 static const struct upd765_interface pc88va_upd765_interface =
@@ -1659,6 +1663,8 @@ static MACHINE_CONFIG_START( pc88va, pc88va_state )
 	MCFG_CPU_PROGRAM_MAP(pc88va_z80_map)
 	MCFG_CPU_IO_MAP(pc88va_z80_io_map)
 
+	MCFG_QUANTUM_PERFECT_CPU("maincpu")
+
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(640, 480)
@@ -1666,13 +1672,10 @@ static MACHINE_CONFIG_START( pc88va, pc88va_state )
 	MCFG_SCREEN_UPDATE_STATIC( pc88va )
 
 	MCFG_PALETTE_LENGTH(32)
-//  MCFG_PALETTE_INIT( pc8801 )
+//  MCFG_PALETTE_INIT_OVERRIDE(pc88va_state, pc8801 )
 	MCFG_GFXDECODE( pc88va )
 
-	MCFG_VIDEO_START( pc88va )
 
-	MCFG_MACHINE_START( pc88va )
-	MCFG_MACHINE_RESET( pc88va )
 
 	MCFG_I8255_ADD( "d8255_2", master_fdd_intf )
 	MCFG_I8255_ADD( "d8255_3", r232c_ctrl_intf )

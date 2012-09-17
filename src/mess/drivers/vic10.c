@@ -39,7 +39,7 @@ READ8_MEMBER( vic10_state::read )
 {
 	// TODO this is really handled by the PLA
 
-	UINT8 data = 0;
+	UINT8 data = m_vic->bus_r();
 	int lorom = 1, uprom = 1, exram = 1;
 
 	if (offset < 0x800)
@@ -60,7 +60,7 @@ READ8_MEMBER( vic10_state::read )
 	}
 	else if (offset >= 0xd400 && offset < 0xd800)
 	{
-		data = sid6581_r(m_sid, offset & 0x1f);
+		data = m_sid->read(space, offset & 0x1f);
 	}
 	else if (offset >= 0xd800 && offset < 0xdc00)
 	{
@@ -75,9 +75,7 @@ READ8_MEMBER( vic10_state::read )
 		uprom = 0;
 	}
 
-	data |= m_exp->cd_r(space, offset, lorom, uprom, exram);
-
-	return data;
+	return m_exp->cd_r(space, offset, data, lorom, uprom, exram);
 }
 
 
@@ -105,7 +103,7 @@ WRITE8_MEMBER( vic10_state::write )
 	}
 	else if (offset >= 0xd400 && offset < 0xd800)
 	{
-		sid6581_w(m_sid, offset & 0x1f, data);
+		m_sid->write(space, offset & 0x1f, data);
 	}
 	else if (offset >= 0xd800 && offset < 0xdc00)
 	{
@@ -126,7 +124,7 @@ WRITE8_MEMBER( vic10_state::write )
 
 READ8_MEMBER( vic10_state::vic_videoram_r )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	if (offset < 0x3000)
 		return program->read_byte(offset);
@@ -253,46 +251,43 @@ static MOS6566_INTERFACE( vic_intf )
 //  sid6581_interface sid_intf
 //-------------------------------------------------
 
-static int vic10_paddle_read( device_t *device, int which )
+UINT8 vic10_state::paddle_read(int which)
 {
-	running_machine &machine = device->machine();
-	vic10_state *state = device->machine().driver_data<vic10_state>();
-
 	int pot1 = 0xff, pot2 = 0xff, pot3 = 0xff, pot4 = 0xff, temp;
-	UINT8 cia0porta = mos6526_pa_r(state->m_cia, 0);
-	int controller1 = machine.root_device().ioport("CTRLSEL")->read() & 0x07;
-	int controller2 = machine.root_device().ioport("CTRLSEL")->read() & 0x70;
+	UINT8 cia0porta = mos6526_pa_r(m_cia, 0);
+	int controller1 = ioport("CTRLSEL")->read() & 0x07;
+	int controller2 = ioport("CTRLSEL")->read() & 0x70;
 	// Notice that only a single input is defined for Mouse & Lightpen in both ports
 	switch (controller1)
 	{
 		case 0x01:
 			if (which)
-				pot2 = machine.root_device().ioport("PADDLE2")->read();
+				pot2 = ioport("PADDLE2")->read();
 			else
-				pot1 = machine.root_device().ioport("PADDLE1")->read();
+				pot1 = ioport("PADDLE1")->read();
 			break;
 
 		case 0x02:
 			if (which)
-				pot2 = machine.root_device().ioport("TRACKY")->read();
+				pot2 = ioport("TRACKY")->read();
 			else
-				pot1 = machine.root_device().ioport("TRACKX")->read();
+				pot1 = ioport("TRACKX")->read();
 			break;
 
 		case 0x03:
-			if (which && (machine.root_device().ioport("JOY1_2B")->read() & 0x20))	// Joy1 Button 2
+			if (which && (ioport("JOY1_2B")->read() & 0x20))	// Joy1 Button 2
 				pot1 = 0x00;
 			break;
 
 		case 0x04:
 			if (which)
-				pot2 = machine.root_device().ioport("LIGHTY")->read();
+				pot2 = ioport("LIGHTY")->read();
 			else
-				pot1 = machine.root_device().ioport("LIGHTX")->read();
+				pot1 = ioport("LIGHTX")->read();
 			break;
 
 		case 0x06:
-			if (which && (machine.root_device().ioport("OTHER")->read() & 0x04))	// Lightpen Signal
+			if (which && (ioport("OTHER")->read() & 0x04))	// Lightpen Signal
 				pot2 = 0x00;
 			break;
 
@@ -309,32 +304,32 @@ static int vic10_paddle_read( device_t *device, int which )
 	{
 		case 0x10:
 			if (which)
-				pot4 = machine.root_device().ioport("PADDLE4")->read();
+				pot4 = ioport("PADDLE4")->read();
 			else
-				pot3 = machine.root_device().ioport("PADDLE3")->read();
+				pot3 = ioport("PADDLE3")->read();
 			break;
 
 		case 0x20:
 			if (which)
-				pot4 = machine.root_device().ioport("TRACKY")->read();
+				pot4 = ioport("TRACKY")->read();
 			else
-				pot3 = machine.root_device().ioport("TRACKX")->read();
+				pot3 = ioport("TRACKX")->read();
 			break;
 
 		case 0x30:
-			if (which && (machine.root_device().ioport("JOY2_2B")->read() & 0x20))	// Joy2 Button 2
+			if (which && (ioport("JOY2_2B")->read() & 0x20))	// Joy2 Button 2
 				pot4 = 0x00;
 			break;
 
 		case 0x40:
 			if (which)
-				pot4 = machine.root_device().ioport("LIGHTY")->read();
+				pot4 = ioport("LIGHTY")->read();
 			else
-				pot3 = machine.root_device().ioport("LIGHTX")->read();
+				pot3 = ioport("LIGHTX")->read();
 			break;
 
 		case 0x60:
-			if (which && (machine.root_device().ioport("OTHER")->read() & 0x04))	// Lightpen Signal
+			if (which && (ioport("OTHER")->read() & 0x04))	// Lightpen Signal
 				pot4 = 0x00;
 			break;
 
@@ -347,7 +342,7 @@ static int vic10_paddle_read( device_t *device, int which )
 			break;
 	}
 
-	if (machine.root_device().ioport("CTRLSEL")->read() & 0x80)		// Swap
+	if (ioport("CTRLSEL")->read() & 0x80)		// Swap
 	{
 		temp = pot1; pot1 = pot3; pot3 = temp;
 		temp = pot2; pot2 = pot4; pot4 = temp;
@@ -369,9 +364,20 @@ static int vic10_paddle_read( device_t *device, int which )
 	}
 }
 
-static const sid6581_interface sid_intf =
+READ8_MEMBER( vic10_state::sid_potx_r )
 {
-	vic10_paddle_read
+	return paddle_read(0);
+}
+
+READ8_MEMBER( vic10_state::sid_poty_r )
+{
+	return paddle_read(1);
+}
+
+static MOS6581_INTERFACE( sid_intf )
+{
+	DEVCB_DRIVER_MEMBER(vic10_state, sid_potx_r),
+	DEVCB_DRIVER_MEMBER(vic10_state, sid_poty_r)
 };
 
 
@@ -452,7 +458,6 @@ WRITE8_MEMBER( vic10_state::cia_pb_w )
 
 static const mos6526_interface cia_intf =
 {
-	10,
 	DEVCB_DRIVER_LINE_MEMBER(vic10_state, cia_irq_w),
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(VIC10_EXPANSION_SLOT_TAG, vic10_expansion_slot_device, sp_w),
@@ -465,7 +470,7 @@ static const mos6526_interface cia_intf =
 
 
 //-------------------------------------------------
-//  m6502_interface cpu_intf
+//  M6510_INTERFACE( cpu_intf )
 //-------------------------------------------------
 
 READ8_MEMBER( vic10_state::cpu_r )
@@ -475,19 +480,21 @@ READ8_MEMBER( vic10_state::cpu_r )
         bit     description
 
         P0      EXPANSION PORT
-        P1      1
-        P2      1
+        P1
+        P2
         P3
         P4      CASS SENS
-        P5
+        P5      0
 
     */
 
-	UINT8 data = 0x06;
+	UINT8 data = 0;
 
+	// expansion port
 	data |= m_exp->p0_r();
 
-	data |= ((m_cassette->get_state() & CASSETTE_MASK_UISTATE) == CASSETTE_STOPPED) << 4;
+	// cassette sense
+	data |= m_cassette->sense_r() << 4;
 
 	return data;
 }
@@ -513,40 +520,31 @@ WRITE8_MEMBER( vic10_state::cpu_w )
 	}
 
 	// cassette write
-	m_cassette->output(BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	m_cassette->write(BIT(data, 3));
 
 	// cassette motor
-	if (!BIT(data, 5))
-	{
-		m_cassette->change_state(CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
-		m_cassette_timer->adjust(attotime::zero, 0, attotime::from_hz(44100));
-	}
-	else
-	{
-		m_cassette->change_state(CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
-		m_cassette_timer->reset();
-	}
+	m_cassette->motor_w(BIT(data, 5));
 }
 
-static const m6502_interface cpu_intf =
+static M6510_INTERFACE( cpu_intf )
 {
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(vic10_state, cpu_r),
-	DEVCB_DRIVER_MEMBER(vic10_state, cpu_w)
+	DEVCB_DRIVER_MEMBER(vic10_state, cpu_w),
+	0x10,
+	0x20
 };
 
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( cassette_tick )
+//  PET_DATASSETTE_PORT_INTERFACE( datassette_intf )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( cassette_tick )
+static PET_DATASSETTE_PORT_INTERFACE( datassette_intf )
 {
-	vic10_state *state = timer.machine().driver_data<vic10_state>();
-
-	mos6526_flag_w(state->m_cia, state->m_cassette->input() > +0.0);
-}
+	DEVCB_DEVICE_LINE(MOS6526_TAG, mos6526_flag_w)
+};
 
 
 //-------------------------------------------------
@@ -631,10 +629,9 @@ static MACHINE_CONFIG_START( vic10, vic10_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_MOS6526R1_ADD(MOS6526_TAG, VIC6566_CLOCK, cia_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
-	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
-	MCFG_VIC10_EXPANSION_SLOT_ADD(VIC10_EXPANSION_SLOT_TAG, expansion_intf, vic10_expansion_cards, NULL, NULL)
+	MCFG_MOS6526R1_ADD(MOS6526_TAG, VIC6566_CLOCK, 60, cia_intf)
+	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, datassette_intf, cbm_datassette_devices, NULL, NULL)
+	MCFG_VIC10_EXPANSION_SLOT_ADD(VIC10_EXPANSION_SLOT_TAG, VIC6566_CLOCK, expansion_intf, vic10_expansion_cards, NULL, NULL)
 
 	// software list
 	MCFG_SOFTWARE_LIST_ADD("cart_list", "vic10")
@@ -661,4 +658,4 @@ ROM_END
 //  GAME DRIVERS
 //**************************************************************************
 
-COMP( 1982, vic10,		0,    0,    vic10, vic10, driver_device,     0, "Commodore Business Machines", "VIC-10 / Max Machine / UltiMax (NTSC)", GAME_NOT_WORKING )
+COMP( 1982, vic10,		0,    0,    vic10, vic10, driver_device,     0, "Commodore Business Machines", "VIC-10 / Max Machine / UltiMax (NTSC)", GAME_SUPPORTS_SAVE )

@@ -36,8 +36,6 @@
 #include "machine/ins8250.h"
 #include "machine/keyboard.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define VIDEO_START_MEMBER(name) void name::video_start()
 
 #define H19_CLOCK (XTAL_12_288MHz / 6)
 #define H19_BEEP_FRQ (H19_CLOCK / 1024)
@@ -88,7 +86,7 @@ READ8_MEMBER( h19_state::h19_80_r )
 READ8_MEMBER( h19_state::h19_a0_r )
 {
 // keyboard status
-	cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	return 0x7f; // says that a key is ready and no modifier keys are pressed
 }
 
@@ -290,12 +288,12 @@ static INPUT_PORTS_START( h19 )
 INPUT_PORTS_END
 
 
-MACHINE_RESET_MEMBER(h19_state)
+void h19_state::machine_reset()
 {
 	beep_set_frequency(m_beep, H19_BEEP_FRQ);
 }
 
-VIDEO_START_MEMBER( h19_state )
+void h19_state::video_start()
 {
 	m_p_chargen = memregion("chargen")->base();
 }
@@ -338,7 +336,7 @@ static MC6845_UPDATE_ROW( h19_update_row )
 
 static WRITE_LINE_DEVICE_HANDLER(h19_ace_irq)
 {
-	cputag_set_input_line(device->machine(), "maincpu", 0, (state ? HOLD_LINE : CLEAR_LINE));
+	device->machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 static const ins8250_interface h19_ace_interface =
@@ -386,7 +384,7 @@ GFXDECODE_END
 WRITE8_MEMBER( h19_state::h19_kbd_put )
 {
 	m_term_data = data;
-	cputag_set_input_line(machine(), "maincpu", 0, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 }
 
 static ASCII_KEYBOARD_INTERFACE( keyboard_intf )

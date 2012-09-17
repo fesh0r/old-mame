@@ -11,17 +11,16 @@
 
 
 
-VIDEO_START( p2000m )
+VIDEO_START_MEMBER(p2000t_state,p2000m)
 {
-	p2000t_state *state = machine.driver_data<p2000t_state>();
-	state->m_frame_count = 0;
+	m_frame_count = 0;
 }
 
 
 SCREEN_UPDATE_IND16( p2000m )
 {
 	p2000t_state *state = screen.machine().driver_data<p2000t_state>();
-	UINT8 *videoram = state->m_p_videoram;
+	UINT8 *videoram = state->m_videoram;
 	int offs, sx, sy, code, loop;
 
 	for (offs = 0; offs < 80 * 24; offs++)

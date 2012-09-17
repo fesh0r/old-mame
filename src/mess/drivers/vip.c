@@ -56,7 +56,7 @@ Notes:
 
     TODO:
 
-    - Tiny BASIC
+    - ASCII keyboard
     - cassette loading
     - 20K RAM for Floating Point BASIC
     - VP-111 has 1K RAM, no byte I/O, no expansion
@@ -266,16 +266,13 @@ READ8_MEMBER( vip_state::read )
 
     UINT8 data = m_exp->program_r(space, offset, cs, cdef, &minh);
 
-    if (!minh)
+    if (cs)
     {
-        if (cs)
-        {
-            data = memregion(CDP1802_TAG)->base()[offset & 0x1ff];
-        }
-        else
-        {
-            data = m_ram->pointer()[offset & m_ram->mask()];
-        }
+        data = memregion(CDP1802_TAG)->base()[offset & 0x1ff];
+    }
+    else if (!minh)
+    {
+        data = m_ram->pointer()[offset & m_ram->mask()];
     }
 
     return data;
@@ -558,7 +555,7 @@ static CDP1861_INTERFACE( vdc_intf )
 	DEVCB_DRIVER_LINE_MEMBER(vip_state, vdc_ef1_w)
 };
 
-UINT32 vip_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+UINT32 vip_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	m_vdc->screen_update(screen, bitmap, cliprect);
 
@@ -708,6 +705,9 @@ void vip_state::machine_reset()
 
     // internal speaker
     m_beeper->set_output_gain(0, ioport("BEEPER")->read() ? 0.80 : 0);
+
+    // clear byte I/O latch
+    m_byteio_data = 0;
 }
 
 
@@ -773,9 +773,6 @@ static MACHINE_CONFIG_START( vip, vip_state )
     // video hardware
 	MCFG_CDP1861_SCREEN_ADD(CDP1861_TAG, SCREEN_TAG, XTAL_3_52128MHz/2)
 	MCFG_SCREEN_UPDATE_DRIVER(vip_state, screen_update)
-
-	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_CDP1861_ADD(CDP1861_TAG, XTAL_3_52128MHz/2, vdc_intf)
 

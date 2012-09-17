@@ -87,6 +87,7 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	virtual void palette_init();
 };
 
 READ8_MEMBER( mstation_state::flash_0x0000_read_handler )
@@ -173,7 +174,7 @@ UINT32 mstation_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 
 void mstation_state::refresh_memory(UINT8 bank, UINT8 chip_select)
 {
-	address_space* program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space* program = m_maincpu->space(AS_PROGRAM);
 	int &active_flash = (bank == 1 ? m_flash_at_0x4000 : m_flash_at_0x8000);
 	char bank_tag[6];
 
@@ -262,9 +263,9 @@ WRITE8_MEMBER( mstation_state::port2_w )
 void mstation_state::refresh_ints()
 {
 	if (m_irq != 0)
-		device_set_input_line(m_maincpu, 0, HOLD_LINE);
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	else
-		device_set_input_line(m_maincpu, 0, CLEAR_LINE);
+		m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
 READ8_MEMBER( mstation_state::irq_r )
@@ -486,10 +487,10 @@ static TIMER_DEVICE_CALLBACK( mstation_kb_timer )
 	state->refresh_ints();
 }
 
-static PALETTE_INIT( mstation )
+void mstation_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 static RP5C01_INTERFACE( rtc_intf )
@@ -504,7 +505,7 @@ static MACHINE_CONFIG_START( mstation, mstation_state )
     MCFG_CPU_IO_MAP(mstation_io)
 
     /* video hardware */
-    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_ADD("screen", LCD)
     MCFG_SCREEN_REFRESH_RATE(50)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
     MCFG_SCREEN_UPDATE_DRIVER(mstation_state, screen_update)
@@ -512,7 +513,6 @@ static MACHINE_CONFIG_START( mstation, mstation_state )
     MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 128-1)
 
     MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(mstation)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	MCFG_AMD_29F080_ADD("flash0")

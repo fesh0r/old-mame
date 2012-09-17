@@ -123,7 +123,7 @@ static READ8_DEVICE_HANDLER(sym1_riot_b_r)
 static WRITE8_DEVICE_HANDLER(sym1_riot_a_w)
 {
 	sym1_state *state = device->machine().driver_data<sym1_state>();
-	logerror("%x: riot_a_w 0x%02x\n", cpu_get_pc( device->machine().device("maincpu") ), data);
+	logerror("%x: riot_a_w 0x%02x\n", device->machine().device("maincpu") ->safe_pc( ), data);
 
 	/* save for later use */
 	state->m_riot_port_a = data;
@@ -133,7 +133,7 @@ static WRITE8_DEVICE_HANDLER(sym1_riot_a_w)
 static WRITE8_DEVICE_HANDLER(sym1_riot_b_w)
 {
 	sym1_state *state = device->machine().driver_data<sym1_state>();
-	logerror("%x: riot_b_w 0x%02x\n", cpu_get_pc( device->machine().device("maincpu") ), data);
+	logerror("%x: riot_b_w 0x%02x\n", device->machine().device("maincpu") ->safe_pc( ), data);
 
 	/* save for later use */
 	state->m_riot_port_b = data;
@@ -174,7 +174,7 @@ const ttl74145_interface sym1_ttl74145_intf =
 
 static void sym1_irq(device_t *device, int level)
 {
-	cputag_set_input_line(device->machine(), "maincpu", M6502_IRQ_LINE, level);
+	device->machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, level);
 }
 
 
@@ -298,13 +298,12 @@ DRIVER_INIT_MEMBER(sym1_state,sym1)
 }
 
 
-MACHINE_RESET( sym1 )
+void sym1_state::machine_reset()
 {
-	sym1_state *state = machine.driver_data<sym1_state>();
 	/* make 0xf800 to 0xffff point to the last half of the monitor ROM
        so that the CPU can find its reset vectors */
-	machine.device( "maincpu")->memory().space( AS_PROGRAM )->install_read_bank(0xf800, 0xffff, "bank1");
-	machine.device( "maincpu")->memory().space( AS_PROGRAM )->nop_write(0xf800, 0xffff);
-	state->membank("bank1")->set_base(state->m_monitor + 0x800);
-	machine.device("maincpu")->reset();
+	machine().device( "maincpu")->memory().space( AS_PROGRAM )->install_read_bank(0xf800, 0xffff, "bank1");
+	machine().device( "maincpu")->memory().space( AS_PROGRAM )->nop_write(0xf800, 0xffff);
+	membank("bank1")->set_base(m_monitor + 0x800);
+	machine().device("maincpu")->reset();
 }

@@ -22,10 +22,8 @@
 #include "machine/micropolis.h"
 
 #define SORCERER_USING_RS232 0
-#define SCREEN_UPDATE_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-#define VIDEO_START_MEMBER(name) void name::video_start()
 
-typedef struct {
+struct cass_data_t {
 	struct {
 		int length;		/* time cassette level is at input.level */
 		int level;		/* cassette level */
@@ -36,7 +34,7 @@ typedef struct {
 		int level;		/* cassette level */
 		int bit;		/* bit to to output */
 	} output;
-} cass_data_t;
+};
 
 
 class sorcerer_state : public driver_device
@@ -85,15 +83,18 @@ public:
 	required_ioport m_iop_config;
 	required_ioport m_iop_vs;
 	DECLARE_DRIVER_INIT(sorcerer);
+	virtual void machine_start();
+	virtual void machine_reset();
+	DECLARE_MACHINE_START(sorcererd);
 };
 
 
 /*----------- defined in machine/sorcerer.c -----------*/
 
 
-MACHINE_START( sorcererd );
-MACHINE_START( sorcerer );
-MACHINE_RESET( sorcerer );
+
+
+
 SNAPSHOT_LOAD( sorcerer );
 
 #endif /* SORCERER_H_ */

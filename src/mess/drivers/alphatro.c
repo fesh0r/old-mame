@@ -30,8 +30,6 @@
 
 #define MAIN_CLOCK XTAL_4MHz
 
-#define VIDEO_START_MEMBER(name) void name::video_start()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 class alphatro_state : public driver_device
 {
@@ -72,6 +70,7 @@ private:
 	static const device_timer_id SYSTEM_TIMER = 0;
 	static const device_timer_id SERIAL_TIMER = 1;
 	UINT8 m_timer_bit;
+	virtual void palette_init();
 };
 
 static TIMER_CALLBACK( alphatro_beepoff )
@@ -133,7 +132,7 @@ WRITE_LINE_MEMBER( alphatro_state::txdata_callback )
 	m_cass->output( (state) ? 0.8 : -0.8);
 }
 
-VIDEO_START_MEMBER( alphatro_state )
+void alphatro_state::video_start()
 {
 	m_p_chargen = memregion("chargen")->base();
 }
@@ -178,7 +177,7 @@ static MC6845_UPDATE_ROW( alphatro_update_row )
 
 INPUT_CHANGED_MEMBER( alphatro_state::alphatro_break )
 {
-	device_set_input_line(m_maincpu, INPUT_LINE_IRQ0, HOLD_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( alphatro_map, AS_PROGRAM, 8, alphatro_state )
@@ -352,7 +351,7 @@ void alphatro_state::machine_reset()
 	// do what the IPL does
 	//  UINT8* RAM = machine().device<ram_device>("ram")->pointer();
 	UINT8* ROM = memregion("maincpu")->base();
-	cpu_set_reg(m_maincpu, STATE_GENPC, 0xe000);
+	m_maincpu->set_pc(0xe000);
 	memcpy(m_p_ram, ROM, 0xf000); // copy BASIC to RAM, which the undumped IPL is supposed to do.
 	memcpy(m_p_videoram, ROM+0x1000, 0x1000);
 	//  membank("bank1")->set_base(RAM);
@@ -365,19 +364,19 @@ void alphatro_state::machine_reset()
 	beep_set_frequency(m_beep, 950);	/* piezo-device needs to be measured */
 }
 
-static PALETTE_INIT( alphatro )
+void alphatro_state::palette_init()
 {
 	// RGB colours
-	palette_set_color_rgb(machine, 0, 0x00, 0x00, 0x00);
-	palette_set_color_rgb(machine, 1, 0x00, 0x00, 0xff);
-	palette_set_color_rgb(machine, 2, 0xff, 0x00, 0x00);
-	palette_set_color_rgb(machine, 3, 0xff, 0x00, 0xff);
-	palette_set_color_rgb(machine, 4, 0x00, 0xff, 0x00);
-	palette_set_color_rgb(machine, 5, 0x00, 0xff, 0xff);
-	palette_set_color_rgb(machine, 6, 0xff, 0xff, 0x00);
-	palette_set_color_rgb(machine, 7, 0xff, 0xff, 0xff);
+	palette_set_color_rgb(machine(), 0, 0x00, 0x00, 0x00);
+	palette_set_color_rgb(machine(), 1, 0x00, 0x00, 0xff);
+	palette_set_color_rgb(machine(), 2, 0xff, 0x00, 0x00);
+	palette_set_color_rgb(machine(), 3, 0xff, 0x00, 0xff);
+	palette_set_color_rgb(machine(), 4, 0x00, 0xff, 0x00);
+	palette_set_color_rgb(machine(), 5, 0x00, 0xff, 0xff);
+	palette_set_color_rgb(machine(), 6, 0xff, 0xff, 0x00);
+	palette_set_color_rgb(machine(), 7, 0xff, 0xff, 0xff);
 	// Amber
-	palette_set_color_rgb(machine, 8, 0xf7, 0xaa, 0x00);
+	palette_set_color_rgb(machine(), 8, 0xf7, 0xaa, 0x00);
 }
 
 static const mc6845_interface alphatro_crtc6845_interface =
@@ -432,7 +431,6 @@ static MACHINE_CONFIG_START( alphatro, alphatro_state )
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MCFG_GFXDECODE(alphatro)
-	MCFG_PALETTE_INIT(alphatro)
 	MCFG_PALETTE_LENGTH(9) // 8 colours + amber
 
 	/* sound hardware */

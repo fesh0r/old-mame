@@ -28,12 +28,11 @@ public:
 	{
 	}
 
-	static TILE_GET_INFO( get_clcd_tilemap_tile_info )
+	TILE_GET_INFO_MEMBER(get_clcd_tilemap_tile_info)
 	{
-		clcd_state *state = machine.driver_data<clcd_state>();
-		int code  = state->m_ram.target()[((tile_index / 80) * 128) + (tile_index % 80) + 0x800];
+		int code  = m_ram.target()[((tile_index / 80) * 128) + (tile_index % 80) + 0x800];
 
-		SET_TILE_INFO(0, code, 0, 0);
+		SET_TILE_INFO_MEMBER(0, code, 0, 0);
 	}
 
 	virtual void machine_start()
@@ -43,7 +42,7 @@ public:
 
 	virtual void video_start()
 	{
-		m_tilemap = tilemap_create(machine(), get_clcd_tilemap_tile_info, tilemap_scan_rows, 6, 8, 80, 16);
+		m_tilemap = &machine().tilemap().create(tilemap_get_info_delegate(FUNC(clcd_state::get_clcd_tilemap_tile_info),this), TILEMAP_SCAN_ROWS, 6, 8, 80, 16);
 	}
 
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
@@ -125,6 +124,7 @@ private:
 	int keyColumnSelect;
 	int keyClockState;
 	int keyReadState;
+	virtual void palette_init();
 };
 
 static ADDRESS_MAP_START( clcd_mem, AS_PROGRAM, 8, clcd_state )
@@ -232,10 +232,10 @@ static INPUT_PORTS_START( clcd )
 INPUT_PORTS_END
 
 
-static PALETTE_INIT( clcd )
+void clcd_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(32,240,32));
-	palette_set_color(machine, 1, MAKE_RGB(32,32,32));
+	palette_set_color(machine(), 0, MAKE_RGB(32,240,32));
+	palette_set_color(machine(), 1, MAKE_RGB(32,32,32));
 }
 
 static const via6522_interface via0_intf =
@@ -309,7 +309,6 @@ static MACHINE_CONFIG_START( clcd, clcd_state )
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(clcd)
 	MCFG_GFXDECODE(clcd)
 MACHINE_CONFIG_END
 

@@ -10,18 +10,18 @@
 #include "imagedev/snapquik.h"
 #include "machine/wd17xx.h"
 
-typedef struct
+struct nascom1_portstat_t
 {
 	UINT8	stat_flags;
 	UINT8	stat_count;
-} nascom1_portstat_t;
+};
 
-typedef struct
+struct nascom2_fdc_t
 {
 	UINT8 select;
 	UINT8 irq;
 	UINT8 drq;
-} nascom2_fdc_t;
+};
 
 
 class nascom1_state : public driver_device
@@ -47,6 +47,7 @@ public:
 	DECLARE_WRITE8_MEMBER(nascom1_port_01_w);
 	DECLARE_READ8_MEMBER(nascom1_port_02_r);
 	DECLARE_DRIVER_INIT(nascom1);
+	virtual void machine_reset();
 };
 
 
@@ -63,8 +64,8 @@ SNAPSHOT_LOAD( nascom1 );
 READ8_DEVICE_HANDLER( nascom1_hd6402_si );
 WRITE8_DEVICE_HANDLER( nascom1_hd6402_so );
 
-MACHINE_RESET( nascom1 );
-MACHINE_RESET( nascom2 );
+
+
 
 /*----------- defined in video/nascom1.c -----------*/
 

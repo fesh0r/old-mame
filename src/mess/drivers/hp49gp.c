@@ -24,13 +24,13 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, 
 	}
 }
 
-typedef struct
+struct lcd_spi_t
 {
 	int l1;
 	int data;
 	int l3;
 	UINT32 shift, bits;
-} lcd_spi_t;
+};
 
 class hp49gp_state : public driver_device
 {
@@ -44,6 +44,8 @@ public:
 	required_shared_ptr<UINT32> m_steppingstone;
 	lcd_spi_t m_lcd_spi;
 	DECLARE_DRIVER_INIT(hp49gp);
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 /***************************************************************************
@@ -237,16 +239,14 @@ static INPUT_CHANGED( port_changed )
 
 // ...
 
-static MACHINE_START( hp49gp )
+void hp49gp_state::machine_start()
 {
-	hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
-	hp49gp->m_s3c2410 = machine.device( "s3c2410");
+	m_s3c2410 = machine().device( "s3c2410");
 }
 
-static MACHINE_RESET( hp49gp )
+void hp49gp_state::machine_reset()
 {
-//  hp49gp_state *hp49gp = machine.driver_data<hp49gp_state>();
-	devtag_reset( machine, "maincpu");
+	machine().device("maincpu")->reset();
 }
 
 /***************************************************************************
@@ -301,14 +301,10 @@ static MACHINE_CONFIG_START( hp49gp, hp49gp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(160, 85)
 	MCFG_SCREEN_VISIBLE_AREA(0, 131 - 1, 0, 80 - 1)
-	MCFG_SCREEN_UPDATE_STATIC(s3c2410)
+	MCFG_SCREEN_UPDATE_DEVICE("s3c2410", s3c2410_device, screen_update)
 
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
-	MCFG_VIDEO_START(s3c2410)
-
-	MCFG_MACHINE_START(hp49gp)
-	MCFG_MACHINE_RESET(hp49gp)
 
 	MCFG_S3C2410_ADD("s3c2410", 12000000, hp49gp_s3c2410_intf)
 MACHINE_CONFIG_END

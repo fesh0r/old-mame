@@ -55,7 +55,7 @@ enum irg_pos_t
 
 
 /* tape reader registers */
-typedef struct tape_reader_t
+struct tape_reader_t
 {
 	device_image_interface *fd;	/* file descriptor of tape image */
 
@@ -65,31 +65,31 @@ typedef struct tape_reader_t
 	int rc;			/* 2-bit reader counter */
 
 	emu_timer *timer;	/* timer to simulate reader timing */
-} tape_reader_t;
+};
 
 
 
 /* tape puncher registers */
-typedef struct tape_puncher_t
+struct tape_puncher_t
 {
 	device_image_interface *fd;	/* file descriptor of tape image */
 
 	emu_timer *timer;	/* timer to generate completion pulses */
-} tape_puncher_t;
+};
 
 
 
 /* typewriter registers */
-typedef struct typewriter_t
+struct typewriter_t
 {
 	device_image_interface *fd;	/* file descriptor of output image */
 
 	emu_timer *prt_timer;/* timer to generate completion pulses */
-} typewriter_t;
+};
 
 
 /* magnetic tape unit registers */
-typedef struct magtape_t
+struct magtape_t
 {
 	device_image_interface *img;		/* image descriptor */
 
@@ -121,7 +121,7 @@ typedef struct magtape_t
 	int long_parity;
 
 	emu_timer *timer;	/* timer to simulate reader timing */
-} magtape_t;
+};
 
 
 class tx0_state : public driver_device
@@ -146,12 +146,16 @@ public:
 	int m_case_shift;
 	device_t *m_crt;
 	DECLARE_DRIVER_INIT(tx0);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
 /*----------- defined in video/tx0.c -----------*/
 
-VIDEO_START( tx0 );
+
 SCREEN_VBLANK( tx0 );
 SCREEN_UPDATE_IND16( tx0 );
 

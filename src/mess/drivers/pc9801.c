@@ -8,23 +8,20 @@
     - floppy interface doesn't seem to work at all with either floppy inserted or not, missing DMA irq?
     - proper 8251 uart hook-up on keyboard
     - boot is too slow right now, might be due of the floppy / HDD devices
-
-    TODO (PC-9801UX):
-    - POR mechanism makes this to die very soon (hack is unsuited for what this needs);
+    - investigate on POR bit
 
     TODO (PC-9801RS):
     - floppy disk hook-up;
-    - POR mechanism isn't fully understood;
     - extra features;
     - clean-up duplicating code;
 
     TODO (PC-9821):
-    - "set the software dip-switch" warning;
-    - asserts with i386: Invalid REP/opcode 40 combination, this is because POR bit mustn't be
-      setted to off
     - fix CPU for some clones;
+    - PARITY ERROR, presumably it needs a far better emulation of the i8251 ports
 
     TODO: (PC-486MU)
+    - Tries to read port C of i8255_sys (-> 0x35) at boot without setting up the control
+      port. This causes a jump to invalid program area;
     - Dies on ARTIC check;
     - Presumably one ROM is undumped?
 
@@ -256,6 +253,7 @@ class pc9801_state : public driver_device
 public:
 	pc9801_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
+		  m_maincpu(*this, "maincpu"),
 		  m_rtc(*this, UPD1990A_TAG),
 		  m_sio(*this, UPD8251_TAG),
 		  m_hgdc1(*this, "upd7220_chr"),
@@ -264,6 +262,7 @@ public:
 		m_video_ram_1(*this, "video_ram_1"),
 		m_video_ram_2(*this, "video_ram_2"){ }
 
+	required_device<cpu_device> m_maincpu;
 	required_device<upd1990a_device> m_rtc;
 	required_device<i8251_device> m_sio;
 	required_device<upd7220_device> m_hgdc1;
@@ -302,7 +301,7 @@ public:
 
 	/* PC9801RS specific */
 	UINT8 m_gate_a20; //A20 line
-	UINT8 m_por;		//Power-On Reset
+	UINT8 m_access_ctrl; // DMA related
 	UINT8 m_rom_bank;
 	UINT8 m_fdc_ctrl;
 	UINT32 m_ram_size;
@@ -314,6 +313,8 @@ public:
 
 	/* PC9821 specific */
 	UINT8 m_analog256,m_analog256e;
+	UINT8 m_sdip[24], m_sdip_bank;
+
 	DECLARE_READ8_MEMBER(pc9801_xx_r);
 	DECLARE_WRITE8_MEMBER(pc9801_xx_w);
 	DECLARE_READ8_MEMBER(pc9801_00_r);
@@ -375,6 +376,45 @@ public:
 	DECLARE_READ8_MEMBER(ide_status_r);
 	DECLARE_READ8_MEMBER(pc_dma_read_byte);
 	DECLARE_WRITE8_MEMBER(pc_dma_write_byte);
+	DECLARE_READ8_MEMBER(pc9801rs_access_ctrl_r);
+	DECLARE_WRITE8_MEMBER(pc9801rs_access_ctrl_w);
+
+	DECLARE_READ8_MEMBER(sdip_0_r);
+	DECLARE_READ8_MEMBER(sdip_1_r);
+	DECLARE_READ8_MEMBER(sdip_2_r);
+	DECLARE_READ8_MEMBER(sdip_3_r);
+	DECLARE_READ8_MEMBER(sdip_4_r);
+	DECLARE_READ8_MEMBER(sdip_5_r);
+	DECLARE_READ8_MEMBER(sdip_6_r);
+	DECLARE_READ8_MEMBER(sdip_7_r);
+	DECLARE_READ8_MEMBER(sdip_8_r);
+	DECLARE_READ8_MEMBER(sdip_9_r);
+	DECLARE_READ8_MEMBER(sdip_a_r);
+	DECLARE_READ8_MEMBER(sdip_b_r);
+
+	DECLARE_WRITE8_MEMBER(sdip_0_w);
+	DECLARE_WRITE8_MEMBER(sdip_1_w);
+	DECLARE_WRITE8_MEMBER(sdip_2_w);
+	DECLARE_WRITE8_MEMBER(sdip_3_w);
+	DECLARE_WRITE8_MEMBER(sdip_4_w);
+	DECLARE_WRITE8_MEMBER(sdip_5_w);
+	DECLARE_WRITE8_MEMBER(sdip_6_w);
+	DECLARE_WRITE8_MEMBER(sdip_7_w);
+	DECLARE_WRITE8_MEMBER(sdip_8_w);
+	DECLARE_WRITE8_MEMBER(sdip_9_w);
+	DECLARE_WRITE8_MEMBER(sdip_a_w);
+	DECLARE_WRITE8_MEMBER(sdip_b_w);
+
+private:
+	UINT8 m_sdip_read(UINT16 port, UINT8 sdip_offset);
+	void m_sdip_write(UINT16 port, UINT8 sdip_offset,UINT8 data);
+public:
+	DECLARE_MACHINE_START(pc9801);
+	DECLARE_MACHINE_RESET(pc9801);
+	DECLARE_MACHINE_RESET(pc9801f);
+	DECLARE_PALETTE_INIT(pc9801);
+	DECLARE_MACHINE_RESET(pc9801rs);
+	DECLARE_MACHINE_START(pc9821);
 };
 
 
@@ -685,7 +725,7 @@ READ8_MEMBER(pc9801_state::pc9801_40_r)
 			printf("Read to undefined port [%02x]\n",offset+0x40);
 		else
 		{
-			//printf("Read to 8251 kbd port [%02x]\n",offset+0x40);
+			//printf("Read to 8251 kbd port [%02x] %08x\n",offset+0x40,m_maincpu->pc());
 			if(offset == 1)
 			{
 				UINT8 res;
@@ -695,7 +735,7 @@ READ8_MEMBER(pc9801_state::pc9801_40_r)
 				return res;
 			}
 
-			return 1;
+			return 1 | 4 | 2;
 		}
 	}
 
@@ -712,8 +752,8 @@ WRITE8_MEMBER(pc9801_state::pc9801_40_w)
 	{
 		if(offset & 4)
 			printf("Write to undefined port [%02x] <- %02x\n",offset+0x40,data);
-		//else
-			//printf("Write to 8251 kbd port [%02x] <- %02x\n",offset+0x40,data);
+		else
+			printf("Write to 8251 kbd port [%02x] <- %02x\n",offset+0x40,data);
 	}
 }
 
@@ -1285,11 +1325,13 @@ READ8_MEMBER(pc9801_state::pc9801rs_f0_r)
 
 WRITE8_MEMBER(pc9801_state::pc9801rs_f0_w)
 {
-
 	if(offset == 0x00)
 	{
-		m_por = 0x00;
-		cputag_set_input_line(machine(), "maincpu", INPUT_LINE_RESET, PULSE_LINE);
+		UINT8 por;
+		/* reset POR bit, TODO: is there any other way? */
+		por = machine().device<i8255_device>("ppi8255_sys")->read(space, 2) & ~0x20;
+		machine().device<i8255_device>("ppi8255_sys")->write(space, 2,por);
+		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	if(offset == 0x02)
@@ -1306,10 +1348,6 @@ WRITE8_MEMBER(pc9801_state::pc9801rs_f0_w)
 
 READ8_MEMBER(pc9801_state::pc9801rs_30_r)
 {
-
-	if(offset == 5)
-		return (pc9801_30_r(space,offset) & ~0xa0) | m_por; //ppi bug?
-
 	return pc9801_30_r(space,offset);
 }
 
@@ -1490,6 +1528,20 @@ WRITE8_MEMBER(pc9801_state::pc9801rs_a0_w)
 	pc9801_a0_w(space,offset,data);
 }
 
+READ8_MEMBER( pc9801_state::pc9801rs_access_ctrl_r )
+{
+	if(offset == 1)
+		return m_access_ctrl;
+
+	return 0xff;
+}
+
+WRITE8_MEMBER( pc9801_state::pc9801rs_access_ctrl_w )
+{
+	if(offset == 1)
+		m_access_ctrl = data;
+}
+
 static ADDRESS_MAP_START( pc9801rs_map, AS_PROGRAM, 32, pc9801_state )
 	AM_RANGE(0x00000000, 0xffffffff) AM_READWRITE8(pc9801rs_memory_r,pc9801rs_memory_w,0xffffffff)
 ADDRESS_MAP_END
@@ -1508,6 +1560,7 @@ static ADDRESS_MAP_START( pc9801rs_io, AS_IO, 32, pc9801_state )
 	AM_RANGE(0x00bc, 0x00bf) AM_READWRITE8(pc9810rs_fdc_ctrl_r,pc9810rs_fdc_ctrl_w,0xffffffff)
 	AM_RANGE(0x00c8, 0x00cf) AM_READWRITE8(pc9801rs_2dd_r,     pc9801rs_2dd_w,     0xffffffff)
 	AM_RANGE(0x00f0, 0x00ff) AM_READWRITE8(pc9801rs_f0_r,      pc9801rs_f0_w,      0xffffffff)
+	AM_RANGE(0x0438, 0x043b) AM_READWRITE8(pc9801rs_access_ctrl_r,pc9801rs_access_ctrl_w,0xffffffff)
 	AM_RANGE(0x043c, 0x043f) AM_WRITE8(pc9801rs_bank_w,    0xffffffff) //ROM/RAM bank
 
 ADDRESS_MAP_END
@@ -1567,6 +1620,7 @@ static ADDRESS_MAP_START( pc9801ux_io, AS_IO, 16, pc9801_state )
 	AM_RANGE(0x00bc, 0x00bf) AM_READWRITE8(pc9810rs_fdc_ctrl_r,pc9810rs_fdc_ctrl_w,0xffff)
 	AM_RANGE(0x00c8, 0x00cf) AM_READWRITE8(pc9801rs_2dd_r,     pc9801rs_2dd_w,     0xffff)
 	AM_RANGE(0x00f0, 0x00ff) AM_READWRITE8(pc9801rs_f0_r,      pc9801rs_f0_w,      0xffff)
+	AM_RANGE(0x0438, 0x043b) AM_READWRITE8(pc9801rs_access_ctrl_r,pc9801rs_access_ctrl_w,0xffff)
 	AM_RANGE(0x043c, 0x043f) AM_WRITE8(pc9801rs_bank_w,    0xffff) //ROM/RAM bank
 
 ADDRESS_MAP_END
@@ -1639,6 +1693,62 @@ READ8_MEMBER(pc9801_state::ide_status_r)
 	return 0x50; // status
 }
 
+UINT8 pc9801_state::m_sdip_read(UINT16 port, UINT8 sdip_offset)
+{
+	if(port == 2)
+		return m_sdip[sdip_offset];
+
+	printf("Warning: read from unknown SDIP area %02x %04x\n",port,0x841c + port + (sdip_offset % 12)*0x100);
+	return 0xff;
+}
+
+void pc9801_state::m_sdip_write(UINT16 port, UINT8 sdip_offset,UINT8 data)
+{
+	if(port == 2)
+	{
+		m_sdip[sdip_offset] = data;
+		return;
+	}
+
+	printf("Warning: write from unknown SDIP area %02x %04x %02x\n",port,0x841c + port + (sdip_offset % 12)*0x100,data);
+}
+
+READ8_MEMBER(pc9801_state::sdip_0_r) { return m_sdip_read(offset, 0+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_1_r) { return m_sdip_read(offset, 1+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_2_r) { return m_sdip_read(offset, 2+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_3_r) { return m_sdip_read(offset, 3+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_4_r) { return m_sdip_read(offset, 4+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_5_r) { return m_sdip_read(offset, 5+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_6_r) { return m_sdip_read(offset, 6+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_7_r) { return m_sdip_read(offset, 7+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_8_r) { return m_sdip_read(offset, 8+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_9_r) { return m_sdip_read(offset, 9+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_a_r) { return m_sdip_read(offset, 10+m_sdip_bank*12); }
+READ8_MEMBER(pc9801_state::sdip_b_r) { return m_sdip_read(offset, 11+m_sdip_bank*12); }
+
+WRITE8_MEMBER(pc9801_state::sdip_0_w) { m_sdip_write(offset,0+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_1_w) { m_sdip_write(offset,1+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_2_w) { m_sdip_write(offset,2+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_3_w) { m_sdip_write(offset,3+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_4_w) { m_sdip_write(offset,4+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_5_w) { m_sdip_write(offset,5+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_6_w) { m_sdip_write(offset,6+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_7_w) { m_sdip_write(offset,7+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_8_w) { m_sdip_write(offset,8+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_9_w) { m_sdip_write(offset,9+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_a_w) { m_sdip_write(offset,10+m_sdip_bank*12,data); }
+WRITE8_MEMBER(pc9801_state::sdip_b_w)
+{
+	if(offset == 3)
+		m_sdip_bank = (data & 0x40) >> 6;
+
+	if(offset == 2)
+		m_sdip_write(offset,11+m_sdip_bank*12,data);
+
+	if((offset & 2) == 0)
+		printf("SDIP area B write %02x %02x\n",offset,data);
+}
+
 static ADDRESS_MAP_START( pc9821_map, AS_PROGRAM, 32, pc9801_state )
 	AM_RANGE(0x00000000, 0xffffffff) AM_READWRITE8(pc9801rs_memory_r,pc9801rs_memory_w,0xffffffff)
 ADDRESS_MAP_END
@@ -1667,7 +1777,7 @@ static ADDRESS_MAP_START( pc9821_io, AS_IO, 32, pc9801_state )
 //  AM_RANGE(0x018c, 0x018f) YM2203 OPN extended ports / <undefined>
 //  AM_RANGE(0x0430, 0x0430) IDE bank register
 //  AM_RANGE(0x0432, 0x0432) IDE bank register (mirror)
-//  AM_RANGE(0x0439, 0x0439) ROM/RAM bank (NEC)
+	AM_RANGE(0x0438, 0x043b) AM_READWRITE8(pc9801rs_access_ctrl_r,pc9801rs_access_ctrl_w,0xffffffff)
 //  AM_RANGE(0x043d, 0x043d) ROM/RAM bank (NEC)
 	AM_RANGE(0x043c, 0x043f) AM_WRITE8(pc9801rs_bank_w,    0xffffffff) //ROM/RAM bank (EPSON)
 //  AM_RANGE(0x04a0, 0x04af) EGC
@@ -1687,6 +1797,18 @@ static ADDRESS_MAP_START( pc9821_io, AS_IO, 32, pc9801_state )
 //  AM_RANGE(0x0cfc, 0x0cff) PCI bus
 //  AM_RANGE(0x3fd8, 0x3fdf) <undefined> / pit mirror ports
 //  AM_RANGE(0x7fd8, 0x7fdf) <undefined> / mouse ppi8255 ports
+	AM_RANGE(0x841c, 0x841f) AM_READWRITE8(sdip_0_r,sdip_0_w,0xffffffff)
+	AM_RANGE(0x851c, 0x851f) AM_READWRITE8(sdip_1_r,sdip_1_w,0xffffffff)
+	AM_RANGE(0x861c, 0x861f) AM_READWRITE8(sdip_2_r,sdip_2_w,0xffffffff)
+	AM_RANGE(0x871c, 0x871f) AM_READWRITE8(sdip_3_r,sdip_3_w,0xffffffff)
+	AM_RANGE(0x881c, 0x881f) AM_READWRITE8(sdip_4_r,sdip_4_w,0xffffffff)
+	AM_RANGE(0x891c, 0x891f) AM_READWRITE8(sdip_5_r,sdip_5_w,0xffffffff)
+	AM_RANGE(0x8a1c, 0x8a1f) AM_READWRITE8(sdip_6_r,sdip_6_w,0xffffffff)
+	AM_RANGE(0x8b1c, 0x8b1f) AM_READWRITE8(sdip_7_r,sdip_7_w,0xffffffff)
+	AM_RANGE(0x8c1c, 0x8c1f) AM_READWRITE8(sdip_8_r,sdip_8_w,0xffffffff)
+	AM_RANGE(0x8d1c, 0x8d1f) AM_READWRITE8(sdip_9_r,sdip_9_w,0xffffffff)
+	AM_RANGE(0x8e1c, 0x8e1f) AM_READWRITE8(sdip_a_r,sdip_a_w,0xffffffff)
+	AM_RANGE(0x8f1c, 0x8f1f) AM_READWRITE8(sdip_b_r,sdip_b_w,0xffffffff)
 //  AM_RANGE(0xa460, 0xa46f) cs4231 PCM extended port / <undefined>
 //  AM_RANGE(0xbfdb, 0xbfdb) mouse timing port
 //  AM_RANGE(0xc0d0, 0xc0d3) MIDI port, option 0 / <undefined>
@@ -1996,6 +2118,15 @@ static INPUT_PORTS_START( pc9801rs )
 	PORT_BIT( 0x03, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( pc9821 )
+	PORT_INCLUDE( pc9801rs )
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPNAME( 0x01, 0x00, "S-Dip SW Init" ) PORT_DIPLOCATION("SW1:1")
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
 static const gfx_layout charset_8x8 =
 {
 	8,8,
@@ -2069,7 +2200,7 @@ ir7
 static WRITE_LINE_DEVICE_HANDLER( pc9801_master_set_int_line )
 {
 	//printf("%02x\n",interrupt);
-	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 static READ8_DEVICE_HANDLER( get_slave_ack )
@@ -2146,7 +2277,7 @@ static const struct pit8253_config pc9801rs_pit8253_config =
 
 static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 {
-	cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
 	i8237_hlda_w( device, state );
@@ -2381,14 +2512,14 @@ static const i8251_interface pc9801_uart_interface =
 *
 ****************************************/
 
-static PALETTE_INIT( pc9801 )
+PALETTE_INIT_MEMBER(pc9801_state,pc9801)
 {
 	int i;
 
 	for(i=0;i<8;i++)
-		palette_set_color_rgb(machine, i, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
-	for(i=8;i<machine.total_colors();i++)
-		palette_set_color_rgb(machine, i, pal1bit(0), pal1bit(0), pal1bit(0));
+		palette_set_color_rgb(machine(), i, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
+	for(i=8;i<machine().total_colors();i++)
+		palette_set_color_rgb(machine(), i, pal1bit(0), pal1bit(0), pal1bit(0));
 }
 
 static IRQ_CALLBACK(irq_callback)
@@ -2396,19 +2527,17 @@ static IRQ_CALLBACK(irq_callback)
 	return pic8259_acknowledge( device->machine().device( "pic8259_master" ));
 }
 
-static MACHINE_START(pc9801)
+MACHINE_START_MEMBER(pc9801_state,pc9801)
 {
-	pc9801_state *state = machine.driver_data<pc9801_state>();
 
-	device_set_irq_callback(machine.device("maincpu"), irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(irq_callback);
 
-	state->m_rtc->cs_w(1);
-	state->m_rtc->oe_w(1);
+	m_rtc->cs_w(1);
+	m_rtc->oe_w(1);
 }
 
-static MACHINE_RESET(pc9801)
+MACHINE_RESET_MEMBER(pc9801_state,pc9801)
 {
-	pc9801_state *state = machine.driver_data<pc9801_state>();
 
 	/* this looks like to be some kind of backup ram, system will boot with green colors otherwise */
 	{
@@ -2420,56 +2549,62 @@ static MACHINE_RESET(pc9801)
 		};
 
 		for(i=0;i<0x10;i++)
-			state->m_tvram[(0x3fe0)+i*2] = default_memsw_data[i];
+			m_tvram[(0x3fe0)+i*2] = default_memsw_data[i];
 	}
 
-	beep_set_frequency(machine.device(BEEPER_TAG),2400);
-	beep_set_state(machine.device(BEEPER_TAG),0);
+	beep_set_frequency(machine().device(BEEPER_TAG),2400);
+	beep_set_state(machine().device(BEEPER_TAG),0);
 
-	state->m_nmi_ff = 0;
+	m_nmi_ff = 0;
 }
 
-static MACHINE_RESET(pc9801f)
+MACHINE_RESET_MEMBER(pc9801_state,pc9801f)
 {
-	MACHINE_RESET_CALL(pc9801);
+	MACHINE_RESET_CALL_MEMBER(pc9801);
 
 	/* 2dd interface ready line is ON by default */
-	floppy_mon_w(floppy_get_device(machine, 0), CLEAR_LINE);
-	floppy_mon_w(floppy_get_device(machine, 1), CLEAR_LINE);
-	floppy_drive_set_ready_state(floppy_get_device(machine, 0), (1), 0);
-	floppy_drive_set_ready_state(floppy_get_device(machine, 1), (1), 0);
+	floppy_mon_w(floppy_get_device(machine(), 0), CLEAR_LINE);
+	floppy_mon_w(floppy_get_device(machine(), 1), CLEAR_LINE);
+	floppy_drive_set_ready_state(floppy_get_device(machine(), 0), (1), 0);
+	floppy_drive_set_ready_state(floppy_get_device(machine(), 1), (1), 0);
 
 	{
 		UINT8 op_mode;
 		UINT8 *ROM;
-		UINT8 *PRG = machine.root_device().memregion("fdc_data")->base();
+		UINT8 *PRG = machine().root_device().memregion("fdc_data")->base();
 		int i;
 
-		ROM = machine.root_device().memregion("fdc_bios_2dd")->base();
-		op_mode = (machine.root_device().ioport("ROM_LOAD")->read() & 2) >> 1;
+		ROM = machine().root_device().memregion("fdc_bios_2dd")->base();
+		op_mode = (machine().root_device().ioport("ROM_LOAD")->read() & 2) >> 1;
 
 		for(i=0;i<0x1000;i++)
 			ROM[i] = PRG[i+op_mode*0x8000];
 
-		ROM = machine.root_device().memregion("fdc_bios_2hd")->base();
-		op_mode = machine.root_device().ioport("ROM_LOAD")->read() & 1;
+		ROM = machine().root_device().memregion("fdc_bios_2hd")->base();
+		op_mode = machine().root_device().ioport("ROM_LOAD")->read() & 1;
 
 		for(i=0;i<0x1000;i++)
 			ROM[i] = PRG[i+op_mode*0x8000+0x10000];
 	}
 }
 
-static MACHINE_RESET(pc9801rs)
+MACHINE_RESET_MEMBER(pc9801_state,pc9801rs)
 {
-	pc9801_state *state = machine.driver_data<pc9801_state>();
-	MACHINE_RESET_CALL(pc9801);
+	MACHINE_RESET_CALL_MEMBER(pc9801);
 
-	state->m_gate_a20 = 0;
-	state->m_por = 0xa0;
-	state->m_rom_bank = 0;
-	state->m_fdc_ctrl = 3;
+	m_gate_a20 = 0;
+	m_rom_bank = 0;
+	m_fdc_ctrl = 3;
+	m_access_ctrl = 0;
 
-	state->m_ram_size = machine.device<ram_device>(RAM_TAG)->size() - 0xa0000;
+	m_ram_size = machine().device<ram_device>(RAM_TAG)->size() - 0xa0000;
+}
+
+MACHINE_START_MEMBER(pc9801_state,pc9821)
+{
+
+	MACHINE_START_CALL_MEMBER(pc9801);
+	state_save_register_global_pointer(machine(), m_sdip, 24);
 }
 
 static INTERRUPT_GEN(pc9801_vrtc_irq)
@@ -2506,8 +2641,8 @@ static MACHINE_CONFIG_START( pc9801, pc9801_state )
 	MCFG_CPU_IO_MAP(pc9801_io)
 	MCFG_CPU_VBLANK_INT("screen",pc9801_vrtc_irq)
 
-	MCFG_MACHINE_START(pc9801)
-	MCFG_MACHINE_RESET(pc9801f)
+	MCFG_MACHINE_START_OVERRIDE(pc9801_state,pc9801)
+	MCFG_MACHINE_RESET_OVERRIDE(pc9801_state,pc9801f)
 
 	MCFG_PIT8253_ADD( "pit8253", pit8253_config )
 	MCFG_I8237_ADD( "dma8237", 5000000, dma8237_config ) //unknown clock
@@ -2542,7 +2677,7 @@ static MACHINE_CONFIG_START( pc9801, pc9801_state )
 	MCFG_UPD7220_ADD("upd7220_btm", 5000000/2, hgdc_2_intf, upd7220_2_map)
 
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(pc9801)
+	MCFG_PALETTE_INIT_OVERRIDE(pc9801_state,pc9801)
 	MCFG_GFXDECODE(pc9801)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -2569,8 +2704,8 @@ static MACHINE_CONFIG_START( pc9801rs, pc9801_state )
 	MCFG_CPU_IO_MAP(pc9801rs_io)
 	MCFG_CPU_VBLANK_INT("screen",pc9801_vrtc_irq)
 
-	MCFG_MACHINE_START(pc9801)
-	MCFG_MACHINE_RESET(pc9801rs)
+	MCFG_MACHINE_START_OVERRIDE(pc9801_state,pc9801)
+	MCFG_MACHINE_RESET_OVERRIDE(pc9801_state,pc9801rs)
 
 	MCFG_PIT8253_ADD( "pit8253", pc9801rs_pit8253_config )
 	MCFG_I8237_ADD( "dma8237", 16000000, dma8237_config ) //unknown clock
@@ -2601,7 +2736,7 @@ static MACHINE_CONFIG_START( pc9801rs, pc9801_state )
 	MCFG_UPD7220_ADD("upd7220_btm", 5000000/2, hgdc_2_intf, upd7220_2_map)
 
 	MCFG_PALETTE_LENGTH(16+16)
-	MCFG_PALETTE_INIT(pc9801)
+	MCFG_PALETTE_INIT_OVERRIDE(pc9801_state,pc9801)
 	MCFG_GFXDECODE(pc9801)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -2629,8 +2764,8 @@ static MACHINE_CONFIG_START( pc9821, pc9801_state )
 	MCFG_CPU_IO_MAP(pc9821_io)
 	MCFG_CPU_VBLANK_INT("screen",pc9801_vrtc_irq)
 
-	MCFG_MACHINE_START(pc9801)
-	MCFG_MACHINE_RESET(pc9801rs)
+	MCFG_MACHINE_START_OVERRIDE(pc9801_state,pc9821)
+	MCFG_MACHINE_RESET_OVERRIDE(pc9801_state,pc9801rs)
 
 	MCFG_PIT8253_ADD( "pit8253", pc9801rs_pit8253_config )
 	MCFG_I8237_ADD( "dma8237", 16000000, dma8237_config ) //unknown clock
@@ -2661,7 +2796,7 @@ static MACHINE_CONFIG_START( pc9821, pc9801_state )
 	MCFG_UPD7220_ADD("upd7220_btm", 5000000/2, hgdc_2_intf, upd7220_2_map)
 
 	MCFG_PALETTE_LENGTH(16+16+256)
-	MCFG_PALETTE_INIT(pc9801)
+	MCFG_PALETTE_INIT_OVERRIDE(pc9801_state,pc9801)
 	MCFG_GFXDECODE(pc9801)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -3052,11 +3187,11 @@ COMP( 1989, pc9801rs,  0,       0,     pc9801rs, pc9801rs, driver_device, 0, "Ni
 COMP( 1985, pc9801vm,  pc9801rs,0,     pc9801rs, pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9801VM", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 COMP( 1987, pc9801ux,  pc9801rs,0,     pc9801ux, pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9801UX", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
 COMP( 1988, pc9801rx,  pc9801rs,0,     pc9801ux, pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9801RX", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMP( 1994, pc9821,    0,       0,     pc9821,   pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND) //TODO: not sure about the exact model
-COMP( 1993, pc9821as,  pc9821,  0,     pc9821,   pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE A)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMP( 1994, pc9821xs,  pc9821,  0,     pc9821,   pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE Xs)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMP( 1994, pc9821ce2, pc9821,  0,     pc9821,   pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MULTi Ce2)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMP( 1994, pc9821ne,  pc9821,  0,     pc9821,   pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98NOTE)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMP( 1994, pc486mu,   pc9821,  0,     pc9821,   pc9801rs, driver_device, 0, "Epson",                       "PC-486MU",  GAME_NOT_WORKING | GAME_NO_SOUND)
-COMP( 1998, pc9821v13, pc9821,  0,     pc9821,   pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE VALUESTAR 13)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
-COMP( 1998, pc9821v20, pc9821,  0,     pc9821v20,pc9801rs, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE VALUESTAR 20)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1994, pc9821,    0,       0,     pc9821,   pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND) //TODO: not sure about the exact model
+COMP( 1993, pc9821as,  pc9821,  0,     pc9821,   pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE A)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1994, pc9821xs,  pc9821,  0,     pc9821,   pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE Xs)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1994, pc9821ce2, pc9821,  0,     pc9821,   pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MULTi Ce2)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1994, pc9821ne,  pc9821,  0,     pc9821,   pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98NOTE)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1994, pc486mu,   pc9821,  0,     pc9821,   pc9821, driver_device, 0, "Epson",                       "PC-486MU",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1998, pc9821v13, pc9821,  0,     pc9821,   pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE VALUESTAR 13)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)
+COMP( 1998, pc9821v20, pc9821,  0,     pc9821v20,pc9821, driver_device, 0, "Nippon Electronic Company",   "PC-9821 (98MATE VALUESTAR 20)",  GAME_NOT_WORKING | GAME_IMPERFECT_SOUND)

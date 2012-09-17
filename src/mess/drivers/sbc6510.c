@@ -72,6 +72,7 @@ public:
 	UINT8 m_key_row;
 	UINT8 m_2;
 	required_device<generic_terminal_device> m_terminal;
+	virtual void machine_reset();
 };
 
 
@@ -193,16 +194,18 @@ static GENERIC_TERMINAL_INTERFACE( terminal_intf )
 };
 
 
-static MACHINE_RESET(sbc6510)
+void sbc6510_state::machine_reset()
 {
 }
 
-static const m6502_interface sbc6510_m6510_interface =
+static M6510_INTERFACE( sbc6510_m6510_interface )
 {
-	NULL,
-	NULL,
 	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	0x00,
+	0x00
 };
 
 READ8_MEMBER( sbc6510_state::psg_a_r )
@@ -247,7 +250,6 @@ WRITE8_MEMBER( sbc6510_state::key_w )
 
 const mos6526_interface cia_intf =
 {
-	10,		// time-of-day clock 1/10 second - no idea about this
 	DEVCB_CPU_INPUT_LINE("maincpu", M6502_IRQ_LINE), // irq
 	DEVCB_NULL,	// pc (timer related) not connected
 	DEVCB_NULL,	// cnt (serial related) not connected
@@ -264,7 +266,6 @@ static MACHINE_CONFIG_START( sbc6510, sbc6510_state )
 	MCFG_CPU_CONFIG( sbc6510_m6510_interface )
 	MCFG_CPU_PROGRAM_MAP(sbc6510_mem)
 
-	MCFG_MACHINE_RESET(sbc6510)
 
 	/* video hardware */
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
@@ -275,7 +276,7 @@ static MACHINE_CONFIG_START( sbc6510, sbc6510_state )
 	MCFG_SOUND_CONFIG(sbc6510_ay_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_MOS6526R1_ADD("cia6526", XTAL_1MHz, cia_intf)
+	MCFG_MOS6526R1_ADD("cia6526", XTAL_1MHz, 50, cia_intf)
 MACHINE_CONFIG_END
 
 /* ROM definition */

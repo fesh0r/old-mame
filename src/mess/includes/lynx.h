@@ -15,7 +15,7 @@
 
 
 class lynx_state;
-typedef struct
+struct BLITTER
 {
 	UINT8 *mem;
 	// global
@@ -52,18 +52,18 @@ typedef struct
 	int vstretch;
 	int lefthanded;
 	int busy;
-} BLITTER;
+};
 
-typedef struct
+struct UART
 {
 	UINT8 serctl;
 	UINT8 data_received, data_to_send, buffer;
 	int received;
 	int sending;
 	int buffer_loaded;
-} UART;
+};
 
-typedef struct
+struct SUZY
 {
 	UINT8 data[0x100];
 	UINT8 high;
@@ -71,16 +71,16 @@ typedef struct
 	int signed_math;
 	int accumulate;
 	int accumulate_overflow;
-} SUZY;
+};
 
-typedef struct
+struct MIKEY
 {
 	UINT8 data[0x100];
 	UINT16 disp_addr;
 	UINT8 vb_rest;
-} MIKEY;
+};
 
-typedef struct
+struct LYNX_TIMER
 {
 	UINT8	bakup;
 	UINT8	cntrl1;
@@ -88,7 +88,7 @@ typedef struct
 	UINT8	counter;
 	emu_timer	*timer;
 	int		timer_active;
-} LYNX_TIMER;
+};
 
 #define NR_LYNX_TIMERS	8
 
@@ -137,13 +137,16 @@ public:
 	void lynx_multiply();
 	UINT8 lynx_timer_read(int which, int offset);
 	void lynx_timer_write(int which, int offset, UINT8 data);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void palette_init();
 };
 
 
 /*----------- defined in machine/lynx.c -----------*/
 
-MACHINE_START( lynx );
-MACHINE_RESET( lynx );
+
+
 
 void lynx_timer_count_down(running_machine &machine, int nr);
 
@@ -158,8 +161,46 @@ MACHINE_CONFIG_EXTERN( lynx_cartslot );
 
 /*----------- defined in audio/lynx.c -----------*/
 
-DECLARE_LEGACY_SOUND_DEVICE(LYNX, lynx_sound);
-DECLARE_LEGACY_SOUND_DEVICE(LYNX2, lynx2_sound);
+class lynx_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	lynx_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	lynx_sound_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock);
+	~lynx_sound_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type LYNX;
+
+class lynx2_sound_device : public lynx_sound_device
+{
+public:
+	lynx2_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+
+protected:
+	// device-level overrides
+	virtual void device_start();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+};
+
+extern const device_type LYNX2;
+
 
 void lynx_audio_write(device_t *device, int offset, UINT8 data);
 UINT8 lynx_audio_read(device_t *device, int offset);

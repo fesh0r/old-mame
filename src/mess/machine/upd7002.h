@@ -15,7 +15,26 @@
     MACROS
 ***************************************************************************/
 
-DECLARE_LEGACY_DEVICE(UPD7002, uPD7002);
+class uPD7002_device : public device_t
+{
+public:
+	uPD7002_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~uPD7002_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type UPD7002;
+
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -28,8 +47,7 @@ typedef void (*uPD7002_eoc_func)(device_t *device, int data);
 #define UPD7002_EOC(name)	void name(device_t *device, int data )
 
 
-typedef struct _uPD7002_interface uPD7002_interface;
-struct _uPD7002_interface
+struct uPD7002_interface
 {
 	uPD7002_get_analogue_func get_analogue_func;
 	uPD7002_eoc_func		  EOC_func;

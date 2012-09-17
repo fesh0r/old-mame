@@ -21,9 +21,6 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define VIDEO_START_MEMBER(name) void name::video_start()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 class homez80_state : public driver_device
 {
@@ -213,17 +210,17 @@ INPUT_PORTS_START( homez80 )
 INPUT_PORTS_END
 
 
-MACHINE_RESET_MEMBER( homez80_state )
+void homez80_state::machine_reset()
 {
 	m_irq = 0;
 }
 
-VIDEO_START_MEMBER( homez80_state )
+void homez80_state::video_start()
 {
 	m_p_chargen = memregion("chargen")->base();
 }
 
-SCREEN_UPDATE16_MEMBER( homez80_state )
+UINT32 homez80_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
@@ -277,7 +274,7 @@ GFXDECODE_END
 static INTERRUPT_GEN( homez80_interrupt )
 {
 	homez80_state *state = device->machine().driver_data<homez80_state>();
-	device_set_input_line(device, 0, (state->m_irq) ? HOLD_LINE : CLEAR_LINE);
+	device->execute().set_input_line(0, (state->m_irq) ? HOLD_LINE : CLEAR_LINE);
 	state->m_irq ^= 1;
 }
 

@@ -19,18 +19,16 @@ static TIMER_CALLBACK( reset_tick )
 	state->m_reset = 1;
 }
 
-MACHINE_START( pecom )
+void pecom_state::machine_start()
 {
-	pecom_state *state = machine.driver_data<pecom_state>();
-	state->m_reset_timer = machine.scheduler().timer_alloc(FUNC(reset_tick));
+	m_reset_timer = machine().scheduler().timer_alloc(FUNC(reset_tick));
 }
 
-MACHINE_RESET( pecom )
+void pecom_state::machine_reset()
 {
-	UINT8 *rom = machine.root_device().memregion(CDP1802_TAG)->base();
-	address_space *space = machine.device(CDP1802_TAG)->memory().space(AS_PROGRAM);
+	UINT8 *rom = machine().root_device().memregion(CDP1802_TAG)->base();
+	address_space *space = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
 
-	pecom_state *state = machine.driver_data<pecom_state>();
 
 	space->unmap_write(0x0000, 0x3fff);
 	space->install_write_bank(0x4000, 0x7fff, "bank2");
@@ -38,14 +36,14 @@ MACHINE_RESET( pecom )
 	space->unmap_write(0xf800, 0xffff);
 	space->install_read_bank (0xf000, 0xf7ff, "bank3");
 	space->install_read_bank (0xf800, 0xffff, "bank4");
-	state->membank("bank1")->set_base(rom + 0x8000);
-	state->membank("bank2")->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + 0x4000);
-	state->membank("bank3")->set_base(rom + 0xf000);
-	state->membank("bank4")->set_base(rom + 0xf800);
+	membank("bank1")->set_base(rom + 0x8000);
+	membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x4000);
+	membank("bank3")->set_base(rom + 0xf000);
+	membank("bank4")->set_base(rom + 0xf800);
 
-	state->m_reset = 0;
-	state->m_dma = 0;
-	state->m_reset_timer->adjust(attotime::from_msec(5));
+	m_reset = 0;
+	m_dma = 0;
+	m_reset_timer->adjust(attotime::from_msec(5));
 }
 
 READ8_MEMBER(pecom_state::pecom_cdp1869_charram_r)
@@ -106,7 +104,7 @@ READ8_MEMBER(pecom_state::pecom_keyboard_r)
        Address is available on address bus during reading of value from port, and that is
        used to determine keyboard line reading
     */
-	UINT16 addr = cpu_get_reg(machine().device(CDP1802_TAG), COSMAC_R0 + cpu_get_reg(machine().device(CDP1802_TAG), COSMAC_X));
+	UINT16 addr = machine().device(CDP1802_TAG)->state().state_int(COSMAC_R0 + machine().device(CDP1802_TAG)->state().state_int(COSMAC_X));
 	/* just in case somone is reading non existing ports */
 	if (addr<0x7cca || addr>0x7ce3) return 0;
 	return ioport(keynames[addr - 0x7cca])->read() & 0x03;
@@ -169,7 +167,7 @@ static COSMAC_SC_WRITE( pecom64_sc_w )
 
 	case COSMAC_STATE_CODE_S2_DMA:
 		// DMA acknowledge clears the DMAOUT request
-		cputag_set_input_line(device->machine(), CDP1802_TAG, COSMAC_INPUT_LINE_DMAOUT, CLEAR_LINE);
+		device->machine().device(CDP1802_TAG)->execute().set_input_line(COSMAC_INPUT_LINE_DMAOUT, CLEAR_LINE);
 		break;
 	case COSMAC_STATE_CODE_S3_INTERRUPT:
 		break;

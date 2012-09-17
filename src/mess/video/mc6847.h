@@ -40,8 +40,7 @@
 	MCFG_SCREEN_VBLANK_TIME(0)									\
 
 /* interface */
-typedef struct _mc6847_interface mc6847_interface;
-struct _mc6847_interface
+struct mc6847_interface
 {
 	/* screen we are acting on */
 	const char *m_screen_tag;
@@ -262,13 +261,13 @@ protected:
 		static pixel_t mix_color(double factor, UINT8 c0, UINT8 c1);
 	};
 
-	typedef enum
+	enum border_color_t
 	{
 		BORDER_COLOR_BLACK,
 		BORDER_COLOR_GREEN,
 		BORDER_COLOR_WHITE,
 		BORDER_COLOR_ORANGE
-	} border_color_t;
+	};
 
 	// callbacks
 	devcb_resolved_write_line m_res_out_hsync_func;
@@ -423,7 +422,7 @@ protected:
 
 				default:
 					/* should not get here */
-					fatalerror("Should not get here");
+					fatalerror("Should not get here\n");
 					break;
 			}
 		}

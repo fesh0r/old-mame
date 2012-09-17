@@ -55,6 +55,7 @@ public:
 	DECLARE_WRITE8_MEMBER(mk1_f8_w);
 	UINT8 m_f8[2];
 	UINT8 m_led[4];
+	virtual void machine_start();
 };
 
 
@@ -159,16 +160,16 @@ static TIMER_DEVICE_CALLBACK( mk1_update_leds )
 }
 
 
-static MACHINE_START( mk1 )
+void mk1_state::machine_start()
 {
 }
 
 
 static void mk1_interrupt( device_t *device, UINT16 addr, int level )
 {
-	device_set_input_line_vector(device->machine().device("maincpu"), F8_INPUT_LINE_INT_REQ, addr );
+	device->machine().device("maincpu")->execute().set_input_line_vector(F8_INPUT_LINE_INT_REQ, addr );
 
-	cputag_set_input_line(device->machine(),"maincpu", F8_INPUT_LINE_INT_REQ, level ? ASSERT_LINE : CLEAR_LINE );
+	device->machine().device("maincpu")->execute().set_input_line(F8_INPUT_LINE_INT_REQ, level ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
@@ -185,7 +186,6 @@ static MACHINE_CONFIG_START( mk1, mk1_state )
 	MCFG_CPU_IO_MAP( mk1_io)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( mk1 )
 
 	MCFG_F3853_ADD( "f3853", MAIN_CLOCK, mk1_config )
 

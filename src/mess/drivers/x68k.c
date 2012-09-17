@@ -128,11 +128,9 @@
 #include "machine/hd63450.h"
 #include "machine/rp5c15.h"
 #include "machine/mb89352.h"
-#include "machine/scsi.h"
 #include "imagedev/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "formats/dim_dsk.h"
-#include "imagedev/harddriv.h"
 #include "machine/x68k_hdc.h"
 #include "includes/x68k.h"
 #include "machine/ram.h"
@@ -140,6 +138,7 @@
 #include "machine/x68kexp.h"
 #include "machine/x68k_neptunex.h"
 #include "machine/x68k_scsiext.h"
+#include "machine/scsibus.h"
 #include "machine/scsihd.h"
 #include "x68000.lh"
 
@@ -164,7 +163,7 @@ static attotime prescale(int val)
         case 6: return attotime::from_nsec(25000);
         case 7: return attotime::from_nsec(50000);
         default:
-            fatalerror("out of range");
+            fatalerror("out of range\n");
     }
 }
 #endif
@@ -209,7 +208,7 @@ TIMER_CALLBACK(mfp_update_irq)
 //              if(state->m_mfp.iera & (1 << x))
                 {
                     state->m_current_vector[6] = (state->m_mfp.vr & 0xf0) | (x+8);
-                    cputag_set_input_line_and_vector(machine, "maincpu",state->m_mfp.irqline,ASSERT_LINE,(state->m_mfp.vr & 0xf0) | (x + 8));
+                    machine.device("maincpu")->execute().set_input_line_and_vector(state->m_mfp.irqline,ASSERT_LINE,(state->m_mfp.vr & 0xf0) | (x + 8));
 //                  logerror("MFP: Sent IRQ vector 0x%02x (IRQ line %i)\n",(state->m_mfp.vr & 0xf0) | (x+8),state->m_mfp.irqline);
                     return;  // one at a time only
                 }
@@ -228,7 +227,7 @@ TIMER_CALLBACK(mfp_update_irq)
 //              if(state->m_mfp.ierb & (1 << x))
                 {
                     state->m_current_vector[6] = (state->m_mfp.vr & 0xf0) | x;
-                    cputag_set_input_line_and_vector(machine, "maincpu",state->m_mfp.irqline,ASSERT_LINE,(state->m_mfp.vr & 0xf0) | x);
+                    machine.device("maincpu")->execute().set_input_line_and_vector(state->m_mfp.irqline,ASSERT_LINE,(state->m_mfp.vr & 0xf0) | x);
 //                  logerror("MFP: Sent IRQ vector 0x%02x (IRQ line %i)\n",(state->m_mfp.vr & 0xf0) | x,state->m_mfp.irqline);
                     return;  // one at a time only
                 }
@@ -456,7 +455,7 @@ static void x68k_keyboard_push_scancode(running_machine &machine,unsigned char c
 			if(machine.root_device().ioport("options")->read() & 0x01)
 			{
 				state->m_current_vector[6] = 0x4c;
-				cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x4c);
+				machine.device("maincpu")->execute().set_input_line_and_vector(6,ASSERT_LINE,0x4c);
 				logerror("MFP: Receive buffer full IRQ sent\n");
 			}
 		}
@@ -467,7 +466,7 @@ static void x68k_keyboard_push_scancode(running_machine &machine,unsigned char c
 		state->m_keyboard.headpos = 0;
 //      mfp_trigger_irq(MFP_IRQ_RX_ERROR);
 		state->m_current_vector[6] = 0x4b;
-//      cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x4b);
+//      machine.device("maincpu")->execute().set_input_line_and_vector(6,ASSERT_LINE,0x4b);
 	}
 }
 
@@ -655,7 +654,7 @@ static TIMER_CALLBACK(x68k_scc_ack)
 				state->m_mouse.irqactive = 1;
 				state->m_current_vector[5] = 0x54;
 				state->m_current_irq_line = 5;
-				cputag_set_input_line_and_vector(machine, "maincpu",5,ASSERT_LINE,0x54);
+				machine.device("maincpu")->execute().set_input_line_and_vector(5,ASSERT_LINE,0x54);
 			}
 		}
 	}
@@ -1040,7 +1039,7 @@ static WRITE16_HANDLER( x68k_fdc_w )
 		logerror("FDC: Drive #%i: Drive selection set to %02x\n",data & 0x03,data);
 		break;
 	default:
-//      logerror("FDC: [%08x] Wrote %04x to invalid FDC port %04x\n",cpu_get_pc(&space->device()),data,offset);
+//      logerror("FDC: [%08x] Wrote %04x to invalid FDC port %04x\n",space->device().safe_pc(),data,offset);
 		break;
 	}
 }
@@ -1093,7 +1092,7 @@ static WRITE_LINE_DEVICE_HANDLER( fdc_irq )
 		drvstate->m_ioc.irqstatus |= 0x80;
 		drvstate->m_current_irq_line = 1;
 		logerror("FDC: IRQ triggered\n");
-		cputag_set_input_line_and_vector(device->machine(), "maincpu", 1, ASSERT_LINE, drvstate->m_current_vector[1]);
+		device->machine().device("maincpu")->execute().set_input_line_and_vector(1, ASSERT_LINE, drvstate->m_current_vector[1]);
 	}
 }
 
@@ -1256,7 +1255,7 @@ static WRITE16_HANDLER( x68k_sysport_w )
 		state->m_sysport.sram_writeprotect = data;
 		break;
 	default:
-//      logerror("SYS: [%08x] Wrote %04x to invalid or unimplemented system port %04x\n",cpu_get_pc(&space->device()),data,offset);
+//      logerror("SYS: [%08x] Wrote %04x to invalid or unimplemented system port %04x\n",space->device().safe_pc(),data,offset);
 		break;
 	}
 }
@@ -1297,7 +1296,7 @@ static READ16_HANDLER( x68k_mfp_r )
 
 	// Initial settings indicate that IRQs are generated for FM (YM2151), Receive buffer error or full,
     // MFP Timer C, and the power switch
-//  logerror("MFP: [%08x] Reading offset %i\n",cpu_get_pc(&space->device()),offset);
+//  logerror("MFP: [%08x] Reading offset %i\n",space->device().safe_pc(),offset);
     switch(offset)
     {
 #if 0
@@ -1311,7 +1310,7 @@ static READ16_HANDLER( x68k_mfp_r )
 //          ret |= 0x08;  // FM IRQ signal
         if(machine.primary_screen->hpos() > state->m_crtc.width - 32)
             ret |= 0x80;  // Hsync signal
-//      logerror("MFP: [%08x] Reading offset %i (ret=%02x)\n",cpu_get_pc(&space->device()),offset,ret);
+//      logerror("MFP: [%08x] Reading offset %i (ret=%02x)\n",space->device().safe_pc(),offset,ret);
         return ret;  // bit 5 is always 1
     case 3:
         return state->m_mfp.iera;
@@ -1478,7 +1477,7 @@ static WRITE16_HANDLER( x68k_mfp_w )
 			// Keyboard control command.
 			state->m_mfp.usart.send_buffer = data;
 			x68k_keyboard_ctrl_w(state, data);
-//          logerror("MFP: [%08x] USART Sent data %04x\n",cpu_get_pc(&space->device()),data);
+//          logerror("MFP: [%08x] USART Sent data %04x\n",space->device().safe_pc(),data);
 		}
 		break;
 	default:
@@ -1702,8 +1701,8 @@ static TIMER_CALLBACK(x68k_bus_error)
 		v = 0x09;
 	if(ram[v] != 0x02)  // normal vector for bus errors points to 02FF0540
 	{
-		cputag_set_input_line(machine, "maincpu", M68K_LINE_BUSERROR, ASSERT_LINE);
-		cputag_set_input_line(machine, "maincpu", M68K_LINE_BUSERROR, CLEAR_LINE);
+		machine.device("maincpu")->execute().set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+		machine.device("maincpu")->execute().set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 		popmessage("Bus error: Unused RAM access [%08x]", val);
 	}
 }
@@ -1715,7 +1714,7 @@ static READ16_HANDLER( x68k_rom0_r )
        then access causes a bus error */
 	state->m_current_vector[2] = 0x02;  // bus error
 	state->m_current_irq_line = 2;
-//  cputag_set_input_line_and_vector(space->machine(), "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+//  space->machine().device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 	if(state->ioport("options")->read() & 0x02)
 	{
 		offset *= 2;
@@ -1733,7 +1732,7 @@ static WRITE16_HANDLER( x68k_rom0_w )
        then access causes a bus error */
 	state->m_current_vector[2] = 0x02;  // bus error
 	state->m_current_irq_line = 2;
-//  cputag_set_input_line_and_vector(space->machine(), "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+//  space->machine().device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 	if(state->ioport("options")->read() & 0x02)
 	{
 		offset *= 2;
@@ -1750,7 +1749,7 @@ static READ16_HANDLER( x68k_emptyram_r )
        Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
 	state->m_current_vector[2] = 0x02;  // bus error
 	state->m_current_irq_line = 2;
-//  cputag_set_input_line_and_vector(space->machine(), "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+//  space->machine().device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 	if(state->ioport("options")->read() & 0x02)
 	{
 		offset *= 2;
@@ -1768,7 +1767,7 @@ static WRITE16_HANDLER( x68k_emptyram_w )
        Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
 	state->m_current_vector[2] = 0x02;  // bus error
 	state->m_current_irq_line = 2;
-//  cputag_set_input_line_and_vector(space->machine(), "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+//  space->machine().device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 	if(state->ioport("options")->read() & 0x02)
 	{
 		offset *= 2;
@@ -1790,7 +1789,7 @@ static READ16_HANDLER( x68k_exp_r )
 		if(ACCESSING_BITS_0_7)
 			offset++;
 		space->machine().scheduler().timer_set(space->machine().device<cpu_device>("maincpu")->cycles_to_attotime(16), FUNC(x68k_bus_error), 0xeafa00+offset);
-//      cputag_set_input_line_and_vector(machine, "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+//      machine.device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 	}
 	return 0xffff;
 }
@@ -1807,7 +1806,7 @@ static WRITE16_HANDLER( x68k_exp_w )
 		if(ACCESSING_BITS_0_7)
 			offset++;
 		space->machine().scheduler().timer_set(space->machine().device<cpu_device>("maincpu")->cycles_to_attotime(16), FUNC(x68k_bus_error), 0xeafa00+offset);
-//      cputag_set_input_line_and_vector(machine, "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+//      machine.device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 	}
 }
 
@@ -1818,7 +1817,7 @@ static void x68k_dma_irq(running_machine &machine, int channel)
 	state->m_current_vector[3] = hd63450_get_vector(device, channel);
 	state->m_current_irq_line = 3;
 	logerror("DMA#%i: DMA End (vector 0x%02x)\n",channel,state->m_current_vector[3]);
-	cputag_set_input_line_and_vector(machine, "maincpu",3,ASSERT_LINE,state->m_current_vector[3]);
+	machine.device("maincpu")->execute().set_input_line_and_vector(3,ASSERT_LINE,state->m_current_vector[3]);
 }
 
 static void x68k_dma_end(running_machine &machine, int channel,int irq)
@@ -1837,7 +1836,7 @@ static void x68k_dma_error(running_machine &machine, int channel, int irq)
 	{
 		state->m_current_vector[3] = hd63450_get_error_vector(device,channel);
 		state->m_current_irq_line = 3;
-		cputag_set_input_line_and_vector(machine, "maincpu",3,ASSERT_LINE,state->m_current_vector[3]);
+		machine.device("maincpu")->execute().set_input_line_and_vector(3,ASSERT_LINE,state->m_current_vector[3]);
 	}
 }
 
@@ -1891,7 +1890,7 @@ static WRITE_LINE_DEVICE_HANDLER( mfp_irq_callback )
 		state = HOLD_LINE;  // to get around erroneous spurious interrupt
 //  if((state->m_ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
 //      return;
-	cputag_set_input_line(device->machine(), "maincpu", 6, state);
+	device->machine().device("maincpu")->execute().set_input_line(6, state);
 	drvstate->m_current_vector[6] = 0;
 	drvstate->m_mfp_prev = state;
 }
@@ -1925,12 +1924,12 @@ static IRQ_CALLBACK(x68k_int_ack)
 		if(state->m_current_vector[6] != 0x4b && state->m_current_vector[6] != 0x4c)
 			state->m_current_vector[6] = state->m_mfpdev->get_vector();
 		else
-			cputag_set_input_line_and_vector(device->machine(), "maincpu",irqline,CLEAR_LINE,state->m_current_vector[irqline]);
+			device->machine().device("maincpu")->execute().set_input_line_and_vector(irqline,CLEAR_LINE,state->m_current_vector[irqline]);
 		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",state->m_current_vector[6],irqline);
 		return state->m_current_vector[6];
 	}
 
-	cputag_set_input_line_and_vector(device->machine(), "maincpu",irqline,CLEAR_LINE,state->m_current_vector[irqline]);
+	device->machine().device("maincpu")->execute().set_input_line_and_vector(irqline,CLEAR_LINE,state->m_current_vector[irqline]);
 	if(irqline == 1)  // IOSC
 	{
 		state->m_ioc.irqstatus &= ~0xf0;
@@ -1952,7 +1951,7 @@ static WRITE_LINE_DEVICE_HANDLER( x68k_scsi_irq )
 	{
 		tstate->m_current_vector[1] = 0x6c;
 		tstate->m_current_irq_line = 1;
-		cputag_set_input_line_and_vector(device->machine(), "maincpu",1,ASSERT_LINE,tstate->m_current_vector[1]);
+		device->machine().device("maincpu")->execute().set_input_line_and_vector(1,ASSERT_LINE,tstate->m_current_vector[1]);
 	}
 }
 
@@ -1990,7 +1989,7 @@ static ADDRESS_MAP_START(x68k_map, AS_PROGRAM, 16, x68k_state )
 	AM_RANGE(0xeb0000, 0xeb7fff) AM_READWRITE_LEGACY(x68k_spritereg_r, x68k_spritereg_w)
 	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE_LEGACY(x68k_spriteram_r, x68k_spriteram_w)
 	AM_RANGE(0xece000, 0xece3ff) AM_READWRITE_LEGACY(x68k_exp_r, x68k_exp_w)  // User I/O
-//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE_LEGACY(sram_r, sram_w) AM_BASE_LEGACY(&generic_nvram16) AM_SIZE_LEGACY(&generic_nvram_size)
+//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE_LEGACY(sram_r, sram_w)
 	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK("bank4") AM_SHARE("nvram16")
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
 	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
@@ -2018,7 +2017,7 @@ static ADDRESS_MAP_START(x68kxvi_map, AS_PROGRAM, 16, x68k_state )
 	AM_RANGE(0xe92002, 0xe92003) AM_DEVREADWRITE8_LEGACY("okim6258", okim6258_status_r, okim6258_data_w, 0x00ff)
 	AM_RANGE(0xe94000, 0xe95fff) AM_READWRITE_LEGACY(x68k_fdc_r, x68k_fdc_w)
 //  AM_RANGE(0xe96000, 0xe9601f) AM_DEVREADWRITE_LEGACY("x68k_hdc",x68k_hdc_r, x68k_hdc_w)
-	AM_RANGE(0xe96020, 0xe9603f) AM_DEVREADWRITE8("mb89352_int",mb89352_device,mb89352_r,mb89352_w,0x00ff)
+	AM_RANGE(0xe96020, 0xe9603f) AM_DEVREADWRITE8("scsi:mb89352",mb89352_device,mb89352_r,mb89352_w,0x00ff)
 	AM_RANGE(0xe98000, 0xe99fff) AM_READWRITE_LEGACY(x68k_scc_r, x68k_scc_w)
 	AM_RANGE(0xe9a000, 0xe9bfff) AM_READWRITE_LEGACY(x68k_ppi_r, x68k_ppi_w)
 	AM_RANGE(0xe9c000, 0xe9dfff) AM_READWRITE_LEGACY(x68k_ioc_r, x68k_ioc_w)
@@ -2028,7 +2027,7 @@ static ADDRESS_MAP_START(x68kxvi_map, AS_PROGRAM, 16, x68k_state )
 	AM_RANGE(0xeb0000, 0xeb7fff) AM_READWRITE_LEGACY(x68k_spritereg_r, x68k_spritereg_w)
 	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE_LEGACY(x68k_spriteram_r, x68k_spriteram_w)
 	AM_RANGE(0xece000, 0xece3ff) AM_READWRITE_LEGACY(x68k_exp_r, x68k_exp_w)  // User I/O
-//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE_LEGACY(sram_r, sram_w) AM_BASE_LEGACY(&generic_nvram16) AM_SIZE_LEGACY(&generic_nvram_size)
+//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE_LEGACY(sram_r, sram_w)
 	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK("bank4") AM_SHARE("nvram16")
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
 	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
@@ -2056,7 +2055,7 @@ static ADDRESS_MAP_START(x68030_map, AS_PROGRAM, 32, x68k_state )
 	AM_RANGE(0xe92000, 0xe92003) AM_DEVREADWRITE8_LEGACY("okim6258", okim6258_status_r, x68030_adpcm_w, 0x00ff00ff)
 	AM_RANGE(0xe94000, 0xe95fff) AM_READWRITE16_LEGACY(x68k_fdc_r, x68k_fdc_w,0xffffffff)
 //  AM_RANGE(0xe96000, 0xe9601f) AM_DEVREADWRITE16_LEGACY("x68k_hdc",x68k_hdc_r, x68k_hdc_w,0xffffffff)
-	AM_RANGE(0xe96020, 0xe9603f) AM_DEVREADWRITE8("mb89352_int",mb89352_device,mb89352_r,mb89352_w,0x00ff00ff)
+	AM_RANGE(0xe96020, 0xe9603f) AM_DEVREADWRITE8("scsi:mb89352",mb89352_device,mb89352_r,mb89352_w,0x00ff00ff)
 	AM_RANGE(0xe98000, 0xe99fff) AM_READWRITE16_LEGACY(x68k_scc_r, x68k_scc_w,0xffffffff)
 	AM_RANGE(0xe9a000, 0xe9bfff) AM_READWRITE16_LEGACY(x68k_ppi_r, x68k_ppi_w,0xffffffff)
 	AM_RANGE(0xe9c000, 0xe9dfff) AM_READWRITE16_LEGACY(x68k_ioc_r, x68k_ioc_w,0xffffffff)
@@ -2066,7 +2065,7 @@ static ADDRESS_MAP_START(x68030_map, AS_PROGRAM, 32, x68k_state )
 	AM_RANGE(0xeb0000, 0xeb7fff) AM_READWRITE16_LEGACY(x68k_spritereg_r, x68k_spritereg_w,0xffffffff)
 	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE16_LEGACY(x68k_spriteram_r, x68k_spriteram_w,0xffffffff)
 	AM_RANGE(0xece000, 0xece3ff) AM_READWRITE16_LEGACY(x68k_exp_r, x68k_exp_w,0xffffffff)  // User I/O
-//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE_LEGACY(sram_r, sram_w) AM_BASE_LEGACY(&generic_nvram16) AM_SIZE_LEGACY(&generic_nvram_size)
+//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE_LEGACY(sram_r, sram_w)
 	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK("bank4") AM_SHARE("nvram32")
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
 	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
@@ -2464,7 +2463,7 @@ static void x68k_load_proc(device_image_interface &image)
 		state->m_current_vector[1] = 0x61;
 		state->m_ioc.irqstatus |= 0x40;
 		state->m_current_irq_line = 1;
-		cputag_set_input_line_and_vector(image.device().machine(), "maincpu",1,ASSERT_LINE,state->m_current_vector[1]);  // Disk insert/eject interrupt
+		image.device().machine().device("maincpu")->execute().set_input_line_and_vector(1,ASSERT_LINE,state->m_current_vector[1]);  // Disk insert/eject interrupt
 		logerror("IOC: Disk image inserted\n");
 	}
 	state->m_fdc.disk_inserted[floppy_get_drive(&image.device())] = 1;
@@ -2478,7 +2477,7 @@ static void x68k_unload_proc(device_image_interface &image)
 		state->m_current_vector[1] = 0x61;
 		state->m_ioc.irqstatus |= 0x40;
 		state->m_current_irq_line = 1;
-		cputag_set_input_line_and_vector(image.device().machine(), "maincpu",1,ASSERT_LINE,state->m_current_vector[1]);  // Disk insert/eject interrupt
+		image.device().machine().device("maincpu")->execute().set_input_line_and_vector(1,ASSERT_LINE,state->m_current_vector[1]);  // Disk insert/eject interrupt
 	}
 	state->m_fdc.disk_inserted[floppy_get_drive(&image.device())] = 0;
 }
@@ -2489,7 +2488,7 @@ static TIMER_CALLBACK( x68k_net_irq )
 
 	state->m_current_vector[2] = 0xf9;
 	state->m_current_irq_line = 2;
-	cputag_set_input_line_and_vector(machine, "maincpu",2,ASSERT_LINE,state->m_current_vector[2]);
+	machine.device("maincpu")->execute().set_input_line_and_vector(2,ASSERT_LINE,state->m_current_vector[2]);
 }
 
 static void x68k_irq2_line(device_t* device,int state)
@@ -2500,7 +2499,7 @@ static void x68k_irq2_line(device_t* device,int state)
 		tstate->m_net_timer->adjust(attotime::from_usec(16));
 	}
 	else
-		cputag_set_input_line_and_vector(device->machine(), "maincpu",2,CLEAR_LINE,tstate->m_current_vector[2]);
+		device->machine().device("maincpu")->execute().set_input_line_and_vector(2,CLEAR_LINE,tstate->m_current_vector[2]);
 	logerror("EXP: IRQ2 set to %i\n",state);
 
 }
@@ -2529,23 +2528,8 @@ static const floppy_interface x68k_floppy_interface =
 	NULL
 };
 
-static const SCSIConfigTable x68k_scsi_devtable =
-{
-	7,                                      /* 7 SCSI devices */
-	{
-		{ SCSI_ID_0, "harddisk0" },
-		{ SCSI_ID_1, "harddisk1" },
-		{ SCSI_ID_2, "harddisk2" },
-		{ SCSI_ID_3, "harddisk3" },
-		{ SCSI_ID_4, "harddisk4" },
-		{ SCSI_ID_5, "harddisk5" },
-		{ SCSI_ID_6, "harddisk6" },
-	}
-};
-
 static const mb89352_interface x68k_scsi_intf =
 {
-	&x68k_scsi_devtable,
 	DEVCB_LINE(x68k_scsi_irq),
 	DEVCB_LINE(x68k_scsi_drq)
 };
@@ -2563,58 +2547,57 @@ static SLOT_INTERFACE_START(x68000_exp_cards)
 	SLOT_INTERFACE("cz6bs1",X68K_SCSIEXT)  // Sharp CZ-6BS1 SCSI-1 controller
 SLOT_INTERFACE_END
 
-static MACHINE_RESET( x68000 )
+MACHINE_RESET_MEMBER(x68k_state,x68000)
 {
-	x68k_state *state = machine.driver_data<x68k_state>();
 	/* The last half of the IPLROM is mapped to 0x000000 on reset only
        Just copying the inital stack pointer and program counter should
        more or less do the same job */
 
 	int drive;
-	UINT8* romdata = state->memregion("user2")->base();
+	UINT8* romdata = memregion("user2")->base();
 	attotime irq_time;
 
-	memset(machine.device<ram_device>(RAM_TAG)->pointer(),0,machine.device<ram_device>(RAM_TAG)->size());
-	memcpy(machine.device<ram_device>(RAM_TAG)->pointer(),romdata,8);
+	memset(machine().device<ram_device>(RAM_TAG)->pointer(),0,machine().device<ram_device>(RAM_TAG)->size());
+	memcpy(machine().device<ram_device>(RAM_TAG)->pointer(),romdata,8);
 
 	// init keyboard
-	state->m_keyboard.delay = 500;  // 3*100+200
-	state->m_keyboard.repeat = 110;  // 4^2*5+30
+	m_keyboard.delay = 500;  // 3*100+200
+	m_keyboard.repeat = 110;  // 4^2*5+30
 
 	// check for disks
 	for(drive=0;drive<4;drive++)
 	{
-		device_image_interface *image = dynamic_cast<device_image_interface *>(floppy_get_device(machine, drive));
+		device_image_interface *image = dynamic_cast<device_image_interface *>(floppy_get_device(machine(), drive));
 		if(image->exists())
-			state->m_fdc.disk_inserted[drive] = 1;
+			m_fdc.disk_inserted[drive] = 1;
 		else
-			state->m_fdc.disk_inserted[drive] = 0;
+			m_fdc.disk_inserted[drive] = 0;
 	}
 
 	// initialise CRTC, set registers to defaults for the standard text mode (768x512)
-	state->m_crtc.reg[0] = 137;  // Horizontal total  (in characters)
-	state->m_crtc.reg[1] = 14;   // Horizontal sync end
-	state->m_crtc.reg[2] = 28;   // Horizontal start
-	state->m_crtc.reg[3] = 124;  // Horizontal end
-	state->m_crtc.reg[4] = 567;  // Vertical total
-	state->m_crtc.reg[5] = 5;    // Vertical sync end
-	state->m_crtc.reg[6] = 40;   // Vertical start
-	state->m_crtc.reg[7] = 552;  // Vertical end
-	state->m_crtc.reg[8] = 27;   // Horizontal adjust
+	m_crtc.reg[0] = 137;  // Horizontal total  (in characters)
+	m_crtc.reg[1] = 14;   // Horizontal sync end
+	m_crtc.reg[2] = 28;   // Horizontal start
+	m_crtc.reg[3] = 124;  // Horizontal end
+	m_crtc.reg[4] = 567;  // Vertical total
+	m_crtc.reg[5] = 5;    // Vertical sync end
+	m_crtc.reg[6] = 40;   // Vertical start
+	m_crtc.reg[7] = 552;  // Vertical end
+	m_crtc.reg[8] = 27;   // Horizontal adjust
 
-	mfp_init(machine);
+	mfp_init(machine());
 
-	state->m_scanline = machine.primary_screen->vpos();// = state->m_crtc.reg[6];  // Vertical start
+	m_scanline = machine().primary_screen->vpos();// = m_crtc.reg[6];  // Vertical start
 
 	// start VBlank timer
-	state->m_crtc.vblank = 1;
-	irq_time = machine.primary_screen->time_until_pos(state->m_crtc.reg[6],2);
-	state->m_vblank_irq->adjust(irq_time);
+	m_crtc.vblank = 1;
+	irq_time = machine().primary_screen->time_until_pos(m_crtc.reg[6],2);
+	m_vblank_irq->adjust(irq_time);
 
 	// start HBlank timer
-	state->m_scanline_timer->adjust(machine.primary_screen->scan_period(), 1);
+	m_scanline_timer->adjust(machine().primary_screen->scan_period(), 1);
 
-	state->m_mfp.gpio = 0xfb;
+	m_mfp.gpio = 0xfb;
 
 	// reset output values
 	output_set_value("key_led_kana",1);
@@ -2629,74 +2612,72 @@ static MACHINE_RESET( x68000 )
 		output_set_indexed_value("eject_drv",drive,1);
 		output_set_indexed_value("ctrl_drv",drive,1);
 		output_set_indexed_value("access_drv",drive,1);
-		floppy_install_unload_proc(floppy_get_device(machine, drive), x68k_unload_proc);
-		floppy_install_load_proc(floppy_get_device(machine, drive), x68k_load_proc);
+		floppy_install_unload_proc(floppy_get_device(machine(), drive), x68k_unload_proc);
+		floppy_install_load_proc(floppy_get_device(machine(), drive), x68k_load_proc);
 	}
 
 	// reset CPU
-	machine.device("maincpu")->reset();
+	machine().device("maincpu")->reset();
 }
 
-static MACHINE_START( x68000 )
+MACHINE_START_MEMBER(x68k_state,x68000)
 {
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
-	x68k_state *state = machine.driver_data<x68k_state>();
+	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	/*  Install RAM handlers  */
-	state->m_spriteram = (UINT16*)(*state->memregion("user1"));
+	m_spriteram = (UINT16*)(*memregion("user1"));
 	space->install_legacy_read_handler(0x000000,0xbffffb,0xffffffff,0,FUNC(x68k_emptyram_r));
 	space->install_legacy_write_handler(0x000000,0xbffffb,0xffffffff,0,FUNC(x68k_emptyram_w));
-	space->install_readwrite_bank(0x000000,machine.device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,"bank1");
-	state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer());
+	space->install_readwrite_bank(0x000000,machine().device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,"bank1");
+	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 	space->install_legacy_read_handler(0xc00000,0xdfffff,0xffffffff,0,FUNC(x68k_gvram_r));
 	space->install_legacy_write_handler(0xc00000,0xdfffff,0xffffffff,0,FUNC(x68k_gvram_w));
-	state->membank("bank2")->set_base(state->m_gvram16);  // so that code in VRAM is executable - needed for Terra Cresta
+	membank("bank2")->set_base(m_gvram16);  // so that code in VRAM is executable - needed for Terra Cresta
 	space->install_legacy_read_handler(0xe00000,0xe7ffff,0xffffffff,0,FUNC(x68k_tvram_r));
 	space->install_legacy_write_handler(0xe00000,0xe7ffff,0xffffffff,0,FUNC(x68k_tvram_w));
-	state->membank("bank3")->set_base(state->m_tvram16);  // so that code in VRAM is executable - needed for Terra Cresta
+	membank("bank3")->set_base(m_tvram16);  // so that code in VRAM is executable - needed for Terra Cresta
 	space->install_legacy_read_handler(0xed0000,0xed3fff,0xffffffff,0,FUNC(x68k_sram_r));
 	space->install_legacy_write_handler(0xed0000,0xed3fff,0xffffffff,0,FUNC(x68k_sram_w));
-	state->membank("bank4")->set_base(state->m_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
+	membank("bank4")->set_base(m_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
-	state->m_kb_timer->adjust(attotime::zero, 0, attotime::from_msec(5));  // every 5ms
+	m_kb_timer->adjust(attotime::zero, 0, attotime::from_msec(5));  // every 5ms
 
 	// start mouse timer
-	state->m_mouse_timer->adjust(attotime::zero, 0, attotime::from_msec(1));  // a guess for now
-	state->m_mouse.inputtype = 0;
+	m_mouse_timer->adjust(attotime::zero, 0, attotime::from_msec(1));  // a guess for now
+	m_mouse.inputtype = 0;
 
 	// start LED timer
-	state->m_led_timer->adjust(attotime::zero, 0, attotime::from_msec(400));
+	m_led_timer->adjust(attotime::zero, 0, attotime::from_msec(400));
 }
 
-static MACHINE_START( x68030 )
+MACHINE_START_MEMBER(x68k_state,x68030)
 {
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
-	x68k_state *state = machine.driver_data<x68k_state>();
+	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	/*  Install RAM handlers  */
-	state->m_spriteram = (UINT16*)(*state->memregion("user1"));
+	m_spriteram = (UINT16*)(*memregion("user1"));
 	space->install_legacy_read_handler(0x000000,0xbffffb,0xffffffff,0,FUNC(x68k_rom0_r),0xffffffff);
 	space->install_legacy_write_handler(0x000000,0xbffffb,0xffffffff,0,FUNC(x68k_rom0_w),0xffffffff);
-	space->install_readwrite_bank(0x000000,machine.device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,"bank1");
-	state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer());
+	space->install_readwrite_bank(0x000000,machine().device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,"bank1");
+	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 	space->install_legacy_read_handler(0xc00000,0xdfffff,0xffffffff,0,FUNC(x68k_gvram32_r));
 	space->install_legacy_write_handler(0xc00000,0xdfffff,0xffffffff,0,FUNC(x68k_gvram32_w));
-	state->membank("bank2")->set_base(state->m_gvram32);  // so that code in VRAM is executable - needed for Terra Cresta
+	membank("bank2")->set_base(m_gvram32);  // so that code in VRAM is executable - needed for Terra Cresta
 	space->install_legacy_read_handler(0xe00000,0xe7ffff,0xffffffff,0,FUNC(x68k_tvram32_r));
 	space->install_legacy_write_handler(0xe00000,0xe7ffff,0xffffffff,0,FUNC(x68k_tvram32_w));
-	state->membank("bank3")->set_base(state->m_tvram32);  // so that code in VRAM is executable - needed for Terra Cresta
+	membank("bank3")->set_base(m_tvram32);  // so that code in VRAM is executable - needed for Terra Cresta
 	space->install_legacy_read_handler(0xed0000,0xed3fff,0xffffffff,0,FUNC(x68k_sram32_r));
 	space->install_legacy_write_handler(0xed0000,0xed3fff,0xffffffff,0,FUNC(x68k_sram32_w));
-	state->membank("bank4")->set_base(state->m_nvram32);  // so that code in SRAM is executable, there is an option for booting from SRAM
+	membank("bank4")->set_base(m_nvram32);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
-	state->m_kb_timer->adjust(attotime::zero, 0, attotime::from_msec(5));  // every 5ms
+	m_kb_timer->adjust(attotime::zero, 0, attotime::from_msec(5));  // every 5ms
 
 	// start mouse timer
-	state->m_mouse_timer->adjust(attotime::zero, 0, attotime::from_msec(1));  // a guess for now
-	state->m_mouse.inputtype = 0;
+	m_mouse_timer->adjust(attotime::zero, 0, attotime::from_msec(1));  // a guess for now
+	m_mouse.inputtype = 0;
 
 	// start LED timer
-	state->m_led_timer->adjust(attotime::zero, 0, attotime::from_msec(400));
+	m_led_timer->adjust(attotime::zero, 0, attotime::from_msec(400));
 }
 
 DRIVER_INIT_MEMBER(x68k_state,x68000)
@@ -2722,7 +2703,7 @@ DRIVER_INIT_MEMBER(x68k_state,x68000)
 
 	mfp_init(machine());
 
-	device_set_irq_callback(machine().device("maincpu"), x68k_int_ack);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(x68k_int_ack);
 
 	// init keyboard
 	m_keyboard.delay = 500;  // 3*100+200
@@ -2763,8 +2744,8 @@ static MACHINE_CONFIG_FRAGMENT( x68000_base )
 	MCFG_CPU_VBLANK_INT("screen", x68k_vsync_irq)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( x68000 )
-	MCFG_MACHINE_RESET( x68000 )
+	MCFG_MACHINE_START_OVERRIDE(x68k_state, x68000 )
+	MCFG_MACHINE_RESET_OVERRIDE(x68k_state, x68000 )
 
 	/* device hardware */
 	MCFG_MC68901_ADD(MC68901_TAG, 4000000, mfp_interface)
@@ -2787,9 +2768,9 @@ static MACHINE_CONFIG_FRAGMENT( x68000_base )
 	MCFG_SCREEN_UPDATE_STATIC( x68000 )
 
 	MCFG_PALETTE_LENGTH(65536)
-	MCFG_PALETTE_INIT( x68000 )
+	MCFG_PALETTE_INIT_OVERRIDE(x68k_state, x68000 )
 
-	MCFG_VIDEO_START( x68000 )
+	MCFG_VIDEO_START_OVERRIDE(x68k_state, x68000 )
 
 	MCFG_DEFAULT_LAYOUT( layout_x68000 )
 
@@ -2833,14 +2814,15 @@ static MACHINE_CONFIG_START( x68ksupr, x68k_state )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(x68kxvi_map)
 
-	MCFG_MB89352A_ADD("mb89352_int",x68k_scsi_intf)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk5", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk6", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_2)
+	MCFG_SCSIDEV_ADD("scsi:harddisk3", SCSIHD, SCSI_ID_3)
+	MCFG_SCSIDEV_ADD("scsi:harddisk4", SCSIHD, SCSI_ID_4)
+	MCFG_SCSIDEV_ADD("scsi:harddisk5", SCSIHD, SCSI_ID_5)
+	MCFG_SCSIDEV_ADD("scsi:harddisk6", SCSIHD, SCSI_ID_6)
+	MCFG_MB89352A_ADD("scsi:mb89352",x68k_scsi_intf)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( x68kxvi, x68k_state )
@@ -2853,14 +2835,15 @@ static MACHINE_CONFIG_START( x68kxvi, x68k_state )
 	MCFG_CPU_CLOCK(16000000)  /* 16 MHz */
 	MCFG_CPU_PROGRAM_MAP(x68kxvi_map)
 
-	MCFG_MB89352A_ADD("mb89352_int",x68k_scsi_intf)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk5", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk6", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_2)
+	MCFG_SCSIDEV_ADD("scsi:harddisk3", SCSIHD, SCSI_ID_3)
+	MCFG_SCSIDEV_ADD("scsi:harddisk4", SCSIHD, SCSI_ID_4)
+	MCFG_SCSIDEV_ADD("scsi:harddisk5", SCSIHD, SCSI_ID_5)
+	MCFG_SCSIDEV_ADD("scsi:harddisk6", SCSIHD, SCSI_ID_6)
+	MCFG_MB89352A_ADD("scsi:mb89352",x68k_scsi_intf)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( x68030, x68k_state )
@@ -2869,19 +2852,20 @@ static MACHINE_CONFIG_START( x68030, x68k_state )
 	MCFG_CPU_REPLACE("maincpu", M68030, 25000000)  /* 25 MHz 68EC030 */
 	MCFG_CPU_PROGRAM_MAP(x68030_map)
 
-	MCFG_MACHINE_START( x68030 )
-	MCFG_MACHINE_RESET( x68000 )
+	MCFG_MACHINE_START_OVERRIDE(x68k_state, x68030 )
+	MCFG_MACHINE_RESET_OVERRIDE(x68k_state, x68000 )
 
 	MCFG_NVRAM_ADD_0FILL("nvram32")
 
-	MCFG_MB89352A_ADD("mb89352_int",x68k_scsi_intf)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk5", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk6", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_2)
+	MCFG_SCSIDEV_ADD("scsi:harddisk3", SCSIHD, SCSI_ID_3)
+	MCFG_SCSIDEV_ADD("scsi:harddisk4", SCSIHD, SCSI_ID_4)
+	MCFG_SCSIDEV_ADD("scsi:harddisk5", SCSIHD, SCSI_ID_5)
+	MCFG_SCSIDEV_ADD("scsi:harddisk6", SCSIHD, SCSI_ID_6)
+	MCFG_MB89352A_ADD("scsi:mb89352",x68k_scsi_intf)
 MACHINE_CONFIG_END
 
 ROM_START( x68000 )

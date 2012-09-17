@@ -75,13 +75,13 @@
 #define FDC_TAG                 "wd1793"
 
 
-typedef struct
+struct keyboard_t
 {
 	UINT8       keyrows[MBC55X_KEYROWS];
 	emu_timer   *keyscan_timer;
 
 	UINT8		key_special;
-}  keyboard_t;
+};
 
 
 class mbc55x_state : public driver_device
@@ -151,14 +151,19 @@ public:
 	DECLARE_READ8_MEMBER(mbc55x_kb_usart_r);
 	DECLARE_WRITE8_MEMBER(mbc55x_kb_usart_w);
 	DECLARE_DRIVER_INIT(mbc55x);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void video_reset();
+	virtual void palette_init();
 };
 
 /* IO chips */
 
 
-typedef struct
+struct msm_rx_t
 {
-} msm_rx_t;
+};
 
 /*----------- defined in drivers/mbc55x.c -----------*/
 
@@ -173,8 +178,8 @@ extern const i8255_interface mbc55x_ppi8255_interface;
 extern const i8251_interface mbc55x_i8251a_interface;
 extern const i8251_interface mbc55x_i8251b_interface;
 
-MACHINE_RESET(mbc55x);
-MACHINE_START(mbc55x);
+
+
 
 
 /* Memory controller */
@@ -215,9 +220,9 @@ extern const mc6845_interface mb55x_mc6845_intf;
 READ16_HANDLER (mbc55x_video_io_r);
 WRITE16_HANDLER (mbc55x_video_io_w);
 
-VIDEO_START( mbc55x );
+
 SCREEN_VBLANK( mbc55x );
-VIDEO_RESET( mbc55x );
+
 
 #define RED                     0
 #define GREEN                   1

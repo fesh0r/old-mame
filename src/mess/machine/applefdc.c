@@ -58,12 +58,12 @@
 #define IWM_Q6		0x40
 #define IWM_Q7		0x80
 
-typedef enum
+enum applefdc_t
 {
 	APPLEFDC_APPLE2,	/* classic Apple II disk controller (pre-IWM) */
 	APPLEFDC_IWM,		/* Integrated Woz Machine */
 	APPLEFDC_SWIM		/* Sander/Woz Integrated Machine */
-} applefdc_t;
+};
 
 
 static UINT8 swim_default_parms[16] =
@@ -119,8 +119,7 @@ enum
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _applefdc_token applefdc_token;
-struct _applefdc_token
+struct applefdc_token
 {
 	/* data that is constant for the lifetime of the emulation */
 	emu_timer *motor_timer;
@@ -165,7 +164,7 @@ INLINE void assert_is_applefdc(device_t *device)
 INLINE applefdc_token *get_token(device_t *device)
 {
 	assert_is_applefdc(device);
-	return (applefdc_token *) downcast<legacy_device_base *>(device)->token();
+	return (applefdc_token *) downcast<applefdc_base_device *>(device)->token();
 }
 
 
@@ -735,33 +734,6 @@ UINT8 applefdc_get_lines(device_t *device)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    DEVICE_GET_INFO(applefdc_base) - device get info
-    callback
--------------------------------------------------*/
-
-static DEVICE_GET_INFO(applefdc_base)
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(applefdc_token);			break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							/* Nothing */								break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(applefdc);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Apple FDC");						break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
-	}
-}
-
-
-
-/*-------------------------------------------------
     DEVICE_START(oldfdc) - device start
     callback
 -------------------------------------------------*/
@@ -769,27 +741,6 @@ static DEVICE_GET_INFO(applefdc_base)
 static DEVICE_START(oldfdc)
 {
 	applefdc_start(device, APPLEFDC_APPLE2);
-}
-
-
-
-/*-------------------------------------------------
-    DEVICE_GET_INFO(applefdc) - device get info
-    callback
--------------------------------------------------*/
-
-DEVICE_GET_INFO(applefdc)
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Apple FDC");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(oldfdc);	break;
-
-		default:										DEVICE_GET_INFO_CALL(applefdc_base);	break;
-	}
 }
 
 
@@ -805,28 +756,6 @@ static DEVICE_START(iwm)
 }
 
 
-
-/*-------------------------------------------------
-    DEVICE_GET_INFO(iwm) - device get info
-    callback
--------------------------------------------------*/
-
-DEVICE_GET_INFO(iwm)
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Apple IWM (Integrated Woz Machine)");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(iwm);	break;
-
-		default:										DEVICE_GET_INFO_CALL(applefdc_base);	break;
-	}
-}
-
-
-
 /*-------------------------------------------------
     DEVICE_START(iwm) - device start
     callback
@@ -838,26 +767,80 @@ static DEVICE_START(swim)
 }
 
 
-
-/*-------------------------------------------------
-    DEVICE_GET_INFO(swim) - device get info
-    callback
--------------------------------------------------*/
-
-DEVICE_GET_INFO(swim)
+applefdc_base_device::applefdc_base_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, type, name, tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Apple SWIM (Steve Woz Integrated Machine)");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(swim);	break;
-
-		default:										DEVICE_GET_INFO_CALL(applefdc_base);	break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(applefdc_token));
 }
 
-DEFINE_LEGACY_DEVICE(APPLEFDC, applefdc);
-DEFINE_LEGACY_DEVICE(IWM, iwm);
-DEFINE_LEGACY_DEVICE(SWIM, swim);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void applefdc_base_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void applefdc_base_device::device_reset()
+{
+	DEVICE_RESET_NAME( applefdc )(this);
+}
+
+
+const device_type APPLEFDC = &device_creator<applefdc_device>;
+
+applefdc_device::applefdc_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: applefdc_base_device(mconfig, APPLEFDC, "Apple FDC", tag, owner, clock)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void applefdc_device::device_start()
+{
+	DEVICE_START_NAME( oldfdc )(this);
+}
+
+
+const device_type IWM = &device_creator<iwm_device>;
+
+iwm_device::iwm_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: applefdc_base_device(mconfig, IWM, "Apple IWM (Integrated Woz Machine)", tag, owner, clock)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void iwm_device::device_start()
+{
+	DEVICE_START_NAME( iwm )(this);
+}
+
+
+const device_type SWIM = &device_creator<swim_device>;
+
+swim_device::swim_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: applefdc_base_device(mconfig, SWIM, "Apple SWIM (Steve Woz Integrated Machine)", tag, owner, clock)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void swim_device::device_start()
+{
+	DEVICE_START_NAME( swim )(this);
+}
+
+

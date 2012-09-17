@@ -101,7 +101,7 @@ WRITE32_MEMBER( cxhumax_state::cx_gxa_w )
 
 			if((m_intctrl_regs[INTREG(INTGROUP2, INTIRQ)] & m_intctrl_regs[INTREG(INTGROUP2, INTENABLE)])
 				|| (m_intctrl_regs[INTREG(INTGROUP1, INTIRQ)] & m_intctrl_regs[INTREG(INTGROUP1, INTENABLE)]))
-					device_set_input_line(machine().device("maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+					machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 
 			break;
 		default:
@@ -150,16 +150,16 @@ READ32_MEMBER( cxhumax_state::cx_scratch_r )
 	UINT32 data = m_scratch_reg;
 	verboselog( machine(), 9, "(SCRATCH) %08X -> %08X\n", 0xE0400024 + (offset << 2), data);
 
-	if((cpu_get_pc(m_maincpu)==0xF0003BB8) || (cpu_get_pc(m_maincpu)==0x01003724) || (cpu_get_pc(m_maincpu)==0x00005d8c)) { // HDCI-2000
+	if((m_maincpu->pc()==0xF0003BB8) || (m_maincpu->pc()==0x01003724) || (m_maincpu->pc()==0x00005d8c)) { // HDCI-2000
 		//we're in disabled debug_printf
 		unsigned char* buf = (unsigned char *)alloca(200);
 		unsigned char temp;
-		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *program = m_maincpu->space(AS_PROGRAM);
 
 		memset(buf,0,200);
 
 		int i = 0;
-		while ((temp=program->read_byte(cpu_get_reg(m_maincpu, ARM7_R0)+i))) {
+		while ((temp=program->read_byte(m_maincpu->state_int(ARM7_R0)+i))) {
 			buf[i++]=temp;
 			//m_terminal->write(space, 0, temp);
 		}
@@ -322,7 +322,7 @@ static TIMER_CALLBACK( timer_tick )
 
 			/* Interrupt if Timer interrupt is not masked in ITC_INTENABLE_REG */
 			if (state->m_intctrl_regs[INTREG(INTGROUP2, INTENABLE)] & INT_TIMER_BIT)
-				device_set_input_line(machine.device("maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+				machine.device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 		}
 	}
 	attotime period = attotime::from_hz(XTAL_54MHz)*state->m_timer_regs.timer[param].timebase;
@@ -418,7 +418,7 @@ WRITE32_MEMBER( cxhumax_state::cx_uart2_w )
 
 					/* If INT is enabled at INT Ctrl raise it */
 					if(m_intctrl_regs[INTREG(INTGROUP1, INTENABLE)]&INT_UART2_BIT) {
-						device_set_input_line(machine().device("maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+						machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 					}
 				}
 			}
@@ -548,9 +548,9 @@ WRITE32_MEMBER( cxhumax_state::cx_intctrl_w )
 	/* check if */
 	if((m_intctrl_regs[INTREG(INTGROUP2, INTIRQ)] & m_intctrl_regs[INTREG(INTGROUP2, INTENABLE)])
 		|| (m_intctrl_regs[INTREG(INTGROUP1, INTIRQ)] & m_intctrl_regs[INTREG(INTGROUP1, INTENABLE)]))
-		device_set_input_line(machine().device("maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+		machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 	else
-		device_set_input_line(machine().device("maincpu"), ARM7_IRQ_LINE, CLEAR_LINE);
+		machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, CLEAR_LINE);
 
 }
 
@@ -734,7 +734,7 @@ WRITE32_MEMBER( cxhumax_state::cx_i2c1_w )
 			m_intctrl_regs[INTREG(INTGROUP1, INTSTATSET)] |= 1<<7;
 			if (m_intctrl_regs[INTREG(INTGROUP1, INTENABLE)] & (1<<7)) {
 					verboselog( machine(), 9, "(I2C1) Int\n" );
-					device_set_input_line(machine().device("maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+					machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 			}
 			break;
 		case I2C_STAT_REG:
@@ -820,7 +820,7 @@ WRITE32_MEMBER( cxhumax_state::cx_hdmi_w )
 	COMBINE_DATA(&m_hdmi_regs[offset]);
 }
 
-static VIDEO_START( cxhumax )
+void cxhumax_state::video_start()
 {
 }
 
@@ -978,29 +978,27 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START( cxhumax )
 INPUT_PORTS_END
 
-static MACHINE_START( cxhumax )
+void cxhumax_state::machine_start()
 {
-	cxhumax_state *state = machine.driver_data<cxhumax_state>();
-	state->m_i2cmem = machine.device("eeprom");
+	m_i2cmem = machine().device("eeprom");
 	int index = 0;
 	for(index = 0; index < MAX_CX_TIMERS; index++)
 	{
-		state->m_timer_regs.timer[index].timer = machine.scheduler().timer_alloc(FUNC(timer_tick));
-		state->m_timer_regs.timer[index].timer->adjust(attotime::never, index);
+		m_timer_regs.timer[index].timer = machine().scheduler().timer_alloc(FUNC(timer_tick));
+		m_timer_regs.timer[index].timer->adjust(attotime::never, index);
 	}
 }
 
-static MACHINE_RESET( cxhumax )
+void cxhumax_state::machine_reset()
 {
-	cxhumax_state *state = machine.driver_data<cxhumax_state>();
 
-	state->m_i2c0_regs[0x08/4] = 0x08; // SDA high
-	state->m_i2c2_regs[0x08/4] = 0x08; // SDA high
+	m_i2c0_regs[0x08/4] = 0x08; // SDA high
+	m_i2c2_regs[0x08/4] = 0x08; // SDA high
 
-	UINT8* FLASH = machine.root_device().memregion("flash")->base();
-	memcpy(state->m_ram,FLASH,0x400000);
+	UINT8* FLASH = machine().root_device().memregion("flash")->base();
+	memcpy(m_ram,FLASH,0x400000);
 
-	state->m_chipcontrol_regs[PIN_CONFIG_0_REG] =
+	m_chipcontrol_regs[PIN_CONFIG_0_REG] =
 		1 << 0  | /* Short Reset: 0=200ms delay ; 1=1ms delay */
 		1 << 1  | /* Software config bit. OK */
 		1 << 4  | /* SDRAM memory controller data width. 0=16bit 1=32bit */
@@ -1013,45 +1011,45 @@ static MACHINE_RESET( cxhumax )
 		0 << 29 | /* 0=using SC2 1=not using SC2 */
 		0 << 30 | /* 0=using SC1 (TDA8004) 1=not using SC1 */
 		1 << 31;  /* 0=Ext clk for boot 1=Int PLL for boot OK */
-	state->m_chipcontrol_regs[SREG_MODE_REG] = 0x0000020F;
+	m_chipcontrol_regs[SREG_MODE_REG] = 0x0000020F;
 
-	memset(state->m_isaromdescr_regs,0,sizeof(state->m_isaromdescr_regs));
-	memset(state->m_isadescr_regs,0,sizeof(state->m_isadescr_regs));
-	state->m_rommode_reg=0;
-	state->m_xoemask_reg=0;
-	memset(state->m_extdesc_regs,0,sizeof(state->m_extdesc_regs));
+	memset(m_isaromdescr_regs,0,sizeof(m_isaromdescr_regs));
+	memset(m_isadescr_regs,0,sizeof(m_isadescr_regs));
+	m_rommode_reg=0;
+	m_xoemask_reg=0;
+	memset(m_extdesc_regs,0,sizeof(m_extdesc_regs));
 
-	state->m_pll_regs[SREG_MPG_0_INTFRAC_REG] = (0x1A << 25) /* integer */ | 0x5D1764 /* fraction */;
-	state->m_pll_regs[SREG_MPG_1_INTFRAC_REG] = (0x1A << 25) /* integer */ | 0x5D1764 /* fraction */;
-	state->m_pll_regs[SREG_ARM_INTFRAC_REG] = (0x28 << 25) /* integer */ | 0xCEDE62 /* fraction */;
-	state->m_pll_regs[SREG_MEM_INTFRAC_REG] = (0x13 << 25) /* integer */ | 0xC9B26D /* fraction */;
-	state->m_pll_regs[SREG_USB_INTFRAC_REG] = (0x08 << 25) /* integer */ | 0x52BF5B /* fraction */;
+	m_pll_regs[SREG_MPG_0_INTFRAC_REG] = (0x1A << 25) /* integer */ | 0x5D1764 /* fraction */;
+	m_pll_regs[SREG_MPG_1_INTFRAC_REG] = (0x1A << 25) /* integer */ | 0x5D1764 /* fraction */;
+	m_pll_regs[SREG_ARM_INTFRAC_REG] = (0x28 << 25) /* integer */ | 0xCEDE62 /* fraction */;
+	m_pll_regs[SREG_MEM_INTFRAC_REG] = (0x13 << 25) /* integer */ | 0xC9B26D /* fraction */;
+	m_pll_regs[SREG_USB_INTFRAC_REG] = (0x08 << 25) /* integer */ | 0x52BF5B /* fraction */;
 
-	state->m_clkdiv_regs[SREG_DIV_0_REG] = (2<<0)|(1<<6)|(2<<8)|(2<<14)|(10<<16)|(1<<22)|(10<<24)|(1<<30);
-	state->m_clkdiv_regs[SREG_DIV_1_REG] = (5<<0)|(0<<6)|(12<<8)|(0<<14)|(4<<16)|(1<<22)|(5<<24)|(1<<30);
-	state->m_clkdiv_regs[SREG_DIV_2_REG] = (22<<0)|(0<<6)|(12<<8)|(1<<14)|(4<<16)|(3<<22); //|(5<<24)|(1<<30);???
-	state->m_clkdiv_regs[SREG_DIV_3_REG] = (5<<0)|(0<<6)|(5<<8)|(0<<14)|(5<<16)|(0<<22)|(5<<24)|(0<<30);
-	state->m_clkdiv_regs[SREG_DIV_4_REG] = (8<<0)|(0<<6)|(5<<8)|(0<<14)|(5<<16)|(0<<22)|(5<<24)|(0<<30);
-	state->m_clkdiv_regs[SREG_DIV_5_REG] = (8<<0)|(0<<6)|(5<<8)|(0<<14)|(5<<16)|(0<<22);
+	m_clkdiv_regs[SREG_DIV_0_REG] = (2<<0)|(1<<6)|(2<<8)|(2<<14)|(10<<16)|(1<<22)|(10<<24)|(1<<30);
+	m_clkdiv_regs[SREG_DIV_1_REG] = (5<<0)|(0<<6)|(12<<8)|(0<<14)|(4<<16)|(1<<22)|(5<<24)|(1<<30);
+	m_clkdiv_regs[SREG_DIV_2_REG] = (22<<0)|(0<<6)|(12<<8)|(1<<14)|(4<<16)|(3<<22); //|(5<<24)|(1<<30);???
+	m_clkdiv_regs[SREG_DIV_3_REG] = (5<<0)|(0<<6)|(5<<8)|(0<<14)|(5<<16)|(0<<22)|(5<<24)|(0<<30);
+	m_clkdiv_regs[SREG_DIV_4_REG] = (8<<0)|(0<<6)|(5<<8)|(0<<14)|(5<<16)|(0<<22)|(5<<24)|(0<<30);
+	m_clkdiv_regs[SREG_DIV_5_REG] = (8<<0)|(0<<6)|(5<<8)|(0<<14)|(5<<16)|(0<<22);
 
-	state->m_pllprescale_reg=0xFFF;
+	m_pllprescale_reg=0xFFF;
 
-	state->m_mccfg_regs[MC_CFG0] = ((state->m_chipcontrol_regs[PIN_CONFIG_0_REG]>>4)&1)<<16;
-	state->m_mccfg_regs[MC_CFG1] = 0;
-	state->m_mccfg_regs[MC_CFG2] = (7<<8)|(7<<0);
+	m_mccfg_regs[MC_CFG0] = ((m_chipcontrol_regs[PIN_CONFIG_0_REG]>>4)&1)<<16;
+	m_mccfg_regs[MC_CFG1] = 0;
+	m_mccfg_regs[MC_CFG2] = (7<<8)|(7<<0);
 
 	// UART2
-	state->m_uart2_regs[UART_FIFC_REG] = 0x30;
+	m_uart2_regs[UART_FIFC_REG] = 0x30;
 
 	// Clear SS TX FIFO
-	memset(state->m_ss_tx_fifo,0,sizeof(state->m_ss_tx_fifo));
-	state->m_ss_regs[SS_BAUD_REG] = 1; // Default SS clock = 13,5MHz
+	memset(m_ss_tx_fifo,0,sizeof(m_ss_tx_fifo));
+	m_ss_regs[SS_BAUD_REG] = 1; // Default SS clock = 13,5MHz
 
-	memset(state->m_intctrl_regs,0,sizeof(state->m_intctrl_regs));
+	memset(m_intctrl_regs,0,sizeof(m_intctrl_regs));
 
-	memset(state->m_hdmi_regs,0,sizeof(state->m_hdmi_regs));
+	memset(m_hdmi_regs,0,sizeof(m_hdmi_regs));
 
-	memset(state->m_gxa_cmd_regs,0,sizeof(state->m_gxa_cmd_regs));
+	memset(m_gxa_cmd_regs,0,sizeof(m_gxa_cmd_regs));
 }
 
 static GENERIC_TERMINAL_INTERFACE( terminal_intf )
@@ -1068,8 +1066,6 @@ static MACHINE_CONFIG_START( cxhumax, cxhumax_state )
 	MCFG_CPU_ADD("maincpu", ARM920T, 180000000) // CX24175 (RevC up?)
 	MCFG_CPU_PROGRAM_MAP(cxhumax_map)
 
-	MCFG_MACHINE_RESET(cxhumax)
-	MCFG_MACHINE_START(cxhumax)
 
 	MCFG_INTEL_28F320J3D_ADD("flash")
 	MCFG_I2CMEM_ADD("eeprom",i2cmem_interface)
@@ -1087,7 +1083,6 @@ static MACHINE_CONFIG_START( cxhumax, cxhumax_state )
 
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG, terminal_intf)
 
-	MCFG_VIDEO_START(cxhumax)
 MACHINE_CONFIG_END
 
 ROM_START( hxhdci2k )

@@ -9,6 +9,13 @@
 #
 ###########################################################################
 
+ifeq ($(TARGET),mame)
+# In order to keep dependencies reasonable, we exclude objects in the base of
+# $(SRC)/emu, as well as all the OSD objects and anything in the $(OBJ) tree
+depend: maketree $(MAKEDEP_TARGET)
+	@echo Rebuilding depend_$(TARGET).mak...
+	$(MAKEDEP) -I. $(INCPATH) -X$(SRC)/emu -X$(SRC)/osd/... -X$(OBJ)/... src/$(TARGET) > depend_$(TARGET).mak
+endif
 
 MAMESRC = $(SRC)/mame
 MAMEOBJ = $(OBJ)/mame
@@ -2033,12 +2040,16 @@ $(DRIVERS)/dlair.o:	$(LAYOUT)/dlair.lh
 
 $(DRIVERS)/firebeat.o:	$(LAYOUT)/firebeat.lh
 
+$(DRIVERS)/flicker.o:	$(LAYOUT)/flicker.lh
+
 $(DRIVERS)/fortecar.o:	$(LAYOUT)/fortecrd.lh
 
 $(DRIVERS)/funworld.o:	$(LAYOUT)/jollycrd.lh \
 			$(LAYOUT)/bigdeal.lh \
 			$(LAYOUT)/novoplay.lh \
 			$(LAYOUT)/royalcrd.lh
+
+$(DRIVERS)/g627.o:	$(LAYOUT)/g627.lh
 
 $(DRIVERS)/galaxi.o:	$(LAYOUT)/galaxi.lh
 
@@ -2068,7 +2079,7 @@ $(DRIVERS)/jpmimpct.o:	$(LAYOUT)/awpvid16.lh
 
 $(DRIVERS)/jpmsys5.o:	$(LAYOUT)/awpvid16.lh
 
-$(DRIVERS)/kas89.o:	$(LAYOUT)/kas89.lh
+$(DRIVERS)/kas89.o:		$(LAYOUT)/kas89.lh
 
 $(DRIVERS)/kingdrby.o:	$(LAYOUT)/kingdrby.lh
 
@@ -2087,7 +2098,9 @@ $(DRIVERS)/majorpkr.o:	$(LAYOUT)/majorpkr.lh
 
 $(DRIVERS)/maxaflex.o:	$(LAYOUT)/maxaflex.lh
 
-$(DRIVERS)/mcr3.o:	$(LAYOUT)/turbotag.lh
+$(DRIVERS)/mcr.o:		$(LAYOUT)/dpoker.lh
+
+$(DRIVERS)/mcr3.o:		$(LAYOUT)/turbotag.lh
 
 $(DRIVERS)/mpoker.o:	$(LAYOUT)/mpoker.lh
 
@@ -2101,10 +2114,10 @@ $(DRIVERS)/mpu4hw.o:	$(LAYOUT)/mpu4.lh \
 $(DRIVERS)/mpu4vid.o:	$(LAYOUT)/crmaze2p.lh \
 			$(LAYOUT)/crmaze4p.lh
 
-$(DRIVERS)/mpu4plasma.o: $(LAYOUT)/mpu4plasma.lh \
+$(DRIVERS)/mpu4plasma.o:	$(LAYOUT)/mpu4plasma.lh \
 
 
-$(DRIVERS)/mw18w.o:	$(LAYOUT)/18w.lh
+$(DRIVERS)/mw18w.o:		$(LAYOUT)/18w.lh
 
 $(DRIVERS)/mw8080bw.o:	$(LAYOUT)/280zzzap.lh \
 			$(LAYOUT)/clowns.lh \
@@ -2157,6 +2170,8 @@ $(DRIVERS)/re900.o:	$(LAYOUT)/re900.lh
 
 $(DRIVERS)/roul.o:	$(LAYOUT)/roul.lh
 
+$(DRIVERS)/rowamet.o:	$(LAYOUT)/rowamet.lh
+
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 
 $(DRIVERS)/sderby.o:	$(LAYOUT)/sderby.lh \
@@ -2203,6 +2218,8 @@ $(DRIVERS)/tatsumi.o:	$(LAYOUT)/roundup5.lh
 
 $(DRIVERS)/tceptor.o:	$(LAYOUT)/tceptor2.lh
 
+$(DRIVERS)/techno.o:	$(LAYOUT)/techno.lh
+
 $(DRIVERS)/tehkanwc.o:	$(LAYOUT)/gridiron.lh
 
 $(DRIVERS)/tetrisp2.o:	$(LAYOUT)/rocknms.lh \
@@ -2243,10 +2260,15 @@ $(DRIVERS)/wecleman.o:	$(LAYOUT)/wecleman.lh
 
 $(DRIVERS)/zac2650.o:	$(LAYOUT)/tinv2650.lh
 
+$(DRIVERS)/zac_1.o:	$(LAYOUT)/zac_1.lh
+
+$(DRIVERS)/zac_2.o:	$(LAYOUT)/zac_2.lh
+
+$(DRIVERS)/zac_proto.o:	$(LAYOUT)/zac_proto.lh
+
 $(DRIVERS)/peyper.o:    $(LAYOUT)/peyper.lh
 
-$(MACHINE)/megadriv.o:  $(LAYOUT)/megacd.lh
-
+$(MACHINE)/megacd.o:  $(LAYOUT)/megacd.lh
 
 #-------------------------------------------------
 # misc dependencies

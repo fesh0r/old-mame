@@ -114,7 +114,7 @@ void portfolio_state::check_interrupt()
 {
 	int level = (m_ip & m_ie) ? ASSERT_LINE : CLEAR_LINE;
 
-	device_set_input_line(m_maincpu, INPUT_LINE_INT0, level);
+	m_maincpu->set_input_line(INPUT_LINE_INT0, level);
 }
 
 //-------------------------------------------------
@@ -438,7 +438,7 @@ WRITE8_MEMBER( portfolio_state::counter_w )
 
 WRITE8_MEMBER( portfolio_state::ncc1_w )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	if (BIT(data, 0))
 	{
@@ -645,10 +645,10 @@ INPUT_PORTS_END
 //  PALETTE_INIT( portfolio )
 //-------------------------------------------------
 
-static PALETTE_INIT( portfolio )
+void portfolio_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 //-------------------------------------------------
@@ -763,10 +763,10 @@ static DEVICE_IMAGE_LOAD( portfolio_cart )
 
 void portfolio_state::machine_start()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	/* set CPU interrupt vector callback */
-	device_set_irq_callback(m_maincpu, portfolio_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(portfolio_int_ack);
 
 	/* memory expansions */
 	switch (machine().device<ram_device>(RAM_TAG)->size())
@@ -801,7 +801,7 @@ void portfolio_state::machine_start()
 
 void portfolio_state::machine_reset()
 {
-	address_space *io = m_maincpu->memory().space(AS_IO);
+	address_space *io = m_maincpu->space(AS_IO);
 
 	// peripherals
 	m_pid = ioport("PERIPHERAL")->read();
@@ -845,7 +845,6 @@ static MACHINE_CONFIG_START( portfolio, portfolio_state )
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(portfolio)
 
 	MCFG_GFXDECODE(portfolio)
 

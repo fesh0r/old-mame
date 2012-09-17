@@ -23,7 +23,6 @@
 #include "machine/ram.h"
 #include "video/upd7220.h"
 
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 class vt240_state : public driver_device
 {
@@ -47,6 +46,7 @@ public:
 
 	required_shared_ptr<UINT8> m_video_ram;
 	DECLARE_DRIVER_INIT(vt240);
+	virtual void machine_reset();
 };
 
 /* TODO */
@@ -95,7 +95,7 @@ static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 /* presumably communication with T11 */
 READ8_MEMBER( vt240_state::test_r )
 {
-	//cputag_set_input_line(machine(), "maincpu", I8085_RST65_LINE, CLEAR_LINE);
+	//machine().device("maincpu")->execute().set_input_line(I8085_RST65_LINE, CLEAR_LINE);
 
 	return rand();
 }
@@ -126,7 +126,7 @@ static INPUT_PORTS_START( vt240 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(vt240)
+void vt240_state::machine_reset()
 {
 }
 
@@ -142,7 +142,7 @@ static UPD7220_INTERFACE( hgdc_intf )
 
 static INTERRUPT_GEN( vt240_irq )
 {
-	//device_set_input_line(device, I8085_RST65_LINE, ASSERT_LINE);
+	//device->execute().set_input_line(I8085_RST65_LINE, ASSERT_LINE);
 }
 
 static const gfx_layout vt240_chars_8x8 =
@@ -167,7 +167,6 @@ static MACHINE_CONFIG_START( vt240, vt240_state )
 	MCFG_CPU_IO_MAP(vt240_io)
 	MCFG_CPU_VBLANK_INT("screen",vt240_irq)
 
-	MCFG_MACHINE_RESET(vt240)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -175,7 +174,7 @@ static MACHINE_CONFIG_START( vt240, vt240_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-//  MCFG_VIDEO_START(vt240)
+//  MCFG_VIDEO_START_OVERRIDE(vt240_state,vt240)
 	MCFG_SCREEN_UPDATE_DEVICE("upd7220", upd7220_device, screen_update)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

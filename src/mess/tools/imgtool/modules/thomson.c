@@ -118,7 +118,7 @@
 
 #define MAXSIZE 80*16*256*2 /* room for two faces, double-density, 80 tracks */
 
-typedef struct {
+struct thom_floppy {
 
   imgtool_stream *stream;
 
@@ -130,20 +130,20 @@ typedef struct {
 
   int    modified;      /* data need to be copied back to image file */
 
-} thom_floppy;
+};
 
 
-typedef enum {
+enum thom_dirent_type {
 
   THOM_DIRENT_END,
   THOM_DIRENT_FREE,
   THOM_DIRENT_FILE,
   THOM_DIRENT_INVALID,
 
-} thom_dirent_type;
+};
 
 
-typedef struct {
+struct thom_dirent {
 
   thom_dirent_type type;
   int    index;
@@ -159,7 +159,7 @@ typedef struct {
   UINT8  month;
   UINT8  year;
 
-} thom_dirent;
+};
 
 
 static void thom_basic_get_info(const imgtool_class *clas, UINT32 param,

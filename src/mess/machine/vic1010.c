@@ -50,12 +50,12 @@ static VIC20_EXPANSION_INTERFACE( expansion_intf )
 //-------------------------------------------------
 
 static MACHINE_CONFIG_FRAGMENT( vic1010 )
-	MCFG_VIC20_EXPANSION_SLOT_ADD("slot1", expansion_intf, vic20_expansion_cards, NULL, NULL)
-	MCFG_VIC20_EXPANSION_SLOT_ADD("slot2", expansion_intf, vic20_expansion_cards, NULL, NULL)
-	MCFG_VIC20_EXPANSION_SLOT_ADD("slot3", expansion_intf, vic20_expansion_cards, NULL, NULL)
-	MCFG_VIC20_EXPANSION_SLOT_ADD("slot4", expansion_intf, vic20_expansion_cards, NULL, NULL)
-	MCFG_VIC20_EXPANSION_SLOT_ADD("slot5", expansion_intf, vic20_expansion_cards, NULL, NULL)
-	MCFG_VIC20_EXPANSION_SLOT_ADD("slot6", expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD("slot1", 0, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD("slot2", 0, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD("slot3", 0, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD("slot4", 0, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD("slot5", 0, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD("slot6", 0, expansion_intf, vic20_expansion_cards, NULL, NULL)
 MACHINE_CONFIG_END
 
 
@@ -106,13 +106,16 @@ void vic1010_device::device_start()
 //  vic20_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 vic1010_device::vic20_cd_r(address_space &space, offs_t offset, int ram1, int ram2, int ram3, int blk1, int blk2, int blk3, int blk5, int io2, int io3)
+UINT8 vic1010_device::vic20_cd_r(address_space &space, offs_t offset, UINT8 data, int ram1, int ram2, int ram3, int blk1, int blk2, int blk3, int blk5, int io2, int io3)
 {
-	UINT8 data = 0;
-
 	for (int i = 0; i < MAX_SLOTS; i++)
 	{
-		data |= m_expansion_slot[i]->cd_r(space, offset, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
+		UINT8 slot_data = m_expansion_slot[i]->cd_r(space, offset, data, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
+
+		if (data != slot_data)
+		{
+			data = slot_data;
+		}
 	}
 
 	return data;
@@ -129,23 +132,6 @@ void vic1010_device::vic20_cd_w(address_space &space, offs_t offset, UINT8 data,
 	{
 		m_expansion_slot[i]->cd_w(space, offset, data, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
 	}
-}
-
-
-//-------------------------------------------------
-//  vic20_screen_update - screen update
-//-------------------------------------------------
-
-UINT32 vic1010_device::vic20_screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	UINT32 data = 0;
-
-	for (int i = 0; i < MAX_SLOTS; i++)
-	{
-		data |= m_expansion_slot[i]->screen_update(screen, bitmap, cliprect);
-	}
-
-	return data;
 }
 
 

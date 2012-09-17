@@ -8,7 +8,8 @@
 **********************************************************************/
 
 #include "d9060.h"
-#include "machine/scsihd.h"
+#include "machine/scsicb.h"
+#include "machine/d9060hd.h"
 
 
 
@@ -72,15 +73,16 @@ void base_d9060_device::device_config_complete()
 
 ROM_START( d9060 )
 	ROM_REGION( 0x4000, M6502_DOS_TAG, 0 )
-	ROM_LOAD_OPTIONAL( "300516-revb.7c", 0x0000, 0x2000, CRC(2d758a14) SHA1(c959cc9dde84fc3d64e95e58a0a096a26d8107fd) )
-	ROM_LOAD( "300516-revc.7c", 0x0000, 0x2000, CRC(d6a3e88f) SHA1(bb1ddb5da94a86266012eca54818aa21dc4cef6a) )
-	ROM_LOAD_OPTIONAL( "300517-reva.7d", 0x2000, 0x2000, CRC(566df630) SHA1(b1602dfff408b165ee52a6a4ca3e2ec27e689ba9) )
-	ROM_LOAD_OPTIONAL( "300517-revb.7d", 0x2000, 0x2000, CRC(f0382bc3) SHA1(0b0a8dc520f5b41ffa832e4a636b3d226ccbb7f1) )
-	ROM_LOAD( "300517-revc.7d", 0x2000, 0x2000, CRC(2a9ad4ad) SHA1(4c17d014de48c906871b9b6c7d037d8736b1fd52) )
+	ROM_LOAD( "300516-001.7c", 0x0000, 0x2000, NO_DUMP ) // Revision A
+	ROM_LOAD( "300517-001.7d", 0x2000, 0x2000, CRC(566df630) SHA1(b1602dfff408b165ee52a6a4ca3e2ec27e689ba9) ) // Revision A
+	ROM_LOAD( "300516-002.7c", 0x0000, 0x2000, CRC(2d758a14) SHA1(c959cc9dde84fc3d64e95e58a0a096a26d8107fd) ) // Revision B
+	ROM_LOAD( "300517-002.7d", 0x2000, 0x2000, CRC(f0382bc3) SHA1(0b0a8dc520f5b41ffa832e4a636b3d226ccbb7f1) ) // Revision B
+	ROM_LOAD( "300516-003.7c", 0x0000, 0x2000, CRC(d6a3e88f) SHA1(bb1ddb5da94a86266012eca54818aa21dc4cef6a) ) // Revision C
+	ROM_LOAD( "300517-003.7d", 0x2000, 0x2000, CRC(2a9ad4ad) SHA1(4c17d014de48c906871b9b6c7d037d8736b1fd52) ) // Revision C
 
 	ROM_REGION( 0x800, M6502_HDC_TAG, 0 )
-	ROM_LOAD_OPTIONAL( "300515-reva.4c", 0x000, 0x800, CRC(99e096f7) SHA1(a3d1deb27bf5918b62b89c27fa3e488eb8f717a4) )
-	ROM_LOAD( "300515-revb.4c", 0x000, 0x800, CRC(49adf4fb) SHA1(59dafbd4855083074ba8dc96a04d4daa5b76e0d6) )
+	ROM_LOAD( "300515-001.4c", 0x000, 0x800, CRC(99e096f7) SHA1(a3d1deb27bf5918b62b89c27fa3e488eb8f717a4) ) // Revision A
+	ROM_LOAD( "300515-002.4c", 0x000, 0x800, CRC(49adf4fb) SHA1(59dafbd4855083074ba8dc96a04d4daa5b76e0d6) ) // Revision B
 
 	ROM_REGION( 0x5000, AM2910_TAG, 0 )
 	ROM_LOAD( "441.5b", 0x0000, 0x1000, NO_DUMP ) // 82S137
@@ -135,32 +137,23 @@ ADDRESS_MAP_END
 
 
 //-------------------------------------------------
-//  SCSIBus_interface sasi_intf
+//  SCSICB_interface sasi_intf
 //-------------------------------------------------
-
-static const SCSIConfigTable sasi_dev_table =
-{
-	1,
-	{
-		{ SCSI_ID_0, "harddisk0" }
-	}
-};
 
 WRITE_LINE_MEMBER( base_d9060_device::req_w )
 {
 	m_via->write_ca1(!state);
 }
 
-static const SCSIBus_interface sasi_intf =
+static const SCSICB_interface sasi_intf =
 {
-    &sasi_dev_table,
-    NULL,
+	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, req_w),
+	DEVCB_DEVICE_LINE_MEMBER("^^", base_d9060_device, req_w),
 	DEVCB_NULL
 };
 
@@ -382,10 +375,10 @@ READ8_MEMBER( base_d9060_device::via_pb_r )
 
 	UINT8 data = 0;
 
-	data |= !scsi_cd_r(m_sasibus) << 2;
-	data |= !scsi_bsy_r(m_sasibus) << 3;
-	data |= !scsi_io_r(m_sasibus) << 6;
-	data |= !scsi_msg_r(m_sasibus) << 7;
+	data |= !m_sasibus->scsi_cd_r() << 2;
+	data |= !m_sasibus->scsi_bsy_r() << 3;
+	data |= !m_sasibus->scsi_io_r() << 6;
+	data |= !m_sasibus->scsi_msg_r() << 7;
 
 	// drive type
 	data |= (m_variant == TYPE_9060) << 4;
@@ -410,18 +403,18 @@ WRITE8_MEMBER( base_d9060_device::via_pb_w )
 
     */
 
-	scsi_sel_w(m_sasibus, !BIT(data, 0));
-	scsi_rst_w(m_sasibus, !BIT(data, 1));
+	m_sasibus->scsi_sel_w(!BIT(data, 0));
+	m_sasibus->scsi_rst_w(!BIT(data, 1));
 }
 
 READ_LINE_MEMBER( base_d9060_device::req_r )
 {
-	return !scsi_req_r(m_sasibus);
+	return !m_sasibus->scsi_req_r();
 }
 
 WRITE_LINE_MEMBER( base_d9060_device::ack_w )
 {
-	scsi_ack_w(m_sasibus, state);
+	m_sasibus->scsi_ack_w(state);
 }
 
 WRITE_LINE_MEMBER( base_d9060_device::enable_w )
@@ -431,14 +424,14 @@ WRITE_LINE_MEMBER( base_d9060_device::enable_w )
 
 static const via6522_interface via_intf =
 {
-	DEVCB_DEVICE_HANDLER(SASIBUS_TAG, scsi_data_r),
+	DEVCB_DEVICE_MEMBER(SASIBUS_TAG, scsibus_device, scsi_data_r),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, via_pb_r),
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, req_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_HANDLER(SASIBUS_TAG, scsi_data_w),
+	DEVCB_DEVICE_MEMBER(SASIBUS_TAG, scsibus_device, scsi_data_w),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, via_pb_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -467,8 +460,9 @@ static MACHINE_CONFIG_FRAGMENT( d9060 )
 
 	MCFG_VIA6522_ADD(M6522_TAG, XTAL_4MHz/4, via_intf)
 
-	MCFG_SCSIBUS_ADD(SASIBUS_TAG, sasi_intf)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD(SASIBUS_TAG)
+	MCFG_SCSIDEV_ADD(SASIBUS_TAG ":harddisk0", D9060HD, SCSI_ID_0)
+	MCFG_SCSICB_ADD(SASIBUS_TAG ":host", sasi_intf)
 MACHINE_CONFIG_END
 
 
@@ -566,7 +560,7 @@ void base_d9060_device::device_start()
 
 void base_d9060_device::device_reset()
 {
-	init_scsibus(m_sasibus, 256);
+	m_sasibus->init_scsibus(256);
 
 	m_maincpu->set_input_line(M6502_SET_OVERFLOW, ASSERT_LINE);
 	m_maincpu->set_input_line(M6502_SET_OVERFLOW, CLEAR_LINE);

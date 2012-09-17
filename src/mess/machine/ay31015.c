@@ -72,7 +72,7 @@ Start bit (low), Bit 0, Bit 1... highest bit, Parity bit (if enabled), 1-2 stop 
 #include "emu.h"
 #include "ay31015.h"
 
-typedef enum
+enum state_t
 {
 	IDLE,
 	START_BIT,
@@ -81,11 +81,10 @@ typedef enum
 	FIRST_STOP_BIT,
 	SECOND_STOP_BIT,
 	PREP_TIME
-} state_t;
+};
 
 
-typedef struct _ay31015_t ay31015_t;
-struct _ay31015_t
+struct ay31015_t
 {
 	const ay31015_config	*config;
 
@@ -141,7 +140,7 @@ INLINE ay31015_t *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == AY31015);
-	return (ay31015_t *) downcast<legacy_device_base *>(device)->token();
+	return (ay31015_t *) downcast<ay31015_device *>(device)->token();
 }
 
 
@@ -716,31 +715,40 @@ static DEVICE_RESET( ay31015 )
 }
 
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO(ay31015) - device getinfo
-    function
--------------------------------------------------*/
+const device_type AY31015 = &device_creator<ay31015_device>;
 
-DEVICE_GET_INFO( ay31015 )
+ay31015_device::ay31015_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, AY31015, "AY-3-1015", tag, owner, clock)
 {
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(ay31015_t);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0;									break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(ay31015);		break;
-		case DEVINFO_FCT_STOP:					/* nothing */									break;
-		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME( ay31015 );		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					strcpy(info->s, "AY-3-1015");							break;
-		case DEVINFO_STR_FAMILY:				strcpy(info->s, "AY-3-1015/AY-5-1013 UARTs");			break;
-		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.00");								break;
-		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);								break;
-		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright the MAME and MESS Teams");	break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(ay31015_t));
 }
 
-DEFINE_LEGACY_DEVICE(AY31015, ay31015);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void ay31015_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void ay31015_device::device_start()
+{
+	DEVICE_START_NAME( ay31015 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void ay31015_device::device_reset()
+{
+	DEVICE_RESET_NAME( ay31015 )(this);
+}
+
+

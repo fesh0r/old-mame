@@ -63,6 +63,7 @@ public:
 	bool m_display_enabled;
 	required_shared_ptr<UINT16> m_screen_buffer;
 	DECLARE_DRIVER_INIT(apricot);
+	virtual void palette_init();
 };
 
 
@@ -226,7 +227,7 @@ static MC6845_UPDATE_ROW( apricot_update_row )
 	else
 	{
 		/* graphics mode */
-		fatalerror("Graphics mode not implemented!");
+		fatalerror("Graphics mode not implemented!\n");
 	}
 }
 
@@ -256,7 +257,7 @@ static const mc6845_interface apricot_mc6845_intf =
 
 DRIVER_INIT_MEMBER(apricot_state,apricot)
 {
-	address_space *prg = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *prg = m_maincpu->space(AS_PROGRAM);
 
 	UINT8 *ram = m_ram->pointer();
 	UINT32 ram_size = m_ram->size();
@@ -264,7 +265,7 @@ DRIVER_INIT_MEMBER(apricot_state,apricot)
 	prg->unmap_readwrite(0x40000, 0xeffff);
 	prg->install_ram(0x00000, ram_size - 1, ram);
 
-	device_set_irq_callback(m_maincpu, apricot_irq_ack);
+	m_maincpu->set_irq_acknowledge_callback(apricot_irq_ack);
 
 	m_video_mode = 0;
 	m_display_on = 1;
@@ -286,7 +287,7 @@ static ADDRESS_MAP_START( apricot_io, AS_IO, 16, apricot_state )
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE8_LEGACY("ic31", pic8259_r, pic8259_w, 0x00ff)
 	AM_RANGE(0x40, 0x47) AM_DEVREADWRITE8_LEGACY("ic68", wd17xx_r, wd17xx_w, 0x00ff)
 	AM_RANGE(0x48, 0x4f) AM_DEVREADWRITE8("ic17", i8255_device, read, write, 0x00ff)
-	AM_RANGE(0x50, 0x51) AM_MIRROR(0x06) AM_DEVWRITE8_LEGACY("ic7", sn76496_w, 0x00ff)
+	AM_RANGE(0x50, 0x51) AM_MIRROR(0x06) AM_DEVWRITE8("ic7", sn76489_new_device, write, 0x00ff)
 	AM_RANGE(0x58, 0x5f) AM_DEVREADWRITE8_LEGACY("ic16", pit8253_r, pit8253_w, 0x00ff)
 	AM_RANGE(0x60, 0x67) AM_DEVREADWRITE8("ic15", z80sio_device, read_alt, write_alt, 0x00ff)
 	AM_RANGE(0x68, 0x69) AM_MIRROR(0x04) AM_DEVWRITE8("ic30", mc6845_device, address_w, 0x00ff)
@@ -309,12 +310,27 @@ INPUT_PORTS_END
     PALETTE
 ***************************************************************************/
 
-static PALETTE_INIT( apricot )
+void apricot_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(0x00, 0x00, 0x00)); /* black */
-	palette_set_color(machine, 1, MAKE_RGB(0x00, 0x7f, 0x00)); /* low intensity */
-	palette_set_color(machine, 2, MAKE_RGB(0x00, 0xff, 0x00)); /* high intensitiy */
+	palette_set_color(machine(), 0, MAKE_RGB(0x00, 0x00, 0x00)); /* black */
+	palette_set_color(machine(), 1, MAKE_RGB(0x00, 0x7f, 0x00)); /* low intensity */
+	palette_set_color(machine(), 2, MAKE_RGB(0x00, 0xff, 0x00)); /* high intensitiy */
 }
+
+
+/***************************************************************************
+    SOUND INTERFACE
+ **************************************************************************/
+
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
 
 
 /***************************************************************************
@@ -362,11 +378,11 @@ static MACHINE_CONFIG_START( apricot, apricot_state )
 	MCFG_SCREEN_REFRESH_RATE(72)
 	MCFG_SCREEN_UPDATE_STATIC(apricot)
 	MCFG_PALETTE_LENGTH(3)
-	MCFG_PALETTE_INIT(apricot)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("ic7", SN76489, XTAL_4MHz / 2)
+	MCFG_SOUND_ADD("ic7", SN76489_NEW, XTAL_4MHz / 2)
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	/* internal ram */

@@ -9,8 +9,62 @@
 #include "imagedev/cartslot.h"
 
 
-DECLARE_LEGACY_SOUND_DEVICE(PV1000,pv1000_sound);
-DEFINE_LEGACY_SOUND_DEVICE(PV1000,pv1000_sound);
+class pv1000_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	pv1000_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+};
+
+extern const device_type PV1000;
+
+const device_type PV1000 = &device_creator<pv1000_sound_device>;
+
+pv1000_sound_device::pv1000_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, PV1000, "NEC D65010G031", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
+{
+}
+
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void pv1000_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+static DEVICE_START( pv1000_sound );
+void pv1000_sound_device::device_start()
+{
+	DEVICE_START_NAME( pv1000_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void pv1000_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+
 
 
 class pv1000_state : public driver_device
@@ -42,6 +96,9 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<screen_device> m_screen;
 	required_shared_ptr<UINT8> m_p_videoram;
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void palette_init();
 };
 
 
@@ -63,7 +120,7 @@ WRITE8_MEMBER( pv1000_state::pv1000_gfxram_w )
 	UINT8 *gfxram = memregion( "gfxram" )->base();
 
 	gfxram[ offset ] = data;
-	gfx_element_mark_dirty(machine().gfx[1], offset/32);
+	machine().gfx[1]->mark_dirty(offset/32);
 }
 
 
@@ -158,16 +215,16 @@ static INPUT_PORTS_START( pv1000 )
 INPUT_PORTS_END
 
 
-static PALETTE_INIT( pv1000 )
+void pv1000_state::palette_init()
 {
-	palette_set_color_rgb( machine,  0,   0,   0,   0 );
-	palette_set_color_rgb( machine,  1,   0,   0, 255 );
-	palette_set_color_rgb( machine,  2,   0, 255,   0 );
-	palette_set_color_rgb( machine,  3,   0, 255, 255 );
-	palette_set_color_rgb( machine,  4, 255,   0,   0 );
-	palette_set_color_rgb( machine,  5, 255,   0, 255 );
-	palette_set_color_rgb( machine,  6, 255, 255,   0 );
-	palette_set_color_rgb( machine,  7, 255, 255, 255 );
+	palette_set_color_rgb( machine(),  0,   0,   0,   0 );
+	palette_set_color_rgb( machine(),  1,   0,   0, 255 );
+	palette_set_color_rgb( machine(),  2,   0, 255,   0 );
+	palette_set_color_rgb( machine(),  3,   0, 255, 255 );
+	palette_set_color_rgb( machine(),  4, 255,   0,   0 );
+	palette_set_color_rgb( machine(),  5, 255,   0, 255 );
+	palette_set_color_rgb( machine(),  6, 255, 255,   0 );
+	palette_set_color_rgb( machine(),  7, 255, 255, 255 );
 }
 
 
@@ -286,20 +343,6 @@ static DEVICE_START( pv1000_sound )
 }
 
 
-DEVICE_GET_INFO( pv1000_sound )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(pv1000_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "NEC D65010G031");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
-}
-
-
 /* Interrupt is triggering 16 times during vblank. */
 /* we have chosen to trigger on scanlines 195, 199, 203, 207, 211, 215, 219, 223, 227, 231, 235, 239, 243, 247, 251, 255 */
 static TIMER_CALLBACK( d65010_irq_on_cb )
@@ -309,7 +352,7 @@ static TIMER_CALLBACK( d65010_irq_on_cb )
 	int next_vpos = vpos + 12;
 
 	/* Set IRQ line and schedule release of IRQ line */
-	device_set_input_line( state->m_maincpu, 0, ASSERT_LINE );
+	state->m_maincpu->set_input_line(0, ASSERT_LINE );
 	state->m_irq_off_timer->adjust( state->m_screen->time_until_pos(vpos, 380/2 ) );
 
 	/* Schedule next IRQ trigger */
@@ -325,27 +368,25 @@ static TIMER_CALLBACK( d65010_irq_off_cb )
 {
 	pv1000_state *state = machine.driver_data<pv1000_state>();
 
-	device_set_input_line( state->m_maincpu, 0, CLEAR_LINE );
+	state->m_maincpu->set_input_line(0, CLEAR_LINE );
 }
 
 
-static MACHINE_START( pv1000 )
+void pv1000_state::machine_start()
 {
-	pv1000_state *state = machine.driver_data<pv1000_state>();
 
-	state->m_irq_on_timer = machine.scheduler().timer_alloc(FUNC(d65010_irq_on_cb));
-	state->m_irq_off_timer = machine.scheduler().timer_alloc(FUNC(d65010_irq_off_cb));
+	m_irq_on_timer = machine().scheduler().timer_alloc(FUNC(d65010_irq_on_cb));
+	m_irq_off_timer = machine().scheduler().timer_alloc(FUNC(d65010_irq_off_cb));
 }
 
 
-static MACHINE_RESET( pv1000 )
+void pv1000_state::machine_reset()
 {
-	pv1000_state *state = machine.driver_data<pv1000_state>();
 
-	state->m_io_regs[5] = 0;
-	state->m_fd_data = 0;
-	state->m_irq_on_timer->adjust( state->m_screen->time_until_pos(195, 0 ) );
-	state->m_irq_off_timer->adjust( attotime::never );
+	m_io_regs[5] = 0;
+	m_fd_data = 0;
+	m_irq_on_timer->adjust( m_screen->time_until_pos(195, 0 ) );
+	m_irq_off_timer->adjust( attotime::never );
 }
 
 
@@ -373,8 +414,6 @@ static MACHINE_CONFIG_START( pv1000, pv1000_state )
 	MCFG_CPU_PROGRAM_MAP( pv1000 )
 	MCFG_CPU_IO_MAP( pv1000_io )
 
-	MCFG_MACHINE_START( pv1000 )
-	MCFG_MACHINE_RESET( pv1000 )
 
 	/* D65010G031 - Video & sound chip */
 	MCFG_SCREEN_ADD( "screen", RASTER )
@@ -382,7 +421,6 @@ static MACHINE_CONFIG_START( pv1000, pv1000_state )
 	MCFG_SCREEN_UPDATE_STATIC( pv1000 )
 
 	MCFG_PALETTE_LENGTH( 8 )
-	MCFG_PALETTE_INIT( pv1000 )
 	MCFG_GFXDECODE( pv1000 )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")

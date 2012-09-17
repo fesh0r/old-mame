@@ -19,8 +19,7 @@
 
 
 /* interface */
-typedef struct _sam6883_interface sam6883_interface;
-struct _sam6883_interface
+struct sam6883_interface
 {
 	/* the CPU/space from which the SAM reads data */
 	const char *		m_cpu_tag;
@@ -176,7 +175,7 @@ private:
 			case 0x06:	x_division = 1;	break;
 			case 0x07:	x_division = 1;	break;
 			default:
-				fatalerror("Should not get here");
+				fatalerror("Should not get here\n");
 				return;
 		}
 
@@ -204,7 +203,7 @@ private:
 			case 0x06:	y_division = 1;		break;
 			case 0x07:	y_division = 1;		break;
 			default:
-				fatalerror("Should not get here");
+				fatalerror("Should not get here\n");
 				return;
 		}
 

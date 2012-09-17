@@ -26,14 +26,13 @@ typedef void (*vic3_port_changed_callback) (running_machine &, int);
 
 typedef UINT8 (*vic3_c64mem_callback)(running_machine &machine, int offset);
 
-typedef enum
+enum vic3_type
 {
 	VIC4567_NTSC,
 	VIC4567_PAL
-} vic3_type;
+};
 
-typedef struct _vic3_interface vic3_interface;
-struct _vic3_interface
+struct vic3_interface
 {
 	const char         *screen;
 	const char         *cpu;
@@ -137,7 +136,26 @@ struct _vic3_interface
     DEVICE CONFIGURATION MACROS
 ***************************************************************************/
 
-DECLARE_LEGACY_DEVICE(VIC3, vic3);
+class vic3_device : public device_t
+{
+public:
+	vic3_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~vic3_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type VIC3;
+
 
 #define MCFG_VIC3_ADD(_tag, _interface) \
 	MCFG_DEVICE_ADD(_tag, VIC3, 0) \

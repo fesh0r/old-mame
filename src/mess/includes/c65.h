@@ -10,13 +10,13 @@
 #include "includes/c64_legacy.h"
 #include "machine/6526cia.h"
 
-typedef struct
+struct dma_t
 {
 	int version;
 	UINT8 data[4];
-} dma_t;
+};
 
-typedef struct
+struct fdc_t
 {
 	int state;
 
@@ -30,12 +30,12 @@ typedef struct
 
 	attotime time;
 	int head,track,sector;
-} fdc_t;
+};
 
-typedef struct
+struct expansion_ram_t
 {
 	UINT8 reg;
-} expansion_ram_t;
+};
 
 class c65_state : public legacy_c64_state
 {
@@ -59,6 +59,11 @@ public:
 	int m_io_dc00_on;
 	DECLARE_DRIVER_INIT(c65);
 	DECLARE_DRIVER_INIT(c65pal);
+
+	DECLARE_READ8_MEMBER( sid_potx_r );
+	DECLARE_READ8_MEMBER( sid_poty_r );
+	DECLARE_MACHINE_START(c65);
+	DECLARE_PALETTE_INIT(c65);
 };
 
 
@@ -79,10 +84,10 @@ int c65_dma_read_color(running_machine &machine, int offset);
 void c65_vic_interrupt(running_machine &machine, int level);
 void c65_bankswitch_interface(running_machine &machine, int value);
 
-MACHINE_START( c65 );
+
 INTERRUPT_GEN( c65_frame_interrupt );
 
-extern const mos6526_interface c65_ntsc_cia0, c65_pal_cia0;
-extern const mos6526_interface c65_ntsc_cia1, c65_pal_cia1;
+extern const mos6526_interface c65_cia0;
+extern const mos6526_interface c65_cia1;
 
 #endif /* C65_H_ */

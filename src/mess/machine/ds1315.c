@@ -15,15 +15,14 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef enum
+enum ds1315_mode_t
 {
 	DS_SEEK_MATCHING,
 	DS_CALENDAR_IO
-} ds1315_mode_t;
+};
 
 
-typedef struct _ds1315_t ds1315_t;
-struct _ds1315_t
+struct ds1315_t
 {
 	int count;
 	ds1315_mode_t mode;
@@ -65,7 +64,7 @@ INLINE ds1315_t *get_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == DS1315);
-	return (ds1315_t *) downcast<legacy_device_base *>(device)->token();
+	return (ds1315_t *) downcast<ds1315_device *>(device)->token();
 }
 
 
@@ -239,30 +238,31 @@ static void ds1315_input_raw_data(device_t *device)
 }
 
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO( ds1315 )
--------------------------------------------------*/
+const device_type DS1315 = &device_creator<ds1315_device>;
 
-DEVICE_GET_INFO( ds1315 )
+ds1315_device::ds1315_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, DS1315, "Dallas Semiconductor DS1315", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(ds1315_t);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(ds1315);	break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							/* Nothing */								break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Dallas Semiconductor DS1315");	break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Dallas Semiconductor DS1315");	break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
-		case DEVINFO_STR_CREDITS:						/* Nothing */								break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(ds1315_t));
 }
 
-DEFINE_LEGACY_DEVICE(DS1315, ds1315);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void ds1315_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void ds1315_device::device_start()
+{
+	DEVICE_START_NAME( ds1315 )(this);
+}
+
+

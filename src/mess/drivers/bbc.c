@@ -26,7 +26,7 @@
 #include "formats/uef_cas.h"
 #include "formats/csw_cas.h"
 #include "sound/sn76496.h"
-#include "video/saa505x.h"
+#include "video/saa5050.h"
 #include "includes/bbc.h"
 
 
@@ -293,9 +293,9 @@ static const rgb_t bbc_palette[8]=
 	MAKE_RGB(0x000,0x000,0x000)
 };
 
-static PALETTE_INIT( bbc )
+PALETTE_INIT_MEMBER(bbc_state,bbc)
 {
-	palette_set_colors(machine, 0, bbc_palette, ARRAY_LENGTH(bbc_palette));
+	palette_set_colors(machine(), 0, bbc_palette, ARRAY_LENGTH(bbc_palette));
 }
 
 /* 2008-05 FP:
@@ -772,9 +772,11 @@ static const floppy_interface bbc_floppy_interface =
 	NULL
 };
 
-static const saa505x_interface bbc_saa505x_intf =
+
+static SAA5050_INTERFACE( trom_intf )
 {
-	bbc_draw_RGB_in,
+	DEVCB_NULL,
+	40, 24, 40  // x, y, size
 };
 
 static const mc6854_interface adlc_intf =
@@ -785,6 +787,15 @@ static const mc6854_interface adlc_intf =
 	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL
+};
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
 };
 
 static WRITE_LINE_DEVICE_HANDLER( econet_clk_w )
@@ -834,8 +845,8 @@ static MACHINE_CONFIG_START( bbca, bbc_state )
 	MCFG_CPU_PERIODIC_INT(bbcb_keyscan, 1000)		/* scan keyboard */
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( bbca )
-	MCFG_MACHINE_RESET( bbca )
+	MCFG_MACHINE_START_OVERRIDE(bbc_state, bbca )
+	MCFG_MACHINE_RESET_OVERRIDE(bbc_state, bbca )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -844,16 +855,17 @@ static MACHINE_CONFIG_START( bbca, bbc_state )
 	MCFG_SCREEN_UPDATE_DEVICE("mc6845", mc6845_device, screen_update)
 
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(bbc)
-	MCFG_SAA505X_VIDEO_ADD("saa505x", bbc_saa505x_intf)
+	MCFG_PALETTE_INIT_OVERRIDE(bbc_state,bbc)
+	MCFG_SAA5050_ADD("saa505x", XTAL_12MHz/2, trom_intf)
 
     MCFG_MC6845_ADD("mc6845",MC6845,2000000, bbc_mc6845_intf)
 
-	MCFG_VIDEO_START(bbca)
+	MCFG_VIDEO_START_OVERRIDE(bbc_state,bbca)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("sn76489", SN76489, 4000000)	/* 4 MHz */
+	MCFG_SOUND_ADD("sn76489", SN76489_NEW, 4000000)	/* 4 MHz */
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 //  MCFG_SOUND_ADD("tms5220", TMS5220, tms5220_interface)
 
@@ -874,9 +886,9 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( bbcb, bbca )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP( bbcb_mem)
-	MCFG_MACHINE_START( bbcb )
-	MCFG_MACHINE_RESET( bbcb )
-	MCFG_VIDEO_START( bbcb )
+	MCFG_MACHINE_START_OVERRIDE(bbc_state, bbcb )
+	MCFG_MACHINE_RESET_OVERRIDE(bbc_state, bbcb )
+	MCFG_VIDEO_START_OVERRIDE(bbc_state, bbcb )
 
 	/* devices */
 	MCFG_UPD7002_ADD("upd7002", bbc_uPD7002)
@@ -899,9 +911,9 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( bbcbp, bbcb )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP( bbcbp_mem)
-	MCFG_MACHINE_START( bbcbp )
-	MCFG_MACHINE_RESET( bbcbp )
-	MCFG_VIDEO_START( bbcbp )
+	MCFG_MACHINE_START_OVERRIDE(bbc_state, bbcbp )
+	MCFG_MACHINE_RESET_OVERRIDE(bbc_state, bbcbp )
+	MCFG_VIDEO_START_OVERRIDE(bbc_state, bbcbp )
 
 	MCFG_DEVICE_REMOVE("i8271")
 MACHINE_CONFIG_END
@@ -910,9 +922,9 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( bbcbp128, bbcbp )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP( bbcbp128_mem)
-	MCFG_MACHINE_START( bbcbp )
-	MCFG_MACHINE_RESET( bbcbp )
-	MCFG_VIDEO_START( bbcbp )
+	MCFG_MACHINE_START_OVERRIDE(bbc_state, bbcbp )
+	MCFG_MACHINE_RESET_OVERRIDE(bbc_state, bbcbp )
+	MCFG_VIDEO_START_OVERRIDE(bbc_state, bbcbp )
 MACHINE_CONFIG_END
 
 
@@ -925,8 +937,8 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_CPU_PERIODIC_INT(bbcm_keyscan, 1000)		/* scan keyboard */
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START( bbcm )
-	MCFG_MACHINE_RESET( bbcm )
+	MCFG_MACHINE_START_OVERRIDE(bbc_state, bbcm )
+	MCFG_MACHINE_RESET_OVERRIDE(bbc_state, bbcm )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -935,18 +947,19 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_SCREEN_SIZE(800,300)
 	MCFG_SCREEN_VISIBLE_AREA(0,800-1,0,300-1)
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(bbc)
+	MCFG_PALETTE_INIT_OVERRIDE(bbc_state,bbc)
 	MCFG_SCREEN_UPDATE_DEVICE("mc6845", mc6845_device, screen_update)
 
-	MCFG_SAA505X_VIDEO_ADD("saa505x", bbc_saa505x_intf)
+	MCFG_SAA5050_ADD("saa505x", XTAL_12MHz/2, trom_intf)
 
     MCFG_MC6845_ADD("mc6845",MC6845,2000000, bbc_mc6845_intf)
 
-	MCFG_VIDEO_START(bbcm)
+	MCFG_VIDEO_START_OVERRIDE(bbc_state,bbcm)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("sn76489", SN76489, 4000000)	/* 4 MHz */
+	MCFG_SOUND_ADD("sn76489", SN76489_NEW, 4000000)	/* 4 MHz */
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )

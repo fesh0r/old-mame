@@ -7,6 +7,7 @@
  */
 
 #include "emu.h"
+#include "machine/scsibus.h"
 #include "machine/scsihd.h"
 #include "machine/mb89352.h"
 #include "machine/x68k_scsiext.h"
@@ -17,23 +18,8 @@
 
 const device_type X68K_SCSIEXT = &device_creator<x68k_scsiext_device>;
 
-static const SCSIConfigTable x68k_scsiext_devtable =
+static const mb89352_interface mb89352_intf =
 {
-	7,                                      /* 7 SCSI devices */
-	{
-		{ SCSI_ID_0, ":exp:cz6bs1:extharddisk0" },
-		{ SCSI_ID_1, ":exp:cz6bs1:extharddisk1" },
-		{ SCSI_ID_2, ":exp:cz6bs1:extharddisk2" },
-		{ SCSI_ID_3, ":exp:cz6bs1:extharddisk3" },
-		{ SCSI_ID_4, ":exp:cz6bs1:extharddisk4" },
-		{ SCSI_ID_5, ":exp:cz6bs1:extharddisk5" },
-		{ SCSI_ID_6, ":exp:cz6bs1:extharddisk6" },
-	}
-};
-
-static const mb89352_interface x68k_scsiext_intf =
-{
-	&x68k_scsiext_devtable,
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER,x68k_scsiext_device,irq_w),
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER,x68k_scsiext_device,drq_w)
 };
@@ -54,14 +40,15 @@ const rom_entry *x68k_scsiext_device::device_rom_region() const
 
 // device machine config
 static MACHINE_CONFIG_FRAGMENT( x68k_scsiext )
-	MCFG_MB89352A_ADD("mb89352_ext",x68k_scsiext_intf)
-	MCFG_DEVICE_ADD("extharddisk0", SCSIHD, 0)
-	MCFG_DEVICE_ADD("extharddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("extharddisk2", SCSIHD, 0)
-	MCFG_DEVICE_ADD("extharddisk3", SCSIHD, 0)
-	MCFG_DEVICE_ADD("extharddisk4", SCSIHD, 0)
-	MCFG_DEVICE_ADD("extharddisk5", SCSIHD, 0)
-	MCFG_DEVICE_ADD("extharddisk6", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_2)
+	MCFG_SCSIDEV_ADD("scsi:harddisk3", SCSIHD, SCSI_ID_3)
+	MCFG_SCSIDEV_ADD("scsi:harddisk4", SCSIHD, SCSI_ID_4)
+	MCFG_SCSIDEV_ADD("scsi:harddisk5", SCSIHD, SCSI_ID_5)
+	MCFG_SCSIDEV_ADD("scsi:harddisk6", SCSIHD, SCSI_ID_6)
+	MCFG_MB89352A_ADD("scsi:mb89352",mb89352_intf)
 MACHINE_CONFIG_END
 
 machine_config_constructor x68k_scsiext_device::device_mconfig_additions() const
@@ -72,7 +59,7 @@ machine_config_constructor x68k_scsiext_device::device_mconfig_additions() const
 x68k_scsiext_device::x68k_scsiext_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
         : device_t(mconfig, X68K_SCSIEXT, "Sharp CZ-6BS1 SCSI-1", tag, owner, clock),
 		device_x68k_expansion_card_interface(mconfig, *this),
-		m_spc(*this, "mb89352_ext")
+		m_spc(*this, "scsi:mb89352")
 {
 }
 

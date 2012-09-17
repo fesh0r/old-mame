@@ -363,7 +363,7 @@ static ADDRESS_MAP_START(tandy1000_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(tandy1000_pio_r,			tandy1000_pio_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
-	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE_LEGACY("sn76496",	sn76496_w)
+	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496",	ncr7496_new_device, write)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,					pc_JOY_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,			pc_t1t_p37x_w)
@@ -393,7 +393,7 @@ static ADDRESS_MAP_START(tandy1000_16_io, AS_IO, 16, pc_state )
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,			tandy1000_pio_w, 0xffff)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
-	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8_LEGACY("sn76496",	sn76496_w, 0xffff)
+	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496",	ncr7496_new_device, write, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r,					pc_JOY_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE8_LEGACY(pc_t1t_p37x_r,			pc_t1t_p37x_w, 0xffff)
@@ -424,7 +424,7 @@ static ADDRESS_MAP_START(tandy1000_286_io, AS_IO, 16, pc_state )
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,         tandy1000_pio_w, 0xffff)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
-	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8_LEGACY("sn76496",    sn76496_w, 0xffff)
+	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496", ncr7496_new_device, write, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r,                    pc_JOY_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE8_LEGACY(pc_t1t_p37x_r,           pc_t1t_p37x_w, 0xffff)
@@ -454,7 +454,7 @@ static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_READWRITE(pcjr_nmi_enable_r, pc_nmi_enable_w )
-	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE_LEGACY("sn76496",	sn76496_w)
+	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496", sn76496_new_device, write)
 	AM_RANGE(0x00f0, 0x00f7) AM_READWRITE_LEGACY(pc_fdc_r,					pcjr_fdc_w)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,					pc_JOY_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
@@ -928,6 +928,23 @@ static GFXDECODE_START( ibm5150 )
 GFXDECODE_END
 
 
+/*************************************
+ *
+ *  Sound interface
+ *
+ *************************************/
+
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
+
+
 static const pc_kbdc_interface pc_kbdc_intf =
 {
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, pc_state, keyboard_clock_w),
@@ -941,8 +958,8 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1023,8 +1040,8 @@ static MACHINE_CONFIG_START( europc, pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(europc, europc, I8088, 4772720*2, pc_frame_interrupt)
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1073,8 +1090,8 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(tandy1000, tandy1000, I8088, 8000000, pc_frame_interrupt)
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1097,7 +1114,8 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
-	MCFG_SOUND_ADD("sn76496", NCR7496, XTAL_14_31818MHz/4)
+	MCFG_SOUND_ADD("sn76496", NCR7496_NEW, XTAL_14_31818MHz/4)
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
@@ -1121,8 +1139,8 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(tandy1000_16, tandy1000_16, I8086, XTAL_28_63636MHz / 3, pc_frame_interrupt)
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(tandy1000rl)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,tandy1000rl)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1145,7 +1163,8 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
-	MCFG_SOUND_ADD("sn76496", NCR7496, XTAL_14_31818MHz/4)
+	MCFG_SOUND_ADD("sn76496", NCR7496_NEW, XTAL_14_31818MHz/4)
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
@@ -1169,8 +1188,8 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(tandy1000_286, tandy1000_286, I80286, XTAL_28_63636MHz / 2, pc_frame_interrupt)
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1193,7 +1212,8 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
-	MCFG_SOUND_ADD("sn76496", NCR7496, XTAL_14_31818MHz/4)
+	MCFG_SOUND_ADD("sn76496", NCR7496_NEW, XTAL_14_31818MHz/4)
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
@@ -1239,8 +1259,8 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt)	/* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
 
-	MCFG_MACHINE_START(pcjr)
-	MCFG_MACHINE_RESET(pcjr)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pcjr)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pcjr)
 
 	MCFG_PIT8253_ADD( "pit8253", pcjr_pit8253_config )
 
@@ -1261,7 +1281,8 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
-	MCFG_SOUND_ADD("sn76496", SN76496, XTAL_14_31818MHz/4)
+	MCFG_SOUND_ADD("sn76496", SN76496_NEW, XTAL_14_31818MHz/4)
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( tandy1000 )
@@ -1322,8 +1343,8 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 	MCFG_CPU_IO_MAP(mc1502_io)
 	MCFG_CPU_CONFIG(i86_address_mask)
 
-	MCFG_MACHINE_START(mc1502)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,mc1502)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", mc1502_pit8253_config )
 
@@ -1365,8 +1386,8 @@ static MACHINE_CONFIG_START( ec1841, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1413,8 +1434,8 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1467,8 +1488,8 @@ static MACHINE_CONFIG_START( iskr3104, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1520,8 +1541,8 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1573,8 +1594,8 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1626,8 +1647,8 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1679,8 +1700,8 @@ static MACHINE_CONFIG_START( ibm5550, pc_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(pc)
-	MCFG_MACHINE_RESET(pc)
+	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 

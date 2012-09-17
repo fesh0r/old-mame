@@ -18,8 +18,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _sst39vfx_t sst39vfx_t;
-struct _sst39vfx_t
+struct sst39vfx_t
 {
 	UINT8 *data;
 	UINT32 size;
@@ -41,7 +40,7 @@ INLINE sst39vfx_t *get_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == SST39VF020 || device->type() == SST39VF400A);
 
-	return (sst39vfx_t *) downcast<legacy_device_base *>(device)->token();
+	return (sst39vfx_t *) downcast<sst39vf020_device *>(device)->token();
 }
 
 INLINE const sst39vfx_config *get_config(device_t *device)
@@ -49,7 +48,7 @@ INLINE const sst39vfx_config *get_config(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == SST39VF020 || device->type() == SST39VF400A);
 
-	return (const sst39vfx_config *) downcast<const legacy_device_base *>(device)->inline_config();
+	return (const sst39vfx_config *)device->static_config();
 }
 
 
@@ -178,46 +177,53 @@ NVRAM_HANDLER( sst39vfx )
 }
 #endif
 
+const device_type SST39VF020 = &device_creator<sst39vf020_device>;
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO( sst39vf020 )
--------------------------------------------------*/
-
-DEVICE_GET_INFO( sst39vf020 )
+sst39vf020_device::sst39vf020_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, SST39VF020, "SST39VF020", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(sst39vfx_t);				break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = sizeof(sst39vfx_config);			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(sst39vf020);	break;
-		case DEVINFO_FCT_STOP:							/* Nothing */									break;
-		case DEVINFO_FCT_RESET:							/* Nothing */									break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "SST39VF020");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "SST39VFxx");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:						/* Nothing */									break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(sst39vfx_t));
+}
+sst39vf020_device::sst39vf020_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, type, name, tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(sst39vfx_t));
 }
 
-DEVICE_GET_INFO( sst39vf400a )
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void sst39vf020_device::device_config_complete()
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "SST39VF400A");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(sst39vf400a);	break;
-
-		default:										DEVICE_GET_INFO_CALL(sst39vf020);				break;
-	}
 }
 
-DEFINE_LEGACY_DEVICE(SST39VF020, sst39vf020);
-DEFINE_LEGACY_DEVICE(SST39VF400A, sst39vf400a);
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void sst39vf020_device::device_start()
+{
+	DEVICE_START_NAME( sst39vf020 )(this);
+}
+
+
+const device_type SST39VF400A = &device_creator<sst39vf400a_device>;
+
+sst39vf400a_device::sst39vf400a_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: sst39vf020_device(mconfig, SST39VF400A, "SST39VF400A", tag, owner, clock)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void sst39vf400a_device::device_start()
+{
+	DEVICE_START_NAME( sst39vf400a )(this);
+}
+
+

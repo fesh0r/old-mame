@@ -164,12 +164,12 @@ WRITE8_MEMBER( micronic_state::bank_select_w )
 	if (data < 2)
 	{
 		membank("bank1")->set_entry(data);
-		m_maincpu->memory().space(AS_PROGRAM)->unmap_write(0x0000, 0x7fff);
+		m_maincpu->space(AS_PROGRAM)->unmap_write(0x0000, 0x7fff);
 	}
 	else
 	{
 		membank("bank1")->set_entry((data <= m_banks_num) ? data : m_banks_num);
-		m_maincpu->memory().space(AS_PROGRAM)->install_write_bank(0x0000, 0x7fff, "bank1");
+		m_maincpu->space(AS_PROGRAM)->install_write_bank(0x0000, 0x7fff, "bank1");
 	}
 }
 
@@ -314,10 +314,10 @@ static NVRAM_HANDLER( micronic )
 	}
 }
 
-static PALETTE_INIT( micronic )
+void micronic_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 static HD61830_INTERFACE( lcdc_intf )
@@ -342,13 +342,13 @@ void micronic_state::machine_start()
 void micronic_state::machine_reset()
 {
 	membank("bank1")->set_entry(0);
-	m_maincpu->memory().space(AS_PROGRAM)->unmap_write(0x0000, 0x7fff);
+	m_maincpu->space(AS_PROGRAM)->unmap_write(0x0000, 0x7fff);
 }
 
 
 WRITE_LINE_MEMBER( micronic_state::mc146818_irq )
 {
-	device_set_input_line(m_maincpu, 0, !state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, !state ? HOLD_LINE : CLEAR_LINE);
 }
 
 const struct mc146818_interface micronic_mc146818_config =
@@ -372,7 +372,6 @@ static MACHINE_CONFIG_START( micronic, micronic_state )
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(micronic)
 
 	MCFG_HD61830_ADD(HD61830_TAG, XTAL_4_9152MHz/2/2, lcdc_intf)
 

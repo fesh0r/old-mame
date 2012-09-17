@@ -22,43 +22,42 @@
 
 
 
-VIDEO_START(vc4000)
+void vc4000_state::video_start()
 {
-	vc4000_state *state = machine.driver_data<vc4000_state>();
-	screen_device *screen = machine.first_screen();
+	screen_device *screen = machine().first_screen();
 	int i;
 
 	for (i=0;i<0x20; i++)
 	{
-		state->m_sprite_collision[i]=0;
-		if ((i&3)==3) state->m_sprite_collision[i]|=0x20;
-		if ((i&5)==5) state->m_sprite_collision[i]|=0x10;
-		if ((i&9)==9) state->m_sprite_collision[i]|=8;
-		if ((i&6)==6) state->m_sprite_collision[i]|=4;
-		if ((i&0xa)==0xa) state->m_sprite_collision[i]|=2;
-		if ((i&0xc)==0xc) state->m_sprite_collision[i]|=1;
-		state->m_background_collision[i]=0;
-		if ((i&0x11)==0x11) state->m_background_collision[i]|=0x80;
-		if ((i&0x12)==0x12) state->m_background_collision[i]|=0x40;
-		if ((i&0x14)==0x14) state->m_background_collision[i]|=0x20;
-		if ((i&0x18)==0x18) state->m_background_collision[i]|=0x10;
+		m_sprite_collision[i]=0;
+		if ((i&3)==3) m_sprite_collision[i]|=0x20;
+		if ((i&5)==5) m_sprite_collision[i]|=0x10;
+		if ((i&9)==9) m_sprite_collision[i]|=8;
+		if ((i&6)==6) m_sprite_collision[i]|=4;
+		if ((i&0xa)==0xa) m_sprite_collision[i]|=2;
+		if ((i&0xc)==0xc) m_sprite_collision[i]|=1;
+		m_background_collision[i]=0;
+		if ((i&0x11)==0x11) m_background_collision[i]|=0x80;
+		if ((i&0x12)==0x12) m_background_collision[i]|=0x40;
+		if ((i&0x14)==0x14) m_background_collision[i]|=0x20;
+		if ((i&0x18)==0x18) m_background_collision[i]|=0x10;
 	}
 
-	state->m_joy1_x = STICKCENTRE;
-	state->m_joy1_y = STICKCENTRE;
-	state->m_joy2_x = STICKCENTRE;
-	state->m_joy2_y = STICKCENTRE;
+	m_joy1_x = STICKCENTRE;
+	m_joy1_y = STICKCENTRE;
+	m_joy2_x = STICKCENTRE;
+	m_joy2_y = STICKCENTRE;
 
-	memset(&state->m_video, 0, sizeof(state->m_video));
+	memset(&m_video, 0, sizeof(m_video));
 	for (i=0; i<3; i++)
 	{
-		state->m_video.sprites[i].data = &state->m_video.reg.d.sprites[i];
-		state->m_video.sprites[i].mask = 1 << i;
+		m_video.sprites[i].data = &m_video.reg.d.sprites[i];
+		m_video.sprites[i].mask = 1 << i;
 	}
-	state->m_video.sprites[3].data = &state->m_video.reg.d.sprite4;
-	state->m_video.sprites[3].mask = 1 << 3;
+	m_video.sprites[3].data = &m_video.reg.d.sprite4;
+	m_video.sprites[3].mask = 1 << 3;
 
-	state->m_bitmap = auto_bitmap_ind16_alloc(machine, screen->width(), screen->height());
+	m_bitmap = auto_bitmap_ind16_alloc(machine(), screen->width(), screen->height());
 }
 
 INLINE UINT8 vc4000_joystick_return_to_centre(UINT8 joy)
@@ -116,7 +115,7 @@ READ8_MEMBER( vc4000_state::vc4000_video_r )
 
 #ifndef ANALOG_HACK
 	case 0xcc:
-		if (!activecpu_get_reg(S2650_FO)) data=ioport("JOY1_X")->read();
+		if (!activeS2650_FO)) data=ioport("JOY1_X")->read();
 		else data=ioport("JOY1_Y")->read();
 		break;
 	case 0xcd:
@@ -128,7 +127,7 @@ READ8_MEMBER( vc4000_state::vc4000_video_r )
 	case 0xcc:		/* left joystick */
 		if (ioport("CONFIG")->read()&1)
 		{		/* paddle */
-			if (!cpu_get_reg(machine().device("maincpu"), S2650_FO))
+			if (!machine().device("maincpu")->state().state_int(S2650_FO))
 			{
 				data = ioport("JOYS")->read() & 0x03;
 				switch (data)
@@ -167,7 +166,7 @@ READ8_MEMBER( vc4000_state::vc4000_video_r )
 		}
 		else
 		{		/* buttons */
-			if (!cpu_get_reg(machine().device("maincpu"), S2650_FO))
+			if (!machine().device("maincpu")->state().state_int(S2650_FO))
 			{
 				data = ioport("JOYS")->read() & 0x03;
 				switch (data)
@@ -205,7 +204,7 @@ READ8_MEMBER( vc4000_state::vc4000_video_r )
 	case 0xcd:		/* right joystick */
 		if (ioport("CONFIG")->read()&1)
 		{
-			if (!cpu_get_reg(machine().device("maincpu"), S2650_FO))
+			if (!machine().device("maincpu")->state().state_int(S2650_FO))
 			{
 				data = ioport("JOYS")->read() & 0x30;
 				switch (data)
@@ -244,7 +243,7 @@ READ8_MEMBER( vc4000_state::vc4000_video_r )
 		}
 		else
 		{
-			if (!cpu_get_reg(machine().device("maincpu"), S2650_FO))
+			if (!machine().device("maincpu")->state().state_int(S2650_FO))
 			{
 				data = ioport("JOYS")->read() & 0x30;
 				switch (data)
@@ -596,7 +595,7 @@ INTERRUPT_GEN( vc4000_video_line )
 
 	if (state->m_irq_pause>10)
 	{
-		cputag_set_input_line(device->machine(), "maincpu", 0, CLEAR_LINE);
+		device->machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 		state->m_irq_pause = 0;
 	}
 
@@ -642,7 +641,7 @@ INTERRUPT_GEN( vc4000_video_line )
 		(state->m_video.sprites[1].finished_now) |
 		(state->m_video.sprites[0].finished_now)) && (!state->m_irq_pause))
 		{
-			cputag_set_input_line_and_vector(device->machine(), "maincpu", 0, ASSERT_LINE, 3);
+			device->machine().device("maincpu")->execute().set_input_line_and_vector(0, ASSERT_LINE, 3);
 			state->m_irq_pause=1;
 		}
 }

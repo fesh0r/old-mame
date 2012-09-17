@@ -47,7 +47,7 @@ static void c65_nmi( running_machine &machine )
 
 	if (state->m_nmilevel != (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq)	/* KEY_RESTORE */
 	{
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq);
 
 		state->m_nmilevel = (machine.root_device().ioport("SPECIAL")->read() & 0x80) || cia1irq;
 	}
@@ -104,7 +104,7 @@ static void c65_irq( running_machine &machine, int level )
 	if (level != state->m_old_level)
 	{
 		DBG_LOG(machine, 3, "mos6510", ("irq %s\n", level ? "start" : "end"));
-		cputag_set_input_line(machine, "maincpu", M6510_IRQ_LINE, level);
+		machine.device("maincpu")->execute().set_input_line(M6510_IRQ_LINE, level);
 		state->m_old_level = level;
 	}
 }
@@ -130,22 +130,8 @@ void c65_vic_interrupt( running_machine &machine, int level )
 #endif
 }
 
-const mos6526_interface c65_ntsc_cia0 =
+const mos6526_interface c65_cia0 =
 {
-	60,
-	DEVCB_LINE(c65_cia0_interrupt),
-	DEVCB_NULL,	/* pc_func */
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_HANDLER(c65_cia0_port_a_r),
-	DEVCB_NULL,
-	DEVCB_HANDLER(c65_cia0_port_b_r),
-	DEVCB_HANDLER(c65_cia0_port_b_w)
-};
-
-const mos6526_interface c65_pal_cia0 =
-{
-	50,
 	DEVCB_LINE(c65_cia0_interrupt),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -210,22 +196,8 @@ static WRITE_LINE_DEVICE_HANDLER( c65_cia1_interrupt )
 	c65_nmi(device->machine());
 }
 
-const mos6526_interface c65_ntsc_cia1 =
+const mos6526_interface c65_cia1 =
 {
-	60,
-	DEVCB_LINE(c65_cia1_interrupt),
-	DEVCB_NULL,	/* pc_func */
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_HANDLER(c65_cia1_port_a_r),
-	DEVCB_HANDLER(c65_cia1_port_a_w),
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
-const mos6526_interface c65_pal_cia1 =
-{
-	50,
 	DEVCB_LINE(c65_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -536,7 +508,7 @@ static void c65_fdc_state(void)
 static void c65_fdc_w( running_machine &machine, int offset, int data )
 {
 	c65_state *state = machine.driver_data<c65_state>();
-	DBG_LOG(machine, 1, "fdc write", ("%.5x %.2x %.2x\n", cpu_get_pc(machine.device("maincpu")), offset, data));
+	DBG_LOG(machine, 1, "fdc write", ("%.5x %.2x %.2x\n", machine.device("maincpu")->safe_pc(), offset, data));
 	switch (offset & 0xf)
 	{
 	case 0:
@@ -621,7 +593,7 @@ static int c65_fdc_r( running_machine &machine, int offset )
 		data = state->m_fdc.reg[offset & 0xf];
 		break;
 	}
-	DBG_LOG(machine, 1, "fdc read", ("%.5x %.2x %.2x\n", cpu_get_pc(machine.device("maincpu")), offset, data));
+	DBG_LOG(machine, 1, "fdc read", ("%.5x %.2x %.2x\n", machine.device("maincpu")->safe_pc(), offset, data));
 	return data;
 }
 
@@ -674,8 +646,8 @@ static WRITE8_HANDLER( c65_ram_expansion_w )
 
 static WRITE8_HANDLER( c65_write_io )
 {
-	device_t *sid_0 = space->machine().device("sid_r");
-	device_t *sid_1 = space->machine().device("sid_l");
+	sid6581_device *sid_0 = space->machine().device<sid6581_device>("sid_r");
+	sid6581_device *sid_1 = space->machine().device<sid6581_device>("sid_l");
 	device_t *vic3 = space->machine().device("vic3");
 
 	switch (offset & 0xf00)
@@ -698,9 +670,9 @@ static WRITE8_HANDLER( c65_write_io )
 		break;
 	case 0x400:
 		if (offset<0x420) /* maybe 0x20 */
-			sid6581_w(sid_0, offset & 0x3f, data);
+			sid_0->write(*space, offset & 0x3f, data);
 		else if (offset<0x440)
-			sid6581_w(sid_1, offset & 0x3f, data);
+			sid_1->write(*space, offset & 0x3f, data);
 		else
 			DBG_LOG(space->machine(), 1, "io write", ("%.3x %.2x\n", offset, data));
 		break;
@@ -738,8 +710,8 @@ static WRITE8_HANDLER( c65_write_io_dc00 )
 
 static READ8_HANDLER( c65_read_io )
 {
-	device_t *sid_0 = space->machine().device("sid_r");
-	device_t *sid_1 = space->machine().device("sid_l");
+	sid6581_device *sid_0 = space->machine().device<sid6581_device>("sid_r");
+	sid6581_device *sid_1 = space->machine().device<sid6581_device>("sid_l");
 	device_t *vic3 = space->machine().device("vic3");
 
 	switch (offset & 0xf00)
@@ -763,9 +735,9 @@ static READ8_HANDLER( c65_read_io )
 		break;
 	case 0x400:
 		if (offset < 0x420)
-			return sid6581_r(sid_0, offset & 0x3f);
+			return sid_0->read(*space, offset & 0x3f);
 		if (offset < 0x440)
-			return sid6581_r(sid_1, offset & 0x3f);
+			return sid_1->read(*space, offset & 0x3f);
 		DBG_LOG(space->machine(), 1, "io read", ("%.3x\n", offset));
 		break;
 	case 0x500:
@@ -1033,20 +1005,19 @@ DRIVER_INIT_MEMBER(c65_state,c65pal)
 	m_pal = 1;
 }
 
-MACHINE_START( c65 )
+MACHINE_START_MEMBER(c65_state,c65)
 {
-	c65_state *state = machine.driver_data<c65_state>();
 	/* clear upper memory */
-	memset(machine.device<ram_device>(RAM_TAG)->pointer() + 128*1024, 0xff, machine.device<ram_device>(RAM_TAG)->size() -  128*1024);
+	memset(machine().device<ram_device>(RAM_TAG)->pointer() + 128*1024, 0xff, machine().device<ram_device>(RAM_TAG)->size() -  128*1024);
 
 //removed   cbm_drive_0_config (SERIAL, 10);
 //removed   cbm_drive_1_config (SERIAL, 11);
-	state->m_vicaddr = state->m_memory;
+	m_vicaddr = m_memory;
 
-	state->m_c64mode = 0;
+	m_c64mode = 0;
 
-	c65_bankswitch_interface(machine, 0xff);
-	c65_bankswitch (machine);
+	c65_bankswitch_interface(machine(), 0xff);
+	c65_bankswitch (machine());
 }
 
 

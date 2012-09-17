@@ -50,6 +50,7 @@ public:
 	UINT16 pb1000_kb_r(running_machine &machine);
 	void kb_matrix_w(running_machine &machine, UINT8 matrix);
 	UINT16 read_touchscreen(running_machine &machine, UINT8 line);
+	virtual void palette_init();
 };
 
 static ADDRESS_MAP_START(pb1000_mem, AS_PROGRAM, 16, pb1000_state)
@@ -276,10 +277,10 @@ static INPUT_PORTS_START( pb2000c )
 		PORT_BIT(0xffff, IP_ACTIVE_HIGH, IPT_UNUSED)
 INPUT_PORTS_END
 
-static PALETTE_INIT( pb1000 )
+void pb1000_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 
@@ -483,8 +484,8 @@ static const hd61700_config pb2000c_config =
 
 static TIMER_CALLBACK( keyboard_timer )
 {
-	cputag_set_input_line(machine, "maincpu", HD61700_KEY_INT, ASSERT_LINE);
-	cputag_set_input_line(machine, "maincpu", HD61700_KEY_INT, CLEAR_LINE);
+	machine.device("maincpu")->execute().set_input_line(HD61700_KEY_INT, ASSERT_LINE);
+	machine.device("maincpu")->execute().set_input_line(HD61700_KEY_INT, CLEAR_LINE);
 }
 
 void pb1000_state::machine_start()
@@ -507,7 +508,7 @@ static MACHINE_CONFIG_START( pb1000, pb1000_state )
 	MCFG_HD61700_CONFIG(pb1000_config)
 
 	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_UPDATE_DEVICE("hd44352", hd44352_device, screen_update)
@@ -515,7 +516,6 @@ static MACHINE_CONFIG_START( pb1000, pb1000_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 192-1, 0, 32-1)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT( pb1000 )
 	MCFG_GFXDECODE( pb1000 )
 
 	MCFG_HD44352_ADD("hd44352", 910000, hd44352_pb1000_conf)
@@ -529,33 +529,11 @@ static MACHINE_CONFIG_START( pb1000, pb1000_state )
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( pb2000c, pb1000_state )
+static MACHINE_CONFIG_DERIVED( pb2000c, pb1000 )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu",HD61700, 910000)
+	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(pb2000c_mem)
 	MCFG_HD61700_CONFIG(pb2000c_config)
-
-	/* video hardware */
-	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_UPDATE_DEVICE("hd44352", hd44352_device, screen_update)
-	MCFG_SCREEN_SIZE(192, 32)
-	MCFG_SCREEN_VISIBLE_AREA(0, 192-1, 0, 32-1)
-	MCFG_DEFAULT_LAYOUT(layout_lcd)
-	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT( pb1000 )
-	MCFG_GFXDECODE( pb1000 )
-
-	MCFG_HD44352_ADD("hd44352", 910000, hd44352_pb1000_conf)
-
-	MCFG_NVRAM_ADD_0FILL("nvram1")
-	MCFG_NVRAM_ADD_0FILL("nvram2")
-
-	/* sound hardware */
-	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD( BEEPER_TAG, BEEP, 0 )
-	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
 	MCFG_CARTSLOT_ADD("card1")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")

@@ -302,12 +302,12 @@ void electron_interrupt_handler(running_machine &machine, int mode, int interrup
 	if ( state->m_ula.interrupt_status & state->m_ula.interrupt_control & ~0x83 )
 	{
 		state->m_ula.interrupt_status |= 0x01;
-		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE );
+		machine.device("maincpu")->execute().set_input_line(0, ASSERT_LINE );
 	}
 	else
 	{
 		state->m_ula.interrupt_status &= ~0x01;
-		cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE );
+		machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE );
 	}
 }
 
@@ -340,15 +340,14 @@ static void electron_reset(running_machine &machine)
 	state->m_ula.vram = (UINT8 *)machine.device("maincpu")->memory().space(AS_PROGRAM)->get_read_ptr(state->m_ula.screen_base);
 }
 
-MACHINE_START( electron )
+void electron_state::machine_start()
 {
-	electron_state *state = machine.driver_data<electron_state>();
-	state->membank("bank2")->configure_entries(0, 16, state->memregion("user1")->base(), 0x4000);
+	membank("bank2")->configure_entries(0, 16, memregion("user1")->base(), 0x4000);
 
-	state->m_ula.interrupt_status = 0x82;
-	state->m_ula.interrupt_control = 0x00;
-	machine.scheduler().timer_set(attotime::zero, FUNC(setup_beep));
-	state->m_tape_timer = machine.scheduler().timer_alloc(FUNC(electron_tape_timer_handler));
-	machine.add_notifier(MACHINE_NOTIFY_RESET, machine_notify_delegate(FUNC(electron_reset),&machine));
+	m_ula.interrupt_status = 0x82;
+	m_ula.interrupt_control = 0x00;
+	machine().scheduler().timer_set(attotime::zero, FUNC(setup_beep));
+	m_tape_timer = machine().scheduler().timer_alloc(FUNC(electron_tape_timer_handler));
+	machine().add_notifier(MACHINE_NOTIFY_RESET, machine_notify_delegate(FUNC(electron_reset),&machine()));
 }
 

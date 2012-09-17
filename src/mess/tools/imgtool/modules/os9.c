@@ -13,15 +13,14 @@
 #include "formats/coco_dsk.h"
 #include "iflopimg.h"
 
-typedef enum
+enum creation_policy_t
 {
 	CREATE_NONE,
 	CREATE_FILE,
 	CREATE_DIR
-} creation_policy_t;
+};
 
-typedef struct _os9_diskinfo os9_diskinfo;
-struct _os9_diskinfo
+struct os9_diskinfo
 {
 	UINT32 total_sectors;
 	UINT32 sectors_per_track;

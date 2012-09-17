@@ -16,9 +16,6 @@ ToDo:
 
 ***************************************************************************/
 
-#define VIDEO_START_MEMBER(name) void name::video_start()
-#define SCREEN_UPDATE_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-
 #include "emu.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/z80/z80.h"
@@ -131,12 +128,12 @@ WRITE8_MEMBER( jupiter3_state::kbd_put )
 //  VIDEO
 //**************************************************************************
 
-VIDEO_START_MEMBER( jupiter3_state )
+void jupiter3_state::video_start()
 {
 	m_p_chargen = memregion("chargen")->base();
 }
 
-SCREEN_UPDATE_MEMBER( jupiter3_state )
+UINT32 jupiter3_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	UINT8 y,ra,chr,gfx;
 	UINT16 sy=0,ma=0,x;
@@ -242,7 +239,7 @@ void jupiter3_state::machine_reset()
 {
 	UINT8* ROM = memregion(Z80_TAG)->base();
 	memcpy(m_p_ram, ROM, 0x1000);
-	cpu_set_reg(m_maincpu, STATE_GENPC, 0xe000);
+	m_maincpu->set_pc(0xe000);
 }
 
 

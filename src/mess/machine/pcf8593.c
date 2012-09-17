@@ -42,8 +42,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _pcf8593_t pcf8593_t;
-struct _pcf8593_t
+struct pcf8593_t
 {
 	UINT8 data[16];
 	int pin_scl, pin_sda, inp;
@@ -72,7 +71,7 @@ INLINE pcf8593_t *get_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == PCF8593);
 
-	return (pcf8593_t *) downcast<legacy_device_base *>(device)->token();
+	return (pcf8593_t *) downcast<pcf8593_device *>(device)->token();
 }
 
 
@@ -445,30 +444,40 @@ NVRAM_HANDLER( pcf8593 )
 #endif
 
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO( pcf8593 )
--------------------------------------------------*/
+const device_type PCF8593 = &device_creator<pcf8593_device>;
 
-DEVICE_GET_INFO( pcf8593 )
+pcf8593_device::pcf8593_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, PCF8593, "PCF8593 RTC", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(pcf8593_t);				break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(pcf8593);	break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(pcf8593);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "PCF8593 RTC");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "PCF8593 RTC");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
-		case DEVINFO_STR_CREDITS:						/* Nothing */								break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(pcf8593_t));
 }
 
-DEFINE_LEGACY_DEVICE(PCF8593, pcf8593);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void pcf8593_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void pcf8593_device::device_start()
+{
+	DEVICE_START_NAME( pcf8593 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void pcf8593_device::device_reset()
+{
+	DEVICE_RESET_NAME( pcf8593 )(this);
+}
+
+

@@ -36,7 +36,7 @@ static void dai_update_memory(running_machine &machine, int dai_rom_bank)
 
 static TIMER_CALLBACK(dai_bootstrap_callback)
 {
-	cpu_set_reg(machine.device("maincpu"), STATE_GENPC, 0xc000);
+	machine.device("maincpu")->state().set_pc(0xc000);
 }
 
 
@@ -62,9 +62,9 @@ WRITE8_MEMBER(dai_state::dai_keyboard_w)
 static TMS5501_IRQ_CALLBACK(dai_interrupt_callback)
 {
 	if (intreq)
-		cputag_set_input_line_and_vector(device.machine(), "maincpu", 0, HOLD_LINE, vector);
+		device.machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE, vector);
 	else
-		cputag_set_input_line(device.machine(), "maincpu", 0, CLEAR_LINE);
+		device.machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 }
 
 TMS5501_INTERFACE( dai_tms5501_interface )
@@ -111,21 +111,19 @@ static TIMER_CALLBACK( dai_timer )
 	state->m_tms5501->set_pio_bit_7((state->ioport("IN8")->read() & 0x04) ? 1:0);
 }
 
-MACHINE_START( dai )
+void dai_state::machine_start()
 {
-	dai_state *state = machine.driver_data<dai_state>();
 
-	state->membank("bank2")->configure_entries(0, 4, state->memregion("maincpu")->base() + 0x010000, 0x1000);
-	machine.scheduler().timer_set(attotime::zero, FUNC(dai_bootstrap_callback));
-	machine.scheduler().timer_pulse(attotime::from_hz(100), FUNC(dai_timer));	/* timer for tms5501 */
+	membank("bank2")->configure_entries(0, 4, memregion("maincpu")->base() + 0x010000, 0x1000);
+	machine().scheduler().timer_set(attotime::zero, FUNC(dai_bootstrap_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(100), FUNC(dai_timer));	/* timer for tms5501 */
 
-	memset(machine.device<ram_device>(RAM_TAG)->pointer(), 0, machine.device<ram_device>(RAM_TAG)->size());
+	memset(machine().device<ram_device>(RAM_TAG)->pointer(), 0, machine().device<ram_device>(RAM_TAG)->size());
 }
 
-MACHINE_RESET( dai )
+void dai_state::machine_reset()
 {
-	dai_state *state = machine.driver_data<dai_state>();
-	state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer());
+	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 }
 
 /***************************************************************************

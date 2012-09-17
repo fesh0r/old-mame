@@ -32,7 +32,7 @@
 
 void tvc_state::tvc_set_mem_page(UINT8 data)
 {
-	address_space *space = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
 	switch(data & 0x18)
 	{
 		case 0x00 : // system ROM selected
@@ -193,7 +193,7 @@ WRITE8_MEMBER(tvc_state::tvc_flipflop_w)
 {
 	// every write here clears the vblank flipflop
 	m_int_flipflop = 1;
-	device_set_input_line(m_maincpu, 0, CLEAR_LINE);
+	m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
 READ8_MEMBER(tvc_state::tvc_exp_id_r)
@@ -573,7 +573,7 @@ static MC6845_UPDATE_ROW( tvc_update_row )
 	}
 }
 
-static PALETTE_INIT( tvc )
+void tvc_state::palette_init()
 {
 	const static unsigned char tvc_palette[16][3] =
 	{
@@ -597,7 +597,7 @@ static PALETTE_INIT( tvc )
 	int i;
 
 	for(i = 0; i < 16; i++)
-		palette_set_color_rgb(machine, i, tvc_palette[i][0], tvc_palette[i][1], tvc_palette[i][2]);
+		palette_set_color_rgb(machine(), i, tvc_palette[i][0], tvc_palette[i][1], tvc_palette[i][2]);
 }
 
 WRITE_LINE_MEMBER(tvc_state::tvc_int_ff_set)
@@ -605,7 +605,7 @@ WRITE_LINE_MEMBER(tvc_state::tvc_int_ff_set)
 	if (state)
 	{
 		m_int_flipflop = 0;
-		device_set_input_line(m_maincpu, 0, ASSERT_LINE);
+		m_maincpu->set_input_line(0, ASSERT_LINE);
 	}
 }
 
@@ -694,7 +694,6 @@ static MACHINE_CONFIG_START( tvc, tvc_state )
     MCFG_SCREEN_UPDATE_DEVICE("crtc", mc6845_device, screen_update)
 
 	MCFG_PALETTE_LENGTH( 16 )
-	MCFG_PALETTE_INIT(tvc)
 
 	MCFG_MC6845_ADD("crtc", MC6845, 3125000/2, tvc_crtc6845_interface) // clk taken from schematics
 

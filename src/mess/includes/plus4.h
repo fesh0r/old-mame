@@ -14,7 +14,8 @@
 #include "machine/cbmiec.h"
 #include "machine/cbmipt.h"
 #include "machine/mos6529.h"
-#include "machine/pls100.h"
+#include "machine/petcass.h"
+#include "machine/pla.h"
 #include "machine/ram.h"
 
 #define MOS7501_TAG			"u2"
@@ -25,7 +26,6 @@
 #define T6721_TAG			"t6721"
 #define PLA_TAG				"u19"
 #define SCREEN_TAG			"screen"
-#define CASSETTE_TAG		"cassette"
 
 class plus4_state : public driver_device
 {
@@ -43,10 +43,10 @@ public:
 		  m_exp(*this, PLUS4_EXPANSION_SLOT_TAG),
 		  m_user(*this, PLUS4_USER_PORT_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_cassette(*this, CASSETTE_TAG),
+		  m_cassette(*this, PET_DATASSETTE_PORT_TAG),
 		  m_function(NULL),
+		  m_c2(NULL),
 		  m_addr(0),
-		  m_rom_en(1),
 		  m_ted_irq(CLEAR_LINE),
 		  m_acia_irq(CLEAR_LINE),
 		  m_exp_irq(CLEAR_LINE)
@@ -63,7 +63,7 @@ public:
 	required_device<plus4_expansion_slot_device> m_exp;
 	optional_device<plus4_user_port_device> m_user;
 	required_device<ram_device> m_ram;
-	required_device<cassette_image_device> m_cassette;
+	required_device<pet_datassette_port_device> m_cassette;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -75,6 +75,7 @@ public:
 
 	DECLARE_READ8_MEMBER( read );
 	DECLARE_WRITE8_MEMBER( write );
+	DECLARE_READ8_MEMBER( ted_videoram_r );
 
 	DECLARE_READ8_MEMBER( cpu_r );
 	DECLARE_READ8_MEMBER( c16_cpu_r );
@@ -95,8 +96,8 @@ public:
 	// memory state
 	const UINT8 *m_kernal;
 	const UINT8 *m_function;
+	const UINT8 *m_c2;
 	UINT8 m_addr;
-	int m_rom_en;
 
 	// interrupt state
 	int m_ted_irq;

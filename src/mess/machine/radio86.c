@@ -134,7 +134,7 @@ I8255A_INTERFACE( rk7007_ppi8255_interface )
 static WRITE_LINE_DEVICE_HANDLER( hrq_w )
 {
 	/* HACK - this should be connected to the BUSREQ line of Z80 */
-	cputag_set_input_line(device->machine(), "maincpu", INPUT_LINE_HALT, state);
+	device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, state);
 
 	/* HACK - this should be connected to the BUSACK line of Z80 */
 	i8257_hlda_w(device, state);
@@ -163,7 +163,7 @@ static TIMER_CALLBACK( radio86_reset )
 
 READ8_MEMBER(radio86_state::radio_cpu_state_r)
 {
-	return cpu_get_reg(&space.device(), I8085_STATUS);
+	return space.device().state().state_int(I8085_STATUS);
 }
 
 READ8_MEMBER(radio86_state::radio_io_r)
@@ -176,14 +176,13 @@ WRITE8_MEMBER(radio86_state::radio_io_w)
 	machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte((offset << 8) + offset,data);
 }
 
-MACHINE_RESET( radio86 )
+MACHINE_RESET_MEMBER(radio86_state,radio86)
 {
-	radio86_state *state = machine.driver_data<radio86_state>();
-	machine.scheduler().timer_set(attotime::from_usec(10), FUNC(radio86_reset));
-	state->membank("bank1")->set_entry(1);
+	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(radio86_reset));
+	membank("bank1")->set_entry(1);
 
-	state->m_keyboard_mask = 0;
-	state->m_disk_sel = 0;
+	m_keyboard_mask = 0;
+	m_disk_sel = 0;
 }
 
 

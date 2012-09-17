@@ -54,6 +54,7 @@
 */
 
 #include "e01.h"
+#include "machine/scsicb.h"
 #include "machine/scsihd.h"
 
 
@@ -259,22 +260,14 @@ static const wd17xx_interface fdc_intf =
 
 
 //-------------------------------------------------
-//  SCSIBus_interface scsi_intf
+//  SCSICB_interface scsi_intf
 //-------------------------------------------------
-
-static const SCSIConfigTable scsi_dev_table =
-{
-	1,
-	{
-		{ SCSI_ID_0, "harddisk0" }
-	}
-};
 
 WRITE_LINE_MEMBER( e01_device::scsi_bsy_w )
 {
 	if (!state)
 	{
-		scsi_sel_w(m_scsibus, 1);
+		m_scsibus->scsi_sel_w(1);
 	}
 }
 
@@ -282,23 +275,22 @@ WRITE_LINE_MEMBER( e01_device::scsi_req_w )
 {
 	if (state)
 	{
-		scsi_ack_w(m_scsibus, 1);
+		m_scsibus->scsi_ack_w(1);
 	}
 
 	m_hdc_irq = !state;
 	update_interrupts();
 }
 
-static const SCSIBus_interface scsi_intf =
+static const SCSICB_interface scsi_intf =
 {
-    &scsi_dev_table,
-    NULL,
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, e01_device, scsi_bsy_w),
+	NULL,
+	DEVCB_DEVICE_LINE_MEMBER("^^", e01_device, scsi_bsy_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, e01_device, scsi_req_w),
+	DEVCB_DEVICE_LINE_MEMBER("^^", e01_device, scsi_req_w),
 	DEVCB_NULL
 };
 
@@ -356,8 +348,9 @@ static MACHINE_CONFIG_FRAGMENT( e01 )
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(e01_floppy_interface)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, e01_centronics_intf)
 
-	MCFG_SCSIBUS_ADD(SCSIBUS_TAG, scsi_intf)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD(SCSIBUS_TAG)
+	MCFG_SCSIDEV_ADD(SCSIBUS_TAG ":harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSICB_ADD(SCSIBUS_TAG ":host", scsi_intf)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -564,7 +557,7 @@ void e01_device::device_start()
 
 void e01_device::device_reset()
 {
-	init_scsibus(m_scsibus, 512);
+	m_scsibus->init_scsibus(512);
 
 	m_clk_timer->adjust(attotime::zero, 0, attotime::from_hz(200000));
 
@@ -697,9 +690,9 @@ WRITE8_MEMBER( e01_device::network_irq_enable_w )
 
 READ8_MEMBER( e01_device::hdc_data_r )
 {
-	UINT8 data = scsi_data_r(m_scsibus, 0);
+	UINT8 data = m_scsibus->scsi_data_r(space, 0);
 
-	scsi_ack_w(m_scsibus, 0);
+	m_scsibus->scsi_ack_w(0);
 
 	return data;
 }
@@ -711,9 +704,9 @@ READ8_MEMBER( e01_device::hdc_data_r )
 
 WRITE8_MEMBER( e01_device::hdc_data_w )
 {
-	scsi_data_w(m_scsibus, 0, data);
+	m_scsibus->scsi_data_w(space, 0, data);
 
-	scsi_ack_w(m_scsibus, 0);
+	m_scsibus->scsi_ack_w(0);
 }
 
 
@@ -741,11 +734,11 @@ READ8_MEMBER( e01_device::hdc_status_r )
 	UINT8 data = 0;
 
 	// SCSI bus
-	data |= !scsi_msg_r(m_scsibus);
-	data |= !scsi_bsy_r(m_scsibus) << 1;
-	data |= !scsi_req_r(m_scsibus) << 5;
-	data |= !scsi_io_r(m_scsibus) << 6;
-	data |= !scsi_cd_r(m_scsibus) << 7;
+	data |= !m_scsibus->scsi_msg_r();
+	data |= !m_scsibus->scsi_bsy_r() << 1;
+	data |= !m_scsibus->scsi_req_r() << 5;
+	data |= !m_scsibus->scsi_io_r() << 6;
+	data |= !m_scsibus->scsi_cd_r() << 7;
 
 	// TODO NIRQ
 
@@ -759,7 +752,7 @@ READ8_MEMBER( e01_device::hdc_status_r )
 
 WRITE8_MEMBER( e01_device::hdc_select_w )
 {
-	scsi_sel_w(m_scsibus, 0);
+	m_scsibus->scsi_sel_w(0);
 }
 
 

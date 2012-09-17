@@ -175,8 +175,8 @@ READ_LINE_MEMBER( csc_state::pia1_cb1_r )
 
 static TIMER_DEVICE_CALLBACK( irq_timer )
 {
-	cputag_set_input_line(timer.machine(), "maincpu", M6502_IRQ_LINE, ASSERT_LINE);
-	cputag_set_input_line(timer.machine(), "maincpu", M6502_IRQ_LINE, CLEAR_LINE);
+	timer.machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, ASSERT_LINE);
+	timer.machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, CLEAR_LINE);
 }
 
 /* Address maps */
@@ -343,4 +343,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME          PARENT  COMPAT  MACHINE    INPUT       INIT      COMPANY  FULLNAME                     FLAGS */
-COMP( 198?, csc,     0,      0,      csc,  csc, driver_device,   0, "Fidelity Electronics", "Champion Chess Challenger (model CSC)",   GAME_NOT_WORKING | GAME_NO_SOUND | GAME_SUPPORTS_SAVE)
+COMP( 198?, csc,     0,      0,      csc,  csc, driver_device,   0, "Fidelity Electronics", "Champion Chess Challenger (model CSC)",   GAME_NOT_WORKING | GAME_NO_SOUND | GAME_SUPPORTS_SAVE | GAME_CLICKABLE_ARTWORK)

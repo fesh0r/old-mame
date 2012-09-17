@@ -51,7 +51,6 @@
 #include "machine/6821pia.h"
 #include "machine/nvram.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
 
 class eacc_state : public driver_device
 {
@@ -128,7 +127,7 @@ static INPUT_PORTS_START(eacc)
 	PORT_BIT( 0xf8, 0, IPT_UNUSED )
 INPUT_PORTS_END
 
-MACHINE_RESET_MEMBER(eacc_state)
+void eacc_state::machine_reset()
 {
 	m_cb2 = 0;
 }
@@ -138,7 +137,7 @@ static TIMER_DEVICE_CALLBACK( eacc_cb1 )
 	eacc_state *state = timer.machine().driver_data<eacc_state>();
 	state->m_cb1 ^= 1; // 15hz
 	if (state->m_cb2)
-		device_set_input_line(state->m_maincpu, M6800_IRQ_LINE, ASSERT_LINE);
+		state->m_maincpu->set_input_line(M6800_IRQ_LINE, ASSERT_LINE);
 }
 
 static TIMER_DEVICE_CALLBACK( eacc_nmi )
@@ -148,7 +147,7 @@ static TIMER_DEVICE_CALLBACK( eacc_nmi )
 	if (state->m_cb2)
 	{
 		state->m_nmi = true;
-		device_set_input_line(state->m_maincpu, INPUT_LINE_NMI, ASSERT_LINE);
+		state->m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -226,7 +225,7 @@ WRITE8_MEMBER( eacc_state::eacc_digit_w )
 {
 	if (m_nmi)
 	{
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 		m_nmi = false;
 	}
 	m_digit = data & 0xf8;

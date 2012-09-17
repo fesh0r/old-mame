@@ -57,8 +57,7 @@ sound generator (?), CD40105BE (RCA H 432) and a 74LS222A logic chip.
 #include "audio/t6721.h"
 
 
-typedef struct _t6721_state  t6721_state;
-struct _t6721_state
+struct t6721_state
 {
 	emu_timer *timer;
 
@@ -103,7 +102,7 @@ INLINE t6721_state *get_safe_token( device_t *device )
 	assert(device != NULL);
 	assert(device->type() == T6721);
 
-	return (t6721_state *)downcast<legacy_device_base *>(device)->token();
+	return (t6721_state *)downcast<t6721_device *>(device)->token();
 }
 
 /*****************************************************************************
@@ -284,17 +283,40 @@ static DEVICE_RESET( t6721 )
 	t6721->writeindex = 0;
 }
 
+const device_type T6721 = &device_creator<t6721_device>;
 
-/*-------------------------------------------------
-    device definition
--------------------------------------------------*/
+t6721_device::t6721_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, T6721, "Toshiba 6721A", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(t6721_state));
+}
 
-static const char DEVTEMPLATE_SOURCE[] = __FILE__;
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-#define DEVTEMPLATE_ID(p,s)				p##t6721##s
-#define DEVTEMPLATE_FEATURES			DT_HAS_START | DT_HAS_RESET
-#define DEVTEMPLATE_NAME				"Toshiba 6721A"
-#define DEVTEMPLATE_FAMILY				"Toshiba 6721A"
-#include "devtempl.h"
+void t6721_device::device_config_complete()
+{
+}
 
-DEFINE_LEGACY_DEVICE(T6721, t6721);
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void t6721_device::device_start()
+{
+	DEVICE_START_NAME( t6721 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void t6721_device::device_reset()
+{
+	DEVICE_RESET_NAME( t6721 )(this);
+}
+
+

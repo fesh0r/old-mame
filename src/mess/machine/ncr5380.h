@@ -6,12 +6,10 @@
 #ifndef _NCR5380_H_
 #define _NCR5380_H_
 
-#include "machine/scsi.h"
 #include "machine/scsidev.h"
 
 struct NCR5380interface
 {
-	const SCSIConfigTable *scsidevs;		/* SCSI devices */
 	void (*irq_callback)(running_machine &machine, int state);	/* irq callback */
 };
 
@@ -56,7 +54,6 @@ public:
 	void ncr5380_read_data(int bytes, UINT8 *pData);
 	void ncr5380_write_data(int bytes, UINT8 *pData);
 
-	void *ncr5380_get_scsi_device(int id);
 protected:
 	// device-level overrides
 	virtual void device_start();
@@ -76,14 +73,5 @@ private:
 
 // device type definition
 extern const device_type NCR5380;
-
-/***************************************************************************
-    PROTOTYPES
-***************************************************************************/
-READ8_DEVICE_HANDLER(ncr5380_read_reg);
-WRITE8_DEVICE_HANDLER(ncr5380_write_reg);
-
-void ncr5380_read_data(device_t *dev, int bytes, UINT8 *pData);
-void ncr5380_write_data(device_t *dev, int bytes, UINT8 *pData);
 
 #endif

@@ -17,8 +17,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _beta_disk_state beta_disk_state;
-struct _beta_disk_state
+struct beta_disk_state
 {
 	UINT8 betadisk_status;
 	UINT8 betadisk_active;
@@ -35,7 +34,7 @@ INLINE beta_disk_state *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == BETA_DISK);
 
-	return (beta_disk_state *)downcast<legacy_device_base *>(device)->token();
+	return (beta_disk_state *)downcast<beta_disk_device *>(device)->token();
 }
 
 
@@ -328,35 +327,61 @@ static DEVICE_RESET( beta_disk )
 {
 }
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO( beta_disk )
--------------------------------------------------*/
+const device_type BETA_DISK = &device_creator<beta_disk_device>;
 
-DEVICE_GET_INFO( beta_disk )
+beta_disk_device::beta_disk_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, BETA_DISK, "Beta Disk Interface", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(beta_disk_state);							break;
-
-		/* --- the following bits of info are returned as pointers --- */
-		case DEVINFO_PTR_ROM_REGION:					info->romregion = ROM_NAME(beta_disk);						break;
-		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_CONFIG_NAME(beta_disk);		break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(beta_disk);					break;
-		case DEVINFO_FCT_STOP:							/* Nothing */												break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(beta_disk);					break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Beta Disk Interface");						break;
-		case DEVINFO_STR_SHORTNAME:						strcpy(info->s, "betadisk");								break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Beta Disk Interface");						break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(beta_disk_state));
 }
 
-DEFINE_LEGACY_DEVICE(BETA_DISK, beta_disk);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void beta_disk_device::device_config_complete()
+{
+	m_shortname = "betadisk";
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void beta_disk_device::device_start()
+{
+	DEVICE_START_NAME( beta_disk )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void beta_disk_device::device_reset()
+{
+	DEVICE_RESET_NAME( beta_disk )(this);
+}
+
+//-------------------------------------------------
+//  device_mconfig_additions - return a pointer to
+//  the device's machine fragment
+//-------------------------------------------------
+
+machine_config_constructor beta_disk_device::device_mconfig_additions() const
+{
+	return MACHINE_CONFIG_NAME( beta_disk  );
+}
+
+//-------------------------------------------------
+//  device_rom_region - return a pointer to the
+//  the device's ROM definitions
+//-------------------------------------------------
+
+const rom_entry *beta_disk_device::device_rom_region() const
+{
+	return ROM_NAME(beta_disk );
+}
+
+

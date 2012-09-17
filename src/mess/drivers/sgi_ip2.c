@@ -100,6 +100,8 @@ public:
 	DECLARE_READ16_MEMBER(sgi_ip2_stklmt_r);
 	DECLARE_WRITE16_MEMBER(sgi_ip2_stklmt_w);
 	DECLARE_DRIVER_INIT(sgi_ip2);
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 
@@ -117,7 +119,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, 
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror("%08x: %s", cpu_get_pc(machine.device("maincpu")), buf);
+		logerror("%08x: %s", machine.device("maincpu")->safe_pc(), buf);
 	}
 }
 #else
@@ -369,11 +371,11 @@ static INTERRUPT_GEN( sgi_ip2_vbl )
 {
 }
 
-static MACHINE_START( sgi_ip2 )
+void sgi_ip2_state::machine_start()
 {
 }
 
-static MACHINE_RESET( sgi_ip2 )
+void sgi_ip2_state::machine_reset()
 {
 }
 
@@ -412,7 +414,7 @@ ADDRESS_MAP_END
 static void duarta_irq_handler(device_t *device, int state, UINT8 vector)
 {
 	verboselog(device->machine(), 0, "duarta_irq_handler\n");
-	cputag_set_input_line_and_vector(device->machine(), "maincpu", M68K_IRQ_6, state, M68K_INT_ACK_AUTOVECTOR);
+	device->machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_6, state, M68K_INT_ACK_AUTOVECTOR);
 };
 
 static UINT8 duarta_input(device_t *device)
@@ -444,7 +446,7 @@ static const duart68681_config sgi_ip2_duart68681a_config =
 static void duartb_irq_handler(device_t *device, int state, UINT8 vector)
 {
 	verboselog(device->machine(), 0, "duartb_irq_handler\n");
-	cputag_set_input_line_and_vector(device->machine(), "maincpu", M68K_IRQ_6, state, M68K_INT_ACK_AUTOVECTOR);
+	device->machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_6, state, M68K_INT_ACK_AUTOVECTOR);
 };
 
 static UINT8 duartb_input(device_t *device)
@@ -477,8 +479,6 @@ static MACHINE_CONFIG_START( sgi_ip2, sgi_ip2_state )
 	MCFG_CPU_PROGRAM_MAP(sgi_ip2_map)
 	MCFG_CPU_VBLANK_INT(TERMINAL_TAG ":" TERMINAL_SCREEN_TAG, sgi_ip2_vbl)
 
-	MCFG_MACHINE_START(sgi_ip2)
-	MCFG_MACHINE_RESET(sgi_ip2)
 
 	/* video hardware */
 	MCFG_GENERIC_TERMINAL_ADD(TERMINAL_TAG,sgi_terminal_intf)

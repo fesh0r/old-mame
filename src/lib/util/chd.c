@@ -1079,7 +1079,12 @@ chd_error chd_file::read_metadata(chd_metadata_tag searchtag, UINT32 searchindex
 			throw CHDERR_METADATA_NOT_FOUND;
 
 		// read the metadata
-		file_read(metaentry.offset + METADATA_HEADER_SIZE, output.stringbuffer(metaentry.length), metaentry.length);
+		// TODO: how to properly allocate a dynamic char buffer?
+		char* metabuf = new char[metaentry.length+1];
+		memset(metabuf, 0x00, metaentry.length+1);
+		file_read(metaentry.offset + METADATA_HEADER_SIZE, metabuf, metaentry.length);
+		output.cpy(metabuf);
+		delete[] metabuf;
 		return CHDERR_NONE;
 	}
 
@@ -1583,6 +1588,9 @@ void chd_file::parse_v5_header(UINT8 *rawheader, sha1_t &parentsha1)
 	m_compression[1] = be_read(&rawheader[20], 4);
 	m_compression[2] = be_read(&rawheader[24], 4);
 	m_compression[3] = be_read(&rawheader[28], 4);
+
+	if (compressed() && m_allow_writes)
+		throw CHDERR_FILE_NOT_WRITEABLE;
 
 	// describe the format
 	m_mapoffset_offset = 40;

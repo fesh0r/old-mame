@@ -65,24 +65,23 @@ const via6522_interface concept_via6522_intf =
 static void concept_fdc_init(running_machine &machine, int slot);
 static void concept_hdc_init(running_machine &machine, int slot);
 
-MACHINE_START(concept)
+void concept_state::machine_start()
 {
-	concept_state *state = machine.driver_data<concept_state>();
 	/* initialize int state */
-	state->m_pending_interrupts = 0;
+	m_pending_interrupts = 0;
 
 	/* initialize clock interface */
-	state->m_clock_enable = 0/*1*/;
+	m_clock_enable = 0/*1*/;
 
 	/* clear keyboard interface state */
-	state->m_KeyQueueHead = state->m_KeyQueueLen = 0;
-	memset(state->m_KeyStateSave, 0, sizeof(state->m_KeyStateSave));
+	m_KeyQueueHead = m_KeyQueueLen = 0;
+	memset(m_KeyStateSave, 0, sizeof(m_KeyStateSave));
 
 	/* initialize expansion slots */
-	memset(state->m_expansion_slots, 0, sizeof(state->m_expansion_slots));
+	memset(m_expansion_slots, 0, sizeof(m_expansion_slots));
 
-	concept_hdc_init(machine, 1);	/* Flat cable Hard Disk Controller in Slot 2 */
-	concept_fdc_init(machine, 2);	/* Floppy Disk Controller in Slot 3 */
+	concept_hdc_init(machine(), 1);	/* Flat cable Hard Disk Controller in Slot 2 */
+	concept_fdc_init(machine(), 2);	/* Floppy Disk Controller in Slot 3 */
 }
 
 static void install_expansion_slot(running_machine &machine, int slot,
@@ -96,7 +95,7 @@ static void install_expansion_slot(running_machine &machine, int slot,
 	state->m_expansion_slots[slot].rom_write = rom_write;
 }
 
-VIDEO_START(concept)
+void concept_state::video_start()
 {
 }
 
@@ -133,10 +132,10 @@ static void concept_set_interrupt(running_machine &machine, int level, int state
 
 	if (final_level)
 		/* assert interrupt */
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_1 + final_level - 1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_1 + final_level - 1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 INLINE void post_in_KeyQueue(concept_state *state, int keycode)

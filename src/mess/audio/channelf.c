@@ -3,8 +3,7 @@
 
 static const int max_amplitude = 0x7fff;
 
-typedef struct _channelf_sound_state channelf_sound_state;
-struct _channelf_sound_state
+struct channelf_sound_state
 {
 	sound_stream *channel;
 	int sound_mode;
@@ -20,7 +19,7 @@ INLINE channelf_sound_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == CHANNELF);
-	return (channelf_sound_state *)downcast<legacy_device_base *>(device)->token();
+	return (channelf_sound_state *)downcast<channelf_sound_device *>(device)->token();
 }
 
 void channelf_sound_w(device_t *device, int mode)
@@ -132,21 +131,42 @@ static DEVICE_START(channelf_sound)
 	state->envelope = 0;
 }
 
+const device_type CHANNELF = &device_creator<channelf_sound_device>;
 
-DEVICE_GET_INFO( channelf_sound )
+channelf_sound_device::channelf_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, CHANNELF, "Channel F", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(channelf_sound_state);			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(channelf_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Channel F");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(channelf_sound_state));
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(CHANNELF, channelf_sound);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void channelf_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void channelf_sound_device::device_start()
+{
+	DEVICE_START_NAME( channelf_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void channelf_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

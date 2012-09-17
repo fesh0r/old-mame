@@ -12,7 +12,7 @@
 
 typedef short termchar_t;
 
-typedef struct
+struct terminal_t
 {
 	tilemap_t *tm;
 	int gfx;
@@ -24,7 +24,7 @@ typedef struct
 	int cur_offset;
 	int cur_hidden;
 	termchar_t mem[1];
-} terminal_t;
+};
 
 
 class apple1_state : public driver_device
@@ -44,6 +44,9 @@ public:
 	DECLARE_READ8_MEMBER(apple1_cassette_r);
 	DECLARE_WRITE8_MEMBER(apple1_cassette_w);
 	DECLARE_DRIVER_INIT(apple1);
+	TILE_GET_INFO_MEMBER(terminal_gettileinfo);
+	virtual void machine_reset();
+	virtual void video_start();
 };
 
 
@@ -51,14 +54,14 @@ public:
 
 extern const pia6821_interface apple1_pia0;
 
-MACHINE_RESET( apple1 );
+
 SNAPSHOT_LOAD( apple1 );
 
 
 
 /*----------- defined in video/apple1.c -----------*/
 
-VIDEO_START( apple1 );
+
 SCREEN_UPDATE_IND16( apple1 );
 
 void apple1_vh_dsp_w (running_machine &machine, int data);

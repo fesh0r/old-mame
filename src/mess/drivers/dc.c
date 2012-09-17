@@ -40,24 +40,22 @@ extern WRITE64_HANDLER( dc_mess_gdrom_w );
 extern READ64_HANDLER( dc_mess_g1_ctrl_r );
 extern WRITE64_HANDLER( dc_mess_g1_ctrl_w );
 
-static UINT64 *dc_ram;
-
 static READ64_HANDLER( dcus_idle_skip_r )
 {
-	if (cpu_get_pc(&space->device())==0xc0ba52a)
-		device_spin_until_time(&space->device(), attotime::from_usec(2500));
+	if (space->device().safe_pc()==0xc0ba52a)
+		space->device().execute().spin_until_time(attotime::from_usec(2500));
 	//  device_spinuntil_int(&space->device());
 
-	return dc_ram[0x2303b0/8];
+	return space->machine().driver_data<dc_state>()->dc_ram[0x2303b0/8];
 }
 
 static READ64_HANDLER( dcjp_idle_skip_r )
 {
-	if (cpu_get_pc(&space->device())==0xc0bac62)
-		device_spin_until_time(&space->device(), attotime::from_usec(2500));
+	if (space->device().safe_pc()==0xc0bac62)
+		space->device().execute().spin_until_time(attotime::from_usec(2500));
 	//  device_spinuntil_int(&space->device());
 
-	return dc_ram[0x2302f8/8];
+	return space->machine().driver_data<dc_state>()->dc_ram[0x2302f8/8];
 }
 
 DRIVER_INIT_MEMBER(dc_state,dc)
@@ -179,10 +177,10 @@ static ADDRESS_MAP_START( dc_map, AS_PROGRAM, 64, dc_state )
 	AM_RANGE(0x05000000, 0x05ffffff) AM_RAM AM_SHARE("frameram") // apparently this actually accesses the same memory as the 64-bit texture memory access, but in a different format, keep it apart for now
 
 	/* Area 3 */
-	AM_RANGE(0x0c000000, 0x0cffffff) AM_RAM AM_SHARE("share4") AM_BASE_LEGACY(&dc_ram)
-	AM_RANGE(0x0d000000, 0x0dffffff) AM_RAM AM_SHARE("share4")// extra ram on Naomi (mirror on DC)
-	AM_RANGE(0x0e000000, 0x0effffff) AM_RAM AM_SHARE("share4")// mirror
-	AM_RANGE(0x0f000000, 0x0fffffff) AM_RAM AM_SHARE("share4")// mirror
+	AM_RANGE(0x0c000000, 0x0cffffff) AM_RAM AM_SHARE("dc_ram")
+	AM_RANGE(0x0d000000, 0x0dffffff) AM_RAM AM_SHARE("dc_ram")// extra ram on Naomi (mirror on DC)
+	AM_RANGE(0x0e000000, 0x0effffff) AM_RAM AM_SHARE("dc_ram")// mirror
+	AM_RANGE(0x0f000000, 0x0fffffff) AM_RAM AM_SHARE("dc_ram")// mirror
 
 	/* Area 4 */
 	AM_RANGE(0x10000000, 0x107fffff) AM_WRITE_LEGACY(ta_fifo_poly_w )
@@ -193,7 +191,7 @@ static ADDRESS_MAP_START( dc_map, AS_PROGRAM, 64, dc_state )
 	AM_RANGE(0x12800000, 0x12ffffff) AM_WRITE_LEGACY(ta_fifo_yuv_w )
 	AM_RANGE(0x13000000, 0x137fffff) AM_WRITE_LEGACY(ta_texture_directpath1_w ) AM_MIRROR(0x00800000) // access to texture / fraembfufer memory (either 32-bit or 64-bit area depending on SB_LMMODE1 register - cannot be written directly, only through dma / store queue
 
-	AM_RANGE(0x8c000000, 0x8cffffff) AM_RAM AM_SHARE("share4")	// another RAM mirror
+	AM_RANGE(0x8c000000, 0x8cffffff) AM_RAM AM_SHARE("dc_ram")	// another RAM mirror
 
 	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("maincpu", 0)
 ADDRESS_MAP_END
@@ -212,14 +210,14 @@ static MACHINE_RESET( dc_console )
 	dc_state *state = machine.driver_data<dc_state>();
 
 	device_t *aica = machine.device("aica");
-	MACHINE_RESET_CALL(dc);
+	state->machine_reset();
 	aica_set_ram_base(aica, state->dc_sound_ram, 2*1024*1024);
 	dreamcast_atapi_reset(machine);
 }
 
 static void aica_irq(device_t *device, int irq)
 {
-	cputag_set_input_line(device->machine(), "soundcpu", ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	device->machine().device("soundcpu")->execute().set_input_line(ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const aica_interface dc_aica_interface =
@@ -241,7 +239,6 @@ static MACHINE_CONFIG_START( dc, dc_state )
 	MCFG_CPU_ADD("soundcpu", ARM7, ((XTAL_33_8688MHz*2)/3)/8)	// AICA bus clock is 2/3rds * 33.8688.  ARM7 gets 1 bus cycle out of each 8.
 	MCFG_CPU_PROGRAM_MAP(dc_audio_map)
 
-	MCFG_MACHINE_START( dc )
 	MCFG_MACHINE_RESET( dc_console )
 
 	MCFG_MAPLE_DC_ADD( "maple_dc", "maincpu", dc_maple_irq )
@@ -260,7 +257,6 @@ static MACHINE_CONFIG_START( dc, dc_state )
 
 	MCFG_PALETTE_LENGTH(0x1000)
 
-	MCFG_VIDEO_START(dc)
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MCFG_SOUND_ADD("aica", AICA, 0)

@@ -335,19 +335,17 @@ WRITE32_MEMBER( jmfb_device::mac_48gc_w )
 
 READ32_MEMBER( jmfb_device::mac_48gc_r )
 {
-//  printf("48gc_r: @ %x, mask %08x [PC=%x]\n", offset, mem_mask, cpu_get_pc(machine().device("maincpu")));
+//  printf("48gc_r: @ %x, mask %08x [PC=%x]\n", offset, mem_mask, machine().device("maincpu")->safe_pc());
 
 	switch (offset)
 	{
 		case 0:
 			return 0x0c00;	// sense 13" RGB for now
 //          return 0x0000;  // sense "RGB Kong" monitor
-			break;
 
 		case 0x1c0/4:
 			m_toggle ^= 0xffffffff;
 			return m_toggle;
-			break;
 	}
 
 	return 0;

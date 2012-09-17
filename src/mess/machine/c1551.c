@@ -16,7 +16,6 @@
 
 */
 
-#include "c1541.h"
 #include "c1551.h"
 
 
@@ -30,6 +29,7 @@
 #define M6523_1_TAG		"ci_u2"
 #define C64H156_TAG		"u6"
 #define PLA_TAG			"u1"
+
 
 enum
 {
@@ -70,7 +70,7 @@ const rom_entry *c1551_device::device_rom_region() const
 
 
 //-------------------------------------------------
-//  m6502_interface m6510t_intf
+//  M6510_INTERFACE( cpu_intf )
 //-------------------------------------------------
 
 READ8_MEMBER( c1551_device::port_r )
@@ -100,7 +100,6 @@ READ8_MEMBER( c1551_device::port_r )
 
 	return data;
 }
-
 
 WRITE8_MEMBER( c1551_device::port_w )
 {
@@ -132,13 +131,14 @@ WRITE8_MEMBER( c1551_device::port_w )
 	m_ga->ds_w((data >> 5) & 0x03);
 }
 
-
-static const m6502_interface m6510t_intf =
+static M6510_INTERFACE( cpu_intf )
 {
-	NULL,			// read_indexed_func
-	NULL,			// write_indexed_func
+	DEVCB_NULL,			// read_indexed_func
+	DEVCB_NULL,			// write_indexed_func
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1551_device, port_r),
-	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1551_device, port_w)
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1551_device, port_w),
+	0x00,
+	0x00
 };
 
 
@@ -166,7 +166,6 @@ READ8_MEMBER( c1551_device::tcbm_data_r )
 	return m_tcbm_data;
 }
 
-
 WRITE8_MEMBER( c1551_device::tcbm_data_w )
 {
 	/*
@@ -186,7 +185,6 @@ WRITE8_MEMBER( c1551_device::tcbm_data_w )
 
 	m_tcbm_data = data;
 }
-
 
 READ8_MEMBER( c1551_device::tpi0_pc_r )
 {
@@ -219,7 +217,6 @@ READ8_MEMBER( c1551_device::tpi0_pc_r )
 	return data;
 }
 
-
 WRITE8_MEMBER( c1551_device::tpi0_pc_w )
 {
 	/*
@@ -249,7 +246,6 @@ WRITE8_MEMBER( c1551_device::tpi0_pc_w )
 	// read/write mode
 	m_ga->oe_w(BIT(data, 4));
 }
-
 
 static const tpi6525_interface tpi0_intf =
 {
@@ -289,7 +285,6 @@ READ8_MEMBER( c1551_device::tpi1_pb_r )
 	return m_status & 0x03;
 }
 
-
 READ8_MEMBER( c1551_device::tpi1_pc_r )
 {
 	/*
@@ -315,7 +310,6 @@ READ8_MEMBER( c1551_device::tpi1_pc_r )
 	return data;
 }
 
-
 WRITE8_MEMBER( c1551_device::tpi1_pc_w )
 {
 	/*
@@ -336,7 +330,6 @@ WRITE8_MEMBER( c1551_device::tpi1_pc_w )
 	// TCBM data valid
 	m_dav = BIT(data, 6);
 }
-
 
 static const tpi6525_interface tpi1_intf =
 {
@@ -376,13 +369,46 @@ static C64H156_INTERFACE( ga_intf )
 
 
 //-------------------------------------------------
+//  PLUS4_EXPANSION_INTERFACE( expansion_intf )
+//-------------------------------------------------
+
+READ8_MEMBER( c1551_device::exp_dma_r )
+{
+	return m_slot->dma_cd_r(offset);
+}
+
+WRITE8_MEMBER( c1551_device::exp_dma_w )
+{
+	m_slot->dma_cd_w(offset, data);
+}
+
+WRITE_LINE_MEMBER( c1551_device::exp_irq_w )
+{
+	m_slot->irq_w(state);
+}
+
+WRITE_LINE_MEMBER( c1551_device::exp_aec_w )
+{
+	m_slot->aec_w(state);
+}
+
+static PLUS4_EXPANSION_INTERFACE( expansion_intf )
+{
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1551_device, exp_dma_r),
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c1551_device, exp_dma_w),
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c1551_device, exp_irq_w),
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c1551_device, exp_aec_w)
+};
+
+
+//-------------------------------------------------
 //  MACHINE_DRIVER( c1551 )
 //-------------------------------------------------
 
 static MACHINE_CONFIG_FRAGMENT( c1551 )
 	MCFG_CPU_ADD(M6510T_TAG, M6510T, XTAL_16MHz/8)
 	MCFG_CPU_PROGRAM_MAP(c1551_mem)
-	MCFG_CPU_CONFIG(m6510t_intf)
+	MCFG_CPU_CONFIG(cpu_intf)
 	MCFG_QUANTUM_PERFECT_CPU(M6510T_TAG)
 
 	MCFG_PLS100_ADD(PLA_TAG)
@@ -391,6 +417,8 @@ static MACHINE_CONFIG_FRAGMENT( c1551 )
 
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, c1541_floppy_interface)
 	MCFG_64H156_ADD(C64H156_TAG, XTAL_16MHz, ga_intf)
+
+	MCFG_PLUS4_EXPANSION_SLOT_ADD(PLUS4_EXPANSION_SLOT_TAG, 0, expansion_intf, plus4_expansion_cards, NULL, NULL)
 MACHINE_CONFIG_END
 
 
@@ -443,7 +471,9 @@ c1551_device::c1551_device(const machine_config &mconfig, const char *tag, devic
 	  m_tpi0(*this, M6523_0_TAG),
 	  m_tpi1(*this, M6523_1_TAG),
 	  m_ga(*this, C64H156_TAG),
+	  m_pla(*this, PLA_TAG),
 	  m_image(*this, FLOPPY_0),
+	  m_exp(*this, PLUS4_EXPANSION_SLOT_TAG),
 	  m_tcbm_data(0xff),
 	  m_status(1),
 	  m_dav(1),
@@ -472,6 +502,7 @@ void c1551_device::device_start()
 	save_item(NAME(m_status));
 	save_item(NAME(m_dav));
 	save_item(NAME(m_ack));
+	save_item(NAME(m_dev));
 }
 
 
@@ -515,16 +546,38 @@ void c1551_device::device_timer(emu_timer &timer, device_timer_id id, int param,
 
 
 //-------------------------------------------------
+//  tpi1_selected -
+//-------------------------------------------------
+
+bool c1551_device::tpi1_selected(offs_t offset)
+{
+#ifdef PLA_DUMPED
+	int mux = 0, ras = 0, phi0 = 0, f7 = 0;
+	UINT16 input = A5 << 15 | A6 << 14 | A7 << 13 | A8 << 12 | A9 << 11 | mux << 10 | A10 << 9 | m_dev << 8 | ras << 7 | phi0 << 6 | A15 << 5 | A14 << 4 | A13 << 3 | A12 << 2 | A11 << 1 | f7;
+	UINT8 data = m_pla->read(input);
+	return BIT(data, 0) ? true : false;
+#endif
+
+	offs_t start_address = m_dev ? 0xfee0 : 0xfec0;
+
+	if (offset >= start_address && offset < (start_address + 0x20))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+//-------------------------------------------------
 //  plus4_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c1551_device::plus4_cd_r(address_space &space, offs_t offset, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
+UINT8 c1551_device::plus4_cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
 {
-	UINT8 data = 0;
+	data = m_exp->cd_r(space, offset, data, ba, cs0, c1l, c2l, cs1, c1h, c2h);
 
-	offs_t start_address = m_dev ? 0xfef0 : 0xfec0;
-
-	if (offset >= start_address && offset < (start_address + 8))
+	if (tpi1_selected(offset))
 	{
 		data = tpi6525_r(m_tpi1, offset & 0x07);
 	}
@@ -539,12 +592,12 @@ UINT8 c1551_device::plus4_cd_r(address_space &space, offs_t offset, int ba, int 
 
 void c1551_device::plus4_cd_w(address_space &space, offs_t offset, UINT8 data, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h)
 {
-	offs_t start_address = m_dev ? 0xfef0 : 0xfec0;
-
-	if (offset >= start_address && offset < (start_address + 8))
+	if (tpi1_selected(offset))
 	{
 		tpi6525_w(m_tpi1, offset & 0x07, data);
 	}
+
+	m_exp->cd_w(space, offset, data, ba, cs0, c1l, c2l, cs1, c1h, c2h);
 }
 
 
@@ -558,6 +611,8 @@ void c1551_device::plus4_breset_w(int state)
 	{
 		device_reset();
 	}
+
+	m_exp->breset_w(state);
 }
 
 

@@ -64,7 +64,7 @@
  * - "Keypad ," is not mapped
  */
 
-typedef struct _kay_kbd_t
+struct kay_kbd_t
 {
 	device_t *beeper;
 	UINT8 buff[16];
@@ -78,7 +78,7 @@ typedef struct _kay_kbd_t
 	int key;
 	int repeat;
 	int repeater;
-} kay_kbd_t;
+};
 
 INPUT_PORTS_START( kay_kbd )
 	PORT_START("ROW0")
@@ -280,15 +280,14 @@ static const UINT8 keyboard[8][10][8] = {
 	},
 };
 
-MACHINE_RESET( kay_kbd )
+MACHINE_RESET_MEMBER(kaypro_state,kay_kbd)
 {
-	kaypro_state *state = machine.driver_data<kaypro_state>();
-	kay_kbd_t *kbd = state->m_kbd = auto_alloc_clear(machine, kay_kbd_t);
+	kay_kbd_t *kbd = m_kbd = auto_alloc_clear(machine(), kay_kbd_t);
 
 	/* disable CapsLock LED initially */
-	set_led_status(machine, 1, 1);
-	set_led_status(machine, 1, 0);
-	kbd->beeper = machine.device(BEEPER_TAG);
+	set_led_status(machine(), 1, 1);
+	set_led_status(machine(), 1, 0);
+	kbd->beeper = machine().device(BEEPER_TAG);
 	kbd->beep_on = 1;
 	kbd->control_status = 0x14;
 	beep_set_state(kbd->beeper, 0);

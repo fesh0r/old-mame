@@ -20,11 +20,11 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, 
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", (unsigned) cpu_get_pc(machine.device("maincpu")), buf );
+		logerror( "%08x: %s", (unsigned) machine.device("maincpu")->safe_pc(), buf );
 	}
 }
 
-typedef struct
+struct MC_t
 {
 	emu_timer *tUpdateTimer;
 	UINT32 nCPUControl0;
@@ -68,7 +68,7 @@ typedef struct
 	UINT32 nDMAMode;
 	UINT32 nDMAZoomByteCnt;
 	UINT32 nDMARunning;
-} MC_t;
+};
 static MC_t *pMC;
 
 READ32_HANDLER( sgi_mc_r )

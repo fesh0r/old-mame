@@ -39,9 +39,9 @@ WRITE8_MEMBER(fm7_state::fm7_subintf_w)
 	if(data & 0x80)
 		m_video.sub_busy = data & 0x80;
 
-	cputag_set_input_line(machine(),"sub",INPUT_LINE_HALT,(data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
+	machine().device("sub")->execute().set_input_line(INPUT_LINE_HALT,(data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
 	if(data & 0x40)
-		cputag_set_input_line(machine(),"sub",M6809_IRQ_LINE,ASSERT_LINE);
+		machine().device("sub")->execute().set_input_line(M6809_IRQ_LINE,ASSERT_LINE);
 	//popmessage("Sub CPU Interface write: %02x\n",data);
 }
 
@@ -63,7 +63,7 @@ WRITE8_MEMBER(fm7_state::fm7_sub_busyflag_w)
  */
 READ8_MEMBER(fm7_state::fm7_cancel_ack)
 {
-	cputag_set_input_line(machine(),"sub",M6809_IRQ_LINE,CLEAR_LINE);
+	machine().device("sub")->execute().set_input_line(M6809_IRQ_LINE,CLEAR_LINE);
 	return 0x00;
 }
 
@@ -73,7 +73,7 @@ READ8_MEMBER(fm7_state::fm7_cancel_ack)
 READ8_MEMBER(fm7_state::fm7_attn_irq_r)
 {
 	m_video.attn_irq = 1;
-	cputag_set_input_line(machine(),"maincpu",M6809_FIRQ_LINE,ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(M6809_FIRQ_LINE,ASSERT_LINE);
 	return 0xff;
 }
 
@@ -1177,7 +1177,7 @@ WRITE8_MEMBER(fm7_state::fm77av_sub_bank_w)
 			break;
 	}
 	// reset sub CPU, set busy flag, set reset flag
-	cputag_set_input_line(machine(),"sub",INPUT_LINE_RESET,PULSE_LINE);
+	machine().device("sub")->execute().set_input_line(INPUT_LINE_RESET,PULSE_LINE);
 	m_video.sub_busy = 0x80;
 	m_video.sub_halt = 0;
 	m_video.sub_reset = 1;
@@ -1494,22 +1494,21 @@ WRITE8_MEMBER(fm7_state::fm7_console_ram_banked_w)
 	RAM[0x1c000+offset] = data;
 }
 
-VIDEO_START( fm7 )
+void fm7_state::video_start()
 {
-	fm7_state *state = machine.driver_data<fm7_state>();
-	state->m_video.vram_access = 0;
-	state->m_video.crt_enable = 0;
-	state->m_video.vram_offset = 0x0000;
-	state->m_video.vram_offset2 = 0x0000;
-	state->m_video.sub_reset = 0;
-	state->m_video.multi_page = 0;
-	state->m_video.subrom = 0;
-	state->m_video.cgrom = 0;
-	state->m_video.fine_offset = 0;
-	state->m_video.nmi_mask = 0;
-	state->m_video.active_video_page = 0;
-	state->m_video.display_video_page = 0;
-	state->m_video.vsync_flag = 0;
+	m_video.vram_access = 0;
+	m_video.crt_enable = 0;
+	m_video.vram_offset = 0x0000;
+	m_video.vram_offset2 = 0x0000;
+	m_video.sub_reset = 0;
+	m_video.multi_page = 0;
+	m_video.subrom = 0;
+	m_video.cgrom = 0;
+	m_video.fine_offset = 0;
+	m_video.nmi_mask = 0;
+	m_video.active_video_page = 0;
+	m_video.display_video_page = 0;
+	m_video.vsync_flag = 0;
 }
 
 SCREEN_UPDATE_IND16( fm7 )
@@ -1601,13 +1600,12 @@ static const rgb_t fm7_initial_palette[8] = {
 	MAKE_RGB(0xff, 0xff, 0xff), // 7
 };
 
-PALETTE_INIT( fm7 )
+void fm7_state::palette_init()
 {
-	fm7_state *state = machine.driver_data<fm7_state>();
 	int x;
 
-	palette_set_colors(machine, 0, fm7_initial_palette, ARRAY_LENGTH(fm7_initial_palette));
+	palette_set_colors(machine(), 0, fm7_initial_palette, ARRAY_LENGTH(fm7_initial_palette));
 	for(x=0;x<8;x++)
-		state->m_video.fm7_pal[x] = x;
+		m_video.fm7_pal[x] = x;
 }
 

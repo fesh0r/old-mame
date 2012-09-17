@@ -35,6 +35,7 @@ public:
 	UINT16 m_tty_data;
 	UINT8 m_tty_key_data;
 	int m_tty_cnt;
+	virtual void machine_reset();
 };
 
 WRITE8_MEMBER( mod8_state::out_w )
@@ -86,15 +87,15 @@ static IRQ_CALLBACK ( mod8_irq_callback )
 	return 0xC0; // LAA - NOP equivalent
 }
 
-static MACHINE_RESET(mod8)
+void mod8_state::machine_reset()
 {
-	device_set_irq_callback(machine.device("maincpu"), mod8_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(mod8_irq_callback);
 }
 
 WRITE8_MEMBER( mod8_state::kbd_put )
 {
 	m_tty_key_data = data ^ 0xff;
-	cputag_set_input_line(machine(), "maincpu", 0, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 }
 
 static GENERIC_TELEPRINTER_INTERFACE( teleprinter_intf )
@@ -108,7 +109,6 @@ static MACHINE_CONFIG_START( mod8, mod8_state )
 	MCFG_CPU_PROGRAM_MAP(mod8_mem)
 	MCFG_CPU_IO_MAP(mod8_io)
 
-	MCFG_MACHINE_RESET(mod8)
 
 	/* video hardware */
 	MCFG_GENERIC_TELEPRINTER_ADD(TELEPRINTER_TAG, teleprinter_intf)

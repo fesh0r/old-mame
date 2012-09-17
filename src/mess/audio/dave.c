@@ -28,8 +28,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _dave_t dave_t;
-struct _dave_t
+struct dave_t
 {
 	devcb_resolved_read8 reg_r;
 	devcb_resolved_write8 reg_w;
@@ -100,7 +99,7 @@ INLINE dave_t *get_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == DAVE);
-	return (dave_t *) downcast<legacy_device_base *>(device)->token();
+	return (dave_t *) downcast<dave_sound_device *>(device)->token();
 }
 
 
@@ -817,21 +816,51 @@ b0 = 1: Enable 1kHz/50Hz/TG latch
 
 
 
-DEVICE_GET_INFO( dave_sound )
+const device_type DAVE = &device_creator<dave_sound_device>;
+
+dave_sound_device::dave_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, DAVE, "Dave", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(dave_t);				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(dave_sound);	break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(dave_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Dave");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(dave_t));
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(DAVE, dave_sound);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void dave_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void dave_sound_device::device_start()
+{
+	DEVICE_START_NAME( dave_sound )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void dave_sound_device::device_reset()
+{
+	DEVICE_RESET_NAME( dave_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void dave_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

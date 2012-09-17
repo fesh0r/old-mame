@@ -108,6 +108,9 @@ public:
 protected:
 	virtual void machine_reset();
 
+	virtual void machine_start();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 #define mc6845_h_char_total 	(state->m_crtc_vreg[0])
@@ -128,10 +131,9 @@ protected:
 #define mc6845_update_addr  	(((state->m_crtc_vreg[0x12]<<8) & 0x3f00) | (state->m_crtc_vreg[0x13] & 0xff))
 
 
-static VIDEO_START( bml3 )
+void bml3_state::video_start()
 {
-	bml3_state *state = machine.driver_data<bml3_state>();
-	state->m_p_chargen = state->memregion("chargen")->base();
+	m_p_chargen = memregion("chargen")->base();
 }
 
 static SCREEN_UPDATE_IND16( bml3 )
@@ -381,7 +383,7 @@ WRITE8_MEMBER( bml3_state::bml3_firq_mask_w)
 	if(m_firq_mask)
 	{
 		m_firq_status = 0; // clear pending firq
-		device_set_input_line(m_maincpu, M6809_FIRQ_LINE, CLEAR_LINE);
+		m_maincpu->set_input_line(M6809_FIRQ_LINE, CLEAR_LINE);
 	}
 }
 
@@ -389,7 +391,7 @@ READ8_MEMBER( bml3_state::bml3_firq_status_r )
 {
 	UINT8 res = m_firq_status << 7;
 	m_firq_status = 0;
-	device_set_input_line(m_maincpu, M6809_FIRQ_LINE, CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_FIRQ_LINE, CLEAR_LINE);
 	return res;
 }
 
@@ -586,7 +588,7 @@ static TIMER_DEVICE_CALLBACK( keyboard_callback )
 				{
 					state->m_keyb_press = scancode;
 					state->m_keyb_press_flag = 1;
-					cputag_set_input_line(timer.machine(), "maincpu", M6809_IRQ_LINE, HOLD_LINE);
+					timer.machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 					return;
 				}
 			}
@@ -599,7 +601,7 @@ static TIMER_DEVICE_CALLBACK( keyboard_callback )
 #if 0
 static INTERRUPT_GEN( bml3_irq )
 {
-	cputag_set_input_line(device->machine(), "maincpu", M6809_IRQ_LINE, HOLD_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 }
 #endif
 
@@ -610,31 +612,30 @@ static INTERRUPT_GEN( bml3_timer_firq )
 
 	if(!state->m_firq_mask)
 	{
-		device_set_input_line(state->m_maincpu, M6809_FIRQ_LINE, ASSERT_LINE);
+		state->m_maincpu->set_input_line(M6809_FIRQ_LINE, ASSERT_LINE);
 		state->m_firq_status = 1;
 	}
 }
 
-static PALETTE_INIT( bml3 )
+void bml3_state::palette_init()
 {
 	int i;
 
 	for(i=0;i<8;i++)
-		palette_set_color_rgb(machine, i, pal1bit(i >> 1),pal1bit(i >> 2),pal1bit(i >> 0));
+		palette_set_color_rgb(machine(), i, pal1bit(i >> 1),pal1bit(i >> 2),pal1bit(i >> 0));
 }
 
-static MACHINE_START(bml3)
+void bml3_state::machine_start()
 {
-	bml3_state *state = machine.driver_data<bml3_state>();
 
-	beep_set_frequency(machine.device(BEEPER_TAG),1200); //guesswork
-	beep_set_state(machine.device(BEEPER_TAG),0);
-	state->m_extram = auto_alloc_array(machine,UINT8,0x10000);
+	beep_set_frequency(machine().device(BEEPER_TAG),1200); //guesswork
+	beep_set_state(machine().device(BEEPER_TAG),0);
+	m_extram = auto_alloc_array(machine(),UINT8,0x10000);
 }
 
 void bml3_state::machine_reset()
 {
-	address_space *mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
 
 	/* defaults */
 	mem->install_rom(0xa000, 0xfeff,mem->machine().root_device().memregion("maincpu")->base() + 0xa000);
@@ -698,7 +699,7 @@ const mc6843_interface bml3_6843_if = { NULL };
 
 WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 {
-	address_space *mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
 	/* ROM banking:
     -0-- --0- 0xa000 - 0xbfff ROM R RAM W
     -1-- --0- 0xa000 - 0xbfff RAM R/W
@@ -890,8 +891,7 @@ static MACHINE_CONFIG_START( bml3, bml3_state )
 	MCFG_CPU_VBLANK_INT("screen", bml3_timer_firq )
 //  MCFG_CPU_PERIODIC_INT(bml3_firq,45)
 
-	MCFG_MACHINE_START(bml3)
-//  MCFG_MACHINE_RESET(bml3)
+//  MCFG_MACHINE_RESET_OVERRIDE(bml3_state,bml3)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -900,9 +900,7 @@ static MACHINE_CONFIG_START( bml3, bml3_state )
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 200-1)
 	MCFG_SCREEN_UPDATE_STATIC(bml3)
-	MCFG_VIDEO_START(bml3)
 	MCFG_PALETTE_LENGTH(8)
-	MCFG_PALETTE_INIT(bml3)
 	MCFG_GFXDECODE(bml3)
 
 	/* Devices */

@@ -245,7 +245,7 @@ enum
 
 void adam_state::bankswitch()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	switch (m_mioc & 0x03)
@@ -1171,7 +1171,7 @@ static TIMER_DEVICE_CALLBACK( paddle_tick )
 
 	// TODO: improve irq behaviour (see drivers/coleco.c)
 	if (coleco_scan_paddles(timer.machine(), &state->m_joy_status0, &state->m_joy_status1))
-		device_set_input_line(state->m_maincpu, INPUT_LINE_IRQ0, HOLD_LINE);
+		state->m_maincpu->set_input_line(INPUT_LINE_IRQ0, HOLD_LINE);
 }
 
 
@@ -1505,7 +1505,7 @@ static WRITE_LINE_DEVICE_HANDLER(adam_vdp_interrupt)
 
 	if (state && !driver_state->m_vdp_nmi)
 	{
-		cputag_set_input_line(device->machine(), Z80_TAG, INPUT_LINE_NMI, PULSE_LINE);
+		device->machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 	driver_state->m_vdp_nmi = state;
@@ -1606,8 +1606,8 @@ WRITE_LINE_MEMBER( adam_state::os3_w )
 
 			//logerror("Master 6801 read from %04x data %02x\n", m_ba, m_data_out);
 
-			device_set_input_line(m_netcpu, M6801_SC1_LINE, ASSERT_LINE);
-			device_set_input_line(m_netcpu, M6801_SC1_LINE, CLEAR_LINE);
+			m_netcpu->set_input_line(M6801_SC1_LINE, ASSERT_LINE);
+			m_netcpu->set_input_line(M6801_SC1_LINE, CLEAR_LINE);
 		}
 	}
 }

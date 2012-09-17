@@ -70,20 +70,19 @@
 
 ***************************************************************************/
 
-static TILE_GET_INFO(terminal_gettileinfo)
+TILE_GET_INFO_MEMBER(apple1_state::terminal_gettileinfo)
 {
-	apple1_state *state = machine.driver_data<apple1_state>();
 	int ch, gfxfont, code, color;
 
-	ch = state->m_current_terminal->mem[tile_index];
-	code = ch & ((1 << state->m_current_terminal->char_bits) - 1);
-	color = ch >> state->m_current_terminal->char_bits;
-	gfxfont = state->m_current_terminal->gfx;
+	ch = m_current_terminal->mem[tile_index];
+	code = ch & ((1 << m_current_terminal->char_bits) - 1);
+	color = ch >> m_current_terminal->char_bits;
+	gfxfont = m_current_terminal->gfx;
 
-	if ((tile_index == state->m_current_terminal->cur_offset) && !state->m_current_terminal->cur_hidden && state->m_current_terminal->getcursorcode)
-		code = state->m_current_terminal->getcursorcode(code);
+	if ((tile_index == m_current_terminal->cur_offset) && !m_current_terminal->cur_hidden && m_current_terminal->getcursorcode)
+		code = m_current_terminal->getcursorcode(code);
 
-	SET_TILE_INFO(
+	SET_TILE_INFO_MEMBER(
 		gfxfont,	/* gfx */
 		code,		/* character */
 		color,		/* color */
@@ -186,14 +185,15 @@ static terminal_t *terminal_create(
 {
 	terminal_t *term;
 	int char_width, char_height;
+	apple1_state *state = machine.driver_data<apple1_state>();
 
-	char_width = machine.gfx[gfx]->width;
-	char_height = machine.gfx[gfx]->height;
+	char_width = machine.gfx[gfx]->width();
+	char_height = machine.gfx[gfx]->height();
 
 	term = (terminal_t *) auto_alloc_array(machine, char, sizeof(terminal_t) - sizeof(term->mem)
 		+ (num_cols * num_rows * sizeof(termchar_t)));
 
-	term->tm = tilemap_create(machine, terminal_gettileinfo, tilemap_scan_rows,
+	term->tm = &machine.tilemap().create(tilemap_get_info_delegate(FUNC(apple1_state::terminal_gettileinfo),state), TILEMAP_SCAN_ROWS,
 		char_width, char_height, num_cols, num_rows);
 
 	term->gfx = gfx;
@@ -228,19 +228,18 @@ static int apple1_getcursorcode(int original_code)
 
 /**************************************************************************/
 
-VIDEO_START( apple1 )
+void apple1_state::video_start()
 {
-	apple1_state *state = machine.driver_data<apple1_state>();
-	state->m_blink_on = 1;		/* cursor is visible initially */
-	state->m_terminal = terminal_create(
-		machine,
+	m_blink_on = 1;		/* cursor is visible initially */
+	m_terminal = terminal_create(
+		machine(),
 		0,			/* graphics font 0 (the only one we have) */
 		32,			/* Blank character is symbol 32 in the ROM */
 		8,			/* use 8 bits for the character code */
 		apple1_getcursorcode,
 		40, 24);	/* 40 columns, 24 rows */
 
-	terminal_setcursor(state->m_terminal, 0, 0);
+	terminal_setcursor(m_terminal, 0, 0);
 }
 
 /* This function handles all writes to the video display. */

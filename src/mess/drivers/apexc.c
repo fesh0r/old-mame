@@ -28,6 +28,9 @@ public:
 	int m_letters;
 	int m_pos;
 	DECLARE_DRIVER_INIT(apexc);
+	virtual void machine_start();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
@@ -35,9 +38,9 @@ static void apexc_teletyper_init(running_machine &machine);
 static void apexc_teletyper_putchar(running_machine &machine, int character);
 
 
-static MACHINE_START(apexc)
+void apexc_state::machine_start()
 {
-	apexc_teletyper_init(machine);
+	apexc_teletyper_init(machine());
 }
 
 
@@ -421,7 +424,7 @@ static INTERRUPT_GEN( apexc_interrupt )
 
 	if (control_transitions & panel_run)
 	{	/* toggle run/stop state */
-		cpu_set_reg(device, APEXC_STATE, ! cpu_get_reg(device, APEXC_STATE));
+		device->state().set_state_int(APEXC_STATE, ! device->state().state_int(APEXC_STATE));
 	}
 
 	while (control_transitions & (panel_CR | panel_A | panel_R | panel_ML | panel_HB))
@@ -463,10 +466,10 @@ static INTERRUPT_GEN( apexc_interrupt )
 			/* read/write register #reg_id */
 			if (control_keys & panel_write)
 				/* write reg */
-				cpu_set_reg(device, reg_id, state->m_panel_data_reg);
+				device->state().set_state_int(reg_id, state->m_panel_data_reg);
 			else
 				/* read reg */
-				state->m_panel_data_reg = cpu_get_reg(device, reg_id);
+				state->m_panel_data_reg = device->state().state_int(reg_id);
 		}
 	}
 
@@ -475,11 +478,11 @@ static INTERRUPT_GEN( apexc_interrupt )
 
 		if (control_keys & panel_write) {
 			/* write memory */
-			space->write_dword(cpu_get_reg(device, APEXC_ML_FULL)<<2, state->m_panel_data_reg);
+			space->write_dword(device->state().state_int(APEXC_ML_FULL)<<2, state->m_panel_data_reg);
 		}
 		else {
 			/* read memory */
-			state->m_panel_data_reg = space->read_dword(cpu_get_reg(device, APEXC_ML_FULL)<<2);
+			state->m_panel_data_reg = space->read_dword(device->state().state_int(APEXC_ML_FULL)<<2);
 		}
 	}
 
@@ -543,20 +546,19 @@ static const rectangle teletyper_scroll_clear_window(
 );
 static const int var_teletyper_scroll_step = - teletyper_scroll_step;
 
-static PALETTE_INIT( apexc )
+void apexc_state::palette_init()
 {
-	palette_set_colors(machine, 0, apexc_palette, APEXC_PALETTE_SIZE);
+	palette_set_colors(machine(), 0, apexc_palette, APEXC_PALETTE_SIZE);
 }
 
-static VIDEO_START( apexc )
+void apexc_state::video_start()
 {
-	apexc_state *state = machine.driver_data<apexc_state>();
-	screen_device *screen = machine.first_screen();
+	screen_device *screen = machine().first_screen();
 	int width = screen->width();
 	int height = screen->height();
 
-	state->m_bitmap = auto_bitmap_ind16_alloc(machine, width, height);
-	state->m_bitmap->fill(0, /*machine.visible_area*/teletyper_window);
+	m_bitmap = auto_bitmap_ind16_alloc(machine(), width, height);
+	m_bitmap->fill(0, /*machine().visible_area*/teletyper_window);
 }
 
 /* draw a small 8*8 LED (well, there were no LEDs at the time, so let's call this a lamp ;-) ) */
@@ -605,7 +607,7 @@ static SCREEN_UPDATE_IND16( apexc )
 
 	apexc_draw_led(bitmap, 0, 0, 1);
 
-	apexc_draw_led(bitmap, 0, 8, cpu_get_reg(screen.machine().device("maincpu"), APEXC_STATE));
+	apexc_draw_led(bitmap, 0, 8, screen.machine().device("maincpu")->state().state_int(APEXC_STATE));
 
 	for (i=0; i<32; i++)
 	{
@@ -870,7 +872,6 @@ static MACHINE_CONFIG_START( apexc, apexc_state )
 	MCFG_CPU_VBLANK_INT("screen", apexc_interrupt)
 	/*MCFG_CPU_PERIODIC_INT(func, rate)*/
 
-	MCFG_MACHINE_START( apexc )
 
 	/* video hardware does not exist, but we display a control panel and the typewriter output */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -883,8 +884,6 @@ static MACHINE_CONFIG_START( apexc, apexc_state )
 	MCFG_GFXDECODE(apexc)
 	MCFG_PALETTE_LENGTH(APEXC_PALETTE_SIZE)
 
-	MCFG_PALETTE_INIT(apexc)
-	MCFG_VIDEO_START(apexc)
 
 	MCFG_APEXC_CYLINDER_ADD("cylinder")
 	MCFG_APEXC_TAPE_PUNCHER_ADD("tape_puncher")

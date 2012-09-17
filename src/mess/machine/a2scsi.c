@@ -20,6 +20,7 @@
 
 #include "a2scsi.h"
 #include "includes/apple2.h"
+#include "machine/scsibus.h"
 
 
 /***************************************************************************
@@ -33,24 +34,15 @@
 const device_type A2BUS_SCSI = &device_creator<a2bus_scsi_device>;
 
 #define SCSI_ROM_REGION  "scsi_rom"
-#define SCSI_5380_TAG    "ncr5380"
-
-static const SCSIConfigTable dev_table =
-{
-	0,                                      /* 2 SCSI devices */
-	{
-//   { SCSI_ID_6, "harddisk1", SCSI_DEVICE_HARDDISK },  /* SCSI ID 6, using disk1, and it's a harddisk */
-//   { SCSI_ID_5, "harddisk2", SCSI_DEVICE_HARDDISK }   /* SCSI ID 5, using disk2, and it's a harddisk */
-	}
-};
+#define SCSI_5380_TAG    "scsi:ncr5380"
 
 static const struct NCR5380interface a2scsi_5380_intf =
 {
-	&dev_table,	// SCSI device table
 	NULL        // IRQ handler (unconnected according to schematic)
 };
 
 MACHINE_CONFIG_FRAGMENT( scsi )
+	MCFG_SCSIBUS_ADD("scsi")
 	MCFG_NCR5380_ADD(SCSI_5380_TAG, (XTAL_28_63636MHz/4), a2scsi_5380_intf)
 MACHINE_CONFIG_END
 
@@ -133,7 +125,7 @@ void a2bus_scsi_device::device_reset()
 
 UINT8 a2bus_scsi_device::read_c0nx(address_space &space, UINT8 offset)
 {
-    printf("Read c0n%x (PC=%x)\n", offset, cpu_get_pc(&space.device()));
+    printf("Read c0n%x (PC=%x)\n", offset, space.device().safe_pc());
 
     switch (offset)
     {
@@ -145,7 +137,7 @@ UINT8 a2bus_scsi_device::read_c0nx(address_space &space, UINT8 offset)
         case 5:
         case 6:
         case 7:
-            return ncr5380_read_reg(m_ncr5380, offset);
+            return m_ncr5380->ncr5380_read_reg(offset);
 
     case 9:         // card's ID?
         return 7;
@@ -161,7 +153,7 @@ UINT8 a2bus_scsi_device::read_c0nx(address_space &space, UINT8 offset)
 
 void a2bus_scsi_device::write_c0nx(address_space &space, UINT8 offset, UINT8 data)
 {
-    printf("Write %02x to c0n%x (PC=%x)\n", data, offset, cpu_get_pc(&space.device()));
+    printf("Write %02x to c0n%x (PC=%x)\n", data, offset, space.device().safe_pc());
 
     switch (offset)
     {
@@ -173,7 +165,7 @@ void a2bus_scsi_device::write_c0nx(address_space &space, UINT8 offset, UINT8 dat
         case 5:
         case 6:
         case 7:
-            ncr5380_write_reg(m_ncr5380, offset, data);
+            m_ncr5380->ncr5380_write_reg(offset, data);
             break;
 
         case 0xa:  // ROM and RAM banking (74LS273 at U3E)
@@ -214,7 +206,7 @@ UINT8 a2bus_scsi_device::read_cnxx(address_space &space, UINT8 offset)
 
 void a2bus_scsi_device::write_cnxx(address_space &space, UINT8 offset, UINT8 data)
 {
-    printf("Write %02x to cn%02x (PC=%x)\n", data, offset, cpu_get_pc(&space.device()));
+    printf("Write %02x to cn%02x (PC=%x)\n", data, offset, space.device().safe_pc());
 }
 
 /*-------------------------------------------------

@@ -21,8 +21,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _er59256_t er59256_t;
-struct _er59256_t
+struct er59256_t
 {
     /* The actual memory */
 	UINT16  eerom[EEROM_WORDS];
@@ -61,7 +60,7 @@ static void decode_command(er59256_t *er59256);
 INLINE er59256_t *get_token(device_t *device)
 {
 	assert(device->type() == ER59256);
-	return (er59256_t *) downcast<legacy_device_base *>(device)->token();
+	return (er59256_t *) downcast<er59256_device *>(device)->token();
 }
 
 
@@ -223,30 +222,40 @@ static void decode_command(er59256_t *er59256)
         er59256->command=CMD_INVALID;
 }
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO( er59256 )
--------------------------------------------------*/
+const device_type ER59256 = &device_creator<er59256_device>;
 
-DEVICE_GET_INFO( er59256 )
+er59256_device::er59256_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, ER59256, "Microchip ER59256 serial eeprom.", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(er59256_t);				break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(er59256);	break;
-		case DEVINFO_FCT_STOP:							info->stop = DEVICE_STOP_NAME(er59256);    break;
-		case DEVINFO_FCT_RESET:							/* Nothing */								break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Microchip ER59256 serial eeprom.");		break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Microchip ER59256 serial eeprom.");		break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
-		case DEVINFO_STR_CREDITS:						/* Nothing */								break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(er59256_t));
 }
 
-DEFINE_LEGACY_DEVICE(ER59256, er59256);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void er59256_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void er59256_device::device_start()
+{
+	DEVICE_START_NAME( er59256 )(this);
+}
+
+//-------------------------------------------------
+//  device_stop - device-specific stop
+//-------------------------------------------------
+
+void er59256_device::device_stop()
+{
+	DEVICE_STOP_NAME( er59256 )(this);
+}
+
+

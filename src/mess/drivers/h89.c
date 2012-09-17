@@ -40,6 +40,7 @@ public:
 	DECLARE_WRITE8_MEMBER( port_f2_w );
 
 	UINT8 m_port_f2;
+	virtual void machine_reset();
 };
 
 
@@ -92,7 +93,7 @@ static INPUT_PORTS_START( h89 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(h89)
+void h89_state::machine_reset()
 {
 }
 
@@ -101,7 +102,7 @@ static TIMER_DEVICE_CALLBACK( h89_irq_timer )
 	h89_state *state = timer.machine().driver_data<h89_state>();
 
 	if (state->m_port_f2 & 0x02)
-		device_set_input_line_and_vector(state->m_maincpu, 0, HOLD_LINE, 0xcf);
+		state->m_maincpu->set_input_line_and_vector(0, HOLD_LINE, 0xcf);
 }
 
 WRITE8_MEMBER( h89_state::port_f2_w )
@@ -130,7 +131,6 @@ static MACHINE_CONFIG_START( h89, h89_state )
 	MCFG_CPU_PROGRAM_MAP(h89_mem)
 	MCFG_CPU_IO_MAP(h89_io)
 
-	MCFG_MACHINE_RESET(h89)
 
 #if 0
 	/* video hardware */

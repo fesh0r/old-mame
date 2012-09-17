@@ -220,6 +220,14 @@ void vic20_expansion_slot_device::device_start()
 	m_out_irq_func.resolve(m_out_irq_cb, *this);
 	m_out_nmi_func.resolve(m_out_nmi_cb, *this);
 	m_out_res_func.resolve(m_out_res_cb, *this);
+
+	// inherit bus clock
+	if (clock() == 0)
+	{
+		vic20_expansion_slot_device *root = machine().device<vic20_expansion_slot_device>(VIC20_EXPANSION_SLOT_TAG);
+		assert(root);
+		set_unscaled_clock(root->clock());
+	}
 }
 
 
@@ -326,13 +334,11 @@ const char * vic20_expansion_slot_device::get_default_card_software(const machin
 //  cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 vic20_expansion_slot_device::cd_r(address_space &space, offs_t offset, int ram1, int ram2, int ram3, int blk1, int blk2, int blk3, int blk5, int io2, int io3)
+UINT8 vic20_expansion_slot_device::cd_r(address_space &space, offs_t offset, UINT8 data, int ram1, int ram2, int ram3, int blk1, int blk2, int blk3, int blk5, int io2, int io3)
 {
-	UINT8 data = 0;
-
 	if (m_cart != NULL)
 	{
-		data = m_cart->vic20_cd_r(space, offset, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
+		data = m_cart->vic20_cd_r(space, offset, data, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
 	}
 
 	return data;
@@ -349,23 +355,6 @@ void vic20_expansion_slot_device::cd_w(address_space &space, offs_t offset, UINT
 	{
 		m_cart->vic20_cd_w(space, offset, data, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
 	}
-}
-
-
-//-------------------------------------------------
-//  screen_update -
-//-------------------------------------------------
-
-UINT32 vic20_expansion_slot_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	bool value = false;
-
-	if (m_cart != NULL)
-	{
-		value = m_cart->vic20_screen_update(screen, bitmap, cliprect);
-	}
-
-	return value;
 }
 
 WRITE_LINE_MEMBER( vic20_expansion_slot_device::port_res_w ) { if (m_cart != NULL) m_cart->vic20_res_w(state); }

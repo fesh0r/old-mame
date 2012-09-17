@@ -75,12 +75,12 @@ INPUT_PORTS_END
 static MC6845_UPDATE_ROW( victor9k_update_row )
 {
 	victor9k_state *state = device->machine().driver_data<victor9k_state>();
-	address_space *program = state->m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = state->m_maincpu->space(AS_PROGRAM);
 	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 
 	if (BIT(ma, 13))
 	{
-		fatalerror("Graphics mode not supported!");
+		fatalerror("Graphics mode not supported!\n");
 	}
 	else
 	{
@@ -825,7 +825,7 @@ WRITE8_MEMBER( victor9k_state::via6_pb_w )
     */
 
 	// motor speed controller reset
-	device_set_input_line(m_fdc_cpu, INPUT_LINE_RESET, BIT(data, 2));
+	m_fdc_cpu->set_input_line(INPUT_LINE_RESET, BIT(data, 2));
 
 	// stepper enable A
 	m_se[0] = BIT(data, 6);
@@ -923,10 +923,10 @@ static IRQ_CALLBACK( victor9k_irq_callback )
 void victor9k_state::machine_start()
 {
 	// set interrupt callback
-	device_set_irq_callback(m_maincpu, victor9k_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(victor9k_irq_callback);
 
 	// memory banking
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	program->install_ram(0x00000, m_ram->size() - 1, m_ram->pointer());
 }
 

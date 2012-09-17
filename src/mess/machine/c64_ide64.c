@@ -12,7 +12,6 @@
     TODO:
 
     - fast loader does not work with 1541
-    - graphics corruption during Ultimax mode (VIC issue?)
     - IDE unknown command (E8)
     - FT245 USB
     - CompactFlash slot
@@ -46,12 +45,18 @@ const device_type C64_IDE64 = &device_creator<c64_ide64_cartridge_device>;
 //-------------------------------------------------
 //  MACHINE_CONFIG_FRAGMENT( c64_ide64 )
 //-------------------------------------------------
+static const ide_config ide_intf =
+{
+	NULL,
+	NULL,
+	0
+};
 
 static MACHINE_CONFIG_FRAGMENT( c64_ide64 )
 	MCFG_ATMEL_29C010_ADD(AT29C010A_TAG)
 	MCFG_DS1302_ADD(DS1302_TAG, XTAL_32_768kHz)
 
-	MCFG_IDE_CONTROLLER_ADD(IDE_TAG, NULL, ide_image_devices, "hdd", "hdd", false)
+	MCFG_IDE_CONTROLLER_ADD(IDE_TAG, ide_intf, ide_image_devices, "hdd", "hdd", false)
 MACHINE_CONFIG_END
 
 
@@ -143,11 +148,10 @@ void c64_ide64_cartridge_device::device_reset()
 //  c64_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c64_ide64_cartridge_device::c64_cd_r(address_space &space, offs_t offset, int ba, int roml, int romh, int io1, int io2)
+UINT8 c64_ide64_cartridge_device::c64_cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
 {
-	if (!m_enable) return 0;
+	if (!m_enable) return data;
 
-	UINT8 data = 0;
 	int rom_oe = 1, ram_oe = 1;
 
 	if (!m_game && m_exrom && ba)
@@ -214,7 +218,8 @@ UINT8 c64_ide64_cartridge_device::c64_cd_r(address_space &space, offs_t offset, 
 		{
 			m_rtc->sclk_w(0);
 
-			data = m_rtc->io_r();
+			data &= ~0x01;
+			data |= m_rtc->io_r();
 
 			m_rtc->sclk_w(1);
 		}
@@ -227,6 +232,7 @@ UINT8 c64_ide64_cartridge_device::c64_cd_r(address_space &space, offs_t offset, 
 	if (!rom_oe)
 	{
 		offs_t addr = (m_bank << 14) | (offset & 0x3fff);
+
 		data = m_flash_rom->read(addr);
 	}
 	else if (!ram_oe)
@@ -322,4 +328,24 @@ void c64_ide64_cartridge_device::c64_cd_w(address_space &space, offs_t offset, U
 			m_exrom = BIT(offset, 1);
 		}
 	}
+}
+
+
+//-------------------------------------------------
+//  c64_game_r - GAME read
+//-------------------------------------------------
+
+int c64_ide64_cartridge_device::c64_game_r(offs_t offset, int ba, int rw, int hiram)
+{
+	return ba ? m_game : 1;
+}
+
+
+//-------------------------------------------------
+//  c64_exrom_r - EXROM read
+//-------------------------------------------------
+
+int c64_ide64_cartridge_device::c64_exrom_r(offs_t offset, int ba, int rw, int hiram)
+{
+	return ba ? m_exrom : 1;
 }

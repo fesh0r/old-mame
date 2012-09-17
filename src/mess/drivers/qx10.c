@@ -138,6 +138,7 @@ public:
 		UINT8 rx;
 	}m_rs232c;
 
+	virtual void palette_init();
 };
 
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
@@ -526,7 +527,7 @@ static const struct pit8253_config qx10_pit8253_2_config =
 
 WRITE_LINE_MEMBER( qx10_state::qx10_pic8259_master_set_int_line )
 {
-	cputag_set_input_line(machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER( qx10_state::get_slave_ack )
@@ -899,7 +900,7 @@ INPUT_PORTS_END
 
 void qx10_state::machine_start()
 {
-	device_set_irq_callback(machine().device("maincpu"), irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(irq_callback);
 }
 
 void qx10_state::machine_reset()
@@ -971,7 +972,7 @@ static UPD7220_INTERFACE( hgdc_intf )
 	DEVCB_NULL
 };
 
-static PALETTE_INIT( gdc )
+void qx10_state::palette_init()
 {
 	// ...
 }
@@ -1019,7 +1020,6 @@ static MACHINE_CONFIG_START( qx10, qx10_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MCFG_GFXDECODE(qx10)
 	MCFG_PALETTE_LENGTH(8)
-	MCFG_PALETTE_INIT(gdc)
 
 	/* Devices */
 	MCFG_PIT8253_ADD("pit8253_1", qx10_pit8253_1_config)

@@ -106,18 +106,6 @@ static const applefdc_interface lisa210_fdc_interface =
 	sony_read_status
 };
 
-#ifdef UNUSED_FUNCTION
-static void lisa_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-    switch(state)
-    {
-        case MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:     info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K; break;
-
-        default:                                        sonydriv_device_getinfo(devclass, state, info); break;
-    }
-}
-#endif
-
 static const floppy_interface lisa_floppy_interface =
 {
 	DEVCB_NULL,
@@ -161,8 +149,6 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	MCFG_CPU_PROGRAM_MAP(lisa_fdc_map)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
-	MCFG_MACHINE_START( lisa )
-	MCFG_MACHINE_RESET( lisa )
 
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -175,7 +161,6 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
 
-	MCFG_VIDEO_START(lisa)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

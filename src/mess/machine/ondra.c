@@ -79,19 +79,18 @@ static TIMER_CALLBACK(nmi_check_callback)
 {
 	if ((machine.root_device().ioport("NMI")->read() & 1) == 1)
 	{
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
-MACHINE_RESET( ondra )
+void ondra_state::machine_reset()
 {
-	ondra_state *state = machine.driver_data<ondra_state>();
-	state->m_bank1_status = 0;
-	state->m_bank2_status = 0;
-	ondra_update_banks(machine);
+	m_bank1_status = 0;
+	m_bank2_status = 0;
+	ondra_update_banks(machine());
 }
 
-MACHINE_START(ondra)
+void ondra_state::machine_start()
 {
-	machine.scheduler().timer_pulse(attotime::from_hz(10), FUNC(nmi_check_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(10), FUNC(nmi_check_callback));
 }

@@ -253,7 +253,7 @@ WRITE8_MEMBER( intv_state::intvkbd_dualport8_msb_w )
 				intvkbd_tms9927_w(space, offset-0xc0, data);
 				break;
 			default:
-				logerror("%04X: Unknown write %02x to 0x40%02x\n",cpu_get_pc(&space.device()),data,offset);
+				logerror("%04X: Unknown write %02x to 0x40%02x\n",space.device().safe_pc(),data,offset);
 				break;
 		}
 	}
@@ -616,36 +616,35 @@ DRIVER_INIT_MEMBER(intv_state,intv)
 #endif
 
 /* Set Reset and INTR/INTRM Vector */
-MACHINE_RESET( intv )
+void intv_state::machine_reset()
 {
-	device_set_input_line_vector(machine.device("maincpu"), CP1610_RESET, 0x1000);
+	machine().device("maincpu")->execute().set_input_line_vector(CP1610_RESET, 0x1000);
 
 	/* These are actually the same vector, and INTR is unused */
-	device_set_input_line_vector(machine.device("maincpu"), CP1610_INT_INTRM, 0x1004);
-	device_set_input_line_vector(machine.device("maincpu"), CP1610_INT_INTR,  0x1004);
+	machine().device("maincpu")->execute().set_input_line_vector(CP1610_INT_INTRM, 0x1004);
+	machine().device("maincpu")->execute().set_input_line_vector(CP1610_INT_INTR,  0x1004);
 
 	/* Set initial PC */
-	cpu_set_reg(machine.device("maincpu"), CP1610_R7, 0x1000);
+	machine().device("maincpu")->state().set_state_int(CP1610_R7, 0x1000);
 
 	return;
 }
 
-MACHINE_RESET( intvecs )
+MACHINE_RESET_MEMBER(intv_state,intvecs)
 {
-	intv_state *state = machine.driver_data<intv_state>();
-	state->membank("bank1")->set_base(machine.root_device().memregion("maincpu")->base() + (0x2000 << 1));
-	state->membank("bank2")->set_base(machine.root_device().memregion("ecs_rom")->base() + (0x7000 << 1));
-	state->membank("bank3")->set_base(machine.root_device().memregion("maincpu")->base() + (0xE000 << 1));
-	state->membank("bank4")->set_base(machine.root_device().memregion("maincpu")->base() + (0xF000 << 1));
+	membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base() + (0x2000 << 1));
+	membank("bank2")->set_base(machine().root_device().memregion("ecs_rom")->base() + (0x7000 << 1));
+	membank("bank3")->set_base(machine().root_device().memregion("maincpu")->base() + (0xE000 << 1));
+	membank("bank4")->set_base(machine().root_device().memregion("maincpu")->base() + (0xF000 << 1));
 
-	device_set_input_line_vector(machine.device("maincpu"), CP1610_RESET, 0x1000);
+	machine().device("maincpu")->execute().set_input_line_vector(CP1610_RESET, 0x1000);
 
 	/* These are actually the same vector, and INTR is unused */
-	device_set_input_line_vector(machine.device("maincpu"), CP1610_INT_INTRM, 0x1004);
-	device_set_input_line_vector(machine.device("maincpu"), CP1610_INT_INTR,  0x1004);
+	machine().device("maincpu")->execute().set_input_line_vector(CP1610_INT_INTRM, 0x1004);
+	machine().device("maincpu")->execute().set_input_line_vector(CP1610_INT_INTR,  0x1004);
 
 	/* Set initial PC */
-	cpu_set_reg(machine.device("maincpu"), CP1610_R7, 0x1000);
+	machine().device("maincpu")->state().set_state_int(CP1610_R7, 0x1000);
 
 	return;
 }
@@ -654,7 +653,7 @@ MACHINE_RESET( intvecs )
 static TIMER_CALLBACK(intv_interrupt_complete)
 {
 	intv_state *state = machine.driver_data<intv_state>();
-	cputag_set_input_line(machine, "maincpu", CP1610_INT_INTRM, CLEAR_LINE);
+	machine.device("maincpu")->execute().set_input_line(CP1610_INT_INTRM, CLEAR_LINE);
 	state->m_bus_copy_mode = 0;
 }
 
@@ -663,7 +662,7 @@ static TIMER_CALLBACK(intv_btb_fill)
 	intv_state *state = machine.driver_data<intv_state>();
 	UINT8 column;
 	UINT8 row = state->m_backtab_row;
-	//device_adjust_icount(machine.device("maincpu"), -STIC_ROW_FETCH);
+	//machine.device("maincpu")->execute().adjust_icount(-STIC_ROW_FETCH);
 	for(column=0; column < STIC_BACKTAB_WIDTH; column++)
 	{
 		state->m_backtab_buffer[row][column] = state->m_ram16[column + row * STIC_BACKTAB_WIDTH];
@@ -675,12 +674,12 @@ static TIMER_CALLBACK(intv_btb_fill)
 INTERRUPT_GEN( intv_interrupt )
 {
 	intv_state *state = device->machine().driver_data<intv_state>();
-	cputag_set_input_line(device->machine(), "maincpu", CP1610_INT_INTRM, ASSERT_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(CP1610_INT_INTRM, ASSERT_LINE);
 	state->m_sr1_int_pending = 1;
 	state->m_bus_copy_mode = 1;
 	state->m_backtab_row = 0;
 	UINT8 row;
-	device_adjust_icount(device->machine().device("maincpu"), -(12*STIC_ROW_BUSRQ+STIC_FRAME_BUSRQ)); // Account for stic cycle stealing
+	device->machine().device("maincpu")->execute().adjust_icount(-(12*STIC_ROW_BUSRQ+STIC_FRAME_BUSRQ)); // Account for stic cycle stealing
 	device->machine().scheduler().timer_set(device->machine().device<cpu_device>("maincpu")
 		->cycles_to_attotime(STIC_VBLANK_END), FUNC(intv_interrupt_complete));
 	for (row=0; row < STIC_BACKTAB_HEIGHT; row++)
@@ -691,7 +690,7 @@ INTERRUPT_GEN( intv_interrupt )
 
 	if (state->m_row_delay == 0)
 	{
-		device_adjust_icount(device->machine().device("maincpu"), -STIC_ROW_BUSRQ); // extra row fetch occurs if vertical delay == 0
+		device->machine().device("maincpu")->execute().adjust_icount(-STIC_ROW_BUSRQ); // extra row fetch occurs if vertical delay == 0
 	}
 
 	intv_stic_screenrefresh(device->machine());

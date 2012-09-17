@@ -30,8 +30,6 @@ ToDo:
 #include "formats/basicdsk.h"
 
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define VIDEO_START_MEMBER(name) void name::video_start()
 
 class a5105_state : public driver_device
 {
@@ -67,6 +65,7 @@ public:
 	UINT8 m_memsel[4];
 	virtual void machine_reset();
 	virtual void video_start();
+	virtual void palette_init();
 };
 
 /* TODO */
@@ -144,7 +143,7 @@ WRITE8_MEMBER( a5105_state::pcg_val_w )
 {
 	m_char_rom[m_pcg_addr | m_pcg_internal_addr] = data;
 
-	gfx_element_mark_dirty(machine().gfx[0], m_pcg_addr >> 3);
+	machine().gfx[0]->mark_dirty(m_pcg_addr >> 3);
 
 	m_pcg_internal_addr++;
 	m_pcg_internal_addr&=7;
@@ -220,7 +219,7 @@ READ8_MEMBER( a5105_state::a5105_memsel_r )
 
 WRITE8_MEMBER( a5105_state::a5105_memsel_w )
 {
-	address_space *prog = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *prog = m_maincpu->space( AS_PROGRAM );
 
 	if (m_memsel[0] != ((data & 0x03) >> 0))
 	{
@@ -453,9 +452,9 @@ static INPUT_PORTS_START( a5105 )
 INPUT_PORTS_END
 
 
-MACHINE_RESET_MEMBER(a5105_state)
+void a5105_state::machine_reset()
 {
-	address_space *space = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
 	a5105_ab_w(*space, 0, 9); // turn motor off
 	beep_set_frequency(m_beep, 500);
 
@@ -485,7 +484,7 @@ static GFXDECODE_START( a5105 )
 GFXDECODE_END
 
 
-static PALETTE_INIT( gdc )
+void a5105_state::palette_init()
 {
 	int i;
 	int r,g,b;
@@ -496,11 +495,11 @@ static PALETTE_INIT( gdc )
 		g = i & 2 ? ((i & 8) ? 0xaa : 0xff) : 0x00;
 		b = i & 1 ? ((i & 8) ? 0xaa : 0xff) : 0x00;
 
-		palette_set_color(machine, i, MAKE_RGB(r,g,b));
+		palette_set_color(machine(), i, MAKE_RGB(r,g,b));
 	}
 }
 
-VIDEO_START_MEMBER( a5105_state )
+void a5105_state::video_start()
 {
 	// find memory regions
 	m_char_rom = memregion("pcg")->base();
@@ -595,7 +594,6 @@ static MACHINE_CONFIG_START( a5105, a5105_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 25*8-1)
 	MCFG_GFXDECODE(a5105)
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(gdc)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

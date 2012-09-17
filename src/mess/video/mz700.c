@@ -29,19 +29,19 @@
 	} while (0)
 
 
-PALETTE_INIT( mz700 )
+void mz_state::palette_init()
 {
 	int i;
 
-	machine.colortable = colortable_alloc(machine, 8);
+	machine().colortable = colortable_alloc(machine(), 8);
 
 	for (i = 0; i < 8; i++)
-		colortable_palette_set_color(machine.colortable, i, MAKE_RGB((i & 2) ? 0xff : 0x00, (i & 4) ? 0xff : 0x00, (i & 1) ? 0xff : 0x00));
+		colortable_palette_set_color(machine().colortable, i, MAKE_RGB((i & 2) ? 0xff : 0x00, (i & 4) ? 0xff : 0x00, (i & 1) ? 0xff : 0x00));
 
 	for (i = 0; i < 256; i++)
 	{
-		colortable_entry_set_value(machine.colortable, i*2, i & 7);
-        	colortable_entry_set_value(machine.colortable, i*2+1, (i >> 4) & 7);
+		colortable_entry_set_value(machine().colortable, i*2, i & 7);
+        	colortable_entry_set_value(machine().colortable, i*2+1, (i >> 4) & 7);
 	}
 }
 
@@ -76,10 +76,9 @@ SCREEN_UPDATE_IND16( mz700 )
     MZ-800
 ***************************************************************************/
 
-VIDEO_START( mz800 )
+VIDEO_START_MEMBER(mz_state,mz800)
 {
-	mz_state *mz = machine.driver_data<mz_state>();
-	gfx_element_set_source(machine.gfx[0], mz->m_cgram);
+	machine().gfx[0]->set_source(m_cgram);
 }
 
 SCREEN_UPDATE_IND16( mz800 )
@@ -131,5 +130,5 @@ WRITE8_MEMBER(mz_state::mz800_cgram_w)
 {
 	m_cgram[offset] = data;
 
-	gfx_element_mark_dirty(machine().gfx[0], offset/8);
+	machine().gfx[0]->mark_dirty(offset/8);
 }

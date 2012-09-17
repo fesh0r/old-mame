@@ -146,30 +146,58 @@ static DEVICE_RESET(apollo_config)
 	config = device->machine().root_device().ioport("apollo_config")->read();
 }
 
-/*-------------------------------------------------
- device get info callback
- -------------------------------------------------*/
-
-static DEVICE_GET_INFO(apollo_config)
+class apollo_config_device : public device_t
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(apollo_config); break;
-		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(apollo_config);break;
+public:
+	apollo_config_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+	virtual void device_reset();
+private:
+	// internal state
+};
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					strcpy(info->s, "Apollo Configuration");break;
-		case DEVINFO_STR_FAMILY:				strcpy(info->s, "Configuration");		break;
-		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");					break;
-		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);				break;
-		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
-	}
+extern const device_type APOLLO_CONF;
+
+
+const device_type APOLLO_CONF = &device_creator<apollo_config_device>;
+
+apollo_config_device::apollo_config_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, APOLLO_CONF, "Apollo Configuration", tag, owner, clock)
+{
 }
 
-static DECLARE_LEGACY_DEVICE(APOLLO_CONF, apollo_config);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-DEFINE_LEGACY_DEVICE(APOLLO_CONF, apollo_config);
+void apollo_config_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void apollo_config_device::device_start()
+{
+	DEVICE_START_NAME( apollo_config )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void apollo_config_device::device_reset()
+{
+	DEVICE_RESET_NAME( apollo_config )(this);
+}
+
+
 
 //##########################################################################
 // machine/apollo_csr.c - APOLLO DS3500 CPU Control and Status registers
@@ -546,7 +574,7 @@ static WRITE_LINE_DEVICE_HANDLER( apollo_dma_1_hrq_changed ) {
 
 static WRITE_LINE_DEVICE_HANDLER( apollo_dma_2_hrq_changed ) {
 	// DLOG2(("dma 2 hrq changed state %02x", state));
-	cputag_set_input_line(device->machine(), MAINCPU, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	device->machine().device(MAINCPU)->execute().set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
 	i8237_hlda_w(device, state);
@@ -685,7 +713,7 @@ static WRITE_LINE_DEVICE_HANDLER( apollo_pic8259_master_set_int_line ) {
 		apollo_set_cache_status_register(0x10, state ? 0x10 : 0x00);
 	}
 
-	cputag_set_input_line_and_vector(device->machine(), MAINCPU, M68K_IRQ_6,state ? ASSERT_LINE : CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+	device->machine().device(MAINCPU)->execute().set_input_line_and_vector(M68K_IRQ_6,state ? ASSERT_LINE : CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( apollo_pic8259_slave_set_int_line ) {
@@ -1437,39 +1465,38 @@ DRIVER_INIT_MEMBER(apollo_state,apollo)
 	//MLOG1(("driver_init_apollo"));
 }
 
-MACHINE_START( apollo )
+MACHINE_START_MEMBER(apollo_state,apollo)
 {
-	MLOG1(("machine_start_apollo"));
+	//MLOG1(("machine_start_apollo"));
 
-	device_start_apollo_fdc (machine.device(APOLLO_FDC_TAG));
-	device_start_apollo_ptm (machine.device(APOLLO_PTM_TAG) );
-	device_start_apollo_sio(machine.device(APOLLO_SIO_TAG));
-	device_start_apollo_sio2(machine.device(APOLLO_SIO2_TAG));
+	device_start_apollo_fdc (machine().device(APOLLO_FDC_TAG));
+	device_start_apollo_ptm (machine().device(APOLLO_PTM_TAG) );
+	device_start_apollo_sio(machine().device(APOLLO_SIO_TAG));
+	device_start_apollo_sio2(machine().device(APOLLO_SIO2_TAG));
 
 	if (apollo_is_dn3000())
 	{
-		MLOG1(("faking mc146818 interrupts (DN3000 only)"));
+		//MLOG1(("faking mc146818 interrupts (DN3000 only)"));
 		// fake mc146818 interrupts (DN3000 only)
-		machine.scheduler().timer_pulse(attotime::from_hz(2), FUNC(apollo_rtc_timer));
+		machine().scheduler().timer_pulse(attotime::from_hz(2), FUNC(apollo_rtc_timer));
 	}
 }
 
-MACHINE_RESET( apollo )
+MACHINE_RESET_MEMBER(apollo_state,apollo)
 {
-	apollo_state *st = machine.driver_data<apollo_state>();
-	MLOG1(("machine_reset_apollo"));
+	//MLOG1(("machine_reset_apollo"));
 
-	st->dma8237_1 = machine.device(APOLLO_DMA1_TAG);
-	st->dma8237_2 = machine.device(APOLLO_DMA2_TAG);
-	st->pic8259_master = machine.device(APOLLO_PIC1_TAG);
-	st->pic8259_slave = machine.device(APOLLO_PIC2_TAG);
+	dma8237_1 = machine().device(APOLLO_DMA1_TAG);
+	dma8237_2 = machine().device(APOLLO_DMA2_TAG);
+	pic8259_master = machine().device(APOLLO_PIC1_TAG);
+	pic8259_slave = machine().device(APOLLO_PIC2_TAG);
 
 	// set configuration
 	apollo_csr_set_servicemode(apollo_config(APOLLO_CONF_SERVICE_MODE));
 
-	device_reset_apollo_ptm(machine.device(APOLLO_PTM_TAG));
-	device_reset_apollo_rtc(machine.device(APOLLO_RTC_TAG));
-	device_reset_apollo_sio(machine.device(APOLLO_SIO_TAG));
-	device_reset_apollo_sio2(machine.device(APOLLO_SIO2_TAG));
+	device_reset_apollo_ptm(machine().device(APOLLO_PTM_TAG));
+	device_reset_apollo_rtc(machine().device(APOLLO_RTC_TAG));
+	device_reset_apollo_sio(machine().device(APOLLO_SIO_TAG));
+	device_reset_apollo_sio2(machine().device(APOLLO_SIO2_TAG));
 	device_reset_apollo_fdc(apollo_fdc_device);
 }

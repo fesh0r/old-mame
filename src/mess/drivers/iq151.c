@@ -59,8 +59,6 @@ ToDo:
 #include "video/iq151_video32.h"
 #include "video/iq151_video64.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 
 class iq151_state : public driver_device
@@ -318,7 +316,7 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER( iq151_state::pic_set_int_line )
 {
-	device_set_input_line(m_maincpu, 0, state ?  HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ?  HOLD_LINE : CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( iq151_vblank_interrupt )
@@ -352,7 +350,7 @@ DRIVER_INIT_MEMBER(iq151_state,iq151)
 	membank("boot")->configure_entry(0, RAM + 0xf800);
 	membank("boot")->configure_entry(1, RAM + 0x0000);
 
-	device_set_irq_callback(m_maincpu, iq151_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(iq151_irq_callback);
 
 	// keep machine pointers to slots
 	m_carts[0] = machine().device<iq151cart_slot_device>("slot1");
@@ -362,7 +360,7 @@ DRIVER_INIT_MEMBER(iq151_state,iq151)
 	m_carts[4] = machine().device<iq151cart_slot_device>("slot5");
 }
 
-MACHINE_RESET_MEMBER( iq151_state )
+void iq151_state::machine_reset()
 {
 	membank("boot")->set_entry(0);
 
@@ -370,7 +368,7 @@ MACHINE_RESET_MEMBER( iq151_state )
 }
 
 // this machine don't have a built-in video controller, but uses external cartridge
-SCREEN_UPDATE16_MEMBER( iq151_state )
+UINT32 iq151_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	bitmap.fill(0, cliprect);
 

@@ -24,7 +24,7 @@
 #-------------------------------------------------
 
 ifndef TARGET
-TARGET = mess
+TARGET = mame
 endif
 
 ifndef SUBTARGET
@@ -688,11 +688,11 @@ BUILDOUT = $(BUILDOBJ)
 include $(SRC)/osd/$(OSD)/$(OSD).mak
 
 # then the various core pieces
+include $(SRC)/build/build.mak
 include $(SRC)/$(TARGET)/$(SUBTARGET).mak
 -include $(SRC)/$(TARGET)/osd/$(OSD)/$(OSD).mak
 include $(SRC)/emu/emu.mak
 include $(SRC)/lib/lib.mak
-include $(SRC)/build/build.mak
 -include $(SRC)/osd/$(CROSS_BUILD_OSD)/build.mak
 include $(SRC)/tools/tools.mak
 
@@ -709,12 +709,6 @@ CDEFS = $(DEFS)
 emulator: maketree $(BUILD) $(EMULATOR)
 
 buildtools: maketree $(BUILD)
-
-# In order to keep dependencies reasonable, we exclude objects in the base of
-# $(SRC)/emu, as well as all the OSD objects and anything in the $(OBJ) tree
-depend: maketree $(MAKEDEP_TARGET)
-	@echo Rebuilding depend.mak...
-	$(MAKEDEP) -I. $(INCPATH) -X$(SRC)/emu -X$(SRC)/osd/... -X$(OBJ)/... src/$(TARGET) > depend.mak
 
 tools: maketree $(TOOLS)
 
@@ -824,4 +818,4 @@ endif
 # optional dependencies file
 #-------------------------------------------------
 
--include depend.mak
+-include depend_$(TARGET).mak

@@ -71,8 +71,7 @@
 #define CR2_SHIFT_ACCESS 0x02
 #define CR2_PLANE_ACCESS 0x03
 
-typedef struct _screen_data screen_data_t;
-struct _screen_data {
+struct screen_data_t {
 	UINT16 width;
 	UINT16 height;
 	UINT16 buffer_width;
@@ -113,7 +112,7 @@ struct _screen_data {
 INLINE screen_data_t *get_safe_token(device_t *device) {
 	assert(device != NULL);
 	assert(device->type() == APOLLO_MONO15I || device->type() == APOLLO_MONO19I );
-	return (screen_data_t *)downcast<legacy_device_base *>(device)->token();
+	return (screen_data_t *)downcast<apollo_mono_device *>(device)->token();
 }
 
 /***************************************************************************
@@ -834,49 +833,81 @@ static DEVICE_RESET( apollo_mono15i ) {
 	DEVICE_RESET_CALL(apollo_mono19i);
 }
 
-/*-------------------------------------------------
- DEVICE_GET_INFO( apollo_mono19i/15i )
- -------------------------------------------------*/
-
-DEVICE_GET_INFO( apollo_mono19i ) {
-	switch (state) {
-	/* --- the following bits of info are returned as 64-bit signed integers --- */
-	case DEVINFO_INT_INLINE_CONFIG_BYTES:  info->i = 0; break;
-	case DEVINFO_INT_TOKEN_BYTES:          info->i = sizeof(screen_data_t); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-	case DEVINFO_FCT_START:                info->start = DEVICE_START_NAME(apollo_mono19i); break;
-	case DEVINFO_FCT_STOP:                 /* Nothing */ break;
-	case DEVINFO_FCT_RESET:                info->reset = DEVICE_RESET_NAME(apollo_mono19i); 	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-	case DEVINFO_STR_NAME:                 strcpy(info->s, "Apollo 19\" Monochrome Screen"); break;
-	case DEVINFO_STR_FAMILY:               strcpy(info->s, "Terminal"); break;
-	case DEVINFO_STR_VERSION:              strcpy(info->s, "1.0"); break;
-	case DEVINFO_STR_SOURCE_FILE:          strcpy(info->s, __FILE__); break;
-	case DEVINFO_STR_CREDITS:              strcpy(info->s, "Copyright the MESS Team"); break;
-	}
+apollo_mono_device::apollo_mono_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, type, name, tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(screen_data_t));
 }
 
-DEVICE_GET_INFO( apollo_mono15i ) {
-	switch (state) {
-	/* --- the following bits of info are returned as 64-bit signed integers --- */
-	case DEVINFO_INT_INLINE_CONFIG_BYTES:  info->i = 0; break;
-	case DEVINFO_INT_TOKEN_BYTES:          info->i = sizeof(screen_data_t); break;
+const device_type APOLLO_MONO19I = &device_creator<apollo_mono19i_device>;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-	case DEVINFO_FCT_START:                info->start = DEVICE_START_NAME(apollo_mono15i); break;
-	case DEVINFO_FCT_STOP:                 /* Nothing */ break;
-	case DEVINFO_FCT_RESET:                info->reset = DEVICE_RESET_NAME(apollo_mono15i); 	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-	case DEVINFO_STR_NAME:                 strcpy(info->s, "Apollo 15\" Monochrome Screen"); break;
-	case DEVINFO_STR_FAMILY:               strcpy(info->s, "Terminal"); break;
-	case DEVINFO_STR_VERSION:              strcpy(info->s, "1.0"); break;
-	case DEVINFO_STR_SOURCE_FILE:          strcpy(info->s, __FILE__); break;
-	case DEVINFO_STR_CREDITS:              strcpy(info->s, "Copyright the MESS Team"); break;
-	}
+apollo_mono19i_device::apollo_mono19i_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: apollo_mono_device(mconfig, APOLLO_MONO19I, "Apollo 19\" Monochrome Screen", tag, owner, clock)
+{
 }
 
-DEFINE_LEGACY_DEVICE(APOLLO_MONO19I, apollo_mono19i);
-DEFINE_LEGACY_DEVICE(APOLLO_MONO15I, apollo_mono15i);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void apollo_mono19i_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void apollo_mono19i_device::device_start()
+{
+	DEVICE_START_NAME( apollo_mono19i )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void apollo_mono19i_device::device_reset()
+{
+	DEVICE_RESET_NAME( apollo_mono19i )(this);
+}
+
+
+const device_type APOLLO_MONO15I = &device_creator<apollo_mono15i_device>;
+
+apollo_mono15i_device::apollo_mono15i_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: apollo_mono_device(mconfig, APOLLO_MONO15I, "Apollo 15\" Monochrome Screen", tag, owner, clock)
+{
+}
+
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void apollo_mono15i_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void apollo_mono15i_device::device_start()
+{
+	DEVICE_START_NAME( apollo_mono15i )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void apollo_mono15i_device::device_reset()
+{
+	DEVICE_RESET_NAME( apollo_mono15i )(this);
+}
+
+

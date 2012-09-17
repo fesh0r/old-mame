@@ -131,15 +131,15 @@ INPUT_PORTS_END
 
 
 /* Initialize the palette */
-static PALETTE_INIT( apple2gs )
+PALETTE_INIT_MEMBER(apple2gs_state,apple2gs)
 {
 	int i;
 
-	PALETTE_INIT_CALL(apple2);
+	PALETTE_INIT_CALL_MEMBER(apple2);
 
 	for (i = 0; i < 16; i++)
 	{
-		palette_set_color_rgb(machine, i,
+		palette_set_color_rgb(machine(), i,
 			apple2gs_palette[(3*i)]*17,
 			apple2gs_palette[(3*i)+1]*17,
 			apple2gs_palette[(3*i)+2]*17);
@@ -198,7 +198,7 @@ static WRITE8_DEVICE_HANDLER(a2bus_nmi_w)
 {
     apple2gs_state *a2 = device->machine().driver_data<apple2gs_state>();
 
-    device_set_input_line(a2->m_maincpu, INPUT_LINE_NMI, data);
+    a2->m_maincpu->set_input_line(INPUT_LINE_NMI, data);
 }
 
 static WRITE8_DEVICE_HANDLER(a2bus_inh_w)
@@ -248,11 +248,11 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 	MCFG_PALETTE_LENGTH( 16+256 )
 	MCFG_GFXDECODE( apple2gs )
 
-	MCFG_MACHINE_START( apple2gs )
-	MCFG_MACHINE_RESET( apple2gs )
+	MCFG_MACHINE_START_OVERRIDE(apple2gs_state, apple2gs )
+	MCFG_MACHINE_RESET_OVERRIDE(apple2gs_state, apple2gs )
 
-	MCFG_PALETTE_INIT( apple2gs )
-	MCFG_VIDEO_START( apple2gs )
+	MCFG_PALETTE_INIT_OVERRIDE(apple2gs_state, apple2gs )
+	MCFG_VIDEO_START_OVERRIDE(apple2gs_state, apple2gs )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -296,7 +296,7 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( apple2gsr1, apple2gs )
-	MCFG_MACHINE_START( apple2gsr1 )
+	MCFG_MACHINE_START_OVERRIDE(apple2gs_state, apple2gsr1 )
 
     MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1280K")  // 256K on board + 1M in the expansion slot was common for ROM 01
@@ -409,8 +409,9 @@ ROM_START(apple2gsr0)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT       INIT      COMPANY            FULLNAME */
-COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs, driver_device,   0, "Apple Computer", "Apple IIgs (ROM03)", 0 )
+COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs, driver_device,   0, "Apple Computer", "Apple IIgs (ROM03)", GAME_SUPPORTS_SAVE )
 COMP( 198?, apple2gsr3p, apple2gs, 0,   apple2gs, apple2gs, driver_device,   0, "Apple Computer", "Apple IIgs (ROM03 prototype)", GAME_NOT_WORKING )
 COMP( 1989, apple2gsr3lp, apple2gs, 0,  apple2gs, apple2gs, driver_device,   0, "Apple Computer", "Apple IIgs (ROM03 late prototype?)", GAME_NOT_WORKING )
-COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gsr1, apple2gs, driver_device, 0, "Apple Computer", "Apple IIgs (ROM01)", 0 )
-COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gsr1, apple2gs, driver_device, 0, "Apple Computer", "Apple IIgs (ROM00)", 0 )
+COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gsr1, apple2gs, driver_device, 0, "Apple Computer", "Apple IIgs (ROM01)", GAME_SUPPORTS_SAVE )
+COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gsr1, apple2gs, driver_device, 0, "Apple Computer", "Apple IIgs (ROM00)", GAME_SUPPORTS_SAVE )
+

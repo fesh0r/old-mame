@@ -236,7 +236,7 @@ static CDP1861_INTERFACE( elf2_cdp1861_intf )
 
 void elf2_state::machine_start()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	/* initialize LED displays */
 	m_led_l->rbi_w(1);
@@ -306,9 +306,6 @@ static MACHINE_CONFIG_START( elf2, elf2_state )
 	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
 	MCFG_SCREEN_UPDATE_DEVICE(CDP1861_TAG, cdp1861_device, screen_update)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_3_579545MHz/2, CDP1861_SCREEN_WIDTH, CDP1861_HBLANK_END, CDP1861_HBLANK_START, CDP1861_TOTAL_SCANLINES, CDP1861_SCANLINE_VBLANK_END, CDP1861_SCANLINE_VBLANK_START)
-
-	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(black_and_white)
 
 	MCFG_MM74C923_ADD(MM74C923_TAG, keyboard_intf)
 	MCFG_DM9368_ADD(DM9368_H_TAG, led_h_intf)

@@ -7,7 +7,6 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "imagedev/flopdrv.h"
-#include "imagedev/harddriv.h"
 #include "machine/ctronics.h"
 #include "machine/ram.h"
 #include "machine/scsibus.h"
@@ -104,7 +103,7 @@ public:
 		  m_scsibus(*this, SCSIBUS_TAG)
 	{ }
 
-	required_device<device_t> m_scsibus;
+	required_device<scsibus_device> m_scsibus;
 
 	virtual void machine_start();
 	virtual void machine_reset();

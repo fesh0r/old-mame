@@ -242,7 +242,7 @@ WRITE_LINE_DEVICE_HANDLER( cbmb_irq )
 	if (state != driver_state->m_old_level)
 	{
 		DBG_LOG(device->machine(), 3, "mos6509", ("irq %s\n", state ? "start" : "end"));
-		cputag_set_input_line(device->machine(), "maincpu", M6502_IRQ_LINE, state);
+		device->machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, state);
 		driver_state->m_old_level = state;
 	}
 }
@@ -259,7 +259,6 @@ WRITE_LINE_DEVICE_HANDLER( cbmb_irq )
 
 const mos6526_interface cbmb_cia =
 {
-	60,
 	DEVCB_DEVICE_LINE("tpi6525_0", tpi6525_i2_w),
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
@@ -327,7 +326,7 @@ DRIVER_INIT_MEMBER(cbmb_state,p500)
 	m_cbm_ntsc = 1;
 }
 
-MACHINE_RESET( cbmb )
+MACHINE_RESET_MEMBER(cbmb_state,cbmb)
 {
 //removed   cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
 //removed   cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);

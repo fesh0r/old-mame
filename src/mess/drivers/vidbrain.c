@@ -212,12 +212,12 @@ WRITE8_MEMBER( vidbrain_state::f3853_w )
 		logerror("%s: F3853 Interrupt Control %u\n", machine().describe_context(), m_int_enable);
 		interrupt_check();
 
-		if (m_int_enable == 0x03) fatalerror("F3853 Timer not supported!");
+		if (m_int_enable == 0x03) fatalerror("F3853 Timer not supported!\n");
 		break;
 
 	case 3:
 		// timer 8-bit polynomial counter
-		fatalerror("%s: F3853 Timer not supported!", machine().describe_context());
+		fatalerror("%s: F3853 Timer not supported!\n", machine().describe_context());
 		break;
 	}
 }
@@ -530,7 +530,7 @@ void vidbrain_state::device_timer(emu_timer &timer, device_timer_id id, int para
 void vidbrain_state::machine_start()
 {
 	// register IRQ callback
-	device_set_irq_callback(m_maincpu, vidbrain_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(vidbrain_int_ack);
 
 	// allocate timers
 	m_timer_ne555 = timer_alloc(TIMER_JOYSTICK);

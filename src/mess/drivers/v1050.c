@@ -106,7 +106,9 @@ Notes:
 */
 
 #include "includes/v1050.h"
+#include "machine/scsicb.h"
 #include "machine/scsihd.h"
+#include "machine/s1410.h"
 
 void v1050_state::set_interrupt(UINT8 mask, int state)
 {
@@ -124,7 +126,7 @@ void v1050_state::set_interrupt(UINT8 mask, int state)
 
 void v1050_state::bankswitch()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	int bank = (m_bank >> 1) & 0x03;
 
@@ -341,7 +343,7 @@ WRITE8_MEMBER( v1050_state::dint_w )
 
 WRITE8_MEMBER( v1050_state::dvint_clr_w )
 {
-	device_set_input_line(m_subcpu, INPUT_LINE_IRQ0, CLEAR_LINE);
+	m_subcpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 READ8_MEMBER( v1050_state::sasi_status_r )
@@ -363,11 +365,11 @@ READ8_MEMBER( v1050_state::sasi_status_r )
 
 	UINT8 data = 0;
 
-	data |= scsi_req_r(m_sasibus);
-	data |= !scsi_bsy_r(m_sasibus) << 1;
-	data |= !scsi_msg_r(m_sasibus) << 2;
-	data |= !scsi_cd_r(m_sasibus) << 3;
-	data |= scsi_io_r(m_sasibus) << 4;
+	data |= m_sasibus->scsi_req_r();
+	data |= !m_sasibus->scsi_bsy_r() << 1;
+	data |= !m_sasibus->scsi_msg_r() << 2;
+	data |= !m_sasibus->scsi_cd_r() << 3;
+	data |= m_sasibus->scsi_io_r() << 4;
 
 	return data;
 }
@@ -376,14 +378,14 @@ static TIMER_DEVICE_CALLBACK( sasi_ack_tick )
 {
 	v1050_state *state = timer.machine().driver_data<v1050_state>();
 
-	scsi_ack_w(state->m_sasibus, 1);
+	state->m_sasibus->scsi_ack_w(1);
 }
 
 static TIMER_DEVICE_CALLBACK( sasi_rst_tick )
 {
 	v1050_state *state = timer.machine().driver_data<v1050_state>();
 
-	scsi_rst_w(state->m_sasibus, 1);
+	state->m_sasibus->scsi_rst_w(1);
 }
 
 WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
@@ -403,12 +405,12 @@ WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
 
     */
 
-	scsi_sel_w(m_sasibus, !BIT(data, 0));
+	m_sasibus->scsi_sel_w(!BIT(data, 0));
 
 	if (BIT(data, 1))
 	{
 		// send acknowledge pulse
-		scsi_ack_w(m_sasibus, 0);
+		m_sasibus->scsi_ack_w(0);
 
 		m_timer_ack->adjust(attotime::from_nsec(100));
 	}
@@ -416,7 +418,7 @@ WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
 	if (BIT(data, 7))
 	{
 		// send reset pulse
-		scsi_rst_w(m_sasibus, 0);
+		m_sasibus->scsi_rst_w(0);
 
 		m_timer_rst->adjust(attotime::from_nsec(100));
 	}
@@ -450,7 +452,7 @@ static ADDRESS_MAP_START( v1050_io, AS_IO, 8, v1050_state )
 	AM_RANGE(0xb0, 0xb0) AM_READWRITE(dint_clr_r, dint_clr_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(v1050_i8214_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(bank_w)
-	AM_RANGE(0xe0, 0xe0) AM_DEVREADWRITE_LEGACY(SASIBUS_TAG, scsi_data_r, scsi_data_w)
+	AM_RANGE(0xe0, 0xe0) AM_DEVREADWRITE(SASIBUS_TAG, scsibus_device, scsi_data_r, scsi_data_w)
 	AM_RANGE(0xe1, 0xe1) AM_READWRITE(sasi_status_r, sasi_ctrl_w)
 ADDRESS_MAP_END
 
@@ -602,7 +604,7 @@ static WRITE_LINE_DEVICE_HANDLER( pic_int_w )
 {
 	if (state == ASSERT_LINE)
 	{
-		device_set_input_line(device, INPUT_LINE_IRQ0, ASSERT_LINE);
+		device->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 	}
 }
 
@@ -754,7 +756,7 @@ WRITE8_MEMBER( v1050_state::misc_ppi_pc_w )
 	if (!m_f_int_enb)
 	{
 		set_interrupt(INT_FLOPPY, 0);
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	}
 
 	// baud select
@@ -946,11 +948,11 @@ WRITE_LINE_MEMBER( v1050_state::fdc_drq_w )
 {
 	if (m_f_int_enb)
 	{
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, state);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, state);
 	}
 	else
 	{
-		device_set_input_line(m_maincpu, INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	}
 }
 
@@ -986,21 +988,12 @@ static const floppy_interface v1050_floppy_interface =
 
 
 //-------------------------------------------------
-//  SCSIBus_interface sasi_intf
+//  SCSICB_interface sasi_intf
 //-------------------------------------------------
 
-static const SCSIConfigTable sasi_dev_table =
+static const SCSICB_interface sasi_intf =
 {
-	1,
-	{
-		{ SCSI_ID_0, "harddisk0" }
-	}
-};
-
-static const SCSIBus_interface sasi_intf =
-{
-    &sasi_dev_table,
-    NULL,
+	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1020,17 +1013,17 @@ static IRQ_CALLBACK( v1050_int_ack )
 
 	//logerror("Interrupt Acknowledge Vector: %02x\n", vector);
 
-	device_set_input_line(state->m_maincpu, INPUT_LINE_IRQ0, CLEAR_LINE);
+	state->m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 
 	return vector;
 }
 
 void v1050_state::machine_start()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	// initialize SASI bus
-	init_scsibus(m_sasibus, 256);
+	m_sasibus->init_scsibus(256);
 
 	// initialize I8214
 	m_pic->etlg_w(1);
@@ -1040,7 +1033,7 @@ void v1050_state::machine_start()
 	m_rtc->cs1_w(1);
 
 	// set CPU interrupt callback
-	device_set_irq_callback(m_maincpu, v1050_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(v1050_int_ack);
 
 	// setup memory banking
 	UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
@@ -1120,10 +1113,12 @@ static MACHINE_CONFIG_START( v1050, v1050_state )
 	MCFG_TIMER_ADD(TIMER_SIO_TAG, sio_8251_tick)
 
 	// SASI bus
-    MCFG_SCSIBUS_ADD(SASIBUS_TAG, sasi_intf)
+	MCFG_SCSIBUS_ADD(SASIBUS_TAG)
+	MCFG_SCSIDEV_ADD(SASIBUS_TAG ":harddisk0", S1410, SCSI_ID_0)
+	MCFG_SCSICB_ADD(SASIBUS_TAG ":host", sasi_intf)
+
 	MCFG_TIMER_ADD(TIMER_ACK_TAG, sasi_ack_tick)
 	MCFG_TIMER_ADD(TIMER_RST_TAG, sasi_rst_tick)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
 
 	// keyboard
 	MCFG_V1050_KEYBOARD_ADD()

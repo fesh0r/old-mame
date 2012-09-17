@@ -57,7 +57,6 @@ EMUOBJS = \
 	$(EMUOBJ)/devcb.o \
 	$(EMUOBJ)/devcpu.o \
 	$(EMUOBJ)/device.o \
-	$(EMUOBJ)/devlegcy.o \
 	$(EMUOBJ)/didisasm.o \
 	$(EMUOBJ)/diexec.o \
 	$(EMUOBJ)/diimage.o \
@@ -99,6 +98,7 @@ EMUOBJS = \
 	$(EMUOBJ)/softlist.o \
 	$(EMUOBJ)/sound.o \
 	$(EMUOBJ)/speaker.o \
+	$(EMUOBJ)/sprite.o \
 	$(EMUOBJ)/tilemap.o \
 	$(EMUOBJ)/timer.o \
 	$(EMUOBJ)/ui.o \
@@ -199,10 +199,12 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/k056230.o		\
 	$(EMUMACHINE)/latch8.o		\
 	$(EMUMACHINE)/laserdsc.o	\
+	$(EMUMACHINE)/lc89510.o		\
 	$(EMUMACHINE)/ldstub.o		\
 	$(EMUMACHINE)/ldpr8210.o	\
 	$(EMUMACHINE)/ldv1000.o		\
 	$(EMUMACHINE)/ldvp931.o		\
+	$(EMUMACHINE)/m6m80011ap.o	\
 	$(EMUMACHINE)/matsucd.o		\
 	$(EMUMACHINE)/mb14241.o		\
 	$(EMUMACHINE)/mb3773.o		\
@@ -222,17 +224,17 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/netlist.o		\
 	$(EMUMACHINE)/net_lib.o		\
 	$(EMUMACHINE)/nmc9306.o		\
-    	$(EMUMACHINE)/nscsi_bus.o   	\
-    	$(EMUMACHINE)/nscsi_cd.o    	\
-    	$(EMUMACHINE)/nscsi_hd.o    	\
+	$(EMUMACHINE)/nscsi_bus.o   \
+	$(EMUMACHINE)/nscsi_cd.o    \
+	$(EMUMACHINE)/nscsi_hd.o    \
 	$(EMUMACHINE)/nvram.o		\
 	$(EMUMACHINE)/pc16552d.o	\
-	$(EMUMACHINE)/pci.o		\
+	$(EMUMACHINE)/pci.o			\
 	$(EMUMACHINE)/pd4990a.o		\
 	$(EMUMACHINE)/pic8259.o		\
 	$(EMUMACHINE)/pit8253.o		\
-	$(EMUMACHINE)/pls100.o		\
-	$(EMUMACHINE)/ram.o		\
+	$(EMUMACHINE)/pla.o			\
+	$(EMUMACHINE)/ram.o			\
 	$(EMUMACHINE)/roc10937.o	\
 	$(EMUMACHINE)/rp5c01.o		\
 	$(EMUMACHINE)/rp5c15.o		\
@@ -242,11 +244,14 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/s3c2400.o		\
 	$(EMUMACHINE)/s3c2410.o		\
 	$(EMUMACHINE)/s3c2440.o		\
-	$(EMUMACHINE)/scsi.o		\
+	$(EMUMACHINE)/s3520cf.o		\
+	$(EMUMACHINE)/scsicb.o		\
+	$(EMUMACHINE)/scsibus.o		\
 	$(EMUMACHINE)/scsicd.o		\
 	$(EMUMACHINE)/scsidev.o		\
 	$(EMUMACHINE)/scsihd.o		\
 	$(EMUMACHINE)/secflash.o	\
+	$(EMUMACHINE)/seibu_cop.o	\
 	$(EMUMACHINE)/smc91c9x.o	\
 	$(EMUMACHINE)/tc009xlvc.o	\
 	$(EMUMACHINE)/timekpr.o		\
@@ -287,9 +292,13 @@ EMUVIDEOOBJS = \
 	$(EMUVIDEO)/hd63484.o		\
 	$(EMUVIDEO)/huc6202.o		\
 	$(EMUVIDEO)/huc6260.o		\
+	$(EMUVIDEO)/huc6261.o		\
 	$(EMUVIDEO)/huc6270.o		\
+	$(EMUVIDEO)/huc6272.o		\
 	$(EMUVIDEO)/i8275.o			\
 	$(EMUVIDEO)/k053250.o		\
+	$(EMUVIDEO)/m50458.o		\
+	$(EMUVIDEO)/mb90082.o		\
 	$(EMUVIDEO)/mc6845.o		\
 	$(EMUVIDEO)/msm6255.o		\
 	$(EMUVIDEO)/pc_cga.o		\

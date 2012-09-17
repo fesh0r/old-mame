@@ -145,6 +145,7 @@ public:
 	int 				m_cassette_in;
 
 	kcexp_slot_device *	m_expansions[3];
+	DECLARE_PALETTE_INIT(kc85);
 };
 
 
@@ -178,10 +179,6 @@ public:
 	UINT8 *				m_display_video_ram;
 };
 
-
-/*----------- defined in video/kc.c -----------*/
-
-extern PALETTE_INIT( kc85 );
 
 /*----------- defined in machine/kc.c -----------*/
 

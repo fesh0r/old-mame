@@ -32,19 +32,19 @@ Theory of operation:
 #include "video/crt.h"
 
 
-typedef struct
+struct point
 {
 	int intensity;		/* current intensity of the pixel */
 							/* a node is not in the list when (intensity == -1) */
 	int next;			/* index of next pixel in list */
-} point;
+};
 
 enum
 {
 	intensity_pixel_not_in_list = -1	/* special value that tells that the node is not in list */
 };
 
-typedef struct
+struct crt_t
 {
 	point *list;		/* array of (crt_window_width*crt_window_height) point */
 	int *list_head;	/* head of the list of lit pixels (index in the array) */
@@ -56,7 +56,7 @@ typedef struct
 	int num_intensity_levels;
 	int window_offset_x, window_offset_y;
 	int window_width, window_height;
-} crt_t;
+};
 
 
 INLINE crt_t *get_safe_token(device_t *device)
@@ -64,7 +64,7 @@ INLINE crt_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == CRT);
 
-	return (crt_t *)downcast<legacy_device_base *>(device)->token();
+	return (crt_t *)downcast<crt_device *>(device)->token();
 }
 
 static DEVICE_START( crt )
@@ -99,26 +99,34 @@ static DEVICE_START( crt )
 }
 
 
-DEVICE_GET_INFO( crt )
+const device_type CRT = &device_creator<crt_device>;
+
+crt_device::crt_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, CRT, "CRT Video", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(crt_t);					break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(crt);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "CRT Video");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "CRT Video");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(crt_t));
 }
 
-DEFINE_LEGACY_DEVICE(CRT, crt);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void crt_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void crt_device::device_start()
+{
+	DEVICE_START_NAME( crt )(this);
+}
+
+
 
 /*
     crt_plot

@@ -150,7 +150,7 @@ static void microtan_set_irq_line(running_machine &machine)
     /* The 6502 IRQ line is active low and probably driven
        by open collector outputs (guess). Since MAME/MESS use
        a non-0 value for ASSERT_LINE we OR the signals here */
-    cputag_set_input_line(machine, "maincpu", 0, state->m_via_0_irq_line | state->m_via_1_irq_line | state->m_kbd_irq_line);
+    machine.device("maincpu")->execute().set_input_line(0, state->m_via_0_irq_line | state->m_via_1_irq_line | state->m_kbd_irq_line);
 }
 
 static cassette_image_device *cassette_device_image(running_machine &machine)
@@ -384,7 +384,7 @@ READ8_MEMBER(microtan_state::microtan_bffx_r)
 /* This callback is called one clock cycle after BFF2 is written (delayed nmi) */
 static TIMER_CALLBACK(microtan_pulse_nmi)
 {
-    cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
+    machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 WRITE8_MEMBER(microtan_state::microtan_bffx_w)
@@ -570,15 +570,14 @@ DRIVER_INIT_MEMBER(microtan_state,microtan)
 	m_timer = machine().scheduler().timer_alloc(FUNC(microtan_read_cassette));
 }
 
-MACHINE_RESET( microtan )
+void microtan_state::machine_reset()
 {
-	microtan_state *state = machine.driver_data<microtan_state>();
 	int i;
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
 
 	for (i = 1; i < 10;  i++)
 	{
-		state->m_keyrows[i] = machine.root_device().ioport(keynames[i-1])->read();
+		m_keyrows[i] = machine().root_device().ioport(keynames[i-1])->read();
 	}
-	set_led_status(machine, 1, (state->m_keyrows[3] & 0x80) ? 0 : 1);
+	set_led_status(machine(), 1, (m_keyrows[3] & 0x80) ? 0 : 1);
 }

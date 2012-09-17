@@ -17,8 +17,6 @@
 #include "machine/upd71071.h"
 #include "machine/ram.h"
 #include "machine/nvram.h"
-#include "imagedev/harddriv.h"
-#include "machine/scsi.h"
 #include "machine/fm_scsi.h"
 
 #define IRQ_LOG 0  // set to 1 to log IRQ line activity
@@ -105,7 +103,7 @@ class towns_state : public driver_device
 	{ }
 
 	/* devices */
-	device_t* m_maincpu;
+	cpu_device* m_maincpu;
 	device_t* m_dma_1;
 	device_t* m_dma_2;
 	device_t* m_fdc;

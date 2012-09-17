@@ -112,9 +112,12 @@ public:
 		UINT8 portb;
 		UINT8 portc;
 	}m_upd7801;
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
 };
 
-static VIDEO_START( fp1100 )
+void fp1100_state::video_start()
 {
 }
 
@@ -166,26 +169,26 @@ WRITE8_MEMBER( fp1100_state::main_bank_w )
 WRITE8_MEMBER( fp1100_state::irq_mask_w )
 {
 	//if((irq_mask & 0x80) != (data & 0x80))
-	//  cputag_set_input_line(machine(), "sub", UPD7810_INTF2, HOLD_LINE);
+	//  machine().device("sub")->execute().set_input_line(UPD7810_INTF2, HOLD_LINE);
 
 	irq_mask = data;
 	///printf("%02x\n",data);
 	// FIXME - the below 2 lines are needed, otherwise nothing ever gets written to videoram
-	address_space *mem = m_subcpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_subcpu->space(AS_PROGRAM);
 	data = mem->read_byte(0xe800);
 }
 
 WRITE8_MEMBER( fp1100_state::main_to_sub_w )
 {
 	machine().scheduler().synchronize(); // force resync
-	cputag_set_input_line(machine(), "sub", UPD7810_INTF2, ASSERT_LINE);
+	machine().device("sub")->execute().set_input_line(UPD7810_INTF2, ASSERT_LINE);
 	m_sub_latch = data;
 }
 
 READ8_MEMBER( fp1100_state::sub_to_main_r )
 {
 	machine().scheduler().synchronize(); // force resync
-//  cputag_set_input_line_and_vector(machine(), "maincpu", 0, CLEAR_LINE, 0xf0);
+//  machine().device("maincpu")->execute().set_input_line_and_vector(0, CLEAR_LINE, 0xf0);
 	return m_main_latch;
 }
 
@@ -230,14 +233,14 @@ WRITE8_MEMBER( fp1100_state::fp1100_vram_w )
 READ8_MEMBER( fp1100_state::main_to_sub_r )
 {
 	machine().scheduler().synchronize(); // force resync
-	cputag_set_input_line(machine(), "sub", UPD7810_INTF2, CLEAR_LINE);
+	machine().device("sub")->execute().set_input_line(UPD7810_INTF2, CLEAR_LINE);
 	return m_sub_latch;
 }
 
 WRITE8_MEMBER( fp1100_state::sub_to_main_w )
 {
 	machine().scheduler().synchronize(); // force resync
-//  cputag_set_input_line_and_vector(machine(), "maincpu", 0, ASSERT_LINE, 0xf0);
+//  machine().device("maincpu")->execute().set_input_line_and_vector(0, ASSERT_LINE, 0xf0);
 	m_main_latch = data;
 }
 
@@ -256,7 +259,7 @@ ADDRESS_MAP_END
 WRITE8_MEMBER( fp1100_state::portc_w )
 {
 	if((!(m_upd7801.portc & 8)) && data & 8)
-		cputag_set_input_line_and_vector(machine(), "maincpu", 0, HOLD_LINE,0xf8); // TODO
+		machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,0xf8); // TODO
 
 	m_upd7801.portc = data;
 }
@@ -341,23 +344,21 @@ static INPUT_PORTS_START( fp1100 )
 INPUT_PORTS_END
 
 
-static MACHINE_START(fp1100)
+void fp1100_state::machine_start()
 {
-	fp1100_state *state = machine.driver_data<fp1100_state>();
-	state->m_wram = state->memregion("wram")->base();
+	m_wram = memregion("wram")->base();
 }
 
-static MACHINE_RESET(fp1100)
+void fp1100_state::machine_reset()
 {
-	fp1100_state *state = machine.driver_data<fp1100_state>();
 	int i;
 	UINT8 slot_type;
 	const UINT8 id_type[4] = { 0xff, 0x00, 0x01, 0x04};
 
 	for(i=0;i<8;i++)
 	{
-		slot_type = (machine.root_device().ioport("SLOTS")->read() >> i*2) & 3;
-		state->m_slot[i].id = id_type[slot_type];
+		slot_type = (machine().root_device().ioport("SLOTS")->read() >> i*2) & 3;
+		m_slot[i].id = id_type[slot_type];
 	}
 }
 
@@ -398,7 +399,7 @@ static INTERRUPT_GEN( fp1100_vblank_irq )
 	fp1100_state *state = device->machine().driver_data<fp1100_state>();
 
 	if(state->irq_mask & 0x10)
-		cputag_set_input_line_and_vector(device->machine(), "maincpu", 0, HOLD_LINE, 0xf0);
+		device->machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE, 0xf0);
 }
 
 static MACHINE_CONFIG_START( fp1100, fp1100_state )
@@ -413,8 +414,6 @@ static MACHINE_CONFIG_START( fp1100, fp1100_state )
 	MCFG_CPU_IO_MAP( fp1100_slave_io )
 	MCFG_CPU_CONFIG( fp1100_slave_cpu_config )
 
-	MCFG_MACHINE_START(fp1100)
-	MCFG_MACHINE_RESET(fp1100)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -422,7 +421,6 @@ static MACHINE_CONFIG_START( fp1100, fp1100_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_VIDEO_START(fp1100)
 	MCFG_SCREEN_UPDATE_DEVICE("crtc", h46505_device, screen_update)
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_GFXDECODE(fp1100)

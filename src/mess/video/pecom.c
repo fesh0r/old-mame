@@ -77,7 +77,7 @@ static WRITE_LINE_DEVICE_HANDLER( pecom_prd_w )
 	// every other PRD triggers a DMAOUT request
 	if (driver_state->m_dma)
 	{
-		cputag_set_input_line(device->machine(), CDP1802_TAG, COSMAC_INPUT_LINE_DMAOUT, HOLD_LINE);
+		device->machine().device(CDP1802_TAG)->execute().set_input_line(COSMAC_INPUT_LINE_DMAOUT, HOLD_LINE);
 	}
 
 	driver_state->m_dma = !driver_state->m_dma;
@@ -94,23 +94,22 @@ static CDP1869_INTERFACE( pecom_cdp1869_intf )
 	DEVCB_LINE(pecom_prd_w)
 };
 
-static VIDEO_START( pecom )
+VIDEO_START_MEMBER(pecom_state,pecom)
 {
-	pecom_state *state = machine.driver_data<pecom_state>();
 
 	/* allocate memory */
-	state->m_charram = auto_alloc_array(machine, UINT8, PECOM_CHAR_RAM_SIZE);
+	m_charram = auto_alloc_array(machine(), UINT8, PECOM_CHAR_RAM_SIZE);
 
 	/* register for state saving */
-	state->save_item(NAME(state->m_reset));
-	state->save_item(NAME(state->m_dma));
-	state->save_pointer(NAME(state->m_charram), PECOM_CHAR_RAM_SIZE);
+	save_item(NAME(m_reset));
+	save_item(NAME(m_dma));
+	save_pointer(NAME(m_charram), PECOM_CHAR_RAM_SIZE);
 }
 
 MACHINE_CONFIG_FRAGMENT( pecom_video )
 	MCFG_CDP1869_SCREEN_PAL_ADD(CDP1869_TAG, SCREEN_TAG, CDP1869_DOT_CLK_PAL)
 
-	MCFG_VIDEO_START(pecom)
+	MCFG_VIDEO_START_OVERRIDE(pecom_state,pecom)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 

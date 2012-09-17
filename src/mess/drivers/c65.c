@@ -172,13 +172,13 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static PALETTE_INIT( c65 )
+PALETTE_INIT_MEMBER(c65_state,c65)
 {
 	int i;
 
 	for ( i = 0; i < 0x100; i++ )
 	{
-		palette_set_color_rgb(machine, i, 0, 0, 0);
+		palette_set_color_rgb(machine(), i, 0, 0, 0);
 	}
 }
 
@@ -189,9 +189,30 @@ static PALETTE_INIT( c65 )
  *
  *************************************/
 
-static const sid6581_interface c65_sound_interface =
+READ8_MEMBER( c65_state::sid_potx_r )
 {
-	c64_paddle_read
+	device_t *sid = machine().device("sid_r");
+
+	return c64_paddle_read(sid, 0);
+}
+
+READ8_MEMBER( c65_state::sid_poty_r )
+{
+	device_t *sid = machine().device("sid_r");
+
+	return c64_paddle_read(sid, 1);
+}
+
+static MOS6581_INTERFACE( sidr_intf )
+{
+	DEVCB_DRIVER_MEMBER(c65_state, sid_potx_r),
+	DEVCB_DRIVER_MEMBER(c65_state, sid_poty_r)
+};
+
+static MOS6581_INTERFACE( sidl_intf )
+{
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -288,7 +309,7 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_CPU_VBLANK_INT("screen", c65_frame_interrupt)
 	MCFG_CPU_PERIODIC_INT(vic3_raster_irq, VIC6567_HRETRACERATE)
 
-	MCFG_MACHINE_START( c65 )
+	MCFG_MACHINE_START_OVERRIDE(c65_state, c65 )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -299,24 +320,25 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_SCREEN_UPDATE_STATIC( c65 )
 
 	MCFG_PALETTE_LENGTH(0x100)
-	MCFG_PALETTE_INIT( c65 )
+	MCFG_PALETTE_INIT_OVERRIDE(c65_state, c65 )
 
 	MCFG_VIC3_ADD("vic3", c65_vic3_ntsc_intf)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MCFG_SOUND_ADD("sid_r", SID8580, 985248)
-	MCFG_SOUND_CONFIG(c65_sound_interface)
+	MCFG_SOUND_CONFIG(sidr_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 	MCFG_SOUND_ADD("sid_l", SID8580, 985248)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MCFG_SOUND_CONFIG(sidl_intf)
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c65, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cia */
-	MCFG_MOS6526R1_ADD("cia_0", 3500000, c65_ntsc_cia0)
-	MCFG_MOS6526R1_ADD("cia_1", 3500000, c65_ntsc_cia1)
+	MCFG_MOS6526R1_ADD("cia_0", 3500000, 60, c65_cia0)
+	MCFG_MOS6526R1_ADD("cia_1", 3500000, 60, c65_cia1)
 
 	/* floppy from serial bus */
 	MCFG_CBM_IEC_ADD(cbm_iec_intf, NULL)
@@ -340,16 +362,17 @@ static MACHINE_CONFIG_DERIVED( c65pal, c65 )
 
 	/* sound hardware */
 	MCFG_SOUND_REPLACE("sid_r", SID8580, 1022727)
-	MCFG_SOUND_CONFIG(c65_sound_interface)
+	MCFG_SOUND_CONFIG(sidr_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 	MCFG_SOUND_REPLACE("sid_l", SID8580, 1022727)
+	MCFG_SOUND_CONFIG(sidl_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
 
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_DEVICE_REMOVE("cia_1")
-	MCFG_MOS6526R1_ADD("cia_0", 3500000, c65_pal_cia0)
-	MCFG_MOS6526R1_ADD("cia_1", 3500000, c65_pal_cia1)
+	MCFG_MOS6526R1_ADD("cia_0", 3500000, 50, c65_cia0)
+	MCFG_MOS6526R1_ADD("cia_1", 3500000, 50, c65_cia1)
 MACHINE_CONFIG_END
 
 

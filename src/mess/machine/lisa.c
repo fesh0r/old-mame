@@ -164,27 +164,27 @@ static void lisa_field_interrupts(running_machine &machine)
 #if 0
 	if (RSIR)
 		// serial interrupt
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int0)
 		// external interrupt
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int1)
 		// external interrupt
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int2)
 		// external interrupt
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 #endif
 	if (state->m_KBIR)
 		/* COPS VIA interrupt */
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (state->m_FDIR || state->m_VTIR)
 		/* floppy disk or VBl */
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static void set_parity_error_pending(running_machine &machine, int value)
@@ -195,18 +195,18 @@ static void set_parity_error_pending(running_machine &machine, int value)
 	state->m_parity_error_pending = value;
 	if (state->m_parity_error_pending)
 	{
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else
 	{
-		cputag_set_input_line(machine, "maincpu", M68K_IRQ_7, CLEAR_LINE);
+		machine.device("maincpu")->execute().set_input_line(M68K_IRQ_7, CLEAR_LINE);
 	}
 #else
 	/* work-around... */
 	if ((! state->m_parity_error_pending) && value)
 	{
 		state->m_parity_error_pending = 1;
-		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
+		machine.device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else if (state->m_parity_error_pending && (! value))
 	{
@@ -327,8 +327,8 @@ static void scan_keyboard(running_machine &machine)
 #if 0
 						if (keycode == state->m_NMIcode)
 						{	/* generate NMI interrupt */
-							cputag_set_input_line(machine, "maincpu", M68K_IRQ_7, PULSE_LINE);
-							device_set_input_line_vector(machine.device("maincpu"), M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
+							machine.device("maincpu")->execute().set_input_line(M68K_IRQ_7, PULSE_LINE);
+							machine.device("maincpu")->execute().set_input_line_vector(M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
 						}
 #endif
 						COPS_queue_data(machine, & keycode, 1);
@@ -815,7 +815,7 @@ static READ8_DEVICE_HANDLER(parallel_via_in_b)
     LISA video emulation
 */
 
-VIDEO_START( lisa )
+void lisa_state::video_start()
 {
 }
 
@@ -879,7 +879,7 @@ DIRECT_UPDATE_HANDLER (lisa_OPbaseoverride)
 
 	}
 
-	if (cpu_get_reg(machine.device("maincpu"), M68K_SR) & 0x2000)
+	if (machine.device("maincpu")->state().state_int(M68K_SR) & 0x2000)
 	{
 		/* supervisor mode -> force register file 0 */
 		the_seg = 0;
@@ -1031,63 +1031,61 @@ DRIVER_INIT_MEMBER(lisa_state,mac_xl)
 	m_bad_parity_table = auto_alloc_array(machine(), UINT8, 0x40000);  /* 1 bit per byte of CPU RAM */
 }
 
-MACHINE_START( lisa )
+void lisa_state::machine_start()
 {
-	lisa_state *state = machine.driver_data<lisa_state>();
-	state->m_mouse_timer = machine.scheduler().timer_alloc(FUNC(handle_mouse));
+	m_mouse_timer = machine().scheduler().timer_alloc(FUNC(handle_mouse));
 
 	/* read command every ms (don't know the real value) */
-	machine.scheduler().timer_pulse(attotime::from_msec(1), FUNC(set_COPS_ready));
+	machine().scheduler().timer_pulse(attotime::from_msec(1), FUNC(set_COPS_ready));
 }
 
-MACHINE_RESET( lisa )
+void lisa_state::machine_reset()
 {
-	lisa_state *state = machine.driver_data<lisa_state>();
-	state->m_ram_ptr = machine.root_device().memregion("maincpu")->base() + RAM_OFFSET;
-	state->m_rom_ptr = machine.root_device().memregion("maincpu")->base() + ROM_OFFSET;
-	state->m_videoROM_ptr = state->memregion("gfx1")->base();
+	m_ram_ptr = machine().root_device().memregion("maincpu")->base() + RAM_OFFSET;
+	m_rom_ptr = machine().root_device().memregion("maincpu")->base() + ROM_OFFSET;
+	m_videoROM_ptr = memregion("gfx1")->base();
 
-//  machine.device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(lisa_OPbaseoverride, *machine));
-//  m68k_set_reset_callback(machine.device("maincpu"), /*lisa_reset_instr_callback*/NULL);
+//  machine().device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(lisa_OPbaseoverride, *machine()));
+//  m68k_set_reset_callback(machine().device("maincpu"), /*lisa_reset_instr_callback*/NULL);
 
 	/* init MMU */
-	state->m_setup = 1;
-	state->m_seg = 0;
+	m_setup = 1;
+	m_seg = 0;
 
 	/* init parity */
-	state->m_diag2 = 0;
-	state->m_test_parity = 0;
-	state->m_parity_error_pending = 0;
+	m_diag2 = 0;
+	m_test_parity = 0;
+	m_parity_error_pending = 0;
 
-	state->m_bad_parity_count = 0;
-	memset(state->m_bad_parity_table, 0, 0x40000);	/* Clear */
+	m_bad_parity_count = 0;
+	memset(m_bad_parity_table, 0, 0x40000);	/* Clear */
 
 	/* init video */
 
-	state->m_VTMSK = 0;
-	set_VTIR(machine, 0);
+	m_VTMSK = 0;
+	set_VTIR(machine(), 0);
 
-	state->m_video_address_latch = 0;
-	state->m_videoram_ptr = (UINT16 *) state->m_ram_ptr;
+	m_video_address_latch = 0;
+	m_videoram_ptr = (UINT16 *) m_ram_ptr;
 
 	/* reset COPS keyboard/mouse controller */
-	init_COPS(machine);
+	init_COPS(machine());
 
 	{
-		via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
+		via6522_device *via_0 = machine().device<via6522_device>("via6522_0");
 		COPS_via_out_ca2(via_0, 0, 0);	/* VIA core forgets to do so */
 	}
 
 	/* initialize floppy */
 	{
-		if (state->m_features.floppy_hardware == sony_lisa2)
+		if (m_features.floppy_hardware == sony_lisa2)
 		{
-			sony_set_enable_lines(machine.device("fdc"),1);	/* on lisa2, drive unit 1 is always selected (?) */
+			sony_set_enable_lines(machine().device("fdc"),1);	/* on lisa2, drive unit 1 is always selected (?) */
 		}
 	}
 
 	/* reset 68k to pick up proper vectors from MMU */
-	devtag_reset(machine, "maincpu");
+	machine().device("maincpu")->reset();
 }
 
 INTERRUPT_GEN( lisa_interrupt )
@@ -1412,7 +1410,7 @@ READ16_MEMBER(lisa_state::lisa_r)
 		}
 	}
 
-	if (cpu_get_reg(machine().device("maincpu"), M68K_SR) & 0x2000)
+	if (machine().device("maincpu")->state().state_int(M68K_SR) & 0x2000)
 		/* supervisor mode -> force register file 0 */
 		the_seg = 0;
 
@@ -1515,12 +1513,12 @@ READ16_MEMBER(lisa_state::lisa_r)
 					if ((time_in_frame >= 364) && (time_in_frame <= 375))
 					{
 						answer = m_videoROM_ptr[m_videoROM_address|0x80] << 8;
-				logerror("reading1 %06X=%04x PC=%06x time=%d\n", address, answer, cpu_get_pc(machine().device("maincpu")), time_in_frame);
+				logerror("reading1 %06X=%04x PC=%06x time=%d\n", address, answer, machine().device("maincpu")->safe_pc(), time_in_frame);
 					}
 					else
 					{
 						answer = m_videoROM_ptr[m_videoROM_address] << 8;
-				logerror("reading2 %06X=%04x PC=%06x time=%d\n", address, answer, cpu_get_pc(machine().device("maincpu")), time_in_frame);
+				logerror("reading2 %06X=%04x PC=%06x time=%d\n", address, answer, machine().device("maincpu")->safe_pc(), time_in_frame);
 					}
 				}
 
@@ -1619,7 +1617,7 @@ WRITE16_MEMBER(lisa_state::lisa_w)
 		}
 	}
 
-	if (cpu_get_reg(machine().device("maincpu"), M68K_SR) & 0x2000)
+	if (machine().device("maincpu")->state().state_int(M68K_SR) & 0x2000)
 		/* supervisor mode -> force register file 0 */
 		the_seg = 0;
 
@@ -1782,19 +1780,19 @@ INLINE void cpu_board_control_access(running_machine &machine, offs_t offset)
 		state->m_seg &= ~2;
 		break;
 	case 0x0010:	/* SETUP register SET */
-		logerror("setup SET PC=%x\n", cpu_get_pc(machine.device("maincpu")));
+		logerror("setup SET PC=%x\n", machine.device("maincpu")->safe_pc());
 		state->m_setup = 1;
 		break;
 	case 0x0012:	/* SETUP register RESET */
-		logerror("setup UNSET PC=%x\n", cpu_get_pc(machine.device("maincpu")));
+		logerror("setup UNSET PC=%x\n", machine.device("maincpu")->safe_pc());
 		state->m_setup = 0;
 		break;
 	case 0x001A:	/* Enable Vertical Retrace Interrupt */
-		logerror("enable retrace PC=%x\n", cpu_get_pc(machine.device("maincpu")));
+		logerror("enable retrace PC=%x\n", machine.device("maincpu")->safe_pc());
 		state->m_VTMSK = 1;
 		break;
 	case 0x0018:	/* Disable Vertical Retrace Interrupt */
-		logerror("disable retrace PC=%x\n", cpu_get_pc(machine.device("maincpu")));
+		logerror("disable retrace PC=%x\n", machine.device("maincpu")->safe_pc());
 		state->m_VTMSK = 0;
 		set_VTIR(machine, 2);
 		break;
@@ -1858,19 +1856,19 @@ READ16_MEMBER(lisa_state::lisa_IO_r)
 			switch ((offset & 0x0600) >> 9)
 			{
             case 0:	/* serial ports control */
-                return m_scc->reg_r(space, offset&7);
+                answer = m_scc->reg_r(space, offset&7);
 				break;
 
 			case 2:	/* parallel port */
 				/* 1 VIA located at 0xD901 */
 				if (ACCESSING_BITS_0_7)
-					return via_1->read(space, (offset >> 2) & 0xf);
+					answer = via_1->read(space, (offset >> 2) & 0xf);
 				break;
 
 			case 3:	/* keyboard/mouse cops via */
 				/* 1 VIA located at 0xDD81 */
 				if (ACCESSING_BITS_0_7)
-					return via_0->read(space, offset & 0xf);
+					answer = via_0->read(space, offset & 0xf);
 				break;
 			}
 		}
@@ -1928,7 +1926,7 @@ READ16_MEMBER(lisa_state::lisa_IO_r)
 			else
 						answer |= 0x04;
 			/* huh... we need to emulate some other bits */
-			logerror("read status PC=%x val=%x\n", cpu_get_pc(machine().device("maincpu")), answer);
+			logerror("read status PC=%x val=%x\n", machine().device("maincpu")->safe_pc(), answer);
 
 			break;
 		}

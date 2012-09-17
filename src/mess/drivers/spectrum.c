@@ -325,9 +325,9 @@ DIRECT_UPDATE_MEMBER(spectrum_state::spectrum_direct)
 {
     /* Hack for correct handling 0xffff interrupt vector */
     if (address == 0x0001)
-        if (cpu_get_reg(machine().device("maincpu"), STATE_GENPCBASE)==0xffff)
+        if (machine().device("maincpu")->safe_pcbase()==0xffff)
         {
-            cpu_set_reg(machine().device("maincpu"), Z80_PC, 0xfff4);
+            machine().device("maincpu")->state().set_state_int(Z80_PC, 0xfff4);
             return 0xfff4;
         }
     return address;
@@ -631,15 +631,14 @@ DRIVER_INIT_MEMBER(spectrum_state,spectrum)
 	}
 }
 
-MACHINE_RESET( spectrum )
+MACHINE_RESET_MEMBER(spectrum_state,spectrum)
 {
-	spectrum_state *state = machine.driver_data<spectrum_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	space->set_direct_update_handler(direct_update_delegate(FUNC(spectrum_state::spectrum_direct), state));
+	space->set_direct_update_handler(direct_update_delegate(FUNC(spectrum_state::spectrum_direct), this));
 
-	state->m_port_7ffd_data = -1;
-	state->m_port_1ffd_data = -1;
+	m_port_7ffd_data = -1;
+	m_port_1ffd_data = -1;
 }
 
 /* F4 Character Displayer */
@@ -663,7 +662,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( spec_interrupt )
 {
-	device_set_input_line(device, 0, HOLD_LINE);
+	device->execute().set_input_line(0, HOLD_LINE);
 }
 
 static const cassette_interface spectrum_cassette_interface =
@@ -712,7 +711,7 @@ MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 	MCFG_CPU_VBLANK_INT("screen", spec_interrupt)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_RESET( spectrum )
+	MCFG_MACHINE_RESET_OVERRIDE(spectrum_state, spectrum )
 
     /* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -724,9 +723,9 @@ MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 	MCFG_SCREEN_VBLANK_STATIC( spectrum )
 
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT( spectrum )
+	MCFG_PALETTE_INIT_OVERRIDE(spectrum_state, spectrum )
 	MCFG_GFXDECODE(spectrum)
-	MCFG_VIDEO_START( spectrum )
+	MCFG_VIDEO_START_OVERRIDE(spectrum_state, spectrum )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

@@ -696,7 +696,7 @@ WRITE_LINE_MEMBER( wangpc_state::eop_w )
 
 READ8_MEMBER( wangpc_state::memr_r )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	offs_t addr = (m_dma_page[m_dack] << 16) | offset;
 
 	return program->read_byte(addr);
@@ -704,7 +704,7 @@ READ8_MEMBER( wangpc_state::memr_r )
 
 WRITE8_MEMBER( wangpc_state::memw_w )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	offs_t addr = (m_dma_page[m_dack] << 16) | offset;
 
 	program->write_byte(addr, data);
@@ -1165,7 +1165,7 @@ SLOT_INTERFACE_END
 void wangpc_state::machine_start()
 {
 	// register CPU IRQ callback
-	device_set_irq_callback(m_maincpu, wangpc_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(wangpc_irq_callback);
 
 	// connect serial keyboard
 	m_uart->connect(m_kb);

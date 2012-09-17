@@ -25,8 +25,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _vt_video_t vt_video_t;
-struct _vt_video_t
+struct vt_video_t
 {
 	devcb_resolved_read8		in_ram_func;
 	devcb_resolved_write8		clear_video_interrupt;
@@ -58,7 +57,7 @@ INLINE vt_video_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == VT100_VIDEO);
 
-	return (vt_video_t *)downcast<legacy_device_base *>(device)->token();
+	return (vt_video_t *)downcast<vt100_video_device *>(device)->token();
 }
 
 INLINE const vt_video_interface *get_interface(device_t *device)
@@ -448,30 +447,40 @@ static DEVICE_RESET( vt_video )
 	vt->skip_lines = 2; // for 60Hz
 }
 
-/*-------------------------------------------------
-    DEVICE_GET_INFO( vt100_video )
--------------------------------------------------*/
+const device_type VT100_VIDEO = &device_creator<vt100_video_device>;
 
-DEVICE_GET_INFO( vt100_video )
+vt100_video_device::vt100_video_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, VT100_VIDEO, "VT100 Video", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(vt_video_t);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;									break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(vt_video);		break;
-		case DEVINFO_FCT_STOP:							/* Nothing */									break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(vt_video);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "VT100 Video");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "VTxxx Video");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(vt_video_t));
 }
 
-DEFINE_LEGACY_DEVICE(VT100_VIDEO, vt100_video);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void vt100_video_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void vt100_video_device::device_start()
+{
+	DEVICE_START_NAME( vt_video )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void vt100_video_device::device_reset()
+{
+	DEVICE_RESET_NAME( vt_video )(this);
+}
+
+

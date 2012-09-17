@@ -10,7 +10,7 @@
 #include "machine/wd17xx.h"
 
 // CRTC 6845
-typedef struct
+struct CRTC6845
 {
 	UINT8    cursor_address_lo;
 	UINT8    cursor_address_hi;
@@ -31,7 +31,7 @@ typedef struct
 	UINT8    idx;
 	UINT8    cursor_visible;
 	UINT8    cursor_phase;
-} CRTC6845;
+};
 
 
 class cgenie_state : public driver_device
@@ -65,6 +65,11 @@ public:
 	bitmap_ind16 m_dlybitmap;
 	int m_off_x;
 	int m_off_y;
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	DECLARE_PALETTE_INIT(cgenie);
+	DECLARE_PALETTE_INIT(cgenienz);
 };
 
 
@@ -81,8 +86,8 @@ READ8_HANDLER ( cgenie_psg_port_b_r );
 WRITE8_HANDLER ( cgenie_psg_port_a_w );
 WRITE8_HANDLER ( cgenie_psg_port_b_w );
 
-MACHINE_START( cgenie );
-MACHINE_RESET( cgenie );
+
+
 
 READ8_HANDLER ( cgenie_colorram_r );
 READ8_HANDLER ( cgenie_fontram_r );
@@ -118,7 +123,7 @@ WRITE8_HANDLER ( cgenie_videoram_w );
 
 /*----------- defined in video/cgenie.c -----------*/
 
-VIDEO_START( cgenie );
+
 SCREEN_UPDATE_IND16( cgenie );
 
 READ8_HANDLER ( cgenie_index_r );

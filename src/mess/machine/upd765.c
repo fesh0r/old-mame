@@ -30,23 +30,23 @@
 #include "machine/upd765.h"
 
 
-typedef enum
+enum UPD765_PHASE
 {
 	UPD765_COMMAND_PHASE_FIRST_BYTE,
 	UPD765_COMMAND_PHASE_BYTES,
 	UPD765_RESULT_PHASE,
 	UPD765_EXECUTION_PHASE_READ,
 	UPD765_EXECUTION_PHASE_WRITE
-} UPD765_PHASE;
+};
 
 /* supported versions */
-typedef enum
+enum UPD765_VERSION
 {
 	TYPE_UPD765A = 0,
 	TYPE_UPD765B = 1,
 	TYPE_SMC37C78 = 2,
 	TYPE_UPD72065 = 3
-} UPD765_VERSION;
+};
 
 
 /* uncomment the following line for verbose information */
@@ -84,8 +84,7 @@ typedef enum
 
 #define UPD765_BAD_MEDIA 0x100
 
-typedef struct _upd765_t upd765_t;
-struct _upd765_t
+struct upd765_t
 {
 	devcb_resolved_write_line	out_int_func;
 	devcb_resolved_write_line	out_drq_func;
@@ -171,7 +170,7 @@ INLINE upd765_t *get_safe_token(device_t *device)
 	assert(device->type() == UPD765A || device->type() == UPD765B ||
 		device->type() == SMC37C78 || device->type() == UPD72065);
 
-	return (upd765_t *)downcast<legacy_device_base *>(device)->token();
+	return (upd765_t *)downcast<upd765a_device *>(device)->token();
 }
 
 static device_t *current_image(device_t *device)
@@ -2476,72 +2475,96 @@ static DEVICE_RESET( upd765 )
 	upd765_reset(device,0);
 }
 
-DEVICE_GET_INFO( upd765a )
+const device_type UPD765A = &device_creator<upd765a_device>;
+
+upd765a_device::upd765a_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, UPD765A, "UPD765A", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(upd765_t);					break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
+	m_token = global_alloc_array_clear(UINT8, sizeof(upd765_t));
+}
+upd765a_device::upd765a_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, type, name, tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(upd765_t));
+}
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(upd765a);	break;
-		case DEVINFO_FCT_STOP:							/* Nothing */								break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(upd765);	break;
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "UPD765A");						break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "UPD765A");						break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+void upd765a_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void upd765a_device::device_start()
+{
+	DEVICE_START_NAME( upd765a )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void upd765a_device::device_reset()
+{
+	DEVICE_RESET_NAME( upd765 )(this);
 }
 
 
-DEVICE_GET_INFO( upd765b )
+const device_type UPD765B = &device_creator<upd765b_device>;
+
+upd765b_device::upd765b_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: upd765a_device(mconfig, UPD765B, "UPD765B", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "UPD765B");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(upd765b);	break;
-
-		default:										DEVICE_GET_INFO_CALL(upd765a);				break;
-	}
 }
 
-DEVICE_GET_INFO( smc37c78 )
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void upd765b_device::device_start()
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "SMC37C78");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(smc37c78);	break;
-
-		default:										DEVICE_GET_INFO_CALL(upd765a);				break;
-	}
+	DEVICE_START_NAME( upd765b )(this);
 }
 
-DEVICE_GET_INFO( upd72065 )
+
+const device_type SMC37C78 = &device_creator<smc37c78_device>;
+
+smc37c78_device::smc37c78_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: upd765a_device(mconfig, SMC37C78, "SMC37C78", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "UPD72065");				break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(upd72065);	break;
-
-		default:										DEVICE_GET_INFO_CALL(upd765a);				break;
-	}
 }
 
-DEFINE_LEGACY_DEVICE(UPD765A, upd765a);
-DEFINE_LEGACY_DEVICE(UPD765B, upd765b);
-DEFINE_LEGACY_DEVICE(SMC37C78, smc37c78);
-DEFINE_LEGACY_DEVICE(UPD72065, upd72065);
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void smc37c78_device::device_start()
+{
+	DEVICE_START_NAME( smc37c78 )(this);
+}
+
+
+const device_type UPD72065 = &device_creator<upd72065_device>;
+
+upd72065_device::upd72065_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: upd765a_device(mconfig, UPD72065, "UPD72065", tag, owner, clock)
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void upd72065_device::device_start()
+{
+	DEVICE_START_NAME( upd72065 )(this);
+}
+
+

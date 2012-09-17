@@ -491,7 +491,7 @@ static I8212_INTERFACE( iop_intf )
 
 WRITE_LINE_MEMBER( mm1_state::dma_hrq_changed )
 {
-	device_set_input_line(m_maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	// Assert HLDA
 	m_dmac->hack_w(state);
@@ -757,7 +757,7 @@ void mm1_state::machine_start()
 
 void mm1_state::machine_reset()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	int i;
 
 	// reset LS259

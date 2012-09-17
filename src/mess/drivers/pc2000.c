@@ -46,6 +46,7 @@ public:
 	DECLARE_WRITE8_MEMBER( rombank2_w );
 	DECLARE_READ8_MEMBER( beep_r );
 	DECLARE_WRITE8_MEMBER( beep_w );
+	virtual void palette_init();
 };
 
 
@@ -295,10 +296,10 @@ void pc2000_state::machine_reset()
 	membank("bank2")->set_entry(0);
 }
 
-static PALETTE_INIT( pc2000 )
+void pc2000_state::palette_init()
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 static const gfx_layout hd44780_charlayout =
@@ -319,7 +320,8 @@ GFXDECODE_END
 static HD44780_INTERFACE( pc2000_display )
 {
 	2,					// number of lines
-	20					// chars for line
+	20,					// chars for line
+	NULL				// pixel update callback
 };
 
 static MACHINE_CONFIG_START( pc2000, pc2000_state )
@@ -330,7 +332,7 @@ static MACHINE_CONFIG_START( pc2000, pc2000_state )
     MCFG_CPU_VBLANK_INT("screen",irq0_line_hold)
 
     /* video hardware */
-    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_ADD("screen", LCD)
     MCFG_SCREEN_REFRESH_RATE(50)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_UPDATE_DEVICE("hd44780", hd44780_device, screen_update)
@@ -338,7 +340,6 @@ static MACHINE_CONFIG_START( pc2000, pc2000_state )
     MCFG_SCREEN_VISIBLE_AREA(0, 120-1, 0, 18-1)
 
     MCFG_PALETTE_LENGTH(2)
-    MCFG_PALETTE_INIT(pc2000)
 	MCFG_GFXDECODE(pc2000)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 

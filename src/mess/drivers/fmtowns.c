@@ -115,6 +115,7 @@
  */
 
 #include "includes/fmtowns.h"
+#include "machine/scsibus.h"
 #include "machine/scsihd.h"
 
 // CD controller IRQ types
@@ -269,7 +270,7 @@ WRITE8_MEMBER(towns_state::towns_system_w)
 	switch(offset)
 	{
 		case 0x00:  // bit 7 = NMI vector protect, bit 6 = power off, bit 0 = software reset, bit 3 = A20 line?
-//          cputag_set_input_line(space->machine(),"maincpu",INPUT_LINE_A20,(data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+//          space->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_A20,(data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 			logerror("SYS: port 0x20 write %02x\n",data);
 			break;
 		case 0x02:
@@ -373,7 +374,7 @@ void towns_state::intervaltimer2_timeout()
 
 void towns_state::wait_end()
 {
-	device_set_input_line(m_maincpu,INPUT_LINE_HALT,CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_HALT,CLEAR_LINE);
 }
 
 READ8_MEMBER(towns_state::towns_sys6c_r)
@@ -385,7 +386,7 @@ READ8_MEMBER(towns_state::towns_sys6c_r)
 WRITE8_MEMBER(towns_state::towns_sys6c_w)
 {
 	// halts the CPU for 1 microsecond
-	device_set_input_line(m_maincpu,INPUT_LINE_HALT,ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_HALT,ASSERT_LINE);
 	m_towns_wait_timer->adjust(attotime::from_usec(1),0,attotime::never);
 }
 
@@ -2005,7 +2006,7 @@ static void towns_pcm_irq(device_t* device, int channel)
 
 static WRITE_LINE_DEVICE_HANDLER( towns_pic_irq )
 {
-	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 //  logerror("PIC#1: set IRQ line to %i\n",interrupt);
 }
 
@@ -2171,7 +2172,7 @@ static ADDRESS_MAP_START( towns_io , AS_IO, 32, towns_state)
   // Keyboard (8042 MCU)
   AM_RANGE(0x0600,0x0607) AM_READWRITE8(towns_keyboard_r, towns_keyboard_w,0x00ff00ff)
   // SCSI controller
-  AM_RANGE(0x0c30,0x0c37) AM_DEVREADWRITE8("scsi",fmscsi_device,fmscsi_r,fmscsi_w,0x00ff00ff)
+  AM_RANGE(0x0c30,0x0c37) AM_DEVREADWRITE8("scsi:fm",fmscsi_device,fmscsi_r,fmscsi_w,0x00ff00ff)
   // CMOS
   AM_RANGE(0x3000,0x4fff) AM_READWRITE8(towns_cmos_r, towns_cmos_w,0x00ff00ff)
   // Something (MS-DOS wants this 0x41ff to be 1)
@@ -2457,7 +2458,7 @@ void towns_state::driver_start()
 	// CD-ROM init
 	m_towns_cd.read_timer = machine().scheduler().timer_alloc(FUNC(towns_cdrom_read_byte), (void*)machine().device("dma_1"));
 
-	device_set_irq_callback(machine().device("maincpu"), towns_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(towns_irq_callback);
 	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_ram(0x100000,machine().device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,NULL);
 
 }
@@ -2473,8 +2474,8 @@ void towns_state::machine_reset()
 {
 	address_space *program;
 
-	m_maincpu = machine().device("maincpu");
-	program = m_maincpu->memory().space(AS_PROGRAM);
+	m_maincpu = machine().device<cpu_device>("maincpu");
+	program = m_maincpu->space(AS_PROGRAM);
 	m_dma_1 = machine().device("dma_1");
 	m_dma_2 = machine().device("dma_2");
 	m_fdc = machine().device("fdc");
@@ -2485,7 +2486,7 @@ void towns_state::machine_reset()
 	m_cdrom = machine().device<cdrom_image_device>("cdrom");
 	m_cdda = machine().device("cdda");
 	m_speaker = machine().device(SPEAKER_TAG);
-	m_scsi = machine().device<fmscsi_device>("scsi");
+	m_scsi = machine().device<fmscsi_device>("scsi:fm");
 	m_ram = machine().device<ram_device>(RAM_TAG);
 	m_ftimer = 0x00;
 	m_freerun_timer = 0x00;
@@ -2625,21 +2626,8 @@ static const rf5c68_interface rf5c68_intf =
 	towns_pcm_irq
 };
 
-static const SCSIConfigTable towns_scsi_devtable =
-{
-	5,                                      /* 5 SCSI devices */
-	{
-		{ SCSI_ID_0, "harddisk0" },
-		{ SCSI_ID_1, "harddisk1" },
-		{ SCSI_ID_2, "harddisk2" },
-		{ SCSI_ID_3, "harddisk3" },
-		{ SCSI_ID_4, "harddisk4" },
-	}
-};
-
 static const FMSCSIinterface towns_scsi_config =
 {
-	&towns_scsi_devtable,
 	DEVCB_LINE(towns_scsi_irq),
 	DEVCB_LINE(towns_scsi_drq)
 };
@@ -2684,7 +2672,7 @@ static MACHINE_CONFIG_FRAGMENT( towns_base )
 	MCFG_CPU_IO_MAP(towns_io)
 	MCFG_CPU_VBLANK_INT("screen", towns_vsync_irq)
 
-	//    MCFG_MACHINE_RESET(towns)
+	//    MCFG_MACHINE_RESET_OVERRIDE(towns_state,towns)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -2721,19 +2709,20 @@ static MACHINE_CONFIG_FRAGMENT( towns_base )
 
 	MCFG_CDROM_ADD("cdrom",towns_cdrom)
 
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk3", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk4", SCSIHD, 0)
-	MCFG_FMSCSI_ADD("scsi",towns_scsi_config)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk0", SCSIHD, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_2)
+	MCFG_SCSIDEV_ADD("scsi:harddisk3", SCSIHD, SCSI_ID_3)
+	MCFG_SCSIDEV_ADD("scsi:harddisk4", SCSIHD, SCSI_ID_4)
+	MCFG_FMSCSI_ADD("scsi:fm",towns_scsi_config)
 
 	MCFG_UPD71071_ADD("dma_1",towns_dma_config)
 	MCFG_UPD71071_ADD("dma_2",towns_dma_config)
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
-	//MCFG_VIDEO_START(towns)
+	//MCFG_VIDEO_START_OVERRIDE(towns_state,towns)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

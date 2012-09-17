@@ -61,7 +61,7 @@ QUICKLOAD_LOAD(kc)
 		datasize = image.length() - 128;
 	}
 
-	address_space *space = state->m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = state->m_maincpu->space( AS_PROGRAM );
 
 	for (i=0; i<datasize; i++)
 		space->write_byte((addr+i) & 0xffff, data[i+128]);
@@ -69,7 +69,7 @@ QUICKLOAD_LOAD(kc)
 	if (execution_address != 0 && header->number_addresses >= 3 )
 	{
 		// if specified, jumps to the quickload start address
-		cpu_set_reg(state->m_maincpu, STATE_GENPC, execution_address);
+		state->m_maincpu->set_pc(execution_address);
 	}
 
 	auto_free(image.device().machine(), data);
@@ -290,7 +290,7 @@ void kc_state::cassette_set_motor(int motor_state)
 /* update status of memory area 0x0000-0x03fff */
 void kc_state::update_0x00000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	/* access ram? */
 	if (m_pio_data[0] & (1<<1))
@@ -330,7 +330,7 @@ void kc_state::update_0x00000()
 /* update status of memory area 0x4000-0x07fff */
 void kc_state::update_0x04000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	LOG(("Module at 0x4000\n"));
 
@@ -343,7 +343,7 @@ void kc_state::update_0x04000()
 /* update memory address 0x0c000-0x0e000 */
 void kc_state::update_0x0c000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	if ((m_pio_data[0] & (1<<7)) && memregion("basic")->base() != NULL)
 	{
@@ -366,7 +366,7 @@ void kc_state::update_0x0c000()
 /* update memory address 0x0e000-0x0ffff */
 void kc_state::update_0x0e000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	if (m_pio_data[0] & (1<<0))
 	{
@@ -390,7 +390,7 @@ void kc_state::update_0x0e000()
 /* update status of memory area 0x08000-0x0ffff */
 void kc_state::update_0x08000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
     if (m_pio_data[0] & (1<<2))
     {
@@ -413,7 +413,7 @@ void kc_state::update_0x08000()
 /* update status of memory area 0x4000-0x07fff */
 void kc85_4_state::update_0x04000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	/* access ram? */
 	if (m_port_86_data & (1<<0))
@@ -455,7 +455,7 @@ void kc85_4_state::update_0x04000()
 /* update memory address 0x0c000-0x0e000 */
 void kc85_4_state::update_0x0c000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	if (m_port_86_data & (1<<7))
 	{
@@ -491,7 +491,7 @@ void kc85_4_state::update_0x0c000()
 
 void kc85_4_state::update_0x08000()
 {
-	address_space *space = m_maincpu->memory().space( AS_PROGRAM );
+	address_space *space = m_maincpu->space( AS_PROGRAM );
 
 	if (m_pio_data[0] & (1<<2))
 	{
@@ -790,7 +790,7 @@ void kc_state::machine_reset()
     at address 0x0000-0x01000 which has a single jump in it,
     can't see yet where it disables it later!!!! so for now
     here will be a override */
-	cpu_set_reg(m_maincpu, STATE_GENPC, 0x0f000);
+	m_maincpu->set_pc(0x0f000);
 }
 
 void kc85_4_state::machine_reset()

@@ -23,9 +23,6 @@
 #include "imagedev/cassette.h"
 #include "sound/wave.h"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define VIDEO_START_MEMBER(name) void name::video_start()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 #define LOG	1
 
@@ -60,6 +57,7 @@ public:
 	required_device<device_t> m_speaker;
 	required_device<cassette_image_device> m_cass;
 	required_shared_ptr<UINT8> m_videoram;
+	virtual void palette_init();
 };
 
 
@@ -198,7 +196,7 @@ static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
 };
 
 
-MACHINE_RESET_MEMBER(phunsy_state)
+void phunsy_state::machine_reset()
 {
 	membank( "bank1" )->set_base( m_ram_1800 );
 	membank( "bank2" )->set_base( memregion("ram_4000")->base() );
@@ -209,24 +207,24 @@ MACHINE_RESET_MEMBER(phunsy_state)
 }
 
 
-static PALETTE_INIT( phunsy )
+void phunsy_state::palette_init()
 {
 	for ( int i = 0; i < 8; i++ )
 	{
 		int j = ( i << 5 ) | ( i << 2 ) | ( i >> 1 );
 
-		palette_set_color_rgb( machine, i, j, j, j );
+		palette_set_color_rgb( machine(), i, j, j, j );
 	}
 }
 
 
-VIDEO_START_MEMBER( phunsy_state )
+void phunsy_state::video_start()
 {
 	m_p_chargen = memregion( "chargen" )->base();
 }
 
 
-SCREEN_UPDATE16_MEMBER( phunsy_state )
+UINT32 phunsy_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	UINT8 y,ra,chr,gfx,col;
 	UINT16 sy=0,ma=0,x;
@@ -309,7 +307,6 @@ static MACHINE_CONFIG_START( phunsy, phunsy_state )
 	MCFG_SCREEN_UPDATE_DRIVER(phunsy_state, screen_update)
 	MCFG_GFXDECODE(phunsy)
 	MCFG_PALETTE_LENGTH(8)
-	MCFG_PALETTE_INIT(phunsy)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

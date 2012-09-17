@@ -25,17 +25,17 @@
 #include "charconv.h"
 
 
-typedef struct _imgtool_image imgtool_image;
-typedef struct _imgtool_partition imgtool_partition;
-typedef struct _imgtool_directory imgtool_directory;
-typedef struct _imgtool_library imgtool_library;
+struct imgtool_image;
+struct imgtool_partition;
+struct imgtool_directory;
+struct imgtool_library;
 
-typedef enum
+enum imgtool_suggestion_viability_t
 {
 	SUGGESTION_END,
 	SUGGESTION_POSSIBLE,
 	SUGGESTION_RECOMMENDED
-} imgtool_suggestion_viability_t;
+};
 
 union filterinfo
 {
@@ -51,13 +51,13 @@ union filterinfo
 
 typedef void (*filter_getinfoproc)(UINT32 state, union filterinfo *info);
 
-typedef enum
+enum imgtool_libsort_t
 {
 	ITLS_NAME,
 	ITLS_DESCRIPTION
-} imgtool_libsort_t;
+};
 
-typedef struct
+struct imgtool_dirent
 {
 	char filename[1024];
 	char attr[64];
@@ -75,36 +75,36 @@ typedef struct
 	unsigned int corrupt : 1;
 	unsigned int directory : 1;
 	unsigned int hardlink : 1;
-} imgtool_dirent;
+};
 
-typedef struct
+struct imgtool_chainent
 {
 	UINT8 level;
 	UINT64 block;
-} imgtool_chainent;
+};
 
-typedef enum
+enum imgtool_forktype_t
 {
 	FORK_END,
 	FORK_DATA,
 	FORK_RESOURCE,
 	FORK_ALTERNATE
-} imgtool_forktype_t;
+};
 
-typedef struct
+struct imgtool_forkent
 {
 	imgtool_forktype_t type;
 	UINT64 size;
 	char forkname[64];
-} imgtool_forkent;
+};
 
-typedef struct
+struct imgtool_transfer_suggestion
 {
 	imgtool_suggestion_viability_t viability;
 	filter_getinfoproc filter;
 	const char *fork;
 	const char *description;
-} imgtool_transfer_suggestion;
+};
 
 enum
 {
@@ -134,19 +134,19 @@ enum
 	IMGTOOLATTR_TIME_LASTMODIFIED
 };
 
-typedef union
+union imgtool_attribute
 {
 	INT64	i;
 	time_t	t;
-} imgtool_attribute;
+};
 
-typedef struct
+struct imgtool_iconinfo
 {
 	unsigned icon16x16_specified : 1;
 	unsigned icon32x32_specified : 1;
 	UINT32 icon16x16[16][16];
 	UINT32 icon32x32[32][32];
-} imgtool_iconinfo;
+};
 
 enum
 {
@@ -228,11 +228,11 @@ enum
 
 
 union imgtoolinfo;
-typedef struct _imgtool_class imgtool_class;
 
+struct imgtool_class;
 typedef void (*imgtool_get_info)(const imgtool_class *, UINT32, union imgtoolinfo *);
 
-struct _imgtool_class
+struct imgtool_class
 {
 	imgtool_get_info get_info;
 	imgtool_get_info derived_get_info;
@@ -241,8 +241,7 @@ struct _imgtool_class
 
 
 
-typedef struct _imgtool_partition_info imgtool_partition_info;
-struct _imgtool_partition_info
+struct imgtool_partition_info
 {
 	imgtool_get_info get_info;
 	UINT64 base_block;
@@ -334,8 +333,7 @@ char *imgtool_temp_str(void);
 
 
 
-typedef struct _imgtool_module imgtool_module;
-struct _imgtool_module
+struct imgtool_module
 {
 	imgtool_module *previous;
 	imgtool_module *next;

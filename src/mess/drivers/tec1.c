@@ -76,8 +76,6 @@ JMON ToDo:
 #include "imagedev/cassette.h"
 #include "tec1.lh"
 
-#define MACHINE_RESET_MEMBER(name) void name::machine_reset()
-#define MACHINE_START_MEMBER(name) void name::machine_start()
 
 class tec1_state : public driver_device
 {
@@ -188,7 +186,7 @@ READ8_MEMBER( tec1_state::latch_r )
 
 READ8_MEMBER( tec1_state::tec1_kbd_r )
 {
-	cputag_set_input_line(machine(), "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	return m_kbd | ioport("SHIFT")->read();
 }
 
@@ -250,7 +248,7 @@ static TIMER_CALLBACK( tec1_kbd_callback )
 	if (machine.root_device().ioport(keynames[state->m_kbd_row])->read())
 	{
 		state->m_kbd = state->tec1_convert_col_to_bin(machine.root_device().ioport(keynames[state->m_kbd_row])->read(), state->m_kbd_row);
-		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, HOLD_LINE);
+		machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, HOLD_LINE);
 		state->m_key_pressed = TRUE;
 	}
 	else
@@ -264,13 +262,13 @@ static TIMER_CALLBACK( tec1_kbd_callback )
 
 ***************************************************************************/
 
-MACHINE_START_MEMBER( tec1_state )
+void tec1_state::machine_start()
 {
 	m_kbd_timer = machine().scheduler().timer_alloc(FUNC(tec1_kbd_callback));
 	m_kbd_timer->adjust( attotime::zero, 0, attotime::from_hz(500) );
 }
 
-MACHINE_RESET_MEMBER( tec1_state )
+void tec1_state::machine_reset()
 {
 	m_kbd = 0;
 }

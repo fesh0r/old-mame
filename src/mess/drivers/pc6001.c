@@ -223,6 +223,13 @@ public:
 	DECLARE_WRITE8_MEMBER(pc6001sr_vram_bank_w);
 	DECLARE_WRITE8_MEMBER(pc6001sr_system_latch_w);
 	DECLARE_WRITE8_MEMBER(necsr_ppi8255_w);
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
+	DECLARE_MACHINE_RESET(pc6001m2);
+	DECLARE_PALETTE_INIT(pc6001m2);
+	DECLARE_MACHINE_RESET(pc6001sr);
 };
 
 
@@ -231,9 +238,8 @@ public:
 
 #define IRQ_LOG (0)
 
-static VIDEO_START( pc6001 )
+void pc6001_state::video_start()
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
 	#if 0
 	m6847_config cfg;
 
@@ -242,9 +248,9 @@ static VIDEO_START( pc6001 )
 	cfg.get_attributes = pc6001_get_attributes;
 	cfg.get_video_ram = pc6001_get_video_ram;
 	cfg.get_char_rom = pc6001_get_char_rom;
-	m6847_init(machine, &cfg);
+	m6847_init(machine(), &cfg);
 	#endif
-	state->m_video_ram = auto_alloc_array(machine, UINT8, 0x4000);
+	m_video_ram = auto_alloc_array(machine(), UINT8, 0x4000);
 }
 
 /* this is known as gfx mode 4 */
@@ -759,7 +765,7 @@ WRITE8_MEMBER(pc6001_state::pc6001_system_latch_w)
 		//machine().device(CASSETTE_TAG )->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 		//machine().device(CASSETTE_TAG )->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 		//m_irq_vector = 0x00;
-		//cputag_set_input_line(machine(),"maincpu", 0, ASSERT_LINE);
+		//machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 	}
 
 	m_sys_latch = data;
@@ -1245,7 +1251,7 @@ WRITE8_MEMBER(pc6001_state::pc6001m2_system_latch_w)
 		//machine().device(CASSETTE_TAG )->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 		//machine().device(CASSETTE_TAG )->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 		//m_irq_vector = 0x00;
-		//cputag_set_input_line(machine(),"maincpu", 0, ASSERT_LINE);
+		//machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 	}
 
 	m_sys_latch = data;
@@ -1355,7 +1361,7 @@ static TIMER_CALLBACK(audio_callback)
 	{
 		if(IRQ_LOG) printf("Timer IRQ called %02x\n",state->m_timer_irq_vector);
 		state->m_irq_vector = state->m_timer_irq_vector;
-		cputag_set_input_line(machine,"maincpu", 0, ASSERT_LINE);
+		machine.device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 	}
 }
 
@@ -1591,7 +1597,7 @@ WRITE8_MEMBER(pc6001_state::pc6001sr_system_latch_w)
 		//machine().device(CASSETTE_TAG )->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 		//machine().device(CASSETTE_TAG )->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 		//m_irq_vector = 0x00;
-		//cputag_set_input_line(machine(),"maincpu", 0, ASSERT_LINE);
+		//machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 	}
 
 	m_sys_latch = data;
@@ -1845,7 +1851,7 @@ static INTERRUPT_GEN( pc6001_interrupt )
 	state->m_cur_keycode = check_joy_press(device->machine());
 	if(IRQ_LOG) printf("Stick IRQ called 0x16\n");
 	state->m_irq_vector = 0x16;
-	device_set_input_line(device, 0, ASSERT_LINE);
+	device->execute().set_input_line(0, ASSERT_LINE);
 }
 
 static INTERRUPT_GEN( pc6001sr_interrupt )
@@ -1856,13 +1862,13 @@ static INTERRUPT_GEN( pc6001sr_interrupt )
 	state->m_cur_keycode = check_joy_press(device->machine());
 	if(IRQ_LOG) printf("VRTC IRQ called 0x16\n");
 	state->m_irq_vector = (state->m_kludge) ? 0x22 : 0x16;
-	device_set_input_line(device, 0, ASSERT_LINE);
+	device->execute().set_input_line(0, ASSERT_LINE);
 }
 
 static IRQ_CALLBACK ( pc6001_irq_callback )
 {
 	pc6001_state *state = device->machine().driver_data<pc6001_state>();
-	device_set_input_line(device, 0, CLEAR_LINE);
+	device->execute().set_input_line(0, CLEAR_LINE);
 	return state->m_irq_vector;
 }
 
@@ -2032,7 +2038,7 @@ static TIMER_DEVICE_CALLBACK(cassette_callback)
 			cas_data_i = 0x80;
 			/* data ready, poll irq */
 			state->m_irq_vector = 0x08;
-			cputag_set_input_line(timer.machine(),"maincpu", 0, ASSERT_LINE);
+			timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 		}
 		else
 			cas_data_i>>=1;
@@ -2047,13 +2053,13 @@ static TIMER_DEVICE_CALLBACK(cassette_callback)
 				state->m_cas_switch = 0;
 				if(IRQ_LOG) printf("Tape-E IRQ 0x12\n");
 				state->m_irq_vector = 0x12;
-				cputag_set_input_line(timer.machine(),"maincpu", 0, ASSERT_LINE);
+				timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			}
 			else
 			{
 				if(IRQ_LOG) printf("Tape-D IRQ 0x08\n");
 				state->m_irq_vector = 0x08;
-				cputag_set_input_line(timer.machine(),"maincpu", 0, ASSERT_LINE);
+				timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			}
 		#endif
 	}
@@ -2075,7 +2081,7 @@ static TIMER_DEVICE_CALLBACK(keyboard_callback)
 			state->m_cur_keycode = check_keyboard_press(space->machine());
 			if(IRQ_LOG) printf("KEY IRQ 0x02\n");
 			state->m_irq_vector = 0x02;
-			cputag_set_input_line(timer.machine(),"maincpu", 0, ASSERT_LINE);
+			timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			state->m_old_key1 = key1;
 			state->m_old_key2 = key2;
 			state->m_old_key3 = key3;
@@ -2087,120 +2093,116 @@ static TIMER_DEVICE_CALLBACK(keyboard_callback)
 			if(state->m_cur_keycode)
 			{
 				state->m_irq_vector = 0x16;
-				cputag_set_input_line(timer.machine(),"maincpu", 0, ASSERT_LINE);
+				timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			}
 		}
 		#endif
 	}
 }
 
-static MACHINE_START(pc6001)
+void pc6001_state::machine_start()
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
-	state->m_timer_hz_div = 3;
+	m_timer_hz_div = 3;
 	{
-		attotime period = attotime::from_hz((487.5*4)/(state->m_timer_hz_div+1));
-		state->m_timer_irq_timer = machine.scheduler().timer_alloc(FUNC(audio_callback));
-		state->m_timer_irq_timer->adjust(period,  0, period);
+		attotime period = attotime::from_hz((487.5*4)/(m_timer_hz_div+1));
+		m_timer_irq_timer = machine().scheduler().timer_alloc(FUNC(audio_callback));
+		m_timer_irq_timer->adjust(period,  0, period);
 	}
 }
 
-static MACHINE_RESET(pc6001)
+void pc6001_state::machine_reset()
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
-	UINT8 *work_ram = state->memregion("maincpu")->base();
+	UINT8 *work_ram = memregion("maincpu")->base();
 
-	state->m_video_ram =  work_ram + 0xc000;
+	m_video_ram =  work_ram + 0xc000;
 
-	state->m_port_c_8255=0;
+	m_port_c_8255=0;
 
-	device_set_irq_callback(machine.device("maincpu"),pc6001_irq_callback);
-	state->m_cas_switch = 0;
-	state->m_cas_offset = 0;
-	state->m_timer_irq_mask = 1;
-	state->m_timer_irq_mask2 = 1;
-	state->m_timer_irq_vector = 0x06; // actually vector is fixed in plain PC-6001
-	state->m_timer_hz_div = 3;
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pc6001_irq_callback);
+	m_cas_switch = 0;
+	m_cas_offset = 0;
+	m_timer_irq_mask = 1;
+	m_timer_irq_mask2 = 1;
+	m_timer_irq_vector = 0x06; // actually vector is fixed in plain PC-6001
+	m_timer_hz_div = 3;
 }
 
-static MACHINE_RESET(pc6001m2)
+MACHINE_RESET_MEMBER(pc6001_state,pc6001m2)
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
-	UINT8 *work_ram = machine.root_device().memregion("maincpu")->base();
+	UINT8 *work_ram = machine().root_device().memregion("maincpu")->base();
 
-	state->m_video_ram = work_ram + 0xc000 + 0x28000;
+	m_video_ram = work_ram + 0xc000 + 0x28000;
 
-	state->m_port_c_8255=0;
+	m_port_c_8255=0;
 
-	device_set_irq_callback(machine.device("maincpu"),pc6001_irq_callback);
-	state->m_cas_switch = 0;
-	state->m_cas_offset = 0;
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pc6001_irq_callback);
+	m_cas_switch = 0;
+	m_cas_offset = 0;
 
 	/* set default bankswitch */
 	{
-		UINT8 *ROM = state->memregion("maincpu")->base();
-		state->m_bank_r0 = 0x71;
-		state->membank("bank1")->set_base(&ROM[BASICROM(0)]);
-		state->membank("bank2")->set_base(&ROM[BASICROM(1)]);
-		state->membank("bank3")->set_base(&ROM[EXROM(0)]);
-		state->membank("bank4")->set_base(&ROM[EXROM(1)]);
-		state->m_bank_r1 = 0xdd;
-		state->membank("bank5")->set_base(&ROM[WRAM(4)]);
-		state->membank("bank6")->set_base(&ROM[WRAM(5)]);
-		state->membank("bank7")->set_base(&ROM[WRAM(6)]);
-		state->membank("bank8")->set_base(&ROM[WRAM(7)]);
-		state->m_bank_opt = 0x02; //tv rom
-		state->m_bank_w = 0x50; //enable write to work ram 4,5,6,7
-		state->m_gfx_bank_on = 0;
+		UINT8 *ROM = memregion("maincpu")->base();
+		m_bank_r0 = 0x71;
+		membank("bank1")->set_base(&ROM[BASICROM(0)]);
+		membank("bank2")->set_base(&ROM[BASICROM(1)]);
+		membank("bank3")->set_base(&ROM[EXROM(0)]);
+		membank("bank4")->set_base(&ROM[EXROM(1)]);
+		m_bank_r1 = 0xdd;
+		membank("bank5")->set_base(&ROM[WRAM(4)]);
+		membank("bank6")->set_base(&ROM[WRAM(5)]);
+		membank("bank7")->set_base(&ROM[WRAM(6)]);
+		membank("bank8")->set_base(&ROM[WRAM(7)]);
+		m_bank_opt = 0x02; //tv rom
+		m_bank_w = 0x50; //enable write to work ram 4,5,6,7
+		m_gfx_bank_on = 0;
 	}
 
-	state->m_timer_irq_mask = 1;
-	state->m_timer_irq_mask2 = 1;
-	state->m_timer_irq_vector = 0x06;
+	m_timer_irq_mask = 1;
+	m_timer_irq_mask2 = 1;
+	m_timer_irq_vector = 0x06;
 }
 
-static MACHINE_RESET(pc6001sr)
+MACHINE_RESET_MEMBER(pc6001_state,pc6001sr)
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
-	UINT8 *work_ram = machine.root_device().memregion("maincpu")->base();
+	UINT8 *work_ram = machine().root_device().memregion("maincpu")->base();
 
-	state->m_video_ram = work_ram + 0x70000;
+	m_video_ram = work_ram + 0x70000;
 
-	state->m_port_c_8255=0;
+	m_port_c_8255=0;
 
-	device_set_irq_callback(machine.device("maincpu"),pc6001_irq_callback);
-	state->m_cas_switch = 0;
-	state->m_cas_offset = 0;
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pc6001_irq_callback);
+	m_cas_switch = 0;
+	m_cas_offset = 0;
 
 	/* set default bankswitch */
 	{
-		UINT8 *ROM = state->memregion("maincpu")->base();
-		state->m_sr_bank_r[0] = 0xf8; state->membank("bank1")->set_base(&ROM[SR_SYSROM_1(0x08)]);
-		state->m_sr_bank_r[1] = 0xfa; state->membank("bank2")->set_base(&ROM[SR_SYSROM_1(0x0a)]);
-		state->m_sr_bank_r[2] = 0xb0; state->membank("bank3")->set_base(&ROM[SR_EXROM1(0x00)]);
-		state->m_sr_bank_r[3] = 0xc0; state->membank("bank4")->set_base(&ROM[SR_EXROM0(0x00)]);
-		state->m_sr_bank_r[4] = 0x08; state->membank("bank5")->set_base(&ROM[SR_WRAM0(0x08)]);
-		state->m_sr_bank_r[5] = 0x0a; state->membank("bank6")->set_base(&ROM[SR_WRAM0(0x0a)]);
-		state->m_sr_bank_r[6] = 0x0c; state->membank("bank7")->set_base(&ROM[SR_WRAM0(0x0c)]);
-		state->m_sr_bank_r[7] = 0x0e; state->membank("bank8")->set_base(&ROM[SR_WRAM0(0x0e)]);
-//      state->m_bank_opt = 0x02; //tv rom
+		UINT8 *ROM = memregion("maincpu")->base();
+		m_sr_bank_r[0] = 0xf8; membank("bank1")->set_base(&ROM[SR_SYSROM_1(0x08)]);
+		m_sr_bank_r[1] = 0xfa; membank("bank2")->set_base(&ROM[SR_SYSROM_1(0x0a)]);
+		m_sr_bank_r[2] = 0xb0; membank("bank3")->set_base(&ROM[SR_EXROM1(0x00)]);
+		m_sr_bank_r[3] = 0xc0; membank("bank4")->set_base(&ROM[SR_EXROM0(0x00)]);
+		m_sr_bank_r[4] = 0x08; membank("bank5")->set_base(&ROM[SR_WRAM0(0x08)]);
+		m_sr_bank_r[5] = 0x0a; membank("bank6")->set_base(&ROM[SR_WRAM0(0x0a)]);
+		m_sr_bank_r[6] = 0x0c; membank("bank7")->set_base(&ROM[SR_WRAM0(0x0c)]);
+		m_sr_bank_r[7] = 0x0e; membank("bank8")->set_base(&ROM[SR_WRAM0(0x0e)]);
+//      m_bank_opt = 0x02; //tv rom
 
 		/* enable default work RAM writes */
-		state->m_sr_bank_w[0] = 0x00;
-		state->m_sr_bank_w[1] = 0x02;
-		state->m_sr_bank_w[2] = 0x04;
-		state->m_sr_bank_w[3] = 0x06;
-		state->m_sr_bank_w[4] = 0x08;
-		state->m_sr_bank_w[5] = 0x0a;
-		state->m_sr_bank_w[6] = 0x0c;
-		state->m_sr_bank_w[7] = 0x0e;
+		m_sr_bank_w[0] = 0x00;
+		m_sr_bank_w[1] = 0x02;
+		m_sr_bank_w[2] = 0x04;
+		m_sr_bank_w[3] = 0x06;
+		m_sr_bank_w[4] = 0x08;
+		m_sr_bank_w[5] = 0x0a;
+		m_sr_bank_w[6] = 0x0c;
+		m_sr_bank_w[7] = 0x0e;
 
-		state->m_gfx_bank_on = 0;
+		m_gfx_bank_on = 0;
 	}
 
-	state->m_timer_irq_mask = 1;
-	state->m_timer_irq_mask2 = 1;
-	state->m_timer_irq_vector = 0x06;
+	m_timer_irq_mask = 1;
+	m_timer_irq_mask2 = 1;
+	m_timer_irq_vector = 0x06;
 }
 
 static const rgb_t defcolors[] =
@@ -2241,23 +2243,23 @@ static const rgb_t mk2_defcolors[] =
 	MAKE_RGB(0xff, 0xff, 0xff)	/* WHITE */
 };
 
-static PALETTE_INIT(pc6001)
+void pc6001_state::palette_init()
 {
 	int i;
 
 	for(i=0;i<8+4;i++)
-		palette_set_color(machine, i+8,defcolors[i]);
+		palette_set_color(machine(), i+8,defcolors[i]);
 }
 
-static PALETTE_INIT(pc6001m2)
+PALETTE_INIT_MEMBER(pc6001_state,pc6001m2)
 {
 	int i;
 
 	for(i=0;i<8;i++)
-		palette_set_color(machine, i+8,defcolors[i]);
+		palette_set_color(machine(), i+8,defcolors[i]);
 
 	for(i=0x10;i<0x20;i++)
-		palette_set_color(machine, i,mk2_defcolors[i-0x10]);
+		palette_set_color(machine(), i,mk2_defcolors[i-0x10]);
 }
 
 static const cassette_interface pc6001_cassette_interface =
@@ -2327,8 +2329,6 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 
 //  MCFG_CPU_ADD("subcpu", I8049, 7987200)
 
-	MCFG_MACHINE_START(pc6001)
-	MCFG_MACHINE_RESET(pc6001)
 
 	MCFG_GFXDECODE(pc6001m2)
 
@@ -2341,10 +2341,8 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 	MCFG_SCREEN_SIZE(320, 25+192+26)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
 
-	MCFG_VIDEO_START(pc6001)
 
 	MCFG_PALETTE_LENGTH(16+4)
-	MCFG_PALETTE_INIT(pc6001)
 
 	MCFG_I8255_ADD( "ppi8255", pc6001_ppi8255_interface )
 	/* uart */
@@ -2377,12 +2375,12 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc6001m2, pc6001 )
 
-	MCFG_MACHINE_RESET(pc6001m2)
+	MCFG_MACHINE_RESET_OVERRIDE(pc6001_state,pc6001m2)
 
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_UPDATE_STATIC(pc6001m2)
 	MCFG_PALETTE_LENGTH(16+16)
-	MCFG_PALETTE_INIT(pc6001m2)
+	MCFG_PALETTE_INIT_OVERRIDE(pc6001_state,pc6001m2)
 
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
@@ -2404,7 +2402,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc6001sr, pc6001m2 )
 
-	MCFG_MACHINE_RESET(pc6001sr)
+	MCFG_MACHINE_RESET_OVERRIDE(pc6001_state,pc6001sr)
 
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_UPDATE_STATIC(pc6001sr)

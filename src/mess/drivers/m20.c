@@ -61,7 +61,7 @@ public:
 		m_wd177x(*this, "fd1797"),
 		m_p_videoram(*this, "p_videoram"){ }
 
-    required_device<device_t> m_maincpu;
+    required_device<z8001_device> m_maincpu;
     required_device<i8251_device> m_kbdi8251;
     required_device<i8251_device> m_ttyi8251;
     required_device<i8255_device> m_i8255;
@@ -93,6 +93,7 @@ private:
 	UINT8 m_port21;
 public:
 	DECLARE_DRIVER_INIT(m20);
+	virtual void video_start();
 };
 
 
@@ -100,7 +101,7 @@ public:
 #define PIXEL_CLOCK XTAL_4_433619MHz
 
 
-static VIDEO_START( m20 )
+void m20_state::video_start()
 {
 }
 
@@ -243,12 +244,12 @@ WRITE_LINE_MEMBER( m20_state::pic_irq_line_w )
     if (state)
     {
 		//printf ("PIC raised VI\n");
-		device_set_input_line(m_maincpu, 1, ASSERT_LINE);
+		m_maincpu->set_input_line(1, ASSERT_LINE);
     }
     else
     {
 		//printf ("PIC lowered VI\n");
-		device_set_input_line(m_maincpu, 1, CLEAR_LINE);
+		m_maincpu->set_input_line(1, CLEAR_LINE);
     }
 }
 
@@ -274,7 +275,7 @@ WRITE_LINE_MEMBER( m20_state::timer_tick_w )
      * 8253 is programmed in square wave mode, not rate
      * generator mode.
      */
-	device_set_input_line(m_maincpu, 0, state ? HOLD_LINE /*ASSERT_LINE*/ : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE /*ASSERT_LINE*/ : CLEAR_LINE);
 }
 
 /* from the M20 hardware reference manual:
@@ -376,7 +377,7 @@ void m20_state::machine_reset()
 	m_port21 = 0xff;
 	m_port21_sd = 1;
 
-	device_set_irq_callback(m_maincpu, m20_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(m20_irq_callback);
 
 	wd17xx_mr_w(m_wd177x, 0);
 	//wd17xx_mr_w(m_wd177x, 1);
@@ -545,7 +546,6 @@ static MACHINE_CONFIG_START( m20, m20_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
-	MCFG_VIDEO_START(m20)
 	MCFG_SCREEN_UPDATE_STATIC(m20)
 	MCFG_PALETTE_LENGTH(4)
 

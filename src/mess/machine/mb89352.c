@@ -120,7 +120,6 @@ void mb89352_device::device_config_complete()
     // otherwise, initialize it to defaults
     else
     {
-		scsidevs = NULL;
 		memset(&irq_callback,0,sizeof(irq_callback));
 		memset(&drq_callback,0,sizeof(drq_callback));
     }
@@ -137,8 +136,6 @@ mb89352_device::mb89352_device(const machine_config &mconfig, const char *tag, d
 
 void mb89352_device::device_start()
 {
-	int i;
-
 	m_phase = SCSI_PHASE_BUS_FREE;
     m_target = 0;
     m_command_index = 0;
@@ -158,9 +155,13 @@ void mb89352_device::device_start()
     m_transfer_timer = timer_alloc(TIMER_TRANSFER);
 
 	// try to open the devices
-	for (i = 0; i < scsidevs->devs_present; i++)
+	for( device_t *device = owner()->first_subdevice(); device != NULL; device = device->next() )
 	{
-		m_SCSIdevices[scsidevs->devices[i].scsiID] = machine().device<scsidev_device>( scsidevs->devices[i].tag );
+		scsidev_device *scsidev = dynamic_cast<scsidev_device *>(device);
+		if( scsidev != NULL )
+		{
+			m_SCSIdevices[scsidev->GetDeviceID()] = scsidev;
+		}
 	}
 }
 
@@ -190,7 +191,7 @@ int mb89352_device::get_scsi_cmd_len(UINT8 cbyte)
 	if (group == 1 || group == 2) return 10;
 	if (group == 5) return 12;
 
-	fatalerror("MB89352: Unknown SCSI command group %d", group);
+	fatalerror("MB89352: Unknown SCSI command group %d\n", group);
 
 	return 6;
 }

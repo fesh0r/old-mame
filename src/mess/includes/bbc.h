@@ -17,6 +17,8 @@
 #include "machine/wd17xx.h"
 #include "machine/upd7002.h"
 #include "video/mc6845.h"
+#include "video/saa5050.h"
+#include "sound/sn76496.h"
 
 class bbc_state : public driver_device
 {
@@ -24,6 +26,8 @@ public:
 	bbc_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		  m_maincpu(*this, "maincpu"),
+		  m_sn(*this, "sn76489"),
+		  m_trom(*this, "saa505x"),
 		  m_ACCCON_IRR(CLEAR_LINE),
 		  m_via_system_irq(CLEAR_LINE),
 		  m_via_user_irq(CLEAR_LINE),
@@ -31,6 +35,8 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
+	optional_device<sn76489_new_device> m_sn;
+	required_device<saa5050_device> m_trom;
 
 	void check_interrupts();
 
@@ -190,7 +196,6 @@ public:
 	unsigned char m_pixel_bits[256];
 	int m_BBC_HSync;
 	int m_BBC_VSync;
-	device_t *m_saa505x;
 
 
 
@@ -263,6 +268,19 @@ public:
 	DECLARE_DIRECT_UPDATE_MEMBER(bbcm_direct_handler);
 	DECLARE_DRIVER_INIT(bbc);
 	DECLARE_DRIVER_INIT(bbcm);
+	DECLARE_MACHINE_START(bbca);
+	DECLARE_MACHINE_RESET(bbca);
+	DECLARE_VIDEO_START(bbca);
+	DECLARE_PALETTE_INIT(bbc);
+	DECLARE_MACHINE_START(bbcm);
+	DECLARE_MACHINE_RESET(bbcm);
+	DECLARE_VIDEO_START(bbcm);
+	DECLARE_MACHINE_START(bbcb);
+	DECLARE_MACHINE_RESET(bbcb);
+	DECLARE_VIDEO_START(bbcb);
+	DECLARE_MACHINE_START(bbcbp);
+	DECLARE_MACHINE_RESET(bbcbp);
+	DECLARE_VIDEO_START(bbcbp);
 };
 
 
@@ -276,15 +294,15 @@ extern const via6522_interface bbcb_system_via;
 extern const via6522_interface bbcb_user_via;
 extern const wd17xx_interface bbc_wd17xx_interface;
 
-MACHINE_START( bbca );
-MACHINE_START( bbcb );
-MACHINE_START( bbcbp );
-MACHINE_START( bbcm );
 
-MACHINE_RESET( bbca );
-MACHINE_RESET( bbcb );
-MACHINE_RESET( bbcbp );
-MACHINE_RESET( bbcm );
+
+
+
+
+
+
+
+
 
 INTERRUPT_GEN( bbcb_keyscan );
 INTERRUPT_GEN( bbcm_keyscan );
@@ -314,13 +332,12 @@ extern const uPD7002_interface bbc_uPD7002;
 
 /*----------- defined in video/bbc.c -----------*/
 
-VIDEO_START( bbca );
-VIDEO_START( bbcb );
-VIDEO_START( bbcbp );
-VIDEO_START( bbcm );
+
+
+
+
 SCREEN_UPDATE_IND16( bbc );
 
-void bbc_draw_RGB_in(device_t *device, int offset, int data);
 void bbc_set_video_memory_lookups(running_machine &machine, int ramsize);
 void bbc_setscreenstart(running_machine &machine, int b4, int b5);
 void bbcbp_setvideoshadow(running_machine &machine, int vdusel);

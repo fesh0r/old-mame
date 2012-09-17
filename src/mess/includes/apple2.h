@@ -72,24 +72,23 @@
 #define APPLE2_MEM_FLOATING	0xFFFFFFFF
 #define APPLE2_MEM_MASK		0x00FFFFFF
 
-typedef enum
+enum machine_type_t
 {
     APPLE_II,           // Apple II/II+
     APPLE_IIEPLUS,      // Apple IIe/IIc/IIgs/IIc+
     TK2000,             // Microdigital TK2000
     LASER128,           // Laser 128/128EX/128EX2
     SPACE84             // "Space 84" with flipped text mode
-} machine_type_t;
+};
 
-typedef enum
+enum bank_disposition_t
 {
 	A2MEM_IO		= 0,	/* this is always handlers; never banked memory */
 	A2MEM_MONO		= 1,	/* this is a bank where read and write are always in unison */
 	A2MEM_DUAL		= 2		/* this is a bank where read and write can go different places */
-} bank_disposition_t;
+};
 
-typedef struct _apple2_meminfo apple2_meminfo;
-struct _apple2_meminfo
+struct apple2_meminfo
 {
 	UINT32 read_mem;
 	read8_delegate *read_handler;
@@ -97,8 +96,7 @@ struct _apple2_meminfo
 	write8_delegate *write_handler;
 };
 
-typedef struct _apple2_memmap_entry apple2_memmap_entry;
-struct _apple2_memmap_entry
+struct apple2_memmap_entry
 {
 	offs_t begin;
 	offs_t end;
@@ -106,8 +104,7 @@ struct _apple2_memmap_entry
 	bank_disposition_t bank_disposition;
 };
 
-typedef struct _apple2_memmap_config apple2_memmap_config;
-struct _apple2_memmap_config
+struct apple2_memmap_config
 {
 	int first_bank;
 	UINT8 *auxmem;
@@ -235,13 +232,22 @@ public:
     write8_delegate wd_inh_d000;
     read8_delegate rd_inh_e000;
     write8_delegate wd_inh_e000;
+	DECLARE_MACHINE_START(apple2);
+	DECLARE_VIDEO_START(apple2);
+	DECLARE_PALETTE_INIT(apple2);
+	DECLARE_MACHINE_START(apple2orig);
+	DECLARE_VIDEO_START(apple2p);
+	DECLARE_VIDEO_START(apple2e);
+	DECLARE_MACHINE_START(tk2000);
+	DECLARE_MACHINE_START(laser128);
+	DECLARE_MACHINE_START(space84);
 };
 
 
 /*----------- defined in drivers/apple2.c -----------*/
 
 INPUT_PORTS_EXTERN( apple2ep );
-PALETTE_INIT( apple2 );
+
 
 
 /*----------- defined in machine/apple2.c -----------*/
@@ -252,11 +258,11 @@ void apple2_iwm_setdiskreg(running_machine &machine, UINT8 data);
 UINT8 apple2_iwm_getdiskreg(running_machine &machine);
 
 void apple2_init_common(running_machine &machine);
-MACHINE_START( apple2 );
-MACHINE_START( apple2orig );
-MACHINE_START( tk2000 );
-MACHINE_START( laser128 );
-MACHINE_START( space84 );
+
+
+
+
+
 UINT8 apple2_getfloatingbusvalue(running_machine &machine);
 READ8_HANDLER( apple2_c0xx_r );
 WRITE8_HANDLER( apple2_c0xx_w );
@@ -279,9 +285,9 @@ void apple2_update_memory(running_machine &machine);
 /*----------- defined in video/apple2.c -----------*/
 
 void apple2_video_start(running_machine &machine, const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
-VIDEO_START( apple2 );
-VIDEO_START( apple2p );
-VIDEO_START( apple2e );
+
+
+
 SCREEN_UPDATE_IND16( apple2 );
 
 #endif /* APPLE2_H_ */

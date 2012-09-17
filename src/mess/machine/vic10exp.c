@@ -9,9 +9,9 @@
 
 #include "emu.h"
 #include "emuopts.h"
-#include "machine/vic10exp.h"
 #include "formats/cbm_crt.h"
 #include "formats/imageutl.h"
+#include "machine/vic10exp.h"
 
 
 
@@ -164,6 +164,14 @@ void vic10_expansion_slot_device::device_start()
 	m_out_sp_func.resolve(m_out_sp_cb, *this);
 	m_out_cnt_func.resolve(m_out_cnt_cb, *this);
 	m_out_res_func.resolve(m_out_res_cb, *this);
+
+	// inherit bus clock
+	if (clock() == 0)
+	{
+		vic10_expansion_slot_device *root = machine().device<vic10_expansion_slot_device>(VIC10_EXPANSION_SLOT_TAG);
+		assert(root);
+		set_unscaled_clock(root->clock());
+	}
 }
 
 
@@ -271,33 +279,14 @@ const char * vic10_expansion_slot_device::get_default_card_software(const machin
 
 
 //-------------------------------------------------
-//  screen_update -
-//-------------------------------------------------
-
-UINT32 vic10_expansion_slot_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	bool value = false;
-
-	if (m_cart != NULL)
-	{
-		value = m_cart->vic10_screen_update(screen, bitmap, cliprect);
-	}
-
-	return value;
-}
-
-
-//-------------------------------------------------
 //  cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 vic10_expansion_slot_device::cd_r(address_space &space, offs_t offset, int lorom, int uprom, int exram)
+UINT8 vic10_expansion_slot_device::cd_r(address_space &space, offs_t offset, UINT8 data, int lorom, int uprom, int exram)
 {
-	UINT8 data = 0;
-
 	if (m_cart != NULL)
 	{
-		data = m_cart->vic10_cd_r(space, offset, lorom, uprom, exram);
+		data = m_cart->vic10_cd_r(space, offset, data, lorom, uprom, exram);
 	}
 
 	return data;

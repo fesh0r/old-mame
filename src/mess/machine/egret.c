@@ -137,21 +137,21 @@ void egret_device::send_port(address_space &space, UINT8 offset, UINT8 data)
 				if (xcvr_session != ((data>>1)&1))
 				{
 					#ifdef EGRET_SUPER_VERBOSE
-                    printf("EG-> XCVR_SESSION: %d (PC=%x)\n", (data>>1)&1, cpu_get_pc(m_maincpu));
+                    printf("EG-> XCVR_SESSION: %d (PC=%x)\n", (data>>1)&1, m_maincpu->pc());
 					#endif
 					xcvr_session = (data>>1) & 1;
 				}
                 if (via_data != ((data>>5)&1))
                 {
 					#ifdef EGRET_SUPER_VERBOSE
-                    printf("EG-> VIA_DATA: %d (PC=%x)\n", (data>>5)&1, cpu_get_pc(m_maincpu));
+                    printf("EG-> VIA_DATA: %d (PC=%x)\n", (data>>5)&1, m_maincpu->pc());
 					#endif
 					via_data = (data>>5) & 1;
                 }
                 if (via_clock != ((data>>4)&1))
                 {
 					#ifdef EGRET_SUPER_VERBOSE
-                    printf("EG-> VIA_CLOCK: %d (PC=%x)\n", ((data>>4)&1)^1, cpu_get_pc(m_maincpu));
+                    printf("EG-> VIA_CLOCK: %d (PC=%x)\n", ((data>>4)&1)^1, m_maincpu->pc());
 					#endif
 					via_clock = (data>>4) & 1;
 					via6522_device *via1 = machine().device<via6522_device>("via6522_0");
@@ -185,7 +185,7 @@ void egret_device::send_port(address_space &space, UINT8 offset, UINT8 data)
 					}
 				}
 
-				cputag_set_input_line(machine(), "maincpu", INPUT_LINE_RESET, (reset_line & 8) ? ASSERT_LINE : CLEAR_LINE);
+				machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, (reset_line & 8) ? ASSERT_LINE : CLEAR_LINE);
 			}
 			break;
 	}
@@ -312,7 +312,7 @@ WRITE8_MEMBER( egret_device::onesec_w )
 
 	if ((onesec & 0x40) && !(data & 0x40))
 	{
-		device_set_input_line(m_maincpu, M68HC05EG_INT_CPI, CLEAR_LINE);
+		m_maincpu->set_input_line(M68HC05EG_INT_CPI, CLEAR_LINE);
 	}
 
 	onesec = data;
@@ -419,7 +419,7 @@ void egret_device::device_timer(emu_timer &timer, device_timer_id id, int param,
 
 	if (onesec & 0x10)
 	{
-		device_set_input_line(m_maincpu, M68HC05EG_INT_CPI, ASSERT_LINE);
+		m_maincpu->set_input_line(M68HC05EG_INT_CPI, ASSERT_LINE);
 	}
 }
 

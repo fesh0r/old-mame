@@ -45,11 +45,10 @@
 #include "machine/ncr5380.h"
 #include "machine/applefdc.h"
 #include "devices/sonydriv.h"
-#include "imagedev/harddriv.h"
 #include "formats/ap_dsk35.h"
 #include "machine/ram.h"
+#include "machine/scsibus.h"
 #include "machine/scsihd.h"
-#include "imagedev/chd_cd.h"
 #include "sound/asc.h"
 #include "sound/awacs.h"
 #include "sound/cdda.h"
@@ -183,7 +182,7 @@ READ8_MEMBER( mac_state::mac_sonora_vctl_r )
 {
 	if (offset == 2)
 	{
-//        printf("Sonora: read monitor ID at PC=%x\n", cpu_get_pc(m_maincpu));
+//        printf("Sonora: read monitor ID at PC=%x\n", m_maincpu->pc());
 		return (6 << 4);	// 640x480 RGB monitor
 	}
 
@@ -241,7 +240,7 @@ READ8_MEMBER ( mac_state::mac_rbv_r )
 		{
 			data &= ~0x38;
 			data |= (space.machine().root_device().ioport("MONTYPE")->read_safe(2)<<3);
-//            printf("rbv_r montype: %02x (PC %x)\n", data, cpu_get_pc(space.cpu));
+//            printf("rbv_r montype: %02x (PC %x)\n", data, space.cpu->safe_pc());
 		}
 
 		// bit 7 of these registers always reads as 0 on RBV
@@ -257,13 +256,13 @@ READ8_MEMBER ( mac_state::mac_rbv_r )
 		switch (offset)
 		{
 			case 13:	// IFR
-//              printf("Read IER = %02x (PC=%x) 2=%02x\n", m_rbv_ier, cpu_get_pc(m_maincpu), m_rbv_regs[2]);
-				return m_rbv_ifr;
+//              printf("Read IER = %02x (PC=%x) 2=%02x\n", m_rbv_ier, m_maincpu->pc(), m_rbv_regs[2]);
+				data = m_rbv_ifr;
 				break;
 
 			case 14:	// IER
-//              printf("Read IFR = %02x (PC=%x) 2=%02x\n", m_rbv_ifr, cpu_get_pc(m_maincpu), m_rbv_regs[2]);
-				return m_rbv_ier;
+//              printf("Read IFR = %02x (PC=%x) 2=%02x\n", m_rbv_ifr, m_maincpu->pc(), m_rbv_regs[2]);
+				data = m_rbv_ier;
 				break;
 
 			default:
@@ -272,7 +271,7 @@ READ8_MEMBER ( mac_state::mac_rbv_r )
 		}
 	}
 
-//  printf("rbv_r: %x = %02x (PC=%x)\n", offset, data, cpu_get_pc(m_maincpu));
+//  printf("rbv_r: %x = %02x (PC=%x)\n", offset, data, m_maincpu->pc());
 
 	return data;
 }
@@ -282,7 +281,7 @@ WRITE8_MEMBER ( mac_state::mac_rbv_w )
 	if (offset < 0x100)
 	{
 //      if (offset == 0x10)
-//      printf("rbv_w: %02x to offset %x (PC=%x)\n", data, offset, cpu_get_pc(m_maincpu));
+//      printf("rbv_w: %02x to offset %x (PC=%x)\n", data, offset, m_maincpu->pc());
 		switch (offset)
 		{
 			case 0x00:
@@ -365,7 +364,7 @@ WRITE8_MEMBER ( mac_state::mac_rbv_w )
 		switch (offset)
 		{
 			case 13:	// IFR
-//              printf("%02x to IFR (PC=%x)\n", data, cpu_get_pc(m_maincpu));
+//              printf("%02x to IFR (PC=%x)\n", data, m_maincpu->pc());
 				if (data & 0x80)
 				{
 					data = 0x7f;
@@ -374,7 +373,7 @@ WRITE8_MEMBER ( mac_state::mac_rbv_w )
 				break;
 
 			case 14:	// IER
-//              printf("%02x to IER (PC=%x)\n", data, cpu_get_pc(m_maincpu));
+//              printf("%02x to IER (PC=%x)\n", data, m_maincpu->pc());
 				if (data & 0x80)	// 1 bits write 1s
 				{
 					m_rbv_ier |= data & 0x7f;
@@ -394,7 +393,7 @@ WRITE8_MEMBER ( mac_state::mac_rbv_w )
 }
 
 // Portable/PB100 video
-static VIDEO_START( macprtb )
+VIDEO_START_MEMBER(mac_state,macprtb)
 {
 }
 
@@ -434,31 +433,31 @@ WRITE8_MEMBER(mac_state::oss_w)
 
 READ32_MEMBER(mac_state::buserror_r)
 {
-	cputag_set_input_line(machine(), "maincpu", M68K_LINE_BUSERROR, ASSERT_LINE);
-	cputag_set_input_line(machine(), "maincpu", M68K_LINE_BUSERROR, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 	return 0;
 }
 
 READ8_MEMBER(mac_state::scciop_r)
 {
-//  printf("scciop_r @ %x (PC=%x)\n", offset, cpu_get_pc(m_maincpu));
+//  printf("scciop_r @ %x (PC=%x)\n", offset, m_maincpu->pc());
 	return 0;
 }
 
 WRITE8_MEMBER(mac_state::scciop_w)
 {
-//  printf("scciop_w %x @ %x (PC=%x)\n", data, offset, cpu_get_pc(m_maincpu));
+//  printf("scciop_w %x @ %x (PC=%x)\n", data, offset, m_maincpu->pc());
 }
 
 READ8_MEMBER(mac_state::swimiop_r)
 {
-//  printf("swimiop_r @ %x (PC=%x)\n", offset, cpu_get_pc(m_maincpu));
+//  printf("swimiop_r @ %x (PC=%x)\n", offset, m_maincpu->pc());
 	return 0;
 }
 
 WRITE8_MEMBER(mac_state::swimiop_w)
 {
-//  printf("swimiop_w %x @ %x (PC=%x)\n", data, offset, cpu_get_pc(m_maincpu));
+//  printf("swimiop_w %x @ %x (PC=%x)\n", data, offset, m_maincpu->pc());
 }
 
 READ8_MEMBER(mac_state::pmac_diag_r)
@@ -479,7 +478,7 @@ READ8_MEMBER(mac_state::amic_dma_r)
 
 WRITE8_MEMBER(mac_state::amic_dma_w)
 {
-//  printf("amic_dma_w: %02x at %x (PC=%x)\n", data, offset+0x1000, cpu_get_pc(m_maincpu));
+//  printf("amic_dma_w: %02x at %x (PC=%x)\n", data, offset+0x1000, m_maincpu->pc());
 }
 
 // HMC has one register: a 35-bit shift register which is accessed one bit at a time (see pmac6100 code at 4030383c which makes this obvious)
@@ -814,24 +813,13 @@ static const applefdc_interface mac_iwm_interface =
 	sony_read_status
 };
 
-static const SCSIConfigTable dev_table =
-{
-	2,                                      /* 2 SCSI devices */
-	{
-	 { SCSI_ID_6, "harddisk1" },  /* SCSI ID 6, using harddisk1 */
-	 { SCSI_ID_5, "harddisk2" }   /* SCSI ID 5, using harddisk2 */
-	}
-};
-
 static const struct NCR5380interface macplus_5380intf =
 {
-	&dev_table,	// SCSI device table
 	mac_scsi_irq	// IRQ (unconnected on the Mac Plus)
 };
 
 static const struct NCR539Xinterface mac_539x_intf =
 {
-	&dev_table,	// SCSI device table
 	DEVCB_DRIVER_LINE_MEMBER(mac_state, irq_539x_1_w),
 	DEVCB_DRIVER_LINE_MEMBER(mac_state, drq_539x_1_w)
 };
@@ -901,9 +889,9 @@ static MACHINE_CONFIG_START( mac512ke, mac_state )
 	MCFG_SCREEN_UPDATE_STATIC(mac)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(mac)
+	MCFG_PALETTE_INIT_OVERRIDE(mac_state,mac)
 
-	MCFG_VIDEO_START(mac)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,mac)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -939,10 +927,10 @@ static MACHINE_CONFIG_DERIVED( macplus, mac512ke )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP(macplus_map)
 
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_MODIFY(mac_floppy_interface)
 
@@ -984,9 +972,9 @@ static MACHINE_CONFIG_START( macprtb, mac_state )
 	MCFG_SCREEN_UPDATE_STATIC(macprtb)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(mac)
+	MCFG_PALETTE_INIT_OVERRIDE(mac_state,mac)
 
-	MCFG_VIDEO_START(macprtb)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macprtb)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -998,16 +986,16 @@ static MACHINE_CONFIG_START( macprtb, mac_state )
 	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_IWM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
 
 	MCFG_SCC8530_ADD("scc", C7M, line_cb_t(FUNC(mac_state::set_scc_interrupt), static_cast<mac_state *>(owner)))
 	MCFG_VIA6522_ADD("via6522_0", 783360, mac_via6522_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1044,7 +1032,10 @@ static MACHINE_CONFIG_START( macii, mac_state )
 	MCFG_NUBUS_SLOT_ADD("nubus","nbd", mac_nubus_cards, NULL, NULL)
 	MCFG_NUBUS_SLOT_ADD("nubus","nbe", mac_nubus_cards, NULL, NULL)
 
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_IWM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1053,9 +1044,6 @@ static MACHINE_CONFIG_START( macii, mac_state )
 
 	MCFG_VIA6522_ADD("via6522_0", C7M/10, mac_via6522_adb_intf)
 	MCFG_VIA6522_ADD("via6522_1", C7M/10, mac_via6522_2_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1096,7 +1084,10 @@ static MACHINE_CONFIG_START( maciifx, mac_state )
 	MCFG_NUBUS_SLOT_ADD("nubus","nbd", mac_nubus_cards, NULL, NULL)
 	MCFG_NUBUS_SLOT_ADD("nubus","nbe", mac_nubus_cards, NULL, NULL)
 
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_IWM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1104,9 +1095,6 @@ static MACHINE_CONFIG_START( maciifx, mac_state )
 	MCFG_SCC8530_ADD("scc", C7M, line_cb_t(FUNC(mac_state::set_scc_interrupt), static_cast<mac_state *>(owner)))
 
 	MCFG_VIA6522_ADD("via6522_0", C7M/10, mac_via6522_adb_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1126,8 +1114,8 @@ static MACHINE_CONFIG_DERIVED( maclc, macii )
 
 	MCFG_PALETTE_LENGTH(256)
 
-	MCFG_VIDEO_START(macv8)
-	MCFG_VIDEO_RESET(macrbv)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macv8)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macrbv)
 
 	MCFG_SCREEN_ADD(MAC_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_RAW_PARAMS(25175000, 800, 0, 640, 525, 0, 480)
@@ -1178,8 +1166,8 @@ static MACHINE_CONFIG_DERIVED( maclc3, maclc )
 	MCFG_CPU_PROGRAM_MAP(maclc3_map)
 	MCFG_CPU_VBLANK_INT(MAC_SCREEN_NAME, mac_rbv_vbl)
 
-	MCFG_VIDEO_START(macsonora)
-	MCFG_VIDEO_RESET(macsonora)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macsonora)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macsonora)
 
 	MCFG_SCREEN_MODIFY(MAC_SCREEN_NAME)
 	MCFG_SCREEN_UPDATE_STATIC(macrbvvram)
@@ -1207,8 +1195,8 @@ static MACHINE_CONFIG_DERIVED( maciivx, maclc )
 	MCFG_CPU_PROGRAM_MAP(maclc3_map)
 	MCFG_CPU_VBLANK_INT(MAC_SCREEN_NAME, mac_rbv_vbl)
 
-	MCFG_VIDEO_START(macv8)
-	MCFG_VIDEO_RESET(macrbv)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macv8)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macrbv)
 
 	MCFG_SCREEN_MODIFY(MAC_SCREEN_NAME)
 	MCFG_SCREEN_UPDATE_STATIC(macrbvvram)
@@ -1231,8 +1219,8 @@ static MACHINE_CONFIG_DERIVED( maciivi, maclc )
 	MCFG_CPU_PROGRAM_MAP(maclc3_map)
 	MCFG_CPU_VBLANK_INT(MAC_SCREEN_NAME, mac_rbv_vbl)
 
-	MCFG_VIDEO_START(macv8)
-	MCFG_VIDEO_RESET(macrbv)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macv8)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macrbv)
 
 	MCFG_SCREEN_MODIFY(MAC_SCREEN_NAME)
 	MCFG_SCREEN_UPDATE_STATIC(macrbvvram)
@@ -1280,9 +1268,9 @@ static MACHINE_CONFIG_START( macse30, mac_state )
 	MCFG_SCREEN_UPDATE_STATIC(macse30)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(mac)
+	MCFG_PALETTE_INIT_OVERRIDE(mac_state,mac)
 
-	MCFG_VIDEO_START(mac)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,mac)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1294,7 +1282,10 @@ static MACHINE_CONFIG_START( macse30, mac_state )
 	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_SWIM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1303,9 +1294,6 @@ static MACHINE_CONFIG_START( macse30, mac_state )
 
 	MCFG_VIA6522_ADD("via6522_0", 783360, mac_via6522_adb_intf)
 	MCFG_VIA6522_ADD("via6522_1", 783360, mac_via6522_2_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1331,9 +1319,9 @@ static MACHINE_CONFIG_START( macpb140, mac_state )
 	MCFG_SCREEN_UPDATE_STATIC(macpb140)
 
 	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(mac)
+	MCFG_PALETTE_INIT_OVERRIDE(mac_state,mac)
 
-	MCFG_VIDEO_START(macprtb)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macprtb)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1345,7 +1333,10 @@ static MACHINE_CONFIG_START( macpb140, mac_state )
 	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_SWIM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1354,9 +1345,6 @@ static MACHINE_CONFIG_START( macpb140, mac_state )
 
 	MCFG_VIA6522_ADD("via6522_0", 783360, mac_via6522_adb_intf)
 	MCFG_VIA6522_ADD("via6522_1", 783360, mac_via6522_2_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1402,9 +1390,9 @@ static MACHINE_CONFIG_START( macpb160, mac_state )
 	MCFG_SCREEN_UPDATE_STATIC(macpb160)
 
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(macgsc)
+	MCFG_PALETTE_INIT_OVERRIDE(mac_state,macgsc)
 
-	MCFG_VIDEO_START(macprtb)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macprtb)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1416,7 +1404,10 @@ static MACHINE_CONFIG_START( macpb160, mac_state )
 	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_SWIM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1425,9 +1416,6 @@ static MACHINE_CONFIG_START( macpb160, mac_state )
 
 	MCFG_VIA6522_ADD("via6522_0", 783360, mac_via6522_adb_intf)
 	MCFG_VIA6522_ADD("via6522_1", 783360, mac_via6522_2_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1475,8 +1463,8 @@ static MACHINE_CONFIG_DERIVED( macclas2, maclc )
 	MCFG_CPU_REPLACE("maincpu", M68030, C15M)
 	MCFG_CPU_PROGRAM_MAP(maclc_map)
 
-	MCFG_VIDEO_START(macv8)
-	MCFG_VIDEO_RESET(maceagle)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macv8)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,maceagle)
 
 	MCFG_SCREEN_MODIFY(MAC_SCREEN_NAME)
 	MCFG_SCREEN_SIZE(MAC_H_TOTAL, MAC_V_TOTAL)
@@ -1507,8 +1495,8 @@ static MACHINE_CONFIG_DERIVED( maciici, macii )
 	MCFG_NUBUS_SLOT_REMOVE("nba")
 	MCFG_NUBUS_SLOT_REMOVE("nbb")
 
-	MCFG_VIDEO_START(macrbv)
-	MCFG_VIDEO_RESET(macrbv)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macrbv)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macrbv)
 
 	MCFG_SCREEN_ADD(MAC_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_RAW_PARAMS(25175000, 800, 0, 640, 525, 0, 480)
@@ -1539,8 +1527,8 @@ static MACHINE_CONFIG_DERIVED( maciisi, macii )
 	MCFG_NUBUS_SLOT_REMOVE("nbe")
 	MCFG_NUBUS_BUS_REMOVE("nubus")
 
-	MCFG_VIDEO_START(macrbv)
-	MCFG_VIDEO_RESET(macrbv)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macrbv)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macrbv)
 
 	MCFG_SCREEN_ADD(MAC_SCREEN_NAME, RASTER)
 	MCFG_SCREEN_RAW_PARAMS(25175000, 800, 0, 640, 525, 0, 480)
@@ -1574,8 +1562,8 @@ static MACHINE_CONFIG_START( pwrmac, mac_state )
 
 	MCFG_PALETTE_LENGTH(256)
 
-	MCFG_VIDEO_START(macsonora)
-	MCFG_VIDEO_RESET(macrbv)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macsonora)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macrbv)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1587,7 +1575,10 @@ static MACHINE_CONFIG_START( pwrmac, mac_state )
 	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
-	MCFG_NCR5380_ADD("ncr5380", C7M, macplus_5380intf)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
+	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
 
 	MCFG_IWM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1596,9 +1587,6 @@ static MACHINE_CONFIG_START( pwrmac, mac_state )
 
 	MCFG_VIA6522_ADD("via6522_0", 783360, mac_via6522_adb_intf)
 	MCFG_VIA6522_ADD("via6522_1", 783360, mac_via6522_2_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1620,8 +1608,8 @@ static MACHINE_CONFIG_START( macqd700, mac_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 1152-1, 0, 870-1)
 	MCFG_SCREEN_UPDATE_STATIC(macdafb)
 
-	MCFG_VIDEO_START(macdafb)
-	MCFG_VIDEO_RESET(macdafb)
+	MCFG_VIDEO_START_OVERRIDE(mac_state,macdafb)
+	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macdafb)
 
 	MCFG_PALETTE_LENGTH(256)
 
@@ -1647,10 +1635,10 @@ static MACHINE_CONFIG_START( macqd700, mac_state )
 	MCFG_VIA6522_ADD("via6522_0", C7M/10, mac_via6522_adb_intf)
 	MCFG_VIA6522_ADD("via6522_1", C7M/10, mac_via6522_2_intf)
 
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
+	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
 	MCFG_NCR539X_ADD(MAC_539X_1_TAG, C7M, mac_539x_intf)
-
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
-	MCFG_DEVICE_ADD("harddisk2", SCSIHD, 0)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

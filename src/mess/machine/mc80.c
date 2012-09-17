@@ -18,9 +18,9 @@ static IRQ_CALLBACK( mc8020_irq_callback )
 	return 0x00;
 }
 
-MACHINE_RESET( mc8020 )
+MACHINE_RESET_MEMBER(mc80_state,mc8020)
 {
-	device_set_irq_callback(machine.device("maincpu"), mc8020_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(mc8020_irq_callback);
 }
 
 WRITE_LINE_MEMBER( mc80_state::ctc_z0_w )
@@ -112,9 +112,9 @@ static IRQ_CALLBACK( mc8030_irq_callback )
 	return 0x20;
 }
 
-MACHINE_RESET( mc8030 )
+MACHINE_RESET_MEMBER(mc80_state,mc8030)
 {
-	device_set_irq_callback(machine.device("maincpu"), mc8030_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(mc8030_irq_callback);
 }
 
 READ8_MEMBER( mc80_state::zve_port_a_r )
@@ -137,7 +137,7 @@ WRITE8_MEMBER( mc80_state::zve_port_b_w )
 
 Z80PIO_INTERFACE( mc8030_zve_z80pio_intf )
 {
-	DEVCB_NULL,	/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_DRIVER_MEMBER(mc80_state, zve_port_a_r),
 	DEVCB_DRIVER_MEMBER(mc80_state, zve_port_a_w),
 	DEVCB_NULL,
@@ -166,7 +166,7 @@ WRITE8_MEMBER( mc80_state::asp_port_b_w )
 
 Z80PIO_INTERFACE( mc8030_asp_z80pio_intf )
 {
-	DEVCB_NULL,	/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_DRIVER_MEMBER(mc80_state, asp_port_a_r),
 	DEVCB_DRIVER_MEMBER(mc80_state, asp_port_a_w),
 	DEVCB_NULL,
@@ -177,27 +177,28 @@ Z80PIO_INTERFACE( mc8030_asp_z80pio_intf )
 
 Z80CTC_INTERFACE( mc8030_zve_z80ctc_intf )
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
+	DEVCB_NULL,	// for user
+	DEVCB_NULL,	// for user
+	DEVCB_NULL	// for user
 };
 
 Z80CTC_INTERFACE( mc8030_asp_z80ctc_intf )
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
+	DEVCB_NULL,	// to SIO CLK CH A
+	DEVCB_NULL,	// to SIO CLK CH B
+	DEVCB_NULL	// KMBG (??)
 };
 
+// SIO CH A in = keyboard; out = beeper; CH B = IFSS (??)
 const z80sio_interface mc8030_asp_z80sio_intf =
 {
 	0,	/* interrupt handler */
 	0,			/* DTR changed handler */
 	0,			/* RTS changed handler */
 	0,			/* BREAK changed handler */
-	0,			/* transmit handler - which channel is this for? */
-	0			/* receive handler - which channel is this for? */
+	0,			/* transmit handler */
+	0			/* receive handler */
 };
 

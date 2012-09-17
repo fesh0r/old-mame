@@ -22,8 +22,7 @@
 #include "emu.h"
 #include "video/vdc8563.h"
 
-typedef struct _vdc8563_state vdc8563_state;
-struct _vdc8563_state
+struct vdc8563_state
 {
 	screen_device *screen;
 
@@ -162,7 +161,7 @@ INLINE vdc8563_state *get_safe_token( device_t *device )
 	assert(device != NULL);
 	assert(device->type() == VDC8563);
 
-	return (vdc8563_state *)downcast<legacy_device_base *>(device)->token();
+	return (vdc8563_state *)downcast<vdc8563_device *>(device)->token();
 }
 
 INLINE const vdc8563_interface *get_interface( device_t *device )
@@ -416,7 +415,7 @@ static void vdc8563_monotext_screenrefresh( device_t *device, bitmap_ind16 &bitm
 			if (vdc8563->dirty[i])
 			{
 				drawgfx_opaque(bitmap,rect,machine.gfx[0], vdc8563->ram[i], FRAMECOLOR | (MONOCOLOR << 4), 0, 0,
-						machine.gfx[0]->width * x + 8, height * y + height);
+						machine.gfx[0]->width() * x + 8, height * y + height);
 
 				if ((vdc8563->cursor_on) && (i == (CRTC6845_CURSOR_POS & vdc8563->mask)))
 				{
@@ -425,7 +424,7 @@ static void vdc8563_monotext_screenrefresh( device_t *device, bitmap_ind16 &bitm
 						k = CRTC6845_CURSOR_BOTTOM - CRTC6845_CURSOR_TOP + 1;
 
 					if (k > 0)
-						bitmap.plot_box(machine.gfx[0]->width * x + 8, height * y + height + CRTC6845_CURSOR_TOP, machine.gfx[0]->width, k, FRAMECOLOR);
+						bitmap.plot_box(machine.gfx[0]->width() * x + 8, height * y + height + CRTC6845_CURSOR_TOP, machine.gfx[0]->width(), k, FRAMECOLOR);
 				}
 
 				vdc8563->dirty[i] = 0;
@@ -485,7 +484,7 @@ static void vdc8563_text_screenrefresh( device_t *device, bitmap_ind16 &bitmap, 
 						k = CRTC6845_CURSOR_BOTTOM - CRTC6845_CURSOR_TOP + 1;
 
 					if (k > 0)
-						bitmap.plot_box(machine.gfx[0]->width * x + 8, height * y + height + CRTC6845_CURSOR_TOP, machine.gfx[0]->width,
+						bitmap.plot_box(machine.gfx[0]->width() * x + 8, height * y + height + CRTC6845_CURSOR_TOP, machine.gfx[0]->width(),
 								k, 0x10 | (vdc8563->ram[j] & 0x0f));
 				}
 
@@ -524,7 +523,7 @@ static void vdc8563_graphic_screenrefresh( device_t *device, bitmap_ind16 &bitma
 				if (vdc8563->dirty[k])
 				{
 					drawgfx_opaque(bitmap, rect, machine.gfx[1], vdc8563->ram[k], FRAMECOLOR | (MONOCOLOR << 4), 0, 0,
-							machine.gfx[0]->width * x + 8, height * y + height + j);
+							machine.gfx[0]->width() * x + 8, height * y + height + j);
 					vdc8563->dirty[k] = 0;
 				}
 			}
@@ -556,7 +555,7 @@ UINT32 vdc8563_video_update( device_t *device, bitmap_ind16 &bitmap, const recta
 		{
 			if (full_refresh || vdc8563->fontdirty[i])
 			{
-				gfx_element_mark_dirty(device->machine().gfx[0],i);
+				device->machine().gfx[0]->mark_dirty(i);
 				vdc8563->fontdirty[i] = 0;
 			}
 		}
@@ -572,13 +571,13 @@ UINT32 vdc8563_video_update( device_t *device, bitmap_ind16 &bitmap, const recta
 		int h = CRTC6845_CHAR_LINES;
 		int height = CRTC6845_CHAR_HEIGHT;
 
-		bitmap.plot_box(0, 0, device->machine().gfx[0]->width * (w + 2), height, FRAMECOLOR);
+		bitmap.plot_box(0, 0, device->machine().gfx[0]->width() * (w + 2), height, FRAMECOLOR);
 
-		bitmap.plot_box(0, height, device->machine().gfx[0]->width, height * h, FRAMECOLOR);
+		bitmap.plot_box(0, height, device->machine().gfx[0]->width(), height * h, FRAMECOLOR);
 
-		bitmap.plot_box(device->machine().gfx[0]->width * (w + 1), height, device->machine().gfx[0]->width, height * h, FRAMECOLOR);
+		bitmap.plot_box(device->machine().gfx[0]->width() * (w + 1), height, device->machine().gfx[0]->width(), height * h, FRAMECOLOR);
 
-		bitmap.plot_box(0, height * (h + 1), device->machine().gfx[0]->width * (w + 2), height, FRAMECOLOR);
+		bitmap.plot_box(0, height * (h + 1), device->machine().gfx[0]->width() * (w + 2), height, FRAMECOLOR);
 	}
 
 	vdc8563->changed = 0;
@@ -658,16 +657,40 @@ static DEVICE_RESET( vdc8563 )
 	vdc8563->changed = 0;
 }
 
-/*-------------------------------------------------
-    device definition
--------------------------------------------------*/
+const device_type VDC8563 = &device_creator<vdc8563_device>;
 
-static const char DEVTEMPLATE_SOURCE[] = __FILE__;
+vdc8563_device::vdc8563_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, VDC8563, "8563 / 8568 VDC", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(vdc8563_state));
+}
 
-#define DEVTEMPLATE_ID(p,s)				p##vdc8563##s
-#define DEVTEMPLATE_FEATURES			DT_HAS_START | DT_HAS_RESET
-#define DEVTEMPLATE_NAME				"8563 / 8568 VDC"
-#define DEVTEMPLATE_FAMILY				"8563 / 8568 VDC"
-#include "devtempl.h"
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-DEFINE_LEGACY_DEVICE(VDC8563, vdc8563);
+void vdc8563_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void vdc8563_device::device_start()
+{
+	DEVICE_START_NAME( vdc8563 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void vdc8563_device::device_reset()
+{
+	DEVICE_RESET_NAME( vdc8563 )(this);
+}
+
+

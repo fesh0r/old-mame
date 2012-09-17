@@ -136,7 +136,7 @@ static ADDRESS_MAP_START( mz800_io, AS_IO, 8, mz_state )
 	AM_RANGE(0xeb, 0xeb) AM_WRITE(mz800_ramaddr_w )
 	AM_RANGE(0xf0, 0xf0) AM_READ_PORT("atari_joy1") AM_WRITE(mz800_palette_w)
 	AM_RANGE(0xf1, 0xf1) AM_READ_PORT("atari_joy2")
-	AM_RANGE(0xf2, 0xf2) AM_DEVWRITE_LEGACY("sn76489n", sn76496_w)
+	AM_RANGE(0xf2, 0xf2) AM_DEVWRITE("sn76489n", sn76489_new_device, write)
 	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE("z80pio", z80pio_device, read, write)
 ADDRESS_MAP_END
 
@@ -315,6 +315,24 @@ static GFXDECODE_START( mz800 )
 	GFXDECODE_ENTRY("monitor", 0x1000, mz700_layout, 0, 256)	// for mz800 viewer only
 GFXDECODE_END
 
+
+/*************************************
+ *
+ *  Sound interface
+ *
+ *************************************/
+
+
+//-------------------------------------------------
+//  sn76496_config psg_intf
+//-------------------------------------------------
+
+static const sn76496_config psg_intf =
+{
+    DEVCB_NULL
+};
+
+
 /***************************************************************************
     MACHINE DRIVERS
 ***************************************************************************/
@@ -324,7 +342,7 @@ static const cassette_interface mz700_cassette_interface =
 	mz700_cassette_formats,
 	NULL,
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED),
-	NULL,
+	"mz_cass",
 	NULL
 };
 
@@ -335,7 +353,6 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	MCFG_CPU_PROGRAM_MAP(mz700_mem)
 	MCFG_CPU_IO_MAP(mz700_io)
 
-	MCFG_MACHINE_START(mz700)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -344,7 +361,6 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 
 	MCFG_GFXDECODE(mz700)
 	MCFG_PALETTE_LENGTH(256*2)
-	MCFG_PALETTE_INIT(mz700)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -363,6 +379,7 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	MCFG_TTL74145_ADD("ls145", default_ttl74145)
 
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, mz700_cassette_interface )
+	MCFG_SOFTWARE_LIST_ADD("cass_list","mz700_cass")
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -378,12 +395,13 @@ static MACHINE_CONFIG_DERIVED( mz800, mz700 )
 	MCFG_CPU_IO_MAP(mz800_io)
 
 	MCFG_GFXDECODE(mz800)
-	MCFG_VIDEO_START(mz800)
+	MCFG_VIDEO_START_OVERRIDE(mz_state,mz800)
 
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_UPDATE_STATIC(mz800)
 
-	MCFG_SOUND_ADD("sn76489n", SN76489, XTAL_17_73447MHz/5)
+	MCFG_SOUND_ADD("sn76489n", SN76489_NEW, XTAL_17_73447MHz/5)
+	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	/* devices */

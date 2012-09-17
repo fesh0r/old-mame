@@ -14,13 +14,12 @@ DRIVER_INIT_MEMBER(mz80_state,mz80k)
 {
 }
 
-MACHINE_RESET( mz80k )
+void mz80_state::machine_reset()
 {
-	mz80_state *state = machine.driver_data<mz80_state>();
-	state->m_mz80k_tempo_strobe = 0;
-	state->m_mz80k_vertical = 0;
-	state->m_mz80k_cursor_cnt = 0;
-	state->m_mz80k_keyboard_line = 0;
+	m_mz80k_tempo_strobe = 0;
+	m_mz80k_vertical = 0;
+	m_mz80k_cursor_cnt = 0;
+	m_mz80k_keyboard_line = 0;
 }
 
 
@@ -69,7 +68,7 @@ WRITE_LINE_MEMBER( mz80_state::pit_out0_changed )
 
 WRITE_LINE_MEMBER( mz80_state::pit_out2_changed )
 {
-	cputag_set_input_line(machine(), "maincpu", 0, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 }
 
 I8255_INTERFACE( mz80k_8255_int )

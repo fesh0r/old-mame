@@ -252,7 +252,7 @@ INPUT_CHANGED_MEMBER( cosmicos_state::clear_data )
 
 void cosmicos_state::set_ram_mode()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	if (m_ram_disable)
@@ -486,7 +486,7 @@ static COSMAC_INTERFACE( cosmicos_config )
 
 void cosmicos_state::machine_start()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	/* initialize LED display */
 	m_led->rbi_w(1);
@@ -574,8 +574,6 @@ static MACHINE_CONFIG_START( cosmicos, cosmicos_state )
 
 	MCFG_CDP1864_SCREEN_ADD(SCREEN_TAG, XTAL_1_75MHz)
 	MCFG_SCREEN_UPDATE_DEVICE(CDP1864_TAG, cdp1864_device, screen_update)
-
-	MCFG_PALETTE_LENGTH(8+8)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

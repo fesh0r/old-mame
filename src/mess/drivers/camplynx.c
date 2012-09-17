@@ -104,6 +104,9 @@ public:
 	DECLARE_WRITE8_MEMBER(lynx128k_bank_w);
 	DECLARE_WRITE8_MEMBER(lynx128k_irq);
 	DECLARE_DRIVER_INIT(lynx48k);
+	virtual void video_start();
+	virtual void palette_init();
+	DECLARE_MACHINE_RESET(lynx128k);
 };
 
 /* These bankswitch handlers are very incomplete, just enough to get the
@@ -121,13 +124,13 @@ WRITE8_MEMBER( camplynx_state::lynx48k_bank_w )
 	if (data & 4)
 		membank("bank1")->set_entry(2);
 	else
-		logerror("%04X: Cannot understand bankswitch command %X\n",cpu_get_pc(m_maincpu), data);
+		logerror("%04X: Cannot understand bankswitch command %X\n",m_maincpu->pc(), data);
 }
 
 WRITE8_MEMBER( camplynx_state::lynx128k_bank_w )
 {
 	/* get address space */
-	address_space *mem = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
 	UINT8 *base = mem->machine().root_device().memregion("maincpu")->base();
 
 	/* Set read banks */
@@ -157,7 +160,7 @@ WRITE8_MEMBER( camplynx_state::lynx128k_bank_w )
 		membank("bank8")->set_base(base + 0x2e000);
 	}
 	else
-		logerror("%04X: Cannot understand bankswitch command %X\n",cpu_get_pc(m_maincpu), data);
+		logerror("%04X: Cannot understand bankswitch command %X\n",m_maincpu->pc(), data);
 
 	/* Set write banks */
 	bank = data & 0xd0;
@@ -186,7 +189,7 @@ WRITE8_MEMBER( camplynx_state::lynx128k_bank_w )
 		membank("bank18")->set_base(base + 0x2e000);
 	}
 	else
-		logerror("%04X: Cannot understand bankswitch command %X\n",cpu_get_pc(m_maincpu), data);
+		logerror("%04X: Cannot understand bankswitch command %X\n",m_maincpu->pc(), data);
 }
 
 static ADDRESS_MAP_START( lynx48k_mem, AS_PROGRAM, 8, camplynx_state )
@@ -325,10 +328,9 @@ static INPUT_PORTS_START( lynx48k )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET( lynx128k )
+MACHINE_RESET_MEMBER(camplynx_state,lynx128k)
 {
-	camplynx_state *state = machine.driver_data<camplynx_state>();
-	address_space *mem = state->m_maincpu->memory().space(AS_PROGRAM);
+	address_space *mem = m_maincpu->space(AS_PROGRAM);
 	mem->install_read_bank (0x0000, 0x1fff, "bank1");
 	mem->install_read_bank (0x2000, 0x3fff, "bank2");
 	mem->install_read_bank (0x4000, 0x5fff, "bank3");
@@ -346,12 +348,12 @@ static MACHINE_RESET( lynx128k )
 	mem->install_write_bank (0xc000, 0xdfff, "bank17");
 	mem->install_write_bank (0xe000, 0xffff, "bank18");
 
-	state->lynx128k_bank_w(*mem, 0, 0);
+	lynx128k_bank_w(*mem, 0, 0);
 }
 
 WRITE8_MEMBER( camplynx_state::lynx128k_irq )
 {
-	cputag_set_input_line(machine(), "maincpu", 0, data);
+	machine().device("maincpu")->execute().set_input_line(0, data);
 }
 
 
@@ -367,14 +369,14 @@ static const UINT8 lynx48k_palette[8*3] =
 	0xff, 0xff, 0xff,	/*  7 White     */
 };
 
-static PALETTE_INIT( lynx48k )
+void camplynx_state::palette_init()
 {
 	UINT8 r, b, g, i=0, color_count = 8;
 
 	while (color_count--)
 	{
 		r = lynx48k_palette[i++]; g = lynx48k_palette[i++]; b = lynx48k_palette[i++];
-		palette_set_color(machine, 7-color_count, MAKE_RGB(r, g, b));
+		palette_set_color(machine(), 7-color_count, MAKE_RGB(r, g, b));
 	}
 }
 
@@ -426,7 +428,7 @@ static MC6845_UPDATE_ROW( lynx128k_update_row )
 	}
 }
 
-static VIDEO_START( lynx48k )
+void camplynx_state::video_start()
 {
 }
 
@@ -471,9 +473,7 @@ static MACHINE_CONFIG_START( lynx48k, camplynx_state )
 	MCFG_SCREEN_SIZE(512, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 511, 0, 479)
 	MCFG_SCREEN_UPDATE_DEVICE("crtc", mc6845_device, screen_update)
-	MCFG_VIDEO_START(lynx48k)
 	MCFG_PALETTE_LENGTH(8)
-	MCFG_PALETTE_INIT(lynx48k)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -491,7 +491,7 @@ static MACHINE_CONFIG_START( lynx128k, camplynx_state )
 	MCFG_CPU_PROGRAM_MAP(lynx128k_mem)
 	MCFG_CPU_IO_MAP(lynx128k_io)
 
-	MCFG_MACHINE_RESET(lynx128k)
+	MCFG_MACHINE_RESET_OVERRIDE(camplynx_state,lynx128k)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -500,9 +500,7 @@ static MACHINE_CONFIG_START( lynx128k, camplynx_state )
 	MCFG_SCREEN_SIZE(512, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 511, 0, 479)
 	MCFG_SCREEN_UPDATE_DEVICE("crtc", mc6845_device, screen_update)
-	MCFG_VIDEO_START(lynx48k)
 	MCFG_PALETTE_LENGTH(8)
-	MCFG_PALETTE_INIT(lynx48k)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

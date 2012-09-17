@@ -42,31 +42,31 @@ static void mc68328_set_interrupt_line(device_t *device, UINT32 line, UINT32 act
 
             if(mc68328->regs.isr & INT_M68K_LINE7)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_7, ASSERT_LINE, mc68328->regs.ivr | 0x07);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_7, ASSERT_LINE, mc68328->regs.ivr | 0x07);
             }
             else if(mc68328->regs.isr & INT_M68K_LINE6)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_6, ASSERT_LINE, mc68328->regs.ivr | 0x06);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_6, ASSERT_LINE, mc68328->regs.ivr | 0x06);
             }
             else if(mc68328->regs.isr & INT_M68K_LINE5)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_5, ASSERT_LINE, mc68328->regs.ivr | 0x05);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_5, ASSERT_LINE, mc68328->regs.ivr | 0x05);
             }
             else if(mc68328->regs.isr & INT_M68K_LINE4)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_4, ASSERT_LINE, mc68328->regs.ivr | 0x04);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_4, ASSERT_LINE, mc68328->regs.ivr | 0x04);
             }
             else if(mc68328->regs.isr & INT_M68K_LINE3)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_3, ASSERT_LINE, mc68328->regs.ivr | 0x03);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_3, ASSERT_LINE, mc68328->regs.ivr | 0x03);
             }
             else if(mc68328->regs.isr & INT_M68K_LINE2)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_2, ASSERT_LINE, mc68328->regs.ivr | 0x02);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_2, ASSERT_LINE, mc68328->regs.ivr | 0x02);
             }
             else if(mc68328->regs.isr & INT_M68K_LINE1)
             {
-                device_set_input_line_and_vector(cpu, M68K_IRQ_1, ASSERT_LINE, mc68328->regs.ivr | 0x01);
+                cpu->execute().set_input_line_and_vector(M68K_IRQ_1, ASSERT_LINE, mc68328->regs.ivr | 0x01);
             }
         }
     }
@@ -76,31 +76,31 @@ static void mc68328_set_interrupt_line(device_t *device, UINT32 line, UINT32 act
 
         if((line & INT_M68K_LINE7) && !(mc68328->regs.isr & INT_M68K_LINE7))
         {
-            device_set_input_line(cpu, M68K_IRQ_7, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_7, CLEAR_LINE);
         }
         if((line & INT_M68K_LINE6) && !(mc68328->regs.isr & INT_M68K_LINE6))
         {
-            device_set_input_line(cpu, M68K_IRQ_6, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_6, CLEAR_LINE);
         }
         if((line & INT_M68K_LINE5) && !(mc68328->regs.isr & INT_M68K_LINE5))
         {
-            device_set_input_line(cpu, M68K_IRQ_5, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_5, CLEAR_LINE);
         }
         if((line & INT_M68K_LINE4) && !(mc68328->regs.isr & INT_M68K_LINE4))
         {
-            device_set_input_line(cpu, M68K_IRQ_4, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_4, CLEAR_LINE);
         }
         if((line & INT_M68K_LINE3) && !(mc68328->regs.isr & INT_M68K_LINE3))
         {
-            device_set_input_line(cpu, M68K_IRQ_3, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_3, CLEAR_LINE);
         }
         if((line & INT_M68K_LINE2) && !(mc68328->regs.isr & INT_M68K_LINE2))
         {
-            device_set_input_line(cpu, M68K_IRQ_2, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_2, CLEAR_LINE);
         }
         if((line & INT_M68K_LINE1) && !(mc68328->regs.isr & INT_M68K_LINE1))
         {
-            device_set_input_line(cpu, M68K_IRQ_1, CLEAR_LINE);
+            cpu->execute().set_input_line(M68K_IRQ_1, CLEAR_LINE);
         }
     }
 }
@@ -2808,26 +2808,40 @@ static DEVICE_START( mc68328 )
     mc68328_register_state_save(device);
 }
 
-DEVICE_GET_INFO( mc68328 )
+const device_type MC68328 = &device_creator<mc68328_device>;
+
+mc68328_device::mc68328_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, MC68328, "Motorola MC68328 (DragonBall) Integrated Processor", tag, owner, clock)
 {
-    switch ( state )
-    {
-        /* --- the following bits of info are returned as 64-bit signed integers --- */
-        case DEVINFO_INT_TOKEN_BYTES:           info->i = sizeof(mc68328_t);                    break;
-        case DEVINFO_INT_INLINE_CONFIG_BYTES:   info->i = 0;                                    break;
-
-        /* --- the following bits of info are returned as pointers to data or functions --- */
-        case DEVINFO_FCT_START:                 info->start = DEVICE_START_NAME(mc68328);       break;
-        case DEVINFO_FCT_STOP:                  /* nothing */                                   break;
-        case DEVINFO_FCT_RESET:                 info->reset = DEVICE_RESET_NAME(mc68328);       break;
-
-        /* --- the following bits of info are returned as NULL-terminated strings --- */
-        case DEVINFO_STR_NAME:                  strcpy(info->s, "Motorola MC68328 (DragonBall) Integrated Processor"); break;
-        case DEVINFO_STR_FAMILY:                strcpy(info->s, "MC68328");                     break;
-        case DEVINFO_STR_VERSION:               strcpy(info->s, "1.00");                        break;
-        case DEVINFO_STR_SOURCE_FILE:           strcpy(info->s, __FILE__);                      break;
-        case DEVINFO_STR_CREDITS:               strcpy(info->s, "Copyright the MESS Teams and Ryan Holtz"); break;
-    }
+	m_token = global_alloc_array_clear(UINT8, sizeof(mc68328_t));
 }
 
-DEFINE_LEGACY_DEVICE(MC68328, mc68328);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void mc68328_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void mc68328_device::device_start()
+{
+	DEVICE_START_NAME( mc68328 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void mc68328_device::device_reset()
+{
+	DEVICE_RESET_NAME( mc68328 )(this);
+}
+
+

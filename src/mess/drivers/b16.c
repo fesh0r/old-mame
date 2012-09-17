@@ -16,8 +16,6 @@
 #include "video/mc6845.h"
 #include "machine/8237dma.h"
 
-#define VIDEO_START_MEMBER(name) void name::video_start()
-#define SCREEN_UPDATE16_MEMBER(name) UINT32 name::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 
 
 class b16_state : public driver_device
@@ -43,6 +41,8 @@ public:
 
 	mc6845_device *m_mc6845;
 	i8237_device  *m_dma8237;
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 #define mc6845_h_char_total 	(m_crtc_vreg[0])
@@ -63,14 +63,14 @@ public:
 #define mc6845_update_addr  	(((m_crtc_vreg[0x12]<<8) & 0x3f00) | (m_crtc_vreg[0x13] & 0xff))
 
 
-VIDEO_START_MEMBER( b16_state )
+void b16_state::video_start()
 {
 	// find memory regions
 	m_char_rom = memregion("pcg")->base();
 }
 
 
-SCREEN_UPDATE16_MEMBER( b16_state )
+UINT32 b16_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	b16_state *state = machine().driver_data<b16_state>();
 	int x,y;
@@ -105,7 +105,7 @@ WRITE8_MEMBER( b16_state::b16_pcg_w )
 {
 	m_char_rom[offset] = data;
 
-	gfx_element_mark_dirty(machine().gfx[0], offset >> 4);
+	machine().gfx[0]->mark_dirty(offset >> 4);
 }
 
 static ADDRESS_MAP_START( b16_map, AS_PROGRAM, 16, b16_state)
@@ -235,15 +235,14 @@ static GFXDECODE_START( b16 )
 	GFXDECODE_ENTRY( "pcg", 0x0000, b16_charlayout, 0, 1 )
 GFXDECODE_END
 
-static MACHINE_START(b16)
+void b16_state::machine_start()
 {
-	b16_state *state = machine.driver_data<b16_state>();
 
-	state->m_dma8237 = machine.device<i8237_device>( "dma8237" );
-	state->m_mc6845 = machine.device<mc6845_device>("crtc");
+	m_dma8237 = machine().device<i8237_device>( "dma8237" );
+	m_mc6845 = machine().device<mc6845_device>("crtc");
 }
 
-static MACHINE_RESET(b16)
+void b16_state::machine_reset()
 {
 }
 
@@ -284,8 +283,6 @@ static MACHINE_CONFIG_START( b16, b16_state )
 	MCFG_CPU_PROGRAM_MAP(b16_map)
 	MCFG_CPU_IO_MAP(b16_io)
 
-	MCFG_MACHINE_START(b16)
-	MCFG_MACHINE_RESET(b16)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)

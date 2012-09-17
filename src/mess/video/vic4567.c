@@ -31,8 +31,7 @@ struct vic3_sprite
 	UINT8 bitmap[8][SPRITE_BASE_X_SIZE * 2 / 8 + 1  /*for simplier sprite collision detection*/];
 };
 
-typedef struct _vic3_state  vic3_state;
-struct _vic3_state
+struct vic3_state
 {
 	vic3_type  type;
 
@@ -229,7 +228,7 @@ INLINE vic3_state *get_safe_token( device_t *device )
 	assert(device != NULL);
 	assert(device->type() == VIC3);
 
-	return (vic3_state *)downcast<legacy_device_base *>(device)->token();
+	return (vic3_state *)downcast<vic3_device *>(device)->token();
 }
 
 INLINE const vic3_interface *get_interface( device_t *device )
@@ -2150,16 +2149,40 @@ static DEVICE_RESET( vic3 )
 }
 
 
-/*-------------------------------------------------
-    device definition
--------------------------------------------------*/
+const device_type VIC3 = &device_creator<vic3_device>;
 
-static const char DEVTEMPLATE_SOURCE[] = __FILE__;
+vic3_device::vic3_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, VIC3, "4567 VIC III", tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(vic3_state));
+}
 
-#define DEVTEMPLATE_ID(p,s)				p##vic3##s
-#define DEVTEMPLATE_FEATURES			DT_HAS_START | DT_HAS_RESET
-#define DEVTEMPLATE_NAME				"4567 VIC III"
-#define DEVTEMPLATE_FAMILY				"4567 VIC III"
-#include "devtempl.h"
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
 
-DEFINE_LEGACY_DEVICE(VIC3, vic3);
+void vic3_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void vic3_device::device_start()
+{
+	DEVICE_START_NAME( vic3 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void vic3_device::device_reset()
+{
+	DEVICE_RESET_NAME( vic3 )(this);
+}
+
+

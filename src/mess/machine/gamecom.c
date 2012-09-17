@@ -10,19 +10,18 @@ static TIMER_CALLBACK(gamecom_clock_timer_callback)
 	UINT8 * RAM = machine.root_device().memregion("maincpu")->base();
 	UINT8 val = ( ( RAM[SM8521_CLKT] & 0x3F ) + 1 ) & 0x3F;
 	RAM[SM8521_CLKT] = ( RAM[SM8521_CLKT] & 0xC0 ) | val;
-	cputag_set_input_line(machine, "maincpu", CK_INT, ASSERT_LINE );
+	machine.device("maincpu")->execute().set_input_line(CK_INT, ASSERT_LINE );
 }
 
-MACHINE_RESET( gamecom )
+void gamecom_state::machine_reset()
 {
-	gamecom_state *state = machine.driver_data<gamecom_state>();
-	UINT8 *rom = state->memregion("kernel")->base();
-	state->membank( "bank1" )->set_base( rom );
-	state->membank( "bank2" )->set_base( rom );
-	state->membank( "bank3" )->set_base( rom );
-	state->membank( "bank4" )->set_base( rom );
+	UINT8 *rom = memregion("kernel")->base();
+	membank( "bank1" )->set_base( rom );
+	membank( "bank2" )->set_base( rom );
+	membank( "bank3" )->set_base( rom );
+	membank( "bank4" )->set_base( rom );
 
-	state->m_cartridge = NULL;
+	m_cartridge = NULL;
 }
 
 void gamecom_state::gamecom_set_mmu(UINT8 mmu, UINT8 data )
@@ -329,7 +328,7 @@ WRITE8_MEMBER( gamecom_state::gamecom_internal_w )
 	case SM8521_55: case SM8521_56: case SM8521_57: case SM8521_58:
 	case SM8521_59: case SM8521_5A: case SM8521_5B: case SM8521_5C:
 	case SM8521_5D:
-		logerror( "%X: Write to reserved address (0x%02X). Value written: 0x%02X\n", cpu_get_pc(m_maincpu), offset, data );
+		logerror( "%X: Write to reserved address (0x%02X). Value written: 0x%02X\n", m_maincpu->pc(), offset, data );
 		break;
 	}
 	m_p_ram[offset] = data;
@@ -498,7 +497,7 @@ void gamecom_handle_dma( device_t *device, int cycles )
 		state->m_dma.dest_current = state->m_dma.dest_line;
 	}
 	state->m_dma.enabled = 0;
-	cputag_set_input_line(device->machine(), "maincpu", DMA_INT, ASSERT_LINE );
+	device->machine().device("maincpu")->execute().set_input_line(DMA_INT, ASSERT_LINE );
 }
 
 void gamecom_update_timers( device_t *device, int cycles )
@@ -515,7 +514,7 @@ void gamecom_update_timers( device_t *device, int cycles )
 			if ( RAM[SM8521_TM0D] >= state->m_timer[0].check_value )
 			{
 				RAM[SM8521_TM0D] = 0;
-				cputag_set_input_line(device->machine(), "maincpu", TIM0_INT, ASSERT_LINE );
+				device->machine().device("maincpu")->execute().set_input_line(TIM0_INT, ASSERT_LINE );
 			}
 		}
 	}
@@ -529,7 +528,7 @@ void gamecom_update_timers( device_t *device, int cycles )
 			if ( RAM[SM8521_TM1D] >= state->m_timer[1].check_value )
 			{
 				RAM[SM8521_TM1D] = 0;
-				cputag_set_input_line(device->machine(), "maincpu", TIM1_INT, ASSERT_LINE );
+				device->machine().device("maincpu")->execute().set_input_line(TIM1_INT, ASSERT_LINE );
 			}
 		}
 	}

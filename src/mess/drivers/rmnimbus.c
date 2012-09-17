@@ -11,13 +11,14 @@
 #include "cpu/i86/i86.h"
 #include "cpu/mcs51/mcs51.h"
 #include "imagedev/flopdrv.h"
-#include "imagedev/harddriv.h"
 #include "machine/ram.h"
 #include "formats/pc_dsk.h"
 #include "includes/rmnimbus.h"
 #include "machine/er59256.h"
-#include "machine/scsi.h"
+#include "machine/scsicb.h"
 #include "machine/scsihd.h"
+#include "machine/s1410.h"
+#include "machine/acb4070.h"
 #include "machine/6522via.h"
 #include "machine/ctronics.h"
 #include "sound/ay8910.h"
@@ -78,22 +79,13 @@ static const msm5205_interface msm5205_config =
 	MSM5205_S48_4B		/* 8 kHz */
 };
 
-static const SCSIConfigTable nimbus_scsi_dev_table =
-{
-	4,                                      /* 4 SCSI devices */
-	{
-		{ SCSI_ID_0, HARDDISK0_TAG },
-		{ SCSI_ID_1, HARDDISK1_TAG },
-		{ SCSI_ID_2, HARDDISK2_TAG },
-		{ SCSI_ID_3, HARDDISK3_TAG },
-	}
-};
+//-------------------------------------------------
+//  SCSICB_interface sasi_intf
+//-------------------------------------------------
 
-
-static const SCSIBus_interface scsibus_config =
+static const SCSICB_interface scsibus_config =
 {
-    &nimbus_scsi_dev_table,
-    &nimbus_scsi_linechange
+	&nimbus_scsi_linechange
 };
 
 static const centronics_interface nimbus_centronics_config =
@@ -286,13 +278,13 @@ static ADDRESS_MAP_START( nimbus_iocpu_io , AS_IO, 8, rmnimbus_state )
 ADDRESS_MAP_END
 
 
-static PALETTE_INIT( nimbus )
+void rmnimbus_state::palette_init()
 {
 	int colourno;
 
 	for ( colourno = 0; colourno < SCREEN_NO_COLOURS; colourno++ )
     {
-		palette_set_color_rgb(machine, colourno, nimbus_palette[colourno][RED], nimbus_palette[colourno][GREEN], nimbus_palette[colourno][BLUE]);
+		palette_set_color_rgb(machine(), colourno, nimbus_palette[colourno][RED], nimbus_palette[colourno][GREEN], nimbus_palette[colourno][BLUE]);
 	}
 }
 
@@ -307,9 +299,7 @@ static MACHINE_CONFIG_START( nimbus, rmnimbus_state )
     MCFG_CPU_PROGRAM_MAP(nimbus_iocpu_mem)
     MCFG_CPU_IO_MAP(nimbus_iocpu_io)
 
-    MCFG_MACHINE_START( nimbus )
 
-    MCFG_MACHINE_RESET(nimbus)
 
     /* video hardware */
     MCFG_SCREEN_ADD("screen", RASTER)
@@ -321,24 +311,22 @@ static MACHINE_CONFIG_START( nimbus, rmnimbus_state )
     MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
 
     MCFG_PALETTE_LENGTH(SCREEN_NO_COLOURS * 3)
-	MCFG_PALETTE_INIT( nimbus )
 
     MCFG_SCREEN_SIZE(650, 260)
     MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
 
-    MCFG_VIDEO_START(nimbus)
-    MCFG_VIDEO_RESET(nimbus)
 
 
     /* Backing storage */
 	MCFG_WD2793_ADD(FDC_TAG, nimbus_wd17xx_interface )
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(nimbus_floppy_interface)
 
-	MCFG_DEVICE_ADD(HARDDISK0_TAG, SCSIHD, 0)
-	MCFG_DEVICE_ADD(HARDDISK1_TAG, SCSIHD, 0)
-	MCFG_DEVICE_ADD(HARDDISK2_TAG, SCSIHD, 0)
-	MCFG_DEVICE_ADD(HARDDISK3_TAG, SCSIHD, 0)
-    MCFG_SCSIBUS_ADD(SCSIBUS_TAG, scsibus_config)
+	MCFG_SCSIBUS_ADD(SCSIBUS_TAG)
+	MCFG_SCSIDEV_ADD(SCSIBUS_TAG ":harddisk0", ACB4070, SCSI_ID_0)
+	MCFG_SCSIDEV_ADD(SCSIBUS_TAG ":harddisk1", S1410, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD(SCSIBUS_TAG ":harddisk2", SCSIHD, SCSI_ID_2)
+	MCFG_SCSIDEV_ADD(SCSIBUS_TAG ":harddisk3", SCSIHD, SCSI_ID_3)
+	MCFG_SCSICB_ADD(SCSIBUS_TAG ":host", scsibus_config)
 
     MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("1536K")

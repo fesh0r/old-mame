@@ -132,7 +132,7 @@ WRITE8_MEMBER( at_state::at_page8_w )
 	if (LOG_PORT80 && (offset == 0))
 	{
 		logerror(" at_page8_w(): Port 80h <== 0x%02x (PC=0x%08x)\n", data,
-							(unsigned) cpu_get_reg(m_maincpu, STATE_GENPC));
+							(unsigned) m_maincpu->pc());
 	}
 
 	switch(offset % 8)
@@ -155,7 +155,7 @@ WRITE8_MEMBER( at_state::at_page8_w )
 
 WRITE_LINE_MEMBER( at_state::pc_dma_hrq_changed )
 {
-	device_set_input_line(m_maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
 	m_dma8237_2->hack_w(state);
@@ -163,6 +163,8 @@ WRITE_LINE_MEMBER( at_state::pc_dma_hrq_changed )
 
 READ8_MEMBER(at_state::pc_dma_read_byte)
 {
+	if(m_dma_channel == -1)
+		return 0xff;
 	UINT8 result;
 	offs_t page_offset = (((offs_t) m_dma_offset[0][m_dma_channel]) << 16) & 0xFF0000;
 
@@ -173,6 +175,8 @@ READ8_MEMBER(at_state::pc_dma_read_byte)
 
 WRITE8_MEMBER(at_state::pc_dma_write_byte)
 {
+	if(m_dma_channel == -1)
+		return;
 	offs_t page_offset = (((offs_t) m_dma_offset[0][m_dma_channel]) << 16) & 0xFF0000;
 
 	space.write_byte(page_offset + offset, data);
@@ -181,8 +185,10 @@ WRITE8_MEMBER(at_state::pc_dma_write_byte)
 
 READ8_MEMBER(at_state::pc_dma_read_word)
 {
+	if(m_dma_channel == -1)
+		return 0xff;
 	UINT16 result;
-	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFF0000;
+	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFE0000;
 
 	result = space.read_word(page_offset + ( offset << 1 ) );
 	m_dma_high_byte = result & 0xFF00;
@@ -193,46 +199,59 @@ READ8_MEMBER(at_state::pc_dma_read_word)
 
 WRITE8_MEMBER(at_state::pc_dma_write_word)
 {
-	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFF0000;
+	if(m_dma_channel == -1)
+		return;
+	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFE0000;
 
 	space.write_word(page_offset + ( offset << 1 ), m_dma_high_byte | data);
 }
-
 
 READ8_MEMBER( at_state::pc_dma8237_0_dack_r ) { return m_isabus->dack_r(0); }
 READ8_MEMBER( at_state::pc_dma8237_1_dack_r ) { return m_isabus->dack_r(1); }
 READ8_MEMBER( at_state::pc_dma8237_2_dack_r ) { return m_isabus->dack_r(2); }
 READ8_MEMBER( at_state::pc_dma8237_3_dack_r ) { return m_isabus->dack_r(3); }
-READ8_MEMBER( at_state::pc_dma8237_5_dack_r ) { return m_isabus->dack_r(5); }
-READ8_MEMBER( at_state::pc_dma8237_6_dack_r ) { return m_isabus->dack_r(6); }
-READ8_MEMBER( at_state::pc_dma8237_7_dack_r ) { return m_isabus->dack_r(7); }
+READ8_MEMBER( at_state::pc_dma8237_5_dack_r ) { UINT16 ret = m_isabus->dack16_r(5); m_dma_high_byte = ret & 0xff00; return ret; }
+READ8_MEMBER( at_state::pc_dma8237_6_dack_r ) { UINT16 ret = m_isabus->dack16_r(6); m_dma_high_byte = ret & 0xff00; return ret; }
+READ8_MEMBER( at_state::pc_dma8237_7_dack_r ) { UINT16 ret = m_isabus->dack16_r(7); m_dma_high_byte = ret & 0xff00; return ret; }
 
 
 WRITE8_MEMBER( at_state::pc_dma8237_0_dack_w ){ m_isabus->dack_w(0, data); }
 WRITE8_MEMBER( at_state::pc_dma8237_1_dack_w ){ m_isabus->dack_w(1, data); }
 WRITE8_MEMBER( at_state::pc_dma8237_2_dack_w ){ m_isabus->dack_w(2, data); }
 WRITE8_MEMBER( at_state::pc_dma8237_3_dack_w ){ m_isabus->dack_w(3, data); }
-WRITE8_MEMBER( at_state::pc_dma8237_5_dack_w ){ m_isabus->dack_w(5, data); }
-WRITE8_MEMBER( at_state::pc_dma8237_6_dack_w ){ m_isabus->dack_w(6, data); }
-WRITE8_MEMBER( at_state::pc_dma8237_7_dack_w ){ m_isabus->dack_w(7, data); }
+WRITE8_MEMBER( at_state::pc_dma8237_5_dack_w ){ m_isabus->dack16_w(5, m_dma_high_byte | data); }
+WRITE8_MEMBER( at_state::pc_dma8237_6_dack_w ){ m_isabus->dack16_w(6, m_dma_high_byte | data); }
+WRITE8_MEMBER( at_state::pc_dma8237_7_dack_w ){ m_isabus->dack16_w(7, m_dma_high_byte | data); }
 
-WRITE_LINE_MEMBER( at_state::at_dma8237_out_eop ) { m_isabus->eop_w(state == ASSERT_LINE ? 0 : 1 ); }
-
-static void set_dma_channel(device_t *device, int channel, int state)
+WRITE_LINE_MEMBER( at_state::at_dma8237_out_eop )
 {
-	at_state *st = device->machine().driver_data<at_state>();
-	if (!state)
-		st->m_dma_channel = channel;
+	m_cur_eop = state == ASSERT_LINE;
+	if(m_dma_channel != -1)
+		m_isabus->eop_w(m_dma_channel, m_cur_eop ? ASSERT_LINE : CLEAR_LINE );
 }
 
-WRITE_LINE_MEMBER( at_state::pc_dack0_w ) { set_dma_channel(m_dma8237_1, 0, state); }
-WRITE_LINE_MEMBER( at_state::pc_dack1_w ) { set_dma_channel(m_dma8237_1, 1, state); }
-WRITE_LINE_MEMBER( at_state::pc_dack2_w ) { set_dma_channel(m_dma8237_1, 2, state); }
-WRITE_LINE_MEMBER( at_state::pc_dack3_w ) { set_dma_channel(m_dma8237_1, 3, state); }
+void at_state::pc_set_dma_channel(int channel, int state)
+{
+	if(!state) {
+		m_dma_channel = channel;
+		if(m_cur_eop)
+			m_isabus->eop_w(channel, ASSERT_LINE );
+
+	} else if(m_dma_channel == channel) {
+		m_dma_channel = -1;
+		if(m_cur_eop)
+			m_isabus->eop_w(channel, CLEAR_LINE );
+	}
+}
+
+WRITE_LINE_MEMBER( at_state::pc_dack0_w ) { pc_set_dma_channel(0, state); }
+WRITE_LINE_MEMBER( at_state::pc_dack1_w ) { pc_set_dma_channel(1, state); }
+WRITE_LINE_MEMBER( at_state::pc_dack2_w ) { pc_set_dma_channel(2, state); }
+WRITE_LINE_MEMBER( at_state::pc_dack3_w ) { pc_set_dma_channel(3, state); }
 WRITE_LINE_MEMBER( at_state::pc_dack4_w ) { m_dma8237_1->hack_w(state ? 0 : 1); } // it's inverted
-WRITE_LINE_MEMBER( at_state::pc_dack5_w ) { set_dma_channel(m_dma8237_2, 5, state); }
-WRITE_LINE_MEMBER( at_state::pc_dack6_w ) { set_dma_channel(m_dma8237_2, 6, state); }
-WRITE_LINE_MEMBER( at_state::pc_dack7_w ) { set_dma_channel(m_dma8237_2, 7, state); }
+WRITE_LINE_MEMBER( at_state::pc_dack5_w ) { pc_set_dma_channel(5, state); }
+WRITE_LINE_MEMBER( at_state::pc_dack6_w ) { pc_set_dma_channel(6, state); }
+WRITE_LINE_MEMBER( at_state::pc_dack7_w ) { pc_set_dma_channel(7, state); }
 
 I8237_INTERFACE( at_dma8237_1_config )
 {
@@ -333,15 +352,16 @@ static IRQ_CALLBACK(at_irq_callback)
 	return pic8259_acknowledge(st->m_pic8259_master);
 }
 
-MACHINE_START( at )
+MACHINE_START_MEMBER(at_state,at)
 {
-	device_set_irq_callback(machine.device("maincpu"), at_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(at_irq_callback);
 }
 
-MACHINE_RESET( at )
+MACHINE_RESET_MEMBER(at_state,at)
 {
-	at_state *st = machine.driver_data<at_state>();
-	st->m_poll_delay = 4;
-	st->m_at_spkrdata = 0;
-	st->m_at_speaker_input = 0;
+	m_poll_delay = 4;
+	m_at_spkrdata = 0;
+	m_at_speaker_input = 0;
+	m_dma_channel = -1;
+	m_cur_eop = false;
 }

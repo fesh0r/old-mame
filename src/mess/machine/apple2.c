@@ -1002,7 +1002,7 @@ void apple2_setvar(running_machine &machine, UINT32 val, UINT32 mask)
 {
 	apple2_state *state = machine.driver_data<apple2_state>();
 	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask,
-					(unsigned int) cpu_get_reg(machine.device("maincpu"), STATE_GENPC)));
+					(unsigned int) machine.device("maincpu")->safe_pc()));
 
 	assert((val & mask) == val);
 
@@ -1450,12 +1450,12 @@ READ8_MEMBER ( apple2_state::apple2_c05x_r )
             if (offset == 0xa)  // RAM
             {
                 apple2_setvar(space.machine(), VAR_TK2000RAM, ~0);
-                printf("TK2000: RAM (PC %x)\n", cpu_get_pc(m_maincpu));
+                printf("TK2000: RAM (PC %x)\n", m_maincpu->pc());
             }
             else if (offset == 0xb) // ROM
             {
                 apple2_setvar(space.machine(), 0, ~VAR_TK2000RAM);
-                printf("TK2000: ROM (PC %x)\n", cpu_get_pc(m_maincpu));
+                printf("TK2000: ROM (PC %x)\n", m_maincpu->pc());
             }
         }
 
@@ -1785,125 +1785,120 @@ void apple2_init_common(running_machine &machine)
 
 
 
-MACHINE_START( apple2 )
+MACHINE_START_MEMBER(apple2_state,apple2)
 {
 	apple2_memmap_config mem_cfg;
 	void *apple2cp_ce00_ram = NULL;
-	apple2_state *state = machine.driver_data<apple2_state>();
 
-    state->m_flags_mask = 0;
+    m_flags_mask = 0;
 
 	/* there appears to be some hidden RAM that is swapped in on the Apple
      * IIc plus; I have not found any official documentation but the BIOS
      * clearly uses this area as writeable memory */
-	if (!strcmp(machine.system().name, "apple2cp"))
-		apple2cp_ce00_ram = auto_alloc_array(machine, UINT8, 0x200);
+	if (!strcmp(machine().system().name, "apple2cp"))
+		apple2cp_ce00_ram = auto_alloc_array(machine(), UINT8, 0x200);
 
-    state->m_machinetype = APPLE_IIEPLUS;
+    m_machinetype = APPLE_IIEPLUS;
 
-	apple2_init_common(machine);
+	apple2_init_common(machine());
 
 	/* setup memory */
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
 	mem_cfg.auxmem = (UINT8*)apple2cp_ce00_ram;
-	apple2_setup_memory(machine, &mem_cfg);
+	apple2_setup_memory(machine(), &mem_cfg);
 
 	/* perform initial reset */
-	apple2_reset(machine);
+	apple2_reset(machine());
 }
 
-MACHINE_START( laser128 )
+MACHINE_START_MEMBER(apple2_state,laser128)
 {
 	apple2_memmap_config mem_cfg;
-	apple2_state *state = machine.driver_data<apple2_state>();
 
-    state->m_flags_mask = 0;
-    state->m_machinetype = LASER128;
+    m_flags_mask = 0;
+    m_machinetype = LASER128;
 
-	apple2_init_common(machine);
+	apple2_init_common(machine());
 
 	/* setup memory */
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
 	mem_cfg.auxmem = (UINT8*)NULL;
-	apple2_setup_memory(machine, &mem_cfg);
+	apple2_setup_memory(machine(), &mem_cfg);
 
 	/* perform initial reset */
-	apple2_reset(machine);
+	apple2_reset(machine());
 }
 
-MACHINE_START( apple2orig )
+MACHINE_START_MEMBER(apple2_state,apple2orig)
 {
 	apple2_memmap_config mem_cfg;
 	void *apple2cp_ce00_ram = NULL;
-	apple2_state *state = machine.driver_data<apple2_state>();
 
     // II and II+ have no internal ROM or internal slot 3 h/w, so don't allow these states
-    state->m_flags_mask = VAR_INTCXROM|VAR_SLOTC3ROM;
+    m_flags_mask = VAR_INTCXROM|VAR_SLOTC3ROM;
 
-    state->m_machinetype = APPLE_II;
+    m_machinetype = APPLE_II;
 
-	apple2_init_common(machine);
+	apple2_init_common(machine());
 
 	/* setup memory */
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
 	mem_cfg.auxmem = (UINT8*)apple2cp_ce00_ram;
-	apple2_setup_memory(machine, &mem_cfg);
+	apple2_setup_memory(machine(), &mem_cfg);
 
 	/* perform initial reset */
-	apple2_reset(machine);
+	apple2_reset(machine());
 }
 
-MACHINE_START( space84 )
+MACHINE_START_MEMBER(apple2_state,space84)
 {
 	apple2_memmap_config mem_cfg;
 	void *apple2cp_ce00_ram = NULL;
-	apple2_state *state = machine.driver_data<apple2_state>();
 
     // II and II+ have no internal ROM or internal slot 3 h/w, so don't allow these states
-    state->m_flags_mask = VAR_INTCXROM|VAR_SLOTC3ROM;
+    m_flags_mask = VAR_INTCXROM|VAR_SLOTC3ROM;
 
-    state->m_machinetype = SPACE84;
+    m_machinetype = SPACE84;
 
-	apple2_init_common(machine);
+	apple2_init_common(machine());
 
 	/* setup memory */
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
 	mem_cfg.auxmem = (UINT8*)apple2cp_ce00_ram;
-	apple2_setup_memory(machine, &mem_cfg);
+	apple2_setup_memory(machine(), &mem_cfg);
 
 	/* perform initial reset */
-	apple2_reset(machine);
+	apple2_reset(machine());
 }
 
-MACHINE_START( tk2000 )
+MACHINE_START_MEMBER(apple2_state,tk2000)
 {
 	apple2_memmap_config mem_cfg;
-	apple2_state *state = machine.driver_data<apple2_state>();
 
     // II and II+ have no internal ROM or internal slot 3 h/w, so don't allow these states
-    state->m_flags_mask = VAR_INTCXROM|VAR_SLOTC3ROM;
+    m_flags_mask = VAR_INTCXROM|VAR_SLOTC3ROM;
 
-    state->m_machinetype = TK2000;
+    m_machinetype = TK2000;
 
-	apple2_init_common(machine);
+	apple2_init_common(machine());
 
 	/* setup memory */
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = tk2000_memmap_entries;
 	mem_cfg.auxmem = (UINT8*)NULL;
-	apple2_setup_memory(machine, &mem_cfg);
+	apple2_setup_memory(machine(), &mem_cfg);
 
 	/* perform initial reset */
-	apple2_reset(machine);
+	apple2_reset(machine());
 }
 
 int apple2_pressed_specialkey(running_machine &machine, UINT8 key)

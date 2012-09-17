@@ -2,9 +2,9 @@
 
     TODO:
 
+    - floating bus writes to peripheral registers in m6502.c
+    - sort out kernals between PAL/NTSC
     - tsuit215 test failures
-
-        - CPUPORT (0=FF 1=FF 0=00 1=FF 1=FF 1=FF, AFTER 00 17, RIGHT 00 DF)
         - IRQ (WRONG $DC0D)
         - NMI (WRONG $DD0D)
         - all CIA tests
@@ -49,10 +49,10 @@ void c64_state::check_interrupts()
 {
 	int restore = BIT(ioport("SPECIAL")->read(), 7);
 
-	m_maincpu->set_input_line(INPUT_LINE_IRQ0, m_cia1_irq | m_vic_irq | m_exp_irq);
-	m_maincpu->set_input_line(INPUT_LINE_NMI, m_cia2_irq | restore | m_exp_nmi);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, m_cia1_irq || m_vic_irq || m_exp_irq);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, m_cia2_irq || restore || m_exp_nmi);
 
-	mos6526_flag_w(m_cia1, m_cass_rd & m_iec_srq);
+	mos6526_flag_w(m_cia1, m_cass_rd && m_iec_srq);
 }
 
 
@@ -67,11 +67,11 @@ void c64_state::check_interrupts()
 
 void c64_state::bankswitch(offs_t offset, offs_t va, int rw, int aec, int ba, int cas, int *casram, int *basic, int *kernal, int *charom, int *grw, int *io, int *roml, int *romh)
 {
-	int game = m_exp->game_r(offset, rw, ba, m_hiram);
-	int exrom = m_exp->exrom_r(offset, rw, ba, m_hiram);
+	int game = m_exp->game_r(offset, ba, rw, m_hiram);
+	int exrom = m_exp->exrom_r(offset, ba, rw, m_hiram);
 
-	UINT16 input = VA12 << 15 | VA13 << 14 | game << 13 | exrom << 12 | rw << 11 | aec << 10 | ba << 9 | A12 << 8 | A13 << 7 | A14 << 6 | A15 << 5 | m_va14 << 4 | m_charen << 3 | m_hiram << 2 | m_loram << 1 | cas;
-	UINT8 data = m_pla->read(input);
+	UINT32 input = VA12 << 15 | VA13 << 14 | game << 13 | exrom << 12 | rw << 11 | aec << 10 | ba << 9 | A12 << 8 | A13 << 7 | A14 << 6 | A15 << 5 | m_va14 << 4 | m_charen << 3 | m_hiram << 2 | m_loram << 1 | cas;
+	UINT32 data = m_pla->read(input);
 
 	*casram = BIT(data, 0);
 	*basic = BIT(data, 1);
@@ -92,7 +92,12 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int ba, int ca
 {
 	int io1 = 1, io2 = 1;
 
-	UINT8 data = 0;
+	UINT8 data = 0xff;
+
+	if (ba)
+	{
+		data = m_vic->bus_r();
+	}
 
 	if (!casram)
 	{
@@ -119,7 +124,7 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int ba, int ca
 			break;
 
 		case 1: // SID
-			data = sid6581_r(m_sid, offset & 0x1f);
+			data = m_sid->read(space, offset & 0x1f);
 			break;
 
 		case 2: // COLOR
@@ -135,11 +140,11 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int ba, int ca
 				else
 					cia_set_port_mask_value(m_cia1, 0, ioport("CTRLSEL")->read() & 0x80 ? c64_keyline[8] : c64_keyline[9] );
 
-				data = mos6526_r(m_cia1, offset & 0x0f);
+				data = m_cia1->read(space, offset & 0x0f);
 				break;
 
 			case 1: // CIA2
-				data = mos6526_r(m_cia2, offset & 0x0f);
+				data = m_cia2->read(space, offset & 0x0f);
 				break;
 
 			case 2: // I/O1
@@ -154,9 +159,7 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int ba, int ca
 		}
 	}
 
-	data |= m_exp->cd_r(space, offset, ba, roml, romh, io1, io2);
-
-	return data;
+	return m_exp->cd_r(space, offset, data, ba, roml, romh, io1, io2);
 }
 
 
@@ -189,6 +192,12 @@ WRITE8_MEMBER( c64_state::write )
 
 	bankswitch(offset, va, rw, aec, ba, cas, &casram, &basic, &kernal, &charom, &grw, &io, &roml, &romh);
 
+	if (offset < 0x0002)
+	{
+		// write to internal CPU register
+		data = m_vic->bus_r();
+	}
+
 	if (!casram)
 	{
 		m_ram->pointer()[offset] = data;
@@ -202,7 +211,7 @@ WRITE8_MEMBER( c64_state::write )
 			break;
 
 		case 1: // SID
-			sid6581_w(m_sid, offset & 0x1f, data);
+			m_sid->write(space, offset & 0x1f, data);
 			break;
 
 		case 2: // COLOR
@@ -213,11 +222,11 @@ WRITE8_MEMBER( c64_state::write )
 			switch ((offset >> 8) & 0x03)
 			{
 			case 0: // CIA1
-				mos6526_w(m_cia1, offset & 0x0f, data);
+				m_cia1->write(space, offset & 0x0f, data);
 				break;
 
 			case 1: // CIA2
-				mos6526_w(m_cia2, offset & 0x0f, data);
+				m_cia2->write(space, offset & 0x0f, data);
 				break;
 
 			case 2: // I/O1
@@ -248,7 +257,7 @@ READ8_MEMBER( c64_state::vic_videoram_r )
 	int casram, basic, kernal, charom, grw, io, roml, romh;
 	bankswitch(0xffff, offset, rw, aec, ba, cas, &casram, &basic, &kernal, &charom, &grw, &io, &roml, &romh);
 
-	return read_memory(space, offset, 0, casram, basic, kernal, charom, io, roml, romh);
+	return read_memory(space, offset, ba, casram, basic, kernal, charom, io, roml, romh);
 }
 
 
@@ -364,26 +373,6 @@ INPUT_PORTS_END
 //  vic2_interface vic_intf
 //-------------------------------------------------
 
-static const unsigned char c64_palette[] =
-{
-// black, white, red, cyan
-// purple, green, blue, yellow
-// orange, brown, light red, dark gray,
-// medium gray, light green, light blue, light gray
-// taken from the vice emulator
-	0x00, 0x00, 0x00,  0xfd, 0xfe, 0xfc,  0xbe, 0x1a, 0x24,  0x30, 0xe6, 0xc6,
-	0xb4, 0x1a, 0xe2,  0x1f, 0xd2, 0x1e,  0x21, 0x1b, 0xae,  0xdf, 0xf6, 0x0a,
-	0xb8, 0x41, 0x04,  0x6a, 0x33, 0x04,  0xfe, 0x4a, 0x57,  0x42, 0x45, 0x40,
-	0x70, 0x74, 0x6f,  0x59, 0xfe, 0x59,  0x5f, 0x53, 0xfe,  0xa4, 0xa7, 0xa2
-};
-
-static PALETTE_INIT( pet64 )
-{
-	int i;
-	for (i = 0; i < 16; i++)
-		palette_set_color_rgb(machine, i, 0, c64_palette[i * 3 + 1], 0);
-}
-
 static INTERRUPT_GEN( c64_frame_interrupt )
 {
 	c64_state *state = device->machine().driver_data<c64_state>();
@@ -433,128 +422,43 @@ static MOS6567_INTERFACE( vic_intf )
 
 
 //-------------------------------------------------
-//  sid6581_interface sid_intf
+//  MOS6581_INTERFACE( sid_intf )
 //-------------------------------------------------
 
-static int paddle_read( device_t *device, int which )
+READ8_MEMBER( c64_state::sid_potx_r )
 {
-	running_machine &machine = device->machine();
-	c64_state *state = device->machine().driver_data<c64_state>();
+	UINT8 cia1_pa = mos6526_pa_r(m_cia1, 0);
 
-	int pot1 = 0xff, pot2 = 0xff, pot3 = 0xff, pot4 = 0xff, temp;
-	UINT8 cia0porta = mos6526_pa_r(state->m_cia1, 0);
-	int controller1 = machine.root_device().ioport("CTRLSEL")->read() & 0x07;
-	int controller2 = machine.root_device().ioport("CTRLSEL")->read() & 0x70;
-	// Notice that only a single input is defined for Mouse & Lightpen in both ports
-	switch (controller1)
-	{
-		case 0x01:
-			if (which)
-				pot2 = machine.root_device().ioport("PADDLE2")->read();
-			else
-				pot1 = machine.root_device().ioport("PADDLE1")->read();
-			break;
+	int sela = BIT(cia1_pa, 6);
+	int selb = BIT(cia1_pa, 7);
 
-		case 0x02:
-			if (which)
-				pot2 = machine.root_device().ioport("TRACKY")->read();
-			else
-				pot1 = machine.root_device().ioport("TRACKX")->read();
-			break;
+	UINT8 data = 0;
 
-		case 0x03:
-			if (which && (machine.root_device().ioport("JOY1_2B")->read() & 0x20))	// Joy1 Button 2
-				pot1 = 0x00;
-			break;
+	if (sela) data = m_joy1->pot_x_r();
+	if (selb) data = m_joy2->pot_x_r();
 
-		case 0x04:
-			if (which)
-				pot2 = machine.root_device().ioport("LIGHTY")->read();
-			else
-				pot1 = machine.root_device().ioport("LIGHTX")->read();
-			break;
-
-		case 0x06:
-			if (which && (machine.root_device().ioport("OTHER")->read() & 0x04))	// Lightpen Signal
-				pot2 = 0x00;
-			break;
-
-		case 0x00:
-		case 0x07:
-			break;
-
-		default:
-			logerror("Invalid Controller Setting %d\n", controller1);
-			break;
-	}
-
-	switch (controller2)
-	{
-		case 0x10:
-			if (which)
-				pot4 = machine.root_device().ioport("PADDLE4")->read();
-			else
-				pot3 = machine.root_device().ioport("PADDLE3")->read();
-			break;
-
-		case 0x20:
-			if (which)
-				pot4 = machine.root_device().ioport("TRACKY")->read();
-			else
-				pot3 = machine.root_device().ioport("TRACKX")->read();
-			break;
-
-		case 0x30:
-			if (which && (machine.root_device().ioport("JOY2_2B")->read() & 0x20))	// Joy2 Button 2
-				pot4 = 0x00;
-			break;
-
-		case 0x40:
-			if (which)
-				pot4 = machine.root_device().ioport("LIGHTY")->read();
-			else
-				pot3 = machine.root_device().ioport("LIGHTX")->read();
-			break;
-
-		case 0x60:
-			if (which && (machine.root_device().ioport("OTHER")->read() & 0x04))	// Lightpen Signal
-				pot4 = 0x00;
-			break;
-
-		case 0x00:
-		case 0x70:
-			break;
-
-		default:
-			logerror("Invalid Controller Setting %d\n", controller1);
-			break;
-	}
-
-	if (machine.root_device().ioport("CTRLSEL")->read() & 0x80)		// Swap
-	{
-		temp = pot1; pot1 = pot3; pot3 = temp;
-		temp = pot2; pot2 = pot4; pot4 = temp;
-	}
-
-	switch (cia0porta & 0xc0)
-	{
-		case 0x40:
-			return which ? pot2 : pot1;
-
-		case 0x80:
-			return which ? pot4 : pot3;
-
-		case 0xc0:
-			return which ? pot2 : pot1;
-
-		default:
-			return 0;
-	}
+	return data;
 }
 
-static const sid6581_interface sid_intf =
+READ8_MEMBER( c64_state::sid_poty_r )
 {
-	paddle_read
+	UINT8 cia1_pa = mos6526_pa_r(m_cia1, 0);
+
+	int sela = BIT(cia1_pa, 6);
+	int selb = BIT(cia1_pa, 7);
+
+	UINT8 data = 0;
+
+	if (sela) data = m_joy1->pot_y_r();
+	if (selb) data = m_joy2->pot_y_r();
+
+	return data;
+}
+
+static MOS6581_INTERFACE( sid_intf )
+{
+	DEVCB_DRIVER_MEMBER(c64_state, sid_potx_r),
+	DEVCB_DRIVER_MEMBER(c64_state, sid_poty_r)
 };
 
 
@@ -635,7 +539,6 @@ WRITE8_MEMBER( c64_state::cia1_pb_w )
 
 static const mos6526_interface cia1_intf =
 {
-	10,
 	DEVCB_DRIVER_LINE_MEMBER(c64_state, cia1_irq_w),
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(C64_USER_PORT_TAG, c64_user_port_device, sp1_w),
@@ -719,7 +622,6 @@ WRITE8_MEMBER( c64_state::cia2_pa_w )
 
 static const mos6526_interface cia2_intf =
 {
-	10,
 	DEVCB_DRIVER_LINE_MEMBER(c64_state, cia2_irq_w),
 	DEVCB_DEVICE_LINE_MEMBER(C64_USER_PORT_TAG, c64_user_port_device, pc2_w),
 	DEVCB_DEVICE_LINE_MEMBER(C64_USER_PORT_TAG, c64_user_port_device, sp2_w),
@@ -732,7 +634,7 @@ static const mos6526_interface cia2_intf =
 
 
 //-------------------------------------------------
-//  m6502_interface cpu_intf
+//  M6510_INTERFACE( cpu_intf )
 //-------------------------------------------------
 
 READ8_MEMBER( c64_state::cpu_r )
@@ -746,13 +648,13 @@ READ8_MEMBER( c64_state::cpu_r )
         P2      1
         P3
         P4      CASS SENS
-        P5
+        P5      0
 
     */
 
 	UINT8 data = 0x07;
 
-	data |= ((m_cassette->get_state() & CASSETTE_MASK_UISTATE) == CASSETTE_STOPPED) << 4;
+	data |= m_cassette->sense_r() << 4;
 
 	return data;
 }
@@ -772,40 +674,31 @@ WRITE8_MEMBER( c64_state::cpu_w )
 
     */
 
-	// HACK apply pull-up resistors
-	data |= (offset ^ 0x07) & 0x07;
-
+    // memory banking
 	m_loram = BIT(data, 0);
 	m_hiram = BIT(data, 1);
 	m_charen = BIT(data, 2);
 
 	// cassette write
-	m_cassette->output(BIT(data, 3) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	m_cassette->write(BIT(data, 3));
 
 	// cassette motor
-	if (!BIT(data, 5))
-	{
-		m_cassette->change_state(CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
-		m_cassette_timer->adjust(attotime::zero, 0, attotime::from_hz(44100));
-	}
-	else
-	{
-		m_cassette->change_state(CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
-		m_cassette_timer->reset();
-	}
+	m_cassette->motor_w(BIT(data, 5));
 }
 
-static const m6502_interface cpu_intf =
+static M6510_INTERFACE( cpu_intf )
 {
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(c64_state, cpu_r),
-	DEVCB_DRIVER_MEMBER(c64_state, cpu_w)
+	DEVCB_DRIVER_MEMBER(c64_state, cpu_w),
+	0x17,
+	0x20
 };
 
 
 //-------------------------------------------------
-//  m6502_interface sx64_cpu_intf
+//  M6510_INTERFACE( sx64_cpu_intf )
 //-------------------------------------------------
 
 READ8_MEMBER( sx64_state::cpu_r )
@@ -817,13 +710,13 @@ READ8_MEMBER( sx64_state::cpu_r )
         P0      1
         P1      1
         P2      1
-        P3      1
-        P4      1
-        P5      1
+        P3
+        P4
+        P5
 
     */
 
-	return 0x3f;
+	return 0x07;
 }
 
 WRITE8_MEMBER( sx64_state::cpu_w )
@@ -841,25 +734,25 @@ WRITE8_MEMBER( sx64_state::cpu_w )
 
     */
 
-	// HACK apply pull-up resistors
-	data |= (offset ^ 0x07) & 0x07;
-
+    // memory banking
 	m_loram = BIT(data, 0);
 	m_hiram = BIT(data, 1);
 	m_charen = BIT(data, 2);
 }
 
-static const m6502_interface sx64_cpu_intf =
+static M6510_INTERFACE( sx64_cpu_intf )
 {
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(sx64_state, cpu_r),
-	DEVCB_DRIVER_MEMBER(sx64_state, cpu_w)
+	DEVCB_DRIVER_MEMBER(sx64_state, cpu_w),
+	0x07,
+	0x00
 };
 
 
 //-------------------------------------------------
-//  m6502_interface c64gs_cpu_intf
+//  M6510_INTERFACE( c64gs_cpu_intf )
 //-------------------------------------------------
 
 READ8_MEMBER( c64gs_state::cpu_r )
@@ -871,13 +764,13 @@ READ8_MEMBER( c64gs_state::cpu_r )
         P0      1
         P1      1
         P2      1
-        P3      1
-        P4      1
-        P5      1
+        P3
+        P4
+        P5
 
     */
 
-	return 0x3f;
+	return 0x07;
 }
 
 WRITE8_MEMBER( c64gs_state::cpu_w )
@@ -895,35 +788,38 @@ WRITE8_MEMBER( c64gs_state::cpu_w )
 
     */
 
-	// HACK apply pull-up resistors
-	data |= (offset ^ 0x07) & 0x07;
-
+    // memory banking
 	m_loram = BIT(data, 0);
 	m_hiram = BIT(data, 1);
 	m_charen = BIT(data, 2);
 }
 
-static const m6502_interface c64gs_cpu_intf =
+static M6510_INTERFACE( c64gs_cpu_intf )
 {
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(c64gs_state, cpu_r),
-	DEVCB_DRIVER_MEMBER(c64gs_state, cpu_w)
+	DEVCB_DRIVER_MEMBER(c64gs_state, cpu_w),
+	0x07,
+	0x00
 };
 
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( cassette_tick )
+//  PET_DATASSETTE_PORT_INTERFACE( datassette_intf )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( cassette_tick )
+WRITE_LINE_MEMBER( c64_state::tape_read_w )
 {
-	c64_state *state = timer.machine().driver_data<c64_state>();
+	m_cass_rd = state;
 
-	state->m_cass_rd = state->m_cassette->input() > +0.0;
-
-	state->check_interrupts();
+	check_interrupts();
 }
+
+static PET_DATASSETTE_PORT_INTERFACE( datassette_intf )
+{
+	DEVCB_DRIVER_LINE_MEMBER(c64_state, tape_read_w),
+};
 
 
 //-------------------------------------------------
@@ -953,12 +849,12 @@ static CBM_IEC_INTERFACE( iec_intf )
 
 READ8_MEMBER( c64_state::exp_dma_r )
 {
-	return m_maincpu->memory().space(AS_PROGRAM)->read_byte(offset);
+	return m_maincpu->space(AS_PROGRAM)->read_byte(offset);
 }
 
 WRITE8_MEMBER( c64_state::exp_dma_w )
 {
-	m_maincpu->memory().space(AS_PROGRAM)->write_byte(offset, data);
+	m_maincpu->space(AS_PROGRAM)->write_byte(offset, data);
 }
 
 WRITE_LINE_MEMBER( c64_state::exp_irq_w )
@@ -1111,14 +1007,13 @@ static MACHINE_CONFIG_START( ntsc, c64_state )
 
 	// devices
 	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6567_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6567_CLOCK, cia2_intf)
+	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6567_CLOCK, 60, cia1_intf)
+	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6567_CLOCK, 60, cia2_intf)
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
-	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
+	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, datassette_intf, cbm_datassette_devices, "c1530", NULL)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1141,7 +1036,7 @@ MACHINE_CONFIG_END
 //-------------------------------------------------
 
 static MACHINE_CONFIG_DERIVED( pet64, ntsc )
-	MCFG_PALETTE_INIT( pet64 )
+	// TODO monochrome green palette
 MACHINE_CONFIG_END
 
 
@@ -1150,51 +1045,15 @@ MACHINE_CONFIG_END
 //-------------------------------------------------
 
 static MACHINE_CONFIG_START( ntsc_sx, sx64_state )
+	MCFG_FRAGMENT_ADD(ntsc)
+
 	// basic hardware
-	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6567_CLOCK)
-	MCFG_CPU_PROGRAM_MAP(c64_mem)
+	MCFG_CPU_MODIFY(M6510_TAG)
 	MCFG_CPU_CONFIG(sx64_cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
-
-	// video hardware
-	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
-
-	// sound hardware
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6567_CLOCK)
-	MCFG_SOUND_CONFIG(sid_intf)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6567_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6567_CLOCK, cia2_intf)
-	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CBM_IEC_BUS_ADD(iec_intf)
-	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL)
+	MCFG_DEVICE_REMOVE("iec8")
 	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, sx1541_iec_devices, "sx1541", NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
-	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
-
-	// software list
-	MCFG_SOFTWARE_LIST_ADD("cart_list_vic10", "vic10")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_vic10", "NTSC")
-	MCFG_SOFTWARE_LIST_ADD("cart_list_c64", "c64_cart")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_c64", "NTSC")
-	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "NTSC")
-
-	// internal ram
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 
@@ -1203,51 +1062,11 @@ MACHINE_CONFIG_END
 //-------------------------------------------------
 
 static MACHINE_CONFIG_START( ntsc_dx, sx64_state )
-	// basic hardware
-	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6567_CLOCK)
-	MCFG_CPU_PROGRAM_MAP(c64_mem)
-	MCFG_CPU_CONFIG(sx64_cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
-
-	// video hardware
-	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
-
-	// sound hardware
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6567_CLOCK)
-	MCFG_SOUND_CONFIG(sid_intf)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MCFG_FRAGMENT_ADD(ntsc_sx)
 
 	// devices
-	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6567_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6567_CLOCK, cia2_intf)
-	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CBM_IEC_BUS_ADD(iec_intf)
-	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, sx1541_iec_devices, "sx1541", NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, sx1541_iec_devices, "sx1541", NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
-	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
-
-	// software list
-	MCFG_SOFTWARE_LIST_ADD("cart_list_vic10", "vic10")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_vic10", "NTSC")
-	MCFG_SOFTWARE_LIST_ADD("cart_list_c64", "c64_cart")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_c64", "NTSC")
-	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "NTSC")
-
-	// internal ram
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("64K")
+	MCFG_DEVICE_REMOVE("iec9")
+	MCFG_CBM_IEC_SLOT_ADD("iec9", 8, sx1541_iec_devices, "sx1541", NULL)
 MACHINE_CONFIG_END
 
 
@@ -1255,49 +1074,10 @@ MACHINE_CONFIG_END
 //  MACHINE_CONFIG( ntsc_c )
 //-------------------------------------------------
 
-static MACHINE_CONFIG_START( ntsc_c, c64c_state )
-	// basic hardware
-	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6567_CLOCK)
-	MCFG_CPU_PROGRAM_MAP(c64_mem)
-	MCFG_CPU_CONFIG(cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
-
-	// video hardware
-	MCFG_MOS8562_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
-
-	// sound hardware
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6567_CLOCK)
+static MACHINE_CONFIG_DERIVED_CLASS( ntsc_c, ntsc, c64c_state )
+	MCFG_SOUND_REPLACE(MOS6851_TAG, SID8580, VIC6567_CLOCK)
 	MCFG_SOUND_CONFIG(sid_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	// devices
-	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6567_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6567_CLOCK, cia2_intf)
-	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
-	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
-	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6567_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
-	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
-
-	// software list
-	MCFG_SOFTWARE_LIST_ADD("cart_list_vic10", "vic10")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_vic10", "NTSC")
-	MCFG_SOFTWARE_LIST_ADD("cart_list_c64", "c64_cart")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_c64", "NTSC")
-	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "NTSC")
-
-	// internal ram
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 
@@ -1326,14 +1106,13 @@ static MACHINE_CONFIG_START( pal, c64_state )
 
 	// devices
 	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, cia2_intf)
+	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, 50, cia1_intf)
+	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, 50, cia2_intf)
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
-	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
+	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, datassette_intf, cbm_datassette_devices, "c1530", NULL)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1356,51 +1135,15 @@ MACHINE_CONFIG_END
 //-------------------------------------------------
 
 static MACHINE_CONFIG_START( pal_sx, sx64_state )
+	MCFG_FRAGMENT_ADD(pal)
+
 	// basic hardware
-	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6569_CLOCK)
-	MCFG_CPU_PROGRAM_MAP(c64_mem)
+	MCFG_CPU_MODIFY(M6510_TAG)
 	MCFG_CPU_CONFIG(sx64_cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
-
-	// video hardware
-	MCFG_MOS6569_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
-
-	// sound hardware
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6569_CLOCK)
-	MCFG_SOUND_CONFIG(sid_intf)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, cia2_intf)
-	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CBM_IEC_BUS_ADD(iec_intf)
-	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL)
+	MCFG_DEVICE_REMOVE("iec8")
 	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, sx1541_iec_devices, "sx1541", NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL)
-	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
-	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
-
-	// software list
-	MCFG_SOFTWARE_LIST_ADD("cart_list_vic10", "vic10")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_vic10", "PAL")
-	MCFG_SOFTWARE_LIST_ADD("cart_list_c64", "c64_cart")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_c64", "PAL")
-	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "PAL")
-
-	// internal ram
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 
@@ -1408,49 +1151,10 @@ MACHINE_CONFIG_END
 //  MACHINE_CONFIG( pal_c )
 //-------------------------------------------------
 
-static MACHINE_CONFIG_START( pal_c, c64c_state )
-	// basic hardware
-	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6569_CLOCK)
-	MCFG_CPU_PROGRAM_MAP(c64_mem)
-	MCFG_CPU_CONFIG(cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
-	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
-
-	// video hardware
-	MCFG_MOS8565_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
-
-	// sound hardware
-	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6569_CLOCK)
+static MACHINE_CONFIG_DERIVED_CLASS( pal_c, pal, c64c_state )
+	MCFG_SOUND_REPLACE(MOS6851_TAG, SID8580, VIC6569_CLOCK)
 	MCFG_SOUND_CONFIG(sid_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	// devices
-	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, cia2_intf)
-	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_interface)
-	MCFG_TIMER_ADD(TIMER_C1531_TAG, cassette_tick)
-	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
-	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
-
-	// software list
-	MCFG_SOFTWARE_LIST_ADD("cart_list_vic10", "vic10")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_vic10", "PAL")
-	MCFG_SOFTWARE_LIST_ADD("cart_list_c64", "c64_cart")
-	MCFG_SOFTWARE_LIST_FILTER("cart_list_c64", "PAL")
-	MCFG_SOFTWARE_LIST_ADD("disk_list", "c64_flop")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "PAL")
-
-	// internal ram
-	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("64K")
 MACHINE_CONFIG_END
 
 
@@ -1471,7 +1175,7 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6569_CLOCK)
+	MCFG_SOUND_ADD(MOS6851_TAG, SID8580, VIC6569_CLOCK)
 	MCFG_SOUND_CONFIG(sid_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_ADD("dac", DAC, 0)
@@ -1479,11 +1183,11 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 
 	// devices
 	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, cia2_intf)
+	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, 50, cia1_intf)
+	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, 50, cia2_intf)
 	MCFG_CBM_IEC_BUS_ADD(iec_intf)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vic20_control_port_devices, NULL, NULL)
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vic20_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, VIC6569_CLOCK, expansion_intf, c64_expansion_cards, NULL, NULL)
 	MCFG_C64_USER_PORT_ADD(C64_USER_PORT_TAG, user_intf, c64_user_port_cards, NULL, NULL)
 
@@ -1512,7 +1216,7 @@ ROM_START( c64n )
 	ROM_REGION( 0x2000, "basic", 0 )
 	ROM_LOAD( "901226-01.u3", 0x0000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 
-	ROM_REGION( 0x2000, "kernal", 0 )
+	ROM_REGION( 0x4000, "kernal", 0 )
 	ROM_DEFAULT_BIOS("r3")
 	ROM_SYSTEM_BIOS(0, "r1", "Kernal rev. 1" )
 	ROMX_LOAD( "901227-01.u4", 0x0000, 0x2000, CRC(dce782fa) SHA1(87cc04d61fc748b82df09856847bb5c2754a2033), ROM_BIOS(1) )
@@ -1568,6 +1272,12 @@ ROM_START( c64n )
 	ROMX_LOAD( "exos3.u4", 0x0000, 0x2000, CRC(4e54d020) SHA1(f8931b7c0b26807f4de0cc241f0b1e2c8f5271e9), ROM_BIOS(26) )
 	ROM_SYSTEM_BIOS(26, "exos4", "EXOS v4" )
 	ROMX_LOAD( "exos4.u4", 0x0000, 0x2000, CRC(d5cf83a9) SHA1(d5f03a5c0e9d00032d4751ecc6bcd6385879c9c7), ROM_BIOS(27) )
+	ROM_SYSTEM_BIOS(27, "pdc", "ProLogic-DOS Classic" )
+	ROMX_LOAD( "pdc.u4", 0x0000, 0x4000, CRC(6b653b9c) SHA1(0f44a9c62619424a0cd48a90e1b377b987b494e0), ROM_BIOS(28) )
+	ROM_SYSTEM_BIOS(28, "digidos", "DigiDOS" )
+	ROMX_LOAD( "digidos.u4", 0x0000, 0x2000, CRC(2b0c8e89) SHA1(542d6f61c318bced0642e7c2d4d3b34a0f13e634), ROM_BIOS(29) )
+	ROM_SYSTEM_BIOS(29, "magnum", "Magnum Load" )
+	ROMX_LOAD( "magnum.u4", 0x0000, 0x2000, CRC(b2cffcc6) SHA1(827c782c1723b5d0992c05c00738ae4b2133b641), ROM_BIOS(30) )
 
 	ROM_REGION( 0x1000, "charom", 0 )
 	ROM_LOAD( "901225-01.u5", 0x0000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
@@ -1778,21 +1488,21 @@ ROM_END
 //  SYSTEM DRIVERS
 //**************************************************************************
 
-//    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY                        FULLNAME                                     FLAGS
-COMP( 1982,	c64n,	0,  	0,		ntsc,		c64, driver_device,		0,		"Commodore Business Machines", "Commodore 64 (NTSC)",						0 )
-COMP( 1982,	c64j,	c64n,	0,		ntsc,		c64, driver_device,		0,		"Commodore Business Machines", "Commodore 64 (Japan)",						0 )
-COMP( 1982,	c64p,	c64n,	0,		pal,		c64, driver_device,		0,		"Commodore Business Machines", "Commodore 64 (PAL)",						0 )
-COMP( 1982,	c64sw,	c64n,	0,		pal,		c64sw, driver_device,		0,		"Commodore Business Machines", "Commodore 64 / VIC-64S (Sweden/Finland)",	0 )
-COMP( 1983, pet64,	c64n,	0,  	pet64,  	c64, driver_device, 	0,  	"Commodore Business Machines", "PET 64 / CBM 4064 (NTSC)",					0 )
-COMP( 1983, edu64,  c64n,	0,  	pet64,  	c64, driver_device, 	0,  	"Commodore Business Machines", "Educator 64 (NTSC)",						0 )
-COMP( 1984, sx64n,	c64n,	0,		ntsc_sx,	c64, driver_device,		0,		"Commodore Business Machines", "SX-64 / Executive 64 (NTSC)",				0 )
-COMP( 1984, sx64p,	c64n,	0,		pal_sx,		c64, driver_device,		0,		"Commodore Business Machines", "SX-64 / Executive 64 (PAL)",				0 )
-COMP( 1984, vip64,	c64n,	0,		pal_sx,		c64sw, driver_device,		0,		"Commodore Business Machines", "VIP-64 (Sweden/Finland)",					0 )
-COMP( 1984, dx64,	c64n,	0,		ntsc_dx,	c64, driver_device,		0,		"Commodore Business Machines", "DX-64 (NTSC)",								0 )
+//    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT                        COMPANY                        FULLNAME                                     FLAGS
+COMP( 1982,	c64n,	0,  	0,		ntsc,		c64,	driver_device,		0,		"Commodore Business Machines", "Commodore 64 (NTSC)",						GAME_SUPPORTS_SAVE )
+COMP( 1982,	c64j,	c64n,	0,		ntsc,		c64,	driver_device,		0,		"Commodore Business Machines", "Commodore 64 (Japan)",						GAME_SUPPORTS_SAVE )
+COMP( 1982,	c64p,	c64n,	0,		pal,		c64,	driver_device,		0,		"Commodore Business Machines", "Commodore 64 (PAL)",						GAME_SUPPORTS_SAVE )
+COMP( 1982,	c64sw,	c64n,	0,		pal,		c64sw,	driver_device,		0,		"Commodore Business Machines", "Commodore 64 / VIC-64S (Sweden/Finland)",	GAME_SUPPORTS_SAVE )
+COMP( 1983, pet64,	c64n,	0,  	pet64,  	c64,	driver_device,		0,  	"Commodore Business Machines", "PET 64 / CBM 4064 (NTSC)",					GAME_SUPPORTS_SAVE | GAME_WRONG_COLORS )
+COMP( 1983, edu64,  c64n,	0,  	pet64,  	c64,	driver_device,		0,  	"Commodore Business Machines", "Educator 64 (NTSC)",						GAME_SUPPORTS_SAVE | GAME_WRONG_COLORS )
+COMP( 1984, sx64n,	c64n,	0,		ntsc_sx,	c64,	driver_device,		0,		"Commodore Business Machines", "SX-64 / Executive 64 (NTSC)",				GAME_SUPPORTS_SAVE )
+COMP( 1984, sx64p,	c64n,	0,		pal_sx,		c64,	driver_device,		0,		"Commodore Business Machines", "SX-64 / Executive 64 (PAL)",				GAME_SUPPORTS_SAVE )
+COMP( 1984, vip64,	c64n,	0,		pal_sx,		c64sw,	driver_device,		0,		"Commodore Business Machines", "VIP-64 (Sweden/Finland)",					GAME_SUPPORTS_SAVE )
+COMP( 1984, dx64,	c64n,	0,		ntsc_dx,	c64,	driver_device,		0,		"Commodore Business Machines", "DX-64 (NTSC)",								GAME_SUPPORTS_SAVE )
 //COMP(1983, clipper,  c64,  0, c64pal,  clipper, XXX_CLASS, c64pal,  "PDC", "Clipper", GAME_NOT_WORKING) // C64 in a briefcase with 3" floppy, electroluminescent flat screen, thermal printer
 //COMP(1983, tesa6240, c64,  0, c64pal,  c64, XXX_CLASS,     c64pal,  "Tesa", "6240", GAME_NOT_WORKING) // modified SX64 with label printer
-COMP( 1986, c64cn,	c64n,	0,  	ntsc_c,		c64, driver_device,		0,		"Commodore Business Machines", "Commodore 64C (NTSC)",						0 )
-COMP( 1986, c64cp,	c64n,	0,  	pal_c,		c64, driver_device,		0,		"Commodore Business Machines", "Commodore 64C (PAL)",						0 )
-COMP( 1986, c64csw,	c64n,	0,  	pal_c,		c64sw, driver_device,		0,		"Commodore Business Machines", "Commodore 64C (Sweden/Finland)",			0 )
-COMP( 1986, c64g,	c64n,	0,		pal_c,		c64, driver_device,		0,		"Commodore Business Machines", "Commodore 64G (PAL)",						0 )
-CONS( 1990, c64gs,	c64n,	0,		pal_gs,		c64gs, driver_device,		0,		"Commodore Business Machines", "Commodore 64 Games System (PAL)",			0 )
+COMP( 1986, c64cn,	c64n,	0,  	ntsc_c,		c64,	driver_device,		0,		"Commodore Business Machines", "Commodore 64C (NTSC)",						GAME_SUPPORTS_SAVE )
+COMP( 1986, c64cp,	c64n,	0,  	pal_c,		c64,	driver_device,		0,		"Commodore Business Machines", "Commodore 64C (PAL)",						GAME_SUPPORTS_SAVE )
+COMP( 1986, c64csw,	c64n,	0,  	pal_c,		c64sw,	driver_device,		0,		"Commodore Business Machines", "Commodore 64C (Sweden/Finland)",			GAME_SUPPORTS_SAVE )
+COMP( 1986, c64g,	c64n,	0,		pal_c,		c64,	driver_device,		0,		"Commodore Business Machines", "Commodore 64G (PAL)",						GAME_SUPPORTS_SAVE )
+CONS( 1990, c64gs,	c64n,	0,		pal_gs,		c64gs,	driver_device,		0,		"Commodore Business Machines", "Commodore 64 Games System (PAL)",			GAME_SUPPORTS_SAVE )

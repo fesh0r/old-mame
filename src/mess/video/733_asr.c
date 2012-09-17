@@ -34,7 +34,7 @@ enum
 	asr_scroll_step = 8
 };
 
-typedef struct
+struct asr_t
 {
 #if 0
 	UINT8 OutQueue[ASROutQueueSize];
@@ -58,7 +58,7 @@ typedef struct
 	void (*int_callback)(running_machine &, int state);
 
 	bitmap_ind16 *bitmap;
-} asr_t;
+};
 
 enum
 {
@@ -167,7 +167,7 @@ INLINE asr_t *get_safe_token(device_t *device)
 	assert(device != NULL);
 	assert(device->type() == ASR733);
 
-	return (asr_t *)downcast<legacy_device_base *>(device)->token();
+	return (asr_t *)downcast<asr733_device *>(device)->token();
 }
 
 static DEVICE_START( asr733 )
@@ -216,27 +216,43 @@ static DEVICE_RESET( asr733 )
 	asr_field_interrupt(device);
 }
 
-DEVICE_GET_INFO( asr733 )
+const device_type ASR733 = &device_creator<asr733_device>;
+
+asr733_device::asr733_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, ASR733, "733 ASR", tag, owner, clock)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(asr_t);					break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(asr733);		break;
-		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(asr733);		break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "733 ASR");					break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "733 ASR Video");					break;
-		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(asr_t));
 }
 
-DEFINE_LEGACY_DEVICE(ASR733, asr733);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void asr733_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void asr733_device::device_start()
+{
+	DEVICE_START_NAME( asr733 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void asr733_device::device_reset()
+{
+	DEVICE_RESET_NAME( asr733 )(this);
+}
+
+
 
 /* write a single char on screen */
 static void asr_draw_char(device_t *device, int character, int x, int y, int color)
@@ -642,13 +658,13 @@ static const unsigned char key_translate[3][51] =
 void asr733_keyboard(device_t *device)
 {
 	asr_t *asr = get_safe_token(device);
-	typedef enum
+	enum modifier_state_t
 	{
 		/* key modifier states */
 		unshifted = 0, shift, control,
 		/* special value to stop repeat if the modifier state changes */
 		special_debounce = -1
-	} modifier_state_t;
+	} ;
 
 	enum { repeat_delay = 5 /* approx. 1/10s */ };
 

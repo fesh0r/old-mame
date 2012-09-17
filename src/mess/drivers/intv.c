@@ -85,28 +85,28 @@ static const unsigned char intv_colors[] =
 	0xB5, 0x1A, 0x58  /* PURPLE */
 };
 
-static PALETTE_INIT( intv )
+void intv_state::palette_init()
 {
 	int k = 0;
 
 	UINT8 i, j, r, g, b;
 	/* Two copies of everything (why?) */
 
-	machine.colortable = colortable_alloc(machine, 32);
+	machine().colortable = colortable_alloc(machine(), 32);
 
 	for ( i = 0; i < 16; i++ )
 	{
 		r = intv_colors[i*3]; g = intv_colors[i*3+1]; b = intv_colors[i*3+2];
-		colortable_palette_set_color(machine.colortable, i, MAKE_RGB(r, g, b));
-		colortable_palette_set_color(machine.colortable, i + 16, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine().colortable, i, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine().colortable, i + 16, MAKE_RGB(r, g, b));
 	}
 
 	for(i=0;i<16;i++)
 	{
 		for(j=0;j<16;j++)
 		{
-		colortable_entry_set_value(machine.colortable, k++, i);
-		colortable_entry_set_value(machine.colortable, k++, j);
+		colortable_entry_set_value(machine().colortable, k++, i);
+		colortable_entry_set_value(machine().colortable, k++, j);
 		}
 	}
 
@@ -114,8 +114,8 @@ static PALETTE_INIT( intv )
 	{
 		for(j=16;j<32;j++)
 		{
-			colortable_entry_set_value(machine.colortable, k++, i);
-			colortable_entry_set_value(machine.colortable, k++, j);
+			colortable_entry_set_value(machine().colortable, k++, i);
+			colortable_entry_set_value(machine().colortable, k++, j);
 		}
 	}
 }
@@ -798,12 +798,12 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK(intv_interrupt2_complete)
 {
-	cputag_set_input_line(machine, "keyboard", 0, CLEAR_LINE);
+	machine.device("keyboard")->execute().set_input_line(0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( intv_interrupt2 )
 {
-	cputag_set_input_line(device->machine(), "keyboard", 0, ASSERT_LINE);
+	device->machine().device("keyboard")->execute().set_input_line(0, ASSERT_LINE);
 	device->machine().scheduler().timer_set(device->machine().device<cpu_device>("keyboard")->cycles_to_attotime(100), FUNC(intv_interrupt2_complete));
 }
 
@@ -814,7 +814,6 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	MCFG_CPU_VBLANK_INT("screen", intv_interrupt)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_RESET( intv )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -826,9 +825,7 @@ static MACHINE_CONFIG_START( intv, intv_state )
 
 	MCFG_GFXDECODE( intv )
 	MCFG_PALETTE_LENGTH(0x400)
-	MCFG_PALETTE_INIT( intv )
 
-	MCFG_VIDEO_START( intv )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -864,7 +861,7 @@ static MACHINE_CONFIG_DERIVED( intvecs, intv )
 	MCFG_SOUND_CONFIG(intv_ay8914_ecs_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 
-	MCFG_MACHINE_RESET( intvecs )
+	MCFG_MACHINE_RESET_OVERRIDE(intv_state, intvecs )
 
 	/* cassette */
 	//MCFG_CASSETTE_ADD( CASSETTE_TAG, ecs_cassette_interface )
@@ -964,27 +961,6 @@ ROM_START(intvkbd) // the intv1 exec rom should be two roms: RO-3-9502-011.U5 an
 	ROM_REGION(0x00800,"gfx1",0)
 	ROM_LOAD( "4c52.u34",  0x0000, 0x0800, CRC(cbeb2e96) SHA1(f0e17adcd278fb376c9f90833c7fbbb60193dbe3))
 ROM_END
-
-
-#ifdef UNUSED_FUNCTION
-static void intvkbd_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 0;	/* INVALID */ break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0;	/* INVALID */ break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0;	/* INVALID */ break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
-	}
-}
-#endif
 
 DRIVER_INIT_MEMBER(intv_state,intv)
 {

@@ -58,8 +58,8 @@
 	const vic10_expansion_slot_interface (_name) =
 
 
-#define MCFG_VIC10_EXPANSION_SLOT_ADD(_tag, _config, _slot_intf, _def_slot, _def_inp) \
-    MCFG_DEVICE_ADD(_tag, VIC10_EXPANSION_SLOT, 0) \
+#define MCFG_VIC10_EXPANSION_SLOT_ADD(_tag, _clock, _config, _slot_intf, _def_slot, _def_inp) \
+    MCFG_DEVICE_ADD(_tag, VIC10_EXPANSION_SLOT, _clock) \
     MCFG_DEVICE_CONFIG(_config) \
 	MCFG_DEVICE_SLOT_INTERFACE(_slot_intf, _def_slot, _def_inp, false)
 
@@ -95,7 +95,7 @@ public:
 	virtual ~vic10_expansion_slot_device();
 
 	// computer interface
-	UINT8 cd_r(address_space &space, offs_t offset, int lorom, int uprom, int exram);
+	UINT8 cd_r(address_space &space, offs_t offset, UINT8 data, int lorom, int uprom, int exram);
 	void cd_w(address_space &space, offs_t offset, UINT8 data, int lorom, int uprom, int exram);
 	DECLARE_READ_LINE_MEMBER( p0_r );
 	DECLARE_WRITE_LINE_MEMBER( p0_w );
@@ -161,13 +161,12 @@ protected:
 	virtual UINT8* vic10_uprom_pointer(running_machine &machine, size_t size);
 
 	// runtime
-	virtual UINT8 vic10_cd_r(address_space &space, offs_t offset, int lorom, int uprom, int exram) { return 0; };
+	virtual UINT8 vic10_cd_r(address_space &space, offs_t offset, UINT8 data, int lorom, int uprom, int exram) { return data; };
 	virtual void vic10_cd_w(address_space &space, offs_t offset, UINT8 data, int lorom, int uprom, int exram) { };
 	virtual int vic10_p0_r() { return 0; };
 	virtual void vic10_p0_w(int state) { };
 	virtual void vic10_sp_w(int state) { };
 	virtual void vic10_cnt_w(int state) { };
-	virtual UINT32 vic10_screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect) { return false; }
 	virtual void vic10_res_w(int state) { };
 
 	vic10_expansion_slot_device *m_slot;

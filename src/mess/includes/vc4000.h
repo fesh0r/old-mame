@@ -19,12 +19,12 @@
 #define ANALOG_HACK
 
 
-typedef struct
+struct SPRITE_HELPER
 {
 	UINT8 bitmap[10],x1,x2,y1,y2, res1, res2;
-} SPRITE_HELPER;
+};
 
-typedef struct
+struct SPRITE
 {
 	const SPRITE_HELPER *data;
 	int mask;
@@ -35,9 +35,9 @@ typedef struct
 	UINT8 scolor;
 	int finished;
 	int finished_now;
-} SPRITE;
+};
 
-typedef struct
+struct vc4000_video_t
 {
 	SPRITE sprites[4];
 	int line;
@@ -66,7 +66,7 @@ typedef struct
 			UINT8 sprite_collision;
 		} d;
 	} reg;
-} vc4000_video_t;
+} ;
 
 class vc4000_state : public driver_device
 {
@@ -94,6 +94,8 @@ public:
 	UINT8 m_irq_pause;
 	bitmap_ind16 *m_bitmap;
 	optional_device<cassette_image_device> m_cass;
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
@@ -106,7 +108,29 @@ extern SCREEN_UPDATE_IND16( vc4000 );
 
 /*----------- defined in audio/vc4000.c -----------*/
 
-DECLARE_LEGACY_SOUND_DEVICE(VC4000, vc4000_sound);
+class vc4000_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	vc4000_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	~vc4000_sound_device() { global_free(m_token); }
+
+	// access to legacy token
+	void *token() const { assert(m_token != NULL); return m_token; }
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+	void *m_token;
+};
+
+extern const device_type VC4000;
+
 void vc4000_soundport_w (device_t *device, int mode, int data);
 
 

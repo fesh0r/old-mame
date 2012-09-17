@@ -182,7 +182,7 @@ UINT8 abc1600_state::read_ram(offs_t offset)
 	else if (offset < 0x180000)
 	{
 		// video RAM
-		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *program = m_maincpu->space(AS_PROGRAM);
 		data = video_ram_r(*program, offset);
 	}
 	else
@@ -209,7 +209,7 @@ void abc1600_state::write_ram(offs_t offset, UINT8 data)
 	else if (offset < 0x180000)
 	{
 		// video RAM
-		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *program = m_maincpu->space(AS_PROGRAM);
 		video_ram_w(*program, offset, data);
 	}
 	else
@@ -242,7 +242,7 @@ UINT8 abc1600_state::read_io(offs_t offset)
 
 UINT8 abc1600_state::read_internal_io(offs_t offset)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT8 data = 0;
 
 	if (X11)
@@ -467,7 +467,7 @@ void abc1600_state::write_io(offs_t offset, UINT8 data)
 
 void abc1600_state::write_internal_io(offs_t offset, UINT8 data)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	if (X11)
 	{
@@ -770,7 +770,7 @@ void abc1600_state::write_user_memory(offs_t offset, UINT8 data)
 
 UINT8 abc1600_state::read_supervisor_memory(offs_t offset)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	UINT8 data = 0;
 
 	if (!A2 && !A1)
@@ -799,7 +799,7 @@ UINT8 abc1600_state::read_supervisor_memory(offs_t offset)
 
 void abc1600_state::write_supervisor_memory(offs_t offset, UINT8 data)
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	if (!A2 && !A1)
 	{
@@ -1849,7 +1849,7 @@ static IRQ_CALLBACK( abc1600_int_ack )
 void abc1600_state::machine_start()
 {
 	// interrupt callback
-	device_set_irq_callback(m_maincpu, abc1600_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(abc1600_int_ack);
 
 	// HACK fill segment RAM with non-zero values or no boot
 	memset(m_segment_ram, 0xcd, 0x400);
@@ -1879,7 +1879,7 @@ void abc1600_state::machine_start()
 
 void abc1600_state::machine_reset()
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 
 	// clear special control register
 	for (int i = 0; i < 8; i++)
@@ -1932,9 +1932,7 @@ static MACHINE_CONFIG_START( abc1600, abc1600_state )
 	MCFG_E0516_ADD(E050_C16PC_TAG, XTAL_32_768kHz)
 	MCFG_FD1797_ADD(SAB1797_02P_TAG, fdc_intf)
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, abc1600_floppy_interface)
-	MCFG_DEVICE_ADD("harddisk0", SCSIHD, 0)
 	MCFG_ABC99_ADD(abc99_intf)
-	MCFG_S1410_ADD()
 
 	MCFG_ABC1600BUS_SLOT_ADD("bus0i", bus0i_intf, abc1600bus_cards, NULL, NULL)
 	MCFG_ABC1600BUS_SLOT_ADD("bus0x", bus0x_intf, abc1600bus_cards, NULL, NULL)

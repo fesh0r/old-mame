@@ -979,7 +979,7 @@ const struct pit8253_config pk8020_pit8253_intf =
 
 static WRITE_LINE_DEVICE_HANDLER( pk8020_pic_set_int_line )
 {
-	cputag_set_input_line(device->machine(), "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
+	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 const struct pic8259_interface pk8020_pic8259_config =
@@ -994,14 +994,13 @@ static IRQ_CALLBACK( pk8020_irq_callback )
 	return pic8259_acknowledge(device->machine().device("pic8259"));
 }
 
-MACHINE_RESET( pk8020 )
+void pk8020_state::machine_reset()
 {
-	pk8020_state *state = machine.driver_data<pk8020_state>();
-	pk8020_set_bank(machine,0);
-	device_set_irq_callback(machine.device("maincpu"), pk8020_irq_callback);
+	pk8020_set_bank(machine(),0);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pk8020_irq_callback);
 
-	state->m_sound_gate = 0;
-	state->m_sound_level = 0;
+	m_sound_gate = 0;
+	m_sound_level = 0;
 }
 
 INTERRUPT_GEN( pk8020_interrupt )

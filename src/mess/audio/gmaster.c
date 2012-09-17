@@ -7,8 +7,7 @@
 #include "cpu/upd7810/upd7810.h"
 #include "includes/gmaster.h"
 
-typedef struct _gmaster_sound gmaster_sound;
-struct _gmaster_sound
+struct gmaster_sound
 {
 	/*bool*/int level;
 	sound_stream *mixer_channel;
@@ -19,7 +18,7 @@ static gmaster_sound *get_token(device_t *device)
 {
 	assert(device != NULL);
 	assert(device->type() == GMASTER);
-	return (gmaster_sound *) downcast<legacy_device_base *>(device)->token();
+	return (gmaster_sound *) downcast<gmaster_sound_device *>(device)->token();
 }
 
 
@@ -66,21 +65,42 @@ static DEVICE_START( gmaster_sound )
 	token->mixer_channel = device->machine().sound().stream_alloc(*device, 0, 1, device->machine().sample_rate(), 0, gmaster_update);
 }
 
+const device_type GMASTER = &device_creator<gmaster_sound_device>;
 
-DEVICE_GET_INFO( gmaster_sound )
+gmaster_sound_device::gmaster_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, GMASTER, "Game Master Custom", tag, owner, clock),
+	  device_sound_interface(mconfig, *this)
 {
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(gmaster_sound);			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(gmaster_sound);	break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Game Master Custom");				break;
-		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
-	}
+	m_token = global_alloc_array_clear(UINT8, sizeof(gmaster_sound));
 }
 
-DEFINE_LEGACY_SOUND_DEVICE(GMASTER, gmaster_sound);
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void gmaster_sound_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void gmaster_sound_device::device_start()
+{
+	DEVICE_START_NAME( gmaster_sound )(this);
+}
+
+//-------------------------------------------------
+//  sound_stream_update - handle a stream update
+//-------------------------------------------------
+
+void gmaster_sound_device::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+{
+	// should never get here
+	fatalerror("sound_stream_update called; not applicable to legacy sound devices\n");
+}
+
+

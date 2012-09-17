@@ -290,7 +290,7 @@ static GFXDECODE_START( pdp1 )
 GFXDECODE_END
 
 /* Initialise the palette */
-static PALETTE_INIT( pdp1 )
+void pdp1_state::palette_init()
 {
 	/* rgb components for the two color emissions */
 	const double r1 = .1, g1 = .1, b1 = .924, r2 = .7, g2 = .7, b2 = .076;
@@ -302,7 +302,7 @@ static PALETTE_INIT( pdp1 )
 	double cur_level_1, cur_level_2;
 	UINT8 i, r, g, b;
 
-	machine.colortable = colortable_alloc(machine, total_colors_needed);
+	machine().colortable = colortable_alloc(machine(), total_colors_needed);
 
 	/* initialize CRT palette */
 
@@ -319,28 +319,28 @@ static PALETTE_INIT( pdp1 )
 		g = (int) ((g1*cur_level_1 + g2*cur_level_2) + .5);
 		b = (int) ((b1*cur_level_1 + b2*cur_level_2) + .5);
 		/* write color in palette */
-		colortable_palette_set_color(machine.colortable, i, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine().colortable, i, MAKE_RGB(r, g, b));
 		/* apply decay for next iteration */
 		cur_level_1 *= decay_1;
 		cur_level_2 *= decay_2;
 	}
 
-	colortable_palette_set_color(machine.colortable, 0, MAKE_RGB(0, 0, 0));
+	colortable_palette_set_color(machine().colortable, 0, MAKE_RGB(0, 0, 0));
 
 	/* load static palette */
 	for ( i = 0; i < 6; i++ )
 	{
 		r = pdp1_colors[i*3]; g = pdp1_colors[i*3+1]; b = pdp1_colors[i*3+2];
-		colortable_palette_set_color(machine.colortable, pen_crt_num_levels + i, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine().colortable, pen_crt_num_levels + i, MAKE_RGB(r, g, b));
 	}
 
 	/* copy colortable to palette */
 	for( i = 0; i < total_colors_needed; i++ )
-		colortable_entry_set_value(machine.colortable, i, i);
+		colortable_entry_set_value(machine().colortable, i, i);
 
 	/* set up palette for text */
 	for( i = 0; i < 6; i++ )
-		colortable_entry_set_value(machine.colortable, total_colors_needed + i, pdp1_palette[i]);
+		colortable_entry_set_value(machine().colortable, total_colors_needed + i, pdp1_palette[i]);
 }
 
 
@@ -490,23 +490,22 @@ static pdp1_reset_param_t pdp1_reset_param =
 	0	/* type 20 sequence break system support defined in input ports and pdp1_init_machine */
 };
 
-static MACHINE_RESET( pdp1 )
+void pdp1_state::machine_reset()
 {
-	pdp1_state *state = machine.driver_data<pdp1_state>();
 	int cfg;
 
-	cfg = machine.root_device().ioport("CFG")->read();
+	cfg = machine().root_device().ioport("CFG")->read();
 	pdp1_reset_param.extend_support = (cfg >> pdp1_config_extend_bit) & pdp1_config_extend_mask;
 	pdp1_reset_param.hw_mul_div = (cfg >> pdp1_config_hw_mul_div_bit) & pdp1_config_hw_mul_div_mask;
 	pdp1_reset_param.type_20_sbs = (cfg >> pdp1_config_type_20_sbs_bit) & pdp1_config_type_20_sbs_mask;
 
 	/* reset device state */
-	state->m_tape_reader.rcl = state->m_tape_reader.rc = 0;
-	state->m_io_status = io_st_tyo | io_st_ptp;
-	state->m_lightpen.active = state->m_lightpen.down = 0;
-	state->m_lightpen.x = state->m_lightpen.y = 0;
-	state->m_lightpen.radius = 10;	/* ??? */
-	pdp1_update_lightpen_state(machine, &state->m_lightpen);
+	m_tape_reader.rcl = m_tape_reader.rc = 0;
+	m_io_status = io_st_tyo | io_st_ptp;
+	m_lightpen.active = m_lightpen.down = 0;
+	m_lightpen.x = m_lightpen.y = 0;
+	m_lightpen.radius = 10;	/* ??? */
+	pdp1_update_lightpen_state(machine(), &m_lightpen);
 }
 
 
@@ -524,9 +523,8 @@ static void pdp1_machine_stop(running_machine &machine)
 
     Set up the pdp1_memory pointer, and generate font data.
 */
-static MACHINE_START( pdp1 )
+void pdp1_state::machine_start()
 {
-	pdp1_state *state = machine.driver_data<pdp1_state>();
 	UINT8 *dst;
 
 	static const unsigned char fontdata6x8[pdp1_fontdata_size] =
@@ -655,17 +653,17 @@ static MACHINE_START( pdp1 )
 	};
 
 	/* set up our font */
-	dst = machine.root_device().memregion("gfx1")->base();
+	dst = machine().root_device().memregion("gfx1")->base();
 	memcpy(dst, fontdata6x8, pdp1_fontdata_size);
 
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(pdp1_machine_stop),&machine));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(pdp1_machine_stop),&machine()));
 
-	state->m_tape_reader.timer = machine.scheduler().timer_alloc(FUNC(reader_callback));
-	state->m_tape_puncher.timer = machine.scheduler().timer_alloc(FUNC(puncher_callback));
-	state->m_typewriter.tyo_timer = machine.scheduler().timer_alloc(FUNC(tyo_callback));
-	state->m_dpy_timer = machine.scheduler().timer_alloc(FUNC(dpy_callback));
-	state->m_tape_reader.timer->adjust(attotime::zero, 0, attotime::from_hz(2500));
-	state->m_tape_reader.timer->enable(0);
+	m_tape_reader.timer = machine().scheduler().timer_alloc(FUNC(reader_callback));
+	m_tape_puncher.timer = machine().scheduler().timer_alloc(FUNC(puncher_callback));
+	m_typewriter.tyo_timer = machine().scheduler().timer_alloc(FUNC(tyo_callback));
+	m_dpy_timer = machine().scheduler().timer_alloc(FUNC(dpy_callback));
+	m_tape_reader.timer->adjust(attotime::zero, 0, attotime::from_hz(2500));
+	m_tape_reader.timer->enable(0);
 }
 
 
@@ -935,7 +933,7 @@ static TIMER_CALLBACK(reader_callback)
 					state->m_tape_reader.rcl = 0;
 					if (state->m_tape_reader.rcp)
 					{
-						cpu_set_reg(machine.device("maincpu"), PDP1_IO, state->m_tape_reader.rb);	/* transfer reader buffer to IO */
+						machine.device("maincpu")->state().set_state_int(PDP1_IO, state->m_tape_reader.rb);	/* transfer reader buffer to IO */
 						pdp1_pulse_iot_done(machine.device("maincpu"));
 					}
 					else
@@ -1373,7 +1371,7 @@ static void iot_tyi(device_t *device, int op2, int nac, int mb, int *io, int ac)
 	{
 		state->m_io_status &= ~io_st_tyi;
 		if (USE_SBS)
-			cputag_set_input_line_and_vector(device->machine(), "maincpu", 0, CLEAR_LINE, 0);	/* interrupt it, baby */
+			device->machine().device("maincpu")->execute().set_input_line_and_vector(0, CLEAR_LINE, 0);	/* interrupt it, baby */
 	}
 }
 
@@ -1444,7 +1442,7 @@ static void iot_dpy(device_t *device, int op2, int nac, int mb, int *io, int ac)
 	{
 		state->m_io_status |= io_st_pen;
 
-		cpu_set_reg(device->machine().device("maincpu"), PDP1_PF3, 1);
+		device->machine().device("maincpu")->state().set_state_int(PDP1_PF3, 1);
 	}
 
 	if (nac)
@@ -1604,9 +1602,9 @@ static void iot_dcc(device_t *device, int op2, int nac, int mb, int *io, int ac)
 		if (state->m_parallel_drum.wc)
 			delay = delay + PARALLEL_DRUM_WORD_TIME;
 	} while (state->m_parallel_drum.wc);
-	device_adjust_icount(device->machine().device("maincpu"),-device->machine().device<cpu_device>("maincpu")->attotime_to_cycles(delay));
+	device->machine().device("maincpu")->execute().adjust_icount(-device->machine().device<cpu_device>("maincpu")->attotime_to_cycles(delay));
 	/* if no error, skip */
-	cpu_set_reg(device->machine().device("maincpu"), PDP1_PC, cpu_get_reg(device->machine().device("maincpu"), PDP1_PC)+1);
+	device->machine().device("maincpu")->state().set_state_int(PDP1_PC, device->machine().device("maincpu")->state().state_int(PDP1_PC)+1);
 }
 
 static void iot_dra(device_t *device, int op2, int nac, int mb, int *io, int ac)
@@ -1735,9 +1733,9 @@ static void pdp1_keyboard(running_machine &machine)
 			state->m_typewriter.tb = (i << 4) + j;
 			state->m_io_status |= io_st_tyi;
 			#if USE_SBS
-				cputag_set_input_line_and_vector(machine, "maincpu", 0, ASSERT_LINE, 0);	/* interrupt it, baby */
+				machine.device("maincpu")->execute().set_input_line_and_vector(0, ASSERT_LINE, 0);	/* interrupt it, baby */
 			#endif
-			cpu_set_reg(machine.device("maincpu"), PDP1_PF1, 1);
+			machine.device("maincpu")->state().set_state_int(PDP1_PF1, 1);
 			pdp1_typewriter_drawchar(machine, state->m_typewriter.tb);	/* we want to echo input */
 			break;
 		}
@@ -1816,7 +1814,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 	int ta_transitions;
 
 
-	cpu_set_reg(device, PDP1_SS, device->machine().root_device().ioport("SENSE")->read());
+	device->state().set_state_int(PDP1_SS, device->machine().root_device().ioport("SENSE")->read());
 
 	/* read new state of control keys */
 	control_keys = state->ioport("CSW")->read();
@@ -1828,68 +1826,68 @@ INTERRUPT_GEN( pdp1_interrupt )
 
 		if (control_transitions & pdp1_extend)
 		{
-			cpu_set_reg(device, PDP1_EXTEND_SW, ! cpu_get_reg(device, PDP1_EXTEND_SW));
+			device->state().set_state_int(PDP1_EXTEND_SW, ! device->state().state_int(PDP1_EXTEND_SW));
 		}
 		if (control_transitions & pdp1_start_nobrk)
 		{
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
-			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
-			cpu_set_reg(device, PDP1_SBM, (UINT64)0);
-			cpu_set_reg(device, PDP1_OV, (UINT64)0);
-			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
-			cpu_set_reg(device, PDP1_RUN, 1);
+			device->state().set_state_int(PDP1_EXD, device->state().state_int(PDP1_EXTEND_SW));
+			device->state().set_state_int(PDP1_SBM, (UINT64)0);
+			device->state().set_state_int(PDP1_OV, (UINT64)0);
+			device->state().set_state_int(PDP1_PC, device->state().state_int(PDP1_TA));
+			device->state().set_state_int(PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_start_brk)
 		{
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
-			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
-			cpu_set_reg(device, PDP1_SBM, 1);
-			cpu_set_reg(device, PDP1_OV, (UINT64)0);
-			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
-			cpu_set_reg(device, PDP1_RUN, 1);
+			device->state().set_state_int(PDP1_EXD, device->state().state_int(PDP1_EXTEND_SW));
+			device->state().set_state_int(PDP1_SBM, 1);
+			device->state().set_state_int(PDP1_OV, (UINT64)0);
+			device->state().set_state_int(PDP1_PC, device->state().state_int(PDP1_TA));
+			device->state().set_state_int(PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_stop)
 		{
-			cpu_set_reg(device, PDP1_RUN, (UINT64)0);
-			cpu_set_reg(device, PDP1_RIM, (UINT64)0);	/* bug : we stop after reading an even-numbered word
+			device->state().set_state_int(PDP1_RUN, (UINT64)0);
+			device->state().set_state_int(PDP1_RIM, (UINT64)0);	/* bug : we stop after reading an even-numbered word
                                             (i.e. data), whereas a real pdp-1 stops after reading
                                             an odd-numbered word (i.e. dio instruciton) */
 		}
 		if (control_transitions & pdp1_continue)
 		{
-			cpu_set_reg(device, PDP1_RUN, 1);
+			device->state().set_state_int(PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_examine)
 		{
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
-			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
-			cpu_set_reg(device, PDP1_MA, cpu_get_reg(device, PDP1_PC));
-			cpu_set_reg(device, PDP1_IR, LAC);	/* this instruction is actually executed */
+			device->state().set_state_int(PDP1_PC, device->state().state_int(PDP1_TA));
+			device->state().set_state_int(PDP1_MA, device->state().state_int(PDP1_PC));
+			device->state().set_state_int(PDP1_IR, LAC);	/* this instruction is actually executed */
 
-			cpu_set_reg(device, PDP1_MB, (signed)device->memory().space(AS_PROGRAM)->read_dword(PDP1_MA<<2));
-			cpu_set_reg(device, PDP1_AC, cpu_get_reg(device, PDP1_MB));
+			device->state().set_state_int(PDP1_MB, (signed)device->memory().space(AS_PROGRAM)->read_dword(PDP1_MA<<2));
+			device->state().set_state_int(PDP1_AC, device->state().state_int(PDP1_MB));
 		}
 		if (control_transitions & pdp1_deposit)
 		{
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
-			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
-			cpu_set_reg(device, PDP1_MA, cpu_get_reg(device, PDP1_PC));
-			cpu_set_reg(device, PDP1_AC, cpu_get_reg(device, PDP1_TW));
-			cpu_set_reg(device, PDP1_IR, DAC);	/* this instruction is actually executed */
+			device->state().set_state_int(PDP1_PC, device->state().state_int(PDP1_TA));
+			device->state().set_state_int(PDP1_MA, device->state().state_int(PDP1_PC));
+			device->state().set_state_int(PDP1_AC, device->state().state_int(PDP1_TW));
+			device->state().set_state_int(PDP1_IR, DAC);	/* this instruction is actually executed */
 
-			cpu_set_reg(device, PDP1_MB, cpu_get_reg(device, PDP1_AC));
-			device->memory().space(AS_PROGRAM)->write_dword(cpu_get_reg(device, PDP1_MA)<<2, cpu_get_reg(device, PDP1_MB));
+			device->state().set_state_int(PDP1_MB, device->state().state_int(PDP1_AC));
+			device->memory().space(AS_PROGRAM)->write_dword(device->state().state_int(PDP1_MA)<<2, device->state().state_int(PDP1_MB));
 		}
 		if (control_transitions & pdp1_read_in)
 		{	/* set cpu to read instructions from perforated tape */
 			pdp1_pulse_start_clear(device);	/* pulse Start Clear line */
-			cpu_set_reg(device, PDP1_PC, (  cpu_get_reg(device, PDP1_TA) & 0170000)
-										|  (cpu_get_reg(device, PDP1_PC) & 0007777));	/* transfer ETA to EPC */
-			/*cpu_set_reg(machine.device("maincpu"), PDP1_MA, cpu_get_reg(machine.device("maincpu"), PDP1_PC));*/
-			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
-			cpu_set_reg(device, PDP1_OV, (UINT64)0);		/* right??? */
-			cpu_set_reg(device, PDP1_RUN, (UINT64)0);
-			cpu_set_reg(device, PDP1_RIM, 1);
+			device->state().set_state_int(PDP1_PC, (  device->state().state_int(PDP1_TA) & 0170000)
+										|  (device->state().state_int(PDP1_PC) & 0007777));	/* transfer ETA to EPC */
+			/*machine.device("maincpu")->state().set_state_int(PDP1_MA, machine.device("maincpu")->state().state_int(PDP1_PC));*/
+			device->state().set_state_int(PDP1_EXD, device->state().state_int(PDP1_EXTEND_SW));
+			device->state().set_state_int(PDP1_OV, (UINT64)0);		/* right??? */
+			device->state().set_state_int(PDP1_RUN, (UINT64)0);
+			device->state().set_state_int(PDP1_RIM, 1);
 		}
 		if (control_transitions & pdp1_reader)
 		{
@@ -1899,11 +1897,11 @@ INTERRUPT_GEN( pdp1_interrupt )
 		}
 		if (control_transitions & pdp1_single_step)
 		{
-			cpu_set_reg(device, PDP1_SNGL_STEP, ! cpu_get_reg(device, PDP1_SNGL_STEP));
+			device->state().set_state_int(PDP1_SNGL_STEP, ! device->state().state_int(PDP1_SNGL_STEP));
 		}
 		if (control_transitions & pdp1_single_inst)
 		{
-			cpu_set_reg(device, PDP1_SNGL_INST, ! cpu_get_reg(device, PDP1_SNGL_INST));
+			device->state().set_state_int(PDP1_SNGL_INST, ! device->state().state_int(PDP1_SNGL_INST));
 		}
 
 		/* remember new state of control keys */
@@ -1917,7 +1915,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 		tw_transitions = tw_keys & (~ state->m_old_tw_keys);
 
 		if (tw_transitions)
-			cpu_set_reg(device, PDP1_TW, cpu_get_reg(device, PDP1_TW) ^ tw_transitions);
+			device->state().set_state_int(PDP1_TW, device->state().state_int(PDP1_TW) ^ tw_transitions);
 
 		/* remember new state of test word keys */
 		state->m_old_tw_keys = tw_keys;
@@ -1930,7 +1928,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 		ta_transitions = ta_keys & (~ state->m_old_ta_keys);
 
 		if (ta_transitions)
-			cpu_set_reg(device, PDP1_TA, cpu_get_reg(device, PDP1_TA) ^ ta_transitions);
+			device->state().set_state_int(PDP1_TA, device->state().state_int(PDP1_TA) ^ ta_transitions);
 
 		/* remember new state of test word keys */
 		state->m_old_ta_keys = ta_keys;
@@ -1958,8 +1956,6 @@ static MACHINE_CONFIG_START( pdp1, pdp1_state )
 	MCFG_CPU_PROGRAM_MAP(pdp1_map)
 	MCFG_CPU_VBLANK_INT("screen", pdp1_interrupt)	/* dummy interrupt: handles input */
 
-	MCFG_MACHINE_START( pdp1 )
-	MCFG_MACHINE_RESET( pdp1 )
 
 	/* video hardware (includes the control panel and typewriter output) */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -1979,8 +1975,6 @@ static MACHINE_CONFIG_START( pdp1, pdp1_state )
 	MCFG_GFXDECODE(pdp1)
 	MCFG_PALETTE_LENGTH(pen_crt_num_levels + sizeof(pdp1_colors) / 3 + sizeof(pdp1_palette))
 
-	MCFG_PALETTE_INIT(pdp1)
-	MCFG_VIDEO_START(pdp1)
 MACHINE_CONFIG_END
 
 /*

@@ -51,7 +51,7 @@
 #define TS2068_RIGHT_BORDER  96   /* Number of right hand border pixels */
 #define TS2068_SCREEN_WIDTH (TS2068_LEFT_BORDER + TS2068_DISPLAY_XSIZE + TS2068_RIGHT_BORDER)
 
-typedef struct
+struct EVENT_LIST_ITEM
 {
 	/* driver defined ID for this write */
 	int	Event_ID;
@@ -59,7 +59,7 @@ typedef struct
 	int	Event_Data;
 	/* time at which this write occurred */
 	int Event_Time;
-} EVENT_LIST_ITEM;
+};
 
 
 class spectrum_state : public driver_device
@@ -110,6 +110,15 @@ public:
 	DECLARE_DRIVER_INIT(spectrum);
 	DECLARE_DRIVER_INIT(plus2);
 	DECLARE_DRIVER_INIT(plus3);
+	DECLARE_MACHINE_RESET(spectrum);
+	DECLARE_VIDEO_START(spectrum);
+	DECLARE_PALETTE_INIT(spectrum);
+	DECLARE_MACHINE_RESET(tc2048);
+	DECLARE_VIDEO_START(spectrum_128);
+	DECLARE_MACHINE_RESET(spectrum_128);
+	DECLARE_MACHINE_RESET(spectrum_plus3);
+	DECLARE_MACHINE_RESET(ts2068);
+	DECLARE_VIDEO_START(ts2068);
 };
 
 
@@ -119,7 +128,7 @@ INPUT_PORTS_EXTERN( spectrum );
 INPUT_PORTS_EXTERN( spec_plus );
 
 MACHINE_CONFIG_EXTERN( spectrum );
-MACHINE_RESET( spectrum );
+
 
 
 /*----------- defined in drivers/spec128.c -----------*/
@@ -138,10 +147,10 @@ void ts2068_update_memory(running_machine &machine);
 
 /*----------- defined in video/spectrum.c -----------*/
 
-PALETTE_INIT( spectrum );
 
-VIDEO_START( spectrum );
-VIDEO_START( spectrum_128 );
+
+
+
 
 SCREEN_UPDATE_IND16( spectrum );
 SCREEN_VBLANK( spectrum );
@@ -163,7 +172,7 @@ EVENT_LIST_ITEM *spectrum_EventList_GetFirstItem(running_machine &machine);
 
 /*----------- defined in video/timex.c -----------*/
 
-VIDEO_START( ts2068 );
+
 SCREEN_UPDATE_IND16( ts2068 );
 
 SCREEN_UPDATE_IND16( tc2048 );

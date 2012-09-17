@@ -16,7 +16,7 @@ static TIMER_CALLBACK(poly88_usart_timer_callback)
 {
 	poly88_state *state = machine.driver_data<poly88_state>();
 	state->m_int_vector = 0xe7;
-	device_set_input_line(machine.device("maincpu"), 0, HOLD_LINE);
+	machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 }
 
 WRITE8_MEMBER(poly88_state::poly88_baud_rate_w)
@@ -119,7 +119,7 @@ static TIMER_CALLBACK(keyboard_callback)
 	}
 	if (key_code==0 && state->m_last_code !=0){
 		state->m_int_vector = 0xef;
-		cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
+		machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 	} else {
 		state->m_last_code = key_code;
 	}
@@ -207,28 +207,27 @@ DRIVER_INIT_MEMBER(poly88_state,poly88)
 	machine().scheduler().timer_pulse(attotime::from_hz(24000), FUNC(keyboard_callback));
 }
 
-MACHINE_RESET(poly88)
+void poly88_state::machine_reset()
 {
-	poly88_state *state = machine.driver_data<poly88_state>();
-	device_set_irq_callback(machine.device("maincpu"), poly88_irq_callback);
-	state->m_intr = 0;
-	state->m_last_code = 0;
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(poly88_irq_callback);
+	m_intr = 0;
+	m_last_code = 0;
 
-	machine.scheduler().timer_set(attotime::zero, FUNC(setup_machine_state));
+	machine().scheduler().timer_set(attotime::zero, FUNC(setup_machine_state));
 }
 
 INTERRUPT_GEN( poly88_interrupt )
 {
 	poly88_state *state = device->machine().driver_data<poly88_state>();
 	state->m_int_vector = 0xf7;
-	device_set_input_line(device, 0, HOLD_LINE);
+	device->execute().set_input_line(0, HOLD_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( poly88_usart_rxready )
 {
 	//poly88_state *drvstate = device->machine().driver_data<poly88_state>();
 	//drvstate->m_int_vector = 0xe7;
-	//device_set_input_line(device, 0, HOLD_LINE);
+	//device->execute().set_input_line(0, HOLD_LINE);
 }
 
 const i8251_interface poly88_usart_interface=
@@ -247,14 +246,14 @@ const i8251_interface poly88_usart_interface=
 READ8_MEMBER(poly88_state::poly88_keyboard_r)
 {
 	UINT8 retVal = m_last_code;
-	cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	m_last_code = 0x00;
 	return retVal;
 }
 
 WRITE8_MEMBER(poly88_state::poly88_intr_w)
 {
-	cputag_set_input_line(machine(), "maincpu", 0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 }
 
 SNAPSHOT_LOAD( poly88 )
@@ -302,7 +301,7 @@ SNAPSHOT_LOAD( poly88 )
 					break;
 			case 3 :
 					/* 03 Auto Start @ Address */
-					cpu_set_reg(image.device().machine().device("maincpu"), I8085_PC, address);
+					image.device().machine().device("maincpu")->state().set_state_int(I8085_PC, address);
 					theend = 1;
 					break;
 			case 4 :

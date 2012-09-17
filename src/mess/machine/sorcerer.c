@@ -330,40 +330,39 @@ SNAPSHOT_LOAD(sorcerer)
 	image.fread( RAM+0xc000, 0x4000);
 
 	/* patch CPU registers */
-	cpu_set_reg(cpu, Z80_I, header[0]);
-	cpu_set_reg(cpu, Z80_HL2, header[1] | (header[2] << 8));
-	cpu_set_reg(cpu, Z80_DE2, header[3] | (header[4] << 8));
-	cpu_set_reg(cpu, Z80_BC2, header[5] | (header[6] << 8));
-	cpu_set_reg(cpu, Z80_AF2, header[7] | (header[8] << 8));
-	cpu_set_reg(cpu, Z80_HL, header[9] | (header[10] << 8));
-	cpu_set_reg(cpu, Z80_DE, header[11] | (header[12] << 8));
-	cpu_set_reg(cpu, Z80_BC, header[13] | (header[14] << 8));
-	cpu_set_reg(cpu, Z80_IY, header[15] | (header[16] << 8));
-	cpu_set_reg(cpu, Z80_IX, header[17] | (header[18] << 8));
-	cpu_set_reg(cpu, Z80_IFF1, header[19]&2 ? 1 : 0);
-	cpu_set_reg(cpu, Z80_IFF2, header[19]&4 ? 1 : 0);
-	cpu_set_reg(cpu, Z80_R, header[20]);
-	cpu_set_reg(cpu, Z80_AF, header[21] | (header[22] << 8));
-	cpu_set_reg(cpu, STATE_GENSP, header[23] | (header[24] << 8));
-	cpu_set_reg(cpu, Z80_IM, header[25]);
-	cpu_set_reg(cpu, STATE_GENPC, header[26] | (header[27] << 8));
+	cpu->state().set_state_int(Z80_I, header[0]);
+	cpu->state().set_state_int(Z80_HL2, header[1] | (header[2] << 8));
+	cpu->state().set_state_int(Z80_DE2, header[3] | (header[4] << 8));
+	cpu->state().set_state_int(Z80_BC2, header[5] | (header[6] << 8));
+	cpu->state().set_state_int(Z80_AF2, header[7] | (header[8] << 8));
+	cpu->state().set_state_int(Z80_HL, header[9] | (header[10] << 8));
+	cpu->state().set_state_int(Z80_DE, header[11] | (header[12] << 8));
+	cpu->state().set_state_int(Z80_BC, header[13] | (header[14] << 8));
+	cpu->state().set_state_int(Z80_IY, header[15] | (header[16] << 8));
+	cpu->state().set_state_int(Z80_IX, header[17] | (header[18] << 8));
+	cpu->state().set_state_int(Z80_IFF1, header[19]&2 ? 1 : 0);
+	cpu->state().set_state_int(Z80_IFF2, header[19]&4 ? 1 : 0);
+	cpu->state().set_state_int(Z80_R, header[20]);
+	cpu->state().set_state_int(Z80_AF, header[21] | (header[22] << 8));
+	cpu->state().set_state_int(STATE_GENSP, header[23] | (header[24] << 8));
+	cpu->state().set_state_int(Z80_IM, header[25]);
+	cpu->state().set_pc(header[26] | (header[27] << 8));
 
 	return IMAGE_INIT_PASS;
 }
 
-MACHINE_START( sorcerer )
+void sorcerer_state::machine_start()
 {
-	sorcerer_state *state = machine.driver_data<sorcerer_state>();
-	state->m_cassette_timer = machine.scheduler().timer_alloc(FUNC(sorcerer_cassette_tc));
+	m_cassette_timer = machine().scheduler().timer_alloc(FUNC(sorcerer_cassette_tc));
 #if SORCERER_USING_RS232
-	state->m_serial_timer = machine.scheduler().timer_alloc(FUNC(sorcerer_serial_tc));
+	m_serial_timer = machine().scheduler().timer_alloc(FUNC(sorcerer_serial_tc));
 #endif
 
 	UINT16 endmem = 0xbfff;
 
-	address_space *space = state->m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
 	/* configure RAM */
-	switch (state->m_ram->size())
+	switch (m_ram->size())
 	{
 	case 8*1024:
 		space->unmap_readwrite(0x2000, endmem);
@@ -379,19 +378,18 @@ MACHINE_START( sorcerer )
 	}
 }
 
-MACHINE_START( sorcererd )
+MACHINE_START_MEMBER(sorcerer_state,sorcererd)
 {
-	sorcerer_state *state = machine.driver_data<sorcerer_state>();
-	state->m_cassette_timer = machine.scheduler().timer_alloc(FUNC(sorcerer_cassette_tc));
+	m_cassette_timer = machine().scheduler().timer_alloc(FUNC(sorcerer_cassette_tc));
 #if SORCERER_USING_RS232
-	state->m_serial_timer = machine.scheduler().timer_alloc(FUNC(sorcerer_serial_tc));
+	m_serial_timer = machine().scheduler().timer_alloc(FUNC(sorcerer_serial_tc));
 #endif
 
 	UINT16 endmem = 0xbbff;
 
-	address_space *space = state->m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
 	/* configure RAM */
-	switch (state->m_ram->size())
+	switch (m_ram->size())
 	{
 	case 8*1024:
 		space->unmap_readwrite(0x2000, endmem);
@@ -407,20 +405,19 @@ MACHINE_START( sorcererd )
 	}
 }
 
-MACHINE_RESET( sorcerer )
+void sorcerer_state::machine_reset()
 {
-	sorcerer_state *state = machine.driver_data<sorcerer_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	/* Initialize cassette interface */
-	state->m_cass_data.output.length = 0;
-	state->m_cass_data.output.level = 1;
-	state->m_cass_data.input.length = 0;
-	state->m_cass_data.input.bit = 1;
+	m_cass_data.output.length = 0;
+	m_cass_data.output.level = 1;
+	m_cass_data.input.length = 0;
+	m_cass_data.input.bit = 1;
 
-	state->m_fe = 0xff;
-	state->sorcerer_fe_w(*space, 0, 0, 0xff);
+	m_fe = 0xff;
+	sorcerer_fe_w(*space, 0, 0, 0xff);
 
-	state->membank("boot")->set_entry(1);
-	machine.scheduler().timer_set(attotime::from_usec(10), FUNC(sorcerer_reset));
+	membank("boot")->set_entry(1);
+	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(sorcerer_reset));
 }

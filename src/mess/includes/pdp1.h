@@ -164,7 +164,7 @@ enum
 };
 
 /* tape reader registers */
-typedef struct tape_reader_t
+struct tape_reader_t
 {
 	device_image_interface *fd;	/* file descriptor of tape image */
 
@@ -177,32 +177,32 @@ typedef struct tape_reader_t
 	int rcp;		/* 1-bit reader "need a completion pulse" flip-flop */
 
 	emu_timer *timer;	/* timer to simulate reader timing */
-} tape_reader_t;
+};
 
 
 
 /* tape puncher registers */
-typedef struct tape_puncher_t
+struct tape_puncher_t
 {
 	device_image_interface *fd;	/* file descriptor of tape image */
 
 	emu_timer *timer;	/* timer to generate completion pulses */
-} tape_puncher_t;
+};
 
 
 
 /* typewriter registers */
-typedef struct typewriter_t
+struct typewriter_t
 {
 	device_image_interface *fd;	/* file descriptor of output image */
 
 	int tb;			/* typewriter buffer */
 
 	emu_timer *tyo_timer;/* timer to generate completion pulses */
-} typewriter_t;
+};
 
 /* MIT parallel drum (mostly similar to type 23) */
-typedef struct parallel_drum_t
+struct parallel_drum_t
 {
 	device_image_interface *fd;	/* file descriptor of drum image */
 
@@ -216,16 +216,16 @@ typedef struct parallel_drum_t
 
 	emu_timer *rotation_timer;	/* timer called each time dc is 0 */
 	emu_timer *il_timer;		/* timer called each time dc is il */
-} parallel_drum_t;
+};
 
 
-typedef struct lightpen_t
+struct lightpen_t
 {
 	char active;
 	char down;
 	short x, y;
 	short radius;
-} lightpen_t;
+};
 
 
 class pdp1_state : public driver_device
@@ -255,13 +255,17 @@ public:
 	int m_pos;
 	int m_case_shift;
 	device_t *m_crt;
+	virtual void machine_start();
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
 
 /*----------- defined in video/pdp1.c -----------*/
 
-VIDEO_START( pdp1 );
+
 SCREEN_VBLANK( pdp1 );
 SCREEN_UPDATE_IND16( pdp1 );
 

@@ -95,8 +95,7 @@ static const int dl1416t_segments[128] = {
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _dl1416_state dl1416_state;
-struct _dl1416_state
+struct dl1416_state
 {
 	int write_enable;
 	int chip_enable;
@@ -114,9 +113,9 @@ struct _dl1416_state
 INLINE dl1416_state *get_safe_token(device_t *device)
 {
 	assert(device != NULL);
-	assert(device->type() == DL1416);
+	assert(device->type() == DL1416B || device->type() == DL1416T);
 
-	return (dl1416_state *)downcast<legacy_device_base *>(device)->token();
+	return (dl1416_state *)downcast<dl1416_device *>(device)->token();
 }
 
 
@@ -127,10 +126,6 @@ INLINE dl1416_state *get_safe_token(device_t *device)
 static DEVICE_START( dl1416 )
 {
 	dl1416_state *dl1416 = get_safe_token(device);
-
-	/* validate arguments */
-	assert(((const dl1416_interface *)(downcast<const legacy_device_base *>(device)->inline_config()))->type >= DL1416B);
-	assert(((const dl1416_interface *)(downcast<const legacy_device_base *>(device)->inline_config()))->type < MAX_DL1416_TYPES);
 
 	/* register for state saving */
 	state_save_register_item(device->machine(), "dl1416", device->tag(), 0, dl1416->chip_enable);
@@ -144,7 +139,7 @@ static DEVICE_RESET( dl1416 )
 {
 	int i, pattern;
 	dl1416_state *chip = get_safe_token(device);
-	const dl1416_interface *intf = (const dl1416_interface *)downcast<const legacy_device_base *>(device)->inline_config();
+	const dl1416_interface *intf = (const dl1416_interface *)device->static_config();
 	/* disable all lines */
 	chip->chip_enable = FALSE;
 	chip->write_enable = FALSE;
@@ -171,29 +166,6 @@ static DEVICE_RESET( dl1416 )
 		/* Call update function */
 		if (intf->update)
 			intf->update(device, i, pattern);
-	}
-}
-
-
-DEVICE_GET_INFO( dl1416 )
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(dl1416_state);			break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = sizeof(dl1416_interface);		break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME( dl1416 );				break;
-		case DEVINFO_FCT_STOP:					/* Nothing */							break;
-		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME( dl1416 );				break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					strcpy(info->s, "DL1416");						break;
-		case DEVINFO_STR_FAMILY:				strcpy(info->s, "DL1416");						break;
-		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.1");						break;
-		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);						break;
-		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright MESS Team");		break;
 	}
 }
 
@@ -227,7 +199,7 @@ WRITE_LINE_DEVICE_HANDLER( dl1416_cu_w )
 WRITE8_DEVICE_HANDLER( dl1416_data_w )
 {
 	dl1416_state *chip = get_safe_token(device);
-	const dl1416_interface *intf = (const dl1416_interface *)downcast<const legacy_device_base *>(device)->inline_config();
+	const dl1416_interface *intf = (const dl1416_interface *)device->static_config();
 
 	offset &= 0x03; /* A0-A1 */
 	data &= 0x7f;   /* D0-D6 */
@@ -240,9 +212,9 @@ WRITE8_DEVICE_HANDLER( dl1416_data_w )
 
 		if (chip->cursor_enable) /* cursor enable is set */
 		{
-			switch (intf->type)
+			if (device->type() == DL1416B)
 			{
-			case DL1416B: /* DL1416B uses offset to decide cursor pos to change and D0 to hold new state */
+			 /* DL1416B uses offset to decide cursor pos to change and D0 to hold new state */
 
 				/* The cursor will be set if D0 is high and the original */
 				/* character restored otherwise */
@@ -266,9 +238,9 @@ WRITE8_DEVICE_HANDLER( dl1416_data_w )
 					if (intf->update)
 						intf->update(device, offset, pattern);
 				}
-				break;
-
-			case DL1416T: /* DL1416T uses a bitmap of 4 data bits D0,D1,D2,D3 to decide cursor pos to change and new state */
+			}
+			else {
+			/* DL1416T uses a bitmap of 4 data bits D0,D1,D2,D3 to decide cursor pos to change and new state */
 
 				for (i = 0; i < 4; i++)
 				{
@@ -295,7 +267,6 @@ WRITE8_DEVICE_HANDLER( dl1416_data_w )
 							intf->update(device, i, pattern);
 					}
 				}
-				break;
 			}
 		}
 		else /* cursor enable is not set, so standard write */
@@ -322,4 +293,54 @@ WRITE8_DEVICE_HANDLER( dl1416_data_w )
 	}
 }
 
-DEFINE_LEGACY_DEVICE(DL1416, dl1416);
+dl1416_device::dl1416_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, type, name, tag, owner, clock)
+{
+	m_token = global_alloc_array_clear(UINT8, sizeof(dl1416_state));
+}
+
+//-------------------------------------------------
+//  device_config_complete - perform any
+//  operations now that the configuration is
+//  complete
+//-------------------------------------------------
+
+void dl1416_device::device_config_complete()
+{
+}
+
+//-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void dl1416_device::device_start()
+{
+	DEVICE_START_NAME( dl1416 )(this);
+}
+
+//-------------------------------------------------
+//  device_reset - device-specific reset
+//-------------------------------------------------
+
+void dl1416_device::device_reset()
+{
+	DEVICE_RESET_NAME( dl1416 )(this);
+}
+
+
+const device_type DL1416B = &device_creator<dl1416b_device>;
+
+dl1416b_device::dl1416b_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: dl1416_device(mconfig, DL1416B, "DL1416B", tag, owner, clock)
+{
+}
+
+
+const device_type DL1416T = &device_creator<dl1416t_device>;
+
+dl1416t_device::dl1416t_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: dl1416_device(mconfig, DL1416T, "DL1416T", tag, owner, clock)
+{
+}
+
+

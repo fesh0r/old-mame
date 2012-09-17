@@ -144,8 +144,7 @@
 
 #define LOG(x)
 
-typedef struct _fat_partition_info fat_partition_info;
-struct _fat_partition_info
+struct fat_partition_info
 {
 	UINT32 fat_bits;
 	UINT32 sectors_per_cluster;
@@ -158,8 +157,7 @@ struct _fat_partition_info
 	UINT32 total_clusters;
 };
 
-typedef struct _fat_file fat_file;
-struct _fat_file
+struct fat_file
 {
 	unsigned int root : 1;
 	unsigned int directory : 1;
@@ -174,8 +172,7 @@ struct _fat_file
 	UINT32 dirent_sector_offset;
 };
 
-typedef struct _fat_dirent fat_dirent;
-struct _fat_dirent
+struct fat_dirent
 {
 	char long_filename[512];
 	char short_filename[13];
@@ -189,16 +186,14 @@ struct _fat_dirent
 	time_t lastmodified_time;
 };
 
-typedef struct _fat_freeentry_info fat_freeentry_info;
-struct _fat_freeentry_info
+struct fat_freeentry_info
 {
 	UINT32 required_size;
 	UINT32 candidate_position;
 	UINT32 position;
 };
 
-typedef struct _fat_mediatype fat_mediatype;
-struct _fat_mediatype
+struct fat_mediatype
 {
 	UINT8 media_descriptor;
 	UINT8 heads;
@@ -206,12 +201,12 @@ struct _fat_mediatype
 	UINT8 sectors;
 };
 
-typedef enum
+enum creation_policy_t
 {
 	CREATE_NONE,
 	CREATE_FILE,
 	CREATE_DIR
-} creation_policy_t;
+};
 
 
 
@@ -1400,12 +1395,12 @@ static imgtoolerr_t fat_read_dirent(imgtool_partition *partition, fat_file *file
 
 
 
-typedef enum
+enum sfn_disposition_t
 {
 	SFN_SUFFICIENT,	/* name fully representable in short file name */
 	SFN_DERIVATIVE,	/* name not fully representable in short file name, but no need to tildize */
 	SFN_MANGLED		/* name not representable in short file name; must tildize */
-} sfn_disposition_t;
+};
 
 static imgtoolerr_t fat_construct_dirent(const char *filename, creation_policy_t create,
 	UINT8 **entry, size_t *entry_len)

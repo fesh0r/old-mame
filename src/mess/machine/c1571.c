@@ -32,6 +32,7 @@
 #define M6526_TAG		"u20"
 #define WD1770_TAG		"u11"
 #define C64H156_TAG		"u6"
+#define C64H157_TAG		"u5"
 
 
 enum
@@ -252,11 +253,8 @@ WRITE8_MEMBER( base_c1571_device::via0_pa_w )
 		set_iec_data();
 		set_iec_srq();
 
-		if (!m_ser_dir)
-		{
-			//m_cia->cnt_w(m_bus->srq_r());
-			//m_cia->sp_w(m_bus->data_r());
-		}
+		m_cia->cnt_w(m_ser_dir || m_bus->srq_r());
+		m_cia->sp_w(m_ser_dir || m_bus->data_r());
 	}
 
 	// side select
@@ -494,7 +492,6 @@ WRITE8_MEMBER( base_c1571_device::cia_pb_w )
 
 static MOS6526_INTERFACE( cia_intf )
 {
-	0,
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_c1571_device, cia_irq_w),
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_c1571_device, cia_pc_w),
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_c1571_device, cia_cnt_w),
@@ -606,7 +603,7 @@ static MACHINE_CONFIG_FRAGMENT( c1571 )
 
 	MCFG_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/16, via0_intf)
 	MCFG_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/16, via1_intf)
-	MCFG_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, cia_intf)
+	MCFG_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, 0, cia_intf)
 	MCFG_WD1770_ADD(WD1770_TAG, /* XTAL_16MHz/2, */ fdc_intf)
 
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, c1571_floppy_interface)
@@ -625,7 +622,7 @@ static MACHINE_CONFIG_FRAGMENT( c1570 )
 
 	MCFG_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/16, via0_intf)
 	MCFG_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/16, via1_intf)
-	MCFG_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, cia_intf)
+	MCFG_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, 0, cia_intf)
 	MCFG_WD1770_ADD(WD1770_TAG, /* XTAL_16MHz/2, */ fdc_intf)
 
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, c1570_floppy_interface)
@@ -802,10 +799,7 @@ void base_c1571_device::device_reset()
 
 void base_c1571_device::cbm_iec_srq(int state)
 {
-	if (!m_ser_dir)
-	{
-		m_cia->cnt_w(state);
-	}
+	m_cia->cnt_w(m_ser_dir || state);
 }
 
 
@@ -828,10 +822,7 @@ void base_c1571_device::cbm_iec_atn(int state)
 
 void base_c1571_device::cbm_iec_data(int state)
 {
-	if (!m_ser_dir)
-	{
-		m_cia->sp_w(state);
-	}
+	m_cia->sp_w(m_ser_dir || state);
 }
 
 

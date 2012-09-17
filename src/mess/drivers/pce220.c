@@ -91,6 +91,7 @@ public:
 	DECLARE_READ8_MEMBER( irq_status_r );
 	DECLARE_WRITE8_MEMBER( irq_ack_w );
 	DECLARE_WRITE8_MEMBER( irq_mask_w );
+	DECLARE_PALETTE_INIT(pce220);
 };
 
 class pcg850v_state : public pce220_state
@@ -337,7 +338,7 @@ WRITE8_MEMBER( pce220_state::boot_bank_w )
 	// set to 1 after boot for restore the ram in the first bank
 	if (data & 0x01)
 	{
-		address_space *space_prg = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *space_prg = m_maincpu->space(AS_PROGRAM);
 		space_prg->install_write_bank(0x0000, 0x3fff, "bank1");
 		membank("bank1")->set_entry(0);
 	}
@@ -469,7 +470,7 @@ READ8_MEMBER( pcg850v_state::g850v_bank_r )
 
 WRITE8_MEMBER( pcg850v_state::g850v_bank_w )
 {
-	address_space *space_prg = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space_prg = m_maincpu->space(AS_PROGRAM);
 
 	if (data < 0x16)
 	{
@@ -618,7 +619,7 @@ static INPUT_CHANGED( kb_irq )
 
 	if (state->m_irq_mask & IRQ_FLAG_KEY)
 	{
-		device_set_input_line( state->m_maincpu, 0, newval ? ASSERT_LINE : CLEAR_LINE );
+		state->m_maincpu->set_input_line(0, newval ? ASSERT_LINE : CLEAR_LINE );
 
 		state->m_irq_flag = (state->m_irq_flag & 0xfe) | (newval & 0x01);
 	}
@@ -630,7 +631,7 @@ static INPUT_CHANGED( on_irq )
 
 	if (state->m_irq_mask & IRQ_FLAG_ON)
 	{
-		device_set_input_line( state->m_maincpu, 0, newval ? ASSERT_LINE : CLEAR_LINE );
+		state->m_maincpu->set_input_line(0, newval ? ASSERT_LINE : CLEAR_LINE );
 
 		state->m_irq_flag = (state->m_irq_flag & 0xfd) | ((newval & 0x01)<<1);
 	}
@@ -872,7 +873,7 @@ void pcg850v_state::machine_start()
 
 void pce220_state::machine_reset()
 {
-	address_space *space = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *space = m_maincpu->space(AS_PROGRAM);
 	space->unmap_write(0x0000, 0x3fff);
 
 	// install the boot code into the first bank
@@ -907,16 +908,16 @@ static TIMER_DEVICE_CALLBACK(pce220_timer_callback)
 
 	if (state->m_irq_mask & IRQ_FLAG_TIMER)
 	{
-		device_set_input_line( state->m_maincpu, 0, HOLD_LINE );
+		state->m_maincpu->set_input_line(0, HOLD_LINE );
 
 		state->m_irq_flag = (state->m_irq_flag & 0xfb) | (state->m_timer_status<<2);
 	}
 }
 
-static PALETTE_INIT(pce220)
+PALETTE_INIT_MEMBER(pce220_state,pce220)
 {
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
+	palette_set_color(machine(), 0, MAKE_RGB(138, 146, 148));
+	palette_set_color(machine(), 1, MAKE_RGB(92, 83, 88));
 }
 
 
@@ -928,7 +929,7 @@ static MACHINE_CONFIG_START( pce220, pce220_state )
 
     /* video hardware */
 	// 4 lines x 24 characters, resp. 144 x 32 pixel
-    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_ADD("screen", LCD)
     MCFG_SCREEN_REFRESH_RATE(50)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
     MCFG_SCREEN_UPDATE_DRIVER(pce220_state, screen_update)
@@ -936,7 +937,7 @@ static MACHINE_CONFIG_START( pce220, pce220_state )
     MCFG_SCREEN_VISIBLE_AREA(0, 24*6-1, 0, 4*8-1)
 
     MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(pce220)
+	MCFG_PALETTE_INIT_OVERRIDE(pce220_state,pce220)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	/* sound hardware */
@@ -963,7 +964,7 @@ static MACHINE_CONFIG_START( pcg850v, pcg850v_state )
 
     /* video hardware */
 	// 6 lines x 24 characters, resp. 144 x 48 pixel
-    MCFG_SCREEN_ADD("screen", RASTER)
+    MCFG_SCREEN_ADD("screen", LCD)
     MCFG_SCREEN_REFRESH_RATE(50)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
     MCFG_SCREEN_UPDATE_DRIVER(pcg850v_state, screen_update)
@@ -971,7 +972,7 @@ static MACHINE_CONFIG_START( pcg850v, pcg850v_state )
     MCFG_SCREEN_VISIBLE_AREA(0, 144-1, 0, 48-1)
 
     MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(pce220)
+	MCFG_PALETTE_INIT_OVERRIDE(pce220_state,pce220)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
 	/* sound hardware */

@@ -50,22 +50,21 @@
 #include "includes/ps2.h"
 #include "machine/pcshare.h"
 #include "video/newport.h"
-#include "machine/wd33c93.h"
-#include "imagedev/harddriv.h"
-#include "imagedev/chd_cd.h"
 #include "sound/dac.h"
 #include "machine/nvram.h"
+#include "machine/scsibus.h"
 #include "machine/scsicd.h"
 #include "machine/scsihd.h"
+#include "machine/wd33c93.h"
 
-typedef struct
+struct RTC_t
 {
 	UINT8 nRegs[0x80];
 	UINT8 nUserRAM[0x200];
 	UINT8 nRAM[0x800];
-} RTC_t;
+};
 
-typedef struct
+struct HPC3_t
 {
 	UINT32 nenetr_nbdp;
 	UINT32 nenetr_cbp;
@@ -74,31 +73,33 @@ typedef struct
 	UINT32 nIC_Unk0;
 	UINT32 nSCSI0Descriptor;
 	UINT32 nSCSI0DMACtrl;
-} HPC3_t;
+};
 
-typedef struct
+struct HAL2_t
 {
 	UINT32 nIAR;
 	UINT32 nIDR[4];
-} HAL2_t;
+};
 
-typedef struct
+struct PBUS_DMA_t
 {
 	UINT8 nActive;
 	UINT32 nCurPtr;
 	UINT32 nDescPtr;
 	UINT32 nNextPtr;
 	UINT32 nWordsLeft;
-} PBUS_DMA_t;
+};
 
 class ip22_state : public driver_device
 {
 public:
 	ip22_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
+		m_wd33c93(*this, "scsi:wd33c93"),
 		m_unkpbus0(*this, "unkpbus0"),
 		m_mainram(*this, "mainram") { }
 
+	required_device<wd33c93_device> m_wd33c93;
 	required_shared_ptr<UINT32> m_unkpbus0;
 	required_shared_ptr<UINT32> m_mainram;
 	RTC_t m_RTC;
@@ -128,6 +129,8 @@ public:
 	DECLARE_READ32_MEMBER(hpc3_unkpbus0_r);
 	DECLARE_WRITE32_MEMBER(hpc3_unkpbus0_w);
 	DECLARE_DRIVER_INIT(ip225015);
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 
@@ -143,7 +146,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog(running_machine &machine, int n_level, c
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror("%08x: %s", cpu_get_pc(machine.device("maincpu")), buf);
+		logerror("%08x: %s", machine.device("maincpu")->safe_pc(), buf);
 	}
 }
 
@@ -203,7 +206,7 @@ static void int3_raise_local0_irq(running_machine &machine, UINT8 source_mask)
 	// if it's not masked, also assert it now at the CPU
 	if (state->m_int3_regs[1] & source_mask)
 	{
-		cputag_set_input_line(machine, "maincpu", MIPS3_IRQ0, ASSERT_LINE);
+		machine.device("maincpu")->execute().set_input_line(MIPS3_IRQ0, ASSERT_LINE);
 	}
 }
 
@@ -224,7 +227,7 @@ static void int3_raise_local1_irq(running_machine &machine, UINT8 source_mask)
 	// if it's not masked, also assert it now at the CPU
 	if (state->m_int3_regs[2] & source_mask)
 	{
-		cputag_set_input_line(machine, "maincpu", MIPS3_IRQ1, ASSERT_LINE);
+		machine.device("maincpu")->execute().set_input_line(MIPS3_IRQ1, ASSERT_LINE);
 	}
 }
 
@@ -252,7 +255,7 @@ READ32_MEMBER(ip22_state::hpc3_pbus6_r)
 		return ret8;
 	case 0x030/4:
 		//verboselog(( machine, 2, "Serial 1 Command Transfer Read, 0x1fbd9830: %02x\n", 0x04 );
-		switch(cpu_get_pc(&space.device()))
+		switch(space.device().safe_pc())
 		{
 			case 0x9fc1d9e4:	// interpreter (ip244415)
 			case 0x9fc1d9e0:	// DRC (ip244415)
@@ -373,21 +376,21 @@ WRITE32_MEMBER(ip22_state::hpc3_pbus6_w)
 		// if no local0 interrupts now, clear the input to the CPU
 		if ((m_int3_regs[0] & m_int3_regs[1]) == 0)
 		{
-			cputag_set_input_line(machine(), "maincpu", MIPS3_IRQ0, CLEAR_LINE);
+			machine().device("maincpu")->execute().set_input_line(MIPS3_IRQ0, CLEAR_LINE);
 		}
 		else
 		{
-			cputag_set_input_line(machine(), "maincpu", MIPS3_IRQ0, ASSERT_LINE);
+			machine().device("maincpu")->execute().set_input_line(MIPS3_IRQ0, ASSERT_LINE);
 		}
 
 		// if no local1 interrupts now, clear the input to the CPU
 		if ((m_int3_regs[2] & m_int3_regs[3]) == 0)
 		{
-			cputag_set_input_line(machine(), "maincpu", MIPS3_IRQ1, CLEAR_LINE);
+			machine().device("maincpu")->execute().set_input_line(MIPS3_IRQ1, CLEAR_LINE);
 		}
 		else
 		{
-			cputag_set_input_line(machine(), "maincpu", MIPS3_IRQ1, ASSERT_LINE);
+			machine().device("maincpu")->execute().set_input_line(MIPS3_IRQ1, ASSERT_LINE);
 		}
 		break;
 	case 0xb0/4:
@@ -480,7 +483,7 @@ READ32_MEMBER(ip22_state::hpc3_hd0_r)
 //      //verboselog((machine, 2, "HPC3 HD0 Status Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[0x17] );
 		if (ACCESSING_BITS_0_7)
 		{
-			return wd33c93_r( &space, 0 );
+			return m_wd33c93->read( space, 0 );
 		}
 		else
 		{
@@ -491,14 +494,14 @@ READ32_MEMBER(ip22_state::hpc3_hd0_r)
 //      //verboselog((machine, 2, "HPC3 HD0 Register Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[nHPC3_hd0_register] );
 		if (ACCESSING_BITS_0_7)
 		{
-			return wd33c93_r( &space, 1 );
+			return m_wd33c93->read( space, 1 );
 		}
 		else
 		{
 			return 0;
 		}
 	default:
-		//verboselog((machine, 0, "Unknown HPC3 HD0 Read: %08x (%08x) [%x] PC=%x\n", 0x1fbc0000 + ( offset << 2 ), mem_mask, offset, cpu_get_pc(&space.device()) );
+		//verboselog((machine, 0, "Unknown HPC3 HD0 Read: %08x (%08x) [%x] PC=%x\n", 0x1fbc0000 + ( offset << 2 ), mem_mask, offset, space.device().safe_pc() );
 		return 0;
 	}
 	return 0;
@@ -515,7 +518,7 @@ WRITE32_MEMBER(ip22_state::hpc3_hd0_w)
 //      //verboselog((machine, 2, "HPC3 HD0 Register Select Write: %08x\n", data );
 		if (ACCESSING_BITS_0_7)
 		{
-			wd33c93_w( &space, 0, data & 0x000000ff );
+			m_wd33c93->write( space, 0, data & 0x000000ff );
 		}
 		break;
 	case 0x0004/4:
@@ -523,7 +526,7 @@ WRITE32_MEMBER(ip22_state::hpc3_hd0_w)
 //      //verboselog((machine, 2, "HPC3 HD0 Register %d Write: %08x\n", nHPC3_hd0_register, data );
 		if (ACCESSING_BITS_0_7)
 		{
-			wd33c93_w( &space, 1,  data & 0x000000ff );
+			m_wd33c93->write( space, 1,  data & 0x000000ff );
 		}
 		break;
 	default:
@@ -1217,23 +1220,23 @@ static TIMER_CALLBACK(ip22_timer)
 	machine.scheduler().timer_set(attotime::from_msec(1), FUNC(ip22_timer));
 }
 
-static MACHINE_RESET( ip225015 )
+void ip22_state::machine_reset()
 {
-	ip22_state *state = machine.driver_data<ip22_state>();
-	state->m_HPC3.nenetr_nbdp = 0x80000000;
-	state->m_HPC3.nenetr_cbp = 0x80000000;
-	state->m_nIntCounter = 0;
+	ip22_state *state = machine().driver_data<ip22_state>();
+	m_HPC3.nenetr_nbdp = 0x80000000;
+	m_HPC3.nenetr_cbp = 0x80000000;
+	m_nIntCounter = 0;
 	RTC_REGISTERB = 0x08;
 	RTC_REGISTERD = 0x80;
 
-	machine.scheduler().timer_set(attotime::from_msec(1), FUNC(ip22_timer));
+	machine().scheduler().timer_set(attotime::from_msec(1), FUNC(ip22_timer));
 
 	// set up low RAM mirror
-	state->membank("bank1")->set_base(state->m_mainram);
+	membank("bank1")->set_base(m_mainram);
 
-	state->m_PBUS_DMA.nActive = 0;
+	m_PBUS_DMA.nActive = 0;
 
-	mips3drc_set_options(machine.device("maincpu"), MIPS3DRC_COMPATIBLE_OPTIONS | MIPS3DRC_CHECK_OVERFLOWS);
+	mips3drc_set_options(machine().device("maincpu"), MIPS3DRC_COMPATIBLE_OPTIONS | MIPS3DRC_CHECK_OVERFLOWS);
 }
 
 static void dump_chain(address_space *space, UINT32 ch_base)
@@ -1261,9 +1264,9 @@ static void scsi_irq(running_machine &machine, int state)
 
 	if (state)
 	{
-		if (wd33c93_get_dma_count())
+		if (drvstate->m_wd33c93->get_dma_count())
 		{
-			printf("wd33c93_get_dma_count() is %d\n", wd33c93_get_dma_count() );
+			printf("drvstate->m_wd33c93->get_dma_count() is %d\n", drvstate->m_wd33c93->get_dma_count() );
 			if (drvstate->m_HPC3.nSCSI0DMACtrl & HPC3_DMACTRL_ENABLE)
 			{
 				if (drvstate->m_HPC3.nSCSI0DMACtrl & HPC3_DMACTRL_IRQ) logerror("IP22: Unhandled SCSI DMA IRQ\n");
@@ -1275,7 +1278,7 @@ static void scsi_irq(running_machine &machine, int state)
 				UINT32 wptr, tmpword;
 				int words, dptr, twords;
 
-				words = wd33c93_get_dma_count();
+				words = drvstate->m_wd33c93->get_dma_count();
 				words /= 4;
 
 				wptr = space->read_dword(drvstate->m_HPC3.nSCSI0Descriptor);
@@ -1289,7 +1292,7 @@ static void scsi_irq(running_machine &machine, int state)
 				if (words <= (512/4))
 				{
 					// one-shot
-					//wd33c93_get_dma_data(wd33c93_get_dma_count(), drvstate->m_dma_buffer);
+					//drvstate->m_wd33c93->get_dma_data(drvstate->m_wd33c93->get_dma_count(), drvstate->m_dma_buffer);
 
 					while (words)
 					{
@@ -1315,14 +1318,14 @@ static void scsi_irq(running_machine &machine, int state)
 						words--;
 					}
 
-					words = wd33c93_get_dma_count();
-					wd33c93_write_data(words, drvstate->m_dma_buffer);
+					words = drvstate->m_wd33c93->get_dma_count();
+					drvstate->m_wd33c93->write_data(words, drvstate->m_dma_buffer);
 				}
 				else
 				{
 					while (words)
 					{
-						//wd33c93_get_dma_data(512, drvstate->m_dma_buffer);
+						//drvstate->m_wd33c93->get_dma_data(512, drvstate->m_dma_buffer);
 						twords = 512/4;
 						drvstate->m_HPC3.nSCSI0Descriptor += 512;
 						dptr = 0;
@@ -1351,14 +1354,14 @@ static void scsi_irq(running_machine &machine, int state)
 							twords--;
 						}
 
-						wd33c93_write_data(512, drvstate->m_dma_buffer);
+						drvstate->m_wd33c93->write_data(512, drvstate->m_dma_buffer);
 
 						words -= (512/4);
 					}
 				}
 
 				// clear DMA on the controller too
-				wd33c93_clear_dma();
+				drvstate->m_wd33c93->clear_dma();
 #if 0
 				UINT32 dptr, tmpword;
 				UINT32 bc = space->read_dword(drvstate->m_HPC3.nSCSI0Descriptor + 4);
@@ -1369,7 +1372,7 @@ static void scsi_irq(running_machine &machine, int state)
 
 				dump_chain(space, drvstate->m_HPC3.nSCSI0Descriptor);
 
-				printf("PC is %08x\n", cpu_get_pc(machine.device("maincpu")));
+				printf("PC is %08x\n", machine.device("maincpu")->safe_pc());
 				printf("DMA to device: length %x xie %d eox %d\n", length, xie, eox);
 
 				if (length <= 0x4000)
@@ -1399,10 +1402,10 @@ static void scsi_irq(running_machine &machine, int state)
 					}
 
 					length = space->read_dword(drvstate->m_HPC3.nSCSI0Descriptor+4) & 0x3fff;
-					wd33c93_write_data(length, drvstate->m_dma_buffer);
+					drvstate->m_wd33c93->write_data(length, drvstate->m_dma_buffer);
 
 					// clear DMA on the controller too
-					wd33c93_clear_dma();
+					drvstate->m_wd33c93->clear_dma();
 				}
 				else
 				{
@@ -1417,7 +1420,7 @@ static void scsi_irq(running_machine &machine, int state)
 				UINT32 wptr, tmpword;
 				int words, sptr, twords;
 
-				words = wd33c93_get_dma_count();
+				words = drvstate->m_wd33c93->get_dma_count();
 				words /= 4;
 
 				wptr = space->read_dword(drvstate->m_HPC3.nSCSI0Descriptor);
@@ -1430,7 +1433,7 @@ static void scsi_irq(running_machine &machine, int state)
 				if (words <= (1024/4))
 				{
 					// one-shot
-					wd33c93_get_dma_data(wd33c93_get_dma_count(), drvstate->m_dma_buffer);
+					drvstate->m_wd33c93->get_dma_data(drvstate->m_wd33c93->get_dma_count(), drvstate->m_dma_buffer);
 
 					while (words)
 					{
@@ -1453,7 +1456,7 @@ static void scsi_irq(running_machine &machine, int state)
 				{
 					while (words)
 					{
-						wd33c93_get_dma_data(512, drvstate->m_dma_buffer);
+						drvstate->m_wd33c93->get_dma_data(512, drvstate->m_dma_buffer);
 						twords = 512/4;
 						sptr = 0;
 
@@ -1479,7 +1482,7 @@ static void scsi_irq(running_machine &machine, int state)
 				}
 
 				// clear DMA on the controller too
-				wd33c93_clear_dma();
+				drvstate->m_wd33c93->clear_dma();
 			}
 		}
 
@@ -1495,18 +1498,8 @@ static void scsi_irq(running_machine &machine, int state)
 	}
 }
 
-static const SCSIConfigTable dev_table =
+static const struct WD33C93interface wd33c93_intf =
 {
-	2,                                      /* 1 SCSI device */
-	{
-		{ SCSI_ID_1, "harddisk1" },
-		{ SCSI_ID_4, "cdrom" }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
-	}
-};
-
-static const struct WD33C93interface scsi_intf =
-{
-	&dev_table,		/* SCSI device table */
 	&scsi_irq,		/* command completion IRQ */
 };
 
@@ -1518,17 +1511,15 @@ static int ip22_get_out2(running_machine &machine) {
 	return pit8253_get_output(machine.device("pit8254"), 2 );
 }
 
-static MACHINE_START( ip225015 )
+void ip22_state::machine_start()
 {
-	ip22_state *state = machine.driver_data<ip22_state>();
-	sgi_mc_init(machine);
+	sgi_mc_init(machine());
 
 	// SCSI init
-	wd33c93_init(machine, &scsi_intf);
-	machine.add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(ip225015_exit),&machine));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(ip225015_exit),&machine()));
 
-	machine.device<nvram_device>("nvram_user")->set_base(state->m_RTC.nUserRAM, 0x200);
-	machine.device<nvram_device>("nvram")->set_base(state->m_RTC.nRAM, 0x200);
+	machine().device<nvram_device>("nvram_user")->set_base(m_RTC.nUserRAM, 0x200);
+	machine().device<nvram_device>("nvram")->set_base(m_RTC.nRAM, 0x200);
 }
 
 DRIVER_INIT_MEMBER(ip22_state,ip225015)
@@ -1635,20 +1626,6 @@ static const mips3_config config =
 	32768	/* data cache size */
 };
 
-#ifdef UNUSED_FUNCTION
-static void ip22_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* harddisk */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		default: harddisk_device_getinfo(devclass, state, info); break;
-	}
-}
-#endif
-
 static const pc_lpt_interface ip22_lpt_config =
 {
 	DEVCB_NULL /* no idea if the lpt irq is connected and where */
@@ -1660,8 +1637,6 @@ static MACHINE_CONFIG_START( ip225015, ip22_state )
 	MCFG_CPU_PROGRAM_MAP( ip225015_map)
 	MCFG_CPU_VBLANK_INT("screen", ip22_vbl)
 
-	MCFG_MACHINE_START( ip225015 )
-	MCFG_MACHINE_RESET( ip225015 )
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 	MCFG_NVRAM_ADD_0FILL("nvram_user")
@@ -1691,8 +1666,10 @@ static MACHINE_CONFIG_START( ip225015, ip22_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
-	MCFG_DEVICE_ADD("cdrom", SCSICD, 0)
-	MCFG_DEVICE_ADD("harddisk1", SCSIHD, 0)
+	MCFG_SCSIBUS_ADD("scsi")
+	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_1)
+	MCFG_SCSIDEV_ADD("scsi:cdrom", SCSICD, SCSI_ID_4)
+	MCFG_WD33C93_ADD("scsi:wd33c93", wd33c93_intf)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ip224613, ip225015 )

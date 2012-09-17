@@ -888,7 +888,7 @@ WRITE_LINE_MEMBER( pc1512_state::eop_w )
 
 READ8_MEMBER( pc1512_state::memr_r )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	offs_t page_offset = m_dma_page[m_dma_channel] << 16;
 
 	return program->read_byte(page_offset + offset);
@@ -896,7 +896,7 @@ READ8_MEMBER( pc1512_state::memr_r )
 
 WRITE8_MEMBER( pc1512_state::memw_w )
 {
-	address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+	address_space *program = m_maincpu->space(AS_PROGRAM);
 	offs_t page_offset = m_dma_page[m_dma_channel] << 16;
 
 	program->write_byte(page_offset + offset, data);
@@ -1203,14 +1203,14 @@ static const isa8bus_interface isabus_intf =
 void pc1512_state::machine_start()
 {
 	// register CPU IRQ callback
-	device_set_irq_callback(m_maincpu, pc1512_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(pc1512_irq_callback);
 
 	// set RAM size
 	size_t ram_size = m_ram->size();
 
 	if (ram_size < 640 * 1024)
 	{
-		address_space *program = m_maincpu->memory().space(AS_PROGRAM);
+		address_space *program = m_maincpu->space(AS_PROGRAM);
 		program->unmap_readwrite(ram_size, 0x9ffff);
 	}
 
@@ -1286,7 +1286,7 @@ void pc1512_state::machine_reset()
 void pc1640_state::machine_start()
 {
 	// register CPU IRQ callback
-	device_set_irq_callback(m_maincpu, pc1512_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(pc1512_irq_callback);
 
 	// state saving
 	save_item(NAME(m_pit1));

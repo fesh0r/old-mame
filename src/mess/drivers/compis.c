@@ -64,22 +64,22 @@ static const unsigned char COMPIS_palette[16*3] =
 	255, 255, 255
 };
 
-static PALETTE_INIT( compis_gdc )
+PALETTE_INIT_MEMBER(compis_state,compis_gdc)
 {
 	int i;
 
 	for ( i = 0; i < 16; i++ ) {
-		palette_set_color_rgb(machine, i, COMPIS_palette[i*3], COMPIS_palette[i*3+1], COMPIS_palette[i*3+2]);
+		palette_set_color_rgb(machine(), i, COMPIS_palette[i*3], COMPIS_palette[i*3+1], COMPIS_palette[i*3+2]);
 	}
 }
 #endif
 
 
-static PALETTE_INIT( compis )
+void compis_state::palette_init()
 {
-	palette_set_color(machine, 0, RGB_BLACK); // black
-	palette_set_color(machine, 1, MAKE_RGB(0x00, 0xc0, 0x00)); // green
-	palette_set_color(machine, 2, MAKE_RGB(0x00, 0xff, 0x00)); // highlight
+	palette_set_color(machine(), 0, RGB_BLACK); // black
+	palette_set_color(machine(), 1, MAKE_RGB(0x00, 0xc0, 0x00)); // green
+	palette_set_color(machine(), 2, MAKE_RGB(0x00, 0xff, 0x00)); // highlight
 }
 
 static SCREEN_UPDATE_IND16( compis2 ) // temporary
@@ -186,14 +186,6 @@ static ADDRESS_MAP_START( compis_io, AS_IO, 16, compis_state )
 //{ 0x0370, 0x037e, compis_null_r },    /* J9 CS1 (8-bit)       */
 //{ 0x0371, 0x037f, compis_null_r },    /* J9 CS1 (8-bit)       */
 //{ 0xff20, 0xffff, compis_null_r },    /* CPU 80186            */
-ADDRESS_MAP_END
-
-/* TODO */
-static ADDRESS_MAP_START( keyboard_io, AS_IO, 8, compis_state )
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_NOP
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_NOP
-	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_NOP
-	AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS) AM_NOP
 ADDRESS_MAP_END
 
 /* COMPIS Keyboard */
@@ -369,13 +361,8 @@ static MACHINE_CONFIG_START( compis, compis_state )
 	MCFG_CPU_VBLANK_INT("screen", compis_vblank_int)
 	MCFG_CPU_CONFIG(i86_address_mask)
 
-	MCFG_CPU_ADD("i8749", I8749, 1000000)
-	MCFG_CPU_IO_MAP(keyboard_io)
-
 	//MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(compis)
-	MCFG_MACHINE_RESET(compis)
 
 	/* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -387,10 +374,9 @@ static MACHINE_CONFIG_START( compis, compis_state )
 	MCFG_SCREEN_UPDATE_DEVICE("upd7220", upd7220_device, screen_update)
 #if 0
 	MCFG_PALETTE_LENGTH(16)
-	MCFG_PALETTE_INIT(compis_gdc)
+	MCFG_PALETTE_INIT_OVERRIDE(compis_state,compis_gdc)
 #endif
 	MCFG_PALETTE_LENGTH(3)
-	MCFG_PALETTE_INIT(compis)
 
 	/* Devices */
 	MCFG_PIT8253_ADD( "pit8253", compis_pit8253_config )
@@ -404,6 +390,7 @@ static MACHINE_CONFIG_START( compis, compis_state )
 	MCFG_MM58274C_ADD("mm58274c", compis_mm58274c_interface)
 	MCFG_UPD765A_ADD("upd765", compis_fdc_interface)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(compis_floppy_interface)
+	MCFG_COMPIS_KEYBOARD_ADD()
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "compis")
@@ -417,13 +404,8 @@ static MACHINE_CONFIG_START( compis2, compis_state )
 	MCFG_CPU_VBLANK_INT("screen", compis_vblank_int)
 	MCFG_CPU_CONFIG(i86_address_mask)
 
-	MCFG_CPU_ADD("i8749", I8749, 1000000)
-	MCFG_CPU_IO_MAP(keyboard_io)
-
 	//MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
-	MCFG_MACHINE_START(compis)
-	MCFG_MACHINE_RESET(compis)
 
 	/* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -434,7 +416,6 @@ static MACHINE_CONFIG_START( compis2, compis_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 400-1)
 	MCFG_SCREEN_UPDATE_STATIC(compis2)
 	MCFG_PALETTE_LENGTH(3)
-	MCFG_PALETTE_INIT(compis)
 
 	/* Devices */
 	MCFG_PIT8253_ADD( "pit8253", compis_pit8253_config )
@@ -448,6 +429,7 @@ static MACHINE_CONFIG_START( compis2, compis_state )
 	MCFG_MM58274C_ADD("mm58274c", compis_mm58274c_interface)
 	MCFG_UPD765A_ADD("upd765", compis_fdc_interface)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(compis_floppy_interface)
+	MCFG_COMPIS_KEYBOARD_ADD()
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "compis")
@@ -467,9 +449,6 @@ ROM_START( compis )
 	ROM_LOAD16_BYTE( "sa883003.u36", 0x0001, 0x4000, CRC(7c918f56) SHA1(8ba33d206351c52f44f1aa76cc4d7f292dcef761) )
 	ROM_LOAD16_BYTE( "sa883003.u39", 0x8000, 0x4000, CRC(3cca66db) SHA1(cac36c9caa2f5bb42d7a6d5b84f419318628935f) )
 	ROM_LOAD16_BYTE( "sa883003.u35", 0x8001, 0x4000, CRC(43c38e76) SHA1(f32e43604107def2c2259898926d090f2ed62104) )
-
-	ROM_REGION( 0x800, "i8749", 0 )
-	ROM_LOAD( "cmpkey13.u1", 0x0000, 0x0800, CRC(3f87d138) SHA1(c04e2d325b9c04818bc7c47c3bf32b13862b11ec) )
 ROM_END
 
 ROM_START( compis2 )
@@ -483,9 +462,6 @@ ROM_START( compis2 )
 	ROM_SYSTEM_BIOS( 1, "v303", "Compis II v3.03 (1987-03-09)" )
 	ROMX_LOAD( "rysa094.u39", 0x0000, 0x8000, CRC(e7302bff) SHA1(44ea20ef4008849af036c1a945bc4f27431048fb), ROM_BIOS(2) | ROM_SKIP(1) )
 	ROMX_LOAD( "rysa094.u35", 0x0001, 0x8000, CRC(b0694026) SHA1(eb6b2e3cb0f42fd5ffdf44f70e652ecb9714ce30), ROM_BIOS(2) | ROM_SKIP(1) )
-
-	ROM_REGION( 0x800, "i8749", 0 )
-	ROM_LOAD( "cmpkey13.u1", 0x0000, 0x0800, CRC(3f87d138) SHA1(c04e2d325b9c04818bc7c47c3bf32b13862b11ec) )
 ROM_END
 
 /*   YEAR   NAME        PARENT  COMPAT MACHINE  INPUT   INIT     COMPANY     FULLNAME */

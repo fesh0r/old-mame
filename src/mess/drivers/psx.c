@@ -19,7 +19,7 @@
 #include "machine/psxcd.h"
 #include "machine/psxcard.h"
 
-typedef struct
+struct pad_t
 {
 	UINT8 n_shiftin;
 	UINT8 n_shiftout;
@@ -28,7 +28,7 @@ typedef struct
 	int n_byte;
 	int b_lastclock;
 	int b_ack;
-} pad_t;
+};
 
 
 class psx1_state : public psx_state
@@ -54,6 +54,7 @@ public:
 	DECLARE_DIRECT_UPDATE_MEMBER(psx_default);
 	DECLARE_DIRECT_UPDATE_MEMBER(psx_setopbase);
 	DECLARE_DRIVER_INIT(psx);
+	DECLARE_MACHINE_RESET(psx);
 };
 
 
@@ -164,13 +165,13 @@ static int load_psxexe( device_t *cpu, unsigned char *p_n_file, int n_len )
 			n_size--;
 		}
 
-		cpu_set_reg( cpu, PSXCPU_PC, psxexe_header->pc0 );
-		cpu_set_reg( cpu, PSXCPU_R28, psxexe_header->gp0 );
+		cpu->state().set_state_int( PSXCPU_PC, psxexe_header->pc0 );
+		cpu->state().set_state_int( PSXCPU_R28, psxexe_header->gp0 );
 		n_stack = psxexe_header->s_addr + psxexe_header->s_size;
 		if( n_stack != 0 )
 		{
-			cpu_set_reg( cpu, PSXCPU_R29, n_stack );
-			cpu_set_reg( cpu, PSXCPU_R30, n_stack );
+			cpu->state().set_state_int( PSXCPU_R29, n_stack );
+			cpu->state().set_state_int( PSXCPU_R30, n_stack );
 		}
 
 		return 1;
@@ -183,37 +184,37 @@ static void cpe_set_register( device_t *cpu, int n_reg, int n_value )
 	if( n_reg < 0x80 && ( n_reg % 4 ) == 0 )
 	{
 		logerror( "psx_exe_load: r%-2d   %08x\n", n_reg / 4, n_value );
-		cpu_set_reg( cpu, PSXCPU_R0 + ( n_reg / 4 ), n_value );
+		cpu->state().set_state_int( PSXCPU_R0 + ( n_reg / 4 ), n_value );
 	}
 	else if( n_reg == 0x80 )
 	{
 		logerror( "psx_exe_load: lo    %08x\n", n_value );
-		cpu_set_reg( cpu, PSXCPU_LO, n_value );
+		cpu->state().set_state_int( PSXCPU_LO, n_value );
 	}
 	else if( n_reg == 0x84 )
 	{
 		logerror( "psx_exe_load: hi    %08x\n", n_value );
-		cpu_set_reg( cpu, PSXCPU_HI, n_value );
+		cpu->state().set_state_int( PSXCPU_HI, n_value );
 	}
 	else if( n_reg == 0x88 )
 	{
 		logerror( "psx_exe_load: sr    %08x\n", n_value );
-		cpu_set_reg( cpu, PSXCPU_CP0R12, n_value );
+		cpu->state().set_state_int( PSXCPU_CP0R12, n_value );
 	}
 	else if( n_reg == 0x8c )
 	{
 		logerror( "psx_exe_load: cause %08x\n", n_value );
-		cpu_set_reg( cpu, PSXCPU_CP0R13, n_value );
+		cpu->state().set_state_int( PSXCPU_CP0R13, n_value );
 	}
 	else if( n_reg == 0x90 )
 	{
 		logerror( "psx_exe_load: pc    %08x\n", n_value );
-		cpu_set_reg( cpu, PSXCPU_PC, n_value );
+		cpu->state().set_state_int( PSXCPU_PC, n_value );
 	}
 	else if( n_reg == 0x94 )
 	{
 		logerror( "psx_exe_load: prid  %08x\n", n_value );
-		cpu_set_reg( cpu, PSXCPU_CP0R15, n_value );
+		cpu->state().set_state_int( PSXCPU_CP0R15, n_value );
 	}
 	else
 	{
@@ -438,7 +439,7 @@ DIRECT_UPDATE_MEMBER(psx1_state::psx_setopbase)
 		{
 /*          DEBUGGER_BREAK; */
 
-			address = cpu_get_reg( cpu, PSXCPU_PC );
+			address = cpu->state().state_int( PSXCPU_PC );
 		}
 		else
 		{
@@ -701,9 +702,9 @@ static ADDRESS_MAP_START( psx_map, AS_PROGRAM, 32, psx1_state )
 ADDRESS_MAP_END
 
 
-static MACHINE_RESET( psx )
+MACHINE_RESET_MEMBER(psx1_state,psx)
 {
-	psx_sio_install_handler( machine, 0, psx_sio0 );
+	psx_sio_install_handler( machine(), 0, psx_sio0 );
 }
 
 DRIVER_INIT_MEMBER(psx1_state,psx)
@@ -772,7 +773,7 @@ static MACHINE_CONFIG_START( psxntsc, psx1_state )
 	MCFG_CPU_ADD( "maincpu", CXD8530CQ, XTAL_67_7376MHz )
 	MCFG_CPU_PROGRAM_MAP( psx_map )
 
-	MCFG_MACHINE_RESET( psx )
+	MCFG_MACHINE_RESET_OVERRIDE(psx1_state, psx )
 
 	/* video hardware */
 	MCFG_PSXGPU_ADD( "maincpu", "gpu", CXD8561Q, 0x100000, XTAL_53_693175MHz )
@@ -802,7 +803,7 @@ static MACHINE_CONFIG_START( psxpal, psx1_state )
 	MCFG_CPU_ADD( "maincpu", CXD8530AQ, XTAL_67_7376MHz )
 	MCFG_CPU_PROGRAM_MAP( psx_map)
 
-	MCFG_MACHINE_RESET( psx )
+	MCFG_MACHINE_RESET_OVERRIDE(psx1_state, psx )
 
 	/* video hardware */
 	/* TODO: visible area and refresh rate */

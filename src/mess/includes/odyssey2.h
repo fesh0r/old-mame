@@ -24,7 +24,7 @@
 #define I824X_SCREEN_HEIGHT				243
 #define I824X_LINE_CLOCKS				228
 
-typedef union {
+union o2_vdc_t {
     UINT8 reg[0x100];
     struct {
 	struct {
@@ -52,9 +52,9 @@ typedef union {
 	UINT8 hgrid[2][0x10];
 	UINT8 vgrid[0x10];
     } s;
-} o2_vdc_t;
+};
 
-typedef struct
+struct ef9341_t
 {
 	UINT8	X;
 	UINT8	Y;
@@ -65,7 +65,7 @@ typedef struct
 	UINT8	TB;
 	UINT8	busy;
 	UINT8	ram[1024];
-} ef9341_t;
+};
 
 
 class odyssey2_state : public driver_device
@@ -111,6 +111,9 @@ public:
 	DECLARE_WRITE8_MEMBER(odyssey2_lum_w);
 	DECLARE_READ8_MEMBER(odyssey2_t1_r);
 	DECLARE_DRIVER_INIT(odyssey2);
+	virtual void machine_reset();
+	virtual void video_start();
+	virtual void palette_init();
 };
 
 
@@ -118,20 +121,37 @@ public:
 
 extern const UINT8 odyssey2_colors[];
 
-VIDEO_START( odyssey2 );
+
 SCREEN_UPDATE_IND16( odyssey2 );
-PALETTE_INIT( odyssey2 );
+
 
 STREAM_UPDATE( odyssey2_sh_update );
 
 void odyssey2_ef9341_w( running_machine &machine, int command, int b, UINT8 data );
 UINT8 odyssey2_ef9341_r( running_machine &machine, int command, int b );
 
-DECLARE_LEGACY_SOUND_DEVICE(ODYSSEY2, odyssey2_sound);
+class odyssey2_sound_device : public device_t,
+                                  public device_sound_interface
+{
+public:
+	odyssey2_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+protected:
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+private:
+	// internal state
+};
+
+extern const device_type ODYSSEY2;
+
 
 /*----------- defined in machine/odyssey2.c -----------*/
 
-MACHINE_RESET( odyssey2 );
+
 
 /* i/o ports */
 
