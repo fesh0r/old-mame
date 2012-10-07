@@ -41,82 +41,78 @@ DRIVER_INIT_MEMBER(radio86_state,radioram)
 	m_radio_ram_disk = auto_alloc_array(machine(), UINT8, 0x20000);
 	memset(m_radio_ram_disk,0,0x20000);
 }
-static READ8_DEVICE_HANDLER (radio86_8255_portb_r2 )
+READ8_MEMBER(radio86_state::radio86_8255_portb_r2)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
 	UINT8 key = 0xff;
-	if ((state->m_keyboard_mask & 0x01)!=0) { key &= state->ioport("LINE0")->read(); }
-	if ((state->m_keyboard_mask & 0x02)!=0) { key &= device->machine().root_device().ioport("LINE1")->read(); }
-	if ((state->m_keyboard_mask & 0x04)!=0) { key &= device->machine().root_device().ioport("LINE2")->read(); }
-	if ((state->m_keyboard_mask & 0x08)!=0) { key &= device->machine().root_device().ioport("LINE3")->read(); }
-	if ((state->m_keyboard_mask & 0x10)!=0) { key &= device->machine().root_device().ioport("LINE4")->read(); }
-	if ((state->m_keyboard_mask & 0x20)!=0) { key &= device->machine().root_device().ioport("LINE5")->read(); }
-	if ((state->m_keyboard_mask & 0x40)!=0) { key &= device->machine().root_device().ioport("LINE6")->read(); }
-	if ((state->m_keyboard_mask & 0x80)!=0) { key &= device->machine().root_device().ioport("LINE7")->read(); }
+	if ((m_keyboard_mask & 0x01)!=0) { key &= ioport("LINE0")->read(); }
+	if ((m_keyboard_mask & 0x02)!=0) { key &= machine().root_device().ioport("LINE1")->read(); }
+	if ((m_keyboard_mask & 0x04)!=0) { key &= machine().root_device().ioport("LINE2")->read(); }
+	if ((m_keyboard_mask & 0x08)!=0) { key &= machine().root_device().ioport("LINE3")->read(); }
+	if ((m_keyboard_mask & 0x10)!=0) { key &= machine().root_device().ioport("LINE4")->read(); }
+	if ((m_keyboard_mask & 0x20)!=0) { key &= machine().root_device().ioport("LINE5")->read(); }
+	if ((m_keyboard_mask & 0x40)!=0) { key &= machine().root_device().ioport("LINE6")->read(); }
+	if ((m_keyboard_mask & 0x80)!=0) { key &= machine().root_device().ioport("LINE7")->read(); }
 	return key;
 }
 
-static READ8_DEVICE_HANDLER (radio86_8255_portc_r2 )
+READ8_MEMBER(radio86_state::radio86_8255_portc_r2)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	double level = (device->machine().device<cassette_image_device>(CASSETTE_TAG)->input());
-	UINT8 dat = state->ioport("LINE8")->read();
+	double level = (machine().device<cassette_image_device>(CASSETTE_TAG)->input());
+	UINT8 dat = ioport("LINE8")->read();
 	if (level <  0) {
-		dat ^= state->m_tape_value;
+		dat ^= m_tape_value;
 	}
 	return dat;
 }
 
-static WRITE8_DEVICE_HANDLER (radio86_8255_porta_w2 )
+WRITE8_MEMBER(radio86_state::radio86_8255_porta_w2)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	state->m_keyboard_mask = data ^ 0xff;
+	m_keyboard_mask = data ^ 0xff;
 }
 
-static WRITE8_DEVICE_HANDLER (radio86_8255_portc_w2 )
+WRITE8_MEMBER(radio86_state::radio86_8255_portc_w2)
 {
-	device->machine().device<cassette_image_device>(CASSETTE_TAG)->output(data & 0x01 ? 1 : -1);
+	machine().device<cassette_image_device>(CASSETTE_TAG)->output(data & 0x01 ? 1 : -1);
 }
 
 
 I8255A_INTERFACE( radio86_ppi8255_interface_1 )
 {
 	DEVCB_NULL,
-	DEVCB_HANDLER(radio86_8255_porta_w2),
-	DEVCB_HANDLER(radio86_8255_portb_r2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_porta_w2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portb_r2),
 	DEVCB_NULL,
-	DEVCB_HANDLER(radio86_8255_portc_r2),
-	DEVCB_HANDLER(radio86_8255_portc_w2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portc_r2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portc_w2),
 };
 
 I8255A_INTERFACE( mikrosha_ppi8255_interface_1 )
 {
-	DEVCB_HANDLER(radio86_8255_portb_r2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portb_r2),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(radio86_8255_porta_w2),
-	DEVCB_HANDLER(radio86_8255_portc_r2),
-	DEVCB_HANDLER(radio86_8255_portc_w2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_porta_w2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portc_r2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portc_w2),
 };
 
 
 
-static READ8_DEVICE_HANDLER (rk7007_8255_portc_r )
+READ8_MEMBER(radio86_state::rk7007_8255_portc_r)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	double level = (device->machine().device<cassette_image_device>(CASSETTE_TAG)->input());
+	double level = (machine().device<cassette_image_device>(CASSETTE_TAG)->input());
 	UINT8 key = 0xff;
-	if ((state->m_keyboard_mask & 0x01)!=0) { key &= state->ioport("CLINE0")->read(); }
-	if ((state->m_keyboard_mask & 0x02)!=0) { key &= device->machine().root_device().ioport("CLINE1")->read(); }
-	if ((state->m_keyboard_mask & 0x04)!=0) { key &= device->machine().root_device().ioport("CLINE2")->read(); }
-	if ((state->m_keyboard_mask & 0x08)!=0) { key &= device->machine().root_device().ioport("CLINE3")->read(); }
-	if ((state->m_keyboard_mask & 0x10)!=0) { key &= device->machine().root_device().ioport("CLINE4")->read(); }
-	if ((state->m_keyboard_mask & 0x20)!=0) { key &= device->machine().root_device().ioport("CLINE5")->read(); }
-	if ((state->m_keyboard_mask & 0x40)!=0) { key &= device->machine().root_device().ioport("CLINE6")->read(); }
-	if ((state->m_keyboard_mask & 0x80)!=0) { key &= device->machine().root_device().ioport("CLINE7")->read(); }
+	if ((m_keyboard_mask & 0x01)!=0) { key &= ioport("CLINE0")->read(); }
+	if ((m_keyboard_mask & 0x02)!=0) { key &= machine().root_device().ioport("CLINE1")->read(); }
+	if ((m_keyboard_mask & 0x04)!=0) { key &= machine().root_device().ioport("CLINE2")->read(); }
+	if ((m_keyboard_mask & 0x08)!=0) { key &= machine().root_device().ioport("CLINE3")->read(); }
+	if ((m_keyboard_mask & 0x10)!=0) { key &= machine().root_device().ioport("CLINE4")->read(); }
+	if ((m_keyboard_mask & 0x20)!=0) { key &= machine().root_device().ioport("CLINE5")->read(); }
+	if ((m_keyboard_mask & 0x40)!=0) { key &= machine().root_device().ioport("CLINE6")->read(); }
+	if ((m_keyboard_mask & 0x80)!=0) { key &= machine().root_device().ioport("CLINE7")->read(); }
 	key &= 0xe0;
 	if (level <  0) {
-		key ^= state->m_tape_value;
+		key ^= m_tape_value;
 	}
 	return key;
 }
@@ -124,28 +120,28 @@ static READ8_DEVICE_HANDLER (rk7007_8255_portc_r )
 I8255A_INTERFACE( rk7007_ppi8255_interface )
 {
 	DEVCB_NULL,
-	DEVCB_HANDLER(radio86_8255_porta_w2),
-	DEVCB_HANDLER(radio86_8255_portb_r2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_porta_w2),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portb_r2),
 	DEVCB_NULL,
-	DEVCB_HANDLER(rk7007_8255_portc_r),
-	DEVCB_HANDLER(radio86_8255_portc_w2),
+	DEVCB_DRIVER_MEMBER(radio86_state,rk7007_8255_portc_r),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_8255_portc_w2),
 };
 
-static WRITE_LINE_DEVICE_HANDLER( hrq_w )
+WRITE_LINE_MEMBER(radio86_state::hrq_w)
 {
 	/* HACK - this should be connected to the BUSREQ line of Z80 */
-	device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, state);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, state);
 
 	/* HACK - this should be connected to the BUSACK line of Z80 */
-	i8257_hlda_w(device, state);
+	i8257_hlda_w(machine().device("dma8257"), state);
 }
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 I8257_INTERFACE( radio86_dma )
 {
-	DEVCB_LINE(hrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(radio86_state,hrq_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
@@ -154,10 +150,9 @@ I8257_INTERFACE( radio86_dma )
 	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER("i8275", i8275_dack_w), DEVCB_NULL }
 };
 
-static TIMER_CALLBACK( radio86_reset )
+TIMER_CALLBACK_MEMBER(radio86_state::radio86_reset)
 {
-	radio86_state *state = machine.driver_data<radio86_state>();
-	state->membank("bank1")->set_entry(0);
+	membank("bank1")->set_entry(0);
 }
 
 
@@ -168,17 +163,17 @@ READ8_MEMBER(radio86_state::radio_cpu_state_r)
 
 READ8_MEMBER(radio86_state::radio_io_r)
 {
-	return machine().device("maincpu")->memory().space(AS_PROGRAM)->read_byte((offset << 8) + offset);
+	return machine().device("maincpu")->memory().space(AS_PROGRAM).read_byte((offset << 8) + offset);
 }
 
 WRITE8_MEMBER(radio86_state::radio_io_w)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte((offset << 8) + offset,data);
+	machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte((offset << 8) + offset,data);
 }
 
 MACHINE_RESET_MEMBER(radio86_state,radio86)
 {
-	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(radio86_reset));
+	machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(radio86_state::radio86_reset),this));
 	membank("bank1")->set_entry(1);
 
 	m_keyboard_mask = 0;
@@ -191,47 +186,43 @@ WRITE8_MEMBER(radio86_state::radio86_pagesel)
 	m_disk_sel = data;
 }
 
-static READ8_DEVICE_HANDLER (radio86_romdisk_porta_r )
+READ8_MEMBER(radio86_state::radio86_romdisk_porta_r)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	UINT8 *romdisk = state->memregion("maincpu")->base() + 0x10000;
-	if ((state->m_disk_sel & 0x0f) ==0) {
-		return romdisk[state->m_romdisk_msb*256+state->m_romdisk_lsb];
+	UINT8 *romdisk = memregion("maincpu")->base() + 0x10000;
+	if ((m_disk_sel & 0x0f) ==0) {
+		return romdisk[m_romdisk_msb*256+m_romdisk_lsb];
 	} else {
-		if (state->m_disk_sel==0xdf) {
-			return state->m_radio_ram_disk[state->m_romdisk_msb*256+state->m_romdisk_lsb + 0x10000];
+		if (m_disk_sel==0xdf) {
+			return m_radio_ram_disk[m_romdisk_msb*256+m_romdisk_lsb + 0x10000];
 		} else {
-			return state->m_radio_ram_disk[state->m_romdisk_msb*256+state->m_romdisk_lsb];
+			return m_radio_ram_disk[m_romdisk_msb*256+m_romdisk_lsb];
 		}
 	}
 }
 
-static WRITE8_DEVICE_HANDLER (radio86_romdisk_portb_w )
+WRITE8_MEMBER(radio86_state::radio86_romdisk_portb_w)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	state->m_romdisk_lsb = data;
+	m_romdisk_lsb = data;
 }
 
-static WRITE8_DEVICE_HANDLER (radio86_romdisk_portc_w )
+WRITE8_MEMBER(radio86_state::radio86_romdisk_portc_w)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	state->m_romdisk_msb = data;
+	m_romdisk_msb = data;
 }
 
 I8255A_INTERFACE( radio86_ppi8255_interface_2 )
 {
-	DEVCB_HANDLER(radio86_romdisk_porta_r),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_romdisk_porta_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(radio86_romdisk_portb_w),
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_romdisk_portb_w),
 	DEVCB_NULL,
-	DEVCB_HANDLER(radio86_romdisk_portc_w)
+	DEVCB_DRIVER_MEMBER(radio86_state,radio86_romdisk_portc_w)
 };
 
-static WRITE8_DEVICE_HANDLER (mikrosha_8255_font_page_w )
+WRITE8_MEMBER(radio86_state::mikrosha_8255_font_page_w)
 {
-	radio86_state *state = device->machine().driver_data<radio86_state>();
-	state->m_mikrosha_font_page = (data  > 7) & 1;
+	m_mikrosha_font_page = (data  > 7) & 1;
 }
 
 I8255A_INTERFACE( mikrosha_ppi8255_interface_2 )
@@ -239,7 +230,7 @@ I8255A_INTERFACE( mikrosha_ppi8255_interface_2 )
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(mikrosha_8255_font_page_w),
+	DEVCB_DRIVER_MEMBER(radio86_state,mikrosha_8255_font_page_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };

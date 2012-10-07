@@ -252,22 +252,22 @@ INPUT_CHANGED_MEMBER( cosmicos_state::clear_data )
 
 void cosmicos_state::set_ram_mode()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	if (m_ram_disable)
 	{
-		program->unmap_readwrite(0xff00, 0xffff);
+		program.unmap_readwrite(0xff00, 0xffff);
 	}
 	else
 	{
 		if (m_ram_protect)
 		{
-			program->install_rom(0xff00, 0xffff, ram);
+			program.install_rom(0xff00, 0xffff, ram);
 		}
 		else
 		{
-			program->install_ram(0xff00, 0xffff, ram);
+			program.install_ram(0xff00, 0xffff, ram);
 		}
 	}
 }
@@ -341,20 +341,16 @@ INPUT_PORTS_END
 
 /* Video */
 
-static TIMER_DEVICE_CALLBACK( digit_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(cosmicos_state::digit_tick)
 {
-	cosmicos_state *state = timer.machine().driver_data<cosmicos_state>();
+	m_digit = !m_digit;
 
-	state->m_digit = !state->m_digit;
-
-	output_set_digit_value(state->m_digit, state->m_segment);
+	output_set_digit_value(m_digit, m_segment);
 }
 
-static TIMER_DEVICE_CALLBACK( int_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(cosmicos_state::int_tick)
 {
-	cosmicos_state *state = timer.machine().driver_data<cosmicos_state>();
-
-	state->m_maincpu->set_input_line(COSMAC_INPUT_LINE_INT, ASSERT_LINE);
+	m_maincpu->set_input_line(COSMAC_INPUT_LINE_INT, ASSERT_LINE);
 }
 
 WRITE_LINE_MEMBER( cosmicos_state::dmaout_w )
@@ -486,7 +482,7 @@ static COSMAC_INTERFACE( cosmicos_config )
 
 void cosmicos_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* initialize LED display */
 	m_led->rbi_w(1);
@@ -495,11 +491,11 @@ void cosmicos_state::machine_start()
 	switch (m_ram->size())
 	{
 	case 256:
-		program->unmap_readwrite(0x0000, 0xbfff);
+		program.unmap_readwrite(0x0000, 0xbfff);
 		break;
 
 	case 4*1024:
-		program->unmap_readwrite(0x1000, 0xbfff);
+		program.unmap_readwrite(0x1000, 0xbfff);
 		break;
 	}
 
@@ -569,8 +565,8 @@ static MACHINE_CONFIG_START( cosmicos, cosmicos_state )
     /* video hardware */
 	MCFG_DEFAULT_LAYOUT( layout_cosmicos )
 	MCFG_DM9368_ADD(DM9368_TAG, led_intf)
-	MCFG_TIMER_ADD_PERIODIC("digit", digit_tick, attotime::from_hz(100))
-	MCFG_TIMER_ADD_PERIODIC("interrupt", int_tick, attotime::from_hz(1000))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("digit", cosmicos_state, digit_tick, attotime::from_hz(100))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("interrupt", cosmicos_state, int_tick, attotime::from_hz(1000))
 
 	MCFG_CDP1864_SCREEN_ADD(SCREEN_TAG, XTAL_1_75MHz)
 	MCFG_SCREEN_UPDATE_DEVICE(CDP1864_TAG, cdp1864_device, screen_update)
@@ -622,9 +618,9 @@ DIRECT_UPDATE_MEMBER(cosmicos_state::cosmicos_direct_update_handler)
 
 DRIVER_INIT_MEMBER(cosmicos_state,cosmicos)
 {
-	address_space *program = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
+	address_space &program = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
 
-	program->set_direct_update_handler(direct_update_delegate(FUNC(cosmicos_state::cosmicos_direct_update_handler), this));
+	program.set_direct_update_handler(direct_update_delegate(FUNC(cosmicos_state::cosmicos_direct_update_handler), this));
 }
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME    FLAGS */

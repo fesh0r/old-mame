@@ -241,6 +241,11 @@ public:
 	DECLARE_MACHINE_START(tk2000);
 	DECLARE_MACHINE_START(laser128);
 	DECLARE_MACHINE_START(space84);
+	UINT32 screen_update_apple2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(apple2_interrupt);
+	DECLARE_WRITE8_MEMBER(a2bus_irq_w);
+	DECLARE_WRITE8_MEMBER(a2bus_nmi_w);
+	DECLARE_WRITE8_MEMBER(a2bus_inh_w);
 };
 
 
@@ -264,12 +269,10 @@ void apple2_init_common(running_machine &machine);
 
 
 UINT8 apple2_getfloatingbusvalue(running_machine &machine);
-READ8_HANDLER( apple2_c0xx_r );
-WRITE8_HANDLER( apple2_c0xx_w );
-READ8_HANDLER( apple2_c080_r );
-WRITE8_HANDLER( apple2_c080_w );
-
-TIMER_DEVICE_CALLBACK( apple2_interrupt );
+DECLARE_READ8_HANDLER( apple2_c0xx_r );
+DECLARE_WRITE8_HANDLER( apple2_c0xx_w );
+DECLARE_READ8_HANDLER( apple2_c080_r );
+DECLARE_WRITE8_HANDLER( apple2_c080_w );
 
 INT8 apple2_slotram_r(running_machine &machine, int slotnum, int offset);
 
@@ -280,14 +283,9 @@ int apple2_pressed_specialkey(running_machine &machine, UINT8 key);
 void apple2_setup_memory(running_machine &machine, const apple2_memmap_config *config);
 void apple2_update_memory(running_machine &machine);
 
-
-
 /*----------- defined in video/apple2.c -----------*/
 
 void apple2_video_start(running_machine &machine, const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
 
-
-
-SCREEN_UPDATE_IND16( apple2 );
 
 #endif /* APPLE2_H_ */

@@ -11,6 +11,7 @@
 #include "imagedev/cassette.h"
 #include "machine/ctronics.h"
 #include "machine/z80ctc.h"
+#include "sound/sn76496.h"
 
 #define Z80_TAG			"z80"
 #define Z80CTC_TAG		"z80ctc"
@@ -26,7 +27,11 @@ class mtx_state : public driver_device
 {
 public:
 	mtx_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_sn(*this, SN76489A_TAG)
+	{ }
+
+	required_device<sn76489a_device> m_sn;
 
 	/* keyboard state */
 	UINT8 m_key_sense;
@@ -46,6 +51,7 @@ public:
 
 	/* timers */
 	device_t *m_cassette_timer;
+
 	DECLARE_WRITE8_MEMBER(mtx_bankswitch_w);
 	DECLARE_WRITE8_MEMBER(mtx_sound_latch_w);
 	DECLARE_WRITE8_MEMBER(mtx_sense_w);
@@ -58,27 +64,19 @@ public:
 	DECLARE_WRITE8_MEMBER(hrx_attr_w);
 	DECLARE_MACHINE_START(mtx512);
 	DECLARE_MACHINE_RESET(mtx512);
+	TIMER_DEVICE_CALLBACK_MEMBER(ctc_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(cassette_tick);
+	DECLARE_WRITE_LINE_MEMBER(ctc_trg1_w);
+	DECLARE_WRITE_LINE_MEMBER(ctc_trg2_w);
+	DECLARE_WRITE_LINE_MEMBER(mtx_tms9929a_interrupt);
+	DECLARE_READ8_MEMBER(mtx_strobe_r);
+	DECLARE_READ8_MEMBER(mtx_sound_strobe_r);
+	DECLARE_WRITE8_MEMBER(mtx_cst_w);
+	DECLARE_READ8_MEMBER(mtx_prt_r);
 };
 
 /*----------- defined in machine/mtx.c -----------*/
 
-
-
 SNAPSHOT_LOAD( mtx );
-
-
-/* Sound */
-READ8_DEVICE_HANDLER( mtx_sound_strobe_r );
-
-/* Cassette */
-WRITE8_DEVICE_HANDLER( mtx_cst_w );
-
-/* Printer */
-READ8_DEVICE_HANDLER( mtx_strobe_r );
-READ8_DEVICE_HANDLER( mtx_prt_r );
-
-/* Keyboard */
-
-/* HRX */
 
 #endif /* __MTX_H__ */

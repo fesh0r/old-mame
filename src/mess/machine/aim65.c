@@ -47,7 +47,7 @@ static void dl1416_update(device_t *device, int index)
 	dl1416_ce_w(device, state->m_pia_a & (0x04 << index));
 	dl1416_wr_w(device, BIT(state->m_pia_a, 7));
 	dl1416_cu_w(device, BIT(state->m_pia_b, 7));
-	dl1416_data_w(device, state->m_pia_a & 0x03, state->m_pia_b & 0x7f);
+	dl1416_data_w(device, state->generic_space(), state->m_pia_a & 0x03, state->m_pia_b & 0x7f);
 }
 
 static void aim65_pia(running_machine &machine)
@@ -141,10 +141,10 @@ WRITE8_MEMBER( aim65_state::aim65_riot_a_w )
 void aim65_state::machine_start()
 {
 	ram_device *ram = machine().device<ram_device>(RAM_TAG);
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	/* Init RAM */
-	space->install_ram(0x0000, ram->size() - 1, ram->pointer());
+	space.install_ram(0x0000, ram->size() - 1, ram->pointer());
 
 	m_pb_save = 0;
 }
@@ -300,42 +300,41 @@ DRIVER_MEMBER(aim65_state, aim65_printer_on), // out CB2
 */
 
 
-static TIMER_CALLBACK(aim65_printer_timer)
+TIMER_CALLBACK_MEMBER(aim65_state::aim65_printer_timer)
 {
-	aim65_state *state = machine.driver_data<aim65_state>();
-	via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
+	via6522_device *via_0 = machine().device<via6522_device>("via6522_0");
 
-	via_0->write_cb1(state->m_printer_level);
-	via_0->write_cb1(!state->m_printer_level);
-	state->m_printer_level ^= 1;
+	via_0->write_cb1(m_printer_level);
+	via_0->write_cb1(!m_printer_level);
+	m_printer_level ^= 1;
 
-	if (state->m_printer_dir)
+	if (m_printer_dir)
 	{
-		if (state->m_printer_x > 0)
-			state->m_printer_x--;
+		if (m_printer_x > 0)
+			m_printer_x--;
 		else
 		{
-			state->m_printer_dir = 0;
-			state->m_printer_x++;
-			state->m_printer_y++;
+			m_printer_dir = 0;
+			m_printer_x++;
+			m_printer_y++;
 		}
 	}
 	else
 	{
-		if (state->m_printer_x < 9)
-			state->m_printer_x++;
+		if (m_printer_x < 9)
+			m_printer_x++;
 		else
 		{
-			state->m_printer_dir = 1;
-			state->m_printer_x--;
-			state->m_printer_y++;
+			m_printer_dir = 1;
+			m_printer_x--;
+			m_printer_y++;
 		}
 	}
 
-	if (state->m_printer_y > 500) state->m_printer_y = 0;
+	if (m_printer_y > 500) m_printer_y = 0;
 
-	state->m_flag_a=0;
-	state->m_flag_b=0;
+	m_flag_a=0;
+	m_flag_b=0;
 }
 
 
@@ -369,7 +368,7 @@ WRITE8_MEMBER( aim65_state::aim65_pa_w )
 
 VIDEO_START_MEMBER(aim65_state,aim65)
 {
-	m_print_timer = machine().scheduler().timer_alloc(FUNC(aim65_printer_timer));
+	m_print_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(aim65_state::aim65_printer_timer),this));
 	m_printerRAM = auto_alloc_array(machine(), UINT16, (600 * 10 * 2) / 2);
 	memset(m_printerRAM, 0, videoram_size);
 	VIDEO_START_CALL_MEMBER(generic);

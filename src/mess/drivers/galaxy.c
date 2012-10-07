@@ -187,7 +187,7 @@ static MACHINE_CONFIG_START( galaxy, galaxy_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL / 2)
 	MCFG_CPU_PROGRAM_MAP(galaxy_mem)
-	MCFG_CPU_VBLANK_INT("screen", galaxy_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxy_state,  galaxy_interrupt)
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
 
@@ -196,7 +196,7 @@ static MACHINE_CONFIG_START( galaxy, galaxy_state )
 	/* video hardware */
 	MCFG_SCREEN_SIZE(384, 212)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 208-1)
-	MCFG_SCREEN_UPDATE_STATIC( galaxy )
+	MCFG_SCREEN_UPDATE_DRIVER(galaxy_state, screen_update_galaxy)
 
 	MCFG_GFXDECODE(galaxy)
 	MCFG_PALETTE_LENGTH(2)
@@ -223,7 +223,7 @@ static MACHINE_CONFIG_START( galaxyp, galaxy_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL / 2)
 	MCFG_CPU_PROGRAM_MAP(galaxyp_mem)
 	MCFG_CPU_IO_MAP(galaxyp_io)
-	MCFG_CPU_VBLANK_INT("screen", galaxy_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxy_state,  galaxy_interrupt)
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
 
@@ -232,7 +232,7 @@ static MACHINE_CONFIG_START( galaxyp, galaxy_state )
 	/* video hardware */
 	MCFG_SCREEN_SIZE(384, 208)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 208-1)
-	MCFG_SCREEN_UPDATE_STATIC( galaxy )
+	MCFG_SCREEN_UPDATE_DRIVER(galaxy_state, screen_update_galaxy)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT( black_and_white )

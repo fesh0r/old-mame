@@ -48,8 +48,8 @@ static void scanline_update(screen_device &screen, int scanline)
 
 WRITE16_MEMBER(klax_state::interrupt_ack_w)
 {
-	atarigen_scanline_int_ack_w(&space, offset, data, mem_mask);
-	atarigen_video_int_ack_w(&space, offset, data, mem_mask);
+	atarigen_scanline_int_ack_w(space, offset, data, mem_mask);
+	atarigen_video_int_ack_w(space, offset, data, mem_mask);
 }
 
 
@@ -184,7 +184,7 @@ static MACHINE_CONFIG_START( klax, klax_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(klax)
+	MCFG_SCREEN_UPDATE_DRIVER(klax_state, screen_update_klax)
 
 	MCFG_VIDEO_START_OVERRIDE(klax_state,klax)
 

@@ -542,7 +542,7 @@ INPUT_PORTS_END
 static MACHINE_CONFIG_START( gstriker, gstriker_state )
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
 	MCFG_CPU_PROGRAM_MAP(gstriker_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gstriker_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -555,7 +555,7 @@ static MACHINE_CONFIG_START( gstriker, gstriker_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(5000) /* hand-tuned, it needs a bit */)
 	MCFG_SCREEN_SIZE(64*8, 64*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(gstriker)
+	MCFG_SCREEN_UPDATE_DRIVER(gstriker_state, screen_update_gstriker)
 
 	MCFG_GFXDECODE(gstriker)
 	MCFG_PALETTE_LENGTH(0x800)
@@ -580,7 +580,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_START( vgoal, gstriker_state )
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(vgoal_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gstriker_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -593,7 +593,7 @@ static MACHINE_CONFIG_START( vgoal, gstriker_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(5000) /* hand-tuned, it needs a bit */)
 	MCFG_SCREEN_SIZE(64*8, 64*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(gstriker)
+	MCFG_SCREEN_UPDATE_DRIVER(gstriker_state, screen_update_gstriker)
 
 	MCFG_GFXDECODE(gstriker)
 	MCFG_PALETTE_LENGTH(0x2000)
@@ -1013,11 +1013,11 @@ static void mcu_init( running_machine &machine )
 	state->m_pending_command = 0;
 	state->m_mcu_data = 0;
 
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x20008a, 0x20008b, write16_delegate(FUNC(gstriker_state::twrldc94_mcu_w),state));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x20008a, 0x20008b, read16_delegate(FUNC(gstriker_state::twrldc94_mcu_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x20008a, 0x20008b, write16_delegate(FUNC(gstriker_state::twrldc94_mcu_w),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x20008a, 0x20008b, read16_delegate(FUNC(gstriker_state::twrldc94_mcu_r),state));
 
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x20008e, 0x20008f, write16_delegate(FUNC(gstriker_state::twrldc94_prot_reg_w),state));
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x20008e, 0x20008f, read16_delegate(FUNC(gstriker_state::twrldc94_prot_reg_r),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x20008e, 0x20008f, write16_delegate(FUNC(gstriker_state::twrldc94_prot_reg_w),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x20008e, 0x20008f, read16_delegate(FUNC(gstriker_state::twrldc94_prot_reg_r),state));
 }
 
 DRIVER_INIT_MEMBER(gstriker_state,twrldc94)
@@ -1037,8 +1037,8 @@ DRIVER_INIT_MEMBER(gstriker_state,vgoalsoc)
 	m_gametype = 3;
 	mcu_init( machine() );
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x200090, 0x200091, write16_delegate(FUNC(gstriker_state::vbl_toggle_w),this)); // vblank toggle
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x200090, 0x200091, read16_delegate(FUNC(gstriker_state::vbl_toggle_r),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x200090, 0x200091, write16_delegate(FUNC(gstriker_state::vbl_toggle_w),this)); // vblank toggle
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200090, 0x200091, read16_delegate(FUNC(gstriker_state::vbl_toggle_r),this));
 }
 
 /*** GAME DRIVERS ************************************************************/

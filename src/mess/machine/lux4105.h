@@ -15,7 +15,7 @@
 
 #include "emu.h"
 #include "abc1600_bus.h"
-#include "machine/scsibus.h"
+#include "machine/scsicb.h"
 
 
 
@@ -71,7 +71,7 @@ private:
 
 	abc1600bus_slot_device *m_slot;
 
-	required_device<scsibus_device> m_sasibus;
+	required_device<scsicb_device> m_sasibus;
 
 	int m_cs;
 	int m_io;

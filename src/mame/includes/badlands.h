@@ -30,12 +30,9 @@ public:
 	DECLARE_MACHINE_RESET(badlands);
 	DECLARE_VIDEO_START(badlands);
 	DECLARE_MACHINE_RESET(badlandsb);
+	UINT32 screen_update_badlands(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vblank_int);
 };
 
-
 /*----------- defined in video/badlands.c -----------*/
-
-WRITE16_HANDLER( badlands_pf_bank_w );
-
-
-SCREEN_UPDATE_IND16( badlands );
+DECLARE_WRITE16_HANDLER( badlands_pf_bank_w );

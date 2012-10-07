@@ -530,7 +530,7 @@ static MACHINE_CONFIG_START( arcadia, arcadia_state )
 	MCFG_CPU_ADD("maincpu", S2650, 3580000/4)        /* 0.895 MHz */
 	MCFG_CPU_PROGRAM_MAP(arcadia_mem)
 	MCFG_CPU_IO_MAP(arcadia_io)
-	MCFG_CPU_PERIODIC_INT(arcadia_video_line, 262*60)
+	MCFG_CPU_PERIODIC_INT_DRIVER(arcadia_state, arcadia_video_line,  262*60)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	/* video hardware */
@@ -539,7 +539,7 @@ static MACHINE_CONFIG_START( arcadia, arcadia_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(128+2*XPOS, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0, 2*XPOS+128-1, 0, 262-1)
-	MCFG_SCREEN_UPDATE_STATIC( arcadia )
+	MCFG_SCREEN_UPDATE_DRIVER(arcadia_state, screen_update_arcadia)
 
 	MCFG_GFXDECODE( arcadia )
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(arcadia_palette))

@@ -334,6 +334,8 @@ public:
 	UINT8	m_bank[8];
 	UINT8	*m_bank_base[8];
 	virtual void palette_init();
+	DECLARE_INPUT_CHANGED_MEMBER(trigger_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(kb_timer);
 };
 
 
@@ -499,26 +501,25 @@ static ADDRESS_MAP_START( nakajies_io_map, AS_IO, 8, nakajies_state )
 ADDRESS_MAP_END
 
 
-static INPUT_CHANGED( trigger_irq )
+INPUT_CHANGED_MEMBER(nakajies_state::trigger_irq)
 {
-	nakajies_state *state = field.machine().driver_data<nakajies_state>();
-	UINT8 irqs = field.machine().root_device().ioport( "debug" )->read();
+	UINT8 irqs = machine().root_device().ioport( "debug" )->read();
 
-	state->m_irq_active |= irqs;
-	state->nakajies_update_irqs(field.machine());
+	m_irq_active |= irqs;
+	nakajies_update_irqs(machine());
 }
 
 
 static INPUT_PORTS_START( nakajies )
 	PORT_START( "debug" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F1 ) PORT_NAME( "irq 0xff" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F2 ) PORT_NAME( "irq 0xfe" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F3 ) PORT_NAME( "irq 0xfd" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F4 ) PORT_NAME( "irq 0xfc" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F5 ) PORT_NAME( "irq 0xfb" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F6 ) PORT_NAME( "irq 0xfa" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F7 ) PORT_NAME( "irq 0xf9" ) PORT_CHANGED( trigger_irq, NULL )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F8 ) PORT_NAME( "irq 0xf8" ) PORT_CHANGED( trigger_irq, NULL )
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F1 ) PORT_NAME( "irq 0xff" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F2 ) PORT_NAME( "irq 0xfe" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F3 ) PORT_NAME( "irq 0xfd" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F4 ) PORT_NAME( "irq 0xfc" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F5 ) PORT_NAME( "irq 0xfb" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F6 ) PORT_NAME( "irq 0xfa" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F7 ) PORT_NAME( "irq 0xf9" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE( KEYCODE_F8 ) PORT_NAME( "irq 0xf8" ) PORT_CHANGED_MEMBER(DEVICE_SELF, nakajies_state,  trigger_irq, NULL )
 
 	PORT_START( "ROW0" )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Left Shift")	PORT_CODE( KEYCODE_LSHIFT )
@@ -674,24 +675,23 @@ UINT32 nakajies_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 }
 
 
-static TIMER_DEVICE_CALLBACK( kb_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(nakajies_state::kb_timer)
 {
-	nakajies_state *state = timer.machine().driver_data<nakajies_state>();
 
-	if (state->m_matrix > 0x09)
+	if (m_matrix > 0x09)
 	{
 		// reset the keyboard scan
-		state->m_matrix = 0;
-		state->m_irq_active |= 0x20;
+		m_matrix = 0;
+		m_irq_active |= 0x20;
 	}
 	else
 	{
 		// next row
-		state->m_matrix++;
-		state->m_irq_active |= 0x10;
+		m_matrix++;
+		m_irq_active |= 0x10;
 	}
 
-	state->nakajies_update_irqs(timer.machine());
+	nakajies_update_irqs(machine());
 }
 
 
@@ -759,7 +759,7 @@ static MACHINE_CONFIG_START( nakajies210, nakajies_state )
 	/* rtc */
 	MCFG_RP5C01_ADD("rtc", XTAL_32_768kHz, rtc_intf)
 
-	MCFG_TIMER_ADD_PERIODIC("kb_timer", kb_timer, attotime::from_hz(250))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("kb_timer", nakajies_state, kb_timer, attotime::from_hz(250))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( dator3k, nakajies210 )

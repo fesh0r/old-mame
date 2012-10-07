@@ -378,7 +378,7 @@ static MACHINE_CONFIG_START( fstarfrc, tecmo16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,24000000/2)			/* 12MHz */
 	MCFG_CPU_PROGRAM_MAP(fstarfrc_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tecmo16_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,8000000/2)			/* 4MHz */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -391,7 +391,7 @@ static MACHINE_CONFIG_START( fstarfrc, tecmo16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tecmo16)
+	MCFG_SCREEN_UPDATE_DRIVER(tecmo16_state, screen_update_tecmo16)
 
 	MCFG_GFXDECODE(tecmo16)
 	MCFG_PALETTE_LENGTH(4096)

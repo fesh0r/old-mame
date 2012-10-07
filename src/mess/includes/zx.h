@@ -57,25 +57,14 @@ public:
 	DECLARE_PALETTE_INIT(ts1000);
 	DECLARE_MACHINE_RESET(pc8300);
 	DECLARE_MACHINE_RESET(pow3000);
+	void screen_eof_zx(screen_device &screen, bool state);
+	TIMER_CALLBACK_MEMBER(zx_tape_pulse);
+	TIMER_CALLBACK_MEMBER(zx_ula_nmi);
+	TIMER_CALLBACK_MEMBER(zx_ula_irq);
 };
-
-
-/*----------- defined in machine/zx.c -----------*/
-
-
-
-
-
 /*----------- defined in video/zx.c -----------*/
-
-
-SCREEN_VBLANK( zx );
 
 void zx_ula_bkgnd(running_machine &machine, int color);
 void zx_ula_r(running_machine &machine, int offs, const char *region, const UINT8 param);
-
-//extern int ula_nmi_active;
-//extern int ula_scancode_count;
-
 
 #endif /* ZX_H_ */

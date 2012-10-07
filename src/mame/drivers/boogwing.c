@@ -343,7 +343,7 @@ static MACHINE_CONFIG_START( boogwing, boogwing_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)	/* DE102 */
 	MCFG_CPU_PROGRAM_MAP(boogwing_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", boogwing_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/4)
 	MCFG_CPU_PROGRAM_MAP(audio_map)
@@ -354,7 +354,7 @@ static MACHINE_CONFIG_START( boogwing, boogwing_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(boogwing)
+	MCFG_SCREEN_UPDATE_DRIVER(boogwing_state, screen_update_boogwing)
 
 	MCFG_PALETTE_LENGTH(2048)
 	MCFG_GFXDECODE(boogwing)

@@ -75,6 +75,14 @@ public:
 	DECLARE_MACHINE_RESET(kaypro2x);
 	DECLARE_PALETTE_INIT(kaypro);
 	DECLARE_MACHINE_RESET(kay_kbd);
+	UINT32 screen_update_kayproii(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_kaypro2x(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_omni2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(kay_kbd_interrupt);
+	TIMER_CALLBACK_MEMBER(kaypro_timer_callback);
+	DECLARE_WRITE_LINE_MEMBER(kaypro_interrupt);
+	DECLARE_READ8_MEMBER(kaypro_sio_r);
+	DECLARE_WRITE8_MEMBER(kaypro_sio_w);
 };
 
 
@@ -83,7 +91,6 @@ public:
 UINT8 kay_kbd_c_r( running_machine &machine );
 UINT8 kay_kbd_d_r( running_machine &machine );
 void kay_kbd_d_w( running_machine &machine, UINT8 data );
-INTERRUPT_GEN( kay_kbd_interrupt );
 
 INPUT_PORTS_EXTERN( kay_kbd );
 
@@ -96,12 +103,6 @@ extern const z80pio_interface kaypro4_pio_s_intf;
 extern const z80sio_interface kaypro_sio_intf;
 extern const wd17xx_interface kaypro_wd1793_interface;
 
-READ8_DEVICE_HANDLER( kaypro_sio_r );
-WRITE8_DEVICE_HANDLER( kaypro_sio_w );
-
-
-
-
 
 QUICKLOAD_LOAD( kayproii );
 QUICKLOAD_LOAD( kaypro2x );
@@ -109,8 +110,3 @@ QUICKLOAD_LOAD( kaypro2x );
 /*----------- defined in video/kaypro.c -----------*/
 
 MC6845_UPDATE_ROW( kaypro2x_update_row );
-
-
-SCREEN_UPDATE_IND16( kayproii );
-SCREEN_UPDATE_IND16( omni2 );
-SCREEN_UPDATE_RGB32( kaypro2x );

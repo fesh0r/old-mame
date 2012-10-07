@@ -542,15 +542,14 @@ static void draw_gfxbitmap(running_machine &machine, bitmap_rgb32 &bitmap,const 
 	}
 }
 
-SCREEN_UPDATE_RGB32( x1 )
+UINT32 x1_state::screen_update_x1(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	x1_state *state = screen.machine().driver_data<x1_state>();
 
 	bitmap.fill(MAKE_ARGB(0xff,0x00,0x00,0x00), cliprect);
 
-	draw_gfxbitmap(screen.machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri);
-	draw_fgtilemap(screen.machine(),bitmap,cliprect);
-	draw_gfxbitmap(screen.machine(),bitmap,cliprect,state->m_scrn_reg.disp_bank,state->m_scrn_reg.pri^0xff);
+	draw_gfxbitmap(machine(),bitmap,cliprect,m_scrn_reg.disp_bank,m_scrn_reg.pri);
+	draw_fgtilemap(machine(),bitmap,cliprect);
+	draw_gfxbitmap(machine(),bitmap,cliprect,m_scrn_reg.disp_bank,m_scrn_reg.pri^0xff);
 
 	return 0;
 }
@@ -808,26 +807,24 @@ static void cmt_command( running_machine &machine, UINT8 cmd )
 	logerror("CMT: Command 0xe9-0x%02x received.\n",cmd);
 }
 
-TIMER_DEVICE_CALLBACK( x1_cmt_wind_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(x1_state::x1_cmt_wind_timer)
 {
-	x1_state *state = timer.machine().driver_data<x1_state>();
-
-	if(state->m_cass->get_image() == NULL) //avoid a crash if a disk game tries to access this
+	if(m_cass->get_image() == NULL) //avoid a crash if a disk game tries to access this
 		return;
 
-	switch(state->m_cmt_current_cmd)
+	switch(m_cmt_current_cmd)
 	{
 		case 0x03:
 		case 0x05:  // Fast Forwarding tape
-			state->m_cass->seek(1,SEEK_CUR);
-			if(state->m_cass->get_position() >= state->m_cass->get_length())  // at end?
-				cmt_command(timer.machine(),0x01);  // Stop tape
+			m_cass->seek(1,SEEK_CUR);
+			if(m_cass->get_position() >= m_cass->get_length())  // at end?
+				cmt_command(machine(),0x01);  // Stop tape
 			break;
 		case 0x04:
 		case 0x06:  // Rewinding tape
-			state->m_cass->seek(-1,SEEK_CUR);
-			if(state->m_cass->get_position() <= 0) // at beginning?
-				cmt_command(timer.machine(),0x01);  // Stop tape
+			m_cass->seek(-1,SEEK_CUR);
+			if(m_cass->get_position() <= 0) // at beginning?
+				cmt_command(machine(),0x01);  // Stop tape
 			break;
 	}
 }
@@ -999,13 +996,13 @@ READ8_MEMBER( x1_state::x1_fdc_r )
 	switch(offset+0xff8)
 	{
 		case 0x0ff8:
-			return wd17xx_status_r(m_fdc,offset);
+			return wd17xx_status_r(m_fdc,space, offset);
 		case 0x0ff9:
-			return wd17xx_track_r(m_fdc,offset);
+			return wd17xx_track_r(m_fdc,space, offset);
 		case 0x0ffa:
-			return wd17xx_sector_r(m_fdc,offset);
+			return wd17xx_sector_r(m_fdc,space, offset);
 		case 0x0ffb:
-			return wd17xx_data_r(m_fdc,offset);
+			return wd17xx_data_r(m_fdc,space, offset);
 		case 0x0ffc:
 			printf("FDC: read FM type\n");
 			return 0xff;
@@ -1028,16 +1025,16 @@ WRITE8_MEMBER( x1_state::x1_fdc_w )
 	switch(offset+0xff8)
 	{
 		case 0x0ff8:
-			wd17xx_command_w(m_fdc,offset,data);
+			wd17xx_command_w(m_fdc,space, offset,data);
 			break;
 		case 0x0ff9:
-			wd17xx_track_w(m_fdc,offset,data);
+			wd17xx_track_w(m_fdc,space, offset,data);
 			break;
 		case 0x0ffa:
-			wd17xx_sector_w(m_fdc,offset,data);
+			wd17xx_sector_w(m_fdc,space, offset,data);
 			break;
 		case 0x0ffb:
-			wd17xx_data_w(m_fdc,offset,data);
+			wd17xx_data_w(m_fdc,space, offset,data);
 			break;
 		case 0x0ffc:
 			wd17xx_set_drive(m_fdc,data & 3);
@@ -1061,16 +1058,16 @@ static const wd17xx_interface x1_mb8877a_interface =
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
-static WRITE_LINE_DEVICE_HANDLER( fdc_drq_w )
+WRITE_LINE_MEMBER(x1_state::fdc_drq_w)
 {
-	z80dma_rdy_w(device->machine().device("dma"), state ^ 1);
+	z80dma_rdy_w(machine().device("dma"), state ^ 1);
 }
 
 static const wd17xx_interface x1turbo_mb8877a_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE("fdc", fdc_drq_w),
+	DEVCB_DRIVER_LINE_MEMBER(x1_state,fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
@@ -1618,7 +1615,7 @@ READ8_MEMBER( x1_state::x1_io_r )
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ return x1_pcg_r(space, offset-0x1400); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ return x1_sub_io_r(space, 0); }
 	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ return machine().device<i8255_device>("ppi8255_0")->read(space, (offset-0x1a00) & 3); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(machine().device("ay"), 0); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(machine().device("ay"), space, 0); }
 //  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { return z80dma_r(machine().device("dma"), 0); }
 //  else if(offset >= 0x1f90 && offset <= 0x1f91)   { return z80sio_c_r(machine().device("sio"), (offset-0x1f90) & 1); }
 //  else if(offset >= 0x1f92 && offset <= 0x1f93)   { return z80sio_d_r(machine().device("sio"), (offset-0x1f92) & 1); }
@@ -1631,7 +1628,7 @@ READ8_MEMBER( x1_state::x1_io_r )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ return m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)]; }
 	else
 	{
-		//logerror("(PC=%06x) Read i/o address %04x\n",space->device().safe_pc(),offset);
+		//logerror("(PC=%06x) Read i/o address %04x\n",space.device().safe_pc(),offset);
 	}
 	return 0xff;
 }
@@ -1654,8 +1651,8 @@ WRITE8_MEMBER( x1_state::x1_io_w )
 	else if(offset == 0x1800 || offset == 0x1801)	{ x1_6845_w(space, offset-0x1800, data); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ x1_sub_io_w(space, 0,data); }
 	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ machine().device<i8255_device>("ppi8255_0")->write(space, (offset-0x1a00) & 3,data); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(machine().device("ay"), 0,data); }
-	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(machine().device("ay"), 0,data); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(machine().device("ay"), space, 0,data); }
+	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(machine().device("ay"), space, 0,data); }
 	else if(offset >= 0x1d00 && offset <= 0x1dff)	{ x1_rom_bank_1_w(space,0,data); }
 	else if(offset >= 0x1e00 && offset <= 0x1eff)	{ x1_rom_bank_0_w(space,0,data); }
 //  else if(offset >= 0x1f80 && offset <= 0x1f8f)   { z80dma_w(machine().device("dma"), 0,data); }
@@ -1674,7 +1671,7 @@ WRITE8_MEMBER( x1_state::x1_io_w )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)] = data; }
 	else
 	{
-		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",space->device().safe_pc(),data,offset);
+		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",space.device().safe_pc(),data,offset);
 	}
 }
 
@@ -1684,8 +1681,8 @@ READ8_MEMBER( x1_state::x1turbo_io_r )
 	m_io_bank_mode = 0; //any read disables the extended mode.
 
 	// a * at the end states devices used on plain X1 too
-	if(offset == 0x0700)							{ return (ym2151_r(machine().device("ym"), offset-0x0700) & 0x7f) | (ioport("SOUND_SW")->read() & 0x80); }
-	else if(offset == 0x0701)		                { return ym2151_r(machine().device("ym"), offset-0x0700); }
+	if(offset == 0x0700)							{ return (ym2151_r(machine().device("ym"), space, offset-0x0700) & 0x7f) | (ioport("SOUND_SW")->read() & 0x80); }
+	else if(offset == 0x0701)		                { return ym2151_r(machine().device("ym"), space, offset-0x0700); }
 	//0x704 is FM sound detection port on X1 turboZ
 	else if(offset >= 0x0704 && offset <= 0x0707)   { return m_ctc->read(space,offset-0x0704); }
 	else if(offset == 0x0801)						{ printf("Color image board read\n"); return 0xff; } // *
@@ -1702,9 +1699,9 @@ READ8_MEMBER( x1_state::x1turbo_io_r )
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ return x1_pcg_r(space, offset-0x1400); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ return x1_sub_io_r(space, 0); }
 	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ return machine().device<i8255_device>("ppi8255_0")->read(space, (offset-0x1a00) & 3); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(machine().device("ay"), 0); }
-	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ return z80dma_r(machine().device("dma"), 0); }
-	else if(offset >= 0x1f90 && offset <= 0x1f93)	{ return z80dart_ba_cd_r(machine().device("sio"), (offset-0x1f90) & 3); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ return ay8910_r(machine().device("ay"), space, 0); }
+	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ return z80dma_r(machine().device("dma"), space, 0); }
+	else if(offset >= 0x1f90 && offset <= 0x1f93)	{ return z80dart_ba_cd_r(machine().device("sio"), space, (offset-0x1f90) & 3); }
 	else if(offset >= 0x1f98 && offset <= 0x1f9f)	{ printf("Extended SIO/CTC read %04x\n",offset); return 0xff; }
 	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ return m_ctc->read(space,offset-0x1fa0); }
 	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ return m_ctc->read(space,offset-0x1fa8); }
@@ -1721,7 +1718,7 @@ READ8_MEMBER( x1_state::x1turbo_io_r )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ return m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)]; }
 	else
 	{
-		//logerror("(PC=%06x) Read i/o address %04x\n",space->device().safe_pc(),offset);
+		//logerror("(PC=%06x) Read i/o address %04x\n",space.device().safe_pc(),offset);
 	}
 	return 0xff;
 }
@@ -1730,7 +1727,7 @@ WRITE8_MEMBER( x1_state::x1turbo_io_w )
 {
 	// a * at the end states devices used on plain X1 too
 	if(m_io_bank_mode == 1)                    { x1_ex_gfxram_w(space, offset, data); }
-	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(machine().device("ym"), offset-0x0700,data); }
+	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(machine().device("ym"), space, offset-0x0700,data); }
 	//0x704 is FM sound detection port on X1 turboZ
 	else if(offset >= 0x0704 && offset <= 0x0707)	{ m_ctc->write(space,offset-0x0704,data); }
 	else if(offset == 0x0800)						{ printf("Color image board write %02x\n",data); } // *
@@ -1752,12 +1749,12 @@ WRITE8_MEMBER( x1_state::x1turbo_io_w )
 	else if(offset == 0x1800 || offset == 0x1801)	{ x1_6845_w(space, offset-0x1800, data); }
 	else if(offset >= 0x1900 && offset <= 0x19ff)	{ x1_sub_io_w(space, 0,data); }
 	else if(offset >= 0x1a00 && offset <= 0x1aff)	{ machine().device<i8255_device>("ppi8255_0")->write(space, (offset-0x1a00) & 3,data); }
-	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(machine().device("ay"), 0,data); }
-	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(machine().device("ay"), 0,data); }
+	else if(offset >= 0x1b00 && offset <= 0x1bff)	{ ay8910_data_w(machine().device("ay"), space, 0,data); }
+	else if(offset >= 0x1c00 && offset <= 0x1cff)	{ ay8910_address_w(machine().device("ay"), space, 0,data); }
 	else if(offset >= 0x1d00 && offset <= 0x1dff)	{ x1_rom_bank_1_w(space,0,data); }
 	else if(offset >= 0x1e00 && offset <= 0x1eff)	{ x1_rom_bank_0_w(space,0,data); }
-	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ z80dma_w(machine().device("dma"), 0,data); }
-	else if(offset >= 0x1f90 && offset <= 0x1f93)	{ z80dart_ba_cd_w(machine().device("sio"), (offset-0x1f90) & 3,data); }
+	else if(offset >= 0x1f80 && offset <= 0x1f8f)	{ z80dma_w(machine().device("dma"), space, 0,data); }
+	else if(offset >= 0x1f90 && offset <= 0x1f93)	{ z80dart_ba_cd_w(machine().device("sio"), space, (offset-0x1f90) & 3,data); }
 	else if(offset >= 0x1f98 && offset <= 0x1f9f)	{ printf("Extended SIO/CTC write %04x %02x\n",offset,data); }
 	else if(offset >= 0x1fa0 && offset <= 0x1fa3)	{ m_ctc->write(space,offset-0x1fa0,data); }
 	else if(offset >= 0x1fa8 && offset <= 0x1fab)	{ m_ctc->write(space,offset-0x1fa8,data); }
@@ -1777,7 +1774,7 @@ WRITE8_MEMBER( x1_state::x1turbo_io_w )
 	else if(offset >= 0x4000 && offset <= 0xffff)	{ m_gfx_bitmap_ram[offset-0x4000+(m_scrn_reg.gfx_bank*0xc000)] = data; }
 	else
 	{
-		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",space->device().safe_pc(),data,offset);
+		//logerror("(PC=%06x) Write %02x at i/o address %04x\n",space.device().safe_pc(),data,offset);
 	}
 }
 
@@ -1916,8 +1913,8 @@ static const mc6845_interface mc6845_intf =
 	NULL		/* update address callback */
 };
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static Z80DMA_INTERFACE( x1_dma )
 {
@@ -1936,30 +1933,28 @@ static Z80DMA_INTERFACE( x1_dma )
  *
  *************************************/
 
-static INPUT_CHANGED( ipl_reset )
+INPUT_CHANGED_MEMBER(x1_state::ipl_reset)
 {
-	//address_space *space = field.machine().device("x1_cpu")->memory().space(AS_PROGRAM);
-	x1_state *state = field.machine().driver_data<x1_state>();
+	//address_space &space = machine().device("x1_cpu")->memory().space(AS_PROGRAM);
 
-	state->m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 
-	state->m_ram_bank = 0x00;
-	if(state->m_is_turbo) { state->m_ex_bank = 0x10; }
+	m_ram_bank = 0x00;
+	if(m_is_turbo) { m_ex_bank = 0x10; }
 	//anything else?
 }
 
 /* Apparently most games doesn't support this (not even the Konami ones!), one that does is...177 :o */
-static INPUT_CHANGED( nmi_reset )
+INPUT_CHANGED_MEMBER(x1_state::nmi_reset)
 {
-	x1_state *state = field.machine().driver_data<x1_state>();
 
-	state->m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 INPUT_PORTS_START( x1 )
 	PORT_START("FP_SYS") //front panel buttons, hard-wired with the soft reset/NMI lines
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED(ipl_reset,0) PORT_NAME("IPL reset")
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED(nmi_reset,0) PORT_NAME("NMI reset")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED_MEMBER(DEVICE_SELF, x1_state, ipl_reset,0) PORT_NAME("IPL reset")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED_MEMBER(DEVICE_SELF, x1_state, nmi_reset,0) PORT_NAME("NMI reset")
 
 	PORT_START("SOUND_SW") //FIXME: this is X1Turbo specific
 	PORT_DIPNAME( 0x80, 0x80, "OPM Sound Setting?" )
@@ -2295,12 +2290,12 @@ static Z80CTC_INTERFACE( ctc_intf )
 #if 0
 static const z80sio_interface sio_intf =
 {
-	0,					/* interrupt handler */
-	0,					/* DTR changed handler */
-	0,					/* RTS changed handler */
-	0,					/* BREAK changed handler */
-	0,					/* transmit handler */
-	0					/* receive handler */
+	DEVCB_NULL,					/* interrupt handler */
+	DEVCB_NULL,					/* DTR changed handler */
+	DEVCB_NULL,					/* RTS changed handler */
+	DEVCB_NULL,					/* BREAK changed handler */
+	DEVCB_NULL,					/* transmit handler */
+	DEVCB_NULL					/* receive handler */
 };
 #endif
 
@@ -2404,63 +2399,61 @@ static IRQ_CALLBACK(x1_irq_callback)
 }
 #endif
 
-TIMER_DEVICE_CALLBACK(x1_keyboard_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(x1_state::x1_keyboard_callback)
 {
-	x1_state *state = timer.machine().driver_data<x1_state>();
-	address_space *space = timer.machine().device("x1_cpu")->memory().space(AS_PROGRAM);
-	UINT32 key1 = timer.machine().root_device().ioport("key1")->read();
-	UINT32 key2 = timer.machine().root_device().ioport("key2")->read();
-	UINT32 key3 = timer.machine().root_device().ioport("key3")->read();
-	UINT32 key4 = timer.machine().root_device().ioport("tenkey")->read();
-	UINT32 f_key = timer.machine().root_device().ioport("f_keys")->read();
+	address_space &space = machine().device("x1_cpu")->memory().space(AS_PROGRAM);
+	UINT32 key1 = machine().root_device().ioport("key1")->read();
+	UINT32 key2 = machine().root_device().ioport("key2")->read();
+	UINT32 key3 = machine().root_device().ioport("key3")->read();
+	UINT32 key4 = machine().root_device().ioport("tenkey")->read();
+	UINT32 f_key = machine().root_device().ioport("f_keys")->read();
 
-	if(state->m_key_irq_vector)
+	if(m_key_irq_vector)
 	{
 		//if(key1 == 0 && key2 == 0 && key3 == 0 && key4 == 0 && f_key == 0)
 		//  return;
 
-		if((key1 != state->m_old_key1) || (key2 != state->m_old_key2) || (key3 != state->m_old_key3) || (key4 != state->m_old_key4) || (f_key != state->m_old_fkey))
+		if((key1 != m_old_key1) || (key2 != m_old_key2) || (key3 != m_old_key3) || (key4 != m_old_key4) || (f_key != m_old_fkey))
 		{
 			// generate keyboard IRQ
-			state->x1_sub_io_w(*space,0,0xe6);
-			state->m_irq_vector = state->m_key_irq_vector;
-			state->m_key_irq_flag = 1;
-			timer.machine().device("x1_cpu")->execute().set_input_line(0,ASSERT_LINE);
-			state->m_old_key1 = key1;
-			state->m_old_key2 = key2;
-			state->m_old_key3 = key3;
-			state->m_old_key4 = key4;
-			state->m_old_fkey = f_key;
+			x1_sub_io_w(space,0,0xe6);
+			m_irq_vector = m_key_irq_vector;
+			m_key_irq_flag = 1;
+			machine().device("x1_cpu")->execute().set_input_line(0,ASSERT_LINE);
+			m_old_key1 = key1;
+			m_old_key2 = key2;
+			m_old_key3 = key3;
+			m_old_key4 = key4;
+			m_old_fkey = f_key;
 		}
 	}
 }
 
-TIMER_CALLBACK(x1_rtc_increment)
+TIMER_CALLBACK_MEMBER(x1_state::x1_rtc_increment)
 {
-	x1_state *state = machine.driver_data<x1_state>();
 	static const UINT8 dpm[12] = { 0x31, 0x28, 0x31, 0x30, 0x31, 0x30, 0x31, 0x31, 0x30, 0x31, 0x30, 0x31 };
 
-	state->m_rtc.sec++;
+	m_rtc.sec++;
 
-	if((state->m_rtc.sec & 0x0f) >= 0x0a)				{ state->m_rtc.sec+=0x10; state->m_rtc.sec&=0xf0; }
-	if((state->m_rtc.sec & 0xf0) >= 0x60)				{ state->m_rtc.min++; state->m_rtc.sec = 0; }
-	if((state->m_rtc.min & 0x0f) >= 0x0a)				{ state->m_rtc.min+=0x10; state->m_rtc.min&=0xf0; }
-	if((state->m_rtc.min & 0xf0) >= 0x60)				{ state->m_rtc.hour++; state->m_rtc.min = 0; }
-	if((state->m_rtc.hour & 0x0f) >= 0x0a)				{ state->m_rtc.hour+=0x10; state->m_rtc.hour&=0xf0; }
-	if((state->m_rtc.hour & 0xff) >= 0x24)				{ state->m_rtc.day++; state->m_rtc.wday++; state->m_rtc.hour = 0; }
-	if((state->m_rtc.wday & 0x0f) >= 0x07)				{ state->m_rtc.wday = 0; }
-	if((state->m_rtc.day & 0x0f) >= 0x0a)				{ state->m_rtc.day+=0x10; state->m_rtc.day&=0xf0; }
+	if((m_rtc.sec & 0x0f) >= 0x0a)				{ m_rtc.sec+=0x10; m_rtc.sec&=0xf0; }
+	if((m_rtc.sec & 0xf0) >= 0x60)				{ m_rtc.min++; m_rtc.sec = 0; }
+	if((m_rtc.min & 0x0f) >= 0x0a)				{ m_rtc.min+=0x10; m_rtc.min&=0xf0; }
+	if((m_rtc.min & 0xf0) >= 0x60)				{ m_rtc.hour++; m_rtc.min = 0; }
+	if((m_rtc.hour & 0x0f) >= 0x0a)				{ m_rtc.hour+=0x10; m_rtc.hour&=0xf0; }
+	if((m_rtc.hour & 0xff) >= 0x24)				{ m_rtc.day++; m_rtc.wday++; m_rtc.hour = 0; }
+	if((m_rtc.wday & 0x0f) >= 0x07)				{ m_rtc.wday = 0; }
+	if((m_rtc.day & 0x0f) >= 0x0a)				{ m_rtc.day+=0x10; m_rtc.day&=0xf0; }
 	/* FIXME: very crude leap year support (i.e. it treats the RTC to be with a 2000-2099 timeline), dunno how the real x1 supports this,
        maybe it just have a 1980-1999 timeline since year 0x00 shows as a XX on display */
-	if(((state->m_rtc.year % 4) == 0) && state->m_rtc.month == 2)
+	if(((m_rtc.year % 4) == 0) && m_rtc.month == 2)
 	{
-		if((state->m_rtc.day & 0xff) >= dpm[state->m_rtc.month-1]+1+1)
-			{ state->m_rtc.month++; state->m_rtc.day = 0x01; }
+		if((m_rtc.day & 0xff) >= dpm[m_rtc.month-1]+1+1)
+			{ m_rtc.month++; m_rtc.day = 0x01; }
 	}
-	else if((state->m_rtc.day & 0xff) >= dpm[state->m_rtc.month-1]+1){ state->m_rtc.month++; state->m_rtc.day = 0x01; }
-	if(state->m_rtc.month > 12)							{ state->m_rtc.year++;  state->m_rtc.month = 0x01; }
-	if((state->m_rtc.year & 0x0f) >= 0x0a)				{ state->m_rtc.year+=0x10; state->m_rtc.year&=0xf0; }
-	if((state->m_rtc.year & 0xf0) >= 0xa0)				{ state->m_rtc.year = 0; } //roll over
+	else if((m_rtc.day & 0xff) >= dpm[m_rtc.month-1]+1){ m_rtc.month++; m_rtc.day = 0x01; }
+	if(m_rtc.month > 12)							{ m_rtc.year++;  m_rtc.month = 0x01; }
+	if((m_rtc.year & 0x0f) >= 0x0a)				{ m_rtc.year+=0x10; m_rtc.year&=0xf0; }
+	if((m_rtc.year & 0xf0) >= 0xa0)				{ m_rtc.year = 0; } //roll over
 }
 
 MACHINE_RESET_MEMBER(x1_state,x1)
@@ -2533,7 +2526,7 @@ MACHINE_START_MEMBER(x1_state,x1)
 		m_rtc.min = ((systime.local_time.minute / 10)<<4) | ((systime.local_time.minute % 10) & 0xf);
 		m_rtc.sec = ((systime.local_time.second / 10)<<4) | ((systime.local_time.second % 10) & 0xf);
 
-		m_rtc_timer = machine().scheduler().timer_alloc(FUNC(x1_rtc_increment));
+		m_rtc_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(x1_state::x1_rtc_increment),this));
 	}
 }
 
@@ -2589,7 +2582,7 @@ static MACHINE_CONFIG_START( x1, x1_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_STATIC(x1)
+	MCFG_SCREEN_UPDATE_DRIVER(x1_state, screen_update_x1)
 
 	MCFG_MC6845_ADD("crtc", H46505, (VDP_CLOCK/48), mc6845_intf) //unknown divider
 	MCFG_PALETTE_LENGTH(0x10+0x1000)
@@ -2624,8 +2617,8 @@ static MACHINE_CONFIG_START( x1, x1_state )
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(x1_floppy_interface)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","x1_flop")
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", x1_keyboard_callback, attotime::from_hz(250))
-	MCFG_TIMER_ADD_PERIODIC("cmt_wind_timer", x1_cmt_wind_timer, attotime::from_hz(16))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", x1_state, x1_keyboard_callback, attotime::from_hz(250))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("cmt_wind_timer", x1_state, x1_cmt_wind_timer, attotime::from_hz(16))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( x1turbo, x1 )

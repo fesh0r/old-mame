@@ -796,22 +796,22 @@ ADDRESS_MAP_END
 /* This is needed because MAME core does not allow PULSE_LINE.
     The time interval is not critical, although it should be below 1000. */
 
-static TIMER_CALLBACK(intv_interrupt2_complete)
+TIMER_CALLBACK_MEMBER(intv_state::intv_interrupt2_complete)
 {
-	machine.device("keyboard")->execute().set_input_line(0, CLEAR_LINE);
+	machine().device("keyboard")->execute().set_input_line(0, CLEAR_LINE);
 }
 
-static INTERRUPT_GEN( intv_interrupt2 )
+INTERRUPT_GEN_MEMBER(intv_state::intv_interrupt2)
 {
-	device->machine().device("keyboard")->execute().set_input_line(0, ASSERT_LINE);
-	device->machine().scheduler().timer_set(device->machine().device<cpu_device>("keyboard")->cycles_to_attotime(100), FUNC(intv_interrupt2_complete));
+	machine().device("keyboard")->execute().set_input_line(0, ASSERT_LINE);
+	machine().scheduler().timer_set(machine().device<cpu_device>("keyboard")->cycles_to_attotime(100), timer_expired_delegate(FUNC(intv_state::intv_interrupt2_complete),this));
 }
 
 static MACHINE_CONFIG_START( intv, intv_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", CP1610, XTAL_3_579545MHz/4)        /* Colorburst/4 */
 	MCFG_CPU_PROGRAM_MAP(intv_mem)
-	MCFG_CPU_VBLANK_INT("screen", intv_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", intv_state,  intv_interrupt)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 
@@ -819,7 +819,7 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(59.92)
 	//MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2400)) /* not accurate */
-	MCFG_SCREEN_UPDATE_STATIC(intv)
+	MCFG_SCREEN_UPDATE_DRIVER(intv_state, screen_update_intv)
 	MCFG_SCREEN_SIZE((STIC_OVERSCAN_LEFT_WIDTH+STIC_BACKTAB_WIDTH*STIC_CARD_WIDTH-1+STIC_OVERSCAN_RIGHT_WIDTH)*STIC_X_SCALE*INTV_X_SCALE, (STIC_OVERSCAN_TOP_HEIGHT+STIC_BACKTAB_HEIGHT*STIC_CARD_HEIGHT+STIC_OVERSCAN_BOTTOM_HEIGHT)*STIC_Y_SCALE*INTV_Y_SCALE)
 	MCFG_SCREEN_VISIBLE_AREA(0, (STIC_OVERSCAN_LEFT_WIDTH+STIC_BACKTAB_WIDTH*STIC_CARD_WIDTH-1+STIC_OVERSCAN_RIGHT_WIDTH)*STIC_X_SCALE*INTV_X_SCALE-1, 0, (STIC_OVERSCAN_TOP_HEIGHT+STIC_BACKTAB_HEIGHT*STIC_CARD_HEIGHT+STIC_OVERSCAN_BOTTOM_HEIGHT)*STIC_Y_SCALE*INTV_Y_SCALE-1)
 
@@ -874,7 +874,7 @@ static MACHINE_CONFIG_DERIVED( intvkbd, intv )
 
 	MCFG_CPU_ADD("keyboard", M6502, XTAL_3_579545MHz/2)	/* Colorburst/2 */
 	MCFG_CPU_PROGRAM_MAP(intvkbd2_mem)
-	MCFG_CPU_VBLANK_INT("screen", intv_interrupt2)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", intv_state,  intv_interrupt2)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(6000))
 
@@ -883,7 +883,7 @@ static MACHINE_CONFIG_DERIVED( intvkbd, intv )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE((STIC_OVERSCAN_LEFT_WIDTH+STIC_BACKTAB_WIDTH*STIC_CARD_WIDTH-1+STIC_OVERSCAN_RIGHT_WIDTH)*STIC_X_SCALE*INTVKBD_X_SCALE, (STIC_OVERSCAN_TOP_HEIGHT+STIC_BACKTAB_HEIGHT*STIC_CARD_HEIGHT+STIC_OVERSCAN_BOTTOM_HEIGHT)*STIC_Y_SCALE*INTVKBD_Y_SCALE)
 	MCFG_SCREEN_VISIBLE_AREA(0, (STIC_OVERSCAN_LEFT_WIDTH+STIC_BACKTAB_WIDTH*STIC_CARD_WIDTH-1+STIC_OVERSCAN_RIGHT_WIDTH)*STIC_X_SCALE*INTVKBD_X_SCALE-1, 0, (STIC_OVERSCAN_TOP_HEIGHT+STIC_BACKTAB_HEIGHT*STIC_CARD_HEIGHT+STIC_OVERSCAN_BOTTOM_HEIGHT)*STIC_Y_SCALE*INTVKBD_Y_SCALE-1)
-	MCFG_SCREEN_UPDATE_STATIC(intvkbd)
+	MCFG_SCREEN_UPDATE_DRIVER(intv_state, screen_update_intvkbd)
 
 	/* cartridge */
 	MCFG_DEVICE_REMOVE("cart")

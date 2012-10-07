@@ -61,16 +61,15 @@ Notes:
 
 
 
-static TIMER_DEVICE_CALLBACK( dbz_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(dbz_state::dbz_scanline)
 {
-	dbz_state *state = timer.machine().driver_data<dbz_state>();
 	int scanline = param;
 
 	if(scanline == 256) // vblank-out irq
-		timer.machine().device("maincpu")->execute().set_input_line(M68K_IRQ_2, ASSERT_LINE);
+		machine().device("maincpu")->execute().set_input_line(M68K_IRQ_2, ASSERT_LINE);
 
-	if(scanline == 0 && k053246_is_irq_enabled(state->m_k053246)) // vblank-in irq
-		timer.machine().device("maincpu")->execute().set_input_line(M68K_IRQ_4, HOLD_LINE); //auto-acks apparently
+	if(scanline == 0 && k053246_is_irq_enabled(m_k053246)) // vblank-in irq
+		machine().device("maincpu")->execute().set_input_line(M68K_IRQ_4, HOLD_LINE); //auto-acks apparently
 }
 
 #if 0
@@ -383,7 +382,7 @@ static MACHINE_CONFIG_START( dbz, dbz_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(dbz_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", dbz_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", dbz_state, dbz_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(dbz_sound_map)
@@ -398,7 +397,7 @@ static MACHINE_CONFIG_START( dbz, dbz_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 40*8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 48*8-1, 0, 32*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(dbz)
+	MCFG_SCREEN_UPDATE_DRIVER(dbz_state, screen_update_dbz)
 
 	MCFG_GFXDECODE(dbz)
 

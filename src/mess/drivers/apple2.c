@@ -209,6 +209,7 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 #include "machine/a2alfam2.h"
 #include "machine/laser128.h"
 #include "machine/a2echoii.h"
+#include "machine/a2arcadebd.h"
 
 /***************************************************************************
     PARAMETERS
@@ -221,26 +222,20 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 #define PADDLE_SENSITIVITY      10
 #define PADDLE_AUTOCENTER       0
 
-static WRITE8_DEVICE_HANDLER(a2bus_irq_w)
+WRITE8_MEMBER(apple2_state::a2bus_irq_w)
 {
-    apple2_state *a2 = device->machine().driver_data<apple2_state>();
-
-    a2->m_maincpu->set_input_line(M6502_IRQ_LINE, data);
+    m_maincpu->set_input_line(M6502_IRQ_LINE, data);
 }
 
-static WRITE8_DEVICE_HANDLER(a2bus_nmi_w)
+WRITE8_MEMBER(apple2_state::a2bus_nmi_w)
 {
-    apple2_state *a2 = device->machine().driver_data<apple2_state>();
-
-    a2->m_maincpu->set_input_line(INPUT_LINE_NMI, data);
+    m_maincpu->set_input_line(INPUT_LINE_NMI, data);
 }
 
-static WRITE8_DEVICE_HANDLER(a2bus_inh_w)
+WRITE8_MEMBER(apple2_state::a2bus_inh_w)
 {
-    apple2_state *a2 = device->machine().driver_data<apple2_state>();
-
-    a2->m_inh_slot = data;
-    apple2_update_memory(device->machine());
+    m_inh_slot = data;
+    apple2_update_memory(machine());
 }
 
 /***************************************************************************
@@ -595,16 +590,16 @@ static const cassette_interface apple2_cassette_interface =
 static const struct a2bus_interface a2bus_intf =
 {
 	// interrupt lines
-	DEVCB_HANDLER(a2bus_irq_w),
-	DEVCB_HANDLER(a2bus_nmi_w),
-    DEVCB_HANDLER(a2bus_inh_w)
+	DEVCB_DRIVER_MEMBER(apple2_state,a2bus_irq_w),
+	DEVCB_DRIVER_MEMBER(apple2_state,a2bus_nmi_w),
+    DEVCB_DRIVER_MEMBER(apple2_state,a2bus_inh_w)
 };
 
 static const struct a2eauxslot_interface a2eauxbus_intf =
 {
 	// interrupt lines
-	DEVCB_HANDLER(a2bus_irq_w),
-	DEVCB_HANDLER(a2bus_nmi_w)
+	DEVCB_DRIVER_MEMBER(apple2_state,a2bus_irq_w),
+	DEVCB_DRIVER_MEMBER(apple2_state,a2bus_nmi_w)
 };
 
 static SLOT_INTERFACE_START(apple2_slot0_cards)
@@ -632,6 +627,7 @@ static SLOT_INTERFACE_START(apple2_cards)
     SLOT_INTERFACE("ap16alt", A2BUS_IBSAP16ALT)    /* IBS AP16 (German VideoTerm clone), alternate revision */
     SLOT_INTERFACE("vtc1", A2BUS_VTC1)    /* Unknown VideoTerm clone #1 */
     SLOT_INTERFACE("vtc2", A2BUS_VTC2)    /* Unknown VideoTerm clone #2 */
+    SLOT_INTERFACE("arcbd", A2BUS_ARCADEBOARD)    /* Third Millenium Engineering Arcade Board */
 //    SLOT_INTERFACE("scsi", A2BUS_SCSI)  /* Apple II SCSI Card */
 SLOT_INTERFACE_END
 
@@ -642,7 +638,7 @@ static MACHINE_CONFIG_START( apple2_common, apple2_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, 1021800)		/* close to actual CPU frequency of 1.020484 MHz */
 	MCFG_CPU_PROGRAM_MAP(apple2_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", apple2_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", apple2_state, apple2_interrupt, "screen", 0, 1)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START_OVERRIDE(apple2_state, apple2 )
@@ -652,7 +648,7 @@ static MACHINE_CONFIG_START( apple2_common, apple2_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(280*2, 192)
 	MCFG_SCREEN_VISIBLE_AREA(0, (280*2)-1,0,192-1)
-	MCFG_SCREEN_UPDATE_STATIC(apple2)
+	MCFG_SCREEN_UPDATE_DRIVER(apple2_state, screen_update_apple2)
 
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(apple2_palette))
 	MCFG_PALETTE_INIT_OVERRIDE(apple2_state,apple2)

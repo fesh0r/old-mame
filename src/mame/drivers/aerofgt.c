@@ -1327,7 +1327,7 @@ static MACHINE_CONFIG_START( pspikes, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,XTAL_20MHz/2)    /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(pspikes_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_CPU_ADD("audiocpu",Z80,XTAL_20MHz/4) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1343,7 +1343,7 @@ static MACHINE_CONFIG_START( pspikes, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+4, 44*8+4-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(pspikes)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_pspikes)
 
 	MCFG_GFXDECODE(pspikes)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1366,7 +1366,7 @@ static MACHINE_CONFIG_START( spikes91, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(spikes91_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	/* + Z80 for sound */
 
@@ -1379,7 +1379,7 @@ static MACHINE_CONFIG_START( spikes91, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 320-1, 0*8+4, 224+4-1)
-	MCFG_SCREEN_UPDATE_STATIC(spikes91)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_spikes91)
 
 	MCFG_GFXDECODE(spikes91)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1400,7 +1400,7 @@ static MACHINE_CONFIG_START( pspikesb, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(pspikesb_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_MACHINE_START_OVERRIDE(aerofgt_state,common)
 	MCFG_MACHINE_RESET_OVERRIDE(aerofgt_state,common)
@@ -1411,7 +1411,7 @@ static MACHINE_CONFIG_START( pspikesb, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+4, 44*8+4-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(pspikesb)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_pspikesb)
 
 	MCFG_GFXDECODE(pspikesb)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1430,7 +1430,7 @@ static MACHINE_CONFIG_START( pspikesc, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(pspikesc_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_MACHINE_START_OVERRIDE(aerofgt_state,common)
 	MCFG_MACHINE_RESET_OVERRIDE(aerofgt_state,common)
@@ -1441,7 +1441,7 @@ static MACHINE_CONFIG_START( pspikesc, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+4, 44*8+4-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(pspikes)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_pspikes)
 
 	MCFG_GFXDECODE(pspikes)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1460,7 +1460,7 @@ static MACHINE_CONFIG_START( karatblz, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(karatblz_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu",Z80,8000000/2) /* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1476,7 +1476,7 @@ static MACHINE_CONFIG_START( karatblz, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(1*8, 45*8-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(karatblz)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_karatblz)
 
 	MCFG_GFXDECODE(turbofrc)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1499,7 +1499,7 @@ static MACHINE_CONFIG_START( spinlbrk, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,XTAL_20MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(spinlbrk_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* there are vectors for 3 and 4 too */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* there are vectors for 3 and 4 too */
 
 	MCFG_CPU_ADD("audiocpu",Z80,XTAL_20MHz/4)	/* 5mhz verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1515,7 +1515,7 @@ static MACHINE_CONFIG_START( spinlbrk, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(1*8, 45*8-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(spinlbrk)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_spinlbrk)
 
 	MCFG_GFXDECODE(turbofrc)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1538,7 +1538,7 @@ static MACHINE_CONFIG_START( turbofrc, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,XTAL_20MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(turbofrc_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_CPU_ADD("audiocpu",Z80,XTAL_5MHz)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1554,7 +1554,7 @@ static MACHINE_CONFIG_START( turbofrc, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 44*8-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(turbofrc)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_turbofrc)
 
 	MCFG_GFXDECODE(turbofrc)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1577,7 +1577,7 @@ static MACHINE_CONFIG_START( aerofgtb, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(aerofgtb_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_CPU_ADD("audiocpu",Z80,8000000/2) /* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1594,7 +1594,7 @@ static MACHINE_CONFIG_START( aerofgtb, aerofgt_state )
 				/* wrong but improves sprite-background synchronization */
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+12, 40*8-1+12, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(turbofrc)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_turbofrc)
 
 	MCFG_GFXDECODE(aerofgtb)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1617,7 +1617,7 @@ static MACHINE_CONFIG_START( aerofgt, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,XTAL_20MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(aerofgt_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_CPU_ADD("audiocpu",Z80,XTAL_20MHz/4) /* 5 MHz verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1634,7 +1634,7 @@ static MACHINE_CONFIG_START( aerofgt, aerofgt_state )
 				/* wrong but improves sprite-background synchronization */
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(aerofgt)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_aerofgt)
 
 	MCFG_GFXDECODE(aerofgt)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1657,7 +1657,7 @@ static MACHINE_CONFIG_START( aerfboot, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(aerfboot_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu",Z80,8000000/2) /* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(aerfboot_sound_map)
@@ -1672,7 +1672,7 @@ static MACHINE_CONFIG_START( aerfboot, aerofgt_state )
 				/* wrong but improves sprite-background synchronization */
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+12, 40*8-1+12, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(aerfboot)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_aerfboot)
 
 	MCFG_GFXDECODE(aerfboot)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1691,7 +1691,7 @@ static MACHINE_CONFIG_START( aerfboo2, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(aerfboo2_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq2_line_hold)
 
 	MCFG_MACHINE_START_OVERRIDE(aerofgt_state,common)
 	MCFG_MACHINE_RESET_OVERRIDE(aerofgt_state,common)
@@ -1703,7 +1703,7 @@ static MACHINE_CONFIG_START( aerfboo2, aerofgt_state )
 				/* wrong but improves sprite-background synchronization */
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+12, 40*8-1+12, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(aerfboo2)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_aerfboo2)
 
 	MCFG_GFXDECODE(aerfboo2)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1722,7 +1722,7 @@ static MACHINE_CONFIG_START( wbbc97, aerofgt_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M68000,20000000/2)	/* 10 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(wbbc97_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)/* all irq vectors are the same */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aerofgt_state,  irq1_line_hold)/* all irq vectors are the same */
 
 	MCFG_CPU_ADD("audiocpu",Z80,8000000/2) /* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(wbbc97_sound_map)
@@ -1736,7 +1736,7 @@ static MACHINE_CONFIG_START( wbbc97, aerofgt_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 64*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8+14, 44*8-1+4, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(wbbc97)
+	MCFG_SCREEN_UPDATE_DRIVER(aerofgt_state, screen_update_wbbc97)
 
 	MCFG_GFXDECODE(wbbc97)
 	MCFG_PALETTE_LENGTH(2048)

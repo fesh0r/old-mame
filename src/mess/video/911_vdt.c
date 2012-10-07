@@ -273,7 +273,7 @@ const device_type VDT911 = &device_creator<vdt911_device>;
 vdt911_device::vdt911_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, VDT911, "911 VDT", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(vdt_t));
+	m_token = global_alloc_clear(vdt_t);
 }
 
 //-------------------------------------------------
@@ -420,7 +420,7 @@ WRITE8_DEVICE_HANDLER( vdt911_cru_w )
 		case 0xc:
 			/* keyboard interrupt enable */
 			vdt->keyboard_interrupt_enable = data;
-			(*vdt->int_callback)(device->machine(), vdt->keyboard_interrupt_enable && vdt->keyboard_data_ready);
+			(*vdt->int_callback)(space.machine(), vdt->keyboard_interrupt_enable && vdt->keyboard_data_ready);
 			break;
 
 		case 0xd:
@@ -478,14 +478,14 @@ WRITE8_DEVICE_HANDLER( vdt911_cru_w )
 			{
 				vdt->keyboard_data_ready = 0;
 				if (vdt->keyboard_interrupt_enable)
-					(*vdt->int_callback)(device->machine(), 0);
+					(*vdt->int_callback)(space.machine(), 0);
 			}
 			/*vdt->keyboard_parity_error = 0;*/
 			break;
 
 		case 0xe:
 			/* beep enable strobe - not tested */
-			beep_set_state(device->machine().device(BEEPER_TAG), 1);
+			beep_set_state(space.machine().device(BEEPER_TAG), 1);
 
 			vdt->beep_timer->adjust(attotime::from_usec(300));
 			break;

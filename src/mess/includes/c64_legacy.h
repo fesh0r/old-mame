@@ -84,44 +84,14 @@ public:
 	UINT8 *m_io_ram_r_ptr;
 	c64_cart_t m_cart;
 	int m_nmilevel;
-
-	DECLARE_DRIVER_INIT( c64 );
-	DECLARE_DRIVER_INIT( c64pal );
-	DECLARE_DRIVER_INIT( ultimax );
-	DECLARE_DRIVER_INIT( c64gs );
-	DECLARE_DRIVER_INIT( sx64 );
 };
 
 
 /*----------- defined in machine/c64.c -----------*/
 
-/* private area */
 
-extern READ8_DEVICE_HANDLER(c64_m6510_port_read);
-extern WRITE8_DEVICE_HANDLER(c64_m6510_port_write);
-
-READ8_HANDLER ( c64_colorram_read );
-WRITE8_HANDLER ( c64_colorram_write );
-
-MACHINE_START( c64 );
-MACHINE_RESET( c64 );
-INTERRUPT_GEN( c64_frame_interrupt );
-TIMER_CALLBACK( c64_tape_timer );
-
-/* private area */
-WRITE8_HANDLER(c64_roml_w);
-
-READ8_HANDLER(c64_ioarea_r);
-WRITE8_HANDLER(c64_ioarea_w);
-
-WRITE8_HANDLER ( c64_write_io );
-READ8_HANDLER ( c64_read_io );
-int c64_paddle_read (device_t *device, int which);
-
-extern const mos6526_interface c64_ntsc_cia0, c64_pal_cia0;
-extern const mos6526_interface c64_ntsc_cia1, c64_pal_cia1;
-
+DECLARE_READ8_HANDLER ( c64_colorram_read );
+DECLARE_WRITE8_HANDLER ( c64_colorram_write );
+int c64_paddle_read (device_t *device, address_space &space, int which);
 MACHINE_CONFIG_EXTERN( c64_cartslot );
-MACHINE_CONFIG_EXTERN( ultimax_cartslot );
-
 #endif /* C64_H_ */

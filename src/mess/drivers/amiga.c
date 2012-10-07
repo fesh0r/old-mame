@@ -48,9 +48,9 @@ public:
 	DECLARE_MACHINE_RESET(cdtv);
 };
 
-static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r );
-static READ8_DEVICE_HANDLER( amiga_cia_0_cdtv_portA_r );
-static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w );
+static DECLARE_READ8_DEVICE_HANDLER( amiga_cia_0_portA_r );
+static DECLARE_READ8_DEVICE_HANDLER( amiga_cia_0_cdtv_portA_r );
+static DECLARE_WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w );
 
 /***************************************************************************
   Battery Backed-Up Clock (MSM6264)
@@ -58,15 +58,15 @@ static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w );
 
 static READ16_HANDLER( amiga_clock_r )
 {
-	msm6242_device *rtc = space->machine().device<msm6242_device>("rtc");
-	return rtc->read(*space,offset / 2);
+	msm6242_device *rtc = space.machine().device<msm6242_device>("rtc");
+	return rtc->read(space,offset / 2);
 }
 
 
 static WRITE16_HANDLER( amiga_clock_w )
 {
-	msm6242_device *rtc = space->machine().device<msm6242_device>("rtc");
-	rtc->write(*space,offset / 2, data);
+	msm6242_device *rtc = space.machine().device<msm6242_device>("rtc");
+	rtc->write(space,offset / 2, data);
 }
 
 
@@ -76,7 +76,7 @@ static WRITE16_HANDLER( amiga_clock_w )
 
 static READ8_DEVICE_HANDLER( amiga_cia_1_porta_r )
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	centronics_device *centronics = space.machine().device<centronics_device>("centronics");
 	UINT8 result = 0;
 
 	/* centronics status is stored in PA0 to PA2 */
@@ -251,9 +251,6 @@ static INPUT_PORTS_START( amiga_common )
 
 	PORT_START("P1MOUSEY")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(2)
-
-	PORT_INCLUDE( amiga_us_keyboard )
-
 INPUT_PORTS_END
 
 
@@ -290,7 +287,7 @@ MACHINE_RESET_MEMBER(cdtv_state,cdtv)
 	MACHINE_RESET_CALL_LEGACY( amigacd );
 }
 
-static const mos6526_interface cia_0_ntsc_intf =
+static const legacy_mos6526_interface cia_0_ntsc_intf =
 {
 	DEVCB_DEVICE_LINE("cia_0", amiga_cia_0_irq),							/* irq_func */
 	DEVCB_DEVICE_LINE_MEMBER("centronics", centronics_device, strobe_w),	/* pc_func */
@@ -302,7 +299,7 @@ static const mos6526_interface cia_0_ntsc_intf =
 	DEVCB_DEVICE_MEMBER("centronics", centronics_device, write)	/* port B */
 };
 
-static const mos6526_interface cia_0_pal_intf =
+static const legacy_mos6526_interface cia_0_pal_intf =
 {
 	DEVCB_DEVICE_LINE("cia_0", amiga_cia_0_irq),							/* irq_func */
 	DEVCB_DEVICE_LINE_MEMBER("centronics", centronics_device, strobe_w),	/* pc_func */
@@ -314,7 +311,7 @@ static const mos6526_interface cia_0_pal_intf =
 	DEVCB_DEVICE_MEMBER("centronics", centronics_device, write)	/* port B */
 };
 
-static const mos6526_interface cia_1_intf =
+static const legacy_mos6526_interface cia_1_intf =
 {
 	DEVCB_DEVICE_LINE("cia_1", amiga_cia_1_irq),							/* irq_func */
 	DEVCB_NULL,												/* pc_func */
@@ -326,7 +323,7 @@ static const mos6526_interface cia_1_intf =
 	DEVCB_DEVICE_MEMBER("fdc", amiga_fdc, ciaaprb_w)		/* port B */
 };
 
-static const mos6526_interface cia_0_cdtv_intf =
+static const legacy_mos6526_interface cia_0_cdtv_intf =
 {
 	DEVCB_DEVICE_LINE("cia_0", amiga_cia_0_irq),							/* irq_func */
 	DEVCB_DEVICE_LINE_MEMBER("centronics", centronics_device, strobe_w),	/* pc_func */
@@ -338,7 +335,7 @@ static const mos6526_interface cia_0_cdtv_intf =
 	DEVCB_DEVICE_MEMBER("centronics", centronics_device, write)	/* port B */
 };
 
-static const mos6526_interface cia_1_cdtv_intf =
+static const legacy_mos6526_interface cia_1_cdtv_intf =
 {
 	DEVCB_DEVICE_LINE("cia_1", amiga_cia_1_irq),							/* irq_func */
 	DEVCB_NULL,	/* pc_func */
@@ -397,7 +394,7 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MCFG_SCREEN_SIZE(228*4, 262)
 	MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 262-1)
-	MCFG_SCREEN_UPDATE_STATIC(amiga)
+	MCFG_SCREEN_UPDATE_DRIVER(amiga_state, screen_update_amiga)
 
 	MCFG_PALETTE_LENGTH(4096)
 	MCFG_PALETTE_INIT_OVERRIDE(amiga_state, amiga )
@@ -418,8 +415,8 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 	MCFG_SOUND_ROUTE(3, "lspeaker", 0.50)
 
 	/* cia */
-	MCFG_MOS8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, 60, cia_0_ntsc_intf)
-	MCFG_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK, 0, cia_1_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, 60, cia_0_ntsc_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK, 0, cia_1_intf)
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68000_NTSC_CLOCK)
@@ -427,6 +424,8 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 	MCFG_FLOPPY_DRIVE_ADD("fd1", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fd2", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fd3", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+
+	MCFG_AMIGA_KEYBOARD_ADD("kbd")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( a1000n, ntsc )
@@ -475,8 +474,8 @@ static MACHINE_CONFIG_DERIVED_CLASS( cdtv, ntsc, cdtv_state)
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_DEVICE_REMOVE("cia_1")
-	MCFG_MOS8520_ADD("cia_0", CDTV_CLOCK_X1 / 40, 0, cia_0_cdtv_intf)
-	MCFG_MOS8520_ADD("cia_1", CDTV_CLOCK_X1 / 4, 0, cia_1_cdtv_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_0", CDTV_CLOCK_X1 / 40, 0, cia_0_cdtv_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", CDTV_CLOCK_X1 / 4, 0, cia_1_cdtv_intf)
 
 	/* fdc */
 	MCFG_DEVICE_MODIFY("fdc")
@@ -499,7 +498,7 @@ static MACHINE_CONFIG_DERIVED( pal, ntsc )
 
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
-	MCFG_MOS8520_ADD("cia_0", AMIGA_68000_PAL_CLOCK / 10, 50, cia_0_pal_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68000_PAL_CLOCK / 10, 50, cia_0_pal_intf)
 
 	/* fdc */
 	MCFG_DEVICE_MODIFY("fdc")
@@ -524,21 +523,21 @@ MACHINE_CONFIG_END
 
 static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r )
 {
-	UINT8 ret = device->machine().root_device().ioport("CIA0PORTA")->read() & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= device->machine().device<amiga_fdc>("fdc")->ciaapra_r();
+	UINT8 ret = space.machine().root_device().ioport("CIA0PORTA")->read() & 0xc0;	/* Gameport 1 and 0 buttons */
+	ret |= space.machine().device<amiga_fdc>("fdc")->ciaapra_r();
 	return ret;
 }
 
 
 static READ8_DEVICE_HANDLER( amiga_cia_0_cdtv_portA_r )
 {
-	return device->machine().root_device().ioport("CIA0PORTA")->read() & 0xc0;	/* Gameport 1 and 0 buttons */
+	return space.machine().root_device().ioport("CIA0PORTA")->read() & 0xc0;	/* Gameport 1 and 0 buttons */
 }
 
 
 static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 {
-	amiga_state *state = device->machine().driver_data<amiga_state>();
+	amiga_state *state = space.machine().driver_data<amiga_state>();
 	/* switch banks as appropriate */
 	state->membank("bank1")->set_entry(data & 1);
 
@@ -551,17 +550,17 @@ static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 		}
 
 		/* overlay disabled, map RAM on 0x000000 */
-		device->machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_bank(0x000000, state->m_chip_ram.bytes() - 1, 0, mirror_mask, "bank1");
+		space.machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_bank(0x000000, state->m_chip_ram.bytes() - 1, 0, mirror_mask, "bank1");
 
 		/* if there is a cart region, check for cart overlay */
-		if (device->machine().root_device().memregion("user2")->base() != NULL)
-			amiga_cart_check_overlay(device->machine());
+		if (space.machine().root_device().memregion("user2")->base() != NULL)
+			amiga_cart_check_overlay(space.machine());
 	}
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		device->machine().device("maincpu")->memory().space(AS_PROGRAM)->unmap_write(0x000000, state->m_chip_ram.bytes() - 1);
+		space.machine().device("maincpu")->memory().space(AS_PROGRAM).unmap_write(0x000000, state->m_chip_ram.bytes() - 1);
 
-	set_led_status( device->machine(), 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga */
+	set_led_status( space.machine(), 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga */
 	output_set_value("power_led", ( data & 2 ) ? 0 : 1);
 }
 
@@ -598,12 +597,12 @@ static void amiga_reset(running_machine &machine)
 	if (machine.root_device().ioport("hardware")->read() & 0x08)
 	{
 		/* Install RTC */
-		machine.device("maincpu")->memory().space(AS_PROGRAM)->install_legacy_readwrite_handler(0xdc0000, 0xdc003f, FUNC(amiga_clock_r), FUNC(amiga_clock_w));
+		machine.device("maincpu")->memory().space(AS_PROGRAM).install_legacy_readwrite_handler(0xdc0000, 0xdc003f, FUNC(amiga_clock_r), FUNC(amiga_clock_w));
 	}
 	else
 	{
 		/* No RTC support */
-		machine.device("maincpu")->memory().space(AS_PROGRAM)->unmap_readwrite(0xdc0000, 0xdc003f);
+		machine.device("maincpu")->memory().space(AS_PROGRAM).unmap_readwrite(0xdc0000, 0xdc003f);
 	}
 }
 
@@ -629,9 +628,6 @@ DRIVER_INIT_MEMBER(amiga_state,amiga)
 
 	/* initialize cartridge (if present) */
 	amiga_cart_init(machine());
-
-	/* initialize keyboard */
-	amigakbd_init(machine());
 }
 
 #ifdef UNUSED_FUNCTION
@@ -661,9 +657,6 @@ DRIVER_INIT_MEMBER(apollo_state,amiga_ecs)
 
 	/* initialize Action Replay (if present) */
 	amiga_cart_init(machine());
-
-	/* initialize keyboard */
-	amigakbd_init(machine());
 }
 #endif
 
@@ -686,9 +679,6 @@ DRIVER_INIT_MEMBER(amiga_state,cdtv)
 	/* set up memory */
 	membank("bank1")->configure_entry(0, m_chip_ram);
 	membank("bank1")->configure_entry(1, machine().root_device().memregion("user1")->base());
-
-	/* initialize keyboard - in cdtv we can use a standard Amiga keyboard*/
-	amigakbd_init(machine());
 }
 
 

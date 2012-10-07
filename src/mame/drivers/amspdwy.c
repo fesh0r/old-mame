@@ -65,7 +65,7 @@ READ8_MEMBER(amspdwy_state::amspdwy_wheel_1_r)
 READ8_MEMBER(amspdwy_state::amspdwy_sound_r)
 {
 	device_t *device = machine().device("ymsnd");
-	return (ym2151_status_port_r(device, 0) & ~ 0x30) | machine().root_device().ioport("IN0")->read();
+	return (ym2151_status_port_r(device, space, 0) & ~ 0x30) | machine().root_device().ioport("IN0")->read();
 }
 
 WRITE8_MEMBER(amspdwy_state::amspdwy_sound_w)
@@ -275,7 +275,7 @@ static MACHINE_CONFIG_START( amspdwy, amspdwy_state )
 	MCFG_CPU_ADD("maincpu", Z80,3000000)
 	MCFG_CPU_PROGRAM_MAP(amspdwy_map)
 	MCFG_CPU_IO_MAP(amspdwy_portmap)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)	/* IRQ: 60Hz, NMI: retn */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", amspdwy_state,  irq0_line_hold)	/* IRQ: 60Hz, NMI: retn */
 
 	MCFG_CPU_ADD("audiocpu", Z80,3000000)	/* Can't be disabled: the YM2151 timers must work */
 	MCFG_CPU_PROGRAM_MAP(amspdwy_sound_map)
@@ -288,7 +288,7 @@ static MACHINE_CONFIG_START( amspdwy, amspdwy_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
-	MCFG_SCREEN_UPDATE_STATIC(amspdwy)
+	MCFG_SCREEN_UPDATE_DRIVER(amspdwy_state, screen_update_amspdwy)
 
 	MCFG_GFXDECODE(amspdwy)
 	MCFG_PALETTE_LENGTH(32)

@@ -19,11 +19,10 @@
 static KONAMI_SETLINES_CALLBACK( parodius_banking );
 
 
-static INTERRUPT_GEN( parodius_interrupt )
+INTERRUPT_GEN_MEMBER(parodius_state::parodius_interrupt)
 {
-	parodius_state *state = device->machine().driver_data<parodius_state>();
-	if (k052109_is_irq_enabled(state->m_k052109))
-		device->execute().set_input_line(0, HOLD_LINE);
+	if (k052109_is_irq_enabled(m_k052109))
+		device.execute().set_input_line(0, HOLD_LINE);
 }
 
 READ8_MEMBER(parodius_state::bankedram_r)
@@ -58,18 +57,18 @@ READ8_MEMBER(parodius_state::parodius_052109_053245_r)
 {
 
 	if (m_videobank & 0x02)
-		return k053245_r(m_k053245, offset);
+		return k053245_r(m_k053245, space, offset);
 	else
-		return k052109_r(m_k052109, offset);
+		return k052109_r(m_k052109, space, offset);
 }
 
 WRITE8_MEMBER(parodius_state::parodius_052109_053245_w)
 {
 
 	if (m_videobank & 0x02)
-		k053245_w(m_k053245, offset, data);
+		k053245_w(m_k053245, space, offset, data);
 	else
-		k052109_w(m_k052109, offset, data);
+		k052109_w(m_k052109, space, offset, data);
 }
 
 WRITE8_MEMBER(parodius_state::parodius_videobank_w)
@@ -103,7 +102,7 @@ WRITE8_MEMBER(parodius_state::parodius_3fc0_w)
 READ8_MEMBER(parodius_state::parodius_sound_r)
 {
 	device_t *device = machine().device("k053260");
-	return k053260_r(device, 2 + offset);
+	return k053260_r(device, space, 2 + offset);
 }
 
 WRITE8_MEMBER(parodius_state::parodius_sh_irqtrigger_w)
@@ -122,17 +121,16 @@ static void sound_nmi_callback( running_machine &machine, int param )
 }
 #endif
 
-static TIMER_CALLBACK( nmi_callback )
+TIMER_CALLBACK_MEMBER(parodius_state::nmi_callback)
 {
-	parodius_state *state = machine.driver_data<parodius_state>();
-	state->m_audiocpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 WRITE8_MEMBER(parodius_state::sound_arm_nmi_w)
 {
 
 	m_audiocpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
-	machine().scheduler().timer_set(attotime::from_usec(50), FUNC(nmi_callback));	/* kludge until the K053260 is emulated correctly */
+	machine().scheduler().timer_set(attotime::from_usec(50), timer_expired_delegate(FUNC(parodius_state::nmi_callback),this));	/* kludge until the K053260 is emulated correctly */
 }
 
 /********************************************/
@@ -290,7 +288,7 @@ static MACHINE_CONFIG_START( parodius, parodius_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", KONAMI, 3000000)		/* 053248 */
 	MCFG_CPU_PROGRAM_MAP(parodius_map)
-	MCFG_CPU_VBLANK_INT("screen", parodius_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", parodius_state,  parodius_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3579545)
 	MCFG_CPU_PROGRAM_MAP(parodius_sound_map)
@@ -304,7 +302,7 @@ static MACHINE_CONFIG_START( parodius, parodius_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(parodius)
+	MCFG_SCREEN_UPDATE_DRIVER(parodius_state, screen_update_parodius)
 
 	MCFG_PALETTE_LENGTH(2048)
 

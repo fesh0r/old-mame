@@ -696,18 +696,18 @@ WRITE_LINE_MEMBER( wangpc_state::eop_w )
 
 READ8_MEMBER( wangpc_state::memr_r )
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	offs_t addr = (m_dma_page[m_dack] << 16) | offset;
 
-	return program->read_byte(addr);
+	return program.read_byte(addr);
 }
 
 WRITE8_MEMBER( wangpc_state::memw_w )
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	offs_t addr = (m_dma_page[m_dack] << 16) | offset;
 
-	program->write_byte(addr, data);
+	program.write_byte(addr, data);
 }
 
 READ8_MEMBER( wangpc_state::ior2_r )
@@ -715,7 +715,7 @@ READ8_MEMBER( wangpc_state::ior2_r )
 	if (m_disable_dreq2)
 		return m_bus->dack_r(space, 2);
 	else
-		return upd765_dack_r(m_fdc, 0);
+		return upd765_dack_r(m_fdc, space, 0);
 }
 
 WRITE8_MEMBER( wangpc_state::iow2_w )
@@ -723,7 +723,7 @@ WRITE8_MEMBER( wangpc_state::iow2_w )
 	if (m_disable_dreq2)
 		m_bus->dack_w(space, 2, data);
 	else
-		upd765_dack_w(m_fdc, 0, data);
+		upd765_dack_w(m_fdc, space, 0, data);
 }
 
 WRITE_LINE_MEMBER( wangpc_state::dack0_w )

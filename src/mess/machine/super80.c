@@ -12,9 +12,8 @@ WRITE8_MEMBER( super80_state::pio_port_a_w )
 	m_keylatch = data;
 };
 
-static READ8_DEVICE_HANDLER( pio_port_b_r ) // cannot be modernised yet as super80 hangs at start
+READ8_MEMBER(super80_state::pio_port_b_r)// cannot be modernised yet as super80 hangs at start
 {
-	super80_state *state = device->machine().driver_data<super80_state>();
 	char kbdrow[6];
 	UINT8 i;
 	UINT8 data = 0xff;
@@ -22,7 +21,7 @@ static READ8_DEVICE_HANDLER( pio_port_b_r ) // cannot be modernised yet as super
 	for (i = 0; i < 8; i++)
 	{
 		sprintf(kbdrow,"X%d",i);
-		if (!BIT(state->m_keylatch, i)) data &= state->ioport(kbdrow)->read();
+		if (!BIT(m_keylatch, i)) data &= ioport(kbdrow)->read();
 	}
 
 	return data;
@@ -34,7 +33,7 @@ Z80PIO_INTERFACE( super80_pio_intf )
 	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(super80_state, pio_port_a_w),
 	DEVCB_NULL,			/* portA ready active callback (not used in super80) */
-	DEVCB_HANDLER(pio_port_b_r),
+	DEVCB_DRIVER_MEMBER(super80_state,pio_port_b_r),
 	DEVCB_NULL,
 	DEVCB_NULL			/* portB ready active callback (not used in super80) */
 };
@@ -78,58 +77,55 @@ static void super80_cassette_motor( running_machine &machine, UINT8 data )
     bit 1 = MDS fast system
     bit 2 = CA3140 */
 
-static TIMER_CALLBACK( super80_timer )
+TIMER_CALLBACK_MEMBER(super80_state::super80_timer)
 {
-	super80_state *state = machine.driver_data<super80_state>();
 	UINT8 cass_ws=0;
 
-	state->m_cass_data[1]++;
-	cass_ws = ((state->m_cass)->input() > +0.03) ? 4 : 0;
+	m_cass_data[1]++;
+	cass_ws = ((m_cass)->input() > +0.03) ? 4 : 0;
 
-	if (cass_ws != state->m_cass_data[0])
+	if (cass_ws != m_cass_data[0])
 	{
-		if (cass_ws) state->m_cass_data[3] ^= 2;		// the MDS flipflop
-		state->m_cass_data[0] = cass_ws;
-		state->m_cass_data[2] = ((state->m_cass_data[1] < 0x40) ? 1 : 0) | cass_ws | state->m_cass_data[3];
-		state->m_cass_data[1] = 0;
+		if (cass_ws) m_cass_data[3] ^= 2;		// the MDS flipflop
+		m_cass_data[0] = cass_ws;
+		m_cass_data[2] = ((m_cass_data[1] < 0x40) ? 1 : 0) | cass_ws | m_cass_data[3];
+		m_cass_data[1] = 0;
 	}
 
-	state->m_pio->port_b_write(pio_port_b_r(state->m_pio,0));
+	m_pio->port_b_write(pio_port_b_r(generic_space(),0,0xff));
 }
 
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
-static TIMER_CALLBACK( super80_reset )
+TIMER_CALLBACK_MEMBER(super80_state::super80_reset)
 {
-	super80_state *state = machine.driver_data<super80_state>();
-	state->membank("boot")->set_entry(0);
+	membank("boot")->set_entry(0);
 }
 
-static TIMER_CALLBACK( super80_halfspeed )
+TIMER_CALLBACK_MEMBER(super80_state::super80_halfspeed)
 {
 	UINT8 go_fast = 0;
-	super80_state *state = machine.driver_data<super80_state>();
-	if ( (!BIT(state->m_shared, 2)) | (!BIT(machine.root_device().ioport("CONFIG")->read(), 1)) )	/* bit 2 of port F0 is low, OR user turned on config switch */
+	if ( (!BIT(m_shared, 2)) | (!BIT(machine().root_device().ioport("CONFIG")->read(), 1)) )	/* bit 2 of port F0 is low, OR user turned on config switch */
 		go_fast++;
 
 	/* code to slow down computer to 1 MHz by halting cpu on every second frame */
 	if (!go_fast)
 	{
-		if (!state->m_int_sw)
-			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);	// if going, stop it
+		if (!m_int_sw)
+			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);	// if going, stop it
 
-		state->m_int_sw++;
-		if (state->m_int_sw > 1)
+		m_int_sw++;
+		if (m_int_sw > 1)
 		{
-			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);		// if stopped, start it
-			state->m_int_sw = 0;
+			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);		// if stopped, start it
+			m_int_sw = 0;
 		}
 	}
 	else
 	{
-		if (state->m_int_sw < 8)								// @2MHz, reset just once
+		if (m_int_sw < 8)								// @2MHz, reset just once
 		{
-			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
-			state->m_int_sw = 8;							// ...not every time
+			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+			m_int_sw = 8;							// ...not every time
 		}
 	}
 }
@@ -202,7 +198,7 @@ WRITE8_MEMBER( super80_state::super80r_f0_w )
 void super80_state::machine_reset()
 {
 	m_shared=0xff;
-	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(super80_reset));
+	machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(super80_state::super80_reset),this));
 	membank("boot")->set_entry(1);
 }
 
@@ -211,12 +207,12 @@ static void driver_init_common( running_machine &machine )
 	super80_state *state = machine.driver_data<super80_state>();
 	UINT8 *RAM = state->memregion("maincpu")->base();
 	state->membank("boot")->configure_entries(0, 2, &RAM[0x0000], 0xc000);
-	machine.scheduler().timer_pulse(attotime::from_hz(200000), FUNC(super80_timer));	/* timer for keyboard and cassette */
+	machine.scheduler().timer_pulse(attotime::from_hz(200000), timer_expired_delegate(FUNC(super80_state::super80_timer),state));	/* timer for keyboard and cassette */
 }
 
 DRIVER_INIT_MEMBER(super80_state,super80)
 {
-	machine().scheduler().timer_pulse(attotime::from_hz(100), FUNC(super80_halfspeed));	/* timer for 1MHz slowdown */
+	machine().scheduler().timer_pulse(attotime::from_hz(100), timer_expired_delegate(FUNC(super80_state::super80_halfspeed),this));	/* timer for 1MHz slowdown */
 	driver_init_common(machine());
 }
 

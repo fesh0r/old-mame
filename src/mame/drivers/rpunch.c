@@ -156,19 +156,18 @@ CUSTOM_INPUT_MEMBER(rpunch_state::hi_bits_r)
  *
  *************************************/
 
-static TIMER_CALLBACK( sound_command_w_callback )
+TIMER_CALLBACK_MEMBER(rpunch_state::sound_command_w_callback)
 {
-	rpunch_state *state = machine.driver_data<rpunch_state>();
-	state->m_sound_busy = 1;
-	state->m_sound_data = param;
-	machine.device("audiocpu")->execute().set_input_line(0, (state->m_ym2151_irq | state->m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	m_sound_busy = 1;
+	m_sound_data = param;
+	machine().device("audiocpu")->execute().set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 WRITE16_MEMBER(rpunch_state::sound_command_w)
 {
 	if (ACCESSING_BITS_0_7)
-		machine().scheduler().synchronize(FUNC(sound_command_w_callback), data & 0xff);
+		machine().scheduler().synchronize(timer_expired_delegate(FUNC(rpunch_state::sound_command_w_callback),this), data & 0xff);
 }
 
 
@@ -209,7 +208,7 @@ WRITE8_MEMBER(rpunch_state::upd_control_w)
 WRITE8_MEMBER(rpunch_state::upd_data_w)
 {
 	device_t *device = machine().device("upd");
-	upd7759_port_w(device, 0, data);
+	upd7759_port_w(device, space, 0, data);
 	upd7759_start_w(device, 0);
 	upd7759_start_w(device, 1);
 }
@@ -476,7 +475,7 @@ static MACHINE_CONFIG_START( rpunch, rpunch_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(304, 224)
 	MCFG_SCREEN_VISIBLE_AREA(8, 303-8, 0, 223-8)
-	MCFG_SCREEN_UPDATE_STATIC(rpunch)
+	MCFG_SCREEN_UPDATE_DRIVER(rpunch_state, screen_update_rpunch)
 
 	MCFG_GFXDECODE(rpunch)
 	MCFG_PALETTE_LENGTH(1024)

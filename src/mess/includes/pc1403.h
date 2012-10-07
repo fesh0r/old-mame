@@ -29,6 +29,8 @@ public:
 	UINT8 m_reg[0x100];
 
 	DECLARE_DRIVER_INIT(pc1403);
+	UINT32 screen_update_pc1403(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(pc1403_power_up);
 };
 
 
@@ -44,17 +46,17 @@ int pc1403_ina(device_t *device);
 
 MACHINE_START( pc1403 );
 
-READ8_HANDLER(pc1403_asic_read);
-WRITE8_HANDLER(pc1403_asic_write);
+DECLARE_READ8_HANDLER(pc1403_asic_read);
+DECLARE_WRITE8_HANDLER(pc1403_asic_write);
 
 
 /*----------- defined in video/pc1403.c -----------*/
 
 VIDEO_START( pc1403 );
-SCREEN_UPDATE_IND16( pc1403 );
 
-READ8_HANDLER(pc1403_lcd_read);
-WRITE8_HANDLER(pc1403_lcd_write);
+
+DECLARE_READ8_HANDLER(pc1403_lcd_read);
+DECLARE_WRITE8_HANDLER(pc1403_lcd_write);
 
 
 #endif /* PC1403_H_ */

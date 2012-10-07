@@ -115,6 +115,10 @@ public:
 
 	UINT8 identify_bank_type(UINT32 bank);
 	virtual void palette_init();
+	DECLARE_INPUT_CHANGED_MEMBER(trigger_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(irq_timer1);
+	TIMER_DEVICE_CALLBACK_MEMBER(irq_timer2);
+	TIMER_DEVICE_CALLBACK_MEMBER(sec_timer);
 };
 
 
@@ -154,7 +158,7 @@ READ8_MEMBER( rex6000_state::bankswitch_r )
 
 WRITE8_MEMBER( rex6000_state::bankswitch_w )
 {
-	address_space* program = m_maincpu->space(AS_PROGRAM);
+	address_space& program = m_maincpu->space(AS_PROGRAM);
 
 	m_bank[offset&3] = data;
 
@@ -169,11 +173,11 @@ WRITE8_MEMBER( rex6000_state::bankswitch_w )
 
 			if (m_banks[0].type != BANK_UNKNOWN)
 			{
-				program->install_readwrite_handler(0x8000, 0x9fff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0x8000_r), this), write8_delegate(FUNC(rex6000_state::flash_0x8000_w), this));
+				program.install_readwrite_handler(0x8000, 0x9fff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0x8000_r), this), write8_delegate(FUNC(rex6000_state::flash_0x8000_w), this));
 			}
 			else
 			{
-				program->unmap_readwrite(0x8000, 0x9fff);
+				program.unmap_readwrite(0x8000, 0x9fff);
 			}
 
 			break;
@@ -186,15 +190,15 @@ WRITE8_MEMBER( rex6000_state::bankswitch_w )
 
 			if (m_banks[1].type == BANK_RAM)
 			{
-				program->install_ram(0xa000, 0xbfff, m_ram_base + ((m_banks[1].page & 0x03)<<13));
+				program.install_ram(0xa000, 0xbfff, m_ram_base + ((m_banks[1].page & 0x03)<<13));
 			}
 			else if (m_banks[1].type != BANK_UNKNOWN)
 			{
-				program->install_readwrite_handler(0xa000, 0xbfff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0xa000_r), this), write8_delegate(FUNC(rex6000_state::flash_0xa000_w), this));
+				program.install_readwrite_handler(0xa000, 0xbfff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0xa000_r), this), write8_delegate(FUNC(rex6000_state::flash_0xa000_w), this));
 			}
 			else
 			{
-				program->unmap_readwrite(0xa000, 0xbfff);
+				program.unmap_readwrite(0xa000, 0xbfff);
 			}
 
 			break;
@@ -406,15 +410,14 @@ static ADDRESS_MAP_START( rex6000_io, AS_IO, 8, rex6000_state)
 	//AM_RANGE( 0x00, 0xff ) AM_RAM
 ADDRESS_MAP_END
 
-static INPUT_CHANGED( trigger_irq )
+INPUT_CHANGED_MEMBER(rex6000_state::trigger_irq)
 {
-	rex6000_state *state = field.machine().driver_data<rex6000_state>();
 
-	if (!(state->m_irq_mask & IRQ_FLAG_KEYCHANGE))
+	if (!(m_irq_mask & IRQ_FLAG_KEYCHANGE))
 	{
-		state->m_irq_flag |= IRQ_FLAG_KEYCHANGE;
+		m_irq_flag |= IRQ_FLAG_KEYCHANGE;
 
-		state->m_maincpu->set_input_line(0, HOLD_LINE);
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -426,12 +429,12 @@ INPUT_PORTS_START( rex6000 )
 	PORT_CONFSETTING( 0x0000, "Poor" )
 
 	PORT_START("INPUT")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Home")	PORT_CODE(KEYCODE_HOME)			PORT_CHANGED(trigger_irq, 0)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Back")	PORT_CODE(KEYCODE_BACKSPACE)	PORT_CHANGED(trigger_irq, 0)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Select")		PORT_CODE(KEYCODE_SPACE)	PORT_CHANGED(trigger_irq, 0)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Up")		PORT_CODE(KEYCODE_PGUP)			PORT_CHANGED(trigger_irq, 0)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Down")	PORT_CODE(KEYCODE_PGDN)			PORT_CHANGED(trigger_irq, 0)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Pen")	PORT_CODE(KEYCODE_ENTER) PORT_CODE(MOUSECODE_BUTTON1)	PORT_CHANGED(trigger_irq, 0)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Home")	PORT_CODE(KEYCODE_HOME)			PORT_CHANGED_MEMBER(DEVICE_SELF, rex6000_state, trigger_irq, 0)
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Back")	PORT_CODE(KEYCODE_BACKSPACE)	PORT_CHANGED_MEMBER(DEVICE_SELF, rex6000_state, trigger_irq, 0)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Select")		PORT_CODE(KEYCODE_SPACE)	PORT_CHANGED_MEMBER(DEVICE_SELF, rex6000_state, trigger_irq, 0)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Up")		PORT_CODE(KEYCODE_PGUP)			PORT_CHANGED_MEMBER(DEVICE_SELF, rex6000_state, trigger_irq, 0)
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYPAD)  PORT_NAME("Down")	PORT_CODE(KEYCODE_PGDN)			PORT_CHANGED_MEMBER(DEVICE_SELF, rex6000_state, trigger_irq, 0)
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Pen")	PORT_CODE(KEYCODE_ENTER) PORT_CODE(MOUSECODE_BUTTON1)	PORT_CHANGED_MEMBER(DEVICE_SELF, rex6000_state, trigger_irq, 0)
 
 	PORT_START("PENX")
 	PORT_BIT(0x3ff, 0x00, IPT_LIGHTGUN_X) PORT_NAME("Pen X") PORT_CROSSHAIR(X, 1, 0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_INVERT
@@ -452,10 +455,10 @@ void rex6000_state::machine_start()
 }
 void rex6000_state::machine_reset()
 {
-	address_space* program = m_maincpu->space(AS_PROGRAM);
+	address_space& program = m_maincpu->space(AS_PROGRAM);
 
-	program->install_readwrite_handler(0x8000, 0x9fff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0x8000_r), this), write8_delegate(FUNC(rex6000_state::flash_0x8000_w), this));
-	program->install_readwrite_handler(0xa000, 0xbfff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0xa000_r), this), write8_delegate(FUNC(rex6000_state::flash_0xa000_w), this));
+	program.install_readwrite_handler(0x8000, 0x9fff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0x8000_r), this), write8_delegate(FUNC(rex6000_state::flash_0x8000_w), this));
+	program.install_readwrite_handler(0xa000, 0xbfff, 0, 0, read8_delegate(FUNC(rex6000_state::flash_0xa000_r), this), write8_delegate(FUNC(rex6000_state::flash_0xa000_w), this));
 
 	m_banks[0].type = 0x04;
 	m_banks[0].type = 0;
@@ -493,7 +496,7 @@ UINT32 rex6000_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 				}
 				else
 				{
-					data =  m_flash[mem_type]->space(0)->read_byte(((lcd_bank & 0x7f)<<13) | (y*30 + x));
+					data =  m_flash[mem_type]->space(0).read_byte(((lcd_bank & 0x7f)<<13) | (y*30 + x));
 				}
 
 
@@ -512,40 +515,37 @@ UINT32 rex6000_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 	return 0;
 }
 
-static TIMER_DEVICE_CALLBACK( irq_timer1 )
+TIMER_DEVICE_CALLBACK_MEMBER(rex6000_state::irq_timer1)
 {
-	rex6000_state *state = timer.machine().driver_data<rex6000_state>();
 
-	if (!(state->m_irq_mask & IRQ_FLAG_IRQ2))
+	if (!(m_irq_mask & IRQ_FLAG_IRQ2))
 	{
-		state->m_irq_flag |= IRQ_FLAG_IRQ2;
+		m_irq_flag |= IRQ_FLAG_IRQ2;
 
-		state->m_maincpu->set_input_line(0, HOLD_LINE);
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	}
 
 }
 
-static TIMER_DEVICE_CALLBACK( irq_timer2 )
+TIMER_DEVICE_CALLBACK_MEMBER(rex6000_state::irq_timer2)
 {
-	rex6000_state *state = timer.machine().driver_data<rex6000_state>();
 
-	if (!(state->m_irq_mask & IRQ_FLAG_IRQ1))
+	if (!(m_irq_mask & IRQ_FLAG_IRQ1))
 	{
-		state->m_irq_flag |= IRQ_FLAG_IRQ1;
+		m_irq_flag |= IRQ_FLAG_IRQ1;
 
-		state->m_maincpu->set_input_line(0, HOLD_LINE);
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( sec_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(rex6000_state::sec_timer)
 {
-	rex6000_state *state = timer.machine().driver_data<rex6000_state>();
 
-	if (!(state->m_irq_mask & IRQ_FLAG_1HZ))
+	if (!(m_irq_mask & IRQ_FLAG_1HZ))
 	{
-		state->m_irq_flag |= IRQ_FLAG_1HZ;
+		m_irq_flag |= IRQ_FLAG_1HZ;
 
-		state->m_maincpu->set_input_line(0, HOLD_LINE);
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -569,7 +569,7 @@ static QUICKLOAD_LOAD(rex6000)
 {
 	static const char magic[] = "ApplicationName:Addin";
 	running_machine &machine = image.device().machine();
-	address_space* flash = machine.device("flash0b")->memory().space(0);
+	address_space& flash = machine.device("flash0b")->memory().space(0);
 	UINT32 img_start = 0;
 	UINT8 *data;
 
@@ -583,7 +583,7 @@ static QUICKLOAD_LOAD(rex6000)
 	img_start += 0xa0;	//skip the icon (40x32 pixel)
 
 	for (int i=0; i<image.length() - img_start ;i++)
-		flash->write_byte(i, data[img_start + i]);
+		flash.write_byte(i, data[img_start + i]);
 
 	auto_free(machine, data);
 
@@ -650,9 +650,9 @@ static MACHINE_CONFIG_START( rex6000, rex6000_state )
     MCFG_CPU_PROGRAM_MAP(rex6000_mem)
     MCFG_CPU_IO_MAP(rex6000_io)
 
-	MCFG_TIMER_ADD_PERIODIC("sec_timer", sec_timer, attotime::from_hz(1))
-	MCFG_TIMER_ADD_PERIODIC("irq_timer1", irq_timer1, attotime::from_hz(32))
-	MCFG_TIMER_ADD_PERIODIC("irq_timer2", irq_timer2, attotime::from_hz(4096))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("sec_timer", rex6000_state, sec_timer, attotime::from_hz(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer1", rex6000_state, irq_timer1, attotime::from_hz(32))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer2", rex6000_state, irq_timer2, attotime::from_hz(4096))
 
     /* video hardware */
     MCFG_SCREEN_ADD("screen", LCD)

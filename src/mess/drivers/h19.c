@@ -46,12 +46,12 @@ class h19_state : public driver_device
 public:
 	h19_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-	m_maincpu(*this, "maincpu"),
-	m_crtc(*this, "crtc"),
-	m_ace(*this, "ins8250"),
-	m_beep(*this, BEEPER_TAG)
-	,
-		m_p_videoram(*this, "p_videoram"){ }
+		  m_maincpu(*this, "maincpu"),
+		  m_crtc(*this, "crtc"),
+		  m_ace(*this, "ins8250"),
+		  m_beep(*this, BEEPER_TAG),
+		  m_p_videoram(*this, "p_videoram")
+	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<mc6845_device> m_crtc;
@@ -60,19 +60,20 @@ public:
 	DECLARE_READ8_MEMBER(h19_80_r);
 	DECLARE_READ8_MEMBER(h19_a0_r);
 	DECLARE_WRITE8_MEMBER(h19_c0_w);
-	WRITE8_MEMBER(h19_kbd_put);
+	DECLARE_WRITE8_MEMBER(h19_kbd_put);
 	required_shared_ptr<UINT8> m_p_videoram;
 	UINT8 *m_p_chargen;
 	UINT8 m_term_data;
 	virtual void machine_reset();
 	virtual void video_start();
+	TIMER_CALLBACK_MEMBER(h19_beepoff);
+	DECLARE_WRITE_LINE_MEMBER(h19_ace_irq);
 };
 
 
-static TIMER_CALLBACK( h19_beepoff )
+TIMER_CALLBACK_MEMBER(h19_state::h19_beepoff)
 {
-	h19_state *state = machine.driver_data<h19_state>();
-	beep_set_state(state->m_beep, 0);
+	beep_set_state(m_beep, 0);
 }
 
 READ8_MEMBER( h19_state::h19_80_r )
@@ -99,7 +100,7 @@ WRITE8_MEMBER( h19_state::h19_c0_w )
 
 	UINT8 length = (offset & 0x20) ? 200 : 4;
 	beep_set_state(m_beep, 1);
-	machine().scheduler().timer_set(attotime::from_msec(length), FUNC(h19_beepoff));
+	machine().scheduler().timer_set(attotime::from_msec(length), timer_expired_delegate(FUNC(h19_state::h19_beepoff),this));
 }
 
 static ADDRESS_MAP_START(h19_mem, AS_PROGRAM, 8, h19_state)
@@ -334,9 +335,9 @@ static MC6845_UPDATE_ROW( h19_update_row )
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER(h19_ace_irq)
+WRITE_LINE_MEMBER(h19_state::h19_ace_irq)
 {
-	device->machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
+	machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 static const ins8250_interface h19_ace_interface =
@@ -344,7 +345,7 @@ static const ins8250_interface h19_ace_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_LINE(h19_ace_irq), // interrupt
+	DEVCB_DRIVER_LINE_MEMBER(h19_state, h19_ace_irq), // interrupt
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -397,7 +398,7 @@ static MACHINE_CONFIG_START( h19, h19_state )
 	MCFG_CPU_ADD("maincpu",Z80, H19_CLOCK) // From schematics
 	MCFG_CPU_PROGRAM_MAP(h19_mem)
 	MCFG_CPU_IO_MAP(h19_io)
-	//MCFG_DEVICE_PERIODIC_INT(irq0_line_hold, 50) // for testing, causes a keyboard scan
+	//MCFG_DEVICE_PERIODIC_INT_DRIVER(h19_state, irq0_line_hold,  50) // for testing, causes a keyboard scan
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)

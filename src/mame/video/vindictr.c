@@ -112,7 +112,7 @@ WRITE16_HANDLER( vindictr_paletteram_w )
 	int c;
 
 	/* first blend the data */
-	vindictr_state *state = space->machine().driver_data<vindictr_state>();
+	vindictr_state *state = space.machine().driver_data<vindictr_state>();
 	COMBINE_DATA(&state->m_generic_paletteram_16[offset]);
 	data = state->m_generic_paletteram_16[offset];
 
@@ -124,7 +124,7 @@ WRITE16_HANDLER( vindictr_paletteram_w )
 		int g = ((data >> 4) & 15) * i;
 		int b = ((data >> 0) & 15) * i;
 
-		palette_set_color(space->machine(),offset + c*2048,MAKE_RGB(r,g,b));
+		palette_set_color(space.machine(),offset + c*2048,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -216,15 +216,14 @@ void vindictr_scanline_update(screen_device &screen, int scanline)
  *
  *************************************/
 
-SCREEN_UPDATE_IND16( vindictr )
+UINT32 vindictr_state::screen_update_vindictr(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	vindictr_state *state = screen.machine().driver_data<vindictr_state>();
 	atarimo_rect_list rectlist;
 	bitmap_ind16 *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
-	state->m_playfield_tilemap->draw(bitmap, cliprect, 0, 0);
+	m_playfield_tilemap->draw(bitmap, cliprect, 0, 0);
 
 	/* draw and merge the MO */
 	mobitmap = atarimo_render(0, cliprect, &rectlist);
@@ -265,7 +264,7 @@ SCREEN_UPDATE_IND16( vindictr )
 		}
 
 	/* add the alpha on top */
-	state->m_alpha_tilemap->draw(bitmap, cliprect, 0, 0);
+	m_alpha_tilemap->draw(bitmap, cliprect, 0, 0);
 
 	/* now go back and process the upper bit of MO priority */
 	rectlist.rect -= rectlist.numrects;

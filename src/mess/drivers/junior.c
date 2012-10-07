@@ -47,6 +47,8 @@ public:
 	UINT8 m_led_time[6];
 	virtual void machine_start();
 	virtual void machine_reset();
+	DECLARE_INPUT_CHANGED_MEMBER(junior_reset);
+	TIMER_DEVICE_CALLBACK_MEMBER(junior_update_leds);
 };
 
 
@@ -62,10 +64,10 @@ static ADDRESS_MAP_START(junior_mem, AS_PROGRAM, 8, junior_state)
 ADDRESS_MAP_END
 
 
-static INPUT_CHANGED( junior_reset )
+INPUT_CHANGED_MEMBER(junior_state::junior_reset)
 {
 	if (newval == 0)
-		field.machine().firstcpu->reset();
+		machine().firstcpu->reset();
 }
 
 
@@ -104,7 +106,7 @@ PORT_START("LINE0")			/* IN0 keys row 0 */
 	PORT_START("LINE3")			/* IN3 STEP and RESET keys, MODE switch */
 	PORT_BIT( 0x80, 0x00, IPT_UNUSED )
 	PORT_BIT( 0x40, 0x40, IPT_KEYBOARD ) PORT_NAME("sw1: ST") PORT_CODE(KEYCODE_F7)
-	PORT_BIT( 0x20, 0x20, IPT_KEYBOARD ) PORT_NAME("sw2: RST") PORT_CODE(KEYCODE_F3) PORT_CHANGED(junior_reset, NULL)
+	PORT_BIT( 0x20, 0x20, IPT_KEYBOARD ) PORT_NAME("sw2: RST") PORT_CODE(KEYCODE_F3) PORT_CHANGED_MEMBER(DEVICE_SELF, junior_state, junior_reset, NULL)
 	PORT_DIPNAME(0x10, 0x10, "sw3: SS (NumLock)") PORT_CODE(KEYCODE_NUMLOCK) PORT_TOGGLE
 	PORT_DIPSETTING( 0x00, "single step")
 	PORT_DIPSETTING( 0x10, "run")
@@ -191,15 +193,14 @@ static const riot6532_interface junior_riot_interface =
 };
 
 
-static TIMER_DEVICE_CALLBACK( junior_update_leds )
+TIMER_DEVICE_CALLBACK_MEMBER(junior_state::junior_update_leds)
 {
-	junior_state *state = timer.machine().driver_data<junior_state>();
 	int i;
 
 	for ( i = 0; i < 6; i++ )
 	{
-		if ( state->m_led_time[i] )
-			state->m_led_time[i]--;
+		if ( m_led_time[i] )
+			m_led_time[i]--;
 		else
 			output_set_digit_value( i, 0 );
 	}
@@ -234,7 +235,7 @@ static MACHINE_CONFIG_START( junior, junior_state )
 
 	/* Devices */
 	MCFG_RIOT6532_ADD("riot", XTAL_1MHz, junior_riot_interface)
-	MCFG_TIMER_ADD_PERIODIC("led_timer", junior_update_leds, attotime::from_hz(50))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("led_timer", junior_state, junior_update_leds, attotime::from_hz(50))
 MACHINE_CONFIG_END
 
 

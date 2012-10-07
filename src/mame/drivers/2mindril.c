@@ -63,7 +63,10 @@ public:
 	DECLARE_DRIVER_INIT(drill);
 	DECLARE_MACHINE_START(drill);
 	DECLARE_MACHINE_RESET(drill);
-
+	INTERRUPT_GEN_MEMBER(drill_vblank_irq);
+	//INTERRUPT_GEN_MEMBER(drill_device_irq);
+	TIMER_CALLBACK_MEMBER(shutter_req);
+	TIMER_CALLBACK_MEMBER(defender_req);
 };
 
 
@@ -131,16 +134,14 @@ WRITE16_MEMBER(_2mindril_state::drill_io_w)
     PORT_DIPSETTING(      0x0800, DEF_STR( On ) )
 */
 #ifdef UNUSED_FUNCTION
-static TIMER_CALLBACK( shutter_req )
+TIMER_CALLBACK_MEMBER(_2mindril_state::shutter_req)
 {
-	_2mindril_state *state = machine.driver_data<_2mindril_state>();
-	state->m_shutter_sensor = param;
+	m_shutter_sensor = param;
 }
 
-static TIMER_CALLBACK( defender_req )
+TIMER_CALLBACK_MEMBER(_2mindril_state::defender_req)
 {
-	_2mindril_state *state = machine.driver_data<_2mindril_state>();
-	state->m_defender_sensor = param;
+	m_defender_sensor = param;
 }
 #endif
 
@@ -400,15 +401,15 @@ static GFXDECODE_START( 2mindril )
 GFXDECODE_END
 
 
-static INTERRUPT_GEN( drill_vblank_irq )
+INTERRUPT_GEN_MEMBER(_2mindril_state::drill_vblank_irq)
 {
-	device->execute().set_input_line(4, ASSERT_LINE);
+	device.execute().set_input_line(4, ASSERT_LINE);
 }
 
 #if 0
-static INTERRUPT_GEN( drill_device_irq )
+INTERRUPT_GEN_MEMBER(_2mindril_state::drill_device_irq)
 {
-	device->execute().set_input_line(5, ASSERT_LINE);
+	device.execute().set_input_line(5, ASSERT_LINE);
 }
 #endif
 
@@ -446,8 +447,8 @@ static MACHINE_CONFIG_START( drill, _2mindril_state )
 
 	MCFG_CPU_ADD("maincpu", M68000, 16000000 )
 	MCFG_CPU_PROGRAM_MAP(drill_map)
-	MCFG_CPU_VBLANK_INT("screen", drill_vblank_irq)
-	//MCFG_CPU_PERIODIC_INT(drill_device_irq,60)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", _2mindril_state,  drill_vblank_irq)
+	//MCFG_CPU_PERIODIC_INT_DRIVER(_2mindril_state, drill_device_irq, 60)
 	MCFG_GFXDECODE(2mindril)
 
 	MCFG_MACHINE_START_OVERRIDE(_2mindril_state,drill)
@@ -458,8 +459,8 @@ static MACHINE_CONFIG_START( drill, _2mindril_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* inaccurate, same as Taito F3? (needs screen raw params anyway) */
 	MCFG_SCREEN_SIZE(40*8+48*2, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(46, 40*8-1 + 46, 24, 24+224-1)
-	MCFG_SCREEN_UPDATE_STATIC(f3)
-	MCFG_SCREEN_VBLANK_STATIC(f3)
+	MCFG_SCREEN_UPDATE_DRIVER(_2mindril_state, screen_update_f3)
+	MCFG_SCREEN_VBLANK_DRIVER(_2mindril_state, screen_eof_f3)
 
 	MCFG_PALETTE_LENGTH(0x2000)
 

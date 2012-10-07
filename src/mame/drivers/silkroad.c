@@ -283,7 +283,7 @@ static MACHINE_CONFIG_START( silkroad, silkroad_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68EC020, 16000000)
 	MCFG_CPU_PROGRAM_MAP(cpu_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", silkroad_state,  irq4_line_hold)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -291,7 +291,7 @@ static MACHINE_CONFIG_START( silkroad, silkroad_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(6*8+2, 64*8-1-(10*8)-2, 2*8, 32*8-1-(2*8))
-	MCFG_SCREEN_UPDATE_STATIC(silkroad)
+	MCFG_SCREEN_UPDATE_DRIVER(silkroad_state, screen_update_silkroad)
 
 	MCFG_GFXDECODE(silkroad)
 	MCFG_PALETTE_LENGTH(0x2000)

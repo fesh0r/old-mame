@@ -176,73 +176,24 @@ public:
 	DECLARE_VIDEO_START(scorpion);
 	DECLARE_VIDEO_START(ad2083);
 	DECLARE_VIDEO_START(dambustr);
+	UINT32 screen_update_galaxold(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_dambustr(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vblank_irq);
+	INTERRUPT_GEN_MEMBER(hunchbks_vh_interrupt);
+	TIMER_CALLBACK_MEMBER(stars_blink_callback);
+	TIMER_CALLBACK_MEMBER(stars_scroll_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(galaxold_interrupt_timer);
 };
 
-
 /*----------- defined in video/galaxold.c -----------*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void galaxold_init_stars(running_machine &machine, int colors_offset);
 void galaxold_draw_stars(running_machine &machine, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-SCREEN_UPDATE_IND16( galaxold );
-SCREEN_UPDATE_IND16( dambustr );
-
-
-
 /*----------- defined in machine/galaxold.c -----------*/
-
-TIMER_DEVICE_CALLBACK( galaxold_interrupt_timer );
 
 WRITE_LINE_DEVICE_HANDLER( galaxold_7474_9m_2_q_callback );
 WRITE_LINE_DEVICE_HANDLER( galaxold_7474_9m_1_callback );
 
-
-
-
-
-
 #define galaxold_coin_counter_0_w galaxold_coin_counter_w
-
-
-
-INTERRUPT_GEN( hunchbks_vh_interrupt );
 
 #endif

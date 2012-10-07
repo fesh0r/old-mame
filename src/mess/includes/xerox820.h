@@ -82,6 +82,11 @@ public:
 	int m_fdc_drq;						/* data request */
 	int m_8n5;							/* 5.25" / 8" drive select */
 	int m_dsdd;							/* double sided disk detect */
+	TIMER_CALLBACK_MEMBER(bigboard_beepoff);
+	TIMER_DEVICE_CALLBACK_MEMBER(xerox820_keyboard_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(ctc_tick);
+	DECLARE_WRITE_LINE_MEMBER(ctc_z0_w);
+	DECLARE_WRITE_LINE_MEMBER(ctc_z2_w);
 };
 
 class xerox820ii_state : public xerox820_state

@@ -64,6 +64,15 @@ public:
 	DECLARE_READ8_MEMBER( sid_poty_r );
 	DECLARE_MACHINE_START(c65);
 	DECLARE_PALETTE_INIT(c65);
+	UINT32 screen_update_c65(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vic3_raster_irq);
+	INTERRUPT_GEN_MEMBER(c65_frame_interrupt);
+	DECLARE_READ8_MEMBER(c65_cia0_port_a_r);
+	DECLARE_READ8_MEMBER(c65_cia0_port_b_r);
+	DECLARE_WRITE8_MEMBER(c65_cia0_port_b_w);
+	DECLARE_READ8_MEMBER(c65_cia1_port_a_r);
+	DECLARE_WRITE8_MEMBER(c65_cia1_port_a_w);
+	DECLARE_WRITE_LINE_MEMBER(c65_cia1_interrupt);
 };
 
 
@@ -84,10 +93,7 @@ int c65_dma_read_color(running_machine &machine, int offset);
 void c65_vic_interrupt(running_machine &machine, int level);
 void c65_bankswitch_interface(running_machine &machine, int value);
 
-
-INTERRUPT_GEN( c65_frame_interrupt );
-
-extern const mos6526_interface c65_cia0;
-extern const mos6526_interface c65_cia1;
+extern const legacy_mos6526_interface c65_cia0;
+extern const legacy_mos6526_interface c65_cia1;
 
 #endif /* C65_H_ */

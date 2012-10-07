@@ -38,21 +38,21 @@ public:
 	required_device<device_t> m_speaker;
 	required_device<centronics_device> m_centronics;
 	optional_device<mc6845_device> m_6845;
-	READ8_MEMBER( super80v_low_r );
-	READ8_MEMBER( super80v_high_r );
-	WRITE8_MEMBER( super80v_low_w );
-	WRITE8_MEMBER( super80v_high_w );
-	WRITE8_MEMBER( super80v_10_w );
-	WRITE8_MEMBER( super80v_11_w );
-	WRITE8_MEMBER( super80_f1_w );
-	READ8_MEMBER( super80_dc_r );
-	READ8_MEMBER( super80_f2_r );
-	WRITE8_MEMBER( super80_dc_w );
-	WRITE8_MEMBER( super80_f0_w );
-	WRITE8_MEMBER( super80r_f0_w );
-	READ8_MEMBER( super80_read_ff );
-	WRITE8_MEMBER( pio_port_a_w );
-	//READ8_MEMBER( pio_port_b_r );
+	DECLARE_READ8_MEMBER( super80v_low_r );
+	DECLARE_READ8_MEMBER( super80v_high_r );
+	DECLARE_WRITE8_MEMBER( super80v_low_w );
+	DECLARE_WRITE8_MEMBER( super80v_high_w );
+	DECLARE_WRITE8_MEMBER( super80v_10_w );
+	DECLARE_WRITE8_MEMBER( super80v_11_w );
+	DECLARE_WRITE8_MEMBER( super80_f1_w );
+	DECLARE_READ8_MEMBER( super80_dc_r );
+	DECLARE_READ8_MEMBER( super80_f2_r );
+	DECLARE_WRITE8_MEMBER( super80_dc_w );
+	DECLARE_WRITE8_MEMBER( super80_f0_w );
+	DECLARE_WRITE8_MEMBER( super80r_f0_w );
+	DECLARE_READ8_MEMBER( super80_read_ff );
+	DECLARE_WRITE8_MEMBER( pio_port_a_w );
+	//DECLARE_READ8_MEMBER( pio_port_b_r );
 	virtual void machine_reset();
 	UINT8 m_shared;
 	UINT8 m_keylatch;
@@ -80,25 +80,22 @@ public:
 	DECLARE_VIDEO_START(super80);
 	DECLARE_VIDEO_START(super80v);
 	DECLARE_PALETTE_INIT(super80m);
+	UINT32 screen_update_super80(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_super80v(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_super80d(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_super80e(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_super80m(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void screen_eof_super80m(screen_device &screen, bool state);
+	TIMER_CALLBACK_MEMBER(super80_timer);
+	TIMER_CALLBACK_MEMBER(super80_reset);
+	TIMER_CALLBACK_MEMBER(super80_halfspeed);
+	DECLARE_READ8_MEMBER(pio_port_b_r);
 };
 
 
 /*----------- defined in video/super80.c -----------*/
-
-
-SCREEN_UPDATE_IND16( super80 );
-SCREEN_UPDATE_IND16( super80d );
-SCREEN_UPDATE_IND16( super80e );
-SCREEN_UPDATE_IND16( super80m );
-
-SCREEN_VBLANK( super80m );
-
-SCREEN_UPDATE_RGB32( super80v );
 MC6845_UPDATE_ROW( super80v_update_row );
 
 /*----------- defined in machine/super80.c -----------*/
 
-
-
 extern const z80pio_interface super80_pio_intf;
-

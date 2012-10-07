@@ -49,10 +49,10 @@ void tandy2k_state::speaker_update()
 
 READ8_MEMBER( tandy2k_state::videoram_r )
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	offs_t addr = (m_vram_base << 15) | (offset << 1);
-	UINT16 data = program->read_word(addr);
+	UINT16 data = program.read_word(addr);
 
 	// character
 	m_drb0->write(space, 0, data & 0xff);
@@ -195,16 +195,18 @@ WRITE16_MEMBER( tandy2k_state::vpac_w )
 	}
 }
 
-static READ8_DEVICE_HANDLER( fldtc_r )
+READ8_MEMBER(tandy2k_state::fldtc_r)
 {
+	device_t *device = machine().device("AM_RANGE(0x00004, 0x00005) AM_READWRITE8(I8272A_TAG, fldtc_r, fldtc_w, 0x00ff)");
 	upd765_tc_w(device, 1);
 	upd765_tc_w(device, 0);
 
 	return 0;
 }
 
-static WRITE8_DEVICE_HANDLER( fldtc_w )
+WRITE8_MEMBER(tandy2k_state::fldtc_w)
 {
+	device_t *device = machine().device(I8272A_TAG);
 	upd765_tc_w(device, 1);
 	upd765_tc_w(device, 0);
 }
@@ -269,7 +271,7 @@ static ADDRESS_MAP_START( tandy2k_io, AS_IO, 16, tandy2k_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0x00001) AM_READWRITE8(enable_r, enable_w, 0x00ff)
 	AM_RANGE(0x00002, 0x00003) AM_WRITE8(dma_mux_w, 0x00ff)
-	AM_RANGE(0x00004, 0x00005) AM_DEVREADWRITE8_LEGACY(I8272A_TAG, fldtc_r, fldtc_w, 0x00ff)
+	AM_RANGE(0x00004, 0x00005) AM_READWRITE8(fldtc_r, fldtc_w, 0x00ff)
 	AM_RANGE(0x00010, 0x00013) AM_DEVREADWRITE8(I8251A_TAG, i8251_device, data_r, data_w, 0x00ff)
 	AM_RANGE(0x00030, 0x00031) AM_DEVREAD8_LEGACY(I8272A_TAG, upd765_status_r, 0x00ff)
 	AM_RANGE(0x00032, 0x00033) AM_DEVREADWRITE8_LEGACY(I8272A_TAG, upd765_data_r, upd765_data_w, 0x00ff)
@@ -319,12 +321,12 @@ UINT32 tandy2k_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap,
 static CRT9007_DRAW_SCANLINE( tandy2k_crt9007_display_pixels )
 {
     tandy2k_state *state = device->machine().driver_data<tandy2k_state>();
-    address_space *program = state->m_maincpu->space(AS_PROGRAM);
+    address_space &program = state->m_maincpu->space(AS_PROGRAM);
 
     for (int sx = 0; sx < x_count; sx++)
     {
         UINT32 videoram_addr = ((state->m_vram_base << 15) | (va << 1)) + sx;
-        UINT8 videoram_data = program->read_word(videoram_addr);
+        UINT8 videoram_data = program.read_word(videoram_addr);
         UINT16 charram_addr = (videoram_data << 4) | sl;
         UINT8 charram_data = state->m_char_ram[charram_addr] & 0xff;
 
@@ -670,11 +672,11 @@ static TANDY2K_KEYBOARD_INTERFACE( kb_intf )
 void tandy2k_state::machine_start()
 {
 	// memory banking
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 	int ram_size = m_ram->size();
 
-	program->install_ram(0x00000, ram_size - 1, ram);
+	program.install_ram(0x00000, ram_size - 1, ram);
 
 	// patch out i186 relocation register check
 	UINT8 *rom = memregion(I80186_TAG)->base();

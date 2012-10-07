@@ -295,7 +295,7 @@ WRITE8_DEVICE_HANDLER( micropolis_data_w )
 	else
 	{
 		if (VERBOSE)
-			logerror("%s: micropolis_data_w $%02X\n", device->machine().describe_context(), data);
+			logerror("%s: micropolis_data_w $%02X\n", space.machine().describe_context(), data);
 	}
 	w->data = data;
 }
@@ -306,10 +306,10 @@ READ8_DEVICE_HANDLER( micropolis_r )
 
 	switch (offset & 0x03)
 	{
-	case 0: data = micropolis_status_r(device, 0); break;
-	case 1:	data = micropolis_status_r(device, 1); break;
+	case 0: data = micropolis_status_r(device, space, 0); break;
+	case 1:	data = micropolis_status_r(device, space, 1); break;
 	case 2:
-	case 3:	data = micropolis_data_r(device, 0); break;
+	case 3:	data = micropolis_data_r(device, space, 0); break;
 	}
 
 	return data;
@@ -320,9 +320,9 @@ WRITE8_DEVICE_HANDLER( micropolis_w )
 	switch (offset & 0x03)
 	{
 	case 0:
-	case 1:	micropolis_command_w(device, 0, data); break;
+	case 1:	micropolis_command_w(device, space, 0, data); break;
 	case 2:
-	case 3: micropolis_data_w(device, 0, data);    break;
+	case 3: micropolis_data_w(device, space, 0, data);    break;
 	}
 }
 
@@ -381,7 +381,7 @@ const device_type MICROPOLIS = &device_creator<micropolis_device>;
 micropolis_device::micropolis_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, MICROPOLIS, "MICROPOLIS", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(micropolis_state));
+	m_token = global_alloc_clear(micropolis_state);
 }
 
 //-------------------------------------------------

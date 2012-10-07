@@ -78,6 +78,9 @@ private:
 	UINT8 m_portb;
 	virtual void machine_start();
 	virtual void machine_reset();
+public:
+	UINT32 screen_update_d6800(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(d6800_p);
 };
 
 
@@ -152,9 +155,8 @@ INPUT_PORTS_END
 
 /* Video */
 
-static SCREEN_UPDATE_IND16( d6800 )
+UINT32 d6800_state::screen_update_d6800(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	d6800_state *state = screen.machine().driver_data<d6800_state>();
 	UINT8 x,y,gfx=0;
 
 	for (y = 0; y < 32; y++)
@@ -163,8 +165,8 @@ static SCREEN_UPDATE_IND16( d6800 )
 
 		for (x = 0; x < 8; x++)
 		{
-			if (state->m_screen_on)
-				gfx = state->m_videoram[ x | (y<<3)];
+			if (m_screen_on)
+				gfx = m_videoram[ x | (y<<3)];
 
 			*p++ = BIT(gfx, 7);
 			*p++ = BIT(gfx, 6);
@@ -181,11 +183,10 @@ static SCREEN_UPDATE_IND16( d6800 )
 
 /* PIA6821 Interface */
 
-static TIMER_DEVICE_CALLBACK( d6800_p )
+TIMER_DEVICE_CALLBACK_MEMBER(d6800_state::d6800_p)
 {
-	d6800_state *state = timer.machine().driver_data<d6800_state>();
-	state->m_rtc++;
-	state->m_maincpu->set_input_line(M6800_IRQ_LINE, (state->m_rtc > 0xf8) ? ASSERT_LINE : CLEAR_LINE);
+	m_rtc++;
+	m_maincpu->set_input_line(M6800_IRQ_LINE, (m_rtc > 0xf8) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -319,7 +320,7 @@ static const cassette_interface d6800_cassette_interface =
 
 static QUICKLOAD_LOAD( d6800 )
 {
-	address_space *space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int i;
 	int quick_addr = 0x0200;
 	int exec_addr = 0xc000;
@@ -346,7 +347,7 @@ static QUICKLOAD_LOAD( d6800 )
 
 	for (i = 0; i < quick_length; i++)
 		if ((quick_addr + i) < 0x800)
-			space->write_byte(i + quick_addr, quick_data[i]);
+			space.write_byte(i + quick_addr, quick_data[i]);
 
 	/* display a message about the loaded quickload */
 	image.message(" Quickload: size=%04X : start=%04X : end=%04X : exec=%04X",quick_length,quick_addr,quick_addr+quick_length,exec_addr);
@@ -367,7 +368,7 @@ static MACHINE_CONFIG_START( d6800, d6800_state )
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_SIZE(64, 32)
 	MCFG_SCREEN_VISIBLE_AREA(0, 63, 0, 31)
-	MCFG_SCREEN_UPDATE_STATIC(d6800)
+	MCFG_SCREEN_UPDATE_DRIVER(d6800_state, screen_update_d6800)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
@@ -382,7 +383,7 @@ static MACHINE_CONFIG_START( d6800, d6800_state )
 	/* devices */
 	MCFG_PIA6821_ADD("pia", d6800_mc6821_intf)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, d6800_cassette_interface)
-	MCFG_TIMER_ADD_PERIODIC("d6800_p", d6800_p, attotime::from_hz(40000) )
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("d6800_p", d6800_state, d6800_p, attotime::from_hz(40000))
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", d6800, "ch8", 1)

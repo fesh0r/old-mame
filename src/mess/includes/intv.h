@@ -130,14 +130,16 @@ public:
 	virtual void video_start();
 	virtual void palette_init();
 	DECLARE_MACHINE_RESET(intvecs);
+	UINT32 screen_update_intv(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_intvkbd(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(intv_interrupt2);
+	INTERRUPT_GEN_MEMBER(intv_interrupt);
+	TIMER_CALLBACK_MEMBER(intv_interrupt2_complete);
+	TIMER_CALLBACK_MEMBER(intv_interrupt_complete);
+	TIMER_CALLBACK_MEMBER(intv_btb_fill);
 };
 
 /*----------- defined in video/intv.c -----------*/
-
-extern VIDEO_START( intv );
-extern SCREEN_UPDATE_IND16( intv );
-extern SCREEN_UPDATE_IND16( intvkbd );
-
 void intv_stic_screenrefresh(running_machine &machine);
 
 /*----------- defined in machine/intv.c -----------*/
@@ -146,12 +148,6 @@ void intv_stic_screenrefresh(running_machine &machine);
 
 DEVICE_START( intv_cart );
 DEVICE_IMAGE_LOAD( intv_cart );
-
-extern MACHINE_RESET( intv );
-extern INTERRUPT_GEN( intv_interrupt );
-
-// ECS
-extern MACHINE_RESET( intvecs );
 
 /* for the console + keyboard component... */
 

@@ -29,42 +29,42 @@
 
 READ16_MEMBER(gradius3_state::k052109_halfword_r)
 {
-	return k052109_r(m_k052109, offset);
+	return k052109_r(m_k052109, space, offset);
 }
 
 WRITE16_MEMBER(gradius3_state::k052109_halfword_w)
 {
 
 	if (ACCESSING_BITS_0_7)
-		k052109_w(m_k052109, offset, data & 0xff);
+		k052109_w(m_k052109, space, offset, data & 0xff);
 
 	/* is this a bug in the game or something else? */
 	if (!ACCESSING_BITS_0_7)
-		k052109_w(m_k052109, offset, (data >> 8) & 0xff);
+		k052109_w(m_k052109, space, offset, (data >> 8) & 0xff);
 //      logerror("%06x half %04x = %04x\n",space.device().safe_pc(),offset,data);
 }
 
 READ16_MEMBER(gradius3_state::k051937_halfword_r)
 {
-	return k051937_r(m_k051960, offset);
+	return k051937_r(m_k051960, space, offset);
 }
 
 WRITE16_MEMBER(gradius3_state::k051937_halfword_w)
 {
 
 	if (ACCESSING_BITS_0_7)
-		k051937_w(m_k051960, offset, data & 0xff);
+		k051937_w(m_k051960, space, offset, data & 0xff);
 }
 
 READ16_MEMBER(gradius3_state::k051960_halfword_r)
 {
-	return k051960_r(m_k051960, offset);
+	return k051960_r(m_k051960, space, offset);
 }
 
 WRITE16_MEMBER(gradius3_state::k051960_halfword_w)
 {
 	if (ACCESSING_BITS_0_7)
-		k051960_w(m_k051960, offset, data & 0xff);
+		k051960_w(m_k051960, space, offset, data & 0xff);
 }
 
 WRITE16_MEMBER(gradius3_state::cpuA_ctrl_w)
@@ -99,24 +99,22 @@ WRITE16_MEMBER(gradius3_state::cpuB_irqenable_w)
 		m_irqBmask = (data >> 8) & 0x07;
 }
 
-static INTERRUPT_GEN( cpuA_interrupt )
+INTERRUPT_GEN_MEMBER(gradius3_state::cpuA_interrupt)
 {
-	gradius3_state *state = device->machine().driver_data<gradius3_state>();
-	if (state->m_irqAen)
-		device->execute().set_input_line(2, HOLD_LINE);
+	if (m_irqAen)
+		device.execute().set_input_line(2, HOLD_LINE);
 }
 
 
-static TIMER_DEVICE_CALLBACK( gradius3_sub_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(gradius3_state::gradius3_sub_scanline)
 {
-	gradius3_state *state = timer.machine().driver_data<gradius3_state>();
 	int scanline = param;
 
-	if(scanline == 240 && state->m_irqBmask & 1) // vblank-out irq
-		timer.machine().device("sub")->execute().set_input_line(1, HOLD_LINE);
+	if(scanline == 240 && m_irqBmask & 1) // vblank-out irq
+		machine().device("sub")->execute().set_input_line(1, HOLD_LINE);
 
-	if(scanline ==  16 && state->m_irqBmask & 2) // sprite end DMA irq
-		timer.machine().device("sub")->execute().set_input_line(2, HOLD_LINE);
+	if(scanline ==  16 && m_irqBmask & 2) // sprite end DMA irq
+		machine().device("sub")->execute().set_input_line(2, HOLD_LINE);
 }
 
 WRITE16_MEMBER(gradius3_state::cpuB_irqtrigger_w)
@@ -317,11 +315,11 @@ static MACHINE_CONFIG_START( gradius3, gradius3_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)	/* 10 MHz */
 	MCFG_CPU_PROGRAM_MAP(gradius3_map)
-	MCFG_CPU_VBLANK_INT("screen", cpuA_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gradius3_state,  cpuA_interrupt)
 
 	MCFG_CPU_ADD("sub", M68000, 10000000)	/* 10 MHz */
 	MCFG_CPU_PROGRAM_MAP(gradius3_map2)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", gradius3_sub_scanline, "screen", 0, 1) /* has three interrupt vectors, 1 2 and 4 */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", gradius3_state, gradius3_sub_scanline, "screen", 0, 1)
 																				/* 4 is triggered by cpu A, the others are unknown but */
 																				/* required for the game to run. */
 
@@ -339,7 +337,7 @@ static MACHINE_CONFIG_START( gradius3, gradius3_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(12*8, (64-12)*8-1, 2*8, 30*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(gradius3)
+	MCFG_SCREEN_UPDATE_DRIVER(gradius3_state, screen_update_gradius3)
 
 	MCFG_PALETTE_LENGTH(2048)
 

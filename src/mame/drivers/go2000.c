@@ -53,6 +53,7 @@ public:
 	DECLARE_WRITE8_MEMBER(go2000_pcm_1_bankswitch_w);
 	virtual void machine_start();
 	virtual void video_start();
+	UINT32 screen_update_go2000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 
@@ -174,9 +175,8 @@ void go2000_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16(go2000)
+UINT32 go2000_state::screen_update_go2000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	go2000_state *state = screen.machine().driver_data<go2000_state>();
 	int x,y;
 	int count = 0;
 
@@ -185,9 +185,9 @@ static SCREEN_UPDATE_IND16(go2000)
 	{
 		for (y = 0; y < 32; y++)
 		{
-			int tile = state->m_videoram[count];
-			int attr = state->m_videoram2[count];
-			drawgfx_opaque(bitmap, cliprect, screen.machine().gfx[0], tile, attr, 0, 0, x * 8, y * 8);
+			int tile = m_videoram[count];
+			int attr = m_videoram2[count];
+			drawgfx_opaque(bitmap, cliprect, machine().gfx[0], tile, attr, 0, 0, x * 8, y * 8);
 			count++;
 		}
 	}
@@ -197,9 +197,9 @@ static SCREEN_UPDATE_IND16(go2000)
 	{
 		for (y = 0; y < 32; y++)
 		{
-			int tile = state->m_videoram[count];
-			int attr = state->m_videoram2[count];
-			drawgfx_transpen(bitmap, cliprect, screen.machine().gfx[0], tile, attr, 0, 0, x * 8, y * 8, 0xf);
+			int tile = m_videoram[count];
+			int attr = m_videoram2[count];
+			drawgfx_transpen(bitmap, cliprect, machine().gfx[0], tile, attr, 0, 0, x * 8, y * 8, 0xf);
 			count++;
 		}
 	}
@@ -208,8 +208,8 @@ static SCREEN_UPDATE_IND16(go2000)
 	{
 	int offs;
 
-	int max_x = screen.machine().primary_screen->width() - 8;
-	int max_y = screen.machine().primary_screen->height() - 8;
+	int max_x = machine().primary_screen->width() - 8;
+	int max_y = machine().primary_screen->height() - 8;
 
 	for (offs = 0xf800 / 2; offs < 0x10000 / 2 ; offs += 4/2)
 	{
@@ -219,9 +219,9 @@ static SCREEN_UPDATE_IND16(go2000)
 		int dx, dy;
 		int flipx, y0;
 
-		int y = state->m_videoram[offs + 0 + 0x00000 / 2];
-		int x = state->m_videoram[offs + 1 + 0x00000 / 2];
-		int dim = state->m_videoram2[offs + 0 + 0x00000 / 2];
+		int y = m_videoram[offs + 0 + 0x00000 / 2];
+		int x = m_videoram[offs + 1 + 0x00000 / 2];
+		int dim = m_videoram2[offs + 0 + 0x00000 / 2];
 
 		int bank	=	(x >> 12) & 0xf;
 
@@ -270,8 +270,8 @@ static SCREEN_UPDATE_IND16(go2000)
 			for (dx = 0; dx < dimx * 8; dx += 8)
 			{
 				int addr = (srcpg * 0x20 * 0x20) + ((srcx + tile_x) & 0x1f) * 0x20 + ((srcy + tile_y) & 0x1f);
-				int tile = state->m_videoram[addr + 0x00000 / 2];
-				int attr = state->m_videoram2[addr + 0x00000 / 2];
+				int tile = m_videoram[addr + 0x00000 / 2];
+				int attr = m_videoram2[addr + 0x00000 / 2];
 
 				int sx = x + dx;
 				int sy = (y + dy) & 0xff;
@@ -282,7 +282,7 @@ static SCREEN_UPDATE_IND16(go2000)
 				if (flipx)
 					tile_flipx = !tile_flipx;
 
-				if (state->flip_screen())
+				if (flip_screen())
 				{
 					sx = max_x - sx;
 					sy = max_y - sy;
@@ -290,7 +290,7 @@ static SCREEN_UPDATE_IND16(go2000)
 					tile_flipy = !tile_flipy;
 				}
 
-				drawgfx_transpen(	bitmap, cliprect,screen.machine().gfx[0],
+				drawgfx_transpen(	bitmap, cliprect,machine().gfx[0],
 							(tile & 0x1fff) + bank*0x4000,
 							attr,
 							tile_flipx, tile_flipy,
@@ -326,7 +326,7 @@ static MACHINE_CONFIG_START( go2000, go2000_state )
 
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
 	MCFG_CPU_PROGRAM_MAP(go2000_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", go2000_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(go2000_sound_map)
@@ -340,7 +340,7 @@ static MACHINE_CONFIG_START( go2000, go2000_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(go2000)
+	MCFG_SCREEN_UPDATE_DRIVER(go2000_state, screen_update_go2000)
 
 	MCFG_PALETTE_LENGTH(0x800)
 

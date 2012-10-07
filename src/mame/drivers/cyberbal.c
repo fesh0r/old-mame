@@ -440,7 +440,7 @@ static MACHINE_CONFIG_START( cyberbal, cyberbal_state )
 
 	MCFG_CPU_ADD("dac", M68000, ATARI_CLOCK_14MHz/2)
 	MCFG_CPU_PROGRAM_MAP(sound_68k_map)
-	MCFG_CPU_PERIODIC_INT(cyberbal_sound_68k_irq_gen, 10000)
+	MCFG_CPU_PERIODIC_INT_DRIVER(cyberbal_state, cyberbal_sound_68k_irq_gen,  10000)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(600))
 
@@ -457,13 +457,13 @@ static MACHINE_CONFIG_START( cyberbal, cyberbal_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz, 456*2, 0, 336*2, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(cyberbal_left)
+	MCFG_SCREEN_UPDATE_DRIVER(cyberbal_state, screen_update_cyberbal_left)
 
 	MCFG_SCREEN_ADD("rscreen", RASTER)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz, 456*2, 0, 336*2, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(cyberbal_right)
+	MCFG_SCREEN_UPDATE_DRIVER(cyberbal_state, screen_update_cyberbal_right)
 
 	MCFG_VIDEO_START_OVERRIDE(cyberbal_state,cyberbal)
 
@@ -503,7 +503,7 @@ static MACHINE_CONFIG_START( cyberbal2p, cyberbal_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz, 456*2, 0, 336*2, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(cyberbal2p)
+	MCFG_SCREEN_UPDATE_DRIVER(cyberbal_state, screen_update_cyberbal2p)
 
 	MCFG_VIDEO_START_OVERRIDE(cyberbal_state,cyberbal2p)
 

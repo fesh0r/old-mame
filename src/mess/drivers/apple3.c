@@ -71,7 +71,7 @@ static MACHINE_CONFIG_START( apple3, apple3_state )
 	MCFG_CPU_ADD("maincpu", M6502, 2000000)        /* 2 MHz */
 	MCFG_CPU_PROGRAM_MAP(apple3_map)
 	MCFG_CPU_CONFIG( apple3_m6502_interface )
-	MCFG_CPU_PERIODIC_INT(apple3_interrupt, 192)
+	MCFG_CPU_PERIODIC_INT_DRIVER(apple3_state, apple3_interrupt,  192)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET_OVERRIDE(apple3_state, apple3 )
@@ -82,7 +82,7 @@ static MACHINE_CONFIG_START( apple3, apple3_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(280*2, 192)
 	MCFG_SCREEN_VISIBLE_AREA(0, (280*2)-1,0,192-1)
-	MCFG_SCREEN_UPDATE_STATIC( apple3 )
+	MCFG_SCREEN_UPDATE_DRIVER(apple3_state, screen_update_apple3)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT_OVERRIDE(apple3_state, apple2 )

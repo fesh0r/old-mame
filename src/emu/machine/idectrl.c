@@ -1859,9 +1859,7 @@ static DEVICE_START( ide_controller )
 		device_memory_interface *memory;
 		if (!bmtarget->interface(memory))
 			throw emu_fatalerror("IDE controller '%s' bus master target '%s' has no memory!", device->tag(), config->bmcpu);
-		ide->dma_space = memory->space(config->bmspace);
-		if (ide->dma_space == NULL)
-			throw emu_fatalerror("IDE controller '%s' bus master target '%s' does not have specified space %d!", device->tag(), config->bmcpu, config->bmspace);
+		ide->dma_space = &memory->space(config->bmspace);
 		ide->dma_address_xor = (ide->dma_space->endianness() == ENDIANNESS_LITTLE) ? 0 : 3;
 	}
 
@@ -1948,7 +1946,7 @@ const device_type IDE_CONTROLLER = &device_creator<ide_controller_device>;
 ide_controller_device::ide_controller_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, IDE_CONTROLLER, "IDE Controller", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(ide_state));
+	m_token = global_alloc_clear(ide_state);
 }
 
 //-------------------------------------------------

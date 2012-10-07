@@ -64,6 +64,8 @@ public:
 	required_shared_ptr<UINT16> m_screen_buffer;
 	DECLARE_DRIVER_INIT(apricot);
 	virtual void palette_init();
+	UINT32 screen_update_apricot(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	DECLARE_WRITE_LINE_MEMBER(apricot_sio_irq_w);
 };
 
 
@@ -120,20 +122,19 @@ static const struct pit8253_config apricot_pit8253_intf =
 	}
 };
 
-static void apricot_sio_irq_w(device_t *device, int st)
+WRITE_LINE_MEMBER(apricot_state::apricot_sio_irq_w)
 {
-	apricot_state *state = device->machine().driver_data<apricot_state>();
-	pic8259_ir5_w(state->m_pic, st);
+	pic8259_ir5_w(m_pic, state);
 }
 
 static const z80sio_interface apricot_z80sio_intf =
 {
-	apricot_sio_irq_w,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_DRIVER_LINE_MEMBER(apricot_state, apricot_sio_irq_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -183,12 +184,11 @@ static const wd17xx_interface apricot_wd17xx_intf =
     VIDEO EMULATION
 ***************************************************************************/
 
-static SCREEN_UPDATE_RGB32( apricot )
+UINT32 apricot_state::screen_update_apricot(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	apricot_state *state = screen.machine().driver_data<apricot_state>();
 
-	if (!state->m_display_on)
-		state->m_crtc->screen_update( screen, bitmap, cliprect);
+	if (!m_display_on)
+		m_crtc->screen_update( screen, bitmap, cliprect);
 	else
 		bitmap.fill(0, cliprect);
 
@@ -257,13 +257,13 @@ static const mc6845_interface apricot_mc6845_intf =
 
 DRIVER_INIT_MEMBER(apricot_state,apricot)
 {
-	address_space *prg = m_maincpu->space(AS_PROGRAM);
+	address_space &prg = m_maincpu->space(AS_PROGRAM);
 
 	UINT8 *ram = m_ram->pointer();
 	UINT32 ram_size = m_ram->size();
 
-	prg->unmap_readwrite(0x40000, 0xeffff);
-	prg->install_ram(0x00000, ram_size - 1, ram);
+	prg.unmap_readwrite(0x40000, 0xeffff);
+	prg.install_ram(0x00000, ram_size - 1, ram);
 
 	m_maincpu->set_irq_acknowledge_callback(apricot_irq_ack);
 
@@ -287,7 +287,7 @@ static ADDRESS_MAP_START( apricot_io, AS_IO, 16, apricot_state )
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE8_LEGACY("ic31", pic8259_r, pic8259_w, 0x00ff)
 	AM_RANGE(0x40, 0x47) AM_DEVREADWRITE8_LEGACY("ic68", wd17xx_r, wd17xx_w, 0x00ff)
 	AM_RANGE(0x48, 0x4f) AM_DEVREADWRITE8("ic17", i8255_device, read, write, 0x00ff)
-	AM_RANGE(0x50, 0x51) AM_MIRROR(0x06) AM_DEVWRITE8("ic7", sn76489_new_device, write, 0x00ff)
+	AM_RANGE(0x50, 0x51) AM_MIRROR(0x06) AM_DEVWRITE8("ic7", sn76489_device, write, 0x00ff)
 	AM_RANGE(0x58, 0x5f) AM_DEVREADWRITE8_LEGACY("ic16", pit8253_r, pit8253_w, 0x00ff)
 	AM_RANGE(0x60, 0x67) AM_DEVREADWRITE8("ic15", z80sio_device, read_alt, write_alt, 0x00ff)
 	AM_RANGE(0x68, 0x69) AM_MIRROR(0x04) AM_DEVWRITE8("ic30", mc6845_device, address_w, 0x00ff)
@@ -376,12 +376,12 @@ static MACHINE_CONFIG_START( apricot, apricot_state )
 	MCFG_SCREEN_SIZE(800, 400)
 	MCFG_SCREEN_VISIBLE_AREA(0, 800-1, 0, 400-1)
 	MCFG_SCREEN_REFRESH_RATE(72)
-	MCFG_SCREEN_UPDATE_STATIC(apricot)
+	MCFG_SCREEN_UPDATE_DRIVER(apricot_state, screen_update_apricot)
 	MCFG_PALETTE_LENGTH(3)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("ic7", SN76489_NEW, XTAL_4MHz / 2)
+	MCFG_SOUND_ADD("ic7", SN76489, XTAL_4MHz / 2)
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

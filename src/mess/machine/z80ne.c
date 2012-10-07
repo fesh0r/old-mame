@@ -39,39 +39,38 @@ static cassette_image_device *cassette_device_image(running_machine &machine)
 		return machine.device<cassette_image_device>(CASSETTE_TAG);
 }
 
-static TIMER_CALLBACK(z80ne_cassette_tc)
+TIMER_CALLBACK_MEMBER(z80ne_state::z80ne_cassette_tc)
 {
-	z80ne_state *state = machine.driver_data<z80ne_state>();
 	UINT8 cass_ws = 0;
-	state->m_cass_data.input.length++;
+	m_cass_data.input.length++;
 
-	cass_ws = ((cassette_device_image(machine))->input() > +0.02) ? 1 : 0;
+	cass_ws = ((cassette_device_image(machine()))->input() > +0.02) ? 1 : 0;
 
-	if ((cass_ws ^ state->m_cass_data.input.level) & cass_ws)
+	if ((cass_ws ^ m_cass_data.input.level) & cass_ws)
 	{
-		state->m_cass_data.input.level = cass_ws;
-		state->m_cass_data.input.bit = ((state->m_cass_data.input.length < state->m_cass_data.wave_filter) || (state->m_cass_data.input.length > 0x20)) ? 1 : 0;
-		state->m_cass_data.input.length = 0;
-		ay31015_set_input_pin( state->m_ay31015, AY31015_SI, state->m_cass_data.input.bit );
+		m_cass_data.input.level = cass_ws;
+		m_cass_data.input.bit = ((m_cass_data.input.length < m_cass_data.wave_filter) || (m_cass_data.input.length > 0x20)) ? 1 : 0;
+		m_cass_data.input.length = 0;
+		ay31015_set_input_pin( m_ay31015, AY31015_SI, m_cass_data.input.bit );
 	}
-	state->m_cass_data.input.level = cass_ws;
+	m_cass_data.input.level = cass_ws;
 
 	/* saving a tape - convert the serial stream from the uart */
 
-	state->m_cass_data.output.length--;
+	m_cass_data.output.length--;
 
-	if (!(state->m_cass_data.output.length))
+	if (!(m_cass_data.output.length))
 	{
-		if (state->m_cass_data.output.level)
-			state->m_cass_data.output.level = 0;
+		if (m_cass_data.output.level)
+			m_cass_data.output.level = 0;
 		else
 		{
-			state->m_cass_data.output.level=1;
-			cass_ws = ay31015_get_output_pin( state->m_ay31015, AY31015_SO );
-			state->m_cass_data.wave_length = cass_ws ? state->m_cass_data.wave_short : state->m_cass_data.wave_long;
+			m_cass_data.output.level=1;
+			cass_ws = ay31015_get_output_pin( m_ay31015, AY31015_SO );
+			m_cass_data.wave_length = cass_ws ? m_cass_data.wave_short : m_cass_data.wave_long;
 		}
-		cassette_device_image(machine)->output(state->m_cass_data.output.level ? -1.0 : +1.0);
-		state->m_cass_data.output.length = state->m_cass_data.wave_length;
+		cassette_device_image(machine())->output(m_cass_data.output.level ? -1.0 : +1.0);
+		m_cass_data.output.length = m_cass_data.wave_length;
 	}
 }
 
@@ -114,9 +113,8 @@ DRIVER_INIT_MEMBER(z80ne_state,z80netf)
 
 }
 
-static TIMER_CALLBACK( z80ne_kbd_scan )
+TIMER_CALLBACK_MEMBER(z80ne_state::z80ne_kbd_scan)
 {
-	z80ne_state *state = machine.driver_data<z80ne_state>();
 	/*
      * NE555 is connected to a 74LS93 binary counter
      * 74LS93 output:
@@ -141,19 +139,19 @@ static TIMER_CALLBACK( z80ne_kbd_scan )
 	UINT8 i;
 
 	/* 4-bit counter */
-	--state->m_lx383_scan_counter;
-	state->m_lx383_scan_counter &= 0x0f;
+	--m_lx383_scan_counter;
+	m_lx383_scan_counter &= 0x0f;
 
-	if ( --state->m_lx383_downsampler == 0 )
+	if ( --m_lx383_downsampler == 0 )
 	{
-		state->m_lx383_downsampler = LX383_DOWNSAMPLING;
-		key_bits = (machine.root_device().ioport("ROW1")->read() << 8) | machine.root_device().ioport("ROW0")->read();
-//      rst = machine.root_device().ioport("RST")->read();
-		ctrl = machine.root_device().ioport("CTRL")->read();
+		m_lx383_downsampler = LX383_DOWNSAMPLING;
+		key_bits = (machine().root_device().ioport("ROW1")->read() << 8) | machine().root_device().ioport("ROW0")->read();
+//      rst = machine().root_device().ioport("RST")->read();
+		ctrl = machine().root_device().ioport("CTRL")->read();
 
 		for ( i = 0; i<LX383_KEYS; i++)
 		{
-			state->m_lx383_key[i] = ( i | (key_bits & 0x01 ? 0x80 : 0x00) | ~ctrl);
+			m_lx383_key[i] = ( i | (key_bits & 0x01 ? 0x80 : 0x00) | ~ctrl);
 			key_bits >>= 1;
 		}
 	}
@@ -172,7 +170,7 @@ DIRECT_UPDATE_MEMBER(z80ne_state::z80ne_nmi_delay_count)
 
 	if (!m_nmi_delay_counter)
 	{
-		machine().device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), this));
+		machine().device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), this));
 		machine().device("z80ne")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 	return address;
@@ -184,18 +182,18 @@ DIRECT_UPDATE_MEMBER(z80ne_state::z80ne_nmi_delay_count)
  */
 DIRECT_UPDATE_MEMBER(z80ne_state::z80ne_reset_delay_count)
 {
-	address_space *space = machine().device("z80ne")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("z80ne")->memory().space(AS_PROGRAM);
 	/*
      * TODO: when debugger is active, his memory access causes this callback
      *
      */
-	if(!space->debugger_access())
+	if(!space.debugger_access())
 		m_reset_delay_counter--;
 
 	if (!m_reset_delay_counter)
 	{
 		/* remove this callback */
-		machine().device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), this));
+		machine().device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), this));
 		/* and switch to RAM bank at address 0x0000 */
 		membank( "bank1" )->set_entry( 0 ); /* RAM at 0x0000 (bank 1) */
 	}
@@ -213,7 +211,7 @@ static void reset_lx388(running_machine &machine)
 static void reset_lx382_banking(running_machine &machine)
 {
 	z80ne_state *state = machine.driver_data<z80ne_state>();
-	address_space *space = machine.device("z80ne")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("z80ne")->memory().space(AS_PROGRAM);
 
 	/* switch to ROM bank at address 0x0000 */
     state->membank("bank1")->set_entry(1);
@@ -221,13 +219,13 @@ static void reset_lx382_banking(running_machine &machine)
 
 	/* after the first 3 bytes have been read from ROM, switch the RAM back in */
 	state->m_reset_delay_counter = 2;
-	space->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_reset_delay_count), state));
+	space.set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_reset_delay_count), state));
 }
 
 static void reset_lx390_banking(running_machine &machine)
 {
 	z80ne_state *state = machine.driver_data<z80ne_state>();
-	address_space *space = machine.device("z80ne")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("z80ne")->memory().space(AS_PROGRAM);
 	state->m_reset_delay_counter = 0;
 
 	switch (machine.root_device().ioport("CONFIG")->read() & 0x07) {
@@ -240,7 +238,7 @@ static void reset_lx390_banking(running_machine &machine)
 	    state->membank("bank4")->set_entry(0);  /* RAM   at 0xF000 */
 		/* after the first 3 bytes have been read from ROM, switch the RAM back in */
 		state->m_reset_delay_counter = 2;
-		space->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_reset_delay_count), state));
+		space.set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_reset_delay_count), state));
 	    break;
 	case 0x02: /* EP548  16k BASIC */
 		if (VERBOSE)
@@ -249,7 +247,7 @@ static void reset_lx390_banking(running_machine &machine)
 	    state->membank("bank2")->set_entry(1);  /* ep548 at 0x0400-0x3FFF */
 	    state->membank("bank3")->set_entry(0);  /* RAM   at 0x8000 */
 	    state->membank("bank4")->set_entry(0);  /* RAM   at 0xF000 */
-		machine.device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
+		machine.device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
 	    break;
 	case 0x03: /* EP390  Boot Loader for 5.5k floppy BASIC */
 		if (VERBOSE)
@@ -258,7 +256,7 @@ static void reset_lx390_banking(running_machine &machine)
 	    state->membank("bank2")->set_entry(0);  /* RAM   at 0x0400-0x3FFF */
 	    state->membank("bank3")->set_entry(0);  /* RAM   at 0x8000 */
 	    state->membank("bank4")->set_entry(1);  /* ep390 at 0xF000 */
-		machine.device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
+		machine.device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
 	    break;
 	case 0x04: /* EP1390 Boot Loader for NE DOS 1.0/1.5 */
 		if (VERBOSE)
@@ -267,7 +265,7 @@ static void reset_lx390_banking(running_machine &machine)
 	    state->membank("bank2")->set_entry(0);  /* RAM   at 0x0400-0x3FFF */
 	    state->membank("bank3")->set_entry(0);  /* RAM   at 0x8000 */
 	    state->membank("bank4")->set_entry(2);  /* ep1390 at 0xF000 */
-		machine.device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
+		machine.device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
 	    break;
 	case 0x05: /* EP2390 Boot Loader for NE DOS G.1 */
 		if (VERBOSE)
@@ -276,7 +274,7 @@ static void reset_lx390_banking(running_machine &machine)
 	    state->membank("bank2")->set_entry(0);  /* RAM   at 0x0400-0x3FFF */
 	    state->membank("bank3")->set_entry(0);  /* RAM   at 0x8000 */
 	    state->membank("bank4")->set_entry(3);  /* ep2390 at 0xF000 */
-		machine.device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
+		machine.device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_default), state));
 	    break;
 	}
 
@@ -288,7 +286,7 @@ static void reset_lx390_banking(running_machine &machine)
 MACHINE_RESET_MEMBER(z80ne_state,z80ne_base)
 {
 	int i;
-	address_space *space = machine().device("z80ne")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("z80ne")->memory().space(AS_PROGRAM);
 
 	LOG(("In MACHINE_RESET z80ne_base\n"));
 
@@ -336,7 +334,7 @@ MACHINE_RESET_MEMBER(z80ne_state,z80ne_base)
 	ay31015_set_transmitter_clock( m_ay31015, m_cass_data.speed * 16.0);
 
 	m_nmi_delay_counter = 0;
-	lx385_ctrl_w(*space, 0, 0);
+	lx385_ctrl_w(space, 0, 0);
 
 }
 
@@ -369,26 +367,25 @@ MACHINE_RESET_MEMBER(z80ne_state,z80netf)
 	reset_lx388(machine());
 }
 
-INPUT_CHANGED( z80ne_reset )
+INPUT_CHANGED_MEMBER(z80ne_state::z80ne_reset)
 {
 	UINT8 rst;
-	rst = field.machine().root_device().ioport("RST")->read();
+	rst = machine().root_device().ioport("RST")->read();
 
 	if ( ! BIT(rst, 0))
 	{
-		running_machine &machine = field.machine();
-		machine.schedule_soft_reset();
+		machine().schedule_soft_reset();
 	}
 }
 
-INPUT_CHANGED( z80ne_nmi )
+INPUT_CHANGED_MEMBER(z80ne_state::z80ne_nmi)
 {
 	UINT8 nmi;
-	nmi = field.machine().root_device().ioport("LX388_BRK")->read();
+	nmi = machine().root_device().ioport("LX388_BRK")->read();
 
 	if ( ! BIT(nmi, 0))
 	{
-		field.machine().device("z80ne")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		machine().device("z80ne")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -400,8 +397,8 @@ MACHINE_START_MEMBER(z80ne_state,z80ne)
 	state_save_register_item( machine(), "z80ne", NULL, 0, m_lx383_downsampler );
 	state_save_register_item_array( machine(), "z80ne", NULL, 0, m_lx383_key );
 	state_save_register_item( machine(), "z80ne", NULL, 0, m_nmi_delay_counter );
-	m_cassette_timer = machine().scheduler().timer_alloc(FUNC(z80ne_cassette_tc));
-	machine().scheduler().timer_pulse( attotime::from_hz(1000), FUNC(z80ne_kbd_scan));
+	m_cassette_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(z80ne_state::z80ne_cassette_tc),this));
+	machine().scheduler().timer_pulse( attotime::from_hz(1000), timer_expired_delegate(FUNC(z80ne_state::z80ne_kbd_scan),this));
 }
 
 MACHINE_START_MEMBER(z80ne_state,z80net)
@@ -481,7 +478,7 @@ WRITE8_MEMBER(z80ne_state::lx383_w)
     else
     	/* after writing to port 0xF8 and the first ~M1 cycles strike a NMI for single step execution */
     	m_nmi_delay_counter = 1;
-		machine().device("z80ne")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_nmi_delay_count), this));
+		machine().device("z80ne")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(z80ne_state::z80ne_nmi_delay_count), this));
 }
 
 
@@ -612,18 +609,17 @@ WRITE8_MEMBER(z80ne_state::lx385_ctrl_w)
 	}
 }
 
-READ8_DEVICE_HANDLER( lx388_mc6847_videoram_r )
+READ8_MEMBER(z80ne_state::lx388_mc6847_videoram_r)
 {
-	z80ne_state *state = device->machine().driver_data<z80ne_state>();
 	if (offset == ~0) return 0xff;
 
-	UINT8 *videoram = state->m_videoram;
+	UINT8 *videoram = m_videoram;
 	int d6 = BIT(videoram[offset], 6);
 	int d7 = BIT(videoram[offset], 7);
 
-	state->m_vdg->inv_w(d6 && d7);
-	state->m_vdg->as_w(!d6 && d7);
-	state->m_vdg->intext_w(!d6 && d7);
+	m_vdg->inv_w(d6 && d7);
+	m_vdg->as_w(!d6 && d7);
+	m_vdg->intext_w(!d6 && d7);
 
 	return videoram[offset];
 }
@@ -632,7 +628,7 @@ READ8_MEMBER(z80ne_state::lx388_data_r)
 {
 	UINT8 data;
 
-	data = kr2376_data_r(m_lx388_kr2376, 0) & 0x7f;
+	data = kr2376_data_r(m_lx388_kr2376, space, 0) & 0x7f;
 	data |= kr2376_get_output_pin(m_lx388_kr2376, KR2376_SO) << 7;
 	return data;
 }
@@ -651,9 +647,8 @@ READ8_MEMBER(z80ne_state::lx388_read_field_sync)
  *
  */
 
-WRITE8_DEVICE_HANDLER(lx390_motor_w)
+WRITE8_MEMBER(z80ne_state::lx390_motor_w)
 {
-	z80ne_state *state = device->machine().driver_data<z80ne_state>();
 	/* Selection of drive and parameters
      A write also causes the selected drive motor to turn on for about 3 seconds.
      When the motor turns off, the drive is deselected.
@@ -680,11 +675,11 @@ WRITE8_DEVICE_HANDLER(lx390_motor_w)
 		if (data & 8)
 			drive = 3;
 
-		state->m_wd17xx_state.head = (data & 32) ? 1 : 0;
-		state->m_wd17xx_state.drive = data & 0x0F;
+		m_wd17xx_state.head = (data & 32) ? 1 : 0;
+		m_wd17xx_state.drive = data & 0x0F;
 
 		/* no drive selected, turn off all leds */
-		if (!state->m_wd17xx_state.drive)
+		if (!m_wd17xx_state.drive)
 		{
 			output_set_value("drv0", 0);
 			output_set_value("drv1", 0);
@@ -693,23 +688,22 @@ WRITE8_DEVICE_HANDLER(lx390_motor_w)
 		if (drive < 4)
 		{
 			LOG(("lx390_motor_w, set drive %1d\n", drive));
-			wd17xx_set_drive(device,drive);
-			LOG(("lx390_motor_w, set side %1d\n", state->m_wd17xx_state.head));
-			wd17xx_set_side(device, state->m_wd17xx_state.head);
+			wd17xx_set_drive(machine().device("wd1771"),drive);
+			LOG(("lx390_motor_w, set side %1d\n", m_wd17xx_state.head));
+			wd17xx_set_side(machine().device("wd1771"), m_wd17xx_state.head);
 		}
 }
 
-READ8_DEVICE_HANDLER(lx390_reset_bank)
+READ8_MEMBER(z80ne_state::lx390_reset_bank)
 {
-	z80ne_state *state = device->machine().driver_data<z80ne_state>();
 	offs_t pc;
 
 	/* if PC is not in range, we are under integrated debugger control, DON'T SWAP */
-	pc = device->machine().device("z80ne")->safe_pc();
+	pc = machine().device("z80ne")->safe_pc();
 	if((pc >= 0xf000) && (pc <=0xffff))
 	{
 		LOG(("lx390_reset_bank, reset memory bank 1\n"));
-		state->membank("bank1")->set_entry(0); /* RAM at 0x0000 (bank 1) */
+		membank("bank1")->set_entry(0); /* RAM at 0x0000 (bank 1) */
 	}
 	else
 	{
@@ -718,34 +712,34 @@ READ8_DEVICE_HANDLER(lx390_reset_bank)
 	return 0xff;
 }
 
-READ8_DEVICE_HANDLER(lx390_fdc_r)
+READ8_MEMBER(z80ne_state::lx390_fdc_r)
 {
 	UINT8 d;
 
 	switch(offset)
 	{
 	case 0:
-		d = wd17xx_status_r(device, 0) ^ 0xff;
+		d = wd17xx_status_r(machine().device("wd1771"), space, 0) ^ 0xff;
 		LOG(("lx390_fdc_r, WD17xx status: %02x\n", d));
 		break;
 	case 1:
-		d = wd17xx_track_r(device, 0) ^ 0xff;
+		d = wd17xx_track_r(machine().device("wd1771"), space, 0) ^ 0xff;
 		LOG(("lx390_fdc_r, WD17xx track:  %02x\n", d));
 		break;
 	case 2:
-		d = wd17xx_sector_r(device, 0) ^ 0xff;
+		d = wd17xx_sector_r(machine().device("wd1771"), space, 0) ^ 0xff;
 		LOG(("lx390_fdc_r, WD17xx sector: %02x\n", d));
 		break;
 	case 3:
-		d = wd17xx_data_r(device, 0) ^ 0xff;
+		d = wd17xx_data_r(machine().device("wd1771"), space, 0) ^ 0xff;
 		LOG(("lx390_fdc_r, WD17xx data3:  %02x\n", d));
 		break;
 	case 6:
 		d = 0xff;
-		lx390_reset_bank(device, 0);
+		lx390_reset_bank(space, 0);
 		break;
 	case 7:
-		d = wd17xx_data_r(device, 3) ^ 0xff;
+		d = wd17xx_data_r(machine().device("wd1771"), space, 3) ^ 0xff;
 		LOG(("lx390_fdc_r, WD17xx data7, force:  %02x\n", d));
 		break;
 	default:
@@ -754,9 +748,8 @@ READ8_DEVICE_HANDLER(lx390_fdc_r)
 	return d;
 }
 
-WRITE8_DEVICE_HANDLER(lx390_fdc_w)
+WRITE8_MEMBER(z80ne_state::lx390_fdc_w)
 {
-	z80ne_state *state = device->machine().driver_data<z80ne_state>();
 	UINT8 d;
 
 	d = data;
@@ -764,31 +757,31 @@ WRITE8_DEVICE_HANDLER(lx390_fdc_w)
 	{
 	case 0:
 		LOG(("lx390_fdc_w, WD17xx command: %02x\n", d));
-		wd17xx_command_w(device, offset, d ^ 0xff);
-		if (state->m_wd17xx_state.drive & 1)
+		wd17xx_command_w(machine().device("wd1771"), space, offset, d ^ 0xff);
+		if (m_wd17xx_state.drive & 1)
 			output_set_value("drv0", 2);
-		else if (state->m_wd17xx_state.drive & 2)
+		else if (m_wd17xx_state.drive & 2)
 			output_set_value("drv1", 2);
 		break;
 	case 1:
 		LOG(("lx390_fdc_w, WD17xx track:   %02x\n", d));
-		wd17xx_track_w(device, offset, d ^ 0xff);
+		wd17xx_track_w(machine().device("wd1771"), space, offset, d ^ 0xff);
 		break;
 	case 2:
 		LOG(("lx390_fdc_w, WD17xx sector:  %02x\n", d));
-		wd17xx_sector_w(device, offset, d ^ 0xff);
+		wd17xx_sector_w(machine().device("wd1771"), space, offset, d ^ 0xff);
 		break;
 	case 3:
-		wd17xx_data_w(device, 0, d ^ 0xff);
+		wd17xx_data_w(machine().device("wd1771"), space, 0, d ^ 0xff);
 		LOG(("lx390_fdc_w, WD17xx data3:   %02x\n", d));
 		break;
 	case 6:
 		LOG(("lx390_fdc_w, motor_w:   %02x\n", d));
-		lx390_motor_w(device, 0, d);
+		lx390_motor_w(space, 0, d);
 		break;
 	case 7:
 		LOG(("lx390_fdc_w, WD17xx data7, force:   %02x\n", d));
-		wd17xx_data_w(device, 3, d ^ 0xff);
+		wd17xx_data_w(machine().device("wd1771"), space, 3, d ^ 0xff);
 		break;
 	}
 }

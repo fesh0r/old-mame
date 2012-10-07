@@ -1446,8 +1446,8 @@ static MACHINE_CONFIG_START( atarigx2, atarigx2_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a pair of GALs to determine H and V parameters */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(atarigx2)
-	MCFG_SCREEN_VBLANK_STATIC(atarigx2)
+	MCFG_SCREEN_UPDATE_DRIVER(atarigx2_state, screen_update_atarigx2)
+	MCFG_SCREEN_VBLANK_DRIVER(atarigx2_state, screen_eof_atarigx2)
 
 	MCFG_VIDEO_START_OVERRIDE(atarigx2_state,atarigx2)
 
@@ -2236,7 +2236,7 @@ DRIVER_INIT_MEMBER(atarigx2_state,rrreveng)
 
 	m_playfield_base = 0x000;
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0xca0fc0, 0xca0fc3, read32_delegate(FUNC(atarigx2_state::rrreveng_prot_r),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xca0fc0, 0xca0fc3, read32_delegate(FUNC(atarigx2_state::rrreveng_prot_r),this));
 }
 
 

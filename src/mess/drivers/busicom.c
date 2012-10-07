@@ -178,13 +178,12 @@ static INPUT_PORTS_START( busicom )
 INPUT_PORTS_END
 
 
-static TIMER_DEVICE_CALLBACK(timer_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(busicom_state::timer_callback)
 {
-	busicom_state *state = timer.machine().driver_data<busicom_state>();
-	state->m_timer ^=1;
-	if (state->m_timer==1) state->m_drum_index++;
-	if (state->m_drum_index==13) state->m_drum_index=0;
-	i4004_set_test(timer.machine().device("maincpu"),state->m_timer);
+	m_timer ^=1;
+	if (m_timer==1) m_drum_index++;
+	if (m_drum_index==13) m_drum_index=0;
+	i4004_set_test(machine().device("maincpu"),m_timer);
 
 }
 
@@ -224,12 +223,12 @@ static MACHINE_CONFIG_START( busicom, busicom_state )
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
     MCFG_SCREEN_SIZE(40*17, 44*11)
     MCFG_SCREEN_VISIBLE_AREA(0, 40*17-1, 0, 44*11-1)
-	MCFG_SCREEN_UPDATE_STATIC(busicom)
+	MCFG_SCREEN_UPDATE_DRIVER(busicom_state, screen_update_busicom)
 
     MCFG_PALETTE_LENGTH(16)
 
 
-	MCFG_TIMER_ADD_PERIODIC("busicom_timer", timer_callback, attotime::from_msec(28*2))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("busicom_timer", busicom_state, timer_callback, attotime::from_msec(28*2))
 MACHINE_CONFIG_END
 
 /* ROM definition */

@@ -36,19 +36,8 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_bk0010(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(keyboard_callback);
 };
-
-
-/*----------- defined in machine/bk.c -----------*/
-
-extern MACHINE_START( bk0010 );
-extern MACHINE_RESET( bk0010 );
-
-
-
-/*----------- defined in video/bk.c -----------*/
-
-extern VIDEO_START( bk0010 );
-extern SCREEN_UPDATE_IND16( bk0010 );
 
 #endif /* BK_H_ */

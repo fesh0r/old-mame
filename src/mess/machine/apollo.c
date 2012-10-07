@@ -369,11 +369,11 @@ static void apollo_dma_ctape_drq(device_t *device, int state) {
 
 WRITE8_MEMBER(apollo_state::apollo_dma_1_w){
 	SLOG1(("apollo_dma_1_w: writing DMA Controller 1 at offset %02x = %02x", offset, data));
-	i8237_w(get_device_dma8237_1(&space.device()), offset, data);
+	i8237_w(get_device_dma8237_1(&space.device()), space, offset, data);
 }
 
 READ8_MEMBER(apollo_state::apollo_dma_1_r){
-	UINT8 data = i8237_r(get_device_dma8237_1(&space.device()), offset);
+	UINT8 data = i8237_r(get_device_dma8237_1(&space.device()), space, offset);
 	SLOG1(("apollo_dma_1_r: reading DMA Controller 1 at offset %02x = %02x", offset, data));
 	return data;
 }
@@ -384,11 +384,11 @@ READ8_MEMBER(apollo_state::apollo_dma_1_r){
 
 WRITE8_MEMBER(apollo_state::apollo_dma_2_w){
 	SLOG1(("apollo_dma_2_w: writing DMA Controller 2 at offset %02x = %02x", offset/2, data));
-	i8237_w(get_device_dma8237_2(&space.device()), offset / 2, data);
+	i8237_w(get_device_dma8237_2(&space.device()), space, offset / 2, data);
 }
 
 READ8_MEMBER(apollo_state::apollo_dma_2_r){
-	UINT8 data = i8237_r(get_device_dma8237_2(&space.device()), offset / 2);
+	UINT8 data = i8237_r(get_device_dma8237_2(&space.device()), space, offset / 2);
 	SLOG1(("apollo_dma_2_r: reading DMA Controller 2 at offset %02x = %02x", offset/2, data));
 	return data;
 }
@@ -507,7 +507,7 @@ WRITE8_MEMBER(apollo_state::apollo_dma_write_word){
 
 static READ8_DEVICE_HANDLER( apollo_dma8237_ctape_dack_r ) {
 
-	UINT8 data = sc499_dack_r(&device->machine());
+	UINT8 data = sc499_dack_r(&space.machine());
 	DLOG2(("dma ctape dack read %02x",data));
 
 	// hack for DN3000: select appropriate DMA channel No.
@@ -518,7 +518,7 @@ static READ8_DEVICE_HANDLER( apollo_dma8237_ctape_dack_r ) {
 
 static WRITE8_DEVICE_HANDLER( apollo_dma8237_ctape_dack_w ) {
 	DLOG2(("dma ctape dack write %02x", data));
-	sc499_dack_w(&device->machine(), data);
+	sc499_dack_w(&space.machine(), data);
 
 	// hack for DN3000: select appropriate DMA channel No.
 	// Note: too late for this byte, but next bytes will be ok
@@ -526,7 +526,7 @@ static WRITE8_DEVICE_HANDLER( apollo_dma8237_ctape_dack_w ) {
 }
 
 static READ8_DEVICE_HANDLER( apollo_dma8237_fdc_dack_r ) {
-	UINT8 data = pc_fdc_dack_r(device->machine());
+	UINT8 data = pc_fdc_dack_r(space.machine(), space);
 	//  DLOG2(("dma fdc dack read %02x",data));
 
 	// hack for DN3000: select appropriate DMA channel No.
@@ -537,7 +537,7 @@ static READ8_DEVICE_HANDLER( apollo_dma8237_fdc_dack_r ) {
 
 static WRITE8_DEVICE_HANDLER( apollo_dma8237_fdc_dack_w ) {
 	// DLOG2(("dma fdc dack write %02x", data));
-	pc_fdc_dack_w(device->machine(), data);
+	pc_fdc_dack_w(space.machine(), space, data);
 
 	// hack for DN3000: select appropriate DMA channel No.
 	// Note: too late for this byte, but next bytes will be ok
@@ -623,11 +623,11 @@ INLINE device_t *get_pic8259_slave(device_t *device) {
 
 WRITE8_DEVICE_HANDLER(apollo_pic8259_master_w ) {
 	DLOG1(("writing %s at offset %X = %02x", device->tag(), offset, data));
-	pic8259_w(device, offset, data);
+	pic8259_w(device, space, offset, data);
 }
 
 READ8_DEVICE_HANDLER( apollo_pic8259_master_r ) {
-	UINT8 data = pic8259_r(device, offset);
+	UINT8 data = pic8259_r(device, space, offset);
 	DLOG1(("reading %s at offset %X = %02x", device->tag(), offset, data));
 	return data;
 }
@@ -638,11 +638,11 @@ READ8_DEVICE_HANDLER( apollo_pic8259_master_r ) {
 
 WRITE8_DEVICE_HANDLER(apollo_pic8259_slave_w ) {
 	DLOG1(("writing %s at offset %X = %02x", device->tag(), offset, data));
-	pic8259_w(device, offset, data);
+	pic8259_w(device, space, offset, data);
 }
 
 READ8_DEVICE_HANDLER( apollo_pic8259_slave_r ) {
-	UINT8 data = pic8259_r(device, offset);
+	UINT8 data = pic8259_r(device, space, offset);
 	DLOG1(("reading %s at offset %X = %02x", device->tag(), offset, data));
 	return data;
 }
@@ -826,20 +826,20 @@ WRITE8_DEVICE_HANDLER(apollo_ptm_w) {
  ***************************************************************************/
 
 static DEVICE_RESET( apollo_rtc ) {
-	address_space *space = device->machine().device(MAINCPU)->memory().space(AS_PROGRAM);
+	address_space &space = device->machine().device(MAINCPU)->memory().space(AS_PROGRAM);
 	apollo_state *state = device->machine().driver_data<apollo_state>();
-	UINT8 year = state->apollo_rtc_r(*space, 9);
+	UINT8 year = state->apollo_rtc_r(space, 9);
 
 	// change year according to configuration settings
 	if (year < 20 && apollo_config(APOLLO_CONF_DATE_1990))
 	{
 		year+=80;
-		state->apollo_rtc_w(*space, 9, year);
+		state->apollo_rtc_w(space, 9, year);
 	}
 	else if (year >= 80 && !apollo_config(APOLLO_CONF_DATE_1990))
 	{
 		year -=80;
-		state->apollo_rtc_w(*space, 9, year);
+		state->apollo_rtc_w(space, 9, year);
 	}
 
 	//SLOG1(("reset apollo_rtc year=%d", year));
@@ -872,13 +872,13 @@ READ8_MEMBER(apollo_state::apollo_rtc_r)
 static TIMER_CALLBACK( apollo_rtc_timer )
 {
 	apollo_state *state = machine.driver_data<apollo_state>();
-	address_space *space = machine.device(MAINCPU)->memory().space(AS_PROGRAM);
+	address_space &space = machine.device(MAINCPU)->memory().space(AS_PROGRAM);
 
 	// FIXME: reading register 0x0c will clear all interrupt flags
-	if ((state->apollo_rtc_r(*space, 0x0c) & 0x80))
+	if ((state->apollo_rtc_r(space, 0x0c) & 0x80))
 	{
 		//SLOG2(("apollo_rtc_timer - set_irq_line %d", APOLLO_IRQ_RTC));
-		apollo_pic_set_irq_line(&space->device(), APOLLO_IRQ_RTC, 1);
+		apollo_pic_set_irq_line(&space.device(), APOLLO_IRQ_RTC, 1);
 	}
 }
 
@@ -1026,7 +1026,7 @@ READ8_DEVICE_HANDLER(apollo_sio_r) {
 			"1X/16X Test", "RHRB", "IVR", "Input Ports", "Start Counter",
 			"Stop Counter" };
 
-	int data = duart68681_r(device, offset / 2);
+	int data = duart68681_r(device, space, offset / 2);
 
 	if (sio_irq_line) {
 		apollo_pic_set_irq_line(device, APOLLO_IRQ_SIO1, 0);
@@ -1089,7 +1089,7 @@ WRITE8_DEVICE_HANDLER(apollo_sio_w)
 		}
 		break;
 	}
-	duart68681_w(device, offset / 2, data);
+	duart68681_w(device, space, offset / 2, data);
 }
 
 /*-------------------------------------------------
@@ -1106,7 +1106,7 @@ static TIMER_CALLBACK(kbd_timer_callback)
 #define SRA 0x01
 #define SRB 0x09
 
-	if (!(duart68681_r(device, SRB) & 0x02))
+	if (!(duart68681_r(device, space, SRB) & 0x02))
 	{
 		// Channel B FIFO not yet full (STATUS_FIFO_FULL)
 		if (read(STDIN_FILENO, &data, 1) == 1)
@@ -1116,7 +1116,7 @@ static TIMER_CALLBACK(kbd_timer_callback)
 			// stop sleeping to reduce CPU usage
 			sio_sleep(0);
 		}
-		else if (input_from_stdin && (duart68681_r(device, SRB) & 0x0c) == 0x0c)
+		else if (input_from_stdin && (duart68681_r(device, space, SRB) & 0x0c) == 0x0c)
 		{
 			// we reduce the CPU usage, if SRB is being polled for input
 			// but only as long as the transmitter is empty and ready
@@ -1221,7 +1221,7 @@ READ8_DEVICE_HANDLER(apollo_sio2_r)
 
 	apollo_pic_set_irq_line(device, APOLLO_IRQ_SIO2, 0);
 
-	int data = duart68681_r(device, offset / 2);
+	int data = duart68681_r(device, space, offset / 2);
 
 	DLOG2(("reading 2681 reg %x (%s) returned %02x",
 				offset, duart68681_reg_read_names[offset/2], data ));
@@ -1247,7 +1247,7 @@ WRITE8_DEVICE_HANDLER(apollo_sio2_w)
 		break;
 	}
 
-	duart68681_w(device, offset / 2, data);
+	duart68681_w(device, space, offset / 2, data);
 }
 
 /*-------------------------------------------------
@@ -1343,11 +1343,11 @@ static DEVICE_RESET( apollo_fdc ) {
 
 WRITE8_MEMBER(apollo_state::apollo_fdc_w){
 	SLOG1(("writing FDC upd765 at offset %X = %02x", offset, data));
-	pc_fdc_w(&space, offset, data);
+	pc_fdc_w(space, offset, data);
 }
 
 READ8_MEMBER(apollo_state::apollo_fdc_r){
-	UINT8 data = pc_fdc_r(&space, offset);
+	UINT8 data = pc_fdc_r(space, offset);
 	SLOG1(("reading FDC upd765 at offset %X = %02x", offset, data));
 	return data;
 }

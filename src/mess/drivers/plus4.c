@@ -157,7 +157,7 @@ UINT8 plus4_state::read_memory(address_space &space, offs_t offset, int ba, int 
 
 	if (!scs && m_t6721)
 	{
-		data = t6721_speech_r(m_t6721, offset & 0x03);
+		data = t6721_speech_r(m_t6721, space, offset & 0x03);
 	}
 	else if (!user)
 	{
@@ -286,7 +286,7 @@ WRITE8_MEMBER( plus4_state::write )
 
 	if (!scs && m_t6721)
 	{
-		t6721_speech_w(m_t6721, offset & 0x03, data);
+		t6721_speech_w(m_t6721, space, offset & 0x03, data);
 	}
 	else if (!user && m_spi_user)
 	{
@@ -566,16 +566,14 @@ static M6510_INTERFACE( c16_cpu_intf )
 //  ted7360_interface ted_intf
 //-------------------------------------------------
 
-static INTERRUPT_GEN( c16_raster_interrupt )
+INTERRUPT_GEN_MEMBER(plus4_state::c16_raster_interrupt)
 {
-	plus4_state *state = device->machine().driver_data<plus4_state>();
 
-	state->m_ted->raster_interrupt_gen();
+	m_ted->raster_interrupt_gen();
 }
 
-static INTERRUPT_GEN( c16_frame_interrupt )
+INTERRUPT_GEN_MEMBER(plus4_state::c16_frame_interrupt)
 {
-	plus4_state *state = device->machine().driver_data<plus4_state>();
 
 	int value, i;
 	static const char *const c16ports[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
@@ -584,54 +582,54 @@ static INTERRUPT_GEN( c16_frame_interrupt )
 	for (i = 0; i < 8; i++)
 	{
 		value = 0xff;
-		value &= ~device->machine().root_device().ioport(c16ports[i])->read();
+		value &= ~machine().root_device().ioport(c16ports[i])->read();
 
 		/* Shift Lock is mapped on Left/Right Shift */
-		if ((i == 1) && (device->machine().root_device().ioport("SPECIAL")->read() & 0x80))
+		if ((i == 1) && (machine().root_device().ioport("SPECIAL")->read() & 0x80))
 			value &= ~0x80;
 
-		state->m_keyline[i] = value;
+		m_keyline[i] = value;
 	}
 
-	if (device->machine().root_device().ioport("CTRLSEL")->read() & 0x01)
+	if (machine().root_device().ioport("CTRLSEL")->read() & 0x01)
 	{
 		value = 0xff;
-		if (device->machine().root_device().ioport("JOY0")->read() & 0x10)			/* Joypad1_Button */
+		if (machine().root_device().ioport("JOY0")->read() & 0x10)			/* Joypad1_Button */
 			{
-				if (device->machine().root_device().ioport("SPECIAL")->read() & 0x40)
+				if (machine().root_device().ioport("SPECIAL")->read() & 0x40)
 					value &= ~0x80;
 				else
 					value &= ~0x40;
 			}
 
-		value &= ~(device->machine().root_device().ioport("JOY0")->read() & 0x0f);	/* Other Inputs Joypad1 */
+		value &= ~(machine().root_device().ioport("JOY0")->read() & 0x0f);	/* Other Inputs Joypad1 */
 
-		if (device->machine().root_device().ioport("SPECIAL")->read() & 0x40)
-			state->m_keyline[9] = value;
+		if (machine().root_device().ioport("SPECIAL")->read() & 0x40)
+			m_keyline[9] = value;
 		else
-			state->m_keyline[8] = value;
+			m_keyline[8] = value;
 	}
 
-	if (device->machine().root_device().ioport("CTRLSEL")->read() & 0x10)
+	if (machine().root_device().ioport("CTRLSEL")->read() & 0x10)
 	{
 		value = 0xff;
-		if (device->machine().root_device().ioport("JOY1")->read() & 0x10)			/* Joypad2_Button */
+		if (machine().root_device().ioport("JOY1")->read() & 0x10)			/* Joypad2_Button */
 			{
-				if (device->machine().root_device().ioport("SPECIAL")->read() & 0x40)
+				if (machine().root_device().ioport("SPECIAL")->read() & 0x40)
 					value &= ~0x40;
 				else
 					value &= ~0x80;
 			}
 
-		value &= ~(device->machine().root_device().ioport("JOY1")->read() & 0x0f);	/* Other Inputs Joypad2 */
+		value &= ~(machine().root_device().ioport("JOY1")->read() & 0x0f);	/* Other Inputs Joypad2 */
 
-		if (device->machine().root_device().ioport("SPECIAL")->read() & 0x40)
-			state->m_keyline[8] = value;
+		if (machine().root_device().ioport("SPECIAL")->read() & 0x40)
+			m_keyline[8] = value;
 		else
-			state->m_keyline[9] = value;
+			m_keyline[9] = value;
 	}
 
-	state->m_ted->frame_interrupt_gen();
+	m_ted->frame_interrupt_gen();
 }
 
 WRITE_LINE_MEMBER( plus4_state::ted_irq_w )
@@ -802,12 +800,12 @@ static CBM_IEC_INTERFACE( c16_iec_intf )
 
 READ8_MEMBER( plus4_state::exp_dma_r )
 {
-	return m_maincpu->space(AS_PROGRAM)->read_byte(offset);
+	return m_maincpu->space(AS_PROGRAM).read_byte(offset);
 }
 
 WRITE8_MEMBER( plus4_state::exp_dma_w )
 {
-	m_maincpu->space(AS_PROGRAM)->write_byte(offset, data);
+	m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
 }
 
 WRITE_LINE_MEMBER( plus4_state::exp_irq_w )
@@ -905,8 +903,8 @@ static MACHINE_CONFIG_START( ntsc, plus4_state )
 	MCFG_CPU_ADD(MOS7501_TAG, M7501, XTAL_14_31818MHz/16)
 	MCFG_CPU_PROGRAM_MAP(plus4_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c16_frame_interrupt)
-	MCFG_CPU_PERIODIC_INT(c16_raster_interrupt, TED7360_HRETRACERATE)
+	MCFG_CPU_VBLANK_INT_DRIVER(SCREEN_TAG, plus4_state,  c16_frame_interrupt)
+	MCFG_CPU_PERIODIC_INT_DRIVER(plus4_state, c16_raster_interrupt,  TED7360_HRETRACERATE)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	// video and sound hardware
@@ -944,8 +942,8 @@ static MACHINE_CONFIG_START( pal, plus4_state )
 	MCFG_CPU_ADD(MOS7501_TAG, M7501, XTAL_17_73447MHz/20)
 	MCFG_CPU_PROGRAM_MAP(plus4_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c16_frame_interrupt)
-	MCFG_CPU_PERIODIC_INT(c16_raster_interrupt, TED7360_HRETRACERATE)
+	MCFG_CPU_VBLANK_INT_DRIVER(SCREEN_TAG, plus4_state,  c16_frame_interrupt)
+	MCFG_CPU_PERIODIC_INT_DRIVER(plus4_state, c16_raster_interrupt,  TED7360_HRETRACERATE)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	// video and sound hardware

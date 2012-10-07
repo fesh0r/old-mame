@@ -123,11 +123,11 @@ Hardware:   PPIA 8255
 
 void atom_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	UINT8 *eprom = memregion(EXTROM_TAG)->base() + (m_eprom << 12);
 
-	program->install_rom(0xa000, 0xafff, eprom);
+	program.install_rom(0xa000, 0xafff, eprom);
 }
 
 /*-------------------------------------------------
@@ -205,7 +205,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 /*-------------------------------------------------
-    INPUT_CHANGED( trigger_reset )
+    INPUT_CHANGED_MEMBER( trigger_reset )
 -------------------------------------------------*/
 
 INPUT_CHANGED_MEMBER( atom_state::trigger_reset )
@@ -592,15 +592,13 @@ static const floppy_interface atom_floppy_interface =
     cassette_interface atom_cassette_interface
 -------------------------------------------------*/
 
-static TIMER_DEVICE_CALLBACK( cassette_output_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(atom_state::cassette_output_tick)
 {
-	atom_state *state = timer.machine().driver_data<atom_state>();
+	int level = !(!(!m_hz2400 && m_pc1) && m_pc0);
 
-	int level = !(!(!state->m_hz2400 && state->m_pc1) && state->m_pc0);
+	m_cassette->output(level ? -1.0 : +1.0);
 
-	state->m_cassette->output(level ? -1.0 : +1.0);
-
-	state->m_hz2400 = !state->m_hz2400;
+	m_hz2400 = !m_hz2400;
 }
 
 static const cassette_interface atom_cassette_interface =
@@ -648,7 +646,7 @@ void atom_state::machine_start()
     generator. I don't know if this is hardware, or random data because the
     ram chips are not cleared at start-up. So at this time, these numbers
     are poked into the memory to simulate it. When I have more details I will fix it */
-	UINT8 *m_baseram = (UINT8 *)m_maincpu->space(AS_PROGRAM)->get_write_ptr(0x0000);
+	UINT8 *m_baseram = (UINT8 *)m_maincpu->space(AS_PROGRAM).get_write_ptr(0x0000);
 
 	m_baseram[0x08] = machine().rand() & 0x0ff;
 	m_baseram[0x09] = machine().rand() & 0x0ff;
@@ -784,7 +782,7 @@ static MACHINE_CONFIG_START( atom, atom_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
-	MCFG_TIMER_ADD_PERIODIC("hz2400", cassette_output_tick, attotime::from_hz(4806)) // X2/4/416
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("hz2400", atom_state, cassette_output_tick, attotime::from_hz(4806))
 	MCFG_VIA6522_ADD(R6522_TAG, X2/4, via_intf)
 	MCFG_I8255_ADD(INS8255_TAG, ppi_intf)
 	MCFG_I8271_ADD(I8271_TAG, fdc_intf)

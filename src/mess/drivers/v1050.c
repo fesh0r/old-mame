@@ -100,12 +100,13 @@ Notes:
     - keyboard beeper (NE555 wired in strange mix of astable/monostable modes)
     - Winchester (Tandon TM501/CMI CM-5412 10MB drive on Xebec S1410 controller)
 
-        chdman -createblankhd tm501.chd 306 2 32 256
-        chdman -createblankhd cm5412.chd 306 4 17 512
+        chdman createhd -chs 306,2,32 -ss 256 -o tm501.chd
+        chdman createhd -chs 306,4,32 -ss 256 -o cm5412.chd
 
 */
 
 #include "includes/v1050.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/scsihd.h"
 #include "machine/s1410.h"
@@ -126,19 +127,19 @@ void v1050_state::set_interrupt(UINT8 mask, int state)
 
 void v1050_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	int bank = (m_bank >> 1) & 0x03;
 
 	if (BIT(m_bank, 0))
 	{
-		program->install_readwrite_bank(0x0000, 0x1fff, "bank1");
+		program.install_readwrite_bank(0x0000, 0x1fff, "bank1");
 		membank("bank1")->set_entry(bank);
 	}
 	else
 	{
-		program->install_read_bank(0x0000, 0x1fff, "bank1");
-		program->unmap_write(0x0000, 0x1fff);
+		program.install_read_bank(0x0000, 0x1fff, "bank1");
+		program.unmap_write(0x0000, 0x1fff);
 		membank("bank1")->set_entry(3);
 	}
 
@@ -146,12 +147,12 @@ void v1050_state::bankswitch()
 
 	if (bank == 2)
 	{
-		program->unmap_readwrite(0x4000, 0xbfff);
+		program.unmap_readwrite(0x4000, 0xbfff);
 	}
 	else
 	{
-		program->install_readwrite_bank(0x4000, 0x7fff, "bank3");
-		program->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+		program.install_readwrite_bank(0x4000, 0x7fff, "bank3");
+		program.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 		membank("bank3")->set_entry(bank);
 		membank("bank4")->set_entry(bank);
 	}
@@ -272,11 +273,9 @@ void v1050_state::scan_keyboard()
 	m_keydata = keydata;
 }
 
-static TIMER_DEVICE_CALLBACK( v1050_keyboard_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::v1050_keyboard_tick)
 {
-	v1050_state *state = timer.machine().driver_data<v1050_state>();
-
-	state->scan_keyboard();
+	scan_keyboard();
 }
 
 READ8_MEMBER( v1050_state::kb_data_r )
@@ -346,6 +345,28 @@ WRITE8_MEMBER( v1050_state::dvint_clr_w )
 	m_subcpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
+WRITE8_MEMBER( v1050_state::sasi_data_w )
+{
+	data_out = data;
+
+	if( m_sasibus->scsi_io_r() != 0 )
+	{
+		m_sasibus->scsi_data_w( data );
+	}
+}
+
+WRITE_LINE_MEMBER( v1050_state::sasi_io_w )
+{
+	if( state != 0 )
+	{
+		m_sasibus->scsi_data_w( data_out );
+	}
+	else
+	{
+		m_sasibus->scsi_data_w( 0xff );
+	}
+}
+
 READ8_MEMBER( v1050_state::sasi_status_r )
 {
 	/*
@@ -374,18 +395,14 @@ READ8_MEMBER( v1050_state::sasi_status_r )
 	return data;
 }
 
-static TIMER_DEVICE_CALLBACK( sasi_ack_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::sasi_ack_tick)
 {
-	v1050_state *state = timer.machine().driver_data<v1050_state>();
-
-	state->m_sasibus->scsi_ack_w(1);
+	m_sasibus->scsi_ack_w(1);
 }
 
-static TIMER_DEVICE_CALLBACK( sasi_rst_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::sasi_rst_tick)
 {
-	v1050_state *state = timer.machine().driver_data<v1050_state>();
-
-	state->m_sasibus->scsi_rst_w(1);
+	m_sasibus->scsi_rst_w(1);
 }
 
 WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
@@ -452,7 +469,7 @@ static ADDRESS_MAP_START( v1050_io, AS_IO, 8, v1050_state )
 	AM_RANGE(0xb0, 0xb0) AM_READWRITE(dint_clr_r, dint_clr_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(v1050_i8214_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(bank_w)
-	AM_RANGE(0xe0, 0xe0) AM_DEVREADWRITE(SASIBUS_TAG, scsibus_device, scsi_data_r, scsi_data_w)
+	AM_RANGE(0xe0, 0xe0) AM_WRITE(sasi_data_w) AM_DEVREAD(SASIBUS_TAG ":host", scsicb_device, scsi_data_r)
 	AM_RANGE(0xe1, 0xe1) AM_READWRITE(sasi_status_r, sasi_ctrl_w)
 ADDRESS_MAP_END
 
@@ -600,17 +617,17 @@ INPUT_PORTS_END
 
 // 8214 Interface
 
-static WRITE_LINE_DEVICE_HANDLER( pic_int_w )
+WRITE_LINE_MEMBER(v1050_state::pic_int_w)
 {
 	if (state == ASSERT_LINE)
 	{
-		device->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 	}
 }
 
 static I8214_INTERFACE( pic_intf )
 {
-	DEVCB_DEVICE_LINE(Z80_TAG, pic_int_w),
+	DEVCB_DRIVER_LINE_MEMBER(v1050_state,pic_int_w),
 	DEVCB_NULL
 };
 
@@ -623,8 +640,9 @@ static MSM58321_INTERFACE( rtc_intf )
 
 // Display 8255A Interface
 
-static WRITE8_DEVICE_HANDLER( disp_ppi_pc_w )
+WRITE8_MEMBER(v1050_state::disp_ppi_pc_w)
 {
+	device_t *device = machine().device(I8255A_M6502_TAG);
 	i8255_device *ppi = static_cast<i8255_device*>(device);
 
 	ppi->pc2_w(BIT(data, 6));
@@ -638,11 +656,12 @@ static I8255A_INTERFACE( disp_ppi_intf )
 	DEVCB_NULL,							// Port B read
 	DEVCB_NULL,							// Port B write
 	DEVCB_NULL,							// Port C read
-	DEVCB_DEVICE_HANDLER(I8255A_M6502_TAG, disp_ppi_pc_w)		// Port C write
+	DEVCB_DRIVER_MEMBER(v1050_state,disp_ppi_pc_w)		// Port C write
 };
 
-static WRITE8_DEVICE_HANDLER( m6502_ppi_pc_w )
+WRITE8_MEMBER(v1050_state::m6502_ppi_pc_w)
 {
+	device_t *device = machine().device(I8255A_DISP_TAG);
 	i8255_device *ppi = static_cast<i8255_device*>(device);
 
 	ppi->pc2_w(BIT(data, 7));
@@ -656,7 +675,7 @@ static I8255A_INTERFACE( m6502_ppi_intf )
 	DEVCB_NULL,							// Port B read
 	DEVCB_NULL,							// Port B write
 	DEVCB_NULL,							// Port C read
-	DEVCB_DEVICE_HANDLER(I8255A_DISP_TAG, m6502_ppi_pc_w)	// Port C write
+	DEVCB_DRIVER_MEMBER(v1050_state,m6502_ppi_pc_w)	// Port C write
 };
 
 // Miscellanous 8255A Interface
@@ -699,13 +718,13 @@ WRITE8_MEMBER( v1050_state::misc_ppi_pa_w )
 	wd17xx_dden_w(m_fdc, BIT(data, 7));
 }
 
-static WRITE8_DEVICE_HANDLER( misc_ppi_pb_w )
+WRITE8_MEMBER(v1050_state::misc_ppi_pb_w)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>(CENTRONICS_TAG);
-	centronics->write( *device->machine().memory().first_space() , 0, ~data & 0xff);
+	centronics_device *centronics = machine().device<centronics_device>(CENTRONICS_TAG);
+	centronics->write( machine().driver_data()->generic_space() , 0, ~data & 0xff);
 }
 
-static READ8_DEVICE_HANDLER( misc_ppi_pc_r )
+READ8_MEMBER(v1050_state::misc_ppi_pc_r)
 {
 	/*
 
@@ -723,7 +742,7 @@ static READ8_DEVICE_HANDLER( misc_ppi_pc_r )
     */
 
 	UINT8 data = 0;
-	centronics_device *centronics = device->machine().device<centronics_device>(CENTRONICS_TAG);
+	centronics_device *centronics = machine().device<centronics_device>(CENTRONICS_TAG);
 	data |= centronics->not_busy_r() << 4;
 	data |= centronics->pe_r() << 5;
 
@@ -785,8 +804,8 @@ static I8255A_INTERFACE( misc_ppi_intf )
 	DEVCB_NULL,							// Port A read
 	DEVCB_DRIVER_MEMBER(v1050_state, misc_ppi_pa_w),		// Port A write
 	DEVCB_NULL,							// Port B read
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, misc_ppi_pb_w),		// Port B write
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, misc_ppi_pc_r),		// Port C read
+	DEVCB_DRIVER_MEMBER(v1050_state,misc_ppi_pb_w),		// Port B write
+	DEVCB_DRIVER_MEMBER(v1050_state,misc_ppi_pc_r),		// Port C read
 	DEVCB_DRIVER_MEMBER(v1050_state, misc_ppi_pc_w)		// Port C write
 };
 
@@ -867,12 +886,10 @@ static I8255A_INTERFACE( rtc_ppi_intf )
 
 // Keyboard 8251A Interface
 
-static TIMER_DEVICE_CALLBACK( kb_8251_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::kb_8251_tick)
 {
-	v1050_state *state = timer.machine().driver_data<v1050_state>();
-
-	state->m_uart_kb->transmit_clock();
-	state->m_uart_kb->receive_clock();
+	m_uart_kb->transmit_clock();
+	m_uart_kb->receive_clock();
 }
 
 WRITE_LINE_MEMBER( v1050_state::kb_rxrdy_w )
@@ -895,12 +912,10 @@ static const i8251_interface kb_8251_intf =
 
 // Serial 8251A Interface
 
-static TIMER_DEVICE_CALLBACK( sio_8251_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::sio_8251_tick)
 {
-	v1050_state *state = timer.machine().driver_data<v1050_state>();
-
-	state->m_uart_sio->transmit_clock();
-	state->m_uart_sio->receive_clock();
+	m_uart_sio->transmit_clock();
+	m_uart_sio->receive_clock();
 }
 
 WRITE_LINE_MEMBER( v1050_state::sio_rxrdy_w )
@@ -993,9 +1008,10 @@ static const floppy_interface v1050_floppy_interface =
 
 static const SCSICB_interface sasi_intf =
 {
-	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DRIVER_LINE_MEMBER(v1050_state, sasi_io_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1020,10 +1036,7 @@ static IRQ_CALLBACK( v1050_int_ack )
 
 void v1050_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
-
-	// initialize SASI bus
-	m_sasibus->init_scsibus(256);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	// initialize I8214
 	m_pic->etlg_w(1);
@@ -1042,17 +1055,17 @@ void v1050_state::machine_start()
 	membank("bank1")->configure_entry(2, ram + 0x1c000);
 	membank("bank1")->configure_entry(3, memregion(Z80_TAG)->base());
 
-	program->install_readwrite_bank(0x2000, 0x3fff, "bank2");
+	program.install_readwrite_bank(0x2000, 0x3fff, "bank2");
 	membank("bank2")->configure_entries(0, 2, ram + 0x2000, 0x10000);
 	membank("bank2")->configure_entry(2, ram + 0x1e000);
 
-	program->install_readwrite_bank(0x4000, 0x7fff, "bank3");
+	program.install_readwrite_bank(0x4000, 0x7fff, "bank3");
 	membank("bank3")->configure_entries(0, 2, ram + 0x4000, 0x10000);
 
-	program->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+	program.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 	membank("bank4")->configure_entries(0, 2, ram + 0x8000, 0x10000);
 
-	program->install_readwrite_bank(0xc000, 0xffff, "bank5");
+	program.install_readwrite_bank(0xc000, 0xffff, "bank5");
 	membank("bank5")->configure_entries(0, 3, ram + 0xc000, 0);
 
 	bankswitch();
@@ -1093,7 +1106,7 @@ static MACHINE_CONFIG_START( v1050, v1050_state )
 	MCFG_QUANTUM_PERFECT_CPU(M6502_TAG)
 
 	// keyboard HACK
-	MCFG_TIMER_ADD_PERIODIC("keyboard", v1050_keyboard_tick, attotime::from_hz(60))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", v1050_state, v1050_keyboard_tick, attotime::from_hz(60))
 
     // video hardware
 	MCFG_FRAGMENT_ADD(v1050_video)
@@ -1109,16 +1122,16 @@ static MACHINE_CONFIG_START( v1050, v1050_state )
 	MCFG_I8251_ADD(I8251A_SIO_TAG, /*XTAL_16MHz/8,*/ sio_8251_intf)
 	MCFG_MB8877_ADD(MB8877_TAG, /*XTAL_16MHz/16,*/ fdc_intf )
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(v1050_floppy_interface)
-	MCFG_TIMER_ADD_PERIODIC(TIMER_KB_TAG, kb_8251_tick, attotime::from_hz((double)XTAL_16MHz/4/13/8))
-	MCFG_TIMER_ADD(TIMER_SIO_TAG, sio_8251_tick)
+	MCFG_TIMER_DRIVER_ADD_PERIODIC(TIMER_KB_TAG, v1050_state, kb_8251_tick, attotime::from_hz((double)XTAL_16MHz/4/13/8))
+	MCFG_TIMER_DRIVER_ADD(TIMER_SIO_TAG, v1050_state, sio_8251_tick)
 
 	// SASI bus
 	MCFG_SCSIBUS_ADD(SASIBUS_TAG)
 	MCFG_SCSIDEV_ADD(SASIBUS_TAG ":harddisk0", S1410, SCSI_ID_0)
 	MCFG_SCSICB_ADD(SASIBUS_TAG ":host", sasi_intf)
 
-	MCFG_TIMER_ADD(TIMER_ACK_TAG, sasi_ack_tick)
-	MCFG_TIMER_ADD(TIMER_RST_TAG, sasi_rst_tick)
+	MCFG_TIMER_DRIVER_ADD(TIMER_ACK_TAG, v1050_state, sasi_ack_tick)
+	MCFG_TIMER_DRIVER_ADD(TIMER_RST_TAG, v1050_state, sasi_rst_tick)
 
 	// keyboard
 	MCFG_V1050_KEYBOARD_ADD()

@@ -33,18 +33,13 @@ public:
 	DECLARE_DRIVER_INIT(mikro80);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_mikro80(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(mikro80_reset);
 };
 
 
 /*----------- defined in machine/mikro80.c -----------*/
 
 extern const i8255_interface mikro80_ppi8255_interface;
-
-extern MACHINE_RESET( mikro80 );
-
-/*----------- defined in video/mikro80.c -----------*/
-
-extern VIDEO_START( mikro80 );
-extern SCREEN_UPDATE_IND16( mikro80 );
 
 #endif /* UT88_H_ */

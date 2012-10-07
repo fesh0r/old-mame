@@ -407,7 +407,7 @@ static MACHINE_CONFIG_START( rastan, rastan_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(rastan_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rastan_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(rastan_s_map)
@@ -421,7 +421,7 @@ static MACHINE_CONFIG_START( rastan, rastan_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(rastan)
+	MCFG_SCREEN_UPDATE_DRIVER(rastan_state, screen_update_rastan)
 
 	MCFG_GFXDECODE(rastan)
 	MCFG_PALETTE_LENGTH(8192)

@@ -1052,7 +1052,7 @@ static MACHINE_CONFIG_START( legionna, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,20000000/2)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(legionna_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)/* VBL */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold)/* VBL */
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -1064,7 +1064,7 @@ static MACHINE_CONFIG_START( legionna, legionna_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_SIZE(36*8, 36*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(legionna)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_legionna)
 
 	MCFG_GFXDECODE(legionna)
 	MCFG_PALETTE_LENGTH(128*16)
@@ -1082,7 +1082,7 @@ static MACHINE_CONFIG_START( heatbrl, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,20000000/2)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(heatbrl_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)/* VBL */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold)/* VBL */
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -1094,7 +1094,7 @@ static MACHINE_CONFIG_START( heatbrl, legionna_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_SIZE(36*8, 36*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(legionna)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_legionna)
 
 	MCFG_GFXDECODE(heatbrl)
 	MCFG_PALETTE_LENGTH(128*16)
@@ -1111,7 +1111,7 @@ static MACHINE_CONFIG_START( godzilla, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 20000000/2)
 	MCFG_CPU_PROGRAM_MAP(godzilla_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold)
 
 	SEIBU2_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -1123,7 +1123,7 @@ static MACHINE_CONFIG_START( godzilla, legionna_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_SIZE(42*8, 36*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(godzilla)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_godzilla)
 
 	MCFG_GFXDECODE(heatbrl)
 	MCFG_PALETTE_LENGTH(128*16)
@@ -1140,7 +1140,7 @@ static MACHINE_CONFIG_START( denjinmk, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 20000000/2)
 	MCFG_CPU_PROGRAM_MAP(denjinmk_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold)
 
 	SEIBU2_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -1152,7 +1152,7 @@ static MACHINE_CONFIG_START( denjinmk, legionna_state )
 	MCFG_SCREEN_REFRESH_RATE(61)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(godzilla)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_godzilla)
 
 	MCFG_GFXDECODE(heatbrl)
 	MCFG_PALETTE_LENGTH(128*16)
@@ -1169,7 +1169,7 @@ static MACHINE_CONFIG_START( grainbow, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 20000000/2)
 	MCFG_CPU_PROGRAM_MAP(grainbow_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold)
 
 	SEIBU2_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -1181,7 +1181,7 @@ static MACHINE_CONFIG_START( grainbow, legionna_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_SIZE(64*8, 36*8)
 	MCFG_SCREEN_VISIBLE_AREA(2*8, 42*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(grainbow)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_grainbow)
 
 	MCFG_GFXDECODE(grainbow)
 	MCFG_PALETTE_LENGTH(128*16)
@@ -1199,7 +1199,7 @@ static MACHINE_CONFIG_START( cupsoc, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,20000000/2)
 	MCFG_CPU_PROGRAM_MAP(cupsoc_mem)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)/* VBL */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold)/* VBL */
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -1211,7 +1211,7 @@ static MACHINE_CONFIG_START( cupsoc, legionna_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MCFG_SCREEN_SIZE(42*8, 36*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(grainbow)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_grainbow)
 
 	MCFG_GFXDECODE(cupsoc)
 	MCFG_PALETTE_LENGTH(128*16)
@@ -1233,7 +1233,7 @@ static MACHINE_CONFIG_START( cupsocbl, legionna_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,12000000)
 	MCFG_CPU_PROGRAM_MAP(cupsocbl_mem)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold) /* VBL */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", legionna_state,  irq4_line_hold) /* VBL */
 
 	/*Different Sound hardware*/
 	//SEIBU_SOUND_SYSTEM_CPU(14318180/4)
@@ -1249,7 +1249,7 @@ static MACHINE_CONFIG_START( cupsocbl, legionna_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(42*8, 36*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(grainbow)
+	MCFG_SCREEN_UPDATE_DRIVER(legionna_state, screen_update_grainbow)
 
 	MCFG_GFXDECODE(heatbrl_csb)
 	MCFG_PALETTE_LENGTH(128*16)

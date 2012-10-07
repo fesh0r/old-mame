@@ -133,7 +133,7 @@ enum
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( towns_pic_irq );
+
 
 INLINE UINT8 byte_to_bcd(UINT8 val)
 {
@@ -270,7 +270,7 @@ WRITE8_MEMBER(towns_state::towns_system_w)
 	switch(offset)
 	{
 		case 0x00:  // bit 7 = NMI vector protect, bit 6 = power off, bit 0 = software reset, bit 3 = A20 line?
-//          space->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_A20,(data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+//          space.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_A20,(data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 			logerror("SYS: port 0x20 write %02x\n",data);
 			break;
 		case 0x02:
@@ -393,25 +393,25 @@ WRITE8_MEMBER(towns_state::towns_sys6c_w)
 READ8_MEMBER(towns_state::towns_dma1_r)
 {
 //  logerror("DMA#1: read register %i\n",offset);
-	return upd71071_r(m_dma_1,offset);
+	return upd71071_r(m_dma_1,space, offset);
 }
 
 WRITE8_MEMBER(towns_state::towns_dma1_w)
 {
 //  logerror("DMA#1: wrote 0x%02x to register %i\n",data,offset);
-	upd71071_w(m_dma_1,offset,data);
+	upd71071_w(m_dma_1,space, offset,data);
 }
 
 READ8_MEMBER(towns_state::towns_dma2_r)
 {
 	logerror("DMA#2: read register %i\n",offset);
-	return upd71071_r(m_dma_2,offset);
+	return upd71071_r(m_dma_2,space, offset);
 }
 
 WRITE8_MEMBER(towns_state::towns_dma2_w)
 {
 	logerror("DMA#2: wrote 0x%02x to register %i\n",data,offset);
-	upd71071_w(m_dma_2,offset,data);
+	upd71071_w(m_dma_2,space, offset,data);
 }
 
 /*
@@ -440,13 +440,13 @@ READ8_MEMBER(towns_state::towns_floppy_r)
 	switch(offset)
 	{
 		case 0x00:
-			return wd17xx_status_r(fdc,offset/2);
+			return wd17xx_status_r(fdc,space, offset/2);
 		case 0x02:
-			return wd17xx_track_r(fdc,offset/2);
+			return wd17xx_track_r(fdc,space, offset/2);
 		case 0x04:
-			return wd17xx_sector_r(fdc,offset/2);
+			return wd17xx_sector_r(fdc,space, offset/2);
 		case 0x06:
-			return wd17xx_data_r(fdc,offset/2);
+			return wd17xx_data_r(fdc,space, offset/2);
 		case 0x08:  // selected drive status?
 			//logerror("FDC: read from offset 0x08\n");
 			ret = 0x80;  // always set
@@ -492,16 +492,16 @@ WRITE8_MEMBER(towns_state::towns_floppy_w)
 				return;
 			if(data == 0xfe)
 				return;
-			wd17xx_command_w(fdc,offset/2,data);
+			wd17xx_command_w(fdc,space, offset/2,data);
 			break;
 		case 0x02:
-			wd17xx_track_w(fdc,offset/2,data);
+			wd17xx_track_w(fdc,space, offset/2,data);
 			break;
 		case 0x04:
-			wd17xx_sector_w(fdc,offset/2,data);
+			wd17xx_sector_w(fdc,space, offset/2,data);
 			break;
 		case 0x06:
-			wd17xx_data_w(fdc,offset/2,data);
+			wd17xx_data_w(fdc,space, offset/2,data);
 			break;
 		case 0x08:
 			// bit 5 - CLKSEL
@@ -550,14 +550,14 @@ static UINT16 towns_fdc_dma_r(running_machine &machine)
 {
 	towns_state* state = machine.driver_data<towns_state>();
 	device_t* fdc = state->m_fdc;
-	return wd17xx_data_r(fdc,0);
+	return wd17xx_data_r(fdc,state->generic_space(), 0);
 }
 
 static void towns_fdc_dma_w(running_machine &machine, UINT16 data)
 {
 	towns_state* state = machine.driver_data<towns_state>();
 	device_t* fdc = state->m_fdc;
-	wd17xx_data_w(fdc,0,data);
+	wd17xx_data_w(fdc,state->generic_space(), 0,data);
 }
 
 /*
@@ -1305,13 +1305,12 @@ static void towns_cdrom_set_irq(running_machine &machine,int line,int state)
 	}
 }
 
-static TIMER_CALLBACK( towns_cd_status_ready )
+TIMER_CALLBACK_MEMBER(towns_state::towns_cd_status_ready)
 {
-	towns_state* state = machine.driver_data<towns_state>();
-	state->m_towns_cd.status |= 0x02;  // status read request
-	state->m_towns_cd.status |= 0x01;  // ready
-	state->m_towns_cd.cmd_status_ptr = 0;
-	towns_cdrom_set_irq((running_machine&)machine,TOWNS_CD_IRQ_MPU,1);
+	m_towns_cd.status |= 0x02;  // status read request
+	m_towns_cd.status |= 0x01;  // ready
+	m_towns_cd.cmd_status_ptr = 0;
+	towns_cdrom_set_irq((running_machine&)machine(),TOWNS_CD_IRQ_MPU,1);
 }
 
 static void towns_cd_set_status(running_machine &machine, UINT8 st0, UINT8 st1, UINT8 st2, UINT8 st3)
@@ -1322,7 +1321,7 @@ static void towns_cd_set_status(running_machine &machine, UINT8 st0, UINT8 st1, 
 	state->m_towns_cd.cmd_status[2] = st2;
 	state->m_towns_cd.cmd_status[3] = st3;
 	// wait a bit
-	machine.scheduler().timer_set(attotime::from_msec(1), FUNC(towns_cd_status_ready), 0, &machine);
+	machine.scheduler().timer_set(attotime::from_msec(1), timer_expired_delegate(FUNC(towns_state::towns_cd_status_ready),state), 0, &machine);
 }
 
 static UINT8 towns_cd_get_track(running_machine &machine)
@@ -1341,52 +1340,51 @@ static UINT8 towns_cd_get_track(running_machine &machine)
 	return track;
 }
 
-static TIMER_CALLBACK( towns_cdrom_read_byte )
+TIMER_CALLBACK_MEMBER(towns_state::towns_cdrom_read_byte)
 {
 	device_t* device = (device_t* )ptr;
-	towns_state* state = machine.driver_data<towns_state>();
 	int masked;
 	// TODO: support software transfers, for now DMA is assumed.
 
-	if(state->m_towns_cd.buffer_ptr < 0) // transfer has ended
+	if(m_towns_cd.buffer_ptr < 0) // transfer has ended
 		return;
 
 	masked = upd71071_dmarq(device,param,3);  // CD-ROM controller uses DMA1 channel 3
-//  logerror("DMARQ: param=%i ret=%i bufferptr=%i\n",param,masked,state->m_towns_cd.buffer_ptr);
+//  logerror("DMARQ: param=%i ret=%i bufferptr=%i\n",param,masked,m_towns_cd.buffer_ptr);
 	if(param != 0)
 	{
-		state->m_towns_cd.read_timer->adjust(attotime::from_hz(300000));
+		m_towns_cd.read_timer->adjust(attotime::from_hz(300000));
 	}
 	else
 	{
 		if(masked != 0)  // check if the DMA channel is masked
 		{
-			state->m_towns_cd.read_timer->adjust(attotime::from_hz(300000),1);
+			m_towns_cd.read_timer->adjust(attotime::from_hz(300000),1);
 			return;
 		}
-		if(state->m_towns_cd.buffer_ptr < 2048)
-			state->m_towns_cd.read_timer->adjust(attotime::from_hz(300000),1);
+		if(m_towns_cd.buffer_ptr < 2048)
+			m_towns_cd.read_timer->adjust(attotime::from_hz(300000),1);
 		else
 		{  // end of transfer
-			state->m_towns_cd.status &= ~0x10;  // no longer transferring by DMA
-			state->m_towns_cd.status &= ~0x20;  // no longer transferring by software
-			logerror("DMA1: end of transfer (LBA=%08x)\n",state->m_towns_cd.lba_current);
-			if(state->m_towns_cd.lba_current >= state->m_towns_cd.lba_last)
+			m_towns_cd.status &= ~0x10;  // no longer transferring by DMA
+			m_towns_cd.status &= ~0x20;  // no longer transferring by software
+			logerror("DMA1: end of transfer (LBA=%08x)\n",m_towns_cd.lba_current);
+			if(m_towns_cd.lba_current >= m_towns_cd.lba_last)
 			{
-				state->m_towns_cd.extra_status = 0;
+				m_towns_cd.extra_status = 0;
 				towns_cd_set_status(device->machine(),0x06,0x00,0x00,0x00);
 				towns_cdrom_set_irq(device->machine(),TOWNS_CD_IRQ_DMA,1);
-				state->m_towns_cd.buffer_ptr = -1;
-				state->m_towns_cd.status |= 0x01;  // ready
+				m_towns_cd.buffer_ptr = -1;
+				m_towns_cd.status |= 0x01;  // ready
 			}
 			else
 			{
-				state->m_towns_cd.extra_status = 0;
+				m_towns_cd.extra_status = 0;
 				towns_cd_set_status(device->machine(),0x22,0x00,0x00,0x00);
 				towns_cdrom_set_irq(device->machine(),TOWNS_CD_IRQ_DMA,1);
-				cdrom_read_data(state->m_cdrom->get_cdrom_file(),++state->m_towns_cd.lba_current,state->m_towns_cd.buffer,CD_TRACK_MODE1);
-				state->m_towns_cd.read_timer->adjust(attotime::from_hz(300000),1);
-				state->m_towns_cd.buffer_ptr = -1;
+				cdrom_read_data(m_cdrom->get_cdrom_file(),++m_towns_cd.lba_current,m_towns_cd.buffer,CD_TRACK_MODE1);
+				m_towns_cd.read_timer->adjust(attotime::from_hz(300000),1);
+				m_towns_cd.buffer_ptr = -1;
 			}
 		}
 	}
@@ -1482,7 +1480,7 @@ static void towns_cdrom_play_cdda(cdrom_image_device* device)
 	}
 }
 
-static TIMER_CALLBACK(towns_delay_cdda)
+TIMER_CALLBACK_MEMBER(towns_state::towns_delay_cdda)
 {
 	towns_cdrom_play_cdda((cdrom_image_device*)ptr);
 }
@@ -1526,7 +1524,7 @@ static void towns_cdrom_execute_command(cdrom_image_device* device)
 				break;
 			case 0x04:  // Play Audio Track
 				logerror("CD: Command 0x04: PLAY CD-DA\n");
-				device->machine().scheduler().timer_set(attotime::from_msec(1), FUNC(towns_delay_cdda), 0, device);
+				device->machine().scheduler().timer_set(attotime::from_msec(1), timer_expired_delegate(FUNC(towns_state::towns_delay_cdda),state), 0, device);
 				break;
 			case 0x05:  // Read TOC
 				logerror("CD: Command 0x05: READ TOC\n");
@@ -1894,18 +1892,16 @@ static void towns_scsi_dma_w(running_machine &machine, UINT16 data)
 	state->m_scsi->fmscsi_data_w(data & 0xff);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( towns_scsi_irq )
+WRITE_LINE_MEMBER(towns_state::towns_scsi_irq)
 {
-	towns_state* tstate = device->machine().driver_data<towns_state>();
-	pic8259_ir0_w(tstate->m_pic_slave, state);
+	pic8259_ir0_w(m_pic_slave, state);
 	if(IRQ_LOG)
 		logerror("PIC: IRQ8 (SCSI) set to %i\n",state);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( towns_scsi_drq )
+WRITE_LINE_MEMBER(towns_state::towns_scsi_drq)
 {
-	towns_state* tstate = device->machine().driver_data<towns_state>();
-	upd71071_dmarq(tstate->m_dma_1,state,1);  // SCSI HDs use channel 1
+	upd71071_dmarq(m_dma_1,state,1);  // SCSI HDs use channel 1
 }
 
 
@@ -2004,42 +2000,40 @@ static void towns_pcm_irq(device_t* device, int channel)
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER( towns_pic_irq )
+WRITE_LINE_MEMBER(towns_state::towns_pic_irq)
 {
-	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 //  logerror("PIC#1: set IRQ line to %i\n",interrupt);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( towns_pit_out0_changed )
+WRITE_LINE_MEMBER(towns_state::towns_pit_out0_changed)
 {
-	towns_state* tstate = device->machine().driver_data<towns_state>();
-	device_t* dev = tstate->m_pic_master;
+	device_t* dev = m_pic_master;
 
-	if(tstate->m_towns_timer_mask & 0x01)
+	if(m_towns_timer_mask & 0x01)
 	{
-		tstate->m_timer0 = state;
+		m_timer0 = state;
 		if(IRQ_LOG) logerror("PIC: IRQ0 (PIT Timer ch0) set to %i\n",state);
 	}
 	else
-		tstate->m_timer0 = 0;
+		m_timer0 = 0;
 
-	pic8259_ir0_w(dev, tstate->m_timer0 || tstate->m_timer1);
+	pic8259_ir0_w(dev, m_timer0 || m_timer1);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( towns_pit_out1_changed )
+WRITE_LINE_MEMBER(towns_state::towns_pit_out1_changed)
 {
-	towns_state* tstate = device->machine().driver_data<towns_state>();
-	device_t* dev = tstate->m_pic_master;
+	device_t* dev = m_pic_master;
 
-	if(tstate->m_towns_timer_mask & 0x02)
+	if(m_towns_timer_mask & 0x02)
 	{
-		tstate->m_timer1 = state;
+		m_timer1 = state;
 		if(IRQ_LOG) logerror("PIC: IRQ0 (PIT Timer ch1) set to %i\n",state);
 	}
 	else
-		tstate->m_timer1 = 0;
+		m_timer1 = 0;
 
-	pic8259_ir0_w(dev, tstate->m_timer0 || tstate->m_timer1);
+	pic8259_ir0_w(dev, m_timer0 || m_timer1);
 }
 
 WRITE_LINE_MEMBER( towns_state::pit_out2_changed )
@@ -2456,10 +2450,10 @@ void towns_state::driver_start()
 	m_towns_intervaltimer2 = timer_alloc(TIMER_INTERVAL2);
 
 	// CD-ROM init
-	m_towns_cd.read_timer = machine().scheduler().timer_alloc(FUNC(towns_cdrom_read_byte), (void*)machine().device("dma_1"));
+	m_towns_cd.read_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(towns_state::towns_cdrom_read_byte),this), (void*)machine().device("dma_1"));
 
 	machine().device("maincpu")->execute().set_irq_acknowledge_callback(towns_irq_callback);
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_ram(0x100000,machine().device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,NULL);
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x100000,machine().device<ram_device>(RAM_TAG)->size()-1,0xffffffff,0,NULL);
 
 }
 
@@ -2472,10 +2466,8 @@ void marty_state::driver_start()
 
 void towns_state::machine_reset()
 {
-	address_space *program;
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
-	program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	m_dma_1 = machine().device("dma_1");
 	m_dma_2 = machine().device("dma_2");
 	m_fdc = machine().device("fdc");
@@ -2496,7 +2488,7 @@ void towns_state::machine_reset()
 	m_towns_mainmem_enable = 0x00;
 	m_towns_system_port = 0x00;
 	m_towns_ram_enable = 0x00;
-	towns_update_video_banks(*program);
+	towns_update_video_banks(program);
 	m_towns_kb_status = 0x18;
 	m_towns_kb_irq1_enable = 0;
 	m_towns_pad_mask = 0x7f;
@@ -2519,12 +2511,12 @@ static const struct pit8253_config towns_pit8253_config =
 		{
 			307200,
 			DEVCB_NULL,
-			DEVCB_LINE(towns_pit_out0_changed)
+			DEVCB_DRIVER_LINE_MEMBER(towns_state,towns_pit_out0_changed)
 		},
 		{
 			307200,
 			DEVCB_NULL,
-			DEVCB_LINE(towns_pit_out1_changed)
+			DEVCB_DRIVER_LINE_MEMBER(towns_state,towns_pit_out1_changed)
 		},
 		{
 			307200,
@@ -2555,19 +2547,18 @@ static const struct pit8253_config towns_pit8253_config_2 =
 	}
 };
 
-static READ8_DEVICE_HANDLER( get_slave_ack )
+READ8_MEMBER(towns_state::get_slave_ack)
 {
-	towns_state* state = device->machine().driver_data<towns_state>();
 	if (offset==7) { // IRQ = 7
-		return pic8259_acknowledge(state->m_pic_slave);
+		return pic8259_acknowledge(m_pic_slave);
 	}
 	return 0x00;
 }
 static const struct pic8259_interface towns_pic8259_master_config =
 {
-	DEVCB_LINE(towns_pic_irq),
+	DEVCB_DRIVER_LINE_MEMBER(towns_state,towns_pic_irq),
 	DEVCB_LINE_VCC,
-	DEVCB_HANDLER(get_slave_ack)
+	DEVCB_DRIVER_MEMBER(towns_state,get_slave_ack)
 };
 
 
@@ -2628,8 +2619,8 @@ static const rf5c68_interface rf5c68_intf =
 
 static const FMSCSIinterface towns_scsi_config =
 {
-	DEVCB_LINE(towns_scsi_irq),
-	DEVCB_LINE(towns_scsi_drq)
+	DEVCB_DRIVER_LINE_MEMBER(towns_state,towns_scsi_irq),
+	DEVCB_DRIVER_LINE_MEMBER(towns_state,towns_scsi_drq)
 };
 
 static const gfx_layout fnt_chars_16x16 =
@@ -2670,7 +2661,7 @@ static MACHINE_CONFIG_FRAGMENT( towns_base )
 	MCFG_CPU_ADD("maincpu",I386, 16000000)
 	MCFG_CPU_PROGRAM_MAP(towns_mem)
 	MCFG_CPU_IO_MAP(towns_io)
-	MCFG_CPU_VBLANK_INT("screen", towns_vsync_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", towns_state,  towns_vsync_irq)
 
 	//    MCFG_MACHINE_RESET_OVERRIDE(towns_state,towns)
 
@@ -2741,7 +2732,7 @@ static MACHINE_CONFIG_DERIVED( townsux, towns )
 	MCFG_CPU_REPLACE("maincpu",I386, 16000000)
 	MCFG_CPU_PROGRAM_MAP(ux_mem)
 	MCFG_CPU_IO_MAP(towns_io)
-	MCFG_CPU_VBLANK_INT("screen", towns_vsync_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", towns_state,  towns_vsync_irq)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2M")
@@ -2753,7 +2744,7 @@ static MACHINE_CONFIG_DERIVED( townssj, towns )
 	MCFG_CPU_REPLACE("maincpu",I486, 66000000)
 	MCFG_CPU_PROGRAM_MAP(towns_mem)
 	MCFG_CPU_IO_MAP(towns_io)
-	MCFG_CPU_VBLANK_INT("screen", towns_vsync_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", towns_state,  towns_vsync_irq)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("8M")
@@ -2765,7 +2756,7 @@ static MACHINE_CONFIG_DERIVED( townshr, towns )
 	MCFG_CPU_REPLACE("maincpu",I486, 20000000)
 	MCFG_CPU_PROGRAM_MAP(towns_mem)
 	MCFG_CPU_IO_MAP(towns_io)
-	MCFG_CPU_VBLANK_INT("screen", towns_vsync_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", towns_state,  towns_vsync_irq)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("4M")
@@ -2778,7 +2769,7 @@ static MACHINE_CONFIG_START( marty, marty_state )
 	MCFG_CPU_REPLACE("maincpu",I386, 16000000)
 	MCFG_CPU_PROGRAM_MAP(marty_mem)
 	MCFG_CPU_IO_MAP(towns_io)
-	MCFG_CPU_VBLANK_INT("screen", towns_vsync_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", towns_state,  towns_vsync_irq)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("6M")

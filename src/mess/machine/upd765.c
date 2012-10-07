@@ -803,7 +803,7 @@ READ8_DEVICE_HANDLER( upd765_status_r )
 {
 	upd765_t *fdc = get_safe_token(device);
 	if (LOG_EXTRA)
-		logerror("%s: upd765_status_r: %02x\n", device->machine().describe_context(), fdc->FDC_main);
+		logerror("%s: upd765_status_r: %02x\n", space.machine().describe_context(), fdc->FDC_main);
 	return fdc->FDC_main;
 }
 
@@ -2263,7 +2263,7 @@ WRITE8_DEVICE_HANDLER(upd765_dack_w)
 	upd765_set_dma_drq(device, CLEAR_LINE);
 
 	/* write data */
-	upd765_data_w(device, offset, data);
+	upd765_data_w(device, space, offset, data);
 }
 
 READ8_DEVICE_HANDLER(upd765_dack_r)
@@ -2272,7 +2272,7 @@ READ8_DEVICE_HANDLER(upd765_dack_r)
 	upd765_set_dma_drq(device,CLEAR_LINE);
 
 	/* read data */
-	return upd765_data_r(device, offset);
+	return upd765_data_r(device, space, offset);
 }
 
 static TIMER_CALLBACK( interrupt_callback )
@@ -2480,12 +2480,12 @@ const device_type UPD765A = &device_creator<upd765a_device>;
 upd765a_device::upd765a_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, UPD765A, "UPD765A", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(upd765_t));
+	m_token = global_alloc_clear(upd765_t);
 }
 upd765a_device::upd765a_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, type, name, tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(upd765_t));
+	m_token = global_alloc_clear(upd765_t);
 }
 
 //-------------------------------------------------

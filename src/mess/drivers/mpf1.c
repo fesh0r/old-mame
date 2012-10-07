@@ -203,16 +203,15 @@ INPUT_PORTS_END
 
 /* Intel 8255A Interface */
 
-static TIMER_CALLBACK( led_refresh )
+TIMER_CALLBACK_MEMBER(mpf1_state::led_refresh)
 {
-	mpf1_state *state = machine.driver_data<mpf1_state>();
 
-	if (BIT(state->m_lednum, 5)) output_set_digit_value(0, param);
-	if (BIT(state->m_lednum, 4)) output_set_digit_value(1, param);
-	if (BIT(state->m_lednum, 3)) output_set_digit_value(2, param);
-	if (BIT(state->m_lednum, 2)) output_set_digit_value(3, param);
-	if (BIT(state->m_lednum, 1)) output_set_digit_value(4, param);
-	if (BIT(state->m_lednum, 0)) output_set_digit_value(5, param);
+	if (BIT(m_lednum, 5)) output_set_digit_value(0, param);
+	if (BIT(m_lednum, 4)) output_set_digit_value(1, param);
+	if (BIT(m_lednum, 3)) output_set_digit_value(2, param);
+	if (BIT(m_lednum, 2)) output_set_digit_value(3, param);
+	if (BIT(m_lednum, 1)) output_set_digit_value(4, param);
+	if (BIT(m_lednum, 0)) output_set_digit_value(5, param);
 }
 
 READ8_MEMBER( mpf1_state::ppi_pa_r )
@@ -334,19 +333,17 @@ static const tms5220_interface mpf1_tms5220_intf =
 
 /* Machine Initialization */
 
-static TIMER_DEVICE_CALLBACK( check_halt_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(mpf1_state::check_halt_callback)
 {
-	mpf1_state *state = timer.machine().driver_data<mpf1_state>();
-
 	// halt-LED; the red one, is turned on when the processor is halted
 	// TODO: processor seems to halt, but restarts(?) at 0x0000 after a while -> fix
-	INT64 led_halt = state->m_maincpu->state_int(Z80_HALT);
-	set_led_status(timer.machine(), 1, led_halt);
+	INT64 led_halt = m_maincpu->state_int(Z80_HALT);
+	set_led_status(machine(), 1, led_halt);
 }
 
 void mpf1_state::machine_start()
 {
-	m_led_refresh_timer = machine().scheduler().timer_alloc(FUNC(led_refresh));
+	m_led_refresh_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(mpf1_state::led_refresh),this));
 
 	/* register for state saving */
 	save_item(NAME(m_break));
@@ -383,7 +380,7 @@ static MACHINE_CONFIG_START( mpf1, mpf1_state )
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_TIMER_ADD_PERIODIC("halt_timer", check_halt_callback, attotime::from_hz(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("halt_timer", mpf1_state, check_halt_callback, attotime::from_hz(1))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( mpf1b, mpf1_state )
@@ -411,7 +408,7 @@ static MACHINE_CONFIG_START( mpf1b, mpf1_state )
 	MCFG_SOUND_CONFIG(mpf1_tms5220_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MCFG_TIMER_ADD_PERIODIC("halt_timer", check_halt_callback, attotime::from_hz(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("halt_timer", mpf1_state, check_halt_callback, attotime::from_hz(1))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( mpf1p, mpf1_state )
@@ -435,7 +432,7 @@ static MACHINE_CONFIG_START( mpf1p, mpf1_state )
 	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_TIMER_ADD_PERIODIC("halt_timer", check_halt_callback, attotime::from_hz(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("halt_timer", mpf1_state, check_halt_callback, attotime::from_hz(1))
 MACHINE_CONFIG_END
 
 /* ROMs */
@@ -479,7 +476,7 @@ DIRECT_UPDATE_MEMBER(mpf1_state::mpf1_direct_update_handler)
 DRIVER_INIT_MEMBER(mpf1_state,mpf1)
 {
 
-	m_maincpu->space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(mpf1_state::mpf1_direct_update_handler), this));
+	m_maincpu->space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(mpf1_state::mpf1_direct_update_handler), this));
 }
 
 COMP( 1979, mpf1,  0,    0, mpf1, mpf1, mpf1_state,  mpf1, "Multitech", "Micro Professor 1", 0)

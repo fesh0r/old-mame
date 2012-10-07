@@ -167,35 +167,33 @@ public:
 	DECLARE_MACHINE_START(aleste);
 	DECLARE_MACHINE_RESET(aleste);
 	DECLARE_PALETTE_INIT(aleste);
+	UINT32 screen_update_amstrad(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void screen_eof_amstrad(screen_device &screen, bool state);
+	DECLARE_INPUT_CHANGED_MEMBER(cpc_monitor_changed);
+	TIMER_CALLBACK_MEMBER(amstrad_pc2_low);
+	TIMER_CALLBACK_MEMBER(amstrad_video_update_timer);
+	TIMER_CALLBACK_MEMBER(cb_set_resolution);
+	DECLARE_WRITE_LINE_MEMBER(aleste_interrupt);
+	DECLARE_WRITE_LINE_MEMBER(amstrad_hsync_changed);
+	DECLARE_WRITE_LINE_MEMBER(amstrad_plus_hsync_changed);
+	DECLARE_WRITE_LINE_MEMBER(amstrad_vsync_changed);
+	DECLARE_WRITE_LINE_MEMBER(amstrad_plus_vsync_changed);
+	DECLARE_WRITE_LINE_MEMBER(amstrad_de_changed);
+	DECLARE_WRITE_LINE_MEMBER(amstrad_plus_de_changed);
+	DECLARE_READ8_MEMBER(amstrad_ppi_porta_r);
+	DECLARE_WRITE8_MEMBER(amstrad_ppi_porta_w);
+	DECLARE_READ8_MEMBER(amstrad_ppi_portb_r);
+	DECLARE_WRITE8_MEMBER(amstrad_ppi_portc_w);
 };
 
 
 /*----------- defined in machine/amstrad.c -----------*/
 
 
-
-READ8_DEVICE_HANDLER( amstrad_ppi_porta_r );
-READ8_DEVICE_HANDLER( amstrad_ppi_portb_r );
-WRITE8_DEVICE_HANDLER( amstrad_ppi_porta_w );
-WRITE8_DEVICE_HANDLER( amstrad_ppi_portc_w );
-
-
-WRITE_LINE_DEVICE_HANDLER( aleste_interrupt );
 WRITE_LINE_DEVICE_HANDLER( cpc_irq_w );
 WRITE_LINE_DEVICE_HANDLER( cpc_nmi_w );
 WRITE_LINE_DEVICE_HANDLER( cpc_romdis );
 WRITE_LINE_DEVICE_HANDLER( cpc_romen );
-
-
-
-
-
-
-
-
-
-
-
 
 SNAPSHOT_LOAD( amstrad );
 
@@ -205,8 +203,8 @@ extern const mc6845_interface amstrad_mc6845_intf;
 extern const mc6845_interface amstrad_plus_mc6845_intf;
 
 
-SCREEN_UPDATE_IND16( amstrad );
-SCREEN_VBLANK( amstrad );
+
+
 
 
 SLOT_INTERFACE_START(cpc_exp_cards)

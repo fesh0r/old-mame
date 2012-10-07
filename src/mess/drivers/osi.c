@@ -270,7 +270,7 @@ WRITE8_MEMBER( sb2m600_state::keyboard_w )
 	m_keylatch = data;
 
 	if (ioport("Sound")->read())
-		discrete_sound_w(m_discrete, NODE_01, (data >> 2) & 0x0f);
+		discrete_sound_w(m_discrete, space, NODE_01, (data >> 2) & 0x0f);
 }
 
 WRITE8_MEMBER( uk101_state::keyboard_w )
@@ -298,7 +298,7 @@ WRITE8_MEMBER( sb2m600_state::ctrl_w )
 	m_32 = BIT(data, 0);
 	m_coloren = BIT(data, 1);
 
-	discrete_sound_w(m_discrete, NODE_10, BIT(data, 4));
+	discrete_sound_w(m_discrete, space, NODE_10, BIT(data, 4));
 }
 
 WRITE8_MEMBER( c1p_state::osi630_ctrl_w )
@@ -362,11 +362,9 @@ WRITE8_MEMBER( c1p_state::osi630_sound_w )
     C011 ACIAIO         DISK CONTROLLER ACIA I/O PORT
 */
 
-static WRITE_LINE_DEVICE_HANDLER(osi470_index_callback)
+WRITE_LINE_MEMBER(sb2m600_state::osi470_index_callback)
 {
-	sb2m600_state *driver_state = device->machine().driver_data<sb2m600_state>();
-
-	driver_state->m_fdc_index = state;
+	m_fdc_index = state;
 }
 
 READ8_MEMBER( c1pmf_state::osi470_pia_pa_r )
@@ -674,7 +672,7 @@ static ACIA6850_INTERFACE( osi470_acia_intf )
 
 void sb2m600_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* configure RAM banking */
 	membank("bank1")->configure_entry(0, memregion(M6502_TAG)->base());
@@ -683,12 +681,12 @@ void sb2m600_state::machine_start()
 	switch (m_ram->size())
 	{
 	case 4*1024:
-		program->install_readwrite_bank(0x0000, 0x0fff, "bank1");
-		program->unmap_readwrite(0x1000, 0x1fff);
+		program.install_readwrite_bank(0x0000, 0x0fff, "bank1");
+		program.unmap_readwrite(0x1000, 0x1fff);
 		break;
 
 	case 8*1024:
-		program->install_readwrite_bank(0x0000, 0x1fff, "bank1");
+		program.install_readwrite_bank(0x0000, 0x1fff, "bank1");
 		break;
 	}
 
@@ -699,7 +697,7 @@ void sb2m600_state::machine_start()
 
 void c1p_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* configure RAM banking */
 	membank("bank1")->configure_entry(0, memregion(M6502_TAG)->base());
@@ -708,12 +706,12 @@ void c1p_state::machine_start()
 	switch (m_ram->size())
 	{
 	case 8*1024:
-		program->install_readwrite_bank(0x0000, 0x1fff, "bank1");
-		program->unmap_readwrite(0x2000, 0x4fff);
+		program.install_readwrite_bank(0x0000, 0x1fff, "bank1");
+		program.unmap_readwrite(0x2000, 0x4fff);
 		break;
 
 	case 20*1024:
-		program->install_readwrite_bank(0x0000, 0x4fff, "bank1");
+		program.install_readwrite_bank(0x0000, 0x4fff, "bank1");
 		break;
 	}
 
@@ -741,7 +739,7 @@ LEGACY_FLOPPY_OPTIONS_END
 
 static const floppy_interface osi_floppy_interface =
 {
-	DEVCB_LINE(osi470_index_callback),
+	DEVCB_DRIVER_LINE_MEMBER(sb2m600_state,osi470_index_callback),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -903,16 +901,16 @@ ROM_END
 
 /* Driver Initialization */
 
-static TIMER_CALLBACK( setup_beep )
+TIMER_CALLBACK_MEMBER(sb2m600_state::setup_beep)
 {
-	device_t *speaker = machine.device(BEEPER_TAG);
+	device_t *speaker = machine().device(BEEPER_TAG);
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 300);
 }
 
 DRIVER_INIT_MEMBER(c1p_state,c1p)
 {
-	machine().scheduler().timer_set(attotime::zero, FUNC(setup_beep));
+	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(sb2m600_state::setup_beep),this));
 }
 
 

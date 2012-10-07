@@ -488,8 +488,8 @@ public:
 	UINT32 m_control;
 
 	emu_timer *m_atapi_timer;
-	scsidev_device *m_inserted_cdrom;
-	scsidev_device *m_available_cdroms[ 2 ];
+	scsihle_device *m_inserted_cdrom;
+	scsihle_device *m_available_cdroms[ 2 ];
 	int m_atapi_data_ptr;
 	int m_atapi_data_len;
 	int m_atapi_xferlen;
@@ -583,6 +583,7 @@ public:
 	DECLARE_DRIVER_INIT(ddrdigital);
 	DECLARE_DRIVER_INIT(konami573);
 	DECLARE_MACHINE_RESET(konami573);
+	TIMER_CALLBACK_MEMBER(atapi_xfer_end);
 };
 
 INLINE void ATTR_PRINTF(3,4) verboselog( running_machine &machine, int n_level, const char *s_fmt, ... )
@@ -693,61 +694,60 @@ WRITE32_MEMBER(ksys573_state::control_w)
 	}
 }
 
-static TIMER_CALLBACK( atapi_xfer_end )
+TIMER_CALLBACK_MEMBER(ksys573_state::atapi_xfer_end)
 {
-	ksys573_state *state = machine.driver_data<ksys573_state>();
-	UINT32 *p_n_psxram = state->m_p_n_psxram;
-	UINT8 *atapi_regs = state->m_atapi_regs;
-	int i, n_this;
+	UINT32 *p_n_psxram = m_p_n_psxram;
+	UINT8 *atapi_regs = m_atapi_regs;
+	int i, n_state;
 	UINT8 sector_buffer[ 4096 ];
 
-	state->m_atapi_timer->adjust(attotime::never);
+	m_atapi_timer->adjust(attotime::never);
 
-//  verboselog( machine, 2, "atapi_xfer_end( %d ) atapi_xferlen = %d, atapi_xfermod=%d\n", x, atapi_xfermod, atapi_xferlen );
+//  verboselog( machine(), 2, "atapi_xfer_end( %d ) atapi_xferlen = %d, atapi_xfermod=%d\n", x, atapi_xfermod, atapi_xferlen );
 
 //  mame_printf_debug("ATAPI: xfer_end.  xferlen = %d, atapi_xfermod = %d\n", atapi_xferlen, atapi_xfermod);
 
-	while( state->m_atapi_xferlen > 0 )
+	while( m_atapi_xferlen > 0 )
 	{
 		// get a sector from the SCSI device
-		state->m_inserted_cdrom->ReadData( sector_buffer, 2048 );
+		m_inserted_cdrom->ReadData( sector_buffer, 2048 );
 
-		state->m_atapi_xferlen -= 2048;
+		m_atapi_xferlen -= 2048;
 
 		i = 0;
-		n_this = 2048 / 4;
-		while( n_this > 0 )
+		n_state = 2048 / 4;
+		while( n_state > 0 )
 		{
-			p_n_psxram[ state->m_atapi_xferbase / 4 ] =
+			p_n_psxram[ m_atapi_xferbase / 4 ] =
 				( sector_buffer[ i + 0 ] << 0 ) |
 				( sector_buffer[ i + 1 ] << 8 ) |
 				( sector_buffer[ i + 2 ] << 16 ) |
 				( sector_buffer[ i + 3 ] << 24 );
-			state->m_atapi_xferbase += 4;
+			m_atapi_xferbase += 4;
 			i += 4;
-			n_this--;
+			n_state--;
 		}
 	}
 
-	if (state->m_atapi_xfermod > MAX_TRANSFER_SIZE)
+	if (m_atapi_xfermod > MAX_TRANSFER_SIZE)
 	{
-		state->m_atapi_xferlen = MAX_TRANSFER_SIZE;
-		state->m_atapi_xfermod = state->m_atapi_xfermod - MAX_TRANSFER_SIZE;
+		m_atapi_xferlen = MAX_TRANSFER_SIZE;
+		m_atapi_xfermod = m_atapi_xfermod - MAX_TRANSFER_SIZE;
 	}
 	else
 	{
-		state->m_atapi_xferlen = state->m_atapi_xfermod;
-		state->m_atapi_xfermod = 0;
+		m_atapi_xferlen = m_atapi_xfermod;
+		m_atapi_xfermod = 0;
 	}
 
 
-	if (state->m_atapi_xferlen > 0)
+	if (m_atapi_xferlen > 0)
 	{
 		//mame_printf_debug("ATAPI: starting next piece of multi-part transfer\n");
-		atapi_regs[ATAPI_REG_COUNTLOW] = state->m_atapi_xferlen & 0xff;
-		atapi_regs[ATAPI_REG_COUNTHIGH] = (state->m_atapi_xferlen>>8)&0xff;
+		atapi_regs[ATAPI_REG_COUNTLOW] = m_atapi_xferlen & 0xff;
+		atapi_regs[ATAPI_REG_COUNTHIGH] = (m_atapi_xferlen>>8)&0xff;
 
-		state->m_atapi_timer->adjust(machine.device<cpu_device>("maincpu")->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (state->m_atapi_xferlen/2048))));
+		m_atapi_timer->adjust(machine().device<cpu_device>("maincpu")->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (m_atapi_xferlen/2048))));
 	}
 	else
 	{
@@ -756,9 +756,9 @@ static TIMER_CALLBACK( atapi_xfer_end )
 		atapi_regs[ATAPI_REG_INTREASON] = ATAPI_INTREASON_IO | ATAPI_INTREASON_COMMAND;
 	}
 
-	psx_irq_set(machine, 0x400);
+	psx_irq_set(machine(), 0x400);
 
-	verboselog( machine, 2, "atapi_xfer_end: %d %d\n", state->m_atapi_xferlen, state->m_atapi_xfermod );
+	verboselog( machine(), 2, "atapi_xfer_end: %d %d\n", m_atapi_xferlen, m_atapi_xfermod );
 }
 
 READ32_MEMBER(ksys573_state::atapi_r)
@@ -1131,13 +1131,13 @@ static void atapi_init(running_machine &machine)
 	state->m_atapi_data_len = 0;
 	state->m_atapi_cdata_wait = 0;
 
-	state->m_atapi_timer = machine.scheduler().timer_alloc(FUNC(atapi_xfer_end));
+	state->m_atapi_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(ksys573_state::atapi_xfer_end),state));
 	state->m_atapi_timer->adjust(attotime::never);
 
-	state->m_available_cdroms[ 0 ] = machine.device<scsidev_device>( ":cdrom0" );
+	state->m_available_cdroms[ 0 ] = machine.device<scsihle_device>( ":cdrom0" );
 	if( get_disk_handle( machine, ":cdrom1" ) != NULL )
 	{
-		state->m_available_cdroms[ 1 ] = machine.device<scsidev_device>( ":cdrom1" );
+		state->m_available_cdroms[ 1 ] = machine.device<scsihle_device>( ":cdrom1" );
 	}
 	else
 	{
@@ -1365,7 +1365,7 @@ static void update_mode( running_machine &machine )
 	ksys573_state *state = machine.driver_data<ksys573_state>();
 	int cart = state->ioport("CART")->read();
 	int cd = state->ioport( "CD" )->read();
-	scsidev_device *new_cdrom;
+	scsihle_device *new_cdrom;
 
 	if( state->machine().device<device_secure_serial_flash>("game_eeprom") )
 	{
@@ -1484,25 +1484,25 @@ READ32_MEMBER(ksys573_state::ge765pwbba_r)
 	switch (offset)
 	{
 	case 0x26:
-		upd4701_y_add(upd4701, 0, ioport("uPD4701_y")->read_safe(0), 0xffff);
-		upd4701_switches_set(upd4701, 0, ioport("uPD4701_switches")->read_safe(0));
+		upd4701_y_add(upd4701, space, 0, ioport("uPD4701_y")->read_safe(0), 0xffff);
+		upd4701_switches_set(upd4701, space, 0, ioport("uPD4701_switches")->read_safe(0));
 
-		upd4701_cs_w(upd4701, 0, 0);
-		upd4701_xy_w(upd4701, 0, 1);
+		upd4701_cs_w(upd4701, space, 0, 0);
+		upd4701_xy_w(upd4701, space, 0, 1);
 
 		if (ACCESSING_BITS_0_7)
 		{
-			upd4701_ul_w(upd4701, 0, 0);
-			data |= upd4701_d_r(upd4701, 0, 0xffff) << 0;
+			upd4701_ul_w(upd4701, space, 0, 0);
+			data |= upd4701_d_r(upd4701, space, 0, 0xffff) << 0;
 		}
 
 		if (ACCESSING_BITS_16_23)
 		{
-			upd4701_ul_w(upd4701, 0, 1);
-			data |= upd4701_d_r(upd4701, 0, 0xffff) << 16;
+			upd4701_ul_w(upd4701, space, 0, 1);
+			data |= upd4701_d_r(upd4701, space, 0, 0xffff) << 16;
 		}
 
-		upd4701_cs_w(upd4701, 0, 1);
+		upd4701_cs_w(upd4701, space, 0, 1);
 		break;
 
 	default:
@@ -1539,8 +1539,8 @@ WRITE32_MEMBER(ksys573_state::ge765pwbba_w)
 	case 0x28:
 		if (ACCESSING_BITS_0_7)
 		{
-			upd4701_resety_w(upd4701, 0, 1);
-			upd4701_resety_w(upd4701, 0, 0);
+			upd4701_resety_w(upd4701, space, 0, 1);
+			upd4701_resety_w(upd4701, space, 0, 0);
 		}
 		break;
 
@@ -1555,7 +1555,7 @@ WRITE32_MEMBER(ksys573_state::ge765pwbba_w)
 DRIVER_INIT_MEMBER(ksys573_state,ge765pwbba)
 {
 	DRIVER_INIT_CALL(konami573);
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::ge765pwbba_r),this), write32_delegate(FUNC(ksys573_state::ge765pwbba_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::ge765pwbba_r),this), write32_delegate(FUNC(ksys573_state::ge765pwbba_w),this));
 }
 
 /*
@@ -1667,7 +1667,7 @@ static void gx700pwfbf_init( running_machine &machine, void (*output_callback_fu
 
 	state->m_gx700pwfbf_output_callback = output_callback_func;
 
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx700pwbf_io_r),state), write32_delegate(FUNC(ksys573_state::gx700pwbf_io_w),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx700pwbf_io_r),state), write32_delegate(FUNC(ksys573_state::gx700pwbf_io_w),state));
 
 	state->save_item( NAME(state->m_gx700pwbf_output_data) );
 }
@@ -1905,7 +1905,7 @@ WRITE32_MEMBER(ksys573_state::gtrfrks_io_w)
 DRIVER_INIT_MEMBER(ksys573_state,gtrfrks)
 {
 	DRIVER_INIT_CALL(konami573);
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this));
 }
 
 /* GX894 digital i/o */
@@ -2218,7 +2218,7 @@ static void gx894pwbba_init( running_machine &machine, void (*output_callback_fu
 
 	state->m_gx894pwbba_output_callback = output_callback_func;
 
-	machine.device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx894pwbba_r),state), write32_delegate(FUNC(ksys573_state::gx894pwbba_w),state));
+	machine.device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx894pwbba_r),state), write32_delegate(FUNC(ksys573_state::gx894pwbba_w),state));
 
 	state->m_gx894_ram_write_offset = 0;
 	state->m_gx894_ram_read_offset = 0;
@@ -2244,7 +2244,7 @@ DRIVER_INIT_MEMBER(ksys573_state,gtrfrkdigital)
 	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( machine(), NULL );
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this) );
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this) );
 }
 
 /* ddr solo */
@@ -2536,7 +2536,7 @@ DRIVER_INIT_MEMBER(ksys573_state,dmx)
 	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( machine(), dmx_output_callback );
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::dmx_io_w),this) );
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::dmx_io_w),this) );
 }
 
 /* salary man champ */
@@ -2693,7 +2693,7 @@ DRIVER_INIT_MEMBER(ksys573_state,mamboagg)
 	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( machine(), mamboagg_output_callback );
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::mamboagg_io_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::mamboagg_io_w),this));
 }
 
 
@@ -3011,7 +3011,7 @@ READ32_MEMBER(ksys573_state::gunmania_r)
 DRIVER_INIT_MEMBER(ksys573_state,gunmania)
 {
 	DRIVER_INIT_CALL(konami573);
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gunmania_r),this), write32_delegate(FUNC(ksys573_state::gunmania_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gunmania_r),this), write32_delegate(FUNC(ksys573_state::gunmania_w),this));
 }
 
 /* ADC0834 Interface */

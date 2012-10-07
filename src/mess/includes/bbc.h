@@ -35,7 +35,7 @@ public:
 	{ }
 
 	required_device<cpu_device> m_maincpu;
-	optional_device<sn76489_new_device> m_sn;
+	optional_device<sn76489_device> m_sn;
 	required_device<saa5050_device> m_trom;
 
 	void check_interrupts();
@@ -281,6 +281,29 @@ public:
 	DECLARE_MACHINE_START(bbcbp);
 	DECLARE_MACHINE_RESET(bbcbp);
 	DECLARE_VIDEO_START(bbcbp);
+	UINT32 screen_update_bbc(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(bbcb_vsync);
+	INTERRUPT_GEN_MEMBER(bbcb_keyscan);
+	INTERRUPT_GEN_MEMBER(bbcm_keyscan);
+	TIMER_CALLBACK_MEMBER(bbc_tape_timer_cb);
+	DECLARE_WRITE_LINE_MEMBER(bbcb_ack_w);
+	DECLARE_WRITE_LINE_MEMBER(bbcb_acia6850_irq_w);
+	DECLARE_WRITE_LINE_MEMBER(econet_clk_w);
+	DECLARE_WRITE8_MEMBER(bbcb_via_system_write_porta);
+	DECLARE_WRITE8_MEMBER(bbcb_via_system_write_portb);
+	DECLARE_READ8_MEMBER(bbcb_via_system_read_porta);
+	DECLARE_READ8_MEMBER(bbcb_via_system_read_portb);
+	DECLARE_READ8_MEMBER(bbcb_via_system_read_ca1);
+	DECLARE_READ8_MEMBER(bbcb_via_system_read_cb1);
+	DECLARE_READ8_MEMBER(bbcb_via_system_read_ca2);
+	DECLARE_READ8_MEMBER(bbcb_via_system_read_cb2);
+	DECLARE_WRITE_LINE_MEMBER(bbcb_via_system_irq_w);
+	DECLARE_READ8_MEMBER(bbcb_via_user_read_portb);
+	DECLARE_WRITE8_MEMBER(bbcb_via_user_write_portb);
+	DECLARE_WRITE_LINE_MEMBER(bbcb_via_user_irq_w);
+	DECLARE_WRITE_LINE_MEMBER(bbc_wd177x_intrq_w);
+	DECLARE_WRITE_LINE_MEMBER(bbc_wd177x_drq_w);
+	DECLARE_WRITE_LINE_MEMBER(bbc_vsync);
 };
 
 
@@ -294,35 +317,9 @@ extern const via6522_interface bbcb_system_via;
 extern const via6522_interface bbcb_user_via;
 extern const wd17xx_interface bbc_wd17xx_interface;
 
-
-
-
-
-
-
-
-
-
-
-INTERRUPT_GEN( bbcb_keyscan );
-INTERRUPT_GEN( bbcm_keyscan );
-
-
-
-
-
-
-
-
 /* disc support */
 
 DEVICE_IMAGE_LOAD ( bbcb_cart );
-
-
-
-
-
-
 
 /* tape support */
 
@@ -332,18 +329,8 @@ extern const uPD7002_interface bbc_uPD7002;
 
 /*----------- defined in video/bbc.c -----------*/
 
-
-
-
-
-SCREEN_UPDATE_IND16( bbc );
-
 void bbc_set_video_memory_lookups(running_machine &machine, int ramsize);
 void bbc_setscreenstart(running_machine &machine, int b4, int b5);
 void bbcbp_setvideoshadow(running_machine &machine, int vdusel);
-
-
-
-
 
 #endif /* BBC_H_ */

@@ -69,13 +69,16 @@ public:
 	DECLARE_DRIVER_INIT(pasogo);
 	virtual void machine_reset();
 	virtual void palette_init();
+	UINT32 screen_update_pasogo(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(pasogo_interrupt);
+	TIMER_DEVICE_CALLBACK_MEMBER(vg230_timer);
+	DECLARE_WRITE_LINE_MEMBER(pasogo_pic8259_set_int_line);
 };
 
 
-static TIMER_DEVICE_CALLBACK( vg230_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(pasogo_state::vg230_timer)
 {
-	pasogo_state *state = timer.machine().driver_data<pasogo_state>();
-	vg230_t *vg230 = &state->m_vg230;
+	vg230_t *vg230 = &m_vg230;
 
 	vg230->rtc.seconds+=1;
 	if (vg230->rtc.seconds>=60)
@@ -390,10 +393,10 @@ void pasogo_state::palette_init()
 	}
 }
 
-static SCREEN_UPDATE_IND16( pasogo )
+UINT32 pasogo_state::screen_update_pasogo(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	//static int width=-1,height=-1;
-	UINT8 *rom = screen.machine().root_device().memregion("maincpu")->base()+0xb8000;
+	UINT8 *rom = machine().root_device().memregion("maincpu")->base()+0xb8000;
 	static const UINT16 c[]={ 3, 0 };
 	int x,y;
 //  plot_box(bitmap, 0, 0, 64/*bitmap.width*/, bitmap.height, 0);
@@ -441,14 +444,14 @@ static SCREEN_UPDATE_IND16( pasogo )
 	if (w!=width || h!=height)
 	{
 		width=w; height=h;
-//      machine.primary_screen->set_visible_area(0, width-1, 0, height-1);
+//      machine().primary_screen->set_visible_area(0, width-1, 0, height-1);
 		screen.set_visible_area(0, width-1, 0, height-1);
 	}
 #endif
 	return 0;
 }
 
-static INTERRUPT_GEN( pasogo_interrupt )
+INTERRUPT_GEN_MEMBER(pasogo_state::pasogo_interrupt)
 {
 //  machine.device("maincpu")->execute().set_input_line(UPD7810_INTFE1, PULSE_LINE);
 }
@@ -485,14 +488,14 @@ static const pit8253_config pc_pit8254_config =
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( pasogo_pic8259_set_int_line )
+WRITE_LINE_MEMBER(pasogo_state::pasogo_pic8259_set_int_line)
 {
-	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const pic8259_interface pasogo_pic8259_config =
 {
-	DEVCB_LINE(pasogo_pic8259_set_int_line),
+	DEVCB_DRIVER_LINE_MEMBER(pasogo_state, pasogo_pic8259_set_int_line),
 	DEVCB_LINE_VCC,
 	DEVCB_NULL
 };
@@ -503,7 +506,7 @@ static MACHINE_CONFIG_START( pasogo, pasogo_state )
 	MCFG_CPU_ADD("maincpu", I80188/*V30HL in vadem vg230*/, 10000000/*?*/)
 	MCFG_CPU_PROGRAM_MAP(pasogo_mem)
 	MCFG_CPU_IO_MAP( pasogo_io)
-	MCFG_CPU_VBLANK_INT("screen", pasogo_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pasogo_state,  pasogo_interrupt)
 //  MCFG_CPU_CONFIG(i86_address_mask)
 
 	MCFG_PIT8254_ADD( "pit8254", pc_pit8254_config )
@@ -514,7 +517,7 @@ static MACHINE_CONFIG_START( pasogo, pasogo_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(640, 400)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 400-1)
-	MCFG_SCREEN_UPDATE_STATIC(pasogo)
+	MCFG_SCREEN_UPDATE_DRIVER(pasogo_state, screen_update_pasogo)
 
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(pasogo_palette))
 #if 0
@@ -530,7 +533,7 @@ static MACHINE_CONFIG_START( pasogo, pasogo_state )
 	MCFG_CARTSLOT_INTERFACE("pasogo_cart")
 	MCFG_SOFTWARE_LIST_ADD("cart_list","pasogo")
 
-	MCFG_TIMER_ADD_PERIODIC("vg230_timer", vg230_timer, attotime::from_hz(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("vg230_timer", pasogo_state, vg230_timer, attotime::from_hz(1))
 MACHINE_CONFIG_END
 
 

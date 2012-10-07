@@ -52,7 +52,7 @@ void c64_state::check_interrupts()
 	m_maincpu->set_input_line(INPUT_LINE_IRQ0, m_cia1_irq || m_vic_irq || m_exp_irq);
 	m_maincpu->set_input_line(INPUT_LINE_NMI, m_cia2_irq || restore || m_exp_nmi);
 
-	mos6526_flag_w(m_cia1, m_cass_rd && m_iec_srq);
+	m_cia1->flag_w(m_cass_rd && m_iec_srq);
 }
 
 
@@ -135,11 +135,6 @@ UINT8 c64_state::read_memory(address_space &space, offs_t offset, int ba, int ca
 			switch ((offset >> 8) & 0x03)
 			{
 			case 0: // CIA1
-				if (offset & 1)
-					cia_set_port_mask_value(m_cia1, 1, ioport("CTRLSEL")->read() & 0x80 ? c64_keyline[9] : c64_keyline[8] );
-				else
-					cia_set_port_mask_value(m_cia1, 0, ioport("CTRLSEL")->read() & 0x80 ? c64_keyline[8] : c64_keyline[9] );
-
 				data = m_cia1->read(space, offset & 0x0f);
 				break;
 
@@ -319,14 +314,14 @@ static INPUT_PORTS_START( c64sw )
 	PORT_INCLUDE( c64 )
 
 	PORT_MODIFY( "ROW5" )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xa5") PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR('\xA5')
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR(0x00E5) PORT_CHAR(0x00C5)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON)								PORT_CHAR(';') PORT_CHAR(']')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS)							PORT_CHAR('=')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS)								PORT_CHAR('-')
 
 	PORT_MODIFY( "ROW6" )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xa4") PORT_CODE(KEYCODE_BACKSLASH)	PORT_CHAR('\xA4')
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xb6") PORT_CODE(KEYCODE_QUOTE)		PORT_CHAR('\xB6')
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH)	PORT_CHAR(0x00E4) PORT_CHAR(0x00C4)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE)		PORT_CHAR(0x00F6) PORT_CHAR(0x00D6)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE)						PORT_CHAR('@')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH2)						PORT_CHAR(':') PORT_CHAR('*')
 INPUT_PORTS_END
@@ -373,12 +368,11 @@ INPUT_PORTS_END
 //  vic2_interface vic_intf
 //-------------------------------------------------
 
-static INTERRUPT_GEN( c64_frame_interrupt )
+INTERRUPT_GEN_MEMBER(c64_state::c64_frame_interrupt)
 {
-	c64_state *state = device->machine().driver_data<c64_state>();
 
-	state->check_interrupts();
-	cbm_common_interrupt(device);
+	check_interrupts();
+	cbm_common_interrupt(&device);
 }
 
 WRITE_LINE_MEMBER( c64_state::vic_irq_w )
@@ -427,7 +421,7 @@ static MOS6567_INTERFACE( vic_intf )
 
 READ8_MEMBER( c64_state::sid_potx_r )
 {
-	UINT8 cia1_pa = mos6526_pa_r(m_cia1, 0);
+	UINT8 cia1_pa = m_cia1->pa_r();
 
 	int sela = BIT(cia1_pa, 6);
 	int selb = BIT(cia1_pa, 7);
@@ -442,7 +436,7 @@ READ8_MEMBER( c64_state::sid_potx_r )
 
 READ8_MEMBER( c64_state::sid_poty_r )
 {
-	UINT8 cia1_pa = mos6526_pa_r(m_cia1, 0);
+	UINT8 cia1_pa = m_cia1->pa_r();
 
 	int sela = BIT(cia1_pa, 6);
 	int selb = BIT(cia1_pa, 7);
@@ -463,7 +457,7 @@ static MOS6581_INTERFACE( sid_intf )
 
 
 //-------------------------------------------------
-//  mos6526_interface cia1_intf
+//  legacy_mos6526_interface cia1_intf
 //-------------------------------------------------
 
 WRITE_LINE_MEMBER( c64_state::cia1_irq_w )
@@ -490,7 +484,7 @@ READ8_MEMBER( c64_state::cia1_pa_r )
 
     */
 
-	UINT8 cia0portb = mos6526_pb_r(m_cia1, 0);
+	UINT8 cia0portb = m_cia1->pb_r();
 
 	return cbm_common_cia0_port_a_r(m_cia1, cia0portb);
 }
@@ -512,7 +506,7 @@ READ8_MEMBER( c64_state::cia1_pb_r )
 
     */
 
-	UINT8 cia0porta = mos6526_pa_r(m_cia1, 0);
+	UINT8 cia0porta = m_cia1->pa_r();
 
 	return cbm_common_cia0_port_b_r(m_cia1, cia0porta);
 }
@@ -537,7 +531,7 @@ WRITE8_MEMBER( c64_state::cia1_pb_w )
 	m_vic->lp_w(BIT(data, 4));
 }
 
-static const mos6526_interface cia1_intf =
+static MOS6526_INTERFACE( cia1_intf )
 {
 	DEVCB_DRIVER_LINE_MEMBER(c64_state, cia1_irq_w),
 	DEVCB_NULL,
@@ -551,7 +545,7 @@ static const mos6526_interface cia1_intf =
 
 
 //-------------------------------------------------
-//  mos6526_interface cia2_intf
+//  legacy_mos6526_interface cia2_intf
 //-------------------------------------------------
 
 WRITE_LINE_MEMBER( c64_state::cia2_irq_w )
@@ -620,7 +614,7 @@ WRITE8_MEMBER( c64_state::cia2_pa_w )
 	m_iec->data_w(!BIT(data, 5));
 }
 
-static const mos6526_interface cia2_intf =
+static MOS6526_INTERFACE( cia2_intf )
 {
 	DEVCB_DRIVER_LINE_MEMBER(c64_state, cia2_irq_w),
 	DEVCB_DEVICE_LINE_MEMBER(C64_USER_PORT_TAG, c64_user_port_device, pc2_w),
@@ -849,12 +843,12 @@ static CBM_IEC_INTERFACE( iec_intf )
 
 READ8_MEMBER( c64_state::exp_dma_r )
 {
-	return m_maincpu->space(AS_PROGRAM)->read_byte(offset);
+	return m_maincpu->space(AS_PROGRAM).read_byte(offset);
 }
 
 WRITE8_MEMBER( c64_state::exp_dma_w )
 {
-	m_maincpu->space(AS_PROGRAM)->write_byte(offset, data);
+	m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
 }
 
 WRITE_LINE_MEMBER( c64_state::exp_irq_w )
@@ -896,11 +890,11 @@ static C64_EXPANSION_INTERFACE( expansion_intf )
 
 static C64_USER_PORT_INTERFACE( user_intf )
 {
-	DEVCB_DEVICE_LINE(MOS6526_1_TAG, mos6526_sp_w),
-	DEVCB_DEVICE_LINE(MOS6526_1_TAG, mos6526_cnt_w),
-	DEVCB_DEVICE_LINE(MOS6526_2_TAG, mos6526_sp_w),
-	DEVCB_DEVICE_LINE(MOS6526_2_TAG, mos6526_cnt_w),
-	DEVCB_DEVICE_LINE(MOS6526_2_TAG, mos6526_flag_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6526_1_TAG, mos6526_device, sp_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6526_1_TAG, mos6526_device, cnt_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6526_2_TAG, mos6526_device, sp_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6526_2_TAG, mos6526_device, cnt_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6526_2_TAG, mos6526_device, flag_w),
 	DEVCB_DRIVER_LINE_MEMBER(c64_state, exp_reset_w)
 };
 
@@ -991,7 +985,7 @@ static MACHINE_CONFIG_START( ntsc, c64_state )
 	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6567_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER(SCREEN_TAG, c64_state,  c64_frame_interrupt)
 	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
@@ -1007,8 +1001,8 @@ static MACHINE_CONFIG_START( ntsc, c64_state )
 
 	// devices
 	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6567_CLOCK, 60, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6567_CLOCK, 60, cia2_intf)
+	MCFG_MOS6526_ADD(MOS6526_1_TAG, VIC6567_CLOCK, 60, cia1_intf)
+	MCFG_MOS6526_ADD(MOS6526_2_TAG, VIC6567_CLOCK, 60, cia2_intf)
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, datassette_intf, cbm_datassette_devices, "c1530", NULL)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
@@ -1090,7 +1084,7 @@ static MACHINE_CONFIG_START( pal, c64_state )
 	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6569_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER(SCREEN_TAG, c64_state,  c64_frame_interrupt)
 	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
@@ -1106,8 +1100,8 @@ static MACHINE_CONFIG_START( pal, c64_state )
 
 	// devices
 	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, 50, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, 50, cia2_intf)
+	MCFG_MOS6526_ADD(MOS6526_1_TAG, VIC6569_CLOCK, 50, cia1_intf)
+	MCFG_MOS6526_ADD(MOS6526_2_TAG, VIC6569_CLOCK, 50, cia2_intf)
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, datassette_intf, cbm_datassette_devices, "c1530", NULL)
 	MCFG_CBM_IEC_ADD(iec_intf, "c1541")
@@ -1167,7 +1161,7 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 	MCFG_CPU_ADD(M6510_TAG, M6510, VIC6569_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(c64_mem)
 	MCFG_CPU_CONFIG(c64gs_cpu_intf)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, c64_frame_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER(SCREEN_TAG, c64_state,  c64_frame_interrupt)
 	MCFG_QUANTUM_PERFECT_CPU(M6510_TAG)
 
 	// video hardware
@@ -1183,8 +1177,8 @@ static MACHINE_CONFIG_START( pal_gs, c64gs_state )
 
 	// devices
 	MCFG_PLS100_ADD(PLA_TAG)
-	MCFG_MOS6526R1_ADD(MOS6526_1_TAG, VIC6569_CLOCK, 50, cia1_intf)
-	MCFG_MOS6526R1_ADD(MOS6526_2_TAG, VIC6569_CLOCK, 50, cia2_intf)
+	MCFG_MOS6526_ADD(MOS6526_1_TAG, VIC6569_CLOCK, 50, cia1_intf)
+	MCFG_MOS6526_ADD(MOS6526_2_TAG, VIC6569_CLOCK, 50, cia2_intf)
 	MCFG_CBM_IEC_BUS_ADD(iec_intf)
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)

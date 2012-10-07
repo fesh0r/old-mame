@@ -557,9 +557,9 @@ static const ay31015_config trs80_ay31015_config =
 	AY_3_1015,
 	0.0,
 	0.0,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const floppy_interface trs80_floppy_interface =
@@ -588,7 +588,7 @@ static MACHINE_CONFIG_START( trs80, trs80_state )		// the original model I, leve
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*6, 16*12)
 	MCFG_SCREEN_VISIBLE_AREA(0,64*6-1,0,16*12-1)
-	MCFG_SCREEN_UPDATE_STATIC( trs80 )
+	MCFG_SCREEN_UPDATE_DRIVER(trs80_state, screen_update_trs80)
 
 	MCFG_GFXDECODE(trs80)
 	MCFG_PALETTE_LENGTH(2)
@@ -610,7 +610,7 @@ static MACHINE_CONFIG_DERIVED( model1, trs80 )		// model I, level II
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP( model1_map)
 	MCFG_CPU_IO_MAP( model1_io)
-	MCFG_CPU_PERIODIC_INT(trs80_rtc_interrupt, 40)
+	MCFG_CPU_PERIODIC_INT_DRIVER(trs80_state, trs80_rtc_interrupt,  40)
 
 	/* devices */
 	MCFG_CASSETTE_MODIFY( CASSETTE_TAG, trs80l2_cassette_interface )
@@ -625,13 +625,13 @@ static MACHINE_CONFIG_DERIVED( model3, model1 )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP( model3_map)
 	MCFG_CPU_IO_MAP( model3_io)
-	MCFG_CPU_PERIODIC_INT(trs80_rtc_interrupt, 30)
+	MCFG_CPU_PERIODIC_INT_DRIVER(trs80_state, trs80_rtc_interrupt,  30)
 
 	MCFG_MACHINE_RESET_OVERRIDE(trs80_state, trs80m4 )
 
 	MCFG_GFXDECODE(trs80m4)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( trs80m4 )
+	MCFG_SCREEN_UPDATE_DRIVER(trs80_state, screen_update_trs80m4)
 	MCFG_SCREEN_SIZE(80*8, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
 MACHINE_CONFIG_END
@@ -653,7 +653,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( ht1080z, sys80 )
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( ht1080z )
+	MCFG_SCREEN_UPDATE_DRIVER(trs80_state, screen_update_ht1080z)
 	MCFG_GFXDECODE(ht1080z)
 MACHINE_CONFIG_END
 
@@ -669,14 +669,14 @@ static MACHINE_CONFIG_DERIVED( lnw80, model1 )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(80*6, 16*12)
 	MCFG_SCREEN_VISIBLE_AREA(0,80*6-1,0,16*12-1)
-	MCFG_SCREEN_UPDATE_STATIC(lnw80)
+	MCFG_SCREEN_UPDATE_DRIVER(trs80_state, screen_update_lnw80)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( radionic, model1 )
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_SIZE(64*8, 16*16)
 	MCFG_SCREEN_VISIBLE_AREA(0,64*8-1,0,16*16-1)
-	MCFG_SCREEN_UPDATE_STATIC( radionic )
+	MCFG_SCREEN_UPDATE_DRIVER(trs80_state, screen_update_radionic)
 	MCFG_GFXDECODE(radionic)
 MACHINE_CONFIG_END
 
@@ -685,7 +685,7 @@ static MACHINE_CONFIG_DERIVED( meritum, sys80 )
 	MCFG_CPU_PROGRAM_MAP( meritum_map)
 	MCFG_CPU_IO_MAP( meritum_io)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( meritum )
+	MCFG_SCREEN_UPDATE_DRIVER(trs80_state, screen_update_meritum)
 	MCFG_GFXDECODE(meritum)
 MACHINE_CONFIG_END
 

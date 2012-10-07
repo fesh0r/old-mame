@@ -162,6 +162,9 @@ public:
 	DECLARE_DRIVER_INIT(kinst2);
 	virtual void machine_start();
 	virtual void machine_reset();
+	UINT32 screen_update_kinst(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(irq0_start);
+	TIMER_CALLBACK_MEMBER(irq0_stop);
 };
 
 
@@ -242,15 +245,14 @@ void kinst_state::machine_reset()
  *
  *************************************/
 
-static SCREEN_UPDATE_IND16( kinst )
+UINT32 kinst_state::screen_update_kinst(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	kinst_state *state = screen.machine().driver_data<kinst_state>();
 	int y;
 
 	/* loop over rows and copy to the destination */
 	for (y = cliprect.min_y; y <= cliprect.max_y; y++)
 	{
-		UINT32 *src = &state->m_video_base[640/4 * y];
+		UINT32 *src = &m_video_base[640/4 * y];
 		UINT16 *dest = &bitmap.pix16(y, cliprect.min_x);
 		int x;
 
@@ -275,16 +277,16 @@ static SCREEN_UPDATE_IND16( kinst )
  *
  *************************************/
 
-static TIMER_CALLBACK( irq0_stop )
+TIMER_CALLBACK_MEMBER(kinst_state::irq0_stop)
 {
-	machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 }
 
 
-static INTERRUPT_GEN( irq0_start )
+INTERRUPT_GEN_MEMBER(kinst_state::irq0_start)
 {
-	device->execute().set_input_line(0, ASSERT_LINE);
-	device->machine().scheduler().timer_set(attotime::from_usec(50), FUNC(irq0_stop));
+	device.execute().set_input_line(0, ASSERT_LINE);
+	machine().scheduler().timer_set(attotime::from_usec(50), timer_expired_delegate(FUNC(kinst_state::irq0_stop),this));
 }
 
 
@@ -304,28 +306,28 @@ static void ide_interrupt(device_t *device, int state)
 READ32_MEMBER(kinst_state::kinst_ide_r)
 {
 	device_t *device = machine().device("ide");
-	return midway_ide_asic_r(device, offset / 2, mem_mask);
+	return midway_ide_asic_r(device, space, offset / 2, mem_mask);
 }
 
 
 WRITE32_MEMBER(kinst_state::kinst_ide_w)
 {
 	device_t *device = machine().device("ide");
-	midway_ide_asic_w(device, offset / 2, data, mem_mask);
+	midway_ide_asic_w(device, space, offset / 2, data, mem_mask);
 }
 
 
 READ32_MEMBER(kinst_state::kinst_ide_extra_r)
 {
 	device_t *device = machine().device("ide");
-	return ide_controller32_r(device, 0x3f6/4, 0x00ff0000) >> 16;
+	return ide_controller32_r(device, space, 0x3f6/4, 0x00ff0000) >> 16;
 }
 
 
 WRITE32_MEMBER(kinst_state::kinst_ide_extra_w)
 {
 	device_t *device = machine().device("ide");
-	ide_controller32_w(device, 0x3f6/4, data << 16, 0x00ff0000);
+	ide_controller32_w(device, space, 0x3f6/4, data << 16, 0x00ff0000);
 }
 
 
@@ -675,7 +677,7 @@ static MACHINE_CONFIG_START( kinst, kinst_state )
 	MCFG_CPU_ADD("maincpu", R4600LE, MASTER_CLOCK*2)
 	MCFG_CPU_CONFIG(r4600_config)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_start)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", kinst_state,  irq0_start)
 
 
 	MCFG_IDE_CONTROLLER_ADD("ide", ide_intf, ide_devices, "hdd", NULL, true)
@@ -688,7 +690,7 @@ static MACHINE_CONFIG_START( kinst, kinst_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
-	MCFG_SCREEN_UPDATE_STATIC(kinst)
+	MCFG_SCREEN_UPDATE_DRIVER(kinst_state, screen_update_kinst)
 
 	MCFG_PALETTE_INIT(BBBBB_GGGGG_RRRRR)
 	MCFG_PALETTE_LENGTH(32768)

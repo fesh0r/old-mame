@@ -91,23 +91,17 @@ the drive type (TWIGGY or 3.5'')) */
     a hard disk
 */
 
-static READ8_DEVICE_HANDLER(COPS_via_in_b);
-static WRITE8_DEVICE_HANDLER(COPS_via_out_a);
-static WRITE8_DEVICE_HANDLER(COPS_via_out_b);
-static WRITE8_DEVICE_HANDLER(COPS_via_out_ca2);
-static WRITE8_DEVICE_HANDLER(COPS_via_out_cb2);
 static void COPS_via_irq_func(device_t *device, int val);
-static READ8_DEVICE_HANDLER(parallel_via_in_b);
 
 
 const via6522_interface lisa_via6522_0_intf =
 {
 	/* COPS via */
-	DEVCB_NULL, DEVCB_HANDLER(COPS_via_in_b),
+	DEVCB_NULL, DEVCB_DRIVER_MEMBER(lisa_state,COPS_via_in_b),
 	DEVCB_NULL, DEVCB_NULL,
 	DEVCB_NULL, DEVCB_NULL,
-	DEVCB_HANDLER(COPS_via_out_a), DEVCB_HANDLER(COPS_via_out_b),
-	DEVCB_HANDLER(COPS_via_out_ca2), DEVCB_HANDLER(COPS_via_out_cb2),
+	DEVCB_DRIVER_MEMBER(lisa_state,COPS_via_out_a), DEVCB_DRIVER_MEMBER(lisa_state,COPS_via_out_b),
+	DEVCB_DRIVER_MEMBER(lisa_state,COPS_via_out_ca2), DEVCB_DRIVER_MEMBER(lisa_state,COPS_via_out_cb2),
 	DEVCB_NULL, DEVCB_NULL,
 	DEVCB_LINE(COPS_via_irq_func),
 };
@@ -115,7 +109,7 @@ const via6522_interface lisa_via6522_0_intf =
 const via6522_interface lisa_via6522_1_intf =
 {
 	/* parallel interface via - incomplete */
-	DEVCB_NULL, DEVCB_HANDLER(parallel_via_in_b),
+	DEVCB_NULL, DEVCB_DRIVER_MEMBER(lisa_state,parallel_via_in_b),
 	DEVCB_NULL, DEVCB_NULL,
 	DEVCB_NULL, DEVCB_NULL,
 	DEVCB_NULL, DEVCB_NULL,
@@ -237,13 +231,13 @@ INLINE void COPS_send_data_if_possible(running_machine &machine)
 {
 	lisa_state *state = machine.driver_data<lisa_state>();
 	via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	if ((! state->m_hold_COPS_data) && state->m_fifo_size && (! state->m_COPS_Ready))
 	{
 //        printf("COPsim: sending %02x to VIA\n", state->m_fifo_data[state->m_fifo_head]);
 
-		via_0->write_porta(*space, 0, state->m_fifo_data[state->m_fifo_head]);	/* output data */
+		via_0->write_porta(space, 0, state->m_fifo_data[state->m_fifo_head]);	/* output data */
 		if (state->m_fifo_head == state->m_mouse_data_offset)
 			state->m_mouse_data_offset = -1;	/* we just phased out the mouse data in buffer */
 		state->m_fifo_head = (state->m_fifo_head+1) & 0x7;
@@ -340,24 +334,23 @@ static void scan_keyboard(running_machine &machine)
 
 /* handle mouse moves */
 /* shamelessly stolen from machine/mac.c :-) */
-static TIMER_CALLBACK(handle_mouse)
+TIMER_CALLBACK_MEMBER(lisa_state::handle_mouse)
 {
-	lisa_state *state = machine.driver_data<lisa_state>();
 	int diff_x = 0, diff_y = 0;
 	int new_mx, new_my;
 
 #if 0
-	if (state->m_COPS_force_unplug)
+	if (m_COPS_force_unplug)
 		return;	/* ???? */
 #endif
 
-	new_mx = machine.root_device().ioport("MOUSE_X")->read();
-	new_my = machine.root_device().ioport("MOUSE_Y")->read();
+	new_mx = machine().root_device().ioport("MOUSE_X")->read();
+	new_my = machine().root_device().ioport("MOUSE_Y")->read();
 
 	/* see if it moved in the x coord */
-	if (new_mx != state->m_last_mx)
+	if (new_mx != m_last_mx)
 	{
-		diff_x = new_mx - state->m_last_mx;
+		diff_x = new_mx - m_last_mx;
 
 		/* check for wrap */
 		if (diff_x > 0x80)
@@ -365,12 +358,12 @@ static TIMER_CALLBACK(handle_mouse)
 		if  (diff_x < -0x80)
 			diff_x = -0x100-diff_x;
 
-		state->m_last_mx = new_mx;
+		m_last_mx = new_mx;
 	}
 	/* see if it moved in the y coord */
-	if (new_my != state->m_last_my)
+	if (new_my != m_last_my)
 	{
-		diff_y = new_my - state->m_last_my;
+		diff_y = new_my - m_last_my;
 
 		/* check for wrap */
 		if (diff_y > 0x80)
@@ -378,43 +371,43 @@ static TIMER_CALLBACK(handle_mouse)
 		if  (diff_y < -0x80)
 			diff_y = -0x100-diff_y;
 
-		state->m_last_my = new_my;
+		m_last_my = new_my;
 	}
 
 	/* update any remaining count and then return */
 	if (diff_x || diff_y)
 	{
-		if (state->m_mouse_data_offset != -1)
+		if (m_mouse_data_offset != -1)
 		{
-			state->m_fifo_data[state->m_mouse_data_offset] += diff_x;
-			state->m_fifo_data[(state->m_mouse_data_offset+1) & 0x7] += diff_y;
+			m_fifo_data[m_mouse_data_offset] += diff_x;
+			m_fifo_data[(m_mouse_data_offset+1) & 0x7] += diff_y;
 		}
 		else
 		{
 #if 0
-			if (state->m_fifo_size <= 5)
+			if (m_fifo_size <= 5)
 #else
 			/* trash old data */
-			while (state->m_fifo_size > 5)
+			while (m_fifo_size > 5)
 			{
-				state->m_fifo_head = (state->m_fifo_head+1) & 0x7;
-				state->m_fifo_size--;
+				m_fifo_head = (m_fifo_head+1) & 0x7;
+				m_fifo_size--;
 			}
 #endif
 
 			{
 				/*logerror("Adding 3 bytes of mouse data to FIFO\n");*/
 
-				state->m_fifo_data[state->m_fifo_tail] = 0;
-				state->m_mouse_data_offset = state->m_fifo_tail = (state->m_fifo_tail+1) & 0x7;
-				state->m_fifo_data[state->m_fifo_tail] = diff_x;
-				state->m_fifo_tail = (state->m_fifo_tail+1) & 0x7;
-				state->m_fifo_data[state->m_fifo_tail] = diff_y;
-				state->m_fifo_tail = (state->m_fifo_tail+1) & 0x7;
-				state->m_fifo_size += 3;
+				m_fifo_data[m_fifo_tail] = 0;
+				m_mouse_data_offset = m_fifo_tail = (m_fifo_tail+1) & 0x7;
+				m_fifo_data[m_fifo_tail] = diff_x;
+				m_fifo_tail = (m_fifo_tail+1) & 0x7;
+				m_fifo_data[m_fifo_tail] = diff_y;
+				m_fifo_tail = (m_fifo_tail+1) & 0x7;
+				m_fifo_size += 3;
 
 				/*logerror("handle_mouse : trying to send data to VIA\n");*/
-				COPS_send_data_if_possible(machine);
+				COPS_send_data_if_possible(machine());
 			}
 			/* else, mouse data is lost forever (correct ??) */
 		}
@@ -422,20 +415,19 @@ static TIMER_CALLBACK(handle_mouse)
 }
 
 /* read command from the VIA port A */
-static TIMER_CALLBACK(read_COPS_command)
+TIMER_CALLBACK_MEMBER(lisa_state::read_COPS_command)
 {
-	lisa_state *state = machine.driver_data<lisa_state>();
 	int command;
-	via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	via6522_device *via_0 = machine().device<via6522_device>("via6522_0");
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	state->m_COPS_Ready = 0;
+	m_COPS_Ready = 0;
 
 	/*logerror("read_COPS_command : trying to send data to VIA\n");*/
-	COPS_send_data_if_possible(machine);
+	COPS_send_data_if_possible(machine());
 
 	/* some pull-ups allow the COPS to read 1s when the VIA port is not set as output */
-	command = (state->m_COPS_command | (~ via_0->read(*space, VIA_DDRA))) & 0xff;
+	command = (m_COPS_command | (~ via_0->read(space, VIA_DDRA))) & 0xff;
 
 //    printf("Dropping Ready, command = %02x\n", command);
 
@@ -449,9 +441,9 @@ static TIMER_CALLBACK(read_COPS_command)
 		switch ((command & 0xF0) >> 4)
 		{
 		case 0x1:	/* write clock data */
-			if (state->m_clock_regs.clock_write_ptr != -1)
+			if (m_clock_regs.clock_write_ptr != -1)
 			{
-				switch (state->m_clock_regs.clock_write_ptr)
+				switch (m_clock_regs.clock_write_ptr)
 				{
 				case 0:
 				case 1:
@@ -459,57 +451,57 @@ static TIMER_CALLBACK(read_COPS_command)
 				case 3:
 				case 4:
 					/* alarm */
-					state->m_clock_regs.alarm &= ~ (0xf << (4 * (4 - state->m_clock_regs.clock_write_ptr)));
-					state->m_clock_regs.alarm |= immediate << (4 * (4 - state->m_clock_regs.clock_write_ptr));
+					m_clock_regs.alarm &= ~ (0xf << (4 * (4 - m_clock_regs.clock_write_ptr)));
+					m_clock_regs.alarm |= immediate << (4 * (4 - m_clock_regs.clock_write_ptr));
 					break;
 				case 5:
 					/* year */
-					state->m_clock_regs.years = immediate;
+					m_clock_regs.years = immediate;
 					break;
 				case 6:
 					/* day */
-					state->m_clock_regs.days1 = immediate;
+					m_clock_regs.days1 = immediate;
 					break;
 				case 7:
 					/* day */
-					state->m_clock_regs.days2 = immediate;
+					m_clock_regs.days2 = immediate;
 					break;
 				case 8:
 					/* day */
-					state->m_clock_regs.days3 = immediate;
+					m_clock_regs.days3 = immediate;
 					break;
 				case 9:
 					/* hours */
-					state->m_clock_regs.hours1 = immediate;
+					m_clock_regs.hours1 = immediate;
 					break;
 				case 10:
 					/* hours */
-					state->m_clock_regs.hours2 = immediate;
+					m_clock_regs.hours2 = immediate;
 					break;
 				case 11:
 					/* minutes */
-					state->m_clock_regs.minutes1 = immediate;
+					m_clock_regs.minutes1 = immediate;
 					break;
 				case 12:
 					/* minutes */
-					state->m_clock_regs.minutes1 = immediate;
+					m_clock_regs.minutes1 = immediate;
 					break;
 				case 13:
 					/* seconds */
-					state->m_clock_regs.seconds1 = immediate;
+					m_clock_regs.seconds1 = immediate;
 					break;
 				case 14:
 					/* seconds */
-					state->m_clock_regs.seconds2 = immediate;
+					m_clock_regs.seconds2 = immediate;
 					break;
 				case 15:
 					/* tenth */
-					state->m_clock_regs.tenths = immediate;
+					m_clock_regs.tenths = immediate;
 					break;
 				}
-				state->m_clock_regs.clock_write_ptr++;
-				if (state->m_clock_regs.clock_write_ptr == 16)
-					state->m_clock_regs.clock_write_ptr = -1;
+				m_clock_regs.clock_write_ptr++;
+				if (m_clock_regs.clock_write_ptr == 16)
+					m_clock_regs.clock_write_ptr = -1;
 			}
 
 			break;
@@ -517,11 +509,11 @@ static TIMER_CALLBACK(read_COPS_command)
 		case 0x2:	/* set clock mode */
 			if (immediate & 0x8)
 			{	/* start setting the clock */
-				state->m_clock_regs.clock_write_ptr = 0;
+				m_clock_regs.clock_write_ptr = 0;
 			}
 			else
 			{	/* clock write disabled */
-				state->m_clock_regs.clock_write_ptr = -1;
+				m_clock_regs.clock_write_ptr = -1;
 			}
 
 			if (! (immediate & 0x4))
@@ -533,7 +525,7 @@ static TIMER_CALLBACK(read_COPS_command)
 				/* should never happen */
 			}
 
-			state->m_clock_regs.clock_mode = (clock_mode_t)(immediate & 0x3);
+			m_clock_regs.clock_mode = (clock_mode_t)(immediate & 0x3);
 			break;
 
 #if 0
@@ -548,18 +540,18 @@ static TIMER_CALLBACK(read_COPS_command)
 #endif
 
 		case 0x5:	/* set high nibble of NMI character to nnnn */
-			state->m_NMIcode = (state->m_NMIcode & 0x0f) | (immediate << 4);
+			m_NMIcode = (m_NMIcode & 0x0f) | (immediate << 4);
 			break;
 
 		case 0x6:	/* set low nibble of NMI character to nnnn */
-			state->m_NMIcode = (state->m_NMIcode & 0xf0) | immediate;
+			m_NMIcode = (m_NMIcode & 0xf0) | immediate;
 			break;
 
 		case 0x7:	/* send mouse command */
 			if (immediate & 0x8)
-				state->m_mouse_timer->adjust(attotime::zero, 0, attotime::from_msec((immediate & 0x7)*4)); /* enable mouse */
+				m_mouse_timer->adjust(attotime::zero, 0, attotime::from_msec((immediate & 0x7)*4)); /* enable mouse */
 			else
-				state->m_mouse_timer->reset();
+				m_mouse_timer->reset();
 			break;
 		}
 	}
@@ -582,14 +574,14 @@ static TIMER_CALLBACK(read_COPS_command)
 				UINT8 reply[7];
 
 				reply[0] = 0x80;
-				reply[1] = 0xE0 | state->m_clock_regs.years;
-				reply[2] = (state->m_clock_regs.days1 << 4) | state->m_clock_regs.days2;
-				reply[3] = (state->m_clock_regs.days3 << 4) | state->m_clock_regs.hours1;
-				reply[4] = (state->m_clock_regs.hours2 << 4) | state->m_clock_regs.minutes1;
-				reply[5] = (state->m_clock_regs.minutes2 << 4) | state->m_clock_regs.seconds1;
-				reply[6] = (state->m_clock_regs.seconds2 << 4) | state->m_clock_regs.tenths;
+				reply[1] = 0xE0 | m_clock_regs.years;
+				reply[2] = (m_clock_regs.days1 << 4) | m_clock_regs.days2;
+				reply[3] = (m_clock_regs.days3 << 4) | m_clock_regs.hours1;
+				reply[4] = (m_clock_regs.hours2 << 4) | m_clock_regs.minutes1;
+				reply[5] = (m_clock_regs.minutes2 << 4) | m_clock_regs.seconds1;
+				reply[6] = (m_clock_regs.seconds2 << 4) | m_clock_regs.tenths;
 
-				COPS_queue_data(machine, reply, 7);
+				COPS_queue_data(machine(), reply, 7);
 			}
 			break;
 		}
@@ -597,13 +589,12 @@ static TIMER_CALLBACK(read_COPS_command)
 }
 
 /* this timer callback raises the COPS Ready line, which tells the COPS is about to read a command */
-static TIMER_CALLBACK(set_COPS_ready)
+TIMER_CALLBACK_MEMBER(lisa_state::set_COPS_ready)
 {
-	lisa_state *state = machine.driver_data<lisa_state>();
-	state->m_COPS_Ready = 1;
+	m_COPS_Ready = 1;
 
 	/* impulsion width : +/- 20us */
-	machine.scheduler().timer_set(attotime::from_usec(20), FUNC(read_COPS_command));
+	machine().scheduler().timer_set(attotime::from_usec(20), timer_expired_delegate(FUNC(lisa_state::read_COPS_command),this));
 }
 
 static void reset_COPS(lisa_state *state)
@@ -679,22 +670,20 @@ static void init_COPS(running_machine &machine)
     CA1 (I) : COPS sending valid data
     CA2 (O) : VIA -> COPS handshake
 */
-static WRITE8_DEVICE_HANDLER(COPS_via_out_a)
+WRITE8_MEMBER(lisa_state::COPS_via_out_a)
 {
-	lisa_state *state = device->machine().driver_data<lisa_state>();
 //    printf("VIA A = %02x\n", data);
-    state->m_COPS_command = data;
+    m_COPS_command = data;
 }
 
-static WRITE8_DEVICE_HANDLER(COPS_via_out_ca2)
+WRITE8_MEMBER(lisa_state::COPS_via_out_ca2)
 {
-	lisa_state *state = device->machine().driver_data<lisa_state>();
-	state->m_hold_COPS_data = data;
+	m_hold_COPS_data = data;
 
 	/*logerror("COPS CA2 line state : %d\n", val);*/
 
 	/*logerror("COPS_via_out_ca2 : trying to send data to VIA\n");*/
-	COPS_send_data_if_possible(device->machine());
+	COPS_send_data_if_possible(machine());
 }
 
 /*
@@ -711,51 +700,48 @@ static WRITE8_DEVICE_HANDLER(COPS_via_out_ca2)
     CB1 : not used
     CB2 (O) : sound output
 */
-static READ8_DEVICE_HANDLER(COPS_via_in_b)
+READ8_MEMBER(lisa_state::COPS_via_in_b)
 {
-	lisa_state *state = device->machine().driver_data<lisa_state>();
 	int val = 0;
 
-	if (state->m_COPS_Ready)
+	if (m_COPS_Ready)
 		val |= 0x40;
 
-	if (state->m_FDIR)
+	if (m_FDIR)
 		val |= 0x10;
 
 	return val;
 }
 
-static WRITE8_DEVICE_HANDLER(COPS_via_out_b)
+WRITE8_MEMBER(lisa_state::COPS_via_out_b)
 {
-	lisa_state *state = device->machine().driver_data<lisa_state>();
-	via6522_device *via_0 = device->machine().device<via6522_device>("via6522_0");
-	address_space *space = device->machine().device("maincpu")->memory().space(AS_PROGRAM);
+	via6522_device *via_0 = machine().device<via6522_device>("via6522_0");
 
 	/* pull-up */
-	data |= (~ via_0->read(*space,VIA_DDRA)) & 0x01;
+	data |= (~ via_0->read(space,VIA_DDRA)) & 0x01;
 
 	if (data & 0x01)
 	{
-		if (state->m_COPS_force_unplug)
+		if (m_COPS_force_unplug)
 		{
-			state->m_COPS_force_unplug = 0;
-			plug_keyboard(device->machine());
+			m_COPS_force_unplug = 0;
+			plug_keyboard(machine());
 		}
 	}
 	else
 	{
-		if (! state->m_COPS_force_unplug)
+		if (! m_COPS_force_unplug)
 		{
-			state->m_COPS_force_unplug = 1;
-			unplug_keyboard(device->machine());
+			m_COPS_force_unplug = 1;
+			unplug_keyboard(machine());
 			//reset_COPS(state);
 		}
 	}
 }
 
-static WRITE8_DEVICE_HANDLER(COPS_via_out_cb2)
+WRITE8_MEMBER(lisa_state::COPS_via_out_cb2)
 {
-	device_t *speaker = device->machine().device(SPEAKER_TAG);
+	device_t *speaker = machine().device(SPEAKER_TAG);
 	speaker_level_w(speaker, data);
 }
 
@@ -789,12 +775,11 @@ static void COPS_via_irq_func(device_t *device, int val)
     CB1 : not used
     CB2 (I) : current parity latch value
 */
-static READ8_DEVICE_HANDLER(parallel_via_in_b)
+READ8_MEMBER(lisa_state::parallel_via_in_b)
 {
-	lisa_state *state = device->machine().driver_data<lisa_state>();
 	int val = 0;
 
-	if (state->m_DISK_DIAG)
+	if (m_DISK_DIAG)
 		val |= 0x40;
 
 	/* tell there is no hard disk : */
@@ -822,25 +807,24 @@ void lisa_state::video_start()
 /*
     Video update
 */
-SCREEN_UPDATE_IND16( lisa )
+UINT32 lisa_state::screen_update_lisa(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	lisa_state *state = screen.machine().driver_data<lisa_state>();
 	UINT16 *v;
 	int x, y;
 	/* resolution is 720*364 on lisa, vs 608*431 on mac XL */
-	int resx = (state->m_features.has_mac_xl_video) ? 608 : 720;	/* width */
-	int resy = (state->m_features.has_mac_xl_video) ? 431 : 364;	/* height */
+	int resx = (m_features.has_mac_xl_video) ? 608 : 720;	/* width */
+	int resy = (m_features.has_mac_xl_video) ? 431 : 364;	/* height */
 
 	UINT8 line_buffer[720];
 
-	v = state->m_videoram_ptr;
+	v = m_videoram_ptr;
 
 	for (y = 0; y < resy; y++)
 	{
 		for (x = 0; x < resx; x++)
 //          line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> ((x+y*resx) & 0xf))) ? 0 : 1;
 			line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> (x & 0xf))) ? 0 : 1;
-		draw_scanline8(bitmap, 0, y, resx, line_buffer, screen.machine().pens);
+		draw_scanline8(bitmap, 0, y, resx, line_buffer, machine().pens);
 	}
 	return 0;
 }
@@ -1033,10 +1017,10 @@ DRIVER_INIT_MEMBER(lisa_state,mac_xl)
 
 void lisa_state::machine_start()
 {
-	m_mouse_timer = machine().scheduler().timer_alloc(FUNC(handle_mouse));
+	m_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(lisa_state::handle_mouse),this));
 
 	/* read command every ms (don't know the real value) */
-	machine().scheduler().timer_pulse(attotime::from_msec(1), FUNC(set_COPS_ready));
+	machine().scheduler().timer_pulse(attotime::from_msec(1), timer_expired_delegate(FUNC(lisa_state::set_COPS_ready),this));
 }
 
 void lisa_state::machine_reset()
@@ -1045,7 +1029,7 @@ void lisa_state::machine_reset()
 	m_rom_ptr = machine().root_device().memregion("maincpu")->base() + ROM_OFFSET;
 	m_videoROM_ptr = memregion("gfx1")->base();
 
-//  machine().device("maincpu")->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate_create_static(lisa_OPbaseoverride, *machine()));
+//  machine().device("maincpu")->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate_create_static(lisa_OPbaseoverride, *machine()));
 //  m68k_set_reset_callback(machine().device("maincpu"), /*lisa_reset_instr_callback*/NULL);
 
 	/* init MMU */
@@ -1072,8 +1056,7 @@ void lisa_state::machine_reset()
 	init_COPS(machine());
 
 	{
-		via6522_device *via_0 = machine().device<via6522_device>("via6522_0");
-		COPS_via_out_ca2(via_0, 0, 0);	/* VIA core forgets to do so */
+		COPS_via_out_ca2(generic_space(), 0, 0);	/* VIA core forgets to do so */
 	}
 
 	/* initialize floppy */
@@ -1088,22 +1071,21 @@ void lisa_state::machine_reset()
 	machine().device("maincpu")->reset();
 }
 
-INTERRUPT_GEN( lisa_interrupt )
+INTERRUPT_GEN_MEMBER(lisa_state::lisa_interrupt)
 {
-	lisa_state *state = device->machine().driver_data<lisa_state>();
-	if ((++state->m_frame_count) == 6)
+	if ((++m_frame_count) == 6)
 	{	/* increment clock every 1/10s */
-		state->m_frame_count = 0;
+		m_frame_count = 0;
 
-		if (state->m_clock_regs.clock_mode != clock_timer_disable)
+		if (m_clock_regs.clock_mode != clock_timer_disable)
 		{
-			if ((++state->m_clock_regs.tenths) == 10)
+			if ((++m_clock_regs.tenths) == 10)
 			{
-				state->m_clock_regs.tenths = 0;
+				m_clock_regs.tenths = 0;
 
-				if (state->m_clock_regs.clock_mode != timer_disable)
+				if (m_clock_regs.clock_mode != timer_disable)
 				{
-					if (state->m_clock_regs.alarm == 0)
+					if (m_clock_regs.alarm == 0)
 					{
 						/* generate reset (should cause a VIA interrupt...) */
 						static const UINT8 cmd[2] =
@@ -1111,61 +1093,61 @@ INTERRUPT_GEN( lisa_interrupt )
 							0x80,	/* RESET code */
 							0xFC	/* timer time-out */
 						};
-						COPS_queue_data(device->machine(), cmd, 2);
+						COPS_queue_data(machine(), cmd, 2);
 
-						state->m_clock_regs.alarm = 0xfffffL;
+						m_clock_regs.alarm = 0xfffffL;
 					}
 					else
 					{
-						state->m_clock_regs.alarm--;
+						m_clock_regs.alarm--;
 					}
 				}
 
-				if ((++state->m_clock_regs.seconds2) == 10)
+				if ((++m_clock_regs.seconds2) == 10)
 				{
-					state->m_clock_regs.seconds2 = 0;
+					m_clock_regs.seconds2 = 0;
 
-					if ((++state->m_clock_regs.seconds1) == 6)
+					if ((++m_clock_regs.seconds1) == 6)
 					{
-						state->m_clock_regs.seconds1 = 0;
+						m_clock_regs.seconds1 = 0;
 
-						if ((++state->m_clock_regs.minutes2) == 10)
+						if ((++m_clock_regs.minutes2) == 10)
 						{
-							state->m_clock_regs.minutes2 = 0;
+							m_clock_regs.minutes2 = 0;
 
-							if ((++state->m_clock_regs.minutes1) == 6)
+							if ((++m_clock_regs.minutes1) == 6)
 							{
-								state->m_clock_regs.minutes1 = 0;
+								m_clock_regs.minutes1 = 0;
 
-								if ((++state->m_clock_regs.hours2) == 10)
+								if ((++m_clock_regs.hours2) == 10)
 								{
-									state->m_clock_regs.hours2 = 0;
+									m_clock_regs.hours2 = 0;
 
-									state->m_clock_regs.hours1++;
+									m_clock_regs.hours1++;
 								}
 
-								if ((state->m_clock_regs.hours1*10 + state->m_clock_regs.hours2) == 24)
+								if ((m_clock_regs.hours1*10 + m_clock_regs.hours2) == 24)
 								{
-									state->m_clock_regs.hours1 = state->m_clock_regs.hours2 = 0;
+									m_clock_regs.hours1 = m_clock_regs.hours2 = 0;
 
-									if ((++state->m_clock_regs.days3) == 10)
+									if ((++m_clock_regs.days3) == 10)
 									{
-										state->m_clock_regs.days3 = 0;
+										m_clock_regs.days3 = 0;
 
-										if ((++state->m_clock_regs.days2) == 10)
+										if ((++m_clock_regs.days2) == 10)
 										{
-											state->m_clock_regs.days2 = 0;
+											m_clock_regs.days2 = 0;
 
-											state->m_clock_regs.days1++;
+											m_clock_regs.days1++;
 										}
 									}
 
-									if ((state->m_clock_regs.days1*100 + state->m_clock_regs.days2*10 + state->m_clock_regs.days3) ==
-										((state->m_clock_regs.years % 4) ? 366 : 367))
+									if ((m_clock_regs.days1*100 + m_clock_regs.days2*10 + m_clock_regs.days3) ==
+										((m_clock_regs.years % 4) ? 366 : 367))
 									{
-										state->m_clock_regs.days1 = state->m_clock_regs.days2 = state->m_clock_regs.days3 = 0;
+										m_clock_regs.days1 = m_clock_regs.days2 = m_clock_regs.days3 = 0;
 
-										state->m_clock_regs.years = (state->m_clock_regs.years + 1) & 0xf;
+										m_clock_regs.years = (m_clock_regs.years + 1) & 0xf;
 									}
 								}
 							}
@@ -1177,13 +1159,13 @@ INTERRUPT_GEN( lisa_interrupt )
 	}
 
 	/* set VBI */
-	if (state->m_VTMSK)
-		set_VTIR(device->machine(), 1);
+	if (m_VTMSK)
+		set_VTIR(machine(), 1);
 	else
-		set_VTIR(device->machine(), 0);
+		set_VTIR(machine(), 0);
 
 	/* do keyboard scan */
-	scan_keyboard(device->machine());
+	scan_keyboard(machine());
 }
 
 /*
@@ -1256,7 +1238,7 @@ READ8_MEMBER(lisa_state::lisa_fdc_io_r)
 	switch ((offset & 0x0030) >> 4)
 	{
 	case 0:	/* IWM */
-		answer = applefdc_r(fdc, offset);
+		answer = applefdc_r(fdc, space, offset);
 		break;
 
 	case 1:	/* TTL glue */
@@ -1283,7 +1265,7 @@ WRITE8_MEMBER(lisa_state::lisa_fdc_io_w)
 	switch ((offset & 0x0030) >> 4)
 	{
 	case 0:	/* IWM */
-		applefdc_w(fdc, offset, data);
+		applefdc_w(fdc, space, offset, data);
 		break;
 
 	case 1:	/* TTL glue */

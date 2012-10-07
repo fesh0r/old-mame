@@ -140,17 +140,16 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void palette_init();
+	TIMER_CALLBACK_MEMBER(lynx_blitter_timer);
+	TIMER_CALLBACK_MEMBER(lynx_timer_shot);
+	TIMER_CALLBACK_MEMBER(lynx_uart_loopback_timer);
+	TIMER_CALLBACK_MEMBER(lynx_uart_timer);
 };
 
 
 /*----------- defined in machine/lynx.c -----------*/
 
-
-
-
 void lynx_timer_count_down(running_machine &machine, int nr);
-
-INTERRUPT_GEN( lynx_frame_int );
 
 /* These functions are also needed for the Quickload */
 int lynx_verify_cart (char *header, int kind);

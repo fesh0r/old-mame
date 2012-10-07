@@ -99,7 +99,7 @@ READ8_DEVICE_HANDLER(betadisk_status_r)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		return wd17xx_status_r(beta->wd179x, offset);
+		return wd17xx_status_r(beta->wd179x, space, offset);
 	} else {
 		return 0xff;
 	}
@@ -110,7 +110,7 @@ READ8_DEVICE_HANDLER(betadisk_track_r)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		return wd17xx_track_r(beta->wd179x, offset);
+		return wd17xx_track_r(beta->wd179x, space, offset);
 	} else {
 		return 0xff;
 	}
@@ -121,7 +121,7 @@ READ8_DEVICE_HANDLER(betadisk_sector_r)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		return wd17xx_sector_r(beta->wd179x, offset);
+		return wd17xx_sector_r(beta->wd179x, space, offset);
 	} else {
 		return 0xff;
 	}
@@ -133,7 +133,7 @@ READ8_DEVICE_HANDLER(betadisk_data_r)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		return wd17xx_data_r(beta->wd179x, offset);
+		return wd17xx_data_r(beta->wd179x, space, offset);
 	} else {
 		return 0xff;
 	}
@@ -171,7 +171,7 @@ WRITE8_DEVICE_HANDLER(betadisk_command_w)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		wd17xx_command_w(beta->wd179x, offset, data);
+		wd17xx_command_w(beta->wd179x, space, offset, data);
 	}
 }
 
@@ -180,7 +180,7 @@ WRITE8_DEVICE_HANDLER(betadisk_track_w)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		wd17xx_track_w(beta->wd179x, offset, data);
+		wd17xx_track_w(beta->wd179x, space, offset, data);
 	}
 }
 
@@ -189,7 +189,7 @@ WRITE8_DEVICE_HANDLER(betadisk_sector_w)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		wd17xx_sector_w(beta->wd179x, offset, data);
+		wd17xx_sector_w(beta->wd179x, space, offset, data);
 	}
 }
 
@@ -198,7 +198,7 @@ WRITE8_DEVICE_HANDLER(betadisk_data_w)
 	beta_disk_state *beta = get_safe_token(device);
 
 	if (beta->betadisk_active==1) {
-		wd17xx_data_w(beta->wd179x, offset, data);
+		wd17xx_data_w(beta->wd179x, space, offset, data);
 	}
 }
 
@@ -332,7 +332,7 @@ const device_type BETA_DISK = &device_creator<beta_disk_device>;
 beta_disk_device::beta_disk_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, BETA_DISK, "Beta Disk Interface", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(beta_disk_state));
+	m_token = global_alloc_clear(beta_disk_state);
 }
 
 //-------------------------------------------------

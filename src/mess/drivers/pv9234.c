@@ -35,6 +35,7 @@ public:
 	required_shared_ptr<UINT32> m_p_ram;
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_pv9234(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 
@@ -78,10 +79,10 @@ WRITE32_MEMBER( pv9234_state::debug1_w )
 		{
 			j = (data & 0xff000000) >> 24;
 			data <<= 8;
-			printf("%c",j); // this prints 'OFF' to the console.
+//          printf("%c",j); // this prints 'OFF' to the console.
 			logerror("debug1=%02x %c\n",j,j);
 		}
-		printf("\n");
+//      printf("\n");
 	}
 }
 
@@ -126,7 +127,7 @@ void pv9234_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16( pv9234 )
+UINT32 pv9234_state::screen_update_pv9234(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	return 0;
 }
@@ -143,7 +144,7 @@ static MACHINE_CONFIG_START( pv9234, pv9234_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_STATIC(pv9234)
+	MCFG_SCREEN_UPDATE_DRIVER(pv9234_state, screen_update_pv9234)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

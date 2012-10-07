@@ -134,46 +134,42 @@ WRITE8_MEMBER(oric_state::oric_psg_porta_write)
 /* bit 0 = BC1 state */
 
 /* this port is also used to read printer data */
-static READ8_DEVICE_HANDLER ( oric_via_in_a_func )
+READ8_MEMBER(oric_state::oric_via_in_a_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	address_space *space = device->machine().device( "maincpu")->memory().space( AS_PROGRAM );
-
 	/*logerror("port a read\r\n"); */
 
 	/* access psg? */
-	if (state->m_psg_control!=0)
+	if (m_psg_control!=0)
 	{
 		/* if psg is in read register state return reg data */
-		if (state->m_psg_control==0x01)
-			return ay8910_r(space->machine().device("ay8912"), 0);
+		if (m_psg_control==0x01)
+			return ay8910_r(machine().device("ay8912"), space, 0);
 
 		/* return high-impedance */
 		return 0x0ff;
 	}
 
 	/* correct?? */
-	return state->m_via_port_a_data;
+	return m_via_port_a_data;
 }
 
-static READ8_DEVICE_HANDLER ( oric_via_in_b_func )
+READ8_MEMBER(oric_state::oric_via_in_b_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
 	int data;
 
-	oric_keyboard_sense_refresh(device->machine());
+	oric_keyboard_sense_refresh(machine());
 
-	data = state->m_key_sense_bit;
-	data |= state->m_keyboard_line & 0x07;
+	data = m_key_sense_bit;
+	data |= m_keyboard_line & 0x07;
 
 	return data;
 }
 
 
 /* read/write data depending on state of bdir, bc1 pins and data output to psg */
-static void oric_psg_connection_refresh(running_machine &machine)
+static void oric_psg_connection_refresh(address_space &space)
 {
-	oric_state *state = machine.driver_data<oric_state>();
+	oric_state *state = space.machine().driver_data<oric_state>();
 	if (state->m_psg_control!=0)
 	{
 		switch (state->m_psg_control)
@@ -190,15 +186,15 @@ static void oric_psg_connection_refresh(running_machine &machine)
 			/* write register data */
 			case 2:
 			{
-				device_t *ay8912 = machine.device("ay8912");
-				ay8910_data_w(ay8912, 0, state->m_via_port_a_data);
+				device_t *ay8912 = space.machine().device("ay8912");
+				ay8910_data_w(ay8912, space, 0, state->m_via_port_a_data);
 			}
 			break;
 			/* write register index */
 			case 3:
 			{
-				device_t *ay8912 = machine.device("ay8912");
-				ay8910_address_w(ay8912, 0, state->m_via_port_a_data);
+				device_t *ay8912 = space.machine().device("ay8912");
+				ay8910_address_w(ay8912, space, 0, state->m_via_port_a_data);
 			}
 			break;
 
@@ -210,19 +206,18 @@ static void oric_psg_connection_refresh(running_machine &machine)
 	}
 }
 
-static WRITE8_DEVICE_HANDLER ( oric_via_out_a_func )
+WRITE8_MEMBER(oric_state::oric_via_out_a_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	state->m_via_port_a_data = data;
+	m_via_port_a_data = data;
 
-	oric_psg_connection_refresh(device->machine());
+	oric_psg_connection_refresh(space);
 
 
-	if (state->m_psg_control==0)
+	if (m_psg_control==0)
 	{
 		/* if psg not selected, write to printer */
-		centronics_device *centronics = device->machine().device<centronics_device>("centronics");
-		centronics->write(*device->machine().memory().first_space(), 0, data);
+		centronics_device *centronics = machine().device<centronics_device>("centronics");
+		centronics->write(machine().driver_data()->generic_space(), 0, data);
 	}
 }
 
@@ -255,15 +250,15 @@ static cassette_image_device *cassette_device_image(running_machine &machine)
 
 /* not called yet - this will update the via with the state of the tape data.
 This allows the via to trigger on bit changes and issue interrupts */
-static TIMER_CALLBACK(oric_refresh_tape)
+TIMER_CALLBACK_MEMBER(oric_state::oric_refresh_tape)
 {
 	int data;
 	int input_port_9;
-	via6522_device *via_0 = machine.device<via6522_device>("via6522_0");
+	via6522_device *via_0 = machine().device<via6522_device>("via6522_0");
 
 	data = 0;
 
-	if ((cassette_device_image(machine))->input() > 0.0038)
+	if ((cassette_device_image(machine()))->input() > 0.0038)
 		data |= 1;
 
 	/* "A simple cable to catch the vertical retrace signal !
@@ -271,7 +266,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
     to the via cb1 input. Interrupts can be generated from the vertical
     sync, and flicker free games can be produced */
 
-	input_port_9 = machine.root_device().ioport("FLOPPY")->read();
+	input_port_9 = machine().root_device().ioport("FLOPPY")->read();
 	/* cable is enabled? */
 	if ((input_port_9 & 0x08)!=0)
 	{
@@ -282,63 +277,58 @@ static TIMER_CALLBACK(oric_refresh_tape)
 	via_0->write_cb1(data);
 }
 
-static WRITE8_DEVICE_HANDLER ( oric_via_out_b_func )
+WRITE8_MEMBER(oric_state::oric_via_out_b_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	centronics_device *centronics = machine().device<centronics_device>("centronics");
 
 	/* KEYBOARD */
-	state->m_keyboard_line = data & 0x07;
+	m_keyboard_line = data & 0x07;
 
 	/* CASSETTE */
 	/* cassette motor control */
-	cassette_device_image(device->machine())->change_state(
+	cassette_device_image(machine())->change_state(
 		(data & 0x40) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 		CASSETTE_MOTOR_DISABLED);
 
 	/* cassette data out */
-	cassette_device_image(device->machine())->output((data & (1<<7)) ? -1.0 : +1.0);
+	cassette_device_image(machine())->output((data & (1<<7)) ? -1.0 : +1.0);
 
 	/* centronics STROBE is connected to PB4 */
 	centronics->strobe_w(BIT(data, 4));
 
-	oric_psg_connection_refresh(device->machine());
-	state->m_previous_portb_data = data;
+	oric_psg_connection_refresh(space);
+	m_previous_portb_data = data;
 }
 
 
-static READ8_DEVICE_HANDLER ( oric_via_in_ca2_func )
+READ8_MEMBER(oric_state::oric_via_in_ca2_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	return state->m_psg_control & 1;
+	return m_psg_control & 1;
 }
 
-static READ8_DEVICE_HANDLER ( oric_via_in_cb2_func )
+READ8_MEMBER(oric_state::oric_via_in_cb2_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	return (state->m_psg_control>>1) & 1;
+	return (m_psg_control>>1) & 1;
 }
 
-static WRITE8_DEVICE_HANDLER ( oric_via_out_ca2_func )
+WRITE8_MEMBER(oric_state::oric_via_out_ca2_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	state->m_psg_control &=~1;
+	m_psg_control &=~1;
 
 	if (data)
-		state->m_psg_control |=1;
+		m_psg_control |=1;
 
-	oric_psg_connection_refresh(device->machine());
+	oric_psg_connection_refresh(space);
 }
 
-static WRITE8_DEVICE_HANDLER ( oric_via_out_cb2_func )
+WRITE8_MEMBER(oric_state::oric_via_out_cb2_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	state->m_psg_control &=~2;
+	m_psg_control &=~2;
 
 	if (data)
-		state->m_psg_control |=2;
+		m_psg_control |=2;
 
-	oric_psg_connection_refresh(device->machine());
+	oric_psg_connection_refresh(space);
 }
 
 
@@ -395,18 +385,18 @@ CB2
 
 const via6522_interface oric_6522_interface=
 {
-	DEVCB_HANDLER(oric_via_in_a_func),
-	DEVCB_HANDLER(oric_via_in_b_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_a_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_b_func),
 	DEVCB_NULL,				/* printer acknowledge - handled by callback*/
 	DEVCB_NULL,				/* tape input - handled by timer */
-	DEVCB_HANDLER(oric_via_in_ca2_func),
-	DEVCB_HANDLER(oric_via_in_cb2_func),
-	DEVCB_HANDLER(oric_via_out_a_func),
-	DEVCB_HANDLER(oric_via_out_b_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_ca2_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_cb2_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_out_a_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_out_b_func),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(oric_via_out_ca2_func),
-	DEVCB_HANDLER(oric_via_out_cb2_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_out_ca2_func),
+	DEVCB_DRIVER_MEMBER(oric_state,oric_via_out_cb2_func),
 	DEVCB_LINE(oric_via_irq_func),
 };
 
@@ -428,17 +418,17 @@ static void oric_install_apple2_interface(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
 	device_t *fdc = machine.device("fdc");
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (state->m_is_telestrat)
 		return;
 
-	space->install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
-	space->install_legacy_read_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_r));
-	space->install_read_bank(0x0320, 0x03ff, "bank4");
+	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
+	space.install_legacy_read_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_r));
+	space.install_read_bank(0x0320, 0x03ff, "bank4");
 
-	space->install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
-	space->install_legacy_write_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_w));
+	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
+	space.install_legacy_write_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_w));
 	state->membank("bank4")->set_base(	state->memregion("maincpu")->base() + 0x014000 + 0x020);
 }
 
@@ -447,7 +437,7 @@ static void oric_enable_memory(running_machine &machine, int low, int high, int 
 {
 	oric_state *state = machine.driver_data<oric_state>();
 	int i;
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (state->m_is_telestrat)
 		return;
@@ -456,33 +446,33 @@ static void oric_enable_memory(running_machine &machine, int low, int high, int 
 		switch(i) {
 		case 1:
 			if (rd) {
-				space->install_read_bank(0xc000, 0xdfff, "bank1");
+				space.install_read_bank(0xc000, 0xdfff, "bank1");
 			} else {
-				space->nop_read(0xc000, 0xdfff);
+				space.nop_read(0xc000, 0xdfff);
 			}
 			if (wr) {
-				space->install_write_bank(0xc000, 0xdfff, "bank5");
+				space.install_write_bank(0xc000, 0xdfff, "bank5");
 			} else {
-				space->unmap_write(0xc000, 0xdfff);
+				space.unmap_write(0xc000, 0xdfff);
 			}
 			break;
 		case 2:
 			if (rd) {
-				space->install_read_bank(0xe000, 0xf7ff, "bank2");
+				space.install_read_bank(0xe000, 0xf7ff, "bank2");
 			} else {
-				space->nop_read(0xe000, 0xf7ff);
+				space.nop_read(0xe000, 0xf7ff);
 			}
 			if (wr) {
-				space->install_write_bank(0xe000, 0xf7ff, "bank6");
+				space.install_write_bank(0xe000, 0xf7ff, "bank6");
 			} else {
-				space->unmap_write(0xe000, 0xf7ff);
+				space.unmap_write(0xe000, 0xf7ff);
 			}
 			break;
 		case 3:
 			if (rd) {
-				space->install_read_bank(0xf800, 0xffff, "bank3");
+				space.install_read_bank(0xf800, 0xffff, "bank3");
 			} else {
-				space->nop_read(0xf800, 0xffff);
+				space.nop_read(0xf800, 0xffff);
 			}
 			break;
 		}
@@ -552,17 +542,17 @@ static void oric_install_apple2_v2_interface(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
 	device_t *fdc = machine.device("fdc");
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	space->install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
-	space->install_legacy_read_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_r));
-	space->install_read_bank(0x0320, 0x03ff, "bank4");
+	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
+	space.install_legacy_read_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_r));
+	space.install_read_bank(0x0320, 0x03ff, "bank4");
 
-	space->install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
-	space->install_legacy_write_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_w));
-	space->install_write_handler(0x0380, 0x0383, write8_delegate(FUNC(oric_state::apple2_v2_interface_w),state));
+	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
+	space.install_legacy_write_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_w));
+	space.install_write_handler(0x0380, 0x0383, write8_delegate(FUNC(oric_state::apple2_v2_interface_w),state));
 
-	state->apple2_v2_interface_w(*space, 0, 0);
+	state->apple2_v2_interface_w(space, 0, 0);
 }
 
 /********************/
@@ -659,15 +649,14 @@ static void oric_jasmin_set_mem_0x0c000(running_machine &machine)
 }
 
 /* DRQ is connected to interrupt */
-static WRITE_LINE_DEVICE_HANDLER( oric_jasmin_wd179x_drq_w )
+WRITE_LINE_MEMBER(oric_state::oric_jasmin_wd179x_drq_w)
 {
-	oric_state *drvstate = device->machine().driver_data<oric_state>();
 	if (state)
-		drvstate->m_irqs |= (1<<1);
+		m_irqs |= (1<<1);
 	else
-		drvstate->m_irqs &=~(1<<1);
+		m_irqs &=~(1<<1);
 
-	oric_refresh_ints(device->machine());
+	oric_refresh_ints(machine());
 }
 
 READ8_MEMBER(oric_state::oric_jasmin_r)
@@ -680,16 +669,16 @@ READ8_MEMBER(oric_state::oric_jasmin_r)
 	{
 		/* jasmin floppy disc interface */
 		case 0x04:
-			data = wd17xx_status_r(fdc, 0);
+			data = wd17xx_status_r(fdc, space, 0);
 			break;
 		case 0x05:
-			data =wd17xx_track_r(fdc, 0);
+			data =wd17xx_track_r(fdc, space, 0);
 			break;
 		case 0x06:
-			data = wd17xx_sector_r(fdc, 0);
+			data = wd17xx_sector_r(fdc, space, 0);
 			break;
 		case 0x07:
-			data = wd17xx_data_r(fdc, 0);
+			data = wd17xx_data_r(fdc, space, 0);
 			break;
 		default:
 			data = via_0->read(space,offset & 0x0f);
@@ -709,16 +698,16 @@ WRITE8_MEMBER(oric_state::oric_jasmin_w)
 	{
 		/* microdisc floppy disc interface */
 		case 0x04:
-			wd17xx_command_w(fdc, 0, data);
+			wd17xx_command_w(fdc, space, 0, data);
 			break;
 		case 0x05:
-			wd17xx_track_w(fdc, 0, data);
+			wd17xx_track_w(fdc, space, 0, data);
 			break;
 		case 0x06:
-			wd17xx_sector_w(fdc, 0, data);
+			wd17xx_sector_w(fdc, space, 0, data);
 			break;
 		case 0x07:
-			wd17xx_data_w(fdc, 0, data);
+			wd17xx_data_w(fdc, space, 0, data);
 			break;
 		/* bit 0 = side */
 		case 0x08:
@@ -756,16 +745,16 @@ WRITE8_MEMBER(oric_state::oric_jasmin_w)
 static void oric_install_jasmin_interface(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	/* romdis */
 	state->m_port_3fb_w = 1;
 	oric_jasmin_set_mem_0x0c000(machine);
 
-	space->install_read_handler(0x0300, 0x03ef, read8_delegate(FUNC(oric_state::oric_IO_r),state));
-	space->install_read_handler(0x03f0, 0x03ff, read8_delegate(FUNC(oric_state::oric_jasmin_r),state));
+	space.install_read_handler(0x0300, 0x03ef, read8_delegate(FUNC(oric_state::oric_IO_r),state));
+	space.install_read_handler(0x03f0, 0x03ff, read8_delegate(FUNC(oric_state::oric_jasmin_r),state));
 
-	space->install_write_handler(0x0300, 0x03ef, write8_delegate(FUNC(oric_state::oric_IO_w),state));
-	space->install_write_handler(0x03f0, 0x03ff, write8_delegate(FUNC(oric_state::oric_jasmin_w),state));
+	space.install_write_handler(0x0300, 0x03ef, write8_delegate(FUNC(oric_state::oric_IO_w),state));
+	space.install_write_handler(0x03f0, 0x03ff, write8_delegate(FUNC(oric_state::oric_jasmin_w),state));
 }
 
 /*********************************/
@@ -796,26 +785,24 @@ static void oric_microdisc_refresh_wd179x_ints(running_machine &machine)
 	oric_refresh_ints(machine);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( oric_microdisc_wd179x_intrq_w )
+WRITE_LINE_MEMBER(oric_state::oric_microdisc_wd179x_intrq_w)
 {
-	oric_state *drvstate = device->machine().driver_data<oric_state>();
-	drvstate->m_wd179x_int_state = state;
+	m_wd179x_int_state = state;
 
 	if (state)
-		drvstate->m_port_314_r &= ~(1<<7);
+		m_port_314_r &= ~(1<<7);
 	else
-		drvstate->m_port_314_r |=(1<<7);
+		m_port_314_r |=(1<<7);
 
-	oric_microdisc_refresh_wd179x_ints(device->machine());
+	oric_microdisc_refresh_wd179x_ints(machine());
 }
 
-static WRITE_LINE_DEVICE_HANDLER( oric_microdisc_wd179x_drq_w )
+WRITE_LINE_MEMBER(oric_state::oric_microdisc_wd179x_drq_w)
 {
-	oric_state *drvstate = device->machine().driver_data<oric_state>();
 	if (state)
-		drvstate->m_port_318_r &=~(1<<7);
+		m_port_318_r &=~(1<<7);
 	else
-		drvstate->m_port_318_r |= (1<<7);
+		m_port_318_r |= (1<<7);
 }
 
 static void oric_microdisc_set_mem_0x0c000(running_machine &machine)
@@ -898,16 +885,16 @@ READ8_MEMBER(oric_state::oric_microdisc_r)
 	{
 		/* microdisc floppy disc interface */
 		case 0x00:
-			data = wd17xx_status_r(fdc, 0);
+			data = wd17xx_status_r(fdc, space, 0);
 			break;
 		case 0x01:
-			data =wd17xx_track_r(fdc, 0);
+			data =wd17xx_track_r(fdc, space, 0);
 			break;
 		case 0x02:
-			data = wd17xx_sector_r(fdc, 0);
+			data = wd17xx_sector_r(fdc, space, 0);
 			break;
 		case 0x03:
-			data = wd17xx_data_r(fdc, 0);
+			data = wd17xx_data_r(fdc, space, 0);
 			break;
 		case 0x04:
 			data = m_port_314_r | 0x07f;
@@ -937,16 +924,16 @@ WRITE8_MEMBER(oric_state::oric_microdisc_w)
 	{
 		/* microdisc floppy disc interface */
 		case 0x00:
-			wd17xx_command_w(fdc, 0, data);
+			wd17xx_command_w(fdc, space, 0, data);
 			break;
 		case 0x01:
-			wd17xx_track_w(fdc, 0, data);
+			wd17xx_track_w(fdc, space, 0, data);
 			break;
 		case 0x02:
-			wd17xx_sector_w(fdc, 0, data);
+			wd17xx_sector_w(fdc, space, 0, data);
 			break;
 		case 0x03:
-			wd17xx_data_w(fdc, 0, data);
+			wd17xx_data_w(fdc, space, 0, data);
 			break;
 		case 0x04:
 		{
@@ -979,15 +966,15 @@ WRITE8_MEMBER(oric_state::oric_microdisc_w)
 static void oric_install_microdisc_interface(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	space->install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
-	space->install_read_handler(0x0310, 0x031f, read8_delegate(FUNC(oric_state::oric_microdisc_r),state));
-	space->install_read_handler(0x0320, 0x03ff, read8_delegate(FUNC(oric_state::oric_IO_r),state));
+	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
+	space.install_read_handler(0x0310, 0x031f, read8_delegate(FUNC(oric_state::oric_microdisc_r),state));
+	space.install_read_handler(0x0320, 0x03ff, read8_delegate(FUNC(oric_state::oric_IO_r),state));
 
-	space->install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
-	space->install_write_handler(0x0310, 0x031f, write8_delegate(FUNC(oric_state::oric_microdisc_w),state));
-	space->install_write_handler(0x0320, 0x03ff, write8_delegate(FUNC(oric_state::oric_IO_w),state));
+	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
+	space.install_write_handler(0x0310, 0x031f, write8_delegate(FUNC(oric_state::oric_microdisc_w),state));
+	space.install_write_handler(0x0320, 0x03ff, write8_delegate(FUNC(oric_state::oric_IO_w),state));
 
 	/* disable os rom, enable microdisc rom */
 	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
@@ -1000,25 +987,25 @@ static void oric_install_microdisc_interface(running_machine &machine)
 
 /*********************************************************/
 
-static WRITE_LINE_DEVICE_HANDLER( oric_wd179x_intrq_w )
+WRITE_LINE_MEMBER(oric_state::oric_wd179x_intrq_w)
 {
-	if ((device->machine().root_device().ioport("FLOPPY")->read() & 0x07) == ORIC_FLOPPY_INTERFACE_MICRODISC)
-		oric_microdisc_wd179x_intrq_w(device, state);
+	if ((machine().root_device().ioport("FLOPPY")->read() & 0x07) == ORIC_FLOPPY_INTERFACE_MICRODISC)
+		oric_microdisc_wd179x_intrq_w(state);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( oric_wd179x_drq_w )
+WRITE_LINE_MEMBER(oric_state::oric_wd179x_drq_w)
 {
-	switch (device->machine().root_device().ioport("FLOPPY")->read() &  0x07)
+	switch (machine().root_device().ioport("FLOPPY")->read() &  0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
 		case ORIC_FLOPPY_INTERFACE_APPLE2:
 			return;
 		case ORIC_FLOPPY_INTERFACE_MICRODISC:
-			oric_microdisc_wd179x_drq_w(device, state);
+			oric_microdisc_wd179x_drq_w(state);
 			return;
 		case ORIC_FLOPPY_INTERFACE_JASMIN:
-			oric_jasmin_wd179x_drq_w(device, state);
+			oric_jasmin_wd179x_drq_w(state);
 			return;
 	}
 }
@@ -1026,8 +1013,8 @@ static WRITE_LINE_DEVICE_HANDLER( oric_wd179x_drq_w )
 const wd17xx_interface oric_wd17xx_interface =
 {
 	DEVCB_NULL,
-	DEVCB_LINE(oric_wd179x_intrq_w),
-	DEVCB_LINE(oric_wd179x_drq_w),
+	DEVCB_DRIVER_LINE_MEMBER(oric_state,oric_wd179x_intrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(oric_state,oric_wd179x_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
@@ -1049,7 +1036,7 @@ static void oric_common_init_machine(running_machine &machine)
 	state->m_port_314_r = 0;
 	state->m_port_318_r = 0;
 	state->m_port_314_w = 0;
-	machine.scheduler().timer_pulse(attotime::from_hz(4800), FUNC(oric_refresh_tape));
+	machine.scheduler().timer_pulse(attotime::from_hz(4800), timer_expired_delegate(FUNC(oric_state::oric_refresh_tape),state));
 }
 
 void oric_state::machine_start()
@@ -1065,7 +1052,7 @@ void oric_state::machine_start()
 void oric_state::machine_reset()
 {
 	int disc_interface_id = machine().root_device().ioport("FLOPPY")->read() & 0x07;
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	if (m_is_telestrat)
 		return;
 
@@ -1096,8 +1083,8 @@ void oric_state::machine_reset()
 			}
 			else
 			{
-				space->install_read_handler(0x0300, 0x03ff, read8_delegate(FUNC(oric_state::oric_IO_r),this));
-				space->install_write_handler(0x0300, 0x03ff, write8_delegate(FUNC(oric_state::oric_IO_w),this));
+				space.install_read_handler(0x0300, 0x03ff, read8_delegate(FUNC(oric_state::oric_IO_r),this));
+				space.install_write_handler(0x0300, 0x03ff, write8_delegate(FUNC(oric_state::oric_IO_w),this));
 			}
 		}
 		break;
@@ -1247,7 +1234,7 @@ CB2
 static void telestrat_refresh_mem(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	telestrat_mem_block *mem_block = &state->m_telestrat_blocks[state->m_telestrat_bank_selection];
 
@@ -1257,77 +1244,73 @@ static void telestrat_refresh_mem(running_machine &machine)
 		{
 			state->membank("bank1")->set_base(mem_block->ptr);
 			state->membank("bank2")->set_base(mem_block->ptr);
-			space->install_read_bank(0xc000, 0xffff, "bank1");
-			space->install_write_bank(0xc000, 0xffff, "bank2");
+			space.install_read_bank(0xc000, 0xffff, "bank1");
+			space.install_write_bank(0xc000, 0xffff, "bank2");
 		}
 		break;
 
 		case TELESTRAT_MEM_BLOCK_ROM:
 		{
 			state->membank("bank1")->set_base(mem_block->ptr);
-			space->install_read_bank(0xc000, 0xffff, "bank1");
-			space->nop_write(0xc000, 0xffff);
+			space.install_read_bank(0xc000, 0xffff, "bank1");
+			space.nop_write(0xc000, 0xffff);
 		}
 		break;
 
 		default:
 		case TELESTRAT_MEM_BLOCK_UNDEFINED:
 		{
-			space->nop_readwrite(0xc000, 0xffff);
+			space.nop_readwrite(0xc000, 0xffff);
 		}
 		break;
 	}
 }
 
-static READ8_DEVICE_HANDLER(telestrat_via2_in_a_func)
+READ8_MEMBER(oric_state::telestrat_via2_in_a_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	//logerror("via 2 - port a %02x\n",state->m_telestrat_via2_port_a_data);
-	return state->m_telestrat_via2_port_a_data;
+	//logerror("via 2 - port a %02x\n",m_telestrat_via2_port_a_data);
+	return m_telestrat_via2_port_a_data;
 }
 
 
-static WRITE8_DEVICE_HANDLER(telestrat_via2_out_a_func)
+WRITE8_MEMBER(oric_state::telestrat_via2_out_a_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
 	//logerror("via 2 - port a w: %02x\n",data);
 
-	state->m_telestrat_via2_port_a_data = data;
+	m_telestrat_via2_port_a_data = data;
 
-	if (((data^state->m_telestrat_bank_selection) & 0x07)!=0)
+	if (((data^m_telestrat_bank_selection) & 0x07)!=0)
 	{
-		state->m_telestrat_bank_selection = data & 0x07;
+		m_telestrat_bank_selection = data & 0x07;
 
-		telestrat_refresh_mem(device->machine());
+		telestrat_refresh_mem(machine());
 	}
 }
 
-static READ8_DEVICE_HANDLER(telestrat_via2_in_b_func)
+READ8_MEMBER(oric_state::telestrat_via2_in_b_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
 	unsigned char data = 0x01f;
 
 	/* left joystick selected? */
-	if (state->m_telestrat_via2_port_b_data & (1<<6))
+	if (m_telestrat_via2_port_b_data & (1<<6))
 	{
-		data &= state->ioport("JOY0")->read();
+		data &= ioport("JOY0")->read();
 	}
 
 	/* right joystick selected? */
-	if (state->m_telestrat_via2_port_b_data & (1<<7))
+	if (m_telestrat_via2_port_b_data & (1<<7))
 	{
-		data &= device->machine().root_device().ioport("JOY1")->read();
+		data &= machine().root_device().ioport("JOY1")->read();
 	}
 
-	data |= state->m_telestrat_via2_port_b_data & ((1<<7) | (1<<6) | (1<<5));
+	data |= m_telestrat_via2_port_b_data & ((1<<7) | (1<<6) | (1<<5));
 
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER(telestrat_via2_out_b_func)
+WRITE8_MEMBER(oric_state::telestrat_via2_out_b_func)
 {
-	oric_state *state = device->machine().driver_data<oric_state>();
-	state->m_telestrat_via2_port_b_data = data;
+	m_telestrat_via2_port_b_data = data;
 }
 
 
@@ -1348,14 +1331,14 @@ static void telestrat_via2_irq_func(device_t *device, int state)
 
 const via6522_interface telestrat_via2_interface=
 {
-	DEVCB_HANDLER(telestrat_via2_in_a_func),
-	DEVCB_HANDLER(telestrat_via2_in_b_func),
+	DEVCB_DRIVER_MEMBER(oric_state,telestrat_via2_in_a_func),
+	DEVCB_DRIVER_MEMBER(oric_state,telestrat_via2_in_b_func),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(telestrat_via2_out_a_func),
-	DEVCB_HANDLER(telestrat_via2_out_b_func),
+	DEVCB_DRIVER_MEMBER(oric_state,telestrat_via2_out_a_func),
+	DEVCB_DRIVER_MEMBER(oric_state,telestrat_via2_out_b_func),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,

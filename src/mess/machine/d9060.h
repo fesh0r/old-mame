@@ -29,7 +29,7 @@
 #include "machine/6522via.h"
 #include "machine/6532riot.h"
 #include "machine/ieee488.h"
-#include "machine/scsibus.h"
+#include "machine/scsicb.h"
 
 
 
@@ -90,7 +90,7 @@ private:
 	required_device<riot6532_device> m_riot0;
 	required_device<riot6532_device> m_riot1;
 	required_device<via6522_device> m_via;
-	required_device<scsibus_device> m_sasibus;
+	required_device<scsicb_device> m_sasibus;
 
 	// IEEE-488 bus
 	int m_rfdo;							// not ready for data output

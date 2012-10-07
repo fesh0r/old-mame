@@ -118,39 +118,36 @@ static void moo_objdma( running_machine &machine, int type )
 	if (num_inactive) do { *dst = 0; dst += 8; } while (--num_inactive);
 }
 
-static TIMER_CALLBACK( dmaend_callback )
+TIMER_CALLBACK_MEMBER(moo_state::dmaend_callback)
 {
-	moo_state *state = machine.driver_data<moo_state>();
-	if (state->m_cur_control2 & 0x800)
-		state->m_maincpu->set_input_line(4, HOLD_LINE);
+	if (m_cur_control2 & 0x800)
+		m_maincpu->set_input_line(4, HOLD_LINE);
 }
 
-static INTERRUPT_GEN( moo_interrupt )
+INTERRUPT_GEN_MEMBER(moo_state::moo_interrupt)
 {
-	moo_state *state = device->machine().driver_data<moo_state>();
-	if (k053246_is_irq_enabled(state->m_k053246))
+	if (k053246_is_irq_enabled(m_k053246))
 	{
-		moo_objdma(device->machine(), state->m_game_type);
+		moo_objdma(machine(), m_game_type);
 
 		// schedule DMA end interrupt (delay shortened to catch up with V-blank)
-        state->m_dmaend_timer->adjust(attotime::from_usec(MOO_DMADELAY));
+        m_dmaend_timer->adjust(attotime::from_usec(MOO_DMADELAY));
 	}
 
 	// trigger V-blank interrupt
-	if (state->m_cur_control2 & 0x20)
-		device->execute().set_input_line(5, HOLD_LINE);
+	if (m_cur_control2 & 0x20)
+		device.execute().set_input_line(5, HOLD_LINE);
 }
 
-static INTERRUPT_GEN( moobl_interrupt )
+INTERRUPT_GEN_MEMBER(moo_state::moobl_interrupt)
 {
-	moo_state *state = device->machine().driver_data<moo_state>();
-	moo_objdma(device->machine(), state->m_game_type);
+	moo_objdma(machine(), m_game_type);
 
 	// schedule DMA end interrupt (delay shortened to catch up with V-blank)
-    state->m_dmaend_timer->adjust(attotime::from_usec(MOO_DMADELAY));
+    m_dmaend_timer->adjust(attotime::from_usec(MOO_DMADELAY));
 
 	// trigger V-blank interrupt
-	device->execute().set_input_line(5, HOLD_LINE);
+	device.execute().set_input_line(5, HOLD_LINE);
 }
 
 WRITE16_MEMBER(moo_state::sound_cmd1_w)
@@ -441,7 +438,7 @@ MACHINE_START_MEMBER(moo_state,moo)
 	save_item(NAME(m_layerpri));
 	save_item(NAME(m_protram));
 
-    m_dmaend_timer = machine().scheduler().timer_alloc(FUNC(dmaend_callback));
+    m_dmaend_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(moo_state::dmaend_callback),this));
 }
 
 MACHINE_RESET_MEMBER(moo_state,moo)
@@ -515,7 +512,7 @@ static MACHINE_CONFIG_START( moo, moo_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(moo_map)
-	MCFG_CPU_VBLANK_INT("screen", moo_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", moo_state,  moo_interrupt)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 8000000)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -535,7 +532,7 @@ static MACHINE_CONFIG_START( moo, moo_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1200))	 // should give IRQ4 sufficient time to update scroll registers
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(40, 40+384-1, 16, 16+224-1)
-	MCFG_SCREEN_UPDATE_STATIC(moo)
+	MCFG_SCREEN_UPDATE_DRIVER(moo_state, screen_update_moo)
 
 	MCFG_PALETTE_LENGTH(2048)
 
@@ -563,7 +560,7 @@ static MACHINE_CONFIG_START( moobl, moo_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16100000)
 	MCFG_CPU_PROGRAM_MAP(moobl_map)
-	MCFG_CPU_VBLANK_INT("screen", moobl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", moo_state,  moobl_interrupt)
 
 	MCFG_MACHINE_START_OVERRIDE(moo_state,moo)
 	MCFG_MACHINE_RESET_OVERRIDE(moo_state,moo)
@@ -578,7 +575,7 @@ static MACHINE_CONFIG_START( moobl, moo_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1200)) // should give IRQ4 sufficient time to update scroll registers
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(40, 40+384-1, 16, 16+224-1)
-	MCFG_SCREEN_UPDATE_STATIC(moo)
+	MCFG_SCREEN_UPDATE_DRIVER(moo_state, screen_update_moo)
 
 	MCFG_PALETTE_LENGTH(2048)
 

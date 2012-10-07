@@ -666,20 +666,18 @@ void x07_state::cassette_w()
 	m_cass_data = m_regs_w[7];
 }
 
-static TIMER_CALLBACK( cassette_tick )
+TIMER_CALLBACK_MEMBER(x07_state::cassette_tick)
 {
-	x07_state *state = machine.driver_data<x07_state>();
-	state->m_cass_clk++;
+	m_cass_clk++;
 }
 
-static TIMER_CALLBACK( cassette_poll )
+TIMER_CALLBACK_MEMBER(x07_state::cassette_poll)
 {
-	x07_state *state = machine.driver_data<x07_state>();
 
-	if ((state->m_cassette->get_state() & 0x03) == CASSETTE_PLAY)
-		state->cassette_load();
-	else if ((state->m_cassette->get_state() & 0x03) == CASSETTE_RECORD)
-		state->cassette_save();
+	if ((m_cassette->get_state() & 0x03) == CASSETTE_PLAY)
+		cassette_load();
+	else if ((m_cassette->get_state() & 0x03) == CASSETTE_RECORD)
+		cassette_save();
 }
 
 void x07_state::cassette_load()
@@ -1042,7 +1040,7 @@ static DEVICE_IMAGE_LOAD( x07_card )
 {
 	running_machine &machine = image.device().machine();
 	x07_state *state = machine.driver_data<x07_state>();
-	address_space *space = state->m_maincpu->space( AS_PROGRAM );
+	address_space &space = state->m_maincpu->space( AS_PROGRAM );
 	UINT16 ram_size = state->m_ram->size();
 
 	if (image.software_entry() == NULL)
@@ -1050,8 +1048,8 @@ static DEVICE_IMAGE_LOAD( x07_card )
 		UINT8 *rom = machine.memory().region_alloc( "card", image.length(), 1, ENDIANNESS_LITTLE )->base();
 		image.fread(rom, image.length());
 
-		space->install_ram(ram_size, ram_size + 0xfff);
-		space->install_rom(0x6000, 0x7fff, rom);
+		space.install_ram(ram_size, ram_size + 0xfff);
+		space.install_rom(0x6000, 0x7fff, rom);
 	}
 	else
 	{
@@ -1061,8 +1059,8 @@ static DEVICE_IMAGE_LOAD( x07_card )
 		{
 			// 0x4000 - 0x4fff   4KB RAM
 			// 0x6000 - 0x7fff   8KB ROM
-			space->install_ram(ram_size, ram_size + 0xfff);
-			space->install_rom(0x6000, 0x7fff, image.get_software_region("rom"));
+			space.install_ram(ram_size, ram_size + 0xfff);
+			space.install_rom(0x6000, 0x7fff, image.get_software_region("rom"));
 		}
 		else
 		{
@@ -1360,33 +1358,28 @@ static NVRAM_HANDLER( x07 )
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( blink_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(x07_state::blink_timer)
 {
-	x07_state *state = timer.machine().driver_data<x07_state>();
-
-	state->m_blink = !state->m_blink;
+	m_blink = !m_blink;
 }
 
-static TIMER_CALLBACK( rsta_clear )
+TIMER_CALLBACK_MEMBER(x07_state::rsta_clear)
 {
-	x07_state *state = machine.driver_data<x07_state>();
-	state->m_maincpu->set_input_line(NSC800_RSTA, CLEAR_LINE);
+	m_maincpu->set_input_line(NSC800_RSTA, CLEAR_LINE);
 
-	if (state->m_kb_size)
-		state->kb_irq();
+	if (m_kb_size)
+		kb_irq();
 }
 
-static TIMER_CALLBACK( rstb_clear )
+TIMER_CALLBACK_MEMBER(x07_state::rstb_clear)
 {
-	x07_state *state = machine.driver_data<x07_state>();
-	state->m_maincpu->set_input_line(NSC800_RSTB, CLEAR_LINE);
+	m_maincpu->set_input_line(NSC800_RSTB, CLEAR_LINE);
 }
 
-static TIMER_CALLBACK( beep_stop )
+TIMER_CALLBACK_MEMBER(x07_state::beep_stop)
 {
-	x07_state *state = machine.driver_data<x07_state>();
 
-	beep_set_state(state->m_beep, 0);
+	beep_set_state(m_beep, 0);
 }
 
 static const gfx_layout x07_charlayout =
@@ -1406,11 +1399,11 @@ GFXDECODE_END
 
 void x07_state::machine_start()
 {
-	m_rsta_clear = machine().scheduler().timer_alloc(FUNC(rsta_clear));
-	m_rstb_clear = machine().scheduler().timer_alloc(FUNC(rstb_clear));
-	m_beep_stop = machine().scheduler().timer_alloc(FUNC(beep_stop));
-	m_cass_poll = machine().scheduler().timer_alloc(FUNC(cassette_poll));
-	m_cass_tick = machine().scheduler().timer_alloc(FUNC(cassette_tick));
+	m_rsta_clear = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(x07_state::rsta_clear),this));
+	m_rstb_clear = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(x07_state::rstb_clear),this));
+	m_beep_stop = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(x07_state::beep_stop),this));
+	m_cass_poll = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(x07_state::cassette_poll),this));
+	m_cass_tick = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(x07_state::cassette_tick),this));
 
 	/* Save State */
 	save_item(NAME(m_sleep));
@@ -1454,8 +1447,8 @@ void x07_state::machine_start()
 	save_item(NAME(m_cursor.on));
 
 	/* install RAM */
-	address_space *program = m_maincpu->space(AS_PROGRAM);
-	program->install_ram(0x0000, m_ram->size() - 1, m_ram->pointer());
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+	program.install_ram(0x0000, m_ram->size() - 1, m_ram->pointer());
 }
 
 void x07_state::machine_reset()
@@ -1529,7 +1522,7 @@ static MACHINE_CONFIG_START( x07, x07_state )
 	/* printer */
 	MCFG_PRINTER_ADD("printer")
 
-	MCFG_TIMER_ADD_PERIODIC("blink_timer", blink_timer, attotime::from_msec(300))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("blink_timer", x07_state, blink_timer, attotime::from_msec(300))
 
 	MCFG_NVRAM_HANDLER( x07 )
 

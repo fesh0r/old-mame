@@ -85,6 +85,10 @@ public:
 	/* peripheral state */
 	UINT8 m_pid;						/* peripheral identification */
 	virtual void palette_init();
+	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(system_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(counter_tick);
+	DECLARE_READ8_MEMBER(hd61830_rd_r);
 };
 
 #endif

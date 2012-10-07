@@ -18,16 +18,15 @@ DRIVER_INIT_MEMBER(irisha_state,irisha)
 
 
 
-static TIMER_CALLBACK( irisha_key )
+TIMER_CALLBACK_MEMBER(irisha_state::irisha_key)
 {
-	irisha_state *state = machine.driver_data<irisha_state>();
-	state->m_keypressed = 1;
-	state->m_keyboard_cnt = 0;
+	m_keypressed = 1;
+	m_keyboard_cnt = 0;
 }
 
 void irisha_state::machine_start()
 {
-	machine().scheduler().timer_pulse(attotime::from_msec(30), FUNC(irisha_key));
+	machine().scheduler().timer_pulse(attotime::from_msec(30), timer_expired_delegate(FUNC(irisha_state::irisha_key),this));
 }
 
 void irisha_state::machine_reset()
@@ -118,14 +117,14 @@ I8255A_INTERFACE( irisha_ppi8255_interface )
 	DEVCB_DRIVER_MEMBER(irisha_state, irisha_8255_portc_w),
 };
 
-static WRITE_LINE_DEVICE_HANDLER( irisha_pic_set_int_line )
+WRITE_LINE_MEMBER(irisha_state::irisha_pic_set_int_line)
 {
-	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 const struct pic8259_interface irisha_pic8259_config =
 {
-	DEVCB_LINE(irisha_pic_set_int_line),
+	DEVCB_DRIVER_LINE_MEMBER(irisha_state,irisha_pic_set_int_line),
 	DEVCB_LINE_VCC,
 	DEVCB_NULL
 };

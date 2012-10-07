@@ -125,7 +125,7 @@ static DEVICE_START( m72_audio )
 
 	state->samples = device->machine().root_device().memregion("samples")->base();
 	state->samples_size = device->machine().root_device().memregion("samples")->bytes();
-	state->space = device->machine().device("soundcpu")->memory().space(AS_IO);
+	state->space = &device->machine().device("soundcpu")->memory().space(AS_IO);
 	state->dac = device->machine().device<dac_device>("dac");
 
 	device->save_item(NAME(state->irqvector));
@@ -152,25 +152,25 @@ WRITE16_DEVICE_HANDLER( m72_sound_command_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		m72_audio_state *state = get_safe_token(device);
-		driver_device *drvstate = device->machine().driver_data<driver_device>();
+		driver_device *drvstate = space.machine().driver_data<driver_device>();
 		drvstate->soundlatch_byte_w(*state->space, offset, data);
-		device->machine().scheduler().synchronize(FUNC(setvector_callback), Z80_ASSERT, state);
+		space.machine().scheduler().synchronize(FUNC(setvector_callback), Z80_ASSERT, state);
 	}
 }
 
 WRITE8_DEVICE_HANDLER( m72_sound_command_byte_w )
 {
 	m72_audio_state *state = get_safe_token(device);
-	driver_device *drvstate = device->machine().driver_data<driver_device>();
+	driver_device *drvstate = space.machine().driver_data<driver_device>();
 	drvstate->soundlatch_byte_w(*state->space, offset, data);
-	device->machine().scheduler().synchronize(FUNC(setvector_callback), Z80_ASSERT, state);
+	space.machine().scheduler().synchronize(FUNC(setvector_callback), Z80_ASSERT, state);
 }
 
 WRITE8_DEVICE_HANDLER( m72_sound_irq_ack_w )
 {
 	m72_audio_state *state = get_safe_token(device);
 
-	device->machine().scheduler().synchronize(FUNC(setvector_callback), Z80_CLEAR, state);
+	space.machine().scheduler().synchronize(FUNC(setvector_callback), Z80_CLEAR, state);
 }
 
 
@@ -259,7 +259,7 @@ m72_audio_device::m72_audio_device(const machine_config &mconfig, const char *ta
 	: device_t(mconfig, M72, "M72 Custom", tag, owner, clock),
 	  device_sound_interface(mconfig, *this)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(m72_audio_state));
+	m_token = global_alloc_clear(m72_audio_state);
 }
 
 //-------------------------------------------------

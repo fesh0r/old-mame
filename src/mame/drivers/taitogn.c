@@ -388,6 +388,7 @@ public:
 	DECLARE_DRIVER_INIT(coh3002t_mp);
 	DECLARE_DRIVER_INIT(coh3002t);
 	DECLARE_MACHINE_RESET(coh3002t);
+	TIMER_CALLBACK_MEMBER(dip_timer_fired);
 };
 
 
@@ -424,7 +425,7 @@ static UINT8 rf5c296_reg_r(ATTR_UNUSED running_machine &machine, UINT8 reg)
 WRITE32_MEMBER(taitogn_state::rf5c296_io_w)
 {
 	if(offset < 2) {
-		ide_controller32_pcmcia_w(machine().device(":card"), offset, data, mem_mask);
+		ide_controller32_pcmcia_w(machine().device(":card"), space, offset, data, mem_mask);
 		return;
 	}
 
@@ -439,7 +440,7 @@ WRITE32_MEMBER(taitogn_state::rf5c296_io_w)
 READ32_MEMBER(taitogn_state::rf5c296_io_r)
 {
 	if(offset < 2)
-		return ide_controller32_pcmcia_r(machine().device(":card"), offset, mem_mask);
+		return ide_controller32_pcmcia_r(machine().device(":card"), space, offset, mem_mask);
 
 	offset *= 4;
 
@@ -572,19 +573,19 @@ WRITE32_MEMBER(taitogn_state::flash_s3_w)
 static void install_handlers(running_machine &machine, int mode)
 {
 	taitogn_state *state = machine.driver_data<taitogn_state>();
-	address_space *a = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &a = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	if(mode == 0) {
 		// Mode 0 has access to the subbios, the mn102 flash and the rf5c296 mem zone
-		a->install_readwrite_handler(0x1f000000, 0x1f1fffff, read32_delegate(FUNC(taitogn_state::flash_subbios_r),state), write32_delegate(FUNC(taitogn_state::flash_subbios_w),state));
-		a->install_readwrite_handler(0x1f200000, 0x1f2fffff, read32_delegate(FUNC(taitogn_state::rf5c296_mem_r),state), write32_delegate(FUNC(taitogn_state::rf5c296_mem_w),state));
-		a->install_readwrite_handler(0x1f300000, 0x1f37ffff, read32_delegate(FUNC(taitogn_state::flash_mn102_r),state), write32_delegate(FUNC(taitogn_state::flash_mn102_w),state));
-		a->nop_readwrite(0x1f380000, 0x1f5fffff);
+		a.install_readwrite_handler(0x1f000000, 0x1f1fffff, read32_delegate(FUNC(taitogn_state::flash_subbios_r),state), write32_delegate(FUNC(taitogn_state::flash_subbios_w),state));
+		a.install_readwrite_handler(0x1f200000, 0x1f2fffff, read32_delegate(FUNC(taitogn_state::rf5c296_mem_r),state), write32_delegate(FUNC(taitogn_state::rf5c296_mem_w),state));
+		a.install_readwrite_handler(0x1f300000, 0x1f37ffff, read32_delegate(FUNC(taitogn_state::flash_mn102_r),state), write32_delegate(FUNC(taitogn_state::flash_mn102_w),state));
+		a.nop_readwrite(0x1f380000, 0x1f5fffff);
 
 	} else {
 		// Mode 1 has access to the 3 samples flashes
-		a->install_readwrite_handler(0x1f000000, 0x1f1fffff, read32_delegate(FUNC(taitogn_state::flash_s1_r),state), write32_delegate(FUNC(taitogn_state::flash_s1_w),state));
-		a->install_readwrite_handler(0x1f200000, 0x1f3fffff, read32_delegate(FUNC(taitogn_state::flash_s2_r),state), write32_delegate(FUNC(taitogn_state::flash_s2_w),state));
-		a->install_readwrite_handler(0x1f400000, 0x1f5fffff, read32_delegate(FUNC(taitogn_state::flash_s3_r),state), write32_delegate(FUNC(taitogn_state::flash_s3_w),state));
+		a.install_readwrite_handler(0x1f000000, 0x1f1fffff, read32_delegate(FUNC(taitogn_state::flash_s1_r),state), write32_delegate(FUNC(taitogn_state::flash_s1_w),state));
+		a.install_readwrite_handler(0x1f200000, 0x1f3fffff, read32_delegate(FUNC(taitogn_state::flash_s2_r),state), write32_delegate(FUNC(taitogn_state::flash_s2_w),state));
+		a.install_readwrite_handler(0x1f400000, 0x1f5fffff, read32_delegate(FUNC(taitogn_state::flash_s3_r),state), write32_delegate(FUNC(taitogn_state::flash_s3_w),state));
 	}
 }
 
@@ -782,15 +783,14 @@ WRITE32_MEMBER(taitogn_state::znsecsel_w)
         }
 }
 
-static TIMER_CALLBACK( dip_timer_fired )
+TIMER_CALLBACK_MEMBER(taitogn_state::dip_timer_fired)
 {
-	taitogn_state *state = machine.driver_data<taitogn_state>();
 
-	psx_sio_input( machine, 0, PSX_SIO_IN_DSR, param * PSX_SIO_IN_DSR );
+	psx_sio_input( machine(), 0, PSX_SIO_IN_DSR, param * PSX_SIO_IN_DSR );
 
 	if( param )
 	{
-		state->m_dip_timer->adjust(machine.device<cpu_device>("maincpu")->cycles_to_attotime(50));
+		m_dip_timer->adjust(machine().device<cpu_device>("maincpu")->cycles_to_attotime(50));
 	}
 }
 
@@ -868,7 +868,7 @@ DRIVER_INIT_MEMBER(taitogn_state,coh3002t)
 	znsec_init(0, tt10);
 	znsec_init(1, tt16);
 	psx_sio_install_handler(machine(), 0, sio_pad_handler);
-	m_dip_timer = machine().scheduler().timer_alloc( FUNC(dip_timer_fired), NULL );
+	m_dip_timer = machine().scheduler().timer_alloc( timer_expired_delegate(FUNC(taitogn_state::dip_timer_fired),this), NULL );
 
 	UINT32 metalength;
 	memset(m_cis, 0xff, 512);
@@ -879,7 +879,7 @@ DRIVER_INIT_MEMBER(taitogn_state,coh3002t)
 DRIVER_INIT_MEMBER(taitogn_state,coh3002t_mp)
 {
 	DRIVER_INIT_CALL(coh3002t);
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x1fa10100, 0x1fa10103, read32_delegate(FUNC(taitogn_state::gnet_mahjong_panel_r),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x1fa10100, 0x1fa10103, read32_delegate(FUNC(taitogn_state::gnet_mahjong_panel_r),this));
 }
 
 MACHINE_RESET_MEMBER(taitogn_state,coh3002t)

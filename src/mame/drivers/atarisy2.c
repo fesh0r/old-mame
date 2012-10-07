@@ -242,8 +242,8 @@ MACHINE_RESET_MEMBER(atarisy2_state,atarisy2)
 	atarigen_sound_io_reset(machine().device("soundcpu"));
 	atarigen_scanline_timer_reset(*machine().primary_screen, scanline_update, 64);
 
-	address_space *main = machine().device<t11_device>("maincpu")->space(AS_PROGRAM);
-	main->set_direct_update_handler(direct_update_delegate(FUNC(atarisy2_state::atarisy2_direct_handler), this));
+	address_space &main = machine().device<t11_device>("maincpu")->space(AS_PROGRAM);
+	main.set_direct_update_handler(direct_update_delegate(FUNC(atarisy2_state::atarisy2_direct_handler), this));
 
 	m_p2portwr_state = 0;
 	m_p2portrd_state = 0;
@@ -259,13 +259,12 @@ MACHINE_RESET_MEMBER(atarisy2_state,atarisy2)
  *
  *************************************/
 
-static INTERRUPT_GEN( vblank_int )
+INTERRUPT_GEN_MEMBER(atarisy2_state::vblank_int)
 {
-	atarisy2_state *state = device->machine().driver_data<atarisy2_state>();
 
 	/* clock the VBLANK through */
-	if (state->m_interrupt_enable & 8)
-		atarigen_video_int_gen(device);
+	if (m_interrupt_enable & 8)
+		atarigen_video_int_gen(&device);
 }
 
 
@@ -285,17 +284,16 @@ WRITE16_MEMBER(atarisy2_state::int1_ack_w)
 }
 
 
-static TIMER_CALLBACK( delayed_int_enable_w )
+TIMER_CALLBACK_MEMBER(atarisy2_state::delayed_int_enable_w)
 {
-	atarisy2_state *state = machine.driver_data<atarisy2_state>();
-	state->m_interrupt_enable = param;
+	m_interrupt_enable = param;
 }
 
 
 WRITE16_MEMBER(atarisy2_state::int_enable_w)
 {
 	if (offset == 0 && ACCESSING_BITS_0_7)
-		machine().scheduler().synchronize(FUNC(delayed_int_enable_w), data);
+		machine().scheduler().synchronize(timer_expired_delegate(FUNC(atarisy2_state::delayed_int_enable_w),this), data);
 }
 
 
@@ -341,11 +339,11 @@ WRITE16_MEMBER(atarisy2_state::bankselect_w)
 
 static void bankselect_postload(running_machine &machine)
 {
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	atarisy2_state *state = machine.driver_data<atarisy2_state>();
 
-	state->bankselect_w(*space, 0, state->m_bankselect[0], 0xffff);
-	state->bankselect_w(*space, 1, state->m_bankselect[1], 0xffff);
+	state->bankselect_w(space, 0, state->m_bankselect[0], 0xffff);
+	state->bankselect_w(space, 1, state->m_bankselect[1], 0xffff);
 }
 
 
@@ -725,7 +723,7 @@ READ16_MEMBER(atarisy2_state::sound_r)
 	atarigen_update_interrupts(machine());
 
 	/* handle it normally otherwise */
-	return atarigen_sound_r(&space,offset,0xffff);
+	return atarigen_sound_r(space,offset,0xffff);
 }
 
 
@@ -737,7 +735,7 @@ WRITE8_MEMBER(atarisy2_state::sound_6502_w)
 	atarigen_update_interrupts(machine());
 
 	/* handle it normally otherwise */
-	atarigen_6502_sound_w(&space, offset, data);
+	atarigen_6502_sound_w(space, offset, data);
 }
 
 
@@ -749,7 +747,7 @@ READ8_MEMBER(atarisy2_state::sound_6502_r)
 	atarigen_update_interrupts(machine());
 
 	/* handle it normally otherwise */
-	return atarigen_6502_sound_r(&space, offset);
+	return atarigen_6502_sound_r(space, offset);
 }
 
 
@@ -764,7 +762,7 @@ WRITE8_MEMBER(atarisy2_state::tms5220_w)
 {
 	if (m_has_tms5220)
 	{
-		tms5220_data_w(machine().device("tms"), 0, data);
+		tms5220_data_w(machine().device("tms"), space, 0, data);
 	}
 }
 
@@ -1262,7 +1260,7 @@ static MACHINE_CONFIG_START( atarisy2, atarisy2_state )
 	MCFG_CPU_ADD("maincpu", T11, MASTER_CLOCK/2)
 	MCFG_CPU_CONFIG(t11_data)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", vblank_int)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", atarisy2_state,  vblank_int)
 
 	MCFG_CPU_ADD("soundcpu", M6502, SOUND_CLOCK/8)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1279,7 +1277,7 @@ static MACHINE_CONFIG_START( atarisy2, atarisy2_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(VIDEO_CLOCK/2, 640, 0, 512, 416, 0, 384)
-	MCFG_SCREEN_UPDATE_STATIC(atarisy2)
+	MCFG_SCREEN_UPDATE_DRIVER(atarisy2_state, screen_update_atarisy2)
 
 	MCFG_VIDEO_START_OVERRIDE(atarisy2_state,atarisy2)
 

@@ -67,14 +67,14 @@ void st_state::flush_dma_fifo()
 	if (m_fdc_fifo_empty[m_fdc_fifo_sel]) return;
 
 	if (m_fdc_dmabytes) {
-		address_space *program = m_maincpu->space(AS_PROGRAM);
+		address_space &program = m_maincpu->space(AS_PROGRAM);
 		for (int i = 0; i < 8; i++) {
 			UINT16 data = m_fdc_fifo[m_fdc_fifo_sel][i];
 
 			if (LOG) logerror("Flushing DMA FIFO %u data %04x to address %06x\n", m_fdc_fifo_sel, data, m_dma_base);
 
 			if(m_dma_base >= 8)
-				program->write_word(m_dma_base, data);
+				program.write_word(m_dma_base, data);
 			m_dma_base += 2;
 		}
 		m_fdc_dmabytes -= 16;
@@ -98,9 +98,9 @@ void st_state::flush_dma_fifo()
 void st_state::fill_dma_fifo()
 {
 	if (m_fdc_dmabytes) {
-		address_space *program = m_maincpu->space(AS_PROGRAM);
+		address_space &program = m_maincpu->space(AS_PROGRAM);
 		for (int i = 0; i < 8; i++) {
-			UINT16 data = program->read_word(m_dma_base);
+			UINT16 data = program.read_word(m_dma_base);
 
 			if (LOG) logerror("Filling DMA FIFO %u with data %04x from memory address %06x\n", m_fdc_fifo_sel, data, m_dma_base);
 
@@ -476,14 +476,13 @@ void st_state::mouse_tick()
 
 
 //-------------------------------------------------
-//  TIMER_CALLBACK( st_mouse_tick )
+//  TIMER_CALLBACK_MEMBER( st_mouse_tick )
 //-------------------------------------------------
 
-static TIMER_CALLBACK( st_mouse_tick )
+TIMER_CALLBACK_MEMBER(st_state::st_mouse_tick)
 {
-	st_state *state = machine.driver_data<st_state>();
 
-	state->mouse_tick();
+	mouse_tick();
 }
 
 
@@ -773,14 +772,13 @@ void ste_state::dmasound_tick()
 
 
 //-------------------------------------------------
-//  TIMER_CALLBACK( atariste_dmasound_tick )
+//  TIMER_CALLBACK_MEMBER( atariste_dmasound_tick )
 //-------------------------------------------------
 
-static TIMER_CALLBACK( atariste_dmasound_tick )
+TIMER_CALLBACK_MEMBER(ste_state::atariste_dmasound_tick)
 {
-	ste_state *state = machine.driver_data<ste_state>();
 
-	state->dmasound_tick();
+	dmasound_tick();
 }
 
 
@@ -1024,14 +1022,13 @@ void ste_state::microwire_tick()
 
 
 //-------------------------------------------------
-//  TIMER_CALLBACK( atariste_microwire_tick )
+//  TIMER_CALLBACK_MEMBER( atariste_microwire_tick )
 //-------------------------------------------------
 
-static TIMER_CALLBACK( atariste_microwire_tick )
+TIMER_CALLBACK_MEMBER(ste_state::atariste_microwire_tick)
 {
-	ste_state *state = machine.driver_data<ste_state>();
 
-	state->microwire_tick();
+	microwire_tick();
 }
 
 
@@ -2142,24 +2139,24 @@ static IRQ_CALLBACK( atarist_int_ack )
 
 void st_state::configure_memory()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	switch (m_ram->size())
 	{
 	case 256 * 1024:
-		program->unmap_readwrite(0x040000, 0x3fffff);
+		program.unmap_readwrite(0x040000, 0x3fffff);
 		break;
 
 	case 512 * 1024:
-		program->unmap_readwrite(0x080000, 0x3fffff);
+		program.unmap_readwrite(0x080000, 0x3fffff);
 		break;
 
 	case 1024 * 1024:
-		program->unmap_readwrite(0x100000, 0x3fffff);
+		program.unmap_readwrite(0x100000, 0x3fffff);
 		break;
 
 	case 2048 * 1024:
-		program->unmap_readwrite(0x200000, 0x3fffff);
+		program.unmap_readwrite(0x200000, 0x3fffff);
 		break;
 	}
 }
@@ -2208,7 +2205,7 @@ void st_state::machine_start()
 	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
 
 	// allocate timers
-	m_mouse_timer = machine().scheduler().timer_alloc(FUNC(st_mouse_tick));
+	m_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(st_state::st_mouse_tick),this));
 	m_mouse_timer->adjust(attotime::zero, 0, attotime::from_hz(500));
 
 	// register for state saving
@@ -2265,8 +2262,8 @@ void ste_state::machine_start()
 	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
 
 	/* allocate timers */
-	m_dmasound_timer = machine().scheduler().timer_alloc(FUNC(atariste_dmasound_tick));
-	m_microwire_timer = machine().scheduler().timer_alloc(FUNC(atariste_microwire_tick));
+	m_dmasound_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(ste_state::atariste_dmasound_tick),this));
+	m_microwire_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(ste_state::atariste_microwire_tick),this));
 
 	/* register for state saving */
 	state_save();
@@ -2292,12 +2289,12 @@ void megaste_state::machine_start()
 void stbook_state::machine_start()
 {
 	/* configure RAM banking */
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	switch (m_ram->size())
 	{
 	case 1024 * 1024:
-		program->unmap_readwrite(0x100000, 0x3fffff);
+		program.unmap_readwrite(0x100000, 0x3fffff);
 		break;
 	}
 

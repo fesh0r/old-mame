@@ -382,7 +382,6 @@ GFXDECODE_END
 
 void m52_state::machine_reset()
 {
-
 	m_bg1xpos = 0;
 	m_bg1ypos = 0;
 	m_bg2xpos = 0;
@@ -396,8 +395,7 @@ static MACHINE_CONFIG_START( m52, m52_state )
 	MCFG_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)
 	MCFG_CPU_PROGRAM_MAP(main_map)
 	MCFG_CPU_IO_MAP(main_portmap)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
-
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", m52_state,  irq0_line_hold)
 
 	/* video hardware */
 	MCFG_GFXDECODE(m52)
@@ -405,8 +403,7 @@ static MACHINE_CONFIG_START( m52, m52_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(MASTER_CLOCK/3, 384, 136, 376, 282, 22, 274)
-	MCFG_SCREEN_UPDATE_STATIC(m52)
-
+	MCFG_SCREEN_UPDATE_DRIVER(m52_state, screen_update_m52)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(m52_sound_c_audio)
@@ -547,4 +544,4 @@ ROM_END
 
 GAME( 1982, mpatrol,  0,        m52,      mpatrol, driver_device,  0, ROT0, "Irem", "Moon Patrol", GAME_SUPPORTS_SAVE )
 GAME( 1982, mpatrolw, mpatrol,  m52,      mpatrolw, driver_device, 0, ROT0, "Irem (Williams license)", "Moon Patrol (Williams)", GAME_SUPPORTS_SAVE )
-GAME( 1988, alpha1v,  0,        alpha1v,  alpha1v, driver_device,  0, ROT0, "Vision Electronics", "Alpha One (Vision Electronics / Kyle Hodgetts)", GAME_NOT_WORKING|GAME_NO_SOUND|GAME_SUPPORTS_SAVE )
+GAME( 1988, alpha1v,  0,        alpha1v,  alpha1v, driver_device,  0, ROT0, "Vision Electronics", "Alpha One (Vision Electronics)", GAME_NOT_WORKING| GAME_NO_SOUND| GAME_SUPPORTS_SAVE )

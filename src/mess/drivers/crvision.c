@@ -198,7 +198,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 /*-------------------------------------------------
-    INPUT_CHANGED( trigger_nmi )
+    INPUT_CHANGED_MEMBER( trigger_nmi )
 -------------------------------------------------*/
 
 INPUT_CHANGED_MEMBER( crvision_state::trigger_nmi )
@@ -853,7 +853,7 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 	running_machine &machine = image.device().machine();
 	crvision_state *state = machine.driver_data<crvision_state>();
 	UINT8 *mem = state->memregion(M6502_TAG)->base();
-	address_space *program = machine.device(M6502_TAG)->memory().space(AS_PROGRAM);
+	address_space &program = machine.device(M6502_TAG)->memory().space(AS_PROGRAM);
 
 	if (image.software_entry() == NULL)
 	{
@@ -873,7 +873,7 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 	case 0x1000: // 4K
 		memcpy(mem + 0x9000, temp_copy, 0x1000);			// load 4KB at 0x9000
 		memcpy(mem + 0xb000, mem + 0x9000, 0x1000);			// mirror 4KB at 0xb000
-		program->install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
+		program.install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
 		break;
 
 	case 0x1800: // 6K
@@ -883,13 +883,13 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x8800, mem + 0x8000, 0x0800);			// mirror higher 2KB at 0x8800
 		memcpy(mem + 0xa000, mem + 0x8000, 0x0800);			// mirror higher 2KB at 0xa000
 		memcpy(mem + 0xa800, mem + 0x8000, 0x0800);			// mirror higher 2KB at 0xa800
-		program->install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
+		program.install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
 		break;
 
 	case 0x2000: // 8K
 		memcpy(mem + 0x8000, temp_copy, 0x2000);			// load 8KB at 0x8000
 		memcpy(mem + 0xa000, mem + 0x8000, 0x2000);			// mirror 8KB at 0xa000
-		program->install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
+		program.install_read_bank(0x8000, 0xbfff, 0, 0x2000, BANK_ROM1);
 		break;
 
 	case 0x2800: // 10K
@@ -903,8 +903,8 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x6800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x6800
 		memcpy(mem + 0x7000, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7000
 		memcpy(mem + 0x7800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7800
-		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
-		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
+		program.install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program.install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	case 0x3000: // 12K
@@ -914,15 +914,15 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x5000, mem + 0x4000, 0x1000);			// mirror higher 4KB at 0x5000
 		memcpy(mem + 0x6000, mem + 0x4000, 0x1000);			// mirror higher 4KB at 0x6000
 		memcpy(mem + 0x7000, mem + 0x4000, 0x1000);			// mirror higher 4KB at 0x7000
-		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
-		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
+		program.install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program.install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	case 0x4000: // 16K
 		memcpy(mem + 0xa000, temp_copy, 0x2000);			// load lower 8KB at 0xa000
 		memcpy(mem + 0x8000, temp_copy + 0x2000, 0x2000);	// load higher 8KB at 0x8000
-		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
-		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
+		program.install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program.install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	case 0x4800: // 18K
@@ -936,8 +936,8 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		memcpy(mem + 0x6800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x6800
 		memcpy(mem + 0x7000, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7000
 		memcpy(mem + 0x7800, mem + 0x4000, 0x0800);			// mirror higher 2KB at 0x7800
-		program->install_read_bank(0x8000, 0xbfff, BANK_ROM1);
-		program->install_read_bank(0x4000, 0x7fff, BANK_ROM2);
+		program.install_read_bank(0x8000, 0xbfff, BANK_ROM1);
+		program.install_read_bank(0x4000, 0x7fff, BANK_ROM2);
 		break;
 
 	default:
@@ -976,7 +976,7 @@ static MACHINE_CONFIG_START( creativision, crvision_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489_TAG, SN76489A_NEW, XTAL_2MHz)
+	MCFG_SOUND_ADD(SN76489_TAG, SN76489A, XTAL_2MHz)
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
@@ -1043,7 +1043,7 @@ static MACHINE_CONFIG_START( lasr2001, laser2001_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489_TAG, SN76489A_NEW, XTAL_17_73447MHz/9)
+	MCFG_SOUND_ADD(SN76489_TAG, SN76489A, XTAL_17_73447MHz/9)
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 

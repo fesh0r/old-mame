@@ -115,6 +115,8 @@ public:
 	int m_bell;				/* bell output */
 
 	DECLARE_PALETTE_INIT(kc85);
+	DECLARE_WRITE_LINE_MEMBER(kc85_sod_w);
+	DECLARE_READ_LINE_MEMBER(kc85_sid_r);
 };
 
 class trsm100_state : public kc85_state
@@ -189,6 +191,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( i8155_to_w );
 
 	DECLARE_PALETTE_INIT(tandy200);
+
+	TIMER_DEVICE_CALLBACK_MEMBER(tandy200_tp_tick);
 
 	void bankswitch(UINT8 data);
 

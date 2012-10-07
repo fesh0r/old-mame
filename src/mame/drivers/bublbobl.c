@@ -764,11 +764,11 @@ static MACHINE_CONFIG_START( tokio, bublbobl_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, MAIN_XTAL/4)	// 6 MHz
 	MCFG_CPU_PROGRAM_MAP(tokio_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bublbobl_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("slave", Z80, MAIN_XTAL/4)	// 6 MHz
 	MCFG_CPU_PROGRAM_MAP(tokio_slave_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bublbobl_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, MAIN_XTAL/8)	// 3 MHz
 	MCFG_CPU_PROGRAM_MAP(tokio_sound_map) // NMIs are triggered by the main CPU, IRQs are triggered by the YM2203
@@ -781,7 +781,7 @@ static MACHINE_CONFIG_START( tokio, bublbobl_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(MAIN_XTAL/4, 384, 0, 256, 264, 16, 240)
-	MCFG_SCREEN_UPDATE_STATIC(bublbobl)
+	MCFG_SCREEN_UPDATE_DRIVER(bublbobl_state, screen_update_bublbobl)
 
 	MCFG_GFXDECODE(bublbobl)
 	MCFG_PALETTE_LENGTH(256)
@@ -845,14 +845,14 @@ static MACHINE_CONFIG_START( bublbobl, bublbobl_state )
 
 	MCFG_CPU_ADD("slave", Z80, MAIN_XTAL/4)	// 6 MHz
 	MCFG_CPU_PROGRAM_MAP(slave_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bublbobl_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, MAIN_XTAL/8)	// 3 MHz
 	MCFG_CPU_PROGRAM_MAP(sound_map) // IRQs are triggered by the YM2203
 
 	MCFG_CPU_ADD("mcu", M6801, 4000000)	// actually 6801U4  // xtal is 4MHz, divided by 4 internally
 	MCFG_CPU_PROGRAM_MAP(mcu_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_pulse) // comes from the same clock that latches the INT pin on the second Z80
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bublbobl_state,  irq0_line_pulse) // comes from the same clock that latches the INT pin on the second Z80
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(6000)) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
@@ -862,7 +862,7 @@ static MACHINE_CONFIG_START( bublbobl, bublbobl_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(MAIN_XTAL/4, 384, 0, 256, 264, 16, 240)
-	MCFG_SCREEN_UPDATE_STATIC(bublbobl)
+	MCFG_SCREEN_UPDATE_DRIVER(bublbobl_state, screen_update_bublbobl)
 
 	MCFG_GFXDECODE(bublbobl)
 	MCFG_PALETTE_LENGTH(256)
@@ -901,7 +901,7 @@ static MACHINE_CONFIG_DERIVED( boblbobl, bublbobl )
 
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(bootleg_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)	// interrupt mode 1, unlike Bubble Bobble
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bublbobl_state,  irq0_line_hold)	// interrupt mode 1, unlike Bubble Bobble
 
 	MCFG_MACHINE_START_OVERRIDE(bublbobl_state,boblbobl)
 	MCFG_MACHINE_RESET_OVERRIDE(bublbobl_state,boblbobl)
@@ -945,7 +945,7 @@ static MACHINE_CONFIG_DERIVED( bub68705, bublbobl )
 
 	MCFG_CPU_ADD("mcu", M68705, 4000000)	// xtal is 4MHz, divided by 4 internally
 	MCFG_CPU_PROGRAM_MAP(bootlegmcu_map)
-	MCFG_CPU_VBLANK_INT("screen",bublbobl_m68705_interrupt) // ??? should come from the same clock which latches the INT pin on the second Z80
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bublbobl_state, bublbobl_m68705_interrupt) // ??? should come from the same clock which latches the INT pin on the second Z80
 
 	MCFG_MACHINE_START_OVERRIDE(bublbobl_state,bub68705)
 	MCFG_MACHINE_RESET_OVERRIDE(bublbobl_state,bub68705)
@@ -1568,7 +1568,7 @@ DRIVER_INIT_MEMBER(bublbobl_state,tokiob)
 {
 	DRIVER_INIT_CALL(tokio);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0xfe00, 0xfe00, read8_delegate(FUNC(bublbobl_state::tokiob_mcu_r),this) );
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xfe00, 0xfe00, read8_delegate(FUNC(bublbobl_state::tokiob_mcu_r),this) );
 }
 
 DRIVER_INIT_MEMBER(bublbobl_state,dland)

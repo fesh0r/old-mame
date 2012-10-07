@@ -57,6 +57,7 @@ public:
 	required_device<cassette_image_device> m_cass1;
 	required_device<cassette_image_device> m_cass2;
 	virtual void machine_start();
+	TIMER_CALLBACK_MEMBER(aim65_printer_timer);
 };
 
 
@@ -67,8 +68,6 @@ void aim65_update_ds2(device_t *device, int digit, int data);
 void aim65_update_ds3(device_t *device, int digit, int data);
 void aim65_update_ds4(device_t *device, int digit, int data);
 void aim65_update_ds5(device_t *device, int digit, int data);
-
-
 
 
 #endif /* AIM65_H_ */

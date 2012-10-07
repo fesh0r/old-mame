@@ -16,7 +16,6 @@
 
 MACHINE_START_MEMBER(_8080bw_state,extra_8080bw_sh)
 {
-
 	m_speaker = machine().device("speaker");
 
 	save_item(NAME(m_port_1_last_extra));
@@ -280,9 +279,9 @@ WRITE8_MEMBER(_8080bw_state::indianbt_sh_port_2_w)
 	m_port_2_last_extra = data;
 }
 
-WRITE8_DEVICE_HANDLER( indianbt_sh_port_3_w )
+WRITE8_MEMBER(_8080bw_state::indianbt_sh_port_3_w)
 {
-	discrete_sound_w(device, INDIANBT_MUSIC_DATA, data);
+	discrete_sound_w(m_discrete, space, INDIANBT_MUSIC_DATA, data);
 }
 
 
@@ -598,50 +597,49 @@ DISCRETE_SOUND_START(polaris)
 
 DISCRETE_SOUND_END
 
-WRITE8_DEVICE_HANDLER( polaris_sh_port_1_w )
+WRITE8_MEMBER(_8080bw_state::polaris_sh_port_1_w)
 {
-	discrete_sound_w(device, POLARIS_MUSIC_DATA, data);
+	discrete_sound_w(m_discrete, space, POLARIS_MUSIC_DATA, data);
 }
 
-WRITE8_DEVICE_HANDLER( polaris_sh_port_2_w )
+WRITE8_MEMBER(_8080bw_state::polaris_sh_port_2_w)
 {
 	/* 0x01 - SX0 - Shot */
-	discrete_sound_w(device, POLARIS_SX0_EN, data & 0x01);
+	discrete_sound_w(m_discrete, space, POLARIS_SX0_EN, data & 0x01);
 
 	/* 0x02 - SX1 - Ship Hit (Sub) */
-	discrete_sound_w(device, POLARIS_SX1_EN, data & 0x02);
+	discrete_sound_w(m_discrete, space, POLARIS_SX1_EN, data & 0x02);
 
 	/* 0x04 - SX2 - Ship */
-	discrete_sound_w(device, POLARIS_SX2_EN, data & 0x04);
+	discrete_sound_w(m_discrete, space, POLARIS_SX2_EN, data & 0x04);
 
 	/* 0x08 - SX3 - Explosion */
-	discrete_sound_w(device, POLARIS_SX3_EN, data & 0x08);
+	discrete_sound_w(m_discrete, space, POLARIS_SX3_EN, data & 0x08);
 
 	/* 0x10 - SX4 */
 
 	/* 0x20 - SX5 - Sound Enable */
-	discrete_sound_w(device, POLARIS_SX5_EN, data & 0x20);
+	discrete_sound_w(m_discrete, space, POLARIS_SX5_EN, data & 0x20);
 }
 
-WRITE8_DEVICE_HANDLER( polaris_sh_port_3_w )
+WRITE8_MEMBER(_8080bw_state::polaris_sh_port_3_w)
 {
-	_8080bw_state *state = device->machine().driver_data<_8080bw_state>();
 
-	coin_lockout_global_w(device->machine(), data & 0x04);  /* SX8 */
+	coin_lockout_global_w(machine(), data & 0x04);  /* SX8 */
 
-	state->m_c8080bw_flip_screen = data & 0x20;		/* SX11 */
+	m_c8080bw_flip_screen = data & 0x20;		/* SX11 */
 
 	/* 0x01 - SX6 - Plane Down */
-	discrete_sound_w(device, POLARIS_SX6_EN, data & 0x01);
+	discrete_sound_w(m_discrete, space, POLARIS_SX6_EN, data & 0x01);
 
 	/* 0x02 - SX7 - Plane Up */
-	discrete_sound_w(device, POLARIS_SX7_EN, data & 0x02);
+	discrete_sound_w(m_discrete, space, POLARIS_SX7_EN, data & 0x02);
 
 	/* 0x08 - SX9 - Hit */
-	discrete_sound_w(device, POLARIS_SX9_EN, data & 0x08);
+	discrete_sound_w(m_discrete, space, POLARIS_SX9_EN, data & 0x08);
 
 	/* 0x10 - SX10 - Hit */
-	discrete_sound_w(device, POLARIS_SX10_EN, data & 0x10);
+	discrete_sound_w(m_discrete, space, POLARIS_SX10_EN, data & 0x10);
 }
 
 
@@ -789,8 +787,8 @@ WRITE8_MEMBER(_8080bw_state::schaser_sh_port_1_w)
        bit 5 - Explosion (SX5) */
 
     //printf( "schaser_sh_port_1_w: %02x\n", data );
-	discrete_sound_w(m_discrete, SCHASER_DOT_EN, data & 0x01);
-	discrete_sound_w(m_discrete, SCHASER_DOT_SEL, data & 0x02);
+	discrete_sound_w(m_discrete, space, SCHASER_DOT_EN, data & 0x01);
+	discrete_sound_w(m_discrete, space, SCHASER_DOT_SEL, data & 0x02);
 
 	/* The effect is a variable rate 555 timer.  A diode/resistor array is used to
      * select the frequency.  Because of the diode voltage drop, we can not use the
@@ -820,7 +818,7 @@ WRITE8_MEMBER(_8080bw_state::schaser_sh_port_1_w)
 			/* disable effect - stops at end of low cycle */
 			if (!m_schaser_effect_555_is_low)
 			{
-				m_schaser_effect_555_time_remain = m_schaser_effect_555_timer->remaining();
+				m_schaser_effect_555_time_remain = m_schaser_effect_555_timer->time_left();
             		m_schaser_effect_555_time_remain_savable = m_schaser_effect_555_time_remain.as_double();
 				m_schaser_effect_555_timer->adjust(attotime::never);
 			}
@@ -854,9 +852,9 @@ WRITE8_MEMBER(_8080bw_state::schaser_sh_port_2_w)
 
 	//printf( "schaser_sh_port_2_w: %02x\n", data );
 
-	discrete_sound_w(m_discrete, SCHASER_MUSIC_BIT, data & 0x01);
+	discrete_sound_w(m_discrete, space, SCHASER_MUSIC_BIT, data & 0x01);
 
-	discrete_sound_w(m_discrete, SCHASER_SND_EN, data & 0x02);
+	discrete_sound_w(m_discrete, space, SCHASER_SND_EN, data & 0x02);
 	machine().sound().system_enable(data & 0x02);
 
 	coin_lockout_global_w(machine(), data & 0x04);
@@ -870,17 +868,17 @@ WRITE8_MEMBER(_8080bw_state::schaser_sh_port_2_w)
 }
 
 
-static TIMER_CALLBACK( schaser_effect_555_cb )
+TIMER_DEVICE_CALLBACK_MEMBER(_8080bw_state::schaser_effect_555_cb)
 {
-	_8080bw_state *state = machine.driver_data<_8080bw_state>();
 	int effect = param;
 	attotime new_time;
-	/* Toggle 555 output */
-	state->m_schaser_effect_555_is_low = !state->m_schaser_effect_555_is_low;
-	state->m_schaser_effect_555_time_remain = attotime::zero;
-	state->m_schaser_effect_555_time_remain_savable = state->m_schaser_effect_555_time_remain.as_double();
 
-	if (state->m_schaser_effect_555_is_low)
+	/* Toggle 555 output */
+	m_schaser_effect_555_is_low = !m_schaser_effect_555_is_low;
+	m_schaser_effect_555_time_remain = attotime::zero;
+	m_schaser_effect_555_time_remain_savable = m_schaser_effect_555_time_remain.as_double();
+
+	if (m_schaser_effect_555_is_low)
 		new_time = PERIOD_OF_555_ASTABLE(0, RES_K(20), CAP_U(1)) / 2;
 	else
 	{
@@ -889,25 +887,22 @@ static TIMER_CALLBACK( schaser_effect_555_cb )
 		else
 			new_time = attotime::never;
 	}
-	state->m_schaser_effect_555_timer->adjust(new_time, effect);
-	sn76477_enable_w(state->m_sn, !(state->m_schaser_effect_555_is_low || state->m_schaser_explosion));
-	sn76477_one_shot_cap_voltage_w(state->m_sn, !(state->m_schaser_effect_555_is_low || state->m_schaser_explosion) ? 0 : SN76477_EXTERNAL_VOLTAGE_DISCONNECT);
+	m_schaser_effect_555_timer->adjust(new_time, effect);
+	sn76477_enable_w(m_sn, !(m_schaser_effect_555_is_low || m_schaser_explosion));
+	sn76477_one_shot_cap_voltage_w(m_sn, !(m_schaser_effect_555_is_low || m_schaser_explosion) ? 0 : SN76477_EXTERNAL_VOLTAGE_DISCONNECT);
 }
 
 
 static void schaser_reinit_555_time_remain(_8080bw_state *state)
 {
-	address_space *space = state->m_maincpu->space(AS_PROGRAM);
+	address_space &space = state->m_maincpu->space(AS_PROGRAM);
 	state->m_schaser_effect_555_time_remain = attotime::from_double(state->m_schaser_effect_555_time_remain_savable);
-	state->schaser_sh_port_2_w(*space, 0, state->m_port_2_last_extra);
+	state->schaser_sh_port_2_w(space, 0, state->m_port_2_last_extra);
 }
 
 
 MACHINE_START_MEMBER(_8080bw_state,schaser_sh)
 {
-
-	m_schaser_effect_555_timer = machine().scheduler().timer_alloc(FUNC(schaser_effect_555_cb));
-
 	save_item(NAME(m_schaser_explosion));
 	save_item(NAME(m_schaser_effect_555_is_low));
 	save_item(NAME(m_schaser_effect_555_time_remain_savable));
@@ -918,12 +913,12 @@ MACHINE_START_MEMBER(_8080bw_state,schaser_sh)
 
 MACHINE_RESET_MEMBER(_8080bw_state,schaser_sh)
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	m_schaser_effect_555_is_low = 0;
 	m_schaser_effect_555_timer->adjust(attotime::never);
-	schaser_sh_port_1_w(*space, 0, 0);
-	schaser_sh_port_2_w(*space, 0, 0);
+	schaser_sh_port_1_w(space, 0, 0);
+	schaser_sh_port_2_w(space, 0, 0);
 	m_schaser_effect_555_time_remain = attotime::zero;
 	m_schaser_effect_555_time_remain_savable = m_schaser_effect_555_time_remain.as_double();
 }
@@ -1042,7 +1037,6 @@ WRITE8_MEMBER(_8080bw_state::lupin3_sh_port_2_w)
 
 WRITE8_MEMBER(_8080bw_state::schasercv_sh_port_1_w)
 {
-
 	/* bit 2 = 2nd speedup
        bit 3 = 1st speedup
        Death is a stream of ff's with some fe's thrown in */
@@ -1057,7 +1051,6 @@ WRITE8_MEMBER(_8080bw_state::schasercv_sh_port_1_w)
 
 WRITE8_MEMBER(_8080bw_state::schasercv_sh_port_2_w)
 {
-
 	speaker_level_w(m_speaker, (data & 0x01) ? 1 : 0);		/* End-of-Level */
 
 	machine().sound().system_enable(data & 0x10);

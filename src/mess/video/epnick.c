@@ -968,7 +968,7 @@ READ8_HANDLER( nick_reg_r )
 
 WRITE8_HANDLER( epnick_reg_w )
 {
-	ep_state *state = space->machine().driver_data<ep_state>();
+	ep_state *state = space.machine().driver_data<ep_state>();
 	NICK_STATE *nick = state->nick;
 	//mame_printf_info("Nick write %02x %02x\r\n",offset, data);
 
@@ -1034,10 +1034,9 @@ void ep_state::video_start()
 }
 
 
-SCREEN_UPDATE_IND16( epnick )
+UINT32 ep_state::screen_update_epnick(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	ep_state *state = screen.machine().driver_data<ep_state>();
-	Nick_DoScreen(state->nick,state->m_bitmap);
-	copybitmap(bitmap, state->m_bitmap, 0, 0, 0, 0, cliprect);
+	Nick_DoScreen(nick,m_bitmap);
+	copybitmap(bitmap, m_bitmap, 0, 0, 0, 0, cliprect);
 	return 0;
 }

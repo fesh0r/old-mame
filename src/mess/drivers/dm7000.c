@@ -263,14 +263,14 @@ void dm7000_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16( dm7000 )
+UINT32 dm7000_state::screen_update_dm7000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	return 0;
 }
 
 static READ32_DEVICE_HANDLER( dcr_r )
 {
-	dm7000_state *state = device->machine().driver_data<dm7000_state>();
+	dm7000_state *state = space.machine().driver_data<dm7000_state>();
 	mame_printf_debug("DCR %03X read\n", offset);
 	if(offset>=1024) {printf("get %04X\n", offset); return 0;} else
 	switch(offset) {
@@ -285,7 +285,7 @@ static READ32_DEVICE_HANDLER( dcr_r )
 static WRITE32_DEVICE_HANDLER( dcr_w )
 {
 	mame_printf_debug("DCR %03X write = %08X\n", offset, data);
-	dm7000_state *state = device->machine().driver_data<dm7000_state>();
+	dm7000_state *state = space.machine().driver_data<dm7000_state>();
 	if(offset>=1024) {printf("get %04X\n", offset); } else
 	state->dcr[offset] = data;
 }
@@ -323,7 +323,7 @@ static MACHINE_CONFIG_START( dm7000, dm7000_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_STATIC(dm7000)
+	MCFG_SCREEN_UPDATE_DRIVER(dm7000_state, screen_update_dm7000)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

@@ -69,6 +69,10 @@ public:
 	DECLARE_MACHINE_START(swyft);
 	DECLARE_MACHINE_RESET(swyft);
 	DECLARE_VIDEO_START(swyft);
+	UINT32 screen_update_cat(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_swyft(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(keyboard_callback);
+	TIMER_CALLBACK_MEMBER(swyft_reset);
 };
 
 WRITE16_MEMBER( cat_state::cat_video_status_w )
@@ -295,9 +299,9 @@ static INPUT_PORTS_START( swyft )
 INPUT_PORTS_END
 
 
-static TIMER_CALLBACK(keyboard_callback)
+TIMER_CALLBACK_MEMBER(cat_state::keyboard_callback)
 {
-	machine.device("maincpu")->execute().set_input_line(M68K_IRQ_1, ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(M68K_IRQ_1, ASSERT_LINE);
 }
 
 static IRQ_CALLBACK(cat_int_ack)
@@ -310,7 +314,7 @@ MACHINE_START_MEMBER(cat_state,cat)
 {
 
 	m_duart_inp = 0x0e;
-	m_keyboard_timer = machine().scheduler().timer_alloc(FUNC(keyboard_callback));
+	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(cat_state::keyboard_callback),this));
 	machine().device<nvram_device>("nvram")->set_base(m_p_sram, 0x4000);
 }
 
@@ -324,21 +328,20 @@ VIDEO_START_MEMBER(cat_state,cat)
 {
 }
 
-static SCREEN_UPDATE_IND16( cat )
+UINT32 cat_state::screen_update_cat(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	cat_state *state = screen.machine().driver_data<cat_state>();
 	UINT16 code;
 	int y, x, b;
 
 	int addr = 0;
-	if (state->m_video_enable == 1)
+	if (m_video_enable == 1)
 	{
 		for (y = 0; y < 344; y++)
 		{
 			int horpos = 0;
 			for (x = 0; x < 42; x++)
 			{
-				code = state->m_p_videoram[addr++];
+				code = m_p_videoram[addr++];
 				for (b = 15; b >= 0; b--)
 				{
 					bitmap.pix16(y, horpos++) = (code >> b) & 0x01;
@@ -352,9 +355,9 @@ static SCREEN_UPDATE_IND16( cat )
 	return 0;
 }
 
-static TIMER_CALLBACK( swyft_reset )
+TIMER_CALLBACK_MEMBER(cat_state::swyft_reset)
 {
-	memset(machine.device("maincpu")->memory().space(AS_PROGRAM)->get_read_ptr(0xe2341), 0xff, 1);
+	memset(machine().device("maincpu")->memory().space(AS_PROGRAM).get_read_ptr(0xe2341), 0xff, 1);
 }
 
 MACHINE_START_MEMBER(cat_state,swyft)
@@ -363,16 +366,15 @@ MACHINE_START_MEMBER(cat_state,swyft)
 
 MACHINE_RESET_MEMBER(cat_state,swyft)
 {
-	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(swyft_reset));
+	machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(cat_state::swyft_reset),this));
 }
 
 VIDEO_START_MEMBER(cat_state,swyft)
 {
 }
 
-static SCREEN_UPDATE_IND16( swyft )
+UINT32 cat_state::screen_update_swyft(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	cat_state *state = screen.machine().driver_data<cat_state>();
 	UINT16 code;
 	int y, x, b;
 
@@ -382,7 +384,7 @@ static SCREEN_UPDATE_IND16( swyft )
 		int horpos = 0;
 		for (x = 0; x < 20; x++)
 		{
-			code = state->m_p_videoram[addr++];
+			code = m_p_videoram[addr++];
 			for (b = 15; b >= 0; b--)
 			{
 				bitmap.pix16(y, horpos++) = (code >> b) & 0x01;
@@ -440,7 +442,7 @@ static MACHINE_CONFIG_START( cat, cat_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(672, 344)
 	MCFG_SCREEN_VISIBLE_AREA(0, 672-1, 0, 344-1)
-	MCFG_SCREEN_UPDATE_STATIC(cat)
+	MCFG_SCREEN_UPDATE_DRIVER(cat_state, screen_update_cat)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)
@@ -467,7 +469,7 @@ static MACHINE_CONFIG_START( swyft, cat_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(320, 242)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 242-1)
-	MCFG_SCREEN_UPDATE_STATIC(swyft)
+	MCFG_SCREEN_UPDATE_DRIVER(cat_state, screen_update_swyft)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

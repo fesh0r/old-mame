@@ -85,6 +85,8 @@
 #include "sound/okim6376.h"
 #include "machine/nvram.h"
 
+#include "maygay1b.lh"
+
 #define VERBOSE 1
 #define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
@@ -841,7 +843,7 @@ WRITE8_MEMBER(maygay1b_state::m1_latch_w)
 WRITE8_MEMBER(maygay1b_state::latch_ch2_w)
 {
 	device_t *msm6376 = machine().device("msm6376");
-	okim6376_w(msm6376, 0, data&0x7f);
+	okim6376_w(msm6376, space, 0, data&0x7f);
 	okim6376_ch2_w(msm6376,data&0x80);
 }
 
@@ -930,7 +932,7 @@ static MACHINE_CONFIG_START( m1, maygay1b_state )
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
-	MCFG_DEFAULT_LAYOUT(layout_awpvid16)
+	MCFG_DEFAULT_LAYOUT(layout_maygay1b)
 MACHINE_CONFIG_END
 
 
@@ -3017,10 +3019,9 @@ ROM_END_M1A_MCU
 ROM_START( m1htclb )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "hitensionclubv1-2.rom", 0x0000, 0x010000, CRC(b33fa7a9) SHA1(9aa2b61bac96441a3aa9da254c54636d29a895e2) )
-	ROM_LOAD( "hitensio.bin", 0x0000, 0x010000, CRC(b8c8edc9) SHA1(1f989a3a72fb7c7747fc6deeb08e06da429620ee) )
 
 	ROM_REGION( 0x20000, "altrevs", ROMREGION_ERASE00  )
-	ROM_LOAD( "sc3-057.bin", 0x0000, 0x010000, CRC(b33fa7a9) SHA1(9aa2b61bac96441a3aa9da254c54636d29a895e2) )
+	ROM_LOAD( "hitensio.bin", 0x0000, 0x010000, CRC(b8c8edc9) SHA1(1f989a3a72fb7c7747fc6deeb08e06da429620ee) )
 ROM_END_M1A_MCU
 
 ROM_START( m1hotpot )
@@ -4431,7 +4432,7 @@ DRIVER_INIT_MEMBER(maygay1b_state,m1)
 	UINT8 *okirom = machine().root_device().memregion( "msm6376" )->base();
 
 	if (!okirom) {
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x2420, 0x2421, write8_delegate(FUNC(maygay1b_state::m1ab_no_oki_w), this));
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x2420, 0x2421, write8_delegate(FUNC(maygay1b_state::m1ab_no_oki_w), this));
 	}
 	// print out the rom id / header info to give us some hints
 	// note this isn't always correct, alley cat has 'Calpsyo' still in the ident string?

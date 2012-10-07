@@ -326,7 +326,7 @@ static MACHINE_CONFIG_START( twocrude, cbuster_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000) /* Custom chip 59 */
 	MCFG_CPU_PROGRAM_MAP(twocrude_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)/* VBL */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cbuster_state,  irq4_line_hold)/* VBL */
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/4) /* Custom chip 45, Audio section crystal is 32.220 MHz */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -338,7 +338,7 @@ static MACHINE_CONFIG_START( twocrude, cbuster_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(twocrude)
+	MCFG_SCREEN_UPDATE_DRIVER(cbuster_state, screen_update_twocrude)
 
 	MCFG_GFXDECODE(cbuster)
 	MCFG_PALETTE_LENGTH(2048)

@@ -499,7 +499,7 @@ WRITE8_MEMBER(opwolf_state::opwolf_adpcm_b_w)
 		msm5205_reset_w(device, 0);
 	}
 
-//  logerror("CPU #1     b00%i-data=%2x   pc=%4x\n",offset,data,space->device().safe_pc() );
+//  logerror("CPU #1     b00%i-data=%2x   pc=%4x\n",offset,data,space.device().safe_pc() );
 }
 
 
@@ -522,7 +522,7 @@ WRITE8_MEMBER(opwolf_state::opwolf_adpcm_c_w)
 		msm5205_reset_w(device, 0);
 	}
 
-//  logerror("CPU #1     c00%i-data=%2x   pc=%4x\n",offset,data,space->device().safe_pc() );
+//  logerror("CPU #1     c00%i-data=%2x   pc=%4x\n",offset,data,space.device().safe_pc() );
 }
 
 
@@ -735,7 +735,7 @@ static MACHINE_CONFIG_START( opwolf, opwolf_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, CPU_CLOCK )	/* 8 MHz */
 	MCFG_CPU_PROGRAM_MAP(opwolf_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", opwolf_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, SOUND_CPU_CLOCK )	/* 4 MHz */
 	MCFG_CPU_PROGRAM_MAP(opwolf_sound_z80_map)
@@ -750,7 +750,7 @@ static MACHINE_CONFIG_START( opwolf, opwolf_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(opwolf)
+	MCFG_SCREEN_UPDATE_DRIVER(opwolf_state, screen_update_opwolf)
 
 	MCFG_GFXDECODE(opwolf)
 	MCFG_PALETTE_LENGTH(8192)
@@ -785,14 +785,14 @@ static MACHINE_CONFIG_START( opwolfb, opwolf_state ) /* OSC clocks unknown for t
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, CPU_CLOCK )	/* 8 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(opwolfb_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", opwolf_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, SOUND_CPU_CLOCK )	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(opwolf_sound_z80_map)
 
 	MCFG_CPU_ADD("sub", Z80, SOUND_CPU_CLOCK )	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(opwolfb_sub_z80_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", opwolf_state,  irq0_line_hold)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
@@ -803,7 +803,7 @@ static MACHINE_CONFIG_START( opwolfb, opwolf_state ) /* OSC clocks unknown for t
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(opwolf)
+	MCFG_SCREEN_UPDATE_DRIVER(opwolf_state, screen_update_opwolf)
 
 	MCFG_GFXDECODE(opwolfb)
 	MCFG_PALETTE_LENGTH(8192)

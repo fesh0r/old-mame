@@ -172,16 +172,15 @@ void gmaster_state::palette_init()
 	}
 }
 
-static SCREEN_UPDATE_IND16( gmaster )
+UINT32 gmaster_state::screen_update_gmaster(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	gmaster_state *state = screen.machine().driver_data<gmaster_state>();
     int x,y;
 //  plot_box(bitmap, 0, 0, 64/*bitmap.width*/, bitmap.height, 0); //xmess rounds up to 64 pixel
-    for (y = 0; y < ARRAY_LENGTH(state->m_video.pixels); y++)
+    for (y = 0; y < ARRAY_LENGTH(m_video.pixels); y++)
 	{
-		for (x = 0; x < ARRAY_LENGTH(state->m_video.pixels[0]); x++)
+		for (x = 0; x < ARRAY_LENGTH(m_video.pixels[0]); x++)
 		{
-			UINT8 d = state->m_video.pixels[y][x];
+			UINT8 d = m_video.pixels[y][x];
 			UINT16 *line;
 
 			line = &bitmap.pix16((y * 8), x);
@@ -206,9 +205,9 @@ static SCREEN_UPDATE_IND16( gmaster )
 }
 
 
-static INTERRUPT_GEN( gmaster_interrupt )
+INTERRUPT_GEN_MEMBER(gmaster_state::gmaster_interrupt)
 {
-	device->machine().device("maincpu")->execute().set_input_line(UPD7810_INTFE1, ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(UPD7810_INTFE1, ASSERT_LINE);
 }
 
 static const UPD7810_CONFIG config = {
@@ -222,13 +221,13 @@ static MACHINE_CONFIG_START( gmaster, gmaster_state )
 	MCFG_CPU_PROGRAM_MAP(gmaster_mem)
 	MCFG_CPU_IO_MAP( gmaster_io)
 	MCFG_CPU_CONFIG( config )
-	MCFG_CPU_VBLANK_INT("screen", gmaster_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gmaster_state,  gmaster_interrupt)
 
 	MCFG_SCREEN_ADD("screen", LCD)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(64, 64)
 	MCFG_SCREEN_VISIBLE_AREA(0, 64-1-3, 0, 64-1)
-	MCFG_SCREEN_UPDATE_STATIC(gmaster)
+	MCFG_SCREEN_UPDATE_DRIVER(gmaster_state, screen_update_gmaster)
 
 	MCFG_PALETTE_LENGTH(sizeof(gmaster_palette)/sizeof(gmaster_palette[0]))
 	MCFG_DEFAULT_LAYOUT(layout_lcd)

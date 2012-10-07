@@ -42,6 +42,12 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_jr100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(sound_tick);
+	DECLARE_READ8_MEMBER(jr100_via_read_b);
+	DECLARE_WRITE8_MEMBER(jr100_via_write_a);
+	DECLARE_WRITE8_MEMBER(jr100_via_write_b);
+	DECLARE_WRITE_LINE_MEMBER(jr100_via_write_cb2);
 };
 
 
@@ -173,22 +179,21 @@ void jr100_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16( jr100 )
+UINT32 jr100_state::screen_update_jr100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	jr100_state *state = screen.machine().driver_data<jr100_state>();
 	int x,y,xi,yi;
 
-	UINT8 *rom_pcg = state->memregion("maincpu")->base() + 0xe000;
+	UINT8 *rom_pcg = memregion("maincpu")->base() + 0xe000;
 	for (y = 0; y < 24; y++)
 	{
 		for (x = 0; x < 32; x++)
 		{
-			UINT8 tile = state->m_vram[x + y*32];
+			UINT8 tile = m_vram[x + y*32];
 			UINT8 attr = tile >> 7;
 			// ATTR is inverted for normal char or use PCG in case of CMODE1
 			UINT8 *gfx_data = rom_pcg;
-			if (state->m_use_pcg && attr) {
-				gfx_data = state->m_pcg;
+			if (m_use_pcg && attr) {
+				gfx_data = m_pcg;
 				attr = 0; // clear attr so bellow code stay same
 			}
 			tile &= 0x7f;
@@ -227,47 +232,44 @@ static const char *const keynames[] = {
 };
 
 
-static READ8_DEVICE_HANDLER(jr100_via_read_b)
+READ8_MEMBER(jr100_state::jr100_via_read_b)
 {
-	jr100_state *state = device->machine().driver_data<jr100_state>();
 	UINT8 val = 0x1f;
-	if (keynames[state->m_keyboard_line]) {
-		val = state->ioport(keynames[state->m_keyboard_line])->read();
+	if (keynames[m_keyboard_line]) {
+		val = ioport(keynames[m_keyboard_line])->read();
 	}
 	return val;
 }
 
-static WRITE8_DEVICE_HANDLER(jr100_via_write_a )
+WRITE8_MEMBER(jr100_state::jr100_via_write_a)
 {
-	jr100_state *state = device->machine().driver_data<jr100_state>();
-	state->m_keyboard_line = data & 0x0f;
+	m_keyboard_line = data & 0x0f;
 }
 
-static WRITE8_DEVICE_HANDLER(jr100_via_write_b )
+WRITE8_MEMBER(jr100_state::jr100_via_write_b)
 {
-	jr100_state *state = device->machine().driver_data<jr100_state>();
-	state->m_use_pcg = (data & 0x20) ? TRUE : FALSE;
-	state->m_speaker = data>>7;
+	m_use_pcg = (data & 0x20) ? TRUE : FALSE;
+	m_speaker = data>>7;
 }
 
-static WRITE_LINE_DEVICE_HANDLER(jr100_via_write_cb2)
+WRITE_LINE_MEMBER(jr100_state::jr100_via_write_cb2)
 {
-	device->machine().device<cassette_image_device>(CASSETTE_TAG)->output(state ? -1.0 : +1.0);
+	machine().device<cassette_image_device>(CASSETTE_TAG)->output(state ? -1.0 : +1.0);
 }
 static const via6522_interface jr100_via_intf =
 {
 	DEVCB_NULL,											/* in_a_func */
-	DEVCB_HANDLER(jr100_via_read_b),					/* in_b_func */
+	DEVCB_DRIVER_MEMBER(jr100_state,jr100_via_read_b),					/* in_b_func */
 	DEVCB_NULL,     									/* in_ca1_func */
 	DEVCB_NULL,     									/* in_cb1_func */
 	DEVCB_NULL,     									/* in_ca2_func */
 	DEVCB_NULL,     									/* in_cb2_func */
-	DEVCB_HANDLER(jr100_via_write_a),					/* out_a_func */
-	DEVCB_HANDLER(jr100_via_write_b),   				/* out_b_func */
+	DEVCB_DRIVER_MEMBER(jr100_state,jr100_via_write_a),					/* out_a_func */
+	DEVCB_DRIVER_MEMBER(jr100_state,jr100_via_write_b), 				/* out_b_func */
 	DEVCB_NULL,     									/* out_ca1_func */
 	DEVCB_NULL,											/* out_cb1_func */
 	DEVCB_NULL,     									/* out_ca2_func */
-	DEVCB_LINE(jr100_via_write_cb2),    				/* out_cb2_func */
+	DEVCB_DRIVER_LINE_MEMBER(jr100_state, jr100_via_write_cb2), 				/* out_cb2_func */
 	DEVCB_NULL  										/* irq_func */
 };
 static const cassette_interface jr100_cassette_interface =
@@ -279,15 +281,14 @@ static const cassette_interface jr100_cassette_interface =
 	NULL
 };
 
-static TIMER_DEVICE_CALLBACK( sound_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(jr100_state::sound_tick)
 {
-	jr100_state *state = timer.machine().driver_data<jr100_state>();
-	device_t *speaker = timer.machine().device(SPEAKER_TAG);
-	speaker_level_w(speaker,state->m_speaker);
-	state->m_speaker = 0;
+	device_t *speaker = machine().device(SPEAKER_TAG);
+	speaker_level_w(speaker,m_speaker);
+	m_speaker = 0;
 
-	via6522_device *via = timer.machine().device<via6522_device>("via");
-	double level = (timer.machine().device<cassette_image_device>(CASSETTE_TAG)->input());
+	via6522_device *via = machine().device<via6522_device>("via");
+	double level = (machine().device<cassette_image_device>(CASSETTE_TAG)->input());
 	if (level > 0.0) {
 		via->write_ca1(0);
 		via->write_cb1(0);
@@ -365,7 +366,7 @@ static MACHINE_CONFIG_START( jr100, jr100_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256, 192) /* border size not accurate */
 	MCFG_SCREEN_VISIBLE_AREA(0, 256 - 1, 0, 192 - 1)
-    MCFG_SCREEN_UPDATE_STATIC(jr100)
+	MCFG_SCREEN_UPDATE_DRIVER(jr100_state, screen_update_jr100)
 
 	MCFG_GFXDECODE(jr100)
     MCFG_PALETTE_LENGTH(2)
@@ -385,7 +386,7 @@ static MACHINE_CONFIG_START( jr100, jr100_state )
 
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, jr100_cassette_interface )
 
-	MCFG_TIMER_ADD_PERIODIC("sound_tick", sound_tick, attotime::from_hz(XTAL_14_31818MHz / 16))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("sound_tick", jr100_state, sound_tick, attotime::from_hz(XTAL_14_31818MHz / 16))
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", jr100, "prg", 2)

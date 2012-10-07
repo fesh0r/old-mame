@@ -593,7 +593,7 @@ static MACHINE_CONFIG_START( burglarx, unico_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(burglarx_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", unico_state,  irq2_line_hold)
 
 	MCFG_MACHINE_RESET_OVERRIDE(unico_state,unico)
 
@@ -603,7 +603,7 @@ static MACHINE_CONFIG_START( burglarx, unico_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(0x180, 0xe0)
 	MCFG_SCREEN_VISIBLE_AREA(0, 0x180-1, 0, 0xe0-1)
-	MCFG_SCREEN_UPDATE_STATIC(unico)
+	MCFG_SCREEN_UPDATE_DRIVER(unico_state, screen_update_unico)
 
 	MCFG_GFXDECODE(unico)
 	MCFG_PALETTE_LENGTH(8192)
@@ -638,7 +638,7 @@ static MACHINE_CONFIG_START( zeropnt, unico_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(zeropnt_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", unico_state,  irq2_line_hold)
 
 	MCFG_MACHINE_RESET_OVERRIDE(unico_state,zeropt)
 
@@ -648,7 +648,7 @@ static MACHINE_CONFIG_START( zeropnt, unico_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(0x180, 0xe0)
 	MCFG_SCREEN_VISIBLE_AREA(0, 0x180-1, 0, 0xe0-1)
-	MCFG_SCREEN_UPDATE_STATIC(unico)
+	MCFG_SCREEN_UPDATE_DRIVER(unico_state, screen_update_unico)
 
 	MCFG_GFXDECODE(unico)
 	MCFG_PALETTE_LENGTH(8192)
@@ -678,7 +678,7 @@ static MACHINE_CONFIG_START( zeropnt2, unico_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68EC020, 16000000)
 	MCFG_CPU_PROGRAM_MAP(zeropnt2_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", unico_state,  irq2_line_hold)
 
 	MCFG_MACHINE_RESET_OVERRIDE(unico_state,zeropt)
 
@@ -690,7 +690,7 @@ static MACHINE_CONFIG_START( zeropnt2, unico_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(0x180, 0xe0)
 	MCFG_SCREEN_VISIBLE_AREA(0, 0x180-1, 0, 0xe0-1)
-	MCFG_SCREEN_UPDATE_STATIC(zeropnt2)
+	MCFG_SCREEN_UPDATE_DRIVER(unico_state, screen_update_zeropnt2)
 
 	MCFG_GFXDECODE(unico)
 	MCFG_PALETTE_LENGTH(8192)

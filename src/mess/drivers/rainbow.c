@@ -130,6 +130,10 @@ private:
 
     void update_kbd_irq();
 	virtual void machine_reset();
+public:
+	UINT32 screen_update_rainbow(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vblank_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_tick);
 };
 
 void rainbow_state::machine_start()
@@ -203,9 +207,9 @@ void rainbow_state::machine_reset()
     m_kbd8251->input_callback(SERIAL_STATE_CTS); // raise clear to send
 }
 
-static SCREEN_UPDATE_IND16( rainbow )
+UINT32 rainbow_state::screen_update_rainbow(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	device_t *devconf = screen.machine().device("vt100_video");
+	device_t *devconf = machine().device("vt100_video");
 	rainbow_video_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -314,9 +318,9 @@ READ8_MEMBER( rainbow_state::read_video_ram_r )
 	return m_p_ram[offset];
 }
 
-static INTERRUPT_GEN( vblank_irq )
+INTERRUPT_GEN_MEMBER(rainbow_state::vblank_irq)
 {
-    device->execute().set_input_line_and_vector(INPUT_LINE_INT0, ASSERT_LINE, 0x20);
+    device.execute().set_input_line_and_vector(INPUT_LINE_INT0, ASSERT_LINE, 0x20);
 }
 
 WRITE8_MEMBER( rainbow_state::clear_video_interrupt )
@@ -387,12 +391,11 @@ WRITE_LINE_MEMBER(rainbow_state::kbd_txready_w)
     update_kbd_irq();
 }
 
-static TIMER_DEVICE_CALLBACK( keyboard_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(rainbow_state::keyboard_tick)
 {
-	rainbow_state *state = timer.machine().driver_data<rainbow_state>();
 
-    state->m_kbd8251->transmit_clock();
-    state->m_kbd8251->receive_clock();
+    m_kbd8251->transmit_clock();
+    m_kbd8251->receive_clock();
 }
 
 static const vt_video_interface video_interface =
@@ -461,7 +464,7 @@ static MACHINE_CONFIG_START( rainbow, rainbow_state )
 	MCFG_CPU_ADD("maincpu",I8088, XTAL_24_0734MHz / 5)
 	MCFG_CPU_PROGRAM_MAP(rainbow8088_map)
 	MCFG_CPU_IO_MAP(rainbow8088_io)
-	MCFG_CPU_VBLANK_INT("screen", vblank_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rainbow_state,  vblank_irq)
 
 	MCFG_CPU_ADD("subcpu",Z80, XTAL_24_0734MHz / 6)
 	MCFG_CPU_PROGRAM_MAP(rainbowz80_mem)
@@ -474,7 +477,7 @@ static MACHINE_CONFIG_START( rainbow, rainbow_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(80*10, 25*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*10-1, 0, 25*10-1)
-	MCFG_SCREEN_UPDATE_STATIC(rainbow)
+	MCFG_SCREEN_UPDATE_DRIVER(rainbow_state, screen_update_rainbow)
 	MCFG_GFXDECODE(rainbow)
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(monochrome_green)
@@ -485,7 +488,7 @@ static MACHINE_CONFIG_START( rainbow, rainbow_state )
 	MCFG_SOFTWARE_LIST_ADD("flop_list","rainbow")
 
 	MCFG_I8251_ADD("kbdser", i8251_intf)
-	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, attotime::from_hz(4800))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", rainbow_state, keyboard_tick, attotime::from_hz(4800))
 
     MCFG_LK201_ADD()
 MACHINE_CONFIG_END

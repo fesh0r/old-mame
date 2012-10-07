@@ -36,13 +36,7 @@ public:
 	DECLARE_DRIVER_INIT(uballoon);
 	virtual void video_start();
 	DECLARE_MACHINE_RESET(uballoon);
+	UINT32 screen_update_suna16(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_bestbest(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(bssoccer_interrupt);
 };
-
-
-/*----------- defined in video/suna16.c -----------*/
-
-
-
-
-SCREEN_UPDATE_IND16( suna16 );
-SCREEN_UPDATE_IND16( bestbest );

@@ -112,10 +112,10 @@ WRITE8_DEVICE_HANDLER( ym2151_w )
 }
 
 
-READ8_DEVICE_HANDLER( ym2151_status_port_r ) { return ym2151_r(device, 1); }
+READ8_DEVICE_HANDLER( ym2151_status_port_r ) { return ym2151_r(device, space, 1); }
 
-WRITE8_DEVICE_HANDLER( ym2151_register_port_w ) { ym2151_w(device, 0, data); }
-WRITE8_DEVICE_HANDLER( ym2151_data_port_w ) { ym2151_w(device, 1, data); }
+WRITE8_DEVICE_HANDLER( ym2151_register_port_w ) { ym2151_w(device, space, 0, data); }
+WRITE8_DEVICE_HANDLER( ym2151_data_port_w ) { ym2151_w(device, space, 1, data); }
 
 
 const device_type YM2151 = &device_creator<ym2151_device>;
@@ -124,7 +124,7 @@ ym2151_device::ym2151_device(const machine_config &mconfig, const char *tag, dev
 	: device_t(mconfig, YM2151, "YM2151", tag, owner, clock),
 	  device_sound_interface(mconfig, *this)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(ym2151_state));
+	m_token = global_alloc_clear(ym2151_state);
 }
 
 //-------------------------------------------------

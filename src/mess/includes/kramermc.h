@@ -19,21 +19,20 @@ public:
 	DECLARE_DRIVER_INIT(kramermc);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_kramermc(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	DECLARE_READ8_MEMBER(kramermc_port_a_r);
+	DECLARE_READ8_MEMBER(kramermc_port_b_r);
+	DECLARE_WRITE8_MEMBER(kramermc_port_a_w);
 };
 
 
 /*----------- defined in machine/kramermc.c -----------*/
-
-
 
 extern const z80pio_interface kramermc_z80pio_intf;
 
 /*----------- defined in video/kramermc.c -----------*/
 
 extern const gfx_layout kramermc_charlayout;
-
-
-SCREEN_UPDATE_IND16( kramermc );
 
 
 #endif /* KRAMERMC_h_ */

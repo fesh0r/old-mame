@@ -31,87 +31,78 @@
 ******************************************************************************/
 
 
-static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_0_w )
+WRITE_LINE_MEMBER(sym1_state::sym1_74145_output_0_w)
 {
-	sym1_state *drvstate = device->machine().driver_data<sym1_state>();
-	if (state) drvstate->m_led_update->adjust(LED_REFRESH_DELAY);
+	if (state) m_led_update->adjust(LED_REFRESH_DELAY);
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_1_w )
+WRITE_LINE_MEMBER(sym1_state::sym1_74145_output_1_w)
 {
-	sym1_state *drvstate = device->machine().driver_data<sym1_state>();
-	if (state) drvstate->m_led_update->adjust(LED_REFRESH_DELAY, 1);
+	if (state) m_led_update->adjust(LED_REFRESH_DELAY, 1);
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_2_w )
+WRITE_LINE_MEMBER(sym1_state::sym1_74145_output_2_w)
 {
-	sym1_state *drvstate = device->machine().driver_data<sym1_state>();
-	if (state) drvstate->m_led_update->adjust(LED_REFRESH_DELAY, 2);
+	if (state) m_led_update->adjust(LED_REFRESH_DELAY, 2);
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_3_w )
+WRITE_LINE_MEMBER(sym1_state::sym1_74145_output_3_w)
 {
-	sym1_state *drvstate = device->machine().driver_data<sym1_state>();
-	if (state) drvstate->m_led_update->adjust(LED_REFRESH_DELAY, 3);
+	if (state) m_led_update->adjust(LED_REFRESH_DELAY, 3);
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_4_w )
+WRITE_LINE_MEMBER(sym1_state::sym1_74145_output_4_w)
 {
-	sym1_state *drvstate = device->machine().driver_data<sym1_state>();
-	if (state) drvstate->m_led_update->adjust(LED_REFRESH_DELAY, 4);
+	if (state) m_led_update->adjust(LED_REFRESH_DELAY, 4);
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_5_w )
+WRITE_LINE_MEMBER(sym1_state::sym1_74145_output_5_w)
 {
-	sym1_state *drvstate = device->machine().driver_data<sym1_state>();
-	if (state) drvstate->m_led_update->adjust(LED_REFRESH_DELAY, 5);
+	if (state) m_led_update->adjust(LED_REFRESH_DELAY, 5);
 }
 
 
-static TIMER_CALLBACK( led_refresh )
+TIMER_CALLBACK_MEMBER(sym1_state::led_refresh)
 {
-	sym1_state *state = machine.driver_data<sym1_state>();
-	output_set_digit_value(param, state->m_riot_port_a);
+	output_set_digit_value(param, m_riot_port_a);
 }
 
 
-static READ8_DEVICE_HANDLER(sym1_riot_a_r)
+READ8_MEMBER(sym1_state::sym1_riot_a_r)
 {
-	sym1_state *state = device->machine().driver_data<sym1_state>();
 	int data = 0x7f;
 
 	/* scan keypad rows */
-	if (!(state->m_riot_port_a & 0x80)) data &= device->machine().root_device().ioport("ROW-0")->read();
-	if (!(state->m_riot_port_b & 0x01)) data &= device->machine().root_device().ioport("ROW-1")->read();
-	if (!(state->m_riot_port_b & 0x02)) data &= device->machine().root_device().ioport("ROW-2")->read();
-	if (!(state->m_riot_port_b & 0x04)) data &= device->machine().root_device().ioport("ROW-3")->read();
+	if (!(m_riot_port_a & 0x80)) data &= machine().root_device().ioport("ROW-0")->read();
+	if (!(m_riot_port_b & 0x01)) data &= machine().root_device().ioport("ROW-1")->read();
+	if (!(m_riot_port_b & 0x02)) data &= machine().root_device().ioport("ROW-2")->read();
+	if (!(m_riot_port_b & 0x04)) data &= machine().root_device().ioport("ROW-3")->read();
 
 	/* determine column */
-	if ( ((state->m_riot_port_a ^ 0xff) & (state->ioport("ROW-0")->read() ^ 0xff)) & 0x7f )
+	if ( ((m_riot_port_a ^ 0xff) & (ioport("ROW-0")->read() ^ 0xff)) & 0x7f )
 		data &= ~0x80;
 
 	return data;
 }
 
 
-static READ8_DEVICE_HANDLER(sym1_riot_b_r)
+READ8_MEMBER(sym1_state::sym1_riot_b_r)
 {
-	sym1_state *state = device->machine().driver_data<sym1_state>();
 	int data = 0xff;
 
 	/* determine column */
-	if ( ((state->m_riot_port_a ^ 0xff) & (device->machine().root_device().ioport("ROW-1")->read() ^ 0xff)) & 0x7f )
+	if ( ((m_riot_port_a ^ 0xff) & (machine().root_device().ioport("ROW-1")->read() ^ 0xff)) & 0x7f )
 		data &= ~0x01;
 
-	if ( ((state->m_riot_port_a ^ 0xff) & (device->machine().root_device().ioport("ROW-2")->read() ^ 0xff)) & 0x3f )
+	if ( ((m_riot_port_a ^ 0xff) & (machine().root_device().ioport("ROW-2")->read() ^ 0xff)) & 0x3f )
 		data &= ~0x02;
 
-	if ( ((state->m_riot_port_a ^ 0xff) & (state->ioport("ROW-3")->read() ^ 0xff)) & 0x1f )
+	if ( ((m_riot_port_a ^ 0xff) & (ioport("ROW-3")->read() ^ 0xff)) & 0x1f )
 		data &= ~0x04;
 
 	data &= ~0x80; // else hangs 8b02
@@ -120,46 +111,44 @@ static READ8_DEVICE_HANDLER(sym1_riot_b_r)
 }
 
 
-static WRITE8_DEVICE_HANDLER(sym1_riot_a_w)
+WRITE8_MEMBER(sym1_state::sym1_riot_a_w)
 {
-	sym1_state *state = device->machine().driver_data<sym1_state>();
-	logerror("%x: riot_a_w 0x%02x\n", device->machine().device("maincpu") ->safe_pc( ), data);
+	logerror("%x: riot_a_w 0x%02x\n", machine().device("maincpu") ->safe_pc( ), data);
 
 	/* save for later use */
-	state->m_riot_port_a = data;
+	m_riot_port_a = data;
 }
 
 
-static WRITE8_DEVICE_HANDLER(sym1_riot_b_w)
+WRITE8_MEMBER(sym1_state::sym1_riot_b_w)
 {
-	sym1_state *state = device->machine().driver_data<sym1_state>();
-	logerror("%x: riot_b_w 0x%02x\n", device->machine().device("maincpu") ->safe_pc( ), data);
+	logerror("%x: riot_b_w 0x%02x\n", machine().device("maincpu") ->safe_pc( ), data);
 
 	/* save for later use */
-	state->m_riot_port_b = data;
+	m_riot_port_b = data;
 
 	/* first 4 pins are connected to the 74145 */
-	device->machine().device<ttl74145_device>("ttl74145")->write(data & 0x0f);
+	machine().device<ttl74145_device>("ttl74145")->write(data & 0x0f);
 }
 
 
 const riot6532_interface sym1_r6532_interface =
 {
-	DEVCB_HANDLER(sym1_riot_a_r),
-	DEVCB_HANDLER(sym1_riot_b_r),
-	DEVCB_HANDLER(sym1_riot_a_w),
-	DEVCB_HANDLER(sym1_riot_b_w)
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_riot_a_r),
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_riot_b_r),
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_riot_a_w),
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_riot_b_w)
 };
 
 
 const ttl74145_interface sym1_ttl74145_intf =
 {
-	DEVCB_LINE(sym1_74145_output_0_w),  /* connected to DS0 */
-	DEVCB_LINE(sym1_74145_output_1_w),  /* connected to DS1 */
-	DEVCB_LINE(sym1_74145_output_2_w),  /* connected to DS2 */
-	DEVCB_LINE(sym1_74145_output_3_w),  /* connected to DS3 */
-	DEVCB_LINE(sym1_74145_output_4_w),  /* connected to DS4 */
-	DEVCB_LINE(sym1_74145_output_5_w),  /* connected to DS5 */
+	DEVCB_DRIVER_LINE_MEMBER(sym1_state,sym1_74145_output_0_w),  /* connected to DS0 */
+	DEVCB_DRIVER_LINE_MEMBER(sym1_state,sym1_74145_output_1_w),  /* connected to DS1 */
+	DEVCB_DRIVER_LINE_MEMBER(sym1_state,sym1_74145_output_2_w),  /* connected to DS2 */
+	DEVCB_DRIVER_LINE_MEMBER(sym1_state,sym1_74145_output_3_w),  /* connected to DS3 */
+	DEVCB_DRIVER_LINE_MEMBER(sym1_state,sym1_74145_output_4_w),  /* connected to DS4 */
+	DEVCB_DRIVER_LINE_MEMBER(sym1_state,sym1_74145_output_5_w),  /* connected to DS5 */
 	DEVCB_DEVICE_LINE(SPEAKER_TAG, speaker_level_w),
 	DEVCB_NULL,	/* not connected */
 	DEVCB_NULL,	/* not connected */
@@ -178,15 +167,15 @@ static void sym1_irq(device_t *device, int level)
 }
 
 
-static READ8_DEVICE_HANDLER( sym1_via0_b_r )
+READ8_MEMBER(sym1_state::sym1_via0_b_r)
 {
 	return 0xff;
 }
 
 
-static WRITE8_DEVICE_HANDLER( sym1_via0_b_w )
+WRITE8_MEMBER(sym1_state::sym1_via0_b_w)
 {
-	logerror("%s: via0_b_w 0x%02x\n", device->machine().describe_context(), data);
+	logerror("%s: via0_b_w 0x%02x\n", machine().describe_context(), data);
 }
 
 
@@ -195,31 +184,31 @@ static WRITE8_DEVICE_HANDLER( sym1_via0_b_w )
  * PA2: Write protect RAM 0x800-0xbff
  * PA3: Write protect RAM 0xc00-0xfff
  */
-static WRITE8_DEVICE_HANDLER( sym1_via2_a_w )
+WRITE8_MEMBER(sym1_state::sym1_via2_a_w)
 {
-	address_space *cpu0space = device->machine().device( "maincpu")->memory().space( AS_PROGRAM );
+	address_space &cpu0space = machine().device( "maincpu")->memory().space( AS_PROGRAM );
 
 	logerror("SYM1 VIA2 W 0x%02x\n", data);
 
-	if ((device->machine().root_device().ioport("WP")->read() & 0x01) && !(data & 0x01)) {
-		cpu0space->nop_write(0xa600, 0xa67f);
+	if ((machine().root_device().ioport("WP")->read() & 0x01) && !(data & 0x01)) {
+		cpu0space.nop_write(0xa600, 0xa67f);
 	} else {
-		cpu0space->install_write_bank(0xa600, 0xa67f, "bank5");
+		cpu0space.install_write_bank(0xa600, 0xa67f, "bank5");
 	}
-	if ((device->machine().root_device().ioport("WP")->read() & 0x02) && !(data & 0x02)) {
-		cpu0space->nop_write(0x0400, 0x07ff);
+	if ((machine().root_device().ioport("WP")->read() & 0x02) && !(data & 0x02)) {
+		cpu0space.nop_write(0x0400, 0x07ff);
 	} else {
-		cpu0space->install_write_bank(0x0400, 0x07ff, "bank2");
+		cpu0space.install_write_bank(0x0400, 0x07ff, "bank2");
 	}
-	if ((device->machine().root_device().ioport("WP")->read() & 0x04) && !(data & 0x04)) {
-		cpu0space->nop_write(0x0800, 0x0bff);
+	if ((machine().root_device().ioport("WP")->read() & 0x04) && !(data & 0x04)) {
+		cpu0space.nop_write(0x0800, 0x0bff);
 	} else {
-		cpu0space->install_write_bank(0x0800, 0x0bff, "bank3");
+		cpu0space.install_write_bank(0x0800, 0x0bff, "bank3");
 	}
-	if ((device->machine().root_device().ioport("WP")->read() & 0x08) && !(data & 0x08)) {
-		cpu0space->nop_write(0x0c00, 0x0fff);
+	if ((machine().root_device().ioport("WP")->read() & 0x08) && !(data & 0x08)) {
+		cpu0space.nop_write(0x0c00, 0x0fff);
 	} else {
-		cpu0space->install_write_bank(0x0c00, 0x0fff, "bank4");
+		cpu0space.install_write_bank(0x0c00, 0x0fff, "bank4");
 	}
 }
 
@@ -227,13 +216,13 @@ static WRITE8_DEVICE_HANDLER( sym1_via2_a_w )
 const via6522_interface sym1_via0 =
 {
 	DEVCB_NULL,           /* VIA Port A Input */
-	DEVCB_HANDLER(sym1_via0_b_r),  /* VIA Port B Input */
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_via0_b_r),  /* VIA Port B Input */
 	DEVCB_NULL,           /* VIA Port CA1 Input */
 	DEVCB_NULL,           /* VIA Port CB1 Input */
 	DEVCB_NULL,           /* VIA Port CA2 Input */
 	DEVCB_NULL,           /* VIA Port CB2 Input */
 	DEVCB_NULL,           /* VIA Port A Output */
-	DEVCB_HANDLER(sym1_via0_b_w),  /* VIA Port B Output */
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_via0_b_w),  /* VIA Port B Output */
 	DEVCB_NULL,           /* VIA Port CA1 Output */
 	DEVCB_NULL,           /* VIA Port CB1 Output */
 	DEVCB_NULL,           /* VIA Port CA2 Output */
@@ -268,7 +257,7 @@ const via6522_interface sym1_via2 =
 	DEVCB_NULL,           /* VIA Port CB1 Input */
 	DEVCB_NULL,           /* VIA Port CA2 Input */
 	DEVCB_NULL,           /* VIA Port CB2 Input */
-	DEVCB_HANDLER(sym1_via2_a_w),  /* VIA Port A Output */
+	DEVCB_DRIVER_MEMBER(sym1_state,sym1_via2_a_w),  /* VIA Port A Output */
 	DEVCB_NULL,           /* VIA Port B Output */
 	DEVCB_NULL,           /* VIA Port CA1 Output */
 	DEVCB_NULL,           /* VIA Port CB1 Output */
@@ -289,12 +278,12 @@ DRIVER_INIT_MEMBER(sym1_state,sym1)
 	/* wipe expansion memory banks that are not installed */
 	if (machine().device<ram_device>(RAM_TAG)->size() < 4*1024)
 	{
-		machine().device( "maincpu")->memory().space( AS_PROGRAM )->nop_readwrite(
+		machine().device( "maincpu")->memory().space( AS_PROGRAM ).nop_readwrite(
 			machine().device<ram_device>(RAM_TAG)->size(), 0x0fff);
 	}
 
 	/* allocate a timer to refresh the led display */
-	m_led_update = machine().scheduler().timer_alloc(FUNC(led_refresh));
+	m_led_update = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(sym1_state::led_refresh),this));
 }
 
 
@@ -302,8 +291,8 @@ void sym1_state::machine_reset()
 {
 	/* make 0xf800 to 0xffff point to the last half of the monitor ROM
        so that the CPU can find its reset vectors */
-	machine().device( "maincpu")->memory().space( AS_PROGRAM )->install_read_bank(0xf800, 0xffff, "bank1");
-	machine().device( "maincpu")->memory().space( AS_PROGRAM )->nop_write(0xf800, 0xffff);
+	machine().device( "maincpu")->memory().space( AS_PROGRAM ).install_read_bank(0xf800, 0xffff, "bank1");
+	machine().device( "maincpu")->memory().space( AS_PROGRAM ).nop_write(0xf800, 0xffff);
 	membank("bank1")->set_base(m_monitor + 0x800);
 	machine().device("maincpu")->reset();
 }

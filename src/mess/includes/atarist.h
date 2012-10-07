@@ -274,6 +274,10 @@ public:
 	floppy_image_device *floppy_devices[2];
 
 	static const floppy_format_type floppy_formats[];
+	TIMER_CALLBACK_MEMBER(st_mouse_tick);
+	TIMER_CALLBACK_MEMBER(atarist_shifter_tick);
+	TIMER_CALLBACK_MEMBER(atarist_glue_tick);
+	TIMER_CALLBACK_MEMBER(atarist_blitter_tick);
 };
 
 class megast_state : public st_state
@@ -301,15 +305,15 @@ public:
 
 	void video_start();
 
-	READ8_MEMBER( shifter_base_low_r );
-	WRITE8_MEMBER( shifter_base_low_w );
-	READ8_MEMBER( shifter_counter_r );
-	WRITE8_MEMBER( shifter_counter_w );
-	WRITE16_MEMBER( shifter_palette_w );
-	READ8_MEMBER( shifter_lineofs_r );
-	WRITE8_MEMBER( shifter_lineofs_w );
-	READ8_MEMBER( shifter_pixelofs_r );
-	WRITE8_MEMBER( shifter_pixelofs_w );
+	DECLARE_READ8_MEMBER( shifter_base_low_r );
+	DECLARE_WRITE8_MEMBER( shifter_base_low_w );
+	DECLARE_READ8_MEMBER( shifter_counter_r );
+	DECLARE_WRITE8_MEMBER( shifter_counter_w );
+	DECLARE_WRITE16_MEMBER( shifter_palette_w );
+	DECLARE_READ8_MEMBER( shifter_lineofs_r );
+	DECLARE_WRITE8_MEMBER( shifter_lineofs_w );
+	DECLARE_READ8_MEMBER( shifter_pixelofs_r );
+	DECLARE_WRITE8_MEMBER( shifter_pixelofs_w );
 
 	DECLARE_READ8_MEMBER( sound_dma_control_r );
 	DECLARE_READ8_MEMBER( sound_dma_base_r );
@@ -326,6 +330,9 @@ public:
 	DECLARE_WRITE16_MEMBER( microwire_mask_w );
 
 	DECLARE_READ8_MEMBER( mfp_gpio_r );
+
+	TIMER_CALLBACK_MEMBER(atariste_dmasound_tick);
+	TIMER_CALLBACK_MEMBER(atariste_microwire_tick);
 
 	void dmasound_set_state(int level);
 	void dmasound_tick();

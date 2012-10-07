@@ -603,7 +603,7 @@ static const mc6845_interface crtc_pet40 = {
 	NULL,
 	pet40_update_row,
 	NULL,
-	DEVCB_LINE(pet_display_enable_changed),
+	DEVCB_DRIVER_LINE_MEMBER(pet_state, pet_display_enable_changed),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -616,7 +616,7 @@ static const mc6845_interface crtc_pet80 = {
 	NULL,
 	pet80_update_row,
 	NULL,
-	DEVCB_LINE(pet_display_enable_changed),
+	DEVCB_DRIVER_LINE_MEMBER(pet_state, pet_display_enable_changed),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -659,7 +659,7 @@ static MACHINE_CONFIG_START( pet_general, pet_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, XTAL_8MHz/8)
 	MCFG_CPU_PROGRAM_MAP(pet_mem)
-	MCFG_CPU_VBLANK_INT("screen", pet_frame_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pet_state,  pet_frame_interrupt)
 
 
     /* video hardware */
@@ -668,7 +668,7 @@ static MACHINE_CONFIG_START( pet_general, pet_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(320, 200)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320 - 1, 0, 200 - 1)
-	MCFG_SCREEN_UPDATE_STATIC( pet )
+	MCFG_SCREEN_UPDATE_DRIVER(pet_state, screen_update_pet)
 
 	MCFG_GFXDECODE( pet )
 	MCFG_PALETTE_LENGTH(ARRAY_LENGTH(pet_palette) / 3)
@@ -783,7 +783,7 @@ static MACHINE_CONFIG_DERIVED( superpet, pet80 )
 	/* m6809 cpu */
 	MCFG_CPU_ADD("m6809", M6809, 1000000)
 	MCFG_CPU_PROGRAM_MAP(superpet_m6809_mem)
-	MCFG_CPU_VBLANK_INT("screen", pet_frame_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pet_state,  pet_frame_interrupt)
 
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_REFRESH_RATE(50)

@@ -117,7 +117,7 @@ WRITE8_DEVICE_HANDLER( e05a03_w )
 {
 	e05a03_state *e05a03 = get_safe_token(device);
 
-	logerror("%s: e05a03_w(%02x): %02x\n", device->machine().describe_context(), offset, data);
+	logerror("%s: e05a03_w(%02x): %02x\n", space.machine().describe_context(), offset, data);
 
 	switch (offset)
 	{
@@ -157,7 +157,7 @@ READ8_DEVICE_HANDLER( e05a03_r )
 	e05a03_state *e05a03 = get_safe_token(device);
 	UINT8 result = 0;
 
-	logerror("%s: e05a03_r(%02x)\n", device->machine().describe_context(), offset);
+	logerror("%s: e05a03_r(%02x)\n", space.machine().describe_context(), offset);
 
 	switch (offset)
 	{
@@ -220,7 +220,7 @@ const device_type E05A03 = &device_creator<e05a03_device>;
 e05a03_device::e05a03_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, E05A03, "E05A03", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(e05a03_state));
+	m_token = global_alloc_clear(e05a03_state);
 }
 
 //-------------------------------------------------

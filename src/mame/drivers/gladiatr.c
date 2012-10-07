@@ -202,14 +202,14 @@ WRITE8_MEMBER(gladiatr_state::gladiatr_bankswitch_w)
 
 static READ8_HANDLER( gladiator_dsw1_r )
 {
-	int orig = space->machine().root_device().ioport("DSW1")->read()^0xff;
+	int orig = space.machine().root_device().ioport("DSW1")->read()^0xff;
 
 	return BITSWAP8(orig, 0,1,2,3,4,5,6,7);
 }
 
 static READ8_HANDLER( gladiator_dsw2_r )
 {
-	int orig = space->machine().root_device().ioport("DSW2")->read()^0xff;
+	int orig = space.machine().root_device().ioport("DSW2")->read()^0xff;
 
 	return BITSWAP8(orig, 2,3,4,5,6,7,1,0);
 }
@@ -218,15 +218,15 @@ static READ8_HANDLER( gladiator_controls_r )
 {
 	int coins = 0;
 
-	if( space->machine().root_device().ioport("COINS")->read() & 0xc0 ) coins = 0x80;
+	if( space.machine().root_device().ioport("COINS")->read() & 0xc0 ) coins = 0x80;
 	switch(offset)
 	{
 	case 0x01: /* start button , coins */
-		return space->machine().root_device().ioport("IN0")->read() | coins;
+		return space.machine().root_device().ioport("IN0")->read() | coins;
 	case 0x02: /* Player 1 Controller , coins */
-		return space->machine().root_device().ioport("IN1")->read() | coins;
+		return space.machine().root_device().ioport("IN1")->read() | coins;
 	case 0x04: /* Player 2 Controller , coins */
-		return space->machine().root_device().ioport("IN2")->read() | coins;
+		return space.machine().root_device().ioport("IN2")->read() | coins;
 	}
 	/* unknown */
 	return 0;
@@ -237,7 +237,7 @@ static READ8_HANDLER( gladiator_button3_r )
 	switch(offset)
 	{
 	case 0x01: /* button 3 */
-		return space->machine().root_device().ioport("IN3")->read();
+		return space.machine().root_device().ioport("IN3")->read();
 	}
 	/* unknown */
 	return 0;
@@ -666,12 +666,12 @@ static MACHINE_CONFIG_START( ppking, gladiatr_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(ppking_cpu1_map)
 	MCFG_CPU_IO_MAP(ppking_cpu1_io)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gladiatr_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80, XTAL_12MHz/4) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cpu2_map)
 	MCFG_CPU_IO_MAP(ppking_cpu2_io)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gladiatr_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", M6809, XTAL_12MHz/16) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(ppking_cpu3_map)
@@ -687,7 +687,7 @@ static MACHINE_CONFIG_START( ppking, gladiatr_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(ppking)
+	MCFG_SCREEN_UPDATE_DRIVER(gladiatr_state, screen_update_ppking)
 
 	MCFG_GFXDECODE(ppking)
 	MCFG_PALETTE_LENGTH(1024)
@@ -715,7 +715,7 @@ static MACHINE_CONFIG_START( gladiatr, gladiatr_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(gladiatr_cpu1_map)
 	MCFG_CPU_IO_MAP(gladiatr_cpu1_io)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gladiatr_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80, XTAL_12MHz/4) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cpu2_map)
@@ -735,7 +735,7 @@ static MACHINE_CONFIG_START( gladiatr, gladiatr_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(gladiatr)
+	MCFG_SCREEN_UPDATE_DRIVER(gladiatr_state, screen_update_gladiatr)
 
 	MCFG_GFXDECODE(gladiatr)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1022,7 +1022,7 @@ DRIVER_INIT_MEMBER(gladiatr_state,ppking)
 			rom[i+2*j*0x2000] = rom[i+j*0x2000];
 		}
 	}
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0xf6a3,0xf6a3,read8_delegate(FUNC(gladiatr_state::f6a3_r),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xf6a3,0xf6a3,read8_delegate(FUNC(gladiatr_state::f6a3_r),this));
 }
 
 

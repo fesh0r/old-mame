@@ -136,25 +136,27 @@ public:
 	DECLARE_MACHINE_RESET(hec2hrx);
 	DECLARE_MACHINE_START(hec2mdhrx);
 	DECLARE_MACHINE_RESET(hec2mdhrx);
+	UINT32 screen_update_hec2hrp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(Callback_CK);
 };
 
 /*----------- defined in machine/hec2hrp.c -----------*/
 
 /* Protoype of memory Handler*/
-WRITE8_HANDLER( hector_switch_bank_rom_w );
+DECLARE_WRITE8_HANDLER( hector_switch_bank_rom_w );
 
 void hector_init( running_machine &machine);
 void hector_reset(running_machine &machine, int hr, int with_D2);
 void hector_disc2_reset( running_machine &machine);
 
 /* Prototype of I/O Handler*/
-READ8_HANDLER( hector_mx_io_port_r );
+DECLARE_READ8_HANDLER( hector_mx_io_port_r );
 /*----------- defined in video/hec2video.c -----------*/
 
 void hector_80c(running_machine &machine, bitmap_ind16 &bitmap, UINT8 *page, int ymax, int yram) ;
 void hector_hr(running_machine &machine, bitmap_ind16 &bitmap, UINT8 *page, int ymax, int yram) ;
 
-SCREEN_UPDATE_IND16( hec2hrp );
+
 
 /* Sound function*/
 extern const sn76477_interface hector_sn76477_interface;
@@ -163,20 +165,20 @@ extern const sn76477_interface hector_sn76477_interface;
 
 // disc2 handling
 WRITE_LINE_DEVICE_HANDLER( hector_disk2_fdc_interrupt );
-READ8_HANDLER(  hector_disc2_io00_port_r);
-WRITE8_HANDLER( hector_disc2_io00_port_w);
-READ8_HANDLER(  hector_disc2_io20_port_r);
-WRITE8_HANDLER( hector_disc2_io20_port_w);
-READ8_HANDLER(  hector_disc2_io30_port_r);
-WRITE8_HANDLER( hector_disc2_io30_port_w);
-READ8_HANDLER(  hector_disc2_io40_port_r);
-WRITE8_HANDLER( hector_disc2_io40_port_w);
-READ8_HANDLER(  hector_disc2_io50_port_r);
-WRITE8_HANDLER( hector_disc2_io50_port_w);
-READ8_HANDLER(  hector_disc2_io61_port_r);
-WRITE8_HANDLER( hector_disc2_io61_port_w);
-READ8_HANDLER(  hector_disc2_io70_port_r);
-WRITE8_HANDLER( hector_disc2_io70_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io00_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io00_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io20_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io20_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io30_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io30_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io40_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io40_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io50_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io50_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io61_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io61_port_w);
+DECLARE_READ8_HANDLER(  hector_disc2_io70_port_r);
+DECLARE_WRITE8_HANDLER( hector_disc2_io70_port_w);
 
 void hector_disc2_init( running_machine &machine);
 void hector_minidisc_init( running_machine &machine);

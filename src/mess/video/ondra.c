@@ -18,20 +18,19 @@ void ondra_state::video_start()
 	m_video_enable = 0;
 }
 
-SCREEN_UPDATE_IND16( ondra )
+UINT32 ondra_state::screen_update_ondra(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	ondra_state *state = screen.machine().driver_data<ondra_state>();
 	UINT8 code1,code2;
 	int y, x, b;
 	int Vaddr = 0x2800;
 
-	if (state->m_video_enable==1) {
+	if (m_video_enable==1) {
 		for (x = 0; x < 40; x++)
 		{
 			for (y = 127; y >=0; y--)
 			{
-				code1 = screen.machine().device<ram_device>(RAM_TAG)->pointer()[0xd700 + Vaddr + 0x80];
-				code2 = screen.machine().device<ram_device>(RAM_TAG)->pointer()[0xd700 + Vaddr + 0x00];
+				code1 = machine().device<ram_device>(RAM_TAG)->pointer()[0xd700 + Vaddr + 0x80];
+				code2 = machine().device<ram_device>(RAM_TAG)->pointer()[0xd700 + Vaddr + 0x00];
 				for (b = 0; b < 8; b++)
 				{
 					bitmap.pix16(2*y, x*8+b) =  ((code1 << b) & 0x80) ? 1 : 0;

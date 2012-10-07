@@ -867,14 +867,14 @@ static void mcu_run(running_machine &machine, UINT8 dsw_setting)
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( tdragon_mcu_sim )
+TIMER_DEVICE_CALLBACK_MEMBER(nmk16_state::tdragon_mcu_sim)
 {
-	mcu_run(timer.machine(),1);
+	mcu_run(machine(),1);
 }
 
-static TIMER_DEVICE_CALLBACK( hachamf_mcu_sim )
+TIMER_DEVICE_CALLBACK_MEMBER(nmk16_state::hachamf_mcu_sim)
 {
-	mcu_run(timer.machine(),0);
+	mcu_run(machine(),0);
 }
 
 static ADDRESS_MAP_START( tdragon_map, AS_PROGRAM, 16, nmk16_state )
@@ -3512,30 +3512,30 @@ static const ym2203_interface ym2203_config =
 	DEVCB_LINE(ym2203_irqhandler)
 };
 
-static TIMER_DEVICE_CALLBACK( nmk16_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(nmk16_state::nmk16_scanline)
 {
 	int scanline = param;
 
 	if(scanline == 240) // vblank-out irq
-		timer.machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
 
 	/* This is either vblank-in or sprite dma irq complete, Vandyke definitely relies that irq fires at scanline ~0 instead of 112 (as per previous
        cpu_getiloops function implementation), mostly noticeable with sword collisions and related attract mode behaviour. */
 	if(scanline == 0)
-		timer.machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
 }
 
 /* bee-oh board, almost certainly it has different timings */
-static TIMER_DEVICE_CALLBACK( manybloc_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(nmk16_state::manybloc_scanline)
 {
 	int scanline = param;
 
 	if(scanline == 248) // vblank-out irq
-		timer.machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
 
 	/* This is either vblank-in or sprite dma irq complete */
 	if(scanline == 0)
-		timer.machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
 }
 
 
@@ -3549,8 +3549,8 @@ static MACHINE_CONFIG_START( tharrier, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz */
 	MCFG_CPU_PROGRAM_MAP(tharrier_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3000000)
 	MCFG_CPU_PROGRAM_MAP(tharrier_sound_map)
@@ -3564,8 +3564,8 @@ static MACHINE_CONFIG_START( tharrier, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tharrier)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_tharrier)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(tharrier)
 	MCFG_PALETTE_LENGTH(512)
@@ -3594,8 +3594,8 @@ static MACHINE_CONFIG_START( manybloc, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10? MHz - check */
 	MCFG_CPU_PROGRAM_MAP(manybloc_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,56)/* this needs to equal the framerate on this, rather than being double it .. */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", manybloc_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 56)/* this needs to equal the framerate on this, rather than being double it .. */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, manybloc_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3000000)
 	MCFG_CPU_PROGRAM_MAP(tharrier_sound_map)
@@ -3607,8 +3607,8 @@ static MACHINE_CONFIG_START( manybloc, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(manybloc)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_manybloc)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(tharrier)
 	MCFG_PALETTE_LENGTH(512)
@@ -3637,8 +3637,8 @@ static MACHINE_CONFIG_START( mustang, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(mustang_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -3648,8 +3648,8 @@ static MACHINE_CONFIG_START( mustang, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3678,8 +3678,8 @@ static MACHINE_CONFIG_START( mustangb, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(mustangb_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -3691,8 +3691,8 @@ static MACHINE_CONFIG_START( mustangb, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3712,8 +3712,8 @@ static MACHINE_CONFIG_START( bioship, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, BIOSHIP_CRYSTAL1 ) /* 10.0 MHz (verified) */
 	MCFG_CPU_PROGRAM_MAP(bioship_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,100)/* 112 breaks the title screen */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 100)/* 112 breaks the title screen */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -3723,8 +3723,8 @@ static MACHINE_CONFIG_START( bioship, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(bioship)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_bioship)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(bioship)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3753,8 +3753,8 @@ static MACHINE_CONFIG_START( vandyke, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_10MHz) /* 68000p12 running at 10Mhz, verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(vandyke_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -3764,8 +3764,8 @@ static MACHINE_CONFIG_START( vandyke, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3794,8 +3794,8 @@ static MACHINE_CONFIG_START( vandykeb, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(vandykeb_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("mcu", PIC16C57, 12000000)	/* 3MHz */
 	MCFG_DEVICE_DISABLE()
@@ -3808,8 +3808,8 @@ static MACHINE_CONFIG_START( vandykeb, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3828,8 +3828,8 @@ static MACHINE_CONFIG_START( acrobatm, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz (verified on pcb) */
 	MCFG_CPU_PROGRAM_MAP(acrobatm_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -3839,8 +3839,8 @@ static MACHINE_CONFIG_START( acrobatm, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3870,9 +3870,9 @@ static MACHINE_CONFIG_START( tdragonb, nmk16_state )	/* bootleg using Raiden sou
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
 	MCFG_CPU_PROGRAM_MAP(tdragonb_map)
-	//MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ?? drives music */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	//MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ?? drives music */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
@@ -3884,8 +3884,8 @@ static MACHINE_CONFIG_START( tdragonb, nmk16_state )	/* bootleg using Raiden sou
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3901,9 +3901,9 @@ static MACHINE_CONFIG_START( tdragon, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_8MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(tdragon_map)
-	//MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ?? drives music */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	//MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ?? drives music */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -3913,14 +3913,14 @@ static MACHINE_CONFIG_START( tdragon, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
 
 	MCFG_VIDEO_START_OVERRIDE(nmk16_state,macross)
-	MCFG_TIMER_ADD_PERIODIC("coinsim", tdragon_mcu_sim, attotime::from_hz(10000)) // not real, but for simulating the MCU
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("coinsim", nmk16_state, tdragon_mcu_sim, attotime::from_hz(10000))
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -3944,8 +3944,8 @@ static MACHINE_CONFIG_START( ssmissin, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000) /* 8 Mhz */
 	MCFG_CPU_PROGRAM_MAP(ssmissin_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112) /* input related */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112) /* input related */
 
 	MCFG_CPU_ADD("audiocpu", Z80, 8000000/2) /* 4 Mhz */
 	MCFG_CPU_PROGRAM_MAP(ssmissin_sound_map)
@@ -3956,8 +3956,8 @@ static MACHINE_CONFIG_START( ssmissin, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -3977,8 +3977,8 @@ static MACHINE_CONFIG_START( strahl, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000) /* 12 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(strahl_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -3988,8 +3988,8 @@ static MACHINE_CONFIG_START( strahl, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(strahl)
-	MCFG_SCREEN_VBLANK_STATIC(strahl)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_strahl)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_strahl)
 
 	MCFG_GFXDECODE(strahl)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4018,8 +4018,8 @@ static MACHINE_CONFIG_START( hachamf, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(hachamf_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -4029,14 +4029,14 @@ static MACHINE_CONFIG_START( hachamf, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
 
 	MCFG_VIDEO_START_OVERRIDE(nmk16_state,macross)
-	MCFG_TIMER_ADD_PERIODIC("coinsim", hachamf_mcu_sim, attotime::from_hz(10000)) // not real, but for simulating the MCU
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("coinsim", nmk16_state, hachamf_mcu_sim, attotime::from_hz(10000))
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -4060,8 +4060,8 @@ static MACHINE_CONFIG_START( macross, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(macross_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -4071,8 +4071,8 @@ static MACHINE_CONFIG_START( macross, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4101,8 +4101,8 @@ static MACHINE_CONFIG_START( blkheart, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_8MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(macross_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -4112,8 +4112,8 @@ static MACHINE_CONFIG_START( blkheart, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4142,8 +4142,8 @@ static MACHINE_CONFIG_START( gunnail, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000) /* 12 MHz? */
 	MCFG_CPU_PROGRAM_MAP(gunnail_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)
 
 	MCFG_MACHINE_RESET_OVERRIDE(nmk16_state,NMK004)
 
@@ -4153,8 +4153,8 @@ static MACHINE_CONFIG_START( gunnail, nmk16_state )
 //  MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(gunnail)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_gunnail)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4183,8 +4183,8 @@ static MACHINE_CONFIG_START( macross2, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(macross2_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000) /* 4 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(macross2_sound_map)
@@ -4196,8 +4196,8 @@ static MACHINE_CONFIG_START( macross2, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(gunnail)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_gunnail)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross2)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4225,8 +4225,8 @@ static MACHINE_CONFIG_START( tdragon2, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* 10 MHz  */
 	MCFG_CPU_PROGRAM_MAP(macross2_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000) /* 4 MHz  */
 	MCFG_CPU_PROGRAM_MAP(macross2_sound_map)
@@ -4238,8 +4238,8 @@ static MACHINE_CONFIG_START( tdragon2, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tdragon2)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_tdragon2)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross2)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4267,8 +4267,8 @@ static MACHINE_CONFIG_START( raphero, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000) /* 14 MHz measured */
 	MCFG_CPU_PROGRAM_MAP(raphero_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
 
 	MCFG_CPU_ADD("audiocpu",TMP90841, 8000000)
 	MCFG_CPU_PROGRAM_MAP(raphero_sound_mem_map)
@@ -4279,8 +4279,8 @@ static MACHINE_CONFIG_START( raphero, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tdragon2)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_tdragon2)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross2)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4308,8 +4308,8 @@ static MACHINE_CONFIG_START( bjtwin, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(bjtwin_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ?? drives music */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", nmk16_state,  irq4_line_hold)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ?? drives music */
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -4317,8 +4317,8 @@ static MACHINE_CONFIG_START( bjtwin, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(bjtwin)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_bjtwin)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(bjtwin)
 	MCFG_PALETTE_LENGTH(1024)
@@ -4573,8 +4573,8 @@ DRIVER_INIT_MEMBER(nmk16_state,bjtwin)
 READ16_MEMBER(nmk16_state::vandykeb_r){ return 0x0000; }
 DRIVER_INIT_MEMBER(nmk16_state,vandykeb)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x08000e, 0x08000f, read16_delegate(FUNC(nmk16_state::vandykeb_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->nop_write(0x08001e, 0x08001f);
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x08000e, 0x08000f, read16_delegate(FUNC(nmk16_state::vandykeb_r),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).nop_write(0x08001e, 0x08001f);
 }
 
 
@@ -4708,7 +4708,7 @@ WRITE8_MEMBER(nmk16_state::twinactn_oki_bank_w)
 	if (data & (~3))
 		logerror("%s: invalid oki bank %02x\n", machine().describe_context(), data);
 
-//  logerror("%04x: oki bank %02x\n", space->device().safe_pc(), data);
+//  logerror("%04x: oki bank %02x\n", space.device().safe_pc(), data);
 }
 
 static ADDRESS_MAP_START( twinactn_sound_cpu, AS_PROGRAM, 8, nmk16_state )
@@ -4815,7 +4815,7 @@ static MACHINE_CONFIG_START( stagger1, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,XTAL_12MHz) /* 68000p10 running at 12mhz, verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(afega)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_4MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(afega_sound_cpu)
@@ -4826,8 +4826,8 @@ static MACHINE_CONFIG_START( stagger1, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(afega)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_afega)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(stagger1)
 	MCFG_PALETTE_LENGTH(768)
@@ -4852,7 +4852,7 @@ static MACHINE_CONFIG_DERIVED( redhawki, stagger1 )
 	/* basic machine hardware */
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(redhawki)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_redhawki)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( redhawkb, stagger1 )
@@ -4861,7 +4861,7 @@ static MACHINE_CONFIG_DERIVED( redhawkb, stagger1 )
 	/* video hardware */
 	MCFG_GFXDECODE(redhawkb)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(redhawkb)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_redhawkb)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( grdnstrm, stagger1 )
@@ -4872,7 +4872,7 @@ static MACHINE_CONFIG_DERIVED( grdnstrm, stagger1 )
 	MCFG_GFXDECODE(grdnstrm)
 	MCFG_VIDEO_START_OVERRIDE(nmk16_state,firehawk)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(firehawk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_firehawk)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( grdnstrmk, stagger1 ) /* Side by side with PCB, the music seems too fast as well */
@@ -4892,7 +4892,7 @@ static MACHINE_CONFIG_DERIVED( popspops, grdnstrm )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(bubl2000)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_bubl2000)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( firehawk, nmk16_state )
@@ -4900,7 +4900,7 @@ static MACHINE_CONFIG_START( firehawk, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,12000000)
 	MCFG_CPU_PROGRAM_MAP(afega)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80,4000000)
 	MCFG_CPU_PROGRAM_MAP(firehawk_sound_cpu)
@@ -4911,8 +4911,8 @@ static MACHINE_CONFIG_START( firehawk, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(firehawk)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_firehawk)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(grdnstrm)
 	MCFG_PALETTE_LENGTH(768)
@@ -4934,8 +4934,8 @@ static MACHINE_CONFIG_START( twinactn, nmk16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,12000000)
 	MCFG_CPU_PROGRAM_MAP(twinactn_map)
-	MCFG_CPU_PERIODIC_INT(irq1_line_hold,112)/* ???????? */
-	MCFG_TIMER_ADD_SCANLINE("scantimer", nmk16_scanline, "screen", 0, 1)
+	MCFG_CPU_PERIODIC_INT_DRIVER(nmk16_state, irq1_line_hold, 112)/* ???????? */
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", nmk16_state, nmk16_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(twinactn_sound_cpu)
@@ -4946,8 +4946,8 @@ static MACHINE_CONFIG_START( twinactn, nmk16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(macross)
-	MCFG_SCREEN_VBLANK_STATIC(nmk)
+	MCFG_SCREEN_UPDATE_DRIVER(nmk16_state, screen_update_macross)
+	MCFG_SCREEN_VBLANK_DRIVER(nmk16_state, screen_eof_nmk)
 
 	MCFG_GFXDECODE(macross)
 	MCFG_PALETTE_LENGTH(1024)
@@ -5124,14 +5124,14 @@ ROM_END
 
 ROM_START( tharrier )
 	ROM_REGION( 0x40000, "maincpu", 0 )
-	ROM_LOAD16_BYTE( "2" ,   0x00000, 0x20000, CRC(78923aaa) SHA1(28338f49581180604403e1bd200f524fc4cb8b9f) )
-	ROM_LOAD16_BYTE( "3" ,   0x00001, 0x20000, CRC(99cea259) SHA1(75abfb08b2358dd13809ade5a2dfffeb8b8df82c) )
+	ROM_LOAD16_BYTE( "2.bin" ,   0x00000, 0x20000, CRC(f3887a44) SHA1(4e5b660d33ba1d1e00263030efa67e2db376a234) )
+	ROM_LOAD16_BYTE( "3.bin" ,   0x00001, 0x20000, CRC(65c247f6) SHA1(9f35f2b6f54814b4c4d23e2d78db8043e678fef2) )
 
 	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "12" ,   0x00000, 0x10000, CRC(b959f837) SHA1(073b14935e7d5b0cad19a3471fd26e9e3a363827) )
 
 	ROM_REGION( 0x020000, "gfx1", 0 )
-	ROM_LOAD( "1" ,        0x000000, 0x10000, CRC(c7402e4a) SHA1(25cade2f8d4784887f0f51beb48b1e6b695629c2) )
+	ROM_LOAD( "1.bin" ,        0x000000, 0x10000, CRC(005c26c3) SHA1(ee88d8f956b9b0a8ba5fb49c5c05f6ed6f01729c) )
 
 	ROM_REGION( 0x080000, "gfx2", 0 )
 	ROM_LOAD( "89050-4" ,  0x000000, 0x80000, CRC(64d7d687) SHA1(dcfeac71fd577439e31cc1186b720388fbdc6ca0) )
@@ -5157,16 +5157,16 @@ ROM_START( tharrier )
 	ROM_LOAD( "26.bpr",  0x00120, 0x020, CRC(0cbfb33e) SHA1(5dfee031a0a14bcd667fe2af2fa9cdfac3941d22) )
 ROM_END
 
-ROM_START( tharrierj )
+ROM_START( tharrieru )
 	ROM_REGION( 0x40000, "maincpu", 0 )
-	ROM_LOAD16_BYTE( "2.bin" ,   0x00000, 0x20000, CRC(f3887a44) SHA1(4e5b660d33ba1d1e00263030efa67e2db376a234) )
-	ROM_LOAD16_BYTE( "3.bin" ,   0x00001, 0x20000, CRC(65c247f6) SHA1(9f35f2b6f54814b4c4d23e2d78db8043e678fef2) )
+	ROM_LOAD16_BYTE( "2" ,   0x00000, 0x20000, CRC(78923aaa) SHA1(28338f49581180604403e1bd200f524fc4cb8b9f) )
+	ROM_LOAD16_BYTE( "3" ,   0x00001, 0x20000, CRC(99cea259) SHA1(75abfb08b2358dd13809ade5a2dfffeb8b8df82c) )
 
 	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "12" ,   0x00000, 0x10000, CRC(b959f837) SHA1(073b14935e7d5b0cad19a3471fd26e9e3a363827) )
 
 	ROM_REGION( 0x020000, "gfx1", 0 )
-	ROM_LOAD( "1.bin" ,        0x000000, 0x10000, CRC(005c26c3) SHA1(ee88d8f956b9b0a8ba5fb49c5c05f6ed6f01729c) )
+	ROM_LOAD( "1" ,        0x000000, 0x10000, CRC(c7402e4a) SHA1(25cade2f8d4784887f0f51beb48b1e6b695629c2) )
 
 	ROM_REGION( 0x080000, "gfx2", 0 )
 	ROM_LOAD( "89050-4" ,  0x000000, 0x80000, CRC(64d7d687) SHA1(dcfeac71fd577439e31cc1186b720388fbdc6ca0) )
@@ -7141,8 +7141,8 @@ ROM_END
 ***************************************************************************/
 
 
-GAME( 1989, tharrier, 0,        tharrier, tharrier, driver_device, 0,        ROT270, "UPL (American Sammy license)", "Task Force Harrier", GAME_IMPERFECT_GRAPHICS )
-GAME( 1989, tharrierj,tharrier, tharrier, tharrier, driver_device, 0,        ROT270, "UPL",                          "Task Force Harrier (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1989, tharrier,  0,       tharrier, tharrier, driver_device, 0,        ROT270, "UPL",                          "Task Force Harrier", GAME_IMPERFECT_GRAPHICS )
+GAME( 1989, tharrieru, tharrier,tharrier, tharrier, driver_device, 0,        ROT270, "UPL (American Sammy license)", "Task Force Harrier (US?)", GAME_IMPERFECT_GRAPHICS )
 
 GAME( 1990, mustang,  0,        mustang,  mustang, driver_device,  0,        ROT0,   "UPL",                          "US AAF Mustang (25th May. 1990)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1990, mustangs, mustang,  mustang,  mustang, driver_device,  0,        ROT0,   "UPL (Seoul Trading license)",  "US AAF Mustang (25th May. 1990 / Seoul Trading)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

@@ -390,17 +390,15 @@ INPUT_PORTS_END
 //**************************************************************************
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( vsync_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( vsync_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( vsync_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(vixen_state::vsync_tick)
 {
-	vixen_state *state = timer.machine().driver_data<vixen_state>();
-
-	if (state->m_cmd_d0)
+	if (m_cmd_d0)
 	{
-		state->m_vsync = 1;
-		state->update_interrupt();
+		m_vsync = 1;
+		update_interrupt();
 	}
 }
 
@@ -557,7 +555,7 @@ WRITE8_MEMBER( vixen_state::i8155_pc_w )
 	m_256 = BIT(data, 4);
 
 	// beep enable
-	discrete_sound_w(m_discrete, NODE_01, BIT(data, 5));
+	discrete_sound_w(m_discrete, space, NODE_01, BIT(data, 5));
 }
 
 static I8155_INTERFACE( i8155_intf )
@@ -809,10 +807,10 @@ void vixen_state::machine_start()
 
 void vixen_state::machine_reset()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
-	program->install_read_bank(0x0000, 0xefff, 0xfff, 0, "bank1");
-	program->install_write_bank(0x0000, 0xefff, 0xfff, 0, "bank2");
+	program.install_read_bank(0x0000, 0xefff, 0xfff, 0, "bank1");
+	program.install_write_bank(0x0000, 0xefff, 0xfff, 0, "bank2");
 
 	membank("bank1")->set_entry(1);
 	membank("bank2")->set_entry(1);
@@ -846,7 +844,7 @@ static MACHINE_CONFIG_START( vixen, vixen_state )
 	MCFG_SCREEN_ADD(SCREEN_TAG, RASTER)
 	MCFG_SCREEN_UPDATE_DRIVER(vixen_state, screen_update)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_23_9616MHz/2, 96*8, 0*8, 81*8, 27*10, 0*10, 26*10)
-	MCFG_TIMER_ADD_SCANLINE("vsync", vsync_tick, SCREEN_TAG, 26*10, 27*10)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("vsync", vixen_state, vsync_tick, SCREEN_TAG, 26*10, 27*10)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(monochrome_amber)
@@ -910,10 +908,10 @@ DIRECT_UPDATE_MEMBER(vixen_state::vixen_direct_update_handler)
 	{
 		if (m_reset)
 		{
-			address_space *program = m_maincpu->space(AS_PROGRAM);
+			address_space &program = m_maincpu->space(AS_PROGRAM);
 
-			program->install_read_bank(0x0000, 0xefff, "bank1");
-			program->install_write_bank(0x0000, 0xefff, "bank2");
+			program.install_read_bank(0x0000, 0xefff, "bank1");
+			program.install_write_bank(0x0000, 0xefff, "bank2");
 
 			membank("bank1")->set_entry(0);
 			membank("bank2")->set_entry(0);
@@ -931,8 +929,8 @@ DIRECT_UPDATE_MEMBER(vixen_state::vixen_direct_update_handler)
 
 DRIVER_INIT_MEMBER(vixen_state,vixen)
 {
-	address_space *program = machine().device<cpu_device>(Z8400A_TAG)->space(AS_PROGRAM);
-	program->set_direct_update_handler(direct_update_delegate(FUNC(vixen_state::vixen_direct_update_handler), this));
+	address_space &program = machine().device<cpu_device>(Z8400A_TAG)->space(AS_PROGRAM);
+	program.set_direct_update_handler(direct_update_delegate(FUNC(vixen_state::vixen_direct_update_handler), this));
 }
 
 

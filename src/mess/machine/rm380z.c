@@ -107,14 +107,14 @@ READ8_MEMBER( rm380z_state::port_read )
 
 WRITE8_MEMBER( rm380z_state::port_write_1b00 )
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
-	port_write(*program,offset+0xfc,data);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+	port_write(program,offset+0xfc,data);
 }
 
 READ8_MEMBER( rm380z_state::port_read_1b00 )
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
-	return port_read(*program,offset+0xfc);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+	return port_read(program,offset+0xfc);
 }
 
 READ8_MEMBER( rm380z_state::hiram_read )
@@ -158,33 +158,32 @@ WRITE8_MEMBER( rm380z_state::rm380z_porthi_w )
 // for about 4.5 milliseconds every 20 milliseconds"
 //
 
-static TIMER_CALLBACK(static_vblank_timer)
+TIMER_CALLBACK_MEMBER(rm380z_state::static_vblank_timer)
 {
-	//printf("timer callback called at [%f]\n",machine.time().as_double());
+	//printf("timer callback called at [%f]\n",machine().time().as_double());
 
-	rm380z_state *state = machine.driver_data<rm380z_state>();
 
-	state->m_rasterlineCtr++;
-	state->m_rasterlineCtr%=(HORZ_LINES*LINE_SUBDIVISION);
+	m_rasterlineCtr++;
+	m_rasterlineCtr%=(HORZ_LINES*LINE_SUBDIVISION);
 
 	// frame blanking
-	if (state->m_rasterlineCtr>=((HORZ_LINES-22)*LINE_SUBDIVISION))
+	if (m_rasterlineCtr>=((HORZ_LINES-22)*LINE_SUBDIVISION))
 	{
-		state->m_port1|=0x40;
+		m_port1|=0x40;
 	}
 	else
 	{
-		state->m_port1&=~0x40;
+		m_port1&=~0x40;
 	}
 
 	// line blanking
-	if ((state->m_rasterlineCtr%LINE_SUBDIVISION)>80)
+	if ((m_rasterlineCtr%LINE_SUBDIVISION)>80)
 	{
-		state->m_port1|=0x80;
+		m_port1|=0x80;
 	}
 	else
 	{
-		state->m_port1&=~0x80;
+		m_port1&=~0x80;
 	}
 }
 
@@ -249,7 +248,7 @@ WRITE8_MEMBER( rm380z_state::disk_0_control )
 
 void rm380z_state::machine_start()
 {
-	machine().scheduler().timer_pulse(attotime::from_hz(TIMER_SPEED), FUNC(static_vblank_timer));
+	machine().scheduler().timer_pulse(attotime::from_hz(TIMER_SPEED), timer_expired_delegate(FUNC(rm380z_state::static_vblank_timer),this));
 }
 
 void rm380z_state::machine_reset()
@@ -282,19 +281,19 @@ void rm380z_state::machine_reset()
 
 void rm380z_state::config_memory_map()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *rom = memregion(RM380Z_MAINCPU_TAG)->base();
 	UINT8* m_ram_p = m_messram->pointer();
 
 	if ( RM380Z_PORTS_ENABLED_HIGH )
 	{
-		program->install_ram( 0x0000, 0xDFFF, m_ram_p );
+		program.install_ram( 0x0000, 0xDFFF, m_ram_p );
 	}
 	else
 	{
-		program->install_rom( 0x0000, 0x0FFF, rom );
-		program->install_readwrite_handler(0x1BFC, 0x1BFF,read8_delegate(FUNC(rm380z_state::port_read_1b00), this),write8_delegate(FUNC(rm380z_state::port_write_1b00), this)	);
-		program->install_rom( 0x1C00, 0x1DFF, rom + 0x1400 );
-		program->install_ram( 0x4000, 0xDFFF, m_ram_p );
+		program.install_rom( 0x0000, 0x0FFF, rom );
+		program.install_readwrite_handler(0x1BFC, 0x1BFF,read8_delegate(FUNC(rm380z_state::port_read_1b00), this),write8_delegate(FUNC(rm380z_state::port_write_1b00), this)	);
+		program.install_rom( 0x1C00, 0x1DFF, rom + 0x1400 );
+		program.install_ram( 0x4000, 0xDFFF, m_ram_p );
 	}
 }

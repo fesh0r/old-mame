@@ -122,12 +122,11 @@ WRITE8_MEMBER( vector06_state::vector06_8255_2_w )
 	m_ppi2->write(space, offset^3, data);
 }
 
-INTERRUPT_GEN( vector06_interrupt )
+INTERRUPT_GEN_MEMBER(vector06_state::vector06_interrupt)
 {
-	vector06_state *state = device->machine().driver_data<vector06_state>();
-	state->m_vblank_state++;
-	if (state->m_vblank_state>1) state->m_vblank_state=0;
-	device->execute().set_input_line(0,state->m_vblank_state ? HOLD_LINE : CLEAR_LINE);
+	m_vblank_state++;
+	if (m_vblank_state>1) m_vblank_state=0;
+	device.execute().set_input_line(0,m_vblank_state ? HOLD_LINE : CLEAR_LINE);
 
 }
 
@@ -137,21 +136,20 @@ static IRQ_CALLBACK( vector06_irq_callback )
 	return 0xff;
 }
 
-static TIMER_CALLBACK( reset_check_callback )
+TIMER_CALLBACK_MEMBER(vector06_state::reset_check_callback)
 {
-	vector06_state *state = machine.driver_data<vector06_state>();
-	UINT8 val = machine.root_device().ioport("RESET")->read();
+	UINT8 val = machine().root_device().ioport("RESET")->read();
 
 	if (BIT(val, 0))
 	{
-		state->membank("bank1")->set_base(machine.root_device().memregion("maincpu")->base() + 0x10000);
-		machine.device("maincpu")->reset();
+		membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base() + 0x10000);
+		machine().device("maincpu")->reset();
 	}
 
 	if (BIT(val, 1))
 	{
-		state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + 0x0000);
-		machine.device("maincpu")->reset();
+		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x0000);
+		machine().device("maincpu")->reset();
 	}
 }
 
@@ -165,18 +163,18 @@ WRITE8_MEMBER( vector06_state::vector06_disc_w )
 
 void vector06_state::machine_start()
 {
-	machine().scheduler().timer_pulse(attotime::from_hz(50), FUNC(reset_check_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(50), timer_expired_delegate(FUNC(vector06_state::reset_check_callback),this));
 }
 
 void vector06_state::machine_reset()
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	machine().device("maincpu")->execute().set_irq_acknowledge_callback(vector06_irq_callback);
-	space->install_read_bank (0x0000, 0x7fff, "bank1");
-	space->install_write_bank(0x0000, 0x7fff, "bank2");
-	space->install_read_bank (0x8000, 0xffff, "bank3");
-	space->install_write_bank(0x8000, 0xffff, "bank4");
+	space.install_read_bank (0x0000, 0x7fff, "bank1");
+	space.install_write_bank(0x0000, 0x7fff, "bank2");
+	space.install_read_bank (0x8000, 0xffff, "bank3");
+	space.install_write_bank(0x8000, 0xffff, "bank4");
 
 	membank("bank1")->set_base(memregion("maincpu")->base() + 0x10000);
 	membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x0000);

@@ -163,7 +163,7 @@ static MACHINE_CONFIG_START( vector06, vector06_state )
 //  MCFG_CPU_ADD("maincpu", Z80, 3000000)
 	MCFG_CPU_PROGRAM_MAP(vector06_mem)
 	MCFG_CPU_IO_MAP(vector06_io)
-	MCFG_CPU_VBLANK_INT("screen", vector06_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", vector06_state,  vector06_interrupt)
 
 
 	/* video hardware */
@@ -172,7 +172,7 @@ static MACHINE_CONFIG_START( vector06, vector06_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256+64, 256+64)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256+64-1, 0, 256+64-1)
-	MCFG_SCREEN_UPDATE_STATIC(vector06)
+	MCFG_SCREEN_UPDATE_DRIVER(vector06_state, screen_update_vector06)
 	MCFG_PALETTE_LENGTH(16)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")

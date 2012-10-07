@@ -47,27 +47,26 @@ public:
 	TILE_GET_INFO_MEMBER(terminal_gettileinfo);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_apple1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(apple1_kbd_poll);
+	TIMER_CALLBACK_MEMBER(apple1_kbd_strobe_end);
+	TIMER_CALLBACK_MEMBER(apple1_dsp_ready_start);
+	TIMER_CALLBACK_MEMBER(apple1_dsp_ready_end);
+	DECLARE_READ8_MEMBER(apple1_pia0_kbdin);
+	DECLARE_WRITE8_MEMBER(apple1_pia0_dspout);
+	DECLARE_WRITE8_MEMBER(apple1_pia0_dsp_write_signal);
 };
 
 
 /*----------- defined in machine/apple1.c -----------*/
 
 extern const pia6821_interface apple1_pia0;
-
-
 SNAPSHOT_LOAD( apple1 );
 
-
-
 /*----------- defined in video/apple1.c -----------*/
-
-
-SCREEN_UPDATE_IND16( apple1 );
-
 void apple1_vh_dsp_w (running_machine &machine, int data);
 void apple1_vh_dsp_clr (running_machine &machine);
 attotime apple1_vh_dsp_time_to_ready (running_machine &machine);
-
 
 
 /*----------- defined in drivers/apple1.c -----------*/

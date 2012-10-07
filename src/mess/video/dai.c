@@ -55,13 +55,12 @@ void dai_state::video_start()
 {
 }
 
-SCREEN_UPDATE_IND16( dai )
+UINT32 dai_state::screen_update_dai(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	dai_state *state = screen.machine().driver_data<dai_state>();
-	address_space *space = screen.machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int i, j, k, l;
 
-	UINT8* char_rom = state->memregion("gfx1")->base();
+	UINT8* char_rom = memregion("gfx1")->base();
 
 	UINT16 dai_video_memory_start = 0xbfff;
 	UINT16 dai_scan_lines = 604;	/* scan lines of PAL tv */
@@ -102,15 +101,15 @@ SCREEN_UPDATE_IND16( dai )
 
 	while (current_scan_line < dai_scan_lines)
 	{
-		mode = space->read_byte(current_video_memory_address--);
-		colour = space->read_byte(current_video_memory_address--);
+		mode = space.read_byte(current_video_memory_address--);
+		colour = space.read_byte(current_video_memory_address--);
 		line_repeat_count = mode & 0x0f;
 		horizontal_resolution = (mode & 0x30) >> 4;
 		display_mode = (mode & 0xc0) >> 6;
 		unit_mode = (colour & 0x40) >> 6;
 
 		if (colour & 0x80)
-			state->m_4_colours_palette[(colour & 0x30) >> 4] = colour & 0x0f;
+			m_4_colours_palette[(colour & 0x30) >> 4] = colour & 0x0f;
 
 		switch (display_mode)
 		{
@@ -123,8 +122,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 
 					for (i=0; i<11; i++)
 					{
@@ -132,7 +131,7 @@ SCREEN_UPDATE_IND16( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<12; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -143,13 +142,13 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<11; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<12; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -163,15 +162,15 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<22; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<6; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -182,13 +181,13 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<22; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<6; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -202,15 +201,15 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<44; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<3; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -220,13 +219,13 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<44; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<3; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -240,15 +239,15 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<66; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<2; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -258,13 +257,13 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<66; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_1>>(7-k)) & 0x01)<<1) | ((current_data_2>>(7-k)) & 0x01)];
 								for (l=0; l<2; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -284,8 +283,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address);
-					current_data_2 = space->read_byte(current_video_memory_address-1);
+					current_data_1 = space.read_byte(current_video_memory_address);
+					current_data_2 = space.read_byte(current_video_memory_address-1);
 					current_video_memory_address-=2;
 					for (i=0; i<11; i++)
 					{
@@ -293,7 +292,7 @@ SCREEN_UPDATE_IND16( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<12; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -304,14 +303,14 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<11; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address);
-						current_data_2 = space->read_byte(current_video_memory_address-1);
+						current_data_1 = space.read_byte(current_video_memory_address);
+						current_data_2 = space.read_byte(current_video_memory_address-1);
 						current_video_memory_address-=2;
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<12; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*12+l) = current_colour;
 							}
@@ -325,8 +324,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address);
-					current_data_2 = space->read_byte(current_video_memory_address-1);
+					current_data_1 = space.read_byte(current_video_memory_address);
+					current_data_2 = space.read_byte(current_video_memory_address-1);
 					current_video_memory_address-=2;
 					for (i=0; i<22; i++)
 					{
@@ -334,7 +333,7 @@ SCREEN_UPDATE_IND16( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<6; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -345,14 +344,14 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<22; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address);
-						current_data_2 = space->read_byte(current_video_memory_address-1);
+						current_data_1 = space.read_byte(current_video_memory_address);
+						current_data_2 = space.read_byte(current_video_memory_address-1);
 						current_video_memory_address-=2;
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<6; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*6+l) = current_colour;
 							}
@@ -366,8 +365,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address);
-					current_data_2 = space->read_byte(current_video_memory_address-1);
+					current_data_1 = space.read_byte(current_video_memory_address);
+					current_data_2 = space.read_byte(current_video_memory_address-1);
 					current_video_memory_address-=2;
 					for (i=0; i<44; i++)
 					{
@@ -375,7 +374,7 @@ SCREEN_UPDATE_IND16( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<3; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -385,14 +384,14 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<44; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address);
-						current_data_2 = space->read_byte(current_video_memory_address-1);
+						current_data_1 = space.read_byte(current_video_memory_address);
+						current_data_2 = space.read_byte(current_video_memory_address-1);
 						current_video_memory_address-=2;
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<3; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*3+l) = current_colour;
 							}
@@ -405,8 +404,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address);
-					current_data_2 = space->read_byte(current_video_memory_address-1);
+					current_data_1 = space.read_byte(current_video_memory_address);
+					current_data_2 = space.read_byte(current_video_memory_address-1);
 					current_video_memory_address-=2;
 					for (i=0; i<66; i++)
 					{
@@ -414,7 +413,7 @@ SCREEN_UPDATE_IND16( dai )
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<2; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -424,14 +423,14 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<66; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address);
-						current_data_2 = space->read_byte(current_video_memory_address-1);
+						current_data_1 = space.read_byte(current_video_memory_address);
+						current_data_2 = space.read_byte(current_video_memory_address-1);
 						current_video_memory_address-=2;
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
 							{
-								current_colour = state->m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
+								current_colour = m_4_colours_palette[(((current_data_2 >> k)&0x01)<<1) | ((char_rom[current_data_1*16+j]>>k) & 0x01)];
 								for (l=0; l<2; l++)
 									bitmap.pix16(current_scan_line/2 + j, (i*8+k)*2+l) = current_colour;
 							}
@@ -450,8 +449,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 
 					for (i=0; i<11; i++)
 					{
@@ -470,8 +469,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<11; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -490,8 +489,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<22; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -509,8 +508,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<22; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -529,8 +528,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<44; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -547,8 +546,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<44; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -567,8 +566,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<66; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -585,8 +584,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<66; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -610,8 +609,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<11; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -629,8 +628,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<11; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -649,8 +648,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<22; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -668,8 +667,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<22; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -688,8 +687,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<44; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -706,8 +705,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<44; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)
@@ -725,8 +724,8 @@ SCREEN_UPDATE_IND16( dai )
 				switch (unit_mode)
 				{
 				case 0:
-					current_data_1 = space->read_byte(current_video_memory_address--);
-					current_data_2 = space->read_byte(current_video_memory_address--);
+					current_data_1 = space.read_byte(current_video_memory_address--);
+					current_data_2 = space.read_byte(current_video_memory_address--);
 					for (i=0; i<66; i++)
 					{
 						for (j=0; j<=line_repeat_count; j++)
@@ -743,8 +742,8 @@ SCREEN_UPDATE_IND16( dai )
 				case 1:
 					for (i=0; i<66; i++)
 					{
-						current_data_1 = space->read_byte(current_video_memory_address--);
-						current_data_2 = space->read_byte(current_video_memory_address--);
+						current_data_1 = space.read_byte(current_video_memory_address--);
+						current_data_2 = space.read_byte(current_video_memory_address--);
 						for (j=0; j<=line_repeat_count; j++)
 						{
 							for (k=0; k<8; k++)

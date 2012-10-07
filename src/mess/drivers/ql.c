@@ -268,10 +268,10 @@ READ8_MEMBER( ql_state::disk_io_r )
 
 	switch (offset)
 	{
-		case 0x0000	: result=wd17xx_r(m_fdc, offset); break;
-		case 0x0001	: result=wd17xx_r(m_fdc, offset); break;
-		case 0x0002	: result=wd17xx_r(m_fdc, offset); break;
-		case 0x0003	: result=wd17xx_r(m_fdc, offset); break;
+		case 0x0000	: result=wd17xx_r(m_fdc, space, offset); break;
+		case 0x0001	: result=wd17xx_r(m_fdc, space, offset); break;
+		case 0x0002	: result=wd17xx_r(m_fdc, space, offset); break;
+		case 0x0003	: result=wd17xx_r(m_fdc, space, offset); break;
 		default		: logerror("%s DiskIO undefined read : from %08X\n",machine().describe_context(),m_disk_io_base+offset); break;
 	}
 
@@ -285,10 +285,10 @@ WRITE8_MEMBER( ql_state::disk_io_w )
 
 	switch (offset)
 	{
-		case 0x0000	: wd17xx_w(m_fdc, offset, data); break;
-		case 0x0001	: wd17xx_w(m_fdc, offset, data); break;
-		case 0x0002	: wd17xx_w(m_fdc, offset, data); break;
-		case 0x0003	: wd17xx_w(m_fdc, offset, data); break;
+		case 0x0000	: wd17xx_w(m_fdc, space, offset, data); break;
+		case 0x0001	: wd17xx_w(m_fdc, space, offset, data); break;
+		case 0x0002	: wd17xx_w(m_fdc, space, offset, data); break;
+		case 0x0003	: wd17xx_w(m_fdc, space, offset, data); break;
 		case 0x0004 : if(m_disk_type==DISK_TYPE_SANDY)
 						sandy_set_control(data);break;
 		case 0x0008 : if(m_disk_type==DISK_TYPE_SANDY)
@@ -364,22 +364,20 @@ void ql_state::sandy_set_control(UINT8 data)
 	}
 }
 
-static READ_LINE_DEVICE_HANDLER( disk_io_dden_r )
+READ_LINE_MEMBER(ql_state::disk_io_dden_r)
 {
-	ql_state *state = device->machine().driver_data<ql_state>();
-
-	if(state->m_disk_type==DISK_TYPE_SANDY)
-		return ((state->m_disk_io_byte & SANDY_DDEN_MASK) >> SANDY_DDEN_SHIFT);
+	if(m_disk_type==DISK_TYPE_SANDY)
+		return ((m_disk_io_byte & SANDY_DDEN_MASK) >> SANDY_DDEN_SHIFT);
 	else
 		return 0;
 }
 
-static WRITE_LINE_DEVICE_HANDLER( disk_io_intrq_w )
+WRITE_LINE_MEMBER(ql_state::disk_io_intrq_w)
 {
 	//logerror("DiskIO:intrq = %d\n",state);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( disk_io_drq_w )
+WRITE_LINE_MEMBER(ql_state::disk_io_drq_w)
 {
 	//logerror("DiskIO:drq = %d\n",state);
 }
@@ -846,9 +844,9 @@ static const floppy_interface ql_floppy_interface =
 
 wd17xx_interface ql_wd17xx_interface =
 {
-	DEVCB_LINE(disk_io_dden_r),
-	DEVCB_LINE(disk_io_intrq_w),
-	DEVCB_LINE(disk_io_drq_w),
+	DEVCB_DRIVER_LINE_MEMBER(ql_state,disk_io_dden_r),
+	DEVCB_DRIVER_LINE_MEMBER(ql_state,disk_io_intrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(ql_state,disk_io_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
@@ -907,7 +905,7 @@ void ql_state::machine_start()
 
 void ql_state::machine_reset()
 {
-	address_space	*program	= m_maincpu->space(AS_PROGRAM);
+	address_space	&program	= m_maincpu->space(AS_PROGRAM);
 
 	m_disk_type=ioport(QL_CONFIG_PORT)->read() & DISK_TYPE_MASK;
 	logerror("disktype=%d\n",m_disk_type);
@@ -920,23 +918,23 @@ void ql_state::machine_reset()
 	switch (m_ram->size())
 	{
 		case 128*1024:
-			program->unmap_readwrite(0x040000, 0x0fffff);
+			program.unmap_readwrite(0x040000, 0x0fffff);
 			break;
 
 		case 192*1024:
-			program->unmap_readwrite(0x050000, 0x0fffff);
+			program.unmap_readwrite(0x050000, 0x0fffff);
 			break;
 
 		case 256*1024:
-			program->unmap_readwrite(0x060000, 0x0fffff);
+			program.unmap_readwrite(0x060000, 0x0fffff);
 			break;
 
 		case 384*1024:
-			program->unmap_readwrite(0x080000, 0x0fffff);
+			program.unmap_readwrite(0x080000, 0x0fffff);
 			break;
 
 		case 640*1024:
-			program->unmap_readwrite(0x0c0000, 0x0fffff);
+			program.unmap_readwrite(0x0c0000, 0x0fffff);
 			break;
 	}
 
@@ -944,17 +942,17 @@ void ql_state::machine_reset()
 	{
 		case DISK_TYPE_SANDY :
 			logerror("Configuring SandySuperDisk\n");
-			program->install_rom(0x0c0000, 0x0c3fff, &machine().root_device().memregion(M68008_TAG)->base()[SANDY_ROM_BASE]);
-			program->install_read_handler(SANDY_IO_BASE, SANDY_IO_END, 0, 0, read8_delegate(FUNC(ql_state::disk_io_r), this));
-			program->install_write_handler(SANDY_IO_BASE, SANDY_IO_END, 0, 0, write8_delegate(FUNC(ql_state::disk_io_w), this));
+			program.install_rom(0x0c0000, 0x0c3fff, &machine().root_device().memregion(M68008_TAG)->base()[SANDY_ROM_BASE]);
+			program.install_read_handler(SANDY_IO_BASE, SANDY_IO_END, 0, 0, read8_delegate(FUNC(ql_state::disk_io_r), this));
+			program.install_write_handler(SANDY_IO_BASE, SANDY_IO_END, 0, 0, write8_delegate(FUNC(ql_state::disk_io_w), this));
 			m_disk_io_base=SANDY_IO_BASE;
 			break;
 		case DISK_TYPE_TRUMP :
 			logerror("Configuring TrumpCard\n");
-			program->install_read_handler(CART_ROM_BASE, CART_ROM_END, 0, 0, read8_delegate(FUNC(ql_state::cart_rom_r), this));
-			program->install_read_handler(TRUMP_ROM_BASE, TRUMP_ROM_END, 0, 0, read8_delegate(FUNC(ql_state::trump_card_rom_r), this));
-			program->install_read_handler(TRUMP_IO_BASE, TRUMP_IO_END, 0, 0, read8_delegate(FUNC(ql_state::disk_io_r), this));
-			program->install_write_handler(TRUMP_IO_BASE, TRUMP_IO_END, 0, 0, write8_delegate(FUNC(ql_state::disk_io_w), this));
+			program.install_read_handler(CART_ROM_BASE, CART_ROM_END, 0, 0, read8_delegate(FUNC(ql_state::cart_rom_r), this));
+			program.install_read_handler(TRUMP_ROM_BASE, TRUMP_ROM_END, 0, 0, read8_delegate(FUNC(ql_state::trump_card_rom_r), this));
+			program.install_read_handler(TRUMP_IO_BASE, TRUMP_IO_END, 0, 0, read8_delegate(FUNC(ql_state::disk_io_r), this));
+			program.install_write_handler(TRUMP_IO_BASE, TRUMP_IO_END, 0, 0, write8_delegate(FUNC(ql_state::disk_io_w), this));
 			m_disk_io_base=TRUMP_IO_BASE;
 			break;
 	}

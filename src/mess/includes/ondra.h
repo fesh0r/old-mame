@@ -23,17 +23,9 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_ondra(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(ondra_interrupt);
+	TIMER_CALLBACK_MEMBER(nmi_check_callback);
 };
-
-
-/*----------- defined in machine/ondra.c -----------*/
-
-extern MACHINE_START( ondra );
-extern MACHINE_RESET( ondra );
-
-/*----------- defined in video/ondra.c -----------*/
-
-extern VIDEO_START( ondra );
-extern SCREEN_UPDATE_IND16( ondra );
 
 #endif

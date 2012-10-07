@@ -15,40 +15,39 @@
 #define TI86_SNAPSHOT_SIZE	131284
 
 
-static TIMER_CALLBACK(ti85_timer_callback)
+TIMER_CALLBACK_MEMBER(ti85_state::ti85_timer_callback)
 {
-	ti85_state *state = machine.driver_data<ti85_state>();
-	if (machine.root_device().ioport("ON")->read() & 0x01)
+	if (machine().root_device().ioport("ON")->read() & 0x01)
 	{
-		if (state->m_ON_interrupt_mask && !state->m_ON_pressed)
+		if (m_ON_interrupt_mask && !m_ON_pressed)
 		{
-			state->m_maincpu->set_input_line(0, HOLD_LINE);
-			state->m_ON_interrupt_status = 1;
-			if (!state->m_timer_interrupt_mask) state->m_timer_interrupt_mask = 1;
+			m_maincpu->set_input_line(0, HOLD_LINE);
+			m_ON_interrupt_status = 1;
+			if (!m_timer_interrupt_mask) m_timer_interrupt_mask = 1;
 		}
-		state->m_ON_pressed = 1;
+		m_ON_pressed = 1;
 		return;
 	}
 	else
-		state->m_ON_pressed = 0;
-	if (state->m_timer_interrupt_mask)
+		m_ON_pressed = 0;
+	if (m_timer_interrupt_mask)
 	{
-		state->m_maincpu->set_input_line(0, HOLD_LINE);
-		state->m_timer_interrupt_status = 1;
+		m_maincpu->set_input_line(0, HOLD_LINE);
+		m_timer_interrupt_status = 1;
 	}
 }
 
-inline void ti8x_update_bank(address_space *space, UINT8 bank, UINT8 *base, UINT8 page, bool is_ram)
+inline void ti8x_update_bank(address_space &space, UINT8 bank, UINT8 *base, UINT8 page, bool is_ram)
 {
-	ti85_state *state = space->machine().driver_data<ti85_state>();
+	ti85_state *state = space.machine().driver_data<ti85_state>();
 	static const char *const tag[] = {"bank1", "bank2", "bank3", "bank4"};
 
 	state->membank(tag[bank&3])->set_base(base + (0x4000 * page));
 
 	if (is_ram)
-		space->install_write_bank(bank * 0x4000, bank * 0x4000 + 0x3fff, tag[bank&3]);
+		space.install_write_bank(bank * 0x4000, bank * 0x4000 + 0x3fff, tag[bank&3]);
 	else
-		space->nop_write(bank * 0x4000, bank * 0x4000 + 0x3fff);
+		space.nop_write(bank * 0x4000, bank * 0x4000 + 0x3fff);
 }
 
 static void update_ti85_memory (running_machine &machine)
@@ -60,7 +59,7 @@ static void update_ti85_memory (running_machine &machine)
 static void update_ti83p_memory (running_machine &machine)
 {
 	ti85_state *state = machine.driver_data<ti85_state>();
-	address_space *space = state->m_maincpu->space(AS_PROGRAM);
+	address_space &space = state->m_maincpu->space(AS_PROGRAM);
 
 	if (state->m_ti8x_memory_page_1 & 0x40)
 	{
@@ -84,7 +83,7 @@ static void update_ti83p_memory (running_machine &machine)
 static void update_ti86_memory (running_machine &machine)
 {
 	ti85_state *state = machine.driver_data<ti85_state>();
-	address_space *space = state->m_maincpu->space(AS_PROGRAM);
+	address_space &space = state->m_maincpu->space(AS_PROGRAM);
 
 	if (state->m_ti8x_memory_page_1 & 0x40)
 	{
@@ -112,7 +111,7 @@ static void update_ti86_memory (running_machine &machine)
 
 void ti85_state::machine_start()
 {
-	address_space *space = m_maincpu->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	m_bios = memregion("bios")->base();
 
 	m_timer_interrupt_mask = 0;
@@ -131,10 +130,10 @@ void ti85_state::machine_start()
 	m_port4_bit0 = 0;
 	m_ti81_port_7_data = 0;
 
-	machine().scheduler().timer_pulse(attotime::from_hz(200), FUNC(ti85_timer_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(200), timer_expired_delegate(FUNC(ti85_state::ti85_timer_callback),this));
 
-	space->unmap_write(0x0000, 0x3fff);
-	space->unmap_write(0x4000, 0x7fff);
+	space.unmap_write(0x0000, 0x3fff);
+	space.unmap_write(0x4000, 0x7fff);
 	membank("bank1")->set_base(m_bios);
 	membank("bank2")->set_base(m_bios + 0x04000);
 }
@@ -149,7 +148,7 @@ MACHINE_RESET_MEMBER(ti85_state,ti85)
 
 MACHINE_START_MEMBER(ti85_state,ti83p)
 {
-	address_space *space = m_maincpu->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	m_bios = memregion("bios")->base();
 
 	m_timer_interrupt_mask = 0;
@@ -171,23 +170,23 @@ MACHINE_START_MEMBER(ti85_state,ti83p)
 	m_ti8x_ram = auto_alloc_array(machine(), UINT8, 32*1024);
 	memset(m_ti8x_ram, 0, sizeof(UINT8)*32*1024);
 
-	space->unmap_write(0x0000, 0x3fff);
-	space->unmap_write(0x4000, 0x7fff);
-	space->unmap_write(0x8000, 0xbfff);
+	space.unmap_write(0x0000, 0x3fff);
+	space.unmap_write(0x4000, 0x7fff);
+	space.unmap_write(0x8000, 0xbfff);
 
 	membank("bank1")->set_base(m_bios);
 	membank("bank2")->set_base(m_bios);
 	membank("bank3")->set_base(m_bios);
 	membank("bank4")->set_base(m_ti8x_ram);
 
-	machine().scheduler().timer_pulse(attotime::from_hz(200), FUNC(ti85_timer_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(200), timer_expired_delegate(FUNC(ti85_state::ti85_timer_callback),this));
 
 }
 
 
 MACHINE_START_MEMBER(ti85_state,ti86)
 {
-	address_space *space = m_maincpu->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	m_bios = memregion("bios")->base();
 
 	m_timer_interrupt_mask = 0;
@@ -209,14 +208,14 @@ MACHINE_START_MEMBER(ti85_state,ti86)
 	m_ti8x_ram = auto_alloc_array(machine(), UINT8, 128*1024);
 	memset(m_ti8x_ram, 0, sizeof(UINT8)*128*1024);
 
-	space->unmap_write(0x0000, 0x3fff);
+	space.unmap_write(0x0000, 0x3fff);
 
 	membank("bank1")->set_base(m_bios);
 	membank("bank2")->set_base(m_bios + 0x04000);
 
 	membank("bank4")->set_base(m_ti8x_ram);
 
-	machine().scheduler().timer_pulse(attotime::from_hz(200), FUNC(ti85_timer_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(200), timer_expired_delegate(FUNC(ti85_state::ti85_timer_callback),this));
 }
 
 
@@ -608,7 +607,7 @@ static void ti8x_snapshot_setup_registers (running_machine &machine, UINT8 * dat
 static void ti85_setup_snapshot (running_machine &machine, UINT8 * data)
 {
 	ti85_state *state = machine.driver_data<ti85_state>();
-	address_space *space = state->m_maincpu->space(AS_PROGRAM);
+	address_space &space = state->m_maincpu->space(AS_PROGRAM);
 	int i;
 	unsigned char lo,hi;
 	unsigned char * hdw = data + 0x8000 + 0x94;
@@ -617,7 +616,7 @@ static void ti85_setup_snapshot (running_machine &machine, UINT8 * data)
 
 	/* Memory dump */
 	for (i = 0; i < 0x8000; i++)
-	   space->write_byte(i + 0x8000, data[i+0x94]);
+	   space.write_byte(i + 0x8000, data[i+0x94]);
 
 	state->m_keypad_mask = hdw[0x00]&0x7f;
 

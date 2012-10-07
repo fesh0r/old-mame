@@ -206,13 +206,14 @@ public:
 	DECLARE_DRIVER_INIT(pyuuta);
 	virtual void machine_start();
 	virtual void machine_reset();
+	TIMER_CALLBACK_MEMBER(tape_interrupt_handler);
 };
 
 
 /* mapper state */
 
 /* tape interface state */
-static TIMER_CALLBACK(tape_interrupt_handler);
+
 
 
 /* parallel interface state */
@@ -226,7 +227,7 @@ enum
 
 DRIVER_INIT_MEMBER(tutor_state,tutor)
 {
-	m_tape_interrupt_timer = machine().scheduler().timer_alloc(FUNC(tape_interrupt_handler));
+	m_tape_interrupt_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(tutor_state::tape_interrupt_handler),this));
 
 	membank("bank1")->configure_entry(0, machine().root_device().memregion("maincpu")->base() + basic_base);
 	membank("bank1")->configure_entry(1, memregion("maincpu")->base() + cartridge_base);
@@ -400,11 +401,10 @@ WRITE8_MEMBER( tutor_state::tutor_mapper_w )
     know their exact meaning.
 */
 
-static TIMER_CALLBACK(tape_interrupt_handler)
+TIMER_CALLBACK_MEMBER(tutor_state::tape_interrupt_handler)
 {
-	tutor_state *state = machine.driver_data<tutor_state>();
-	//assert(state->m_tape_interrupt_enable);
-	machine.device("maincpu")->execute().set_input_line(1, (state->m_cass->input() > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	//assert(m_tape_interrupt_enable);
+	machine().device("maincpu")->execute().set_input_line(1, (m_cass->input() > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
@@ -552,7 +552,7 @@ static ADDRESS_MAP_START(tutor_memmap, AS_PROGRAM, 8, tutor_state)
 	AM_RANGE(0xe000, 0xe000) AM_DEVREADWRITE("tms9928a", tms9928a_device, vram_read, vram_write)	/*VDP data*/
 	AM_RANGE(0xe002, 0xe002) AM_DEVREADWRITE("tms9928a", tms9928a_device, register_read, register_write)/*VDP status*/
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
-	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76489a_new_device, write)	/*sound chip*/
+	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76489a_device, write)	/*sound chip*/
 	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w)	/*printer*/
 	AM_RANGE(0xee00, 0xeeff) AM_READNOP AM_WRITE( tutor_cassette_w)		/*cassette interface*/
 
@@ -566,7 +566,7 @@ static ADDRESS_MAP_START(pyuutajr_mem, AS_PROGRAM, 8, tutor_state)
 	AM_RANGE(0xe000, 0xe000) AM_DEVREADWRITE("tms9928a", tms9928a_device, vram_read, vram_write)	/*VDP data*/
 	AM_RANGE(0xe002, 0xe002) AM_DEVREADWRITE("tms9928a", tms9928a_device, register_read, register_write)/*VDP status*/
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
-	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76489a_new_device, write)	/*sound chip*/
+	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76489a_device, write)	/*sound chip*/
 	AM_RANGE(0xe800, 0xe800) AM_READ_PORT("LINE0")
 	AM_RANGE(0xea00, 0xea00) AM_READ_PORT("LINE1")
 	AM_RANGE(0xec00, 0xec00) AM_READ_PORT("LINE2")
@@ -768,7 +768,7 @@ static MACHINE_CONFIG_START( tutor, tutor_state )
 
 	/* sound */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("sn76489a", SN76489A_NEW, 3579545)	/* 3.579545 MHz */
+	MCFG_SOUND_ADD("sn76489a", SN76489A, 3579545)	/* 3.579545 MHz */
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)

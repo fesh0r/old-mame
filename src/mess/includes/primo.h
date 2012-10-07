@@ -33,21 +33,15 @@ public:
 	DECLARE_DRIVER_INIT(primo32);
 	virtual void machine_reset();
 	DECLARE_MACHINE_RESET(primob);
+	UINT32 screen_update_primo(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(primo_vblank_interrupt);
 };
 
 
 /*----------- defined in machine/primo.c -----------*/
 
-extern MACHINE_RESET( primoa );
-extern MACHINE_RESET( primob );
-extern INTERRUPT_GEN( primo_vblank_interrupt );
 extern SNAPSHOT_LOAD( primo );
 extern QUICKLOAD_LOAD( primo );
-
-
-/*----------- defined in video/primo.c -----------*/
-
-extern SCREEN_UPDATE_IND16( primo );
 
 
 #endif /* PRIMO_H_ */

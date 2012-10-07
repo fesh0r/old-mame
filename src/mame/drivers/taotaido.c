@@ -332,7 +332,7 @@ static const ym2610_interface ym2610_config =
 static MACHINE_CONFIG_START( taotaido, taotaido_state )
 	MCFG_CPU_ADD("maincpu", M68000, 32000000/2)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", taotaido_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,20000000/4) // ??
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -346,8 +346,8 @@ static MACHINE_CONFIG_START( taotaido, taotaido_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(taotaido)
-	MCFG_SCREEN_VBLANK_STATIC( taotaido )
+	MCFG_SCREEN_UPDATE_DRIVER(taotaido_state, screen_update_taotaido)
+	MCFG_SCREEN_VBLANK_DRIVER(taotaido_state, screen_eof_taotaido)
 
 	MCFG_PALETTE_LENGTH(0x800)
 

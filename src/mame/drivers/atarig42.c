@@ -569,8 +569,8 @@ static MACHINE_CONFIG_START( atarig42, atarig42_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(atarig42)
-	MCFG_SCREEN_VBLANK_STATIC(atarig42)
+	MCFG_SCREEN_UPDATE_DRIVER(atarig42_state, screen_update_atarig42)
+	MCFG_SCREEN_VBLANK_DRIVER(atarig42_state, screen_eof_atarig42)
 
 	MCFG_VIDEO_START_OVERRIDE(atarig42_state,atarig42)
 
@@ -786,9 +786,9 @@ DRIVER_INIT_MEMBER(atarig42_state,roadriot)
 
 	m_playfield_base = 0x400;
 
-	address_space *main = machine().device<m68000_device>("maincpu")->space(AS_PROGRAM);
-	m_sloop_base = main->install_readwrite_handler(0x000000, 0x07ffff, read16_delegate(FUNC(atarig42_state::roadriot_sloop_data_r),this), write16_delegate(FUNC(atarig42_state::roadriot_sloop_data_w),this));
-	main->set_direct_update_handler(direct_update_delegate(FUNC(atarig42_state::atarig42_sloop_direct_handler), this));
+	address_space &main = machine().device<m68000_device>("maincpu")->space(AS_PROGRAM);
+	m_sloop_base = main.install_readwrite_handler(0x000000, 0x07ffff, read16_delegate(FUNC(atarig42_state::roadriot_sloop_data_r),this), write16_delegate(FUNC(atarig42_state::roadriot_sloop_data_w),this));
+	main.set_direct_update_handler(direct_update_delegate(FUNC(atarig42_state::atarig42_sloop_direct_handler), this));
 
 	asic65_config(machine(), ASIC65_ROMBASED);
 /*
@@ -824,9 +824,9 @@ DRIVER_INIT_MEMBER(atarig42_state,guardian)
 	/* put an RTS there so we don't die */
 	*(UINT16 *)&memregion("maincpu")->base()[0x80000] = 0x4E75;
 
-	address_space *main = machine().device<m68000_device>("maincpu")->space(AS_PROGRAM);
-	m_sloop_base = main->install_readwrite_handler(0x000000, 0x07ffff, read16_delegate(FUNC(atarig42_state::guardians_sloop_data_r),this), write16_delegate(FUNC(atarig42_state::guardians_sloop_data_w),this));
-	main->set_direct_update_handler(direct_update_delegate(FUNC(atarig42_state::atarig42_sloop_direct_handler), this));
+	address_space &main = machine().device<m68000_device>("maincpu")->space(AS_PROGRAM);
+	m_sloop_base = main.install_readwrite_handler(0x000000, 0x07ffff, read16_delegate(FUNC(atarig42_state::guardians_sloop_data_r),this), write16_delegate(FUNC(atarig42_state::guardians_sloop_data_w),this));
+	main.set_direct_update_handler(direct_update_delegate(FUNC(atarig42_state::atarig42_sloop_direct_handler), this));
 
 	asic65_config(machine(), ASIC65_GUARDIANS);
 /*

@@ -62,15 +62,12 @@ even if you have to use unusual geometry to do so !
 #include "machine/i8251.h"
 #include "machine/ctronics.h"
 #include "machine/6522via.h"
+#include "machine/scsibus.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
 
 #include "includes/rmnimbus.h"
 
-static void sio_interrupt(device_t *device, int state);
-//static WRITE8_DEVICE_HANDLER( sio_dtr_w );
-static WRITE8_DEVICE_HANDLER( sio_serial_transmit );
-static int sio_serial_receive( device_t *device, int channel );
 
 
 /*-------------------------------------------------------------------------*/
@@ -113,24 +110,24 @@ static int sio_serial_receive( device_t *device, int channel );
 
 const z80sio_interface nimbus_sio_intf =
 {
-	sio_interrupt,			/* interrupt handler */
-	0, //sio_dtr_w,             /* DTR changed handler */
-	0,						/* RTS changed handler */
-	0,						/* BREAK changed handler */
-	sio_serial_transmit,	/* transmit handler */
-	sio_serial_receive		/* receive handler */
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state,sio_interrupt),			/* interrupt handler */
+	DEVCB_NULL, //sio_dtr_w,             /* DTR changed handler */
+	DEVCB_NULL,						/* RTS changed handler */
+	DEVCB_NULL,						/* BREAK changed handler */
+	DEVCB_DRIVER_MEMBER16(rmnimbus_state,sio_serial_transmit),	/* transmit handler */
+	DEVCB_DRIVER_MEMBER16(rmnimbus_state,sio_serial_receive)		/* receive handler */
 };
 
 /* Floppy drives WD2793 */
 
-static WRITE_LINE_DEVICE_HANDLER( nimbus_fdc_intrq_w );
-static WRITE_LINE_DEVICE_HANDLER( nimbus_fdc_drq_w );
+
+
 
 const wd17xx_interface nimbus_wd17xx_interface =
 {
 	DEVCB_LINE_GND,
-	DEVCB_LINE(nimbus_fdc_intrq_w),
-	DEVCB_LINE(nimbus_fdc_drq_w),
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state,nimbus_fdc_intrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state,nimbus_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
@@ -177,14 +174,14 @@ static void hdc_post_rw(running_machine &machine);
 static void hdc_drq(running_machine &machine);
 
 static void keyboard_reset(running_machine &machine);
-static TIMER_CALLBACK(keyscan_callback);
+
 
 static void pc8031_reset(running_machine &machine);
 static void iou_reset(running_machine &machine);
 static void rmni_sound_reset(running_machine &machine);
 
 static void mouse_js_reset(running_machine &machine);
-static TIMER_CALLBACK(mouse_callback);
+
 
 
 /*************************************
@@ -458,11 +455,10 @@ static void nimbus_recalculate_ints(running_machine &machine)
  *
  *************************************/
 
-static TIMER_CALLBACK(internal_timer_int)
+TIMER_CALLBACK_MEMBER(rmnimbus_state::internal_timer_int)
 {
-	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
 	int which = param;
-	struct timer_state *t = &state->m_i186.timer[which];
+	struct timer_state *t = &m_i186.timer[which];
 
 	if (LOG_TIMER) logerror("Hit interrupt callback for timer %d\n", which);
 
@@ -472,8 +468,8 @@ static TIMER_CALLBACK(internal_timer_int)
 	/* request an interrupt */
 	if (t->control & 0x2000)
 	{
-		state->m_i186.intr.status |= 0x01 << which;
-		update_interrupt_state(machine);
+		m_i186.intr.status |= 0x01 << which;
+		update_interrupt_state(machine());
 		if (LOG_TIMER) logerror("  Generating timer interrupt\n");
 	}
 
@@ -654,11 +650,10 @@ static void internal_timer_update(running_machine &machine,
  *
  *************************************/
 
-static TIMER_CALLBACK(dma_timer_callback)
+TIMER_CALLBACK_MEMBER(rmnimbus_state::dma_timer_callback)
 {
-	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
 	int which = param;
-	struct dma_state *d = &state->m_i186.dma[which];
+	struct dma_state *d = &m_i186.dma[which];
 
 	/* complete the status update */
 	d->control &= ~0x0002;
@@ -669,8 +664,8 @@ static TIMER_CALLBACK(dma_timer_callback)
 	if (d->control & 0x0100)
 	{
 		if (LOG_DMA>1) logerror("DMA%d timer callback - requesting interrupt: count = %04X, source = %04X\n", which, d->count, d->source);
-		state->m_i186.intr.request |= 0x04 << which;
-		update_interrupt_state(machine);
+		m_i186.intr.request |= 0x04 << which;
+		update_interrupt_state(machine());
 	}
 }
 
@@ -729,11 +724,8 @@ static void drq_callback(running_machine &machine, int which)
 {
 	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
 	struct dma_state *dma = &state->m_i186.dma[which];
-	address_space *memory_space   = machine.device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
-	address_space *io_space       = machine.device(MAINCPU_TAG)->memory().space(AS_IO);
-
-    address_space *src_space;
-    address_space *dest_space;
+	address_space &memory_space   = machine.device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+	address_space &io_space       = machine.device(MAINCPU_TAG)->memory().space(AS_IO);
 
     UINT16  dma_word;
     UINT8   dma_byte;
@@ -750,27 +742,20 @@ static void drq_callback(running_machine &machine, int which)
         return;
     }
 
-    if(dma->control & DEST_MIO)
-        dest_space=memory_space;
-    else
-        dest_space=io_space;
-
-    if(dma->control & SRC_MIO)
-        src_space=memory_space;
-    else
-        src_space=io_space;
+	address_space &dest_space = (dma->control & DEST_MIO) ? memory_space : io_space;
+    address_space &src_space = (dma->control & SRC_MIO) ? memory_space : io_space;
 
     // Do the transfer
     if(dma->control & BYTE_WORD)
     {
-        dma_word=src_space->read_word(dma->source);
-        dest_space->write_word(dma->dest,dma_word);
+        dma_word=src_space.read_word(dma->source);
+        dest_space.write_word(dma->dest,dma_word);
         incdec_size=2;
     }
     else
     {
-        dma_byte=src_space->read_byte(dma->source);
-        dest_space->write_byte(dma->dest,dma_byte);
+        dma_byte=src_space.read_byte(dma->source);
+        dest_space.write_byte(dma->dest,dma_byte);
         incdec_size=1;
     }
 
@@ -816,14 +801,14 @@ static void nimbus_cpu_init(running_machine &machine)
 	logerror("Machine reset\n");
 
 	/* create timers here so they stick around */
-	state->m_i186.timer[0].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
-	state->m_i186.timer[1].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
-	state->m_i186.timer[2].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
+	state->m_i186.timer[0].int_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::internal_timer_int),state));
+	state->m_i186.timer[1].int_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::internal_timer_int),state));
+	state->m_i186.timer[2].int_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::internal_timer_int),state));
 	state->m_i186.timer[0].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
 	state->m_i186.timer[1].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
 	state->m_i186.timer[2].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
-	state->m_i186.dma[0].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
-	state->m_i186.dma[1].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
+	state->m_i186.dma[0].finish_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::dma_timer_callback),state));
+	state->m_i186.dma[1].finish_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::dma_timer_callback),state));
 }
 
 static void nimbus_cpu_reset(running_machine &machine)
@@ -1232,14 +1217,14 @@ WRITE16_MEMBER(rmnimbus_state::nimbus_i186_internal_port_w)
 			temp = (data16 & 0x0fff) << 8;
 			if (data16 & 0x1000)
 			{
-				machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM)->install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_r),this));
-				machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM)->install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_w),this));
+				machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM).install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_r),this));
+				machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM).install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_w),this));
 			}
 			else
 			{
 				temp &= 0xffff;
-				machine().device(MAINCPU_TAG)->memory().space(AS_IO)->install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_r),this));
-				machine().device(MAINCPU_TAG)->memory().space(AS_IO)->install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_w),this));
+				machine().device(MAINCPU_TAG)->memory().space(AS_IO).install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_r),this));
+				machine().device(MAINCPU_TAG)->memory().space(AS_IO).install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(rmnimbus_state::nimbus_i186_internal_port_w),this));
 			}
 			break;
 
@@ -1272,8 +1257,8 @@ void rmnimbus_state::machine_start()
 	/* init cpu */
 	nimbus_cpu_init(machine());
 
-	m_keyboard.keyscan_timer=machine().scheduler().timer_alloc(FUNC(keyscan_callback));
-	m_nimbus_mouse.m_mouse_timer=machine().scheduler().timer_alloc(FUNC(mouse_callback));
+	m_keyboard.keyscan_timer=machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::keyscan_callback),this));
+	m_nimbus_mouse.m_mouse_timer=machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(rmnimbus_state::mouse_callback),this));
 
 	/* setup debug commands */
 	if (machine().debug_flags & DEBUG_FLAG_ENABLED)
@@ -1346,10 +1331,10 @@ static void nimbus_debug(running_machine &machine, int ref, int params, const ch
 static int instruction_hook(device_t &device, offs_t curpc)
 {
 	rmnimbus_state	*state = device.machine().driver_data<rmnimbus_state>();
-    address_space	*space = device.memory().space(AS_PROGRAM);
+    address_space	&space = device.memory().space(AS_PROGRAM);
     UINT8           *addr_ptr;
 
-    addr_ptr = (UINT8*)space->get_read_ptr(curpc);
+    addr_ptr = (UINT8*)space.get_read_ptr(curpc);
 
 	if ((addr_ptr !=NULL) && (addr_ptr[0]==0xCD))
 	{
@@ -1713,19 +1698,19 @@ static void decode_subbios(device_t *device,offs_t pc, UINT8 raw_flag)
 	}
 }
 
-static void *get_dssi_ptr(address_space *space, UINT16   ds, UINT16 si)
+static void *get_dssi_ptr(address_space &space, UINT16   ds, UINT16 si)
 {
     int             addr;
 
     addr=((ds<<4)+si);
 //    OUTPUT_SEGOFS("DS:SI",ds,si);
 
-    return space->get_read_ptr(addr);
+    return space.get_read_ptr(addr);
 }
 
 static void decode_dssi_generic(device_t *device,UINT16  ds, UINT16 si, UINT8 raw_flag)
 {
-	address_space *space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+	address_space &space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
     UINT16  *params;
 	int		count;
 
@@ -1743,7 +1728,7 @@ static void decode_dssi_generic(device_t *device,UINT16  ds, UINT16 si, UINT8 ra
 
 static void decode_dssi_f_fill_area(device_t *device,UINT16  ds, UINT16 si, UINT8 raw_flag)
 {
-    address_space *space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+    address_space &space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
 
     UINT16          *addr_ptr;
     t_area_params   *area_params;
@@ -1755,7 +1740,7 @@ static void decode_dssi_f_fill_area(device_t *device,UINT16  ds, UINT16 si, UINT
     if (!raw_flag)
 		OUTPUT_SEGOFS("SegBrush:OfsBrush",area_params->seg_brush,area_params->ofs_brush);
 
-	brush=(t_nimbus_brush  *)space->get_read_ptr(LINEAR_ADDR(area_params->seg_brush,area_params->ofs_brush));
+	brush=(t_nimbus_brush  *)space.get_read_ptr(LINEAR_ADDR(area_params->seg_brush,area_params->ofs_brush));
 
     if(raw_flag)
 	{
@@ -1776,7 +1761,7 @@ static void decode_dssi_f_fill_area(device_t *device,UINT16  ds, UINT16 si, UINT
 		OUTPUT_SEGOFS("SegData:OfsData",area_params->seg_data,area_params->ofs_data);
 	}
 
-    addr_ptr = (UINT16 *)space->get_read_ptr(LINEAR_ADDR(area_params->seg_data,area_params->ofs_data));
+    addr_ptr = (UINT16 *)space.get_read_ptr(LINEAR_ADDR(area_params->seg_data,area_params->ofs_data));
     for(cocount=0; cocount < area_params->count; cocount++)
     {
 		if(raw_flag)
@@ -1796,7 +1781,7 @@ static void decode_dssi_f_fill_area(device_t *device,UINT16  ds, UINT16 si, UINT
 
 static void decode_dssi_f_plot_character_string(device_t *device,UINT16  ds, UINT16 si, UINT8 raw_flag)
 {
-    address_space *space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+    address_space &space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
 
     UINT8       			*char_ptr;
     t_plot_string_params	*plot_string_params;
@@ -1812,7 +1797,7 @@ static void decode_dssi_f_plot_character_string(device_t *device,UINT16  ds, UIN
 
     logerror("x=%d, y=%d, length=%d\n",plot_string_params->x,plot_string_params->y,plot_string_params->length);
 
-    char_ptr=(UINT8*)space->get_read_ptr(LINEAR_ADDR(plot_string_params->seg_data,plot_string_params->ofs_data));
+    char_ptr=(UINT8*)space.get_read_ptr(LINEAR_ADDR(plot_string_params->seg_data,plot_string_params->ofs_data));
 
     if (plot_string_params->length==0xFFFF)
         logerror("%s",char_ptr);
@@ -1825,7 +1810,7 @@ static void decode_dssi_f_plot_character_string(device_t *device,UINT16  ds, UIN
 
 static void decode_dssi_f_set_new_clt(device_t *device,UINT16  ds, UINT16 si, UINT8 raw_flag)
 {
-    address_space *space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+    address_space &space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
     UINT16  *new_colours;
     int     colour;
     new_colours=(UINT16  *)get_dssi_ptr(space,ds,si);
@@ -1842,7 +1827,7 @@ static void decode_dssi_f_set_new_clt(device_t *device,UINT16  ds, UINT16 si, UI
 
 static void decode_dssi_f_plonk_char(device_t *device,UINT16  ds, UINT16 si, UINT8 raw_flag)
 {
-    address_space *space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+    address_space &space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
     UINT16  *params;
     params=(UINT16  *)get_dssi_ptr(space,ds,si);
 
@@ -1856,7 +1841,7 @@ static void decode_dssi_f_plonk_char(device_t *device,UINT16  ds, UINT16 si, UIN
 
 static void decode_dssi_f_rw_sectors(device_t *device,UINT16  ds, UINT16 si, UINT8 raw_flag)
 {
-    address_space *space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
+    address_space &space = device->machine().device(MAINCPU_TAG)->memory().space(AS_PROGRAM);
     UINT16  *params;
     int     param_no;
 
@@ -1992,7 +1977,7 @@ static const nimbus_blocks ramblocks[] =
 static void nimbus_bank_memory(running_machine &machine)
 {
 	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
-    address_space *space = machine.device( MAINCPU_TAG)->memory().space( AS_PROGRAM );
+    address_space &space = machine.device( MAINCPU_TAG)->memory().space( AS_PROGRAM );
     int     ramsize = machine.device<ram_device>(RAM_TAG)->size();
     int     ramblock = 0;
     int     blockno;
@@ -2049,12 +2034,12 @@ static void nimbus_bank_memory(running_machine &machine)
             map_base=(ramsel==0x07) ? map_blocks[map_blockno] : &map_blocks[map_blockno][block_ofs*1024];
 
             state->membank(bank)->set_base(map_base);
-            space->install_readwrite_bank(memmap[blockno].start, memmap[blockno].end, bank);
+            space.install_readwrite_bank(memmap[blockno].start, memmap[blockno].end, bank);
             //if(LOG_RAM) logerror(", base=%X\n",(int)map_base);
         }
         else
         {
-            space->nop_readwrite(memmap[blockno].start, memmap[blockno].end);
+            space.nop_readwrite(memmap[blockno].start, memmap[blockno].end);
             if(LOG_RAM) logerror("NOP\n");
         }
     }
@@ -2181,9 +2166,9 @@ static void scan_keyboard(running_machine &machine)
     }
 }
 
-static TIMER_CALLBACK(keyscan_callback)
+TIMER_CALLBACK_MEMBER(rmnimbus_state::keyscan_callback)
 {
-    scan_keyboard(machine);
+    scan_keyboard(machine());
 }
 
 /*
@@ -2194,24 +2179,23 @@ Z80SIO, used for the keyboard interface
 
 /* Z80 SIO/2 */
 
-static void sio_interrupt(device_t *device, int state)
+WRITE_LINE_MEMBER(rmnimbus_state::sio_interrupt)
 {
-	rmnimbus_state *drvstate = device->machine().driver_data<rmnimbus_state>();
     if(LOG_SIO)
         logerror("SIO Interrupt state=%02X\n",state);
 
     // Don't re-trigger if already active !
-    if(state!=drvstate->m_sio_int_state)
+    if(state!=m_sio_int_state)
     {
-        drvstate->m_sio_int_state=state;
+        m_sio_int_state=state;
 
         if(state)
-            external_int(device->machine(),0,EXTERNAL_INT_Z80SIO);
+            external_int(machine(),0,EXTERNAL_INT_Z80SIO);
     }
 }
 
 #ifdef UNUSED_FUNCTION
-WRITE8_DEVICE_HANDLER( sio_dtr_w )
+WRITE8_MEMBER(rmnimbus_state::sio_dtr_w)
 {
 	if (offset == 1)
 	{
@@ -2219,15 +2203,15 @@ WRITE8_DEVICE_HANDLER( sio_dtr_w )
 }
 #endif
 
-static WRITE8_DEVICE_HANDLER( sio_serial_transmit )
+WRITE16_MEMBER(rmnimbus_state::sio_serial_transmit)
 {
 }
 
-static int sio_serial_receive( device_t *device, int channel )
+READ16_MEMBER(rmnimbus_state::sio_serial_receive)
 {
-    if(channel==0)
+    if(offset==0)
     {
-        return keyboard_queue_read(device->machine());
+        return keyboard_queue_read(machine());
     }
     else
         return -1;
@@ -2262,20 +2246,18 @@ static void set_disk_int(running_machine &machine, int state)
     }
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nimbus_fdc_intrq_w )
+WRITE_LINE_MEMBER(rmnimbus_state::nimbus_fdc_intrq_w)
 {
-    set_disk_int(device->machine(),state);
+    set_disk_int(machine(),state);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nimbus_fdc_drq_w )
+WRITE_LINE_MEMBER(rmnimbus_state::nimbus_fdc_drq_w)
 {
-	rmnimbus_state *drvstate = device->machine().driver_data<rmnimbus_state>();
-
     if(LOG_DISK)
         logerror("nimbus_drives_drq_w(%d)\n", state);
 
-    if(state && FDC_DRQ_ENABLED(drvstate))
-        drq_callback(device->machine(),1);
+    if(state && FDC_DRQ_ENABLED(this))
+        drq_callback(machine(),1);
 }
 
 static UINT8 fdc_driveno(UINT8 drivesel)
@@ -2311,7 +2293,6 @@ READ8_MEMBER(rmnimbus_state::nimbus_disk_r)
 {
 	int result = 0;
 	device_t *fdc = machine().device(FDC_TAG);
-	scsibus_device *hdc = machine().device<scsibus_device>(SCSIBUS_TAG);
 
 	int pc=space.device().safe_pc();
 	rmnimbus_state *state = machine().driver_data<rmnimbus_state>();
@@ -2320,17 +2301,17 @@ READ8_MEMBER(rmnimbus_state::nimbus_disk_r)
 	switch(offset*2)
 	{
 		case 0x08 :
-			result = wd17xx_status_r(fdc, 0);
+			result = wd17xx_status_r(fdc, space, 0);
 			if (LOG_DISK_FDD) logerror("Disk status=%2.2X\n",result);
 			break;
 		case 0x0A :
-			result = wd17xx_track_r(fdc, 0);
+			result = wd17xx_track_r(fdc, space, 0);
 			break;
 		case 0x0C :
-			result = wd17xx_sector_r(fdc, 0);
+			result = wd17xx_sector_r(fdc, space, 0);
 			break;
 		case 0x0E :
-			result = wd17xx_data_r(fdc, 0);
+			result = wd17xx_data_r(fdc, space, 0);
 			break;
 		case 0x10 :
 			m_nimbus_drives.reg410_in &= ~FDC_BITS_410;
@@ -2342,7 +2323,7 @@ READ8_MEMBER(rmnimbus_state::nimbus_disk_r)
 			result=m_nimbus_drives.reg410_in ^ INV_BITS_410;
 			break;
 		case 0x18 :
-			result = hdc->scsi_data_r();
+			result = m_scsibus->scsi_data_r();
 			hdc_post_rw(machine());
 		default:
 			break;
@@ -2379,7 +2360,6 @@ READ8_MEMBER(rmnimbus_state::nimbus_disk_r)
 WRITE8_MEMBER(rmnimbus_state::nimbus_disk_w)
 {
 	device_t *fdc = machine().device(FDC_TAG);
-	scsibus_device *hdc = machine().device<scsibus_device>(SCSIBUS_TAG);
     int                 pc=space.device().safe_pc();
     UINT8               reg400_old = m_nimbus_drives.reg400;
 
@@ -2406,23 +2386,23 @@ WRITE8_MEMBER(rmnimbus_state::nimbus_disk_w)
 
             break;
 		case 0x08 :
-			wd17xx_command_w(fdc, 0, data);
+			wd17xx_command_w(fdc, space, 0, data);
 			break;
 		case 0x0A :
-			wd17xx_track_w(fdc, 0, data);
+			wd17xx_track_w(fdc, space, 0, data);
 			break;
 		case 0x0C :
-			wd17xx_sector_w(fdc, 0, data);
+			wd17xx_sector_w(fdc, space, 0, data);
 			break;
 		case 0x0E :
-			wd17xx_data_w(fdc, 0, data);
+			wd17xx_data_w(fdc, space, 0, data);
 			break;
         case 0x10 :
             hdc_ctrl_write(machine(),data);
             break;
 
         case 0x18 :
-            hdc->scsi_data_w(data);
+            m_scsibus->scsi_data_w(data);
             hdc_post_rw(machine());
             break;
 	}
@@ -2431,16 +2411,13 @@ WRITE8_MEMBER(rmnimbus_state::nimbus_disk_w)
 static void hdc_reset(running_machine &machine)
 {
 	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
-	scsibus_device *hdc = machine.device<scsibus_device>(SCSIBUS_TAG);
-
-    hdc->init_scsibus(512);
 
     state->m_nimbus_drives.reg410_in=0;
-    state->m_nimbus_drives.reg410_in |= (hdc->get_scsi_line(SCSI_LINE_REQ) ? HDC_REQ_MASK : 0);
-    state->m_nimbus_drives.reg410_in |= (hdc->get_scsi_line(SCSI_LINE_CD)  ? HDC_CD_MASK  : 0);
-    state->m_nimbus_drives.reg410_in |= (hdc->get_scsi_line(SCSI_LINE_IO)  ? HDC_IO_MASK  : 0);
-    state->m_nimbus_drives.reg410_in |= (hdc->get_scsi_line(SCSI_LINE_BSY) ? HDC_BSY_MASK : 0);
-    state->m_nimbus_drives.reg410_in |= (hdc->get_scsi_line(SCSI_LINE_MSG) ? HDC_MSG_MASK : 0);
+    state->m_nimbus_drives.reg410_in |= (state->m_scsibus->scsi_req_r() ? HDC_REQ_MASK : 0);
+    state->m_nimbus_drives.reg410_in |= (state->m_scsibus->scsi_cd_r()  ? HDC_CD_MASK  : 0);
+    state->m_nimbus_drives.reg410_in |= (state->m_scsibus->scsi_io_r()  ? HDC_IO_MASK  : 0);
+    state->m_nimbus_drives.reg410_in |= (state->m_scsibus->scsi_bsy_r() ? HDC_BSY_MASK : 0);
+    state->m_nimbus_drives.reg410_in |= (state->m_scsibus->scsi_msg_r() ? HDC_MSG_MASK : 0);
 
     state->m_nimbus_drives.drq_ff=0;
 }
@@ -2448,7 +2425,6 @@ static void hdc_reset(running_machine &machine)
 static void hdc_ctrl_write(running_machine &machine, UINT8 data)
 {
 	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
-	scsibus_device *hdc = machine.device<scsibus_device>(SCSIBUS_TAG);
 
     // If we enable the HDC interupt, and an interrupt is pending, go deal with it.
     if(((data & HDC_IRQ_MASK) && (~state->m_nimbus_drives.reg410_out & HDC_IRQ_MASK)) &&
@@ -2457,17 +2433,16 @@ static void hdc_ctrl_write(running_machine &machine, UINT8 data)
 
     state->m_nimbus_drives.reg410_out=data;
 
-    hdc->set_scsi_line(SCSI_LINE_RESET, (data & HDC_RESET_MASK) ? 0 : 1);
-    hdc->set_scsi_line(SCSI_LINE_SEL, (data & HDC_SEL_MASK) ? 0 : 1);
+    state->m_scsibus->scsi_rst_w((data & HDC_RESET_MASK) ? 0 : 1);
+    state->m_scsibus->scsi_sel_w((data & HDC_SEL_MASK) ? 0 : 1);
 }
 
 static void hdc_post_rw(running_machine &machine)
 {
 	rmnimbus_state *state = machine.driver_data<rmnimbus_state>();
-	scsibus_device *hdc = machine.device<scsibus_device>(SCSIBUS_TAG);
 
     if((state->m_nimbus_drives.reg410_in & HDC_REQ_MASK)==0)
-        hdc->set_scsi_line(SCSI_LINE_ACK,0);
+        state->m_scsibus->scsi_ack_w(0);
 
     state->m_nimbus_drives.drq_ff=0;
 }
@@ -2481,48 +2456,61 @@ static void hdc_drq(running_machine &machine)
     }
 }
 
-void nimbus_scsi_linechange(device_t *device, UINT8 line, UINT8 state)
+WRITE_LINE_MEMBER( rmnimbus_state::nimbus_scsi_bsy_w )
 {
-	rmnimbus_state *drvstate = device->machine().driver_data<rmnimbus_state>();
-    UINT8   mask = 0;
+	nimbus_scsi_linechange( HDC_BSY_MASK, state );
+}
+
+WRITE_LINE_MEMBER( rmnimbus_state::nimbus_scsi_cd_w )
+{
+	nimbus_scsi_linechange( HDC_CD_MASK, state );
+}
+
+WRITE_LINE_MEMBER( rmnimbus_state::nimbus_scsi_io_w )
+{
+	nimbus_scsi_linechange( HDC_IO_MASK, state );
+}
+
+WRITE_LINE_MEMBER( rmnimbus_state::nimbus_scsi_msg_w )
+{
+	nimbus_scsi_linechange( HDC_MSG_MASK, state );
+}
+
+WRITE_LINE_MEMBER( rmnimbus_state::nimbus_scsi_req_w )
+{
+	nimbus_scsi_linechange( HDC_REQ_MASK, state );
+}
+
+void rmnimbus_state::nimbus_scsi_linechange( UINT8 mask, UINT8 state )
+{
     UINT8   last = 0;
 
-    switch (line)
-    {
-        case SCSI_LINE_REQ   : mask=HDC_REQ_MASK; break;
-        case SCSI_LINE_CD    : mask=HDC_CD_MASK; break;
-        case SCSI_LINE_IO    : mask=HDC_IO_MASK; break;
-        case SCSI_LINE_BSY   : mask=HDC_BSY_MASK; break;
-        case SCSI_LINE_MSG   : mask=HDC_MSG_MASK; break;
-    }
-
-    last=drvstate->m_nimbus_drives.reg410_in & mask;
+    last=m_nimbus_drives.reg410_in & mask;
 
     if(state)
-        drvstate->m_nimbus_drives.reg410_in|=mask;
+        m_nimbus_drives.reg410_in|=mask;
     else
-        drvstate->m_nimbus_drives.reg410_in&=~mask;
+        m_nimbus_drives.reg410_in&=~mask;
 
 
-    if(HDC_IRQ_ENABLED(drvstate) && ((~drvstate->m_nimbus_drives.reg410_in & HDC_INT_TRIGGER)==HDC_INT_TRIGGER))
-        set_disk_int(device->machine(),1);
+    if(HDC_IRQ_ENABLED() && ((~m_nimbus_drives.reg410_in & HDC_INT_TRIGGER)==HDC_INT_TRIGGER))
+        set_disk_int(machine(),1);
     else
-        set_disk_int(device->machine(),0);
+        set_disk_int(machine(),0);
 
-    if(line==SCSI_LINE_REQ)
+    if( mask == HDC_REQ_MASK )
     {
         if (state==0)
         {
-            if(((drvstate->m_nimbus_drives.reg410_in & HDC_CD_MASK)==HDC_CD_MASK) && (last!=0))
+            if(((m_nimbus_drives.reg410_in & HDC_CD_MASK)==HDC_CD_MASK) && (last!=0))
             {
-                drvstate->m_nimbus_drives.drq_ff=1;
-                hdc_drq(device->machine());
+                m_nimbus_drives.drq_ff=1;
+                hdc_drq(machine());
             }
         }
         else
 		{
-			scsibus_device *hdc = downcast<scsibus_device *>(device);
-			hdc->set_scsi_line(SCSI_LINE_ACK,1);
+			m_scsibus->scsi_ack_w(1);
 		}
     }
 }
@@ -2774,7 +2762,7 @@ READ8_MEMBER(rmnimbus_state::nimbus_sound_ay8910_r)
     UINT8   result=0;
 
     if ((offset*2)==0)
-        result=ay8910_r(ay8910,0);
+        result=ay8910_r(ay8910,space, 0);
 
     return result;
 }
@@ -2789,8 +2777,8 @@ WRITE8_MEMBER(rmnimbus_state::nimbus_sound_ay8910_w)
 
     switch (offset*2)
     {
-        case 0x00   : ay8910_data_address_w(ay8910, 1, data); break;
-        case 0x02   : ay8910_data_address_w(ay8910, 0, data); break;
+        case 0x00   : ay8910_data_address_w(ay8910, space, 1, data); break;
+        case 0x02   : ay8910_data_address_w(ay8910, space, 0, data); break;
     }
 
 }
@@ -2848,24 +2836,23 @@ static void mouse_js_reset(running_machine &machine)
     state->m_mouse_timer->adjust(attotime::zero, 0, attotime::from_hz(1000));
 }
 
-static TIMER_CALLBACK(mouse_callback)
+TIMER_CALLBACK_MEMBER(rmnimbus_state::mouse_callback)
 {
-	rmnimbus_state *drvstate = machine.driver_data<rmnimbus_state>();
     UINT8   x = 0;
     UINT8   y = 0;
-//  int     pc=machine.device(MAINCPU_TAG)->safe_pc();
+//  int     pc=machine().device(MAINCPU_TAG)->safe_pc();
 
     UINT8   intstate_x;
     UINT8   intstate_y;
     int     xint;
     int     yint;
 
-    mouse_joy_state *state = &drvstate->m_nimbus_mouse;
+    mouse_joy_state *state = &m_nimbus_mouse;
 
 
-	state->m_reg0a4 = machine.root_device().ioport(MOUSE_BUTTON_TAG)->read() | 0xC0;
-	x = machine.root_device().ioport(MOUSEX_TAG)->read();
-    y = machine.root_device().ioport(MOUSEY_TAG)->read();
+	state->m_reg0a4 = machine().root_device().ioport(MOUSE_BUTTON_TAG)->read() | 0xC0;
+	x = machine().root_device().ioport(MOUSEX_TAG)->read();
+    y = machine().root_device().ioport(MOUSEY_TAG)->read();
 
     UINT8   mxa;
     UINT8   mxb;
@@ -2935,10 +2922,10 @@ static TIMER_CALLBACK(mouse_callback)
 //              mxb,mxa, (mxb ^ mxa) , (state->m_ay8910_a & 0xC0), (mxb ^ mxa) ^ ((state->m_ay8910_a & 0x40) >> 6));
     }
 
-    intstate_x = (mxb ^ mxa) ^ ((drvstate->m_ay8910_a & 0x40) >> 6);
-    intstate_y = (myb ^ mya) ^ ((drvstate->m_ay8910_a & 0x80) >> 7);
+    intstate_x = (mxb ^ mxa) ^ ((m_ay8910_a & 0x40) >> 6);
+    intstate_y = (myb ^ mya) ^ ((m_ay8910_a & 0x80) >> 7);
 
-    if (MOUSE_INT_ENABLED(drvstate))
+    if (MOUSE_INT_ENABLED(this))
     {
         if ((intstate_x==1) && (state->m_intstate_x==0))
 //        if (intstate_x!=state->m_intstate_x)
@@ -2946,7 +2933,7 @@ static TIMER_CALLBACK(mouse_callback)
 
             xint=mxa ? EXTERNAL_INT_MOUSE_XR : EXTERNAL_INT_MOUSE_XL;
 
-            external_int(machine,0,xint);
+            external_int(machine(),0,xint);
 
 //            logerror("Xint:%02X, mxb=%02X\n",xint,mxb);
         }
@@ -2956,7 +2943,7 @@ static TIMER_CALLBACK(mouse_callback)
         {
             yint=myb ? EXTERNAL_INT_MOUSE_YU : EXTERNAL_INT_MOUSE_YD;
 
-            external_int(machine,0,yint);
+            external_int(machine(),0,yint);
 //            logerror("Yint:%02X, myb=%02X\n",yint,myb);
         }
     }
@@ -3032,41 +3019,41 @@ collector output only. It usially acts as the printer strobe line.
 ***********************************************************************/
 
 /* USER VIA 6522 port B is connected to the BBC user port */
-static READ8_DEVICE_HANDLER( nimbus_via_read_portb )
+READ8_MEMBER(rmnimbus_state::nimbus_via_read_portb)
 {
 	return 0xff;
 }
 
-static WRITE8_DEVICE_HANDLER( nimbus_via_write_portb )
+WRITE8_MEMBER(rmnimbus_state::nimbus_via_write_portb)
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nimbus_via_irq_w )
+WRITE_LINE_MEMBER(rmnimbus_state::nimbus_via_irq_w)
 {
 	if(state)
-		external_int(device->machine(),VIA_INT,0x00);
+		external_int(machine(),VIA_INT,0x00);
 }
 
 const via6522_interface nimbus_via =
 {
 	DEVCB_NULL,	//via_user_read_porta,
-	DEVCB_HANDLER(nimbus_via_read_portb),
+	DEVCB_DRIVER_MEMBER(rmnimbus_state,nimbus_via_read_portb),
 	DEVCB_NULL,	//via_user_read_ca1,
 	DEVCB_NULL,	//via_user_read_cb1,
 	DEVCB_NULL,	//via_user_read_ca2,
 	DEVCB_NULL,	//via_user_read_cb2,
 	DEVCB_DEVICE_MEMBER(CENTRONICS_TAG, centronics_device, write),
-	DEVCB_HANDLER(nimbus_via_write_portb),
+	DEVCB_DRIVER_MEMBER(rmnimbus_state,nimbus_via_write_portb),
 	DEVCB_NULL, //via_user_write_ca1
 	DEVCB_NULL, //via_user_write_cb1
 	DEVCB_DEVICE_LINE_MEMBER(CENTRONICS_TAG, centronics_device, strobe_w),
 	DEVCB_NULL,	//via_user_write_cb2,
-	DEVCB_LINE(nimbus_via_irq_w)
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state,nimbus_via_irq_w)
 };
 
-WRITE_LINE_DEVICE_HANDLER(nimbus_ack_w)
+WRITE_LINE_MEMBER(rmnimbus_state::nimbus_ack_w)
 {
-	via6522_device *via_1 = device->machine().device<via6522_device>(VIA_TAG);
+	via6522_device *via_1 = machine().device<via6522_device>(VIA_TAG);
 	via_1->write_ca1(!state); /* ack seems to be inverted? */
 }
 

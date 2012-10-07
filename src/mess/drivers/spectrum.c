@@ -620,22 +620,22 @@ INPUT_PORTS_END
 
 DRIVER_INIT_MEMBER(spectrum_state,spectrum)
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	switch (machine().device<ram_device>(RAM_TAG)->size())
 	{
 	    case 48*1024:
-		space->install_ram(0x8000, 0xffff, NULL); // Fall through
+		space.install_ram(0x8000, 0xffff, NULL); // Fall through
 	    case 16*1024:
-		space->install_ram(0x5b00, 0x7fff, NULL);
+		space.install_ram(0x5b00, 0x7fff, NULL);
 	}
 }
 
 MACHINE_RESET_MEMBER(spectrum_state,spectrum)
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	space->set_direct_update_handler(direct_update_delegate(FUNC(spectrum_state::spectrum_direct), this));
+	space.set_direct_update_handler(direct_update_delegate(FUNC(spectrum_state::spectrum_direct), this));
 
 	m_port_7ffd_data = -1;
 	m_port_1ffd_data = -1;
@@ -660,9 +660,9 @@ static GFXDECODE_START( spectrum )
 GFXDECODE_END
 
 
-static INTERRUPT_GEN( spec_interrupt )
+INTERRUPT_GEN_MEMBER(spectrum_state::spec_interrupt)
 {
-	device->execute().set_input_line(0, HOLD_LINE);
+	device.execute().set_input_line(0, HOLD_LINE);
 }
 
 static const cassette_interface spectrum_cassette_interface =
@@ -708,7 +708,7 @@ MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 	MCFG_CPU_ADD("maincpu", Z80, X1 / 4)        /* This is verified only for the ZX Spectum. Other clones are reported to have different clocks */
 	MCFG_CPU_PROGRAM_MAP(spectrum_mem)
 	MCFG_CPU_IO_MAP(spectrum_io)
-	MCFG_CPU_VBLANK_INT("screen", spec_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", spectrum_state,  spec_interrupt)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_RESET_OVERRIDE(spectrum_state, spectrum )
@@ -719,8 +719,8 @@ MACHINE_CONFIG_START( spectrum_common, spectrum_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(SPEC_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, SPEC_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
-	MCFG_SCREEN_UPDATE_STATIC( spectrum )
-	MCFG_SCREEN_VBLANK_STATIC( spectrum )
+	MCFG_SCREEN_UPDATE_DRIVER(spectrum_state, screen_update_spectrum)
+	MCFG_SCREEN_VBLANK_DRIVER(spectrum_state, screen_eof_spectrum)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT_OVERRIDE(spectrum_state, spectrum )

@@ -102,6 +102,8 @@ public:
 	DECLARE_DRIVER_INIT(sgi_ip2);
 	virtual void machine_start();
 	virtual void machine_reset();
+	INTERRUPT_GEN_MEMBER(sgi_ip2_vbl);
+	DECLARE_WRITE8_MEMBER(sgi_kbd_put);
 };
 
 
@@ -356,18 +358,18 @@ WRITE16_MEMBER(sgi_ip2_state::sgi_ip2_stklmt_w)
 	COMBINE_DATA(&m_stklmt);
 }
 
-static WRITE8_DEVICE_HANDLER( sgi_kbd_put )
+WRITE8_MEMBER(sgi_ip2_state::sgi_kbd_put)
 {
-	duart68681_rx_data(device->machine().device("duart68681a"), 1, data);
+	duart68681_rx_data(machine().device("duart68681a"), 1, data);
 }
 
 static GENERIC_TERMINAL_INTERFACE( sgi_terminal_intf )
 {
-	DEVCB_HANDLER(sgi_kbd_put)
+	DEVCB_DRIVER_MEMBER(sgi_ip2_state,sgi_kbd_put)
 };
 
 
-static INTERRUPT_GEN( sgi_ip2_vbl )
+INTERRUPT_GEN_MEMBER(sgi_ip2_state::sgi_ip2_vbl)
 {
 }
 
@@ -432,7 +434,7 @@ static void duarta_tx(device_t *device, int channel, UINT8 data)
 {
 	device_t *devconf = device->machine().device(TERMINAL_TAG);
 	verboselog(device->machine(), 0, "duarta_tx: %02x\n", data);
-	dynamic_cast<generic_terminal_device *>(devconf)->write(*devconf->machine().memory().first_space(), 0, data);
+	dynamic_cast<generic_terminal_device *>(devconf)->write(devconf->machine().driver_data()->generic_space(), 0, data);
 }
 
 static const duart68681_config sgi_ip2_duart68681a_config =
@@ -477,7 +479,7 @@ static MACHINE_CONFIG_START( sgi_ip2, sgi_ip2_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68020, 16000000)
 	MCFG_CPU_PROGRAM_MAP(sgi_ip2_map)
-	MCFG_CPU_VBLANK_INT(TERMINAL_TAG ":" TERMINAL_SCREEN_TAG, sgi_ip2_vbl)
+	MCFG_CPU_VBLANK_INT_DRIVER(TERMINAL_TAG ":" TERMINAL_SCREEN_TAG, sgi_ip2_state,  sgi_ip2_vbl)
 
 
 	/* video hardware */

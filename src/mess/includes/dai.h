@@ -80,6 +80,9 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_dai(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(dai_bootstrap_callback);
+	TIMER_CALLBACK_MEMBER(dai_timer);
 };
 
 
@@ -90,16 +93,9 @@ extern const i8255_interface dai_ppi82555_intf;
 extern const tms5501_interface dai_tms5501_interface;
 
 
-
-
-
 /*----------- defined in video/dai.c -----------*/
 
 extern const unsigned char dai_palette[16*3];
-
-
-SCREEN_UPDATE_IND16( dai );
-
 
 
 /*----------- defined in audio/dai.c -----------*/

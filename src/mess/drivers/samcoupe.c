@@ -167,7 +167,7 @@ READ8_MEMBER(samcoupe_state::samcoupe_lmpr_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_lmpr_w)
 {
-	address_space *space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	m_lmpr = data;
 	samcoupe_update_memory(space_program);
@@ -180,7 +180,7 @@ READ8_MEMBER(samcoupe_state::samcoupe_hmpr_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_hmpr_w)
 {
-	address_space *space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	m_hmpr = data;
 	samcoupe_update_memory(space_program);
@@ -193,7 +193,7 @@ READ8_MEMBER(samcoupe_state::samcoupe_vmpr_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_vmpr_w)
 {
-	address_space *space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	m_vmpr = data;
 	samcoupe_update_memory(space_program);
@@ -265,27 +265,27 @@ READ8_MEMBER(samcoupe_state::samcoupe_attributes_r)
 	return m_attribute;
 }
 
-static READ8_DEVICE_HANDLER( samcoupe_lpt1_busy_r )
+READ8_MEMBER(samcoupe_state::samcoupe_lpt1_busy_r)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("lpt1");
+	centronics_device *centronics = machine().device<centronics_device>("lpt1");
 	return centronics->busy_r();
 }
 
-static WRITE8_DEVICE_HANDLER( samcoupe_lpt1_strobe_w )
+WRITE8_MEMBER(samcoupe_state::samcoupe_lpt1_strobe_w)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("lpt1");
+	centronics_device *centronics = machine().device<centronics_device>("lpt1");
 	centronics->strobe_w(data);
 }
 
-static READ8_DEVICE_HANDLER( samcoupe_lpt2_busy_r )
+READ8_MEMBER(samcoupe_state::samcoupe_lpt2_busy_r)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("lpt2");
+	centronics_device *centronics = machine().device<centronics_device>("lpt2");
 	return centronics->busy_r();
 }
 
-static WRITE8_DEVICE_HANDLER( samcoupe_lpt2_strobe_w )
+WRITE8_MEMBER(samcoupe_state::samcoupe_lpt2_strobe_w)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("lpt2");
+	centronics_device *centronics = machine().device<centronics_device>("lpt2");
 	centronics->strobe_w(data);
 }
 
@@ -305,9 +305,9 @@ static ADDRESS_MAP_START( samcoupe_io, AS_IO, 8, samcoupe_state )
 	AM_RANGE(0x0080, 0x0081) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_WRITE(samcoupe_ext_mem_w)
 	AM_RANGE(0x00e0, 0x00e7) AM_MIRROR(0xff10) AM_MASK(0xffff) AM_READWRITE(samcoupe_disk_r, samcoupe_disk_w)
 	AM_RANGE(0x00e8, 0x00e8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("lpt1", centronics_device, write)
-	AM_RANGE(0x00e9, 0x00e9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVREADWRITE_LEGACY("lpt1", samcoupe_lpt1_busy_r, samcoupe_lpt1_strobe_w)
+	AM_RANGE(0x00e9, 0x00e9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_lpt1_busy_r, samcoupe_lpt1_strobe_w)
 	AM_RANGE(0x00ea, 0x00ea) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("lpt2", centronics_device, write)
-	AM_RANGE(0x00eb, 0x00eb) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVREADWRITE_LEGACY("lpt2", samcoupe_lpt2_busy_r, samcoupe_lpt2_strobe_w)
+	AM_RANGE(0x00eb, 0x00eb) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_lpt2_busy_r, samcoupe_lpt2_strobe_w)
 	AM_RANGE(0x00f8, 0x00f8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_pen_r, samcoupe_clut_w)
 	AM_RANGE(0x00f9, 0x00f9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_status_r, samcoupe_line_int_w)
 	AM_RANGE(0x00fa, 0x00fa) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_lmpr_r, samcoupe_lmpr_w)
@@ -325,15 +325,14 @@ ADDRESS_MAP_END
     INTERRUPTS
 ***************************************************************************/
 
-static TIMER_CALLBACK( irq_off )
+TIMER_CALLBACK_MEMBER(samcoupe_state::irq_off)
 {
-	samcoupe_state *state = machine.driver_data<samcoupe_state>();
 	/* adjust STATUS register */
-	state->m_status |= param;
+	m_status |= param;
 
 	/* clear interrupt */
-	if ((state->m_status & 0x1f) == 0x1f)
-		machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	if ((m_status & 0x1f) == 0x1f)
+		machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 
 }
 
@@ -343,16 +342,16 @@ void samcoupe_irq(device_t *device, UINT8 src)
 
 	/* assert irq and a timer to set it off again */
 	device->execute().set_input_line(0, ASSERT_LINE);
-	device->machine().scheduler().timer_set(attotime::from_usec(20), FUNC(irq_off), src);
+	device->machine().scheduler().timer_set(attotime::from_usec(20), timer_expired_delegate(FUNC(samcoupe_state::irq_off),state), src);
 
 	/* adjust STATUS register */
 	state->m_status &= ~src;
 }
 
-static INTERRUPT_GEN( samcoupe_frame_interrupt )
+INTERRUPT_GEN_MEMBER(samcoupe_state::samcoupe_frame_interrupt)
 {
 	/* signal frame interrupt */
-	samcoupe_irq(device, SAM_FRAME_INT);
+	samcoupe_irq(&device, SAM_FRAME_INT);
 }
 
 
@@ -530,7 +529,7 @@ static MACHINE_CONFIG_START( samcoupe, samcoupe_state )
 	MCFG_CPU_ADD("maincpu", Z80, SAMCOUPE_XTAL_X1 / 4) /* 6 MHz */
 	MCFG_CPU_PROGRAM_MAP(samcoupe_mem)
 	MCFG_CPU_IO_MAP(samcoupe_io)
-	MCFG_CPU_VBLANK_INT("screen", samcoupe_frame_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", samcoupe_state,  samcoupe_frame_interrupt)
 
 
     /* video hardware */

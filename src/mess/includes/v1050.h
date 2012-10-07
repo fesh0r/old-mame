@@ -15,7 +15,7 @@
 #include "machine/i8255.h"
 #include "machine/msm58321.h"
 #include "machine/ram.h"
-#include "machine/scsibus.h"
+#include "machine/scsicb.h"
 #include "machine/v1050kb.h"
 #include "machine/wd17xx.h"
 #include "video/mc6845.h"
@@ -74,7 +74,7 @@ public:
 		  m_timer_sio(*this, TIMER_SIO_TAG),
 		  m_timer_ack(*this, TIMER_ACK_TAG),
 		  m_timer_rst(*this, TIMER_RST_TAG),
-		  m_sasibus(*this, SASIBUS_TAG)
+		  m_sasibus(*this, SASIBUS_TAG ":host")
 	,
 		m_video_ram(*this, "video_ram"){ }
 
@@ -93,7 +93,7 @@ public:
 	required_device<timer_device> m_timer_sio;
 	required_device<timer_device> m_timer_ack;
 	required_device<timer_device> m_timer_rst;
-	required_device<scsibus_device> m_sasibus;
+	required_device<scsicb_device> m_sasibus;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -128,6 +128,8 @@ public:
 	DECLARE_READ8_MEMBER( videoram_r );
 	DECLARE_WRITE8_MEMBER( videoram_w );
 	DECLARE_WRITE_LINE_MEMBER( crtc_vs_w );
+	DECLARE_WRITE8_MEMBER(sasi_data_w);
+	DECLARE_WRITE_LINE_MEMBER(sasi_io_w);
 	DECLARE_READ8_MEMBER( sasi_status_r );
 	DECLARE_WRITE8_MEMBER( sasi_ctrl_w );
 
@@ -157,6 +159,20 @@ public:
 	required_shared_ptr<UINT8> m_video_ram; 			// video RAM
 	UINT8 *m_attr_ram;			// attribute RAM
 	UINT8 m_attr;				// attribute latch
+
+	// sasi state
+	UINT8 data_out;
+
+	TIMER_DEVICE_CALLBACK_MEMBER(v1050_keyboard_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(sasi_ack_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(sasi_rst_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(kb_8251_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(sio_8251_tick);
+	DECLARE_WRITE_LINE_MEMBER(pic_int_w);
+	DECLARE_WRITE8_MEMBER(disp_ppi_pc_w);
+	DECLARE_WRITE8_MEMBER(m6502_ppi_pc_w);
+	DECLARE_WRITE8_MEMBER(misc_ppi_pb_w);
+	DECLARE_READ8_MEMBER(misc_ppi_pc_r);
 };
 
 //----------- defined in video/v1050.c -----------

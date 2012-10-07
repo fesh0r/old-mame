@@ -137,7 +137,7 @@ READ8_DEVICE_HANDLER( pc_lpt_data_r )
 {
 	pc_lpt_state *lpt = get_safe_token(device);
 	// pull up mechanism for input lines, zeros are provided by pheripherial
-	return lpt->data & ~lpt->centronics->read(*device->machine().memory().first_space(), 0);
+	return lpt->data & ~lpt->centronics->read(space.machine().driver_data()->generic_space(), 0);
 }
 
 
@@ -145,7 +145,7 @@ WRITE8_DEVICE_HANDLER( pc_lpt_data_w )
 {
 	pc_lpt_state *lpt = get_safe_token(device);
 	lpt->data = data;
-	lpt->centronics->write(*device->machine().memory().first_space(), 0, data);
+	lpt->centronics->write(space.machine().driver_data()->generic_space(), 0, data);
 }
 
 
@@ -204,9 +204,9 @@ READ8_DEVICE_HANDLER( pc_lpt_r )
 {
 	switch (offset)
 	{
-	case 0: return pc_lpt_data_r(device, 0);
-	case 1: return pc_lpt_status_r(device, 0);
-	case 2: return pc_lpt_control_r(device, 0);
+	case 0: return pc_lpt_data_r(device, space, 0);
+	case 1: return pc_lpt_status_r(device, space, 0);
+	case 2: return pc_lpt_control_r(device, space, 0);
 	}
 
 	/* if we reach this its an error */
@@ -220,9 +220,9 @@ WRITE8_DEVICE_HANDLER( pc_lpt_w )
 {
 	switch (offset)
 	{
-	case 0: pc_lpt_data_w(device, 0, data); break;
+	case 0: pc_lpt_data_w(device, space, 0, data); break;
 	case 1: break;
-	case 2:	pc_lpt_control_w(device, 0, data); break;
+	case 2:	pc_lpt_control_w(device, space, 0, data); break;
 	}
 }
 
@@ -231,7 +231,7 @@ const device_type PC_LPT = &device_creator<pc_lpt_device>;
 pc_lpt_device::pc_lpt_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, PC_LPT, "PC-LPT", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(pc_lpt_state));
+	m_token = global_alloc_clear(pc_lpt_state);
 }
 
 //-------------------------------------------------

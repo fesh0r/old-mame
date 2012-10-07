@@ -11,8 +11,8 @@
 
 #include "emu.h"
 
-READ8_HANDLER ( pc_JOY_r );
-WRITE8_HANDLER ( pc_JOY_w );
+DECLARE_READ8_HANDLER ( pc_JOY_r );
+DECLARE_WRITE8_HANDLER ( pc_JOY_w );
 
 INPUT_PORTS_EXTERN( pc_joystick_none );
 INPUT_PORTS_EXTERN( pc_joystick );
@@ -26,8 +26,8 @@ public:
 	pc_joy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 	virtual ioport_constructor device_input_ports() const;
 
-	DECLARE_READ8_MEMBER(joy_port_r) { return pc_JOY_r(&space, offset); }
-	DECLARE_WRITE8_MEMBER(joy_port_w) { pc_JOY_w(&space, offset, data); }
+	DECLARE_READ8_MEMBER(joy_port_r) { return pc_JOY_r(space, offset); }
+	DECLARE_WRITE8_MEMBER(joy_port_w) { pc_JOY_w(space, offset, data); }
 protected:
 	virtual void device_start() {}
 };

@@ -217,6 +217,7 @@ Info from Atariage and Atarimania
 		<info name="serial" value="CX26137" /> <!-- Not Sure About it. -->
 		<sharedfeat name="compatibility" value="NTSC"/>
 		<part name="cart" interface="a2600_cart">
+			<feature name="mapper" value="4in1" />
 			<dataarea name="rom" size="8192">
 				<rom name="4 in 1 - canyon bomber, home run, night driver, sky diver (02-19-1987) (atari) (cx26137) (prototype).bin" size="8192" crc="8b304851" sha1="bc60987b668d6fa26c49f5aba5815622710140d9" offset="0" />
 			</dataarea>
@@ -230,29 +231,34 @@ Info from Atariage and Atarimania
 		<info name="serial" value="P460" />
 		<sharedfeat name="compatibility" value="PAL"/>
 		<part name="cart" interface="a2600_cart">
+			<feature name="mapper" value="4in1" />
 			<dataarea name="rom" size="16384">
 				<rom name="4 game in one - rodeo champ, open sesame, bobby is going home, festival.bin" size="16384" crc="69ca1a92" sha1="b6193826df511f39077013369e625e56577f2f36" offset="0" />
 			</dataarea>
 		</part>
 	</software>
 
-	<software name="4game1a" supported="no">
+	<software name="4game1a">
 		<description>4 Game in One - Ice Hockey + Phantom UFO + Spy Vs. Spy + Cosmic Avenger</description>
 		<year>198?</year>
 		<publisher>Bitcorp</publisher>
+		<sharedfeat name="compatibility" value="PAL"/>
 		<part name="cart" interface="a2600_cart">
+			<feature name="mapper" value="4in1" />
 			<dataarea name="rom" size="16384">
 				<rom name="4 game in one - ice hockey, phantom ufo, spy vs. spy, cosmic avenger.bin" size="16384" crc="caf86fa7" sha1="724c1ce352d0219699892f7c78083f825a71ac1a" offset="0" />
 			</dataarea>
 		</part>
 	</software>
 
+	<!-- Known 'feature': Centipede doesn't work -->
 	<software name="8in1">
 		<description>8 in 1 - Asteroids + Centipede + BattleZone + SwordQuest - EarthWorld + SwordQuest - FireWorld + RealSports Soccer + RealSports Tennis + Yars' Revenge (Prototype 19920116)</description>
 		<year>1988</year>
 		<publisher>Atari</publisher>
 		<info name="serial" value="CX26193" />
 		<part name="cart" interface="a2600_cart">
+			<feature name="mapper" value="8in1" />
 			<dataarea name="rom" size="65536">
 				<rom name="8 in 1 (prototype).bin" size="65536" crc="5ddf79f5" sha1="c066942446c3fc7075ee8430a381d5da4adaec41" offset="0" />
 			</dataarea>
@@ -355,7 +361,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="decathln" supported="no">
+	<software name="decathln">
 		<description>The Activision Decathlon</description>
 		<year>1983</year>
 		<publisher>Activision</publisher>
@@ -597,7 +603,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="abwerniee" cloneof="abwernie" supported="no">
+	<software name="abwerniee" cloneof="abwernie">
 	<!-- controller not emulated -->
 		<description>Alpha Beam with Ernie (PAL)</description>
 		<year>1983</year>
@@ -613,7 +619,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="abwernie" supported="no">
+	<software name="abwernie">
 		<description>Alpha Beam with Ernie</description>
 		<year>1983</year>
 		<publisher>Atari</publisher>
@@ -628,7 +634,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="abwerniep" cloneof="abwernie" supported="no">
+	<software name="abwerniep" cloneof="abwernie">
 		<description>Alpha Beam with Ernie (Prototype 19831222)</description>
 		<year>1983</year>
 		<publisher>Atari</publisher>
@@ -643,7 +649,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="abwernieep" cloneof="abwernie" supported="no">
+	<software name="abwernieep" cloneof="abwernie">
 		<description>Alpha Beam with Ernie (PAL) (Prototype 19830603)</description>
 		<year>1983</year>
 		<publisher>Atari</publisher>
@@ -686,7 +692,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="andrmanp" supported="no">
+	<software name="andrmanp">
 	<!-- No display-->
 		<description>AndroMan on the Moon (Prototype)</description>
 		<year>1984</year>
@@ -1219,7 +1225,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="zoofun" supported="no">
+	<software name="zoofun">
 		<description>Zoo Fun</description>
 		<year>1983</year>
 		<publisher>HomeVision</publisher>
@@ -1440,7 +1446,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="basprog" supported="no">
+	<software name="basprog">
 		<description>BASIC Programming</description>
 		<year>1978</year>
 		<publisher>Atari</publisher>
@@ -3350,7 +3356,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="compumat">
+	<software name="compumat" supported="no">
 		<description>CompuMate (PAL)</description>
 		<year>1983</year>
 		<publisher>Spectravideo</publisher>
@@ -4186,7 +4192,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="demodrby">
+	<software name="demohrby">
 		<description>Demolition Herby</description>
 		<year>1983</year>
 		<publisher>Telesys</publisher>
@@ -4197,7 +4203,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="demodrbye" cloneof="demodrby">
+	<software name="demohrbye" cloneof="demohrby">
 		<description>Demolition Herby (PAL)</description>
 		<year>1983</year>
 		<publisher>Telesys</publisher>
@@ -4208,7 +4214,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="demodrbye1" cloneof="demodrby">
+	<software name="demohrbye1" cloneof="demohrby">
 		<description>Demolition Herby (PAL) (Unknown)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
@@ -6100,7 +6106,7 @@ Info from Atariage and Atarimania
 		</part>
 	</software>
 
-	<software name="gameline">
+	<software name="gameline" supported="no">
 		<description>GameLine Master Module ROM</description>
 		<year>1983</year>
 		<publisher>Control Video Corporation</publisher>

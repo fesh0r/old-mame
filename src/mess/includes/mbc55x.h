@@ -156,13 +156,8 @@ public:
 	virtual void video_start();
 	virtual void video_reset();
 	virtual void palette_init();
-};
-
-/* IO chips */
-
-
-struct msm_rx_t
-{
+	void screen_eof_mbc55x(screen_device &screen, bool state);
+	TIMER_CALLBACK_MEMBER(keyscan_callback);
 };
 
 /*----------- defined in drivers/mbc55x.c -----------*/
@@ -177,9 +172,6 @@ extern const struct pic8259_interface mbc55x_pic8259_config;
 extern const i8255_interface mbc55x_ppi8255_interface;
 extern const i8251_interface mbc55x_i8251a_interface;
 extern const i8251_interface mbc55x_i8251b_interface;
-
-
-
 
 
 /* Memory controller */
@@ -202,10 +194,6 @@ extern const i8251_interface mbc55x_i8251b_interface;
 #define RAM_BANK_SIZE	(64*1024)
 #define RAM_BANK_COUNT	15
 
-
-READ8_HANDLER(ppi8255_r);
-WRITE8_HANDLER(ppi8255_w);
-
 /* Floppy drive interface */
 
 #define FDC_PAUSE				10000
@@ -216,12 +204,6 @@ extern const wd17xx_interface mbc55x_wd17xx_interface;
 /*----------- defined in video/mbc55x.c -----------*/
 
 extern const mc6845_interface mb55x_mc6845_intf;
-
-READ16_HANDLER (mbc55x_video_io_r);
-WRITE16_HANDLER (mbc55x_video_io_w);
-
-
-SCREEN_VBLANK( mbc55x );
 
 
 #define RED                     0

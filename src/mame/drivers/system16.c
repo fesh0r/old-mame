@@ -100,9 +100,9 @@
 #define SHADOW_COLORS_MULTIPLIER 2
 
 
-static INTERRUPT_GEN( sys16_interrupt )
+INTERRUPT_GEN_MEMBER(segas1x_bootleg_state::sys16_interrupt)
 {
-	device->execute().set_input_line(4, HOLD_LINE); /* Interrupt vector 4, used by VBlank */
+	device.execute().set_input_line(4, HOLD_LINE); /* Interrupt vector 4, used by VBlank */
 }
 
 
@@ -2015,7 +2015,7 @@ static MACHINE_CONFIG_START( system16, segas1x_bootleg_state )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
-	MCFG_CPU_VBLANK_INT("screen", sys16_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", segas1x_bootleg_state,  sys16_interrupt)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -2027,7 +2027,7 @@ static MACHINE_CONFIG_START( system16, segas1x_bootleg_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 28*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(system16)
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_system16)
 
 	MCFG_GFXDECODE(sys16)
 	MCFG_PALETTE_LENGTH(2048*SHADOW_COLORS_MULTIPLIER)
@@ -2108,7 +2108,7 @@ static MACHINE_CONFIG_DERIVED( shinobib, system16 )
 
 	MCFG_VIDEO_START_OVERRIDE(segas1x_bootleg_state, s16a_bootleg_shinobi )
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( s16a_bootleg )
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_s16a_bootleg)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( passshtb, system16_7759 )
@@ -2123,7 +2123,7 @@ static MACHINE_CONFIG_DERIVED( passshtb, system16_7759 )
 
 	MCFG_VIDEO_START_OVERRIDE(segas1x_bootleg_state, s16a_bootleg_passsht )
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( s16a_bootleg )
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_s16a_bootleg)
 MACHINE_CONFIG_END
 
 
@@ -2140,7 +2140,7 @@ static MACHINE_CONFIG_DERIVED( passsht4b, system16_7759 )
 
 	MCFG_VIDEO_START_OVERRIDE(segas1x_bootleg_state, s16a_bootleg_passsht )
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( s16a_bootleg_passht4b )
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_s16a_bootleg_passht4b)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( wb3bb, system16 )
@@ -2156,7 +2156,7 @@ static MACHINE_CONFIG_DERIVED( wb3bb, system16 )
 
 	MCFG_VIDEO_START_OVERRIDE(segas1x_bootleg_state, s16a_bootleg_wb3bl )
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC( s16a_bootleg )
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_s16a_bootleg)
 MACHINE_CONFIG_END
 
 
@@ -2165,7 +2165,7 @@ static MACHINE_CONFIG_START( goldnaxeb1, segas1x_bootleg_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
 	MCFG_CPU_PROGRAM_MAP(goldnaxeb1_map)
-	MCFG_CPU_VBLANK_INT("screen", sys16_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", segas1x_bootleg_state,  sys16_interrupt)
 
 
 	/* video hardware */
@@ -2174,7 +2174,7 @@ static MACHINE_CONFIG_START( goldnaxeb1, segas1x_bootleg_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 28*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(system16)
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_system16)
 
 	MCFG_GFXDECODE(sys16)
 	MCFG_PALETTE_LENGTH(2048*SHADOW_COLORS_MULTIPLIER)
@@ -2295,7 +2295,7 @@ static MACHINE_CONFIG_START( system18, segas1x_bootleg_state )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", segas1x_bootleg_state,  irq4_line_hold)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 8000000)
 	MCFG_CPU_PROGRAM_MAP(sound_18_map)
@@ -2307,7 +2307,7 @@ static MACHINE_CONFIG_START( system18, segas1x_bootleg_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 28*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(system18old)
+	MCFG_SCREEN_UPDATE_DRIVER(segas1x_bootleg_state, screen_update_system18old)
 
 	MCFG_GFXDECODE(sys16)
 	MCFG_PALETTE_LENGTH((2048+2048)*SHADOW_COLORS_MULTIPLIER) // 64 extra colours for vdp (but we use 2048 so shadow mask works)
@@ -3294,7 +3294,7 @@ DRIVER_INIT_MEMBER(segas1x_bootleg_state,goldnaxeb1)
 	int i;
 	UINT8 *ROM = memregion("maincpu")->base();
 	UINT8 *KEY = memregion("decryption")->base();
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	UINT8 data[0x1000];
 
 	// the decryption key is in a rom (part of an MSDOS executable...)
@@ -3313,7 +3313,7 @@ DRIVER_INIT_MEMBER(segas1x_bootleg_state,goldnaxeb1)
 		m_decrypted_region[i] = ROM[i] ^ data[(i & 0xfff) ^ 1];
 	}
 
-	space->set_decrypted_region(0x00000, 0xbffff, m_decrypted_region);
+	space.set_decrypted_region(0x00000, 0xbffff, m_decrypted_region);
 
 	DRIVER_INIT_CALL(common);
 

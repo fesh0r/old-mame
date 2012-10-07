@@ -707,37 +707,37 @@ WRITE8_MEMBER(wecleman_state::hotchase_sound_control_w)
 READ8_MEMBER(wecleman_state::hotchase_1_k007232_r)
 {
 	device_t *device = machine().device("konami1");
-	return k007232_r(device, offset ^ 1);
+	return k007232_r(device, space, offset ^ 1);
 }
 
 WRITE8_MEMBER(wecleman_state::hotchase_1_k007232_w)
 {
 	device_t *device = machine().device("konami1");
-	k007232_w(device, offset ^ 1, data);
+	k007232_w(device, space, offset ^ 1, data);
 }
 
 READ8_MEMBER(wecleman_state::hotchase_2_k007232_r)
 {
 	device_t *device = machine().device("konami2");
-	return k007232_r(device, offset ^ 1);
+	return k007232_r(device, space, offset ^ 1);
 }
 
 WRITE8_MEMBER(wecleman_state::hotchase_2_k007232_w)
 {
 	device_t *device = machine().device("konami2");
-	k007232_w(device, offset ^ 1, data);
+	k007232_w(device, space, offset ^ 1, data);
 }
 
 READ8_MEMBER(wecleman_state::hotchase_3_k007232_r)
 {
 	device_t *device = machine().device("konami3");
-	return k007232_r(device, offset ^ 1);
+	return k007232_r(device, space, offset ^ 1);
 }
 
 WRITE8_MEMBER(wecleman_state::hotchase_3_k007232_w)
 {
 	device_t *device = machine().device("konami3");
-	k007232_w(device, offset ^ 1, data);
+	k007232_w(device, space, offset ^ 1, data);
 }
 
 static ADDRESS_MAP_START( hotchase_sound_map, AS_PROGRAM, 8, wecleman_state )
@@ -1024,24 +1024,24 @@ GFXDECODE_END
 ***************************************************************************/
 
 
-static TIMER_DEVICE_CALLBACK( wecleman_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(wecleman_state::wecleman_scanline)
 {
 	int scanline = param;
 
 	if(scanline == 232) // vblank irq
-		timer.machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
 	else if(((scanline % 64) == 0)) // timer irq TODO: timings
-		timer.machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
 }
 
-static TIMER_DEVICE_CALLBACK( hotchase_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(wecleman_state::hotchase_scanline)
 {
 	int scanline = param;
 
 	if(scanline == 224) // vblank irq
-		timer.machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
 	else if(((scanline % 64) == 0)) // timer irq TODO: timings
-		timer.machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
 }
 
 
@@ -1055,7 +1055,7 @@ static MACHINE_CONFIG_START( wecleman, wecleman_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)	/* Schems show 10MHz */
 	MCFG_CPU_PROGRAM_MAP(wecleman_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", wecleman_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", wecleman_state, wecleman_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("sub", M68000, 10000000)	/* Schems show 10MHz */
 	MCFG_CPU_PROGRAM_MAP(wecleman_sub_map)
@@ -1074,7 +1074,7 @@ static MACHINE_CONFIG_START( wecleman, wecleman_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(320 +16, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0 +8, 320-1 +8, 0 +8, 224-1 +8)
-	MCFG_SCREEN_UPDATE_STATIC(wecleman)
+	MCFG_SCREEN_UPDATE_DRIVER(wecleman_state, screen_update_wecleman)
 
 	MCFG_GFXDECODE(wecleman)
 
@@ -1099,9 +1099,9 @@ MACHINE_CONFIG_END
                         Hot Chase Hardware Definitions
 ***************************************************************************/
 
-static INTERRUPT_GEN( hotchase_sound_timer )
+INTERRUPT_GEN_MEMBER(wecleman_state::hotchase_sound_timer)
 {
-	generic_pulse_irq_line(device, M6809_FIRQ_LINE, 1);
+	generic_pulse_irq_line(device.execute(), M6809_FIRQ_LINE, 1);
 }
 
 static const k051316_interface hotchase_k051316_intf_0 =
@@ -1139,14 +1139,14 @@ static MACHINE_CONFIG_START( hotchase, wecleman_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
 	MCFG_CPU_PROGRAM_MAP(hotchase_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", hotchase_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", wecleman_state, hotchase_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("sub", M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
 	MCFG_CPU_PROGRAM_MAP(hotchase_sub_map)
 
 	MCFG_CPU_ADD("audiocpu", M6809, 3579545 / 2)	/* 3.579/2 MHz - PCB is drawn in one set's readme */
 	MCFG_CPU_PROGRAM_MAP(hotchase_sound_map)
-	MCFG_CPU_PERIODIC_INT( hotchase_sound_timer, 496 )
+	MCFG_CPU_PERIODIC_INT_DRIVER(wecleman_state, hotchase_sound_timer,  496)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(6000))
 
@@ -1158,7 +1158,7 @@ static MACHINE_CONFIG_START( hotchase, wecleman_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(320 +16, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 224-1)
-	MCFG_SCREEN_UPDATE_STATIC(hotchase)
+	MCFG_SCREEN_UPDATE_DRIVER(wecleman_state, screen_update_hotchase)
 
 	MCFG_GFXDECODE(hotchase)
 	MCFG_PALETTE_LENGTH(2048*2)

@@ -49,7 +49,6 @@ public:
 	int m_colour_palette[16];
 	int m_video_control;
 	DECLARE_WRITE8_MEMBER(pcw16_palette_w);
-	DECLARE_READ8_MEMBER(pcw16_no_mem_r);
 	DECLARE_READ8_MEMBER(pcw16_bankhw_r);
 	DECLARE_WRITE8_MEMBER(pcw16_bankhw_w);
 	DECLARE_WRITE8_MEMBER(pcw16_video_control_w);
@@ -96,16 +95,21 @@ public:
 	UINT8 read_bank_data(UINT8 type, UINT16 offset);
 	void write_bank_data(UINT8 type, UINT16 offset, UINT8 data);
 	virtual void machine_start();
+	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_pcw16(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(pcw16_timer_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(pcw16_keyboard_timer_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(rtc_timer_callback);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_interrupt_1);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_interrupt_2);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_tx_0);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_dtr_0);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_rts_0);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_tx_1);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_dtr_1);
+	DECLARE_WRITE_LINE_MEMBER(pcw16_com_rts_1);
 };
-
-
-/*----------- defined in video/pcw16.c -----------*/
-
-extern PALETTE_INIT( pcw16 );
-extern VIDEO_START( pcw16 );
-extern SCREEN_UPDATE_IND16( pcw16 );
-
 
 #endif /* PCW16_H_ */

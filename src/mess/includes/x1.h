@@ -199,25 +199,14 @@ public:
 	DECLARE_VIDEO_START(x1);
 	DECLARE_PALETTE_INIT(x1);
 	DECLARE_MACHINE_RESET(x1turbo);
+	UINT32 screen_update_x1(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	DECLARE_INPUT_CHANGED_MEMBER(ipl_reset);
+	DECLARE_INPUT_CHANGED_MEMBER(nmi_reset);
+	TIMER_CALLBACK_MEMBER(x1_rtc_increment);
+	TIMER_DEVICE_CALLBACK_MEMBER(x1_cmt_wind_timer);
+	TIMER_DEVICE_CALLBACK_MEMBER(x1_keyboard_callback);
+	DECLARE_WRITE_LINE_MEMBER(fdc_drq_w);
 };
-
-
-
-/*----------- shared with x1twin.c -----------*/
-
-
-SCREEN_UPDATE_RGB32( x1 );
-
-TIMER_DEVICE_CALLBACK(x1_keyboard_callback);
-TIMER_CALLBACK(x1_rtc_increment);
-TIMER_DEVICE_CALLBACK( x1_cmt_wind_timer );
-
-
-
-
-
-
-
 
 /*----------- defined in machine/x1.c -----------*/
 

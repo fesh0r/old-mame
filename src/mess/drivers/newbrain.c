@@ -55,18 +55,18 @@ void newbrain_state::check_interrupt()
 /* Bank Switching */
 
 #define memory_install_unmapped(program, bank, bank_start, bank_end) \
-	program->unmap_readwrite(bank_start, bank_end);
+	program.unmap_readwrite(bank_start, bank_end);
 
 #define memory_install_rom_helper(program, bank, bank_start, bank_end) \
-	program->install_read_bank(bank_start, bank_end, bank); \
-	program->unmap_write(bank_start, bank_end);
+	program.install_read_bank(bank_start, bank_end, bank); \
+	program.unmap_write(bank_start, bank_end);
 
 #define memory_install_ram_helper(program, bank, bank_start, bank_end) \
-	program->install_readwrite_bank(bank_start, bank_end, bank);
+	program.install_readwrite_bank(bank_start, bank_end, bank);
 
 void newbrain_eim_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	int bank;
 
 	for (bank = 1; bank < 9; bank++)
@@ -104,7 +104,7 @@ void newbrain_eim_state::bankswitch()
 
 void newbrain_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	int bank;
 
 	for (bank = 1; bank < 9; bank++)
@@ -730,15 +730,13 @@ WRITE8_MEMBER( newbrain_state::cop_w )
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( cop_regint_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(newbrain_state::cop_regint_tick)
 {
-	newbrain_state *state = timer.machine().driver_data<newbrain_state>();
-
-	if (state->m_copregint)
+	if (m_copregint)
 	{
 		logerror("COP REGINT\n");
-		state->m_copint = 0;
-		state->check_interrupt();
+		m_copint = 0;
+		check_interrupt();
 	}
 }
 
@@ -1226,12 +1224,10 @@ static Z80CTC_INTERFACE( newbrain_ctc_intf )
 	DEVCB_DRIVER_LINE_MEMBER(newbrain_eim_state, ctc_z2_w)	/* ZC/TO2 callback */
 };
 
-static TIMER_DEVICE_CALLBACK( ctc_c2_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(newbrain_eim_state::ctc_c2_tick)
 {
-	newbrain_eim_state *state = timer.machine().driver_data<newbrain_eim_state>();
-
-	state->m_ctc->trg2(1);
-	state->m_ctc->trg2(0);
+	m_ctc->trg2(1);
+	m_ctc->trg2(0);
 }
 
 inline int newbrain_state::get_reset_t()
@@ -1329,14 +1325,13 @@ void newbrain_state::machine_reset()
 	timer_set(attotime::from_usec(get_reset_t()), TIMER_ID_RESET);
 }
 
-static INTERRUPT_GEN( newbrain_interrupt )
+INTERRUPT_GEN_MEMBER(newbrain_state::newbrain_interrupt)
 {
-	newbrain_state *state = device->machine().driver_data<newbrain_state>();
 
-	if (!(state->m_enrg1 & NEWBRAIN_ENRG1_CLK))
+	if (!(m_enrg1 & NEWBRAIN_ENRG1_CLK))
 	{
-		state->m_clkint = 0;
-		state->check_interrupt();
+		m_clkint = 0;
+		check_interrupt();
 	}
 }
 
@@ -1381,7 +1376,7 @@ static MACHINE_CONFIG_START( newbrain_a, newbrain_state )
 	MCFG_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/8)
 	MCFG_CPU_PROGRAM_MAP(newbrain_map)
 	MCFG_CPU_IO_MAP(newbrain_a_io_map)
-	MCFG_CPU_VBLANK_INT(SCREEN_TAG, newbrain_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER(SCREEN_TAG, newbrain_state,  newbrain_interrupt)
 
 	MCFG_CPU_ADD(COP420_TAG, COP420, XTAL_16MHz/8) // COP420-GUW/N
 	MCFG_CPU_IO_MAP(newbrain_cop_io_map)
@@ -1389,7 +1384,7 @@ static MACHINE_CONFIG_START( newbrain_a, newbrain_state )
 
 	MCFG_GFXDECODE(newbrain)
 
-	MCFG_TIMER_ADD_PERIODIC("cop_regint", cop_regint_tick, attotime::from_usec(12500)) // HACK
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("cop_regint", newbrain_state, cop_regint_tick, attotime::from_usec(12500))
 
 	// video hardware
 	MCFG_FRAGMENT_ADD(newbrain_video)
@@ -1431,7 +1426,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( newbrain_eim, newbrain_a, newbrain_eim_stat
 
 	// devices
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/8, newbrain_ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("z80ctc_c2", ctc_c2_tick, attotime::from_hz(XTAL_16MHz/4/13))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("z80ctc_c2", newbrain_eim_state, ctc_c2_tick, attotime::from_hz(XTAL_16MHz/4/13))
 	MCFG_ADC0808_ADD(ADC0809_TAG, 500000, adc_intf)
 	MCFG_ACIA6850_ADD(MC6850_TAG, acia_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, fdc_intf)

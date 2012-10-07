@@ -95,7 +95,6 @@ public:
 	DECLARE_WRITE8_MEMBER(at_page8_w);
 	DECLARE_READ8_MEMBER(pc_dma_read_byte);
 	DECLARE_WRITE8_MEMBER(pc_dma_write_byte);
-	DECLARE_READ8_MEMBER(vga_setting);
 	DECLARE_READ32_MEMBER(ide_r);
 	DECLARE_WRITE32_MEMBER(ide_w);
 	DECLARE_READ32_MEMBER(fdc_r);
@@ -380,26 +379,26 @@ WRITE32_MEMBER(queen_state::bios_ram_w)
 READ32_MEMBER(queen_state::ide_r)
 {
 	device_t *device = machine().device("ide");
-	return ide_controller32_r(device, 0x1f0/4 + offset, mem_mask);
+	return ide_controller32_r(device, space, 0x1f0/4 + offset, mem_mask);
 }
 
 WRITE32_MEMBER(queen_state::ide_w)
 {
 	device_t *device = machine().device("ide");
-	ide_controller32_w(device, 0x1f0/4 + offset, data, mem_mask);
+	ide_controller32_w(device, space, 0x1f0/4 + offset, data, mem_mask);
 }
 
 READ32_MEMBER(queen_state::fdc_r)
 {
 	device_t *device = machine().device("ide");
-	return ide_controller32_r(device, 0x3f0/4 + offset, mem_mask);
+	return ide_controller32_r(device, space, 0x3f0/4 + offset, mem_mask);
 }
 
 WRITE32_MEMBER(queen_state::fdc_w)
 {
 	device_t *device = machine().device("ide");
 	//mame_printf_debug("FDC: write %08X, %08X, %08X\n", data, offset, mem_mask);
-	ide_controller32_w(device, 0x3f0/4 + offset, data, mem_mask);
+	ide_controller32_w(device, space, 0x3f0/4 + offset, data, mem_mask);
 }
 
 READ8_MEMBER(queen_state::at_page8_r)
@@ -448,13 +447,13 @@ WRITE8_MEMBER(queen_state::at_page8_w)
 READ8_MEMBER(queen_state::at_dma8237_2_r)
 {
 	device_t *device = machine().device("dma8237_2");
-	return i8237_r(device, offset / 2);
+	return i8237_r(device, space, offset / 2);
 }
 
 WRITE8_MEMBER(queen_state::at_dma8237_2_w)
 {
 	device_t *device = machine().device("dma8237_2");
-	i8237_w(device, offset / 2, data);
+	i8237_w(device, space, offset / 2, data);
 }
 
 WRITE_LINE_MEMBER(queen_state::pc_dma_hrq_changed)
@@ -518,7 +517,7 @@ static I8237_INTERFACE( dma8237_2_config )
 
 static ADDRESS_MAP_START( queen_map, AS_PROGRAM, 32, queen_state )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAM
-	AM_RANGE(0x000a0000, 0x000bffff) AM_RAM
+	AM_RANGE(0x000a0000, 0x000bffff) AM_DEVREADWRITE8("vga", vga_device, mem_r, mem_w, 0xffffffff)
 	AM_RANGE(0x000c0000, 0x000c3fff) AM_ROMBANK("video_bank1") AM_WRITE(isa_ram1_w)
 	AM_RANGE(0x000c4000, 0x000c7fff) AM_ROMBANK("video_bank2") AM_WRITE(isa_ram2_w)
 	AM_RANGE(0x000e0000, 0x000e3fff) AM_ROMBANK("bios_ext1") AM_WRITE(bios_ext1_ram_w)
@@ -542,6 +541,9 @@ static ADDRESS_MAP_START( queen_io, AS_IO, 32, queen_state )
 	AM_RANGE(0x00e8, 0x00ef) AM_NOP
 
 	AM_RANGE(0x01f0, 0x01f7) AM_READWRITE(ide_r, ide_w)
+	AM_RANGE(0x03b0, 0x03bf) AM_DEVREADWRITE8("vga", vga_device, port_03b0_r, port_03b0_w, 0xffffffff)
+	AM_RANGE(0x03c0, 0x03cf) AM_DEVREADWRITE8("vga", vga_device, port_03c0_r, port_03c0_w, 0xffffffff)
+	AM_RANGE(0x03d0, 0x03df) AM_DEVREADWRITE8("vga", vga_device, port_03d0_r, port_03d0_w, 0xffffffff)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(fdc_r, fdc_w)
 
 	AM_RANGE(0x0cf8, 0x0cff) AM_DEVREADWRITE("pcibus", pci_bus_legacy_device, read, write)
@@ -636,8 +638,6 @@ static void ide_interrupt(device_t *device, int state)
 	pic8259_ir6_w(drvstate->m_pic8259_2, state);
 }
 
-static READ8_HANDLER( vga_setting ) { return 0xff; } // hard-code to color
-
 void queen_state::machine_start()
 {
 
@@ -655,8 +655,6 @@ void queen_state::machine_start()
 	intel82439tx_init(machine());
 
 	kbdc8042_init(machine(), &at8042);
-	pc_vga_init(machine(), ::vga_setting, NULL);
-	pc_vga_io_init(machine(), machine().device("maincpu")->memory().space(AS_PROGRAM), 0xa0000, machine().device("maincpu")->memory().space(AS_IO), 0x0000);
 }
 
 void queen_state::machine_reset()

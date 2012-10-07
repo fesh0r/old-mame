@@ -1620,11 +1620,11 @@ static MACHINE_CONFIG_START( arknoid2, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", arknoid2_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  arknoid2_interrupt)
 
 	MCFG_CPU_ADD("sub", Z80, XTAL_12MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1639,8 +1639,8 @@ static MACHINE_CONFIG_START( arknoid2, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(tnzs)
 	MCFG_PALETTE_LENGTH(512)
@@ -1661,11 +1661,11 @@ static MACHINE_CONFIG_START( drtoppel, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", arknoid2_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  arknoid2_interrupt)
 
 	MCFG_CPU_ADD("sub", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1680,8 +1680,8 @@ static MACHINE_CONFIG_START( drtoppel, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(tnzs)
 	MCFG_PALETTE_LENGTH(512)
@@ -1702,11 +1702,11 @@ static MACHINE_CONFIG_START( tnzs, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("mcu", I8742, 12000000/2)	/* 400KHz ??? - Main board Crystal is 12MHz */
 	MCFG_CPU_IO_MAP(i8742_io_map)
@@ -1724,8 +1724,8 @@ static MACHINE_CONFIG_START( tnzs, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(tnzs)
 	MCFG_PALETTE_LENGTH(512)
@@ -1745,11 +1745,11 @@ static MACHINE_CONFIG_START( insectx, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80, XTAL_12MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1764,8 +1764,8 @@ static MACHINE_CONFIG_START( insectx, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(insectx)
 	MCFG_PALETTE_LENGTH(512)
@@ -1784,11 +1784,11 @@ static MACHINE_CONFIG_START( kageki, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(kageki_sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1803,8 +1803,8 @@ static MACHINE_CONFIG_START( kageki, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(tnzs)
 	MCFG_PALETTE_LENGTH(512)
@@ -1829,11 +1829,11 @@ static MACHINE_CONFIG_START( tnzsb, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cpu0_type2)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(tnzsb_cpu1_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(tnzsb_cpu2_map)
@@ -1852,8 +1852,8 @@ static MACHINE_CONFIG_START( tnzsb, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(tnzs)
 	MCFG_PALETTE_LENGTH(512)
@@ -1892,11 +1892,11 @@ static MACHINE_CONFIG_START( jpopnics, tnzs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80,XTAL_12MHz/2) /* Not verified - Main board Crystal is 12MHz */
 	MCFG_CPU_PROGRAM_MAP(jpopnics_main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("sub", Z80,XTAL_12MHz/2)	/* Not verified - Main board Crystal is 12MHz */
 	MCFG_CPU_PROGRAM_MAP(jpopnics_sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tnzs_state,  irq0_line_hold)
 
 	MCFG_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1911,8 +1911,8 @@ static MACHINE_CONFIG_START( jpopnics, tnzs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(tnzs)
-	MCFG_SCREEN_VBLANK_STATIC(tnzs)
+	MCFG_SCREEN_UPDATE_DRIVER(tnzs_state, screen_update_tnzs)
+	MCFG_SCREEN_VBLANK_DRIVER(tnzs_state, screen_eof_tnzs)
 
 	MCFG_GFXDECODE(tnzs)
 	MCFG_PALETTE_LENGTH(1024)

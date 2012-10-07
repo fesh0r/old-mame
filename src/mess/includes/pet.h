@@ -55,6 +55,25 @@ public:
 	virtual void machine_reset();
 	virtual void palette_init();
 	DECLARE_VIDEO_START(pet_crtc);
+	UINT32 screen_update_pet(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(pet_frame_interrupt);
+	TIMER_CALLBACK_MEMBER(pet_interrupt);
+	TIMER_CALLBACK_MEMBER(pet_tape1_timer);
+	TIMER_CALLBACK_MEMBER(pet_tape2_timer);
+	DECLARE_READ8_MEMBER(pia0_pa_r);
+	DECLARE_WRITE8_MEMBER(pia0_pa_w);
+	DECLARE_READ8_MEMBER(kin_r);
+	DECLARE_READ8_MEMBER(petb_kin_r);
+	DECLARE_READ8_MEMBER(cass1_r);
+	DECLARE_WRITE8_MEMBER(cass1_motor_w);
+	DECLARE_WRITE_LINE_MEMBER(pia0_irq_w);
+	DECLARE_WRITE_LINE_MEMBER(pia1_irq_w);
+	DECLARE_READ8_MEMBER(via_pb_r);
+	DECLARE_READ_LINE_MEMBER(cass2_r);
+	DECLARE_WRITE8_MEMBER(via_pb_w);
+	DECLARE_WRITE_LINE_MEMBER(gb_w);
+	DECLARE_WRITE_LINE_MEMBER(via_irq_w);
+	DECLARE_WRITE_LINE_MEMBER(pet_display_enable_changed);
 };
 
 /*----------- defined in video/pet.c -----------*/
@@ -63,10 +82,9 @@ public:
 void pet_vh_init (running_machine &machine);
 void pet80_vh_init (running_machine &machine);
 void superpet_vh_init (running_machine &machine);
-SCREEN_UPDATE_IND16( pet );
+
 MC6845_UPDATE_ROW( pet40_update_row );
 MC6845_UPDATE_ROW( pet80_update_row );
-WRITE_LINE_DEVICE_HANDLER( pet_display_enable_changed );
 
 
 /*----------- defined in machine/pet.c -----------*/
@@ -77,12 +95,9 @@ extern const pia6821_interface petb_pia0;
 extern const pia6821_interface pet_pia1;
 
 
-WRITE8_HANDLER(cbm8096_w);
-extern READ8_HANDLER(superpet_r);
-extern WRITE8_HANDLER(superpet_w);
-
-
-INTERRUPT_GEN( pet_frame_interrupt );
+DECLARE_WRITE8_HANDLER(cbm8096_w);
+extern DECLARE_READ8_HANDLER(superpet_r);
+extern DECLARE_WRITE8_HANDLER(superpet_w);
 
 MACHINE_CONFIG_EXTERN( pet_cartslot );
 MACHINE_CONFIG_EXTERN( pet4_cartslot );

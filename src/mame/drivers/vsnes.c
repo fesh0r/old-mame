@@ -153,14 +153,14 @@ WRITE8_MEMBER(vsnes_state::sprite_dma_0_w)
 {
 	int source = ( data & 7 );
 	ppu2c0x_device *ppu = machine().device<ppu2c0x_device>("ppu1");
-	ppu->spriteram_dma( &space, source );
+	ppu->spriteram_dma( space, source );
 }
 
 WRITE8_MEMBER(vsnes_state::sprite_dma_1_w)
 {
 	int source = ( data & 7 );
 	ppu2c0x_device *ppu = machine().device<ppu2c0x_device>("ppu2");
-	ppu->spriteram_dma( &space, source );
+	ppu->spriteram_dma( space, source );
 }
 
 WRITE8_MEMBER(vsnes_state::vsnes_coin_counter_w)
@@ -196,37 +196,37 @@ WRITE8_MEMBER(vsnes_state::vsnes_coin_counter_1_w)
 READ8_MEMBER(vsnes_state::psg1_4015_r)
 {
 	device_t *device = machine().device("nes1");
-	return nes_psg_r(device, 0x15);
+	return nes_psg_r(device, space, 0x15);
 }
 
 WRITE8_MEMBER(vsnes_state::psg1_4015_w)
 {
 	device_t *device = machine().device("nes1");
-	nes_psg_w(device, 0x15, data);
+	nes_psg_w(device, space, 0x15, data);
 }
 
 WRITE8_MEMBER(vsnes_state::psg1_4017_w)
 {
 	device_t *device = machine().device("nes1");
-	nes_psg_w(device, 0x17, data);
+	nes_psg_w(device, space, 0x17, data);
 }
 
 READ8_MEMBER(vsnes_state::psg2_4015_r)
 {
 	device_t *device = machine().device("nes2");
-	return nes_psg_r(device, 0x15);
+	return nes_psg_r(device, space, 0x15);
 }
 
 WRITE8_MEMBER(vsnes_state::psg2_4015_w)
 {
 	device_t *device = machine().device("nes2");
-	nes_psg_w(device, 0x15, data);
+	nes_psg_w(device, space, 0x15, data);
 }
 
 WRITE8_MEMBER(vsnes_state::psg2_4017_w)
 {
 	device_t *device = machine().device("nes2");
-	nes_psg_w(device, 0x17, data);
+	nes_psg_w(device, space, 0x17, data);
 }
 static ADDRESS_MAP_START( vsnes_cpu1_map, AS_PROGRAM, 8, vsnes_state )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x1800) AM_RAM AM_SHARE("work_ram")
@@ -1699,7 +1699,7 @@ static MACHINE_CONFIG_START( vsnes, vsnes_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(vsnes)
+	MCFG_SCREEN_UPDATE_DRIVER(vsnes_state, screen_update_vsnes)
 
 	MCFG_PALETTE_LENGTH(8*4*16)
 
@@ -1763,13 +1763,13 @@ static MACHINE_CONFIG_START( vsdual, vsnes_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(vsnes)
+	MCFG_SCREEN_UPDATE_DRIVER(vsnes_state, screen_update_vsnes)
 
 	MCFG_SCREEN_ADD("screen2", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(vsnes_bottom)
+	MCFG_SCREEN_UPDATE_DRIVER(vsnes_state, screen_update_vsnes_bottom)
 
 	MCFG_PALETTE_INIT_OVERRIDE(vsnes_state,vsdual)
 	MCFG_VIDEO_START_OVERRIDE(vsnes_state,vsdual)

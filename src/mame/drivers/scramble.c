@@ -1215,8 +1215,8 @@ I8255A_INTERFACE( scramble_protection_ppi_1_intf )
 	DEVCB_DRIVER_MEMBER(driver_device, soundlatch_byte_w),/* Port A write */
 	DEVCB_NULL,								/* Port B read */
 	DEVCB_HANDLER(scramble_sh_irqtrigger_w),/* Port B write */
-	DEVCB_HANDLER(scramble_protection_r),	/* Port C read */
-	DEVCB_HANDLER(scramble_protection_w)	/* Port C write */
+	DEVCB_DRIVER_MEMBER(scramble_state, scramble_protection_r),	/* Port C read */
+	DEVCB_DRIVER_MEMBER(scramble_state, scramble_protection_w)	/* Port C write */
 };
 
 I8255A_INTERFACE( mrkougar_ppi_1_intf )
@@ -1331,7 +1331,7 @@ static MACHINE_CONFIG_START( scramble, scramble_state )
 
 	MCFG_7474_ADD("konami_7474", "konami_7474", NULL, scramble_sh_7474_q_callback)
 
-	MCFG_TIMER_ADD("int_timer", galaxold_interrupt_timer)
+	MCFG_TIMER_DRIVER_ADD("int_timer", scramble_state, galaxold_interrupt_timer)
 
 	MCFG_MACHINE_RESET_OVERRIDE(scramble_state,scramble)
 
@@ -1344,7 +1344,7 @@ static MACHINE_CONFIG_START( scramble, scramble_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(scramble_state, screen_update_galaxold)
 
 	MCFG_GFXDECODE(scramble)
 	MCFG_PALETTE_LENGTH(32+64+2+1)	/* 32 for characters, 64 for stars, 2 for bullets, 0/1 for background */
@@ -1533,7 +1533,7 @@ static MACHINE_CONFIG_DERIVED( hunchbks, scramble )
 	MCFG_CPU_REPLACE("maincpu", S2650, 18432000/6)
 	MCFG_CPU_PROGRAM_MAP(hunchbks_map)
 	MCFG_CPU_IO_MAP(hunchbks_readport)
-	MCFG_CPU_VBLANK_INT("screen", hunchbks_vh_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", scramble_state,  hunchbks_vh_interrupt)
 
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
@@ -1562,7 +1562,7 @@ static MACHINE_CONFIG_START( ad2083, scramble_state )
 	MCFG_7474_ADD("7474_9m_1", "7474_9m_1", galaxold_7474_9m_1_callback, NULL)
 	MCFG_7474_ADD("7474_9m_2", "7474_9m_1", NULL, galaxold_7474_9m_2_q_callback)
 
-	MCFG_TIMER_ADD("int_timer", galaxold_interrupt_timer)
+	MCFG_TIMER_DRIVER_ADD("int_timer", scramble_state, galaxold_interrupt_timer)
 
 	MCFG_MACHINE_RESET_OVERRIDE(scramble_state,galaxold)
 
@@ -1572,7 +1572,7 @@ static MACHINE_CONFIG_START( ad2083, scramble_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(scramble_state, screen_update_galaxold)
 
 	MCFG_GFXDECODE(ad2083)
 	MCFG_PALETTE_LENGTH(32+64+2+8)	/* 32 for characters, 64 for stars, 2 for bullets, 8 for background */

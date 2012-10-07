@@ -183,7 +183,7 @@ machine_config_constructor abc77_device::device_mconfig_additions() const
 
 
 //-------------------------------------------------
-//  INPUT_CHANGED( keyboard_reset )
+//  INPUT_CHANGED_MEMBER( keyboard_reset )
 //-------------------------------------------------
 
 INPUT_CHANGED_MEMBER( abc77_device::keyboard_reset )
@@ -589,7 +589,7 @@ WRITE8_MEMBER( abc77_device::p2_w )
 	}
 
 	// beep
-	discrete_sound_w(m_discrete, NODE_01, BIT(data, 4));
+	discrete_sound_w(m_discrete, space, NODE_01, BIT(data, 4));
 
 	// transmit data
 	serial_output(BIT(data, 5));

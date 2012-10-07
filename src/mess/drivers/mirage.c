@@ -95,6 +95,15 @@ public:
     void fdc_intrq_w(bool state);
 	DECLARE_DRIVER_INIT(mirage);
 	virtual void video_start();
+	UINT32 screen_update_mirage(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	DECLARE_WRITE8_MEMBER(mirage_via_write_porta);
+	DECLARE_WRITE8_MEMBER(mirage_via_write_portb);
+	DECLARE_READ8_MEMBER(mirage_via_read_porta);
+	DECLARE_READ8_MEMBER(mirage_via_read_portb);
+	DECLARE_READ8_MEMBER(mirage_via_read_ca1);
+	DECLARE_READ8_MEMBER(mirage_via_read_cb1);
+	DECLARE_READ8_MEMBER(mirage_via_read_ca2);
+	DECLARE_READ8_MEMBER(mirage_via_read_cb2);
 };
 
 const floppy_format_type mirage_state::floppy_formats[] = {
@@ -124,7 +133,7 @@ void mirage_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_RGB32( mirage )
+UINT32 mirage_state::screen_update_mirage(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	return 0;
 }
@@ -148,7 +157,7 @@ static ADDRESS_MAP_START( mirage_map, AS_PROGRAM, 8, mirage_state )
 ADDRESS_MAP_END
 
 // port A: front panel
-static WRITE8_DEVICE_HANDLER( mirage_via_write_porta )
+WRITE8_MEMBER(mirage_state::mirage_via_write_porta)
 {
 //  printf("PORT A: %02x\n", data);
 }
@@ -161,23 +170,22 @@ static WRITE8_DEVICE_HANDLER( mirage_via_write_porta )
 //  bit 1: OUT upper/lower bank (64k halves)
 //  bit 0: OUT bank 0/bank 1 (32k halves)
 
-static WRITE8_DEVICE_HANDLER( mirage_via_write_portb )
+WRITE8_MEMBER(mirage_state::mirage_via_write_portb)
 {
 	int bank = 0;
-    mirage_state *state = device->machine().driver_data<mirage_state>();
 
 	// handle sound RAM bank switching
 	bank = (data & 2) ? (64*1024) : 0;
 	bank += (data & 1) ? (32*1024) : 0;
-	if (bank != state->last_sndram_bank)
+	if (bank != last_sndram_bank)
 	{
-		state->last_sndram_bank = bank;
-		state->membank("sndbank")->set_base(state->memregion("es5503")->base() + bank);
+		last_sndram_bank = bank;
+		membank("sndbank")->set_base(memregion("es5503")->base() + bank);
 	}
 }
 
 // port A: front panel
-static READ8_DEVICE_HANDLER( mirage_via_read_porta )
+READ8_MEMBER(mirage_state::mirage_via_read_porta)
 {
 	return 0;
 }
@@ -185,46 +193,46 @@ static READ8_DEVICE_HANDLER( mirage_via_read_porta )
 // port B:
 //  bit 6: IN FDC disk loaded
 //  bit 5: IN 5503 sync (?)
-static READ8_DEVICE_HANDLER( mirage_via_read_portb )
+READ8_MEMBER(mirage_state::mirage_via_read_portb)
 {
 	return 0x60;
 }
 
 // external sync pulse
-static READ8_DEVICE_HANDLER( mirage_via_read_ca1 )
+READ8_MEMBER(mirage_state::mirage_via_read_ca1)
 {
 	return 0;
 }
 
 // keyscan
-static READ8_DEVICE_HANDLER( mirage_via_read_cb1 )
+READ8_MEMBER(mirage_state::mirage_via_read_cb1)
 {
 	return 0;
 }
 
 // keyscan
-static READ8_DEVICE_HANDLER( mirage_via_read_ca2 )
+READ8_MEMBER(mirage_state::mirage_via_read_ca2)
 {
 	return 0;
 }
 
 
 // keyscan
-static READ8_DEVICE_HANDLER( mirage_via_read_cb2 )
+READ8_MEMBER(mirage_state::mirage_via_read_cb2)
 {
 	return 0;
 }
 
 const via6522_interface mirage_via =
 {
-	DEVCB_HANDLER(mirage_via_read_porta),
-	DEVCB_HANDLER(mirage_via_read_portb),
-	DEVCB_HANDLER(mirage_via_read_ca1),
-	DEVCB_HANDLER(mirage_via_read_cb1),
-	DEVCB_HANDLER(mirage_via_read_ca2),
-	DEVCB_HANDLER(mirage_via_read_cb2),
-	DEVCB_HANDLER(mirage_via_write_porta),
-	DEVCB_HANDLER(mirage_via_write_portb),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_read_porta),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_read_portb),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_read_ca1),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_read_cb1),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_read_ca2),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_read_cb2),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_write_porta),
+	DEVCB_DRIVER_MEMBER(mirage_state,mirage_via_write_portb),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -250,7 +258,7 @@ static MACHINE_CONFIG_START( mirage, mirage_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_UPDATE_STATIC(mirage)
+	MCFG_SCREEN_UPDATE_DRIVER(mirage_state, screen_update_mirage)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 

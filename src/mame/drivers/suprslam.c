@@ -316,7 +316,7 @@ static MACHINE_CONFIG_START( suprslam, suprslam_state )
 
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(suprslam_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", suprslam_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -332,7 +332,7 @@ static MACHINE_CONFIG_START( suprslam, suprslam_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2300) /* hand-tuned */)
 	MCFG_SCREEN_SIZE(64*8, 64*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(suprslam)
+	MCFG_SCREEN_UPDATE_DRIVER(suprslam_state, screen_update_suprslam)
 
 	MCFG_PALETTE_LENGTH(0x800)
 

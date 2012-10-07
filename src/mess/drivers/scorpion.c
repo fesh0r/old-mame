@@ -167,6 +167,7 @@ public:
 	DECLARE_WRITE8_MEMBER(scorpion_port_1ffd_w);
 	DECLARE_MACHINE_START(scorpion);
 	DECLARE_MACHINE_RESET(scorpion);
+	TIMER_DEVICE_CALLBACK_MEMBER(nmi_check_callback);
 };
 
 /****************************************************************************************************/
@@ -272,15 +273,14 @@ DIRECT_UPDATE_MEMBER(scorpion_state::scorpion_direct)
 	return address;
 }
 
-static TIMER_DEVICE_CALLBACK(nmi_check_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(scorpion_state::nmi_check_callback)
 {
-	spectrum_state *state = timer.machine().driver_data<spectrum_state>();
 
-	if ((timer.machine().root_device().ioport("NMI")->read() & 1)==1)
+	if ((machine().root_device().ioport("NMI")->read() & 1)==1)
 	{
-		state->m_port_1ffd_data |= 0x02;
-		scorpion_update_memory(timer.machine());
-		timer.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_port_1ffd_data |= 0x02;
+		scorpion_update_memory(machine());
+		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -326,15 +326,15 @@ MACHINE_RESET_MEMBER(scorpion_state,scorpion)
 {
 	UINT8 *messram = machine().device<ram_device>(RAM_TAG)->pointer();
 	device_t *beta = machine().device(BETA_DISK_TAG);
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	m_ram_0000 = NULL;
-	space->install_read_bank(0x0000, 0x3fff, "bank1");
-	space->install_write_handler(0x0000, 0x3fff, write8_delegate(FUNC(scorpion_state::scorpion_0000_w),this));
+	space.install_read_bank(0x0000, 0x3fff, "bank1");
+	space.install_write_handler(0x0000, 0x3fff, write8_delegate(FUNC(scorpion_state::scorpion_0000_w),this));
 
 	betadisk_disable(beta);
 	betadisk_clear_status(beta);
-	space->set_direct_update_handler(direct_update_delegate(FUNC(scorpion_state::scorpion_direct), this));
+	space.set_direct_update_handler(direct_update_delegate(FUNC(scorpion_state::scorpion_direct), this));
 
 	memset(messram,0,256*1024);
 
@@ -421,7 +421,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( scorpion, spectrum_128, scorpion_state )
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("256K")
 
-	MCFG_TIMER_ADD_PERIODIC("nmi_timer", nmi_check_callback, attotime::from_hz(50))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("nmi_timer", scorpion_state, nmi_check_callback, attotime::from_hz(50))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( profi, scorpion )

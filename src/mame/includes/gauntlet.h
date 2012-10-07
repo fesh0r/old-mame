@@ -30,13 +30,9 @@ public:
 	DECLARE_MACHINE_START(gauntlet);
 	DECLARE_MACHINE_RESET(gauntlet);
 	DECLARE_VIDEO_START(gauntlet);
+	UINT32 screen_update_gauntlet(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
-
 /*----------- defined in video/gauntlet.c -----------*/
-
-WRITE16_HANDLER( gauntlet_xscroll_w );
-WRITE16_HANDLER( gauntlet_yscroll_w );
-
-
-SCREEN_UPDATE_IND16( gauntlet );
+DECLARE_WRITE16_HANDLER( gauntlet_xscroll_w );
+DECLARE_WRITE16_HANDLER( gauntlet_yscroll_w );

@@ -540,7 +540,7 @@ static void store_registers(running_machine &machine)
 	if (! (hdc.w[1] & w1_transfer_inhibit))
 		for (i=0; i<real_word_count; i++)
 		{
-			machine.device("maincpu")->memory().space(AS_PROGRAM)->write_word(dma_address, buffer[i]);
+			machine.device("maincpu")->memory().space(AS_PROGRAM).write_word(dma_address, buffer[i]);
 			dma_address = (dma_address + 2) & 0x1ffffe;
 		}
 
@@ -695,7 +695,7 @@ static void read_data(running_machine &machine)
 		if (! (hdc.w[1] & w1_transfer_inhibit))
 			for (i=0; i<bytes_read; i+=2)
 			{
-				machine.device("maincpu")->memory().space(AS_PROGRAM)->write_word(dma_address, (((int) buffer[i]) << 8) | buffer[i+1]);
+				machine.device("maincpu")->memory().space(AS_PROGRAM).write_word(dma_address, (((int) buffer[i]) << 8) | buffer[i+1]);
 				dma_address = (dma_address + 2) & 0x1ffffe;
 			}
 
@@ -791,7 +791,7 @@ static void write_data(running_machine &machine)
 		/* DMA */
 		for (i=0; (i<byte_count) && (i<hdc.d[dsk_sel].bytes_per_sector); i+=2)
 		{
-			word = machine.device("maincpu")->memory().space(AS_PROGRAM)->read_word(dma_address);
+			word = machine.device("maincpu")->memory().space(AS_PROGRAM).read_word(dma_address);
 			buffer[i] = word >> 8;
 			buffer[i+1] = word & 0xff;
 
@@ -898,7 +898,7 @@ static void unformatted_read(running_machine &machine)
 	if (! (hdc.w[1] & w1_transfer_inhibit))
 		for (i=0; i<real_word_count; i++)
 		{
-			machine.device("maincpu")->memory().space(AS_PROGRAM)->write_word(dma_address, buffer[i]);
+			machine.device("maincpu")->memory().space(AS_PROGRAM).write_word(dma_address, buffer[i]);
 			dma_address = (dma_address + 2) & 0x1ffffe;
 		}
 
@@ -1025,11 +1025,11 @@ WRITE16_HANDLER(ti990_hdc_w)
 			hdc.w[offset] = (hdc.w[offset] & ((~w_mask[offset]) | mem_mask)) | (data & w_mask[offset] & ~mem_mask);
 
 			if ((offset == 0) || (offset == 7))
-				update_interrupt(space->machine());
+				update_interrupt(space.machine());
 
 			if ((offset == 7) && (old_data & w7_idle) && ! (data & w7_idle))
 			{	/* idle has been cleared: start command execution */
-				execute_command(space->machine());
+				execute_command(space.machine());
 			}
 		}
 	}

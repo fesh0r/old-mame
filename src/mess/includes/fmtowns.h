@@ -21,28 +21,6 @@
 
 #define IRQ_LOG 0  // set to 1 to log IRQ line activity
 
-READ8_HANDLER( towns_gfx_high_r );
-WRITE8_HANDLER( towns_gfx_high_w );
-READ8_HANDLER( towns_gfx_r );
-WRITE8_HANDLER( towns_gfx_w );
-READ8_HANDLER( towns_video_cff80_r );
-WRITE8_HANDLER( towns_video_cff80_w );
-READ8_HANDLER( towns_video_cff80_mem_r );
-WRITE8_HANDLER( towns_video_cff80_mem_w );
-READ8_HANDLER(towns_video_440_r);
-WRITE8_HANDLER(towns_video_440_w);
-READ8_HANDLER(towns_video_5c8_r);
-WRITE8_HANDLER(towns_video_5c8_w);
-READ8_HANDLER(towns_video_fd90_r);
-WRITE8_HANDLER(towns_video_fd90_w);
-READ8_HANDLER(towns_video_ff81_r);
-WRITE8_HANDLER(towns_video_ff81_w);
-READ32_HANDLER(towns_video_unknown_r);
-READ8_HANDLER(towns_spriteram_low_r);
-WRITE8_HANDLER(towns_spriteram_low_w);
-READ8_HANDLER(towns_spriteram_r);
-WRITE8_HANDLER(towns_spriteram_w);
-
 struct towns_cdrom_controller
 {
 	UINT8 command;
@@ -274,6 +252,19 @@ class towns_state : public driver_device
 	void poll_keyboard();
 	void mouse_timeout();
 	void wait_end();
+public:
+	INTERRUPT_GEN_MEMBER(towns_vsync_irq);
+	TIMER_CALLBACK_MEMBER(towns_cd_status_ready);
+	TIMER_CALLBACK_MEMBER(towns_cdrom_read_byte);
+	TIMER_CALLBACK_MEMBER(towns_delay_cdda);
+	TIMER_CALLBACK_MEMBER(towns_sprite_done);
+	TIMER_CALLBACK_MEMBER(towns_vblank_end);
+	DECLARE_WRITE_LINE_MEMBER(towns_scsi_irq);
+	DECLARE_WRITE_LINE_MEMBER(towns_scsi_drq);
+	DECLARE_WRITE_LINE_MEMBER(towns_pic_irq);
+	DECLARE_WRITE_LINE_MEMBER(towns_pit_out0_changed);
+	DECLARE_WRITE_LINE_MEMBER(towns_pit_out1_changed);
+	DECLARE_READ8_MEMBER(get_slave_ack);
 };
 
 class marty_state : public towns_state
@@ -285,9 +276,5 @@ class marty_state : public towns_state
 
 	virtual void driver_start();
 };
-
-INTERRUPT_GEN( towns_vsync_irq );
-//VIDEO_START( towns );
-//SCREEN_UPDATE_RGB32( towns );
 
 #endif /*FMTOWNS_H_*/

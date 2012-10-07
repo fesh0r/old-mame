@@ -78,19 +78,20 @@ public:
 	DECLARE_MACHINE_START(atarisy2);
 	DECLARE_MACHINE_RESET(atarisy2);
 	DECLARE_VIDEO_START(atarisy2);
+	UINT32 screen_update_atarisy2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vblank_int);
+	TIMER_CALLBACK_MEMBER(delayed_int_enable_w);
+	TIMER_CALLBACK_MEMBER(reset_yscroll_callback);
 };
 
 
 /*----------- defined in video/atarisy2.c -----------*/
 
-READ16_HANDLER( atarisy2_slapstic_r );
-READ16_HANDLER( atarisy2_videoram_r );
+DECLARE_READ16_HANDLER( atarisy2_slapstic_r );
+DECLARE_READ16_HANDLER( atarisy2_videoram_r );
 
-WRITE16_HANDLER( atarisy2_slapstic_w );
-WRITE16_HANDLER( atarisy2_yscroll_w );
-WRITE16_HANDLER( atarisy2_xscroll_w );
-WRITE16_HANDLER( atarisy2_videoram_w );
-WRITE16_HANDLER( atarisy2_paletteram_w );
-
-
-SCREEN_UPDATE_IND16( atarisy2 );
+DECLARE_WRITE16_HANDLER( atarisy2_slapstic_w );
+DECLARE_WRITE16_HANDLER( atarisy2_yscroll_w );
+DECLARE_WRITE16_HANDLER( atarisy2_xscroll_w );
+DECLARE_WRITE16_HANDLER( atarisy2_videoram_w );
+DECLARE_WRITE16_HANDLER( atarisy2_paletteram_w );

@@ -8,6 +8,7 @@
 *********************************************************************/
 
 #include "lux4105.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/scsihd.h"
 #include "machine/s1410.h"
@@ -65,13 +66,14 @@ WRITE_LINE_MEMBER( luxor_4105_device::sasi_req_w )
 
 static const SCSICB_interface sasi_intf =
 {
-	NULL,
 	DEVCB_DEVICE_LINE_MEMBER("^^", luxor_4105_device, sasi_bsy_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER("^^", luxor_4105_device, sasi_io_w),
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER("^^", luxor_4105_device, sasi_req_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -178,7 +180,7 @@ inline void luxor_4105_device::update_trrq_int()
 luxor_4105_device::luxor_4105_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
     : device_t(mconfig, LUXOR_4105, "Luxor 4105", tag, owner, clock),
 	  device_abc1600bus_card_interface(mconfig, *this),
-	  m_sasibus(*this, SASIBUS_TAG),
+	  m_sasibus(*this, SASIBUS_TAG ":host"),
 	  m_io(1)
 {
 }
@@ -206,8 +208,6 @@ void luxor_4105_device::device_start()
 
 void luxor_4105_device::device_reset()
 {
-	m_sasibus->init_scsibus(512);
-
 	m_cs = 0;
 	m_data = 0;
 	m_dma = 0;

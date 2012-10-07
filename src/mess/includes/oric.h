@@ -107,27 +107,31 @@ public:
 	virtual void video_start();
 	virtual void palette_init();
 	DECLARE_MACHINE_START(telestrat);
+	UINT32 screen_update_oric(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(oric_refresh_tape);
+	TIMER_CALLBACK_MEMBER(oric_vh_timer_callback);
+	DECLARE_READ8_MEMBER(oric_via_in_a_func);
+	DECLARE_READ8_MEMBER(oric_via_in_b_func);
+	DECLARE_WRITE8_MEMBER(oric_via_out_a_func);
+	DECLARE_WRITE8_MEMBER(oric_via_out_b_func);
+	DECLARE_READ8_MEMBER(oric_via_in_ca2_func);
+	DECLARE_READ8_MEMBER(oric_via_in_cb2_func);
+	DECLARE_WRITE8_MEMBER(oric_via_out_ca2_func);
+	DECLARE_WRITE8_MEMBER(oric_via_out_cb2_func);
+	DECLARE_WRITE_LINE_MEMBER(oric_jasmin_wd179x_drq_w);
+	DECLARE_WRITE_LINE_MEMBER(oric_microdisc_wd179x_intrq_w);
+	DECLARE_WRITE_LINE_MEMBER(oric_microdisc_wd179x_drq_w);
+	DECLARE_WRITE_LINE_MEMBER(oric_wd179x_intrq_w);
+	DECLARE_WRITE_LINE_MEMBER(oric_wd179x_drq_w);
+	DECLARE_READ8_MEMBER(telestrat_via2_in_a_func);
+	DECLARE_WRITE8_MEMBER(telestrat_via2_out_a_func);
+	DECLARE_READ8_MEMBER(telestrat_via2_in_b_func);
+	DECLARE_WRITE8_MEMBER(telestrat_via2_out_b_func);
 };
 
-
 /*----------- defined in machine/oric.c -----------*/
-
 extern const via6522_interface oric_6522_interface;
 extern const via6522_interface telestrat_via2_interface;
 extern const wd17xx_interface oric_wd17xx_interface;
-
-
-
-
-
-/* Telestrat specific */
-
-
-
-/*----------- defined in video/oric.c -----------*/
-
-
-SCREEN_UPDATE_IND16( oric );
-
 
 #endif /* ORIC_H_ */

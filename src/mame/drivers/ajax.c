@@ -210,7 +210,7 @@ static MACHINE_CONFIG_START( ajax, ajax_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", KONAMI, 3000000)	/* 12/4 MHz*/
 	MCFG_CPU_PROGRAM_MAP(ajax_main_map)
-	MCFG_CPU_VBLANK_INT("screen", ajax_interrupt)	/* IRQs triggered by the 051960 */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", ajax_state,  ajax_interrupt)	/* IRQs triggered by the 051960 */
 
 	MCFG_CPU_ADD("sub", M6809, 3000000)	/* ? */
 	MCFG_CPU_PROGRAM_MAP(ajax_sub_map)
@@ -229,7 +229,7 @@ static MACHINE_CONFIG_START( ajax, ajax_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(ajax)
+	MCFG_SCREEN_UPDATE_DRIVER(ajax_state, screen_update_ajax)
 
 	MCFG_PALETTE_LENGTH(2048)
 

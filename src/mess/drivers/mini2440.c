@@ -44,6 +44,7 @@ public:
 	DECLARE_DRIVER_INIT(mini2440);
 	virtual void machine_start();
 	virtual void machine_reset();
+	DECLARE_INPUT_CHANGED_MEMBER(mini2440_input_changed);
 };
 
 /***************************************************************************
@@ -112,25 +113,25 @@ static int s3c2440_core_pin_r( device_t *device, int pin)
 
 static WRITE8_DEVICE_HANDLER( s3c2440_nand_command_w )
 {
-	mini2440_state *state = device->machine().driver_data<mini2440_state>();
+	mini2440_state *state = space.machine().driver_data<mini2440_state>();
 	state->m_nand->command_w(data);
 }
 
 static WRITE8_DEVICE_HANDLER( s3c2440_nand_address_w )
 {
-	mini2440_state *state = device->machine().driver_data<mini2440_state>();
+	mini2440_state *state = space.machine().driver_data<mini2440_state>();
 	state->m_nand->address_w(data);
 }
 
 static READ8_DEVICE_HANDLER( s3c2440_nand_data_r )
 {
-	mini2440_state *state = device->machine().driver_data<mini2440_state>();
+	mini2440_state *state = space.machine().driver_data<mini2440_state>();
 	return state->m_nand->data_r();
 }
 
 static WRITE8_DEVICE_HANDLER( s3c2440_nand_data_w )
 {
-	mini2440_state *state = device->machine().driver_data<mini2440_state>();
+	mini2440_state *state = space.machine().driver_data<mini2440_state>();
 	state->m_nand->data_w(data);
 }
 
@@ -138,7 +139,7 @@ static WRITE8_DEVICE_HANDLER( s3c2440_nand_data_w )
 
 static WRITE16_DEVICE_HANDLER( s3c2440_i2s_data_w )
 {
-	mini2440_state *state = device->machine().driver_data<mini2440_state>();
+	mini2440_state *state = space.machine().driver_data<mini2440_state>();
 	state->m_dac[offset]->write_signed16(data + 0x8000);
 }
 
@@ -149,19 +150,18 @@ static READ32_DEVICE_HANDLER( s3c2440_adc_data_r )
 	UINT32 data = 0;
 	switch (offset)
 	{
-		case 2 + 0 : data = device->machine().root_device().ioport( "PENX")->read(); break;
-		case 2 + 1 : data = 915 - device->machine().root_device().ioport( "PENY")->read() + 90; break;
+		case 2 + 0 : data = space.machine().root_device().ioport( "PENX")->read(); break;
+		case 2 + 1 : data = 915 - space.machine().root_device().ioport( "PENY")->read() + 90; break;
 	}
-	verboselog( device->machine(), 5,  "s3c2440_adc_data_r %08X\n", data);
+	verboselog( space.machine(), 5,  "s3c2440_adc_data_r %08X\n", data);
 	return data;
 }
 
 // TOUCH
 
-static INPUT_CHANGED( mini2440_input_changed )
+INPUT_CHANGED_MEMBER(mini2440_state::mini2440_input_changed)
 {
-	mini2440_state *state = field.machine().driver_data<mini2440_state>();
-	s3c2440_touch_screen( state->m_s3c2440, (newval & 0x01) ? 1 : 0);
+	s3c2440_touch_screen( m_s3c2440, (newval & 0x01) ? 1 : 0);
 }
 
 // ...
@@ -250,7 +250,7 @@ MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( mini2440 )
 	PORT_START( "PENB" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("Pen Button") PORT_CHANGED(mini2440_input_changed, NULL) PORT_PLAYER(1)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("Pen Button") PORT_CHANGED_MEMBER(DEVICE_SELF, mini2440_state, mini2440_input_changed, NULL) PORT_PLAYER(1)
 	PORT_START( "PENX" )
 	PORT_BIT( 0x3ff, 0x200, IPT_LIGHTGUN_X ) PORT_NAME("Pen X") PORT_MINMAX(80, 950) PORT_SENSITIVITY(50) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_KEYDELTA(30) PORT_PLAYER(1)
 	PORT_START( "PENY" )

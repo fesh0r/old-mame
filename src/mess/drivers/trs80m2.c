@@ -109,11 +109,9 @@ void trs80m2_state::scan_keyboard()
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( trs80m2_keyboard_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(trs80m2_state::trs80m2_keyboard_tick)
 {
-	trs80m2_state *state = timer.machine().driver_data<trs80m2_state>();
-
-	state->scan_keyboard();
+	scan_keyboard();
 }
 
 
@@ -334,12 +332,12 @@ WRITE8_MEMBER( trs80m2_state::nmi_w )
 
 READ8_MEMBER( trs80m2_state::fdc_r )
 {
-	return wd17xx_r(m_fdc, offset) ^ 0xff;
+	return wd17xx_r(m_fdc, space, offset) ^ 0xff;
 }
 
 WRITE8_MEMBER( trs80m2_state::fdc_w )
 {
-	wd17xx_w(m_fdc, offset, data ^ 0xff);
+	wd17xx_w(m_fdc, space, offset, data ^ 0xff);
 }
 
 WRITE8_MEMBER( trs80m16_state::tcl_w )
@@ -564,25 +562,24 @@ INPUT_PORTS_END
 static MC6845_UPDATE_ROW( trs80m2_update_row )
 {
 	trs80m2_state *state = device->machine().driver_data<trs80m2_state>();
-	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
+
+	int x = 0;
 
 	for (int column = 0; column < x_count; column++)
 	{
-		int bit;
+		UINT8 code = state->m_video_ram[(ma + column) & 0x7ff];
+		offs_t address = ((code & 0x7f) << 4) | (ra & 0x0f);
+		UINT8 data = state->m_char_rom[address];
 
-		UINT16 address = (state->m_video_ram[(ma + column) & 0x7ff] << 4) | (ra & 0x0f);
-		UINT8 data = state->m_char_rom[address & 0x7ff];
+		int dcursor = (column == cursor_x);
+		int drevid = BIT(code, 7);
 
-		if (column == cursor_x)
+		for (int bit = 0; bit < 8; bit++)
 		{
-			data = 0xff;
-		}
+			int dout = BIT(data, 7);
+			int color = dcursor ^ drevid ^ dout;
 
-		for (bit = 0; bit < 8; bit++)
-		{
-			int x = (column * 8) + bit;
-
-			bitmap.pix32(y, x) = palette[BIT(data, 7)];
+			bitmap.pix32(y, x++) = RGB_MONOCHROME_GREEN[color];
 
 			data <<= 1;
 		}
@@ -635,7 +632,7 @@ UINT32 trs80m2_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap,
 {
 	if (m_blnkvid)
 	{
-		bitmap.fill(get_black_pen(machine()), cliprect);
+		bitmap.fill(RGB_BLACK, cliprect);
 	}
 	else
 	{
@@ -694,8 +691,8 @@ static TRS80M2_KEYBOARD_INTERFACE( kb_intf )
 //  Z80DMA_INTERFACE( dma_intf )
 //-------------------------------------------------
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static Z80DMA_INTERFACE( dma_intf )
 {
@@ -833,18 +830,16 @@ static Z80DART_INTERFACE( sio_intf )
 //  Z80CTC_INTERFACE( ctc_intf )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( ctc_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(trs80m2_state::ctc_tick)
 {
-	trs80m2_state *state = timer.machine().driver_data<trs80m2_state>();
+	m_ctc->trg0(1);
+	m_ctc->trg0(0);
 
-	state->m_ctc->trg0(1);
-	state->m_ctc->trg0(0);
+	m_ctc->trg1(1);
+	m_ctc->trg1(0);
 
-	state->m_ctc->trg1(1);
-	state->m_ctc->trg1(0);
-
-	state->m_ctc->trg2(1);
-	state->m_ctc->trg2(0);
+	m_ctc->trg2(1);
+	m_ctc->trg2(0);
 }
 
 static Z80CTC_INTERFACE( ctc_intf )
@@ -1016,7 +1011,7 @@ static MACHINE_CONFIG_START( trs80m2, trs80m2_state )
 	// devices
 	MCFG_FD1791_ADD(FD1791_TAG, fdc_intf)
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_8MHz/2, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_8MHz/2/2))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", trs80m2_state, ctc_tick, attotime::from_hz(XTAL_8MHz/2/2))
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_8MHz/2, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_8MHz/2, pio_intf)
 	MCFG_Z80SIO0_ADD(Z80SIO_TAG, XTAL_8MHz/2, sio_intf)
@@ -1024,7 +1019,7 @@ static MACHINE_CONFIG_START( trs80m2, trs80m2_state )
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, trs80m2_floppy_interface)
 	MCFG_TRS80M2_KEYBOARD_ADD(kb_intf)
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard", trs80m2_keyboard_tick,attotime::from_hz(60))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", trs80m2_state, trs80m2_keyboard_tick, attotime::from_hz(60))
 
 	// internal RAM
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1059,15 +1054,12 @@ static MACHINE_CONFIG_START( trs80m16, trs80m16_state )
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
 
-	MCFG_PALETTE_LENGTH(2)
-	MCFG_PALETTE_INIT(monochrome_green)
-
 	MCFG_MC6845_ADD(MC6845_TAG, MC6845, XTAL_12_48MHz/8, mc6845_intf)
 
 	// devices
 	MCFG_FD1791_ADD(FD1791_TAG, fdc_intf)
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_8MHz/2, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_8MHz/2/2))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", trs80m2_state, ctc_tick, attotime::from_hz(XTAL_8MHz/2/2))
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_8MHz/2, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_8MHz/2, pio_intf)
 	MCFG_Z80SIO0_ADD(Z80SIO_TAG, XTAL_8MHz/2, sio_intf)
@@ -1076,7 +1068,7 @@ static MACHINE_CONFIG_START( trs80m16, trs80m16_state )
 	MCFG_PIC8259_ADD(AM9519A_TAG, pic_intf)
 	MCFG_TRS80M2_KEYBOARD_ADD(kb_intf)
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard", trs80m2_keyboard_tick,attotime::from_hz(60))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", trs80m2_state, trs80m2_keyboard_tick, attotime::from_hz(60))
 
 	// internal RAM
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1168,7 +1160,7 @@ ROM_END
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT     COMPANY             FULLNAME        FLAGS
 COMP( 1979, trs80m2,	0,			0,		trs80m2,	trs80m2, driver_device,		0,		"Tandy Radio Shack",	"TRS-80 Model II",	GAME_NO_SOUND_HW | GAME_IMPERFECT_KEYBOARD )
-COMP( 1982, trs80m16,	trs80m2,	0,		trs80m16,	trs80m2, driver_device,	0,		"Tandy Radio Shack",	"TRS-80 Model 16",	GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
-//COMP( 1983, trs80m12, trs80m2,    0,      trs80m16,   trs80m2, driver_device,    0,      "Tandy Radio Shack",    "TRS-80 Model 12",  GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
-//COMP( 1984, trs80m16b,trs80m2,    0,      trs80m16,   trs80m2, driver_device,    0,      "Tandy Radio Shack",    "TRS-80 Model 16B", GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
-//COMP( 1985, tandy6k,  trs80m2,    0,      tandy6k,    trs80m2, driver_device,         0,      "Tandy Radio Shack",    "Tandy 6000 HD",    GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+COMP( 1982, trs80m16,	trs80m2,	0,		trs80m16,	trs80m2, driver_device,		0,		"Tandy Radio Shack",	"TRS-80 Model 16",	GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+//COMP( 1983, trs80m12, trs80m2,    0,      trs80m16,   trs80m2, driver_device,     0,      "Tandy Radio Shack",    "TRS-80 Model 12",  GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+//COMP( 1984, trs80m16b,trs80m2,    0,      trs80m16,   trs80m2, driver_device,     0,      "Tandy Radio Shack",    "TRS-80 Model 16B", GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+//COMP( 1985, tandy6k,  trs80m2,    0,      tandy6k,    trs80m2, driver_device,     0,      "Tandy Radio Shack",    "Tandy 6000 HD",    GAME_NO_SOUND_HW | GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )

@@ -141,7 +141,7 @@ WRITE8_MEMBER( vidbrain_state::sound_w )
 
 	if (!m_sound_clk && sound_clk)
 	{
-		//discrete_sound_w(m_discrete, NODE_01, m_keylatch & 0x03);
+		//discrete_sound_w(m_discrete, space, NODE_01, m_keylatch & 0x03);
 
 		UINT8 dac_data = 0;
 
@@ -262,7 +262,7 @@ ADDRESS_MAP_END
 //**************************************************************************
 
 //-------------------------------------------------
-//  INPUT_CHANGED( trigger_reset )
+//  INPUT_CHANGED_MEMBER( trigger_reset )
 //-------------------------------------------------
 
 INPUT_CHANGED_MEMBER( vidbrain_state::trigger_reset )
@@ -449,7 +449,7 @@ WRITE_LINE_MEMBER( vidbrain_state::hblank_w )
 	}
 }
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
 
 static UV201_INTERFACE( uv_intf )
 {

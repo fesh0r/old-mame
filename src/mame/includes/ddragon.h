@@ -99,13 +99,7 @@ public:
 	DECLARE_MACHINE_START(ddragon);
 	DECLARE_MACHINE_RESET(ddragon);
 	DECLARE_VIDEO_START(ddragon);
+	UINT32 screen_update_ddragon(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(ddragon_scanline);
+	TIMER_DEVICE_CALLBACK_MEMBER(chinagat_scanline);
 };
-
-
-/*----------- defined in video/ddragon.c -----------*/
-
-
-
-
-SCREEN_UPDATE_IND16( ddragon );
-

@@ -102,7 +102,7 @@ READ16_MEMBER(cabal_state::track_r)
 
 WRITE16_MEMBER(cabal_state::cabal_sound_irq_trigger_word_w)
 {
-	seibu_main_word_w(&space,4,data,mem_mask);
+	seibu_main_word_w(space,4,data,mem_mask);
 
 	/* spin for a while to let the Z80 read the command, otherwise coins "stick" */
 	space.device().execute().spin_until_time(attotime::from_usec(50));
@@ -492,7 +492,7 @@ static MACHINE_CONFIG_START( cabal, cabal_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_20MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cabal_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -505,7 +505,7 @@ static MACHINE_CONFIG_START( cabal, cabal_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(cabal)
+	MCFG_SCREEN_UPDATE_DRIVER(cabal_state, screen_update_cabal)
 
 	MCFG_GFXDECODE(cabal)
 	MCFG_PALETTE_LENGTH(1024)
@@ -534,7 +534,7 @@ static MACHINE_CONFIG_START( cabalbl, cabal_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_20MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cabalbl_main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cabal_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cabalbl_sound_map)
@@ -543,12 +543,12 @@ static MACHINE_CONFIG_START( cabalbl, cabal_state )
 	MCFG_CPU_ADD("adpcm1", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cabalbl_talk1_map)
 	MCFG_CPU_IO_MAP(cabalbl_talk1_portmap)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,8000)
+	MCFG_CPU_PERIODIC_INT_DRIVER(cabal_state, irq0_line_hold, 8000)
 
 	MCFG_CPU_ADD("adpcm2", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(cabalbl_talk2_map)
 	MCFG_CPU_IO_MAP(cabalbl_talk2_portmap)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,8000)
+	MCFG_CPU_PERIODIC_INT_DRIVER(cabal_state, irq0_line_hold, 8000)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(600))
 
@@ -560,7 +560,7 @@ static MACHINE_CONFIG_START( cabalbl, cabal_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(cabal)
+	MCFG_SCREEN_UPDATE_DRIVER(cabal_state, screen_update_cabal)
 
 	MCFG_GFXDECODE(cabal)
 	MCFG_PALETTE_LENGTH(1024)
@@ -848,11 +848,11 @@ ROM_END
 
 static void seibu_sound_bootleg(running_machine &machine,const char *cpu,int length)
 {
-	address_space *space = machine.device(cpu)->memory().space(AS_PROGRAM);
+	address_space &space = machine.device(cpu)->memory().space(AS_PROGRAM);
 	UINT8 *decrypt = auto_alloc_array(machine, UINT8, length);
 	UINT8 *rom = machine.root_device().memregion(cpu)->base();
 
-	space->set_decrypted_region(0x0000, (length < 0x10000) ? (length - 1) : 0x1fff, decrypt);
+	space.set_decrypted_region(0x0000, (length < 0x10000) ? (length - 1) : 0x1fff, decrypt);
 
 	memcpy(decrypt, rom+length, length);
 

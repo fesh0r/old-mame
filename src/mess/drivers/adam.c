@@ -245,7 +245,7 @@ enum
 
 void adam_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	switch (m_mioc & 0x03)
@@ -253,58 +253,58 @@ void adam_state::bankswitch()
 	case LO_SMARTWRITER:
 		if (BIT(m_adamnet, 1))
 		{
-			program->unmap_readwrite(0x0000, 0x5fff);
-			program->install_rom(0x6000, 0x7fff, memregion("wp")->base() + 0x8000);
+			program.unmap_readwrite(0x0000, 0x5fff);
+			program.install_rom(0x6000, 0x7fff, memregion("wp")->base() + 0x8000);
 		}
 		else
 		{
-			program->install_rom(0x0000, 0x7fff, memregion("wp")->base());
+			program.install_rom(0x0000, 0x7fff, memregion("wp")->base());
 		}
 		break;
 
 	case LO_INTERNAL_RAM:
-		program->install_ram(0x0000, 0x7fff, ram);
+		program.install_ram(0x0000, 0x7fff, ram);
 		break;
 
 	case LO_RAM_EXPANSION:
 		if (m_ram->size() > 64 * 1024)
-			program->install_ram(0x0000, 0x7fff, ram + 0x10000);
+			program.install_ram(0x0000, 0x7fff, ram + 0x10000);
 		else
-			program->unmap_readwrite(0x0000, 0x7fff);
+			program.unmap_readwrite(0x0000, 0x7fff);
 		break;
 
 	case LO_OS7_ROM_INTERNAL_RAM:
-		program->install_rom(0x0000, 0x1fff, memregion("os7")->base());
-		program->install_ram(0x2000, 0x7fff, ram + 0x2000);
+		program.install_rom(0x0000, 0x1fff, memregion("os7")->base());
+		program.install_ram(0x2000, 0x7fff, ram + 0x2000);
 		break;
 	}
 
 	switch ((m_mioc >> 2) & 0x03)
 	{
 	case HI_INTERNAL_RAM:
-		program->install_ram(0x8000, 0xffff, ram + 0x8000);
+		program.install_ram(0x8000, 0xffff, ram + 0x8000);
 		break;
 
 	case HI_ROM_EXPANSION:
-		program->install_rom(0x8000, 0xffff, memregion("xrom")->base());
+		program.install_rom(0x8000, 0xffff, memregion("xrom")->base());
 		break;
 
 	case HI_RAM_EXPANSION:
 		if (m_game)
 		{
-			program->install_rom(0x8000, 0xffff, memregion("cart")->base());
+			program.install_rom(0x8000, 0xffff, memregion("cart")->base());
 		}
 		else
 		{
 			if (m_ram->size() > 64 * 1024)
-				program->install_ram(0x8000, 0xffff, ram + 0x18000);
+				program.install_ram(0x8000, 0xffff, ram + 0x18000);
 			else
-				program->unmap_readwrite(0x8000, 0xffff);
+				program.unmap_readwrite(0x8000, 0xffff);
 		}
 		break;
 
 	case HI_CARTRIDGE_ROM:
-		program->install_rom(0x8000, 0xffff, memregion("cart")->base());
+		program.install_rom(0x8000, 0xffff, memregion("cart")->base());
 		break;
 	}
 }
@@ -1162,16 +1162,14 @@ WRITE8_MEMBER( adam_state::fdc6801_p4_w )
 //**************************************************************************
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( paddle_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( paddle_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( paddle_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(adam_state::paddle_tick)
 {
-	adam_state *state = timer.machine().driver_data<adam_state>();
-
 	// TODO: improve irq behaviour (see drivers/coleco.c)
-	if (coleco_scan_paddles(timer.machine(), &state->m_joy_status0, &state->m_joy_status1))
-		state->m_maincpu->set_input_line(INPUT_LINE_IRQ0, HOLD_LINE);
+	if (coleco_scan_paddles(machine(), &m_joy_status0, &m_joy_status1))
+		m_maincpu->set_input_line(INPUT_LINE_IRQ0, HOLD_LINE);
 }
 
 
@@ -1248,7 +1246,7 @@ static ADDRESS_MAP_START( adam_io, AS_IO, 8, adam_state )
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x1e) AM_DEVREADWRITE("tms9928a", tms9928a_device, vram_read, vram_write)
 	AM_RANGE(0xa1, 0xa1) AM_MIRROR(0x1e) AM_DEVREADWRITE("tms9928a", tms9928a_device, register_read, register_write)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x1f) AM_WRITE(joystick_w)
-	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1f) AM_DEVWRITE(SN76489A_TAG, sn76489a_new_device, write)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1f) AM_DEVWRITE(SN76489A_TAG, sn76489a_device, write)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1d) AM_READ(input1_r)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x1d) AM_READ(input2_r)
 ADDRESS_MAP_END
@@ -1499,23 +1497,21 @@ INPUT_PORTS_END
 //  TMS9928a_interface tms9928a_interface
 //-------------------------------------------------
 
-static WRITE_LINE_DEVICE_HANDLER(adam_vdp_interrupt)
+WRITE_LINE_MEMBER(adam_state::adam_vdp_interrupt)
 {
-	adam_state *driver_state = device->machine().driver_data<adam_state>();
-
-	if (state && !driver_state->m_vdp_nmi)
+	if (state && !m_vdp_nmi)
 	{
-		device->machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 
-	driver_state->m_vdp_nmi = state;
+	m_vdp_nmi = state;
 }
 
 static TMS9928A_INTERFACE(adam_tms9928a_interface)
 {
 	"screen",
 	0x4000,
-	DEVCB_LINE(adam_vdp_interrupt)
+	DEVCB_DRIVER_LINE_MEMBER(adam_state,adam_vdp_interrupt)
 };
 
 //-------------------------------------------------
@@ -1727,12 +1723,12 @@ static MACHINE_CONFIG_START( adam, adam_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489A_TAG, SN76489A_NEW, XTAL_7_15909MHz/2)
+	MCFG_SOUND_ADD(SN76489A_TAG, SN76489A, XTAL_7_15909MHz/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
     MCFG_SOUND_CONFIG(psg_intf)
 
 	// devices
-	MCFG_TIMER_ADD_PERIODIC("paddles", paddle_tick, attotime::from_msec(20))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("paddles", adam_state, paddle_tick, attotime::from_msec(20))
 	MCFG_WD2793_ADD(WD2793_TAG, fdc_intf)
 	MCFG_LEGACY_FLOPPY_DRIVE_ADD(FLOPPY_0, adam_floppy_interface)
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, adam_cassette_interface)

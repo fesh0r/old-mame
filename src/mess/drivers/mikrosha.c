@@ -24,6 +24,7 @@ class mikrosha_state : public radio86_state
 public:
 	mikrosha_state(const machine_config &mconfig, device_type type, const char *tag)
 		: radio86_state(mconfig, type, tag) { }
+	DECLARE_WRITE_LINE_MEMBER(mikrosha_pit_out2);
 };
 
 
@@ -150,7 +151,7 @@ static const cassette_interface mikrosha_cassette_interface =
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER(mikrosha_pit_out2)
+WRITE_LINE_MEMBER(mikrosha_state::mikrosha_pit_out2)
 {
 
 }
@@ -171,7 +172,7 @@ static const struct pit8253_config mikrosha_pit8253_intf =
 		{
 			2000000,
 			DEVCB_NULL,
-			DEVCB_LINE(mikrosha_pit_out2)
+			DEVCB_DRIVER_LINE_MEMBER(mikrosha_state, mikrosha_pit_out2)
 		}
 	}
 };
@@ -216,7 +217,7 @@ static MACHINE_CONFIG_START( mikrosha, mikrosha_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(78*6, 30*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
-	MCFG_SCREEN_UPDATE_STATIC(radio86)
+	MCFG_SCREEN_UPDATE_DRIVER(radio86_state, screen_update_radio86)
 
 	MCFG_GFXDECODE(mikrosha)
 	MCFG_PALETTE_LENGTH(3)

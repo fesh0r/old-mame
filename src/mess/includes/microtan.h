@@ -51,6 +51,30 @@ public:
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_microtan(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(microtan_interrupt);
+	TIMER_CALLBACK_MEMBER(microtan_read_cassette);
+	TIMER_CALLBACK_MEMBER(microtan_pulse_nmi);
+	DECLARE_READ8_MEMBER(via_0_in_a);
+	DECLARE_READ8_MEMBER(via_0_in_b);
+	DECLARE_READ8_MEMBER(via_0_in_ca1);
+	DECLARE_READ8_MEMBER(via_0_in_cb1);
+	DECLARE_READ8_MEMBER(via_0_in_ca2);
+	DECLARE_READ8_MEMBER(via_0_in_cb2);
+	DECLARE_WRITE8_MEMBER(via_0_out_a);
+	DECLARE_WRITE8_MEMBER(via_0_out_b);
+	DECLARE_WRITE8_MEMBER(via_0_out_ca2);
+	DECLARE_WRITE8_MEMBER(via_0_out_cb2);
+	DECLARE_READ8_MEMBER(via_1_in_a);
+	DECLARE_READ8_MEMBER(via_1_in_b);
+	DECLARE_READ8_MEMBER(via_1_in_ca1);
+	DECLARE_READ8_MEMBER(via_1_in_cb1);
+	DECLARE_READ8_MEMBER(via_1_in_ca2);
+	DECLARE_READ8_MEMBER(via_1_in_cb2);
+	DECLARE_WRITE8_MEMBER(via_1_out_a);
+	DECLARE_WRITE8_MEMBER(via_1_out_b);
+	DECLARE_WRITE8_MEMBER(via_1_out_ca2);
+	DECLARE_WRITE8_MEMBER(via_1_out_cb2);
 };
 
 
@@ -59,20 +83,7 @@ public:
 extern const via6522_interface microtan_via6522_0;
 extern const via6522_interface microtan_via6522_1;
 
-
-
 SNAPSHOT_LOAD( microtan );
 QUICKLOAD_LOAD( microtan_hexfile );
-
-INTERRUPT_GEN( microtan_interrupt );
-
-
-
-/*----------- defined in video/microtan.c -----------*/
-
-
-extern VIDEO_START( microtan );
-extern SCREEN_UPDATE_IND16( microtan );
-
 
 #endif /* MICROTAN_H_ */

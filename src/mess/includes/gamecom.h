@@ -243,22 +243,18 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	INTERRUPT_GEN_MEMBER(gamecom_interrupt);
+	TIMER_CALLBACK_MEMBER(gamecom_clock_timer_callback);
+	TIMER_CALLBACK_MEMBER(gamecom_scanline);
 };
 
 
 /*----------- defined in machine/gamecom.c -----------*/
 
-extern MACHINE_RESET( gamecom );
 extern DEVICE_IMAGE_LOAD( gamecom_cart1 );
 extern DEVICE_IMAGE_LOAD( gamecom_cart2 );
 
 extern void gamecom_handle_dma( device_t *device, int cycles );
 extern void gamecom_update_timers( device_t *device, int cycles );
-
-
-/*----------- defined in video/gamecom.c -----------*/
-
-
-
 
 #endif /* GAMECOM_H_ */

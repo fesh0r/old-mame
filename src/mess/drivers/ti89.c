@@ -152,37 +152,35 @@ READ16_MEMBER ( ti68k_state::flash_r )
 }
 
 
-static TIMER_DEVICE_CALLBACK( ti68k_timer_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(ti68k_state::ti68k_timer_callback)
 {
-	ti68k_state *state = timer.machine().driver_data<ti68k_state>();
+	m_timer++;
 
-	state->m_timer++;
-
-	if (state->m_timer_on)
+	if (m_timer_on)
 	{
-		if (!(state->m_timer & state->m_timer_mask) && BIT(state->m_io_hw1[0x0a], 3))
+		if (!(m_timer & m_timer_mask) && BIT(m_io_hw1[0x0a], 3))
 		{
-			if (state->m_timer_val)
-				state->m_timer_val++;
+			if (m_timer_val)
+				m_timer_val++;
 			else
-				state->m_timer_val = (state->m_io_hw1[0x0b]) & 0xff;
+				m_timer_val = (m_io_hw1[0x0b]) & 0xff;
 		}
 
-		if (!BIT(state->m_io_hw1[0x0a], 7) && ((state->m_hw_version == state->m_HW1) || (!BIT(state->m_io_hw1[0x0f], 2) && !BIT(state->m_io_hw1[0x0f], 1))))
+		if (!BIT(m_io_hw1[0x0a], 7) && ((m_hw_version == m_HW1) || (!BIT(m_io_hw1[0x0f], 2) && !BIT(m_io_hw1[0x0f], 1))))
 		{
-			if (!(state->m_timer & 0x003f))
-				state->m_maincpu->set_input_line(M68K_IRQ_1, HOLD_LINE);
+			if (!(m_timer & 0x003f))
+				m_maincpu->set_input_line(M68K_IRQ_1, HOLD_LINE);
 
-			if (!(state->m_timer & 0x3fff) && !BIT(state->m_io_hw1[0x0a], 3))
-				state->m_maincpu->set_input_line(M68K_IRQ_3, HOLD_LINE);
+			if (!(m_timer & 0x3fff) && !BIT(m_io_hw1[0x0a], 3))
+				m_maincpu->set_input_line(M68K_IRQ_3, HOLD_LINE);
 
-			if (!(state->m_timer & state->m_timer_mask) && BIT(state->m_io_hw1[0x0a], 3) && state->m_timer_val == 0)
-				state->m_maincpu->set_input_line(M68K_IRQ_5, HOLD_LINE);
+			if (!(m_timer & m_timer_mask) && BIT(m_io_hw1[0x0a], 3) && m_timer_val == 0)
+				m_maincpu->set_input_line(M68K_IRQ_5, HOLD_LINE);
 		}
 	}
 
-	if (state->keypad_r(timer.machine()) != 0xff)
-		state->m_maincpu->set_input_line(M68K_IRQ_2, HOLD_LINE);
+	if (keypad_r(machine()) != 0xff)
+		m_maincpu->set_input_line(M68K_IRQ_2, HOLD_LINE);
 }
 
 
@@ -233,18 +231,17 @@ static ADDRESS_MAP_START(ti89t_mem, AS_PROGRAM, 16, ti68k_state)
 ADDRESS_MAP_END
 
 
-static INPUT_CHANGED( ti68k_on_key )
+INPUT_CHANGED_MEMBER(ti68k_state::ti68k_on_key)
 {
-	ti68k_state *state = field.machine().driver_data<ti68k_state>();
 
-	state->m_on_key = newval;
+	m_on_key = newval;
 
-	if (state->m_on_key)
+	if (m_on_key)
 	{
-		if (state->m_maincpu->suspended(SUSPEND_REASON_DISABLE))
-			state->m_maincpu->resume(SUSPEND_REASON_DISABLE);
+		if (m_maincpu->suspended(SUSPEND_REASON_DISABLE))
+			m_maincpu->resume(SUSPEND_REASON_DISABLE);
 
-		state->m_maincpu->set_input_line(M68K_IRQ_6, HOLD_LINE);
+		m_maincpu->set_input_line(M68K_IRQ_6, HOLD_LINE);
 	}
 }
 
@@ -267,7 +264,7 @@ static INPUT_PORTS_START (ti8x)
 		PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2)
 		PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)
 		PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("STORE") PORT_CODE(KEYCODE_TAB)
-		PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON") PORT_CODE(KEYCODE_F10) PORT_CHANGED(ti68k_on_key, 0)
+		PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON") PORT_CODE(KEYCODE_F10) PORT_CHANGED_MEMBER(DEVICE_SELF, ti68k_state, ti68k_on_key, 0)
 
 	PORT_START("BIT2")   /* bit 2 */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Down") PORT_CODE(KEYCODE_DOWN)
@@ -413,7 +410,7 @@ static INPUT_PORTS_START (ti9x)
 		PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("TAN") PORT_CODE(KEYCODE_INSERT)
 		PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("P") PORT_CODE(KEYCODE_P)
 		PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("*") PORT_CODE(KEYCODE_ASTERISK)
-		PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON") PORT_CODE(KEYCODE_F10) PORT_CHANGED(ti68k_on_key, 0)
+		PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON") PORT_CODE(KEYCODE_F10) PORT_CHANGED_MEMBER(DEVICE_SELF, ti68k_state, ti68k_on_key, 0)
 		PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(-)") PORT_CODE(KEYCODE_MINUS_PAD)
 INPUT_PORTS_END
 
@@ -446,15 +443,15 @@ void ti68k_state::machine_start()
 		m_hw_version = m_HW1;
 		m_initial_pc = ((rom[2]) << 16) | rom[3];
 
-		m_maincpu->space(AS_PROGRAM)->unmap_read(0x200000, 0x5fffff);
+		m_maincpu->space(AS_PROGRAM).unmap_read(0x200000, 0x5fffff);
 
 		if (m_initial_pc > 0x400000)
 		{
-			m_maincpu->space(AS_PROGRAM)->install_readwrite_handler(0x400000, 0x5fffff, 0, 0, read16_delegate(FUNC(ti68k_state::flash_r), this),write16_delegate(FUNC(ti68k_state::flash_w), this));
+			m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x400000, 0x5fffff, 0, 0, read16_delegate(FUNC(ti68k_state::flash_r), this),write16_delegate(FUNC(ti68k_state::flash_w), this));
 		}
         else
 		{
-			m_maincpu->space(AS_PROGRAM)->install_readwrite_handler(0x200000, 0x3fffff, 0, 0, read16_delegate(FUNC(ti68k_state::flash_r), this), write16_delegate(FUNC(ti68k_state::flash_w), this));
+			m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x200000, 0x3fffff, 0, 0, read16_delegate(FUNC(ti68k_state::flash_r), this), write16_delegate(FUNC(ti68k_state::flash_w), this));
 		}
 	}
 
@@ -494,7 +491,7 @@ UINT32 ti68k_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 		for (y = 0; y < height; y++)
 			for (x = 0; x < width / 8; x++)
 			{
-				UINT8 s_byte= m_maincpu->space(AS_PROGRAM)->read_byte(m_lcd_base + y * (width/8) + x);
+				UINT8 s_byte= m_maincpu->space(AS_PROGRAM).read_byte(m_lcd_base + y * (width/8) + x);
 				for (b = 0; b<8; b++)
 					bitmap.pix16(y, x * 8 + (7 - b)) = BIT(s_byte, b);
 			}
@@ -527,7 +524,7 @@ static MACHINE_CONFIG_START( ti89, ti68k_state )
 
 	MCFG_SHARP_UNK128MBIT_ADD("flash")	//should be LH28F320 for ti89t and v200 and LH28F160S3T for other models
 
-	MCFG_TIMER_ADD_PERIODIC("ti68k_timer", ti68k_timer_callback, attotime::from_hz(1<<14))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ti68k_timer", ti68k_state, ti68k_timer_callback, attotime::from_hz(1<<14))
 MACHINE_CONFIG_END
 
 

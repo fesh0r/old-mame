@@ -214,7 +214,7 @@ READ16_MEMBER( compis_state::compis_fdc_dack_r )
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
 	if (ioport("DSW1")->read())
 	{
-		data = upd765_dack_r(m_fdc, 0);
+		data = upd765_dack_r(m_fdc, space, 0);
 	}
 
 	return data;
@@ -225,7 +225,7 @@ WRITE8_MEMBER( compis_state::compis_fdc_w )
 	switch(offset)
 	{
 		case 2:
-			upd765_data_w(m_fdc, 0, data);
+			upd765_data_w(m_fdc, space, 0, data);
 			break;
 		default:
 			printf("FDC Unknown Port Write %04X = %04X\n", offset, data);
@@ -240,10 +240,10 @@ READ8_MEMBER( compis_state::compis_fdc_r )
 	switch(offset)
 	{
 		case 0:
-			data = upd765_status_r(m_fdc, 0);
+			data = upd765_status_r(m_fdc, space, 0);
 			break;
 		case 2:
-			data = upd765_data_r(m_fdc, 0);
+			data = upd765_data_r(m_fdc, space, 0);
 			break;
 		default:
 			printf("FDC Unknown Port Read %04X\n", offset);
@@ -347,12 +347,12 @@ const struct pit8253_config compis_pit8254_config =
 
 READ16_MEMBER( compis_state::compis_osp_pit_r )
 {
-	return pit8253_r(m_8254, offset);
+	return pit8253_r(m_8254, space, offset);
 }
 
 WRITE16_MEMBER( compis_state::compis_osp_pit_w )
 {
-	pit8253_w(m_8254, offset, data);
+	pit8253_w(m_8254, space, offset, data);
 }
 
 
@@ -596,11 +596,10 @@ void compis_state::handle_eoi(int data)
  *
  *************************************/
 
-static TIMER_CALLBACK(internal_timer_int)
+TIMER_CALLBACK_MEMBER(compis_state::internal_timer_int)
 {
-	compis_state *state = machine.driver_data<compis_state>();
 	int which = param;
-	struct timer_state *t = &state->m_i186.timer[which];
+	struct timer_state *t = &m_i186.timer[which];
 
 	if (LOG_TIMER) logerror("Hit interrupt callback for timer %d\n", which);
 
@@ -610,8 +609,8 @@ static TIMER_CALLBACK(internal_timer_int)
 	/* request an interrupt */
 	if (t->control & 0x2000)
 	{
-		state->m_i186.intr.status |= 0x01 << which;
-		update_interrupt_state(machine);
+		m_i186.intr.status |= 0x01 << which;
+		update_interrupt_state(machine());
 		if (LOG_TIMER) logerror("  Generating timer interrupt\n");
 	}
 
@@ -781,11 +780,10 @@ void compis_state::internal_timer_update(int which, int new_count, int new_maxA,
  *
  *************************************/
 
-static TIMER_CALLBACK(dma_timer_callback)
+TIMER_CALLBACK_MEMBER(compis_state::dma_timer_callback)
 {
-	compis_state *state = machine.driver_data<compis_state>();
 	int which = param;
-	struct dma_state *d = &state->m_i186.dma[which];
+	struct dma_state *d = &m_i186.dma[which];
 
 	/* force an update and see if we're really done */
 	//stream_update(dma_stream, 0);
@@ -799,8 +797,8 @@ static TIMER_CALLBACK(dma_timer_callback)
 	if (d->control & 0x0100)
 	{
 		if (LOG_DMA) logerror("DMA%d timer callback - requesting interrupt: count = %04X, source = %04X\n", which, d->count, d->source);
-		state->m_i186.intr.request |= 0x04 << which;
-		update_interrupt_state(machine);
+		m_i186.intr.request |= 0x04 << which;
+		update_interrupt_state(machine());
 	}
 }
 
@@ -1053,8 +1051,8 @@ READ16_MEMBER( compis_state::compis_i186_internal_port_r )
 
 WRITE16_MEMBER( compis_state::compis_i186_internal_port_w )
 {
-	address_space *mem = m_maincpu->space(AS_PROGRAM);
-	address_space *io = m_maincpu->space(AS_IO);
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
+	address_space &io = m_maincpu->space(AS_IO);
 	int temp, which, data16 = data;
 
 	switch (offset)
@@ -1275,14 +1273,14 @@ WRITE16_MEMBER( compis_state::compis_i186_internal_port_w )
 			temp = (data16 & 0x0fff) << 8;
 			if (data16 & 0x1000)
 			{
-				mem->install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(compis_state::compis_i186_internal_port_r), this));
-				mem->install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(compis_state::compis_i186_internal_port_w), this));
+				mem.install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(compis_state::compis_i186_internal_port_r), this));
+				mem.install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(compis_state::compis_i186_internal_port_w), this));
 			}
 			else
 			{
 				temp &= 0xffff;
-				io->install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(compis_state::compis_i186_internal_port_r), this));
-				io->install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(compis_state::compis_i186_internal_port_w), this));
+				io.install_read_handler(temp, temp + 0xff, read16_delegate(FUNC(compis_state::compis_i186_internal_port_r), this));
+				io.install_write_handler(temp, temp + 0xff, write16_delegate(FUNC(compis_state::compis_i186_internal_port_w), this));
 			}
 /*          popmessage("Sound CPU reset");*/
 			break;
@@ -1301,14 +1299,14 @@ static void compis_cpu_init(running_machine &machine)
 {
 	compis_state *state = machine.driver_data<compis_state>();
 	/* create timers here so they stick around */
-	state->m_i186.timer[0].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
-	state->m_i186.timer[1].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
-	state->m_i186.timer[2].int_timer = machine.scheduler().timer_alloc(FUNC(internal_timer_int));
+	state->m_i186.timer[0].int_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(compis_state::internal_timer_int),state));
+	state->m_i186.timer[1].int_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(compis_state::internal_timer_int),state));
+	state->m_i186.timer[2].int_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(compis_state::internal_timer_int),state));
 	state->m_i186.timer[0].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
 	state->m_i186.timer[1].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
 	state->m_i186.timer[2].time_timer = machine.scheduler().timer_alloc(FUNC_NULL);
-	state->m_i186.dma[0].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
-	state->m_i186.dma[1].finish_timer = machine.scheduler().timer_alloc(FUNC(dma_timer_callback));
+	state->m_i186.dma[0].finish_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(compis_state::dma_timer_callback),state));
+	state->m_i186.dma[1].finish_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(compis_state::dma_timer_callback),state));
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1395,8 +1393,8 @@ void compis_state::machine_reset()
 /* Name: compis                                                            */
 /* Desc: Interrupt - Vertical Blanking Interrupt                           */
 /*-------------------------------------------------------------------------*/
-INTERRUPT_GEN( compis_vblank_int )
+INTERRUPT_GEN_MEMBER(compis_state::compis_vblank_int)
 {
 //  compis_gdc_vblank_int();
-	compis_keyb_update(device->machine());
+	compis_keyb_update(machine());
 }

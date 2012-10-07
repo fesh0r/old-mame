@@ -339,7 +339,7 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 {
 	running_machine &machine = image.device().machine();
 	vc4000_state *state = machine.driver_data<vc4000_state>();
-	address_space *memspace = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &memspace = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -352,23 +352,23 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 
 	if (size > 0x1000)	/* 6k rom + 1k ram - Chess2 only */
 	{
-		memspace->install_read_bank(0x0800, 0x15ff, "bank1");	/* extra rom */
+		memspace.install_read_bank(0x0800, 0x15ff, "bank1");	/* extra rom */
 		state->membank("bank1")->set_base(machine.root_device().memregion("maincpu")->base() + 0x1000);
 
-		memspace->install_readwrite_bank(0x1800, 0x1bff, "bank2");	/* ram */
+		memspace.install_readwrite_bank(0x1800, 0x1bff, "bank2");	/* ram */
 		state->membank("bank2")->set_base(machine.root_device().memregion("maincpu")->base() + 0x1800);
 	}
 	else if (size > 0x0800)	/* some 4k roms have 1k of mirrored ram */
 	{
-		memspace->install_read_bank(0x0800, 0x0fff, "bank1");	/* extra rom */
+		memspace.install_read_bank(0x0800, 0x0fff, "bank1");	/* extra rom */
 		state->membank("bank1")->set_base(machine.root_device().memregion("maincpu")->base() + 0x0800);
 
-		memspace->install_readwrite_bank(0x1000, 0x15ff, 0, 0x800, "bank2"); /* ram */
+		memspace.install_readwrite_bank(0x1000, 0x15ff, 0, 0x800, "bank2"); /* ram */
 		state->membank("bank2")->set_base(machine.root_device().memregion("maincpu")->base() + 0x1000);
 	}
 	else if (size == 0x0800)	/* 2k roms + 2k ram - Hobby Module(Radofin) and elektor TVGC*/
 	{
-		memspace->install_readwrite_bank(0x0800, 0x0fff, "bank1"); /* ram */
+		memspace.install_readwrite_bank(0x0800, 0x0fff, "bank1"); /* ram */
 		state->membank("bank1")->set_base(machine.root_device().memregion("maincpu")->base() + 0x0800);
 	}
 
@@ -392,14 +392,14 @@ static MACHINE_CONFIG_START( vc4000, vc4000_state )
 	MCFG_CPU_ADD("maincpu", S2650, 3546875/4)
 	MCFG_CPU_PROGRAM_MAP(vc4000_mem)
 	MCFG_CPU_IO_MAP(vc4000_io)
-	MCFG_CPU_PERIODIC_INT(vc4000_video_line, 312*53)	// GOLF needs this exact value
+	MCFG_CPU_PERIODIC_INT_DRIVER(vc4000_state, vc4000_video_line,  312*53)	// GOLF needs this exact value
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_SIZE(226, 312)
 	MCFG_SCREEN_VISIBLE_AREA(8, 184, 0, 269)
-	MCFG_SCREEN_UPDATE_STATIC( vc4000 )
+	MCFG_SCREEN_UPDATE_DRIVER(vc4000_state, screen_update_vc4000)
 
 	MCFG_PALETTE_LENGTH(8)
 
@@ -530,7 +530,7 @@ ROM_END
 
 QUICKLOAD_LOAD(vc4000)
 {
-	address_space *space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
 	int i;
 	int quick_addr = 0x08c0;
 	int exec_addr;
@@ -567,12 +567,12 @@ QUICKLOAD_LOAD(vc4000)
 		quick_addr = quick_data[1] * 256 + quick_data[2];
 		exec_addr = quick_data[3] * 256 + quick_data[4];
 
-		space->write_byte(0x08be, quick_data[3]);
-		space->write_byte(0x08bf, quick_data[4]);
+		space.write_byte(0x08be, quick_data[3]);
+		space.write_byte(0x08bf, quick_data[4]);
 
 		for (i = 0; i < quick_length - 5; i++)
 			if ((quick_addr + i) < 0x1600)
-				space->write_byte(i + quick_addr, quick_data[i+5]);
+				space.write_byte(i + quick_addr, quick_data[i+5]);
 
 		/* display a message about the loaded quickload */
 		image.message(" Quickload: size=%04X : start=%04X : end=%04X : exec=%04X",quick_length-5,quick_addr,quick_addr+quick_length-5,exec_addr);
@@ -617,7 +617,7 @@ QUICKLOAD_LOAD(vc4000)
 
 		for (i = quick_addr; i < quick_length; i++)
 			if (i < 0x1600)
-				space->write_byte(i, quick_data[i]);
+				space.write_byte(i, quick_data[i]);
 
 		/* display a message about the loaded quickload */
 		image.message(" Quickload: size=%04X : exec=%04X",quick_length,exec_addr);

@@ -158,7 +158,7 @@ static RP5C01_INTERFACE( rtc_intf )
 
 void avigo_state::refresh_memory(UINT8 bank, UINT8 chip_select)
 {
-	address_space* space = m_maincpu->space(AS_PROGRAM);
+	address_space& space = m_maincpu->space(AS_PROGRAM);
 	int &active_flash = (bank == 1 ? m_flash_at_0x4000 : m_flash_at_0x8000);
 	char bank_tag[6];
 
@@ -167,14 +167,14 @@ void avigo_state::refresh_memory(UINT8 bank, UINT8 chip_select)
 	switch (chip_select)
 	{
 		case 0x06:	// videoram
-			space->install_readwrite_handler(bank * 0x4000, bank * 0x4000 + 0x3fff, read8_delegate(FUNC(avigo_state::vid_memory_r), this), write8_delegate(FUNC(avigo_state::vid_memory_w), this));
+			space.install_readwrite_handler(bank * 0x4000, bank * 0x4000 + 0x3fff, read8_delegate(FUNC(avigo_state::vid_memory_r), this), write8_delegate(FUNC(avigo_state::vid_memory_w), this));
 			active_flash = -1;
 			break;
 
 		case 0x01: // banked RAM
 			sprintf(bank_tag,"bank%d", bank);
 			membank(bank_tag)->set_base(m_ram_base + (((bank == 1 ? m_bank1_l : m_bank2_l) & 0x07)<<14));
-			space->install_readwrite_bank (bank * 0x4000, bank * 0x4000 + 0x3fff, bank_tag);
+			space.install_readwrite_bank (bank * 0x4000, bank * 0x4000 + 0x3fff, bank_tag);
 			active_flash = -1;
 			break;
 
@@ -185,9 +185,9 @@ void avigo_state::refresh_memory(UINT8 bank, UINT8 chip_select)
 			if (active_flash < 0)	// to avoid useless calls to install_readwrite_handler that cause slowdowns
 			{
 				if (bank == 1)
-					space->install_readwrite_handler(0x4000, 0x7fff, read8_delegate(FUNC(avigo_state::flash_0x4000_read_handler), this), write8_delegate(FUNC(avigo_state::flash_0x4000_write_handler), this));
+					space.install_readwrite_handler(0x4000, 0x7fff, read8_delegate(FUNC(avigo_state::flash_0x4000_read_handler), this), write8_delegate(FUNC(avigo_state::flash_0x4000_write_handler), this));
 				else
-					space->install_readwrite_handler(0x8000, 0xbfff, read8_delegate(FUNC(avigo_state::flash_0x8000_read_handler), this), write8_delegate(FUNC(avigo_state::flash_0x8000_write_handler), this));
+					space.install_readwrite_handler(0x8000, 0xbfff, read8_delegate(FUNC(avigo_state::flash_0x8000_read_handler), this), write8_delegate(FUNC(avigo_state::flash_0x8000_write_handler), this));
 			}
 
 			switch (chip_select)
@@ -201,7 +201,7 @@ void avigo_state::refresh_memory(UINT8 bank, UINT8 chip_select)
 
 		default:
 			logerror("Unknown chip %02x mapped at %04x - %04x\n", chip_select, bank * 0x4000, bank * 0x4000 + 0x3fff);
-			space->unmap_readwrite(bank * 0x4000, bank * 0x4000 + 0x3fff);
+			space.unmap_readwrite(bank * 0x4000, bank * 0x4000 + 0x3fff);
 			active_flash = -1;
 			break;
 	}
@@ -246,8 +246,8 @@ void avigo_state::machine_reset()
 	/* if is a cold start initialize flash contents */
 	if (!m_warm_start)
 	{
-		memcpy(m_flashes[0]->space()->get_read_ptr(0), memregion("bios")->base() + 0x000000, 0x100000);
-		memcpy(m_flashes[1]->space()->get_read_ptr(0), memregion("bios")->base() + 0x100000, 0x100000);
+		memcpy(m_flashes[0]->space().get_read_ptr(0), memregion("bios")->base() + 0x000000, 0x100000);
+		memcpy(m_flashes[1]->space().get_read_ptr(0), memregion("bios")->base() + 0x100000, 0x100000);
 	}
 
 	m_irq = 0;
@@ -293,9 +293,9 @@ void avigo_state::machine_start()
 	save_item(NAME(m_warm_start));
 
 	// save all flash contents
-	save_pointer(NAME((UINT8*)m_flashes[0]->space()->get_read_ptr(0)), 0x100000);
-	save_pointer(NAME((UINT8*)m_flashes[1]->space()->get_read_ptr(0)), 0x100000);
-	save_pointer(NAME((UINT8*)m_flashes[2]->space()->get_read_ptr(0)), 0x100000);
+	save_pointer(NAME((UINT8*)m_flashes[0]->space().get_read_ptr(0)), 0x100000);
+	save_pointer(NAME((UINT8*)m_flashes[1]->space().get_read_ptr(0)), 0x100000);
+	save_pointer(NAME((UINT8*)m_flashes[2]->space().get_read_ptr(0)), 0x100000);
 
 	// register postload callback
 	machine().save().register_postload(save_prepost_delegate(FUNC(avigo_state::postload), this));
@@ -809,28 +809,24 @@ static GFXDECODE_START( avigo )
 GFXDECODE_END
 
 
-static TIMER_DEVICE_CALLBACK( avigo_scan_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(avigo_state::avigo_scan_timer)
 {
-	avigo_state *state = timer.machine().driver_data<avigo_state>();
+	m_irq |= (1<<1);
 
-	state->m_irq |= (1<<1);
-
-	state->refresh_ints();
+	refresh_ints();
 }
 
-static TIMER_DEVICE_CALLBACK( avigo_1hz_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(avigo_state::avigo_1hz_timer)
 {
-	avigo_state *state = timer.machine().driver_data<avigo_state>();
+	m_irq |= (1<<4);
 
-	state->m_irq |= (1<<4);
-
-	state->refresh_ints();
+	refresh_ints();
 }
 
 static QUICKLOAD_LOAD(avigo)
 {
 	avigo_state *state = image.device().machine().driver_data<avigo_state>();
-	address_space* flash1 = state->m_flashes[1]->space(0);
+	address_space& flash1 = state->m_flashes[1]->space(0);
 	const char *systemname = image.device().machine().system().name;
 	UINT32 first_app_page = (0x50000>>14);
 	int app_page;
@@ -846,7 +842,7 @@ static QUICKLOAD_LOAD(avigo)
 
 		for (int offset=0; offset<0x4000; offset++)
 		{
-			if (flash1->read_byte((app_page<<14) + offset) != 0xff)
+			if (flash1.read_byte((app_page<<14) + offset) != 0xff)
 			{
 				empty_page = false;
 				break;
@@ -863,10 +859,10 @@ static QUICKLOAD_LOAD(avigo)
 		logerror("Application loaded at 0x%05x-0x%05x\n", app_page<<14, (app_page<<14) + (UINT32)image.length());
 
 		// copy app file into flash memory
-		image.fread((UINT8*)state->m_flashes[1]->space()->get_read_ptr(app_page<<14), image.length());
+		image.fread((UINT8*)state->m_flashes[1]->space().get_read_ptr(app_page<<14), image.length());
 
 		// update the application ID
-		flash1->write_byte((app_page<<14) + 0x1a5, 0x80 + (app_page - (first_app_page>>14)));
+		flash1.write_byte((app_page<<14) + 0x1a5, 0x80 + (app_page - (first_app_page>>14)));
 
 		// reset the CPU for allow at the Avigo OS to recognize the installed app
 		state->m_warm_start = 1;
@@ -930,10 +926,10 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_NVRAM_ADD_CUSTOM_DRIVER("nvram", avigo_state, nvram_init)
 
 	// IRQ 1 is used for scan the pen and for cursor blinking
-	MCFG_TIMER_ADD_PERIODIC("scan_timer", avigo_scan_timer, attotime::from_hz(50))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("scan_timer", avigo_state, avigo_scan_timer, attotime::from_hz(50))
 
 	// IRQ 4 is generated every second, used for auto power off
-	MCFG_TIMER_ADD_PERIODIC("1hz_timer", avigo_1hz_timer, attotime::from_hz(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("1hz_timer", avigo_state, avigo_1hz_timer, attotime::from_hz(1))
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", avigo, "app", 0)

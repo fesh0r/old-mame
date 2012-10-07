@@ -44,6 +44,16 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_pk8020(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(pk8020_interrupt);
+	DECLARE_READ8_MEMBER(pk8020_porta_r);
+	DECLARE_WRITE8_MEMBER(pk8020_portc_w);
+	DECLARE_WRITE8_MEMBER(pk8020_portb_w);
+	DECLARE_READ8_MEMBER(pk8020_portc_r);
+	DECLARE_WRITE8_MEMBER(pk8020_2_portc_w);
+	DECLARE_WRITE_LINE_MEMBER(pk8020_pit_out0);
+	DECLARE_WRITE_LINE_MEMBER(pk8020_pit_out1);
+	DECLARE_WRITE_LINE_MEMBER(pk8020_pic_set_int_line);
 };
 
 
@@ -53,9 +63,5 @@ extern const i8255_interface pk8020_ppi8255_interface_2;
 extern const i8255_interface pk8020_ppi8255_interface_3;
 extern const struct pit8253_config pk8020_pit8253_intf;
 extern const struct pic8259_interface pk8020_pic8259_config;
-extern INTERRUPT_GEN( pk8020_interrupt );
-/*----------- defined in video/pk8020.c -----------*/
-
-extern SCREEN_UPDATE_IND16( pk8020 );
 
 #endif /* pk8020_H_ */

@@ -9,7 +9,7 @@
 #include "imagedev/flopdrv.h"
 #include "machine/ctronics.h"
 #include "machine/ram.h"
-#include "machine/scsibus.h"
+#include "machine/scsicb.h"
 #include "machine/terminal.h"
 #include "machine/wd17xx.h"
 #include "machine/z80ctc.h"
@@ -93,6 +93,8 @@ public:
 	int m_winrdy;
 	int m_exrdy1;
 	int m_exrdy2;
+	TIMER_DEVICE_CALLBACK_MEMBER(ctc_tick);
+	DECLARE_WRITE_LINE_MEMBER(dart_rxtxca_w);
 };
 
 class bulletf_state : public bullet_state
@@ -100,10 +102,10 @@ class bulletf_state : public bullet_state
 public:
 	bulletf_state(const machine_config &mconfig, device_type type, const char *tag)
 		: bullet_state(mconfig, type, tag),
-		  m_scsibus(*this, SCSIBUS_TAG)
+		  m_scsibus(*this, SCSIBUS_TAG ":host")
 	{ }
 
-	required_device<scsibus_device> m_scsibus;
+	required_device<scsicb_device> m_scsibus;
 
 	virtual void machine_start();
 	virtual void machine_reset();

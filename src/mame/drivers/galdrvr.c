@@ -6644,7 +6644,7 @@ GAME( 1985, superbon,  0,        scobra,   superbon, galaxian_state,  superbon, 
 //GAME( 1983, ozon1,    0,        ozon1,    ozon1, galaxold_state,    galaxian, ROT90,  "Proma", "Ozon I", GAME_SUPPORTS_SAVE )
 //GAME( 1983, ladybugg, ladybug,  galaxian/*batman2*/,  ladybugg, XXX_CLASS, ladybugg, ROT270, "bootleg", "Lady Bug (bootleg on Galaxian hardware)", GAME_SUPPORTS_SAVE )
 //GAME( 1980, vpool,    hustler,  mooncrst, vpool, galaxian_state,    galaxian, ROT90,  "bootleg", "Video Pool (bootleg on Moon Cresta hardware)", GAME_SUPPORTS_SAVE )
-//GAME( 1984, drivfrcg, drivfrcp, drivfrcg, drivfrcg, galaxold_state, galaxian, ROT90,  "Shinkai Inc. (Magic Eletronics USA license)", "Driving Force (Galaxian conversion)", GAME_SUPPORTS_SAVE )
+//GAME( 1984, drivfrcg, drivfrcp, drivfrcg, drivfrcg, galaxold_state, galaxian, ROT90,  "Shinkai Inc. (Magic Electronics USA license)", "Driving Force (Galaxian conversion)", GAME_SUPPORTS_SAVE )
 //GAME( 1985, drivfrcb, drivfrcp, drivfrcg, drivfrcg, galaxold_state, galaxian, ROT90,  "bootleg", "Driving Force (Galaxian conversion bootleg)", GAME_SUPPORTS_SAVE )
 //GAME( 1983, bongo,    0,        bongo,    bongo, galaxold_state,    galaxian, ROT90,  "Jetsoft", "Bongo", GAME_SUPPORTS_SAVE )
 //GAME( 1983, hunchbkg, hunchbak,   hunchbkg, hunchbkg, galaxold_state, galaxian, ROT90,  "Century Electronics", "Hunchback (Galaxian hardware)", GAME_SUPPORTS_SAVE )
@@ -6695,8 +6695,9 @@ GAME( 1985, superbon,  0,        scobra,   superbon, galaxian_state,  superbon, 
 //GAME( 1982, mimonsco, mimonkey, scobra/*mimonkey*/, mimonsco, XXX_CLASS, mimonsco,     ROT90,  "bootleg", "Mighty Monkey (bootleg on Super Cobra hardware)", GAME_SUPPORTS_SAVE )
 
 /* currently in dambustr.c and should be moved here */
-//GAME( 1981, dambustr, 0,        dambustr, dambustr, dambustr_state, dambustr, ROT90, "South West Research", "Dambusters (US)", 0 )
-//GAME( 1981, dambust,  dambustr, dambustr, dambustr, dambustr_state, dambustr, ROT90, "South West Research", "Dambusters (UK)", 0 )
+//GAME( 1981, dambustr,   0,        dambustr, dambustr, dambustr_state,   dambustr, ROT90, "South West Research", "Dambusters (US, set 1)", 0 )
+//GAME( 1981, dambustra,  dambustr, dambustr, dambustr, dambustr_state,   dambustr, ROT90, "South West Research", "Dambusters (US, set 2)", 0 )
+//GAME( 1981, dambustruk, dambustr, dambustr, dambustruk, dambustr_state, dambustr, ROT90, "South West Research", "Dambusters (UK)", 0 )
 
 /* misc stuff that should eventually be moved here */
 //GAME( 1981, scramblb, scramble, scramblb, scramblb, galaxian_state, galaxian, ROT90,  "bootleg", "Scramble (Galaxian hardware)", GAME_SUPPORTS_SAVE )

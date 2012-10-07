@@ -182,39 +182,35 @@ static ADDRESS_MAP_START( apple2gs_map, AS_PROGRAM, 8, apple2gs_state )
 	/* nothing in the address map - everything is added dynamically */
 ADDRESS_MAP_END
 
-static WRITE8_DEVICE_HANDLER(a2bus_irq_w)
+WRITE8_MEMBER(apple2gs_state::a2bus_irq_w)
 {
     if (data)
     {
-        apple2gs_add_irq(device->machine(), IRQ_SLOT);
+        apple2gs_add_irq(machine(), IRQ_SLOT);
     }
     else
     {
-        apple2gs_remove_irq(device->machine(), IRQ_SLOT);
+        apple2gs_remove_irq(machine(), IRQ_SLOT);
     }
 }
 
-static WRITE8_DEVICE_HANDLER(a2bus_nmi_w)
+WRITE8_MEMBER(apple2gs_state::a2bus_nmi_w)
 {
-    apple2gs_state *a2 = device->machine().driver_data<apple2gs_state>();
-
-    a2->m_maincpu->set_input_line(INPUT_LINE_NMI, data);
+    m_maincpu->set_input_line(INPUT_LINE_NMI, data);
 }
 
-static WRITE8_DEVICE_HANDLER(a2bus_inh_w)
+WRITE8_MEMBER(apple2gs_state::a2bus_inh_w)
 {
-    apple2_state *a2 = device->machine().driver_data<apple2_state>();
-
-    a2->m_inh_slot = data;
-    apple2_update_memory(device->machine());
+    m_inh_slot = data;
+    apple2_update_memory(machine());
 }
 
 static const struct a2bus_interface a2bus_intf =
 {
     // interrupt lines
-    DEVCB_HANDLER(a2bus_irq_w),
-    DEVCB_HANDLER(a2bus_nmi_w),
-    DEVCB_HANDLER(a2bus_inh_w)
+    DEVCB_DRIVER_MEMBER(apple2gs_state,a2bus_irq_w),
+    DEVCB_DRIVER_MEMBER(apple2gs_state,a2bus_nmi_w),
+    DEVCB_DRIVER_MEMBER(apple2gs_state,a2bus_inh_w)
 };
 
 static SLOT_INTERFACE_START(apple2_cards)
@@ -235,7 +231,7 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", G65816, APPLE2GS_14M/5)
 	MCFG_CPU_PROGRAM_MAP(apple2gs_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", apple2_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", apple2gs_state, apple2_interrupt, "screen", 0, 1)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -243,7 +239,7 @@ static MACHINE_CONFIG_START( apple2gs, apple2gs_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(704, 262)	// 640+32+32 for the borders
 	MCFG_SCREEN_VISIBLE_AREA(0,703,0,230)
-	MCFG_SCREEN_UPDATE_STATIC( apple2gs )
+	MCFG_SCREEN_UPDATE_DRIVER(apple2gs_state, screen_update_apple2gs)
 
 	MCFG_PALETTE_LENGTH( 16+256 )
 	MCFG_GFXDECODE( apple2gs )

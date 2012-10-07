@@ -187,7 +187,7 @@ static void update_interrupts(running_machine &machine)
 
 static void scanline_update(screen_device &screen, int scanline)
 {
-	address_space *space = screen.machine().device("audiocpu")->memory().space(AS_PROGRAM);
+	address_space &space = screen.machine().device("audiocpu")->memory().space(AS_PROGRAM);
 
 	/* sound IRQ is on 32V */
 	if (scanline & 32)
@@ -227,21 +227,20 @@ MACHINE_RESET_MEMBER(badlands_state,badlands)
  *
  *************************************/
 
-static INTERRUPT_GEN( vblank_int )
+INTERRUPT_GEN_MEMBER(badlands_state::vblank_int)
 {
-	badlands_state *state = device->machine().driver_data<badlands_state>();
-	int pedal_state = state->ioport("PEDALS")->read();
+	int pedal_state = ioport("PEDALS")->read();
 	int i;
 
 	/* update the pedals once per frame */
 	for (i = 0; i < 2; i++)
 	{
-		state->m_pedal_value[i]--;
+		m_pedal_value[i]--;
 		if (pedal_state & (1 << i))
-			state->m_pedal_value[i]++;
+			m_pedal_value[i]++;
 	}
 
-	atarigen_video_int_gen(device);
+	atarigen_video_int_gen(&device);
 }
 
 
@@ -290,7 +289,7 @@ READ8_MEMBER(badlands_state::audio_io_r)
 			break;
 
 		case 0x002:		/* /RDP */
-			result = atarigen_6502_sound_r(&space, offset);
+			result = atarigen_6502_sound_r(space, offset);
 			break;
 
 		case 0x004:		/* /RDIO */
@@ -312,7 +311,7 @@ READ8_MEMBER(badlands_state::audio_io_r)
 			break;
 
 		case 0x006:		/* /IRQACK */
-			atarigen_6502_irq_ack_r(&space, 0);
+			atarigen_6502_irq_ack_r(space, 0);
 			break;
 
 		case 0x200:		/* /VOICE */
@@ -339,7 +338,7 @@ WRITE8_MEMBER(badlands_state::audio_io_w)
 			break;
 
 		case 0x006:		/* /IRQACK */
-			atarigen_6502_irq_ack_r(&space, 0);
+			atarigen_6502_irq_ack_r(space, 0);
 			break;
 
 		case 0x200:		/* n/c */
@@ -347,7 +346,7 @@ WRITE8_MEMBER(badlands_state::audio_io_w)
 			break;
 
 		case 0x202:		/* /WRP */
-			atarigen_6502_sound_w(&space, offset, data);
+			atarigen_6502_sound_w(space, offset, data);
 			break;
 
 		case 0x204:		/* WRIO */
@@ -502,7 +501,7 @@ static MACHINE_CONFIG_START( badlands, badlands_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, ATARI_CLOCK_14MHz/2)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", vblank_int)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", badlands_state,  vblank_int)
 
 	MCFG_CPU_ADD("audiocpu", M6502, ATARI_CLOCK_14MHz/8)
 	MCFG_CPU_PROGRAM_MAP(audio_map)
@@ -520,7 +519,7 @@ static MACHINE_CONFIG_START( badlands, badlands_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(badlands)
+	MCFG_SCREEN_UPDATE_DRIVER(badlands_state, screen_update_badlands)
 
 	MCFG_VIDEO_START_OVERRIDE(badlands_state,badlands)
 
@@ -708,7 +707,7 @@ static MACHINE_CONFIG_START( badlandsb, badlands_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_28MHz/4)	/* Divisor estimated */
 	MCFG_CPU_PROGRAM_MAP(bootleg_map)
-	MCFG_CPU_VBLANK_INT("screen", vblank_int)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", badlands_state,  vblank_int)
 
 //  MCFG_CPU_ADD("audiocpu", Z80, XTAL_20MHz/12)    /* Divisor estimated */
 //  MCFG_CPU_PROGRAM_MAP(bootleg_soundmap)
@@ -726,7 +725,7 @@ static MACHINE_CONFIG_START( badlandsb, badlands_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(badlands)
+	MCFG_SCREEN_UPDATE_DRIVER(badlands_state, screen_update_badlands)
 
 	MCFG_VIDEO_START_OVERRIDE(badlands_state,badlands)
 

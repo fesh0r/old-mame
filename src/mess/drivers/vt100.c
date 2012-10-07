@@ -56,6 +56,9 @@ public:
 	double m_recv_baud_rate;
 	virtual void machine_start();
 	virtual void machine_reset();
+	UINT32 screen_update_vt100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vt100_vertical_interrupt);
+	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_callback);
 };
 
 
@@ -95,7 +98,7 @@ ADDRESS_MAP_END
 READ8_MEMBER( vt100_state::vt100_flags_r )
 {
 	UINT8 ret = 0;
-	ret |= vt_video_lba7_r(m_crtc, 0) << 6;
+	ret |= vt_video_lba7_r(m_crtc, space, 0) << 6;
 	ret |= m_keyboard_int << 7;
 	return ret;
 }
@@ -113,22 +116,21 @@ static UINT8 bit_sel(UINT8 data)
 	return 0;
 }
 
-static TIMER_DEVICE_CALLBACK(keyboard_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(vt100_state::keyboard_callback)
 {
-	vt100_state *state = timer.machine().driver_data<vt100_state>();
 	UINT8 i, code;
 	char kbdrow[8];
-	if (state->m_key_scan)
+	if (m_key_scan)
 	{
 		for(i = 0; i < 16; i++)
 		{
 			sprintf(kbdrow,"LINE%X", i);
-			code =	timer.machine().root_device().ioport(kbdrow)->read();
+			code =	machine().root_device().ioport(kbdrow)->read();
 			if (code < 0xff)
 			{
-				state->m_keyboard_int = 1;
-				state->m_key_code = i | bit_sel(code);
-				timer.machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+				m_keyboard_int = 1;
+				m_key_code = i | bit_sel(code);
+				machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
 				break;
 			}
 		}
@@ -316,9 +318,9 @@ static INPUT_PORTS_START( vt100 )
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED) // Always return 0x7f on last scan line
 INPUT_PORTS_END
 
-static SCREEN_UPDATE_IND16( vt100 )
+UINT32 vt100_state::screen_update_vt100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	device_t *devconf = screen.machine().device("vt100_video");
+	device_t *devconf = machine().device("vt100_video");
 	vt_video_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -378,11 +380,10 @@ static const vt_video_interface vt100_video_interface =
 	DEVCB_DRIVER_MEMBER(vt100_state, vt100_clear_video_interrupt)
 };
 
-static INTERRUPT_GEN( vt100_vertical_interrupt )
+INTERRUPT_GEN_MEMBER(vt100_state::vt100_vertical_interrupt)
 {
-	vt100_state *state = device->machine().driver_data<vt100_state>();
-	state->m_vertical_int = 1;
-	device->execute().set_input_line(0, HOLD_LINE);
+	m_vertical_int = 1;
+	device.execute().set_input_line(0, HOLD_LINE);
 }
 
 /* F4 Character Displayer */
@@ -411,7 +412,7 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_CPU_ADD("maincpu",I8080, XTAL_24_8832MHz / 9)
 	MCFG_CPU_PROGRAM_MAP(vt100_mem)
 	MCFG_CPU_IO_MAP(vt100_io)
-	MCFG_CPU_VBLANK_INT("screen", vt100_vertical_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", vt100_state,  vt100_vertical_interrupt)
 
 
 	/* video hardware */
@@ -420,7 +421,7 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(80*10, 25*10)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*10-1, 0, 25*10-1)
-	MCFG_SCREEN_UPDATE_STATIC(vt100)
+	MCFG_SCREEN_UPDATE_DRIVER(vt100_state, screen_update_vt100)
 
 	MCFG_GFXDECODE(vt100)
 	MCFG_PALETTE_LENGTH(2)
@@ -435,7 +436,7 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(800))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", vt100_state, keyboard_callback, attotime::from_hz(800))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( vt180, vt100 )

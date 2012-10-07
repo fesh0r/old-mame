@@ -47,24 +47,23 @@ void m107_state::machine_start()
 
 /*****************************************************************************/
 
-static TIMER_DEVICE_CALLBACK( m107_scanline_interrupt )
+TIMER_DEVICE_CALLBACK_MEMBER(m107_state::m107_scanline_interrupt)
 {
-	running_machine &machine = timer.machine();
-	m107_state *state = machine.driver_data<m107_state>();
 	int scanline = param;
+	m107_state *state = machine().driver_data<m107_state>();
 
 	/* raster interrupt */
-	if (scanline == state->m_raster_irq_position)
+	if (scanline == m_raster_irq_position)
 	{
-		machine.primary_screen->update_partial(scanline);
-		machine.device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE, M107_IRQ_2);
+		machine().primary_screen->update_partial(scanline);
+		state->m_maincpu->set_input_line_and_vector(0, HOLD_LINE, M107_IRQ_2);
 	}
 
 	/* VBLANK interrupt */
-	else if (scanline == machine.primary_screen->visible_area().max_y + 1)
+	else if (scanline == machine().primary_screen->visible_area().max_y + 1)
 	{
-		machine.primary_screen->update_partial(scanline);
-		machine.device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE, M107_IRQ_0);
+		machine().primary_screen->update_partial(scanline);
+		state->m_maincpu->set_input_line_and_vector(0, HOLD_LINE, M107_IRQ_0);
 	}
 }
 
@@ -780,7 +779,7 @@ static MACHINE_CONFIG_START( firebarr, m107_state )
 	MCFG_CPU_CONFIG(firebarr_config)
 
 
-	MCFG_TIMER_ADD_SCANLINE("scantimer", m107_scanline_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", m107_state, m107_scanline_interrupt, "screen", 0, 1)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -788,7 +787,7 @@ static MACHINE_CONFIG_START( firebarr, m107_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(512, 256)
 	MCFG_SCREEN_VISIBLE_AREA(80, 511-112, 8, 247) /* 320 x 240 */
-	MCFG_SCREEN_UPDATE_STATIC(m107)
+	MCFG_SCREEN_UPDATE_DRIVER(m107_state, screen_update_m107)
 
 	MCFG_GFXDECODE(firebarr)
 	MCFG_PALETTE_LENGTH(2048)
@@ -974,7 +973,7 @@ DRIVER_INIT_MEMBER(m107_state,dsoccr94)
 	UINT8 *ROM = memregion("maincpu")->base();
 
 	membank("bank1")->configure_entries(0, 4, &ROM[0x80000], 0x20000);
-	machine().device("maincpu")->memory().space(AS_IO)->install_write_handler(0x06, 0x07, write16_delegate(FUNC(m107_state::m107_bankswitch_w),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_write_handler(0x06, 0x07, write16_delegate(FUNC(m107_state::m107_bankswitch_w),this));
 
 	m_irq_vectorbase = 0x80;
 	m_spritesystem = 0;

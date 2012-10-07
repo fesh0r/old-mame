@@ -223,28 +223,28 @@ INLINE void set_palette_entry(running_machine &machine, int entry, UINT16 value)
 
 WRITE16_HANDLER( cyberbal_paletteram_0_w )
 {
-	cyberbal_state *state = space->machine().driver_data<cyberbal_state>();
+	cyberbal_state *state = space.machine().driver_data<cyberbal_state>();
 	COMBINE_DATA(&state->m_paletteram_0[offset]);
-	set_palette_entry(space->machine(), offset, state->m_paletteram_0[offset]);
+	set_palette_entry(space.machine(), offset, state->m_paletteram_0[offset]);
 }
 
 READ16_HANDLER( cyberbal_paletteram_0_r )
 {
-	cyberbal_state *state = space->machine().driver_data<cyberbal_state>();
+	cyberbal_state *state = space.machine().driver_data<cyberbal_state>();
 	return state->m_paletteram_0[offset];
 }
 
 
 WRITE16_HANDLER( cyberbal_paletteram_1_w )
 {
-	cyberbal_state *state = space->machine().driver_data<cyberbal_state>();
+	cyberbal_state *state = space.machine().driver_data<cyberbal_state>();
 	COMBINE_DATA(&state->m_paletteram_1[offset]);
-	set_palette_entry(space->machine(), offset + 0x800, state->m_paletteram_1[offset]);
+	set_palette_entry(space.machine(), offset + 0x800, state->m_paletteram_1[offset]);
 }
 
 READ16_HANDLER( cyberbal_paletteram_1_r )
 {
-	cyberbal_state *state = space->machine().driver_data<cyberbal_state>();
+	cyberbal_state *state = space.machine().driver_data<cyberbal_state>();
 	return state->m_paletteram_1[offset];
 }
 
@@ -377,17 +377,17 @@ static UINT32 update_one_screen(screen_device &screen, bitmap_ind16 &bitmap, con
 }
 
 
-SCREEN_UPDATE_IND16( cyberbal_left )
+UINT32 cyberbal_state::screen_update_cyberbal_left(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	return update_one_screen(screen, bitmap, cliprect, 0);
 }
 
-SCREEN_UPDATE_IND16( cyberbal_right )
+UINT32 cyberbal_state::screen_update_cyberbal_right(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	return update_one_screen(screen, bitmap, cliprect, 1);
 }
 
-SCREEN_UPDATE_IND16( cyberbal2p )
+UINT32 cyberbal_state::screen_update_cyberbal2p(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	return update_one_screen(screen, bitmap, cliprect, 0);
 }

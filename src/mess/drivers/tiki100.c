@@ -44,20 +44,20 @@ WRITE8_MEMBER( tiki100_state::gfxram_w )
 
 void tiki100_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	if (m_vire)
 	{
 		if (!m_rome)
 		{
 			/* reserved */
-			program->unmap_readwrite(0x0000, 0xffff);
+			program.unmap_readwrite(0x0000, 0xffff);
 		}
 		else
 		{
 			/* GFXRAM, GFXRAM, RAM */
-			program->install_readwrite_handler(0x0000, 0x7fff, read8_delegate(FUNC(tiki100_state::gfxram_r), this), write8_delegate(FUNC(tiki100_state::gfxram_w), this));
-			program->install_readwrite_bank(0x8000, 0xffff, "bank3");
+			program.install_readwrite_handler(0x0000, 0x7fff, read8_delegate(FUNC(tiki100_state::gfxram_r), this), write8_delegate(FUNC(tiki100_state::gfxram_w), this));
+			program.install_readwrite_bank(0x8000, 0xffff, "bank3");
 
 			membank("bank1")->set_entry(BANK_VIDEO_RAM);
 			membank("bank2")->set_entry(BANK_VIDEO_RAM);
@@ -69,10 +69,10 @@ void tiki100_state::bankswitch()
 		if (!m_rome)
 		{
 			/* ROM, RAM, RAM */
-			program->install_read_bank(0x0000, 0x3fff, "bank1");
-			program->unmap_write(0x0000, 0x3fff);
-			program->install_readwrite_bank(0x4000, 0x7fff, "bank2");
-			program->install_readwrite_bank(0x8000, 0xffff, "bank3");
+			program.install_read_bank(0x0000, 0x3fff, "bank1");
+			program.unmap_write(0x0000, 0x3fff);
+			program.install_readwrite_bank(0x4000, 0x7fff, "bank2");
+			program.install_readwrite_bank(0x8000, 0xffff, "bank3");
 
 			membank("bank1")->set_entry(BANK_ROM);
 			membank("bank2")->set_entry(BANK_RAM);
@@ -81,9 +81,9 @@ void tiki100_state::bankswitch()
 		else
 		{
 			/* RAM, RAM, RAM */
-			program->install_readwrite_bank(0x0000, 0x3fff, "bank1");
-			program->install_readwrite_bank(0x4000, 0x7fff, "bank2");
-			program->install_readwrite_bank(0x8000, 0xffff, "bank3");
+			program.install_readwrite_bank(0x0000, 0x3fff, "bank1");
+			program.install_readwrite_bank(0x4000, 0x7fff, "bank2");
+			program.install_readwrite_bank(0x8000, 0xffff, "bank3");
 
 			membank("bank1")->set_entry(BANK_RAM);
 			membank("bank2")->set_entry(BANK_RAM);
@@ -483,15 +483,13 @@ static Z80PIO_INTERFACE( pio_intf )
 
 /* Z80-CTC Interface */
 
-static TIMER_DEVICE_CALLBACK( ctc_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(tiki100_state::ctc_tick)
 {
-	tiki100_state *state = timer.machine().driver_data<tiki100_state>();
+	m_ctc->trg0(1);
+	m_ctc->trg0(0);
 
-	state->m_ctc->trg0(1);
-	state->m_ctc->trg0(0);
-
-	state->m_ctc->trg1(1);
-	state->m_ctc->trg1(0);
+	m_ctc->trg1(1);
+	m_ctc->trg1(0);
 }
 
 WRITE_LINE_MEMBER( tiki100_state::ctc_z1_w )
@@ -639,7 +637,7 @@ static MACHINE_CONFIG_START( tiki100, tiki100_state )
 	MCFG_Z80DART_ADD(Z80DART_TAG, XTAL_8MHz/4, dart_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_8MHz/4, pio_intf)
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_8MHz/4, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_8MHz/4))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", tiki100_state, ctc_tick, attotime::from_hz(XTAL_8MHz/4))
 	MCFG_FD1797_ADD(FD1797_TAG, fdc_intf) // FD1767PL-02 or FD1797-PL
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(tiki100_floppy_interface)
 

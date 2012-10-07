@@ -245,6 +245,11 @@ public:
 	DECLARE_PALETTE_INIT(gbc);
 	DECLARE_MACHINE_START(gb_video);
 	DECLARE_MACHINE_START(gbc_video);
+	INTERRUPT_GEN_MEMBER(gb_scanline_interrupt);
+	TIMER_CALLBACK_MEMBER(gb_serial_timer_proc);
+	TIMER_CALLBACK_MEMBER(gb_video_init_vbl);
+	TIMER_CALLBACK_MEMBER(gb_lcd_timer_proc);
+	TIMER_CALLBACK_MEMBER(gbc_lcd_timer_proc);
 };
 
 
@@ -252,7 +257,6 @@ public:
 
 DEVICE_START(gb_cart);
 DEVICE_IMAGE_LOAD(gb_cart);
-INTERRUPT_GEN( gb_scanline_interrupt );
 void gb_timer_callback(lr35902_cpu_device *device, int cycles);
 
 
@@ -271,8 +275,6 @@ extern DEVICE_IMAGE_LOAD(megaduck_cart);
 
 /*----------- defined in video/gb.c -----------*/
 
-
-
 enum
 {
 	GB_VIDEO_DMG = 1,
@@ -280,14 +282,6 @@ enum
 	GB_VIDEO_SGB,
 	GB_VIDEO_CGB
 };
-
-
-
-
-
-
-
-
 
 void gb_video_reset( running_machine &machine, int mode );
 UINT8 *gb_get_vram_ptr(running_machine &machine);

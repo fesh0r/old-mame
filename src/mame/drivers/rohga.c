@@ -800,7 +800,7 @@ static MACHINE_CONFIG_START( rohga, rohga_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)
 	MCFG_CPU_PROGRAM_MAP(rohga_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_assert)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rohga_state,  irq6_line_assert)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
 	MCFG_CPU_PROGRAM_MAP(rohga_sound_map)
@@ -813,7 +813,7 @@ static MACHINE_CONFIG_START( rohga, rohga_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(rohga)
+	MCFG_SCREEN_UPDATE_DRIVER(rohga_state, screen_update_rohga)
 
 	MCFG_GFXDECODE(rohga)
 	MCFG_PALETTE_LENGTH(2048)
@@ -850,7 +850,7 @@ static MACHINE_CONFIG_START( wizdfire, rohga_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)
 	MCFG_CPU_PROGRAM_MAP(wizdfire_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_assert)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rohga_state,  irq6_line_assert)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
 	MCFG_CPU_PROGRAM_MAP(rohga_sound_map)
@@ -864,7 +864,7 @@ static MACHINE_CONFIG_START( wizdfire, rohga_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(wizdfire)
+	MCFG_SCREEN_UPDATE_DRIVER(rohga_state, screen_update_wizdfire)
 
 	MCFG_GFXDECODE(wizdfire)
 	MCFG_PALETTE_LENGTH(2048)
@@ -904,7 +904,7 @@ static MACHINE_CONFIG_START( nitrobal, rohga_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)
 	MCFG_CPU_PROGRAM_MAP(nitrobal_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_assert)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rohga_state,  irq6_line_assert)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
 	MCFG_CPU_PROGRAM_MAP(rohga_sound_map)
@@ -918,7 +918,7 @@ static MACHINE_CONFIG_START( nitrobal, rohga_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(nitrobal)
+	MCFG_SCREEN_UPDATE_DRIVER(rohga_state, screen_update_nitrobal)
 
 	MCFG_GFXDECODE(wizdfire)
 	MCFG_PALETTE_LENGTH(2048)
@@ -958,7 +958,7 @@ static MACHINE_CONFIG_START( schmeisr, rohga_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)
 	MCFG_CPU_PROGRAM_MAP(schmeisr_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_assert)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rohga_state,  irq6_line_assert)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
 	MCFG_CPU_PROGRAM_MAP(rohga_sound_map)
@@ -971,7 +971,7 @@ static MACHINE_CONFIG_START( schmeisr, rohga_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(rohga)
+	MCFG_SCREEN_UPDATE_DRIVER(rohga_state, screen_update_rohga)
 
 	MCFG_GFXDECODE(schmeisr)
 	MCFG_PALETTE_LENGTH(2048)

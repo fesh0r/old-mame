@@ -999,7 +999,7 @@ static MACHINE_CONFIG_START( cinemat_nojmi_4k, cinemat_state )
 	MCFG_SCREEN_REFRESH_RATE(MASTER_CLOCK/4/16/16/16/16/2)
 	MCFG_SCREEN_SIZE(1024, 768)
 	MCFG_SCREEN_VISIBLE_AREA(0, 1023, 0, 767)
-	MCFG_SCREEN_UPDATE_STATIC(cinemat)
+	MCFG_SCREEN_UPDATE_DRIVER(cinemat_state, screen_update_cinemat)
 
 MACHINE_CONFIG_END
 
@@ -1045,7 +1045,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( spacewar, cinemat_nojmi_4k )
 	MCFG_FRAGMENT_ADD(spacewar_sound)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(spacewar)
+	MCFG_SCREEN_UPDATE_DRIVER(cinemat_state, screen_update_spacewar)
 MACHINE_CONFIG_END
 
 
@@ -1448,34 +1448,34 @@ ROM_END
 DRIVER_INIT_MEMBER(cinemat_state,speedfrk)
 {
 	m_gear = 0xe;
-	machine().device("maincpu")->memory().space(AS_IO)->install_read_handler(0x00, 0x03, read8_delegate(FUNC(cinemat_state::speedfrk_wheel_r),this));
-	machine().device("maincpu")->memory().space(AS_IO)->install_read_handler(0x04, 0x06, read8_delegate(FUNC(cinemat_state::speedfrk_gear_r),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_read_handler(0x00, 0x03, read8_delegate(FUNC(cinemat_state::speedfrk_wheel_r),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_read_handler(0x04, 0x06, read8_delegate(FUNC(cinemat_state::speedfrk_gear_r),this));
 }
 
 
 DRIVER_INIT_MEMBER(cinemat_state,sundance)
 {
-	machine().device("maincpu")->memory().space(AS_IO)->install_read_handler(0x00, 0x0f, read8_delegate(FUNC(cinemat_state::sundance_inputs_r),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_read_handler(0x00, 0x0f, read8_delegate(FUNC(cinemat_state::sundance_inputs_r),this));
 }
 
 
 DRIVER_INIT_MEMBER(cinemat_state,tailg)
 {
-	machine().device("maincpu")->memory().space(AS_IO)->install_write_handler(0x07, 0x07, write8_delegate(FUNC(cinemat_state::mux_select_w),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_write_handler(0x07, 0x07, write8_delegate(FUNC(cinemat_state::mux_select_w),this));
 }
 
 
 DRIVER_INIT_MEMBER(cinemat_state,boxingb)
 {
-	machine().device("maincpu")->memory().space(AS_IO)->install_read_handler(0x0c, 0x0f, read8_delegate(FUNC(cinemat_state::boxingb_dial_r),this));
-	machine().device("maincpu")->memory().space(AS_IO)->install_write_handler(0x07, 0x07, write8_delegate(FUNC(cinemat_state::mux_select_w),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_read_handler(0x0c, 0x0f, read8_delegate(FUNC(cinemat_state::boxingb_dial_r),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_write_handler(0x07, 0x07, write8_delegate(FUNC(cinemat_state::mux_select_w),this));
 }
 
 
 DRIVER_INIT_MEMBER(cinemat_state,qb3)
 {
-	machine().device("maincpu")->memory().space(AS_IO)->install_read_handler(0x0f, 0x0f, read8_delegate(FUNC(cinemat_state::qb3_frame_r),this));
-	machine().device("maincpu")->memory().space(AS_IO)->install_write_handler(0x00, 0x00, write8_delegate(FUNC(cinemat_state::qb3_ram_bank_w),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_read_handler(0x0f, 0x0f, read8_delegate(FUNC(cinemat_state::qb3_frame_r),this));
+	machine().device("maincpu")->memory().space(AS_IO).install_write_handler(0x00, 0x00, write8_delegate(FUNC(cinemat_state::qb3_ram_bank_w),this));
 
 	membank("bank1")->configure_entries(0, 4, m_rambase, 0x100*2);
 }

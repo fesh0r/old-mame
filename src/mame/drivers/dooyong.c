@@ -865,7 +865,7 @@ static MACHINE_CONFIG_START( lastday, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(lastday_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dooyong_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(lastday_sound_map)
@@ -882,7 +882,7 @@ static MACHINE_CONFIG_START( lastday, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(lastday)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_lastday)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram8_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(lastday)
@@ -908,7 +908,7 @@ static MACHINE_CONFIG_START( gulfstrm, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(gulfstrm_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dooyong_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(lastday_sound_map)
@@ -924,7 +924,7 @@ static MACHINE_CONFIG_START( gulfstrm, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(gulfstrm)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_gulfstrm)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram8_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(lastday)
@@ -941,7 +941,7 @@ static MACHINE_CONFIG_START( pollux, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(pollux_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dooyong_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(pollux_sound_map)
@@ -957,7 +957,7 @@ static MACHINE_CONFIG_START( pollux, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(pollux)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_pollux)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram8_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(lastday)
@@ -974,7 +974,7 @@ static MACHINE_CONFIG_START( bluehawk, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dooyong_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_sound_map)
@@ -989,7 +989,7 @@ static MACHINE_CONFIG_START( bluehawk, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(bluehawk)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_bluehawk)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram8_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(bluehawk)
@@ -1006,7 +1006,7 @@ static MACHINE_CONFIG_START( flytiger, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(flytiger_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dooyong_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_sound_map)
@@ -1021,7 +1021,7 @@ static MACHINE_CONFIG_START( flytiger, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(flytiger)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_flytiger)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram8_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(flytiger)
@@ -1038,7 +1038,7 @@ static MACHINE_CONFIG_START( primella, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, 8000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(primella_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dooyong_state,  irq0_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* ??? */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_sound_map)
@@ -1051,7 +1051,7 @@ static MACHINE_CONFIG_START( primella, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 0*8, 32*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(primella)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_primella)
 
 	MCFG_GFXDECODE(primella)
 	MCFG_PALETTE_LENGTH(1024)
@@ -1062,15 +1062,15 @@ static MACHINE_CONFIG_START( primella, dooyong_state )
 	MCFG_FRAGMENT_ADD( sound_2151 )
 MACHINE_CONFIG_END
 
-static TIMER_DEVICE_CALLBACK( rshark_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(dooyong_state::rshark_scanline)
 {
 	int scanline = param;
 
 	if(scanline == 248) // vblank-out irq
-		timer.machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
 
 	if(scanline == 120) // timer irq?
-		timer.machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
 }
 
 
@@ -1079,7 +1079,7 @@ static MACHINE_CONFIG_START( rshark, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)	/* measured on super-x */
 	MCFG_CPU_PROGRAM_MAP(rshark_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", rshark_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", dooyong_state, rshark_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* measured on super-x */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_sound_map)
@@ -1092,7 +1092,7 @@ static MACHINE_CONFIG_START( rshark, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(rshark)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_rshark)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram16", buffered_spriteram16_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(rshark)
@@ -1109,7 +1109,7 @@ static MACHINE_CONFIG_START( superx, dooyong_state ) // dif mem map
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)	/* measured on super-x */
 	MCFG_CPU_PROGRAM_MAP(superx_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", rshark_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", dooyong_state, rshark_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* measured on super-x */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_sound_map)
@@ -1122,7 +1122,7 @@ static MACHINE_CONFIG_START( superx, dooyong_state ) // dif mem map
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(rshark)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_rshark)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram16", buffered_spriteram16_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(rshark)
@@ -1139,7 +1139,7 @@ static MACHINE_CONFIG_START( popbingo, dooyong_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 10000000)
 	MCFG_CPU_PROGRAM_MAP(popbingo_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", rshark_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", dooyong_state, rshark_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* measured on super-x */
 	MCFG_CPU_PROGRAM_MAP(bluehawk_sound_map)
@@ -1152,7 +1152,7 @@ static MACHINE_CONFIG_START( popbingo, dooyong_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(popbingo)
+	MCFG_SCREEN_UPDATE_DRIVER(dooyong_state, screen_update_popbingo)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram16", buffered_spriteram16_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(popbingo)

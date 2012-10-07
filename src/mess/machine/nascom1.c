@@ -39,23 +39,21 @@
  *
  *************************************/
 
-static WRITE_LINE_DEVICE_HANDLER( nascom2_fdc_intrq_w )
+WRITE_LINE_MEMBER(nascom1_state::nascom2_fdc_intrq_w)
 {
-	nascom1_state *drvstate = device->machine().driver_data<nascom1_state>();
-	drvstate->m_nascom2_fdc.irq = state;
+	m_nascom2_fdc.irq = state;
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nascom2_fdc_drq_w )
+WRITE_LINE_MEMBER(nascom1_state::nascom2_fdc_drq_w)
 {
-	nascom1_state *drvstate = device->machine().driver_data<nascom1_state>();
-	drvstate->m_nascom2_fdc.drq = state;
+	m_nascom2_fdc.drq = state;
 }
 
 const wd17xx_interface nascom2_wd17xx_interface =
 {
 	DEVCB_LINE_VCC,
-	DEVCB_LINE(nascom2_fdc_intrq_w),
-	DEVCB_LINE(nascom2_fdc_drq_w),
+	DEVCB_DRIVER_LINE_MEMBER(nascom1_state,nascom2_fdc_intrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(nascom1_state,nascom2_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
@@ -170,13 +168,13 @@ READ8_MEMBER(nascom1_state::nascom1_port_02_r)
 }
 
 
-READ8_DEVICE_HANDLER( nascom1_hd6402_si )
+READ8_MEMBER(nascom1_state::nascom1_hd6402_si)
 {
 	return 1;
 }
 
 
-WRITE8_DEVICE_HANDLER( nascom1_hd6402_so )
+WRITE8_MEMBER(nascom1_state::nascom1_hd6402_so)
 {
 }
 
@@ -222,14 +220,14 @@ SNAPSHOT_LOAD( nascom1 )
 		if (sscanf((char *)line, "%x %x %x %x %x %x %x %x %x %x\010\010\n",
 			&addr, &b0, &b1, &b2, &b3, &b4, &b5, &b6, &b7, &dummy) == 10)
 		{
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b0);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b1);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b2);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b3);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b4);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b5);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b6);
-			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->write_byte(addr++, b7);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b0);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b1);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b2);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b3);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b4);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b5);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b6);
+			image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).write_byte(addr++, b7);
 		}
 	}
 
@@ -265,28 +263,28 @@ DRIVER_INIT_MEMBER(nascom1_state,nascom1)
 	switch (machine().device<ram_device>(RAM_TAG)->size())
 	{
 	case 1 * 1024:
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->nop_readwrite(
+		machine().device("maincpu")->memory().space(AS_PROGRAM).nop_readwrite(
 			0x1400, 0x9000);
 		break;
 
 	case 16 * 1024:
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_bank(
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_bank(
 			0x1400, 0x4fff, "bank1");
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->nop_readwrite(
+		machine().device("maincpu")->memory().space(AS_PROGRAM).nop_readwrite(
 			0x5000, 0xafff);
 		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 		break;
 
 	case 32 * 1024:
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_bank(
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_bank(
 			0x1400, 0x8fff, "bank1");
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->nop_readwrite(
+		machine().device("maincpu")->memory().space(AS_PROGRAM).nop_readwrite(
 			0x9000, 0xafff);
 		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 		break;
 
 	case 40 * 1024:
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_bank(
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_bank(
 			0x1400, 0xafff, "bank1");
 		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 		break;

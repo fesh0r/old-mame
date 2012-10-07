@@ -54,6 +54,7 @@
 */
 
 #include "e01.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/scsihd.h"
 
@@ -284,13 +285,14 @@ WRITE_LINE_MEMBER( e01_device::scsi_req_w )
 
 static const SCSICB_interface scsi_intf =
 {
-	NULL,
 	DEVCB_DEVICE_LINE_MEMBER("^^", e01_device, scsi_bsy_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER("^^", e01_device, scsi_req_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -455,7 +457,7 @@ e01_device::e01_device(const machine_config &mconfig, const char *tag, device_t 
 	  m_adlc(*this, MC6854_TAG),
 	  m_rtc(*this, HD146818_TAG),
 	  m_ram(*this, RAM_TAG),
-	  m_scsibus(*this, SCSIBUS_TAG),
+	  m_scsibus(*this, SCSIBUS_TAG ":host"),
 	  m_adlc_ie(0),
 	  m_hdc_ie(0),
 	  m_rtc_irq(CLEAR_LINE),
@@ -477,7 +479,7 @@ e01_device::e01_device(const machine_config &mconfig, device_type type, const ch
 	  m_adlc(*this, MC6854_TAG),
 	  m_rtc(*this, HD146818_TAG),
 	  m_ram(*this, RAM_TAG),
-	  m_scsibus(*this, SCSIBUS_TAG),
+	  m_scsibus(*this, SCSIBUS_TAG ":host"),
 	  m_adlc_ie(0),
 	  m_hdc_ie(0),
 	  m_rtc_irq(CLEAR_LINE),
@@ -557,8 +559,6 @@ void e01_device::device_start()
 
 void e01_device::device_reset()
 {
-	m_scsibus->init_scsibus(512);
-
 	m_clk_timer->adjust(attotime::zero, 0, attotime::from_hz(200000));
 
 	membank("bank1")->set_entry(1);

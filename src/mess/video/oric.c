@@ -12,11 +12,10 @@
 
 #include "includes/oric.h"
 
-static TIMER_CALLBACK(oric_vh_timer_callback)
+TIMER_CALLBACK_MEMBER(oric_state::oric_vh_timer_callback)
 {
-	oric_state *state = machine.driver_data<oric_state>();
 	/* update flash count */
-	state->m_vh_state.flash_count++;
+	m_vh_state.flash_count++;
 }
 
 static void oric_vh_update_flash(oric_state *state)
@@ -68,7 +67,7 @@ static void oric_vh_update_attribute(running_machine &machine, UINT8 c)
 	oric_state *state = machine.driver_data<oric_state>();
 	/* attribute */
 	UINT8 attribute = c & 0x03f;
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	switch ((attribute>>3) & 0x03)
 	{
@@ -115,7 +114,7 @@ static void oric_vh_update_attribute(running_machine &machine, UINT8 c)
 				if (state->m_ram)
 					state->m_vh_state.char_base = state->m_ram + (offs_t)0x09800;
 				else
-					state->m_vh_state.char_base = (UINT8 *)space->get_read_ptr(0x09800);
+					state->m_vh_state.char_base = (UINT8 *)space.get_read_ptr(0x09800);
 			}
 			else
 			{
@@ -124,7 +123,7 @@ static void oric_vh_update_attribute(running_machine &machine, UINT8 c)
 				if (state->m_ram)
 					state->m_vh_state.char_base = state->m_ram + (offs_t)0x0b400;
 				else
-					state->m_vh_state.char_base = (UINT8 *)space->get_read_ptr(0x0b400);
+					state->m_vh_state.char_base = (UINT8 *)space.get_read_ptr(0x0b400);
 			}
 			/* changing the mode also changes the position of the standard charset and alternative charset */
 			oric_refresh_charset(state);
@@ -163,30 +162,29 @@ static void oric_vh_render_6pixels(bitmap_ind16 &bitmap, int x, UINT8 y, UINT8 f
 /***************************************************************************
   oric_vh_screenrefresh
 ***************************************************************************/
-SCREEN_UPDATE_IND16( oric )
+UINT32 oric_state::screen_update_oric(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	oric_state *state = screen.machine().driver_data<oric_state>();
 	UINT8 *RAM, y;
 	offs_t byte_offset, read_addr_base;
 	bool hires_active;
 
-	RAM = state->m_ram;
+	RAM = m_ram;
 
 	/* set initial base */
-	read_addr_base = state->m_vh_state.read_addr;
+	read_addr_base = m_vh_state.read_addr;
 
 	/* is hires active? */
-	hires_active = BIT(state->m_vh_state.mode, 2);
+	hires_active = BIT(m_vh_state.mode, 2);
 
 	for (y = 0; y < 224; y++)
 	{
 		int x = 0;
 
 		/* foreground colour white */
-		oric_vh_update_attribute(screen.machine(),7);
+		oric_vh_update_attribute(machine(),7);
 		/* background colour black */
-		oric_vh_update_attribute(screen.machine(),(1<<3));
-		oric_vh_update_attribute(screen.machine(),(1<<4));
+		oric_vh_update_attribute(machine(),(1<<3));
+		oric_vh_update_attribute(machine(),(1<<4));
 
 		for (byte_offset=0; byte_offset<40; byte_offset++)
 		{
@@ -214,21 +212,21 @@ SCREEN_UPDATE_IND16( oric )
 			}
 
 			/* fetch data */
-			c = RAM ? RAM[read_addr] : screen.machine().device("maincpu")->memory().space(AS_PROGRAM)->read_byte(read_addr);
+			c = RAM ? RAM[read_addr] : machine().device("maincpu")->memory().space(AS_PROGRAM).read_byte(read_addr);
 
 			/* if bits 6 and 5 are zero, the byte contains a serial attribute */
 			if ((c & ((1 << 6) | (1 << 5))) == 0)
 			{
-				oric_vh_update_attribute(screen.machine(), c);
+				oric_vh_update_attribute(machine(), c);
 
 				/* display background colour when attribute has been found */
-				oric_vh_render_6pixels(bitmap, x, y, state->m_vh_state.active_foreground_colour, state->m_vh_state.active_background_colour, 0, (c & 0x080));
+				oric_vh_render_6pixels(bitmap, x, y, m_vh_state.active_foreground_colour, m_vh_state.active_background_colour, 0, (c & 0x080));
 
 				if (y < 200)
 				{
 					/* is hires active? */
-					hires_active = BIT(state->m_vh_state.mode, 2);
-					read_addr_base = state->m_vh_state.read_addr;
+					hires_active = BIT(m_vh_state.mode, 2);
+					read_addr_base = m_vh_state.read_addr;
 				}
 			}
 			else
@@ -238,7 +236,7 @@ SCREEN_UPDATE_IND16( oric )
 				{
 					UINT8 pixel_data = c & 0x03f;
 					/* plot hires pixels */
-					oric_vh_render_6pixels(bitmap,x,y,state->m_vh_state.active_foreground_colour, state->m_vh_state.active_background_colour, pixel_data, BIT(c, 7));
+					oric_vh_render_6pixels(bitmap,x,y,m_vh_state.active_foreground_colour, m_vh_state.active_background_colour, pixel_data, BIT(c, 7));
 				}
 				else
 				{
@@ -249,7 +247,7 @@ SCREEN_UPDATE_IND16( oric )
 					ch_line = y & 7;
 
 					/* is double height set? */
-					if (BIT(state->m_vh_state.text_attributes, 1))
+					if (BIT(m_vh_state.text_attributes, 1))
 					{
 					/* if char line is even, top half of character is displayed else bottom half */
 						UINT8 double_height_flag = BIT(y, 3);
@@ -259,12 +257,12 @@ SCREEN_UPDATE_IND16( oric )
 					}
 
 					/* fetch pixel data for this char line */
-					char_data = state->m_vh_state.char_data[(char_index<<3) | ch_line] & 0x03f;
+					char_data = m_vh_state.char_data[(char_index<<3) | ch_line] & 0x03f;
 
 					/* draw! */
 					oric_vh_render_6pixels(bitmap,x,y,
-						state->m_vh_state.active_foreground_colour,
-						state->m_vh_state.active_background_colour, char_data, BIT(c, 7));
+						m_vh_state.active_foreground_colour,
+						m_vh_state.active_background_colour, char_data, BIT(c, 7));
 				}
 
 			}
@@ -300,7 +298,7 @@ void oric_state::video_start()
 	m_vh_state.char_base = 0;
 	/* initialise flash timer */
 	m_vh_state.flash_count = 0;
-	machine().scheduler().timer_pulse(attotime::from_hz(50), FUNC(oric_vh_timer_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(50), timer_expired_delegate(FUNC(oric_state::oric_vh_timer_callback),this));
 	/* mode */
 	oric_vh_update_attribute(machine(),(1<<3)|(1<<4));
 }

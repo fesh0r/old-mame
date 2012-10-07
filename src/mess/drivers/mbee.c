@@ -682,7 +682,7 @@ static MACHINE_CONFIG_START( mbee, mbee_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
 	MCFG_SCREEN_SIZE(64*8, 19*16)			/* need at least 17 lines for NET */
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0, 19*16-1)
-	MCFG_SCREEN_UPDATE_STATIC(mbee)
+	MCFG_SCREEN_UPDATE_DRIVER(mbee_state, screen_update_mbee)
 
 	MCFG_GFXDECODE(mbee)
 	MCFG_PALETTE_LENGTH(2)
@@ -712,7 +712,7 @@ static MACHINE_CONFIG_START( mbeeic, mbee_state )
 	MCFG_CPU_PROGRAM_MAP(mbeeic_mem)
 	MCFG_CPU_IO_MAP(mbeeic_io)
 	MCFG_CPU_CONFIG(mbee_daisy_chain)
-	//MCFG_CPU_VBLANK_INT("screen", mbee_interrupt)
+	//MCFG_CPU_VBLANK_INT_DRIVER("screen", mbee_state,  mbee_interrupt)
 
 	MCFG_MACHINE_RESET_OVERRIDE(mbee_state, mbee )
 
@@ -723,7 +723,7 @@ static MACHINE_CONFIG_START( mbeeic, mbee_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
 	MCFG_SCREEN_SIZE(80*8, 310)
 	MCFG_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 19*16-1)
-	MCFG_SCREEN_UPDATE_STATIC(mbee)
+	MCFG_SCREEN_UPDATE_DRIVER(mbee_state, screen_update_mbee)
 
 	MCFG_GFXDECODE(mbeeic)
 	MCFG_PALETTE_LENGTH(96)

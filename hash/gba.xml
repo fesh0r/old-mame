@@ -6106,7 +6106,7 @@
 		</part>
 	</software>
 
-	<software name="castlewn">
+	<software name="castlewn" supported="partial">
 		<description>Castleween (Euro)</description>
 		<year>2002</year>
 		<publisher>Wanadoo</publisher>
@@ -8109,7 +8109,7 @@
 		</part>
 	</software>
 
-	<software name="stafy3a" cloneof="stafy">
+	<software name="stafy3a" cloneof="stafy3" supported="no">
 		<description>Densetsu no Stafy 3 (Jpn)</description>
 		<year>2004</year>
 		<publisher>Nintendo</publisher>
@@ -8124,7 +8124,7 @@
 		</part>
 	</software>
 
-	<software name="stafy3">
+	<software name="stafy3" supported="no">
 		<description>Densetsu no Stafy 3 (Jpn, Rev. 1)</description>
 		<year>2004</year>
 		<publisher>Nintendo</publisher>
@@ -18791,7 +18791,7 @@
 		</part>
 	</software>
 
-	<software name="spyronbg">
+	<software name="spyronbg" supported="partial">
 		<description>The Legend of Spyro - A New Beginning (Euro)</description>
 		<year>2006</year>
 		<publisher>Sierra Entertainment</publisher>
@@ -18804,7 +18804,7 @@
 		</part>
 	</software>
 
-	<software name="spyronbgu" cloneof="spyronbg">
+	<software name="spyronbgu" cloneof="spyronbg" supported="partial">
 		<description>The Legend of Spyro - A New Beginning (USA)</description>
 		<year>2006</year>
 		<publisher>Sierra Entertainment</publisher>
@@ -20165,7 +20165,7 @@
 		</part>
 	</software>
 
-	<software name="mahopmpk" cloneof="castlewn">
+	<software name="mahopmpk" cloneof="castlewn" supported="partial">
 		<description>Mahou no Pumpkin - Ann to Greg no Daibouken (Jpn)</description>
 		<year>2003</year>
 		<publisher>MTO</publisher>
@@ -29143,7 +29143,8 @@
 		</part>
 	</software>
 
-	<software name="sennenkz">
+<!-- does this need RTC too? -->
+	<software name="sennenkz" supported="no">
 		<description>Sennen Kazoku (Jpn)</description>
 		<year>2005</year>
 		<publisher>Nintendo</publisher>
@@ -29853,7 +29854,7 @@
 		</part>
 	</software>
 
-	<software name="shirenmn">
+	<software name="shirenmn" supported="partial">
 		<description>Shiren Monsters Netsal (Jpn)</description>
 		<year>2004</year>
 		<publisher>ChunSoft</publisher>
@@ -29946,7 +29947,8 @@
 		</part>
 	</software>
 
-	<software name="shrekslm">
+<!-- cracking sound -->
+	<software name="shrekslm" supported="partial">
 		<description>Shrek - Super Slam (Euro)</description>
 		<year>2005</year>
 		<publisher>Activision</publisher>
@@ -29959,7 +29961,8 @@
 		</part>
 	</software>
 
-	<software name="shrekslmu" cloneof="shrekslm">
+<!-- cracking sound -->
+	<software name="shrekslmu" cloneof="shrekslm" supported="partial">
 		<description>Shrek - Super Slam (USA)</description>
 		<year>2005</year>
 		<publisher>Activision</publisher>
@@ -29972,7 +29975,7 @@
 		</part>
 	</software>
 
-	<software name="shreksks">
+	<software name="shreksks" supported="partial">
 		<description>Shrek - Swamp Kart Speedway (Euro, USA)</description>
 		<year>2002</year>
 		<publisher>TDK Mediactive</publisher>
@@ -30216,7 +30219,7 @@
 		</part>
 	</software>
 
-	<software name="simpsrra" cloneof="simpsrr">
+	<software name="simpsrra" cloneof="simpsrr" supported="partial">
 		<description>The Simpsons - Road Rage (Euro, English / French / German / Italian / Spanish)</description>
 		<year>2003</year>
 		<publisher>THQ</publisher>
@@ -30227,7 +30230,7 @@
 		</part>
 	</software>
 
-	<software name="simpsrr">
+	<software name="simpsrr" supported="partial">
 		<description>The Simpsons - Road Rage (Euro, USA)</description>
 		<year>2003</year>
 		<publisher>THQ</publisher>
@@ -30239,7 +30242,7 @@
 		</part>
 	</software>
 
-	<software name="sims2">
+	<software name="sims2" supported="no">
 		<description>The Sims 2 (Euro, USA)</description>
 		<year>2005</year>
 		<publisher>Electronic Arts</publisher>
@@ -30252,7 +30255,7 @@
 		</part>
 	</software>
 
-	<software name="sims2peta" cloneof="sims2pet">
+	<software name="sims2peta" cloneof="sims2pet" supported="partial">
 		<description>The Sims 2 - Pets (Euro, English / French / German / Italian / Spanish / Dutch)</description>
 		<year>2006</year>
 		<publisher>Electronic Arts</publisher>
@@ -30264,7 +30267,7 @@
 		</part>
 	</software>
 
-	<software name="sims2pet">
+	<software name="sims2pet" supported="partial">
 		<description>The Sims 2 - Pets (Euro, USA)</description>
 		<year>2006</year>
 		<publisher>Electronic Arts</publisher>
@@ -30401,7 +30404,7 @@
 	<software name="slotpro2">
 		<description>Slot! Pro 2 Advance - GoGo Juggler &amp; New Tairyou (Jpn)</description>
 		<year>2002</year>
-		<publisher>Nippon Telenet</publisher>
+		<publisher>Nihon Telenet</publisher>
 		<info name="serial" value="AGB-ATBJ-JPN"/>
 		<info name="release" value="20020426"/>
 		<info name="alt_title" value="スロット!プロ2 アドバンス - GO GO ジャグラー&amp;Newタイリョウ"/>
@@ -30416,7 +30419,7 @@
 	<software name="slotpro">
 		<description>Slot! Pro Advance - Takarabune &amp; Ooedo Sakurafubuki 2 (Jpn)</description>
 		<year>2001</year>
-		<publisher>Nippon Telenet</publisher>
+		<publisher>Nihon Telenet</publisher>
 		<info name="serial" value="AGB-ASFJ-JPN"/>
 		<info name="release" value="20011228"/>
 		<info name="alt_title" value="スロット!プロ アドバンス - 宝船&amp;大江戸桜吹雪2"/>
@@ -30452,7 +30455,7 @@
 		</part>
 	</software>
 
-	<software name="smuggler">
+	<software name="smuggler" supported="no">
 		<description>Smuggler's Run (Euro)</description>
 		<year>2002</year>
 		<publisher>Digital Worldwide</publisher>
@@ -30476,7 +30479,7 @@
 		</part>
 	</software>
 
-	<software name="smurfs">
+	<software name="smurfs" supported="partial">
 		<!-- Alt. Title: The Revenge of the Smurfs (Box) -->
 		<description>The Smurfs - The Revenge of the Smurfs (Euro)</description>
 		<year>2002</year>
@@ -30564,7 +30567,7 @@
 		</part>
 	</software>
 
-	<software name="sonic">
+	<software name="sonic" supported="partial">
 		<description>Sonic Advance (Euro)</description>
 		<year>2002</year>
 		<publisher>Infogrames</publisher>
@@ -30577,7 +30580,7 @@
 		</part>
 	</software>
 
-	<software name="sonicj" cloneof="sonic">
+	<software name="sonicj" cloneof="sonic" supported="partial">
 		<description>Sonic Advance (Jpn, Rev. 1)</description>
 		<year>2001</year>
 		<publisher>Sega</publisher>
@@ -30592,7 +30595,7 @@
 		</part>
 	</software>
 
-	<software name="sonicja" cloneof="sonic">
+	<software name="sonicja" cloneof="sonic" supported="partial">
 		<description>Sonic Advance (Jpn)</description>
 		<year>2001</year>
 		<publisher>Sega</publisher>
@@ -30607,7 +30610,7 @@
 		</part>
 	</software>
 
-	<software name="sonicu" cloneof="sonic">
+	<software name="sonicu" cloneof="sonic" supported="partial">
 		<description>Sonic Advance (USA)</description>
 		<year>2002</year>
 		<publisher>THQ</publisher>
@@ -30620,7 +30623,7 @@
 		</part>
 	</software>
 
-	<software name="sonic2">
+	<software name="sonic2" supported="partial">
 		<description>Sonic Advance 2 (Euro)</description>
 		<year>2003</year>
 		<publisher>Infogrames</publisher>
@@ -30633,7 +30636,7 @@
 		</part>
 	</software>
 
-	<software name="sonic2j" cloneof="sonic2">
+	<software name="sonic2j" cloneof="sonic2" supported="partial">
 		<description>Sonic Advance 2 (Jpn)</description>
 		<year>2002</year>
 		<publisher>Sega</publisher>
@@ -30648,7 +30651,7 @@
 		</part>
 	</software>
 
-	<software name="sonic2u" cloneof="sonic2">
+	<software name="sonic2u" cloneof="sonic2" supported="partial">
 		<description>Sonic Advance 2 (USA)</description>
 		<year>2003</year>
 		<publisher>THQ</publisher>
@@ -30661,8 +30664,8 @@
 		</part>
 	</software>
 
-	<software name="sonic3p" cloneof="sonic3">
-		<description>Sonic Advance 3 (Euro, Prototype)</description>
+	<software name="sonic3p" cloneof="sonic3" supported="partial">
+		<description>Sonic Advance 3 (Jpn, Prototype)</description>
 		<year>2004</year>
 		<publisher>Sega</publisher>
 		<part name="cart" interface="gba_cart">
@@ -30673,7 +30676,7 @@
 		</part>
 	</software>
 
-	<software name="sonic3">
+	<software name="sonic3" supported="partial">
 		<description>Sonic Advance 3 (Euro)</description>
 		<year>2004</year>
 		<publisher>THQ</publisher>
@@ -30686,7 +30689,7 @@
 		</part>
 	</software>
 
-	<software name="sonic3j" cloneof="sonic3">
+	<software name="sonic3j" cloneof="sonic3" supported="partial">
 		<description>Sonic Advance 3 (Jpn)</description>
 		<year>2004</year>
 		<publisher>Sega</publisher>
@@ -30701,7 +30704,7 @@
 		</part>
 	</software>
 
-	<software name="sonic3u" cloneof="sonic3">
+	<software name="sonic3u" cloneof="sonic3" supported="partial">
 		<description>Sonic Advance 3 (USA)</description>
 		<year>2004</year>
 		<publisher>THQ</publisher>
@@ -31129,7 +31132,7 @@
 	</software>
 
 	<software name="spiritgp" cloneof="spirit">
-		<description>Spirit - Der Wilde Mustang - Auf der Suche nach Homeland (Ger, Prototype)</description>
+		<description>Spirit - Der Wilde Mustang (Ger, Prototype)</description>
 		<year>2002</year>
 		<publisher>THQ</publisher>
 		<part name="cart" interface="gba_cart">
@@ -31140,9 +31143,10 @@
 	</software>
 
 	<software name="spiritg" cloneof="spirit">
-		<description>Spirit - Der Wilde Mustang - Auf der Suche nach Homeland (Ger)</description>
+		<description>Spirit - Der Wilde Mustang (Ger)</description>
 		<year>2002</year>
 		<publisher>THQ</publisher>
+		<info name="alt_title" value="Spirit - Der Wilde Mustang - Auf der Suche nach Homeland (Box)"/>
 		<part name="cart" interface="gba_cart">
 			<dataarea name="rom" size="4194304">
 				<rom name="spirit - der wilde mustang - auf der suche nach homeland (germany).bin" size="4194304" crc="4785eee0" sha1="ce8f271e143456616a9649fee7d47ef1602ee497" offset="000000" />
@@ -31151,9 +31155,10 @@
 	</software>
 
 	<software name="spiritf" cloneof="spirit">
-		<description>Spirit - L'Etalon des Plaines - A la Recherche de la Terre Natale (Fra)</description>
+		<description>Spirit - L'Etalon des Plaines (Fra)</description>
 		<year>2002</year>
 		<publisher>THQ</publisher>
+		<info name="alt_title" value="Spirit - L'Etalon des Plaines - A la Recherche de la Terre Natale (Box)"/>
 		<part name="cart" interface="gba_cart">
 			<dataarea name="rom" size="4194304">
 				<rom name="spirit - l'etalon des plaines - a la recherche de la terre natale (france).bin" size="4194304" crc="c8c76255" sha1="0aa4fedc71f168f19e3263e7c0347a6ca81b80d0" offset="000000" />
@@ -31162,10 +31167,11 @@
 	</software>
 
 	<software name="spirit">
-		<description>Spirit - Stallion of the Cimarron - Search for Homeland (Euro)</description>
+		<description>Spirit - Stallion of the Cimarron (Euro)</description>
 		<year>2002</year>
 		<publisher>THQ</publisher>
 		<info name="serial" value="AGB-AC6P"/>
+		<info name="alt_title" value="Spirit - Stallion of the Cimarron - Search for Homeland (Box)"/>
 		<part name="cart" interface="gba_cart">
 			<dataarea name="rom" size="4194304">
 				<rom name="spirit - stallion of the cimarron - search for homeland (europe).bin" size="4194304" crc="aee21783" sha1="9158b8a2998c6bb78df8904c2e230b51f82c9531" offset="000000" />
@@ -31174,10 +31180,11 @@
 	</software>
 
 	<software name="spiritu" cloneof="spirit">
-		<description>Spirit - Stallion of the Cimarron - Search for Homeland (USA)</description>
+		<description>Spirit - Stallion of the Cimarron (USA)</description>
 		<year>2002</year>
 		<publisher>THQ</publisher>
 		<info name="serial" value="AGB-AC6E-USA"/>
+		<info name="alt_title" value="Spirit - Stallion of the Cimarron - Search for Homeland (Box)"/>
 		<part name="cart" interface="gba_cart">
 			<dataarea name="rom" size="4194304">
 				<rom name="spirit - stallion of the cimarron - search for homeland (usa).bin" size="4194304" crc="9a457633" sha1="220791a2a4db7d45fc6fb0bd259cf7a8d24e3a6d" offset="000000" />
@@ -31185,7 +31192,7 @@
 		</part>
 	</software>
 
-	<software name="spirspel" cloneof="castlewn">
+	<software name="spirspel" cloneof="castlewn" supported="partial">
 		<description>Spirits &amp; Spells (USA)</description>
 		<year>2003</year>
 		<publisher>Dreamcatcher</publisher>
@@ -31347,7 +31354,7 @@
 	</software>
 
 	<software name="spongbmv">
-		<description>The SpongeBob SquarePants Movie (Euro)</description>
+		<description>SpongeBob SquarePants - The Movie (Euro)</description>
 		<year>2005</year>
 		<publisher>THQ</publisher>
 		<info name="serial" value="AGB-BSNP-EUR"/>
@@ -31358,8 +31365,8 @@
 		</part>
 	</software>
 
-	<software name="spongbmvup" cloneof="spongbmv">
-		<description>The SpongeBob SquarePants Movie (USA, Prototype)</description>
+	<software name="spongbmvup" cloneof="spongbmv" supported="no">
+		<description>SpongeBob SquarePants - The Movie (USA, Prototype)</description>
 		<year>2004</year>
 		<publisher>THQ</publisher>
 		<part name="cart" interface="gba_cart">
@@ -31371,7 +31378,7 @@
 	</software>
 
 	<software name="spongbmvu" cloneof="spongbmv">
-		<description>The SpongeBob SquarePants Movie (USA)</description>
+		<description>SpongeBob SquarePants - The Movie (USA)</description>
 		<year>2004</year>
 		<publisher>THQ</publisher>
 		<info name="serial" value="AGB-BSNE-USA"/>
@@ -31394,7 +31401,7 @@
 		</part>
 	</software>
 
-	<software name="spilbase">
+	<software name="spilbase" supported="no">
 		<description>Sports Illustrated for Kids - Baseball (USA)</description>
 		<year>2001</year>
 		<publisher>BAM! Entertainment</publisher>
@@ -31407,7 +31414,7 @@
 		</part>
 	</software>
 
-	<software name="spilfoot">
+	<software name="spilfoot" supported="partial">
 		<description>Sports Illustrated for Kids - Football (USA)</description>
 		<year>2003</year>
 		<publisher>BAM! Entertainment</publisher>
@@ -31877,7 +31884,7 @@
 		</part>
 	</software>
 
-	<software name="starskyh">
+	<software name="starskyh" supported="no">
 		<description>Starsky &amp; Hutch (Euro)</description>
 		<year>2003</year>
 		<publisher>Empire Entertainment</publisher>
@@ -31890,7 +31897,7 @@
 		</part>
 	</software>
 
-	<software name="starskyhup" cloneof="starskyh">
+	<software name="starskyhup" cloneof="starskyh" supported="no">
 		<description>Starsky &amp; Hutch (USA, Prototype)</description>
 		<year>2003</year>
 		<publisher>Empire Entertainment</publisher>
@@ -31901,7 +31908,7 @@
 		</part>
 	</software>
 
-	<software name="starskyhu" cloneof="starskyh">
+	<software name="starskyhu" cloneof="starskyh" supported="no">
 		<description>Starsky &amp; Hutch (USA)</description>
 		<year>2003</year>
 		<publisher>Empire Entertainment</publisher>
@@ -32145,7 +32152,7 @@
 		</part>
 	</software>
 
-	<software name="suitezc">
+	<software name="suitezc" supported="partial">
 		<description>The Suite Life of Zack &amp; Cody - Tipton Caper (USA)</description>
 		<year>2006</year>
 		<publisher>Buena Vista Games</publisher>
@@ -32454,12 +32461,12 @@
 		</part>
 	</software>
 
-	<software name="sdropzon">
-		<!-- Alt. Title: Super Dropzone - Intergalactic Rescue Mission (Box) -->
-		<description>Archer Maclean's Super Dropzone (Euro)</description>
+	<software name="dropzone">
+		<description>Archer Maclean's Dropzone (Euro)</description>
 		<year>2003</year>
 		<publisher>Ignition Entertainment</publisher>
 		<info name="serial" value="AGB-AZNP"/>
+		<info name="alt_title" value="Super Dropzone - Intergalactic Rescue Mission (Box)"/>
 		<part name="cart" interface="gba_cart">
 			<dataarea name="rom" size="4194304">
 				<rom name="super dropzone - intergalactic rescue mission (europe).bin" size="4194304" crc="bab43d5c" sha1="07bd1fa75c322e682784db7260ea96faba6b9256" offset="000000" />
@@ -32467,12 +32474,12 @@
 		</part>
 	</software>
 
-	<software name="sdropzonu" cloneof="sdropzon">
-		<!-- Alt. Title: Super Dropzone - Intergalactic Rescue Mission (Box) -->
-		<description>Archer Maclean's Super Dropzone (USA)</description>
+	<software name="dropzoneu" cloneof="dropzone">
+		<description>Archer Maclean's Dropzone (USA)</description>
 		<year>2003</year>
 		<publisher>AIA</publisher>
 		<info name="serial" value="AGB-AZNE-USA"/>
+		<info name="alt_title" value="Super Dropzone - Intergalactic Rescue Mission (Box)"/>
 		<part name="cart" interface="gba_cart">
 			<dataarea name="rom" size="4194304">
 				<rom name="super dropzone - intergalactic rescue mission (usa).bin" size="4194304" crc="2b4843fe" sha1="3acd2595dbca9802583f9de2c789db2e87561b05" offset="000000" />
@@ -32480,7 +32487,7 @@
 		</part>
 	</software>
 
-	<software name="sdsumos">
+	<software name="sdsumos" supported="partial">
 		<description>Super Duper Sumos (USA)</description>
 		<year>2003</year>
 		<publisher>Midway</publisher>
@@ -32765,7 +32772,7 @@
 		</part>
 	</software>
 
-	<software name="smb">
+	<software name="smb" supported="partial">
 		<description>Super Mario Bros. (Jpn, Hot Mario Campaign)</description>
 		<year>19??</year>
 		<publisher>&lt;unknown&gt;</publisher>
@@ -34378,7 +34385,7 @@
 		</part>
 	</software>
 
-	<software name="splintclp" cloneof="splintcl">
+	<software name="splintclp" cloneof="splintcl" supported="no">
 		<description>Tom Clancy's Splinter Cell (Euro, Prototype)</description>
 		<year>2003</year>
 		<publisher>Ubi Soft</publisher>
@@ -34390,7 +34397,7 @@
 		</part>
 	</software>
 
-	<software name="splintcl">
+	<software name="splintcl" supported="no">
 		<description>Tom Clancy's Splinter Cell (Euro)</description>
 		<year>2003</year>
 		<publisher>Ubi Soft</publisher>
@@ -34403,7 +34410,7 @@
 		</part>
 	</software>
 
-	<software name="splintclu" cloneof="splintcl">
+	<software name="splintclu" cloneof="splintcl" supported="no">
 		<description>Tom Clancy's Splinter Cell (USA)</description>
 		<year>2003</year>
 		<publisher>Ubi Soft</publisher>

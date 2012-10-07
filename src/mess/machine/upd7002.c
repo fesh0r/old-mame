@@ -152,10 +152,10 @@ WRITE8_DEVICE_HANDLER ( uPD7002_w )
 		if (uPD7002->status & 0x08)
 		{
 			// 12 bit conversion takes 10ms
-			device->machine().scheduler().timer_set(attotime::from_msec(10), FUNC(uPD7002_conversioncomplete), uPD7002->conversion_counter, (void *)device);
+			space.machine().scheduler().timer_set(attotime::from_msec(10), FUNC(uPD7002_conversioncomplete), uPD7002->conversion_counter, (void *)device);
 		} else {
 			// 8 bit conversion takes 4ms
-			device->machine().scheduler().timer_set(attotime::from_msec(4), FUNC(uPD7002_conversioncomplete), uPD7002->conversion_counter, (void *)device);
+			space.machine().scheduler().timer_set(attotime::from_msec(4), FUNC(uPD7002_conversioncomplete), uPD7002->conversion_counter, (void *)device);
 		}
 		break;
 
@@ -213,7 +213,7 @@ const device_type UPD7002 = &device_creator<uPD7002_device>;
 uPD7002_device::uPD7002_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, UPD7002, "uPD7002", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(uPD7002_t));
+	m_token = global_alloc_clear(uPD7002_t);
 }
 
 //-------------------------------------------------

@@ -33,23 +33,20 @@ public:
 	DECLARE_DRIVER_INIT(poly88);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_poly88(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(poly88_interrupt);
+	TIMER_CALLBACK_MEMBER(poly88_usart_timer_callback);
+	TIMER_CALLBACK_MEMBER(keyboard_callback);
+	TIMER_CALLBACK_MEMBER(poly88_cassette_timer_callback);
+	TIMER_CALLBACK_MEMBER(setup_machine_state);
+	DECLARE_WRITE_LINE_MEMBER(poly88_usart_rxready);
 };
 
 
 /*----------- defined in machine/poly88.c -----------*/
-
-
-INTERRUPT_GEN( poly88_interrupt );
-
 extern const i8251_interface poly88_usart_interface;
 
 extern SNAPSHOT_LOAD( poly88 );
-
-
-/*----------- defined in video/poly88.c -----------*/
-
-extern VIDEO_START( poly88 );
-extern SCREEN_UPDATE_IND16( poly88 );
 
 #endif /* POLY88_H_ */
 

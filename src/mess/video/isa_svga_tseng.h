@@ -5,6 +5,7 @@
 
 #include "emu.h"
 #include "machine/isa.h"
+#include "video/pc_vga.h"
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -23,10 +24,14 @@ public:
 		// optional information overrides
 		virtual machine_config_constructor device_mconfig_additions() const;
 		virtual const rom_entry *device_rom_region() const;
+
+		DECLARE_READ8_MEMBER(input_port_0_r);
 protected:
         // device-level overrides
         virtual void device_start();
         virtual void device_reset();
+private:
+		tseng_vga_device *m_vga;
 };
 
 

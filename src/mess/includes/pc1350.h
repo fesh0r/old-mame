@@ -24,6 +24,8 @@ public:
 	UINT8 m_outb;
 	int m_power;
 	UINT8 m_reg[0x1000];
+	UINT32 screen_update_pc1350(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(pc1350_power_up);
 };
 
 
@@ -42,9 +44,9 @@ MACHINE_START( pc1350 );
 
 /*----------- defined in video/pc1350.c -----------*/
 
-READ8_HANDLER(pc1350_lcd_read);
-WRITE8_HANDLER(pc1350_lcd_write);
-SCREEN_UPDATE_IND16( pc1350 );
+DECLARE_READ8_HANDLER(pc1350_lcd_read);
+DECLARE_WRITE8_HANDLER(pc1350_lcd_write);
+
 
 int pc1350_keyboard_line_r(running_machine &machine);
 

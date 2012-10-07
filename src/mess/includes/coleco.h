@@ -43,6 +43,11 @@ public:
 	int m_joy_d7_state[2];
 	UINT8 m_joy_analog_state[2];
 	UINT8 m_joy_analog_reload[2];
+	TIMER_CALLBACK_MEMBER(paddle_d7reset_callback);
+	TIMER_CALLBACK_MEMBER(paddle_irqreset_callback);
+	TIMER_CALLBACK_MEMBER(paddle_pulse_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(paddle_update_callback);
+	DECLARE_WRITE_LINE_MEMBER(coleco_vdp_interrupt);
 };
 
 #endif

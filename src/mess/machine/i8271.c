@@ -1496,13 +1496,13 @@ READ8_DEVICE_HANDLER(i8271_r)
 /* to be completed! */
 READ8_DEVICE_HANDLER(i8271_dack_r)
 {
-	return i8271_data_r(device, offset);
+	return i8271_data_r(device, space, offset);
 }
 
 /* to be completed! */
 WRITE8_DEVICE_HANDLER(i8271_dack_w)
 {
-	i8271_data_w(device, offset, data);
+	i8271_data_w(device, space, offset, data);
 }
 
  READ8_DEVICE_HANDLER(i8271_data_r)
@@ -1579,7 +1579,7 @@ const device_type I8271 = &device_creator<i8271_device>;
 i8271_device::i8271_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, I8271, "Intel 8271", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(i8271_t));
+	m_token = global_alloc_clear(i8271_t);
 }
 
 //-------------------------------------------------

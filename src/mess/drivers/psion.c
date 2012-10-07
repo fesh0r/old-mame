@@ -22,12 +22,10 @@
 #include "includes/psion.h"
 #include "rendlay.h"
 
-static TIMER_DEVICE_CALLBACK( nmi_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(psion_state::nmi_timer)
 {
-	psion_state *state = timer.machine().driver_data<psion_state>();
-
-	if (state->m_enable_nmi)
-		timer.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	if (m_enable_nmi)
+		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 UINT8 psion_state::kb_read(running_machine &machine)
@@ -101,7 +99,7 @@ WRITE8_MEMBER( psion_state::hd63701_int_reg_w )
 		break;
 	}
 
-	m6801_io_w(&space, offset, data);
+	m6801_io_w(space, offset, data);
 }
 
 READ8_MEMBER( psion_state::hd63701_int_reg_r )
@@ -112,7 +110,7 @@ READ8_MEMBER( psion_state::hd63701_int_reg_r )
 		/* datapack i/o data bus */
 		return (m_pack1->data_r() | m_pack2->data_r()) & (~m_port2_ddr);
 	case 0x14:
-		return (m6801_io_r(&space, offset)&0x7f) | (m_stby_pwr<<7);
+		return (m6801_io_r(space, offset)&0x7f) | (m_stby_pwr<<7);
 	case 0x15:
 		/*
         x--- ---- ON key active high
@@ -125,9 +123,9 @@ READ8_MEMBER( psion_state::hd63701_int_reg_r )
 		/* datapack control lines */
 		return (m_pack1->control_r() | (m_pack2->control_r() & 0x8f)) | ((m_pack2->control_r() & 0x10)<<1);
 	case 0x08:
-		m6801_io_w(&space, offset, m_tcsr_value);
+		m6801_io_w(space, offset, m_tcsr_value);
 	default:
-		return m6801_io_r(&space, offset);
+		return m6801_io_r(space, offset);
 	}
 }
 
@@ -222,9 +220,9 @@ READ8_MEMBER( psion_state::io_r )
 	return 0;
 }
 
-static INPUT_CHANGED( psion_on )
+INPUT_CHANGED_MEMBER(psion_state::psion_on)
 {
-	cpu_device *cpu = field.machine().device<cpu_device>("maincpu");
+	cpu_device *cpu = machine().device<cpu_device>("maincpu");
 
 	/* reset the CPU for resume from standby */
 	if (cpu->suspended(SUSPEND_REASON_HALT))
@@ -288,7 +286,7 @@ INPUT_PORTS_START( psion )
 		PORT_CONFSETTING( 0x01, "Low Battery" )
 
 	PORT_START("ON")
-		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON/CLEAR") PORT_CODE(KEYCODE_MINUS)  PORT_CHANGED(psion_on, 0)
+		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON/CLEAR") PORT_CODE(KEYCODE_MINUS)  PORT_CHANGED_MEMBER(DEVICE_SELF, psion_state, psion_on, 0)
 
 	PORT_START("K1")
 		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("MODE") PORT_CODE(KEYCODE_EQUALS)
@@ -492,7 +490,7 @@ static MACHINE_CONFIG_START( psion_2lines, psion_state )
 
 	MCFG_NVRAM_HANDLER(psion)
 
-	MCFG_TIMER_ADD_PERIODIC("nmi_timer", nmi_timer, attotime::from_seconds(1))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("nmi_timer", psion_state, nmi_timer, attotime::from_seconds(1))
 
 	/* Datapack */
 	MCFG_PSION_DATAPACK_ADD("pack1")

@@ -341,12 +341,13 @@ static ADDRESS_MAP_START ( msx_memory_map, AS_PROGRAM, 8, msx_state )
 ADDRESS_MAP_END
 
 
-static WRITE8_DEVICE_HANDLER( msx_ay8910_w )
+WRITE8_MEMBER(msx_state::msx_ay8910_w)
 {
+	device_t *device = machine().device("ay8910");
 	if ( offset & 1 )
-		ay8910_data_w( device, offset, data );
+		ay8910_data_w( device, space, offset, data );
 	else
-		ay8910_address_w( device, offset, data );
+		ay8910_address_w( device, space, offset, data );
 }
 
 
@@ -355,9 +356,9 @@ static ADDRESS_MAP_START ( msx_io_map, AS_IO, 8, msx_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x77, 0x77) AM_WRITE(msx_90in1_w)
 	AM_RANGE( 0x7c, 0x7d) AM_WRITE(msx_fmpac_w)
-	AM_RANGE( 0x90, 0x90) AM_DEVREADWRITE_LEGACY("centronics", msx_printer_status_r, msx_printer_strobe_w)
-	AM_RANGE( 0x91, 0x91) AM_DEVWRITE_LEGACY("centronics", msx_printer_data_w)
-	AM_RANGE( 0xa0, 0xa7) AM_DEVREADWRITE_LEGACY("ay8910", ay8910_r, msx_ay8910_w)
+	AM_RANGE( 0x90, 0x90) AM_READWRITE(msx_printer_status_r, msx_printer_strobe_w)
+	AM_RANGE( 0x91, 0x91) AM_WRITE(msx_printer_data_w)
+	AM_RANGE( 0xa0, 0xa7) AM_DEVREAD_LEGACY("ay8910", ay8910_r) AM_WRITE(msx_ay8910_w)
 	AM_RANGE( 0xa8, 0xab) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
 	AM_RANGE( 0x98, 0x98) AM_DEVREADWRITE("tms9928a", tms9928a_device, vram_read, vram_write)
 	AM_RANGE( 0x99, 0x99) AM_DEVREADWRITE("tms9928a", tms9928a_device, register_read, register_write)
@@ -370,9 +371,9 @@ static ADDRESS_MAP_START ( msx2_io_map, AS_IO, 8, msx_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x77, 0x77) AM_WRITE(msx_90in1_w)
 	AM_RANGE( 0x7c, 0x7d) AM_WRITE(msx_fmpac_w)
-	AM_RANGE( 0x90, 0x90) AM_DEVREADWRITE_LEGACY("centronics", msx_printer_status_r, msx_printer_strobe_w)
-	AM_RANGE( 0x91, 0x91) AM_DEVWRITE_LEGACY("centronics", msx_printer_data_w)
-	AM_RANGE( 0xa0, 0xa7) AM_DEVREADWRITE_LEGACY("ay8910", ay8910_r, msx_ay8910_w)
+	AM_RANGE( 0x90, 0x90) AM_READWRITE(msx_printer_status_r, msx_printer_strobe_w)
+	AM_RANGE( 0x91, 0x91) AM_WRITE(msx_printer_data_w)
+	AM_RANGE( 0xa0, 0xa7) AM_DEVREAD_LEGACY("ay8910", ay8910_r) AM_WRITE(msx_ay8910_w)
 	AM_RANGE( 0xa8, 0xab) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
 	AM_RANGE( 0x98, 0x9b) AM_DEVREADWRITE("v9938", v9938_device, read, write)
 	AM_RANGE( 0xb4, 0xb4) AM_WRITE(msx_rtc_latch_w)
@@ -1069,7 +1070,7 @@ static MACHINE_CONFIG_START( msx, msx_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_10_738635MHz/3)		  /* 3.579545 MHz */
 	MCFG_CPU_PROGRAM_MAP(msx_memory_map)
 	MCFG_CPU_IO_MAP(msx_io_map)
-	MCFG_CPU_VBLANK_INT("screen", msx_interrupt)	/* Needed for mouse updates */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", msx_state,  msx_interrupt)	/* Needed for mouse updates */
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START_OVERRIDE(msx_state, msx )
@@ -1148,7 +1149,7 @@ static MACHINE_CONFIG_START( msx2, msx_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_21_4772MHz/6)		  /* 3.579545 MHz */
 	MCFG_CPU_PROGRAM_MAP(msx_memory_map)
 	MCFG_CPU_IO_MAP(msx2_io_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", msx2_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", msx_state, msx2_interrupt, "screen", 0, 1)
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
 	MCFG_MACHINE_START_OVERRIDE(msx_state, msx2 )

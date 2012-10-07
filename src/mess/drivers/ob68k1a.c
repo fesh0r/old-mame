@@ -251,8 +251,16 @@ static ACIA6850_INTERFACE( acia1_intf )
 //  COM8116_INTERFACE( dbrg_intf )
 //-------------------------------------------------
 
-static WRITE_LINE_DEVICE_HANDLER( rx_tx_w )
+WRITE_LINE_MEMBER(ob68k1a_state::rx_tx_0_w)
 {
+	device_t *device = machine().device(MC6850_0_TAG);
+	downcast<acia6850_device *>(device)->rx_clock_in();
+	downcast<acia6850_device *>(device)->tx_clock_in();
+}
+
+WRITE_LINE_MEMBER(ob68k1a_state::rx_tx_1_w)
+{
+	device_t *device = machine().device(MC6850_1_TAG);
 	downcast<acia6850_device *>(device)->rx_clock_in();
 	downcast<acia6850_device *>(device)->tx_clock_in();
 }
@@ -260,8 +268,8 @@ static WRITE_LINE_DEVICE_HANDLER( rx_tx_w )
 static COM8116_INTERFACE( dbrg_intf )
 {
 	DEVCB_NULL,		/* fX/4 output */
-	DEVCB_DEVICE_LINE(MC6850_0_TAG, rx_tx_w),
-	DEVCB_DEVICE_LINE(MC6850_1_TAG, rx_tx_w),
+	DEVCB_DRIVER_LINE_MEMBER(ob68k1a_state,rx_tx_0_w),
+	DEVCB_DRIVER_LINE_MEMBER(ob68k1a_state,rx_tx_1_w),
 	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },			/* receiver divisor ROM */
 	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },			/* transmitter divisor ROM */
 };
@@ -288,13 +296,13 @@ static serial_terminal_interface terminal_intf =
 
 void ob68k1a_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	// configure RAM
 	switch (m_ram->size())
 	{
 	case 32*1024:
-		program->unmap_readwrite(0x008000, 0x01ffff);
+		program.unmap_readwrite(0x008000, 0x01ffff);
 		break;
 	}
 }
@@ -306,14 +314,14 @@ void ob68k1a_state::machine_start()
 
 void ob68k1a_state::machine_reset()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	// initialize COM8116
 //  m_dbrg->stt_w(program, 0, 0x01);
 //  m_dbrg->str_w(program, 0, 0x01);
 
 	// set reset vector
-	void *ram = program->get_write_ptr(0);
+	void *ram = program.get_write_ptr(0);
 	UINT8 *rom = memregion(MC68000L10_TAG)->base();
 
 	memcpy(ram, rom, 8);

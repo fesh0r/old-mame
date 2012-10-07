@@ -54,6 +54,12 @@ public:
 	DECLARE_PALETTE_INIT(svisionp);
 	DECLARE_PALETTE_INIT(svisionn);
 	DECLARE_MACHINE_RESET(tvlink);
+	UINT32 screen_update_svision(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_tvlink(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(svision_frame_int);
+	TIMER_CALLBACK_MEMBER(svision_pet_timer);
+	TIMER_CALLBACK_MEMBER(svision_timer);
+	TIMER_DEVICE_CALLBACK_MEMBER(svision_pet_timer_dev);
 };
 
 
@@ -91,8 +97,8 @@ extern const device_type SVISION;
 int *svision_dma_finished(device_t *device);
 void svision_sound_decrement(device_t *device);
 void svision_soundport_w(device_t *device, int which, int offset, int data);
-WRITE8_DEVICE_HANDLER( svision_sounddma_w );
-WRITE8_DEVICE_HANDLER( svision_noise_w );
+DECLARE_WRITE8_DEVICE_HANDLER( svision_sounddma_w );
+DECLARE_WRITE8_DEVICE_HANDLER( svision_noise_w );
 
 
 #endif /* SVISION_H_ */

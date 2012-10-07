@@ -483,7 +483,7 @@ WRITE32_MEMBER(apollo_state::ram_with_parity_w){
 			// no more than 192 read/write handlers may be used
 			// see table_assign_handler in memory.c
 			if (parity_error_handler_install_counter < 40) {
-				//memory_install_read32_handler(&space, ram_base_address+offset*4, ram_base_address+offset*4+3, 0xffffffff, 0, ram_with_parity_r);
+				//memory_install_read32_handler(space, ram_base_address+offset*4, ram_base_address+offset*4+3, 0xffffffff, 0, ram_with_parity_r);
 				space.install_read_handler(ram_base_address+offset*4, ram_base_address+offset*4+3, 0xffffffff,0,read32_delegate(FUNC(apollo_state::ram_with_parity_r),this));
 				parity_error_handler_is_installed = 1;
 				parity_error_handler_install_counter++;
@@ -495,7 +495,7 @@ WRITE32_MEMBER(apollo_state::ram_with_parity_w){
 
 		// uninstall not supported, reinstall previous read handler instead
 
-		// memory_install_rom(&space, ram_base_address, ram_end_address, 0xffffffff, 0, messram_ptr.v);
+		// memory_install_rom(space, ram_base_address, ram_end_address, 0xffffffff, 0, messram_ptr.v);
 		space.install_rom(ram_base_address,ram_end_address,0xffffffff,0,&m_messram_ptr[0]);
 
 		parity_error_handler_is_installed = 0;
@@ -1158,7 +1158,7 @@ INPUT_PORTS_END
 static WRITE8_DEVICE_HANDLER( apollo_kbd_putchar ) {
 	// put keyboard character to the keyboard sio
 //  DLOG1(("apollo_kbd_putchar: 0x%02x", data));
-	apollo_sio_rx_data(device->machine().device(APOLLO_SIO_TAG), 0, data);
+	apollo_sio_rx_data(space.machine().device(APOLLO_SIO_TAG), 0, data);
 }
 
 static READ8_DEVICE_HANDLER( apollo_kbd_has_beeper ) {
@@ -1170,9 +1170,9 @@ static READ8_DEVICE_HANDLER( apollo_kbd_is_german ) {
 }
 
 static APOLLO_KBD_INTERFACE( apollo_kbd_config ) = {
-	apollo_kbd_putchar,
-	apollo_kbd_has_beeper,
-	apollo_kbd_is_german
+	DEVCB_HANDLER(apollo_kbd_putchar),
+	DEVCB_HANDLER(apollo_kbd_has_beeper),
+	DEVCB_HANDLER(apollo_kbd_is_german)
 };
 
 static WRITE8_DEVICE_HANDLER( terminal_kbd_putchar ) {
@@ -1181,7 +1181,7 @@ static WRITE8_DEVICE_HANDLER( terminal_kbd_putchar ) {
 	// FIXME: as of mess0145u1, terminal.c will append a null character after each input character
 	if (data != 0)
 	{
-		apollo_sio_rx_data(device->machine().device(APOLLO_SIO_TAG), 1, data);
+		apollo_sio_rx_data(space.machine().device(APOLLO_SIO_TAG), 1, data);
 	}
 }
 
@@ -1192,7 +1192,7 @@ static GENERIC_TERMINAL_INTERFACE( apollo_terminal_config ) {
 void apollo_terminal_write(UINT8 data) {
 	if (dsp_terminal != NULL) {
 		// output data to the terminal emulator
-		dynamic_cast<generic_terminal_device *>(dsp_terminal)->write(*dsp_terminal->machine().memory().first_space(), 0, data);
+		dynamic_cast<generic_terminal_device *>(dsp_terminal)->write(dsp_terminal->machine().driver_data()->generic_space(), 0, data);
 	}
 }
 

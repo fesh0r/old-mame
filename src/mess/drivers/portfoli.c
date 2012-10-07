@@ -244,14 +244,12 @@ void portfolio_state::scan_keyboard()
 }
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( keyboard_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( keyboard_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( keyboard_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(portfolio_state::keyboard_tick)
 {
-	portfolio_state *state = timer.machine().driver_data<portfolio_state>();
-
-	state->scan_keyboard();
+	scan_keyboard();
 }
 
 //-------------------------------------------------
@@ -367,25 +365,21 @@ WRITE8_MEMBER( portfolio_state::unknown_w )
 //**************************************************************************
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( system_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( system_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( system_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(portfolio_state::system_tick)
 {
-	portfolio_state *state = timer.machine().driver_data<portfolio_state>();
-
-	state->trigger_interrupt(INT_TICK);
+	trigger_interrupt(INT_TICK);
 }
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( counter_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( counter_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( counter_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(portfolio_state::counter_tick)
 {
-	portfolio_state *state = timer.machine().driver_data<portfolio_state>();
-
-	state->m_counter++;
+	m_counter++;
 }
 
 //-------------------------------------------------
@@ -438,18 +432,18 @@ WRITE8_MEMBER( portfolio_state::counter_w )
 
 WRITE8_MEMBER( portfolio_state::ncc1_w )
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	if (BIT(data, 0))
 	{
 		// system ROM
 		UINT8 *rom = memregion(M80C88A_TAG)->base();
-		program->install_rom(0xc0000, 0xdffff, rom);
+		program.install_rom(0xc0000, 0xdffff, rom);
 	}
 	else
 	{
 		// credit card memory
-		program->unmap_readwrite(0xc0000, 0xdffff);
+		program.unmap_readwrite(0xc0000, 0xdffff);
 	}
 
 	//logerror("NCC %02x\n", data);
@@ -655,10 +649,10 @@ void portfolio_state::palette_init()
 //  HD61830_INTERFACE( lcdc_intf )
 //-------------------------------------------------
 
-static READ8_DEVICE_HANDLER( hd61830_rd_r )
+READ8_MEMBER(portfolio_state::hd61830_rd_r)
 {
 	UINT16 address = ((offset & 0xff) << 3) | ((offset >> 12) & 0x07);
-	UINT8 data = device->machine().root_device().memregion(HD61830_TAG)->base()[address];
+	UINT8 data = machine().root_device().memregion(HD61830_TAG)->base()[address];
 
 	return data;
 }
@@ -666,7 +660,7 @@ static READ8_DEVICE_HANDLER( hd61830_rd_r )
 static HD61830_INTERFACE( lcdc_intf )
 {
 	SCREEN_TAG,
-	DEVCB_HANDLER(hd61830_rd_r)
+	DEVCB_DRIVER_MEMBER(portfolio_state,hd61830_rd_r)
 };
 
 //-------------------------------------------------
@@ -763,7 +757,7 @@ static DEVICE_IMAGE_LOAD( portfolio_cart )
 
 void portfolio_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* set CPU interrupt vector callback */
 	m_maincpu->set_irq_acknowledge_callback(portfolio_int_ack);
@@ -772,11 +766,11 @@ void portfolio_state::machine_start()
 	switch (machine().device<ram_device>(RAM_TAG)->size())
 	{
 	case 128 * 1024:
-		program->unmap_readwrite(0x1f000, 0x9efff);
+		program.unmap_readwrite(0x1f000, 0x9efff);
 		break;
 
 	case 384 * 1024:
-		program->unmap_readwrite(0x5f000, 0x9efff);
+		program.unmap_readwrite(0x5f000, 0x9efff);
 		break;
 	}
 
@@ -801,22 +795,22 @@ void portfolio_state::machine_start()
 
 void portfolio_state::machine_reset()
 {
-	address_space *io = m_maincpu->space(AS_IO);
+	address_space &io = m_maincpu->space(AS_IO);
 
 	// peripherals
 	m_pid = ioport("PERIPHERAL")->read();
 
-	io->unmap_readwrite(0x8070, 0x807b);
-	io->unmap_readwrite(0x807d, 0x807e);
+	io.unmap_readwrite(0x8070, 0x807b);
+	io.unmap_readwrite(0x807d, 0x807e);
 
 	switch (m_pid)
 	{
 	case PID_SERIAL:
-		io->install_readwrite_handler(0x8070, 0x8077, read8_delegate(FUNC(ins8250_device::ins8250_r), (ins8250_device*)m_uart), write8_delegate(FUNC(ins8250_device::ins8250_w), (ins8250_device*)m_uart));
+		io.install_readwrite_handler(0x8070, 0x8077, read8_delegate(FUNC(ins8250_device::ins8250_r), (ins8250_device*)m_uart), write8_delegate(FUNC(ins8250_device::ins8250_w), (ins8250_device*)m_uart));
 		break;
 
 	case PID_PARALLEL:
-		io->install_readwrite_handler(0x8078, 0x807b, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
+		io.install_readwrite_handler(0x8078, 0x807b, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
 		break;
 	}
 }
@@ -859,11 +853,11 @@ static MACHINE_CONFIG_START( portfolio, portfolio_state )
 	MCFG_I8255A_ADD(M82C55A_TAG, ppi_intf)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
 	MCFG_INS8250_ADD(M82C50A_TAG, i8250_intf, XTAL_1_8432MHz) // should be MCFG_INS8250A_ADD
-	MCFG_TIMER_ADD_PERIODIC("counter", counter_tick, attotime::from_hz(XTAL_32_768kHz/16384))
-	MCFG_TIMER_ADD_PERIODIC(TIMER_TICK_TAG, system_tick, attotime::from_hz(XTAL_32_768kHz/32768))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("counter", portfolio_state, counter_tick, attotime::from_hz(XTAL_32_768kHz/16384))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC(TIMER_TICK_TAG, portfolio_state, system_tick, attotime::from_hz(XTAL_32_768kHz/32768))
 
 	/* fake keyboard */
-	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, attotime::from_usec(2500))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", portfolio_state, keyboard_tick, attotime::from_usec(2500))
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")

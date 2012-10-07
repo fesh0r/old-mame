@@ -426,7 +426,7 @@ static MACHINE_CONFIG_START( eprom, eprom_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a SYNGEN chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(eprom)
+	MCFG_SCREEN_UPDATE_DRIVER(eprom_state, screen_update_eprom)
 
 	MCFG_VIDEO_START_OVERRIDE(eprom_state,eprom)
 
@@ -457,7 +457,7 @@ static MACHINE_CONFIG_START( klaxp, eprom_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a SYNGEN chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(eprom)
+	MCFG_SCREEN_UPDATE_DRIVER(eprom_state, screen_update_eprom)
 
 	MCFG_VIDEO_START_OVERRIDE(eprom_state,eprom)
 
@@ -488,7 +488,7 @@ static MACHINE_CONFIG_START( guts, eprom_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a SYNGEN chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(guts)
+	MCFG_SCREEN_UPDATE_DRIVER(eprom_state, screen_update_guts)
 
 	MCFG_VIDEO_START_OVERRIDE(eprom_state,guts)
 
@@ -721,8 +721,8 @@ DRIVER_INIT_MEMBER(eprom_state,eprom)
 	atarijsa_init(machine(), "260010", 0x0002);
 
 	/* install CPU synchronization handlers */
-	m_sync_data = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0x16cc00, 0x16cc01, read16_delegate(FUNC(eprom_state::sync_r),this), write16_delegate(FUNC(eprom_state::sync_w),this));
-	m_sync_data = machine().device("extra")->memory().space(AS_PROGRAM)->install_readwrite_handler(0x16cc00, 0x16cc01, read16_delegate(FUNC(eprom_state::sync_r),this), write16_delegate(FUNC(eprom_state::sync_w),this));
+	m_sync_data = machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x16cc00, 0x16cc01, read16_delegate(FUNC(eprom_state::sync_r),this), write16_delegate(FUNC(eprom_state::sync_w),this));
+	m_sync_data = machine().device("extra")->memory().space(AS_PROGRAM).install_readwrite_handler(0x16cc00, 0x16cc01, read16_delegate(FUNC(eprom_state::sync_r),this), write16_delegate(FUNC(eprom_state::sync_w),this));
 }
 
 

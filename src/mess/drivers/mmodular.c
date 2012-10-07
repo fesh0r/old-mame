@@ -195,6 +195,11 @@ public:
 	DECLARE_MACHINE_START(risc);
 	DECLARE_MACHINE_RESET(academy);
 	DECLARE_PALETTE_INIT(chess_lcd);
+	TIMER_DEVICE_CALLBACK_MEMBER(cause_nmi);
+	TIMER_DEVICE_CALLBACK_MEMBER(cause_M6502_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(timer_update_irq6);
+	TIMER_DEVICE_CALLBACK_MEMBER(timer_update_irq2);
+	TIMER_DEVICE_CALLBACK_MEMBER(timer_update_irq_academy);
 };
 
 static HD44780_INTERFACE( chess_display )
@@ -644,7 +649,7 @@ WRITE8_MEMBER(polgar_state::academy_write_board)
 
 	latch_data = data;
 //    logerror("acad_write_latch %02x\n",data);
-	if (data != 0xff) mboard_write_board_8(&space,0, data);
+	if (data != 0xff) mboard_write_board_8(space,0, data);
 }
 
 WRITE8_MEMBER(polgar_state::milano_write_board)
@@ -754,7 +759,7 @@ READ8_MEMBER(polgar_state::read_keys_board_monteciv)
 	UINT8 data = 0;
 
 	if (monteciv_select[0] == 0xff && monteciv_select[1] == 0xff) {
-			data = mboard_read_board_8(&space,0);
+			data = mboard_read_board_8(space,0);
 	} else {
 		if (monteciv_select[0] == 0x0) {
 			data = ioport("BUTTONS_MONTE2")->read();
@@ -792,14 +797,14 @@ READ8_MEMBER(polgar_state::read_keys_board_academy)
 		data = ioport("BUTTONS_ACAD")->read();
 	} else {
 //      if (latch_data & 0x7f) {
-		data = mboard_read_board_8(&space,0);
+		data = mboard_read_board_8(space,0);
 //      data = milano_read_board(space,0);
 
 //          logerror("ReadingBoard %02x\n",latch_data);
 //          line = get_first_cleared_bit(latch_data);
 //          tmp = machine.root_device().ioport(board_lines[line])->read();
-//          mboard_write_board_8(&space,0, latch_data);
-//          data = mboard_read_board_8(&space,0);
+//          mboard_write_board_8(space,0, latch_data);
+//          data = mboard_read_board_8(space,0);
 //          logerror("BoardRead Port Offset = %d data %02x Latch %02x\n", offset,data,latch_data);
 //          printf  ("BoardRead Port Offset = %d data %02x Latch %02x\n", offset,data,latch_data);
 //      } else {
@@ -811,15 +816,15 @@ READ8_MEMBER(polgar_state::read_keys_board_academy)
 	return data;
 }
 
-static TIMER_DEVICE_CALLBACK( cause_nmi )
+TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::cause_nmi)
 {
-	timer.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI,PULSE_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI,PULSE_LINE);
 }
 
-static TIMER_DEVICE_CALLBACK( cause_M6502_irq )
+TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::cause_M6502_irq)
 {
-	timer.machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, ASSERT_LINE);
-	timer.machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(M6502_IRQ_LINE, CLEAR_LINE);
 
 }
 
@@ -885,10 +890,10 @@ WRITE16_MEMBER(polgar_state::write_LCD_data)
 
 }
 
-static void write_IOenable(unsigned char data,address_space *space) {
+static void write_IOenable(unsigned char data,address_space &space) {
 
-	hd44780_device * hd44780 = space->machine().device<hd44780_device>("hd44780");
-	device_t *speaker = space->machine().device("beep");
+	hd44780_device * hd44780 = space.machine().device<hd44780_device>("hd44780");
+	device_t *speaker = space.machine().device("beep");
 
 	if (BIT(data,5) && BIT(data,4)) {
 		if (BIT(data,1)) {
@@ -899,15 +904,15 @@ static void write_IOenable(unsigned char data,address_space *space) {
 			// MAME core does not appear to have this opcode timed right.
 			// This also allows 'fake' clocks to test ELO at impossibly high speeds on real hardware
 			// The original programmer says RAM is 2x as fast as the ROM on the 030 machines, maybe waitstates can be put in MAME core someday
-//          cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(50));
+//          cpu_spinuntil_time(space.cpu, ATTOTIME_IN_USEC(50));
 			if (BIT(data,0)) {
 				logerror("Write LCD_DATA [%02x] [%c]\n",lcd32_char,lcd32_char);
 //              printf("Write LCD_DATA [%02x] [%c]\n",lcd32_char,lcd32_char);
-				hd44780->data_write(*space, 128, lcd32_char);
+				hd44780->data_write(space, 128, lcd32_char);
 			} else {
 				logerror("Write LCD_CTRL [%02x] [%c]\n",lcd32_char,lcd32_char);
 //              printf("Write LCD_CTRL [%02x] [%c]\n",lcd32_char,lcd32_char);
-				hd44780->control_write(*space, 128, lcd32_char);
+				hd44780->control_write(space, 128, lcd32_char);
 			}
 		}
 
@@ -920,12 +925,12 @@ static void write_IOenable(unsigned char data,address_space *space) {
 
 WRITE32_MEMBER(polgar_state::write_IOenables_32){
 
-	write_IOenable(data>>24,&space);
+	write_IOenable(data>>24,space);
 }
 
 WRITE16_MEMBER(polgar_state::write_IOenables)
 {
-	write_IOenable(data>>8,&space);
+	write_IOenable(data>>8,space);
 }
 
 /* Unknown read/write */
@@ -981,21 +986,21 @@ WRITE32_MEMBER(polgar_state::write_1000000)
 	logerror("Write to  RISC2500 1000000\n");
 }
 
-static TIMER_DEVICE_CALLBACK( timer_update_irq6 )
+TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::timer_update_irq6)
 {
-	timer.machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
 }
 
-static TIMER_DEVICE_CALLBACK( timer_update_irq2 )
+TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::timer_update_irq2)
 {
-	timer.machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
 }
 
 
-static TIMER_DEVICE_CALLBACK( timer_update_irq_academy )
+TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::timer_update_irq_academy)
 {
 	if (academyallowNMI) {
-		timer.machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
 	}
 }
 
@@ -1560,7 +1565,7 @@ static MACHINE_CONFIG_START( polgar, polgar_state )
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state, polgar )
 	MCFG_FRAGMENT_ADD( chess_common )
 
-	MCFG_TIMER_ADD_PERIODIC("irq_timer", cause_nmi, attotime::from_hz(600))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer", polgar_state, cause_nmi, attotime::from_hz(600))
 	MCFG_TIMER_START_DELAY(attotime::from_hz(60))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(100))
 
@@ -1577,7 +1582,7 @@ static MACHINE_CONFIG_START( sfortea, polgar_state )
 	/* acia */
 //  MCFG_ACIA6551_ADD("acia65c51")
 
-	MCFG_TIMER_ADD_PERIODIC("irq_timer", cause_M6502_irq, attotime::from_hz(600))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer", polgar_state, cause_M6502_irq, attotime::from_hz(600))
 	MCFG_TIMER_START_DELAY(attotime::from_hz(60))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(100))
 MACHINE_CONFIG_END
@@ -1587,7 +1592,7 @@ static MACHINE_CONFIG_START( alm32, polgar_state )
 	MCFG_CPU_PROGRAM_MAP(alm32_mem)
 	MCFG_MACHINE_START_OVERRIDE(polgar_state,van32)
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state,van16)
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(750))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(750))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(120))
 
 	MCFG_FRAGMENT_ADD( chess_common )
@@ -1600,7 +1605,7 @@ static MACHINE_CONFIG_DERIVED( academy, polgar )
 	MCFG_CPU_PROGRAM_MAP(academy_mem)
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state, academy )
 	//MCFG_DEVICE_REMOVE("int_timer")
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq_academy, attotime::from_hz(600))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq_academy, attotime::from_hz(600))
 
 MACHINE_CONFIG_END
 
@@ -1620,7 +1625,7 @@ static MACHINE_CONFIG_START( monteciv, polgar_state )
 	MCFG_SOUND_ADD("beep", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MCFG_TIMER_ADD_PERIODIC("irq_timer", cause_nmi, attotime::from_hz(600))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer", polgar_state, cause_nmi, attotime::from_hz(600))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(100))
 
 MACHINE_CONFIG_END
@@ -1640,7 +1645,7 @@ static MACHINE_CONFIG_START( diablo68, polgar_state )
 	/* acia */
 //  MCFG_ACIA6551_ADD("acia65c51")
 
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq2, attotime::from_hz(60))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq2, attotime::from_hz(60))
 	MCFG_TIMER_START_DELAY(attotime::from_hz(30))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(120))
 
@@ -1652,8 +1657,8 @@ static MACHINE_CONFIG_START( van16, polgar_state )
 	MCFG_CPU_PROGRAM_MAP(van16_mem)
 	MCFG_MACHINE_START_OVERRIDE(polgar_state,van16)
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state,van16)
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(600))  // chess clock right, diags wrong
-//  MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(587))  // vv
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(600))
+	//MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(587))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(120))
 	MCFG_FRAGMENT_ADD( chess_common )
 	MCFG_NVRAM_ADD_0FILL("nvram")
@@ -1670,7 +1675,7 @@ static MACHINE_CONFIG_START( van32, polgar_state )
 	MCFG_CPU_PROGRAM_MAP(van32_mem)
 	MCFG_MACHINE_START_OVERRIDE(polgar_state,van32)
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state,van16)
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(750))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(750))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(120))
 
 	MCFG_FRAGMENT_ADD( chess_common )
@@ -1695,8 +1700,8 @@ static MACHINE_CONFIG_START( gen32, polgar_state )
 	MCFG_CPU_PROGRAM_MAP(gen32_mem)
 	MCFG_MACHINE_START_OVERRIDE(polgar_state,van32)
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state,van16)
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(375))
-//  MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(368.64))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(375))
+	//MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(368.64))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(120))
 
 	MCFG_FRAGMENT_ADD( chess_common )
@@ -1709,7 +1714,7 @@ static MACHINE_CONFIG_DERIVED( gen32_oc, gen32 )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_CLOCK( XTAL_33_333MHz * 2 )
 	MCFG_DEVICE_REMOVE("int_timer")
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(500))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(500))
 
 
 MACHINE_CONFIG_END
@@ -1719,7 +1724,7 @@ static MACHINE_CONFIG_START( bpl32, polgar_state )
 	MCFG_CPU_PROGRAM_MAP(bpl32_mem)
 	MCFG_MACHINE_START_OVERRIDE(polgar_state,van32)
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state,van16)
-	MCFG_TIMER_ADD_PERIODIC("int_timer", timer_update_irq6, attotime::from_hz(750))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("int_timer", polgar_state, timer_update_irq6, attotime::from_hz(750))
 	MCFG_TIMER_ADD_PERIODIC("artwork_timer", mboard_update_artwork, attotime::from_hz(100))
 
 	MCFG_FRAGMENT_ADD( chess_common )

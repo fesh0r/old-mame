@@ -144,6 +144,54 @@ public:
 	int m_DrawInterlace;
 	virtual void machine_start();
 	virtual void palette_init();
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b0_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b1_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b2_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b3_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b4_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b5_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b6_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b7_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b8_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_b9_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bA_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bB_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bC_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bD_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bE_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bF_w);
+	DECLARE_WRITE8_MEMBER(dgnbeta_ram_bG_w);
+	DECLARE_READ8_MEMBER(d_pia0_pa_r);
+	DECLARE_WRITE8_MEMBER(d_pia0_pa_w);
+	DECLARE_READ8_MEMBER(d_pia0_pb_r);
+	DECLARE_WRITE8_MEMBER(d_pia0_pb_w);
+	DECLARE_WRITE8_MEMBER(d_pia0_cb2_w);
+	DECLARE_WRITE_LINE_MEMBER(d_pia0_irq_a);
+	DECLARE_WRITE_LINE_MEMBER(d_pia0_irq_b);
+	DECLARE_READ8_MEMBER(d_pia1_pa_r);
+	DECLARE_WRITE8_MEMBER(d_pia1_pa_w);
+	DECLARE_READ8_MEMBER(d_pia1_pb_r);
+	DECLARE_WRITE8_MEMBER(d_pia1_pb_w);
+	DECLARE_WRITE_LINE_MEMBER(d_pia1_irq_a);
+	DECLARE_WRITE_LINE_MEMBER(d_pia1_irq_b);
+	DECLARE_READ8_MEMBER(d_pia2_pa_r);
+	DECLARE_WRITE8_MEMBER(d_pia2_pa_w);
+	DECLARE_READ8_MEMBER(d_pia2_pb_r);
+	DECLARE_WRITE8_MEMBER(d_pia2_pb_w);
+	DECLARE_WRITE_LINE_MEMBER(d_pia2_irq_a);
+	DECLARE_WRITE_LINE_MEMBER(d_pia2_irq_b);
+	DECLARE_WRITE_LINE_MEMBER(dgnbeta_fdc_intrq_w);
+	DECLARE_WRITE_LINE_MEMBER(dgnbeta_fdc_drq_w);
+	DECLARE_WRITE_LINE_MEMBER(dgnbeta_vsync_changed);
+	/* 74HC670 4x4bit colour ram */
+	DECLARE_WRITE8_MEMBER(dgnbeta_colour_ram_w);
+	// Page IO at FE00
+	DECLARE_READ8_MEMBER(dgn_beta_page_r);
+	DECLARE_WRITE8_MEMBER(dgn_beta_page_w);
+
+	/*  WD2797 FDC */
+	DECLARE_READ8_HANDLER(dgnbeta_wd2797_r);
+	DECLARE_WRITE8_HANDLER(dgnbeta_wd2797_w);
 };
 
 
@@ -153,16 +201,6 @@ extern const wd17xx_interface dgnbeta_wd17xx_interface;
 extern const pia6821_interface dgnbeta_pia_intf[];
 
 
-
-
-// Page IO at FE00
-READ8_HANDLER( dgn_beta_page_r );
-WRITE8_HANDLER( dgn_beta_page_w );
-
-/*  WD2797 FDC */
-READ8_HANDLER(dgnbeta_wd2797_r);
-WRITE8_HANDLER(dgnbeta_wd2797_w);
-
 void dgn_beta_frame_interrupt (running_machine &machine, int data);
 
 
@@ -170,9 +208,6 @@ void dgn_beta_frame_interrupt (running_machine &machine, int data);
 
 /* mc6845 video display generator */
 void dgnbeta_vid_set_gctrl(running_machine &machine, int data);
-
-/* 74HC670 4x4bit colour ram */
-WRITE8_HANDLER(dgnbeta_colour_ram_w);
 
 extern const mc6845_interface dgnbeta_crtc6845_interface;
 

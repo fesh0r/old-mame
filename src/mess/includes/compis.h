@@ -186,6 +186,10 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void palette_init();
+	UINT32 screen_update_compis2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(compis_vblank_int);
+	TIMER_CALLBACK_MEMBER(internal_timer_int);
+	TIMER_CALLBACK_MEMBER(dma_timer_callback);
 };
 
 
@@ -198,9 +202,5 @@ extern const struct pic8259_interface compis_pic8259_master_config;
 extern const struct pic8259_interface compis_pic8259_slave_config;
 extern const i8251_interface compis_usart_interface;
 extern const upd765_interface compis_fdc_interface;
-
-
-
-INTERRUPT_GEN(compis_vblank_int);
 
 #endif /* COMPIS_H_ */

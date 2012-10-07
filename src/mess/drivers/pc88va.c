@@ -101,6 +101,24 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_pc88va(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(pc88va_vrtc_irq);
+	TIMER_CALLBACK_MEMBER(pc8801fd_upd765_tc_to_zero);
+	TIMER_CALLBACK_MEMBER(t3_mouse_callback);
+	DECLARE_READ8_MEMBER(cpu_8255_c_r);
+	DECLARE_WRITE8_MEMBER(cpu_8255_c_w);
+	DECLARE_READ8_MEMBER(fdc_8255_c_r);
+	DECLARE_WRITE8_MEMBER(fdc_8255_c_w);
+	DECLARE_READ8_MEMBER(r232_ctrl_porta_r);
+	DECLARE_READ8_MEMBER(r232_ctrl_portb_r);
+	DECLARE_READ8_MEMBER(r232_ctrl_portc_r);
+	DECLARE_WRITE8_MEMBER(r232_ctrl_porta_w);
+	DECLARE_WRITE8_MEMBER(r232_ctrl_portb_w);
+	DECLARE_WRITE8_MEMBER(r232_ctrl_portc_w);
+	DECLARE_WRITE_LINE_MEMBER(pc88va_pic_irq);
+	DECLARE_READ8_MEMBER(get_slave_ack);
+	DECLARE_WRITE_LINE_MEMBER(pc88va_pit_out0_changed);
+	DECLARE_WRITE_LINE_MEMBER(pc88va_upd765_interrupt);
 };
 
 
@@ -402,35 +420,34 @@ static void draw_text(running_machine &machine, bitmap_rgb32 &bitmap, const rect
 	}
 }
 
-static SCREEN_UPDATE_RGB32( pc88va )
+UINT32 pc88va_state::screen_update_pc88va(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	pc88va_state *state = screen.machine().driver_data<pc88va_state>();
 	UINT8 pri,cur_pri_lv;
 	UINT32 screen_pri;
 	bitmap.fill(0, cliprect);
 
-	if(state->m_tsp.disp_on == 0) // don't bother if we are under DSPOFF command
+	if(m_tsp.disp_on == 0) // don't bother if we are under DSPOFF command
 		return 0;
 
 	/*
-    state->m_video_pri_reg[0]
+    m_video_pri_reg[0]
     xxxx ---- ---- ---- priority 3
     ---- xxxx ---- ---- priority 2
     ---- ---- xxxx ---- priority 1
     ---- ---- ---- xxxx priority 0
-    state->m_video_pri_reg[1]
+    m_video_pri_reg[1]
     ---- ---- xxxx ---- priority 5
     ---- ---- ---- xxxx priority 4
 
     Note that orthogonality level is actually REVERSED than the level number it indicates, so we have to play a little with the data for an easier usage ...
     */
 
-	screen_pri = (state->m_video_pri_reg[1] & 0x00f0) >> 4; // priority 5
-	screen_pri|= (state->m_video_pri_reg[1] & 0x000f) << 4; // priority 4
-	screen_pri|= (state->m_video_pri_reg[0] & 0xf000) >> 4; // priority 3
-	screen_pri|= (state->m_video_pri_reg[0] & 0x0f00) << 4; // priority 2
-	screen_pri|= (state->m_video_pri_reg[0] & 0x00f0) << 12; // priority 1
-	screen_pri|= (state->m_video_pri_reg[0] & 0x000f) << 20; // priority 0
+	screen_pri = (m_video_pri_reg[1] & 0x00f0) >> 4; // priority 5
+	screen_pri|= (m_video_pri_reg[1] & 0x000f) << 4; // priority 4
+	screen_pri|= (m_video_pri_reg[0] & 0xf000) >> 4; // priority 3
+	screen_pri|= (m_video_pri_reg[0] & 0x0f00) << 4; // priority 2
+	screen_pri|= (m_video_pri_reg[0] & 0x00f0) << 12; // priority 1
+	screen_pri|= (m_video_pri_reg[0] & 0x000f) << 20; // priority 0
 
 	for(pri=0;pri<6;pri++)
 	{
@@ -447,8 +464,8 @@ static SCREEN_UPDATE_RGB32( pc88va )
 			{
 				switch(cur_pri_lv & 3) // (palette color mode)
 				{
-					case 0: draw_text(screen.machine(),bitmap,cliprect); break;
-					case 1: if(state->m_tsp.spr_on) { draw_sprites(screen.machine(),bitmap,cliprect); } break;
+					case 0: draw_text(machine(),bitmap,cliprect); break;
+					case 1: if(m_tsp.spr_on) { draw_sprites(machine(),bitmap,cliprect); } break;
 					case 2: /* A = graphic 0 */ break;
 					case 3: /* B = graphic 1 */ break;
 				}
@@ -650,10 +667,10 @@ WRITE8_MEMBER(pc88va_state::idp_command_w)
 
 static void tsp_sprite_enable(running_machine &machine, UINT32 spr_offset, UINT8 sw_bit)
 {
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	space->write_word(spr_offset, space->read_word(spr_offset) & ~0x200);
-	space->write_word(spr_offset, space->read_word(spr_offset) | (sw_bit & 0x200));
+	space.write_word(spr_offset, space.read_word(spr_offset) & ~0x200);
+	space.write_word(spr_offset, space.read_word(spr_offset) | (sw_bit & 0x200));
 }
 
 /* TODO: very preliminary, needs something showable first */
@@ -943,18 +960,17 @@ WRITE8_MEMBER(pc88va_state::upd765_mc_w)
 	floppy_drive_set_ready_state(floppy_get_device(machine(), 1), (data & 2), 0);
 }
 
-static TIMER_CALLBACK( pc8801fd_upd765_tc_to_zero )
+TIMER_CALLBACK_MEMBER(pc88va_state::pc8801fd_upd765_tc_to_zero)
 {
-//  pc88va_state *state = machine.driver_data<pc88va_state>();
 
-	upd765_tc_w(machine.device("upd765"), 0);
+	upd765_tc_w(machine().device("upd765"), 0);
 }
 
 READ8_MEMBER(pc88va_state::upd765_tc_r)
 {
 
 	upd765_tc_w(machine().device("upd765"), 1);
-	machine().scheduler().timer_set(attotime::from_usec(500), FUNC(pc8801fd_upd765_tc_to_zero));
+	machine().scheduler().timer_set(attotime::from_usec(500), timer_expired_delegate(FUNC(pc88va_state::pc8801fd_upd765_tc_to_zero),this));
 	return 0;
 }
 
@@ -970,8 +986,8 @@ READ8_MEMBER(pc88va_state::pc88va_fdc_r)
 		/* ---x ---- RDY: (0) Busy (1) Ready */
 		case 0x06: // FDC control port 2
 			return 0;
-		case 0x08: return upd765_status_r(machine().device("upd765"), 0);
-		case 0x0a: return upd765_data_r(machine().device("upd765"), 0);
+		case 0x08: return upd765_status_r(machine().device("upd765"), space, 0);
+		case 0x0a: return upd765_data_r(machine().device("upd765"), space, 0);
 	}
 
 	return 0xff;
@@ -1013,7 +1029,7 @@ WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
 			printf("%02x\n",data);
 			break; // FDC control port 2
 		case 0x08: break; // UPD765 status
-		case 0x0a: upd765_data_w(machine().device("upd765"), 0,data); break;
+		case 0x0a: upd765_data_w(machine().device("upd765"), space, 0,data); break;
 	}
 }
 
@@ -1037,13 +1053,12 @@ WRITE16_MEMBER(pc88va_state::screen_ctrl_w)
 	m_screen_ctrl_reg = data;
 }
 
-static TIMER_CALLBACK( t3_mouse_callback )
+TIMER_CALLBACK_MEMBER(pc88va_state::t3_mouse_callback)
 {
-	pc88va_state *state = machine.driver_data<pc88va_state>();
-	if(state->m_timer3_io_reg & 0x80)
+	if(m_timer3_io_reg & 0x80)
 	{
-		pic8259_ir5_w(machine.device("pic8259_slave"), 1);
-		state->m_t3_mouse_timer->adjust(attotime::from_hz(120 >> (state->m_timer3_io_reg & 3)));
+		pic8259_ir5_w(machine().device("pic8259_slave"), 1);
+		m_t3_mouse_timer->adjust(attotime::from_hz(120 >> (m_timer3_io_reg & 3)));
 	}
 }
 
@@ -1395,18 +1410,16 @@ static GFXDECODE_START( pc88va )
 	GFXDECODE_ENTRY( "kanji",   0x00000, pc88va_chars_16x16,  0, 1 )
 GFXDECODE_END
 
-static READ8_DEVICE_HANDLER( cpu_8255_c_r )
+READ8_MEMBER(pc88va_state::cpu_8255_c_r)
 {
-	pc88va_state *state = device->machine().driver_data<pc88va_state>();
 
-	return state->m_i8255_1_pc >> 4;
+	return m_i8255_1_pc >> 4;
 }
 
-static WRITE8_DEVICE_HANDLER( cpu_8255_c_w )
+WRITE8_MEMBER(pc88va_state::cpu_8255_c_w)
 {
-	pc88va_state *state = device->machine().driver_data<pc88va_state>();
 
-	state->m_i8255_0_pc = data;
+	m_i8255_0_pc = data;
 }
 
 static I8255A_INTERFACE( master_fdd_intf )
@@ -1415,22 +1428,20 @@ static I8255A_INTERFACE( master_fdd_intf )
 	DEVCB_NULL,							// Port A write
 	DEVCB_DEVICE_MEMBER("d8255_2s", i8255_device, pa_r), // Port B read
 	DEVCB_NULL,							// Port B write
-	DEVCB_HANDLER(cpu_8255_c_r),		// Port C read
-	DEVCB_HANDLER(cpu_8255_c_w)			// Port C write
+	DEVCB_DRIVER_MEMBER(pc88va_state,cpu_8255_c_r),		// Port C read
+	DEVCB_DRIVER_MEMBER(pc88va_state,cpu_8255_c_w)			// Port C write
 };
 
-static READ8_DEVICE_HANDLER( fdc_8255_c_r )
+READ8_MEMBER(pc88va_state::fdc_8255_c_r)
 {
-	pc88va_state *state = device->machine().driver_data<pc88va_state>();
 
-	return state->m_i8255_0_pc >> 4;
+	return m_i8255_0_pc >> 4;
 }
 
-static WRITE8_DEVICE_HANDLER( fdc_8255_c_w )
+WRITE8_MEMBER(pc88va_state::fdc_8255_c_w)
 {
-	pc88va_state *state = device->machine().driver_data<pc88va_state>();
 
-	state->m_i8255_1_pc = data;
+	m_i8255_1_pc = data;
 }
 
 static I8255A_INTERFACE( slave_fdd_intf )
@@ -1439,60 +1450,60 @@ static I8255A_INTERFACE( slave_fdd_intf )
 	DEVCB_NULL,							// Port A write
 	DEVCB_DEVICE_MEMBER("d8255_2", i8255_device, pa_r), // Port B read
 	DEVCB_NULL,							// Port B write
-	DEVCB_HANDLER(fdc_8255_c_r),		// Port C read
-	DEVCB_HANDLER(fdc_8255_c_w)			// Port C write
+	DEVCB_DRIVER_MEMBER(pc88va_state,fdc_8255_c_r),		// Port C read
+	DEVCB_DRIVER_MEMBER(pc88va_state,fdc_8255_c_w)			// Port C write
 };
 
-static READ8_DEVICE_HANDLER( r232_ctrl_porta_r )
+READ8_MEMBER(pc88va_state::r232_ctrl_porta_r)
 {
 	UINT8 sw5, sw4, sw3, sw2,speed_sw;
 
-	speed_sw = (device->machine().root_device().ioport("SPEED_SW")->read() & 1) ? 0x20 : 0x00;
-	sw5 = (device->machine().root_device().ioport("DSW")->read() & 0x10);
-	sw4 = (device->machine().root_device().ioport("DSW")->read() & 0x08);
-	sw3 = (device->machine().root_device().ioport("DSW")->read() & 0x04);
-	sw2 = (device->machine().root_device().ioport("DSW")->read() & 0x02);
+	speed_sw = (machine().root_device().ioport("SPEED_SW")->read() & 1) ? 0x20 : 0x00;
+	sw5 = (machine().root_device().ioport("DSW")->read() & 0x10);
+	sw4 = (machine().root_device().ioport("DSW")->read() & 0x08);
+	sw3 = (machine().root_device().ioport("DSW")->read() & 0x04);
+	sw2 = (machine().root_device().ioport("DSW")->read() & 0x02);
 
 	return 0xc1 | sw5 | sw4 | sw3 | sw2 | speed_sw;
 }
 
-static READ8_DEVICE_HANDLER( r232_ctrl_portb_r )
+READ8_MEMBER(pc88va_state::r232_ctrl_portb_r)
 {
 	UINT8 xsw1;
 
-	xsw1 = (device->machine().root_device().ioport("DSW")->read() & 1) ? 0 : 8;
+	xsw1 = (machine().root_device().ioport("DSW")->read() & 1) ? 0 : 8;
 
 	return 0xf7 | xsw1;
 }
 
-static READ8_DEVICE_HANDLER( r232_ctrl_portc_r )
+READ8_MEMBER(pc88va_state::r232_ctrl_portc_r)
 {
 	return 0xff;
 }
 
-static WRITE8_DEVICE_HANDLER( r232_ctrl_porta_w )
+WRITE8_MEMBER(pc88va_state::r232_ctrl_porta_w)
 {
 	// ...
 }
 
-static WRITE8_DEVICE_HANDLER( r232_ctrl_portb_w )
+WRITE8_MEMBER(pc88va_state::r232_ctrl_portb_w)
 {
 	// ...
 }
 
-static WRITE8_DEVICE_HANDLER( r232_ctrl_portc_w )
+WRITE8_MEMBER(pc88va_state::r232_ctrl_portc_w)
 {
 	// ...
 }
 
 static I8255_INTERFACE( r232c_ctrl_intf )
 {
-	DEVCB_HANDLER(r232_ctrl_porta_r),						/* Port A read */
-	DEVCB_HANDLER(r232_ctrl_porta_w),						/* Port A write */
-	DEVCB_HANDLER(r232_ctrl_portb_r),						/* Port B read */
-	DEVCB_HANDLER(r232_ctrl_portb_w),						/* Port B write */
-	DEVCB_HANDLER(r232_ctrl_portc_r),						/* Port C read */
-	DEVCB_HANDLER(r232_ctrl_portc_w)						/* Port C write */
+	DEVCB_DRIVER_MEMBER(pc88va_state,r232_ctrl_porta_r),						/* Port A read */
+	DEVCB_DRIVER_MEMBER(pc88va_state,r232_ctrl_porta_w),						/* Port A write */
+	DEVCB_DRIVER_MEMBER(pc88va_state,r232_ctrl_portb_r),						/* Port B read */
+	DEVCB_DRIVER_MEMBER(pc88va_state,r232_ctrl_portb_w),						/* Port B write */
+	DEVCB_DRIVER_MEMBER(pc88va_state,r232_ctrl_portc_r),						/* Port C read */
+	DEVCB_DRIVER_MEMBER(pc88va_state,r232_ctrl_portc_w)						/* Port C write */
 };
 
 static IRQ_CALLBACK(pc88va_irq_callback)
@@ -1500,25 +1511,25 @@ static IRQ_CALLBACK(pc88va_irq_callback)
 	return pic8259_acknowledge( device->machine().device( "pic8259_master" ) );
 }
 
-static WRITE_LINE_DEVICE_HANDLER( pc88va_pic_irq )
+WRITE_LINE_MEMBER(pc88va_state::pc88va_pic_irq)
 {
-	device->machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 //  logerror("PIC#1: set IRQ line to %i\n",interrupt);
 }
 
-static READ8_DEVICE_HANDLER( get_slave_ack )
+READ8_MEMBER(pc88va_state::get_slave_ack)
 {
 	if (offset==7) { // IRQ = 7
-		return pic8259_acknowledge(device->machine().device( "pic8259_slave"));
+		return pic8259_acknowledge(machine().device( "pic8259_slave"));
 	}
 	return 0x00;
 }
 
 static const struct pic8259_interface pc88va_pic8259_master_config =
 {
-	DEVCB_LINE(pc88va_pic_irq),
+	DEVCB_DRIVER_LINE_MEMBER(pc88va_state, pc88va_pic_irq),
 	DEVCB_LINE_VCC,
-	DEVCB_HANDLER(get_slave_ack)
+	DEVCB_DRIVER_MEMBER(pc88va_state,get_slave_ack)
 };
 
 static const struct pic8259_interface pc88va_pic8259_slave_config =
@@ -1532,7 +1543,7 @@ void pc88va_state::machine_start()
 {
 	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pc88va_irq_callback);
 
-	m_t3_mouse_timer = machine().scheduler().timer_alloc(FUNC(t3_mouse_callback));
+	m_t3_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc88va_state::t3_mouse_callback),this));
 	m_t3_mouse_timer->adjust(attotime::never);
 }
 
@@ -1562,9 +1573,9 @@ void pc88va_state::machine_reset()
 	machine().device("fdccpu")->execute().set_input_line_vector(0, 0);
 }
 
-static INTERRUPT_GEN( pc88va_vrtc_irq )
+INTERRUPT_GEN_MEMBER(pc88va_state::pc88va_vrtc_irq)
 {
-	pic8259_ir2_w(device->machine().device("pic8259_master"), 1);
+	pic8259_ir2_w(machine().device("pic8259_master"), 1);
 }
 
 /* Not sure if parameters are correct for pc88va (copied from x68k) */
@@ -1591,9 +1602,9 @@ static const floppy_interface pc88va_floppy_interface =
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( pc88va_pit_out0_changed )
+WRITE_LINE_MEMBER(pc88va_state::pc88va_pit_out0_changed)
 {
-	pic8259_ir0_w(device->machine().device("pic8259_master"), 1);
+	pic8259_ir0_w(machine().device("pic8259_master"), 1);
 }
 
 static const struct pit8253_config pc88va_pit8253_config =
@@ -1603,7 +1614,7 @@ static const struct pit8253_config pc88va_pit8253_config =
 			/* general purpose timer 1 */
 			8000000,
 			DEVCB_NULL,
-			DEVCB_LINE(pc88va_pit_out0_changed)
+			DEVCB_DRIVER_LINE_MEMBER(pc88va_state, pc88va_pit_out0_changed)
 		},
 		{
 			/* BEEP frequency setting */
@@ -1621,18 +1632,17 @@ static const struct pit8253_config pc88va_pit8253_config =
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER(pc88va_upd765_interrupt)
+WRITE_LINE_MEMBER(pc88va_state::pc88va_upd765_interrupt)
 {
-	pc88va_state *drvstate = device->machine().driver_data<pc88va_state>();
-	if(drvstate->m_fdc_mode)
-		pic8259_ir3_w(device->machine().device( "pic8259_slave"), state);
+	if(m_fdc_mode)
+		pic8259_ir3_w(machine().device( "pic8259_slave"), state);
 	else
-		device->machine().device("fdccpu")->execute().set_input_line(0, HOLD_LINE);
+		machine().device("fdccpu")->execute().set_input_line(0, HOLD_LINE);
 };
 
 static const struct upd765_interface pc88va_upd765_interface =
 {
-	DEVCB_LINE(pc88va_upd765_interrupt),
+	DEVCB_DRIVER_LINE_MEMBER(pc88va_state, pc88va_upd765_interrupt),
 	DEVCB_NULL, //DRQ, TODO
 	NULL,
 	UPD765_RDY_PIN_CONNECTED,
@@ -1657,7 +1667,7 @@ static MACHINE_CONFIG_START( pc88va, pc88va_state )
 	MCFG_CPU_ADD("maincpu", V30, 8000000)        /* 8 MHz */
 	MCFG_CPU_PROGRAM_MAP(pc88va_map)
 	MCFG_CPU_IO_MAP(pc88va_io_map)
-	MCFG_CPU_VBLANK_INT("screen",pc88va_vrtc_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pc88va_state, pc88va_vrtc_irq)
 
 	MCFG_CPU_ADD("fdccpu", Z80, 8000000)        /* 8 MHz */
 	MCFG_CPU_PROGRAM_MAP(pc88va_z80_map)
@@ -1669,7 +1679,7 @@ static MACHINE_CONFIG_START( pc88va, pc88va_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
-	MCFG_SCREEN_UPDATE_STATIC( pc88va )
+	MCFG_SCREEN_UPDATE_DRIVER(pc88va_state, screen_update_pc88va)
 
 	MCFG_PALETTE_LENGTH(32)
 //  MCFG_PALETTE_INIT_OVERRIDE(pc88va_state, pc8801 )

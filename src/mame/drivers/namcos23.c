@@ -1228,6 +1228,7 @@ Notes:
 #include "cpu/sh2/sh2.h"
 #include "sound/c352.h"
 #include "machine/nvram.h"
+#include "machine/rtc4543.h"
 
 #define S23_BUSCLOCK	(66664460/2)	/* 33MHz CPU bus clock / input, somehow derived from 14.31721 MHz crystal */
 #define S23_H8CLOCK		(14745600)
@@ -1320,6 +1321,7 @@ class namcos23_state : public driver_device
 public:
 	namcos23_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag) ,
+        m_rtc(*this, "rtc"),
 		m_shared_ram(*this, "shared_ram"),
 		m_charram(*this, "charram"),
 		m_textram(*this, "textram"),
@@ -1333,6 +1335,7 @@ public:
 	render_t m_render;
 
 	tilemap_t *m_bgtilemap;
+    required_device<rtc4543_device> m_rtc;
 	required_shared_ptr<UINT32> m_shared_ram;
 	required_shared_ptr<UINT32> m_charram;
 	required_shared_ptr<UINT32> m_textram;
@@ -1434,6 +1437,9 @@ public:
 	DECLARE_MACHINE_START(s23);
 	DECLARE_VIDEO_START(ss23);
 	DECLARE_MACHINE_RESET(gmen);
+	UINT32 screen_update_ss23(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(s23_interrupt);
+	TIMER_CALLBACK_MEMBER(c361_timer_cb);
 };
 
 
@@ -1744,14 +1750,13 @@ READ16_MEMBER(namcos23_state::s23_ctl_r)
 }
 
 // raster timer.  TC2 indicates it's probably one-shot since it resets it each VBL...
-static TIMER_CALLBACK( c361_timer_cb )
+TIMER_CALLBACK_MEMBER(namcos23_state::c361_timer_cb)
 {
-	namcos23_state *state = machine.driver_data<namcos23_state>();
-	c361_t &c361 = state->m_c361;
+	c361_t &c361 = m_c361;
 
 	if (c361.scanline != 511)
 	{
-		machine.device("maincpu")->execute().set_input_line(MIPS3_IRQ1, ASSERT_LINE);
+		machine().device("maincpu")->execute().set_input_line(MIPS3_IRQ1, ASSERT_LINE);
 		c361.timer->adjust(attotime::never);
 	}
 }
@@ -2128,14 +2133,14 @@ static void p3d_flush(namcos23_state *state, const UINT16 *p, int size)
 	render.count[render.cur]++;
 }
 
-static void p3d_dma(address_space *space, UINT32 adr, UINT32 size)
+static void p3d_dma(address_space &space, UINT32 adr, UINT32 size)
 {
-	namcos23_state *state = space->machine().driver_data<namcos23_state>();
+	namcos23_state *state = space.machine().driver_data<namcos23_state>();
 	UINT16 buffer[256];
 	adr &= 0x1fffffff;
 	int pos = 0;
 	while(pos < size) {
-		UINT16 h = space->read_word(adr+pos);
+		UINT16 h = space.read_word(adr+pos);
 
 		pos += 2;
 
@@ -2155,7 +2160,7 @@ static void p3d_dma(address_space *space, UINT32 adr, UINT32 size)
 		}
 
 		for(int i=0; i < psize; i++) {
-			buffer[i] = space->read_word(adr+pos);
+			buffer[i] = space.read_word(adr+pos);
 			pos += 2;
 		}
 
@@ -2199,7 +2204,7 @@ WRITE32_MEMBER(namcos23_state::p3d_w)
 	case 0x8: COMBINE_DATA(&m_p3d_size); return;
 	case 0x9:
 		if(data & 1)
-			p3d_dma(&space, m_p3d_address, m_p3d_size);
+			p3d_dma(space, m_p3d_address, m_p3d_size);
 		return;
 	case 0x17:
 		machine().device("maincpu")->execute().set_input_line(MIPS3_IRQ1, CLEAR_LINE);
@@ -2418,28 +2423,26 @@ VIDEO_START_MEMBER(namcos23_state,ss23)
 	m_render.polymgr = poly_alloc(machine(), 10000, sizeof(namcos23_render_data), 0);
 }
 
-static SCREEN_UPDATE_RGB32( ss23 )
+UINT32 namcos23_state::screen_update_ss23(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	namcos23_state *state = screen.machine().driver_data<namcos23_state>();
-	bitmap.fill(get_black_pen(screen.machine()), cliprect);
+	bitmap.fill(get_black_pen(machine()), cliprect);
 
-	render_run( screen.machine(), bitmap );
+	render_run( machine(), bitmap );
 
-	gfx_element *gfx = screen.machine().gfx[0];
+	gfx_element *gfx = machine().gfx[0];
 	gfx->mark_all_dirty();
 
-	state->m_bgtilemap->draw(bitmap, cliprect, 0/*flags*/, 0/*priority*/ ); /* opaque */
+	m_bgtilemap->draw(bitmap, cliprect, 0/*flags*/, 0/*priority*/ ); /* opaque */
 	return 0;
 }
 
-static INTERRUPT_GEN(s23_interrupt)
+INTERRUPT_GEN_MEMBER(namcos23_state::s23_interrupt)
 {
-	namcos23_state *state = device->machine().driver_data<namcos23_state>();
-	render_t &render = state->m_render;
+	render_t &render = m_render;
 
-	if(!state->m_ctl_vbl_active) {
-		state->m_ctl_vbl_active = true;
-		device->execute().set_input_line(MIPS3_IRQ0, ASSERT_LINE);
+	if(!m_ctl_vbl_active) {
+		m_ctl_vbl_active = true;
+		device.execute().set_input_line(MIPS3_IRQ0, ASSERT_LINE);
 	}
 
 	render.cur = !render.cur;
@@ -2449,7 +2452,7 @@ static INTERRUPT_GEN(s23_interrupt)
 MACHINE_START_MEMBER(namcos23_state,s23)
 {
 	c361_t &c361 = m_c361;
-	c361.timer = machine().scheduler().timer_alloc(FUNC(c361_timer_cb));
+	c361.timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(namcos23_state::c361_timer_cb),this));
 	c361.timer->adjust(attotime::never);
 }
 
@@ -2610,57 +2613,21 @@ READ8_MEMBER(namcos23_state::s23_mcu_pa_r)
 WRITE8_MEMBER(namcos23_state::s23_mcu_pa_w)
 {
 	// bit 0 = chip enable for the RTC
-	// reset the state on the rising edge of the bit
-	if ((!(m_s23_porta & 1)) && (data & 1))
-	{
-		m_s23_rtcstate = 0;
-	}
-
+    m_rtc->ce_w(data & 1);
 	m_s23_porta = data;
-}
-
-INLINE UINT8 make_bcd(UINT8 data)
-{
-	return ((data / 10) << 4) | (data % 10);
 }
 
 READ8_MEMBER(namcos23_state::s23_mcu_rtc_r)
 {
-	UINT8 ret = 0;
-	system_time systime;
-	static const int weekday[7] = { 7, 1, 2, 3, 4, 5, 6 };
+    UINT8 ret = 0;
 
-	machine().current_datetime(systime);
-
-	switch (m_s23_rtcstate)
-	{
-		case 0:
-			ret = make_bcd(systime.local_time.second);	// seconds (BCD, 0-59) in bits 0-6, bit 7 = battery low
-			break;
-		case 1:
-			ret = make_bcd(systime.local_time.minute);	// minutes (BCD, 0-59)
-			break;
-		case 2:
-			ret = make_bcd(systime.local_time.hour);	// hour (BCD, 0-23)
-			break;
-		case 3:
-			ret = make_bcd(weekday[systime.local_time.weekday]);	// low nibble = day of the week
-			ret |= (make_bcd(systime.local_time.mday) & 0x0f)<<4;	// high nibble = low digit of day
-			break;
-		case 4:
-			ret = (make_bcd(systime.local_time.mday) >> 4);			// low nibble = high digit of day
-			ret |= (make_bcd(systime.local_time.month + 1) & 0x0f)<<4;	// high nibble = low digit of month
-			break;
-		case 5:
-			ret = make_bcd(systime.local_time.month + 1) >> 4;	// low nibble = high digit of month
-			ret |= (make_bcd(systime.local_time.year % 10) << 4);	// high nibble = low digit of year
-			break;
-		case 6:
-			ret = make_bcd(systime.local_time.year % 100) >> 4;	// low nibble = tens digit of year (BCD, 0-9)
-			break;
-	}
-
-	m_s23_rtcstate++;
+    for (int i = 0; i < 8; i++)
+    {
+        m_rtc->clk_w(0);
+        m_rtc->clk_w(1);
+        ret <<= 1;
+        ret |= m_rtc->data_r();
+    }
 
 	return ret;
 }
@@ -3148,12 +3115,12 @@ static MACHINE_CONFIG_START( gorgon, namcos23_state )
 	MCFG_CPU_ADD("maincpu", R4650BE, S23_BUSCLOCK*4)
 	MCFG_CPU_CONFIG(r4650_config)
 	MCFG_CPU_PROGRAM_MAP(gorgon_map)
-	MCFG_CPU_VBLANK_INT("screen", s23_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos23_state,  s23_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H83002, S23_H8CLOCK )
 	MCFG_CPU_PROGRAM_MAP( s23h8rwmap )
 	MCFG_CPU_IO_MAP( s23h8iomap )
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos23_state,  irq1_line_pulse)
 
 	MCFG_CPU_ADD("ioboard", H83334, S23_H8CLOCK )
 	MCFG_CPU_PROGRAM_MAP( gorgoniobrdmap )
@@ -3161,12 +3128,14 @@ static MACHINE_CONFIG_START( gorgon, namcos23_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60000))
 
+    MCFG_RTC4543_ADD("rtc", XTAL_32_768kHz)
+
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(S23_VSYNC1)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // Not in any way accurate
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
-	MCFG_SCREEN_UPDATE_STATIC(ss23)
+	MCFG_SCREEN_UPDATE_DRIVER(namcos23_state, screen_update_ss23)
 
 	MCFG_PALETTE_LENGTH(0x8000)
 
@@ -3193,12 +3162,12 @@ static MACHINE_CONFIG_START( s23, namcos23_state )
 	MCFG_CPU_ADD("maincpu", R4650BE, S23_BUSCLOCK*4)
 	MCFG_CPU_CONFIG(r4650_config)
 	MCFG_CPU_PROGRAM_MAP(ss23_map)
-	MCFG_CPU_VBLANK_INT("screen", s23_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos23_state,  s23_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H83002, S23_H8CLOCK )
 	MCFG_CPU_PROGRAM_MAP( s23h8rwmap )
 	MCFG_CPU_IO_MAP( s23h8iomap )
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos23_state,  irq1_line_pulse)
 
 	MCFG_CPU_ADD("ioboard", H83334, S23_H8CLOCK )
 	MCFG_CPU_PROGRAM_MAP( s23iobrdmap )
@@ -3206,12 +3175,14 @@ static MACHINE_CONFIG_START( s23, namcos23_state )
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60000))
 
+    MCFG_RTC4543_ADD("rtc", XTAL_32_768kHz)
+
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(S23_VSYNC1)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // Not in any way accurate
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
-	MCFG_SCREEN_UPDATE_STATIC(ss23)
+	MCFG_SCREEN_UPDATE_DRIVER(namcos23_state, screen_update_ss23)
 
 	MCFG_PALETTE_LENGTH(0x8000)
 
@@ -3238,21 +3209,23 @@ static MACHINE_CONFIG_START( ss23, namcos23_state )
 	MCFG_CPU_ADD("maincpu", R4650BE, S23_BUSCLOCK*5)
 	MCFG_CPU_CONFIG(r4650_config)
 	MCFG_CPU_PROGRAM_MAP(ss23_map)
-	MCFG_CPU_VBLANK_INT("screen", s23_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos23_state,  s23_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H83002, S23_H8CLOCK )
 	MCFG_CPU_PROGRAM_MAP( s23h8rwmap )
 	MCFG_CPU_IO_MAP( s23h8noiobmap )
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos23_state,  irq1_line_pulse)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60000))
+
+    MCFG_RTC4543_ADD("rtc", XTAL_32_768kHz)
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(S23_VSYNC1)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // Not in any way accurate
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
-	MCFG_SCREEN_UPDATE_STATIC(ss23)
+	MCFG_SCREEN_UPDATE_DRIVER(namcos23_state, screen_update_ss23)
 
 	MCFG_PALETTE_LENGTH(0x8000)
 

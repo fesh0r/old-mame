@@ -111,24 +111,31 @@ protected:
 	virtual void machine_start();
 	virtual void video_start();
 	virtual void palette_init();
+public:
+	UINT32 screen_update_bml3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(bml3_irq);
+	INTERRUPT_GEN_MEMBER(bml3_timer_firq);
+	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_callback);
+	DECLARE_READ8_MEMBER(bml3_ym2203_r);
+	DECLARE_WRITE8_MEMBER(bml3_ym2203_w);
 };
 
-#define mc6845_h_char_total 	(state->m_crtc_vreg[0])
-#define mc6845_h_display		(state->m_crtc_vreg[1])
-#define mc6845_h_sync_pos		(state->m_crtc_vreg[2])
-#define mc6845_sync_width		(state->m_crtc_vreg[3])
-#define mc6845_v_char_total		(state->m_crtc_vreg[4])
-#define mc6845_v_total_adj		(state->m_crtc_vreg[5])
-#define mc6845_v_display		(state->m_crtc_vreg[6])
-#define mc6845_v_sync_pos		(state->m_crtc_vreg[7])
-#define mc6845_mode_ctrl		(state->m_crtc_vreg[8])
-#define mc6845_tile_height		(state->m_crtc_vreg[9]+1)
-#define mc6845_cursor_y_start	(state->m_crtc_vreg[0x0a])
-#define mc6845_cursor_y_end 	(state->m_crtc_vreg[0x0b])
-#define mc6845_start_addr		(((state->m_crtc_vreg[0x0c]<<8) & 0x3f00) | (state->m_crtc_vreg[0x0d] & 0xff))
-#define mc6845_cursor_addr  	(((state->m_crtc_vreg[0x0e]<<8) & 0x3f00) | (state->m_crtc_vreg[0x0f] & 0xff))
-#define mc6845_light_pen_addr	(((state->m_crtc_vreg[0x10]<<8) & 0x3f00) | (state->m_crtc_vreg[0x11] & 0xff))
-#define mc6845_update_addr  	(((state->m_crtc_vreg[0x12]<<8) & 0x3f00) | (state->m_crtc_vreg[0x13] & 0xff))
+#define mc6845_h_char_total 	(m_crtc_vreg[0])
+#define mc6845_h_display		(m_crtc_vreg[1])
+#define mc6845_h_sync_pos		(m_crtc_vreg[2])
+#define mc6845_sync_width		(m_crtc_vreg[3])
+#define mc6845_v_char_total		(m_crtc_vreg[4])
+#define mc6845_v_total_adj		(m_crtc_vreg[5])
+#define mc6845_v_display		(m_crtc_vreg[6])
+#define mc6845_v_sync_pos		(m_crtc_vreg[7])
+#define mc6845_mode_ctrl		(m_crtc_vreg[8])
+#define mc6845_tile_height		(m_crtc_vreg[9]+1)
+#define mc6845_cursor_y_start	(m_crtc_vreg[0x0a])
+#define mc6845_cursor_y_end 	(m_crtc_vreg[0x0b])
+#define mc6845_start_addr		(((m_crtc_vreg[0x0c]<<8) & 0x3f00) | (m_crtc_vreg[0x0d] & 0xff))
+#define mc6845_cursor_addr  	(((m_crtc_vreg[0x0e]<<8) & 0x3f00) | (m_crtc_vreg[0x0f] & 0xff))
+#define mc6845_light_pen_addr	(((m_crtc_vreg[0x10]<<8) & 0x3f00) | (m_crtc_vreg[0x11] & 0xff))
+#define mc6845_update_addr  	(((m_crtc_vreg[0x12]<<8) & 0x3f00) | (m_crtc_vreg[0x13] & 0xff))
 
 
 void bml3_state::video_start()
@@ -136,20 +143,19 @@ void bml3_state::video_start()
 	m_p_chargen = memregion("chargen")->base();
 }
 
-static SCREEN_UPDATE_IND16( bml3 )
+UINT32 bml3_state::screen_update_bml3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	bml3_state *state = screen.machine().driver_data<bml3_state>();
 	int x,y,count;
 	int xi,yi;
 	int width; //,height;
-	UINT8 *vram = state->memregion("vram")->base();
+	UINT8 *vram = memregion("vram")->base();
 
 	count = 0x0000;
 
-	width = (state->m_hres_reg & 0x80) ? 80 : 40;
-//  height = (state->m_vres_reg & 0x08) ? 1 : 0;
+	width = (m_hres_reg & 0x80) ? 80 : 40;
+//  height = (m_vres_reg & 0x08) ? 1 : 0;
 
-//  popmessage("%02x %02x",state->m_hres_reg,state->m_vres_reg);
+//  popmessage("%02x %02x",m_hres_reg,m_vres_reg);
 
 	for(y=0;y<25;y++)
 	{
@@ -168,9 +174,9 @@ static SCREEN_UPDATE_IND16( bml3 )
 					int pen;
 
 					if(reverse)
-						pen = (state->m_p_chargen[tile*16+yi*2+tile_bank] >> (7-xi) & 1) ? 0 : color;
+						pen = (m_p_chargen[tile*16+yi*2+tile_bank] >> (7-xi) & 1) ? 0 : color;
 					else
-						pen = (state->m_p_chargen[tile*16+yi*2+tile_bank] >> (7-xi) & 1) ? color : 0;
+						pen = (m_p_chargen[tile*16+yi*2+tile_bank] >> (7-xi) & 1) ? color : 0;
 
 					bitmap.pix16(y*mc6845_tile_height+yi, x*8+xi) = pen;
 				}
@@ -185,8 +191,8 @@ static SCREEN_UPDATE_IND16( bml3 )
 				{
 					case 0x00: cursor_on = 1; break; //always on
 					case 0x20: cursor_on = 0; break; //always off
-					case 0x40: if(screen.machine().primary_screen->frame_number() & 0x10) { cursor_on = 1; } break; //fast blink
-					case 0x60: if(screen.machine().primary_screen->frame_number() & 0x20) { cursor_on = 1; } break; //slow blink
+					case 0x40: if(machine().primary_screen->frame_number() & 0x10) { cursor_on = 1; } break; //fast blink
+					case 0x60: if(machine().primary_screen->frame_number() & 0x20) { cursor_on = 1; } break; //slow blink
 				}
 
 				if(cursor_on)
@@ -325,20 +331,20 @@ WRITE8_MEMBER( bml3_state::bml3_psg_latch_w)
 	m_psg_latch = data;
 }
 
-static READ8_DEVICE_HANDLER( bml3_ym2203_r )
+READ8_MEMBER(bml3_state::bml3_ym2203_r)
 {
-	bml3_state *state = device->machine().driver_data<bml3_state>();
-	UINT8 dev_offs = ((state->m_psg_latch & 3) != 3);
+	device_t *device = machine().device("ym2203");
+	UINT8 dev_offs = ((m_psg_latch & 3) != 3);
 
-	return ym2203_r(device,dev_offs);
+	return ym2203_r(device,space, dev_offs);
 }
 
-static WRITE8_DEVICE_HANDLER( bml3_ym2203_w )
+WRITE8_MEMBER(bml3_state::bml3_ym2203_w)
 {
-	bml3_state *state = device->machine().driver_data<bml3_state>();
-	UINT8 dev_offs = ((state->m_psg_latch & 3) != 3);
+	device_t *device = machine().device("ym2203");
+	UINT8 dev_offs = ((m_psg_latch & 3) != 3);
 
-	ym2203_w(device,dev_offs,data);
+	ym2203_w(device,space, dev_offs,data);
 }
 
 READ8_MEMBER( bml3_state::bml3_vram_attr_r)
@@ -400,7 +406,7 @@ static ADDRESS_MAP_START(bml3_mem, AS_PROGRAM, 8, bml3_state)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0400, 0x43ff) AM_READWRITE(bml3_vram_r,bml3_vram_w)
 	AM_RANGE(0x4400, 0x9fff) AM_RAM
-	AM_RANGE(0xff00, 0xff00) AM_DEVREADWRITE_LEGACY("ym2203",bml3_ym2203_r,bml3_ym2203_w)
+	AM_RANGE(0xff00, 0xff00) AM_READWRITE(bml3_ym2203_r,bml3_ym2203_w)
 	AM_RANGE(0xff02, 0xff02) AM_READWRITE(bml3_psg_latch_r,bml3_psg_latch_w) // PSG address/data select
 	AM_RANGE(0xff18, 0xff1f) AM_DEVREADWRITE_LEGACY("mc6843",mc6843_r,mc6843_w)
 	AM_RANGE(0xff20, 0xff20) AM_READWRITE(bml3_fdd_r,bml3_fdd_w) // FDD drive select
@@ -572,9 +578,8 @@ static const mc6845_interface mc6845_intf =
 	NULL		/* update address callback */
 };
 
-static TIMER_DEVICE_CALLBACK( keyboard_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(bml3_state::keyboard_callback)
 {
-	bml3_state *state = timer.machine().driver_data<bml3_state>();
 	static const char *const portnames[3] = { "key1","key2","key3" };
 	int i,port_i,scancode;
 	scancode = 0;
@@ -583,12 +588,12 @@ static TIMER_DEVICE_CALLBACK( keyboard_callback )
 	{
 		for(i=0;i<32;i++)
 		{
-			if((timer.machine().root_device().ioport(portnames[port_i])->read()>>i) & 1)
+			if((machine().root_device().ioport(portnames[port_i])->read()>>i) & 1)
 			{
 				{
-					state->m_keyb_press = scancode;
-					state->m_keyb_press_flag = 1;
-					timer.machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
+					m_keyb_press = scancode;
+					m_keyb_press_flag = 1;
+					machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 					return;
 				}
 			}
@@ -599,21 +604,20 @@ static TIMER_DEVICE_CALLBACK( keyboard_callback )
 }
 
 #if 0
-static INTERRUPT_GEN( bml3_irq )
+INTERRUPT_GEN_MEMBER(bml3_state::bml3_irq)
 {
-	device->machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 }
 #endif
 
 
-static INTERRUPT_GEN( bml3_timer_firq )
+INTERRUPT_GEN_MEMBER(bml3_state::bml3_timer_firq)
 {
-	bml3_state *state = device->machine().driver_data<bml3_state>();
 
-	if(!state->m_firq_mask)
+	if(!m_firq_mask)
 	{
-		state->m_maincpu->set_input_line(M6809_FIRQ_LINE, ASSERT_LINE);
-		state->m_firq_status = 1;
+		m_maincpu->set_input_line(M6809_FIRQ_LINE, ASSERT_LINE);
+		m_firq_status = 1;
 	}
 }
 
@@ -635,16 +639,16 @@ void bml3_state::machine_start()
 
 void bml3_state::machine_reset()
 {
-	address_space *mem = m_maincpu->space(AS_PROGRAM);
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 
 	/* defaults */
-	mem->install_rom(0xa000, 0xfeff,mem->machine().root_device().memregion("maincpu")->base() + 0xa000);
-	mem->install_rom(0xfff0, 0xffff,mem->machine().root_device().memregion("maincpu")->base() + 0xfff0);
-	mem->install_write_handler(0xa000, 0xbfff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_a000_w), this),0);
-	mem->install_write_handler(0xc000, 0xdfff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_c000_w), this),0);
-	mem->install_write_handler(0xe000, 0xefff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_e000_w), this),0);
-	mem->install_write_handler(0xf000, 0xfeff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_f000_w), this),0);
-	mem->install_write_handler(0xfff0, 0xffff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_fff0_w), this),0);
+	mem.install_rom(0xa000, 0xfeff,mem.machine().root_device().memregion("maincpu")->base() + 0xa000);
+	mem.install_rom(0xfff0, 0xffff,mem.machine().root_device().memregion("maincpu")->base() + 0xfff0);
+	mem.install_write_handler(0xa000, 0xbfff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_a000_w), this),0);
+	mem.install_write_handler(0xc000, 0xdfff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_c000_w), this),0);
+	mem.install_write_handler(0xe000, 0xefff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_e000_w), this),0);
+	mem.install_write_handler(0xf000, 0xfeff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_f000_w), this),0);
+	mem.install_write_handler(0xfff0, 0xffff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_fff0_w), this),0);
 
 	m_firq_mask = -1; // disable firq
 }
@@ -699,7 +703,7 @@ const mc6843_interface bml3_6843_if = { NULL };
 
 WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 {
-	address_space *mem = m_maincpu->space(AS_PROGRAM);
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 	/* ROM banking:
     -0-- --0- 0xa000 - 0xbfff ROM R RAM W
     -1-- --0- 0xa000 - 0xbfff RAM R/W
@@ -719,15 +723,15 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 	{
 		if(data & 0x40)
 		{
-			mem->install_readwrite_handler(0xa000, 0xbfff, 0, 0,
+			mem.install_readwrite_handler(0xa000, 0xbfff, 0, 0,
 				read8_delegate(FUNC(bml3_state::bml3_a000_r), this),
 				write8_delegate(FUNC(bml3_state::bml3_a000_w), this), 0);
 		}
 		else
 		{
-			mem->install_rom(0xa000, 0xbfff,
-				mem->machine().root_device().memregion("maincpu")->base() + 0xa000);
-			mem->install_write_handler(0xa000, 0xbfff, 0, 0,
+			mem.install_rom(0xa000, 0xbfff,
+				mem.machine().root_device().memregion("maincpu")->base() + 0xa000);
+			mem.install_write_handler(0xa000, 0xbfff, 0, 0,
 				write8_delegate(FUNC(bml3_state::bml3_a000_w), this),
 				0);
 		}
@@ -737,15 +741,15 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 	{
 		if(data & 0x40)
 		{
-			mem->install_readwrite_handler(0xc000, 0xdfff, 0, 0,
+			mem.install_readwrite_handler(0xc000, 0xdfff, 0, 0,
 				read8_delegate(FUNC(bml3_state::bml3_c000_r), this),
 				write8_delegate(FUNC(bml3_state::bml3_c000_w), this), 0);
 		}
 		else
 		{
-			mem->install_rom(0xc000, 0xdfff,
-				mem->machine().root_device().memregion("maincpu")->base() + 0xc000);
-			mem->install_write_handler(0xc000, 0xdfff, 0, 0,
+			mem.install_rom(0xc000, 0xdfff,
+				mem.machine().root_device().memregion("maincpu")->base() + 0xc000);
+			mem.install_write_handler(0xc000, 0xdfff, 0, 0,
 				write8_delegate(FUNC(bml3_state::bml3_c000_w), this),
 				0);
 		}
@@ -755,15 +759,15 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 	{
 		if(data & 0x80)
 		{
-			mem->install_readwrite_handler(0xe000, 0xefff, 0, 0,
+			mem.install_readwrite_handler(0xe000, 0xefff, 0, 0,
 				read8_delegate(FUNC(bml3_state::bml3_e000_r), this),
 				write8_delegate(FUNC(bml3_state::bml3_e000_w), this), 0);
 		}
 		else
 		{
-			mem->install_rom(0xe000, 0xefff,
-				mem->machine().root_device().memregion("maincpu")->base() + 0xe000);
-			mem->install_write_handler(0xe000, 0xefff, 0, 0,
+			mem.install_rom(0xe000, 0xefff,
+				mem.machine().root_device().memregion("maincpu")->base() + 0xe000);
+			mem.install_write_handler(0xe000, 0xefff, 0, 0,
 				write8_delegate(FUNC(bml3_state::bml3_e000_w), this),
 				0);
 		}
@@ -771,30 +775,30 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 
 	if(data & 1)
 	{
-		mem->install_readwrite_handler(0xf000, 0xfeff, 0, 0,
+		mem.install_readwrite_handler(0xf000, 0xfeff, 0, 0,
 			read8_delegate(FUNC(bml3_state::bml3_f000_r), this),
 			write8_delegate(FUNC(bml3_state::bml3_f000_w), this), 0);
 	}
 	else
 	{
-		mem->install_rom(0xf000, 0xfeff,
-			mem->machine().root_device().memregion("maincpu")->base() + 0xf000);
-		mem->install_write_handler(0xf000, 0xfeff, 0, 0,
+		mem.install_rom(0xf000, 0xfeff,
+			mem.machine().root_device().memregion("maincpu")->base() + 0xf000);
+		mem.install_write_handler(0xf000, 0xfeff, 0, 0,
 			write8_delegate(FUNC(bml3_state::bml3_f000_w), this),
 			0);
 	}
 
 	if(data & 2)
 	{
-		mem->install_readwrite_handler(0xfff0, 0xffff, 0, 0,
+		mem.install_readwrite_handler(0xfff0, 0xffff, 0, 0,
 			read8_delegate(FUNC(bml3_state::bml3_fff0_r), this),
 			write8_delegate(FUNC(bml3_state::bml3_fff0_w), this), 0);
 	}
 	else
 	{
-		mem->install_rom(0xfff0, 0xffff,
-			mem->machine().root_device().memregion("maincpu")->base() + 0xfff0);
-		mem->install_write_handler(0xfff0, 0xffff, 0, 0,
+		mem.install_rom(0xfff0, 0xffff,
+			mem.machine().root_device().memregion("maincpu")->base() + 0xfff0);
+		mem.install_write_handler(0xfff0, 0xffff, 0, 0,
 			write8_delegate(FUNC(bml3_state::bml3_fff0_w), this),
 			0);
 	}
@@ -888,8 +892,8 @@ static MACHINE_CONFIG_START( bml3, bml3_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu",M6809, XTAL_1MHz)
 	MCFG_CPU_PROGRAM_MAP(bml3_mem)
-	MCFG_CPU_VBLANK_INT("screen", bml3_timer_firq )
-//  MCFG_CPU_PERIODIC_INT(bml3_firq,45)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", bml3_state,  bml3_timer_firq)
+//  MCFG_CPU_PERIODIC_INT_DRIVER(bml3_state, bml3_firq, 45)
 
 //  MCFG_MACHINE_RESET_OVERRIDE(bml3_state,bml3)
 
@@ -899,13 +903,13 @@ static MACHINE_CONFIG_START( bml3, bml3_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 200-1)
-	MCFG_SCREEN_UPDATE_STATIC(bml3)
+	MCFG_SCREEN_UPDATE_DRIVER(bml3_state, screen_update_bml3)
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_GFXDECODE(bml3)
 
 	/* Devices */
 	MCFG_MC6845_ADD("crtc", H46505, XTAL_1MHz, mc6845_intf)
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(240/8))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", bml3_state, keyboard_callback, attotime::from_hz(240/8))
 	MCFG_MC6843_ADD( "mc6843", bml3_6843_if )
 	MCFG_PIA6821_ADD("pia6821", bml3_pia_config)
 	MCFG_ACIA6850_ADD("acia6850", bml3_acia_if)

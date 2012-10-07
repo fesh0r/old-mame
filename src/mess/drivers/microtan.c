@@ -219,7 +219,7 @@ static MACHINE_CONFIG_START( microtan, microtan_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, 750000)	// 750 kHz
 	MCFG_CPU_PROGRAM_MAP(microtan_map)
-	MCFG_CPU_VBLANK_INT("screen", microtan_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", microtan_state,  microtan_interrupt)
 
 
     /* video hardware - include overscan */
@@ -228,7 +228,7 @@ static MACHINE_CONFIG_START( microtan, microtan_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(32*8, 16*16)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*16, 16*16-1)
-	MCFG_SCREEN_UPDATE_STATIC(microtan)
+	MCFG_SCREEN_UPDATE_DRIVER(microtan_state, screen_update_microtan)
 
 	MCFG_GFXDECODE(microtan)
 	MCFG_PALETTE_LENGTH(2)

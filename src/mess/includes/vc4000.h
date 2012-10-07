@@ -96,15 +96,9 @@ public:
 	optional_device<cassette_image_device> m_cass;
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_vc4000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vc4000_video_line);
 };
-
-
-/*----------- defined in video/vc4000.c -----------*/
-
-extern INTERRUPT_GEN( vc4000_video_line );
-extern VIDEO_START( vc4000 );
-extern SCREEN_UPDATE_IND16( vc4000 );
-
 
 /*----------- defined in audio/vc4000.c -----------*/
 

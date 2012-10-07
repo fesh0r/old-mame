@@ -63,6 +63,9 @@ public:
 	DECLARE_READ8_MEMBER(vsc_pio_porta_r);
 	DECLARE_READ8_MEMBER(vsc_pio_portb_r);
 	DECLARE_WRITE8_MEMBER(vsc_pio_portb_w);
+	DECLARE_INPUT_CHANGED_MEMBER(fidelz80_trigger_reset);
+	DECLARE_INPUT_CHANGED_MEMBER(abc_trigger_reset);
+	TIMER_DEVICE_CALLBACK_MEMBER(nmi_timer);
 };
 
 

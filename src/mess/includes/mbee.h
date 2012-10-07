@@ -140,6 +140,11 @@ public:
 	DECLARE_MACHINE_RESET(mbee128);
 	DECLARE_MACHINE_RESET(mbee256);
 	DECLARE_MACHINE_RESET(mbeett);
+	UINT32 screen_update_mbee(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(mbee_interrupt);
+	TIMER_CALLBACK_MEMBER(mbee256_kbd);
+	TIMER_CALLBACK_MEMBER(mbee_rtc_irq);
+	TIMER_CALLBACK_MEMBER(mbee_reset);
 };
 
 
@@ -148,13 +153,6 @@ public:
 extern const wd17xx_interface mbee_wd17xx_interface;
 extern const z80pio_interface mbee_z80pio_intf;
 
-
-
-
-
-
-
-INTERRUPT_GEN( mbee_interrupt );
 QUICKLOAD_LOAD( mbee );
 
 
@@ -165,15 +163,6 @@ MC6845_UPDATE_ROW( mbeeic_update_row );
 MC6845_UPDATE_ROW( mbeeppc_update_row );
 MC6845_ON_UPDATE_ADDR_CHANGED( mbee_update_addr );
 MC6845_ON_UPDATE_ADDR_CHANGED( mbee256_update_addr );
-
-
-SCREEN_UPDATE_RGB32( mbee );
-
-SCREEN_UPDATE_RGB32( mbeeic );
-
-SCREEN_UPDATE_RGB32( mbeeppc );
-
-
 
 
 #endif /* MBEE_H_ */

@@ -230,6 +230,20 @@ public:
 	DECLARE_MACHINE_RESET(pc6001m2);
 	DECLARE_PALETTE_INIT(pc6001m2);
 	DECLARE_MACHINE_RESET(pc6001sr);
+	UINT32 screen_update_pc6001(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_pc6001m2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_pc6001sr(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(pc6001_interrupt);
+	INTERRUPT_GEN_MEMBER(pc6001sr_interrupt);
+	TIMER_CALLBACK_MEMBER(audio_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(cassette_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_callback);
+	DECLARE_READ8_MEMBER(pc6001_8255_porta_r);
+	DECLARE_WRITE8_MEMBER(pc6001_8255_porta_w);
+	DECLARE_READ8_MEMBER(pc6001_8255_portb_r);
+	DECLARE_WRITE8_MEMBER(pc6001_8255_portb_w);
+	DECLARE_WRITE8_MEMBER(pc6001_8255_portc_w);
+	DECLARE_READ8_MEMBER(pc6001_8255_portc_r);
 };
 
 
@@ -503,20 +517,19 @@ static void pc6001_screen_draw(running_machine &machine, bitmap_ind16 &bitmap,co
 	}
 }
 
-static SCREEN_UPDATE_IND16( pc6001 )
+UINT32 pc6001_state::screen_update_pc6001(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	pc6001_screen_draw(screen.machine(),bitmap,cliprect,1);
+	pc6001_screen_draw(machine(),bitmap,cliprect,1);
 
 	return 0;
 }
 
-static SCREEN_UPDATE_IND16( pc6001m2 )
+UINT32 pc6001_state::screen_update_pc6001m2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	pc6001_state *state = screen.machine().driver_data<pc6001_state>();
 	int x,y,tile,attr;
 
 	/* note: bitmap mode have priority over everything else, check American Truck */
-	if(state->m_exgfx_bitmap_mode)
+	if(m_exgfx_bitmap_mode)
 	{
 		int count,color,i;
 
@@ -539,8 +552,8 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
 					color |= pal_num[(pen[0] & 3) | ((pen[1] & 3) << 2)];
 #endif
 
-					pen[0] = state->m_video_ram[count+0x0000] >> (6-i*2) & 3;
-					pen[1] = state->m_video_ram[count+0x2000] >> (6-i*2) & 3;
+					pen[0] = m_video_ram[count+0x0000] >> (6-i*2) & 3;
+					pen[1] = m_video_ram[count+0x2000] >> (6-i*2) & 3;
 
 					color = 0x10;
 					color |= ((pen[0] & 1) << 2);
@@ -549,16 +562,16 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
 					color |= ((pen[1] & 2) << 2);
 
 					if (cliprect.contains((x+i)*2+0, y))
-						bitmap.pix16(y, (x+i)*2+0) = screen.machine().pens[color];
+						bitmap.pix16(y, (x+i)*2+0) = machine().pens[color];
 					if (cliprect.contains((x+i)*2+1, y))
-						bitmap.pix16(y, (x+i)*2+1) = screen.machine().pens[color];
+						bitmap.pix16(y, (x+i)*2+1) = machine().pens[color];
 				}
 
 				count++;
 			}
 		}
 	}
-	else if(state->m_exgfx_2bpp_mode)
+	else if(m_exgfx_2bpp_mode)
 	{
 		int count,color,i;
 
@@ -578,26 +591,26 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
 					color |= pal_num[(pen[0] & 1) | ((pen[1] & 1) << 1)];
 #endif
 
-					pen[0] = state->m_video_ram[count+0x0000] >> (7-i) & 1;
-					pen[1] = state->m_video_ram[count+0x2000] >> (7-i) & 1;
+					pen[0] = m_video_ram[count+0x0000] >> (7-i) & 1;
+					pen[1] = m_video_ram[count+0x2000] >> (7-i) & 1;
 
-					if(state->m_bgcol_bank & 4) //PC-6001 emulation mode
+					if(m_bgcol_bank & 4) //PC-6001 emulation mode
 					{
 						color = 0x08;
 						color |= (pen[0]) | (pen[1]<<1);
-						color |= (state->m_bgcol_bank & 1) << 2;
+						color |= (m_bgcol_bank & 1) << 2;
 					}
 					else //Mk-2 mode
 					{
 						color = 0x10;
 						color |= ((pen[0] & 1) << 2);
 						color |= ((pen[1] & 1) >> 0);
-						color |= ((state->m_bgcol_bank & 1) << 1);
-						color |= ((state->m_bgcol_bank & 2) << 2);
+						color |= ((m_bgcol_bank & 1) << 1);
+						color |= ((m_bgcol_bank & 2) << 2);
 					}
 
 					if (cliprect.contains(x+i, y))
-						bitmap.pix16(y, (x+i)) = screen.machine().pens[color];
+						bitmap.pix16(y, (x+i)) = machine().pens[color];
 				}
 
 				count++;
@@ -605,10 +618,10 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
 		}
 
 	}
-	else if(state->m_exgfx_text_mode)
+	else if(m_exgfx_text_mode)
 	{
 		int xi,yi,pen,fgcol,bgcol,color;
-		UINT8 *gfx_data = screen.machine().root_device().memregion("gfx1")->base();
+		UINT8 *gfx_data = machine().root_device().memregion("gfx1")->base();
 
 		for(y=0;y<20;y++)
 		{
@@ -621,8 +634,8 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
                 ---- xxxx fg color
                 Note that the exgfx banks a different gfx ROM
                 */
-				tile = state->m_video_ram[(x+(y*40))+0x400] + 0x200;
-				attr = state->m_video_ram[(x+(y*40)) & 0x3ff];
+				tile = m_video_ram[(x+(y*40))+0x400] + 0x200;
+				attr = m_video_ram[(x+(y*40)) & 0x3ff];
 				tile+= ((attr & 0x80) << 1);
 
 				for(yi=0;yi<12;yi++)
@@ -632,12 +645,12 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
 						pen = gfx_data[(tile*0x10)+yi]>>(7-xi) & 1;
 
 						fgcol = (attr & 0x0f) + 0x10;
-						bgcol = ((attr & 0x70) >> 4) + 0x10 + ((state->m_bgcol_bank & 2) << 2);
+						bgcol = ((attr & 0x70) >> 4) + 0x10 + ((m_bgcol_bank & 2) << 2);
 
 						color = pen ? fgcol : bgcol;
 
 						if (cliprect.contains(x*8+xi, y*12+yi))
-							bitmap.pix16(((y*12+yi)), (x*8+xi)) = screen.machine().pens[color];
+							bitmap.pix16(((y*12+yi)), (x*8+xi)) = machine().pens[color];
 					}
 				}
 			}
@@ -645,29 +658,28 @@ static SCREEN_UPDATE_IND16( pc6001m2 )
 	}
 	else
 	{
-		attr = state->m_video_ram[0];
-		pc6001_screen_draw(screen.machine(),bitmap,cliprect,0);
+		attr = m_video_ram[0];
+		pc6001_screen_draw(machine(),bitmap,cliprect,0);
 	}
 
 	return 0;
 }
 
-static SCREEN_UPDATE_IND16( pc6001sr )
+UINT32 pc6001_state::screen_update_pc6001sr(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	pc6001_state *state = screen.machine().driver_data<pc6001_state>();
 	int x,y,tile,attr;
 	int xi,yi,pen,fgcol,bgcol,color;
-	UINT8 *gfx_data = state->memregion("gfx1")->base();
+	UINT8 *gfx_data = memregion("gfx1")->base();
 
 
-	if(state->m_sr_video_mode & 8) // text mode
+	if(m_sr_video_mode & 8) // text mode
 	{
 		for(y=0;y<20;y++)
 		{
 			for(x=0;x<40;x++)
 			{
-				tile = state->m_video_ram[(x+(y*40))*2+0];
-				attr = state->m_video_ram[(x+(y*40))*2+1];
+				tile = m_video_ram[(x+(y*40))*2+0];
+				attr = m_video_ram[(x+(y*40))*2+1];
 				tile+= ((attr & 0x80) << 1);
 
 				for(yi=0;yi<12;yi++)
@@ -677,12 +689,12 @@ static SCREEN_UPDATE_IND16( pc6001sr )
 						pen = gfx_data[(tile*0x10)+yi]>>(7-xi) & 1;
 
 						fgcol = (attr & 0x0f) + 0x10;
-						bgcol = ((attr & 0x70) >> 4) + 0x10 + ((state->m_bgcol_bank & 2) << 2);
+						bgcol = ((attr & 0x70) >> 4) + 0x10 + ((m_bgcol_bank & 2) << 2);
 
 						color = pen ? fgcol : bgcol;
 
 						if (cliprect.contains(x*8+xi, y*12+yi))
-							bitmap.pix16(((y*12+yi)), (x*8+xi)) = screen.machine().pens[color];
+							bitmap.pix16(((y*12+yi)), (x*8+xi)) = machine().pens[color];
 					}
 				}
 			}
@@ -698,45 +710,45 @@ static SCREEN_UPDATE_IND16( pc6001sr )
 		{
 			for(x=0;x<320;x+=4)
 			{
-				color = state->m_video_ram[count] & 0x0f;
+				color = m_video_ram[count] & 0x0f;
 
 				if (cliprect.contains(x+0, y+0))
-					bitmap.pix16((y+0), (x+0)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+0), (x+0)) = machine().pens[color+0x10];
 
-				color = (state->m_video_ram[count] & 0xf0) >> 4;
+				color = (m_video_ram[count] & 0xf0) >> 4;
 
 				if (cliprect.contains(x+1, y+0))
-					bitmap.pix16((y+0), (x+1)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+0), (x+1)) = machine().pens[color+0x10];
 
-				color = state->m_video_ram[count+1] & 0x0f;
+				color = m_video_ram[count+1] & 0x0f;
 
 				if (cliprect.contains(x+2, y+0))
-					bitmap.pix16((y+0), (x+2)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+0), (x+2)) = machine().pens[color+0x10];
 
-				color = (state->m_video_ram[count+1] & 0xf0) >> 4;
+				color = (m_video_ram[count+1] & 0xf0) >> 4;
 
 				if (cliprect.contains(x+3, y+0))
-					bitmap.pix16((y+0), (x+3)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+0), (x+3)) = machine().pens[color+0x10];
 
-				color = state->m_video_ram[count+2] & 0x0f;
+				color = m_video_ram[count+2] & 0x0f;
 
 				if (cliprect.contains(x+0, y+1))
-					bitmap.pix16((y+1), (x+0)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+1), (x+0)) = machine().pens[color+0x10];
 
-				color = (state->m_video_ram[count+2] & 0xf0) >> 4;
+				color = (m_video_ram[count+2] & 0xf0) >> 4;
 
 				if (cliprect.contains(x+1, y+1))
-					bitmap.pix16((y+1), (x+1)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+1), (x+1)) = machine().pens[color+0x10];
 
-				color = state->m_video_ram[count+3] & 0x0f;
+				color = m_video_ram[count+3] & 0x0f;
 
 				if (cliprect.contains(x+2, y+1))
-					bitmap.pix16((y+1), (x+2)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+1), (x+2)) = machine().pens[color+0x10];
 
-				color = (state->m_video_ram[count+3] & 0xf0) >> 4;
+				color = (m_video_ram[count+3] & 0xf0) >> 4;
 
 				if (cliprect.contains(x+3, y+1))
-					bitmap.pix16((y+1), (x+3)) = screen.machine().pens[color+0x10];
+					bitmap.pix16((y+1), (x+3)) = machine().pens[color+0x10];
 
 
 				count+=4;
@@ -1354,14 +1366,13 @@ WRITE8_MEMBER(pc6001_state::pc6001m2_0xf3_w)
 	m_timer_irq_mask2 = data & 4;
 }
 
-static TIMER_CALLBACK(audio_callback)
+TIMER_CALLBACK_MEMBER(pc6001_state::audio_callback)
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
-	if(state->m_cas_switch == 0 && ((state->m_timer_irq_mask == 0) || (state->m_timer_irq_mask2 == 0)))
+	if(m_cas_switch == 0 && ((m_timer_irq_mask == 0) || (m_timer_irq_mask2 == 0)))
 	{
-		if(IRQ_LOG) printf("Timer IRQ called %02x\n",state->m_timer_irq_vector);
-		state->m_irq_vector = state->m_timer_irq_vector;
-		machine.device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+		if(IRQ_LOG) printf("Timer IRQ called %02x\n",m_timer_irq_vector);
+		m_irq_vector = m_timer_irq_vector;
+		machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 	}
 }
 
@@ -1845,24 +1856,22 @@ INPUT_PORTS_END
 
 static UINT8 check_joy_press(running_machine &machine);
 
-static INTERRUPT_GEN( pc6001_interrupt )
+INTERRUPT_GEN_MEMBER(pc6001_state::pc6001_interrupt)
 {
-	pc6001_state *state = device->machine().driver_data<pc6001_state>();
-	state->m_cur_keycode = check_joy_press(device->machine());
+	m_cur_keycode = check_joy_press(machine());
 	if(IRQ_LOG) printf("Stick IRQ called 0x16\n");
-	state->m_irq_vector = 0x16;
-	device->execute().set_input_line(0, ASSERT_LINE);
+	m_irq_vector = 0x16;
+	device.execute().set_input_line(0, ASSERT_LINE);
 }
 
-static INTERRUPT_GEN( pc6001sr_interrupt )
+INTERRUPT_GEN_MEMBER(pc6001_state::pc6001sr_interrupt)
 {
-	pc6001_state *state = device->machine().driver_data<pc6001_state>();
-	state->m_kludge^= 1;
+	m_kludge^= 1;
 
-	state->m_cur_keycode = check_joy_press(device->machine());
+	m_cur_keycode = check_joy_press(machine());
 	if(IRQ_LOG) printf("VRTC IRQ called 0x16\n");
-	state->m_irq_vector = (state->m_kludge) ? 0x22 : 0x16;
-	device->execute().set_input_line(0, ASSERT_LINE);
+	m_irq_vector = (m_kludge) ? 0x22 : 0x16;
+	device.execute().set_input_line(0, ASSERT_LINE);
 }
 
 static IRQ_CALLBACK ( pc6001_irq_callback )
@@ -1872,33 +1881,33 @@ static IRQ_CALLBACK ( pc6001_irq_callback )
 	return state->m_irq_vector;
 }
 
-static READ8_DEVICE_HANDLER (pc6001_8255_porta_r )
+READ8_MEMBER(pc6001_state::pc6001_8255_porta_r)
 {
 	return 0;
 }
 
-static WRITE8_DEVICE_HANDLER (pc6001_8255_porta_w )
+WRITE8_MEMBER(pc6001_state::pc6001_8255_porta_w)
 {
 //  if(data != 0x06)
 //      printf("pc6001_8255_porta_w %02x\n",data);
 }
 
-static READ8_DEVICE_HANDLER (pc6001_8255_portb_r )
+READ8_MEMBER(pc6001_state::pc6001_8255_portb_r)
 {
 	return 0;
 }
 
-static WRITE8_DEVICE_HANDLER (pc6001_8255_portb_w )
+WRITE8_MEMBER(pc6001_state::pc6001_8255_portb_w)
 {
 	//printf("pc6001_8255_portb_w %02x\n",data);
 }
 
-static WRITE8_DEVICE_HANDLER (pc6001_8255_portc_w )
+WRITE8_MEMBER(pc6001_state::pc6001_8255_portc_w)
 {
 	//printf("pc6001_8255_portc_w %02x\n",data);
 }
 
-static READ8_DEVICE_HANDLER (pc6001_8255_portc_r )
+READ8_MEMBER(pc6001_state::pc6001_8255_portc_r)
 {
 	return 0x88;
 }
@@ -1907,12 +1916,12 @@ static READ8_DEVICE_HANDLER (pc6001_8255_portc_r )
 
 static I8255_INTERFACE( pc6001_ppi8255_interface )
 {
-	DEVCB_HANDLER(pc6001_8255_porta_r),
-	DEVCB_HANDLER(pc6001_8255_porta_w),
-	DEVCB_HANDLER(pc6001_8255_portb_r),
-	DEVCB_HANDLER(pc6001_8255_portb_w),
-	DEVCB_HANDLER(pc6001_8255_portc_r),
-	DEVCB_HANDLER(pc6001_8255_portc_w)
+	DEVCB_DRIVER_MEMBER(pc6001_state,pc6001_8255_porta_r),
+	DEVCB_DRIVER_MEMBER(pc6001_state,pc6001_8255_porta_w),
+	DEVCB_DRIVER_MEMBER(pc6001_state,pc6001_8255_portb_r),
+	DEVCB_DRIVER_MEMBER(pc6001_state,pc6001_8255_portb_w),
+	DEVCB_DRIVER_MEMBER(pc6001_state,pc6001_8255_portc_r),
+	DEVCB_DRIVER_MEMBER(pc6001_state,pc6001_8255_portc_w)
 };
 
 static const i8251_interface pc6001_usart_interface=
@@ -2020,80 +2029,78 @@ static UINT8 check_joy_press(running_machine &machine)
 	return joy_press;
 }
 
-static TIMER_DEVICE_CALLBACK(cassette_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(pc6001_state::cassette_callback)
 {
-	pc6001_state *state = timer.machine().driver_data<pc6001_state>();
-	if(state->m_cas_switch == 1)
+	if(m_cas_switch == 1)
 	{
 		#if 0
 		static UINT8 cas_data_i = 0x80,cas_data_poll;
-		//state->m_cur_keycode = gfx_data[state->m_cas_offset++];
-		if((timer.machine().device<cassette_image_device>(CASSETTE_TAG))->input() > 0.03)
+		//m_cur_keycode = gfx_data[m_cas_offset++];
+		if((machine().device<cassette_image_device>(CASSETTE_TAG))->input() > 0.03)
 			cas_data_poll|= cas_data_i;
 		else
 			cas_data_poll&=~cas_data_i;
 		if(cas_data_i == 1)
 		{
-			state->m_cur_keycode = cas_data_poll;
+			m_cur_keycode = cas_data_poll;
 			cas_data_i = 0x80;
 			/* data ready, poll irq */
-			state->m_irq_vector = 0x08;
-			timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+			m_irq_vector = 0x08;
+			machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 		}
 		else
 			cas_data_i>>=1;
 		#else
-			UINT8 *cas_data = timer.machine().root_device().memregion("cas")->base();
+			UINT8 *cas_data = machine().root_device().memregion("cas")->base();
 
-			state->m_cur_keycode = cas_data[state->m_cas_offset++];
-			popmessage("%04x %04x",state->m_cas_offset,state->m_cas_maxsize);
-			if(state->m_cas_offset > state->m_cas_maxsize)
+			m_cur_keycode = cas_data[m_cas_offset++];
+			popmessage("%04x %04x",m_cas_offset,m_cas_maxsize);
+			if(m_cas_offset > m_cas_maxsize)
 			{
-				state->m_cas_offset = 0;
-				state->m_cas_switch = 0;
+				m_cas_offset = 0;
+				m_cas_switch = 0;
 				if(IRQ_LOG) printf("Tape-E IRQ 0x12\n");
-				state->m_irq_vector = 0x12;
-				timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+				m_irq_vector = 0x12;
+				machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			}
 			else
 			{
 				if(IRQ_LOG) printf("Tape-D IRQ 0x08\n");
-				state->m_irq_vector = 0x08;
-				timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+				m_irq_vector = 0x08;
+				machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			}
 		#endif
 	}
 }
 
-static TIMER_DEVICE_CALLBACK(keyboard_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(pc6001_state::keyboard_callback)
 {
-	pc6001_state *state = timer.machine().driver_data<pc6001_state>();
-	address_space *space = timer.machine().device("maincpu")->memory().space(AS_PROGRAM);
-	UINT32 key1 = timer.machine().root_device().ioport("key1")->read();
-	UINT32 key2 = timer.machine().root_device().ioport("key2")->read();
-	UINT32 key3 = timer.machine().root_device().ioport("key3")->read();
-//  UINT8 p1_key = timer.machine().root_device().ioport("P1")->read();
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	UINT32 key1 = machine().root_device().ioport("key1")->read();
+	UINT32 key2 = machine().root_device().ioport("key2")->read();
+	UINT32 key3 = machine().root_device().ioport("key3")->read();
+//  UINT8 p1_key = machine().root_device().ioport("P1")->read();
 
-	if(state->m_cas_switch == 0)
+	if(m_cas_switch == 0)
 	{
-		if((key1 != state->m_old_key1) || (key2 != state->m_old_key2) || (key3 != state->m_old_key3))
+		if((key1 != m_old_key1) || (key2 != m_old_key2) || (key3 != m_old_key3))
 		{
-			state->m_cur_keycode = check_keyboard_press(space->machine());
+			m_cur_keycode = check_keyboard_press(space.machine());
 			if(IRQ_LOG) printf("KEY IRQ 0x02\n");
-			state->m_irq_vector = 0x02;
-			timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
-			state->m_old_key1 = key1;
-			state->m_old_key2 = key2;
-			state->m_old_key3 = key3;
+			m_irq_vector = 0x02;
+			machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+			m_old_key1 = key1;
+			m_old_key2 = key2;
+			m_old_key3 = key3;
 		}
 		#if 0
 		else /* joypad polling */
 		{
-			state->m_cur_keycode = check_joy_press(space->machine());
-			if(state->m_cur_keycode)
+			m_cur_keycode = check_joy_press(space.machine());
+			if(m_cur_keycode)
 			{
-				state->m_irq_vector = 0x16;
-				timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+				m_irq_vector = 0x16;
+				machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 			}
 		}
 		#endif
@@ -2105,7 +2112,7 @@ void pc6001_state::machine_start()
 	m_timer_hz_div = 3;
 	{
 		attotime period = attotime::from_hz((487.5*4)/(m_timer_hz_div+1));
-		m_timer_irq_timer = machine().scheduler().timer_alloc(FUNC(audio_callback));
+		m_timer_irq_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc6001_state::audio_callback),this));
 		m_timer_irq_timer->adjust(period,  0, period);
 	}
 }
@@ -2325,7 +2332,7 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 	MCFG_CPU_ADD("maincpu",Z80, PC6001_MAIN_CLOCK / 2) // ~4 Mhz
 	MCFG_CPU_PROGRAM_MAP(pc6001_map)
 	MCFG_CPU_IO_MAP(pc6001_io)
-	MCFG_CPU_VBLANK_INT("screen", pc6001_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pc6001_state,  pc6001_interrupt)
 
 //  MCFG_CPU_ADD("subcpu", I8049, 7987200)
 
@@ -2335,7 +2342,7 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
-	MCFG_SCREEN_UPDATE_STATIC(pc6001)
+	MCFG_SCREEN_UPDATE_DRIVER(pc6001_state, screen_update_pc6001)
 //  MCFG_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 //  MCFG_SCREEN_UPDATE_STATIC(m6847)
 	MCFG_SCREEN_SIZE(320, 25+192+26)
@@ -2367,8 +2374,8 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 //  MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* TODO: accurate timing on this */
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(250))
-	MCFG_TIMER_ADD_PERIODIC("cassette_timer", cassette_callback, attotime::from_hz(1200/12)) //1200 bauds / (1 start bit -> 8 data bits -> 3 stop bits)
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", pc6001_state, keyboard_callback, attotime::from_hz(250))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("cassette_timer", pc6001_state, cassette_callback, attotime::from_hz(1200/12))
 MACHINE_CONFIG_END
 
 
@@ -2378,7 +2385,7 @@ static MACHINE_CONFIG_DERIVED( pc6001m2, pc6001 )
 	MCFG_MACHINE_RESET_OVERRIDE(pc6001_state,pc6001m2)
 
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(pc6001m2)
+	MCFG_SCREEN_UPDATE_DRIVER(pc6001_state, screen_update_pc6001m2)
 	MCFG_PALETTE_LENGTH(16+16)
 	MCFG_PALETTE_INIT_OVERRIDE(pc6001_state,pc6001m2)
 
@@ -2397,7 +2404,7 @@ static MACHINE_CONFIG_DERIVED( pc6601, pc6001m2 )
 	MCFG_CPU_REPLACE("maincpu", Z80, PC6001_MAIN_CLOCK / 2)
 	MCFG_CPU_PROGRAM_MAP(pc6001m2_map)
 	MCFG_CPU_IO_MAP(pc6601_io)
-	MCFG_CPU_VBLANK_INT("screen", pc6001_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pc6001_state,  pc6001_interrupt)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc6001sr, pc6001m2 )
@@ -2405,13 +2412,13 @@ static MACHINE_CONFIG_DERIVED( pc6001sr, pc6001m2 )
 	MCFG_MACHINE_RESET_OVERRIDE(pc6001_state,pc6001sr)
 
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(pc6001sr)
+	MCFG_SCREEN_UPDATE_DRIVER(pc6001_state, screen_update_pc6001sr)
 
 	/* basic machine hardware */
 	MCFG_CPU_REPLACE("maincpu", Z80, XTAL_3_579545MHz) //*Yes*, PC-6001 SR Z80 CPU is actually slower than older models
 	MCFG_CPU_PROGRAM_MAP(pc6001sr_map)
 	MCFG_CPU_IO_MAP(pc6001sr_io)
-	MCFG_CPU_VBLANK_INT("screen", pc6001sr_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pc6001_state,  pc6001sr_interrupt)
 MACHINE_CONFIG_END
 
 /* ROM definition */

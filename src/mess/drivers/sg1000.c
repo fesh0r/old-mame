@@ -151,7 +151,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sg1000_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
+	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_device, write)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0x81, 0x81) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xdc, 0xdc) AM_READ_PORT("PA7")
@@ -176,7 +176,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( omv_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
+	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_device, write)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0x81, 0x81) AM_MIRROR(0x3e) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x38) AM_READ_PORT("C0")
@@ -203,7 +203,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sc3000_io_map, AS_IO, 8, sg1000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_device, write)
 	AM_RANGE(0xbe, 0xbe) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0xbf, 0xbf) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(UPD9255_TAG, i8255_device, read, write)
@@ -213,7 +213,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sc3000_io_map, AS_IO, 8, sg1000_state )
     ADDRESS_MAP_GLOBAL_MASK(0xff)
     AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE(UPD9255_TAG, i8255_device, read, write)
-    AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
+    AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_device, write)
     AM_RANGE(0x00, 0x00) AM_MIRROR(0xae) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
     AM_RANGE(0x01, 0x01) AM_MIRROR(0xae) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
     AM_RANGE(0x60, 0x60) AM_MIRROR(0x9f) AM_READ(sc3000_r_r)
@@ -235,7 +235,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sf7000_io_map, AS_IO, 8, sf7000_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_new_device, write)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489AN_TAG, sn76489a_device, write)
 	AM_RANGE(0xbe, 0xbe) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, vram_read, vram_write)
 	AM_RANGE(0xbf, 0xbf) AM_DEVREADWRITE(TMS9918A_TAG, tms9918a_device, register_read, register_write)
 	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(UPD9255_0_TAG, i8255_device, read, write)
@@ -251,7 +251,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 /*-------------------------------------------------
-    INPUT_CHANGED( trigger_nmi )
+    INPUT_CHANGED_MEMBER( trigger_nmi )
 -------------------------------------------------*/
 
 INPUT_CHANGED_MEMBER( sg1000_state::trigger_nmi )
@@ -517,16 +517,16 @@ INPUT_PORTS_END
     TMS9928a_interface tms9928a_interface
 -------------------------------------------------*/
 
-static WRITE_LINE_DEVICE_HANDLER(sg1000_vdp_interrupt)
+WRITE_LINE_MEMBER(sg1000_state::sg1000_vdp_interrupt)
 {
-	device->machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_IRQ0, state);
+	machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_IRQ0, state);
 }
 
 static TMS9928A_INTERFACE(sg1000_tms9918a_interface)
 {
 	"screen",
 	0x4000,
-	DEVCB_LINE(sg1000_vdp_interrupt)
+	DEVCB_DRIVER_LINE_MEMBER(sg1000_state,sg1000_vdp_interrupt)
 };
 
 /*-------------------------------------------------
@@ -642,20 +642,20 @@ const cassette_interface sc3000_cassette_interface =
 
 void sg1000_state::install_cartridge(UINT8 *ptr, int size)
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	switch (size)
 	{
 	case 40 * 1024:
-		program->install_read_bank(0x8000, 0x9fff, "bank1");
-		program->unmap_write(0x8000, 0x9fff);
+		program.install_read_bank(0x8000, 0x9fff, "bank1");
+		program.unmap_write(0x8000, 0x9fff);
 		membank("bank1")->configure_entry(0, memregion(Z80_TAG)->base() + 0x8000);
 		membank("bank1")->set_entry(0);
 		break;
 
 	case 48 * 1024:
-		program->install_read_bank(0x8000, 0xbfff, "bank1");
-		program->unmap_write(0x8000, 0xbfff);
+		program.install_read_bank(0x8000, 0xbfff, "bank1");
+		program.unmap_write(0x8000, 0xbfff);
 		membank("bank1")->configure_entry(0, memregion(Z80_TAG)->base() + 0x8000);
 		membank("bank1")->set_entry(0);
 		break;
@@ -663,14 +663,14 @@ void sg1000_state::install_cartridge(UINT8 *ptr, int size)
 	default:
 		if (IS_CARTRIDGE_TV_DRAW(ptr))
 		{
-			program->install_write_handler(0x6000, 0x6000, 0, 0, write8_delegate(FUNC(sg1000_state::tvdraw_axis_w), this), 0);
-			program->install_read_handler(0x8000, 0x8000, 0, 0, read8_delegate(FUNC(sg1000_state::tvdraw_status_r), this), 0);
-			program->install_read_handler(0xa000, 0xa000, 0, 0, read8_delegate(FUNC(sg1000_state::tvdraw_data_r), this), 0);
-			program->nop_write(0xa000, 0xa000);
+			program.install_write_handler(0x6000, 0x6000, 0, 0, write8_delegate(FUNC(sg1000_state::tvdraw_axis_w), this), 0);
+			program.install_read_handler(0x8000, 0x8000, 0, 0, read8_delegate(FUNC(sg1000_state::tvdraw_status_r), this), 0);
+			program.install_read_handler(0xa000, 0xa000, 0, 0, read8_delegate(FUNC(sg1000_state::tvdraw_data_r), this), 0);
+			program.nop_write(0xa000, 0xa000);
 		}
 		else if (IS_CARTRIDGE_THE_CASTLE(ptr))
 		{
-			program->install_readwrite_bank(0x8000, 0x9fff, "bank1");
+			program.install_readwrite_bank(0x8000, 0x9fff, "bank1");
 		}
 		break;
 	}
@@ -684,7 +684,7 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 {
 	running_machine &machine = image.device().machine();
 	sg1000_state *state = machine.driver_data<sg1000_state>();
-	address_space *program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
+	address_space &program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
 	UINT8 *ptr = state->memregion(Z80_TAG)->base();
 	UINT32 ram_size = 0x400;
 	bool install_2000_ram = false;
@@ -781,11 +781,11 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 
 	if ( install_2000_ram )
 	{
-		program->install_ram(0x2000, 0x3FFF);
+		program.install_ram(0x2000, 0x3FFF);
 	}
 
 	/* work RAM banking */
-	program->install_readwrite_bank(0xc000, 0xc000 + ram_size - 1, 0, 0x4000 - ram_size, "bank2");
+	program.install_readwrite_bank(0xc000, 0xc000 + ram_size - 1, 0, 0x4000 - ram_size, "bank2");
 
 	return IMAGE_INIT_PASS;
 }
@@ -825,25 +825,25 @@ static DEVICE_IMAGE_LOAD( omv_cart )
 
 void sc3000_state::install_cartridge(UINT8 *ptr, int size)
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* include SG-1000 mapping */
 	sg1000_state::install_cartridge(ptr, size);
 
 	if (IS_CARTRIDGE_BASIC_LEVEL_III(ptr))
 	{
-		program->install_readwrite_bank(0x8000, 0xbfff, "bank1");
-		program->install_readwrite_bank(0xc000, 0xffff, "bank2");
+		program.install_readwrite_bank(0x8000, 0xbfff, "bank1");
+		program.install_readwrite_bank(0xc000, 0xffff, "bank2");
 	}
 	else if (IS_CARTRIDGE_MUSIC_EDITOR(ptr))
 	{
-		program->install_readwrite_bank(0x8000, 0x9fff, "bank1");
-		program->install_readwrite_bank(0xc000, 0xc7ff, 0, 0x3800, "bank2");
+		program.install_readwrite_bank(0x8000, 0x9fff, "bank1");
+		program.install_readwrite_bank(0xc000, 0xc7ff, 0, 0x3800, "bank2");
 	}
 	else
 	{
 		/* regular cartridges */
-		program->install_readwrite_bank(0xc000, 0xc7ff, 0, 0x3800, "bank2");
+		program.install_readwrite_bank(0xc000, 0xc7ff, 0, 0x3800, "bank2");
 	}
 }
 
@@ -984,11 +984,9 @@ LEGACY_FLOPPY_OPTIONS_END
     sf7000_fdc_index_callback -
 -------------------------------------------------*/
 
-static WRITE_LINE_DEVICE_HANDLER(sf7000_fdc_index_callback)
+WRITE_LINE_MEMBER(sf7000_state::sf7000_fdc_index_callback)
 {
-	sf7000_state *driver_state = device->machine().driver_data<sf7000_state>();
-
-	driver_state->m_fdc_index = state;
+	m_fdc_index = state;
 }
 
 /*-------------------------------------------------
@@ -997,7 +995,7 @@ static WRITE_LINE_DEVICE_HANDLER(sf7000_fdc_index_callback)
 
 static const floppy_interface sf7000_floppy_interface =
 {
-	DEVCB_LINE(sf7000_fdc_index_callback),
+	DEVCB_DRIVER_LINE_MEMBER(sf7000_state,sf7000_fdc_index_callback),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1022,22 +1020,22 @@ static const sn76496_config psg_intf =
 ***************************************************************************/
 
 /*-------------------------------------------------
-    TIMER_CALLBACK( lightgun_tick )
+    TIMER_CALLBACK_MEMBER( lightgun_tick )
 -------------------------------------------------*/
 
-static TIMER_CALLBACK( lightgun_tick )
+TIMER_CALLBACK_MEMBER(sg1000_state::lightgun_tick)
 {
-	UINT8 *rom = machine.root_device().memregion(Z80_TAG)->base();
+	UINT8 *rom = machine().root_device().memregion(Z80_TAG)->base();
 
 	if (IS_CARTRIDGE_TV_DRAW(rom))
 	{
 		/* enable crosshair for TV Draw */
-		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);
+		crosshair_set_screen(machine(), 0, CROSSHAIR_SCREEN_ALL);
 	}
 	else
 	{
 		/* disable crosshair for other cartridges */
-		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);
+		crosshair_set_screen(machine(), 0, CROSSHAIR_SCREEN_NONE);
 	}
 }
 
@@ -1048,7 +1046,7 @@ static TIMER_CALLBACK( lightgun_tick )
 void sg1000_state::machine_start()
 {
 	/* toggle light gun crosshair */
-	machine().scheduler().timer_set(attotime::zero, FUNC(lightgun_tick));
+	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(sg1000_state::lightgun_tick),this));
 
 	/* register for state saving */
 	save_item(NAME(m_tvdraw_data));
@@ -1061,7 +1059,7 @@ void sg1000_state::machine_start()
 void sc3000_state::machine_start()
 {
 	/* toggle light gun crosshair */
-	machine().scheduler().timer_set(attotime::zero, FUNC(lightgun_tick));
+	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(sg1000_state::lightgun_tick),this));
 
 	/* register for state saving */
 	save_item(NAME(m_tvdraw_data));
@@ -1117,7 +1115,7 @@ static MACHINE_CONFIG_START( sg1000, sg1000_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A_NEW, XTAL_10_738635MHz/3)
+	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A, XTAL_10_738635MHz/3)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_CONFIG(psg_intf)
 
@@ -1171,7 +1169,7 @@ static MACHINE_CONFIG_START( sc3000, sc3000_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A_NEW, XTAL_10_738635MHz/3)
+	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A, XTAL_10_738635MHz/3)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_CONFIG(psg_intf)
 
@@ -1212,7 +1210,7 @@ static MACHINE_CONFIG_START( sf7000, sf7000_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A_NEW, XTAL_10_738635MHz/3)
+	MCFG_SOUND_ADD(SN76489AN_TAG, SN76489A, XTAL_10_738635MHz/3)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MCFG_SOUND_CONFIG(psg_intf)
 

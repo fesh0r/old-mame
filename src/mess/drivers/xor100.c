@@ -57,7 +57,7 @@ enum
 
 void xor100_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	int banks = m_ram->size() / 0x10000;
 
 	switch (m_mode)
@@ -65,16 +65,16 @@ void xor100_state::bankswitch()
 	case EPROM_0000:
 		if (m_bank < banks)
 		{
-			program->install_write_bank(0x0000, 0xffff, "bank1");
+			program.install_write_bank(0x0000, 0xffff, "bank1");
 			membank("bank1")->set_entry(1 + m_bank);
 		}
 		else
 		{
-			program->unmap_write(0x0000, 0xffff);
+			program.unmap_write(0x0000, 0xffff);
 		}
 
-		program->install_read_bank(0x0000, 0xf7ff, 0x07ff, 0, "bank2");
-		program->install_read_bank(0xf800, 0xffff, "bank3");
+		program.install_read_bank(0x0000, 0xf7ff, 0x07ff, 0, "bank2");
+		program.install_read_bank(0xf800, 0xffff, "bank3");
 		membank("bank2")->set_entry(0);
 		membank("bank3")->set_entry(0);
 		break;
@@ -82,36 +82,36 @@ void xor100_state::bankswitch()
 	case EPROM_F800:
 		if (m_bank < banks)
 		{
-			program->install_write_bank(0x0000, 0xffff, "bank1");
-			program->install_read_bank(0x0000, 0xf7ff, "bank2");
+			program.install_write_bank(0x0000, 0xffff, "bank1");
+			program.install_read_bank(0x0000, 0xf7ff, "bank2");
 			membank("bank1")->set_entry(1 + m_bank);
 			membank("bank2")->set_entry(1 + m_bank);
 		}
 		else
 		{
-			program->unmap_write(0x0000, 0xffff);
-			program->unmap_read(0x0000, 0xf7ff);
+			program.unmap_write(0x0000, 0xffff);
+			program.unmap_read(0x0000, 0xf7ff);
 		}
 
-		program->install_read_bank(0xf800, 0xffff, "bank3");
+		program.install_read_bank(0xf800, 0xffff, "bank3");
 		membank("bank3")->set_entry(0);
 		break;
 
 	case EPROM_OFF:
 		if (m_bank < banks)
 		{
-			program->install_write_bank(0x0000, 0xffff, "bank1");
-			program->install_read_bank(0x0000, 0xf7ff, "bank2");
-			program->install_read_bank(0xf800, 0xffff, "bank3");
+			program.install_write_bank(0x0000, 0xffff, "bank1");
+			program.install_read_bank(0x0000, 0xf7ff, "bank2");
+			program.install_read_bank(0xf800, 0xffff, "bank3");
 			membank("bank1")->set_entry(1 + m_bank);
 			membank("bank2")->set_entry(1 + m_bank);
 			membank("bank3")->set_entry(1 + m_bank);
 		}
 		else
 		{
-			program->unmap_write(0x0000, 0xffff);
-			program->unmap_read(0x0000, 0xf7ff);
-			program->unmap_read(0xf800, 0xffff);
+			program.unmap_write(0x0000, 0xffff);
+			program.unmap_read(0x0000, 0xf7ff);
+			program.unmap_read(0xf800, 0xffff);
 		}
 		break;
 	}
@@ -360,15 +360,17 @@ INPUT_PORTS_END
 
 /* COM5016 Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( com5016_fr_w )
+WRITE_LINE_MEMBER(xor100_state::com5016_fr_w)
 {
+	device_t *device = machine().device(I8251_A_TAG);
 	i8251_device* uart = dynamic_cast<i8251_device*>(device);
 	uart->transmit_clock();
 	uart->receive_clock();
 }
 
-static WRITE_LINE_DEVICE_HANDLER( com5016_ft_w )
+WRITE_LINE_MEMBER(xor100_state::com5016_ft_w)
 {
+	device_t *device = machine().device(I8251_B_TAG);
 	i8251_device* uart = dynamic_cast<i8251_device*>(device);
 	uart->transmit_clock();
 	uart->receive_clock();
@@ -377,8 +379,8 @@ static WRITE_LINE_DEVICE_HANDLER( com5016_ft_w )
 static COM8116_INTERFACE( com5016_intf )
 {
 	DEVCB_NULL,					/* fX/4 output */
-	DEVCB_DEVICE_LINE(I8251_A_TAG, com5016_fr_w),	/* fR output */
-	DEVCB_DEVICE_LINE(I8251_B_TAG, com5016_ft_w),	/* fT output */
+	DEVCB_DRIVER_LINE_MEMBER(xor100_state,com5016_fr_w),	/* fR output */
+	DEVCB_DRIVER_LINE_MEMBER(xor100_state,com5016_ft_w),	/* fT output */
 	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },	// WRONG?
 	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },	// WRONG?
 };
@@ -415,9 +417,9 @@ static const i8251_interface terminal_8251_intf =
 
 /* Printer 8255A Interface */
 
-static READ8_DEVICE_HANDLER( i8255_pc_r )
+READ8_MEMBER(xor100_state::i8255_pc_r)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	centronics_device *centronics = machine().device<centronics_device>("centronics");
 	/*
 
         bit     description
@@ -450,7 +452,7 @@ static I8255A_INTERFACE( printer_8255_intf )
 	DEVCB_DEVICE_MEMBER(CENTRONICS_TAG, centronics_device, write),
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(CENTRONICS_TAG, centronics_device, strobe_w),
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, i8255_pc_r),
+	DEVCB_DRIVER_MEMBER(xor100_state,i8255_pc_r),
 	DEVCB_NULL
 };
 
@@ -463,24 +465,24 @@ static const centronics_interface xor100_centronics_intf =
 
 /* Z80-CTC Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
+WRITE_LINE_MEMBER(xor100_state::ctc_z0_w)
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
+WRITE_LINE_MEMBER(xor100_state::ctc_z1_w)
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
+WRITE_LINE_MEMBER(xor100_state::ctc_z2_w)
 {
 }
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
-	DEVCB_LINE(ctc_z0_w),			/* ZC/TO0 callback */
-	DEVCB_LINE(ctc_z1_w),			/* ZC/TO1 callback */
-	DEVCB_LINE(ctc_z2_w)    		/* ZC/TO2 callback */
+	DEVCB_DRIVER_LINE_MEMBER(xor100_state,ctc_z0_w),			/* ZC/TO0 callback */
+	DEVCB_DRIVER_LINE_MEMBER(xor100_state,ctc_z1_w),			/* ZC/TO1 callback */
+	DEVCB_DRIVER_LINE_MEMBER(xor100_state,ctc_z2_w) 		/* ZC/TO2 callback */
 };
 
 /* WD1795-02 Interface */
@@ -518,15 +520,15 @@ static const wd17xx_interface fdc_intf =
 
 /* Terminal Interface */
 
-static WRITE8_DEVICE_HANDLER( xor100_kbd_put )
+WRITE8_MEMBER(xor100_state::xor100_kbd_put)
 {
-	i8251_device* uart = dynamic_cast<i8251_device*>(device);
+	i8251_device* uart = dynamic_cast<i8251_device*>(machine().device(I8251_B_TAG));
 	uart->receive_character(data);
 }
 
 static GENERIC_TERMINAL_INTERFACE( xor100_terminal_intf )
 {
-	DEVCB_DEVICE_HANDLER(I8251_B_TAG, xor100_kbd_put)
+	DEVCB_DRIVER_MEMBER(xor100_state,xor100_kbd_put)
 };
 
 /* Machine Initialization */

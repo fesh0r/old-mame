@@ -52,6 +52,8 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_jr200(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(timer_d_callback);
 };
 
 
@@ -117,19 +119,18 @@ void jr200_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16( jr200 )
+UINT32 jr200_state::screen_update_jr200(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	jr200_state *state = screen.machine().driver_data<jr200_state>();
 	int x,y,xi,yi,pen;
 
-	bitmap.fill(state->m_border_col, cliprect);
+	bitmap.fill(m_border_col, cliprect);
 
 	for (y = 0; y < 24; y++)
 	{
 		for (x = 0; x < 32; x++)
 		{
-			UINT8 tile = state->m_vram[x + y*32];
-			UINT8 attr = state->m_cram[x + y*32];
+			UINT8 tile = m_vram[x + y*32];
+			UINT8 attr = m_cram[x + y*32];
 
 			for(yi=0;yi<8;yi++)
 			{
@@ -158,12 +159,12 @@ static SCREEN_UPDATE_IND16( jr200 )
 					}
 					else // tile mode
 					{
-						gfx_data = screen.machine().root_device().memregion(attr & 0x40 ? "pcg" : "gfx_ram")->base();
+						gfx_data = machine().root_device().memregion(attr & 0x40 ? "pcg" : "gfx_ram")->base();
 
 						pen = (gfx_data[(tile*8)+yi]>>(7-xi) & 1) ? (attr & 0x7) : ((attr & 0x38) >> 3);
 					}
 
-					bitmap.pix16(y*8+yi+16, x*8+xi+16) = screen.machine().pens[pen];
+					bitmap.pix16(y*8+yi+16, x*8+xi+16) = machine().pens[pen];
 				}
 			}
 		}
@@ -283,9 +284,9 @@ WRITE8_MEMBER(jr200_state::jr200_border_col_w)
 }
 
 
-static TIMER_CALLBACK(timer_d_callback)
+TIMER_CALLBACK_MEMBER(jr200_state::timer_d_callback)
 {
-	machine.firstcpu->set_input_line(0, HOLD_LINE);
+	machine().firstcpu->set_input_line(0, HOLD_LINE);
 }
 
 READ8_MEMBER(jr200_state::mn1271_io_r)
@@ -484,7 +485,7 @@ void jr200_state::machine_start()
 {
 	beep_set_frequency(machine().device(BEEPER_TAG),0);
 	beep_set_state(machine().device(BEEPER_TAG),0);
-	m_timer_d = machine().scheduler().timer_alloc(FUNC(timer_d_callback));
+	m_timer_d = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(jr200_state::timer_d_callback),this));
 }
 
 void jr200_state::machine_reset()
@@ -516,7 +517,7 @@ static MACHINE_CONFIG_START( jr200, jr200_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(16 + 256 + 16, 16 + 192 + 16) /* border size not accurate */
 	MCFG_SCREEN_VISIBLE_AREA(0, 16 + 256 + 16 - 1, 0, 16 + 192 + 16 - 1)
-	MCFG_SCREEN_UPDATE_STATIC(jr200)
+	MCFG_SCREEN_UPDATE_DRIVER(jr200_state, screen_update_jr200)
 
 	MCFG_GFXDECODE(jr200)
 	MCFG_PALETTE_LENGTH(8)

@@ -277,9 +277,9 @@ static const deco16ic_interface fghthist_deco16ic_tilegen2_intf =
 
 
 
-static TIMER_DEVICE_CALLBACK( interrupt_gen )
+TIMER_DEVICE_CALLBACK_MEMBER(deco32_state::interrupt_gen)
 {
-	timer.machine().device("maincpu")->execute().set_input_line(ARM_IRQ_LINE, HOLD_LINE);
+	machine().device("maincpu")->execute().set_input_line(ARM_IRQ_LINE, HOLD_LINE);
 }
 
 READ32_MEMBER(deco32_state::deco32_irq_controller_r)
@@ -506,7 +506,7 @@ WRITE32_MEMBER(deco32_state::tattass_prot_w)
 WRITE32_MEMBER(deco32_state::tattass_control_w)
 {
 	eeprom_device *eeprom = machine().device<eeprom_device>("eeprom");
-	address_space *eeprom_space = eeprom->space();
+	address_space &eeprom_space = eeprom->space();
 
 	/* Eprom in low byte */
 	if (mem_mask==0x000000ff) { /* Byte write to low byte only (different from word writing including low byte) */
@@ -556,7 +556,7 @@ WRITE32_MEMBER(deco32_state::tattass_control_w)
 				int d=m_readBitCount/8;
 				int m=7-(m_readBitCount%8);
 				int a=(m_byteAddr+d)%1024;
-				int b=eeprom_space->read_byte(a);
+				int b=eeprom_space.read_byte(a);
 
 				m_tattass_eprom_bit=(b>>m)&1;
 
@@ -573,7 +573,7 @@ WRITE32_MEMBER(deco32_state::tattass_control_w)
 					int b=(m_buffer[24]<<7)|(m_buffer[25]<<6)|(m_buffer[26]<<5)|(m_buffer[27]<<4)
 						|(m_buffer[28]<<3)|(m_buffer[29]<<2)|(m_buffer[30]<<1)|(m_buffer[31]<<0);
 
-					eeprom_space->write_byte(m_byteAddr, b);
+					eeprom_space.write_byte(m_byteAddr, b);
 				}
 				m_lastClock=data&0x20;
 				return;
@@ -588,7 +588,7 @@ WRITE32_MEMBER(deco32_state::tattass_control_w)
 
 				/* Check for read command */
 				if (m_buffer[0] && m_buffer[1]) {
-					m_tattass_eprom_bit=(eeprom_space->read_byte(m_byteAddr)>>7)&1;
+					m_tattass_eprom_bit=(eeprom_space.read_byte(m_byteAddr)>>7)&1;
 					m_readBitCount=1;
 					m_pendingCommand=1;
 				}
@@ -1671,9 +1671,9 @@ MACHINE_RESET_MEMBER(deco32_state,deco32)
 	decoprot_reset(machine());
 }
 
-static INTERRUPT_GEN( deco32_vbl_interrupt )
+INTERRUPT_GEN_MEMBER(deco32_state::deco32_vbl_interrupt)
 {
-	device->execute().set_input_line(ARM_IRQ_LINE, HOLD_LINE);
+	device.execute().set_input_line(ARM_IRQ_LINE, HOLD_LINE);
 }
 
 UINT16 captaven_pri_callback(UINT16 x)
@@ -1735,21 +1735,21 @@ static MACHINE_CONFIG_START( captaven, deco32_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, XTAL_28MHz/4) /* verified on pcb (Data East 101 custom)*/
 	MCFG_CPU_PROGRAM_MAP(captaven_map)
-	MCFG_CPU_VBLANK_INT("screen", deco32_vbl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", deco32_state,  deco32_vbl_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H6280, XTAL_32_22MHz/4/3)  /* pin 10 is 32mhz/4, pin 14 is High so internal divisor is 3 (verified on pcb) */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
 
 	MCFG_MACHINE_RESET_OVERRIDE(deco32_state,deco32)
 
-	MCFG_TIMER_ADD("int_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("int_timer", deco32_state, interrupt_gen)
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(42*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(captaven)
-	MCFG_SCREEN_VBLANK_STATIC(captaven)
+	MCFG_SCREEN_UPDATE_DRIVER(deco32_state, screen_update_captaven)
+	MCFG_SCREEN_VBLANK_DRIVER(deco32_state, screen_eof_captaven)
 
 	MCFG_GFXDECODE(captaven)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1787,7 +1787,7 @@ static MACHINE_CONFIG_START( fghthist, deco32_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, 28000000/4)
 	MCFG_CPU_PROGRAM_MAP(fghthist_map)
-	MCFG_CPU_VBLANK_INT("screen", deco32_vbl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", deco32_state,  deco32_vbl_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H6280, 32220000/8)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1799,7 +1799,7 @@ static MACHINE_CONFIG_START( fghthist, deco32_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(42*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(fghthist)
+	MCFG_SCREEN_UPDATE_DRIVER(deco32_state, screen_update_fghthist)
 
 	MCFG_GFXDECODE(fghthist)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1834,7 +1834,7 @@ static MACHINE_CONFIG_START( fghthsta, deco32_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, 28000000/4)
 	MCFG_CPU_PROGRAM_MAP(fghthsta_memmap)
-	MCFG_CPU_VBLANK_INT("screen", deco32_vbl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", deco32_state,  deco32_vbl_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H6280, 32220000/8)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1845,7 +1845,7 @@ static MACHINE_CONFIG_START( fghthsta, deco32_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(42*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(fghthist)
+	MCFG_SCREEN_UPDATE_DRIVER(deco32_state, screen_update_fghthist)
 
 	MCFG_GFXDECODE(fghthist)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1943,7 +1943,7 @@ static MACHINE_CONFIG_START( dragngun, dragngun_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, 28000000/4)
 	MCFG_CPU_PROGRAM_MAP(dragngun_map)
-	MCFG_CPU_VBLANK_INT("screen", deco32_vbl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", deco32_state,  deco32_vbl_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", H6280, 32220000/8)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1951,15 +1951,15 @@ static MACHINE_CONFIG_START( dragngun, dragngun_state )
 	MCFG_MACHINE_RESET_OVERRIDE(deco32_state,deco32)
 	MCFG_EEPROM_93C46_ADD("eeprom")
 
-	MCFG_TIMER_ADD("int_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("int_timer", deco32_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(42*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(dragngun)
-	MCFG_SCREEN_VBLANK_STATIC(dragngun)
+	MCFG_SCREEN_UPDATE_DRIVER(dragngun_state, screen_update_dragngun)
+	MCFG_SCREEN_VBLANK_DRIVER(dragngun_state, screen_eof_dragngun)
 
 	MCFG_BUFFERED_SPRITERAM32_ADD("spriteram")
 
@@ -1992,21 +1992,20 @@ static MACHINE_CONFIG_START( dragngun, dragngun_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_CONFIG_END
 
-static TIMER_DEVICE_CALLBACK( lockload_vbl_irq )
+TIMER_DEVICE_CALLBACK_MEMBER(deco32_state::lockload_vbl_irq)
 {
-	deco32_state *state = timer.machine().driver_data<deco32_state>();
 	int scanline = param;
 
 	if(scanline == 31*8)
 	{
-		state->m_irq_source = 0;
-		state->m_maincpu->set_input_line(ARM_IRQ_LINE, HOLD_LINE);
+		m_irq_source = 0;
+		m_maincpu->set_input_line(ARM_IRQ_LINE, HOLD_LINE);
 	}
 
 	if(scanline == 0)
 	{
-		state->m_irq_source = 1;
-		state->m_maincpu->set_input_line(ARM_IRQ_LINE, HOLD_LINE);
+		m_irq_source = 1;
+		m_maincpu->set_input_line(ARM_IRQ_LINE, HOLD_LINE);
 	}
 }
 
@@ -2016,7 +2015,7 @@ static MACHINE_CONFIG_START( lockload, dragngun_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, 28000000/4)
 	MCFG_CPU_PROGRAM_MAP(lockload_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", lockload_vbl_irq, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", deco32_state, lockload_vbl_irq, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 32220000/8)
 	MCFG_CPU_PROGRAM_MAP(nslasher_sound)
@@ -2027,15 +2026,15 @@ static MACHINE_CONFIG_START( lockload, dragngun_state )
 	MCFG_MACHINE_RESET_OVERRIDE(deco32_state,deco32)
 	MCFG_EEPROM_93C46_ADD("eeprom")
 
-	MCFG_TIMER_ADD("int_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("int_timer", deco32_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(42*8, 32*8+22)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(dragngun)
-	MCFG_SCREEN_VBLANK_STATIC(dragngun)
+	MCFG_SCREEN_UPDATE_DRIVER(dragngun_state, screen_update_dragngun)
+	MCFG_SCREEN_VBLANK_DRIVER(dragngun_state, screen_eof_dragngun)
 
 	MCFG_BUFFERED_SPRITERAM32_ADD("spriteram")
 
@@ -2110,7 +2109,7 @@ static MACHINE_CONFIG_START( tattass, deco32_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, 28000000/*/4*/) /* Unconfirmed - the divider makes it far too slow, due to inaccurate core timings? */
 	MCFG_CPU_PROGRAM_MAP(tattass_map)
-	MCFG_CPU_VBLANK_INT("screen", deco32_vbl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", deco32_state,  deco32_vbl_interrupt)
 
 	MCFG_EEPROM_ADD("eeprom", eeprom_interface_tattass)
 
@@ -2119,7 +2118,7 @@ static MACHINE_CONFIG_START( tattass, deco32_state )
 	MCFG_SCREEN_SIZE(42*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
 
-	MCFG_SCREEN_UPDATE_STATIC(nslasher)
+	MCFG_SCREEN_UPDATE_DRIVER(deco32_state, screen_update_nslasher)
 
 	MCFG_DECO16IC_ADD("tilegen1", tattass_deco16ic_tilegen1_intf)
 	MCFG_DECO16IC_ADD("tilegen2", tattass_deco16ic_tilegen2_intf)
@@ -2144,7 +2143,7 @@ static MACHINE_CONFIG_START( nslasher, deco32_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", ARM, 28322000/4)
 	MCFG_CPU_PROGRAM_MAP(nslasher_map)
-	MCFG_CPU_VBLANK_INT("screen", deco32_vbl_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", deco32_state,  deco32_vbl_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 32220000/9)
 	MCFG_CPU_PROGRAM_MAP(nslasher_sound)
@@ -2158,7 +2157,7 @@ static MACHINE_CONFIG_START( nslasher, deco32_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(42*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(nslasher)
+	MCFG_SCREEN_UPDATE_DRIVER(deco32_state, screen_update_nslasher)
 
 	MCFG_DECO16IC_ADD("tilegen1", tattass_deco16ic_tilegen1_intf)
 	MCFG_DECO16IC_ADD("tilegen2", tattass_deco16ic_tilegen2_intf)

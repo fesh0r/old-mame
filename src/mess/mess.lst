@@ -618,8 +618,10 @@ b256hp	// Commodore B256HP
 bx256hp   // Commodore BX256HP
 cbm710	// Commodore CBM 710
 cbm720	// Commodore CBM 720
-cbm720se  // Commodore CBM 720 (Sweden / Finland)
-p500	  // Commodore P500 (proto, a.k.a. C128-40, PET-II)
+cbm720sw  // Commodore CBM 720 (Sweden / Finland)
+cbm730
+p500n	  // Commodore P500 (proto, a.k.a. C128-40, PET-II)
+p500p
 
 c264
 plus4n

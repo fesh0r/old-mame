@@ -59,6 +59,14 @@ public:
 	DECLARE_DRIVER_INIT(apple3);
 	DECLARE_MACHINE_RESET(apple3);
 	DECLARE_VIDEO_START(apple3);
+	UINT32 screen_update_apple3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(apple3_interrupt);
+	DECLARE_READ8_MEMBER(apple3_via_1_in_a);
+	DECLARE_READ8_MEMBER(apple3_via_1_in_b);
+	DECLARE_WRITE8_MEMBER(apple3_via_0_out_a);
+	DECLARE_WRITE8_MEMBER(apple3_via_0_out_b);
+	DECLARE_WRITE8_MEMBER(apple3_via_1_out_a);
+	DECLARE_WRITE8_MEMBER(apple3_via_1_out_b);
 };
 
 
@@ -68,16 +76,8 @@ extern const applefdc_interface apple3_fdc_interface;
 extern const via6522_interface apple3_via_0_intf;
 extern const via6522_interface apple3_via_1_intf;
 
-
-INTERRUPT_GEN( apple3_interrupt );
-
-
-
-
 /*----------- defined in video/apple3.c -----------*/
 
-
-SCREEN_UPDATE_IND16( apple3 );
 void apple3_write_charmem(running_machine &machine);
 
 

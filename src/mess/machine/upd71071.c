@@ -123,7 +123,7 @@ static TIMER_CALLBACK(dma_transfer_timer)
 	// single byte or word transfer
 	device_t* device = (device_t*)ptr;
 	upd71071_t* dmac = get_safe_token(device);
-	address_space* space = device->machine().device(dmac->intf->cputag)->memory().space(AS_PROGRAM);
+	address_space& space = device->machine().device(dmac->intf->cputag)->memory().space(AS_PROGRAM);
 	int channel = param;
 	UINT16 data = 0;  // data to transfer
 
@@ -134,7 +134,7 @@ static TIMER_CALLBACK(dma_transfer_timer)
 		case 0x04:  // I/O -> memory
 			if(dmac->intf->dma_read[channel])
 				data = dmac->intf->dma_read[channel](device->machine());
-			space->write_byte(dmac->reg.address_current[channel],data & 0xff);
+			space.write_byte(dmac->reg.address_current[channel],data & 0xff);
 			if(dmac->reg.mode_control[channel] & 0x20)  // Address direction
 				dmac->reg.address_current[channel]--;
 			else
@@ -152,7 +152,7 @@ static TIMER_CALLBACK(dma_transfer_timer)
 				dmac->reg.count_current[channel]--;
 			break;
 		case 0x08:  // memory -> I/O
-			data = space->read_byte(dmac->reg.address_current[channel]);
+			data = space.read_byte(dmac->reg.address_current[channel]);
 			if(dmac->intf->dma_read[channel])
 				dmac->intf->dma_write[channel](device->machine(),data);
 			if(dmac->reg.mode_control[channel] & 0x20)  // Address direction
@@ -416,15 +416,15 @@ static WRITE8_DEVICE_HANDLER(upd71071_write)
 	}
 }
 
-READ8_DEVICE_HANDLER(upd71071_r) { return upd71071_read(device,offset); }
-WRITE8_DEVICE_HANDLER(upd71071_w) { upd71071_write(device,offset,data); }
+READ8_DEVICE_HANDLER(upd71071_r) { return upd71071_read(device,space,offset,mem_mask); }
+WRITE8_DEVICE_HANDLER(upd71071_w) { upd71071_write(device,space,offset,data,mem_mask); }
 
 const device_type UPD71071 = &device_creator<upd71071_device>;
 
 upd71071_device::upd71071_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, UPD71071, "NEC uPD71071", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(upd71071_t));
+	m_token = global_alloc_clear(upd71071_t);
 }
 
 //-------------------------------------------------

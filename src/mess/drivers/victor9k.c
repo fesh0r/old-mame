@@ -75,7 +75,7 @@ INPUT_PORTS_END
 static MC6845_UPDATE_ROW( victor9k_update_row )
 {
 	victor9k_state *state = device->machine().driver_data<victor9k_state>();
-	address_space *program = state->m_maincpu->space(AS_PROGRAM);
+	address_space &program = state->m_maincpu->space(AS_PROGRAM);
 	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 
 	if (BIT(ma, 13))
@@ -90,7 +90,7 @@ static MC6845_UPDATE_ROW( victor9k_update_row )
 		{
 			UINT16 code = (state->m_video_ram[video_ram_addr + 1] << 8) | state->m_video_ram[video_ram_addr];
 			UINT32 char_ram_addr = (BIT(ma, 12) << 16) | ((code & 0xff) << 5) | (ra << 1);
-			UINT16 data = program->read_word(char_ram_addr);
+			UINT16 data = program.read_word(char_ram_addr);
 
 			for (int x = 0; x <= 10; x++)
 			{
@@ -123,11 +123,11 @@ static const mc6845_interface hd46505s_intf =
 
 // Intel 8253 Interface
 
-static WRITE_LINE_DEVICE_HANDLER( mux_serial_b_w )
+WRITE_LINE_MEMBER(victor9k_state::mux_serial_b_w)
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( mux_serial_a_w )
+WRITE_LINE_MEMBER(victor9k_state::mux_serial_a_w)
 {
 }
 
@@ -137,11 +137,11 @@ static const struct pit8253_config pit_intf =
 		{
 			2500000,
 			DEVCB_LINE_VCC,
-			DEVCB_LINE(mux_serial_b_w)
+			DEVCB_DRIVER_LINE_MEMBER(victor9k_state,mux_serial_b_w)
 		}, {
 			2500000,
 			DEVCB_LINE_VCC,
-			DEVCB_LINE(mux_serial_a_w)
+			DEVCB_DRIVER_LINE_MEMBER(victor9k_state,mux_serial_a_w)
 		}, {
 			100000,
 			DEVCB_LINE_VCC,
@@ -926,8 +926,8 @@ void victor9k_state::machine_start()
 	m_maincpu->set_irq_acknowledge_callback(victor9k_irq_callback);
 
 	// memory banking
-	address_space *program = m_maincpu->space(AS_PROGRAM);
-	program->install_ram(0x00000, m_ram->size() - 1, m_ram->pointer());
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+	program.install_ram(0x00000, m_ram->size() - 1, m_ram->pointer());
 }
 
 // Machine Driver

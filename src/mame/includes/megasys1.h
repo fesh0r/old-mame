@@ -110,16 +110,9 @@ public:
 	DECLARE_VIDEO_START(megasys1);
 	DECLARE_PALETTE_INIT(megasys1);
 	DECLARE_MACHINE_RESET(megasys1_hachoo);
+	UINT32 screen_update_megasys1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void screen_eof_megasys1(screen_device &screen, bool state);
+	INTERRUPT_GEN_MEMBER(megasys1D_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(megasys1A_scanline);
+	TIMER_DEVICE_CALLBACK_MEMBER(megasys1B_scanline);
 };
-
-
-/*----------- defined in video/megasys1.c -----------*/
-
-
-SCREEN_UPDATE_IND16( megasys1 );
-SCREEN_VBLANK( megasys1 );
-
-
-
-
-

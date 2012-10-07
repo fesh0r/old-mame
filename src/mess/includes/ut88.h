@@ -47,6 +47,9 @@ public:
 	DECLARE_VIDEO_START(ut88);
 	DECLARE_MACHINE_START(ut88mini);
 	DECLARE_MACHINE_RESET(ut88mini);
+	UINT32 screen_update_ut88(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(ut88_reset);
+	TIMER_CALLBACK_MEMBER(update_display);
 };
 
 
@@ -54,16 +57,9 @@ public:
 
 extern const i8255_interface ut88_ppi8255_interface;
 
-extern MACHINE_RESET( ut88 );
-extern MACHINE_START( ut88mini );
-extern MACHINE_RESET( ut88mini );
-
 /*----------- defined in video/ut88.c -----------*/
 
 extern const gfx_layout ut88_charlayout;
-
-extern VIDEO_START( ut88 );
-extern SCREEN_UPDATE_IND16( ut88 );
 
 
 #endif /* UT88_H_ */

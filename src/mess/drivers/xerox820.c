@@ -133,50 +133,49 @@ void xerox820_state::scan_keyboard()
 	m_keydata = keydata;
 }
 
-static TIMER_DEVICE_CALLBACK( xerox820_keyboard_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(xerox820_state::xerox820_keyboard_tick)
 {
-	xerox820_state *state = timer.machine().driver_data<xerox820_state>();
-	state->scan_keyboard();
+	scan_keyboard();
 }
 
 /* Read/Write Handlers */
 
 void xerox820_state::bankswitch(int bank)
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	if (bank)
 	{
 		/* ROM */
-		program->install_rom(0x0000, 0x0fff, memregion("monitor")->base());
-		program->unmap_readwrite(0x1000, 0x1fff);
-		program->install_ram(0x3000, 0x3fff, m_video_ram);
+		program.install_rom(0x0000, 0x0fff, memregion("monitor")->base());
+		program.unmap_readwrite(0x1000, 0x1fff);
+		program.install_ram(0x3000, 0x3fff, m_video_ram);
 	}
 	else
 	{
 		/* RAM */
-		program->install_ram(0x0000, 0x3fff, ram);
+		program.install_ram(0x0000, 0x3fff, ram);
 	}
 }
 
 void xerox820ii_state::bankswitch(int bank)
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
 	if (bank)
 	{
 		/* ROM */
-		program->install_rom(0x0000, 0x17ff, memregion("monitor")->base());
-		program->unmap_readwrite(0x1800, 0x2fff);
-		program->install_ram(0x3000, 0x3fff, m_video_ram);
-		program->unmap_readwrite(0x4000, 0xbfff);
+		program.install_rom(0x0000, 0x17ff, memregion("monitor")->base());
+		program.unmap_readwrite(0x1800, 0x2fff);
+		program.install_ram(0x3000, 0x3fff, m_video_ram);
+		program.unmap_readwrite(0x4000, 0xbfff);
 	}
 	else
 	{
 		/* RAM */
-		program->install_ram(0x0000, 0xbfff, ram);
+		program.install_ram(0x0000, 0xbfff, ram);
 	}
 }
 
@@ -386,10 +385,9 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RIGHT CTRL") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
 INPUT_PORTS_END
 
-static TIMER_CALLBACK( bigboard_beepoff )
+TIMER_CALLBACK_MEMBER(xerox820_state::bigboard_beepoff)
 {
-	xerox820_state *state = machine.driver_data<xerox820_state>();
-	beep_set_state(state->m_beeper, 0);
+	beep_set_state(m_beeper, 0);
 }
 
 /* Z80 PIO */
@@ -461,7 +459,7 @@ WRITE8_MEMBER( xerox820_state::kbpio_pa_w )
 	/* beeper on bigboard */
 	if (BIT(data, 5) & (!m_bit5))
 	{
-		machine().scheduler().timer_set(attotime::from_msec(40), FUNC(bigboard_beepoff));
+		machine().scheduler().timer_set(attotime::from_msec(40), timer_expired_delegate(FUNC(xerox820_state::bigboard_beepoff),this));
 		beep_set_state(m_beeper, 1 );
 	}
 	m_bit5 = BIT(data, 5);
@@ -553,30 +551,31 @@ static Z80DART_INTERFACE( sio_intf )
 
 /* Z80 CTC */
 
-static TIMER_DEVICE_CALLBACK( ctc_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(xerox820_state::ctc_tick)
 {
-	xerox820_state *state = timer.machine().driver_data<xerox820_state>();
-
-	state->m_ctc->trg0(1);
-	state->m_ctc->trg0(0);
+	m_ctc->trg0(1);
+	m_ctc->trg0(0);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
+WRITE_LINE_MEMBER(xerox820_state::ctc_z0_w)
 {
+//  device_t *device = machine().device(Z80CTC_TAG);
 //  z80ctc_trg1_w(device, state);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
+WRITE_LINE_MEMBER(xerox820_state::ctc_z2_w)
 {
+//  device_t *device = machine().device(Z80CTC_TAG);
+
 //  z80ctc_trg3_w(device, state);
 }
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
-	DEVCB_DEVICE_LINE(Z80CTC_TAG, ctc_z0_w),		/* ZC/TO0 callback */
+	DEVCB_DRIVER_LINE_MEMBER(xerox820_state,ctc_z0_w),		/* ZC/TO0 callback */
 	DEVCB_DEVICE_LINE_MEMBER(Z80CTC_TAG, z80ctc_device, trg2),	/* ZC/TO1 callback */
-	DEVCB_DEVICE_LINE(Z80CTC_TAG, ctc_z2_w)		/* ZC/TO2 callback */
+	DEVCB_DRIVER_LINE_MEMBER(xerox820_state,ctc_z2_w)		/* ZC/TO2 callback */
 };
 
 /* Z80 Daisy Chain */
@@ -849,8 +848,8 @@ static MACHINE_CONFIG_START( xerox820, xerox820_state )
 	MCFG_PALETTE_INIT(black_and_white)
 
 	/* keyboard */
-	MCFG_TIMER_ADD_PERIODIC("keyboard", xerox820_keyboard_tick,attotime::from_hz(60))
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_20MHz/8))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", xerox820_state, xerox820_keyboard_tick, attotime::from_hz(60))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", xerox820_state, ctc_tick, attotime::from_hz(XTAL_20MHz/8))
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -887,8 +886,8 @@ static MACHINE_CONFIG_START( xerox820ii, xerox820ii_state )
 	MCFG_PALETTE_INIT(black_and_white)
 
 	/* keyboard */
-	MCFG_TIMER_ADD_PERIODIC("keyboard", xerox820_keyboard_tick, attotime::from_hz(60))
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_16MHz/4))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", xerox820_state, xerox820_keyboard_tick, attotime::from_hz(60))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", xerox820_state, ctc_tick, attotime::from_hz(XTAL_16MHz/4))
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

@@ -163,6 +163,17 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_lisa(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(lisa_interrupt);
+	TIMER_CALLBACK_MEMBER(handle_mouse);
+	TIMER_CALLBACK_MEMBER(read_COPS_command);
+	TIMER_CALLBACK_MEMBER(set_COPS_ready);
+	DECLARE_WRITE8_MEMBER(COPS_via_out_a);
+	DECLARE_WRITE8_MEMBER(COPS_via_out_ca2);
+	DECLARE_READ8_MEMBER(COPS_via_in_b);
+	DECLARE_WRITE8_MEMBER(COPS_via_out_b);
+	DECLARE_WRITE8_MEMBER(COPS_via_out_cb2);
+	DECLARE_READ8_MEMBER(parallel_via_in_b);
 };
 
 
@@ -171,17 +182,7 @@ public:
 extern const via6522_interface lisa_via6522_0_intf;
 extern const via6522_interface lisa_via6522_1_intf;
 
-
-SCREEN_UPDATE_IND16( lisa );
-
 extern NVRAM_HANDLER(lisa);
-
-
-
-
-
-INTERRUPT_GEN( lisa_interrupt );
-
 
 
 #endif /* LISA_H_ */

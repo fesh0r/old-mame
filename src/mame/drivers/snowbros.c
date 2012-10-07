@@ -82,9 +82,9 @@ WRITE16_MEMBER(snowbros_state::snowbros_flipscreen_w)
 }
 
 
-static SCREEN_UPDATE_IND16( snowbros )
+UINT32 snowbros_state::screen_update_snowbros(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	device_t *pandora = screen.machine().device("pandora");
+	device_t *pandora = machine().device("pandora");
 
 	/* This clears & redraws the entire screen each pass */
 	bitmap.fill(0xf0, cliprect);
@@ -93,12 +93,12 @@ static SCREEN_UPDATE_IND16( snowbros )
 }
 
 
-static SCREEN_VBLANK( snowbros )
+void snowbros_state::screen_eof_snowbros(screen_device &screen, bool state)
 {
 	// rising edge
-	if (vblank_on)
+	if (state)
 	{
-		device_t *pandora = screen.machine().device("pandora");
+		device_t *pandora = machine().device("pandora");
 		pandora_eof(pandora);
 	}
 }
@@ -120,42 +120,40 @@ WRITE16_MEMBER(snowbros_state::snowbros_irq2_ack_w)
 	machine().device("maincpu")->execute().set_input_line(2, CLEAR_LINE);
 }
 
-static TIMER_DEVICE_CALLBACK( snowbros_irq )
+TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros_irq)
 {
-	snowbros_state *state = timer.machine().driver_data<snowbros_state>();
 	int scanline = param;
 
 	if(scanline == 240)
-		state->m_maincpu->set_input_line(2, ASSERT_LINE);
+		m_maincpu->set_input_line(2, ASSERT_LINE);
 
 	if(scanline == 128)
-		state->m_maincpu->set_input_line(3, ASSERT_LINE);
+		m_maincpu->set_input_line(3, ASSERT_LINE);
 
 	if(scanline == 32)
-		state->m_maincpu->set_input_line(4, ASSERT_LINE);
+		m_maincpu->set_input_line(4, ASSERT_LINE);
 }
 
-static TIMER_DEVICE_CALLBACK( snowbros3_irq )
+TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros3_irq)
 {
-	snowbros_state *state = timer.machine().driver_data<snowbros_state>();
-	okim6295_device *adpcm = timer.machine().device<okim6295_device>("oki");
+	okim6295_device *adpcm = machine().device<okim6295_device>("oki");
 	int status = adpcm->read_status();
 	int scanline = param;
 
 	if(scanline == 240)
-		state->m_maincpu->set_input_line(2, ASSERT_LINE);
+		m_maincpu->set_input_line(2, ASSERT_LINE);
 
 	if(scanline == 128)
-		state->m_maincpu->set_input_line(3, ASSERT_LINE);
+		m_maincpu->set_input_line(3, ASSERT_LINE);
 
 	if(scanline == 32)
-		state->m_maincpu->set_input_line(4, ASSERT_LINE);
+		m_maincpu->set_input_line(4, ASSERT_LINE);
 
-	if (state->m_sb3_music_is_playing)
+	if (m_sb3_music_is_playing)
 	{
 		if ((status&0x08)==0x00)
 		{
-			adpcm->write_command(0x80|state->m_sb3_music);
+			adpcm->write_command(0x80|m_sb3_music);
 			adpcm->write_command(0x00|0x82);
 		}
 
@@ -1544,7 +1542,7 @@ static MACHINE_CONFIG_START( snowbros, snowbros_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000) /* 8 Mhz - confirmed */
 	MCFG_CPU_PROGRAM_MAP(snowbros_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", snowbros_irq, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", snowbros_state, snowbros_irq, "screen", 0, 1)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 6000000) /* 6 MHz - confirmed */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -1556,8 +1554,8 @@ static MACHINE_CONFIG_START( snowbros, snowbros_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(snowbros)
-	MCFG_SCREEN_VBLANK_STATIC(snowbros)
+	MCFG_SCREEN_UPDATE_DRIVER(snowbros_state, screen_update_snowbros)
+	MCFG_SCREEN_VBLANK_DRIVER(snowbros_state, screen_eof_snowbros)
 
 	MCFG_GFXDECODE(snowbros)
 	MCFG_PALETTE_LENGTH(256)
@@ -1585,7 +1583,7 @@ static MACHINE_CONFIG_DERIVED( wintbob, snowbros )
 	/* video hardware */
 	MCFG_GFXDECODE(wb)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(wintbob)
+	MCFG_SCREEN_UPDATE_DRIVER(snowbros_state, screen_update_wintbob)
 	MCFG_SCREEN_VBLANK_NONE()
 MACHINE_CONFIG_END
 
@@ -1654,7 +1652,7 @@ static MACHINE_CONFIG_START( honeydol, snowbros_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000)
 	MCFG_CPU_PROGRAM_MAP(honeydol_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", snowbros_irq, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", snowbros_state, snowbros_irq, "screen", 0, 1)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(honeydol_sound_map)
@@ -1666,7 +1664,7 @@ static MACHINE_CONFIG_START( honeydol, snowbros_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(honeydol)
+	MCFG_SCREEN_UPDATE_DRIVER(snowbros_state, screen_update_honeydol)
 
 	MCFG_GFXDECODE(honeydol)
 	MCFG_PALETTE_LENGTH(0x800/2)
@@ -1690,12 +1688,12 @@ static MACHINE_CONFIG_START( twinadv, snowbros_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000) // or 12
 	MCFG_CPU_PROGRAM_MAP(twinadv_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", snowbros_irq, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", snowbros_state, snowbros_irq, "screen", 0, 1)
 
 	MCFG_CPU_ADD("soundcpu", Z80, 4000000)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
 	MCFG_CPU_IO_MAP(twinadv_sound_io_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", snowbros_state,  irq0_line_hold)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -1703,7 +1701,7 @@ static MACHINE_CONFIG_START( twinadv, snowbros_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(32*8, 262)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(twinadv)
+	MCFG_SCREEN_UPDATE_DRIVER(snowbros_state, screen_update_twinadv)
 
 	MCFG_GFXDECODE(twinadv)
 	MCFG_PALETTE_LENGTH(0x100)
@@ -1767,7 +1765,7 @@ static MACHINE_CONFIG_START( snowbro3, snowbros_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 16000000) /* 16mhz or 12mhz ? */
 	MCFG_CPU_PROGRAM_MAP(snowbros3_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", snowbros3_irq, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", snowbros_state, snowbros3_irq, "screen", 0, 1)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -1775,7 +1773,7 @@ static MACHINE_CONFIG_START( snowbro3, snowbros_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(snowbro3)
+	MCFG_SCREEN_UPDATE_DRIVER(snowbros_state, screen_update_snowbro3)
 
 	MCFG_GFXDECODE(sb3)
 	MCFG_PALETTE_LENGTH(512)
@@ -2342,7 +2340,7 @@ DRIVER_INIT_MEMBER(snowbros_state,moremorp)
 //      m_hyperpac_ram[0xf000/2 + i] = PROTDATA[i];
 
 	/* explicit check in the code */
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::moremorp_0a_read),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::moremorp_0a_read),this));
 }
 
 
@@ -2741,7 +2739,7 @@ DRIVER_INIT_MEMBER(snowbros_state,4in1boot)
 		memcpy(src,buffer,len);
 		auto_free(machine(), buffer);
 	}
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_4in1_02_read),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_4in1_02_read),this));
 }
 
 DRIVER_INIT_MEMBER(snowbros_state,snowbro3)
@@ -2768,7 +2766,7 @@ READ16_MEMBER(snowbros_state::_3in1_read)
 
 DRIVER_INIT_MEMBER(snowbros_state,3in1semi)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_3in1_read),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_3in1_read),this));
 }
 
 READ16_MEMBER(snowbros_state::cookbib3_read)
@@ -2778,7 +2776,7 @@ READ16_MEMBER(snowbros_state::cookbib3_read)
 
 DRIVER_INIT_MEMBER(snowbros_state,cookbib3)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::cookbib3_read),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::cookbib3_read),this));
 }
 
 DRIVER_INIT_MEMBER(snowbros_state,pzlbreak)

@@ -36,7 +36,7 @@ public:
 	m_sn(*this, "sn1")
 	{ }
 
-	optional_device<sn76489a_new_device> m_sn;
+	optional_device<sn76489a_device> m_sn;
 	UINT16 m_cursor_addr;
 	UINT16 m_cursor_raster;
 	UINT8 m_keyb_press;
@@ -86,6 +86,11 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_smc777(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(smc777_vblank_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_callback);
+	DECLARE_WRITE_LINE_MEMBER(smc777_fdc_intrq_w);
+	DECLARE_WRITE_LINE_MEMBER(smc777_fdc_drq_w);
 };
 
 
@@ -97,19 +102,18 @@ void smc777_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16( smc777 )
+UINT32 smc777_state::screen_update_smc777(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	smc777_state *state = screen.machine().driver_data<smc777_state>();
 	int x,y,yi;
 	UINT16 count;
-	UINT8 *vram = screen.machine().root_device().memregion("vram")->base();
-	UINT8 *attr = screen.machine().root_device().memregion("attr")->base();
-	UINT8 *gram = state->memregion("fbuf")->base();
+	UINT8 *vram = machine().root_device().memregion("vram")->base();
+	UINT8 *attr = machine().root_device().memregion("attr")->base();
+	UINT8 *gram = memregion("fbuf")->base();
 	int x_width;
 
-	bitmap.fill(screen.machine().pens[state->m_backdrop_pen], cliprect);
+	bitmap.fill(machine().pens[m_backdrop_pen], cliprect);
 
-	x_width = (state->m_display_reg & 0x80) ? 2 : 4;
+	x_width = (m_display_reg & 0x80) ? 2 : 4;
 
 	count = 0x0000;
 
@@ -125,23 +129,23 @@ static SCREEN_UPDATE_IND16( smc777 )
 				/* todo: clean this up! */
 				if(x_width == 2)
 				{
-					bitmap.pix16(y+yi+CRTC_MIN_Y, x*2+0+CRTC_MIN_X) = screen.machine().pens[color];
+					bitmap.pix16(y+yi+CRTC_MIN_Y, x*2+0+CRTC_MIN_X) = machine().pens[color];
 				}
 				else
 				{
-					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+0+CRTC_MIN_X) = screen.machine().pens[color];
-					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+1+CRTC_MIN_X) = screen.machine().pens[color];
+					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+0+CRTC_MIN_X) = machine().pens[color];
+					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+1+CRTC_MIN_X) = machine().pens[color];
 				}
 
 				color = (gram[count] & 0x0f) >> 0;
 				if(x_width == 2)
 				{
-					bitmap.pix16(y+yi+CRTC_MIN_Y, x*2+1+CRTC_MIN_X) = screen.machine().pens[color];
+					bitmap.pix16(y+yi+CRTC_MIN_Y, x*2+1+CRTC_MIN_X) = machine().pens[color];
 				}
 				else
 				{
-					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+2+CRTC_MIN_X) = screen.machine().pens[color];
-					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+3+CRTC_MIN_X) = screen.machine().pens[color];
+					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+2+CRTC_MIN_X) = machine().pens[color];
+					bitmap.pix16(y+yi+CRTC_MIN_Y, x*4+3+CRTC_MIN_X) = machine().pens[color];
 				}
 
 				count++;
@@ -153,7 +157,7 @@ static SCREEN_UPDATE_IND16( smc777 )
 
 	count = 0x0000;
 
-	x_width = (state->m_display_reg & 0x80) ? 40 : 80;
+	x_width = (m_display_reg & 0x80) ? 40 : 80;
 
 	for(y=0;y<25;y++)
 	{
@@ -181,50 +185,50 @@ static SCREEN_UPDATE_IND16( smc777 )
 				case 3: bk_pen = (color ^ 0xf); break; //complementary
 			}
 
-			if(blink && screen.machine().primary_screen->frame_number() & 0x10) //blinking, used by Dragon's Alphabet
+			if(blink && machine().primary_screen->frame_number() & 0x10) //blinking, used by Dragon's Alphabet
 				color = bk_pen;
 
 			for(yi=0;yi<8;yi++)
 			{
 				for(xi=0;xi<8;xi++)
 				{
-					UINT8 *gfx_data = screen.machine().root_device().memregion("pcg")->base();
+					UINT8 *gfx_data = machine().root_device().memregion("pcg")->base();
 					int pen;
 
-					pen = ((gfx_data[tile*8+yi]>>(7-xi)) & 1) ? (color+state->m_pal_mode) : bk_pen;
+					pen = ((gfx_data[tile*8+yi]>>(7-xi)) & 1) ? (color+m_pal_mode) : bk_pen;
 
 					if(pen != -1)
-						bitmap.pix16(y*8+CRTC_MIN_Y+yi, x*8+CRTC_MIN_X+xi) = screen.machine().pens[pen];
+						bitmap.pix16(y*8+CRTC_MIN_Y+yi, x*8+CRTC_MIN_X+xi) = machine().pens[pen];
 				}
 			}
 
 			// draw cursor
-			if(state->m_cursor_addr == count)
+			if(m_cursor_addr == count)
 			{
 				int xc,yc,cursor_on;
 
 				cursor_on = 0;
-				switch(state->m_cursor_raster & 0x60)
+				switch(m_cursor_raster & 0x60)
 				{
 					case 0x00: cursor_on = 1; break; //always on
 					case 0x20: cursor_on = 0; break; //always off
-					case 0x40: if(screen.machine().primary_screen->frame_number() & 0x10) { cursor_on = 1; } break; //fast blink
-					case 0x60: if(screen.machine().primary_screen->frame_number() & 0x20) { cursor_on = 1; } break; //slow blink
+					case 0x40: if(machine().primary_screen->frame_number() & 0x10) { cursor_on = 1; } break; //fast blink
+					case 0x60: if(machine().primary_screen->frame_number() & 0x20) { cursor_on = 1; } break; //slow blink
 				}
 
 				if(cursor_on)
 				{
-					for(yc=0;yc<(8-(state->m_cursor_raster & 7));yc++)
+					for(yc=0;yc<(8-(m_cursor_raster & 7));yc++)
 					{
 						for(xc=0;xc<8;xc++)
 						{
-							bitmap.pix16(y*8+CRTC_MIN_Y-yc+7, x*8+CRTC_MIN_X+xc) = screen.machine().pens[0x7];
+							bitmap.pix16(y*8+CRTC_MIN_Y-yc+7, x*8+CRTC_MIN_X+xc) = machine().pens[0x7];
 						}
 					}
 				}
 			}
 
-			(state->m_display_reg & 0x80) ? count+=2 : count++;
+			(m_display_reg & 0x80) ? count+=2 : count++;
 		}
 	}
 
@@ -366,13 +370,13 @@ READ8_MEMBER(smc777_state::smc777_fdc1_r)
 	switch(offset)
 	{
 		case 0x00:
-			return wd17xx_status_r(dev,offset) ^ 0xff;
+			return wd17xx_status_r(dev,space, offset) ^ 0xff;
 		case 0x01:
-			return wd17xx_track_r(dev,offset) ^ 0xff;
+			return wd17xx_track_r(dev,space, offset) ^ 0xff;
 		case 0x02:
-			return wd17xx_sector_r(dev,offset) ^ 0xff;
+			return wd17xx_sector_r(dev,space, offset) ^ 0xff;
 		case 0x03:
-			return wd17xx_data_r(dev,offset) ^ 0xff;
+			return wd17xx_data_r(dev,space, offset) ^ 0xff;
 		case 0x04: //irq / drq status
 			//popmessage("%02x %02x\n",m_fdc_irq_flag,m_fdc_drq_flag);
 
@@ -391,16 +395,16 @@ WRITE8_MEMBER(smc777_state::smc777_fdc1_w)
 	switch(offset)
 	{
 		case 0x00:
-			wd17xx_command_w(dev,offset,data ^ 0xff);
+			wd17xx_command_w(dev,space, offset,data ^ 0xff);
 			break;
 		case 0x01:
-			wd17xx_track_w(dev,offset,data ^ 0xff);
+			wd17xx_track_w(dev,space, offset,data ^ 0xff);
 			break;
 		case 0x02:
-			wd17xx_sector_w(dev,offset,data ^ 0xff);
+			wd17xx_sector_w(dev,space, offset,data ^ 0xff);
 			break;
 		case 0x03:
-			wd17xx_data_w(dev,offset,data ^ 0xff);
+			wd17xx_data_w(dev,space, offset,data ^ 0xff);
 			break;
 		case 0x04:
 			// ---- xxxx select floppy drive (yes, 15 of them, A to P)
@@ -412,16 +416,14 @@ WRITE8_MEMBER(smc777_state::smc777_fdc1_w)
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER( smc777_fdc_intrq_w )
+WRITE_LINE_MEMBER(smc777_state::smc777_fdc_intrq_w)
 {
-	smc777_state *drvstate = device->machine().driver_data<smc777_state>();
-	drvstate->m_fdc_irq_flag = state;
+	m_fdc_irq_flag = state;
 }
 
-static WRITE_LINE_DEVICE_HANDLER( smc777_fdc_drq_w )
+WRITE_LINE_MEMBER(smc777_state::smc777_fdc_drq_w)
 {
-	smc777_state *drvstate = device->machine().driver_data<smc777_state>();
-	drvstate->m_fdc_drq_flag = state;
+	m_fdc_drq_flag = state;
 }
 
 READ8_MEMBER(smc777_state::key_r)
@@ -929,25 +931,24 @@ static const UINT8 smc777_keytable[2][0xa0] =
 	}
 };
 
-static TIMER_DEVICE_CALLBACK( keyboard_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(smc777_state::keyboard_callback)
 {
-	smc777_state *state = timer.machine().driver_data<smc777_state>();
 	static const char *const portnames[11] = { "key0","key1","key2","key3","key4","key5","key6","key7", "key8", "key9", "keya" };
 	int i,port_i,scancode;
-	UINT8 shift_mod = timer.machine().root_device().ioport("key_mod")->read() & 1;
-	UINT8 kana_mod = timer.machine().root_device().ioport("key_mod")->read() & 0x10;
+	UINT8 shift_mod = machine().root_device().ioport("key_mod")->read() & 1;
+	UINT8 kana_mod = machine().root_device().ioport("key_mod")->read() & 0x10;
 	scancode = 0;
 
 	for(port_i=0;port_i<11;port_i++)
 	{
 		for(i=0;i<8;i++)
 		{
-			if((timer.machine().root_device().ioport(portnames[port_i])->read()>>i) & 1)
+			if((machine().root_device().ioport(portnames[port_i])->read()>>i) & 1)
 			{
-				state->m_keyb_press = smc777_keytable[shift_mod & 1][scancode];
-				if(kana_mod) { state->m_keyb_press|=0x80; }
-				state->m_keyb_press_flag = 1;
-				state->m_shift_press_flag = shift_mod & 1;
+				m_keyb_press = smc777_keytable[shift_mod & 1][scancode];
+				if(kana_mod) { m_keyb_press|=0x80; }
+				m_keyb_press_flag = 1;
+				m_shift_press_flag = shift_mod & 1;
 				return;
 			}
 			scancode++;
@@ -1019,8 +1020,8 @@ void smc777_state::palette_init()
 static const wd17xx_interface smc777_mb8876_interface =
 {
 	DEVCB_NULL,
-	DEVCB_LINE(smc777_fdc_intrq_w),
-	DEVCB_LINE(smc777_fdc_drq_w),
+	DEVCB_DRIVER_LINE_MEMBER(smc777_state, smc777_fdc_intrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(smc777_state, smc777_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
@@ -1046,12 +1047,11 @@ static const floppy_interface smc777_floppy_interface =
 	NULL
 };
 
-static INTERRUPT_GEN( smc777_vblank_irq )
+INTERRUPT_GEN_MEMBER(smc777_state::smc777_vblank_irq)
 {
-	smc777_state *state = device->machine().driver_data<smc777_state>();
 
-	if(state->m_irq_mask)
-		device->execute().set_input_line(0,HOLD_LINE);
+	if(m_irq_mask)
+		device.execute().set_input_line(0,HOLD_LINE);
 }
 
 
@@ -1079,7 +1079,7 @@ static MACHINE_CONFIG_START( smc777, smc777_state )
     MCFG_CPU_ADD("maincpu",Z80, MASTER_CLOCK)
     MCFG_CPU_PROGRAM_MAP(smc777_mem)
     MCFG_CPU_IO_MAP(smc777_io)
-	MCFG_CPU_VBLANK_INT("screen",smc777_vblank_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", smc777_state, smc777_vblank_irq)
 
 
     /* video hardware */
@@ -1088,7 +1088,7 @@ static MACHINE_CONFIG_START( smc777, smc777_state )
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
     MCFG_SCREEN_SIZE(0x400, 400)
     MCFG_SCREEN_VISIBLE_AREA(0, 660-1, 0, 220-1) //normal 640 x 200 + 20 pixels for border color
-    MCFG_SCREEN_UPDATE_STATIC(smc777)
+	MCFG_SCREEN_UPDATE_DRIVER(smc777_state, screen_update_smc777)
 
     MCFG_PALETTE_LENGTH(0x10+8) //16 palette entries + 8 special colors
 	MCFG_GFXDECODE(smc777)
@@ -1102,14 +1102,14 @@ static MACHINE_CONFIG_START( smc777, smc777_state )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("sn1", SN76489A_NEW, MASTER_CLOCK) // unknown clock / divider
+	MCFG_SOUND_ADD("sn1", SN76489A, MASTER_CLOCK) // unknown clock / divider
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_CONFIG(psg_intf)
 
 	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", keyboard_callback, attotime::from_hz(240/32))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", smc777_state, keyboard_callback, attotime::from_hz(240/32))
 MACHINE_CONFIG_END
 
 /* ROM definition */

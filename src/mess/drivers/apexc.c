@@ -31,6 +31,10 @@ public:
 	virtual void machine_start();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_apexc(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(apexc_interrupt);
+	DECLARE_READ8_MEMBER(tape_read);
+	DECLARE_WRITE8_MEMBER(tape_write);
 };
 
 
@@ -262,8 +266,9 @@ apexc_tape_reader_image_device::apexc_tape_reader_image_device(const machine_con
     Open a tape image
 */
 
-static READ8_DEVICE_HANDLER(tape_read)
+READ8_MEMBER(apexc_state::tape_read)
 {
+	device_t *device = machine().device("tape_reader");
 	UINT8 reply;
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
 
@@ -273,15 +278,16 @@ static READ8_DEVICE_HANDLER(tape_read)
 		return 0;	/* unit not ready - I don't know what we should do */
 }
 
-static WRITE8_DEVICE_HANDLER(tape_write)
+WRITE8_MEMBER(apexc_state::tape_write)
 {
+	device_t *device = machine().device("tape_puncher");
 	UINT8 data5 = (data & 0x1f);
 	device_image_interface *image = dynamic_cast<device_image_interface *>(device);
 
 	if (image->exists())
 		image->fwrite(& data5, 1);
 
-	apexc_teletyper_putchar(device->machine(), data & 0x1f);	/* display on screen */
+	apexc_teletyper_putchar(machine(), data & 0x1f);	/* display on screen */
 }
 
 /*
@@ -394,10 +400,9 @@ INPUT_PORTS_END
 /*
     Not a real interrupt - just handle keyboard input
 */
-static INTERRUPT_GEN( apexc_interrupt )
+INTERRUPT_GEN_MEMBER(apexc_state::apexc_interrupt)
 {
-	apexc_state *state = device->machine().driver_data<apexc_state>();
-	address_space* space = device->machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space& space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	UINT32 edit_keys;
 	int control_keys;
 
@@ -405,26 +410,26 @@ static INTERRUPT_GEN( apexc_interrupt )
 
 
 	/* read new state of edit keys */
-	edit_keys = device->machine().root_device().ioport("data")->read();
+	edit_keys = machine().root_device().ioport("data")->read();
 
 	/* toggle data reg according to transitions */
-	state->m_panel_data_reg ^= edit_keys & (~state->m_old_edit_keys);
+	m_panel_data_reg ^= edit_keys & (~m_old_edit_keys);
 
 	/* remember new state of edit keys */
-	state->m_old_edit_keys = edit_keys;
+	m_old_edit_keys = edit_keys;
 
 
 	/* read new state of control keys */
-	control_keys = state->ioport("panel")->read();
+	control_keys = ioport("panel")->read();
 
 	/* compute transitions */
-	control_transitions = control_keys & (~state->m_old_control_keys);
+	control_transitions = control_keys & (~m_old_control_keys);
 
 	/* process commands */
 
 	if (control_transitions & panel_run)
 	{	/* toggle run/stop state */
-		device->state().set_state_int(APEXC_STATE, ! device->state().state_int(APEXC_STATE));
+		device.state().set_state_int(APEXC_STATE, ! device.state().state_int(APEXC_STATE));
 	}
 
 	while (control_transitions & (panel_CR | panel_A | panel_R | panel_ML | panel_HB))
@@ -466,10 +471,10 @@ static INTERRUPT_GEN( apexc_interrupt )
 			/* read/write register #reg_id */
 			if (control_keys & panel_write)
 				/* write reg */
-				device->state().set_state_int(reg_id, state->m_panel_data_reg);
+				device.state().set_state_int(reg_id, m_panel_data_reg);
 			else
 				/* read reg */
-				state->m_panel_data_reg = device->state().state_int(reg_id);
+				m_panel_data_reg = device.state().state_int(reg_id);
 		}
 	}
 
@@ -478,16 +483,16 @@ static INTERRUPT_GEN( apexc_interrupt )
 
 		if (control_keys & panel_write) {
 			/* write memory */
-			space->write_dword(device->state().state_int(APEXC_ML_FULL)<<2, state->m_panel_data_reg);
+			space.write_dword(device.state().state_int(APEXC_ML_FULL)<<2, m_panel_data_reg);
 		}
 		else {
 			/* read memory */
-			state->m_panel_data_reg = space->read_dword(device->state().state_int(APEXC_ML_FULL)<<2);
+			m_panel_data_reg = space.read_dword(device.state().state_int(APEXC_ML_FULL)<<2);
 		}
 	}
 
 	/* remember new state of control keys */
-	state->m_old_control_keys = control_keys;
+	m_old_control_keys = control_keys;
 }
 
 /*
@@ -591,33 +596,32 @@ static void apexc_draw_string(running_machine &machine, bitmap_ind16 &bitmap, co
 }
 
 
-static SCREEN_UPDATE_IND16( apexc )
+UINT32 apexc_state::screen_update_apexc(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	apexc_state *state = screen.machine().driver_data<apexc_state>();
 	int i;
 	char the_char;
 
-	bitmap.fill(0, /*machine.visible_area*/panel_window);
-	apexc_draw_string(screen.machine(), bitmap, "power", 8, 0, 0);
-	apexc_draw_string(screen.machine(), bitmap, "running", 8, 8, 0);
-	apexc_draw_string(screen.machine(), bitmap, "data :", 0, 24, 0);
+	bitmap.fill(0, /*machine().visible_area*/panel_window);
+	apexc_draw_string(machine(), bitmap, "power", 8, 0, 0);
+	apexc_draw_string(machine(), bitmap, "running", 8, 8, 0);
+	apexc_draw_string(machine(), bitmap, "data :", 0, 24, 0);
 
-	copybitmap(bitmap, *state->m_bitmap, 0, 0, 0, 0, teletyper_window);
+	copybitmap(bitmap, *m_bitmap, 0, 0, 0, 0, teletyper_window);
 
 
 	apexc_draw_led(bitmap, 0, 0, 1);
 
-	apexc_draw_led(bitmap, 0, 8, screen.machine().device("maincpu")->state().state_int(APEXC_STATE));
+	apexc_draw_led(bitmap, 0, 8, machine().device("maincpu")->state().state_int(APEXC_STATE));
 
 	for (i=0; i<32; i++)
 	{
-		apexc_draw_led(bitmap, i*8, 32, (state->m_panel_data_reg << i) & 0x80000000UL);
+		apexc_draw_led(bitmap, i*8, 32, (m_panel_data_reg << i) & 0x80000000UL);
 		the_char = '0' + ((i + 1) % 10);
-		apexc_draw_char(screen.machine(), bitmap, the_char, i*8, 40, 0);
+		apexc_draw_char(machine(), bitmap, the_char, i*8, 40, 0);
 		if (((i + 1) % 10) == 0)
 		{
 			the_char = '0' + ((i + 1) / 10);
-			apexc_draw_char(screen.machine(), bitmap, the_char, i*8, 48, 0);
+			apexc_draw_char(machine(), bitmap, the_char, i*8, 48, 0);
 		}
 	}
 	return 0;
@@ -855,8 +859,8 @@ static ADDRESS_MAP_START(apexc_mem_map, AS_PROGRAM, 32, apexc_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(apexc_io_map, AS_IO, 8, apexc_state )
-	AM_RANGE(0x00, 0x00) AM_DEVREAD_LEGACY("tape_reader",tape_read)
-	AM_RANGE(0x00, 0x00) AM_DEVWRITE_LEGACY("tape_puncher",tape_write)
+	AM_RANGE(0x00, 0x00) AM_READ(tape_read)
+	AM_RANGE(0x00, 0x00) AM_WRITE(tape_write)
 ADDRESS_MAP_END
 
 
@@ -869,7 +873,7 @@ static MACHINE_CONFIG_START( apexc, apexc_state )
 	MCFG_CPU_PROGRAM_MAP(apexc_mem_map)
 	MCFG_CPU_IO_MAP(apexc_io_map)
 	/* dummy interrupt: handles the control panel */
-	MCFG_CPU_VBLANK_INT("screen", apexc_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", apexc_state,  apexc_interrupt)
 	/*MCFG_CPU_PERIODIC_INT(func, rate)*/
 
 
@@ -879,7 +883,7 @@ static MACHINE_CONFIG_START( apexc, apexc_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256, 192)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0, 192-1)
-	MCFG_SCREEN_UPDATE_STATIC(apexc)
+	MCFG_SCREEN_UPDATE_DRIVER(apexc_state, screen_update_apexc)
 
 	MCFG_GFXDECODE(apexc)
 	MCFG_PALETTE_LENGTH(APEXC_PALETTE_SIZE)

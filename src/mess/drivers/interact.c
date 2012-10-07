@@ -72,6 +72,7 @@ public:
 	required_shared_ptr<UINT8> m_videoram;
 	DECLARE_MACHINE_START(interact);
 	DECLARE_MACHINE_RESET(interact);
+	UINT32 screen_update_interact(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 
@@ -129,12 +130,11 @@ MACHINE_START_MEMBER(interact_state,interact)
 	hector_init(machine());
 }
 
-static SCREEN_UPDATE_IND16( interact )
+UINT32 interact_state::screen_update_interact(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	interact_state *state = screen.machine().driver_data<interact_state>();
-	UINT8 *videoram = state->m_videoram;
+	UINT8 *videoram = m_videoram;
 	screen.set_visible_area(0, 113, 0, 75);
-	hector_hr( screen.machine(), bitmap, videoram,  77, 32);
+	hector_hr( machine(), bitmap, videoram,  77, 32);
 	return 0;
 }
 
@@ -143,7 +143,7 @@ static MACHINE_CONFIG_START( interact, interact_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8080, XTAL_2MHz)
 	MCFG_CPU_PROGRAM_MAP(interact_mem)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
+	MCFG_CPU_PERIODIC_INT_DRIVER(interact_state, irq0_line_hold, 50) /*  put on the I8080 irq in Hz*/
 
 	MCFG_MACHINE_RESET_OVERRIDE(interact_state,interact)
 	MCFG_MACHINE_START_OVERRIDE(interact_state,interact)
@@ -154,7 +154,7 @@ static MACHINE_CONFIG_START( interact, interact_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256, 79)
 	MCFG_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
-	MCFG_SCREEN_UPDATE_STATIC(interact)
+	MCFG_SCREEN_UPDATE_DRIVER(interact_state, screen_update_interact)
 
 	MCFG_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
 
@@ -184,7 +184,7 @@ static MACHINE_CONFIG_START( hector1, interact_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_1_75MHz)
 	MCFG_CPU_PROGRAM_MAP(interact_mem)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the I8080 irq in Hz*/
+	MCFG_CPU_PERIODIC_INT_DRIVER(interact_state, irq0_line_hold, 50) /*  put on the I8080 irq in Hz*/
 
 	MCFG_MACHINE_RESET_OVERRIDE(interact_state,interact)
 	MCFG_MACHINE_START_OVERRIDE(interact_state,interact)
@@ -195,7 +195,7 @@ static MACHINE_CONFIG_START( hector1, interact_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256, 79)
 	MCFG_SCREEN_VISIBLE_AREA(0, 112, 0, 77)
-	MCFG_SCREEN_UPDATE_STATIC(interact)
+	MCFG_SCREEN_UPDATE_DRIVER(interact_state, screen_update_interact)
 
 	MCFG_PALETTE_LENGTH(16)				/* 8 colours, but only 4 at a time*/
 

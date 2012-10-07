@@ -36,32 +36,27 @@
 	} while (0)
 
 
-static READ8_DEVICE_HANDLER ( pio_port_b_r );
-static READ8_DEVICE_HANDLER ( pio_port_c_r );
-static WRITE8_DEVICE_HANDLER ( pio_port_a_w );
-static WRITE8_DEVICE_HANDLER ( pio_port_c_w );
-
 I8255_INTERFACE( mz700_ppi8255_interface )
 {
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER("ls145", pio_port_a_w),
-	DEVCB_DEVICE_HANDLER("ls145", pio_port_b_r),
+	DEVCB_DRIVER_MEMBER(mz_state,pio_port_a_w),
+	DEVCB_DRIVER_MEMBER(mz_state,pio_port_b_r),
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER("ppi8255", pio_port_c_r),
-	DEVCB_DEVICE_HANDLER("ppi8255", pio_port_c_w)
+	DEVCB_DRIVER_MEMBER(mz_state,pio_port_c_r),
+	DEVCB_DRIVER_MEMBER(mz_state,pio_port_c_w)
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( pit_out0_changed );
-static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 );
+
+
 
 const struct pit8253_config mz700_pit8253_config =
 {
 	{
 		/* clockin             gate            callback */
-		{ XTAL_17_73447MHz/20, DEVCB_NULL,     DEVCB_DEVICE_LINE("pit8253", pit_out0_changed) },
+		{ XTAL_17_73447MHz/20, DEVCB_NULL,     DEVCB_DRIVER_LINE_MEMBER(mz_state,pit_out0_changed) },
 		{	          15611.0, DEVCB_LINE_VCC, DEVCB_DEVICE_LINE("pit8253", pit8253_clk2_w)   },
-		{		            0, DEVCB_LINE_VCC, DEVCB_DEVICE_LINE("pit8253", pit_irq_2)        },
+		{		            0, DEVCB_LINE_VCC, DEVCB_DRIVER_LINE_MEMBER(mz_state,pit_irq_2)        },
 	}
 };
 
@@ -69,9 +64,9 @@ const struct pit8253_config mz800_pit8253_config =
 {
 	{
 		/* clockin             gate            callback */
-		{ XTAL_17_73447MHz/16, DEVCB_NULL,     DEVCB_DEVICE_LINE("pit8253", pit_out0_changed) },
+		{ XTAL_17_73447MHz/16, DEVCB_NULL,     DEVCB_DRIVER_LINE_MEMBER(mz_state,pit_out0_changed) },
 		{	          15611.0, DEVCB_LINE_VCC, DEVCB_DEVICE_LINE("pit8253", pit8253_clk2_w)   },
-		{		            0, DEVCB_LINE_VCC, DEVCB_DEVICE_LINE("pit8253", pit_irq_2)        },
+		{		            0, DEVCB_LINE_VCC, DEVCB_DRIVER_LINE_MEMBER(mz_state,pit_irq_2)        },
 	}
 };
 
@@ -109,7 +104,7 @@ void mz_state::machine_start()
 	m_ppi = machine().device<i8255_device>("ppi8255");
 
 	/* reset memory map to defaults */
-	mz700_bank_4_w(*machine().device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
+	mz700_bank_4_w(machine().device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
 }
 
 
@@ -143,18 +138,18 @@ WRITE8_MEMBER(mz_state::mz700_e008_w)
 READ8_MEMBER(mz_state::mz800_bank_0_r)
 {
 	UINT8 *videoram = m_videoram;
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	/* switch in cgrom */
-	spc->install_read_bank(0x1000, 0x1fff, "bank2");
-	spc->nop_write(0x1000, 0x1fff);
+	spc.install_read_bank(0x1000, 0x1fff, "bank2");
+	spc.nop_write(0x1000, 0x1fff);
 	membank("bank2")->set_base(machine().root_device().memregion("monitor")->base() + 0x1000);
 
 	if (m_mz700_mode)
 	{
 		/* cgram from 0xc000 to 0xcfff */
-		spc->install_read_bank(0xc000, 0xcfff, "bank6");
-		spc->install_write_handler(0xc000, 0xcfff, write8_delegate(FUNC(mz_state::mz800_cgram_w),this));
+		spc.install_read_bank(0xc000, 0xcfff, "bank6");
+		spc.install_write_handler(0xc000, 0xcfff, write8_delegate(FUNC(mz_state::mz800_cgram_w),this));
 		membank("bank6")->set_base(m_cgram);
 	}
 	else
@@ -162,17 +157,17 @@ READ8_MEMBER(mz_state::mz800_bank_0_r)
 		if (m_hires_mode)
 		{
 			/* vram from 0x8000 to 0xbfff */
-			spc->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+			spc.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 			membank("bank4")->set_base(videoram);
 		}
 		else
 		{
 			/* vram from 0x8000 to 0x9fff */
-			spc->install_readwrite_bank(0x8000, 0x9fff, "bank4");
+			spc.install_readwrite_bank(0x8000, 0x9fff, "bank4");
 			membank("bank4")->set_base(videoram);
 
 			/* ram from 0xa000 to 0xbfff */
-			spc->install_readwrite_bank(0xa000, 0xbfff, "bank5");
+			spc.install_readwrite_bank(0xa000, 0xbfff, "bank5");
 			membank("bank5")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0xa000);
 		}
 	}
@@ -182,38 +177,38 @@ READ8_MEMBER(mz_state::mz800_bank_0_r)
 
 WRITE8_MEMBER(mz_state::mz700_bank_0_w)
 {
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	spc->install_readwrite_bank(0x0000, 0x0fff, "bank1");
+	spc.install_readwrite_bank(0x0000, 0x0fff, "bank1");
 	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 }
 
 WRITE8_MEMBER(mz_state::mz800_bank_0_w)
 {
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	spc->install_readwrite_bank(0x0000, 0x7fff, "bank1");
+	spc.install_readwrite_bank(0x0000, 0x7fff, "bank1");
 	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 }
 
 READ8_MEMBER(mz_state::mz800_bank_1_r)
 {
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	/* switch in ram from 0x1000 to 0x1fff */
-	spc->install_readwrite_bank(0x1000, 0x1fff, "bank2");
+	spc.install_readwrite_bank(0x1000, 0x1fff, "bank2");
 	membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x1000);
 
 	if (m_mz700_mode)
 	{
 		/* ram from 0xc000 to 0xcfff */
-		spc->install_readwrite_bank(0xc000, 0xcfff, "bank6");
+		spc.install_readwrite_bank(0xc000, 0xcfff, "bank6");
 		membank("bank6")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0xc000);
 	}
 	else
 	{
 		/* ram from 0x8000 to 0xbfff */
-		spc->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+		spc.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 		membank("bank4")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x8000);
 	}
 
@@ -222,14 +217,14 @@ READ8_MEMBER(mz_state::mz800_bank_1_r)
 
 WRITE8_MEMBER(mz_state::mz700_bank_1_w)
 {
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (m_mz700_mode)
 	{
 		/* switch in ram when not locked */
 		if (!m_mz700_ram_lock)
 		{
-			spc->install_readwrite_bank(0xd000, 0xffff, "bank7");
+			spc.install_readwrite_bank(0xd000, 0xffff, "bank7");
 			membank("bank7")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0xd000);
 			m_mz700_ram_vram = FALSE;
 		}
@@ -239,7 +234,7 @@ WRITE8_MEMBER(mz_state::mz700_bank_1_w)
 		/* switch in ram when not locked */
 		if (!m_mz800_ram_lock)
 		{
-			spc->install_readwrite_bank(0xe000, 0xffff, "bank8");
+			spc.install_readwrite_bank(0xe000, 0xffff, "bank8");
 			membank("bank8")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0xe000);
 			m_mz800_ram_monitor = FALSE;
 		}
@@ -248,28 +243,28 @@ WRITE8_MEMBER(mz_state::mz700_bank_1_w)
 
 WRITE8_MEMBER(mz_state::mz700_bank_2_w)
 {
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	spc->install_read_bank(0x0000, 0x0fff, "bank1");
-	spc->nop_write(0x0000, 0x0fff);
+	spc.install_read_bank(0x0000, 0x0fff, "bank1");
+	spc.nop_write(0x0000, 0x0fff);
 	membank("bank1")->set_base(machine().root_device().memregion("monitor")->base());
 }
 
 WRITE8_MEMBER(mz_state::mz700_bank_3_w)
 {
 	UINT8 *videoram = m_videoram;
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (m_mz700_mode)
 	{
 		if (!m_mz700_ram_lock)
 		{
 			/* switch in videoram */
-			spc->install_readwrite_bank(0xd000, 0xd7ff, "bank7");
+			spc.install_readwrite_bank(0xd000, 0xd7ff, "bank7");
 			membank("bank7")->set_base(videoram);
 
 			/* switch in colorram */
-			spc->install_readwrite_bank(0xd800, 0xdfff, "bank9");
+			spc.install_readwrite_bank(0xd800, 0xdfff, "bank9");
 			membank("bank9")->set_base(m_colorram);
 
 			m_mz700_ram_vram = TRUE;
@@ -277,15 +272,15 @@ WRITE8_MEMBER(mz_state::mz700_bank_3_w)
 			/* switch in memory mapped i/o devices */
 			if (m_mz700)
 			{
-				spc->install_readwrite_handler(0xe000, 0xfff3, 0, 0x1ff0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
-				spc->install_legacy_readwrite_handler(*m_pit, 0xe004, 0xfff7, 0, 0x1ff0, FUNC(pit8253_r), FUNC(pit8253_w));
-				spc->install_readwrite_handler(0xe008, 0xfff8, 0, 0x1ff0, read8_delegate(FUNC(mz_state::mz700_e008_r),this), write8_delegate(FUNC(mz_state::mz700_e008_w),this));
+				spc.install_readwrite_handler(0xe000, 0xfff3, 0, 0x1ff0, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
+				spc.install_legacy_readwrite_handler(*m_pit, 0xe004, 0xfff7, 0, 0x1ff0, FUNC(pit8253_r), FUNC(pit8253_w));
+				spc.install_readwrite_handler(0xe008, 0xfff8, 0, 0x1ff0, read8_delegate(FUNC(mz_state::mz700_e008_r),this), write8_delegate(FUNC(mz_state::mz700_e008_w),this));
 			}
 			else
 			{
-				spc->install_readwrite_handler(0xe000, 0xe003, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
-				spc->install_legacy_readwrite_handler(*m_pit, 0xe004, 0xe007, FUNC(pit8253_r), FUNC(pit8253_w));
-				spc->install_readwrite_handler(0xe008, 0xe008, read8_delegate(FUNC(mz_state::mz700_e008_r),this), write8_delegate(FUNC(mz_state::mz700_e008_w),this));
+				spc.install_readwrite_handler(0xe000, 0xe003, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
+				spc.install_legacy_readwrite_handler(*m_pit, 0xe004, 0xe007, FUNC(pit8253_r), FUNC(pit8253_w));
+				spc.install_readwrite_handler(0xe008, 0xe008, read8_delegate(FUNC(mz_state::mz700_e008_r),this), write8_delegate(FUNC(mz_state::mz700_e008_w),this));
 			}
 		}
 	}
@@ -294,8 +289,8 @@ WRITE8_MEMBER(mz_state::mz700_bank_3_w)
 		if (!m_mz800_ram_lock)
 		{
 			/* switch in mz800 monitor rom if not locked */
-			spc->install_read_bank(0xe000, 0xffff, "bank8");
-			spc->nop_write(0xe000, 0xffff);
+			spc.install_read_bank(0xe000, 0xffff, "bank8");
+			spc.nop_write(0xe000, 0xffff);
 			membank("bank8")->set_base(machine().root_device().memregion("monitor")->base() + 0x2000);
 			m_mz800_ram_monitor = TRUE;
 		}
@@ -305,7 +300,7 @@ WRITE8_MEMBER(mz_state::mz700_bank_3_w)
 WRITE8_MEMBER(mz_state::mz700_bank_4_w)
 {
 	UINT8 *videoram = m_videoram;
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (m_mz700_mode)
 	{
@@ -314,44 +309,44 @@ WRITE8_MEMBER(mz_state::mz700_bank_4_w)
 		mz700_bank_3_w(space, 0, 0);	/* switch in videoram, colorram, and mmio */
 
 		/* rest is ram is always ram in mz700 mode */
-		spc->install_readwrite_bank(0x1000, 0xcfff, "bank2");
+		spc.install_readwrite_bank(0x1000, 0xcfff, "bank2");
 		membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x1000);
 	}
 	else
 	{
 		/* monitor rom and cgrom */
-		spc->install_read_bank(0x0000, 0x1fff, "bank1");
-		spc->nop_write(0x0000, 0x1fff);
+		spc.install_read_bank(0x0000, 0x1fff, "bank1");
+		spc.nop_write(0x0000, 0x1fff);
 		membank("bank1")->set_base(machine().root_device().memregion("monitor")->base());
 
 		/* ram from 0x2000 to 0x7fff */
-		spc->install_readwrite_bank(0x2000, 0x7fff, "bank3");
+		spc.install_readwrite_bank(0x2000, 0x7fff, "bank3");
 		membank("bank3")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 
 		if (m_hires_mode)
 		{
 			/* vram from 0x8000 to 0xbfff */
-			spc->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+			spc.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 			membank("bank4")->set_base(videoram);
 		}
 		else
 		{
 			/* vram from 0x8000 to 0x9fff */
-			spc->install_readwrite_bank(0x8000, 0x9fff, "bank4");
+			spc.install_readwrite_bank(0x8000, 0x9fff, "bank4");
 			membank("bank4")->set_base(videoram);
 
 			/* ram from 0xa000 to 0xbfff */
-			spc->install_readwrite_bank(0xa000, 0xbfff, "bank5");
+			spc.install_readwrite_bank(0xa000, 0xbfff, "bank5");
 			membank("bank5")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0xa000);
 		}
 
 		/* ram from 0xc000 to 0xdfff */
-		spc->install_readwrite_bank(0xc000, 0xdfff, "bank6");
+		spc.install_readwrite_bank(0xc000, 0xdfff, "bank6");
 		membank("bank6")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0xc000);
 
 		/* mz800 monitor rom from 0xe000 to 0xffff */
-		spc->install_read_bank(0xe000, 0xffff, "bank8");
-		spc->nop_write(0xe000, 0xffff);
+		spc.install_read_bank(0xe000, 0xffff, "bank8");
+		spc.nop_write(0xe000, 0xffff);
 		membank("bank8")->set_base(machine().root_device().memregion("monitor")->base() + 0x2000);
 		m_mz800_ram_monitor = TRUE;
 
@@ -361,19 +356,19 @@ WRITE8_MEMBER(mz_state::mz700_bank_4_w)
 
 WRITE8_MEMBER(mz_state::mz700_bank_5_w)
 {
-	address_space *spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &spc = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (m_mz700_mode)
 	{
 		/* prevent access from 0xd000 to 0xffff */
 		m_mz700_ram_lock = TRUE;
-		spc->nop_readwrite(0xd000, 0xffff);
+		spc.nop_readwrite(0xd000, 0xffff);
 	}
 	else
 	{
 		/* prevent access from 0xe000 to 0xffff */
 		m_mz800_ram_lock = TRUE;
-		spc->nop_readwrite(0xe000, 0xffff);
+		spc.nop_readwrite(0xe000, 0xffff);
 	}
 }
 
@@ -407,24 +402,21 @@ WRITE8_MEMBER(mz_state::mz700_bank_6_w)
 
 /* Timer 0 is the clock for the speaker output */
 
-static WRITE_LINE_DEVICE_HANDLER( pit_out0_changed )
+WRITE_LINE_MEMBER(mz_state::pit_out0_changed)
 {
-	mz_state *drvstate = device->machine().driver_data<mz_state>();
-	device_t *speaker = device->machine().device(SPEAKER_TAG);
-	if((drvstate->m_prev_state==0) && (state==1)) {
-		drvstate->m_speaker_level ^= 1;
+	device_t *speaker = machine().device(SPEAKER_TAG);
+	if((m_prev_state==0) && (state==1)) {
+		m_speaker_level ^= 1;
 	}
-	drvstate->m_prev_state = state;
-	speaker_level_w( speaker, drvstate->m_speaker_level);
+	m_prev_state = state;
+	speaker_level_w( speaker, m_speaker_level);
 }
 
 /* timer 2 is the AM/PM (12 hour) interrupt */
-static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 )
+WRITE_LINE_MEMBER(mz_state::pit_irq_2)
 {
-	mz_state *mz = device->machine().driver_data<mz_state>();
-
-	if (!mz->m_intmsk)
-		device->machine().device("maincpu")->execute().set_input_line(0, state);
+	if (!m_intmsk)
+		machine().device("maincpu")->execute().set_input_line(0, state);
 }
 
 
@@ -432,8 +424,9 @@ static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 )
     8255 PPI
 ***************************************************************************/
 
-static READ8_DEVICE_HANDLER( pio_port_b_r )
+READ8_MEMBER(mz_state::pio_port_b_r)
 {
+	device_t *device = machine().device("ls145");
 	int key_line = dynamic_cast<ttl74145_device *>(device)->read();
 	const char *const keynames[10] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9" };
 	int i;
@@ -442,7 +435,7 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
 	for(i=0;i<10;i++)
 	{
 		if(key_line & (1 << i))
-			res |= device->machine().root_device().ioport(keynames[i])->read();
+			res |= machine().root_device().ioport(keynames[i])->read();
 	}
 
     return res;
@@ -454,10 +447,9 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
  * bit 5 in     tape data (RDATA)
  * bit 4 in     motor (1 = on)
  */
-static READ8_DEVICE_HANDLER( pio_port_c_r )
+READ8_MEMBER(mz_state::pio_port_c_r)
 {
-	cassette_image_device *cas = device->machine().device<cassette_image_device>(CASSETTE_TAG);
-	mz_state *mz = device->machine().driver_data<mz_state>();
+	cassette_image_device *cas = machine().device<cassette_image_device>(CASSETTE_TAG);
 	UINT8 data = 0;
 
 	/* note: this is actually connected to Q output of the motor-control flip-flop (see below) */
@@ -467,20 +459,21 @@ static READ8_DEVICE_HANDLER( pio_port_c_r )
 	if ((cas)->input() > 0.0038)
 		data |= 0x20;       /* set the RDATA status */
 
-	data |= mz->m_cursor_timer << 6;
-	data |= device->machine().primary_screen->vblank() << 7;
+	data |= m_cursor_timer << 6;
+	data |= machine().primary_screen->vblank() << 7;
 
-	LOG(2,"mz700_pio_port_c_r",("%02X\n", data),device->machine());
+	LOG(2,"mz700_pio_port_c_r",("%02X\n", data),machine());
 
 	return data;
 }
 
 
-static WRITE8_DEVICE_HANDLER( pio_port_a_w )
+WRITE8_MEMBER(mz_state::pio_port_a_w)
 {
-	timer_device *timer = device->machine().device<timer_device>("cursor");
+	device_t *device = machine().device("ls145");
+	timer_device *timer = machine().device<timer_device>("cursor");
 
-	LOG(2,"mz700_pio_port_a_w",("%02X\n", data),device->machine());
+	LOG(2,"mz700_pio_port_a_w",("%02X\n", data),machine());
 
 	/* the ls145 is connected to PA0-PA3 */
 	dynamic_cast<ttl74145_device *>(device)->write(data & 0x07);
@@ -490,7 +483,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_a_w )
 }
 
 
-static WRITE8_DEVICE_HANDLER( pio_port_c_w )
+WRITE8_MEMBER(mz_state::pio_port_c_w)
 {
     /*
      * bit 3 out    motor control (0 = on)
@@ -499,7 +492,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_c_w )
      * bit 0 out    unused
      */
 
-//  UINT8 state = cassette_get_state(device->machine().device<cassette_image_device>(CASSETTE_TAG));
+//  UINT8 state = cassette_get_state(machine().device<cassette_image_device>(CASSETTE_TAG));
 //  UINT8 action = ((~pio_port_c_output & 8) & (data & 8));     /* detect low-to-high transition */
 
 	/* The motor control circuit consists of a resistor, capacitor, invertor, nand-gate, and D flip-flop.
@@ -512,15 +505,15 @@ static WRITE8_DEVICE_HANDLER( pio_port_c_w )
         If you load from the command-line or the software-picker, type in L <enter> immediately. */
 #if 0
 
-		device->machine().device<cassette_image_device>(CASSETTE_TAG)->change_state(
+		machine().device<cassette_image_device>(CASSETTE_TAG)->change_state(
 		((data & 0x08) && mz700_motor_on) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 		CASSETTE_MOTOR_DISABLED);
 
 #endif
 
-	LOG(2,"mz700_pio_port_c_w",("%02X\n", data),device->machine());
+	LOG(2,"mz700_pio_port_c_w",("%02X\n", data),machine());
 
-	device->machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x02) ? +1.0 : -1.0);
+	machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x02) ? +1.0 : -1.0);
 }
 
 
@@ -543,21 +536,21 @@ static void mz800_z80pio_irq(device_t *device, int which)
 	device->machine().device("maincpu")->execute().set_input_line(0, which);
 }
 
-static READ8_DEVICE_HANDLER( mz800_z80pio_port_a_r )
+READ8_MEMBER(mz_state::mz800_z80pio_port_a_r)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	centronics_device *centronics = machine().device<centronics_device>("centronics");
 	UINT8 result = 0;
 
 	result |= centronics->busy_r();
 	result |= centronics->pe_r() << 1;
-	result |= device->machine().primary_screen->hblank() << 5;
+	result |= machine().primary_screen->hblank() << 5;
 
 	return result;
 }
 
-static WRITE8_DEVICE_HANDLER( mz800_z80pio_port_a_w )
+WRITE8_MEMBER(mz_state::mz800_z80pio_port_a_w)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>("centronics");
+	centronics_device *centronics = machine().device<centronics_device>("centronics");
 
 	centronics->init_prime_w(BIT(data, 6));
 	centronics->strobe_w(BIT(data, 7));
@@ -566,8 +559,8 @@ static WRITE8_DEVICE_HANDLER( mz800_z80pio_port_a_w )
 const z80pio_interface mz800_z80pio_config =
 {
 	DEVCB_DEVICE_LINE("z80pio", mz800_z80pio_irq),
-	DEVCB_DEVICE_HANDLER("z80pio", mz800_z80pio_port_a_r),
-	DEVCB_DEVICE_HANDLER("z80pio", mz800_z80pio_port_a_w),
+	DEVCB_DRIVER_MEMBER(mz_state,mz800_z80pio_port_a_r),
+	DEVCB_DRIVER_MEMBER(mz_state,mz800_z80pio_port_a_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DEVICE_MEMBER("centronics", centronics_device, write),
@@ -627,7 +620,7 @@ WRITE8_MEMBER(mz_state::mz800_display_mode_w)
 //  {
 //      logerror("mz800_display_mode_w: switching mode to %s\n", (BIT(data, 3) ? "mz700" : "mz800"));
 //      m_mz700_mode = BIT(data, 3);
-//      mz700_bank_4_w(machine().device("maincpu")->memory().&space(AS_PROGRAM), 0, 0);
+//      mz700_bank_4_w(*machine().device("maincpu")->memory().&space(AS_PROGRAM), 0, 0);
 //  }
 }
 

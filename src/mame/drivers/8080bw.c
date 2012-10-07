@@ -396,7 +396,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( invadpt2, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(invadpt2)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_invadpt2)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -470,8 +470,8 @@ static ADDRESS_MAP_START( astropal_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x04) AM_READ_PORT("IN1")
 	AM_RANGE(0x03, 0x03) AM_MIRROR(0x04) AM_READ_PORT("IN3")
 
-	AM_RANGE(0x03, 0x03) AM_DEVWRITE_LEGACY("discrete", invaders_audio_1_w)
-	AM_RANGE(0x05, 0x05) AM_DEVWRITE_LEGACY("discrete", invaders_audio_2_w)
+	AM_RANGE(0x03, 0x03) AM_WRITE(invaders_audio_1_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(invaders_audio_2_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
 
@@ -572,7 +572,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( cosmo, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(cosmo)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_cosmo)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -802,7 +802,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( lrescue, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(invadpt2)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_invadpt2)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -954,7 +954,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( rollingc, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(rollingc)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_rollingc)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1067,12 +1067,14 @@ static MACHINE_CONFIG_DERIVED_CLASS( schaser, mw8080bw_root, _8080bw_state )
 	MCFG_MACHINE_START_OVERRIDE(_8080bw_state,schaser)
 	MCFG_MACHINE_RESET_OVERRIDE(_8080bw_state,schaser)
 
+	MCFG_TIMER_DRIVER_ADD("schaser_sh_555", _8080bw_state, schaser_effect_555_cb)
+
 	/* add shifter */
 	MCFG_MB14241_ADD("mb14241")
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(schaser)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_schaser)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1141,7 +1143,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( schasercv, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(schasercv)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_schasercv)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1214,7 +1216,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( sflush, mw8080bw_root, _8080bw_state )
 	/* basic machine hardware */
 	MCFG_CPU_REPLACE("maincpu",M6800,1500000) // ?
 	MCFG_CPU_PROGRAM_MAP(sflush_map)
-	MCFG_CPU_VBLANK_INT("screen",irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", _8080bw_state, irq0_line_hold)
 	MCFG_MACHINE_START_OVERRIDE(_8080bw_state,mw8080bw)
 
 	/* add shifter */
@@ -1222,7 +1224,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( sflush, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(sflush)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_sflush)
 
 MACHINE_CONFIG_END
 
@@ -1329,7 +1331,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( lupin3, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(indianbt)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_indianbt)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1349,7 +1351,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( lupin3a, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(lupin3)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_lupin3)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1363,15 +1365,14 @@ MACHINE_CONFIG_END
 /*                                                     */
 /*******************************************************/
 
-static INTERRUPT_GEN( polaris_interrupt )
+INTERRUPT_GEN_MEMBER(_8080bw_state::polaris_interrupt)
 {
-	_8080bw_state *state = device->machine().driver_data<_8080bw_state>();
-	state->m_polaris_cloud_speed++;
+	m_polaris_cloud_speed++;
 
-	if (state->m_polaris_cloud_speed >= 4)	/* every 4 frames - this was verified against real machine */
+	if (m_polaris_cloud_speed >= 4)	/* every 4 frames - this was verified against real machine */
 	{
-		state->m_polaris_cloud_speed = 0;
-		state->m_polaris_cloud_pos++;
+		m_polaris_cloud_speed = 0;
+		m_polaris_cloud_pos++;
 	}
 }
 
@@ -1392,11 +1393,11 @@ MACHINE_START_MEMBER(_8080bw_state,polaris)
 static ADDRESS_MAP_START( polaris_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
-	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2") AM_DEVWRITE_LEGACY("discrete", polaris_sh_port_1_w)
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2") AM_WRITE(polaris_sh_port_1_w)
 	AM_RANGE(0x03, 0x03) AM_DEVREADWRITE_LEGACY("mb14241", mb14241_shift_result_r, mb14241_shift_data_w)
-	AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY("discrete", polaris_sh_port_2_w)
+	AM_RANGE(0x04, 0x04) AM_WRITE(polaris_sh_port_2_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x06, 0x06) AM_DEVWRITE_LEGACY("discrete", polaris_sh_port_3_w)
+	AM_RANGE(0x06, 0x06) AM_WRITE(polaris_sh_port_3_w)
 ADDRESS_MAP_END
 
 
@@ -1461,7 +1462,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( polaris, mw8080bw_root, _8080bw_state )
 	MCFG_CPU_PROGRAM_MAP(schaser_map)
 	MCFG_CPU_IO_MAP(polaris_io_map)
 	MCFG_WATCHDOG_VBLANK_INIT(255)
-	MCFG_CPU_VBLANK_INT("screen", polaris_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", _8080bw_state,  polaris_interrupt)
 	MCFG_MACHINE_START_OVERRIDE(_8080bw_state,polaris)
 
 	/* add shifter */
@@ -1469,7 +1470,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( polaris, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(polaris)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_polaris)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -1592,7 +1593,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( ballbomb, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(ballbomb)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_ballbomb)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1747,7 +1748,7 @@ static ADDRESS_MAP_START( indianbt_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_data_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(indianbt_sh_port_2_w)
 	AM_RANGE(0x06, 0x06) AM_WRITENOP /* sound ? */
-	AM_RANGE(0x07, 0x07) AM_DEVWRITE_LEGACY("discrete", indianbt_sh_port_3_w)
+	AM_RANGE(0x07, 0x07) AM_WRITE(indianbt_sh_port_3_w)
 ADDRESS_MAP_END
 
 
@@ -1763,7 +1764,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( indianbt, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(indianbt)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_indianbt)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1837,7 +1838,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( steelwkr, mw8080bw_root, _8080bw_state )
 
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(invadpt2)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_invadpt2)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -1972,7 +1973,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( shuttlei, mw8080bw_root, _8080bw_state )
 	/* video hardware */
 	MCFG_SCREEN_MODIFY("screen")
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(shuttlei)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_shuttlei)
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
@@ -2074,7 +2075,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( darthvdr, mw8080bw_root, _8080bw_state )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(darthvdr_map)
 	MCFG_CPU_IO_MAP(darthvdr_io_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", _8080bw_state,  irq0_line_hold)
 
 	MCFG_MACHINE_START_OVERRIDE(_8080bw_state,darthvdr)
 	MCFG_MACHINE_RESET_OVERRIDE(_8080bw_state,darthvdr)
@@ -2102,9 +2103,9 @@ static ADDRESS_MAP_START( vortex_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x04) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r)
 
 	AM_RANGE(0x00, 0x00) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
-	AM_RANGE(0x01, 0x01) AM_DEVWRITE_LEGACY("discrete", invaders_audio_1_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(invaders_audio_1_w)
 	AM_RANGE(0x06, 0x06) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_data_w)
-	AM_RANGE(0x07, 0x07) AM_DEVWRITE_LEGACY("discrete", invaders_audio_2_w)
+	AM_RANGE(0x07, 0x07) AM_WRITE(invaders_audio_2_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
 
@@ -2153,7 +2154,7 @@ MACHINE_CONFIG_DERIVED_CLASS( vortex, mw8080bw_root, _8080bw_state )
 	/* video hardware */
 	// TODO: replace with modified invaders color renderer code allowing midscanline color writes
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(invaders)
+	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_invaders)
 
 	/* add shifter */
 	MCFG_MB14241_ADD("mb14241")
@@ -2215,7 +2216,7 @@ DRIVER_INIT_MEMBER(_8080bw_state,vortex)
 
 
 
-/* unknown gun game by Model Racing, possibly Gun Champ?
+/* unlabeled gun game by Model Racing, almost certainly Gun Champ
 
 BOARD 1:
  _________________________________________________________________________________________________________________________________
@@ -2270,7 +2271,7 @@ BOARD 1:
 |  _|     |             |                                          |_______|    |_______|    |_______|    |_______|               |
 |___|     |         2708|                                                                                                         |
 |         |_____________|                                                                                            Model Racing |
-|                                                                                                                    CS235 A      |
+|                                                                                                                    CS 235A      |
 |               A               B            C            D            E            F            G            H                   |
 |_________________________________________________________________________________________________________________________________|
 
@@ -2335,26 +2336,135 @@ BOARD 2:
 |                               P           R           S            T             U         V            W          X            |
 |_________________________________________________________________________________________________________________________________|
 
+
+Claybuster is on the same hardware, PCB labels CS 235A and CS 238A as well
+
 */
 
+TIMER_DEVICE_CALLBACK_MEMBER(_8080bw_state::claybust_gun_callback)
+{
 
-// the invaders shifter stuff doesn't seem correct for this, if i hook up the count_w the gfx are corrupt, otherwise they're incorrectly offset?
-// might need custom implementation
+	// reset gun latch
+	m_claybust_gun_pos = 0;
+}
 
-static ADDRESS_MAP_START( modelr_io_map, AS_IO, 8, _8080bw_state )
-//  AM_RANGE(0x00, 0x00) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
-//  AM_RANGE(0x01, 0x01) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r)
-	AM_RANGE(0x02, 0x02) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_data_w)
-	AM_RANGE(0x03, 0x03) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r)
-//  AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(watchdog_reset_w)
+CUSTOM_INPUT_MEMBER(_8080bw_state::claybust_gun_on_r)
+{
+	return (m_claybust_gun_pos != 0) ? 1 : 0;
+}
+
+INPUT_CHANGED_MEMBER(_8080bw_state::claybust_gun_trigger)
+{
+	if (newval)
+	{
+		/*
+            The game registers a valid shot after the gun trigger is pressed, and IN1 d0 is high.
+            It latches the gun position and then compares it with VRAM contents: 1 byte/8 pixels, 0 means miss.
+            IN1 d0 probably indicates if the latch is ready or not (glitches happen otherwise)
+
+            in   $06
+            cpi  $04
+            rc
+            mov  h,a
+            in   $02
+            mov  l,a
+            lxi  d,$1ffe  <-- this is where the +2 comes from
+            dad  d
+            out  $00
+            mov  a,m
+            ana  a
+            rz
+        */
+		UINT8 gunx = ioport("GUNX")->read_safe(0x00);
+		UINT8 guny = ioport("GUNY")->read_safe(0x20);
+		m_claybust_gun_pos = ((gunx >> 3) | (guny << 5)) + 2;
+		m_claybust_gun_on->adjust(attotime::from_msec(250)); // timing is a guess
+	}
+}
+
+READ8_MEMBER(_8080bw_state::claybust_gun_lo_r)
+{
+	return m_claybust_gun_pos & 0xff;
+}
+
+READ8_MEMBER(_8080bw_state::claybust_gun_hi_r)
+{
+	return m_claybust_gun_pos >> 8;
+}
+
+static ADDRESS_MAP_START( claybust_io_map, AS_IO, 8, _8080bw_state )
+	//AM_RANGE(0x00, 0x00) AM_WRITENOP // ?
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1") AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
+	AM_RANGE(0x02, 0x02) AM_READ(claybust_gun_lo_r) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_data_w)
+	AM_RANGE(0x03, 0x03) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r) //AM_WRITENOP // port3 write looks sound-related
+	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
+	//AM_RANGE(0x05, 0x05) AM_WRITENOP // ?
+	AM_RANGE(0x06, 0x06) AM_READ(claybust_gun_hi_r)
 ADDRESS_MAP_END
 
-MACHINE_CONFIG_DERIVED_CLASS( modelr, invaders, _8080bw_state )
+
+static INPUT_PORTS_START( claybust )
+	PORT_START("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, _8080bw_state, claybust_gun_on_r, NULL)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_IMPULSE(2) PORT_CHANGED_MEMBER(DEVICE_SELF, _8080bw_state, claybust_gun_trigger, NULL)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_COIN1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_START1 )
+
+	// switch is 6-pos, but DNS06:5 and DNS06:6 are not connected
+	PORT_DIPNAME( 0x10, 0x10, "Shots" )				PORT_DIPLOCATION("DNS06:1")
+	PORT_DIPSETTING(    0x10, "4" )
+	PORT_DIPSETTING(    0x00, "2" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x20, 0x20, "DNS06:2" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x40, 0x40, "DNS06:3" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x80, 0x80, "DNS06:4" )
+
+	PORT_START( "GUNX" )
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0x00, 0xff) PORT_CROSSHAIR(X, 1.0 - (MW8080BW_HPIXCOUNT-256)/256.0, (MW8080BW_HPIXCOUNT-256)/256.0, 0) PORT_SENSITIVITY(56) PORT_KEYDELTA(5)
+	PORT_START( "GUNY" )
+	PORT_BIT( 0xff, 0xa0, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x20, 0xff) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(64) PORT_KEYDELTA(5)
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( gunchamp )
+	PORT_INCLUDE( claybust )
+
+	PORT_MODIFY("IN1")
+
+	// switch is 6-pos, but DNS06:5 and DNS06:6 are not connected
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )	PORT_DIPLOCATION("DNS06:1")
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0xe0, 0x40, DEF_STR( Coinage ) )	PORT_DIPLOCATION("DNS06:2,3,4")
+	PORT_DIPSETTING(    0xa0, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0xe0, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(    0x60, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_4C ) )
+INPUT_PORTS_END
+
+
+MACHINE_START_MEMBER(_8080bw_state, claybust)
+{
+	m_claybust_gun_pos = 0;
+	save_item(NAME(m_claybust_gun_pos));
+
+	MACHINE_START_CALL_MEMBER(mw8080bw);
+}
+
+MACHINE_CONFIG_DERIVED_CLASS( claybust, invaders, _8080bw_state )
 
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_IO_MAP(modelr_io_map)
+	MCFG_CPU_IO_MAP(claybust_io_map)
+
+	MCFG_TIMER_DRIVER_ADD("claybust_gun", _8080bw_state, claybust_gun_callback)
+
+	MCFG_MACHINE_START_OVERRIDE(_8080bw_state, claybust)
+
+	/* sound hardware */
+	// TODO: discrete sound
 
 MACHINE_CONFIG_END
 
@@ -2362,8 +2472,7 @@ MACHINE_CONFIG_END
 
 /* Taito Galactica / Space Missile
 This game was officially only distributed in Brazil.
-Not much information is avaliable. It is speculated that the original is "Space Missile", whose manufacturer was sued by Taito in Japan.
-Release date is unknown, maybe even before Galaxian?!
+Regarding release data, not much information is available online.
 
 ROM dump came from a collection of old 5 1/4 disks (Apple II) that used to be in the possession of an arcade operator in the early 80s.
 
@@ -2530,8 +2639,7 @@ WRITE8_MEMBER(_8080bw_state::invmulti_bank_w)
 
 MACHINE_RESET_MEMBER(_8080bw_state,invmulti)
 {
-
-	invmulti_bank_w(*m_maincpu->space(AS_PROGRAM), 0, 0);
+	invmulti_bank_w(m_maincpu->space(AS_PROGRAM), 0, 0);
 
 	MACHINE_RESET_CALL_MEMBER(mw8080bw);
 }
@@ -2597,16 +2705,28 @@ ROM_START( invadrmr )
 	ROM_LOAD( "sv06.1g",     0x1c00, 0x0400, CRC(2c68e0b4) SHA1(a5e5357120102ad32792bf3ef6362f45b7ba7070) )
 ROM_END
 
-ROM_START( modelr )
+
+ROM_START( claybust )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "251.bin",       0x0000, 0x0400, CRC(f27a8c1e) SHA1(510debd1ac2c0986f99c217e3078208a39d7837c) )
-	ROM_LOAD( "252.bin",       0x0400, 0x0400, CRC(d53b8f91) SHA1(56919f4c88fb3b5c23b5365f0866698bfceb2762) )
-	ROM_LOAD( "253.bin",       0x0800, 0x0400, CRC(9ef35c6c) SHA1(95bda3e2cdd50f7ac989c581481bad5f1ef2992f) )
-	ROM_LOAD( "254.bin",       0x0c00, 0x0400, CRC(ba5b562d) SHA1(47819d7e5ef3700e700a5f2faa9537bc2199561c) )
-	ROM_LOAD( "255.bin",       0x1000, 0x0400, CRC(00ea8293) SHA1(9c921fa4bafc36fc16a3f5f8588887342936d433) )
-	ROM_LOAD( "256.bin",       0x1400, 0x0400, CRC(e271150c) SHA1(36d0c0c1335036b4a994e8a38904adcf74161c59) )
-	ROM_LOAD( "257.bin",       0x1800, 0x0400, CRC(0da5d9ad) SHA1(c87c6ab248bfd2b75f070343a8f7fcbaed13f4e3) )
-	ROM_LOAD( "258.bin",       0x1c00, 0x0400, CRC(471d4052) SHA1(c8ccda2eba44c2ab49f5fc2874fe70c2bdae35d3) )
+	ROM_LOAD( "0.a1",         0x0000, 0x0400, CRC(90810582) SHA1(a5c3655bae6f92a3cd0eae3a5a3c25e414d4fdf0) )
+	ROM_LOAD( "1.a2",         0x0400, 0x0400, CRC(5ce6fb0e) SHA1(19fa3fbc0dd7e0fa4fffc005ded5a814c3b48f2d) )
+	ROM_LOAD( "2.a4",         0x0800, 0x0400, CRC(d4c1d523) SHA1(1a4785095caa8200d7e1d8d53a93c8e298f52c65) )
+	ROM_LOAD( "3.a5",         0x0c00, 0x0400, CRC(1ca00825) SHA1(74633a4903a51f1eebdd09679597dbe86db2e001) )
+	ROM_LOAD( "4.a6",         0x1000, 0x0400, CRC(09a21120) SHA1(e976d2c173c649e51b032bc5dad54f006864155c) )
+	ROM_LOAD( "5.a8",         0x1400, 0x0400, CRC(92cd4da8) SHA1(217e00012a52c479bf0b0cf37ce556387755740d) )
+ROM_END
+
+
+ROM_START( gunchamp )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "251.a1",       0x0000, 0x0400, CRC(f27a8c1e) SHA1(510debd1ac2c0986f99c217e3078208a39d7837c) )
+	ROM_LOAD( "252.a2",       0x0400, 0x0400, CRC(d53b8f91) SHA1(56919f4c88fb3b5c23b5365f0866698bfceb2762) )
+	ROM_LOAD( "253.a4",       0x0800, 0x0400, CRC(9ef35c6c) SHA1(95bda3e2cdd50f7ac989c581481bad5f1ef2992f) )
+	ROM_LOAD( "254.a5",       0x0c00, 0x0400, CRC(ba5b562d) SHA1(47819d7e5ef3700e700a5f2faa9537bc2199561c) )
+	ROM_LOAD( "255.a6",       0x1000, 0x0400, CRC(00ea8293) SHA1(9c921fa4bafc36fc16a3f5f8588887342936d433) )
+	ROM_LOAD( "256.a8",       0x1400, 0x0400, CRC(e271150c) SHA1(36d0c0c1335036b4a994e8a38904adcf74161c59) )
+	ROM_LOAD( "257.a9",       0x1800, 0x0400, CRC(0da5d9ad) SHA1(c87c6ab248bfd2b75f070343a8f7fcbaed13f4e3) )
+	ROM_LOAD( "258.a10",      0x1c00, 0x0400, CRC(471d4052) SHA1(c8ccda2eba44c2ab49f5fc2874fe70c2bdae35d3) )
 ROM_END
 
 
@@ -3774,7 +3894,8 @@ GAME( 1979, yosakdon, 0,        yosakdon, yosakdon, driver_device, 0, ROT270, "W
 GAME( 1979, yosakdona,yosakdon, yosakdon, yosakdon, driver_device, 0, ROT270, "Wing", "Yosaku To Donbei (set 2)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND ) /* bootleg? */
 GAMEL(1979, shuttlei, 0,        shuttlei, shuttlei, driver_device, 0, ROT270, "Omori Electric Co., Ltd.", "Shuttle Invader", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND | GAME_NO_COCKTAIL, layout_shuttlei )
 GAMEL(1979, skylove,  0,        shuttlei, skylove, driver_device,  0, ROT270, "Omori Electric Co., Ltd.", "Sky Love", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND | GAME_NO_COCKTAIL, layout_shuttlei )
-GAME (19??, modelr,   0,        modelr,   invadrmr, driver_device, 0, ROT0,   "Model Racing", "unknown Model Racing gun game", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE ) // no titlescreen
+GAME (1978, claybust, 0,        claybust, claybust, driver_device, 0, ROT0,   "Model Racing", "Claybuster", GAME_SUPPORTS_SAVE | GAME_NO_SOUND ) // no titlescreen, Claybuster according to flyers
+GAME (1980, gunchamp, 0,        claybust, gunchamp, driver_device, 0, ROT0,   "Model Racing", "Gun Champ", GAME_SUPPORTS_SAVE | GAME_NO_SOUND ) // no titlescreen, but very likely this is Gun Champ
 
 GAME( 2002, invmulti,    0,        invmulti, invmulti, _8080bw_state, invmulti, ROT270, "hack (Braze Technologies)", "Space Invaders Multigame (M8.03D)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 2002, invmultim3a, invmulti, invmulti, invmulti, _8080bw_state, invmulti, ROT270, "hack (Braze Technologies)", "Space Invaders Multigame (M8.03A)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

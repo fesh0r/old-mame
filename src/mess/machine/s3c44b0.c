@@ -346,7 +346,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_lcd_r )
 		}
 		break;
 	}
-//  verboselog( device->machine(), 9, "(LCD) %08X -> %08X\n", S3C44B0_BASE_LCD + (offset << 2), data);
+//  verboselog( space.machine(), 9, "(LCD) %08X -> %08X\n", S3C44B0_BASE_LCD + (offset << 2), data);
 	return data;
 }
 
@@ -442,7 +442,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_lcd_w )
 {
 	s3c44b0_lcd_t *lcd = &(get_token( device)->lcd);
 	UINT32 old_value = ((UINT32*)&lcd->regs)[offset];
-//  verboselog( device->machine(), 9, "(LCD) %08X <- %08X\n", S3C44B0_BASE_LCD + (offset << 2), data);
+//  verboselog( space.machine(), 9, "(LCD) %08X <- %08X\n", S3C44B0_BASE_LCD + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&lcd->regs)[offset]);
 	switch (offset)
 	{
@@ -474,20 +474,20 @@ static READ32_DEVICE_HANDLER( s3c44b0_clkpow_r )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 data = ((UINT32*)&s3c44b0->clkpow.regs)[offset];
-	verboselog( device->machine(), 9, "(CLKPOW) %08X -> %08X\n", S3C44B0_BASE_CLKPOW + (offset << 2), data);
+	verboselog( space.machine(), 9, "(CLKPOW) %08X -> %08X\n", S3C44B0_BASE_CLKPOW + (offset << 2), data);
 	return data;
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_clkpow_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
-	verboselog( device->machine(), 9, "(CLKPOW) %08X <- %08X\n", S3C44B0_BASE_CLKPOW + (offset << 2), data);
+	verboselog( space.machine(), 9, "(CLKPOW) %08X <- %08X\n", S3C44B0_BASE_CLKPOW + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->clkpow.regs)[offset]);
 	switch (offset)
 	{
 		case S3C44B0_PLLCON :
 		{
-			verboselog( device->machine(), 5, "CLKPOW - mclk %d\n", s3c44b0_get_mclk( device));
+			verboselog( space.machine(), 5, "CLKPOW - mclk %d\n", s3c44b0_get_mclk( device));
 			s3c44b0->cpu->set_unscaled_clock( s3c44b0_get_mclk( device) * CLOCK_MULTIPLIER);
 		}
 		break;
@@ -602,14 +602,14 @@ static READ32_DEVICE_HANDLER( s3c44b0_irq_r )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 data = ((UINT32*)&s3c44b0->irq.regs)[offset];
-	verboselog( device->machine(), 9, "(IRQ) %08X -> %08X\n", S3C44B0_BASE_INT + (offset << 2), data);
+	verboselog( space.machine(), 9, "(IRQ) %08X -> %08X\n", S3C44B0_BASE_INT + (offset << 2), data);
 	return data;
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_irq_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
-	verboselog( device->machine(), 9, "(IRQ) %08X <- %08X\n", S3C44B0_BASE_INT + (offset << 2), data);
+	verboselog( space.machine(), 9, "(IRQ) %08X <- %08X\n", S3C44B0_BASE_INT + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->irq.regs)[offset]);
 	switch (offset)
 	{
@@ -688,7 +688,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_pwm_r )
 		}
 		break;
 	}
-	verboselog( device->machine(), 9, "(PWM) %08X -> %08X\n", S3C44B0_BASE_PWM + (offset << 2), data);
+	verboselog( space.machine(), 9, "(PWM) %08X -> %08X\n", S3C44B0_BASE_PWM + (offset << 2), data);
 	return data;
 }
 
@@ -818,7 +818,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_pwm_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->pwm.regs)[offset];
-	verboselog( device->machine(), 9, "(PWM) %08X <- %08X\n", S3C44B0_BASE_PWM + (offset << 2), data);
+	verboselog( space.machine(), 9, "(PWM) %08X <- %08X\n", S3C44B0_BASE_PWM + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->pwm.regs)[offset]);
 	switch (offset)
 	{
@@ -1009,7 +1009,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_iic_r )
 		}
 		break;
 	}
-	verboselog( device->machine(), 9, "(IIC) %08X -> %08X\n", S3C44B0_BASE_IIC + (offset << 2), data);
+	verboselog( space.machine(), 9, "(IIC) %08X -> %08X\n", S3C44B0_BASE_IIC + (offset << 2), data);
 	return data;
 }
 
@@ -1017,7 +1017,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_iic_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->iic.regs)[offset];
-	verboselog( device->machine(), 9, "(IIC) %08X <- %08X\n", S3C44B0_BASE_IIC + (offset << 2), data);
+	verboselog( space.machine(), 9, "(IIC) %08X <- %08X\n", S3C44B0_BASE_IIC + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->iic.regs)[offset]);
 	switch (offset)
 	{
@@ -1176,7 +1176,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_gpio_r )
 		}
 		break;
 	}
-	verboselog( device->machine(), 9, "(GPIO) %08X -> %08X\n", S3C44B0_BASE_GPIO + (offset << 2), data);
+	verboselog( space.machine(), 9, "(GPIO) %08X -> %08X\n", S3C44B0_BASE_GPIO + (offset << 2), data);
 	return data;
 }
 
@@ -1184,7 +1184,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_gpio_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->gpio.regs)[offset];
-	verboselog( device->machine(), 9, "(GPIO) %08X <- %08X\n", S3C44B0_BASE_GPIO + (offset << 2), data);
+	verboselog( space.machine(), 9, "(GPIO) %08X <- %08X\n", S3C44B0_BASE_GPIO + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->gpio.regs)[offset]);
 	switch (offset)
 	{
@@ -1287,26 +1287,26 @@ static void s3c44b0_uart_w( device_t *device, int ch, UINT32 offset, UINT32 data
 static READ32_DEVICE_HANDLER( s3c44b0_uart_0_r )
 {
 	UINT32 data = s3c44b0_uart_r( device, 0, offset);
-//  verboselog( device->machine(), 9, "(UART 0) %08X -> %08X\n", S3C44B0_BASE_UART_0 + (offset << 2), data);
+//  verboselog( space.machine(), 9, "(UART 0) %08X -> %08X\n", S3C44B0_BASE_UART_0 + (offset << 2), data);
 	return data;
 }
 
 static READ32_DEVICE_HANDLER( s3c44b0_uart_1_r )
 {
 	UINT32 data = s3c44b0_uart_r( device, 1, offset);
-//  verboselog( device->machine(), 9, "(UART 1) %08X -> %08X\n", S3C44B0_BASE_UART_1 + (offset << 2), data);
+//  verboselog( space.machine(), 9, "(UART 1) %08X -> %08X\n", S3C44B0_BASE_UART_1 + (offset << 2), data);
 	return data;
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_uart_0_w )
 {
-	verboselog( device->machine(), 9, "(UART 0) %08X <- %08X (%08X)\n", S3C44B0_BASE_UART_0 + (offset << 2), data, mem_mask);
+	verboselog( space.machine(), 9, "(UART 0) %08X <- %08X (%08X)\n", S3C44B0_BASE_UART_0 + (offset << 2), data, mem_mask);
 	s3c44b0_uart_w( device, 0, offset, data, mem_mask);
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_uart_1_w )
 {
-	verboselog( device->machine(), 9, "(UART 1) %08X <- %08X (%08X)\n", S3C44B0_BASE_UART_1 + (offset << 2), data, mem_mask);
+	verboselog( space.machine(), 9, "(UART 1) %08X <- %08X (%08X)\n", S3C44B0_BASE_UART_1 + (offset << 2), data, mem_mask);
 	s3c44b0_uart_w( device, 1, offset, data, mem_mask);
 }
 
@@ -1355,7 +1355,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_wdt_r )
 		}
 		break;
 	}
-	verboselog( device->machine(), 9, "(WDT) %08X -> %08X\n", S3C44B0_BASE_WDT + (offset << 2), data);
+	verboselog( space.machine(), 9, "(WDT) %08X -> %08X\n", S3C44B0_BASE_WDT + (offset << 2), data);
 	return data;
 }
 
@@ -1399,7 +1399,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_wdt_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->wdt.regs)[offset];
-	verboselog( device->machine(), 9, "(WDT) %08X <- %08X\n", S3C44B0_BASE_WDT + (offset << 2), data);
+	verboselog( space.machine(), 9, "(WDT) %08X <- %08X\n", S3C44B0_BASE_WDT + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->wdt.regs)[offset]);
 	switch (offset)
 	{
@@ -1435,14 +1435,14 @@ static READ32_DEVICE_HANDLER( s3c44b0_cpuwrap_r )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 data = ((UINT32*)&s3c44b0->cpuwrap.regs)[offset];
-	verboselog( device->machine(), 9, "(CPUWRAP) %08X -> %08X\n", S3C44B0_BASE_CPU_WRAPPER + (offset << 2), data);
+	verboselog( space.machine(), 9, "(CPUWRAP) %08X -> %08X\n", S3C44B0_BASE_CPU_WRAPPER + (offset << 2), data);
 	return data;
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_cpuwrap_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
-	verboselog( device->machine(), 9, "(CPUWRAP) %08X <- %08X\n", S3C44B0_BASE_CPU_WRAPPER + (offset << 2), data);
+	verboselog( space.machine(), 9, "(CPUWRAP) %08X <- %08X\n", S3C44B0_BASE_CPU_WRAPPER + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->cpuwrap.regs)[offset]);
 }
 
@@ -1452,7 +1452,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_adc_r )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 data = ((UINT32*)&s3c44b0->adc.regs)[offset];
-	verboselog( device->machine(), 9, "(ADC) %08X -> %08X\n", S3C44B0_BASE_ADC + (offset << 2), data);
+	verboselog( space.machine(), 9, "(ADC) %08X -> %08X\n", S3C44B0_BASE_ADC + (offset << 2), data);
 	return data;
 }
 
@@ -1494,7 +1494,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_adc_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->wdt.regs)[offset];
-	verboselog( device->machine(), 9, "(ADC) %08X <- %08X\n", S3C44B0_BASE_ADC + (offset << 2), data);
+	verboselog( space.machine(), 9, "(ADC) %08X <- %08X\n", S3C44B0_BASE_ADC + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->adc.regs)[offset]);
 	switch (offset)
 	{
@@ -1525,7 +1525,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_sio_r )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 data = ((UINT32*)&s3c44b0->sio.regs)[offset];
-	verboselog( device->machine(), 9, "(SIO) %08X -> %08X\n", S3C44B0_BASE_SIO + (offset << 2), data);
+	verboselog( space.machine(), 9, "(SIO) %08X -> %08X\n", S3C44B0_BASE_SIO + (offset << 2), data);
 	return data;
 }
 
@@ -1569,7 +1569,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_sio_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->sio.regs)[offset];
-	verboselog( device->machine(), 9, "(SIO) %08X <- %08X\n", S3C44B0_BASE_SIO + (offset << 2), data);
+	verboselog( space.machine(), 9, "(SIO) %08X <- %08X\n", S3C44B0_BASE_SIO + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->sio.regs)[offset]);
 	switch (offset)
 	{
@@ -1601,12 +1601,12 @@ static TIMER_CALLBACK( s3c44b0_sio_timer_exp )
 
 /* IIS */
 
-INLINE void iface_i2s_data_w( device_t *device, int ch, UINT16 data)
+INLINE void iface_i2s_data_w( device_t *device, address_space &space, int ch, UINT16 data)
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	if (s3c44b0->iface->i2s.data_w)
 	{
-		(s3c44b0->iface->i2s.data_w)( device, ch, data, 0);
+		(s3c44b0->iface->i2s.data_w)( device, space, ch, data, 0);
 	}
 }
 
@@ -1637,7 +1637,7 @@ static READ32_DEVICE_HANDLER( s3c44b0_iis_r )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 data = ((UINT32*)&s3c44b0->iis.regs)[offset];
-	verboselog( device->machine(), 9, "(IIS) %08X -> %08X\n", S3C44B0_BASE_IIS + (offset << 2), data);
+	verboselog( space.machine(), 9, "(IIS) %08X -> %08X\n", S3C44B0_BASE_IIS + (offset << 2), data);
 	return data;
 }
 
@@ -1645,7 +1645,7 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_iis_w )
 {
 	s3c44b0_t *s3c44b0 = get_token( device);
 	UINT32 old_value = ((UINT32*)&s3c44b0->iis.regs)[offset];
-	verboselog( device->machine(), 9, "(IIS) %08X <- %08X\n", S3C44B0_BASE_IIS + (offset << 2), data);
+	verboselog( space.machine(), 9, "(IIS) %08X <- %08X\n", S3C44B0_BASE_IIS + (offset << 2), data);
 	COMBINE_DATA(&((UINT32*)&s3c44b0->iis.regs)[offset]);
 	switch (offset)
 	{
@@ -1677,8 +1677,8 @@ static WRITE32_DEVICE_HANDLER( s3c44b0_iis_w )
 			if (s3c44b0->iis.fifo_index == 2)
 			{
 				s3c44b0->iis.fifo_index = 0;
-				iface_i2s_data_w( device, 0, s3c44b0->iis.fifo[0]);
-				iface_i2s_data_w( device, 1, s3c44b0->iis.fifo[1]);
+				iface_i2s_data_w( device, space, 0, s3c44b0->iis.fifo[0]);
+				iface_i2s_data_w( device, space, 1, s3c44b0->iis.fifo[1]);
 			}
 		}
 		break;
@@ -1793,26 +1793,26 @@ static void s3c44b0_zdma_w( device_t *device, int ch, UINT32 offset, UINT32 data
 static READ32_DEVICE_HANDLER( s3c44b0_zdma_0_r )
 {
 	UINT32 data = s3c44b0_zdma_r( device, 0, offset);
-	verboselog( device->machine(), 9, "(ZDMA 0) %08X -> %08X\n", S3C44B0_BASE_ZDMA_0 + (offset << 2), data);
+	verboselog( space.machine(), 9, "(ZDMA 0) %08X -> %08X\n", S3C44B0_BASE_ZDMA_0 + (offset << 2), data);
 	return data;
 }
 
 static READ32_DEVICE_HANDLER( s3c44b0_zdma_1_r )
 {
 	UINT32 data = s3c44b0_zdma_r( device, 1, offset);
-	verboselog( device->machine(), 9, "(ZDMA 1) %08X -> %08X\n", S3C44B0_BASE_ZDMA_1 + (offset << 2), data);
+	verboselog( space.machine(), 9, "(ZDMA 1) %08X -> %08X\n", S3C44B0_BASE_ZDMA_1 + (offset << 2), data);
 	return data;
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_zdma_0_w )
 {
-	verboselog( device->machine(), 9, "(ZDMA 0) %08X <- %08X (%08X)\n", S3C44B0_BASE_ZDMA_0 + (offset << 2), data, mem_mask);
+	verboselog( space.machine(), 9, "(ZDMA 0) %08X <- %08X (%08X)\n", S3C44B0_BASE_ZDMA_0 + (offset << 2), data, mem_mask);
 	s3c44b0_zdma_w( device, 0, offset, data, mem_mask);
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_zdma_1_w )
 {
-	verboselog( device->machine(), 9, "(ZDMA 1) %08X <- %08X (%08X)\n", S3C44B0_BASE_ZDMA_1 + (offset << 2), data, mem_mask);
+	verboselog( space.machine(), 9, "(ZDMA 1) %08X <- %08X (%08X)\n", S3C44B0_BASE_ZDMA_1 + (offset << 2), data, mem_mask);
 	s3c44b0_zdma_w( device, 1, offset, data, mem_mask);
 }
 
@@ -1942,26 +1942,26 @@ static void s3c44b0_bdma_w( device_t *device, int ch, UINT32 offset, UINT32 data
 static READ32_DEVICE_HANDLER( s3c44b0_bdma_0_r )
 {
 	UINT32 data = s3c44b0_bdma_r( device, 0, offset);
-	verboselog( device->machine(), 9, "(BDMA 0) %08X -> %08X\n", S3C44B0_BASE_BDMA_0 + (offset << 2), data);
+	verboselog( space.machine(), 9, "(BDMA 0) %08X -> %08X\n", S3C44B0_BASE_BDMA_0 + (offset << 2), data);
 	return data;
 }
 
 static READ32_DEVICE_HANDLER( s3c44b0_bdma_1_r )
 {
 	UINT32 data = s3c44b0_bdma_r( device, 1, offset);
-	verboselog( device->machine(), 9, "(BDMA 1) %08X -> %08X\n", S3C44B0_BASE_BDMA_1 + (offset << 2), data);
+	verboselog( space.machine(), 9, "(BDMA 1) %08X -> %08X\n", S3C44B0_BASE_BDMA_1 + (offset << 2), data);
 	return data;
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_bdma_0_w )
 {
-	verboselog( device->machine(), 9, "(BDMA 0) %08X <- %08X (%08X)\n", S3C44B0_BASE_BDMA_0 + (offset << 2), data, mem_mask);
+	verboselog( space.machine(), 9, "(BDMA 0) %08X <- %08X (%08X)\n", S3C44B0_BASE_BDMA_0 + (offset << 2), data, mem_mask);
 	s3c44b0_bdma_w( device, 0, offset, data, mem_mask);
 }
 
 static WRITE32_DEVICE_HANDLER( s3c44b0_bdma_1_w )
 {
-	verboselog( device->machine(), 9, "(BDMA 1) %08X <- %08X (%08X)\n", S3C44B0_BASE_BDMA_1 + (offset << 2), data, mem_mask);
+	verboselog( space.machine(), 9, "(BDMA 1) %08X <- %08X (%08X)\n", S3C44B0_BASE_BDMA_1 + (offset << 2), data, mem_mask);
 	s3c44b0_bdma_w( device, 1, offset, data, mem_mask);
 }
 
@@ -2001,10 +2001,10 @@ SCREEN_UPDATE_RGB32( s3c44b0 )
 DEVICE_START( s3c44b0 )
 {
 	running_machine &machine = device->machine();
-	address_space *space = machine.device( "maincpu")->memory().space( AS_PROGRAM);
+	address_space &space = machine.device( "maincpu")->memory().space( AS_PROGRAM);
 	s3c44b0_t *s3c44b0 = get_token( device);
 	s3c44b0->iface = (const s3c44b0_interface *)device->static_config();
-	s3c44b0->space = space;
+	s3c44b0->space = &space;
 	s3c44b0->cpu = downcast<cpu_device *>(device->machine().device( "maincpu"));
 	for (int i = 0; i < 6; i++) s3c44b0->pwm.timer[i] = machine.scheduler().timer_alloc(FUNC(s3c44b0_pwm_timer_exp), (void*)device);
 	for (int i = 0; i < 2; i++) s3c44b0->uart[i].timer = machine.scheduler().timer_alloc(FUNC(s3c44b0_uart_timer_exp), (void*)device);
@@ -2016,23 +2016,23 @@ DEVICE_START( s3c44b0 )
 	s3c44b0->adc.timer = machine.scheduler().timer_alloc(FUNC(s3c44b0_adc_timer_exp), (void*)device);
 	s3c44b0->iic.timer = machine.scheduler().timer_alloc(FUNC(s3c44b0_iic_timer_exp), (void*)device);
 	s3c44b0->iis.timer = machine.scheduler().timer_alloc(FUNC(s3c44b0_iis_timer_exp), (void*)device);
-	space->install_legacy_readwrite_handler( *device, 0x01c00000, 0x01c0000b, 0, 0, FUNC(s3c44b0_cpuwrap_r), FUNC(s3c44b0_cpuwrap_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d00000, 0x01d0002b, 0, 0, FUNC(s3c44b0_uart_0_r), FUNC(s3c44b0_uart_0_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d04000, 0x01d0402b, 0, 0, FUNC(s3c44b0_uart_1_r), FUNC(s3c44b0_uart_1_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d14000, 0x01d14013, 0, 0, FUNC(s3c44b0_sio_r), FUNC(s3c44b0_sio_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d18000, 0x01d18013, 0, 0, FUNC(s3c44b0_iis_r), FUNC(s3c44b0_iis_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d20000, 0x01d20057, 0, 0, FUNC(s3c44b0_gpio_r), FUNC(s3c44b0_gpio_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d30000, 0x01d3000b, 0, 0, FUNC(s3c44b0_wdt_r), FUNC(s3c44b0_wdt_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d40000, 0x01d4000b, 0, 0, FUNC(s3c44b0_adc_r), FUNC(s3c44b0_adc_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d50000, 0x01d5004f, 0, 0, FUNC(s3c44b0_pwm_r), FUNC(s3c44b0_pwm_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d60000, 0x01d6000f, 0, 0, FUNC(s3c44b0_iic_r), FUNC(s3c44b0_iic_w));
-	space->install_legacy_readwrite_handler( *device, 0x01d80000, 0x01d8000f, 0, 0, FUNC(s3c44b0_clkpow_r), FUNC(s3c44b0_clkpow_w));
-	space->install_legacy_readwrite_handler( *device, 0x01e00000, 0x01e0003f, 0, 0, FUNC(s3c44b0_irq_r), FUNC(s3c44b0_irq_w));
-	space->install_legacy_readwrite_handler( *device, 0x01e80000, 0x01e8001b, 0, 0, FUNC(s3c44b0_zdma_0_r), FUNC(s3c44b0_zdma_0_w));
-	space->install_legacy_readwrite_handler( *device, 0x01e80020, 0x01e8003b, 0, 0, FUNC(s3c44b0_zdma_1_r), FUNC(s3c44b0_zdma_1_w));
-	space->install_legacy_readwrite_handler( *device, 0x01f00000, 0x01f00047, 0, 0, FUNC(s3c44b0_lcd_r), FUNC(s3c44b0_lcd_w));
-	space->install_legacy_readwrite_handler( *device, 0x01f80000, 0x01f8001b, 0, 0, FUNC(s3c44b0_bdma_0_r), FUNC(s3c44b0_bdma_0_w));
-	space->install_legacy_readwrite_handler( *device, 0x01f80020, 0x01f8003b, 0, 0, FUNC(s3c44b0_bdma_1_r), FUNC(s3c44b0_bdma_1_w));
+	space.install_legacy_readwrite_handler( *device, 0x01c00000, 0x01c0000b, 0, 0, FUNC(s3c44b0_cpuwrap_r), FUNC(s3c44b0_cpuwrap_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d00000, 0x01d0002b, 0, 0, FUNC(s3c44b0_uart_0_r), FUNC(s3c44b0_uart_0_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d04000, 0x01d0402b, 0, 0, FUNC(s3c44b0_uart_1_r), FUNC(s3c44b0_uart_1_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d14000, 0x01d14013, 0, 0, FUNC(s3c44b0_sio_r), FUNC(s3c44b0_sio_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d18000, 0x01d18013, 0, 0, FUNC(s3c44b0_iis_r), FUNC(s3c44b0_iis_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d20000, 0x01d20057, 0, 0, FUNC(s3c44b0_gpio_r), FUNC(s3c44b0_gpio_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d30000, 0x01d3000b, 0, 0, FUNC(s3c44b0_wdt_r), FUNC(s3c44b0_wdt_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d40000, 0x01d4000b, 0, 0, FUNC(s3c44b0_adc_r), FUNC(s3c44b0_adc_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d50000, 0x01d5004f, 0, 0, FUNC(s3c44b0_pwm_r), FUNC(s3c44b0_pwm_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d60000, 0x01d6000f, 0, 0, FUNC(s3c44b0_iic_r), FUNC(s3c44b0_iic_w));
+	space.install_legacy_readwrite_handler( *device, 0x01d80000, 0x01d8000f, 0, 0, FUNC(s3c44b0_clkpow_r), FUNC(s3c44b0_clkpow_w));
+	space.install_legacy_readwrite_handler( *device, 0x01e00000, 0x01e0003f, 0, 0, FUNC(s3c44b0_irq_r), FUNC(s3c44b0_irq_w));
+	space.install_legacy_readwrite_handler( *device, 0x01e80000, 0x01e8001b, 0, 0, FUNC(s3c44b0_zdma_0_r), FUNC(s3c44b0_zdma_0_w));
+	space.install_legacy_readwrite_handler( *device, 0x01e80020, 0x01e8003b, 0, 0, FUNC(s3c44b0_zdma_1_r), FUNC(s3c44b0_zdma_1_w));
+	space.install_legacy_readwrite_handler( *device, 0x01f00000, 0x01f00047, 0, 0, FUNC(s3c44b0_lcd_r), FUNC(s3c44b0_lcd_w));
+	space.install_legacy_readwrite_handler( *device, 0x01f80000, 0x01f8001b, 0, 0, FUNC(s3c44b0_bdma_0_r), FUNC(s3c44b0_bdma_0_w));
+	space.install_legacy_readwrite_handler( *device, 0x01f80020, 0x01f8003b, 0, 0, FUNC(s3c44b0_bdma_1_r), FUNC(s3c44b0_bdma_1_w));
 }
 
 const device_type S3C44B0 = &device_creator<s3c44b0_device>;
@@ -2040,7 +2040,7 @@ const device_type S3C44B0 = &device_creator<s3c44b0_device>;
 s3c44b0_device::s3c44b0_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, S3C44B0, "Samsung S3C44B0", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(s3c44b0_t));
+	m_token = global_alloc_clear(s3c44b0_t);
 }
 
 //-------------------------------------------------

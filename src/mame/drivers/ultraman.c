@@ -218,7 +218,7 @@ static MACHINE_CONFIG_START( ultraman, ultraman_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,24000000/2)		/* 12 MHz? */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", ultraman_state,  irq4_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,24000000/6)	/* 4 MHz? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -235,7 +235,7 @@ static MACHINE_CONFIG_START( ultraman, ultraman_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(ultraman)
+	MCFG_SCREEN_UPDATE_DRIVER(ultraman_state, screen_update_ultraman)
 
 	MCFG_PALETTE_LENGTH(8192)
 

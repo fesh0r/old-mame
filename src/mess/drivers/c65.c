@@ -193,14 +193,14 @@ READ8_MEMBER( c65_state::sid_potx_r )
 {
 	device_t *sid = machine().device("sid_r");
 
-	return c64_paddle_read(sid, 0);
+	return c64_paddle_read(sid, space, 0);
 }
 
 READ8_MEMBER( c65_state::sid_poty_r )
 {
 	device_t *sid = machine().device("sid_r");
 
-	return c64_paddle_read(sid, 1);
+	return c64_paddle_read(sid, space, 1);
 }
 
 static MOS6581_INTERFACE( sidr_intf )
@@ -232,9 +232,9 @@ static CBM_IEC_INTERFACE( cbm_iec_intf )
  *
  *************************************/
 
-static SCREEN_UPDATE_IND16( c65 )
+UINT32 c65_state::screen_update_c65(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	device_t *vic3 = screen.machine().device("vic3");
+	device_t *vic3 = machine().device("vic3");
 
 	vic3_video_update(vic3, bitmap, cliprect);
 	return 0;
@@ -289,9 +289,9 @@ static const vic3_interface c65_vic3_pal_intf = {
 	c65_c64_mem_r
 };
 
-static INTERRUPT_GEN( vic3_raster_irq )
+INTERRUPT_GEN_MEMBER(c65_state::vic3_raster_irq)
 {
-	device_t *vic3 = device->machine().device("vic3");
+	device_t *vic3 = machine().device("vic3");
 
 	vic3_raster_interrupt_gen(vic3);
 }
@@ -306,8 +306,8 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M4510, 3500000)  /* or VIC6567_CLOCK, */
 	MCFG_CPU_PROGRAM_MAP(c65_mem)
-	MCFG_CPU_VBLANK_INT("screen", c65_frame_interrupt)
-	MCFG_CPU_PERIODIC_INT(vic3_raster_irq, VIC6567_HRETRACERATE)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", c65_state,  c65_frame_interrupt)
+	MCFG_CPU_PERIODIC_INT_DRIVER(c65_state, vic3_raster_irq,  VIC6567_HRETRACERATE)
 
 	MCFG_MACHINE_START_OVERRIDE(c65_state, c65 )
 
@@ -317,7 +317,7 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(525 * 2, 520 * 2)
 	MCFG_SCREEN_VISIBLE_AREA(VIC6567_STARTVISIBLECOLUMNS ,(VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1) * 2, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1)
-	MCFG_SCREEN_UPDATE_STATIC( c65 )
+	MCFG_SCREEN_UPDATE_DRIVER(c65_state, screen_update_c65)
 
 	MCFG_PALETTE_LENGTH(0x100)
 	MCFG_PALETTE_INIT_OVERRIDE(c65_state, c65 )
@@ -337,8 +337,8 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c65, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cia */
-	MCFG_MOS6526R1_ADD("cia_0", 3500000, 60, c65_cia0)
-	MCFG_MOS6526R1_ADD("cia_1", 3500000, 60, c65_cia1)
+	MCFG_LEGACY_MOS6526R1_ADD("cia_0", 3500000, 60, c65_cia0)
+	MCFG_LEGACY_MOS6526R1_ADD("cia_1", 3500000, 60, c65_cia1)
 
 	/* floppy from serial bus */
 	MCFG_CBM_IEC_ADD(cbm_iec_intf, NULL)
@@ -371,8 +371,8 @@ static MACHINE_CONFIG_DERIVED( c65pal, c65 )
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_DEVICE_REMOVE("cia_1")
-	MCFG_MOS6526R1_ADD("cia_0", 3500000, 50, c65_cia0)
-	MCFG_MOS6526R1_ADD("cia_1", 3500000, 50, c65_cia1)
+	MCFG_LEGACY_MOS6526R1_ADD("cia_0", 3500000, 50, c65_cia0)
+	MCFG_LEGACY_MOS6526R1_ADD("cia_1", 3500000, 50, c65_cia1)
 MACHINE_CONFIG_END
 
 

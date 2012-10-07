@@ -69,8 +69,8 @@ public:
 
 	void install_handler( int n_port, psx_sio_handler p_f_sio_handler );
 
-	WRITE32_MEMBER( write );
-	READ32_MEMBER( read );
+	DECLARE_WRITE32_MEMBER( write );
+	DECLARE_READ32_MEMBER( read );
 
 	void input( int n_port, int n_mask, int n_data );
 
@@ -82,12 +82,12 @@ protected:
 private:
 	void sio_interrupt( int n_port );
 	void sio_timer_adjust( int n_port );
-	void sio_clock(void *ptr, int param);
+	TIMER_CALLBACK_MEMBER(sio_clock);
 
 	psx_sio port[2];
 };
 
-WRITE32_HANDLER( psx_sio_w );
-READ32_HANDLER( psx_sio_r );
+DECLARE_WRITE32_HANDLER( psx_sio_w );
+DECLARE_READ32_HANDLER( psx_sio_r );
 
 #endif

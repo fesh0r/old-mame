@@ -7,11 +7,11 @@
 #include "emu.h"
 #include "formats/cbm_snqk.h"
 #include "includes/cbm.h"
-#include "machine/6526cia.h"
 #include "machine/c64exp.h"
 #include "machine/c64user.h"
 #include "machine/cbmiec.h"
 #include "machine/cbmipt.h"
+#include "machine/mos6526.h"
 #include "machine/petcass.h"
 #include "machine/pla.h"
 #include "machine/ram.h"
@@ -142,6 +142,7 @@ public:
 	int m_cass_rd;
 	int m_iec_srq;
 	DECLARE_DRIVER_INIT(c64pal);
+	INTERRUPT_GEN_MEMBER(c64_frame_interrupt);
 };
 
 
@@ -182,7 +183,7 @@ public:
 };
 
 
-int c64_paddle_read (device_t *device, int which);
+int c64_paddle_read (device_t *device, address_space &space, int which);
 
 
 #endif

@@ -36,14 +36,7 @@ public:
 	TILE_GET_INFO_MEMBER(aquarius_gettileinfo);
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_aquarius(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	DECLARE_INPUT_CHANGED_MEMBER(aquarius_reset);
 };
-
-
-/*----------- defined in video/aquarius.c -----------*/
-
-
-
-
-SCREEN_UPDATE_IND16( aquarius );
-
 #endif /* AQUARIUS_H_ */

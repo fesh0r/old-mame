@@ -37,8 +37,8 @@ public:
 	void install_read_handler( int n_channel, psx_dma_read_delegate p_fn_dma_read );
 	void install_write_handler( int n_channel, psx_dma_read_delegate p_fn_dma_write );
 
-	WRITE32_MEMBER( write );
-	READ32_MEMBER( read );
+	DECLARE_WRITE32_MEMBER( write );
+	DECLARE_READ32_MEMBER( read );
 
 protected:
 	virtual void device_start();
@@ -51,7 +51,7 @@ private:
 	void dma_timer_adjust( int n_channel );
 	void dma_interrupt_update();
 	void dma_finished( int n_channel );
-	void dma_finished_callback(void *ptr, int param);
+	TIMER_CALLBACK_MEMBER(dma_finished_callback);
 	void write( offs_t offset, UINT32 data, UINT32 mem_mask );
 	UINT32 read( offs_t offset, UINT32 mem_mask );
 

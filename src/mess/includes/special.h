@@ -90,6 +90,12 @@ public:
 	DECLARE_MACHINE_RESET(specimx);
 	DECLARE_VIDEO_START(specimx);
 	DECLARE_PALETTE_INIT(specimx);
+	UINT32 screen_update_special(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_erik(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_specialp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_specimx(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(special_reset);
+	TIMER_CALLBACK_MEMBER(setup_pit8253_gates);
 };
 
 
@@ -108,16 +114,16 @@ extern const i8255_interface specialist_ppi8255_interface;
 /*----------- defined in video/special.c -----------*/
 
 
-SCREEN_UPDATE_IND16( special );
 
 
-SCREEN_UPDATE_IND16( specialp );
 
 
-SCREEN_UPDATE_IND16( specimx );
 
 
-SCREEN_UPDATE_IND16( erik );
+
+
+
+
 
 
 

@@ -417,7 +417,7 @@ static MACHINE_CONFIG_START( offtwall, offtwall_state )
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a VAD chip to generate video signals */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(offtwall)
+	MCFG_SCREEN_UPDATE_DRIVER(offtwall_state, screen_update_offtwall)
 
 	MCFG_VIDEO_START_OVERRIDE(offtwall_state,offtwall)
 
@@ -490,9 +490,9 @@ DRIVER_INIT_MEMBER(offtwall_state,offtwall)
 	atarijsa_init(machine(), "260010", 0x0040);
 
 	/* install son-of-slapstic workarounds */
-	m_spritecache_count = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x3fde42, 0x3fde43, read16_delegate(FUNC(offtwall_state::spritecache_count_r),this));
-	m_bankswitch_base = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x037ec2, 0x037f39, read16_delegate(FUNC(offtwall_state::bankswitch_r),this));
-	m_unknown_verify_base = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x3fdf1e, 0x3fdf1f, read16_delegate(FUNC(offtwall_state::unknown_verify_r),this));
+	m_spritecache_count = machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x3fde42, 0x3fde43, read16_delegate(FUNC(offtwall_state::spritecache_count_r),this));
+	m_bankswitch_base = machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x037ec2, 0x037f39, read16_delegate(FUNC(offtwall_state::bankswitch_r),this));
+	m_unknown_verify_base = machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x3fdf1e, 0x3fdf1f, read16_delegate(FUNC(offtwall_state::unknown_verify_r),this));
 }
 
 
@@ -502,9 +502,9 @@ DRIVER_INIT_MEMBER(offtwall_state,offtwalc)
 	atarijsa_init(machine(), "260010", 0x0040);
 
 	/* install son-of-slapstic workarounds */
-	m_spritecache_count = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x3fde42, 0x3fde43, read16_delegate(FUNC(offtwall_state::spritecache_count_r),this));
-	m_bankswitch_base = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x037eca, 0x037f43, read16_delegate(FUNC(offtwall_state::bankswitch_r),this));
-	m_unknown_verify_base = machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x3fdf24, 0x3fdf25, read16_delegate(FUNC(offtwall_state::unknown_verify_r),this));
+	m_spritecache_count = machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x3fde42, 0x3fde43, read16_delegate(FUNC(offtwall_state::spritecache_count_r),this));
+	m_bankswitch_base = machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x037eca, 0x037f43, read16_delegate(FUNC(offtwall_state::bankswitch_r),this));
+	m_unknown_verify_base = machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x3fdf24, 0x3fdf25, read16_delegate(FUNC(offtwall_state::unknown_verify_r),this));
 }
 
 

@@ -79,14 +79,22 @@ public:
 	virtual void palette_init();
 	DECLARE_MACHINE_START(nc200);
 	DECLARE_MACHINE_RESET(nc200);
+	UINT32 screen_update_nc(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(nc_keyboard_timer_callback);
+	TIMER_CALLBACK_MEMBER(nc_serial_timer_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(dummy_timer_callback);
+	DECLARE_WRITE_LINE_MEMBER(nc100_tc8521_alarm_callback);
+	DECLARE_WRITE_LINE_MEMBER(nc100_txrdy_callback);
+	DECLARE_WRITE_LINE_MEMBER(nc100_rxrdy_callback);
+	DECLARE_WRITE_LINE_MEMBER(nc100_centronics_ack_w);
+	DECLARE_WRITE_LINE_MEMBER(nc200_centronics_ack_w);
+	DECLARE_WRITE_LINE_MEMBER(nc200_txrdy_callback);
+	DECLARE_WRITE_LINE_MEMBER(nc200_rxrdy_callback);
+	DECLARE_WRITE_LINE_MEMBER(nc200_fdc_interrupt);
 };
 
 
 /*----------- defined in video/nc.c -----------*/
-
-extern VIDEO_START( nc );
-extern SCREEN_UPDATE_IND16( nc );
-extern PALETTE_INIT( nc );
 
 void nc200_video_set_backlight(running_machine &machine, int state);
 

@@ -11,7 +11,7 @@
 #include "includes/fromance.h"
 
 
-static TIMER_CALLBACK( crtc_interrupt_gen );
+
 
 /*************************************
  *
@@ -70,7 +70,7 @@ static void init_common( running_machine &machine )
 	state->m_fg_tilemap->set_transparent_pen(15);
 
 	/* reset the timer */
-	state->m_crtc_timer = machine.scheduler().timer_alloc(FUNC(crtc_interrupt_gen));
+	state->m_crtc_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(fromance_state::crtc_interrupt_gen),state));
 
 	/* state save */
 	state->save_item(NAME(state->m_selected_videoram));
@@ -251,12 +251,11 @@ WRITE8_MEMBER(fromance_state::fromance_scroll_w)
  *
  *************************************/
 
-static TIMER_CALLBACK( crtc_interrupt_gen )
+TIMER_CALLBACK_MEMBER(fromance_state::crtc_interrupt_gen)
 {
-	fromance_state *state = machine.driver_data<fromance_state>();
-	state->m_subcpu->set_input_line(0, HOLD_LINE);
+	m_subcpu->set_input_line(0, HOLD_LINE);
 	if (param != 0)
-		state->m_crtc_timer->adjust(machine.primary_screen->frame_period() / param, 0, machine.primary_screen->frame_period() / param);
+		m_crtc_timer->adjust(machine().primary_screen->frame_period() / param, 0, machine().primary_screen->frame_period() / param);
 }
 
 
@@ -410,31 +409,29 @@ static void draw_sprites( screen_device &screen, bitmap_ind16 &bitmap, const rec
  *
  *************************************/
 
-SCREEN_UPDATE_IND16( fromance )
+UINT32 fromance_state::screen_update_fromance(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	fromance_state *state = screen.machine().driver_data<fromance_state>();
 
-	state->m_bg_tilemap->set_scrollx(0, state->m_scrollx[0]);
-	state->m_bg_tilemap->set_scrolly(0, state->m_scrolly[0]);
-	state->m_fg_tilemap->set_scrollx(0, state->m_scrollx[1]);
-	state->m_fg_tilemap->set_scrolly(0, state->m_scrolly[1]);
+	m_bg_tilemap->set_scrollx(0, m_scrollx[0]);
+	m_bg_tilemap->set_scrolly(0, m_scrolly[0]);
+	m_fg_tilemap->set_scrollx(0, m_scrollx[1]);
+	m_fg_tilemap->set_scrolly(0, m_scrolly[1]);
 
-	state->m_bg_tilemap->draw(bitmap, cliprect, 0, 0);
-	state->m_fg_tilemap->draw(bitmap, cliprect, 0, 0);
+	m_bg_tilemap->draw(bitmap, cliprect, 0, 0);
+	m_fg_tilemap->draw(bitmap, cliprect, 0, 0);
 	return 0;
 }
 
 
-SCREEN_UPDATE_IND16( pipedrm )
+UINT32 fromance_state::screen_update_pipedrm(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	fromance_state *state = screen.machine().driver_data<fromance_state>();
 
 	/* there seems to be no logical mapping for the X scroll register -- maybe it's gone */
-	state->m_bg_tilemap->set_scrolly(0, state->m_scrolly[1]);
-	state->m_fg_tilemap->set_scrolly(0, state->m_scrolly[0]);
+	m_bg_tilemap->set_scrolly(0, m_scrolly[1]);
+	m_fg_tilemap->set_scrolly(0, m_scrolly[0]);
 
-	state->m_bg_tilemap->draw(bitmap, cliprect, 0, 0);
-	state->m_fg_tilemap->draw(bitmap, cliprect, 0, 0);
+	m_bg_tilemap->draw(bitmap, cliprect, 0, 0);
+	m_fg_tilemap->draw(bitmap, cliprect, 0, 0);
 
 	draw_sprites(screen, bitmap, cliprect, 0);
 	draw_sprites(screen, bitmap, cliprect, 1);

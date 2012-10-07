@@ -113,7 +113,7 @@
 static const UINT8 half_step_table[4] = { 0x01, 0x02, 0x04, 0x08 };
 static const UINT8 full_step_table[4] = { 0x03, 0x06, 0x0c, 0x09 };
 
-static WRITE_LINE_DEVICE_HANDLER( pcw_fdc_interrupt );
+
 
 static void pcw_update_interrupt_counter(pcw_state *state)
 {
@@ -129,7 +129,7 @@ static void pcw_update_interrupt_counter(pcw_state *state)
 /NMI depending on choice (see system control below) */
 static const upd765_interface pcw_upd765_interface =
 {
-	DEVCB_LINE(pcw_fdc_interrupt),
+	DEVCB_DRIVER_LINE_MEMBER(pcw_state,pcw_fdc_interrupt),
 	DEVCB_NULL,
 	NULL,
 	UPD765_RDY_PIN_CONNECTED,
@@ -162,35 +162,32 @@ static void pcw_update_irqs(running_machine &machine)
 	machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 }
 
-static TIMER_CALLBACK(pcw_timer_pulse)
+TIMER_CALLBACK_MEMBER(pcw_state::pcw_timer_pulse)
 {
-	pcw_state *state = machine.driver_data<pcw_state>();
-	state->m_timer_irq_flag = 0;
-	pcw_update_irqs(machine);
+	m_timer_irq_flag = 0;
+	pcw_update_irqs(machine());
 }
 
 /* callback for 1/300ths of a second interrupt */
-static TIMER_DEVICE_CALLBACK(pcw_timer_interrupt)
+TIMER_DEVICE_CALLBACK_MEMBER(pcw_state::pcw_timer_interrupt)
 {
-	pcw_state *state = timer.machine().driver_data<pcw_state>();
-	pcw_update_interrupt_counter(state);
+	pcw_update_interrupt_counter(this);
 
-	state->m_timer_irq_flag = 1;
-	pcw_update_irqs(timer.machine());
-	timer.machine().scheduler().timer_set(attotime::from_usec(100), FUNC(pcw_timer_pulse));
+	m_timer_irq_flag = 1;
+	pcw_update_irqs(machine());
+	machine().scheduler().timer_set(attotime::from_usec(100), timer_expired_delegate(FUNC(pcw_state::pcw_timer_pulse),this));
 }
 
 /* fdc interrupt callback. set/clear fdc int */
-static WRITE_LINE_DEVICE_HANDLER( pcw_fdc_interrupt )
+WRITE_LINE_MEMBER(pcw_state::pcw_fdc_interrupt)
 {
-	pcw_state *drvstate = device->machine().driver_data<pcw_state>();
 	if (state == CLEAR_LINE)
-		drvstate->m_system_status &= ~(1<<5);
+		m_system_status &= ~(1<<5);
 	else
 	{
-		drvstate->m_system_status |= (1<<5);
-		if(drvstate->m_fdc_interrupt_code == 0)  // NMI is held until interrupt type is changed
-			drvstate->m_nmi_flag = 1;
+		m_system_status |= (1<<5);
+		if(m_fdc_interrupt_code == 0)  // NMI is held until interrupt type is changed
+			m_nmi_flag = 1;
 	}
 }
 
@@ -234,7 +231,7 @@ READ8_MEMBER(pcw_state::pcw_keyboard_data_r)
 static void pcw_update_read_memory_block(running_machine &machine, int block, int bank)
 {
 	pcw_state *state = machine.driver_data<pcw_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	char block_name[10];
 
 	sprintf(block_name,"bank%d",block+1);
@@ -243,14 +240,14 @@ static void pcw_update_read_memory_block(running_machine &machine, int block, in
 	{
 		/* when upper 16 bytes are accessed use keyboard read
            handler */
-		space->install_read_handler(
+		space.install_read_handler(
 			block * 0x04000 + 0x3ff0, block * 0x04000 + 0x3fff, read8_delegate(FUNC(pcw_state::pcw_keyboard_data_r),state));
 //      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
 	else
 	{
 		/* restore bank handler across entire block */
-		space->install_read_bank(block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff,block_name);
+		space.install_read_bank(block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff,block_name);
 //      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
 	state->membank(block_name)->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + ((bank * 0x4000) % machine.device<ram_device>(RAM_TAG)->size()));
@@ -641,10 +638,10 @@ READ8_MEMBER(pcw_state::pcw_fdc_r)
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		return upd765_data_r(fdc, 0);
+		return upd765_data_r(fdc, space, 0);
 	}
 
-	return upd765_status_r(fdc, 0);
+	return upd765_status_r(fdc, space, 0);
 }
 
 WRITE8_MEMBER(pcw_state::pcw_fdc_w)
@@ -653,7 +650,7 @@ WRITE8_MEMBER(pcw_state::pcw_fdc_w)
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		upd765_data_w(fdc, 0,data);
+		upd765_data_w(fdc, space, 0,data);
 	}
 }
 
@@ -731,73 +728,71 @@ READ8_MEMBER(pcw_state::pcw_printer_status_r)
  * T0: Paper sensor (?)
  * T1: Print head location (1 if not at left margin)
  */
-static TIMER_CALLBACK(pcw_stepper_callback)
+TIMER_CALLBACK_MEMBER(pcw_state::pcw_stepper_callback)
 {
-	pcw_state *state = machine.driver_data<pcw_state>();
 
-	//popmessage("PRN: P2 bits %s %s %s\nSerial: %02x\nHeadpos: %i",state->m_printer_p2 & 0x40 ? " " : "6",state->m_printer_p2 & 0x20 ? " " : "5",state->m_printer_p2 & 0x10 ? " " : "4",state->m_printer_shift_output,state->m_printer_headpos);
-	if((state->m_printer_p2 & 0x10) == 0)  // print head motor active
+	//popmessage("PRN: P2 bits %s %s %s\nSerial: %02x\nHeadpos: %i",m_printer_p2 & 0x40 ? " " : "6",m_printer_p2 & 0x20 ? " " : "5",m_printer_p2 & 0x10 ? " " : "4",m_printer_shift_output,m_printer_headpos);
+	if((m_printer_p2 & 0x10) == 0)  // print head motor active
 	{
-		UINT8 stepper_state = (state->m_printer_shift_output >> 4) & 0x0f;
-		if(stepper_state == full_step_table[(state->m_head_motor_state + 1) & 0x03])
+		UINT8 stepper_state = (m_printer_shift_output >> 4) & 0x0f;
+		if(stepper_state == full_step_table[(m_head_motor_state + 1) & 0x03])
 		{
-			state->m_printer_headpos += 2;
-			state->m_head_motor_state++;
-			logerror("Printer head moved forward by 2 to %i\n",state->m_printer_headpos);
+			m_printer_headpos += 2;
+			m_head_motor_state++;
+			logerror("Printer head moved forward by 2 to %i\n",m_printer_headpos);
 		}
-		if(stepper_state == half_step_table[(state->m_head_motor_state + 1) & 0x03])
+		if(stepper_state == half_step_table[(m_head_motor_state + 1) & 0x03])
 		{
-			state->m_printer_headpos += 1;
-			state->m_head_motor_state++;
-			logerror("Printer head moved forward by 1 to %i\n",state->m_printer_headpos);
+			m_printer_headpos += 1;
+			m_head_motor_state++;
+			logerror("Printer head moved forward by 1 to %i\n",m_printer_headpos);
 		}
-		if(stepper_state == full_step_table[(state->m_head_motor_state - 1) & 0x03])
+		if(stepper_state == full_step_table[(m_head_motor_state - 1) & 0x03])
 		{
-			state->m_printer_headpos -= 2;
-			state->m_head_motor_state--;
-			logerror("Printer head moved back by 2 to %i\n",state->m_printer_headpos);
+			m_printer_headpos -= 2;
+			m_head_motor_state--;
+			logerror("Printer head moved back by 2 to %i\n",m_printer_headpos);
 		}
-		if(stepper_state == half_step_table[(state->m_head_motor_state - 1) & 0x03])
+		if(stepper_state == half_step_table[(m_head_motor_state - 1) & 0x03])
 		{
-			state->m_printer_headpos -= 1;
-			state->m_head_motor_state--;
-			logerror("Printer head moved back by 1 to %i\n",state->m_printer_headpos);
+			m_printer_headpos -= 1;
+			m_head_motor_state--;
+			logerror("Printer head moved back by 1 to %i\n",m_printer_headpos);
 		}
-		if(state->m_printer_headpos < 0)
-			state->m_printer_headpos = 0;
-		if(state->m_printer_headpos > PCW_PRINTER_WIDTH)
-			state->m_printer_headpos = PCW_PRINTER_WIDTH;
-		state->m_head_motor_state &= 0x03;
-		state->m_printer_p2 |= 0x10;
+		if(m_printer_headpos < 0)
+			m_printer_headpos = 0;
+		if(m_printer_headpos > PCW_PRINTER_WIDTH)
+			m_printer_headpos = PCW_PRINTER_WIDTH;
+		m_head_motor_state &= 0x03;
+		m_printer_p2 |= 0x10;
 	}
-	if((state->m_printer_p2 & 0x20) == 0)  // line feed motor active
+	if((m_printer_p2 & 0x20) == 0)  // line feed motor active
 	{
-		UINT8 stepper_state = state->m_printer_shift_output & 0x0f;
-		if(stepper_state == full_step_table[(state->m_linefeed_motor_state + 1) & 0x03])
+		UINT8 stepper_state = m_printer_shift_output & 0x0f;
+		if(stepper_state == full_step_table[(m_linefeed_motor_state + 1) & 0x03])
 		{
-			state->m_paper_feed++;
-			if(state->m_paper_feed > PCW_PRINTER_HEIGHT*2)
-				state->m_paper_feed = 0;
-			state->m_linefeed_motor_state++;
+			m_paper_feed++;
+			if(m_paper_feed > PCW_PRINTER_HEIGHT*2)
+				m_paper_feed = 0;
+			m_linefeed_motor_state++;
 		}
-		if(stepper_state == half_step_table[(state->m_linefeed_motor_state + 1) & 0x03])
+		if(stepper_state == half_step_table[(m_linefeed_motor_state + 1) & 0x03])
 		{
-			state->m_paper_feed++;
-			if(state->m_paper_feed > PCW_PRINTER_HEIGHT*2)
-				state->m_paper_feed = 0;
-			state->m_linefeed_motor_state++;
+			m_paper_feed++;
+			if(m_paper_feed > PCW_PRINTER_HEIGHT*2)
+				m_paper_feed = 0;
+			m_linefeed_motor_state++;
 		}
-		state->m_linefeed_motor_state &= 0x03;
-		state->m_printer_p2 |= 0x20;
+		m_linefeed_motor_state &= 0x03;
+		m_printer_p2 |= 0x20;
 	}
 }
 
-static TIMER_CALLBACK(pcw_pins_callback)
+TIMER_CALLBACK_MEMBER(pcw_state::pcw_pins_callback)
 {
-	pcw_state *state = machine.driver_data<pcw_state>();
 
-	pcw_printer_fire_pins(machine,state->m_printer_pins);
-	state->m_printer_p2 |= 0x40;
+	pcw_printer_fire_pins(machine(),m_printer_pins);
+	m_printer_p2 |= 0x40;
 }
 
 READ8_MEMBER(pcw_state::mcu_printer_p1_r)
@@ -1034,9 +1029,9 @@ static ADDRESS_MAP_START(pcw_keyboard_io, AS_IO, 8, pcw_state )
 ADDRESS_MAP_END
 
 
-static TIMER_CALLBACK(setup_beep)
+TIMER_CALLBACK_MEMBER(pcw_state::setup_beep)
 {
-	device_t *speaker = machine.device(BEEPER_TAG);
+	device_t *speaker = machine().device(BEEPER_TAG);
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 3750);
 }
@@ -1096,10 +1091,10 @@ DRIVER_INIT_MEMBER(pcw_state,pcw)
 	m_roller_ram_offset = 0;
 
 	/* timer interrupt */
-	machine().scheduler().timer_set(attotime::zero, FUNC(setup_beep));
+	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(pcw_state::setup_beep),this));
 
-	m_prn_stepper = machine().scheduler().timer_alloc(FUNC(pcw_stepper_callback));
-	m_prn_pins = machine().scheduler().timer_alloc(FUNC(pcw_pins_callback));
+	m_prn_stepper = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pcw_state::pcw_stepper_callback),this));
+	m_prn_pins = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pcw_state::pcw_pins_callback),this));
 }
 
 
@@ -1331,7 +1326,7 @@ static MACHINE_CONFIG_START( pcw, pcw_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(PCW_SCREEN_WIDTH, PCW_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW_SCREEN_WIDTH-1, 0, PCW_SCREEN_HEIGHT-1)
-	MCFG_SCREEN_UPDATE_STATIC( pcw )
+	MCFG_SCREEN_UPDATE_DRIVER(pcw_state, screen_update_pcw)
 
 	MCFG_PALETTE_LENGTH(PCW_NUM_COLOURS)
 
@@ -1350,7 +1345,7 @@ static MACHINE_CONFIG_START( pcw, pcw_state )
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("256K")
 
-	MCFG_TIMER_ADD_PERIODIC("pcw_timer", pcw_timer_interrupt, attotime::from_hz(300))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("pcw_timer", pcw_state, pcw_timer_interrupt, attotime::from_hz(300))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pcw8256, pcw )
@@ -1358,7 +1353,7 @@ static MACHINE_CONFIG_DERIVED( pcw8256, pcw )
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_SIZE( PCW_PRINTER_WIDTH, PCW_PRINTER_HEIGHT )
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW_PRINTER_WIDTH-1, 0, PCW_PRINTER_HEIGHT-1)
-	MCFG_SCREEN_UPDATE_STATIC( pcw_printer )
+	MCFG_SCREEN_UPDATE_DRIVER(pcw_state, screen_update_pcw_printer)
 
 	MCFG_DEFAULT_LAYOUT( layout_pcw )
 
@@ -1369,7 +1364,7 @@ static MACHINE_CONFIG_DERIVED( pcw8512, pcw )
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_SIZE( PCW_PRINTER_WIDTH, PCW_PRINTER_HEIGHT )
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW_PRINTER_WIDTH-1, 0, PCW_PRINTER_HEIGHT-1)
-	MCFG_SCREEN_UPDATE_STATIC( pcw_printer )
+	MCFG_SCREEN_UPDATE_DRIVER(pcw_state, screen_update_pcw_printer)
 
 	MCFG_DEFAULT_LAYOUT( layout_pcw )
 

@@ -82,6 +82,13 @@ public:
 	virtual void machine_reset();
 	DECLARE_MACHINE_START(einstein2);
 	DECLARE_MACHINE_RESET(einstein2);
+	UINT32 screen_update_einstein2(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(einstein_keyboard_timer_callback);
+	TIMER_DEVICE_CALLBACK_MEMBER(einstein_ctc_trigger_callback);
+	DECLARE_WRITE_LINE_MEMBER(einstein_6845_de_changed);
+	DECLARE_WRITE8_MEMBER(einstein_drsel_w);
+	DECLARE_WRITE_LINE_MEMBER(einstein_serial_transmit_clock);
+	DECLARE_WRITE_LINE_MEMBER(einstein_serial_receive_clock);
 };
 
 

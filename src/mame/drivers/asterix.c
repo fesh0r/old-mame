@@ -53,34 +53,32 @@ WRITE16_MEMBER(asterix_state::control2_w)
 	}
 }
 
-static INTERRUPT_GEN( asterix_interrupt )
+INTERRUPT_GEN_MEMBER(asterix_state::asterix_interrupt)
 {
-	asterix_state *state = device->machine().driver_data<asterix_state>();
 
 	// global interrupt masking
-	if (!k056832_is_irq_enabled(state->m_k056832, 0))
+	if (!k056832_is_irq_enabled(m_k056832, 0))
 		return;
 
-	device->execute().set_input_line(5, HOLD_LINE); /* ??? All irqs have the same vector, and the mask used is 0 or 7 */
+	device.execute().set_input_line(5, HOLD_LINE); /* ??? All irqs have the same vector, and the mask used is 0 or 7 */
 }
 
 READ8_MEMBER(asterix_state::asterix_sound_r)
 {
 	device_t *device = machine().device("k053260");
-	return k053260_r(device, 2 + offset);
+	return k053260_r(device, space, 2 + offset);
 }
 
-static TIMER_CALLBACK( nmi_callback )
+TIMER_CALLBACK_MEMBER(asterix_state::nmi_callback)
 {
-	asterix_state *state = machine.driver_data<asterix_state>();
-	state->m_audiocpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 WRITE8_MEMBER(asterix_state::sound_arm_nmi_w)
 {
 
 	m_audiocpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
-	machine().scheduler().timer_set(attotime::from_usec(5), FUNC(nmi_callback));
+	machine().scheduler().timer_set(attotime::from_usec(5), timer_expired_delegate(FUNC(asterix_state::nmi_callback),this));
 }
 
 WRITE16_MEMBER(asterix_state::sound_irq_w)
@@ -291,7 +289,7 @@ static MACHINE_CONFIG_START( asterix, asterix_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_CPU_VBLANK_INT("screen", asterix_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", asterix_state,  asterix_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 8000000)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -307,7 +305,7 @@ static MACHINE_CONFIG_START( asterix, asterix_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(asterix)
+	MCFG_SCREEN_UPDATE_DRIVER(asterix_state, screen_update_asterix)
 
 	MCFG_PALETTE_LENGTH(2048)
 

@@ -250,12 +250,11 @@ MACHINE_RESET_MEMBER(atarisy1_state,atarisy1)
  *
  *************************************/
 
-static TIMER_DEVICE_CALLBACK( delayed_joystick_int )
+TIMER_DEVICE_CALLBACK_MEMBER(atarisy1_state::delayed_joystick_int)
 {
-	atarisy1_state *state = timer.machine().driver_data<atarisy1_state>();
-	state->m_joystick_value = param;
-	state->m_joystick_int = 1;
-	atarigen_update_interrupts(timer.machine());
+	m_joystick_value = param;
+	m_joystick_int = 1;
+	atarigen_update_interrupts(machine());
 }
 
 
@@ -402,14 +401,14 @@ READ8_MEMBER(atarisy1_state::switch_6502_r)
 WRITE8_MEMBER(atarisy1_state::via_pa_w)
 {
 	device_t *device = machine().device("tms");
-	tms5220_data_w(device, 0, data);
+	tms5220_data_w(device, space, 0, data);
 }
 
 
 READ8_MEMBER(atarisy1_state::via_pa_r)
 {
 	device_t *device = machine().device("tms");
-	return tms5220_status_r(device, 0);
+	return tms5220_status_r(device, space, 0);
 }
 
 
@@ -771,10 +770,10 @@ static MACHINE_CONFIG_START( atarisy1, atarisy1_state )
 	MCFG_MACHINE_RESET_OVERRIDE(atarisy1_state,atarisy1)
 	MCFG_NVRAM_ADD_1FILL("eeprom")
 
-	MCFG_TIMER_ADD("joystick_timer", delayed_joystick_int)
-	MCFG_TIMER_ADD("scan_timer", atarisy1_int3_callback)
-	MCFG_TIMER_ADD("int3off_timer", atarisy1_int3off_callback)
-	MCFG_TIMER_ADD("yreset_timer", atarisy1_reset_yscroll_callback)
+	MCFG_TIMER_DRIVER_ADD("joystick_timer", atarisy1_state, delayed_joystick_int)
+	MCFG_TIMER_DRIVER_ADD("scan_timer", atarisy1_state, atarisy1_int3_callback)
+	MCFG_TIMER_DRIVER_ADD("int3off_timer", atarisy1_state, atarisy1_int3off_callback)
+	MCFG_TIMER_DRIVER_ADD("yreset_timer", atarisy1_state, atarisy1_reset_yscroll_callback)
 
 	/* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -785,7 +784,7 @@ static MACHINE_CONFIG_START( atarisy1, atarisy1_state )
 	/* note: these parameters are from published specs, not derived */
 	/* video timing comes from an 82S163 (H) and an 82S129 (V) */
 	MCFG_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)
-	MCFG_SCREEN_UPDATE_STATIC(atarisy1)
+	MCFG_SCREEN_UPDATE_DRIVER(atarisy1_state, screen_update_atarisy1)
 
 	MCFG_VIDEO_START_OVERRIDE(atarisy1_state,atarisy1)
 

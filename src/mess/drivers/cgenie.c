@@ -60,7 +60,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (cgenie_io, AS_IO, 8, cgenie_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xf8, 0xf8) AM_DEVREADWRITE_LEGACY("ay8910", cgenie_sh_control_port_r, cgenie_sh_control_port_w )
+	AM_RANGE(0xf8, 0xf8) AM_READWRITE(cgenie_sh_control_port_r, cgenie_sh_control_port_w )
 	AM_RANGE(0xf9, 0xf9) AM_DEVREADWRITE_LEGACY("ay8910", ay8910_r, ay8910_data_w )
 	AM_RANGE(0xfa, 0xfa) AM_READWRITE_LEGACY(cgenie_index_r, cgenie_index_w )
 	AM_RANGE(0xfb, 0xfb) AM_READWRITE_LEGACY(cgenie_register_r, cgenie_register_w )
@@ -523,8 +523,8 @@ static MACHINE_CONFIG_START( cgenie_common, cgenie_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_17_73447MHz/8)        /* 2,2168 MHz */
 	MCFG_CPU_PROGRAM_MAP(cgenie_mem)
 	MCFG_CPU_IO_MAP(cgenie_io)
-	MCFG_CPU_VBLANK_INT("screen", cgenie_frame_interrupt)
-	MCFG_CPU_PERIODIC_INT(cgenie_timer_interrupt, 40)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cgenie_state,  cgenie_frame_interrupt)
+	MCFG_CPU_PERIODIC_INT_DRIVER(cgenie_state, cgenie_timer_interrupt,  40)
 	MCFG_QUANTUM_TIME(attotime::from_hz(240))
 
 
@@ -534,7 +534,7 @@ static MACHINE_CONFIG_START( cgenie_common, cgenie_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(48*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1,0*8,32*8-1)
-	MCFG_SCREEN_UPDATE_STATIC( cgenie )
+	MCFG_SCREEN_UPDATE_DRIVER(cgenie_state, screen_update_cgenie)
 
 	MCFG_GFXDECODE( cgenie )
 	MCFG_PALETTE_LENGTH(108)

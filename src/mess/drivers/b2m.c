@@ -204,7 +204,7 @@ static MACHINE_CONFIG_START( b2m, b2m_state )
     MCFG_CPU_ADD("maincpu", I8080, 2000000)
     MCFG_CPU_PROGRAM_MAP(b2m_mem)
     MCFG_CPU_IO_MAP(b2m_io)
-    MCFG_CPU_VBLANK_INT("screen", b2m_vblank_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", b2m_state,  b2m_vblank_interrupt)
 
 
     /* video hardware */
@@ -213,7 +213,7 @@ static MACHINE_CONFIG_START( b2m, b2m_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(384, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 256-1)
-    MCFG_SCREEN_UPDATE_STATIC(b2m)
+	MCFG_SCREEN_UPDATE_DRIVER(b2m_state, screen_update_b2m)
 
 	MCFG_PALETTE_LENGTH(4)
 

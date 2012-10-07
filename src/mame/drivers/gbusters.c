@@ -19,12 +19,11 @@
 /* prototypes */
 static KONAMI_SETLINES_CALLBACK( gbusters_banking );
 
-static INTERRUPT_GEN( gbusters_interrupt )
+INTERRUPT_GEN_MEMBER(gbusters_state::gbusters_interrupt)
 {
-	gbusters_state *state = device->machine().driver_data<gbusters_state>();
 
-	if (k052109_is_irq_enabled(state->m_k052109))
-		device->execute().set_input_line(KONAMI_IRQ_LINE, HOLD_LINE);
+	if (k052109_is_irq_enabled(m_k052109))
+		device.execute().set_input_line(KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 READ8_MEMBER(gbusters_state::bankedram_r)
@@ -127,25 +126,25 @@ READ8_MEMBER(gbusters_state::k052109_051960_r)
 	if (k052109_get_rmrd_line(m_k052109) == CLEAR_LINE)
 	{
 		if (offset >= 0x3800 && offset < 0x3808)
-			return k051937_r(m_k051960, offset - 0x3800);
+			return k051937_r(m_k051960, space, offset - 0x3800);
 		else if (offset < 0x3c00)
-			return k052109_r(m_k052109, offset);
+			return k052109_r(m_k052109, space, offset);
 		else
-			return k051960_r(m_k051960, offset - 0x3c00);
+			return k051960_r(m_k051960, space, offset - 0x3c00);
 	}
 	else
-		return k052109_r(m_k052109, offset);
+		return k052109_r(m_k052109, space, offset);
 }
 
 WRITE8_MEMBER(gbusters_state::k052109_051960_w)
 {
 
 	if (offset >= 0x3800 && offset < 0x3808)
-		k051937_w(m_k051960, offset - 0x3800, data);
+		k051937_w(m_k051960, space, offset - 0x3800, data);
 	else if (offset < 0x3c00)
-		k052109_w(m_k052109, offset, data);
+		k052109_w(m_k052109, space, offset, data);
 	else
-		k051960_w(m_k051960, offset - 0x3c00, data);
+		k051960_w(m_k051960, space, offset - 0x3c00, data);
 }
 
 
@@ -303,7 +302,7 @@ static MACHINE_CONFIG_START( gbusters, gbusters_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", KONAMI, 3000000)	/* Konami custom 052526 */
 	MCFG_CPU_PROGRAM_MAP(gbusters_map)
-	MCFG_CPU_VBLANK_INT("screen", gbusters_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gbusters_state,  gbusters_interrupt)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3579545)		/* ? */
 	MCFG_CPU_PROGRAM_MAP(gbusters_sound_map)
@@ -317,7 +316,7 @@ static MACHINE_CONFIG_START( gbusters, gbusters_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(gbusters)
+	MCFG_SCREEN_UPDATE_DRIVER(gbusters_state, screen_update_gbusters)
 
 	MCFG_PALETTE_LENGTH(1024)
 

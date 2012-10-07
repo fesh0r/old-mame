@@ -216,9 +216,9 @@ DRIVER_INIT_MEMBER(aquarius_state,aquarius)
 	/* install expansion memory if available */
 	if (machine().device<ram_device>(RAM_TAG)->size() > 0x1000)
 	{
-		address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-		space->install_readwrite_bank(0x4000, 0x4000 + machine().device<ram_device>(RAM_TAG)->size() - 0x1000 - 1, "bank1");
+		space.install_readwrite_bank(0x4000, 0x4000 + machine().device<ram_device>(RAM_TAG)->size() - 0x1000 - 1, "bank1");
 		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 	}
 }
@@ -258,9 +258,9 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 /* the 'reset' key is directly tied to the reset line of the cpu */
-static INPUT_CHANGED( aquarius_reset )
+INPUT_CHANGED_MEMBER(aquarius_state::aquarius_reset)
 {
-	field.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static INPUT_PORTS_START( aquarius )
@@ -337,7 +337,7 @@ static INPUT_PORTS_START( aquarius )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("RESET")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RST") PORT_CODE(KEYCODE_F10) PORT_CHANGED(aquarius_reset, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RST") PORT_CODE(KEYCODE_F10) PORT_CHANGED_MEMBER(DEVICE_SELF, aquarius_state, aquarius_reset, 0)
 
 	PORT_START("LEFT")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -397,7 +397,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_CPU_ADD("maincpu", Z80, XTAL_3_579545MHz) // ???
 	MCFG_CPU_PROGRAM_MAP(aquarius_mem)
 	MCFG_CPU_IO_MAP(aquarius_io)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", aquarius_state,  irq0_line_hold)
 
     /* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -405,7 +405,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2800))
 	MCFG_SCREEN_SIZE(40 * 8, 25 * 8)
 	MCFG_SCREEN_VISIBLE_AREA(0, 40 * 8 - 1, 0 * 8, 25 * 8 - 1)
-	MCFG_SCREEN_UPDATE_STATIC( aquarius )
+	MCFG_SCREEN_UPDATE_DRIVER(aquarius_state, screen_update_aquarius)
 
 	MCFG_GFXDECODE( aquarius )
 	MCFG_PALETTE_LENGTH(512)

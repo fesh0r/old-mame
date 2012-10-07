@@ -312,7 +312,7 @@ static MACHINE_CONFIG_START( funkyjet, funkyjet_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_28MHz/2) /* 28 MHz crystal */
 	MCFG_CPU_PROGRAM_MAP(funkyjet_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funkyjet_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280, XTAL_32_22MHz/4) /* Custom chip 45, Audio section crystal is 32.220 MHz */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -324,7 +324,7 @@ static MACHINE_CONFIG_START( funkyjet, funkyjet_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(funkyjet)
+	MCFG_SCREEN_UPDATE_DRIVER(funkyjet_state, screen_update_funkyjet)
 
 	MCFG_GFXDECODE(funkyjet)
 	MCFG_PALETTE_LENGTH(1024)

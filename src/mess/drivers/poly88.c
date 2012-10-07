@@ -169,7 +169,7 @@ static MACHINE_CONFIG_START( poly88, poly88_state )
 	MCFG_CPU_ADD("maincpu",I8080, 1853000)
 	MCFG_CPU_PROGRAM_MAP(poly88_mem)
 	MCFG_CPU_IO_MAP(poly88_io)
-	MCFG_CPU_VBLANK_INT("screen", poly88_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", poly88_state,  poly88_interrupt)
 
 
 	/* video hardware */
@@ -178,7 +178,7 @@ static MACHINE_CONFIG_START( poly88, poly88_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(64*10, 16*15)
 	MCFG_SCREEN_VISIBLE_AREA(0, 64*10-1, 0, 16*15-1)
-	MCFG_SCREEN_UPDATE_STATIC(poly88)
+	MCFG_SCREEN_UPDATE_DRIVER(poly88_state, screen_update_poly88)
 
 	MCFG_GFXDECODE(poly88)
 	MCFG_PALETTE_LENGTH(2)

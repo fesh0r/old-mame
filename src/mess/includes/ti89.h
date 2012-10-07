@@ -62,6 +62,8 @@ public:
 	DECLARE_READ16_MEMBER ( flash_r );
 	UINT64 m_timer;
 	virtual void palette_init();
+	DECLARE_INPUT_CHANGED_MEMBER(ti68k_on_key);
+	TIMER_DEVICE_CALLBACK_MEMBER(ti68k_timer_callback);
 };
 
 #endif // TI89_H_

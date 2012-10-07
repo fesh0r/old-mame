@@ -148,6 +148,12 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_vboy_left(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_vboy_right(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(timer_main_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(timer_pad_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(vboy_scanlineL);
+	TIMER_DEVICE_CALLBACK_MEMBER(vboy_scanlineR);
 };
 
 
@@ -484,18 +490,17 @@ UINT8 vboy_state::display_world(int num, bitmap_ind16 &bitmap, bool right, int &
 	return 0;
 }
 
-static SCREEN_UPDATE_IND16( vboy_left )
+UINT32 vboy_state::screen_update_vboy_left(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	vboy_state *state = screen.machine().driver_data<vboy_state>();
-	bitmap.fill(screen.machine().pens[state->m_vip_regs.BKCOL], cliprect);
+	bitmap.fill(machine().pens[m_vip_regs.BKCOL], cliprect);
 	int cur_spt;
 
-	if(!(state->m_vip_regs.DPCTRL & 2)) /* Don't bother if screen is off */
+	if(!(m_vip_regs.DPCTRL & 2)) /* Don't bother if screen is off */
 		return 0;
 
 	cur_spt = 3;
 	for(int i=31; i>=0; i--)
-		if (state->display_world(i, bitmap, false, cur_spt)) break;
+		if (display_world(i, bitmap, false, cur_spt)) break;
 
 	if(0)
 	{
@@ -509,11 +514,11 @@ static SCREEN_UPDATE_IND16( vboy_left )
 				UINT8 pix;
 				int yi;
 
-				pen = state->m_l_frame_1[(x*0x40)+(y >> 2)];
+				pen = m_l_frame_1[(x*0x40)+(y >> 2)];
 				yi = ((y & 0x3)*2);
 				pix = (pen >> yi) & 3;
 
-				bitmap.pix16(y, x) = screen.machine().pens[pix & 3];
+				bitmap.pix16(y, x) = machine().pens[pix & 3];
 			}
 		}
 	}
@@ -521,18 +526,17 @@ static SCREEN_UPDATE_IND16( vboy_left )
 	return 0;
 }
 
-static SCREEN_UPDATE_IND16( vboy_right )
+UINT32 vboy_state::screen_update_vboy_right(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	vboy_state *state = screen.machine().driver_data<vboy_state>();
-	bitmap.fill(screen.machine().pens[state->m_vip_regs.BKCOL], cliprect);
+	bitmap.fill(machine().pens[m_vip_regs.BKCOL], cliprect);
 	int cur_spt;
 
-	if(!(state->m_vip_regs.DPCTRL & 2)) /* Don't bother if screen is off */
+	if(!(m_vip_regs.DPCTRL & 2)) /* Don't bother if screen is off */
 		return 0;
 
 	cur_spt = 3;
 	for(int i=31; i>=0; i--)
-		if (state->display_world(i, bitmap, true, cur_spt)) break;
+		if (display_world(i, bitmap, true, cur_spt)) break;
 
 	return 0;
 }
@@ -1213,19 +1217,17 @@ void vboy_state::m_timer_tick()
     }
 }
 
-static TIMER_DEVICE_CALLBACK( timer_main_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(vboy_state::timer_main_tick)
 {
-	vboy_state *state = timer.machine().driver_data<vboy_state>();
 
-    state->m_timer_tick();
+    m_timer_tick();
 }
 
-static TIMER_DEVICE_CALLBACK( timer_pad_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(vboy_state::timer_pad_tick)
 {
-	vboy_state *state = timer.machine().driver_data<vboy_state>();
 
-	if((state->m_vboy_regs.kcr & 0x80) == 0)
-		state->m_maincpu->set_input_line(0, HOLD_LINE);
+	if((m_vboy_regs.kcr & 0x80) == 0)
+		m_maincpu->set_input_line(0, HOLD_LINE);
 }
 
 void vboy_state::palette_init()
@@ -1299,21 +1301,19 @@ void vboy_state::m_scanline_tick(int scanline, UINT8 screen_type)
 
 }
 
-static TIMER_DEVICE_CALLBACK( vboy_scanlineL )
+TIMER_DEVICE_CALLBACK_MEMBER(vboy_state::vboy_scanlineL)
 {
-	vboy_state *state = timer.machine().driver_data<vboy_state>();
 	int scanline = param;
 
-	state->m_scanline_tick(scanline,0);
+	m_scanline_tick(scanline,0);
 }
 
 #if 0
-static TIMER_DEVICE_CALLBACK( vboy_scanlineR )
+TIMER_DEVICE_CALLBACK_MEMBER(vboy_state::vboy_scanlineR)
 {
-	vboy_state *state = timer.machine().driver_data<vboy_state>();
 	int scanline = param;
 
-	//state->m_scanline_tick(scanline,1);
+	//m_scanline_tick(scanline,1);
 }
 #endif
 
@@ -1334,12 +1334,6 @@ static GFXDECODE_START( vboy )
 	GFXDECODE_ENTRY( "pcg",     0x00000, vboy_pcg_8x8,      0, 1 )
 GFXDECODE_END
 
-struct vboy_pcb
-{
-	const char              *pcb_name;
-	int                     pcb_id;
-};
-
 READ32_MEMBER(vboy_state::sram_r)
 {
 	return m_vboy_sram[offset];
@@ -1348,29 +1342,6 @@ READ32_MEMBER(vboy_state::sram_r)
 WRITE32_MEMBER(vboy_state::sram_w)
 {
 	COMBINE_DATA(&m_vboy_sram[offset]);
-}
-
-#define VBOY_CHIP_NONE 0
-#define	VBOY_CHIP_SRAM 1
-
-static const vboy_pcb pcb_list[] =
-{
-	{"No",    VBOY_CHIP_NONE},
-	{"Yes",   VBOY_CHIP_SRAM}
-};
-
-
-static int vboy_get_pcb_id(const char *pcb)
-{
-	int	i;
-
-	for (i = 0; i < ARRAY_LENGTH(pcb_list); i++)
-	{
-		if (!mame_stricmp(pcb_list[i].pcb_name, pcb))
-			return pcb_list[i].pcb_id;
-	}
-
-	return 0;
 }
 
 
@@ -1389,24 +1360,20 @@ static DEVICE_IMAGE_LOAD( vboy_cart )
 	}
 	else
 	{
-		const char *pcb_name;
 		cart_size = image.get_software_region_length("rom");
 		memcpy(ROM, image.get_software_region("rom"), cart_size);
 
-		pcb_name = image.get_feature("eeprom");
-		if (pcb_name == NULL)
-			chip = 0;
-		else
-			chip = vboy_get_pcb_id(pcb_name);
-
+		UINT8 *tmp_eeprom = image.get_software_region("eeprom");
+		if (tmp_eeprom)
+			chip = 1;
 	}
 
-	if(chip & VBOY_CHIP_SRAM)
+	if (chip)
 	{
 		state->m_nvptr = (UINT8 *)&state->m_vboy_sram;
 
-		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x06000000, 0x0600ffff, read32_delegate(FUNC(vboy_state::sram_r),state));
-		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x06000000, 0x0600ffff, write32_delegate(FUNC(vboy_state::sram_w),state));
+		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x06000000, 0x0600ffff, read32_delegate(FUNC(vboy_state::sram_r),state));
+		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x06000000, 0x0600ffff, write32_delegate(FUNC(vboy_state::sram_w),state));
 
 		image.battery_load(state->m_nvptr, 0x10000, 0x00);
 		state->m_nvimage = image;
@@ -1425,15 +1392,15 @@ static MACHINE_CONFIG_START( vboy, vboy_state )
 	MCFG_CPU_ADD( "maincpu", V810, XTAL_20MHz )
 	MCFG_CPU_PROGRAM_MAP(vboy_mem)
 	MCFG_CPU_IO_MAP(vboy_io)
-	MCFG_TIMER_ADD_SCANLINE("scantimer_l", vboy_scanlineL, "3dleft", 0, 1)
-	//MCFG_TIMER_ADD_SCANLINE("scantimer_r", vboy_scanlineR, "3dright", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer_l", vboy_state, vboy_scanlineL, "3dleft", 0, 1)
+	//MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer_r", vboy_state, vboy_scanlineR, "3dright", 0, 1)
 
 
     // programmable timer
-	MCFG_TIMER_ADD("timer_main", timer_main_tick)
+	MCFG_TIMER_DRIVER_ADD("timer_main", vboy_state, timer_main_tick)
 
     // pad ready, which should be once per VBL
-	MCFG_TIMER_ADD_PERIODIC("timer_pad", timer_pad_tick, attotime::from_hz(50.038029f))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("timer_pad", vboy_state, timer_pad_tick, attotime::from_hz(50.038029f))
 
 	/* video hardware */
 	MCFG_DEFAULT_LAYOUT(layout_vboy)
@@ -1442,12 +1409,12 @@ static MACHINE_CONFIG_START( vboy, vboy_state )
 	/* Left screen */
 	MCFG_SCREEN_ADD("3dleft", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_20MHz/2,757,0,384,264,0,224)
-	MCFG_SCREEN_UPDATE_STATIC(vboy_left)
+	MCFG_SCREEN_UPDATE_DRIVER(vboy_state, screen_update_vboy_left)
 
 	/* Right screen */
 	MCFG_SCREEN_ADD("3dright", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_20MHz/2,757,0,384,264,0,224)
-	MCFG_SCREEN_UPDATE_STATIC(vboy_right)
+	MCFG_SCREEN_UPDATE_DRIVER(vboy_state, screen_update_vboy_right)
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")

@@ -95,6 +95,9 @@ public:
 	UINT8 m_cassette_data;
 	iq151cart_slot_device * m_carts[5];
 	DECLARE_DRIVER_INIT(iq151);
+	INTERRUPT_GEN_MEMBER(iq151_vblank_interrupt);
+	DECLARE_INPUT_CHANGED_MEMBER(iq151_break);
+	TIMER_DEVICE_CALLBACK_MEMBER(cassette_timer);
 };
 
 READ8_MEMBER(iq151_state::keyboard_row_r)
@@ -215,10 +218,9 @@ static ADDRESS_MAP_START(iq151_io, AS_IO, 8, iq151_state)
 ADDRESS_MAP_END
 
 
-static INPUT_CHANGED( iq151_break )
+INPUT_CHANGED_MEMBER(iq151_state::iq151_break)
 {
-	iq151_state *state = field.machine().driver_data<iq151_state>();
-	pic8259_ir5_w(state->m_pic, newval & 1);
+	pic8259_ir5_w(m_pic, newval & 1);
 }
 
 /* Input ports */
@@ -310,7 +312,7 @@ static INPUT_PORTS_START( iq151 )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("FB") PORT_CODE(KEYCODE_RCONTROL)		// Function B
 
 	PORT_START("BREAK")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BREAK") PORT_CODE(KEYCODE_ESC)   PORT_CHANGED(iq151_break, 0)  PORT_CHAR(UCHAR_MAMEKEY(ESC))
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BREAK") PORT_CODE(KEYCODE_ESC)   PORT_CHANGED_MEMBER(DEVICE_SELF, iq151_state, iq151_break, 0)  PORT_CHAR(UCHAR_MAMEKEY(ESC))
 INPUT_PORTS_END
 
 
@@ -319,12 +321,11 @@ WRITE_LINE_MEMBER( iq151_state::pic_set_int_line )
 	m_maincpu->set_input_line(0, state ?  HOLD_LINE : CLEAR_LINE);
 }
 
-static INTERRUPT_GEN( iq151_vblank_interrupt )
+INTERRUPT_GEN_MEMBER(iq151_state::iq151_vblank_interrupt)
 {
-	iq151_state *state = device->machine().driver_data<iq151_state>();
 
-	pic8259_ir6_w(state->m_pic, state->m_vblank_irq_state & 1);
-	state->m_vblank_irq_state ^= 1;
+	pic8259_ir6_w(m_pic, m_vblank_irq_state & 1);
+	m_vblank_irq_state ^= 1;
 }
 
 static IRQ_CALLBACK(iq151_irq_callback)
@@ -334,13 +335,12 @@ static IRQ_CALLBACK(iq151_irq_callback)
 	return pic8259_acknowledge(state->m_pic);
 }
 
-static TIMER_DEVICE_CALLBACK( cassette_timer )
+TIMER_DEVICE_CALLBACK_MEMBER(iq151_state::cassette_timer)
 {
-	iq151_state *state = timer.machine().driver_data<iq151_state>();
 
-	state->m_cassette_clk ^= 1;
+	m_cassette_clk ^= 1;
 
-	state->m_cassette->output((state->m_cassette_data & 1) ^ (state->m_cassette_clk & 1) ? +1 : -1);
+	m_cassette->output((m_cassette_data & 1) ^ (m_cassette_clk & 1) ? +1 : -1);
 }
 
 DRIVER_INIT_MEMBER(iq151_state,iq151)
@@ -435,7 +435,7 @@ static MACHINE_CONFIG_START( iq151, iq151_state )
 	MCFG_CPU_ADD("maincpu",I8080, XTAL_2MHz)
 	MCFG_CPU_PROGRAM_MAP(iq151_mem)
 	MCFG_CPU_IO_MAP(iq151_io)
-	MCFG_CPU_VBLANK_INT("screen", iq151_vblank_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", iq151_state,  iq151_vblank_interrupt)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -457,7 +457,7 @@ static MACHINE_CONFIG_START( iq151, iq151_state )
 	MCFG_I8255_ADD("ppi8255", iq151_ppi8255_intf)
 
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, iq151_cassette_interface )
-	MCFG_TIMER_ADD_PERIODIC("cassette_timer", cassette_timer, attotime::from_hz(2000))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("cassette_timer", iq151_state, cassette_timer, attotime::from_hz(2000))
 
 	/* cartridge */
 	MCFG_IQ151_CARTRIDGE_ADD("slot1", iq151_cart_interface, iq151_cart, NULL, NULL)

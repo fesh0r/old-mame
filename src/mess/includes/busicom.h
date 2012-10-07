@@ -30,13 +30,8 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_busicom(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(timer_callback);
 };
-
-
-/*----------- defined in video/busicom.c -----------*/
-
-extern PALETTE_INIT( busicom );
-extern VIDEO_START( busicom );
-extern SCREEN_UPDATE_IND16( busicom );
 
 #endif /* BUSICOM_H_ */

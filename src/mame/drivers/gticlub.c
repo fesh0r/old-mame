@@ -263,6 +263,8 @@ public:
 	DECLARE_MACHINE_START(gticlub);
 	DECLARE_MACHINE_RESET(gticlub);
 	DECLARE_MACHINE_RESET(hangplt);
+	INTERRUPT_GEN_MEMBER(gticlub_vblank);
+	TIMER_CALLBACK_MEMBER(irq_off);
 };
 
 
@@ -286,38 +288,38 @@ static void voodoo_vblank_1(device_t *device, int param)
 READ32_MEMBER(gticlub_state::gticlub_k001604_tile_r)
 {
 	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	return k001604_tile_r(k001604, offset, mem_mask);
+	return k001604_tile_r(k001604, space, offset, mem_mask);
 }
 
 WRITE32_MEMBER(gticlub_state::gticlub_k001604_tile_w)
 {
 	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	k001604_tile_w(k001604, offset, data, mem_mask);
+	k001604_tile_w(k001604, space, offset, data, mem_mask);
 }
 
 
 READ32_MEMBER(gticlub_state::gticlub_k001604_char_r)
 {
 	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	return k001604_char_r(k001604, offset, mem_mask);
+	return k001604_char_r(k001604, space, offset, mem_mask);
 }
 
 WRITE32_MEMBER(gticlub_state::gticlub_k001604_char_w)
 {
 	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	k001604_char_w(k001604, offset, data, mem_mask);
+	k001604_char_w(k001604, space, offset, data, mem_mask);
 }
 
 READ32_MEMBER(gticlub_state::gticlub_k001604_reg_r)
 {
 	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	return k001604_reg_r(k001604, offset, mem_mask);
+	return k001604_reg_r(k001604, space, offset, mem_mask);
 }
 
 WRITE32_MEMBER(gticlub_state::gticlub_k001604_reg_w)
 {
 	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	k001604_reg_w(k001604, offset, data, mem_mask);
+	k001604_reg_w(k001604, space, offset, data, mem_mask);
 }
 
 
@@ -694,9 +696,9 @@ INPUT_PORTS_END
     DMA0
 
 */
-static INTERRUPT_GEN( gticlub_vblank )
+INTERRUPT_GEN_MEMBER(gticlub_state::gticlub_vblank)
 {
-	device->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+	device.execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 
@@ -706,17 +708,18 @@ static const sharc_config sharc_cfg =
 };
 
 
-static TIMER_CALLBACK( irq_off )
+TIMER_CALLBACK_MEMBER(gticlub_state::irq_off)
 {
-	machine.device("audiocpu")->execute().set_input_line(param, CLEAR_LINE);
+	machine().device("audiocpu")->execute().set_input_line(param, CLEAR_LINE);
 }
 
 static void sound_irq_callback( running_machine &machine, int irq )
 {
+	gticlub_state *state = machine.driver_data<gticlub_state>();
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
 
 	machine.device("audiocpu")->execute().set_input_line(line, ASSERT_LINE);
-	machine.scheduler().timer_set(attotime::from_usec(1), FUNC(irq_off), line);
+	machine.scheduler().timer_set(attotime::from_usec(1), timer_expired_delegate(FUNC(gticlub_state::irq_off),state), line);
 }
 
 static const k056800_interface gticlub_k056800_interface =
@@ -806,7 +809,7 @@ static MACHINE_CONFIG_START( gticlub, gticlub_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MCFG_CPU_PROGRAM_MAP(gticlub_map)
-	MCFG_CPU_VBLANK_INT("screen", gticlub_vblank)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gticlub_state,  gticlub_vblank)
 
 	MCFG_CPU_ADD("audiocpu", M68000, 64000000/4)	/* 16MHz */
 	MCFG_CPU_PROGRAM_MAP(sound_memmap)

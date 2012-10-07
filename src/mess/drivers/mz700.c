@@ -83,16 +83,14 @@
     TIMER DEVICE CALLBACKS
 ***************************************************************************/
 
-static TIMER_DEVICE_CALLBACK( ne556_cursor_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(mz_state::ne556_cursor_callback)
 {
-	mz_state *mz = timer.machine().driver_data<mz_state>();
-	mz->m_cursor_timer ^= 1;
+	m_cursor_timer ^= 1;
 }
 
-static TIMER_DEVICE_CALLBACK( ne556_other_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(mz_state::ne556_other_callback)
 {
-	mz_state *mz = timer.machine().driver_data<mz_state>();
-	mz->m_other_timer ^= 1;
+	m_other_timer ^= 1;
 }
 
 
@@ -136,7 +134,7 @@ static ADDRESS_MAP_START( mz800_io, AS_IO, 8, mz_state )
 	AM_RANGE(0xeb, 0xeb) AM_WRITE(mz800_ramaddr_w )
 	AM_RANGE(0xf0, 0xf0) AM_READ_PORT("atari_joy1") AM_WRITE(mz800_palette_w)
 	AM_RANGE(0xf1, 0xf1) AM_READ_PORT("atari_joy2")
-	AM_RANGE(0xf2, 0xf2) AM_DEVWRITE("sn76489n", sn76489_new_device, write)
+	AM_RANGE(0xf2, 0xf2) AM_DEVWRITE("sn76489n", sn76489_device, write)
 	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE("z80pio", z80pio_device, read, write)
 ADDRESS_MAP_END
 
@@ -357,7 +355,7 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_17_73447MHz/2, 568, 0, 40*8, 312, 0, 25*8)
-	MCFG_SCREEN_UPDATE_STATIC(mz700)
+	MCFG_SCREEN_UPDATE_DRIVER(mz_state, screen_update_mz700)
 
 	MCFG_GFXDECODE(mz700)
 	MCFG_PALETTE_LENGTH(256*2)
@@ -370,8 +368,8 @@ static MACHINE_CONFIG_START( mz700, mz_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* ne556 timers */
-	MCFG_TIMER_ADD_PERIODIC("cursor", ne556_cursor_callback, attotime::from_hz(1.5))
-	MCFG_TIMER_ADD_PERIODIC("other", ne556_other_callback, attotime::from_hz(34.5))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("cursor", mz_state, ne556_cursor_callback, attotime::from_hz(1.5))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("other", mz_state, ne556_other_callback, attotime::from_hz(34.5))
 
 	/* devices */
 	MCFG_PIT8253_ADD("pit8253", mz700_pit8253_config)
@@ -398,9 +396,9 @@ static MACHINE_CONFIG_DERIVED( mz800, mz700 )
 	MCFG_VIDEO_START_OVERRIDE(mz_state,mz800)
 
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(mz800)
+	MCFG_SCREEN_UPDATE_DRIVER(mz_state, screen_update_mz800)
 
-	MCFG_SOUND_ADD("sn76489n", SN76489_NEW, XTAL_17_73447MHz/5)
+	MCFG_SOUND_ADD("sn76489n", SN76489, XTAL_17_73447MHz/5)
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

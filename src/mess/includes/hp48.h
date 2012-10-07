@@ -24,10 +24,8 @@ struct hp48_module
 {
 	/* static part */
 	UINT32 off_mask;             /* offset bit-mask, indicates the real size */
-	read8_space_func read;
-	const char *read_name;
-	write8_space_func write;
-	const char *write_name;
+	read8_delegate read;
+	write8_delegate write;
 	void* data;                  /* non-NULL for banks */
 	int isnop;
 
@@ -75,6 +73,17 @@ public:
 	DECLARE_MACHINE_START(hp48gp);
 	DECLARE_MACHINE_START(hp48sx);
 	DECLARE_MACHINE_START(hp48s);
+	UINT32 screen_update_hp48(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void hp48_machine_start(hp48_models model);
+	DECLARE_WRITE8_MEMBER(hp48_io_w);
+	DECLARE_READ8_MEMBER(hp48_io_r);
+	DECLARE_READ8_MEMBER(hp48_bank_r);
+	TIMER_CALLBACK_MEMBER(hp48_rs232_byte_recv_cb);
+	TIMER_CALLBACK_MEMBER(hp48_rs232_byte_sent_cb);
+	TIMER_CALLBACK_MEMBER(hp48_chardev_byte_recv_cb);
+	TIMER_CALLBACK_MEMBER(hp48_kbd_cb);
+	TIMER_CALLBACK_MEMBER(hp48_timer1_cb);
+	TIMER_CALLBACK_MEMBER(hp48_timer2_cb);
 };
 
 
@@ -183,20 +192,3 @@ extern const device_type HP48_PORT;
 	MCFG_DEVICE_ADD(_tag, HP48_PORT, 0) \
 	MCFG_DEVICE_CONFIG(_intrf)
 
-/****************************** machine ******************************/
-
-
-extern MACHINE_START( hp48s  );
-extern MACHINE_START( hp48sx );
-extern MACHINE_START( hp48g  );
-extern MACHINE_START( hp48gx );
-extern MACHINE_START( hp48gp );
-
-extern MACHINE_RESET( hp48 );
-
-/*----------- defined in video/hp48.c -----------*/
-
-/****************************** video ********************************/
-
-extern SCREEN_UPDATE_IND16 ( hp48 );
-extern PALETTE_INIT ( hp48 );

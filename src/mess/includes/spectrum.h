@@ -119,6 +119,11 @@ public:
 	DECLARE_MACHINE_RESET(spectrum_plus3);
 	DECLARE_MACHINE_RESET(ts2068);
 	DECLARE_VIDEO_START(ts2068);
+	UINT32 screen_update_spectrum(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_tc2048(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_ts2068(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void screen_eof_spectrum(screen_device &screen, bool state);
+	INTERRUPT_GEN_MEMBER(spec_interrupt);
 };
 
 
@@ -148,13 +153,6 @@ void ts2068_update_memory(running_machine &machine);
 /*----------- defined in video/spectrum.c -----------*/
 
 
-
-
-
-
-SCREEN_UPDATE_IND16( spectrum );
-SCREEN_VBLANK( spectrum );
-
 void spectrum_border_force_redraw (running_machine &machine);
 void spectrum_border_set_last_color (running_machine &machine, int NewColor);
 void spectrum_border_draw(running_machine &machine, bitmap_ind16 &bitmap, int full_refresh,
@@ -169,12 +167,5 @@ void spectrum_EventList_SetOffsetStartTime(running_machine &machine, int StartTi
 void spectrum_EventList_AddItemOffset(running_machine &machine, int ID, int Data,int Time);
 int spectrum_EventList_NumEvents(running_machine &machine);
 EVENT_LIST_ITEM *spectrum_EventList_GetFirstItem(running_machine &machine);
-
-/*----------- defined in video/timex.c -----------*/
-
-
-SCREEN_UPDATE_IND16( ts2068 );
-
-SCREEN_UPDATE_IND16( tc2048 );
 
 #endif /* __SPECTRUM_H__ */

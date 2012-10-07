@@ -40,7 +40,7 @@ static const UINT32 text_map[] =
 void apple3_write_charmem(running_machine &machine)
 {
 	apple3_state *state = machine.driver_data<apple3_state>();
-	address_space* space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space& space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	static const UINT32 screen_hole_map[] =
 	{
 		0x478, 0x4f8, 0x578, 0x5f8, 0x678, 0x6f8, 0x778, 0x7f8
@@ -52,12 +52,12 @@ void apple3_write_charmem(running_machine &machine)
 	{
 		for (j = 0; j < 4; j++)
 		{
-			addr = 0x7f & space->read_byte(screen_hole_map[i] + 0x400 + j + 0);
-			val = space->read_byte(screen_hole_map[i] + j + 0);
+			addr = 0x7f & space.read_byte(screen_hole_map[i] + 0x400 + j + 0);
+			val = space.read_byte(screen_hole_map[i] + j + 0);
 			state->m_char_mem[((addr * 8) + ((i & 3) * 2) + 0) & 0x3ff] = val;
 
-			addr = 0x7f & space->read_byte(screen_hole_map[i] + 0x400 + j + 4);
-			val = space->read_byte(screen_hole_map[i] + j + 4);
+			addr = 0x7f & space.read_byte(screen_hole_map[i] + 0x400 + j + 4);
+			val = space.read_byte(screen_hole_map[i] + j + 4);
 			state->m_char_mem[((addr * 8) + ((i & 3) * 2) + 1) & 0x3ff] = val;
 		}
 	}
@@ -363,35 +363,34 @@ static void apple3_video_graphics_chires(running_machine &machine,bitmap_ind16 &
 
 
 
-SCREEN_UPDATE_IND16( apple3 )
+UINT32 apple3_state::screen_update_apple3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	apple3_state *state = screen.machine().driver_data<apple3_state>();
-	switch(state->m_flags & (VAR_VM3|VAR_VM1|VAR_VM0))
+	switch(m_flags & (VAR_VM3|VAR_VM1|VAR_VM0))
 	{
 		case 0:
 		case VAR_VM0:
-			apple3_video_text40(screen.machine(),bitmap);
+			apple3_video_text40(machine(),bitmap);
 			break;
 
 		case VAR_VM1:
 		case VAR_VM1|VAR_VM0:
-			apple3_video_text80(screen.machine(),bitmap);
+			apple3_video_text80(machine(),bitmap);
 			break;
 
 		case VAR_VM3:
-			apple3_video_graphics_hgr(screen.machine(),bitmap);	/* hgr mode */
+			apple3_video_graphics_hgr(machine(),bitmap);	/* hgr mode */
 			break;
 
 		case VAR_VM3|VAR_VM0:
-			apple3_video_graphics_chgr(screen.machine(),bitmap);
+			apple3_video_graphics_chgr(machine(),bitmap);
 			break;
 
 		case VAR_VM3|VAR_VM1:
-			apple3_video_graphics_shgr(screen.machine(),bitmap);
+			apple3_video_graphics_shgr(machine(),bitmap);
 			break;
 
 		case VAR_VM3|VAR_VM1|VAR_VM0:
-			apple3_video_graphics_chires(screen.machine(),bitmap);
+			apple3_video_graphics_chires(machine(),bitmap);
 			break;
 	}
 	return 0;

@@ -142,7 +142,7 @@ static MACHINE_CONFIG_START( orion128, orion_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(384, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 256-1)
-    MCFG_SCREEN_UPDATE_STATIC(orion128)
+	MCFG_SCREEN_UPDATE_DRIVER(orion_state, screen_update_orion128)
 
 	MCFG_PALETTE_LENGTH(18)
 	MCFG_PALETTE_INIT_OVERRIDE(orion_state, orion128 )
@@ -183,7 +183,7 @@ static MACHINE_CONFIG_START( orionz80, orion_state )
     MCFG_CPU_ADD("maincpu", Z80, 2500000)
     MCFG_CPU_PROGRAM_MAP(orionz80_mem)
     MCFG_CPU_IO_MAP(orionz80_io)
-    MCFG_CPU_VBLANK_INT("screen",orionz80_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", orion_state, orionz80_interrupt)
 
     MCFG_MACHINE_START_OVERRIDE(orion_state, orionz80 )
     MCFG_MACHINE_RESET_OVERRIDE(orion_state, orionz80 )
@@ -198,7 +198,7 @@ static MACHINE_CONFIG_START( orionz80, orion_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(384, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 256-1)
-	MCFG_SCREEN_UPDATE_STATIC(orion128)
+	MCFG_SCREEN_UPDATE_DRIVER(orion_state, screen_update_orion128)
 
 	MCFG_PALETTE_LENGTH(18)
 	MCFG_PALETTE_INIT_OVERRIDE(orion_state, orion128 )
@@ -253,7 +253,7 @@ static MACHINE_CONFIG_START( orionpro, orion_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(384, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 384-1, 0, 256-1)
-    MCFG_SCREEN_UPDATE_STATIC(orion128)
+	MCFG_SCREEN_UPDATE_DRIVER(orion_state, screen_update_orion128)
 
 	MCFG_PALETTE_LENGTH(18)
 	MCFG_PALETTE_INIT_OVERRIDE(orion_state, orion128 )

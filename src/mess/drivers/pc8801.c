@@ -451,6 +451,17 @@ public:
 	DECLARE_MACHINE_RESET(pc8801_clock_speed);
 	DECLARE_MACHINE_RESET(pc8801_dic);
 	DECLARE_MACHINE_RESET(pc8801_cdrom);
+	INTERRUPT_GEN_MEMBER(pc8801_vrtc_irq);
+	TIMER_CALLBACK_MEMBER(pc8801fd_upd765_tc_to_zero);
+	TIMER_DEVICE_CALLBACK_MEMBER(pc8801_rtc_irq);
+	DECLARE_READ8_MEMBER(cpu_8255_c_r);
+	DECLARE_WRITE8_MEMBER(cpu_8255_c_w);
+	DECLARE_READ8_MEMBER(fdc_8255_c_r);
+	DECLARE_WRITE8_MEMBER(fdc_8255_c_w);
+	DECLARE_WRITE_LINE_MEMBER(pic_int_w);
+	DECLARE_WRITE_LINE_MEMBER(pic_enlg_w);
+	DECLARE_READ8_MEMBER(opn_porta_r);
+	DECLARE_READ8_MEMBER(opn_portb_r);
 };
 
 
@@ -825,9 +836,9 @@ void pc8801_state::draw_text(bitmap_ind16 &bitmap,int y_size, UINT8 width)
 	}
 }
 
-UINT32 pc8801_state::screen_update( screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect )
+UINT32 pc8801_state::screen_update( screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	bitmap.fill(screen.machine().pens[0], cliprect);
+	bitmap.fill(machine().pens[0], cliprect);
 
 //  popmessage("%04x %04x %02x",m_dma_address[2],m_dma_counter[2],m_dmac_mode);
 
@@ -1688,23 +1699,23 @@ WRITE8_MEMBER(pc8801_state::pc8801_rtc_w)
 READ8_MEMBER(pc8801_state::pc8801_sound_board_r)
 {
 	if(m_has_opna)
-		return ym2608_r(machine().device("opna"), offset);
+		return ym2608_r(machine().device("opna"), space, offset);
 
-	return (offset & 2) ? 0xff : ym2203_r(machine().device("opn"), offset);
+	return (offset & 2) ? 0xff : ym2203_r(machine().device("opn"), space, offset);
 }
 
 WRITE8_MEMBER(pc8801_state::pc8801_sound_board_w)
 {
 	if(m_has_opna)
-		ym2608_w(machine().device("opna"), offset,data);
+		ym2608_w(machine().device("opna"), space, offset,data);
 	else if((offset & 2) == 0)
-		ym2203_w(machine().device("opn"), offset,data);
+		ym2203_w(machine().device("opn"), space, offset,data);
 }
 
 READ8_MEMBER(pc8801_state::pc8801_opna_r)
 {
 	if(m_has_opna && (offset & 2) == 0)
-		return ym2608_r(machine().device("opna"), (offset & 1) | ((offset & 4) >> 1));
+		return ym2608_r(machine().device("opna"), space, (offset & 1) | ((offset & 4) >> 1));
 
 	return 0xff;
 }
@@ -1712,7 +1723,7 @@ READ8_MEMBER(pc8801_state::pc8801_opna_r)
 WRITE8_MEMBER(pc8801_state::pc8801_opna_w)
 {
 	if(m_has_opna && (offset & 2) == 0)
-		ym2608_w(machine().device("opna"), (offset & 1) | ((offset & 4) >> 1),data);
+		ym2608_w(machine().device("opna"), space, (offset & 1) | ((offset & 4) >> 1),data);
 	else if(m_has_opna && offset == 2)
 	{
 		m_sound_irq_mask = ((data & 0x80) == 0);
@@ -1817,20 +1828,18 @@ static ADDRESS_MAP_START( pc8801_io, AS_IO, 8, pc8801_state )
 	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE("d8255_master", i8255_device, read, write)
 ADDRESS_MAP_END
 
-static READ8_DEVICE_HANDLER( cpu_8255_c_r )
+READ8_MEMBER(pc8801_state::cpu_8255_c_r)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-//  device->machine().scheduler().synchronize(); // force resync
+//  machine().scheduler().synchronize(); // force resync
 
-	return state->m_i8255_1_pc >> 4;
+	return m_i8255_1_pc >> 4;
 }
 
-static WRITE8_DEVICE_HANDLER( cpu_8255_c_w )
+WRITE8_MEMBER(pc8801_state::cpu_8255_c_w)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-//  device->machine().scheduler().synchronize(); // force resync
+//  machine().scheduler().synchronize(); // force resync
 
-	state->m_i8255_0_pc = data;
+	m_i8255_0_pc = data;
 }
 
 
@@ -1840,24 +1849,22 @@ static I8255A_INTERFACE( master_fdd_intf )
 	DEVCB_NULL,							// Port A write
 	DEVCB_DEVICE_MEMBER("d8255_slave", i8255_device, pa_r), // Port B read
 	DEVCB_NULL,							// Port B write
-	DEVCB_HANDLER(cpu_8255_c_r),		// Port C read
-	DEVCB_HANDLER(cpu_8255_c_w)			// Port C write
+	DEVCB_DRIVER_MEMBER(pc8801_state,cpu_8255_c_r),		// Port C read
+	DEVCB_DRIVER_MEMBER(pc8801_state,cpu_8255_c_w)			// Port C write
 };
 
-static READ8_DEVICE_HANDLER( fdc_8255_c_r )
+READ8_MEMBER(pc8801_state::fdc_8255_c_r)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-//  device->machine().scheduler().synchronize(); // force resync
+//  machine().scheduler().synchronize(); // force resync
 
-	return state->m_i8255_0_pc >> 4;
+	return m_i8255_0_pc >> 4;
 }
 
-static WRITE8_DEVICE_HANDLER( fdc_8255_c_w )
+WRITE8_MEMBER(pc8801_state::fdc_8255_c_w)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-//  device->machine().scheduler().synchronize(); // force resync
+//  machine().scheduler().synchronize(); // force resync
 
-	state->m_i8255_1_pc = data;
+	m_i8255_1_pc = data;
 }
 
 static I8255A_INTERFACE( slave_fdd_intf )
@@ -1866,8 +1873,8 @@ static I8255A_INTERFACE( slave_fdd_intf )
 	DEVCB_NULL,							// Port A write
 	DEVCB_DEVICE_MEMBER("d8255_master", i8255_device, pa_r),	// Port B read
 	DEVCB_NULL,							// Port B write
-	DEVCB_HANDLER(fdc_8255_c_r),		// Port C read
-	DEVCB_HANDLER(fdc_8255_c_w)			// Port C write
+	DEVCB_DRIVER_MEMBER(pc8801_state,fdc_8255_c_r),		// Port C read
+	DEVCB_DRIVER_MEMBER(pc8801_state,fdc_8255_c_w)			// Port C write
 };
 
 
@@ -1876,12 +1883,11 @@ static ADDRESS_MAP_START( pc8801fdc_mem, AS_PROGRAM, 8, pc8801_state )
 	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
-static TIMER_CALLBACK( pc8801fd_upd765_tc_to_zero )
+TIMER_CALLBACK_MEMBER(pc8801_state::pc8801fd_upd765_tc_to_zero)
 {
-//  pc8801_state *state = machine.driver_data<pc8801_state>();
 
 	//printf("0\n");
-	upd765_tc_w(machine.device("upd765"), 0);
+	upd765_tc_w(machine().device("upd765"), 0);
 }
 
 WRITE8_MEMBER(pc8801_state::upd765_mc_w)
@@ -1898,7 +1904,7 @@ READ8_MEMBER(pc8801_state::upd765_tc_r)
 
 	upd765_tc_w(machine().device("upd765"), 1);
 	 //TODO: I'm not convinced that this works correctly with current hook-up ... 1000 usec is needed by Aploon, a bigger value breaks Alpha.
-	machine().scheduler().timer_set(attotime::from_usec(750), FUNC(pc8801fd_upd765_tc_to_zero));
+	machine().scheduler().timer_set(attotime::from_usec(750), timer_expired_delegate(FUNC(pc8801_state::pc8801fd_upd765_tc_to_zero),this));
 	return 0xff; // value is meaningless
 }
 
@@ -2299,15 +2305,17 @@ void pc8801_raise_irq(running_machine &machine,UINT8 irq,UINT8 state)
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER( pic_int_w )
+WRITE_LINE_MEMBER(pc8801_state::pic_int_w)
 {
+	device_t *device = machine().device("maincpu");
 //  if (state == ASSERT_LINE)
 //  {
 //  }
 }
 
-static WRITE_LINE_DEVICE_HANDLER( pic_enlg_w )
+WRITE_LINE_MEMBER(pc8801_state::pic_enlg_w)
 {
+	device_t *device = machine().device("maincpu");
 	//if (state == CLEAR_LINE)
 	//{
 	//}
@@ -2315,8 +2323,8 @@ static WRITE_LINE_DEVICE_HANDLER( pic_enlg_w )
 
 static I8214_INTERFACE( pic_intf )
 {
-	DEVCB_DEVICE_LINE("maincpu", pic_int_w),
-	DEVCB_DEVICE_LINE("maincpu", pic_enlg_w)
+	DEVCB_DRIVER_LINE_MEMBER(pc8801_state,pic_int_w),
+	DEVCB_DRIVER_LINE_MEMBER(pc8801_state,pic_enlg_w)
 };
 
 static IRQ_CALLBACK( pc8801_irq_callback )
@@ -2337,18 +2345,18 @@ static void pc8801_sound_irq( device_t *device, int irq )
 		pc8801_raise_irq(device->machine(),1<<(4),1);
 }
 
-static TIMER_DEVICE_CALLBACK( pc8801_rtc_irq )
+/*
+TIMER_DEVICE_CALLBACK_MEMBER(pc8801_state::pc8801_rtc_irq)
 {
-	pc8801_state *state = timer.machine().driver_data<pc8801_state>();
-	if(state->m_timer_irq_mask)
-		pc8801_raise_irq(timer.machine(),1<<(2),1);
+    if(m_timer_irq_mask)
+        pc8801_raise_irq(machine(),1<<(2),1);
 }
+*/
 
-static INTERRUPT_GEN( pc8801_vrtc_irq )
+INTERRUPT_GEN_MEMBER(pc8801_state::pc8801_vrtc_irq)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	if(state->m_vblank_irq_mask)
-		pc8801_raise_irq(device->machine(),1<<(1),1);
+	if(m_vblank_irq_mask)
+		pc8801_raise_irq(machine(),1<<(1),1);
 }
 
 #else
@@ -2400,25 +2408,23 @@ static void pc8801_sound_irq( device_t *device, int irq )
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( pc8801_rtc_irq )
+TIMER_DEVICE_CALLBACK_MEMBER(pc8801_state::pc8801_rtc_irq)
 {
-	pc8801_state *state = timer.machine().driver_data<pc8801_state>();
-	if(state->m_timer_irq_mask && state->m_i8214_irq_level >= 3)
+	if(m_timer_irq_mask && m_i8214_irq_level >= 3)
 	{
-		state->m_timer_irq_latch = 1;
+		m_timer_irq_latch = 1;
 		//IRQ_LOG(("timer\n"));
-		timer.machine().device("maincpu")->execute().set_input_line(0,HOLD_LINE);
+		machine().device("maincpu")->execute().set_input_line(0,HOLD_LINE);
 	}
 }
 
-static INTERRUPT_GEN( pc8801_vrtc_irq )
+INTERRUPT_GEN_MEMBER(pc8801_state::pc8801_vrtc_irq)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
-	if(state->m_vrtc_irq_mask && state->m_i8214_irq_level >= 2)
+	if(m_vrtc_irq_mask && m_i8214_irq_level >= 2)
 	{
-		state->m_vrtc_irq_latch = 1;
+		m_vrtc_irq_latch = 1;
 		//IRQ_LOG(("vrtc\n"));
-		device->execute().set_input_line(0,HOLD_LINE);
+		device.execute().set_input_line(0,HOLD_LINE);
 	}
 }
 #endif
@@ -2568,33 +2574,32 @@ static const struct upd765_interface pc8801_upd765_interface =
 
 /* YM2203 Interface */
 
-static READ8_DEVICE_HANDLER( opn_porta_r )
+READ8_MEMBER(pc8801_state::opn_porta_r)
 {
-	pc8801_state *state = device->machine().driver_data<pc8801_state>();
 
-	if(device->machine().root_device().ioport("BOARD_CONFIG")->read() & 2)
+	if(machine().root_device().ioport("BOARD_CONFIG")->read() & 2)
 	{
 		UINT8 shift,res;
 
-		shift = (state->m_mouse.phase & 1) ? 0 : 4;
-		res = (state->m_mouse.phase & 2) ? state->m_mouse.y : state->m_mouse.x;
+		shift = (m_mouse.phase & 1) ? 0 : 4;
+		res = (m_mouse.phase & 2) ? m_mouse.y : m_mouse.x;
 
-//      printf("%d\n",state->m_mouse.phase);
+//      printf("%d\n",m_mouse.phase);
 
 		return ((res >> shift) & 0x0f) | 0xf0;
 	}
 
-	return device->machine().root_device().ioport("OPN_PA")->read();
+	return machine().root_device().ioport("OPN_PA")->read();
 }
-static READ8_DEVICE_HANDLER( opn_portb_r ) { return device->machine().root_device().ioport("OPN_PB")->read(); }
+READ8_MEMBER(pc8801_state::opn_portb_r){ return machine().root_device().ioport("OPN_PB")->read(); }
 
 static const ym2203_interface pc88_ym2203_intf =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		DEVCB_HANDLER(opn_porta_r),
-		DEVCB_HANDLER(opn_portb_r),
+		DEVCB_DRIVER_MEMBER(pc8801_state,opn_porta_r),
+		DEVCB_DRIVER_MEMBER(pc8801_state,opn_portb_r),
 		DEVCB_NULL,
 		DEVCB_NULL
 	},
@@ -2606,8 +2611,8 @@ static const ym2608_interface pc88_ym2608_intf =
 	{
 		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		DEVCB_HANDLER(opn_porta_r),
-		DEVCB_HANDLER(opn_portb_r),
+		DEVCB_DRIVER_MEMBER(pc8801_state,opn_porta_r),
+		DEVCB_DRIVER_MEMBER(pc8801_state,opn_portb_r),
 		DEVCB_NULL,
 		DEVCB_NULL
 	},
@@ -2663,7 +2668,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	MCFG_CPU_ADD("maincpu", Z80, MASTER_CLOCK)        /* 4 MHz */
 	MCFG_CPU_PROGRAM_MAP(pc8801_mem)
 	MCFG_CPU_IO_MAP(pc8801_io)
-	MCFG_CPU_VBLANK_INT("screen", pc8801_vrtc_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pc8801_state,  pc8801_vrtc_irq)
 
 	/* sub CPU(5 inch floppy drive) */
 	MCFG_CPU_ADD("fdccpu", Z80, MASTER_CLOCK)		/* 4 MHz */
@@ -2714,7 +2719,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
-	MCFG_TIMER_ADD_PERIODIC("rtc_timer", pc8801_rtc_irq, attotime::from_hz(600))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("rtc_timer", pc8801_state, pc8801_rtc_irq, attotime::from_hz(600))
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pc8801fh, pc8801 )

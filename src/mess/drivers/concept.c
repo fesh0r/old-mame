@@ -119,7 +119,7 @@ static MACHINE_CONFIG_START( concept, concept_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8182000)        /* 16.364 MHz / 2 */
 	MCFG_CPU_PROGRAM_MAP(concept_memmap)
-	MCFG_CPU_VBLANK_INT("screen", concept_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", concept_state,  concept_interrupt)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
@@ -130,7 +130,7 @@ static MACHINE_CONFIG_START( concept, concept_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(720, 560)
 	MCFG_SCREEN_VISIBLE_AREA(0, 720-1, 0, 560-1)
-	MCFG_SCREEN_UPDATE_STATIC(concept)
+	MCFG_SCREEN_UPDATE_DRIVER(concept_state, screen_update_concept)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

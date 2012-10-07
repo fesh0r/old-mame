@@ -18,7 +18,6 @@
 #include "video/vdc.h"
 //#include "cpu/h6280/h6280.h"
 //#include "sound/c6280.h"
-#include "machine/pcecommn.h"
 
 #include "rendlay.h"
 
@@ -28,14 +27,18 @@ class x1twin_state : public x1_state
 		x1twin_state(const machine_config &mconfig, device_type type, const char *tag)
 		: x1_state(mconfig, type, tag)
 	{ }
+	UINT32 screen_update_x1pce(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	DECLARE_INPUT_CHANGED_MEMBER(ipl_reset);
+	DECLARE_INPUT_CHANGED_MEMBER(nmi_reset);
 };
 
 
 #define X1_MAIN_CLOCK XTAL_16MHz
 #define VDP_CLOCK  XTAL_42_9545MHz
 #define MCU_CLOCK  XTAL_6MHz
+#define	PCE_MAIN_CLOCK		VDP_CLOCK / 2
 
-static SCREEN_UPDATE_RGB32( x1pce )
+UINT32 x1twin_state::screen_update_x1pce(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	return 0;
 }
@@ -105,30 +108,28 @@ static const mc6845_interface mc6845_intf =
  *
  *************************************/
 
-static INPUT_CHANGED( ipl_reset )
+INPUT_CHANGED_MEMBER(x1twin_state::ipl_reset)
 {
-	//address_space *space = field.machine().device("x1_cpu")->memory().space(AS_PROGRAM);
-	x1twin_state *state = field.machine().driver_data<x1twin_state>();
+	//address_space &space = machine().device("x1_cpu")->memory().space(AS_PROGRAM);
 
-	state->m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 
-	state->m_ram_bank = 0x00;
-	if(state->m_is_turbo) { state->m_ex_bank = 0x10; }
+	m_ram_bank = 0x00;
+	if(m_is_turbo) { m_ex_bank = 0x10; }
 	//anything else?
 }
 
 /* Apparently most games doesn't support this (not even the Konami ones!), one that does is...177 :o */
-static INPUT_CHANGED( nmi_reset )
+INPUT_CHANGED_MEMBER(x1twin_state::nmi_reset)
 {
-	x1twin_state *state = field.machine().driver_data<x1twin_state>();
 
-	state->m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 INPUT_PORTS_START( x1twin )
 	PORT_START("FP_SYS") //front panel buttons, hard-wired with the soft reset/NMI lines
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED(ipl_reset,0) PORT_NAME("IPL reset")
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED(nmi_reset,0) PORT_NAME("NMI reset")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED_MEMBER(DEVICE_SELF, x1twin_state, ipl_reset,0) PORT_NAME("IPL reset")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED_MEMBER(DEVICE_SELF, x1twin_state, nmi_reset,0) PORT_NAME("NMI reset")
 
 	PORT_START("SOUND_SW") //FIXME: this is X1Turbo specific
 	PORT_DIPNAME( 0x80, 0x80, "OPM Sound Setting?" )
@@ -429,12 +430,12 @@ static Z80CTC_INTERFACE( ctc_intf )
 #if 0
 static const z80sio_interface sio_intf =
 {
-	0,					/* interrupt handler */
-	0,					/* DTR changed handler */
-	0,					/* RTS changed handler */
-	0,					/* BREAK changed handler */
-	0,					/* transmit handler */
-	0					/* receive handler */
+	DEVCB_NULL,					/* interrupt handler */
+	DEVCB_NULL,					/* DTR changed handler */
+	DEVCB_NULL,					/* RTS changed handler */
+	DEVCB_NULL,					/* BREAK changed handler */
+	DEVCB_NULL,					/* transmit handler */
+	DEVCB_NULL					/* receive handler */
 };
 #endif
 
@@ -547,13 +548,13 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_STATIC(x1)
+	MCFG_SCREEN_UPDATE_DRIVER(x1twin_state, screen_update_x1)
 
 	MCFG_SCREEN_ADD("pce_screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_RAW_PARAMS(PCE_MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
-	MCFG_SCREEN_UPDATE_STATIC(x1pce)
+	MCFG_SCREEN_UPDATE_DRIVER(x1twin_state, screen_update_x1pce)
 
 	MCFG_MC6845_ADD("crtc", H46505, (VDP_CLOCK/48), mc6845_intf) //unknown divider
 	MCFG_PALETTE_LENGTH(0x10+0x1000)
@@ -600,8 +601,8 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 	MCFG_SOUND_ROUTE(1, "pce_r", 0.5)
 #endif
 
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", x1_keyboard_callback, attotime::from_hz(250))
-	MCFG_TIMER_ADD_PERIODIC("cmt_wind_timer", x1_cmt_wind_timer, attotime::from_hz(16))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", x1twin_state, x1_keyboard_callback, attotime::from_hz(250))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("cmt_wind_timer", x1twin_state, x1_cmt_wind_timer, attotime::from_hz(16))
 MACHINE_CONFIG_END
 
 ROM_START( x1twin )

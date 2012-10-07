@@ -886,9 +886,9 @@ static ADDRESS_MAP_START( racknrol, AS_PROGRAM, 8, galaxold_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( racknrol_io, AS_IO, 8, galaxold_state )
-	AM_RANGE(0x1d, 0x1d) AM_DEVWRITE("sn1", sn76496_new_device, write)
-	AM_RANGE(0x1e, 0x1e) AM_DEVWRITE("sn2", sn76496_new_device, write)
-	AM_RANGE(0x1f, 0x1f) AM_DEVWRITE("sn3", sn76496_new_device, write)
+	AM_RANGE(0x1d, 0x1d) AM_DEVWRITE("sn1", sn76496_device, write)
+	AM_RANGE(0x1e, 0x1e) AM_DEVWRITE("sn2", sn76496_device, write)
+	AM_RANGE(0x1f, 0x1f) AM_DEVWRITE("sn3", sn76496_device, write)
 	AM_RANGE(0x20, 0x3f) AM_WRITE(racknrol_tiles_bank_w) AM_SHARE("racknrol_tbank")
 	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
 ADDRESS_MAP_END
@@ -910,7 +910,7 @@ READ8_MEMBER(galaxold_state::hexpoola_data_port_r)
 static ADDRESS_MAP_START( hexpoola_io, AS_IO, 8, galaxold_state )
 	AM_RANGE(0x00, 0x00) AM_READNOP
 	AM_RANGE(0x20, 0x3f) AM_WRITE(racknrol_tiles_bank_w) AM_SHARE("racknrol_tbank")
-	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READ(hexpoola_data_port_r) AM_DEVWRITE("snsnd", sn76496_new_device, write)
+	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READ(hexpoola_data_port_r) AM_DEVWRITE("snsnd", sn76496_device, write)
 	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
 ADDRESS_MAP_END
 
@@ -938,7 +938,7 @@ READ8_MEMBER(galaxold_state::bullsdrtg_data_port_r)
 static ADDRESS_MAP_START( bullsdrtg_io_map, AS_IO, 8, galaxold_state )
 	AM_RANGE(0x00, 0x00) AM_READNOP
 	AM_RANGE(0x20, 0x3f) AM_WRITE(racknrol_tiles_bank_w) AM_SHARE("racknrol_tbank")
-	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READ(bullsdrtg_data_port_r) AM_DEVWRITE("snsnd", sn76496_new_device, write)
+	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READ(bullsdrtg_data_port_r) AM_DEVWRITE("snsnd", sn76496_device, write)
 	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
 ADDRESS_MAP_END
 
@@ -2179,7 +2179,7 @@ static MACHINE_CONFIG_START( galaxold_base, galaxold_state )
 	MCFG_7474_ADD("7474_9m_1", "7474_9m_1", galaxold_7474_9m_1_callback, NULL)
 	MCFG_7474_ADD("7474_9m_2", "7474_9m_1", NULL, galaxold_7474_9m_2_q_callback)
 
-	MCFG_TIMER_ADD("int_timer", galaxold_interrupt_timer)
+	MCFG_TIMER_DRIVER_ADD("int_timer", galaxold_state, galaxold_interrupt_timer)
 
 	/* video hardware */
 	MCFG_GFXDECODE(galaxian)
@@ -2187,7 +2187,7 @@ static MACHINE_CONFIG_START( galaxold_base, galaxold_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(galaxold_state, screen_update_galaxold)
 
 	MCFG_PALETTE_INIT_OVERRIDE(galaxold_state,galaxold)
 	MCFG_VIDEO_START_OVERRIDE(galaxold_state,galaxold)
@@ -2314,7 +2314,7 @@ static MACHINE_CONFIG_DERIVED( ozon1, galaxold_base )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(ozon1_map)
 	MCFG_CPU_IO_MAP(ozon1_io_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxold_state,  nmi_line_pulse)
 
 	MCFG_MACHINE_RESET(0)
 
@@ -2332,7 +2332,7 @@ static MACHINE_CONFIG_START( drivfrcg, galaxold_state )
 	MCFG_CPU_ADD("maincpu", S2650, MASTER_CLOCK/6)
 	MCFG_CPU_PROGRAM_MAP(drivfrcg)
 	MCFG_CPU_IO_MAP(drivfrcg_io)
-	MCFG_CPU_VBLANK_INT("screen", hunchbks_vh_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxold_state,  hunchbks_vh_interrupt)
 
 
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -2340,7 +2340,7 @@ static MACHINE_CONFIG_START( drivfrcg, galaxold_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(galaxold_state, screen_update_galaxold)
 
 	MCFG_PALETTE_LENGTH(64)
 	MCFG_GFXDECODE(gmgalax)
@@ -2364,7 +2364,7 @@ static MACHINE_CONFIG_DERIVED( bongo, galaxold_base )
 
 	MCFG_VIDEO_START_OVERRIDE(galaxold_state,bongo)
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(galaxold_state, screen_update_galaxold)
 
 	MCFG_SOUND_ADD("aysnd", AY8910, PIXEL_CLOCK/4)
 	MCFG_SOUND_CONFIG(bongo_ay8910_interface)
@@ -2384,12 +2384,11 @@ static MACHINE_CONFIG_DERIVED( hunchbkg, galaxold_base )
 	MCFG_FRAGMENT_ADD(galaxian_audio)
 MACHINE_CONFIG_END
 
-static INTERRUPT_GEN( vblank_irq )
+INTERRUPT_GEN_MEMBER(galaxold_state::vblank_irq)
 {
-	galaxold_state *state = device->machine().driver_data<galaxold_state>();
 
-	if(state->m_nmi_mask)
-		device->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	if(m_nmi_mask)
+		device.execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_CONFIG_DERIVED( harem, galaxold_base )
@@ -2397,7 +2396,7 @@ static MACHINE_CONFIG_DERIVED( harem, galaxold_base )
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(harem_cpu1)
-	MCFG_CPU_VBLANK_INT("screen", vblank_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxold_state,  vblank_irq)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 1620000) //?
 	MCFG_CPU_PROGRAM_MAP(harem_cpu2)
@@ -2433,29 +2432,29 @@ static MACHINE_CONFIG_START( racknrol, galaxold_state )
 	MCFG_CPU_ADD("maincpu", S2650, PIXEL_CLOCK/2)
 	MCFG_CPU_PROGRAM_MAP(racknrol)
 	MCFG_CPU_IO_MAP(racknrol_io)
-	MCFG_CPU_VBLANK_INT("screen", hunchbks_vh_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxold_state,  hunchbks_vh_interrupt)
 
 	MCFG_GFXDECODE(galaxian)
 	MCFG_PALETTE_LENGTH(32)
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(galaxold_state, screen_update_galaxold)
 
 	MCFG_PALETTE_INIT_OVERRIDE(galaxold_state,rockclim)
 	MCFG_VIDEO_START_OVERRIDE(galaxold_state,racknrol)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("sn1", SN76496_NEW, PIXEL_CLOCK/2)
+	MCFG_SOUND_ADD("sn1", SN76496, PIXEL_CLOCK/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 	MCFG_SOUND_CONFIG(psg_intf)
 
-	MCFG_SOUND_ADD("sn2", SN76496_NEW, PIXEL_CLOCK/2)
+	MCFG_SOUND_ADD("sn2", SN76496, PIXEL_CLOCK/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 	MCFG_SOUND_CONFIG(psg_intf)
 
-	MCFG_SOUND_ADD("sn3", SN76496_NEW, PIXEL_CLOCK/2)
+	MCFG_SOUND_ADD("sn3", SN76496, PIXEL_CLOCK/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 	MCFG_SOUND_CONFIG(psg_intf)
 MACHINE_CONFIG_END
@@ -2491,21 +2490,21 @@ static MACHINE_CONFIG_START( hexpoola, galaxold_state )
 	MCFG_CPU_ADD("maincpu", S2650, PIXEL_CLOCK/2)
 	MCFG_CPU_PROGRAM_MAP(racknrol)
 	MCFG_CPU_IO_MAP(hexpoola_io)
-	MCFG_CPU_VBLANK_INT("screen", hunchbks_vh_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", galaxold_state,  hunchbks_vh_interrupt)
 
 	MCFG_GFXDECODE(galaxian)
 	MCFG_PALETTE_LENGTH(32)
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MCFG_SCREEN_UPDATE_STATIC(galaxold)
+	MCFG_SCREEN_UPDATE_DRIVER(galaxold_state, screen_update_galaxold)
 
 	MCFG_PALETTE_INIT_OVERRIDE(galaxold_state,rockclim)
 	MCFG_VIDEO_START_OVERRIDE(galaxold_state,racknrol)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("snsnd", SN76496_NEW, PIXEL_CLOCK/2)
+	MCFG_SOUND_ADD("snsnd", SN76496, PIXEL_CLOCK/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 	MCFG_SOUND_CONFIG(psg_intf)
 MACHINE_CONFIG_END
@@ -3233,7 +3232,7 @@ GAME( 1983, harem,    0,        harem,    harem, driver_device,    0,        ROT
 
 /* S2650 games */
 GAME( 1983, hunchbkg, hunchbak,	hunchbkg, hunchbkg, driver_device, 0,        ROT90,  "Century Electronics", "Hunchback (Galaxian hardware)", GAME_SUPPORTS_SAVE )
-GAME( 1984, drivfrcg, drivfrcp, drivfrcg, drivfrcg, driver_device, 0,        ROT90,  "Shinkai Inc. (Magic Eletronics USA license)", "Driving Force (Galaxian conversion)", GAME_SUPPORTS_SAVE )
+GAME( 1984, drivfrcg, drivfrcp, drivfrcg, drivfrcg, driver_device, 0,        ROT90,  "Shinkai Inc. (Magic Electronics USA license)", "Driving Force (Galaxian conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1984, drivfrct, drivfrcp, drivfrcg, drivfrcg, driver_device, 0,        ROT90,  "bootleg (EMT Germany)", "Top Racer (bootleg of Driving Force)", GAME_SUPPORTS_SAVE ) // Video Klein PCB
 GAME( 1985, drivfrcb, drivfrcp, drivfrcg, drivfrcg, driver_device, 0,        ROT90,  "bootleg (Elsys Software)", "Driving Force (Galaxian conversion bootleg)", GAME_SUPPORTS_SAVE )
 GAME( 1986, racknrol, 0,        racknrol, racknrol, driver_device, 0,	      ROT0,   "Senko Industries (Status license from Shinkai Inc.)", "Rack + Roll", GAME_SUPPORTS_SAVE )

@@ -239,6 +239,10 @@ public:
 	DECLARE_MACHINE_START(meritm_crt250_crt252_crt258);
 	DECLARE_MACHINE_START(meritm_crt260);
 	DECLARE_MACHINE_START(merit_common);
+	UINT32 screen_update_meritm(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(meritm_interrupt);
+	TIMER_DEVICE_CALLBACK_MEMBER(vblank_start_tick);
+	TIMER_DEVICE_CALLBACK_MEMBER(vblank_end_tick);
 };
 
 
@@ -370,7 +374,7 @@ static void pc16650d_tx_callback(running_machine &machine, int channel, int coun
 {
 	meritm_state *state = machine.driver_data<meritm_state>();
 	for(int i = 0; i < count; i++)
-		state->m_microtouch->rx(*machine.memory().first_space(), 0, data[i]);
+		state->m_microtouch->rx(machine.driver_data()->generic_space(), 0, data[i]);
 }
 
 WRITE8_MEMBER(meritm_state::microtouch_tx)
@@ -421,20 +425,19 @@ static const microtouch_interface meritm_microtouch_config =
  *************************************/
 
 
-static TIMER_DEVICE_CALLBACK( meritm_interrupt )
+TIMER_DEVICE_CALLBACK_MEMBER(meritm_state::meritm_interrupt)
 {
-	meritm_state *state = timer.machine().driver_data<meritm_state>();
 	int scanline = param;
 
 	if((scanline % 2) == 0)
 	{
-		state->m_v9938_0->set_sprite_limit(0);
-		state->m_v9938_0->set_resolution(RENDER_HIGH);
-		state->m_v9938_0->interrupt();
+		m_v9938_0->set_sprite_limit(0);
+		m_v9938_0->set_resolution(RENDER_HIGH);
+		m_v9938_0->interrupt();
 
-		state->m_v9938_1->set_sprite_limit(0);
-		state->m_v9938_1->set_resolution(RENDER_HIGH);
-		state->m_v9938_1->interrupt();
+		m_v9938_1->set_sprite_limit(0);
+		m_v9938_1->set_resolution(RENDER_HIGH);
+		m_v9938_1->interrupt();
 	}
 }
 
@@ -461,30 +464,29 @@ void meritm_state::video_start()
 	state_save_register_global(machine(), m_interrupt_vdp1_state);
 }
 
-static SCREEN_UPDATE_IND16( meritm )
+UINT32 meritm_state::screen_update_meritm(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	meritm_state *state = screen.machine().driver_data<meritm_state>();
-	if(screen.machine().input().code_pressed_once(KEYCODE_Q))
+	if(machine().input().code_pressed_once(KEYCODE_Q))
 	{
-		state->m_layer0_enabled^=1;
-		popmessage("Layer 0 %sabled",state->m_layer0_enabled ? "en" : "dis");
+		m_layer0_enabled^=1;
+		popmessage("Layer 0 %sabled",m_layer0_enabled ? "en" : "dis");
 	}
-	if(screen.machine().input().code_pressed_once(KEYCODE_W))
+	if(machine().input().code_pressed_once(KEYCODE_W))
 	{
-		state->m_layer1_enabled^=1;
-		popmessage("Layer 1 %sabled",state->m_layer1_enabled ? "en" : "dis");
-	}
-
-	bitmap.fill(get_black_pen(screen.machine()), cliprect);
-
-	if ( state->m_layer0_enabled )
-	{
-		copybitmap(bitmap, state->m_v9938_0->get_bitmap(), 0, 0, 0, 0, cliprect);
+		m_layer1_enabled^=1;
+		popmessage("Layer 1 %sabled",m_layer1_enabled ? "en" : "dis");
 	}
 
-	if ( state->m_layer1_enabled )
+	bitmap.fill(get_black_pen(machine()), cliprect);
+
+	if ( m_layer0_enabled )
 	{
-		copybitmap_trans(bitmap, state->m_v9938_1->get_bitmap(), 0, 0, -6, -12, cliprect, state->m_v9938_1->get_transpen());
+		copybitmap(bitmap, m_v9938_0->get_bitmap(), 0, 0, 0, 0, cliprect);
+	}
+
+	if ( m_layer1_enabled )
+	{
+		copybitmap_trans(bitmap, m_v9938_1->get_bitmap(), 0, 0, -6, -12, cliprect, m_v9938_1->get_transpen());
 	}
 	return 0;
 }
@@ -1150,20 +1152,18 @@ MACHINE_START_MEMBER(meritm_state,meritm_crt260)
 #define MSX2_VISIBLE_XBORDER_PIXELS	8 * 2
 #define MSX2_VISIBLE_YBORDER_PIXELS	14 * 2
 
-static TIMER_DEVICE_CALLBACK( vblank_start_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(meritm_state::vblank_start_tick)
 {
-	meritm_state *state = timer.machine().driver_data<meritm_state>();
 	/* this is a workaround to signal the v9938 vblank interrupt correctly */
-	state->m_vint = 0x08;
-	state->m_z80pio_0->port_a_write(state->m_vint);
+	m_vint = 0x08;
+	m_z80pio_0->port_a_write(m_vint);
 }
 
-static TIMER_DEVICE_CALLBACK( vblank_end_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(meritm_state::vblank_end_tick)
 {
-	meritm_state *state = timer.machine().driver_data<meritm_state>();
 	/* this is a workaround to signal the v9938 vblank interrupt correctly */
-	state->m_vint = 0x18;
-	state->m_z80pio_0->port_a_write(state->m_vint);
+	m_vint = 0x18;
+	m_z80pio_0->port_a_write(m_vint);
 }
 
 static MACHINE_CONFIG_START( meritm_crt250, meritm_state )
@@ -1171,7 +1171,7 @@ static MACHINE_CONFIG_START( meritm_crt250, meritm_state )
 	MCFG_CPU_PROGRAM_MAP(meritm_crt250_map)
 	MCFG_CPU_IO_MAP(meritm_crt250_io_map)
 	MCFG_CPU_CONFIG(meritm_daisy_chain)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", meritm_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", meritm_state, meritm_interrupt, "screen", 0, 1)
 
 
 	MCFG_I8255A_ADD( "ppi8255", crt250_ppi8255_intf )
@@ -1179,8 +1179,8 @@ static MACHINE_CONFIG_START( meritm_crt250, meritm_state )
 	MCFG_Z80PIO_ADD( "z80pio_0", SYSTEM_CLK/6, meritm_audio_pio_intf )
 	MCFG_Z80PIO_ADD( "z80pio_1", SYSTEM_CLK/6, meritm_io_pio_intf )
 
-	MCFG_TIMER_ADD_SCANLINE("vblank_start", vblank_start_tick, "screen", 259, 262)
-	MCFG_TIMER_ADD_SCANLINE("vblank_end",   vblank_end_tick,   "screen", 262, 262)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("vblank_start", meritm_state, vblank_start_tick, "screen", 259, 262)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("vblank_end", meritm_state, vblank_end_tick, "screen", 262, 262)
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
@@ -1198,7 +1198,7 @@ static MACHINE_CONFIG_START( meritm_crt250, meritm_state )
 
 	MCFG_SCREEN_SIZE(MSX2_TOTAL_XRES_PIXELS, 262*2)
 	MCFG_SCREEN_VISIBLE_AREA(MSX2_XBORDER_PIXELS - MSX2_VISIBLE_XBORDER_PIXELS, MSX2_TOTAL_XRES_PIXELS - MSX2_XBORDER_PIXELS + MSX2_VISIBLE_XBORDER_PIXELS - 1, MSX2_YBORDER_PIXELS - MSX2_VISIBLE_YBORDER_PIXELS, MSX2_TOTAL_YRES_PIXELS - MSX2_YBORDER_PIXELS + MSX2_VISIBLE_YBORDER_PIXELS - 1)
-	MCFG_SCREEN_UPDATE_STATIC(meritm)
+	MCFG_SCREEN_UPDATE_DRIVER(meritm_state, screen_update_meritm)
 	MCFG_PALETTE_LENGTH(512)
 
 	MCFG_PALETTE_INIT( v9938 )
@@ -2047,7 +2047,7 @@ DRIVER_INIT_MEMBER(meritm_state,megat3te)
 
 	ds1204_init(machine(), megat3_ds1204_key, megat3_ds1204_nvram);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
 
 };
 
@@ -2077,7 +2077,7 @@ DRIVER_INIT_MEMBER(meritm_state,megat4te)
 
 	ds1204_init(machine(), 0, megat4te_ds1204_nvram);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
 
 };
 
@@ -2088,7 +2088,7 @@ DRIVER_INIT_MEMBER(meritm_state,megat4st)
 
 	ds1204_init(machine(), 0, megat4te_ds1204_nvram);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
 
 };
 
@@ -2108,7 +2108,7 @@ DRIVER_INIT_MEMBER(meritm_state,megat5t)
 
 	ds1204_init(machine(), 0, megat5_ds1204_nvram);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xfff8, 0xffff, read8_delegate(FUNC(meritm_state::meritm_ds1644_r), this), write8_delegate(FUNC(meritm_state::meritm_ds1644_w), this));
 
 }
 

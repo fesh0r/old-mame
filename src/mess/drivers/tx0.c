@@ -340,10 +340,10 @@ static const crt_interface tx0_crt_interface =
 */
 
 
-static TIMER_CALLBACK(reader_callback);
-static TIMER_CALLBACK(puncher_callback);
-static TIMER_CALLBACK(prt_callback);
-static TIMER_CALLBACK(dis_callback);
+
+
+
+
 
 
 
@@ -383,10 +383,10 @@ static void tx0_machine_stop(running_machine &machine)
 
 void tx0_state::machine_start()
 {
-	m_tape_reader.timer = machine().scheduler().timer_alloc(FUNC(reader_callback));
-	m_tape_puncher.timer = machine().scheduler().timer_alloc(FUNC(puncher_callback));
-	m_typewriter.prt_timer = machine().scheduler().timer_alloc(FUNC(prt_callback));
-	m_dis_timer = machine().scheduler().timer_alloc(FUNC(dis_callback));
+	m_tape_reader.timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(tx0_state::reader_callback),this));
+	m_tape_puncher.timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(tx0_state::puncher_callback),this));
+	m_typewriter.prt_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(tx0_state::prt_callback),this));
+	m_dis_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(tx0_state::dis_callback),this));
 
 	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(tx0_machine_stop),&machine()));
 }
@@ -631,49 +631,48 @@ static void begin_tape_read(tx0_state *state, int binary)
 /*
     timer callback to simulate reader IO
 */
-static TIMER_CALLBACK(reader_callback)
+TIMER_CALLBACK_MEMBER(tx0_state::reader_callback)
 {
-	tx0_state *state = machine.driver_data<tx0_state>();
 	int not_ready;
 	UINT8 data;
 	int ac;
 
-	if (state->m_tape_reader.rc)
+	if (m_tape_reader.rc)
 	{
-		not_ready = tape_read(state, & data);
+		not_ready = tape_read(this, & data);
 		if (not_ready)
 		{
-			state->m_tape_reader.motor_on = 0;	/* let us stop the motor */
+			m_tape_reader.motor_on = 0;	/* let us stop the motor */
 		}
 		else
 		{
 			if (data & 0100)
 			{
 				/* read current AC */
-				ac = machine.device("maincpu")->state().state_int(TX0_AC);
+				ac = machine().device("maincpu")->state().state_int(TX0_AC);
 				/* cycle right */
 				ac = (ac >> 1) | ((ac & 1) << 17);
 				/* shuffle and insert data into AC */
 				ac = (ac /*& 0333333*/) | ((data & 001) << 17) | ((data & 002) << 13) | ((data & 004) << 9) | ((data & 010) << 5) | ((data & 020) << 1) | ((data & 040) >> 3);
 				/* write modified AC */
-				machine.device("maincpu")->state().set_state_int(TX0_AC, ac);
+				machine().device("maincpu")->state().set_state_int(TX0_AC, ac);
 
-				state->m_tape_reader.rc = (state->m_tape_reader.rc+1) & 3;
+				m_tape_reader.rc = (m_tape_reader.rc+1) & 3;
 
-				if (state->m_tape_reader.rc == 0)
+				if (m_tape_reader.rc == 0)
 				{	/* IO complete */
-					state->m_tape_reader.rcl = 0;
-					machine.device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
+					m_tape_reader.rcl = 0;
+					machine().device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
 				}
 			}
 		}
 	}
 
-	if (state->m_tape_reader.motor_on && state->m_tape_reader.rcl)
+	if (m_tape_reader.motor_on && m_tape_reader.rcl)
 		/* delay is approximately 1/400s */
-		state->m_tape_reader.timer->adjust(attotime::from_usec(2500));
+		m_tape_reader.timer->adjust(attotime::from_usec(2500));
 	else
-		state->m_tape_reader.timer->enable(0);
+		m_tape_reader.timer->enable(0);
 }
 
 /*
@@ -697,9 +696,9 @@ void tx0_punchtape_image_device::call_unload()
 	state->m_tape_puncher.fd = NULL;
 }
 
-static TIMER_CALLBACK(puncher_callback)
+TIMER_CALLBACK_MEMBER(tx0_state::puncher_callback)
 {
-	machine.device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
+	machine().device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
 }
 
 /*
@@ -792,9 +791,9 @@ static void typewriter_out(running_machine &machine, UINT8 data)
 /*
     timer callback to generate typewriter completion pulse
 */
-static TIMER_CALLBACK(prt_callback)
+TIMER_CALLBACK_MEMBER(tx0_state::prt_callback)
 {
-	machine.device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
+	machine().device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
 }
 
 /*
@@ -819,9 +818,9 @@ static void tx0_io_prt(device_t *device)
 /*
     timer callback to generate crt completion pulse
 */
-static TIMER_CALLBACK(dis_callback)
+TIMER_CALLBACK_MEMBER(tx0_state::dis_callback)
 {
-	machine.device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
+	machine().device("maincpu")->state().set_state_int(TX0_IO_COMPLETE, (UINT64)0);
 }
 
 /*
@@ -1498,9 +1497,8 @@ static void tx0_keyboard(running_machine &machine)
 /*
     Not a real interrupt - just handle keyboard input
 */
-static INTERRUPT_GEN( tx0_interrupt )
+INTERRUPT_GEN_MEMBER(tx0_state::tx0_interrupt)
 {
-	tx0_state *state = device->machine().driver_data<tx0_state>();
 	int control_keys;
 	int tsr_keys;
 
@@ -1509,93 +1507,93 @@ static INTERRUPT_GEN( tx0_interrupt )
 
 
 	/* read new state of control keys */
-	control_keys = state->ioport("CSW")->read();
+	control_keys = ioport("CSW")->read();
 
 	if (control_keys & tx0_control)
 	{
 		/* compute transitions */
-		control_transitions = control_keys & (~ state->m_old_control_keys);
+		control_transitions = control_keys & (~ m_old_control_keys);
 
 		if (control_transitions & tx0_stop_cyc0)
 		{
-			device->machine().device("maincpu")->state().set_state_int(TX0_STOP_CYC0, !device->machine().device("maincpu")->state().state_int(TX0_STOP_CYC0));
+			machine().device("maincpu")->state().set_state_int(TX0_STOP_CYC0, !machine().device("maincpu")->state().state_int(TX0_STOP_CYC0));
 		}
 		if (control_transitions & tx0_stop_cyc1)
 		{
-			device->machine().device("maincpu")->state().set_state_int(TX0_STOP_CYC1, !device->machine().device("maincpu")->state().state_int(TX0_STOP_CYC1));
+			machine().device("maincpu")->state().set_state_int(TX0_STOP_CYC1, !machine().device("maincpu")->state().state_int(TX0_STOP_CYC1));
 		}
 		if (control_transitions & tx0_gbl_cm_sel)
 		{
-			device->machine().device("maincpu")->state().set_state_int(TX0_GBL_CM_SEL, !device->machine().device("maincpu")->state().state_int(TX0_GBL_CM_SEL));
+			machine().device("maincpu")->state().set_state_int(TX0_GBL_CM_SEL, !machine().device("maincpu")->state().state_int(TX0_GBL_CM_SEL));
 		}
 		if (control_transitions & tx0_stop)
 		{
-			device->machine().device("maincpu")->state().set_state_int(TX0_RUN, (UINT64)0);
-			device->machine().device("maincpu")->state().set_state_int(TX0_RIM, (UINT64)0);
+			machine().device("maincpu")->state().set_state_int(TX0_RUN, (UINT64)0);
+			machine().device("maincpu")->state().set_state_int(TX0_RIM, (UINT64)0);
 		}
 		if (control_transitions & tx0_restart)
 		{
-			device->machine().device("maincpu")->state().set_state_int(TX0_RUN, 1);
-			device->machine().device("maincpu")->state().set_state_int(TX0_RIM, (UINT64)0);
+			machine().device("maincpu")->state().set_state_int(TX0_RUN, 1);
+			machine().device("maincpu")->state().set_state_int(TX0_RIM, (UINT64)0);
 		}
 		if (control_transitions & tx0_read_in)
 		{	/* set cpu to read instructions from perforated tape */
-			device->machine().device("maincpu")->state().set_state_int(TX0_RESET, (UINT64)0);
-			device->machine().device("maincpu")->state().set_state_int(TX0_RUN, (UINT64)0);
-			device->machine().device("maincpu")->state().set_state_int(TX0_RIM, 1);
+			machine().device("maincpu")->state().set_state_int(TX0_RESET, (UINT64)0);
+			machine().device("maincpu")->state().set_state_int(TX0_RUN, (UINT64)0);
+			machine().device("maincpu")->state().set_state_int(TX0_RIM, 1);
 		}
 		if (control_transitions & tx0_toggle_dn)
 		{
-			state->m_tsr_index++;
-			if (state->m_tsr_index == 18)
-				state->m_tsr_index = 0;
+			m_tsr_index++;
+			if (m_tsr_index == 18)
+				m_tsr_index = 0;
 		}
 		if (control_transitions & tx0_toggle_up)
 		{
-			state->m_tsr_index--;
-			if (state->m_tsr_index == -1)
-				state->m_tsr_index = 17;
+			m_tsr_index--;
+			if (m_tsr_index == -1)
+				m_tsr_index = 17;
 		}
 		if (control_transitions & tx0_cm_sel)
 		{
-			if (state->m_tsr_index >= 2)
+			if (m_tsr_index >= 2)
 			{
-				UINT32 cm_sel = (UINT32) device->machine().device("maincpu")->state().state_int(TX0_CM_SEL);
-				device->machine().device("maincpu")->state().set_state_int(TX0_CM_SEL, cm_sel ^ (1 << (state->m_tsr_index - 2)));
+				UINT32 cm_sel = (UINT32) machine().device("maincpu")->state().state_int(TX0_CM_SEL);
+				machine().device("maincpu")->state().set_state_int(TX0_CM_SEL, cm_sel ^ (1 << (m_tsr_index - 2)));
 			}
 		}
 		if (control_transitions & tx0_lr_sel)
 		{
-			if (state->m_tsr_index >= 2)
+			if (m_tsr_index >= 2)
 			{
-				UINT32 lr_sel = (UINT32) device->machine().device("maincpu")->state().state_int(TX0_LR_SEL);
-				device->machine().device("maincpu")->state().set_state_int(TX0_LR_SEL, (lr_sel ^ (1 << (state->m_tsr_index - 2))));
+				UINT32 lr_sel = (UINT32) machine().device("maincpu")->state().state_int(TX0_LR_SEL);
+				machine().device("maincpu")->state().set_state_int(TX0_LR_SEL, (lr_sel ^ (1 << (m_tsr_index - 2))));
 			}
 		}
 
 		/* remember new state of control keys */
-		state->m_old_control_keys = control_keys;
+		m_old_control_keys = control_keys;
 
 
 		/* handle toggle switch register keys */
-		tsr_keys = (device->machine().root_device().ioport("MSW")->read() << 16) | device->machine().root_device().ioport("LSW")->read();
+		tsr_keys = (machine().root_device().ioport("MSW")->read() << 16) | machine().root_device().ioport("LSW")->read();
 
 		/* compute transitions */
-		tsr_transitions = tsr_keys & (~ state->m_old_tsr_keys);
+		tsr_transitions = tsr_keys & (~ m_old_tsr_keys);
 
 		/* update toggle switch register */
 		if (tsr_transitions)
-			device->machine().device("maincpu")->state().set_state_int(TX0_TBR+state->m_tsr_index, device->machine().device("maincpu")->state().state_int(TX0_TBR+state->m_tsr_index) ^ tsr_transitions);
+			machine().device("maincpu")->state().set_state_int(TX0_TBR+m_tsr_index, machine().device("maincpu")->state().state_int(TX0_TBR+m_tsr_index) ^ tsr_transitions);
 
 		/* remember new state of toggle switch register keys */
-		state->m_old_tsr_keys = tsr_keys;
+		m_old_tsr_keys = tsr_keys;
 	}
 	else
 	{
-		state->m_old_control_keys = 0;
-		state->m_old_tsr_keys = 0;
+		m_old_control_keys = 0;
+		m_old_tsr_keys = 0;
 
-		tx0_keyboard(device->machine());
+		tx0_keyboard(machine());
 	}
 }
 
@@ -1606,7 +1604,7 @@ static MACHINE_CONFIG_START( tx0_64kw, tx0_state )
 	MCFG_CPU_CONFIG(tx0_reset_param)
 	MCFG_CPU_PROGRAM_MAP(tx0_64kw_map)
 	/* dummy interrupt: handles input */
-	MCFG_CPU_VBLANK_INT("screen", tx0_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", tx0_state,  tx0_interrupt)
 
 
 	/* video hardware (includes the control panel and typewriter output) */
@@ -1615,8 +1613,8 @@ static MACHINE_CONFIG_START( tx0_64kw, tx0_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(virtual_width, virtual_height)
 	MCFG_SCREEN_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
-	MCFG_SCREEN_UPDATE_STATIC(tx0)
-	MCFG_SCREEN_VBLANK_STATIC(tx0)
+	MCFG_SCREEN_UPDATE_DRIVER(tx0_state, screen_update_tx0)
+	MCFG_SCREEN_VBLANK_DRIVER(tx0_state, screen_eof_tx0)
 
 	MCFG_CRT_ADD( "crt", tx0_crt_interface )
 	MCFG_DEVICE_ADD("readt", TX0_READTAPE, 0)

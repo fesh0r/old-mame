@@ -1416,14 +1416,14 @@ static const struct sh4_config sh4cpu_config = {  1,  0,  1,  0,  0,  0,  1,  1,
 
 static READ64_HANDLER( naomi_arm_r )
 {
-	dc_state *state = space->machine().driver_data<dc_state>();
+	dc_state *state = space.machine().driver_data<dc_state>();
 
 	return *(reinterpret_cast<UINT64 *>(state->dc_sound_ram.target())+offset);
 }
 
 static WRITE64_HANDLER( naomi_arm_w )
 {
-	dc_state *state = space->machine().driver_data<dc_state>();
+	dc_state *state = space.machine().driver_data<dc_state>();
 
 	COMBINE_DATA(reinterpret_cast<UINT64 *>(state->dc_sound_ram.target()) + offset);
 }
@@ -1517,7 +1517,7 @@ static WRITE64_DEVICE_HANDLER( eeprom_93c46a_w )
  // SB_LMMODE0
  static WRITE64_HANDLER( ta_texture_directpath0_w )
  {
-	dc_state *state = space->machine().driver_data<dc_state>();
+	dc_state *state = space.machine().driver_data<dc_state>();
 
 	int mode = state->pvrctrl_regs[SB_LMMODE0]&1;
 	if (mode&1)
@@ -1534,7 +1534,7 @@ static WRITE64_DEVICE_HANDLER( eeprom_93c46a_w )
  // SB_LMMODE1
  static WRITE64_HANDLER( ta_texture_directpath1_w )
  {
-	dc_state *state = space->machine().driver_data<dc_state>();
+	dc_state *state = space.machine().driver_data<dc_state>();
 
 	int mode = state->pvrctrl_regs[SB_LMMODE1]&1;
 	if (mode&1)
@@ -1566,7 +1566,7 @@ static ADDRESS_MAP_START( naomi_map, AS_PROGRAM, 64, dc_state )
 	AM_RANGE(0x005f7c00, 0x005f7cff) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(pvr_ctrl_r, pvr_ctrl_w )
 	AM_RANGE(0x005f8000, 0x005f9fff) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(pvr_ta_r, pvr_ta_w )
 	AM_RANGE(0x00600000, 0x006007ff) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(dc_modem_r, dc_modem_w )
-	AM_RANGE(0x00700000, 0x00707fff) AM_MIRROR(0x02000000) AM_DEVREADWRITE_LEGACY("aica", dc_aica_reg_r, dc_aica_reg_w )
+	AM_RANGE(0x00700000, 0x00707fff) AM_MIRROR(0x02000000) AM_READWRITE(dc_aica_reg_r, dc_aica_reg_w )
 	AM_RANGE(0x00710000, 0x0071000f) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(dc_rtc_r, dc_rtc_w )
 	AM_RANGE(0x00800000, 0x00ffffff) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(naomi_arm_r, naomi_arm_w )           // sound RAM (8 MB)
 
@@ -1618,7 +1618,7 @@ static ADDRESS_MAP_START( naomi2_map, AS_PROGRAM, 64, dc_state )
 	AM_RANGE(0x005f7c00, 0x005f7cff) AM_READWRITE_LEGACY(pvr_ctrl_r, pvr_ctrl_w )
 	AM_RANGE(0x005f8000, 0x005f9fff) AM_READWRITE_LEGACY(pvr_ta_r, pvr_ta_w )
 	AM_RANGE(0x00600000, 0x006007ff) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(dc_modem_r, dc_modem_w )
-	AM_RANGE(0x00700000, 0x00707fff) AM_MIRROR(0x02000000) AM_DEVREADWRITE_LEGACY("aica", dc_aica_reg_r, dc_aica_reg_w )
+	AM_RANGE(0x00700000, 0x00707fff) AM_MIRROR(0x02000000) AM_READWRITE(dc_aica_reg_r, dc_aica_reg_w )
 	AM_RANGE(0x00710000, 0x0071000f) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(dc_rtc_r, dc_rtc_w )
 	AM_RANGE(0x00800000, 0x00ffffff) AM_MIRROR(0x02000000) AM_READWRITE_LEGACY(naomi_arm_r, naomi_arm_w )           // sound RAM (8 MB)
 
@@ -1724,11 +1724,11 @@ static READ64_HANDLER( aw_modem_r )
 	int reg;
 	UINT64 shift;
 
-	reg = decode_reg32_64(space->machine(), offset, mem_mask, &shift);
+	reg = decode_reg32_64(space.machine(), offset, mem_mask, &shift);
 
 	if (reg == 0x280/4)
 	{
-		UINT32 coins = space->machine().root_device().ioport("COINS")->read();
+		UINT32 coins = space.machine().root_device().ioport("COINS")->read();
 
 		if (coins & 0x01)
 		{
@@ -1752,7 +1752,7 @@ static WRITE64_HANDLER( aw_modem_w )
 	UINT64 shift;
 	UINT32 dat;
 
-	reg = decode_reg32_64(space->machine(), offset, mem_mask, &shift);
+	reg = decode_reg32_64(space.machine(), offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
 	mame_printf_verbose("MODEM: [%08x=%x] write %" I64FMT "x to %x, mask %" I64FMT "x\n", 0x600000+reg*4, dat, data, offset, mem_mask);
 }
@@ -1771,7 +1771,7 @@ static ADDRESS_MAP_START( aw_map, AS_PROGRAM, 64, dc_state )
 	AM_RANGE(0x005f7c00, 0x005f7cff) AM_READWRITE_LEGACY(pvr_ctrl_r, pvr_ctrl_w )
 	AM_RANGE(0x005f8000, 0x005f9fff) AM_READWRITE_LEGACY(pvr_ta_r, pvr_ta_w )
 	AM_RANGE(0x00600000, 0x006007ff) AM_READWRITE_LEGACY(aw_modem_r, aw_modem_w )
-	AM_RANGE(0x00700000, 0x00707fff) AM_DEVREADWRITE_LEGACY("aica", dc_aica_reg_r, dc_aica_reg_w )
+	AM_RANGE(0x00700000, 0x00707fff) AM_READWRITE(dc_aica_reg_r, dc_aica_reg_w )
 	AM_RANGE(0x00710000, 0x0071000f) AM_READWRITE_LEGACY(dc_rtc_r, dc_rtc_w )
 	AM_RANGE(0x00800000, 0x00ffffff) AM_READWRITE_LEGACY(naomi_arm_r, naomi_arm_w )           // sound RAM (8 MB)
 
@@ -1832,7 +1832,7 @@ static const aica_interface aica_config =
 static ADDRESS_MAP_START( dc_audio_map, AS_PROGRAM, 32, dc_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_SHARE("dc_sound_ram")                /* shared with SH-4 */
-	AM_RANGE(0x00800000, 0x00807fff) AM_DEVREADWRITE_LEGACY("aica", dc_arm_aica_r, dc_arm_aica_w)
+	AM_RANGE(0x00800000, 0x00807fff) AM_READWRITE(dc_arm_aica_r, dc_arm_aica_w)
 ADDRESS_MAP_END
 
 /*
@@ -2526,7 +2526,7 @@ static MACHINE_CONFIG_START( naomi_aw_base, dc_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_STATIC(dc)
+	MCFG_SCREEN_UPDATE_DRIVER(dc_state, screen_update_dc)
 
 	MCFG_PALETTE_LENGTH(0x1000)
 
@@ -8157,8 +8157,8 @@ ROM_END
 /* Atomiswave */
 GAME( 2001, awbios,   0,        aw2c,    aw2c, dc_state,  atomiswave, ROT0, "Sammy",                           "Atomiswave Bios", GAME_FLAGS|GAME_IS_BIOS_ROOT )
 
-GAME( 2002, maxspeed, awbios,   aw1c,    aw1w, dc_state,  atomiswave, ROT0, "Sammy",                           "Maximum Speed", GAME_FLAGS )
-GAME( 2002, sprtshot, awbios,   aw2c,    aw2c, dc_state,  atomiswave, ROT0, "Sammy USA",                       "Sports Shooting USA", GAME_FLAGS )
+GAME( 2003, maxspeed, awbios,   aw1c,    aw1w, dc_state,  atomiswave, ROT0, "Sammy",                           "Maximum Speed", GAME_FLAGS )
+GAME( 2003, sprtshot, awbios,   aw2c,    aw2c, dc_state,  atomiswave, ROT0, "Sammy USA",                       "Sports Shooting USA", GAME_FLAGS )
 GAME( 2003, ggx15,    awbios,   aw2c,    aw2c, dc_state,  atomiswave, ROT0, "Sammy / Arc System Works",        "Guilty Gear X ver. 1.5", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND|GAME_NOT_WORKING )
 GAME( 2003, demofist, awbios,   aw2c,    aw2c, dc_state,  atomiswave, ROT0, "Polygon Magic / Dimps",           "Demolish Fist", GAME_FLAGS )
 GAME( 2003, dolphin,  awbios,   aw2c,    aw2c, dc_state,  atomiswave, ROT0, "Sammy",                           "Dolphin Blue", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND|GAME_NOT_WORKING )

@@ -676,7 +676,7 @@ static MACHINE_CONFIG_START( rbisland, rbisland_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_16MHz/2) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(rbisland_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rbisland_state,  irq4_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4) /* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(rbisland_sound_map)
@@ -690,7 +690,7 @@ static MACHINE_CONFIG_START( rbisland, rbisland_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(rainbow)
+	MCFG_SCREEN_UPDATE_DRIVER(rbisland_state, screen_update_rainbow)
 
 	MCFG_GFXDECODE(rbisland)
 	MCFG_PALETTE_LENGTH(8192)
@@ -716,7 +716,7 @@ static MACHINE_CONFIG_START( jumping, rbisland_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_24MHz/3)	/* not verified but matches original */
 	MCFG_CPU_PROGRAM_MAP(jumping_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rbisland_state,  irq4_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_18_432MHz/6)	/* not verified but music tempo matches original */
 	MCFG_CPU_PROGRAM_MAP(jumping_sound_map)
@@ -730,7 +730,7 @@ static MACHINE_CONFIG_START( jumping, rbisland_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(jumping)
+	MCFG_SCREEN_UPDATE_DRIVER(rbisland_state, screen_update_jumping)
 
 	MCFG_GFXDECODE(jumping)
 	MCFG_PALETTE_LENGTH(8192)

@@ -135,7 +135,7 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 5093760)        /* 20.37504 MHz / 4 */
 	MCFG_CPU_PROGRAM_MAP(lisa_map)
-	MCFG_CPU_VBLANK_INT("screen", lisa_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", lisa_state,  lisa_interrupt)
 
 	MCFG_CPU_ADD(COP421_TAG, COP421, 3900000)
 	MCFG_CPU_IO_MAP(lisa_cop_io_map)
@@ -156,7 +156,7 @@ static MACHINE_CONFIG_START( lisa, lisa_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(880, 380)
 	MCFG_SCREEN_VISIBLE_AREA(0, 720-1, 0, 364-1)
-	MCFG_SCREEN_UPDATE_STATIC(lisa)
+	MCFG_SCREEN_UPDATE_DRIVER(lisa_state, screen_update_lisa)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

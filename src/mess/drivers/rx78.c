@@ -278,7 +278,7 @@ static ADDRESS_MAP_START(rx78_io, AS_IO, 8, rx78_state)
 	AM_RANGE(0xf5, 0xfb) AM_WRITE(vdp_reg_w) //vdp
 	AM_RANGE(0xfc, 0xfc) AM_WRITE(vdp_bg_reg_w) //vdp
 	AM_RANGE(0xfe, 0xfe) AM_WRITE(vdp_pri_mask_w)
-	AM_RANGE(0xff, 0xff) AM_DEVWRITE("sn1", sn76489a_new_device, write) //psg
+	AM_RANGE(0xff, 0xff) AM_DEVWRITE("sn1", sn76489a_device, write) //psg
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -476,7 +476,7 @@ static MACHINE_CONFIG_START( rx78, rx78_state )
 	MCFG_CPU_ADD("maincpu",Z80, MASTER_CLOCK/7)	// unknown divider
 	MCFG_CPU_PROGRAM_MAP(rx78_mem)
 	MCFG_CPU_IO_MAP(rx78_io)
-	MCFG_CPU_VBLANK_INT("screen",irq0_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", rx78_state, irq0_line_hold)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
@@ -503,7 +503,7 @@ static MACHINE_CONFIG_START( rx78, rx78_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("sn1", SN76489A_NEW, XTAL_28_63636MHz/8) // unknown divider
+	MCFG_SOUND_ADD("sn1", SN76489A, XTAL_28_63636MHz/8) // unknown divider
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
@@ -525,10 +525,10 @@ ROM_END
 DRIVER_INIT_MEMBER(rx78_state,rx78)
 {
 	UINT32 ram_size = machine().device<ram_device>(RAM_TAG)->size();
-	address_space *prg = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &prg = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	if(ram_size == 0x4000)
-		prg->unmap_readwrite(0x6000, 0xafff);
+		prg.unmap_readwrite(0x6000, 0xafff);
 }
 
 /* Driver */

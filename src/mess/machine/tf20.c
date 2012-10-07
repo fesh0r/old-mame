@@ -71,20 +71,20 @@ static TIMER_DEVICE_CALLBACK( serial_clock )
 /* a read from this location disables the rom */
 static READ8_HANDLER( tf20_rom_disable )
 {
-	tf20_state *tf20 = get_safe_token(space->device().owner());
-	address_space *prg = space->device().memory().space(AS_PROGRAM);
+	tf20_state *tf20 = get_safe_token(space.device().owner());
+	address_space &prg = space.device().memory().space(AS_PROGRAM);
 
 	/* switch in ram */
-	prg->install_ram(0x0000, 0x7fff, tf20->ram->pointer());
+	prg.install_ram(0x0000, 0x7fff, tf20->ram->pointer());
 
 	return 0xff;
 }
 
 static READ8_HANDLER( tf20_dip_r )
 {
-	logerror("%s: tf20_dip_r\n", space->machine().describe_context());
+	logerror("%s: tf20_dip_r\n", space.machine().describe_context());
 
-	return space->machine().root_device().ioport("tf20_dip")->read();
+	return space.machine().root_device().ioport("tf20_dip")->read();
 }
 
 static TIMER_CALLBACK( tf20_upd765_tc_reset )
@@ -94,19 +94,19 @@ static TIMER_CALLBACK( tf20_upd765_tc_reset )
 
 static READ8_DEVICE_HANDLER( tf20_upd765_tc_r )
 {
-	logerror("%s: tf20_upd765_tc_r\n", device->machine().describe_context());
+	logerror("%s: tf20_upd765_tc_r\n", space.machine().describe_context());
 
 	/* toggle tc on read */
 	upd765_tc_w(device, ASSERT_LINE);
-	device->machine().scheduler().timer_set(attotime::zero, FUNC(tf20_upd765_tc_reset), 0, device);
+	space.machine().scheduler().timer_set(attotime::zero, FUNC(tf20_upd765_tc_reset), 0, device);
 
 	return 0xff;
 }
 
 static WRITE8_HANDLER( tf20_fdc_control_w )
 {
-	tf20_state *tf20 = get_safe_token(space->device().owner());
-	logerror("%s: tf20_fdc_control_w %02x\n", space->machine().describe_context(), data);
+	tf20_state *tf20 = get_safe_token(space.device().owner());
+	logerror("%s: tf20_fdc_control_w %02x\n", space.machine().describe_context(), data);
 
 	/* bit 0, motor on signal */
 	floppy_mon_w(tf20->floppy_0, !BIT(data, 0));
@@ -327,7 +327,7 @@ static DEVICE_START( tf20 )
 {
 	tf20_state *tf20 = get_safe_token(device);
 	device_t *cpu = device->subdevice("tf20");
-	address_space *prg = cpu->memory().space(AS_PROGRAM);
+	address_space &prg = cpu->memory().space(AS_PROGRAM);
 
 	cpu->execute().set_irq_acknowledge_callback(tf20_irq_ack);
 
@@ -345,16 +345,16 @@ static DEVICE_START( tf20 )
 	tf20->floppy_1 = device->subdevice(FLOPPY_1);
 
 	/* enable second half of ram */
-	prg->install_ram(0x8000, 0xffff, tf20->ram->pointer() + 0x8000);
+	prg.install_ram(0x8000, 0xffff, tf20->ram->pointer() + 0x8000);
 }
 
 static DEVICE_RESET( tf20 )
 {
 	device_t *cpu = device->subdevice("tf20");
-	address_space *prg = cpu->memory().space(AS_PROGRAM);
+	address_space &prg = cpu->memory().space(AS_PROGRAM);
 
 	/* enable rom */
-	prg->install_rom(0x0000, 0x07ff, 0, 0x7800, cpu->region()->base());
+	prg.install_rom(0x0000, 0x07ff, 0, 0x7800, cpu->region()->base());
 }
 
 const device_type TF20 = &device_creator<tf20_device>;
@@ -362,7 +362,7 @@ const device_type TF20 = &device_creator<tf20_device>;
 tf20_device::tf20_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, TF20, "TF-20", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(tf20_state));
+	m_token = global_alloc_clear(tf20_state);
 }
 
 //-------------------------------------------------

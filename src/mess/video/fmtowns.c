@@ -1766,46 +1766,43 @@ static void draw_text_layer(running_machine &machine)
 	}
 }
 
-static TIMER_CALLBACK( towns_sprite_done )
+TIMER_CALLBACK_MEMBER(towns_state::towns_sprite_done)
 {
 	// sprite drawing is complete, lower flag
-	towns_state* state = machine.driver_data<towns_state>();
-	state->m_video.towns_sprite_flag = 0;
-	if(state->m_video.towns_sprite_page != 0)
-		state->m_video.towns_crtc_reg[21] |= 0x8000;
+	m_video.towns_sprite_flag = 0;
+	if(m_video.towns_sprite_page != 0)
+		m_video.towns_crtc_reg[21] |= 0x8000;
 	else
-		state->m_video.towns_crtc_reg[21] &= ~0x8000;
+		m_video.towns_crtc_reg[21] &= ~0x8000;
 }
 
-static TIMER_CALLBACK( towns_vblank_end )
+TIMER_CALLBACK_MEMBER(towns_state::towns_vblank_end)
 {
 	// here we'll clear the vsync signal, I presume it goes low on it's own eventually
-	towns_state* state = machine.driver_data<towns_state>();
 	device_t* dev = (device_t*)ptr;
 	pic8259_ir3_w(dev, 0);  // IRQ11 = VSync
 	if(IRQ_LOG) logerror("PIC: IRQ11 (VSync) set low\n");
-	state->m_video.towns_vblank_flag = 0;
+	m_video.towns_vblank_flag = 0;
 }
 
-INTERRUPT_GEN( towns_vsync_irq )
+INTERRUPT_GEN_MEMBER(towns_state::towns_vsync_irq)
 {
-	towns_state* state = device->machine().driver_data<towns_state>();
-	device_t* dev = state->m_pic_slave;
+	device_t* dev = m_pic_slave;
 	pic8259_ir3_w(dev, 1);  // IRQ11 = VSync
 	if(IRQ_LOG) logerror("PIC: IRQ11 (VSync) set high\n");
-	state->m_video.towns_vblank_flag = 1;
-	device->machine().scheduler().timer_set(device->machine().primary_screen->time_until_vblank_end(), FUNC(towns_vblank_end), 0, (void*)dev);
-	if(state->m_video.towns_tvram_enable)
+	m_video.towns_vblank_flag = 1;
+	machine().scheduler().timer_set(machine().primary_screen->time_until_vblank_end(), timer_expired_delegate(FUNC(towns_state::towns_vblank_end),this), 0, (void*)dev);
+	if(m_video.towns_tvram_enable)
 		draw_text_layer(dev->machine());
-	if(state->m_video.towns_sprite_reg[1] & 0x80)
-		draw_sprites(dev->machine(),&state->m_video.towns_crtc_layerscr[1]);
+	if(m_video.towns_sprite_reg[1] & 0x80)
+		draw_sprites(dev->machine(),&m_video.towns_crtc_layerscr[1]);
 }
 
 void towns_state::video_start()
 {
 	m_video.towns_vram_wplane = 0x00;
 	m_video.towns_sprite_page = 0;
-	m_video.sprite_timer = machine().scheduler().timer_alloc(FUNC(towns_sprite_done));
+	m_video.sprite_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(towns_state::towns_sprite_done),this));
 }
 
 UINT32 towns_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
@@ -1814,36 +1811,36 @@ UINT32 towns_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, c
 
 	if(!(m_video.towns_video_reg[1] & 0x01))
 	{
-		if(!screen.machine().input().code_pressed(KEYCODE_Q))
+		if(!machine().input().code_pressed(KEYCODE_Q))
 		{
 			if((m_video.towns_layer_ctrl & 0x03) != 0)
-				towns_crtc_draw_layer(screen.machine(),bitmap,&m_video.towns_crtc_layerscr[1],1);
+				towns_crtc_draw_layer(machine(),bitmap,&m_video.towns_crtc_layerscr[1],1);
 		}
-		if(!screen.machine().input().code_pressed(KEYCODE_W))
+		if(!machine().input().code_pressed(KEYCODE_W))
 		{
 			if((m_video.towns_layer_ctrl & 0x0c) != 0)
-				towns_crtc_draw_layer(screen.machine(),bitmap,&m_video.towns_crtc_layerscr[0],0);
+				towns_crtc_draw_layer(machine(),bitmap,&m_video.towns_crtc_layerscr[0],0);
 		}
 	}
 	else
 	{
-		if(!screen.machine().input().code_pressed(KEYCODE_Q))
+		if(!machine().input().code_pressed(KEYCODE_Q))
 		{
 			if((m_video.towns_layer_ctrl & 0x0c) != 0)
-				towns_crtc_draw_layer(screen.machine(),bitmap,&m_video.towns_crtc_layerscr[0],0);
+				towns_crtc_draw_layer(machine(),bitmap,&m_video.towns_crtc_layerscr[0],0);
 		}
-		if(!screen.machine().input().code_pressed(KEYCODE_W))
+		if(!machine().input().code_pressed(KEYCODE_W))
 		{
 			if((m_video.towns_layer_ctrl & 0x03) != 0)
-				towns_crtc_draw_layer(screen.machine(),bitmap,&m_video.towns_crtc_layerscr[1],1);
+				towns_crtc_draw_layer(machine(),bitmap,&m_video.towns_crtc_layerscr[1],1);
 		}
 	}
 
 #if 0
 #ifdef SPR_DEBUG
-	if(screen.machine().input().code_pressed(KEYCODE_O))
+	if(machine().input().code_pressed(KEYCODE_O))
 		pshift+=0x80;
-	if(screen.machine().input().code_pressed(KEYCODE_I))
+	if(machine().input().code_pressed(KEYCODE_I))
 		pshift-=0x80;
 	popmessage("Pixel shift = %08x",pshift);
 #endif

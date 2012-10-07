@@ -54,24 +54,25 @@ public:
 	virtual void palette_init();
 	DECLARE_MACHINE_RESET(laser500);
 	DECLARE_MACHINE_RESET(laser700);
+	UINT32 screen_update_laser(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vtech2_interrupt);
+
+	int mra_bank(int bank, int offs);
+	void mwa_bank(int bank, int offs, int data);
+
+	DECLARE_WRITE8_MEMBER(mwa_bank1);
+	DECLARE_WRITE8_MEMBER(mwa_bank2);
+	DECLARE_WRITE8_MEMBER(mwa_bank3);
+	DECLARE_WRITE8_MEMBER(mwa_bank4);
+	DECLARE_READ8_MEMBER(mra_bank1);
+	DECLARE_READ8_MEMBER(mra_bank2);
+	DECLARE_READ8_MEMBER(mra_bank3);
+	DECLARE_READ8_MEMBER(mra_bank4);
 };
 
 
 /*----------- defined in machine/vtech2.c -----------*/
-
-
-
-
-
 DEVICE_IMAGE_LOAD( laser_cart );
 DEVICE_IMAGE_UNLOAD( laser_cart );
-
-
-
-/*----------- defined in video/vtech2.c -----------*/
-
-extern VIDEO_START( laser );
-extern SCREEN_UPDATE_IND16( laser );
-
 
 #endif /* VTECH2_H_ */

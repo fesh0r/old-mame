@@ -120,7 +120,7 @@ READ16_MEMBER(qdrmfgp_state::v_rom_r)
 {
 	device_t *k056832 = machine().device("k056832");
 	UINT8 *mem8 = memregion("gfx1")->base();
-	int bank = k056832_word_r(k056832, 0x34/2, 0xffff);
+	int bank = k056832_word_r(k056832, space, 0x34/2, 0xffff);
 
 	offset += bank * 0x800 * 4;
 
@@ -136,9 +136,9 @@ READ16_MEMBER(qdrmfgp_state::gp2_vram_r)
 	device_t *k056832 = machine().device("k056832");
 
 	if (offset < 0x1000 / 2)
-		return k056832_ram_word_r(k056832, offset * 2 + 1, mem_mask);
+		return k056832_ram_word_r(k056832, space, offset * 2 + 1, mem_mask);
 	else
-		return k056832_ram_word_r(k056832, (offset - 0x1000 / 2) * 2, mem_mask);
+		return k056832_ram_word_r(k056832, space, (offset - 0x1000 / 2) * 2, mem_mask);
 }
 
 READ16_MEMBER(qdrmfgp_state::gp2_vram_mirror_r)
@@ -146,9 +146,9 @@ READ16_MEMBER(qdrmfgp_state::gp2_vram_mirror_r)
 	device_t *k056832 = machine().device("k056832");
 
 	if (offset < 0x1000 / 2)
-		return k056832_ram_word_r(k056832, offset * 2, mem_mask);
+		return k056832_ram_word_r(k056832, space, offset * 2, mem_mask);
 	else
-		return k056832_ram_word_r(k056832, (offset - 0x1000 / 2) * 2 + 1, mem_mask);
+		return k056832_ram_word_r(k056832, space, (offset - 0x1000 / 2) * 2 + 1, mem_mask);
 }
 
 WRITE16_MEMBER(qdrmfgp_state::gp2_vram_w)
@@ -156,9 +156,9 @@ WRITE16_MEMBER(qdrmfgp_state::gp2_vram_w)
 	device_t *k056832 = machine().device("k056832");
 
 	if (offset < 0x1000 / 2)
-		k056832_ram_word_w(k056832, offset * 2 + 1, data, mem_mask);
+		k056832_ram_word_w(k056832, space, offset * 2 + 1, data, mem_mask);
 	else
-		k056832_ram_word_w(k056832, (offset - 0x1000 / 2) * 2, data, mem_mask);
+		k056832_ram_word_w(k056832, space, (offset - 0x1000 / 2) * 2, data, mem_mask);
 }
 
 WRITE16_MEMBER(qdrmfgp_state::gp2_vram_mirror_w)
@@ -166,9 +166,9 @@ WRITE16_MEMBER(qdrmfgp_state::gp2_vram_mirror_w)
 	device_t *k056832 = machine().device("k056832");
 
 	if (offset < 0x1000 / 2)
-		k056832_ram_word_w(k056832, offset * 2, data, mem_mask);
+		k056832_ram_word_w(k056832, space, offset * 2, data, mem_mask);
 	else
-		k056832_ram_word_w(k056832, (offset - 0x1000 / 2) * 2 + 1, data, mem_mask);
+		k056832_ram_word_w(k056832, space, (offset - 0x1000 / 2) * 2 + 1, data, mem_mask);
 }
 
 
@@ -201,25 +201,25 @@ READ16_MEMBER(qdrmfgp_state::ide_std_r)
 {
 	device_t *device = machine().device("ide");
 	if (offset & 0x01)
-		return ide_controller16_r(device, IDE_STD_OFFSET + offset/2, 0xff00) >> 8;
+		return ide_controller16_r(device, space, IDE_STD_OFFSET + offset/2, 0xff00) >> 8;
 	else
-		return ide_controller16_r(device, IDE_STD_OFFSET + offset/2, 0xffff);
+		return ide_controller16_r(device, space, IDE_STD_OFFSET + offset/2, 0xffff);
 }
 
 WRITE16_MEMBER(qdrmfgp_state::ide_std_w)
 {
 	device_t *device = machine().device("ide");
 	if (offset & 0x01)
-		ide_controller16_w(device, IDE_STD_OFFSET + offset/2, data << 8, 0xff00);
+		ide_controller16_w(device, space, IDE_STD_OFFSET + offset/2, data << 8, 0xff00);
 	else
-		ide_controller16_w(device, IDE_STD_OFFSET + offset/2, data, 0xffff);
+		ide_controller16_w(device, space, IDE_STD_OFFSET + offset/2, data, 0xffff);
 }
 
 READ16_MEMBER(qdrmfgp_state::ide_alt_r)
 {
 	device_t *device = machine().device("ide");
 	if (offset == 0)
-		return ide_controller16_r(device, IDE_ALT_OFFSET, 0x00ff);
+		return ide_controller16_r(device, space, IDE_ALT_OFFSET, 0x00ff);
 
 	return 0;
 }
@@ -228,7 +228,7 @@ WRITE16_MEMBER(qdrmfgp_state::ide_alt_w)
 {
 	device_t *device = machine().device("ide");
 	if (offset == 0)
-		ide_controller16_w(device, IDE_ALT_OFFSET, data, 0x00ff);
+		ide_controller16_w(device, space, IDE_ALT_OFFSET, data, 0x00ff);
 }
 
 
@@ -251,9 +251,9 @@ READ16_MEMBER(qdrmfgp_state::gp2_ide_std_r)
 					break;
 			}
 		}
-		return ide_controller16_r(device, IDE_STD_OFFSET + offset/2, 0xff00) >> 8;
+		return ide_controller16_r(device, space, IDE_STD_OFFSET + offset/2, 0xff00) >> 8;
 	} else {
-		return ide_controller16_r(device, IDE_STD_OFFSET + offset/2, 0xffff);
+		return ide_controller16_r(device, space, IDE_STD_OFFSET + offset/2, 0xffff);
 	}
 }
 
@@ -264,19 +264,18 @@ READ16_MEMBER(qdrmfgp_state::gp2_ide_std_r)
  *
  *************************************/
 
-static TIMER_DEVICE_CALLBACK(qdrmfgp_interrupt)
+TIMER_DEVICE_CALLBACK_MEMBER(qdrmfgp_state::qdrmfgp_interrupt)
 {
-	qdrmfgp_state *state = timer.machine().driver_data<qdrmfgp_state>();
 	int scanline = param;
 
 	if(scanline == 0)
-		if (state->m_control & 0x0001)
-			state->m_maincpu->set_input_line(1, HOLD_LINE);
+		if (m_control & 0x0001)
+			m_maincpu->set_input_line(1, HOLD_LINE);
 
 	/* trigger V-blank interrupt */
 	if(scanline == 240)
-		if (state->m_control & 0x0004)
-			state->m_maincpu->set_input_line(3, HOLD_LINE);
+		if (m_control & 0x0004)
+			m_maincpu->set_input_line(3, HOLD_LINE);
 }
 
 static void ide_interrupt(device_t *device, int state)
@@ -293,19 +292,17 @@ static void ide_interrupt(device_t *device, int state)
 
 /*************/
 
-static TIMER_CALLBACK( gp2_timer_callback )
+TIMER_CALLBACK_MEMBER(qdrmfgp_state::gp2_timer_callback)
 {
-	qdrmfgp_state *state = machine.driver_data<qdrmfgp_state>();
-	if (state->m_control & 0x0004)
-		machine.device("maincpu")->execute().set_input_line(3, HOLD_LINE);
+	if (m_control & 0x0004)
+		machine().device("maincpu")->execute().set_input_line(3, HOLD_LINE);
 }
 
-static INTERRUPT_GEN(qdrmfgp2_interrupt)
+INTERRUPT_GEN_MEMBER(qdrmfgp_state::qdrmfgp2_interrupt)
 {
-	qdrmfgp_state *state = device->machine().driver_data<qdrmfgp_state>();
 	/* trigger V-blank interrupt */
-	if (state->m_control & 0x0008)
-		device->execute().set_input_line(4, HOLD_LINE);
+	if (m_control & 0x0008)
+		device.execute().set_input_line(4, HOLD_LINE);
 }
 
 static void gp2_ide_interrupt(device_t *device, int state)
@@ -645,7 +642,7 @@ MACHINE_START_MEMBER(qdrmfgp_state,qdrmfgp)
 MACHINE_START_MEMBER(qdrmfgp_state,qdrmfgp2)
 {
 	/* sound irq (CCU? 240Hz) */
-	machine().scheduler().timer_pulse(attotime::from_hz(18432000/76800), FUNC(gp2_timer_callback));
+	machine().scheduler().timer_pulse(attotime::from_hz(18432000/76800), timer_expired_delegate(FUNC(qdrmfgp_state::gp2_timer_callback),this));
 
 	MACHINE_START_CALL_MEMBER( qdrmfgp );
 }
@@ -677,7 +674,7 @@ static MACHINE_CONFIG_START( qdrmfgp, qdrmfgp_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 32000000/2)	/*  16.000 MHz */
 	MCFG_CPU_PROGRAM_MAP(qdrmfgp_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", qdrmfgp_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", qdrmfgp_state, qdrmfgp_interrupt, "screen", 0, 1)
 
 	MCFG_MACHINE_START_OVERRIDE(qdrmfgp_state,qdrmfgp)
 	MCFG_NVRAM_ADD_1FILL("nvram")
@@ -690,7 +687,7 @@ static MACHINE_CONFIG_START( qdrmfgp, qdrmfgp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(40, 40+384-1, 16, 16+224-1)
-	MCFG_SCREEN_UPDATE_STATIC(qdrmfgp)
+	MCFG_SCREEN_UPDATE_DRIVER(qdrmfgp_state, screen_update_qdrmfgp)
 
 	MCFG_PALETTE_LENGTH(2048)
 
@@ -718,7 +715,7 @@ static MACHINE_CONFIG_START( qdrmfgp2, qdrmfgp_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 32000000/2)	/*  16.000 MHz */
 	MCFG_CPU_PROGRAM_MAP(qdrmfgp2_map)
-	MCFG_CPU_VBLANK_INT("screen", qdrmfgp2_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", qdrmfgp_state,  qdrmfgp2_interrupt)
 
 	MCFG_MACHINE_START_OVERRIDE(qdrmfgp_state,qdrmfgp2)
 	MCFG_NVRAM_ADD_1FILL("nvram")
@@ -731,7 +728,7 @@ static MACHINE_CONFIG_START( qdrmfgp2, qdrmfgp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(40, 40+384-1, 16, 16+224-1)
-	MCFG_SCREEN_UPDATE_STATIC(qdrmfgp)
+	MCFG_SCREEN_UPDATE_DRIVER(qdrmfgp_state, screen_update_qdrmfgp)
 
 	MCFG_PALETTE_LENGTH(2048)
 

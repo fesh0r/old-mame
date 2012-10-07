@@ -51,28 +51,28 @@
 
 void bw12_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	switch (m_bank)
 	{
 	case 0: /* ROM */
-		program->install_read_bank(0x0000, 0x7fff, "bank1");
-		program->unmap_write(0x0000, 0x7fff);
+		program.install_read_bank(0x0000, 0x7fff, "bank1");
+		program.unmap_write(0x0000, 0x7fff);
 		break;
 
 	case 1: /* BK0 */
-		program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
+		program.install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		break;
 
 	case 2: /* BK1 */
 	case 3: /* BK2 */
 		if (m_ram->size() > 64*1024)
 		{
-			program->install_readwrite_bank(0x0000, 0x7fff, "bank1");
+			program.install_readwrite_bank(0x0000, 0x7fff, "bank1");
 		}
 		else
 		{
-			program->unmap_readwrite(0x0000, 0x7fff);
+			program.unmap_readwrite(0x0000, 0x7fff);
 		}
 		break;
 	}
@@ -91,11 +91,9 @@ void bw12_state::floppy_motor_off()
 	m_motor_on = 0;
 }
 
-static TIMER_DEVICE_CALLBACK( floppy_motor_off_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(bw12_state::floppy_motor_off_tick)
 {
-	bw12_state *state = timer.machine().driver_data<bw12_state>();
-
-	state->floppy_motor_off();
+	floppy_motor_off();
 }
 
 void bw12_state::set_floppy_motor_off_timer()
@@ -543,10 +541,10 @@ static Z80DART_INTERFACE( sio_intf )
 
 /* PIT8253 Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( pit_out0_w )
+WRITE_LINE_MEMBER(bw12_state::pit_out0_w)
 {
-	z80dart_txca_w(device, state);
-	z80dart_rxca_w(device, state);
+	z80dart_txca_w(m_sio, state);
+	z80dart_rxca_w(m_sio, state);
 }
 
 WRITE_LINE_MEMBER( bw12_state::pit_out2_w )
@@ -560,7 +558,7 @@ static const struct pit8253_config pit_intf =
 		{
 			XTAL_1_8432MHz,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE(Z80SIO_TAG, pit_out0_w)
+			DEVCB_DRIVER_LINE_MEMBER(bw12_state,pit_out0_w)
 		},
 		{
 			XTAL_1_8432MHz,
@@ -789,7 +787,7 @@ static MACHINE_CONFIG_START( common, bw12_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MCFG_TIMER_ADD(FLOPPY_TIMER_TAG, floppy_motor_off_tick)
+	MCFG_TIMER_DRIVER_ADD(FLOPPY_TIMER_TAG, bw12_state, floppy_motor_off_tick)
 	MCFG_UPD765A_ADD(UPD765_TAG, fdc_intf)
 	MCFG_PIA6821_ADD(PIA6821_TAG, pia_intf)
 	MCFG_Z80SIO0_ADD(Z80SIO_TAG, XTAL_16MHz/4, sio_intf)

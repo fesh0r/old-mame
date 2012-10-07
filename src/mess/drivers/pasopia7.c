@@ -50,8 +50,8 @@ public:
 	required_device<z80pio_device> m_pio;
 	required_device<mc6845_device> m_crtc;
 	required_device<device_t> m_fdc;
-	required_device<sn76489a_new_device> m_sn1;
-	required_device<sn76489a_new_device> m_sn2;
+	required_device<sn76489a_device> m_sn1;
+	required_device<sn76489a_device> m_sn2;
 	DECLARE_READ8_MEMBER(vram_r);
 	DECLARE_WRITE8_MEMBER(vram_w);
 	DECLARE_WRITE8_MEMBER(pasopia7_memory_ctrl_w);
@@ -109,6 +109,7 @@ public:
 	DECLARE_VIDEO_START(pasopia7);
 	DECLARE_PALETTE_INIT(p7_raster);
 	DECLARE_PALETTE_INIT(p7_lcd);
+	UINT32 screen_update_pasopia7(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 #define VDP_CLOCK XTAL_3_579545MHz/4
@@ -304,21 +305,20 @@ static void draw_mixed_screen(running_machine &machine, bitmap_ind16 &bitmap,con
 	}
 }
 
-static SCREEN_UPDATE_IND16( pasopia7 )
+UINT32 pasopia7_state::screen_update_pasopia7(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	pasopia7_state *state = screen.machine().driver_data<pasopia7_state>();
 	int width;
 
-	bitmap.fill(screen.machine().pens[0], cliprect);
+	bitmap.fill(machine().pens[0], cliprect);
 
-	width = state->m_x_width ? 80 : 40;
+	width = m_x_width ? 80 : 40;
 
-	if(state->m_gfx_mode)
-		draw_mixed_screen(screen.machine(),bitmap,cliprect,width);
+	if(m_gfx_mode)
+		draw_mixed_screen(machine(),bitmap,cliprect,width);
 	else
 	{
-		draw_cg4_screen(screen.machine(),bitmap,cliprect,width);
-		draw_tv_screen(screen.machine(),bitmap,cliprect,width);
+		draw_cg4_screen(machine(),bitmap,cliprect,width);
+		draw_tv_screen(machine(),bitmap,cliprect,width);
 	}
 
 	return 0;
@@ -549,8 +549,8 @@ READ8_MEMBER( pasopia7_state::pasopia7_fdc_r )
 {
 	switch(offset)
 	{
-		case 4: return upd765_status_r(m_fdc, 0);
-		case 5: return upd765_data_r(m_fdc, 0);
+		case 4: return upd765_status_r(m_fdc, space, 0);
+		case 5: return upd765_data_r(m_fdc, space, 0);
 		//case 6: bit 7 interrupt bit
 	}
 
@@ -563,7 +563,7 @@ WRITE8_MEMBER( pasopia7_state::pasopia7_fdc_w )
 	{
 		case 0: upd765_tc_w(m_fdc, 0); break;
 		case 2: upd765_tc_w(m_fdc, 1); break;
-		case 5: upd765_data_w(m_fdc, 0, data); break;
+		case 5: upd765_data_w(m_fdc, space, 0, data); break;
 		case 6:
 			upd765_reset_w(m_fdc, data & 0x80);
 			floppy_mon_w(floppy_get_device(machine(), 0), (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
@@ -579,12 +579,12 @@ READ8_MEMBER( pasopia7_state::pasopia7_io_r )
 
 	if(m_mio_sel)
 	{
-		address_space *ram_space = m_maincpu->space(AS_PROGRAM);
+		address_space &ram_space = m_maincpu->space(AS_PROGRAM);
 
 		m_mio_sel = 0;
 		//printf("%08x\n",offset);
 		//return 0x0d; // hack: this is used for reading the keyboard data, we can fake it a little ... (modify fda4)
-		return ram_space->read_byte(offset);
+		return ram_space.read_byte(offset);
 	}
 
 	io_port = offset & 0xff; //trim down to 8-bit bus
@@ -630,9 +630,9 @@ WRITE8_MEMBER( pasopia7_state::pasopia7_io_w )
 
 	if(m_mio_sel)
 	{
-		address_space *ram_space = m_maincpu->space(AS_PROGRAM);
+		address_space &ram_space = m_maincpu->space(AS_PROGRAM);
 		m_mio_sel = 0;
-		ram_space->write_byte(offset, data);
+		ram_space.write_byte(offset, data);
 		return;
 	}
 
@@ -1018,10 +1018,10 @@ static MACHINE_CONFIG_START( p7_base, pasopia7_state )
 
 	/* Audio */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("sn1", SN76489A_NEW, 1996800) // unknown clock / divider
+	MCFG_SOUND_ADD("sn1", SN76489A, 1996800) // unknown clock / divider
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_CONFIG(psg_intf)
-	MCFG_SOUND_ADD("sn2", SN76489A_NEW, 1996800) // unknown clock / divider
+	MCFG_SOUND_ADD("sn2", SN76489A, 1996800) // unknown clock / divider
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_CONFIG(psg_intf)
 
@@ -1042,7 +1042,7 @@ static MACHINE_CONFIG_DERIVED( p7_raster, p7_base )
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 32-1)
 	MCFG_VIDEO_START_OVERRIDE(pasopia7_state,pasopia7)
-	MCFG_SCREEN_UPDATE_STATIC(pasopia7)
+	MCFG_SCREEN_UPDATE_DRIVER(pasopia7_state, screen_update_pasopia7)
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_PALETTE_INIT_OVERRIDE(pasopia7_state,p7_raster)
 	MCFG_GFXDECODE( pasopia7 )
@@ -1058,7 +1058,7 @@ static MACHINE_CONFIG_DERIVED( p7_lcd, p7_base )
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
 	MCFG_VIDEO_START_OVERRIDE(pasopia7_state,pasopia7)
-	MCFG_SCREEN_UPDATE_STATIC(pasopia7)
+	MCFG_SCREEN_UPDATE_DRIVER(pasopia7_state, screen_update_pasopia7)
 	MCFG_PALETTE_LENGTH(8)
 	MCFG_PALETTE_INIT_OVERRIDE(pasopia7_state,p7_lcd)
 	MCFG_GFXDECODE( pasopia7 )

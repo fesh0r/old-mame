@@ -2352,7 +2352,7 @@ static MACHINE_CONFIG_START( fw1stpal, funworld_state )
     /* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M65SC02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(funworld_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
@@ -2366,7 +2366,7 @@ static MACHINE_CONFIG_START( fw1stpal, funworld_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE((124+1)*4, (30+1)*8)				/* Taken from MC6845 init, registers 00 & 04. Normally programmed with (value-1) */
 	MCFG_SCREEN_VISIBLE_AREA(0*4, 96*4-1, 0*8, 29*8-1)	/* Taken from MC6845 init, registers 01 & 06 */
-	MCFG_SCREEN_UPDATE_STATIC(funworld)
+	MCFG_SCREEN_UPDATE_DRIVER(funworld_state, screen_update_funworld)
 
 	MCFG_GFXDECODE(fw1stpal)
 
@@ -2388,7 +2388,7 @@ static MACHINE_CONFIG_DERIVED( fw2ndpal, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(funworld_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 
 	MCFG_GFXDECODE(fw2ndpal)
 MACHINE_CONFIG_END
@@ -2400,7 +2400,7 @@ static MACHINE_CONFIG_DERIVED( funquiz, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(funquiz_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 
 	MCFG_SOUND_REPLACE("ay8910", AY8910, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_SOUND_CONFIG(funquiz_ay8910_intf)
@@ -2412,7 +2412,7 @@ static MACHINE_CONFIG_DERIVED( magicrd2, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(magicrd2_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 
 	MCFG_VIDEO_START_OVERRIDE(funworld_state,magicrd2)
 
@@ -2425,35 +2425,35 @@ static MACHINE_CONFIG_DERIVED( royalcd1, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* (G65SC02P in pro version) 2MHz */
 	MCFG_CPU_PROGRAM_MAP(magicrd2_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( royalcd2, fw2ndpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(magicrd2_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( cuoreuno, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(cuoreuno_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( saloon, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(saloon_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( witchryl, fw1stpal )
 
 	MCFG_CPU_REPLACE("maincpu", M65C02, MASTER_CLOCK/8)	/* 2MHz */
 	MCFG_CPU_PROGRAM_MAP(witchryl_map)
-	MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", funworld_state,  nmi_line_pulse)
 MACHINE_CONFIG_END
 
 
@@ -4535,7 +4535,7 @@ DRIVER_INIT_MEMBER(funworld_state,multiwin)
 ******************************************************/
 {
 	UINT8 *ROM = machine().root_device().memregion("maincpu")->base();
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	int x;
 
@@ -4553,7 +4553,7 @@ DRIVER_INIT_MEMBER(funworld_state,multiwin)
 		ROM[x+0x10000] = code;
 	}
 
-	space->set_decrypted_region(0x8000, 0xffff, machine().root_device().memregion("maincpu")->base() + 0x18000);
+	space.set_decrypted_region(0x8000, 0xffff, machine().root_device().memregion("maincpu")->base() + 0x18000);
 }
 
 DRIVER_INIT_MEMBER(funworld_state,royalcdc)
@@ -4568,7 +4568,7 @@ DRIVER_INIT_MEMBER(funworld_state,royalcdc)
 ******************************************************/
 
 	UINT8 *ROM = machine().root_device().memregion("maincpu")->base();
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	int x;
 
@@ -4606,7 +4606,7 @@ DRIVER_INIT_MEMBER(funworld_state,royalcdc)
 		ROM[x+0x10000] = code;
 	}
 
-	space->set_decrypted_region(0x6000, 0xffff, machine().root_device().memregion("maincpu")->base() + 0x16000);
+	space.set_decrypted_region(0x6000, 0xffff, machine().root_device().memregion("maincpu")->base() + 0x16000);
 }
 
 

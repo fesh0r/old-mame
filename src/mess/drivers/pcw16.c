@@ -134,368 +134,30 @@ void pcw16_state::pcw16_refresh_ints()
 }
 
 
-static TIMER_DEVICE_CALLBACK(pcw16_timer_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(pcw16_state::pcw16_timer_callback)
 {
-	pcw16_state *state = timer.machine().driver_data<pcw16_state>();
 	/* do not increment past 15 */
-	if (state->m_interrupt_counter!=15)
+	if (m_interrupt_counter!=15)
 	{
-		state->m_interrupt_counter++;
+		m_interrupt_counter++;
 		/* display int */
-		state->m_system_status |= (1<<0);
+		m_system_status |= (1<<0);
 	}
 
-	if (state->m_interrupt_counter!=0)
+	if (m_interrupt_counter!=0)
 	{
-		state->pcw16_refresh_ints();
+		pcw16_refresh_ints();
 	}
 }
 
 static ADDRESS_MAP_START(pcw16_map, AS_PROGRAM, 8, pcw16_state )
 	AM_RANGE(0x0000, 0xffff) AM_READWRITE(pcw16_mem_r, pcw16_mem_w)
-//  AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
-//  AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
-//  AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
-//  AM_RANGE(0xc000, 0xffff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank8")
 ADDRESS_MAP_END
 
 
 WRITE8_MEMBER(pcw16_state::pcw16_palette_w)
 {
 	m_colour_palette[offset & 0x0f] = data & 31;
-}
-
-
-static const char *const pcw16_write_handler_dram[4] =
-{
-	"bank5",
-	"bank6",
-	"bank7",
-	"bank8"
-};
-
-static const char *const pcw16_read_handler_dram[4] =
-{
-	"bank1",
-	"bank2",
-	"bank3",
-	"bank4"
-};
-/*******************************************/
-
-
-/* PCW16 Flash interface */
-/* PCW16 can have two 1mb flash chips */
-
-/* read flash0 */
-static int pcw16_flash0_bank_handler_r(running_machine &machine, int bank, int offset)
-{
-	pcw16_state *state = machine.driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash0");
-	int flash_offset = (state->m_banks[bank]<<14) | offset;
-	return flash->read(flash_offset);
-}
-
-/* read flash1 */
-static int pcw16_flash1_bank_handler_r(running_machine &machine, int bank, int offset)
-{
-	pcw16_state *state = machine.driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash1");
-	int flash_offset = ((state->m_banks[bank]&0x03f)<<14) | offset;
-
-	return flash->read(flash_offset);
-}
-
-/* flash 0 */
-static  READ8_HANDLER(pcw16_flash0_bank_handler0_r)
-{
-	return pcw16_flash0_bank_handler_r(space->machine(),0, offset);
-}
-
-static  READ8_HANDLER(pcw16_flash0_bank_handler1_r)
-{
-	return pcw16_flash0_bank_handler_r(space->machine(),1, offset);
-}
-
-static  READ8_HANDLER(pcw16_flash0_bank_handler2_r)
-{
-	return pcw16_flash0_bank_handler_r(space->machine(),2, offset);
-}
-
-static  READ8_HANDLER(pcw16_flash0_bank_handler3_r)
-{
-	return pcw16_flash0_bank_handler_r(space->machine(),3, offset);
-}
-
-/* flash 1 */
-static  READ8_HANDLER(pcw16_flash1_bank_handler0_r)
-{
-	return pcw16_flash1_bank_handler_r(space->machine(),0, offset);
-}
-
-static  READ8_HANDLER(pcw16_flash1_bank_handler1_r)
-{
-	return pcw16_flash1_bank_handler_r(space->machine(),1, offset);
-}
-
-static  READ8_HANDLER(pcw16_flash1_bank_handler2_r)
-{
-	return pcw16_flash1_bank_handler_r(space->machine(),2, offset);
-}
-
-static  READ8_HANDLER(pcw16_flash1_bank_handler3_r)
-{
-	return pcw16_flash1_bank_handler_r(space->machine(),3, offset);
-}
-
-static const struct { read8_space_func func; const char *name; } pcw16_flash0_bank_handlers_r[4] =
-{
-	{ FUNC(pcw16_flash0_bank_handler0_r) },
-	{ FUNC(pcw16_flash0_bank_handler1_r) },
-	{ FUNC(pcw16_flash0_bank_handler2_r) },
-	{ FUNC(pcw16_flash0_bank_handler3_r) }
-};
-
-static const struct { read8_space_func func; const char *name; } pcw16_flash1_bank_handlers_r[4] =
-{
-	{ FUNC(pcw16_flash1_bank_handler0_r) },
-	{ FUNC(pcw16_flash1_bank_handler1_r) },
-	{ FUNC(pcw16_flash1_bank_handler2_r) },
-	{ FUNC(pcw16_flash1_bank_handler3_r) }
-};
-
-/* write flash0 */
-static void pcw16_flash0_bank_handler_w(running_machine &machine, int bank, int offset, int data)
-{
-	pcw16_state *state = machine.driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash0");
-
-	int flash_offset = (state->m_banks[bank]<<14) | offset;
-
-	flash->write(flash_offset, data);
-}
-
-/* read flash1 */
-static void pcw16_flash1_bank_handler_w(running_machine &machine, int bank, int offset, int data)
-{
-	pcw16_state *state = machine.driver_data<pcw16_state>();
-	intel_e28f008sa_device *flash = machine.device<intel_e28f008sa_device>("flash1");
-
-	int flash_offset = ((state->m_banks[bank]&0x03f)<<14) | offset;
-
-	flash->write(flash_offset,data);
-}
-
-/* flash 0 */
-static WRITE8_HANDLER(pcw16_flash0_bank_handler0_w)
-{
-	pcw16_flash0_bank_handler_w(space->machine(),0, offset, data);
-}
-
-
-static WRITE8_HANDLER(pcw16_flash0_bank_handler1_w)
-{
-	pcw16_flash0_bank_handler_w(space->machine(),1, offset, data);
-}
-
-static WRITE8_HANDLER(pcw16_flash0_bank_handler2_w)
-{
-	pcw16_flash0_bank_handler_w(space->machine(),2, offset, data);
-}
-
-static WRITE8_HANDLER(pcw16_flash0_bank_handler3_w)
-{
-	pcw16_flash0_bank_handler_w(space->machine(),3, offset, data);
-}
-
-
-/* flash 1 */
-static WRITE8_HANDLER(pcw16_flash1_bank_handler0_w)
-{
-	pcw16_flash1_bank_handler_w(space->machine(),0, offset, data);
-}
-
-
-static WRITE8_HANDLER(pcw16_flash1_bank_handler1_w)
-{
-	pcw16_flash1_bank_handler_w(space->machine(),1, offset, data);
-}
-
-static WRITE8_HANDLER(pcw16_flash1_bank_handler2_w)
-{
-	pcw16_flash1_bank_handler_w(space->machine(),2, offset, data);
-}
-
-static WRITE8_HANDLER(pcw16_flash1_bank_handler3_w)
-{
-	pcw16_flash1_bank_handler_w(space->machine(),3, offset, data);
-}
-
-static const struct { write8_space_func func; const char *name; } pcw16_flash0_bank_handlers_w[4] =
-{
-	{ FUNC(pcw16_flash0_bank_handler0_w) },
-	{ FUNC(pcw16_flash0_bank_handler1_w) },
-	{ FUNC(pcw16_flash0_bank_handler2_w) },
-	{ FUNC(pcw16_flash0_bank_handler3_w) }
-};
-
-static const struct { write8_space_func func; const char *name; } pcw16_flash1_bank_handlers_w[4] =
-{
-	{ FUNC(pcw16_flash1_bank_handler0_w) },
-	{ FUNC(pcw16_flash1_bank_handler1_w) },
-	{ FUNC(pcw16_flash1_bank_handler2_w) },
-	{ FUNC(pcw16_flash1_bank_handler3_w) }
-};
-
-enum PCW16_RAM_TYPE
-{
-	/* rom which is really first block of flash0 */
-	PCW16_MEM_ROM,
-	/* flash 0 */
-	PCW16_MEM_FLASH_1,
-	/* flash 1 i.e. unexpanded pcw16 */
-	PCW16_MEM_FLASH_2,
-	/* dram */
-	PCW16_MEM_DRAM,
-	/* no mem. i.e. unexpanded pcw16 */
-	PCW16_MEM_NONE
-};
-
-READ8_MEMBER(pcw16_state::pcw16_no_mem_r)
-{
-	return 0x0ff;
-}
-
-/*
-static void pcw16_set_bank_handlers(running_machine &machine, int bank, PCW16_RAM_TYPE type)
-{
-    address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
-    pcw16_state *state = machine.driver_data<pcw16_state>();
-    switch (type) {
-    case PCW16_MEM_ROM:
-        // rom
-        space->install_read_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_read_handler_dram[bank]);
-        space->nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
-        break;
-
-    case PCW16_MEM_FLASH_1:
-        // sram
-        space->install_legacy_read_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_flash0_bank_handlers_r[bank].func, pcw16_flash0_bank_handlers_r[bank].name);
-        space->install_legacy_write_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_flash0_bank_handlers_w[bank].func, pcw16_flash0_bank_handlers_w[bank].name);
-        break;
-
-    case PCW16_MEM_FLASH_2:
-        space->install_legacy_read_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_flash1_bank_handlers_r[bank].func, pcw16_flash1_bank_handlers_r[bank].name);
-        space->install_legacy_write_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_flash1_bank_handlers_w[bank].func, pcw16_flash1_bank_handlers_w[bank].name);
-        break;
-
-    case PCW16_MEM_NONE:
-        space->install_read_handler((bank * 0x4000), (bank * 0x4000) + 0x3fff, read8_delegate(FUNC(pcw16_state::pcw16_no_mem_r),state));
-        space->nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
-        break;
-
-    default:
-    case PCW16_MEM_DRAM:
-        // dram
-        space->install_read_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_read_handler_dram[bank]);
-        space->install_write_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, pcw16_write_handler_dram[bank]);
-        break;
-    }
-
-}
-
-static void pcw16_update_bank(running_machine &machine, int bank)
-{
-    pcw16_state *state = machine.driver_data<pcw16_state>();
-    unsigned char *mem_ptr = NULL; // machine.device<ram_device>(RAM_TAG)->pointer();
-    int bank_id = 0;
-    int bank_offs = 0;
-    char bank1[10];
-    char bank2[10];
-
-    // get memory bank
-    bank_id = state->m_banks[bank];
-
-
-    if ((bank_id & 0x080)==0)
-    {
-        bank_offs = 0;
-
-        if (bank_id<4)
-        {
-            //lower 4 banks are write protected. Use the rom
-            //loaded
-            mem_ptr = &state->memregion("maincpu")->base()[0x010000];
-        }
-        else
-        {
-            intelfsh8_device *flashdev;
-
-            // nvram
-            if ((bank_id & 0x040)==0)
-            {
-                flashdev = machine.device<intelfsh8_device>("flash0");
-            }
-            else
-            {
-                flashdev = machine.device<intelfsh8_device>("flash1");
-            }
-
-            mem_ptr = (unsigned char *)flashdev->space()->get_read_ptr(0);
-        }
-
-    }
-    else
-    {
-        bank_offs = 128;
-         //dram
-        mem_ptr = machine.device<ram_device>(RAM_TAG)->pointer();
-    }
-
-    mem_ptr = mem_ptr + ((bank_id - bank_offs)<<14);
-    state->m_mem_ptr[bank] = (char*)mem_ptr;
-    sprintf(bank1,"bank%d",(bank+1));
-    sprintf(bank2,"bank%d",(bank+5));
-    state->membank(bank1)->set_base(mem_ptr);
-    state->membank(bank2)->set_base(mem_ptr);
-
-    if ((bank_id & 0x080)==0)
-    {
-        // selections 0-3 within the first 64k are write protected
-        if (bank_id<4)
-        {
-            // rom
-            pcw16_set_bank_handlers(machine, bank, PCW16_MEM_ROM);
-        }
-        else
-        {
-            // selections 0-63 are for flash-rom 0, selections
-            // 64-128 are for flash-rom 1
-            if ((bank_id & 0x040)==0)
-            {
-                pcw16_set_bank_handlers(machine, bank, PCW16_MEM_FLASH_1);
-            }
-            else
-            {
-                pcw16_set_bank_handlers(machine, bank, PCW16_MEM_FLASH_2);
-            }
-        }
-    }
-    else
-    {
-        pcw16_set_bank_handlers(machine, bank, PCW16_MEM_DRAM);
-    }
-}
-*/
-
-/* update memory h/w */
-static void pcw16_update_memory(running_machine &machine)
-{
-//  pcw16_update_bank(machine, 0);
-//  pcw16_update_bank(machine, 1);
-//  pcw16_update_bank(machine, 2);
-//  pcw16_update_bank(machine, 3);
-
 }
 
 UINT8 pcw16_state::read_bank_data(UINT8 type, UINT16 offset)
@@ -622,8 +284,6 @@ WRITE8_MEMBER(pcw16_state::pcw16_bankhw_w)
 	//logerror("bank w: %d block: %02x\n", offset, data);
 
 	m_banks[offset] = data;
-
-	pcw16_update_memory(machine());
 }
 
 WRITE8_MEMBER(pcw16_state::pcw16_video_control_w)
@@ -878,11 +538,10 @@ WRITE8_MEMBER(pcw16_state::pcw16_keyboard_control_w)
 }
 
 
-static TIMER_DEVICE_CALLBACK(pcw16_keyboard_timer_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(pcw16_state::pcw16_keyboard_timer_callback)
 {
-	pcw16_state *state = timer.machine().driver_data<pcw16_state>();
 	at_keyboard_polling();
-	if (state->pcw16_keyboard_can_transmit())
+	if (pcw16_keyboard_can_transmit())
 	{
 		int data;
 
@@ -895,11 +554,11 @@ static TIMER_DEVICE_CALLBACK(pcw16_keyboard_timer_callback)
 //              pcw16_dump_cpu_ram();
 //          }
 
-			state->pcw16_keyboard_signal_byte_received(data);
+			pcw16_keyboard_signal_byte_received(data);
 		}
 	}
 	// TODO: fix
-	state->subdevice<ns16550_device>("ns16550_2")->ri_w((timer.machine().root_device().ioport("EXTRA")->read() & 0x040) ? 0 : 1);
+	subdevice<ns16550_device>("ns16550_2")->ri_w((machine().root_device().ioport("EXTRA")->read() & 0x040) ? 0 : 1);
 }
 
 
@@ -938,58 +597,57 @@ void pcw16_state::rtc_setup_max_days()
 	}
 }
 
-static TIMER_DEVICE_CALLBACK(rtc_timer_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(pcw16_state::rtc_timer_callback)
 {
-	pcw16_state *state = timer.machine().driver_data<pcw16_state>();
 	int fraction_of_second;
 
 	/* halt counter? */
-	if ((state->m_rtc_control & 0x01)!=0)
+	if ((m_rtc_control & 0x01)!=0)
 	{
 		/* no */
 
 		/* increment 256th's of a second register */
-		fraction_of_second = state->m_rtc_256ths_seconds+1;
+		fraction_of_second = m_rtc_256ths_seconds+1;
 		/* add bit 8 = overflow */
-		state->m_rtc_seconds+=(fraction_of_second>>8);
+		m_rtc_seconds+=(fraction_of_second>>8);
 		/* ensure counter is in range 0-255 */
-		state->m_rtc_256ths_seconds = fraction_of_second & 0x0ff;
+		m_rtc_256ths_seconds = fraction_of_second & 0x0ff;
 	}
 
-	if (state->m_rtc_seconds>59)
+	if (m_rtc_seconds>59)
 	{
-		state->m_rtc_seconds = 0;
+		m_rtc_seconds = 0;
 
-		state->m_rtc_minutes++;
+		m_rtc_minutes++;
 
-		if (state->m_rtc_minutes>59)
+		if (m_rtc_minutes>59)
 		{
-			state->m_rtc_minutes = 0;
+			m_rtc_minutes = 0;
 
-			state->m_rtc_hours++;
+			m_rtc_hours++;
 
-			if (state->m_rtc_hours>23)
+			if (m_rtc_hours>23)
 			{
-				state->m_rtc_hours = 0;
+				m_rtc_hours = 0;
 
-				state->m_rtc_days++;
+				m_rtc_days++;
 
-				if (state->m_rtc_days > state->m_rtc_days_max)
+				if (m_rtc_days > m_rtc_days_max)
 				{
-					state->m_rtc_days = 1;
+					m_rtc_days = 1;
 
-					state->m_rtc_months++;
+					m_rtc_months++;
 
-					if (state->m_rtc_months>12)
+					if (m_rtc_months>12)
 					{
-						state->m_rtc_months = 1;
+						m_rtc_months = 1;
 
 						/* 7 bit year counter */
-						state->m_rtc_years = (state->m_rtc_years + 1) & 0x07f;
+						m_rtc_years = (m_rtc_years + 1) & 0x07f;
 
 					}
 
-					state->rtc_setup_max_days();
+					rtc_setup_max_days();
 				}
 
 			}
@@ -1254,36 +912,36 @@ WRITE8_MEMBER(pcw16_state::pcw16_system_control_w)
 /* write to Super I/O chip. FDC Data Rate. */
 WRITE8_MEMBER(pcw16_state::pcw16_superio_fdc_datarate_w)
 {
-	pc_fdc_w(&space, PC_FDC_DATA_RATE_REGISTER,data);
+	pc_fdc_w(space, PC_FDC_DATA_RATE_REGISTER,data);
 }
 
 /* write to Super I/O chip. FDC Digital output register */
 WRITE8_MEMBER(pcw16_state::pcw16_superio_fdc_digital_output_register_w)
 {
-	pc_fdc_w(&space, PC_FDC_DIGITAL_OUTPUT_REGISTER, data);
+	pc_fdc_w(space, PC_FDC_DIGITAL_OUTPUT_REGISTER, data);
 }
 
 /* write to Super I/O chip. FDC Data Register */
 WRITE8_MEMBER(pcw16_state::pcw16_superio_fdc_data_w)
 {
-	pc_fdc_w(&space, PC_FDC_DATA_REGISTER, data);
+	pc_fdc_w(space, PC_FDC_DATA_REGISTER, data);
 }
 
 /* write to Super I/O chip. FDC Data Register */
 READ8_MEMBER(pcw16_state::pcw16_superio_fdc_data_r)
 {
-	return pc_fdc_r(&space, PC_FDC_DATA_REGISTER);
+	return pc_fdc_r(space, PC_FDC_DATA_REGISTER);
 }
 
 /* write to Super I/O chip. FDC Main Status Register */
 READ8_MEMBER(pcw16_state::pcw16_superio_fdc_main_status_register_r)
 {
-	return pc_fdc_r(&space, PC_FDC_MAIN_STATUS_REGISTER);
+	return pc_fdc_r(space, PC_FDC_MAIN_STATUS_REGISTER);
 }
 
 READ8_MEMBER(pcw16_state::pcw16_superio_fdc_digital_input_register_r)
 {
-	return pc_fdc_r(&space, PC_FDC_DIGITIAL_INPUT_REGISTER);
+	return pc_fdc_r(space, PC_FDC_DIGITIAL_INPUT_REGISTER);
 }
 
 static void pcw16_fdc_interrupt(running_machine &machine, int state)
@@ -1315,54 +973,52 @@ static const struct pc_fdc_interface pcw16_fdc_interface=
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_interrupt_1 )
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_interrupt_1)
 {
-	pcw16_state *drvstate = device->machine().driver_data<pcw16_state>();
-	drvstate->m_system_status &= ~(1 << 4);
+	m_system_status &= ~(1 << 4);
 
 	if ( state ) {
-		drvstate->m_system_status |= (1 << 4);
+		m_system_status |= (1 << 4);
 	}
 
-	drvstate->pcw16_refresh_ints();
+	pcw16_refresh_ints();
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_interrupt_2 )
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_interrupt_2)
 {
-	pcw16_state *drvstate = device->machine().driver_data<pcw16_state>();
-	drvstate->m_system_status &= ~(1 << 3);
+	m_system_status &= ~(1 << 3);
 
 	if ( state ) {
-		drvstate->m_system_status |= (1 << 3);
+		m_system_status |= (1 << 3);
 	}
 
-	drvstate->pcw16_refresh_ints();
+	pcw16_refresh_ints();
 }
 
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_tx_0 ) { }
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_dtr_0 ) { }
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_rts_0 ) { }
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_tx_0){ }
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_dtr_0){ }
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_rts_0){ }
 
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_tx_1 ) { }
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_dtr_1 ) { }
-static WRITE_LINE_DEVICE_HANDLER( pcw16_com_rts_1 ) { }
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_tx_1){ }
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_dtr_1){ }
+WRITE_LINE_MEMBER(pcw16_state::pcw16_com_rts_1){ }
 
 static const ins8250_interface pcw16_com_interface[2]=
 {
 	{
-		DEVCB_LINE(pcw16_com_tx_0),
-		DEVCB_LINE(pcw16_com_dtr_0),
-		DEVCB_LINE(pcw16_com_rts_0),
-		DEVCB_LINE(pcw16_com_interrupt_1),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_tx_0),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_dtr_0),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_rts_0),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_interrupt_1),
 		DEVCB_NULL,
 		DEVCB_NULL
 	},
 	{
-		DEVCB_LINE(pcw16_com_tx_1),
-		DEVCB_LINE(pcw16_com_dtr_1),
-		DEVCB_LINE(pcw16_com_rts_1),
-		DEVCB_LINE(pcw16_com_interrupt_2),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_tx_1),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_dtr_1),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_rts_1),
+		DEVCB_DRIVER_LINE_MEMBER(pcw16_state,pcw16_com_interrupt_2),
 		DEVCB_NULL,
 		DEVCB_NULL
 	}
@@ -1397,29 +1053,28 @@ static ADDRESS_MAP_START(pcw16_io, AS_IO, 8, pcw16_state )
 ADDRESS_MAP_END
 
 
-static void pcw16_reset(running_machine &machine)
+void pcw16_state::machine_reset()
 {
-	pcw16_state *state = machine.driver_data<pcw16_state>();
 	/* initialise defaults */
-	state->m_fdc_int_code = 2;
+	m_fdc_int_code = 2;
 	/* clear terminal count */
-	pc_fdc_set_tc_state(machine, 0);
+	pc_fdc_set_tc_state(machine(), 0);
 	/* select first rom page */
-	state->m_banks[0] = 0;
+	m_banks[0] = 0;
 //  pcw16_update_memory(machine);
 
 	/* temp rtc setup */
-	state->m_rtc_seconds = 0;
-	state->m_rtc_minutes = 0;
-	state->m_rtc_hours = 0;
-	state->m_rtc_days_max = 0;
-	state->m_rtc_days = 1;
-	state->m_rtc_months = 1;
-	state->m_rtc_years = 0;
-	state->m_rtc_control = 1;
-	state->m_rtc_256ths_seconds = 0;
+	m_rtc_seconds = 0;
+	m_rtc_minutes = 0;
+	m_rtc_hours = 0;
+	m_rtc_days_max = 0;
+	m_rtc_days = 1;
+	m_rtc_months = 1;
+	m_rtc_years = 0;
+	m_rtc_control = 1;
+	m_rtc_256ths_seconds = 0;
 
-	state->pcw16_keyboard_init();
+	pcw16_keyboard_init();
 }
 
 
@@ -1434,8 +1089,6 @@ void pcw16_state::machine_start()
 	/* initialise keyboard */
 	at_keyboard_init(machine(), AT_KEYBOARD_TYPE_AT);
 	at_keyboard_set_scan_code_set(3);
-
-	pcw16_reset(machine());
 
 	beep_set_state(speaker,0);
 	beep_set_frequency(speaker,3750);
@@ -1490,7 +1143,7 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(PCW16_SCREEN_WIDTH, PCW16_SCREEN_HEIGHT)
 	MCFG_SCREEN_VISIBLE_AREA(0, PCW16_SCREEN_WIDTH-1, 0, PCW16_SCREEN_HEIGHT-1)
-	MCFG_SCREEN_UPDATE_STATIC( pcw16 )
+	MCFG_SCREEN_UPDATE_DRIVER(pcw16_state, screen_update_pcw16)
 
 	MCFG_PALETTE_LENGTH(PCW16_NUM_COLOURS)
 
@@ -1512,11 +1165,11 @@ static MACHINE_CONFIG_START( pcw16, pcw16_state )
 	MCFG_INTEL_E28F008SA_ADD("flash1")
 
 	/* video ints */
-	MCFG_TIMER_ADD_PERIODIC("video_timer", pcw16_timer_callback, attotime::from_usec(5830))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("video_timer", pcw16_state, pcw16_timer_callback, attotime::from_usec(5830))
 	/* rtc timer */
-	MCFG_TIMER_ADD_PERIODIC("rtc_timer", rtc_timer_callback, attotime::from_hz(256))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("rtc_timer", pcw16_state, rtc_timer_callback, attotime::from_hz(256))
 	/* keyboard timer */
-	MCFG_TIMER_ADD_PERIODIC("keyboard_timer", pcw16_keyboard_timer_callback, attotime::from_hz(50))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", pcw16_state, pcw16_keyboard_timer_callback, attotime::from_hz(50))
 MACHINE_CONFIG_END
 
 /***************************************************************************

@@ -30,15 +30,15 @@
 
 void super6_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 	UINT8 *rom = memregion(Z80_TAG)->base();
 
 	// power on jump
-	if (!BIT(m_bank0, 6)) {	program->install_rom(0x0000, 0x07ff, 0, 0xf800, rom); return; }
+	if (!BIT(m_bank0, 6)) {	program.install_rom(0x0000, 0x07ff, 0, 0xf800, rom); return; }
 
 	// first 64KB of memory
-	program->install_ram(0x0000, 0xffff, ram);
+	program.install_ram(0x0000, 0xffff, ram);
 
 	// second 64KB of memory
 	int map = (m_bank1 >> 4) & 0x07;
@@ -46,49 +46,49 @@ void super6_state::bankswitch()
 	switch (map)
 	{
 	case 0:
-		if (BIT(m_bank1, 0)) program->install_ram(0x0000, 0x3fff, ram + 0x10000);
-		if (BIT(m_bank1, 1)) program->install_ram(0x4000, 0x7fff, ram + 0x14000);
-		if (BIT(m_bank1, 2)) program->install_ram(0x8000, 0xbfff, ram + 0x18000);
-		if (BIT(m_bank1, 3)) program->install_ram(0xc000, 0xffff, ram + 0x1c000);
+		if (BIT(m_bank1, 0)) program.install_ram(0x0000, 0x3fff, ram + 0x10000);
+		if (BIT(m_bank1, 1)) program.install_ram(0x4000, 0x7fff, ram + 0x14000);
+		if (BIT(m_bank1, 2)) program.install_ram(0x8000, 0xbfff, ram + 0x18000);
+		if (BIT(m_bank1, 3)) program.install_ram(0xc000, 0xffff, ram + 0x1c000);
 		break;
 
 	case 1:
-		if (BIT(m_bank1, 0)) program->install_ram(0x0000, 0x3fff, ram + 0x10000);
-		if (BIT(m_bank1, 1)) program->install_ram(0x4000, 0x7fff, ram + 0x14000);
-		if (BIT(m_bank1, 2)) program->install_ram(0x8000, 0xbfff, ram + 0x18000);
-		if (BIT(m_bank1, 3)) program->install_ram(0xc000, 0xffff, ram + 0x0000);
+		if (BIT(m_bank1, 0)) program.install_ram(0x0000, 0x3fff, ram + 0x10000);
+		if (BIT(m_bank1, 1)) program.install_ram(0x4000, 0x7fff, ram + 0x14000);
+		if (BIT(m_bank1, 2)) program.install_ram(0x8000, 0xbfff, ram + 0x18000);
+		if (BIT(m_bank1, 3)) program.install_ram(0xc000, 0xffff, ram + 0x0000);
 		break;
 
 	case 2:
-		if (BIT(m_bank1, 0)) program->install_ram(0x0000, 0x3fff, ram + 0x10000);
-		if (BIT(m_bank1, 1)) program->install_ram(0x4000, 0x7fff, ram + 0x14000);
-		if (BIT(m_bank1, 2)) program->install_ram(0x8000, 0xbfff, ram + 0x4000);
-		if (BIT(m_bank1, 3)) program->install_ram(0xc000, 0xffff, ram + 0x1c000);
+		if (BIT(m_bank1, 0)) program.install_ram(0x0000, 0x3fff, ram + 0x10000);
+		if (BIT(m_bank1, 1)) program.install_ram(0x4000, 0x7fff, ram + 0x14000);
+		if (BIT(m_bank1, 2)) program.install_ram(0x8000, 0xbfff, ram + 0x4000);
+		if (BIT(m_bank1, 3)) program.install_ram(0xc000, 0xffff, ram + 0x1c000);
 		break;
 
 	case 3:
-		if (BIT(m_bank1, 0)) program->install_ram(0x0000, 0x3fff, ram + 0x10000);
-		if (BIT(m_bank1, 1)) program->install_ram(0x4000, 0x7fff, ram + 0x14000);
-		if (BIT(m_bank1, 2)) program->install_ram(0x8000, 0xbfff, ram + 0x0000);
-		if (BIT(m_bank1, 3)) program->install_ram(0xc000, 0xffff, ram + 0x4000);
+		if (BIT(m_bank1, 0)) program.install_ram(0x0000, 0x3fff, ram + 0x10000);
+		if (BIT(m_bank1, 1)) program.install_ram(0x4000, 0x7fff, ram + 0x14000);
+		if (BIT(m_bank1, 2)) program.install_ram(0x8000, 0xbfff, ram + 0x0000);
+		if (BIT(m_bank1, 3)) program.install_ram(0xc000, 0xffff, ram + 0x4000);
 		break;
 
 	case 4:
-		if (BIT(m_bank1, 0)) program->install_ram(0x0000, 0x3fff, ram + 0xc000);
-		if (BIT(m_bank1, 1)) program->install_ram(0x4000, 0x7fff, ram + 0x14000);
-		if (BIT(m_bank1, 2)) program->install_ram(0x8000, 0xbfff, ram + 0x18000);
-		if (BIT(m_bank1, 3)) program->install_ram(0xc000, 0xffff, ram + 0x1c000);
+		if (BIT(m_bank1, 0)) program.install_ram(0x0000, 0x3fff, ram + 0xc000);
+		if (BIT(m_bank1, 1)) program.install_ram(0x4000, 0x7fff, ram + 0x14000);
+		if (BIT(m_bank1, 2)) program.install_ram(0x8000, 0xbfff, ram + 0x18000);
+		if (BIT(m_bank1, 3)) program.install_ram(0xc000, 0xffff, ram + 0x1c000);
 		break;
 	}
 
 	// bank 0 overrides
-	if (BIT(m_bank0, 0)) program->install_ram(0x0000, 0x3fff, ram + 0x0000);
-	if (BIT(m_bank0, 1)) program->install_ram(0x4000, 0x7fff, ram + 0x4000);
-	if (BIT(m_bank0, 2)) program->install_ram(0x8000, 0xbfff, ram + 0x8000);
-	if (BIT(m_bank0, 3)) program->install_ram(0xc000, 0xffff, ram + 0xc000);
+	if (BIT(m_bank0, 0)) program.install_ram(0x0000, 0x3fff, ram + 0x0000);
+	if (BIT(m_bank0, 1)) program.install_ram(0x4000, 0x7fff, ram + 0x4000);
+	if (BIT(m_bank0, 2)) program.install_ram(0x8000, 0xbfff, ram + 0x8000);
+	if (BIT(m_bank0, 3)) program.install_ram(0xc000, 0xffff, ram + 0xc000);
 
 	// PROM enabled
-	if (!BIT(m_bank0, 5)) program->install_rom(0xf000, 0xf7ff, 0, 0x800, rom);
+	if (!BIT(m_bank0, 5)) program.install_rom(0xf000, 0xf7ff, 0, 0x800, rom);
 }
 
 
@@ -349,12 +349,10 @@ INPUT_PORTS_END
 //  Z80CTC_INTERFACE( ctc_intf )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( ctc_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(super6_state::ctc_tick)
 {
-	super6_state *state = timer.machine().driver_data<super6_state>();
-
-	state->m_ctc->trg0(1);
-	state->m_ctc->trg0(0);
+	m_ctc->trg0(1);
+	m_ctc->trg0(0);
 }
 
 static Z80CTC_INTERFACE( ctc_intf )
@@ -396,8 +394,8 @@ static Z80DART_INTERFACE( dart_intf )
 //  Z80DMA_INTERFACE( dma_intf )
 //-------------------------------------------------
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static Z80DMA_INTERFACE( dma_intf )
 {
@@ -511,14 +509,14 @@ static const z80_daisy_config super6_daisy_chain[] =
 //  GENERIC_TERMINAL_INTERFACE( terminal_intf )
 //-------------------------------------------------
 
-static WRITE8_DEVICE_HANDLER( dummy_w )
+WRITE8_MEMBER(super6_state::dummy_w)
 {
 	// handled in Z80DART_INTERFACE
 }
 
 static GENERIC_TERMINAL_INTERFACE( terminal_intf )
 {
-	DEVCB_HANDLER(dummy_w)
+	DEVCB_DRIVER_MEMBER(super6_state,dummy_w)
 };
 
 
@@ -570,7 +568,7 @@ static MACHINE_CONFIG_START( super6, super6_state )
 
 	// devices
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_24MHz/4, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_24MHz/16))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", super6_state, ctc_tick, attotime::from_hz(XTAL_24MHz/16))
 	MCFG_Z80DART_ADD(Z80DART_TAG, XTAL_24MHz/4, dart_intf)
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_24MHz/6, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_24MHz/4, pio_intf)

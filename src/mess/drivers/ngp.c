@@ -164,38 +164,40 @@ public:
 	DECLARE_WRITE8_MEMBER( ngp_vblank_pin_w );
 	DECLARE_WRITE8_MEMBER( ngp_hblank_pin_w );
 	DECLARE_WRITE8_MEMBER( ngp_tlcs900_to3 );
+	UINT32 screen_update_ngp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	DECLARE_INPUT_CHANGED_MEMBER(power_callback);
+	TIMER_CALLBACK_MEMBER(ngp_seconds_callback);
 };
 
 
-static TIMER_CALLBACK( ngp_seconds_callback )
+TIMER_CALLBACK_MEMBER(ngp_state::ngp_seconds_callback)
 {
-	ngp_state *state = machine.driver_data<ngp_state>();
 
-	state->m_io_reg[0x16] += 1;
-	if ( ( state->m_io_reg[0x16] & 0x0f ) == 0x0a )
+	m_io_reg[0x16] += 1;
+	if ( ( m_io_reg[0x16] & 0x0f ) == 0x0a )
 	{
-		state->m_io_reg[0x16] += 0x06;
+		m_io_reg[0x16] += 0x06;
 	}
 
-	if ( state->m_io_reg[0x16] >= 0x60 )
+	if ( m_io_reg[0x16] >= 0x60 )
 	{
-		state->m_io_reg[0x16] = 0;
-		state->m_io_reg[0x15] += 1;
-		if ( ( state->m_io_reg[0x15] & 0x0f ) == 0x0a ) {
-			state->m_io_reg[0x15] += 0x06;
+		m_io_reg[0x16] = 0;
+		m_io_reg[0x15] += 1;
+		if ( ( m_io_reg[0x15] & 0x0f ) == 0x0a ) {
+			m_io_reg[0x15] += 0x06;
 		}
 
-		if ( state->m_io_reg[0x15] >= 0x60 )
+		if ( m_io_reg[0x15] >= 0x60 )
 		{
-			state->m_io_reg[0x15] = 0;
-			state->m_io_reg[0x14] += 1;
-			if ( ( state->m_io_reg[0x14] & 0x0f ) == 0x0a ) {
-				state->m_io_reg[0x14] += 0x06;
+			m_io_reg[0x15] = 0;
+			m_io_reg[0x14] += 1;
+			if ( ( m_io_reg[0x14] & 0x0f ) == 0x0a ) {
+				m_io_reg[0x14] += 0x06;
 			}
 
-			if ( state->m_io_reg[0x14] == 0x24 )
+			if ( m_io_reg[0x14] == 0x24 )
 			{
-				state->m_io_reg[0x14] = 0;
+				m_io_reg[0x14] = 0;
 			}
 		}
 	}
@@ -229,7 +231,7 @@ WRITE8_MEMBER( ngp_state::ngp_io_w )
 	case 0x21:		/* t6w28 "left" */
 		if ( m_io_reg[0x38] == 0x55 && m_io_reg[0x39] == 0xAA )
 		{
-			t6w28_w( m_t6w28, 0, data );
+			t6w28_w( m_t6w28, space, 0, data );
 		}
 		break;
 
@@ -551,14 +553,13 @@ static ADDRESS_MAP_START( z80_io, AS_IO, 8, ngp_state )
 ADDRESS_MAP_END
 
 
-static INPUT_CHANGED( power_callback )
+INPUT_CHANGED_MEMBER(ngp_state::power_callback)
 {
-	ngp_state *state = field.machine().driver_data<ngp_state>();
 
-	if ( state->m_io_reg[0x33] & 0x04 )
+	if ( m_io_reg[0x33] & 0x04 )
 	{
-		state->m_tlcs900->execute().set_input_line(TLCS900_NMI,
-			(field.machine().root_device().ioport("Power")->read() & 0x01 ) ? CLEAR_LINE : ASSERT_LINE );
+		m_tlcs900->execute().set_input_line(TLCS900_NMI,
+			(machine().root_device().ioport("Power")->read() & 0x01 ) ? CLEAR_LINE : ASSERT_LINE );
 	}
 }
 
@@ -575,7 +576,7 @@ static INPUT_PORTS_START( ngp )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("Power")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_CODE(KEYCODE_Q) PORT_NAME("Power") PORT_CHANGED(power_callback, NULL)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_CODE(KEYCODE_Q) PORT_NAME("Power") PORT_CHANGED_MEMBER(DEVICE_SELF, ngp_state, power_callback, NULL)
 INPUT_PORTS_END
 
 
@@ -602,7 +603,7 @@ WRITE8_MEMBER( ngp_state::ngp_tlcs900_to3 )
 
 void ngp_state::machine_start()
 {
-	m_seconds_timer = machine().scheduler().timer_alloc(FUNC(ngp_seconds_callback));
+	m_seconds_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(ngp_state::ngp_seconds_callback),this));
 	m_seconds_timer->adjust( attotime::from_seconds(1), 0, attotime::from_seconds(1) );
 }
 
@@ -622,11 +623,10 @@ void ngp_state::machine_reset()
 }
 
 
-static SCREEN_UPDATE_IND16( ngp )
+UINT32 ngp_state::screen_update_ngp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	ngp_state *state = screen.machine().driver_data<ngp_state>();
 
-	k1ge_update( state->m_k1ge, bitmap, cliprect );
+	k1ge_update( m_k1ge, bitmap, cliprect );
 	return 0;
 }
 
@@ -777,7 +777,7 @@ static MACHINE_CONFIG_START( ngp_common, ngp_state )
 
 	MCFG_SCREEN_ADD( "screen", LCD )
 	MCFG_SCREEN_RAW_PARAMS( XTAL_6_144MHz, 515, 0, 160 /*480*/, 199, 0, 152 )
-	MCFG_SCREEN_UPDATE_STATIC( ngp )
+	MCFG_SCREEN_UPDATE_DRIVER(ngp_state, screen_update_ngp)
 
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 

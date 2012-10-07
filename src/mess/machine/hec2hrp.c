@@ -55,7 +55,7 @@
 #endif
 
 static void Mise_A_Jour_Etat(running_machine &machine, int Adresse, int Value );
-static void Update_Sound(address_space *space, UINT8 data);
+static void Update_Sound(address_space &space, UINT8 data);
 
 static cassette_image_device *cassette_device_image(running_machine &machine);
 
@@ -100,11 +100,10 @@ return ((strncmp(machine.system().name , "hec2mdhrx", 9)==0) ||
 }
 
 /* Cassette timer*/
-static TIMER_CALLBACK( Callback_CK )
+TIMER_CALLBACK_MEMBER(hec2hrp_state::Callback_CK)
 {
-	hec2hrp_state *state = machine.driver_data<hec2hrp_state>();
 /* To generate the CK signal (K7)*/
-	state->m_CK_signal++;
+	m_CK_signal++;
 }
 
 void hector_minidisc_init(running_machine &machine)
@@ -115,7 +114,7 @@ void hector_minidisc_init(running_machine &machine)
 
 	/* FDC Motor Control - Bit 0/1 defines the state of the FDD 0/1 motor */
 	floppy_mon_w(floppy_get_device(machine, 0), 0);	// Moteur floppy A:
-	//floppy_mon_w(floppy_get_device(space->machine(), 1), BIT(data, 7));   // Moteur floppy B:, not implanted on the real machine
+	//floppy_mon_w(floppy_get_device(space.machine(), 1), BIT(data, 7));   // Moteur floppy B:, not implanted on the real machine
 
 	//Set the drive ready !
 	floppy_drive_set_ready_state(floppy_get_device(machine, 0), FLOPPY_DRIVE_READY, 0);// Disc 0 ready !
@@ -131,16 +130,16 @@ device_t *fdc = machine().device("wd179x");
 	{
 		/* minidisc floppy disc interface */
 		case 0x04:
-			data = wd17xx_status_r(fdc, 0);
+			data = wd17xx_status_r(fdc, space, 0);
 			break;
 		case 0x05:
-			data = wd17xx_track_r(fdc, 0);
+			data = wd17xx_track_r(fdc, space, 0);
 			break;
 		case 0x06:
-			data = wd17xx_sector_r(fdc, 0);
+			data = wd17xx_sector_r(fdc, space, 0);
 			break;
 		case 0x07:
-			data = wd17xx_data_r(fdc, 0);
+			data = wd17xx_data_r(fdc, space, 0);
 			break;
 		default:
 			break;
@@ -155,17 +154,17 @@ switch (offset)
 	{
 		/* minidisc floppy disc interface */
 		case 0x04:
-			wd17xx_command_w(fdc, 0, data);
+			wd17xx_command_w(fdc, space, 0, data);
 			break;
 		case 0x05:
-			wd17xx_track_w(fdc, 0, data);
+			wd17xx_track_w(fdc, space, 0, data);
 			break;
 		case 0x06:
-			wd17xx_sector_w(fdc, 0, data);
+			wd17xx_sector_w(fdc, space, 0, data);
 			break;
 		case 0x07:
 			/*write into command register*/
-			wd17xx_data_w(fdc, 0, data);
+			wd17xx_data_w(fdc, space, 0, data);
 			break;
 		case 0x08:
 			/*General purpose port (0x08) for the minidisk I/O */
@@ -307,12 +306,12 @@ READ8_MEMBER(hec2hrp_state::hector_keyboard_r)
 WRITE8_MEMBER(hec2hrp_state::hector_sn_2000_w)
 {
 	Mise_A_Jour_Etat(machine(), 0x2000+ offset, data);
-	Update_Sound(&space, data);
+	Update_Sound(space, data);
 }
 WRITE8_MEMBER(hec2hrp_state::hector_sn_2800_w)
 {
 	Mise_A_Jour_Etat(machine(), 0x2800+ offset, data);
-	Update_Sound(&space, data);
+	Update_Sound(space, data);
 }
 READ8_MEMBER(hec2hrp_state::hector_cassette_r)
 {
@@ -364,7 +363,7 @@ WRITE8_MEMBER(hec2hrp_state::hector_sn_3000_w)
 	{
 		/* Update sn76477 only when necessary!*/
 		Mise_A_Jour_Etat( machine(), 0x3000, data & 7 );
-		Update_Sound(&space, data & 7);
+		Update_Sound(space, data & 7);
 	}
 	m_oldstate3000 = data & 7;
 }
@@ -429,7 +428,7 @@ WRITE8_MEMBER(hec2hrp_state::hector_color_b_w)
 	if (data & 0x40) m_hector_color[2] |= 8; else m_hector_color[2] &= 7;
 
 	/* Play bit*/
-	discrete_sound_w(discrete, NODE_01,  (data & 0x80) ? 0:1 );
+	discrete_sound_w(discrete, space, NODE_01,  (data & 0x80) ? 0:1 );
 }
 
 
@@ -790,11 +789,11 @@ static void Init_Value_SN76477_Hector(running_machine &machine)
 	state->m_ValMixer = 0;
 }
 
-static void Update_Sound(address_space *space, UINT8 data)
+static void Update_Sound(address_space &space, UINT8 data)
 {
-	hec2hrp_state *state = space->machine().driver_data<hec2hrp_state>();
+	hec2hrp_state *state = space.machine().driver_data<hec2hrp_state>();
 	/* keep device*/
-	device_t *sn76477 = space->machine().device("sn76477");
+	device_t *sn76477 = space.machine().device("sn76477");
 
 	/* MIXER*/
 	sn76477_mixer_a_w(sn76477, ((state->m_ValMixer & 0x04)==4) ? 1 : 0);
@@ -891,7 +890,7 @@ void hector_init(running_machine &machine)
 	state->m_pot0 = state->m_pot1 = 0x40;
 
 	/* For Cassette synchro*/
-	state->m_Cassette_timer = machine.scheduler().timer_alloc(FUNC(Callback_CK));
+	state->m_Cassette_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(hec2hrp_state::Callback_CK),state));
 	state->m_Cassette_timer->adjust(attotime::from_msec(100), 0, attotime::from_usec(64));/* => real synchro scan speed for 15,624Khz*/
 
 	/* Sound sn76477*/

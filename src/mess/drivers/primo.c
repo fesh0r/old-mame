@@ -262,7 +262,7 @@ static MACHINE_CONFIG_START( primoa32, primo_state )
 	MCFG_CPU_ADD( "maincpu", Z80, 2500000 )
 	MCFG_CPU_PROGRAM_MAP( primo32_mem)
 	MCFG_CPU_IO_MAP( primoa_port)
-	MCFG_CPU_VBLANK_INT("screen", primo_vblank_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", primo_state,  primo_vblank_interrupt)
 
 
 	/* video hardware */
@@ -271,7 +271,7 @@ static MACHINE_CONFIG_START( primoa32, primo_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE( 256, 192 )
 	MCFG_SCREEN_VISIBLE_AREA( 0, 256-1, 0, 192-1 )
-	MCFG_SCREEN_UPDATE_STATIC( primo )
+	MCFG_SCREEN_UPDATE_DRIVER(primo_state, screen_update_primo)
 
 	MCFG_PALETTE_LENGTH(2)
 	MCFG_PALETTE_INIT(black_and_white)

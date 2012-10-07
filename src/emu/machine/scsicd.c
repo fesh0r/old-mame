@@ -5,7 +5,7 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "scsidev.h"
+#include "machine/scsihle.h"
 #include "cdrom.h"
 #include "sound/cdda.h"
 #include "imagedev/chd_cd.h"
@@ -23,17 +23,19 @@ static void phys_frame_to_msf(int phys_frame, int *m, int *s, int *f)
 const device_type SCSICD = &device_creator<scsicd_device>;
 
 scsicd_device::scsicd_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: scsidev_device(mconfig, SCSICD, "SCSICD", tag, owner, clock)
+	: scsihle_device(mconfig, SCSICD, "SCSICD", tag, owner, clock)
 {
 }
 
 scsicd_device::scsicd_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock) :
-	scsidev_device(mconfig, type, name, tag, owner, clock)
+	scsihle_device(mconfig, type, name, tag, owner, clock)
 {
 }
 
 void scsicd_device::device_start()
 {
+	scsihle_device::device_start();
+
 	save_item( NAME( lba ) );
 	save_item( NAME( blocks ) );
 	save_item( NAME( last_lba ) );
@@ -45,7 +47,7 @@ void scsicd_device::device_start()
 
 void scsicd_device::device_reset()
 {
-	scsidev_device::device_reset();
+	scsihle_device::device_reset();
 
 	is_file = TRUE;
 	cdrom = subdevice<cdrom_image_device>("image")->get_cdrom_file();
@@ -375,7 +377,7 @@ void scsicd_device::ExecCommand( int *transferLength )
 			break;
 
 		default:
-			scsidev_device::ExecCommand( transferLength );
+			scsihle_device::ExecCommand( transferLength );
 	}
 }
 
@@ -711,7 +713,7 @@ void scsicd_device::ReadData( UINT8 *data, int dataLength )
 			break;
 
 		default:
-			scsidev_device::ReadData( data, dataLength );
+			scsihle_device::ReadData( data, dataLength );
 			break;
 	}
 }
@@ -759,7 +761,7 @@ void scsicd_device::WriteData( UINT8 *data, int dataLength )
 			break;
 
 		default:
-			scsidev_device::WriteData( data, dataLength );
+			scsihle_device::WriteData( data, dataLength );
 			break;
 	}
 }
@@ -772,4 +774,9 @@ void scsicd_device::GetDevice( void **_cdrom )
 void scsicd_device::SetDevice( void *_cdrom )
 {
 	cdrom = (cdrom_file *)_cdrom;
+}
+
+int scsicd_device::GetSectorBytes()
+{
+	return bytes_per_sector;
 }

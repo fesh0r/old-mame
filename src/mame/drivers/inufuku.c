@@ -348,7 +348,7 @@ static MACHINE_CONFIG_START( inufuku, inufuku_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 32000000/2)	/* 16.00 MHz */
 	MCFG_CPU_PROGRAM_MAP(inufuku_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", inufuku_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 32000000/4)		/* 8.00 MHz */
 	MCFG_CPU_PROGRAM_MAP(inufuku_sound_map)
@@ -364,7 +364,7 @@ static MACHINE_CONFIG_START( inufuku, inufuku_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(2048, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 319-1, 1, 224-1)
-	MCFG_SCREEN_UPDATE_STATIC(inufuku)
+	MCFG_SCREEN_UPDATE_DRIVER(inufuku_state, screen_update_inufuku)
 
 	MCFG_GFXDECODE(inufuku)
 	MCFG_PALETTE_LENGTH(4096)

@@ -410,7 +410,7 @@ static int intv_load_rom_file(device_image_interface &image)
 
 	UINT8 *memory = image.device().machine().root_device().memregion("maincpu")->base();
 	intv_state *state = image.device().machine().driver_data<intv_state>();
-	address_space *program = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &program = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
 	const char *filetype = image.filetype();
 
 	/* if it is in .rom format, we enter here */
@@ -504,7 +504,7 @@ static int intv_load_rom_file(device_image_interface &image)
 				start = (( ram & 0xf0 ) >> 4) * 0x1000;
 				size = ( ram & 0x0f ) * 0x800;
 
-				program->install_readwrite_handler(start, start + size,
+				program.install_readwrite_handler(start, start + size,
 					read16_delegate( FUNC( intv_state::intv_cart_ram8_r ), state),
 					write16_delegate( FUNC( intv_state::intv_cart_ram8_w ), state));
 			}
@@ -556,7 +556,7 @@ DEVICE_IMAGE_LOAD( intv_cart )
 		const char* region_name[] = {"4800", "5000", "6000", "7000", "9000", "A000", "C000", "D000", "F000"};
 		UINT8 *memory = image.device().machine().root_device().memregion("maincpu")->base();
 		intv_state *state = image.device().machine().driver_data<intv_state>();
-		address_space *program = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &program = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 		UINT32 size=0;
 		UINT16 address = 0;
@@ -593,7 +593,7 @@ DEVICE_IMAGE_LOAD( intv_cart )
 		size = image.get_software_region_length("D000_RAM8");
 		if (size)
 		{
-			program->install_readwrite_handler(0xD000, 0xD000 + size,
+			program.install_readwrite_handler(0xD000, 0xD000 + size,
 				read16_delegate( FUNC( intv_state::intv_cart_ram8_r ), state),
 				write16_delegate( FUNC( intv_state::intv_cart_ram8_w ), state));
 		}
@@ -601,7 +601,7 @@ DEVICE_IMAGE_LOAD( intv_cart )
 		size = image.get_software_region_length("8800_RAM8");
 		if (size)
 		{
-			program->install_readwrite_handler(0x8800, 0x8800 + size,
+			program.install_readwrite_handler(0x8800, 0x8800 + size,
 				read16_delegate( FUNC( intv_state::intv_cart_ram8_r ), state),
 				write16_delegate( FUNC( intv_state::intv_cart_ram8_w ), state));
 		}
@@ -650,54 +650,51 @@ MACHINE_RESET_MEMBER(intv_state,intvecs)
 }
 
 
-static TIMER_CALLBACK(intv_interrupt_complete)
+TIMER_CALLBACK_MEMBER(intv_state::intv_interrupt_complete)
 {
-	intv_state *state = machine.driver_data<intv_state>();
-	machine.device("maincpu")->execute().set_input_line(CP1610_INT_INTRM, CLEAR_LINE);
-	state->m_bus_copy_mode = 0;
+	machine().device("maincpu")->execute().set_input_line(CP1610_INT_INTRM, CLEAR_LINE);
+	m_bus_copy_mode = 0;
 }
 
-static TIMER_CALLBACK(intv_btb_fill)
+TIMER_CALLBACK_MEMBER(intv_state::intv_btb_fill)
 {
-	intv_state *state = machine.driver_data<intv_state>();
 	UINT8 column;
-	UINT8 row = state->m_backtab_row;
-	//machine.device("maincpu")->execute().adjust_icount(-STIC_ROW_FETCH);
+	UINT8 row = m_backtab_row;
+	//machine().device("maincpu")->execute().adjust_icount(-STIC_ROW_FETCH);
 	for(column=0; column < STIC_BACKTAB_WIDTH; column++)
 	{
-		state->m_backtab_buffer[row][column] = state->m_ram16[column + row * STIC_BACKTAB_WIDTH];
+		m_backtab_buffer[row][column] = m_ram16[column + row * STIC_BACKTAB_WIDTH];
 	}
 
-	state->m_backtab_row += 1;
+	m_backtab_row += 1;
 }
 
-INTERRUPT_GEN( intv_interrupt )
+INTERRUPT_GEN_MEMBER(intv_state::intv_interrupt)
 {
-	intv_state *state = device->machine().driver_data<intv_state>();
-	device->machine().device("maincpu")->execute().set_input_line(CP1610_INT_INTRM, ASSERT_LINE);
-	state->m_sr1_int_pending = 1;
-	state->m_bus_copy_mode = 1;
-	state->m_backtab_row = 0;
+	machine().device("maincpu")->execute().set_input_line(CP1610_INT_INTRM, ASSERT_LINE);
+	m_sr1_int_pending = 1;
+	m_bus_copy_mode = 1;
+	m_backtab_row = 0;
 	UINT8 row;
-	device->machine().device("maincpu")->execute().adjust_icount(-(12*STIC_ROW_BUSRQ+STIC_FRAME_BUSRQ)); // Account for stic cycle stealing
-	device->machine().scheduler().timer_set(device->machine().device<cpu_device>("maincpu")
-		->cycles_to_attotime(STIC_VBLANK_END), FUNC(intv_interrupt_complete));
+	machine().device("maincpu")->execute().adjust_icount(-(12*STIC_ROW_BUSRQ+STIC_FRAME_BUSRQ)); // Account for stic cycle stealing
+	machine().scheduler().timer_set(machine().device<cpu_device>("maincpu")
+		->cycles_to_attotime(STIC_VBLANK_END), timer_expired_delegate(FUNC(intv_state::intv_interrupt_complete),this));
 	for (row=0; row < STIC_BACKTAB_HEIGHT; row++)
 	{
-		device->machine().scheduler().timer_set(device->machine().device<cpu_device>("maincpu")
-			->cycles_to_attotime(STIC_FIRST_FETCH-STIC_FRAME_BUSRQ+STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*state->m_row_delay + (STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*STIC_CARD_HEIGHT - STIC_ROW_BUSRQ)*row), FUNC(intv_btb_fill));
+		machine().scheduler().timer_set(machine().device<cpu_device>("maincpu")
+			->cycles_to_attotime(STIC_FIRST_FETCH-STIC_FRAME_BUSRQ+STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*m_row_delay + (STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*STIC_CARD_HEIGHT - STIC_ROW_BUSRQ)*row), timer_expired_delegate(FUNC(intv_state::intv_btb_fill),this));
 	}
 
-	if (state->m_row_delay == 0)
+	if (m_row_delay == 0)
 	{
-		device->machine().device("maincpu")->execute().adjust_icount(-STIC_ROW_BUSRQ); // extra row fetch occurs if vertical delay == 0
+		machine().device("maincpu")->execute().adjust_icount(-STIC_ROW_BUSRQ); // extra row fetch occurs if vertical delay == 0
 	}
 
-	intv_stic_screenrefresh(device->machine());
+	intv_stic_screenrefresh(machine());
 }
 
 /* hand 0 == left, 1 == right, 2 == ECS hand controller 1, 3 == ECS hand controller 2 */
-UINT8 intv_control_r(address_space *space, int hand)
+UINT8 intv_control_r(address_space &space, int hand)
 {
 	static const char* const keypad_name[] = { "KEYPAD1", "KEYPAD2", "KEYPAD3", "KEYPAD4" };
 	static const UINT8 keypad_table[] =
@@ -728,7 +725,7 @@ UINT8 intv_control_r(address_space *space, int hand)
 	UINT8 rv = 0xFF;
 
 	/* keypad */
-	x = space->machine().root_device().ioport(keypad_name[hand])->read();
+	x = space.machine().root_device().ioport(keypad_name[hand])->read();
 	for (y = 0; y < 16; y++)
 	{
 		if (x & (1 << y))
@@ -737,12 +734,12 @@ UINT8 intv_control_r(address_space *space, int hand)
 		}
 	}
 
-	switch ((space->machine().root_device().ioport("OPTIONS")->read() >> hand) & 1)
+	switch ((space.machine().root_device().ioport("OPTIONS")->read() >> hand) & 1)
 	{
 		case 0: /* disc == digital */
 		default:
 
-			x = space->machine().root_device().ioport(disc_name[hand])->read();
+			x = space.machine().root_device().ioport(disc_name[hand])->read();
 			for (y = 0; y < 16; y++)
 			{
 				if (x & (1 << y))
@@ -754,8 +751,8 @@ UINT8 intv_control_r(address_space *space, int hand)
 
 		case 1: /* disc == _fake_ analog */
 
-			x = space->machine().root_device().ioport(discx_name[hand])->read();
-			y = space->machine().root_device().ioport(discy_name[hand])->read();
+			x = space.machine().root_device().ioport(discx_name[hand])->read();
+			y = space.machine().root_device().ioport(discy_name[hand])->read();
 			rv &= discyx_table[y / 32][x / 32];
 	}
 
@@ -764,18 +761,18 @@ UINT8 intv_control_r(address_space *space, int hand)
 
 READ8_MEMBER( intv_state::intv_left_control_r )
 {
-	return intv_control_r(&space, 0);
+	return intv_control_r(space, 0);
 }
 
 READ8_MEMBER( intv_state::intv_right_control_r )
 {
-	return intv_control_r(&space, 1);
+	return intv_control_r(space, 1);
 }
 
 READ8_MEMBER( intv_state::intv_ecs_porta_r )
 {
 	if (ioport("ECS_CNTRLSEL")->read() == 0)
-		return intv_control_r(&space, 2);
+		return intv_control_r(space, 2);
 	else
 		return 0xff; // not sure what to return here, maybe it should be last output?
 }
@@ -786,7 +783,7 @@ READ8_MEMBER( intv_state::intv_ecs_portb_r )
 	{
 		case 0x00: // hand controller
 		{
-			return intv_control_r(&space, 3);
+			return intv_control_r(space, 3);
 		}
 		case 0x01: // synthesizer keyboard
 		{

@@ -15,6 +15,7 @@
 #include "formats/pc_dsk.h"
 #include "includes/rmnimbus.h"
 #include "machine/er59256.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/scsihd.h"
 #include "machine/s1410.h"
@@ -85,12 +86,20 @@ static const msm5205_interface msm5205_config =
 
 static const SCSICB_interface scsibus_config =
 {
-	&nimbus_scsi_linechange
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state, nimbus_scsi_bsy_w),
+	DEVCB_NULL,
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state, nimbus_scsi_cd_w),
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state, nimbus_scsi_io_w),
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state, nimbus_scsi_msg_w),
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state, nimbus_scsi_req_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const centronics_interface nimbus_centronics_config =
 {
-	DEVCB_DEVICE_LINE(VIA_TAG,nimbus_ack_w),
+	DEVCB_DRIVER_LINE_MEMBER(rmnimbus_state, nimbus_ack_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -305,8 +314,8 @@ static MACHINE_CONFIG_START( nimbus, rmnimbus_state )
     MCFG_SCREEN_ADD("screen", RASTER)
     MCFG_SCREEN_REFRESH_RATE(50)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
-    MCFG_SCREEN_UPDATE_STATIC(nimbus)
-    MCFG_SCREEN_VBLANK_STATIC(nimbus)
+	MCFG_SCREEN_UPDATE_DRIVER(rmnimbus_state, screen_update_nimbus)
+	MCFG_SCREEN_VBLANK_DRIVER(rmnimbus_state, screen_eof_nimbus)
 
     MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
 

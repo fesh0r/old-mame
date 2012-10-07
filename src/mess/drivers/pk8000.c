@@ -29,6 +29,14 @@ public:
 	DECLARE_READ8_MEMBER(pk8000_joy_2_r);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_pk8000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(pk8000_interrupt);
+	DECLARE_WRITE8_MEMBER(pk8000_80_porta_w);
+	DECLARE_READ8_MEMBER(pk8000_80_portb_r);
+	DECLARE_WRITE8_MEMBER(pk8000_80_portc_w);
+	DECLARE_READ8_MEMBER(pk8000_84_porta_r);
+	DECLARE_WRITE8_MEMBER(pk8000_84_porta_w);
+	DECLARE_WRITE8_MEMBER(pk8000_84_portc_w);
 };
 
 
@@ -98,66 +106,64 @@ static void pk8000_set_bank(running_machine &machine,UINT8 data)
 				break;
 	}
 }
-static WRITE8_DEVICE_HANDLER(pk8000_80_porta_w)
+WRITE8_MEMBER(pk8000_state::pk8000_80_porta_w)
 {
-	pk8000_set_bank(device->machine(),data);
+	pk8000_set_bank(machine(),data);
 }
 
-static READ8_DEVICE_HANDLER(pk8000_80_portb_r)
+READ8_MEMBER(pk8000_state::pk8000_80_portb_r)
 {
-	pk8000_state *state = device->machine().driver_data<pk8000_state>();
 	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
-	if(state->m_keyboard_line>9) {
+	if(m_keyboard_line>9) {
 		return 0xff;
 	}
-	return device->machine().root_device().ioport(keynames[state->m_keyboard_line])->read();
+	return machine().root_device().ioport(keynames[m_keyboard_line])->read();
 }
 
-static WRITE8_DEVICE_HANDLER(pk8000_80_portc_w)
+WRITE8_MEMBER(pk8000_state::pk8000_80_portc_w)
 {
-	pk8000_state *state = device->machine().driver_data<pk8000_state>();
-	state->m_keyboard_line = data & 0x0f;
+	m_keyboard_line = data & 0x0f;
 
-	speaker_level_w(device->machine().device(SPEAKER_TAG), BIT(data,7));
+	speaker_level_w(machine().device(SPEAKER_TAG), BIT(data,7));
 
-	cassette_device_image(device->machine())->change_state(
+	cassette_device_image(machine())->change_state(
 						(BIT(data,4)) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 						CASSETTE_MASK_MOTOR);
-	cassette_device_image(device->machine())->output((BIT(data,6)) ? +1.0 : 0.0);
+	cassette_device_image(machine())->output((BIT(data,6)) ? +1.0 : 0.0);
 }
 
 static I8255_INTERFACE( pk8000_ppi8255_interface_1 )
 {
 	DEVCB_NULL,
-	DEVCB_HANDLER(pk8000_80_porta_w),
-	DEVCB_HANDLER(pk8000_80_portb_r),
+	DEVCB_DRIVER_MEMBER(pk8000_state,pk8000_80_porta_w),
+	DEVCB_DRIVER_MEMBER(pk8000_state,pk8000_80_portb_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(pk8000_80_portc_w)
+	DEVCB_DRIVER_MEMBER(pk8000_state,pk8000_80_portc_w)
 };
 
-static READ8_DEVICE_HANDLER(pk8000_84_porta_r)
+READ8_MEMBER(pk8000_state::pk8000_84_porta_r)
 {
 	return pk8000_video_mode;
 }
 
-static WRITE8_DEVICE_HANDLER(pk8000_84_porta_w)
+WRITE8_MEMBER(pk8000_state::pk8000_84_porta_w)
 {
 	pk8000_video_mode = data;
 }
 
-static WRITE8_DEVICE_HANDLER(pk8000_84_portc_w)
+WRITE8_MEMBER(pk8000_state::pk8000_84_portc_w)
 {
 	pk8000_video_enable = BIT(data,4);
 }
 static I8255_INTERFACE( pk8000_ppi8255_interface_2 )
 {
-	DEVCB_HANDLER(pk8000_84_porta_r),
-	DEVCB_HANDLER(pk8000_84_porta_w),
+	DEVCB_DRIVER_MEMBER(pk8000_state,pk8000_84_porta_r),
+	DEVCB_DRIVER_MEMBER(pk8000_state,pk8000_84_porta_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_HANDLER(pk8000_84_portc_w)
+	DEVCB_DRIVER_MEMBER(pk8000_state,pk8000_84_portc_w)
 };
 
 READ8_MEMBER(pk8000_state::pk8000_joy_1_r)
@@ -307,9 +313,9 @@ static INPUT_PORTS_START( pk8000 )
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED)
 INPUT_PORTS_END
 
-static INTERRUPT_GEN( pk8000_interrupt )
+INTERRUPT_GEN_MEMBER(pk8000_state::pk8000_interrupt)
 {
-	device->execute().set_input_line(0, HOLD_LINE);
+	device.execute().set_input_line(0, HOLD_LINE);
 }
 
 static IRQ_CALLBACK(pk8000_irq_callback)
@@ -328,9 +334,9 @@ void pk8000_state::video_start()
 {
 }
 
-static SCREEN_UPDATE_IND16( pk8000 )
+UINT32 pk8000_state::screen_update_pk8000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	return pk8000_video_update(screen, bitmap, cliprect, screen.machine().device<ram_device>(RAM_TAG)->pointer());
+	return pk8000_video_update(screen, bitmap, cliprect, machine().device<ram_device>(RAM_TAG)->pointer());
 }
 
 /* Machine driver */
@@ -348,7 +354,7 @@ static MACHINE_CONFIG_START( pk8000, pk8000_state )
 	MCFG_CPU_ADD("maincpu",I8080, 1780000)
 	MCFG_CPU_PROGRAM_MAP(pk8000_mem)
 	MCFG_CPU_IO_MAP(pk8000_io)
-	MCFG_CPU_VBLANK_INT("screen", pk8000_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", pk8000_state,  pk8000_interrupt)
 
 
 	/* video hardware */
@@ -357,7 +363,7 @@ static MACHINE_CONFIG_START( pk8000, pk8000_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(256+32, 192+32)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256+32-1, 0, 192+32-1)
-	MCFG_SCREEN_UPDATE_STATIC(pk8000)
+	MCFG_SCREEN_UPDATE_DRIVER(pk8000_state, screen_update_pk8000)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(pk8000)

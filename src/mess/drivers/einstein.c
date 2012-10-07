@@ -132,10 +132,9 @@ static MC6845_UPDATE_ROW( einstein_6845_update_row )
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER( einstein_6845_de_changed )
+WRITE_LINE_MEMBER(einstein_state::einstein_6845_de_changed)
 {
-	einstein_state *einstein = device->machine().driver_data<einstein_state>();
-	einstein->m_de=state;
+	m_de=state;
 }
 
 /* bit 0 - latched display enabled (DE) from 6845
@@ -188,24 +187,22 @@ static void einstein_scan_keyboard(running_machine &machine)
 	einstein->m_keyboard_data = data;
 }
 
-static TIMER_DEVICE_CALLBACK( einstein_keyboard_timer_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(einstein_state::einstein_keyboard_timer_callback)
 {
-	einstein_state *einstein = timer.machine().driver_data<einstein_state>();
-
 	/* re-scan keyboard */
-	einstein_scan_keyboard(timer.machine());
+	einstein_scan_keyboard(machine());
 
 	/* if /fire1 or /fire2 is 0, signal a fire interrupt */
-	if ((timer.machine().root_device().ioport("BUTTONS")->read() & 0x03) != 0)
+	if ((machine().root_device().ioport("BUTTONS")->read() & 0x03) != 0)
 	{
-		einstein->m_interrupt |= EINSTEIN_FIRE_INT;
+		m_interrupt |= EINSTEIN_FIRE_INT;
 	}
 
 	/* keyboard data changed? */
-	if (einstein->m_keyboard_data != 0xff)
+	if (m_keyboard_data != 0xff)
 	{
 		/* generate interrupt */
-		einstein->m_interrupt |= EINSTEIN_KEY_INT;
+		m_interrupt |= EINSTEIN_KEY_INT;
 	}
 }
 
@@ -238,31 +235,30 @@ READ8_MEMBER(einstein_state::einstein_keyboard_data_read)
     FLOPPY DRIVES
 ***************************************************************************/
 
-static WRITE8_DEVICE_HANDLER( einstein_drsel_w )
+WRITE8_MEMBER(einstein_state::einstein_drsel_w)
 {
-	einstein_state *einstein = device->machine().driver_data<einstein_state>();
 	if(VERBOSE_DISK)
-		logerror("%s: einstein_drsel_w %02x\n", device->machine().describe_context(), data);
+		logerror("%s: einstein_drsel_w %02x\n", machine().describe_context(), data);
 
 	/* bit 0 to 3 select the drive */
 	static const char *names[] = { "fd0", "fd1", "fd2", "fd3" };
 	floppy_image_device *floppy = 0;
 	for(int i=0; i<4; i++) {
 		if(BIT(data, i)) {
-			floppy_connector *con = device->machine().device<floppy_connector>(names[i]);
+			floppy_connector *con = machine().device<floppy_connector>(names[i]);
 			if(con)
 				floppy = con->get_device();
 		}
 	}
 
 	/* double sided drive connected? */
-	if (device->machine().root_device().ioport("config")->read() & data)
+	if (machine().root_device().ioport("config")->read() & data)
 	{
 		/* bit 4 selects the side then */
 		//floppy->ss_w(BIT(data, 4));
 	}
 	if (floppy) floppy->ss_w(0);
-	einstein->m_fdc->set_floppy(floppy);
+	m_fdc->set_floppy(floppy);
 }
 
 
@@ -271,15 +267,13 @@ static WRITE8_DEVICE_HANDLER( einstein_drsel_w )
 ***************************************************************************/
 
 /* channel 0 and 1 have a 2 MHz input clock for triggering */
-static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(einstein_state::einstein_ctc_trigger_callback)
 {
-	einstein_state *einstein = timer.machine().driver_data<einstein_state>();
-
 	/* toggle line status */
-	einstein->m_ctc_trigger ^= 1;
+	m_ctc_trigger ^= 1;
 
-	einstein->m_ctc->trg0(einstein->m_ctc_trigger);
-	einstein->m_ctc->trg1(einstein->m_ctc_trigger);
+	m_ctc->trg0(m_ctc_trigger);
+	m_ctc->trg1(m_ctc_trigger);
 }
 
 
@@ -287,15 +281,15 @@ static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
     UART
 ***************************************************************************/
 
-static WRITE_LINE_DEVICE_HANDLER( einstein_serial_transmit_clock )
+WRITE_LINE_MEMBER(einstein_state::einstein_serial_transmit_clock)
 {
-	i8251_device *uart = device->machine().device<i8251_device>(IC_I060);
+	i8251_device *uart = machine().device<i8251_device>(IC_I060);
 	uart->transmit_clock();
 }
 
-static WRITE_LINE_DEVICE_HANDLER( einstein_serial_receive_clock )
+WRITE_LINE_MEMBER(einstein_state::einstein_serial_receive_clock)
 {
-	i8251_device *uart = device->machine().device<i8251_device>(IC_I060);
+	i8251_device *uart = machine().device<i8251_device>(IC_I060);
 	uart->receive_clock();
 }
 
@@ -480,21 +474,19 @@ MACHINE_START_MEMBER(einstein_state,einstein2)
     VIDEO EMULATION
 ***************************************************************************/
 
-static SCREEN_UPDATE_RGB32( einstein2 )
+UINT32 einstein_state::screen_update_einstein2(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	einstein_state *einstein = screen.machine().driver_data<einstein_state>();
 
-	if (&screen == einstein->m_color_screen)
+	if (&screen == m_color_screen)
 	{
-		tms9929a_device *tms9929a = screen.machine().device<tms9929a_device>( "tms9929a" );
-		const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
-		bitmap_ind16 &src = tms9929a->get_bitmap();
+		tms9929a_device *tms9929a = machine().device<tms9929a_device>( "tms9929a" );
+		bitmap_rgb32 &src = tms9929a->get_bitmap();
 		for (int y = cliprect.min_y; y <= cliprect.max_y; y++)
 			for (int x = cliprect.min_x; x <= cliprect.max_x; x++)
-				bitmap.pix32(y, x) = palette[src.pix16(y, x)];
+				bitmap.pix32(y, x) = src.pix32(y, x);
 	}
-	else if (&screen == einstein->m_crtc_screen)
-		einstein->m_mc6845->screen_update( screen, bitmap, cliprect);
+	else if (&screen == m_crtc_screen)
+		m_mc6845->screen_update( screen, bitmap, cliprect);
 	else
 		fatalerror("Unknown screen '%s'\n", screen.tag());
 
@@ -527,7 +519,7 @@ static ADDRESS_MAP_START( einstein_io, AS_IO, 8, einstein_state )
 	/* block 4, internal controls */
 	AM_RANGE(0x20, 0x20) AM_MIRROR(0xff00) AM_READWRITE(einstein_kybintmsk_r, einstein_kybintmsk_w)
 	AM_RANGE(0x21, 0x21) AM_MIRROR(0xff00) AM_WRITE(einstein_adcintmsk_w)
-	AM_RANGE(0x23, 0x23) AM_MIRROR(0xff00) AM_DEVWRITE_LEGACY(IC_I042, einstein_drsel_w)
+	AM_RANGE(0x23, 0x23) AM_MIRROR(0xff00) AM_WRITE(einstein_drsel_w)
 	AM_RANGE(0x24, 0x24) AM_MIRROR(0xff00) AM_WRITE(einstein_rom_w)
 	AM_RANGE(0x25, 0x25) AM_MIRROR(0xff00) AM_WRITE(einstein_fire_int_w)
 	/* block 5, z80ctc */
@@ -698,8 +690,8 @@ INPUT_PORTS_END
 static Z80CTC_INTERFACE( einstein_ctc_intf )
 {
 	DEVCB_NULL,
-	DEVCB_LINE(einstein_serial_transmit_clock),
-	DEVCB_LINE(einstein_serial_receive_clock),
+	DEVCB_DRIVER_LINE_MEMBER(einstein_state,einstein_serial_transmit_clock),
+	DEVCB_DRIVER_LINE_MEMBER(einstein_state,einstein_serial_receive_clock),
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF, z80ctc_device, trg3)
 };
 
@@ -739,7 +731,7 @@ static const mc6845_interface einstein_crtc6845_interface =
 	NULL,
 	einstein_6845_update_row,
 	NULL,
-	DEVCB_LINE(einstein_6845_de_changed),
+	DEVCB_DRIVER_LINE_MEMBER(einstein_state,einstein_6845_de_changed),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -779,13 +771,13 @@ static MACHINE_CONFIG_START( einstein, einstein_state )
 
 	/* this is actually clocked at the system clock 4 MHz, but this would be too fast for our
     driver. So we update at 50Hz and hope this is good enough. */
-	MCFG_TIMER_ADD_PERIODIC("keyboard", einstein_keyboard_timer_callback, attotime::from_hz(50))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", einstein_state, einstein_keyboard_timer_callback, attotime::from_hz(50))
 
 	MCFG_Z80PIO_ADD(IC_I063, XTAL_X002 / 2, einstein_pio_intf)
 
 	MCFG_Z80CTC_ADD(IC_I058, XTAL_X002 / 2, einstein_ctc_intf)
 	/* the input to channel 0 and 1 of the ctc is a 2 MHz clock */
-	MCFG_TIMER_ADD_PERIODIC("ctc", einstein_ctc_trigger_callback, attotime::from_hz(XTAL_X002 /4))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", einstein_state, einstein_ctc_trigger_callback, attotime::from_hz(XTAL_X002 /4))
 
 	/* Einstein daisy chain support for non-Z80 devices */
 	MCFG_DEVICE_ADD("keyboard_daisy", EINSTEIN_KEYBOARD_DAISY, 0)
@@ -842,7 +834,7 @@ static MACHINE_CONFIG_DERIVED( einstei2, einstein )
 	MCFG_SCREEN_SIZE(640, 400)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 400-1)
 	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_UPDATE_STATIC(einstein2)
+	MCFG_SCREEN_UPDATE_DRIVER(einstein_state, screen_update_einstein2)
 	MCFG_GFXDECODE(einstei2)
 
 	/* 2 additional colors for the 80 column screen */

@@ -95,14 +95,12 @@ void tek4051_state::scan_keyboard()
 
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( keyboard_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( keyboard_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( keyboard_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(tek4051_state::keyboard_tick)
 {
-	tek4051_state *state = timer.machine().driver_data<tek4051_state>();
-
-	state->scan_keyboard();
+	scan_keyboard();
 }
 
 
@@ -117,7 +115,7 @@ static TIMER_DEVICE_CALLBACK( keyboard_tick )
 
 void tek4051_state::bankswitch(UINT8 data)
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	//int d = data & 0x07;
 	int lbs = (data >> 3) & 0x07;
@@ -125,19 +123,19 @@ void tek4051_state::bankswitch(UINT8 data)
 	switch (lbs)
 	{
 	case LBS_RBC:
-		program->install_rom(0x8800, 0xa7ff, memregion(MC6800_TAG)->base() + 0x800);
+		program.install_rom(0x8800, 0xa7ff, memregion(MC6800_TAG)->base() + 0x800);
 		break;
 
 	case LBS_BSOFL:
-		program->install_rom(0x8800, 0xa7ff, memregion("020_0147_00")->base());
+		program.install_rom(0x8800, 0xa7ff, memregion("020_0147_00")->base());
 		break;
 
 	case LBS_BSCOM:
-		program->install_rom(0x8800, 0xa7ff, memregion("672_0799_08")->base());
+		program.install_rom(0x8800, 0xa7ff, memregion("672_0799_08")->base());
 		break;
 
 	default:
-		program->unmap_readwrite(0x8800, 0xa7ff);
+		program.unmap_readwrite(0x8800, 0xa7ff);
 	}
 }
 
@@ -1167,21 +1165,21 @@ static IEEE488_INTERFACE( ieee488_intf )
 
 void tek4051_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	// configure RAM
 	switch (m_ram->size())
 	{
 	case 8*1024:
-		program->unmap_readwrite(0x2000, 0x7fff);
+		program.unmap_readwrite(0x2000, 0x7fff);
 		break;
 
 	case 16*1024:
-		program->unmap_readwrite(0x4000, 0x7fff);
+		program.unmap_readwrite(0x4000, 0x7fff);
 		break;
 
 	case 24*1024:
-		program->unmap_readwrite(0x6000, 0x7fff);
+		program.unmap_readwrite(0x6000, 0x7fff);
 		break;
 	}
 
@@ -1230,7 +1228,7 @@ static MACHINE_CONFIG_START( tek4051, tek4051_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, attotime::from_hz(XTAL_12_5MHz/15/4))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard", tek4051_state, keyboard_tick, attotime::from_hz(XTAL_12_5MHz/15/4))
 	MCFG_PIA6821_ADD(MC6820_X_TAG, x_pia_intf)
 	MCFG_PIA6821_ADD(MC6820_Y_TAG, y_pia_intf)
 	MCFG_PIA6821_ADD(MC6820_KB_TAG, kb_pia_intf)

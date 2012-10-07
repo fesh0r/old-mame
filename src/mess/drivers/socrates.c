@@ -11,7 +11,6 @@ TODO:
     hook up mouse
     add waitstates for ram access (lack of this causes the system to run way too fast)
     find and hook up any timers/interrupt controls
-    switch cartridges over to a CART system rather than abusing BIOS
     keyboard IR decoder MCU is HLE'd for now, needs decap and cpu core (it is rather tms1000 or CIC-like)
 
 
@@ -74,6 +73,7 @@ TODO:
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "audio/socrates.h"
+#include "imagedev/cartslot.h"
 
 
 class socrates_state : public driver_device
@@ -127,6 +127,10 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_socrates(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(assert_irq);
+	TIMER_CALLBACK_MEMBER(clear_speech_cb);
+	TIMER_CALLBACK_MEMBER(clear_irq_cb);
 };
 
 
@@ -329,12 +333,11 @@ UINT8 *speechromext = memregion("speechext")->base();
 	logerror("read from i/o 0x4x of %x\n", temp);
 	return temp;
 }
-static TIMER_CALLBACK( clear_speech_cb )
+TIMER_CALLBACK_MEMBER(socrates_state::clear_speech_cb)
 {
-	socrates_state *state = machine.driver_data<socrates_state>();
-	state->m_speech_running = 0;
-	state->m_speech_load_address_count = 0; // should this be here or in the write functuon subpart which is speak command?
-	state->m_speech_load_settings_count = 0;
+	m_speech_running = 0;
+	m_speech_load_address_count = 0; // should this be here or in the write functuon subpart which is speak command?
+	m_speech_load_settings_count = 0;
 }
 
 WRITE8_MEMBER(socrates_state::speech_command)// write 0x4x, some sort of bitfield; speech chip is probably hitachi hd38880 related but not exact, w/4 bit interface
@@ -397,7 +400,7 @@ end hd38880 info.*/
 			{
 				/* write me: start talking */
 				m_speech_running = 1;
-				machine().scheduler().timer_set(attotime::from_seconds(4), FUNC(clear_speech_cb)); // hack
+				machine().scheduler().timer_set(attotime::from_seconds(4), timer_expired_delegate(FUNC(socrates_state::clear_speech_cb),this)); // hack
 			}
 			break;
 		case 0x90: // unknown, one of these is probably read and branch
@@ -421,7 +424,7 @@ end hd38880 info.*/
 			if ((data&0xF) == 0) // speak
 			{
 				m_speech_running = 1;
-				machine().scheduler().timer_set(attotime::from_seconds(4), FUNC(clear_speech_cb)); // hack
+				machine().scheduler().timer_set(attotime::from_seconds(4), timer_expired_delegate(FUNC(socrates_state::clear_speech_cb),this)); // hack
 			}
 			else if ((data&0xF) == 8) // reset
 			{
@@ -608,9 +611,8 @@ void socrates_state::video_start()
 	m_scroll_offset = 0;
 }
 
-static SCREEN_UPDATE_IND16( socrates )
+UINT32 socrates_state::screen_update_socrates(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	socrates_state *state = screen.machine().driver_data<socrates_state>();
 	static const UINT8 fixedcolors[8] =
 	{
 	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0xF7
@@ -619,24 +621,24 @@ static SCREEN_UPDATE_IND16( socrates )
 	int lineoffset = 0; // if display ever tries to display data at 0xfxxx, offset line displayed by 0x1000
 	for (y = 0; y < 228; y++)
 	{
-		if ((((y+state->m_scroll_offset)*128)&0xffff) >= 0xf000) lineoffset = 0x1000; // see comment above
+		if ((((y+m_scroll_offset)*128)&0xffff) >= 0xf000) lineoffset = 0x1000; // see comment above
 		for (x = 0; x < 264; x++)
 		{
 			if (x < 256)
 			{
-				colidx = state->m_videoram[(((y+state->m_scroll_offset)*128)+(x>>1)+lineoffset)&0xffff];
+				colidx = m_videoram[(((y+m_scroll_offset)*128)+(x>>1)+lineoffset)&0xffff];
 				if (x&1) colidx >>=4;
 				colidx &= 0xF;
-				if (colidx > 7) color=state->m_videoram[0xF000+(colidx<<8)+((y+state->m_scroll_offset)&0xFF)];
+				if (colidx > 7) color=m_videoram[0xF000+(colidx<<8)+((y+m_scroll_offset)&0xFF)];
 				else color=fixedcolors[colidx];
 				bitmap.pix16(y, x) = color;
 			}
 			else
 			{
-				colidx = state->m_videoram[(((y+state->m_scroll_offset)*128)+(127)+lineoffset)&0xffff];
+				colidx = m_videoram[(((y+m_scroll_offset)*128)+(127)+lineoffset)&0xffff];
 				colidx >>=4;
 				colidx &= 0xF;
-				if (colidx > 7) color=state->m_videoram[0xF000+(colidx<<8)+((y+state->m_scroll_offset)&0xFF)];
+				if (colidx > 7) color=m_videoram[0xF000+(colidx<<8)+((y+m_scroll_offset)&0xFF)];
 				else color=fixedcolors[colidx];
 				bitmap.pix16(y, x) = color;
 			}
@@ -902,21 +904,19 @@ INPUT_PORTS_END
 /******************************************************************************
  Machine Drivers
 ******************************************************************************/
-static TIMER_CALLBACK( clear_irq_cb )
+TIMER_CALLBACK_MEMBER(socrates_state::clear_irq_cb)
 {
-	socrates_state *state = machine.driver_data<socrates_state>();
-	machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
-	state->m_vblankstate = 0;
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	m_vblankstate = 0;
 }
 
-static INTERRUPT_GEN( assert_irq )
+INTERRUPT_GEN_MEMBER(socrates_state::assert_irq)
 {
-	socrates_state *state = device->machine().driver_data<socrates_state>();
-	device->execute().set_input_line(0, ASSERT_LINE);
-	device->machine().scheduler().timer_set(downcast<cpu_device *>(device)->cycles_to_attotime(44), FUNC(clear_irq_cb));
+	device.execute().set_input_line(0, ASSERT_LINE);
+	machine().scheduler().timer_set(downcast<cpu_device *>(&device)->cycles_to_attotime(44), timer_expired_delegate(FUNC(socrates_state::clear_irq_cb),this));
 // 44 is a complete and total guess, need to properly measure how many clocks/microseconds the int line is high for.
-	state->m_vblankstate = 1;
-	state->m_kbmcu_rscount = 0; // clear the mcu poke count
+	m_vblankstate = 1;
+	m_kbmcu_rscount = 0; // clear the mcu poke count
 }
 
 static MACHINE_CONFIG_START( socrates, socrates_state )
@@ -925,7 +925,7 @@ static MACHINE_CONFIG_START( socrates, socrates_state )
     MCFG_CPU_PROGRAM_MAP(z80_mem)
     MCFG_CPU_IO_MAP(z80_io)
     MCFG_QUANTUM_TIME(attotime::from_hz(60))
-    MCFG_CPU_VBLANK_INT("screen", assert_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", socrates_state,  assert_irq)
     //MCFG_MACHINE_START_OVERRIDE(socrates_state,socrates)
 
     /* video hardware */
@@ -934,7 +934,7 @@ static MACHINE_CONFIG_START( socrates, socrates_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(264, 228) // technically the screen size is 256x228 but super painter abuses what I suspect is a hardware bug to display repeated pixels of the very last pixel beyond this horizontal space, well into hblank
 	MCFG_SCREEN_VISIBLE_AREA(0, 263, 0, 219) // the last few rows are usually cut off by the screen bottom but are indeed displayed if you mess with v-hold
-	MCFG_SCREEN_UPDATE_STATIC(socrates)
+	MCFG_SCREEN_UPDATE_DRIVER(socrates_state, screen_update_socrates)
 
 	MCFG_PALETTE_LENGTH(256)
 
@@ -944,6 +944,13 @@ static MACHINE_CONFIG_START( socrates, socrates_state )
 	MCFG_SOUND_ADD("soc_snd", SOCRATES, XTAL_21_4772MHz/(512+256)) // this is correct, as strange as it sounds.
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
+	MCFG_CARTSLOT_ADD("cart")
+	MCFG_CARTSLOT_EXTENSION_LIST("bin")
+	MCFG_CARTSLOT_NOT_MANDATORY
+	MCFG_CARTSLOT_INTERFACE("socrates_cart")
+
+	/* Software lists */
+	MCFG_SOFTWARE_LIST_ADD("cart_list", "socrates")
 MACHINE_CONFIG_END
 
 
@@ -987,25 +994,8 @@ ROM_START(socrates)
     * read 0x7ff3(0x3ff3 in cart rom) and compare to 0x18
     if all tests passed, jump to 0x4000 (0x0000 in cart rom)
     */
-    ROM_DEFAULT_BIOS("nocart")
     ROM_LOAD("27-00817-000-000.u1", 0x00000, 0x40000, CRC(80f5aa20) SHA1(4fd1ff7f78b5dd2582d5de6f30633e4e4f34ca8f)) // Label: "(Vtech) 27-00817-000-000 // (C)1987 VIDEO TECHNOLOGY // 8811 D"
-    ROM_SYSTEM_BIOS( 0, "nocart", "Socrates w/o cartridge installed")
-    ROM_SYSTEM_BIOS( 1, "maze", "Socrates w/Amazing Mazes cartridge installed")
-    ROMX_LOAD("27-5050-00.u1", 0x40000, 0x20000, CRC(95B84308) SHA1(32E065E8F48BAF0126C1B9AA111C291EC644E387), ROM_BIOS(2)) // Label: "(Vtech) 27-5050-00 // TC531000CP-L332 // (C)1989 VIDEO TECHNOLOGY // 8931EAI   JAPAN"; Alt label: "(Vtech) LH53101Y // (C)1989 VIDEO TECHNOLOGY // 8934 D"; cart has an orange QC stickse
-    ROM_SYSTEM_BIOS( 2, "world", "Socrates w/Around the World cartridge installed")
-    ROMX_LOAD("27-5013-00-0.u1", 0x40000, 0x20000, CRC(A1E01C38) SHA1(BEEB2869AE1DDC8BBC9A81749AB9662C14DD47D3), ROM_BIOS(3)) // Label: "(Vtech) 27-5013-00-0 // TC531000CP-L318 // (C)1989 VIDEO TECHNOLOGY // 8918EAI   JAPAN"; cart has an orange QC sticker
-    ROM_SYSTEM_BIOS( 3, "fracts", "Socrates w/Facts'N Fractions cartridge installed")
-    ROMX_LOAD("27-5001-00-0.u1", 0x40000, 0x20000, CRC(7118617B) SHA1(52268EF0ADB651AD62773FB2EBCB7506759B2686), ROM_BIOS(4)) // Label: "(Vtech) 27-5001-00-0 // TC531000CP-L313 // (C)1988 VIDEO TECHNOLOGY // 8918EAI   JAPAN"; cart has a brown QC sticker
-    ROM_SYSTEM_BIOS( 4, "hodge", "Socrates w/Hodge-Podge cartridge installed")
-    ROMX_LOAD("27-5014-00-0.u1", 0x40000, 0x20000, CRC(19E1A301) SHA1(649A7791E97BCD0D31AC65A890FACB5753AB04A3), ROM_BIOS(5)) // Label: "(Vtech) 27-5014-00-0 // TC531000CP-L316 // (C)1989 VIDEO TECHNOLOGY // 8913EAI   JAPAN"; cart has a green QC sticker
-    ROM_SYSTEM_BIOS( 5, "memoryb", "Socrates w/Memory Mania rev B cartridge installed")
-    ROMX_LOAD("27-5002-00-0.u1", 0x40000, 0x20000, CRC(3C7FD651) SHA1(3118F53625553010EC95EA91DA8320CCE3DC7FE4), ROM_BIOS(6)) // Label: "(Vtech) 27-5002-00-0 // TC531000CP-L314 // (C)1988 VIDEO TECHNOLOGY // 8905EAI   JAPAN"; cart has a red QC sticker with a small B sticker on top of it, and the rom has a large B sticker; cart pcb shows signs of resoldering, which leads me to believe this is the B revision of the rom code for this game
-    ROM_SYSTEM_BIOS( 6, "state", "Socrates w/State to State cartridge installed")
-    ROMX_LOAD("27-5045-00-0.u1", 0x40000, 0x20000, CRC(5848379F) SHA1(961C9CA4F28A9E02AA1D67583B2D2ADF8EE5F10E), ROM_BIOS(7)) // Label: "(Vtech) 27-5045-00-0 // TC531000CP-L333 // (C)1989 VIDEO TECHNOLOGY // 8931EAI   JAPAN"; cart has a brown QC sticker
-// a cartridge called 'game master' is supposed to be here
-// an international-only? cartridge called 'puzzles' is supposed to be here
-// Cad professor mouse is supposed to be here
-// the touch pad cartridge is supposed to be here
+    ROM_CART_LOAD( "cart", 0x40000, 0x20000, 0 )
 
     ROM_REGION(0x10000, "vram", ROMREGION_ERASEFF) /* fill with ff, driver_init changes this to the 'correct' startup pattern */
 
@@ -1027,7 +1017,7 @@ ROM_START(socratfc)
     ROM_REGION(0x80000, "maincpu", ROMREGION_ERASEVAL(0xF3))
     /* Socrates SAITOUT (French Canadian) NTSC */
     ROM_LOAD("27-00884-001-000.u1", 0x00000, 0x40000, CRC(042d9d21) SHA1(9ffc67b2721683b2536727d0592798fbc4d061cb)) // Label: "(Vtech) 27-00884-001-000 // (C)1988 VIDEO TECHNOLOGY // 8911 D"
-    ROM_LOAD_OPTIONAL("cartridge.bin", 0x40000, 0x20000, NO_DUMP)
+    ROM_CART_LOAD( "cart", 0x40000, 0x20000, 0 )
 
     ROM_REGION(0x10000, "vram", ROMREGION_ERASEFF) /* fill with ff, driver_init changes this to the 'correct' startup pattern */
 

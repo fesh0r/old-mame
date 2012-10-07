@@ -88,6 +88,9 @@ public:
 	DECLARE_READ8_MEMBER ( cassette_r );
 	DECLARE_WRITE8_MEMBER ( cassette_w );
 	DECLARE_DRIVER_INIT(vg5k);
+	TIMER_CALLBACK_MEMBER(z80_irq_clear);
+	TIMER_DEVICE_CALLBACK_MEMBER(z80_irq);
+	TIMER_DEVICE_CALLBACK_MEMBER(vg5k_scanline);
 };
 
 
@@ -274,24 +277,22 @@ static INPUT_PORTS_START( vg5k )
 INPUT_PORTS_END
 
 
-static TIMER_CALLBACK( z80_irq_clear )
+TIMER_CALLBACK_MEMBER(vg5k_state::z80_irq_clear)
 {
-	machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 }
 
 
-static TIMER_DEVICE_CALLBACK( z80_irq )
+TIMER_DEVICE_CALLBACK_MEMBER(vg5k_state::z80_irq)
 {
-	timer.machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, ASSERT_LINE);
 
-	timer.machine().scheduler().timer_set(attotime::from_usec(100), FUNC(z80_irq_clear));
+	machine().scheduler().timer_set(attotime::from_usec(100), timer_expired_delegate(FUNC(vg5k_state::z80_irq_clear),this));
 }
 
-static TIMER_DEVICE_CALLBACK( vg5k_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(vg5k_state::vg5k_scanline)
 {
-	vg5k_state *vg5k = timer.machine().driver_data<vg5k_state>();
-
-	vg5k->m_ef9345->update_scanline((UINT16)param);
+	m_ef9345->update_scanline((UINT16)param);
 }
 
 
@@ -337,12 +338,12 @@ DRIVER_INIT_MEMBER(vg5k_state,vg5k)
 
 
 	/* install expansion memory*/
-	address_space *program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &program = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
 	UINT16 ram_size = machine().device<ram_device>(RAM_TAG)->size();
 
 	if (ram_size > 0x4000)
-		program->install_ram(0x8000, 0x3fff + ram_size, ram);
+		program.install_ram(0x8000, 0x3fff + ram_size, ram);
 }
 
 
@@ -375,9 +376,9 @@ static MACHINE_CONFIG_START( vg5k, vg5k_state )
 	MCFG_CPU_PROGRAM_MAP(vg5k_mem)
 	MCFG_CPU_IO_MAP(vg5k_io)
 
-	MCFG_TIMER_ADD_SCANLINE("vg5k_scanline", vg5k_scanline, "screen", 0, 10)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("vg5k_scanline", vg5k_state, vg5k_scanline, "screen", 0, 10)
 
-	MCFG_TIMER_ADD_PERIODIC("irq_timer", z80_irq, attotime::from_msec(20))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer", vg5k_state, z80_irq, attotime::from_msec(20))
 
 	MCFG_EF9345_ADD("ef9345", vg5k_ef9345_config)
 

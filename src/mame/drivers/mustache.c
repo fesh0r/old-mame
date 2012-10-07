@@ -157,16 +157,15 @@ static GFXDECODE_START( mustache )
 	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 0x80, 8 )
 GFXDECODE_END
 
-static TIMER_CALLBACK( clear_irq_cb )
+TIMER_CALLBACK_MEMBER(mustache_state::clear_irq_cb)
 {
-	machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 }
 
-static INTERRUPT_GEN( assert_irq )
+INTERRUPT_GEN_MEMBER(mustache_state::assert_irq)
 {
-	mustache_state *state = device->machine().driver_data<mustache_state>();
-	device->execute().set_input_line(0, ASSERT_LINE);
-    state->m_clear_irq_timer->adjust(downcast<cpu_device *>(device)->cycles_to_attotime(14288));
+	device.execute().set_input_line(0, ASSERT_LINE);
+    m_clear_irq_timer->adjust(downcast<cpu_device *>(&device)->cycles_to_attotime(14288));
        /* Timing here is an educated GUESS, Z80 /INT must stay high so the irq
           fires no less than TWICE per frame, else game doesn't work right.
       6000000 / 56.747 = 105732.4616 cycles per frame, we'll call it A
@@ -180,7 +179,7 @@ static INTERRUPT_GEN( assert_irq )
 
 void mustache_state::machine_start()
 {
-	m_clear_irq_timer = machine().scheduler().timer_alloc(FUNC(clear_irq_cb));
+	m_clear_irq_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(mustache_state::clear_irq_cb),this));
 }
 
 static MACHINE_CONFIG_START( mustache, mustache_state )
@@ -188,7 +187,7 @@ static MACHINE_CONFIG_START( mustache, mustache_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, CPU_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(memmap)
-	MCFG_CPU_VBLANK_INT("screen", assert_irq)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", mustache_state,  assert_irq)
 
 	MCFG_CPU_ADD(CPUTAG_T5182,Z80, T5182_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(t5182_map)
@@ -201,7 +200,7 @@ static MACHINE_CONFIG_START( mustache, mustache_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 0, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(mustache)
+	MCFG_SCREEN_UPDATE_DRIVER(mustache_state, screen_update_mustache)
 
 	MCFG_GFXDECODE(mustache)
 	MCFG_PALETTE_LENGTH(8*16+16*8)

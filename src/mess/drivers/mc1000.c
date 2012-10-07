@@ -26,7 +26,7 @@
 
 void mc1000_state::bankswitch()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* MC6845 video RAM */
 	membank("bank2")->set_entry(m_mc6845_bank);
@@ -34,11 +34,11 @@ void mc1000_state::bankswitch()
 	/* extended RAM */
 	if (m_ram->size() > 16*1024)
 	{
-		program->install_readwrite_bank(0x4000, 0x7fff, "bank3");
+		program.install_readwrite_bank(0x4000, 0x7fff, "bank3");
 	}
 	else
 	{
-		program->unmap_readwrite(0x4000, 0x7fff);
+		program.unmap_readwrite(0x4000, 0x7fff);
 	}
 
 	/* MC6847 video RAM */
@@ -46,16 +46,16 @@ void mc1000_state::bankswitch()
 	{
 		if (m_ram->size() > 16*1024)
 		{
-			program->install_readwrite_bank(0x8000, 0x97ff, "bank4");
+			program.install_readwrite_bank(0x8000, 0x97ff, "bank4");
 		}
 		else
 		{
-			program->unmap_readwrite(0x8000, 0x97ff);
+			program.unmap_readwrite(0x8000, 0x97ff);
 		}
 	}
 	else
 	{
-		program->install_readwrite_bank(0x8000, 0x97ff, "bank4");
+		program.install_readwrite_bank(0x8000, 0x97ff, "bank4");
 	}
 
 	membank("bank4")->set_entry(m_mc6847_bank);
@@ -63,11 +63,11 @@ void mc1000_state::bankswitch()
 	/* extended RAM */
 	if (m_ram->size() > 16*1024)
 	{
-		program->install_readwrite_bank(0x9800, 0xbfff, "bank5");
+		program.install_readwrite_bank(0x9800, 0xbfff, "bank5");
 	}
 	else
 	{
-		program->unmap_readwrite(0x9800, 0xbfff);
+		program.unmap_readwrite(0x9800, 0xbfff);
 	}
 }
 
@@ -323,19 +323,19 @@ static const ay8910_interface ay8910_intf =
 
 void mc1000_state::machine_start()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* setup memory banking */
 	UINT8 *rom = memregion(Z80_TAG)->base();
 
-	program->install_readwrite_bank(0x0000, 0x1fff, "bank1");
+	program.install_readwrite_bank(0x0000, 0x1fff, "bank1");
 	membank("bank1")->configure_entry(0, rom);
 	membank("bank1")->configure_entry(1, rom + 0xc000);
 	membank("bank1")->set_entry(1);
 
 	m_rom0000 = 1;
 
-	program->install_readwrite_bank(0x2000, 0x27ff, "bank2");
+	program.install_readwrite_bank(0x2000, 0x27ff, "bank2");
 	membank("bank2")->configure_entry(0, rom + 0x2000);
 	membank("bank2")->configure_entry(1, m_mc6845_video_ram);
 	membank("bank2")->set_entry(0);
@@ -409,14 +409,12 @@ void mc1000_state::machine_reset()
 #define MC1000_NE555_FREQ       (368) /* Hz */
 #define MC1000_NE555_DUTY_CYCLE (99.745) /* % */
 
-static TIMER_DEVICE_CALLBACK( ne555_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(mc1000_state::ne555_tick)
 {
-	mc1000_state *state = timer.machine().driver_data<mc1000_state>();
-
 	// (m_ne555_int not needed anymore and can be done with?)
-	state->m_ne555_int = param;
+	m_ne555_int = param;
 
-	state->m_maincpu->set_input_line(INPUT_LINE_IRQ0, param);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, param);
 }
 
 static const cassette_interface mc1000_cassette_interface =
@@ -444,10 +442,10 @@ static MACHINE_CONFIG_START( mc1000, mc1000_state )
 	MCFG_CPU_IO_MAP(mc1000_io)
 
 	/* timers */
-	MCFG_TIMER_ADD_PERIODIC("ne555clear", ne555_tick, attotime::from_hz(MC1000_NE555_FREQ))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ne555clear", mc1000_state, ne555_tick, attotime::from_hz(MC1000_NE555_FREQ))
 	MCFG_TIMER_PARAM(CLEAR_LINE)
 
-	MCFG_TIMER_ADD_PERIODIC("ne555assert", ne555_tick, attotime::from_hz(MC1000_NE555_FREQ))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ne555assert", mc1000_state, ne555_tick, attotime::from_hz(MC1000_NE555_FREQ))
 	MCFG_TIMER_START_DELAY(attotime::from_hz(MC1000_NE555_FREQ * 100 / MC1000_NE555_DUTY_CYCLE))
 	MCFG_TIMER_PARAM(ASSERT_LINE)
 
@@ -499,7 +497,7 @@ DIRECT_UPDATE_MEMBER(mc1000_state::mc1000_direct_update_handler)
 DRIVER_INIT_MEMBER(mc1000_state,mc1000)
 {
 
-	machine().device(Z80_TAG)->memory().space(AS_PROGRAM)->set_direct_update_handler(direct_update_delegate(FUNC(mc1000_state::mc1000_direct_update_handler), this));
+	machine().device(Z80_TAG)->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(mc1000_state::mc1000_direct_update_handler), this));
 }
 
 /* System Drivers */

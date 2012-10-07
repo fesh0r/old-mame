@@ -255,59 +255,57 @@ static void ym_set_mixing(device_t *device, double left, double right)
 	flt_volume_set_volume(state->m_filter2r, (71.0 * right) / 55.0);
 }
 
-static TIMER_CALLBACK( dmaend_callback )
+TIMER_CALLBACK_MEMBER(xexex_state::dmaend_callback)
 {
-	xexex_state *state = machine.driver_data<xexex_state>();
 
-	if (state->m_cur_control2 & 0x0040)
+	if (m_cur_control2 & 0x0040)
 	{
 		// foul-proof (CPU0 could be deactivated while we wait)
-		if (state->m_suspension_active)
+		if (m_suspension_active)
 		{
-			state->m_suspension_active = 0;
-			machine.scheduler().trigger(state->m_resume_trigger);
+			m_suspension_active = 0;
+			machine().scheduler().trigger(m_resume_trigger);
 		}
 
 		// IRQ 5 is the "object DMA end interrupt" and shouldn't be triggered
 		// if object data isn't ready for DMA within the frame.
-		state->m_maincpu->set_input_line(5, HOLD_LINE);
+		m_maincpu->set_input_line(5, HOLD_LINE);
 	}
 }
 
-static TIMER_DEVICE_CALLBACK( xexex_interrupt )
+TIMER_DEVICE_CALLBACK_MEMBER(xexex_state::xexex_interrupt)
 {
-	xexex_state *state = timer.machine().driver_data<xexex_state>();
 	int scanline = param;
 
-	if (state->m_suspension_active)
+	if (m_suspension_active)
 	{
-		state->m_suspension_active = 0;
-		timer.machine().scheduler().trigger(state->m_resume_trigger);
+		m_suspension_active = 0;
+		machine().scheduler().trigger(m_resume_trigger);
 	}
 
 	if(scanline == 0)
 	{
 		// IRQ 6 is for test mode only
-			if (state->m_cur_control2 & 0x0020)
-				state->m_maincpu->set_input_line(6, HOLD_LINE);
+			if (m_cur_control2 & 0x0020)
+				m_maincpu->set_input_line(6, HOLD_LINE);
 	}
 
 	/* TODO: vblank is at 256! (enable CCU then have fun in fixing offsetted layers) */
 	if(scanline == 128)
 	{
-		if (k053246_is_irq_enabled(state->m_k053246))
+		if (k053246_is_irq_enabled(m_k053246))
 		{
 			// OBJDMA starts at the beginning of V-blank
-			xexex_objdma(timer.machine(), 0);
+			xexex_objdma(machine(), 0);
 
 			// schedule DMA end interrupt
-			state->m_dmadelay_timer->adjust(XE_DMADELAY);
+			m_dmadelay_timer->adjust(XE_DMADELAY);
 		}
 
 		// IRQ 4 is the V-blank interrupt. It controls color, sound and
 		// vital game logics that shouldn't be interfered by frame-drop.
-		if (state->m_cur_control2 & 0x0800)
-			state->m_maincpu->set_input_line(4, HOLD_LINE);
+		if (m_cur_control2 & 0x0800)
+			m_maincpu->set_input_line(4, HOLD_LINE);
 	}
 }
 
@@ -486,7 +484,7 @@ void xexex_state::machine_start()
 	save_item(NAME(m_cur_sound_region));
 	machine().save().register_postload(save_prepost_delegate(FUNC(xexex_postload), &machine()));
 
-	m_dmadelay_timer = machine().scheduler().timer_alloc(FUNC(dmaend_callback));
+	m_dmadelay_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(xexex_state::dmaend_callback),this));
 }
 
 void xexex_state::machine_reset()
@@ -514,7 +512,7 @@ static MACHINE_CONFIG_START( xexex, xexex_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 32000000/2)	// 16MHz (32MHz xtal)
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", xexex_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", xexex_state, xexex_interrupt, "screen", 0, 1)
 
 	// 8MHz (PCB shows one 32MHz/18.432MHz xtal, reference: www.system16.com)
 	// more likely 32MHz since 18.432MHz yields 4.608MHz(too slow) or 9.216MHz(too fast) with integer divisors
@@ -535,7 +533,7 @@ static MACHINE_CONFIG_START( xexex, xexex_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(40, 40+384-1, 0, 0+256-1)
-	MCFG_SCREEN_UPDATE_STATIC(xexex)
+	MCFG_SCREEN_UPDATE_DRIVER(xexex_state, screen_update_xexex)
 
 	MCFG_PALETTE_LENGTH(2048)
 

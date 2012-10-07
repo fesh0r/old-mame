@@ -506,11 +506,11 @@ static MACHINE_CONFIG_START( dassault, dassault_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_28MHz/2)	/* 14MHz - Accurate */
 	MCFG_CPU_PROGRAM_MAP(dassault_map)
-	MCFG_CPU_VBLANK_INT("screen", irq4_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dassault_state,  irq4_line_hold)
 
 	MCFG_CPU_ADD("sub", M68000, XTAL_28MHz/2)	/* 14MHz - Accurate */
 	MCFG_CPU_PROGRAM_MAP(dassault_sub_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dassault_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280, XTAL_32_22MHz/8)	/* Accurate */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -524,7 +524,7 @@ static MACHINE_CONFIG_START( dassault, dassault_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(dassault)
+	MCFG_SCREEN_UPDATE_DRIVER(dassault_state, screen_update_dassault)
 
 
 	MCFG_GFXDECODE(dassault)

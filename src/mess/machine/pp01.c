@@ -85,7 +85,7 @@ static void pp01_set_memory(running_machine &machine,UINT8 block, UINT8 data)
 {
 	pp01_state *state = machine.driver_data<pp01_state>();
 	UINT8 *mem = state->memregion("maincpu")->base();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	UINT16 startaddr = block*0x1000;
 	UINT16 endaddr   = ((block+1)*0x1000)-1;
 	UINT8  blocknum  = block + 1;
@@ -93,40 +93,40 @@ static void pp01_set_memory(running_machine &machine,UINT8 block, UINT8 data)
 	sprintf(bank,"bank%d",blocknum);
 	if (data>=0xE0 && data<=0xEF) {
 		// This is RAM
-		space->install_read_bank (startaddr, endaddr, bank);
+		space.install_read_bank (startaddr, endaddr, bank);
 		switch(data) {
 			case 0xe6 :
-					space->install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_r_1_w),state));
+					space.install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_r_1_w),state));
 					break;
 			case 0xe7 :
-					space->install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_r_2_w),state));
+					space.install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_r_2_w),state));
 					break;
 			case 0xea :
-					space->install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_g_1_w),state));
+					space.install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_g_1_w),state));
 					break;
 			case 0xeb :
-					space->install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_g_2_w),state));
+					space.install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_g_2_w),state));
 					break;
 			case 0xee :
-					space->install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_b_1_w),state));
+					space.install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_b_1_w),state));
 					break;
 			case 0xef :
-					space->install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_b_2_w),state));
+					space.install_write_handler(startaddr, endaddr, write8_delegate(FUNC(pp01_state::pp01_video_b_2_w),state));
 					break;
 
 			default :
-					space->install_write_bank(startaddr, endaddr, bank);
+					space.install_write_bank(startaddr, endaddr, bank);
 					break;
 		}
 
 		state->membank(bank)->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + (data & 0x0F)* 0x1000);
 	} else if (data>=0xF8) {
-		space->install_read_bank (startaddr, endaddr, bank);
-		space->unmap_write(startaddr, endaddr);
+		space.install_read_bank (startaddr, endaddr, bank);
+		space.unmap_write(startaddr, endaddr);
 		state->membank(bank)->set_base(mem + ((data & 0x0F)-8)* 0x1000+0x10000);
 	} else {
 		logerror("%02x %02x\n",block,data);
-		space->unmap_readwrite (startaddr, endaddr);
+		space.unmap_readwrite (startaddr, endaddr);
 	}
 }
 
@@ -156,11 +156,11 @@ void pp01_state::machine_start()
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( pp01_pit_out0 )
+WRITE_LINE_MEMBER(pp01_state::pp01_pit_out0)
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( pp01_pit_out1 )
+WRITE_LINE_MEMBER(pp01_state::pp01_pit_out1)
 {
 }
 
@@ -170,12 +170,12 @@ const struct pit8253_config pp01_pit8253_intf =
 		{
 			0,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE("pit8253", pp01_pit_out0)
+			DEVCB_DRIVER_LINE_MEMBER(pp01_state,pp01_pit_out0)
 		},
 		{
 			2000000,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE("pit8253", pp01_pit_out1)
+			DEVCB_DRIVER_LINE_MEMBER(pp01_state,pp01_pit_out1)
 		},
 		{
 			2000000,
@@ -185,40 +185,36 @@ const struct pit8253_config pp01_pit8253_intf =
 	}
 };
 
-static READ8_DEVICE_HANDLER (pp01_8255_porta_r )
+READ8_MEMBER(pp01_state::pp01_8255_porta_r)
 {
-	pp01_state *state = device->machine().driver_data<pp01_state>();
-	return state->m_video_scroll;
+	return m_video_scroll;
 }
-static WRITE8_DEVICE_HANDLER (pp01_8255_porta_w )
+WRITE8_MEMBER(pp01_state::pp01_8255_porta_w)
 {
-	pp01_state *state = device->machine().driver_data<pp01_state>();
-	state->m_video_scroll = data;
+	m_video_scroll = data;
 }
 
-static READ8_DEVICE_HANDLER (pp01_8255_portb_r )
+READ8_MEMBER(pp01_state::pp01_8255_portb_r)
 {
-	pp01_state *state = device->machine().driver_data<pp01_state>();
 	static const char *const keynames[] = {
 		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
 		"LINE8", "LINE9", "LINEA", "LINEB", "LINEC", "LINED", "LINEE", "LINEF"
 	};
 
-	return (device->machine().root_device().ioport(keynames[state->m_key_line])->read() & 0x3F) | (device->machine().root_device().ioport("LINEALL")->read() & 0xC0);
+	return (machine().root_device().ioport(keynames[m_key_line])->read() & 0x3F) | (machine().root_device().ioport("LINEALL")->read() & 0xC0);
 }
-static WRITE8_DEVICE_HANDLER (pp01_8255_portb_w )
+WRITE8_MEMBER(pp01_state::pp01_8255_portb_w)
 {
 	//logerror("pp01_8255_portb_w %02x\n",data);
 
 }
 
-static WRITE8_DEVICE_HANDLER (pp01_8255_portc_w )
+WRITE8_MEMBER(pp01_state::pp01_8255_portc_w)
 {
-	pp01_state *state = device->machine().driver_data<pp01_state>();
-	state->m_key_line = data & 0x0f;
+	m_key_line = data & 0x0f;
 }
 
-static READ8_DEVICE_HANDLER (pp01_8255_portc_r )
+READ8_MEMBER(pp01_state::pp01_8255_portc_r)
 {
 	return 0xff;
 }
@@ -227,11 +223,11 @@ static READ8_DEVICE_HANDLER (pp01_8255_portc_r )
 
 I8255A_INTERFACE( pp01_ppi8255_interface )
 {
-	DEVCB_DEVICE_HANDLER("ppi8255", pp01_8255_porta_r),
-	DEVCB_DEVICE_HANDLER("ppi8255", pp01_8255_porta_w),
-	DEVCB_DEVICE_HANDLER("ppi8255", pp01_8255_portb_r),
-	DEVCB_DEVICE_HANDLER("ppi8255", pp01_8255_portb_w),
-	DEVCB_DEVICE_HANDLER("ppi8255", pp01_8255_portc_r),
-	DEVCB_DEVICE_HANDLER("ppi8255", pp01_8255_portc_w)
+	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_porta_r),
+	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_porta_w),
+	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portb_r),
+	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portb_w),
+	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portc_r),
+	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portc_w)
 };
 

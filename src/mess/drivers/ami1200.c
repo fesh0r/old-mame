@@ -38,6 +38,10 @@ public:
 	int m_oldstate[2];
 	DECLARE_WRITE32_MEMBER(aga_overlay_w);
 	DECLARE_DRIVER_INIT(a1200);
+	DECLARE_WRITE8_MEMBER(ami1200_cia_0_porta_w);
+	DECLARE_READ8_MEMBER(ami1200_cia_0_portb_r);
+	DECLARE_WRITE8_MEMBER(ami1200_cia_0_portb_w);
+	DECLARE_READ8_MEMBER(a1200_cia_0_portA_r);
 };
 
 
@@ -83,14 +87,14 @@ WRITE32_MEMBER(ami1200_state::aga_overlay_w)
  *
  *************************************/
 
-static WRITE8_DEVICE_HANDLER( ami1200_cia_0_porta_w )
+WRITE8_MEMBER(ami1200_state::ami1200_cia_0_porta_w)
 {
-	ami1200_state *state = device->machine().driver_data<ami1200_state>();
+	device_t *device = machine().device("cia_0");
 
 	/* bit 2 = Power Led on Amiga */
-	set_led_status(device->machine(), 0, !BIT(data, 1));
+	set_led_status(machine(), 0, !BIT(data, 1));
 
-	handle_cd32_joystick_cia(state, data, mos6526_r(device, 2));
+	handle_cd32_joystick_cia(this, data, mos6526_r(device, space, 2));
 }
 
 /*************************************
@@ -108,17 +112,17 @@ static WRITE8_DEVICE_HANDLER( ami1200_cia_0_porta_w )
  *
  *************************************/
 
-static READ8_DEVICE_HANDLER( ami1200_cia_0_portb_r )
+READ8_MEMBER(ami1200_state::ami1200_cia_0_portb_r)
 {
 	/* parallel port */
-	logerror("%s:CIA0_portb_r\n", device->machine().describe_context());
+	logerror("%s:CIA0_portb_r\n", machine().describe_context());
 	return 0xff;
 }
 
-static WRITE8_DEVICE_HANDLER( ami1200_cia_0_portb_w )
+WRITE8_MEMBER(ami1200_state::ami1200_cia_0_portb_w)
 {
 	/* parallel port */
-	logerror("%s:CIA0_portb_w(%02x)\n", device->machine().describe_context(), data);
+	logerror("%s:CIA0_portb_w(%02x)\n", machine().describe_context(), data);
 }
 
 static ADDRESS_MAP_START( a1200_map, AS_PROGRAM, 32, ami1200_state )
@@ -235,8 +239,6 @@ static INPUT_PORTS_START( a1200 )
 
 	PORT_START("P1MOUSEY")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(2)
-
-	PORT_INCLUDE( amiga_us_keyboard )
 INPUT_PORTS_END
 
 
@@ -246,27 +248,27 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static READ8_DEVICE_HANDLER( a1200_cia_0_portA_r )
+READ8_MEMBER(ami1200_state::a1200_cia_0_portA_r)
 {
-	UINT8 ret = device->machine().root_device().ioport("CIA0PORTA")->read() & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= device->machine().device<amiga_fdc>("fdc")->ciaapra_r();
+	UINT8 ret = machine().root_device().ioport("CIA0PORTA")->read() & 0xc0;	/* Gameport 1 and 0 buttons */
+	ret |= machine().device<amiga_fdc>("fdc")->ciaapra_r();
 	return ret;
 }
 
 
-static const mos6526_interface a1200_cia_0_intf =
+static const legacy_mos6526_interface a1200_cia_0_intf =
 {
 	DEVCB_DEVICE_LINE("cia_0", amiga_cia_0_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER("cia_0", a1200_cia_0_portA_r),
-	DEVCB_DEVICE_HANDLER("cia_0", ami1200_cia_0_porta_w),		/* port A */
-	DEVCB_DEVICE_HANDLER("cia_0", ami1200_cia_0_portb_r),
-	DEVCB_DEVICE_HANDLER("cia_0", ami1200_cia_0_portb_w)		/* port B */
+	DEVCB_DRIVER_MEMBER(ami1200_state,a1200_cia_0_portA_r),
+	DEVCB_DRIVER_MEMBER(ami1200_state,ami1200_cia_0_porta_w),		/* port A */
+	DEVCB_DRIVER_MEMBER(ami1200_state,ami1200_cia_0_portb_r),
+	DEVCB_DRIVER_MEMBER(ami1200_state,ami1200_cia_0_portb_w)		/* port B */
 };
 
-static const mos6526_interface a1200_cia_1_intf =
+static const legacy_mos6526_interface a1200_cia_1_intf =
 {
 	DEVCB_DEVICE_LINE("cia_1", amiga_cia_1_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
@@ -301,7 +303,7 @@ static MACHINE_CONFIG_START( a1200n, ami1200_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(512*2, 312)
 	MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
-	MCFG_SCREEN_UPDATE_STATIC(amiga_aga)
+	MCFG_SCREEN_UPDATE_DRIVER(ami1200_state, screen_update_amiga_aga)
 
 	MCFG_VIDEO_START_OVERRIDE(ami1200_state,amiga_aga)
 
@@ -315,8 +317,8 @@ static MACHINE_CONFIG_START( a1200n, ami1200_state )
 	MCFG_SOUND_ROUTE(3, "lspeaker", 0.25)
 
 	/* cia */
-	MCFG_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, 0, a1200_cia_0_intf)
-	MCFG_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, 0, a1200_cia_1_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, 0, a1200_cia_0_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, 0, a1200_cia_1_intf)
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68EC020_NTSC_CLOCK/2)
@@ -324,6 +326,8 @@ static MACHINE_CONFIG_START( a1200n, ami1200_state )
 	MCFG_FLOPPY_DRIVE_ADD("fd1", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fd2", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("fd3", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+
+	MCFG_AMIGA_KEYBOARD_ADD("kbd")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( a1200p, a1200n )
@@ -400,9 +404,6 @@ DRIVER_INIT_MEMBER(ami1200_state,a1200)
 	/* set up memory */
 	membank("bank1")->configure_entry(0, m_chip_ram);
 	membank("bank1")->configure_entry(1, machine().root_device().memregion("user1")->base());
-
-	/* initialize keyboard */
-	amigakbd_init(machine());
 }
 
 

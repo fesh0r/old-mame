@@ -63,24 +63,14 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_vector06(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vector06_interrupt);
+	TIMER_CALLBACK_MEMBER(reset_check_callback);
 };
 
 
 /*----------- defined in machine/vector06.c -----------*/
-
 extern const i8255_interface vector06_ppi8255_interface;
 extern const i8255_interface vector06_ppi8255_2_interface;
-
-extern MACHINE_START( vector06 );
-extern MACHINE_RESET( vector06 );
-
-extern INTERRUPT_GEN( vector06_interrupt );
-
-
-/*----------- defined in video/vector06.c -----------*/
-
-extern PALETTE_INIT( vector06 );
-extern VIDEO_START( vector06 );
-extern SCREEN_UPDATE_IND16( vector06 );
 
 #endif /* VECTOR06_H_ */

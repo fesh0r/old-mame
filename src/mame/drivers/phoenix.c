@@ -437,7 +437,7 @@ static const ay8910_interface survival_ay8910_interface =
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
 	DEVCB_NULL,
-	DEVCB_HANDLER(survival_protection_r),
+	DEVCB_DRIVER_MEMBER(phoenix_state, survival_protection_r),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -461,7 +461,7 @@ static MACHINE_CONFIG_START( phoenix, phoenix_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MCFG_SCREEN_UPDATE_STATIC(phoenix)
+	MCFG_SCREEN_UPDATE_DRIVER(phoenix_state, screen_update_phoenix)
 
 	MCFG_GFXDECODE(phoenix)
 	MCFG_PALETTE_LENGTH(256)
@@ -514,7 +514,7 @@ static I8085_CONFIG( survival_i8085_config )
 {
 	DEVCB_NULL,							/* STATUS changed callback */
 	DEVCB_NULL,							/* INTE changed callback */
-	DEVCB_LINE(survival_sid_callback),	/* SID changed callback (8085A only) */
+	DEVCB_DRIVER_LINE_MEMBER(phoenix_state, survival_sid_callback),	/* SID changed callback (8085A only) */
 	DEVCB_NULL							/* SOD changed callback (8085A only) */
 };
 
@@ -534,7 +534,7 @@ static MACHINE_CONFIG_START( survival, phoenix_state )
      */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-	MCFG_SCREEN_UPDATE_STATIC(phoenix)
+	MCFG_SCREEN_UPDATE_DRIVER(phoenix_state, screen_update_phoenix)
 
 	MCFG_GFXDECODE(phoenix)
 	MCFG_PALETTE_LENGTH(256)
@@ -1083,7 +1083,7 @@ ROM_END
 DRIVER_INIT_MEMBER(phoenix_state,condor)
 {
 	/* additional inputs for coinage */
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_port(0x5000, 0x5000, "DSW1");
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x5000, 0x5000, "DSW1");
 }
 
 

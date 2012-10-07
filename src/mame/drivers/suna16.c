@@ -361,8 +361,8 @@ ADDRESS_MAP_END
 
 MACHINE_RESET_MEMBER(suna16_state,uballoon)
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
-	uballoon_pcm_1_bankswitch_w(*space, 0, 0);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	uballoon_pcm_1_bankswitch_w(space, 0, 0);
 }
 
 
@@ -753,16 +753,15 @@ GFXDECODE_END
                             Back Street Soccer
 ***************************************************************************/
 
-static TIMER_DEVICE_CALLBACK( bssoccer_interrupt )
+TIMER_DEVICE_CALLBACK_MEMBER(suna16_state::bssoccer_interrupt)
 {
-	suna16_state *state = timer.machine().driver_data<suna16_state>();
 	int scanline = param;
 
 	if(scanline == 240)
-		state->m_maincpu->set_input_line(1, HOLD_LINE);
+		m_maincpu->set_input_line(1, HOLD_LINE);
 
 	if(scanline == 0)
-		state->m_maincpu->set_input_line(2, HOLD_LINE); // does RAM to sprite buffer copy here
+		m_maincpu->set_input_line(2, HOLD_LINE); // does RAM to sprite buffer copy here
 }
 
 static MACHINE_CONFIG_START( bssoccer, suna16_state )
@@ -770,7 +769,7 @@ static MACHINE_CONFIG_START( bssoccer, suna16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)	/* ? */
 	MCFG_CPU_PROGRAM_MAP(bssoccer_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", bssoccer_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", suna16_state, bssoccer_interrupt, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3579545)		/* Z80B */
 	MCFG_CPU_PROGRAM_MAP(bssoccer_sound_map)
@@ -791,7 +790,7 @@ static MACHINE_CONFIG_START( bssoccer, suna16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
-	MCFG_SCREEN_UPDATE_STATIC(suna16)
+	MCFG_SCREEN_UPDATE_DRIVER(suna16_state, screen_update_suna16)
 
 	MCFG_GFXDECODE(suna16)
 	MCFG_PALETTE_LENGTH(512)
@@ -828,7 +827,7 @@ static MACHINE_CONFIG_START( uballoon, suna16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)
 	MCFG_CPU_PROGRAM_MAP(uballoon_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", suna16_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3579545)	/* ? */
 	MCFG_CPU_PROGRAM_MAP(uballoon_sound_map)
@@ -849,7 +848,7 @@ static MACHINE_CONFIG_START( uballoon, suna16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
-	MCFG_SCREEN_UPDATE_STATIC(suna16)
+	MCFG_SCREEN_UPDATE_DRIVER(suna16_state, screen_update_suna16)
 
 	MCFG_GFXDECODE(suna16)
 	MCFG_PALETTE_LENGTH(512)
@@ -878,7 +877,7 @@ static MACHINE_CONFIG_START( sunaq, suna16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 24000000/4)
 	MCFG_CPU_PROGRAM_MAP(sunaq_map)
-	MCFG_CPU_VBLANK_INT("screen", irq1_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", suna16_state,  irq1_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 14318000/4)
 	MCFG_CPU_PROGRAM_MAP(sunaq_sound_map)
@@ -897,7 +896,7 @@ static MACHINE_CONFIG_START( sunaq, suna16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
-	MCFG_SCREEN_UPDATE_STATIC(suna16)
+	MCFG_SCREEN_UPDATE_DRIVER(suna16_state, screen_update_suna16)
 
 	MCFG_GFXDECODE(suna16)
 	MCFG_PALETTE_LENGTH(512)
@@ -944,7 +943,7 @@ static MACHINE_CONFIG_START( bestbest, suna16_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 24000000/4)
 	MCFG_CPU_PROGRAM_MAP(bestbest_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", bssoccer_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", suna16_state, bssoccer_interrupt, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 24000000/4)
 	MCFG_CPU_PROGRAM_MAP(bestbest_sound_map)
@@ -963,7 +962,7 @@ static MACHINE_CONFIG_START( bestbest, suna16_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(256, 256)
 	MCFG_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
-	MCFG_SCREEN_UPDATE_STATIC(bestbest)
+	MCFG_SCREEN_UPDATE_DRIVER(suna16_state, screen_update_bestbest)
 
 	MCFG_GFXDECODE(bestbest)
 	MCFG_PALETTE_LENGTH(256*8)

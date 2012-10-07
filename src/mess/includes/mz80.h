@@ -54,12 +54,15 @@ public:
 	DECLARE_DRIVER_INIT(mz80k);
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_mz80k(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_mz80kj(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_mz80a(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(ne555_tempo_callback);
 };
 
 
 /*----------- defined in machine/mz80.c -----------*/
 
-extern MACHINE_RESET( mz80k );
 extern const i8255_interface mz80k_8255_int;
 extern const struct pit8253_config mz80k_pit8253_config;
 
@@ -68,10 +71,5 @@ extern const struct pit8253_config mz80k_pit8253_config;
 
 extern const gfx_layout mz80k_charlayout;
 extern const gfx_layout mz80kj_charlayout;
-
-extern VIDEO_START( mz80k );
-extern SCREEN_UPDATE_IND16( mz80k );
-extern SCREEN_UPDATE_IND16( mz80kj );
-extern SCREEN_UPDATE_IND16( mz80a );
 
 #endif /* MZ80_H_ */

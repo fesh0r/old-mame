@@ -31,10 +31,10 @@ WRITE_LINE_MEMBER( mc80_state::ctc_z1_w )
 {
 }
 
-static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
+WRITE_LINE_MEMBER(mc80_state::ctc_z2_w)
 {
-	downcast<z80ctc_device *>(device)->trg0(state);
-	downcast<z80ctc_device *>(device)->trg1(state);
+	downcast<z80ctc_device *>(machine().device("z80ctc"))->trg0(state);
+	downcast<z80ctc_device *>(machine().device("z80ctc"))->trg1(state);
 }
 
 Z80CTC_INTERFACE( mc8020_ctc_intf )
@@ -42,7 +42,7 @@ Z80CTC_INTERFACE( mc8020_ctc_intf )
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_DRIVER_LINE_MEMBER(mc80_state, ctc_z0_w),
 	DEVCB_DRIVER_LINE_MEMBER(mc80_state, ctc_z1_w),
-	DEVCB_LINE(ctc_z2_w)
+	DEVCB_DRIVER_LINE_MEMBER(mc80_state,ctc_z2_w)
 };
 
 
@@ -194,11 +194,11 @@ Z80CTC_INTERFACE( mc8030_asp_z80ctc_intf )
 // SIO CH A in = keyboard; out = beeper; CH B = IFSS (??)
 const z80sio_interface mc8030_asp_z80sio_intf =
 {
-	0,	/* interrupt handler */
-	0,			/* DTR changed handler */
-	0,			/* RTS changed handler */
-	0,			/* BREAK changed handler */
-	0,			/* transmit handler */
-	0			/* receive handler */
+	DEVCB_NULL,	/* interrupt handler */
+	DEVCB_NULL,			/* DTR changed handler */
+	DEVCB_NULL,			/* RTS changed handler */
+	DEVCB_NULL,			/* BREAK changed handler */
+	DEVCB_NULL,			/* transmit handler */
+	DEVCB_NULL			/* receive handler */
 };
 

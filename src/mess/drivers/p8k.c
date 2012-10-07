@@ -175,6 +175,7 @@ WRITE8_MEMBER( p8k_state::p8k_port24_w )
 
 WRITE8_MEMBER( p8k_state::kbd_put )
 {
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 	m_term_data = data;
 	// This is a dreadful hack..
 	// simulate interrupt by saving current pc on
@@ -182,9 +183,9 @@ WRITE8_MEMBER( p8k_state::kbd_put )
 	UINT16 spreg = m_maincpu->state_int(Z80_SP);
 	UINT16 pcreg = m_maincpu->state_int(Z80_PC);
 	spreg--;
-	space.write_byte(spreg, pcreg >> 8);
+	mem.write_byte(spreg, pcreg >> 8);
 	spreg--;
-	space.write_byte(spreg, pcreg);
+	mem.write_byte(spreg, pcreg);
 	m_maincpu->set_state_int(Z80_SP, spreg);
 	m_maincpu->set_state_int(Z80_PC, 0x078A);
 }
@@ -201,7 +202,7 @@ static GENERIC_TERMINAL_INTERFACE( terminal_intf )
 
 ****************************************************************************/
 
-static void p8k_daisy_interrupt(device_t *device, int state)
+static WRITE_LINE_DEVICE_HANDLER( p8k_daisy_interrupt )
 {
 	device->machine().device("maincpu")->execute().set_input_line(0, state);
 }
@@ -219,8 +220,8 @@ static WRITE_LINE_DEVICE_HANDLER( p8k_dma_irq_w )
 	p8k_daisy_interrupt(device, state);
 }
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static Z80DMA_INTERFACE( p8k_dma_intf )
 {
@@ -300,36 +301,36 @@ static Z80PIO_INTERFACE( p8k_pio_2_intf )
 
 /* Z80 SIO 0 */
 
-static WRITE8_DEVICE_HANDLER( pk8_sio_0_serial_transmit )
+static WRITE16_DEVICE_HANDLER( pk8_sio_0_serial_transmit )
 {
 // send character to terminal
 }
 
 static const z80sio_interface p8k_sio_0_intf =
 {
-	p8k_daisy_interrupt,			/* interrupt handler */
-	NULL,					/* DTR changed handler */
-	NULL,					/* RTS changed handler */
-	NULL,					/* BREAK changed handler */
-	pk8_sio_0_serial_transmit,	/* transmit handler */
-	NULL					/* receive handler */
+	DEVCB_LINE(p8k_daisy_interrupt),			/* interrupt handler */
+	DEVCB_NULL,					/* DTR changed handler */
+	DEVCB_NULL,					/* RTS changed handler */
+	DEVCB_NULL,					/* BREAK changed handler */
+	DEVCB_HANDLER(pk8_sio_0_serial_transmit),	/* transmit handler */
+	DEVCB_NULL					/* receive handler */
 };
 
 /* Z80 SIO 1 */
 
-static WRITE8_DEVICE_HANDLER( pk8_sio_1_serial_transmit )
+static WRITE16_DEVICE_HANDLER( pk8_sio_1_serial_transmit )
 {
 // send character to terminal
 }
 
 static const z80sio_interface p8k_sio_1_intf =
 {
-	p8k_daisy_interrupt,			/* interrupt handler */
-	NULL,					/* DTR changed handler */
-	NULL,					/* RTS changed handler */
-	NULL,					/* BREAK changed handler */
-	pk8_sio_1_serial_transmit,	/* transmit handler */
-	NULL					/* receive handler */
+	DEVCB_LINE(p8k_daisy_interrupt),			/* interrupt handler */
+	DEVCB_NULL,					/* DTR changed handler */
+	DEVCB_NULL,					/* RTS changed handler */
+	DEVCB_NULL,					/* BREAK changed handler */
+	DEVCB_HANDLER(pk8_sio_1_serial_transmit),	/* transmit handler */
+	DEVCB_NULL					/* receive handler */
 };
 
 /* Z80 Daisy Chain */
@@ -438,13 +439,14 @@ DRIVER_INIT_MEMBER(p8k_state,p8k)
 
 WRITE8_MEMBER( p8k_state::kbd_put_16 )
 {
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 	// keyboard int handler is at 0x0700
 	m_term_data = data;
 	// This is another dire hack..
-	UINT8 offs = space.read_byte(0x43a5);
+	UINT8 offs = mem.read_byte(0x43a5);
 	UINT16 addr = 0x41b0 + (UINT16) offs;
-	space.write_byte(addr, data);
-	space.write_byte(0x43a0, 1);
+	mem.write_byte(addr, data);
+	mem.write_byte(0x43a0, 1);
 }
 
 static GENERIC_TERMINAL_INTERFACE( terminal_intf_16 )
@@ -511,12 +513,12 @@ static WRITE16_DEVICE_HANDLER( p8k_16_pio_w )
 
 static READ16_DEVICE_HANDLER( p8k_16_ctc_r )
 {
-	return (UINT16)downcast<z80ctc_device *>(device)->read(*device->machine().memory().first_space(),(offset & 0x06) >> 1);
+	return (UINT16)downcast<z80ctc_device *>(device)->read(space.machine().driver_data()->generic_space(),(offset & 0x06) >> 1);
 }
 
 static WRITE16_DEVICE_HANDLER( p8k_16_ctc_w )
 {
-	downcast<z80ctc_device *>(device)->write(*device->machine().memory().first_space(), (offset & 0x06) >> 1, (UINT8)(data & 0xff));
+	downcast<z80ctc_device *>(device)->write(space.machine().driver_data()->generic_space(), (offset & 0x06) >> 1, (UINT8)(data & 0xff));
 }
 
 READ16_MEMBER( p8k_state::portff82_r )
@@ -568,7 +570,7 @@ ADDRESS_MAP_END
 
 ****************************************************************************/
 
-static void p8k_16_daisy_interrupt(device_t *device, int state)
+static WRITE_LINE_DEVICE_HANDLER( p8k_16_daisy_interrupt )
 {
 	// this must be studied a little bit more :-)
 }
@@ -634,36 +636,36 @@ static const z80pio_interface p8k_16_pio_2_intf =
 
 /* Z80 SIO 0 */
 
-static WRITE8_DEVICE_HANDLER( pk8_16_sio_0_serial_transmit )
+static WRITE16_DEVICE_HANDLER( pk8_16_sio_0_serial_transmit )
 {
 // send character to terminal
 }
 
 static const z80sio_interface p8k_16_sio_0_intf =
 {
-	p8k_16_daisy_interrupt,			/* interrupt handler */
-	NULL,					/* DTR changed handler */
-	NULL,					/* RTS changed handler */
-	NULL,					/* BREAK changed handler */
-	pk8_16_sio_0_serial_transmit,	/* transmit handler */
-	NULL					/* receive handler */
+	DEVCB_LINE(p8k_16_daisy_interrupt),			/* interrupt handler */
+	DEVCB_NULL,					/* DTR changed handler */
+	DEVCB_NULL,					/* RTS changed handler */
+	DEVCB_NULL,					/* BREAK changed handler */
+	DEVCB_HANDLER(pk8_16_sio_0_serial_transmit),	/* transmit handler */
+	DEVCB_NULL					/* receive handler */
 };
 
 /* Z80 SIO 1 */
 
-static WRITE8_DEVICE_HANDLER( pk8_16_sio_1_serial_transmit )
+static WRITE16_DEVICE_HANDLER( pk8_16_sio_1_serial_transmit )
 {
 // send character to terminal
 }
 
 static const z80sio_interface p8k_16_sio_1_intf =
 {
-	p8k_16_daisy_interrupt,			/* interrupt handler */
-	NULL,					/* DTR changed handler */
-	NULL,					/* RTS changed handler */
-	NULL,					/* BREAK changed handler */
-	pk8_16_sio_1_serial_transmit,	/* transmit handler */
-	NULL					/* receive handler */
+	DEVCB_LINE(p8k_16_daisy_interrupt),			/* interrupt handler */
+	DEVCB_NULL,					/* DTR changed handler */
+	DEVCB_NULL,					/* RTS changed handler */
+	DEVCB_NULL,					/* BREAK changed handler */
+	DEVCB_HANDLER(pk8_16_sio_1_serial_transmit),	/* transmit handler */
+	DEVCB_NULL					/* receive handler */
 };
 
 /* Z80 Daisy Chain */

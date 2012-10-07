@@ -678,6 +678,7 @@ $(MESSOBJ)/apple.a:				\
     $(MESS_MACHINE)/a2alfam2.o \
     $(MESS_MACHINE)/laser128.o \
     $(MESS_MACHINE)/a2echoii.o \
+    $(MESS_MACHINE)/a2arcadebd.o \
 	$(MESS_MACHINE)/lisa.o		\
 	$(MESS_DRIVERS)/lisa.o		\
 	$(MESS_MACHINE)/nubus.o     \
@@ -885,9 +886,10 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/diag264_lb_iec.o	\
 	$(MESS_MACHINE)/diag264_lb_tape.o	\
 	$(MESS_MACHINE)/diag264_lb_user.o	\
-	$(MESS_DRIVERS)/cbmb.o		\
-	$(MESS_MACHINE)/cbmb.o		\
-	$(MESS_VIDEO)/cbmb.o		\
+	$(MESS_DRIVERS)/cbm2.o		\
+	$(MESS_MACHINE)/cbm2exp.o	\
+	$(MESS_MACHINE)/cbm2_std.o	\
+	$(MESS_MACHINE)/cbm2_graphic.o	\
 	$(MESS_DRIVERS)/c65.o		\
 	$(MESS_MACHINE)/c65.o		\
 	$(MESS_DRIVERS)/c128.o		\
@@ -1565,7 +1567,7 @@ $(MESSOBJ)/sega.a:				\
 	$(MESS_DRIVERS)/sg1000.o	\
 	$(MAME_MACHINE)/md_cart.o	\
 	$(MESS_DRIVERS)/megadriv.o  \
-	$(MESS_DRIVERS)/dc.o		\
+	$(MESS_DRIVERS)/dccons.o	\
 	$(MAME_MACHINE)/gdrom.o 	\
 	$(MESS_MACHINE)/dccons.o	\
 	$(MESS_MACHINE)/sms.o	\

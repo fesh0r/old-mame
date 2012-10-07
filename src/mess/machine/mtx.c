@@ -27,9 +27,9 @@
     mtx_strobe_r - centronics strobe
 -------------------------------------------------*/
 
-READ8_DEVICE_HANDLER( mtx_strobe_r )
+READ8_MEMBER(mtx_state::mtx_strobe_r)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>(CENTRONICS_TAG);
+	centronics_device *centronics = machine().device<centronics_device>(CENTRONICS_TAG);
 	/* set STROBE low */
 	centronics->strobe_w(FALSE);
 
@@ -74,7 +74,7 @@ static void bankswitch(running_machine &machine, UINT8 data)
 
     */
 	mtx_state *state = machine.driver_data<mtx_state>();
-	address_space *program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
+	address_space &program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
 	ram_device *messram = machine.device<ram_device>(RAM_TAG);
 
 //  UINT8 cbm_mode = data >> 7 & 0x01;
@@ -87,19 +87,19 @@ static void bankswitch(running_machine &machine, UINT8 data)
 	/* set ram bank, for invalid pages a nop-handler will be installed */
 	if (ram_page >= messram->size()/0x8000)
 	{
-		program->nop_readwrite(0x4000, 0x7fff);
-		program->nop_readwrite(0x8000, 0xbfff);
+		program.nop_readwrite(0x4000, 0x7fff);
+		program.nop_readwrite(0x8000, 0xbfff);
 	}
 	else if (ram_page + 1 == messram->size()/0x8000)
 	{
-		program->nop_readwrite(0x4000, 0x7fff);
-		program->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+		program.nop_readwrite(0x4000, 0x7fff);
+		program.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 		state->membank("bank4")->set_entry(ram_page);
 	}
 	else
 	{
-		program->install_readwrite_bank(0x4000, 0x7fff, "bank3");
-		program->install_readwrite_bank(0x8000, 0xbfff, "bank4");
+		program.install_readwrite_bank(0x4000, 0x7fff, "bank3");
+		program.install_readwrite_bank(0x8000, 0xbfff, "bank4");
 		state->membank("bank3")->set_entry(ram_page);
 		state->membank("bank4")->set_entry(ram_page);
 	}
@@ -114,12 +114,9 @@ WRITE8_MEMBER(mtx_state::mtx_bankswitch_w)
     mtx_sound_strobe_r - sound strobe
 -------------------------------------------------*/
 
-READ8_DEVICE_HANDLER( mtx_sound_strobe_r )
+READ8_MEMBER(mtx_state::mtx_sound_strobe_r)
 {
-	mtx_state *state = device->machine().driver_data<mtx_state>();
-
-	sn76496_w(device, 0, state->m_sound_latch);
-
+	m_sn->write(space, 0, m_sound_latch);
 	return 0xff;
 }
 
@@ -129,7 +126,6 @@ READ8_DEVICE_HANDLER( mtx_sound_strobe_r )
 
 WRITE8_MEMBER(mtx_state::mtx_sound_latch_w)
 {
-
 	m_sound_latch = data;
 }
 
@@ -137,18 +133,18 @@ WRITE8_MEMBER(mtx_state::mtx_sound_latch_w)
     mtx_cst_w - cassette write
 -------------------------------------------------*/
 
-WRITE8_DEVICE_HANDLER( mtx_cst_w )
+WRITE8_MEMBER(mtx_state::mtx_cst_w)
 {
-	dynamic_cast<cassette_image_device *>(device)->output( BIT(data, 0) ? -1 : 1);
+	dynamic_cast<cassette_image_device *>(machine().device(CASSETTE_TAG))->output( BIT(data, 0) ? -1 : 1);
 }
 
 /*-------------------------------------------------
     mtx_prt_r - centronics status
 -------------------------------------------------*/
 
-READ8_DEVICE_HANDLER( mtx_prt_r )
+READ8_MEMBER(mtx_state::mtx_prt_r)
 {
-	centronics_device *centronics = device->machine().device<centronics_device>(CENTRONICS_TAG);
+	centronics_device *centronics = machine().device<centronics_device>(CENTRONICS_TAG);
 
 	/*
 
@@ -191,7 +187,6 @@ READ8_DEVICE_HANDLER( mtx_prt_r )
 
 WRITE8_MEMBER(mtx_state::mtx_sense_w)
 {
-
 	m_key_sense = data;
 }
 
@@ -201,7 +196,6 @@ WRITE8_MEMBER(mtx_state::mtx_sense_w)
 
 READ8_MEMBER(mtx_state::mtx_key_lo_r)
 {
-
 	UINT8 data = 0xff;
 
 	if (!(m_key_sense & 0x01)) data &= ioport("ROW0")->read();
@@ -222,7 +216,6 @@ READ8_MEMBER(mtx_state::mtx_key_lo_r)
 
 READ8_MEMBER(mtx_state::mtx_key_hi_r)
 {
-
 	UINT8 data = ioport("country_code")->read();
 
 	if (!(m_key_sense & 0x01)) data &= ioport("ROW0")->read() >> 8;
@@ -333,7 +326,7 @@ WRITE8_MEMBER(mtx_state::hrx_attr_w)
 
 SNAPSHOT_LOAD( mtx )
 {
-	address_space *program = image.device().machine().device(Z80_TAG)->memory().space(AS_PROGRAM);
+	address_space &program = image.device().machine().device(Z80_TAG)->memory().space(AS_PROGRAM);
 
 	UINT8 header[18];
 	UINT16 addr;
@@ -345,9 +338,9 @@ SNAPSHOT_LOAD( mtx )
 	{
 		/* long header */
 		addr = pick_integer_le(header, 16, 2);
-		void *ptr = program->get_write_ptr(addr);
+		void *ptr = program.get_write_ptr(addr);
 		image.fread( ptr, 599);
-		ptr = program->get_write_ptr(0xc000);
+		ptr = program.get_write_ptr(0xc000);
 		image.fread( ptr, snapshot_size - 599 - 18);
 	}
 	else
@@ -355,9 +348,9 @@ SNAPSHOT_LOAD( mtx )
 		/* short header */
 		addr = pick_integer_le(header, 0, 2);
 		image.fseek(4, SEEK_SET);
-		void *ptr = program->get_write_ptr(addr);
+		void *ptr = program.get_write_ptr(addr);
 		image.fread( ptr, 599);
-		ptr = program->get_write_ptr(0xc000);
+		ptr = program.get_write_ptr(0xc000);
 		image.fread( ptr, snapshot_size - 599 - 4);
 	}
 

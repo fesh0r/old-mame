@@ -306,7 +306,7 @@ WRITE8_MEMBER(namcos86_state::cus115_w)
 		case 1:
 		case 2:
 		case 3:
-			namco_63701x_w(machine().device("namco2"), (offset & 0x1e00) >> 9,data);
+			namco_63701x_w(machine().device("namco2"), space, (offset & 0x1e00) >> 9,data);
 			break;
 
 		case 4:
@@ -992,16 +992,16 @@ static MACHINE_CONFIG_START( hopmappy, namcos86_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("cpu1", M6809, 49152000/32)
 	MCFG_CPU_PROGRAM_MAP(cpu1_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_assert)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos86_state,  irq0_line_assert)
 
 	MCFG_CPU_ADD("cpu2", M6809, 49152000/32)
 	MCFG_CPU_PROGRAM_MAP(hopmappy_cpu2_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_assert)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos86_state,  irq0_line_assert)
 
 	MCFG_CPU_ADD("mcu", HD63701, 49152000/8)	/* or compatible 6808 with extra instructions */
 	MCFG_CPU_PROGRAM_MAP(hopmappy_mcu_map)
 	MCFG_CPU_IO_MAP(mcu_port_map)
-	MCFG_CPU_VBLANK_INT("screen", irq0_line_hold)	/* ??? */
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", namcos86_state,  irq0_line_hold)	/* ??? */
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(48000))	/* heavy interleaving needed to avoid hangs in rthunder */
 
@@ -1012,8 +1012,8 @@ static MACHINE_CONFIG_START( hopmappy, namcos86_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(3 + 8*8, 3 + 44*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(namcos86)
-	MCFG_SCREEN_VBLANK_STATIC(namcos86)
+	MCFG_SCREEN_UPDATE_DRIVER(namcos86_state, screen_update_namcos86)
+	MCFG_SCREEN_VBLANK_DRIVER(namcos86_state, screen_eof_namcos86)
 
 	MCFG_GFXDECODE(namcos86)
 	MCFG_PALETTE_LENGTH(4096)

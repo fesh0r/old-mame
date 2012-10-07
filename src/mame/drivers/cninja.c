@@ -68,12 +68,10 @@ WRITE16_MEMBER(cninja_state::stoneage_sound_w)
 	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static TIMER_DEVICE_CALLBACK( interrupt_gen )
+TIMER_DEVICE_CALLBACK_MEMBER(cninja_state::interrupt_gen)
 {
-	cninja_state *state = timer.machine().driver_data<cninja_state>();
-
-	state->m_maincpu->set_input_line((state->m_irq_mask & 0x10) ? 3 : 4, ASSERT_LINE);
-	state->m_raster_irq_timer->reset();
+	m_maincpu->set_input_line((m_irq_mask & 0x10) ? 3 : 4, ASSERT_LINE);
+	m_raster_irq_timer->reset();
 }
 
 READ16_MEMBER(cninja_state::cninja_irq_r)
@@ -149,14 +147,14 @@ READ16_MEMBER(cninja_state::robocop2_prot_r)
 WRITE16_MEMBER(cninja_state::cninja_pf12_control_w)
 {
 	machine().primary_screen->update_partial(machine().primary_screen->vpos());
-	deco16ic_pf_control_w(m_deco_tilegen1, offset, data, mem_mask);
+	deco16ic_pf_control_w(m_deco_tilegen1, space, offset, data, mem_mask);
 }
 
 
 WRITE16_MEMBER(cninja_state::cninja_pf34_control_w)
 {
 	machine().primary_screen->update_partial(machine().primary_screen->vpos());
-	deco16ic_pf_control_w(m_deco_tilegen2, offset, data, mem_mask);
+	deco16ic_pf_control_w(m_deco_tilegen2, space, offset, data, mem_mask);
 }
 
 
@@ -906,20 +904,20 @@ static MACHINE_CONFIG_START( cninja, cninja_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(cninja_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cninja_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/8)	/* Accurate */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
 
 
-	MCFG_TIMER_ADD("raster_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("raster_timer", cninja_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(58)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(cninja)
+	MCFG_SCREEN_UPDATE_DRIVER(cninja_state, screen_update_cninja)
 
 	MCFG_GFXDECODE(cninja)
 	MCFG_PALETTE_LENGTH(2048)
@@ -958,20 +956,20 @@ static MACHINE_CONFIG_START( stoneage, cninja_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(cninja_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cninja_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3579545)
 	MCFG_CPU_PROGRAM_MAP(stoneage_s_map)
 
 
-	MCFG_TIMER_ADD("raster_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("raster_timer", cninja_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(58)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(cninja)
+	MCFG_SCREEN_UPDATE_DRIVER(cninja_state, screen_update_cninja)
 
 	MCFG_GFXDECODE(cninja)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1010,20 +1008,20 @@ static MACHINE_CONFIG_START( cninjabl, cninja_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(cninjabl_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cninja_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3579545)
 	MCFG_CPU_PROGRAM_MAP(stoneage_s_map)
 
 
-	MCFG_TIMER_ADD("raster_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("raster_timer", cninja_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(58)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(cninjabl)
+	MCFG_SCREEN_UPDATE_DRIVER(cninja_state, screen_update_cninjabl)
 
 	MCFG_GFXDECODE(cninjabl)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1053,20 +1051,20 @@ static MACHINE_CONFIG_START( edrandy, cninja_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(edrandy_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cninja_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/8)	/* Accurate */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
 
 
-	MCFG_TIMER_ADD("raster_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("raster_timer", cninja_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(58)
 	MCFG_SCREEN_SIZE(32*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(edrandy)
+	MCFG_SCREEN_UPDATE_DRIVER(cninja_state, screen_update_edrandy)
 
 	MCFG_GFXDECODE(cninja)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1105,20 +1103,20 @@ static MACHINE_CONFIG_START( robocop2, cninja_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)
 	MCFG_CPU_PROGRAM_MAP(robocop2_map)
-	MCFG_CPU_VBLANK_INT("screen", irq5_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cninja_state,  irq5_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/8)	/* Accurate */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
 
 
-	MCFG_TIMER_ADD("raster_timer", interrupt_gen)
+	MCFG_TIMER_DRIVER_ADD("raster_timer", cninja_state, interrupt_gen)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(robocop2)
+	MCFG_SCREEN_UPDATE_DRIVER(cninja_state, screen_update_robocop2)
 
 	MCFG_GFXDECODE(robocop2)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1160,7 +1158,7 @@ static MACHINE_CONFIG_START( mutantf, cninja_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 14000000)
 	MCFG_CPU_PROGRAM_MAP(mutantf_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", cninja_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280,32220000/8)
 	MCFG_CPU_PROGRAM_MAP(sound_map_mutantf)
@@ -1171,7 +1169,7 @@ static MACHINE_CONFIG_START( mutantf, cninja_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(mutantf)
+	MCFG_SCREEN_UPDATE_DRIVER(cninja_state, screen_update_mutantf)
 
 	MCFG_VIDEO_START_OVERRIDE(cninja_state,mutantf)
 
@@ -2083,13 +2081,13 @@ static void cninja_patch( running_machine &machine )
 
 DRIVER_INIT_MEMBER(cninja_state,cninja)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x1bc0a8, 0x1bc0a9, write16_delegate(FUNC(cninja_state::cninja_sound_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x1bc0a8, 0x1bc0a9, write16_delegate(FUNC(cninja_state::cninja_sound_w),this));
 	cninja_patch(machine());
 }
 
 DRIVER_INIT_MEMBER(cninja_state,stoneage)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x1bc0a8, 0x1bc0a9, write16_delegate(FUNC(cninja_state::stoneage_sound_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x1bc0a8, 0x1bc0a9, write16_delegate(FUNC(cninja_state::stoneage_sound_w),this));
 }
 
 DRIVER_INIT_MEMBER(cninja_state,mutantf)

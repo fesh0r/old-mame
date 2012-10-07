@@ -278,11 +278,11 @@ static MACHINE_CONFIG_START( gotcha, gotcha_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000,14318180)	/* 14.31818 MHz */
 	MCFG_CPU_PROGRAM_MAP(gotcha_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gotcha_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80,6000000)	/* 6 MHz */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
-//  MCFG_CPU_VBLANK_INT("screen", nmi_line_pulse)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gotcha_state,  nmi_line_pulse)
 
 
 	/* video hardware */
@@ -291,7 +291,7 @@ static MACHINE_CONFIG_START( gotcha, gotcha_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(gotcha)
+	MCFG_SCREEN_UPDATE_DRIVER(gotcha_state, screen_update_gotcha)
 
 	MCFG_GFXDECODE(gotcha)
 	MCFG_PALETTE_LENGTH(768)

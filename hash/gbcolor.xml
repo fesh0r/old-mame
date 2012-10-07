@@ -9,7 +9,6 @@ To investigate:
 Undumped:
 - 102 Dalmatas Cachorros Al Rescate CGB-B99S-ESP
 - Army Men 2 CGB-BA2P-EUU
-- Army Men - Air Combat  CGB-BATP-EUR
 - Bionic Command CGB-AV4P-AUS
 - Caterpillar Construction Zone DMG-AR4P-EUU? [unclear pic]
 - Daffy Duck - Fowl Play DMG-AD7P-UKV
@@ -17,21 +16,16 @@ Undumped:
 - Dragon Warrior Monsters DMG-AWQP-UKV
 - Elmo's 123s DMG-AE3P-EUR
 - Elmo's ABCs DMG-AEAP-EUR
-- Heroes of Might and Magic CGB-AUHP-EUR/EUU
 - Hot Wheels - Stunt Track Driver DMG-AHEP-EUR
 - Joust &amp; Defender DMG-AAOP-EUR
 - The Lion King - Simba's Mighty Adventure CGB-BLKP-UKV
 - Mary-Kate and Ashley - Crush Course CGB-BCVP-UKV
 - Mary-Kate and Ashley - Pocket Planner DMG-BMAP-EUR
-- Matchbox Emergency Patrol CGB-BEPP-EUR
 - Mickey's Racing Adventure CGB-ARNP-EUR
-- Microsoft Pinball Arcade CGB-BMQP-EUR
 - MTV Sports - Skateboarding featuring Andy MacDonald CGB-BMTP-EUR
 - NHL 2000 DMG-ANRP-EUR
 - Rampage 2 - Universal Tour CGB-AUTP-EUR
-- Road Rash CGB-BRRP-EUR
 - Rocket Power - Gettin' Air CGB-BRUP-EUR
-- Rugrats - Totally Angelica CGB-BAGP-EUR
 - San Francisco Rush 2049 (Euro, fr/de/nl) [small pic]
 - Sesame Street Sports (Euro) [small pic]
 - Shaun Palmer's Pro Snowboarder CGB-B3SP-AUS
@@ -40,14 +34,12 @@ Undumped:
 - TOCA Touring Car Championship CGB-BTCP-EUR
 - Toy Story Racer CGB-BTBP-EUR? [unclear pic]
 - Yoda Stories DMG-AYDP-EUR
-- WWF Attitude CGB-AWTP-AUS
 
 nointro guys also list the following
 - 1942 (Euro)
 - Mega Man Xtreme (Euro)
 - Moon Patrol &amp; Spy Hunter (Euro)
 - The New Adventures of Mary-Kate &amp; Ashley (Euro)
-- Razor Freestyle Scooter (Euro)
 
 Undumped GBC protos:
   - Jet Force Gemini
@@ -675,10 +667,10 @@ Undumped Pirates:
 
 	<software name="amenairc">
 		<!-- Notes: GBC only -->
-		<description>Army Men - Air Combat (USA)</description>
+		<description>Army Men - Air Combat (Euro, USA)</description>
 		<year>2000</year>
 		<publisher>3DO</publisher>
-		<info name="serial" value="CGB-BATE-USA"/>
+		<info name="serial" value="CGB-BATE-USA, CGB-BATP-EUR"/>
 		<part name="cart" interface="gameboy_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="army men - air combat (usa) (en,fr,de).bin" size="1048576" crc="b0d1de8c" sha1="4e1d964d31013e79ecae4a49dcd3777cc7e06af2" offset="000000" />
@@ -6539,6 +6531,19 @@ Undumped Pirates:
 
 	<software name="mightmag">
 		<!-- Notes: GBC only -->
+		<description>Heroes of Might and Magic (Euro)</description>
+		<year>2000</year>
+		<publisher>3DO</publisher>
+		<info name="serial" value="CGB-AUHP-EUR"/>
+		<part name="cart" interface="gameboy_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="heroesmmauhp.bin" size="1048576" crc="e0b9fd3b" sha1="d6471849187edcf68e61ed98558d9326a44cf2dc" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="mightmagu" cloneof="mightmag">
+		<!-- Notes: GBC only -->
 		<description>Heroes of Might and Magic (USA)</description>
 		<year>2000</year>
 		<publisher>3DO</publisher>
@@ -9564,10 +9569,10 @@ Undumped Pirates:
 
 	<software name="matchbox">
 		<!-- Notes: GBC only -->
-		<description>Matchbox Emergency Patrol (USA)</description>
+		<description>Matchbox Emergency Patrol (Euro, USA)</description>
 		<year>2001</year>
 		<publisher>THQ</publisher>
-		<info name="serial" value="CGB-BEPE-USA"/>
+		<info name="serial" value="CGB-BEPE-USA, CGB-BEPP-EUR"/>
 		<part name="cart" interface="gameboy_cart">
 			<dataarea name="rom" size="2097152">
 				<rom name="matchbox emergency patrol (usa).bin" size="2097152" crc="a3f23d7e" sha1="8697a1a2d3575527c06114b422bd855384cf8905" offset="000000" />
@@ -10160,6 +10165,19 @@ Undumped Pirates:
 	</software>
 
 	<software name="mspinb">
+		<!-- Notes: GBC only -->
+		<description>Microsoft Pinball Arcade (Euro)</description>
+		<year>2001</year>
+		<publisher>Cryo Interactive</publisher>
+		<info name="serial" value="CGB-BMQP-EUR"/>
+		<part name="cart" interface="gameboy_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="mspinballbmqp.bin" size="1048576" crc="4eb7db14" sha1="f2874f0f3023d96edbdb94e5c0dc181d8baa3efb" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="mspinbu" cloneof="mspinb">
 		<!-- Notes: GBC only -->
 		<description>Microsoft Pinball Arcade (USA)</description>
 		<year>2001</year>
@@ -13867,6 +13885,19 @@ Undumped Pirates:
 
 	<software name="razorfs">
 		<!-- Notes: GBC only -->
+		<description>Freestyle Scooter (Euro)</description>
+		<year>2001</year>
+		<publisher>Crave Entertainment</publisher>
+		<info name="serial" value="CGB-BRZP-EUR"/>
+		<part name="cart" interface="gameboy_cart">
+			<dataarea name="rom" size="1048576">
+				<rom name="freestylesbrzp.bin" size="1048576" crc="ee79117d" sha1="cf6ae174584bbfb5ae30478841114443adc00245" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="razorfsu" cloneof="razorfs">
+		<!-- Notes: GBC only -->
 		<description>Razor Freestyle Scooter (USA)</description>
 		<year>2001</year>
 		<publisher>Crave Entertainment</publisher>
@@ -14087,10 +14118,10 @@ Undumped Pirates:
 
 	<software name="roadrash">
 		<!-- Notes: GBC only -->
-		<description>Road Rash (USA)</description>
+		<description>Road Rash (Euro, USA)</description>
 		<year>2000</year>
 		<publisher>Electronic Arts</publisher>
-		<info name="serial" value="CGB-BRRE-USA"/>
+		<info name="serial" value="CGB-BRRE-USA, CGB-BRRP-EUR"/>
 		<part name="cart" interface="gameboy_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="road rash (usa).bin" size="1048576" crc="11025eeb" sha1="b3329c0f92c1a6a6cfa894f487f68a7fcceb5844" offset="000000" />
@@ -14456,10 +14487,10 @@ Undumped Pirates:
 
 	<software name="rugtotan">
 		<!-- Notes: GBC only -->
-		<description>Rugrats - Totally Angelica (USA)</description>
+		<description>Rugrats - Totally Angelica (Euro, USA)</description>
 		<year>2000</year>
 		<publisher>THQ</publisher>
-		<info name="serial" value="CGB-BAGE-USA"/>
+		<info name="serial" value="CGB-BAGE-USA, CGB-BAGP-EUR"/>
 		<part name="cart" interface="gameboy_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="rugrats - totally angelica (usa).bin" size="1048576" crc="fc6195ef" sha1="d4396a974aee16f74a5a80f4845c24dde5a083d6" offset="000000" />
@@ -14645,10 +14676,10 @@ Undumped Pirates:
 
 	<software name="sf2049">
 		<!-- Notes: GBC only -->
-		<description>San Francisco Rush 2049 (USA)</description>
+		<description>San Francisco Rush 2049 (Euro, USA)</description>
 		<year>2000</year>
 		<publisher>Midway</publisher>
-		<info name="serial" value="CGB-ASXE-USA"/>
+		<info name="serial" value="CGB-ASXE-USA, CGB-ASXP-EUU"/>
 		<part name="cart" interface="gameboy_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="san francisco rush 2049 (usa).bin" size="1048576" crc="ef368f16" sha1="b783b770e6680745dcc0b599199a4429957c874e" offset="000000" />
@@ -18298,10 +18329,10 @@ Undumped Pirates:
 
 	<software name="wwfattit">
 		<!-- Notes: GBC only -->
-		<description>WWF Attitude (USA)</description>
+		<description>WWF Attitude (Euro, USA)</description>
 		<year>1999</year>
 		<publisher>Acclaim Entertainment</publisher>
-		<info name="serial" value="CGB-AWTE-USA"/>
+		<info name="serial" value="CGB-AWTE-USA, CGB-AWTP-EUR"/>
 		<part name="cart" interface="gameboy_cart">
 			<dataarea name="rom" size="1048576">
 				<rom name="wwf attitude (usa).bin" size="1048576" crc="d5fdf68a" sha1="d5c37eabe3311666123b22f44a973c06d96bfce0" offset="000000" />
@@ -19072,6 +19103,31 @@ Undumped Pirates:
 
 
 <!-- Other Asian Pirate dumps -->
+
+	<software name="smbl3">
+		<description>Shu Ma Bao Long 3 - Shui Jing Ban (Chi)</description>
+		<year>20??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<info name="alt_title" value="數碼暴龍3-水晶版"/>
+		<part name="cart" interface="gameboy_cart">
+			<dataarea name="rom" size="2097152">
+				<rom name="shu ma bao long 3 - shui jing ban (unlicensed, chinese) [raw dump].bin" size="2097152" crc="8bfbe00a" sha1="ca35357c3be6c55ca1ec692203ce0944f5082c4c" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="smbl9">
+		<description>Shu Ma Bao Long 9 - Bao Long Pian 2002 (Chi)</description>
+		<year>20??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<info name="serial" value="CK019-1"/>
+		<info name="alt_title" value="數碼暴龍3-水晶版"/>
+		<part name="cart" interface="gameboy_cart">
+			<dataarea name="rom" size="4194304">
+				<rom name="shu ma bao long 9 - bao long pian 2002 (unlicensed, chinese) [raw dump].bin" size="4194304" crc="76ab97f6" sha1="c3d9e17c9b01959b64a7c662479c755f757f58c9" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
 
 <!-- 1byte difference between this and the hacked version... check what is about! -->
 	<software name="chongwu" supported="no">

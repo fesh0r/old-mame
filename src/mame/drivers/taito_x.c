@@ -829,7 +829,7 @@ static MACHINE_CONFIG_START( superman, taitox_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(superman_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", taitox_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -847,7 +847,7 @@ static MACHINE_CONFIG_START( superman, taitox_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(52*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(seta_no_layers)
+	MCFG_SCREEN_UPDATE_DRIVER(taitox_state, screen_update_seta_no_layers)
 
 	MCFG_GFXDECODE(superman)
 	MCFG_PALETTE_LENGTH(2048)
@@ -872,7 +872,7 @@ static MACHINE_CONFIG_START( daisenpu, taitox_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(daisenpu_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", taitox_state,  irq2_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(daisenpu_sound_map)
@@ -889,7 +889,7 @@ static MACHINE_CONFIG_START( daisenpu, taitox_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(52*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 2*8, 30*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(seta_no_layers)
+	MCFG_SCREEN_UPDATE_DRIVER(taitox_state, screen_update_seta_no_layers)
 
 	MCFG_GFXDECODE(superman)
 	MCFG_PALETTE_LENGTH(2048)
@@ -912,7 +912,7 @@ static MACHINE_CONFIG_START( gigandes, taitox_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)	/* 8 MHz? */
 	MCFG_CPU_PROGRAM_MAP(gigandes_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", taitox_state,  irq2_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -929,7 +929,7 @@ static MACHINE_CONFIG_START( gigandes, taitox_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(52*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(seta_no_layers)
+	MCFG_SCREEN_UPDATE_DRIVER(taitox_state, screen_update_seta_no_layers)
 
 	MCFG_GFXDECODE(superman)
 	MCFG_PALETTE_LENGTH(2048)
@@ -954,7 +954,7 @@ static MACHINE_CONFIG_START( ballbros, taitox_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, 8000000)	/* 8 MHz? */
 	MCFG_CPU_PROGRAM_MAP(ballbros_map)
-	MCFG_CPU_VBLANK_INT("screen", irq2_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", taitox_state,  irq2_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -971,7 +971,7 @@ static MACHINE_CONFIG_START( ballbros, taitox_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(52*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(seta_no_layers)
+	MCFG_SCREEN_UPDATE_DRIVER(taitox_state, screen_update_seta_no_layers)
 
 	MCFG_GFXDECODE(ballbros)
 	MCFG_PALETTE_LENGTH(2048)
@@ -1269,7 +1269,7 @@ ROM_END
 
 DRIVER_INIT_MEMBER(taitox_state,kyustrkr)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x900000, 0x90000f, write16_delegate(FUNC(taitox_state::kyustrkr_input_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x900000, 0x90000f, write16_delegate(FUNC(taitox_state::kyustrkr_input_w),this));
 }
 
 

@@ -51,13 +51,12 @@ public:
 	DECLARE_MACHINE_START(llc1);
 	DECLARE_MACHINE_RESET(llc1);
 	DECLARE_MACHINE_RESET(llc2);
+	UINT32 screen_update_llc1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_llc2(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 
 /*----------- defined in machine/llc.c -----------*/
-extern MACHINE_START( llc1 );
-extern MACHINE_RESET( llc1 );
-
 extern const z80pio_interface llc1_z80pio1_intf;
 extern const z80pio_interface llc1_z80pio2_intf;
 extern const z80pio_interface llc2_z80pio1_intf;
@@ -65,13 +64,5 @@ extern const z80pio_interface llc2_z80pio2_intf;
 
 extern const z80ctc_interface llc1_ctc_intf;
 extern const z80ctc_interface llc2_ctc_intf;
-
-extern MACHINE_RESET( llc2 );
-
-/*----------- defined in video/llc.c -----------*/
-
-extern VIDEO_START( llc );
-extern SCREEN_UPDATE_IND16( llc1 );
-extern SCREEN_UPDATE_IND16( llc2 );
 
 #endif

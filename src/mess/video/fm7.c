@@ -94,10 +94,9 @@ WRITE8_MEMBER(fm7_state::fm7_vram_access_w)
 	m_video.vram_access = 0;
 }
 
-static TIMER_CALLBACK( fm77av_alu_task_end )
+TIMER_CALLBACK_MEMBER(fm7_state::fm77av_alu_task_end)
 {
-	fm7_state *state = machine.driver_data<fm7_state>();
-	state->m_alu.busy = 0;
+	m_alu.busy = 0;
 }
 
 static void fm7_alu_mask_write(fm7_state *state, UINT32 offset, int bank, UINT8 dat)
@@ -628,7 +627,7 @@ static void fm77av_line_draw(running_machine &machine)
 
 	// set timer to disable busy flag
 	// 1/16 us for each byte changed
-	machine.scheduler().timer_set(attotime::from_usec(byte_count/16), FUNC(fm77av_alu_task_end));
+	machine.scheduler().timer_set(attotime::from_usec(byte_count/16), timer_expired_delegate(FUNC(fm7_state::fm77av_alu_task_end),state));
 }
 
 READ8_MEMBER(fm7_state::fm7_vram_r)
@@ -1350,18 +1349,17 @@ WRITE8_MEMBER(fm7_state::fm77av_alu_w)
 	}
 }
 
-TIMER_CALLBACK( fm77av_vsync )
+TIMER_CALLBACK_MEMBER(fm7_state::fm77av_vsync)
 {
-	fm7_state *state = machine.driver_data<fm7_state>();
 	if(param == 0)  // start of vsync
 	{
-		state->m_video.vsync_flag = 1;
-		state->m_fm77av_vsync_timer->adjust(attotime::from_usec(510),1);  // VSync length for 200 line modes = 0.51ms
+		m_video.vsync_flag = 1;
+		m_fm77av_vsync_timer->adjust(attotime::from_usec(510),1);  // VSync length for 200 line modes = 0.51ms
 	}
 	else
 	{
-		state->m_video.vsync_flag = 0;
-		state->m_fm77av_vsync_timer->adjust(machine.primary_screen->time_until_vblank_end());
+		m_video.vsync_flag = 0;
+		m_fm77av_vsync_timer->adjust(machine().primary_screen->time_until_vblank_end());
 	}
 }
 
@@ -1511,9 +1509,8 @@ void fm7_state::video_start()
 	m_video.vsync_flag = 0;
 }
 
-SCREEN_UPDATE_IND16( fm7 )
+UINT32 fm7_state::screen_update_fm7(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	fm7_state *state = screen.machine().driver_data<fm7_state>();
 	UINT8 code_r = 0,code_g = 0,code_b = 0;
 	UINT8 code_r2 = 0,code_g2 = 0,code_b2 = 0;
 	UINT8 code_r3 = 0,code_g3 = 0,code_b3 = 0;
@@ -1522,38 +1519,38 @@ SCREEN_UPDATE_IND16( fm7 )
 	int y, x, b;
 	UINT16 page = 0x0000;
 
-	if(state->m_video.display_video_page != 0)
+	if(m_video.display_video_page != 0)
 		page = 0xc000;
 
-	if(state->m_video.crt_enable == 0)
+	if(m_video.crt_enable == 0)
 		return 0;
 
-	if(state->m_video.modestatus & 0x40)  // 320x200 mode
+	if(m_video.modestatus & 0x40)  // 320x200 mode
 	{
 		for (y = 0; y < 200; y++)
 		{
 			for (x = 0; x < 40; x++)
 			{
-				if(!(state->m_video.multi_page & 0x40))
+				if(!(m_video.multi_page & 0x40))
 				{
-					code_r = state->m_video_ram[0x8000 + ((y*40 + x + state->m_video.vram_offset) & 0x1fff)];
-					code_r2 = state->m_video_ram[0xa000 + ((y*40 + x + state->m_video.vram_offset) & 0x1fff)];
-					code_r3 = state->m_video_ram[0x14000 + ((y*40 + x + state->m_video.vram_offset2) & 0x1fff)];
-					code_r4 = state->m_video_ram[0x16000 + ((y*40 + x + state->m_video.vram_offset2) & 0x1fff)];
+					code_r = m_video_ram[0x8000 + ((y*40 + x + m_video.vram_offset) & 0x1fff)];
+					code_r2 = m_video_ram[0xa000 + ((y*40 + x + m_video.vram_offset) & 0x1fff)];
+					code_r3 = m_video_ram[0x14000 + ((y*40 + x + m_video.vram_offset2) & 0x1fff)];
+					code_r4 = m_video_ram[0x16000 + ((y*40 + x + m_video.vram_offset2) & 0x1fff)];
 				}
-				if(!(state->m_video.multi_page & 0x20))
+				if(!(m_video.multi_page & 0x20))
 				{
-					code_g = state->m_video_ram[0x4000 + ((y*40 + x + state->m_video.vram_offset) & 0x1fff)];
-					code_g2 = state->m_video_ram[0x6000 + ((y*40 + x + state->m_video.vram_offset) & 0x1fff)];
-					code_g3 = state->m_video_ram[0x10000 + ((y*40 + x + state->m_video.vram_offset2) & 0x1fff)];
-					code_g4 = state->m_video_ram[0x12000 + ((y*40 + x + state->m_video.vram_offset2) & 0x1fff)];
+					code_g = m_video_ram[0x4000 + ((y*40 + x + m_video.vram_offset) & 0x1fff)];
+					code_g2 = m_video_ram[0x6000 + ((y*40 + x + m_video.vram_offset) & 0x1fff)];
+					code_g3 = m_video_ram[0x10000 + ((y*40 + x + m_video.vram_offset2) & 0x1fff)];
+					code_g4 = m_video_ram[0x12000 + ((y*40 + x + m_video.vram_offset2) & 0x1fff)];
 				}
-				if(!(state->m_video.multi_page & 0x10))
+				if(!(m_video.multi_page & 0x10))
 				{
-					code_b = state->m_video_ram[0x0000 + ((y*40 + x + state->m_video.vram_offset) & 0x1fff)];
-					code_b2 = state->m_video_ram[0x2000 + ((y*40 + x + state->m_video.vram_offset) & 0x1fff)];
-					code_b3 = state->m_video_ram[0xc000 + ((y*40 + x + state->m_video.vram_offset2) & 0x1fff)];
-					code_b4 = state->m_video_ram[0xe000 + ((y*40 + x + state->m_video.vram_offset2) & 0x1fff)];
+					code_b = m_video_ram[0x0000 + ((y*40 + x + m_video.vram_offset) & 0x1fff)];
+					code_b2 = m_video_ram[0x2000 + ((y*40 + x + m_video.vram_offset) & 0x1fff)];
+					code_b3 = m_video_ram[0xc000 + ((y*40 + x + m_video.vram_offset2) & 0x1fff)];
+					code_b4 = m_video_ram[0xe000 + ((y*40 + x + m_video.vram_offset2) & 0x1fff)];
 				}
 				for (b = 0; b < 8; b++)
 				{
@@ -1572,12 +1569,12 @@ SCREEN_UPDATE_IND16( fm7 )
 		{
 			for (x = 0; x < 80; x++)
 			{
-				if(!(state->m_video.multi_page & 0x40))
-					code_r = state->m_video_ram[page + 0x8000 + ((y*80 + x + state->m_video.vram_offset) & 0x3fff)];
-				if(!(state->m_video.multi_page & 0x20))
-					code_g = state->m_video_ram[page + 0x4000 + ((y*80 + x + state->m_video.vram_offset) & 0x3fff)];
-				if(!(state->m_video.multi_page & 0x10))
-					code_b = state->m_video_ram[page + 0x0000 + ((y*80 + x + state->m_video.vram_offset) & 0x3fff)];
+				if(!(m_video.multi_page & 0x40))
+					code_r = m_video_ram[page + 0x8000 + ((y*80 + x + m_video.vram_offset) & 0x3fff)];
+				if(!(m_video.multi_page & 0x20))
+					code_g = m_video_ram[page + 0x4000 + ((y*80 + x + m_video.vram_offset) & 0x3fff)];
+				if(!(m_video.multi_page & 0x10))
+					code_b = m_video_ram[page + 0x0000 + ((y*80 + x + m_video.vram_offset) & 0x3fff)];
 				for (b = 0; b < 8; b++)
 				{
 					col = (((code_r >> b) & 0x01) ? 4 : 0) + (((code_g >> b) & 0x01) ? 2 : 0) + (((code_b >> b) & 0x01) ? 1 : 0);

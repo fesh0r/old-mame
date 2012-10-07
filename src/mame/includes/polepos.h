@@ -79,6 +79,8 @@ public:
 	DECLARE_MACHINE_RESET(polepos);
 	DECLARE_VIDEO_START(polepos);
 	DECLARE_PALETTE_INIT(polepos);
+	UINT32 screen_update_polepos(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_DEVICE_CALLBACK_MEMBER(polepos_scanline);
 };
 
 
@@ -108,17 +110,7 @@ private:
 
 extern const device_type POLEPOS;
 
-
-WRITE8_DEVICE_HANDLER( polepos_engine_sound_lsb_w );
-WRITE8_DEVICE_HANDLER( polepos_engine_sound_msb_w );
+DECLARE_WRITE8_DEVICE_HANDLER( polepos_engine_sound_lsb_w );
+DECLARE_WRITE8_DEVICE_HANDLER( polepos_engine_sound_msb_w );
 
 DISCRETE_SOUND_EXTERN( polepos );
-
-
-/*----------- defined in video/polepos.c -----------*/
-
-
-
-SCREEN_UPDATE_IND16( polepos );
-
-

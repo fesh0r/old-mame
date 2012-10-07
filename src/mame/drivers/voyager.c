@@ -78,13 +78,13 @@ static void ide_interrupt(device_t *device, int state);
 READ8_MEMBER(voyager_state::at_dma8237_2_r)
 {
 	device_t *device = machine().device("dma8237_2");
-	return i8237_r(device, offset / 2);
+	return i8237_r(device, space, offset / 2);
 }
 
 WRITE8_MEMBER(voyager_state::at_dma8237_2_w)
 {
 	device_t *device = machine().device("dma8237_2");
-	i8237_w(device, offset / 2, data);
+	i8237_w(device, space, offset / 2, data);
 }
 
 READ8_MEMBER(voyager_state::at_page8_r)
@@ -192,13 +192,13 @@ static I8237_INTERFACE( dma8237_2_config )
 READ32_MEMBER(voyager_state::ide_r)
 {
 	device_t *device = machine().device("ide");
-	return ide_controller32_r(device, 0x1f0/4 + offset, mem_mask);
+	return ide_controller32_r(device, space, 0x1f0/4 + offset, mem_mask);
 }
 
 WRITE32_MEMBER(voyager_state::ide_w)
 {
 	device_t *device = machine().device("ide");
-	ide_controller32_w(device, 0x1f0/4 + offset, data, mem_mask);
+	ide_controller32_w(device, space, 0x1f0/4 + offset, data, mem_mask);
 }
 
 
@@ -208,14 +208,14 @@ WRITE32_MEMBER(voyager_state::ide_w)
 READ32_MEMBER(voyager_state::fdc_r)
 {
 	device_t *device = machine().device("ide");
-	return ide_controller32_r(device, 0x3f0/4 + offset, mem_mask);
+	return ide_controller32_r(device, space, 0x3f0/4 + offset, mem_mask);
 }
 
 WRITE32_MEMBER(voyager_state::fdc_w)
 {
 	device_t *device = machine().device("ide");
 	//mame_printf_debug("FDC: write %08X, %08X, %08X\n", data, offset, mem_mask);
-	ide_controller32_w(device, 0x3f0/4 + offset, data, mem_mask);
+	ide_controller32_w(device, space, 0x3f0/4 + offset, data, mem_mask);
 }
 
 
@@ -395,7 +395,7 @@ WRITE32_MEMBER(voyager_state::bios_ram_w)
 
 static ADDRESS_MAP_START( voyager_map, AS_PROGRAM, 32, voyager_state )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAM
-	AM_RANGE(0x000a0000, 0x000bffff) AM_RAM // VGA VRAM
+	AM_RANGE(0x000a0000, 0x000bffff) AM_DEVREADWRITE8("vga", trident_vga_device, mem_r, mem_w, 0xffffffff) // VGA VRAM
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_RAM AM_REGION("video_bios", 0)
 	AM_RANGE(0x000c8000, 0x000cffff) AM_NOP
 	//AM_RANGE(0x000d0000, 0x000d0003) AM_RAM  // XYLINX - Sincronus serial communication
@@ -445,6 +445,9 @@ static ADDRESS_MAP_START( voyager_io, AS_IO, 32, voyager_state )
 	AM_RANGE(0x02f8, 0x02ff) AM_NOP //To debug
 	AM_RANGE(0x0320, 0x038f) AM_NOP //To debug
 	AM_RANGE(0x03a0, 0x03a7) AM_NOP //To debug
+	AM_RANGE(0x03b0, 0x03bf) AM_DEVREADWRITE8("vga", trident_vga_device, port_03b0_r, port_03b0_w, 0xffffffff)
+	AM_RANGE(0x03c0, 0x03cf) AM_DEVREADWRITE8("vga", trident_vga_device, port_03c0_r, port_03c0_w, 0xffffffff)
+	AM_RANGE(0x03d0, 0x03df) AM_DEVREADWRITE8("vga", trident_vga_device, port_03d0_r, port_03d0_w, 0xffffffff)
 	AM_RANGE(0x03e0, 0x03ef) AM_NOP //To debug
 	AM_RANGE(0x0378, 0x037f) AM_NOP //To debug
 	// AM_RANGE(0x0300, 0x03af) AM_NOP
@@ -650,8 +653,6 @@ static IRQ_CALLBACK(irq_callback)
 	return pic8259_acknowledge( state->m_pic8259_1);
 }
 
-static READ8_HANDLER( vga_setting ) { return 0xff; } // hard-code to color
-
 void voyager_state::machine_start()
 {
 	machine().device("maincpu")->execute().set_irq_acknowledge_callback(irq_callback);
@@ -790,7 +791,7 @@ static MACHINE_CONFIG_START( voyager, voyager_state )
 	MCFG_PCI_BUS_LEGACY_DEVICE(7, NULL, intel82371ab_pci_r, intel82371ab_pci_w)
 
 	/* video hardware */
-	MCFG_FRAGMENT_ADD( pcvideo_vga )
+	MCFG_FRAGMENT_ADD( pcvideo_trident_vga )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker","rspeaker")
@@ -800,8 +801,6 @@ DRIVER_INIT_MEMBER(voyager_state,voyager)
 {
 	m_bios_ram = auto_alloc_array(machine(), UINT32, 0x20000/4);
 
-	pc_vga_init(machine(), vga_setting, NULL);
-	pc_svga_trident_io_init(machine(), machine().device("maincpu")->memory().space(AS_PROGRAM), 0xa0000, machine().device("maincpu")->memory().space(AS_IO), 0x0000);
 	init_pc_common(machine(), PCCOMMON_KEYBOARD_AT, voyager_set_keyb_int);
 
 	intel82439tx_init(machine());

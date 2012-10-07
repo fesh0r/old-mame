@@ -62,28 +62,15 @@ public:
 	DECLARE_MACHINE_START(orionz80);
 	DECLARE_MACHINE_RESET(orionz80);
 	DECLARE_MACHINE_RESET(orionpro);
+	UINT32 screen_update_orion128(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(orionz80_interrupt);
+	DECLARE_READ8_MEMBER(orion_romdisk_porta_r);
+	DECLARE_WRITE8_MEMBER(orion_romdisk_portb_w);
+	DECLARE_WRITE8_MEMBER(orion_romdisk_portc_w);
 };
 
-
 /*----------- defined in machine/orion.c -----------*/
-
 extern const i8255_interface orion128_ppi8255_interface_1;
-
-extern MACHINE_START( orion128 );
-extern MACHINE_RESET( orion128 );
-
-extern MACHINE_START( orionz80 );
-extern MACHINE_RESET( orionz80 );
-extern INTERRUPT_GEN( orionz80_interrupt );
-
-
-extern MACHINE_RESET( orionpro );
-
-/*----------- defined in video/orion.c -----------*/
-
-extern VIDEO_START( orion128 );
-extern SCREEN_UPDATE_IND16( orion128 );
-extern PALETTE_INIT( orion128 );
 
 #endif /* ORION_H_ */
 

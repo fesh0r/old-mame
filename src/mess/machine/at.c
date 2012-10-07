@@ -163,34 +163,37 @@ WRITE_LINE_MEMBER( at_state::pc_dma_hrq_changed )
 
 READ8_MEMBER(at_state::pc_dma_read_byte)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return 0xff;
 	UINT8 result;
 	offs_t page_offset = (((offs_t) m_dma_offset[0][m_dma_channel]) << 16) & 0xFF0000;
 
-	result = space.read_byte(page_offset + offset);
+	result = prog_space.read_byte(page_offset + offset);
 	return result;
 }
 
 
 WRITE8_MEMBER(at_state::pc_dma_write_byte)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return;
 	offs_t page_offset = (((offs_t) m_dma_offset[0][m_dma_channel]) << 16) & 0xFF0000;
 
-	space.write_byte(page_offset + offset, data);
+	prog_space.write_byte(page_offset + offset, data);
 }
 
 
 READ8_MEMBER(at_state::pc_dma_read_word)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return 0xff;
 	UINT16 result;
 	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFE0000;
 
-	result = space.read_word(page_offset + ( offset << 1 ) );
+	result = prog_space.read_word(page_offset + ( offset << 1 ) );
 	m_dma_high_byte = result & 0xFF00;
 
 	return result & 0xFF;
@@ -199,11 +202,12 @@ READ8_MEMBER(at_state::pc_dma_read_word)
 
 WRITE8_MEMBER(at_state::pc_dma_write_word)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return;
 	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFE0000;
 
-	space.write_word(page_offset + ( offset << 1 ), m_dma_high_byte | data);
+	prog_space.write_word(page_offset + ( offset << 1 ), m_dma_high_byte | data);
 }
 
 READ8_MEMBER( at_state::pc_dma8237_0_dack_r ) { return m_isabus->dack_r(0); }
@@ -316,7 +320,7 @@ WRITE8_MEMBER( at_state::at_portb_w )
 static void init_at_common(running_machine &machine)
 {
 	at_state *state = machine.driver_data<at_state>();
-	address_space* space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space& space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	// The CS4031 chipset does this itself
 	if (machine.device("cs4031") == NULL)
@@ -327,8 +331,8 @@ static void init_at_common(running_machine &machine)
 		if (machine.device<ram_device>(RAM_TAG)->size() > 0x0a0000)
 		{
 			offs_t ram_limit = 0x100000 + machine.device<ram_device>(RAM_TAG)->size() - 0x0a0000;
-			space->install_read_bank(0x100000,  ram_limit - 1, "bank1");
-			space->install_write_bank(0x100000,  ram_limit - 1, "bank1");
+			space.install_read_bank(0x100000,  ram_limit - 1, "bank1");
+			space.install_write_bank(0x100000,  ram_limit - 1, "bank1");
 			state->membank("bank1")->set_base(machine.device<ram_device>(RAM_TAG)->pointer() + 0xa0000);
 		}
 	}

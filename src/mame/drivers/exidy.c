@@ -806,7 +806,7 @@ static MACHINE_CONFIG_START( base, exidy_state )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6502, EXIDY_CPU_CLOCK)
-	MCFG_CPU_VBLANK_INT("screen", exidy_vblank_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", exidy_state,  exidy_vblank_interrupt)
 
 	/* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
@@ -815,7 +815,7 @@ static MACHINE_CONFIG_START( base, exidy_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(EXIDY_PIXEL_CLOCK, EXIDY_HTOTAL, EXIDY_HBEND, EXIDY_HBSTART, EXIDY_VTOTAL, EXIDY_VBEND, EXIDY_VBSTART)
-	MCFG_SCREEN_UPDATE_STATIC(exidy)
+	MCFG_SCREEN_UPDATE_DRIVER(exidy_state, screen_update_exidy)
 
 MACHINE_CONFIG_END
 
@@ -878,7 +878,7 @@ static MACHINE_CONFIG_DERIVED( teetert, venture )
 
 	/* basic machine hardware */
 	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_PERIODIC_INT(nmi_line_pulse,10*60)
+	MCFG_CPU_PERIODIC_INT_DRIVER(exidy_state, nmi_line_pulse, 10*60)
 
 	MCFG_MACHINE_START_OVERRIDE(exidy_state, teetert )
 
@@ -1462,7 +1462,7 @@ DRIVER_INIT_MEMBER(exidy_state,phantoma)
 	m_color_latch[0] = 0x09;
 
 	/* the ROM is actually mapped high */
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_bank(0xf800, 0xffff, "bank1");
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0xf800, 0xffff, "bank1");
 	membank("bank1")->set_base(memregion("maincpu")->base() + 0xf800);
 }
 
@@ -1493,12 +1493,12 @@ DRIVER_INIT_MEMBER(exidy_state,pepper2)
 
 DRIVER_INIT_MEMBER(exidy_state,fax)
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	exidy_video_config(machine(), 0x04, 0x04, TRUE);
 
 	/* reset the ROM bank */
-	fax_bank_select_w(*space,0,0);
+	fax_bank_select_w(space,0,0);
 }
 
 

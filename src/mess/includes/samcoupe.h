@@ -82,6 +82,16 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void palette_init();
+	INTERRUPT_GEN_MEMBER(samcoupe_frame_interrupt);
+	TIMER_CALLBACK_MEMBER(irq_off);
+	TIMER_CALLBACK_MEMBER(samcoupe_mouse_reset);
+	TIMER_CALLBACK_MEMBER(sam_video_update_callback);
+	DECLARE_READ8_MEMBER(samcoupe_lpt1_busy_r);
+	DECLARE_WRITE8_MEMBER(samcoupe_lpt1_strobe_w);
+	DECLARE_READ8_MEMBER(samcoupe_lpt2_busy_r);
+	DECLARE_WRITE8_MEMBER(samcoupe_lpt2_strobe_w);
+	DECLARE_READ8_MEMBER(samcoupe_rtc_r);
+	DECLARE_WRITE8_MEMBER(samcoupe_rtc_w);
 };
 
 
@@ -92,16 +102,7 @@ void samcoupe_irq(device_t *device, UINT8 src);
 
 /*----------- defined in machine/samcoupe.c -----------*/
 
-void samcoupe_update_memory(address_space *space);
+void samcoupe_update_memory(address_space &space);
 UINT8 samcoupe_mouse_r(running_machine &machine);
-
-
-
-
-
-/*----------- defined in video/samcoupe.c -----------*/
-
-TIMER_CALLBACK( sam_video_update_callback );
-
 
 #endif /* SAMCOUPE_H_ */

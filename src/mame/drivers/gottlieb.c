@@ -220,8 +220,8 @@ VBlank duration: 1/VSYNC * (16/256) = 1017.6 us
  *
  *************************************/
 
-static TIMER_CALLBACK( laserdisc_bit_callback );
-static TIMER_CALLBACK( laserdisc_philips_callback );
+
+
 
 
 
@@ -244,13 +244,13 @@ void gottlieb_state::machine_start()
 	if (m_laserdisc != NULL)
 	{
 		/* attach to the I/O ports */
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_read_handler(0x05805, 0x05807, 0, 0x07f8, read8_delegate(FUNC(gottlieb_state::laserdisc_status_r),this));
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x05805, 0x05805, 0, 0x07f8, write8_delegate(FUNC(gottlieb_state::laserdisc_command_w),this));	/* command for the player */
-		machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x05806, 0x05806, 0, 0x07f8, write8_delegate(FUNC(gottlieb_state::laserdisc_select_w),this));
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x05805, 0x05807, 0, 0x07f8, read8_delegate(FUNC(gottlieb_state::laserdisc_status_r),this));
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x05805, 0x05805, 0, 0x07f8, write8_delegate(FUNC(gottlieb_state::laserdisc_command_w),this));	/* command for the player */
+		machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x05806, 0x05806, 0, 0x07f8, write8_delegate(FUNC(gottlieb_state::laserdisc_select_w),this));
 
 		/* allocate a timer for serial transmission, and one for philips code processing */
-		m_laserdisc_bit_timer = machine().scheduler().timer_alloc(FUNC(laserdisc_bit_callback));
-		m_laserdisc_philips_timer = machine().scheduler().timer_alloc(FUNC(laserdisc_philips_callback));
+		m_laserdisc_bit_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(gottlieb_state::laserdisc_bit_callback),this));
+		m_laserdisc_philips_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(gottlieb_state::laserdisc_philips_callback),this));
 
 		/* create some audio RAM */
 		m_laserdisc_audio_buffer = auto_alloc_array(machine(), UINT8, AUDIORAM_SIZE);
@@ -420,10 +420,9 @@ WRITE8_MEMBER(gottlieb_state::laserdisc_command_w)
  *
  *************************************/
 
-static TIMER_CALLBACK( laserdisc_philips_callback )
+TIMER_CALLBACK_MEMBER(gottlieb_state::laserdisc_philips_callback)
 {
-	gottlieb_state *state = machine.driver_data<gottlieb_state>();
-	UINT32 newcode = state->m_laserdisc->get_field_code((param == 17) ? LASERDISC_CODE_LINE17 : LASERDISC_CODE_LINE18, TRUE);
+	UINT32 newcode = m_laserdisc->get_field_code((param == 17) ? LASERDISC_CODE_LINE17 : LASERDISC_CODE_LINE18, TRUE);
 
 	/* the PR8210 sends line 17/18 data on each frame; the laserdisc interface
        board receives notification and latches the most recent frame number */
@@ -431,34 +430,32 @@ static TIMER_CALLBACK( laserdisc_philips_callback )
 	/* the logic detects a valid code when the top 4 bits are all 1s */
 	if ((newcode & 0xf00000) == 0xf00000)
 	{
-		state->m_laserdisc_philips_code = newcode;
-		state->m_laserdisc_status = (state->m_laserdisc_status & ~0x07) | ((newcode >> 16) & 7);
+		m_laserdisc_philips_code = newcode;
+		m_laserdisc_status = (m_laserdisc_status & ~0x07) | ((newcode >> 16) & 7);
 	}
 
 	/* toggle to the next one */
 	param = (param == 17) ? 18 : 17;
-	state->m_laserdisc_philips_timer->adjust(machine.primary_screen->time_until_pos(param * 2), param);
+	m_laserdisc_philips_timer->adjust(machine().primary_screen->time_until_pos(param * 2), param);
 }
 
 
-static TIMER_CALLBACK( laserdisc_bit_off_callback )
+TIMER_CALLBACK_MEMBER(gottlieb_state::laserdisc_bit_off_callback)
 {
-	gottlieb_state *state = machine.driver_data<gottlieb_state>();
 	/* deassert the control line */
-	state->m_laserdisc->control_w(CLEAR_LINE);
+	m_laserdisc->control_w(CLEAR_LINE);
 }
 
 
-static TIMER_CALLBACK( laserdisc_bit_callback )
+TIMER_CALLBACK_MEMBER(gottlieb_state::laserdisc_bit_callback)
 {
-	gottlieb_state *state = machine.driver_data<gottlieb_state>();
 	UINT8 bitsleft = param >> 16;
 	UINT8 data = param;
 	attotime duration;
 
 	/* assert the line and set a timer for deassertion */
-	state->m_laserdisc->control_w(ASSERT_LINE);
-	machine.scheduler().timer_set(LASERDISC_CLOCK * 10, FUNC(laserdisc_bit_off_callback));
+	m_laserdisc->control_w(ASSERT_LINE);
+	machine().scheduler().timer_set(LASERDISC_CLOCK * 10, timer_expired_delegate(FUNC(gottlieb_state::laserdisc_bit_off_callback),this));
 
 	/* determine how long for the next command; there is a 555 timer with a
        variable resistor controlling the timing of the pulses. Nominally, the
@@ -470,9 +467,9 @@ static TIMER_CALLBACK( laserdisc_bit_callback )
 
 	/* if we're not out of bits, set a timer for the next one; else set the ready bit */
 	if (bitsleft-- != 0)
-		state->m_laserdisc_bit_timer->adjust(duration, (bitsleft << 16) | data);
+		m_laserdisc_bit_timer->adjust(duration, (bitsleft << 16) | data);
 	else
-		state->m_laserdisc_status |= 0x10;
+		m_laserdisc_status |= 0x10;
 }
 
 
@@ -651,27 +648,26 @@ static void laserdisc_audio_process(device_t *dummy, laserdisc_device &device, i
  *
  *************************************/
 
-static TIMER_CALLBACK( nmi_clear )
+TIMER_CALLBACK_MEMBER(gottlieb_state::nmi_clear)
 {
-	machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
-static INTERRUPT_GEN( gottlieb_interrupt )
+INTERRUPT_GEN_MEMBER(gottlieb_state::gottlieb_interrupt)
 {
-	gottlieb_state *state = device->machine().driver_data<gottlieb_state>();
 	/* assert the NMI and set a timer to clear it at the first visible line */
-	device->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
-	device->machine().scheduler().timer_set(device->machine().primary_screen->time_until_pos(0), FUNC(nmi_clear));
+	device.execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+	machine().scheduler().timer_set(machine().primary_screen->time_until_pos(0), timer_expired_delegate(FUNC(gottlieb_state::nmi_clear),this));
 
 	/* if we have a laserdisc, update it */
-	if (state->m_laserdisc != NULL)
+	if (m_laserdisc != NULL)
 	{
 		/* set the "disc ready" bit, which basically indicates whether or not we have a proper video frame */
-		if (!state->m_laserdisc->video_active())
-			state->m_laserdisc_status &= ~0x20;
+		if (!m_laserdisc->video_active())
+			m_laserdisc_status &= ~0x20;
 		else
-			state->m_laserdisc_status |= 0x20;
+			m_laserdisc_status |= 0x20;
 	}
 }
 
@@ -1711,7 +1707,7 @@ static MACHINE_CONFIG_START( gottlieb_core, gottlieb_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I8088, CPU_CLOCK/3)
 	MCFG_CPU_PROGRAM_MAP(gottlieb_map)
-	MCFG_CPU_VBLANK_INT("screen", gottlieb_interrupt)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", gottlieb_state,  gottlieb_interrupt)
 
 	MCFG_NVRAM_ADD_1FILL("nvram")
 	MCFG_WATCHDOG_VBLANK_INIT(16)
@@ -1719,7 +1715,7 @@ static MACHINE_CONFIG_START( gottlieb_core, gottlieb_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(SYSTEM_CLOCK/4, GOTTLIEB_VIDEO_HCOUNT, 0, GOTTLIEB_VIDEO_HBLANK, GOTTLIEB_VIDEO_VCOUNT, 0, GOTTLIEB_VIDEO_VBLANK)
-	MCFG_SCREEN_UPDATE_STATIC(gottlieb)
+	MCFG_SCREEN_UPDATE_DRIVER(gottlieb_state, screen_update_gottlieb)
 
 	MCFG_GFXDECODE(gfxdecode)
 	MCFG_PALETTE_LENGTH(16)
@@ -1748,7 +1744,7 @@ static MACHINE_CONFIG_DERIVED( g2laser, gottlieb_core )
 
 	MCFG_LASERDISC_PR8210_ADD("laserdisc")
 	MCFG_LASERDISC_AUDIO(laserdisc_audio_delegate(FUNC(laserdisc_audio_process), device))
-	MCFG_LASERDISC_OVERLAY_STATIC(GOTTLIEB_VIDEO_HCOUNT, GOTTLIEB_VIDEO_VCOUNT, gottlieb)
+	MCFG_LASERDISC_OVERLAY_DRIVER(GOTTLIEB_VIDEO_HCOUNT, GOTTLIEB_VIDEO_VCOUNT, gottlieb_state, screen_update_gottlieb)
 	MCFG_LASERDISC_OVERLAY_CLIP(0, GOTTLIEB_VIDEO_HBLANK-1, 0, GOTTLIEB_VIDEO_VBLANK-8)
 	MCFG_SOUND_ROUTE(0, "mono", 1.0)
 	/* right channel is processed as data */
@@ -1829,7 +1825,7 @@ static MACHINE_CONFIG_DERIVED( cobram3, gottlieb_core )
 
 	MCFG_LASERDISC_PR8210_ADD("laserdisc")
 	MCFG_LASERDISC_AUDIO(laserdisc_audio_delegate(FUNC(laserdisc_audio_process), device))
-	MCFG_LASERDISC_OVERLAY_STATIC(GOTTLIEB_VIDEO_HCOUNT, GOTTLIEB_VIDEO_VCOUNT, gottlieb)
+	MCFG_LASERDISC_OVERLAY_DRIVER(GOTTLIEB_VIDEO_HCOUNT, GOTTLIEB_VIDEO_VCOUNT, gottlieb_state, screen_update_gottlieb)
 	MCFG_LASERDISC_OVERLAY_CLIP(0, GOTTLIEB_VIDEO_HBLANK-1, 0, GOTTLIEB_VIDEO_VBLANK-8)
 	MCFG_SOUND_ROUTE(0, "mono", 1.0)
 	/* right channel is processed as data */
@@ -2452,7 +2448,7 @@ DRIVER_INIT_MEMBER(gottlieb_state,romtiles)
 DRIVER_INIT_MEMBER(gottlieb_state,stooges)
 {
 	DRIVER_INIT_CALL(ramtiles);
-	machine().device("maincpu")->memory().space(AS_PROGRAM)->install_write_handler(0x05803, 0x05803, 0, 0x07f8, write8_delegate(FUNC(gottlieb_state::stooges_output_w),this));
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x05803, 0x05803, 0, 0x07f8, write8_delegate(FUNC(gottlieb_state::stooges_output_w),this));
 }
 
 

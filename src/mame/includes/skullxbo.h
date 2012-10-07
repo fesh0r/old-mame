@@ -20,17 +20,14 @@ public:
 	DECLARE_MACHINE_START(skullxbo);
 	DECLARE_MACHINE_RESET(skullxbo);
 	DECLARE_VIDEO_START(skullxbo);
+	UINT32 screen_update_skullxbo(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	TIMER_CALLBACK_MEMBER(irq_gen);
 };
 
-
 /*----------- defined in video/skullxbo.c -----------*/
-
-WRITE16_HANDLER( skullxbo_playfieldlatch_w );
-WRITE16_HANDLER( skullxbo_xscroll_w );
-WRITE16_HANDLER( skullxbo_yscroll_w );
-WRITE16_HANDLER( skullxbo_mobmsb_w );
-
-
-SCREEN_UPDATE_IND16( skullxbo );
+DECLARE_WRITE16_HANDLER( skullxbo_playfieldlatch_w );
+DECLARE_WRITE16_HANDLER( skullxbo_xscroll_w );
+DECLARE_WRITE16_HANDLER( skullxbo_yscroll_w );
+DECLARE_WRITE16_HANDLER( skullxbo_mobmsb_w );
 
 void skullxbo_scanline_update(running_machine &machine, int param);

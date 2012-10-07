@@ -163,6 +163,23 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_mz2500(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(mz2500_vbl);
+	DECLARE_READ8_MEMBER(mz2500_wd17xx_r);
+	DECLARE_WRITE8_MEMBER(mz2500_wd17xx_w);
+	DECLARE_READ8_MEMBER(mz2500_porta_r);
+	DECLARE_READ8_MEMBER(mz2500_portb_r);
+	DECLARE_READ8_MEMBER(mz2500_portc_r);
+	DECLARE_WRITE8_MEMBER(mz2500_porta_w);
+	DECLARE_WRITE8_MEMBER(mz2500_portb_w);
+	DECLARE_WRITE8_MEMBER(mz2500_portc_w);
+	DECLARE_WRITE8_MEMBER(mz2500_pio1_porta_w);
+	DECLARE_READ8_MEMBER(mz2500_pio1_porta_r);
+	DECLARE_READ8_MEMBER(mz2500_pio1_portb_r);
+	DECLARE_READ8_MEMBER(opn_porta_r);
+	DECLARE_WRITE8_MEMBER(opn_porta_w);
+	DECLARE_WRITE_LINE_MEMBER(pit8253_clk0_irq);
+	DECLARE_WRITE_LINE_MEMBER(mz2500_rtc_alarm_irq);
 };
 
 
@@ -631,16 +648,15 @@ static void draw_cg_screen(running_machine &machine, bitmap_ind16 &bitmap,const 
 	}
 }
 
-static SCREEN_UPDATE_IND16( mz2500 )
+UINT32 mz2500_state::screen_update_mz2500(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	//mz2500_state *state = screen.machine().driver_data<mz2500_state>();
-	bitmap.fill(screen.machine().pens[0], cliprect); //TODO: correct?
+	bitmap.fill(machine().pens[0], cliprect); //TODO: correct?
 
-	draw_cg_screen(screen.machine(),bitmap,cliprect,0);
-	draw_tv_screen(screen.machine(),bitmap,cliprect);
-	draw_cg_screen(screen.machine(),bitmap,cliprect,1);
-	//  popmessage("%02x (%02x %02x) (%02x %02x) (%02x %02x) (%02x %02x)",state->m_cg_reg[0x0f],state->m_cg_reg[0x10],state->m_cg_reg[0x11],state->m_cg_reg[0x12],state->m_cg_reg[0x13],state->m_cg_reg[0x14],state->m_cg_reg[0x15],state->m_cg_reg[0x16],state->m_cg_reg[0x17]);
-	//  popmessage("%02x",state->m_text_reg[0x0f]);
+	draw_cg_screen(machine(),bitmap,cliprect,0);
+	draw_tv_screen(machine(),bitmap,cliprect);
+	draw_cg_screen(machine(),bitmap,cliprect,1);
+	//  popmessage("%02x (%02x %02x) (%02x %02x) (%02x %02x) (%02x %02x)",m_cg_reg[0x0f],m_cg_reg[0x10],m_cg_reg[0x11],m_cg_reg[0x12],m_cg_reg[0x13],m_cg_reg[0x14],m_cg_reg[0x15],m_cg_reg[0x16],m_cg_reg[0x17]);
+	//  popmessage("%02x",m_text_reg[0x0f]);
 
 
     return 0;
@@ -1250,16 +1266,16 @@ WRITE8_MEMBER(mz2500_state::palette4096_io_w)
 	palette_set_color_rgb(machine(), pal_entry+0x10, pal4bit(m_pal[pal_entry].r), pal4bit(m_pal[pal_entry].g), pal4bit(m_pal[pal_entry].b));
 }
 
-static READ8_DEVICE_HANDLER( mz2500_wd17xx_r )
+READ8_MEMBER(mz2500_state::mz2500_wd17xx_r)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
-	return wd17xx_r(device, offset) ^ state->m_fdc_reverse;
+	device_t *device = machine().device("mb8877a");
+	return wd17xx_r(device, space, offset) ^ m_fdc_reverse;
 }
 
-static WRITE8_DEVICE_HANDLER( mz2500_wd17xx_w )
+WRITE8_MEMBER(mz2500_state::mz2500_wd17xx_w)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
-	wd17xx_w(device, offset, data ^ state->m_fdc_reverse);
+	device_t *device = machine().device("mb8877a");
+	wd17xx_w(device, space, offset, data ^ m_fdc_reverse);
 }
 
 READ8_MEMBER(mz2500_state::mz2500_bplane_latch_r)
@@ -1521,7 +1537,7 @@ static ADDRESS_MAP_START(mz2500_io, AS_IO, 8, mz2500_state )
 	AM_RANGE(0xcc, 0xcc) AM_READWRITE(rp5c15_8_r, rp5c15_8_w)
 	AM_RANGE(0xce, 0xce) AM_WRITE(mz2500_dictionary_bank_w)
 	AM_RANGE(0xcf, 0xcf) AM_WRITE(mz2500_kanji_bank_w)
-	AM_RANGE(0xd8, 0xdb) AM_DEVREADWRITE_LEGACY("mb8877a", mz2500_wd17xx_r, mz2500_wd17xx_w)
+	AM_RANGE(0xd8, 0xdb) AM_READWRITE(mz2500_wd17xx_r, mz2500_wd17xx_w)
 	AM_RANGE(0xdc, 0xdd) AM_WRITE(mz2500_fdc_w)
 	AM_RANGE(0xde, 0xde) AM_WRITENOP
 	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE("i8255_0", i8255_device, read, write)
@@ -1821,51 +1837,49 @@ static GFXDECODE_START( mz2500 )
 	GFXDECODE_ENTRY("pcg", 0, mz2500_pcg_layout_3bpp, 0, 4)
 GFXDECODE_END
 
-static INTERRUPT_GEN( mz2500_vbl )
+INTERRUPT_GEN_MEMBER(mz2500_state::mz2500_vbl)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
-	if(state->m_irq_mask[0])
-		device->execute().set_input_line_and_vector(0, HOLD_LINE, state->m_irq_vector[0]);
+	if(m_irq_mask[0])
+		device.execute().set_input_line_and_vector(0, HOLD_LINE, m_irq_vector[0]);
 
-	state->m_cg_clear_flag = 0;
+	m_cg_clear_flag = 0;
 }
 
-static READ8_DEVICE_HANDLER( mz2500_porta_r )
+READ8_MEMBER(mz2500_state::mz2500_porta_r)
 {
 	logerror("PPI PORTA R\n");
 
 	return 0xff;
 }
 
-static READ8_DEVICE_HANDLER( mz2500_portb_r )
+READ8_MEMBER(mz2500_state::mz2500_portb_r)
 {
 	UINT8 vblank_bit;
 
-	vblank_bit = device->machine().primary_screen->vblank() ? 0 : 1; //Guess: NOBO wants this bit to be high/low
+	vblank_bit = machine().primary_screen->vblank() ? 0 : 1; //Guess: NOBO wants this bit to be high/low
 
 	return 0xfe | vblank_bit;
 }
 
-static READ8_DEVICE_HANDLER( mz2500_portc_r )
+READ8_MEMBER(mz2500_state::mz2500_portc_r)
 {
 	logerror("PPI PORTC R\n");
 
 	return 0xff;
 }
 
-static WRITE8_DEVICE_HANDLER( mz2500_porta_w )
+WRITE8_MEMBER(mz2500_state::mz2500_porta_w)
 {
 	logerror("PPI PORTA W %02x\n",data);
 }
 
-static WRITE8_DEVICE_HANDLER( mz2500_portb_w )
+WRITE8_MEMBER(mz2500_state::mz2500_portb_w)
 {
 	logerror("PPI PORTB W %02x\n",data);
 }
 
-static WRITE8_DEVICE_HANDLER( mz2500_portc_w )
+WRITE8_MEMBER(mz2500_state::mz2500_portc_w)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
 	/*
     ---- x--- 0->1 transition = IPL reset
     ---- -x-- beeper state
@@ -1873,22 +1887,22 @@ static WRITE8_DEVICE_HANDLER( mz2500_portc_w )
     */
 
 	/* work RAM reset */
-	if((state->m_old_portc & 0x02) == 0x00 && (data & 0x02))
+	if((m_old_portc & 0x02) == 0x00 && (data & 0x02))
 	{
-		mz2500_reset(state, WRAM_RESET);
+		mz2500_reset(this, WRAM_RESET);
 		/* correct? */
-		device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
+		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	/* bit 2 is speaker */
 
 	/* IPL reset */
-	if((state->m_old_portc & 0x08) == 0x00 && (data & 0x08))
-		mz2500_reset(state, IPL_RESET);
+	if((m_old_portc & 0x08) == 0x00 && (data & 0x08))
+		mz2500_reset(this, IPL_RESET);
 
-	state->m_old_portc = data;
+	m_old_portc = data;
 
-	beep_set_state(device->machine().device(BEEPER_TAG),data & 0x04);
+	beep_set_state(machine().device(BEEPER_TAG),data & 0x04);
 
 	if(data & ~0x0e)
 		logerror("PPI PORTC W %02x\n",data & ~0x0e);
@@ -1896,94 +1910,89 @@ static WRITE8_DEVICE_HANDLER( mz2500_portc_w )
 
 static I8255_INTERFACE( ppi8255_intf )
 {
-	DEVCB_DEVICE_HANDLER("i8255_0", mz2500_porta_r),						/* Port A read */
-	DEVCB_DEVICE_HANDLER("i8255_0", mz2500_porta_w),						/* Port A write */
-	DEVCB_DEVICE_HANDLER("i8255_0", mz2500_portb_r),						/* Port B read */
-	DEVCB_DEVICE_HANDLER("i8255_0", mz2500_portb_w),						/* Port B write */
-	DEVCB_DEVICE_HANDLER("i8255_0", mz2500_portc_r),						/* Port C read */
-	DEVCB_DEVICE_HANDLER("i8255_0", mz2500_portc_w)						/* Port C write */
+	DEVCB_DRIVER_MEMBER(mz2500_state,mz2500_porta_r),						/* Port A read */
+	DEVCB_DRIVER_MEMBER(mz2500_state,mz2500_porta_w),						/* Port A write */
+	DEVCB_DRIVER_MEMBER(mz2500_state,mz2500_portb_r),						/* Port B read */
+	DEVCB_DRIVER_MEMBER(mz2500_state,mz2500_portb_w),						/* Port B write */
+	DEVCB_DRIVER_MEMBER(mz2500_state,mz2500_portc_r),						/* Port C read */
+	DEVCB_DRIVER_MEMBER(mz2500_state,mz2500_portc_w)						/* Port C write */
 };
 
-static WRITE8_DEVICE_HANDLER( mz2500_pio1_porta_w )
+WRITE8_MEMBER(mz2500_state::mz2500_pio1_porta_w)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
 //  printf("%02x\n",data);
 
-	if(state->m_prev_col_val != ((data & 0x20) >> 5))
+	if(m_prev_col_val != ((data & 0x20) >> 5))
 	{
-		state->m_text_col_size = ((data & 0x20) >> 5);
-		state->m_prev_col_val = state->m_text_col_size;
-		mz2500_reconfigure_screen(device->machine());
+		m_text_col_size = ((data & 0x20) >> 5);
+		m_prev_col_val = m_text_col_size;
+		mz2500_reconfigure_screen(machine());
 	}
-	state->m_key_mux = data & 0x1f;
+	m_key_mux = data & 0x1f;
 }
 
 
-static READ8_DEVICE_HANDLER( mz2500_pio1_porta_r )
+READ8_MEMBER(mz2500_state::mz2500_pio1_porta_r)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
 	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3",
 	                                        "KEY4", "KEY5", "KEY6", "KEY7",
 	                                        "KEY8", "KEY9", "KEYA", "KEYB",
 	                                        "KEYC", "KEYD", "UNUSED", "UNUSED" };
 
-	if(((state->m_key_mux & 0x10) == 0x00) || ((state->m_key_mux & 0x0f) == 0x0f)) //status read
+	if(((m_key_mux & 0x10) == 0x00) || ((m_key_mux & 0x0f) == 0x0f)) //status read
 	{
 		int res,i;
 
 		res = 0xff;
 		for(i=0;i<0xe;i++)
-			res &= device->machine().root_device().ioport(keynames[i])->read();
+			res &= machine().root_device().ioport(keynames[i])->read();
 
-		state->m_pio_latchb = res;
+		m_pio_latchb = res;
 
 		return res;
 	}
 
-	state->m_pio_latchb = device->machine().root_device().ioport(keynames[state->m_key_mux & 0xf])->read();
+	m_pio_latchb = machine().root_device().ioport(keynames[m_key_mux & 0xf])->read();
 
-	return device->machine().root_device().ioport(keynames[state->m_key_mux & 0xf])->read();
+	return machine().root_device().ioport(keynames[m_key_mux & 0xf])->read();
 }
 
 #if 0
-static READ8_DEVICE_HANDLER( mz2500_pio1_portb_r )
+READ8_MEMBER(mz2500_state::mz2500_pio1_portb_r)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
-	return state->m_pio_latchb;
+	return m_pio_latchb;
 }
 #endif
 
 static Z80PIO_INTERFACE( mz2500_pio1_intf )
 {
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER( "z80pio_1", mz2500_pio1_porta_r ),
-	DEVCB_DEVICE_HANDLER( "z80pio_1", mz2500_pio1_porta_w ),
+	DEVCB_DRIVER_MEMBER( mz2500_state,mz2500_pio1_porta_r ),
+	DEVCB_DRIVER_MEMBER( mz2500_state,mz2500_pio1_porta_w ),
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER( "z80pio_1", mz2500_pio1_porta_r ),
+	DEVCB_DRIVER_MEMBER( mz2500_state,mz2500_pio1_porta_r ),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
 
 
-static READ8_DEVICE_HANDLER( opn_porta_r )
+READ8_MEMBER(mz2500_state::opn_porta_r)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
-	return state->m_ym_porta;
+	return m_ym_porta;
 }
 
-static WRITE8_DEVICE_HANDLER( opn_porta_w )
+WRITE8_MEMBER(mz2500_state::opn_porta_w)
 {
-	mz2500_state *state = device->machine().driver_data<mz2500_state>();
 	/*
     ---- x--- mouse select
     ---- -x-- palette bit (16/4096 colors)
     ---- --x- floppy reverse bit (controls wd17xx bits in command registers)
     */
 
-	state->m_fdc_reverse = (data & 2) ? 0x00 : 0xff;
-	state->m_pal_select = (data & 4) ? 1 : 0;
+	m_fdc_reverse = (data & 2) ? 0x00 : 0xff;
+	m_pal_select = (data & 4) ? 1 : 0;
 
-	state->m_ym_porta = data;
+	m_ym_porta = data;
 }
 
 static const ym2203_interface ym2203_interface_1 =
@@ -1991,9 +2000,9 @@ static const ym2203_interface ym2203_interface_1 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		DEVCB_DEVICE_HANDLER("ym", opn_porta_r),	// read A
+		DEVCB_DRIVER_MEMBER(mz2500_state,opn_porta_r),	// read A
 		DEVCB_INPUT_PORT("DSW1"),	// read B
-		DEVCB_DEVICE_HANDLER("ym", opn_porta_w),	// write A
+		DEVCB_DRIVER_MEMBER(mz2500_state,opn_porta_w),	// write A
 		DEVCB_NULL					// write B
 	},
 	DEVCB_NULL
@@ -2040,11 +2049,10 @@ void mz2500_state::palette_init()
 
 /* PIT8253 Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( pit8253_clk0_irq )
+WRITE_LINE_MEMBER(mz2500_state::pit8253_clk0_irq)
 {
-	mz2500_state *drvstate = device->machine().driver_data<mz2500_state>();
-	if(drvstate->m_irq_mask[1]/* && state & 1*/)
-		device->machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,drvstate->m_irq_vector[1]);
+	if(m_irq_mask[1]/* && state & 1*/)
+		machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,m_irq_vector[1]);
 }
 
 static const struct pit8253_config mz2500_pit8253_intf =
@@ -2053,7 +2061,7 @@ static const struct pit8253_config mz2500_pit8253_intf =
 		{
 			31250,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE("pit", pit8253_clk0_irq)
+			DEVCB_DRIVER_LINE_MEMBER(mz2500_state,pit8253_clk0_irq)
 		},
 		{
 			0,
@@ -2068,28 +2076,27 @@ static const struct pit8253_config mz2500_pit8253_intf =
 	}
 };
 
-static WRITE_LINE_DEVICE_HANDLER( mz2500_rtc_alarm_irq )
+WRITE_LINE_MEMBER(mz2500_state::mz2500_rtc_alarm_irq)
 {
-	//mz2500_state *drvstate = device->machine().driver_data<mz2500_state>();
 	/* TODO: doesn't work yet */
-//  if(drvstate->m_irq_mask[3] && state & 1)
-//      device.device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,drvstate->m_irq_vector[3]);
+//  if(m_irq_mask[3] && state & 1)
+//      device.device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,drvm_irq_vector[3]);
 }
 
 static RP5C15_INTERFACE( rtc_intf )
 {
-	DEVCB_DEVICE_LINE(RP5C15_TAG, mz2500_rtc_alarm_irq),
+	DEVCB_DRIVER_LINE_MEMBER(mz2500_state,mz2500_rtc_alarm_irq),
 	DEVCB_NULL
 };
 
 static const z80sio_interface mz2500_sio_intf =
 {
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_CONFIG_START( mz2500, mz2500_state )
@@ -2097,7 +2104,7 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
     MCFG_CPU_ADD("maincpu", Z80, 6000000)
     MCFG_CPU_PROGRAM_MAP(mz2500_map)
     MCFG_CPU_IO_MAP(mz2500_io)
-	MCFG_CPU_VBLANK_INT("screen", mz2500_vbl)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", mz2500_state,  mz2500_vbl)
 
 
 	MCFG_I8255_ADD( "i8255_0", ppi8255_intf )
@@ -2113,7 +2120,7 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(XTAL_21_4772MHz, 640+108, 0, 640, 480, 0, 200) //unknown clock / divider
-    MCFG_SCREEN_UPDATE_STATIC(mz2500)
+	MCFG_SCREEN_UPDATE_DRIVER(mz2500_state, screen_update_mz2500)
 
 	MCFG_PALETTE_LENGTH(0x200)
 

@@ -8,6 +8,7 @@
 **********************************************************************/
 
 #include "d9060.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/d9060hd.h"
 
@@ -147,13 +148,14 @@ WRITE_LINE_MEMBER( base_d9060_device::req_w )
 
 static const SCSICB_interface sasi_intf =
 {
-	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER("^^", base_d9060_device, req_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -424,14 +426,14 @@ WRITE_LINE_MEMBER( base_d9060_device::enable_w )
 
 static const via6522_interface via_intf =
 {
-	DEVCB_DEVICE_MEMBER(SASIBUS_TAG, scsibus_device, scsi_data_r),
+	DEVCB_DEVICE_MEMBER(SASIBUS_TAG ":host", scsicb_device, scsi_data_r),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, via_pb_r),
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, req_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_MEMBER(SASIBUS_TAG, scsibus_device, scsi_data_w),
+	DEVCB_DEVICE_MEMBER(SASIBUS_TAG ":host", scsicb_device, scsi_data_w),
 	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, base_d9060_device, via_pb_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -514,7 +516,7 @@ base_d9060_device::base_d9060_device(const machine_config &mconfig, device_type 
 	  m_riot0(*this, M6532_0_TAG),
 	  m_riot1(*this, M6532_1_TAG),
 	  m_via(*this, M6522_TAG),
-	  m_sasibus(*this, SASIBUS_TAG),
+	  m_sasibus(*this, SASIBUS_TAG ":host"),
 	  m_rfdo(1),
 	  m_daco(1),
 	  m_atna(1),
@@ -560,8 +562,6 @@ void base_d9060_device::device_start()
 
 void base_d9060_device::device_reset()
 {
-	m_sasibus->init_scsibus(256);
-
 	m_maincpu->set_input_line(M6502_SET_OVERFLOW, ASSERT_LINE);
 	m_maincpu->set_input_line(M6502_SET_OVERFLOW, CLEAR_LINE);
 

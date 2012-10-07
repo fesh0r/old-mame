@@ -440,7 +440,7 @@ static MACHINE_CONFIG_START( hec2hr, hec2hrp_state )
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(hec2hrp_mem)
 	MCFG_CPU_IO_MAP(hec2hrp_io)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the Z80 irq in Hz*/
+	MCFG_CPU_PERIODIC_INT_DRIVER(hec2hrp_state, irq0_line_hold, 50) /*  put on the Z80 irq in Hz*/
 	MCFG_MACHINE_RESET_OVERRIDE(hec2hrp_state,hec2hrp)
 	MCFG_MACHINE_START_OVERRIDE(hec2hrp_state,hec2hrp)
 
@@ -450,7 +450,7 @@ static MACHINE_CONFIG_START( hec2hr, hec2hrp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(400)) /* 2500 not accurate */
 	MCFG_SCREEN_SIZE(512, 230)
 	MCFG_SCREEN_VISIBLE_AREA(0, 243, 0, 227)
-	MCFG_SCREEN_UPDATE_STATIC(hec2hrp)
+	MCFG_SCREEN_UPDATE_DRIVER(hec2hrp_state, screen_update_hec2hrp)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_VIDEO_START_OVERRIDE(hec2hrp_state,hec2hrp)
@@ -483,7 +483,7 @@ static MACHINE_CONFIG_START( hec2hrp, hec2hrp_state )
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(hec2hrp_mem)
 	MCFG_CPU_IO_MAP(hec2hrp_io)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) /*  put on the Z80 irq in Hz*/
+	MCFG_CPU_PERIODIC_INT_DRIVER(hec2hrp_state, irq0_line_hold, 50) /*  put on the Z80 irq in Hz*/
 	MCFG_MACHINE_RESET_OVERRIDE(hec2hrp_state,hec2hrp)
 	MCFG_MACHINE_START_OVERRIDE(hec2hrp_state,hec2hrp)
 
@@ -493,7 +493,7 @@ static MACHINE_CONFIG_START( hec2hrp, hec2hrp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(400)) /* 2500 not accurate */
 	MCFG_SCREEN_SIZE(512, 230)
 	MCFG_SCREEN_VISIBLE_AREA(0, 243, 0, 227)
-	MCFG_SCREEN_UPDATE_STATIC(hec2hrp)
+	MCFG_SCREEN_UPDATE_DRIVER(hec2hrp_state, screen_update_hec2hrp)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_VIDEO_START_OVERRIDE(hec2hrp_state,hec2hrp)
@@ -526,7 +526,7 @@ static MACHINE_CONFIG_START( hec2mx40, hec2hrp_state )
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(hec2hrx_mem)
 	MCFG_CPU_IO_MAP(hec2mx40_io)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) //  put on the Z80 irq in Hz
+	MCFG_CPU_PERIODIC_INT_DRIVER(hec2hrp_state, irq0_line_hold, 50) //  put on the Z80 irq in Hz
 
 	/* Disc II unit */
 	MCFG_CPU_ADD("disc2cpu",Z80, XTAL_4MHz)
@@ -543,7 +543,7 @@ static MACHINE_CONFIG_START( hec2mx40, hec2hrp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(400)) /* 2500 not accurate */
 	MCFG_SCREEN_SIZE(512, 230)
 	MCFG_SCREEN_VISIBLE_AREA(0, 243, 0, 227)
-	MCFG_SCREEN_UPDATE_STATIC(hec2hrp)
+	MCFG_SCREEN_UPDATE_DRIVER(hec2hrp_state, screen_update_hec2hrp)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_VIDEO_START_OVERRIDE(hec2hrp_state,hec2hrp)
@@ -575,7 +575,7 @@ static MACHINE_CONFIG_START( hec2hrx, hec2hrp_state )
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(hec2hrx_mem)
 	MCFG_CPU_IO_MAP(hec2hrx_io)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) //  put on the Z80 irq in Hz
+	MCFG_CPU_PERIODIC_INT_DRIVER(hec2hrp_state, irq0_line_hold, 50) //  put on the Z80 irq in Hz
 	MCFG_MACHINE_RESET_OVERRIDE(hec2hrp_state,hec2hrx)
 	MCFG_MACHINE_START_OVERRIDE(hec2hrp_state,hec2hrx)
 
@@ -592,7 +592,7 @@ static MACHINE_CONFIG_START( hec2hrx, hec2hrp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(400)) /* 2500 not accurate */
 	MCFG_SCREEN_SIZE(512, 230)
 	MCFG_SCREEN_VISIBLE_AREA(0, 243, 0, 227)
-	MCFG_SCREEN_UPDATE_STATIC(hec2hrp)
+	MCFG_SCREEN_UPDATE_DRIVER(hec2hrp_state, screen_update_hec2hrp)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_VIDEO_START_OVERRIDE(hec2hrp_state,hec2hrp)
@@ -625,7 +625,7 @@ static MACHINE_CONFIG_START( hec2mdhrx, hec2hrp_state )
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(hec2hrx_mem)
 	MCFG_CPU_IO_MAP(hec2mdhrx_io)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) //  put on the Z80 irq in Hz
+	MCFG_CPU_PERIODIC_INT_DRIVER(hec2hrp_state, irq0_line_hold, 50) //  put on the Z80 irq in Hz
 	MCFG_MACHINE_RESET_OVERRIDE(hec2hrp_state,hec2mdhrx)
 	MCFG_MACHINE_START_OVERRIDE(hec2hrp_state,hec2mdhrx)
 
@@ -639,7 +639,7 @@ static MACHINE_CONFIG_START( hec2mdhrx, hec2hrp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(400)) /* 2500 not accurate */
 	MCFG_SCREEN_SIZE(512, 230)
 	MCFG_SCREEN_VISIBLE_AREA(0, 243, 0, 227)
-	MCFG_SCREEN_UPDATE_STATIC(hec2hrp)
+	MCFG_SCREEN_UPDATE_DRIVER(hec2hrp_state, screen_update_hec2hrp)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_PALETTE_INIT(black_and_white)
@@ -673,7 +673,7 @@ static MACHINE_CONFIG_START( hec2mx80, hec2hrp_state )
 	MCFG_CPU_ADD("maincpu",Z80, XTAL_5MHz)
 	MCFG_CPU_PROGRAM_MAP(hec2hrx_mem)
 	MCFG_CPU_IO_MAP(hec2mx80_io)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,50) //  put on the Z80 irq in Hz
+	MCFG_CPU_PERIODIC_INT_DRIVER(hec2hrp_state, irq0_line_hold, 50) //  put on the Z80 irq in Hz
 	MCFG_MACHINE_RESET_OVERRIDE(hec2hrp_state,hec2hrx)
 	MCFG_MACHINE_START_OVERRIDE(hec2hrp_state,hec2hrx)
 
@@ -690,7 +690,7 @@ static MACHINE_CONFIG_START( hec2mx80, hec2hrp_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(400)) /* 2500 not accurate */
 	MCFG_SCREEN_SIZE(512, 230)
 	MCFG_SCREEN_VISIBLE_AREA(0, 243, 0, 227)
-	MCFG_SCREEN_UPDATE_STATIC(hec2hrp)
+	MCFG_SCREEN_UPDATE_DRIVER(hec2hrp_state, screen_update_hec2hrp)
 
 	MCFG_PALETTE_LENGTH(16)
 	MCFG_VIDEO_START_OVERRIDE(hec2hrp_state,hec2hrp)

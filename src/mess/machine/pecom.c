@@ -12,30 +12,29 @@
 #include "machine/ram.h"
 #include "includes/pecom.h"
 
-static TIMER_CALLBACK( reset_tick )
+TIMER_CALLBACK_MEMBER(pecom_state::reset_tick)
 {
-	pecom_state *state = machine.driver_data<pecom_state>();
 
-	state->m_reset = 1;
+	m_reset = 1;
 }
 
 void pecom_state::machine_start()
 {
-	m_reset_timer = machine().scheduler().timer_alloc(FUNC(reset_tick));
+	m_reset_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pecom_state::reset_tick),this));
 }
 
 void pecom_state::machine_reset()
 {
 	UINT8 *rom = machine().root_device().memregion(CDP1802_TAG)->base();
-	address_space *space = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
+	address_space &space = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
 
 
-	space->unmap_write(0x0000, 0x3fff);
-	space->install_write_bank(0x4000, 0x7fff, "bank2");
-	space->unmap_write(0xf000, 0xf7ff);
-	space->unmap_write(0xf800, 0xffff);
-	space->install_read_bank (0xf000, 0xf7ff, "bank3");
-	space->install_read_bank (0xf800, 0xffff, "bank4");
+	space.unmap_write(0x0000, 0x3fff);
+	space.install_write_bank(0x4000, 0x7fff, "bank2");
+	space.unmap_write(0xf000, 0xf7ff);
+	space.unmap_write(0xf800, 0xffff);
+	space.install_read_bank (0xf000, 0xf7ff, "bank3");
+	space.install_read_bank (0xf800, 0xffff, "bank4");
 	membank("bank1")->set_base(rom + 0x8000);
 	membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x4000);
 	membank("bank3")->set_base(rom + 0xf000);
@@ -68,24 +67,24 @@ WRITE8_MEMBER(pecom_state::pecom_cdp1869_pageram_w)
 
 WRITE8_MEMBER(pecom_state::pecom_bank_w)
 {
-	address_space *space2 = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
+	address_space &space2 = machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM);
 	UINT8 *rom = memregion(CDP1802_TAG)->base();
-	machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM)->install_write_bank(0x0000, 0x3fff, "bank1");
+	machine().device(CDP1802_TAG)->memory().space(AS_PROGRAM).install_write_bank(0x0000, 0x3fff, "bank1");
 	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + 0x0000);
 
 	if (data==2)
 	{
-		space2->install_read_handler (0xf000, 0xf7ff, read8_delegate(FUNC(pecom_state::pecom_cdp1869_charram_r),this));
-		space2->install_write_handler(0xf000, 0xf7ff, write8_delegate(FUNC(pecom_state::pecom_cdp1869_charram_w),this));
-		space2->install_read_handler (0xf800, 0xffff, read8_delegate(FUNC(pecom_state::pecom_cdp1869_pageram_r),this));
-		space2->install_write_handler(0xf800, 0xffff, write8_delegate(FUNC(pecom_state::pecom_cdp1869_pageram_w),this));
+		space2.install_read_handler (0xf000, 0xf7ff, read8_delegate(FUNC(pecom_state::pecom_cdp1869_charram_r),this));
+		space2.install_write_handler(0xf000, 0xf7ff, write8_delegate(FUNC(pecom_state::pecom_cdp1869_charram_w),this));
+		space2.install_read_handler (0xf800, 0xffff, read8_delegate(FUNC(pecom_state::pecom_cdp1869_pageram_r),this));
+		space2.install_write_handler(0xf800, 0xffff, write8_delegate(FUNC(pecom_state::pecom_cdp1869_pageram_w),this));
 	}
 	else
 	{
-		space2->unmap_write(0xf000, 0xf7ff);
-		space2->unmap_write(0xf800, 0xffff);
-		space2->install_read_bank (0xf000, 0xf7ff, "bank3");
-		space2->install_read_bank (0xf800, 0xffff, "bank4");
+		space2.unmap_write(0xf000, 0xf7ff);
+		space2.unmap_write(0xf800, 0xffff);
+		space2.install_read_bank (0xf000, 0xf7ff, "bank3");
+		space2.install_read_bank (0xf800, 0xffff, "bank4");
 		membank("bank3")->set_base(rom + 0xf000);
 		membank("bank4")->set_base(rom + 0xf800);
 	}
@@ -112,16 +111,15 @@ READ8_MEMBER(pecom_state::pecom_keyboard_r)
 
 /* CDP1802 Interface */
 
-static READ_LINE_DEVICE_HANDLER( clear_r )
+READ_LINE_MEMBER(pecom_state::clear_r)
 {
-	pecom_state *state = device->machine().driver_data<pecom_state>();
-
-	return state->m_reset;
+	return m_reset;
 }
 
-static READ_LINE_DEVICE_HANDLER( ef2_r )
+READ_LINE_MEMBER(pecom_state::ef2_r)
 {
-	int shift = BIT(device->machine().root_device().ioport("CNT")->read(), 1);
+	device_t *device = machine().device(CASSETTE_TAG);
+	int shift = BIT(machine().root_device().ioport("CNT")->read(), 1);
 	double cas = dynamic_cast<cassette_image_device *>(device)->input();
 
 	return (cas > 0.0) | shift;
@@ -149,8 +147,9 @@ static COSMAC_EF_READ( pecom64_ef_r )
     return flags;
 }
 */
-static WRITE_LINE_DEVICE_HANDLER( pecom64_q_w )
+WRITE_LINE_MEMBER(pecom_state::pecom64_q_w)
 {
+	device_t *device = machine().device(CASSETTE_TAG);
 	dynamic_cast<cassette_image_device *>(device)->output(state ? -1.0 : +1.0);
 }
 
@@ -177,12 +176,12 @@ static COSMAC_SC_WRITE( pecom64_sc_w )
 COSMAC_INTERFACE( pecom64_cdp1802_config )
 {
 	DEVCB_LINE_VCC,
-	DEVCB_LINE(clear_r),
+	DEVCB_DRIVER_LINE_MEMBER(pecom_state,clear_r),
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, ef2_r),
+	DEVCB_DRIVER_LINE_MEMBER(pecom_state,ef2_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(CASSETTE_TAG, pecom64_q_w),
+	DEVCB_DRIVER_LINE_MEMBER(pecom_state,pecom64_q_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	pecom64_sc_w,

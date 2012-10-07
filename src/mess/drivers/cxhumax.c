@@ -154,12 +154,12 @@ READ32_MEMBER( cxhumax_state::cx_scratch_r )
 		//we're in disabled debug_printf
 		unsigned char* buf = (unsigned char *)alloca(200);
 		unsigned char temp;
-		address_space *program = m_maincpu->space(AS_PROGRAM);
+		address_space &program = m_maincpu->space(AS_PROGRAM);
 
 		memset(buf,0,200);
 
 		int i = 0;
-		while ((temp=program->read_byte(m_maincpu->state_int(ARM7_R0)+i))) {
+		while ((temp=program.read_byte(m_maincpu->state_int(ARM7_R0)+i))) {
 			buf[i++]=temp;
 			//m_terminal->write(space, 0, temp);
 		}
@@ -301,32 +301,31 @@ WRITE32_MEMBER( cxhumax_state::cx_extdesc_w )
 	COMBINE_DATA(&m_extdesc_regs[offset]);
 }
 
-static TIMER_CALLBACK( timer_tick )
+TIMER_CALLBACK_MEMBER(cxhumax_state::timer_tick)
 {
-	cxhumax_state *state = machine.driver_data<cxhumax_state>();
-	state->m_timer_regs.timer[param].value++;
-	if(state->m_timer_regs.timer[param].value==state->m_timer_regs.timer[param].limit) {
+	m_timer_regs.timer[param].value++;
+	if(m_timer_regs.timer[param].value==m_timer_regs.timer[param].limit) {
 		/* Reset counter when reaching limit and RESET_CNTR bit is cleared */
-		if(!(state->m_timer_regs.timer[param].mode & 2))
-			state->m_timer_regs.timer[param].value=0;
+		if(!(m_timer_regs.timer[param].mode & 2))
+			m_timer_regs.timer[param].value=0;
 
 		/* Indicate interrupt request if EN_INT bit is set */
-		if (state->m_timer_regs.timer[param].mode & 8) {
+		if (m_timer_regs.timer[param].mode & 8) {
 			//printf( "IRQ on Timer %d\n", param );
-			verboselog( machine, 9, "(TIMER%d) Interrupt\n", param);
-			state->m_intctrl_regs[INTREG(INTGROUP2, INTIRQ)] |= INT_TIMER_BIT;     /* Timer interrupt */
-			state->m_intctrl_regs[INTREG(INTGROUP2, INTSTATCLR)] |= INT_TIMER_BIT; /* Timer interrupt */
-			state->m_intctrl_regs[INTREG(INTGROUP2, INTSTATSET)] |= INT_TIMER_BIT; /* Timer interrupt */
+			verboselog( machine(), 9, "(TIMER%d) Interrupt\n", param);
+			m_intctrl_regs[INTREG(INTGROUP2, INTIRQ)] |= INT_TIMER_BIT;     /* Timer interrupt */
+			m_intctrl_regs[INTREG(INTGROUP2, INTSTATCLR)] |= INT_TIMER_BIT; /* Timer interrupt */
+			m_intctrl_regs[INTREG(INTGROUP2, INTSTATSET)] |= INT_TIMER_BIT; /* Timer interrupt */
 
-			state->m_timer_regs.timer_irq |= 1<<param; /* Indicate which timer interrupted */
+			m_timer_regs.timer_irq |= 1<<param; /* Indicate which timer interrupted */
 
 			/* Interrupt if Timer interrupt is not masked in ITC_INTENABLE_REG */
-			if (state->m_intctrl_regs[INTREG(INTGROUP2, INTENABLE)] & INT_TIMER_BIT)
-				machine.device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
+			if (m_intctrl_regs[INTREG(INTGROUP2, INTENABLE)] & INT_TIMER_BIT)
+				machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 		}
 	}
-	attotime period = attotime::from_hz(XTAL_54MHz)*state->m_timer_regs.timer[param].timebase;
-	state->m_timer_regs.timer[param].timer->adjust(period,param);
+	attotime period = attotime::from_hz(XTAL_54MHz)*m_timer_regs.timer[param].timebase;
+	m_timer_regs.timer[param].timer->adjust(period,param);
 }
 
 READ32_MEMBER( cxhumax_state::cx_timers_r )
@@ -890,17 +889,16 @@ INLINE UINT32 ycc_to_rgb(UINT32 ycc)
 	return MAKE_RGB(clamp16_shift8(r), clamp16_shift8(g), clamp16_shift8(b));
 }
 
-static SCREEN_UPDATE_RGB32( cxhumax )
+UINT32 cxhumax_state::screen_update_cxhumax(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	int i, j;
 
-	cxhumax_state *state = screen.machine().driver_data<cxhumax_state>();
 
-	UINT32 osd_pointer = state->m_drm1_regs[DRM_OSD_PTR_REG];
+	UINT32 osd_pointer = m_drm1_regs[DRM_OSD_PTR_REG];
 
 	if(osd_pointer)
 	{
-		UINT32 *ram = state->m_ram;
+		UINT32 *ram = m_ram;
 		UINT32 *osd_header = &ram[osd_pointer/4];
 		UINT8  *vbuf = (UINT8*)(&ram[osd_header[3]/4]);
 		UINT32 *palette = &ram[osd_header[7]/4];
@@ -917,11 +915,11 @@ static SCREEN_UPDATE_RGB32( cxhumax )
 		UINT32 ydisp_last = (y_position_and_region_alpha >> 12) & 0x7ff;
 		UINT32 ydisp_start = y_position_and_region_alpha & 0x7ff;
 
-	/*  UINT32 first_x = state->m_drm0_regs[DRM_ACTIVE_X_REG] & 0xffff;
-        UINT32 last_x = (state->m_drm0_regs[DRM_ACTIVE_X_REG] >> 16) & 0xffff;
+	/*  UINT32 first_x = m_drm0_regs[DRM_ACTIVE_X_REG] & 0xffff;
+        UINT32 last_x = (m_drm0_regs[DRM_ACTIVE_X_REG] >> 16) & 0xffff;
 
-        UINT32 first_y = state->m_drm0_regs[DRM_ACTIVE_Y_REG] & 0xfff;
-        UINT32 last_y = (state->m_drm0_regs[DRM_ACTIVE_Y_REG] >> 16) & 0xfff;*/
+        UINT32 first_y = m_drm0_regs[DRM_ACTIVE_Y_REG] & 0xfff;
+        UINT32 last_y = (m_drm0_regs[DRM_ACTIVE_Y_REG] >> 16) & 0xfff;*/
 
 		for (j=ydisp_start; j <= ydisp_last; j++)
 		{
@@ -932,7 +930,7 @@ static SCREEN_UPDATE_RGB32( cxhumax )
 				if ((i <= (xdisp_start + ximg_width)) && (j <= (ydisp_start + yimg_height))) {
 					bmp[i] = palette[vbuf[i+((j-ydisp_start)*ximg_width)]];
 				} else {
-					bmp[i] = ycc_to_rgb(state->m_drm1_regs[DRM_BCKGND_REG]);
+					bmp[i] = ycc_to_rgb(m_drm1_regs[DRM_BCKGND_REG]);
 				}
 			}
 		}
@@ -984,7 +982,7 @@ void cxhumax_state::machine_start()
 	int index = 0;
 	for(index = 0; index < MAX_CX_TIMERS; index++)
 	{
-		m_timer_regs.timer[index].timer = machine().scheduler().timer_alloc(FUNC(timer_tick));
+		m_timer_regs.timer[index].timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(cxhumax_state::timer_tick),this));
 		m_timer_regs.timer[index].timer->adjust(attotime::never, index);
 	}
 }
@@ -1076,7 +1074,7 @@ static MACHINE_CONFIG_START( cxhumax, cxhumax_state )
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
     MCFG_SCREEN_SIZE(1920, 1080)
     MCFG_SCREEN_VISIBLE_AREA(0, 1920-1, 0, 1080-1)
-    MCFG_SCREEN_UPDATE_STATIC(cxhumax)
+	MCFG_SCREEN_UPDATE_DRIVER(cxhumax_state, screen_update_cxhumax)
 
     MCFG_PALETTE_LENGTH(2)
     MCFG_PALETTE_INIT(black_and_white)

@@ -296,19 +296,18 @@ static void nc_update_interrupts(running_machine &machine)
 	}
 }
 
-static TIMER_CALLBACK(nc_keyboard_timer_callback)
+TIMER_CALLBACK_MEMBER(nc_state::nc_keyboard_timer_callback)
 {
-	nc_state *state = machine.driver_data<nc_state>();
 		LOG(("keyboard int\n"));
 
         /* set int */
-        state->m_irq_status |= (1<<3);
+        m_irq_status |= (1<<3);
 
         /* update ints */
-        nc_update_interrupts(machine);
+        nc_update_interrupts(machine());
 
         /* don't trigger again, but don't free it */
-        state->m_keyboard_timer->reset();
+        m_keyboard_timer->reset();
 }
 
 
@@ -321,7 +320,7 @@ static const char *const nc_bankhandler_w[]={
 static void nc_refresh_memory_bank_config(running_machine &machine, int bank)
 {
 	nc_state *state = machine.driver_data<nc_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	int mem_type;
 	int mem_bank;
 	char bank1[10];
@@ -332,7 +331,7 @@ static void nc_refresh_memory_bank_config(running_machine &machine, int bank)
 	mem_type = (state->m_memory_config[bank]>>6) & 0x03;
 	mem_bank = state->m_memory_config[bank] & 0x03f;
 
-	space->install_read_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, nc_bankhandler_r[bank]);
+	space.install_read_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, nc_bankhandler_r[bank]);
 
 	switch (mem_type)
 	{
@@ -348,7 +347,7 @@ static void nc_refresh_memory_bank_config(running_machine &machine, int bank)
 
 			state->membank(bank1)->set_base(addr);
 
-			space->nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
+			space.nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
 			LOG(("BANK %d: ROM %d\n",bank,mem_bank));
 		}
 		break;
@@ -365,7 +364,7 @@ static void nc_refresh_memory_bank_config(running_machine &machine, int bank)
 			state->membank(bank1)->set_base(addr);
 			state->membank(bank5)->set_base(addr);
 
-			space->install_write_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, nc_bankhandler_w[bank]);
+			space.install_write_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, nc_bankhandler_w[bank]);
 			LOG(("BANK %d: RAM\n",bank));
 		}
 		break;
@@ -389,12 +388,12 @@ static void nc_refresh_memory_bank_config(running_machine &machine, int bank)
 					/* yes */
 					state->membank(bank5)->set_base(addr);
 
-					space->install_write_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, nc_bankhandler_w[bank]);
+					space.install_write_bank((bank * 0x4000), (bank * 0x4000) + 0x3fff, nc_bankhandler_w[bank]);
 				}
 				else
 				{
 					/* no */
-					space->nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
+					space.nop_write((bank * 0x4000), (bank * 0x4000) + 0x3fff);
 				}
 
 				LOG(("BANK %d: CARD-RAM\n",bank));
@@ -402,7 +401,7 @@ static void nc_refresh_memory_bank_config(running_machine &machine, int bank)
 			else
 			{
 				/* if no card connected, then writes fail */
-				space->nop_readwrite((bank * 0x4000), (bank * 0x4000) + 0x3fff);
+				space.nop_readwrite((bank * 0x4000), (bank * 0x4000) + 0x3fff);
 			}
 		}
 		break;
@@ -493,15 +492,14 @@ static void nc_common_close_stream(running_machine &machine)
 
 
 
-static TIMER_DEVICE_CALLBACK(dummy_timer_callback)
+TIMER_DEVICE_CALLBACK_MEMBER(nc_state::dummy_timer_callback)
 {
-	nc_state *state = timer.machine().driver_data<nc_state>();
 	int inputport_10_state;
 	int changed_bits;
 
-	inputport_10_state = timer.machine().root_device().ioport("EXTRA")->read();
+	inputport_10_state = machine().root_device().ioport("EXTRA")->read();
 
-	changed_bits = inputport_10_state^state->m_previous_inputport_10_state;
+	changed_bits = inputport_10_state^m_previous_inputport_10_state;
 
 	/* on/off button changed state? */
 	if (changed_bits & 0x01)
@@ -510,19 +508,19 @@ static TIMER_DEVICE_CALLBACK(dummy_timer_callback)
         {
 			/* on NC100 on/off button causes a nmi, on
             nc200 on/off button causes an int */
-			switch (state->m_type)
+			switch (m_type)
 			{
 				case NC_TYPE_1xx:
 				{
 			        LOG(("nmi triggered\n"));
-				    timer.machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+				    machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 				}
 				break;
 
 				case NC_TYPE_200:
 				{
-					state->m_irq_status |= (1 << 4);
-					nc_update_interrupts(timer.machine());
+					m_irq_status |= (1 << 4);
+					nc_update_interrupts(machine());
 				}
 				break;
 			}
@@ -533,13 +531,13 @@ static TIMER_DEVICE_CALLBACK(dummy_timer_callback)
 	if (changed_bits & 0x02)
 	{
 		/* yes refresh memory config */
-		nc_refresh_memory_config(timer.machine());
+		nc_refresh_memory_config(machine());
 	}
 
-	state->m_previous_inputport_10_state = inputport_10_state;
+	m_previous_inputport_10_state = inputport_10_state;
 }
 
-static TIMER_CALLBACK(nc_serial_timer_callback);
+
 
 static void nc_common_init_machine(running_machine &machine)
 {
@@ -767,9 +765,9 @@ static const unsigned long baud_rate_table[]=
     19200
 };
 
-static TIMER_CALLBACK(nc_serial_timer_callback)
+TIMER_CALLBACK_MEMBER(nc_state::nc_serial_timer_callback)
 {
-	i8251_device *uart = machine.device<i8251_device>("uart");
+	i8251_device *uart = machine().device<i8251_device>("uart");
 
 	uart->transmit_clock();
 	uart->receive_clock();
@@ -839,50 +837,48 @@ WRITE8_MEMBER(nc_state::nc100_uart_control_w)
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER(nc100_tc8521_alarm_callback)
+WRITE_LINE_MEMBER(nc_state::nc100_tc8521_alarm_callback)
 {
 	// TODO
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nc100_txrdy_callback )
+WRITE_LINE_MEMBER(nc_state::nc100_txrdy_callback)
 {
-	nc_state *drvstate = device->machine().driver_data<nc_state>();
-	drvstate->m_irq_latch &= ~(1 << 1);
+	m_irq_latch &= ~(1 << 1);
 
 	/* uart on? */
-	if ((drvstate->m_uart_control & (1 << 3)) == 0)
+	if ((m_uart_control & (1 << 3)) == 0)
 	{
 		if (state)
 		{
 			logerror("tx ready\n");
-			drvstate->m_irq_latch |= (1 << 1);
+			m_irq_latch |= (1 << 1);
 		}
 	}
 
-	nc_update_interrupts(device->machine());
+	nc_update_interrupts(machine());
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nc100_rxrdy_callback )
+WRITE_LINE_MEMBER(nc_state::nc100_rxrdy_callback)
 {
-	nc_state *drvstate = device->machine().driver_data<nc_state>();
-	drvstate->m_irq_latch &= ~(1<<0);
+	m_irq_latch &= ~(1<<0);
 
-	if ((drvstate->m_uart_control & (1<<3))==0)
+	if ((m_uart_control & (1<<3))==0)
 	{
 		if (state)
 		{
 			logerror("rx ready\n");
-			drvstate->m_irq_latch |= (1<<0);
+			m_irq_latch |= (1<<0);
 		}
 	}
 
-	nc_update_interrupts(device->machine());
+	nc_update_interrupts(machine());
 }
 
 
 static RP5C01_INTERFACE( rtc_intf )
 {
-	DEVCB_LINE(nc100_tc8521_alarm_callback)
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc100_tc8521_alarm_callback)
 };
 
 static const i8251_interface nc100_uart_interface =
@@ -892,28 +888,27 @@ static const i8251_interface nc100_uart_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_LINE(nc100_rxrdy_callback),
-	DEVCB_LINE(nc100_txrdy_callback),
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc100_rxrdy_callback),
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc100_txrdy_callback),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( nc100_centronics_ack_w )
+WRITE_LINE_MEMBER(nc_state::nc100_centronics_ack_w)
 {
-	nc_state *drvstate = device->machine().driver_data<nc_state>();
 	if (state)
-		drvstate->m_irq_status |= 0x04;
+		m_irq_status |= 0x04;
 	else
-		drvstate->m_irq_status &= ~0x04;
+		m_irq_status &= ~0x04;
 
 	/* trigger an int if the irq is set */
-	nc_update_interrupts(device->machine());
+	nc_update_interrupts(machine());
 }
 
 static const centronics_interface nc100_centronics_config =
 {
-	DEVCB_LINE(nc100_centronics_ack_w),
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc100_centronics_ack_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -952,11 +947,11 @@ void nc_state::machine_start()
 	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc100_machine_stop),&machine()));
 
 	/* keyboard timer */
-	m_keyboard_timer = machine().scheduler().timer_alloc(FUNC(nc_keyboard_timer_callback));
+	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_keyboard_timer_callback),this));
 	m_keyboard_timer->adjust(attotime::from_msec(10));
 
 	/* serial timer */
-	m_serial_timer = machine().scheduler().timer_alloc(FUNC(nc_serial_timer_callback));
+	m_serial_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_serial_timer_callback),this));
 }
 
 
@@ -1185,21 +1180,20 @@ WRITE8_MEMBER(nc_state::nc200_display_memory_start_w)
 #endif
 
 
-static WRITE_LINE_DEVICE_HANDLER( nc200_centronics_ack_w )
+WRITE_LINE_MEMBER(nc_state::nc200_centronics_ack_w)
 {
-	nc_state *drvstate = device->machine().driver_data<nc_state>();
 	if (state)
-		drvstate->m_irq_status |= 0x01;
+		m_irq_status |= 0x01;
 	else
-		drvstate->m_irq_status &= ~0x01;
+		m_irq_status &= ~0x01;
 
 	/* trigger an int if the irq is set */
-	nc_update_interrupts(device->machine());
+	nc_update_interrupts(machine());
 }
 
 static const centronics_interface nc200_centronics_config =
 {
-	DEVCB_LINE(nc200_centronics_ack_w),
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc200_centronics_ack_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -1224,30 +1218,29 @@ static void nc200_refresh_uart_interrupt(running_machine &machine)
 	nc_update_interrupts(machine);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nc200_txrdy_callback )
+WRITE_LINE_MEMBER(nc_state::nc200_txrdy_callback)
 {
-	//nc_state *drvstate = machine.driver_data<nc_state>();
-//  drvstate->m_nc200_uart_interrupt_irq &=~(1<<0);
+	//nc_state *drvstate = machine().driver_data<nc_state>();
+//  m_nc200_uart_interrupt_irq &=~(1<<0);
 //
 //  if (state)
 //  {
-//      drvstate->m_nc200_uart_interrupt_irq |=(1<<0);
+//      m_nc200_uart_interrupt_irq |=(1<<0);
 //  }
 //
-//  nc200_refresh_uart_interrupt(device->machine());
+//  nc200_refresh_uart_interrupt(machine());
 }
 
-static WRITE_LINE_DEVICE_HANDLER( nc200_rxrdy_callback )
+WRITE_LINE_MEMBER(nc_state::nc200_rxrdy_callback)
 {
-	nc_state *drvstate = device->machine().driver_data<nc_state>();
-	drvstate->m_nc200_uart_interrupt_irq &=~(1<<1);
+	m_nc200_uart_interrupt_irq &=~(1<<1);
 
 	if (state)
 	{
-		drvstate->m_nc200_uart_interrupt_irq |=(1<<1);
+		m_nc200_uart_interrupt_irq |=(1<<1);
 	}
 
-	nc200_refresh_uart_interrupt(device->machine());
+	nc200_refresh_uart_interrupt(machine());
 }
 
 static const i8251_interface nc200_uart_interface=
@@ -1257,37 +1250,36 @@ static const i8251_interface nc200_uart_interface=
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_LINE(nc200_rxrdy_callback),
-	DEVCB_LINE(nc200_txrdy_callback),
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc200_rxrdy_callback),
+	DEVCB_DRIVER_LINE_MEMBER(nc_state,nc200_txrdy_callback),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
 
 
-static WRITE_LINE_DEVICE_HANDLER( nc200_fdc_interrupt )
+WRITE_LINE_MEMBER(nc_state::nc200_fdc_interrupt)
 {
-	nc_state *drvstate = device->machine().driver_data<nc_state>();
 #if 0
-    drvstate->m_irq_latch &=~(1<<5);
+    m_irq_latch &=~(1<<5);
 
     if (state)
     {
-            drvstate->m_irq_latch |=(1<<5);
+            m_irq_latch |=(1<<5);
     }
 #endif
-    drvstate->m_irq_status &=~(1<<5);
+    m_irq_status &=~(1<<5);
 
     if (state)
     {
-            drvstate->m_irq_status |=(1<<5);
+            m_irq_status |=(1<<5);
     }
 
-    nc_update_interrupts(device->machine());
+    nc_update_interrupts(machine());
 }
 
 static const upd765_interface nc200_upd765_interface=
 {
-    DEVCB_LINE(nc200_fdc_interrupt),
+    DEVCB_DRIVER_LINE_MEMBER(nc_state,nc200_fdc_interrupt),
     DEVCB_NULL,
     NULL,
     UPD765_RDY_PIN_CONNECTED,
@@ -1342,11 +1334,11 @@ MACHINE_START_MEMBER(nc_state,nc200)
 	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc200_machine_stop),&machine()));
 
 	/* keyboard timer */
-	m_keyboard_timer = machine().scheduler().timer_alloc(FUNC(nc_keyboard_timer_callback));
+	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_keyboard_timer_callback),this));
 	m_keyboard_timer->adjust(attotime::from_msec(10));
 
 	/* serial timer */
-	m_serial_timer = machine().scheduler().timer_alloc(FUNC(nc_serial_timer_callback));
+	m_serial_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_serial_timer_callback),this));
 }
 
 /*
@@ -1606,7 +1598,7 @@ static MACHINE_CONFIG_START( nc100, nc_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(480, 64)
 	MCFG_SCREEN_VISIBLE_AREA(0, 480-1, 0, 64-1)
-	MCFG_SCREEN_UPDATE_STATIC( nc )
+	MCFG_SCREEN_UPDATE_DRIVER(nc_state, screen_update_nc)
 
 	MCFG_PALETTE_LENGTH(NC_NUM_COLOURS)
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
@@ -1641,7 +1633,7 @@ static MACHINE_CONFIG_START( nc100, nc_state )
 	MCFG_RAM_DEFAULT_SIZE("64K")
 
 	/* dummy timer */
-	MCFG_TIMER_ADD_PERIODIC("dummy_timer", dummy_timer_callback, attotime::from_hz(50))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("dummy_timer", nc_state, dummy_timer_callback, attotime::from_hz(50))
 MACHINE_CONFIG_END
 
 static const floppy_interface nc200_floppy_interface =

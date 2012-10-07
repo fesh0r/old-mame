@@ -58,6 +58,7 @@ Notes:
 */
 
 #include "includes/bullet.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/scsihd.h"
 
@@ -671,22 +672,21 @@ INPUT_PORTS_END
 //  Z80CTC_INTERFACE( ctc_intf )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( ctc_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(bullet_state::ctc_tick)
 {
-	bullet_state *state = timer.machine().driver_data<bullet_state>();
+	m_ctc->trg0(1);
+	m_ctc->trg0(0);
 
-	state->m_ctc->trg0(1);
-	state->m_ctc->trg0(0);
+	m_ctc->trg1(1);
+	m_ctc->trg1(0);
 
-	state->m_ctc->trg1(1);
-	state->m_ctc->trg1(0);
-
-	state->m_ctc->trg2(1);
-	state->m_ctc->trg2(0);
+	m_ctc->trg2(1);
+	m_ctc->trg2(0);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( dart_rxtxca_w )
+WRITE_LINE_MEMBER(bullet_state::dart_rxtxca_w)
 {
+	device_t *device = machine().device(Z80DART_TAG);
 	z80dart_txca_w(device, state);
 	z80dart_rxca_w(device, state);
 }
@@ -694,7 +694,7 @@ static WRITE_LINE_DEVICE_HANDLER( dart_rxtxca_w )
 static Z80CTC_INTERFACE( ctc_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),		// interrupt handler
-	DEVCB_DEVICE_LINE(Z80DART_TAG, dart_rxtxca_w),		// ZC/TO0 callback
+	DEVCB_DRIVER_LINE_MEMBER(bullet_state,dart_rxtxca_w),		// ZC/TO0 callback
 	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),	// ZC/TO1 callback
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF, z80ctc_device, trg3)							// ZC/TO2 callback
 };
@@ -798,8 +798,8 @@ WRITE8_MEMBER( bullet_state::dma_mreq_w )
 	}
 }
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static Z80DMA_INTERFACE( dma_intf )
 {
@@ -1040,13 +1040,14 @@ WRITE_LINE_MEMBER( bulletf_state::req_w )
 
 static const SCSICB_interface scsi_intf =
 {
-	NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DRIVER_LINE_MEMBER(bulletf_state, req_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -1102,9 +1103,6 @@ void bullet_state::machine_start()
 
 void bulletf_state::machine_start()
 {
-	// initialize SASI bus
-	m_scsibus->init_scsibus(512);
-
 	// state saving
 	save_item(NAME(m_fdrdy));
 	save_item(NAME(m_rome));
@@ -1167,7 +1165,7 @@ static MACHINE_CONFIG_START( bullet, bullet_state )
 
 	// devices
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/4, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_4_9152MHz/4))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", bullet_state, ctc_tick, attotime::from_hz(XTAL_4_9152MHz/4))
 	MCFG_Z80DART_ADD(Z80DART_TAG, XTAL_16MHz/4, dart_intf)
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_16MHz/4, pio_intf)
@@ -1198,7 +1196,7 @@ static MACHINE_CONFIG_START( bulletf, bulletf_state )
 
 	// devices
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_16MHz/4, ctc_intf)
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(XTAL_4_9152MHz/4))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", bullet_state, ctc_tick, attotime::from_hz(XTAL_4_9152MHz/4))
 	MCFG_Z80DART_ADD(Z80DART_TAG, XTAL_16MHz/4, dart_intf)
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_16MHz/4, bulletf_pio_intf)

@@ -145,6 +145,8 @@ public:
 	required_device<device_t> m_floppy3;
 	required_device<device_t> m_beeper;
 	DECLARE_DRIVER_INIT(bigbord2);
+	TIMER_DEVICE_CALLBACK_MEMBER(ctc_tick);
+	DECLARE_WRITE_LINE_MEMBER(bigbord2_interrupt);
 };
 
 /* Status port
@@ -175,22 +177,24 @@ READ8_MEMBER( bigbord2_state::portd0_r )
 
 WRITE8_MEMBER( bigbord2_state::bigbord2_kbd_put )
 {
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
+
 	if (data)
 	{
 		m_term_data = data;
 		m_term_status = 8;
 		m_ctca->trg0(0);
 		m_ctca->trg0(1);
-		if (space.read_byte(0xf13d) == 0x4d)
+		if (mem.read_byte(0xf13d) == 0x4d)
 		{
 			// simulate interrupt by saving current pc on
 			// the stack and jumping to interrupt handler.
 			UINT16 spreg = m_maincpu->state_int(Z80_SP);
 			UINT16 pcreg = m_maincpu->state_int(Z80_PC);
 			spreg--;
-			space.write_byte(spreg, pcreg >> 8);
+			mem.write_byte(spreg, pcreg >> 8);
 			spreg--;
-			space.write_byte(spreg, pcreg);
+			mem.write_byte(spreg, pcreg);
 			m_maincpu->set_state_int(Z80_SP, spreg);
 			m_maincpu->set_state_int(Z80_PC, 0xF120);
 		}
@@ -207,8 +211,8 @@ static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
 /* Z80 DMA */
 
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static Z80DMA_INTERFACE( dma_intf )
 {
@@ -385,41 +389,40 @@ INPUT_PORTS_END
 
 /* Z80 SIO */
 
-static void bigbord2_interrupt(device_t *device, int state)
+WRITE_LINE_MEMBER(bigbord2_state::bigbord2_interrupt)
 {
-	device->machine().device(Z80_TAG)->execute().set_input_line(0, state);
+	machine().device(Z80_TAG)->execute().set_input_line(0, state);
 }
 
 const z80sio_interface sio_intf =
 {
-	bigbord2_interrupt,	/* interrupt handler */
-	0,			/* DTR changed handler */
-	0,			/* RTS changed handler */
-	0,			/* BREAK changed handler */
-	0,			/* transmit handler - which channel is this for? */
-	0			/* receive handler - which channel is this for? */
+	DEVCB_DRIVER_LINE_MEMBER(bigbord2_state, bigbord2_interrupt),	/* interrupt handler */
+	DEVCB_NULL,			/* DTR changed handler */
+	DEVCB_NULL,			/* RTS changed handler */
+	DEVCB_NULL,			/* BREAK changed handler */
+	DEVCB_NULL,			/* transmit handler - which channel is this for? */
+	DEVCB_NULL			/* receive handler - which channel is this for? */
 };
 
 
 /* Z80 CTC */
 
-static TIMER_DEVICE_CALLBACK( ctc_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(bigbord2_state::ctc_tick)
 {
-	bigbord2_state *state = timer.machine().driver_data<bigbord2_state>();
 
-	state->m_ctcb->trg0(1);
-	state->m_ctcb->trg1(1);
-	state->m_ctcb->trg0(0);
-	state->m_ctcb->trg1(0);
+	m_ctcb->trg0(1);
+	m_ctcb->trg1(1);
+	m_ctcb->trg0(0);
+	m_ctcb->trg1(0);
 }
 
 WRITE_LINE_MEMBER( bigbord2_state::frame )
 {
-	address_space *space = m_maincpu->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	static UINT8 framecnt;
 	framecnt++;
 
-	if ((space->read_byte(0xf13d) == 0x4d) & (framecnt > 3))
+	if ((space.read_byte(0xf13d) == 0x4d) & (framecnt > 3))
 	{
 		framecnt = 0;
 		// simulate interrupt by saving current pc on
@@ -427,9 +430,9 @@ WRITE_LINE_MEMBER( bigbord2_state::frame )
 		UINT16 spreg = m_maincpu->state_int(Z80_SP);
 		UINT16 pcreg = m_maincpu->state_int(Z80_PC);
 		spreg--;
-		space->write_byte(spreg, pcreg >> 8);
+		space.write_byte(spreg, pcreg >> 8);
 		spreg--;
-		space->write_byte(spreg, pcreg);
+		space.write_byte(spreg, pcreg);
 		m_maincpu->set_state_int(Z80_SP, spreg);
 		m_maincpu->set_state_int(Z80_PC, 0xF18E);
 	}
@@ -694,7 +697,7 @@ static MACHINE_CONFIG_START( bigbord2, bigbord2_state )
 	MCFG_PALETTE_INIT(black_and_white)
 
 	/* keyboard */
-	MCFG_TIMER_ADD_PERIODIC("ctc", ctc_tick, attotime::from_hz(MAIN_CLOCK))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("ctc", bigbord2_state, ctc_tick, attotime::from_hz(MAIN_CLOCK))
 
 	/* devices */
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, MAIN_CLOCK, dma_intf)

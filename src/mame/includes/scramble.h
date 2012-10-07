@@ -53,6 +53,8 @@ public:
 	DECLARE_DRIVER_INIT(billiard);
 	DECLARE_MACHINE_RESET(scramble);
 	DECLARE_MACHINE_RESET(explorer);
+	DECLARE_WRITE8_MEMBER(scramble_protection_w);
+	DECLARE_READ8_MEMBER(scramble_protection_r);
 };
 
 
@@ -62,18 +64,12 @@ extern const i8255_interface(scramble_ppi_0_intf);
 extern const i8255_interface(scramble_ppi_1_intf);
 extern const i8255_interface(stratgyx_ppi_1_intf);
 
+DECLARE_READ8_HANDLER( triplep_pip_r );
+DECLARE_READ8_HANDLER( triplep_pap_r );
 
+DECLARE_READ8_HANDLER( hunchbks_mirror_r );
+DECLARE_WRITE8_HANDLER( hunchbks_mirror_w );
 
-
-
-READ8_HANDLER( triplep_pip_r );
-READ8_HANDLER( triplep_pap_r );
-
-READ8_HANDLER( hunchbks_mirror_r );
-WRITE8_HANDLER( hunchbks_mirror_w );
-
-READ8_DEVICE_HANDLER( scramble_protection_r );
-WRITE8_DEVICE_HANDLER( scramble_protection_w );
 
 
 /*----------- defined in audio/scramble.c -----------*/
@@ -82,13 +78,13 @@ void scramble_sh_init(running_machine &machine);
 WRITE_LINE_DEVICE_HANDLER( scramble_sh_7474_q_callback );
 
 
-READ8_DEVICE_HANDLER( scramble_portB_r );
-READ8_DEVICE_HANDLER( frogger_portB_r );
+DECLARE_READ8_DEVICE_HANDLER( scramble_portB_r );
+DECLARE_READ8_DEVICE_HANDLER( frogger_portB_r );
 
-READ8_DEVICE_HANDLER( hotshock_soundlatch_r );
+DECLARE_READ8_DEVICE_HANDLER( hotshock_soundlatch_r );
 
-WRITE8_DEVICE_HANDLER( scramble_sh_irqtrigger_w );
-WRITE8_DEVICE_HANDLER( mrkougar_sh_irqtrigger_w );
+DECLARE_WRITE8_DEVICE_HANDLER( scramble_sh_irqtrigger_w );
+DECLARE_WRITE8_DEVICE_HANDLER( mrkougar_sh_irqtrigger_w );
 
 MACHINE_CONFIG_EXTERN( ad2083_audio );
 

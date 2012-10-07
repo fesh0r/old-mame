@@ -208,7 +208,7 @@ static MACHINE_CONFIG_START( dietgo, dietgo_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, XTAL_28MHz/2) /* DE102 (verified on pcb) */
 	MCFG_CPU_PROGRAM_MAP(dietgo_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", dietgo_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", H6280, XTAL_32_22MHz/4/3)	/* Custom chip 45; XIN is 32.220MHZ/4, verified on pcb */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -220,7 +220,7 @@ static MACHINE_CONFIG_START( dietgo, dietgo_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(dietgo)
+	MCFG_SCREEN_UPDATE_DRIVER(dietgo_state, screen_update_dietgo)
 
 	MCFG_PALETTE_LENGTH(1024)
 	MCFG_GFXDECODE(dietgo)

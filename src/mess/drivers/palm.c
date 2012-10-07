@@ -43,6 +43,14 @@ public:
 	UINT16 m_spim_data;
 	virtual void machine_start();
 	virtual void machine_reset();
+	DECLARE_INPUT_CHANGED_MEMBER(pen_check);
+	DECLARE_INPUT_CHANGED_MEMBER(button_check);
+	DECLARE_WRITE8_MEMBER(palm_port_f_out);
+	DECLARE_READ8_MEMBER(palm_port_c_in);
+	DECLARE_READ8_MEMBER(palm_port_f_in);
+	DECLARE_WRITE16_MEMBER(palm_spim_out);
+	DECLARE_READ16_MEMBER(palm_spim_in);
+	DECLARE_WRITE8_MEMBER(palm_dac_transition);
 };
 
 static offs_t palm_dasm_override(device_t &device, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram, int options);
@@ -52,52 +60,46 @@ static offs_t palm_dasm_override(device_t &device, char *buffer, offs_t pc, cons
     MACHINE HARDWARE
 ***************************************************************************/
 
-static INPUT_CHANGED( pen_check )
+INPUT_CHANGED_MEMBER(palm_state::pen_check)
 {
-	UINT8 button = field.machine().root_device().ioport("PENB")->read();
-	palm_state *state = field.machine().driver_data<palm_state>();
+	UINT8 button = machine().root_device().ioport("PENB")->read();
 
 	if(button)
-		mc68328_set_penirq_line(state->m_lsi, 1);
+		mc68328_set_penirq_line(m_lsi, 1);
 	else
-		mc68328_set_penirq_line(state->m_lsi, 0);
+		mc68328_set_penirq_line(m_lsi, 0);
 }
 
-static INPUT_CHANGED( button_check )
+INPUT_CHANGED_MEMBER(palm_state::button_check)
 {
-	UINT8 button_state = field.machine().root_device().ioport("PORTD")->read();
-	palm_state *state = field.machine().driver_data<palm_state>();
+	UINT8 button_state = machine().root_device().ioport("PORTD")->read();
 
-	mc68328_set_port_d_lines(state->m_lsi, button_state, (int)(FPTR)param);
+	mc68328_set_port_d_lines(m_lsi, button_state, (int)(FPTR)param);
 }
 
-static WRITE8_DEVICE_HANDLER( palm_port_f_out )
+WRITE8_MEMBER(palm_state::palm_port_f_out)
 {
-	palm_state *state = device->machine().driver_data<palm_state>();
-	state->m_port_f_latch = data;
+	m_port_f_latch = data;
 }
 
-static READ8_DEVICE_HANDLER( palm_port_c_in )
+READ8_MEMBER(palm_state::palm_port_c_in)
 {
 	return 0x10;
 }
 
-static READ8_DEVICE_HANDLER( palm_port_f_in )
+READ8_MEMBER(palm_state::palm_port_f_in)
 {
-	palm_state *state = device->machine().driver_data<palm_state>();
-	return state->m_port_f_latch;
+	return m_port_f_latch;
 }
 
-static WRITE16_DEVICE_HANDLER( palm_spim_out )
+WRITE16_MEMBER(palm_state::palm_spim_out)
 {
-	palm_state *state = device->machine().driver_data<palm_state>();
-	state->m_spim_data = data;
+	m_spim_data = data;
 }
 
-static READ16_DEVICE_HANDLER( palm_spim_in )
+READ16_MEMBER(palm_state::palm_spim_in)
 {
-	palm_state *state = device->machine().driver_data<palm_state>();
-	return state->m_spim_data;
+	return m_spim_data;
 }
 
 static void palm_spim_exchange( device_t *device )
@@ -120,9 +122,9 @@ static void palm_spim_exchange( device_t *device )
 
 void palm_state::machine_start()
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
-	space->install_read_bank (0x000000, machine().device<ram_device>(RAM_TAG)->size() - 1, machine().device<ram_device>(RAM_TAG)->size() - 1, 0, "bank1");
-	space->install_write_bank(0x000000, machine().device<ram_device>(RAM_TAG)->size() - 1, machine().device<ram_device>(RAM_TAG)->size() - 1, 0, "bank1");
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	space.install_read_bank (0x000000, machine().device<ram_device>(RAM_TAG)->size() - 1, machine().device<ram_device>(RAM_TAG)->size() - 1, 0, "bank1");
+	space.install_write_bank(0x000000, machine().device<ram_device>(RAM_TAG)->size() - 1, machine().device<ram_device>(RAM_TAG)->size() - 1, 0, "bank1");
 	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
 
 	save_item(NAME(m_port_f_latch));
@@ -157,10 +159,9 @@ ADDRESS_MAP_END
     AUDIO HARDWARE
 ***************************************************************************/
 
-static WRITE8_DEVICE_HANDLER( palm_dac_transition )
+WRITE8_MEMBER(palm_state::palm_dac_transition)
 {
-	palm_state *state = device->machine().driver_data<palm_state>();
-	state->m_dac->write_unsigned8(0x7f * data );
+	m_dac->write_unsigned8(0x7f * data );
 }
 
 
@@ -171,32 +172,32 @@ static MC68328_INTERFACE(palm_dragonball_iface)
 {
 	"maincpu",
 
-	NULL,                   // Port A Output
-	NULL,                   // Port B Output
-	NULL,                   // Port C Output
-	NULL,                   // Port D Output
-	NULL,                   // Port E Output
-	palm_port_f_out,        // Port F Output
-	NULL,                   // Port G Output
-	NULL,                   // Port J Output
-	NULL,                   // Port K Output
-	NULL,                   // Port M Output
+	DEVCB_NULL,                   // Port A Output
+	DEVCB_NULL,                   // Port B Output
+	DEVCB_NULL,                   // Port C Output
+	DEVCB_NULL,                   // Port D Output
+	DEVCB_NULL,                   // Port E Output
+	DEVCB_DRIVER_MEMBER(palm_state,palm_port_f_out),// Port F Output
+	DEVCB_NULL,                   // Port G Output
+	DEVCB_NULL,                   // Port J Output
+	DEVCB_NULL,                   // Port K Output
+	DEVCB_NULL,                   // Port M Output
 
-	NULL,                   // Port A Input
-	NULL,                   // Port B Input
-	palm_port_c_in,         // Port C Input
-	NULL,                   // Port D Input
-	NULL,                   // Port E Input
-	palm_port_f_in,         // Port F Input
-	NULL,                   // Port G Input
-	NULL,                   // Port J Input
-	NULL,                   // Port K Input
-	NULL,                   // Port M Input
+	DEVCB_NULL,                   // Port A Input
+	DEVCB_NULL,                   // Port B Input
+	DEVCB_DRIVER_MEMBER(palm_state,palm_port_c_in),// Port C Input
+	DEVCB_NULL,                   // Port D Input
+	DEVCB_NULL,                   // Port E Input
+	DEVCB_DRIVER_MEMBER(palm_state,palm_port_f_in),// Port F Input
+	DEVCB_NULL,                   // Port G Input
+	DEVCB_NULL,                   // Port J Input
+	DEVCB_NULL,                   // Port K Input
+	DEVCB_NULL,                   // Port M Input
 
-	palm_dac_transition,
+	DEVCB_DRIVER_MEMBER(palm_state,palm_dac_transition),
 
-	palm_spim_out,
-	palm_spim_in,
+	DEVCB_DRIVER_MEMBER16(palm_state,palm_spim_out),
+	DEVCB_DRIVER_MEMBER16(palm_state,palm_spim_in),
 	palm_spim_exchange
 };
 
@@ -237,16 +238,16 @@ static INPUT_PORTS_START( palm )
 	PORT_BIT( 0xff, 0x50, IPT_LIGHTGUN_Y ) PORT_NAME("Pen Y") PORT_MINMAX(0, 0xa0) PORT_SENSITIVITY(50) PORT_CROSSHAIR(Y, 1.0, 0.0, 0)
 
 	PORT_START( "PENB" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("Pen Button") PORT_CODE(MOUSECODE_BUTTON1) PORT_CHANGED(pen_check, NULL)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("Pen Button") PORT_CODE(MOUSECODE_BUTTON1) PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, pen_check, NULL)
 
 	PORT_START( "PORTD" )
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Power") PORT_CODE(KEYCODE_D)   PORT_CHANGED(button_check, (void*)0)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("Up") PORT_CODE(KEYCODE_Y)	  PORT_CHANGED(button_check, (void*)1)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Down") PORT_CODE(KEYCODE_H)	PORT_CHANGED(button_check, (void*)2)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("Button 1") PORT_CODE(KEYCODE_F)   PORT_CHANGED(button_check, (void*)3)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_NAME("Button 2") PORT_CODE(KEYCODE_G)   PORT_CHANGED(button_check, (void*)4)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_NAME("Button 3") PORT_CODE(KEYCODE_J)   PORT_CHANGED(button_check, (void*)5)
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON8 ) PORT_NAME("Button 4") PORT_CODE(KEYCODE_K)   PORT_CHANGED(button_check, (void*)6)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Power") PORT_CODE(KEYCODE_D)   PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("Up") PORT_CODE(KEYCODE_Y)	  PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)1)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Down") PORT_CODE(KEYCODE_H)	PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)2)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("Button 1") PORT_CODE(KEYCODE_F)   PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)3)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_NAME("Button 2") PORT_CODE(KEYCODE_G)   PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)4)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_NAME("Button 3") PORT_CODE(KEYCODE_J)   PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)5)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON8 ) PORT_NAME("Button 4") PORT_CODE(KEYCODE_K)   PORT_CHANGED_MEMBER(DEVICE_SELF, palm_state, button_check, (void*)6)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 

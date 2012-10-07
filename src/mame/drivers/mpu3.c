@@ -93,6 +93,8 @@ TODO: - Distinguish door switches using manual
 #include "machine/roc10937.h"
 #include "machine/meters.h"
 
+#include "mpu3.lh"
+
 #ifdef MAME_DEBUG
 #define MPU3VERBOSE 1
 #else
@@ -183,12 +185,15 @@ emu_timer *m_ic21_timer;
 	DECLARE_DRIVER_INIT(m3hprvpr);
 	virtual void machine_start();
 	virtual void machine_reset();
+	TIMER_CALLBACK_MEMBER(ic21_timeout);
+	TIMER_DEVICE_CALLBACK_MEMBER(gen_50hz);
+	TIMER_DEVICE_CALLBACK_MEMBER(ic10_callback);
 };
 
 #define DISPLAY_PORT 0
 #define METER_PORT 1
 #define BWB_FUNCTIONALITY 2
-static TIMER_CALLBACK( ic21_timeout );
+
 
 static void update_triacs(running_machine &machine)
 {
@@ -351,11 +356,10 @@ static void ic21_setup(mpu3_state *state)
 	}
 }
 
-static TIMER_CALLBACK( ic21_timeout )
+TIMER_CALLBACK_MEMBER(mpu3_state::ic21_timeout)
 {
-	mpu3_state *state = machine.driver_data<mpu3_state>();
-	state->m_ic11_active=0;
-	ic21_output(state,0);
+	m_ic11_active=0;
+	ic21_output(this,0);
 }
 
 READ8_MEMBER(mpu3_state::pia_ic3_porta_r)
@@ -783,7 +787,7 @@ static const stepper_interface mpu3_reel_interface =
 static void mpu3_config_common(running_machine &machine)
 {
 	mpu3_state *state = machine.driver_data<mpu3_state>();
-	state->m_ic21_timer = machine.scheduler().timer_alloc(FUNC(ic21_timeout));
+	state->m_ic21_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(mpu3_state::ic21_timeout),state));
 }
 
 void mpu3_state::machine_start()
@@ -850,26 +854,24 @@ READ8_MEMBER(mpu3_state::characteriser_r)
 }
 
 /* generate a 50 Hz signal (some components rely on this for external sync) */
-static TIMER_DEVICE_CALLBACK( gen_50hz )
+TIMER_DEVICE_CALLBACK_MEMBER(mpu3_state::gen_50hz)
 {
-	mpu3_state *state = timer.machine().driver_data<mpu3_state>();
 	/* Although reported as a '50Hz' signal, the fact that both rising and
     falling edges of the pulse are used means the timer actually gives a 100Hz
     oscillating signal.*/
-	state->m_signal_50hz = state->m_signal_50hz?0:1;
-	timer.machine().device<ptm6840_device>("ptm_ic2")->set_c1(state->m_signal_50hz);
-	timer.machine().device<pia6821_device>("pia_ic3")->cb1_w(~state->m_signal_50hz);
-	update_triacs(timer.machine());
+	m_signal_50hz = m_signal_50hz?0:1;
+	machine().device<ptm6840_device>("ptm_ic2")->set_c1(m_signal_50hz);
+	machine().device<pia6821_device>("pia_ic3")->cb1_w(~m_signal_50hz);
+	update_triacs(machine());
 }
 
-static TIMER_DEVICE_CALLBACK( ic10_callback )
+TIMER_DEVICE_CALLBACK_MEMBER(mpu3_state::ic10_callback)
 {
-	mpu3_state *state = timer.machine().driver_data<mpu3_state>();
 	// TODO: Use discrete handler for 555, this is far too simplistic
 
-	state->m_ic10_output = state->m_ic10_output?0:1;
-	timer.machine().device<ptm6840_device>("ptm_ic2")->set_c2(state->m_ic10_output);
-	timer.machine().device<pia6821_device>("pia_ic4")->ca1_w(state->m_ic10_output);
+	m_ic10_output = m_ic10_output?0:1;
+	machine().device<ptm6840_device>("ptm_ic2")->set_c2(m_ic10_output);
+	machine().device<pia6821_device>("pia_ic4")->ca1_w(m_ic10_output);
 
 }
 WRITE8_MEMBER(mpu3_state::mpu3ptm_w)
@@ -903,8 +905,8 @@ static MACHINE_CONFIG_START( mpu3base, mpu3_state )
 
 	MCFG_MSC1937_ADD("vfd",0,LEFT_TO_RIGHT)
 
-	MCFG_TIMER_ADD_PERIODIC("50hz",gen_50hz, attotime::from_hz(100))
-	MCFG_TIMER_ADD_PERIODIC("555_ic10",ic10_callback, PERIOD_OF_555_ASTABLE(10000,1000,0.0000001))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("50hz", mpu3_state, gen_50hz, attotime::from_hz(100))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("555_ic10", mpu3_state, ic10_callback, PERIOD_OF_555_ASTABLE(10000,1000,0.0000001))
 
 	/* 6840 PTM */
 	MCFG_PTM6840_ADD("ptm_ic2", ptm_ic2_intf)
@@ -916,7 +918,7 @@ static MACHINE_CONFIG_START( mpu3base, mpu3_state )
 
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
-	MCFG_DEFAULT_LAYOUT(layout_awpvid16)
+	MCFG_DEFAULT_LAYOUT(layout_mpu3)
 MACHINE_CONFIG_END
 
 
@@ -933,11 +935,11 @@ static const mpu3_chr_table hprvpr_data[64] = {
 
 DRIVER_INIT_MEMBER(mpu3_state,m3hprvpr)
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
 	m_disp_func=METER_PORT;
 	m_current_chr_table = hprvpr_data;
-	space->install_readwrite_handler(0xc000, 0xc000 , read8_delegate(FUNC(mpu3_state::characteriser_r), this),write8_delegate(FUNC(mpu3_state::characteriser_w), this));
+	space.install_readwrite_handler(0xc000, 0xc000 , read8_delegate(FUNC(mpu3_state::characteriser_r), this),write8_delegate(FUNC(mpu3_state::characteriser_w), this));
 
 }
 

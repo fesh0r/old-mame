@@ -183,10 +183,11 @@ static DEVICE_RESET( dave_sound )
 	for (i = 0; i < 32; i++)
 		dave->Regs[i] = 0;
 
-	dave_reg_w(device, 0x10, 0);
-	dave_reg_w(device, 0x11, 0);
-	dave_reg_w(device, 0x12, 0);
-	dave_reg_w(device, 0x13, 0);
+	address_space &space = device->machine().driver_data()->generic_space();
+	dave_reg_w(device, space, 0x10, 0);
+	dave_reg_w(device, space, 0x11, 0);
+	dave_reg_w(device, space, 0x12, 0);
+	dave_reg_w(device, space, 0x13, 0);
 
 }
 
@@ -453,7 +454,7 @@ static WRITE8_DEVICE_HANDLER(dave_sound_w)
 			count++;
 
 
-			dave->Period[channel_index] = ((STEP  * device->machine().sample_rate())/125000) * count;
+			dave->Period[channel_index] = ((STEP  * space.machine().sample_rate())/125000) * count;
 
 		}
 		break;
@@ -615,7 +616,7 @@ WRITE8_DEVICE_HANDLER ( dave_reg_w )
 
 	logerror("dave w: %04x %02x\n",offset,data);
 
-	dave_sound_w(device, offset, data);
+	dave_sound_w(device, space, offset, data, mem_mask);
 
 	dave->Regs[offset & 0x01f] = data;
 
@@ -822,7 +823,7 @@ dave_sound_device::dave_sound_device(const machine_config &mconfig, const char *
 	: device_t(mconfig, DAVE, "Dave", tag, owner, clock),
 	  device_sound_interface(mconfig, *this)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(dave_t));
+	m_token = global_alloc_clear(dave_t);
 }
 
 //-------------------------------------------------

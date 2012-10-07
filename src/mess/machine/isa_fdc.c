@@ -11,8 +11,8 @@
 #include "formats/pc_dsk.h"
 #include "machine/idectrl.h"
 
-static READ8_DEVICE_HANDLER ( pc_fdc_r );
-static WRITE8_DEVICE_HANDLER ( pc_fdc_w );
+static DECLARE_READ8_DEVICE_HANDLER ( pc_fdc_r );
+static DECLARE_WRITE8_DEVICE_HANDLER ( pc_fdc_w );
 
 /* if not 1, DACK and TC inputs to FDC are disabled, and DRQ and IRQ are held
  * at high impedance i.e they are not affective */
@@ -226,7 +226,7 @@ static WRITE8_DEVICE_HANDLER( pc_fdc_dor_w )
 	int selected_drive;
 	int floppy_count;
 
-	floppy_count = floppy_get_count(device->machine());
+	floppy_count = floppy_get_count(space.machine());
 
 	if (floppy_count > (fdc->digital_output_register & 0x03))
 		floppy_drive_set_ready_state(get_floppy_subdevice(device, fdc->digital_output_register & 0x03), 1, 0);
@@ -353,15 +353,15 @@ static READ8_DEVICE_HANDLER ( pc_fdc_r )
 		case 3: /* tape drive select? */
 			break;
 		case 4:
-			data = upd765_status_r(fdc->m_upd765, 0);
+			data = upd765_status_r(fdc->m_upd765, space, 0);
 			break;
 		case 5:
-			data = upd765_data_r(fdc->m_upd765, offset);
+			data = upd765_data_r(fdc->m_upd765, space, offset);
 			break;
 		case 6: /* FDC reserved */
-			hdd = device->machine().device(":board3:ide:ide");
+			hdd = space.machine().device(":board3:ide:ide");
 			if (hdd)
-				data = ide_controller16_r(hdd, 0x3f6/2, 0x00ff);
+				data = ide_controller16_r(hdd, space, 0x3f6/2, 0x00ff);
 			break;
 		case 7:
 			device_t *dev = get_floppy_subdevice(device, fdc->digital_output_register & 0x03);
@@ -371,7 +371,7 @@ static READ8_DEVICE_HANDLER ( pc_fdc_r )
     }
 
 	if (LOG_FDC)
-		logerror("pc_fdc_r(): pc=0x%08x offset=%d result=0x%02X\n", (unsigned) device->machine().firstcpu->pc(), offset, data);
+		logerror("pc_fdc_r(): pc=0x%08x offset=%d result=0x%02X\n", (unsigned) space.machine().firstcpu->pc(), offset, data);
 	return data;
 }
 
@@ -382,8 +382,8 @@ static WRITE8_DEVICE_HANDLER ( pc_fdc_w )
 	isa8_fdc_device	*fdc  = downcast<isa8_fdc_device *>(device);
 
 	if (LOG_FDC)
-		logerror("pc_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) device->machine().firstcpu->pc(), offset, data);
-	pc_fdc_check_data_rate(fdc,device->machine());  // check every time a command may start
+		logerror("pc_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) space.machine().firstcpu->pc(), offset, data);
+	pc_fdc_check_data_rate(fdc,space.machine());  // check every time a command may start
 	device_t *hdd = NULL;
 
 	switch(offset)
@@ -392,22 +392,22 @@ static WRITE8_DEVICE_HANDLER ( pc_fdc_w )
 		case 1:	/* n/a */
 			break;
 		case 2:
-			pc_fdc_dor_w(device, 0, data);
+			pc_fdc_dor_w(device, space, 0, data, mem_mask);
 			break;
 		case 3:
 			/* tape drive select? */
 			break;
 		case 4:
-			pc_fdc_data_rate_w(device, 0, data);
+			pc_fdc_data_rate_w(device, space, 0, data, mem_mask);
 			break;
 		case 5:
-			upd765_data_w(fdc->m_upd765, 0, data);
+			upd765_data_w(fdc->m_upd765, space, 0, data);
 			break;
 		case 6:
 			/* FDC reserved */
-			hdd = device->machine().device(":board3:ide:ide");
+			hdd = space.machine().device(":board3:ide:ide");
 			if (hdd)
-				ide_controller16_w(hdd, 0x3f6/2, data, 0x00ff);
+				ide_controller16_w(hdd, space, 0x3f6/2, data, 0x00ff);
 			break;
 		case 7:
 			/* Configuration Control Register
@@ -419,7 +419,7 @@ static WRITE8_DEVICE_HANDLER ( pc_fdc_w )
              *      1 0      250 kbps
              *      1 1     1000 kbps
              */
-			pc_fdc_data_rate_w(device, 0, data & 3);
+			pc_fdc_data_rate_w(device, space, 0, data & 3, mem_mask);
 			break;
 	}
 }
@@ -432,7 +432,7 @@ UINT8 isa8_fdc_device::dack_r(int line)
 	/* if dma is not enabled, dacks are not acknowledged */
 	if ((digital_output_register & PC_FDC_FLAGS_DOR_DMA_ENABLED)!=0)
 	{
-		data = upd765_dack_r(m_upd765, 0);
+		data = upd765_dack_r(m_upd765, machine().driver_data()->generic_space(), 0);
 	}
 
 	return data;
@@ -444,7 +444,7 @@ void isa8_fdc_device::dack_w(int line,UINT8 data)
 	if ((digital_output_register & PC_FDC_FLAGS_DOR_DMA_ENABLED)!=0)
 	{
 		/* dma acknowledge - and send byte to fdc */
-		upd765_dack_w(m_upd765, 0,data);
+		upd765_dack_w(m_upd765, machine().driver_data()->generic_space(), 0,data);
 	}
 }
 void isa8_fdc_device::eop_w(int state)

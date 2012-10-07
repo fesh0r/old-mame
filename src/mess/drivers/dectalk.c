@@ -194,6 +194,8 @@ public:
 	DECLARE_READ16_MEMBER(spc_semaphore_r);
 	DECLARE_DRIVER_INIT(dectalk);
 	virtual void machine_reset();
+	TIMER_CALLBACK_MEMBER(outfifo_read_cb);
+	DECLARE_WRITE8_MEMBER(dectalk_kbd_put);
 };
 
 
@@ -228,7 +230,7 @@ static void duart_output(device_t *device, UINT8 data)
 static void duart_tx(device_t *device, int channel, UINT8 data)
 {
 	device_t *devconf = device->machine().device(TERMINAL_TAG);
-	dynamic_cast<generic_terminal_device *>(devconf)->write(*devconf->machine().memory().first_space(), 0, data);
+	dynamic_cast<generic_terminal_device *>(devconf)->write(devconf->machine().driver_data()->generic_space(), 0, data);
 #ifdef SERIAL_TO_STDERR
 	fprintf(stderr, "%02X ",data);
 #endif
@@ -697,15 +699,15 @@ INPUT_PORTS_END
 /******************************************************************************
  Machine Drivers
 ******************************************************************************/
-static TIMER_CALLBACK( outfifo_read_cb )
+TIMER_CALLBACK_MEMBER(dectalk_state::outfifo_read_cb)
 {
 	UINT16 data;
-	dac_device *speaker = machine.device<dac_device>("dac");
-	data = dectalk_outfifo_r(machine);
+	dac_device *speaker = machine().device<dac_device>("dac");
+	data = dectalk_outfifo_r(machine());
 #ifdef VERBOSE
 	if (data!= 0x8000) logerror("sample output: %04X\n", data);
 #endif
-	machine.scheduler().timer_set(attotime::from_hz(10000), FUNC(outfifo_read_cb));
+	machine().scheduler().timer_set(attotime::from_hz(10000), timer_expired_delegate(FUNC(dectalk_state::outfifo_read_cb),this));
 	speaker->write_signed16(data);
 }
 
@@ -714,17 +716,17 @@ DRIVER_INIT_MEMBER(dectalk_state,dectalk)
 {
 	dectalk_clear_all_fifos(machine());
 	m_simulate_outfifo_error = 0;
-	machine().scheduler().timer_set(attotime::from_hz(10000), FUNC(outfifo_read_cb));
+	machine().scheduler().timer_set(attotime::from_hz(10000), timer_expired_delegate(FUNC(dectalk_state::outfifo_read_cb),this));
 }
 
-static WRITE8_DEVICE_HANDLER( dectalk_kbd_put )
+WRITE8_MEMBER(dectalk_state::dectalk_kbd_put)
 {
-	duart68681_rx_data(device->machine().device("duart68681"), 1, data);
+	duart68681_rx_data(machine().device("duart68681"), 1, data);
 }
 
 static GENERIC_TERMINAL_INTERFACE( dectalk_terminal_intf )
 {
-	DEVCB_HANDLER(dectalk_kbd_put)
+	DEVCB_DRIVER_MEMBER(dectalk_state,dectalk_kbd_put)
 };
 
 static MACHINE_CONFIG_START( dectalk, dectalk_state )

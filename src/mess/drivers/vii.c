@@ -139,6 +139,10 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
+	UINT32 screen_update_vii(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	INTERRUPT_GEN_MEMBER(vii_vblank);
+	TIMER_CALLBACK_MEMBER(tmb1_tick);
+	TIMER_CALLBACK_MEMBER(tmb2_tick);
 };
 
 enum
@@ -215,7 +219,7 @@ static void vii_set_pixel(vii_state *state, UINT32 offset, UINT16 rgb)
 static void vii_blit(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, UINT32 xoff, UINT32 yoff, UINT32 attr, UINT32 ctrl, UINT32 bitmap_addr, UINT16 tile)
 {
 	vii_state *state = machine.driver_data<vii_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	UINT32 h = 8 << ((attr & PAGE_TILE_HEIGHT_MASK) >> PAGE_TILE_HEIGHT_SHIFT);
 	UINT32 w = 8 << ((attr & PAGE_TILE_WIDTH_MASK) >> PAGE_TILE_WIDTH_SHIFT);
@@ -247,7 +251,7 @@ static void vii_blit(running_machine &machine, bitmap_rgb32 &bitmap, const recta
 			bits <<= nc;
 			if(nbits < nc)
 			{
-				UINT16 b = space->read_word((m++ & 0x3fffff) << 1);
+				UINT16 b = space.read_word((m++ & 0x3fffff) << 1);
 				b = (b << 8) | (b >> 8);
 				bits |= b << (nc - nbits);
 				nbits += 16;
@@ -291,7 +295,7 @@ static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const 
 	UINT32 tilemap = regs[4];
 	UINT32 palette_map = regs[5];
 	UINT32 h, w, hn, wn;
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	if(!(ctrl & PAGE_ENABLE_MASK))
 	{
@@ -313,7 +317,7 @@ static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const 
 	{
 		for(x0 = 0; x0 < wn; x0++)
 		{
-			UINT16 tile = space->read_word((tilemap + x0 + wn * y0) << 1);
+			UINT16 tile = space.read_word((tilemap + x0 + wn * y0) << 1);
 			UINT16 palette = 0;
 			UINT32 xx, yy;
 
@@ -322,7 +326,7 @@ static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const 
 				continue;
 			}
 
-			palette = space->read_word((palette_map + (x0 + wn * y0) / 2) << 1);
+			palette = space.read_word((palette_map + (x0 + wn * y0) / 2) << 1);
 			if(x0 & 1)
 			{
 				palette >>= 8;
@@ -353,16 +357,16 @@ static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const 
 static void vii_blit_sprite(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 base_addr)
 {
 	vii_state *state = machine.driver_data<vii_state>();
-	address_space *space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 	UINT16 tile, attr;
 	INT16 x, y;
 	UINT32 h, w;
 	UINT32 bitmap_addr = 0x40 * state->m_video_regs[0x22];
 
-	tile = space->read_word((base_addr + 0) << 1);
-	x = space->read_word((base_addr + 1) << 1);
-	y = space->read_word((base_addr + 2) << 1);
-	attr = space->read_word((base_addr + 3) << 1);
+	tile = space.read_word((base_addr + 0) << 1);
+	x = space.read_word((base_addr + 1) << 1);
+	y = space.read_word((base_addr + 2) << 1);
+	attr = space.read_word((base_addr + 3) << 1);
 
 	if(!tile)
 	{
@@ -404,34 +408,33 @@ static void vii_blit_sprites(running_machine &machine, bitmap_rgb32 &bitmap, con
 
 	for(n = 0; n < 256; n++)
 	{
-		//if(space->read_word((0x2c00 + 4*n) << 1))
+		//if(space.read_word((0x2c00 + 4*n) << 1))
 		{
 			vii_blit_sprite(machine, bitmap, cliprect, depth, 0x2c00 + 4*n);
 		}
 	}
 }
 
-static SCREEN_UPDATE_RGB32( vii )
+UINT32 vii_state::screen_update_vii(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	vii_state *state = screen.machine().driver_data<vii_state>();
 	int i, x, y;
 
 	bitmap.fill(0, cliprect);
 
-	memset(state->m_screen, 0, sizeof(state->m_screen));
+	memset(m_screen, 0, sizeof(m_screen));
 
 	for(i = 0; i < 4; i++)
 	{
-		vii_blit_page(screen.machine(), bitmap, cliprect, i, 0x40 * state->m_video_regs[0x20], state->m_video_regs + 0x10);
-		vii_blit_page(screen.machine(), bitmap, cliprect, i, 0x40 * state->m_video_regs[0x21], state->m_video_regs + 0x16);
-		vii_blit_sprites(screen.machine(), bitmap, cliprect, i);
+		vii_blit_page(machine(), bitmap, cliprect, i, 0x40 * m_video_regs[0x20], m_video_regs + 0x10);
+		vii_blit_page(machine(), bitmap, cliprect, i, 0x40 * m_video_regs[0x21], m_video_regs + 0x16);
+		vii_blit_sprites(machine(), bitmap, cliprect, i);
 	}
 
 	for(y = 0; y < 240; y++)
 	{
 		for(x = 0; x < 320; x++)
 		{
-			bitmap.pix32(y, x) = (state->m_screen[x + 320*y].r << 16) | (state->m_screen[x + 320*y].g << 8) | state->m_screen[x + 320*y].b;
+			bitmap.pix32(y, x) = (m_screen[x + 320*y].r << 16) | (m_screen[x + 320*y].g << 8) | m_screen[x + 320*y].b;
 		}
 	}
 
@@ -444,14 +447,14 @@ static SCREEN_UPDATE_RGB32( vii )
 
 void vii_state::vii_do_dma(UINT32 len)
 {
-	address_space *mem = m_maincpu->space(AS_PROGRAM);
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 	UINT32 src = m_video_regs[0x70];
 	UINT32 dst = m_video_regs[0x71] + 0x2c00;
 	UINT32 j;
 
 	for(j = 0; j < len; j++)
 	{
-		mem->write_word((dst+j) << 1, mem->read_word((src+j) << 1));
+		mem.write_word((dst+j) << 1, mem.read_word((src+j) << 1));
 	}
 
 	m_video_regs[0x72] = 0;
@@ -615,14 +618,14 @@ void vii_state::vii_do_i2c()
 
 void vii_state::spg_do_dma(UINT32 len)
 {
-	address_space *mem = m_maincpu->space(AS_PROGRAM);
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 
 	UINT32 src = ((m_io_regs[0x101] & 0x3f) << 16) | m_io_regs[0x100];
 	UINT32 dst = m_io_regs[0x103] & 0x3fff;
 	UINT32 j;
 
 	for(j = 0; j < len; j++)
-		mem->write_word((dst+j) << 1, mem->read_word((src+j) << 1));
+		mem.write_word((dst+j) << 1, mem.read_word((src+j) << 1));
 
 	m_io_regs[0x102] = 0;
 }
@@ -978,16 +981,14 @@ static DEVICE_IMAGE_LOAD( vsmile_cart )
 	return IMAGE_INIT_PASS;
 }
 
-static TIMER_CALLBACK( tmb1_tick )
+TIMER_CALLBACK_MEMBER(vii_state::tmb1_tick)
 {
-	vii_state *state = machine.driver_data<vii_state>();
-	state->m_io_regs[0x22] |= 1;
+	m_io_regs[0x22] |= 1;
 }
 
-static TIMER_CALLBACK( tmb2_tick )
+TIMER_CALLBACK_MEMBER(vii_state::tmb2_tick)
 {
-	vii_state *state = machine.driver_data<vii_state>();
-	state->m_io_regs[0x22] |= 2;
+	m_io_regs[0x22] |= 2;
 }
 
 void vii_state::machine_start()
@@ -1011,8 +1012,8 @@ void vii_state::machine_start()
 	m_video_regs[0x36] = 0xffff;
 	m_video_regs[0x37] = 0xffff;
 
-	m_tmb1 = machine().scheduler().timer_alloc(FUNC(tmb1_tick));
-	m_tmb2 = machine().scheduler().timer_alloc(FUNC(tmb2_tick));
+	m_tmb1 = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(vii_state::tmb1_tick),this));
+	m_tmb2 = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(vii_state::tmb2_tick),this));
 	m_tmb1->reset();
 	m_tmb2->reset();
 }
@@ -1021,71 +1022,70 @@ void vii_state::machine_reset()
 {
 }
 
-static INTERRUPT_GEN( vii_vblank )
+INTERRUPT_GEN_MEMBER(vii_state::vii_vblank)
 {
-	vii_state *state = device->machine().driver_data<vii_state>();
-	UINT32 x = device->machine().rand() & 0x3ff;
-	UINT32 y = device->machine().rand() & 0x3ff;
-	UINT32 z = device->machine().rand() & 0x3ff;
+	UINT32 x = machine().rand() & 0x3ff;
+	UINT32 y = machine().rand() & 0x3ff;
+	UINT32 z = machine().rand() & 0x3ff;
 
 
-	state->m_controller_input[0] = state->ioport("P1")->read();
-	state->m_controller_input[1] = (UINT8)x;
-	state->m_controller_input[2] = (UINT8)y;
-	state->m_controller_input[3] = (UINT8)z;
-	state->m_controller_input[4] = 0;
+	m_controller_input[0] = ioport("P1")->read();
+	m_controller_input[1] = (UINT8)x;
+	m_controller_input[2] = (UINT8)y;
+	m_controller_input[3] = (UINT8)z;
+	m_controller_input[4] = 0;
 	x >>= 8;
 	y >>= 8;
 	z >>= 8;
-	state->m_controller_input[5] = (z << 4) | (y << 2) | x;
-	state->m_controller_input[6] = 0xff;
-	state->m_controller_input[7] = 0;
+	m_controller_input[5] = (z << 4) | (y << 2) | x;
+	m_controller_input[6] = 0xff;
+	m_controller_input[7] = 0;
 
-	state->m_uart_rx_count = 0;
+	m_uart_rx_count = 0;
 
-	state->VII_VIDEO_IRQ_STATUS = state->VII_VIDEO_IRQ_ENABLE & 1;
-	if(state->VII_VIDEO_IRQ_STATUS)
+	VII_VIDEO_IRQ_STATUS = VII_VIDEO_IRQ_ENABLE & 1;
+	if(VII_VIDEO_IRQ_STATUS)
 	{
-		verboselog(device->machine(), 0, "Video IRQ\n");
-		device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ0_LINE, ASSERT_LINE);
+		verboselog(machine(), 0, "Video IRQ\n");
+		machine().device("maincpu")->execute().set_input_line(UNSP_IRQ0_LINE, ASSERT_LINE);
 	}
 
 //  {
-//      verboselog(device->machine(), 0, "audio 1 IRQ\n");
-//      device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ1_LINE, ASSERT_LINE);
+//      verboselog(machine(), 0, "audio 1 IRQ\n");
+//      machine().device("maincpu")->execute().set_input_line(UNSP_IRQ1_LINE, ASSERT_LINE);
 //  }
-    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x0c00)
+    if(m_io_regs[0x22] & m_io_regs[0x21] & 0x0c00)
 	{
-		verboselog(device->machine(), 0, "timerA, timer B IRQ\n");
-		device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ2_LINE, ASSERT_LINE);
+		verboselog(machine(), 0, "timerA, timer B IRQ\n");
+		machine().device("maincpu")->execute().set_input_line(UNSP_IRQ2_LINE, ASSERT_LINE);
 	}
 
-    //if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x2100)
+    //if(m_io_regs[0x22] & m_io_regs[0x21] & 0x2100)
 	// For now trigger always if any enabled
-	if(state->VII_CTLR_IRQ_ENABLE)
+	if(VII_CTLR_IRQ_ENABLE)
 	{
-		verboselog(device->machine(), 0, "UART, ADC IRQ\n");
-		device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ3_LINE, ASSERT_LINE);
+		verboselog(machine(), 0, "UART, ADC IRQ\n");
+		machine().device("maincpu")->execute().set_input_line(UNSP_IRQ3_LINE, ASSERT_LINE);
 	}
 //  {
-//      verboselog(device->machine(), 0, "audio 4 IRQ\n");
-//      device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ4_LINE, ASSERT_LINE);
+//      verboselog(machine(), 0, "audio 4 IRQ\n");
+//      machine().device("maincpu")->execute().set_input_line(UNSP_IRQ4_LINE, ASSERT_LINE);
 //  }
 
-    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x1200)
+    if(m_io_regs[0x22] & m_io_regs[0x21] & 0x1200)
 	{
-		verboselog(device->machine(), 0, "External IRQ\n");
-		device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ5_LINE, ASSERT_LINE);
+		verboselog(machine(), 0, "External IRQ\n");
+		machine().device("maincpu")->execute().set_input_line(UNSP_IRQ5_LINE, ASSERT_LINE);
 	}
-    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x0070)
+    if(m_io_regs[0x22] & m_io_regs[0x21] & 0x0070)
 	{
-		verboselog(device->machine(), 0, "1024Hz, 2048HZ, 4096HZ IRQ\n");
-		device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ6_LINE, ASSERT_LINE);
+		verboselog(machine(), 0, "1024Hz, 2048HZ, 4096HZ IRQ\n");
+		machine().device("maincpu")->execute().set_input_line(UNSP_IRQ6_LINE, ASSERT_LINE);
 	}
-    if(state->m_io_regs[0x22] & state->m_io_regs[0x21] & 0x008b)
+    if(m_io_regs[0x22] & m_io_regs[0x21] & 0x008b)
 	{
-		verboselog(device->machine(), 0, "TMB1, TMB2, 4Hz, key change IRQ\n");
-		device->machine().device("maincpu")->execute().set_input_line(UNSP_IRQ7_LINE, ASSERT_LINE);
+		verboselog(machine(), 0, "TMB1, TMB2, 4Hz, key change IRQ\n");
+		machine().device("maincpu")->execute().set_input_line(UNSP_IRQ7_LINE, ASSERT_LINE);
 	}
 
 }
@@ -1094,14 +1094,14 @@ static MACHINE_CONFIG_START( vii, vii_state )
 
 	MCFG_CPU_ADD( "maincpu", UNSP, XTAL_27MHz)
 	MCFG_CPU_PROGRAM_MAP( vii_mem )
-	MCFG_CPU_VBLANK_INT("screen", vii_vblank)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", vii_state,  vii_vblank)
 
 
 	MCFG_SCREEN_ADD( "screen", RASTER )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
-	MCFG_SCREEN_UPDATE_STATIC( vii )
+	MCFG_SCREEN_UPDATE_DRIVER(vii_state, screen_update_vii)
 	MCFG_PALETTE_LENGTH(32768)
 
 	MCFG_CARTSLOT_ADD( "cart" )
@@ -1116,14 +1116,14 @@ static MACHINE_CONFIG_START( vsmile, vii_state )
 
 	MCFG_CPU_ADD( "maincpu", UNSP, XTAL_27MHz)
 	MCFG_CPU_PROGRAM_MAP( vii_mem )
-	MCFG_CPU_VBLANK_INT("screen", vii_vblank)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", vii_state,  vii_vblank)
 
 
 	MCFG_SCREEN_ADD( "screen", RASTER )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
-	MCFG_SCREEN_UPDATE_STATIC( vii )
+	MCFG_SCREEN_UPDATE_DRIVER(vii_state, screen_update_vii)
 	MCFG_PALETTE_LENGTH(32768)
 
 	MCFG_CARTSLOT_ADD( "cart" )
@@ -1141,7 +1141,7 @@ static MACHINE_CONFIG_START( batman, vii_state )
 
 	MCFG_CPU_ADD( "maincpu", UNSP, XTAL_27MHz)
 	MCFG_CPU_PROGRAM_MAP( vii_mem )
-	MCFG_CPU_VBLANK_INT("screen", vii_vblank)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", vii_state,  vii_vblank)
 
 
 	MCFG_I2CMEM_ADD("i2cmem",i2cmem_interface)
@@ -1150,7 +1150,7 @@ static MACHINE_CONFIG_START( batman, vii_state )
 	MCFG_SCREEN_REFRESH_RATE(60)
 	MCFG_SCREEN_SIZE(320, 240)
 	MCFG_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
-	MCFG_SCREEN_UPDATE_STATIC( vii )
+	MCFG_SCREEN_UPDATE_DRIVER(vii_state, screen_update_vii)
 	MCFG_PALETTE_LENGTH(32768)
 MACHINE_CONFIG_END
 

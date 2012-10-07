@@ -45,21 +45,20 @@ WRITE8_MEMBER(srumbler_state::srumbler_bankswitch_w)
 
 void srumbler_state::machine_start()
 {
-	address_space *space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 	/* initialize banked ROM pointers */
-	srumbler_bankswitch_w(*space,0,0);
+	srumbler_bankswitch_w(space,0,0);
 }
 
-static TIMER_DEVICE_CALLBACK( srumbler_interrupt )
+TIMER_DEVICE_CALLBACK_MEMBER(srumbler_state::srumbler_interrupt)
 {
-	srumbler_state *state = timer.machine().driver_data<srumbler_state>();
 	int scanline = param;
 
 	if (scanline == 248)
-		state->m_maincpu->set_input_line(0,HOLD_LINE);
+		m_maincpu->set_input_line(0,HOLD_LINE);
 
 	if (scanline == 0)
-		state->m_maincpu->set_input_line(M6809_FIRQ_LINE,HOLD_LINE);
+		m_maincpu->set_input_line(M6809_FIRQ_LINE,HOLD_LINE);
 }
 
 /*
@@ -239,11 +238,11 @@ static MACHINE_CONFIG_START( srumbler, srumbler_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M6809, 1500000)        /* 1.5 MHz (?) */
 	MCFG_CPU_PROGRAM_MAP(srumbler_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", srumbler_interrupt, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", srumbler_state, srumbler_interrupt, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 3000000)        /* 3 MHz ??? */
 	MCFG_CPU_PROGRAM_MAP(srumbler_sound_map)
-	MCFG_CPU_PERIODIC_INT(irq0_line_hold,4*60)
+	MCFG_CPU_PERIODIC_INT_DRIVER(srumbler_state, irq0_line_hold, 4*60)
 
 
 	/* video hardware */
@@ -254,7 +253,7 @@ static MACHINE_CONFIG_START( srumbler, srumbler_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(64*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(10*8, (64-10)*8-1, 1*8, 31*8-1 )
-	MCFG_SCREEN_UPDATE_STATIC(srumbler)
+	MCFG_SCREEN_UPDATE_DRIVER(srumbler_state, screen_update_srumbler)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram8_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(srumbler)

@@ -342,7 +342,7 @@ GFXDECODE_END
  Interrupt Function
 *******************************************************************************/
 
-static TIMER_DEVICE_CALLBACK( wwfwfest_scanline )
+TIMER_DEVICE_CALLBACK_MEMBER(wwfwfest_state::wwfwfest_scanline)
 {
 	int scanline = param;
 
@@ -350,15 +350,15 @@ static TIMER_DEVICE_CALLBACK( wwfwfest_scanline )
 	if (scanline % 16 == 0)
 	{
 		if (scanline > 0)
-			timer.machine().primary_screen->update_partial(scanline - 1);
-		timer.machine().device("maincpu")->execute().set_input_line(2, ASSERT_LINE);
+			machine().primary_screen->update_partial(scanline - 1);
+		machine().device("maincpu")->execute().set_input_line(2, ASSERT_LINE);
 	}
 
 	/* Vblank is raised on scanline 248 */
 	if (scanline == 248)
 	{
-		timer.machine().primary_screen->update_partial(scanline - 1);
-		timer.machine().device("maincpu")->execute().set_input_line(3, ASSERT_LINE);
+		machine().primary_screen->update_partial(scanline - 1);
+		machine().device("maincpu")->execute().set_input_line(3, ASSERT_LINE);
 	}
 }
 
@@ -387,7 +387,7 @@ static MACHINE_CONFIG_START( wwfwfest, wwfwfest_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, CPU_CLOCK)	/* 24 crystal, 12 rated chip */
 	MCFG_CPU_PROGRAM_MAP(main_map)
-	MCFG_TIMER_ADD_SCANLINE("scantimer", wwfwfest_scanline, "screen", 0, 1)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", wwfwfest_state, wwfwfest_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
 	MCFG_CPU_PROGRAM_MAP(sound_map)
@@ -397,7 +397,7 @@ static MACHINE_CONFIG_START( wwfwfest, wwfwfest_state )
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 384, 0, 320, 272, 8, 248)	/* HTOTAL and VTOTAL are guessed */
-	MCFG_SCREEN_UPDATE_STATIC(wwfwfest)
+	MCFG_SCREEN_UPDATE_DRIVER(wwfwfest_state, screen_update_wwfwfest)
 	MCFG_SCREEN_VBLANK_DEVICE("spriteram", buffered_spriteram16_device, vblank_copy_rising)
 
 	MCFG_GFXDECODE(wwfwfest)

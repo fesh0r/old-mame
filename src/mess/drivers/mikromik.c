@@ -96,11 +96,11 @@ READ8_MEMBER( mm1_state::mmu_r )
 			break;
 
 		case 2:
-			data = i8275_r(m_crtc, offset & 0x01);
+			data = i8275_r(m_crtc, space, offset & 0x01);
 			break;
 
 		case 3:
-			data = pit8253_r(m_pit, offset & 0x03);
+			data = pit8253_r(m_pit, space, offset & 0x03);
 			break;
 
 		case 4:
@@ -110,11 +110,11 @@ READ8_MEMBER( mm1_state::mmu_r )
 		case 5:
 			if (BIT(offset, 0))
 			{
-				data = upd765_data_r(m_fdc, 0);
+				data = upd765_data_r(m_fdc, space, 0);
 			}
 			else
 			{
-				data = upd765_status_r(m_fdc, 0);
+				data = upd765_status_r(m_fdc, space, 0);
 			}
 			break;
 
@@ -165,11 +165,11 @@ WRITE8_MEMBER( mm1_state::mmu_w )
 			break;
 
 		case 2:
-			i8275_w(m_crtc, offset & 0x01, data);
+			i8275_w(m_crtc, space, offset & 0x01, data);
 			break;
 
 		case 3:
-			pit8253_w(m_pit, offset & 0x03, data);
+			pit8253_w(m_pit, space, offset & 0x03, data);
 			break;
 
 		case 4:
@@ -179,7 +179,7 @@ WRITE8_MEMBER( mm1_state::mmu_w )
 		case 5:
 			if (BIT(offset, 0))
 			{
-				upd765_data_w(m_fdc, 0, data);
+				upd765_data_w(m_fdc, space, 0, data);
 			}
 			break;
 
@@ -316,14 +316,12 @@ void mm1_state::scan_keyboard()
 
 
 //-------------------------------------------------
-//  TIMER_DEVICE_CALLBACK( kbclk_tick )
+//  TIMER_DEVICE_CALLBACK_MEMBER( kbclk_tick )
 //-------------------------------------------------
 
-static TIMER_DEVICE_CALLBACK( kbclk_tick )
+TIMER_DEVICE_CALLBACK_MEMBER(mm1_state::kbclk_tick)
 {
-	mm1_state *state = timer.machine().driver_data<mm1_state>();
-
-	state->scan_keyboard();
+	scan_keyboard();
 }
 
 
@@ -537,8 +535,8 @@ WRITE_LINE_MEMBER( mm1_state::dack3_w )
 	}
 }
 
-static UINT8 memory_read_byte(address_space *space, offs_t address) { return space->read_byte(address); }
-static void memory_write_byte(address_space *space, offs_t address, UINT8 data) { space->write_byte(address, data); }
+static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
+static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
 
 static I8237_INTERFACE( dmac_intf )
 {
@@ -757,11 +755,11 @@ void mm1_state::machine_start()
 
 void mm1_state::machine_reset()
 {
-	address_space *program = m_maincpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 	int i;
 
 	// reset LS259
-	for (i = 0; i < 8; i++) ls259_w(*program, i, 0);
+	for (i = 0; i < 8; i++) ls259_w(program, i, 0);
 
 	// set FDC ready
 	if (!ioport("T5")->read()) upd765_ready_w(m_fdc, 1);
@@ -787,7 +785,7 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	MCFG_CPU_PROGRAM_MAP(mm1_map)
 	MCFG_CPU_CONFIG(i8085_intf)
 
-	MCFG_TIMER_ADD_PERIODIC("kbclk", kbclk_tick, attotime::from_hz(2500)) //attotime::from_hz(XTAL_6_144MHz/2/8))
+	MCFG_TIMER_DRIVER_ADD_PERIODIC("kbclk", mm1_state, kbclk_tick, attotime::from_hz(2500))
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")

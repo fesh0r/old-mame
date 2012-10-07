@@ -47,6 +47,11 @@ public:
 	DECLARE_DRIVER_INIT(ssystem3);
 	virtual void video_start();
 	virtual void palette_init();
+	UINT32 screen_update_ssystem3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	DECLARE_WRITE8_MEMBER(ssystem3_via_write_a);
+	DECLARE_READ8_MEMBER(ssystem3_via_read_a);
+	DECLARE_READ8_MEMBER(ssystem3_via_read_b);
+	DECLARE_WRITE8_MEMBER(ssystem3_via_write_b);
 };
 
 
@@ -55,10 +60,6 @@ public:
 void ssystem3_playfield_getfigure(running_machine &machine, int x, int y, int *figure, int *black);
 
 /*----------- defined in video/ssystem3.c -----------*/
-
-extern PALETTE_INIT( ssystem3 );
-extern VIDEO_START( ssystem3 );
-extern SCREEN_UPDATE_IND16( ssystem3 );
 
 void ssystem3_lcd_reset(running_machine &machine);
 void ssystem3_lcd_write(running_machine &machine, int clock, int data);

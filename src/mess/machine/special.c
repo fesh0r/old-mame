@@ -101,16 +101,15 @@ I8255_INTERFACE( specialist_ppi8255_interface )
 	DEVCB_DRIVER_MEMBER(special_state, specialist_8255_portc_w)
 };
 
-static TIMER_CALLBACK( special_reset )
+TIMER_CALLBACK_MEMBER(special_state::special_reset)
 {
-	special_state *state = machine.driver_data<special_state>();
-	state->membank("bank1")->set_entry(0);
+	membank("bank1")->set_entry(0);
 }
 
 
 MACHINE_RESET_MEMBER(special_state,special)
 {
-	machine().scheduler().timer_set(attotime::from_usec(10), FUNC(special_reset));
+	machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(special_state::special_reset),this));
 	membank("bank1")->set_entry(1);
 }
 
@@ -136,33 +135,33 @@ READ8_MEMBER( special_state::specimx_video_color_r )
 
 void special_state::specimx_set_bank(offs_t i, UINT8 data)
 {
-	address_space *space = m_maincpu->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	UINT8 *ram = m_ram->pointer();
 
-	space->install_write_bank(0xc000, 0xffbf, "bank3");
-	space->install_write_bank(0xffc0, 0xffdf, "bank4");
+	space.install_write_bank(0xc000, 0xffbf, "bank3");
+	space.install_write_bank(0xffc0, 0xffdf, "bank4");
 	membank("bank4")->set_base(ram + 0xffc0);
 	switch(i)
 	{
 		case 0 :
-			space->install_write_bank(0x0000, 0x8fff, "bank1");
-			space->install_write_handler(0x9000, 0xbfff, write8_delegate(FUNC(special_state::video_memory_w), this));
+			space.install_write_bank(0x0000, 0x8fff, "bank1");
+			space.install_write_handler(0x9000, 0xbfff, write8_delegate(FUNC(special_state::video_memory_w), this));
 
 			membank("bank1")->set_base(ram);
 			membank("bank2")->set_base(ram + 0x9000);
 			membank("bank3")->set_base(ram + 0xc000);
 			break;
 		case 1 :
-			space->install_write_bank(0x0000, 0x8fff, "bank1");
-			space->install_write_bank(0x9000, 0xbfff, "bank2");
+			space.install_write_bank(0x0000, 0x8fff, "bank1");
+			space.install_write_bank(0x9000, 0xbfff, "bank2");
 
 			membank("bank1")->set_base(ram + 0x10000);
 			membank("bank2")->set_base(ram + 0x19000);
 			membank("bank3")->set_base(ram + 0x1c000);
 			break;
 		case 2 :
-			space->unmap_write(0x0000, 0x8fff);
-			space->unmap_write(0x9000, 0xbfff);
+			space.unmap_write(0x0000, 0x8fff);
+			space.unmap_write(0x9000, 0xbfff);
 
 			membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base() + 0x10000);
 			membank("bank2")->set_base(machine().root_device().memregion("maincpu")->base() + 0x19000);
@@ -224,9 +223,9 @@ MACHINE_START_MEMBER(special_state,specimx)
 	m_specimx_audio = machine().device("custom");
 }
 
-static TIMER_CALLBACK( setup_pit8253_gates )
+TIMER_CALLBACK_MEMBER(special_state::setup_pit8253_gates)
 {
-	device_t *pit8253 = machine.device("pit8253");
+	device_t *pit8253 = machine().device("pit8253");
 
 	pit8253_gate0_w(pit8253, 0);
 	pit8253_gate1_w(pit8253, 0);
@@ -237,7 +236,7 @@ MACHINE_RESET_MEMBER(special_state,specimx)
 {
 	specimx_set_bank(2, 0); // Initiali load ROM disk
 	m_specimx_color = 0x70;
-	machine().scheduler().timer_set(attotime::zero, FUNC(setup_pit8253_gates));
+	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(special_state::setup_pit8253_gates),this));
 	device_t *fdc = machine().device("wd1793");
 	wd17xx_set_pause_time(fdc,12);
 	wd17xx_dden_w(fdc, 0);
@@ -273,14 +272,14 @@ void special_state::erik_set_bank()
 	UINT8 bank4 = (m_RR_register >> 6) & 3;
 	UINT8 *mem = memregion("maincpu")->base();
 	UINT8 *ram = m_ram->pointer();
-	address_space *space = m_maincpu->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
-	space->install_write_bank(0x0000, 0x3fff, "bank1");
-	space->install_write_bank(0x4000, 0x8fff, "bank2");
-	space->install_write_bank(0x9000, 0xbfff, "bank3");
-	space->install_write_bank(0xc000, 0xefff, "bank4");
-	space->install_write_bank(0xf000, 0xf7ff, "bank5");
-	space->install_write_bank(0xf800, 0xffff, "bank6");
+	space.install_write_bank(0x0000, 0x3fff, "bank1");
+	space.install_write_bank(0x4000, 0x8fff, "bank2");
+	space.install_write_bank(0x9000, 0xbfff, "bank3");
+	space.install_write_bank(0xc000, 0xefff, "bank4");
+	space.install_write_bank(0xf000, 0xf7ff, "bank5");
+	space.install_write_bank(0xf800, 0xffff, "bank6");
 
 	switch(bank1)
 	{
@@ -290,7 +289,7 @@ void special_state::erik_set_bank()
 			membank("bank1")->set_base(ram + 0x10000*(bank1-1));
 			break;
 		case	0:
-			space->unmap_write(0x0000, 0x3fff);
+			space.unmap_write(0x0000, 0x3fff);
 			membank("bank1")->set_base(mem + 0x10000);
 			break;
 	}
@@ -302,7 +301,7 @@ void special_state::erik_set_bank()
 			membank("bank2")->set_base(ram + 0x10000*(bank2-1) + 0x4000);
 			break;
 		case	0:
-			space->unmap_write(0x4000, 0x8fff);
+			space.unmap_write(0x4000, 0x8fff);
 			membank("bank2")->set_base(mem + 0x14000);
 			break;
 	}
@@ -314,7 +313,7 @@ void special_state::erik_set_bank()
 			membank("bank3")->set_base(ram + 0x10000*(bank3-1) + 0x9000);
 			break;
 		case	0:
-			space->unmap_write(0x9000, 0xbfff);
+			space.unmap_write(0x9000, 0xbfff);
 			membank("bank3")->set_base(mem + 0x19000);
 			break;
 	}
@@ -328,11 +327,11 @@ void special_state::erik_set_bank()
 			membank("bank6")->set_base(ram + 0x10000*(bank4-1) + 0x0f800);
 			break;
 		case	0:
-			space->unmap_write(0xc000, 0xefff);
+			space.unmap_write(0xc000, 0xefff);
 			membank("bank4")->set_base(mem + 0x1c000);
-			space->unmap_write(0xf000, 0xf7ff);
-			space->nop_read(0xf000, 0xf7ff);
-			space->install_readwrite_handler(0xf800, 0xf803, 0, 0x7fc, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
+			space.unmap_write(0xf000, 0xf7ff);
+			space.nop_read(0xf000, 0xf7ff);
+			space.install_readwrite_handler(0xf800, 0xf803, 0, 0x7fc, read8_delegate(FUNC(i8255_device::read), (i8255_device*)m_ppi), write8_delegate(FUNC(i8255_device::write), (i8255_device*)m_ppi));
 			break;
 	}
 }

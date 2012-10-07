@@ -172,7 +172,7 @@ WRITE8_DEVICE_HANDLER( vt_video_dc011_w )
 
 WRITE8_DEVICE_HANDLER( vt_video_brightness_w )
 {
-	//palette_set_color_rgb(device->machine(), 1, data, data, data);
+	//palette_set_color_rgb(space.machine(), 1, data, data, data);
 }
 
 static void vt_video_display_char(device_t *device,bitmap_ind16 &bitmap, UINT8 code,
@@ -452,7 +452,7 @@ const device_type VT100_VIDEO = &device_creator<vt100_video_device>;
 vt100_video_device::vt100_video_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, VT100_VIDEO, "VT100 Video", tag, owner, clock)
 {
-	m_token = global_alloc_array_clear(UINT8, sizeof(vt_video_t));
+	m_token = global_alloc_clear(vt_video_t);
 }
 
 //-------------------------------------------------

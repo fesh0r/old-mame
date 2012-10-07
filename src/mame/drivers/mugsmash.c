@@ -410,7 +410,7 @@ static MACHINE_CONFIG_START( mugsmash, mugsmash_state )
 
 	MCFG_CPU_ADD("maincpu", M68000, 12000000)
 	MCFG_CPU_PROGRAM_MAP(mugsmash_map)
-	MCFG_CPU_VBLANK_INT("screen", irq6_line_hold)
+	MCFG_CPU_VBLANK_INT_DRIVER("screen", mugsmash_state,  irq6_line_hold)
 
 	MCFG_CPU_ADD("audiocpu", Z80, 4000000)	/* Guess */
 	MCFG_CPU_PROGRAM_MAP(mugsmash_sound_map)
@@ -421,7 +421,7 @@ static MACHINE_CONFIG_START( mugsmash, mugsmash_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MCFG_SCREEN_SIZE(40*8, 32*8)
 	MCFG_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MCFG_SCREEN_UPDATE_STATIC(mugsmash)
+	MCFG_SCREEN_UPDATE_DRIVER(mugsmash_state, screen_update_mugsmash)
 	MCFG_GFXDECODE(mugsmash)
 
 	MCFG_PALETTE_LENGTH(0x300)
