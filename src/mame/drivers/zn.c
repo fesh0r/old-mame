@@ -32,9 +32,13 @@
 class zn_state : public psx_state
 {
 public:
-	zn_state(const machine_config &mconfig, device_type type, const char *tag)
-		: psx_state(mconfig, type, tag) { }
+	zn_state(const machine_config &mconfig, device_type type, const char *tag) :
+		psx_state(mconfig, type, tag),
+		m_gpu(*this, "gpu")
+	{
+	}
 
+	required_device<psxgpu_device> m_gpu;
 	UINT32 m_n_znsecsel;
 	UINT32 m_b_znsecport;
 	int m_n_dip_bit;
@@ -534,14 +538,6 @@ static void zn_driver_init( running_machine &machine )
 	state->m_dip_timer = machine.scheduler().timer_alloc( timer_expired_delegate(FUNC(zn_state::dip_timer_fired),state), NULL );
 }
 
-static void psx_spu_irq(device_t *device, UINT32 data)
-{
-	if (data)
-	{
-		psx_irq_set(device->machine(), 1<<9);
-	}
-}
-
 static void zn_machine_init( running_machine &machine )
 {
 	zn_state *state = machine.driver_data<zn_state>();
@@ -561,7 +557,7 @@ static MACHINE_CONFIG_START( zn1_1mb_vram, zn_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2, &psx_spu_irq )
+	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2 )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.35)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.35)
 
@@ -583,7 +579,7 @@ static MACHINE_CONFIG_START( zn2, zn_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2, &psx_spu_irq )
+	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2 )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.35)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.35)
 
@@ -1475,14 +1471,6 @@ Notes:
       *2                  - Unpopulated DIP28 socket
 */
 
-static void atpsx_interrupt(device_t *device, int state)
-{
-	if (state)
-	{
-		psx_irq_set(device->machine(), 0x400);
-	}
-}
-
 static void atpsx_dma_read( zn_state *state, UINT32 n_address, INT32 n_size )
 {
 	UINT32 *p_n_psxram = state->m_p_n_psxram;
@@ -1534,17 +1522,11 @@ MACHINE_RESET_MEMBER(zn_state,coh1000w)
 	machine().device("ide")->reset();
 }
 
-static const ide_config ide_intf =
-{
-	atpsx_interrupt,
-	NULL,
-	0
-};
-
 static MACHINE_CONFIG_DERIVED( coh1000w, zn1_2mb_vram )
 	MCFG_MACHINE_RESET_OVERRIDE(zn_state, coh1000w )
 
-	MCFG_IDE_CONTROLLER_ADD("ide", ide_intf, ide_devices, "hdd", NULL, true)
+	MCFG_IDE_CONTROLLER_ADD("ide", ide_devices, "hdd", NULL, true)
+	MCFG_IDE_CONTROLLER_IRQ_HANDLER(DEVWRITELINE("maincpu:irq", psxirq_device, intin10))
 	MCFG_PSX_DMA_CHANNEL_READ( "maincpu", 5, psx_dma_read_delegate( FUNC( atpsx_dma_read ), (zn_state *) owner ) )
 	MCFG_PSX_DMA_CHANNEL_WRITE( "maincpu", 5, psx_dma_write_delegate( FUNC( atpsx_dma_write ), (zn_state *) owner ) )
 MACHINE_CONFIG_END
@@ -2046,14 +2028,6 @@ Notes:
       *         - Unpopulated DIP42 socket
 */
 
-static void jdredd_ide_interrupt(device_t *device, int state)
-{
-	if (state)
-	{
-		psx_irq_set(device->machine(), 0x400);
-	}
-}
-
 READ32_MEMBER(zn_state::jdredd_idestat_r)
 {
 	device_t *device = machine().device("ide");
@@ -2134,7 +2108,7 @@ void jdredd_vblank(zn_state *state, screen_device &screen, bool vblank_state)
 		if( x > 0x393 && x < 0xcb2 &&
 			y > 0x02d && y < 0x217 )
 		{
-			psx_lightgun_set( state->machine(), x, y );
+			state->m_gpu->lightgun_set( x, y );
 		}
 	}
 }
@@ -2152,7 +2126,8 @@ WRITE32_MEMBER(zn_state::acpsx_10_w)
 WRITE32_MEMBER(zn_state::nbajamex_80_w)
 {
 	verboselog( machine(), 0, "nbajamex_80_w( %08x, %08x, %08x )\n", offset, data, mem_mask );
-	psx_irq_set(machine(), 0x400);
+	psxirq_device *psxirq = (psxirq_device *) machine().device("maincpu:irq");
+	psxirq->intin10(1);
 }
 
 READ32_MEMBER(zn_state::nbajamex_08_r)
@@ -2215,13 +2190,6 @@ static MACHINE_CONFIG_DERIVED( coh1000a, zn1_2mb_vram )
 	MCFG_MACHINE_RESET_OVERRIDE(zn_state, coh1000a )
 MACHINE_CONFIG_END
 
-static const ide_config jdredd_ide_intf =
-{
-	jdredd_ide_interrupt,
-	NULL,
-	0
-};
-
 static MACHINE_CONFIG_DERIVED( coh1000a_ide, zn1_2mb_vram )
 
 	MCFG_DEVICE_MODIFY( "gpu" )
@@ -2229,7 +2197,8 @@ static MACHINE_CONFIG_DERIVED( coh1000a_ide, zn1_2mb_vram )
 
 	MCFG_MACHINE_RESET_OVERRIDE(zn_state, coh1000a )
 
-	MCFG_IDE_CONTROLLER_ADD("ide", jdredd_ide_intf, ide_devices, "hdd", NULL, true)
+	MCFG_IDE_CONTROLLER_ADD("ide", ide_devices, "hdd", NULL, true)
+	MCFG_IDE_CONTROLLER_IRQ_HANDLER(DEVWRITELINE("maincpu:irq", psxirq_device, intin10))
 MACHINE_CONFIG_END
 
 /*

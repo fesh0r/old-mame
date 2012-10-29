@@ -4,6 +4,51 @@
 
   Machine file to handle emulation of the Nintendo Game Boy.
 
+Cardridge port pinouts:
+Pin  Name     Description
+1    VCC      +5 VDC
+2    PHI      CPU clock ?
+3    /WR      Write
+4    /RD      Read
+5    /CS      SRAM select
+6    A0       Address 0
+7    A1       Address 1
+8    A2       Address 2
+9    A3       Address 3
+10   A4       Address 4
+11   A5       Address 5
+12   A6       Address 6
+13   A7       Address 7
+14   A8       Address 8
+15   A9       Address 9
+16   A10      Address 10
+17   A11      Address 11
+18   A12      Address 12
+19   A13      Address 13
+20   A14      Address 14
+21   A15      Address 15
+22   D0       Data 0
+23   D1       Data 1
+24   D2       Data 2
+25   D3       Data 3
+26   D4       Data 4
+27   D5       Data 5
+28   D6       Data 6
+29   D7       Data 7
+30   /RST     Reset
+31   AUDIOIN  Never used ?
+32   GND      Ground
+
+
+TODO:
+- YongYong mapper:
+  - During start there are 2 writes to 5000 and 5003, it is still unknown what these do.
+- Story of La Sa Ma mapper:
+  - This should display the Gowin logo on boot on both DMG and CGB (Not implemented yet)
+- ATV Racing/Rocket Games mapper:
+  - How did this overlay the official Nintendo logo at BIOS check time? (Some Sachen titles use a similar trick)
+
+
   Changes:
 
     13/2/2002       AK - MBC2 and MBC3 support and added NVRAM support.
@@ -58,6 +103,9 @@ enum {
 	MBC_MBC7,		/*    ?? ROM,    ?? RAM                          */
 	MBC_WISDOM,		/*    ?? ROM,    ?? RAM - Wisdom tree controller */
 	MBC_MBC1_KOR,	/*   1MB ROM,    ?? RAM - Korean MBC1 variant    */
+	MBC_YONGYONG,	/*    ?? ROM,    ?? RAM - Appears in Sonic 3D Blast 5 pirate */
+	MBC_LASAMA,     /*    ?? ROM,    ?? RAM - Appears in La Sa Ma */
+	MBC_ATVRACIN,
 	MBC_MEGADUCK,	/* MEGADUCK style banking                        */
 	MBC_UNKNOWN,	/* Unknown mapper                                */
 };
@@ -82,29 +130,6 @@ enum {
 
 
 static void gb_machine_stop(running_machine &machine);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 static void gb_timer_increment( running_machine &machine );
 
 #ifdef MAME_DEBUG
@@ -230,6 +255,18 @@ static void gb_init(running_machine &machine)
 			space.install_write_handler( 0x2000, 0x3fff, write8_delegate(FUNC(gb_state::gb_rom_bank_select_mbc1_kor),state) );
 			space.install_write_handler( 0x4000, 0x5fff, write8_delegate(FUNC(gb_state::gb_ram_bank_select_mbc1_kor),state) );
 			space.install_write_handler( 0x6000, 0x7fff, write8_delegate(FUNC(gb_state::gb_mem_mode_select_mbc1_kor),state) );
+			break;
+		case MBC_YONGYONG:
+			space.install_write_handler( 0x2000, 0x2000, write8_delegate(FUNC(gb_state::gb_rom_bank_yongyong_2000),state) );
+			//space.install_write_handler( 0x5000, 0x5003, write8_delegate(FUNC(gb_state::gb_rom_back_yongyong_5000),state) );
+			break;
+		case MBC_LASAMA:
+			space.install_write_handler( 0x2080, 0x2080, write8_delegate(FUNC(gb_state::gb_rom_bank_lasama_2080),state) );
+			space.install_write_handler( 0x6000, 0x6000, write8_delegate(FUNC(gb_state::gb_rom_bank_lasama_6000),state) );
+			break;
+		case MBC_ATVRACIN:
+			space.install_write_handler( 0x3F00, 0x3F00, write8_delegate(FUNC(gb_state::gb_rom_bank_atvracin_3f00),state) );
+			space.install_write_handler( 0x3FC0, 0x3FC0, write8_delegate(FUNC(gb_state::gb_rom_bank_atvracin_3fc0),state) );
 			break;
 
 		case MBC_MEGADUCK:
@@ -771,6 +808,48 @@ WRITE8_MEMBER(gb_state::gb_mem_mode_select_mbc1_kor)
 {
 	m_MBC1Mode = data & 0x1;
 	gb_set_mbc1_kor_banks(machine());
+}
+
+WRITE8_MEMBER(gb_state::gb_rom_bank_yongyong_2000)
+{
+	m_ROMBank = data;
+	gb_rom16_4000( machine(), m_ROMMap[m_ROMBank] );
+}
+
+WRITE8_MEMBER(gb_state::gb_rom_bank_lasama_2080)
+{
+	// Actual banking?
+	m_ROMBank = m_ROMBank00 | ( data & 0x03 );
+	gb_rom16_4000( machine(), m_ROMMap[m_ROMBank] );
+}
+
+WRITE8_MEMBER(gb_state::gb_rom_bank_lasama_6000)
+{
+	// On boot the following two get written right after each other:
+	// 02
+	// BE
+	// Disable logo switching?
+	if ( ! ( data & 0x80 ) )
+	{
+		m_ROMBank00 = ( data & 0x02 ) << 1;
+		gb_rom16_0000( machine(), m_ROMMap[m_ROMBank00] );
+	}
+}
+
+WRITE8_MEMBER(gb_state::gb_rom_bank_atvracin_3f00)
+{
+	if ( data == 0 )
+	{
+		data = 1;
+	}
+	m_ROMBank = m_ROMBank00 | data;
+	gb_rom16_4000( machine(), m_ROMMap[m_ROMBank] );
+}
+
+WRITE8_MEMBER(gb_state::gb_rom_bank_atvracin_3fc0)
+{
+	m_ROMBank00 = data * 16;
+	gb_rom16_0000( machine(), m_ROMMap[m_ROMBank00] );
 }
 
 WRITE8_MEMBER(gb_state::gb_io_w)
@@ -1608,6 +1687,8 @@ DEVICE_IMAGE_LOAD(gb_cart)
 
 	/* Claim memory */
 	state->m_gb_cart = auto_alloc_array(image.device().machine(), UINT8, filesize);
+	state->m_MBCType = MBC_UNKNOWN;
+	state->m_CartType = 0;
 
 	if (image.software_entry() == NULL)
 	{
@@ -1622,7 +1703,60 @@ DEVICE_IMAGE_LOAD(gb_cart)
 		}
 	}
 	else
+	{
 		memcpy(state->m_gb_cart, image.get_software_region("rom") + load_start, filesize);
+
+		const char *mapper = software_part_get_feature((software_part*)image.part_entry(), "mapper");
+		const char *rumble = software_part_get_feature((software_part*)image.part_entry(), "rumble");
+		const char *battery_backed = software_part_get_feature((software_part*)image.part_entry(), "battery_backed");
+
+		if ( mapper != NULL )
+		{
+			static const struct { const char *mapper_name; int mapper_type; } mapper_types[] =
+			{
+				{ "MBC1",     MBC_MBC1 },
+				{ "MBC2",     MBC_MBC2 },
+				{ "MMM01",    MBC_MMM01 },
+				{ "MBC3",     MBC_MBC3 },
+				{ "MBC4",     MBC_MBC4 },
+				{ "MBC5",     MBC_MBC5 },
+				{ "TAMA5",    MBC_TAMA5 },
+				{ "HuC1",     MBC_HUC1 },
+				{ "HuC3",     MBC_HUC3 },
+				{ "MBC6",     MBC_MBC6 },
+				{ "MBC7",     MBC_MBC7 },
+				{ "WISDOM",   MBC_WISDOM },
+				{ "MBC1_KOR", MBC_MBC1_KOR },
+				{ "YONGYONG", MBC_YONGYONG },
+				{ "LASAMA",   MBC_LASAMA },
+				{ "ATVRACIN", MBC_ATVRACIN },
+			};
+
+			for (int i = 0; i < ARRAY_LENGTH(mapper_types) && state->m_MBCType == MBC_UNKNOWN; i++)
+			{
+				if (!mame_stricmp(mapper, mapper_types[i].mapper_name))
+				{
+					state->m_MBCType = mapper_types[i].mapper_type;
+				}
+			}
+		}
+
+		if ( rumble != NULL )
+		{
+			if ( !mame_stricmp(rumble, "yes"))
+			{
+				state->m_CartType |= RUMBLE;
+			}
+		}
+
+		if ( battery_backed != NULL )
+		{
+			if ( !mame_stricmp(battery_backed, "yes"))
+			{
+				state->m_CartType |= BATTERY;
+			}
+		}
+	}
 
 	gb_header = state->m_gb_cart;
 	state->m_ROMBank00 = 0;
@@ -1687,10 +1821,10 @@ DEVICE_IMAGE_LOAD(gb_cart)
 	case 0x20:	state->m_MBCType = MBC_MBC6;	state->m_CartType = SRAM; break;
 	case 0x22:	state->m_MBCType = MBC_MBC7;	state->m_CartType = SRAM | BATTERY;		break;
 	case 0xBE:	state->m_MBCType = MBC_NONE;	state->m_CartType = 0;				break;	/* used in Flash2Advance GB Bridge boot program */
+	case 0xEA:	state->m_MBCType = MBC_YONGYONG;	state->m_CartType = 0;	break;	/* Found in Sonic 3D Blast 5 pirate */
 	case 0xFD:	state->m_MBCType = MBC_TAMA5;	state->m_CartType = 0 /*RTC | BATTERY?*/;	break;
 	case 0xFE:	state->m_MBCType = MBC_HUC3;	state->m_CartType = 0;				break;
 	case 0xFF:	state->m_MBCType = MBC_HUC1;	state->m_CartType = 0;				break;
-	default:	state->m_MBCType = MBC_UNKNOWN;	state->m_CartType = UNKNOWN;			break;
 	}
 
 	/* Check whether we're dealing with a (possible) Wisdom Tree game here */
@@ -1819,7 +1953,7 @@ DEVICE_IMAGE_LOAD(gb_cart)
 		S[16] = '\0';
 		logerror("Cart Information\n");
 		logerror("\tName:             %s\n", S);
-		logerror("\tType:             %s [0x%2X]\n", CartTypes[gb_header[0x0147]], gb_header[0x0147] );
+		logerror("\tType:             %s [0x%2X]\n", (gb_header[0x0147] <= 32) ? CartTypes[gb_header[0x0147]] : "", gb_header[0x0147] );
 		logerror("\tGame Boy:         %s\n", (gb_header[0x0143] == 0xc0) ? "No" : "Yes" );
 		logerror("\tSuper GB:         %s [0x%2X]\n", (gb_header[0x0146] == 0x03) ? "Yes" : "No", gb_header[0x0146] );
 		logerror("\tColor GB:         %s [0x%2X]\n", (gb_header[0x0143] == 0x80 || gb_header[0x0143] == 0xc0) ? "Yes" : "No", state->m_gb_cart[0x0143] );

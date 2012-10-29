@@ -40,6 +40,7 @@
 #include "machine/c64_pagefox.h"
 #include "machine/c64_prophet64.h"
 #include "machine/c64_ps64.h"
+#include "machine/c64_reu.h"
 #include "machine/c64_rex.h"
 #include "machine/c64_rex_ep256.h"
 #include "machine/c64_ross.h"
@@ -61,6 +62,7 @@
 #include "machine/c64_zaxxon.h"
 #include "machine/c128_comal80.h"
 #include "machine/cbm2_std.h"
+#include "machine/cbm2_24k.h"
 #include "machine/cbm2_graphic.h"
 #include "machine/c1541.h"
 #include "machine/c1551.h"
@@ -125,11 +127,6 @@ INPUT_PORTS_EXTERN( c16_controls );
 INPUT_PORTS_EXTERN( c65_special );
 
 
-/* Commodore 128 */
-
-INPUT_PORTS_EXTERN( c128_special );
-
-
 /* PET2001 */
 
 INPUT_PORTS_EXTERN( pet_keyboard );
@@ -164,7 +161,6 @@ SLOT_INTERFACE_EXTERN( vic20_user_port_cards );
 SLOT_INTERFACE_EXTERN( vic10_expansion_cards );
 SLOT_INTERFACE_EXTERN( c64_expansion_cards );
 SLOT_INTERFACE_EXTERN( c64_user_port_cards );
-SLOT_INTERFACE_EXTERN( c128_expansion_cards );
 SLOT_INTERFACE_EXTERN( plus4_datassette_devices );
 SLOT_INTERFACE_EXTERN( plus4_expansion_cards );
 SLOT_INTERFACE_EXTERN( plus4_user_port_cards );

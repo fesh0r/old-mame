@@ -40,6 +40,8 @@ A1                   2101            2101
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 
+#include "ace.lh"
+
 #define MASTER_CLOCK XTAL_18MHz
 
 // ace_state was also defined in mess/drivers/ace.c
@@ -47,10 +49,11 @@ class aceal_state : public driver_device
 {
 public:
 	aceal_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_scoreram(*this, "scoreram"),
 		m_ram2(*this, "ram2"),
-		m_characterram(*this, "characterram"){ }
+		m_characterram(*this, "characterram")
+	{ }
 
 	/* video-related */
 	required_shared_ptr<UINT8> m_scoreram;
@@ -60,7 +63,6 @@ public:
 	/* input-related */
 	int m_objpos[8];
 	DECLARE_WRITE8_MEMBER(ace_objpos_w);
-	DECLARE_READ8_MEMBER(ace_objpos_r);
 	DECLARE_WRITE8_MEMBER(ace_characterram_w);
 	DECLARE_WRITE8_MEMBER(ace_scoreram_w);
 	DECLARE_READ8_MEMBER(unk_r);
@@ -69,6 +71,7 @@ public:
 	virtual void video_start();
 	virtual void palette_init();
 	UINT32 screen_update_ace(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	void ace_postload();
 };
 
 
@@ -76,13 +79,6 @@ WRITE8_MEMBER(aceal_state::ace_objpos_w)
 {
 	m_objpos[offset] = data;
 }
-
-#if 0
-READ8_MEMBER(aceal_state::ace_objpos_r)
-{
-	return m_objpos[offset];
-}
-#endif
 
 void aceal_state::video_start()
 {
@@ -132,8 +128,8 @@ UINT32 aceal_state::screen_update_ace(screen_device &screen, bitmap_ind16 &bitma
 
 void aceal_state::palette_init()
 {
-	palette_set_color(machine(), 0, MAKE_RGB(0x00,0x00,0x00)); /* black */
-	palette_set_color(machine(), 1, MAKE_RGB(0xff,0xff,0xff)); /* white */
+	palette_set_color(machine(), 0, MAKE_RGB(0xff,0xff,0xff)); /* white */
+	palette_set_color(machine(), 1, MAKE_RGB(0x00,0x00,0x00)); /* black */
 }
 
 
@@ -324,18 +320,18 @@ static GFXDECODE_START( ace )
 	GFXDECODE_ENTRY( NULL          , 0x8000, scorelayout, 0, 2 )    /* the game dynamically modifies this */
 GFXDECODE_END
 
-static void ace_postload(running_machine &machine)
+void aceal_state::ace_postload()
 {
-	machine.gfx[1]->mark_dirty(0);
-	machine.gfx[2]->mark_dirty(0);
-	machine.gfx[3]->mark_dirty(0);
-	machine.gfx[4]->mark_dirty(0);
+	machine().gfx[1]->mark_dirty(0);
+	machine().gfx[2]->mark_dirty(0);
+	machine().gfx[3]->mark_dirty(0);
+	machine().gfx[4]->mark_dirty(0);
 }
 
 void aceal_state::machine_start()
 {
 	save_item(NAME(m_objpos));
-	machine().save().register_postload(save_prepost_delegate(FUNC(ace_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(aceal_state::ace_postload), this));
 }
 
 void aceal_state::machine_reset()
@@ -352,7 +348,6 @@ static MACHINE_CONFIG_START( ace, aceal_state )
 	MCFG_CPU_ADD("maincpu", I8080, MASTER_CLOCK/9)	/* 2 MHz ? */
 	MCFG_CPU_PROGRAM_MAP(main_map)
 
-
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)
@@ -363,7 +358,6 @@ static MACHINE_CONFIG_START( ace, aceal_state )
 
 	MCFG_GFXDECODE(ace)
 	MCFG_PALETTE_LENGTH(2)
-
 
 	/* sound hardware */
 	/* ???? */
@@ -387,7 +381,7 @@ ROM_START( ace )
 	/* not used - I couldn't guess when this should be displayed */
 	ROM_REGION( 0x0200, "gfx1", 0 )
 	ROM_LOAD( "ace.k4",		0x0000, 0x0200, CRC(daa05ec6) SHA1(8b71ffb802293dc93f6b492ff128a704e676a5fd) )
-
 ROM_END
 
-GAME( 1976, ace, 0, ace, ace, driver_device, 0, ROT0, "Allied Leisure", "Ace", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+
+GAMEL(1976, ace, 0, ace, ace, driver_device, 0, ROT0, "Allied Leisure", "Ace", GAME_SUPPORTS_SAVE | GAME_NO_SOUND, layout_ace ) // color overlay assumed from flyer

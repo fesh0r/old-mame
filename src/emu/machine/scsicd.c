@@ -49,19 +49,7 @@ void scsicd_device::device_reset()
 {
 	scsihle_device::device_reset();
 
-	is_file = TRUE;
-	cdrom = subdevice<cdrom_image_device>("image")->get_cdrom_file();
-	if( !cdrom )
-	{
-		// try to locate the CHD from a DISK_REGION
-		chd_file *chd = get_disk_handle( machine(), tag() );
-		if( chd != NULL )
-		{
-			is_file = FALSE;
-			cdrom = cdrom_open( chd );
-		}
-	}
-
+	SetDevice( subdevice<cdrom_image_device>("image")->get_cdrom_file() );
 	if( !cdrom )
 	{
 		logerror( "SCSICD %s: no CD found!\n", tag() );
@@ -76,21 +64,11 @@ void scsicd_device::device_reset()
 	play_err_flag = 0;
 }
 
-void scsicd_device::device_stop()
-{
-	if (!is_file)
-	{
-		if( cdrom )
-		{
-			cdrom_close( cdrom );
-		}
-	}
-}
-
 cdrom_interface scsicd_device::cd_intf = { 0, 0 };
 
 static MACHINE_CONFIG_FRAGMENT(scsi_cdrom)
 	MCFG_CDROM_ADD("image", scsicd_device::cd_intf)
+	MCFG_SOUND_ADD("cdda", CDDA, 0)
 MACHINE_CONFIG_END
 
 machine_config_constructor scsicd_device::device_mconfig_additions() const
@@ -104,12 +82,8 @@ machine_config_constructor scsicd_device::device_mconfig_additions() const
 
 void scsicd_device::ExecCommand( int *transferLength )
 {
-	UINT8 *command;
-	int commandLength;
 	device_t *cdda;
 	int trk;
-
-	GetCommand( &command, &commandLength );
 
 	switch ( command[0] )
 	{
@@ -387,16 +361,11 @@ void scsicd_device::ExecCommand( int *transferLength )
 
 void scsicd_device::ReadData( UINT8 *data, int dataLength )
 {
-	UINT8 *command;
-	int commandLength;
-
 	int i;
 	UINT32 last_phys_frame;
 	UINT32 temp;
 	UINT8 tmp_buffer[2048];
 	device_t *cdda;
-
-	GetCommand( &command, &commandLength );
 
 	switch ( command[0] )
 	{
@@ -724,10 +693,6 @@ void scsicd_device::ReadData( UINT8 *data, int dataLength )
 
 void scsicd_device::WriteData( UINT8 *data, int dataLength )
 {
-	UINT8 *command;
-	int commandLength;
-	GetCommand( &command, &commandLength );
-
 	switch (command[ 0 ])
 	{
 		case 0x15: // MODE SELECT(6)
@@ -774,6 +739,7 @@ void scsicd_device::GetDevice( void **_cdrom )
 void scsicd_device::SetDevice( void *_cdrom )
 {
 	cdrom = (cdrom_file *)_cdrom;
+	cdda_set_cdrom(subdevice("cdda"), cdrom);
 }
 
 int scsicd_device::GetSectorBytes()

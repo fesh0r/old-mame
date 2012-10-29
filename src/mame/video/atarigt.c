@@ -80,7 +80,7 @@ VIDEO_START_MEMBER(atarigt_state,atarigt)
 	int i, width, height;
 
 	/* blend the playfields and free the temporary one */
-	atarigen_blend_gfx(machine(), 0, 2, 0x0f, 0x30);
+	blend_gfx(0, 2, 0x0f, 0x30);
 
 	/* initialize the playfield */
 	m_playfield_tilemap = &machine().tilemap().create(tilemap_get_info_delegate(FUNC(atarigt_state::get_playfield_tile_info),this), tilemap_mapper_delegate(FUNC(atarigt_state::atarigt_playfield_scan),this),  8,8, 128,64);
@@ -162,14 +162,13 @@ UINT16 atarigt_state::atarigt_colorram_r(offs_t address)
  *
  *************************************/
 
-void atarigt_scanline_update(screen_device &screen, int scanline)
+void atarigt_state::scanline_update(screen_device &screen, int scanline)
 {
-	atarigt_state *state = screen.machine().driver_data<atarigt_state>();
-	UINT32 *base = &state->m_alpha32[(scanline / 8) * 32 + 24];
+	UINT32 *base = &m_alpha32[(scanline / 8) * 32 + 24];
 	int i;
 
 	/* keep in range */
-	if (base >= &state->m_alpha32[0x400])
+	if (base >= &m_alpha32[0x400])
 		return;
 
 	/* update the playfield scrolls */
@@ -181,19 +180,19 @@ void atarigt_scanline_update(screen_device &screen, int scanline)
 		{
 			int newscroll = (word >> 21) & 0x3ff;
 			int newbank = (word >> 16) & 0x1f;
-			if (newscroll != state->m_playfield_xscroll)
+			if (newscroll != m_playfield_xscroll)
 			{
 				if (scanline + i > 0)
 					screen.update_partial(scanline + i - 1);
-				state->m_playfield_tilemap->set_scrollx(0, newscroll);
-				state->m_playfield_xscroll = newscroll;
+				m_playfield_tilemap->set_scrollx(0, newscroll);
+				m_playfield_xscroll = newscroll;
 			}
-			if (newbank != state->m_playfield_color_bank)
+			if (newbank != m_playfield_color_bank)
 			{
 				if (scanline + i > 0)
 					screen.update_partial(scanline + i - 1);
-				state->m_playfield_tilemap->set_palette_offset((newbank & 0x1f) << 8);
-				state->m_playfield_color_bank = newbank;
+				m_playfield_tilemap->set_palette_offset((newbank & 0x1f) << 8);
+				m_playfield_color_bank = newbank;
 			}
 		}
 
@@ -201,19 +200,19 @@ void atarigt_scanline_update(screen_device &screen, int scanline)
 		{
 			int newscroll = ((word >> 6) - (scanline + i)) & 0x1ff;
 			int newbank = word & 15;
-			if (newscroll != state->m_playfield_yscroll)
+			if (newscroll != m_playfield_yscroll)
 			{
 				if (scanline + i > 0)
 					screen.update_partial(scanline + i - 1);
-				state->m_playfield_tilemap->set_scrolly(0, newscroll);
-				state->m_playfield_yscroll = newscroll;
+				m_playfield_tilemap->set_scrolly(0, newscroll);
+				m_playfield_yscroll = newscroll;
 			}
-			if (newbank != state->m_playfield_tile_bank)
+			if (newbank != m_playfield_tile_bank)
 			{
 				if (scanline + i > 0)
 					screen.update_partial(scanline + i - 1);
-				state->m_playfield_tilemap->mark_all_dirty();
-				state->m_playfield_tile_bank = newbank;
+				m_playfield_tilemap->mark_all_dirty();
+				m_playfield_tile_bank = newbank;
 			}
 		}
 	}

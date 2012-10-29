@@ -18,6 +18,7 @@
 #include "machine/ncr539x.h"
 #include "machine/ncr5380.h"
 #include "machine/mackbd.h"
+#include "machine/macrtc.h"
 #include "sound/asc.h"
 #include "sound/awacs.h"
 
@@ -29,7 +30,9 @@
 #define ADB_IS_BITBANG	((mac->m_model == MODEL_MAC_SE || mac->m_model == MODEL_MAC_CLASSIC) || (mac->m_model >= MODEL_MAC_II && mac->m_model <= MODEL_MAC_IICI) || (mac->m_model == MODEL_MAC_SE30) || (mac->m_model == MODEL_MAC_QUADRA_700))
 #define ADB_IS_BITBANG_CLASS	((m_model == MODEL_MAC_SE || m_model == MODEL_MAC_CLASSIC) || (m_model >= MODEL_MAC_II && m_model <= MODEL_MAC_IICI) || (m_model == MODEL_MAC_SE30) || (m_model == MODEL_MAC_QUADRA_700))
 #define ADB_IS_EGRET	(m_model >= MODEL_MAC_LC && m_model <= MODEL_MAC_CLASSIC_II) || ((m_model >= MODEL_MAC_IISI) && (m_model <= MODEL_MAC_IIVI))
+#define ADB_IS_EGRET_NONCLASS	(mac->m_model >= MODEL_MAC_LC && mac->m_model <= MODEL_MAC_CLASSIC_II) || ((mac->m_model >= MODEL_MAC_IISI) && (mac->m_model <= MODEL_MAC_IIVI))
 #define ADB_IS_CUDA	    ((m_model >= MODEL_MAC_COLOR_CLASSIC && m_model <= MODEL_MAC_LC_580) || ((m_model >= MODEL_MAC_QUADRA_660AV) && (m_model <= MODEL_MAC_QUADRA_630)) || (m_model >= MODEL_MAC_POWERMAC_6100))
+#define ADB_IS_CUDA_NONCLASS	    ((mac->m_model >= MODEL_MAC_COLOR_CLASSIC && mac->m_model <= MODEL_MAC_LC_580) || ((mac->m_model >= MODEL_MAC_QUADRA_660AV) && (mac->m_model <= MODEL_MAC_QUADRA_630)) || (mac->m_model >= MODEL_MAC_POWERMAC_6100))
 #define ADB_IS_PM_VIA1	(m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100)
 #define ADB_IS_PM_VIA2	(m_model >= MODEL_MAC_PB140 && m_model <= MODEL_MAC_PBDUO_270c)
 #define ADB_IS_PM_VIA1_CLASS	(m_model >= MODEL_MAC_PORTABLE && m_model <= MODEL_MAC_PB100)
@@ -142,39 +145,6 @@ void mac_scsi_irq(running_machine &machine, int state);
 void mac_asc_irq(device_t *device, int state);
 void mac_fdc_set_enable_lines(device_t *device, int enable_mask);
 
-
-
-
-
-
-NVRAM_HANDLER( mac );
-
-/*----------- defined in video/mac.c -----------*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*----------- defined in audio/mac.c -----------*/
 
 class mac_sound_device : public device_t,
@@ -227,6 +197,7 @@ public:
         m_539x_2(*this, MAC_539X_2_TAG),
 		m_ncr5380(*this, "scsi:ncr5380"),
         m_mackbd(*this, MACKBD_TAG),
+		m_rtc(*this,"rtc"),
 		m_vram(*this,"vram"),
 		m_vram16(*this,"vram16")
 	 { }
@@ -244,6 +215,7 @@ public:
     optional_device<ncr539x_device> m_539x_2;
     optional_device<ncr5380_device> m_ncr5380;
     optional_device<mackbd_device> m_mackbd;
+	optional_device<rtc3430042_device> m_rtc;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -257,6 +229,8 @@ public:
 	UINT32 m_via2_vbl;
 	UINT32 m_se30_vbl_enable;
 	UINT8 m_nubus_irq_state;
+
+	void adb_linechange(int state, int dtime);
 
 	/* used to store the reply to most keyboard commands */
 	int m_keyboard_reply;
@@ -286,38 +260,13 @@ public:
 
 	int irq_count, ca1_data, ca2_data;
 
-	/* state of rTCEnb and rTCClk lines */
-	UINT8 m_rtc_rTCEnb;
-	UINT8 m_rtc_rTCClk;
-
-	/* serial transmit/receive register : bits are shifted in/out of this byte */
-	UINT8 m_rtc_data_byte;
-	/* serial transmitted/received bit count */
-	UINT8 m_rtc_bit_count;
-	/* direction of the current transfer (0 : VIA->RTC, 1 : RTC->VIA) */
-	UINT8 m_rtc_data_dir;
-	/* when rtc_data_dir == 1, state of rTCData as set by RTC (-> data bit seen by VIA) */
-	UINT8 m_rtc_data_out;
-
-	/* set to 1 when command in progress */
-	UINT8 m_rtc_cmd;
-
-	/* write protect flag */
-	UINT8 m_rtc_write_protect;
-
-	/* internal seconds register */
-	UINT8 m_rtc_seconds[/*8*/4];
-	/* 20-byte long PRAM, or 256-byte long XPRAM */
-	UINT8 m_rtc_ram[256];
-	/* current extended address and RTC state */
-	UINT8 m_rtc_xpaddr;
-	UINT8 m_rtc_state;
-
 	// Mac ADB state
 	INT32 m_adb_irq_pending, m_adb_waiting_cmd, m_adb_datasize, m_adb_buffer[257];
 	INT32 m_adb_state, m_adb_command, m_adb_send, m_adb_timer_ticks, m_adb_extclock, m_adb_direction;
 	INT32 m_adb_listenreg, m_adb_listenaddr, m_adb_last_talk, m_adb_srq_switch;
 	INT32 m_adb_streaming, m_adb_stream_ptr;
+	INT32 m_adb_linestate;
+	bool  m_adb_srqflag;
 
 	// Portable/PB100 Power Manager IC comms (chapter 4, "Guide to the Macintosh Family Hardware", second edition)
 	UINT8 m_pm_data_send, m_pm_data_recv, m_pm_ack, m_pm_req, m_pm_cmd[32], m_pm_out[32], m_pm_dptr, m_pm_sptr, m_pm_slen, m_pm_state;
@@ -364,6 +313,7 @@ public:
     void rbv_recalc_irqs();
 	void pmu_exec();
 	void mac_adb_newaction(int state);
+	void set_adb_line(int linestate);
 
 	DECLARE_READ16_MEMBER ( mac_via_r );
 	DECLARE_WRITE16_MEMBER ( mac_via_w );
@@ -439,8 +389,6 @@ public:
 	DECLARE_DIRECT_UPDATE_MEMBER(overlay_opbaseoverride);
 private:
 	int has_adb();
-	void rtc_init();
-	void rtc_execute_cmd(int data);
 	void adb_reset();
 	void adb_vblank();
 	int adb_pollkbd(int update);
@@ -459,6 +407,9 @@ private:
 	// ADB keyboard state
 	int m_adb_keybaddr;
 	int m_adb_keybinitialized, m_adb_currentkeys[2], m_adb_modifiers;
+
+	// PRAM for ADB MCU HLEs (mostly unused now)
+	UINT8 m_adb_pram[256];
 
     UINT8 m_oss_regs[0x400];
 
@@ -521,6 +472,8 @@ public:
 	UINT32 screen_update_macrbv(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_macdafb(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_macrbvvram(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_macv8(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_macsonora(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_macpbwd(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(mac_rbv_vbl);
 	TIMER_CALLBACK_MEMBER(kbd_clock);

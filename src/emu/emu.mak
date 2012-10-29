@@ -56,6 +56,7 @@ EMUOBJS = \
 	$(EMUOBJ)/delegate.o \
 	$(EMUOBJ)/devdelegate.o \
 	$(EMUOBJ)/devcb.o \
+	$(EMUOBJ)/devcb2.o \
 	$(EMUOBJ)/devcpu.o \
 	$(EMUOBJ)/device.o \
 	$(EMUOBJ)/didisasm.o \
@@ -392,14 +393,6 @@ $(EMUOBJ)/rendlay.o:	$(EMULAYOUT)/dualhovu.lh \
 						$(EMULAYOUT)/triphsxs.lh \
 						$(EMULAYOUT)/quadhsxs.lh \
 						$(EMULAYOUT)/vertical.lh \
-						$(EMULAYOUT)/ho20ffff.lh \
-						$(EMULAYOUT)/ho2eff2e.lh \
-						$(EMULAYOUT)/ho4f893d.lh \
-						$(EMULAYOUT)/ho88ffff.lh \
-						$(EMULAYOUT)/hoa0a0ff.lh \
-						$(EMULAYOUT)/hoffe457.lh \
-						$(EMULAYOUT)/hoffff20.lh \
-						$(EMULAYOUT)/voffff20.lh \
 						$(EMULAYOUT)/lcd.lh \
 						$(EMULAYOUT)/lcd_rot.lh \
 						$(EMULAYOUT)/noscreens.lh \

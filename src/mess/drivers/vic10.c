@@ -207,31 +207,11 @@ INTERRUPT_GEN_MEMBER(vic10_state::vic10_frame_interrupt)
 	cbm_common_interrupt(&device);
 }
 
-READ8_MEMBER( vic10_state::vic_lightpen_x_cb )
-{
-	return ioport("LIGHTX")->read() & ~0x01;
-}
-
-READ8_MEMBER( vic10_state::vic_lightpen_y_cb )
-{
-	return ioport("LIGHTY")->read() & ~0x01;
-}
-
-READ8_MEMBER( vic10_state::vic_lightpen_button_cb )
-{
-	return ioport("OTHER")->read() & 0x04;
-}
-
 WRITE_LINE_MEMBER( vic10_state::vic_irq_w )
 {
 	m_vic_irq = state;
 
 	check_interrupts();
-}
-
-READ8_MEMBER( vic10_state::vic_rdy_cb )
-{
-	return ioport("CYCLES")->read() & 0x07;
 }
 
 static MOS6566_INTERFACE( vic_intf )
@@ -240,10 +220,8 @@ static MOS6566_INTERFACE( vic_intf )
 	M6510_TAG,
 	DEVCB_DRIVER_LINE_MEMBER(vic10_state, vic_irq_w),
 	DEVCB_NULL,
-	DEVCB_DRIVER_MEMBER(vic10_state, vic_lightpen_x_cb),
-	DEVCB_DRIVER_MEMBER(vic10_state, vic_lightpen_y_cb),
-	DEVCB_DRIVER_MEMBER(vic10_state, vic_lightpen_button_cb),
-	DEVCB_DRIVER_MEMBER(vic10_state, vic_rdy_cb)
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -253,30 +231,28 @@ static MOS6566_INTERFACE( vic_intf )
 
 READ8_MEMBER( vic10_state::sid_potx_r )
 {
-	UINT8 cia_pa = m_cia->pa_r();
+	UINT8 data = 0xff;
 
-	int sela = BIT(cia_pa, 6);
-	int selb = BIT(cia_pa, 7);
-
-	UINT8 data = 0;
-
-	if (sela) data = m_joy1->pot_x_r();
-	if (selb) data = m_joy2->pot_x_r();
+	switch (m_cia->pa_r() >> 6)
+	{
+	case 1: data = m_joy1->pot_x_r(); break;
+	case 2: data = m_joy2->pot_x_r(); break;
+	case 3: break; // TODO pot1 and pot2 in series
+	}
 
 	return data;
 }
 
 READ8_MEMBER( vic10_state::sid_poty_r )
 {
-	UINT8 cia_pa = m_cia->pa_r();
+	UINT8 data = 0xff;
 
-	int sela = BIT(cia_pa, 6);
-	int selb = BIT(cia_pa, 7);
-
-	UINT8 data = 0;
-
-	if (sela) data = m_joy1->pot_y_r();
-	if (selb) data = m_joy2->pot_y_r();
+	switch (m_cia->pa_r() >> 6)
+	{
+	case 1: data = m_joy1->pot_y_r(); break;
+	case 2: data = m_joy2->pot_y_r(); break;
+	case 3: break; // TODO pot1 and pot2 in series
+	}
 
 	return data;
 }
@@ -486,7 +462,16 @@ static VIC10_EXPANSION_INTERFACE( expansion_intf )
 void vic10_state::machine_start()
 {
 	// allocate memory
-	m_color_ram = auto_alloc_array(machine(), UINT8, 0x400);
+	m_color_ram.allocate(0x400);
+
+	// initialize memory
+	UINT8 data = 0xff;
+
+	for (offs_t offset = 0; offset < m_ram->size(); offset++)
+	{
+		m_ram->pointer()[offset] = data;
+		if (!(offset % 64)) data ^= 0xff;
+	}
 
 	// state saving
 	save_item(NAME(m_cia_irq));

@@ -157,37 +157,25 @@ static GFXDECODE_START( mustache )
 	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 0x80, 8 )
 GFXDECODE_END
 
-TIMER_CALLBACK_MEMBER(mustache_state::clear_irq_cb)
+TIMER_DEVICE_CALLBACK_MEMBER(mustache_state::mustache_scanline)
 {
-	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	int scanline = param;
+
+	if(scanline == 240) // vblank-out irq
+		machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,0x10); /* RST 10h */
+
+	if(scanline == 0) // vblank-in irq
+		machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE,0x08); /* RST 08h */
 }
 
-INTERRUPT_GEN_MEMBER(mustache_state::assert_irq)
-{
-	device.execute().set_input_line(0, ASSERT_LINE);
-    m_clear_irq_timer->adjust(downcast<cpu_device *>(&device)->cycles_to_attotime(14288));
-       /* Timing here is an educated GUESS, Z80 /INT must stay high so the irq
-          fires no less than TWICE per frame, else game doesn't work right.
-      6000000 / 56.747 = 105732.4616 cycles per frame, we'll call it A
-      screen size is 256x256, though less is visible.
-          lets assume we have 256 lines L and 40 'lines' (really line-times)
-          of vblank V:
-      So (A/(L+V))*V = the number of cycles spent in vblank.
-      (105732.4616 / (256+40)) * 40 = 14288.17049 z80 clocks in vblank
-       */
-}
 
-void mustache_state::machine_start()
-{
-	m_clear_irq_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(mustache_state::clear_irq_cb),this));
-}
 
 static MACHINE_CONFIG_START( mustache, mustache_state )
 
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", Z80, CPU_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(memmap)
-	MCFG_CPU_VBLANK_INT_DRIVER("screen", mustache_state,  assert_irq)
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", mustache_state, mustache_scanline, "screen", 0, 1)
 
 	MCFG_CPU_ADD(CPUTAG_T5182,Z80, T5182_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(t5182_map)
@@ -209,8 +197,8 @@ static MACHINE_CONFIG_START( mustache, mustache_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("ymsnd", YM2151, YM_CLOCK)
-	MCFG_SOUND_CONFIG(t5182_ym2151_interface)
+	MCFG_YM2151_ADD("ymsnd", YM_CLOCK)
+	MCFG_YM2151_IRQ_HANDLER(WRITELINE(driver_device, member_wrapper_line<t5182_ym2151_irq_handler>))
 	MCFG_SOUND_ROUTE(0, "mono", 1.0)
 	MCFG_SOUND_ROUTE(1, "mono", 1.0)
 MACHINE_CONFIG_END

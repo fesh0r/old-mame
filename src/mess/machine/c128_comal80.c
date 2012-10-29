@@ -59,12 +59,16 @@ void c128_comal80_cartridge_device::device_reset()
 //  c64_cd_r - cartridge data read
 //-------------------------------------------------
 
-UINT8 c128_comal80_cartridge_device::c64_cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
+UINT8 c128_comal80_cartridge_device::c64_cd_r(address_space &space, offs_t offset, UINT8 data, int sphi2, int ba, int roml, int romh, int io1, int io2)
 {
 	if (!romh)
 	{
-		offs_t addr = (m_bank << 14) | (offset & 0x3fff);
-		data = m_roml[addr];
+		offs_t addr = ((m_bank & 0x07) << 14) | (offset & 0x3fff);
+		data = m_romh[addr];
+	}
+	else if (!io1)
+	{
+		data = (m_bank << 4) | (data & 0x0f);
 	}
 
 	return data;
@@ -75,7 +79,7 @@ UINT8 c128_comal80_cartridge_device::c64_cd_r(address_space &space, offs_t offse
 //  c64_cd_w - cartridge data write
 //-------------------------------------------------
 
-void c128_comal80_cartridge_device::c64_cd_w(address_space &space, offs_t offset, UINT8 data, int ba, int roml, int romh, int io1, int io2)
+void c128_comal80_cartridge_device::c64_cd_w(address_space &space, offs_t offset, UINT8 data, int sphi2, int ba, int roml, int romh, int io1, int io2)
 {
 	if (!io1)
 	{
@@ -88,12 +92,12 @@ void c128_comal80_cartridge_device::c64_cd_w(address_space &space, offs_t offset
             2
             3
             4       A14
-            5       ROM select bit 0
-            6       ROM select bit 1
-            7
+            5       A15
+            6       A16
+            7       A17
 
         */
 
-		m_bank = (data >> 4) & 0x07;
+		m_bank = data >> 4;
 	}
 }

@@ -9,12 +9,14 @@ scsibus.c
 
 void scsibus_device::scsi_update()
 {
-	UINT32 newdata = SCSI_MASK_ALL;
+	UINT32 newdata = 0;
 
 	for( int i = 0; i < deviceCount; i++ )
 	{
-		newdata &= devices[ i ]->data_out;
+		newdata |= devices[ i ]->data_out;
 	}
+
+	newdata &= SCSI_MASK_ALL;
 
 	UINT32 mask = data ^ newdata;
 
@@ -44,10 +46,11 @@ void scsibus_device::device_start()
 		if( scsidev != NULL )
 		{
 			devices[ deviceCount++ ] = scsidev;
+			scsidev->m_scsibus = this;
 		}
 	}
 
-	data = SCSI_MASK_ALL;
+	data = 0;
 }
 
 const device_type SCSIBUS = &device_creator<scsibus_device>;

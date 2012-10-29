@@ -579,7 +579,7 @@ static ADDRESS_MAP_START( sub_map, AS_PROGRAM, 8, cps_state )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
-	AM_RANGE(0xf000, 0xf001) AM_DEVREADWRITE_LEGACY("2151", ym2151_r, ym2151_w)
+	AM_RANGE(0xf000, 0xf001) AM_DEVREADWRITE("2151", ym2151_device, read, write)
 	AM_RANGE(0xf002, 0xf002) AM_DEVREADWRITE("oki", okim6295_device, read, write)
 	AM_RANGE(0xf004, 0xf004) AM_WRITE(cps1_snd_bankswitch_w)
 	AM_RANGE(0xf006, 0xf006) AM_WRITE(cps1_oki_pin7_w) /* controls pin 7 of OKI chip */
@@ -3008,19 +3008,6 @@ GFXDECODE_END
 
 
 
-static void cps1_irq_handler_mus(device_t *device, int irq)
-{
-	cps_state *state = device->machine().driver_data<cps_state>();
-	state->m_audiocpu->set_input_line(0, irq ? ASSERT_LINE : CLEAR_LINE);
-}
-
-static const ym2151_interface ym2151_config =
-{
-	DEVCB_LINE(cps1_irq_handler_mus)
-};
-
-
-
 /********************************************************************
 *
 *  Machine Driver macro
@@ -3079,8 +3066,8 @@ static MACHINE_CONFIG_START( cps1_10MHz, cps_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("2151", YM2151, XTAL_3_579545MHz)  /* verified on pcb */
-	MCFG_SOUND_CONFIG(ym2151_config)
+	MCFG_YM2151_ADD("2151", XTAL_3_579545MHz)  /* verified on pcb */
+	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
 	MCFG_SOUND_ROUTE(0, "mono", 0.35)
 	MCFG_SOUND_ROUTE(1, "mono", 0.35)
 
@@ -3237,8 +3224,8 @@ static MACHINE_CONFIG_START( sf2mdt, cps_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("2151", YM2151, 3579545)
-	MCFG_SOUND_CONFIG(ym2151_config)
+	MCFG_YM2151_ADD("2151", 3579545)
+	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
 	MCFG_SOUND_ROUTE(0, "mono", 0.35)
 	MCFG_SOUND_ROUTE(1, "mono", 0.35)
 
@@ -3321,8 +3308,8 @@ static MACHINE_CONFIG_START( knightsb, cps_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD("2151", YM2151, 29821000 / 8)
-	MCFG_SOUND_CONFIG(ym2151_config)
+	MCFG_YM2151_ADD("2151", 29821000 / 8)
+	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
 	MCFG_SOUND_ROUTE(0, "mono", 0.35)
 	MCFG_SOUND_ROUTE(1, "mono", 0.35)
 
@@ -10696,7 +10683,6 @@ ROM_END
 
 DRIVER_INIT_MEMBER(cps_state,forgottn)
 {
-
 	/* Forgotten Worlds has a NEC uPD4701AC on the B-board handling dial inputs from the CN-MOWS connector. */
 	/* The memory mapping is handled by PAL LWIO */
 	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x800040, 0x800041, write16_delegate(FUNC(cps_state::forgottn_dial_0_reset_w),this));
@@ -10708,6 +10694,48 @@ DRIVER_INIT_MEMBER(cps_state,forgottn)
 
 	m_dial[0] = 0;
 	m_dial[1] = 0;
+
+	DRIVER_INIT_CALL(cps1);
+}
+
+READ16_MEMBER(cps_state::sf2rb_prot_r)
+{
+	switch (offset)
+	{
+		case 0x01201/2:
+			return 0x0002;
+
+		case 0x81201/2:
+			return 0x0040;
+	}
+
+	return 0;
+}
+
+DRIVER_INIT_MEMBER(cps_state,sf2rb)
+{
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x2fffff, read16_delegate(FUNC(cps_state::sf2rb_prot_r),this));
+
+	DRIVER_INIT_CALL(cps1);
+}
+
+READ16_MEMBER(cps_state::sf2rb2_prot_r)
+{
+	switch (offset)
+	{
+		case 0x01201/2:
+			return 0x0000;
+
+		case 0x81201/2:
+			return 0x0040;
+	}
+
+	return 0;
+}
+
+DRIVER_INIT_MEMBER(cps_state,sf2rb2)
+{
+	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x2fffff, read16_delegate(FUNC(cps_state::sf2rb2_prot_r),this));
 
 	DRIVER_INIT_CALL(cps1);
 }
@@ -10934,8 +10962,8 @@ GAME( 1992, sf2ceuc,     sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     
 GAME( 1992, sf2ceja,     sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "Capcom", "Street Fighter II': Champion Edition (Japan 920322)", GAME_SUPPORTS_SAVE )
 GAME( 1992, sf2cejb,     sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "Capcom", "Street Fighter II': Champion Edition (Japan 920513)", GAME_SUPPORTS_SAVE )
 GAME( 1992, sf2cejc,     sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "Capcom", "Street Fighter II': Champion Edition (Japan 920803)", GAME_SUPPORTS_SAVE )
-GAME( 1992, sf2rb,       sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "bootleg", "Street Fighter II': Champion Edition (Rainbow set 1, bootleg)", GAME_SUPPORTS_SAVE )			// 920322 - based on World version
-GAME( 1992, sf2rb2,      sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "bootleg", "Street Fighter II': Champion Edition (Rainbow set 2, bootleg)", GAME_SUPPORTS_SAVE )			// 920322 - based on World version
+GAME( 1992, sf2rb,       sf2ce,    cps1_12MHz, sf2, cps_state,        sf2rb,    ROT0,   "bootleg", "Street Fighter II': Champion Edition (Rainbow set 1, bootleg)", GAME_SUPPORTS_SAVE )			// 920322 - based on World version
+GAME( 1992, sf2rb2,      sf2ce,    cps1_12MHz, sf2, cps_state,        sf2rb2,   ROT0,   "bootleg", "Street Fighter II': Champion Edition (Rainbow set 2, bootleg)", GAME_SUPPORTS_SAVE )			// 920322 - based on World version
 GAME( 1992, sf2rb3,      sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "bootleg", "Street Fighter II': Champion Edition (Rainbow set 3, bootleg)", GAME_SUPPORTS_SAVE )			// 920322 - based on World version
 GAME( 1992, sf2red,      sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "bootleg", "Street Fighter II': Champion Edition (Red Wave, bootleg)", GAME_SUPPORTS_SAVE )			// 920313 - based on World version
 GAME( 1992, sf2v004,     sf2ce,    cps1_12MHz, sf2, cps_state,        cps1,     ROT0,   "bootleg", "Street Fighter II': Champion Edition (V004, bootleg)", GAME_SUPPORTS_SAVE )				// 102092 !!! - based on (heavily modified) World version

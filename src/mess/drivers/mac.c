@@ -34,6 +34,12 @@
             PB_EXT  from mouse Y circuitry
             PA_EXT  from mouse X circuitry
 
+    NOTES:
+        - pmac6100: with recent PPC fixes now gets into the 68000 emulator and executes part of the 680x0 startup code.
+          'g 6802c73c' to get to the interesting part (wait past the boot chime).  PPC register r24 is the 68000 PC.
+          when the PC hits GetCPUID, the move.l (a2), d0 at PC = 0x10000 will cause an MMU fault (jump to 0xFFF00300).  why?
+          a2 = 0x5ffffffc (the CPU ID register).  MMU is unable to resolve this; defect in the MMU emulation probable.
+
 ****************************************************************************/
 
 
@@ -62,6 +68,12 @@
 #include "video/nubus_radiustpd.h"
 #include "video/nubus_wsportrait.h"
 #include "machine/nubus_asntmc3b.h"
+#include "video/nubus_m2video.h"
+#include "video/pds30_cb264.h"
+#include "video/pds30_procolor816.h"
+#include "video/pds30_sigmalview.h"
+#include "video/pds30_30hr.h"
+#include "video/pds30_mc30.h"
 #include "includes/mac.h"
 #include "mac.lh"
 
@@ -182,7 +194,7 @@ READ8_MEMBER( mac_state::mac_sonora_vctl_r )
 	if (offset == 2)
 	{
 //        printf("Sonora: read monitor ID at PC=%x\n", m_maincpu->pc());
-		return (6 << 4);	// 640x480 RGB monitor
+		return (space.machine().root_device().ioport("MONTYPE")->read_safe(6)<<4);
 	}
 
 	return m_sonora_vctl[offset];
@@ -657,6 +669,7 @@ static ADDRESS_MAP_START(macse30_map, AS_PROGRAM, 32, mac_state )
 	AM_RANGE(0x50040000, 0x50041fff) AM_READWRITE16(mac_via_r, mac_via_w, 0xffffffff) AM_MIRROR(0x00f00000)	// mirror
 
 	AM_RANGE(0xfe000000, 0xfe00ffff) AM_RAM	AM_SHARE("vram")
+    AM_RANGE(0xfee00000, 0xfee0ffff) AM_RAM AM_SHARE("vram") AM_MIRROR(0x000f0000)
 	AM_RANGE(0xfeffe000, 0xfeffffff) AM_ROM AM_REGION("se30vrom", 0x0)
 ADDRESS_MAP_END
 
@@ -835,6 +848,7 @@ static const struct nbbus_interface nubus_intf =
 };
 
 static SLOT_INTERFACE_START(mac_nubus_cards)
+    SLOT_INTERFACE("m2video", NUBUS_M2VIDEO)    /* Apple Macintosh II Video Card */
 	SLOT_INTERFACE("48gc", NUBUS_48GC)		/* Apple 4*8 Graphics Card */
 	SLOT_INTERFACE("824gc", NUBUS_824GC)	/* Apple 8*24 Graphics Card */
 	SLOT_INTERFACE("cb264", NUBUS_CB264)	/* RasterOps ColorBoard 264 */
@@ -847,6 +861,14 @@ static SLOT_INTERFACE_START(mac_nubus_cards)
 	SLOT_INTERFACE("asmc3nb", NUBUS_ASNTMC3NB)	/* Asante MC3NB Ethernet card */
 	SLOT_INTERFACE("portrait", NUBUS_WSPORTRAIT)	/* Apple Macintosh II Portrait video card */
 	SLOT_INTERFACE("enetnb", NUBUS_APPLEENET)	/* Apple NuBus Ethernet */
+SLOT_INTERFACE_END
+
+static SLOT_INTERFACE_START(mac_pds030_cards)
+    SLOT_INTERFACE("cb264", PDS030_CB264SE30)   // RasterOps Colorboard 264/SE30
+    SLOT_INTERFACE("pc816", PDS030_PROCOLOR816) // Lapis ProColor Server 8*16 PDS
+    SLOT_INTERFACE("lview", PDS030_LVIEW)       // Sigma Designs L-View
+    SLOT_INTERFACE("30hr",  PDS030_XCEED30HR)   // Micron/XCEED Technology Color 30HR
+    SLOT_INTERFACE("mc30",  PDS030_XCEEDMC30)   // Micron/XCEED Technology MacroColor 30
 SLOT_INTERFACE_END
 
 /***************************************************************************
@@ -897,10 +919,8 @@ static MACHINE_CONFIG_START( mac512ke, mac_state )
 	MCFG_SOUND_ADD("custom", MAC_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
+    MCFG_RTC3430042_ADD("rtc", XTAL_32_768kHz)
 	MCFG_IWM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
 
@@ -981,10 +1001,8 @@ static MACHINE_CONFIG_START( macprtb, mac_state )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
+    MCFG_RTC3430042_ADD("rtc", XTAL_32_768kHz)
 	MCFG_SCSIBUS_ADD("scsi")
 	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
 	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
@@ -1019,10 +1037,8 @@ static MACHINE_CONFIG_START( macii, mac_state )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
+    MCFG_RTC3430042_ADD("rtc", XTAL_32_768kHz)
 	MCFG_NUBUS_BUS_ADD("nubus", "maincpu", nubus_intf)
 	MCFG_NUBUS_SLOT_ADD("nubus","nb9", mac_nubus_cards, "48gc", NULL)
 	MCFG_NUBUS_SLOT_ADD("nubus","nba", mac_nubus_cards, NULL, NULL)
@@ -1071,10 +1087,8 @@ static MACHINE_CONFIG_START( maciifx, mac_state )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
+    MCFG_RTC3430042_ADD("rtc", XTAL_32_768kHz)
 	MCFG_NUBUS_BUS_ADD("nubus", "maincpu", nubus_intf)
 	MCFG_NUBUS_SLOT_ADD("nubus","nb9", mac_nubus_cards, "48gc", NULL)
 	MCFG_NUBUS_SLOT_ADD("nubus","nba", mac_nubus_cards, NULL, NULL)
@@ -1120,7 +1134,8 @@ static MACHINE_CONFIG_DERIVED( maclc, macii )
 	MCFG_SCREEN_RAW_PARAMS(25175000, 800, 0, 640, 525, 0, 480)
 	MCFG_SCREEN_SIZE(1024,768)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-	MCFG_SCREEN_UPDATE_DRIVER(mac_state, screen_update_macrbvvram)
+	MCFG_SCREEN_UPDATE_DRIVER(mac_state, screen_update_macv8)
+	MCFG_DEFAULT_LAYOUT(layout_mac)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2M")
@@ -1156,7 +1171,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( maccclas, maclc2 )
 
     MCFG_EGRET_REMOVE()
-    MCFG_CUDA_ADD(CUDA_341S0788, mac_cuda_interface)    // should be 341s0417, but only the color classic used that rev and those are "collectable" ($$$$)
+    MCFG_CUDA_ADD(CUDA_341S0788, mac_cuda_interface)    // should be 0417, but that version won't sync up properly with the '030 right now
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( maclc3, maclc )
@@ -1169,11 +1184,11 @@ static MACHINE_CONFIG_DERIVED( maclc3, maclc )
 	MCFG_VIDEO_RESET_OVERRIDE(mac_state,macsonora)
 
 	MCFG_SCREEN_MODIFY(MAC_SCREEN_NAME)
-	MCFG_SCREEN_UPDATE_DRIVER(mac_state, screen_update_macrbvvram)
+	MCFG_SCREEN_UPDATE_DRIVER(mac_state, screen_update_macsonora)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("4M")
-	MCFG_RAM_EXTRA_OPTIONS("8M,12M,16M,20M,24M,28M,32M,36M")
+	MCFG_RAM_EXTRA_OPTIONS("8M,16M,32M,48M,64M,80M")
 
 	MCFG_ASC_REPLACE("asc", C15M, ASC_TYPE_SONORA, mac_asc_irq)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
@@ -1277,14 +1292,15 @@ static MACHINE_CONFIG_START( macse30, mac_state )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
+    MCFG_RTC3430042_ADD("rtc", XTAL_32_768kHz)
 	MCFG_SCSIBUS_ADD("scsi")
 	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
 	MCFG_SCSIDEV_ADD("scsi:harddisk2", SCSIHD, SCSI_ID_5)
 	MCFG_NCR5380_ADD("scsi:ncr5380", C7M, macplus_5380intf)
+
+	MCFG_NUBUS_BUS_ADD("pds", "maincpu", nubus_intf)
+	MCFG_NUBUS_SLOT_ADD("pds","pds030", mac_pds030_cards, NULL, NULL)
 
 	MCFG_SWIM_ADD("fdc", mac_iwm_interface)
 	MCFG_LEGACY_FLOPPY_SONY_2_DRIVES_ADD(mac_floppy_interface)
@@ -1327,9 +1343,6 @@ static MACHINE_CONFIG_START( macpb140, mac_state )
 	MCFG_ASC_ADD("asc", C15M, ASC_TYPE_ASC, mac_asc_irq)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
-
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
 	MCFG_SCSIBUS_ADD("scsi")
@@ -1399,9 +1412,6 @@ static MACHINE_CONFIG_START( macpb160, mac_state )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
 	MCFG_SCSIBUS_ADD("scsi")
 	MCFG_SCSIDEV_ADD("scsi:harddisk1", SCSIHD, SCSI_ID_6)
@@ -1458,9 +1468,9 @@ static MACHINE_CONFIG_DERIVED( macpd210, macpb160 )
 MACHINE_CONFIG_END
 #endif
 static MACHINE_CONFIG_DERIVED( macclas2, maclc )
-
 	MCFG_CPU_REPLACE("maincpu", M68030, C15M)
 	MCFG_CPU_PROGRAM_MAP(maclc_map)
+	MCFG_CPU_VBLANK_INT_DRIVER(MAC_SCREEN_NAME, mac_state,  mac_rbv_vbl)
 
 	MCFG_VIDEO_START_OVERRIDE(mac_state,macv8)
 	MCFG_VIDEO_RESET_OVERRIDE(mac_state,maceagle)
@@ -1534,6 +1544,7 @@ static MACHINE_CONFIG_DERIVED( maciisi, macii )
 	MCFG_SCREEN_SIZE(640, 870)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MCFG_SCREEN_UPDATE_DRIVER(mac_state, screen_update_macrbv)
+	MCFG_DEFAULT_LAYOUT(layout_mac)
 
 	/* internal ram */
 	MCFG_RAM_MODIFY(RAM_TAG)
@@ -1569,9 +1580,6 @@ static MACHINE_CONFIG_START( pwrmac, mac_state )
 	MCFG_AWACS_ADD("awacs", 44100)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
-
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
 
 	/* devices */
 	MCFG_SCSIBUS_ADD("scsi")
@@ -1618,10 +1626,8 @@ static MACHINE_CONFIG_START( macqd700, mac_state )
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	/* nvram */
-	MCFG_NVRAM_HANDLER(mac)
-
 	/* devices */
+    MCFG_RTC3430042_ADD("rtc", XTAL_32_768kHz)
 	MCFG_NUBUS_BUS_ADD("nubus", "maincpu", nubus_intf)
 	MCFG_NUBUS_SLOT_ADD("nubus","nbd", mac_nubus_cards, NULL, NULL)
 	MCFG_NUBUS_SLOT_ADD("nubus","nbe", mac_nubus_cards, NULL, NULL)
@@ -2139,14 +2145,14 @@ COMP( 1989, maciicx,  mac2fdhd, 0,	maciicx,  macadb, mac_state,   maciicx,	  "Ap
 COMP( 1989, maciici,  0,		0,	maciici,  maciici, mac_state,  maciici,	  "Apple Computer", "Macintosh IIci", 0 )
 COMP( 1990, maciifx,  0,		0,	maciifx,  macadb, mac_state,   maciifx,      "Apple Computer", "Macintosh IIfx",  GAME_NOT_WORKING )
 COMP( 1990, macclasc, 0,		0,	macse,    macadb, mac_state,   macclassic,	  "Apple Computer", "Macintosh Classic",  0 )
-COMP( 1990, maclc,    0,		0,	maclc,    maciici, mac_state,  maclc,	      "Apple Computer", "Macintosh LC",  GAME_NOT_WORKING )
-COMP( 1990, maciisi,  0,		0,	maciisi,  maciici, mac_state,  maciisi,	  "Apple Computer", "Macintosh IIsi",  GAME_NOT_WORKING )
+COMP( 1990, maclc,    0,		0,	maclc,    maciici, mac_state,  maclc,	      "Apple Computer", "Macintosh LC", GAME_IMPERFECT_SOUND )
+COMP( 1990, maciisi,  0,		0,	maciisi,  maciici, mac_state,  maciisi,	  "Apple Computer", "Macintosh IIsi", 0 )
 COMP( 1991, macpb100, 0,        0,  macprtb,  macadb, mac_state,   macprtb,	  "Apple Computer", "Macintosh PowerBook 100", GAME_NOT_WORKING )
 COMP( 1991, macpb140, 0,        0,  macpb140, macadb, mac_state,   macpb140,	  "Apple Computer", "Macintosh PowerBook 140", GAME_NOT_WORKING )
 COMP( 1991, macpb170, macpb140, 0,  macpb170, macadb, mac_state,   macpb140,	  "Apple Computer", "Macintosh PowerBook 170", GAME_NOT_WORKING )
 COMP( 1991, macqd700, macpb140, 0,  macqd700, macadb, mac_state,   macquadra700, "Apple Computer", "Macintosh Quadra 700", GAME_NOT_WORKING )
-COMP( 1991, macclas2, 0,		0,	macclas2, macadb, mac_state,   macclassic2,  "Apple Computer", "Macintosh Classic II",  GAME_NOT_WORKING )
-COMP( 1991, maclc2,   0,		0,	maclc2,   maciici, mac_state,  maclc2,	      "Apple Computer", "Macintosh LC II",  GAME_NOT_WORKING )
+COMP( 1991, macclas2, 0,		0,	macclas2, macadb, mac_state,   macclassic2,  "Apple Computer", "Macintosh Classic II", GAME_IMPERFECT_SOUND )
+COMP( 1991, maclc2,   0,		0,	maclc2,   maciici, mac_state,  maclc2,	      "Apple Computer", "Macintosh LC II",  GAME_IMPERFECT_SOUND )
 COMP( 1992, macpb145, macpb140, 0,  macpb145, macadb, mac_state,   macpb140,	  "Apple Computer", "Macintosh PowerBook 145", GAME_NOT_WORKING )
 COMP( 1992, macpb160, 0,        0,  macpb160, macadb, mac_state,   macpb160,	  "Apple Computer", "Macintosh PowerBook 160", GAME_NOT_WORKING )
 COMP( 1992, macpb180, macpb160, 0,  macpb180, macadb, mac_state,   macpb160,	  "Apple Computer", "Macintosh PowerBook 180", GAME_NOT_WORKING )
@@ -2154,8 +2160,8 @@ COMP( 1992, macpb180c,macpb160, 0,  macpb180c,macadb, mac_state,   macpb160,    
 //COMP( 1992, macpd210, 0,        0,  macpd210, macadb, mac_state,   macpd210,     "Apple Computer", "Macintosh PowerBook Duo 210", GAME_NOT_WORKING )
 COMP( 1993, maccclas, 0,        0,  maccclas, macadb, mac_state,   maclrcclassic,"Apple Computer", "Macintosh Color Classic", GAME_NOT_WORKING )
 COMP( 1992, macpb145b,macpb140, 0,  macpb170, macadb, mac_state,   macpb140,	  "Apple Computer", "Macintosh PowerBook 145B", GAME_NOT_WORKING )
-COMP( 1993, maclc3,   0,		0,	maclc3,   maciici, mac_state,  maclc3,	      "Apple Computer", "Macintosh LC III",  GAME_NOT_WORKING )
-COMP( 1993, maciivx,  0,		0,	maciivx,  maciici, mac_state,  maciivx,	  "Apple Computer", "Macintosh IIvx",  GAME_NOT_WORKING )
-COMP( 1993, maciivi,  maciivx,	0,	maciivi,  maciici, mac_state,  maciivx,	  "Apple Computer", "Macintosh IIvi",  GAME_NOT_WORKING )
+COMP( 1993, maclc3,   0,		0,	maclc3,   maciici, mac_state,  maclc3,	      "Apple Computer", "Macintosh LC III",  GAME_IMPERFECT_SOUND )
+COMP( 1993, maciivx,  0,		0,	maciivx,  maciici, mac_state,  maciivx,	  "Apple Computer", "Macintosh IIvx", GAME_IMPERFECT_SOUND )
+COMP( 1993, maciivi,  maciivx,	0,	maciivi,  maciici, mac_state,  maciivx,	  "Apple Computer", "Macintosh IIvi", GAME_IMPERFECT_SOUND )
 COMP( 1993, maclc520, 0,		0,	maclc520, maciici, mac_state,  maclc520,     "Apple Computer", "Macintosh LC 520",  GAME_NOT_WORKING )
 COMP( 1994, pmac6100, 0,		0,	pwrmac,   macadb, mac_state,   macpm6100,	  "Apple Computer", "Power Macintosh 6100/60",  GAME_NOT_WORKING | GAME_NO_SOUND )

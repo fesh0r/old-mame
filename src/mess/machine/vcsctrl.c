@@ -84,6 +84,8 @@ UINT8 vcs_control_port_device::pot_x_r() { UINT8 data = 0xff; if (m_device != NU
 READ8_MEMBER( vcs_control_port_device::pot_x_r ) { return pot_x_r(); }
 UINT8 vcs_control_port_device::pot_y_r() { UINT8 data = 0xff; if (m_device != NULL) data = m_device->vcs_pot_y_r(); return data; }
 READ8_MEMBER( vcs_control_port_device::pot_y_r ) { return pot_y_r(); }
+void vcs_control_port_device::joy_w( UINT8 data ) { if ( m_device != NULL ) m_device->vcs_joy_w( data ); }
+WRITE8_MEMBER( vcs_control_port_device::joy_w ) { joy_w(data); }
 
 
 //-------------------------------------------------
@@ -94,4 +96,7 @@ SLOT_INTERFACE_START( vcs_control_port_devices )
 	SLOT_INTERFACE("joy", VCS_JOYSTICK)
 	SLOT_INTERFACE("pad", VCS_PADDLES)
 	SLOT_INTERFACE("lp", VCS_LIGHTPEN)
+	SLOT_INTERFACE("joybstr", VCS_JOYSTICK_BOOSTER)
+	SLOT_INTERFACE("wheel", VCS_WHEEL)
+	SLOT_INTERFACE("keypad", VCS_KEYPAD)
 SLOT_INTERFACE_END

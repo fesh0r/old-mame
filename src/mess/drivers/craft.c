@@ -1,18 +1,16 @@
 /*\
 * * Linus Akesson's "Craft"
 * *
-* * Skeleton driver by MooglyGuy
-* * Partial rewrite by Harmony
+* * Driver by MooglyGuy
 \*/
 
 #include "emu.h"
 #include "cpu/avr8/avr8.h"
-#include "machine/avr8.h"
 #include "sound/dac.h"
 
 #define VERBOSE_LEVEL	(0)
 
-#define ENABLE_VERBOSE_LOG (1)
+#define ENABLE_VERBOSE_LOG (0)
 
 #if ENABLE_VERBOSE_LOG
 INLINE void verboselog(running_machine &machine, int n_level, const char *s_fmt, ...)
@@ -31,44 +29,68 @@ INLINE void verboselog(running_machine &machine, int n_level, const char *s_fmt,
 #define verboselog(x,y,z,...)
 #endif
 
-#define MASTER_CLOCK 20000000
+#define MASTER_CLOCK	20000000
+
+#define VISIBLE_CYCLES		480
+#define HSYNC_CYCLES		155
+#define LINE_CYCLES 		(VISIBLE_CYCLES + HSYNC_CYCLES)
+#define VISIBLE_LINES		480
+#define VSYNC_LINES			45
+#define LINES_PER_FRAME		(VISIBLE_LINES + VSYNC_LINES)
+#define CYCLES_PER_FRAME	(LINES_PER_FRAME * LINE_CYCLES)
+#define PIXELS_PER_FRAME	(CYCLES_PER_FRAME)
+
+/****************************************************\
+* I/O defines                                        *
+\****************************************************/
+
+#define AVR8_DDRD				(state->m_regs[AVR8_REGIDX_DDRD])
+#define AVR8_PORTC				(state->m_regs[AVR8_REGIDX_PORTC])
+#define AVR8_DDRC				(state->m_regs[AVR8_REGIDX_DDRC])
+#define AVR8_PORTB				(state->m_regs[AVR8_REGIDX_PORTB])
+#define AVR8_DDRB				(state->m_regs[AVR8_REGIDX_DDRB])
+
+#define AVR8_SPSR				(state->m_regs[AVR8_REGIDX_SPSR])
+#define AVR8_SPSR_SPR2X			(AVR8_SPSR & AVR8_SPSR_SPR2X_MASK)
+
+#define AVR8_SPCR				(state->m_regs[AVR8_REGIDX_SPCR])
+#define AVR8_SPCR_SPIE			((AVR8_SPCR & AVR8_SPCR_SPIE_MASK) >> 7)
+#define AVR8_SPCR_SPE			((AVR8_SPCR & AVR8_SPCR_SPE_MASK) >> 6)
+#define AVR8_SPCR_DORD			((AVR8_SPCR & AVR8_SPCR_DORD_MASK) >> 5)
+#define AVR8_SPCR_MSTR			((AVR8_SPCR & AVR8_SPCR_MSTR_MASK) >> 4)
+#define AVR8_SPCR_CPOL			((AVR8_SPCR & AVR8_SPCR_CPOL_MASK) >> 3)
+#define AVR8_SPCR_CPHA			((AVR8_SPCR & AVR8_SPCR_CPHA_MASK) >> 2)
+#define AVR8_SPCR_SPR			(AVR8_SPCR & AVR8_SPCR_SPR_MASK)
+
 
 /****************************************************\
 * I/O devices                                        *
 \****************************************************/
 
-
-
-
-
 class craft_state : public driver_device
 {
 public:
 	craft_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
+		: driver_device(mconfig, type, tag),
+        m_maincpu(*this, "maincpu")
 	{
-		m_timer0_increment = 1;
-
-		m_timer1_increment = 1;
-
-		m_timer2_increment = 1;
 	}
 
 	virtual void machine_start();
 
+    dac_device* dac;
+
 	UINT8 m_regs[0x100];
+    UINT8* m_eeprom;
+    UINT32 last_cycles;
 
-	emu_timer* m_timer0_timer;
-	UINT8 m_timer0_top;
-	INT32 m_timer0_increment;
+    bool spi_pending;
+    UINT32 spi_start_cycle;
 
-	emu_timer* m_timer1_timer;
-	UINT16 m_timer1_top;
-	INT32 m_timer1_increment;
+    UINT8 m_pixels[PIXELS_PER_FRAME + LINE_CYCLES]; // Allocate one extra line for wrapping in the video update
 
-	emu_timer* m_timer2_timer;
-	UINT8 m_timer2_top;
-	INT32 m_timer2_increment;
+    required_device<cpu_device> m_maincpu;
+
 	DECLARE_READ8_MEMBER(avr8_read);
 	DECLARE_WRITE8_MEMBER(avr8_write);
 	DECLARE_DRIVER_INIT(craft);
@@ -81,145 +103,13 @@ public:
 
 void craft_state::machine_start()
 {
-	m_timer0_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(craft_state::avr8_timer0_tick),this));
-	m_timer1_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(craft_state::avr8_timer1_tick),this));
-	m_timer2_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(craft_state::avr8_timer2_tick),this));
-}
-enum
-{
-	AVR8_REG_A = 0,
-	AVR8_REG_B,
-	AVR8_REG_C,
-	AVR8_REG_D,
-};
-
-static const char avr8_reg_name[4] = { 'A', 'B', 'C', 'D' };
-
-TIMER_CALLBACK_MEMBER(craft_state::avr8_timer0_tick)
-{
-	// TODO
-}
-
-TIMER_CALLBACK_MEMBER(craft_state::avr8_timer1_tick)
-{
-    /* TODO: Handle comparison, setting OC1x pins, detection of BOTTOM and TOP
-
-    UINT16 count = AVR8_TCNT1;
-    count += m_timer1_increment;
-
-    for(INT32 reg = AVR8_REG_A; reg <= AVR8_REG_B; reg++)
-    {
-        UINT8 mode = (reg == AVR8_REG_A) ? AVR8_TCCR1A_COM1A : AVR8_TCCR1A_COM1B;
-        switch(mode)
-        {
-            case 0:
-                //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Normal port operation (OC1 disconnected)\n");
-                break;
-
-            case 1:
-                switch(AVR8_WGM1)
-                {
-                    case Avr8::WGM1_NORMAL:
-                    case Avr8::WGM1_CTC_OCR:
-                    case Avr8::WGM1_CTC_ICR:
-                    case Avr8::WGM1_FAST_PWM_8:
-                    case Avr8::WGM1_FAST_PWM_9:
-                    case Avr8::WGM1_FAST_PWM_10:
-                    case Avr8::WGM1_PWM_8_PC:
-                    case Avr8::WGM1_PWM_9_PC:
-                    case Avr8::WGM1_PWM_10_PC:
-                    case Avr8::WGM1_PWM_PFC_ICR:
-                    case Avr8::WGM1_PWM_PC_ICR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Normal port operation (OC1 disconnected)\n");
-                        break;
-
-                    case Avr8::WGM1_FAST_PWM_ICR:
-                    case Avr8::WGM1_FAST_PWM_OCR:
-                    case Avr8::WGM1_PWM_PFC_OCR:
-                    case Avr8::WGM1_PWM_PC_OCR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Toggle OC1A on compare match, OC1B disconnected\n");
-                        break;
-                }
-                break;
-
-            case 2:
-                switch(AVR8_WGM1)
-                {
-                    case Avr8::WGM1_NORMAL:
-                    case Avr8::WGM1_CTC_OCR:
-                    case Avr8::WGM1_CTC_ICR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Clear OC1%c on compare match\n", avr8_reg_name[reg]);
-                        break;
-
-                    case Avr8::WGM1_PWM_8_PC:
-                    case Avr8::WGM1_PWM_9_PC:
-                    case Avr8::WGM1_PWM_10_PC:
-                    case Avr8::WGM1_PWM_PFC_ICR:
-                    case Avr8::WGM1_PWM_PC_ICR:
-                    case Avr8::WGM1_PWM_PFC_OCR:
-                    case Avr8::WGM1_PWM_PC_OCR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Clear OC1%c on match when up-counting, set when down-counting\n", avr8_reg_name[reg]);
-                        break;
-
-                    case Avr8::WGM1_FAST_PWM_8:
-                    case Avr8::WGM1_FAST_PWM_9:
-                    case Avr8::WGM1_FAST_PWM_10:
-                    case Avr8::WGM1_FAST_PWM_ICR:
-                    case Avr8::WGM1_FAST_PWM_OCR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Clear OC1%c on compare match, set at BOTTOM\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-
-            case 3:
-                switch(AVR8_WGM1)
-                {
-                    case Avr8::WGM1_NORMAL:
-                    case Avr8::WGM1_CTC_OCR:
-                    case Avr8::WGM1_CTC_ICR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Set OC1%c on compare match\n", avr8_reg_name[reg]);
-                        break;
-
-                    case Avr8::WGM1_PWM_8_PC:
-                    case Avr8::WGM1_PWM_9_PC:
-                    case Avr8::WGM1_PWM_10_PC:
-                    case Avr8::WGM1_PWM_PFC_ICR:
-                    case Avr8::WGM1_PWM_PC_ICR:
-                    case Avr8::WGM1_PWM_PFC_OCR:
-                    case Avr8::WGM1_PWM_PC_OCR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Set OC1%c on match when up-counting, clear on match when down-counting\n", avr8_reg_name[reg]);
-                        break;
-
-                    case Avr8::WGM1_FAST_PWM_8:
-                    case Avr8::WGM1_FAST_PWM_9:
-                    case Avr8::WGM1_FAST_PWM_10:
-                    case Avr8::WGM1_FAST_PWM_ICR:
-                    case Avr8::WGM1_FAST_PWM_OCR:
-                        //verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Set OC1%c on compare match, clear at BOTTOM\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-            default:
-                verboselog(machine(), 0, "avr8_update_timer1_compare_mode: Unknown COM1%c mode setting (%d)\n", avr8_reg_name[reg], mode);
-                break;
-        }
-    }
-    */
 }
 
 READ8_MEMBER(craft_state::avr8_read)
 {
-
-	if(offset <= Avr8::REGIDX_R31)
-	{
-		return m_regs[offset];
-	}
-
     switch( offset )
     {
-		case Avr8::REGIDX_SPL:
-		case Avr8::REGIDX_SPH:
-		case Avr8::REGIDX_SREG:
+		case AVR8_REGIDX_EEDR:
 			return m_regs[offset];
 
         default:
@@ -263,64 +153,80 @@ static void avr8_change_ddr(running_machine &machine, int reg, UINT8 data)
 	if(changed)
 	{
 		// TODO
-		verboselog(machine, 0, "avr8_change_port: DDR%c lines %02x changed\n", avr8_reg_name[reg], changed);
+		verboselog(machine, 0, "avr8_change_ddr: DDR%c lines %02x changed\n", avr8_reg_name[reg], changed);
 	}
+}
+
+static void avr8_video_update(running_machine &machine)
+{
+    craft_state *state = machine.driver_data<craft_state>();
+
+	UINT64 cycles = avr8_get_elapsed_cycles(state->m_maincpu);
+	UINT32 frame_cycles = (UINT32)(cycles % CYCLES_PER_FRAME);
+
+	if (state->last_cycles < frame_cycles)
+	{
+		for (UINT32 pixidx = state->last_cycles; pixidx < frame_cycles; pixidx++)
+		{
+			UINT8 value = AVR8_PORTC & 0x3f;
+			if (state->spi_pending)
+			{
+				if (pixidx >= state->spi_start_cycle && pixidx < (state->spi_start_cycle + 16))
+				{
+					UINT8 bitidx = 7 - ((pixidx - state->spi_start_cycle) >> 1);
+					value = ((state->m_regs[AVR8_REGIDX_SPDR] & (1 << bitidx)) ? value : 0x3f);
+					if (pixidx == (state->spi_start_cycle + 15))
+					{
+						state->spi_pending = false;
+						state->m_regs[AVR8_REGIDX_SPDR] = 0;
+					}
+				}
+			}
+			state->m_pixels[pixidx] = value;
+		}
+	}
+
+	state->last_cycles = frame_cycles;
 }
 
 static void avr8_change_port(running_machine &machine, int reg, UINT8 data)
 {
-    //craft_state *state = machine.driver_data<craft_state>();
+    craft_state *state = machine.driver_data<craft_state>();
 
 	UINT8 oldport = avr8_get_ddr(machine, reg);
 	UINT8 newport = data;
 	UINT8 changed = newport ^ oldport;
+
 	// TODO: When AVR8 is converted to emu/machine, this should be factored out to 8 single-bit callbacks per port
 	if(changed)
 	{
 		// TODO
-		verboselog(machine, 0, "avr8_change_port: PORT%c lines %02x changed\n", avr8_reg_name[reg], changed);
+		//verboselog(machine, 0, "avr8_change_port: PORT%c lines %02x changed\n", avr8_reg_name[reg], changed);
 	}
-}
 
-namespace Avr8
-{
+	if (reg == AVR8_REG_C)
+	{
+		avr8_video_update(machine);
 
-enum
-{
-	INTIDX_SPI,
-	INTIDX_ICF1,
-	INTIDX_OCF1B,
-	INTIDX_OCF1A,
-	INTIDX_TOV1,
+		/*if (frame_cycles >= state->spi_start_cycle && frame_cycles < (state->spi_start_cycle + 16))
+        {
+            UINT8 bitidx = 7 - ((frame_cycles - state->spi_start_cycle) >> 1);
+            state->m_pixels[frame_cycles] = ((state->m_regs[AVR8_REGIDX_SPDR] & (1 << bitidx)) ? 0x3f : (data & 0x3f));
+        }
+        else
+        {
+            state->m_pixels[frame_cycles] = data & 0x3f;
+        }*/
 
-	INTIDX_COUNT,
-};
+		AVR8_PORTC = data;
+	}
 
-class CInterruptCondition
-{
-	public:
-		UINT8 m_intindex;
-		UINT8 m_regindex;
-		UINT8 m_regmask;
-		UINT8 m_regshift;
-		UINT8* mp_reg;
-};
+	if (reg == AVR8_REG_D)
+	{
+		UINT8 audio_sample = (data & 0x02) | ((data & 0xf4) >> 2);
 
-static const CInterruptCondition s_int_conditions[INTIDX_COUNT] =
-{
-	{ INTIDX_SPI,	REGIDX_SPSR,	AVR8_SPSR_SPIF_MASK,	AVR8_SPSR_SPIF_SHIFT,	NULL },
-	{ INTIDX_ICF1,	REGIDX_TIFR1,	AVR8_TIFR1_ICF1_MASK,	AVR8_TIFR1_ICF1_SHIFT,	NULL },
-	{ INTIDX_OCF1B,	REGIDX_TIFR1,	AVR8_TIFR1_OCF1B_MASK,	AVR8_TIFR1_OCF1B_SHIFT,	NULL },
-	{ INTIDX_OCF1A,	REGIDX_TIFR1,	AVR8_TIFR1_OCF1A_MASK,	AVR8_TIFR1_OCF1A_SHIFT,	NULL },
-	{ INTIDX_TOV1,	REGIDX_TIFR1,	AVR8_TIFR1_TOV1_MASK,	AVR8_TIFR1_TOV1_SHIFT,	NULL }
-};
-
-}
-
-static void avr8_interrupt_update(running_machine &machine, int source)
-{
-	// TODO
-	verboselog(machine, 0, "avr8_interrupt_update: TODO; source interrupt is %d\n", source);
+		state->dac->write_unsigned8(audio_sample << 2);
+	}
 }
 
 /****************/
@@ -342,22 +248,22 @@ static void avr8_disable_spi(running_machine &machine)
 static void avr8_spi_update_masterslave_select(running_machine &machine)
 {
 	// TODO
-    craft_state *state = machine.driver_data<craft_state>();
-	verboselog(machine, 0, "avr8_spi_update_masterslave_select: TODO; AVR is %s\n", AVR8_SPCR_MSTR ? "Master" : "Slave");
+    //craft_state *state = machine.driver_data<craft_state>();
+	//verboselog(machine, 0, "avr8_spi_update_masterslave_select: TODO; AVR is %s\n", AVR8_SPCR_MSTR ? "Master" : "Slave");
 }
 
 static void avr8_spi_update_clock_polarity(running_machine &machine)
 {
 	// TODO
-    craft_state *state = machine.driver_data<craft_state>();
-	verboselog(machine, 0, "avr8_spi_update_clock_polarity: TODO; SCK is Active-%s\n", AVR8_SPCR_CPOL ? "Low" : "High");
+    //craft_state *state = machine.driver_data<craft_state>();
+	//verboselog(machine, 0, "avr8_spi_update_clock_polarity: TODO; SCK is Active-%s\n", AVR8_SPCR_CPOL ? "Low" : "High");
 }
 
 static void avr8_spi_update_clock_phase(running_machine &machine)
 {
 	// TODO
-    craft_state *state = machine.driver_data<craft_state>();
-	verboselog(machine, 0, "avr8_spi_update_clock_phase: TODO; Sampling edge is %s\n", AVR8_SPCR_CPHA ? "Trailing" : "Leading");
+    //craft_state *state = machine.driver_data<craft_state>();
+	//verboselog(machine, 0, "avr8_spi_update_clock_phase: TODO; Sampling edge is %s\n", AVR8_SPCR_CPHA ? "Trailing" : "Leading");
 }
 
 static const UINT8 avr8_spi_clock_divisor[8] = { 4, 16, 64, 128, 2, 8, 32, 64 };
@@ -365,8 +271,8 @@ static const UINT8 avr8_spi_clock_divisor[8] = { 4, 16, 64, 128, 2, 8, 32, 64 };
 static void avr8_spi_update_clock_rate(running_machine &machine)
 {
 	// TODO
-    craft_state *state = machine.driver_data<craft_state>();
-	verboselog(machine, 0, "avr8_spi_update_clock_rate: TODO; New clock rate should be f/%d\n", avr8_spi_clock_divisor[AVR8_SPCR_SPR] / (AVR8_SPSR_SPR2X ? 2 : 1));
+    //craft_state *state = machine.driver_data<craft_state>();
+	//verboselog(machine, 0, "avr8_spi_update_clock_rate: TODO; New clock rate should be f/%d\n", avr8_spi_clock_divisor[AVR8_SPCR_SPR] / (AVR8_SPSR_SPR2X ? 2 : 1));
 }
 
 static void avr8_change_spcr(running_machine &machine, UINT8 data)
@@ -384,7 +290,7 @@ static void avr8_change_spcr(running_machine &machine, UINT8 data)
 	if(changed & AVR8_SPCR_SPIE_MASK)
 	{
 		// Check for SPI interrupt condition
-		avr8_interrupt_update(machine, Avr8::INTIDX_SPI);
+		avr8_update_interrupt(state->m_maincpu, AVR8_INTIDX_SPI);
 	}
 
 	if(low_to_high & AVR8_SPCR_SPE_MASK)
@@ -436,489 +342,60 @@ static void avr8_change_spsr(running_machine &machine, UINT8 data)
 	}
 }
 
-/********************/
-/* Timer 1 Handling */
-/********************/
-
-static void avr8_change_timsk1(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldtimsk = AVR8_TIMSK1;
-	UINT8 newtimsk = data;
-	UINT8 changed = newtimsk ^ oldtimsk;
-
-	if(changed & AVR8_TIMSK1_ICIE1_MASK)
-	{
-		// Check for Input Capture Interrupt interrupt condition
-		avr8_interrupt_update(machine, Avr8::INTIDX_ICF1);
-	}
-
-	if(changed & AVR8_TIMSK1_OCIE1B_MASK)
-	{
-		// Check for Output Compare B Interrupt interrupt condition
-		avr8_interrupt_update(machine, Avr8::INTIDX_OCF1B);
-	}
-
-	if(changed & AVR8_TIMSK1_OCIE1A_MASK)
-	{
-		// Check for Output Compare A Interrupt interrupt condition
-		avr8_interrupt_update(machine, Avr8::INTIDX_OCF1A);
-	}
-
-	if(changed & AVR8_TIMSK1_TOIE1_MASK)
-	{
-		// Check for Output Compare A Interrupt interrupt condition
-		avr8_interrupt_update(machine, Avr8::INTIDX_TOV1);
-	}
-}
-
-static void avr8_update_timer1_waveform_gen_mode(running_machine &machine)
-{
-	// TODO
-    craft_state *state = machine.driver_data<craft_state>();
-	state->m_timer1_top = 0;
-	verboselog(machine, 0, "avr8_update_timer1_waveform_gen_mode: TODO; WGM1 is %d\n", AVR8_WGM1 );
-	switch(AVR8_WGM1)
-	{
-		case Avr8::WGM1_NORMAL:
-			state->m_timer1_top = 0xffff;
-			break;
-
-		case Avr8::WGM1_PWM_8_PC:
-		case Avr8::WGM1_FAST_PWM_8:
-			state->m_timer1_top = 0x00ff;
-			break;
-
-		case Avr8::WGM1_PWM_9_PC:
-		case Avr8::WGM1_FAST_PWM_9:
-			state->m_timer1_top = 0x01ff;
-			break;
-
-		case Avr8::WGM1_PWM_10_PC:
-		case Avr8::WGM1_FAST_PWM_10:
-			state->m_timer1_top = 0x03ff;
-			break;
-
-		case Avr8::WGM1_PWM_PFC_ICR:
-		case Avr8::WGM1_PWM_PC_ICR:
-		case Avr8::WGM1_CTC_ICR:
-		case Avr8::WGM1_FAST_PWM_ICR:
-			state->m_timer1_top = AVR8_ICR1;
-			break;
-
-		case Avr8::WGM1_PWM_PFC_OCR:
-		case Avr8::WGM1_PWM_PC_OCR:
-		case Avr8::WGM1_CTC_OCR:
-		case Avr8::WGM1_FAST_PWM_OCR:
-			state->m_timer1_top = AVR8_OCR1A;
-			break;
-
-		default:
-			verboselog(machine, 0, "avr8_update_timer1_waveform_gen_mode: Unsupported waveform generation type: %d\n", AVR8_WGM1);
-			break;
-	}
-}
-
-static void avr8_changed_tccr1a(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldtccr = AVR8_TCCR1A;
-	UINT8 newtccr = data;
-	UINT8 changed = newtccr ^ oldtccr;
-
-	if(changed & AVR8_TCCR1A_WGM1_10)
-	{
-		// TODO
-		avr8_update_timer1_waveform_gen_mode(machine);
-	}
-}
-
-static void avr8_update_timer1_input_noise_canceler(running_machine &machine)
-{
-}
-
-static void avr8_update_timer1_input_edge_select(running_machine &machine)
-{
-	// TODO
-    //craft_state *state = machine.driver_data<craft_state>();
-	verboselog(machine, 0, "avr8_update_timer1_input_edge_select: TODO; Clocking edge is %s\n", "test");
-}
-
-TIMER_CALLBACK_MEMBER(craft_state::avr8_timer2_tick)
-{
-    /* TODO: Handle comparison, setting OC2x pins, detection of BOTTOM and TOP
-
-    UINT16 count = AVR8_TCNT2;
-    count += m_timer1_increment;
-    for(INT32 reg = AVR8_REG_A; reg <= AVR8_REG_B; reg++)
-    {
-        UINT8 mode = (reg == AVR8_REG_A) ? AVR8_TCCR2A_COM2A : AVR8_TCCR2A_COM2B;
-
-        if(!mode)
-        {
-            // Normal port operation, OC2n disconnected
-            //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; OC2%c disconnected, normal port operation\n", avr8_reg_name[reg]);
-            return;
-        }
-
-        switch(AVR8_WGM2)
-        {
-            case Avr8::WGM2_NORMAL:
-            case Avr8::WGM2_CTC_CMP:
-                switch(mode)
-                {
-                    case 1: // Toggle OC2n on Compare Match
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Toggle OC2%c on Compare Match\n", avr8_reg_name[reg]);
-                        break;
-                    case 2: // Clear OC2n on Compare Match
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Clear OC2%c on Compare Match\n", avr8_reg_name[reg]);
-                        break;
-                    case 3: // Set OC2n on Compare Match
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Set OC2%c on Compare Match\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-
-            case Avr8::WGM2_PWM_PC:
-                switch(mode)
-                {
-                    case 1: // Normal port operation, OC2n disconnected
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; OC2%c disconnected, normal port operation\n", avr8_reg_name[reg]);
-                        break;
-                    case 2: // Clear OC2n on match when up-counting, set when down-counting
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Clear OC2%c on match when up-counting, set when down-counting\n", avr8_reg_name[reg]);
-                        break;
-                    case 3: // Set OC2n on match when up-counting, clear when down-counting
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Set OC2%c on match when up-counting, clear when down-counting\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-
-            case Avr8::WGM2_PWM_PC_CMP:
-                switch(mode)
-                {
-                    case 1: // Toggle OC2n on compare match
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Toggle OC2%c on compare match\n", avr8_reg_name[reg]);
-                        break;
-                    case 2: // Clear OC2n on match when up-counting, set when down-counting
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Clear OC2%c on match when up-counting, set when down-counting\n", avr8_reg_name[reg]);
-                        break;
-                    case 3: // Set OC2n on match when up-counting, clear when down-counting
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Set OC2%c on match when up-counting, clear when down-counting\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-
-
-            case Avr8::WGM2_FAST_PWM:
-                switch(mode)
-                {
-                    case 1: // Normal port operation, OC2n disconnected
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; OC2%c disconnected, normal port operation\n", avr8_reg_name[reg]);
-                        break;
-                    case 2: // Clear OC2n on match, set at BOTTOM
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Clear OC2%c on match, set at BOTTOM\n", avr8_reg_name[reg]);
-                        break;
-                    case 3: // Set OC2n on match, clear at BOTTOM
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Set OC2%c on match, clear at BOTTOM\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-
-            case Avr8::WGM2_FAST_PWM_CMP:
-                switch(mode)
-                {
-                    case 1: // Toggle OC2n on compare match
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Toggle OC2%c on compare match\n", avr8_reg_name[reg]);
-                        break;
-                    case 2: // Clear OC2n on match, set at BOTTOM
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Clear OC2%c on match, set at BOTTOM\n", avr8_reg_name[reg]);
-                        break;
-                    case 3: // Set OC2n on match, clear at BOTTOM
-                        //verboselog(machine(), 0, "avr8_update_timer2_compare_mode: TODO; Set OC2%c on match, clear at BOTTOM\n", avr8_reg_name[reg]);
-                        break;
-                }
-                break;
-
-            default:
-                break;
-        }
-    }
-    */
-}
-
-static void avr8_update_timer1_clock_source(running_machine &machine)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-	attotime period;
-	switch(AVR8_TIMER2_CLOCK_SELECT)
-	{
-		case 0: // Counter stopped
-			period = attotime::never;
-			break;
-		case 1: // Clk/1; no prescaling
-			period = attotime::from_hz(MASTER_CLOCK);
-			break;
-		case 2: // Clk/8
-			period = attotime::from_hz(MASTER_CLOCK/8);
-			break;
-		case 3: // Clk/32
-			period = attotime::from_hz(MASTER_CLOCK/32);
-			break;
-		case 4: // Clk/64
-			period = attotime::from_hz(MASTER_CLOCK/64);
-			break;
-		case 5: // Clk/128
-			period = attotime::from_hz(MASTER_CLOCK/128);
-			break;
-		case 6: // T1 trigger, falling edge
-		case 7: // T1 trigger, rising edge
-			period = attotime::never;
-			verboselog(machine, 0, "avr8_update_timer1_clock_source: T1 Trigger mode not implemented yet\n");
-			break;
-	}
-	state->m_timer1_timer->adjust(period, 0, period);
-}
-
-static void avr8_changed_tccr1b(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldtccr = AVR8_TCCR1B;
-	UINT8 newtccr = data;
-	UINT8 changed = newtccr ^ oldtccr;
-
-	if(changed & AVR8_TCCR1B_ICNC1_MASK)
-	{
-		// TODO
-		avr8_update_timer1_input_noise_canceler(machine);
-	}
-
-	if(changed & AVR8_TCCR1B_ICES1_MASK)
-	{
-		// TODO
-		avr8_update_timer1_input_edge_select(machine);
-	}
-
-	if(changed & AVR8_TCCR1B_WGM1_32_MASK)
-	{
-		// TODO
-		avr8_update_timer1_waveform_gen_mode(machine);
-	}
-
-	if(changed & AVR8_TCCR1B_CS_MASK)
-	{
-		avr8_update_timer1_clock_source(machine);
-	}
-}
-
-static void avr8_update_timer2_waveform_gen_mode(running_machine &machine)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-    state->m_timer2_top = 0;
-	switch(AVR8_WGM2)
-	{
-		case Avr8::WGM2_NORMAL:
-		case Avr8::WGM2_PWM_PC:
-		case Avr8::WGM2_FAST_PWM:
-			state->m_timer2_top = 0x00ff;
-			break;
-
-		case Avr8::WGM2_CTC_CMP:
-		case Avr8::WGM2_PWM_PC_CMP:
-		case Avr8::WGM2_FAST_PWM_CMP:
-			state->m_timer2_top = AVR8_OCR2A;
-			break;
-
-		default:
-			verboselog(machine, 0, "avr8_update_timer2_waveform_gen_mode: Unsupported waveform generation type: %d\n", AVR8_WGM2);
-			break;
-	}
-}
-
-static void avr8_changed_tccr2a(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldtccr = AVR8_TCCR2A;
-	UINT8 newtccr = data;
-	UINT8 changed = newtccr ^ oldtccr;
-
-	if(changed & AVR8_TCCR2A_WGM2_10_MASK)
-	{
-		// TODO
-		avr8_update_timer2_waveform_gen_mode(machine);
-	}
-}
-
-static void avr8_update_timer2_clock_source(running_machine &machine)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-	attotime period;
-	switch(AVR8_TIMER2_CLOCK_SELECT)
-	{
-		case 0: // Counter stopped
-			period = attotime::never;
-			break;
-		case 1: // Clk/1; no prescaling
-			period = attotime::from_hz(MASTER_CLOCK);
-			break;
-		case 2: // Clk/8
-			period = attotime::from_hz(MASTER_CLOCK/8);
-			break;
-		case 3: // Clk/32
-			period = attotime::from_hz(MASTER_CLOCK/32);
-			break;
-		case 4: // Clk/64
-			period = attotime::from_hz(MASTER_CLOCK/64);
-			break;
-		case 5: // Clk/128
-			period = attotime::from_hz(MASTER_CLOCK/128);
-			break;
-		case 6: // Clk/256
-			period = attotime::from_hz(MASTER_CLOCK/256);
-			break;
-		case 7: // Clk/1024
-			period = attotime::from_hz(MASTER_CLOCK/1024);
-			break;
-	}
-	state->m_timer2_timer->adjust(period, 0, period);
-}
-
-static void avr8_timer2_force_output_compare(running_machine &machine, int reg)
-{
-	// TODO
-	verboselog(machine, 0, "avr8_force_output_compare: TODO; should be forcing OC2%c\n", avr8_reg_name[reg]);
-}
-
-static void avr8_changed_tccr2b(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldtccr = AVR8_TCCR2B;
-	UINT8 newtccr = data;
-	UINT8 changed = newtccr ^ oldtccr;
-
-	if(changed & AVR8_TCCR2B_FOC2A_MASK)
-	{
-		// TODO
-		avr8_timer2_force_output_compare(machine, AVR8_REG_A);
-	}
-
-	if(changed & AVR8_TCCR2B_FOC2B_MASK)
-	{
-		// TODO
-		avr8_timer2_force_output_compare(machine, AVR8_REG_B);
-	}
-
-	if(changed & AVR8_TCCR2B_WGM2_2_MASK)
-	{
-		// TODO
-		avr8_update_timer2_waveform_gen_mode(machine);
-	}
-
-	if(changed & AVR8_TCCR2B_CS_MASK)
-	{
-		avr8_update_timer2_clock_source(machine);
-	}
-}
-
-static void avr8_update_ocr1(running_machine &machine, UINT16 newval, UINT8 reg)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-	UINT8 *p_reg_h = (reg == AVR8_REG_A) ? &AVR8_OCR1AH : &AVR8_OCR1BH;
-	UINT8 *p_reg_l = (reg == AVR8_REG_A) ? &AVR8_OCR1AL : &AVR8_OCR1BL;
-	*p_reg_h = (UINT8)(newval >> 8);
-	*p_reg_l = (UINT8)newval;
-	// TODO
-	verboselog(machine, 0, "avr8_update_ocr1: TODO: new OCR1%c = %04x\n", avr8_reg_name[reg], newval);
-}
-
 WRITE8_MEMBER(craft_state::avr8_write)
 {
-	craft_state *state = machine().driver_data<craft_state>();
-	if(offset <= Avr8::REGIDX_R31)
-	{
-		m_regs[offset] = data;
-		return;
-	}
-
     switch( offset )
     {
-		case Avr8::REGIDX_OCR1BH:
-			verboselog(machine(), 0, "AVR8: OCR1BH = %02x\n", data );
-			avr8_update_ocr1(machine(), (AVR8_OCR1B & 0x00ff) | (data << 8), AVR8_REG_B);
-			break;
-
-		case Avr8::REGIDX_OCR1BL:
-			verboselog(machine(), 0, "AVR8: OCR1BL = %02x\n", data );
-			avr8_update_ocr1(machine(), (AVR8_OCR1B & 0xff00) | data, AVR8_REG_B);
-			break;
-
-		case Avr8::REGIDX_OCR1AH:
-			verboselog(machine(), 0, "AVR8: OCR1AH = %02x\n", data );
-			avr8_update_ocr1(machine(), (AVR8_OCR1A & 0x00ff) | (data << 8), AVR8_REG_A);
-			break;
-
-		case Avr8::REGIDX_OCR1AL:
-			verboselog(machine(), 0, "AVR8: OCR1AL = %02x\n", data );
-			avr8_update_ocr1(machine(), (AVR8_OCR1A & 0xff00) | data, AVR8_REG_A);
-			break;
-
-		case Avr8::REGIDX_TCCR1B:
-			verboselog(machine(), 0, "AVR8: TCCR1B = %02x\n", data );
-			avr8_changed_tccr1b(machine(), data);
-			break;
-
-		case Avr8::REGIDX_TCCR1A:
-			verboselog(machine(), 0, "AVR8: TCCR1A = %02x\n", data );
-			avr8_changed_tccr1a(machine(), data);
-			break;
-
-		case Avr8::REGIDX_TIMSK1:
-			verboselog(machine(), 0, "AVR8: TIMSK1 = %02x\n", data );
-			avr8_change_timsk1(machine(), data);
-			break;
-
-		case Avr8::REGIDX_TCCR2B:
-			verboselog(machine(), 0, "AVR8: TCCR2B = %02x\n", data );
-			avr8_changed_tccr2b(machine(), data);
-			break;
-
-		case Avr8::REGIDX_TCCR2A:
-			verboselog(machine(), 0, "AVR8: TCCR2A = %02x\n", data );
-			avr8_changed_tccr2a(machine(), data);
-			break;
-
-		case Avr8::REGIDX_SPL:
-		case Avr8::REGIDX_SPH:
-		case Avr8::REGIDX_SREG:
-			m_regs[offset] = data;
-			break;
-
-		case Avr8::REGIDX_SPSR:
+		case AVR8_REGIDX_SPSR:
 			avr8_change_spsr(machine(), data);
 			break;
 
-		case Avr8::REGIDX_SPCR:
+		case AVR8_REGIDX_SPCR:
 			avr8_change_spcr(machine(), data);
 			break;
 
-		case Avr8::REGIDX_DDRD:
+		case AVR8_REGIDX_SPDR:
+			avr8_video_update(machine());
+			m_regs[offset] = data;
+			spi_pending = true;
+			spi_start_cycle = (UINT32)(avr8_get_elapsed_cycles(m_maincpu) % CYCLES_PER_FRAME);
+			break;
+
+		case AVR8_REGIDX_EECR:
+			if (data & AVR8_EECR_EERE)
+			{
+				UINT16 addr = (m_regs[AVR8_REGIDX_EEARH] & AVR8_EEARH_MASK) << 8;
+				addr |= m_regs[AVR8_REGIDX_EEARL];
+				m_regs[AVR8_REGIDX_EEDR] = m_eeprom[addr];
+			}
+			break;
+
+        case AVR8_REGIDX_EEARL:
+        case AVR8_REGIDX_EEARH:
+			m_regs[offset] = data;
+			break;
+
+        case AVR8_REGIDX_PORTD:
+            avr8_change_port(machine(), AVR8_REG_D, data);
+            break;
+
+		case AVR8_REGIDX_DDRD:
 			avr8_change_ddr(machine(), AVR8_REG_D, data);
 			break;
 
-		case Avr8::REGIDX_DDRC:
+		case AVR8_REGIDX_PORTC:
+			avr8_change_port(machine(), AVR8_REG_C, data);
+			break;
+
+		case AVR8_REGIDX_DDRC:
 			avr8_change_ddr(machine(), AVR8_REG_C, data);
 			break;
 
-		case Avr8::REGIDX_PORTB:
+		case AVR8_REGIDX_PORTB:
 			avr8_change_port(machine(), AVR8_REG_B, data);
 			break;
 
-		case Avr8::REGIDX_DDRB:
+		case AVR8_REGIDX_DDRB:
 			avr8_change_ddr(machine(), AVR8_REG_B, data);
 			break;
 
@@ -955,6 +432,21 @@ INPUT_PORTS_END
 
 UINT32 craft_state::screen_update_craft(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	for(int y = 0; y < LINES_PER_FRAME; y++)
+	{
+		UINT32 *line = &bitmap.pix32(y);
+		for(int x = 0; x < LINE_CYCLES; x++)
+		{
+			UINT8 pixel = m_pixels[y * LINE_CYCLES + (x + HSYNC_CYCLES)];
+			UINT8 r = 0x55 * ((pixel & 0x30) >> 4);
+			UINT8 g = 0x55 * ((pixel & 0x0c) >> 2);
+			UINT8 b = 0x55 * (pixel & 0x03);
+			line[x] = 0xff000000 | (r << 16) | (g << 8) | b;
+
+			// Clear behind us
+			m_pixels[y * LINE_CYCLES + (x + HSYNC_CYCLES)] = 0;
+		}
+	}
     return 0;
 }
 
@@ -970,17 +462,11 @@ void craft_state::machine_reset()
 {
     craft_state *state = machine().driver_data<craft_state>();
 
-    AVR8_TIMSK1 = 0;
-    AVR8_OCR1AH = 0;
-    AVR8_OCR1AL = 0;
-    AVR8_OCR1BH = 0;
-    AVR8_OCR1BL = 0;
-    AVR8_ICR1H = 0;
-    AVR8_ICR1L = 0;
-    AVR8_TCNT1H = 0;
-    AVR8_TCNT1L = 0;
+    state->dac = machine().device<dac_device>("dac");
 
-    machine().device<dac_device>("dac")->write_unsigned8(0x00);
+    state->dac->write_unsigned8(0x00);
+
+    state->m_eeprom = memregion("eeprom")->base();
 }
 
 static MACHINE_CONFIG_START( craft, craft_state )
@@ -993,13 +479,11 @@ static MACHINE_CONFIG_START( craft, craft_state )
 
     /* video hardware */
     MCFG_SCREEN_ADD("screen", RASTER)
-    //MCFG_SCREEN_RAW_PARAMS( MASTER_CLOCK, 634, 0, 633, 525, 0, 481 )
-    MCFG_SCREEN_REFRESH_RATE(60.08)
-    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1395)) /* accurate */
-    MCFG_SCREEN_SIZE(634, 480)
-    MCFG_SCREEN_VISIBLE_AREA(0, 633, 0, 479)
+    MCFG_SCREEN_REFRESH_RATE(59.99)
+    MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1429)) /* accurate */
+    MCFG_SCREEN_SIZE(635, 525)
+    MCFG_SCREEN_VISIBLE_AREA(0, 634, 0, 524)
 	MCFG_SCREEN_UPDATE_DRIVER(craft_state, screen_update_craft)
-
     MCFG_PALETTE_LENGTH(0x1000)
 
     /* sound hardware */

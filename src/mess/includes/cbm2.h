@@ -5,6 +5,7 @@
 
 #include "emu.h"
 #include "cpu/m6502/m6509.h"
+#include "cpu/i86/i86.h"
 #include "formats/cbm_snqk.h"
 #include "includes/cbm.h"
 #include "machine/6525tpi.h"
@@ -16,6 +17,7 @@
 #include "machine/ieee488.h"
 #include "machine/mos6526.h"
 #include "machine/petcass.h"
+#include "machine/pic8259.h"
 #include "machine/pla.h"
 #include "machine/ram.h"
 #include "machine/vcsctrl.h"
@@ -41,6 +43,12 @@
 #define CONTROL1_TAG	"joy1"
 #define CONTROL2_TAG	"joy2"
 
+#define EXT_I8088_TAG	"ext_u1"
+#define EXT_I8087_TAG	"ext_u4"
+#define EXT_I8259A_TAG	"ext_u3"
+#define EXT_MOS6526_TAG	"ext_u15"
+#define EXT_MOS6525_TAG	"ext_u16"
+
 class cbm2_state : public driver_device
 {
 public:
@@ -62,7 +70,12 @@ public:
 		  m_ram(*this, RAM_TAG),
 		  m_cassette(*this, PET_DATASSETTE_PORT_TAG),
 		  m_ieee(*this, IEEE488_TAG),
+		  m_ext_cpu(*this, EXT_I8088_TAG),
+		  m_ext_pic(*this, EXT_I8259A_TAG),
+		  m_ext_cia(*this, EXT_MOS6526_TAG),
+		  m_ext_tpi(*this, EXT_MOS6525_TAG),
 		  m_buffer_ram(*this, "buffer_ram"),
+		  m_extbuf_ram(*this, "extbuf_ram"),
 		  m_dramon(1),
 		  m_video_ram(*this, "video_ram"),
 		  m_video_ram_size(0x800),
@@ -93,17 +106,24 @@ public:
 	required_device<pet_datassette_port_device> m_cassette;
 	required_device<ieee488_device> m_ieee;
 
+	optional_device<cpu_device> m_ext_cpu;
+	optional_device<pic8259_device> m_ext_pic;
+	optional_device<mos6526_device> m_ext_cia;
+	optional_device<tpi6525_device> m_ext_tpi;
+
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 
 	DECLARE_MACHINE_START( cbm2 );
 	DECLARE_MACHINE_START( cbm2_ntsc );
 	DECLARE_MACHINE_START( cbm2_pal );
+	DECLARE_MACHINE_START( cbm2x_ntsc );
+	DECLARE_MACHINE_START( cbm2x_pal );
 	DECLARE_MACHINE_RESET( cbm2 );
 
-	virtual void read_pla(offs_t offset, int ras, int cas, int refen, int eras, int ecas, int busy2,
+	virtual void read_pla(offs_t offset, int ras, int cas, int refen, int eras, int ecas,
 		int *casseg1, int *casseg2, int *casseg3, int *casseg4, int *rasseg1, int *rasseg2, int *rasseg3, int *rasseg4);
 
-	void bankswitch(offs_t offset, int busy2, int eras, int ecas, int refen, int cas, int ras, int *sysioen, int *dramen,
+	void bankswitch(offs_t offset, int eras, int ecas, int refen, int cas, int ras, int *sysioen, int *dramen,
 		int *casseg1, int *casseg2, int *casseg3, int *casseg4, int *buframcs, int *extbufcs, int *vidramcs,
 		int *diskromcs, int *csbank1, int *csbank2, int *csbank3, int *basiccs, int *knbcs, int *kernalcs,
 		int *crtccs, int *cs1, int *sidcs, int *extprtcs, int *ciacs, int *aciacs, int *tript1cs, int *tript2cs);
@@ -112,6 +132,8 @@ public:
 
 	DECLARE_READ8_MEMBER( read );
 	DECLARE_WRITE8_MEMBER( write );
+	DECLARE_READ8_MEMBER( ext_read );
+	DECLARE_WRITE8_MEMBER( ext_write );
 
 	DECLARE_READ8_MEMBER( sid_potx_r );
 	DECLARE_READ8_MEMBER( sid_poty_r );
@@ -135,12 +157,22 @@ public:
 
 	DECLARE_WRITE_LINE_MEMBER( tape_read_w );
 
+	DECLARE_READ8_MEMBER( ext_tpi_pb_r );
+	DECLARE_WRITE8_MEMBER( ext_tpi_pb_w );
+	DECLARE_WRITE8_MEMBER( ext_tpi_pc_w );
+
+	DECLARE_READ8_MEMBER( ext_cia_pb_r );
+	DECLARE_WRITE8_MEMBER( ext_cia_pb_w );
+
 	// memory state
 	optional_shared_ptr<UINT8> m_buffer_ram;
+	optional_shared_ptr<UINT8> m_extbuf_ram;
 	UINT8 *m_basic;
 	UINT8 *m_kernal;
 	UINT8 *m_charom;
 	int m_dramon;
+	int m_busen1;
+	int m_busy2;
 
 	// video state
 	optional_shared_ptr<UINT8> m_video_ram;
@@ -172,7 +204,7 @@ public:
 		: cbm2_state(mconfig, type, tag)
 	{ }
 
-	virtual void read_pla(offs_t offset, int ras, int cas, int refen, int eras, int ecas, int busy2,
+	virtual void read_pla(offs_t offset, int ras, int cas, int refen, int eras, int ecas,
 		int *casseg1, int *casseg2, int *casseg3, int *casseg4, int *rasseg1, int *rasseg2, int *rasseg3, int *rasseg4);
 
 	DECLARE_READ8_MEMBER( tpi2_pc_r );
@@ -201,25 +233,26 @@ public:
 	DECLARE_MACHINE_START( p500_pal );
 	DECLARE_MACHINE_RESET( p500 );
 
-	void read_pla1(offs_t offset, int bras, int busy2, int sphi2, int clrnibcsb, int procvid, int refen, int ba, int aec, int srw,
+	void read_pla1(offs_t offset, int busy2, int clrnibcsb, int procvid, int refen, int ba, int aec, int srw,
 		int *datxen, int *dramxen, int *clrniben, int *segf, int *_64kcasen, int *casenb, int *viddaten, int *viddat_tr);
 
-	void read_pla2(offs_t offset, offs_t va, int ba, int sphi2, int vicen, int ae, int segf, int bcas, int bank0,
+	void read_pla2(offs_t offset, offs_t va, int ba, int vicen, int ae, int segf, int bank0,
 		int *clrnibcsb, int *extbufcs, int *discromcs, int *buframcs, int *charomcs, int *procvid, int *viccs, int *vidmatcs);
 
-	void bankswitch(offs_t offset, offs_t va, int srw, int sphi0, int sphi1, int sphi2, int ba, int ae, int bras, int bcas, int busy2, int refen,
+	void bankswitch(offs_t offset, offs_t va, int srw, int ba, int ae, int busy2, int refen,
 		int *datxen, int *dramxen, int *clrniben, int *_64kcasen, int *casenb, int *viddaten, int *viddat_tr,
 		int *clrnibcs, int *extbufcs, int *discromcs, int *buframcs, int *charomcs, int *viccs, int *vidmatcs,
 		int *csbank1, int *csbank2, int *csbank3, int *basiclocs, int *basichics, int *kernalcs,
 		int *cs1, int *sidcs, int *extprtcs, int *ciacs, int *aciacs, int *tript1cs, int *tript2cs, int *aec, int *vsysaden);
 
-	UINT8 read_memory(address_space &space, offs_t offset, offs_t va, int sphi0, int sphi1, int sphi2, int ba, int ae, int bras, int bcas, UINT8 *clrnib);
-	void write_memory(address_space &space, offs_t offset, UINT8 data, int sphi0, int sphi1, int sphi2, int ba, int ae, int bras, int bcas);
+	UINT8 read_memory(address_space &space, offs_t offset, offs_t va, int ba, int ae);
+	void write_memory(address_space &space, offs_t offset, UINT8 data, int ba, int ae);
 
 	DECLARE_READ8_MEMBER( read );
 	DECLARE_WRITE8_MEMBER( write );
 
 	DECLARE_READ8_MEMBER( vic_videoram_r );
+	DECLARE_READ8_MEMBER( vic_colorram_r );
 	DECLARE_WRITE_LINE_MEMBER( vic_irq_w );
 
 	DECLARE_WRITE_LINE_MEMBER( tpi1_irq_w );

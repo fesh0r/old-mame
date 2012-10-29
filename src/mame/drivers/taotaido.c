@@ -67,6 +67,7 @@ zooming might be wrong
 #include "cpu/z80/z80.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/2610intf.h"
+#include "video/vsystem_spr.h"
 #include "includes/taotaido.h"
 
 #define TAOTAIDO_SHOW_ALL_INPUTS	0
@@ -329,6 +330,8 @@ static const ym2610_interface ym2610_config =
 	irqhandler
 };
 
+
+
 static MACHINE_CONFIG_START( taotaido, taotaido_state )
 	MCFG_CPU_ADD("maincpu", M68000, 32000000/2)
 	MCFG_CPU_PROGRAM_MAP(main_map)
@@ -351,6 +354,9 @@ static MACHINE_CONFIG_START( taotaido, taotaido_state )
 
 	MCFG_PALETTE_LENGTH(0x800)
 
+	MCFG_DEVICE_ADD("vsystem_spr", VSYSTEM_SPR, 0)
+	MCFG_VSYSTEM_SPR_SET_TILE_INDIRECT( taotaido_state, taotaido_tile_callback )
+	MCFG_VSYSTEM_SPR_SET_GFXREGION(0)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")

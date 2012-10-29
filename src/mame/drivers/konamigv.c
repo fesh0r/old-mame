@@ -171,7 +171,6 @@ public:
 	DECLARE_DRIVER_INIT(konamigv);
 	DECLARE_DRIVER_INIT(btchamp);
 	DECLARE_MACHINE_START(konamigv);
-	DECLARE_MACHINE_RESET(konamigv);
 };
 
 /* EEPROM handlers */
@@ -293,16 +292,6 @@ static void scsi_dma_write( konamigv_state *state, UINT32 n_address, INT32 n_siz
 	}
 }
 
-static void scsi_irq(running_machine &machine)
-{
-	psx_irq_set(machine, 0x400);
-}
-
-static const struct AM53CF96interface am53cf96_intf =
-{
-	&scsi_irq,		/* command completion IRQ */
-};
-
 DRIVER_INIT_MEMBER(konamigv_state,konamigv)
 {
 	psx_driver_init(machine());
@@ -310,30 +299,12 @@ DRIVER_INIT_MEMBER(konamigv_state,konamigv)
 
 MACHINE_START_MEMBER(konamigv_state,konamigv)
 {
-
 	save_item(NAME(m_sector_buffer));
 	save_item(NAME(m_flash_address));
 	save_item(NAME(m_trackball_prev));
 	save_item(NAME(m_trackball_data));
 	save_item(NAME(m_btc_trackball_prev));
 	save_item(NAME(m_btc_trackball_data));
-}
-
-MACHINE_RESET_MEMBER(konamigv_state,konamigv)
-{
-	/* also hook up CDDA audio to the CD-ROM drive */
-	void *cdrom;
-	scsihle_device *scsidev = machine().device<scsihle_device>("scsi:cdrom");
-	scsidev->GetDevice( &cdrom );
-	cdda_set_cdrom(machine().device("cdda"), cdrom);
-}
-
-static void spu_irq(device_t *device, UINT32 data)
-{
-	if (data)
-	{
-		psx_irq_set(device->machine(), 1<<9);
-	}
 }
 
 static MACHINE_CONFIG_START( konamigv, konamigv_state )
@@ -345,13 +316,13 @@ static MACHINE_CONFIG_START( konamigv, konamigv_state )
 	MCFG_PSX_DMA_CHANNEL_WRITE( "maincpu", 5, psx_dma_write_delegate( FUNC( scsi_dma_write ), (konamigv_state *) owner ) )
 
 	MCFG_MACHINE_START_OVERRIDE(konamigv_state, konamigv )
-	MCFG_MACHINE_RESET_OVERRIDE(konamigv_state, konamigv )
 
 	MCFG_EEPROM_93C46_ADD("eeprom")
 
 	MCFG_SCSIBUS_ADD("scsi")
 	MCFG_SCSIDEV_ADD("scsi:cdrom", SCSICD, SCSI_ID_4)
-	MCFG_AM53CF96_ADD("scsi:am53cf96", am53cf96_intf)
+	MCFG_AM53CF96_ADD("scsi:am53cf96")
+	MCFG_AM53CF96_IRQ_HANDLER(DEVWRITELINE("^maincpu:irq", psxirq_device, intin10))
 
 	/* video hardware */
 	MCFG_PSXGPU_ADD( "maincpu", "gpu", CXD8514Q, 0x100000, XTAL_53_693175MHz )
@@ -359,13 +330,13 @@ static MACHINE_CONFIG_START( konamigv, konamigv_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2, &spu_irq )
+	MCFG_SPU_ADD( "spu", XTAL_67_7376MHz/2 )
 	MCFG_SOUND_ROUTE( 0, "lspeaker", 0.75 )
 	MCFG_SOUND_ROUTE( 1, "rspeaker", 0.75 )
 
-	MCFG_SOUND_ADD( "cdda", CDDA, 0 )
-	MCFG_SOUND_ROUTE( 0, "lspeaker", 1.0 )
-	MCFG_SOUND_ROUTE( 1, "rspeaker", 1.0 )
+	MCFG_SOUND_MODIFY( "scsi:cdrom:cdda" )
+	MCFG_SOUND_ROUTE( 0, "^^^lspeaker", 1.0 )
+	MCFG_SOUND_ROUTE( 1, "^^^rspeaker", 1.0 )
 MACHINE_CONFIG_END
 
 

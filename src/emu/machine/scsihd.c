@@ -35,43 +35,20 @@ void scsihd_device::device_reset()
 {
 	scsihle_device::device_reset();
 
-	is_image_device = true;
-	disk = subdevice<harddisk_image_device>("image")->get_hard_disk_file();
-	if( !disk )
-	{
-		// try to locate the CHD from a DISK_REGION
-		chd_file *handle = get_disk_handle(machine(), tag());
-		if (handle != NULL)
-		{
-			is_image_device = false;
-			disk = hard_disk_open(handle);
-		}
-	}
-
 	lba = 0;
 	blocks = 0;
 	sectorbytes = 512;
 
+	disk = subdevice<harddisk_image_device>("image")->get_hard_disk_file();
 	if (!disk)
 	{
-		logerror("SCSIHD: no HD found!\n");
+		logerror("%s SCSIHD: no HD found!\n", tag());
 	}
 	else
 	{
 		// get hard disk sector size from CHD metadata
 		const hard_disk_info *hdinfo = hard_disk_get_info(disk);
 		sectorbytes = hdinfo->sectorbytes;
-	}
-}
-
-void scsihd_device::device_stop()
-{
-	if (!is_image_device)
-	{
-		if( disk )
-		{
-			hard_disk_close( disk );
-		}
 	}
 }
 
@@ -87,10 +64,6 @@ machine_config_constructor scsihd_device::device_mconfig_additions() const
 // scsihd_exec_command
 void scsihd_device::ExecCommand( int *transferLength )
 {
-	UINT8 *command;
-	int commandLength;
-	GetCommand( &command, &commandLength );
-
 	switch ( command[0] )
 	{
 		case 0x03: // REQUEST SENSE
@@ -184,9 +157,6 @@ void scsihd_device::ExecCommand( int *transferLength )
 void scsihd_device::ReadData( UINT8 *data, int dataLength )
 {
 	int i;
-	UINT8 *command;
-	int commandLength;
-	GetCommand( &command, &commandLength );
 
 	// if we're a drive without a disk, return all zeroes
 	if (!disk)
@@ -281,10 +251,6 @@ void scsihd_device::ReadData( UINT8 *data, int dataLength )
 
 void scsihd_device::WriteData( UINT8 *data, int dataLength )
 {
-	UINT8 *command;
-	int commandLength;
-	GetCommand( &command, &commandLength );
-
 	if (!disk)
 	{
 		return;

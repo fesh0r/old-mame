@@ -1322,8 +1322,11 @@ READ8_MEMBER(mac_state::mac_via_in_b)
 	else
 	{
 		/* video beam in display (! VBLANK && ! HBLANK basically) */
-		if (machine().primary_screen->vpos() >= MAC_V_VIS)
-			val |= 0x40;
+        if (machine().primary_screen)
+        {
+            if (machine().primary_screen->vpos() >= MAC_V_VIS)
+                val |= 0x40;
+        }
 
 		if (ADB_IS_BITBANG_CLASS)
 		{
@@ -1333,6 +1336,8 @@ READ8_MEMBER(mac_state::mac_via_in_b)
 			{
 				val |= 0x08;
 			}
+
+            val |= m_rtc->data_r();
 		}
 		else if (ADB_IS_EGRET)
         {
@@ -1350,9 +1355,12 @@ READ8_MEMBER(mac_state::mac_via_in_b)
 				val |= 0x10;
 			if ((machine().root_device().ioport("MOUSE0")->read() & 0x01) == 0)
 				val |= 0x08;
+
+            if (!ADB_IS_PM_CLASS)
+            {
+                val |= m_rtc->data_r();
+            }
 		}
-		if (m_rtc_data_out)
-			val |= 1;
 	}
 
 //  printf("VIA1 IN_B = %02x (PC %x)\n", val, machine().device("maincpu")->safe_pc());
@@ -1405,7 +1413,6 @@ WRITE8_MEMBER(mac_state::mac_via_out_a)
 WRITE8_MEMBER(mac_state::mac_via_out_b)
 {
 	device_t *sound = machine().device("custom");
-	int new_rtc_rTCClk;
 //  printf("VIA1 OUT B: %02x (PC %x)\n", data, machine().device("maincpu")->safe_pc());
 
 	if (ADB_IS_PM_VIA1)
@@ -1496,15 +1503,13 @@ WRITE8_MEMBER(mac_state::mac_via_out_b)
 		}
 	}
 
-	rtc_write_rTCEnb(data & 0x04);
-	new_rtc_rTCClk = (data >> 1) & 0x01;
-	if ((! new_rtc_rTCClk) && (m_rtc_rTCClk))
-		rtc_shift_data(data & 0x01);
-	m_rtc_rTCClk = new_rtc_rTCClk;
-
 	if (ADB_IS_BITBANG_CLASS)
 	{
 		mac_adb_newaction((data & 0x30) >> 4);
+
+        m_rtc->ce_w((data & 0x04)>>2);
+        m_rtc->data_w(data & 0x01);
+        m_rtc->clk_w((data >> 1) & 0x01);
 	}
 	else if (ADB_IS_EGRET)
 	{
@@ -1522,6 +1527,12 @@ WRITE8_MEMBER(mac_state::mac_via_out_b)
         m_cuda->set_byteack((data&0x10) ? 1 : 0);
         m_cuda->set_tip((data&0x20) ? 1 : 0);
 	}
+    else if (!ADB_IS_PM_CLASS)
+    {
+        m_rtc->ce_w((data & 0x04)>>2);
+        m_rtc->data_w(data & 0x01);
+        m_rtc->clk_w((data >> 1) & 0x01);
+    }
 }
 
 static void mac_via_irq(device_t *device, int state)
@@ -1763,8 +1774,12 @@ void mac_state::machine_start()
 		}
 
 	}
-	this->m_scanline_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(mac_state::mac_scanline_tick),this));
-	this->m_scanline_timer->adjust(machine().primary_screen->time_until_pos(0, 0));
+
+    if (machine().primary_screen)
+    {
+        this->m_scanline_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(mac_state::mac_scanline_tick),this));
+        this->m_scanline_timer->adjust(machine().primary_screen->time_until_pos(0, 0));
+    }
 
 	m_6015_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(mac_state::mac_6015_tick),this));
 	m_6015_timer->adjust(attotime::never);
@@ -1848,9 +1863,6 @@ void mac_state::machine_reset()
 
 	m_last_taken_interrupt = -1;
 
-	/* initialize real-time clock */
-	rtc_init();
-
 	/* setup the memory overlay */
 	if (m_model < MODEL_MAC_POWERMAC_6100)	// no overlay for PowerPC
 	{
@@ -1886,7 +1898,7 @@ void mac_state::machine_reset()
 	}
 
 	m_scsi_interrupt = 0;
-	if (machine().device<cpu_device>("maincpu")->debug())
+	if ((machine().device<cpu_device>("maincpu")->debug()) && (m_model < MODEL_MAC_POWERMAC_6100))
 	{
 		machine().device<cpu_device>("maincpu")->debug()->set_dasm_override(mac_dasm_override);
 	}
@@ -1902,14 +1914,6 @@ void mac_state::machine_reset()
 	m_kbd_shift_reg = 0;
 	m_kbd_shift_count = 0;
 	m_mouse_bit_x = m_mouse_bit_y = 0;
-	m_rtc_rTCEnb = 0;
-	m_rtc_rTCClk = 0;
-	m_rtc_bit_count = 0;
-	m_rtc_data_dir = 0;
-	m_rtc_data_out = 0;
-	m_rtc_cmd = 0;
-	m_rtc_write_protect = 0;
-	m_rtc_state = 0;
 	m_pm_data_send = m_pm_data_recv = m_pm_ack = m_pm_req = m_pm_dptr = 0;
 	m_pm_state = 0;
 	m_last_taken_interrupt = 0;
@@ -2199,7 +2203,6 @@ void mac_state::vblank_irq()
 		ca2_data ^= 1;
 		/* signal 1 Hz irq on CA2 input on the VIA */
 		m_via1->write_ca2(ca2_data);
-		rtc_incticks();
 	}
 
 	// handle SE/30 vblank IRQ

@@ -63,9 +63,9 @@ amiga_fdc::amiga_fdc(const machine_config &mconfig, const char *tag, device_t *o
 
 void amiga_fdc::device_start()
 {
-	static const char *names[] = { "fd0", "fd1", "fd2", "fd3" };
+	static const char *names[] = { "0", "1", "2", "3" };
 	for(int i=0; i != 4; i++) {
-		floppy_connector *con = machine().device<floppy_connector>(names[i]);
+		floppy_connector *con = subdevice<floppy_connector>(names[i]);
 		if(con)
 			floppy_devices[i] = con->get_device();
 		else

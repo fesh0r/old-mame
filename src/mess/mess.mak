@@ -554,13 +554,15 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/wd1772.o	\
 	$(MESS_MACHINE)/3c503.o		\
 	$(MESS_FORMATS)/z80bin.o	\
-	$(MESS_MACHINE)/n82077aa.o	\
 	$(MESS_MACHINE)/mb8795.o	\
 	$(MESS_MACHINE)/null_modem.o	\
 	$(MESS_MACHINE)/vcsctrl.o	\
 	$(MESS_MACHINE)/vcs_joy.o	\
 	$(MESS_MACHINE)/vcs_lightpen.o	\
 	$(MESS_MACHINE)/vcs_paddles.o	\
+	$(MESS_MACHINE)/vcs_joybooster.o	\
+	$(MESS_MACHINE)/vcs_wheel.o	\
+	$(MESS_MACHINE)/vcs_keypad.o	\
 
 
 
@@ -610,8 +612,6 @@ $(MESSOBJ)/amiga.a:				\
 	$(MESS_MACHINE)/amigacd.o	\
 	$(MESS_MACHINE)/amigakbd.o	\
 	$(MESS_DRIVERS)/amiga.o		\
-	$(MESS_DRIVERS)/a3000.o		\
-	$(MESS_DRIVERS)/ami1200.o	\
 
 $(MESSOBJ)/amstrad.a:			\
 	$(MESS_DRIVERS)/amstrad.o	\
@@ -706,8 +706,14 @@ $(MESSOBJ)/apple.a:				\
 	$(MESS_VIDEO)/nubus_m2hires.o \
 	$(MESS_VIDEO)/nubus_spec8.o \
 	$(MESS_VIDEO)/nubus_radiustpd.o \
+    $(MESS_VIDEO)/nubus_m2video.o \
 	$(MESS_MACHINE)/nubus_asntmc3b.o \
 	$(MESS_VIDEO)/nubus_wsportrait.o \
+    $(MESS_VIDEO)/pds30_cb264.o \
+    $(MESS_VIDEO)/pds30_procolor816.o \
+    $(MESS_VIDEO)/pds30_sigmalview.o \
+    $(MESS_VIDEO)/pds30_30hr.o \
+    $(MESS_VIDEO)/pds30_mc30.o \
 
 $(MESSOBJ)/applied.a:			\
 	$(MESS_VIDEO)/mbee.o		\
@@ -843,6 +849,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/c64_pagefox.o	\
 	$(MESS_MACHINE)/c64_prophet64.o	\
 	$(MESS_MACHINE)/c64_ps64.o	\
+	$(MESS_MACHINE)/c64_reu.o	\
 	$(MESS_MACHINE)/c64_rex.o	\
 	$(MESS_MACHINE)/c64_rex_ep256.o	\
 	$(MESS_MACHINE)/c64_ross.o	\
@@ -889,11 +896,11 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_DRIVERS)/cbm2.o		\
 	$(MESS_MACHINE)/cbm2exp.o	\
 	$(MESS_MACHINE)/cbm2_std.o	\
+	$(MESS_MACHINE)/cbm2_24k.o	\
 	$(MESS_MACHINE)/cbm2_graphic.o	\
 	$(MESS_DRIVERS)/c65.o		\
 	$(MESS_MACHINE)/c65.o		\
 	$(MESS_DRIVERS)/c128.o		\
-	$(MESS_MACHINE)/c128.o		\
 	$(MESS_MACHINE)/c128_comal80.o		\
 	$(MESS_MACHINE)/cbmiec.o	\
 	$(MESS_MACHINE)/c1541.o		\
@@ -915,6 +922,7 @@ $(MESSOBJ)/cbm.a:				\
 	$(MESS_MACHINE)/64h156.o	\
 	$(MESS_MACHINE)/petcass.o	\
 	$(MESS_MACHINE)/mos8722.o	\
+	$(MESS_MACHINE)/mos8726.o	\
 	$(MESS_MACHINE)/c2n.o		\
 	$(MESS_VIDEO)/vdc8563.o		\
 	$(MESS_VIDEO)/vic6567.o		\
@@ -1455,6 +1463,7 @@ $(MESSOBJ)/pcshare.a:			\
 	$(MESS_MACHINE)/isa_mpu401.o	\
 	$(MESS_MACHINE)/isa_sblaster.o	\
 	$(MESS_MACHINE)/isa_stereo_fx.o	\
+	$(MESS_MACHINE)/isa_ssi2001.o	\
 	$(MESS_MACHINE)/isa_ide.o	\
 	$(MESS_MACHINE)/isa_ide_cd.o	\
 	$(MESS_MACHINE)/isa_aha1542.o	\

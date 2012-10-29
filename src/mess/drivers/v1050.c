@@ -349,7 +349,7 @@ WRITE8_MEMBER( v1050_state::sasi_data_w )
 {
 	data_out = data;
 
-	if( m_sasibus->scsi_io_r() != 0 )
+	if( !m_sasibus->scsi_io_r() )
 	{
 		m_sasibus->scsi_data_w( data );
 	}
@@ -357,13 +357,13 @@ WRITE8_MEMBER( v1050_state::sasi_data_w )
 
 WRITE_LINE_MEMBER( v1050_state::sasi_io_w )
 {
-	if( state != 0 )
+	if( !state )
 	{
 		m_sasibus->scsi_data_w( data_out );
 	}
 	else
 	{
-		m_sasibus->scsi_data_w( 0xff );
+		m_sasibus->scsi_data_w( 0 );
 	}
 }
 
@@ -386,23 +386,23 @@ READ8_MEMBER( v1050_state::sasi_status_r )
 
 	UINT8 data = 0;
 
-	data |= m_sasibus->scsi_req_r();
-	data |= !m_sasibus->scsi_bsy_r() << 1;
-	data |= !m_sasibus->scsi_msg_r() << 2;
-	data |= !m_sasibus->scsi_cd_r() << 3;
-	data |= m_sasibus->scsi_io_r() << 4;
+	data |= !m_sasibus->scsi_req_r();
+	data |= m_sasibus->scsi_bsy_r() << 1;
+	data |= m_sasibus->scsi_msg_r() << 2;
+	data |= m_sasibus->scsi_cd_r() << 3;
+	data |= !m_sasibus->scsi_io_r() << 4;
 
 	return data;
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::sasi_ack_tick)
 {
-	m_sasibus->scsi_ack_w(1);
+	m_sasibus->scsi_ack_w(0);
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(v1050_state::sasi_rst_tick)
 {
-	m_sasibus->scsi_rst_w(1);
+	m_sasibus->scsi_rst_w(0);
 }
 
 WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
@@ -422,12 +422,12 @@ WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
 
     */
 
-	m_sasibus->scsi_sel_w(!BIT(data, 0));
+	m_sasibus->scsi_sel_w(BIT(data, 0));
 
 	if (BIT(data, 1))
 	{
 		// send acknowledge pulse
-		m_sasibus->scsi_ack_w(0);
+		m_sasibus->scsi_ack_w(1);
 
 		m_timer_ack->adjust(attotime::from_nsec(100));
 	}
@@ -435,7 +435,7 @@ WRITE8_MEMBER( v1050_state::sasi_ctrl_w )
 	if (BIT(data, 7))
 	{
 		// send reset pulse
-		m_sasibus->scsi_rst_w(0);
+		m_sasibus->scsi_rst_w(1);
 
 		m_timer_rst->adjust(attotime::from_nsec(100));
 	}
@@ -1002,23 +1002,6 @@ static const floppy_interface v1050_floppy_interface =
 };
 
 
-//-------------------------------------------------
-//  SCSICB_interface sasi_intf
-//-------------------------------------------------
-
-static const SCSICB_interface sasi_intf =
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_DRIVER_LINE_MEMBER(v1050_state, sasi_io_w),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
 // Machine Initialization
 
 static IRQ_CALLBACK( v1050_int_ack )
@@ -1128,7 +1111,8 @@ static MACHINE_CONFIG_START( v1050, v1050_state )
 	// SASI bus
 	MCFG_SCSIBUS_ADD(SASIBUS_TAG)
 	MCFG_SCSIDEV_ADD(SASIBUS_TAG ":harddisk0", S1410, SCSI_ID_0)
-	MCFG_SCSICB_ADD(SASIBUS_TAG ":host", sasi_intf)
+	MCFG_SCSICB_ADD(SASIBUS_TAG ":host")
+	MCFG_SCSICB_IO_HANDLER(DEVWRITELINE(DEVICE_SELF_OWNER, v1050_state, sasi_io_w))
 
 	MCFG_TIMER_DRIVER_ADD(TIMER_ACK_TAG, v1050_state, sasi_ack_tick)
 	MCFG_TIMER_DRIVER_ADD(TIMER_RST_TAG, v1050_state, sasi_rst_tick)

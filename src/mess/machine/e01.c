@@ -260,41 +260,24 @@ static const wd17xx_interface fdc_intf =
 };
 
 
-//-------------------------------------------------
-//  SCSICB_interface scsi_intf
-//-------------------------------------------------
-
 WRITE_LINE_MEMBER( e01_device::scsi_bsy_w )
 {
-	if (!state)
+	if (state)
 	{
-		m_scsibus->scsi_sel_w(1);
+		m_scsibus->scsi_sel_w(0);
 	}
 }
 
 WRITE_LINE_MEMBER( e01_device::scsi_req_w )
 {
-	if (state)
+	if (!state)
 	{
-		m_scsibus->scsi_ack_w(1);
+		m_scsibus->scsi_ack_w(0);
 	}
 
 	m_hdc_irq = !state;
 	update_interrupts();
 }
-
-static const SCSICB_interface scsi_intf =
-{
-	DEVCB_DEVICE_LINE_MEMBER("^^", e01_device, scsi_bsy_w),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER("^^", e01_device, scsi_req_w),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
-};
 
 
 //-------------------------------------------------
@@ -352,7 +335,9 @@ static MACHINE_CONFIG_FRAGMENT( e01 )
 
 	MCFG_SCSIBUS_ADD(SCSIBUS_TAG)
 	MCFG_SCSIDEV_ADD(SCSIBUS_TAG ":harddisk0", SCSIHD, SCSI_ID_0)
-	MCFG_SCSICB_ADD(SCSIBUS_TAG ":host", scsi_intf)
+	MCFG_SCSICB_ADD(SCSIBUS_TAG ":host")
+	MCFG_SCSICB_BSY_HANDLER(DEVWRITELINE(DEVICE_SELF_OWNER, e01_device, scsi_bsy_w))
+	MCFG_SCSICB_REQ_HANDLER(DEVWRITELINE(DEVICE_SELF_OWNER, e01_device, scsi_req_w))
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -692,7 +677,7 @@ READ8_MEMBER( e01_device::hdc_data_r )
 {
 	UINT8 data = m_scsibus->scsi_data_r(space, 0);
 
-	m_scsibus->scsi_ack_w(0);
+	m_scsibus->scsi_ack_w(1);
 
 	return data;
 }
@@ -706,7 +691,7 @@ WRITE8_MEMBER( e01_device::hdc_data_w )
 {
 	m_scsibus->scsi_data_w(space, 0, data);
 
-	m_scsibus->scsi_ack_w(0);
+	m_scsibus->scsi_ack_w(1);
 }
 
 
@@ -734,11 +719,11 @@ READ8_MEMBER( e01_device::hdc_status_r )
 	UINT8 data = 0;
 
 	// SCSI bus
-	data |= !m_scsibus->scsi_msg_r();
-	data |= !m_scsibus->scsi_bsy_r() << 1;
-	data |= !m_scsibus->scsi_req_r() << 5;
-	data |= !m_scsibus->scsi_io_r() << 6;
-	data |= !m_scsibus->scsi_cd_r() << 7;
+	data |= m_scsibus->scsi_msg_r();
+	data |= m_scsibus->scsi_bsy_r() << 1;
+	data |= m_scsibus->scsi_req_r() << 5;
+	data |= m_scsibus->scsi_io_r() << 6;
+	data |= m_scsibus->scsi_cd_r() << 7;
 
 	// TODO NIRQ
 
@@ -752,7 +737,7 @@ READ8_MEMBER( e01_device::hdc_status_r )
 
 WRITE8_MEMBER( e01_device::hdc_select_w )
 {
-	m_scsibus->scsi_sel_w(0);
+	m_scsibus->scsi_sel_w(1);
 }
 
 

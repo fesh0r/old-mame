@@ -96,7 +96,7 @@ xx/xx/2001  KS -    TS-2068 sound fixed.
                 causes Spectrum to reset. Fixing this problem
                 made much more software runing (i.e. Paperboy).
             Corrected frames per second value for 48k and 128k
-            Sincalir machines.
+            Sinclair machines.
                 There are 50.08 frames per second for Spectrum
                 48k what gives 69888 cycles for each frame and
                 50.021 for Spectrum 128/+2/+2A/+3 what gives
@@ -152,25 +152,16 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
+#include "formats/mfi_dsk.h"
 
 /* +3 hardware */
 #include "machine/upd765.h"
-#include "imagedev/flopdrv.h"
 #include "machine/ram.h"
 
 /****************************************************************************************************/
 /* Spectrum + 3 specific functions */
 /* This driver uses some of the spectrum_128 functions. The +3 is similar to a spectrum 128
 but with a disc drive */
-
-static const upd765_interface spectrum_plus3_upd765_interface =
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	NULL,
-	UPD765_RDY_PIN_CONNECTED,
-	{FLOPPY_0,FLOPPY_1, NULL, NULL}
-};
 
 
 static const int spectrum_plus3_memory_selections[]=
@@ -185,7 +176,7 @@ static WRITE8_HANDLER(spectrum_plus3_port_3ffd_w)
 {
 	spectrum_state *state = space.machine().driver_data<spectrum_state>();
 	if (state->m_floppy==1)
-		upd765_data_w(space.machine().device("upd765"), space, 0,data);
+		space.machine().device<upd765a_device>("upd765")->fifo_w(space, 0, data, 0xff);
 }
 
 static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
@@ -194,7 +185,7 @@ static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
 	if (state->m_floppy==0)
 		return 0xff;
 	else
-		return upd765_data_r(space.machine().device("upd765"), space, 0);
+		return space.machine().device<upd765a_device>("upd765")->fifo_r(space, 0, 0xff);
 }
 
 
@@ -202,9 +193,9 @@ static  READ8_HANDLER(spectrum_plus3_port_2ffd_r)
 {
 	spectrum_state *state = space.machine().driver_data<spectrum_state>();
 	if (state->m_floppy==0)
-			return 0xff;
+		return 0xff;
 	else
-			return upd765_status_r(space.machine().device("upd765"), space, 0);
+		return space.machine().device<upd765a_device>("upd765")->msr_r(space, 0, 0xff);
 }
 
 
@@ -323,10 +314,8 @@ static WRITE8_HANDLER(spectrum_plus3_port_1ffd_w)
 
 	spectrum_state *state = space.machine().driver_data<spectrum_state>();
 
-	floppy_mon_w(floppy_get_device(space.machine(), 0), !BIT(data, 3));
-	floppy_mon_w(floppy_get_device(space.machine(), 1), !BIT(data, 3));
-	floppy_drive_set_ready_state(floppy_get_device(space.machine(), 0), 1, 1);
-	floppy_drive_set_ready_state(floppy_get_device(space.machine(), 1), 1, 1);
+	space.machine().device<floppy_connector>("upd765:0")->get_device()->mon_w(!BIT(data, 3));
+	space.machine().device<floppy_connector>("upd765:1")->get_device()->mon_w(!BIT(data, 3));
 
 	state->m_port_1ffd_data = data;
 
@@ -375,18 +364,14 @@ DRIVER_INIT_MEMBER(spectrum_state,plus2)
 	m_floppy = 0;
 }
 
-static const floppy_interface specpls3_floppy_interface =
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	FLOPPY_STANDARD_3_SSDD,
-	LEGACY_FLOPPY_OPTIONS_NAME(default),
-	NULL,
+static const floppy_format_type specpls3_floppy_formats[] = {
+	FLOPPY_MFI_FORMAT,
 	NULL
 };
+
+static SLOT_INTERFACE_START( specpls3_floppies )
+	SLOT_INTERFACE( "3ssdd", FLOPPY_3_SSDD )
+SLOT_INTERFACE_END
 
 /* F4 Character Displayer */
 static const gfx_layout spectrum_charlayout =
@@ -415,8 +400,9 @@ static MACHINE_CONFIG_DERIVED( spectrum_plus3, spectrum_128 )
 
 	MCFG_MACHINE_RESET_OVERRIDE(spectrum_state, spectrum_plus3 )
 
-	MCFG_UPD765A_ADD("upd765", spectrum_plus3_upd765_interface)
-	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(specpls3_floppy_interface)
+	MCFG_UPD765A_ADD("upd765", true, true)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", specpls3_floppies, "3ssdd", 0, specpls3_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", specpls3_floppies, "3ssdd", 0, specpls3_floppy_formats)
 MACHINE_CONFIG_END
 
 /***************************************************************************
