@@ -106,6 +106,26 @@
           The display list objects seem to be there, but the address is wrong (0x14c400, instead of the correct address)
 
         - The external Yamaha MIDI sound board is not emulated (no keyboard sounds).
+
+
+        - Notes on how the video is supposed to work from Ville / Ian Patterson:
+
+        There are four "display contexts" that are set up via registers 20-4E. They are
+        basically just raw framebuffers. 40-4E sets the base framebuffer pointer, 30-3E
+        sets the size, 20-2E may set the minimum x and y coordinates but I haven't seen
+        them set to something other than 0 yet. One context is set as the one the RAMDAC
+        outputs to the monitor (not sure how this is selected yet, probably the lower
+        bits of register 12). Thestartup test in the popn BIOS checks all of VRAM, so
+        it moves the currentdisplay address around so you don't see crazy colors, which
+        is very helpful in figuring out how this part works.
+
+        The other new part is that there are two VRAM write ports, managed by registers
+        60+68+70 and 64+6A+74, with status read from the lower bits of reg 7A. Each context
+        can either write to VRAM as currently emulated, or the port can be switched in to
+        "immediate mode" via registers 68/6A. Immedate mode can be used to run GCU commands
+        at any point during the frame. It's mainly used to call display lists, which is where
+        the display list addresses come from. Some games use it to send other commands, so
+        it appears to be a 4-dword FIFO or something along those lines.
 */
 
 #include "emu.h"
@@ -709,7 +729,42 @@ static void GCU_w(running_machine &machine, int chip, UINT32 offset, UINT32 data
 			break;
 		}
 
-		case 0x40:		/* ??? */
+		case 0x40:		/* framebuffer config */
+			// HACK: switch display lists at the right times for the ParaParaParadise games until we
+			// do the video emulation properly
+			if (mame_strnicmp(machine.system().name, "pp", 2) == 0)
+			{
+				switch (data)
+				{
+					case 0x00080000:	// post
+						state->m_layer = 0;
+						break;
+
+					case 0x00008400:	// startup tests
+						if (state->m_layer != 2)
+						{
+							state->m_layer = 1;
+						}
+						break;
+
+					case 0x00068400:	// game & svc menu
+						state->m_layer = 2;
+						break;
+				}
+			}
+			else if (mame_strnicmp(machine.system().name, "kbm", 3) == 0)
+			{
+				switch (data)
+				{
+					case 0x00080000:	// post
+						state->m_layer = 0;
+						break;
+
+					case 0x0000c400:	// game & svn menu
+						state->m_layer = 2;
+						break;
+				}
+			}
 			break;
 
 		//case 0x44:    /* ??? */
@@ -1132,8 +1187,17 @@ static void atapi_command_reg_w(running_machine &machine, int reg, UINT16 data)
 				}
 
 				// perform special ATAPI processing of certain commands
+				//if (state->m_atapi_drivesel==1) logerror("!!!ATAPI COMMAND %x\n", state->m_atapi_data[0]&0xff);
 				switch (state->m_atapi_data[0]&0xff)
 				{
+
+                    case 0x55:	// MODE SELECT
+						state->m_atapi_cdata_wait = state->m_atapi_data[4]/2;
+						state->m_atapi_data_ptr = 0;
+						logerror("ATAPI: Waiting for %x bytes of MODE SELECT data\n", state->m_atapi_cdata_wait);
+						break;
+
+
 					case 0xa8:	// READ (12)
 						// indicate data ready: set DRQ and DMA ready, and IO in INTREASON
 						state->m_atapi_regs[ATAPI_REG_CMDSTATUS] = ATAPI_STAT_DRQ | ATAPI_STAT_SERVDSC;
@@ -1145,8 +1209,8 @@ static void atapi_command_reg_w(running_machine &machine, int reg, UINT16 data)
 					case 0x00: // BUS RESET / TEST UNIT READY
 					case 0xbb: // SET CD SPEED
 					case 0xa5: // PLAY AUDIO
-					case 0x1b:
-					case 0x4e:
+					case 0x1b: // START_STOP_UNIT
+					case 0x4e: // STOPPLAY_SCAN
 						state->m_atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
 						break;
 				}
@@ -1802,6 +1866,12 @@ ADDRESS_MAP_END
 
 READ8_MEMBER(firebeat_state::soundram_r)
 {
+	// firebeat expects first read after setting the address to be dummy.  fixes "YMZ test".
+	if (offset > 0)
+	{
+		offset--;
+	}
+
 	if (offset < 0x200000)
 	{
 		return m_flash[1]->read(offset & 0x1fffff);
@@ -1979,6 +2049,8 @@ MACHINE_RESET_MEMBER(firebeat_state,firebeat)
 		sound[i] = m_flash[1]->read(i);
 		sound[i+0x200000] = m_flash[2]->read(i);
 	}
+
+	m_layer = 0;
 }
 
 const rtc65271_interface firebeat_rtc =
@@ -2315,6 +2387,22 @@ ROM_START( ppp )
 	// TODO: the audio CD is not dumped
 ROM_END
 
+ROM_START( ppp1mp )
+	ROM_REGION32_BE(0x80000, "user1", 0)
+	ROM_LOAD16_WORD_SWAP("977jaa03.21e", 0x00000, 0x80000, CRC(7b83362a) SHA1(2857a93be58636c10a8d180dbccf2caeeaaff0e2))
+
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
+
+	ROM_REGION(0xc0, "user2", 0)	// Security dongle
+	ROM_LOAD( "gqa11-ja",     0x000000, 0x0000c0, CRC(2ed8e2ae) SHA1(b8c3410dab643111b2d2027068175ba018a0a67e) )
+
+	DISK_REGION( "scsi0" )
+	DISK_IMAGE_READONLY( "a11jaa01", 0, SHA1(539ec6f1c1d198b0d6ce5543eadcbb4d9917fa42) )
+
+	DISK_REGION( "scsi1" )
+	DISK_IMAGE_READONLY( "a11jaa02", 0, SHA1(575069570cb4a2b58b199a1329d45b189a20fcc9) )
+ROM_END
+
 ROM_START( kbm )
 	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("974a03.21e", 0x00000, 0x80000, CRC(ef9a932d) SHA1(6299d3b9823605e519dbf1f105b59a09197df72f))
@@ -2437,6 +2525,7 @@ ROM_END
 GAME( 2000, ppp,      0,       firebeat,      ppp, firebeat_state,    ppp,      ROT0,   "Konami",  "ParaParaParadise", GAME_NOT_WORKING)
 GAME( 2000, ppd,      0,       firebeat,      ppp, firebeat_state,    ppd,      ROT0,   "Konami",  "ParaParaDancing", GAME_NOT_WORKING)
 GAME( 2000, ppp11,    0,       firebeat,      ppp, firebeat_state,    ppp,      ROT0,   "Konami",  "ParaParaParadise v1.1", GAME_NOT_WORKING)
+GAME( 2000, ppp1mp,   ppp,     firebeat,      ppp, firebeat_state,    ppp,      ROT0,   "Konami",  "ParaParaParadise 1st Mix Plus", GAME_NOT_WORKING)
 GAMEL(2000, kbm,      0,       firebeat2,     kbm, firebeat_state,    kbm,    ROT270,   "Konami",  "Keyboardmania", GAME_NOT_WORKING, layout_firebeat)
 GAMEL(2000, kbm2nd,   0,       firebeat2,     kbm, firebeat_state,    kbm,    ROT270,   "Konami",  "Keyboardmania 2nd Mix", GAME_NOT_WORKING, layout_firebeat)
 GAMEL(2001, kbm3rd,   0,       firebeat2,     kbm, firebeat_state,    kbm,    ROT270,   "Konami",  "Keyboardmania 3rd Mix", GAME_NOT_WORKING, layout_firebeat)

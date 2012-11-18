@@ -41,29 +41,6 @@ INLINE void verboselog(running_machine &machine, int n_level, const char *s_fmt,
 #define PIXELS_PER_FRAME	(CYCLES_PER_FRAME)
 
 /****************************************************\
-* I/O defines                                        *
-\****************************************************/
-
-#define AVR8_DDRD				(state->m_regs[AVR8_REGIDX_DDRD])
-#define AVR8_PORTC				(state->m_regs[AVR8_REGIDX_PORTC])
-#define AVR8_DDRC				(state->m_regs[AVR8_REGIDX_DDRC])
-#define AVR8_PORTB				(state->m_regs[AVR8_REGIDX_PORTB])
-#define AVR8_DDRB				(state->m_regs[AVR8_REGIDX_DDRB])
-
-#define AVR8_SPSR				(state->m_regs[AVR8_REGIDX_SPSR])
-#define AVR8_SPSR_SPR2X			(AVR8_SPSR & AVR8_SPSR_SPR2X_MASK)
-
-#define AVR8_SPCR				(state->m_regs[AVR8_REGIDX_SPCR])
-#define AVR8_SPCR_SPIE			((AVR8_SPCR & AVR8_SPCR_SPIE_MASK) >> 7)
-#define AVR8_SPCR_SPE			((AVR8_SPCR & AVR8_SPCR_SPE_MASK) >> 6)
-#define AVR8_SPCR_DORD			((AVR8_SPCR & AVR8_SPCR_DORD_MASK) >> 5)
-#define AVR8_SPCR_MSTR			((AVR8_SPCR & AVR8_SPCR_MSTR_MASK) >> 4)
-#define AVR8_SPCR_CPOL			((AVR8_SPCR & AVR8_SPCR_CPOL_MASK) >> 3)
-#define AVR8_SPCR_CPHA			((AVR8_SPCR & AVR8_SPCR_CPHA_MASK) >> 2)
-#define AVR8_SPCR_SPR			(AVR8_SPCR & AVR8_SPCR_SPR_MASK)
-
-
-/****************************************************\
 * I/O devices                                        *
 \****************************************************/
 
@@ -76,332 +53,122 @@ public:
 	{
 	}
 
+	void video_update();
+
 	virtual void machine_start();
 
-    dac_device* dac;
+    dac_device* m_dac;
 
-	UINT8 m_regs[0x100];
-    UINT8* m_eeprom;
-    UINT32 last_cycles;
+    UINT32 m_last_cycles;
+    UINT64 m_frame_start_cycle;
 
-    bool spi_pending;
-    UINT32 spi_start_cycle;
+	UINT8 m_port_b;
+	UINT8 m_port_c;
+	UINT8 m_port_d;
 
-    UINT8 m_pixels[PIXELS_PER_FRAME + LINE_CYCLES]; // Allocate one extra line for wrapping in the video update
+	UINT8 m_latched_color;
+    UINT8 m_pixels[PIXELS_PER_FRAME];
 
-    required_device<cpu_device> m_maincpu;
+    required_device<avr8_device> m_maincpu;
 
-	DECLARE_READ8_MEMBER(avr8_read);
-	DECLARE_WRITE8_MEMBER(avr8_write);
+	DECLARE_READ8_MEMBER(port_r);
+	DECLARE_WRITE8_MEMBER(port_w);
 	DECLARE_DRIVER_INIT(craft);
 	virtual void machine_reset();
 	UINT32 screen_update_craft(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	TIMER_CALLBACK_MEMBER(avr8_timer0_tick);
-	TIMER_CALLBACK_MEMBER(avr8_timer1_tick);
-	TIMER_CALLBACK_MEMBER(avr8_timer2_tick);
 };
 
 void craft_state::machine_start()
 {
 }
 
-READ8_MEMBER(craft_state::avr8_read)
+READ8_MEMBER(craft_state::port_r)
 {
     switch( offset )
     {
-		case AVR8_REGIDX_EEDR:
-			return m_regs[offset];
-
-        default:
-            verboselog(machine(), 0, "AVR8: Unrecognized register read: %02x\n", offset );
+		case 0x00: // Port A
+		case 0x01: // Port B
+		case 0x02: // Port C
+		case 0x03: // Port D
+			// Unhandled
+			return 0x00;
     }
 
     return 0;
 }
 
-static UINT8 avr8_get_ddr(running_machine &machine, int reg)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	switch(reg)
-	{
-		case AVR8_REG_B:
-			return AVR8_DDRB;
-
-		case AVR8_REG_C:
-			return AVR8_DDRC;
-
-		case AVR8_REG_D:
-			return AVR8_DDRD;
-
-		default:
-			verboselog(machine, 0, "avr8_get_ddr: Unsupported register retrieval: %c\n", avr8_reg_name[reg]);
-			break;
-	}
-
-	return 0;
-}
-
-static void avr8_change_ddr(running_machine &machine, int reg, UINT8 data)
-{
-    //craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldddr = avr8_get_ddr(machine, reg);
-	UINT8 newddr = data;
-	UINT8 changed = newddr ^ oldddr;
-	// TODO: When AVR8 is converted to emu/machine, this should be factored out to 8 single-bit callbacks per port
-	if(changed)
-	{
-		// TODO
-		verboselog(machine, 0, "avr8_change_ddr: DDR%c lines %02x changed\n", avr8_reg_name[reg], changed);
-	}
-}
-
-static void avr8_video_update(running_machine &machine)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT64 cycles = avr8_get_elapsed_cycles(state->m_maincpu);
-	UINT32 frame_cycles = (UINT32)(cycles % CYCLES_PER_FRAME);
-
-	if (state->last_cycles < frame_cycles)
-	{
-		for (UINT32 pixidx = state->last_cycles; pixidx < frame_cycles; pixidx++)
-		{
-			UINT8 value = AVR8_PORTC & 0x3f;
-			if (state->spi_pending)
-			{
-				if (pixidx >= state->spi_start_cycle && pixidx < (state->spi_start_cycle + 16))
-				{
-					UINT8 bitidx = 7 - ((pixidx - state->spi_start_cycle) >> 1);
-					value = ((state->m_regs[AVR8_REGIDX_SPDR] & (1 << bitidx)) ? value : 0x3f);
-					if (pixidx == (state->spi_start_cycle + 15))
-					{
-						state->spi_pending = false;
-						state->m_regs[AVR8_REGIDX_SPDR] = 0;
-					}
-				}
-			}
-			state->m_pixels[pixidx] = value;
-		}
-	}
-
-	state->last_cycles = frame_cycles;
-}
-
-static void avr8_change_port(running_machine &machine, int reg, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldport = avr8_get_ddr(machine, reg);
-	UINT8 newport = data;
-	UINT8 changed = newport ^ oldport;
-
-	// TODO: When AVR8 is converted to emu/machine, this should be factored out to 8 single-bit callbacks per port
-	if(changed)
-	{
-		// TODO
-		//verboselog(machine, 0, "avr8_change_port: PORT%c lines %02x changed\n", avr8_reg_name[reg], changed);
-	}
-
-	if (reg == AVR8_REG_C)
-	{
-		avr8_video_update(machine);
-
-		/*if (frame_cycles >= state->spi_start_cycle && frame_cycles < (state->spi_start_cycle + 16))
-        {
-            UINT8 bitidx = 7 - ((frame_cycles - state->spi_start_cycle) >> 1);
-            state->m_pixels[frame_cycles] = ((state->m_regs[AVR8_REGIDX_SPDR] & (1 << bitidx)) ? 0x3f : (data & 0x3f));
-        }
-        else
-        {
-            state->m_pixels[frame_cycles] = data & 0x3f;
-        }*/
-
-		AVR8_PORTC = data;
-	}
-
-	if (reg == AVR8_REG_D)
-	{
-		UINT8 audio_sample = (data & 0x02) | ((data & 0xf4) >> 2);
-
-		state->dac->write_unsigned8(audio_sample << 2);
-	}
-}
-
-/****************/
-/* SPI Handling */
-/****************/
-
-static void avr8_enable_spi(running_machine &machine)
-{
-	// TODO
-	verboselog(machine, 0, "avr8_enable_spi: TODO\n");
-}
-
-static void avr8_disable_spi(running_machine &machine)
-{
-	// TODO
-	verboselog(machine, 0, "avr8_disable_spi: TODO\n");
-}
-
-static void avr8_spi_update_masterslave_select(running_machine &machine)
-{
-	// TODO
-    //craft_state *state = machine.driver_data<craft_state>();
-	//verboselog(machine, 0, "avr8_spi_update_masterslave_select: TODO; AVR is %s\n", AVR8_SPCR_MSTR ? "Master" : "Slave");
-}
-
-static void avr8_spi_update_clock_polarity(running_machine &machine)
-{
-	// TODO
-    //craft_state *state = machine.driver_data<craft_state>();
-	//verboselog(machine, 0, "avr8_spi_update_clock_polarity: TODO; SCK is Active-%s\n", AVR8_SPCR_CPOL ? "Low" : "High");
-}
-
-static void avr8_spi_update_clock_phase(running_machine &machine)
-{
-	// TODO
-    //craft_state *state = machine.driver_data<craft_state>();
-	//verboselog(machine, 0, "avr8_spi_update_clock_phase: TODO; Sampling edge is %s\n", AVR8_SPCR_CPHA ? "Trailing" : "Leading");
-}
-
-static const UINT8 avr8_spi_clock_divisor[8] = { 4, 16, 64, 128, 2, 8, 32, 64 };
-
-static void avr8_spi_update_clock_rate(running_machine &machine)
-{
-	// TODO
-    //craft_state *state = machine.driver_data<craft_state>();
-	//verboselog(machine, 0, "avr8_spi_update_clock_rate: TODO; New clock rate should be f/%d\n", avr8_spi_clock_divisor[AVR8_SPCR_SPR] / (AVR8_SPSR_SPR2X ? 2 : 1));
-}
-
-static void avr8_change_spcr(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldspcr = AVR8_SPCR;
-	UINT8 newspcr = data;
-	UINT8 changed = newspcr ^ oldspcr;
-	UINT8 high_to_low = ~newspcr & oldspcr;
-	UINT8 low_to_high = newspcr & ~oldspcr;
-
-	AVR8_SPCR = data;
-
-	if(changed & AVR8_SPCR_SPIE_MASK)
-	{
-		// Check for SPI interrupt condition
-		avr8_update_interrupt(state->m_maincpu, AVR8_INTIDX_SPI);
-	}
-
-	if(low_to_high & AVR8_SPCR_SPE_MASK)
-	{
-		avr8_enable_spi(machine);
-	}
-	else if(high_to_low & AVR8_SPCR_SPE_MASK)
-	{
-		avr8_disable_spi(machine);
-	}
-
-	if(changed & AVR8_SPCR_MSTR_MASK)
-	{
-		avr8_spi_update_masterslave_select(machine);
-	}
-
-	if(changed & AVR8_SPCR_CPOL_MASK)
-	{
-		avr8_spi_update_clock_polarity(machine);
-	}
-
-	if(changed & AVR8_SPCR_CPHA_MASK)
-	{
-		avr8_spi_update_clock_phase(machine);
-	}
-
-	if(changed & AVR8_SPCR_SPR_MASK)
-	{
-		avr8_spi_update_clock_rate(machine);
-	}
-}
-
-static void avr8_change_spsr(running_machine &machine, UINT8 data)
-{
-    craft_state *state = machine.driver_data<craft_state>();
-
-	UINT8 oldspsr = AVR8_SPSR;
-	UINT8 newspsr = data;
-	UINT8 changed = newspsr ^ oldspsr;
-	//UINT8 high_to_low = ~newspsr & oldspsr;
-	//UINT8 low_to_high = newspsr & ~oldspsr;
-
-	AVR8_SPSR &= ~1;
-	AVR8_SPSR |= data & 1;
-
-	if(changed & AVR8_SPSR_SPR2X_MASK)
-	{
-		avr8_spi_update_clock_rate(machine);
-	}
-}
-
-WRITE8_MEMBER(craft_state::avr8_write)
+WRITE8_MEMBER(craft_state::port_w)
 {
     switch( offset )
     {
-		case AVR8_REGIDX_SPSR:
-			avr8_change_spsr(machine(), data);
+		case 0x00: // Port A
+			// Unhandled
 			break;
 
-		case AVR8_REGIDX_SPCR:
-			avr8_change_spcr(machine(), data);
-			break;
-
-		case AVR8_REGIDX_SPDR:
-			avr8_video_update(machine());
-			m_regs[offset] = data;
-			spi_pending = true;
-			spi_start_cycle = (UINT32)(avr8_get_elapsed_cycles(m_maincpu) % CYCLES_PER_FRAME);
-			break;
-
-		case AVR8_REGIDX_EECR:
-			if (data & AVR8_EECR_EERE)
+		case 0x01: // Port B
+		{
+			UINT8 old_port_b = m_port_b;
+			UINT8 pins = data;
+			UINT8 changed = pins ^ old_port_b;
+			if(pins & changed & 0x02)
 			{
-				UINT16 addr = (m_regs[AVR8_REGIDX_EEARH] & AVR8_EEARH_MASK) << 8;
-				addr |= m_regs[AVR8_REGIDX_EEARL];
-				m_regs[AVR8_REGIDX_EEDR] = m_eeprom[addr];
+				m_frame_start_cycle = m_maincpu->get_elapsed_cycles();
+				video_update();
 			}
+			if(changed & 0x08)
+			{
+				video_update();
+				m_latched_color = (pins & 0x08) ? (m_port_c & 0x3f) : 0x3f;
+			}
+			m_port_b = data;
+			break;
+		}
+
+		case 0x02: // Port C
+			video_update();
+			m_port_c = data;
+			m_latched_color = m_port_c;
 			break;
 
-        case AVR8_REGIDX_EEARL:
-        case AVR8_REGIDX_EEARH:
-			m_regs[offset] = data;
+		case 0x03: // Port D
+		{
+			m_port_d = data;
+			UINT8 audio_sample = (data & 0x02) | ((data & 0xf4) >> 2);
+			m_dac->write_unsigned8(audio_sample << 1);
 			break;
-
-        case AVR8_REGIDX_PORTD:
-            avr8_change_port(machine(), AVR8_REG_D, data);
-            break;
-
-		case AVR8_REGIDX_DDRD:
-			avr8_change_ddr(machine(), AVR8_REG_D, data);
-			break;
-
-		case AVR8_REGIDX_PORTC:
-			avr8_change_port(machine(), AVR8_REG_C, data);
-			break;
-
-		case AVR8_REGIDX_DDRC:
-			avr8_change_ddr(machine(), AVR8_REG_C, data);
-			break;
-
-		case AVR8_REGIDX_PORTB:
-			avr8_change_port(machine(), AVR8_REG_B, data);
-			break;
-
-		case AVR8_REGIDX_DDRB:
-			avr8_change_ddr(machine(), AVR8_REG_B, data);
-			break;
-
-        default:
-            verboselog(machine(), 0, "AVR8: Unrecognized register write: %02x = %02x\n", offset, data );
+		}
     }
+}
+
+void craft_state::video_update()
+{
+	UINT64 cycles = m_maincpu->get_elapsed_cycles();
+	UINT32 frame_cycles = (UINT32)(cycles - m_frame_start_cycle);
+
+	if (m_last_cycles < frame_cycles)
+	{
+		for (UINT32 pixidx = m_last_cycles; pixidx < frame_cycles && pixidx < PIXELS_PER_FRAME; pixidx++)
+		{
+			m_pixels[pixidx] = m_latched_color;
+		}
+	}
+	else
+	{
+		UINT32 end_clear = sizeof(m_pixels) - m_last_cycles;
+		UINT32 start_clear = frame_cycles;
+		end_clear = (end_clear > PIXELS_PER_FRAME) ? (PIXELS_PER_FRAME - m_last_cycles) : end_clear;
+		start_clear = (start_clear > PIXELS_PER_FRAME) ? PIXELS_PER_FRAME : start_clear;
+		if (m_last_cycles < PIXELS_PER_FRAME)
+		{
+			memset(m_pixels + m_last_cycles, 0, end_clear);
+		}
+		if (start_clear < PIXELS_PER_FRAME)
+		{
+			memset(m_pixels, 0, start_clear);
+		}
+	}
+
+	m_last_cycles = frame_cycles;
 }
 
 /****************************************************\
@@ -412,9 +179,12 @@ static ADDRESS_MAP_START( craft_prg_map, AS_PROGRAM, 8, craft_state )
     AM_RANGE(0x0000, 0x1fff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( craft_io_map, AS_IO, 8, craft_state )
-    AM_RANGE(0x0000, 0x00ff) AM_READWRITE(avr8_read, avr8_write)
+static ADDRESS_MAP_START( craft_data_map, AS_DATA, 8, craft_state )
     AM_RANGE(0x0100, 0x04ff) AM_RAM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( craft_io_map, AS_IO, 8, craft_state )
+    AM_RANGE(0x00, 0x03) AM_READWRITE( port_r, port_w )
 ADDRESS_MAP_END
 
 /****************************************************\
@@ -437,14 +207,11 @@ UINT32 craft_state::screen_update_craft(screen_device &screen, bitmap_rgb32 &bit
 		UINT32 *line = &bitmap.pix32(y);
 		for(int x = 0; x < LINE_CYCLES; x++)
 		{
-			UINT8 pixel = m_pixels[y * LINE_CYCLES + (x + HSYNC_CYCLES)];
+			UINT8 pixel = m_pixels[y * LINE_CYCLES + x];
 			UINT8 r = 0x55 * ((pixel & 0x30) >> 4);
 			UINT8 g = 0x55 * ((pixel & 0x0c) >> 2);
 			UINT8 b = 0x55 * (pixel & 0x03);
 			line[x] = 0xff000000 | (r << 16) | (g << 8) | b;
-
-			// Clear behind us
-			m_pixels[y * LINE_CYCLES + (x + HSYNC_CYCLES)] = 0;
 		}
 	}
     return 0;
@@ -460,29 +227,34 @@ DRIVER_INIT_MEMBER(craft_state,craft)
 
 void craft_state::machine_reset()
 {
-    craft_state *state = machine().driver_data<craft_state>();
+    m_dac = machine().device<dac_device>("dac");
 
-    state->dac = machine().device<dac_device>("dac");
+    m_dac->write_unsigned8(0x00);
 
-    state->dac->write_unsigned8(0x00);
-
-    state->m_eeprom = memregion("eeprom")->base();
+    m_frame_start_cycle = 0;
+    m_last_cycles = 0;
 }
+
+const avr8_config atmega88_config =
+{
+	"eeprom"
+};
 
 static MACHINE_CONFIG_START( craft, craft_state )
 
     /* basic machine hardware */
     MCFG_CPU_ADD("maincpu", ATMEGA88, MASTER_CLOCK)
+    MCFG_CPU_AVR8_CONFIG(atmega88_config)
     MCFG_CPU_PROGRAM_MAP(craft_prg_map)
+    MCFG_CPU_DATA_MAP(craft_data_map)
     MCFG_CPU_IO_MAP(craft_io_map)
-
 
     /* video hardware */
     MCFG_SCREEN_ADD("screen", RASTER)
     MCFG_SCREEN_REFRESH_RATE(59.99)
     MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1429)) /* accurate */
     MCFG_SCREEN_SIZE(635, 525)
-    MCFG_SCREEN_VISIBLE_AREA(0, 634, 0, 524)
+    MCFG_SCREEN_VISIBLE_AREA(47, 526, 36, 515)
 	MCFG_SCREEN_UPDATE_DRIVER(craft_state, screen_update_craft)
     MCFG_PALETTE_LENGTH(0x1000)
 
@@ -500,4 +272,4 @@ ROM_START( craft )
 ROM_END
 
 /*   YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY          FULLNAME */
-CONS(2008, craft,    0,        0,        craft,    craft, craft_state,    craft,    "Linus Akesson", "Craft", GAME_NO_SOUND | GAME_NOT_WORKING)
+CONS(2008, craft,    0,        0,        craft,    craft, craft_state,    craft,    "Linus Akesson", "Craft", GAME_NOT_WORKING)

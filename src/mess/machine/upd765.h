@@ -208,10 +208,12 @@ protected:
 
 		// Live states
 		SEARCH_ADDRESS_MARK_HEADER,
+		SEARCH_ADDRESS_MARK_HEADER_FM,
 		READ_HEADER_BLOCK_HEADER,
 		READ_DATA_BLOCK_HEADER,
 		READ_ID_BLOCK,
 		SEARCH_ADDRESS_MARK_DATA,
+		SEARCH_ADDRESS_MARK_DATA_FM,
 		SEARCH_ADDRESS_MARK_DATA_FAILED,
 		READ_SECTOR_DATA,
 		READ_SECTOR_DATA_BYTE,
@@ -249,13 +251,15 @@ protected:
 	};
 
 	struct floppy_info {
+		enum { IRQ_NONE, IRQ_SEEK, IRQ_POLLED };
 		emu_timer *tm;
 		floppy_image_device *dev;
 		int id;
 		int main_state, sub_state;
 		int dir, counter;
 		UINT8 pcn;
-		bool irq_seek, live, index, ready, irq_polled;
+		int irq;
+		bool live, index, ready;
 	};
 
 	struct live_info {
@@ -284,7 +288,7 @@ protected:
 
 	live_info cur_live, checkpoint_live;
 	line_cb intrq_cb, drq_cb;
-	bool cur_irq, data_irq, drq, internal_drq, tc, tc_done, locked;
+	bool cur_irq, polled_irq, data_irq, drq, internal_drq, tc, tc_done, locked;
 	floppy_info flopi[4];
 
 	int fifo_pos, fifo_expected, command_pos, result_pos;
@@ -372,6 +376,7 @@ protected:
 	void live_sync();
 	void live_run(attotime limit = attotime::never);
 	void live_write_raw(UINT16 raw);
+	void live_write_fm(UINT8 fm);
 	void live_write_mfm(UINT8 mfm);
 
 	bool read_one_bit(attotime limit);

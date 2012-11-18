@@ -778,6 +778,8 @@ $(MESSOBJ)/bnpo.a:				\
 
 $(MESSOBJ)/bondwell.a:			\
 	$(MESS_DRIVERS)/bw2.o		\
+	$(MESS_MACHINE)/bw2exp.o	\
+	$(MESS_MACHINE)/bw2_ramcard.o	\
 	$(MESS_DRIVERS)/bw12.o		\
 
 $(MESSOBJ)/booth.a:				\
@@ -970,6 +972,16 @@ $(MESSOBJ)/coleco.a:			\
 	$(MESS_DRIVERS)/coleco.o	\
 	$(MESS_MACHINE)/coleco.o	\
 	$(MESS_DRIVERS)/adam.o		\
+	$(MESS_MACHINE)/adamexp.o	\
+	$(MESS_MACHINE)/adamlink.o	\
+	$(MESS_MACHINE)/adam_ide.o	\
+	$(MESS_MACHINE)/adam_ram.o	\
+	$(MESS_MACHINE)/adamnet.o	\
+	$(MESS_MACHINE)/adam_ddp.o	\
+	$(MESS_MACHINE)/adam_fdc.o	\
+	$(MESS_MACHINE)/adam_kb.o	\
+	$(MESS_MACHINE)/adam_prn.o	\
+	$(MESS_MACHINE)/adam_spi.o	\
 
 $(MESSOBJ)/cromemco.a:			\
 	$(MESS_DRIVERS)/c10.o		\
@@ -1108,6 +1120,7 @@ $(MESSOBJ)/epson.a:				\
 	$(MESS_DRIVERS)/hx20.o		\
 	$(MESS_DRIVERS)/lx800.o		\
 	$(MESS_MACHINE)/e05a03.o	\
+	$(MESS_MACHINE)/epson_sio.o	\
 	$(MESS_MACHINE)/pf10.o		\
 	$(MESS_MACHINE)/tf20.o		\
 	$(MESS_DRIVERS)/px4.o		\
@@ -1347,6 +1360,7 @@ $(MESSOBJ)/ne.a:				\
 	$(MESS_MACHINE)/z80ne.o     \
 
 $(MESSOBJ)/nec.a:				\
+	$(MESS_DRIVERS)/apc.o		\
 	$(MESS_MACHINE)/pce.o		\
 	$(MESS_DRIVERS)/pce.o		\
 	$(MESS_DRIVERS)/pcfx.o		\
@@ -1428,6 +1442,7 @@ $(MESSOBJ)/palm.a:				\
 	$(MESS_DRIVERS)/palmz22.o	\
 
 $(MESSOBJ)/parker.a:			\
+	$(MESS_DRIVERS)/merlin.o	\
 	$(MESS_DRIVERS)/stopthie.o	\
 
 $(MESSOBJ)/pitronic.a:			\
@@ -1657,6 +1672,7 @@ $(MESSOBJ)/snk.a:				\
 
 $(MESSOBJ)/sony.a:				\
 	$(MESS_DRIVERS)/psx.o		\
+	$(MESS_MACHINE)/psxcport.o	\
 	$(MESS_MACHINE)/psxcd.o		\
 	$(MESS_MACHINE)/psxcddrv.o	\
 	$(MESS_MACHINE)/psxcard.o	\
@@ -1952,6 +1968,7 @@ $(MESSOBJ)/test.a:				\
 	$(MESS_DRIVERS)/zexall.o	\
 
 $(MESSOBJ)/skeleton.a:			\
+	$(MESS_DRIVERS)/altos5.o	\
 	$(MESS_DRIVERS)/alphasma.o	\
 	$(MESS_DRIVERS)/alphatro.o	\
 	$(MESS_DRIVERS)/amico2k.o	\
@@ -2033,6 +2050,7 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/terak.o		\
 	$(MESS_DRIVERS)/tim011.o	\
 	$(MESS_DRIVERS)/tricep.o	\
+	$(MESS_DRIVERS)/ts802.o	\
 	$(MESS_DRIVERS)/tsispch.o	\
 	$(MESS_DRIVERS)/unior.o		\
 	$(MESS_DRIVERS)/unistar.o	\
@@ -2170,6 +2188,7 @@ $(MAME_MACHINE)/megadriv.o:	$(MAME_LAYOUT)/megacd.lh
 $(MESS_DRIVERS)/megadriv.o:	$(MAME_LAYOUT)/megacd.lh
 $(MESS_DRIVERS)/mekd2.o:	$(MESS_LAYOUT)/mekd2.lh
 $(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
+$(MESS_DRIVERS)/merlin.o:	$(MESS_LAYOUT)/merlin.lh
 $(MESS_DRIVERS)/mikrolab.o:	$(MESS_LAYOUT)/mikrolab.lh
 $(MESS_DRIVERS)/mk1.o:		$(MESS_LAYOUT)/mk1.lh
 $(MESS_DRIVERS)/mk14.o:		$(MESS_LAYOUT)/mk14.lh

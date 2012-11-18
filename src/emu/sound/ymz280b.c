@@ -217,8 +217,7 @@ INLINE void update_volumes(struct YMZ280BVoice *voice)
 
 static void YMZ280B_state_save_update_step(ymz280b_state *chip)
 {
-	int j;
-	for (j = 0; j < 8; j++)
+	for (int j = 0; j < 8; j++)
 	{
 		struct YMZ280BVoice *voice = &chip->voice[j];
 		update_step(chip, voice);
@@ -259,10 +258,8 @@ static TIMER_CALLBACK( update_irq_state_timer_7 ) { update_irq_state_timer_commo
 
 static void compute_tables(void)
 {
-	int nib;
-
 	/* loop over all nibbles and compute the difference */
-	for (nib = 0; nib < 16; nib++)
+	for (int nib = 0; nib < 16; nib++)
 	{
 		int value = (nib & 0x07) * 2 + 1;
 		diff_lookup[nib] = (nib & 0x08) ? -value : value;
@@ -472,9 +469,6 @@ static int generate_pcm16(struct YMZ280BVoice *voice, UINT8 *base, UINT32 size, 
 	int position = voice->position;
 	int val;
 
-	/* is it even used in any MAME game? */
-	popmessage("YMZ280B 16-bit PCM contact MAMEDEV");
-
 	/* two cases: first cases is non-looping */
 	if (!voice->looping)
 	{
@@ -482,7 +476,7 @@ static int generate_pcm16(struct YMZ280BVoice *voice, UINT8 *base, UINT32 size, 
 		while (samples)
 		{
 			/* fetch the current value */
-			val = (INT16)((ymz280b_read_memory(base, size, position / 2 + 0) << 8) + ymz280b_read_memory(base, size, position / 2 + 1));
+			val = (INT16)((ymz280b_read_memory(base, size, position / 2 + 1) << 8) + ymz280b_read_memory(base, size, position / 2 + 0));
 
 			/* output to the buffer, scaling by the volume */
 			*buffer++ = val;
@@ -507,7 +501,7 @@ static int generate_pcm16(struct YMZ280BVoice *voice, UINT8 *base, UINT32 size, 
 		while (samples)
 		{
 			/* fetch the current value */
-			val = (INT16)((ymz280b_read_memory(base, size, position / 2 + 0) << 8) + ymz280b_read_memory(base, size, position / 2 + 1));
+			val = (INT16)((ymz280b_read_memory(base, size, position / 2 + 1) << 8) + ymz280b_read_memory(base, size, position / 2 + 0));
 
 			/* output to the buffer, scaling by the volume */
 			*buffer++ = val;

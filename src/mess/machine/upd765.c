@@ -148,12 +148,12 @@ void upd765_family_device::soft_reset()
 	for(int i=0; i<4; i++) {
 		flopi[i].main_state = IDLE;
 		flopi[i].sub_state = IDLE;
-		flopi[i].irq_seek = false;
 		flopi[i].live = false;
 		flopi[i].ready = !ready_polled;
-		flopi[i].irq_polled = false;
+		flopi[i].irq = floppy_info::IRQ_NONE;
 	}
 	data_irq = false;
+	polled_irq = false;
 	internal_drq = false;
 	fifo_pos = 0;
 	command_pos = 0;
@@ -195,7 +195,7 @@ void upd765_family_device::ready_w(bool _ready)
 bool upd765_family_device::get_ready(int fid)
 {
 	if(ready_connected)
-		return flopi[fid].dev ? flopi[fid].dev->ready_r() : false;
+		return flopi[fid].dev ? !flopi[fid].dev->ready_r() : false;
 	return external_ready;
 }
 
@@ -438,8 +438,11 @@ void upd765_family_device::disable_transfer()
 void upd765_family_device::fifo_push(UINT8 data, bool internal)
 {
 	if(fifo_pos == 16) {
-		if(internal)
+		if(internal) {
+			if(!(st1 & ST1_OR))
+				logerror("%s: Fifo overrun\n", tag());
 			st1 |= ST1_OR;
+		}
 		return;
 	}
 	fifo[fifo_pos++] = data;
@@ -456,8 +459,11 @@ void upd765_family_device::fifo_push(UINT8 data, bool internal)
 UINT8 upd765_family_device::fifo_pop(bool internal)
 {
 	if(!fifo_pos) {
-		if(internal)
+		if(internal) {
+			if(!(st1 & ST1_OR))
+				logerror("%s: Fifo underrun\n", tag());
 			st1 |= ST1_OR;
+		}
 		return 0;
 	}
 	UINT8 r = fifo[0];
@@ -668,6 +674,30 @@ void upd765_family_device::live_run(attotime limit)
 			break;
 		}
 
+		case SEARCH_ADDRESS_MARK_HEADER_FM:
+			if(read_one_bit(limit))
+				return;
+#if 0
+			fprintf(stderr, "%s: shift = %04x data=%02x c=%d\n", tts(cur_live.tm).cstr(), cur_live.shift_reg,
+					(cur_live.shift_reg & 0x4000 ? 0x80 : 0x00) |
+					(cur_live.shift_reg & 0x1000 ? 0x40 : 0x00) |
+					(cur_live.shift_reg & 0x0400 ? 0x20 : 0x00) |
+					(cur_live.shift_reg & 0x0100 ? 0x10 : 0x00) |
+					(cur_live.shift_reg & 0x0040 ? 0x08 : 0x00) |
+					(cur_live.shift_reg & 0x0010 ? 0x04 : 0x00) |
+					(cur_live.shift_reg & 0x0004 ? 0x02 : 0x00) |
+					(cur_live.shift_reg & 0x0001 ? 0x01 : 0x00),
+					cur_live.bit_counter);
+#endif
+
+			if(cur_live.shift_reg == 0xf57e) {
+				cur_live.crc = 0xef21;
+				cur_live.data_separator_phase = false;
+				cur_live.bit_counter = 0;
+				cur_live.state = READ_ID_BLOCK;
+			}
+			break;
+
 		case READ_ID_BLOCK: {
 			if(read_one_bit(limit))
 				return;
@@ -756,6 +786,34 @@ void upd765_family_device::live_run(attotime limit)
 			st2 |= ST2_MD;
 			cur_live.state = IDLE;
 			return;
+
+		case SEARCH_ADDRESS_MARK_DATA_FM:
+			if(read_one_bit(limit))
+				return;
+#if 0
+			fprintf(stderr, "%s: shift = %04x data=%02x c=%d.%x\n", tts(cur_live.tm).cstr(), cur_live.shift_reg,
+					(cur_live.shift_reg & 0x4000 ? 0x80 : 0x00) |
+					(cur_live.shift_reg & 0x1000 ? 0x40 : 0x00) |
+					(cur_live.shift_reg & 0x0400 ? 0x20 : 0x00) |
+					(cur_live.shift_reg & 0x0100 ? 0x10 : 0x00) |
+					(cur_live.shift_reg & 0x0040 ? 0x08 : 0x00) |
+					(cur_live.shift_reg & 0x0010 ? 0x04 : 0x00) |
+					(cur_live.shift_reg & 0x0004 ? 0x02 : 0x00) |
+					(cur_live.shift_reg & 0x0001 ? 0x01 : 0x00),
+					cur_live.bit_counter >> 4, cur_live.bit_counter & 15);
+#endif
+			if(cur_live.bit_counter > 23*16) {
+				live_delay(SEARCH_ADDRESS_MARK_DATA_FAILED);
+				return;
+			}
+
+			if(cur_live.bit_counter >= 11*16 && (cur_live.shift_reg == 0xf56a || cur_live.shift_reg == 0xf56f)) {
+				cur_live.crc = cur_live.shift_reg == 0xf56a ? 0x8fe7 : 0xbf84;
+				cur_live.data_separator_phase = false;
+				cur_live.bit_counter = 0;
+				cur_live.state = READ_SECTOR_DATA;
+			}
+			break;
 
 		case READ_SECTOR_DATA: {
 			if(read_one_bit(limit))
@@ -1097,9 +1155,7 @@ void upd765_family_device::start_command(int cmd)
 		main_phase = PHASE_RESULT;
 
 		int fid;
-		for(fid=0; fid<4 && !flopi[fid].irq_seek; fid++);
-		if(fid == 4)
-			for(fid=0; fid<4 && !flopi[fid].irq_polled; fid++);
+		for(fid=0; fid<4 && flopi[fid].irq == floppy_info::IRQ_NONE; fid++);
 		if(fid == 4) {
 			st0 = ST0_UNK;
 			result[0] = st0;
@@ -1109,25 +1165,28 @@ void upd765_family_device::start_command(int cmd)
 			break;
 		}
 		floppy_info &fi = flopi[fid];
-		if(fi.irq_seek)
-			fi.irq_seek = false;
-
-		else if(fi.irq_polled) {
+		if(fi.irq == floppy_info::IRQ_POLLED) {
 			// Documentation is somewhat contradictory w.r.t polling
 			// and irq.  PC bios, especially 5150, requires that only
 			// one irq happens.  That's also wait the ns82077a doc
 			// says it does.  OTOH, a number of docs says you need to
 			// call SIS 4 times, once per drive...
 			//
-			// Let's take the option that allows PC to boot.
-
-			for(int i=0; i<4; i++)
-				flopi[i].irq_polled = false;
+			// There's also the interaction with the seek irq.  The
+			// somewhat borderline tf20 code seems to think that
+			// essentially ignoring the polling irq should work.
+			//
+			// So at that point the best bet seems to drop the
+			// "polled" irq as soon as a SIS happens, and override any
+			// polled-in-waiting information when a seek irq happens
+			// for a given floppy.
 
 			st0 = ST0_ABRT | fid;
-		} else {
-			abort();
 		}
+		fi.irq = floppy_info::IRQ_NONE;
+
+		polled_irq = false;
+
 		result[0] = st0;
 		result[1] = fi.pcn;
 		logerror("%s: command sense interrupt status (fid=%d %02x %02x)\n", tag(), fid, result[0], result[1]);
@@ -1165,7 +1224,7 @@ void upd765_family_device::command_end(floppy_info &fi, bool data_completion)
 	if(data_completion)
 		data_irq = true;
 	else
-		fi.irq_seek = true;
+		fi.irq = floppy_info::IRQ_SEEK;
 	check_irq();
 }
 
@@ -1330,7 +1389,7 @@ void upd765_family_device::read_data_continue(floppy_info &fi)
 		case SEEK_DONE:
 			fi.counter = 0;
 			fi.sub_state = SCAN_ID;
-			live_start(fi, SEARCH_ADDRESS_MARK_HEADER);
+			live_start(fi, command[0] & 0x40 ? SEARCH_ADDRESS_MARK_HEADER : SEARCH_ADDRESS_MARK_HEADER_FM);
 			return;
 
 		case SCAN_ID:
@@ -1351,7 +1410,7 @@ void upd765_family_device::read_data_continue(floppy_info &fi)
 					fi.sub_state = COMMAND_DONE;
 					break;
 				}
-				live_start(fi, SEARCH_ADDRESS_MARK_HEADER);
+				live_start(fi, command[0] & 0x40 ? SEARCH_ADDRESS_MARK_HEADER : SEARCH_ADDRESS_MARK_HEADER_FM);
 				return;
 			}
 			logerror("%s: reading sector %02x %02x %02x %02x\n",
@@ -1363,7 +1422,7 @@ void upd765_family_device::read_data_continue(floppy_info &fi)
 			sector_size = calc_sector_size(cur_live.idbuf[3]);
 			fifo_expect(sector_size, false);
 			fi.sub_state = SECTOR_READ;
-			live_start(fi, SEARCH_ADDRESS_MARK_DATA);
+			live_start(fi, command[0] & 0x40 ? SEARCH_ADDRESS_MARK_DATA : SEARCH_ADDRESS_MARK_DATA_FM);
 			return;
 
 		case SCAN_ID_FAILED:
@@ -1785,9 +1844,9 @@ void upd765_family_device::read_id_continue(floppy_info &fi)
 void upd765_family_device::check_irq()
 {
 	bool old_irq = cur_irq;
-	cur_irq = data_irq || internal_drq;
+	cur_irq = data_irq || polled_irq || internal_drq;
 	for(int i=0; i<4; i++)
-		cur_irq = cur_irq || flopi[i].irq_seek || flopi[i].irq_polled;
+		cur_irq = cur_irq || flopi[i].irq == floppy_info::IRQ_SEEK;
 	cur_irq = cur_irq && (dor & 4) && (dor & 8);
 	if(cur_irq != old_irq && !intrq_cb.isnull()) {
 		logerror("%s: irq = %d\n", tag(), cur_irq);
@@ -1851,8 +1910,11 @@ void upd765_family_device::run_drive_ready_polling()
 		if(ready != flopi[fid].ready) {
 			logerror("%s: polled %d : %d -> %d\n", tag(), fid, flopi[fid].ready, ready);
 			flopi[fid].ready = ready;
-			flopi[fid].irq_polled = true;
-			changed = true;
+			if(flopi[fid].irq == floppy_info::IRQ_NONE) {
+				flopi[fid].irq = floppy_info::IRQ_POLLED;
+				polled_irq = true;
+				changed = true;
+			}
 		}
 	}
 	if(changed)
@@ -2015,6 +2077,23 @@ void upd765_family_device::live_write_mfm(UINT8 mfm)
 	//  logerror("write %02x   %04x %04x\n", mfm, cur_live.crc, raw);
 }
 
+void upd765_family_device::live_write_fm(UINT8 fm)
+{
+	bool context = cur_live.data_bit_context;
+	UINT16 raw = 0;
+	for(int i=0; i<8; i++) {
+		bool bit = fm & (0x80 >> i);
+		raw |= 0x8000 >> (2*i);
+		if(bit)
+			raw |= 0x4000 >> (2*i);
+		context = bit;
+	}
+	cur_live.data_reg = fm;
+	cur_live.shift_reg = raw;
+	cur_live.data_bit_context = context;
+	//  logerror("write %02x   %04x %04x\n", fm, cur_live.crc, raw);
+}
+
 bool upd765_family_device::sector_matches() const
 {
 	return
@@ -2079,11 +2158,11 @@ int upd765_family_device::pll_t::get_next_bit(attotime &tm, floppy_image_device 
 		return -1;
 
 	ctime = next;
+	tm = next;
 
 	if(edge.is_never() || edge >= next) {
 		// No transition in the window means 0 and pll in free run mode
 		phase_adjust = attotime::zero;
-		tm = next;
 		return 0;
 	}
 

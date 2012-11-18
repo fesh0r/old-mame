@@ -920,7 +920,7 @@ $(MAMEOBJ)/konami.a: \
 	$(DRIVERS)/konamim2.o \
 	$(DRIVERS)/kontest.o \
 	$(DRIVERS)/konendev.o \
-	$(DRIVERS)/ksys573.o $(MACHINE)/zs01.o \
+	$(DRIVERS)/ksys573.o $(MACHINE)/k573cass.o $(MACHINE)/zs01.o \
 	$(DRIVERS)/labyrunr.o $(VIDEO)/labyrunr.o \
 	$(DRIVERS)/lethal.o $(VIDEO)/lethal.o \
 	$(DRIVERS)/mainevt.o $(VIDEO)/mainevt.o \
@@ -1366,7 +1366,7 @@ $(MAMEOBJ)/snk.a: \
 	$(DRIVERS)/snk68.o $(VIDEO)/snk68.o \
 
 $(MAMEOBJ)/sony.a: \
-	$(DRIVERS)/zn.o $(MACHINE)/znsec.o \
+	$(DRIVERS)/zn.o $(MACHINE)/zndip.o $(MACHINE)/znsec.o \
 	$(MACHINE)/psx.o
 
 $(MAMEOBJ)/stern.a: \
@@ -1723,10 +1723,13 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/artmagic.o $(VIDEO)/artmagic.o \
 	$(DRIVERS)/astrafr.o \
 	$(DRIVERS)/astrocorp.o \
+	$(DRIVERS)/astropc.o \
+	$(DRIVERS)/atronic.o \
 	$(DRIVERS)/attckufo.o \
 	$(DRIVERS)/avt.o \
 	$(DRIVERS)/aztarac.o $(AUDIO)/aztarac.o $(VIDEO)/aztarac.o \
 	$(DRIVERS)/beaminv.o \
+	$(DRIVERS)/belatra.o \
 	$(DRIVERS)/bgt.o \
 	$(DRIVERS)/bingoman.o \
 	$(DRIVERS)/bingor.o \
@@ -1746,6 +1749,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/coinmstr.o \
 	$(DRIVERS)/coinmvga.o \
 	$(DRIVERS)/comebaby.o \
+	$(DRIVERS)/cupidon.o \
 	$(DRIVERS)/bntyhunt.o \
 	$(DRIVERS)/coolpool.o \
 	$(DRIVERS)/corona.o \
@@ -1772,6 +1776,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/esh.o \
 	$(DRIVERS)/esripsys.o $(VIDEO)/esripsys.o \
 	$(DRIVERS)/ettrivia.o \
+	$(DRIVERS)/extrema.o \
 	$(DRIVERS)/flipjack.o \
 	$(DRIVERS)/flower.o $(AUDIO)/flower.o $(VIDEO)/flower.o \
 	$(DRIVERS)/fortecar.o \
@@ -1781,8 +1786,10 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/galgame.o \
 	$(DRIVERS)/gamecstl.o \
 	$(DRIVERS)/gammagic.o \
+	$(DRIVERS)/gamtor.o \
 	$(DRIVERS)/gei.o \
 	$(DRIVERS)/globalfr.o \
+	$(DRIVERS)/globalvr.o \
 	$(DRIVERS)/goldngam.o \
 	$(DRIVERS)/goldnpkr.o \
 	$(DRIVERS)/good.o \
@@ -1805,6 +1812,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/itgambl3.o \
 	$(DRIVERS)/itgamble.o \
 	$(DRIVERS)/jackpool.o \
+	$(DRIVERS)/jankenmn.o \
 	$(DRIVERS)/jokrwild.o \
 	$(DRIVERS)/jongkyo.o \
 	$(DRIVERS)/jubilee.o \
@@ -1826,6 +1834,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/magtouch.o \
 	$(DRIVERS)/majorpkr.o \
 	$(DRIVERS)/malzak.o $(VIDEO)/malzak.o \
+	$(DRIVERS)/manohman.o \
 	$(DRIVERS)/mcatadv.o $(VIDEO)/mcatadv.o \
 	$(DRIVERS)/meyc8080.o \
 	$(DRIVERS)/meyc8088.o \
@@ -1835,6 +1844,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/mirax.o \
 	$(DRIVERS)/mole.o \
 	$(DRIVERS)/mosaic.o $(VIDEO)/mosaic.o \
+	$(DRIVERS)/mpu12wbk.o \
 	$(DRIVERS)/mrjong.o $(VIDEO)/mrjong.o \
 	$(DRIVERS)/multfish.o \
 	$(DRIVERS)/murogem.o \
@@ -1895,6 +1905,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/su2000.o \
 	$(DRIVERS)/summit.o \
 	$(DRIVERS)/sumt8035.o \
+	$(DRIVERS)/supercrd.o \
 	$(DRIVERS)/supertnk.o \
 	$(DRIVERS)/superwng.o \
 	$(DRIVERS)/tapatune.o \
@@ -1905,6 +1916,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/thedeep.o $(VIDEO)/thedeep.o \
 	$(DRIVERS)/tiamc1.o $(VIDEO)/tiamc1.o $(AUDIO)/tiamc1.o \
 	$(DRIVERS)/tickee.o \
+	$(DRIVERS)/tmspoker.o \
 	$(DRIVERS)/truco.o $(VIDEO)/truco.o \
 	$(DRIVERS)/trucocl.o $(VIDEO)/trucocl.o \
 	$(DRIVERS)/trvmadns.o \
@@ -1920,25 +1932,14 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/vectrex.o $(VIDEO)/vectrex.o $(MACHINE)/vectrex.o \
 	$(DRIVERS)/videopkr.o \
 	$(DRIVERS)/vlc.o \
-    $(DRIVERS)/voyager.o \
+	$(DRIVERS)/voyager.o \
 	$(DRIVERS)/vp101.o \
 	$(DRIVERS)/vpoker.o \
 	$(DRIVERS)/vroulet.o \
+	$(DRIVERS)/wildpkr.o \
+	$(DRIVERS)/wms.o \
 	$(DRIVERS)/xtom3d.o \
 	$(DRIVERS)/xyonix.o $(VIDEO)/xyonix.o \
-	$(DRIVERS)/gamtor.o \
-	$(DRIVERS)/belatra.o \
-	$(DRIVERS)/atronic.o \
-	$(DRIVERS)/astropc.o \
-	$(DRIVERS)/wms.o \
-	$(DRIVERS)/cupidon.o \
-	$(DRIVERS)/extrema.o \
-	$(DRIVERS)/tmspoker.o \
-	$(DRIVERS)/manohman.o \
-	$(DRIVERS)/jankenmn.o \
-	$(DRIVERS)/wildpkr.o \
-	$(DRIVERS)/globalvr.o \
-	$(DRIVERS)/mpu12wbk.o \
 
 
 #-------------------------------------------------
@@ -2232,9 +2233,14 @@ $(DRIVERS)/s6.o:	$(LAYOUT)/s6.lh
 
 $(DRIVERS)/s6a.o:	$(LAYOUT)/s6a.lh
 
+$(DRIVERS)/s7.o:	$(LAYOUT)/s7.lh
+
 $(DRIVERS)/s8.o:	$(LAYOUT)/s8.lh
 
 $(DRIVERS)/s9.o:	$(LAYOUT)/s9.lh
+
+$(DRIVERS)/s11.o:	$(LAYOUT)/s11.lh
+$(DRIVERS)/s11a.o:	$(LAYOUT)/s11a.lh
 
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 

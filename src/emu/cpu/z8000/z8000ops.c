@@ -5833,14 +5833,14 @@ static void ZB7_ssss_dddd(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_0010_0000_rrrr_ssN0_0000(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	cpustate->RB(2) = xlt;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-	cpustate->RW(dst)++;
+	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5849,15 +5849,20 @@ static void ZB8_ddN0_0010_0000_rrrr_ssN0_0000(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_0110_0000_rrrr_ssN0_1110(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	cpustate->RB(2) = xlt;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-	cpustate->RW(dst)++;
-	if (--cpustate->RW(cnt)) { CLR_V; cpustate->pc -= 4; } else SET_V;
+	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
+	if (--cpustate->RW(cnt)) {
+	  CLR_V;
+	  if (!xlt)
+	    cpustate->pc -= 4;
+	}
+	else SET_V;
 }
 
 /******************************************
@@ -5865,14 +5870,14 @@ static void ZB8_ddN0_0110_0000_rrrr_ssN0_1110(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_1010_0000_rrrr_ssN0_0000(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	cpustate->RB(2) = xlt;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-    cpustate->RW(dst)--;
+	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5881,15 +5886,20 @@ static void ZB8_ddN0_1010_0000_rrrr_ssN0_0000(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_1110_0000_rrrr_ssN0_1110(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	cpustate->RB(2) = xlt;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-    cpustate->RW(dst)--;
-	if (--cpustate->RW(cnt)) { CLR_V; cpustate->pc -= 4; } else SET_V;
+	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
+	if (--cpustate->RW(cnt)) {
+	  CLR_V;
+	  if (!xlt)
+	    cpustate->pc -= 4;
+	}
+	else SET_V;
 }
 
 /******************************************
@@ -5897,13 +5907,14 @@ static void ZB8_ddN0_1110_0000_rrrr_ssN0_1110(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_0000_0000_rrrr_ssN0_0000(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	WRMEM_B(cpustate,  cpustate->RW(dst), xlt);
-	cpustate->RW(dst)++;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	cpustate->RB(1) = xlt;	/* destroy RH1 */
+	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5912,13 +5923,14 @@ static void ZB8_ddN0_0000_0000_rrrr_ssN0_0000(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_0100_0000_rrrr_ssN0_0000(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	WRMEM_B(cpustate,  cpustate->RW(dst), xlt);
-	cpustate->RW(dst)++;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	cpustate->RB(1) = xlt;	/* destroy RH1 */
+	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
 	if (--cpustate->RW(cnt)) { CLR_V; cpustate->pc -= 4; } else SET_V;
 }
 
@@ -5927,13 +5939,14 @@ static void ZB8_ddN0_0100_0000_rrrr_ssN0_0000(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_1000_0000_rrrr_ssN0_0000(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	WRMEM_B(cpustate,  cpustate->RW(dst), xlt);
-    cpustate->RW(dst)--;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	cpustate->RB(1) = xlt;	/* destroy RH1 */
+	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5942,13 +5955,14 @@ static void ZB8_ddN0_1000_0000_rrrr_ssN0_0000(z8000_state *cpustate)
  flags:  -ZSV--
  ******************************************/
 static void ZB8_ddN0_1100_0000_rrrr_ssN0_0000(z8000_state *cpustate)
-{//@@@
+{
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate,  (UINT16)(cpustate->RW(src) + RDMEM_B(cpustate, cpustate->RW(dst))));
-	WRMEM_B(cpustate,  cpustate->RW(dst), xlt);
-    cpustate->RW(dst)--;
+	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	cpustate->RB(1) = xlt;	/* destroy RH1 */
+	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
 	if (--cpustate->RW(cnt)) { CLR_V; cpustate->pc -= 4; } else SET_V;
 }
 

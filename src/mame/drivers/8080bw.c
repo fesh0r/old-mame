@@ -927,6 +927,7 @@ INPUT_PORTS_END
 /*******************************************************/
 /*                                                     */
 /* Nichibutsu "Rolling Crash"                          */
+/* Press left-arrow to play "Moon Base"                */
 /*                                                     */
 /*******************************************************/
 
@@ -943,8 +944,9 @@ static ADDRESS_MAP_START( rollingc_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(rollingc_sh_port_w)
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2") AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
-	AM_RANGE(0x03, 0x03) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r)
+	AM_RANGE(0x03, 0x03) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r) AM_WRITE(invadpt2_sh_port_1_w)
 	AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_data_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(invadpt2_sh_port_2_w)
 ADDRESS_MAP_END
 
 
@@ -1265,14 +1267,25 @@ MACHINE_CONFIG_END
 
 
 
-/*******************************************************/
-/*                                                     */
-/* Taito "Lupin III"                                   */
-/*                                                     */
-/*******************************************************/
+/*******************************************************************************************/
+/*                                                                                         */
+/* Taito "Lupin III"                                                                       */
+/*                                                                                         */
+/*  The rom at 5000 is optional. It contains code for colour ram, and all tunes except     */
+/*  when the moneybag has been stolen. If you remove this rom, bits 0 and 1 of port 0      */
+/*  must be set High. The colour will then be determined by the 2 proms instead. Bit 6     */
+/*  of port 5 will select which prom to use.                                               */
+/*                                                                                         */
+/*  Differences between the 2 sets:                                                        */
+/*  - Set 2 has a language selection switch. In the Japanese position, it looks            */
+/*    the same as set 1. Set 1 is always in Japanese.                                      */
+/*  - Set 1, bit 6 of port 3 activates when the wife is kicking the man.                   */
+/*  - The dogs and policemen are yellow in set 1, and different colours in set 2.          */
+/*                                                                                         */
+/*******************************************************************************************/
 
 static ADDRESS_MAP_START( lupin3_io_map, AS_IO, 8, _8080bw_state )
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(lupin3_00_w)
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2") AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
 	AM_RANGE(0x03, 0x03) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r) AM_WRITE(lupin3_sh_port_1_w)
@@ -1354,7 +1367,18 @@ static MACHINE_CONFIG_DERIVED_CLASS( lupin3, mw8080bw_root, _8080bw_state )
 	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_indianbt)
 
 	/* sound hardware */
-	MCFG_FRAGMENT_ADD(invaders_samples_audio)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+
+	MCFG_SOUND_ADD("snsnd", SN76477, 0)
+	MCFG_SOUND_CONFIG(lupin3_sn76477_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
+
+	MCFG_SAMPLES_ADD("samples", lupin3_samples_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MCFG_SOUND_ADD("discrete", DISCRETE, 0)
+	MCFG_SOUND_CONFIG_DISCRETE(indianbt)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED_CLASS( lupin3a, mw8080bw_root, _8080bw_state )
@@ -1373,7 +1397,18 @@ static MACHINE_CONFIG_DERIVED_CLASS( lupin3a, mw8080bw_root, _8080bw_state )
 	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_lupin3)
 
 	/* sound hardware */
-	MCFG_FRAGMENT_ADD(invaders_samples_audio)
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+
+	MCFG_SOUND_ADD("snsnd", SN76477, 0)
+	MCFG_SOUND_CONFIG(lupin3_sn76477_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
+
+	MCFG_SAMPLES_ADD("samples", lupin3_samples_interface)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MCFG_SOUND_ADD("discrete", DISCRETE, 0)
+	MCFG_SOUND_CONFIG_DISCRETE(indianbt)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
 
@@ -1582,7 +1617,7 @@ INPUT_PORTS_END
 
 static ADDRESS_MAP_START( ballbomb_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1") AM_WRITE(ballbomb_01_w)
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2") AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_count_w)
 	AM_RANGE(0x03, 0x03) AM_DEVREAD_LEGACY("mb14241", mb14241_shift_result_r) AM_WRITE(ballbomb_sh_port_1_w)
 	AM_RANGE(0x04, 0x04) AM_DEVWRITE_LEGACY("mb14241", mb14241_shift_data_w)
@@ -1617,6 +1652,10 @@ static MACHINE_CONFIG_DERIVED_CLASS( ballbomb, mw8080bw_root, _8080bw_state )
 
 	/* sound hardware */
 	MCFG_FRAGMENT_ADD(invaders_samples_audio)
+
+	MCFG_SOUND_ADD("discrete", DISCRETE, 0)
+	MCFG_SOUND_CONFIG_DISCRETE(ballbomb)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 
 
@@ -2028,6 +2067,9 @@ Another (same checksums) dump came from board labeled SI-7811M-2
 MACHINE_START_MEMBER(_8080bw_state,darthvdr)
 {
 	/* do nothing for now - different interrupt system */
+	m_fleet_step = 3;
+	m_samples = machine().device<samples_device>("samples");
+	m_sn = machine().device("snsnd");
 }
 
 
@@ -2046,7 +2088,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( darthvdr_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("P1")
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("P2")
-	AM_RANGE(0x00, 0x0f) AM_WRITENOP
+
+	AM_RANGE(0x00, 0x00) AM_WRITE(darthvdr_00_w) // flipscreen
+	AM_RANGE(0x04, 0x04) AM_WRITENOP
+	AM_RANGE(0x08, 0x08) AM_WRITE(darthvdr_08_w) // sound
 ADDRESS_MAP_END
 
 
@@ -2057,9 +2102,9 @@ static INPUT_PORTS_START( darthvdr )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x00, "1000" )
+	PORT_DIPSETTING(    0x20, "3000" )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2072,7 +2117,7 @@ static INPUT_PORTS_START( darthvdr )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(2)
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x10, 0x10, "One less life" )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
@@ -2099,6 +2144,9 @@ static MACHINE_CONFIG_DERIVED_CLASS( darthvdr, mw8080bw_root, _8080bw_state )
 
 	MCFG_MACHINE_START_OVERRIDE(_8080bw_state,darthvdr)
 	MCFG_MACHINE_RESET_OVERRIDE(_8080bw_state,darthvdr)
+
+	/* sound hardware */
+	MCFG_FRAGMENT_ADD(invaders_samples_audio)
 MACHINE_CONFIG_END
 
 
@@ -3473,6 +3521,16 @@ ROM_START( invasionrza )
 	ROM_LOAD( "rz7-7.2k",   0x1c00, 0x0400, CRC(27dbea48) SHA1(f0bf5d31424dc72ac2e6fa01c528365efff838d2) )
 ROM_END
 
+ROM_START( ultrainv )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "in-01.bin",   0x0000, 0x0400, CRC(db9de599) SHA1(ccee1116ca924b520a126b63088a76d2ce8c396f) )
+	ROM_LOAD( "in-02.bin",   0x0400, 0x0400, CRC(febe6d1a) SHA1(e1c3a24b4fa5862107ada1f9d7249466e8c3f06a) )
+	ROM_LOAD( "in-03.bin",   0x0800, 0x0400, CRC(3d5c9820) SHA1(f3c83c660edf56a04148e2aa1c8e00427b86ca07) )
+	ROM_LOAD( "in-04.bin",   0x1400, 0x0400, CRC(1293b826) SHA1(165cd5d08a19eadbe954145b12807f10df9e691a) )
+	ROM_LOAD( "in-05.bin",   0x1800, 0x0400, CRC(e315a8c4) SHA1(dffec9e8bd7014fa34500b4bdac7feadac090482) )
+	ROM_LOAD( "in-06.bin",   0x1c00, 0x0400, CRC(d958478c) SHA1(9df38c400c500b45d306d52fe74cd4d5ca92c0f0) )
+ROM_END
+
 
 ROM_START( invmulti )
 	ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASE00 ) // decrypted rom goes here
@@ -3920,8 +3978,9 @@ GAMEL(1979, jspecter,   invaders, invaders,  jspecter,  driver_device, 0, ROT270
 GAMEL(1979, jspecter2,  invaders, invaders,  jspecter,  driver_device, 0, ROT270, "bootleg (Jatre)", "Jatre Specter (set 2)", GAME_SUPPORTS_SAVE, layout_invaders )
 GAMEL(1978, spacewr3,   invaders, spcewars,  sicv,      driver_device, 0, ROT270, "bootleg", "Space War Part 3", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE, layout_invaders ) // unrelated to Sanritsu's version?
 GAMEL(1978, invader4,   invaders, invaders,  sicv,      driver_device, 0, ROT270, "bootleg", "Space Invaders Part Four", GAME_SUPPORTS_SAVE, layout_invaders )
-GAME( 1978, darthvdr,   invaders, darthvdr,  darthvdr,  driver_device, 0, ROT270, "bootleg", "Darth Vader (bootleg of Space Invaders)", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
+GAME( 1978, darthvdr,   invaders, darthvdr,  darthvdr,  driver_device, 0, ROT270, "bootleg", "Darth Vader (bootleg of Space Invaders)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND )
 GAMEL(19??, tst_invd,   invaders, invaders,  sicv,      driver_device, 0, ROT0,   "<unknown>", "Space Invaders Test ROM", GAME_SUPPORTS_SAVE, layout_invaders )
+GAMEL(1980, ultrainv,   invaders, invaders,  sicv,      driver_device, 0, ROT270, "Konami", "Ultra Invaders", GAME_SUPPORTS_SAVE, layout_invaders )
 
 // other Taito
 GAME( 1979, invadpt2,   0,        invadpt2,  invadpt2,  driver_device, 0, ROT270, "Taito", "Space Invaders Part II (Taito)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND )
