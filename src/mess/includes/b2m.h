@@ -10,7 +10,7 @@
 #include "machine/i8255.h"
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 #include "sound/speaker.h"
 #include "sound/wave.h"
 
@@ -18,7 +18,8 @@ class b2m_state : public driver_device
 {
 public:
 	b2m_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		  m_maincpu(*this, "maincpu") { }
 
 	UINT8 m_b2m_8255_porta;
 	UINT8 m_b2m_video_scroll;
@@ -34,9 +35,10 @@ public:
 	UINT8 m_b2m_color[4];
 	UINT8 m_b2m_localmachine;
 	UINT8 m_vblank_state;
+	required_device<cpu_device> m_maincpu;
 
 	/* devices */
-	wd1773_t *m_fdc;
+	fd1793_t *m_fdc;
 	device_t *m_pic;
 	device_t *m_speaker;
 	DECLARE_READ8_MEMBER(b2m_keyboard_r);
@@ -61,6 +63,8 @@ public:
 	DECLARE_WRITE8_MEMBER(b2m_romdisk_portb_w);
 	DECLARE_WRITE8_MEMBER(b2m_romdisk_portc_w);
 	DECLARE_WRITE_LINE_MEMBER(b2m_pic_set_int_line);
+	void b2m_fdc_drq(bool state);
+	DECLARE_FLOPPY_FORMATS( b2m_floppy_formats );
 };
 
 /*----------- defined in machine/b2m.c -----------*/

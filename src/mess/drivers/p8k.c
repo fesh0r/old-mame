@@ -49,8 +49,6 @@
 #include "cpu/z80/z80.h"
 #include "cpu/z8000/z8000.h"
 #include "cpu/z80/z80daisy.h"
-#include "formats/mfi_dsk.h"
-#include "imagedev/flopdrv.h"
 #include "machine/upd765.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
@@ -373,11 +371,6 @@ void p8k_state::machine_start()
 		fdc->setup_drq_cb(i8272a_device::line_cb(FUNC(p8k_state::fdc_drq), this));
 	}
 }
-
-static const floppy_format_type p8k_floppy_formats[] = {
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
 
 static SLOT_INTERFACE_START( p8k_floppies )
 	SLOT_INTERFACE( "525hd", FLOPPY_525_HD )
@@ -731,8 +724,8 @@ static MACHINE_CONFIG_START( p8k, p8k_state )
 	MCFG_Z80PIO_ADD("z80pio_1", 1229000, p8k_pio_1_intf)
 	MCFG_Z80PIO_ADD("z80pio_2", 1229000, p8k_pio_2_intf)
 	MCFG_I8272A_ADD("i8272", true)
-	MCFG_FLOPPY_DRIVE_ADD("i8272:0", p8k_floppies, "525hd", 0, p8k_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("i8272:1", p8k_floppies, "525hd", 0, p8k_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("i8272:0", p8k_floppies, "525hd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("i8272:1", p8k_floppies, "525hd", 0, floppy_image_device::default_floppy_formats)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

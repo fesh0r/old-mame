@@ -41,9 +41,6 @@
 #include "video/upd7220.h"
 #include "machine/upd765.h"
 #include "machine/ram.h"
-#include "formats/mfi_dsk.h"
-#include "formats/d88_dsk.h"
-#include "formats/imd_dsk.h"
 
 #define MAIN_CLK	15974400
 
@@ -67,13 +64,13 @@ public:
 	m_fdc(*this, "upd765"),
 	m_hgdc(*this, "upd7220"),
 	m_rtc(*this, "rtc"),
-	m_vram_bank(0),
-	m_video_ram(*this, "video_ram"){ }
+	m_vram_bank(0)
+	{ }
 
-	required_device<device_t> m_pit_1;
-	required_device<device_t> m_pit_2;
-	required_device<device_t> m_pic_m;
-	required_device<device_t> m_pic_s;
+	required_device<pit8253_device> m_pit_1;
+	required_device<pit8253_device> m_pit_2;
+	required_device<pic8259_device> m_pic_m;
+	required_device<pic8259_device> m_pic_s;
 	required_device<upd7201_device> m_scc;
 	required_device<i8255_device> m_ppi;
 	required_device<i8237_device> m_dma_1;
@@ -82,7 +79,10 @@ public:
 	required_device<upd7220_device> m_hgdc;
 	required_device<mc146818_device> m_rtc;
 	UINT8 m_vram_bank;
-	required_shared_ptr<UINT8> m_video_ram;
+	//required_shared_ptr<UINT8> m_video_ram;
+	UINT8 *m_video_ram;
+
+	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -151,14 +151,15 @@ public:
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 {
 	qx10_state *state = device->machine().driver_data<qx10_state>();
+	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	int xi,gfx[3];
 	UINT8 pen;
 
 	if(state->m_color_mode)
 	{
-		gfx[0] = state->m_video_ram[(address * 2) + 0x00000];
-		gfx[1] = state->m_video_ram[(address * 2) + 0x20000];
-		gfx[2] = state->m_video_ram[(address * 2) + 0x40000];
+		gfx[0] = state->m_video_ram[(address) + 0x00000];
+		gfx[1] = state->m_video_ram[(address) + 0x20000];
+		gfx[2] = state->m_video_ram[(address) + 0x40000];
 	}
 	else
 	{
@@ -173,13 +174,14 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 		pen|= ((gfx[1] >> (7-xi)) & 1) ? 2 : 0;
 		pen|= ((gfx[2] >> (7-xi)) & 1) ? 4 : 0;
 
-		bitmap.pix16(y, x + xi) = pen;
+		bitmap.pix32(y, x + xi) = palette[pen];
 	}
 }
 
 static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 {
 	qx10_state *state = device->machine().driver_data<qx10_state>();
+	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	int x;
 	int xi,yi;
 	int tile;
@@ -212,22 +214,31 @@ static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 			{
 				int res_x,res_y;
 
+				res_x = x * 8 + xi;
+				res_y = y * lr + yi;
+
+				if(!device->machine().primary_screen->visible_area().contains(res_x, res_y))
+					continue;
+
 				if(yi >= 16)
 					pen = 0;
 				else
 					pen = ((tile_data >> xi) & 1) ? color : 0;
 
-				res_x = x * 8 + xi;
-				res_y = y * lr + yi;
-
-				if(res_x > screen_max_x || res_y > screen_max_y)
-					continue;
-
 				if(pen)
-					bitmap.pix16(res_y, res_x) = pen;
+					bitmap.pix32(res_y, res_x) = palette[pen];
 			}
 		}
 	}
+}
+
+UINT32 qx10_state::screen_update( screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect )
+{
+	bitmap.fill(get_black_pen(machine()), cliprect);
+
+	m_hgdc->screen_update(screen, bitmap, cliprect);
+
+	return 0;
 }
 
 /*
@@ -305,15 +316,8 @@ WRITE8_MEMBER( qx10_state::cmos_sel_w )
     FDD
 */
 
-static const floppy_format_type qx10_floppy_formats[] = {
-	FLOPPY_D88_FORMAT,
-	FLOPPY_IMD_FORMAT,
-	FLOPPY_MFI_FORMAT,
-	NULL // TODO: TD0 format
-};
-
 static SLOT_INTERFACE_START( qx10_floppies )
-	SLOT_INTERFACE( "525hd", FLOPPY_525_HD )
+	SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
 SLOT_INTERFACE_END
 
 void qx10_state::qx10_upd765_interrupt(bool state)
@@ -963,7 +967,7 @@ GFXDECODE_END
 void qx10_state::video_start()
 {
 	// allocate memory
-	//m_video_ram = auto_alloc_array_clear(machine(), UINT8, 0x60000);
+	m_video_ram = auto_alloc_array_clear(machine(), UINT8, 0x60000);
 
 	// find memory regions
 	m_char_rom = memregion("chargen")->base();
@@ -1007,8 +1011,7 @@ WRITE8_MEMBER( qx10_state::vram_w )
 }
 
 static ADDRESS_MAP_START( upd7220_map, AS_0, 8, qx10_state )
-	ADDRESS_MAP_GLOBAL_MASK(0x1ffff)
-	AM_RANGE(0x00000, 0x1ffff) AM_RAM AM_SHARE("video_ram")
+	AM_RANGE(0x00000, 0x5ffff) AM_READWRITE(vram_r,vram_w)
 ADDRESS_MAP_END
 
 
@@ -1022,7 +1025,7 @@ static MACHINE_CONFIG_START( qx10, qx10_state )
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(50)
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MCFG_SCREEN_UPDATE_DEVICE("upd7220", upd7220_device, screen_update)
+	MCFG_SCREEN_UPDATE_DRIVER(qx10_state, screen_update)
 	MCFG_SCREEN_SIZE(640, 480)
 	MCFG_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MCFG_GFXDECODE(qx10)
@@ -1037,11 +1040,11 @@ static MACHINE_CONFIG_START( qx10, qx10_state )
 	MCFG_I8255_ADD("i8255", qx10_i8255_interface)
 	MCFG_I8237_ADD("8237dma_1", MAIN_CLK/4, qx10_dma8237_1_interface)
 	MCFG_I8237_ADD("8237dma_2", MAIN_CLK/4, qx10_dma8237_2_interface)
-	MCFG_UPD7220_ADD("upd7220", MAIN_CLK/4, hgdc_intf, upd7220_map)
+	MCFG_UPD7220_ADD("upd7220", MAIN_CLK/6, hgdc_intf, upd7220_map) // unk clock
 	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
 	MCFG_UPD765A_ADD("upd765", true, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", qx10_floppies, "525hd", 0, qx10_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", qx10_floppies, "525hd", 0, qx10_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", qx10_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", qx10_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

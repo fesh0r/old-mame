@@ -10,7 +10,6 @@
 #include "cpu/i86/i86.h"
 #include "machine/upd765.h"
 #include "video/upd7220.h"
-#include "formats/mfi_dsk.h"
 
 class mz6500_state : public driver_device
 {
@@ -36,6 +35,7 @@ public:
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 {
 	mz6500_state *state = device->machine().driver_data<mz6500_state>();
+	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	int gfx[3];
 	UINT8 i,pen;
 
@@ -47,7 +47,7 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 	{
 		pen = (BIT(gfx[0], i)) | (BIT(gfx[1], i) << 1) | (BIT(gfx[2], i) << 2);
 
-		bitmap.pix16(y, x + i) = pen;
+		bitmap.pix32(y, x + i) = palette[pen];
 	}
 }
 
@@ -119,11 +119,6 @@ void mz6500_state::fdc_drq(bool state)
 	//printf("%02x DRQ\n",state);
 }
 
-static const floppy_format_type mz6500_floppy_formats[] = {
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
-
 static SLOT_INTERFACE_START( mz6500_floppies )
 	SLOT_INTERFACE( "525hd", FLOPPY_525_HD )
 SLOT_INTERFACE_END
@@ -145,7 +140,7 @@ ADDRESS_MAP_END
 
 static MACHINE_CONFIG_START( mz6500, mz6500_state )
 	/* basic machine hardware */
-	MCFG_CPU_ADD("maincpu", I8086, 4000000) //unk clock
+	MCFG_CPU_ADD("maincpu", I8086, 8000000) //unk clock
 	MCFG_CPU_PROGRAM_MAP(mz6500_map)
 	MCFG_CPU_IO_MAP(mz6500_io)
 
@@ -160,10 +155,10 @@ static MACHINE_CONFIG_START( mz6500, mz6500_state )
 	MCFG_PALETTE_LENGTH(8)
 
 	/* Devices */
-	MCFG_UPD7220_ADD("upd7220", 4000000, hgdc_intf, upd7220_map)
+	MCFG_UPD7220_ADD("upd7220", 8000000/6, hgdc_intf, upd7220_map) // unk clock
 	MCFG_UPD765A_ADD("upd765", true, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", mz6500_floppies, "525hd", 0, mz6500_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", mz6500_floppies, "525hd", 0, mz6500_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", mz6500_floppies, "525hd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", mz6500_floppies, "525hd", 0, floppy_image_device::default_floppy_formats)
 MACHINE_CONFIG_END
 
 /* ROM definition */

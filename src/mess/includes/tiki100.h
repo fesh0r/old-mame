@@ -7,13 +7,12 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "formats/basicdsk.h"
-#include "imagedev/flopdrv.h"
+#include "formats/tiki100_dsk.h"
 #include "machine/ram.h"
 #include "machine/z80ctc.h"
 #include "machine/z80dart.h"
 #include "machine/z80pio.h"
-#include "machine/wd17xx.h"
+#include "machine/wd_fdc.h"
 #include "sound/ay8910.h"
 
 #define SCREEN_TAG		"screen"
@@ -40,20 +39,22 @@ public:
 		  m_ctc(*this, Z80CTC_TAG),
 		  m_fdc(*this, FD1797_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_floppy0(*this, FLOPPY_0),
-		  m_floppy1(*this, FLOPPY_1)
+		  m_floppy0(*this, FD1797_TAG":0"),
+		  m_floppy1(*this, FD1797_TAG":1"),
+		  m_video_ram(*this, "video_ram")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<z80ctc_device> m_ctc;
-	required_device<device_t> m_fdc;
+	required_device<fd1797_t> m_fdc;
 	required_device<ram_device> m_ram;
-	required_device<device_t> m_floppy0;
-	required_device<device_t> m_floppy1;
+	required_device<floppy_connector> m_floppy0;
+	required_device<floppy_connector> m_floppy1;
+	optional_shared_ptr<UINT8> m_video_ram;
 
 	virtual void machine_start();
 
-	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	DECLARE_READ8_MEMBER( gfxram_r );
 	DECLARE_WRITE8_MEMBER( gfxram_w );
@@ -64,6 +65,7 @@ public:
 	DECLARE_WRITE8_MEMBER( system_w );
 	DECLARE_WRITE_LINE_MEMBER( ctc_z1_w );
 	DECLARE_WRITE8_MEMBER( video_scroll_w );
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
 	void bankswitch();
 
@@ -72,7 +74,6 @@ public:
 	int m_vire;
 
 	/* video state */
-	UINT8 *m_video_ram;
 	UINT8 m_scroll;
 	UINT8 m_mode;
 	UINT8 m_palette;

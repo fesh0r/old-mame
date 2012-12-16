@@ -13,7 +13,6 @@
 #include "machine/upd765.h"
 #include "machine/8237dma.h"
 #include "video/upd7220.h"
-#include "formats/mfi_dsk.h"
 #include "dmv.lh"
 
 class dmv_state : public driver_device
@@ -148,6 +147,7 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 {
 	dmv_state *state = device->machine().driver_data<dmv_state>();
+	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	UINT8 * chargen = state->memregion("maincpu")->base() + 0x1000;
 
 	for( int x = 0; x < pitch; x++ )
@@ -166,24 +166,19 @@ static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 				int res_x,res_y;
 				int pen = (tile_data >> xi) & 1 ? 1 : 0;
 
-				if(yi >= 16) { pen = 0; }
-
 				res_x = x * 8 + xi;
 				res_y = y * lr + yi;
 
-				if(res_x > screen_max_x || res_y > screen_max_y)
+				if(!device->machine().primary_screen->visible_area().contains(res_x, res_y))
 					continue;
 
-				bitmap.pix16(res_y, res_x) = pen;
+				if(yi >= 16) { pen = 0; }
+
+				bitmap.pix32(res_y, res_x) = palette[pen];
 			}
 		}
 	}
 }
-
-static const floppy_format_type dmv_floppy_formats[] = {
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
 
 static SLOT_INTERFACE_START( dmv_floppies )
 	 SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
@@ -330,11 +325,11 @@ static MACHINE_CONFIG_START( dmv, dmv_state )
 	MCFG_DEFAULT_LAYOUT(layout_dmv)
 
 	// devices
-	MCFG_UPD7220_ADD( "upd7220", XTAL_4MHz, hgdc_intf, upd7220_map )
+	MCFG_UPD7220_ADD( "upd7220", XTAL_5MHz/2, hgdc_intf, upd7220_map ) // unk clock
 	MCFG_I8237_ADD( "dma8237", XTAL_4MHz, dmv_dma8237_config )
 	MCFG_UPD765A_ADD( "upd765", true, true )
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", dmv_floppies, "525dd", 0, dmv_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", dmv_floppies, "525dd", 0, dmv_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", dmv_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", dmv_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
 MACHINE_CONFIG_END
 
 /* ROM definition */

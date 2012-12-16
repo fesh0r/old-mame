@@ -23,12 +23,10 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "formats/mfi_dsk.h"
 #include "formats/m5_dsk.h"
 #include "formats/sord_cas.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
-#include "imagedev/flopdrv.h"
 #include "machine/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/ram.h"
@@ -560,11 +558,9 @@ static I8255_INTERFACE( ppi_intf )
 //  upd765_interface fdc_intf
 //-------------------------------------------------
 
-static const floppy_format_type m5_floppy_formats[] = {
-	FLOPPY_M5_FORMAT,
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
+FLOPPY_FORMATS_MEMBER( m5_state::floppy_formats )
+	FLOPPY_M5_FORMAT
+FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( m5_floppies )
 	 SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
@@ -665,7 +661,7 @@ static MACHINE_CONFIG_START( m5, m5_state )
 	MCFG_CASSETTE_ADD(CASSETTE_TAG, cassette_intf)
 	MCFG_I8255_ADD(I8255A_TAG, ppi_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, true, true)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", m5_floppies, "525dd", 0, m5_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", m5_floppies, "525dd", 0, m5_state::floppy_formats)
 
 	// cartridge
 	MCFG_CARTSLOT_ADD("cart")

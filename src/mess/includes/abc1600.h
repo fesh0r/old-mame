@@ -6,8 +6,6 @@
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
-#include "formats/basicdsk.h"
-#include "imagedev/flopdrv.h"
 #include "machine/ram.h"
 #include "machine/8530scc.h"
 #include "machine/abc99.h"
@@ -15,7 +13,7 @@
 #include "machine/e0516.h"
 #include "machine/lux4105.h"
 #include "machine/nmc9306.h"
-#include "machine/wd17xx.h"
+#include "machine/wd_fdc.h"
 #include "machine/z80dart.h"
 #include "machine/z80dma.h"
 #include "machine/z8536.h"
@@ -69,11 +67,16 @@ public:
 		  m_nvram(*this, NMC9306_TAG),
 		  m_crtc(*this, SY6845E_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_floppy(*this, FLOPPY_0),
+		  m_floppy0(*this, SAB1797_02P_TAG":0"),
+		  m_floppy1(*this, SAB1797_02P_TAG":1"),
+		  m_floppy2(*this, SAB1797_02P_TAG":2"),
 		  m_bus0i(*this, BUS0I_TAG),
 		  m_bus0x(*this, BUS0X_TAG),
 		  m_bus1(*this, BUS1_TAG),
-		  m_bus2(*this, BUS2_TAG)
+		  m_bus2(*this, BUS2_TAG),
+		  m_segment_ram(*this, "segment_ram"),
+		  m_page_ram(*this, "page_ram"),
+		  m_video_ram(*this, "video_ram")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -83,16 +86,21 @@ public:
 	required_device<z80dart_device> m_dart;
 	required_device<scc8530_t> m_scc;
 	required_device<z8536_device> m_cio;
-	required_device<device_t> m_fdc;
+	required_device<fd1797_t> m_fdc;
 	required_device<e0516_device> m_rtc;
 	required_device<nmc9306_device> m_nvram;
 	required_device<mc6845_device> m_crtc;
 	required_device<ram_device> m_ram;
-	required_device<device_t> m_floppy;
+	required_device<floppy_connector> m_floppy0;
+	required_device<floppy_connector> m_floppy1;
+	required_device<floppy_connector> m_floppy2;
 	required_device<abc1600bus_slot_device> m_bus0i;
 	required_device<abc1600bus_slot_device> m_bus0x;
 	required_device<abc1600bus_slot_device> m_bus1;
 	required_device<abc1600bus_slot_device> m_bus2;
+	optional_shared_ptr<UINT8> m_segment_ram;
+	optional_shared_ptr<UINT16> m_page_ram;
+	optional_shared_ptr<UINT16> m_video_ram;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -114,7 +122,6 @@ public:
 
 	DECLARE_WRITE8_MEMBER( dmamap_w );
 	DECLARE_WRITE_LINE_MEMBER( dbrq_w );
-	DECLARE_WRITE_LINE_MEMBER( drq_w );
 	DECLARE_READ8_MEMBER( dma0_mreq_r );
 	DECLARE_WRITE8_MEMBER( dma0_mreq_w );
 	DECLARE_READ8_MEMBER( dma0_iorq_r );
@@ -142,6 +149,9 @@ public:
 	DECLARE_WRITE8_MEMBER( cio_pc_w );
 
 	DECLARE_WRITE_LINE_MEMBER( nmi_w );
+
+	void fdc_intrq_w(bool state);
+	void fdc_drq_w(bool state);
 
 	int get_current_task(offs_t offset);
 	offs_t get_segment_address(offs_t offset);
@@ -196,8 +206,6 @@ public:
 	// memory access controller
 	int m_ifc2;
 	UINT8 m_task;
-	UINT8 m_segment_ram[0x400];
-	UINT16 m_page_ram[0x400];
 
 	// DMA
 	UINT8 m_dmamap[8];
@@ -218,7 +226,6 @@ public:
 	const UINT8 *m_wrmsk_rom;	// write mask ROM
 	const UINT8 *m_shinf_rom;	// shifter info ROM
 	const UINT8 *m_drmsk_rom;	// data read mask ROM
-	UINT16 *m_video_ram;		// video RAM
 	int m_endisp;				// enable display
 	int m_clocks_disabled;		// clocks disabled
 	UINT16 m_gmdi;				// video RAM data latch
@@ -244,7 +251,6 @@ public:
 	int m_rmc;					// row match count
 	int m_cmc;					// column match count
 	int m_amm;					// active mover mask
-	UINT32 screen_update_abc1600(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 

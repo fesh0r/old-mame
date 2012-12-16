@@ -5,6 +5,7 @@
     12/05/2009 Skeleton driver.
 
     http://www.robotrontechnik.de/index.htm?/html/computer/a5105.htm
+    http://www.sax.de/~zander/bic/bic_bw.html
 
     - this looks like "somehow" inspired by the MSX1 machine?
 
@@ -21,7 +22,6 @@ ToDo:
 #include "video/upd7220.h"
 #include "machine/ram.h"
 #include "machine/upd765.h"
-#include "formats/mfi_dsk.h"
 #include "formats/a5105_dsk.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
@@ -37,16 +37,28 @@ class a5105_state : public driver_device
 public:
 	a5105_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-	m_maincpu(*this, "maincpu"),
-	m_hgdc(*this, "upd7220"),
-	m_cass(*this, CASSETTE_TAG),
-	m_beep(*this, BEEPER_TAG),
-	m_video_ram(*this, "video_ram"){ }
+		  m_maincpu(*this, "maincpu"),
+		  m_hgdc(*this, "upd7220"),
+		  m_cass(*this, CASSETTE_TAG),
+		  m_beep(*this, BEEPER_TAG),
+		  m_fdc(*this, "upd765a"),
+		  m_floppy0(*this, "upd765a:0"),
+		  m_floppy1(*this, "upd765a:1"),
+		  m_floppy2(*this, "upd765a:2"),
+		  m_floppy3(*this, "upd765a:3"),
+		  m_video_ram(*this, "video_ram")
+		{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<upd7220_device> m_hgdc;
 	required_device<cassette_image_device> m_cass;
-	required_device<device_t> m_beep;
+	required_device<beep_device> m_beep;
+	required_device<upd765a_device> m_fdc;
+	required_device<floppy_connector> m_floppy0;
+	required_device<floppy_connector> m_floppy1;
+	required_device<floppy_connector> m_floppy2;
+	required_device<floppy_connector> m_floppy3;
+
 	DECLARE_READ8_MEMBER(a5105_memsel_r);
 	DECLARE_READ8_MEMBER(key_r);
 	DECLARE_READ8_MEMBER(key_mux_r);
@@ -67,12 +79,14 @@ public:
 	virtual void machine_reset();
 	virtual void video_start();
 	virtual void palette_init();
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 };
 
 /* TODO */
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 {
 	a5105_state *state = device->machine().driver_data<a5105_state>();
+	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 
 	int xi,gfx;
 	UINT8 pen;
@@ -83,13 +97,14 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 	{
 		pen = ((gfx >> xi) & 1) ? 7 : 0;
 
-		bitmap.pix16(y, x + xi) = pen;
+		bitmap.pix32(y, x + xi) = palette[pen];
 	}
 }
 
 static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 {
 	a5105_state *state = device->machine().driver_data<a5105_state>();
+	const rgb_t *palette = palette_entry_list_raw(bitmap.palette());
 	int x;
 	int xi,yi;
 	int tile,color;
@@ -112,15 +127,21 @@ static UPD7220_DRAW_TEXT_LINE( hgdc_draw_text )
 				int res_x,res_y;
 				int pen = (tile_data >> xi) & 1 ? color : 0;
 
-				if(yi >= 8) { pen = 0; }
-
 				res_x = x * 8 + xi;
 				res_y = y * lr + yi;
 
-				if(res_x > screen_max_x || res_y > screen_max_y)
+				if(yi >= 8) { pen = 0; }
+
+				/* TODO: pitch is currently 40, this should actually go in the upd7220 device */
+				if(!device->machine().primary_screen->visible_area().contains(res_x*2+0, res_y))
 					continue;
 
-				bitmap.pix16(res_y, res_x) = pen;
+				bitmap.pix32(res_y, res_x*2+0) = palette[pen];
+
+				if(!device->machine().primary_screen->visible_area().contains(res_x*2+1, res_y))
+					continue;
+
+				bitmap.pix32(res_y, res_x*2+1) = palette[pen];
 			}
 		}
 	}
@@ -311,7 +332,12 @@ WRITE8_MEMBER( a5105_state::a5105_memsel_w )
 
 WRITE8_MEMBER( a5105_state::a5105_upd765_w )
 {
-	machine().device<upd765a_device>("upd765a")->tc_w(BIT(data, 4));
+	m_floppy0->get_device()->mon_w(!BIT(data,0));
+	m_floppy1->get_device()->mon_w(!BIT(data,1));
+	m_floppy2->get_device()->mon_w(!BIT(data,2));
+	m_floppy3->get_device()->mon_w(!BIT(data,3));
+
+	m_fdc->tc_w(BIT(data, 4));
 }
 
 static ADDRESS_MAP_START(a5105_io, AS_IO, 8, a5105_state)
@@ -520,14 +546,12 @@ static ADDRESS_MAP_START( upd7220_map, AS_0, 8, a5105_state)
 	AM_RANGE(0x00000, 0x1ffff) AM_RAM AM_SHARE("video_ram")
 ADDRESS_MAP_END
 
-static const floppy_format_type a5105_floppy_formats[] = {
-	FLOPPY_MFI_FORMAT,
-	FLOPPY_A5105_FORMAT,
-	NULL
-};
+FLOPPY_FORMATS_MEMBER( a5105_state::floppy_formats )
+	FLOPPY_A5105_FORMAT
+FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( a5105_floppies )
-	SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
+	SLOT_INTERFACE( "525qd", FLOPPY_525_QD )
 SLOT_INTERFACE_END
 
 static Z80CTC_INTERFACE( a5105_ctc_intf )
@@ -581,17 +605,17 @@ static MACHINE_CONFIG_START( a5105, a5105_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* Devices */
-	MCFG_UPD7220_ADD("upd7220", XTAL_15MHz, hgdc_intf, upd7220_map)
+	MCFG_UPD7220_ADD("upd7220", XTAL_15MHz / 16, hgdc_intf, upd7220_map) // unk clock
 	MCFG_Z80CTC_ADD( "z80ctc", XTAL_15MHz / 4, a5105_ctc_intf )
 	MCFG_Z80PIO_ADD( "z80pio", XTAL_15MHz / 4, a5105_pio_intf )
 
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
 
-	MCFG_UPD765A_ADD("upd765a", false, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765a:0", a5105_floppies, "525dd", 0, a5105_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765a:1", a5105_floppies, "525dd", 0, a5105_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765a:2", a5105_floppies, "525dd", 0, a5105_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765a:3", a5105_floppies, "525dd", 0, a5105_floppy_formats)
+	MCFG_UPD765A_ADD("upd765a", true, true)
+	MCFG_FLOPPY_DRIVE_ADD("upd765a:0", a5105_floppies, "525qd", 0, a5105_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765a:1", a5105_floppies, "525qd", 0, a5105_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765a:2", a5105_floppies, "525qd", 0, a5105_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765a:3", a5105_floppies, "525qd", 0, a5105_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

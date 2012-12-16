@@ -8,7 +8,6 @@
 #include "cpu/m68000/m68000.h"
 #include "cpu/m6800/m6800.h"
 #include "imagedev/cartslot.h"
-#include "imagedev/floppy.h"
 #include "machine/ram.h"
 #include "machine/6850acia.h"
 #include "machine/8530scc.h"
@@ -16,7 +15,7 @@
 #include "machine/mc68901.h"
 #include "machine/rescap.h"
 #include "machine/rp5c15.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 #include "sound/ay8910.h"
 #include "sound/lmc1992.h"
 
@@ -77,7 +76,6 @@ public:
 		  m_fdc(*this, WD1772_TAG),
 		  m_mfp(*this, MC68901_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
-		  //m_rs232(*this, RS232_TAG),
 		  m_ram(*this, RAM_TAG),
 		  m_acia_ikbd_irq(1),
 		  m_acia_midi_irq(1),
@@ -93,7 +91,6 @@ public:
 	required_device<wd1772_t> m_fdc;
 	required_device<mc68901_device> m_mfp;
 	required_device<centronics_device> m_centronics;
-	//required_device<device_t> m_rs232;
 	required_device<ram_device> m_ram;
 
 	void machine_start();
@@ -273,7 +270,7 @@ public:
 
 	floppy_image_device *floppy_devices[2];
 
-	static const floppy_format_type floppy_formats[];
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 	TIMER_CALLBACK_MEMBER(st_mouse_tick);
 	TIMER_CALLBACK_MEMBER(atarist_shifter_tick);
 	TIMER_CALLBACK_MEMBER(atarist_glue_tick);

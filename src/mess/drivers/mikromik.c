@@ -250,8 +250,6 @@ WRITE8_MEMBER( mm1_state::ls259_w )
 		if (LOG) logerror("MOTOR %u\n", d);
 		m_floppy0->mon_w(!d);
 		m_floppy1->mon_w(!d);
-
-		if (ioport("T5")->read()) m_fdc->ready_w(d);
 		break;
 	}
 }
@@ -683,18 +681,14 @@ static I8085_CONFIG( i8085_intf )
 //  upd765_interface fdc_intf
 //-------------------------------------------------
 
-static const floppy_format_type mm1_floppy_formats[] = {
-	FLOPPY_MM1_FORMAT,
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
-
-static const floppy_format_type mm2_floppy_formats[] = {
-	FLOPPY_MM2_FORMAT,
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
-
+FLOPPY_FORMATS_MEMBER( mm1_state::floppy_formats )
+	FLOPPY_MM1_FORMAT
+FLOPPY_FORMATS_END
+/*
+FLOPPY_FORMATS_MEMBER( mm2_state::floppy_formats )
+    FLOPPY_MM2_FORMAT
+FLOPPY_FORMATS_END
+*/
 static SLOT_INTERFACE_START( mm1_floppies )
 	SLOT_INTERFACE( "525qd", FLOPPY_525_QD )
 SLOT_INTERFACE_END
@@ -720,6 +714,10 @@ void mm1_state::fdc_drq(bool state)
 
 void mm1_state::machine_start()
 {
+	// floppy callbacks
+	m_fdc->setup_intrq_cb(upd765a_device::line_cb(FUNC(mm1_state::fdc_irq), this));
+	m_fdc->setup_drq_cb(upd765a_device::line_cb(FUNC(mm1_state::fdc_drq), this));
+
 	// find memory regions
 	m_mmu_rom = memregion("address")->base();
 	m_key_rom = memregion("keyboard")->base();
@@ -748,9 +746,6 @@ void mm1_state::machine_reset()
 
 	// reset LS259
 	for (i = 0; i < 8; i++) ls259_w(program, i, 0);
-
-	// set FDC ready
-	if (!ioport("T5")->read()) m_fdc->ready_w(true);
 
 	// reset FDC
 	m_fdc->reset();
@@ -786,8 +781,8 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	MCFG_UPD765A_ADD(UPD765_TAG, /* XTAL_16MHz/2/2 */ true, true)
 	MCFG_UPD7201_ADD(UPD7201_TAG, XTAL_6_144MHz/2, mpsc_intf)
 
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", mm1_floppies, "525qd", 0, mm1_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", mm1_floppies, "525qd", 0, mm1_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", mm1_floppies, "525qd", 0, mm1_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", mm1_floppies, "525qd", 0, mm1_state::floppy_formats)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

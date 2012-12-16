@@ -36,8 +36,6 @@
 #include "cpu/m6800/m6800.h"
 #include "video/mc6845.h"
 #include "sound/speaker.h"
-#include "imagedev/flopdrv.h"
-#include "formats/mfi_dsk.h"
 #include "formats/pyldin_dsk.h"
 #include "machine/upd765.h"
 #include "machine/ram.h"
@@ -77,13 +75,14 @@ public:
 	DECLARE_WRITE8_MEMBER(floppy_w);
 	DECLARE_READ8_MEMBER(floppy_r);
 	UINT8 selectedline(UINT16 data);
-	required_device<device_t> m_speaker;
+	required_device<speaker_sound_device> m_speaker;
 	required_device<upd765a_device> m_fdc;
 	required_device<ram_device> m_ram;
 	DECLARE_DRIVER_INIT(pyl601);
 	virtual void machine_reset();
 	virtual void video_start();
 	INTERRUPT_GEN_MEMBER(pyl601_interrupt);
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 };
 
 
@@ -503,11 +502,9 @@ INTERRUPT_GEN_MEMBER(pyl601_state::pyl601_interrupt)
 	device.execute().set_input_line(0, HOLD_LINE);
 }
 
-static const floppy_format_type pyl601_floppy_formats[] = {
-	FLOPPY_PYLDIN_FORMAT,
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
+FLOPPY_FORMATS_MEMBER( pyl601_state::floppy_formats )
+	FLOPPY_PYLDIN_FORMAT
+FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( pyl601_floppies )
 	SLOT_INTERFACE( "525hd", FLOPPY_525_HD )
@@ -574,8 +571,8 @@ static MACHINE_CONFIG_START( pyl601, pyl601_state )
 	/* Devices */
 	MCFG_MC6845_ADD("crtc", MC6845, XTAL_2MHz, pyl601_crtc6845_interface)
 	MCFG_UPD765A_ADD("upd765", true, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", pyl601_floppies, "525hd", 0, pyl601_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", pyl601_floppies, "525hd", 0, pyl601_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", pyl601_floppies, "525hd", 0, pyl601_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", pyl601_floppies, "525hd", 0, pyl601_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

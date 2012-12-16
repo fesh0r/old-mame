@@ -13,6 +13,7 @@
 #include "machine/serial.h"
 #include "machine/ser_mouse.h"
 #include "machine/pc_kbdc.h"
+#include "machine/upd765.h"
 
 class pc_state : public driver_device
 {
@@ -38,6 +39,8 @@ public:
 	UINT8 m_dma_offset[2][4];
 	UINT8 m_pc_spkrdata;
 	UINT8 m_pc_input;
+	UINT8 m_pcjr_dor;
+	emu_timer *m_pcjr_watchdog;
 
 	int						m_ppi_portc_switch_high;
 	int						m_ppi_speaker;
@@ -86,6 +89,7 @@ public:
 	DECLARE_MACHINE_START(mc1502);
 	TIMER_CALLBACK_MEMBER(pcjr_delayed_pic8259_irq);
 	TIMER_CALLBACK_MEMBER(pcjr_keyb_signal_callback);
+	TIMER_CALLBACK_MEMBER(pcjr_fdc_watchdog);
 	TIMER_CALLBACK_MEMBER(mc1502_keyb_signal_callback);
 	TIMER_CALLBACK_MEMBER(pc_rtc_timer);
 	TIMER_DEVICE_CALLBACK_MEMBER(pc_frame_interrupt);
@@ -126,9 +130,11 @@ public:
 	DECLARE_WRITE8_MEMBER(mc1502_wd17xx_aux_w);
 	DECLARE_READ8_MEMBER(mc1502_wd17xx_drq_r);
 	DECLARE_READ8_MEMBER(mc1502_wd17xx_motor_r);
+	DECLARE_WRITE8_MEMBER(pcjr_fdc_dor_w);
 
 	void fdc_interrupt(bool state);
 	void fdc_dma_drq(bool state);
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 };
 
 /*----------- defined in machine/pc.c -----------*/

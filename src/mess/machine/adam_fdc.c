@@ -105,10 +105,9 @@ void adam_fdc_device::fdc_intrq_w(bool state)
 	m_maincpu->set_input_line(INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-const floppy_format_type adam_fdc_device::floppy_formats[] = {
-	FLOPPY_ADAM_FORMAT, FLOPPY_MFM_FORMAT, FLOPPY_MFI_FORMAT,
-	NULL
-};
+FLOPPY_FORMATS_MEMBER( adam_fdc_device::floppy_formats )
+	FLOPPY_ADAM_FORMAT
+FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( adam_fdc_floppies )
 	SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
@@ -175,12 +174,13 @@ ioport_constructor adam_fdc_device::device_input_ports() const
 
 adam_fdc_device::adam_fdc_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, ADAM_FDC, "Adam FDC", tag, owner, clock),
-		device_adamnet_card_interface(mconfig, *this),
-		m_maincpu(*this, M6801_TAG),
-		m_fdc(*this, WD2793_TAG),
-		m_floppy0(*this, WD2793_TAG":0"),
-		m_ram(*this, "ram"),
-		m_image0(NULL)
+	  device_adamnet_card_interface(mconfig, *this),
+	  m_maincpu(*this, M6801_TAG),
+	  m_fdc(*this, WD2793_TAG),
+	  m_floppy0(*this, WD2793_TAG":0"),
+	  m_floppy(NULL),
+	  m_ram(*this, "ram"),
+	  m_sw3(*this, "SW3")
 {
 }
 
@@ -191,7 +191,7 @@ adam_fdc_device::adam_fdc_device(const machine_config &mconfig, const char *tag,
 
 void adam_fdc_device::device_start()
 {
-	m_fdc->setup_intrq_cb(wd2793_t::line_cb(FUNC(adam_fdc_device::fdc_intrq_w), this));
+	m_fdc->setup_intrq_cb(wd_fdc_t::line_cb(FUNC(adam_fdc_device::fdc_intrq_w), this));
 }
 
 
@@ -228,16 +228,16 @@ READ8_MEMBER( adam_fdc_device::p1_r )
 
     */
 
-	UINT8 data = 0;
+	UINT8 data = 0x00;
 
 	// disk in place
-	data |= m_floppy0->get_device()->exists();
+	data |= m_floppy0->get_device()->exists() ? 0x01 : 0x00;
 
 	// floppy data request
-	data |= m_fdc->drq_r() ? 0x04 : 0;
+	data |= m_fdc->drq_r() ? 0x04 : 0x00;
 
 	// drive select
-	data |= ioport("SW3")->read() << 7;
+	data |= m_sw3->read() << 7;
 
 	return data;
 }
@@ -271,17 +271,17 @@ WRITE8_MEMBER( adam_fdc_device::p1_w )
 	m_fdc->dden_w(BIT(data, 3));
 
 	// drive select
-	m_image0 = NULL;
+	m_floppy = NULL;
 
 	if (BIT(data, 5))
 	{
-		m_image0 = m_floppy0->get_device();
+		m_floppy = m_floppy0->get_device();
 	}
 
-	m_fdc->set_floppy(m_image0);
+	m_fdc->set_floppy(m_floppy);
 
 	// motor enable
-	if (m_image0) m_image0->mon_w(!BIT(data, 6));
+	if (m_floppy) m_floppy->mon_w(!BIT(data, 6));
 }
 
 

@@ -31,7 +31,6 @@
 */
 
 #include "includes/sage2.h"
-#include "formats/mfi_dsk.h"
 
 
 //**************************************************************************
@@ -304,8 +303,8 @@ READ8_MEMBER( sage2_state::ppi1_pb_r )
 	data = m_fdc->get_irq();
 
 	// floppy write protected
-	if (!m_sl0) data |= floppy_wpt_r(m_floppy0) << 1;
-	if (!m_sl1) data |= floppy_wpt_r(m_floppy1) << 1;
+	if (!m_sl0) data |= m_floppy0->wpt_r() << 1;
+	if (!m_sl1) data |= m_floppy1->wpt_r() << 1;
 
 	// RS-232 ring indicator
 
@@ -477,11 +476,6 @@ static const i8251_interface usart1_intf =
 //  upd765_interface fdc_intf
 //-------------------------------------------------
 
-static const floppy_format_type sage2_floppy_formats[] = {
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
-
 static SLOT_INTERFACE_START( sage2_floppies )
 	 SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
 SLOT_INTERFACE_END
@@ -596,8 +590,8 @@ static MACHINE_CONFIG_START( sage2, sage2_state )
 	MCFG_I8251_ADD(I8251_1_TAG, usart1_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, false, false)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", sage2_floppies, "525dd", 0, sage2_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", sage2_floppies, "525dd", 0, sage2_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", sage2_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", sage2_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
 	MCFG_IEEE488_BUS_ADD(ieee488_intf)
 
 	// internal ram

@@ -12,6 +12,8 @@
 
 VIDEO_START_MEMBER(special_state,special)
 {
+	palette_set_color(machine(),0,RGB_BLACK); /* black */
+	palette_set_color(machine(),1,RGB_WHITE); /* white */
 }
 
 UINT32 special_state::screen_update_special(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
@@ -80,7 +82,6 @@ PALETTE_INIT_MEMBER(special_state,specimx)
 VIDEO_START_MEMBER(special_state,specimx)
 {
 	m_specimx_colorram = auto_alloc_array(machine(), UINT8, 0x3000);
-	memset(m_specimx_colorram,0x70,0x3000);
 }
 
 UINT32 special_state::screen_update_specimx(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)

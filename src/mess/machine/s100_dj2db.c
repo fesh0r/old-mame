@@ -78,36 +78,32 @@ static COM8116_INTERFACE( brg_intf )
 //  wd17xx_interface fdc_intf
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( s100_dj2db_device::fdc_intrq_w )
-{
-	if (state) m_s100->rdy_w(CLEAR_LINE);
+static SLOT_INTERFACE_START( s100_dj2db_floppies )
+	SLOT_INTERFACE( "8dsdd", FLOPPY_8_DSDD )
+SLOT_INTERFACE_END
 
-	switch (ioport("J1A")->read())
+void s100_dj2db_device::fdc_intrq_w(bool state)
+{
+	if (state) m_bus->rdy_w(CLEAR_LINE);
+
+	switch (m_j1a->read())
 	{
-	case 0: m_s100->vi0_w(state); break;
-	case 1: m_s100->vi1_w(state); break;
-	case 2: m_s100->vi2_w(state); break;
-	case 3: m_s100->vi3_w(state); break;
-	case 4: m_s100->vi4_w(state); break;
-	case 5: m_s100->vi5_w(state); break;
-	case 6: m_s100->vi6_w(state); break;
-	case 7: m_s100->vi7_w(state); break;
-	case 8: m_s100->int_w(state); break;
+	case 0: m_bus->vi0_w(state); break;
+	case 1: m_bus->vi1_w(state); break;
+	case 2: m_bus->vi2_w(state); break;
+	case 3: m_bus->vi3_w(state); break;
+	case 4: m_bus->vi4_w(state); break;
+	case 5: m_bus->vi5_w(state); break;
+	case 6: m_bus->vi6_w(state); break;
+	case 7: m_bus->vi7_w(state); break;
+	case 8: m_bus->int_w(state); break;
 	}
 }
 
-WRITE_LINE_MEMBER( s100_dj2db_device::fdc_drq_w )
+void s100_dj2db_device::fdc_drq_w(bool state)
 {
-	if (state) m_s100->rdy_w(CLEAR_LINE);
+	if (state) m_bus->rdy_w(CLEAR_LINE);
 }
-
-static const wd17xx_interface fdc_intf =
-{
-	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, s100_dj2db_device, fdc_intrq_w),
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, s100_dj2db_device, fdc_drq_w),
-	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
-};
 
 
 //-------------------------------------------------
@@ -116,7 +112,12 @@ static const wd17xx_interface fdc_intf =
 
 static MACHINE_CONFIG_FRAGMENT( s100_dj2db )
 	MCFG_COM8116_ADD(BR1941_TAG, XTAL_5_0688MHz, brg_intf)
-	MCFG_MB8866_ADD(MB8866_TAG, fdc_intf)
+	MCFG_MB8866x_ADD(MB8866_TAG, XTAL_10MHz/5)
+
+	MCFG_FLOPPY_DRIVE_ADD(MB8866_TAG":0", s100_dj2db_floppies, "8dsdd", NULL, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(MB8866_TAG":1", s100_dj2db_floppies, NULL,    NULL, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(MB8866_TAG":2", s100_dj2db_floppies, NULL,    NULL, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(MB8866_TAG":3", s100_dj2db_floppies, NULL,    NULL, floppy_image_device::default_floppy_formats)
 MACHINE_CONFIG_END
 
 
@@ -260,6 +261,13 @@ s100_dj2db_device::s100_dj2db_device(const machine_config &mconfig, const char *
 	device_s100_card_interface(mconfig, *this),
 	m_fdc(*this, MB8866_TAG),
 	m_dbrg(*this, BR1941_TAG),
+	m_floppy0(*this, MB8866_TAG":0"),
+	m_floppy1(*this, MB8866_TAG":1"),
+	m_floppy2(*this, MB8866_TAG":2"),
+	m_floppy3(*this, MB8866_TAG":3"),
+	m_floppy(NULL),
+	m_j1a(*this, "J1A"),
+	m_ram(*this, "ram"),
 	m_drive(0),
 	m_head(1),
 	m_int_enbl(0),
@@ -276,17 +284,23 @@ s100_dj2db_device::s100_dj2db_device(const machine_config &mconfig, const char *
 
 void s100_dj2db_device::device_start()
 {
-	m_s100 = machine().device<s100_device>("s100");
-
+	// find memory regions
 	m_rom = memregion("dj2db")->base();
-	m_ram = auto_alloc_array(machine(), UINT8, 0x400);
 
-	// find floppy devices
-	m_floppy0 = machine().device(FLOPPY_0);
-	m_floppy1 = machine().device(FLOPPY_1);
+	// allocate memory
+	m_ram.allocate(0x400);
+
+	// floppy callbacks
+	m_fdc->setup_intrq_cb(wd_fdc_t::line_cb(FUNC(s100_dj2db_device::fdc_intrq_w), this));
+	m_fdc->setup_drq_cb(wd_fdc_t::line_cb(FUNC(s100_dj2db_device::fdc_drq_w), this));
 
 	// state saving
-	//save_item(NAME());
+	save_item(NAME(m_drive));
+	save_item(NAME(m_head));
+	save_item(NAME(m_int_enbl));
+	save_item(NAME(m_access_enbl));
+	save_item(NAME(m_board_enbl));
+	save_item(NAME(m_phantom));
 }
 
 
@@ -353,19 +367,17 @@ UINT8 s100_dj2db_device::s100_smemr_r(address_space &space, offs_t offset)
         */
 
 		data |= !m_head;
-		data |= !wd17xx_drq_r(m_fdc) << 1;
-		data |= !wd17xx_intrq_r(m_fdc) << 2;
-
-		device_t *floppy = m_drive ? m_floppy1 : m_floppy0;
-		data |= floppy_twosid_r(floppy) << 3;
-		data |= floppy_index_r(floppy) << 4;
-		data |= floppy_ready_r(floppy) << 7;
+		data |= !m_fdc->drq_r() << 1;
+		data |= !m_fdc->intrq_r() << 2;
+		data |= (m_floppy ? m_floppy->twosid_r() : 1) << 3;
+		data |= (m_floppy ? m_floppy->idx_r() : 1) << 4;
+		data |= (m_floppy ? m_floppy->ready_r() : 1) << 7;
 	}
 	else if ((offset >= 0xfbfc) && (offset < 0xfc00))
 	{
-		m_s100->rdy_w(ASSERT_LINE);
+		m_bus->rdy_w(ASSERT_LINE);
 
-		data = wd17xx_r(m_fdc, space, offset & 0x03);
+		data = m_fdc->gen_r(offset & 0x03);
 	}
 	else if ((offset >= 0xfc00) && (offset < 0x10000))
 	{
@@ -414,16 +426,21 @@ void s100_dj2db_device::s100_mwrt_w(address_space &space, offs_t offset, UINT8 d
         */
 
 		// drive select
-		if (BIT(data, 0)) m_drive = 0;
-		if (BIT(data, 1)) m_drive = 1;
-		//if (BIT(data, 2)) m_drive = 2;
-		//if (BIT(data, 3)) m_drive = 3;
-		wd17xx_set_drive(m_fdc, m_drive);
-		floppy_mon_w(m_floppy0, CLEAR_LINE);
-		floppy_mon_w(m_floppy1, CLEAR_LINE);
+		m_floppy = NULL;
+
+		if (BIT(data, 0)) m_floppy = m_floppy0->get_device();
+		if (BIT(data, 1)) m_floppy = m_floppy1->get_device();
+		if (BIT(data, 2)) m_floppy = m_floppy2->get_device();
+		if (BIT(data, 3)) m_floppy = m_floppy3->get_device();
+
+		m_fdc->set_floppy(m_floppy);
 
 		// side select
-		wd17xx_set_side(m_fdc, BIT(data, 4));
+		if (m_floppy)
+		{
+			m_floppy->ss_w(BIT(data, 4));
+			m_floppy->mon_w(0);
+		}
 
 		// interrupt enable
 		m_int_enbl = BIT(data, 5);
@@ -432,7 +449,7 @@ void s100_dj2db_device::s100_mwrt_w(address_space &space, offs_t offset, UINT8 d
 		m_access_enbl = BIT(data, 6);
 
 		// master reset
-		wd17xx_mr_w(m_fdc, BIT(data, 7));
+		if (!BIT(data, 7)) m_fdc->reset();
 	}
 	else if (offset == 0xfbfa) // FUNCTION SEL
 	{
@@ -452,14 +469,15 @@ void s100_dj2db_device::s100_mwrt_w(address_space &space, offs_t offset, UINT8 d
         */
 
 		// density select
-		wd17xx_dden_w(m_fdc, BIT(data, 0));
+		m_fdc->dden_w(BIT(data, 0));
 	}
 	else if (offset == 0xfbfb) // WAIT ENBL
 	{
+		fatalerror("Z80 WAIT not supported by MAME core\n");
 	}
 	else if ((offset >= 0xfbfc) && (offset < 0xfc00))
 	{
-		wd17xx_w(m_fdc, space, offset & 0x03, data);
+		m_fdc->gen_w(offset & 0x03, data);
 	}
 	else if ((offset >= 0xfc00) && (offset < 0x10000))
 	{

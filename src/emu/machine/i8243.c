@@ -10,7 +10,6 @@
 
 #include "emu.h"
 #include "i8243.h"
-#include "devhelpr.h"
 
 //**************************************************************************
 //  LIVE DEVICE
@@ -106,17 +105,17 @@ WRITE8_MEMBER(i8243_device::i8243_prog_w)
 		{
 			case MCS48_EXPANDER_OP_WRITE:
 				m_p[m_opcode & 3] = m_p2 & 0x0f;
-				m_writehandler((UINT8)(m_opcode & 3), (UINT8)(m_p[m_opcode & 3]));
+				m_writehandler((offs_t)(m_opcode & 3), m_p[m_opcode & 3]);
 				break;
 
 			case MCS48_EXPANDER_OP_OR:
 				m_p[m_opcode & 3] |= m_p2 & 0x0f;
-				m_writehandler((UINT8)(m_opcode & 3), (UINT8)(m_p[m_opcode & 3]));
+				m_writehandler((offs_t)(m_opcode & 3), m_p[m_opcode & 3]);
 				break;
 
 			case MCS48_EXPANDER_OP_AND:
 				m_p[m_opcode & 3] &= m_p2 & 0x0f;
-				m_writehandler((UINT8)(m_opcode & 3), (UINT8)(m_p[m_opcode & 3]));
+				m_writehandler((offs_t)(m_opcode & 3), m_p[m_opcode & 3]);
 				break;
 		}
 	}

@@ -5,7 +5,6 @@
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
-#include "imagedev/flopdrv.h"
 #include "machine/nscsi_bus.h"
 #include "machine/mccs1850.h"
 #include "machine/8530scc.h"
@@ -114,7 +113,7 @@ public:
 	void mo_irq(bool state);
 	void mo_drq(bool state);
 
-	static const floppy_format_type floppy_formats[];
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 	static const cdrom_interface cdrom_intf;
 	static const harddisk_interface harddisk_intf;
 

@@ -140,8 +140,8 @@ static MACHINE_CONFIG_FRAGMENT( wangpc_tig )
 
 	MCFG_PALETTE_LENGTH(3)
 
-	MCFG_UPD7220_ADD(UPD7720_0_TAG, XTAL_52_832MHz/10, hgdc0_intf, upd7220_0_map)
-	MCFG_UPD7220_ADD(UPD7720_1_TAG, XTAL_52_832MHz/16, hgdc1_intf, upd7220_1_map)
+	MCFG_UPD7220_ADD(UPD7720_0_TAG, XTAL_52_832MHz/28, hgdc0_intf, upd7220_0_map) // was /10?
+	MCFG_UPD7220_ADD(UPD7720_1_TAG, XTAL_52_832MHz/28, hgdc1_intf, upd7220_1_map) // was /16?
 MACHINE_CONFIG_END
 
 
@@ -206,7 +206,7 @@ void wangpc_tig_device::device_reset()
 //  screen_update -
 //-------------------------------------------------
 
-UINT32 wangpc_tig_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+UINT32 wangpc_tig_device::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	m_hgdc0->screen_update(screen, bitmap, cliprect);
 	m_hgdc1->screen_update(screen, bitmap, cliprect);

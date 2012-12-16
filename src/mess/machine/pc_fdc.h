@@ -8,18 +8,13 @@
 #define PC_FDC_H
 
 #include "emu.h"
-#include "imagedev/floppy.h"
-#include "upd765.h"
+#include "machine/upd765.h"
 
 #define MCFG_PC_FDC_XT_ADD(_tag) \
 	MCFG_DEVICE_ADD(_tag, PC_FDC_XT, 0)
 
 #define MCFG_PC_FDC_AT_ADD(_tag) \
 	MCFG_DEVICE_ADD(_tag, PC_FDC_AT, 0)
-
-#define MCFG_PC_FDC_JR_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, PC_FDC_JR, 0)
-
 
 class pc_fdc_family_device : public pc_fdc_interface {
 public:
@@ -74,16 +69,8 @@ public:
 	virtual DECLARE_ADDRESS_MAP(map, 8);
 };
 
-class pc_fdc_jr_device : public pc_fdc_family_device {
-public:
-	pc_fdc_jr_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
-};
-
-
 extern const device_type PC_FDC_XT;
 extern const device_type PC_FDC_AT;
-extern const device_type PC_FDC_JR;
-
 
 #if 0
 /* interface has been seperated, so that it can be used in the super i/o chip */

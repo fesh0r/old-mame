@@ -138,8 +138,6 @@
     </part>
   </software>
 
-  <!-- disable most things for now, until I actually get it working -->
-  <!--
   <software name="2020bb">
 	  <description>2020 Super Baseball (1995)(SNK)(JP-US)[!]</description>
 	  <year>199?</year>
@@ -250,7 +248,8 @@
 	  </part>
   </software>
 
-  <software name="lastbld2">
+  <!-- Resets after loading? -->
+  <software name="lastbld2" supported="no">
 	  <description>Bakumatsu Roman Daini Maku - Gekka no Kenshi - Tsuki ni Saku Hana, Chiri Yuku Hana (1999)(SNK)(JP)[!][Last Blade 2, The]</description>
 	  <year>199?</year>
 	  <publisher>SNK</publisher>
@@ -342,7 +341,8 @@
 	  </part>
   </software>
 
-  <software name="doubledr">
+  <!-- Hangs during loading due to erasing vectors -->
+  <software name="doubledr" supported="no">
 	  <description>Double Dragon (1995)(SNK)(JP-US)[!][NGCD-082 MT B01, NGCD-082E MT B04]</description>
 	  <year>199?</year>
 	  <publisher>SNK</publisher>
@@ -375,7 +375,8 @@
 	  </part>
   </software>
 
-  <software name="fatfury3">
+  <!-- Copy protection failure, select demo mode and leave it for a few cycles to see -->
+  <software name="fatfury3" supported="no">
 	  <description>Fatal Fury 3 - Road to the Final Victory (1995)(SNK)(JP-US)[!][Garou Densetsu 3 - Harukanaru Tatakai][NGCD-069, NGCD-069E MT B02]</description>
 	  <year>199?</year>
 	  <publisher>SNK</publisher>
@@ -386,7 +387,8 @@
 	  </part>
   </software>
 
-  <software name="fatfury3a" cloneof="fatfury3">
+  <!-- Copy protection failure, select demo mode and leave it for a few cycles to see -->
+  <software name="fatfury3a" cloneof="fatfury3" supported="no">
 	  <description>Fatal Fury 3 - Road to the Final Victory (1995)(SNK)(US)[!][Garou Densetsu 3 - Harukanaru Tatakai][NGCD-069E MT B03]</description>
 	  <year>199?</year>
 	  <publisher>SNK</publisher>
@@ -1159,7 +1161,5 @@
 		  </diskarea>
 	  </part>
   </software>
-
-  -->
 
 </softwarelist>

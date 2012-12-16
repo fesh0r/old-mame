@@ -10,7 +10,6 @@
 #include "machine/upd765.h"
 #include "machine/idectrl.h"
 #include "formats/basicdsk.h"
-#include "imagedev/flopdrv.h"
 #include "imagedev/harddriv.h"
 
 
@@ -32,6 +31,8 @@ public:
 	// optional information overrides
 	virtual machine_config_constructor device_mconfig_additions() const;
 	virtual const rom_entry *device_rom_region() const;
+
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
 protected:
 	// device-level overrides
@@ -101,7 +102,7 @@ public:
 	DECLARE_WRITE8_MEMBER(gide_w);
 
 private:
-	required_device<device_t> m_ide;
+	required_device<ide_controller_device> m_ide;
 
 	UINT16				m_ide_data;
 	int 				m_lh;

@@ -25,10 +25,8 @@
 #include "machine/i8251.h"
 
 /* Devices */
-#include "imagedev/flopdrv.h"
 #include "imagedev/cassette.h"
 #include "formats/tzx_cas.h"
-#include "formats/mfi_dsk.h"
 #include "machine/ram.h"
 
 
@@ -534,11 +532,6 @@ INTERRUPT_GEN_MEMBER(elwro800_state::elwro800jr_interrupt)
 	device.execute().set_input_line(0, HOLD_LINE);
 }
 
-static const floppy_format_type elwro800jr_floppy_formats[] = {
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
-
 static SLOT_INTERFACE_START( elwro800jr_floppies )
 	SLOT_INTERFACE( "525hd", FLOPPY_525_HD )
 SLOT_INTERFACE_END
@@ -604,8 +597,8 @@ static MACHINE_CONFIG_START( elwro800, elwro800_state )
 
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, elwro800jr_cassette_interface )
 
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", elwro800jr_floppies, "525hd", 0, elwro800jr_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", elwro800jr_floppies, "525hd", 0, elwro800jr_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", elwro800jr_floppies, "525hd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", elwro800jr_floppies, "525hd", 0, floppy_image_device::default_floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

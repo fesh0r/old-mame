@@ -9,8 +9,7 @@
 
 #include "video/mc6845.h"
 #include "cpu/z80/z80daisy.h"
-#include "imagedev/floppy.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 #include "machine/z80ctc.h"
 
 /***************************************************************************
@@ -67,7 +66,7 @@ public:
 	UINT8 *m_crtc_ram;
 	UINT8	m_de;
 
-	static const floppy_format_type floppy_formats[];
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 	DECLARE_WRITE8_MEMBER(einstein_80col_ram_w);
 	DECLARE_READ8_MEMBER(einstein_80col_ram_r);
 	DECLARE_READ8_MEMBER(einstein_80col_state_r);

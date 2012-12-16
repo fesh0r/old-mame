@@ -14,6 +14,11 @@ map a mirror of the custom chips right after any fast-mem we mapped.
 If we didn't map any, then we still put a mirror, but where fast-mem
 would commence ($C00000).
 
+Note 2: when you do disk swapping it often causes crashes in the system.
+This is because you have to UNLOAD the image first then LOAD whatever image
+the program asked to. Just like on a real system, apparently the Amiga is
+very fussy with the state machine.
+
 ***************************************************************************/
 /*
     Amiga 1200
@@ -60,6 +65,7 @@ would commence ($C00000).
 #include "machine/nvram.h"
 #include "sound/cdda.h"
 #include "machine/i2cmem.h"
+#include "amiga.lh"
 
 /* Devices */
 #include "imagedev/chd_cd.h"
@@ -390,7 +396,7 @@ WRITE8_MEMBER(a1200_state::ami1200_cia_0_porta_w)
 	device_t *device = machine().device("cia_0");
 
 	/* bit 2 = Power Led on Amiga */
-	set_led_status(machine(), 0, !BIT(data, 1));
+	output_set_value("audio_led", !BIT(data, 1));
 
 	handle_cd32_joystick_cia(this, data, mos6526_r(device, space, 2));
 }
@@ -621,6 +627,7 @@ static MSM6242_INTERFACE( amiga_rtc_intf )
 	DEVCB_NULL
 };
 
+
 static MACHINE_CONFIG_START( ntsc, amiga_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", M68000, AMIGA_68000_NTSC_CLOCK)
@@ -631,15 +638,18 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 	MCFG_DEVICE_DISABLE()
 
 	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(59.997)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+//  MCFG_SCREEN_REFRESH_RATE(59.997)
+//  MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MCFG_MACHINE_RESET_OVERRIDE(amiga_state, amiga )
 
+	MCFG_DEFAULT_LAYOUT(layout_amiga)
+
     /* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
-	MCFG_SCREEN_SIZE(228*4, 262)
-	MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 262-1)
+//  MCFG_SCREEN_SIZE(228*4, 262)
+//  MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 262-1)
+	MCFG_SCREEN_RAW_PARAMS(AMIGA_68000_NTSC_CLOCK*2,228*4,214,228*4,262,34,262)
 	MCFG_SCREEN_UPDATE_DRIVER(amiga_state, screen_update_amiga)
 
 	MCFG_PALETTE_LENGTH(4096)
@@ -662,7 +672,7 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 
 	/* cia */
 	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, 60, cia_0_ntsc_intf)
-	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK, 0, cia_1_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK / 10, 0, cia_1_intf)
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68000_NTSC_CLOCK)
@@ -721,8 +731,8 @@ static MACHINE_CONFIG_DERIVED_CLASS( cdtv, ntsc, cdtv_state)
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_DEVICE_REMOVE("cia_1")
-	MCFG_LEGACY_MOS8520_ADD("cia_0", CDTV_CLOCK_X1 / 40, 0, cia_0_cdtv_intf)
-	MCFG_LEGACY_MOS8520_ADD("cia_1", CDTV_CLOCK_X1 / 4, 0, cia_1_cdtv_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_0", CDTV_CLOCK_X1 / 4 / 40, 0, cia_0_cdtv_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", CDTV_CLOCK_X1 / 4 / 40, 0, cia_1_cdtv_intf)
 
 	/* fdc */
 	MCFG_DEVICE_MODIFY("fdc")
@@ -739,13 +749,16 @@ static MACHINE_CONFIG_DERIVED( pal, ntsc )
 	// Change the FDC clock too?
 
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_SIZE(228*4, 312)
-	MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 312-1)
+	MCFG_SCREEN_RAW_PARAMS(AMIGA_68000_PAL_CLOCK*2,228*4,214,228*4,312,34,312)
+//  MCFG_SCREEN_REFRESH_RATE(50)
+//  MCFG_SCREEN_SIZE(228*4, 312)
+//  MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 312-1)
 
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68000_PAL_CLOCK / 10, 50, cia_0_pal_intf)
+	MCFG_DEVICE_REMOVE("cia_1")
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_PAL_CLOCK / 10, 0, cia_1_intf)
 
 	/* fdc */
 	MCFG_DEVICE_MODIFY("fdc")
@@ -818,15 +831,20 @@ static MACHINE_CONFIG_START( a1200n, a1200_state )
 
 	MCFG_MACHINE_RESET_OVERRIDE(amiga_state, amiga )
 
+	/* TODO: params */
 	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(59.997)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MCFG_SCREEN_SIZE(512*2, 312)
-	MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
+//  MCFG_SCREEN_REFRESH_RATE(59.997)
+//  MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+//  MCFG_SCREEN_SIZE(512*2, 312)
+//  MCFG_SCREEN_VISIBLE_AREA((129-8-8)*2, (449+8-1+8)*2, 44-8, 300+8-1)
+//  MCFG_SCREEN_RAW_PARAMS(AMIGA_68EC020_NTSC_CLOCK,512*2,(129-8-8)*2,(449+8-1+8)*2,312,44-8,300+8)
+	MCFG_SCREEN_RAW_PARAMS(AMIGA_68EC020_NTSC_CLOCK,228*4,214,228*4,262,34,262)
+
 	MCFG_SCREEN_UPDATE_DRIVER(a1200_state, screen_update_amiga_aga)
 
 	MCFG_VIDEO_START_OVERRIDE(a1200_state,amiga_aga)
 
+	MCFG_DEFAULT_LAYOUT(layout_amiga)
 
 	MCFG_PALETTE_LENGTH(4096)
 	MCFG_PALETTE_INIT_OVERRIDE(amiga_state, amiga )
@@ -848,7 +866,7 @@ static MACHINE_CONFIG_START( a1200n, a1200_state )
 
 	/* cia */
 	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK /2 / 10, 60, cia_0_ntsc_intf)
-	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK /2, 0, cia_1_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK /2 / 10, 0, cia_1_intf)
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68EC020_NTSC_CLOCK / 2)
@@ -874,8 +892,10 @@ static MACHINE_CONFIG_DERIVED( a1200, a1200n )
 	MCFG_CPU_CLOCK(AMIGA_68EC020_PAL_CLOCK) /* 14.18758 MHz */
 
 	/* video hardware */
+	/* TODO: params */
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(50)
+//  MCFG_SCREEN_RAW_PARAMS(AMIGA_68EC020_PAL_CLOCK,512*2,(129-8-8)*2,(449+8-1+8)*2,312,44-8,300+8)
+	MCFG_SCREEN_RAW_PARAMS(AMIGA_68EC020_PAL_CLOCK,228*4,214,228*4,312,34,312)
 
 	/* sound hardware */
 	MCFG_SOUND_MODIFY("amiga")
@@ -885,7 +905,7 @@ static MACHINE_CONFIG_DERIVED( a1200, a1200n )
 	MCFG_DEVICE_MODIFY("cia_0")
 	MCFG_DEVICE_CLOCK(AMIGA_68EC020_PAL_CLOCK/10/2)
 	MCFG_DEVICE_MODIFY("cia_1")
-	MCFG_DEVICE_CLOCK(AMIGA_68EC020_PAL_CLOCK/2)
+	MCFG_DEVICE_CLOCK(AMIGA_68EC020_PAL_CLOCK/10/2)
 
 	/* fdc */
 	MCFG_DEVICE_MODIFY("fdc")
@@ -914,10 +934,13 @@ static MACHINE_CONFIG_START( a3000n, amiga_state )
 
 	MCFG_MACHINE_RESET_OVERRIDE(amiga_state, amiga )
 
+	MCFG_DEFAULT_LAYOUT(layout_amiga)
+
     /* video hardware */
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
-	MCFG_SCREEN_SIZE(228*4, 262)
-	MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 262-1)
+	MCFG_SCREEN_RAW_PARAMS(A3000_XTAL,228*4,214,228*4,262,34,262)
+//  MCFG_SCREEN_SIZE(228*4, 262)
+//  MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 262-1)
 	MCFG_SCREEN_UPDATE_DRIVER(amiga_state, screen_update_amiga)
 
 	MCFG_PALETTE_LENGTH(4096)
@@ -940,7 +963,7 @@ static MACHINE_CONFIG_START( a3000n, amiga_state )
 
 	/* cia */
 	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, 60, cia_0_ntsc_intf)
-	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK, 0, cia_1_intf)
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK / 10, 0, cia_1_intf)
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68000_NTSC_CLOCK)
@@ -958,13 +981,16 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( a3000, a3000n )
 
 	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_SIZE(228*4, 312)
-	MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 312-1)
+	MCFG_SCREEN_RAW_PARAMS(A3000_XTAL,228*4,214,228*4,312,34,312)
+//  MCFG_SCREEN_REFRESH_RATE(50)
+//  MCFG_SCREEN_SIZE(228*4, 312)
+//  MCFG_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 312-1)
 
 	/* cia */
 	MCFG_DEVICE_REMOVE("cia_0")
 	MCFG_LEGACY_MOS8520_ADD("cia_0", AMIGA_68000_PAL_CLOCK / 10, 50, cia_0_pal_intf)
+	MCFG_DEVICE_REMOVE("cia_1")
+	MCFG_LEGACY_MOS8520_ADD("cia_1", AMIGA_68000_PAL_CLOCK / 10, 0, cia_1_intf)
 
 	/* fdc */
 	MCFG_DEVICE_MODIFY("fdc")

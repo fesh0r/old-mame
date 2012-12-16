@@ -71,18 +71,20 @@ public:
 		  m_kb(*this, ABC80_KEYBOARD_TAG),
 		  m_ram(*this, RAM_TAG),
 		  m_rs232(*this, RS232_TAG),
+		  m_video_ram(*this, "video_ram"),
 		  m_tape_in(1),
 		  m_tape_in_latch(1)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<z80pio_device> m_pio;
-	required_device<device_t> m_psg;
+	required_device<sn76477_device> m_psg;
 	required_device<cassette_image_device> m_cassette;
 	required_device<abcbus_slot_device> m_bus;
 	required_device<abc80_keyboard_device> m_kb;
 	required_device<ram_device> m_ram;
 	required_device<rs232_port_device> m_rs232;
+	optional_shared_ptr<UINT8> m_video_ram;
 
 	enum
 	{
@@ -123,7 +125,6 @@ public:
 	int m_pio_astb;
 
 	// video state
-	UINT8 *m_video_ram;
 	UINT8 m_latch;
 	int m_blink;
 

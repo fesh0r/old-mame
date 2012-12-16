@@ -26,10 +26,7 @@ X (. to escape)
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/68681.h"
-#include "formats/hxcmfm_dsk.h"
-#include "formats/mfi_dsk.h"
-#include "imagedev/flopdrv.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 #include "machine/terminal.h"
 
 
@@ -46,11 +43,9 @@ public:
 		m_p_ram(*this, "p_ram"){ }
 
 
-	static const floppy_format_type floppy_formats[];
-
 	required_device<cpu_device> m_maincpu;
 	required_device<generic_terminal_device> m_terminal;
-	required_device<device_t> m_duart;
+	required_device<duart68681_device> m_duart;
 	required_device<wd1770_t> m_fdc;
 	DECLARE_WRITE8_MEMBER(kbd_put);
 	DECLARE_WRITE_LINE_MEMBER(ht68k_fdc_intrq_w);
@@ -59,18 +54,12 @@ public:
 };
 
 
-const floppy_format_type ht68k_state::floppy_formats[] = {
-	FLOPPY_MFM_FORMAT, FLOPPY_MFI_FORMAT,
-	NULL
-};
-
-
 static ADDRESS_MAP_START(ht68k_mem, AS_PROGRAM, 16, ht68k_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_SHARE("p_ram") // 512 KB RAM / ROM at boot
 	//AM_RANGE(0x00080000, 0x000fffff) // Expansion
 	//AM_RANGE(0x00d80000, 0x00d8ffff) // Printer
-	AM_RANGE(0x00e00000, 0x00e00007) AM_MIRROR(0xfff8) AM_DEVREADWRITE8("wd1770", wd177x_t, read, write, 0x00ff) // FDC WD1770
+	AM_RANGE(0x00e00000, 0x00e00007) AM_MIRROR(0xfff8) AM_DEVREADWRITE8("wd1770", wd1770_t, read, write, 0x00ff) // FDC WD1770
 	AM_RANGE(0x00e80000, 0x00e800ff) AM_MIRROR(0xff00) AM_DEVREADWRITE8_LEGACY("duart68681", duart68681_r, duart68681_w, 0xff )
 	AM_RANGE(0x00f00000, 0x00f07fff) AM_ROM AM_MIRROR(0xf8000) AM_REGION("user1",0)
 ADDRESS_MAP_END
@@ -159,10 +148,10 @@ static MACHINE_CONFIG_START( ht68k, ht68k_state )
 
 	MCFG_WD1770x_ADD("wd1770", XTAL_8MHz )
 
-	MCFG_FLOPPY_DRIVE_ADD("wd1770:0", ht68k_floppies, "525dd", 0, ht68k_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("wd1770:1", ht68k_floppies, "525dd", 0, ht68k_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("wd1770:2", ht68k_floppies, "525dd", 0, ht68k_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("wd1770:3", ht68k_floppies, "525dd", 0, ht68k_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1770:0", ht68k_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1770:1", ht68k_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1770:2", ht68k_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1770:3", ht68k_floppies, "525dd", 0, floppy_image_device::default_floppy_formats)
 MACHINE_CONFIG_END
 
 /* ROM definition */

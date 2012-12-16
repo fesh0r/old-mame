@@ -542,6 +542,9 @@ $(MAMEOBJ)/bfm.a: \
 	$(DRIVERS)/bfm_sc4.o \
 	$(DRIVERS)/bfm_sc4h.o \
 	$(DRIVERS)/bfm_sc5.o \
+	$(DRIVERS)/bfm_sc5sw.o \
+	$(DRIVERS)/bfm_ad5.o \
+	$(DRIVERS)/bfm_ad5sw.o \
 	$(DRIVERS)/bfm_swp.o \
 	$(DRIVERS)/bfmsys83.o \
 	$(DRIVERS)/bfmsys85.o \
@@ -588,6 +591,7 @@ $(MAMEOBJ)/cinemat.a: \
 	$(DRIVERS)/cinemat.o $(AUDIO)/cinemat.o $(VIDEO)/cinemat.o \
 	$(DRIVERS)/cchasm.o $(MACHINE)/cchasm.o $(AUDIO)/cchasm.o $(VIDEO)/cchasm.o \
 	$(DRIVERS)/dlair.o \
+	$(DRIVERS)/dlair2.o \
 	$(DRIVERS)/embargo.o \
 	$(DRIVERS)/jack.o $(VIDEO)/jack.o \
 	$(DRIVERS)/leland.o $(MACHINE)/leland.o $(AUDIO)/leland.o $(VIDEO)/leland.o \
@@ -846,10 +850,12 @@ $(MAMEOBJ)/jaleco.a: \
 $(MAMEOBJ)/jpm.a: \
 	$(DRIVERS)/guab.o \
 	$(DRIVERS)/jpmsys5.o \
+	$(DRIVERS)/jpmsys5sw.o \
 	$(DRIVERS)/jpmmps.o \
 	$(DRIVERS)/jpms80.o \
 	$(DRIVERS)/jpmsru.o \
 	$(DRIVERS)/jpmimpct.o $(VIDEO)/jpmimpct.o \
+	$(DRIVERS)/jpmimpctsw.o \
 	$(DRIVERS)/pluto5.o \
 	$(DRIVERS)/jpmsys7.o \
 	$(VIDEO)/awpvid.o \
@@ -974,6 +980,7 @@ $(MAMEOBJ)/konami.a: \
 
 $(MAMEOBJ)/maygay.a: \
 	$(DRIVERS)/maygay1b.o \
+	$(DRIVERS)/maygay1bsw.o \
 	$(DRIVERS)/maygayv1.o \
 	$(DRIVERS)/maygayep.o \
 	$(DRIVERS)/maygaysw.o \
@@ -1243,6 +1250,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/kopunch.o $(VIDEO)/kopunch.o \
 	$(MACHINE)/megadriv.o \
 	$(MACHINE)/megacd.o \
+	$(MACHINE)/megacdcd.o \
 	$(MACHINE)/mega32x.o \
 	$(MACHINE)/megasvp.o \
 	$(MACHINE)/megavdp.o \
@@ -1798,6 +1806,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/gumbo.o $(VIDEO)/gumbo.o \
 	$(DRIVERS)/gunpey.o \
 	$(DRIVERS)/hazelgr.o \
+	$(DRIVERS)/headonb.o \
 	$(DRIVERS)/highvdeo.o \
 	$(DRIVERS)/himesiki.o $(VIDEO)/himesiki.o \
 	$(DRIVERS)/hitpoker.o \
@@ -1819,6 +1828,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/kas89.o \
 	$(DRIVERS)/kingpin.o \
 	$(DRIVERS)/koikoi.o \
+	$(DRIVERS)/kurukuru.o \
 	$(DRIVERS)/kyugo.o $(VIDEO)/kyugo.o \
 	$(DRIVERS)/ladyfrog.o $(VIDEO)/ladyfrog.o \
 	$(DRIVERS)/laserbas.o \
@@ -1950,7 +1960,8 @@ $(DRIVERS)/30test.o:	$(LAYOUT)/30test.lh
 
 $(DRIVERS)/8080bw.o:	$(LAYOUT)/cosmicm.lh \
 			$(LAYOUT)/galactic.lh \
-			$(LAYOUT)/shuttlei.lh
+			$(LAYOUT)/shuttlei.lh \
+			$(LAYOUT)/spacecom.lh
 
 $(DRIVERS)/ace.o:		$(LAYOUT)/ace.lh
 
@@ -2067,6 +2078,8 @@ $(DRIVERS)/destroyr.o:	$(LAYOUT)/destroyr.lh
 $(DRIVERS)/dlair.o:		$(LAYOUT)/dlair.lh
 
 $(DRIVERS)/dragrace.o:	$(LAYOUT)/dragrace.lh
+
+$(DRIVERS)/ecoinf3.o:	$(LAYOUT)/ecoinf3.lh
 
 $(DRIVERS)/firebeat.o:	$(LAYOUT)/firebeat.lh
 

@@ -12,7 +12,7 @@
 #include "imagedev/cassette.h"
 #include "machine/i8255.h"
 #include "machine/pit8253.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 #include "machine/pic8259.h"
 #include "machine/i8251.h"
 #include "includes/b2m.h"
@@ -200,6 +200,12 @@ I8255A_INTERFACE( b2m_ppi8255_interface_1 )
 	DEVCB_DRIVER_MEMBER(b2m_state,b2m_8255_portc_w)
 };
 
+void b2m_state::b2m_fdc_drq(bool state)
+{
+	/* Clears HALT state of CPU when data is ready to read */
+	if (state)
+		m_maincpu->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+}
 
 
 WRITE8_MEMBER(b2m_state::b2m_ext_8255_portc_w)
@@ -218,9 +224,18 @@ WRITE8_MEMBER(b2m_state::b2m_ext_8255_portc_w)
 	if (m_b2m_drive!=drive) {
 		m_b2m_drive = drive;
 	}
-	floppy->ss_w(side);
+
 	if (m_b2m_side!=side) {
 		m_b2m_side = side;
+		floppy->ss_w(side);
+	}
+	/*
+        When bit 5 is set CPU is in HALT state and stay there until
+        DRQ is triggered from floppy side
+    */
+
+	if ((data & 0xf0)==0x20) {
+		m_maincpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 	}
 }
 
@@ -312,8 +327,10 @@ static void b2m_postload(b2m_state *state)
 void b2m_state::machine_start()
 {
 	m_pic = machine().device("pic8259");
-	m_fdc = machine().device<wd1773_t>("wd1793");
+	m_fdc = machine().device<fd1793_t>("fd1793");
 	m_speaker = machine().device(SPEAKER_TAG);
+
+	m_fdc->setup_drq_cb(fd1793_t::line_cb(FUNC(b2m_state::b2m_fdc_drq), this));
 
 	/* register for state saving */
 	save_item(NAME(m_b2m_8255_porta));

@@ -51,19 +51,79 @@ TODO:
     - Analog filters and VCA on the back end of the 5503
     - SQ-80 support (additional banking, FDC)
 
+NOTES:
+    Commands from KPC are all 2 bytes
+
+    first byte: command code, bit 7 is 1 = press, 0 = release
+    second byte is source: 00 = panel  01 = internal keyboard
+
+    04 SEQ
+    05 CART A
+    06 CART B
+    07 INT
+    08 1 / SEQ 1
+    09 2 / SEQ 2
+    0A 3 / SEQ 3
+    0B 4 / SONG
+    0C COMPARE
+    0D DATA UP
+    0E DATA DOWN
+    0F WRITE
+    10 = UPPER 1 (buttons above display)
+    11 = UPPER 2
+    12 = UPPER 3
+    13 = UPPER 4
+    14 = UPPER 5
+    15 = LOWER 1 (buttons below display)
+    16 = LOWER 2
+    17 = LOWER 3
+    18 = LOWER 4
+    19 = LOWER 5
+    1a = LFO 1
+    1b = ENV 2
+    1c = MASTER
+    1d = CREATE / ERASE
+    1e = SELECT
+    1f = RECORD
+    20 = STORAGE
+    21 = EDIT
+    22 = MIX
+    23 = STOP / CONT
+    24 = MIDI
+    25 = CONTROL
+    26 = LOCATE
+    27 = PLAY
+    28 = OSC 1
+    29 = OSC 2
+    2A = OSC 3
+    2B = ENV 1
+    2C = DCA 1
+    2D = DCA 2
+    2E = DCA 3
+    2F = LFO 2
+    30 = LFO 3
+    31 = FILTER
+    32 = ENV 4
+    33 = ENV 3
+    34 = DCA 4
+    35 = MODES
+    36 = SPLIT / LAYER
+
 ***************************************************************************/
 
 #include "emu.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/es5503.h"
 #include "machine/68681.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 
 #include "machine/esqvfd.h"
 
 #define WD1772_TAG		"wd1772"
 
-#define KEYBOARD_HACK   (0)
+// QWERTYU = a few keys
+// top row 1-0 = the soft keys above and below the display (patch select)
+#define KEYBOARD_HACK   (1)
 
 class esq1_state : public driver_device
 {
@@ -76,8 +136,8 @@ public:
         m_vfd(*this, "vfd")
     { }
 
-    required_device<device_t> m_maincpu;
-    required_device<device_t> m_duart;
+    required_device<cpu_device> m_maincpu;
+    required_device<duart68681_device> m_duart;
     optional_device<wd1772_t> m_fdc;
     optional_device<esq2x40_t> m_vfd;
 
@@ -102,7 +162,7 @@ static void esq1_doc_irq(device_t *device, int state)
 
 static UINT8 esq1_adc_read(device_t *device)
 {
-	return 0x80;
+	return 0x00;
 }
 
 void esq1_state::machine_reset()
@@ -160,6 +220,8 @@ static ADDRESS_MAP_START( esq1_map, AS_PROGRAM, 8, esq1_state )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM					// SEQRAM
 	AM_RANGE(0x6000, 0x63ff) AM_DEVREADWRITE("es5503", es5503_device, read, write)
 	AM_RANGE(0x6400, 0x640f) AM_DEVREADWRITE_LEGACY("duart", duart68681_r, duart68681_w)
+	AM_RANGE(0x6800, 0x68ff) AM_NOP
+
 	AM_RANGE(0x7000, 0x7fff) AM_ROMBANK("osbank")
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("osrom", 0x8000)	// OS "high" ROM is always mapped here
 ADDRESS_MAP_END
@@ -220,17 +282,16 @@ static void duart_tx(device_t *device, int channel, UINT8 data)
 
 	if (channel == 1)
     {
-        #if 0
-        if (data >= 0x20 && data <= 0x7f)
-        {
-            printf("%c", data);
-        }
-        else
-        {
-            printf("[%02x]", data);
-        }
-        #endif
-
+		#if 0
+		if ((data >= 0x20) && (data < 0x80))
+		{
+			printf("%c", data);
+		}
+		else
+		{
+			printf("[%02x]", data);
+		}
+		#endif
         state->m_vfd->write_char(data);
     }
 }
@@ -238,17 +299,29 @@ static void duart_tx(device_t *device, int channel, UINT8 data)
 #if KEYBOARD_HACK
 INPUT_CHANGED_MEMBER(esq1_state::key_stroke)
 {
-	esq1_state *state = device.machine().driver_data<esq1_state>();
-
     if (oldval == 0 && newval == 1)
     {
-        printf("key on %02x\n", (int)(FPTR)param);
         duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)param);
+		if ((UINT8)(FPTR)param >= 0x90)
+		{
+			duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)0x00);
+		}
+		else
+		{
+			duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)0x01);
+		}
     }
     else if (oldval == 1 && newval == 0)
     {
-        printf("key off %02x\n", (int)(FPTR)param);
-//        duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)param-0x40);
+        duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)param&0x7f);
+		if ((UINT8)(FPTR)param >= 0x90)
+		{
+			duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)0x00);
+		}
+		else
+		{
+			duart68681_rx_data(m_duart, 1, (UINT8)(FPTR)0x01);
+		}
     }
 }
 #endif
@@ -274,9 +347,15 @@ static MACHINE_CONFIG_START( esq1, esq1_state )
     MCFG_ESQ2x40_ADD("vfd")
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MCFG_ES5503_ADD("es5503", 7000000, esq1_doc_irq, esq1_adc_read)
+	MCFG_ES5503_ADD("es5503", 7000000, 8, esq1_doc_irq, esq1_adc_read)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
+	MCFG_SOUND_ROUTE(2, "lspeaker", 1.0)
+	MCFG_SOUND_ROUTE(3, "rspeaker", 1.0)
+	MCFG_SOUND_ROUTE(4, "lspeaker", 1.0)
+	MCFG_SOUND_ROUTE(5, "rspeaker", 1.0)
+	MCFG_SOUND_ROUTE(6, "lspeaker", 1.0)
+	MCFG_SOUND_ROUTE(7, "rspeaker", 1.0)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED(sq80, esq1)
@@ -300,23 +379,23 @@ static INPUT_PORTS_START( esq1 )
 	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_L) 			PORT_CHAR('l') PORT_CHAR('L') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x88)
 	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) 			PORT_CHAR('q') PORT_CHAR('Q') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x89)
 	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W)             PORT_CHAR('w') PORT_CHAR('W') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8a)
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) 			PORT_CHAR('e') PORT_CHAR('E') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8b)
-	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) 			PORT_CHAR('r') PORT_CHAR('R') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8c)
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) 			PORT_CHAR('t') PORT_CHAR('T') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8d)
-	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) 			PORT_CHAR('y') PORT_CHAR('Y') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8e)
-	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) 			PORT_CHAR('u') PORT_CHAR('U') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8f)
+	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) 			PORT_CHAR('e') PORT_CHAR('E') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8b)
+	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) 			PORT_CHAR('r') PORT_CHAR('R') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8c)
+	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T) 			PORT_CHAR('t') PORT_CHAR('T') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8d)
+	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y) 			PORT_CHAR('y') PORT_CHAR('Y') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8e)
+	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U) 			PORT_CHAR('u') PORT_CHAR('U') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x8f)
 
 	PORT_START("KEY1")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 			PORT_CHAR('1') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x0c)
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) 			PORT_CHAR('2') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x0d)
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) 			PORT_CHAR('3') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x0e)
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) 			PORT_CHAR('4') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x15)
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) 			PORT_CHAR('5') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x0f)
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) 			PORT_CHAR('6') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x10)
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) 			PORT_CHAR('7') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x11)
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) 			PORT_CHAR('8') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x12)
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 			PORT_CHAR('9') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x13)
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) 			PORT_CHAR('0') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x14)
+	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 			PORT_CHAR('1') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x90)
+	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) 			PORT_CHAR('2') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x91)
+	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) 			PORT_CHAR('3') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x92)
+	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) 			PORT_CHAR('4') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x93)
+	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) 			PORT_CHAR('5') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x99)
+	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) 			PORT_CHAR('6') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x94)
+	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) 			PORT_CHAR('7') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x95)
+	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) 			PORT_CHAR('8') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x96)
+	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 			PORT_CHAR('9') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x97)
+	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) 			PORT_CHAR('0') PORT_CHANGED_MEMBER(DEVICE_SELF, esq1_state, key_stroke, 0x98)
     #endif
 INPUT_PORTS_END
 

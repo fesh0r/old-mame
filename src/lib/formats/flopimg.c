@@ -20,8 +20,8 @@
 #include "pool.h"
 #include "imageutl.h"
 
-#define TRACK_LOADED		0x01
-#define TRACK_DIRTY			0x02
+#define TRACK_LOADED        0x01
+#define TRACK_DIRTY         0x02
 
 
 struct floppy_image_legacy
@@ -57,12 +57,12 @@ struct floppy_params
 static floperr_t floppy_track_unload(floppy_image_legacy *floppy);
 
 OPTION_GUIDE_START(floppy_option_guide)
-	OPTION_INT('H', "heads",			"Heads")
-	OPTION_INT('T', "tracks",			"Tracks")
-	OPTION_INT('S', "sectors",			"Sectors")
-	OPTION_INT('L', "sectorlength",		"Sector Bytes")
-	OPTION_INT('I', "interleave",		"Interleave")
-	OPTION_INT('F', "firstsectorid",	"First Sector")
+	OPTION_INT('H', "heads",            "Heads")
+	OPTION_INT('T', "tracks",           "Tracks")
+	OPTION_INT('S', "sectors",          "Sectors")
+	OPTION_INT('L', "sectorlength",     "Sector Bytes")
+	OPTION_INT('I', "interleave",       "Interleave")
+	OPTION_INT('F', "firstsectorid",    "First Sector")
 OPTION_GUIDE_END
 
 
@@ -550,7 +550,7 @@ done:
 
 
 
-floperr_t floppy_read_sector(floppy_image_legacy *floppy, int head, int track, int sector, int offset,	void *buffer, size_t buffer_len)
+floperr_t floppy_read_sector(floppy_image_legacy *floppy, int head, int track, int sector, int offset,  void *buffer, size_t buffer_len)
 {
 	return floppy_readwrite_sector(floppy, head, track, sector, offset, buffer, buffer_len, FALSE, FALSE, 0);
 }
@@ -564,7 +564,7 @@ floperr_t floppy_write_sector(floppy_image_legacy *floppy, int head, int track, 
 
 
 
-floperr_t floppy_read_indexed_sector(floppy_image_legacy *floppy, int head, int track, int sector_index, int offset,	void *buffer, size_t buffer_len)
+floperr_t floppy_read_indexed_sector(floppy_image_legacy *floppy, int head, int track, int sector_index, int offset,    void *buffer, size_t buffer_len)
 {
 	return floppy_readwrite_sector(floppy, head, track, sector_index, offset, buffer, buffer_len, FALSE, TRUE, 0);
 }
@@ -1015,7 +1015,7 @@ void floppy_image::get_actual_geometry(int &_tracks, int &_heads)
 				goto track_done;
 		maxt--;
 	}
- track_done:
+	track_done:
 	if(maxt >= 0)
 		while(maxh >= 0) {
 			for(int i=0; i<=maxt; i++)
@@ -1023,7 +1023,7 @@ void floppy_image::get_actual_geometry(int &_tracks, int &_heads)
 					goto head_done;
 			maxh--;
 		}
- head_done:
+	head_done:
 	_tracks = maxt+1;
 	_heads = maxh+1;
 }
@@ -1369,11 +1369,15 @@ void floppy_image_format_t::generate_track(const desc_e *desc, int track, int he
 			mfm_w(buffer, offset, 8, head);
 			break;
 
+		case HEAD_ID_SWAP:
+			mfm_w(buffer, offset, 8, !head);
+			break;
+
 		case TRACK_HEAD_ID_GCR6:
 			raw_w(buffer, offset, 8, gcr6fw_tb[(track & 0x40 ? 1 : 0) | (head ? 0x20 : 0)]);
 			break;
 
-        case SECTOR_ID:
+		case SECTOR_ID:
 			mfm_w(buffer, offset, 8, sect[sector_idx].sector_id);
 			break;
 
@@ -2131,7 +2135,7 @@ void floppy_image_format_t::generate_bitstream_from_track(int track, int head, i
 
 		// Wrap around
 		if(cur_entry == tsize-1 &&
-		   (tbuf[cur_entry] & floppy_image::TIME_MASK) < cur_pos) {
+			(tbuf[cur_entry] & floppy_image::TIME_MASK) < cur_pos) {
 			// Wrap to index 0 or 1 depending on whether there is a transition exactly at the index hole
 			cur_entry = (tbuf[tsize-1] & floppy_image::MG_MASK) != (tbuf[0] & floppy_image::MG_MASK) ?
 				0 : 1;
@@ -2462,4 +2466,162 @@ void floppy_image_format_t::get_track_data_fm_pc(int track, int head, floppy_ima
 		} else
 			memset(sd, 0, sector_size);
 	}
+}
+
+int floppy_image_format_t::calc_default_pc_gap3_size(UINT32 form_factor, int sector_size)
+{
+	return
+		form_factor == floppy_image::FF_8 ? 25 :
+		sector_size < 512 ?
+		(form_factor == floppy_image::FF_35 ? 54 : 50) :
+		(form_factor == floppy_image::FF_35 ? 84 : 80);
+}
+
+void floppy_image_format_t::build_wd_track_fm(int track, int head, floppy_image *image, int cell_count, int sector_count, const desc_pc_sector *sects, int gap_3, int gap_1, int gap_2)
+{
+	build_pc_track_fm(track, head, image, cell_count, sector_count, sects, gap_3, -1, gap_1, gap_2);
+}
+
+void floppy_image_format_t::build_wd_track_mfm(int track, int head, floppy_image *image, int cell_count, int sector_count, const desc_pc_sector *sects, int gap_3, int gap_1, int gap_2)
+{
+	build_pc_track_mfm(track, head, image, cell_count, sector_count, sects, gap_3, -1, gap_1, gap_2);
+}
+
+void floppy_image_format_t::build_pc_track_fm(int track, int head, floppy_image *image, int cell_count, int sector_count, const desc_pc_sector *sects, int gap_3, int gap_4a, int gap_1, int gap_2)
+{
+	UINT32 *track_data = global_alloc_array(UINT32, cell_count+10000);
+	int tpos = 0;
+
+	// gap 4a , IAM and gap 1
+	if(gap_4a != -1) {
+		for(int i=0; i<gap_4a; i++) fm_w(track_data, tpos, 8, 0xff);
+		for(int i=0; i< 6;     i++) fm_w(track_data, tpos, 8, 0x00);
+		raw_w(track_data, tpos, 16, 0xf77a);
+	}
+	for(int i=0; i<gap_1; i++) fm_w(track_data, tpos, 8, 0xff);
+
+	int total_size = 0;
+	for(int i=0; i<sector_count; i++)
+		total_size += sects[i].actual_size;
+
+	int etpos = tpos;
+	etpos += (sector_count*(6+5+2+11+6+1+2) + total_size)*16;
+
+	if(etpos > cell_count)
+		throw emu_fatalerror("Incorrect layout on track %d head %d, expected_size=%d, current_size=%d", track, head, cell_count, etpos);
+
+	if(etpos + gap_3*16*(sector_count-1) > cell_count)
+		gap_3 = (cell_count - etpos) / 16 / (sector_count-1);
+
+	// Build the track
+	for(int i=0; i<sector_count; i++) {
+		int cpos;
+		UINT16 crc;
+		// sync and IDAM and gap 2
+		for(int j=0; j< 6; j++) fm_w(track_data, tpos, 8, 0x00);
+		cpos = tpos;
+		raw_w(track_data, tpos, 16, 0xf57e);
+		fm_w (track_data, tpos, 8, sects[i].track);
+		fm_w (track_data, tpos, 8, sects[i].head);
+		fm_w (track_data, tpos, 8, sects[i].sector);
+		fm_w (track_data, tpos, 8, sects[i].size);
+		crc = calc_crc_ccitt(track_data, cpos, tpos);
+		fm_w (track_data, tpos, 16, crc);
+		for(int j=0; j<gap_2; j++) fm_w(track_data, tpos, 8, 0xff);
+
+		if(!sects[i].data)
+			for(int j=0; j<6+1+sects[i].actual_size+2+gap_3; j++) fm_w(track_data, tpos, 8, 0xff);
+
+		else {
+			// sync, DAM, data and gap 3
+			for(int j=0; j< 6; j++) fm_w(track_data, tpos, 8, 0x00);
+			cpos = tpos;
+			raw_w(track_data, tpos, 16, sects[i].deleted ? 0xf56a : 0xf56f);
+			for(int j=0; j<sects[i].actual_size; j++) fm_w(track_data, tpos, 8, sects[i].data[j]);
+			crc = calc_crc_ccitt(track_data, cpos, tpos);
+			if(sects[i].bad_crc)
+				crc = 0xffff^crc;
+			fm_w(track_data, tpos, 16, crc);
+			for(int j=0; j<gap_3; j++) fm_w(track_data, tpos, 8, 0xff);
+		}
+	}
+
+	// Gap 4b
+
+	while(tpos < cell_count-15) fm_w(track_data, tpos, 8, 0xff);
+	raw_w(track_data, tpos, cell_count-tpos, 0xffff >> (16+tpos-cell_count));
+
+	generate_track_from_levels(track, head, track_data, cell_count, 0, image);
+	global_free(track_data);
+}
+
+void floppy_image_format_t::build_pc_track_mfm(int track, int head, floppy_image *image, int cell_count, int sector_count, const desc_pc_sector *sects, int gap_3, int gap_4a, int gap_1, int gap_2)
+{
+	UINT32 *track_data = global_alloc_array(UINT32, cell_count+10000);
+	int tpos = 0;
+
+	// gap 4a , IAM and gap 1
+	if(gap_4a != -1) {
+		for(int i=0; i<gap_4a; i++) mfm_w(track_data, tpos, 8, 0x4e);
+		for(int i=0; i<12;     i++) mfm_w(track_data, tpos, 8, 0x00);
+		for(int i=0; i< 3;     i++) raw_w(track_data, tpos, 16, 0x5224);
+		mfm_w(track_data, tpos, 8, 0xfc);
+	}
+	for(int i=0; i<gap_1; i++) mfm_w(track_data, tpos, 8, 0x4e);
+
+	int total_size = 0;
+	for(int i=0; i<sector_count; i++)
+		total_size += sects[i].actual_size;
+
+	int etpos = tpos;
+	etpos += (sector_count*(12+3+5+2+gap_2+12+3+1+2) + total_size)*16;
+
+	if(etpos > cell_count)
+		throw emu_fatalerror("Incorrect layout on track %d head %d, expected_size=%d, current_size=%d", track, head, cell_count, etpos);
+
+	if(etpos + gap_3*16*(sector_count-1) > cell_count)
+		gap_3 = (cell_count - etpos) / 16 / (sector_count-1);
+
+	// Build the track
+	for(int i=0; i<sector_count; i++) {
+		int cpos;
+		UINT16 crc;
+		// sync and IDAM and gap 2
+		for(int j=0; j<12; j++) mfm_w(track_data, tpos, 8, 0x00);
+		cpos = tpos;
+		for(int j=0; j< 3; j++) raw_w(track_data, tpos, 16, 0x4489);
+		mfm_w(track_data, tpos, 8, 0xfe);
+		mfm_w(track_data, tpos, 8, sects[i].track);
+		mfm_w(track_data, tpos, 8, sects[i].head);
+		mfm_w(track_data, tpos, 8, sects[i].sector);
+		mfm_w(track_data, tpos, 8, sects[i].size);
+		crc = calc_crc_ccitt(track_data, cpos, tpos);
+		mfm_w(track_data, tpos, 16, crc);
+		for(int j=0; j<gap_2; j++) mfm_w(track_data, tpos, 8, 0x4e);
+
+		if(!sects[i].data)
+			for(int j=0; j<12+4+sects[i].actual_size+2+gap_3; j++) mfm_w(track_data, tpos, 8, 0x4e);
+
+		else {
+			// sync, DAM, data and gap 3
+			for(int j=0; j<12; j++) mfm_w(track_data, tpos, 8, 0x00);
+			cpos = tpos;
+			for(int j=0; j< 3; j++) raw_w(track_data, tpos, 16, 0x4489);
+			mfm_w(track_data, tpos, 8, sects[i].deleted ? 0xf8 : 0xfb);
+			for(int j=0; j<sects[i].actual_size; j++) mfm_w(track_data, tpos, 8, sects[i].data[j]);
+			crc = calc_crc_ccitt(track_data, cpos, tpos);
+			if(sects[i].bad_crc)
+				crc = 0xffff^crc;
+			mfm_w(track_data, tpos, 16, crc);
+			for(int j=0; j<gap_3; j++) mfm_w(track_data, tpos, 8, 0x4e);
+		}
+	}
+
+	// Gap 4b
+
+	while(tpos < cell_count-15) mfm_w(track_data, tpos, 8, 0x4e);
+	raw_w(track_data, tpos, cell_count-tpos, 0x9254 >> (16+tpos-cell_count));
+
+	generate_track_from_levels(track, head, track_data, cell_count, 0, image);
+	global_free(track_data);
 }

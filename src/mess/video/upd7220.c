@@ -27,7 +27,8 @@
     - QX-10 diagnostic test has positioning bugs with the bitmap display test;
     - QX-10 diagnostic test misses the zooming factor (external pin);
     - compis2 SAD address for bitmap is 0x20000 for whatever reason (presumably missing banking);
-    - A5105 has a FIFO bug with the RDAT, should be a lot larger when it scrolls up;
+    - A5105 has a FIFO bug with the RDAT, should be a lot larger when it scrolls up.
+      The problem is that DMA-ing with RDAT/WDAT shouldn't be instant;
 
     - honor visible area
     - wide mode (32-bit access)
@@ -391,7 +392,9 @@ inline void upd7220_device::update_blank_timer(int state)
 
 inline void upd7220_device::recompute_parameters()
 {
-	int horiz_pix_total = (m_hs + m_hbp + m_aw + m_hfp) * 8;
+	/* TODO: assume that the pitch also controls number of horizontal pixels in a single cell */
+	int horiz_mult = ((m_pitch == 40) ? 16 : 8);
+	int horiz_pix_total = (m_hs + m_hbp + m_aw + m_hfp) * horiz_mult;
 	int vert_pix_total = m_vs + m_vbp + m_al + m_vfp;
 
 	//printf("%d %d %d %d\n",m_hs,m_hbp,m_aw,m_hfp);
@@ -400,20 +403,21 @@ inline void upd7220_device::recompute_parameters()
 	if (horiz_pix_total == 0 || vert_pix_total == 0) //bail out if screen params aren't valid
 		return;
 
-	attoseconds_t refresh = HZ_TO_ATTOSECONDS(60); //HZ_TO_ATTOSECONDS(clock() * 8) * horiz_pix_total * vert_pix_total;
+	attoseconds_t refresh = HZ_TO_ATTOSECONDS(clock() * horiz_mult) * horiz_pix_total * vert_pix_total;
 
 	rectangle visarea;
 
 	visarea.min_x = 0; //(m_hs + m_hbp) * 8;
 	visarea.min_y = 0; //m_vs + m_vbp;
-	visarea.max_x = m_aw * 8 - 1;//horiz_pix_total - (m_hfp * 8) - 1;
+	visarea.max_x = m_aw * horiz_mult - 1;//horiz_pix_total - (m_hfp * 8) - 1;
 	visarea.max_y = m_al - 1;//vert_pix_total - m_vfp - 1;
-
 
 	if (LOG)
 	{
 		logerror("uPD7220 '%s' Screen: %u x %u @ %f Hz\n", tag(), horiz_pix_total, vert_pix_total, 1 / ATTOSECONDS_TO_DOUBLE(refresh));
-		logerror("uPD7220 '%s' Visible Area: (%u, %u) - (%u, %u)\n", tag(), visarea.min_x, visarea.min_y, visarea.max_x, visarea.max_y);
+		logerror("Visible Area: (%u, %u) - (%u, %u)\n", visarea.min_x, visarea.min_y, visarea.max_x, visarea.max_y);
+		logerror("%d %d %d %d %d\n",m_hs,m_hbp,m_aw,m_hfp,m_pitch);
+		logerror("%d %d %d %d\n",m_vs,m_vbp,m_al,m_vfp);
 	}
 
 	if (m_m)
@@ -1248,13 +1252,13 @@ void upd7220_device::process_fifo()
 	case COMMAND_START: /* start display & end idle mode */
 		m_de = 1;
 
-		if (LOG) logerror("uPD7220 '%s' DE: 1\n", tag());
+		//if (LOG) logerror("uPD7220 '%s' DE: 1\n", tag());
 		break;
 
 	case COMMAND_BCTRL: /* display blanking control */
 		m_de = m_cr & 0x01;
 
-		if (LOG) logerror("uPD7220 '%s' DE: %u\n", tag(), m_de);
+		//if (LOG) logerror("uPD7220 '%s' DE: %u\n", tag(), m_de);
 		break;
 
 	case COMMAND_ZOOM: /* zoom factors specify */
@@ -1275,12 +1279,12 @@ void upd7220_device::process_fifo()
 
 			m_ead = (upper_addr << 16) | (m_pr[2] << 8) | m_pr[1];
 
-			if (LOG) logerror("uPD7220 '%s' EAD: %06x\n", tag(), m_ead);
+			//if (LOG) logerror("uPD7220 '%s' EAD: %06x\n", tag(), m_ead);
 
 			if(m_param_ptr == 4)
 			{
 				m_dad = m_pr[3] >> 4;
-				if (LOG) logerror("uPD7220 '%s' DAD: %01x\n", tag(), m_dad);
+				//if (LOG) logerror("uPD7220 '%s' DAD: %01x\n", tag(), m_dad);
 			}
 		}
 		break;
@@ -1554,7 +1558,7 @@ WRITE_LINE_MEMBER( upd7220_device::lpen_w )
 //  update_text -
 //-------------------------------------------------
 
-void upd7220_device::update_text(bitmap_ind16 &bitmap, const rectangle &cliprect)
+void upd7220_device::update_text(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	UINT32 addr, sad;
 	UINT16 len;
@@ -1570,7 +1574,7 @@ void upd7220_device::update_text(bitmap_ind16 &bitmap, const rectangle &cliprect
 			addr = sad + (y * m_pitch);
 
 			if (m_draw_text_cb)
-				m_draw_text_cb(this, bitmap, addr, y, wd, m_pitch, 0, 0, m_aw * 8 - 1, m_al - 1, m_lr, m_dc, m_ead);
+				m_draw_text_cb(this, bitmap, addr, y, wd, m_pitch, m_lr, m_dc, m_ead);
 		}
 
 		sy = y + 1;
@@ -1582,7 +1586,7 @@ void upd7220_device::update_text(bitmap_ind16 &bitmap, const rectangle &cliprect
 //  draw_graphics_line -
 //-------------------------------------------------
 
-void upd7220_device::draw_graphics_line(bitmap_ind16 &bitmap, UINT32 addr, int y, int wd)
+void upd7220_device::draw_graphics_line(bitmap_rgb32 &bitmap, UINT32 addr, int y, int wd)
 {
 	int sx;
 
@@ -1591,7 +1595,7 @@ void upd7220_device::draw_graphics_line(bitmap_ind16 &bitmap, UINT32 addr, int y
 		if((sx << 3) < m_aw * 16 && y < m_al)
 			m_display_cb(this, bitmap, y, sx << 3, addr);
 
-		if (wd) addr += 2; else addr++;
+		addr+= wd + 1;
 	}
 }
 
@@ -1600,38 +1604,50 @@ void upd7220_device::draw_graphics_line(bitmap_ind16 &bitmap, UINT32 addr, int y
 //  update_graphics -
 //-------------------------------------------------
 
-void upd7220_device::update_graphics(bitmap_ind16 &bitmap, const rectangle &cliprect, int force_bitmap)
+void upd7220_device::update_graphics(bitmap_rgb32 &bitmap, const rectangle &cliprect, int force_bitmap)
 {
 	UINT32 addr, sad;
 	UINT16 len;
 	int im, wd, area;
-	int y, tsy = 0, bsy = 0;
+	int y = 0, tsy = 0, bsy = 0;
 
-	for (area = 0; area < 2; area++)
+	for (area = 0; area < 4; area++)
 	{
 		get_graphics_partition(area, &sad, &len, &im, &wd);
 
-		for (y = 0; y < len; y++)
+		if (im || force_bitmap)
 		{
-			if (im || force_bitmap)
+			get_graphics_partition(area, &sad, &len, &im, &wd);
+
+			if(area >= 2) // TODO: correct?
+				break;
+
+			for (y = 0; y < len; y++)
 			{
-				addr = (sad & 0x3ffff) + (y * m_pitch * 2);
+				addr = ((sad << 1) & 0x3ffff) + (y * m_pitch * 2);
 
 				if (m_display_cb)
 					draw_graphics_line(bitmap, addr, y + bsy, wd);
 			}
-			else
-			{
-				/* TODO: text params are more limited compared to graphics */
-				addr = (sad & 0x3ffff) + (y * m_pitch);
+		}
+		else
+		{
+			get_text_partition(area, &sad, &len, &im, &wd);
 
-				if (m_draw_text_cb)
-					m_draw_text_cb(this, bitmap, addr, y + tsy, wd, m_pitch, 0, 0, m_aw * 8 - 1, len + bsy - 1, m_lr, m_dc, m_ead);
+			if(m_lr)
+			{
+				for (y = 0; y < len; y+=m_lr)
+				{
+					addr = (sad & 0x3ffff) + ((y / m_lr) * m_pitch);
+
+					if (m_draw_text_cb)
+						m_draw_text_cb(this, bitmap, addr, (y + tsy) / m_lr, wd, m_pitch, m_lr, m_dc, m_ead);
+				}
 			}
 		}
 
 		if (m_lr)
-			tsy += (y / m_lr);
+			tsy += y;
 		bsy += y;
 	}
 }
@@ -1641,7 +1657,7 @@ void upd7220_device::update_graphics(bitmap_ind16 &bitmap, const rectangle &clip
 //  update_screen -
 //-------------------------------------------------
 
-UINT32 upd7220_device::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+UINT32 upd7220_device::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	if (m_de)
 	{

@@ -6,7 +6,6 @@
 
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
-#include "imagedev/flopdrv.h"
 #include "machine/am9517a.h"
 #include "machine/i8212.h"
 #include "machine/pit8253.h"
@@ -50,23 +49,22 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<i8212_device> m_iop;
 	required_device<am9517a_device> m_dmac;
-	required_device<device_t> m_pit;
-	required_device<device_t> m_crtc;
+	required_device<pit8253_device> m_pit;
+	required_device<i8275_device> m_crtc;
 	required_device<upd765a_device> m_fdc;
 	required_device<upd7201_device> m_mpsc;
 	required_device<upd7220_device> m_hgdc;
-	required_device<device_t> m_speaker;
+	required_device<speaker_sound_device> m_speaker;
 	required_device<floppy_image_device> m_floppy0;
 	required_device<floppy_image_device> m_floppy1;
 	required_device<ram_device> m_ram;
 	required_shared_ptr<UINT8> m_video_ram;
 
-
 	virtual void machine_start();
 	virtual void machine_reset();
 
 	virtual void video_start();
-	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	DECLARE_READ8_MEMBER( mmu_r );
 	DECLARE_WRITE8_MEMBER( mmu_w );
@@ -102,7 +100,7 @@ public:
 	const UINT8 *m_key_rom;
 
 	// video state
-	bitmap_ind16 m_bitmap;
+	bitmap_rgb32 m_bitmap;
 	const UINT8 *m_char_rom;
 	int m_llen;
 
@@ -116,8 +114,9 @@ public:
 	int m_recall;
 	int m_dack3;
 	int m_tc;
-	UINT32 screen_update_mm1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	UINT32 screen_update_mm1(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	TIMER_DEVICE_CALLBACK_MEMBER(kbclk_tick);
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 };
 
 

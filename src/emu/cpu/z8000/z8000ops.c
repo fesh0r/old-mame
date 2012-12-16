@@ -6,6 +6,7 @@
  *
  *   Copyright Juergen Buchmueller, all rights reserved.
  *   Bug fixes and MSB_FIRST compliance Ernesto Corvi.
+ *   Bug fixes and segmented mode support Christian Groessler.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -73,7 +74,7 @@ INLINE void CHANGE_FCW(z8000_state *cpustate, UINT16 fcw)
 
 INLINE UINT32 make_segmented_addr(UINT32 addr)
 {
-    return ((addr & 0xffff0000) << 8) | (addr & 0xffff);
+    return ((addr & 0x007f0000) << 8) | 0x80000000 | (addr & 0xffff);
 }
 
 INLINE UINT32 segmented_addr(UINT32 addr)
@@ -91,10 +92,35 @@ INLINE UINT32 addr_from_reg(z8000_state *cpustate, int regno)
 
 INLINE void addr_to_reg(z8000_state *cpustate, int regno, UINT32 addr)
 {
-    if (segmented_mode(cpustate))
-        cpustate->RL(regno) = /*(cpustate->RL(regno) & 0x00ff0000) |*/ make_segmented_addr(addr);
+	if (segmented_mode(cpustate)) {
+		UINT32 segaddr = make_segmented_addr(addr);
+		cpustate->RW(regno) = (cpustate->RW(regno) & 0x80ff) | ((segaddr >> 16) & 0x7f00);
+		cpustate->RW(regno | 1) = segaddr & 0xffff;
+	}
     else
         cpustate->RW(regno) = addr;
+}
+
+INLINE void add_to_addr_reg(z8000_state *cpustate, int regno, UINT16 addend)
+{
+	if (segmented_mode(cpustate))
+		regno |= 1;
+	cpustate->RW(regno) += addend;
+}
+
+INLINE void sub_from_addr_reg(z8000_state *cpustate, int regno, UINT16 subtrahend)
+{
+	if (segmented_mode(cpustate))
+		regno |= 1;
+	cpustate->RW(regno) -= subtrahend;
+}
+
+INLINE void set_pc(z8000_state *cpustate, UINT32 addr)
+{
+	if (segmented_mode(cpustate))
+		cpustate->pc = addr;
+	else
+		cpustate->pc = (cpustate->pc & 0xffff0000) | (addr & 0xffff);
 }
 
 INLINE void PUSHW(z8000_state *cpustate, UINT8 dst, UINT16 value)
@@ -103,12 +129,12 @@ INLINE void PUSHW(z8000_state *cpustate, UINT8 dst, UINT16 value)
         cpustate->RW(dst | 1) -= 2;
     else
         cpustate->RW(dst) -= 2;
-	WRMEM_W(cpustate, addr_from_reg(cpustate, dst), value);
+	WRMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst), value);
 }
 
 INLINE UINT16 POPW(z8000_state *cpustate, UINT8 src)
 {
-	UINT16 result = RDMEM_W(cpustate, addr_from_reg(cpustate, src));
+	UINT16 result = RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src));
     if (segmented_mode(cpustate))
         cpustate->RW(src | 1) += 2;
     else
@@ -122,12 +148,12 @@ INLINE void PUSHL(z8000_state *cpustate, UINT8 dst, UINT32 value)
         cpustate->RW(dst | 1) -= 4;
     else
         cpustate->RW(dst) -= 4;
-	WRMEM_L(cpustate,  addr_from_reg(cpustate, dst), value);
+	WRMEM_L(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), value);
 }
 
 INLINE UINT32 POPL(z8000_state *cpustate, UINT8 src)
 {
-	UINT32 result = RDMEM_L(cpustate, addr_from_reg(cpustate, src));
+	UINT32 result = RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, src));
     if (segmented_mode(cpustate))
         cpustate->RW(src | 1) += 4;
     else
@@ -1185,7 +1211,7 @@ static void Z00_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RB(dst) = ADDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RB(dst) = ADDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1207,7 +1233,7 @@ static void Z01_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = ADDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RW(dst) = ADDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1229,7 +1255,7 @@ static void Z02_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RB(dst) = SUBB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src))); /* EHC */
+	cpustate->RB(dst) = SUBB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src))); /* EHC */
 }
 
 /******************************************
@@ -1251,7 +1277,7 @@ static void Z03_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = SUBW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RW(dst) = SUBW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1273,7 +1299,7 @@ static void Z04_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RB(dst) = ORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RB(dst) = ORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1295,7 +1321,7 @@ static void Z05_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = ORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RW(dst) = ORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1317,7 +1343,7 @@ static void Z06_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RB(dst) = ANDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RB(dst) = ANDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1339,7 +1365,7 @@ static void Z07_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = ANDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RW(dst) = ANDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1361,7 +1387,7 @@ static void Z08_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RB(dst) = XORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RB(dst) = XORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1383,7 +1409,7 @@ static void Z09_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = XORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RW(dst) = XORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1405,7 +1431,7 @@ static void Z0A_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1427,7 +1453,7 @@ static void Z0B_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate,src)));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate,src)));
 }
 
 /******************************************
@@ -1437,7 +1463,8 @@ static void Z0B_ssN0_dddd(z8000_state *cpustate)
 static void Z0C_ddN0_0000(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
-	WRMEM_B(cpustate,  cpustate->RW(dst), COMB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst))));
+	UINT32 addr = addr_from_reg(cpustate, dst);
+	WRMEM_B(cpustate, AS_DATA, addr, COMB(cpustate, RDMEM_B(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -1448,7 +1475,7 @@ static void Z0C_ddN0_0001_imm8(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
 	GET_IMM8(OP1);
-	CPB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst)), imm8); // @@@done
+	CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), imm8); // @@@done
 }
 
 /******************************************
@@ -1459,7 +1486,7 @@ static void Z0C_ddN0_0010(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_B(cpustate,  addr, NEGB(cpustate, RDMEM_B(cpustate, addr)));
+	WRMEM_B(cpustate, AS_DATA,  addr, NEGB(cpustate, RDMEM_B(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -1469,7 +1496,7 @@ static void Z0C_ddN0_0010(z8000_state *cpustate)
 static void Z0C_ddN0_0100(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	TESTB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	TESTB(cpustate, RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 }
 
 /******************************************
@@ -1480,7 +1507,7 @@ static void Z0C_ddN0_0101_imm8(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
 	GET_IMM8(OP1);
-	WRMEM_B(cpustate,  addr_from_reg(cpustate, dst), imm8);
+	WRMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst), imm8);
 }
 
 /******************************************
@@ -1491,8 +1518,8 @@ static void Z0C_ddN0_0110(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-    if (RDMEM_B(cpustate, addr) & S08) SET_S; else CLR_S;
-    WRMEM_B(cpustate, addr, 0xff);
+    if (RDMEM_B(cpustate, AS_DATA, addr) & S08) SET_S; else CLR_S;
+    WRMEM_B(cpustate, AS_DATA, addr, 0xff);
 }
 
 /******************************************
@@ -1502,7 +1529,7 @@ static void Z0C_ddN0_0110(z8000_state *cpustate)
 static void Z0C_ddN0_1000(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	WRMEM_B(cpustate,  addr_from_reg(cpustate, dst), 0);
+	WRMEM_B(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), 0);
 }
 
 /******************************************
@@ -1513,7 +1540,7 @@ static void Z0D_ddN0_0000(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_W(cpustate, addr, COMW(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_W(cpustate, AS_DATA, addr, COMW(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -1524,7 +1551,7 @@ static void Z0D_ddN0_0001_imm16(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
 	GET_IMM16(OP1);
-	CPW(cpustate, RDMEM_W(cpustate, addr_from_reg(cpustate, dst)), imm16);
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), imm16);
 }
 
 /******************************************
@@ -1535,7 +1562,7 @@ static void Z0D_ddN0_0010(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_W(cpustate,  addr, NEGW(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_W(cpustate, AS_DATA, addr, NEGW(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -1545,7 +1572,7 @@ static void Z0D_ddN0_0010(z8000_state *cpustate)
 static void Z0D_ddN0_0100(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	TESTW(cpustate, RDMEM_W(cpustate, addr_from_reg(cpustate, dst)));
+	TESTW(cpustate, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 }
 
 /******************************************
@@ -1556,7 +1583,7 @@ static void Z0D_ddN0_0101_imm16(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
 	GET_IMM16(OP1);
-	WRMEM_W(cpustate, addr_from_reg(cpustate, dst), imm16);
+	WRMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst), imm16);
 }
 
 /******************************************
@@ -1567,8 +1594,8 @@ static void Z0D_ddN0_0110(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-    if (RDMEM_W(cpustate, addr) & S16) SET_S; else CLR_S;
-    WRMEM_W(cpustate, addr, 0xffff);
+    if (RDMEM_W(cpustate, AS_DATA, addr) & S16) SET_S; else CLR_S;
+    WRMEM_W(cpustate, AS_DATA, addr, 0xffff);
 }
 
 /******************************************
@@ -1578,7 +1605,7 @@ static void Z0D_ddN0_0110(z8000_state *cpustate)
 static void Z0D_ddN0_1000(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	WRMEM_W(cpustate,  addr_from_reg(cpustate, dst), 0);
+	WRMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst), 0);
 }
 
 /******************************************
@@ -1641,7 +1668,7 @@ static void Z10_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	CPL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr_from_reg(cpustate, src)));
+	CPL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1652,7 +1679,7 @@ static void Z11_ddN0_ssN0(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	PUSHL(cpustate, dst, RDMEM_L(cpustate, addr_from_reg(cpustate, src)));
+	PUSHL(cpustate, dst, RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1674,7 +1701,7 @@ static void Z12_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RL(dst) = SUBL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RL(dst) = SUBL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1685,7 +1712,7 @@ static void Z13_ddN0_ssN0(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	PUSHW(cpustate, dst, RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	PUSHW(cpustate, dst, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1707,11 +1734,11 @@ static void Z14_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RL(dst) = RDMEM_L(cpustate,  addr_from_reg(cpustate, src));
+	cpustate->RL(dst) = RDMEM_L(cpustate,  AS_DATA, addr_from_reg(cpustate, src));
 }
 
 /******************************************
- popl    @rd,@rs
+ popl    rd,@rs
  flags:  ------
  ******************************************/
 static void Z15_ssN0_ddN0(z8000_state *cpustate)
@@ -1740,7 +1767,7 @@ static void Z16_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RL(dst) = ADDL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RL(dst) = ADDL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1751,7 +1778,7 @@ static void Z17_ssN0_ddN0(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = POPW(cpustate, src);
+	WRMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst), POPW(cpustate, src));
 }
 
 /******************************************
@@ -1795,7 +1822,7 @@ static void Z19_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RL(dst) = MULTW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RL(dst) = MULTW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1817,7 +1844,7 @@ static void Z1A_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RQ(dst) = DIVL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RQ(dst) = DIVL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1839,7 +1866,7 @@ static void Z1B_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RL(dst) = DIVW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	cpustate->RL(dst) = DIVW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 }
 
 /******************************************
@@ -1849,7 +1876,7 @@ static void Z1B_ssN0_dddd(z8000_state *cpustate)
 static void Z1C_ddN0_1000(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	TESTL(cpustate, RDMEM_L(cpustate, addr_from_reg(cpustate, dst)));
+	TESTL(cpustate, RDMEM_L(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 }
 
 /******************************************
@@ -1861,10 +1888,10 @@ static void Z1C_ddN0_1001_0000_ssss_0000_nmin1(z8000_state *cpustate)
     GET_DST(OP0,NIB2);
     GET_CNT(OP1,NIB3);
     GET_SRC(OP1,NIB1);
-	UINT16 idx = cpustate->RW(dst);
+	UINT32 addr = addr_from_reg(cpustate, dst);
     while (cnt-- >= 0) {
-        WRMEM_W(cpustate,  idx, cpustate->RW(src));
-		idx = (idx + 2) & 0xffff;
+        WRMEM_W(cpustate, AS_DATA, addr, cpustate->RW(src));
+		addr = addr_add(cpustate, addr, 2);
 		src = (src+1) & 15;
     }
 }
@@ -1878,10 +1905,10 @@ static void Z1C_ssN0_0001_0000_dddd_0000_nmin1(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_CNT(OP1,NIB3);
 	GET_DST(OP1,NIB1);
-	UINT16 idx = cpustate->RW(src);
+	UINT32 addr = addr_from_reg(cpustate, src);
 	while (cnt-- >= 0) {
-		cpustate->RW(dst) = RDMEM_W(cpustate,  idx);
-		idx = (idx + 2) & 0xffff;
+		cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr);
+		addr = addr_add(cpustate, addr, 2);
 		dst = (dst+1) & 15;
     }
 }
@@ -1894,7 +1921,7 @@ static void Z1D_ddN0_ssss(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	WRMEM_L(cpustate,  addr_from_reg(cpustate, dst), cpustate->RL(src));
+	WRMEM_L(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), cpustate->RL(src));
 }
 
 /******************************************
@@ -1906,22 +1933,22 @@ static void Z1E_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
 	switch (cc) {
-		case  0: if (CC0) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  1: if (CC1) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  2: if (CC2) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  3: if (CC3) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  4: if (CC4) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  5: if (CC5) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  6: if (CC6) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  7: if (CC7) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  8: if (CC8) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case  9: if (CC9) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case 10: if (CCA) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case 11: if (CCB) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case 12: if (CCC) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case 13: if (CCD) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case 14: if (CCE) cpustate->pc = addr_from_reg(cpustate, dst); break;
-		case 15: if (CCF) cpustate->pc = addr_from_reg(cpustate, dst); break;
+		case  0: if (CC0) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  1: if (CC1) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  2: if (CC2) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  3: if (CC3) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  4: if (CC4) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  5: if (CC5) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  6: if (CC6) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  7: if (CC7) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  8: if (CC8) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case  9: if (CC9) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case 10: if (CCA) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case 11: if (CCB) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case 12: if (CCC) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case 13: if (CCD) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case 14: if (CCE) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
+		case 15: if (CCF) set_pc(cpustate, addr_from_reg(cpustate, dst)); break;
 	}
 }
 
@@ -1936,7 +1963,7 @@ static void Z1F_ddN0_0000(z8000_state *cpustate)
         PUSHL(cpustate, SP, make_segmented_addr(cpustate->pc));
     else
         PUSHW(cpustate, SP, cpustate->pc);
-    cpustate->pc = addr_from_reg(cpustate, dst);
+    set_pc(cpustate, addr_from_reg(cpustate, dst));
 }
 
 /******************************************
@@ -1947,7 +1974,7 @@ static void Z20_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-    cpustate->RB(dst) = RDMEM_B(cpustate,  addr_from_reg(cpustate, src));
+    cpustate->RB(dst) = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src));
 }
 
 /******************************************
@@ -1969,7 +1996,7 @@ static void Z21_ssN0_dddd(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	cpustate->RW(dst) = RDMEM_W(cpustate,  addr_from_reg(cpustate, src));
+	cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src));
 }
 
 /******************************************
@@ -1992,7 +2019,7 @@ static void Z22_ddN0_imm4(z8000_state *cpustate)
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_B(cpustate, addr, RDMEM_B(cpustate, addr) & ~bit);
+	WRMEM_B(cpustate, AS_DATA, addr, RDMEM_B(cpustate, AS_DATA, addr) & ~bit);
 }
 
 /******************************************
@@ -2015,7 +2042,7 @@ static void Z23_ddN0_imm4(z8000_state *cpustate)
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_W(cpustate, addr, RDMEM_W(cpustate, addr) & ~bit);
+	WRMEM_W(cpustate, AS_DATA, addr, RDMEM_W(cpustate, AS_DATA, addr) & ~bit);
 }
 
 /******************************************
@@ -2038,7 +2065,7 @@ static void Z24_ddN0_imm4(z8000_state *cpustate)
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_B(cpustate, addr, RDMEM_B(cpustate, addr) | bit);
+	WRMEM_B(cpustate, AS_DATA, addr, RDMEM_B(cpustate, AS_DATA, addr) | bit);
 }
 
 /******************************************
@@ -2061,7 +2088,7 @@ static void Z25_ddN0_imm4(z8000_state *cpustate)
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_W(cpustate, addr, RDMEM_W(cpustate, addr) | bit);
+	WRMEM_W(cpustate, AS_DATA, addr, RDMEM_W(cpustate, AS_DATA, addr) | bit);
 }
 
 /******************************************
@@ -2083,7 +2110,7 @@ static void Z26_ddN0_imm4(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
-	if (RDMEM_B(cpustate, addr_from_reg(cpustate, dst)) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -2105,7 +2132,7 @@ static void Z27_ddN0_imm4(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_DST(OP0,NIB2);
-	if (RDMEM_W(cpustate, addr_from_reg(cpustate, dst)) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -2117,7 +2144,7 @@ static void Z28_ddN0_imm4m1(z8000_state *cpustate)
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_B(cpustate,  addr, INCB(cpustate, RDMEM_B(cpustate, addr), i4p1));
+	WRMEM_B(cpustate, AS_DATA,  addr, INCB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -2129,7 +2156,7 @@ static void Z29_ddN0_imm4m1(z8000_state *cpustate)
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_W(cpustate, addr, INCW(cpustate, RDMEM_W(cpustate, addr), i4p1));
+	WRMEM_W(cpustate, AS_DATA, addr, INCW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -2141,7 +2168,7 @@ static void Z2A_ddN0_imm4m1(z8000_state *cpustate)
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_B(cpustate, addr, DECB(cpustate, RDMEM_B(cpustate, addr), i4p1));
+	WRMEM_B(cpustate, AS_DATA, addr, DECB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -2153,7 +2180,7 @@ static void Z2B_ddN0_imm4m1(z8000_state *cpustate)
 	GET_I4M1(OP0,NIB3);
 	GET_DST(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, dst);
-	WRMEM_W(cpustate, addr, DECW(cpustate, RDMEM_W(cpustate, addr), i4p1));
+	WRMEM_W(cpustate, AS_DATA, addr, DECW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -2165,8 +2192,8 @@ static void Z2C_ssN0_dddd(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, src);
-	UINT8 tmp = RDMEM_B(cpustate,  addr);
-	WRMEM_B(cpustate, addr, cpustate->RB(dst));
+	UINT8 tmp = RDMEM_B(cpustate,  AS_DATA, addr);
+	WRMEM_B(cpustate, AS_DATA, addr, cpustate->RB(dst));
 	cpustate->RB(dst) = tmp;
 }
 
@@ -2179,8 +2206,8 @@ static void Z2D_ssN0_dddd(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
     UINT32 addr = addr_from_reg(cpustate, src);
-	UINT16 tmp = RDMEM_W(cpustate, addr);
-	WRMEM_W(cpustate, addr, cpustate->RW(dst));
+	UINT16 tmp = RDMEM_W(cpustate, AS_DATA, addr);
+	WRMEM_W(cpustate, AS_DATA, addr, cpustate->RW(dst));
 	cpustate->RW(dst) = tmp;
 }
 
@@ -2192,7 +2219,7 @@ static void Z2E_ddN0_ssss(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	WRMEM_B(cpustate,  addr_from_reg(cpustate, dst), cpustate->RB(src));
+	WRMEM_B(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), cpustate->RB(src));
 }
 
 /******************************************
@@ -2203,7 +2230,7 @@ static void Z2F_ddN0_ssss(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
-	WRMEM_W(cpustate,  addr_from_reg(cpustate, dst), cpustate->RW(src));
+	WRMEM_W(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), cpustate->RW(src));
 }
 
 /******************************************
@@ -2214,7 +2241,7 @@ static void Z30_0000_dddd_dsp16(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_DSP16;
-	cpustate->RB(dst) = RDMEM_B(cpustate, dsp16);
+	cpustate->RB(dst) = RDMEM_B(cpustate, AS_PROGRAM, dsp16);
 }
 
 /******************************************
@@ -2227,7 +2254,7 @@ static void Z30_ssN0_dddd_imm16(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_IDX16(OP1);
 	idx16 = addr_add(cpustate, addr_from_reg(cpustate, src), idx16);
-	cpustate->RB(dst) = RDMEM_B(cpustate,  idx16);
+	cpustate->RB(dst) = RDMEM_B(cpustate, AS_DATA, idx16);
 }
 
 /******************************************
@@ -2238,7 +2265,7 @@ static void Z31_0000_dddd_dsp16(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_DSP16;
-	cpustate->RW(dst) = RDMEM_W(cpustate, dsp16);
+	cpustate->RW(dst) = RDMEM_W(cpustate, AS_PROGRAM, dsp16);
 }
 
 /******************************************
@@ -2251,7 +2278,7 @@ static void Z31_ssN0_dddd_imm16(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_IDX16(OP1);
 	idx16 = addr_add(cpustate, addr_from_reg(cpustate, src), idx16);
-	cpustate->RW(dst) = RDMEM_W(cpustate,  idx16);
+	cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, idx16);
 }
 
 /******************************************
@@ -2262,7 +2289,7 @@ static void Z32_0000_ssss_dsp16(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DSP16;
-	WRMEM_B(cpustate,  dsp16, cpustate->RB(src));
+	WRMEM_B(cpustate, AS_PROGRAM,  dsp16, cpustate->RB(src));
 }
 
 /******************************************
@@ -2275,7 +2302,7 @@ static void Z32_ddN0_ssss_imm16(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_IDX16(OP1);
 	idx16 = addr_add(cpustate, addr_from_reg(cpustate, dst), idx16);
-	WRMEM_B(cpustate,  idx16, cpustate->RB(src));
+	WRMEM_B(cpustate, AS_DATA,  idx16, cpustate->RB(src));
 }
 
 /******************************************
@@ -2286,7 +2313,7 @@ static void Z33_0000_ssss_dsp16(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DSP16;
-	WRMEM_W(cpustate,  dsp16, cpustate->RW(src));
+	WRMEM_W(cpustate, AS_PROGRAM,  dsp16, cpustate->RW(src));
 }
 
 /******************************************
@@ -2299,7 +2326,7 @@ static void Z33_ddN0_ssss_imm16(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_IDX16(OP1);
 	idx16 = addr_add(cpustate, addr_from_reg(cpustate,dst), idx16);
-	WRMEM_W(cpustate,  idx16, cpustate->RW(src));
+	WRMEM_W(cpustate, AS_DATA,  idx16, cpustate->RW(src));
 }
 
 /******************************************
@@ -2322,8 +2349,13 @@ static void Z34_ssN0_dddd_imm16(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
 	GET_IDX16(OP1);
-	idx16 = addr_add(cpustate, addr_from_reg(cpustate, src), idx16);
-	addr_to_reg(cpustate, dst, idx16);
+	if (segmented_mode(cpustate)) {
+		cpustate->RL(dst) = cpustate->RL(src);
+	}
+	else {
+		cpustate->RW(dst) = cpustate->RW(src);
+	}
+	add_to_addr_reg(cpustate, dst, idx16);
 }
 
 /******************************************
@@ -2334,7 +2366,7 @@ static void Z35_0000_dddd_dsp16(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_DSP16;
-	cpustate->RL(dst) = RDMEM_L(cpustate,  dsp16);
+	cpustate->RL(dst) = RDMEM_L(cpustate, AS_PROGRAM, dsp16);
 }
 
 /******************************************
@@ -2347,7 +2379,7 @@ static void Z35_ssN0_dddd_imm16(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_IDX16(OP1);
 	idx16 = addr_add(cpustate, addr_from_reg(cpustate, src), idx16);
-	cpustate->RL(dst) = RDMEM_L(cpustate,  idx16);
+	cpustate->RL(dst) = RDMEM_L(cpustate, AS_DATA, idx16);
 }
 
 /******************************************
@@ -2382,7 +2414,7 @@ static void Z37_0000_ssss_dsp16(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_DSP16;
-	WRMEM_L(cpustate,  dsp16, cpustate->RL(src));
+	WRMEM_L(cpustate, AS_PROGRAM,  dsp16, cpustate->RL(src));
 }
 
 /******************************************
@@ -2395,7 +2427,7 @@ static void Z37_ddN0_ssss_imm16(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_IDX16(OP1);
 	idx16 = addr_add(cpustate, addr_from_reg(cpustate, dst), idx16);
-	WRMEM_L(cpustate,  idx16, cpustate->RL(src));
+	WRMEM_L(cpustate, AS_DATA,  idx16, cpustate->RL(src));
 }
 
 /******************************************
@@ -2423,13 +2455,14 @@ static void Z39_ssN0_0000(z8000_state *cpustate)
 	UINT16 fcw;
     if (segmented_mode(cpustate)) {
         UINT32 addr = addr_from_reg(cpustate, src);
-        fcw = RDMEM_W(cpustate,  addr + 2);
-        cpustate->pc = segmented_addr(RDMEM_L(cpustate, addr + 4));
+        fcw = RDMEM_W(cpustate, AS_DATA, addr + 2);
+        set_pc(cpustate, segmented_addr(RDMEM_L(cpustate, AS_DATA, addr + 4)));
     }
     else {
-        fcw = RDMEM_W(cpustate,  cpustate->RW(src));
-        cpustate->pc = RDMEM_W(cpustate,  (UINT16)(cpustate->RW(src) + 2));
+        fcw = RDMEM_W(cpustate, AS_DATA,  cpustate->RW(src));
+        set_pc(cpustate, RDMEM_W(cpustate, AS_DATA, (UINT16)(cpustate->RW(src) + 2)));
     }
+	if ((fcw ^ cpustate->fcw) & F_SEG) printf("ldps 1 (0x%05x): changing from %ssegmented mode to %ssegmented mode\n", cpustate->pc, (fcw & F_SEG) ? "non-" : "", (fcw & F_SEG) ? "" : "non-");
 	CHANGE_FCW(cpustate, fcw); /* check for user/system mode change */
 }
 
@@ -2444,8 +2477,8 @@ static void Z3A_ssss_0000_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
     GET_DST(OP1,NIB2);
     GET_CCC(OP1,NIB3);
-    WRMEM_B(cpustate, addr_from_reg(cpustate, dst), RDPORT_B(cpustate,  0, cpustate->RW(src)));
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
+    WRMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst), RDPORT_B(cpustate,  0, cpustate->RW(src)));
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -2461,7 +2494,7 @@ static void Z3A_ssss_0001_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
     GET_DST(OP1,NIB2);
     GET_CCC(OP1,NIB3);
-    WRMEM_B(cpustate,  cpustate->RW(dst), RDPORT_B(cpustate,  1, cpustate->RW(src)));
+    WRMEM_B(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_B(cpustate,  1, cpustate->RW(src)));
     cpustate->RW(dst)++;
     cpustate->RW(src)++;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2479,8 +2512,8 @@ static void Z3A_ssss_0010_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
     GET_DST(OP1,NIB2);
     GET_CCC(OP1,NIB3);
-    WRPORT_B(cpustate,  0, cpustate->RW(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 1));
+    WRPORT_B(cpustate,  0, cpustate->RW(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
+	add_to_addr_reg(cpustate, src, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -2496,7 +2529,7 @@ static void Z3A_ssss_0011_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
     GET_DST(OP1,NIB2);
     GET_CCC(OP1,NIB3);
-    WRPORT_B(cpustate,  1, cpustate->RW(dst), RDMEM_B(cpustate,  cpustate->RW(src)));
+    WRPORT_B(cpustate,  1, cpustate->RW(dst), RDMEM_B(cpustate, AS_DATA, cpustate->RW(src)));
     cpustate->RW(dst)++;
     cpustate->RW(src)++;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2562,7 +2595,7 @@ static void Z3A_ssss_1000_0000_aaaa_dddd_x000(z8000_state *cpustate)
 	GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_B(cpustate,  cpustate->RW(dst), RDPORT_B(cpustate,  0, cpustate->RW(src)));
+	WRMEM_B(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_B(cpustate,  0, cpustate->RW(src)));
 	cpustate->RW(dst)--;
 	cpustate->RW(src)--;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2580,7 +2613,7 @@ static void Z3A_ssss_1001_0000_aaaa_dddd_x000(z8000_state *cpustate)
 	GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_B(cpustate,  cpustate->RW(dst), RDPORT_B(cpustate,  1, cpustate->RW(src)));
+	WRMEM_B(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_B(cpustate,  1, cpustate->RW(src)));
 	cpustate->RW(dst)--;
 	cpustate->RW(src)--;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2598,7 +2631,7 @@ static void Z3A_ssss_1010_0000_aaaa_dddd_x000(z8000_state *cpustate)
 	GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_B(cpustate,  0, cpustate->RW(dst), RDMEM_B(cpustate,  cpustate->RW(src)));
+	WRPORT_B(cpustate,  0, cpustate->RW(dst), RDMEM_B(cpustate, AS_DATA, cpustate->RW(src)));
 	cpustate->RW(dst)--;
 	cpustate->RW(src)--;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2616,7 +2649,7 @@ static void Z3A_ssss_1011_0000_aaaa_dddd_x000(z8000_state *cpustate)
 	GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_B(cpustate,  1, cpustate->RW(dst), RDMEM_B(cpustate,  cpustate->RW(src)));
+	WRPORT_B(cpustate,  1, cpustate->RW(dst), RDMEM_B(cpustate, AS_DATA, cpustate->RW(src)));
 	cpustate->RW(dst)--;
 	cpustate->RW(src)--;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2634,7 +2667,7 @@ static void Z3B_ssss_0000_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_W(cpustate,  cpustate->RW(dst), RDPORT_W(cpustate,  0, cpustate->RW(src)));
+	WRMEM_W(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_W(cpustate,  0, cpustate->RW(src)));
 	cpustate->RW(dst) += 2;
 	cpustate->RW(src) += 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2652,7 +2685,7 @@ static void Z3B_ssss_0001_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_W(cpustate,  cpustate->RW(dst), RDPORT_W(cpustate,  1, cpustate->RW(src)));
+	WRMEM_W(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_W(cpustate,  1, cpustate->RW(src)));
 	cpustate->RW(dst) += 2;
 	cpustate->RW(src) += 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2670,7 +2703,7 @@ static void Z3B_ssss_0010_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_W(cpustate,  0, cpustate->RW(dst), RDMEM_W(cpustate,  cpustate->RW(src)));
+	WRPORT_W(cpustate,  0, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, cpustate->RW(src)));
 	cpustate->RW(dst) += 2;
 	cpustate->RW(src) += 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2688,7 +2721,7 @@ static void Z3B_ssss_0011_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_W(cpustate,  1, cpustate->RW(dst), RDMEM_W(cpustate,  cpustate->RW(src)));
+	WRPORT_W(cpustate,  1, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, cpustate->RW(src)));
 	cpustate->RW(dst) += 2;
 	cpustate->RW(src) += 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2754,7 +2787,7 @@ static void Z3B_ssss_1000_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_W(cpustate,  cpustate->RW(dst), RDPORT_W(cpustate,  0, cpustate->RW(src)));
+	WRMEM_W(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_W(cpustate,  0, cpustate->RW(src)));
 	cpustate->RW(dst) -= 2;
 	cpustate->RW(src) -= 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2772,7 +2805,7 @@ static void Z3B_ssss_1001_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_W(cpustate,  cpustate->RW(dst), RDPORT_W(cpustate,  1, cpustate->RW(src)));
+	WRMEM_W(cpustate, AS_DATA,  cpustate->RW(dst), RDPORT_W(cpustate,  1, cpustate->RW(src)));
 	cpustate->RW(dst) -= 2;
 	cpustate->RW(src) -= 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2790,7 +2823,7 @@ static void Z3B_ssss_1010_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_W(cpustate,  0, cpustate->RW(dst), RDMEM_W(cpustate,  cpustate->RW(src)));
+	WRPORT_W(cpustate,  0, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, cpustate->RW(src)));
 	cpustate->RW(dst) -= 2;
 	cpustate->RW(src) -= 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2808,7 +2841,7 @@ static void Z3B_ssss_1011_0000_aaaa_dddd_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRPORT_W(cpustate,  1, cpustate->RW(dst), RDMEM_W(cpustate,  cpustate->RW(src)));
+	WRPORT_W(cpustate,  1, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, cpustate->RW(src)));
 	cpustate->RW(dst) -= 2;
 	cpustate->RW(src) -= 2;
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
@@ -2870,7 +2903,7 @@ static void Z40_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RB(dst) = ADDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = ADDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2883,7 +2916,7 @@ static void Z40_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RB(dst) = ADDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = ADDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2894,7 +2927,7 @@ static void Z41_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RW(dst) = ADDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr)); /* EHC */
+	cpustate->RW(dst) = ADDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr)); /* EHC */
 }
 
 /******************************************
@@ -2907,7 +2940,7 @@ static void Z41_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RW(dst) = ADDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));	/* ASG */
+	cpustate->RW(dst) = ADDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));	/* ASG */
 }
 
 /******************************************
@@ -2918,7 +2951,7 @@ static void Z42_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RB(dst) = SUBB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr)); /* EHC */
+	cpustate->RB(dst) = SUBB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr)); /* EHC */
 }
 
 /******************************************
@@ -2931,7 +2964,7 @@ static void Z42_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RB(dst) = SUBB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = SUBB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2942,7 +2975,7 @@ static void Z43_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RW(dst) = SUBW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = SUBW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2955,7 +2988,7 @@ static void Z43_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RW(dst) = SUBW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = SUBW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2966,7 +2999,7 @@ static void Z44_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RB(dst) = ORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = ORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2979,7 +3012,7 @@ static void Z44_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RB(dst) = ORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = ORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -2990,7 +3023,7 @@ static void Z45_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RW(dst) = ORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = ORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3003,7 +3036,7 @@ static void Z45_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RW(dst) = ORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = ORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3014,7 +3047,7 @@ static void Z46_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RB(dst) = ANDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = ANDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3027,7 +3060,7 @@ static void Z46_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RB(dst) = ANDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = ANDB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3038,7 +3071,7 @@ static void Z47_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RW(dst) = ANDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = ANDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3051,7 +3084,7 @@ static void Z47_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RW(dst) = ANDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = ANDW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3062,7 +3095,7 @@ static void Z48_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RB(dst) = XORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = XORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3075,7 +3108,7 @@ static void Z48_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RB(dst) = XORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	cpustate->RB(dst) = XORB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3086,7 +3119,7 @@ static void Z49_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RW(dst) = XORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = XORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3099,7 +3132,7 @@ static void Z49_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RW(dst) = XORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	cpustate->RW(dst) = XORW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3110,7 +3143,7 @@ static void Z4A_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3123,7 +3156,7 @@ static void Z4A_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr));
+	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3134,7 +3167,7 @@ static void Z4B_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3147,7 +3180,7 @@ static void Z4B_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3157,7 +3190,7 @@ static void Z4B_ssN0_dddd_addr(z8000_state *cpustate)
 static void Z4C_0000_0000_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, COMB(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_B(cpustate, AS_DATA,  addr, COMB(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3168,7 +3201,7 @@ static void Z4C_0000_0001_addr_imm8(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
-	CPB(cpustate, RDMEM_B(cpustate, addr), imm8);
+	CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), imm8);
 }
 
 /******************************************
@@ -3178,7 +3211,7 @@ static void Z4C_0000_0001_addr_imm8(z8000_state *cpustate)
 static void Z4C_0000_0010_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, NEGB(cpustate, RDMEM_B(cpustate, addr)));
+	WRMEM_B(cpustate, AS_DATA,  addr, NEGB(cpustate, RDMEM_B(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3188,7 +3221,7 @@ static void Z4C_0000_0010_addr(z8000_state *cpustate)
 static void Z4C_0000_0100_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	TESTB(cpustate, RDMEM_B(cpustate, addr));
+	TESTB(cpustate, RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3199,7 +3232,7 @@ static void Z4C_0000_0101_addr_imm8(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
-	WRMEM_B(cpustate,  addr, imm8);
+	WRMEM_B(cpustate, AS_DATA,  addr, imm8);
 }
 
 /******************************************
@@ -3209,8 +3242,8 @@ static void Z4C_0000_0101_addr_imm8(z8000_state *cpustate)
 static void Z4C_0000_0110_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-    if (RDMEM_B(cpustate, addr) & S08) SET_S; else CLR_S;
-    WRMEM_B(cpustate, addr, 0xff);
+    if (RDMEM_B(cpustate, AS_DATA, addr) & S08) SET_S; else CLR_S;
+    WRMEM_B(cpustate, AS_DATA, addr, 0xff);
 }
 
 /******************************************
@@ -3220,7 +3253,7 @@ static void Z4C_0000_0110_addr(z8000_state *cpustate)
 static void Z4C_0000_1000_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, 0);
+	WRMEM_B(cpustate, AS_DATA,  addr, 0);
 }
 
 /******************************************
@@ -3232,7 +3265,7 @@ static void Z4C_ddN0_0000_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, COMB(cpustate, RDMEM_B(cpustate, addr)));
+	WRMEM_B(cpustate, AS_DATA,  addr, COMB(cpustate, RDMEM_B(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3245,7 +3278,7 @@ static void Z4C_ddN0_0001_addr_imm8(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	CPB(cpustate, RDMEM_B(cpustate, addr), imm8);
+	CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), imm8);
 }
 
 /******************************************
@@ -3257,7 +3290,7 @@ static void Z4C_ddN0_0010_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, NEGB(cpustate, RDMEM_B(cpustate, addr)));
+	WRMEM_B(cpustate, AS_DATA,  addr, NEGB(cpustate, RDMEM_B(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3269,7 +3302,7 @@ static void Z4C_ddN0_0100_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	TESTB(cpustate, RDMEM_B(cpustate, addr));
+	TESTB(cpustate, RDMEM_B(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3282,7 +3315,7 @@ static void Z4C_ddN0_0101_addr_imm8(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	GET_IMM8(OP2);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, imm8);
+	WRMEM_B(cpustate, AS_DATA,  addr, imm8);
 }
 
 /******************************************
@@ -3294,8 +3327,8 @@ static void Z4C_ddN0_0110_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-    if (RDMEM_B(cpustate, addr) & S08) SET_S; else CLR_S;
-    WRMEM_B(cpustate, addr, 0xff);
+    if (RDMEM_B(cpustate, AS_DATA, addr) & S08) SET_S; else CLR_S;
+    WRMEM_B(cpustate, AS_DATA, addr, 0xff);
 }
 
 /******************************************
@@ -3307,7 +3340,7 @@ static void Z4C_ddN0_1000_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, 0);
+	WRMEM_B(cpustate, AS_DATA,  addr, 0);
 }
 
 /******************************************
@@ -3317,7 +3350,7 @@ static void Z4C_ddN0_1000_addr(z8000_state *cpustate)
 static void Z4D_0000_0000_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, COMW(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_W(cpustate, AS_DATA,  addr, COMW(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3328,7 +3361,7 @@ static void Z4D_0000_0001_addr_imm16(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
-	CPW(cpustate, RDMEM_W(cpustate, addr), imm16);
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), imm16);
 }
 
 /******************************************
@@ -3338,7 +3371,7 @@ static void Z4D_0000_0001_addr_imm16(z8000_state *cpustate)
 static void Z4D_0000_0010_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, NEGW(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_W(cpustate, AS_DATA,  addr, NEGW(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3348,7 +3381,7 @@ static void Z4D_0000_0010_addr(z8000_state *cpustate)
 static void Z4D_0000_0100_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	TESTW(cpustate, RDMEM_W(cpustate, addr));
+	TESTW(cpustate, RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3359,7 +3392,7 @@ static void Z4D_0000_0101_addr_imm16(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
-	WRMEM_W(cpustate,  addr, imm16);
+	WRMEM_W(cpustate, AS_DATA,  addr, imm16);
 }
 
 /******************************************
@@ -3369,8 +3402,8 @@ static void Z4D_0000_0101_addr_imm16(z8000_state *cpustate)
 static void Z4D_0000_0110_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-    if (RDMEM_W(cpustate, addr) & S16) SET_S; else CLR_S;
-    WRMEM_W(cpustate, addr, 0xffff);
+    if (RDMEM_W(cpustate, AS_DATA, addr) & S16) SET_S; else CLR_S;
+    WRMEM_W(cpustate, AS_DATA, addr, 0xffff);
 }
 
 /******************************************
@@ -3380,7 +3413,7 @@ static void Z4D_0000_0110_addr(z8000_state *cpustate)
 static void Z4D_0000_1000_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, 0);
+	WRMEM_W(cpustate, AS_DATA,  addr, 0);
 }
 
 /******************************************
@@ -3392,7 +3425,7 @@ static void Z4D_ddN0_0000_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, COMW(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_W(cpustate, AS_DATA,  addr, COMW(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3405,7 +3438,7 @@ static void Z4D_ddN0_0001_addr_imm16(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	CPW(cpustate, RDMEM_W(cpustate, addr), imm16);
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), imm16);
 }
 
 /******************************************
@@ -3417,7 +3450,7 @@ static void Z4D_ddN0_0010_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, NEGW(cpustate, RDMEM_W(cpustate, addr)));
+	WRMEM_W(cpustate, AS_DATA,  addr, NEGW(cpustate, RDMEM_W(cpustate, AS_DATA, addr)));
 }
 
 /******************************************
@@ -3429,7 +3462,7 @@ static void Z4D_ddN0_0100_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	TESTW(cpustate, RDMEM_W(cpustate, addr));
+	TESTW(cpustate, RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3442,7 +3475,7 @@ static void Z4D_ddN0_0101_addr_imm16(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	GET_IMM16(OP2);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, imm16);
+	WRMEM_W(cpustate, AS_DATA,  addr, imm16);
 }
 
 /******************************************
@@ -3454,8 +3487,8 @@ static void Z4D_ddN0_0110_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-    if (RDMEM_W(cpustate, addr) & S16) SET_S; else CLR_S;
-    WRMEM_W(cpustate, addr, 0xffff);
+    if (RDMEM_W(cpustate, AS_DATA, addr) & S16) SET_S; else CLR_S;
+    WRMEM_W(cpustate, AS_DATA, addr, 0xffff);
 }
 
 /******************************************
@@ -3467,7 +3500,7 @@ static void Z4D_ddN0_1000_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, 0);
+	WRMEM_W(cpustate, AS_DATA,  addr, 0);
 }
 
 /******************************************
@@ -3480,7 +3513,7 @@ static void Z4E_ddN0_ssN0_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, cpustate->RB(src));
+	WRMEM_B(cpustate, AS_DATA,  addr, cpustate->RB(src));
 }
 
 /******************************************
@@ -3491,7 +3524,7 @@ static void Z50_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	CPL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr));
+	CPL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3504,7 +3537,7 @@ static void Z50_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	CPL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr));
+	CPL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3515,7 +3548,7 @@ static void Z51_ddN0_0000_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
-	PUSHL(cpustate, dst, RDMEM_L(cpustate, addr));
+	PUSHL(cpustate, dst, RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3528,7 +3561,7 @@ static void Z51_ddN0_ssN0_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	PUSHL(cpustate, dst, RDMEM_L(cpustate, addr));
+	PUSHL(cpustate, dst, RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3539,7 +3572,7 @@ static void Z52_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RL(dst) = SUBL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr));
+	cpustate->RL(dst) = SUBL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3552,7 +3585,7 @@ static void Z52_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RL(dst) = SUBL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr));
+	cpustate->RL(dst) = SUBL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3563,7 +3596,7 @@ static void Z53_ddN0_0000_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
-	PUSHW(cpustate, dst, RDMEM_W(cpustate, addr));
+	PUSHW(cpustate, dst, RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3576,7 +3609,7 @@ static void Z53_ddN0_ssN0_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	PUSHW(cpustate, dst, RDMEM_W(cpustate, addr));
+	PUSHW(cpustate, dst, RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3587,7 +3620,7 @@ static void Z54_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RL(dst) = RDMEM_L(cpustate,  addr);
+	cpustate->RL(dst) = RDMEM_L(cpustate, AS_DATA, addr);
 }
 
 /******************************************
@@ -3600,7 +3633,7 @@ static void Z54_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RL(dst) = RDMEM_L(cpustate,  addr);
+	cpustate->RL(dst) = RDMEM_L(cpustate, AS_DATA, addr);
 }
 
 /******************************************
@@ -3611,7 +3644,7 @@ static void Z55_ssN0_0000_addr(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
-	WRMEM_L(cpustate,  addr, POPL(cpustate, src));
+	WRMEM_L(cpustate, AS_DATA,  addr, POPL(cpustate, src));
 }
 
 /******************************************
@@ -3624,7 +3657,7 @@ static void Z55_ssN0_ddN0_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_L(cpustate,  addr, POPL(cpustate, src));
+	WRMEM_L(cpustate, AS_DATA,  addr, POPL(cpustate, src));
 }
 
 /******************************************
@@ -3635,7 +3668,7 @@ static void Z56_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RL(dst) = ADDL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr));
+	cpustate->RL(dst) = ADDL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3648,7 +3681,7 @@ static void Z56_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RL(dst) = ADDL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, addr));
+	cpustate->RL(dst) = ADDL(cpustate, cpustate->RL(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3659,7 +3692,7 @@ static void Z57_ssN0_0000_addr(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, POPW(cpustate, src));
+	WRMEM_W(cpustate, AS_DATA,  addr, POPW(cpustate, src));
 }
 
 /******************************************
@@ -3672,7 +3705,7 @@ static void Z57_ssN0_ddN0_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, POPW(cpustate, src));
+	WRMEM_W(cpustate, AS_DATA,  addr, POPW(cpustate, src));
 }
 
 /******************************************
@@ -3683,7 +3716,7 @@ static void Z58_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RQ(dst) = MULTL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, addr));
+	cpustate->RQ(dst) = MULTL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3696,7 +3729,7 @@ static void Z58_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RQ(dst) = MULTL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, addr));
+	cpustate->RQ(dst) = MULTL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3707,7 +3740,7 @@ static void Z59_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RL(dst) = MULTW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, addr));
+	cpustate->RL(dst) = MULTW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3720,7 +3753,7 @@ static void Z59_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RL(dst) = MULTW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, addr));
+	cpustate->RL(dst) = MULTW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3731,7 +3764,7 @@ static void Z5A_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RQ(dst) = DIVL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, addr));
+	cpustate->RQ(dst) = DIVL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3744,7 +3777,7 @@ static void Z5A_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RQ(dst) = DIVL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, addr));
+	cpustate->RQ(dst) = DIVL(cpustate, cpustate->RQ(dst), RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3755,7 +3788,7 @@ static void Z5B_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RL(dst) = DIVW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, addr));
+	cpustate->RL(dst) = DIVW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3768,7 +3801,7 @@ static void Z5B_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RL(dst) = DIVW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, addr));
+	cpustate->RL(dst) = DIVW(cpustate, cpustate->RL(dst), RDMEM_W(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3781,7 +3814,7 @@ static void Z5C_0000_0001_0000_dddd_0000_nmin1_addr(z8000_state *cpustate)
 	GET_CNT(OP1,NIB3);
 	GET_ADDR(OP2);
 	while (cnt-- >= 0) {
-		cpustate->RW(dst) = RDMEM_W(cpustate, addr);
+		cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr);
 		dst = (dst+1) & 15;
         addr = addr_add (cpustate, addr, 2);
 	}
@@ -3794,7 +3827,7 @@ static void Z5C_0000_0001_0000_dddd_0000_nmin1_addr(z8000_state *cpustate)
 static void Z5C_0000_1000_addr(z8000_state *cpustate)
 {
 	GET_ADDR(OP1);
-	TESTL(cpustate, RDMEM_L(cpustate, addr));
+	TESTL(cpustate, RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3807,7 +3840,7 @@ static void Z5C_0000_1001_0000_ssss_0000_nmin1_addr(z8000_state *cpustate)
 	GET_CNT(OP1,NIB3);
 	GET_ADDR(OP2);
 	while (cnt-- >= 0) {
-		WRMEM_W(cpustate,  addr, cpustate->RW(src));
+		WRMEM_W(cpustate, AS_DATA,  addr, cpustate->RW(src));
 		src = (src+1) & 15;
         addr = addr_add (cpustate, addr, 2);
 	}
@@ -3822,7 +3855,7 @@ static void Z5C_ddN0_1000_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	TESTL(cpustate, RDMEM_L(cpustate, addr));
+	TESTL(cpustate, RDMEM_L(cpustate, AS_DATA, addr));
 }
 
 /******************************************
@@ -3837,7 +3870,7 @@ static void Z5C_ddN0_1001_0000_ssN0_0000_nmin1_addr(z8000_state *cpustate)
 	GET_ADDR(OP2);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
 	while (cnt-- >= 0) {
-		WRMEM_W(cpustate,  addr, cpustate->RW(src));
+		WRMEM_W(cpustate, AS_DATA,  addr, cpustate->RW(src));
 		src = (src+1) & 15;
 		addr = addr_add(cpustate, addr, 2);
 	}
@@ -3855,7 +3888,7 @@ static void Z5C_ssN0_0001_0000_dddd_0000_nmin1_addr(z8000_state *cpustate)
 	GET_ADDR(OP2);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
 	while (cnt-- >= 0) {
-		cpustate->RW(dst) = RDMEM_W(cpustate, addr);
+		cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr);
 		dst = (dst+1) & 15;
 		addr = addr_add(cpustate, addr, 2);
 	}
@@ -3869,7 +3902,7 @@ static void Z5D_0000_ssss_addr(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_L(cpustate,  addr, cpustate->RL(src));
+	WRMEM_L(cpustate, AS_DATA,  addr, cpustate->RL(src));
 }
 
 /******************************************
@@ -3882,7 +3915,7 @@ static void Z5D_ddN0_ssss_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_L(cpustate,  addr, cpustate->RL(src));
+	WRMEM_L(cpustate, AS_DATA,  addr, cpustate->RL(src));
 }
 
 /******************************************
@@ -3894,22 +3927,22 @@ static void Z5E_0000_cccc_addr(z8000_state *cpustate)
 	GET_CCC(OP0,NIB3);
 	GET_ADDR(OP1);
 	switch (cc) {
-		case  0: if (CC0) cpustate->pc = addr; break;
-		case  1: if (CC1) cpustate->pc = addr; break;
-		case  2: if (CC2) cpustate->pc = addr; break;
-		case  3: if (CC3) cpustate->pc = addr; break;
-		case  4: if (CC4) cpustate->pc = addr; break;
-		case  5: if (CC5) cpustate->pc = addr; break;
-		case  6: if (CC6) cpustate->pc = addr; break;
-		case  7: if (CC7) cpustate->pc = addr; break;
-		case  8: if (CC8) cpustate->pc = addr; break;
-		case  9: if (CC9) cpustate->pc = addr; break;
-		case 10: if (CCA) cpustate->pc = addr; break;
-		case 11: if (CCB) cpustate->pc = addr; break;
-		case 12: if (CCC) cpustate->pc = addr; break;
-		case 13: if (CCD) cpustate->pc = addr; break;
-		case 14: if (CCE) cpustate->pc = addr; break;
-		case 15: if (CCF) cpustate->pc = addr; break;
+		case  0: if (CC0) set_pc(cpustate, addr); break;
+		case  1: if (CC1) set_pc(cpustate, addr); break;
+		case  2: if (CC2) set_pc(cpustate, addr); break;
+		case  3: if (CC3) set_pc(cpustate, addr); break;
+		case  4: if (CC4) set_pc(cpustate, addr); break;
+		case  5: if (CC5) set_pc(cpustate, addr); break;
+		case  6: if (CC6) set_pc(cpustate, addr); break;
+		case  7: if (CC7) set_pc(cpustate, addr); break;
+		case  8: if (CC8) set_pc(cpustate, addr); break;
+		case  9: if (CC9) set_pc(cpustate, addr); break;
+		case 10: if (CCA) set_pc(cpustate, addr); break;
+		case 11: if (CCB) set_pc(cpustate, addr); break;
+		case 12: if (CCC) set_pc(cpustate, addr); break;
+		case 13: if (CCD) set_pc(cpustate, addr); break;
+		case 14: if (CCE) set_pc(cpustate, addr); break;
+		case 15: if (CCF) set_pc(cpustate, addr); break;
 	}
 }
 
@@ -3924,22 +3957,22 @@ static void Z5E_ddN0_cccc_addr(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
 	switch (cc) {
-		case  0: if (CC0) cpustate->pc = addr; break;
-		case  1: if (CC1) cpustate->pc = addr; break;
-		case  2: if (CC2) cpustate->pc = addr; break;
-		case  3: if (CC3) cpustate->pc = addr; break;
-		case  4: if (CC4) cpustate->pc = addr; break;
-		case  5: if (CC5) cpustate->pc = addr; break;
-		case  6: if (CC6) cpustate->pc = addr; break;
-		case  7: if (CC7) cpustate->pc = addr; break;
-		case  8: if (CC8) cpustate->pc = addr; break;
-		case  9: if (CC9) cpustate->pc = addr; break;
-		case 10: if (CCA) cpustate->pc = addr; break;
-		case 11: if (CCB) cpustate->pc = addr; break;
-		case 12: if (CCC) cpustate->pc = addr; break;
-		case 13: if (CCD) cpustate->pc = addr; break;
-		case 14: if (CCE) cpustate->pc = addr; break;
-		case 15: if (CCF) cpustate->pc = addr; break;
+		case  0: if (CC0) set_pc(cpustate, addr); break;
+		case  1: if (CC1) set_pc(cpustate, addr); break;
+		case  2: if (CC2) set_pc(cpustate, addr); break;
+		case  3: if (CC3) set_pc(cpustate, addr); break;
+		case  4: if (CC4) set_pc(cpustate, addr); break;
+		case  5: if (CC5) set_pc(cpustate, addr); break;
+		case  6: if (CC6) set_pc(cpustate, addr); break;
+		case  7: if (CC7) set_pc(cpustate, addr); break;
+		case  8: if (CC8) set_pc(cpustate, addr); break;
+		case  9: if (CC9) set_pc(cpustate, addr); break;
+		case 10: if (CCA) set_pc(cpustate, addr); break;
+		case 11: if (CCB) set_pc(cpustate, addr); break;
+		case 12: if (CCC) set_pc(cpustate, addr); break;
+		case 13: if (CCD) set_pc(cpustate, addr); break;
+		case 14: if (CCE) set_pc(cpustate, addr); break;
+		case 15: if (CCF) set_pc(cpustate, addr); break;
 	}
 }
 
@@ -3954,7 +3987,7 @@ static void Z5F_0000_0000_addr(z8000_state *cpustate)
         PUSHL(cpustate, SP, make_segmented_addr(cpustate->pc));
     else
         PUSHW(cpustate, SP, cpustate->pc);
-	cpustate->pc = addr;
+	set_pc(cpustate, addr);
 }
 
 /******************************************
@@ -3970,7 +4003,7 @@ static void Z5F_ddN0_0000_addr(z8000_state *cpustate)
     else
         PUSHW(cpustate, SP, cpustate->pc);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	cpustate->pc = addr;
+	set_pc(cpustate, addr);
 }
 
 /******************************************
@@ -3981,7 +4014,7 @@ static void Z60_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RB(dst) = RDMEM_B(cpustate, addr);
+	cpustate->RB(dst) = RDMEM_B(cpustate, AS_DATA, addr);
 }
 
 /******************************************
@@ -3994,7 +4027,7 @@ static void Z60_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RB(dst) = RDMEM_B(cpustate, addr);
+	cpustate->RB(dst) = RDMEM_B(cpustate, AS_DATA, addr);
 }
 
 /******************************************
@@ -4005,7 +4038,7 @@ static void Z61_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	cpustate->RW(dst) = RDMEM_W(cpustate, addr);
+	cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr);
 }
 
 /******************************************
@@ -4018,7 +4051,7 @@ static void Z61_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_SRC(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	cpustate->RW(dst) = RDMEM_W(cpustate, addr);
+	cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr);
 }
 
 /******************************************
@@ -4029,7 +4062,7 @@ static void Z62_0000_imm4_addr(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, RDMEM_B(cpustate, addr) & ~bit);
+	WRMEM_B(cpustate, AS_DATA,  addr, RDMEM_B(cpustate, AS_DATA, addr) & ~bit);
 }
 
 /******************************************
@@ -4042,7 +4075,7 @@ static void Z62_ddN0_imm4_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, RDMEM_B(cpustate, addr) & ~bit);
+	WRMEM_B(cpustate, AS_DATA,  addr, RDMEM_B(cpustate, AS_DATA, addr) & ~bit);
 }
 
 /******************************************
@@ -4053,7 +4086,7 @@ static void Z63_0000_imm4_addr(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, RDMEM_W(cpustate, addr) & ~bit);
+	WRMEM_W(cpustate, AS_DATA,  addr, RDMEM_W(cpustate, AS_DATA, addr) & ~bit);
 }
 
 /******************************************
@@ -4066,7 +4099,7 @@ static void Z63_ddN0_imm4_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, RDMEM_W(cpustate, addr) & ~bit);
+	WRMEM_W(cpustate, AS_DATA,  addr, RDMEM_W(cpustate, AS_DATA, addr) & ~bit);
 }
 
 /******************************************
@@ -4077,7 +4110,7 @@ static void Z64_0000_imm4_addr(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, RDMEM_B(cpustate, addr) | bit);
+	WRMEM_B(cpustate, AS_DATA,  addr, RDMEM_B(cpustate, AS_DATA, addr) | bit);
 }
 
 /******************************************
@@ -4090,7 +4123,7 @@ static void Z64_ddN0_imm4_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, RDMEM_B(cpustate, addr) | bit);
+	WRMEM_B(cpustate, AS_DATA,  addr, RDMEM_B(cpustate, AS_DATA, addr) | bit);
 }
 
 /******************************************
@@ -4101,7 +4134,7 @@ static void Z65_0000_imm4_addr(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, RDMEM_W(cpustate, addr) | bit);
+	WRMEM_W(cpustate, AS_DATA,  addr, RDMEM_W(cpustate, AS_DATA, addr) | bit);
 }
 
 /******************************************
@@ -4114,7 +4147,7 @@ static void Z65_ddN0_imm4_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, RDMEM_W(cpustate, addr) | bit);
+	WRMEM_W(cpustate, AS_DATA,  addr, RDMEM_W(cpustate, AS_DATA, addr) | bit);
 }
 
 /******************************************
@@ -4125,7 +4158,7 @@ static void Z66_0000_imm4_addr(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	if (RDMEM_B(cpustate, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_B(cpustate, AS_DATA, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4138,7 +4171,7 @@ static void Z66_ddN0_imm4_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-    if (RDMEM_B(cpustate, addr) & bit) CLR_Z; else SET_Z;
+    if (RDMEM_B(cpustate, AS_DATA, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4149,7 +4182,7 @@ static void Z67_0000_imm4_addr(z8000_state *cpustate)
 {
 	GET_BIT(OP0);
 	GET_ADDR(OP1);
-	if (RDMEM_W(cpustate, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_W(cpustate, AS_DATA, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4162,7 +4195,7 @@ static void Z67_ddN0_imm4_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	if (RDMEM_W(cpustate, addr) & bit) CLR_Z; else SET_Z;
+	if (RDMEM_W(cpustate, AS_DATA, addr) & bit) CLR_Z; else SET_Z;
 }
 
 /******************************************
@@ -4173,7 +4206,7 @@ static void Z68_0000_imm4m1_addr(z8000_state *cpustate)
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, INCB(cpustate, RDMEM_B(cpustate, addr), i4p1));
+	WRMEM_B(cpustate, AS_DATA,  addr, INCB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4186,7 +4219,7 @@ static void Z68_ddN0_imm4m1_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, INCB(cpustate, RDMEM_B(cpustate, addr), i4p1));
+	WRMEM_B(cpustate, AS_DATA,  addr, INCB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4197,7 +4230,7 @@ static void Z69_0000_imm4m1_addr(z8000_state *cpustate)
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, INCW(cpustate, RDMEM_W(cpustate, addr), i4p1));
+	WRMEM_W(cpustate, AS_DATA,  addr, INCW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4210,7 +4243,7 @@ static void Z69_ddN0_imm4m1_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, INCW(cpustate, RDMEM_W(cpustate, addr), i4p1));
+	WRMEM_W(cpustate, AS_DATA,  addr, INCW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4221,7 +4254,7 @@ static void Z6A_0000_imm4m1_addr(z8000_state *cpustate)
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, DECB(cpustate, RDMEM_B(cpustate, addr), i4p1));
+	WRMEM_B(cpustate, AS_DATA,  addr, DECB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4234,7 +4267,7 @@ static void Z6A_ddN0_imm4m1_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, DECB(cpustate, RDMEM_B(cpustate, addr), i4p1));
+	WRMEM_B(cpustate, AS_DATA,  addr, DECB(cpustate, RDMEM_B(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4245,7 +4278,7 @@ static void Z6B_0000_imm4m1_addr(z8000_state *cpustate)
 {
 	GET_I4M1(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, DECW(cpustate, RDMEM_W(cpustate, addr), i4p1));
+	WRMEM_W(cpustate, AS_DATA,  addr, DECW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4258,7 +4291,7 @@ static void Z6B_ddN0_imm4m1_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, DECW(cpustate, RDMEM_W(cpustate, addr), i4p1));
+	WRMEM_W(cpustate, AS_DATA,  addr, DECW(cpustate, RDMEM_W(cpustate, AS_DATA, addr), i4p1));
 }
 
 /******************************************
@@ -4269,8 +4302,8 @@ static void Z6C_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	UINT8 tmp = RDMEM_B(cpustate, addr);
-	WRMEM_B(cpustate, addr, cpustate->RB(dst));
+	UINT8 tmp = RDMEM_B(cpustate, AS_DATA, addr);
+	WRMEM_B(cpustate, AS_DATA, addr, cpustate->RB(dst));
 	cpustate->RB(dst) = tmp;
 }
 
@@ -4285,8 +4318,8 @@ static void Z6C_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	UINT8 tmp;
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	tmp = RDMEM_B(cpustate, addr);
-	WRMEM_B(cpustate, addr, cpustate->RB(dst));
+	tmp = RDMEM_B(cpustate, AS_DATA, addr);
+	WRMEM_B(cpustate, AS_DATA, addr, cpustate->RB(dst));
     cpustate->RB(dst) = tmp;
 }
 
@@ -4298,8 +4331,8 @@ static void Z6D_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
 	GET_ADDR(OP1);
-	UINT16 tmp = RDMEM_W(cpustate, addr);
-	WRMEM_W(cpustate,  addr, cpustate->RW(dst));
+	UINT16 tmp = RDMEM_W(cpustate, AS_DATA, addr);
+	WRMEM_W(cpustate, AS_DATA,  addr, cpustate->RW(dst));
 	cpustate->RW(dst) = tmp;
 }
 
@@ -4314,8 +4347,8 @@ static void Z6D_ssN0_dddd_addr(z8000_state *cpustate)
 	GET_ADDR(OP1);
 	UINT16 tmp;
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
-	tmp = RDMEM_W(cpustate, addr);
-	WRMEM_W(cpustate,  addr, cpustate->RW(dst));
+	tmp = RDMEM_W(cpustate, AS_DATA, addr);
+	WRMEM_W(cpustate, AS_DATA,  addr, cpustate->RW(dst));
     cpustate->RW(dst) = tmp;
 }
 
@@ -4327,7 +4360,7 @@ static void Z6E_0000_ssss_addr(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_B(cpustate,  addr, cpustate->RB(src));
+	WRMEM_B(cpustate, AS_DATA,  addr, cpustate->RB(src));
 }
 
 /******************************************
@@ -4340,7 +4373,7 @@ static void Z6E_ddN0_ssss_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_B(cpustate,  addr, cpustate->RB(src));
+	WRMEM_B(cpustate, AS_DATA,  addr, cpustate->RB(src));
 }
 
 /******************************************
@@ -4351,7 +4384,7 @@ static void Z6F_0000_ssss_addr(z8000_state *cpustate)
 {
 	GET_SRC(OP0,NIB3);
 	GET_ADDR(OP1);
-	WRMEM_W(cpustate,  addr, cpustate->RW(src));
+	WRMEM_W(cpustate, AS_DATA,  addr, cpustate->RW(src));
 }
 
 /******************************************
@@ -4364,7 +4397,7 @@ static void Z6F_ddN0_ssss_addr(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_ADDR(OP1);
 	addr = addr_add(cpustate, addr, cpustate->RW(dst));
-	WRMEM_W(cpustate,  addr, cpustate->RW(src));
+	WRMEM_W(cpustate, AS_DATA,  addr, cpustate->RW(src));
 }
 
 /******************************************
@@ -4376,7 +4409,7 @@ static void Z70_ssN0_dddd_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	cpustate->RB(dst) = RDMEM_B(cpustate, addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
+	cpustate->RB(dst) = RDMEM_B(cpustate, AS_DATA, addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
 }
 
 /******************************************
@@ -4388,7 +4421,7 @@ static void Z71_ssN0_dddd_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	cpustate->RW(dst) = RDMEM_W(cpustate, addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
+	cpustate->RW(dst) = RDMEM_W(cpustate, AS_DATA, addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
 }
 
 /******************************************
@@ -4400,7 +4433,7 @@ static void Z72_ddN0_ssss_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	WRMEM_B(cpustate,  addr_add(cpustate, addr_from_reg(cpustate, dst), cpustate->RW(idx)), cpustate->RB(src));
+	WRMEM_B(cpustate, AS_DATA,  addr_add(cpustate, addr_from_reg(cpustate, dst), cpustate->RW(idx)), cpustate->RB(src));
 }
 
 /******************************************
@@ -4412,7 +4445,7 @@ static void Z73_ddN0_ssss_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	WRMEM_W(cpustate,  addr_add(cpustate, addr_from_reg(cpustate, dst), cpustate->RW(idx)), cpustate->RW(src));
+	WRMEM_W(cpustate, AS_DATA,  addr_add(cpustate, addr_from_reg(cpustate, dst), cpustate->RW(idx)), cpustate->RW(src));
 }
 
 /******************************************
@@ -4424,7 +4457,13 @@ static void Z74_ssN0_dddd_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
+	if (segmented_mode(cpustate)) {
+		cpustate->RL(dst) = cpustate->RL(src);
+	}
+	else {
+		cpustate->RW(dst) = cpustate->RW(src);
+	}
+	add_to_addr_reg(cpustate, dst, cpustate->RW(idx));
 }
 
 /******************************************
@@ -4436,7 +4475,7 @@ static void Z75_ssN0_dddd_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	cpustate->RL(dst) = RDMEM_L(cpustate,  addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
+	cpustate->RL(dst) = RDMEM_L(cpustate, AS_DATA, addr_add(cpustate, addr_from_reg(cpustate, src), cpustate->RW(idx)));
 }
 
 /******************************************
@@ -4446,8 +4485,13 @@ static void Z75_ssN0_dddd_0000_xxxx_0000_0000(z8000_state *cpustate)
 static void Z76_0000_dddd_addr(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB3);
-	GET_ADDR(OP1);
-    addr_to_reg(cpustate, dst, addr);
+	GET_ADDR_RAW(OP1);
+	if (segmented_mode(cpustate)) {
+		cpustate->RL(dst) = addr;
+	}
+	else {
+		cpustate->RW(dst) = addr;
+	}
 }
 
 /******************************************
@@ -4455,12 +4499,17 @@ static void Z76_0000_dddd_addr(z8000_state *cpustate)
  flags:  ------
  ******************************************/
 static void Z76_ssN0_dddd_addr(z8000_state *cpustate)
-{
+{//@@@
 	GET_DST(OP0,NIB3);
 	GET_SRC(OP0,NIB2);
-	GET_ADDR(OP1);
-	addr = addr_add(cpustate, addr, cpustate->RW(src));
-    addr_to_reg(cpustate, dst, addr);
+	GET_ADDR_RAW(OP1);
+	if (segmented_mode(cpustate)) {
+		cpustate->RL(dst) = addr;
+	}
+	else {
+		cpustate->RW(dst) = addr;
+	}
+	add_to_addr_reg(cpustate, dst, cpustate->RW(src));
 }
 
 /******************************************
@@ -4472,7 +4521,7 @@ static void Z77_ddN0_ssss_0000_xxxx_0000_0000(z8000_state *cpustate)
 	GET_SRC(OP0,NIB3);
 	GET_DST(OP0,NIB2);
 	GET_IDX(OP1,NIB1);
-	WRMEM_L(cpustate,  addr_add(cpustate, addr_from_reg(cpustate, dst), cpustate->RW(idx)), cpustate->RL(src));
+	WRMEM_L(cpustate, AS_DATA,  addr_add(cpustate, addr_from_reg(cpustate, dst), cpustate->RW(idx)), cpustate->RL(src));
 }
 
 /******************************************
@@ -4498,15 +4547,16 @@ static void Z79_0000_0000_addr(z8000_state *cpustate)
     CHECK_PRIVILEGED_INSTR();
 	GET_ADDR(OP1);
 	UINT16 fcw;
-    //printf("LDPS from 0x%x: old pc: 0x%x\n", addr, cpustate->pc);
+    printf("LDPS from 0x%x: old pc: 0x%x\n", addr, cpustate->pc);
     if (segmented_mode(cpustate)) {
-        fcw = RDMEM_W(cpustate,  addr + 2);
-        cpustate->pc = segmented_addr(RDMEM_L(cpustate, addr + 4));
+        fcw = RDMEM_W(cpustate, AS_DATA,  addr + 2);
+        set_pc(cpustate, segmented_addr(RDMEM_L(cpustate, AS_DATA, addr + 4)));
     }
     else {
-        fcw = RDMEM_W(cpustate, addr);
-        cpustate->pc = RDMEM_W(cpustate, (UINT16)(addr + 2));
+        fcw = RDMEM_W(cpustate, AS_DATA, addr);
+        set_pc(cpustate, RDMEM_W(cpustate, AS_DATA, (UINT16)(addr + 2)));
     }
+	if ((fcw ^ cpustate->fcw) & F_SEG) printf("ldps 2 (0x%05x): changing from %ssegmented mode to %ssegmented mode\n", cpustate->pc, (fcw & F_SEG) ? "non-" : "", (fcw & F_SEG) ? "" : "non-");
 	CHANGE_FCW(cpustate, fcw); /* check for user/system mode change */
     //printf("LDPS: new pc: 0x%x\n", cpustate->pc);
 }
@@ -4523,13 +4573,14 @@ static void Z79_ssN0_0000_addr(z8000_state *cpustate)
 	UINT16 fcw;
 	addr = addr_add(cpustate, addr, cpustate->RW(src));
     if (segmented_mode(cpustate)) {
-        fcw = RDMEM_W(cpustate,  addr + 2);
-        cpustate->pc = segmented_addr(RDMEM_L(cpustate, addr + 4));
+        fcw = RDMEM_W(cpustate, AS_DATA,  addr + 2);
+        set_pc(cpustate, segmented_addr(RDMEM_L(cpustate, AS_DATA, addr + 4)));
     }
     else {
-        fcw = RDMEM_W(cpustate, addr);
-        cpustate->pc	= RDMEM_W(cpustate, (UINT16)(addr + 2));
+        fcw = RDMEM_W(cpustate, AS_DATA, addr);
+        cpustate->pc	= RDMEM_W(cpustate, AS_DATA, (UINT16)(addr + 2));
     }
+	if ((fcw ^ cpustate->fcw) & F_SEG) printf("ldps 3 (0x%05x): changing from %ssegmented mode to %ssegmented mode\n", cpustate->pc, (fcw & F_SEG) ? "non-" : "", (fcw & F_SEG) ? "" : "non-");
 	CHANGE_FCW(cpustate, fcw); /* check for user/system mode change */
 }
 
@@ -4555,7 +4606,7 @@ static void Z7B_0000_0000(z8000_state *cpustate)
 	tag = POPW(cpustate, SP);	/* get type tag */
 	fcw = POPW(cpustate, SP);	/* get cpustate->fcw  */
     if (segmented_mode(cpustate))
-        cpustate->pc = segmented_addr(POPL(cpustate, SP));
+        set_pc(cpustate, segmented_addr(POPL(cpustate, SP)));
     else
         cpustate->pc	= POPW(cpustate, SP);	/* get cpustate->pc   */
     cpustate->irq_srv &= ~tag;    /* remove IRQ serviced flag */
@@ -5213,41 +5264,41 @@ static void Z9E_0000_cccc(z8000_state *cpustate)
 	GET_CCC(OP0,NIB3);
     if (segmented_mode(cpustate))
         switch (cc) {
-            case  0: if (CC0) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  1: if (CC1) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  2: if (CC2) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  3: if (CC3) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  4: if (CC4) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  5: if (CC5) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  6: if (CC6) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  7: if (CC7) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  8: if (CC8) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case  9: if (CC9) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case 10: if (CCA) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case 11: if (CCB) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case 12: if (CCC) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case 13: if (CCD) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case 14: if (CCE) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
-            case 15: if (CCF) cpustate->pc = segmented_addr(POPL(cpustate, SP)); break;
+			case  0: if (CC0) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  1: if (CC1) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  2: if (CC2) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  3: if (CC3) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  4: if (CC4) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  5: if (CC5) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  6: if (CC6) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  7: if (CC7) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  8: if (CC8) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case  9: if (CC9) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case 10: if (CCA) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case 11: if (CCB) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case 12: if (CCC) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case 13: if (CCD) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case 14: if (CCE) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
+			case 15: if (CCF) set_pc(cpustate, segmented_addr(POPL(cpustate, SP))); break;
         }
     else
         switch (cc) {
-		    case  0: if (CC0) cpustate->pc = POPW(cpustate, SP); break;
-		    case  1: if (CC1) cpustate->pc = POPW(cpustate, SP); break;
-		    case  2: if (CC2) cpustate->pc = POPW(cpustate, SP); break;
-		    case  3: if (CC3) cpustate->pc = POPW(cpustate, SP); break;
-		    case  4: if (CC4) cpustate->pc = POPW(cpustate, SP); break;
-		    case  5: if (CC5) cpustate->pc = POPW(cpustate, SP); break;
-		    case  6: if (CC6) cpustate->pc = POPW(cpustate, SP); break;
-		    case  7: if (CC7) cpustate->pc = POPW(cpustate, SP); break;
-		    case  8: if (CC8) cpustate->pc = POPW(cpustate, SP); break;
-		    case  9: if (CC9) cpustate->pc = POPW(cpustate, SP); break;
-		    case 10: if (CCA) cpustate->pc = POPW(cpustate, SP); break;
-		    case 11: if (CCB) cpustate->pc = POPW(cpustate, SP); break;
-		    case 12: if (CCC) cpustate->pc = POPW(cpustate, SP); break;
-		    case 13: if (CCD) cpustate->pc = POPW(cpustate, SP); break;
-		    case 14: if (CCE) cpustate->pc = POPW(cpustate, SP); break;
-		    case 15: if (CCF) cpustate->pc = POPW(cpustate, SP); break;
+			case  0: if (CC0) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  1: if (CC1) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  2: if (CC2) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  3: if (CC3) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  4: if (CC4) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  5: if (CC5) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  6: if (CC6) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  7: if (CC7) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  8: if (CC8) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case  9: if (CC9) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case 10: if (CCA) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case 11: if (CCB) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case 12: if (CCC) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case 13: if (CCD) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case 14: if (CCE) set_pc(cpustate, POPW(cpustate, SP)); break;
+			case 15: if (CCF) set_pc(cpustate, POPW(cpustate, SP)); break;
         }
 }
 
@@ -5543,11 +5594,11 @@ static void ZB1_dddd_1010(z8000_state *cpustate)
 static void ZB2_dddd_0001_imm8(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	GET_IMM16(OP1);
-	if (imm16 & S16)
-		cpustate->RB(dst) = SRLB(cpustate, cpustate->RB(dst), -(INT16)imm16);
+	GET_IMM8(OP1);
+	if (imm8 & S08)
+		cpustate->RB(dst) = SRLB(cpustate, cpustate->RB(dst), -(INT8)imm8);
 	else
-		cpustate->RB(dst) = SLLB(cpustate, cpustate->RB(dst), imm16);
+		cpustate->RB(dst) = SLLB(cpustate, cpustate->RB(dst), imm8);
 }
 
 /******************************************
@@ -5592,11 +5643,11 @@ static void ZB2_dddd_01I0(z8000_state *cpustate)
 static void ZB2_dddd_1001_imm8(z8000_state *cpustate)
 {
 	GET_DST(OP0,NIB2);
-	GET_IMM16(OP1);
-	if (imm16 & S16)
-		cpustate->RB(dst) = SRAB(cpustate, cpustate->RB(dst), -(INT16)imm16);
+	GET_IMM8(OP1);
+	if (imm8 & S08)
+		cpustate->RB(dst) = SRAB(cpustate, cpustate->RB(dst), -(INT8)imm8);
 	else
-		cpustate->RB(dst) = SLAB(cpustate, cpustate->RB(dst), imm16);
+		cpustate->RB(dst) = SLAB(cpustate, cpustate->RB(dst), imm8);
 }
 
 /******************************************
@@ -5837,10 +5888,10 @@ static void ZB8_ddN0_0010_0000_rrrr_ssN0_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5853,10 +5904,10 @@ static void ZB8_ddN0_0110_0000_rrrr_ssN0_1110(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) {
 	  CLR_V;
 	  if (!xlt)
@@ -5874,10 +5925,10 @@ static void ZB8_ddN0_1010_0000_rrrr_ssN0_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5890,10 +5941,10 @@ static void ZB8_ddN0_1110_0000_rrrr_ssN0_1110(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
 	cpustate->RB(1) = xlt;	/* load RH1 */
 	if (xlt) CLR_Z; else SET_Z;
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) {
 	  CLR_V;
 	  if (!xlt)
@@ -5911,10 +5962,10 @@ static void ZB8_ddN0_0000_0000_rrrr_ssN0_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
-	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst), xlt);
 	cpustate->RB(1) = xlt;	/* destroy RH1 */
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5927,10 +5978,10 @@ static void ZB8_ddN0_0100_0000_rrrr_ssN0_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
-	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst), xlt);
 	cpustate->RB(1) = xlt;	/* destroy RH1 */
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; cpustate->pc -= 4; } else SET_V;
 }
 
@@ -5943,10 +5994,10 @@ static void ZB8_ddN0_1000_0000_rrrr_ssN0_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
-	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst), xlt);
 	cpustate->RB(1) = xlt;	/* destroy RH1 */
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -5959,10 +6010,10 @@ static void ZB8_ddN0_1100_0000_rrrr_ssN0_0000(z8000_state *cpustate)
 	GET_DST(OP0,NIB2);
 	GET_SRC(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	UINT8 xlt = RDMEM_B(cpustate, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, addr_from_reg(cpustate, dst)));
-	WRMEM_B(cpustate, addr_from_reg(cpustate, dst), xlt);
+	UINT8 xlt = RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src) + RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)));
+	WRMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst), xlt);
 	cpustate->RB(1) = xlt;	/* destroy RH1 */
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; cpustate->pc -= 4; } else SET_V;
 }
 
@@ -5991,7 +6042,7 @@ static void ZBA_ssN0_0000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6010,7 +6061,7 @@ static void ZBA_ssN0_0000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 1));
+	add_to_addr_reg(cpustate, src, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6025,9 +6076,9 @@ static void ZBA_ssN0_0001_0000_rrrr_ddN0_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);	/* repeat? */
-    WRMEM_B(cpustate,  addr_from_reg(cpustate, dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 1));
+    WRMEM_B(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
+	add_to_addr_reg(cpustate, src, 1);
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6041,7 +6092,7 @@ static void ZBA_ssN0_0010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6060,8 +6111,8 @@ static void ZBA_ssN0_0010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 1));
+	add_to_addr_reg(cpustate, src, 1);
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6075,7 +6126,7 @@ static void ZBA_ssN0_0100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6094,7 +6145,7 @@ static void ZBA_ssN0_0100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 1));
+	add_to_addr_reg(cpustate, src, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6108,7 +6159,7 @@ static void ZBA_ssN0_0110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6127,8 +6178,8 @@ static void ZBA_ssN0_0110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 1));
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 1));
+	add_to_addr_reg(cpustate, src, 1);
+	add_to_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6142,7 +6193,7 @@ static void ZBA_ssN0_1000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-    CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+    CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
     switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6161,7 +6212,7 @@ static void ZBA_ssN0_1000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 1));
+	sub_from_addr_reg(cpustate, src, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6176,9 +6227,9 @@ static void ZBA_ssN0_1001_0000_rrrr_ddN0_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_B(cpustate,  addr_from_reg(cpustate, dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 1));
+	WRMEM_B(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
+	sub_from_addr_reg(cpustate, src, 1);
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6192,7 +6243,7 @@ static void ZBA_ssN0_1010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-    CPB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+    CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6211,8 +6262,8 @@ static void ZBA_ssN0_1010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 1));
+	sub_from_addr_reg(cpustate, src, 1);
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6226,7 +6277,7 @@ static void ZBA_ssN0_1100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+	CPB(cpustate, cpustate->RB(dst), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6245,7 +6296,7 @@ static void ZBA_ssN0_1100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 1));
+	sub_from_addr_reg(cpustate, src, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6259,7 +6310,7 @@ static void ZBA_ssN0_1110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-    CPB(cpustate, RDMEM_B(cpustate, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, addr_from_reg(cpustate, src)));
+    CPB(cpustate, RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_B(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6278,8 +6329,8 @@ static void ZBA_ssN0_1110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
 	}
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 1));
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 1));
+	sub_from_addr_reg(cpustate, src, 1);
+	sub_from_addr_reg(cpustate, dst, 1);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6293,7 +6344,7 @@ static void ZBB_ssN0_0000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
     switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6312,7 +6363,7 @@ static void ZBB_ssN0_0000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 2));
+	add_to_addr_reg(cpustate, src, 2);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6327,9 +6378,9 @@ static void ZBB_ssN0_0001_0000_rrrr_ddN0_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
 	GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-	WRMEM_W(cpustate,  addr_from_reg(cpustate, dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 2));
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 2));
+	WRMEM_W(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
+	add_to_addr_reg(cpustate, src, 2);
+	add_to_addr_reg(cpustate, dst, 2);
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6343,7 +6394,7 @@ static void ZBB_ssN0_0010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, RDMEM_W(cpustate, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6362,8 +6413,8 @@ static void ZBB_ssN0_0010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 2));
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 2));
+	add_to_addr_reg(cpustate, src, 2);
+	add_to_addr_reg(cpustate, dst, 2);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6377,7 +6428,7 @@ static void ZBB_ssN0_0100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6396,7 +6447,7 @@ static void ZBB_ssN0_0100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 2));
+	add_to_addr_reg(cpustate, src, 2);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6410,7 +6461,7 @@ static void ZBB_ssN0_0110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, RDMEM_W(cpustate, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6429,8 +6480,8 @@ static void ZBB_ssN0_0110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_add(cpustate, addr_from_reg(cpustate, src), 2));
-	addr_to_reg(cpustate, dst, addr_add(cpustate, addr_from_reg(cpustate, dst), 2));
+	add_to_addr_reg(cpustate, src, 2);
+	add_to_addr_reg(cpustate, dst, 2);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6444,7 +6495,7 @@ static void ZBB_ssN0_1000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
     switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6463,7 +6514,7 @@ static void ZBB_ssN0_1000_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 2));
+	sub_from_addr_reg(cpustate, src, 2);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6478,9 +6529,9 @@ static void ZBB_ssN0_1001_0000_rrrr_ddN0_x000(z8000_state *cpustate)
     GET_CNT(OP1,NIB1);
     GET_DST(OP1,NIB2);
 	GET_CCC(OP1,NIB3);
-    WRMEM_W(cpustate,  addr_from_reg(cpustate, dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 2));
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 2));
+    WRMEM_W(cpustate, AS_DATA,  addr_from_reg(cpustate, dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
+	sub_from_addr_reg(cpustate, src, 2);
+	sub_from_addr_reg(cpustate, dst, 2);
 	if (--cpustate->RW(cnt)) { CLR_V; if (cc == 0) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6494,7 +6545,7 @@ static void ZBB_ssN0_1010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, RDMEM_W(cpustate, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6513,8 +6564,8 @@ static void ZBB_ssN0_1010_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 2));
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 2));
+	sub_from_addr_reg(cpustate, src, 2);
+	sub_from_addr_reg(cpustate, dst, 2);
 	if (--cpustate->RW(cnt)) CLR_V; else SET_V;
 }
 
@@ -6528,7 +6579,7 @@ static void ZBB_ssN0_1100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, cpustate->RW(dst), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6547,7 +6598,7 @@ static void ZBB_ssN0_1100_0000_rrrr_dddd_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 2));
+	sub_from_addr_reg(cpustate, src, 2);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6561,7 +6612,7 @@ static void ZBB_ssN0_1110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 	GET_CCC(OP1,NIB3);
 	GET_DST(OP1,NIB2);
 	GET_CNT(OP1,NIB1);
-	CPW(cpustate, RDMEM_W(cpustate, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, addr_from_reg(cpustate, src)));
+	CPW(cpustate, RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, dst)), RDMEM_W(cpustate, AS_DATA, addr_from_reg(cpustate, src)));
 	switch (cc) {
 		case  0: if (CC0) SET_Z; else CLR_Z; break;
 		case  1: if (CC1) SET_Z; else CLR_Z; break;
@@ -6580,8 +6631,8 @@ static void ZBB_ssN0_1110_0000_rrrr_ddN0_cccc(z8000_state *cpustate)
 		case 14: if (CCE) SET_Z; else CLR_Z; break;
 		case 15: if (CCF) SET_Z; else CLR_Z; break;
     }
-	addr_to_reg(cpustate, dst, addr_sub(cpustate, addr_from_reg(cpustate, dst), 2));
-	addr_to_reg(cpustate, src, addr_sub(cpustate, addr_from_reg(cpustate, src), 2));
+	sub_from_addr_reg(cpustate, src, 2);
+	sub_from_addr_reg(cpustate, dst, 2);
 	if (--cpustate->RW(cnt)) { CLR_V; if (!(cpustate->fcw & F_Z)) cpustate->pc -= 4; } else SET_V;
 }
 
@@ -6662,7 +6713,7 @@ static void ZD_dsp12(z8000_state *cpustate)
     else
         PUSHW(cpustate, SP, cpustate->pc);
 	dsp12 = (dsp12 & 2048) ? 4096 - 2 * (dsp12 & 2047) : -2 * (dsp12 & 2047);
-	cpustate->pc = addr_add(cpustate, cpustate->pc, dsp12);
+	set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp12));
 }
 
 /******************************************
@@ -6674,22 +6725,22 @@ static void ZE_cccc_dsp8(z8000_state *cpustate)
 	GET_DSP8;
 	GET_CCC(OP0,NIB1);
 	switch (cc) {
-		case  0: if (CC0) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  1: if (CC1) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  2: if (CC2) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  3: if (CC3) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  4: if (CC4) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  5: if (CC5) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  6: if (CC6) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  7: if (CC7) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  8: if (CC8) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  9: if (CC9) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  10: if (CCA) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  11: if (CCB) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  12: if (CCC) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  13: if (CCD) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  14: if (CCE) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
-		case  15: if (CCF) cpustate->pc = addr_add(cpustate, cpustate->pc, dsp8 * 2); break;
+		case  0: if (CC0) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  1: if (CC1) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  2: if (CC2) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  3: if (CC3) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  4: if (CC4) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  5: if (CC5) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  6: if (CC6) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  7: if (CC7) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  8: if (CC8) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  9: if (CC9) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  10: if (CCA) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  11: if (CCB) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  12: if (CCC) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  13: if (CCD) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  14: if (CCE) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
+		case  15: if (CCF) set_pc(cpustate, addr_add(cpustate, cpustate->pc, dsp8 * 2)); break;
 	}
 }
 
@@ -6703,7 +6754,7 @@ static void ZF_dddd_0dsp7(z8000_state *cpustate)
     GET_DSP7;
     cpustate->RB(dst) -= 1;
     if (cpustate->RB(dst)) {
-        cpustate->pc = addr_sub(cpustate, cpustate->pc, 2 * dsp7);
+        set_pc(cpustate, addr_sub(cpustate, cpustate->pc, 2 * dsp7));
     }
 }
 
@@ -6717,6 +6768,6 @@ static void ZF_dddd_1dsp7(z8000_state *cpustate)
 	GET_DSP7;
 	cpustate->RW(dst) -= 1;
 	if (cpustate->RW(dst)) {
-        cpustate->pc = addr_sub(cpustate, cpustate->pc, 2 * dsp7);
+        set_pc(cpustate, addr_sub(cpustate, cpustate->pc, 2 * dsp7));
 	}
 }

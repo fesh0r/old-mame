@@ -8,8 +8,6 @@
 #include "cpu/i86/i86.h"
 #include "cpu/mcs48/mcs48.h"
 #include "formats/pc_dsk.h"
-#include "formats/mfi_dsk.h"
-#include "imagedev/flopdrv.h"
 #include "machine/am9517a.h"
 #include "machine/ctronics.h"
 #include "machine/ins8250.h"
@@ -59,6 +57,7 @@ public:
 		  m_floppy0(*this, PC_FDC_XT_TAG ":0:525dd" ),
 		  m_floppy1(*this, PC_FDC_XT_TAG ":1:525dd" ),
 		  m_bus(*this, ISA_BUS_TAG),
+		  m_video_ram(*this, "video_ram"),
 		  m_pit1(0),
 		  m_pit2(0),
 		  m_status1(0),
@@ -81,19 +80,20 @@ public:
 
 	required_device<cpu_device> m_maincpu;
 	required_device<am9517a_device> m_dmac;
-	required_device<device_t> m_pic;
-	required_device<device_t> m_pit;
+	required_device<pic8259_device> m_pic;
+	required_device<pit8253_device> m_pit;
 	required_device<mc146818_device> m_rtc;
 	required_device<pc_fdc_xt_device> m_fdc;
 	required_device<ins8250_device> m_uart;
 	required_device<ams40041_device> m_vdu;
 	required_device<centronics_device> m_centronics;
-	required_device<device_t> m_speaker;
+	required_device<speaker_sound_device> m_speaker;
 	required_device<pc1512_keyboard_device> m_kb;
 	required_device<ram_device> m_ram;
 	required_device<floppy_image_device> m_floppy0;
 	optional_device<floppy_image_device> m_floppy1;
 	required_device<isa8_device> m_bus;
+	optional_shared_ptr<UINT8> m_video_ram;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -155,6 +155,7 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER( mouse_button_2_changed );
 	DECLARE_INPUT_CHANGED_MEMBER( mouse_x_changed );
 	DECLARE_INPUT_CHANGED_MEMBER( mouse_y_changed );
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
 	// system status register
 	int m_pit1;
@@ -195,8 +196,7 @@ public:
 	UINT8 m_printer_control;
 
 	// video state
-	UINT8 *m_video_ram;
-	UINT8 *m_char_rom;
+	const UINT8 *m_char_rom;
 	int m_toggle;
 	int m_lpen;
 	int m_blink;

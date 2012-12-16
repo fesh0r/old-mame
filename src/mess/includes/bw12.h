@@ -5,9 +5,6 @@
 #include "cpu/z80/z80.h"
 #include "machine/ram.h"
 #include "formats/bw12_dsk.h"
-#include "formats/hxcmfm_dsk.h"
-#include "formats/imd_dsk.h"
-#include "formats/mfi_dsk.h"
 #include "machine/6821pia.h"
 #include "machine/ctronics.h"
 #include "machine/kb3600.h"
@@ -109,6 +106,8 @@ public:
 	int m_motor1;
 	TIMER_DEVICE_CALLBACK_MEMBER(floppy_motor_off_tick);
 	DECLARE_WRITE_LINE_MEMBER(pit_out0_w);
+	DECLARE_FLOPPY_FORMATS( bw12_floppy_formats );
+	DECLARE_FLOPPY_FORMATS( bw14_floppy_formats );
 };
 
 #endif

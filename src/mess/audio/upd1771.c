@@ -5,17 +5,65 @@
     Made using recording/analysis on a Yeno (PAL Super Cassete Vision)
     by plgDavid
 
-    Full markings on my 2 specimens are "NEC JAPAN 8431K9 D1771C 017"
-    31th week of 1984, mask rom #017
+    Full markings on my 2 specimens are
+    "NEC JAPAN 8431K9 D1771C 017" (31st week of 1984, mask rom #017)
 
-    Ive seen mentions of a 006, 011 and 015 on part miner sites.
-    Since the chip generates tones using embeded wavetables,
-    it is probable other sounds are possible and were made for other embeded systems.
-    Its anyone's guess at this point in which products.
+    I've since (October 2012) got a Grandstand Firefox F-7 Handheld game
+    (AKA Epoch GalagaX6/Epoch Astro Thunder 7/Tandy Astro Thunder),
+    (http://www.handheldmuseum.com/Grandstand/Firefox.htm)
+    which includes a
+    "NEC JAPAN 8319K9 D1771C 011" (19th week of 1983, mask rom #011)
+    Thanks to user 'Blanka' from Dragonslairfans for the nice catch!
+    (http://www.dragonslairfans.com/smfor/index.php?topic=3061.0)
 
-    upd17XXX devices are typically 4bit NEC MCUs, so it wouldnt be a stretch to
-    say that this chip is part of that lot.
-    Maybe mask roms 006,011 and 015 dont generate audio at all.
+    Since the chip generates tones using ROM wavetables,
+    it is perfectly possible to generate other sounds with different rom code and data.
+
+    upd17XXX devices are typically 4bit NEC MCUs, however based on information
+    in in "Electronic Speech Synthesis" by Geoff Bristow (ISBN 0-07-007912-9, pages 148-152):
+
+    The uPD1770/uPD1771 is a 16-bit-wide rom/ram mcu with 8kb (4kw) of rom code,
+    64 bytes of ram (16x16bit words addressable as 16 or 2x8 bits each, the
+    remaining 32 bytes acting as a stack), 138 instruction types, a complex
+    noise-IRQ system, external interrupts, and two 8-bit ports with multiple modes.
+
+    The uPD1771 internal workings are described to some extent by the Bristow book
+    and are covered by at least three US patents:
+    4408094 - covers the 3 pin 5-bit DAC with the volume control/vref pin. Not all that interesting,
+              except it might describe to some extent how the 9->5bit PWM works in the text.
+    4470113 - covers the multiplexed PB0/1/2/3 pins and their use as /CS /WR /RD and ALE
+              note as I have marked the pins below I assume the final pins connected
+              to /CS /WR /RD and /ALE are PB7,6,5,4 but this is just a guess of mine:
+              The actual order may well match the patent.
+    4577343 - covers the VSRSSS implementation as discussed in the Bristow book.
+              This patent has an internal diagram of the workings of the chips and
+              a limited description of how many registers etc it has.
+
+    Based on the 4577343 patent mostly:
+    * these are the registers:
+    8bits:
+     AH, AL (forming the 16-bit A' accumulator),
+     B, C (a pair of general purpose registers),
+    4bits (may be technically part of ALU):
+     H -> points to one of the 16 words of ram
+    1bit:
+     L -> selector of left or right half of the ram word
+    ?bits:
+     D (having to do with the DAC)
+     N (having to do with the pseudorandom noise interrupt, namely setting the clock divider ratio for the PRNG clock vs cpu clock)
+     MODE (enabling/disabling/acking the noise interrupt, and the tone interrupts (there are four!))
+     SP (the stack pointer, probably 5 bits, points to the stack ram; may encompass H and L as above!)
+     FLO: unsure. quite possibly 'flag overflow' used for branching. there likely exists other flags as well...
+     ODF: 'output data flag?', selects which half of a selected ram word is output to the dac not really sure of this?
+
+
+    Mask roms known:
+    uPD1776C: mentioned in the bristow book, implements VSRSSS speech concatenation
+              (see US Patent 4577343 which is a patent on this VSRSSS implementation)
+    uPD1771C-006: used in NEC APC for sound as the "MPU"
+            -011: used on Firefox F-4 handheld
+            -015: unknown, known to exist from part scalper sites only.
+            -017: used on Epoch Super Cassete Vision for sound; This audio driver HLEs that part only.
 
      Used pinout in the SCV:
 
@@ -34,6 +82,23 @@
      AUDOUT(inv) 13        16        VCC
      GND         14        15        ? tied to pin 16 (VCC) through a resistor (pullup?)
 
+     Pinout based on guesses and information in "Electronic Speech Synthesis" by Geoff Bristow
+     (ISBN 0-07-007912-9, pages 148-152); [x] is unsure:
+     PB3          1        28        PB2
+     PB4(/ALE)    2        27        PB1
+     PB5(/RD)     3        26        PB0
+     PB6(/WR)     4        25        PA7
+     PB7(/CS)     5        24        PA6
+     /EXTINT?     6        23        PA5
+     [RESET?]     7        22        PA4
+     VCC          8        21        PA3
+     XI           9        20        PA2
+     XO          10        19        PA1
+     D/A OUT +   11        18        PA0
+     [D/A VREF?] 12        17        [MODE3?]
+     D/A OUT -   13        16        [MODE2?]
+     GND         14        15        [MODE1/TEST/RESET?] tied to pin 16 (VCC) through a resistor (pullup?)
+
     In the SCV:
     pin  5 is tied to the !SCPU pin on the Epoch TV chip pin 29 (0x3600 writes)
     pin  6 is tied to the   PC3 pin of the upD7801 CPU
@@ -44,15 +109,19 @@
     7  is always low.
     12 is always high
 
-    It is unknown which is the "real" VCC input betwwen pin 8 and 16,
-    same goes for GNDs on pin 14 and 17.
+    (NOTE: the photomicrograph in the bristow book makes it fairly clear due to
+    pad thicknessess that the real VCC is pin 8 and the real GND is pin 14.
+    Pins 16 and 17 are some sort of ?mode? inputs but could be the /EXTINT pin too?
+    Pin 15 MIGHT be the reset pin or could be a TEST pin. RESET could also be pin 7.)
 
     Pins 11 and 13 go to a special circuit, which according to kevtris's analysis
     of my schematics, consist of a balanced output (not unlike XLR cables),
-    which are then combined togheter then sent to the RF box.
+    which are then combined together then sent to the RF box.
+    (The bristow book explains that there are two DAC pins and one DAC
+    VREF/volume pin. The dac+ and dac- are pins 11 and 13, and based on the
+    photomicrograph it looks like dac vref is probably pin 12)
 
-    All NC pins are unknown, maybe some are  "test" pins.
-
+    HLE:
     All writes are made through address 0x3600 on the upD7801
     Instead of using register=value, this chip require sending multiple
     bytes for each command, one after the other.
@@ -68,10 +137,10 @@
 #define MAX_PACKET_SIZE 0x8000
 
 /*
-  Each of the 8 waveforms have been sampled at 192Khz using period 0xFF,
+  Each of the 8 waveforms have been sampled at 192kHz using period 0xFF,
   filtered, and each of the 32 levels have been calculated with averages on around 10 samples
-  (removing the transition samples) then quantized to 8bit signed.
-  We are not clear on the exact DAC details yet, especially with regards to volume changes
+  (removing the transition samples) then quantized to int8_t's.
+  We are not clear on the exact DAC details yet, especially with regards to volume changes.
 
   External AC coupling is assumed in the use of this DAC, so we will center the 8bit data using a signed container
 */
@@ -136,14 +205,14 @@ struct upd1771_state
     UINT8    t_offset; //[0; 32]
     UINT16   t_period; //[0;255]
     UINT8    t_volume; //[0; 31]
-    UINT8    t_tpos;//timber pos
+    UINT8    t_tpos;//timbre pos
     UINT16   t_ppos;//period pos
 
     //noise wavetable LFSR
     UINT8    nw_timbre; //[0;  7]
     UINT8    nw_volume; //[0; 31]
     UINT32   nw_period;
-    UINT32   nw_tpos;   //timber pos
+    UINT32   nw_tpos;   //timbre pos
     UINT32   nw_ppos;   //period pos
 
     //noise pulse components
@@ -162,9 +231,14 @@ INLINE upd1771_state *get_safe_token(device_t *device)
 }
 
 
+READ8_DEVICE_HANDLER( upd1771_r )
+{
+	return 0x80; // TODO
+}
+
 /*
 *************TONE*****************
-Tone consist of a wavetable playback mechanism.
+Tone consists of a wavetable playback mechanism.
 Each wavetable is a looping period of 32 samples but can be played with an offset from any point in the table
 effectively shrinking the sample loop, thus allowing different pitch "macros ranges" to be played.
 This method is rather crude because the spectrum of the sound get heavily altered...
@@ -190,6 +264,7 @@ Byte3: 0b???VVVVV
    of bit cropping/rounding.
 */
 
+
 /*
 *************NOISE*****************
 Noise consists on 4 different components
@@ -214,9 +289,9 @@ Byte3: 0b???VVVVV
    LSB 5 bits of "Volume"
 
 
-Byte4: 0bPPPPPPPP  Low Freq0 period(if not 0 this peridically resets the  Wavetable LFSR)
-Byte5: 0bPPPPPPPP  Low Freq1 period(if not 0 this peridically resets the  Wavetable LFSR)
-Byte6: 0bPPPPPPPP  Low Freq2 period(if not 0 this peridically resets the  Wavetable LFSR)
+Byte4: 0bPPPPPPPP  Low Freq0 period(if not 0 this periodically resets the  Wavetable LFSR)
+Byte5: 0bPPPPPPPP  Low Freq1 period(if not 0 this periodically resets the  Wavetable LFSR)
+Byte6: 0bPPPPPPPP  Low Freq2 period(if not 0 this periodically resets the  Wavetable LFSR)
 
 Byte7: 0b???VVVVV  Low Freq0 volume
 Byte8: 0b???VVVVV  Low Freq1 volume

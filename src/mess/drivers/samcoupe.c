@@ -34,7 +34,7 @@
 
 /* components */
 #include "cpu/z80/z80.h"
-#include "machine/wd1772.h"
+#include "machine/wd_fdc.h"
 #include "machine/msm6242.h"
 #include "machine/ctronics.h"
 #include "sound/saa1099.h"
@@ -43,9 +43,7 @@
 /* devices */
 #include "imagedev/cassette.h"
 #include "formats/tzx_cas.h"
-#include "imagedev/flopdrv.h"
 #include "formats/coupedsk.h"
-#include "formats/mfi_dsk.h"
 #include "machine/ram.h"
 
 /***************************************************************************
@@ -509,11 +507,9 @@ static const cassette_interface samcoupe_cassette_interface =
 	NULL
 };
 
-
-static const floppy_format_type samcoupe_floppy_formats[] = {
-	FLOPPY_MGT_FORMAT, FLOPPY_MFI_FORMAT,
-	NULL
-};
+FLOPPY_FORMATS_MEMBER( samcoupe_state::floppy_formats )
+	FLOPPY_MGT_FORMAT
+FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( samcoupe_floppies )
 	SLOT_INTERFACE( "35dd", FLOPPY_35_DD )
@@ -547,8 +543,8 @@ static MACHINE_CONFIG_START( samcoupe, samcoupe_state )
 	MCFG_SOFTWARE_LIST_ADD("cass_list","samcoupe_cass")
 
 	MCFG_WD1772x_ADD("wd1772", SAMCOUPE_XTAL_X1/3)
-	MCFG_FLOPPY_DRIVE_ADD("wd1772:0", samcoupe_floppies, "35dd", 0, samcoupe_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("wd1772:1", samcoupe_floppies, "35dd", 0, samcoupe_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1772:0", samcoupe_floppies, "35dd", 0, samcoupe_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1772:1", samcoupe_floppies, "35dd", 0, samcoupe_state::floppy_formats)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","samcoupe_flop")
 
 	/* sound hardware */

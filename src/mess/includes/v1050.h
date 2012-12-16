@@ -7,17 +7,18 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6502/m6502.h"
-#include "imagedev/flopdrv.h"
-#include "formats/basicdsk.h"
 #include "machine/ctronics.h"
 #include "machine/i8214.h"
 #include "machine/i8251.h"
 #include "machine/i8255.h"
 #include "machine/msm58321.h"
 #include "machine/ram.h"
+#include "machine/s1410.h"
+#include "machine/scsibus.h"
 #include "machine/scsicb.h"
+#include "machine/scsihd.h"
 #include "machine/v1050kb.h"
-#include "machine/wd17xx.h"
+#include "machine/wd_fdc.h"
 #include "video/mc6845.h"
 
 #define SCREEN_TAG				"screen"
@@ -69,14 +70,17 @@ public:
 		  m_crtc(*this, H46505_TAG),
 		  m_centronics(*this, CENTRONICS_TAG),
 		  m_ram(*this, RAM_TAG),
-		  m_floppy0(*this, FLOPPY_0),
-		  m_floppy1(*this, FLOPPY_1),
+		  m_floppy0(*this, MB8877_TAG":0"),
+		  m_floppy1(*this, MB8877_TAG":1"),
+		  m_floppy2(*this, MB8877_TAG":2"),
+		  m_floppy3(*this, MB8877_TAG":3"),
 		  m_timer_sio(*this, TIMER_SIO_TAG),
 		  m_timer_ack(*this, TIMER_ACK_TAG),
 		  m_timer_rst(*this, TIMER_RST_TAG),
-		  m_sasibus(*this, SASIBUS_TAG ":host")
-	,
-		m_video_ram(*this, "video_ram"){ }
+		  m_sasibus(*this, SASIBUS_TAG ":host"),
+		  m_video_ram(*this, "video_ram"),
+		  m_attr_ram(*this, "attr_ram")
+	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<cpu_device> m_subcpu;
@@ -84,16 +88,20 @@ public:
 	required_device<msm58321_device> m_rtc;
 	required_device<i8251_device> m_uart_kb;
 	required_device<i8251_device> m_uart_sio;
-	required_device<device_t> m_fdc;
+	required_device<mb8877_t> m_fdc;
 	required_device<mc6845_device> m_crtc;
 	required_device<centronics_device> m_centronics;
 	required_device<ram_device> m_ram;
-	required_device<device_t> m_floppy0;
-	required_device<device_t> m_floppy1;
+	required_device<floppy_connector> m_floppy0;
+	required_device<floppy_connector> m_floppy1;
+	required_device<floppy_connector> m_floppy2;
+	required_device<floppy_connector> m_floppy3;
 	required_device<timer_device> m_timer_sio;
 	required_device<timer_device> m_timer_ack;
 	required_device<timer_device> m_timer_rst;
 	required_device<scsicb_device> m_sasibus;
+	required_shared_ptr<UINT8> m_video_ram;
+	optional_shared_ptr<UINT8> m_attr_ram;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -121,8 +129,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( kb_rxrdy_w );
 	DECLARE_WRITE_LINE_MEMBER( sio_rxrdy_w );
 	DECLARE_WRITE_LINE_MEMBER( sio_txrdy_w );
-	DECLARE_WRITE_LINE_MEMBER( fdc_intrq_w );
-	DECLARE_WRITE_LINE_MEMBER( fdc_drq_w );
+	void fdc_intrq_w(bool state);
+	void fdc_drq_w(bool state);
 	DECLARE_READ8_MEMBER( attr_r );
 	DECLARE_WRITE8_MEMBER( attr_w );
 	DECLARE_READ8_MEMBER( videoram_r );
@@ -134,6 +142,7 @@ public:
 	DECLARE_WRITE8_MEMBER( sasi_ctrl_w );
 
 	void bankswitch();
+	void update_fdc();
 	void set_interrupt(UINT8 mask, int state);
 	void scan_keyboard();
 
@@ -141,6 +150,8 @@ public:
 	UINT8 m_int_mask;			// interrupt mask
 	UINT8 m_int_state;			// interrupt status
 	int m_f_int_enb;			// floppy interrupt enable
+	bool m_fdc_irq;
+	bool m_fdc_drq;
 
 	// keyboard state
 	UINT8 m_keylatch;			// keyboard row select
@@ -156,8 +167,6 @@ public:
 	UINT8 m_bank;				// bank register
 
 	// video state
-	required_shared_ptr<UINT8> m_video_ram; 			// video RAM
-	UINT8 *m_attr_ram;			// attribute RAM
 	UINT8 m_attr;				// attribute latch
 
 	// sasi state

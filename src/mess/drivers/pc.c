@@ -456,7 +456,8 @@ static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_READWRITE(pcjr_nmi_enable_r, pc_nmi_enable_w )
 	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496", sn76496_device, write)
-	AM_RANGE(0x00f0, 0x00f7) AM_DEVICE("fdc", pc_fdc_interface, map)
+	AM_RANGE(0x00f2, 0x00f2) AM_WRITE(pcjr_fdc_dor_w)
+	AM_RANGE(0x00f4, 0x00f5) AM_DEVICE("upd765", upd765a_device, map)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,					pc_JOY_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,			pc_t1t_p37x_w)
@@ -857,11 +858,9 @@ static const pc_lpt_interface pc_lpt_config =
 	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
-static const floppy_format_type ibmpc_floppy_formats[] = {
-	FLOPPY_PC_FORMAT,
-	FLOPPY_MFI_FORMAT,
-	NULL
-};
+FLOPPY_FORMATS_MEMBER( pc_state::floppy_formats )
+	FLOPPY_PC_FORMAT
+FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( ibmpc_floppies )
 	 SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
@@ -996,8 +995,8 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1077,8 +1076,8 @@ static MACHINE_CONFIG_START( europc, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1127,8 +1126,8 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1177,8 +1176,8 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1227,8 +1226,8 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1298,9 +1297,9 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	/* cassette */
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, ibm5150_cassette_interface )
 
-	MCFG_PC_FDC_JR_ADD("fdc")
+	MCFG_UPD765A_ADD("upd765", false, false)
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart1")
@@ -1374,7 +1373,7 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 	MCFG_CASSETTE_ADD( CASSETTE_TAG, mc1502_cassette_interface )	// has no motor control
 
 	MCFG_FD1793_ADD( "vg93", default_wd17xx_interface_2_drives )
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1418,8 +1417,8 @@ static MACHINE_CONFIG_START( ec1841, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* keyboard -- needs dump */
 	MCFG_PC_KBDC_ADD("pc_kbdc", pc_kbdc_intf)
@@ -1478,8 +1477,8 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1532,8 +1531,8 @@ static MACHINE_CONFIG_START( iskr3104, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1587,8 +1586,8 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1641,8 +1640,8 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1695,8 +1694,8 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1749,8 +1748,8 @@ static MACHINE_CONFIG_START( ibm5550, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, ibmpc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -2257,6 +2256,19 @@ ROM_START( sx16 )
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
 ROM_END
 
+ROM_START( compc1 )
+    ROM_REGION(0x100000,"maincpu", 0)
+	ROM_LOAD( "compc1.bin",0xfc000, 0x4000, CRC(75135d37) SHA1(177283642240fee191ba2d87e1d0c2a377c78ccb))
+	ROM_REGION(0x8000,"gfx1", 0)
+	ROM_LOAD("pc1_char.bin", 0x00000, 0x8000, CRC(4773a945) SHA1(bcc38abecc75d3f641d42987cb0d2ed71d71bc4c))
+ROM_END
+
+ROM_START( pc10iii )
+    ROM_REGION(0x100000,"maincpu", 0)
+	ROM_LOAD( "pc10iii_bios.bin",0xf8000, 0x8000, CRC(ae9e6a31) SHA1(853ee251cf230818c407a8d13ef060a21c90a8c1))
+	ROM_REGION(0x8000,"gfx1", 0)
+	ROM_LOAD("pc10iii_char.bin", 0x00000, 0x8000, CRC(b406651c) SHA1(856f58353391a74a06ebb8ec9f8333d7d69e5fd6))
+ROM_END
 /***************************************************************************
 
   Game driver(s)
@@ -2267,6 +2279,8 @@ ROM_END
 COMP( 1984, dgone,      ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Data General", "Data General/One" , GAME_NOT_WORKING)/* CGA, 2x 3.5" disk drives */
 COMP( 1985, bw230,      ibm5150,    0,          pccga,      bondwell, pc_state,   bondwell,   "Bondwell Holding", "BW230 (PRO28 Series)", 0 )
 COMP( 1988, europc,     ibm5150,    0,          europc,     europc, pc_state,     europc,     "Schneider Rdf. AG", "EURO PC", GAME_NOT_WORKING)
+COMP( 1984, compc1,     ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Commodore Business Machines", "Commodore PC-1" , GAME_NOT_WORKING)
+COMP( 1987, pc10iii,    ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Commodore Business Machines", "Commodore PC-10 III" , GAME_NOT_WORKING)
 
 // pcjr (better graphics, better sound)
 COMP( 1983, ibmpcjr,    ibm5150,    0,          ibmpcjr,    tandy1t, pc_state,    pcjr,       "International Business Machines", "IBM PC Jr", GAME_IMPERFECT_COLORS )
