@@ -149,9 +149,6 @@ void comx_fd_device::device_start()
 	// find memory regions
 	m_rom = memregion("c000")->base();
 
-	// initialize floppy controller
-	m_fdc->dden_w(1);
-
 	// state saving
 	save_item(NAME(m_ds));
 	save_item(NAME(m_q));
@@ -166,8 +163,9 @@ void comx_fd_device::device_start()
 
 void comx_fd_device::device_reset()
 {
-	m_fdc->set_floppy(NULL);
 	m_fdc->reset();
+	m_fdc->dden_w(1);
+	m_fdc->set_floppy(NULL);
 
 	m_addr = 0;
 	m_disb = 1;
@@ -214,7 +212,7 @@ UINT8 comx_fd_device::comx_mrd_r(address_space &space, offs_t offset, int *extro
 		data = m_rom[offset & 0x1fff];
 		*extrom = 0;
 	}
-	if (offset >= 0xc000 && offset < 0xe000)
+	else if (offset >= 0xc000 && offset < 0xe000)
 	{
 		data = m_rom[offset & 0x1fff];
 	}
@@ -236,12 +234,11 @@ UINT8 comx_fd_device::comx_io_r(address_space &space, offs_t offset)
 		if (m_q)
 		{
 			data = 0xfe | (m_fdc->intrq_r() ? 1 : 0);
-			logerror("%s FDC intrq read %02x\n", machine().describe_context(), data);
 		}
 		else
 		{
 			data = m_fdc->gen_r(m_addr);
-			logerror("%s FDC read %u:%02x\n", machine().describe_context(), m_addr,data);
+			if (m_addr==3) logerror("%s FDC read %u:%02x\n", machine().describe_context(), m_addr,data);
 		}
 	}
 
@@ -261,16 +258,16 @@ void comx_fd_device::comx_io_w(address_space &space, offs_t offset, UINT8 data)
 		{
 			/*
 
-                bit     description
+			    bit     description
 
-                0       FDC A0
-                1       FDC A1
-                2       DRIVE0
-                3       DRIVE1
-                4       F9 DISB
-                5       SIDE SELECT
+			    0       FDC A0
+			    1       FDC A1
+			    2       DRIVE0
+			    3       DRIVE1
+			    4       F9 DISB
+			    5       SIDE SELECT
 
-            */
+			*/
 
 			// latch data to F3
 			m_addr = data & 0x03;

@@ -7,15 +7,6 @@
 
 **********************************************************************/
 
-/*
-
-    TODO:
-
-    - byte latching does not match hardware behavior
-      (CPU skips data bytes if implemented per schematics)
-
-*/
-
 #include "c1551.h"
 
 
@@ -24,11 +15,11 @@
 //  MACROS / CONSTANTS
 //**************************************************************************
 
-#define M6510T_TAG		"u2"
-#define M6523_0_TAG		"u3"
-#define M6523_1_TAG		"ci_u2"
-#define C64H156_TAG		"u6"
-#define PLA_TAG			"u1"
+#define M6510T_TAG      "u2"
+#define M6523_0_TAG     "u3"
+#define M6523_1_TAG     "ci_u2"
+#define C64H156_TAG     "u6"
+#define PLA_TAG         "u1"
 
 
 enum
@@ -77,18 +68,18 @@ READ8_MEMBER( c1551_device::port_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        P0
-        P1
-        P2
-        P3
-        P4      WPS
-        P5
-        P6
-        P7      BYTE LTCHED
+	    P0
+	    P1
+	    P2
+	    P3
+	    P4      WPS
+	    P5
+	    P6
+	    P7      BYTE LTCHED
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -105,24 +96,24 @@ WRITE8_MEMBER( c1551_device::port_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        P0      STP0A
-        P1      STP0B
-        P2      MTR0
-        P3      ACT0
-        P4
-        P5      DS0
-        P6      DS1
-        P7
+	    P0      STP0A
+	    P1      STP0B
+	    P2      MTR0
+	    P3      ACT0
+	    P4
+	    P5      DS0
+	    P6      DS1
+	    P7
 
-    */
-
-	// spindle motor
-	m_ga->mtr_w(BIT(data, 2));
+	*/
 
 	// stepper motor
 	m_ga->stp_w(data & 0x03);
+
+	// spindle motor
+	m_ga->mtr_w(BIT(data, 2));
 
 	// activity LED
 	output_set_led_value(LED_ACT, BIT(data, 3));
@@ -139,18 +130,18 @@ READ8_MEMBER( c1551_device::tcbm_data_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PA0     TCBM PA0
-        PA1     TCBM PA1
-        PA2     TCBM PA2
-        PA3     TCBM PA3
-        PA4     TCBM PA4
-        PA5     TCBM PA5
-        PA6     TCBM PA6
-        PA7     TCBM PA7
+	    PA0     TCBM PA0
+	    PA1     TCBM PA1
+	    PA2     TCBM PA2
+	    PA3     TCBM PA3
+	    PA4     TCBM PA4
+	    PA5     TCBM PA5
+	    PA6     TCBM PA6
+	    PA7     TCBM PA7
 
-    */
+	*/
 
 	return m_tcbm_data;
 }
@@ -159,38 +150,56 @@ WRITE8_MEMBER( c1551_device::tcbm_data_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PA0     TCBM PA0
-        PA1     TCBM PA1
-        PA2     TCBM PA2
-        PA3     TCBM PA3
-        PA4     TCBM PA4
-        PA5     TCBM PA5
-        PA6     TCBM PA6
-        PA7     TCBM PA7
+	    PA0     TCBM PA0
+	    PA1     TCBM PA1
+	    PA2     TCBM PA2
+	    PA3     TCBM PA3
+	    PA4     TCBM PA4
+	    PA5     TCBM PA5
+	    PA6     TCBM PA6
+	    PA7     TCBM PA7
 
-    */
+	*/
 
 	m_tcbm_data = data;
+}
+
+READ8_MEMBER( c1551_device::tpi0_r )
+{
+	UINT8 data = m_tpi0->read(space, offset);
+
+	m_ga->ted_w(0);
+	m_ga->ted_w(1);
+
+	return data;
+}
+
+WRITE8_MEMBER( c1551_device::tpi0_w )
+{
+	m_tpi0->write(space, offset, data);
+
+	m_ga->ted_w(0);
+	m_ga->ted_w(1);
 }
 
 READ8_MEMBER( c1551_device::tpi0_pc_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PC0
-        PC1
-        PC2
-        PC3
-        PC4
-        PC5     JP1
-        PC6     _SYNC
-        PC7     TCBM DAV
+	    PC0
+	    PC1
+	    PC2
+	    PC3
+	    PC4
+	    PC5     JP1
+	    PC6     _SYNC
+	    PC7     TCBM DAV
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -210,18 +219,18 @@ WRITE8_MEMBER( c1551_device::tpi0_pc_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PC0     TCBM STATUS0
-        PC1     TCBM STATUS1
-        PC2     TCBM DEV
-        PC3     TCBM ACK
-        PC4     MODE
-        PC5
-        PC6
-        PC7
+	    PC0     TCBM STATUS0
+	    PC1     TCBM STATUS1
+	    PC2     TCBM DEV
+	    PC3     TCBM ACK
+	    PC4     MODE
+	    PC5
+	    PC6
+	    PC7
 
-    */
+	*/
 
 	// TCBM status
 	m_status = data & 0x03;
@@ -258,18 +267,18 @@ READ8_MEMBER( c1551_device::tpi1_pb_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PB0     STATUS0
-        PB1     STATUS1
-        PB2
-        PB3
-        PB4
-        PB5
-        PB6
-        PB7
+	    PB0     STATUS0
+	    PB1     STATUS1
+	    PB2
+	    PB3
+	    PB4
+	    PB5
+	    PB6
+	    PB7
 
-    */
+	*/
 
 	return m_status & 0x03;
 }
@@ -278,18 +287,18 @@ READ8_MEMBER( c1551_device::tpi1_pc_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PC0
-        PC1
-        PC2
-        PC3
-        PC4
-        PC5
-        PC6
-        PC7     TCBM ACK
+	    PC0
+	    PC1
+	    PC2
+	    PC3
+	    PC4
+	    PC5
+	    PC6
+	    PC7     TCBM ACK
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -303,18 +312,18 @@ WRITE8_MEMBER( c1551_device::tpi1_pc_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PC0
-        PC1
-        PC2
-        PC3
-        PC4
-        PC5
-        PC6     TCBM DAV
-        PC7
+	    PC0
+	    PC1
+	    PC2
+	    PC3
+	    PC4
+	    PC5
+	    PC6     TCBM DAV
+	    PC7
 
-    */
+	*/
 
 	// TCBM data valid
 	m_dav = BIT(data, 6);
@@ -340,7 +349,7 @@ static const tpi6525_interface tpi1_intf =
 
 static ADDRESS_MAP_START( c1551_mem, AS_PROGRAM, 8, c1551_device )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x0800) AM_RAM
-	AM_RANGE(0x4000, 0x4007) AM_MIRROR(0x3ff8) AM_DEVREADWRITE_LEGACY(M6523_0_TAG, tpi6525_r, tpi6525_w)
+	AM_RANGE(0x4000, 0x4007) AM_MIRROR(0x3ff8) AM_READWRITE(tpi0_r, tpi0_w)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION(M6510T_TAG, 0)
 ADDRESS_MAP_END
 
@@ -353,7 +362,7 @@ static C64H156_INTERFACE( ga_intf )
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER(C64H156_TAG, c64h156_device, atni_w)
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF, c64h156_device, atni_w)
 };
 
 
@@ -454,21 +463,21 @@ ioport_constructor c1551_device::device_input_ports() const
 //-------------------------------------------------
 
 c1551_device::c1551_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-    : device_t(mconfig, C1551, "C1551", tag, owner, clock),
-      device_plus4_expansion_card_interface(mconfig, *this),
-	  m_maincpu(*this, M6510T_TAG),
-	  m_tpi0(*this, M6523_0_TAG),
-	  m_tpi1(*this, M6523_1_TAG),
-	  m_ga(*this, C64H156_TAG),
-	  m_pla(*this, PLA_TAG),
-	  m_image(*this, FLOPPY_0),
-	  m_exp(*this, PLUS4_EXPANSION_SLOT_TAG),
-	  m_jp1(*this, "JP1"),
-	  m_tcbm_data(0xff),
-	  m_status(1),
-	  m_dav(1),
-	  m_ack(1),
-	  m_dev(0)
+	: device_t(mconfig, C1551, "C1551", tag, owner, clock),
+		device_plus4_expansion_card_interface(mconfig, *this),
+		m_maincpu(*this, M6510T_TAG),
+		m_tpi0(*this, M6523_0_TAG),
+		m_tpi1(*this, M6523_1_TAG),
+		m_ga(*this, C64H156_TAG),
+		m_pla(*this, PLA_TAG),
+		m_image(*this, FLOPPY_0),
+		m_exp(*this, PLUS4_EXPANSION_SLOT_TAG),
+		m_jp1(*this, "JP1"),
+		m_tcbm_data(0xff),
+		m_status(1),
+		m_dav(1),
+		m_ack(1),
+		m_dev(0)
 {
 }
 
@@ -484,8 +493,7 @@ void c1551_device::device_start()
 	m_irq_timer->adjust(attotime::zero, CLEAR_LINE);
 
 	// install image callbacks
-	floppy_install_unload_proc(m_image, c1551_device::on_disk_change);
-	floppy_install_load_proc(m_image, c1551_device::on_disk_change);
+	m_ga->set_floppy(m_image);
 
 	// register for state saving
 	save_item(NAME(m_tcbm_data));
@@ -569,7 +577,7 @@ UINT8 c1551_device::plus4_cd_r(address_space &space, offs_t offset, UINT8 data, 
 
 	if (tpi1_selected(offset))
 	{
-		data = tpi6525_r(m_tpi1, space, offset & 0x07);
+		data = m_tpi1->read(space, offset & 0x07);
 	}
 
 	return data;
@@ -584,7 +592,7 @@ void c1551_device::plus4_cd_w(address_space &space, offs_t offset, UINT8 data, i
 {
 	if (tpi1_selected(offset))
 	{
-		tpi6525_w(m_tpi1, space, offset & 0x07, data);
+		m_tpi1->write(space, offset & 0x07, data);
 	}
 
 	m_exp->cd_w(space, offset, data, ba, cs0, c1l, c2l, cs1, c1h, c2h);
@@ -603,17 +611,4 @@ void c1551_device::plus4_breset_w(int state)
 	}
 
 	m_exp->breset_w(state);
-}
-
-
-//-------------------------------------------------
-//  on_disk_change -
-//-------------------------------------------------
-
-void c1551_device::on_disk_change(device_image_interface &image)
-{
-    c1551_device *c1551 = static_cast<c1551_device *>(image.device().owner());
-
-    int wp = floppy_wpt_r(image);
-	c1551->m_ga->on_disk_changed(wp);
 }

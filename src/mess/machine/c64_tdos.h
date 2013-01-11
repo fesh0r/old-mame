@@ -12,9 +12,7 @@
 #ifndef __TDOS__
 #define __TDOS__
 
-
 #include "emu.h"
-#include "imagedev/flopdrv.h"
 #include "machine/c64exp.h"
 #include "machine/cbmipt.h"
 #include "machine/mc6852.h"
@@ -28,7 +26,7 @@
 // ======================> c64_tdos_cartridge_device
 
 class c64_tdos_cartridge_device : public device_t,
-								  public device_c64_expansion_card_interface
+									public device_c64_expansion_card_interface
 {
 public:
 	// construction/destruction

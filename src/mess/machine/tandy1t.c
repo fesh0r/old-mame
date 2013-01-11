@@ -160,7 +160,7 @@ static struct
 {
 	UINT8 data[8];
 
-	UINT8 bios_bank;	/* I/O port FFEAh */
+	UINT8 bios_bank;    /* I/O port FFEAh */
 } tandy={ {0}};
 
 WRITE8_HANDLER ( pc_t1t_p37x_w )
@@ -177,11 +177,11 @@ WRITE8_HANDLER ( pc_t1t_p37x_w )
 	}
 }
 
- READ8_HANDLER ( pc_t1t_p37x_r )
+	READ8_HANDLER ( pc_t1t_p37x_r )
 {
 	int data = tandy.data[offset];
 //  DBG_LOG(1,"T1T_p37x_r",("%.5x #%d $%02x\n", space.device().safe_pc( ), offset, data));
-    return data;
+	return data;
 }
 
 /* this is for tandy1000hx
@@ -205,7 +205,8 @@ WRITE8_HANDLER ( tandy1000_pio_w )
 		tandy_ppi.portb = data;
 		pit8253_gate2_w(space.machine().device("pit8253"), BIT(data, 0));
 		pc_speaker_set_spkrdata( space.machine(), data & 0x02 );
-		pc_keyb_set_clock(data&0x40);
+		// sx enables keyboard from bit 3, others bit 6, hopefully theres no conflict
+		pc_keyb_set_clock(data&0x48);
 		if ( data & 0x80 )
 		{
 			pc_keyb_clear();
@@ -221,7 +222,7 @@ WRITE8_HANDLER ( tandy1000_pio_w )
 	}
 }
 
- READ8_HANDLER(tandy1000_pio_r)
+	READ8_HANDLER(tandy1000_pio_r)
 {
 	int data=0xff;
 	switch (offset)
@@ -265,7 +266,7 @@ READ8_HANDLER( tandy1000_bank_r )
 
 	switch( offset )
 	{
-	case 0x00:	/* FFEA */
+	case 0x00:  /* FFEA */
 		data = tandy.bios_bank;
 		break;
 	}
@@ -280,7 +281,7 @@ WRITE8_HANDLER( tandy1000_bank_w )
 
 	switch( offset )
 	{
-	case 0x00:	/* FFEA */
+	case 0x00:  /* FFEA */
 		tandy.bios_bank = data;
 		tandy1000_set_bios_bank(space.machine());
 		break;
@@ -291,7 +292,7 @@ WRITE8_HANDLER( tandy1000_bank_w )
 
 INPUT_PORTS_START( t1000_keyboard )
 	PORT_START("pc_keyboard_0")
-	PORT_BIT ( 0x0001, 0x0000, IPT_UNUSED ) 	/* unused scancode 0 */
+	PORT_BIT ( 0x0001, 0x0000, IPT_UNUSED )     /* unused scancode 0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Esc") PORT_CODE(KEYCODE_ESC) /* Esc                         01  81 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1) /* 1                           02  82 */
 	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 @") PORT_CODE(KEYCODE_2) /* 2                           03  83 */
@@ -355,7 +356,7 @@ INPUT_PORTS_START( t1000_keyboard )
 	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Print") /*                             37  B7 */
 	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Alt") PORT_CODE(KEYCODE_LALT) /* Left Alt                    38  B8 */
 	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE) /* Space                       39  B9 */
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE/* Caps Lock                   3A  BA */
+	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE /* Caps Lock                   3A  BA */
 	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F1") PORT_CODE(KEYCODE_F1) /* F1                          3B  BB */
 	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2) /* F2                          3C  BC */
 	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F3") PORT_CODE(KEYCODE_F3) /* F3                          3D  BD */
@@ -368,7 +369,7 @@ INPUT_PORTS_START( t1000_keyboard )
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F8") PORT_CODE(KEYCODE_F8) /* F8                          42  C2 */
 	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F9") PORT_CODE(KEYCODE_F9) /* F9                          43  C3 */
 	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F10") PORT_CODE(KEYCODE_F10) /* F10                         44  C4 */
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("NumLock") PORT_CODE(KEYCODE_NUMLOCK) PORT_TOGGLE/* Num Lock                    45  C5 */
+	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("NumLock") PORT_CODE(KEYCODE_NUMLOCK) PORT_TOGGLE /* Num Lock                    45  C5 */
 	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Hold") PORT_CODE(KEYCODE_SCRLOCK) /*                           46  C6 */
 	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP 7 \\") PORT_CODE(KEYCODE_7_PAD) /* Keypad 7                    47  C7 */
 	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP 8 ~") PORT_CODE(KEYCODE_8_PAD) /* Keypad 8                    48  C8 */

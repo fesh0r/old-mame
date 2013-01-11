@@ -38,4 +38,4 @@ $(RESFILE): $(MESS_WINSRC)/mess.rc $(MESS_WINOBJ)/messvers.rc
 
 $(MESS_WINOBJ)/messvers.rc: $(BUILDOUT)/verinfo$(BUILD_EXE) $(SRC)/version.c
 	@echo Emitting $@...
-	@"$(BUILDOUT)/verinfo$(BUILD_EXE)" -b mess $(SRC)/version.c > $@
+	@"$(BUILDOUT)/verinfo$(BUILD_EXE)" -b mess $(SRC)/version.c > $@

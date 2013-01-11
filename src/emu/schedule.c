@@ -47,7 +47,7 @@
 
 #define VERBOSE 0
 
-#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
+#define LOG(x)  do { if (VERBOSE) logerror x; } while (0)
 
 
 
@@ -58,8 +58,8 @@
 // internal trigger IDs
 enum
 {
-	TRIGGER_INT 		= -2000,
-	TRIGGER_YIELDTIME	= -3000,
+	TRIGGER_INT         = -2000,
+	TRIGGER_YIELDTIME   = -3000,
 	TRIGGER_SUSPENDTIME = -4000
 };
 
@@ -75,17 +75,17 @@ enum
 
 emu_timer::emu_timer()
 	: m_machine(NULL),
-	  m_next(NULL),
-	  m_prev(NULL),
-	  m_param(0),
-	  m_ptr(NULL),
-	  m_enabled(false),
-	  m_temporary(false),
-	  m_period(attotime::zero),
-	  m_start(attotime::zero),
-	  m_expire(attotime::never),
-	  m_device(NULL),
-	  m_id(0)
+		m_next(NULL),
+		m_prev(NULL),
+		m_param(0),
+		m_ptr(NULL),
+		m_enabled(false),
+		m_temporary(false),
+		m_period(attotime::zero),
+		m_start(attotime::zero),
+		m_expire(attotime::never),
+		m_device(NULL),
+		m_id(0)
 {
 }
 
@@ -301,7 +301,7 @@ void emu_timer::register_save()
 //  period
 //-------------------------------------------------
 
-void emu_timer::schedule_next_period()
+inline void emu_timer::schedule_next_period()
 {
 	// advance by one period
 	m_start = m_expire;
@@ -400,7 +400,7 @@ bool device_scheduler::can_save() const
 {
 	// if any live temporary timers exit, fail
 	for (emu_timer *timer = m_timer_list; timer != NULL; timer = timer->next())
-		if (timer->m_temporary && timer->expire() != attotime::never)
+		if (timer->m_temporary && !timer->expire().is_never())
 		{
 			logerror("Failed save state attempt due to anonymous timers:\n");
 			dump_timers();
@@ -505,7 +505,9 @@ void device_scheduler::timeslice()
 					exec->m_totalcycles += ran;
 
 					// update the local time for this CPU
-					exec->m_localtime += attotime(0, exec->m_attoseconds_per_cycle * ran);
+					attotime delta = attotime(0, exec->m_attoseconds_per_cycle * ran);
+					assert(delta >= attotime::zero);
+					exec->m_localtime += delta;
 					LOG(("         %d ran, %d total, time = %s\n", ran, (INT32)exec->m_totalcycles, exec->m_localtime.as_string()));
 
 					// if the new local CPU time is less than our target, move the target up, but not before the base
@@ -679,7 +681,7 @@ void device_scheduler::postload()
 		emu_timer &timer = *m_timer_list;
 
 		// temporary timers go away entirely (except our special never-expiring one)
-		if (timer.m_temporary && timer.expire() != attotime::never)
+		if (timer.m_temporary && !timer.expire().is_never())
 			m_timer_allocator.reclaim(timer.release());
 
 		// permanent ones get added to our private list
@@ -756,7 +758,7 @@ void device_scheduler::rebuild_execute_list()
 		attotime min_quantum = machine().config().m_minimum_quantum;
 
 		// if none specified default to 60Hz
-		if (min_quantum == attotime::zero)
+		if (min_quantum.is_zero())
 			min_quantum = attotime::from_hz(60);
 
 		// if the configuration specifies a device to make perfect, pick that as the minimum
@@ -879,7 +881,7 @@ emu_timer &device_scheduler::timer_list_remove(emu_timer &timer)
 //  scheduling quanta
 //-------------------------------------------------
 
-void device_scheduler::execute_timers()
+inline void device_scheduler::execute_timers()
 {
 	// if the current quantum has expired, find a new one
 	while (m_basetime >= m_quantum_list.first()->m_expire)
@@ -893,7 +895,7 @@ void device_scheduler::execute_timers()
 		// if this is a one-shot timer, disable it now
 		emu_timer &timer = *m_timer_list;
 		bool was_enabled = timer.m_enabled;
-		if (timer.m_period == attotime::zero || timer.m_period == attotime::never)
+		if (timer.m_period.is_zero() || timer.m_period.is_never())
 			timer.m_enabled = false;
 
 		// set the global state of which callback we're in
@@ -994,5 +996,3 @@ void device_scheduler::dump_timers() const
 		timer->dump();
 	logerror("=============================================\n");
 }
-
-

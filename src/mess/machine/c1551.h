@@ -34,25 +34,24 @@
 // ======================> c1551_device
 
 class c1551_device :  public device_t,
-					  public device_plus4_expansion_card_interface
+						public device_plus4_expansion_card_interface
 {
 public:
-    // construction/destruction
-    c1551_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	// construction/destruction
+	c1551_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
 	// optional information overrides
 	virtual const rom_entry *device_rom_region() const;
 	virtual machine_config_constructor device_mconfig_additions() const;
 	virtual ioport_constructor device_input_ports() const;
 
-	// not really public
-	static void on_disk_change(device_image_interface &image);
-
 	DECLARE_READ8_MEMBER( port_r );
 	DECLARE_WRITE8_MEMBER( port_w );
 
 	DECLARE_READ8_MEMBER( tcbm_data_r );
 	DECLARE_WRITE8_MEMBER( tcbm_data_w );
+	DECLARE_READ8_MEMBER( tpi0_r );
+	DECLARE_WRITE8_MEMBER( tpi0_w );
 	DECLARE_READ8_MEMBER( yb_r );
 	DECLARE_WRITE8_MEMBER( yb_w );
 	DECLARE_READ8_MEMBER( tpi0_pc_r );
@@ -70,13 +69,13 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( exp_aec_w );
 
 protected:
-    // device-level overrides
-    virtual void device_config_complete() { m_shortname = "c1551"; }
-    virtual void device_start();
+	// device-level overrides
+	virtual void device_config_complete() { m_shortname = "c1551"; }
+	virtual void device_start();
 	virtual void device_reset();
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 
-    // device_plus4_expansion_card_interface overrides
+	// device_plus4_expansion_card_interface overrides
 	virtual UINT8 plus4_cd_r(address_space &space, offs_t offset, UINT8 data, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h);
 	virtual void plus4_cd_w(address_space &space, offs_t offset, UINT8 data, int ba, int cs0, int c1l, int c2l, int cs1, int c1h, int c2h);
 	virtual void plus4_breset_w(int state);
@@ -94,11 +93,11 @@ private:
 	required_ioport m_jp1;
 
 	// TCBM bus
-	UINT8 m_tcbm_data;						// data
-	int m_status;							// status
-	int m_dav;								// data valid
-	int m_ack;								// acknowledge
-	int m_dev;								// device number
+	UINT8 m_tcbm_data;                      // data
+	int m_status;                           // status
+	int m_dav;                              // data valid
+	int m_ack;                              // acknowledge
+	int m_dev;                              // device number
 
 	// timers
 	emu_timer *m_irq_timer;

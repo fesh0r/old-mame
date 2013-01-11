@@ -240,10 +240,10 @@ static Z80DMA_INTERFACE( p8k_dma_intf )
 
 static Z80CTC_INTERFACE( p8k_ctc_0_intf )
 {
-	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* interrupt handler */
-	DEVCB_NULL,			/* ZC/TO0 callback */
-	DEVCB_NULL,			/* ZC/TO1 callback */
-	DEVCB_NULL  		/* ZC/TO2 callback */
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),   /* interrupt handler */
+	DEVCB_NULL,         /* ZC/TO0 callback */
+	DEVCB_NULL,         /* ZC/TO1 callback */
+	DEVCB_NULL          /* ZC/TO2 callback */
 };
 
 /* Z80 CTC 1 */
@@ -253,10 +253,10 @@ static Z80CTC_INTERFACE( p8k_ctc_0_intf )
 
 static Z80CTC_INTERFACE( p8k_ctc_1_intf )
 {
-	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* interrupt handler */
-	DEVCB_NULL,			/* ZC/TO0 callback */
-	DEVCB_NULL,			/* ZC/TO1 callback */
-	DEVCB_NULL,			/* ZC/TO2 callback */
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),   /* interrupt handler */
+	DEVCB_NULL,         /* ZC/TO0 callback */
+	DEVCB_NULL,         /* ZC/TO1 callback */
+	DEVCB_NULL,         /* ZC/TO2 callback */
 };
 
 /* Z80 PIO 0 */
@@ -290,12 +290,12 @@ static Z80PIO_INTERFACE( p8k_pio_1_intf )
 static Z80PIO_INTERFACE( p8k_pio_2_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
-	DEVCB_INPUT_PORT("DSW"),	/* port a read */
-	DEVCB_NULL,	/* port a write */
-	DEVCB_NULL,	/* ready a */
-	DEVCB_NULL,	/* port b read */
-	DEVCB_NULL,	/* port b write */
-	DEVCB_NULL	/* ready b */
+	DEVCB_INPUT_PORT("DSW"),    /* port a read */
+	DEVCB_NULL, /* port a write */
+	DEVCB_NULL, /* ready a */
+	DEVCB_NULL, /* port b read */
+	DEVCB_NULL, /* port b write */
+	DEVCB_NULL  /* ready b */
 };
 
 /* Z80 SIO 0 */
@@ -307,12 +307,12 @@ static WRITE16_DEVICE_HANDLER( pk8_sio_0_serial_transmit )
 
 static const z80sio_interface p8k_sio_0_intf =
 {
-	DEVCB_LINE(p8k_daisy_interrupt),			/* interrupt handler */
-	DEVCB_NULL,					/* DTR changed handler */
-	DEVCB_NULL,					/* RTS changed handler */
-	DEVCB_NULL,					/* BREAK changed handler */
-	DEVCB_HANDLER(pk8_sio_0_serial_transmit),	/* transmit handler */
-	DEVCB_NULL					/* receive handler */
+	DEVCB_LINE(p8k_daisy_interrupt),            /* interrupt handler */
+	DEVCB_NULL,                 /* DTR changed handler */
+	DEVCB_NULL,                 /* RTS changed handler */
+	DEVCB_NULL,                 /* BREAK changed handler */
+	DEVCB_HANDLER(pk8_sio_0_serial_transmit),   /* transmit handler */
+	DEVCB_NULL                  /* receive handler */
 };
 
 /* Z80 SIO 1 */
@@ -324,19 +324,19 @@ static WRITE16_DEVICE_HANDLER( pk8_sio_1_serial_transmit )
 
 static const z80sio_interface p8k_sio_1_intf =
 {
-	DEVCB_LINE(p8k_daisy_interrupt),			/* interrupt handler */
-	DEVCB_NULL,					/* DTR changed handler */
-	DEVCB_NULL,					/* RTS changed handler */
-	DEVCB_NULL,					/* BREAK changed handler */
-	DEVCB_HANDLER(pk8_sio_1_serial_transmit),	/* transmit handler */
-	DEVCB_NULL					/* receive handler */
+	DEVCB_LINE(p8k_daisy_interrupt),            /* interrupt handler */
+	DEVCB_NULL,                 /* DTR changed handler */
+	DEVCB_NULL,                 /* RTS changed handler */
+	DEVCB_NULL,                 /* BREAK changed handler */
+	DEVCB_HANDLER(pk8_sio_1_serial_transmit),   /* transmit handler */
+	DEVCB_NULL                  /* receive handler */
 };
 
 /* Z80 Daisy Chain */
 
 static const z80_daisy_config p8k_daisy_chain[] =
 {
-	{ "z80dma" },	/* FDC related */
+	{ "z80dma" },   /* FDC related */
 	{ "z80pio_2" },
 	{ "z80ctc_0" },
 	{ "z80sio_0" },
@@ -436,7 +436,7 @@ DRIVER_INIT_MEMBER(p8k_state,p8k)
 
 WRITE8_MEMBER( p8k_state::kbd_put_16 )
 {
-	address_space &mem = m_maincpu->space(AS_PROGRAM);
+	address_space &mem = m_maincpu->space(AS_DATA);
 	// keyboard int handler is at 0x0700
 	m_term_data = data;
 	// This is another dire hack..
@@ -531,13 +531,22 @@ READ16_MEMBER( p8k_state::portff82_r )
 WRITE16_MEMBER( p8k_state::portff82_w )
 {
 	if (offset == 1) // FF83
-		m_terminal->write(space, 0, data);
+	{
+		address_space &mem = m_maincpu->space(AS_PROGRAM);
+		m_terminal->write(mem, 0, data);
+	}
 }
 
 static ADDRESS_MAP_START(p8k_16_memmap, AS_PROGRAM, 16, p8k_state)
-	AM_RANGE(0x00000, 0x03fff) AM_ROM
-	AM_RANGE(0x04000, 0x07fff) AM_RAM
-	AM_RANGE(0x08000, 0xfffff) AM_RAM
+	AM_RANGE(0x00000, 0x03fff) AM_ROM AM_SHARE("share0")
+	AM_RANGE(0x04000, 0x07fff) AM_RAM AM_SHARE("share1")
+	AM_RANGE(0x08000, 0xfffff) AM_RAM AM_SHARE("share2")
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START(p8k_16_datamap, AS_DATA, 16, p8k_state)
+	AM_RANGE(0x00000, 0x03fff) AM_ROM AM_SHARE("share0")
+	AM_RANGE(0x04000, 0x07fff) AM_RAM AM_SHARE("share1")
+	AM_RANGE(0x08000, 0xfffff) AM_RAM AM_SHARE("share2")
 ADDRESS_MAP_END
 
 
@@ -576,20 +585,20 @@ static WRITE_LINE_DEVICE_HANDLER( p8k_16_daisy_interrupt )
 
 static Z80CTC_INTERFACE( p8k_16_ctc_0_intf )
 {
-	DEVCB_LINE(p8k_16_daisy_interrupt),	/* interrupt handler */
-	DEVCB_NULL,				/* ZC/TO0 callback */
-	DEVCB_NULL,				/* ZC/TO1 callback */
-	DEVCB_NULL  			/* ZC/TO2 callback */
+	DEVCB_LINE(p8k_16_daisy_interrupt), /* interrupt handler */
+	DEVCB_NULL,             /* ZC/TO0 callback */
+	DEVCB_NULL,             /* ZC/TO1 callback */
+	DEVCB_NULL              /* ZC/TO2 callback */
 };
 
 /* Z80 CTC 1 */
 
 static Z80CTC_INTERFACE( p8k_16_ctc_1_intf )
 {
-	DEVCB_LINE(p8k_16_daisy_interrupt),	/* interrupt handler */
-	DEVCB_NULL,				/* ZC/TO0 callback */
-	DEVCB_NULL,				/* ZC/TO1 callback */
-	DEVCB_NULL				/* ZC/TO2 callback */
+	DEVCB_LINE(p8k_16_daisy_interrupt), /* interrupt handler */
+	DEVCB_NULL,             /* ZC/TO0 callback */
+	DEVCB_NULL,             /* ZC/TO1 callback */
+	DEVCB_NULL              /* ZC/TO2 callback */
 };
 
 /* Z80 PIO 0 */
@@ -640,12 +649,12 @@ static WRITE16_DEVICE_HANDLER( pk8_16_sio_0_serial_transmit )
 
 static const z80sio_interface p8k_16_sio_0_intf =
 {
-	DEVCB_LINE(p8k_16_daisy_interrupt),			/* interrupt handler */
-	DEVCB_NULL,					/* DTR changed handler */
-	DEVCB_NULL,					/* RTS changed handler */
-	DEVCB_NULL,					/* BREAK changed handler */
-	DEVCB_HANDLER(pk8_16_sio_0_serial_transmit),	/* transmit handler */
-	DEVCB_NULL					/* receive handler */
+	DEVCB_LINE(p8k_16_daisy_interrupt),         /* interrupt handler */
+	DEVCB_NULL,                 /* DTR changed handler */
+	DEVCB_NULL,                 /* RTS changed handler */
+	DEVCB_NULL,                 /* BREAK changed handler */
+	DEVCB_HANDLER(pk8_16_sio_0_serial_transmit),    /* transmit handler */
+	DEVCB_NULL                  /* receive handler */
 };
 
 /* Z80 SIO 1 */
@@ -657,12 +666,12 @@ static WRITE16_DEVICE_HANDLER( pk8_16_sio_1_serial_transmit )
 
 static const z80sio_interface p8k_16_sio_1_intf =
 {
-	DEVCB_LINE(p8k_16_daisy_interrupt),			/* interrupt handler */
-	DEVCB_NULL,					/* DTR changed handler */
-	DEVCB_NULL,					/* RTS changed handler */
-	DEVCB_NULL,					/* BREAK changed handler */
-	DEVCB_HANDLER(pk8_16_sio_1_serial_transmit),	/* transmit handler */
-	DEVCB_NULL					/* receive handler */
+	DEVCB_LINE(p8k_16_daisy_interrupt),         /* interrupt handler */
+	DEVCB_NULL,                 /* DTR changed handler */
+	DEVCB_NULL,                 /* RTS changed handler */
+	DEVCB_NULL,                 /* BREAK changed handler */
+	DEVCB_HANDLER(pk8_16_sio_1_serial_transmit),    /* transmit handler */
+	DEVCB_NULL                  /* receive handler */
 };
 
 /* Z80 Daisy Chain */
@@ -684,15 +693,15 @@ static const z80_daisy_config p8k_16_daisy_chain[] =
 /* F4 Character Displayer */
 static const gfx_layout p8k_charlayout =
 {
-	8, 12,					/* 8 x 12 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 12,                  /* 8 x 12 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8 },
-	8*16					/* every char takes 16 bytes */
+	8*16                    /* every char takes 16 bytes */
 };
 
 static GFXDECODE_START( p8k )
@@ -716,10 +725,10 @@ static MACHINE_CONFIG_START( p8k, p8k_state )
 
 	/* peripheral hardware */
 	MCFG_Z80DMA_ADD("z80dma", XTAL_4MHz, p8k_dma_intf)
-	MCFG_Z80CTC_ADD("z80ctc_0", 1229000, p8k_ctc_0_intf)	/* 1.22MHz clock */
-	MCFG_Z80CTC_ADD("z80ctc_1", 1229000, p8k_ctc_1_intf)	/* 1.22MHz clock */
-	MCFG_Z80SIO_ADD("z80sio_0", 9600, p8k_sio_0_intf)	/* 9.6kBaud default */
-	MCFG_Z80SIO_ADD("z80sio_1", 9600, p8k_sio_1_intf)	/* 9.6kBaud default */
+	MCFG_Z80CTC_ADD("z80ctc_0", 1229000, p8k_ctc_0_intf)    /* 1.22MHz clock */
+	MCFG_Z80CTC_ADD("z80ctc_1", 1229000, p8k_ctc_1_intf)    /* 1.22MHz clock */
+	MCFG_Z80SIO_ADD("z80sio_0", 9600, p8k_sio_0_intf)   /* 9.6kBaud default */
+	MCFG_Z80SIO_ADD("z80sio_1", 9600, p8k_sio_1_intf)   /* 9.6kBaud default */
 	MCFG_Z80PIO_ADD("z80pio_0", 1229000, p8k_pio_0_intf)
 	MCFG_Z80PIO_ADD("z80pio_1", 1229000, p8k_pio_1_intf)
 	MCFG_Z80PIO_ADD("z80pio_2", 1229000, p8k_pio_2_intf)
@@ -742,6 +751,7 @@ static MACHINE_CONFIG_START( p8k_16, p8k_state )
 	MCFG_CPU_ADD("maincpu", Z8001, XTAL_4MHz )
 	MCFG_CPU_CONFIG(p8k_16_daisy_chain)
 	MCFG_CPU_PROGRAM_MAP(p8k_16_memmap)
+	MCFG_CPU_DATA_MAP(p8k_16_datamap)
 	MCFG_CPU_IO_MAP(p8k_16_iomap)
 	MCFG_MACHINE_RESET_OVERRIDE(p8k_state,p8k_16)
 
@@ -766,8 +776,8 @@ MACHINE_CONFIG_END
 /* ROM definition */
 ROM_START( p8000 )
 	ROM_REGION( 0x30000, "maincpu", 0 )
-	ROM_LOAD("mon8_1_3.1",	0x0000, 0x1000, CRC(ad1bb118) SHA1(2332963acd74d5d1a009d9bce8a2b108de01d2a5))
-	ROM_LOAD("mon8_2_3.1",	0x1000, 0x1000, CRC(daced7c2) SHA1(f1f778e72568961b448020fc543ed6e81bbe81b1))
+	ROM_LOAD("mon8_1_3.1",  0x0000, 0x1000, CRC(ad1bb118) SHA1(2332963acd74d5d1a009d9bce8a2b108de01d2a5))
+	ROM_LOAD("mon8_2_3.1",  0x1000, 0x1000, CRC(daced7c2) SHA1(f1f778e72568961b448020fc543ed6e81bbe81b1))
 
 	// this is for the p8000's terminal, not the p8000 itself
 	ROM_REGION( 0x1000, "chargen", 0 )

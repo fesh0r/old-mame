@@ -196,6 +196,10 @@ endif
 # (vs. the native framework port).  Normal users should not enable this.
 # MACOSX_USE_LIBSDL = 1
 
+# uncomment and specify path to cppcheck executable to perform
+# static code analysis during compilation
+# CPPCHECK =
+
 
 
 #-------------------------------------------------
@@ -220,6 +224,9 @@ BUILD_FLAC = 1
 
 # uncomment next line to build jpeglib as part of MAME build
 BUILD_JPEGLIB = 1
+
+# uncomment next line to build PortMidi as part of MAME/MESS build
+BUILD_MIDILIB = 1
 
 # uncomment next line to include the symbols
 # SYMBOLS = 1
@@ -658,6 +665,15 @@ SOFTFLOAT = $(OBJ)/libsoftfloat.a
 # add formats emulation library
 FORMATS_LIB = $(OBJ)/libformats.a
 
+# add PortMidi MIDI library
+ifeq ($(BUILD_MIDILIB),1)
+INCPATH += -I$(SRC)/lib/portmidi
+MIDI_LIB = $(OBJ)/libportmidi.a
+else
+LIBS += -lportmidi
+MIDI_LIB =
+endif
+
 #-------------------------------------------------
 # 'default' target needs to go here, before the 
 # include files which define additional targets
@@ -667,6 +683,12 @@ default: maketree buildtools emulator
 
 all: default tools
 
+# TODO: move to a .mak file in the regtests folder?
+tests: maketree jedutil$(EXE) chdman$(EXE)
+	@echo Running jedutil unittest
+	$(PYTHON) src/regtests/jedutil/jedtest.py
+	@echo Running chdman unittest
+	$(PYTHON) src/regtests/chdman/chdtest.py
 
 7Z_LIB = $(OBJ)/lib7z.a 
 
@@ -700,6 +722,8 @@ include $(SRC)/tools/tools.mak
 CCOMFLAGS += $(INCPATH)
 CDEFS = $(DEFS)
 
+# TODO: -x c++ should not be hard-coded
+CPPCHECKFLAGS = $(CDEFS) $(INCPATH) -x c++ --enable=style
 
 
 #-------------------------------------------------
@@ -752,7 +776,7 @@ $(sort $(OBJDIRS)):
 
 ifndef EXECUTABLE_DEFINED
 
-$(EMULATOR): $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(7Z_LIB) $(FORMATS_LIB) $(ZLIB) $(LIBOCORE) $(RESFILE)
+$(EMULATOR): $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(7Z_LIB) $(FORMATS_LIB) $(ZLIB) $(LIBOCORE) $(MIDI_LIB) $(RESFILE)
 	$(CC) $(CDEFS) $(CFLAGS) -c $(SRC)/version.c -o $(VERSIONOBJ)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $(VERSIONOBJ) $^ $(LIBS) -o $@
@@ -775,14 +799,30 @@ endif
 $(OBJ)/%.o: $(SRC)/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
+ifdef CPPCHECK
+	@$(CPPCHECK) $(CPPCHECKFLAGS) $<
+endif
+
+$(OBJ)/%.o: $(OBJ)/%.c | $(OSPREBUILD)
+	@echo Compiling $<...
+	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
+ifdef CPPCHECK
+	@$(CPPCHECK) $(CPPCHECKFLAGS) $<
+endif
 
 $(OBJ)/%.pp: $(SRC)/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -E $< -o $@
+ifdef CPPCHECK
+	@$(CPPCHECK) $(CPPCHECKFLAGS) $<
+endif
 
 $(OBJ)/%.s: $(SRC)/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -S $< -o $@
+ifdef CPPCHECK
+	@$(CPPCHECK) $(CPPCHECKFLAGS) $<
+endif
 
 $(OBJ)/%.lh: $(SRC)/%.lay $(FILE2STR_TARGET)
 	@echo Converting $<...
@@ -796,6 +836,9 @@ $(OBJ)/%.fh: $(SRC)/%.png $(PNG2BDC_TARGET) $(FILE2STR_TARGET)
 $(DRIVLISTOBJ): $(DRIVLISTSRC)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
+ifdef CPPCHECK
+	@$(CPPCHECK) $(CPPCHECKFLAGS) $<
+endif
 
 $(DRIVLISTSRC): $(SRC)/$(TARGET)/$(SUBTARGET).lst $(MAKELIST_TARGET)
 	@echo Building driver list $<...

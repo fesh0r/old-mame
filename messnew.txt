@@ -1,3 +1,172 @@
+0.148
+-------
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 05055: [Documentation] (mephisto.c) rebel5: The correct name of 
+  this set is Mephisto Rebell 5,0. (Robbbert)
+- 05044: [Documentation] (beehive.c) beehive: The correct year of 
+  publication I think it is 1982. (Robbbert)
+- 05068: [Crash/Freeze] (apollo.c) All sets in apollo.c: [debug] 
+  Assert: src/emu/render.c, Line 2466 (Firewave)
+- 05072: [Crash/Freeze] (ip22.c) ip225015: [debug] Crash after 
+  OK (Firewave)
+- 04875: [Crash/Freeze] (apricotp.c) fp: Access Violation when 
+  taking snapshot (Firewave)
+- 05069: [Crash/Freeze] (pc.c) mc1502: Crash after OK (crazyc)
+- 04894: [Core] (coco12.c) All sets in coco12.c: RTC option is 
+  missing (npwoods)
+- 05037: [Misc.] (coco12.c) Request for change in mess/drivers/
+  coco12.c (npwoods)
+- 05031: [Graphics] (coco12.c) coco2: The video timing in the 
+  program MCPaint 2.10 trashes program (npwoods)
+- 04874: [Crash/Freeze] (c65.c) c65, c64dx: memory_bank::set_base 
+  called NULL base (Fabio Priuli)
+- 04958: [Interface] (next.c) All sets in next.c: Inconsistent slot 
+  info between -listslots and -listxml (Fabio Priuli)
+
+New System Drivers Supported:
+-----------------------------
+-Ensoniq SQ-Rack [R. Belmont]
+-Hanimex Pencil II {Robbbert, Ian Farquhar]
+-Milton Bradley MicroVision [kevtris, Wilbert Pol]
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+-Casio PV-1000 [Wilbert Pol, plgDavid, Angelo Salese]
+
+Skeleton drivers:
+-----------------
+-Sanyo MBC-16 [rfka01]
+-Roland MT-32 [Lord_Nightmare, O. Galibert]
+-Roland CM-32L [Lord_Nightmare, O. Galibert]
+-TIM-100 [Miodrag Milanovic]
+-Brandt 8641 - Currency Counter [Miodrag Milanovic]
+-Roland D-110 [Lord_Nightmare, O. Galibert]
+
+System Driver Changes:
+----------------------
+-esq5505: More documentation and other fixes from schematics [R. Belmont]
+
+-vt131/vt102: Redumped 23-226e4 ROM; seems to boot but gets stuck
+ waiting for an unmapped io or interrupt? Also we could use
+ scans of the EK-VT101-TM or MP-01066 sheets, if anyone has them.
+ [pjustice, Lord Nightmare]
+
+-vt100.c: preliminary i8251 PUSART hookup, not working yet. [Lord Nightmare]
+
+-mt32: Add the sample clock, now it's waiting for an irq from the la32
+ [O. Galibert]
+
+-Enabled vt102 driver, made vt131 a clone of vt102 as both use
+ the same main roms, but vt131 has one additional rom added.
+ [Lord Nightmare]
+
+-pencil2 : added printer [Robbbert]
+
+-scorpion.c : fixed 1ffd port handling [MetalliC]
+
+-uzebox: added video emulation and joystick input. [Sandro Ronco]
+
+-fm7: identified F-BASIC versions and renamed drivers accordingly, 
+ fm7a-> fm7 and fm7 -> fmnew7 [anonymous]
+
+-m20: Added -ramsize support. [Christian Grössler]
+
+-atarist: Fix the rom dance [O. Galibert]
+
+-atarist: Fix the consequences of the recently inverted irq polarity of
+ the acia, we have kbd/mouse again [O. Galibert]
+
+-coco: Removing VHD from 'coco' driver  [Robert Gault] (mametesters #5037)
+
+-mc1502: 5.33 version bios [anasana]
+
+-A2Swyft: Change rom name to match card label, add jedec derived
+ dump of pal16r4 [Lord Nightmare, D. Elvey]
+
+-Mac: get the 6805s away from knowing mac_state internals, fixes
+ Pippin error [R. Belmont]
+
+-c64: Added IDEDOS 0.90 and Prince of Persia to the cartridge
+ software list. These can be used to quickly flash the EasyFlash and
+ IDE64 cartridges. Note that you have to delete the resulting files
+ from nvram directory to re-flash. [Curt Coder]
+
+-bbc: Fix another collateral damage of the acia irq fix [O. Galibert]
+
+-mm1: Added software list with boot disk. [Kara Trace, Curt Coder]
+
+-sq1/sqrack: Greatly improved display behavior [R. Belmont]
+
+-c128: Added QuickSilver 128 BIOS. [Curt Coder]
+
+-bw2: Fixed floppy loading. [Curt Coder]
+
+-Apollo fixes: [Hans Ostermeyer]
+ * fixed MLOG: machine -> machine()
+ * use the correct address space for dma (supplied space parameter is
+    wrong; why?)
+ * minor fix for 64 Bit Ubuntu
+ * block_set_filemark() failed to set the filemark buffer; memcpy will
+    now use 64 bit words (i.e. 8 byte chunks) for copying
+
+-pce/tg16/sgx: Convert to using new more accurate video chip
+ device emulation [Wilbert Pol]
+
+-lviv: added support for multipart tapes (lv0, lv1, etc. extensions) 
+ [Fabio Priuli]
+
+-mm1: Fixed floppy. [Curt Coder]
+
+-wangpc: Fixed floppy. [Curt Coder]
+
+-bw12: Fixed floppy. [Curt Coder]
+
+-xerox820: Fixed floppy. [Curt Coder]
+
+Software Lists:
+----------------
+-Added games beginning with "A" to the Apple II softlist [R. Belmont]
+
+-pico.xml: Added two German prototypes [Team Europe]
+
+-pico.xml: added new European and Japanese dumps and better documentation
+ for a few old dumps. [Team Europe]
+
+-Added preliminary softlists to many Eastern Europe computers: Apogee, 
+ Bashkiria-2M, BK-0010, Galaksija, Korvet, Lviv, Mikrosha, Ondra ViLi, 
+ Orao, Orion-128/OrionPro, Partner-01.01, Pecom64, Pyldin-601, Radio-86RK, 
+ Specialist/Specialist MX and UT-88. [Fabio Priuli]
+
+-snes.xml: 
+ Added 50 cartridges [ReadOnly]
+ Added Metal Jack prototype [ruiner9]
+
+Source Changes
+--------------
+-c1551: Fixed floppy loading. [Curt Coder] 
+
+-c1571: Fixed fast serial mode on C128. [Curt Coder] 
+
+-ed1200 family of LCD controllers [O. Galibert]
+
+-dsk: (minimally) complete the dsk support [O. Galibert]
+
+-floppy: Correctly reach files inside zips or softlists [O. Galibert]
+
+-flopimg: Avoid avoidable leaks [O. Galibert]
+
+-upd765: Be verbose about sector IDs when formatting a track [O. Galibert]
+
+-Added FM encoding support to flopimg and wd17xx_dsk. [Curt Coder]
+
+-Added FM encoding support to upd765_dsk. [Curt Coder]
+
+-Added cdda_get_channel_volume() function to CD-DA device. Fixed volume
+ control display in PC Engine CD system [Angelo Salese]
+
 0.147u4
 -------
 
@@ -231,7 +400,6 @@ Source Changes
 -wd_fdc: Change the fd179x timings to be tighter [O. Galibert]
 
 
-
 0.147u3
 -------
 
@@ -334,8 +502,7 @@ Source Changes
  interrupt command (0xd8). [Curt Coder]
 
 
-
-
+ 
 0.147u2
 -------
 
@@ -499,7 +666,6 @@ Source Changes
  commands and add dsr reset [O. Galibert]
 
 -added basic support for the loop flags in tzx [David Haywood]
-
 
 
 

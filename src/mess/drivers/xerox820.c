@@ -170,6 +170,16 @@ void xerox820ii_state::bankswitch(int bank)
 	}
 }
 
+READ8_MEMBER( xerox820_state::fdc_r )
+{
+	return m_fdc->gen_r(offset) ^ 0xff;
+}
+
+WRITE8_MEMBER( xerox820_state::fdc_w )
+{
+	m_fdc->gen_w(offset, data ^ 0xff);
+}
+
 WRITE8_MEMBER( xerox820_state::scroll_w )
 {
 	m_scroll = (offset >> 8) & 0x1f;
@@ -180,18 +190,18 @@ WRITE8_MEMBER( xerox820_state::x120_system_w )
 {
 	/*
 
-        bit     signal      description
+	    bit     signal      description
 
-        0       DSEL0       drive select bit 0 (01=A, 10=B, 00=C, 11=D)
-        1       DSEL1       drive select bit 1
-        2       SIDE        side select
-        3       VATT        video attribute (0=inverse, 1=blinking)
-        4       BELL        bell trigger
-        5       DENSITY     density (0=double, 1=single)
-        6       _MOTOR      disk motor (0=on, 1=off)
-        7       BANK        memory bank switch (0=RAM, 1=ROM/video)
+	    0       DSEL0       drive select bit 0 (01=A, 10=B, 00=C, 11=D)
+	    1       DSEL1       drive select bit 1
+	    2       SIDE        side select
+	    3       VATT        video attribute (0=inverse, 1=blinking)
+	    4       BELL        bell trigger
+	    5       DENSITY     density (0=double, 1=single)
+	    6       _MOTOR      disk motor (0=on, 1=off)
+	    7       BANK        memory bank switch (0=RAM, 1=ROM/video)
 
-    */
+	*/
 }
 #endif
 
@@ -241,7 +251,7 @@ static ADDRESS_MAP_START( xerox820_io, AS_IO, 8, xerox820_state )
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0xff02) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_c_r, z80dart_c_w)
 	AM_RANGE(0x08, 0x0b) AM_MIRROR(0xff00) AM_DEVREADWRITE(Z80PIO_GP_TAG, z80pio_device, read_alt, write_alt)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff03) AM_DEVWRITE(COM8116_TAG, com8116_device, stt_w)
-	AM_RANGE(0x10, 0x13) AM_MIRROR(0xff00) AM_DEVREADWRITE(FD1771_TAG, fd1771_t, read, write)
+	AM_RANGE(0x10, 0x13) AM_MIRROR(0xff00) AM_READWRITE(fdc_r, fdc_w)
 	AM_RANGE(0x14, 0x14) AM_MIRROR(0xff03) AM_MASK(0xff00) AM_WRITE(scroll_w)
 	AM_RANGE(0x18, 0x1b) AM_MIRROR(0xff00) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_device, read, write)
 	AM_RANGE(0x1c, 0x1f) AM_MIRROR(0xff00) AM_DEVREADWRITE(Z80PIO_KB_TAG, z80pio_device, read_alt, write_alt)
@@ -387,22 +397,22 @@ READ8_MEMBER( xerox820_state::kbpio_pa_r )
 {
 	/*
 
-        bit     signal          description
+	    bit     signal          description
 
-        0
-        1
-        2
-        3       PBRDY           keyboard data available
-        4       8/N5            8"/5.25" disk select (0=5.25", 1=8")
-        5       400/460         double sided disk detect (only on Etch 2 PCB) (0=SS, 1=DS)
-        6
-        7
+	    0
+	    1
+	    2
+	    3       PBRDY           keyboard data available
+	    4       8/N5            8"/5.25" disk select (0=5.25", 1=8")
+	    5       400/460         double sided disk detect (only on Etch 2 PCB) (0=SS, 1=DS)
+	    6
+	    7
 
-    */
+	*/
 
-    UINT8 data = 0;
+	UINT8 data = 0;
 
-    // keyboard
+	// keyboard
 	data |= m_kbpio->rdy_b() << 3;
 
 	// floppy
@@ -416,18 +426,18 @@ WRITE8_MEMBER( xerox820_state::kbpio_pa_w )
 {
 	/*
 
-        bit     signal          description
+	    bit     signal          description
 
-        0       _DVSEL1         drive select 1
-        1       _DVSEL2         drive select 2
-        2       SIDE            side select
-        3
-        4
-        5
-        6       NCSET2          display character set (inverted and connected to chargen A10)
-        7       BANK            bank switching (0=RAM, 1=ROM/videoram)
+	    0       _DVSEL1         drive select 1
+	    1       _DVSEL2         drive select 2
+	    2       SIDE            side select
+	    3
+	    4
+	    5
+	    6       NCSET2          display character set (inverted and connected to chargen A10)
+	    7       BANK            bank switching (0=RAM, 1=ROM/videoram)
 
-    */
+	*/
 
 	/* drive select */
 	floppy_image_device *floppy = NULL;
@@ -479,71 +489,71 @@ READ8_MEMBER( xerox820_state::kbpio_pb_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       KB0
-        1       KB1
-        2       KB2
-        3       KB3
-        4       KB4
-        5       KB5
-        6       KB6
-        7       KB7
+	    0       KB0
+	    1       KB1
+	    2       KB2
+	    3       KB3
+	    4       KB4
+	    5       KB5
+	    6       KB6
+	    7       KB7
 
-    */
+	*/
 
 	return m_keydata;
 };
 
 static Z80PIO_INTERFACE( xerox820_kbpio_intf )
 {
-	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),		/* callback when change interrupt status */
-	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_r),	/* port A read callback */
-	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_w),	/* port A write callback */
-	DEVCB_NULL,											/* portA ready active callback */
-	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pb_r),	/* port B read callback */
-	DEVCB_NULL,											/* port B write callback */
-	DEVCB_NULL											/* portB ready active callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),     /* callback when change interrupt status */
+	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_r),    /* port A read callback */
+	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_w),    /* port A write callback */
+	DEVCB_NULL,                                         /* portA ready active callback */
+	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pb_r),    /* port B read callback */
+	DEVCB_NULL,                                         /* port B write callback */
+	DEVCB_NULL                                          /* portB ready active callback */
 };
 
 static Z80PIO_INTERFACE( xerox820ii_kbpio_intf )
 {
-	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),		/* callback when change interrupt status */
-	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_r),	/* port A read callback */
-	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_w),	/* port A write callback */
-	DEVCB_NULL,											/* portA ready active callback */
-	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pb_r),	/* port B read callback */
-	DEVCB_NULL,											/* port B write callback */
-	DEVCB_NULL											/* portB ready active callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),     /* callback when change interrupt status */
+	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_r),    /* port A read callback */
+	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pa_w),    /* port A write callback */
+	DEVCB_NULL,                                         /* portA ready active callback */
+	DEVCB_DRIVER_MEMBER(xerox820_state, kbpio_pb_r),    /* port B read callback */
+	DEVCB_NULL,                                         /* port B write callback */
+	DEVCB_NULL                                          /* portB ready active callback */
 };
 
 static Z80PIO_INTERFACE( gppio_intf )
 {
-	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
-	DEVCB_NULL,		/* port A read callback */
-	DEVCB_NULL,		/* port A write callback */
-	DEVCB_NULL,		/* portA ready active callback */
-	DEVCB_NULL,		/* port B read callback */
-	DEVCB_NULL,		/* port B write callback */
-	DEVCB_NULL		/* portB ready active callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0), /* callback when change interrupt status */
+	DEVCB_NULL,     /* port A read callback */
+	DEVCB_NULL,     /* port A write callback */
+	DEVCB_NULL,     /* portA ready active callback */
+	DEVCB_NULL,     /* port B read callback */
+	DEVCB_NULL,     /* port B write callback */
+	DEVCB_NULL      /* portB ready active callback */
 };
 
 READ8_MEMBER( xerox820ii_state::rdpio_pb_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       NBSY
-        1       NMSG
-        2       NC/D
-        3       NREQ
-        4       NI/O
-        5
-        6       LS74 Q
-        7
+	    0       NBSY
+	    1       NMSG
+	    2       NC/D
+	    3       NREQ
+	    4       NI/O
+	    5
+	    6       LS74 Q
+	    7
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -560,18 +570,18 @@ WRITE8_MEMBER( xerox820ii_state::rdpio_pb_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0
-        1
-        2
-        3
-        4
-        5       NSEL
-        6
-        7       NRST
+	    0
+	    1
+	    2
+	    3
+	    4
+	    5       NSEL
+	    6
+	    7       NRST
 
-    */
+	*/
 
 	m_sasibus->scsi_sel_w(!BIT(data, 5));
 	m_sasibus->scsi_rst_w(!BIT(data, 7));
@@ -584,13 +594,13 @@ WRITE_LINE_MEMBER( xerox820ii_state::rdpio_pardy_w )
 
 static Z80PIO_INTERFACE( rdpio_intf )
 {
-	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
-	DEVCB_DEVICE_MEMBER(SASIBUS_TAG ":host", scsicb_device, scsi_data_r),	/* port A read callback */
-	DEVCB_DEVICE_MEMBER(SASIBUS_TAG ":host", scsicb_device, scsi_data_w),	/* port A write callback */
-	DEVCB_DRIVER_LINE_MEMBER(xerox820ii_state, rdpio_pardy_w),		/* portA ready active callback */
-	DEVCB_DRIVER_MEMBER(xerox820ii_state, rdpio_pb_r),		/* port B read callback */
-	DEVCB_DRIVER_MEMBER(xerox820ii_state, rdpio_pb_w),		/* port B write callback */
-	DEVCB_NULL		/* portB ready active callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0), /* callback when change interrupt status */
+	DEVCB_DEVICE_MEMBER(SASIBUS_TAG ":host", scsicb_device, scsi_data_r),   /* port A read callback */
+	DEVCB_DEVICE_MEMBER(SASIBUS_TAG ":host", scsicb_device, scsi_data_w),   /* port A write callback */
+	DEVCB_DRIVER_LINE_MEMBER(xerox820ii_state, rdpio_pardy_w),      /* portA ready active callback */
+	DEVCB_DRIVER_MEMBER(xerox820ii_state, rdpio_pb_r),      /* port B read callback */
+	DEVCB_DRIVER_MEMBER(xerox820ii_state, rdpio_pb_w),      /* port B write callback */
+	DEVCB_NULL      /* portB ready active callback */
 };
 
 /* Z80 SIO */
@@ -626,10 +636,10 @@ TIMER_DEVICE_CALLBACK_MEMBER( xerox820_state::ctc_tick )
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
-	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
-	DEVCB_DEVICE_LINE_MEMBER(Z80CTC_TAG, z80ctc_device, trg1),	/* ZC/TO0 callback */
-	DEVCB_NULL,	/* ZC/TO1 callback */
-	DEVCB_DEVICE_LINE_MEMBER(Z80CTC_TAG, z80ctc_device, trg3)	/* ZC/TO2 callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0), /* interrupt handler */
+	DEVCB_DEVICE_LINE_MEMBER(Z80CTC_TAG, z80ctc_device, trg1),  /* ZC/TO0 callback */
+	DEVCB_NULL, /* ZC/TO1 callback */
+	DEVCB_DEVICE_LINE_MEMBER(Z80CTC_TAG, z80ctc_device, trg3)   /* ZC/TO2 callback */
 };
 
 /* Z80 Daisy Chain */
@@ -652,39 +662,37 @@ static SLOT_INTERFACE_START( xerox820_floppies )
 	SLOT_INTERFACE( "sa850", FLOPPY_8_DSDD ) // Shugart SA-850
 SLOT_INTERFACE_END
 
+void xerox820_state::update_nmi()
+{
+	int halt = m_maincpu->state_int(Z80_HALT);
+	int state = (halt && (m_fdc_irq || m_fdc_drq)) ? ASSERT_LINE : CLEAR_LINE;
+
+	m_maincpu->set_input_line(INPUT_LINE_NMI, state);
+}
+
 void xerox820_state::fdc_intrq_w(bool state)
 {
 	m_fdc_irq = state;
 
-	int halt = m_maincpu->state_int(Z80_HALT);
-
-	if (halt && (m_fdc_irq || m_fdc_drq))
-		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
-	else
-		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	update_nmi();
 }
 
 void xerox820_state::fdc_drq_w(bool state)
 {
 	m_fdc_drq = state;
 
-	int halt = m_maincpu->state_int(Z80_HALT);
-
-	if (halt && (m_fdc_irq || m_fdc_drq))
-		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
-	else
-		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	update_nmi();
 }
 
 /* COM8116 Interface */
 
 static COM8116_INTERFACE( com8116_intf )
 {
-	DEVCB_NULL,		/* fX/4 output */
-	DEVCB_NULL,		/* fR output */
-	DEVCB_NULL,		/* fT output */
-	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },			/* receiver divisor ROM */
-	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },			/* transmitter divisor ROM */
+	DEVCB_NULL,     /* fX/4 output */
+	DEVCB_NULL,     /* fR output */
+	DEVCB_NULL,     /* fT output */
+	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },         /* receiver divisor ROM */
+	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },         /* transmitter divisor ROM */
 };
 
 /* Video */
@@ -749,7 +757,6 @@ void xerox820_state::machine_start()
 	// floppy callbacks
 	m_fdc->setup_intrq_cb(wd_fdc_t::line_cb(FUNC(xerox820_state::fdc_intrq_w), this));
 	m_fdc->setup_drq_cb(wd_fdc_t::line_cb(FUNC(xerox820_state::fdc_drq_w), this));
-	m_fdc->dden_w(1);
 
 	// state saving
 	save_item(NAME(m_keydata));
@@ -818,28 +825,28 @@ LEGACY_FLOPPY_OPTIONS_END
 /* F4 Character Displayer */
 static const gfx_layout xerox820_charlayout =
 {
-	8, 8,					/* 8 x 8 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 8,                   /* 8 x 8 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	8*8					/* every char takes 8 bytes */
+	8*8                 /* every char takes 8 bytes */
 };
 
 static const gfx_layout xerox820_gfxlayout =
 {
-	8, 8,					/* 8 x 8 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 8,                   /* 8 x 8 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	8*8					/* every char takes 8 bytes */
+	8*8                 /* every char takes 8 bytes */
 };
 
 static GFXDECODE_START( xerox820 )
@@ -1036,9 +1043,9 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY                         FULLNAME        FLAGS */
-COMP( 1980, bigboard,   0,          0,      bigboard,   xerox820, driver_device,   0,      "Digital Research Computers",   "Big Board", 	GAME_IMPERFECT_KEYBOARD )
-COMP( 1981, x820,   	bigboard,   0,      xerox820,   xerox820, driver_device,   0,      "Xerox",                        "Xerox 820", 	GAME_IMPERFECT_KEYBOARD | GAME_NO_SOUND_HW )
-COMP( 1982, mk82,   	bigboard,   0,      bigboard,   xerox820, driver_device,   0,      "Scomar",                       "MK-82", 		GAME_IMPERFECT_KEYBOARD )
-COMP( 1983, x820ii, 	0,  		0,      xerox820ii, xerox820, driver_device,   0,      "Xerox",                        "Xerox 820-II",	GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
-COMP( 1983, x168,   	x820ii, 	0,      xerox168,   xerox820, driver_device,   0,      "Xerox",                        "Xerox 16/8",	GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
-COMP( 1983, mk83,       x820ii, 	0,      mk83,       xerox820, driver_device,   0,      "Scomar",                       "MK-83",     	GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD | GAME_NO_SOUND_HW )
+COMP( 1980, bigboard,   0,          0,      bigboard,   xerox820, driver_device,   0,      "Digital Research Computers",   "Big Board",     GAME_IMPERFECT_KEYBOARD )
+COMP( 1981, x820,       bigboard,   0,      xerox820,   xerox820, driver_device,   0,      "Xerox",                        "Xerox 820",     GAME_IMPERFECT_KEYBOARD | GAME_NO_SOUND_HW )
+COMP( 1982, mk82,       bigboard,   0,      bigboard,   xerox820, driver_device,   0,      "Scomar",                       "MK-82",         GAME_IMPERFECT_KEYBOARD )
+COMP( 1983, x820ii,     0,          0,      xerox820ii, xerox820, driver_device,   0,      "Xerox",                        "Xerox 820-II",  GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+COMP( 1983, x168,       x820ii,     0,      xerox168,   xerox820, driver_device,   0,      "Xerox",                        "Xerox 16/8",    GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD )
+COMP( 1983, mk83,       x820ii,     0,      mk83,       xerox820, driver_device,   0,      "Scomar",                       "MK-83",         GAME_NOT_WORKING | GAME_IMPERFECT_KEYBOARD | GAME_NO_SOUND_HW )

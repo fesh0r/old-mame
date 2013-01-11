@@ -22,11 +22,11 @@
 struct sam6883_interface
 {
 	/* the CPU/space from which the SAM reads data */
-	const char *		m_cpu_tag;
-	address_spacenum	m_cpu_space;
+	const char *        m_cpu_tag;
+	address_spacenum    m_cpu_space;
 
 	/* function for reading from memory for video */
-	devcb_read8			m_input_func;
+	devcb_read8         m_input_func;
 };
 
 
@@ -60,10 +60,10 @@ protected:
 	static const UINT16 SAM_STATE_V0 = 0x0001;
 
 	// incidentals
-	cpu_device *			m_cpu;
+	cpu_device *            m_cpu;
 
 	// device state
-	UINT16					m_sam_state;
+	UINT16                  m_sam_state;
 
 	ATTR_FORCE_INLINE UINT16 display_offset(void)
 	{
@@ -120,7 +120,7 @@ public:
 			if (bit3_carry)
 				counter_carry_bit3();
 		}
-		return m_res_input_func(m_counter);
+		return m_res_input_func((m_counter & m_counter_mask) | m_counter_or);
 	}
 
 	DECLARE_WRITE_LINE_MEMBER( hs_w );
@@ -130,35 +130,70 @@ public:
 	void set_bank_offset(int bank, offs_t offset);
 
 protected:
-    // device-level overrides
-    virtual void device_start();
+	// device-level overrides
+	virtual void device_start();
 	virtual void device_reset();
 	virtual void device_post_load();
 
 private:
+	// represents an external memory bank - memory or IO that the SAM
+	// points to with the S2/S1/S0 output
 	struct sam_bank
 	{
-		UINT8 *			m_memory;
-		UINT32			m_memory_size;
-		offs_t			m_memory_offset;
-		bool			m_memory_read_only;
-		read8_delegate	m_rhandler;
-		write8_delegate	m_whandler;
+		UINT8 *             m_memory;
+		UINT32              m_memory_size;
+		offs_t              m_memory_offset;
+		bool                m_memory_read_only;
+		read8_delegate      m_rhandler;
+		write8_delegate     m_whandler;
+	};
+
+	// represents one of the memory "spaces" (e.g. - $8000-$9FFF) that
+	// can ultimately point to a bank
+	template<UINT16 _addrstart, UINT16 _addrend>
+	class sam_space
+	{
+	public:
+		sam_space(sam6883_device &owner);
+		void point(const sam_bank *bank, UINT16 offset, UINT16 mask = 0);
+
+	private:
+		sam6883_device &    m_owner;
+		memory_bank *       m_read_bank;
+		memory_bank *       m_write_bank;
+		UINT16              m_mask;
+
+		address_space &cpu_space() const;
+		void point_specific_bank(const sam_bank *bank, UINT16 offset, UINT16 mask, memory_bank *&memory_bank, INT32 addrstart, INT32 addrend, bool is_write);
 	};
 
 	// incidentals
-	address_space *			m_cpu_space;
-	devcb_resolved_read8	m_res_input_func;
-	sam_bank				m_banks[8];
+	address_space *             m_cpu_space;
+	devcb_resolved_read8        m_res_input_func;
+	sam_bank                    m_banks[8];
+	sam_space<0x0000, 0x7FFF>   m_space_0000;
+	sam_space<0x8000, 0x9FFF>   m_space_8000;
+	sam_space<0xA000, 0xBFFF>   m_space_A000;
+	sam_space<0xC000, 0xFEFF>   m_space_C000;
+	sam_space<0xFF00, 0xFF1F>   m_space_FF00;
+	sam_space<0xFF20, 0xFF3F>   m_space_FF20;
+	sam_space<0xFF40, 0xFF5F>   m_space_FF40;
+	sam_space<0xFF60, 0xFFBF>   m_space_FF60;
+	sam_space<0xFFE0, 0xFFFF>   m_space_FFE0;
+	UINT16                      m_counter_mask;
+	UINT16                      m_counter_or;
 
 	// SAM state
-	UINT16					m_counter;
-	UINT8					m_counter_xdiv;
-	UINT8					m_counter_ydiv;
+	UINT16                      m_counter;
+	UINT8                       m_counter_xdiv;
+	UINT8                       m_counter_ydiv;
+
+	// dummy scratch memory
+	UINT8                       m_dummy[0x8000];
 
 	// typically called by CPU
-    DECLARE_READ8_MEMBER( read );
-    DECLARE_WRITE8_MEMBER( write );
+	DECLARE_READ8_MEMBER( read );
+	DECLARE_WRITE8_MEMBER( write );
 
 	// called when there is a carry out of bit 3 on the counter
 	ATTR_FORCE_INLINE void counter_carry_bit3(void)
@@ -166,14 +201,14 @@ private:
 		UINT8 x_division;
 		switch((m_sam_state & (SAM_STATE_V2|SAM_STATE_V1|SAM_STATE_V0)) / SAM_STATE_V0)
 		{
-			case 0x00:	x_division = 1;	break;
-			case 0x01:	x_division = 3;	break;
-			case 0x02:	x_division = 1;	break;
-			case 0x03:	x_division = 2;	break;
-			case 0x04:	x_division = 1;	break;
-			case 0x05:	x_division = 1;	break;
-			case 0x06:	x_division = 1;	break;
-			case 0x07:	x_division = 1;	break;
+			case 0x00:  x_division = 1; break;
+			case 0x01:  x_division = 3; break;
+			case 0x02:  x_division = 1; break;
+			case 0x03:  x_division = 2; break;
+			case 0x04:  x_division = 1; break;
+			case 0x05:  x_division = 1; break;
+			case 0x06:  x_division = 1; break;
+			case 0x07:  x_division = 1; break;
 			default:
 				fatalerror("Should not get here\n");
 				return;
@@ -194,14 +229,14 @@ private:
 		UINT8 y_division;
 		switch((m_sam_state & (SAM_STATE_V2|SAM_STATE_V1|SAM_STATE_V0)) / SAM_STATE_V0)
 		{
-			case 0x00:	y_division = 12;	break;
-			case 0x01:	y_division = 1;		break;
-			case 0x02:	y_division = 3;		break;
-			case 0x03:	y_division = 1;		break;
-			case 0x04:	y_division = 2;		break;
-			case 0x05:	y_division = 1;		break;
-			case 0x06:	y_division = 1;		break;
-			case 0x07:	y_division = 1;		break;
+			case 0x00:  y_division = 12;    break;
+			case 0x01:  y_division = 1;     break;
+			case 0x02:  y_division = 3;     break;
+			case 0x03:  y_division = 1;     break;
+			case 0x04:  y_division = 2;     break;
+			case 0x05:  y_division = 1;     break;
+			case 0x06:  y_division = 1;     break;
+			case 0x07:  y_division = 1;     break;
 			default:
 				fatalerror("Should not get here\n");
 				return;
@@ -219,8 +254,6 @@ private:
 	void horizontal_sync(void);
 	void update_state(void);
 	void update_memory(void);
-	void update_bank(int bank, offs_t addrstart, offs_t addrend, offs_t offset);
-	void install_memory(offs_t addrstart, offs_t addrend, void *memory, bool is_read_only);
 };
 
 extern const device_type SAM6883;

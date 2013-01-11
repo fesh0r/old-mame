@@ -7,7 +7,7 @@
 <!--
 
 Titles, serial #s, publishers and release dates taken from:
-  - Oh!FM-7 ( http://retropc.net/fm-7/ )
+	- Oh!FM-7 ( http://retropc.net/fm-7/ )
 
 -->
 
@@ -17,7 +17,7 @@ Titles, serial #s, publishers and release dates taken from:
 	At the F-Basic Ready prompt, type run"" and press Return.
 	If a Bad File Mode error occurs, then you must type loadm"",r and press Return.  Once the loader has loaded,
 	type exec and press Return, and the application will run, or continue to load.
-    Some games which are written in machine language actually need loadm"",,r to load!
+	Some games which are written in machine language actually need loadm"",,r to load!
 
 	If you are using a disk version of F-Basic, then put CAS0: in the quotes.  Note that this is case-sensitive.
 -->
@@ -1324,6 +1324,18 @@ Titles, serial #s, publishers and release dates taken from:
 		</part>
 	</software>
 
+	<software name="ninjakun">
+		<description>Ninja-kun</description>
+		<year>1986</year>
+		<publisher>日本デクスタ (Nihon Dexter)</publisher>
+		<info name="alt_title" value="忍者くん"/>
+		<part name="cass1" interface="fm7_cass">
+			<dataarea name="cass" size="6740260">
+				<rom name="ninjakun.t77" size="6740260" crc="13d364c3" sha1="cd988e2e12653a77c2933279d625160d872300cd" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="nobunaga">
 		<description>Nobunaga no Yabou</description>
 		<year>1983</year>
@@ -2289,7 +2301,7 @@ Titles, serial #s, publishers and release dates taken from:
 		<publisher>&lt;unknown&gt;</publisher>
 		<info name="alt_title" value="ソート研究"/> <!-- Marked ソート研究 7 in the pack I found -->
 		<part name="cass1" interface="fm7_cass">
-		    <dataarea name="cass" size="201096">
+			<dataarea name="cass" size="201096">
 				<rom name="sort.t77" size="201096" crc="4f1a8a23" sha1="b0610ee3414d49149a81bf8b9986b229338407b5" offset="0"/>
 			</dataarea>
 		</part>
@@ -2301,9 +2313,9 @@ Titles, serial #s, publishers and release dates taken from:
 		<publisher>&lt;unknown&gt;</publisher>
 		<info name="alt_title" value="名簿"/> <!-- Marked 名簿 8 in the pack I found -->
 		<part name="cass1" interface="fm7_cass">
-		    <dataarea name="cass" size="426582">
+			<dataarea name="cass" size="426582">
 				<rom name="meibo.t77" size="426582" crc="6048ed8a" sha1="be297c0119fe9f5d634f9ccb1538e5547229a980" offset="0"/>
-		    </dataarea>
+			</dataarea>
 		</part>
 	</software>
 

@@ -45,7 +45,8 @@
 //  MACROS / CONSTANTS
 //**************************************************************************
 
-#define LOG 1
+#define VERBOSE         0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 
 // todo typedef
@@ -88,46 +89,46 @@ enum
 	FIFO_COMMAND
 };
 
-#define UPD7220_COMMAND_RESET			0x00
-#define UPD7220_COMMAND_SYNC			0x0e // & 0xfe
-#define UPD7220_COMMAND_VSYNC			0x6e // & 0xfe
-#define UPD7220_COMMAND_CCHAR			0x4b
-#define UPD7220_COMMAND_START			0x6b
-#define UPD7220_COMMAND_BCTRL			0x0c // & 0xfe
-#define UPD7220_COMMAND_ZOOM			0x46
-#define UPD7220_COMMAND_CURS			0x49
-#define UPD7220_COMMAND_PRAM			0x70 // & 0xf0
-#define UPD7220_COMMAND_PITCH			0x47
-#define UPD7220_COMMAND_WDAT			0x20 // & 0xe4
-#define UPD7220_COMMAND_MASK			0x4a
-#define UPD7220_COMMAND_FIGS			0x4c
-#define UPD7220_COMMAND_FIGD			0x6c
-#define UPD7220_COMMAND_GCHRD			0x68
-#define UPD7220_COMMAND_RDAT			0xa0 // & 0xe4
-#define UPD7220_COMMAND_CURD			0xe0
-#define UPD7220_COMMAND_LPRD			0xc0
-#define UPD7220_COMMAND_DMAR			0xa4 // & 0xe4
-#define UPD7220_COMMAND_DMAW			0x24 // & 0xe4
-#define UPD7220_COMMAND_5A				0x5a
+#define UPD7220_COMMAND_RESET           0x00
+#define UPD7220_COMMAND_SYNC            0x0e // & 0xfe
+#define UPD7220_COMMAND_VSYNC           0x6e // & 0xfe
+#define UPD7220_COMMAND_CCHAR           0x4b
+#define UPD7220_COMMAND_START           0x6b
+#define UPD7220_COMMAND_BCTRL           0x0c // & 0xfe
+#define UPD7220_COMMAND_ZOOM            0x46
+#define UPD7220_COMMAND_CURS            0x49
+#define UPD7220_COMMAND_PRAM            0x70 // & 0xf0
+#define UPD7220_COMMAND_PITCH           0x47
+#define UPD7220_COMMAND_WDAT            0x20 // & 0xe4
+#define UPD7220_COMMAND_MASK            0x4a
+#define UPD7220_COMMAND_FIGS            0x4c
+#define UPD7220_COMMAND_FIGD            0x6c
+#define UPD7220_COMMAND_GCHRD           0x68
+#define UPD7220_COMMAND_RDAT            0xa0 // & 0xe4
+#define UPD7220_COMMAND_CURD            0xe0
+#define UPD7220_COMMAND_LPRD            0xc0
+#define UPD7220_COMMAND_DMAR            0xa4 // & 0xe4
+#define UPD7220_COMMAND_DMAW            0x24 // & 0xe4
+#define UPD7220_COMMAND_5A              0x5a
 
-#define UPD7220_SR_DATA_READY			0x01
-#define UPD7220_SR_FIFO_FULL			0x02
-#define UPD7220_SR_FIFO_EMPTY			0x04
-#define UPD7220_SR_DRAWING_IN_PROGRESS	0x08
-#define UPD7220_SR_DMA_EXECUTE			0x10
-#define UPD7220_SR_VSYNC_ACTIVE			0x20
-#define UPD7220_SR_HBLANK_ACTIVE		0x40
-#define UPD7220_SR_LIGHT_PEN_DETECT		0x80
+#define UPD7220_SR_DATA_READY           0x01
+#define UPD7220_SR_FIFO_FULL            0x02
+#define UPD7220_SR_FIFO_EMPTY           0x04
+#define UPD7220_SR_DRAWING_IN_PROGRESS  0x08
+#define UPD7220_SR_DMA_EXECUTE          0x10
+#define UPD7220_SR_VSYNC_ACTIVE         0x20
+#define UPD7220_SR_HBLANK_ACTIVE        0x40
+#define UPD7220_SR_LIGHT_PEN_DETECT     0x80
 
-#define UPD7220_MODE_S					0x01
-#define UPD7220_MODE_REFRESH_RAM		0x04
-#define UPD7220_MODE_I					0x08
-#define UPD7220_MODE_DRAW_ON_RETRACE	0x10
-#define UPD7220_MODE_DISPLAY_MASK		0x22
-#define UPD7220_MODE_DISPLAY_MIXED		0x00
-#define UPD7220_MODE_DISPLAY_GRAPHICS	0x02
-#define UPD7220_MODE_DISPLAY_CHARACTER	0x20
-#define UPD7220_MODE_DISPLAY_INVALID	0x22
+#define UPD7220_MODE_S                  0x01
+#define UPD7220_MODE_REFRESH_RAM        0x04
+#define UPD7220_MODE_I                  0x08
+#define UPD7220_MODE_DRAW_ON_RETRACE    0x10
+#define UPD7220_MODE_DISPLAY_MASK       0x22
+#define UPD7220_MODE_DISPLAY_MIXED      0x00
+#define UPD7220_MODE_DISPLAY_GRAPHICS   0x02
+#define UPD7220_MODE_DISPLAY_CHARACTER  0x20
+#define UPD7220_MODE_DISPLAY_INVALID    0x22
 
 static const int x_dir[8] = { 0, 1, 1, 1, 0,-1,-1,-1};
 static const int y_dir[8] = { 1, 1, 0,-1,-1,-1, 0, 1};
@@ -412,13 +413,10 @@ inline void upd7220_device::recompute_parameters()
 	visarea.max_x = m_aw * horiz_mult - 1;//horiz_pix_total - (m_hfp * 8) - 1;
 	visarea.max_y = m_al - 1;//vert_pix_total - m_vfp - 1;
 
-	if (LOG)
-	{
-		logerror("uPD7220 '%s' Screen: %u x %u @ %f Hz\n", tag(), horiz_pix_total, vert_pix_total, 1 / ATTOSECONDS_TO_DOUBLE(refresh));
-		logerror("Visible Area: (%u, %u) - (%u, %u)\n", visarea.min_x, visarea.min_y, visarea.max_x, visarea.max_y);
-		logerror("%d %d %d %d %d\n",m_hs,m_hbp,m_aw,m_hfp,m_pitch);
-		logerror("%d %d %d %d\n",m_vs,m_vbp,m_al,m_vfp);
-	}
+	LOG(("uPD7220 '%s' Screen: %u x %u @ %f Hz\n", tag(), horiz_pix_total, vert_pix_total, 1 / ATTOSECONDS_TO_DOUBLE(refresh)));
+	LOG(("Visible Area: (%u, %u) - (%u, %u)\n", visarea.min_x, visarea.min_y, visarea.max_x, visarea.max_y));
+	LOG(("%d %d %d %d %d\n",m_hs,m_hbp,m_aw,m_hfp,m_pitch));
+	LOG(("%d %d %d %d\n",m_vs,m_vbp,m_al,m_vfp));
 
 	if (m_m)
 	{
@@ -457,13 +455,13 @@ inline void upd7220_device::reset_figs_param()
 
 inline void upd7220_device::advance_ead()
 {
-	#define EAD			m_ead
-	#define DAD			m_dad
-	#define P			x_dir[m_figs.m_dir] + (y_dir[m_figs.m_dir] * m_pitch)
-	#define MSB(value)	(BIT(value, 15))
-	#define LSB(value)	(BIT(value, 0))
-	#define LR(value)	((value << 1) | MSB(value))
-	#define RR(value)	((LSB(value) << 15) | (value >> 1))
+	#define EAD         m_ead
+	#define DAD         m_dad
+	#define P           x_dir[m_figs.m_dir] + (y_dir[m_figs.m_dir] * m_pitch)
+	#define MSB(value)  (BIT(value, 15))
+	#define LSB(value)  (BIT(value, 0))
+	#define LR(value)   ((value << 1) | MSB(value))
+	#define RR(value)   ((LSB(value) << 15) | (value >> 1))
 
 	switch (m_draw_mode & 0x07)
 	{
@@ -522,12 +520,12 @@ inline void upd7220_device::read_vram(UINT8 type, UINT8 mod)
 {
 	if (type == 1)
 	{
-		logerror("uPD7220 invalid type 1 RDAT parameter\n");
+		LOG (("uPD7220 invalid type 1 RDAT parameter\n"));
 		return;
 	}
 
 	if (mod)
-		logerror("uPD7220 RDAT used with mod = %02x?\n",mod);
+		LOG (("uPD7220 RDAT used with mod = %02x?\n",mod));
 
 	for (int i = 0; i < m_figs.m_dc; i++)
 	{
@@ -681,41 +679,41 @@ inline void upd7220_device::get_graphics_partition(int index, UINT32 *sad, UINT1
 //-------------------------------------------------
 
 upd7220_device::upd7220_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-    : device_t(mconfig, UPD7220, "uPD7220", tag, owner, clock),
-	  device_memory_interface(mconfig, *this),
-	  m_mask(0),
-	  m_pitch(0),
-	  m_ead(0),
-	  m_dad(0),
-	  m_lad(0),
-	  m_ra_addr(0),
-	  m_sr(UPD7220_SR_FIFO_EMPTY),
-	  m_cr(0),
-	  m_param_ptr(0),
-	  m_fifo_ptr(-1),
-	  m_fifo_dir(0),
-	  m_mode(0),
-	  m_draw_mode(0),
-	  m_de(0),
-	  m_m(0),
-	  m_aw(0),
-	  m_al(0),
-	  m_vs(0),
-	  m_vfp(0),
-	  m_vbp(0),
-	  m_hs(0),
-	  m_hfp(0),
-	  m_hbp(0),
-	  m_dc(0),
-	  m_sc(0),
-	  m_br(0),
-	  m_ctop(0),
-	  m_cbot(0),
-	  m_lr(0),
-	  m_disp(0),
-	  m_gchr(0),
-	  m_bitmap_mod(0),
-	  m_space_config("videoram", ENDIANNESS_LITTLE, 8, 18, 0, NULL, *ADDRESS_MAP_NAME(upd7220_vram))
+	: device_t(mconfig, UPD7220, "uPD7220", tag, owner, clock),
+		device_memory_interface(mconfig, *this),
+		m_mask(0),
+		m_pitch(0),
+		m_ead(0),
+		m_dad(0),
+		m_lad(0),
+		m_ra_addr(0),
+		m_sr(UPD7220_SR_FIFO_EMPTY),
+		m_cr(0),
+		m_param_ptr(0),
+		m_fifo_ptr(-1),
+		m_fifo_dir(0),
+		m_mode(0),
+		m_draw_mode(0),
+		m_de(0),
+		m_m(0),
+		m_aw(0),
+		m_al(0),
+		m_vs(0),
+		m_vfp(0),
+		m_vbp(0),
+		m_hs(0),
+		m_hfp(0),
+		m_hbp(0),
+		m_dc(0),
+		m_sc(0),
+		m_br(0),
+		m_ctop(0),
+		m_cbot(0),
+		m_lr(0),
+		m_disp(0),
+		m_gchr(0),
+		m_bitmap_mod(0),
+		m_space_config("videoram", ENDIANNESS_LITTLE, 8, 18, 0, NULL, *ADDRESS_MAP_NAME(upd7220_vram))
 {
 	m_shortname = "upd7220";
 	for (int i = 0; i < 16; i++)
@@ -753,10 +751,10 @@ void upd7220_device::device_start()
 	m_blank_timer = timer_alloc(TIMER_BLANK);
 
 	// resolve callbacks
-    m_out_drq_func.resolve(m_out_drq_cb, *this);
-    m_out_hsync_func.resolve(m_out_hsync_cb, *this);
-    m_out_vsync_func.resolve(m_out_vsync_cb, *this);
-    m_out_blank_func.resolve(m_out_blank_cb, *this);
+	m_out_drq_func.resolve(m_out_drq_cb, *this);
+	m_out_hsync_func.resolve(m_out_hsync_cb, *this);
+	m_out_vsync_func.resolve(m_out_vsync_cb, *this);
+	m_out_blank_func.resolve(m_out_blank_cb, *this);
 
 	// find screen
 	m_screen = machine().device<screen_device>(m_screen_tag);
@@ -868,22 +866,28 @@ void upd7220_device::device_timer(emu_timer &timer, device_timer_id id, int para
 //  draw_pixel -
 //-------------------------------------------------
 
-void upd7220_device::draw_pixel(int x, int y, UINT16 tile_data)
+void upd7220_device::draw_pixel(int x, int y, UINT8 tile_data)
 {
 	UINT32 addr = (y * m_pitch * 2 + (x >> 3)) & 0x3ffff;
-
 	int dad = x & 0x7;
-
 	UINT8 data = readbyte(addr);
+	UINT8 new_pixel = (tile_data) & (0x80 >> (dad));
 
-	if((m_bitmap_mod & 3) == 1)
+	switch(m_bitmap_mod)
 	{
-		writebyte(addr, data ^ ((tile_data) & (0x80 >> (dad))));
-	}
-	else
-	{
-		writebyte(addr, data & ~(0x80 >> (dad)));
-		writebyte(addr, data | ((tile_data) & (0x80 >> (dad))));
+		case 0: //replace
+			writebyte(addr, data & ~(0x80 >> (dad)));
+			writebyte(addr, data | new_pixel);
+			break;
+		case 1: //complement
+			writebyte(addr, data ^ (new_pixel));
+			break;
+		case 2: //reset
+			writebyte(addr, data & ((new_pixel) ? 0xff : ~(0x80 >> (dad))));
+			break;
+		case 3: //set
+			writebyte(addr, data | new_pixel);
+			break;
 	}
 }
 
@@ -939,7 +943,7 @@ void upd7220_device::draw_rectangle(int x, int y)
 	UINT16 line_pattern;
 	UINT8 dot;
 
-	logerror("uPD7220 rectangle check: %d %d %02x %08x\n",x,y,m_figs.m_dir,m_ead);
+	LOG(("uPD7220 rectangle check: %d %d %02x %08x\n",x,y,m_figs.m_dir,m_ead));
 
 	line_pattern = check_pattern((m_ra[8]) | (m_ra[9]<<8));
 	rect_type = (m_figs.m_dir & 1) << 2;
@@ -1021,11 +1025,11 @@ void upd7220_device::draw_char(int x, int y)
 		switch(m_figs.m_dir & 7)
 		{
 			case 0: tile_data = BITSWAP8(m_ra[((yi) & 7) | 8],0,1,2,3,4,5,6,7); break; // TODO
-			case 2:	tile_data = BITSWAP8(m_ra[((yi) & 7) | 8],0,1,2,3,4,5,6,7); break;
-			case 6:	tile_data = BITSWAP8(m_ra[((ysize-1-yi) & 7) | 8],7,6,5,4,3,2,1,0); break;
+			case 2: tile_data = BITSWAP8(m_ra[((yi) & 7) | 8],0,1,2,3,4,5,6,7); break;
+			case 6: tile_data = BITSWAP8(m_ra[((ysize-1-yi) & 7) | 8],7,6,5,4,3,2,1,0); break;
 			default: tile_data = BITSWAP8(m_ra[((yi) & 7) | 8],7,6,5,4,3,2,1,0);
-					 printf("%d %d %d\n",m_figs.m_dir,xsize,ysize);
-					 break;
+						printf("%d %d %d\n",m_figs.m_dir,xsize,ysize);
+						break;
 		}
 
 		for(xi=0;xi<xsize;xi++)
@@ -1052,25 +1056,25 @@ int upd7220_device::translate_command(UINT8 data)
 
 	switch (data)
 	{
-	case UPD7220_COMMAND_RESET:	command = COMMAND_RESET; break;
-	case UPD7220_COMMAND_CCHAR:	command = COMMAND_CCHAR; break;
-	case UPD7220_COMMAND_START:	command = COMMAND_START; break;
-	case UPD7220_COMMAND_ZOOM:	command = COMMAND_ZOOM;  break;
-	case UPD7220_COMMAND_CURS:	command = COMMAND_CURS;  break;
-	case UPD7220_COMMAND_PITCH:	command = COMMAND_PITCH; break;
-	case UPD7220_COMMAND_MASK:	command = COMMAND_MASK;	 break;
-	case UPD7220_COMMAND_FIGS:	command = COMMAND_FIGS;	 break;
-	case UPD7220_COMMAND_FIGD:	command = COMMAND_FIGD;  break;
-	case UPD7220_COMMAND_GCHRD:	command = COMMAND_GCHRD; break;
-	case UPD7220_COMMAND_CURD:	command = COMMAND_CURD;  break;
-	case UPD7220_COMMAND_LPRD:	command = COMMAND_LPRD;	 break;
-	case UPD7220_COMMAND_5A:	command = COMMAND_5A;    break;
+	case UPD7220_COMMAND_RESET: command = COMMAND_RESET; break;
+	case UPD7220_COMMAND_CCHAR: command = COMMAND_CCHAR; break;
+	case UPD7220_COMMAND_START: command = COMMAND_START; break;
+	case UPD7220_COMMAND_ZOOM:  command = COMMAND_ZOOM;  break;
+	case UPD7220_COMMAND_CURS:  command = COMMAND_CURS;  break;
+	case UPD7220_COMMAND_PITCH: command = COMMAND_PITCH; break;
+	case UPD7220_COMMAND_MASK:  command = COMMAND_MASK;  break;
+	case UPD7220_COMMAND_FIGS:  command = COMMAND_FIGS;  break;
+	case UPD7220_COMMAND_FIGD:  command = COMMAND_FIGD;  break;
+	case UPD7220_COMMAND_GCHRD: command = COMMAND_GCHRD; break;
+	case UPD7220_COMMAND_CURD:  command = COMMAND_CURD;  break;
+	case UPD7220_COMMAND_LPRD:  command = COMMAND_LPRD;  break;
+	case UPD7220_COMMAND_5A:    command = COMMAND_5A;    break;
 	default:
 		switch (data & 0xfe)
 		{
 		case UPD7220_COMMAND_SYNC:  command = COMMAND_SYNC;  break;
 		case UPD7220_COMMAND_VSYNC: command = COMMAND_VSYNC; break;
-		case UPD7220_COMMAND_BCTRL:	command = COMMAND_BCTRL; break;
+		case UPD7220_COMMAND_BCTRL: command = COMMAND_BCTRL; break;
 		default:
 			switch (data & 0xf0)
 			{
@@ -1128,7 +1132,7 @@ void upd7220_device::process_fifo()
 		switch (m_param_ptr)
 		{
 		case 0:
-			if (LOG) logerror("uPD7220 '%s' RESET\n", tag());
+			LOG(("uPD7220 '%s' RESET\n", tag()));
 
 			m_de = 0;
 			m_ra[0] = m_ra[1] = m_ra[2] = 0;
@@ -1151,19 +1155,16 @@ void upd7220_device::process_fifo()
 
 			m_pitch = m_aw;
 
-			if (LOG)
-			{
-				logerror("uPD7220 '%s' Mode: %02x\n", tag(), m_mode);
-				logerror("uPD7220 '%s' AW: %u\n", tag(), m_aw);
-				logerror("uPD7220 '%s' HS: %u\n", tag(), m_hs);
-				logerror("uPD7220 '%s' VS: %u\n", tag(), m_vs);
-				logerror("uPD7220 '%s' HFP: %u\n", tag(), m_hfp);
-				logerror("uPD7220 '%s' HBP: %u\n", tag(), m_hbp);
-				logerror("uPD7220 '%s' VFP: %u\n", tag(), m_vfp);
-				logerror("uPD7220 '%s' AL: %u\n", tag(), m_al);
-				logerror("uPD7220 '%s' VBP: %u\n", tag(), m_vbp);
-				logerror("uPD7220 '%s' PITCH: %u\n", tag(), m_pitch);
-			}
+			LOG(("uPD7220 '%s' Mode: %02x\n", tag(), m_mode));
+			LOG(("uPD7220 '%s' AW: %u\n", tag(), m_aw));
+			LOG(("uPD7220 '%s' HS: %u\n", tag(), m_hs));
+			LOG(("uPD7220 '%s' VS: %u\n", tag(), m_vs));
+			LOG(("uPD7220 '%s' HFP: %u\n", tag(), m_hfp));
+			LOG(("uPD7220 '%s' HBP: %u\n", tag(), m_hbp));
+			LOG(("uPD7220 '%s' VFP: %u\n", tag(), m_vfp));
+			LOG(("uPD7220 '%s' AL: %u\n", tag(), m_al));
+			LOG(("uPD7220 '%s' VBP: %u\n", tag(), m_vbp));
+			LOG(("uPD7220 '%s' PITCH: %u\n", tag(), m_pitch));
 
 			recompute_parameters();
 			break;
@@ -1185,19 +1186,16 @@ void upd7220_device::process_fifo()
 
 			m_pitch = m_aw;
 
-			if (LOG)
-			{
-				logerror("uPD7220 '%s' Mode: %02x\n", tag(), m_mode);
-				logerror("uPD7220 '%s' AW: %u\n", tag(), m_aw);
-				logerror("uPD7220 '%s' HS: %u\n", tag(), m_hs);
-				logerror("uPD7220 '%s' VS: %u\n", tag(), m_vs);
-				logerror("uPD7220 '%s' HFP: %u\n", tag(), m_hfp);
-				logerror("uPD7220 '%s' HBP: %u\n", tag(), m_hbp);
-				logerror("uPD7220 '%s' VFP: %u\n", tag(), m_vfp);
-				logerror("uPD7220 '%s' AL: %u\n", tag(), m_al);
-				logerror("uPD7220 '%s' VBP: %u\n", tag(), m_vbp);
-				logerror("uPD7220 '%s' PITCH: %u\n", tag(), m_pitch);
-			}
+			LOG(("uPD7220 '%s' Mode: %02x\n", tag(), m_mode));
+			LOG(("uPD7220 '%s' AW: %u\n", tag(), m_aw));
+			LOG(("uPD7220 '%s' HS: %u\n", tag(), m_hs));
+			LOG(("uPD7220 '%s' VS: %u\n", tag(), m_vs));
+			LOG(("uPD7220 '%s' HFP: %u\n", tag(), m_hfp));
+			LOG(("uPD7220 '%s' HBP: %u\n", tag(), m_hbp));
+			LOG(("uPD7220 '%s' VFP: %u\n", tag(), m_vfp));
+			LOG(("uPD7220 '%s' AL: %u\n", tag(), m_al));
+			LOG(("uPD7220 '%s' VBP: %u\n", tag(), m_vbp));
+			LOG(("uPD7220 '%s' PITCH: %u\n", tag(), m_pitch));
 
 			recompute_parameters();
 		}
@@ -1206,7 +1204,7 @@ void upd7220_device::process_fifo()
 	case COMMAND_VSYNC: /* vertical sync mode */
 		m_m = m_cr & 0x01;
 
-		if (LOG) logerror("uPD7220 '%s' M: %u\n", tag(), m_m);
+		LOG(("uPD7220 '%s' M: %u\n", tag(), m_m));
 
 		recompute_parameters();
 		break;
@@ -1217,23 +1215,18 @@ void upd7220_device::process_fifo()
 			m_lr = (m_pr[1] & 0x1f) + 1;
 			m_dc = BIT(m_pr[1], 7);
 
-			if (LOG)
-			{
-				logerror("uPD7220 '%s' LR: %u\n", tag(), m_lr);
-				logerror("uPD7220 '%s' DC: %u\n", tag(), m_dc);
-			}
+			LOG(("uPD7220 '%s' LR: %u\n", tag(), m_lr));
+			LOG(("uPD7220 '%s' DC: %u\n", tag(), m_dc));
 		}
 
 		if(m_param_ptr == 3)
 		{
 			m_ctop = m_pr[2] & 0x1f;
 			m_sc = BIT(m_pr[2], 5);
+			m_br = (m_pr[2] >> 6); /* guess, assume that blink rate clears upper bits (if any) */
 
-			if (LOG)
-			{
-				logerror("uPD7220 '%s' CTOP: %u\n", tag(), m_ctop);
-				logerror("uPD7220 '%s' SC: %u\n", tag(), m_sc);
-			}
+			LOG(("uPD7220 '%s' CTOP: %u\n", tag(), m_ctop));
+			LOG(("uPD7220 '%s' SC: %u\n", tag(), m_sc));
 		}
 
 		if(m_param_ptr == 4)
@@ -1241,24 +1234,21 @@ void upd7220_device::process_fifo()
 			m_br = ((m_pr[3] & 0x07) << 2) | (m_pr[2] >> 6);
 			m_cbot = m_pr[3] >> 3;
 
-			if (LOG)
-			{
-				logerror("uPD7220 '%s' BR: %u\n", tag(), m_br);
-				logerror("uPD7220 '%s' CBOT: %u\n", tag(), m_cbot);
-			}
+			LOG(("uPD7220 '%s' BR: %u\n", tag(), m_br));
+			LOG(("uPD7220 '%s' CBOT: %u\n", tag(), m_cbot));
 		}
 		break;
 
 	case COMMAND_START: /* start display & end idle mode */
 		m_de = 1;
 
-		//if (LOG) logerror("uPD7220 '%s' DE: 1\n", tag());
+		//LOG(("uPD7220 '%s' DE: 1\n", tag()));
 		break;
 
 	case COMMAND_BCTRL: /* display blanking control */
 		m_de = m_cr & 0x01;
 
-		//if (LOG) logerror("uPD7220 '%s' DE: %u\n", tag(), m_de);
+		//LOG(("uPD7220 '%s' DE: %u\n", tag(), m_de));
 		break;
 
 	case COMMAND_ZOOM: /* zoom factors specify */
@@ -1267,8 +1257,8 @@ void upd7220_device::process_fifo()
 			m_gchr = m_pr[1] & 0x0f;
 			m_disp = m_pr[1] >> 4;
 
-			if (LOG) logerror("uPD7220 '%s' GCHR: %01x\n", tag(), m_gchr);
-			if (LOG) logerror("uPD7220 '%s' DISP: %01x\n", tag(), m_disp);
+			LOG(("uPD7220 '%s' GCHR: %01x\n", tag(), m_gchr));
+			LOG(("uPD7220 '%s' DISP: %01x\n", tag(), m_disp));
 		}
 		break;
 
@@ -1279,12 +1269,12 @@ void upd7220_device::process_fifo()
 
 			m_ead = (upper_addr << 16) | (m_pr[2] << 8) | m_pr[1];
 
-			//if (LOG) logerror("uPD7220 '%s' EAD: %06x\n", tag(), m_ead);
+			//LOG(("uPD7220 '%s' EAD: %06x\n", tag(), m_ead));
 
 			if(m_param_ptr == 4)
 			{
 				m_dad = m_pr[3] >> 4;
-				//if (LOG) logerror("uPD7220 '%s' DAD: %01x\n", tag(), m_dad);
+				//LOG(("uPD7220 '%s' DAD: %01x\n", tag(), m_dad));
 			}
 		}
 		break;
@@ -1298,7 +1288,7 @@ void upd7220_device::process_fifo()
 		{
 			if (m_ra_addr < 16)
 			{
-				if (LOG) logerror("uPD7220 '%s' RA%u: %02x\n", tag(), m_ra_addr, data);
+				LOG(("uPD7220 '%s' RA%u: %02x\n", tag(), m_ra_addr, data));
 
 				m_ra[m_ra_addr] = data;
 				m_ra_addr++;
@@ -1313,7 +1303,7 @@ void upd7220_device::process_fifo()
 		{
 			m_pitch = data;
 
-			if (LOG) logerror("uPD7220 '%s' PITCH: %u\n", tag(), m_pitch);
+			LOG(("uPD7220 '%s' PITCH: %u\n", tag(), m_pitch));
 		}
 		break;
 
@@ -1336,7 +1326,7 @@ void upd7220_device::process_fifo()
 		{
 			m_mask = (m_pr[2] << 8) | m_pr[1];
 
-			if (LOG) logerror("uPD7220 '%s' MASK: %04x\n", tag(), m_mask);
+			LOG(("uPD7220 '%s' MASK: %04x\n", tag(), m_mask));
 		}
 		break;
 
@@ -1521,7 +1511,7 @@ WRITE8_MEMBER( upd7220_device::dack_w )
 
 WRITE_LINE_MEMBER( upd7220_device::ext_sync_w )
 {
-	//if (LOG) logerror("uPD7220 '%s' External Synchronization: %u\n", tag(), state);
+	//LOG(("uPD7220 '%s' External Synchronization: %u\n", tag(), state));
 
 	if (state)
 	{
@@ -1541,16 +1531,16 @@ WRITE_LINE_MEMBER( upd7220_device::ext_sync_w )
 WRITE_LINE_MEMBER( upd7220_device::lpen_w )
 {
 	/* only if 2 rising edges on the lpen input occur at the same
-       point during successive video fields are the pulses accepted */
+	   point during successive video fields are the pulses accepted */
 
 	/*
 
-        1. compute the address of the location on the CRT
-        2. compare with LAD
-        3. if not equal move address to LAD
-        4. if equal set LPEN DETECT flag to 1
+	    1. compute the address of the location on the CRT
+	    2. compare with LAD
+	    3. if not equal move address to LAD
+	    4. if equal set LPEN DETECT flag to 1
 
-    */
+	*/
 }
 
 
@@ -1676,7 +1666,7 @@ UINT32 upd7220_device::screen_update(screen_device &screen, bitmap_rgb32 &bitmap
 			break;
 
 		case UPD7220_MODE_DISPLAY_INVALID:
-			logerror("uPD7220 '%s' Invalid Display Mode!\n", tag());
+			LOG(("uPD7220 '%s' Invalid Display Mode!\n", tag()));
 		}
 	}
 	return 0;

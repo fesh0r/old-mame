@@ -154,7 +154,7 @@ WRITE8_MEMBER( homelab_state::brailab4_portff_w )
 
 CUSTOM_INPUT_MEMBER( homelab_state::cass3_r )
 {
-	return 1;//(m_cass->input() > 0.03);
+	return (m_cass->input() > 0.03);
 }
 
 
@@ -339,7 +339,7 @@ static INPUT_PORTS_START( homelab3 ) // F4 to F8 are foreign characters
 	PORT_BIT(0xf0, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_START("X3")
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, homelab_state, cass3_r, " ")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, homelab_state, cass3_r, " ")
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F1") PORT_CODE(KEYCODE_F1)
 	PORT_BIT(0xf8, IP_ACTIVE_LOW, IPT_UNUSED)
@@ -452,7 +452,7 @@ static INPUT_PORTS_START( brailab4 ) // F4 to F8 are foreign characters
 	PORT_BIT(0xf0, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_START("X3")
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, homelab_state, cass3_r, " ")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, homelab_state, cass3_r, " ")
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F1") PORT_CODE(KEYCODE_F1)
 	PORT_BIT(0xf8, IP_ACTIVE_LOW, IPT_UNUSED)
@@ -627,15 +627,15 @@ UINT32 homelab_state::screen_update_homelab3(screen_device &screen, bitmap_ind16
 /* F4 Character Displayer */
 static const gfx_layout homelab_charlayout =
 {
-	8, 8,					/* 8 x 8 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 8,                   /* 8 x 8 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0, 1*256*8, 2*256*8, 3*256*8, 4*256*8, 5*256*8, 6*256*8, 7*256*8 },
-	8					/* every char takes 8 x 1 bytes */
+	8                   /* every char takes 8 x 1 bytes */
 };
 
 static GFXDECODE_START( homelab )
@@ -692,11 +692,11 @@ static QUICKLOAD_LOAD(homelab)
 			return IMAGE_INIT_FAIL;
 		}
 
-		pgmname[i] = ch;	/* build program name */
+		pgmname[i] = ch;    /* build program name */
 		i++;
 	}
 
-	pgmname[i] = '\0';	/* terminate string with a null */
+	pgmname[i] = '\0';  /* terminate string with a null */
 
 	if (image.fread(args, sizeof(args)) != sizeof(args))
 	{

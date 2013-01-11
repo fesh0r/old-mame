@@ -36,7 +36,7 @@ class x1twin_state : public x1_state
 #define X1_MAIN_CLOCK XTAL_16MHz
 #define VDP_CLOCK  XTAL_42_9545MHz
 #define MCU_CLOCK  XTAL_6MHz
-#define	PCE_MAIN_CLOCK		VDP_CLOCK / 2
+#define PCE_MAIN_CLOCK      VDP_CLOCK / 2
 
 UINT32 x1twin_state::screen_update_x1pce(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
@@ -59,10 +59,10 @@ static ADDRESS_MAP_START( pce_mem , AS_PROGRAM, 8, x1twin_state )
 	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000)
 	AM_RANGE( 0x1FE000, 0x1FE3FF) AM_READWRITE( vdc_0_r, vdc_0_w )
 	AM_RANGE( 0x1FE400, 0x1FE7FF) AM_READWRITE( vce_r, vce_w )
-	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_DEVREADWRITE( "c6280", c6280_r, c6280_w )
+	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_DEVREADWRITE( "c6280", c6280_device, c6280_r, c6280_w )
 	AM_RANGE( 0x1FEC00, 0x1FEFFF) AM_READWRITE( h6280_timer_r, h6280_timer_w )
 	AM_RANGE( 0x1FF000, 0x1FF3FF) AM_READWRITE( pce_joystick_r, pce_joystick_w )
-	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_READWRITE( h6280_irq_status_r, h6280_irq_status_w )
+	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_DEVREADWRITE( "maincpu", h6280_device, irq_status_r, irq_status_w )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pce_io, AS_IO, 8, x1twin_state )
@@ -80,26 +80,26 @@ static const wd17xx_interface x1_mb8877a_interface =
 
 static I8255A_INTERFACE( ppi8255_intf )
 {
-	DEVCB_DRIVER_MEMBER(x1_state, x1_porta_r),						/* Port A read */
-	DEVCB_DRIVER_MEMBER(x1_state, x1_porta_w),						/* Port A write */
-	DEVCB_DRIVER_MEMBER(x1_state, x1_portb_r),						/* Port B read */
-	DEVCB_DRIVER_MEMBER(x1_state, x1_portb_w),						/* Port B write */
-	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_r),						/* Port C read */
-	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_w)						/* Port C write */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_porta_r),                      /* Port A read */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_porta_w),                      /* Port A write */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portb_r),                      /* Port B read */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portb_w),                      /* Port B write */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_r),                      /* Port C read */
+	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_w)                       /* Port C write */
 };
 
 static const mc6845_interface mc6845_intf =
 {
-	"x1_screen",	/* screen we are acting on */
-	8,			/* number of pixels per video memory address */
-	NULL,		/* before pixel update callback */
-	NULL,		/* row update callback */
-	NULL,		/* after pixel update callback */
-	DEVCB_NULL,	/* callback for display state changes */
-	DEVCB_NULL,	/* callback for cursor state changes */
-	DEVCB_NULL,	/* HSYNC callback */
-	DEVCB_NULL,	/* VSYNC callback */
-	NULL		/* update address callback */
+	"x1_screen",    /* screen we are acting on */
+	8,          /* number of pixels per video memory address */
+	NULL,       /* before pixel update callback */
+	NULL,       /* row update callback */
+	NULL,       /* after pixel update callback */
+	DEVCB_NULL, /* callback for display state changes */
+	DEVCB_NULL, /* callback for cursor state changes */
+	DEVCB_NULL, /* HSYNC callback */
+	DEVCB_NULL, /* VSYNC callback */
+	NULL        /* update address callback */
 };
 
 /*************************************
@@ -421,21 +421,21 @@ GFXDECODE_END
 
 static Z80CTC_INTERFACE( ctc_intf )
 {
-	DEVCB_CPU_INPUT_LINE("x1_cpu", INPUT_LINE_IRQ0),		// interrupt handler
-	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg3),		// ZC/TO0 callback
-	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg1),		// ZC/TO1 callback
-	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg2),		// ZC/TO2 callback
+	DEVCB_CPU_INPUT_LINE("x1_cpu", INPUT_LINE_IRQ0),        // interrupt handler
+	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg3),       // ZC/TO0 callback
+	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg1),       // ZC/TO1 callback
+	DEVCB_DEVICE_LINE_MEMBER("ctc", z80ctc_device, trg2),       // ZC/TO2 callback
 };
 
 #if 0
 static const z80sio_interface sio_intf =
 {
-	DEVCB_NULL,					/* interrupt handler */
-	DEVCB_NULL,					/* DTR changed handler */
-	DEVCB_NULL,					/* RTS changed handler */
-	DEVCB_NULL,					/* BREAK changed handler */
-	DEVCB_NULL,					/* transmit handler */
-	DEVCB_NULL					/* receive handler */
+	DEVCB_NULL,                 /* interrupt handler */
+	DEVCB_NULL,                 /* DTR changed handler */
+	DEVCB_NULL,                 /* RTS changed handler */
+	DEVCB_NULL,                 /* BREAK changed handler */
+	DEVCB_NULL,                 /* transmit handler */
+	DEVCB_NULL                  /* receive handler */
 };
 #endif
 
@@ -573,7 +573,7 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 	MCFG_SPEAKER_ADD("x1_l",-0.2, 0.0, 1.0)
 	MCFG_SPEAKER_ADD("x1_r",0.2, 0.0, 1.0)
 	MCFG_SPEAKER_ADD("pce_l",-0.2, 0.0, 1.0)
-	MCFG_SPEAKER_ADD("pce_r",-0.2, 0.0, 1.0)
+	MCFG_SPEAKER_ADD("pce_r",0.2, 0.0, 1.0)
 
 //  MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
@@ -625,7 +625,7 @@ ROM_START( x1twin )
 
 	ROM_REGION(0x1800, "cgrom", 0)
 	ROM_LOAD("ank8.rom", 0x00000, 0x00800, CRC(e3995a57) SHA1(1c1a0d8c9f4c446ccd7470516b215ddca5052fb2) )
-	ROM_COPY("font",	 0x00000, 0x00800, 0x1000 )
+	ROM_COPY("font",     0x00000, 0x00800, 0x1000 )
 
 	ROM_REGION(0x20000, "kanji", ROMREGION_ERASEFF)
 
@@ -639,4 +639,4 @@ ROM_START( x1twin )
 	ROM_CART_LOAD("cart", 0x0000, 0xffffff, ROM_OPTIONAL | ROM_NOMIRROR)
 ROM_END
 
-COMP( 1986, x1twin,    x1,     0,       x1twin, 	 x1twin, x1_state,         x1_kanji,"Sharp",  "X1 Twin (CZ-830C)",    GAME_NOT_WORKING )
+COMP( 1986, x1twin,    x1,     0,       x1twin,      x1twin, x1_state,         x1_kanji,"Sharp",  "X1 Twin (CZ-830C)",    GAME_NOT_WORKING )

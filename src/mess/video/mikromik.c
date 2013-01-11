@@ -29,7 +29,7 @@ static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 
 		int color = hlt_in ? 2 : (video_in ^ compl_in);
 
-		state->m_bitmap.pix32(y, x + i) = RGB_MONOCHROME_GREEN_HIGHLIGHT[color];
+		bitmap.pix32(y, x + i) = RGB_MONOCHROME_GREEN_HIGHLIGHT[color];
 	}
 }
 
@@ -40,6 +40,8 @@ static const i8275_interface crtc_intf =
 	0,
 	DEVCB_DEVICE_LINE_MEMBER(I8237_TAG, am9517a_device, dreq0_w),
 	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	crtc_display_pixels
 };
 
@@ -49,7 +51,8 @@ static const i8275_interface crtc_intf =
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( mm1_upd7220_map, AS_0, 8, mm1_state )
-	AM_RANGE(0x00000, 0x3ffff) AM_RAM AM_SHARE("video_ram")
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("video_ram")
 ADDRESS_MAP_END
 
 
@@ -61,7 +64,7 @@ static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
 {
 	mm1_state *state = device->machine().driver_data<mm1_state>();
 
-	UINT8 data = state->m_video_ram[address * 2];
+	UINT8 data = state->m_video_ram[address];
 
 	for (int i = 0; i < 8; i++)
 	{
@@ -88,8 +91,6 @@ void mm1_state::video_start()
 {
 	// find memory regions
 	m_char_rom = memregion("chargen")->base();
-
-	machine().primary_screen->register_screen_bitmap(m_bitmap);
 }
 
 
@@ -100,8 +101,7 @@ void mm1_state::video_start()
 UINT32 mm1_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
 	/* text */
-	i8275_update(m_crtc, bitmap, cliprect);
-	copybitmap(bitmap, m_bitmap, 0, 0, 0, 0, cliprect);
+	m_crtc->screen_update(screen, bitmap, cliprect);
 
 	/* graphics */
 	m_hgdc->screen_update(screen, bitmap, cliprect);
@@ -122,7 +122,7 @@ static const gfx_layout charlayout =
 	{ 0 },
 	{ 7, 6, 5, 4, 3, 2, 1, 0 },
 	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8,
-	   8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+		8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
 	8*16
 };
 
@@ -150,6 +150,6 @@ MACHINE_CONFIG_FRAGMENT( mm1m6_video )
 
 	MCFG_GFXDECODE(mm1)
 
-	MCFG_I8275_ADD(I8275_TAG, crtc_intf)
+	MCFG_I8275_ADD(I8275_TAG, XTAL_18_720MHz/8, crtc_intf)
 	MCFG_UPD7220_ADD(UPD7220_TAG, XTAL_18_720MHz/8, hgdc_intf, mm1_upd7220_map)
 MACHINE_CONFIG_END

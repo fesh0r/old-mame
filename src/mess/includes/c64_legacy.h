@@ -36,11 +36,20 @@ class legacy_c64_state : public driver_device
 public:
 	legacy_c64_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-		  m_iec(*this, CBM_IEC_TAG),
-		  m_roml_writable(0)
-    { }
+			m_iec(*this, CBM_IEC_TAG),
+			m_colorram(*this, "colorram"),
+			m_basic(*this, "basic"),
+			m_chargen(*this, "chargen"),
+			m_kernal(*this, "kernal"),
+			m_roml_writable(0)
+	{ }
 
 	optional_device<cbm_iec_device> m_iec;
+
+	required_shared_ptr<UINT8> m_colorram;
+	required_shared_ptr<UINT8> m_basic;
+	required_shared_ptr<UINT8> m_chargen;
+	required_shared_ptr<UINT8> m_kernal;
 
 	DECLARE_READ8_MEMBER( c64_lightpen_x_cb );
 	DECLARE_READ8_MEMBER( c64_lightpen_y_cb );
@@ -58,10 +67,6 @@ public:
 	UINT8 m_vicirq;
 	emu_timer *m_datasette_timer;
 	emu_timer *m_cartridge_timer;
-	UINT8 *m_colorram;
-	UINT8 *m_basic;
-	UINT8 *m_kernal;
-	UINT8 *m_chargen;
 	UINT8 *m_memory;
 	int m_pal;
 	int m_tape_on;

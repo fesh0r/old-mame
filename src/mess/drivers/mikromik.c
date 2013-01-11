@@ -41,18 +41,16 @@
 
     TODO:
 
-    - add HRTC/VRTC output to i8275
     - NEC uPD7220 GDC
     - accurate video timing
     - floppy DRQ during RECALL = 0
     - PCB layout
     - NEC uPD7201 MPSC
+    - model M7 5MB hard disk
 
 */
 
 #include "includes/mikromik.h"
-#include "formats/mfi_dsk.h"
-#include "formats/mm_dsk.h"
 
 
 //**************************************************************************
@@ -61,13 +59,13 @@
 
 #define LOG 0
 
-#define MMU_IOEN_MEMEN	0x01
-#define MMU_RAMEN		0x02
-#define MMU_CE4			0x08
-#define MMU_CE0			0x10
-#define MMU_CE1			0x20
-#define MMU_CE2			0x40
-#define MMU_CE3			0x80
+#define MMU_IOEN    0x01
+#define MMU_RAMEN   0x02
+#define MMU_CE4     0x08
+#define MMU_CE0     0x10
+#define MMU_CE1     0x20
+#define MMU_CE2     0x40
+#define MMU_CE3     0x80
 
 
 
@@ -76,15 +74,15 @@
 //**************************************************************************
 
 //-------------------------------------------------
-//  mmu_r -
+//  read -
 //-------------------------------------------------
 
-READ8_MEMBER( mm1_state::mmu_r )
+READ8_MEMBER( mm1_state::read )
 {
 	UINT8 data = 0;
 	UINT8 mmu = m_mmu_rom[(m_a8 << 8) | (offset >> 8)];
 
-	if (mmu & MMU_IOEN_MEMEN)
+	if (mmu & MMU_IOEN)
 	{
 		switch ((offset >> 4) & 0x07)
 		{
@@ -97,7 +95,7 @@ READ8_MEMBER( mm1_state::mmu_r )
 			break;
 
 		case 2:
-			data = i8275_r(m_crtc, space, offset & 0x01);
+			data = m_crtc->read(space, offset & 0x01);
 			break;
 
 		case 3:
@@ -146,14 +144,14 @@ READ8_MEMBER( mm1_state::mmu_r )
 
 
 //-------------------------------------------------
-//  mmu_w -
+//  write -
 //-------------------------------------------------
 
-WRITE8_MEMBER( mm1_state::mmu_w )
+WRITE8_MEMBER( mm1_state::write )
 {
 	UINT8 mmu = m_mmu_rom[(m_a8 << 8) | (offset >> 8)];
 
-	if (mmu & MMU_IOEN_MEMEN)
+	if (mmu & MMU_IOEN)
 	{
 		switch ((offset >> 4) & 0x07)
 		{
@@ -166,7 +164,7 @@ WRITE8_MEMBER( mm1_state::mmu_w )
 			break;
 
 		case 2:
-			i8275_w(m_crtc, space, offset & 0x01, data);
+			m_crtc->write(space, offset & 0x01, data);
 			break;
 
 		case 3:
@@ -221,8 +219,7 @@ WRITE8_MEMBER( mm1_state::ls259_w )
 	case 1: // RECALL
 		if (LOG) logerror("RECALL %u\n", d);
 		m_recall = d;
-		if(d)
-			m_fdc->reset();
+		if (d) m_fdc->reset();
 		break;
 
 	case 2: // _RV28/RX21
@@ -333,7 +330,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(mm1_state::kbclk_tick)
 //-------------------------------------------------
 
 static ADDRESS_MAP_START( mm1_map, AS_PROGRAM, 8, mm1_state )
-	AM_RANGE(0x0000, 0xffff) AM_READWRITE(mmu_r, mmu_w)
+	AM_RANGE(0x0000, 0xffff) AM_READWRITE(read, write)
 ADDRESS_MAP_END
 
 
@@ -485,7 +482,18 @@ static I8212_INTERFACE( iop_intf )
 //  I8237_INTERFACE( dmac_intf )
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER( mm1_state::dma_hrq_changed )
+void mm1_state::update_tc()
+{
+	int fdc_tc = m_tc && !m_dack3;
+
+	if (m_fdc_tc != fdc_tc)
+	{
+		m_fdc_tc = fdc_tc;
+		m_fdc->tc_w(m_fdc_tc);
+	}
+}
+
+WRITE_LINE_MEMBER( mm1_state::dma_hrq_w )
 {
 	m_maincpu->set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
@@ -509,51 +517,28 @@ WRITE8_MEMBER( mm1_state::mpsc_dack_w )
 	m_dmac->dreq1_w(CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER( mm1_state::tc_w )
+WRITE_LINE_MEMBER( mm1_state::dma_eop_w )
 {
-	if (!m_dack3)
-	{
-		// floppy terminal count
-		m_fdc->tc_w(!state);
-	}
-
-	m_tc = !state;
-
 	m_maincpu->set_input_line(I8085_RST75_LINE, state);
+
+	m_tc = state;
+	update_tc();
 }
 
 WRITE_LINE_MEMBER( mm1_state::dack3_w )
 {
 	m_dack3 = state;
-
-	if (!m_dack3)
-	{
-		// floppy terminal count
-		m_fdc->tc_w(m_tc);
-	}
-}
-
-static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
-static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
-
-READ8_MEMBER( mm1_state::fdc_dma_r )
-{
-	return m_fdc->dma_r();
-}
-
-WRITE8_MEMBER( mm1_state::fdc_dma_w )
-{
-	m_fdc->dma_w(data);
+	update_tc();
 }
 
 static I8237_INTERFACE( dmac_intf )
 {
-	DEVCB_DRIVER_LINE_MEMBER(mm1_state, dma_hrq_changed),
-	DEVCB_DRIVER_LINE_MEMBER(mm1_state, tc_w),
-	DEVCB_MEMORY_HANDLER(I8085A_TAG, PROGRAM, memory_read_byte),
-	DEVCB_MEMORY_HANDLER(I8085A_TAG, PROGRAM, memory_write_byte),
-	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DRIVER_MEMBER(mm1_state, mpsc_dack_r),  DEVCB_DRIVER_MEMBER(mm1_state, fdc_dma_r) },
-	{ DEVCB_DEVICE_HANDLER(I8275_TAG, i8275_dack_w), DEVCB_DRIVER_MEMBER(mm1_state, mpsc_dack_w), DEVCB_NULL, DEVCB_DRIVER_MEMBER(mm1_state, fdc_dma_w) },
+	DEVCB_DRIVER_LINE_MEMBER(mm1_state, dma_hrq_w),
+	DEVCB_DRIVER_LINE_MEMBER(mm1_state, dma_eop_w),
+	DEVCB_DRIVER_MEMBER(mm1_state, read),
+	DEVCB_DRIVER_MEMBER(mm1_state, write),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DRIVER_MEMBER(mm1_state, mpsc_dack_r),  DEVCB_DEVICE_MEMBER(UPD765_TAG, upd765_family_device, mdma_r) },
+	{ DEVCB_DEVICE_MEMBER(I8275_TAG, i8275x_device, dack_w), DEVCB_DRIVER_MEMBER(mm1_state, mpsc_dack_w), DEVCB_NULL, DEVCB_DEVICE_MEMBER(UPD765_TAG, upd765_family_device, mdma_w) },
 	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_DRIVER_LINE_MEMBER(mm1_state, dack3_w) }
 };
 
@@ -626,34 +611,34 @@ WRITE_LINE_MEMBER( mm1_state::drq1_w )
 
 static UPD7201_INTERFACE( mpsc_intf )
 {
-	DEVCB_NULL,					// interrupt
+	DEVCB_NULL,                 // interrupt
 	{
 		{
-			0,					// receive clock
-			0,					// transmit clock
-			DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq2_w),	// receive DRQ
-			DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq1_w),	// transmit DRQ
-			DEVCB_NULL,			// receive data
-			DEVCB_NULL,			// transmit data
-			DEVCB_NULL,			// clear to send
-			DEVCB_NULL,			// data carrier detect
-			DEVCB_NULL,			// ready to send
-			DEVCB_NULL,			// data terminal ready
-			DEVCB_NULL,			// wait
-			DEVCB_NULL			// sync output
+			0,                  // receive clock
+			0,                  // transmit clock
+			DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq2_w),    // receive DRQ
+			DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq1_w),    // transmit DRQ
+			DEVCB_NULL,         // receive data
+			DEVCB_NULL,         // transmit data
+			DEVCB_NULL,         // clear to send
+			DEVCB_NULL,         // data carrier detect
+			DEVCB_NULL,         // ready to send
+			DEVCB_NULL,         // data terminal ready
+			DEVCB_NULL,         // wait
+			DEVCB_NULL          // sync output
 		}, {
-			0,					// receive clock
-			0,					// transmit clock
-			DEVCB_NULL,			// receive DRQ
-			DEVCB_NULL,			// transmit DRQ
-			DEVCB_NULL,			// receive data
-			DEVCB_NULL,			// transmit data
-			DEVCB_NULL,			// clear to send
-			DEVCB_LINE_GND,		// data carrier detect
-			DEVCB_NULL,			// ready to send
-			DEVCB_NULL,			// data terminal ready
-			DEVCB_NULL,			// wait
-			DEVCB_NULL			// sync output
+			0,                  // receive clock
+			0,                  // transmit clock
+			DEVCB_NULL,         // receive DRQ
+			DEVCB_NULL,         // transmit DRQ
+			DEVCB_NULL,         // receive data
+			DEVCB_NULL,         // transmit data
+			DEVCB_NULL,         // clear to send
+			DEVCB_LINE_GND,     // data carrier detect
+			DEVCB_NULL,         // ready to send
+			DEVCB_NULL,         // data terminal ready
+			DEVCB_NULL,         // wait
+			DEVCB_NULL          // sync output
 		}
 	}
 };
@@ -670,10 +655,10 @@ READ_LINE_MEMBER( mm1_state::dsra_r )
 
 static I8085_CONFIG( i8085_intf )
 {
-	DEVCB_NULL,			// STATUS changed callback
-	DEVCB_NULL,			// INTE changed callback
-	DEVCB_DRIVER_LINE_MEMBER(mm1_state, dsra_r),	// SID changed callback (I8085A only)
-	DEVCB_DEVICE_LINE(SPEAKER_TAG, speaker_level_w)	// SOD changed callback (I8085A only)
+	DEVCB_NULL,         // STATUS changed callback
+	DEVCB_NULL,         // INTE changed callback
+	DEVCB_DRIVER_LINE_MEMBER(mm1_state, dsra_r),    // SID changed callback (I8085A only)
+	DEVCB_DEVICE_LINE(SPEAKER_TAG, speaker_level_w) // SOD changed callback (I8085A only)
 };
 
 
@@ -693,12 +678,12 @@ static SLOT_INTERFACE_START( mm1_floppies )
 	SLOT_INTERFACE( "525qd", FLOPPY_525_QD )
 SLOT_INTERFACE_END
 
-void mm1_state::fdc_irq(bool state)
+void mm1_state::fdc_intrq_w(bool state)
 {
 	m_maincpu->set_input_line(I8085_RST55_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-void mm1_state::fdc_drq(bool state)
+void mm1_state::fdc_drq_w(bool state)
 {
 	m_dmac->dreq3_w(state);
 }
@@ -715,8 +700,8 @@ void mm1_state::fdc_drq(bool state)
 void mm1_state::machine_start()
 {
 	// floppy callbacks
-	m_fdc->setup_intrq_cb(upd765a_device::line_cb(FUNC(mm1_state::fdc_irq), this));
-	m_fdc->setup_drq_cb(upd765a_device::line_cb(FUNC(mm1_state::fdc_drq), this));
+	m_fdc->setup_intrq_cb(upd765_family_device::line_cb(FUNC(mm1_state::fdc_intrq_w), this));
+	m_fdc->setup_drq_cb(upd765_family_device::line_cb(FUNC(mm1_state::fdc_drq_w), this));
 
 	// find memory regions
 	m_mmu_rom = memregion("address")->base();
@@ -731,7 +716,6 @@ void mm1_state::machine_start()
 	save_item(NAME(m_tx21));
 	save_item(NAME(m_rcl));
 	save_item(NAME(m_recall));
-	save_item(NAME(m_dack3));
 }
 
 
@@ -742,10 +726,12 @@ void mm1_state::machine_start()
 void mm1_state::machine_reset()
 {
 	address_space &program = m_maincpu->space(AS_PROGRAM);
-	int i;
 
 	// reset LS259
-	for (i = 0; i < 8; i++) ls259_w(program, i, 0);
+	for (int i = 0; i < 8; i++)
+	{
+		ls259_w(program, i, 0);
+	}
 
 	// reset FDC
 	m_fdc->reset();
@@ -766,6 +752,7 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	MCFG_CPU_ADD(I8085A_TAG, I8085A, XTAL_6_144MHz)
 	MCFG_CPU_PROGRAM_MAP(mm1_map)
 	MCFG_CPU_CONFIG(i8085_intf)
+	MCFG_QUANTUM_PERFECT_CPU(I8085A_TAG)
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("kbclk", mm1_state, kbclk_tick, attotime::from_hz(2500))
 
@@ -787,6 +774,9 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
+
+	// software lists
+	MCFG_SOFTWARE_LIST_ADD("flop_list", "mm1_flop")
 MACHINE_CONFIG_END
 
 
@@ -797,6 +787,18 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( mm1m6, mm1 )
 	// video hardware
 	MCFG_FRAGMENT_ADD(mm1m6_video)
+MACHINE_CONFIG_END
+
+
+//-------------------------------------------------
+//  MACHINE_CONFIG( mm1m7 )
+//-------------------------------------------------
+
+static MACHINE_CONFIG_DERIVED( mm1m7, mm1 )
+	// video hardware
+	MCFG_FRAGMENT_ADD(mm1m6_video)
+
+	// TODO hard disk
 MACHINE_CONFIG_END
 
 
@@ -837,5 +839,5 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY           FULLNAME                FLAGS
-COMP( 1981, mm1m6,		0,		0,		mm1m6,		mm1, driver_device,		0,		"Nokia Data",		"MikroMikko 1 M6",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
-COMP( 1981, mm1m7,		mm1m6,	0,		mm1m6,		mm1, driver_device,		0,		"Nokia Data",		"MikroMikko 1 M7",		GAME_NOT_WORKING)
+COMP( 1981, mm1m6,      0,      0,      mm1m6,      mm1, driver_device,     0,      "Nokia Data",       "MikroMikko 1 M6",      GAME_SUPPORTS_SAVE )
+COMP( 1981, mm1m7,      mm1m6,  0,      mm1m7,      mm1, driver_device,     0,      "Nokia Data",       "MikroMikko 1 M7",      GAME_SUPPORTS_SAVE )

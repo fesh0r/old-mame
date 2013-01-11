@@ -20,6 +20,7 @@
 #include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "cpu/z80/z80.h"
+#include "machine/i8251.h"
 #include "sound/beep.h"
 #include "video/vtvideo.h"
 #include "vt100.lh"
@@ -30,15 +31,17 @@ class vt100_state : public driver_device
 public:
 	vt100_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-	m_maincpu(*this, "maincpu"),
-	m_crtc(*this, "vt100_video"),
-	m_speaker(*this, BEEPER_TAG)
-	,
-		m_p_ram(*this, "p_ram"){ }
+		m_maincpu(*this, "maincpu"),
+		m_crtc(*this, "vt100_video"),
+		m_speaker(*this, BEEPER_TAG),
+		m_uart(*this, "i8251"),
+		m_p_ram(*this, "p_ram")
+		{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<vt100_video_device> m_crtc;
 	required_device<beep_device> m_speaker;
+	required_device<i8251_device> m_uart;
 	DECLARE_READ8_MEMBER(vt100_flags_r);
 	DECLARE_WRITE8_MEMBER(vt100_keyboard_w);
 	DECLARE_READ8_MEMBER(vt100_keyboard_r);
@@ -125,7 +128,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(vt100_state::keyboard_callback)
 		for(i = 0; i < 16; i++)
 		{
 			sprintf(kbdrow,"LINE%X", i);
-			code =	machine().root_device().ioport(kbdrow)->read();
+			code =  machine().root_device().ioport(kbdrow)->read();
 			if (code < 0xff)
 			{
 				m_keyboard_int = 1;
@@ -177,7 +180,8 @@ static ADDRESS_MAP_START(vt100_io, AS_IO, 8, vt100_state)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	// 0x00, 0x01 PUSART  (Intel 8251)
-	// AM_RANGE (0x00, 0x01)
+	AM_RANGE (0x00, 0x00) AM_DEVREADWRITE("i8251", i8251_device, data_r, data_w)
+	AM_RANGE (0x01, 0x01) AM_DEVREADWRITE("i8251", i8251_device, status_r, control_w)
 	// 0x02 Baud rate generator
 	AM_RANGE (0x02, 0x02) AM_WRITE(vt100_baud_rate_w)
 	// 0x22 Modem buffer
@@ -389,23 +393,34 @@ INTERRUPT_GEN_MEMBER(vt100_state::vt100_vertical_interrupt)
 /* F4 Character Displayer */
 static const gfx_layout vt100_charlayout =
 {
-	8, 16,					/* 8 x 16 characters */
-	256,					/* 2 x 128 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 16,                  /* 8 x 16 characters */
+	256,                    /* 2 x 128 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	8*16					/* every char takes 16 bytes */
+	8*16                    /* every char takes 16 bytes */
 };
 
 static GFXDECODE_START( vt100 )
 	GFXDECODE_ENTRY( "chargen", 0x0000, vt100_charlayout, 0, 1 )
 GFXDECODE_END
 
-
-#define XTAL_24_8832MHz	 24883200
+/* TODO: i8251: connect me up! */
+static const i8251_interface i8251_intf =
+{
+	DEVCB_NULL, // in_rxd_cb
+	DEVCB_NULL, // out_txd_cb
+	DEVCB_NULL, // in_dsr_cb
+	DEVCB_NULL, // out_dtr_cb
+	DEVCB_NULL, // out_rts_cb
+	DEVCB_NULL, // out_rxrdy_cb
+	DEVCB_NULL, // out_txrdy_cb
+	DEVCB_NULL, // out_txempty_cb
+	DEVCB_NULL // out_syndet_cb
+};
 
 static MACHINE_CONFIG_START( vt100, vt100_state )
 	/* basic machine hardware */
@@ -430,6 +445,11 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 	MCFG_DEFAULT_LAYOUT( layout_vt100 )
 
 	MCFG_VT100_VIDEO_ADD("vt100_video", vt100_video_interface)
+
+
+	/* i8251 uart */
+	MCFG_I8251_ADD("i8251", i8251_intf)
+
 
 	/* audio hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -548,7 +568,7 @@ MACHINE_CONFIG_END
        (This same cute trick is almost certainly also done with the
        23-180e2, 181e2, 182e2 183e2 romset, as well as the
        23-095e2,096e2,139e2,140e2 set and probably others as well)
- * The vt100/103 23-018e2-00 character set rom at location e4 is a 24 pin 2316 mask rom with enables as such: pin 18: CS2; pin 20: /CS1; pin 21: /CS3
+ * The vt100/101/102/103/etc 23-018e2-00 character set rom at location e4 is a 24 pin 2316 mask rom with enables as such: pin 18: CS2; pin 20: /CS1; pin 21: /CS3
  * The optional 23-094e2-00 alternate character set rom at location e9 is a 24 pin 2316 mask rom with enables as such: pin 18: /CS2; pin 20: /CS1; pin 21: /CS3
        Supposedly the 23-094e2 rom is meant for vt100-WC or -WF systems, (which are french canadian and french respectively), implying that it has european language specific accented characters on it. It is probably used in all the -W* systems.
        Pin 21 can be jumpered to +5v for this socket at location e9 by removing jumper w4 and inserting jumper w5, allowing a normal 2716 eprom to be used.
@@ -632,27 +652,27 @@ ROM_START( vt100stp ) // This is from the VT180 technical manual at http://www.b
 // Or as http://bitsavers.trailing-edge.com/www.computer.museum.uq.edu.au/pdf/EK-VT100-TM-003%20VT100%20Series%20Video%20Terminal%20Technical%20Manual.pdf
 // on page 433: VT100 WC or WK uses these as well.
 // This romset adds the Set-up C page to the setup menu (press keypad 5 twice once you hit set-up)
-    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-    ROM_LOAD( "23-095e2-00.e56", 0x0000, 0x0800, NO_DUMP)
-    ROM_LOAD( "23-096e2-00.e52", 0x0800, 0x0800, NO_DUMP)
-    ROM_LOAD( "23-139e2-00.e45", 0x1000, 0x0800, NO_DUMP) // revision 2?; revision 1 is 23-097e2
-    ROM_LOAD( "23-140e2-00.e40", 0x1800, 0x0800, NO_DUMP) // revision 2?; revision 1 is 23-098e2
-    ROM_REGION(0x1000, "chargen",0)
-    ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53))
-    ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional ?word processing? alternate character set rom
-    ROM_REGION(0x10000, "stpcpu",ROMREGION_ERASEFF)
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	ROM_LOAD( "23-095e2-00.e56", 0x0000, 0x0800, NO_DUMP)
+	ROM_LOAD( "23-096e2-00.e52", 0x0800, 0x0800, NO_DUMP)
+	ROM_LOAD( "23-139e2-00.e45", 0x1000, 0x0800, NO_DUMP) // revision 2?; revision 1 is 23-097e2
+	ROM_LOAD( "23-140e2-00.e40", 0x1800, 0x0800, NO_DUMP) // revision 2?; revision 1 is 23-098e2
+	ROM_REGION(0x1000, "chargen",0)
+	ROM_LOAD( "23-018e2-00.e4", 0x0000, 0x0800, CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53))
+	ROM_LOAD_OPTIONAL( "23-094e2-00.e9", 0x0800, 0x0800, NO_DUMP) // optional ?word processing? alternate character set rom
+	ROM_REGION(0x10000, "stpcpu",ROMREGION_ERASEFF)
 // expansion board for a vt100 with a processor on it and dma, intended to act as a ram/send buffer for the STP printer board.
 // It can be populated with two banks of two eproms each, each bank either contains 2k or 4k eproms depending on the w2/w3 and w4/w5 jumpers.
 // It also has two proms on the cpu board. I don't know if it is technically necessary to have this board installed if an STP module is installed, but due to the alt stp romset, it probably is.
-    ROM_LOAD( "23-003e3-00.e10", 0x0000, 0x1000, NO_DUMP) // "EPROM 0" bank 0
-    ROM_LOAD( "23-004e3-00.e4", 0x1000, 0x1000, NO_DUMP) // "EPROM 1" bank 0
-    ROM_LOAD( "23-005e3-00.e9", 0x2000, 0x1000, NO_DUMP) // "EPROM 2" bank 1
-    ROM_LOAD( "23-006e3-00.e3", 0x3000, 0x1000, NO_DUMP) // "EPROM 3" bank 1
-    //ROM_REGION(0x0800, "avo",0)
-    //ROM_LOAD( "23-???e2-00.e34", 0x0000, 0x0800, NO_DUMP) // ? second gfx rom?
-    ROM_REGION(0x0400, "proms",0)
-    ROM_LOAD( "23-312a1-07.e26", 0x0000, 0x0200, NO_DUMP) // "PROM A"; handles 8085 i/o? mapping (usart, timer, dma, comm, etc)
-    ROM_LOAD( "23-313a1-07.e15", 0x0200, 0x0200, NO_DUMP) // "PROM B"; handles firmware rom mapping and memory size/page select; bit 0 = ram page, bits 1-3 unused, bits 4-7 select one eprom each
+	ROM_LOAD( "23-003e3-00.e10", 0x0000, 0x1000, NO_DUMP) // "EPROM 0" bank 0
+	ROM_LOAD( "23-004e3-00.e4", 0x1000, 0x1000, NO_DUMP) // "EPROM 1" bank 0
+	ROM_LOAD( "23-005e3-00.e9", 0x2000, 0x1000, NO_DUMP) // "EPROM 2" bank 1
+	ROM_LOAD( "23-006e3-00.e3", 0x3000, 0x1000, NO_DUMP) // "EPROM 3" bank 1
+	//ROM_REGION(0x0800, "avo",0)
+	//ROM_LOAD( "23-???e2-00.e34", 0x0000, 0x0800, NO_DUMP) // ? second gfx rom?
+	ROM_REGION(0x0400, "proms",0)
+	ROM_LOAD( "23-312a1-07.e26", 0x0000, 0x0200, NO_DUMP) // "PROM A"; handles 8085 i/o? mapping (usart, timer, dma, comm, etc)
+	ROM_LOAD( "23-313a1-07.e15", 0x0200, 0x0200, NO_DUMP) // "PROM B"; handles firmware rom mapping and memory size/page select; bit 0 = ram page, bits 1-3 unused, bits 4-7 select one eprom each
 ROM_END
 
 ROM_START( vt103 ) // This is from the schematics at http://www.bitsavers.org/pdf/dec/terminal/vt103/MP00731_VT103_Aug80.pdf
@@ -748,8 +768,9 @@ ROM_START( vt101 ) // p/n 5414185-01 'unupgradable/low cost' vt101/vt102/vt131 m
 // does not have integrated STP or AVO populated
 // 8085 based instead of I8080
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "23-???e4-00.e71", 0x0000, 0x2000, NO_DUMP)
-	ROM_LOAD( "23-???e4-00.e69", 0x8000, 0x2000, NO_DUMP)
+	ROM_LOAD( "23-???e4-00.e71", 0x0000, 0x2000, NO_DUMP) // rom is unique to vt101
+	//e69 socket is empty/unpopulated on vt101?
+	//e67 socket is empty/unpopulated on vt101?
 
 	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e3", 0x0000, 0x0800, CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53))
@@ -761,8 +782,9 @@ ROM_START( vt102 ) // p/n 5414185-01 'unupgradable/low cost' vt101/vt102/vt131 m
 // ROMS have the set up page C in them
 // 8085 based instead of I8080
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "23-226e4-00.e71", 0x0000, 0x2000, BAD_DUMP CRC(339d4e4e) SHA1(f1b08f2c6bbc2b234f3f43bd800a2615f6dd18d3)) // is this right for vt102? A11 stuck high
-	ROM_LOAD( "23-225e4-00.e69", 0x8000, 0x2000, CRC(3567c760) SHA1(672473162e9c92cd237e4dbf92c2700a31C5374b))
+	ROM_LOAD( "23-226e4-00.e71", 0x0000, 0x2000, CRC(85c9279a) SHA1(3283d27e9c45d9e384227a7e6e98ee8d54b92bcb)) // shared with vt131
+	ROM_LOAD( "23-225e4-00.e69", 0x8000, 0x2000, CRC(3567c760) SHA1(672473162e9c92cd237e4dbf92c2700a31C5374b)) // shared with vt131
+	//e67 socket is empty but populated on vt102
 
 	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e3", 0x0000, 0x0800, CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53))
@@ -774,9 +796,9 @@ ROM_START( vt131 ) // p/n 5414185-01 'unupgradable/low cost' vt101/vt131 mainboa
 // ROMS have the set up page C in them
 // 8085 based instead of I8080
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "23-226e4-00.e71", 0x0000, 0x2000, BAD_DUMP CRC(339d4e4e) SHA1(f1b08f2c6bbc2b234f3f43bd800a2615f6dd18d3)) // A11 stuck high
-	ROM_LOAD( "23-225e4-00.e69", 0x8000, 0x2000, CRC(3567c760) SHA1(672473162e9c92cd237e4dbf92c2700a31C5374b))
-	ROM_LOAD( "23-280e2-00.e67", 0xA000, 0x0800, CRC(71b4172e) SHA1(5a82c7dc313bb92b9829eb8350840e072825a797)) // called "VT131 ROM" in the vt101 quick reference guide
+	ROM_LOAD( "23-226e4-00.e71", 0x0000, 0x2000, CRC(85c9279a) SHA1(3283d27e9c45d9e384227a7e6e98ee8d54b92bcb)) // shared with vt102
+	ROM_LOAD( "23-225e4-00.e69", 0x8000, 0x2000, CRC(3567c760) SHA1(672473162e9c92cd237e4dbf92c2700a31C5374b)) // shared with vt102
+	ROM_LOAD( "23-280e2-00.e67", 0xA000, 0x0800, CRC(71b4172e) SHA1(5a82c7dc313bb92b9829eb8350840e072825a797)) // called "VT131 ROM" in the vt101 quick reference guide; pins 20, 18 and 21 are /CE /CE2 and /CE3 on this mask rom
 
 	ROM_REGION(0x1000, "chargen", 0)
 	ROM_LOAD( "23-018e2-00.e3", 0x0000, 0x0800, CRC(6958458b) SHA1(103429674fc01c215bbc2c91962ae99231f8ae53))
@@ -808,11 +830,11 @@ COMP( 1978, vt100,    0,      0,       vt100,     vt100, driver_device,   0,  "D
 //COMP( 1978, vt100wp,  vt100,  0,       vt100,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT100-Wx", GAME_NOT_WORKING)
 //COMP( 1978, vt100stp, vt100,  0,       vt100,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT100 w/VT1xx-AC STP", GAME_NOT_WORKING)
 //COMP( 1981, vt101,    0,      0,       vt102,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT101", GAME_NOT_WORKING)
-//COMP( 1981, vt102,    vt101,  0,       vt102,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT102", GAME_NOT_WORKING)
+COMP( 1981, vt102,    0,      0,       vt102,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT102", GAME_NOT_WORKING)
 //COMP( 1979, vt103,    vt100,  0,       vt100,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT103", GAME_NOT_WORKING)
 COMP( 1978, vt105,    vt100,  0,       vt100,     vt100, driver_device,   0,   "Digital Equipment Corporation", "VT105", GAME_NOT_WORKING)
 //COMP( 1978, vt110,    vt100,  0,       vt100,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT110", GAME_NOT_WORKING)
 //COMP( 1981, vt125,    vt100,  0,       vt100,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT125", GAME_NOT_WORKING)
-COMP( 1981, vt131,  /*vt101*/0, 0,     vt102,     vt100, driver_device,   0,   "Digital Equipment Corporation", "VT131", GAME_NOT_WORKING)// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
+COMP( 1981, vt131,    vt102,  0,       vt102,     vt100, driver_device,   0,   "Digital Equipment Corporation", "VT131", GAME_NOT_WORKING)
 //COMP( 1979, vt132,    vt100,  0,       vt100,     vt100, driver_device,   0,  "Digital Equipment Corporation", "VT132", GAME_NOT_WORKING)
 COMP( 1983, vt180,    vt100,  0,       vt180,     vt100, driver_device,   0,   "Digital Equipment Corporation", "VT180", GAME_NOT_WORKING)

@@ -38,4 +38,4 @@ $(RESFILE): $(UME_WINSRC)/ume.rc $(UME_WINOBJ)/umevers.rc
 
 $(UME_WINOBJ)/umevers.rc: $(BUILDOUT)/verinfo$(BUILD_EXE) $(SRC)/version.c
 	@echo Emitting $@...
-	@"$(BUILDOUT)/verinfo$(BUILD_EXE)" -b ume $(SRC)/version.c > $@
+	@"$(BUILDOUT)/verinfo$(BUILD_EXE)" -b ume $(SRC)/version.c > $@

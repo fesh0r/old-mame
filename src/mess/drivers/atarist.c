@@ -421,12 +421,12 @@ void st_state::mouse_tick()
 {
 	/*
 
-            Right   Left        Up      Down
+	        Right   Left        Up      Down
 
-        XA  1100    0110    YA  1100    0110
-        XB  0110    1100    YB  0110    1100
+	    XA  1100    0110    YA  1100    0110
+	    XB  0110    1100    YB  0110    1100
 
-    */
+	*/
 
 	UINT8 x = ioport("IKBD_MOUSEX")->read_safe(0x00);
 	UINT8 y = ioport("IKBD_MOUSEY")->read_safe(0x00);
@@ -465,7 +465,7 @@ void st_state::mouse_tick()
 
 	m_ikbd_mouse = 0;
 
-	m_ikbd_mouse |= IKBD_MOUSE_XYB[m_ikbd_mouse_px][m_ikbd_mouse_pc];	   // XB
+	m_ikbd_mouse |= IKBD_MOUSE_XYB[m_ikbd_mouse_px][m_ikbd_mouse_pc];      // XB
 	m_ikbd_mouse |= IKBD_MOUSE_XYA[m_ikbd_mouse_px][m_ikbd_mouse_pc] << 1; // XA
 	m_ikbd_mouse |= IKBD_MOUSE_XYB[m_ikbd_mouse_py][m_ikbd_mouse_pc] << 2; // YA
 	m_ikbd_mouse |= IKBD_MOUSE_XYA[m_ikbd_mouse_py][m_ikbd_mouse_pc] << 3; // YB
@@ -494,18 +494,18 @@ READ8_MEMBER( st_state::ikbd_port1_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       Keyboard column input
-        1       Keyboard column input
-        2       Keyboard column input
-        3       Keyboard column input
-        4       Keyboard column input
-        5       Keyboard column input
-        6       Keyboard column input
-        7       Keyboard column input
+	    0       Keyboard column input
+	    1       Keyboard column input
+	    2       Keyboard column input
+	    3       Keyboard column input
+	    4       Keyboard column input
+	    5       Keyboard column input
+	    6       Keyboard column input
+	    7       Keyboard column input
 
-    */
+	*/
 
 	UINT8 data = 0xff;
 
@@ -538,15 +538,15 @@ READ8_MEMBER( st_state::ikbd_port2_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       JOY 1-5
-        1       JOY 0-6
-        2       JOY 1-6
-        3       SD FROM CPU
-        4
+	    0       JOY 1-5
+	    1       JOY 0-6
+	    2       JOY 1-6
+	    3       SD FROM CPU
+	    4
 
-    */
+	*/
 
 	UINT8 data = ioport("IKBD_JOY1")->read_safe(0xff) & 0x06;
 
@@ -565,15 +565,15 @@ WRITE8_MEMBER( st_state::ikbd_port2_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       joystick enable
-        1
-        2
-        3
-        4       SD TO CPU
+	    0       joystick enable
+	    1
+	    2
+	    3
+	    4       SD TO CPU
 
-    */
+	*/
 
 	// joystick enable
 	m_ikbd_joy = BIT(data, 0);
@@ -591,18 +591,18 @@ WRITE8_MEMBER( st_state::ikbd_port3_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       CAPS LOCK LED
-        1       Keyboard row select
-        2       Keyboard row select
-        3       Keyboard row select
-        4       Keyboard row select
-        5       Keyboard row select
-        6       Keyboard row select
-        7       Keyboard row select
+	    0       CAPS LOCK LED
+	    1       Keyboard row select
+	    2       Keyboard row select
+	    3       Keyboard row select
+	    4       Keyboard row select
+	    5       Keyboard row select
+	    6       Keyboard row select
+	    7       Keyboard row select
 
-    */
+	*/
 
 	// caps lock led
 	set_led_status(machine(), 1, BIT(data, 0));
@@ -620,18 +620,18 @@ READ8_MEMBER( st_state::ikbd_port4_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       JOY 0-1 or mouse XB
-        1       JOY 0-2 or mouse XA
-        2       JOY 0-3 or mouse YA
-        3       JOY 0-4 or mouse YB
-        4       JOY 1-1
-        5       JOY 1-2
-        6       JOY 1-3
-        7       JOY 1-4
+	    0       JOY 0-1 or mouse XB
+	    1       JOY 0-2 or mouse XA
+	    2       JOY 0-3 or mouse YA
+	    3       JOY 0-4 or mouse YB
+	    4       JOY 1-1
+	    5       JOY 1-2
+	    6       JOY 1-3
+	    7       JOY 1-4
 
-    */
+	*/
 
 	if (m_ikbd_joy) return 0xff;
 
@@ -654,18 +654,18 @@ WRITE8_MEMBER( st_state::ikbd_port4_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       Keyboard row select
-        1       Keyboard row select
-        2       Keyboard row select
-        3       Keyboard row select
-        4       Keyboard row select
-        5       Keyboard row select
-        6       Keyboard row select
-        7       Keyboard row select
+	    0       Keyboard row select
+	    1       Keyboard row select
+	    2       Keyboard row select
+	    3       Keyboard row select
+	    4       Keyboard row select
+	    5       Keyboard row select
+	    6       Keyboard row select
+	    7       Keyboard row select
 
-    */
+	*/
 
 	// keyboard row select
 	m_ikbd_keylatch = (data << 8) | (m_ikbd_keylatch & 0xff);
@@ -1119,26 +1119,26 @@ READ16_MEMBER( stbook_state::config_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       _POWER_SWITCH
-        1       _TOP_CLOSED
-        2       _RTC_ALARM
-        3       _SOURCE_DEAD
-        4       _SOURCE_LOW
-        5       _MODEM_WAKE
-        6       (reserved)
-        7       _EXPANSION_WAKE
-        8       (reserved)
-        9       (reserved)
-        10      (reserved)
-        11      (reserved)
-        12      (reserved)
-        13      SELF TEST
-        14      LOW SPEED FLOPPY
-        15      DMA AVAILABLE
+	    0       _POWER_SWITCH
+	    1       _TOP_CLOSED
+	    2       _RTC_ALARM
+	    3       _SOURCE_DEAD
+	    4       _SOURCE_LOW
+	    5       _MODEM_WAKE
+	    6       (reserved)
+	    7       _EXPANSION_WAKE
+	    8       (reserved)
+	    9       (reserved)
+	    10      (reserved)
+	    11      (reserved)
+	    12      (reserved)
+	    13      SELF TEST
+	    14      LOW SPEED FLOPPY
+	    15      DMA AVAILABLE
 
-    */
+	*/
 
 	return (ioport("SW400")->read() << 8) | 0xff;
 }
@@ -1152,18 +1152,18 @@ WRITE16_MEMBER( stbook_state::lcd_control_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       Shadow Chip OFF
-        1       _SHIFTER OFF
-        2       POWEROFF
-        3       _22ON
-        4       RS-232_OFF
-        5       (reserved)
-        6       (reserved)
-        7       MTR_PWR_ON
+	    0       Shadow Chip OFF
+	    1       _SHIFTER OFF
+	    2       POWEROFF
+	    3       _22ON
+	    4       RS-232_OFF
+	    5       (reserved)
+	    6       (reserved)
+	    7       MTR_PWR_ON
 
-    */
+	*/
 }
 
 
@@ -1704,18 +1704,18 @@ WRITE8_MEMBER( st_state::psg_pa_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       SIDE 0
-        1       DRIVE 0
-        2       DRIVE 1
-        3       RTS
-        4       DTR
-        5       STROBE
-        6       GPO
-        7
+	    0       SIDE 0
+	    1       DRIVE 0
+	    2       DRIVE 1
+	    3       RTS
+	    4       DTR
+	    5       STROBE
+	    6       GPO
+	    7
 
-    */
+	*/
 
 	// drive select
 	floppy_image_device *floppy = 0;
@@ -1757,18 +1757,18 @@ WRITE8_MEMBER( stbook_state::psg_pa_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       SIDE 0
-        1       DRIVE 0
-        2       DRIVE 1
-        3       RTS
-        4       DTR
-        5       STROBE
-        6       IDE RESET
-        7       DDEN
+	    0       SIDE 0
+	    1       DRIVE 0
+	    2       DRIVE 1
+	    3       RTS
+	    4       DTR
+	    5       STROBE
+	    6       IDE RESET
+	    7       DDEN
 
-    */
+	*/
 
 	// drive select
 	floppy_image_device *floppy = 0;
@@ -1823,7 +1823,7 @@ WRITE_LINE_MEMBER( st_state::acia_ikbd_irq_w )
 {
 	m_acia_ikbd_irq = state;
 
-	m_mfp->i4_w(m_acia_ikbd_irq & m_acia_midi_irq);
+	m_mfp->i4_w(!(m_acia_ikbd_irq || m_acia_midi_irq));
 }
 
 static ACIA6850_INTERFACE( acia_ikbd_intf )
@@ -1864,7 +1864,7 @@ WRITE_LINE_MEMBER( st_state::acia_midi_irq_w )
 {
 	m_acia_midi_irq = state;
 
-	m_mfp->i4_w(m_acia_ikbd_irq & m_acia_midi_irq);
+	m_mfp->i4_w(!(m_acia_ikbd_irq || m_acia_midi_irq));
 }
 
 static ACIA6850_INTERFACE( acia_midi_intf )
@@ -1888,18 +1888,18 @@ READ8_MEMBER( st_state::mfp_gpio_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       Centronics BUSY
-        1       RS232 DCD
-        2       RS232 CTS
-        3       Blitter done
-        4       Keyboard/MIDI
-        5       FDC
-        6       RS232 RI
-        7       Monochrome monitor detect
+	    0       Centronics BUSY
+	    1       RS232 DCD
+	    2       RS232 CTS
+	    3       Blitter done
+	    4       Keyboard/MIDI
+	    5       FDC
+	    6       RS232 RI
+	    7       Monochrome monitor detect
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -1914,7 +1914,7 @@ READ8_MEMBER( st_state::mfp_gpio_r )
 	data |= m_blitter_done << 3;
 
 	// keyboard/MIDI interrupt
-	data |= (m_acia_ikbd_irq & m_acia_midi_irq) << 4;
+	data |= (!(m_acia_ikbd_irq || m_acia_midi_irq)) << 4;
 
 	// floppy interrupt request
 	data |= !m_fdc->intrq_r() << 5;
@@ -1935,18 +1935,18 @@ WRITE_LINE_MEMBER( st_state::mfp_tdo_w )
 
 static MC68901_INTERFACE( mfp_intf )
 {
-	Y1,													/* timer clock */
-	0,													/* receive clock */
-	0,													/* transmit clock */
-	DEVCB_CPU_INPUT_LINE(M68000_TAG, M68K_IRQ_6),		/* interrupt */
-	DEVCB_DRIVER_MEMBER(st_state, mfp_gpio_r),			/* GPIO read */
-	DEVCB_NULL,											/* GPIO write */
-	DEVCB_NULL,											/* TAO */
-	DEVCB_NULL,											/* TBO */
-	DEVCB_NULL,											/* TCO */
-	DEVCB_DRIVER_LINE_MEMBER(st_state, mfp_tdo_w),		/* TDO */
-	DEVCB_NULL,											/* serial input */
-	DEVCB_NULL											/* serial output */
+	Y1,                                                 /* timer clock */
+	0,                                                  /* receive clock */
+	0,                                                  /* transmit clock */
+	DEVCB_CPU_INPUT_LINE(M68000_TAG, M68K_IRQ_6),       /* interrupt */
+	DEVCB_DRIVER_MEMBER(st_state, mfp_gpio_r),          /* GPIO read */
+	DEVCB_NULL,                                         /* GPIO write */
+	DEVCB_NULL,                                         /* TAO */
+	DEVCB_NULL,                                         /* TBO */
+	DEVCB_NULL,                                         /* TCO */
+	DEVCB_DRIVER_LINE_MEMBER(st_state, mfp_tdo_w),      /* TDO */
+	DEVCB_NULL,                                         /* serial input */
+	DEVCB_NULL                                          /* serial output */
 };
 
 
@@ -1958,18 +1958,18 @@ READ8_MEMBER( ste_state::mfp_gpio_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       Centronics BUSY
-        1       RS232 DCD
-        2       RS232 CTS
-        3       Blitter done
-        4       Keyboard/MIDI
-        5       FDC
-        6       RS232 RI
-        7       Monochrome monitor detect / DMA sound active
+	    0       Centronics BUSY
+	    1       RS232 DCD
+	    2       RS232 CTS
+	    3       Blitter done
+	    4       Keyboard/MIDI
+	    5       FDC
+	    6       RS232 RI
+	    7       Monochrome monitor detect / DMA sound active
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -1984,7 +1984,7 @@ READ8_MEMBER( ste_state::mfp_gpio_r )
 	data |= m_blitter_done << 3;
 
 	// keyboard/MIDI interrupt
-	data |= (m_acia_ikbd_irq & m_acia_midi_irq) << 4;
+	data |= (!(m_acia_ikbd_irq || m_acia_midi_irq)) << 4;
 
 	// floppy interrupt request
 	data |= !m_fdc->intrq_r() << 5;
@@ -1999,18 +1999,18 @@ READ8_MEMBER( ste_state::mfp_gpio_r )
 
 static MC68901_INTERFACE( atariste_mfp_intf )
 {
-	Y1,													/* timer clock */
-	0,													/* receive clock */
-	0,													/* transmit clock */
-	DEVCB_CPU_INPUT_LINE(M68000_TAG, M68K_IRQ_6),		/* interrupt */
-	DEVCB_DRIVER_MEMBER(ste_state, mfp_gpio_r),			/* GPIO read */
-	DEVCB_NULL,											/* GPIO write */
-	DEVCB_NULL,											/* TAO */
-	DEVCB_NULL,											/* TBO */
-	DEVCB_NULL,											/* TCO */
-	DEVCB_DRIVER_LINE_MEMBER(st_state, mfp_tdo_w),		/* TDO */
-	DEVCB_NULL,											/* serial input */
-	DEVCB_NULL											/* serial output */
+	Y1,                                                 /* timer clock */
+	0,                                                  /* receive clock */
+	0,                                                  /* transmit clock */
+	DEVCB_CPU_INPUT_LINE(M68000_TAG, M68K_IRQ_6),       /* interrupt */
+	DEVCB_DRIVER_MEMBER(ste_state, mfp_gpio_r),         /* GPIO read */
+	DEVCB_NULL,                                         /* GPIO write */
+	DEVCB_NULL,                                         /* TAO */
+	DEVCB_NULL,                                         /* TBO */
+	DEVCB_NULL,                                         /* TCO */
+	DEVCB_DRIVER_LINE_MEMBER(st_state, mfp_tdo_w),      /* TDO */
+	DEVCB_NULL,                                         /* serial input */
+	DEVCB_NULL                                          /* serial output */
 };
 
 
@@ -2022,18 +2022,18 @@ READ8_MEMBER( stbook_state::mfp_gpio_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        0       Centronics BUSY
-        1       RS232 DCD
-        2       RS232 CTS
-        3       Blitter done
-        4       Keyboard/MIDI
-        5       FDC
-        6       RS232 RI
-        7       POWER ALARMS
+	    0       Centronics BUSY
+	    1       RS232 DCD
+	    2       RS232 CTS
+	    3       Blitter done
+	    4       Keyboard/MIDI
+	    5       FDC
+	    6       RS232 RI
+	    7       POWER ALARMS
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -2048,7 +2048,7 @@ READ8_MEMBER( stbook_state::mfp_gpio_r )
 	data |= m_blitter_done << 3;
 
 	// keyboard/MIDI interrupt
-	data |= (m_acia_ikbd_irq & m_acia_midi_irq) << 4;
+	data |= (!(m_acia_ikbd_irq || m_acia_midi_irq)) << 4;
 
 	// floppy data request
 	data |= !m_fdc->intrq_r() << 5;
@@ -2062,18 +2062,18 @@ READ8_MEMBER( stbook_state::mfp_gpio_r )
 
 static MC68901_INTERFACE( stbook_mfp_intf )
 {
-	Y1,													/* timer clock */
-	0,													/* receive clock */
-	0,													/* transmit clock */
-	DEVCB_CPU_INPUT_LINE(M68000_TAG, M68K_IRQ_6),		/* interrupt */
-	DEVCB_DRIVER_MEMBER(stbook_state, mfp_gpio_r),		/* GPIO read */
-	DEVCB_NULL,											/* GPIO write */
-	DEVCB_NULL,											/* TAO */
-	DEVCB_NULL,											/* TBO */
-	DEVCB_NULL,											/* TCO */
-	DEVCB_DRIVER_LINE_MEMBER(st_state, mfp_tdo_w),		/* TDO */
-	DEVCB_NULL,											/* serial input */
-	DEVCB_NULL											/* serial output */
+	Y1,                                                 /* timer clock */
+	0,                                                  /* receive clock */
+	0,                                                  /* transmit clock */
+	DEVCB_CPU_INPUT_LINE(M68000_TAG, M68K_IRQ_6),       /* interrupt */
+	DEVCB_DRIVER_MEMBER(stbook_state, mfp_gpio_r),      /* GPIO read */
+	DEVCB_NULL,                                         /* GPIO write */
+	DEVCB_NULL,                                         /* TAO */
+	DEVCB_NULL,                                         /* TBO */
+	DEVCB_NULL,                                         /* TCO */
+	DEVCB_DRIVER_LINE_MEMBER(st_state, mfp_tdo_w),      /* TDO */
+	DEVCB_NULL,                                         /* serial input */
+	DEVCB_NULL                                          /* serial output */
 };
 
 void st_state::fdc_intrq_w(bool state)
@@ -2611,7 +2611,7 @@ ROM_END
 
 ROM_START( st_uk )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos100")
 	ROM_SYSTEM_BIOS( 0, "tos100", "TOS 1.0 (ROM TOS)" )
 	ROMX_LOAD( "tos100uk.bin", 0x00000, 0x30000, BAD_DUMP CRC(1a586c64) SHA1(9a6e4c88533a9eaa4d55cdc040e47443e0226eb2), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "tos102", "TOS 1.02 (MEGA TOS)" )
@@ -2633,7 +2633,7 @@ ROM_END
 
 ROM_START( st_de )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos100")
 	ROM_SYSTEM_BIOS( 0, "tos100", "TOS 1.0 (ROM TOS)" )
 	ROMX_LOAD( "tos100de.bin", 0x00000, 0x30000, BAD_DUMP CRC(16e3e979) SHA1(663d9c87cfb44ae8ada855fe9ed3cccafaa7a4ce), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "tos102", "TOS 1.02 (MEGA TOS)" )
@@ -2662,7 +2662,7 @@ ROM_END
 
 ROM_START( st_fr )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos100")
 	ROM_SYSTEM_BIOS( 0, "tos100", "TOS 1.0 (ROM TOS)" )
 	ROMX_LOAD( "tos100fr.bin", 0x00000, 0x30000, BAD_DUMP CRC(2b7f2117) SHA1(ecb00a2e351a6205089a281b4ce6e08959953704), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "tos102", "TOS 1.02 (MEGA TOS)" )
@@ -2691,7 +2691,7 @@ ROM_END
 
 ROM_START( st_es )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos100")
 	ROM_SYSTEM_BIOS( 0, "tos104", "TOS 1.04 (Rainbow TOS)" )
 	ROMX_LOAD( "tos104es.bin", 0x00000, 0x30000, BAD_DUMP CRC(f4e8ecd2) SHA1(df63f8ac09125d0877b55d5ba1282779b7f99c16), ROM_BIOS(1) )
 
@@ -2709,7 +2709,7 @@ ROM_END
 
 ROM_START( st_nl )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos100")
 	ROM_SYSTEM_BIOS( 0, "tos104", "TOS 1.04 (Rainbow TOS)" )
 	ROMX_LOAD( "tos104nl.bin", 0x00000, 0x30000, BAD_DUMP CRC(bb4370d4) SHA1(6de7c96b2d2e5c68778f4bce3eaf85a4e121f166), ROM_BIOS(1) )
 
@@ -2727,7 +2727,7 @@ ROM_END
 
 ROM_START( st_se )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos102")
 	ROM_SYSTEM_BIOS( 0, "tos102", "TOS 1.02 (MEGA TOS)" )
 	ROMX_LOAD( "tos102se.bin", 0x00000, 0x30000, BAD_DUMP CRC(673fd0c2) SHA1(433de547e09576743ae9ffc43d43f2279782e127), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "tos104", "TOS 1.04 (Rainbow TOS)" )
@@ -2747,7 +2747,7 @@ ROM_END
 
 ROM_START( st_sg )
 	ROM_REGION16_BE( 0x30000, M68000_TAG, 0 )
-	ROM_DEFAULT_BIOS("tos104")
+	ROM_DEFAULT_BIOS("tos102")
 	ROM_SYSTEM_BIOS( 0, "tos102", "TOS 1.02 (MEGA TOS)" )
 	ROMX_LOAD( "tos102sg.bin", 0x00000, 0x30000, BAD_DUMP CRC(5fe16c66) SHA1(45acb2fc4b1b13bd806c751aebd66c8304fc79bc), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "tos104", "TOS 1.04 (Rainbow TOS)" )
@@ -3397,43 +3397,43 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT     COMPANY    FULLNAME                FLAGS
-COMP( 1985,	st,			0,			0,		st,			st, driver_device,			0,		"Atari",	"ST (USA)",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985,	st_uk,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (UK)",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985, st_de,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (Germany)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985, st_es,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (Spain)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985, st_fr,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (France)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985, st_nl,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (Netherlands)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985, st_se,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (Sweden)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1985, st_sg,		st,			0,		st,			st, driver_device,			0,		"Atari",	"ST (Switzerland)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast,		st,			0,		megast,		st, driver_device,			0,		"Atari",	"MEGA ST (USA)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast_uk,	st,			0,		megast,		st, driver_device,			0,		"Atari",	"MEGA ST (UK)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast_de,	st,			0,		megast,		st, driver_device,			0,		"Atari",	"MEGA ST (Germany)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast_fr,	st,			0,		megast,		st, driver_device,			0,		"Atari",	"MEGA ST (France)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast_se,	st,			0,		megast,		st, driver_device,			0,		"Atari",	"MEGA ST (Sweden)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast_sg,	st,			0,		megast,		st, driver_device,			0,		"Atari",	"MEGA ST (Switzerland)",GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste,		0,			0,		ste,		ste, driver_device,		0,		"Atari",	"STE (USA)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_uk,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (UK)",				GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_de,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (Germany)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_es,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (Spain)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_fr,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (France)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_it,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (Italy)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_se,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (Sweden)",			GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1989, ste_sg,		ste,		0,		ste,		ste, driver_device,		0,		"Atari",	"STE (Switzerland)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st,         0,          0,      st,         st, driver_device,          0,      "Atari",    "ST (USA)",             GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_uk,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (UK)",              GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_de,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (Germany)",         GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_es,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (Spain)",           GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_fr,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (France)",          GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_nl,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (Netherlands)",     GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_se,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (Sweden)",          GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1985, st_sg,      st,         0,      st,         st, driver_device,          0,      "Atari",    "ST (Switzerland)",     GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast,     st,         0,      megast,     st, driver_device,          0,      "Atari",    "MEGA ST (USA)",        GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast_uk,  st,         0,      megast,     st, driver_device,          0,      "Atari",    "MEGA ST (UK)",         GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast_de,  st,         0,      megast,     st, driver_device,          0,      "Atari",    "MEGA ST (Germany)",    GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast_fr,  st,         0,      megast,     st, driver_device,          0,      "Atari",    "MEGA ST (France)",     GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast_se,  st,         0,      megast,     st, driver_device,          0,      "Atari",    "MEGA ST (Sweden)",     GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast_sg,  st,         0,      megast,     st, driver_device,          0,      "Atari",    "MEGA ST (Switzerland)",GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste,        0,          0,      ste,        ste, driver_device,     0,      "Atari",    "STE (USA)",            GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_uk,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (UK)",             GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_de,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (Germany)",        GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_es,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (Spain)",          GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_fr,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (France)",         GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_it,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (Italy)",          GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_se,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (Sweden)",         GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1989, ste_sg,     ste,        0,      ste,        ste, driver_device,     0,      "Atari",    "STE (Switzerland)",    GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
 //COMP( 1990, stbook,       ste,        0,      stbook,     stbook, driver_device,     0,      "Atari",    "STBook",               GAME_NOT_WORKING )
-COMP( 1990,	tt030,		0,			0,		tt030,		tt030, driver_device,		0,		"Atari",	"TT030 (USA)",			GAME_NOT_WORKING )
-COMP( 1990,	tt030_uk,	tt030,		0,		tt030,		tt030, driver_device,		0,		"Atari",	"TT030 (UK)",			GAME_NOT_WORKING )
-COMP( 1990,	tt030_de,	tt030,		0,		tt030,		tt030, driver_device,		0,		"Atari",	"TT030 (Germany)",		GAME_NOT_WORKING )
-COMP( 1990,	tt030_fr,	tt030,		0,		tt030,		tt030, driver_device,		0,		"Atari",	"TT030 (France)",		GAME_NOT_WORKING )
-COMP( 1990,	tt030_pl,	tt030,		0,		tt030,		tt030, driver_device,		0,		"Atari",	"TT030 (Poland)",		GAME_NOT_WORKING )
-COMP( 1991, megaste,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (USA)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1991, megaste_uk,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (UK)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1991, megaste_de,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (Germany)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1991, megaste_es,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (Spain)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1991, megaste_fr,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (France)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1991, megaste_it,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (Italy)",		GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1991, megaste_se,	ste,		0,		megaste,	st, driver_device,			0,		"Atari",	"MEGA STE (Sweden)",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1992, falcon30,	0,			0,		falcon,		falcon, driver_device,		0,		"Atari",	"Falcon030",			GAME_NOT_WORKING )
-COMP( 1992, falcon40,	falcon30,	0,		falcon40,	falcon, driver_device,		0,		"Atari",	"Falcon040 (prototype)",GAME_NOT_WORKING )
+COMP( 1990, tt030,      0,          0,      tt030,      tt030, driver_device,       0,      "Atari",    "TT030 (USA)",          GAME_NOT_WORKING )
+COMP( 1990, tt030_uk,   tt030,      0,      tt030,      tt030, driver_device,       0,      "Atari",    "TT030 (UK)",           GAME_NOT_WORKING )
+COMP( 1990, tt030_de,   tt030,      0,      tt030,      tt030, driver_device,       0,      "Atari",    "TT030 (Germany)",      GAME_NOT_WORKING )
+COMP( 1990, tt030_fr,   tt030,      0,      tt030,      tt030, driver_device,       0,      "Atari",    "TT030 (France)",       GAME_NOT_WORKING )
+COMP( 1990, tt030_pl,   tt030,      0,      tt030,      tt030, driver_device,       0,      "Atari",    "TT030 (Poland)",       GAME_NOT_WORKING )
+COMP( 1991, megaste,    ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (USA)",       GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1991, megaste_uk, ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (UK)",        GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1991, megaste_de, ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (Germany)",   GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1991, megaste_es, ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (Spain)",     GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1991, megaste_fr, ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (France)",    GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1991, megaste_it, ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (Italy)",     GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1991, megaste_se, ste,        0,      megaste,    st, driver_device,          0,      "Atari",    "MEGA STE (Sweden)",    GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1992, falcon30,   0,          0,      falcon,     falcon, driver_device,      0,      "Atari",    "Falcon030",            GAME_NOT_WORKING )
+COMP( 1992, falcon40,   falcon30,   0,      falcon40,   falcon, driver_device,      0,      "Atari",    "Falcon040 (prototype)",GAME_NOT_WORKING )
 //COMP( 1989, stacy,    st,  0,      stacy,    stacy, driver_device,    0,     "Atari", "Stacy", GAME_NOT_WORKING )
 //COMP( 1991, stpad,    ste, 0,      stpad,    stpad, driver_device,    0,     "Atari", "STPad (prototype)", GAME_NOT_WORKING )
 //COMP( 1992, fx1,      0,        0,      falcon,   falcon, driver_device,   0,     "Atari", "FX-1 (prototype)", GAME_NOT_WORKING )

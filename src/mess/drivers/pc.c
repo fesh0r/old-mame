@@ -94,10 +94,10 @@ video HW too.
 #include "formats/mfi_dsk.h"
 #include "formats/pc_dsk.h"
 
-#include "machine/8237dma.h"
+#include "machine/am9517a.h"
 #include "sound/sn76496.h"
 
-#include "machine/wd17xx.h"
+#include "machine/wd_fdc.h"
 #include "machine/kb_7007_3.h"
 
 #include "machine/ram.h"
@@ -136,35 +136,32 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ec1841_map, AS_PROGRAM, 16, pc_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK("bank10")	// up to 4 banks
+	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK("bank10") // up to 4 banks
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
-	AM_RANGE(0xdc000, 0xdffff) AM_RAM		// monochrome chargen
+	AM_RANGE(0xdc000, 0xdffff) AM_RAM       // monochrome chargen
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mc1502_map, AS_PROGRAM, 8, pc_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000, 0x97fff) AM_RAMBANK("bank10")	/* 96K on mainboard + 512K on extension card */
-	AM_RANGE(0xe8000, 0xeffff) AM_ROM		/* BASIC */
+	AM_RANGE(0x00000, 0x97fff) AM_RAMBANK("bank10") /* 96K on mainboard + 512K on extension card */
+	AM_RANGE(0xe8000, 0xeffff) AM_ROM       /* BASIC */
 	AM_RANGE(0xfc000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mc1502_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
-	AM_RANGE(0x0028, 0x0028) AM_DEVREADWRITE("upd8251", i8251_device, data_r, data_w)	// not working yet
+	AM_RANGE(0x0028, 0x0028) AM_DEVREADWRITE("upd8251", i8251_device, data_r, data_w)   // not working yet
 	AM_RANGE(0x0029, 0x0029) AM_DEVREADWRITE("upd8251", i8251_device, status_r, control_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
-	AM_RANGE(0x0068, 0x006B) AM_DEVREADWRITE("ppi8255n2", i8255_device, read, write)	// keyboard poll
+	AM_RANGE(0x0068, 0x006B) AM_DEVREADWRITE("ppi8255n2", i8255_device, read, write)    // keyboard poll
 	AM_RANGE(0x0100, 0x0100) AM_READWRITE(mc1502_wd17xx_aux_r, mc1502_wd17xx_aux_w)
-	AM_RANGE(0x0108, 0x0108) AM_READ(mc1502_wd17xx_drq_r)			// blocking read!
+	AM_RANGE(0x0108, 0x0108) AM_READ(mc1502_wd17xx_drq_r)           // blocking read!
 	AM_RANGE(0x010a, 0x010a) AM_READ(mc1502_wd17xx_motor_r)
-	AM_RANGE(0x010c, 0x010c) AM_DEVREADWRITE_LEGACY("vg93", wd17xx_status_r, wd17xx_command_w)
-	AM_RANGE(0x010d, 0x010d) AM_DEVREADWRITE_LEGACY("vg93", wd17xx_track_r, wd17xx_track_w)
-	AM_RANGE(0x010e, 0x010e) AM_DEVREADWRITE_LEGACY("vg93", wd17xx_sector_r, wd17xx_sector_w)
-	AM_RANGE(0x010f, 0x010f) AM_DEVREADWRITE_LEGACY("vg93", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x010c, 0x010f) AM_DEVREADWRITE("vg93", fd1793_t, read, write)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( zenith_map, AS_PROGRAM, 8, pc_state )
@@ -192,14 +189,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pc8_io, AS_IO, 8, pc_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE_LEGACY("dma8237", i8237_r, i8237_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", am9517a_device, read, write)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,			pc_page_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,            pc_page_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_WRITE(pc_nmi_enable_w )
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,				pc_JOY_w)
-	AM_RANGE(0x0240, 0x0257) AM_READWRITE(pc_rtc_r,				pc_rtc_w)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,              pc_JOY_w)
+	AM_RANGE(0x0240, 0x0257) AM_READWRITE(pc_rtc_r,             pc_rtc_w)
 	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE_LEGACY("lpt_2", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE("ins8250_3", ins8250_device, ins8250_r, ins8250_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
@@ -217,15 +214,15 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pc16_io, AS_IO, 16, pc_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8_LEGACY("dma8237", i8237_r, i8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255_device, read, write, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_RAM // needed for Poisk-2
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00a1) AM_WRITE8(pc_nmi_enable_w, 0x00ff )
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r,	pc_JOY_w, 0xffff)
-	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,				pc_rtc_w, 0xffff)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r, pc_JOY_w, 0xffff)
+	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,                pc_rtc_w, 0xffff)
 	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE8_LEGACY("lpt_2", pc_lpt_r, pc_lpt_w, 0xffff)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
@@ -240,15 +237,15 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(ec1841_io, AS_IO, 16, pc_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8_LEGACY("dma8237", i8237_r, i8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255_device, read, write, 0xffff)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00a1) AM_WRITE8( pc_nmi_enable_w, 0x00ff )
-	AM_RANGE(0x0210, 0x0217) AM_NOP	// expansion chassis interface
+	AM_RANGE(0x0210, 0x0217) AM_NOP // expansion chassis interface
 //  AM_RANGE(0x0230, 0x021f)    // mouse
-	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,				pc_rtc_w, 0xffff)
+	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,                pc_rtc_w, 0xffff)
 	AM_RANGE(0x02b0, 0x02b3) AM_READWRITE8(ec1841_memboard_r, ec1841_memboard_w, 0xffff);
 //  AM_RANGE(0x02f8, 0x02f8) AM_DEVREADWRITE8_LEGACY("upd8251_1", i8251_device, data_r, data_w, 0x00ff)
 //  AM_RANGE(0x02f9, 0x02f9) AM_DEVREADWRITE8_LEGACY("upd8251_1", i8251_device, status_r, control_w, 0xff00)
@@ -261,14 +258,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(iskr1031_io, AS_IO, 16, pc_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8_LEGACY("dma8237", i8237_r, i8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255_device, read, write, 0xffff)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00a1) AM_WRITE8( pc_nmi_enable_w, 0x00ff )
 //  AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r, pc_JOY_w, 0xffff)
-	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,				pc_rtc_w, 0xffff)
+	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,                pc_rtc_w, 0xffff)
 //  AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0340, 0x0357) AM_NOP /* anonymous bios should not recogniced realtimeclock */
@@ -293,14 +290,14 @@ READ8_MEMBER(pc_state::unk_r)
 
 static ADDRESS_MAP_START(ibm5550_io, AS_IO, 16, pc_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8_LEGACY("dma8237", i8237_r, i8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255_device, read, write, 0xffff)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00a1) AM_READWRITE8(unk_r, pc_nmi_enable_w, 0x00ff )
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r, pc_JOY_w, 0xffff)
-	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,				pc_rtc_w, 0xffff)
+	AM_RANGE(0x0240, 0x0257) AM_READWRITE8(pc_rtc_r,                pc_rtc_w, 0xffff)
 	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE8_LEGACY("lpt_2", pc_lpt_r, pc_lpt_w, 0xffff)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
@@ -325,13 +322,13 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(europc_io, AS_IO, 8, pc_state )
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE_LEGACY("dma8237", i8237_r, i8237_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", am9517a_device, read, write)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(europc_pio_r,			europc_pio_w)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,			pc_page_w)
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,				pc_JOY_w)
-	AM_RANGE(0x0250, 0x025f) AM_READWRITE_LEGACY(europc_jim_r,			europc_jim_w)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(europc_pio_r,          europc_pio_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,            pc_page_w)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,              pc_JOY_w)
+	AM_RANGE(0x0250, 0x025f) AM_READWRITE_LEGACY(europc_jim_r,          europc_jim_w)
 	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE_LEGACY("lpt_2", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x02e0, 0x02e0) AM_READ_LEGACY(europc_jim2_r)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE("ins8250_3", ins8250_device, ins8250_r, ins8250_w)
@@ -359,15 +356,15 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(tandy1000_io, AS_IO, 8, pc_state )
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE_LEGACY("dma8237", i8237_r, i8237_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", am9517a_device, read, write)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(tandy1000_pio_r,			tandy1000_pio_w)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
-	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496",	ncr7496_device, write)
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,					pc_JOY_w)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(tandy1000_pio_r,           tandy1000_pio_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,                pc_page_w)
+	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496", ncr7496_device, write)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,                  pc_JOY_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,			pc_t1t_p37x_w)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,         pc_t1t_p37x_w)
 	AM_RANGE(0x03bc, 0x03be) AM_DEVREADWRITE_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x03f0, 0x03f7) AM_DEVICE("fdc", pc_fdc_interface, map)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_device, ins8250_r, ins8250_w)
@@ -382,22 +379,22 @@ static ADDRESS_MAP_START(tandy1000_16_map, AS_PROGRAM, 16, pc_state )
 	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
 	AM_RANGE(0xc8000, 0xc9fff) AM_ROM
 	AM_RANGE(0xca000, 0xcffff) AM_NOP
-	AM_RANGE(0xe0000, 0xeffff) AM_ROMBANK("bank11")						/* Banked part of the BIOS */
+	AM_RANGE(0xe0000, 0xeffff) AM_ROMBANK("bank11")                     /* Banked part of the BIOS */
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM AM_REGION("maincpu", 0x70000)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START(tandy1000_16_io, AS_IO, 16, pc_state )
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8_LEGACY("dma8237", i8237_r, i8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,			tandy1000_pio_w, 0xffff)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
-	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496",	ncr7496_device, write, 0xffff)
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r,					pc_JOY_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,          tandy1000_pio_w, 0xffff)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
+	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496",    ncr7496_device, write, 0xffff)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE8_LEGACY(pc_JOY_r,                 pc_JOY_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE8_LEGACY(pc_t1t_p37x_r,			pc_t1t_p37x_w, 0xffff)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE8_LEGACY(pc_t1t_p37x_r,            pc_t1t_p37x_w, 0xffff)
 	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w, 0xffff)
 	AM_RANGE(0x03f0, 0x03f7) AM_DEVICE8("fdc", pc_fdc_interface, map, 0xffff)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ins8250_0", ins8250_device, ins8250_r, ins8250_w, 0xffff)
@@ -420,7 +417,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(tandy1000_286_io, AS_IO, 16, pc_state )
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8_LEGACY("dma8237", i8237_r, i8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,         tandy1000_pio_w, 0xffff)
@@ -453,398 +450,407 @@ static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,                pc_page_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_READWRITE(pcjr_nmi_enable_r, pc_nmi_enable_w )
 	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496", sn76496_device, write)
 	AM_RANGE(0x00f2, 0x00f2) AM_WRITE(pcjr_fdc_dor_w)
 	AM_RANGE(0x00f4, 0x00f5) AM_DEVICE("upd765", upd765a_device, map)
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,					pc_JOY_w)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE_LEGACY(pc_JOY_r,                  pc_JOY_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,			pc_t1t_p37x_w)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,         pc_t1t_p37x_w)
 	AM_RANGE(0x03bc, 0x03be) AM_DEVREADWRITE_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_device, ins8250_r, ins8250_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(ibmpcjx_map, AS_PROGRAM, 8, pc_state )
-	AM_RANGE(0x80000, 0x9ffff) AM_ROM AM_REGION("kanji",0)
+	AM_RANGE(0x80000, 0xb7fff) AM_ROM AM_REGION("kanji",0)
 	AM_IMPORT_FROM( ibmpcjr_map )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(ibmpcjx_io, AS_IO, 8, pc_state )
+	AM_RANGE(0x01ff, 0x01ff) AM_READWRITE(pcjx_port_1ff_r, pcjx_port_1ff_w)
 	AM_IMPORT_FROM( ibmpcjr_io )
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pccga )
 	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
+	PORT_BIT ( 0xf0, 0xf0,   IPT_UNUSED )
+	PORT_BIT ( 0x08, 0x08,   IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT ( 0x07, 0x07,   IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
-	PORT_DIPSETTING(	0x00, "1" )
-	PORT_DIPSETTING(	0x40, "2" )
-	PORT_DIPSETTING(	0x80, "3" )
-	PORT_DIPSETTING(	0xc0, "4" )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x40, "2" )
+	PORT_DIPSETTING(    0x80, "3" )
+	PORT_DIPSETTING(    0xc0, "4" )
 	PORT_DIPNAME( 0x30, 0x20, "Graphics adapter")
-	PORT_DIPSETTING(	0x00, "EGA/VGA" )
-	PORT_DIPSETTING(	0x10, "Color 40x25" )
-	PORT_DIPSETTING(	0x20, "Color 80x25" )
-	PORT_DIPSETTING(	0x30, "Monochrome" )
+	PORT_DIPSETTING(    0x00, "EGA/VGA" )
+	PORT_DIPSETTING(    0x10, "Color 40x25" )
+	PORT_DIPSETTING(    0x20, "Color 80x25" )
+	PORT_DIPSETTING(    0x30, "Monochrome" )
 	PORT_DIPNAME( 0x0c, 0x0c, "RAM banks")
-	PORT_DIPSETTING(	0x00, "1 - 16  64 256K" )
-	PORT_DIPSETTING(	0x04, "2 - 32 128 512K" )
-	PORT_DIPSETTING(	0x08, "3 - 48 192 576K" )
-	PORT_DIPSETTING(	0x0c, "4 - 64 256 640K" )
+	PORT_DIPSETTING(    0x00, "1 - 16  64 256K" )
+	PORT_DIPSETTING(    0x04, "2 - 32 128 512K" )
+	PORT_DIPSETTING(    0x08, "3 - 48 192 576K" )
+	PORT_DIPSETTING(    0x0c, "4 - 64 256 640K" )
 	PORT_DIPNAME( 0x02, 0x00, "80387 installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW2") /* IN3 */
 	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
+	PORT_BIT( 0x02, 0x02,   IPT_UNUSED ) /* no turbo switch */
+	PORT_BIT( 0x01, 0x01,   IPT_UNUSED )
 
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
+	PORT_INCLUDE( pc_joystick )         /* IN15 - IN19 */
 	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pcega )
 	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
+	PORT_BIT ( 0xf0, 0xf0,   IPT_UNUSED )
+	PORT_BIT ( 0x08, 0x08,   IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT ( 0x07, 0x07,   IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
-	PORT_DIPSETTING(	0x00, "1" )
-	PORT_DIPSETTING(	0x40, "2" )
-	PORT_DIPSETTING(	0x80, "3" )
-	PORT_DIPSETTING(	0xc0, "4" )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x40, "2" )
+	PORT_DIPSETTING(    0x80, "3" )
+	PORT_DIPSETTING(    0xc0, "4" )
 	PORT_DIPNAME( 0x00, 0x20, "Graphics adapter")
-	PORT_DIPSETTING(	0x00, "EGA/VGA" )
-	PORT_DIPSETTING(	0x10, "Color 40x25" )
-	PORT_DIPSETTING(	0x20, "Color 80x25" )
-	PORT_DIPSETTING(	0x30, "Monochrome" )
+	PORT_DIPSETTING(    0x00, "EGA/VGA" )
+	PORT_DIPSETTING(    0x10, "Color 40x25" )
+	PORT_DIPSETTING(    0x20, "Color 80x25" )
+	PORT_DIPSETTING(    0x30, "Monochrome" )
 	PORT_DIPNAME( 0x0c, 0x0c, "RAM banks")
-	PORT_DIPSETTING(	0x00, "1 - 16  64 256K" )
-	PORT_DIPSETTING(	0x04, "2 - 32 128 512K" )
-	PORT_DIPSETTING(	0x08, "3 - 48 192 576K" )
-	PORT_DIPSETTING(	0x0c, "4 - 64 256 640K" )
+	PORT_DIPSETTING(    0x00, "1 - 16  64 256K" )
+	PORT_DIPSETTING(    0x04, "2 - 32 128 512K" )
+	PORT_DIPSETTING(    0x08, "3 - 48 192 576K" )
+	PORT_DIPSETTING(    0x0c, "4 - 64 256 640K" )
 	PORT_DIPNAME( 0x02, 0x00, "80387 installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW2") /* IN3 */
 	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
+	PORT_BIT( 0x02, 0x02,   IPT_UNUSED ) /* no turbo switch */
+	PORT_BIT( 0x01, 0x01,   IPT_UNUSED )
 
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
+	PORT_INCLUDE( pc_joystick )         /* IN15 - IN19 */
 	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( europc )
 	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
+	PORT_BIT ( 0xf0, 0xf0,   IPT_UNUSED )
+	PORT_BIT ( 0x08, 0x08,   IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT ( 0x07, 0x07,   IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */
 
 	PORT_START("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW2") /* IN3 */
 	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
+	PORT_BIT( 0x02, 0x02,   IPT_UNUSED ) /* no turbo switch */
+	PORT_BIT( 0x01, 0x01,   IPT_UNUSED )
 
 	EUROPC_KEYBOARD
 
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
+	PORT_INCLUDE( pc_joystick )         /* IN15 - IN19 */
 	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( bondwell )
 	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
+	PORT_BIT ( 0xf0, 0xf0,   IPT_UNUSED )
+	PORT_BIT ( 0x08, 0x08,   IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT ( 0x07, 0x07,   IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
-	PORT_DIPSETTING(	0x00, "1" )
-	PORT_DIPSETTING(	0x40, "2" )
-	PORT_DIPSETTING(	0x80, "3" )
-	PORT_DIPSETTING(	0xc0, "4" )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x40, "2" )
+	PORT_DIPSETTING(    0x80, "3" )
+	PORT_DIPSETTING(    0xc0, "4" )
 	PORT_DIPNAME( 0x30, 0x20, "Graphics adapter")
-	PORT_DIPSETTING(	0x00, "EGA/VGA" )
-	PORT_DIPSETTING(	0x10, "Color 40x25" )
-	PORT_DIPSETTING(	0x20, "Color 80x25" )
-	PORT_DIPSETTING(	0x30, "Monochrome" )
+	PORT_DIPSETTING(    0x00, "EGA/VGA" )
+	PORT_DIPSETTING(    0x10, "Color 40x25" )
+	PORT_DIPSETTING(    0x20, "Color 80x25" )
+	PORT_DIPSETTING(    0x30, "Monochrome" )
 	PORT_DIPNAME( 0x0c, 0x0c, "RAM banks")
-	PORT_DIPSETTING(	0x00, "1 - 16  64 256K" )
-	PORT_DIPSETTING(	0x04, "2 - 32 128 512K" )
-	PORT_DIPSETTING(	0x08, "3 - 48 192 576K" )
-	PORT_DIPSETTING(	0x0c, "4 - 64 256 640K" )
+	PORT_DIPSETTING(    0x00, "1 - 16  64 256K" )
+	PORT_DIPSETTING(    0x04, "2 - 32 128 512K" )
+	PORT_DIPSETTING(    0x08, "3 - 48 192 576K" )
+	PORT_DIPSETTING(    0x0c, "4 - 64 256 640K" )
 	PORT_DIPNAME( 0x02, 0x00, "80387 installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW2") /* IN3 */
 	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x02, "Turbo Switch" )
-	PORT_DIPSETTING(	0x00, "Off (4.77 MHz)" )
-	PORT_DIPSETTING(	0x02, "On (12 MHz)" )
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
+	PORT_DIPSETTING(    0x00, "Off (4.77 MHz)" )
+	PORT_DIPSETTING(    0x02, "On (12 MHz)" )
+	PORT_BIT( 0x01, 0x01,   IPT_UNUSED )
 
 //  PORT_INCLUDE( at_keyboard )     /* IN4 - IN11 */
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
+	PORT_INCLUDE( pc_joystick )         /* IN15 - IN19 */
 	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tandy1t )
 	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
+	PORT_BIT ( 0xf0, 0xf0,   IPT_UNUSED )
+	PORT_BIT ( 0x08, 0x08,   IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT ( 0x07, 0x07,   IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */
-	PORT_BIT ( 0xff, 0xff,	 IPT_UNUSED )
+	PORT_BIT ( 0xff, 0xff,   IPT_UNUSED )
 
 	PORT_START("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
-	PORT_BIT ( 0x30, 0x00,	 IPT_UNUSED )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
+	PORT_BIT ( 0x30, 0x00,   IPT_UNUSED )
 	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
-	PORT_BIT ( 0x06, 0x00,	 IPT_UNUSED )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
+	PORT_BIT ( 0x06, 0x00,   IPT_UNUSED )
 	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW2") /* IN3 */
 	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
+	PORT_BIT( 0x02, 0x02,   IPT_UNUSED ) /* no turbo switch */
+	PORT_BIT( 0x01, 0x01,   IPT_UNUSED )
 
 	PORT_INCLUDE( t1000_keyboard )
-	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
+	PORT_INCLUDE( pc_joystick )         /* IN15 - IN19 */
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( mc1502 )			/* fix */
+static INPUT_PORTS_START( ibmpcjr )
+	PORT_INCLUDE( tandy1t )
+	PORT_MODIFY("pc_keyboard_3")
+	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK)
+	PORT_MODIFY("pc_keyboard_4")
+	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("NumLock") PORT_CODE(KEYCODE_NUMLOCK)
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( mc1502 )          /* fix */
 	PORT_START("IN0") /* IN0 */
-	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
-	PORT_BIT ( 0x08, 0x08,	 IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
+	PORT_BIT ( 0xf0, 0xf0,   IPT_UNUSED )
+	PORT_BIT ( 0x08, 0x08,   IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT ( 0x07, 0x07,   IPT_UNUSED )
 
 	PORT_START("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
-	PORT_DIPSETTING(	0x00, "1" )
-	PORT_DIPSETTING(	0x40, "2" )
-	PORT_DIPSETTING(	0x80, "3" )
-	PORT_DIPSETTING(	0xc0, "4" )
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x40, "2" )
+	PORT_DIPSETTING(    0x80, "3" )
+	PORT_DIPSETTING(    0xc0, "4" )
 	PORT_DIPNAME( 0x30, 0x20, "Graphics adapter")
-	PORT_DIPSETTING(	0x00, "EGA/VGA" )
-	PORT_DIPSETTING(	0x10, "Color 40x25" )
-	PORT_DIPSETTING(	0x20, "Color 80x25" )
-	PORT_DIPSETTING(	0x30, "Monochrome" )
+	PORT_DIPSETTING(    0x00, "EGA/VGA" )
+	PORT_DIPSETTING(    0x10, "Color 40x25" )
+	PORT_DIPSETTING(    0x20, "Color 80x25" )
+	PORT_DIPSETTING(    0x30, "Monochrome" )
 	PORT_DIPNAME( 0x0c, 0x0c, "RAM banks")
-	PORT_DIPSETTING(	0x00, "1 - 16  64 256K" )
-	PORT_DIPSETTING(	0x04, "2 - 32 128 512K" )
-	PORT_DIPSETTING(	0x08, "3 - 48 192 576K" )
-	PORT_DIPSETTING(	0x0c, "4 - 64 256 640K" )
+	PORT_DIPSETTING(    0x00, "1 - 16  64 256K" )
+	PORT_DIPSETTING(    0x04, "2 - 32 128 512K" )
+	PORT_DIPSETTING(    0x08, "3 - 48 192 576K" )
+	PORT_DIPSETTING(    0x0c, "4 - 64 256 640K" )
 	PORT_DIPNAME( 0x02, 0x00, "80387 installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x20, 0x00, "COM3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x10, 0x00, "COM4: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x08, 0x08, "LPT1: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x00, "LPT2: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x00, "LPT3: enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x01, 0x00, "Game port enable")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
 	PORT_START("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
-	PORT_DIPSETTING(	0x80, "COM1" )
-	PORT_DIPSETTING(	0x40, "COM2" )
-	PORT_DIPSETTING(	0x20, "COM3" )
-	PORT_DIPSETTING(	0x10, "COM4" )
+	PORT_DIPSETTING(    0x80, "COM1" )
+	PORT_DIPSETTING(    0x40, "COM2" )
+	PORT_DIPSETTING(    0x20, "COM3" )
+	PORT_DIPSETTING(    0x10, "COM4" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
 	PORT_DIPNAME( 0x08, 0x08, "HDC1 (C800:0 port 320-323)")
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_BIT( 0x02, 0x02,	IPT_UNUSED ) /* no turbo switch */
-	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
+	PORT_DIPSETTING(    0x04, DEF_STR( Yes ) )
+	PORT_BIT( 0x02, 0x02,   IPT_UNUSED ) /* no turbo switch */
+	PORT_BIT( 0x01, 0x01,   IPT_UNUSED )
 
 	PORT_INCLUDE( mc7007_3_keyboard )
 	PORT_INCLUDE( pcvideo_mc1502 )
@@ -863,7 +869,8 @@ FLOPPY_FORMATS_MEMBER( pc_state::floppy_formats )
 FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( ibmpc_floppies )
-	 SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
+		SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
+		SLOT_INTERFACE( "35dd", FLOPPY_35_DD )
 SLOT_INTERFACE_END
 
 SLOT_INTERFACE_START(ibm5150_com)
@@ -871,52 +878,52 @@ SLOT_INTERFACE_START(ibm5150_com)
 	SLOT_INTERFACE("mouse_systems_mouse", MSYSTEM_SERIAL_MOUSE)
 SLOT_INTERFACE_END
 
-#define MCFG_CPU_PC(mem, port, type, clock, vblankfunc)	\
-	MCFG_CPU_ADD("maincpu", type, clock)				\
-	MCFG_CPU_PROGRAM_MAP(mem##_map)	\
-	MCFG_CPU_IO_MAP(port##_io)	\
-	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", pc_state, vblankfunc, "screen", 0, 1) \
-	MCFG_CPU_CONFIG(i86_address_mask)
+#define MCFG_CPU_PC(mem, port, type, clock, vblankfunc) \
+	MCFG_CPU_ADD("maincpu", type, clock)                \
+	MCFG_CPU_PROGRAM_MAP(mem##_map) \
+	MCFG_CPU_IO_MAP(port##_io)  \
+	MCFG_CPU_CONFIG(i86_address_mask)   \
+	MCFG_TIMER_DRIVER_ADD_SCANLINE("scantimer", pc_state, vblankfunc, "screen", 0, 1)
 
 
 /* F4 Character Displayer */
 static const gfx_layout pc_16_charlayout =
 {
-	8, 16,					/* 8 x 16 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 16,                  /* 8 x 16 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 2048*8, 2049*8, 2050*8, 2051*8, 2052*8, 2053*8, 2054*8, 2055*8 },
-	8*8					/* every char takes 2 x 8 bytes */
+	8*8                 /* every char takes 2 x 8 bytes */
 };
 
 static const gfx_layout pc_8_charlayout =
 {
-	8, 8,					/* 8 x 8 characters */
-	512,					/* 512 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 8,                   /* 8 x 8 characters */
+	512,                    /* 512 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8					/* every char takes 8 bytes */
+	8*8                 /* every char takes 8 bytes */
 };
 
 static const gfx_layout kanji_layout =
 {
-	16, 16,					/* 8 x 8 characters */
-	RGN_FRAC(1,1),					/* 512 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	16, 16,                 /* 8 x 8 characters */
+	RGN_FRAC(1,1),                  /* 512 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ STEP16(0,1) },
 	/* y offsets */
 	{ STEP16(0,16) },
-	16*16					/* every char takes 8 bytes */
+	16*16                   /* every char takes 8 bytes */
 };
 
 static GFXDECODE_START( ibm5150 )
@@ -938,7 +945,7 @@ GFXDECODE_END
 
 static const sn76496_config psg_intf =
 {
-    DEVCB_NULL
+	DEVCB_NULL
 };
 
 
@@ -951,7 +958,7 @@ static const pc_kbdc_interface pc_kbdc_intf =
 
 static MACHINE_CONFIG_START( pccga, pc_state )
 	/* basic machine hardware */
-	MCFG_CPU_PC(pc8, pc8, I8088, 4772720, pc_frame_interrupt)	/* 4,77 MHz */
+	MCFG_CPU_PC(pc8, pc8, I8088, 4772720, pc_frame_interrupt)   /* 4,77 MHz */
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
@@ -966,10 +973,10 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1005,28 +1012,28 @@ MACHINE_CONFIG_END
 
 static const gfx_layout europc_8_charlayout =
 {
-	8, 8,					/* 8 x 8 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 8,                   /* 8 x 8 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*16					/* every char takes 16 bytes */
+	8*16                    /* every char takes 16 bytes */
 };
 
 static const gfx_layout europc_16_charlayout =
 {
-	8, 16,					/* 8 x 16 characters */
-	256,					/* 256 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 16,                  /* 8 x 16 characters */
+	256,                    /* 256 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	8*16					/* every char takes 16 bytes */
+	8*16                    /* every char takes 16 bytes */
 };
 
 static GFXDECODE_START( europc )
@@ -1049,10 +1056,10 @@ static MACHINE_CONFIG_START( europc, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1100,8 +1107,8 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 
@@ -1126,14 +1133,17 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 
 	MCFG_PC_FDC_XT_ADD("fdc")
 
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "35dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("640K")
 MACHINE_CONFIG_END
 
+static MACHINE_CONFIG_DERIVED( t1000sx, t1000hx )
+	MCFG_DEVICE_REMOVE("fdc:0")
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( t1000_16, pc_state )
 	/* basic machine hardware */
@@ -1150,8 +1160,8 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 
@@ -1175,9 +1185,7 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 	MCFG_PC_LPT_ADD("lpt_2", pc_lpt_config)
 
 	MCFG_PC_FDC_XT_ADD("fdc")
-
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "35dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1200,8 +1208,8 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", pc_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 
@@ -1225,9 +1233,7 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 	MCFG_PC_LPT_ADD("lpt_2", pc_lpt_config)
 
 	MCFG_PC_FDC_XT_ADD("fdc")
-
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "35dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1259,7 +1265,7 @@ static const cassette_interface mc1502_cassette_interface =
 
 static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	/* basic machine hardware */
-	MCFG_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt)	/* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
+	MCFG_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt) /* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
 
 	MCFG_MACHINE_START_OVERRIDE(pc_state,pcjr)
 	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pcjr)
@@ -1270,8 +1276,8 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", pcjr_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 
@@ -1333,6 +1339,10 @@ static MACHINE_CONFIG_DERIVED( ibmpcjx, ibmpcjr )
 	MCFG_CPU_PROGRAM_MAP(ibmpcjx_map)
 	MCFG_CPU_IO_MAP(ibmpcjx_io)
 
+	MCFG_DEVICE_REMOVE("upd765:0");
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", ibmpc_floppies, "35dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", ibmpc_floppies, "35dd", 0, pc_state::floppy_formats)
+
 	MCFG_GFXDECODE(ibmpcjx)
 MACHINE_CONFIG_END
 
@@ -1352,13 +1362,13 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 
 	MCFG_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
-	MCFG_I8255_ADD( "ppi8255", mc1502_ppi8255_interface )		/* not complete */
-	MCFG_I8255_ADD( "ppi8255n2", mc1502_ppi8255_interface_2 )	/* not complete */
+	MCFG_I8255_ADD( "ppi8255", mc1502_ppi8255_interface )       /* not complete */
+	MCFG_I8255_ADD( "ppi8255n2", mc1502_ppi8255_interface_2 )   /* not complete */
 
 	MCFG_I8251_ADD( "upd8251", default_i8251_interface )
 
 	/* video hardware */
-	MCFG_FRAGMENT_ADD( pcvideo_mc1502 )				/* only 1 chargen, CGA_FONT dip always 1 */
+	MCFG_FRAGMENT_ADD( pcvideo_mc1502 )             /* only 1 chargen, CGA_FONT dip always 1 */
 	MCFG_GFXDECODE(ibmpcjr)
 
 	/* sound hardware */
@@ -1370,20 +1380,21 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 //  MCFG_PC_LPT_ADD("lpt_0", pc_lpt_config)             /* TODO: non-standard */
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, mc1502_cassette_interface )	// has no motor control
+	MCFG_CASSETTE_ADD( CASSETTE_TAG, mc1502_cassette_interface )    // has no motor control
 
-	MCFG_FD1793_ADD( "vg93", default_wd17xx_interface_2_drives )
-	MCFG_FLOPPY_DRIVE_ADD(FLOPPY_0, ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FD1793x_ADD("vg93", XTAL_8MHz / 8) // clock?
+	MCFG_FLOPPY_DRIVE_ADD("fd0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fd1", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("608K")					/* 96 base + 512 on expansion card */
+	MCFG_RAM_DEFAULT_SIZE("608K")                   /* 96 base + 512 on expansion card */
 MACHINE_CONFIG_END
 
 
 static MACHINE_CONFIG_START( ec1841, pc_state )
 	/* basic machine hardware */
-	MCFG_CPU_PC(ec1841, ec1841, I8086, 4096000, pc_frame_interrupt)	// correct but slow
+	MCFG_CPU_PC(ec1841, ec1841, I8086, 4096000, pc_frame_interrupt) // correct but slow
 //  MCFG_CPU_PC(ec1841, ec1841, I8086, 4772720, pc_frame_interrupt)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
@@ -1448,10 +1459,10 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1503,10 +1514,10 @@ static MACHINE_CONFIG_START( iskr3104, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1557,10 +1568,10 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1596,7 +1607,7 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( zenith, pc_state )
 	/* basic machine hardware */
-	MCFG_CPU_PC(zenith, pc8, I8088, XTAL_14_31818MHz/3, pc_frame_interrupt)	/* 4,77 MHz */
+	MCFG_CPU_PC(zenith, pc8, I8088, XTAL_14_31818MHz/3, pc_frame_interrupt) /* 4,77 MHz */
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
@@ -1611,10 +1622,10 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1665,10 +1676,10 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1719,10 +1730,10 @@ static MACHINE_CONFIG_START( ibm5550, pc_state )
 
 	MCFG_I8255_ADD( "ppi8255", ibm5160_ppi8255_interface )
 
-	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )	/* TODO: Verify model */
-	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )	/* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2], XTAL_1_8432MHz )   /* TODO: Verify model */
+	MCFG_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3], XTAL_1_8432MHz )   /* TODO: Verify model */
 	MCFG_RS232_PORT_ADD( "serport0", ibm5150_serport_config[0], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport1", ibm5150_serport_config[1], ibm5150_com, NULL, NULL )
 	MCFG_RS232_PORT_ADD( "serport2", ibm5150_serport_config[2], ibm5150_com, NULL, NULL )
@@ -1812,9 +1823,9 @@ MACHINE_CONFIG_END
 	ROM_LOAD_ODD("ibmxt.1", 0xf0000, 0x8000, CRC(2a629953))
 
 	/* pc xt mfm controller
-       2 harddisks 17 sectors, 4 head, 613 tracks
-       serves 2 controllers? 0x320-3, 0x324-7, dma 3, irq5
-       movable, works at 0xee000 */
+	   2 harddisks 17 sectors, 4 head, 613 tracks
+	   serves 2 controllers? 0x320-3, 0x324-7, dma 3, irq5
+	   movable, works at 0xee000 */
 	/* western digital 06/28/89 */
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 
@@ -1863,24 +1874,31 @@ ROM_END
 
 ROM_START( ibmpcjx )
 	ROM_REGION(0x100000,"maincpu", ROMREGION_ERASEFF)
+	ROM_DEFAULT_BIOS("unk")
 	ROM_SYSTEM_BIOS( 0, "5601jda", "5601jda" )
 	ROMX_LOAD("5601jda.bin", 0xf0000, 0x10000, CRC(b1e12366) SHA1(751feb16b985aa4f1ec1437493ff77e2ebd5e6a6), ROM_BIOS(1))
 	ROMX_LOAD("basicjx.rom",   0xe8000, 0x08000, NO_DUMP, ROM_BIOS(1)) // boot fails due of this.
 	ROM_SYSTEM_BIOS( 1, "unk", "unk" )
 	ROMX_LOAD("ipljx.rom", 0xe0000, 0x20000, CRC(36a7b2de) SHA1(777db50c617725e149bca9b18cf51ce78f6dc548), ROM_BIOS(2))
+	ROM_FILL(0xff195, 1, 0x20) // the bios has a bug that causes an interrupt
+	ROM_FILL(0xff196, 1, 0x06) // to arrive before a flag is set causing the boot to hang
+	ROM_FILL(0xff197, 1, 0x84) // technically this should be fixed in the PIC by delaying
+	ROM_FILL(0xff198, 1, 0x04) // sending an irq after the mask is changed but there is
+	ROM_FILL(0xff199, 1, 0xe6) // a strong possiblility that will cause problems with later
+	ROM_FILL(0xff19a, 1, 0x21) // faster x86 machines.
 
 	ROM_REGION(0x08100,"gfx1", 0) //TODO: needs a different charset
 	ROM_LOAD("cga.chr",     0x00000, 0x01000, BAD_DUMP CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd)) // from an unknown clone cga card
 
-	ROM_REGION(0x20000,"kanji", 0)
-	ROM_LOAD("kanji.rom",     0x00000, 0x20000, BAD_DUMP CRC(a313f241) SHA1(c2a4ea7eb38c5ad51e6482abca8f836a2c06e17a)) // hand-made rom
+	ROM_REGION(0x38000,"kanji", 0)
+	ROM_LOAD("kanji.rom",     0x00000, 0x38000, BAD_DUMP CRC(eaa6e3c3) SHA1(35554587d02d947fae8446964b1886fff5c9d67f)) // hand-made rom
 ROM_END
 
 #ifdef UNUSED_DEFINITION
 ROM_START( t1000 )
 	ROM_REGION(0x100000,"maincpu", 0)
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))  // not sure about this one
 	ROM_SYSTEM_BIOS( 0, "v010000", "v010000" )
 	ROMX_LOAD("v010000.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "v010100", "v010100" )
@@ -1893,7 +1911,7 @@ ROM_END
 ROM_START( t1000a )
 	ROM_REGION(0x100000,"maincpu", 0)
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))  // not sure about this one
 	ROM_LOAD("v010100.f0", 0xf0000, 0x10000, CRC(b6760881) SHA1(8275e4c48ac09cf36685db227434ca438aebe0b9))
 	ROM_REGION(0x08000,"gfx1", 0)
 	// expects 8x9 charset!
@@ -1903,7 +1921,7 @@ ROM_END
 ROM_START( t1000ex )
 	ROM_REGION(0x100000,"maincpu", 0)
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))  // not sure about this one
 	ROM_LOAD("v010200.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
 	ROM_REGION(0x08000,"gfx1", 0)
 	// expects 8x9 charset!
@@ -1925,7 +1943,7 @@ ROM_END
 ROM_START( t1000sl )
 	ROM_REGION(0x100000,"maincpu", 0)
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))  // not sure about this one
 	ROM_SYSTEM_BIOS( 0, "v010400", "v010400" )
 	ROMX_LOAD("v010400.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "v010401", "v010401" )
@@ -1942,7 +1960,7 @@ ROM_END
 ROM_START( t1000sl2 )
 	ROM_REGION(0x100000,"maincpu", 0)
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))  // not sure about this one
 	ROM_LOAD("v010404.f0", 0xf0000, 0x10000, NO_DUMP )
 	ROM_REGION(0x08000,"gfx1", 0)
 	// expects 8x9 charset!
@@ -1953,7 +1971,7 @@ ROM_END
 ROM_START( t1000sx )
 	ROM_REGION(0x100000,"maincpu", 0)
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))  // not sure about this one
 	ROM_LOAD("v010200.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
 	ROM_REGION(0x08000,"gfx1", 0)
 	// expects 8x9 charset!
@@ -1967,7 +1985,7 @@ ROM_START( t1000tx )
 	ROM_LOAD("t1000tx.bin", 0xf8000, 0x8000, CRC(9b34765c) SHA1(0b07e87f6843393f7d4ca4634b832b0c0bec304e))
 
 	ROM_REGION(0x08000,"gfx1", 0)
-    // expects 8x9 charset!
+	// expects 8x9 charset!
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
 ROM_END
 
@@ -2174,13 +2192,16 @@ ROM_END
 ROM_START( mc1502 )
 	ROM_REGION16_LE(0x100000,"maincpu", 0)
 	ROM_DEFAULT_BIOS("v52")
-	ROM_LOAD( "basic.rom",		  0xe8000, 0x8000, CRC(173d69fa) SHA1(003f872e12f00800e22ab6bbc009d36bfde67b9d))
+	ROM_LOAD( "basic.rom",        0xe8000, 0x8000, CRC(173d69fa) SHA1(003f872e12f00800e22ab6bbc009d36bfde67b9d))
 	ROM_SYSTEM_BIOS(0, "v50", "v5.0")
 	ROMX_LOAD( "monitor_5_0.rom",  0xfc000, 0x4000, CRC(9e97c6a0) SHA1(16a304e8de69ec4d8b92acda6bf28454c361a24f),ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "v52", "v5.2")
 	ROMX_LOAD( "monitor_5_2.rom",  0xfc000, 0x4000, CRC(0e65491e) SHA1(8a4d556473b5e0e59b05fab77c79c29f4d562412),ROM_BIOS(2))
 	ROM_SYSTEM_BIOS(2, "v531", "v5.31")
 	ROMX_LOAD( "monitor_5_31.rom", 0xfc000, 0x4000, CRC(a48295d5) SHA1(6f38977c22f9cc6c2bc6f6e53edc4048ca6b6721),ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "v533", "v5.33")
+	ROMX_LOAD( "0_(cbc0).bin", 0xfc000, 0x2000, CRC(9a55bc4f) SHA1(81da44eec2e52cf04b1fc7053502270f51270590),ROM_BIOS(4))
+	ROMX_LOAD( "1_(dfe2).bin", 0xfe000, 0x2000, CRC(8dec077a) SHA1(d6f6d7cc2183abc77fbd9cd59132de5766f7c458),ROM_BIOS(4))
 	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
 	ROM_LOAD( "symgen.rom", 0x0000, 0x2000, CRC(b2747a52) SHA1(6766d275467672436e91ac2997ac6b77700eba1e))
 ROM_END
@@ -2249,7 +2270,7 @@ ROM_START( olypeopl )
 ROM_END
 
 ROM_START( sx16 )
-    ROM_REGION(0x100000,"maincpu", 0)
+	ROM_REGION(0x100000,"maincpu", 0)
 	ROM_LOAD( "tmm27128ad.bin",0xfc000, 0x4000, CRC(f8543362) SHA1(fef625e260ca89ba02174584bdc12db609f0780e))
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
@@ -2257,18 +2278,29 @@ ROM_START( sx16 )
 ROM_END
 
 ROM_START( compc1 )
-    ROM_REGION(0x100000,"maincpu", 0)
+	ROM_REGION(0x100000,"maincpu", 0)
 	ROM_LOAD( "compc1.bin",0xfc000, 0x4000, CRC(75135d37) SHA1(177283642240fee191ba2d87e1d0c2a377c78ccb))
 	ROM_REGION(0x8000,"gfx1", 0)
 	ROM_LOAD("pc1_char.bin", 0x00000, 0x8000, CRC(4773a945) SHA1(bcc38abecc75d3f641d42987cb0d2ed71d71bc4c))
 ROM_END
 
 ROM_START( pc10iii )
-    ROM_REGION(0x100000,"maincpu", 0)
+	ROM_REGION(0x100000,"maincpu", 0)
 	ROM_LOAD( "pc10iii_bios.bin",0xf8000, 0x8000, CRC(ae9e6a31) SHA1(853ee251cf230818c407a8d13ef060a21c90a8c1))
 	ROM_REGION(0x8000,"gfx1", 0)
 	ROM_LOAD("pc10iii_char.bin", 0x00000, 0x8000, CRC(b406651c) SHA1(856f58353391a74a06ebb8ec9f8333d7d69e5fd6))
 ROM_END
+
+ROM_START( mbc16 )
+	ROM_REGION(0x100000,"maincpu", 0)
+	ROM_LOAD( "mbc16.bin", 0xfc000, 0x4000, CRC(f3e0934a) SHA1(e4b91c3d395be0414e20f23ad4919b8ac52639b2))
+	ROM_REGION(0x2000,"gfx1", 0)
+	//ATI Graphics Solution SR (graphics card, need to make it ISA card)
+	ROM_LOAD( "atigssr.bin", 0x0000, 0x2000, CRC(aca81498) SHA1(0d84c89487ee7a6ac4c9e73fdb30c5fd8aa595f8))
+	// override for now with IBM CGA card
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
+ROM_END
+
 /***************************************************************************
 
   Game driver(s)
@@ -2283,12 +2315,12 @@ COMP( 1984, compc1,     ibm5150,    0,          pccga,      pccga, pc_state,    
 COMP( 1987, pc10iii,    ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Commodore Business Machines", "Commodore PC-10 III" , GAME_NOT_WORKING)
 
 // pcjr (better graphics, better sound)
-COMP( 1983, ibmpcjr,    ibm5150,    0,          ibmpcjr,    tandy1t, pc_state,    pcjr,       "International Business Machines", "IBM PC Jr", GAME_IMPERFECT_COLORS )
-COMP( 1985, ibmpcjx,    ibm5150,    0,          ibmpcjx,    tandy1t, pc_state,    pcjr,       "International Business Machines", "IBM PC JX", GAME_IMPERFECT_COLORS | GAME_NOT_WORKING)
+COMP( 1983, ibmpcjr,    ibm5150,    0,          ibmpcjr,    ibmpcjr,  pc_state,    pcjr,       "International Business Machines", "IBM PC Jr", GAME_IMPERFECT_COLORS )
+COMP( 1985, ibmpcjx,    ibm5150,    0,          ibmpcjx,    ibmpcjr, pc_state,    pcjr,       "International Business Machines", "IBM PC JX", GAME_IMPERFECT_COLORS | GAME_NOT_WORKING)
 
 // tandy 1000
 COMP( 1987, t1000hx,    ibm5150,    0,          t1000hx,    tandy1t, pc_state,    t1000hx,    "Tandy Radio Shack", "Tandy 1000 HX", 0)
-COMP( 1987, t1000sx,    ibm5150,    0,          t1000hx,    tandy1t, pc_state,    t1000hx,    "Tandy Radio Shack", "Tandy 1000 SX", GAME_NOT_WORKING)
+COMP( 1987, t1000sx,    ibm5150,    0,          t1000sx,    tandy1t, pc_state,    t1000hx,    "Tandy Radio Shack", "Tandy 1000 SX", GAME_NOT_WORKING)
 COMP( 1987, t1000tx,    ibm5150,    0,          t1000_286,  tandy1t, pc_state,    t1000hx,    "Tandy Radio Shack", "Tandy 1000 TX", 0)
 COMP( 1989, t1000rl,    ibm5150,    0,          t1000_16,   tandy1t, pc_state,    t1000hx,    "Tandy Radio Shack", "Tandy 1000 RL", 0)
 COMP( 1989, t1000tl2,   ibm5150,    0,          t1000_286,  tandy1t, pc_state,    t1000hx,    "Tandy Radio Shack", "Tandy 1000 TL/2", 0)
@@ -2309,7 +2341,7 @@ COMP( 1987, zdsupers,   ibm5150,    0,          zenith,     pccga, pc_state,    
 
 COMP( 1983, m24,        ibm5150,    0,          olivetti,   pccga, pc_state,      pccga,      "Olivetti", "M24", GAME_NOT_WORKING)
 COMP( 1987, m240,       ibm5150,    0,          olivetti,   pccga, pc_state,      pccga,      "Olivetti", "M240", GAME_NOT_WORKING)
-COMP( 198?, olivm15,    ibm5150,    0,          olivm15,    0, driver_device,	    0,  		"Olivetti", "M15", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 198?, olivm15,    ibm5150,    0,          olivm15,    0, driver_device,       0,          "Olivetti", "M15", GAME_NOT_WORKING | GAME_NO_SOUND)
 
 COMP( 1983, ibm5550,    ibm5150,    0,          ibm5550,    pccga, pc_state,      pccga,      "International Business Machines", "IBM 5550", GAME_NOT_WORKING)
 
@@ -2318,3 +2350,4 @@ COMP( 1985, pc7000,     ibm5150,    0,          pccga,      pccga, pc_state,    
 COMP( 198?, pcd,        ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Siemens", "PC-D", GAME_NOT_WORKING)
 COMP( 198?, olypeopl,   ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Olympia", "People PC", GAME_NOT_WORKING)
 COMP( 1988, sx16,       ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Sanyo", "SX-16", GAME_NOT_WORKING)
+COMP( 198?, mbc16,      ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Sanyo", "MBC-16" , GAME_NOT_WORKING)

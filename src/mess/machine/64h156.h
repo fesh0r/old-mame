@@ -89,9 +89,9 @@
 
 struct c64h156_interface
 {
-	devcb_write_line	m_out_atn_cb;
-	devcb_write_line	m_out_sync_cb;
-	devcb_write_line	m_out_byte_cb;
+	devcb_write_line    m_out_atn_cb;
+	devcb_write_line    m_out_sync_cb;
+	devcb_write_line    m_out_byte_cb;
 };
 
 // ======================> c64h156_device
@@ -101,8 +101,8 @@ class c64h156_device :  public device_t,
 						public c64h156_interface
 {
 public:
-    // construction/destruction
-    c64h156_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	// construction/destruction
+	c64h156_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
 	DECLARE_READ8_MEMBER( yb_r );
 	DECLARE_WRITE8_MEMBER( yb_w );
@@ -110,6 +110,7 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( accl_w );
 	DECLARE_READ_LINE_MEMBER( sync_r );
 	DECLARE_READ_LINE_MEMBER( byte_r );
+	DECLARE_WRITE_LINE_MEMBER( ted_w );
 	DECLARE_WRITE_LINE_MEMBER( mtr_w );
 	DECLARE_WRITE_LINE_MEMBER( oe_w );
 	DECLARE_WRITE_LINE_MEMBER( soe_w );
@@ -117,21 +118,23 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( atni_w );
 	DECLARE_WRITE_LINE_MEMBER( atna_w );
 
+	void set_floppy(legacy_floppy_image_device *floppy);
+
 	void stp_w(int data);
 	void ds_w(int data);
 	void set_side(int side);
 
-	void on_disk_changed(int wp);
+	static void on_disk_change(device_image_interface &image);
 
 protected:
-    // device-level overrides
-    virtual void device_config_complete();
-    virtual void device_start();
+	// device-level overrides
+	virtual void device_config_complete();
+	virtual void device_start();
 
-    // device_execute_interface overrides
+	// device_execute_interface overrides
 	virtual void execute_run();
 
-    int m_icount;
+	int m_icount;
 
 	inline void set_atn_line();
 	inline void read_current_track();
@@ -140,48 +143,50 @@ protected:
 	inline void decode_bit();
 
 private:
-	devcb_resolved_write_line	m_out_atn_func;
-	devcb_resolved_write_line	m_out_sync_func;
-	devcb_resolved_write_line	m_out_byte_func;
+	devcb_resolved_write_line   m_out_atn_func;
+	devcb_resolved_write_line   m_out_sync_func;
+	devcb_resolved_write_line   m_out_byte_func;
 
-	required_device<legacy_floppy_image_device> m_image;
-	optional_shared_ptr<UINT8> m_track_buffer;					// track data buffer
-	optional_shared_ptr<UINT8> m_speed_buffer;					// speed block buffer
+	legacy_floppy_image_device *m_floppy;
+	optional_shared_ptr<UINT8> m_track_buffer;                  // track data buffer
+	optional_shared_ptr<UINT8> m_speed_buffer;                  // speed block buffer
 
 	// track
 	UINT16 m_shift;
-	int m_side;								// disk side
-	int m_track_len;						// track length
-	offs_t m_buffer_pos;					// current byte position within track buffer
-	int m_bit_pos;							// current bit position within track buffer byte
-	int m_bit_count;						// current data byte bit counter
+	int m_side;                             // disk side
+	int m_track_len;                        // track length
+	offs_t m_buffer_pos;                    // current byte position within track buffer
+	int m_bit_pos;                          // current bit position within track buffer byte
+	int m_bit_count;                        // current data byte bit counter
 	int m_cycles_until_next_bit;
 	int m_zero_count;
 	int m_cycles_until_random_flux;
 
 	// motors
-	int m_mtr;								// spindle motor on
+	int m_mtr;                              // spindle motor on
 
 	// signals
-	int m_accl;								// 1/2 MHz select
-	int m_ds;								// density select
-	int m_soe;								// s? output enable
-	int m_oe;								// output enable (0 = write, 1 = read)
+	int m_accl;                             // 1/2 MHz select
+	int m_ds;                               // density select
+	int m_soe;                              // serial output enable
+	int m_oe;                               // output enable (0 = write, 1 = read)
 
 	// IEC
-	int m_atni;								// attention input
-	int m_atna;								// attention acknowledge
+	int m_atni;                             // attention input
+	int m_atna;                             // attention acknowledge
 
 	// read logic
 	int m_last_bit_sync;
 	int m_bit_sync;
 	int m_byte_sync;
+	int m_accl_byte_sync;
 	int m_block_sync;
 	int m_ue7;
 	int m_ue7_tc;
 	int m_uf4;
 	int m_uf4_qb;
 	UINT8 m_ud2;
+	UINT8 m_accl_yb;
 	int m_u4a;
 	int m_u4b;
 	int m_ue3;

@@ -41,7 +41,7 @@
 
 #define ATN (m_atni ^ m_atna)
 
-#define CYCLES_UNTIL_ANALOG_DESYNC		288 // 18 us
+#define CYCLES_UNTIL_ANALOG_DESYNC      288 // 18 us
 
 
 
@@ -98,10 +98,10 @@ inline void c64h156_device::read_current_track()
 	int track_length = G64_BUFFER_SIZE;
 
 	// read track data
-	floppy_drive_read_track_data_info_buffer(m_image, m_side, m_track_buffer, &track_length);
+	floppy_drive_read_track_data_info_buffer(m_floppy, m_side, m_track_buffer, &track_length);
 
 	// extract track length
-	m_track_len = floppy_drive_get_current_track_size(m_image, m_side);
+	m_track_len = floppy_drive_get_current_track_size(m_floppy, m_side);
 
 	// set bit pointer to track start
 	m_buffer_pos = 0;
@@ -329,7 +329,7 @@ inline void c64h156_device::decode_bit()
 
 	int byte_sync = !(uc1b && m_soe && !uf4_qb);
 
-	if (LOG) logerror("BYTE %u SOE %u\n", m_byte_sync, m_soe);
+	if (LOG) logerror("BYTE %u SOE %u\n", byte_sync, m_soe);
 
 	// UD3
 
@@ -365,7 +365,20 @@ inline void c64h156_device::decode_bit()
 	if (m_byte_sync != byte_sync)
 	{
 		m_byte_sync = byte_sync;
-		m_out_byte_func(m_byte_sync);
+
+		if (m_accl)
+		{
+			if (!byte_sync)
+			{
+				m_accl_yb = m_ud2;
+				m_accl_byte_sync = byte_sync;
+				m_out_byte_func(m_accl_byte_sync);
+			}
+		}
+		else
+		{
+			m_out_byte_func(m_byte_sync);
+		}
 	}
 
 	m_uf4_qb = uf4_qb;
@@ -384,38 +397,40 @@ inline void c64h156_device::decode_bit()
 //-------------------------------------------------
 
 c64h156_device::c64h156_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-    : device_t(mconfig, C64H156, "64H156", tag, owner, clock),
-      device_execute_interface(mconfig, *this),
-      m_icount(0),
-	  m_image(*this->owner(), FLOPPY_0),
-	  m_track_buffer(*this, "track_buffer"),
-	  m_speed_buffer(*this, "speed_buffer"),
-	  m_side(0),
-	  m_track_len(0),
-	  m_buffer_pos(0),
-	  m_bit_pos(0),
-	  m_bit_count(0),
-	  m_mtr(0),
-	  m_accl(1),
-	  m_ds(0),
-	  m_soe(0),
-	  m_oe(0),
-	  m_atni(1),
-	  m_atna(1),
-	  m_last_bit_sync(0),
-	  m_bit_sync(0),
-	  m_byte_sync(1),
-	  m_block_sync(1),
-	  m_ue7(0),
-	  m_ue7_tc(0),
-	  m_uf4(0),
-	  m_uf4_qb(0),
-	  m_ud2(0),
-	  m_u4a(0),
-	  m_u4b(0),
-	  m_ue3(0),
-	  m_uc1b(0),
-	  m_wp(0)
+	: device_t(mconfig, C64H156, "64H156", tag, owner, clock),
+		device_execute_interface(mconfig, *this),
+		m_icount(0),
+		m_floppy(NULL),
+		m_track_buffer(*this, "track_buffer"),
+		m_speed_buffer(*this, "speed_buffer"),
+		m_side(0),
+		m_track_len(0),
+		m_buffer_pos(0),
+		m_bit_pos(0),
+		m_bit_count(0),
+		m_mtr(0),
+		m_accl(0),
+		m_ds(0),
+		m_soe(0),
+		m_oe(0),
+		m_atni(1),
+		m_atna(1),
+		m_last_bit_sync(0),
+		m_bit_sync(0),
+		m_byte_sync(1),
+		m_accl_byte_sync(1),
+		m_block_sync(1),
+		m_ue7(0),
+		m_ue7_tc(0),
+		m_uf4(0),
+		m_uf4_qb(0),
+		m_ud2(0),
+		m_accl_yb(0),
+		m_u4a(0),
+		m_u4b(0),
+		m_ue3(0),
+		m_uc1b(0),
+		m_wp(0)
 {
 }
 
@@ -458,12 +473,14 @@ void c64h156_device::device_start()
 	save_item(NAME(m_last_bit_sync));
 	save_item(NAME(m_bit_sync));
 	save_item(NAME(m_byte_sync));
+	save_item(NAME(m_accl_byte_sync));
 	save_item(NAME(m_block_sync));
 	save_item(NAME(m_ue7));
 	save_item(NAME(m_ue7_tc));
 	save_item(NAME(m_uf4));
 	save_item(NAME(m_uf4_qb));
 	save_item(NAME(m_ud2));
+	save_item(NAME(m_accl_yb));
 	save_item(NAME(m_u4a));
 	save_item(NAME(m_u4b));
 	save_item(NAME(m_ue3));
@@ -504,10 +521,17 @@ READ8_MEMBER( c64h156_device::yb_r )
 
 	if (m_soe)
 	{
-		data = m_ud2;
+		if (m_accl)
+		{
+			data = m_accl_yb;
+		}
+		else
+		{
+			data = m_ud2;
+		}
 	}
 
-	if (LOG) logerror("YB read %02x:%02x\n", m_ud2, data);
+	if (LOG) logerror("%s YB read %02x:%02x\n", machine().describe_context(), m_ud2, data);
 
 	return data;
 }
@@ -558,7 +582,32 @@ READ_LINE_MEMBER( c64h156_device::sync_r )
 
 READ_LINE_MEMBER( c64h156_device::byte_r )
 {
-	return m_byte_sync;
+	int state = 1;
+
+	if (m_accl)
+	{
+		state = m_accl_byte_sync;
+	}
+	else
+	{
+		state = m_byte_sync;
+	}
+
+	return state;
+}
+
+
+//-------------------------------------------------
+//  ted_w -
+//-------------------------------------------------
+
+WRITE_LINE_MEMBER( c64h156_device::ted_w )
+{
+	if (m_accl && !m_accl_byte_sync && !state)
+	{
+		m_accl_byte_sync = 1;
+		m_out_byte_func(m_accl_byte_sync);
+	}
 }
 
 
@@ -578,7 +627,7 @@ WRITE_LINE_MEMBER( c64h156_device::mtr_w )
 			read_current_track();
 		}
 
-		floppy_mon_w(m_image, !state);
+		floppy_mon_w(m_floppy, !state);
 
 		m_mtr = state;
 	}
@@ -648,6 +697,20 @@ WRITE_LINE_MEMBER( c64h156_device::atna_w )
 
 
 //-------------------------------------------------
+//  set_floppy -
+//-------------------------------------------------
+
+void c64h156_device::set_floppy(legacy_floppy_image_device *floppy)
+{
+	m_floppy = floppy;
+
+	// install image callbacks
+	floppy_install_unload_proc(m_floppy, c64h156_device::on_disk_change);
+	floppy_install_load_proc(m_floppy, c64h156_device::on_disk_change);
+}
+
+
+//-------------------------------------------------
 //  stp_w -
 //-------------------------------------------------
 
@@ -655,7 +718,7 @@ void c64h156_device::stp_w(int data)
 {
 	if (m_mtr)
 	{
-		int track = floppy_drive_get_current_track(m_image);
+		int track = floppy_drive_get_current_track(m_floppy);
 		int tracks = (data - track) & 0x03;
 
 		if (tracks == 3)
@@ -666,7 +729,7 @@ void c64h156_device::stp_w(int data)
 		if (tracks == -1 || tracks == 1)
 		{
 			// step read/write head
-			floppy_drive_seek(m_image, tracks);
+			floppy_drive_seek(m_floppy, tracks);
 
 			// read new track data
 			read_current_track();
@@ -686,22 +749,22 @@ void c64h156_device::ds_w(int data)
 
 
 //-------------------------------------------------
-//  on_disk_changed -
-//-------------------------------------------------
-
-void c64h156_device::on_disk_changed(int wp)
-{
-	m_wp = wp;
-
-	read_current_track();
-}
-
-
-//-------------------------------------------------
 //  set_side -
 //-------------------------------------------------
 
 void c64h156_device::set_side(int side)
 {
 	m_side = side;
+}
+
+
+//-------------------------------------------------
+//  on_disk_change -
+//-------------------------------------------------
+
+void c64h156_device::on_disk_change(device_image_interface &image)
+{
+	//m_wp = !floppy_wpt_r(image);
+
+	//read_current_track();
 }

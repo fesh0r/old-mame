@@ -22,6 +22,7 @@
 #include "machine/c64_easyflash.h"
 #include "machine/c64_epyx_fast_load.h"
 #include "machine/c64_exos.h"
+#include "machine/c64_fcc.h"
 #include "machine/c64_final.h"
 #include "machine/c64_final3.h"
 #include "machine/c64_fun_play.h"
@@ -52,6 +53,7 @@
 #include "machine/c64_structured_basic.h"
 #include "machine/c64_super_explode.h"
 #include "machine/c64_super_games.h"
+#include "machine/c64_supercpu.h"
 #include "machine/c64_sw8k.h"
 #include "machine/c64_system3.h"
 #include "machine/c64_tdos.h"
@@ -111,9 +113,9 @@
 
 /* Commodore 64 */
 
-INPUT_PORTS_EXTERN( common_cbm_keyboard );	/* shared with c16, c65, c128 */
+INPUT_PORTS_EXTERN( common_cbm_keyboard );  /* shared with c16, c65, c128 */
 INPUT_PORTS_EXTERN( c64_special );
-INPUT_PORTS_EXTERN( c64_controls );			/* shared with c65, c128, cbmb */
+INPUT_PORTS_EXTERN( c64_controls );         /* shared with c65, c128, cbmb */
 
 
 /* Commodore 16 */

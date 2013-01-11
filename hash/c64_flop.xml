@@ -160,6 +160,42 @@
 		</part>
 	</software>
 
+	<software name="metaldst">
+		<description>Metal Dust</description>
+		<year>2012</year>
+		<publisher>Protovision</publisher>
+		<sharedfeat name="compatibility" value="PAL"/>
+		<sharedfeat name="requirement" value="c64_cart:supercpu"/>
+
+		<part name="flop1" interface="floppy_3_5">
+			<feature name="part_id" value="Disk 1"/>
+			<dataarea name="flop" size="819200">
+				<rom name="metal dust (final) disk1-5e0ec0.d81" size="819200" crc="c20c3cf1" sha1="471c7ae222522e3818f0b30591e9b3814965ba38" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop2" interface="floppy_3_5">
+			<feature name="part_id" value="Disk 2"/>
+			<dataarea name="flop" size="819200">
+				<rom name="metal dust (final) disk2-389202.d81" size="819200" crc="877b8d19" sha1="2f04378b47a1190aba5241dfd7ac67c1928ca782" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop3" interface="floppy_3_5">
+			<feature name="part_id" value="Disk 3"/>
+			<dataarea name="flop" size="819200">
+				<rom name="metal dust (final) disk3-33ced1.d81" size="819200" crc="80fc1c80" sha1="b2b7739100a0ec1e3b27058086877e1880e7d5bb" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop4" interface="floppy_3_5">
+			<feature name="part_id" value="Disk 4"/>
+			<dataarea name="flop" size="819200">
+				<rom name="metal dust (final) disk4-69306e.d81" size="819200" crc="764f878f" sha1="9149f25990b7cbd8082ba60ea1b5074cacb0941a" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="miamivic" supported="no">
 		<description>Miami Vice</description>
 		<year>1986</year>
@@ -350,6 +386,20 @@
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="333744">
 				<rom name="basic-kaantaja[amersoft_1984].g64" size="333744" crc="68ffade3" sha1="951e63d05c0911abcc247ff8327b7239fc0c9e86" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="goliath">
+		<description>Goliath-Prommer (Ger)</description>
+		<year>19??</year>
+		<publisher>Rex-Datentechnik</publisher>
+		<sharedfeat name="requirement" value="c64_user:goliath"/>
+		<info name="serial" value="REX 9655" />
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="174848">
+				<rom name="goliath.d64" size="174848" crc="3c4f2931" sha1="5584a2406aab892884207f79065d3320ab0755af" offset="0" />
 			</dataarea>
 		</part>
 	</software>

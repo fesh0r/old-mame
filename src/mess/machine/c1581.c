@@ -146,18 +146,18 @@ READ8_MEMBER( base_c1581_device::cia_pa_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PA0
-        PA1     /RDY
-        PA2
-        PA3     DEV# SEL (SW1)
-        PA4     DEV# SEL (SW1)
-        PA5
-        PA6
-        PA7     /DISK CHNG
+	    PA0
+	    PA1     /RDY
+	    PA2
+	    PA3     DEV# SEL (SW1)
+	    PA4     DEV# SEL (SW1)
+	    PA5
+	    PA6
+	    PA7     /DISK CHNG
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -177,18 +177,18 @@ WRITE8_MEMBER( base_c1581_device::cia_pa_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PA0     SIDE0
-        PA1
-        PA2     /MOTOR
-        PA3
-        PA4
-        PA5     POWER LED
-        PA6     ACT LED
-        PA7
+	    PA0     SIDE0
+	    PA1
+	    PA2     /MOTOR
+	    PA3
+	    PA4
+	    PA5     POWER LED
+	    PA6     ACT LED
+	    PA7
 
-    */
+	*/
 
 	// side select
 	m_floppy->ss_w(BIT(data, 0));
@@ -207,18 +207,18 @@ READ8_MEMBER( base_c1581_device::cia_pb_r )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PB0     DATA IN
-        PB1
-        PB2     CLK IN
-        PB3
-        PB4
-        PB5
-        PB6     /WPRT
-        PB7     ATN IN
+	    PB0     DATA IN
+	    PB1
+	    PB2     CLK IN
+	    PB3
+	    PB4
+	    PB5
+	    PB6     /WPRT
+	    PB7     ATN IN
 
-    */
+	*/
 
 	UINT8 data = 0;
 
@@ -241,18 +241,18 @@ WRITE8_MEMBER( base_c1581_device::cia_pb_w )
 {
 	/*
 
-        bit     description
+	    bit     description
 
-        PB0
-        PB1     DATA OUT
-        PB2
-        PB3     CLK OUT
-        PB4     ATN ACK
-        PB5     FAST SER DIR
-        PB6
-        PB7
+	    PB0
+	    PB1     DATA OUT
+	    PB2
+	    PB3     CLK OUT
+	    PB4     ATN ACK
+	    PB5     FAST SER DIR
+	    PB6
+	    PB7
 
-    */
+	*/
 
 	// data out
 	m_data_out = BIT(data, 1);
@@ -453,23 +453,19 @@ void base_c1581_device::cbm_iec_reset(int state)
 
 void base_c1581_device::update_iec()
 {
-	int atn = m_bus->atn_r();
-
 	m_cia->cnt_w(m_fast_ser_dir || m_bus->srq_r());
 	m_cia->sp_w(m_fast_ser_dir || m_bus->data_r());
+
+	int atn = m_bus->atn_r();
 	m_cia->flag_w(atn);
 
 	// serial data
 	int data = !m_data_out && !(m_atn_ack && !atn);
-
 	if (m_fast_ser_dir) data &= m_sp_out;
-
 	m_bus->data_w(this, data);
 
 	// fast clock
 	int srq = 1;
-
 	if (m_fast_ser_dir) srq &= m_cnt_out;
-
 	m_bus->srq_w(this, srq);
 }

@@ -262,9 +262,9 @@ TIMER_CALLBACK_MEMBER(oric_state::oric_refresh_tape)
 		data |= 1;
 
 	/* "A simple cable to catch the vertical retrace signal !
-        This cable connects the video output for the television/monitor
-    to the via cb1 input. Interrupts can be generated from the vertical
-    sync, and flicker free games can be produced */
+	    This cable connects the video output for the television/monitor
+	to the via cb1 input. Interrupts can be generated from the vertical
+	sync, and flicker free games can be produced */
 
 	input_port_9 = machine().root_device().ioport("FLOPPY")->read();
 	/* cable is enabled? */
@@ -387,8 +387,8 @@ const via6522_interface oric_6522_interface=
 {
 	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_a_func),
 	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_b_func),
-	DEVCB_NULL,				/* printer acknowledge - handled by callback*/
-	DEVCB_NULL,				/* tape input - handled by timer */
+	DEVCB_NULL,             /* printer acknowledge - handled by callback*/
+	DEVCB_NULL,             /* tape input - handled by timer */
 	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_ca2_func),
 	DEVCB_DRIVER_MEMBER(oric_state,oric_via_in_cb2_func),
 	DEVCB_DRIVER_MEMBER(oric_state,oric_via_out_a_func),
@@ -417,19 +417,19 @@ CALL &320 to start, or use BOBY rom.
 static void oric_install_apple2_interface(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
-	device_t *fdc = machine.device("fdc");
+	applefdc_base_device *fdc = machine.device<applefdc_base_device>("fdc");
 	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
 	if (state->m_is_telestrat)
 		return;
 
-	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
-	space.install_legacy_read_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_r));
+	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r), state));
+	space.install_read_handler(0x0310, 0x031f, read8_delegate(FUNC(applefdc_base_device::read), fdc));
 	space.install_read_bank(0x0320, 0x03ff, "bank4");
 
-	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
-	space.install_legacy_write_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_w));
-	state->membank("bank4")->set_base(	state->memregion("maincpu")->base() + 0x014000 + 0x020);
+	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w), state));
+	space.install_write_handler(0x0310, 0x031f, write8_delegate(FUNC(applefdc_base_device::write), fdc));
+	state->membank("bank4")->set_base(  state->memregion("maincpu")->base() + 0x014000 + 0x020);
 }
 
 
@@ -541,15 +541,15 @@ WRITE8_MEMBER(oric_state::apple2_v2_interface_w)
 static void oric_install_apple2_v2_interface(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
-	device_t *fdc = machine.device("fdc");
+	applefdc_base_device *fdc = machine.device<applefdc_base_device>("fdc");
 	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
 
-	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r),state));
-	space.install_legacy_read_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_r));
+	space.install_read_handler(0x0300, 0x030f, read8_delegate(FUNC(oric_state::oric_IO_r), state));
+	space.install_read_handler(0x0310, 0x031f, read8_delegate(FUNC(applefdc_base_device::read), fdc));
 	space.install_read_bank(0x0320, 0x03ff, "bank4");
 
-	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w),state));
-	space.install_legacy_write_handler(*fdc, 0x0310, 0x031f, FUNC(applefdc_w));
+	space.install_write_handler(0x0300, 0x030f, write8_delegate(FUNC(oric_state::oric_IO_w), state));
+	space.install_write_handler(0x0310, 0x031f, write8_delegate(FUNC(applefdc_base_device::write), fdc));
 	space.install_write_handler(0x0380, 0x0383, write8_delegate(FUNC(oric_state::apple2_v2_interface_w),state));
 
 	state->apple2_v2_interface_w(space, 0, 0);
@@ -568,15 +568,15 @@ static void oric_jasmin_set_mem_0x0c000(running_machine &machine)
 {
 	oric_state *state = machine.driver_data<oric_state>();
 	/* assumption:
-    1. It is possible to access all 16k overlay ram.
-    2. If os is enabled, and overlay ram is enabled, all 16k can be accessed.
-    3. if os is disabled, and overlay ram is enabled, jasmin rom takes priority.
-    */
+	1. It is possible to access all 16k overlay ram.
+	2. If os is enabled, and overlay ram is enabled, all 16k can be accessed.
+	3. if os is disabled, and overlay ram is enabled, jasmin rom takes priority.
+	*/
 	if (state->m_is_telestrat)
 		return;
 
 	/* the ram is disabled in the jasmin rom which indicates that jasmin takes
-    priority over the ram */
+	priority over the ram */
 
 	/* basic rom disabled? */
 	if ((state->m_port_3fb_w & 0x01)==0)

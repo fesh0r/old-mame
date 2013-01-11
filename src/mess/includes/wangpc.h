@@ -10,10 +10,10 @@
 #include "machine/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/im6402.h"
-#include "machine/pic8259.h"
-#include "machine/pit8253.h"
-#include "machine/ram.h"
 #include "machine/mc2661.h"
+#include "machine/pit8253.h"
+#include "machine/pic8259.h"
+#include "machine/ram.h"
 #include "machine/upd765.h"
 #include "machine/wangpcbus.h"
 #include "machine/wangpckb.h"
@@ -26,15 +26,15 @@
 #include "machine/wangpc_tig.h"
 #include "machine/wangpc_wdc.h"
 
-#define I8086_TAG		"i8086"
-#define AM9517A_TAG		"am9517a"
-#define I8259A_TAG		"i8259"
-#define I8255A_TAG		"i8255a"
-#define I8253_TAG		"i8253"
-#define IM6402_TAG		"im6402"
-#define SCN2661_TAG		"scn2661"
-#define UPD765_TAG		"upd765"
-#define CENTRONICS_TAG	"centronics"
+#define I8086_TAG       "i8086"
+#define AM9517A_TAG     "am9517a"
+#define I8259A_TAG      "i8259"
+#define I8255A_TAG      "i8255a"
+#define I8253_TAG       "i8253"
+#define IM6402_TAG      "im6402"
+#define SCN2661_TAG     "scn2661"
+#define UPD765_TAG      "upd765"
+#define CENTRONICS_TAG  "centronics"
 
 class wangpc_state : public driver_device
 {
@@ -42,37 +42,37 @@ public:
 	// constructor
 	wangpc_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-		  m_maincpu(*this, I8086_TAG),
-		  m_dmac(*this, AM9517A_TAG),
-		  m_pic(*this, I8259A_TAG),
-		  m_ppi(*this, I8255A_TAG),
-		  m_pit(*this, I8253_TAG),
-		  m_uart(*this, IM6402_TAG),
-		  m_epci(*this, SCN2661_TAG),
-		  m_fdc(*this, UPD765_TAG),
-		  m_ram(*this, RAM_TAG),
-		  m_floppy0(*this, UPD765_TAG ":0:525dd"),
-		  m_floppy1(*this, UPD765_TAG ":1:525dd"),
-		  m_centronics(*this, CENTRONICS_TAG),
-		  m_kb(*this, WANGPC_KEYBOARD_TAG),
-		  m_bus(*this, WANGPC_BUS_TAG),
-		  m_timer2_irq(1),
-		  m_acknlg(1),
-		  m_dav(1),
-		  m_busy(1),
-		  m_dma_eop(1),
-		  m_uart_dr(0),
-		  m_uart_tbre(0),
-		  m_fpu_irq(0),
-		  m_bus_irq2(0),
-		  m_enable_eop(0),
-		  m_disable_dreq2(0),
-		  m_fdc_drq(0),
-		  m_fdc_dd0(0),
-		  m_fdc_dd1(0),
-		  m_fdc_tc(0),
-		  m_ds1(1),
-		  m_ds2(1)
+			m_maincpu(*this, I8086_TAG),
+			m_dmac(*this, AM9517A_TAG),
+			m_pic(*this, I8259A_TAG),
+			m_ppi(*this, I8255A_TAG),
+			m_pit(*this, I8253_TAG),
+			m_uart(*this, IM6402_TAG),
+			m_epci(*this, SCN2661_TAG),
+			m_fdc(*this, UPD765_TAG),
+			m_ram(*this, RAM_TAG),
+			m_floppy0(*this, UPD765_TAG ":0:525dd"),
+			m_floppy1(*this, UPD765_TAG ":1:525dd"),
+			m_centronics(*this, CENTRONICS_TAG),
+			m_kb(*this, WANGPC_KEYBOARD_TAG),
+			m_bus(*this, WANGPC_BUS_TAG),
+			m_timer2_irq(1),
+			m_acknlg(1),
+			m_dav(1),
+			m_busy(1),
+			m_dma_eop(1),
+			m_uart_dr(0),
+			m_uart_tbre(0),
+			m_fpu_irq(0),
+			m_bus_irq2(0),
+			m_enable_eop(0),
+			m_disable_dreq2(0),
+			m_fdc_drq(0),
+			m_fdc_dd0(0),
+			m_fdc_dd1(0),
+			m_fdc_tc(0),
+			m_ds1(false),
+			m_ds2(false)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -93,10 +93,7 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 
-	void select_drive(int drive, bool select);
-	void set_motor(int drive, bool motor);
-	void fdc_reset();
-	void fdc_tc();
+	void select_drive();
 	void check_level1_interrupts();
 	void check_level2_interrupts();
 	void update_fdc_drq();
@@ -165,6 +162,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( busy_w );
 	DECLARE_WRITE_LINE_MEMBER( bus_irq2_w );
 
+	DECLARE_FLOPPY_FORMATS( floppy_formats );
+
 	void fdc_irq(bool state);
 	void fdc_drq(bool state);
 
@@ -195,7 +194,7 @@ public:
 	int m_ds1;
 	int m_ds2;
 
-	int m_led[6]; // HACK until keyboard works
+	int m_led[6];
 };
 
 

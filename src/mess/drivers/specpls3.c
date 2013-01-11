@@ -154,8 +154,9 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "formats/tzx_cas.h"
 
 /* +3 hardware */
-#include "machine/upd765.h"
 #include "machine/ram.h"
+#include "formats/dsk_dsk.h"
+
 
 /****************************************************************************************************/
 /* Spectrum + 3 specific functions */
@@ -286,10 +287,10 @@ void spectrum_plus3_update_memory(running_machine &machine)
 
 static WRITE8_HANDLER(spectrum_plus3_port_7ffd_w)
 {
-	   /* D0-D2: RAM page located at 0x0c000-0x0ffff */
-	   /* D3 - Screen select (screen 0 in ram page 5, screen 1 in ram page 7 */
-	   /* D4 - ROM select - which rom paged into 0x0000-0x03fff */
-	   /* D5 - Disable paging */
+		/* D0-D2: RAM page located at 0x0c000-0x0ffff */
+		/* D3 - Screen select (screen 0 in ram page 5, screen 1 in ram page 7 */
+		/* D4 - ROM select - which rom paged into 0x0000-0x03fff */
+		/* D5 - Disable paging */
 
 	spectrum_state *state = space.machine().driver_data<spectrum_state>();
 
@@ -370,20 +371,25 @@ SLOT_INTERFACE_END
 /* F4 Character Displayer */
 static const gfx_layout spectrum_charlayout =
 {
-	8, 8,					/* 8 x 8 characters */
-	96,					/* 96 characters */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes */
+	8, 8,                   /* 8 x 8 characters */
+	96,                 /* 96 characters */
+	1,                  /* 1 bits per pixel */
+	{ 0 },                  /* no bitplanes */
 	/* x offsets */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	/* y offsets */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8					/* every char takes 8 bytes */
+	8*8                 /* every char takes 8 bytes */
 };
 
 static GFXDECODE_START( specpls3 )
 	GFXDECODE_ENTRY( "maincpu", 0x1fd00, spectrum_charlayout, 0, 8 )
 GFXDECODE_END
+
+
+FLOPPY_FORMATS_MEMBER( spectrum_state::floppy_formats )
+	FLOPPY_DSK_FORMAT
+FLOPPY_FORMATS_END
 
 static MACHINE_CONFIG_DERIVED( spectrum_plus3, spectrum_128 )
 	MCFG_CPU_MODIFY("maincpu")
@@ -395,8 +401,10 @@ static MACHINE_CONFIG_DERIVED( spectrum_plus3, spectrum_128 )
 	MCFG_MACHINE_RESET_OVERRIDE(spectrum_state, spectrum_plus3 )
 
 	MCFG_UPD765A_ADD("upd765", true, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", specpls3_floppies, "3ssdd", 0, floppy_image_device::default_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", specpls3_floppies, "3ssdd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", specpls3_floppies, "3ssdd", 0, spectrum_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", specpls3_floppies, "3ssdd", 0, spectrum_state::floppy_formats)
+
+	MCFG_SOFTWARE_LIST_ADD("flop_list","spectrum_flop")
 MACHINE_CONFIG_END
 
 /***************************************************************************
@@ -476,9 +484,9 @@ ROM_START(sp3eata)
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE         INPUT       INIT    COMPANY     FULLNAME */
-COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus2,	"Amstrad plc",          "ZX Spectrum +2a" , 0 )
-COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3" , 0 )
-COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e" , GAME_UNOFFICIAL )
-COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_UNOFFICIAL )
-COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_UNOFFICIAL )
-COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus, spectrum_state,	plus3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_UNOFFICIAL )
+COMP( 1987, specpl2a, spec128,  0,      spectrum_plus3, spec_plus, spectrum_state,  plus2,  "Amstrad plc",          "ZX Spectrum +2a" , 0 )
+COMP( 1987, specpls3, spec128,  0,      spectrum_plus3, spec_plus, spectrum_state,  plus3,  "Amstrad plc",          "ZX Spectrum +3" , 0 )
+COMP( 2000, specpl3e, spec128,  0,      spectrum_plus3, spec_plus, spectrum_state,  plus3,  "Amstrad plc",          "ZX Spectrum +3e" , GAME_UNOFFICIAL )
+COMP( 2002, sp3e8bit, spec128,  0,      spectrum_plus3, spec_plus, spectrum_state,  plus3,  "Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_UNOFFICIAL )
+COMP( 2002, sp3eata,  spec128,  0,      spectrum_plus3, spec_plus, spectrum_state,  plus3,  "Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_UNOFFICIAL )
+COMP( 2002, sp3ezcf,  spec128,  0,      spectrum_plus3, spec_plus, spectrum_state,  plus3,  "Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_UNOFFICIAL )
