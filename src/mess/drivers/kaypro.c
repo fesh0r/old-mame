@@ -147,8 +147,12 @@ static const z80_daisy_config kaypro2x_daisy_chain[] =
 	{ NULL }
 };
 
-static const mc6845_interface kaypro2x_crtc = {
+
+
+static MC6845_INTERFACE( kaypro2x_crtc )
+{
 	"screen",           /* name of screen */
+	false,
 	7,              /* number of dots per character */
 	NULL,
 	kaypro2x_update_row,        /* handler to display a scanline */
@@ -217,7 +221,7 @@ static const floppy_interface kayproii_floppy_interface =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	LEGACY_FLOPPY_OPTIONS_NAME(kayproii),
-	NULL,
+	"floppy_5_25",
 	NULL
 };
 
@@ -230,7 +234,7 @@ static const floppy_interface kaypro2x_floppy_interface =
 	DEVCB_NULL,
 	FLOPPY_STANDARD_5_25_DSHD,
 	LEGACY_FLOPPY_OPTIONS_NAME(kaypro2x),
-	NULL,
+	"floppy_5_25",
 	NULL
 };
 
@@ -272,6 +276,7 @@ static MACHINE_CONFIG_START( kayproii, kaypro_state )
 	MCFG_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )  /* start at 300 baud */
 
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(kayproii_floppy_interface)
+	MCFG_SOFTWARE_LIST_ADD("flop_list","kayproii")
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( kaypro4, kayproii )

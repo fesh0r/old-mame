@@ -564,9 +564,11 @@ static INPUT_PORTS_START( bml3 )
 	PORT_BIT(0xffe00000,IP_ACTIVE_HIGH,IPT_UNKNOWN)
 INPUT_PORTS_END
 
-static const mc6845_interface mc6845_intf =
+
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
@@ -613,7 +615,6 @@ INTERRUPT_GEN_MEMBER(bml3_state::bml3_irq)
 
 INTERRUPT_GEN_MEMBER(bml3_state::bml3_timer_firq)
 {
-
 	if(!m_firq_mask)
 	{
 		m_maincpu->set_input_line(M6809_FIRQ_LINE, ASSERT_LINE);
@@ -631,7 +632,6 @@ void bml3_state::palette_init()
 
 void bml3_state::machine_start()
 {
-
 	beep_set_frequency(machine().device(BEEPER_TAG),1200); //guesswork
 	beep_set_state(machine().device(BEEPER_TAG),0);
 	m_extram = auto_alloc_array(machine(),UINT8,0x10000);

@@ -69,9 +69,8 @@ static int msx_probe_type (UINT8* pmem, int size)
 		return (asc8 > asc16) ? 4 : 5;
 }
 
-DEVICE_IMAGE_LOAD (msx_cart)
+DEVICE_IMAGE_LOAD_MEMBER(msx_state,msx_cart)
 {
-	msx_state *state = image.device().machine().driver_data<msx_state>();
 	int size;
 	int size_aligned;
 	UINT8 *mem;
@@ -106,16 +105,22 @@ DEVICE_IMAGE_LOAD (msx_cart)
 				{ "NOMAPPER",           SLOT_EMPTY },
 				{ "M60002-0125SP",      SLOT_ASCII8 },
 				{ "LZ93A13",            SLOT_ASCII8 },
-				{ "LZ93A13-16",         SLOT_ASCII16 },
-				{ "M60002-0125SP-16",   SLOT_ASCII16 },
-				{ "IREM TAM-S1",        SLOT_RTYPE },
-				{ "MR6401",             SLOT_ASCII16 },
 				{ "NEOS MR6401",        SLOT_ASCII8 },
 				{ "BS6202",             SLOT_ASCII8 },
 				{ "BS6101",             SLOT_ASCII8 },
+				{ "M60002-0125SP-16",   SLOT_ASCII16 },
+				{ "LZ93A13-16",         SLOT_ASCII16 },
 				{ "BS6101-16",          SLOT_ASCII16 },
-				{ "KONAMI-SCC",         SLOT_KONAMI_SCC },
+				{ "MR6401",             SLOT_ASCII16 },
+				{ "CROSS-BLAIM",        SLOT_CROSS_BLAIM },
+				{ "GMASTER2",           SLOT_GAMEMASTER2 },
+				{ "80IN1",              SLOT_KOREAN_80IN1 },
+				{ "90IN1",              SLOT_KOREAN_90IN1 },
+				{ "126IN1",             SLOT_KOREAN_126IN1 },
+				{ "FM-PAC",             SLOT_FMPAC },
+				{ "IREM TAM-S1",        SLOT_RTYPE },
 				{ "KONAMI",             SLOT_KONAMI },
+				{ "KONAMI-SCC",         SLOT_KONAMI_SCC },
 				{ "SUPERLODE",          SLOT_SUPERLODERUNNER },
 				{ "MAJUTSUSHI",         SLOT_MAJUTSUSHI },
 			};
@@ -327,15 +332,14 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	if (msx_slot_list[type].loadsram)
 		msx_slot_list[type].loadsram (image.device().machine(), st);
 
-	state->m_cart_state[id] = st;
+	m_cart_state[id] = st;
 	msx_memory_set_carts (image.device().machine());
 
 	return IMAGE_INIT_PASS;
 }
 
-DEVICE_IMAGE_UNLOAD (msx_cart)
+DEVICE_IMAGE_UNLOAD_MEMBER(msx_state, msx_cart)
 {
-	msx_state *state = image.device().machine().driver_data<msx_state>();
 	int id = -1;
 
 	if (strcmp(image.device().tag(),":cart1")==0)
@@ -350,8 +354,8 @@ DEVICE_IMAGE_UNLOAD (msx_cart)
 		return;
 	}
 
-	if (msx_slot_list[state->m_cart_state[id]->m_type].savesram)
-		msx_slot_list[state->m_cart_state[id]->m_type].savesram (image.device().machine(), state->m_cart_state[id]);
+	if (msx_slot_list[m_cart_state[id]->m_type].savesram)
+		msx_slot_list[m_cart_state[id]->m_type].savesram (machine(), m_cart_state[id]);
 }
 
 void msx_vdp_interrupt(device_t *, v99x8_device &device, int i)
@@ -842,7 +846,6 @@ static void msx_memory_init (running_machine &machine)
 	state->layout = layout;
 
 	for (; layout->entry != MSX_LAYOUT_LAST; layout++) {
-
 		switch (layout->entry) {
 		case MSX_LAYOUT_SLOT_ENTRY:
 			prim = layout->slot_primary;
@@ -895,7 +898,6 @@ static void msx_memory_init (running_machine &machine)
 
 			if (!st) {
 				switch (slot->mem_type) {
-
 				case MSX_MEM_HANDLER:
 				case MSX_MEM_ROM:
 					mem = machine.root_device().memregion("maincpu")->base() + option;

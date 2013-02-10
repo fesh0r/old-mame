@@ -262,7 +262,7 @@ static const ay8910_interface svi318_ay8910_interface =
 
 WRITE_LINE_MEMBER(svi318_state::vdp_interrupt)
 {
-	machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
+	m_maincpu->set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 static TMS9928A_INTERFACE(svi318_tms9928a_interface)
@@ -299,9 +299,8 @@ static MACHINE_CONFIG_FRAGMENT( svi318_cartslot )
 	MCFG_CARTSLOT_EXTENSION_LIST("rom")
 	MCFG_CARTSLOT_NOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("svi318_cart")
-	MCFG_CARTSLOT_START(svi318_cart)
-	MCFG_CARTSLOT_LOAD(svi318_cart)
-	MCFG_CARTSLOT_UNLOAD(svi318_cart)
+	MCFG_CARTSLOT_LOAD(svi318_state,svi318_cart)
+	MCFG_CARTSLOT_UNLOAD(svi318_state,svi318_cart)
 
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","svi318_cart")
@@ -386,9 +385,11 @@ static MACHINE_CONFIG_DERIVED( svi328n, svi318n )
 	MCFG_RAM_EXTRA_OPTIONS("96K,160K")
 MACHINE_CONFIG_END
 
-static const mc6845_interface svi806_crtc6845_interface =
+
+static MC6845_INTERFACE( svi806_crtc6845_interface )
 {
 	"svi806",
+	false,
 	8 /*?*/,
 	NULL,
 	svi806_crtc6845_update_row,

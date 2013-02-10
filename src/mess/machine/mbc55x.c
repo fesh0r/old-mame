@@ -126,10 +126,9 @@ WRITE8_MEMBER(mbc55x_state::mbcpic8259_w)
 	pic8259_w(m_pic, space, offset>>1, data);
 }
 
-static IRQ_CALLBACK(mbc55x_irq_callback)
+IRQ_CALLBACK_MEMBER(mbc55x_state::mbc55x_irq_callback)
 {
-	mbc55x_state *state = device->machine().driver_data<mbc55x_state>();
-	return pic8259_acknowledge( state->m_pic );
+	return m_pic->inta_r();
 }
 
 /* PIT8253 Configuration */
@@ -140,12 +139,12 @@ const struct pit8253_config mbc55x_pit8253_config =
 		{
 			PIT_C0_CLOCK,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE(PIC8259_TAG, pic8259_ir0_w)
+			DEVCB_DEVICE_LINE_MEMBER(PIC8259_TAG, pic8259_device, ir0_w)
 		},
 		{
 			PIT_C1_CLOCK,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE(PIC8259_TAG, pic8259_ir1_w)
+			DEVCB_DEVICE_LINE_MEMBER(PIC8259_TAG, pic8259_device, ir1_w)
 		},
 		{
 			PIT_C2_CLOCK,
@@ -299,7 +298,7 @@ const i8251_interface mbc55x_i8251a_interface =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(PIC8259_TAG, pic8259_ir3_w),
+	DEVCB_DEVICE_LINE_MEMBER(PIC8259_TAG, pic8259_device, ir3_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL
@@ -388,7 +387,7 @@ void mbc55x_state::machine_reset()
 {
 	set_ram_size(machine());
 	keyboard_reset(machine());
-	machine().device(MAINCPU_TAG)->execute().set_irq_acknowledge_callback(mbc55x_irq_callback);
+	machine().device(MAINCPU_TAG)->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(mbc55x_state::mbc55x_irq_callback),this));
 }
 
 void mbc55x_state::machine_start()

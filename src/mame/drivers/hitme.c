@@ -32,7 +32,6 @@
 
 TILE_GET_INFO_MEMBER(hitme_state::get_hitme_tile_info)
 {
-
 	/* the code is the low 6 bits */
 	UINT8 code = m_videoram[tile_index] & 0x3f;
 	SET_TILE_INFO_MEMBER(0, code, 0, 0);
@@ -41,7 +40,6 @@ TILE_GET_INFO_MEMBER(hitme_state::get_hitme_tile_info)
 
 WRITE8_MEMBER(hitme_state::hitme_vidram_w)
 {
-
 	/* mark this tile dirty */
 	m_videoram[offset] = data;
 	m_tilemap->mark_tile_dirty(offset);
@@ -128,22 +126,21 @@ UINT32 hitme_state::screen_update_barricad(screen_device &screen, bitmap_ind16 &
  *
  *************************************/
 
-static UINT8 read_port_and_t0( running_machine &machine, int port )
+UINT8 hitme_state::read_port_and_t0( int port )
 {
-	hitme_state *state = machine.driver_data<hitme_state>();
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3" };
 
-	UINT8 val = machine.root_device().ioport(portnames[port])->read();
-	if (machine.time() > state->m_timeout_time)
+	UINT8 val = machine().root_device().ioport(portnames[port])->read();
+	if (machine().time() > m_timeout_time)
 		val ^= 0x80;
 	return val;
 }
 
 
-static UINT8 read_port_and_t0_and_hblank( running_machine &machine, int port )
+UINT8 hitme_state::read_port_and_t0_and_hblank( int port )
 {
-	UINT8 val = read_port_and_t0(machine, port);
-	if (machine.primary_screen->hpos() < (machine.primary_screen->width() * 9 / 10))
+	UINT8 val = read_port_and_t0(port);
+	if (machine().primary_screen->hpos() < (machine().primary_screen->width() * 9 / 10))
 		val ^= 0x04;
 	return val;
 }
@@ -151,25 +148,25 @@ static UINT8 read_port_and_t0_and_hblank( running_machine &machine, int port )
 
 READ8_MEMBER(hitme_state::hitme_port_0_r)
 {
-	return read_port_and_t0_and_hblank(machine(), 0);
+	return read_port_and_t0_and_hblank(0);
 }
 
 
 READ8_MEMBER(hitme_state::hitme_port_1_r)
 {
-	return read_port_and_t0(machine(), 1);
+	return read_port_and_t0(1);
 }
 
 
 READ8_MEMBER(hitme_state::hitme_port_2_r)
 {
-	return read_port_and_t0_and_hblank(machine(), 2);
+	return read_port_and_t0_and_hblank(2);
 }
 
 
 READ8_MEMBER(hitme_state::hitme_port_3_r)
 {
-	return read_port_and_t0(machine(), 3);
+	return read_port_and_t0(3);
 }
 
 
@@ -308,7 +305,6 @@ void hitme_state::machine_start()
 
 void hitme_state::machine_reset()
 {
-
 	m_timeout_time = attotime::zero;
 }
 

@@ -7,6 +7,7 @@
 
 #include "emu.h"
 #include "psxcard.h"
+#include "machine/psxcport.h"
 
 //
 //
@@ -18,33 +19,36 @@
 //
 //
 
+static const int block_size = 128;
+static const int card_size = block_size * 1024;
+
 const device_type PSXCARD = &device_creator<psxcard_device>;
 
 enum transfer_states
 {
 	state_illegal=0,
 	state_command,
-	state_cmdack_1,
-	state_cmdack_2,
+	state_cmdack,
+	state_wait,
 	state_addr_hi,
 	state_addr_lo,
 	state_read,
 	state_write,
-	state_writeack_1,
 	state_writeack_2,
-	state_writechk
+	state_writechk,
+	state_end
 };
 
 psxcard_device::psxcard_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, PSXCARD, "Sony PSX Memory Card", tag, owner, clock)
+	: device_t(mconfig, PSXCARD, "Sony PSX Memory Card", tag, owner, clock),
+	device_image_interface(mconfig, *this)
 {
 }
 
 void psxcard_device::device_start()
 {
-	cache=new unsigned char [128*1024];
-
-	memset(cache, 0, 128*1024);
+	m_owner = dynamic_cast<psx_controller_port_device *>(owner());
+	m_ack_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(psxcard_device::ack_timer), this));
 
 	// save state registrations
 /*  save_item(NAME(pkt));
@@ -60,6 +64,22 @@ void psxcard_device::device_reset()
 {
 	state = state_illegal;
 	addr = 0;
+
+	m_bit = 0;
+	m_count = 0;
+	m_pad = false;
+	m_idata = 0;
+
+	m_clock = true;
+	m_sel = true;
+	m_rx = true;
+	m_ack = true;
+	m_owner->ack();
+}
+
+void psxcard_device::device_config_complete()
+{
+	update_names(PSXCARD, "memcard", "mc");
 }
 
 //
@@ -73,7 +93,7 @@ bool psxcard_device::transfer(UINT8 to, UINT8 *from)
 	switch (state)
 	{
 		case state_illegal:
-			if (to == 0x81)
+			if ((to == 0x81) && is_loaded())
 			{
 //              printf("CARD: begin\n");
 				state = state_command;
@@ -87,39 +107,36 @@ bool psxcard_device::transfer(UINT8 to, UINT8 *from)
 
 		case state_command:
 			cmd=to;
-			*from=0x00;
-			state=state_cmdack_1;
-			break;
-
-		case state_cmdack_1:
-			//assert(to==0);
 			*from=0x5a;
-			state=state_cmdack_2;
+			state=state_cmdack;
 			break;
 
-		case state_cmdack_2:
-			//assert(to==0);
+		case state_cmdack:
 			*from=0x5d;
+			state=state_wait;
+			break;
+
+		case state_wait:
+			*from=0x00;
 			state=state_addr_hi;
 			break;
 
 		case state_addr_hi:
 			addr=(to<<8);
 //          printf("addr_hi: %02x, addr = %x\n", to, addr);
-			*from=0;
+			*from=to;
 			state=state_addr_lo;
 			break;
 
 		case state_addr_lo:
 			addr|=(to&0xff);
 //          printf("addr_lo: %02x, addr = %x, cmd = %x\n", to, addr, cmd);
-			*from=(addr>>8);
 
 			switch (cmd)
 			{
 				case 'R':   // 0x52
 				{
-					pkt[0]=0x5c;
+					pkt[0]=*from=0x5c;
 					pkt[1]=0x5d;
 					pkt[2]=(addr>>8);
 					pkt[3]=(addr&0xff);
@@ -127,7 +144,7 @@ bool psxcard_device::transfer(UINT8 to, UINT8 *from)
 					pkt[4+128]=checksum_data(&pkt[2],128+2);
 					pkt[5+128]=0x47;
 					pkt_sz=6+128;
-					pkt_ptr=0;
+					pkt_ptr=1;
 					state=state_read;
 					break;
 				}
@@ -138,6 +155,7 @@ bool psxcard_device::transfer(UINT8 to, UINT8 *from)
 					pkt_sz=129+2;
 					pkt_ptr=2;
 					state=state_write;
+					*from=to;
 					break;
 				}
 				default:
@@ -156,21 +174,18 @@ bool psxcard_device::transfer(UINT8 to, UINT8 *from)
 					printf("card: read finished\n");
 				#endif
 
-				state=state_illegal;
-				ret=false;
+				state=state_end;
 			}
 			break;
 
 		case state_write:
-			*from=(pkt_ptr==0)?(addr&0xff):pkt[pkt_ptr-1];
+			*from=to;
 			pkt[pkt_ptr++]=to;
 			if (pkt_ptr==pkt_sz)
-				state=state_writeack_1;
-			break;
-
-		case state_writeack_1:
-			*from=0x5c;
-			state=state_writeack_2;
+			{
+				*from=0x5c;
+				state=state_writeack_2;
+			}
 			break;
 
 		case state_writeack_2:
@@ -198,10 +213,14 @@ bool psxcard_device::transfer(UINT8 to, UINT8 *from)
 
 				*from='N';
 			}
-			state=state_illegal;
-			ret=false;
+			state=state_end;
 			break;
 		}
+
+		case state_end:
+			ret = false;
+			state = state_illegal;
+			break;
 
 		default: /*assert(0);*/ ret=false; break;
 	}
@@ -219,12 +238,13 @@ void psxcard_device::read_card(const unsigned short addr, unsigned char *buf)
 		printf("card: read block %d\n",addr);
 	#endif
 
-	if (addr<1024)
+	if (addr<(card_size/block_size))
 	{
-		memcpy(buf,cache+(addr*128),128);
+		fseek(addr*block_size, SEEK_SET);
+		fread(buf, block_size);
 	} else
 	{
-		memset(buf,0,128);
+		memset(buf,0,block_size);
 	}
 }
 
@@ -238,15 +258,12 @@ void psxcard_device::write_card(const unsigned short addr, unsigned char *buf)
 		printf("card: write block %d\n",addr);
 	#endif
 
-	if (addr<1024)
+	if (addr<(card_size/block_size))
 	{
-		memcpy(cache+(addr*128),buf,128);
+		fseek(addr*block_size, SEEK_SET);
+		fwrite(buf, block_size);
 	}
 }
-
-//
-//
-//
 
 unsigned char psxcard_device::checksum_data(const unsigned char *buf, const unsigned int sz)
 {
@@ -254,4 +271,73 @@ unsigned char psxcard_device::checksum_data(const unsigned char *buf, const unsi
 	int left=sz;
 	while (--left) chk^=*buf++;
 	return chk;
+}
+
+bool psxcard_device::call_load()
+{
+	if(length() != card_size)
+		return IMAGE_INIT_FAIL;
+	return IMAGE_INIT_PASS;
+}
+
+bool psxcard_device::call_create(int format_type, option_resolution *format_options)
+{
+	UINT8 block[block_size];
+	int i, ret;
+
+	memset(block, '\0', block_size);
+	for(i = 0; i < (card_size/block_size); i++)
+	{
+		ret = fwrite(block, block_size);
+		if(ret != block_size)
+			return IMAGE_INIT_FAIL;
+	}
+	return IMAGE_INIT_PASS;
+}
+
+void psxcard_device::do_card()
+{
+	if(!m_bit)
+	{
+		m_idata = 0;
+		if(!m_count)
+			m_odata = 0xff;
+	}
+
+	m_rx = (m_odata & (1 << m_bit)) ? true : false;
+	m_idata |= (m_owner->tx_r()?1:0) << m_bit;
+	m_bit = (m_bit + 1) % 8;
+
+	if(!m_bit)
+	{
+		if((!m_count) && !(m_idata & 0x80))
+		{
+			m_pad = true;
+			return;
+		}
+
+		if(transfer(m_idata, &m_odata))
+		{
+			m_count++;
+			m_ack_timer->adjust(attotime::from_usec(10), 0);
+		}
+		else
+			m_count = 0;
+	}
+}
+
+void psxcard_device::ack_timer(void *ptr, int param)
+{
+	m_ack = param;
+	m_owner->ack();
+
+	if(!param)
+		m_ack_timer->adjust(attotime::from_usec(2), 1);
+}
+
+void psxcard_device::sel_w(bool state)
+{
+	if(state && !m_sel)
+		reset();
+	m_sel = state;
 }

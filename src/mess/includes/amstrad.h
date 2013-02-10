@@ -189,6 +189,10 @@ public:
 	void aleste_interrupt(bool state);
 
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
+
+	IRQ_CALLBACK_MEMBER(amstrad_cpu_acknowledge_int);
+
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( amstrad_plus_cartridge );
 };
 
 
@@ -201,8 +205,6 @@ WRITE_LINE_DEVICE_HANDLER( cpc_romdis );
 WRITE_LINE_DEVICE_HANDLER( cpc_romen );
 
 SNAPSHOT_LOAD( amstrad );
-
-DEVICE_IMAGE_LOAD(amstrad_plus_cartridge);
 
 extern const mc6845_interface amstrad_mc6845_intf;
 extern const mc6845_interface amstrad_plus_mc6845_intf;

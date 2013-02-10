@@ -63,8 +63,6 @@ Notes:
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 #include "includes/gotcha.h"
-#include "video/decospr.h"
-
 
 WRITE16_MEMBER(gotcha_state::gotcha_lamps_w)
 {
@@ -240,7 +238,6 @@ GFXDECODE_END
 
 void gotcha_state::machine_start()
 {
-
 	m_audiocpu = machine().device<cpu_device>("audiocpu");
 
 	save_item(NAME(m_banksel));

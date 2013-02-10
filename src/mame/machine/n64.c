@@ -1842,7 +1842,6 @@ int n64_periphs::pif_channel_handle_command(int channel, int slength, UINT8 *sda
 			////printf("Write mempak at %04x\n", address);
 			if (address >= 0x8000)
 			{
-
 			}
 			else
 			{
@@ -2384,9 +2383,9 @@ WRITE32_MEMBER( n64_periphs::pif_ram_w )
 	signal_rcp_interrupt(SI_INTERRUPT);
 }
 
-static void n64_machine_stop(running_machine &machine)
+void n64_state::n64_machine_stop()
 {
-	n64_periphs *periphs = machine.device<n64_periphs>("rcp");
+	n64_periphs *periphs = machine().device<n64_periphs>("rcp");
 
 	if( periphs->m_nvram_image == NULL )
 		return;
@@ -2419,7 +2418,7 @@ void n64_state::machine_start()
 	rspdrc_add_imem(machine().device("rsp"), rsp_imem);
 
 	/* add a hook for battery save */
-	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(n64_machine_stop),&machine()));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(n64_state::n64_machine_stop),this));
 }
 
 void n64_state::machine_reset()

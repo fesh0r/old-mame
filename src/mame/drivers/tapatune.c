@@ -77,7 +77,6 @@ public:
 
 WRITE16_MEMBER(tapatune_state::palette_w)
 {
-
 	//logerror("Palette write: offset = %02x, data = %04x, mask = %04x\n", offset, data, mem_mask );
 	switch(offset)
 	{
@@ -94,7 +93,6 @@ WRITE16_MEMBER(tapatune_state::palette_w)
 
 READ16_MEMBER(tapatune_state::read_from_z80)
 {
-
 	//logerror("Reading data from Z80: index = %02x, data = %02x\n", m_z80_to_68k_index, m_z80_to_68k_data );
 
 	switch( offset )
@@ -108,7 +106,6 @@ READ16_MEMBER(tapatune_state::read_from_z80)
 
 WRITE16_MEMBER(tapatune_state::write_to_z80)
 {
-
 	switch( offset )
 	{
 		case 0:
@@ -362,9 +359,10 @@ WRITE_LINE_MEMBER(tapatune_state::crtc_vsync)
 	machine().device("maincpu")->execute().set_input_line(2, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const mc6845_interface h46505_intf =
+static MC6845_INTERFACE( h46505_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	5,          /* number of pixels per video memory address */
 	begin_update,/* before pixel update callback */
 	update_row, /* row update callback */

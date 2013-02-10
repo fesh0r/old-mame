@@ -91,7 +91,6 @@ static const eeprom_interface eeprom_intf =
 /* A1, A5 and A6 don't go to the 053247. */
 READ16_MEMBER(xexex_state::K053247_scattered_word_r)
 {
-
 	if (offset & 0x0031)
 		return m_spriteram[offset];
 	else
@@ -103,7 +102,6 @@ READ16_MEMBER(xexex_state::K053247_scattered_word_r)
 
 WRITE16_MEMBER(xexex_state::K053247_scattered_word_w)
 {
-
 	if (offset & 0x0031)
 		COMBINE_DATA(m_spriteram + offset);
 	else
@@ -162,7 +160,6 @@ WRITE16_MEMBER(xexex_state::spriteram_mirror_w)
 
 READ16_MEMBER(xexex_state::xexex_waitskip_r)
 {
-
 	if (space.device().safe_pc() == 0x1158)
 	{
 		space.device().execute().spin_until_trigger(m_resume_trigger);
@@ -206,7 +203,6 @@ WRITE16_MEMBER(xexex_state::control2_w)
 
 WRITE16_MEMBER(xexex_state::sound_cmd1_w)
 {
-
 	if(ACCESSING_BITS_0_7)
 	{
 		// anyone knows why 0x1a keeps lurking the sound queue in the world version???
@@ -249,15 +245,14 @@ WRITE8_MEMBER(xexex_state::sound_bankswitch_w)
 static void ym_set_mixing(device_t *device, double left, double right)
 {
 	xexex_state *state = device->machine().driver_data<xexex_state>();
-	flt_volume_set_volume(state->m_filter1l, (71.0 * left) / 55.0);
-	flt_volume_set_volume(state->m_filter1r, (71.0 * right) / 55.0);
-	flt_volume_set_volume(state->m_filter2l, (71.0 * left) / 55.0);
-	flt_volume_set_volume(state->m_filter2r, (71.0 * right) / 55.0);
+	state->m_filter1l->flt_volume_set_volume((71.0 * left) / 55.0);
+	state->m_filter1r->flt_volume_set_volume((71.0 * right) / 55.0);
+	state->m_filter2l->flt_volume_set_volume((71.0 * left) / 55.0);
+	state->m_filter2r->flt_volume_set_volume((71.0 * right) / 55.0);
 }
 
 TIMER_CALLBACK_MEMBER(xexex_state::dmaend_callback)
 {
-
 	if (m_cur_control2 & 0x0040)
 	{
 		// foul-proof (CPU0 could be deactivated while we wait)
@@ -445,10 +440,10 @@ static const k053252_interface xexex_k053252_intf =
 	0, 0
 };
 
-static void xexex_postload(running_machine &machine)
+void xexex_state::xexex_postload()
 {
-	parse_control2(machine);
-	reset_sound_region(machine);
+	parse_control2(machine());
+	reset_sound_region(machine());
 }
 
 void xexex_state::machine_start()
@@ -467,10 +462,10 @@ void xexex_state::machine_start()
 	m_k056832 = machine().device("k056832");
 	m_k054338 = machine().device("k054338");
 	m_k054539 = machine().device("k054539");
-	m_filter1l = machine().device("filter1l");
-	m_filter1r = machine().device("filter1r");
-	m_filter2l = machine().device("filter2l");
-	m_filter2r = machine().device("filter2r");
+	m_filter1l = machine().device<filter_volume_device>("filter1l");
+	m_filter1r = machine().device<filter_volume_device>("filter1r");
+	m_filter2l = machine().device<filter_volume_device>("filter2l");
+	m_filter2r = machine().device<filter_volume_device>("filter2r");
 
 	save_item(NAME(m_cur_alpha));
 	save_item(NAME(m_sprite_colorbase));
@@ -482,7 +477,7 @@ void xexex_state::machine_start()
 
 	save_item(NAME(m_cur_control2));
 	save_item(NAME(m_cur_sound_region));
-	machine().save().register_postload(save_prepost_delegate(FUNC(xexex_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(xexex_state::xexex_postload), this));
 
 	m_dmadelay_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(xexex_state::dmaend_callback),this));
 }
@@ -560,13 +555,13 @@ static MACHINE_CONFIG_START( xexex, xexex_state )
 	MCFG_SOUND_ROUTE(1, "lspeaker", 1.0)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
-	MCFG_SOUND_ADD("filter1l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("filter1l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("filter1r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("filter1r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
-	MCFG_SOUND_ADD("filter2l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("filter2l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("filter2r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("filter2r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_CONFIG_END
 
@@ -670,7 +665,6 @@ ROM_END
 
 DRIVER_INIT_MEMBER(xexex_state,xexex)
 {
-
 	m_strip_0x1a = 0;
 
 	if (!strcmp(machine().system().name, "xexex"))

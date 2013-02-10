@@ -673,7 +673,6 @@ TIMER_CALLBACK_MEMBER(x07_state::cassette_tick)
 
 TIMER_CALLBACK_MEMBER(x07_state::cassette_poll)
 {
-
 	if ((m_cassette->get_state() & 0x03) == CASSETTE_PLAY)
 		cassette_load();
 	else if ((m_cassette->get_state() & 0x03) == CASSETTE_RECORD)
@@ -721,7 +720,6 @@ void x07_state::cassette_save()
 
 	if (m_cass_clk % 10 == 0)
 	{
-
 		if (m_bit_count < 4)
 		{
 			switch (m_bit_count & 3)
@@ -1036,16 +1034,14 @@ inline void x07_state::draw_udk()
 		}
 }
 
-static DEVICE_IMAGE_LOAD( x07_card )
+DEVICE_IMAGE_LOAD_MEMBER( x07_state, x07_card )
 {
-	running_machine &machine = image.device().machine();
-	x07_state *state = machine.driver_data<x07_state>();
-	address_space &space = state->m_maincpu->space( AS_PROGRAM );
-	UINT16 ram_size = state->m_ram->size();
+	address_space &space = m_maincpu->space( AS_PROGRAM );
+	UINT16 ram_size = m_ram->size();
 
 	if (image.software_entry() == NULL)
 	{
-		UINT8 *rom = machine.memory().region_alloc( "card", image.length(), 1, ENDIANNESS_LITTLE )->base();
+		UINT8 *rom = machine().memory().region_alloc( "card", image.length(), 1, ENDIANNESS_LITTLE )->base();
 		image.fread(rom, image.length());
 
 		space.install_ram(ram_size, ram_size + 0xfff);
@@ -1378,7 +1374,6 @@ TIMER_CALLBACK_MEMBER(x07_state::rstb_clear)
 
 TIMER_CALLBACK_MEMBER(x07_state::beep_stop)
 {
-
 	beep_set_state(m_beep, 0);
 }
 
@@ -1540,7 +1535,7 @@ static MACHINE_CONFIG_START( x07, x07_state )
 	MCFG_CARTSLOT_ADD("card")
 	MCFG_CARTSLOT_EXTENSION_LIST("rom,bin")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_LOAD(x07_card)
+	MCFG_CARTSLOT_LOAD(x07_state,x07_card)
 	MCFG_CARTSLOT_INTERFACE("x07_card")
 
 	/* cassette */

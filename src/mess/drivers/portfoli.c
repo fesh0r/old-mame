@@ -62,8 +62,8 @@
 
     TODO:
 
+    - expansion port slot interface
     - clock is running too fast
-    - access violation after OFF command
     - create chargen ROM from tech manual
     - memory error interrupt vector
     - i/o port 8051
@@ -161,24 +161,22 @@ WRITE8_MEMBER( portfolio_state::sivr_w )
 }
 
 //-------------------------------------------------
-//  IRQ_CALLBACK( portfolio_int_ack )
+//  IRQ_CALLBACK_MEMBER( portfolio_int_ack )
 //-------------------------------------------------
 
-static IRQ_CALLBACK( portfolio_int_ack )
+IRQ_CALLBACK_MEMBER(portfolio_state::portfolio_int_ack)
 {
-	portfolio_state *state = device->machine().driver_data<portfolio_state>();
-
-	UINT8 vector = state->m_sivr;
+	UINT8 vector = m_sivr;
 
 	for (int i = 0; i < 4; i++)
 	{
-		if (BIT(state->m_ip, i))
+		if (BIT(m_ip, i))
 		{
 			// clear interrupt pending bit
-			state->m_ip &= ~(1 << i);
+			m_ip &= ~(1 << i);
 
 			if (i == 3)
-				vector = state->m_sivr;
+				vector = m_sivr;
 			else
 				vector = INTERRUPT_VECTOR[i];
 
@@ -186,7 +184,7 @@ static IRQ_CALLBACK( portfolio_int_ack )
 		}
 	}
 
-	state->check_interrupt();
+	check_interrupt();
 
 	return vector;
 }
@@ -203,11 +201,12 @@ void portfolio_state::scan_keyboard()
 {
 	UINT8 keycode = 0xff;
 
-	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
+	UINT8 keydata[8] = { m_y0->read(), m_y1->read(), m_y2->read(), m_y3->read(),
+							m_y4->read(), m_y5->read(), m_y6->read(), m_y7->read() };
 
 	for (int row = 0; row < 8; row++)
 	{
-		UINT8 data = ioport(keynames[row])->read();
+		UINT8 data = keydata[row];
 
 		if (data != 0xff)
 		{
@@ -346,7 +345,7 @@ READ8_MEMBER( portfolio_state::battery_r )
 	data |= (m_pid != PID_NONE) << 5;
 
 	/* battery status */
-	data |= BIT(ioport("BATTERY")->read(), 0) << 6;
+	data |= BIT(m_battery->read(), 0) << 6;
 
 	return data;
 }
@@ -437,7 +436,7 @@ WRITE8_MEMBER( portfolio_state::ncc1_w )
 	if (BIT(data, 0))
 	{
 		// system ROM
-		UINT8 *rom = memregion(M80C88A_TAG)->base();
+		UINT8 *rom = m_rom->base();
 		program.install_rom(0xc0000, 0xdffff, rom);
 	}
 	else
@@ -519,7 +518,7 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 
 static INPUT_PORTS_START( portfolio )
-	PORT_START("ROW0")
+	PORT_START("Y0")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Atari") PORT_CODE(KEYCODE_TILDE)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
@@ -529,7 +528,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('^')
 
-	PORT_START("ROW1")
+	PORT_START("Y1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Del Ins") PORT_CODE(KEYCODE_DEL) PORT_CHAR(UCHAR_MAMEKEY(DEL))
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Alt") PORT_CODE(KEYCODE_LALT) PORT_CHAR(UCHAR_MAMEKEY(LALT))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q')
@@ -539,7 +538,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Backspace") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('(')
 
-	PORT_START("ROW2")
+	PORT_START("Y2")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) PORT_CHAR(UCHAR_MAMEKEY(TAB))
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Ctrl") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
@@ -549,7 +548,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Enter") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y) PORT_CHAR('y') PORT_CHAR('Y')
 
-	PORT_START("ROW3")
+	PORT_START("Y3")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR(')')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_I) PORT_CHAR('i') PORT_CHAR('I')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-')
@@ -559,7 +558,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('"') PORT_CHAR('`')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']') PORT_CHAR('}')
 
-	PORT_START("ROW4")
+	PORT_START("Y4")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_P) PORT_CHAR('p') PORT_CHAR('P')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
@@ -569,7 +568,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
 
-	PORT_START("ROW5")
+	PORT_START("Y5")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
@@ -579,7 +578,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('8')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
 
-	PORT_START("ROW6")
+	PORT_START("Y6")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('\\') PORT_CHAR('|')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z) PORT_CHAR('z') PORT_CHAR('Z')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
@@ -589,7 +588,7 @@ static INPUT_PORTS_START( portfolio )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Fn") PORT_CODE(KEYCODE_F1) PORT_CHAR(UCHAR_MAMEKEY(F1))
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_X) PORT_CHAR('x') PORT_CHAR('X')
 
-	PORT_START("ROW7")
+	PORT_START("Y7")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) PORT_CHAR('b') PORT_CHAR('B')
@@ -652,7 +651,7 @@ void portfolio_state::palette_init()
 READ8_MEMBER(portfolio_state::hd61830_rd_r)
 {
 	UINT16 address = ((offset & 0xff) << 3) | ((offset >> 12) & 0x07);
-	UINT8 data = machine().root_device().memregion(HD61830_TAG)->base()[address];
+	UINT8 data = m_char_rom->base()[address];
 
 	return data;
 }
@@ -742,7 +741,7 @@ static const centronics_interface centronics_intf =
 //  DEVICE_IMAGE_LOAD( portfolio_cart )
 //-------------------------------------------------
 
-static DEVICE_IMAGE_LOAD( portfolio_cart )
+DEVICE_IMAGE_LOAD_MEMBER( portfolio_state, portfolio_cart )
 {
 	return IMAGE_INIT_FAIL;
 }
@@ -760,7 +759,7 @@ void portfolio_state::machine_start()
 	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	/* set CPU interrupt vector callback */
-	m_maincpu->set_irq_acknowledge_callback(portfolio_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(portfolio_state::portfolio_int_ack),this));
 
 	/* memory expansions */
 	switch (machine().device<ram_device>(RAM_TAG)->size())
@@ -863,7 +862,7 @@ static MACHINE_CONFIG_START( portfolio, portfolio_state )
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_INTERFACE("portfolio_cart")
-	MCFG_CARTSLOT_LOAD(portfolio_cart)
+	MCFG_CARTSLOT_LOAD(portfolio_state,portfolio_cart)
 
 	/* memory card */
 /*  MCFG_MEMCARD_ADD("memcard_a")

@@ -165,11 +165,11 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	UINT32 screen_update_funkball(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	IRQ_CALLBACK_MEMBER(irq_callback);
 };
 
 void funkball_state::video_start()
 {
-
 }
 
 UINT32 funkball_state::screen_update( screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect )
@@ -521,7 +521,6 @@ WRITE8_MEMBER( funkball_state::flash_data_w )
 
 READ32_MEMBER(funkball_state::biu_ctrl_r)
 {
-
 	if (offset == 0)
 	{
 		return 0xffffff;
@@ -531,7 +530,6 @@ READ32_MEMBER(funkball_state::biu_ctrl_r)
 
 WRITE32_MEMBER(funkball_state::biu_ctrl_w)
 {
-
 	//mame_printf_debug("biu_ctrl_w %08X, %08X, %08X\n", data, offset, mem_mask);
 	COMBINE_DATA(m_biu_ctrl_reg + offset);
 
@@ -552,7 +550,6 @@ WRITE32_MEMBER(funkball_state::biu_ctrl_w)
 
 WRITE8_MEMBER(funkball_state::bios_ram_w)
 {
-
 	if(m_biu_ctrl_reg[0x0c/4] & (2 << ((offset & 0x4000)>>14)*4)) // memory is write-able
 	{
 		m_bios_ram[offset] = data;
@@ -1094,10 +1091,9 @@ static void funkball_set_keyb_int(running_machine &machine, int state)
 	pic8259_ir1_w(drvstate->m_pic8259_1, state);
 }
 
-static IRQ_CALLBACK(irq_callback)
+IRQ_CALLBACK_MEMBER(funkball_state::irq_callback)
 {
-	funkball_state *state = device->machine().driver_data<funkball_state>();
-	return pic8259_acknowledge( state->m_pic8259_1);
+	return pic8259_acknowledge(m_pic8259_1);
 }
 
 void funkball_state::machine_start()
@@ -1106,7 +1102,7 @@ void funkball_state::machine_start()
 
 	init_pc_common(machine(), PCCOMMON_KEYBOARD_AT, funkball_set_keyb_int);
 
-	m_maincpu->set_irq_acknowledge_callback(irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(funkball_state::irq_callback),this));
 
 	kbdc8042_init(machine(), &at8042);
 

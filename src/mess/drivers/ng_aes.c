@@ -66,7 +66,6 @@ extern const char layout_neogeo[];
 
 
 
-static IRQ_CALLBACK(neocd_int_callback);
 
 /* Stubs for various functions called by the FBA code, replace with MAME specifics later */
 
@@ -178,6 +177,10 @@ public:
 	DECLARE_DRIVER_INIT(neocdz);
 	DECLARE_DRIVER_INIT(neocdzj);
 
+	IRQ_CALLBACK_MEMBER(neocd_int_callback);
+
+protected:
+	void common_machine_start();
 };
 
 
@@ -303,7 +306,6 @@ READ16_MEMBER(ng_aes_state::neocd_control_r)
 	UINT32 sekAddress = 0xff0000+ (offset*2);
 
 	switch (sekAddress & 0xFFFF) {
-
 		case 0x0016:
 			return m_tempcdc->nff0016_r();
 
@@ -330,7 +332,6 @@ READ16_MEMBER(ng_aes_state::neocd_control_r)
 
 WRITE16_MEMBER(ng_aes_state::neocd_control_w)
 {
-
 	UINT32 sekAddress = 0xff0000+ (offset*2);
 	UINT16 wordValue = data;
 
@@ -458,8 +459,8 @@ WRITE16_MEMBER(ng_aes_state::neocd_control_w)
 				// writes 00 / 01 / ff
 				printf("MapVectorTable? %04x %04x\n",data,mem_mask);
 
-				if (!data) neogeo_set_main_cpu_vector_table_source(machine(), 0); // bios vectors
-				else neogeo_set_main_cpu_vector_table_source(machine(), 1); // ram (aka cart) vectors
+				if (!data) neogeo_set_main_cpu_vector_table_source(0); // bios vectors
+				else neogeo_set_main_cpu_vector_table_source(1); // ram (aka cart) vectors
 
 			}
 
@@ -713,7 +714,6 @@ static INT32 SekIdle(INT32 nCycles)
 
 void ng_aes_state::NeoCDDoDMA(address_space& curr_space)
 {
-
 	// The LC8953 chip has a programmable DMA controller, which is not properly emulated.
 	// Since the software only uses it in a limited way, we can apply a simple heuristic
 	// to determnine the requested operation.
@@ -725,7 +725,6 @@ void ng_aes_state::NeoCDDoDMA(address_space& curr_space)
 //  bprintf(PRINT_IMPORTANT, _T("  - DMA controller transfer started (PC: 0x%06X)\n"), SekGetPC(-1));
 
 	switch (NeoCDDMAMode) {
-
 		case 0xCFFD: {
 //          bprintf(PRINT_NORMAL, _T("    adr : 0x%08X - 0x%08X <- address, skip odd bytes\n"), NeoCDDMAAddress1, NeoCDDMAAddress1 + NeoCDDMACount * 8);
 
@@ -1041,60 +1040,53 @@ READ16_MEMBER(ng_aes_state::aes_in2_r)
  *************************************/
 
 
-static void common_machine_start(running_machine &machine)
+void ng_aes_state::common_machine_start()
 {
-	neogeo_state *state = machine.driver_data<neogeo_state>();
-
 	/* set the BIOS bank */
-	state->membank(NEOGEO_BANK_BIOS)->set_base(state->memregion("mainbios")->base());
+	m_bank_bios->set_base(memregion("mainbios")->base());
 
 	/* set the initial main CPU bank */
-	neogeo_main_cpu_banking_init(machine);
+	neogeo_main_cpu_banking_init();
 
 	/* set the initial audio CPU ROM banks */
-	neogeo_audio_cpu_banking_init(machine);
+	neogeo_audio_cpu_banking_init();
 
-	state->create_interrupt_timers(machine);
+	create_interrupt_timers();
 
 	/* irq levels for MVS / AES */
-	state->m_vblank_level = 1;
-	state->m_raster_level = 2;
+	m_vblank_level = 1;
+	m_raster_level = 2;
 
 	/* start with an IRQ3 - but NOT on a reset */
-	state->m_irq3_pending = 1;
-
-	/* get devices */
-	state->m_maincpu = machine.device<cpu_device>("maincpu");
-	state->m_audiocpu = machine.device<cpu_device>("audiocpu");
-	state->m_upd4990a = machine.device("upd4990a");
+	m_irq3_pending = 1;
 
 	/* register state save */
-	state->save_item(NAME(state->m_display_position_interrupt_control));
-	state->save_item(NAME(state->m_display_counter));
-	state->save_item(NAME(state->m_vblank_interrupt_pending));
-	state->save_item(NAME(state->m_display_position_interrupt_pending));
-	state->save_item(NAME(state->m_irq3_pending));
-	state->save_item(NAME(state->m_audio_result));
-	state->save_item(NAME(state->m_controller_select));
-	state->save_item(NAME(state->m_main_cpu_bank_address));
-	state->save_item(NAME(state->m_main_cpu_vector_table_source));
-	state->save_item(NAME(state->m_audio_cpu_banks));
-	state->save_item(NAME(state->m_audio_cpu_rom_source));
-	state->save_item(NAME(state->m_audio_cpu_rom_source_last));
-	state->save_item(NAME(state->m_save_ram_unlocked));
-	state->save_item(NAME(state->m_output_data));
-	state->save_item(NAME(state->m_output_latch));
-	state->save_item(NAME(state->m_el_value));
-	state->save_item(NAME(state->m_led1_value));
-	state->save_item(NAME(state->m_led2_value));
-	state->save_item(NAME(state->m_recurse));
+	save_item(NAME(m_display_position_interrupt_control));
+	save_item(NAME(m_display_counter));
+	save_item(NAME(m_vblank_interrupt_pending));
+	save_item(NAME(m_display_position_interrupt_pending));
+	save_item(NAME(m_irq3_pending));
+	save_item(NAME(m_audio_result));
+	save_item(NAME(m_controller_select));
+	save_item(NAME(m_main_cpu_bank_address));
+	save_item(NAME(m_main_cpu_vector_table_source));
+	save_item(NAME(m_audio_cpu_banks));
+	save_item(NAME(m_audio_cpu_rom_source));
+	save_item(NAME(m_audio_cpu_rom_source_last));
+	save_item(NAME(m_save_ram_unlocked));
+	save_item(NAME(m_output_data));
+	save_item(NAME(m_output_latch));
+	save_item(NAME(m_el_value));
+	save_item(NAME(m_led1_value));
+	save_item(NAME(m_led2_value));
+	save_item(NAME(m_recurse));
 
-	machine.save().register_postload(save_prepost_delegate(FUNC(neogeo_postload), &machine));
+	machine().save().register_postload(save_prepost_delegate(FUNC(neogeo_state::neogeo_postload), this));
 }
 
 MACHINE_START_MEMBER(ng_aes_state,neogeo)
 {
-	common_machine_start(machine());
+	common_machine_start();
 	m_is_mvs = false;
 
 	/* initialize the memcard data structure */
@@ -1107,7 +1099,7 @@ MACHINE_START_MEMBER(ng_aes_state,neocd)
 	m_has_audio_banking = false;
 	m_is_cartsys = false;
 
-	common_machine_start(machine());
+	common_machine_start();
 	m_is_mvs = false;
 
 	/* irq levels for NEOCD (swapped compared to MVS / AES) */
@@ -1121,9 +1113,9 @@ MACHINE_START_MEMBER(ng_aes_state,neocd)
 	save_pointer(NAME(m_memcard_data), 0x2000);
 
 	// for custom vectors
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(neocd_int_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(ng_aes_state::neocd_int_callback),this));
 
-	neogeo_set_main_cpu_vector_table_source(machine(), 0); // default to the BIOS vectors
+	neogeo_set_main_cpu_vector_table_source(0); // default to the BIOS vectors
 
 	m_tempcdc->reset_cd();
 }
@@ -1146,20 +1138,20 @@ MACHINE_START_MEMBER(ng_aes_state,neocd)
 MACHINE_RESET_MEMBER(ng_aes_state,neogeo)
 {
 	offs_t offs;
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	/* reset system control registers */
 	for (offs = 0; offs < 8; offs++)
 		system_control_w(space, offs, 0, 0x00ff);
 
-	machine().device("maincpu")->reset();
+	m_maincpu->reset();
 
 	neogeo_reset_rng(machine());
 
-	start_interrupt_timers(machine());
+	start_interrupt_timers();
 
 	/* trigger the IRQ3 that was set by MACHINE_START */
-	update_interrupts(machine());
+	update_interrupts();
 
 	m_recurse = 0;
 
@@ -1333,8 +1325,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */    \
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SPECIAL ) /* what is this? */                              \
 	PORT_BIT( 0x00c0, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, neogeo_state,get_calendar_status, NULL)         \
-	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, neogeo_state,get_audio_result, NULL) \
-
+	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM_MEMBER(DEVICE_SELF, neogeo_state,get_audio_result, NULL)
 #define STANDARD_IN4                                                                            \
 	PORT_START("IN4")                                                                           \
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_UNKNOWN )                                             \
@@ -1533,7 +1524,7 @@ static MACHINE_CONFIG_DERIVED_CLASS( aes, neogeo_base, ng_aes_state )
 	MCFG_MACHINE_RESET_OVERRIDE(ng_aes_state, neogeo)
 
 	MCFG_CARTSLOT_ADD("cart")
-	MCFG_CARTSLOT_LOAD(neo_cartridge)
+	MCFG_CARTSLOT_LOAD(ng_aes_state,neo_cartridge)
 	MCFG_CARTSLOT_INTERFACE("neo_cart")
 	MCFG_CARTSLOT_MANDATORY
 
@@ -1544,15 +1535,13 @@ MACHINE_CONFIG_END
 
 /* NeoCD uses custom vectors on IRQ4 to handle various events from the CDC */
 
-static IRQ_CALLBACK(neocd_int_callback)
+IRQ_CALLBACK_MEMBER(ng_aes_state::neocd_int_callback)
 {
-	ng_aes_state *state = device->machine().driver_data<ng_aes_state>();
-
 	if (irqline==4)
 	{
-		if (state->get_nNeoCDIRQVectorAck()) {
-			state->set_nNeoCDIRQVectorAck(0);
-			return state->get_nNeoCDIRQVector();
+		if (get_nNeoCDIRQVectorAck()) {
+			set_nNeoCDIRQVectorAck(0);
+			return get_nNeoCDIRQVector();
 		}
 	}
 
@@ -1589,19 +1578,19 @@ void ng_aes_state::NeoCDIRQUpdate(UINT8 byteValue)
 		if ((nIRQAcknowledge & 0x08) == 0) {
 			nNeoCDIRQVector = 0x17;
 			nNeoCDIRQVectorAck = 1;
-			machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+			m_maincpu->set_input_line(4, HOLD_LINE);
 			return;
 		}
 		if ((nIRQAcknowledge & 0x10) == 0) {
 			nNeoCDIRQVector = 0x16;
 			nNeoCDIRQVectorAck = 1;
-			machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+			m_maincpu->set_input_line(4, HOLD_LINE);
 			return;
 		}
 		if ((nIRQAcknowledge & 0x20) == 0) {
 			nNeoCDIRQVector = 0x15;
 			nNeoCDIRQVectorAck = 1;
-			machine().device("maincpu")->execute().set_input_line(4, HOLD_LINE);
+			m_maincpu->set_input_line(4, HOLD_LINE);
 			return;
 		}
 	}

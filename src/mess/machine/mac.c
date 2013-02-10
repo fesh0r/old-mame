@@ -559,10 +559,10 @@ void mac_state::set_memory_overlay(int overlay)
 static int scan_keyboard(running_machine &machine)
 {
 	int i, j;
-	int keybuf;
+	int keybuf = 0;
 	int keycode;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6" };
 	mac_state *mac = machine.driver_data<mac_state>();
+	ioport_port *ports[7] = { mac->m_key0, mac->m_key1, mac->m_key2, mac->m_key3, mac->m_key4, mac->m_key5, mac->m_key6 };
 
 	if (mac->m_keycode_buf_index)
 	{
@@ -571,7 +571,7 @@ static int scan_keyboard(running_machine &machine)
 
 	for (i=0; i<7; i++)
 	{
-		keybuf = machine.root_device().ioport(keynames[i])->read();
+		keybuf = ports[i]->read();
 
 		if (keybuf != mac->m_key_matrix[i])
 		{
@@ -839,8 +839,8 @@ void mac_state::mouse_callback()
 	int     x_needs_update = 0, y_needs_update = 0;
 	mac_state *mac = machine().driver_data<mac_state>();
 
-	new_mx = ioport("MOUSE1")->read();
-	new_my = ioport("MOUSE2")->read();
+	new_mx = m_mouse1->read();
+	new_my = m_mouse2->read();
 
 	/* see if it moved in the x coord */
 	if (new_mx != last_mx)
@@ -1353,7 +1353,7 @@ READ8_MEMBER(mac_state::mac_via_in_b)
 				val |= 0x20;
 			if (m_mouse_bit_x)  /* Mouse X2 */
 				val |= 0x10;
-			if ((machine().root_device().ioport("MOUSE0")->read() & 0x01) == 0)
+			if ((m_mouse0->read() & 0x01) == 0)
 				val |= 0x08;
 
 			if (!ADB_IS_PM_CLASS)
@@ -1930,14 +1930,14 @@ WRITE_LINE_MEMBER(mac_state::cuda_reset_w)
 	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, state);
 }
 
-static void mac_state_load(mac_state *mac)
+void mac_state::mac_state_load()
 {
 	int overlay;
-	overlay = mac->m_overlay;
-	if (mac->m_model < MODEL_MAC_POWERMAC_6100) // no overlay for PowerPC
+	overlay = m_overlay;
+	if (m_model < MODEL_MAC_POWERMAC_6100) // no overlay for PowerPC
 	{
-		mac->m_overlay = -1;
-		mac->set_memory_overlay(overlay);
+		m_overlay = -1;
+		set_memory_overlay(overlay);
 	}
 }
 
@@ -2077,7 +2077,7 @@ static void mac_driver_init(running_machine &machine, model_t model)
 	mac->m_inquiry_timeout = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(mac_state::inquiry_timeout_func),mac));
 
 	/* save state stuff */
-	machine.save().register_postload(save_prepost_delegate(FUNC(mac_state_load), mac));
+	machine.save().register_postload(save_prepost_delegate(FUNC(mac_state::mac_state_load), mac));
 }
 
 #define MAC_DRIVER_INIT(label, model)   \

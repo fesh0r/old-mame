@@ -59,7 +59,6 @@ bootleg todo:
 #include "video/deco16ic.h"
 #include "sound/okim6295.h"
 #include "includes/pktgaldx.h"
-#include "video/decospr.h"
 #include "video/decocomn.h"
 
 /**********************************************************************************/
@@ -316,7 +315,6 @@ static const deco16ic_interface pktgaldx_deco16ic_tilegen1_intf =
 
 void pktgaldx_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_deco_tilegen1 = machine().device("tilegen1");
 

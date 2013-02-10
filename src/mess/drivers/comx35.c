@@ -30,7 +30,7 @@ READ8_MEMBER( comx35_state::mem_r )
 
 	if (offset < 0x4000)
 	{
-		if (extrom) data = m_rom[offset & 0x3fff];
+		if (extrom) data = m_rom->base()[offset & 0x3fff];
 	}
 	else if (offset >= 0x4000 && offset < 0xc000)
 	{
@@ -136,7 +136,7 @@ ADDRESS_MAP_END
 
 INPUT_CHANGED_MEMBER( comx35_state::trigger_reset )
 {
-	if (newval && BIT(ioport("D6")->read(), 7))
+	if (newval && BIT(m_d6->read(), 7))
 	{
 		machine_reset();
 	}
@@ -357,12 +357,12 @@ static COSMAC_INTERFACE( cosmac_intf )
 
 READ_LINE_MEMBER( comx35_state::shift_r )
 {
-	return BIT(ioport("MODIFIERS")->read(), 0);
+	return BIT(m_modifiers->read(), 0);
 }
 
 READ_LINE_MEMBER( comx35_state::control_r )
 {
-	return BIT(ioport("MODIFIERS")->read(), 1);
+	return BIT(m_modifiers->read(), 1);
 }
 
 static CDP1871_INTERFACE( kbc_intf )
@@ -458,9 +458,6 @@ void comx35_state::machine_start()
 	// clear the RAM since DOS card will go crazy if RAM is not all zeroes
 	UINT8 *ram = m_ram->pointer();
 	memset(ram, 0, m_ram->size());
-
-	// find memory regions
-	m_rom = memregion(CDP1802_TAG)->base();
 
 	// register for state saving
 	save_item(NAME(m_clear));

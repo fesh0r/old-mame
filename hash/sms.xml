@@ -2,28 +2,28 @@
 <!DOCTYPE softwarelist SYSTEM "softwarelist.dtd">
 
 <!--
-	Undumped games
+  Undumped games
 
-	- Game de check! Koutsuu Anzen
-	- Great Ice Hockey Jpn ? (Only 1000 copies were distributed through a
-	BEEP! magazine contest in 1987, to celebrate the release of Phantasy Star)
-	- Tec Toy SMS 3 with built-in games (74 game, 112 games, 120 games or
-	131 games)
-	- a few other pirate multigame carts (two versions of 4 in 1 carts)
+  - Game de check! Koutsuu Anzen
+  - Great Ice Hockey Jpn ? (Only 1000 copies were distributed through a
+  BEEP! magazine contest in 1987, to celebrate the release of Phantasy Star)
+  - Tec Toy SMS 3 with built-in games (74 game, 112 games, 120 games or
+  131 games)
+  - a few other pirate multigame carts (two versions of 4 in 1 carts)
 
 -->
 <!--
-	Taiwanese releases for the Aaronix Mark III
-	- White Gold Cartridges
-	GB1301 - Fantasy Zone / Kuàilè xiǎo fēidié (快樂小飛碟)  [dumped]
-	GB1303 - Hokuto no Ken / Běidǒu shén quán (北斗神拳)  [dumped]
-	GB1310 - Space Harrier / ???  [verified to be the same as the Jpn release]
-	GB1314 - Double Target / Shí miàn máifú (十面埋伏)  [verified to be the same as the Jpn release]
-	- Yellow Gold Cartridges
-	K307 - Great Soccer / Shìjiè bēi zúqiú sài (世界杯足球賽)  [dumped]
-	K313 - F-16 Fighting Falcon / F-16  [dumped]
-	K317 - Comical Machine Gun Joe / Dàzhàn hēishǒu dǎng (大戰黑手黨)  [dumped]
-	K321 - Spy Vs. Spy / Dié duì dié (諜對諜)  [dumped]
+  Taiwanese releases for the Aaronix Mark III
+  - White Gold Cartridges
+  GB1301 - Fantasy Zone / Kuàilè xiǎo fēidié (快樂小飛碟)  [dumped]
+  GB1303 - Hokuto no Ken / Běidǒu shén quán (北斗神拳)  [dumped]
+  GB1310 - Space Harrier / ???  [verified to be the same as the Jpn release]
+  GB1314 - Double Target / Shí miàn máifú (十面埋伏)  [verified to be the same as the Jpn release]
+  - Yellow Gold Cartridges
+  K307 - Great Soccer / Shìjiè bēi zúqiú sài (世界杯足球賽)  [dumped]
+  K313 - F-16 Fighting Falcon / F-16  [dumped]
+  K317 - Comical Machine Gun Joe / Dàzhàn hēishǒu dǎng (大戰黑手黨)  [dumped]
+  K321 - Spy Vs. Spy / Dié duì dié (諜對諜)  [dumped]
 -->
 
 <softwarelist name="sms" description="Sega Master System cartridges">
@@ -54,7 +54,8 @@
 	<software name="3dragon">
 		<description>The Three Dragon Story (Kor)</description>
 		<year>19??</year>
-		<publisher>&lt;unknown&gt;</publisher>
+		<publisher>Zemina?</publisher>
+		<info name="alt_title" value="용의 전설" />
 		<part name="cart" interface="sms_cart">
 			<dataarea name="rom" size="32768">
 				<rom name="three dragon story, the (k).bin" size="32768" crc="8640e7e8" sha1="a05a7a41295c38add5dfc71032d2d83b96f518b1" offset="000000" />
@@ -329,7 +330,7 @@
 		</part>
 	</software>
 
-	<software name="alibaba" supported="no">
+	<software name="alibaba">
 		<description>Alibaba and 40 Thieves (Kor)</description>
 		<year>1989</year>
 		<publisher>HiCom</publisher>
@@ -851,7 +852,7 @@
 		</part>
 	</software>
 
-	<software name="blockhol" supported="no">
+	<software name="blockhol">
 		<description>Block Hole (Kor)</description>
 		<year>1990</year>
 		<publisher>Zemina</publisher>
@@ -952,12 +953,13 @@
 		</part>
 	</software>
 
-	<software name="bublboky" supported="no">
+	<software name="bublboky">
 		<description>Bubble Bobble (Kor, YM Soft)</description>
 		<year>1990</year>
 		<publisher>YM Soft</publisher>
 		<info name="alt_title" value="파워 보글 보글 (Power Boggle Boggle, Box)" />
 		<part name="cart" interface="sms_cart">
+			<feature name="pcb" value="korean_nobank" />
 			<dataarea name="rom" size="32768">
 				<rom name="power boggle boggle (kr).bin" size="32768" crc="6d309ac5" sha1="d7e67d15ccc12e9bf40611dc91a080a99716ca6e" offset="000000" />
 			</dataarea>
@@ -1013,12 +1015,13 @@
 		</part>
 	</software>
 
-	<software name="cso" supported="no">
+	<software name="cso">
 		<description>C_So! (Kor)</description>
 		<year>198?</year>
 		<publisher>Joy Soft</publisher>
 		<info name="alt_title" value="시소" />
 		<part name="cart" interface="sms_cart">
+			<feature name="pcb" value="korean_nobank" />
 			<dataarea name="rom" size="32768">
 				<rom name="c_so! [msx] (kr).bin" size="32768" crc="0918fba0" sha1="e7fefabd7a920fd71e87509d065080855b5b233c" offset="000000" />
 			</dataarea>
@@ -1777,7 +1780,7 @@
 		</part>
 	</software>
 
-	<software name="eagles5" supported="no">
+	<software name="eagles5">
 		<description>Eagles 5 (Kor)</description>
 		<year>1990</year>
 		<publisher>Zemina</publisher>
@@ -1965,6 +1968,7 @@
 		<description>FA Tetris (Kor)</description>
 		<year>1989</year>
 		<publisher>FA Soft</publisher>
+		<info name="alt_title" value="에프에이 테트리스" />
 		<part name="cart" interface="sms_cart">
 			<feature name="pcb" value="korean_nobank" />
 			<dataarea name="rom" size="32768">
@@ -6356,6 +6360,7 @@
 		<description>Wonsiin (Kor)</description>
 		<year>1991</year>
 		<publisher>Zemina</publisher>
+		<info name="alt_title" value="원시인"/>
 		<part name="cart" interface="sms_cart">
 			<feature name="mapper" value="zemina" />
 			<dataarea name="rom" size="131072">
@@ -6771,7 +6776,7 @@
 
 
 <!-- The next items have been compiled from original source code written by Jeroen Tel.
-	It is unsure if Probe has ever written any game code for these licensed titles -->
+  It is unsure if Probe has ever written any game code for these licensed titles -->
 
 	<software name="sn_ateam">
 		<description>The A-Team (Music prototype)</description>

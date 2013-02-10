@@ -13,7 +13,6 @@
 #include "includes/decoprot.h"
 #include "includes/dietgo.h"
 #include "video/deco16ic.h"
-#include "video/decospr.h"
 #include "video/decocomn.h"
 
 static ADDRESS_MAP_START( dietgo_map, AS_PROGRAM, 16, dietgo_state )
@@ -185,7 +184,6 @@ static const deco16ic_interface dietgo_deco16ic_tilegen1_intf =
 
 void dietgo_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_deco_tilegen1 = machine().device("tilegen1");

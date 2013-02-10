@@ -181,20 +181,18 @@ hardware.
 
 ***********************************************************************************************************/
 
-#include "emu.h"
 #include "super80.lh"
 #include "includes/super80.h"
-
 #include "formats/z80bin.h"
 
-#define MASTER_CLOCK            (XTAL_12MHz)
-#define PIXEL_CLOCK         (MASTER_CLOCK/2)
-#define HTOTAL              (384)
-#define HBEND               (0)
-#define HBSTART             (256)
-#define VTOTAL              (240)
-#define VBEND               (0)
-#define VBSTART             (160)
+#define MASTER_CLOCK    (XTAL_12MHz)
+#define PIXEL_CLOCK (MASTER_CLOCK/2)
+#define HTOTAL      (384)
+#define HBEND       (0)
+#define HBSTART     (256)
+#define VTOTAL      (240)
+#define VBEND       (0)
+#define VBSTART     (160)
 
 #define SUPER80V_SCREEN_WIDTH       (560)
 #define SUPER80V_SCREEN_HEIGHT      (300)
@@ -616,8 +614,10 @@ static const cassette_interface super80_cassette_interface =
 };
 
 
-static const mc6845_interface super80v_crtc = {
+static MC6845_INTERFACE( super80v_crtc )
+{
 	"screen",           /* name of screen */
+	false,
 	SUPER80V_DOTS,          /* number of dots per character */
 	NULL,
 	super80v_update_row,        /* handler to display a scanline */
@@ -784,7 +784,7 @@ ROM_END
 
 ROM_START( super80m )
 	ROM_REGION(0x10000, "maincpu", 0)
-	ROM_SYSTEM_BIOS(0, "Bios8R0", "8R0")
+	ROM_SYSTEM_BIOS(0, "8r0", "8R0")
 	ROMX_LOAD("s80-8r0.u26",  0xc000, 0x1000, CRC(48d410d8) SHA1(750d984abc013a3344628300288f6d1ba140a95f), ROM_BIOS(1) )
 	ROMX_LOAD("s80-8r0.u33",  0xd000, 0x1000, CRC(9765793e) SHA1(4951b127888c1f3153004cc9fb386099b408f52c), ROM_BIOS(1) )
 	ROMX_LOAD("s80-8r0.u42",  0xe000, 0x1000, CRC(5f65d94b) SHA1(fe26b54dec14e1c4911d996c9ebd084a38dcb691), ROM_BIOS(1) )
@@ -803,7 +803,7 @@ ROM_START( super80m )
 	ROM_FILL(0xcc4e,1,0x00)
 	ROM_FILL(0xcc4f,1,0x00)
 #endif
-	ROM_SYSTEM_BIOS(1, "BiosV37", "V3.7")
+	ROM_SYSTEM_BIOS(1, "v37", "V3.7")
 	ROMX_LOAD("s80-v37.u26",  0xc000, 0x1000, CRC(46043035) SHA1(1765105df4e4af83d56cafb88e158ed462d4709e), ROM_BIOS(2) )
 	ROMX_LOAD("s80-v37.u33",  0xd000, 0x1000, CRC(afb52b15) SHA1(0a2c25834074ce44bf12ac8532b4add492bcf950), ROM_BIOS(2) )
 	ROMX_LOAD("s80-v37.u42",  0xe000, 0x1000, CRC(7344b27a) SHA1(f43fc47ddb5c12bffffa63488301cd5eb386cc9a), ROM_BIOS(2) )

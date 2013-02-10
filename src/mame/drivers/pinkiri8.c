@@ -63,7 +63,7 @@ public:
 	int m_prev_writes;
 	UINT8 m_mux_data;
 	UINT8 m_prot_read_index;
-	UINT8 m_prot_char[6];
+	UINT8 m_prot_char[5];
 	UINT8 m_prot_index;
 	DECLARE_WRITE8_MEMBER(output_regs_w);
 	DECLARE_WRITE8_MEMBER(pinkiri8_vram_w);
@@ -166,7 +166,6 @@ const address_space_config *janshi_vdp_device::memory_space_config(address_space
 
 void pinkiri8_state::video_start()
 {
-
 }
 
 /*
@@ -229,7 +228,6 @@ UINT32 pinkiri8_state::screen_update_pinkiri8(screen_device &screen, bitmap_ind1
 		count2=0;
 		for (i=0x00;i<0x40;i+=2)
 		{
-
 			printf("%02x, ", m_janshi_widthflags[i+1]);
 
 			count2++;
@@ -286,7 +284,6 @@ UINT32 pinkiri8_state::screen_update_pinkiri8(screen_device &screen, bitmap_ind1
 
 		for(i=(0x1000/4)-4;i>=0;i--)
 		{
-
 		/* vram 1 (video map 0xfc2000)
 
 		  tttt tttt | 00tt tttt | cccc c000 | xxxx xxxx |
@@ -1224,15 +1221,16 @@ READ8_MEMBER(pinkiri8_state::ronjan_prot_r)
 
 WRITE8_MEMBER(pinkiri8_state::ronjan_prot_w)
 {
-
 	if(data == 0)
 	{
 		m_prot_index = 0;
 	}
 	else
 	{
-		m_prot_char[m_prot_index] = data;
-		m_prot_index++;
+		if(m_prot_index == 5)
+			return;
+
+		m_prot_char[m_prot_index++] = data;
 
 		if(m_prot_char[0] == 'E' && m_prot_char[1] == 'R' && m_prot_char[2] == 'R' && m_prot_char[3] == 'O' && m_prot_char[4] == 'R')
 			m_prot_read_index = 0;

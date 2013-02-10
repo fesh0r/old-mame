@@ -270,20 +270,21 @@ int apollo_instruction_hook(device_t *device, offs_t curpc)
  apollo bus error
  ***************************************************************************/
 
-static void apollo_bus_error(running_machine &machine)
+void apollo_state::apollo_bus_error()
 {
-	machine.device(MAINCPU)->execute().set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
-	machine.device(MAINCPU)->execute().set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
+	m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+	m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 
 	apollo_csr_set_status_register(APOLLO_CSR_SR_CPU_TIMEOUT, APOLLO_CSR_SR_CPU_TIMEOUT);
 }
 
-static IRQ_CALLBACK(apollo_irq_acknowledge) {
+IRQ_CALLBACK_MEMBER(apollo_state::apollo_irq_acknowledge)
+{
 	int result = M68K_INT_ACK_AUTOVECTOR;
 
-	device->machine().device(MAINCPU)->execute().set_input_line(irqline, CLEAR_LINE);
+	m_maincpu->set_input_line(irqline, CLEAR_LINE);
 
-	DLOG2(("apollo_irq_acknowledge: interrupt level=%d", irqline));
+	MLOG2(("apollo_irq_acknowledge: interrupt level=%d", irqline));
 
 	if (irqline == 6) {
 		result = apollo_pic_acknowledge(device, irqline);
@@ -456,7 +457,7 @@ READ32_MEMBER(apollo_state::ram_with_parity_r){
 		if (apollo_csr_get_control_register() & APOLLO_CSR_CR_INTERRUPT_ENABLE) {
 			// force parity error (if NMI is enabled)
 //          cpu_set_input_line_and_vector(&space.device(), 7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-			machine().device(MAINCPU)->execute().set_input_line_and_vector(7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+			m_maincpu->set_input_line_and_vector(7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 
 		}
 	}
@@ -464,7 +465,6 @@ READ32_MEMBER(apollo_state::ram_with_parity_r){
 }
 
 WRITE32_MEMBER(apollo_state::ram_with_parity_w){
-
 	COMBINE_DATA(m_messram_ptr+offset);
 
 	if (apollo_csr_get_control_register() & APOLLO_CSR_CR_FORCE_BAD_PARITY) {
@@ -533,7 +533,7 @@ READ32_MEMBER(apollo_state::apollo_unmapped_r)
 	}
 
 	/* unmapped; access causes a bus error */
-	apollo_bus_error(machine());
+	apollo_bus_error();
 	return 0xffffffff;
 }
 
@@ -542,7 +542,7 @@ WRITE32_MEMBER(apollo_state::apollo_unmapped_w)
 	SLOG(("unmapped memory dword write to %08x = %08x & %08x", offset * 4, data, mem_mask));
 
 	/* unmapped; access causes a bus error */
-	apollo_bus_error(machine());
+	apollo_bus_error();
 }
 
 /***************************************************************************
@@ -1000,8 +1000,6 @@ ADDRESS_MAP_END
 
 void apollo_state::machine_reset()
 {
-	device_t *cpu = machine().device(MAINCPU);
-
 	//MLOG1(("machine_reset_dn3500"));
 
 	MACHINE_RESET_CALL_MEMBER(apollo);
@@ -1030,7 +1028,7 @@ void apollo_state::machine_reset()
 		}
 	}
 
-	m68k_set_instruction_hook(cpu, apollo_instruction_hook);
+	m68k_set_instruction_hook(m_maincpu, apollo_instruction_hook);
 }
 
 static void apollo_reset_instr_callback(device_t *device)
@@ -1081,10 +1079,10 @@ DRIVER_INIT_MEMBER(apollo_state,dn3500)
 {
 //  MLOG1(("driver_init_dn3500"));
 
-	machine().device(MAINCPU)->execute().set_irq_acknowledge_callback(apollo_irq_acknowledge);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(apollo_state::apollo_irq_acknowledge),this));
 
 	/* hook the RESET line, which resets a slew of other components */
-	m68k_set_reset_callback(machine().device(MAINCPU), apollo_reset_instr_callback);
+	m68k_set_reset_callback(m_maincpu, apollo_reset_instr_callback);
 
 	ram_base_address = DN3500_RAM_BASE;
 	ram_end_address = DN3500_RAM_END;

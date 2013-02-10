@@ -447,7 +447,6 @@ static const ym3526_interface ym3526_config =
 #if 0
 INTERRUPT_GEN_MEMBER(exprraid_state::exprraid_interrupt)
 {
-
 	if ((~ioport("IN2")->read()) & 0xc0)
 	{
 		if (m_coin == 0)
@@ -468,7 +467,6 @@ INTERRUPT_GEN_MEMBER(exprraid_state::exprraid_interrupt)
 
 void exprraid_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_slave = machine().device("slave");
 
@@ -477,7 +475,6 @@ void exprraid_state::machine_start()
 
 void exprraid_state::machine_reset()
 {
-
 	m_bg_index[0] = 0;
 	m_bg_index[1] = 0;
 	m_bg_index[2] = 0;
@@ -798,11 +795,11 @@ ROM_START( wexpressb3 )
 ROM_END
 
 
-static void exprraid_gfx_expand(running_machine &machine)
+void exprraid_state::exprraid_gfx_expand()
 {
 	/* Expand the background rom so we can use regular decode routines */
 
-	UINT8   *gfx = machine.root_device().memregion("gfx3")->base();
+	UINT8   *gfx = machine().root_device().memregion("gfx3")->base();
 	int offs = 0x10000 - 0x1000;
 	int i;
 
@@ -833,24 +830,24 @@ DRIVER_INIT_MEMBER(exprraid_state,wexpressb)
 	rom[0xfff3] = rom[0xfffe];
 	rom[0xfff2] = rom[0xffff];
 
-	exprraid_gfx_expand(machine());
+	exprraid_gfx_expand();
 }
 
 DRIVER_INIT_MEMBER(exprraid_state,exprraid)
 {
-	exprraid_gfx_expand(machine());
+	exprraid_gfx_expand();
 }
 
 DRIVER_INIT_MEMBER(exprraid_state,wexpressb2)
 {
 	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x3800, 0x3800, read8_delegate(FUNC(exprraid_state::vblank_r),this));
-	exprraid_gfx_expand(machine());
+	exprraid_gfx_expand();
 }
 
 DRIVER_INIT_MEMBER(exprraid_state,wexpressb3)
 {
 	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xFFC0, 0xFFC0, read8_delegate(FUNC(exprraid_state::vblank_r),this));
-	exprraid_gfx_expand(machine());
+	exprraid_gfx_expand();
 }
 
 

@@ -409,7 +409,6 @@ const z80sio_interface sio_intf =
 
 TIMER_DEVICE_CALLBACK_MEMBER(bigbord2_state::ctc_tick)
 {
-
 	m_ctcb->trg0(1);
 	m_ctcb->trg1(1);
 	m_ctcb->trg0(0);
@@ -663,8 +662,10 @@ MC6845_UPDATE_ROW( bigbord2_update_row )
 	}
 }
 
-static const mc6845_interface bigbord2_crtc = {
+static MC6845_INTERFACE( bigbord2_crtc )
+{
 	SCREEN_TAG,         /* name of screen */
+	false,
 	8,          /* number of dots per character */
 	NULL,
 	bigbord2_update_row,        /* handler to display a scanline */

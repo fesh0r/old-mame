@@ -58,14 +58,12 @@ So this is the correct behavior of real hardware, not an emulation bug.
 
 INTERRUPT_GEN_MEMBER(nemesis_state::nemesis_interrupt)
 {
-
 	if (m_irq_on)
 		device.execute().set_input_line(1, HOLD_LINE);
 }
 
 INTERRUPT_GEN_MEMBER(nemesis_state::blkpnthr_interrupt)
 {
-
 	if (m_irq_on)
 		device.execute().set_input_line(2, HOLD_LINE);
 }
@@ -394,11 +392,11 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, AS_PROGRAM, 8, nemesis_state )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
-	AM_RANGE(0xa000, 0xafff) AM_DEVWRITE_LEGACY("k007232", k005289_pitch_A_w)
-	AM_RANGE(0xc000, 0xcfff) AM_DEVWRITE_LEGACY("k007232", k005289_pitch_B_w)
+	AM_RANGE(0xa000, 0xafff) AM_DEVWRITE("k007232", k005289_device, k005289_pitch_A_w)
+	AM_RANGE(0xc000, 0xcfff) AM_DEVWRITE("k007232", k005289_device, k005289_pitch_B_w)
 	AM_RANGE(0xe001, 0xe001) AM_READ(soundlatch_byte_r)
-	AM_RANGE(0xe003, 0xe003) AM_DEVWRITE_LEGACY("k007232", k005289_keylatch_A_w)
-	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE_LEGACY("k007232", k005289_keylatch_B_w)
+	AM_RANGE(0xe003, 0xe003) AM_DEVWRITE("k007232", k005289_device, k005289_keylatch_A_w)
+	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE("k007232", k005289_device, k005289_keylatch_B_w)
 	AM_RANGE(0xe005, 0xe005) AM_DEVWRITE_LEGACY("ay2", ay8910_address_w)
 	AM_RANGE(0xe006, 0xe006) AM_DEVWRITE_LEGACY("ay1", ay8910_address_w)
 	AM_RANGE(0xe086, 0xe086) AM_DEVREAD_LEGACY("ay1", ay8910_r)
@@ -410,12 +408,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( gx400_sound_map, AS_PROGRAM, 8, nemesis_state )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x4000, 0x87ff) AM_RAM AM_SHARE("gx400_shared")
-	AM_RANGE(0xa000, 0xafff) AM_DEVWRITE_LEGACY("k007232", k005289_pitch_A_w)
-	AM_RANGE(0xc000, 0xcfff) AM_DEVWRITE_LEGACY("k007232", k005289_pitch_B_w)
+	AM_RANGE(0xa000, 0xafff) AM_DEVWRITE("k007232", k005289_device, k005289_pitch_A_w)
+	AM_RANGE(0xc000, 0xcfff) AM_DEVWRITE("k007232", k005289_device, k005289_pitch_B_w)
 	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE_LEGACY("vlm", vlm5030_data_w)
 	AM_RANGE(0xe001, 0xe001) AM_READ(soundlatch_byte_r)
-	AM_RANGE(0xe003, 0xe003) AM_DEVWRITE_LEGACY("k007232", k005289_keylatch_A_w)
-	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE_LEGACY("k007232", k005289_keylatch_B_w)
+	AM_RANGE(0xe003, 0xe003) AM_DEVWRITE("k007232", k005289_device, k005289_keylatch_A_w)
+	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE("k007232", k005289_device, k005289_keylatch_B_w)
 	AM_RANGE(0xe005, 0xe005) AM_DEVWRITE_LEGACY("ay2", ay8910_address_w)
 	AM_RANGE(0xe006, 0xe006) AM_DEVWRITE_LEGACY("ay1", ay8910_address_w)
 	AM_RANGE(0xe030, 0xe030) AM_WRITE(gx400_speech_start_w)
@@ -1478,8 +1476,8 @@ static const ay8910_interface ay8910_interface_2 =
 	AY8910_DEFAULT_LOADS,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER("k007232", k005289_control_A_w),
-	DEVCB_DEVICE_HANDLER("k007232", k005289_control_B_w)
+	DEVCB_DEVICE_MEMBER("k007232", k005289_device, k005289_control_A_w),
+	DEVCB_DEVICE_MEMBER("k007232", k005289_device, k005289_control_B_w)
 };
 
 static void sound_irq(device_t *device, int state)
@@ -1509,7 +1507,6 @@ static const k007232_interface k007232_config =
 
 void nemesis_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_vlm = machine().device("vlm");
@@ -1529,7 +1526,6 @@ void nemesis_state::machine_start()
 
 void nemesis_state::machine_reset()
 {
-
 	m_irq_on = 0;
 	m_irq1_on = 0;
 	m_irq2_on = 0;
@@ -1578,7 +1574,7 @@ static MACHINE_CONFIG_START( nemesis, nemesis_state )
 	MCFG_SOUND_CONFIG(ay8910_interface_2)   /* fixed */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00) /* verified with OST */
 
-	MCFG_SOUND_ADD("k007232", K005289, 3579545/2)
+	MCFG_K005289_ADD("k007232", 3579545/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35) /* verified with OST */
 
 	MCFG_SOUND_ADD("vlm", VLM5030, 3579545)
@@ -1621,7 +1617,7 @@ static MACHINE_CONFIG_START( gx400, nemesis_state )
 	MCFG_SOUND_CONFIG(ay8910_interface_2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00) /* verified with OST */
 
-	MCFG_SOUND_ADD("k007232", K005289, 3579545/2)
+	MCFG_K005289_ADD("k007232", 3579545/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35) /* verified with OST */
 
 	MCFG_SOUND_ADD("vlm", VLM5030, 3579545)
@@ -1663,7 +1659,7 @@ static MACHINE_CONFIG_START( konamigt, nemesis_state )
 	MCFG_SOUND_CONFIG(ay8910_interface_2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MCFG_SOUND_ADD("k007232", K005289, 3579545/2)
+	MCFG_K005289_ADD("k007232", 3579545/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_CONFIG_END
 
@@ -1703,7 +1699,7 @@ static MACHINE_CONFIG_START( rf2_gx400, nemesis_state )
 	MCFG_SOUND_CONFIG(ay8910_interface_2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MCFG_SOUND_ADD("k007232", K005289, 3579545/2)
+	MCFG_K005289_ADD("k007232", 3579545/2)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 
 	MCFG_SOUND_ADD("vlm", VLM5030, 3579545)

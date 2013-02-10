@@ -62,9 +62,6 @@ block of RAM instead of 8.
         * K-Star Patrol (Europe).60
         * Seafox (Japan, USA).60
     - mos6560_port_r/w should respond at 0x1000-0x100f
-    - SHIFT LOCK
-    - restore key
-    - light pen
     - VIC21 (built in 21K ram)
 
 */
@@ -156,7 +153,7 @@ READ8_MEMBER( vic20_state::read )
 		switch ((offset >> 10) & 0x07)
 		{
 		default:
-			data = m_charom[offset & 0xfff];
+			data = m_charom->base()[offset & 0xfff];
 			break;
 
 		case IO0:
@@ -186,11 +183,11 @@ READ8_MEMBER( vic20_state::read )
 	case BLK5: blk5 = 0; break;
 
 	case BLK6:
-		data = m_basic[offset & 0x1fff];
+		data = m_basic->base()[offset & 0x1fff];
 		break;
 
 	case BLK7:
-		data = m_kernal[offset & 0x1fff];
+		data = m_kernal->base()[offset & 0x1fff];
 		break;
 	}
 
@@ -296,7 +293,7 @@ READ8_MEMBER( vic20_state::vic_videoram_r )
 	}
 	else
 	{
-		data = m_charom[offset & 0xfff];
+		data = m_charom->base()[offset & 0xfff];
 	}
 
 	return m_exp->cd_r(space, offset & 0x1fff, data, ram1, ram2, ram3, blk1, blk2, blk3, blk5, io2, io3);
@@ -355,10 +352,98 @@ ADDRESS_MAP_END
 //  INPUT_PORTS( vic20 )
 //-------------------------------------------------
 
-static INPUT_PORTS_START( vic20 )
-	PORT_INCLUDE( vic_keyboard )       // ROW0 -> ROW7
+INPUT_CHANGED_MEMBER( vic20_state::restore_w )
+{
+	m_via0->write_ca1(newval);
+}
 
-	PORT_INCLUDE( vic_special )        // SPECIAL
+static INPUT_PORTS_START( vic20 )
+	PORT_START( "ROW0" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Del  Inst") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(INSERT))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH2)     PORT_CHAR('\xA3')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS)          PORT_CHAR('+')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9)              PORT_CHAR('9') PORT_CHAR(')')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7)              PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5)              PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3)              PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1)              PORT_CHAR('1') PORT_CHAR('!')
+
+	PORT_START( "ROW1" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Return") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE)     PORT_CHAR('*')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P)              PORT_CHAR('P')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I)              PORT_CHAR('I')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y)              PORT_CHAR('Y')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_R)              PORT_CHAR('R')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W)              PORT_CHAR('W')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_TILDE) PORT_CHAR(0x2190)
+
+	PORT_START( "ROW2" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Crsr Right Left") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RIGHT)) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE)          PORT_CHAR(';') PORT_CHAR(']')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L)              PORT_CHAR('L')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J)              PORT_CHAR('J')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G)              PORT_CHAR('G')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D)              PORT_CHAR('D')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A)              PORT_CHAR('A')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TAB)            PORT_CHAR(UCHAR_SHIFT_2)
+
+	PORT_START( "ROW3" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Crsr Down Up") PORT_CODE(KEYCODE_RALT) PORT_CHAR(UCHAR_MAMEKEY(DOWN)) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH)          PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA)          PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N)              PORT_CHAR('N')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V)              PORT_CHAR('V')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X)              PORT_CHAR('X')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Shift (Left)") PORT_CODE(KEYCODE_LSHIFT)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Stop Run") PORT_CODE(KEYCODE_HOME)
+
+	PORT_START( "ROW4" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F1)             PORT_CHAR(UCHAR_MAMEKEY(F1)) PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Shift (Right)") PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP)           PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M)              PORT_CHAR('M')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B)              PORT_CHAR('B')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C)              PORT_CHAR('C')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z)              PORT_CHAR('Z')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SPACE)          PORT_CHAR(' ')
+
+	PORT_START( "ROW5" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F2)             PORT_CHAR(UCHAR_MAMEKEY(F3)) PORT_CHAR(UCHAR_MAMEKEY(F4))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH)      PORT_CHAR('=')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON)          PORT_CHAR(':') PORT_CHAR('[')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_K)              PORT_CHAR('K')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H)              PORT_CHAR('H')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F)              PORT_CHAR('F')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S)              PORT_CHAR('S')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CBM") PORT_CODE(KEYCODE_LCONTROL)
+
+	PORT_START( "ROW6" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F3)             PORT_CHAR(UCHAR_MAMEKEY(F5)) PORT_CHAR(UCHAR_MAMEKEY(F6))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91  Pi") PORT_CODE(KEYCODE_DEL) PORT_CHAR(0x2191) PORT_CHAR(0x03C0)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE)      PORT_CHAR('@')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O)              PORT_CHAR('O')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U)              PORT_CHAR('U')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_T)              PORT_CHAR('T')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E)              PORT_CHAR('E')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q)              PORT_CHAR('Q')
+
+	PORT_START( "ROW7" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F4)             PORT_CHAR(UCHAR_MAMEKEY(F7)) PORT_CHAR(UCHAR_MAMEKEY(F8))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Home  Clr") PORT_CODE(KEYCODE_INSERT) PORT_CHAR(UCHAR_MAMEKEY(HOME))
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS)         PORT_CHAR('-')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0)              PORT_CHAR('0')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8)              PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6)              PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4)              PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2)              PORT_CHAR('2') PORT_CHAR('"')
+
+	PORT_START( "RESTORE" )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RESTORE") PORT_CODE(KEYCODE_PRTSCR) PORT_CHANGED_MEMBER(DEVICE_SELF, vic20_state, restore_w, 0)
+
+	PORT_START( "LOCK" )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SHIFT LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
+	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
 
@@ -475,11 +560,16 @@ WRITE8_MEMBER( vic20_state::via0_pa_w )
 	m_iec->atn_w(!BIT(data, 7));
 }
 
+READ_LINE_MEMBER( vic20_state::via0_ca1_r )
+{
+	return m_restore->read();
+}
+
 static const via6522_interface via0_intf =
 {
 	DEVCB_DRIVER_MEMBER(vic20_state, via0_pa_r),
 	DEVCB_DEVICE_MEMBER(VIC20_USER_PORT_TAG, vic20_user_port_device, pb_r),
-	DEVCB_NULL, // RESTORE
+	DEVCB_DRIVER_LINE_MEMBER(vic20_state, via0_ca1_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -516,14 +606,14 @@ READ8_MEMBER( vic20_state::via1_pa_r )
 
 	UINT8 data = 0xff;
 
-	if (!BIT(m_key_col, 0)) data &= ioport("ROW0")->read();
-	if (!BIT(m_key_col, 1)) data &= ioport("ROW1")->read();
-	if (!BIT(m_key_col, 2)) data &= ioport("ROW2")->read();
-	if (!BIT(m_key_col, 3)) data &= ioport("ROW3")->read();
-	if (!BIT(m_key_col, 4)) data &= ioport("ROW4")->read();
-	if (!BIT(m_key_col, 5)) data &= ioport("ROW5")->read();
-	if (!BIT(m_key_col, 6)) data &= ioport("ROW6")->read();
-	if (!BIT(m_key_col, 7)) data &= ioport("ROW7")->read();
+	if (!BIT(m_key_col, 0)) data &= m_row0->read();
+	if (!BIT(m_key_col, 1)) data &= m_row1->read();
+	if (!BIT(m_key_col, 2)) data &= m_row2->read();
+	if (!BIT(m_key_col, 3)) data &= m_row3->read();
+	if (!BIT(m_key_col, 4)) data &= m_row4->read();
+	if (!BIT(m_key_col, 5)) data &= m_row5->read();
+	if (!BIT(m_key_col, 6)) data &= m_row6->read();
+	if (!BIT(m_key_col, 7)) data &= m_row7->read();
 
 	return data;
 }
@@ -612,16 +702,6 @@ static const via6522_interface via1_intf =
 
 
 //-------------------------------------------------
-//  PET_DATASSETTE_PORT_INTERFACE( datassette_intf )
-//-------------------------------------------------
-
-static PET_DATASSETTE_PORT_INTERFACE( datassette_intf )
-{
-	DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_ca1),
-};
-
-
-//-------------------------------------------------
 //  CBM_IEC_INTERFACE( cbm_iec_intf )
 //-------------------------------------------------
 
@@ -691,11 +771,6 @@ static VIC20_USER_PORT_INTERFACE( user_intf )
 
 void vic20_state::machine_start()
 {
-	// find memory regions
-	m_basic = memregion("basic")->base();
-	m_kernal = memregion("kernal")->base();
-	m_charom = memregion("charom")->base();
-
 	// initialize memory
 	UINT8 data = 0xff;
 
@@ -737,18 +812,15 @@ static MACHINE_CONFIG_START( vic20, vic20_state )
 	// devices
 	MCFG_VIA6522_ADD(M6522_0_TAG, 0, via0_intf)
 	MCFG_VIA6522_ADD(M6522_1_TAG, 0, via1_intf)
-
-	MCFG_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
-
-	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, datassette_intf, cbm_datassette_devices, "c1530", NULL)
+	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, cbm_datassette_devices, "c1530", NULL, DEVWRITELINE(M6522_1_TAG, via6522_device, write_ca1))
 	MCFG_CBM_IEC_ADD(cbm_iec_intf, "c1541")
-
-	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, "joy", NULL)
 	MCFG_VIC20_USER_PORT_ADD(VIC20_USER_PORT_TAG, user_intf, vic20_user_port_cards, NULL, NULL)
+	MCFG_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	// software lists
 	MCFG_SOFTWARE_LIST_ADD("cart_list", "vic1001_cart")
-	MCFG_SOFTWARE_LIST_ADD("disk_list", "vic1001_flop")
+	MCFG_SOFTWARE_LIST_ADD("cass_list", "vic1001_cass")
+	MCFG_SOFTWARE_LIST_ADD("flop_list", "vic1001_flop")
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -770,15 +842,16 @@ static MACHINE_CONFIG_DERIVED( ntsc, vic20 )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_MOS6560_ADD(M6560_TAG, SCREEN_TAG, MOS6560_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
 	MCFG_VIC20_EXPANSION_SLOT_ADD(VIC20_EXPANSION_SLOT_TAG, MOS6560_CLOCK, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, "joy", NULL)
+	MCFG_VCS_CONTROL_PORT_TRIGGER_HANDLER(DEVWRITELINE(M6560_TAG, mos6560_device, lp_w))
 
 	// software lists
 	MCFG_SOFTWARE_LIST_FILTER("cart_list", "NTSC")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "NTSC")
+	MCFG_SOFTWARE_LIST_FILTER("cass_list", "NTSC")
+	MCFG_SOFTWARE_LIST_FILTER("flop_list", "NTSC")
 MACHINE_CONFIG_END
 
 
@@ -796,15 +869,16 @@ static MACHINE_CONFIG_DERIVED( pal, vic20 )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_MOS6561_ADD(M6560_TAG, SCREEN_TAG, MOS6561_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD("dac", DAC, 0)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
 	MCFG_VIC20_EXPANSION_SLOT_ADD(VIC20_EXPANSION_SLOT_TAG, MOS6561_CLOCK, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, "joy", NULL)
+	MCFG_VCS_CONTROL_PORT_TRIGGER_HANDLER(DEVWRITELINE(M6561_TAG, mos6561_device, lp_w))
 
 	// software lists
 	MCFG_SOFTWARE_LIST_FILTER("cart_list", "PAL")
-	MCFG_SOFTWARE_LIST_FILTER("disk_list", "PAL")
+	MCFG_SOFTWARE_LIST_FILTER("cass_list", "PAL")
+	MCFG_SOFTWARE_LIST_FILTER("flop_list", "PAL")
 MACHINE_CONFIG_END
 
 

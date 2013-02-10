@@ -518,6 +518,14 @@ COBJFLAGS += \
 CPPONLYFLAGS += \
 	-Woverloaded-virtual
 
+ifneq (,$(findstring clang,$(CC)))
+CCOMFLAGS += \
+	-Wno-cast-align \
+	-Wno-tautological-compare \
+	-Wno-constant-logical-operand \
+	-Wno-format-security
+endif
+
 
 #-------------------------------------------------
 # include paths
@@ -745,6 +753,10 @@ clean: $(OSDCLEAN)
 	$(RM) $(EMULATOR)
 	@echo Deleting $(TOOLS)...
 	$(RM) $(TOOLS)
+	@echo Deleting dependencies...
+	$(RM) depend_mame.mak
+	$(RM) depend_mess.mak
+	$(RM) depend_ume.mak
 ifdef MAP
 	@echo Deleting $(FULLNAME).map...
 	$(RM) $(FULLNAME).map

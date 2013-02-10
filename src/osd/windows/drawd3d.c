@@ -217,8 +217,7 @@ INLINE void set_texture(d3d_info *d3d, d3d_texture_info *texture)
 		d3d->last_texture = texture;
 		d3d->last_texture_flags = (texture == NULL ? 0 : texture->flags);
 		result = (*d3dintf->device.set_texture)(d3d->device, 0, (texture == NULL) ? d3d->default_texture->d3dfinaltex : texture->d3dfinaltex);
-		if (d3d->hlsl != NULL)
-			d3d->hlsl->set_texture(texture);
+		d3d->hlsl->set_texture(texture);
 		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_texture call\n", (int)result);
 	}
 }
@@ -348,6 +347,7 @@ static void drawd3d_window_destroy(win_window_info *window);
 static render_primitive_list *drawd3d_window_get_primitives(win_window_info *window);
 static void drawd3d_window_save(win_window_info *window);
 static void drawd3d_window_record(win_window_info *window);
+static void drawd3d_window_toggle_fsfx(win_window_info *window);
 static int drawd3d_window_draw(win_window_info *window, HDC dc, int update);
 
 // devices
@@ -365,7 +365,7 @@ static void pick_best_mode(win_window_info *window);
 static int update_window_size(win_window_info *window);
 
 // drawing
-static void draw_line(d3d_info *d3d, const render_primitive *prim);
+static void draw_line(d3d_info *d3d, const render_primitive *prim, float line_time);
 static void draw_quad(d3d_info *d3d, const render_primitive *prim);
 
 // primitives
@@ -412,6 +412,7 @@ int drawd3d_init(running_machine &machine, win_draw_callbacks *callbacks)
 	callbacks->window_draw = drawd3d_window_draw;
 	callbacks->window_save = drawd3d_window_save;
 	callbacks->window_record = drawd3d_window_record;
+	callbacks->window_toggle_fsfx = drawd3d_window_toggle_fsfx;
 	callbacks->window_destroy = drawd3d_window_destroy;
 	return 0;
 }
@@ -440,6 +441,7 @@ static int drawd3d_window_init(win_window_info *window)
 
 	// allocate memory for our structures
 	d3d = global_alloc_clear(d3d_info);
+	d3d->restarting = false;
 	window->drawdata = d3d;
 	d3d->window = window;
 	d3d->hlsl = NULL;
@@ -475,21 +477,27 @@ error:
 
 
 
+static void drawd3d_window_toggle_fsfx(win_window_info *window)
+{
+	d3d_info *d3d = (d3d_info *)window->drawdata;
+
+	d3d->restarting = true;
+}
+
 static void drawd3d_window_record(win_window_info *window)
 {
 	d3d_info *d3d = (d3d_info *)window->drawdata;
 
-	if (d3d->hlsl != NULL)
-		d3d->hlsl->window_record();
+	d3d->hlsl->window_record();
 }
 
 static void drawd3d_window_save(win_window_info *window)
 {
 	d3d_info *d3d = (d3d_info *)window->drawdata;
 
-	if (d3d->hlsl != NULL)
-		d3d->hlsl->window_save();
+	d3d->hlsl->window_save();
 }
+
 
 
 //============================================================
@@ -551,6 +559,18 @@ static int drawd3d_window_draw(win_window_info *window, HDC dc, int update)
 	if (window->resize_state == RESIZE_STATE_RESIZING)
 		return 0;
 
+	// if we're restarting the renderer, leave things alone
+	if (d3d->restarting)
+	{
+		d3d->hlsl->toggle();
+
+		// free all existing resources and re-create
+		device_delete_resources(d3d);
+		device_create_resources(d3d);
+
+		d3d->restarting = false;
+	}
+
 	// if we haven't been created, just punt
 	if (d3d == NULL)
 		return 1;
@@ -579,7 +599,7 @@ mtlog_add("drawd3d_window_draw: begin");
 	result = (*d3dintf->device.clear)(d3d->device, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0,0,0,0), 0, 0);
 	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device clear call\n", (int)result);
 
-	d3d->hlsl->record_texture();
+	d3d->hlsl->begin_frame();
 
 	// first update any textures
 	window->primlist->acquire_lock();
@@ -591,9 +611,9 @@ mtlog_add("drawd3d_window_draw: begin");
 		}
 		else if(d3d->hlsl->vector_enabled() && PRIMFLAG_GET_VECTORBUF(prim->flags))
 		{
-			if (!d3d->hlsl->get_vector_target(d3d))
+			if (!d3d->hlsl->get_vector_target())
 			{
-				d3d->hlsl->create_vector_target(d3d, prim);
+				d3d->hlsl->create_vector_target(prim);
 			}
 		}
 	}
@@ -612,12 +632,39 @@ mtlog_add("drawd3d_window_draw: begin_scene");
 		d3d->hlsl->init_fsfx_quad(d3d->hlsl_buf);
 	}
 
-mtlog_add("drawd3d_window_draw: primitive loop begin");
+mtlog_add("drawd3d_window_draw: count lines");
+	int line_count = 0;
 	for (prim = window->primlist->first(); prim != NULL; prim = prim->next())
+		if (prim->type == render_primitive::LINE && PRIMFLAG_GET_VECTOR(prim->flags))
+			line_count++;
+
+mtlog_add("drawd3d_window_draw: primitive loop begin");
+	// Rotating index for vector time offsets
+	static int start_index = 0;
+	int line_index = 0;
+	windows_options &options = downcast<windows_options &>(window->machine().options());
+	float period = options.screen_vector_time_period();
+	for (prim = window->primlist->first(); prim != NULL; prim = prim->next())
+	{
 		switch (prim->type)
 		{
 			case render_primitive::LINE:
-				draw_line(d3d, prim);
+				if (PRIMFLAG_GET_VECTOR(prim->flags))
+				{
+					if (period == 0.0f || line_count == 0)
+					{
+						draw_line(d3d, prim, 1.0f);
+					}
+					else
+					{
+						draw_line(d3d, prim, (float)(start_index + line_index) / ((float)line_count * period));
+						line_index++;
+					}
+				}
+				else
+				{
+					draw_line(d3d, prim, 0.0f);
+				}
 				break;
 
 			case render_primitive::QUAD:
@@ -627,6 +674,12 @@ mtlog_add("drawd3d_window_draw: primitive loop begin");
 			default:
 				throw emu_fatalerror("Unexpected render_primitive type");
 		}
+	}
+	start_index += (int)((float)line_index * period);
+	if (line_count > 0)
+	{
+		start_index %= line_count;
+	}
 mtlog_add("drawd3d_window_draw: primitive loop end");
 	window->primlist->release_lock();
 
@@ -634,6 +687,8 @@ mtlog_add("drawd3d_window_draw: primitive loop end");
 mtlog_add("drawd3d_window_draw: flush_pending begin");
 	primitive_flush_pending(d3d);
 mtlog_add("drawd3d_window_draw: flush_pending end");
+
+	d3d->hlsl->end_frame();
 
 	// finish the scene
 mtlog_add("drawd3d_window_draw: end_scene begin");
@@ -646,8 +701,6 @@ mtlog_add("drawd3d_window_draw: present begin");
 	result = (*d3dintf->device.present)(d3d->device, NULL, NULL, NULL, NULL, 0);
 mtlog_add("drawd3d_window_draw: present end");
 	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device present call\n", (int)result);
-
-	d3d->hlsl->frame_complete();
 
 	return 0;
 }
@@ -811,7 +864,7 @@ static int device_create_resources(d3d_info *d3d)
 				VERTEX_BASE_FORMAT | ((d3d->hlsl->enabled() && d3dintf->post_fx_available) ? D3DFVF_XYZW : D3DFVF_XYZRHW), D3DPOOL_DEFAULT, &d3d->vertexbuf);
 	if (result != D3D_OK)
 	{
-		mame_printf_error("Error creating vertex buffer (%08X)", (UINT32)result);
+		printf("Error creating vertex buffer (%08X)", (UINT32)result);
 		return 1;
 	}
 
@@ -1427,7 +1480,7 @@ static int update_window_size(win_window_info *window)
 //  draw_line
 //============================================================
 
-static void draw_line(d3d_info *d3d, const render_primitive *prim)
+static void draw_line(d3d_info *d3d, const render_primitive *prim, float line_time)
 {
 	const line_aa_step *step = line_aa_4step;
 	render_bounds b0, b1;
@@ -1527,6 +1580,22 @@ static void draw_line(d3d_info *d3d, const render_primitive *prim)
 		poly->flags = prim->flags;
 		poly->modmode = D3DTOP_MODULATE;
 		poly->texture = d3d->vector_texture;
+		poly->line_time = line_time;
+		poly->line_length = 1.0f;
+		if (PRIMFLAG_GET_VECTOR(poly->flags))
+		{
+			float dx = fabs(prim->bounds.x1 - prim->bounds.x0);
+			float dy = fabs(prim->bounds.y1 - prim->bounds.y0);
+			float length2 = dx * dx + dy * dy;
+			if (length2 > 0.0f)
+			{
+				poly->line_length = sqrt(length2);
+			}
+			else
+			{
+				// use default length of 1.0f from above
+			}
+		}
 	}
 }
 
@@ -1621,6 +1690,7 @@ static void draw_quad(d3d_info *d3d, const render_primitive *prim)
 	poly->flags = prim->flags;
 	poly->modmode = modmode;
 	poly->texture = texture;
+	//poly->
 }
 
 
@@ -1634,7 +1704,15 @@ static d3d_vertex *primitive_alloc(d3d_info *d3d, int numverts)
 
 	// if we're going to overflow, flush
 	if (d3d->lockedbuf != NULL && d3d->numverts + numverts >= VERTEX_BUFFER_SIZE)
+	{
 		primitive_flush_pending(d3d);
+
+		if(d3d->hlsl->enabled())
+		{
+			d3d->hlsl_buf = (void*)primitive_alloc(d3d, 6);
+			d3d->hlsl->init_fsfx_quad(d3d->hlsl_buf);
+		}
+	}
 
 	// if we don't have a lock, grab it now
 	if (d3d->lockedbuf == NULL)
@@ -1679,10 +1757,9 @@ static void primitive_flush_pending(d3d_info *d3d)
 	result = (*d3dintf->device.set_stream_source)(d3d->device, 0, d3d->vertexbuf, sizeof(d3d_vertex));
 	if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_stream_source call\n", (int)result);
 
-	d3d->hlsl->begin();
+	d3d->hlsl->begin_draw();
 
-	// first remember the original render target in case we need to set a new one
-	if(d3d->hlsl->enabled() && d3dintf->post_fx_available)
+	if (d3d->hlsl->enabled())
 	{
 		vertnum = 6;
 	}
@@ -1734,7 +1811,7 @@ static void primitive_flush_pending(d3d_info *d3d)
 		vertnum += poly->numverts;
 	}
 
-	d3d->hlsl->end();
+	d3d->hlsl->end_draw();
 
 	// reset the vertex count
 	d3d->numverts = 0;
@@ -2641,6 +2718,20 @@ static void texture_update(d3d_info *d3d, const render_primitive *prim)
 
 d3d_cache_target::~d3d_cache_target()
 {
+	for (int index = 0; index < 11; index++)
+	{
+		if (bloom_texture[index] != NULL)
+		{
+			(*d3dintf->texture.release)(bloom_texture[index]);
+			bloom_texture[index] = NULL;
+		}
+		if (bloom_target[index] != NULL)
+		{
+			(*d3dintf->surface.release)(bloom_target[index]);
+			bloom_target[index] = NULL;
+		}
+	}
+
 	if (last_texture != NULL)
 	{
 		(*d3dintf->texture.release)(last_texture);
@@ -2658,12 +2749,35 @@ d3d_cache_target::~d3d_cache_target()
 //  d3d_cache_target::init - initializes a target cache
 //============================================================
 
-bool d3d_cache_target::init(d3d_info *d3d, d3d_base *d3dintf, int width, int height, int prescale_x, int prescale_y)
+bool d3d_cache_target::init(d3d_info *d3d, d3d_base *d3dintf, int width, int height, int prescale_x, int prescale_y, bool bloom)
 {
+	if (bloom)
+	{
+		int bloom_size = (width * prescale_x < height * prescale_y) ? width * prescale_x : height * prescale_y;
+		int bloom_index = 0;
+		int bloom_width = width * prescale_x;
+		int bloom_height = height * prescale_y;
+		for (; bloom_size >= 2 && bloom_index < 11; bloom_size >>= 1)
+		{
+			bloom_width >>= 1;
+			bloom_height >>= 1;
+			HRESULT result = (*d3dintf->device.create_texture)(d3d->device, bloom_width, bloom_height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom_texture[bloom_index]);
+			if (result != D3D_OK)
+			{
+				return false;
+			}
+			(*d3dintf->texture.get_surface_level)(bloom_texture[bloom_index], 0, &bloom_target[bloom_index]);
+			bloom_index++;
+		}
+	}
+
 	HRESULT result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &last_texture);
 	if (result != D3D_OK)
 		return false;
 	(*d3dintf->texture.get_surface_level)(last_texture, 0, &last_target);
+
+	target_width = width * prescale_x;
+	target_height = height * prescale_y;
 
 	return true;
 }
@@ -2674,6 +2788,20 @@ bool d3d_cache_target::init(d3d_info *d3d, d3d_base *d3dintf, int width, int hei
 
 d3d_render_target::~d3d_render_target()
 {
+	for (int index = 0; index < 11; index++)
+	{
+		if (bloom_texture[index] != NULL)
+		{
+			(*d3dintf->texture.release)(bloom_texture[index]);
+			bloom_texture[index] = NULL;
+		}
+		if (bloom_target[index] != NULL)
+		{
+			(*d3dintf->surface.release)(bloom_target[index]);
+			bloom_target[index] = NULL;
+		}
+	}
+
 	for (int index = 0; index < 5; index++)
 	{
 		if (texture[index] != NULL)
@@ -2716,42 +2844,70 @@ d3d_render_target::~d3d_render_target()
 //  d3d_render_target::init - initializes a render target
 //============================================================
 
-bool d3d_render_target::init(d3d_info *d3d, d3d_base *d3dintf, int width, int height, int prescale_x, int prescale_y)
+bool d3d_render_target::init(d3d_info *d3d, d3d_base *d3dintf, int width, int height, int prescale_x, int prescale_y, bool bloom)
 {
-	HRESULT result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[0]);
+	D3DFORMAT format = bloom ? D3DFMT_A16B16G16R16F : D3DFMT_A8R8G8B8;
+
+	HRESULT result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, format, D3DPOOL_DEFAULT, &texture[0]);
 	if (result != D3D_OK)
 		return false;
 	(*d3dintf->texture.get_surface_level)(texture[0], 0, &target[0]);
 
-	result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[1]);
+	result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, format, D3DPOOL_DEFAULT, &texture[1]);
 	if (result != D3D_OK)
 		return false;
 	(*d3dintf->texture.get_surface_level)(texture[1], 0, &target[1]);
 
-	result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[2]);
+	result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, format, D3DPOOL_DEFAULT, &texture[2]);
 	if (result != D3D_OK)
 		return false;
 	(*d3dintf->texture.get_surface_level)(texture[2], 0, &target[2]);
 
-	result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[3]);
-	if (result != D3D_OK)
-		return false;
-	(*d3dintf->texture.get_surface_level)(texture[3], 0, &target[3]);
+	if (!bloom)
+	{
+		result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[3]);
+		if (result != D3D_OK)
+			return false;
+		(*d3dintf->texture.get_surface_level)(texture[3], 0, &target[3]);
 
-	result = (*d3dintf->device.create_texture)(d3d->device, width, height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[4]);
-	if (result != D3D_OK)
-		return false;
-	(*d3dintf->texture.get_surface_level)(texture[4], 0, &target[4]);
+		result = (*d3dintf->device.create_texture)(d3d->device, width, height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture[4]);
+		if (result != D3D_OK)
+			return false;
+		(*d3dintf->texture.get_surface_level)(texture[4], 0, &target[4]);
 
-	result = (*d3dintf->device.create_texture)(d3d->device, width, height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &smalltexture);
-	if (result != D3D_OK)
-		return false;
-	(*d3dintf->texture.get_surface_level)(smalltexture, 0, &smalltarget);
+		result = (*d3dintf->device.create_texture)(d3d->device, width, height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &smalltexture);
+		if (result != D3D_OK)
+			return false;
+		(*d3dintf->texture.get_surface_level)(smalltexture, 0, &smalltarget);
 
-	result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &prescaletexture);
-	if (result != D3D_OK)
-		return false;
-	(*d3dintf->texture.get_surface_level)(prescaletexture, 0, &prescaletarget);
+		result = (*d3dintf->device.create_texture)(d3d->device, width * prescale_x, height * prescale_y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &prescaletexture);
+		if (result != D3D_OK)
+			return false;
+		(*d3dintf->texture.get_surface_level)(prescaletexture, 0, &prescaletarget);
+
+		for (int index = 0; index < 11; index++)
+		{
+			bloom_texture[index] = NULL;
+			bloom_target[index] = NULL;
+		}
+	}
+	else
+	{
+		int bloom_size = (width < height) ? width : height;
+		int bloom_index = 0;
+		int bloom_width = width;
+		int bloom_height = height;
+		for (; bloom_size >= 2 && bloom_index < 11; bloom_size >>= 1)
+		{
+			bloom_width >>= 1;
+			bloom_height >>= 1;
+			result = (*d3dintf->device.create_texture)(d3d->device, bloom_width, bloom_height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom_texture[bloom_index]);
+			if (result != D3D_OK)
+				return false;
+			(*d3dintf->texture.get_surface_level)(bloom_texture[bloom_index], 0, &bloom_target[bloom_index]);
+			bloom_index++;
+		}
+	}
 
 	target_width = width * prescale_x;
 	target_height = height * prescale_y;

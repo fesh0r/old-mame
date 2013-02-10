@@ -108,6 +108,7 @@ public:
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
 
 	void fdc_intrq_w(bool state);
+	IRQ_CALLBACK_MEMBER(m20_irq_callback);
 };
 
 
@@ -474,11 +475,9 @@ void m20_state::install_memory()
 	state->membank("dram0_1c000")->set_base(memptr + 0x1c000);
 
 	if (m_memsize > 128 * 1024) {
-
 		/* install memory expansions (DRAM1..DRAM3) */
 
 		if (m_memsize < 256 * 1024) {
-
 			/* 32K expansion cards */
 
 			/* DRAM1, 32K */
@@ -565,7 +564,6 @@ void m20_state::install_memory()
 			}
 		}
 		else {
-
 			/* 128K expansion cards */
 
 			/* DRAM1, 128K */
@@ -801,12 +799,12 @@ DRIVER_INIT_MEMBER(m20_state,m20)
 {
 }
 
-static IRQ_CALLBACK( m20_irq_callback )
+IRQ_CALLBACK_MEMBER(m20_state::m20_irq_callback)
 {
 	if (! irqline)
 		return 0xff; // NVI, value ignored
 	else
-		return pic8259_acknowledge(device->machine().device("i8259"));
+		return pic8259_acknowledge(machine().device("i8259"));
 }
 
 void m20_state::machine_start()
@@ -826,7 +824,7 @@ void m20_state::machine_reset()
 	else
 		m_port21 = 0xff;
 
-	m_maincpu->set_irq_acknowledge_callback(m20_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(m20_state::m20_irq_callback),this));
 
 	m_fd1797->reset();
 
@@ -834,9 +832,11 @@ void m20_state::machine_reset()
 	m_maincpu->reset();     // reset the CPU to ensure it picks up the new vector
 }
 
-static const mc6845_interface mc6845_intf =
+
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	16,         /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
@@ -1005,6 +1005,8 @@ static MACHINE_CONFIG_START( m20, m20_state )
 	MCFG_PIC8259_ADD("i8259", pic_intf)
 
 	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, keyboard_intf)
+
+	MCFG_SOFTWARE_LIST_ADD("flop_list","m20")
 MACHINE_CONFIG_END
 
 ROM_START(m20)

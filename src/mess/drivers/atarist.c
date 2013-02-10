@@ -428,8 +428,8 @@ void st_state::mouse_tick()
 
 	*/
 
-	UINT8 x = ioport("IKBD_MOUSEX")->read_safe(0x00);
-	UINT8 y = ioport("IKBD_MOUSEY")->read_safe(0x00);
+	UINT8 x = m_mousex->read();
+	UINT8 y = m_mousey->read();
 
 	if (m_ikbd_mouse_pc == 0)
 	{
@@ -481,7 +481,6 @@ void st_state::mouse_tick()
 
 TIMER_CALLBACK_MEMBER(st_state::st_mouse_tick)
 {
-
 	mouse_tick();
 }
 
@@ -510,21 +509,21 @@ READ8_MEMBER( st_state::ikbd_port1_r )
 	UINT8 data = 0xff;
 
 	// keyboard data
-	if (!BIT(m_ikbd_keylatch, 1)) data &= ioport("P31")->read();
-	if (!BIT(m_ikbd_keylatch, 2)) data &= ioport("P32")->read();
-	if (!BIT(m_ikbd_keylatch, 3)) data &= ioport("P33")->read();
-	if (!BIT(m_ikbd_keylatch, 4)) data &= ioport("P34")->read();
-	if (!BIT(m_ikbd_keylatch, 5)) data &= ioport("P35")->read();
-	if (!BIT(m_ikbd_keylatch, 6)) data &= ioport("P36")->read();
-	if (!BIT(m_ikbd_keylatch, 7)) data &= ioport("P37")->read();
-	if (!BIT(m_ikbd_keylatch, 8)) data &= ioport("P40")->read();
-	if (!BIT(m_ikbd_keylatch, 9)) data &= ioport("P41")->read();
-	if (!BIT(m_ikbd_keylatch, 10)) data &= ioport("P42")->read();
-	if (!BIT(m_ikbd_keylatch, 11)) data &= ioport("P43")->read();
-	if (!BIT(m_ikbd_keylatch, 12)) data &= ioport("P44")->read();
-	if (!BIT(m_ikbd_keylatch, 13)) data &= ioport("P45")->read();
-	if (!BIT(m_ikbd_keylatch, 14)) data &= ioport("P46")->read();
-	if (!BIT(m_ikbd_keylatch, 15)) data &= ioport("P47")->read();
+	if (!BIT(m_ikbd_keylatch, 1)) data &= m_p31->read();
+	if (!BIT(m_ikbd_keylatch, 2)) data &= m_p32->read();
+	if (!BIT(m_ikbd_keylatch, 3)) data &= m_p33->read();
+	if (!BIT(m_ikbd_keylatch, 4)) data &= m_p34->read();
+	if (!BIT(m_ikbd_keylatch, 5)) data &= m_p35->read();
+	if (!BIT(m_ikbd_keylatch, 6)) data &= m_p36->read();
+	if (!BIT(m_ikbd_keylatch, 7)) data &= m_p37->read();
+	if (!BIT(m_ikbd_keylatch, 8)) data &= m_p40->read();
+	if (!BIT(m_ikbd_keylatch, 9)) data &= m_p41->read();
+	if (!BIT(m_ikbd_keylatch, 10)) data &= m_p42->read();
+	if (!BIT(m_ikbd_keylatch, 11)) data &= m_p43->read();
+	if (!BIT(m_ikbd_keylatch, 12)) data &= m_p44->read();
+	if (!BIT(m_ikbd_keylatch, 13)) data &= m_p45->read();
+	if (!BIT(m_ikbd_keylatch, 14)) data &= m_p46->read();
+	if (!BIT(m_ikbd_keylatch, 15)) data &= m_p47->read();
 
 	return data;
 }
@@ -548,7 +547,7 @@ READ8_MEMBER( st_state::ikbd_port2_r )
 
 	*/
 
-	UINT8 data = ioport("IKBD_JOY1")->read_safe(0xff) & 0x06;
+	UINT8 data = m_joy1 ? m_joy1->read() & 0x06 : 0x06;
 
 	// serial receive
 	data |= m_ikbd_tx << 3;
@@ -635,9 +634,9 @@ READ8_MEMBER( st_state::ikbd_port4_r )
 
 	if (m_ikbd_joy) return 0xff;
 
-	UINT8 data = ioport("IKBD_JOY0")->read_safe(0xff);
+	UINT8 data = m_joy0 ? m_joy0->read() : 0xff;
 
-	if ((ioport("config")->read() & 0x01) == 0)
+	if ((m_config->read() & 0x01) == 0)
 	{
 		data = (data & 0xf0) | m_ikbd_mouse;
 	}
@@ -727,7 +726,7 @@ void ste_state::dmasound_tick()
 {
 	if (m_dmasnd_samples == 0)
 	{
-		UINT8 *RAM = machine().device<ram_device>(RAM_TAG)->pointer();
+		UINT8 *RAM = m_ram->pointer();
 
 		for (int i = 0; i < 8; i++)
 		{
@@ -777,7 +776,6 @@ void ste_state::dmasound_tick()
 
 TIMER_CALLBACK_MEMBER(ste_state::atariste_dmasound_tick)
 {
-
 	dmasound_tick();
 }
 
@@ -1027,7 +1025,6 @@ void ste_state::microwire_tick()
 
 TIMER_CALLBACK_MEMBER(ste_state::atariste_microwire_tick)
 {
-
 	microwire_tick();
 }
 
@@ -1140,7 +1137,7 @@ READ16_MEMBER( stbook_state::config_r )
 
 	*/
 
-	return (ioport("SW400")->read() << 8) | 0xff;
+	return (m_sw400->read() << 8) | 0xff;
 }
 
 
@@ -1922,7 +1919,7 @@ READ8_MEMBER( st_state::mfp_gpio_r )
 	// ring indicator
 
 	// monochrome monitor detect
-	data |= ioport("config")->read() & 0x80;
+	data |= m_config->read() & 0x80;
 
 	return data;
 }
@@ -1992,7 +1989,7 @@ READ8_MEMBER( ste_state::mfp_gpio_r )
 	// ring indicator
 
 	// monochrome monitor detect, DMA sound active
-	data |= (ioport("config")->read() & 0x80) ^ (m_dmasnd_active << 7);
+	data |= (m_config->read() & 0x80) ^ (m_dmasnd_active << 7);
 
 	return data;
 }
@@ -2117,16 +2114,14 @@ static const centronics_interface centronics_intf =
 //**************************************************************************
 
 //-------------------------------------------------
-//  IRQ_CALLBACK( atarist_int_ack )
+//  IRQ_CALLBACK_MEMBER( atarist_int_ack )
 //-------------------------------------------------
 
-static IRQ_CALLBACK( atarist_int_ack )
+IRQ_CALLBACK_MEMBER(st_state::atarist_int_ack)
 {
-	st_state *state = device->machine().driver_data<st_state>();
-
 	if (irqline == M68K_IRQ_6)
 	{
-		return state->m_mfp->get_vector();
+		return m_mfp->get_vector();
 	}
 
 	return M68K_INT_ACK_AUTOVECTOR;
@@ -2202,11 +2197,13 @@ void st_state::machine_start()
 	configure_memory();
 
 	// set CPU interrupt callback
-	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(st_state::atarist_int_ack),this));
 
 	// allocate timers
-	m_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(st_state::st_mouse_tick),this));
-	m_mouse_timer->adjust(attotime::zero, 0, attotime::from_hz(500));
+	if(m_mousex) {
+		m_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(st_state::st_mouse_tick),this));
+		m_mouse_timer->adjust(attotime::zero, 0, attotime::from_hz(500));
+	}
 
 	// register for state saving
 	state_save();
@@ -2259,7 +2256,7 @@ void ste_state::machine_start()
 	configure_memory();
 
 	/* set CPU interrupt callback */
-	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(st_state::atarist_int_ack),this));
 
 	/* allocate timers */
 	m_dmasound_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(ste_state::atariste_dmasound_tick),this));
@@ -2299,7 +2296,7 @@ void stbook_state::machine_start()
 	}
 
 	/* set CPU interrupt callback */
-	m_maincpu->set_irq_acknowledge_callback(atarist_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(st_state::atarist_int_ack),this));
 
 	/* register for state saving */
 	ste_state::state_save();

@@ -215,10 +215,11 @@ static const UINT8 pal35[256] = {
 /********************   VIDEO SECTION   ************************************/
 /***************************************************************************/
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
-	"screen",       /* screen we are acting on */
-	8,      /* number of pixels per video memory address */
+	"screen",   /* screen we are acting on */
+	false,      /* show border area */
+	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
 	NULL,       /* after pixel update callback */
@@ -301,7 +302,6 @@ static SCREEN_UPDATE_IND16( nevada )
 /***************************************************************************/
 static PALETTE_INIT( nevada )
 {
-
 	// Palette init
 }
 
@@ -692,7 +692,6 @@ static const duart68681_config nevada_duart40_68681_config =
 
 static MACHINE_RESET( nevada )
 {
-
 	nevada_state *state = machine.driver_data<nevada_state>();
 
 	state->m_duart18_68681 = machine.device( "duart18_68681" );

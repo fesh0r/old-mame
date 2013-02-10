@@ -23,8 +23,23 @@
 //  DEVICE DEFINITIONS
 //**************************************************************************
 
+const device_type C2N = &device_creator<c2n_device>;
 const device_type C1530 = &device_creator<c1530_device>;
 const device_type C1531 = &device_creator<c1531_device>;
+
+
+//-------------------------------------------------
+//  cassette_interface cbm_cassette_interface
+//-------------------------------------------------
+
+const cassette_interface cbm_cassette_interface =
+{
+	cbm_cassette_formats,
+	NULL,
+	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
+	"cbm_cass",
+	NULL
+};
 
 
 //-------------------------------------------------
@@ -58,6 +73,13 @@ machine_config_constructor c2n_device::device_mconfig_additions() const
 
 c2n_device::c2n_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, type, name, tag, owner, clock),
+		device_pet_datassette_port_interface(mconfig, *this),
+		m_cassette(*this, CASSETTE_TAG)
+{
+}
+
+c2n_device::c2n_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
+	: device_t(mconfig, C2N, "C2N", tag, owner, clock),
 		device_pet_datassette_port_interface(mconfig, *this),
 		m_cassette(*this, CASSETTE_TAG)
 {

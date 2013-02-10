@@ -69,6 +69,7 @@ public:
 	DECLARE_VIDEO_START(astrocorp);
 	UINT32 screen_update_astrocorp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	TIMER_DEVICE_CALLBACK_MEMBER(skilldrp_scanline);
+	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
 /***************************************************************************
@@ -77,7 +78,6 @@ public:
 
 VIDEO_START_MEMBER(astrocorp_state,astrocorp)
 {
-
 	machine().primary_screen->register_screen_bitmap(m_bitmap);
 
 	save_item(NAME(m_bitmap));
@@ -107,11 +107,10 @@ VIDEO_START_MEMBER(astrocorp_state,astrocorp)
 
 ***************************************************************************/
 
-static void draw_sprites( running_machine &machine, bitmap_ind16 &bitmap, const rectangle &cliprect )
+void astrocorp_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	astrocorp_state *state = machine.driver_data<astrocorp_state>();
-	UINT16 *source = state->m_spriteram;
-	UINT16 *finish = state->m_spriteram + state->m_spriteram.bytes() / 2;
+	UINT16 *source = m_spriteram;
+	UINT16 *finish = m_spriteram + m_spriteram.bytes() / 2;
 
 	for ( ; source < finish; source += 8 / 2 )
 	{
@@ -143,7 +142,7 @@ static void draw_sprites( running_machine &machine, bitmap_ind16 &bitmap, const 
 				{
 					for (xwrap = 0 ; xwrap <= 0x200 ; xwrap += 0x200)
 					{
-						drawgfx_transpen(bitmap,cliprect, machine.gfx[0],
+						drawgfx_transpen(bitmap,cliprect, machine().gfx[0],
 								code, 0,
 								0, 0,
 								sx + x * 16 - xwrap, sy + y * 16 - ywrap, 0xff);
@@ -157,7 +156,6 @@ static void draw_sprites( running_machine &machine, bitmap_ind16 &bitmap, const 
 
 UINT32 astrocorp_state::screen_update_astrocorp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-
 	if (m_screen_enable & 1)
 		copybitmap(bitmap, m_bitmap, 0,0,0,0, cliprect);
 	else
@@ -173,12 +171,11 @@ UINT32 astrocorp_state::screen_update_astrocorp(screen_device &screen, bitmap_in
 
 WRITE16_MEMBER(astrocorp_state::astrocorp_draw_sprites_w)
 {
-
 	UINT16 old = m_draw_sprites;
 	UINT16 now = COMBINE_DATA(&m_draw_sprites);
 
 	if (!old && now)
-		draw_sprites(machine(), m_bitmap, machine().primary_screen->visible_area());
+		draw_sprites(m_bitmap, machine().primary_screen->visible_area());
 }
 
 WRITE16_MEMBER(astrocorp_state::astrocorp_eeprom_w)

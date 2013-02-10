@@ -149,6 +149,7 @@ public:
 	TIMER_CALLBACK_MEMBER(deferred_ls670_0_w);
 	TIMER_CALLBACK_MEMBER(deferred_ls670_1_w);
 	TIMER_CALLBACK_MEMBER(delayed_sound_w);
+	IRQ_CALLBACK_MEMBER(irq_callback);
 };
 
 
@@ -186,7 +187,6 @@ void mazerbla_state::palette_init()
 
 void mazerbla_state::video_start()
 {
-
 #if 0
 	m_planes_enabled[0] = m_planes_enabled[1] = m_planes_enabled[2] = m_planes_enabled[3] = 1;
 	m_dbg_info = 1;
@@ -329,7 +329,6 @@ UINT32 mazerbla_state::screen_update_mazerbla(screen_device &screen, bitmap_ind1
 
 WRITE8_MEMBER(mazerbla_state::cfb_backgnd_color_w)
 {
-
 	if (m_bknd_col != data)
 	{
 		int r, g, b, bit0, bit1, bit2;
@@ -361,7 +360,6 @@ WRITE8_MEMBER(mazerbla_state::cfb_backgnd_color_w)
 
 WRITE8_MEMBER(mazerbla_state::cfb_vbank_w)
 {
-
 	/* only bit 6 connected */
 	m_vbank = BIT(data, 6);
 }
@@ -510,7 +508,6 @@ READ8_MEMBER(mazerbla_state::vcu_set_gfx_addr_r)
 //      {
 //          if (m_vbank == m_dbg_vbank)
 		{
-
 			for (y = 0; y <= m_pix_ysize; y++)
 			{
 				for (x = 0; x <= m_pix_xsize; x++)
@@ -766,7 +763,6 @@ READ8_MEMBER(mazerbla_state::vcu_set_clr_addr_r)
 
 WRITE8_MEMBER(mazerbla_state::cfb_zpu_int_req_set_w)
 {
-
 	m_zpu_int_vector &= ~2; /* clear D1 on INTA (interrupt acknowledge) */
 
 	m_maincpu->set_input_line(0, ASSERT_LINE);  /* main cpu interrupt (comes from CFB (generated at the start of INT routine on CFB) - vblank?) */
@@ -774,7 +770,6 @@ WRITE8_MEMBER(mazerbla_state::cfb_zpu_int_req_set_w)
 
 READ8_MEMBER(mazerbla_state::cfb_zpu_int_req_clr)
 {
-
 	m_zpu_int_vector |= 2;
 
 	/* clear the INT line when there are no more interrupt requests */
@@ -786,7 +781,6 @@ READ8_MEMBER(mazerbla_state::cfb_zpu_int_req_clr)
 
 READ8_MEMBER(mazerbla_state::ls670_0_r)
 {
-
 	/* set a timer to force synchronization after the read */
 	machine().scheduler().synchronize();
 
@@ -809,7 +803,6 @@ WRITE8_MEMBER(mazerbla_state::ls670_0_w)
 
 READ8_MEMBER(mazerbla_state::ls670_1_r)
 {
-
 	/* set a timer to force synchronization after the read */
 	machine().scheduler().synchronize();
 
@@ -885,7 +878,6 @@ Vertical movement of gun is Strobe 9, Bits 0-7.
 
 WRITE8_MEMBER(mazerbla_state::zpu_bcd_decoder_w)
 {
-
 	/* bcd decoder used a input select (a mux) for reads from port 0x62 */
 	m_bcd_7445 = data & 0xf;
 }
@@ -1403,7 +1395,7 @@ static const ay8910_interface ay8912_interface_2 =
 	DEVCB_DRIVER_MEMBER(mazerbla_state,gg_led_ctrl_w)
 };
 
-static IRQ_CALLBACK(irq_callback)
+IRQ_CALLBACK_MEMBER(mazerbla_state::irq_callback)
 {
 	/* all data lines are tied to +5V via 10K resistors */
 	/* D1 is set to GND when INT comes from CFB */
@@ -1417,8 +1409,7 @@ static IRQ_CALLBACK(irq_callback)
 	note:
 	1111 11110 (0xfe) - cannot happen and is not handled by game */
 
-	mazerbla_state *state = device->machine().driver_data<mazerbla_state>();
-	return (state->m_zpu_int_vector & ~1);  /* D0->GND is performed on CFB board */
+	return (m_zpu_int_vector & ~1);  /* D0->GND is performed on CFB board */
 }
 
 /* frequency is 14.318 MHz/16/16/16/16 */
@@ -1436,7 +1427,6 @@ INTERRUPT_GEN_MEMBER(mazerbla_state::sound_interrupt)
 
 void mazerbla_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_subcpu = machine().device<cpu_device>("sub");
 
@@ -1503,7 +1493,7 @@ void mazerbla_state::machine_reset()
 
 	memset(m_lookup_ram, 0, ARRAY_LENGTH(m_lookup_ram));
 
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(mazerbla_state::irq_callback),this));
 }
 
 

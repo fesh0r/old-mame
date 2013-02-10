@@ -426,7 +426,6 @@ static void parse_control(running_machine &machine)
 
 WRITE16_MEMBER(wgp_state::cpua_ctrl_w)/* assumes Z80 sandwiched between 68Ks */
 {
-
 	if ((data &0xff00) && ((data &0xff) == 0))
 		data = data >> 8;   /* for Wgp */
 	m_cpua_ctrl = data;
@@ -616,7 +615,6 @@ WRITE8_MEMBER(wgp_state::sound_bankswitch_w)
 
 WRITE16_MEMBER(wgp_state::wgp_sound_w)
 {
-
 	if (offset == 0)
 		tc0140syt_port_w(m_tc0140syt, space, 0, data & 0xff);
 	else if (offset == 1)
@@ -625,7 +623,6 @@ WRITE16_MEMBER(wgp_state::wgp_sound_w)
 
 READ16_MEMBER(wgp_state::wgp_sound_r)
 {
-
 	if (offset == 1)
 		return ((tc0140syt_comm_r(m_tc0140syt, space, 0) & 0xff));
 	else
@@ -913,10 +910,10 @@ However sync to vblank is lacking, which is causing the
 graphics glitches.
 ***********************************************************/
 
-static void wgp_postload(running_machine &machine)
+void wgp_state::wgp_postload()
 {
-	parse_control(machine);
-	reset_sound_region(machine);
+	parse_control(machine());
+	reset_sound_region(machine());
 }
 
 void wgp_state::machine_reset()
@@ -940,7 +937,6 @@ void wgp_state::machine_reset()
 
 void wgp_state::machine_start()
 {
-
 	membank("bank10")->configure_entries(0, 4, memregion("audiocpu")->base() + 0xc000, 0x4000);
 
 	m_maincpu = machine().device<cpu_device>("maincpu");
@@ -952,7 +948,7 @@ void wgp_state::machine_start()
 	save_item(NAME(m_cpua_ctrl));
 	save_item(NAME(m_banknum));
 	save_item(NAME(m_port_sel));
-	machine().save().register_postload(save_prepost_delegate(FUNC(wgp_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(wgp_state::wgp_postload), this));
 }
 
 static const tc0100scn_interface wgp_tc0100scn_intf =

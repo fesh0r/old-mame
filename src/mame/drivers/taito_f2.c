@@ -601,17 +601,15 @@ WRITE8_MEMBER(taitof2_state::sound_bankswitch_w)
 
 READ8_MEMBER(taitof2_state::driveout_sound_command_r)
 {
-
 	m_audiocpu->set_input_line(0, CLEAR_LINE);
 //  logerror("sound IRQ OFF (sound command=%02x)\n", m_driveout_sound_latch);
 	return m_driveout_sound_latch;
 }
 
 
-static void reset_driveout_sound_region( running_machine &machine )
+void taitof2_state::reset_driveout_sound_region()
 {
-	taitof2_state *state = machine.driver_data<taitof2_state>();
-	state->m_oki->set_bank_base(state->m_oki_bank * 0x40000);
+	m_oki->set_bank_base(m_oki_bank * 0x40000);
 }
 
 WRITE8_MEMBER(taitof2_state::oki_bank_w)
@@ -621,12 +619,11 @@ WRITE8_MEMBER(taitof2_state::oki_bank_w)
 		m_oki_bank = (data & 3);
 	}
 
-	reset_driveout_sound_region(machine());
+	reset_driveout_sound_region();
 }
 
 WRITE16_MEMBER(taitof2_state::driveout_sound_command_w)
 {
-
 	if (ACCESSING_BITS_8_15)
 	{
 		data >>= 8;
@@ -661,7 +658,6 @@ WRITE16_MEMBER(taitof2_state::driveout_sound_command_w)
 
 WRITE16_MEMBER(taitof2_state::cchip2_word_w)
 {
-
 	logerror("cchip2_w pc: %06x offset %04x: %02x\n", space.device().safe_pc(), offset, data);
 
 	COMBINE_DATA(&m_cchip2_ram[offset]);
@@ -669,7 +665,6 @@ WRITE16_MEMBER(taitof2_state::cchip2_word_w)
 
 READ16_MEMBER(taitof2_state::cchip2_word_r)
 {
-
 	/* C-Chip ID */
 	if (offset == 0x401)
 		return 0x01;
@@ -3017,7 +3012,6 @@ static const tc0140syt_interface taitof2_tc0140syt_intf =
 
 MACHINE_START_MEMBER(taitof2_state,common)
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_audiocpu = machine().device<cpu_device>("audiocpu");;
 	m_tc0100scn = machine().device("tc0100scn");;
@@ -5341,7 +5335,6 @@ DRIVER_INIT_MEMBER(taitof2_state,finalb)
 
 DRIVER_INIT_MEMBER(taitof2_state,cameltry)
 {
-
 	m_last[0] = 0;
 	m_last[1] = 0;
 
@@ -5372,7 +5365,6 @@ DRIVER_INIT_MEMBER(taitof2_state,mjnquest)
 
 DRIVER_INIT_MEMBER(taitof2_state,driveout)
 {
-
 	m_driveout_sound_latch = 0;
 	m_oki_bank = 0;
 	m_nibble = 0;
@@ -5380,7 +5372,7 @@ DRIVER_INIT_MEMBER(taitof2_state,driveout)
 	save_item(NAME(m_driveout_sound_latch));
 	save_item(NAME(m_oki_bank));
 	save_item(NAME(m_nibble));
-	machine().save().register_postload(save_prepost_delegate(FUNC(reset_driveout_sound_region), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(taitof2_state::reset_driveout_sound_region), this));
 }
 
 

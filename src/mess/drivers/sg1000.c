@@ -517,12 +517,12 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER(sg1000_state::sg1000_vdp_interrupt)
 {
-	machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_IRQ0, state);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, state);
 }
 
 static TMS9928A_INTERFACE(sg1000_tms9918a_interface)
 {
-	"screen",
+	SCREEN_TAG,
 	0x4000,
 	DEVCB_DRIVER_LINE_MEMBER(sg1000_state,sg1000_vdp_interrupt)
 };
@@ -546,9 +546,7 @@ READ8_MEMBER( sc3000_state::ppi_pa_r )
 	    PA7     Keyboard input
 	*/
 
-	static const char *const keynames[] = { "PA0", "PA1", "PA2", "PA3", "PA4", "PA5", "PA6", "PA7" };
-
-	return ioport(keynames[m_keylatch])->read();
+	return m_key_row[m_keylatch]->read();
 }
 
 READ8_MEMBER( sc3000_state::ppi_pb_r )
@@ -566,10 +564,8 @@ READ8_MEMBER( sc3000_state::ppi_pb_r )
 	    PB7     Cassette tape input
 	*/
 
-	static const char *const keynames[] = { "PB0", "PB1", "PB2", "PB3", "PB4", "PB5", "PB6", "PB7" };
-
 	/* keyboard */
-	UINT8 data = ioport(keynames[m_keylatch])->read();
+	UINT8 data = m_key_row[m_keylatch + 8]->read();
 
 	/* cartridge contact */
 	data |= 0x10;
@@ -578,7 +574,7 @@ READ8_MEMBER( sc3000_state::ppi_pb_r )
 	data |= 0x60;
 
 	/* tape input */
-	if ((m_cassette)->input() > +0.0) data |= 0x80;
+	if (m_cassette->input() > +0.0) data |= 0x80;
 
 	return data;
 }
@@ -647,14 +643,14 @@ void sg1000_state::install_cartridge(UINT8 *ptr, int size)
 	case 40 * 1024:
 		program.install_read_bank(0x8000, 0x9fff, "bank1");
 		program.unmap_write(0x8000, 0x9fff);
-		membank("bank1")->configure_entry(0, memregion(Z80_TAG)->base() + 0x8000);
+		membank("bank1")->configure_entry(0, m_rom->base() + 0x8000);
 		membank("bank1")->set_entry(0);
 		break;
 
 	case 48 * 1024:
 		program.install_read_bank(0x8000, 0xbfff, "bank1");
 		program.unmap_write(0x8000, 0xbfff);
-		membank("bank1")->configure_entry(0, memregion(Z80_TAG)->base() + 0x8000);
+		membank("bank1")->configure_entry(0, m_rom->base() + 0x8000);
 		membank("bank1")->set_entry(0);
 		break;
 
@@ -678,12 +674,12 @@ void sg1000_state::install_cartridge(UINT8 *ptr, int size)
     DEVICE_IMAGE_LOAD( sg1000_cart )
 -------------------------------------------------*/
 
-static DEVICE_IMAGE_LOAD( sg1000_cart )
+DEVICE_IMAGE_LOAD_MEMBER( sg1000_state,sg1000_cart )
 {
 	running_machine &machine = image.device().machine();
 	sg1000_state *state = machine.driver_data<sg1000_state>();
-	address_space &program = machine.device(Z80_TAG)->memory().space(AS_PROGRAM);
-	UINT8 *ptr = state->memregion(Z80_TAG)->base();
+	address_space &program = state->m_maincpu->space(AS_PROGRAM);
+	UINT8 *ptr = state->m_rom->base();
 	UINT32 ram_size = 0x400;
 	bool install_2000_ram = false;
 	UINT32 size;
@@ -792,12 +788,12 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
     DEVICE_IMAGE_LOAD( omv_cart )
 -------------------------------------------------*/
 
-static DEVICE_IMAGE_LOAD( omv_cart )
+DEVICE_IMAGE_LOAD_MEMBER( sg1000_state,omv_cart )
 {
 	running_machine &machine = image.device().machine();
 	sg1000_state *state = machine.driver_data<sg1000_state>();
 	UINT32 size;
-	UINT8 *ptr = state->memregion(Z80_TAG)->base();
+	UINT8 *ptr = state->m_rom->base();
 
 	if (image.software_entry() == NULL)
 	{
@@ -849,11 +845,11 @@ void sc3000_state::install_cartridge(UINT8 *ptr, int size)
     DEVICE_IMAGE_LOAD( sc3000_cart )
 -------------------------------------------------*/
 
-static DEVICE_IMAGE_LOAD( sc3000_cart )
+DEVICE_IMAGE_LOAD_MEMBER( sc3000_state,sc3000_cart )
 {
 	running_machine &machine = image.device().machine();
 	sc3000_state *state = machine.driver_data<sc3000_state>();
-	UINT8 *ptr = state->memregion(Z80_TAG)->base();
+	UINT8 *ptr = state->m_rom->base();
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -986,7 +982,7 @@ static const sn76496_config psg_intf =
 
 TIMER_CALLBACK_MEMBER(sg1000_state::lightgun_tick)
 {
-	UINT8 *rom = machine().root_device().memregion(Z80_TAG)->base();
+	UINT8 *rom = m_rom->base();
 
 	if (IS_CARTRIDGE_TV_DRAW(rom))
 	{
@@ -1022,6 +1018,24 @@ void sc3000_state::machine_start()
 	/* toggle light gun crosshair */
 	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(sg1000_state::lightgun_tick),this));
 
+	// find keyboard rows
+	m_key_row[0] = m_pa0;
+	m_key_row[1] = m_pa1;
+	m_key_row[2] = m_pa2;
+	m_key_row[3] = m_pa3;
+	m_key_row[4] = m_pa4;
+	m_key_row[5] = m_pa5;
+	m_key_row[6] = m_pa6;
+	m_key_row[7] = m_pa7;
+	m_key_row[8] = m_pb0;
+	m_key_row[9] = m_pb1;
+	m_key_row[10] = m_pb2;
+	m_key_row[11] = m_pb3;
+	m_key_row[12] = m_pb4;
+	m_key_row[13] = m_pb5;
+	m_key_row[14] = m_pb6;
+	m_key_row[15] = m_pb7;
+
 	/* register for state saving */
 	save_item(NAME(m_tvdraw_data));
 	save_item(NAME(m_keylatch));
@@ -1035,7 +1049,7 @@ void sc3000_state::machine_start()
 void sf7000_state::machine_start()
 {
 	/* configure memory banking */
-	membank("bank1")->configure_entry(0, memregion(Z80_TAG)->base());
+	membank("bank1")->configure_entry(0, m_rom->base());
 	membank("bank1")->configure_entry(1, m_ram->pointer());
 	membank("bank2")->configure_entry(0, m_ram->pointer());
 
@@ -1069,7 +1083,7 @@ static MACHINE_CONFIG_START( sg1000, sg1000_state )
 
 	/* video hardware */
 	MCFG_TMS9928A_ADD( TMS9918A_TAG, TMS9918A, sg1000_tms9918a_interface )
-	MCFG_TMS9928A_SCREEN_ADD_NTSC( "screen" )
+	MCFG_TMS9928A_SCREEN_ADD_NTSC( SCREEN_TAG )
 	MCFG_SCREEN_UPDATE_DEVICE( TMS9918A_TAG, tms9918a_device, screen_update )
 
 	/* sound hardware */
@@ -1083,7 +1097,7 @@ static MACHINE_CONFIG_START( sg1000, sg1000_state )
 	MCFG_CARTSLOT_EXTENSION_LIST("sg,bin")
 	MCFG_CARTSLOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("sg1000_cart")
-	MCFG_CARTSLOT_LOAD(sg1000_cart)
+	MCFG_CARTSLOT_LOAD(sg1000_state,sg1000_cart)
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","sg1000")
@@ -1105,7 +1119,7 @@ static MACHINE_CONFIG_DERIVED( omv, sg1000 )
 	MCFG_CARTSLOT_MODIFY("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("sg,bin")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_LOAD(omv_cart)
+	MCFG_CARTSLOT_LOAD(sg1000_state,omv_cart)
 
 	MCFG_RAM_MODIFY(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("2K")
@@ -1123,7 +1137,7 @@ static MACHINE_CONFIG_START( sc3000, sc3000_state )
 
 	/* video hardware */
 	MCFG_TMS9928A_ADD( TMS9918A_TAG, TMS9918A, sg1000_tms9918a_interface )
-	MCFG_TMS9928A_SCREEN_ADD_NTSC( "screen" )
+	MCFG_TMS9928A_SCREEN_ADD_NTSC( SCREEN_TAG )
 	MCFG_SCREEN_UPDATE_DEVICE( TMS9918A_TAG, tms9918a_device, screen_update )
 
 	/* sound hardware */
@@ -1142,7 +1156,7 @@ static MACHINE_CONFIG_START( sc3000, sc3000_state )
 	MCFG_CARTSLOT_EXTENSION_LIST("sg,sc,bin")
 	MCFG_CARTSLOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("sg1000_cart")
-	MCFG_CARTSLOT_LOAD(sc3000_cart)
+	MCFG_CARTSLOT_LOAD(sc3000_state,sc3000_cart)
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","sg1000")
@@ -1164,7 +1178,7 @@ static MACHINE_CONFIG_START( sf7000, sf7000_state )
 
 	/* video hardware */
 	MCFG_TMS9928A_ADD( TMS9918A_TAG, TMS9918A, sg1000_tms9918a_interface )
-	MCFG_TMS9928A_SCREEN_ADD_NTSC( "screen" )
+	MCFG_TMS9928A_SCREEN_ADD_NTSC( SCREEN_TAG )
 	MCFG_SCREEN_UPDATE_DEVICE( TMS9918A_TAG, tms9918a_device, screen_update )
 
 	/* sound hardware */

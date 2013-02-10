@@ -147,7 +147,6 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/6525tpi.o     \
 	$(EMUMACHINE)/6526cia.o     \
 	$(EMUMACHINE)/6532riot.o    \
-	$(EMUMACHINE)/6551acia.o    \
 	$(EMUMACHINE)/6821pia.o     \
 	$(EMUMACHINE)/6840ptm.o     \
 	$(EMUMACHINE)/6850acia.o    \
@@ -226,6 +225,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/microtch.o    \
 	$(EMUMACHINE)/mos6526.o     \
 	$(EMUMACHINE)/mos6529.o     \
+	$(EMUMACHINE)/mos6551.o     \
 	$(EMUMACHINE)/msm5832.o     \
 	$(EMUMACHINE)/msm58321.o    \
 	$(EMUMACHINE)/msm6242.o     \
@@ -298,6 +298,7 @@ EMUVIDEOOBJS = \
 	$(EMUVIDEO)/crt9021.o       \
 	$(EMUVIDEO)/crt9212.o       \
 	$(EMUVIDEO)/dm9368.o        \
+	$(EMUVIDEO)/ef9340_1.o      \
 	$(EMUVIDEO)/generic.o       \
 	$(EMUVIDEO)/h63484.o        \
 	$(EMUVIDEO)/hd44102.o       \
@@ -308,6 +309,7 @@ EMUVIDEOOBJS = \
 	$(EMUVIDEO)/huc6261.o       \
 	$(EMUVIDEO)/huc6270.o       \
 	$(EMUVIDEO)/huc6272.o       \
+	$(EMUVIDEO)/i8244.o         \
 	$(EMUVIDEO)/i8275.o         \
 	$(EMUVIDEO)/i8275x.o        \
 	$(EMUVIDEO)/k053250.o       \
@@ -343,6 +345,8 @@ EMUIMAGEDEVOBJS = \
 	$(EMUIMAGEDEV)/flopdrv.o    \
 	$(EMUIMAGEDEV)/floppy.o     \
 	$(EMUIMAGEDEV)/harddriv.o   \
+	$(EMUIMAGEDEV)/midiin.o     \
+	$(EMUIMAGEDEV)/midiout.o     \
 	$(EMUIMAGEDEV)/printer.o    \
 	$(EMUIMAGEDEV)/serial.o     \
 	$(EMUIMAGEDEV)/snapquik.o   \

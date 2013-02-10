@@ -60,7 +60,7 @@ READ8_MEMBER( pc1512_state::system_r )
 			data = m_kbd;
 			m_kb_bits = 0;
 			m_kb->data_w(1);
-			pic8259_ir1_w(m_pic, CLEAR_LINE);
+			m_pic->ir1_w(CLEAR_LINE);
 		}
 		break;
 
@@ -319,7 +319,7 @@ READ8_MEMBER( pc1512_state::printer_r )
 
 		*/
 
-		data |= ioport("LK")->read() & 0x07;
+		data |= m_lk->read() & 0x07;
 
 		data |= m_centronics->fault_r() << 3;
 		data |= m_centronics->vcc_r() << 4;
@@ -404,7 +404,7 @@ READ8_MEMBER( pc1640_state::printer_r )
 		*/
 		data = m_printer_control;
 		data |= m_opt << 5;
-		data |= (ioport("SW")->read() & 0x60) << 1;
+		data |= (m_sw->read() & 0x60) << 1;
 		break;
 
 	default:
@@ -489,7 +489,7 @@ READ8_MEMBER( pc1640_state::io_r )
 	}
 	else if (!BIT(offset, 7))
 	{
-		UINT16 sw = ioport("SW")->read();
+		UINT16 sw = m_sw->read();
 
 		if (!BIT(offset, 14))
 		{
@@ -766,7 +766,7 @@ WRITE_LINE_MEMBER( pc1512_state::kbclk_w )
 		if (m_kb_bits == 8)
 		{
 			m_kb->data_w(0);
-			pic8259_ir1_w(m_pic, ASSERT_LINE);
+			m_pic->ir1_w(ASSERT_LINE);
 		}
 	}
 
@@ -911,11 +911,9 @@ static I8237_INTERFACE( dmac_intf )
 //  pic8259_interface pic_intf
 //-------------------------------------------------
 
-static IRQ_CALLBACK( pc1512_irq_callback )
+IRQ_CALLBACK_MEMBER(pc1512_state::pc1512_irq_callback)
 {
-	pc1512_state *state = device->machine().driver_data<pc1512_state>();
-
-	return pic8259_acknowledge(state->m_pic);
+	return m_pic->inta_r();
 }
 
 static const struct pic8259_interface pic_intf =
@@ -958,7 +956,7 @@ static const struct pit8253_config pit_intf =
 		{
 			XTAL_28_63636MHz/24,
 			DEVCB_LINE_VCC,
-			DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir0_w)
+			DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir0_w)
 		}, {
 			XTAL_28_63636MHz/24,
 			DEVCB_LINE_VCC,
@@ -978,7 +976,7 @@ static const struct pit8253_config pit_intf =
 
 static const struct mc146818_interface rtc_intf =
 {
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir2_w)
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir2_w)
 };
 
 
@@ -989,9 +987,9 @@ static const struct mc146818_interface rtc_intf =
 void pc1512_state::update_fdc_int()
 {
 	if (m_nden)
-		pic8259_ir6_w(m_pic, m_dint);
+		m_pic->ir6_w(m_dint);
 	else
-		pic8259_ir6_w(m_pic, CLEAR_LINE);
+		m_pic->ir6_w(CLEAR_LINE);
 }
 
 void pc1512_state::update_fdc_drq()
@@ -1023,7 +1021,7 @@ static const ins8250_interface uart_intf =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir4_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir4_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -1036,9 +1034,9 @@ static const ins8250_interface uart_intf =
 void pc1512_state::update_ack()
 {
 	if (m_ack_int_enable)
-		pic8259_ir7_w(m_pic, m_ack);
+		m_pic->ir7_w(m_ack);
 	else
-		pic8259_ir7_w(m_pic, CLEAR_LINE);
+		m_pic->ir7_w(CLEAR_LINE);
 }
 
 WRITE_LINE_MEMBER( pc1512_state::ack_w )
@@ -1066,12 +1064,12 @@ SLOT_INTERFACE_END
 static const isa8bus_interface isabus_intf =
 {
 	// interrupts
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir2_w),
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir3_w),
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir4_w),
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir5_w),
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir6_w),
-	DEVCB_DEVICE_LINE(I8259A2_TAG, pic8259_ir7_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir2_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir3_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir4_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir5_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir6_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir7_w),
 
 	// dma request
 	DEVCB_DEVICE_LINE_MEMBER(I8237A5_TAG, am9517a_device, dreq1_w),
@@ -1084,7 +1082,7 @@ FLOPPY_FORMATS_MEMBER( pc1512_state::floppy_formats )
 FLOPPY_FORMATS_END
 
 static SLOT_INTERFACE_START( ibmpc_floppies )
-		SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
+	SLOT_INTERFACE( "525dd", FLOPPY_525_DD )
 SLOT_INTERFACE_END
 
 
@@ -1099,7 +1097,7 @@ SLOT_INTERFACE_END
 void pc1512_state::machine_start()
 {
 	// register CPU IRQ callback
-	m_maincpu->set_irq_acknowledge_callback(pc1512_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc1512_state::pc1512_irq_callback),this));
 
 	// set RAM size
 	size_t ram_size = m_ram->size();
@@ -1179,7 +1177,7 @@ void pc1512_state::machine_reset()
 void pc1640_state::machine_start()
 {
 	// register CPU IRQ callback
-	m_maincpu->set_irq_acknowledge_callback(pc1512_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc1512_state::pc1512_irq_callback),this));
 
 	// state saving
 	save_item(NAME(m_pit1));

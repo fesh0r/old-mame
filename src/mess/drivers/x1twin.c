@@ -88,18 +88,19 @@ static I8255A_INTERFACE( ppi8255_intf )
 	DEVCB_DRIVER_MEMBER(x1_state, x1_portc_w)                       /* Port C write */
 };
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"x1_screen",    /* screen we are acting on */
-	8,          /* number of pixels per video memory address */
-	NULL,       /* before pixel update callback */
-	NULL,       /* row update callback */
-	NULL,       /* after pixel update callback */
-	DEVCB_NULL, /* callback for display state changes */
-	DEVCB_NULL, /* callback for cursor state changes */
-	DEVCB_NULL, /* HSYNC callback */
-	DEVCB_NULL, /* VSYNC callback */
-	NULL        /* update address callback */
+	false,          /* show border area*/
+	8,              /* number of pixels per video memory address */
+	NULL,           /* before pixel update callback */
+	NULL,           /* row update callback */
+	NULL,           /* after pixel update callback */
+	DEVCB_NULL,     /* callback for display state changes */
+	DEVCB_NULL,     /* callback for cursor state changes */
+	DEVCB_NULL,     /* HSYNC callback */
+	DEVCB_NULL,     /* VSYNC callback */
+	NULL            /* update address callback */
 };
 
 /*************************************
@@ -122,7 +123,6 @@ INPUT_CHANGED_MEMBER(x1twin_state::ipl_reset)
 /* Apparently most games doesn't support this (not even the Konami ones!), one that does is...177 :o */
 INPUT_CHANGED_MEMBER(x1twin_state::nmi_reset)
 {
-
 	m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 

@@ -798,13 +798,13 @@ ADDRESS_MAP_END
 
 TIMER_CALLBACK_MEMBER(intv_state::intv_interrupt2_complete)
 {
-	machine().device("keyboard")->execute().set_input_line(0, CLEAR_LINE);
+	m_keyboard->set_input_line(0, CLEAR_LINE);
 }
 
 INTERRUPT_GEN_MEMBER(intv_state::intv_interrupt2)
 {
-	machine().device("keyboard")->execute().set_input_line(0, ASSERT_LINE);
-	machine().scheduler().timer_set(machine().device<cpu_device>("keyboard")->cycles_to_attotime(100), timer_expired_delegate(FUNC(intv_state::intv_interrupt2_complete),this));
+	m_keyboard->set_input_line(0, ASSERT_LINE);
+	machine().scheduler().timer_set(m_keyboard->cycles_to_attotime(100), timer_expired_delegate(FUNC(intv_state::intv_interrupt2_complete),this));
 }
 
 static MACHINE_CONFIG_START( intv, intv_state )
@@ -841,7 +841,7 @@ static MACHINE_CONFIG_START( intv, intv_state )
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
-	MCFG_CARTSLOT_LOAD(intv_cart)
+	MCFG_CARTSLOT_LOAD(intv_state,intv_cart)
 	MCFG_CARTSLOT_INTERFACE("intv_cart")
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("cart_list","intv")
@@ -890,11 +890,14 @@ static MACHINE_CONFIG_DERIVED( intvkbd, intv )
 	MCFG_CARTSLOT_ADD("cart1")
 	MCFG_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_LOAD(intvkbd_cart)
+	MCFG_CARTSLOT_LOAD(intv_state,intvkbd_cart)
+	MCFG_CARTSLOT_INTERFACE("intv_cart")
+
 	MCFG_CARTSLOT_ADD("cart2")
 	MCFG_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_LOAD(intvkbd_cart)
+	MCFG_CARTSLOT_LOAD(intv_state,intvkbd_cart)
+	MCFG_CARTSLOT_INTERFACE("intv_cart")
 MACHINE_CONFIG_END
 
 ROM_START(intv) // the intv1 exec rom should be two roms: RO-3-9502-011.U5 and RO-3-9504-021.U6
@@ -964,14 +967,12 @@ ROM_END
 
 DRIVER_INIT_MEMBER(intv_state,intv)
 {
-
 	m_x_scale = INTV_X_SCALE;
 	m_y_scale = INTV_Y_SCALE;
 }
 
 DRIVER_INIT_MEMBER(intv_state,intvkbd)
 {
-
 	m_x_scale = INTVKBD_X_SCALE;
 	m_y_scale = INTVKBD_Y_SCALE;
 }

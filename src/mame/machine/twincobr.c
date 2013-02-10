@@ -191,10 +191,9 @@ static void twincobr_dsp(running_machine &machine, int enable)
 	}
 }
 
-static void twincobr_restore_dsp(running_machine &machine)
+void twincobr_state::twincobr_restore_dsp()
 {
-	twincobr_state *state = machine.driver_data<twincobr_state>();
-	twincobr_dsp(machine, state->m_dsp_on);
+	twincobr_dsp(machine(), m_dsp_on);
 }
 
 
@@ -303,7 +302,6 @@ WRITE8_MEMBER(twincobr_state::wardner_coin_dsp_w)
 
 MACHINE_RESET_MEMBER(twincobr_state,twincobr)
 {
-
 	m_toaplan_main_cpu = 0;     /* 68000 */
 	twincobr_display(machine(), 0);
 	m_intenable = 0;
@@ -337,5 +335,5 @@ void twincobr_driver_savestate(running_machine &machine)
 	state_save_register_global(machine, state->m_fsharkbt_8741);
 	state_save_register_global(machine, state->m_wardner_membank);
 
-	machine.save().register_postload(save_prepost_delegate(FUNC(twincobr_restore_dsp), &machine));
+	machine.save().register_postload(save_prepost_delegate(FUNC(twincobr_state::twincobr_restore_dsp), state));
 }

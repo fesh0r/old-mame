@@ -51,7 +51,7 @@ WRITE8_MEMBER(megazone_state::megazone_port_b_w)
 			C += 220000;    /* 220000pF = 0.22uF */
 
 		data >>= 2;
-		filter_rc_set_RC(machine().device(fltname[i]),FLT_RC_LOWPASS,1000,2200,200,CAP_P(C));
+		dynamic_cast<filter_rc_device*>(machine().device(fltname[i]))->filter_rc_set_RC(FLT_RC_LOWPASS, 1000, 2200, 200, CAP_P(C));
 	}
 }
 
@@ -62,7 +62,6 @@ WRITE8_MEMBER(megazone_state::megazone_i8039_irq_w)
 
 WRITE8_MEMBER(megazone_state::i8039_irqen_and_status_w)
 {
-
 	if ((data & 0x80) == 0)
 		m_daccpu->set_input_line(0, CLEAR_LINE);
 	m_i8039_status = (data & 0x70) >> 4;
@@ -75,7 +74,6 @@ WRITE8_MEMBER(megazone_state::megazone_coin_counter_w)
 
 WRITE8_MEMBER(megazone_state::irq_mask_w)
 {
-
 	m_irq_mask = data & 1;
 }
 
@@ -228,7 +226,6 @@ static const ay8910_interface ay8910_config =
 
 void megazone_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_daccpu = machine().device<cpu_device>("daccpu");
@@ -239,14 +236,12 @@ void megazone_state::machine_start()
 
 void megazone_state::machine_reset()
 {
-
 	m_flipscreen = 0;
 	m_i8039_status = 0;
 }
 
 INTERRUPT_GEN_MEMBER(megazone_state::vblank_irq)
 {
-
 	if(m_irq_mask)
 		device.execute().set_input_line(0, HOLD_LINE);
 }
@@ -294,11 +289,11 @@ static MACHINE_CONFIG_START( megazone, megazone_state )
 	MCFG_DAC_ADD("dac")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MCFG_SOUND_ADD("filter.0.0", FILTER_RC, 0)
+	MCFG_FILTER_RC_ADD("filter.0.0", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MCFG_SOUND_ADD("filter.0.1", FILTER_RC, 0)
+	MCFG_FILTER_RC_ADD("filter.0.1", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MCFG_SOUND_ADD("filter.0.2", FILTER_RC, 0)
+	MCFG_FILTER_RC_ADD("filter.0.2", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 

@@ -34,6 +34,7 @@
 #include "machine/c64_mach5.h"
 #include "machine/c64_magic_desk.h"
 #include "machine/c64_magic_formel.h"
+#include "machine/c64_magic_voice.h"
 #include "machine/c64_mikro_assembler.h"
 #include "machine/c64_multiscreen.h"
 #include "machine/c64_neoram.h"
@@ -55,8 +56,11 @@
 #include "machine/c64_super_games.h"
 #include "machine/c64_supercpu.h"
 #include "machine/c64_sw8k.h"
+#include "machine/c64_swiftlink.h"
 #include "machine/c64_system3.h"
 #include "machine/c64_tdos.h"
+#include "machine/c64_turbo232.h"
+#include "machine/c64_vizastar.h"
 #include "machine/c64_vw64.h"
 #include "machine/c64_warp_speed.h"
 #include "machine/c64_westermann.h"
@@ -84,6 +88,7 @@
 #include "machine/plus4_std.h"
 #include "machine/serialbox.h"
 #include "machine/softbox.h"
+#include "machine/superpet.h"
 #include "machine/vic1010.h"
 #include "machine/vic1110.h"
 #include "machine/vic1111.h"
@@ -150,7 +155,10 @@ INPUT_PORTS_EXTERN( vic_special );
 
 
 
+SLOT_INTERFACE_EXTERN( pet_expansion_cards );
+SLOT_INTERFACE_EXTERN( pet_user_port_cards );
 SLOT_INTERFACE_EXTERN( cbm2_expansion_cards );
+SLOT_INTERFACE_EXTERN( cbm2_user_port_cards );
 SLOT_INTERFACE_EXTERN( cbm_datassette_devices );
 SLOT_INTERFACE_EXTERN( cbm_iec_devices );
 SLOT_INTERFACE_EXTERN( sx1541_iec_devices );

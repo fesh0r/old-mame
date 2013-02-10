@@ -208,7 +208,6 @@ int nes_ppu_vidaccess( device_t *device, int address, int data )
 
 void nes_state::machine_reset()
 {
-
 	/* Reset the mapper variables. Will also mark the char-gen ram as dirty */
 	if (m_disk_expansion && m_pcb_id == NO_BOARD)
 		m_ppu->set_hblank_callback(fds_irq);
@@ -228,13 +227,13 @@ TIMER_CALLBACK_MEMBER(nes_state::nes_irq_callback)
 	m_irq_timer->adjust(attotime::never);
 }
 
-static void nes_banks_restore(nes_state *state)
+void nes_state::nes_banks_restore()
 {
-	state->membank("bank1")->set_entry(state->m_prg_bank[0]);
-	state->membank("bank2")->set_entry(state->m_prg_bank[1]);
-	state->membank("bank3")->set_entry(state->m_prg_bank[2]);
-	state->membank("bank4")->set_entry(state->m_prg_bank[3]);
-	state->membank("bank5")->set_entry(state->m_prg_bank[4]);
+	membank("bank1")->set_entry(m_prg_bank[0]);
+	membank("bank2")->set_entry(m_prg_bank[1]);
+	membank("bank3")->set_entry(m_prg_bank[2]);
+	membank("bank4")->set_entry(m_prg_bank[3]);
+	membank("bank5")->set_entry(m_prg_bank[4]);
 }
 
 static void nes_state_register( running_machine &machine )
@@ -287,7 +286,7 @@ static void nes_state_register( running_machine &machine )
 	if (state->m_battery)
 		state->save_pointer(NAME(state->m_battery_ram), state->m_battery_size);
 
-	machine.save().register_postload(save_prepost_delegate(FUNC(nes_banks_restore), state));
+	machine.save().register_postload(save_prepost_delegate(FUNC(nes_state::nes_banks_restore), state));
 }
 
 
@@ -305,6 +304,41 @@ void nes_state::machine_start()
 	m_sound             = machine().device("nessound");
 	m_cart              = machine().device("cart");
 	m_io_ctrlsel        = ioport("CTRLSEL");
+	m_io_fckey[0]       = ioport("FCKEY0");
+	m_io_fckey[1]       = ioport("FCKEY1");
+	m_io_fckey[2]       = ioport("FCKEY2");
+	m_io_fckey[3]       = ioport("FCKEY3");
+	m_io_fckey[4]       = ioport("FCKEY4");
+	m_io_fckey[5]       = ioport("FCKEY5");
+	m_io_fckey[6]       = ioport("FCKEY6");
+	m_io_fckey[7]       = ioport("FCKEY7");
+	m_io_fckey[8]       = ioport("FCKEY8");
+	m_io_subkey[0 ]     = ioport("SUBKEY0");
+	m_io_subkey[1 ]     = ioport("SUBKEY1");
+	m_io_subkey[2 ]     = ioport("SUBKEY2");
+	m_io_subkey[3 ]     = ioport("SUBKEY3");
+	m_io_subkey[4 ]     = ioport("SUBKEY4");
+	m_io_subkey[5 ]     = ioport("SUBKEY5");
+	m_io_subkey[6 ]     = ioport("SUBKEY6");
+	m_io_subkey[7 ]     = ioport("SUBKEY7");
+	m_io_subkey[8 ]     = ioport("SUBKEY8");
+	m_io_subkey[9 ]     = ioport("SUBKEY9");
+	m_io_subkey[10]     = ioport("SUBKEY10");
+	m_io_subkey[11]     = ioport("SUBKEY11");
+	m_io_subkey[12]     = ioport("SUBKEY12");
+	m_io_pad[0]         = ioport("PAD1");
+	m_io_pad[1]         = ioport("PAD2");
+	m_io_pad[2]         = ioport("PAD3");
+	m_io_pad[3]         = ioport("PAD4");
+	m_io_cc_left        = ioport("CC_LEFT");
+	m_io_cc_right       = ioport("CC_RIGHT");
+	m_io_zapper1_t      = ioport("ZAPPER1_T");
+	m_io_zapper1_x      = ioport("ZAPPER1_X");
+	m_io_zapper1_y      = ioport("ZAPPER1_Y");
+	m_io_zapper2_t      = ioport("ZAPPER2_T");
+	m_io_zapper2_x      = ioport("ZAPPER2_X");
+	m_io_zapper2_y      = ioport("ZAPPER2_Y");
+	m_io_paddle         = ioport("PADDLE");
 	m_prg_bank_mem[0]   = membank("bank1");
 	m_prg_bank_mem[1]   = membank("bank2");
 	m_prg_bank_mem[2]   = membank("bank3");
@@ -417,38 +451,23 @@ READ8_MEMBER(nes_state::nes_IN0_r)
 	return ret;
 }
 
-// row of the keyboard matrix are read 4-bits at time, and gets returned as bit1->bit4
-static UINT8 nes_read_fc_keyboard_line( running_machine &machine, UINT8 scan, UINT8 mode )
-{
-	static const char *const fc_keyport_names[] = { "FCKEY0", "FCKEY1", "FCKEY2", "FCKEY3", "FCKEY4", "FCKEY5", "FCKEY6", "FCKEY7", "FCKEY8" };
-	nes_state *state = machine.driver_data<nes_state>();
-	return ((state->ioport(fc_keyport_names[scan])->read() >> (mode * 4)) & 0x0f) << 1;
-}
-
-static UINT8 nes_read_subor_keyboard_line( running_machine &machine, UINT8 scan, UINT8 mode )
-{
-	static const char *const sub_keyport_names[] = { "SUBKEY0", "SUBKEY1", "SUBKEY2", "SUBKEY3", "SUBKEY4",
-		"SUBKEY5", "SUBKEY6", "SUBKEY7", "SUBKEY8", "SUBKEY9", "SUBKEY10", "SUBKEY11", "SUBKEY12" };
-	nes_state *state = machine.driver_data<nes_state>();
-	return ((state->ioport(sub_keyport_names[scan])->read() >> (mode * 4)) & 0x0f) << 1;
-}
-
 READ8_MEMBER(nes_state::nes_IN1_r)
 {
 	int cfg = m_io_ctrlsel->read();
 	int ret;
 
+	// row of the keyboard matrix are read 4-bits at time, and gets returned as bit1->bit4
 	if ((cfg & 0x000f) == 0x08) // for now we treat the FC keyboard separately from other inputs!
 	{
 		if (m_fck_scan < 9)
-			ret = ~nes_read_fc_keyboard_line(machine(), m_fck_scan, m_fck_mode) & 0x1e;
+			ret = ~(((m_io_fckey[m_fck_scan]->read() >> (m_fck_mode * 4)) & 0x0f) << 1) & 0x1e;
 		else
 			ret = 0x1e;
 	}
 	else if ((cfg & 0x000f) == 0x09)    // for now we treat the Subor keyboard separately from other inputs!
 	{
 		if (m_fck_scan < 12)
-			ret = ~nes_read_subor_keyboard_line(machine(), m_fck_scan, m_fck_mode) & 0x1e;
+			ret = ~(((m_io_subkey[m_fck_scan]->read() >> (m_fck_mode * 4)) & 0x0f) << 1) & 0x1e;
 		else
 			ret = 0x1e;
 	}
@@ -514,7 +533,6 @@ READ8_MEMBER(nes_state::nes_IN1_r)
 static void nes_read_input_device( running_machine &machine, int cfg, nes_input *vals, int pad_port, int supports_zapper )
 {
 	nes_state *state = machine.driver_data<nes_state>();
-	static const char *const padnames[] = { "PAD1", "PAD2", "PAD3", "PAD4", "CC_LEFT", "CC_RIGHT" };
 
 	vals->i0 = 0;
 	vals->i1 = 0;
@@ -524,37 +542,37 @@ static void nes_read_input_device( running_machine &machine, int cfg, nes_input 
 	{
 		case 0x01:  /* gamepad */
 			if (pad_port >= 0)
-				vals->i0 = machine.root_device().ioport(padnames[pad_port])->read();
+				vals->i0 = state->m_io_pad[pad_port]->read();
 			break;
 
 		case 0x02:  /* zapper 1 */
 			if (supports_zapper)
 			{
-				vals->i0 = machine.root_device().ioport("ZAPPER1_T")->read();
-				vals->i1 = machine.root_device().ioport("ZAPPER1_X")->read();
-				vals->i2 = machine.root_device().ioport("ZAPPER1_Y")->read();
+				vals->i0 = state->m_io_zapper1_t->read();
+				vals->i1 = state->m_io_zapper1_x->read();
+				vals->i2 = state->m_io_zapper1_y->read();
 			}
 			break;
 
 		case 0x03:  /* zapper 2 */
 			if (supports_zapper)
 			{
-				vals->i0 = machine.root_device().ioport("ZAPPER2_T")->read();
-				vals->i1 = machine.root_device().ioport("ZAPPER2_X")->read();
-				vals->i2 = machine.root_device().ioport("ZAPPER2_Y")->read();
+				vals->i0 = state->m_io_zapper2_t->read();
+				vals->i1 = state->m_io_zapper2_x->read();
+				vals->i2 = state->m_io_zapper2_y->read();
 			}
 			break;
 
 		case 0x04:  /* arkanoid paddle */
 			if (pad_port == 1)
-				vals->i0 = (UINT8) ((UINT8) machine.root_device().ioport("PADDLE")->read() + (UINT8)0x52) ^ 0xff;
+				vals->i0 = (UINT8) ((UINT8) state->m_io_paddle->read() + (UINT8)0x52) ^ 0xff;
 			break;
 
 		case 0x06:  /* crazy climber controller */
 			if (pad_port == 0)
 			{
-				state->m_in_0.i0 = machine.root_device().ioport(padnames[4])->read();
-				state->m_in_1.i0 = machine.root_device().ioport(padnames[5])->read();
+				state->m_in_0.i0 = state->m_io_cc_left->read();
+				state->m_in_1.i0 = state->m_io_cc_right->read();
 			}
 			break;
 	}
@@ -698,7 +716,7 @@ static int nes_cart_get_line( const char *feature )
 	return nes_line->line;
 }
 
-DEVICE_IMAGE_LOAD( nes_cart )
+DEVICE_IMAGE_LOAD_MEMBER( nes_state, nes_cart )
 {
 	nes_state *state = image.device().machine().driver_data<nes_state>();
 	state->m_pcb_id = NO_BOARD; // initialization
@@ -1645,7 +1663,6 @@ READ8_MEMBER(nes_state::nes_fds_r)
 
 WRITE8_MEMBER(nes_state::nes_fds_w)
 {
-
 	switch (offset)
 	{
 		case 0x00:
@@ -1714,7 +1731,6 @@ static void nes_unload_proc( device_image_interface &image )
 
 DRIVER_INIT_MEMBER(nes_state,famicom)
 {
-
 	/* clear some of the variables we don't use */
 	m_trainer = 0;
 	m_battery = 0;

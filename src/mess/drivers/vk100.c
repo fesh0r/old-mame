@@ -137,10 +137,13 @@ public:
 		m_screen(*this, "screen"),
 		m_crtc(*this, "crtc"),
 		m_speaker(*this, BEEPER_TAG),
-		m_uart(*this, "i8251")//,
+		m_uart(*this, "i8251"),
 		//m_i8251_rx_timer(NULL),
 		//m_i8251_tx_timer(NULL),
-		//m_sync_timer(NULL)
+		//m_sync_timer(NULL),
+
+		m_capsshift(*this, "CAPSSHIFT"),
+		m_dipsw(*this, "SWITCHES")
 		{ }
 	required_device<cpu_device> m_maincpu;
 	required_device<screen_device> m_screen;
@@ -150,6 +153,9 @@ public:
 	//required_device<> m_i8251_rx_timer;
 	//required_device<> m_i8251_tx_timer;
 	//required_device<> m_sync_timer;
+
+	required_ioport m_capsshift;
+	required_ioport m_dipsw;
 
 	UINT8* m_vram;
 	UINT8* m_trans;
@@ -175,6 +181,7 @@ public:
 	UINT8 m_ACTS;
 	UINT16 m_RXDivisor;
 	UINT16 m_TXDivisor;
+	ioport_port* m_col_array[16];
 
 	DECLARE_WRITE8_MEMBER(vgLD_X);
 	DECLARE_WRITE8_MEMBER(vgLD_Y);
@@ -496,7 +503,7 @@ WRITE8_MEMBER(vk100_state::KBDW)
      to mask their own dividers on custom ordered chips if desired.
  *  The COM8116(T)/8136(T) came it at least 4 mask rom types meant for different
      input clocks:
-     -000 or no mark for 5.0688Mhz (which exactly matches the table below)
+     -000 or no mark for 5.0688Mhz (which exactly matches the table below) (synertek sy2661-3 also matches this exactly)
      -003 is for 6.01835MHz
      -005 is for 4.915200Mhz
      -006 is for 5.0688Mhz but omits the 2000 baud entry, instead has 200,
@@ -569,7 +576,7 @@ READ8_MEMBER(vk100_state::SYSTAT_A)
 #ifdef SYSTAT_A_VERBOSE
 	if (m_maincpu->pc() != 0x31D) logerror("0x%04X: SYSTAT_A Read!\n", m_maincpu->pc());
 #endif
-	return ((m_vgGO?0:1)<<7)|(vram_read(machine())<<3)|(((ioport("SWITCHES")->read()>>dipswitchLUT[offset])&1)?0x4:0)|(m_vsync?0x2:0);
+	return ((m_vgGO?0:1)<<7)|(vram_read(machine())<<3)|(((m_dipsw->read()>>dipswitchLUT[offset])&1)?0x4:0)|(m_vsync?0x2:0);
 }
 
 /* port 0x48: "SYSTAT B"; NOT documented in the tech manual at all.
@@ -598,10 +605,7 @@ READ8_MEMBER(vk100_state::SYSTAT_B)
 
 READ8_MEMBER(vk100_state::vk100_keyboard_column_r)
 {
-	UINT8 code;
-	char kbdcol[8];
-	sprintf(kbdcol,"COL%X", (offset&0xF));
-	code = ioport(kbdcol)->read() | ioport("CAPSSHIFT")->read();
+	UINT8 code = m_col_array[offset&0xF]->read() | m_capsshift->read();
 #ifdef KBD_VERBOSE
 	logerror("Keyboard column %X read, returning %02X\n", offset&0xF, code);
 #endif
@@ -658,7 +662,7 @@ ADDRESS_MAP_END
 */
 static ADDRESS_MAP_START(vk100_io, AS_IO, 8, vk100_state)
 	ADDRESS_MAP_UNMAP_HIGH
-	//ADDRESS_MAP_GLOBAL_MASK(0x7f) // guess, probably correct
+	ADDRESS_MAP_GLOBAL_MASK(0x7f) // guess, probably correct
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0xBE) AM_DEVWRITE("crtc", mc6845_device, address_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0xBE) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 	// Comments are from page 118 (5-14) of http://web.archive.org/web/20091015205827/http://www.computer.museum.uq.edu.au/pdf/EK-VK100-TM-001%20VK100%20Technical%20Manual.pdf
@@ -720,7 +724,7 @@ static INPUT_PORTS_START( vk100 )
 		PORT_BIT(0x3f, IP_ACTIVE_HIGH, IPT_UNUSED)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT)
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_TOGGLE PORT_NAME("Caps lock") PORT_CODE(KEYCODE_CAPSLOCK)
-		PORT_START("COL0")
+	PORT_START("COL0")
 		PORT_BIT(0x1f, IP_ACTIVE_LOW, IPT_UNUSED)
 		PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_UNUSED) // row 0 bit 6 is always low, checked by keyboard test
 		PORT_BIT(0xc0, IP_ACTIVE_HIGH, IPT_UNUSED) // all rows have these bits left low to save a mask op later
@@ -875,6 +879,13 @@ void vk100_state::machine_reset()
 	m_ACTS = 1;
 	m_RXDivisor = 6336;
 	m_TXDivisor = 6336;
+	char kbdcol[8];
+	// look up all 16 tags 'the slow way' but only once on reset
+	for (int i = 0; i < 16; i++)
+	{
+		sprintf(kbdcol,"COL%X", i);
+		m_col_array[i] = ioport(kbdcol);
+	}
 }
 
 WRITE_LINE_MEMBER(vk100_state::crtc_vsync)
@@ -947,9 +958,10 @@ static MC6845_UPDATE_ROW( vk100_update_row )
 }
 
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",
+	false,
 	12,
 	NULL,
 	vk100_update_row,
@@ -1003,15 +1015,14 @@ MACHINE_CONFIG_END
 /* according to http://www.computer.museum.uq.edu.au/pdf/EK-VK100-TM-001%20VK100%20Technical%20Manual.pdf
 page 5-10 (pdf pg 114), The 4 firmware roms should go from 0x0000-0x1fff,
 0x2000-0x3fff, 0x4000-0x5fff and 0x6000-0x63ff; The last rom is actually a
-little bit longer and goes to 6fff. The data goes 6000-67ff and the 6800-6ff
-area is blank.
+little bit longer and goes to 67ff.
 */
 ROM_START( vk100 )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "23-031e4-00.rom1.e53", 0x0000, 0x2000, CRC(c8596398) SHA1(a8dc833dcdfb7550c030ac3d4143e266b1eab03a))
 	ROM_LOAD( "23-017e4-00.rom2.e52", 0x2000, 0x2000, CRC(e857a01e) SHA1(914b2c51c43d0d181ffb74e3ea59d74e70ab0813))
 	ROM_LOAD( "23-018e4-00.rom3.e51", 0x4000, 0x2000, CRC(b3e7903b) SHA1(8ad6ed25cd9b04a9968aa09ab69ba526d35ca550))
-	ROM_LOAD( "23-190e2-00.rom4.e50", 0x6000, 0x1000, CRC(ad596fa5) SHA1(b30a24155640d32c1b47a3a16ea33cd8df2624f6))
+	ROM_LOAD( "23-190e2-00.rom4.e50", 0x6000, 0x1000, CRC(ad596fa5) SHA1(b30a24155640d32c1b47a3a16ea33cd8df2624f6)) // probably an overdump, e2 implies the size is 0x800 not 0x1000, and the end is all blank
 
 	ROM_REGION( 0x8000, "vram", ROMREGION_ERASE00 ) // 32k of vram
 

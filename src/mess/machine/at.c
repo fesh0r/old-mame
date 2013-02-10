@@ -16,7 +16,7 @@
 READ8_MEMBER( at_state::get_slave_ack )
 {
 	if (offset==2) // IRQ = 2
-		return pic8259_acknowledge(m_pic8259_slave);
+		return m_pic8259_slave->inta_r();
 
 	return 0x00;
 }
@@ -30,7 +30,7 @@ const struct pic8259_interface at_pic8259_master_config =
 
 const struct pic8259_interface at_pic8259_slave_config =
 {
-	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir2_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259_master", pic8259_device, ir2_w),
 	DEVCB_LINE_GND,
 	DEVCB_NULL
 };
@@ -350,15 +350,14 @@ DRIVER_INIT_MEMBER(at_state,atvga)
 	init_at_common(machine());
 }
 
-static IRQ_CALLBACK(at_irq_callback)
+IRQ_CALLBACK_MEMBER(at_state::at_irq_callback)
 {
-	at_state *st = device->machine().driver_data<at_state>();
-	return pic8259_acknowledge(st->m_pic8259_master);
+	return m_pic8259_master->inta_r();
 }
 
 MACHINE_START_MEMBER(at_state,at)
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(at_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(at_state::at_irq_callback),this));
 }
 
 MACHINE_RESET_MEMBER(at_state,at)

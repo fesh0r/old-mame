@@ -22,7 +22,7 @@ Differences between these sets include
 #include "includes/fgoal.h"
 
 
-static int intensity(int bits)
+int fgoal_state::intensity(int bits)
 {
 	int v = 0;
 
@@ -90,10 +90,9 @@ TIMER_CALLBACK_MEMBER(fgoal_state::interrupt_callback)
 }
 
 
-static unsigned video_ram_address( running_machine &machine )
+unsigned fgoal_state::video_ram_address(  )
 {
-	fgoal_state *state = machine.driver_data<fgoal_state>();
-	return 0x4000 | (state->m_row << 5) | (state->m_col >> 3);
+	return 0x4000 | (m_row << 5) | (m_col >> 3);
 }
 
 
@@ -134,26 +133,24 @@ READ8_MEMBER(fgoal_state::fgoal_row_r)
 
 WRITE8_MEMBER(fgoal_state::fgoal_row_w)
 {
-
 	m_row = data;
 	mb14241_shift_data_w(m_mb14241, space, 0, 0);
 }
 
 WRITE8_MEMBER(fgoal_state::fgoal_col_w)
 {
-
 	m_col = data;
 	mb14241_shift_count_w(m_mb14241, space, 0, data);
 }
 
 READ8_MEMBER(fgoal_state::fgoal_address_hi_r)
 {
-	return video_ram_address(machine()) >> 8;
+	return video_ram_address() >> 8;
 }
 
 READ8_MEMBER(fgoal_state::fgoal_address_lo_r)
 {
-	return video_ram_address(machine()) & 0xff;
+	return video_ram_address() & 0xff;
 }
 
 READ8_MEMBER(fgoal_state::fgoal_shifter_r)
@@ -329,7 +326,6 @@ GFXDECODE_END
 
 void fgoal_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_mb14241 = machine().device("mb14241");
 
@@ -344,7 +340,6 @@ void fgoal_state::machine_start()
 
 void fgoal_state::machine_reset()
 {
-
 	machine().scheduler().timer_set(machine().primary_screen->time_until_pos(0), timer_expired_delegate(FUNC(fgoal_state::interrupt_callback),this));
 
 	m_xpos = 0;

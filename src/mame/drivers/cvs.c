@@ -114,7 +114,6 @@ Todo & FIXME:
 
 READ8_MEMBER(cvs_state::cvs_video_or_color_ram_r)
 {
-
 	if (*m_fo_state)
 		return m_video_ram[offset];
 	else
@@ -123,7 +122,6 @@ READ8_MEMBER(cvs_state::cvs_video_or_color_ram_r)
 
 WRITE8_MEMBER(cvs_state::cvs_video_or_color_ram_w)
 {
-
 	if (*m_fo_state)
 		m_video_ram[offset] = data;
 	else
@@ -133,7 +131,6 @@ WRITE8_MEMBER(cvs_state::cvs_video_or_color_ram_w)
 
 READ8_MEMBER(cvs_state::cvs_bullet_ram_or_palette_r)
 {
-
 	if (*m_fo_state)
 		return m_palette_ram[offset & 0x0f];
 	else
@@ -142,7 +139,6 @@ READ8_MEMBER(cvs_state::cvs_bullet_ram_or_palette_r)
 
 WRITE8_MEMBER(cvs_state::cvs_bullet_ram_or_palette_w)
 {
-
 	if (*m_fo_state)
 		m_palette_ram[offset & 0x0f] = data;
 	else
@@ -152,7 +148,6 @@ WRITE8_MEMBER(cvs_state::cvs_bullet_ram_or_palette_w)
 
 READ8_MEMBER(cvs_state::cvs_s2636_0_or_character_ram_r)
 {
-
 	if (*m_fo_state)
 		return m_character_ram[(0 * 0x800) | 0x400 | m_character_ram_page_start | offset];
 	else
@@ -161,7 +156,6 @@ READ8_MEMBER(cvs_state::cvs_s2636_0_or_character_ram_r)
 
 WRITE8_MEMBER(cvs_state::cvs_s2636_0_or_character_ram_w)
 {
-
 	if (*m_fo_state)
 	{
 		offset |= (0 * 0x800) | 0x400 | m_character_ram_page_start;
@@ -175,7 +169,6 @@ WRITE8_MEMBER(cvs_state::cvs_s2636_0_or_character_ram_w)
 
 READ8_MEMBER(cvs_state::cvs_s2636_1_or_character_ram_r)
 {
-
 	if (*m_fo_state)
 		return m_character_ram[(1 * 0x800) | 0x400 | m_character_ram_page_start | offset];
 	else
@@ -184,7 +177,6 @@ READ8_MEMBER(cvs_state::cvs_s2636_1_or_character_ram_r)
 
 WRITE8_MEMBER(cvs_state::cvs_s2636_1_or_character_ram_w)
 {
-
 	if (*m_fo_state)
 	{
 		offset |= (1 * 0x800) | 0x400 | m_character_ram_page_start;
@@ -198,7 +190,6 @@ WRITE8_MEMBER(cvs_state::cvs_s2636_1_or_character_ram_w)
 
 READ8_MEMBER(cvs_state::cvs_s2636_2_or_character_ram_r)
 {
-
 	if (*m_fo_state)
 		return m_character_ram[(2 * 0x800) | 0x400 | m_character_ram_page_start | offset];
 	else
@@ -207,7 +198,6 @@ READ8_MEMBER(cvs_state::cvs_s2636_2_or_character_ram_r)
 
 WRITE8_MEMBER(cvs_state::cvs_s2636_2_or_character_ram_w)
 {
-
 	if (*m_fo_state)
 	{
 		offset |= (2 * 0x800) | 0x400 | m_character_ram_page_start;
@@ -231,7 +221,7 @@ INTERRUPT_GEN_MEMBER(cvs_state::cvs_main_cpu_interrupt)
 	device.execute().set_input_line_vector(0, 0x03);
 	generic_pulse_irq_line(device.execute(), 0, 1);
 
-	cvs_scroll_stars(machine());
+	cvs_scroll_stars();
 }
 
 
@@ -306,11 +296,10 @@ TIMER_CALLBACK_MEMBER(cvs_state::cvs_393hz_timer_cb)
 }
 
 
-static void start_393hz_timer(running_machine &machine)
+void cvs_state::start_393hz_timer()
 {
-	cvs_state *state = machine.driver_data<cvs_state>();
-	state->m_cvs_393hz_timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(cvs_state::cvs_393hz_timer_cb),state));
-	state->m_cvs_393hz_timer->adjust(attotime::from_hz(30*393), 0, attotime::from_hz(30*393));
+	m_cvs_393hz_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(cvs_state::cvs_393hz_timer_cb),this));
+	m_cvs_393hz_timer->adjust(attotime::from_hz(30*393), 0, attotime::from_hz(30*393));
 }
 
 
@@ -371,7 +360,6 @@ WRITE8_MEMBER(cvs_state::cvs_unknown_w)
 
 WRITE8_MEMBER(cvs_state::cvs_speech_rom_address_lo_w)
 {
-
 	/* assuming that d0-d2 are cleared here */
 	m_speech_rom_bit_address = (m_speech_rom_bit_address & 0xf800) | (data << 3);
 	LOG(("%04x : CVS: Speech Lo %02x Address = %04x\n", space.device().safe_pc(), data, m_speech_rom_bit_address >> 3));
@@ -386,7 +374,6 @@ WRITE8_MEMBER(cvs_state::cvs_speech_rom_address_hi_w)
 
 READ8_MEMBER(cvs_state::cvs_speech_command_r)
 {
-
 	/* FIXME: this was by observation on board ???
 	 *          -bit 7 is TMS status (active LO) */
 	return ((tms5110_ctl_r(m_tms, space, 0) ^ 1) << 7) | (soundlatch_byte_r(space, 0) & 0x7f);
@@ -454,7 +441,6 @@ static const tms5110_interface tms5100_interface =
 
 WRITE8_MEMBER(cvs_state::audio_command_w)
 {
-
 	LOG(("data %02x\n", data));
 	/* cause interrupt on audio CPU if bit 7 set */
 	soundlatch_byte_w(space, 0, data);
@@ -989,12 +975,11 @@ static const s2636_interface s2636_2_config =
 
 MACHINE_START_MEMBER(cvs_state,cvs)
 {
-
 	/* allocate memory */
 	if (machine().gfx[1] != NULL)
 		machine().gfx[1]->set_source(m_character_ram);
 
-	start_393hz_timer(machine());
+	start_393hz_timer();
 
 	/* set devices */
 	m_maincpu = machine().device<cpu_device>("maincpu");
@@ -1023,7 +1008,6 @@ MACHINE_START_MEMBER(cvs_state,cvs)
 
 MACHINE_RESET_MEMBER(cvs_state,cvs)
 {
-
 	m_character_banking_mode = 0;
 	m_character_ram_page_start = 0;
 	m_speech_rom_bit_address = 0;
@@ -1107,8 +1091,7 @@ MACHINE_CONFIG_END
 																											\
 	ROM_REGION( 0x0820, "proms", 0 )                                                                    \
 	ROM_LOAD( "82s185.10h", 0x0000, 0x0800, CRC(c205bca6) SHA1(ec9bd220e75f7b067ede6139763ef8aca0fb7a29) )  \
-	ROM_LOAD( "82s123.10k", 0x0800, 0x0020, CRC(b5221cec) SHA1(71d9830b33b1a8140b0fe1a2ba8024ba8e6e48e0) )  \
-
+	ROM_LOAD( "82s123.10k", 0x0800, 0x0020, CRC(b5221cec) SHA1(71d9830b33b1a8140b0fe1a2ba8024ba8e6e48e0) )
 #define CVS_ROM_REGION_SPEECH_DATA(name, len, hash) \
 	ROM_REGION( 0x1000, "speechdata", 0 )   \
 	ROM_LOAD( name, 0x0000, len, hash )

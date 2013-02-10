@@ -72,7 +72,6 @@ READ8_MEMBER(lwings_state::avengers_adpcm_r)
 
 WRITE8_MEMBER(lwings_state::lwings_bankswitch_w)
 {
-
 	/* bit 0 is flip screen */
 	flip_screen_set(~data & 0x01);
 
@@ -89,14 +88,12 @@ WRITE8_MEMBER(lwings_state::lwings_bankswitch_w)
 
 INTERRUPT_GEN_MEMBER(lwings_state::lwings_interrupt)
 {
-
 	if(m_nmi_mask)
 		device.execute().set_input_line_and_vector(0, HOLD_LINE, 0xd7); /* RST 10h */
 }
 
 INTERRUPT_GEN_MEMBER(lwings_state::avengers_interrupt)
 {
-
 	if(m_nmi_mask)
 		device.execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
@@ -134,10 +131,8 @@ WRITE8_MEMBER(lwings_state::avengers_prot_bank_w)
 	m_palette_pen = data * 64;
 }
 
-static int avengers_fetch_paldata( running_machine &machine )
+int lwings_state::avengers_fetch_paldata(  )
 {
-	lwings_state *state = machine.driver_data<lwings_state>();
-
 	static const char pal_data[] =
 	/* page 1: 0x03,0x02,0x01,0x00 */
 	"0000000000000000" "A65486A6364676D6" "C764C777676778A7" "A574E5E5C5756AE5"
@@ -199,8 +194,8 @@ static int avengers_fetch_paldata( running_machine &machine )
 	"0000000000000000" "6474667676660100" "7696657575650423" "88A8647474645473"
 	"0000000000000000" "0001070701050004" "0003060603040303" "0005050505040302";
 
-	int bank = state->m_palette_pen / 64;
-	int offs = state->m_palette_pen % 64;
+	int bank = m_palette_pen / 64;
+	int offs = m_palette_pen % 64;
 	int page = bank / 4;                    /* 0..7 */
 	int base = (3 - (bank & 3));            /* 0..3 */
 	int row = offs & 0xf;                   /* 0..15 */
@@ -221,8 +216,8 @@ static int avengers_fetch_paldata( running_machine &machine )
 
 	result = digit0 * 16 + digit1;
 
-	if ((state->m_palette_pen & 0x3f) != 0x3f)
-		state->m_palette_pen++;
+	if ((m_palette_pen & 0x3f) != 0x3f)
+		m_palette_pen++;
 
 	return result;
 }
@@ -239,7 +234,7 @@ READ8_MEMBER(lwings_state::avengers_protection_r)
 	if (space.device().safe_pc() == 0x7c7)
 	{
 		/* palette data */
-		return avengers_fetch_paldata(machine());
+		return avengers_fetch_paldata();
 	}
 
 	/*  Point to Angle Function
@@ -761,7 +756,6 @@ void lwings_state::machine_start()
 
 void lwings_state::machine_reset()
 {
-
 	m_bg2_image = 0;
 	m_scroll_x[0] = 0;
 	m_scroll_x[1] = 0;

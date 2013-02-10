@@ -98,15 +98,6 @@ Dip locations and factory settings verified with China Gate US manual.
 
     Since MAME's video timing is 0-based, we need to convert this.
 */
-/* based on ddragon.c driver */
-INLINE int scanline_to_vcount( int scanline )
-{
-	int vcount = scanline + 8;
-	if (vcount < 0x100)
-		return vcount;
-	else
-		return (vcount - 0x18) | 0x100;
-}
 
 TIMER_DEVICE_CALLBACK_MEMBER(ddragon_state::chinagat_scanline)
 {
@@ -518,7 +509,6 @@ static const ym2203_interface ym2203_config =
 
 MACHINE_START_MEMBER(ddragon_state,chinagat)
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_sub_cpu = machine().device("sub");
 	m_snd_cpu = machine().device("audiocpu");
@@ -544,7 +534,6 @@ MACHINE_START_MEMBER(ddragon_state,chinagat)
 
 MACHINE_RESET_MEMBER(ddragon_state,chinagat)
 {
-
 	m_scrollx_hi = 0;
 	m_scrolly_hi = 0;
 	m_adpcm_sound_irq = 0;

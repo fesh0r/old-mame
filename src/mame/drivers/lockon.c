@@ -95,7 +95,6 @@ WRITE16_MEMBER(lockon_state::main_obj_w)
 
 WRITE16_MEMBER(lockon_state::tst_w)
 {
-
 	if (offset < 0x800)
 	{
 		address_space &gndspace = m_ground->memory().space(AS_PROGRAM);
@@ -406,13 +405,13 @@ WRITE8_MEMBER(lockon_state::sound_vol)
 	double lgain = gains[data & 0xf];
 	double rgain = gains[data >> 4];
 
-	flt_volume_set_volume(m_f2203_1l, lgain);
-	flt_volume_set_volume(m_f2203_2l, lgain);
-	flt_volume_set_volume(m_f2203_3l, lgain);
+	m_f2203_1l->flt_volume_set_volume(lgain);
+	m_f2203_2l->flt_volume_set_volume(lgain);
+	m_f2203_3l->flt_volume_set_volume(lgain);
 
-	flt_volume_set_volume(m_f2203_1r, rgain);
-	flt_volume_set_volume(m_f2203_2r, rgain);
-	flt_volume_set_volume(m_f2203_3r, rgain);
+	m_f2203_1r->flt_volume_set_volume(rgain);
+	m_f2203_2r->flt_volume_set_volume(rgain);
+	m_f2203_3r->flt_volume_set_volume(rgain);
 }
 
 static void ym2203_irq(device_t *device, int irq)
@@ -453,17 +452,16 @@ static const ym2203_interface ym2203_config =
 
 void lockon_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_ground = machine().device("ground");
 	m_object = machine().device("object");
-	m_f2203_1l = machine().device("f2203.1l");
-	m_f2203_2l = machine().device("f2203.2l");
-	m_f2203_3l = machine().device("f2203.3l");
-	m_f2203_1r = machine().device("f2203.1r");
-	m_f2203_2r = machine().device("f2203.2r");
-	m_f2203_3r = machine().device("f2203.3r");
+	m_f2203_1l = machine().device<filter_volume_device>("f2203.1l");
+	m_f2203_2l = machine().device<filter_volume_device>("f2203.2l");
+	m_f2203_3l = machine().device<filter_volume_device>("f2203.3l");
+	m_f2203_1r = machine().device<filter_volume_device>("f2203.1r");
+	m_f2203_2r = machine().device<filter_volume_device>("f2203.2r");
+	m_f2203_3r = machine().device<filter_volume_device>("f2203.3r");
 
 	save_item(NAME(m_ground_ctrl));
 	save_item(NAME(m_scroll_h));
@@ -485,7 +483,6 @@ void lockon_state::machine_start()
 
 void lockon_state::machine_reset()
 {
-
 	m_ground_ctrl = 0;
 	m_scroll_h = 0;
 	m_scroll_v = 0;
@@ -547,17 +544,17 @@ static MACHINE_CONFIG_START( lockon, lockon_state )
 	MCFG_SOUND_ROUTE(3, "f2203.3l", 1.0)
 	MCFG_SOUND_ROUTE(3, "f2203.3r", 1.0)
 
-	MCFG_SOUND_ADD("f2203.1l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("f2203.1l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("f2203.1r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("f2203.1r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
-	MCFG_SOUND_ADD("f2203.2l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("f2203.2l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("f2203.2r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("f2203.2r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
-	MCFG_SOUND_ADD("f2203.3l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("f2203.3l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("f2203.3r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("f2203.3r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_CONFIG_END
 

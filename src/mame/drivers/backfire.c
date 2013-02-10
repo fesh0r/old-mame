@@ -28,7 +28,10 @@ public:
 		: driver_device(mconfig, type, tag) ,
 		m_mainram(*this, "mainram"),
 		m_left_priority(*this, "left_priority"),
-		m_right_priority(*this, "right_priority"){ }
+		m_right_priority(*this, "right_priority"),
+		m_sprgen(*this, "spritegen"),
+		m_sprgen2(*this, "spritegen2")
+	{ }
 
 	/* memory pointers */
 	UINT16 *  m_spriteram_1;
@@ -36,6 +39,8 @@ public:
 	required_shared_ptr<UINT32> m_mainram;
 	required_shared_ptr<UINT32> m_left_priority;
 	required_shared_ptr<UINT32> m_right_priority;
+	optional_device<decospr_device> m_sprgen;
+	optional_device<decospr_device> m_sprgen2;
 
 	/* video related */
 	bitmap_ind16  *m_left;
@@ -82,6 +87,7 @@ public:
 	UINT32 screen_update_backfire_left(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_backfire_right(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(deco32_vbl_interrupt);
+	void descramble_sound();
 };
 
 //UINT32 *backfire_180010, *backfire_188010;
@@ -89,7 +95,6 @@ public:
 /* I'm using the functions in deco16ic.c ... same chips, why duplicate code? */
 void backfire_state::video_start()
 {
-
 	m_spriteram_1 = auto_alloc_array(machine(), UINT16, 0x2000/2);
 	m_spriteram_2 = auto_alloc_array(machine(), UINT16, 0x2000/2);
 
@@ -113,7 +118,6 @@ void backfire_state::video_start()
 
 UINT32 backfire_state::screen_update_backfire_left(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-
 	//FIXME: flip_screen_x should not be written!
 	flip_screen_set_no_update(1);
 
@@ -129,13 +133,13 @@ UINT32 backfire_state::screen_update_backfire_left(screen_device &screen, bitmap
 	{
 		deco16ic_tilemap_1_draw(m_deco_tilegen2, bitmap, cliprect, 0, 1);
 		deco16ic_tilemap_1_draw(m_deco_tilegen1, bitmap, cliprect, 0, 2);
-		machine().device<decospr_device>("spritegen")->draw_sprites(bitmap, cliprect, m_spriteram_1, 0x800);
+		m_sprgen->draw_sprites(bitmap, cliprect, m_spriteram_1, 0x800);
 	}
 	else if (m_left_priority[0] == 2)
 	{
 		deco16ic_tilemap_1_draw(m_deco_tilegen1, bitmap, cliprect, 0, 2);
 		deco16ic_tilemap_1_draw(m_deco_tilegen2, bitmap, cliprect, 0, 4);
-		machine().device<decospr_device>("spritegen")->draw_sprites(bitmap, cliprect, m_spriteram_1, 0x800);
+		m_sprgen->draw_sprites(bitmap, cliprect, m_spriteram_1, 0x800);
 	}
 	else
 		popmessage( "unknown left priority %08x", m_left_priority[0]);
@@ -145,7 +149,6 @@ UINT32 backfire_state::screen_update_backfire_left(screen_device &screen, bitmap
 
 UINT32 backfire_state::screen_update_backfire_right(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-
 	//FIXME: flip_screen_x should not be written!
 	flip_screen_set_no_update(1);
 
@@ -161,13 +164,13 @@ UINT32 backfire_state::screen_update_backfire_right(screen_device &screen, bitma
 	{
 		deco16ic_tilemap_2_draw(m_deco_tilegen2, bitmap, cliprect, 0, 1);
 		deco16ic_tilemap_2_draw(m_deco_tilegen1, bitmap, cliprect, 0, 2);
-		machine().device<decospr_device>("spritegen2")->draw_sprites(bitmap, cliprect, m_spriteram_2, 0x800);
+		m_sprgen2->draw_sprites(bitmap, cliprect, m_spriteram_2, 0x800);
 	}
 	else if (m_right_priority[0] == 2)
 	{
 		deco16ic_tilemap_2_draw(m_deco_tilegen1, bitmap, cliprect, 0, 2);
 		deco16ic_tilemap_2_draw(m_deco_tilegen2, bitmap, cliprect, 0, 4);
-		machine().device<decospr_device>("spritegen2")->draw_sprites(bitmap, cliprect, m_spriteram_2, 0x800);
+		m_sprgen2->draw_sprites(bitmap, cliprect, m_spriteram_2, 0x800);
 	}
 	else
 		popmessage( "unknown right priority %08x", m_right_priority[0]);
@@ -190,7 +193,6 @@ READ32_MEMBER(backfire_state::backfire_eeprom_r)
 
 READ32_MEMBER(backfire_state::backfire_control2_r)
 {
-
 //  logerror("%08x:Read eprom %08x (%08x)\n", space.device().safe_pc(), offset << 1, mem_mask);
 	return (m_eeprom->read_bit() << 24) | ioport("IN1")->read() | (ioport("IN1")->read() << 16);
 }
@@ -198,7 +200,6 @@ READ32_MEMBER(backfire_state::backfire_control2_r)
 #ifdef UNUSED_FUNCTION
 READ32_MEMBER(backfire_state::backfire_control3_r)
 {
-
 //  logerror("%08x:Read eprom %08x (%08x)\n", space.device().safe_pc(), offset << 1, mem_mask);
 	return (m_eeprom->read_bit() << 24) | ioport("IN2")->read() | (ioport("IN2")->read() << 16);
 }
@@ -475,7 +476,6 @@ static const deco16ic_interface backfire_deco16ic_tilegen2_intf =
 
 void backfire_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_deco_tilegen1 = machine().device("tilegen1");
 	m_deco_tilegen2 = machine().device("tilegen2");
@@ -669,11 +669,11 @@ ROM_START( backfirea )
 	ROM_LOAD( "mbz-06.19l",    0x200000, 0x080000,  CRC(4a38c635) SHA1(7f0fb6a7a4aa6774c04fa38e53ceff8744fe1e9f) )
 ROM_END
 
-static void descramble_sound( running_machine &machine )
+void backfire_state::descramble_sound()
 {
-	UINT8 *rom = machine.root_device().memregion("ymz")->base();
+	UINT8 *rom = machine().root_device().memregion("ymz")->base();
 	int length = 0x200000; // only the first rom is swapped on backfire!
-	UINT8 *buf1 = auto_alloc_array(machine, UINT8, length);
+	UINT8 *buf1 = auto_alloc_array(machine(), UINT8, length);
 	UINT32 x;
 
 	for (x = 0; x < length; x++)
@@ -692,12 +692,11 @@ static void descramble_sound( running_machine &machine )
 
 	memcpy(rom, buf1, length);
 
-	auto_free(machine, buf1);
+	auto_free(machine(), buf1);
 }
 
 READ32_MEMBER(backfire_state::backfire_speedup_r)
 {
-
 	//mame_printf_debug( "%08x\n",space.device().safe_pc());
 
 	if (space.device() .safe_pc()== 0xce44)  space.device().execute().spin_until_time(attotime::from_usec(400)); // backfire
@@ -713,7 +712,7 @@ DRIVER_INIT_MEMBER(backfire_state,backfire)
 	deco56_decrypt_gfx(machine(), "gfx2"); /* 141 */
 	deco156_decrypt(machine());
 	machine().device("maincpu")->set_clock_scale(4.0f); /* core timings aren't accurate */
-	descramble_sound(machine());
+	descramble_sound();
 	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x0170018, 0x017001b, read32_delegate(FUNC(backfire_state::backfire_speedup_r), this));
 }
 

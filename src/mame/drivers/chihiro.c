@@ -418,6 +418,7 @@ public:
 	DECLARE_READ8_MEMBER(get_slave_ack);
 	DECLARE_WRITE_LINE_MEMBER(chihiro_pit8254_out0_changed);
 	DECLARE_WRITE_LINE_MEMBER(chihiro_pit8254_out2_changed);
+	IRQ_CALLBACK_MEMBER(irq_callback);
 };
 
 /*
@@ -1575,14 +1576,13 @@ static const struct pic8259_interface chihiro_pic8259_2_config =
 	DEVCB_NULL
 };
 
-static IRQ_CALLBACK(irq_callback)
+IRQ_CALLBACK_MEMBER(chihiro_state::irq_callback)
 {
-	chihiro_state *chst=device->machine().driver_data<chihiro_state>();
 	int r = 0;
-	r = pic8259_acknowledge(chst->chihiro_devs.pic8259_2);
+	r = pic8259_acknowledge(chihiro_devs.pic8259_2);
 	if (r==0)
 	{
-		r = pic8259_acknowledge(chst->chihiro_devs.pic8259_1);
+		r = pic8259_acknowledge(chihiro_devs.pic8259_1);
 	}
 	return r;
 }
@@ -1805,7 +1805,7 @@ void chihiro_state::machine_start()
 	smbus_register_device(0x10,smbus_callback_pic16lc);
 	smbus_register_device(0x45,smbus_callback_cx25871);
 	smbus_register_device(0x54,smbus_callback_eeprom);
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(chihiro_state::irq_callback),this));
 	chihiro_devs.pic8259_1 = machine().device( "pic8259_1" );
 	chihiro_devs.pic8259_2 = machine().device( "pic8259_2" );
 	chihiro_devs.ide = machine().device( "ide" );
@@ -1874,8 +1874,7 @@ MACHINE_CONFIG_END
 	ROM_LOAD16_WORD_SWAP_BIOS( 0,  "ic10_g24lc64.bin", 0x200000, 0x2000, CRC(cfc5e06f) SHA1(3ababd4334d8d57abb22dd98bd2d347df39648d9) ) \
 	ROM_LOAD16_WORD_SWAP_BIOS( 0,  "ic11_24lc024.bin", 0x202000, 0x80, CRC(8dc8374e) SHA1(cc03a0650bfac4bf6cb66e414bbef121cba53efe) ) \
 	ROM_LOAD16_WORD_SWAP_BIOS( 0,  "pc20_g24lc64.bin", 0x202080, 0x2000, CRC(7742ab62) SHA1(82dad6e2a75bab4a4840dc6939462f1fb9b95101) ) \
-	ROM_LOAD16_WORD_SWAP_BIOS( 0,  "ver1305.bin", 0x204080, 0x200000, CRC(a738ea1c) SHA1(45d94d0c39be1cb3db9fab6610a88a550adda4e9) ) \
-
+	ROM_LOAD16_WORD_SWAP_BIOS( 0,  "ver1305.bin", 0x204080, 0x200000, CRC(a738ea1c) SHA1(45d94d0c39be1cb3db9fab6610a88a550adda4e9) )
 ROM_START( chihiro )
 	CHIHIRO_BIOS
 

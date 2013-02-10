@@ -112,10 +112,12 @@ class apollo_state : public driver_device
 public:
 	apollo_state(const machine_config &mconfig, device_type type, const char *tag)
 			: driver_device(mconfig, type, tag),
+			m_maincpu(*this, MAINCPU),
 			m_ctape(*this, APOLLO_CTAPE_TAG),
 			m_messram_ptr(*this, "messram")
 			{ }
 
+	required_device<cpu_device> m_maincpu;
 	required_device<sc499_device> m_ctape;
 
 	device_t *dma8237_1;
@@ -187,6 +189,9 @@ public:
 	void fdc_interrupt(bool state);
 	void fdc_dma_drq(bool state);
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
+	IRQ_CALLBACK_MEMBER(apollo_irq_acknowledge);
+	IRQ_CALLBACK_MEMBER(apollo_pic_acknowledge);
+	void apollo_bus_error();
 };
 
 MACHINE_CONFIG_EXTERN( apollo );
@@ -249,8 +254,6 @@ DECLARE_READ8_DEVICE_HANDLER( apollo_pic8259_master_r );
 
 DECLARE_WRITE8_DEVICE_HANDLER(apollo_pic8259_slave_w );
 DECLARE_READ8_DEVICE_HANDLER( apollo_pic8259_slave_r );
-
-IRQ_CALLBACK(apollo_pic_acknowledge);
 
 /*----------- machine/apollo_ptm.c -----------*/
 

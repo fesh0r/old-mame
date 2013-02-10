@@ -4,66 +4,68 @@
 
 <!--
 
-	Hardware to be emulated
+    Hardware to be emulated
 
-	CPU replacements:
-	- Turbo Master CPU (R65C02P4 @ 4.09 MHz)
-	- Turbo Process Accelerator (65C816P-4  @ 50kHz-4MHz)
-	- Flash 8 (65816 @ 8 MHz, 4/8 MB RAM)
-	- CMD SuperCPU 64 (65C816S, 64 KB RAM)
-	- Data 20 Z-80 Video Pak (Z80, 80 column video)
+    CPU replacements:
+    - Turbo Master CPU (R65C02P4 @ 4.09 MHz)
+    - Turbo Process Accelerator (65C816P-4  @ 50kHz-4MHz)
+    - Flash 8 (65816 @ 8 MHz, 4/8 MB RAM)
+    - CMD SuperCPU 64 (65C816S, 64 KB RAM)
+    - Data 20 Z-80 Video Pak (Z80, 80 column video)
 
-	Serial I/O:
-	- CMD SwiftLink (6551 @ 3.6864 MHz)
-	- CMD Turbo232
-	- HART (8251)
+    Serial I/O:
+    - CMD SwiftLink (6551 @ 3.6864 MHz)
+    - CMD Turbo232
+    - HART (8251)
 
-	RAM expansions:
-	- CMD RAMLink
-	- CMD RAMDrive
-	- Commodore REU 1700/1750/1764
-	- Rex RAM-Floppy 256K
-	- Rex Goliath 1MB
-	- RAM-Cart
+    RAM expansions:
+    - CMD RAMLink
+    - CMD RAMDrive
+    - CMD REU 1750XL
+    - Commodore REU 1700/1750/1764
+    - Rex RAM-Floppy 256K
+    - Rex Goliath 1MB
+    - RAM-Cart
+    - Silicon Disk System
 
-	Hard disks:
-	- Lt. Kernal
+    Hard disks:
+    - Lt. Kernal
 
-	Audio:
-	- Currah Speech 64 (Currah, 1984)
-	- Easy Speech 64 (Currah, 1984)
-	- Voice Messenger (Currah, 1984)
-	- Votalker (Votrax, 1986)
-	- ProVoice (Genesis, 1986)
-	- SID Symphony
-	- MSSIAH
-	- Synthetiseur Vocal
-	- 64er MIDI
-	- FB-MIDI
-	- C-LAB MIDI
-	- JMS MIDI
-	- Datel MIDI
-	- Passport MIDI
-	- Speech Maker (Adman)
-	- Song Producer (Moog, 1983)
+    Audio:
+    - Currah Speech 64 (Currah, 1984)
+    - Easy Speech 64 (Currah, 1984)
+    - Voice Messenger (Currah, 1984)
+    - Votalker (Votrax, 1986)
+    - ProVoice (Genesis, 1986)
+    - SID Symphony
+    - MSSIAH
+    - Synthetiseur Vocal
+    - 64er MIDI
+    - FB-MIDI
+    - C-LAB MIDI
+    - JMS MIDI
+    - Datel MIDI
+    - Passport MIDI
+    - Speech Maker (Adman)
+    - Song Producer (Moog, 1983)
 
-	EPROM burners:
-	- J-R Promenade C1
-	- Rex Quickbyte 2
-	- Rex Goliath Eprommer
+    EPROM burners:
+    - J-R Promenade C1
+    - Rex Quickbyte 2
+    - Rex Goliath Eprommer
 
-	Missing dumps that exist as .crt but are missing from this list:
+    Missing dumps that exist as .crt but are missing from this list:
 
-	- Ariolasoft Structured BASIC
-	- MSSIAH
-	- Rex Diashow-Maker
+    - Ariolasoft Structured BASIC
+    - MSSIAH
+    - Rex Diashow-Maker
 
-	If you have any of these, please forward them to messdev :)
+    If you have any of these, please forward them to messdev :)
 
-	List of mostly undumped cartridges:
-	http://www.retroport.de/C64_C128_Hardware.html
-	http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
-	http://members.optusnet.com.au/spacetaxi64/SPEED-UP-CARTS/SPEED-C64-CPU.htm
+    List of mostly undumped cartridges:
+    http://www.retroport.de/C64_C128_Hardware.html
+    http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
+    http://members.optusnet.com.au/spacetaxi64/SPEED-UP-CARTS/SPEED-C64-CPU.htm
 
 -->
 
@@ -6413,18 +6415,20 @@
 	</software>
 
 	<software name="fcc" supported="no">
-		<description>The Final ChessCard</description>
+		<description>The Final ChessCard (Ger)</description>
 		<year>1989</year>
 		<publisher>Tasc</publisher>
 
 		<part name="cart" interface="c64_cart">
 			<feature name="slot" value="fcc" />
 			<feature name="exrom" value="0" />
-			<feature name="game" value="1" />
+			<feature name="game" value="0" />
 
 			<dataarea name="roml" size="0x8000">
 				<rom name="fcc_rom2" size="0x8000" crc="8fc0f156" sha1="c843729870e7ce59bb64b60ebec028f7200f93d1" offset="0x0000" />
 			</dataarea>
+
+			<dataarea name="nvram" size="0x2000" />
 		</part>
 	</software>
 
@@ -6566,6 +6570,55 @@
 
 			<dataarea name="roml" size="0x2000">
 				<rom name="sean's diag cart for c64 cs=87e7" size="0x2000" crc="653ec679" sha1="b2d3e90113d7360c7d01a1f017a8edd8ae4441b7" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="vizastar">
+		<description>VizaStar XL4</description>
+		<year>1984</year>
+		<publisher>Viza</publisher>
+		<sharedfeat name="compatibility" value="NTSC,PAL"/>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="slot" value="vizastar" />
+			<feature name="game" value="1" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x1000">
+				<rom name="v" size="0x1000" crc="d17689a0" sha1="4df4d254d7fae916c473d421515b2b74d77e9fd9" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="350952">
+				<rom name="vizastar.g64" size="350952" crc="c4f327ac" sha1="c4d35b895f73d7133a72a5d7642e3a588df5370f" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<!-- Dummy cartridge entries to allow requirement mappings from c64_flop -->
+
+	<software name="cpm">
+		<description>CP/M</description>
+		<year>1982</year>
+		<publisher>Commodore</publisher>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="slot" value="cpm" />
+			<dataarea name="roml" size="0x2000">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="sfxse">
+		<description>SFX Sound Expander</description>
+		<year>1985</year>
+		<publisher>Commodore</publisher>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="slot" value="sfxse" />
+			<dataarea name="roml" size="0x2000">
 			</dataarea>
 		</part>
 	</software>

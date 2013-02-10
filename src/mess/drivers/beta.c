@@ -86,7 +86,6 @@ INPUT_PORTS_END
 
 TIMER_CALLBACK_MEMBER(beta_state::led_refresh)
 {
-
 	if (m_ls145_p < 6)
 	{
 		output_set_digit_value(m_ls145_p, m_segment);
@@ -114,14 +113,14 @@ READ8_MEMBER( beta_state::riot_pa_r )
 
 	switch (m_ls145_p)
 	{
-	case 6: data &= ioport("Q6")->read(); break;
-	case 7: data &= ioport("Q7")->read(); break;
-	case 8: data &= ioport("Q8")->read(); break;
-	case 9: data &= ioport("Q9")->read(); break;
+	case 6: data &= m_q6->read(); break;
+	case 7: data &= m_q7->read(); break;
+	case 8: data &= m_q8->read(); break;
+	case 9: data &= m_q9->read(); break;
 	default:
 		if (!m_eprom_oe && !m_eprom_ce)
 		{
-			data = memregion(EPROM_TAG)->base()[m_eprom_addr & 0x7ff];
+			data = m_eprom->base()[m_eprom_addr & 0x7ff];
 			popmessage("EPROM read %04x = %02x\n", m_eprom_addr & 0x7ff, data);
 		}
 	}
@@ -208,7 +207,7 @@ WRITE8_MEMBER( beta_state::riot_pb_w )
 	if (BIT(data, 6) && (!BIT(m_old_data, 7) && BIT(data, 7)))
 	{
 		popmessage("EPROM write %04x = %02x\n", m_eprom_addr & 0x7ff, m_eprom_data);
-		memregion(EPROM_TAG)->base()[m_eprom_addr & 0x7ff] &= m_eprom_data;
+		m_eprom->base()[m_eprom_addr & 0x7ff] &= m_eprom_data;
 	}
 
 	m_old_data = data;
@@ -225,9 +224,9 @@ static const riot6532_interface beta_riot_interface =
 
 /* Quickload */
 
-static DEVICE_IMAGE_UNLOAD( beta_eprom )
+DEVICE_IMAGE_UNLOAD_MEMBER( beta_state, beta_eprom )
 {
-	UINT8 *ptr = image.device().machine().root_device().memregion(EPROM_TAG)->base();
+	UINT8 *ptr = m_eprom->base();
 
 	image.fwrite(ptr, 0x800);
 }
@@ -238,7 +237,7 @@ void beta_state::machine_start()
 {
 	m_led_refresh_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(beta_state::led_refresh),this));
 
-	/* register for state saving */
+	// state saving
 	save_item(NAME(m_eprom_oe));
 	save_item(NAME(m_eprom_ce));
 	save_item(NAME(m_eprom_addr));
@@ -270,7 +269,7 @@ static MACHINE_CONFIG_START( beta, beta_state )
 	MCFG_CARTSLOT_ADD(EPROM_TAG)
 	MCFG_CARTSLOT_EXTENSION_LIST("bin,rom")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_UNLOAD(beta_eprom)
+	MCFG_CARTSLOT_UNLOAD(beta_state,beta_eprom)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

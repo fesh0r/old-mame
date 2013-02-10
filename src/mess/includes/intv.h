@@ -40,7 +40,8 @@ public:
 	m_sound(*this, "ay8914.1"),
 	m_ecs_sound(*this, "ay8914.2"),
 	m_intvkbd_dualport_ram(*this, "dualport_ram"),
-	m_videoram(*this, "videoram")
+	m_videoram(*this, "videoram"),
+	m_keyboard(*this, "keyboard")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -140,20 +141,15 @@ public:
 	TIMER_CALLBACK_MEMBER(intv_interrupt2_complete);
 	TIMER_CALLBACK_MEMBER(intv_interrupt_complete);
 	TIMER_CALLBACK_MEMBER(intv_btb_fill);
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( intv_cart );
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( intvkbd_cart );
+
+protected:
+	optional_device<cpu_device> m_keyboard;
 };
 
 /*----------- defined in video/intv.c -----------*/
 void intv_stic_screenrefresh(running_machine &machine);
 
-/*----------- defined in machine/intv.c -----------*/
-
-/*  for the console alone... */
-
-DEVICE_START( intv_cart );
-DEVICE_IMAGE_LOAD( intv_cart );
-
-/* for the console + keyboard component... */
-
-DEVICE_IMAGE_LOAD( intvkbd_cart );
 
 #endif /* INTV_H_ */

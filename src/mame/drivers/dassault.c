@@ -136,7 +136,6 @@ Dip locations verified with US conversion kit manual.
 #include "sound/okim6295.h"
 #include "video/deco16ic.h"
 #include "video/decocomn.h"
-#include "video/decospr.h"
 
 /**********************************************************************************/
 
@@ -447,7 +446,6 @@ GFXDECODE_END
 
 WRITE8_MEMBER(dassault_state::sound_bankswitch_w)
 {
-
 	/* the second OKIM6295 ROM is bank switched */
 	m_oki2->set_bank_base((data & 1) * 0x40000);
 }

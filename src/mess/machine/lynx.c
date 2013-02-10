@@ -1920,42 +1920,44 @@ WRITE8_MEMBER(lynx_state::lynx_memory_config_w)
 	membank("bank4")->set_entry((data & 8) ? 1 : 0);
 }
 
-static void lynx_reset(running_machine &machine)
+void lynx_state::machine_reset()
 {
-	lynx_state *state = machine.driver_data<lynx_state>();
-	state->lynx_memory_config_w(machine.device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
+	lynx_memory_config_w(machine().device("maincpu")->memory().space(AS_PROGRAM), 0, 0);
 
-	machine.device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
-	machine.device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(M65SC02_IRQ_LINE, CLEAR_LINE);
 
-	memset(&state->m_suzy, 0, sizeof(state->m_suzy));
-	memset(&state->m_mikey, 0, sizeof(state->m_mikey));
+	memset(&m_suzy, 0, sizeof(m_suzy));
+	memset(&m_mikey, 0, sizeof(m_mikey));
 
-	state->m_suzy.data[0x88]  = 0x01;
-	state->m_suzy.data[0x90]  = 0x00;
-	state->m_suzy.data[0x91]  = 0x00;
-	state->m_mikey.data[0x80] = 0x00;
-	state->m_mikey.data[0x81] = 0x00;
-	state->m_mikey.data[0x88] = 0x01;
-	state->m_mikey.data[0x8a] = 0x00;
-	state->m_mikey.data[0x8c] = 0x00;
-	state->m_mikey.data[0x90] = 0x00;
-	state->m_mikey.data[0x92] = 0x00;
+	m_suzy.data[0x88]  = 0x01;
+	m_suzy.data[0x90]  = 0x00;
+	m_suzy.data[0x91]  = 0x00;
+	m_mikey.data[0x80] = 0x00;
+	m_mikey.data[0x81] = 0x00;
+	m_mikey.data[0x88] = 0x01;
+	m_mikey.data[0x8a] = 0x00;
+	m_mikey.data[0x8c] = 0x00;
+	m_mikey.data[0x90] = 0x00;
+	m_mikey.data[0x92] = 0x00;
 
-	lynx_uart_reset(state);
+	lynx_uart_reset(this);
 
 	// hack to allow current object loading to work
 #if 0
-	lynx_timer_write( state, 0, 0, 160 ); // set backup value (hpos) = 160
-	lynx_timer_write( state, 0, 1, 0x10 | 0x8 | 0 ); // enable count, enable reload, 1us period
-	lynx_timer_write( state, 2, 0, 105 ); // set backup value (vpos) = 102
-	lynx_timer_write( state, 2, 1, 0x10 | 0x8 | 7 ); // enable count, enable reload, link
+	lynx_timer_write( this, 0, 0, 160 ); // set backup value (hpos) = 160
+	lynx_timer_write( this, 0, 1, 0x10 | 0x8 | 0 ); // enable count, enable reload, 1us period
+	lynx_timer_write( this, 2, 0, 105 ); // set backup value (vpos) = 102
+	lynx_timer_write( this, 2, 1, 0x10 | 0x8 | 7 ); // enable count, enable reload, link
 #endif
+
+	render_target *target = machine().render().first_target();
+	target->set_view(m_rotate);
 }
 
-static void lynx_postload(lynx_state *state)
+void lynx_state::lynx_postload()
 {
-	state->lynx_memory_config_w( state->machine().device("maincpu")->memory().space(AS_PROGRAM), 0, state->m_memory_config);
+	lynx_memory_config_w(machine().device("maincpu")->memory().space(AS_PROGRAM), 0, m_memory_config);
 }
 
 void lynx_state::machine_start()
@@ -1965,7 +1967,7 @@ void lynx_state::machine_start()
 	int i;
 	save_item(NAME(m_memory_config));
 	save_pointer(NAME(m_mem_fe00.target()), m_mem_fe00.bytes());
-	machine().save().register_postload(save_prepost_delegate(FUNC(lynx_postload), this));
+	machine().save().register_postload(save_prepost_delegate(FUNC(lynx_state::lynx_postload), this));
 
 	membank("bank3")->configure_entry(0, machine().root_device().memregion("maincpu")->base() + 0x0000);
 	membank("bank3")->configure_entry(1, m_mem_fe00);
@@ -1976,17 +1978,10 @@ void lynx_state::machine_start()
 
 	memset(&m_suzy, 0, sizeof(m_suzy));
 
-	machine().add_notifier(MACHINE_NOTIFY_RESET, machine_notify_delegate(FUNC(lynx_reset),&machine()));
-
 	for (i = 0; i < NR_LYNX_TIMERS; i++)
 		lynx_timer_init(machine(), i);
 }
 
-void lynx_state::machine_reset()
-{
-	render_target *target = machine().render().first_target();
-	target->set_view(m_rotate);
-}
 
 /****************************************
 
@@ -2031,14 +2026,13 @@ int lynx_verify_cart (char *header, int kind)
 	return IMAGE_VERIFY_PASS;
 }
 
-static DEVICE_IMAGE_LOAD( lynx_cart )
+DEVICE_IMAGE_LOAD_MEMBER( lynx_state, lynx_cart )
 {
 	/* Lynx carts have 19 address lines, the upper 8 used for bank select. The lower
 	11 bits are used to address data within the selected bank. Valid bank sizes are 256,
 	512, 1024 or 2048 bytes. Commercial roms use all 256 banks.*/
 
-	lynx_state *state = image.device().machine().driver_data<lynx_state>();
-	UINT8 *rom = state->memregion("user1")->base();
+	UINT8 *rom = memregion("user1")->base();
 	UINT32 size;
 	UINT8 header[0x40];
 
@@ -2068,10 +2062,10 @@ static DEVICE_IMAGE_LOAD( lynx_cart )
 			/* 2008-10 FP: According to Handy source these should be page_size_bank0. Are we using
 			it correctly in MESS? Moreover, the next two values should be page_size_bank1. We should
 			implement this as well */
-			state->m_granularity = header[4] | (header[5] << 8);
+			m_granularity = header[4] | (header[5] << 8);
 
 			logerror ("%s %dkb cartridge with %dbyte granularity from %s\n",
-					header + 10, size / 1024, state->m_granularity, header + 42);
+					header + 10, size / 1024, m_granularity, header + 42);
 
 			size -= 0x40;
 		}
@@ -2081,11 +2075,11 @@ static DEVICE_IMAGE_LOAD( lynx_cart )
 			(see above). What if bank 0 has to be loaded elsewhere? And what about bank 1?
 			These should work with most .lyx files, but we need additional info on raw cart images */
 			if (size == 0x20000)
-				state->m_granularity = 0x0200;
+				m_granularity = 0x0200;
 			else if (size == 0x80000)
-				state->m_granularity = 0x0800;
+				m_granularity = 0x0800;
 			else
-				state->m_granularity = 0x0400;
+				m_granularity = 0x0400;
 		}
 
 		if (image.fread( rom, size) != size)
@@ -2095,21 +2089,21 @@ static DEVICE_IMAGE_LOAD( lynx_cart )
 	{
 		size = image.get_software_region_length("rom");
 		if (size > 0xffff) // 64,128,256,512k cartridges
-		state->m_granularity = size >> 8;
+		m_granularity = size >> 8;
 		else
-		state->m_granularity = 0x400; // Homebrew roms not using all 256 banks (T-Tris) (none currently in softlist)
+		m_granularity = 0x400; // Homebrew roms not using all 256 banks (T-Tris) (none currently in softlist)
 
 		memcpy(rom, image.get_software_region("rom"), size);
 
 		const char *rotate = image.get_feature("rotation");
-		state->m_rotate = 0;
+		m_rotate = 0;
 		if (rotate)
 		{
 			if(strcmp(rotate, "RIGHT") == 0) {
-				state->m_rotate = 1;
+				m_rotate = 1;
 			}
 			else if (strcmp(rotate, "LEFT") == 0) {
-				state->m_rotate = 2;
+				m_rotate = 2;
 			}
 		}
 
@@ -2123,7 +2117,7 @@ MACHINE_CONFIG_FRAGMENT(lynx_cartslot)
 	MCFG_CARTSLOT_EXTENSION_LIST("lnx,lyx")
 	MCFG_CARTSLOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("lynx_cart")
-	MCFG_CARTSLOT_LOAD(lynx_cart)
+	MCFG_CARTSLOT_LOAD(lynx_state, lynx_cart)
 	MCFG_CARTSLOT_PARTIALHASH(lynx_partialhash)
 
 	/* Software lists */

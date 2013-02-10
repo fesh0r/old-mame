@@ -456,7 +456,6 @@ TIMER_DEVICE_CALLBACK_MEMBER(centiped_state::generate_interrupt)
 
 MACHINE_START_MEMBER(centiped_state,centiped)
 {
-
 	save_item(NAME(m_oldpos));
 	save_item(NAME(m_sign));
 	save_item(NAME(m_dsw_select));
@@ -466,7 +465,6 @@ MACHINE_START_MEMBER(centiped_state,centiped)
 
 MACHINE_RESET_MEMBER(centiped_state,centiped)
 {
-
 	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
 	m_dsw_select = 0;
 	m_control_select = 0;
@@ -476,7 +474,6 @@ MACHINE_RESET_MEMBER(centiped_state,centiped)
 
 MACHINE_RESET_MEMBER(centiped_state,magworm)
 {
-
 	MACHINE_RESET_CALL_MEMBER(centiped);
 
 	/* kludge: clear RAM so that magworm can be reset cleanly */
@@ -515,49 +512,48 @@ WRITE8_MEMBER(centiped_state::irq_ack_w)
  * to prevent the counter from wrapping around between reads.
  */
 
-INLINE int read_trackball(running_machine &machine, int idx, int switch_port)
+inline int centiped_state::read_trackball(int idx, int switch_port)
 {
-	centiped_state *state = machine.driver_data<centiped_state>();
 	UINT8 newpos;
 	static const char *const portnames[] = { "IN0", "IN1", "IN2" };
 	static const char *const tracknames[] = { "TRACK0_X", "TRACK0_Y", "TRACK1_X", "TRACK1_Y" };
 
 	/* adjust idx if we're cocktail flipped */
-	if (state->m_flipscreen)
+	if (m_flipscreen)
 		idx += 2;
 
 	/* if we're to read the dipswitches behind the trackball data, do it now */
-	if (state->m_dsw_select)
-		return (machine.root_device().ioport(portnames[switch_port])->read() & 0x7f) | state->m_sign[idx];
+	if (m_dsw_select)
+		return (machine().root_device().ioport(portnames[switch_port])->read() & 0x7f) | m_sign[idx];
 
 	/* get the new position and adjust the result */
-	newpos = machine.root_device().ioport(tracknames[idx])->read();
-	if (newpos != state->m_oldpos[idx])
+	newpos = machine().root_device().ioport(tracknames[idx])->read();
+	if (newpos != m_oldpos[idx])
 	{
-		state->m_sign[idx] = (newpos - state->m_oldpos[idx]) & 0x80;
-		state->m_oldpos[idx] = newpos;
+		m_sign[idx] = (newpos - m_oldpos[idx]) & 0x80;
+		m_oldpos[idx] = newpos;
 	}
 
 	/* blend with the bits from the switch port */
-	return (machine.root_device().ioport(portnames[switch_port])->read() & 0x70) | (state->m_oldpos[idx] & 0x0f) | state->m_sign[idx];
+	return (machine().root_device().ioport(portnames[switch_port])->read() & 0x70) | (m_oldpos[idx] & 0x0f) | m_sign[idx];
 }
 
 
 READ8_MEMBER(centiped_state::centiped_IN0_r)
 {
-	return read_trackball(machine(), 0, 0);
+	return read_trackball(0, 0);
 }
 
 
 READ8_MEMBER(centiped_state::centiped_IN2_r)
 {
-	return read_trackball(machine(), 1, 2);
+	return read_trackball(1, 2);
 }
 
 
 READ8_MEMBER(centiped_state::milliped_IN1_r)
 {
-	return read_trackball(machine(), 1, 1);
+	return read_trackball(1, 1);
 }
 
 READ8_MEMBER(centiped_state::milliped_IN2_r)
@@ -2177,7 +2173,6 @@ ROM_END
 
 DRIVER_INIT_MEMBER(centiped_state,bullsdrt)
 {
-
 	m_dsw_select = 0;
 }
 

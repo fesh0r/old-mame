@@ -45,6 +45,12 @@ protected:
 	virtual UINT8 vcs_pot_x_r();
 	virtual UINT8 vcs_pot_y_r();
 
+	virtual bool has_pot_x() { return true; }
+	virtual bool has_pot_y() { return true; }
+
+private:
+	required_ioport m_keypad;
+
 	UINT8   m_column;
 };
 

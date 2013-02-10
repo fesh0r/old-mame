@@ -283,20 +283,18 @@ static void toaplan1_set_scrolls(running_machine &machine)
 	state->m_pf4_tilemap->set_scrolly(0, (state->m_pf4_scrolly >> 7) - (state->m_tiles_offsety - state->m_scrolly_offs));
 }
 
-static void rallybik_flipscreen(running_machine &machine)
+void toaplan1_state::rallybik_flipscreen()
 {
-	toaplan1_state *state = machine.driver_data<toaplan1_state>();
-	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	state->rallybik_bcu_flipscreen_w(space, 0, state->m_bcu_flipscreen, 0xffff);
+	rallybik_bcu_flipscreen_w(space, 0, m_bcu_flipscreen, 0xffff);
 }
 
-static void toaplan1_flipscreen(running_machine &machine)
+void toaplan1_state::toaplan1_flipscreen()
 {
-	toaplan1_state *state = machine.driver_data<toaplan1_state>();
-	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
 
-	state->toaplan1_bcu_flipscreen_w(space, 0, state->m_bcu_flipscreen, 0xffff);
+	toaplan1_bcu_flipscreen_w(space, 0, m_bcu_flipscreen, 0xffff);
 }
 
 static void register_common(running_machine &machine)
@@ -331,7 +329,6 @@ static void register_common(running_machine &machine)
 
 VIDEO_START_MEMBER(toaplan1_state,rallybik)
 {
-
 	toaplan1_create_tilemaps(machine());
 	toaplan1_paletteram_alloc(machine());
 	toaplan1_vram_alloc(machine());
@@ -351,12 +348,11 @@ VIDEO_START_MEMBER(toaplan1_state,rallybik)
 
 	register_common(machine());
 
-	machine().save().register_postload(save_prepost_delegate(FUNC(rallybik_flipscreen), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(toaplan1_state::rallybik_flipscreen), this));
 }
 
 VIDEO_START_MEMBER(toaplan1_state,toaplan1)
 {
-
 	toaplan1_create_tilemaps(machine());
 	toaplan1_paletteram_alloc(machine());
 	toaplan1_vram_alloc(machine());
@@ -374,7 +370,7 @@ VIDEO_START_MEMBER(toaplan1_state,toaplan1)
 
 	register_common(machine());
 
-	machine().save().register_postload(save_prepost_delegate(FUNC(toaplan1_flipscreen), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(toaplan1_state::toaplan1_flipscreen), this));
 }
 
 
@@ -391,7 +387,6 @@ READ16_MEMBER(toaplan1_state::toaplan1_frame_done_r)
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_tile_offsets_w)
 {
-
 	if ( offset == 0 )
 	{
 		COMBINE_DATA(&m_tiles_offsetx);
@@ -408,7 +403,6 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_tile_offsets_w)
 
 WRITE16_MEMBER(toaplan1_state::rallybik_bcu_flipscreen_w)
 {
-
 	if (ACCESSING_BITS_0_7 && (data != m_bcu_flipscreen))
 	{
 		logerror("Setting BCU controller flipscreen port to %04x\n",data);
@@ -436,7 +430,6 @@ WRITE16_MEMBER(toaplan1_state::rallybik_bcu_flipscreen_w)
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_bcu_flipscreen_w)
 {
-
 	if (ACCESSING_BITS_0_7 && (data != m_bcu_flipscreen))
 	{
 		logerror("Setting BCU controller flipscreen port to %04x\n",data);
@@ -469,7 +462,6 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_fcu_flipscreen_w)
 {
 	if (ACCESSING_BITS_8_15)
 	{
-
 		logerror("Setting FCU controller flipscreen port to %04x\n",data);
 		m_fcu_flipscreen = data & 0x8000;   /* 0x8000 = flip, 0x0000 = no flip */
 	}
@@ -477,13 +469,11 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_fcu_flipscreen_w)
 
 READ16_MEMBER(toaplan1_state::toaplan1_spriteram_offs_r)/// this aint really needed ?
 {
-
 	return m_spriteram_offs;
 }
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_spriteram_offs_w)
 {
-
 	COMBINE_DATA(&m_spriteram_offs);
 }
 
@@ -491,13 +481,11 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_spriteram_offs_w)
 /* tile palette */
 READ16_MEMBER(toaplan1_state::toaplan1_colorram1_r)
 {
-
 	return m_colorram1[offset];
 }
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_colorram1_w)
 {
-
 	COMBINE_DATA(&m_colorram1[offset]);
 	paletteram_xBBBBBGGGGGRRRRR_word_w(space, offset, data, mem_mask);
 }
@@ -505,26 +493,22 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_colorram1_w)
 /* sprite palette */
 READ16_MEMBER(toaplan1_state::toaplan1_colorram2_r)
 {
-
 	return m_colorram2[offset];
 }
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_colorram2_w)
 {
-
 	COMBINE_DATA(&m_colorram2[offset]);
 	paletteram_xBBBBBGGGGGRRRRR_word_w(space, offset+(m_colorram1.bytes()/2), data, mem_mask);
 }
 
 READ16_MEMBER(toaplan1_state::toaplan1_spriteram16_r)
 {
-
 	return m_spriteram[m_spriteram_offs & ((TOAPLAN1_SPRITERAM_SIZE/2)-1)];
 }
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_spriteram16_w)
 {
-
 	COMBINE_DATA(&m_spriteram[m_spriteram_offs & ((TOAPLAN1_SPRITERAM_SIZE/2)-1)]);
 
 #ifdef MAME_DEBUG
@@ -540,13 +524,11 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_spriteram16_w)
 
 READ16_MEMBER(toaplan1_state::toaplan1_spritesizeram16_r)
 {
-
 	return m_spritesizeram16[m_spriteram_offs & ((TOAPLAN1_SPRITESIZERAM_SIZE/2)-1)];
 }
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_spritesizeram16_w)
 {
-
 	COMBINE_DATA(&m_spritesizeram16[m_spriteram_offs & ((TOAPLAN1_SPRITESIZERAM_SIZE/2)-1)]);
 
 #ifdef MAME_DEBUG
@@ -564,7 +546,6 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_spritesizeram16_w)
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_bcu_control_w)
 {
-
 	logerror("BCU tile controller register:%02x now = %04x\n",offset,data);
 
 	/*** Hack for Zero Wing and OutZone, to reset the sound system on */
@@ -580,13 +561,11 @@ WRITE16_MEMBER(toaplan1_state::toaplan1_bcu_control_w)
 
 READ16_MEMBER(toaplan1_state::toaplan1_tileram_offs_r)
 {
-
 	return m_pf_voffs;
 }
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_tileram_offs_w)
 {
-
 	if (data >= 0x4000)
 		logerror("Hmmm, unknown video layer being selected (%08x)\n",data);
 	COMBINE_DATA(&m_pf_voffs);
@@ -693,7 +672,6 @@ READ16_MEMBER(toaplan1_state::toaplan1_scroll_regs_r)
 
 WRITE16_MEMBER(toaplan1_state::toaplan1_scroll_regs_w)
 {
-
 	switch(offset)
 	{
 		case 00: COMBINE_DATA(&m_pf1_scrollx);      /* 1D3h */
@@ -1189,7 +1167,6 @@ void toaplan1_state::screen_eof_rallybik(screen_device &screen, bool state)
 	// rising edge
 	if (state)
 	{
-
 		memcpy(m_buffered_spriteram, m_spriteram, m_spriteram.bytes());
 	}
 }
@@ -1199,7 +1176,6 @@ void toaplan1_state::screen_eof_toaplan1(screen_device &screen, bool state)
 	// rising edge
 	if (state)
 	{
-
 		memcpy(m_buffered_spriteram, m_spriteram, m_spriteram.bytes());
 		memcpy(m_buffered_spritesizeram16, m_spritesizeram16, TOAPLAN1_SPRITESIZERAM_SIZE);
 	}
@@ -1210,7 +1186,6 @@ void toaplan1_state::screen_eof_samesame(screen_device &screen, bool state)
 	// rising edge
 	if (state)
 	{
-
 		memcpy(m_buffered_spriteram, m_spriteram, m_spriteram.bytes());
 		memcpy(m_buffered_spritesizeram16, m_spritesizeram16, TOAPLAN1_SPRITESIZERAM_SIZE);
 		machine().device("maincpu")->execute().set_input_line(M68K_IRQ_2, HOLD_LINE);   /* Frame done */

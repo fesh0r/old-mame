@@ -94,7 +94,6 @@ TILE_GET_INFO_MEMBER(nemesis_state::get_fg_tile_info)
 
 WRITE16_MEMBER(nemesis_state::nemesis_gfx_flipx_word_w)
 {
-
 	if (ACCESSING_BITS_0_7)
 	{
 		m_flipscreen = data & 0x01;
@@ -116,7 +115,6 @@ WRITE16_MEMBER(nemesis_state::nemesis_gfx_flipx_word_w)
 
 WRITE16_MEMBER(nemesis_state::nemesis_gfx_flipy_word_w)
 {
-
 	if (ACCESSING_BITS_0_7)
 	{
 		if (data & 0x01)
@@ -131,7 +129,6 @@ WRITE16_MEMBER(nemesis_state::nemesis_gfx_flipy_word_w)
 
 WRITE16_MEMBER(nemesis_state::salamand_control_port_word_w)
 {
-
 	if (ACCESSING_BITS_0_7)
 	{
 		UINT8 accessing_bits = data ^ m_irq_port_last;
@@ -212,7 +209,6 @@ WRITE16_MEMBER(nemesis_state::nemesis_palette_word_w)
 
 WRITE16_MEMBER(nemesis_state::salamander_palette_word_w)
 {
-
 	COMBINE_DATA(m_paletteram + offset);
 	offset &= ~1;
 
@@ -223,28 +219,24 @@ WRITE16_MEMBER(nemesis_state::salamander_palette_word_w)
 
 WRITE16_MEMBER(nemesis_state::nemesis_videoram1_word_w)
 {
-
 	COMBINE_DATA(m_videoram1 + offset);
 	m_foreground->mark_tile_dirty(offset);
 }
 
 WRITE16_MEMBER(nemesis_state::nemesis_videoram2_word_w)
 {
-
 	COMBINE_DATA(m_videoram2 + offset);
 	m_background->mark_tile_dirty(offset);
 }
 
 WRITE16_MEMBER(nemesis_state::nemesis_colorram1_word_w)
 {
-
 	COMBINE_DATA(m_colorram1 + offset);
 	m_foreground->mark_tile_dirty(offset);
 }
 
 WRITE16_MEMBER(nemesis_state::nemesis_colorram2_word_w)
 {
-
 	COMBINE_DATA(m_colorram2 + offset);
 	m_background->mark_tile_dirty(offset);
 }
@@ -271,29 +263,27 @@ WRITE16_MEMBER(nemesis_state::nemesis_charram_word_w)
 }
 
 
-static void nemesis_postload(running_machine &machine)
+void nemesis_state::nemesis_postload()
 {
-	nemesis_state *state = machine.driver_data<nemesis_state>();
 	int i, offs;
 
-	for (offs = 0; offs < state->m_charram.bytes(); offs++)
+	for (offs = 0; offs < m_charram.bytes(); offs++)
 	{
 		for (i = 0; i < 8; i++)
 		{
 			int w = sprite_data[i].width;
 			int h = sprite_data[i].height;
-			machine.gfx[sprite_data[i].char_type]->mark_dirty(offs * 4 / (w * h));
+			machine().gfx[sprite_data[i].char_type]->mark_dirty(offs * 4 / (w * h));
 		}
 	}
-	state->m_background->mark_all_dirty();
-	state->m_foreground->mark_all_dirty();
+	m_background->mark_all_dirty();
+	m_foreground->mark_all_dirty();
 }
 
 
 /* claim a palette dirty array */
 void nemesis_state::video_start()
 {
-
 	m_spriteram_words = m_spriteram.bytes() / 2;
 
 	m_background = &machine().tilemap().create(tilemap_get_info_delegate(FUNC(nemesis_state::get_bg_tile_info),this), TILEMAP_SCAN_ROWS,  8, 8, 64, 32);
@@ -317,7 +307,7 @@ void nemesis_state::video_start()
 	machine().gfx[7]->set_source((UINT8 *)m_charram.target());
 
 	/* Set up save state */
-	machine().save().register_postload(save_prepost_delegate(FUNC(nemesis_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(nemesis_state::nemesis_postload), this));
 }
 
 

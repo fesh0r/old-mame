@@ -27,7 +27,9 @@ public:
 			m_ram(*this, RAM_TAG),
 			m_terminal(*this, TERMINAL_TAG),
 			m_s100(*this, S100_TAG),
+			m_rom(*this, Z80_TAG),
 			m_map_ram(*this, "map_ram"),
+			m_16c(*this, "16C"),
 			m_nmi(1),
 			m_pint(1),
 			m_int_pend(0),
@@ -45,7 +47,9 @@ public:
 	required_device<ram_device> m_ram;
 	required_device<generic_terminal_device> m_terminal;
 	required_device<s100_device> m_s100;
+	required_memory_region m_rom;
 	optional_shared_ptr<UINT8> m_map_ram;
+	required_ioport m_16c;
 
 	virtual void machine_start();
 	virtual void machine_reset();

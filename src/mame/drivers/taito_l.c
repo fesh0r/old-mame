@@ -142,7 +142,6 @@ static void state_register( running_machine &machine )
 
 MACHINE_START_MEMBER(taitol_state,taito_l)
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_audiocpu = machine().device<cpu_device>("audiocpu");
 
@@ -291,16 +290,15 @@ MACHINE_RESET_MEMBER(taitol_state,horshoes)
 }
 
 
-static IRQ_CALLBACK( irq_callback )
+IRQ_CALLBACK_MEMBER(taitol_state::irq_callback)
 {
-	taitol_state *state = device->machine().driver_data<taitol_state>();
-	return state->m_irq_adr_table[state->m_last_irq_level];
+	return m_irq_adr_table[m_last_irq_level];
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(taitol_state::vbl_interrupt)
 {
 	int scanline = param;
-	m_maincpu->set_irq_acknowledge_callback(irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(taitol_state::irq_callback),this));
 
 	/* kludge to make plgirls boot */
 	if (m_maincpu->state_int(Z80_IM) != 2)
@@ -354,7 +352,6 @@ READ8_MEMBER(taitol_state::irq_enable_r)
 
 WRITE8_MEMBER(taitol_state::rombankswitch_w)
 {
-
 	if (m_cur_rombank != data)
 	{
 		if (data > m_high)
@@ -371,7 +368,6 @@ WRITE8_MEMBER(taitol_state::rombankswitch_w)
 
 WRITE8_MEMBER(taitol_state::rombank2switch_w)
 {
-
 	data &= 0xf;
 
 	if (m_cur_rombank2 != data)
@@ -401,7 +397,6 @@ READ8_MEMBER(taitol_state::rombank2switch_r)
 
 WRITE8_MEMBER(taitol_state::rambankswitch_w)
 {
-
 	if (m_cur_rambank[offset] != data)
 	{
 		m_cur_rambank[offset] = data;
@@ -510,7 +505,6 @@ WRITE8_MEMBER(taitol_state::mcu_control_w)
 
 READ8_MEMBER(taitol_state::mcu_data_r)
 {
-
 //  logerror("mcu read (%04x) [%02x, %04x]\n", space.device().safe_pc(), last_data, last_data_adr);
 	if (m_mcu_pos == m_mcu_reply_len)
 		return 0;
@@ -533,7 +527,6 @@ WRITE8_MEMBER(taitol_state::sound_w)
 
 READ8_MEMBER(taitol_state::mux_r)
 {
-
 	switch (m_mux_ctrl)
 	{
 	case 0:
@@ -554,7 +547,6 @@ READ8_MEMBER(taitol_state::mux_r)
 
 WRITE8_MEMBER(taitol_state::mux_w)
 {
-
 	switch (m_mux_ctrl)
 	{
 	case 4:
@@ -622,7 +614,6 @@ WRITE8_MEMBER(taitol_state::champwr_msm5205_volume_w)
 
 READ8_MEMBER(taitol_state::horshoes_tracky_reset_r)
 {
-
 	/* reset the trackball counter */
 	m_tracky = ioport("AN0")->read();
 	return 0;
@@ -630,7 +621,6 @@ READ8_MEMBER(taitol_state::horshoes_tracky_reset_r)
 
 READ8_MEMBER(taitol_state::horshoes_trackx_reset_r)
 {
-
 	/* reset the trackball counter */
 	m_trackx = ioport("AN1")->read();
 	return 0;
@@ -1767,7 +1757,6 @@ static void irqhandler( device_t *device, int irq )
 
 WRITE8_MEMBER(taitol_state::portA_w)
 {
-
 	if (m_cur_bank != (data & 0x03))
 	{
 		int bankaddress;
@@ -2431,8 +2420,8 @@ ROM_START( plottingu ) /* The demo mode is 2 players */
 	ROM_LOAD( "b96-02.ic9", 0x00000, 0x10000, CRC(6e0bad2a) SHA1(73996688cd058a2f56f61ea60144b9c673919a58) )
 	ROM_LOAD( "b96-03.ic8", 0x10000, 0x10000, CRC(fb5f3ca4) SHA1(0c335acceea50133a6899f9e368cff5f61b55a96) )
 
-	ROM_REGION( 0x0200, "plds", 0 )
-	ROM_LOAD( "gal16v8-b86-04.bin", 0x0000, 0x0117, CRC(bf8c0ea0) SHA1(e0a00f1f6363fb79650202f90a56329990876d49) )  /* derived, but verified  Pal Stamped B86-04 */
+	ROM_REGION( 0x0200, "plds", 0 ) // PAL16L8
+	ROM_LOAD( "b96-04.ic12", 0x0000, 0x0104, CRC(9390a782) SHA1(9e68948ed15d96c1998e5d5cd99b823676e555e7) )  /* Confirmed/Matches U.S. set */
 ROM_END
 
 ROM_START( flipull ) /* The demo mode is 1 player */
@@ -2464,17 +2453,17 @@ ROM_END
 
 ROM_START( puzznicj )
 	ROM_REGION( 0x20000, "maincpu", 0 )
-	ROM_LOAD( "u11.ic11",  0x00000, 0x20000, CRC(a4150b6c) SHA1(27719b8993735532cd59f4ed5693ff3143ee2336) )
+	ROM_LOAD( "c20-04.ic11",  0x00000, 0x20000, CRC(a4150b6c) SHA1(27719b8993735532cd59f4ed5693ff3143ee2336) )
 
 	ROM_REGION( 0x0800, "mcu", 0 )  /* 2k for the microcontroller */
 	ROM_LOAD( "mc68705p3.ic4", 0x0000, 0x0800, CRC(085F68B4) SHA1(2DBC7E2C015220DC59EE1F1208540744E5B9B7CC) )
 
 	ROM_REGION( 0x40000, "gfx1", 0 )
-	ROM_LOAD( "u10.ic10",  0x00000, 0x20000, CRC(4264056c) SHA1(d2d8a170ae0f361093a5384935238605a59e5938) )
-	ROM_LOAD( "u09.ic9",   0x20000, 0x20000, CRC(3c115f8b) SHA1(8d518be01b7c4d6d993d5d9b62aab719a5c8baca) )
+	ROM_LOAD( "c20-03.ic10",  0x00000, 0x20000, CRC(4264056c) SHA1(d2d8a170ae0f361093a5384935238605a59e5938) )
+	ROM_LOAD( "c20-02.ic9",   0x20000, 0x20000, CRC(3c115f8b) SHA1(8d518be01b7c4d6d993d5d9b62aab719a5c8baca) )
 
-	ROM_REGION( 0x0800, "pals", 0 )
-	ROM_LOAD( "mmipal20l8.ic3", 0x0000, 0x0800, NO_DUMP )
+	ROM_REGION( 0x0200, "pals", 0 ) // PAL20L8
+	ROM_LOAD( "c20-05.ic3", 0x0000, 0x0144, CRC(f90e5594) SHA1(6181bb25b77028bb150c84bdc073f0457efd7eaa) ) // Confirmed/Matches Japan Set
 ROM_END
 
 ROM_START( puzznici ) /* bootleg */
@@ -2501,7 +2490,7 @@ Main (M4300189A / K1100589A):
 
 SUB PCB (K9100282A / J9100220A)
  5 Rom chips type M27C1001 labeled C47 01 through C47 05
- Pal 20L88CNS
+ Pal 20L8BCNS
  NEC uPD4701AC
 
 */
@@ -2519,6 +2508,10 @@ ROM_START( horshoes )
 	ROM_CONTINUE (           0x60000, 0x10000 )
 	ROM_LOAD( "c47-05.ic10", 0x50000, 0x10000, CRC(b2a3dafe) SHA1(5ffd3e296272ef3f31432005c827f057aac79497) ) /* silkscreened CH1-H */
 	ROM_CONTINUE (           0x70000, 0x10000 )
+
+	ROM_REGION( 0x0200, "plds", 0 ) // PAL20L8BCNS
+	ROM_LOAD( "c47-06.ic12", 0x0000, 0x0144, CRC(4342ca6c) SHA1(9c798a6f1508b03004b76577eb823f004df7298d) )
+
 ROM_END
 
 ROM_START( palamed )

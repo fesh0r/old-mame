@@ -723,9 +723,10 @@ static GFXDECODE_START( pasopia7 )
 	GFXDECODE_ENTRY( "kanji",  0x00000, p7_chars_16x16,  0, 0x10 )
 GFXDECODE_END
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
@@ -1100,14 +1101,12 @@ ROM_END
 
 DRIVER_INIT_MEMBER(pasopia7_state,p7_raster)
 {
-
 	m_screen_type = 1;
 	machine().scheduler().timer_pulse(attotime::from_hz(500), timer_expired_delegate(FUNC(pasopia7_state::pio_timer),this));
 }
 
 DRIVER_INIT_MEMBER(pasopia7_state,p7_lcd)
 {
-
 	m_screen_type = 0;
 	machine().scheduler().timer_pulse(attotime::from_hz(500), timer_expired_delegate(FUNC(pasopia7_state::pio_timer),this));
 }

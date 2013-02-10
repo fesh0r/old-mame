@@ -1,0 +1,228 @@
+<?xml version="1.0"?>
+<!DOCTYPE softwarelist SYSTEM "softwarelist.dtd">
+<softwarelist name="pet_flop" description="Commodore PET diskettes">
+
+	<software name="2040demo">
+		<description>Commodore 2040 Floppy Disk Drive Test/Demo Disk</description>
+		<year>197?</year>
+		<publisher>Commodore</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="174848">
+				<rom name="2040-demo.d64" size="174848" crc="7bf8ded0" sha1="3adf60392cbafa4717213a9314293882c435693a" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="2040demov1" cloneof="2040demo">
+		<description>Commodore 2040 Floppy Disk Drive Test/Demo Disk (DOS v1)</description>
+		<year>197?</year>
+		<publisher>Commodore</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="333744">
+				<rom name="c2040testdemo-dosv1.g64" size="333744" crc="4015e3eb" sha1="dd790b66b1ae660cae13c0f608d9895fa0825e37" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="visicalc">
+		<description>VisiCalc</description>
+		<year>1981</year>
+		<publisher>Software Arts</publisher>
+		<info name="serial" value="20910-5511" />
+
+		<!--
+		VisiCalc(R)                                                 PET 2001, CBM 2001
+		Program Diskette                                              and CBM 8032 32K
+		                              [VisiCorp logo]                for 2040 and 4040
+		One of the VisiTM programs                                     Diskette Drives
+		from VisiCorp                                           by Software Arts, Inc.
+
+		                                VisiCorpTM
+		                            PERSONAL SOFTWARETM
+
+		Program Copyright (C) 1979, 1981
+		Software Arts, Inc. All Rights Reserved
+		                                                                    20910-5511
+		-->
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="174848">
+				<rom name="visicalc.d64" size="174848" crc="b41f3121" sha1="aad1254ca95f03430edd63997d995c3671bc6c55" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="petass">
+		<description>PET Assembler</description>
+		<year>197?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="174848">
+				<rom name="pass1.d64" size="174848" crc="0cd57135" sha1="434d2c8a3725c0e57df87db8664058f3947729c0" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="petspeed">
+		<description>Petspeed</description>
+		<year>1982</year>
+		<publisher>Small Systems Engineering</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="174848">
+				<rom name="petspe80.d64" size="174848" crc="35d8155d" sha1="b6a134eedbbedf494dd1151153aef45314d2f79f" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="petbok">
+		<description>PET-BOOK 8000</description>
+		<year>1982</year>
+		<publisher>Datatronic</publisher>
+		<info name="serial" value="2078-V4.2" />
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="pet-bok.d80" size="533248" crc="0a89998f" sha1="8fcb4f7b05f8dcfd9119318435bcdeba171a27f2" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="petent">
+		<description>PET-ENT 8000</description>
+		<year>1982</year>
+		<publisher>Datatronic</publisher>
+		<info name="serial" value="270-V6.0" />
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="pet-ent.d80" size="533248" crc="5acfa9dd" sha1="a077adf00e3481a223d52acd9afdb9b1e14d194f" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="petgen">
+		<description>PET-GEN 8000</description>
+		<year>1982</year>
+		<publisher>Datatronic</publisher>
+		<info name="serial" value="131-V2.1" />
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="pet-gen.d80" size="533248" crc="3b4d619c" sha1="70a87335dbd32406c83a80dedc7d604cc458aa4d" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="petlev">
+		<description>PET-LEV 8000</description>
+		<year>1983</year>
+		<publisher>Datatronic</publisher>
+		<info name="serial" value="600-V6.2" />
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="pet-lev.d80" size="533248" crc="524d010c" sha1="814601705a5ab7cc61fc625e2a357166875e3b72" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="spiele">
+		<description>Spiele (Ger)</description>
+		<year>198?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="sp1.d80" size="533248" crc="baf5760e" sha1="f565defaa3c361efeef1c659d91c1e66970f227d" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop2" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="sp2.d80" size="533248" crc="923bd4eb" sha1="cf7120c13f97b51f4348d9888d4c7c66e1c7593c" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop3" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="sp3.d80" size="533248" crc="dfb01633" sha1="1521e9a982269cdd58a7b30375b9658e609b46c0" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop4" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="sp4.d80" size="533248" crc="eeafd71c" sha1="9e7eae26d1a600c36489183d77c3af3045c2a354" offset="0" />
+			</dataarea>
+		</part>
+
+		<part name="flop5" interface="floppy_5_25">
+			<dataarea name="flop" size="1066496">
+				<rom name="sp5.d82" size="1066496" crc="a3622d00" sha1="3c3bf0e64939a5d1a332fafa25d8d1088fae825f" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="dealerts">
+		<description>CBM Dealer Tests</description>
+		<year>198?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="cbmdealertests.d80" size="533248" crc="35cbe914" sha1="14d15ebe8ac36f4afbb8dd19160f551ef094a5c9" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="diag35">
+		<description>Diagnostic (v3.5)</description>
+		<year>198?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="diagnosticv3.5.d80" size="533248" crc="2b0abd85" sha1="67a912aacbf5c939745cc490356bf32f1b95642f" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="goceliak">
+		<description>Goceliak Test Mods</description>
+		<year>198?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="goceliaktestmods.d80" size="533248" crc="a4c1aaf2" sha1="45cfe360fd03292cf630ecae0e735b66246ac416" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="superdsk">
+		<description>Super DiskDoc</description>
+		<year>1986</year>
+		<publisher>Precision Software</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="super disk doc.d80" size="533248" crc="c2e2f377" sha1="39856428e109fd26c14bae6d21cda7ab05a36e7b" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="techdisk">
+		<description>Techdisk</description>
+		<year>198?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="flop1" interface="floppy_5_25">
+			<dataarea name="flop" size="533248">
+				<rom name="techdisk.d80" size="533248" crc="1f18f127" sha1="d1c0977f7aed87df143147002c2bf26755b9b52a" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+</softwarelist>

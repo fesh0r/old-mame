@@ -22,11 +22,28 @@ class pk8000_state : public driver_device
 {
 public:
 	pk8000_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+		, m_cassette(*this, CASSETTE_TAG)
+		, m_ram(*this, RAM_TAG)
+		, m_speaker(*this, SPEAKER_TAG)
+		, m_region_maincpu(*this, "maincpu")
+		, m_bank1(*this, "bank1")
+		, m_bank2(*this, "bank2")
+		, m_bank3(*this, "bank3")
+		, m_bank4(*this, "bank4")
+		, m_bank5(*this, "bank5")
+		, m_bank6(*this, "bank6")
+		, m_bank7(*this, "bank7")
+		, m_bank8(*this, "bank8")
+		, m_io_joy1(*this, "JOY1")
+		, m_io_joy2(*this, "JOY2")
+	{ }
 
 	UINT8 m_keyboard_line;
 	DECLARE_READ8_MEMBER(pk8000_joy_1_r);
 	DECLARE_READ8_MEMBER(pk8000_joy_2_r);
+	virtual void machine_start();
 	virtual void machine_reset();
 	virtual void video_start();
 	UINT32 screen_update_pk8000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -37,20 +54,35 @@ public:
 	DECLARE_READ8_MEMBER(pk8000_84_porta_r);
 	DECLARE_WRITE8_MEMBER(pk8000_84_porta_w);
 	DECLARE_WRITE8_MEMBER(pk8000_84_portc_w);
+	IRQ_CALLBACK_MEMBER(pk8000_irq_callback);
+
+protected:
+	required_device<cpu_device> m_maincpu;
+	required_device<cassette_image_device> m_cassette;
+	required_device<ram_device> m_ram;
+	required_device<device_t> m_speaker;
+	required_memory_region m_region_maincpu;
+	required_memory_bank m_bank1;
+	required_memory_bank m_bank2;
+	required_memory_bank m_bank3;
+	required_memory_bank m_bank4;
+	required_memory_bank m_bank5;
+	required_memory_bank m_bank6;
+	required_memory_bank m_bank7;
+	required_memory_bank m_bank8;
+	required_ioport m_io_joy1;
+	required_ioport m_io_joy2;
+	ioport_port *m_io_port[10];
+
+	void pk8000_set_bank(UINT8 data);
 };
 
 
 
-static cassette_image_device *cassette_device_image(running_machine &machine)
+void pk8000_state::pk8000_set_bank(UINT8 data)
 {
-	return machine.device<cassette_image_device>(CASSETTE_TAG);
-}
-
-static void pk8000_set_bank(running_machine &machine,UINT8 data)
-{
-	pk8000_state *state = machine.driver_data<pk8000_state>();
-	UINT8 *rom = machine.root_device().memregion("maincpu")->base();
-	UINT8 *ram = machine.device<ram_device>(RAM_TAG)->pointer();
+	UINT8 *rom = m_region_maincpu->base();
+	UINT8 *ram = m_ram->pointer();
 	UINT8 block1 = data & 3;
 	UINT8 block2 = (data >> 2) & 3;
 	UINT8 block3 = (data >> 4) & 3;
@@ -58,78 +90,75 @@ static void pk8000_set_bank(running_machine &machine,UINT8 data)
 
 	switch(block1) {
 		case 0:
-				state->membank("bank1")->set_base(rom + 0x10000);
-				state->membank("bank5")->set_base(ram);
+				m_bank1->set_base(rom + 0x10000);
+				m_bank5->set_base(ram);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				state->membank("bank1")->set_base(ram);
-				state->membank("bank5")->set_base(ram);
+				m_bank1->set_base(ram);
+				m_bank5->set_base(ram);
 				break;
 	}
 
 	switch(block2) {
 		case 0:
-				state->membank("bank2")->set_base(rom + 0x14000);
-				state->membank("bank6")->set_base(ram + 0x4000);
+				m_bank2->set_base(rom + 0x14000);
+				m_bank6->set_base(ram + 0x4000);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				state->membank("bank2")->set_base(ram + 0x4000);
-				state->membank("bank6")->set_base(ram + 0x4000);
+				m_bank2->set_base(ram + 0x4000);
+				m_bank6->set_base(ram + 0x4000);
 				break;
 	}
 	switch(block3) {
 		case 0:
-				state->membank("bank3")->set_base(rom + 0x18000);
-				state->membank("bank7")->set_base(ram + 0x8000);
+				m_bank3->set_base(rom + 0x18000);
+				m_bank7->set_base(ram + 0x8000);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				state->membank("bank3")->set_base(ram + 0x8000);
-				state->membank("bank7")->set_base(ram + 0x8000);
+				m_bank3->set_base(ram + 0x8000);
+				m_bank7->set_base(ram + 0x8000);
 				break;
 	}
 	switch(block4) {
 		case 0:
-				state->membank("bank4")->set_base(rom + 0x1c000);
-				state->membank("bank8")->set_base(ram + 0xc000);
+				m_bank4->set_base(rom + 0x1c000);
+				m_bank8->set_base(ram + 0xc000);
 				break;
 		case 1: break;
 		case 2: break;
 		case 3:
-				state->membank("bank4")->set_base(ram + 0xc000);
-				state->membank("bank8")->set_base(ram + 0xc000);
+				m_bank4->set_base(ram + 0xc000);
+				m_bank8->set_base(ram + 0xc000);
 				break;
 	}
 }
 WRITE8_MEMBER(pk8000_state::pk8000_80_porta_w)
 {
-	pk8000_set_bank(machine(),data);
+	pk8000_set_bank(data);
 }
 
 READ8_MEMBER(pk8000_state::pk8000_80_portb_r)
 {
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
 	if(m_keyboard_line>9) {
 		return 0xff;
 	}
-	return machine().root_device().ioport(keynames[m_keyboard_line])->read();
+	return m_io_port[m_keyboard_line]->read();
 }
 
 WRITE8_MEMBER(pk8000_state::pk8000_80_portc_w)
 {
 	m_keyboard_line = data & 0x0f;
 
-	speaker_level_w(machine().device(SPEAKER_TAG), BIT(data,7));
+	speaker_level_w(m_speaker, BIT(data,7));
 
-	cassette_device_image(machine())->change_state(
-						(BIT(data,4)) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
-						CASSETTE_MASK_MOTOR);
-	cassette_device_image(machine())->output((BIT(data,6)) ? +1.0 : 0.0);
+	m_cassette->change_state( (BIT(data,4)) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	m_cassette->output((BIT(data,6)) ? +1.0 : 0.0);
 }
 
 static I8255_INTERFACE( pk8000_ppi8255_interface_1 )
@@ -168,14 +197,14 @@ static I8255_INTERFACE( pk8000_ppi8255_interface_2 )
 
 READ8_MEMBER(pk8000_state::pk8000_joy_1_r)
 {
-	UINT8 retVal = (cassette_device_image(machine())->input() > 0.0038 ? 0x80 : 0);
-	retVal |= ioport("JOY1")->read() & 0x7f;
+	UINT8 retVal = (m_cassette->input() > 0.0038 ? 0x80 : 0);
+	retVal |= m_io_joy1->read() & 0x7f;
 	return retVal;
 }
 READ8_MEMBER(pk8000_state::pk8000_joy_2_r)
 {
-	UINT8 retVal = (cassette_device_image(machine())->input() > 0.0038 ? 0x80 : 0);
-	retVal |= ioport("JOY2")->read() & 0x7f;
+	UINT8 retVal = (m_cassette->input() > 0.0038 ? 0x80 : 0);
+	retVal |= m_io_joy2->read() & 0x7f;
 	return retVal;
 }
 
@@ -318,16 +347,26 @@ INTERRUPT_GEN_MEMBER(pk8000_state::pk8000_interrupt)
 	device.execute().set_input_line(0, HOLD_LINE);
 }
 
-static IRQ_CALLBACK(pk8000_irq_callback)
+IRQ_CALLBACK_MEMBER(pk8000_state::pk8000_irq_callback)
 {
 	return 0xff;
 }
 
 
+void pk8000_state::machine_start()
+{
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
+
+	for ( int i = 0; i < 10; i++ )
+	{
+		m_io_port[i] = ioport(keynames[i]);
+	}
+}
+
 void pk8000_state::machine_reset()
 {
-	pk8000_set_bank(machine(),0);
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pk8000_irq_callback);
+	pk8000_set_bank(0);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pk8000_state::pk8000_irq_callback),this));
 }
 
 void pk8000_state::video_start()
@@ -336,7 +375,7 @@ void pk8000_state::video_start()
 
 UINT32 pk8000_state::screen_update_pk8000(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	return pk8000_video_update(screen, bitmap, cliprect, machine().device<ram_device>(RAM_TAG)->pointer());
+	return pk8000_video_update(screen, bitmap, cliprect, m_ram->pointer());
 }
 
 /* Machine driver */

@@ -399,12 +399,17 @@ static UINT8 thom_cart_nb_banks; /* number of 16 KB banks (up to 4) */
 static UINT8 thom_cart_bank;     /* current bank */
 
 
-DEVICE_IMAGE_LOAD( to7_cartridge )
+DEVICE_IMAGE_LOAD_MEMBER( thomson_state, to7_cartridge )
 {
 	int i,j;
 	UINT8* pos = image.device().machine().root_device().memregion("maincpu" )->base() + 0x10000;
-	offs_t size = image.length();
+	offs_t size;
 	char name[129];
+
+	if (image.software_entry() == NULL)
+		size = image.length();
+	else
+		size = image.get_software_region_length("rom");
 
 	/* get size & number of 16-KB banks */
 	if ( size <= 0x04000 )
@@ -415,14 +420,23 @@ DEVICE_IMAGE_LOAD( to7_cartridge )
 		thom_cart_nb_banks = 4;
 	else
 	{
-		logerror( "to7_cartridge_load: invalid cartridge size %i\n", size );
+		astring errmsg;
+		errmsg.printf("Invalid cartridge size %u", size);
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, errmsg.cstr());
 		return IMAGE_INIT_FAIL;
 	}
 
-	if ( image.fread( pos, size ) != size )
+	if (image.software_entry() == NULL)
 	{
-		logerror( "to7_cartridge_load: read error\n" );
-		return IMAGE_INIT_FAIL;
+		if ( image.fread( pos, size ) != size )
+		{
+			image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Read error");
+			return IMAGE_INIT_FAIL;
+		}
+	}
+	else
+	{
+		memcpy(pos, image.get_software_region("rom"), size);
 	}
 
 	/* extract name */
@@ -1272,7 +1286,6 @@ READ8_HANDLER ( to7_midi_r )
 
 	switch ( offset )
 	{
-
 	case 0: /* get status */
 		/* bit 0:     data received */
 		/* bit 1:     ready to transmit data */
@@ -1325,7 +1338,6 @@ WRITE8_HANDLER ( to7_midi_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* set control */
 		/* bits 0-1: clock divide (ignored) or reset */
 		if ( (data & 3) == 3 )
@@ -1944,12 +1956,17 @@ static UINT8 mo5_reg_cart; /* 0xa7cb bank switch */
 
 
 
-DEVICE_IMAGE_LOAD( mo5_cartridge )
+DEVICE_IMAGE_LOAD_MEMBER( thomson_state, mo5_cartridge )
 {
 	UINT8* pos = image.device().machine().root_device().memregion("maincpu")->base() + 0x10000;
-	UINT64 size = image.length();
+	UINT64 size;
 	int i,j;
 	char name[129];
+
+	if (image.software_entry() == NULL)
+		size = image.length();
+	else
+		size = image.get_software_region_length("rom");
 
 	/* get size & number of 16-KB banks */
 	if ( size > 32 && size <= 0x04000 )
@@ -1960,14 +1977,23 @@ DEVICE_IMAGE_LOAD( mo5_cartridge )
 		thom_cart_nb_banks = 4;
 	else
 	{
-		logerror( "mo5_cartridge_load: invalid cartridge size %u\n", (unsigned) size );
+		astring errmsg;
+		errmsg.printf("Invalid cartridge size "I64FMT, size);
+		image.seterror(IMAGE_ERROR_UNSUPPORTED, errmsg.cstr());
 		return IMAGE_INIT_FAIL;
 	}
 
-	if ( image.fread(pos, size ) != size )
+	if (image.software_entry() == NULL)
 	{
-		logerror( "mo5_cartridge_load: read error\n" );
-		return IMAGE_INIT_FAIL;
+		if ( image.fread(pos, size ) != size )
+		{
+			image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Read error");
+			return IMAGE_INIT_FAIL;
+		}
+	}
+	else
+	{
+		memcpy(pos, image.get_software_region("rom"), size);
 	}
 
 	/* extract name */
@@ -2311,7 +2337,6 @@ READ8_HANDLER  ( to9_vreg_r )
 {
 	switch ( offset )
 	{
-
 	case 0: /* palette data */
 	{
 		UINT8 c =  to9_palette_data[ to9_palette_idx ];
@@ -2343,7 +2368,6 @@ WRITE8_HANDLER ( to9_vreg_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* palette data */
 	{
 		UINT16 color, idx;
@@ -2656,7 +2680,6 @@ READ8_HANDLER ( to9_kbd_r )
 
 	switch ( offset )
 	{
-
 	case 0: /* get status */
 		/* bit 0:     data received */
 		/* bit 1:     ready to transmit data (always 1) */
@@ -2704,7 +2727,6 @@ WRITE8_HANDLER ( to9_kbd_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* set control */
 		/* bits 0-1: clock divide (ignored) or reset */
 		if ( (data & 3) == 3 )
@@ -2941,7 +2963,6 @@ static TIMER_CALLBACK(to9_kbd_timer_cb)
 
 		switch ( to9_kbd_byte_count )
 		{
-
 		case 0: /* key */
 			to9_kbd_send( machine, to9_kbd_get_key(machine), 0 );
 			break;
@@ -3882,7 +3903,6 @@ READ8_HANDLER ( to8_gatearray_r )
 
 	switch ( offset )
 	{
-
 	case 0: /* system 2 / lightpen register 1 */
 		if ( to7_lightpen )
 			res = (count >> 8) & 0xff;
@@ -3937,7 +3957,6 @@ WRITE8_HANDLER ( to8_gatearray_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* switch */
 		to7_lightpen = data & 1;
 		break;
@@ -3990,7 +4009,6 @@ READ8_HANDLER  ( to8_vreg_r )
 
 	switch ( offset )
 	{
-
 	case 0: /* palette data */
 	{
 		UINT8 c =  to9_palette_data[ to9_palette_idx ];
@@ -4024,7 +4042,6 @@ WRITE8_HANDLER ( to8_vreg_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* palette data */
 	{
 		UINT16 color, idx;
@@ -4533,7 +4550,6 @@ static void mo6_update_cart_bank (running_machine &machine)
 				}
 								else
 								{
-
 					if (old_cart_bank < 12)
 										{
 						if ( bank_is_read_only )
@@ -4941,7 +4957,6 @@ READ8_HANDLER ( mo6_gatearray_r )
 
 	switch ( offset )
 	{
-
 	case 0: /* system 2 / lightpen register 1 */
 		if ( to7_lightpen )
 			res = (count >> 8) & 0xff;
@@ -4996,7 +5011,6 @@ WRITE8_HANDLER ( mo6_gatearray_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* switch */
 		to7_lightpen = data & 1;
 		break;
@@ -5041,7 +5055,6 @@ READ8_HANDLER ( mo6_vreg_r )
 
 	switch ( offset )
 	{
-
 	case 0: /* palette data */
 	case 1: /* palette address */
 		return to8_vreg_r( space, offset );
@@ -5066,7 +5079,6 @@ WRITE8_HANDLER ( mo6_vreg_w )
 
 	switch ( offset )
 	{
-
 	case 0: /* palette data */
 	case 1: /* palette address */
 		to8_vreg_w( space, offset, data );

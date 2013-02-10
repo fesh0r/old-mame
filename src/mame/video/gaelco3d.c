@@ -67,7 +67,6 @@ gaelco3d_renderer::gaelco3d_renderer(gaelco3d_state &state)
 
 void gaelco3d_state::video_start()
 {
-
 	m_poly = auto_alloc(machine(), gaelco3d_renderer(*this));
 
 	m_palette = auto_alloc_array(machine(), rgb_t, 32768);
@@ -347,16 +346,16 @@ void gaelco3d_renderer::render_alphablend(INT32 scanline, const extent_t &extent
  *
  *************************************/
 
-void gaelco3d_render(screen_device &screen)
+void gaelco3d_state::gaelco3d_render(screen_device &screen)
 {
 	gaelco3d_state *state = screen.machine().driver_data<gaelco3d_state>();
 	/* wait for any queued stuff to complete */
-	state->m_poly->wait("Time to render");
+	m_poly->wait("Time to render");
 
 #if DISPLAY_STATS
 {
 	int scan = screen.vpos();
-	popmessage("Polys = %4d  Timeleft = %3d", state->m_poly->polygons(), (state->m_lastscan < scan) ? (scan - state->m_lastscan) : (scan + (state->m_lastscan - screen.visible_area().max_y)));
+	popmessage("Polys = %4d  Timeleft = %3d", m_poly->polygons(), (m_lastscan < scan) ? (scan - m_lastscan) : (scan + (m_lastscan - screen.visible_area().max_y)));
 }
 #endif
 

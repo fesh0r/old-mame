@@ -31,14 +31,11 @@ struct slot_interface
 
 #define SLOT_INTERFACE_START(name)                              \
 	const slot_interface slot_interface_##name[] =              \
-	{                                                           \
-
+	{
 #define SLOT_INTERFACE(tag,device) \
-	{ tag, device, false }, \
-
+	{ tag, device, false },
 #define SLOT_INTERFACE_INTERNAL(tag,device) \
-	{ tag, device, true }, \
-
+	{ tag, device, true },
 #define SLOT_INTERFACE_END \
 		{ NULL, NULL, false }                           \
 	};
@@ -62,6 +59,7 @@ public:
 	const void *default_config() const { return m_default_config; }
 	const UINT32 default_clock() const { return m_default_clock; }
 	const bool fixed() const { return m_fixed; }
+	const bool all_internal();
 	device_t* get_card_device();
 protected:
 	const char *m_default_card;

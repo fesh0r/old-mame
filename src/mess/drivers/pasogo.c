@@ -73,6 +73,7 @@ public:
 	INTERRUPT_GEN_MEMBER(pasogo_interrupt);
 	TIMER_DEVICE_CALLBACK_MEMBER(vg230_timer);
 	DECLARE_WRITE_LINE_MEMBER(pasogo_pic8259_set_int_line);
+	IRQ_CALLBACK_MEMBER(pasogo_irq_callback);
 };
 
 
@@ -456,14 +457,14 @@ INTERRUPT_GEN_MEMBER(pasogo_state::pasogo_interrupt)
 //  machine.device("maincpu")->execute().set_input_line(UPD7810_INTFE1, PULSE_LINE);
 }
 
-static IRQ_CALLBACK(pasogo_irq_callback)
+IRQ_CALLBACK_MEMBER(pasogo_state::pasogo_irq_callback)
 {
-	return pic8259_acknowledge( device->machine().device("pic8259"));
+	return pic8259_acknowledge( machine().device("pic8259"));
 }
 
 void pasogo_state::machine_reset()
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(pasogo_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pasogo_state::pasogo_irq_callback),this));
 }
 
 //static const unsigned i86_address_mask = 0x000fffff;
@@ -474,7 +475,7 @@ static const pit8253_config pc_pit8254_config =
 		{
 			4772720/4,              /* heartbeat IRQ */
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE("pic8259", pic8259_ir0_w)
+			DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir0_w)
 		}, {
 			4772720/4,              /* dram refresh */
 			DEVCB_NULL,

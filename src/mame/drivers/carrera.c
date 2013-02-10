@@ -250,7 +250,6 @@ GFXDECODE_END
 
 UINT32 carrera_state::screen_update_carrera(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-
 	int x,y;
 	int count = 0;
 
@@ -310,9 +309,10 @@ void carrera_state::palette_init()
 }
 
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */

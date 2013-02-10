@@ -92,7 +92,10 @@ public:
 		m_p_rowscroll(*this, "p_rowscroll"),
 		m_p_palette(*this, "p_palette"),
 		m_p_spriteram(*this, "p_spriteram"),
-		m_p_cart(*this, "p_cart"){ }
+		m_p_cart(*this, "p_cart"),
+		m_region_cart(*this, "cart"),
+		m_io_p1(*this, "P1")
+	{ }
 
 	required_device<cpu_device> m_maincpu;
 	DECLARE_READ16_MEMBER(vii_video_r);
@@ -143,6 +146,17 @@ public:
 	INTERRUPT_GEN_MEMBER(vii_vblank);
 	TIMER_CALLBACK_MEMBER(tmb1_tick);
 	TIMER_CALLBACK_MEMBER(tmb2_tick);
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(vii_cart);
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(vsmile_cart);
+
+protected:
+	optional_memory_region m_region_cart;
+	required_ioport m_io_p1;
+
+	void vii_blit(bitmap_rgb32 &bitmap, const rectangle &cliprect, UINT32 xoff, UINT32 yoff, UINT32 attr, UINT32 ctrl, UINT32 bitmap_addr, UINT16 tile);
+	void vii_blit_page(bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 bitmap_addr, UINT16 *regs);
+	void vii_blit_sprite(bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 base_addr);
+	void vii_blit_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth);
 };
 
 enum
@@ -174,7 +188,7 @@ INLINE void verboselog(running_machine &machine, int n_level, const char *s_fmt,
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%04x: %s", machine.device("maincpu")->safe_pc(), buf );
+		logerror( "%04x: %s", machine.driver_data<vii_state>()->m_maincpu->pc(), buf );
 	}
 }
 #else
@@ -216,10 +230,9 @@ static void vii_set_pixel(vii_state *state, UINT32 offset, UINT16 rgb)
 	state->m_screen[offset].b = expand_rgb5_to_rgb8(rgb);
 }
 
-static void vii_blit(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, UINT32 xoff, UINT32 yoff, UINT32 attr, UINT32 ctrl, UINT32 bitmap_addr, UINT16 tile)
+void vii_state::vii_blit(bitmap_rgb32 &bitmap, const rectangle &cliprect, UINT32 xoff, UINT32 yoff, UINT32 attr, UINT32 ctrl, UINT32 bitmap_addr, UINT16 tile)
 {
-	vii_state *state = machine.driver_data<vii_state>();
-	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	UINT32 h = 8 << ((attr & PAGE_TILE_HEIGHT_MASK) >> PAGE_TILE_HEIGHT_SHIFT);
 	UINT32 w = 8 << ((attr & PAGE_TILE_WIDTH_MASK) >> PAGE_TILE_WIDTH_SHIFT);
@@ -263,21 +276,21 @@ static void vii_blit(running_machine &machine, bitmap_rgb32 &bitmap, const recta
 
 			if((ctrl & 0x0010) && yy < 240)
 			{
-				xx = (xx - (INT16)state->m_p_rowscroll[yy]) & 0x01ff;
+				xx = (xx - (INT16)m_p_rowscroll[yy]) & 0x01ff;
 			}
 
 			if(xx < 320 && yy < 240)
 			{
-				UINT16 rgb = state->m_p_palette[pal];
+				UINT16 rgb = m_p_palette[pal];
 				if(!(rgb & 0x8000))
 				{
 					if (attr & 0x4000)
 					{
-						vii_mix_pixel(state, xx + 320*yy, rgb);
+						vii_mix_pixel(this, xx + 320*yy, rgb);
 					}
 					else
 					{
-						vii_set_pixel(state, xx + 320*yy, rgb);
+						vii_set_pixel(this, xx + 320*yy, rgb);
 					}
 				}
 			}
@@ -285,7 +298,7 @@ static void vii_blit(running_machine &machine, bitmap_rgb32 &bitmap, const recta
 	}
 }
 
-static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 bitmap_addr, UINT16 *regs)
+void vii_state::vii_blit_page(bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 bitmap_addr, UINT16 *regs)
 {
 	UINT32 x0, y0;
 	UINT32 xscroll = regs[0];
@@ -295,7 +308,7 @@ static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const 
 	UINT32 tilemap = regs[4];
 	UINT32 palette_map = regs[5];
 	UINT32 h, w, hn, wn;
-	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	if(!(ctrl & PAGE_ENABLE_MASK))
 	{
@@ -349,19 +362,18 @@ static void vii_blit_page(running_machine &machine, bitmap_rgb32 &bitmap, const 
 			yy = ((h*y0 - yscroll + 0x10) & 0xff) - 0x10;
 			xx = (w*x0 - xscroll) & 0x1ff;
 
-			vii_blit(machine, bitmap, cliprect, xx, yy, tileattr, tilectrl, bitmap_addr, tile);
+			vii_blit(bitmap, cliprect, xx, yy, tileattr, tilectrl, bitmap_addr, tile);
 		}
 	}
 }
 
-static void vii_blit_sprite(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 base_addr)
+void vii_state::vii_blit_sprite(bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth, UINT32 base_addr)
 {
-	vii_state *state = machine.driver_data<vii_state>();
-	address_space &space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	UINT16 tile, attr;
 	INT16 x, y;
 	UINT32 h, w;
-	UINT32 bitmap_addr = 0x40 * state->m_video_regs[0x22];
+	UINT32 bitmap_addr = 0x40 * m_video_regs[0x22];
 
 	tile = space.read_word((base_addr + 0) << 1);
 	x = space.read_word((base_addr + 1) << 1);
@@ -378,7 +390,7 @@ static void vii_blit_sprite(running_machine &machine, bitmap_rgb32 &bitmap, cons
 		return;
 	}
 
-	if(state->m_centered_coordinates)
+	if(m_centered_coordinates)
 	{
 		x = 160 + x;
 		y = 120 - y;
@@ -393,15 +405,14 @@ static void vii_blit_sprite(running_machine &machine, bitmap_rgb32 &bitmap, cons
 	x &= 0x01ff;
 	y &= 0x01ff;
 
-	vii_blit(machine, bitmap, cliprect, x, y, attr, 0, bitmap_addr, tile);
+	vii_blit(bitmap, cliprect, x, y, attr, 0, bitmap_addr, tile);
 }
 
-static void vii_blit_sprites(running_machine &machine, bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth)
+void vii_state::vii_blit_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprect, int depth)
 {
-	vii_state *state = machine.driver_data<vii_state>();
 	UINT32 n;
 
-	if (!(state->m_video_regs[0x42] & 1))
+	if (!(m_video_regs[0x42] & 1))
 	{
 		return;
 	}
@@ -410,7 +421,7 @@ static void vii_blit_sprites(running_machine &machine, bitmap_rgb32 &bitmap, con
 	{
 		//if(space.read_word((0x2c00 + 4*n) << 1))
 		{
-			vii_blit_sprite(machine, bitmap, cliprect, depth, 0x2c00 + 4*n);
+			vii_blit_sprite(bitmap, cliprect, depth, 0x2c00 + 4*n);
 		}
 	}
 }
@@ -425,9 +436,9 @@ UINT32 vii_state::screen_update_vii(screen_device &screen, bitmap_rgb32 &bitmap,
 
 	for(i = 0; i < 4; i++)
 	{
-		vii_blit_page(machine(), bitmap, cliprect, i, 0x40 * m_video_regs[0x20], m_video_regs + 0x10);
-		vii_blit_page(machine(), bitmap, cliprect, i, 0x40 * m_video_regs[0x21], m_video_regs + 0x16);
-		vii_blit_sprites(machine(), bitmap, cliprect, i);
+		vii_blit_page(bitmap, cliprect, i, 0x40 * m_video_regs[0x20], m_video_regs + 0x10);
+		vii_blit_page(bitmap, cliprect, i, 0x40 * m_video_regs[0x21], m_video_regs + 0x16);
+		vii_blit_sprites(bitmap, cliprect, i);
 	}
 
 	for(y = 0; y < 240; y++)
@@ -557,7 +568,7 @@ WRITE16_MEMBER( vii_state::vii_audio_w )
 
 void vii_state::vii_switch_bank(UINT32 bank)
 {
-	UINT8 *cart = memregion("cart")->base();
+	UINT8 *cart = m_region_cart->base();
 
 	if(bank != m_current_bank)
 	{
@@ -593,7 +604,7 @@ void vii_state::vii_do_gpio(UINT32 offset)
 	{
 		if(index == 0)
 		{
-			UINT16 temp = ioport("P1")->read();
+			UINT16 temp = m_io_p1->read();
 			what |= (temp & 0x0001) ? 0x8000 : 0;
 			what |= (temp & 0x0002) ? 0x4000 : 0;
 			what |= (temp & 0x0004) ? 0x2000 : 0;
@@ -924,10 +935,9 @@ static INPUT_PORTS_START( walle )
 		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 )        PORT_PLAYER(1) PORT_NAME("B Button")
 INPUT_PORTS_END
 
-static DEVICE_IMAGE_LOAD( vii_cart )
+DEVICE_IMAGE_LOAD_MEMBER( vii_state, vii_cart )
 {
-	vii_state *state = image.device().machine().driver_data<vii_state>();
-	UINT8 *cart = state->memregion( "cart" )->base();
+	UINT8 *cart = m_region_cart->base();
 	if (image.software_entry() == NULL)
 	{
 		int size = image.length();
@@ -942,7 +952,7 @@ static DEVICE_IMAGE_LOAD( vii_cart )
 		memcpy(cart, image.get_software_region("rom"), filesize);
 	}
 
-	memcpy(state->m_p_cart, cart + 0x4000*2, (0x400000 - 0x4000) * 2);
+	memcpy(m_p_cart, cart + 0x4000*2, (0x400000 - 0x4000) * 2);
 
 	if( cart[0x3cd808] == 0x99 &&
 		cart[0x3cd809] == 0x99 &&
@@ -953,15 +963,14 @@ static DEVICE_IMAGE_LOAD( vii_cart )
 		cart[0x3cd80e] == 0x78 &&
 		cart[0x3cd80f] == 0x7f )
 	{
-		state->m_centered_coordinates = 0;
+		m_centered_coordinates = 0;
 	}
 	return IMAGE_INIT_PASS;
 }
 
-static DEVICE_IMAGE_LOAD( vsmile_cart )
+DEVICE_IMAGE_LOAD_MEMBER( vii_state, vsmile_cart )
 {
-	vii_state *state = image.device().machine().driver_data<vii_state>();
-	UINT8 *cart = state->memregion( "cart" )->base();
+	UINT8 *cart = m_region_cart->base();
 	if (image.software_entry() == NULL)
 	{
 		int size = image.length();
@@ -977,7 +986,7 @@ static DEVICE_IMAGE_LOAD( vsmile_cart )
 		int filesize = image.get_software_region_length("rom");
 		memcpy(cart, image.get_software_region("rom"), filesize);
 	}
-	memcpy(state->m_p_cart, cart + 0x4000*2, (0x400000 - 0x4000) * 2);
+	memcpy(m_p_cart, cart + 0x4000*2, (0x400000 - 0x4000) * 2);
 	return IMAGE_INIT_PASS;
 }
 
@@ -993,7 +1002,6 @@ TIMER_CALLBACK_MEMBER(vii_state::tmb2_tick)
 
 void vii_state::machine_start()
 {
-
 	memset(m_video_regs, 0, 0x100 * sizeof(UINT16));
 	memset(m_io_regs, 0, 0x100 * sizeof(UINT16));
 	m_current_bank = 0;
@@ -1003,9 +1011,9 @@ void vii_state::machine_start()
 	m_controller_input[6] = 0xff;
 	m_controller_input[7] = 0;
 
-	UINT8 *rom = memregion( "cart" )->base();
-	if (rom)
-	{ // to prevent batman crash
+	if ( m_region_cart )
+	{
+		UINT8 *rom = m_region_cart->base();
 		memcpy(m_p_cart, rom + 0x4000*2, (0x400000 - 0x4000) * 2);
 	}
 
@@ -1029,7 +1037,7 @@ INTERRUPT_GEN_MEMBER(vii_state::vii_vblank)
 	UINT32 z = machine().rand() & 0x3ff;
 
 
-	m_controller_input[0] = ioport("P1")->read();
+	m_controller_input[0] = m_io_p1->read();
 	m_controller_input[1] = (UINT8)x;
 	m_controller_input[2] = (UINT8)y;
 	m_controller_input[3] = (UINT8)z;
@@ -1106,7 +1114,7 @@ static MACHINE_CONFIG_START( vii, vii_state )
 
 	MCFG_CARTSLOT_ADD( "cart" )
 	MCFG_CARTSLOT_EXTENSION_LIST( "bin" )
-	MCFG_CARTSLOT_LOAD( vii_cart )
+	MCFG_CARTSLOT_LOAD( vii_state, vii_cart )
 	MCFG_CARTSLOT_INTERFACE("vii_cart")
 
 	MCFG_SOFTWARE_LIST_ADD("vii_cart","vii")
@@ -1129,7 +1137,7 @@ static MACHINE_CONFIG_START( vsmile, vii_state )
 	MCFG_CARTSLOT_ADD( "cart" )
 	MCFG_CARTSLOT_EXTENSION_LIST( "bin" )
 	MCFG_CARTSLOT_MANDATORY
-	MCFG_CARTSLOT_LOAD( vsmile_cart )
+	MCFG_CARTSLOT_LOAD( vii_state, vsmile_cart )
 MACHINE_CONFIG_END
 
 static const i2cmem_interface i2cmem_interface =
@@ -1156,28 +1164,24 @@ MACHINE_CONFIG_END
 
 DRIVER_INIT_MEMBER(vii_state,vii)
 {
-
 	m_spg243_mode = SPG243_VII;
 	m_centered_coordinates = 1;
 }
 
 DRIVER_INIT_MEMBER(vii_state,batman)
 {
-
 	m_spg243_mode = SPG243_BATMAN;
 	m_centered_coordinates = 1;
 }
 
 DRIVER_INIT_MEMBER(vii_state,vsmile)
 {
-
 	m_spg243_mode = SPG243_VSMILE;
 	m_centered_coordinates = 1;
 }
 
 DRIVER_INIT_MEMBER(vii_state,walle)
 {
-
 	m_spg243_mode = SPG243_BATMAN;
 	m_centered_coordinates = 0;
 }

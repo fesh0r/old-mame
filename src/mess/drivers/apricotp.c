@@ -56,9 +56,11 @@ static MC6845_UPDATE_ROW( fp_update_row )
 {
 }
 
-static const mc6845_interface crtc_intf =
+
+static MC6845_INTERFACE( crtc_intf )
 {
 	SCREEN_CRT_TAG,
+	false,
 	8,
 	NULL,
 	fp_update_row,
@@ -153,7 +155,7 @@ READ8_MEMBER( fp_state::prtr_snd_r )
 
 WRITE8_MEMBER( fp_state::pint_clr_w )
 {
-	pic8259_ir6_w(m_pic, CLEAR_LINE);
+	m_pic->ir6_w(CLEAR_LINE);
 }
 
 
@@ -165,7 +167,6 @@ WRITE8_MEMBER( fp_state::ls_w )
 
 WRITE8_MEMBER( fp_state::contrast_w )
 {
-
 }
 
 
@@ -415,11 +416,9 @@ static APRICOT_KEYBOARD_INTERFACE( kb_intf )
 //  pic8259_interface pic_intf
 //-------------------------------------------------
 
-static IRQ_CALLBACK( fp_irq_callback )
+	IRQ_CALLBACK_MEMBER(fp_state::fp_irq_callback)
 {
-	fp_state *state = device->machine().driver_data<fp_state>();
-
-	return pic8259_acknowledge(state->m_pic);
+	return m_pic->inta_r();
 }
 
 /*
@@ -453,7 +452,7 @@ static const struct pit8253_config pit_intf =
 		{
 			2000000,
 			DEVCB_LINE_VCC,
-			DEVCB_DEVICE_LINE(I8259A_TAG, pic8259_ir0_w)
+			DEVCB_DEVICE_LINE_MEMBER(I8259A_TAG, pic8259_device, ir0_w)
 		}, {
 			2000000,
 			DEVCB_LINE_VCC,
@@ -474,7 +473,7 @@ static const struct pit8253_config pit_intf =
 static I8237_INTERFACE( dmac_intf )
 {
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE(I8259A_TAG, pic8259_ir7_w),
+	DEVCB_DEVICE_LINE_MEMBER(I8259A_TAG, pic8259_device, ir7_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	{ DEVCB_NULL, DEVCB_DEVICE_MEMBER(WD2797_TAG, wd_fdc_t, data_r), DEVCB_NULL, DEVCB_NULL },
@@ -505,7 +504,7 @@ static Z80DART_INTERFACE( sio_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_LINE(I8259A_TAG, pic8259_ir4_w)
+	DEVCB_DEVICE_LINE_MEMBER(I8259A_TAG, pic8259_device, ir4_w)
 };
 
 
@@ -544,7 +543,7 @@ void fp_state::fdc_drq_w(bool state)
 
 WRITE_LINE_MEMBER( fp_state::busy_w )
 {
-	if (!state) pic8259_ir6_w(m_pic, ASSERT_LINE);
+	if (!state) m_pic->ir6_w(ASSERT_LINE);
 }
 
 static const centronics_interface centronics_intf =
@@ -587,7 +586,7 @@ void fp_state::machine_start()
 	m_fdc->setup_drq_cb(wd_fdc_t::line_cb(FUNC(fp_state::fdc_drq_w), this));
 
 	// register CPU IRQ callback
-	m_maincpu->set_irq_acknowledge_callback(fp_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(fp_state::fp_irq_callback),this));
 
 	// allocate memory
 	m_work_ram.allocate(m_ram->size() / 2);

@@ -217,7 +217,6 @@ static UINT16 cpu_control_register = 0x0000;
 
 static int apollo_csr_get_servicemode()
 {
-
 	return cpu_status_register & APOLLO_CSR_SR_SERVICE ? 0 : 1;
 }
 
@@ -506,7 +505,6 @@ WRITE8_MEMBER(apollo_state::apollo_dma_write_word){
 }
 
 static READ8_DEVICE_HANDLER( apollo_dma8237_ctape_dack_r ) {
-
 	UINT8 data = sc499_dack_r(&space.machine());
 	DLOG2(("dma ctape dack read %02x",data));
 
@@ -677,15 +675,16 @@ static void apollo_pic_set_irq_line(device_t *device, int irq, int state) {
 	}
 }
 
-IRQ_CALLBACK(apollo_pic_acknowledge) {
-	UINT32 vector = pic8259_acknowledge(get_pic8259_master(device));
+IRQ_CALLBACK_MEMBER(apollo_state::apollo_pic_acknowledge)
+{
+	UINT32 vector = pic8259_acknowledge(get_pic8259_master(&device));
 	if ((vector & 0x0f) == APOLLO_IRQ_PIC_SLAVE) {
-		vector = pic8259_acknowledge(get_pic8259_slave(device));
+		vector = pic8259_acknowledge(get_pic8259_slave(&device));
 	}
 
 	// don't log ptm interrupts
 	if (vector != APOLLO_IRQ_VECTOR+APOLLO_IRQ_PTM) {
-		DLOG1(("apollo_pic_acknowledge: irq=%d vector=%x", vector & 0x0f, vector));
+		MLOG1(("apollo_pic_acknowledge: irq=%d vector=%x", vector & 0x0f, vector));
 	}
 
 	if (apollo_is_dn3000()) {
@@ -1101,7 +1100,6 @@ WRITE8_DEVICE_HANDLER(apollo_sio_w)
 
 static TIMER_CALLBACK(kbd_timer_callback)
 {
-
 #if defined(APOLLO_FOR_LINUX)
 	device_t *device = (device_t *) ptr;
 	address_space &space = device->machine().device(MAINCPU)->memory().space(AS_PROGRAM);
@@ -1304,7 +1302,6 @@ static void apollo_3c505_set_irq(device_t *device, int state) {
 
 static int apollo_3c505_tx_data(device_t *device,
 		const UINT8 tx_data_buffer[], int tx_data_length) {
-
 	// transmit all transmitted packets to the apollo_netserver
 	apollo_netserver_receive(device, tx_data_buffer, tx_data_length);
 
@@ -1319,13 +1316,11 @@ static int apollo_3c505_setfilter(device_t *device, int node_id)
 
 static int apollo_3c505_rx_data(device_t *device,
 		const UINT8 rx_data_buffer[], int rx_data_length) {
-
 	// transmit all received packets to the threecom3c505 receiver
 	return threecom3c505_receive(device, rx_data_buffer, rx_data_length);
 }
 
 static void apollo_3c505_tx_init(device_t *device) {
-
 	apollo_eth_init(device, apollo_3c505_rx_data);
 
 	// setup to receive all packets from the apollo_netserver

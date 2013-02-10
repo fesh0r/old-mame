@@ -9,17 +9,19 @@
 #include "formats/cbm_snqk.h"
 #include "includes/cbm.h"
 #include "machine/6525tpi.h"
-#include "machine/6551acia.h"
 #include "machine/cbm2exp.h"
+#include "machine/cbm2user.h"
 #include "machine/cbmipt.h"
 #include "machine/ds75160a.h"
 #include "machine/ds75161a.h"
 #include "machine/ieee488.h"
 #include "machine/mos6526.h"
+#include "machine/mos6551.h"
 #include "machine/petcass.h"
 #include "machine/pic8259.h"
 #include "machine/pla.h"
 #include "machine/ram.h"
+#include "machine/serial.h"
 #include "machine/vcsctrl.h"
 #include "sound/dac.h"
 #include "sound/sid6581.h"
@@ -42,6 +44,7 @@
 #define SCREEN_TAG      "screen"
 #define CONTROL1_TAG    "joy1"
 #define CONTROL2_TAG    "joy2"
+#define RS232_TAG       "rs232"
 
 #define EXT_I8088_TAG   "ext_u1"
 #define EXT_I8087_TAG   "ext_u4"
@@ -67,6 +70,7 @@ public:
 			m_joy1(*this, CONTROL1_TAG),
 			m_joy2(*this, CONTROL2_TAG),
 			m_exp(*this, CBM2_EXPANSION_SLOT_TAG),
+			m_user(*this, CBM2_USER_PORT_TAG),
 			m_ram(*this, RAM_TAG),
 			m_cassette(*this, PET_DATASSETTE_PORT_TAG),
 			m_ieee(*this, IEEE488_TAG),
@@ -74,16 +78,35 @@ public:
 			m_ext_pic(*this, EXT_I8259A_TAG),
 			m_ext_cia(*this, EXT_MOS6526_TAG),
 			m_ext_tpi(*this, EXT_MOS6525_TAG),
+			m_basic(*this, "basic"),
+			m_kernal(*this, "kernal"),
+			m_charom(*this, "charom"),
 			m_buffer_ram(*this, "buffer_ram"),
 			m_extbuf_ram(*this, "extbuf_ram"),
-			m_dramon(1),
 			m_video_ram(*this, "video_ram"),
+			m_pa0(*this, "PA0"),
+			m_pa1(*this, "PA1"),
+			m_pa2(*this, "PA2"),
+			m_pa3(*this, "PA3"),
+			m_pa4(*this, "PA4"),
+			m_pa5(*this, "PA5"),
+			m_pa6(*this, "PA6"),
+			m_pa7(*this, "PA7"),
+			m_pb0(*this, "PB0"),
+			m_pb1(*this, "PB1"),
+			m_pb2(*this, "PB2"),
+			m_pb3(*this, "PB3"),
+			m_pb4(*this, "PB4"),
+			m_pb5(*this, "PB5"),
+			m_pb6(*this, "PB6"),
+			m_pb7(*this, "PB7"),
+			m_lock(*this, "LOCK"),
+			m_dramon(1),
 			m_video_ram_size(0x800),
 			m_graphics(1),
 			m_todclk(0),
 			m_tpi1_irq(CLEAR_LINE),
-			m_cass_rd(1),
-			m_user_flag(0),
+			m_acia_irq(CLEAR_LINE),
 			m_user_irq(CLEAR_LINE),
 			m_tpi2_pa(0),
 			m_tpi2_pb(0)
@@ -95,21 +118,44 @@ public:
 	required_device<sid6581_device> m_sid;
 	required_device<tpi6525_device> m_tpi1;
 	required_device<tpi6525_device> m_tpi2;
-	required_device<acia6551_device> m_acia;
+	required_device<mos6551_device> m_acia;
 	required_device<mos6526_device> m_cia;
 	required_device<ds75160a_device> m_ieee1;
 	required_device<ds75161a_device> m_ieee2;
 	required_device<vcs_control_port_device> m_joy1;
 	required_device<vcs_control_port_device> m_joy2;
 	required_device<cbm2_expansion_slot_device> m_exp;
+	required_device<cbm2_user_port_device> m_user;
 	required_device<ram_device> m_ram;
 	required_device<pet_datassette_port_device> m_cassette;
 	required_device<ieee488_device> m_ieee;
-
 	optional_device<cpu_device> m_ext_cpu;
 	optional_device<pic8259_device> m_ext_pic;
 	optional_device<mos6526_device> m_ext_cia;
 	optional_device<tpi6525_device> m_ext_tpi;
+	required_memory_region m_basic;
+	required_memory_region m_kernal;
+	required_memory_region m_charom;
+	optional_shared_ptr<UINT8> m_buffer_ram;
+	optional_shared_ptr<UINT8> m_extbuf_ram;
+	optional_shared_ptr<UINT8> m_video_ram;
+	required_ioport m_pa0;
+	required_ioport m_pa1;
+	required_ioport m_pa2;
+	required_ioport m_pa3;
+	required_ioport m_pa4;
+	required_ioport m_pa5;
+	required_ioport m_pa6;
+	required_ioport m_pa7;
+	required_ioport m_pb0;
+	required_ioport m_pb1;
+	required_ioport m_pb2;
+	required_ioport m_pb3;
+	required_ioport m_pb4;
+	required_ioport m_pb5;
+	required_ioport m_pb6;
+	required_ioport m_pb7;
+	required_ioport m_lock;
 
 	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 
@@ -153,7 +199,6 @@ public:
 	DECLARE_READ8_MEMBER( cia_pa_r );
 	DECLARE_WRITE8_MEMBER( cia_pa_w );
 	DECLARE_READ8_MEMBER( cia_pb_r );
-	DECLARE_WRITE8_MEMBER( cia_pb_w );
 
 	DECLARE_WRITE_LINE_MEMBER( tape_read_w );
 
@@ -164,18 +209,16 @@ public:
 	DECLARE_READ8_MEMBER( ext_cia_pb_r );
 	DECLARE_WRITE8_MEMBER( ext_cia_pb_w );
 
+	DECLARE_WRITE_LINE_MEMBER( user_irq_w );
+
+	IRQ_CALLBACK_MEMBER( pic_irq_callback );
+
 	// memory state
-	optional_shared_ptr<UINT8> m_buffer_ram;
-	optional_shared_ptr<UINT8> m_extbuf_ram;
-	UINT8 *m_basic;
-	UINT8 *m_kernal;
-	UINT8 *m_charom;
 	int m_dramon;
 	int m_busen1;
 	int m_busy2;
 
 	// video state
-	optional_shared_ptr<UINT8> m_video_ram;
 	size_t m_video_ram_size;
 	int m_graphics;
 	int m_ntsc;
@@ -183,8 +226,7 @@ public:
 	// interrupt state
 	int m_todclk;
 	int m_tpi1_irq;
-	int m_cass_rd;
-	int m_user_flag;
+	int m_acia_irq;
 	int m_user_irq;
 
 	// keyboard state;
@@ -227,6 +269,7 @@ public:
 
 	required_device<pls100_device> m_pla2;
 	required_device<mos6566_device> m_vic;
+	optional_shared_ptr<UINT8> m_color_ram;
 
 	DECLARE_MACHINE_START( p500 );
 	DECLARE_MACHINE_START( p500_ntsc );
@@ -262,8 +305,9 @@ public:
 	DECLARE_READ8_MEMBER( tpi2_pc_r );
 	DECLARE_WRITE8_MEMBER( tpi2_pc_w );
 
+	DECLARE_WRITE_LINE_MEMBER( user_irq_w );
+
 	// video state
-	optional_shared_ptr<UINT8> m_color_ram;
 	int m_statvid;
 	int m_vicdotsel;
 	int m_vicbnksel;

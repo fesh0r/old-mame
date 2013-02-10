@@ -337,7 +337,6 @@ static void parse_control( running_machine &machine )   /* assumes Z80 sandwiche
 
 WRITE16_MEMBER(ninjaw_state::cpua_ctrl_w)
 {
-
 	if ((data &0xff00) && ((data &0xff) == 0))
 		data = data >> 8;
 	m_cpua_ctrl = data;
@@ -360,14 +359,12 @@ static void reset_sound_region( running_machine &machine )
 
 WRITE8_MEMBER(ninjaw_state::sound_bankswitch_w)
 {
-
 	m_banknum = data & 7;
 	reset_sound_region(machine());
 }
 
 WRITE16_MEMBER(ninjaw_state::ninjaw_sound_w)
 {
-
 	if (offset == 0)
 		tc0140syt_port_w(m_tc0140syt, space, 0, data & 0xff);
 	else if (offset == 1)
@@ -381,7 +378,6 @@ WRITE16_MEMBER(ninjaw_state::ninjaw_sound_w)
 
 READ16_MEMBER(ninjaw_state::ninjaw_sound_r)
 {
-
 	if (offset == 1)
 		return ((tc0140syt_comm_r(m_tc0140syt, space, 0) & 0xff));
 	else
@@ -393,7 +389,7 @@ READ16_MEMBER(ninjaw_state::ninjaw_sound_r)
 
 WRITE8_MEMBER(ninjaw_state::ninjaw_pancontrol)
 {
-	device_t *flt = NULL;
+	filter_volume_device *flt = NULL;
 	offset &= 3;
 
 	switch (offset)
@@ -406,13 +402,12 @@ WRITE8_MEMBER(ninjaw_state::ninjaw_pancontrol)
 
 	m_pandata[offset] = (float)data * (100.f / 255.0f);
 	//popmessage(" pan %02x %02x %02x %02x", m_pandata[0], m_pandata[1], m_pandata[2], m_pandata[3] );
-	flt_volume_set_volume(flt, m_pandata[offset] / 100.0);
+	flt->flt_volume_set_volume(m_pandata[offset] / 100.0);
 }
 
 
 WRITE16_MEMBER(ninjaw_state::tc0100scn_triple_screen_w)
 {
-
 	tc0100scn_word_w(m_tc0100scn_1, space, offset, data, mem_mask);
 	tc0100scn_word_w(m_tc0100scn_2, space, offset, data, mem_mask);
 	tc0100scn_word_w(m_tc0100scn_3, space, offset, data, mem_mask);
@@ -794,15 +789,14 @@ static const tc0140syt_interface ninjaw_tc0140syt_intf =
 };
 
 
-static void ninjaw_postload(running_machine &machine)
+void ninjaw_state::ninjaw_postload()
 {
-	parse_control(machine);
-	reset_sound_region(machine);
+	parse_control(machine());
+	reset_sound_region(machine());
 }
 
 void ninjaw_state::machine_start()
 {
-
 	membank("bank10")->configure_entries(0, 8, memregion("audiocpu")->base() + 0xc000, 0x4000);
 
 	m_maincpu = machine().device<cpu_device>("maincpu");
@@ -817,15 +811,15 @@ void ninjaw_state::machine_start()
 	m_mscreen = machine().device("mscreen");
 	m_rscreen = machine().device("rscreen");
 
-	m_2610_1l = machine().device("2610.1.l");
-	m_2610_1r = machine().device("2610.1.r");
-	m_2610_2l = machine().device("2610.2.l");
-	m_2610_2r = machine().device("2610.2.r");
+	m_2610_1l = machine().device<filter_volume_device>("2610.1.l");
+	m_2610_1r = machine().device<filter_volume_device>("2610.1.r");
+	m_2610_2l = machine().device<filter_volume_device>("2610.2.l");
+	m_2610_2r = machine().device<filter_volume_device>("2610.2.r");
 
 	save_item(NAME(m_cpua_ctrl));
 	save_item(NAME(m_banknum));
 	save_item(NAME(m_pandata));
-	machine().save().register_postload(save_prepost_delegate(FUNC(ninjaw_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(ninjaw_state::ninjaw_postload), this));
 }
 
 void ninjaw_state::machine_reset()
@@ -903,13 +897,13 @@ static MACHINE_CONFIG_START( ninjaw, ninjaw_state )
 	MCFG_SOUND_ROUTE(2, "2610.2.l", 1.0)
 	MCFG_SOUND_ROUTE(2, "2610.2.r", 1.0)
 
-	MCFG_SOUND_ADD("2610.1.l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.1.l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("2610.1.r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.1.r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
-	MCFG_SOUND_ADD("2610.2.l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.2.l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("2610.2.r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.2.r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 //  MCFG_SOUND_ADD("subwoofer", SUBWOOFER, 0)
@@ -983,13 +977,13 @@ static MACHINE_CONFIG_START( darius2, ninjaw_state )
 	MCFG_SOUND_ROUTE(2, "2610.2.l", 1.0)
 	MCFG_SOUND_ROUTE(2, "2610.2.r", 1.0)
 
-	MCFG_SOUND_ADD("2610.1.l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.1.l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("2610.1.r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.1.r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
-	MCFG_SOUND_ADD("2610.2.l", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.2.l", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
-	MCFG_SOUND_ADD("2610.2.r", FILTER_VOLUME, 0)
+	MCFG_FILTER_VOLUME_ADD("2610.2.r", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 //  MCFG_SOUND_ADD("subwoofer", SUBWOOFER, 0)

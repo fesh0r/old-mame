@@ -120,12 +120,6 @@ receive clock and transmit clock inputs */
 
 static void nc_printer_update(running_machine &machine, UINT8 data);
 
-
-
-
-static void nc100_machine_stop(running_machine &machine);
-static void nc200_machine_stop(running_machine &machine);
-
 /*
     Port 0x00:
     ==========
@@ -421,15 +415,16 @@ static void nc_refresh_memory_config(running_machine &machine)
 static void nc_common_restore_memory_from_stream(running_machine &machine)
 {
 	nc_state *state = machine.driver_data<nc_state>();
-	unsigned long stored_size;
-	unsigned long restore_size;
+	UINT32 stored_size;
+	UINT32 restore_size;
 
 	if (!state->m_file)
 		return;
 
 	LOG(("restoring nc memory\n"));
 	/* get size of memory data stored */
-	state->m_file->read(&stored_size, sizeof(unsigned long));
+	if (state->m_file->read(&stored_size, sizeof(UINT32)) != sizeof(UINT32))
+		stored_size = 0;
 
 	if (stored_size > machine.device<ram_device>(RAM_TAG)->size())
 		restore_size = machine.device<ram_device>(RAM_TAG)->size();
@@ -932,18 +927,18 @@ void nc_state::machine_reset()
 	m_irq_latch_mask = (1<<0) | (1<<1);
 }
 
-static void nc100_machine_stop(running_machine &machine)
+void nc_state::nc100_machine_stop()
 {
-	nc_common_open_stream_for_writing(machine);
-	nc_common_store_memory_to_stream(machine);
-	nc_common_close_stream(machine);
+	nc_common_open_stream_for_writing(machine());
+	nc_common_store_memory_to_stream(machine());
+	nc_common_close_stream(machine());
 }
 
 void nc_state::machine_start()
 {
 	m_type = NC_TYPE_1xx;
 
-	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc100_machine_stop),&machine()));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc_state::nc100_machine_stop),this));
 
 	/* keyboard timer */
 	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_keyboard_timer_callback),this));
@@ -1310,18 +1305,18 @@ MACHINE_RESET_MEMBER(nc_state,nc200)
 	nc200_video_set_backlight(machine(), 0);
 }
 
-static void nc200_machine_stop(running_machine &machine)
+void nc_state::nc200_machine_stop()
 {
-	nc_common_open_stream_for_writing(machine);
-	nc_common_store_memory_to_stream(machine);
-	nc_common_close_stream(machine);
+	nc_common_open_stream_for_writing(machine());
+	nc_common_store_memory_to_stream(machine());
+	nc_common_close_stream(machine());
 }
 
 MACHINE_START_MEMBER(nc_state,nc200)
 {
 	m_type = NC_TYPE_200;
 
-	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc200_machine_stop),&machine()));
+	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc_state::nc200_machine_stop),this));
 
 	/* keyboard timer */
 	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_keyboard_timer_callback),this));
@@ -1614,9 +1609,8 @@ static MACHINE_CONFIG_START( nc100, nc_state )
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("crd,card")
 	MCFG_CARTSLOT_NOT_MANDATORY
-	MCFG_CARTSLOT_START(nc_pcmcia_card)
-	MCFG_CARTSLOT_LOAD(nc_pcmcia_card)
-	MCFG_CARTSLOT_UNLOAD(nc_pcmcia_card)
+	MCFG_CARTSLOT_LOAD(nc_state,nc_pcmcia_card)
+	MCFG_CARTSLOT_UNLOAD(nc_state,nc_pcmcia_card)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1708,6 +1702,6 @@ ROM_START(nc200)
 ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY         FULLNAME    FLAGS */
-COMP( 1992, nc100,  0,      0,      nc100,  nc100, driver_device,  0,      "Amstrad plc",  "NC100",    0 )
-COMP( 1992, nc150,  nc100,  0,      nc100,  nc100, driver_device,  0,      "Amstrad plc",  "NC150",    0 )
-COMP( 1993, nc200,  0,      0,      nc200,  nc200, driver_device,  0,      "Amstrad plc",  "NC200",    GAME_NOT_WORKING ) // boot hangs while checking the MC146818 UIP (update in progress) bit
+COMP( 1992, nc100,  0,      0,      nc100,  nc100, nc_state,  nc,      "Amstrad plc",  "NC100",    0 )
+COMP( 1992, nc150,  nc100,  0,      nc100,  nc100, nc_state,  nc,      "Amstrad plc",  "NC150",    0 )
+COMP( 1993, nc200,  0,      0,      nc200,  nc200, nc_state,  nc,      "Amstrad plc",  "NC200",    GAME_NOT_WORKING ) // boot hangs while checking the MC146818 UIP (update in progress) bit

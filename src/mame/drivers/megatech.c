@@ -448,7 +448,6 @@ VIDEO_START_MEMBER(mtech_state,mtnew)
 //attotime::never
 UINT32 mtech_state::screen_update_mtnew(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-
 	/* if we're running an sms game then use the SMS update.. maybe this should be moved to the megadrive emulation core as compatibility mode is a feature of the chip */
 	if (!m_current_game_is_sms)
 		SCREEN_UPDATE32_CALL(megadriv);
@@ -567,7 +566,7 @@ static const struct megatech_cart_region megatech_cart_table[] =
 	{ 0 }
 };
 
-static DEVICE_IMAGE_LOAD( megatech_cart )
+DEVICE_IMAGE_LOAD_MEMBER( mtech_state, megatech_cart )
 {
 	mtech_state *state = image.device().machine().driver_data<mtech_state>();
 	const struct megatech_cart_region *mt_cart = &megatech_cart_table[0], *this_cart;
@@ -600,17 +599,17 @@ static DEVICE_IMAGE_LOAD( megatech_cart )
 	{
 		if (!mame_stricmp("genesis", pcb_name))
 		{
-			printf("%s is genesis\n", mt_cart->tag);
+			mame_printf_debug("%s is genesis\n", mt_cart->tag);
 			state->m_cart_is_genesis[this_cart->slot] = 1;
 		}
 		else if (!mame_stricmp("sms", pcb_name))
 		{
-			printf("%s is sms\n", mt_cart->tag);
+			mame_printf_debug("%s is sms\n", mt_cart->tag);
 			state->m_cart_is_genesis[this_cart->slot] = 0;
 		}
 		else
 		{
-			printf("%s is invalid\n", mt_cart->tag);
+			mame_printf_debug("%s is invalid\n", mt_cart->tag);
 		}
 
 	}
@@ -621,7 +620,7 @@ static DEVICE_IMAGE_LOAD( megatech_cart )
 #define MCFG_MEGATECH_CARTSLOT_ADD(_tag) \
 	MCFG_CARTSLOT_ADD(_tag) \
 	MCFG_CARTSLOT_INTERFACE("megatech_cart") \
-	MCFG_CARTSLOT_LOAD(megatech_cart)
+	MCFG_CARTSLOT_LOAD(mtech_state, megatech_cart)
 
 MACHINE_CONFIG_FRAGMENT( megatech_cartslot )
 	MCFG_MEGATECH_CARTSLOT_ADD("cart1")
@@ -652,8 +651,7 @@ MACHINE_CONFIG_END
 	ROM_SYSTEM_BIOS( 1, "ver0a", "Ver 0 Rev A" ) \
 	ROMX_LOAD( "epr-12263a.20", 0x000000, 0x8000, CRC(07c3f423) SHA1(50c28bbc2d4349c820d988ae3f20aae3f808545f), ROM_BIOS(2)) \
 	ROM_SYSTEM_BIOS( 2, "ver0b", "Ver 0 Rev B" ) \
-	ROMX_LOAD( "epr-12263b.20", 0x000000, 0x8000, CRC(ca26c87a) SHA1(987a18bede6e54cd73c4434426eb6c302a37cdc5), ROM_BIOS(3)) \
-
+	ROMX_LOAD( "epr-12263b.20", 0x000000, 0x8000, CRC(ca26c87a) SHA1(987a18bede6e54cd73c4434426eb6c302a37cdc5), ROM_BIOS(3))
 /* no games */
 ROM_START( megatech )
 	MEGATECH_BIOS

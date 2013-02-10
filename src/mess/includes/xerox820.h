@@ -6,6 +6,7 @@
 #include "cpu/z80/z80daisy.h"
 #include "cpu/i86/i86.h"
 #include "machine/com8116.h"
+#include "machine/keyboard.h"
 #include "machine/ram.h"
 #include "machine/sa1403d.h"
 #include "machine/scsibus.h"
@@ -47,6 +48,8 @@ public:
 			m_ram(*this, RAM_TAG),
 			m_floppy0(*this, FD1771_TAG":0"),
 			m_floppy1(*this, FD1771_TAG":1"),
+			m_rom(*this, Z80_TAG),
+			m_char_rom(*this, "chargen"),
 			m_video_ram(*this, "video_ram"),
 			m_fdc_irq(0),
 			m_fdc_drq(0),
@@ -57,7 +60,6 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 
-	virtual void video_start();
 	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	required_device<cpu_device> m_maincpu;
@@ -67,6 +69,9 @@ public:
 	required_device<ram_device> m_ram;
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
+	required_memory_region m_rom;
+	required_memory_region m_char_rom;
+	required_shared_ptr<UINT8> m_video_ram;
 
 	DECLARE_READ8_MEMBER( fdc_r );
 	DECLARE_WRITE8_MEMBER( fdc_w );
@@ -77,8 +82,8 @@ public:
 	DECLARE_READ8_MEMBER( kbpio_pb_r );
 	DECLARE_WRITE_LINE_MEMBER( intrq_w );
 	DECLARE_WRITE_LINE_MEMBER( drq_w );
+	DECLARE_WRITE8_MEMBER( kbd_w );
 
-	void scan_keyboard();
 	void bankswitch(int bank);
 	void update_nmi();
 	void fdc_intrq_w(bool state);
@@ -88,8 +93,6 @@ public:
 	int m_keydata;                      /* keyboard data */
 
 	/* video state */
-	required_shared_ptr<UINT8> m_video_ram;                     /* video RAM */
-	UINT8 *m_char_rom;                  /* character ROM */
 	UINT8 m_scroll;                     /* vertical scroll */
 	UINT8 m_framecnt;
 	int m_ncset2;                       /* national character set */
@@ -103,7 +106,6 @@ public:
 	int m_8n5;                          /* 5.25" / 8" drive select */
 	int m_400_460;                      /* double sided disk detect */
 
-	TIMER_DEVICE_CALLBACK_MEMBER(xerox820_keyboard_tick);
 	TIMER_DEVICE_CALLBACK_MEMBER(ctc_tick);
 };
 

@@ -24,17 +24,30 @@ class bbc_state : public driver_device
 {
 public:
 	bbc_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag),
-			m_maincpu(*this, "maincpu"),
-			m_sn(*this, "sn76489"),
-			m_trom(*this, "saa505x"),
-			m_ACCCON_IRR(CLEAR_LINE),
-			m_via_system_irq(CLEAR_LINE),
-			m_via_user_irq(CLEAR_LINE),
-			m_acia_irq(CLEAR_LINE)
+		: driver_device(mconfig, type, tag)
+		, m_maincpu(*this, "maincpu")
+		, m_mc6845(*this, "mc6845")
+		, m_sn(*this, "sn76489")
+		, m_trom(*this, "saa505x")
+		, m_ACCCON_IRR(CLEAR_LINE)
+		, m_via_system_irq(CLEAR_LINE)
+		, m_via_user_irq(CLEAR_LINE)
+		, m_acia_irq(CLEAR_LINE)
+		, m_region_maincpu(*this, "maincpu")
+		, m_region_user1(*this, "user1")
+		, m_region_user2(*this, "user2")
+		, m_bank1(*this, "bank1")
+		, m_bank2(*this, "bank2")
+		, m_bank3(*this, "bank3")
+		, m_bank4(*this, "bank4")
+		, m_bank5(*this, "bank5")
+		, m_bank6(*this, "bank6")
+		, m_bank7(*this, "bank7")
+		, m_bank8(*this, "bank8")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
+	required_device<mc6845_device> m_mc6845;
 	optional_device<sn76489_device> m_sn;
 	required_device<saa5050_device> m_trom;
 
@@ -304,6 +317,25 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(bbc_wd177x_intrq_w);
 	DECLARE_WRITE_LINE_MEMBER(bbc_wd177x_drq_w);
 	DECLARE_WRITE_LINE_MEMBER(bbc_vsync);
+
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( bbcb_cart );
+
+protected:
+	required_memory_region m_region_maincpu;
+	required_memory_region m_region_user1;
+	optional_memory_region m_region_user2;
+	required_memory_bank m_bank1; // bbca bbcb bbcbp bbcbp128 bbcm
+	optional_memory_bank m_bank2; //           bbcbp bbcbp128 bbcm
+	optional_memory_bank m_bank3; // bbca bbcb
+	required_memory_bank m_bank4; // bbca bbcb bbcbp bbcbp128 bbcm
+	optional_memory_bank m_bank5; //                          bbcm
+	optional_memory_bank m_bank6; //           bbcbp bbcbp128
+	required_memory_bank m_bank7; // bbca bbcb bbcbp bbcbp128 bbcm
+	optional_memory_bank m_bank8; //                          bbcm
+
+	void bbcbp_setvideoshadow(int vdusel);
+	void common_init(int memorySize);
+	void set_pixel_lookup();
 };
 
 
@@ -317,20 +349,9 @@ extern const via6522_interface bbcb_system_via;
 extern const via6522_interface bbcb_user_via;
 extern const wd17xx_interface bbc_wd17xx_interface;
 
-/* disc support */
-
-DEVICE_IMAGE_LOAD ( bbcb_cart );
-
 /* tape support */
-
 
 extern const i8271_interface bbc_i8271_interface;
 extern const uPD7002_interface bbc_uPD7002;
-
-/*----------- defined in video/bbc.c -----------*/
-
-void bbc_set_video_memory_lookups(running_machine &machine, int ramsize);
-void bbc_setscreenstart(running_machine &machine, int b4, int b5);
-void bbcbp_setvideoshadow(running_machine &machine, int vdusel);
 
 #endif /* BBC_H_ */

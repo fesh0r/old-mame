@@ -324,7 +324,6 @@ CUSTOM_INPUT_MEMBER(snk6502_state::snk6502_music0_r)
 
 CUSTOM_INPUT_MEMBER(snk6502_state::sasuke_count_r)
 {
-
 	return (m_sasuke_counter >> 4);
 }
 
@@ -740,7 +739,6 @@ GFXDECODE_END
 
 INTERRUPT_GEN_MEMBER(snk6502_state::satansat_interrupt)
 {
-
 	if(m_irq_mask)
 		device.execute().set_input_line(M6502_IRQ_LINE, HOLD_LINE); /* one IRQ per frame */
 }
@@ -757,9 +755,10 @@ INTERRUPT_GEN_MEMBER(snk6502_state::snk6502_interrupt)
  *
  *************************************/
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */

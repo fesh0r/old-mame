@@ -91,7 +91,6 @@ public:
 
 void multi8_state::video_start()
 {
-
 	m_keyb_press = m_keyb_press_flag = m_shift_press_flag = m_display_reg = 0;
 
 	for (m_bw_mode = 0; m_bw_mode < 8; m_bw_mode++)
@@ -557,9 +556,11 @@ static GFXDECODE_START( multi8 )
 	GFXDECODE_ENTRY( "kanji",   0x0000, multi8_kanjilayout, 0, 1 )
 GFXDECODE_END
 
-static const mc6845_interface mc6845_intf =
+
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */

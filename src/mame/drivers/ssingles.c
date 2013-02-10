@@ -265,9 +265,11 @@ static MC6845_UPDATE_ROW( atamanot_update_row )
 	}
 }
 
-static const mc6845_interface ssingles_mc6845_intf =
+
+static MC6845_INTERFACE( ssingles_mc6845_intf )
 {
 	"screen",
+	false,
 	8,
 	NULL,                       /* before pixel update callback */
 	ssingles_update_row,        /* row update callback */
@@ -279,9 +281,10 @@ static const mc6845_interface ssingles_mc6845_intf =
 	NULL                        /* update address callback */
 };
 
-static const mc6845_interface atamanot_mc6845_intf =
+static MC6845_INTERFACE( atamanot_mc6845_intf )
 {
 	"screen",
+	false,
 	8,
 	NULL,                       /* before pixel update callback */
 	atamanot_update_row,        /* row update callback */
@@ -311,7 +314,6 @@ WRITE8_MEMBER(ssingles_state::ssingles_colorram_w)
 
 void ssingles_state::video_start()
 {
-
 	{
 		int i;
 		for(i=0;i<NUM_PENS;++i)
@@ -324,20 +326,17 @@ void ssingles_state::video_start()
 
 READ8_MEMBER(ssingles_state::c000_r)
 {
-
 	return m_prot_data;
 }
 
 READ8_MEMBER(ssingles_state::c001_r)
 {
-
 	m_prot_data=0xc4;
 	return 0;
 }
 
 WRITE8_MEMBER(ssingles_state::c001_w)
 {
-
 	m_prot_data^=data^0x11;
 }
 
@@ -392,7 +391,6 @@ READ8_MEMBER(ssingles_state::atamanot_prot_r)
 
 WRITE8_MEMBER(ssingles_state::atamanot_prot_w)
 {
-
 	m_atamanot_prot_state = data;
 }
 
@@ -686,7 +684,6 @@ ROM_END
 
 DRIVER_INIT_MEMBER(ssingles_state,ssingles)
 {
-
 	save_item(NAME(m_videoram));
 	save_item(NAME(m_colorram));
 }

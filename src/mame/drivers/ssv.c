@@ -176,23 +176,19 @@ Notes:
 ***************************************************************************/
 
 /* Update the IRQ state based on all possible causes */
-static void update_irq_state(running_machine &machine)
+void ssv_state::update_irq_state()
 {
-	ssv_state *state = machine.driver_data<ssv_state>();
-
-	machine.device("maincpu")->execute().set_input_line(0, (state->m_requested_int & state->m_irq_enable)? ASSERT_LINE : CLEAR_LINE);
+	machine().device("maincpu")->execute().set_input_line(0, (m_requested_int & m_irq_enable)? ASSERT_LINE : CLEAR_LINE);
 }
 
-static IRQ_CALLBACK(ssv_irq_callback)
+IRQ_CALLBACK_MEMBER(ssv_state::ssv_irq_callback)
 {
-	ssv_state *state = device->machine().driver_data<ssv_state>();
-
 	int i;
 	for ( i = 0; i <= 7; i++ )
 	{
-		if (state->m_requested_int & (1 << i))
+		if (m_requested_int & (1 << i))
 		{
-			UINT16 vector = state->m_irq_vectors[i * (16/2)] & 7;
+			UINT16 vector = m_irq_vectors[i * (16/2)] & 7;
 			return vector;
 		}
 	}
@@ -205,7 +201,7 @@ WRITE16_MEMBER(ssv_state::ssv_irq_ack_w)
 
 	m_requested_int &= ~(1 << level);
 
-	update_irq_state(machine());
+	update_irq_state();
 }
 
 /*
@@ -228,7 +224,6 @@ WRITE16_MEMBER(ssv_state::ssv_irq_ack_w)
 */
 WRITE16_MEMBER(ssv_state::ssv_irq_enable_w)
 {
-
 	COMBINE_DATA(&m_irq_enable);
 }
 
@@ -241,13 +236,13 @@ TIMER_DEVICE_CALLBACK_MEMBER(ssv_state::ssv_interrupt)
 		if (m_interrupt_ultrax)
 		{
 			m_requested_int |= 1 << 1;  // needed by ultrax to coin up, breaks cairblad
-			update_irq_state(machine());
+			update_irq_state();
 		}
 	}
 	else if(scanline == 240)
 	{
 		m_requested_int |= 1 << 3;  // vblank
-		update_irq_state(machine());
+		update_irq_state();
 	}
 }
 
@@ -258,12 +253,12 @@ TIMER_DEVICE_CALLBACK_MEMBER(ssv_state::gdfs_interrupt)
 	if ((scanline % 64) == 0)
 	{
 		m_requested_int |= 1 << 6;  // reads lightgun (4 times for 4 axis)
-		update_irq_state(machine());
+		update_irq_state();
 	}
 	else if(scanline == 240)
 	{
 		m_requested_int |= 1 << 3;  // vblank
-		update_irq_state(machine());
+		update_irq_state();
 	}
 }
 
@@ -322,7 +317,7 @@ WRITE16_MEMBER(ssv_state::ssv_lockout_inv_w)
 void ssv_state::machine_reset()
 {
 	m_requested_int = 0;
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(ssv_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(ssv_state::ssv_irq_callback),this));
 	membank("bank1")->set_base(memregion("user1")->base());
 }
 
@@ -345,13 +340,11 @@ ADDRESS_MAP_END
 
 READ16_MEMBER(ssv_state::dsp_dr_r)
 {
-
 	return m_dsp->snesdsp_read(true);
 }
 
 WRITE16_MEMBER(ssv_state::dsp_dr_w)
 {
-
 	m_dsp->snesdsp_write(true, data);
 }
 
@@ -421,8 +414,7 @@ READ16_MEMBER(ssv_state::fake_r){   return ssv_scroll[offset];  }
 	AM_RANGE(0x240000, 0x240071) AM_WRITE(ssv_irq_ack_w )                                           /*  IRQ Ack */  \
 	AM_RANGE(0x260000, 0x260001) AM_WRITE(ssv_irq_enable_w)                                         /*  IRQ En  */  \
 	AM_RANGE(0x300000, 0x30007f) AM_DEVREADWRITE8_LEGACY("ensoniq", es5506_r, es5506_w, 0x00ff)         /*  Sound   */  \
-	AM_RANGE(_ROM, 0xffffff) AM_ROMBANK("bank1")                                                        /*  ROM     */  \
-
+	AM_RANGE(_ROM, 0xffffff) AM_ROMBANK("bank1")                                                        /*  ROM     */
 /***************************************************************************
                                 Drift Out '94
 ***************************************************************************/
@@ -606,13 +598,11 @@ ADDRESS_MAP_END
 
 READ16_MEMBER(ssv_state::ssv_mainram_r)
 {
-
 	return m_mainram[offset];
 }
 
 WRITE16_MEMBER(ssv_state::ssv_mainram_w)
 {
-
 	COMBINE_DATA(&m_mainram[offset]);
 }
 
@@ -743,7 +733,6 @@ READ16_MEMBER(ssv_state::sxyreact_ballswitch_r)
 
 READ16_MEMBER(ssv_state::sxyreact_dial_r)
 {
-
 	return ((m_sxyreact_serial >> 1) & 0x80);
 }
 
@@ -752,7 +741,6 @@ WRITE16_MEMBER(ssv_state::sxyreact_dial_w)
 {
 	if (ACCESSING_BITS_0_7)
 	{
-
 		if (data & 0x20)
 			m_sxyreact_serial = ioport("PADDLE")->read_safe(0) & 0xff;
 
@@ -817,7 +805,6 @@ ADDRESS_MAP_END
 
 READ32_MEMBER(ssv_state::latch32_r)
 {
-
 	if(!offset)
 		m_latches[2]&=~2;
 	return m_latches[offset];
@@ -825,7 +812,6 @@ READ32_MEMBER(ssv_state::latch32_r)
 
 WRITE32_MEMBER(ssv_state::latch32_w)
 {
-
 	if(!offset)
 		m_latches[2]|=1;
 	COMBINE_DATA(&m_latches[offset]);
@@ -834,7 +820,6 @@ WRITE32_MEMBER(ssv_state::latch32_w)
 
 READ16_MEMBER(ssv_state::latch16_r)
 {
-
 	if(!offset)
 		m_latches[2]&=~1;
 	return m_latches[offset];
@@ -842,7 +827,6 @@ READ16_MEMBER(ssv_state::latch16_r)
 
 WRITE16_MEMBER(ssv_state::latch16_w)
 {
-
 	if(!offset)
 		m_latches[2]|=2;
 	m_latches[offset]=data;
@@ -894,7 +878,6 @@ WRITE16_MEMBER(ssv_state::eaglshot_gfxrom_w)
 
 READ16_MEMBER(ssv_state::eaglshot_trackball_r)
 {
-
 	switch(m_trackball_select)
 	{
 		case 0x60:  return (ioport("TRACKX")->read() >> 8) & 0xff;
@@ -918,13 +901,11 @@ WRITE16_MEMBER(ssv_state::eaglshot_trackball_w)
 
 READ16_MEMBER(ssv_state::eaglshot_gfxram_r)
 {
-
 	return m_eaglshot_gfxram[offset + (m_scroll[0x76/2] & 0xf) * 0x40000/2];
 }
 
 WRITE16_MEMBER(ssv_state::eaglshot_gfxram_w)
 {
-
 	offset += (m_scroll[0x76/2] & 0xf) * 0x40000/2;
 	COMBINE_DATA(&m_eaglshot_gfxram[offset]);
 	machine().gfx[0]->mark_dirty(offset / (16*8/2));

@@ -207,6 +207,7 @@ public:
 	TIMER_CALLBACK_MEMBER(supracan_line_on_callback);
 	TIMER_CALLBACK_MEMBER(supracan_line_off_callback);
 	TIMER_CALLBACK_MEMBER(supracan_video_callback);
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(supracan_cart);
 };
 
 
@@ -386,7 +387,6 @@ static void supracan_tilemap_get_info_roz(running_machine &machine, int layer, t
 
 TILE_GET_INFO_MEMBER(supracan_state::get_supracan_tilemap0_tile_info)
 {
-
 	supracan_tilemap_get_info_common(machine(), 0, tileinfo, tile_index);
 }
 
@@ -397,13 +397,11 @@ TILE_GET_INFO_MEMBER(supracan_state::get_supracan_tilemap1_tile_info)
 
 TILE_GET_INFO_MEMBER(supracan_state::get_supracan_tilemap2_tile_info)
 {
-
 	supracan_tilemap_get_info_common(machine(), 2, tileinfo, tile_index);
 }
 
 TILE_GET_INFO_MEMBER(supracan_state::get_supracan_roz_tile_info)
 {
-
 	supracan_tilemap_get_info_roz(machine(), 3, tileinfo, tile_index);
 }
 
@@ -527,7 +525,6 @@ static void draw_sprites(running_machine &machine, bitmap_ind16 &bitmap, const r
 
 		if((supracan_vram[i+0] & 0x4000))
 		{
-
 		#if 0
 			printf("%d (unk %02x) (enable %02x) (unk Y2 %02x, %02x) (y pos %02x) (bank %01x) (flip %01x) (unknown %02x) (x size %02x) (xscale %01x) (unk %01x) (xpos %02x) (code %04x)\n", i,
 				(supracan_vram[i+0] & 0x8000) >> 15,
@@ -683,7 +680,6 @@ static void supracan_suprnova_draw_roz(running_machine &machine, bitmap_ind16 &b
 		/* loop over rows */
 		while (sy <= ey)
 		{
-
 			/* initialize X counters */
 			x = sx;
 			cx = startx;
@@ -772,9 +768,6 @@ static void supracan_suprnova_draw_roz(running_machine &machine, bitmap_ind16 &b
 
 UINT32 supracan_state::screen_update_supracan(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-
-
-
 	// treat the sprites as frame-buffered and only update the buffer when drawing scanline 0 - this might not be true!
 
 	if (0)
@@ -791,7 +784,6 @@ UINT32 supracan_state::screen_update_supracan(screen_device &screen, bitmap_ind1
 	}
 	else
 	{
-
 		m_sprite_final_bitmap.fill(0x00, cliprect);
 		bitmap.fill(0x80, cliprect);
 
@@ -809,7 +801,6 @@ UINT32 supracan_state::screen_update_supracan(screen_device &screen, bitmap_ind1
 
 	for (int pri=7;pri>=0;pri--)
 	{
-
 		for (int layer = 3; layer >=0; layer--)
 		{
 		//  popmessage("%04x\n",m_video_flags);
@@ -853,7 +844,6 @@ UINT32 supracan_state::screen_update_supracan(screen_device &screen, bitmap_ind1
 				{
 					if (layer != 3) // standard layers, NOT roz
 					{
-
 						int wrap = (m_tilemap_flags[layer] & 0x20);
 
 						int scrollx = m_tilemap_scrollx[layer];
@@ -1494,7 +1484,6 @@ READ16_MEMBER( supracan_state::supracan_video_r )
 
 TIMER_CALLBACK_MEMBER(supracan_state::supracan_hbl_callback)
 {
-
 	m_maincpu->set_input_line(3, HOLD_LINE);
 
 	m_hbl_timer->adjust(attotime::never);
@@ -1502,7 +1491,6 @@ TIMER_CALLBACK_MEMBER(supracan_state::supracan_hbl_callback)
 
 TIMER_CALLBACK_MEMBER(supracan_state::supracan_line_on_callback)
 {
-
 	m_maincpu->set_input_line(5, HOLD_LINE);
 
 	m_line_on_timer->adjust(attotime::never);
@@ -1510,7 +1498,6 @@ TIMER_CALLBACK_MEMBER(supracan_state::supracan_line_on_callback)
 
 TIMER_CALLBACK_MEMBER(supracan_state::supracan_line_off_callback)
 {
-
 	m_maincpu->set_input_line(5, CLEAR_LINE);
 
 	m_line_on_timer->adjust(attotime::never);
@@ -1740,7 +1727,7 @@ WRITE16_MEMBER( supracan_state::supracan_video_w )
 }
 
 
-static DEVICE_IMAGE_LOAD( supracan_cart )
+DEVICE_IMAGE_LOAD_MEMBER( supracan_state, supracan_cart )
 {
 	UINT8 *cart = image.device().machine().root_device().memregion("cart")->base();
 	UINT32 size = 0;
@@ -1773,7 +1760,6 @@ static DEVICE_IMAGE_LOAD( supracan_cart )
 
 void supracan_state::machine_start()
 {
-
 	m_video_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(supracan_state::supracan_video_callback),this));
 	m_hbl_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(supracan_state::supracan_hbl_callback),this));
 	m_line_on_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(supracan_state::supracan_line_on_callback),this));
@@ -1783,7 +1769,6 @@ void supracan_state::machine_start()
 
 void supracan_state::machine_reset()
 {
-
 	machine().device("soundcpu")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 
 	m_video_timer->adjust( machine().primary_screen->time_until_pos( 0, 0 ) );
@@ -1885,7 +1870,6 @@ INTERRUPT_GEN_MEMBER(supracan_state::supracan_irq)
 
 INTERRUPT_GEN_MEMBER(supracan_state::supracan_sound_irq)
 {
-
 	m_sound_irq_source_reg |= 0x80;
 
 	if(m_sound_irq_enable_reg & m_sound_irq_source_reg)
@@ -1923,7 +1907,7 @@ static MACHINE_CONFIG_START( supracan, supracan_state )
 	MCFG_CARTSLOT_ADD("cart")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_INTERFACE("supracan_cart")
-	MCFG_CARTSLOT_LOAD(supracan_cart)
+	MCFG_CARTSLOT_LOAD(supracan_state,supracan_cart)
 
 	MCFG_SOFTWARE_LIST_ADD("cart_list","supracan")
 MACHINE_CONFIG_END

@@ -36,11 +36,29 @@ static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
 
 generic_keyboard_device::generic_keyboard_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, type, name, tag, owner, clock)
+	, m_io_kbd0(*this, "TERM_LINE0")
+	, m_io_kbd1(*this, "TERM_LINE1")
+	, m_io_kbd2(*this, "TERM_LINE2")
+	, m_io_kbd3(*this, "TERM_LINE3")
+	, m_io_kbd4(*this, "TERM_LINE4")
+	, m_io_kbd5(*this, "TERM_LINE5")
+	, m_io_kbd6(*this, "TERM_LINE6")
+	, m_io_kbd7(*this, "TERM_LINE7")
+	, m_io_kbdc(*this, "TERM_LINEC")
 {
 }
 
 generic_keyboard_device::generic_keyboard_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	: device_t(mconfig, GENERIC_KEYBOARD, "Generic Keyboard", tag, owner, clock)
+	, m_io_kbd0(*this, "TERM_LINE0")
+	, m_io_kbd1(*this, "TERM_LINE1")
+	, m_io_kbd2(*this, "TERM_LINE2")
+	, m_io_kbd3(*this, "TERM_LINE3")
+	, m_io_kbd4(*this, "TERM_LINE4")
+	, m_io_kbd5(*this, "TERM_LINE5")
+	, m_io_kbd6(*this, "TERM_LINE6")
+	, m_io_kbd7(*this, "TERM_LINE7")
+	, m_io_kbdc(*this, "TERM_LINEC")
 {
 }
 
@@ -60,17 +78,31 @@ UINT8 generic_keyboard_device::row_number(UINT8 code)
 
 UINT8 generic_keyboard_device::keyboard_handler(UINT8 last_code, UINT8 *scan_line)
 {
-	static const char *const keynames[] = { "TERM_LINE0", "TERM_LINE1", "TERM_LINE2", "TERM_LINE3", "TERM_LINE4", "TERM_LINE5", "TERM_LINE6", "TERM_LINE7" };
 	int i;
-	UINT8 code;
+	UINT8 code = 0;
 	UINT8 key_code = 0;
 	UINT8 retVal = 0;
-	UINT8 shift = BIT(ioport("TERM_LINEC")->read(), 1);
-	UINT8 caps  = BIT(ioport("TERM_LINEC")->read(), 2);
-	UINT8 ctrl  = BIT(ioport("TERM_LINEC")->read(), 0);
+	UINT8 shift = BIT(m_io_kbdc->read(), 1);
+	UINT8 caps  = BIT(m_io_kbdc->read(), 2);
+	UINT8 ctrl  = BIT(m_io_kbdc->read(), 0);
 	i = *scan_line;
 	{
-		code =  ioport(keynames[i])->read();
+		if (i == 0) code = m_io_kbd0->read();
+		else
+		if (i == 1) code = m_io_kbd1->read();
+		else
+		if (i == 2) code = m_io_kbd2->read();
+		else
+		if (i == 3) code = m_io_kbd3->read();
+		else
+		if (i == 4) code = m_io_kbd4->read();
+		else
+		if (i == 5) code = m_io_kbd5->read();
+		else
+		if (i == 6) code = m_io_kbd6->read();
+		else
+		if (i == 7) code = m_io_kbd7->read();
+
 		if (code != 0)
 		{
 			if (i==0 && shift==0) {
@@ -99,7 +131,7 @@ UINT8 generic_keyboard_device::keyboard_handler(UINT8 last_code, UINT8 *scan_lin
 			if (i>=2 && i<=4 && (shift ^ caps)==1 && ctrl==0) {
 				key_code = 0x40 + row_number(code) + (i-2)*8; // for big letters
 			}
-			if (i>=2 && i<=4 && ctrl==1) {
+			if (i>=2 && i<=5 && ctrl==1) {
 				key_code = 0x00 + row_number(code) + (i-2)*8; // for CTRL + letters
 			}
 			if (i==5 && shift==1 && ctrl==0) {
@@ -124,9 +156,7 @@ UINT8 generic_keyboard_device::keyboard_handler(UINT8 last_code, UINT8 *scan_lin
 					key_code = 0x60 + row_number(code) + (i-2)*8; // for DEL it is switched
 				}
 			}
-			if (i==5 && shift==1 && ctrl==1) {
-				key_code = 0x00 + row_number(code) + (i-2)*8; // for letters + ctrl
-			}
+
 			if (i==6) {
 				switch(row_number(code))
 				{

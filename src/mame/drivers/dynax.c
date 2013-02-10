@@ -294,7 +294,6 @@ WRITE8_MEMBER(dynax_state::hnoridur_palbank_w)
 
 WRITE8_MEMBER(dynax_state::hnoridur_palette_w)
 {
-
 	switch (m_hnoridur_bank)
 	{
 		case 0x10:
@@ -687,7 +686,6 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(dynax_state::yarunara_input_w)
 {
-
 	switch (offset)
 	{
 		case 0: m_input_sel = data;
@@ -1129,7 +1127,6 @@ READ8_MEMBER(dynax_state::htengoku_dsw_r)
 
 WRITE8_MEMBER(dynax_state::htengoku_coin_w)
 {
-
 	switch (m_input_sel)
 	{
 		case 0x0c:
@@ -1168,7 +1165,6 @@ READ8_MEMBER(dynax_state::htengoku_input_r)
 
 READ8_MEMBER(dynax_state::htengoku_coin_r)
 {
-
 	switch (m_input_sel)
 	{
 		case 0x00:  return ioport("COINS")->read();
@@ -1182,7 +1178,6 @@ READ8_MEMBER(dynax_state::htengoku_coin_r)
 
 WRITE8_MEMBER(dynax_state::htengoku_rombank_w)
 {
-
 	membank("bank1")->set_entry(data & 0x07);
 	m_hnoridur_bank = data;
 }
@@ -1252,7 +1247,6 @@ WRITE8_MEMBER(dynax_state::tenkai_ipsel_w)
 
 WRITE8_MEMBER(dynax_state::tenkai_ip_w)
 {
-
 	switch (m_input_sel)
 	{
 	case 0x0c:
@@ -1327,7 +1321,6 @@ WRITE8_MEMBER(dynax_state::tenkai_dswsel_w)
 
 READ8_MEMBER(dynax_state::tenkai_dsw_r)
 {
-
 	if (!BIT(m_dsw_sel, 0)) return ioport("DSW0")->read();
 	if (!BIT(m_dsw_sel, 1)) return ioport("DSW1")->read();
 	if (!BIT(m_dsw_sel, 2)) return ioport("DSW2")->read();
@@ -1358,11 +1351,10 @@ WRITE8_MEMBER(dynax_state::tenkai_palette_w)
 	}
 }
 
-static void tenkai_update_rombank( running_machine &machine )
+void dynax_state::tenkai_update_rombank()
 {
-	dynax_state *state = machine.driver_data<dynax_state>();
-	state->m_romptr = state->memregion("maincpu")->base() + 0x10000 + 0x8000 * state->m_rombank;
-//  logerror("rombank = %02x\n", state->m_rombank);
+	m_romptr = memregion("maincpu")->base() + 0x10000 + 0x8000 * m_rombank;
+//  logerror("rombank = %02x\n", m_rombank);
 }
 
 READ8_MEMBER(dynax_state::tenkai_p3_r)
@@ -1373,12 +1365,12 @@ READ8_MEMBER(dynax_state::tenkai_p3_r)
 WRITE8_MEMBER(dynax_state::tenkai_p3_w)
 {
 	m_rombank = ((data & 0x04) << 1) | (m_rombank & 0x07);
-	tenkai_update_rombank(machine());
+	tenkai_update_rombank();
 }
 WRITE8_MEMBER(dynax_state::tenkai_p4_w)
 {
 	m_rombank = (m_rombank & 0x08) | ((data & 0x0e) >> 1);
-	tenkai_update_rombank(machine());
+	tenkai_update_rombank();
 }
 
 READ8_MEMBER(dynax_state::tenkai_p5_r)
@@ -1405,7 +1397,7 @@ WRITE8_MEMBER(dynax_state::tenkai_p7_w)
 WRITE8_MEMBER(dynax_state::tenkai_p8_w)
 {
 	m_rombank = ((data & 0x08) << 1) | (m_rombank & 0x0f);
-	tenkai_update_rombank(machine());
+	tenkai_update_rombank();
 }
 
 READ8_MEMBER(dynax_state::tenkai_p8_r)
@@ -1415,7 +1407,6 @@ READ8_MEMBER(dynax_state::tenkai_p8_r)
 
 READ8_MEMBER(dynax_state::tenkai_8000_r)
 {
-
 	if (m_rombank < 0x10)
 		return m_romptr[offset];
 	else if ((m_rombank == 0x10) && (offset < 0x10))
@@ -1433,7 +1424,6 @@ READ8_MEMBER(dynax_state::tenkai_8000_r)
 
 WRITE8_MEMBER(dynax_state::tenkai_8000_w)
 {
-
 	if ((m_rombank == 0x10) && (offset < 0x10))
 	{
 		msm6242_device *rtc = machine().device<msm6242_device>("rtc");
@@ -1571,7 +1561,6 @@ WRITE8_MEMBER(dynax_state::gekisha_p4_w)
 
 READ8_MEMBER(dynax_state::gekisha_8000_r)
 {
-
 	if (m_gekisha_rom_enable)
 		return m_romptr[offset];
 
@@ -1592,7 +1581,6 @@ READ8_MEMBER(dynax_state::gekisha_8000_r)
 
 WRITE8_MEMBER(dynax_state::gekisha_8000_w)
 {
-
 	if (!m_gekisha_rom_enable)
 	{
 		switch (offset + 0x8000)
@@ -4817,7 +4805,6 @@ void mjelctrn_update_irq( running_machine &machine )
 
 INTERRUPT_GEN_MEMBER(dynax_state::mjelctrn_vblank_interrupt)
 {
-
 	// This is a kludge to avoid losing blitter interrupts
 	// there should be a vblank ack mechanism
 	if (!m_blitter_irq)
@@ -4987,7 +4974,7 @@ MACHINE_START_MEMBER(dynax_state,tenkai)
 {
 	MACHINE_START_CALL_MEMBER(dynax);
 
-	machine().save().register_postload(save_prepost_delegate(FUNC(tenkai_update_rombank), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(dynax_state::tenkai_update_rombank), this));
 }
 
 WRITE_LINE_MEMBER(dynax_state::tenkai_rtc_irq)
@@ -5048,18 +5035,16 @@ MACHINE_CONFIG_END
                                 Mahjong Gekisha
 ***************************************************************************/
 
-static void gekisha_bank_postload(running_machine &machine)
+void dynax_state::gekisha_bank_postload()
 {
-	dynax_state *state = machine.driver_data<dynax_state>();
-
-	gekisha_set_rombank(machine, state->m_rombank);
+	gekisha_set_rombank(machine(), m_rombank);
 }
 
 MACHINE_START_MEMBER(dynax_state,gekisha)
 {
 	MACHINE_START_CALL_MEMBER(dynax);
 
-	machine().save().register_postload(save_prepost_delegate(FUNC(gekisha_bank_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(dynax_state::gekisha_bank_postload), this));
 }
 
 MACHINE_RESET_MEMBER(dynax_state,gekisha)

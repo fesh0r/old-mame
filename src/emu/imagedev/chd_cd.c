@@ -28,7 +28,6 @@ cdrom_image_device::cdrom_image_device(const machine_config &mconfig, const char
 	: device_t(mconfig, CDROM, "Cdrom", tag, owner, clock),
 		device_image_interface(mconfig, *this)
 {
-
 }
 
 //-------------------------------------------------
@@ -102,6 +101,8 @@ void cdrom_image_device::device_stop()
 {
 	if (m_cdrom_handle)
 		cdrom_close(m_cdrom_handle);
+	if( m_self_chd.opened() )
+		m_self_chd.close();
 }
 
 bool cdrom_image_device::call_load()
@@ -149,4 +150,6 @@ void cdrom_image_device::call_unload()
 	assert(m_cdrom_handle);
 	cdrom_close(m_cdrom_handle);
 	m_cdrom_handle = NULL;
+	if( m_self_chd.opened() )
+		m_self_chd.close();
 }

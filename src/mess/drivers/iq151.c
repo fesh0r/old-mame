@@ -98,6 +98,7 @@ public:
 	INTERRUPT_GEN_MEMBER(iq151_vblank_interrupt);
 	DECLARE_INPUT_CHANGED_MEMBER(iq151_break);
 	TIMER_DEVICE_CALLBACK_MEMBER(cassette_timer);
+	IRQ_CALLBACK_MEMBER(iq151_irq_callback);
 };
 
 READ8_MEMBER(iq151_state::keyboard_row_r)
@@ -220,7 +221,7 @@ ADDRESS_MAP_END
 
 INPUT_CHANGED_MEMBER(iq151_state::iq151_break)
 {
-	pic8259_ir5_w(m_pic, newval & 1);
+	m_pic->ir5_w(newval & 1);
 }
 
 /* Input ports */
@@ -323,21 +324,17 @@ WRITE_LINE_MEMBER( iq151_state::pic_set_int_line )
 
 INTERRUPT_GEN_MEMBER(iq151_state::iq151_vblank_interrupt)
 {
-
-	pic8259_ir6_w(m_pic, m_vblank_irq_state & 1);
+	m_pic->ir6_w(m_vblank_irq_state & 1);
 	m_vblank_irq_state ^= 1;
 }
 
-static IRQ_CALLBACK(iq151_irq_callback)
+IRQ_CALLBACK_MEMBER(iq151_state::iq151_irq_callback)
 {
-	iq151_state *state = device->machine().driver_data<iq151_state>();
-
-	return pic8259_acknowledge(state->m_pic);
+	return m_pic->inta_r();
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(iq151_state::cassette_timer)
 {
-
 	m_cassette_clk ^= 1;
 
 	m_cassette->output((m_cassette_data & 1) ^ (m_cassette_clk & 1) ? +1 : -1);
@@ -345,12 +342,11 @@ TIMER_DEVICE_CALLBACK_MEMBER(iq151_state::cassette_timer)
 
 DRIVER_INIT_MEMBER(iq151_state,iq151)
 {
-
 	UINT8 *RAM = memregion("maincpu")->base();
 	membank("boot")->configure_entry(0, RAM + 0xf800);
 	membank("boot")->configure_entry(1, RAM + 0x0000);
 
-	m_maincpu->set_irq_acknowledge_callback(iq151_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(iq151_state::iq151_irq_callback),this));
 
 	// keep machine pointers to slots
 	m_carts[0] = machine().device<iq151cart_slot_device>("slot1");
@@ -407,11 +403,11 @@ static const cassette_interface iq151_cassette_interface =
 
 static const iq151cart_interface iq151_cart_interface =
 {
-	DEVCB_DEVICE_LINE("pic8259", pic8259_ir0_w),
-	DEVCB_DEVICE_LINE("pic8259", pic8259_ir1_w),
-	DEVCB_DEVICE_LINE("pic8259", pic8259_ir2_w),
-	DEVCB_DEVICE_LINE("pic8259", pic8259_ir3_w),
-	DEVCB_DEVICE_LINE("pic8259", pic8259_ir4_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir0_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir1_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir2_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir3_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir4_w),
 	DEVCB_NULL
 };
 

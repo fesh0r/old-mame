@@ -12,10 +12,8 @@
 #include "emu.h"
 #include "cpu/m6502/m65c02.h"
 #include "machine/6522via.h"
-#include "machine/6551acia.h"
+#include "machine/mos6551.h"
 #include "rendlay.h"
-
-static const char *const keyColumns[] = { "COL0", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7" };
 
 class clcd_state : public driver_device
 {
@@ -24,7 +22,16 @@ public:
 		: driver_device(mconfig, type, tag),
 		m_ram(*this,"ram"),
 		keyClockState(0),
-		keyReadState(0)
+		keyReadState(0),
+		m_col0(*this,"COL0"),
+		m_col1(*this,"COL1"),
+		m_col2(*this,"COL2"),
+		m_col3(*this,"COL3"),
+		m_col4(*this,"COL4"),
+		m_col5(*this,"COL5"),
+		m_col6(*this,"COL6"),
+		m_col7(*this,"COL7"),
+		m_special(*this,"SPECIAL")
 	{
 	}
 
@@ -68,6 +75,38 @@ public:
 		keyColumnSelect = data;
 	}
 
+	int read_column( int column )
+	{
+		switch( column )
+		{
+		case 0:
+			return m_col0->read();
+
+		case 1:
+			return m_col1->read();
+
+		case 2:
+			return m_col2->read();
+
+		case 3:
+			return m_col3->read();
+
+		case 4:
+			return m_col4->read();
+
+		case 5:
+			return m_col5->read();
+
+		case 6:
+			return m_col6->read();
+
+		case 7:
+			return m_col7->read();
+		}
+
+		return 0;
+	}
+
 	WRITE8_MEMBER( via0_pb_w )
 	{
 		int newKeyReadState = data & 1;
@@ -77,13 +116,13 @@ public:
 
 			if( newKeyReadState != 0 )
 			{
-				keyData = ioport( "SPECIAL" )->read();
+				keyData = m_special->read();
 
 				for( int i = 0; i < 8; i++ )
 				{
 					if( ( keyColumnSelect & ( 128 >> i ) ) == 0 )
 					{
-						keyData |= ioport( keyColumns[ i ] )->read() << 8;
+						keyData |= read_column( i ) << 8;
 					}
 				}
 
@@ -125,12 +164,21 @@ private:
 	int keyClockState;
 	int keyReadState;
 	virtual void palette_init();
+	required_ioport m_col0;
+	required_ioport m_col1;
+	required_ioport m_col2;
+	required_ioport m_col3;
+	required_ioport m_col4;
+	required_ioport m_col5;
+	required_ioport m_col6;
+	required_ioport m_col7;
+	required_ioport m_special;
 };
 
 static ADDRESS_MAP_START( clcd_mem, AS_PROGRAM, 8, clcd_state )
 	AM_RANGE(0xf800, 0xf80f) AM_DEVREADWRITE("via0", via6522_device, read, write)
 	AM_RANGE(0xf880, 0xf88f) AM_DEVREADWRITE("via1", via6522_device, read, write)
-	AM_RANGE(0xf980, 0xf981) AM_DEVREADWRITE("acia", acia6551_device, read, write)
+	AM_RANGE(0xf980, 0xf981) AM_DEVREADWRITE("acia", mos6551_device, read, write)
 	AM_RANGE(0xff00, 0xff00) AM_WRITE(rombank_w)
 	AM_RANGE(0xff80, 0xff83) AM_WRITE(rambank_w)
 	AM_RANGE(0x0000, 0x3fff) AM_RAM AM_SHARE("ram")
@@ -297,7 +345,7 @@ static MACHINE_CONFIG_START( clcd, clcd_state )
 
 	MCFG_VIA6522_ADD("via0", 0, via0_intf)
 	MCFG_VIA6522_ADD("via1", 0, via1_intf)
-	MCFG_ACIA6551_ADD("acia")
+	MCFG_MOS6551_ADD("acia", XTAL_1_8432MHz, NULL)
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", LCD)

@@ -223,31 +223,26 @@ UINT32 srmp5_state::screen_update_srmp5(screen_device &screen, bitmap_rgb32 &bit
 
 READ32_MEMBER(srmp5_state::srmp5_palette_r)
 {
-
 	return m_palram[offset];
 }
 
 WRITE32_MEMBER(srmp5_state::srmp5_palette_w)
 {
-
 	COMBINE_DATA(&m_palram[offset]);
 	palette_set_color(machine(), offset, MAKE_RGB(data << 3 & 0xFF, data >> 2 & 0xFF, data >> 7 & 0xFF));
 }
 WRITE32_MEMBER(srmp5_state::bank_w)
 {
-
 	COMBINE_DATA(&m_databank);
 }
 
 READ32_MEMBER(srmp5_state::tileram_r)
 {
-
 	return m_tileram[offset];
 }
 
 WRITE32_MEMBER(srmp5_state::tileram_w)
 {
-
 	m_tileram[offset] = data & 0xFFFF; //lower 16bit only
 #ifdef DEBUG_CHAR
 	m_tileduty[offset >> 6] = 1;
@@ -256,13 +251,11 @@ WRITE32_MEMBER(srmp5_state::tileram_w)
 
 READ32_MEMBER(srmp5_state::spr_r)
 {
-
 	return m_sprram[offset];
 }
 
 WRITE32_MEMBER(srmp5_state::spr_w)
 {
-
 	m_sprram[offset] = data & 0xFFFF; //lower 16bit only
 }
 
@@ -278,7 +271,6 @@ READ32_MEMBER(srmp5_state::data_r)
 
 WRITE32_MEMBER(srmp5_state::input_select_w)
 {
-
 	m_input_select = data & 0x0F;
 }
 
@@ -308,14 +300,12 @@ READ32_MEMBER(srmp5_state::srmp5_inputs_r)
 //almost all cmds are sound related
 WRITE32_MEMBER(srmp5_state::cmd1_w)
 {
-
 	m_cmd1 = data & 0xFF;
 	logerror("cmd1_w %08X\n", data);
 }
 
 WRITE32_MEMBER(srmp5_state::cmd2_w)
 {
-
 	m_cmd2 = data & 0xFF;
 	m_cmd_stat = 5;
 	logerror("cmd2_w %08X\n", data);
@@ -323,20 +313,17 @@ WRITE32_MEMBER(srmp5_state::cmd2_w)
 
 READ32_MEMBER(srmp5_state::cmd_stat32_r)
 {
-
 	return m_cmd_stat;
 }
 
 READ32_MEMBER(srmp5_state::srmp5_vidregs_r)
 {
-
 	logerror("vidregs read  %08X %08X\n", offset << 2, m_vidregs[offset]);
 	return m_vidregs[offset];
 }
 
 WRITE32_MEMBER(srmp5_state::srmp5_vidregs_w)
 {
-
 	COMBINE_DATA(&m_vidregs[offset]);
 	if(offset != 0x10C / 4)
 		logerror("vidregs write %08X %08X\n", offset << 2, m_vidregs[offset]);
@@ -389,20 +376,17 @@ ADDRESS_MAP_END
 
 READ8_MEMBER(srmp5_state::cmd1_r)
 {
-
 	m_cmd_stat = 0;
 	return m_cmd1;
 }
 
 READ8_MEMBER(srmp5_state::cmd2_r)
 {
-
 	return m_cmd2;
 }
 
 READ8_MEMBER(srmp5_state::cmd_stat8_r)
 {
-
 	return m_cmd_stat;
 }
 
@@ -517,13 +501,6 @@ static const st0016_interface st0016_config =
 	&st0016_charram
 };
 
-static const r3000_cpu_core r3000_config =
-{
-	1,  /* 1 if we have an FPU, 0 otherwise */
-	4096,   /* code cache size */
-	4096    /* data cache size */
-};
-
 static const gfx_layout tile_16x8x8_layout =
 {
 	16,8,
@@ -561,8 +538,8 @@ static MACHINE_CONFIG_START( srmp5, srmp5_state )
 	MCFG_CPU_IO_MAP(st0016_io)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", srmp5_state,  irq0_line_hold)
 
-	MCFG_CPU_ADD("sub", R3000LE, 25000000)
-	MCFG_CPU_CONFIG(r3000_config)
+	MCFG_CPU_ADD("sub", R3051, 25000000)
+	MCFG_R3000_ENDIANNESS(ENDIANNESS_LITTLE)
 	MCFG_CPU_PROGRAM_MAP(srmp5_mem)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", srmp5_state,  irq4_line_assert)
 

@@ -3,6 +3,7 @@
 
 #include "imagedev/chd_cd.h"
 #include "psxcddrv.h"
+#include "sound/spu.h"
 
 #define MAX_PSXCD_TIMERS    (4)
 
@@ -32,7 +33,7 @@ const int num_commands=0x20;
 	devcb = &psxcd_device::set_irq_handler(*device, DEVCB2_##_devcb);
 
 #define MCFG_PSXCD_DEVNAME(_name) \
-	psxcd_device::static_set_devname(*device, _name); \
+	psxcd_device::static_set_devname(*device, _name);
 
 struct psxcd_interface
 {
@@ -155,8 +156,8 @@ public:
 
 	void start_dma(UINT8 *mainram, UINT32 size);
 
-	unsigned char read_byte(const unsigned int addr);
-	void write_byte(const unsigned int addr, const unsigned char byte);
+	DECLARE_WRITE8_MEMBER( write );
+	DECLARE_READ8_MEMBER( read );
 
 private:
 	emu_timer *m_timer;
@@ -171,6 +172,8 @@ private:
 	void add_system_event(event *ev);
 
 	devcb2_write_line m_irq_handler;
+	cpu_device *m_maincpu;
+	spu_device *m_spu;
 };
 
 

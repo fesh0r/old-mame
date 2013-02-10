@@ -672,15 +672,14 @@ static const msm5205_interface msm5205_config_2 =
                      MACHINE DRIVERS
 ***********************************************************/
 
-static void topspeed_postload(running_machine &machine)
+void topspeed_state::topspeed_postload()
 {
-	parse_control(machine);
-	reset_sound_region(machine);
+	parse_control(machine());
+	reset_sound_region(machine());
 }
 
 void topspeed_state::machine_start()
 {
-
 	membank("bank10")->configure_entries(0, 4, memregion("audiocpu")->base() + 0xc000, 0x4000);
 
 	m_maincpu = machine().device<cpu_device>("maincpu");
@@ -698,12 +697,11 @@ void topspeed_state::machine_start()
 	save_item(NAME(m_cpua_ctrl));
 	save_item(NAME(m_ioc220_port));
 	save_item(NAME(m_banknum));
-	machine().save().register_postload(save_prepost_delegate(FUNC(topspeed_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(topspeed_state::topspeed_postload), this));
 }
 
 void topspeed_state::machine_reset()
 {
-
 	m_cpua_ctrl = 0xff;
 	m_ioc220_port = 0;
 	m_banknum = -1;

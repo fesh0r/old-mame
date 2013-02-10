@@ -211,7 +211,6 @@ READ8_MEMBER(nes_state::nes_nt_r)
 
 WRITE8_MEMBER(nes_state::nes_low_mapper_w)
 {
-
 	if (!m_mmc_write_low.isnull())
 		(m_mmc_write_low)(space, offset, data, mem_mask);
 	else
@@ -220,7 +219,6 @@ WRITE8_MEMBER(nes_state::nes_low_mapper_w)
 
 READ8_MEMBER(nes_state::nes_low_mapper_r)
 {
-
 	if (!m_mmc_read_low.isnull())
 		return (m_mmc_read_low)(space, offset, mem_mask);
 	else
@@ -562,6 +560,10 @@ void nes_carts_state::set_nt_mirroring(int mirroring)
     MIRROR_HIGH and MIRROR_LOW compared to the above) and Sachen games use sachen_set_mirror (which has
     a slightly different MIRROR_HIGH, with page 0 set to 0) */
 
+#ifdef _MSC_VER
+#pragma optimize("", off)
+#endif
+
 
 /*************************************************************
 
@@ -591,3 +593,7 @@ void nes_carts_state::set_nt_mirroring(int mirroring)
 
 /* Include emulation of iNES Mappers for .nes files */
 #include "machine/nes_ines.c"
+
+#ifdef _MSC_VER
+#pragma optimize("", on)
+#endif

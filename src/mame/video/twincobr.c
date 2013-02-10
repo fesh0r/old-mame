@@ -17,12 +17,11 @@
 #include "includes/twincobr.h"
 
 
-static void twincobr_restore_screen(running_machine &machine);
-
 /* 6845 used for video sync signals only */
-const mc6845_interface twincobr_mc6845_intf =
+MC6845_INTERFACE( twincobr_mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	2,          /* number of pixels per video memory address */ /* Horizontal Display programmed to 160 characters */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
@@ -100,7 +99,6 @@ static void twincobr_create_tilemaps(running_machine &machine)
 
 VIDEO_START_MEMBER(twincobr_state,toaplan0)
 {
-
 	/* the video RAM is accessed via ports, it's not memory mapped */
 	m_txvideoram_size = 0x0800;
 	m_bgvideoram_size = 0x2000; /* banked two times 0x1000 */
@@ -134,15 +132,13 @@ VIDEO_START_MEMBER(twincobr_state,toaplan0)
 	state_save_register_global(machine(), m_bg_ram_bank);
 	state_save_register_global(machine(), m_flip_screen);
 	state_save_register_global(machine(), m_wardner_sprite_hack);
-	machine().save().register_postload(save_prepost_delegate(FUNC(twincobr_restore_screen), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(twincobr_state::twincobr_restore_screen), this));
 }
 
-static void twincobr_restore_screen(running_machine &machine)
+void twincobr_state::twincobr_restore_screen()
 {
-	twincobr_state *state = machine.driver_data<twincobr_state>();
-
-	twincobr_display(machine, state->m_display_on);
-	twincobr_flipscreen(machine, state->m_flip_screen);
+	twincobr_display(machine(), m_display_on);
+	twincobr_flipscreen(machine(), m_flip_screen);
 }
 
 
@@ -179,54 +175,45 @@ void twincobr_flipscreen(running_machine &machine, int flip)
 
 WRITE16_MEMBER(twincobr_state::twincobr_txoffs_w)
 {
-
 	COMBINE_DATA(&m_txoffs);
 	m_txoffs %= m_txvideoram_size;
 }
 READ16_MEMBER(twincobr_state::twincobr_txram_r)
 {
-
 	return m_txvideoram16[m_txoffs];
 }
 WRITE16_MEMBER(twincobr_state::twincobr_txram_w)
 {
-
 	COMBINE_DATA(&m_txvideoram16[m_txoffs]);
 	m_tx_tilemap->mark_tile_dirty(m_txoffs);
 }
 
 WRITE16_MEMBER(twincobr_state::twincobr_bgoffs_w)
 {
-
 	COMBINE_DATA(&m_bgoffs);
 	m_bgoffs %= (m_bgvideoram_size >> 1);
 }
 READ16_MEMBER(twincobr_state::twincobr_bgram_r)
 {
-
 	return m_bgvideoram16[m_bgoffs+m_bg_ram_bank];
 }
 WRITE16_MEMBER(twincobr_state::twincobr_bgram_w)
 {
-
 	COMBINE_DATA(&m_bgvideoram16[m_bgoffs+m_bg_ram_bank]);
 	m_bg_tilemap->mark_tile_dirty((m_bgoffs+m_bg_ram_bank));
 }
 
 WRITE16_MEMBER(twincobr_state::twincobr_fgoffs_w)
 {
-
 	COMBINE_DATA(&m_fgoffs);
 	m_fgoffs %= m_fgvideoram_size;
 }
 READ16_MEMBER(twincobr_state::twincobr_fgram_r)
 {
-
 	return m_fgvideoram16[m_fgoffs];
 }
 WRITE16_MEMBER(twincobr_state::twincobr_fgram_w)
 {
-
 	COMBINE_DATA(&m_fgvideoram16[m_fgoffs]);
 	m_fg_tilemap->mark_tile_dirty(m_fgoffs);
 }
@@ -234,7 +221,6 @@ WRITE16_MEMBER(twincobr_state::twincobr_fgram_w)
 
 WRITE16_MEMBER(twincobr_state::twincobr_txscroll_w)
 {
-
 	if (offset == 0) {
 		COMBINE_DATA(&m_txscrollx);
 		m_tx_tilemap->set_scrollx(0,(m_txscrollx+m_scroll_x) & 0x1ff);
@@ -247,7 +233,6 @@ WRITE16_MEMBER(twincobr_state::twincobr_txscroll_w)
 
 WRITE16_MEMBER(twincobr_state::twincobr_bgscroll_w)
 {
-
 	if (offset == 0) {
 		COMBINE_DATA(&m_bgscrollx);
 		m_bg_tilemap->set_scrollx(0,(m_bgscrollx+m_scroll_x) & 0x1ff);
@@ -260,7 +245,6 @@ WRITE16_MEMBER(twincobr_state::twincobr_bgscroll_w)
 
 WRITE16_MEMBER(twincobr_state::twincobr_fgscroll_w)
 {
-
 	if (offset == 0) {
 		COMBINE_DATA(&m_fgscrollx);
 		m_fg_tilemap->set_scrollx(0,(m_fgscrollx+m_scroll_x) & 0x1ff);

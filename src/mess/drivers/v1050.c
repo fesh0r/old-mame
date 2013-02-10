@@ -95,6 +95,7 @@ Notes:
 
     TODO:
 
+    - floppy broken
     - write to banked RAM at 0x0000-0x1fff when ROM is active
     - real keyboard w/i8049
     - keyboard beeper (NE555 wired in strange mix of astable/monostable modes)
@@ -981,15 +982,13 @@ LEGACY_FLOPPY_OPTIONS_END
 
 // Machine Initialization
 
-static IRQ_CALLBACK( v1050_int_ack )
+IRQ_CALLBACK_MEMBER(v1050_state::v1050_int_ack)
 {
-	v1050_state *state = device->machine().driver_data<v1050_state>();
-
-	UINT8 vector = 0xf0 | (state->m_pic->a_r() << 1);
+	UINT8 vector = 0xf0 | (m_pic->a_r() << 1);
 
 	//logerror("Interrupt Acknowledge Vector: %02x\n", vector);
 
-	state->m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 
 	return vector;
 }
@@ -1010,14 +1009,14 @@ void v1050_state::machine_start()
 	m_rtc->cs1_w(1);
 
 	// set CPU interrupt callback
-	m_maincpu->set_irq_acknowledge_callback(v1050_int_ack);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(v1050_state::v1050_int_ack),this));
 
 	// setup memory banking
 	UINT8 *ram = machine().device<ram_device>(RAM_TAG)->pointer();
 
 	membank("bank1")->configure_entries(0, 2, ram, 0x10000);
 	membank("bank1")->configure_entry(2, ram + 0x1c000);
-	membank("bank1")->configure_entry(3, memregion(Z80_TAG)->base());
+	membank("bank1")->configure_entry(3, m_rom->base());
 
 	program.install_readwrite_bank(0x2000, 0x3fff, "bank2");
 	membank("bank2")->configure_entries(0, 2, ram + 0x2000, 0x10000);
@@ -1131,4 +1130,4 @@ ROM_END
 // System Drivers
 
 //    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                     FULLNAME        FLAGS
-COMP( 1983, v1050,  0,      0,      v1050,  v1050, driver_device,   0,      "Visual Technology Inc",    "Visual 1050",  GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE | GAME_NO_SOUND | GAME_IMPERFECT_KEYBOARD )
+COMP( 1983, v1050,  0,      0,      v1050,  v1050, driver_device,   0,      "Visual Technology Inc",    "Visual 1050", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE | GAME_NO_SOUND | GAME_IMPERFECT_KEYBOARD )

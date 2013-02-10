@@ -71,19 +71,15 @@ extern const device_type GOTTLIEB_SOUND_REV2;
 //**************************************************************************
 
 #define MCFG_GOTTLIEB_SOUND_R1_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV1, 0) \
-
+	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV1, 0)
 #define MCFG_GOTTLIEB_SOUND_R1_ADD_VOTRAX(_tag) \
-	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV1_WITH_VOTRAX, 0) \
-
+	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV1_WITH_VOTRAX, 0)
 
 #define MCFG_GOTTLIEB_SOUND_R2_ADD(_tag) \
-	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV2, 0) \
-
+	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV2, 0)
 #define MCFG_GOTTLIEB_SOUND_R2_ADD_COBRAM3(_tag) \
 	MCFG_DEVICE_ADD(_tag, GOTTLIEB_SOUND_REV2, 0) \
-	gottlieb_sound_r2_device::static_enable_cobram3_mods(*device); \
-
+	gottlieb_sound_r2_device::static_enable_cobram3_mods(*device);
 
 
 //**************************************************************************
@@ -318,6 +314,11 @@ public:
 	TIMER_CALLBACK_MEMBER(laserdisc_bit_off_callback);
 	TIMER_CALLBACK_MEMBER(laserdisc_bit_callback);
 	TIMER_CALLBACK_MEMBER(nmi_clear);
+	void draw_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	inline void audio_end_state();
+	void audio_process_clock(int logit);
+	void audio_handle_zero_crossing(attotime zerotime, int logit);
+	void laserdisc_audio_process(laserdisc_device &device, int samplerate, int samples, const INT16 *ch0, const INT16 *ch1);
 };
 
 /*----------- defined in audio/gottlieb.c -----------*/

@@ -150,10 +150,10 @@ reg: 0->1 (main->2nd) /     : (1->0) 2nd->main :
 
 
 #if 0
-static int gsword_coins_in(void)
+int ::gsword_coins_in(void)
 {
 	/* emulate 8741 coin slot */
-	if (machine.root_device().ioport("IN4")->read() & 0xc0)
+	if (machine().root_device().ioport("IN4")->read() & 0xc0)
 	{
 		logerror("Coin In\n");
 		return 0x80;
@@ -249,7 +249,6 @@ MACHINE_RESET_MEMBER(gsword_state,josvolly)
 
 INTERRUPT_GEN_MEMBER(gsword_state::gsword_snd_interrupt)
 {
-
 	if(m_nmi_enable)
 		device.execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }

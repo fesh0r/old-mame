@@ -616,50 +616,49 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(ide_interrupt);
 };
 
-
+/*
 static void taitotz_exit(running_machine &machine)
 {
-	/*
-	taitotz_state *state = machine.driver_data<taitotz_state>();
 
-	FILE *file;
-	int i;
+    taitotz_state *state = machine.driver_data<taitotz_state>();
 
-	file = fopen("screen_ram.bin","wb");
-	for (i=0; i < 0x200000; i++)
-	{
-	    fputc((UINT8)(state->m_screen_ram[i] >> 24), file);
-	    fputc((UINT8)(state->m_screen_ram[i] >> 16), file);
-	    fputc((UINT8)(state->m_screen_ram[i] >> 8), file);
-	    fputc((UINT8)(state->m_screen_ram[i] >> 0), file);
-	}
-	fclose(file);
+    FILE *file;
+    int i;
 
-	file = fopen("frame_ram.bin","wb");
-	for (i=0; i < 0x80000; i++)
-	{
-	    fputc((UINT8)(state->m_frame_ram[i] >> 24), file);
-	    fputc((UINT8)(state->m_frame_ram[i] >> 16), file);
-	    fputc((UINT8)(state->m_frame_ram[i] >> 8), file);
-	    fputc((UINT8)(state->m_frame_ram[i] >> 0), file);
-	}
-	fclose(file);
+    file = fopen("screen_ram.bin","wb");
+    for (i=0; i < 0x200000; i++)
+    {
+        fputc((UINT8)(state->m_screen_ram[i] >> 24), file);
+        fputc((UINT8)(state->m_screen_ram[i] >> 16), file);
+        fputc((UINT8)(state->m_screen_ram[i] >> 8), file);
+        fputc((UINT8)(state->m_screen_ram[i] >> 0), file);
+    }
+    fclose(file);
 
-	file = fopen("texture_ram.bin","wb");
-	for (i=0; i < 0x800000; i++)
-	{
-	    fputc((UINT8)(state->m_texture_ram[i] >> 24), file);
-	    fputc((UINT8)(state->m_texture_ram[i] >> 16), file);
-	    fputc((UINT8)(state->m_texture_ram[i] >> 8), file);
-	    fputc((UINT8)(state->m_texture_ram[i] >> 0), file);
-	}
-	fclose(file);
-	*/
+    file = fopen("frame_ram.bin","wb");
+    for (i=0; i < 0x80000; i++)
+    {
+        fputc((UINT8)(state->m_frame_ram[i] >> 24), file);
+        fputc((UINT8)(state->m_frame_ram[i] >> 16), file);
+        fputc((UINT8)(state->m_frame_ram[i] >> 8), file);
+        fputc((UINT8)(state->m_frame_ram[i] >> 0), file);
+    }
+    fclose(file);
+
+    file = fopen("texture_ram.bin","wb");
+    for (i=0; i < 0x800000; i++)
+    {
+        fputc((UINT8)(state->m_texture_ram[i] >> 24), file);
+        fputc((UINT8)(state->m_texture_ram[i] >> 16), file);
+        fputc((UINT8)(state->m_texture_ram[i] >> 8), file);
+        fputc((UINT8)(state->m_texture_ram[i] >> 0), file);
+    }
+    fclose(file);
+
 }
-
+*/
 void taitotz_state::video_start()
 {
-
 	int width = machine().primary_screen->width();
 	int height = machine().primary_screen->height();
 
@@ -670,7 +669,7 @@ void taitotz_state::video_start()
 	/* create renderer */
 	m_renderer = auto_alloc(machine(), taitotz_renderer(machine(), width, height, m_texture_ram));
 
-	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(taitotz_exit), &machine()));
+	//machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(taitotz_exit), &machine()));
 }
 
 static const float dot3_tex_table[32] =
@@ -1371,7 +1370,6 @@ void taitotz_renderer::render_displaylist(running_machine &machine, const rectan
 
 UINT32 taitotz_state::screen_update_taitotz(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-
 	bitmap.fill(0x000000, cliprect);
 	m_renderer->set_fb(&bitmap);
 	m_renderer->render_displaylist(machine(), cliprect);
@@ -1818,11 +1816,9 @@ WRITE64_MEMBER(taitotz_state::ieee1394_w)
 	//logerror("ieee1394_w: %08X, %08X%08X, %08X%08X\n", offset, (UINT32)(data >> 32), (UINT32)(data), (UINT32)(mem_mask >> 32), (UINT32)(mem_mask));
 	if (ACCESSING_BITS_32_63)
 	{
-
 	}
 	if (ACCESSING_BITS_0_31)
 	{
-
 	}
 }
 
@@ -2530,7 +2526,6 @@ void taitotz_state::machine_reset()
 
 void taitotz_state::machine_start()
 {
-
 	/* set conservative DRC options */
 	ppcdrc_set_options(machine().device("maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
 
@@ -2629,7 +2624,6 @@ static const char RAIZPIN_HDD_SERIAL[] =            // "691934013492        "
 
 DRIVER_INIT_MEMBER(taitotz_state,landhigh)
 {
-
 	init_taitotz_152(machine());
 
 	m_hdd_serial_number = LANDHIGH_HDD_SERIAL;
@@ -2641,7 +2635,6 @@ DRIVER_INIT_MEMBER(taitotz_state,landhigh)
 
 DRIVER_INIT_MEMBER(taitotz_state,batlgear)
 {
-
 	init_taitotz_111a(machine());
 
 	// unknown, not used by BIOS 1.11a
@@ -2654,7 +2647,6 @@ DRIVER_INIT_MEMBER(taitotz_state,batlgear)
 
 DRIVER_INIT_MEMBER(taitotz_state,batlgr2)
 {
-
 	init_taitotz_152(machine());
 
 	m_hdd_serial_number = BATLGR2_HDD_SERIAL;
@@ -2666,7 +2658,6 @@ DRIVER_INIT_MEMBER(taitotz_state,batlgr2)
 
 DRIVER_INIT_MEMBER(taitotz_state,batlgr2a)
 {
-
 	init_taitotz_152(machine());
 
 	m_hdd_serial_number = BATLGR2A_HDD_SERIAL;
@@ -2678,7 +2669,6 @@ DRIVER_INIT_MEMBER(taitotz_state,batlgr2a)
 
 DRIVER_INIT_MEMBER(taitotz_state,pwrshovl)
 {
-
 	init_taitotz_111a(machine());
 
 	// unknown, not used by BIOS 1.11a

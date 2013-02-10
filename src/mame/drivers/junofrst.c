@@ -142,7 +142,6 @@ public:
 
 WRITE8_MEMBER(junofrst_state::junofrst_blitter_w)
 {
-
 	m_blitterdata[offset] = data;
 
 	/* blitter is triggered by $8073 */
@@ -231,15 +230,13 @@ WRITE8_MEMBER(junofrst_state::junofrst_portB_w)
 			C += 220000;    /* 220000pF = 0.22uF */
 
 		data >>= 2;
-		filter_rc_set_RC(filter[i], FLT_RC_LOWPASS, 1000, 2200, 200, CAP_P(C));
+		dynamic_cast<filter_rc_device*>(filter[i])->filter_rc_set_RC(FLT_RC_LOWPASS, 1000, 2200, 200, CAP_P(C));
 	}
 }
 
 
 WRITE8_MEMBER(junofrst_state::junofrst_sh_irqtrigger_w)
 {
-
-
 	if (m_last_irq == 0 && data == 1)
 	{
 		/* setting bit 0 low then high triggers IRQ on the sound CPU */
@@ -252,15 +249,12 @@ WRITE8_MEMBER(junofrst_state::junofrst_sh_irqtrigger_w)
 
 WRITE8_MEMBER(junofrst_state::junofrst_i8039_irq_w)
 {
-
 	m_i8039->execute().set_input_line(0, ASSERT_LINE);
 }
 
 
 WRITE8_MEMBER(junofrst_state::i8039_irqen_and_status_w)
 {
-
-
 	if ((data & 0x80) == 0)
 		m_i8039->execute().set_input_line(0, CLEAR_LINE);
 	m_i8039_status = (data & 0x70) >> 4;
@@ -269,7 +263,6 @@ WRITE8_MEMBER(junofrst_state::i8039_irqen_and_status_w)
 
 WRITE8_MEMBER(junofrst_state::flip_screen_w)
 {
-
 	tutankhm_flip_screen_x_w(space, 0, data);
 	tutankhm_flip_screen_y_w(space, 0, data);
 }
@@ -282,8 +275,6 @@ WRITE8_MEMBER(junofrst_state::junofrst_coin_counter_w)
 
 WRITE8_MEMBER(junofrst_state::junofrst_irq_enable_w)
 {
-
-
 	m_irq_enable = data & 1;
 	if (!m_irq_enable)
 		m_maincpu->set_input_line(0, CLEAR_LINE);
@@ -389,7 +380,6 @@ static const ay8910_interface ay8910_config =
 
 MACHINE_START_MEMBER(junofrst_state,junofrst)
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_i8039 = machine().device("mcu");
 	m_soundcpu = machine().device<cpu_device>("audiocpu");
@@ -408,7 +398,6 @@ MACHINE_START_MEMBER(junofrst_state,junofrst)
 
 MACHINE_RESET_MEMBER(junofrst_state,junofrst)
 {
-
 	m_i8039_status = 0;
 	m_last_irq = 0;
 	m_flip_x = 0;
@@ -421,7 +410,6 @@ MACHINE_RESET_MEMBER(junofrst_state,junofrst)
 
 INTERRUPT_GEN_MEMBER(junofrst_state::junofrst_30hz_irq)
 {
-
 	/* flip flops cause the interrupt to be signalled every other frame */
 	m_irq_toggle ^= 1;
 	if (m_irq_toggle && m_irq_enable)
@@ -465,11 +453,11 @@ static MACHINE_CONFIG_START( junofrst, junofrst_state )
 	MCFG_DAC_ADD("dac")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MCFG_SOUND_ADD("filter.0.0", FILTER_RC, 0)
+	MCFG_FILTER_RC_ADD("filter.0.0", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MCFG_SOUND_ADD("filter.0.1", FILTER_RC, 0)
+	MCFG_FILTER_RC_ADD("filter.0.1", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MCFG_SOUND_ADD("filter.0.2", FILTER_RC, 0)
+	MCFG_FILTER_RC_ADD("filter.0.2", 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_CONFIG_END
 

@@ -27,7 +27,7 @@
         bit 1 - set for scanline interrupt
         bit 0 - set for external interrupt
 
-    C025 - KEYMODREG
+    C025 - KEYMODREG (comes from ?)
         bit 7 - option key pressed
         bit 6 - command key presssed
         bit 5 - modified latch
@@ -37,7 +37,7 @@
         bit 1 - control key pressed
         bit 0 - shift key pressed
 
-    C027 - KMSTATUS
+    C027 - KMSTATUS (GLU system status)
         bit 7 - set if mouse register full
         bit 6 - mouse interupt enable flag
         bit 5 - set if data register full
@@ -261,7 +261,7 @@ void apple2gs_add_irq(running_machine &machine, UINT16 irq_mask)
 			logerror("apple2gs_add_irq(): adding %s\n", apple2gs_irq_name(irq_mask));
 
 		state->m_pending_irqs |= irq_mask;
-		machine.device("maincpu")->execute().set_input_line(G65816_LINE_IRQ, state->m_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
+		state->m_maincpu->set_input_line(G65816_LINE_IRQ, state->m_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -276,7 +276,7 @@ void apple2gs_remove_irq(running_machine &machine, UINT16 irq_mask)
 			logerror("apple2gs_remove_irq(): removing %s\n", apple2gs_irq_name(irq_mask));
 
 		state->m_pending_irqs &= ~irq_mask;
-		machine.device("maincpu")->execute().set_input_line(G65816_LINE_IRQ, state->m_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
+		state->m_maincpu->set_input_line(G65816_LINE_IRQ, state->m_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -320,7 +320,7 @@ TIMER_CALLBACK_MEMBER(apple2gs_state::apple2gs_qsecond_tick)
  * ----------------------------------------------------------------------- */
 
 
-
+#if !RUN_ADB_MICRO
 static UINT8 adb_read_memory(apple2gs_state *state, UINT32 address)
 {
 	if (address < ARRAY_LENGTH(state->m_adb_memory))
@@ -379,7 +379,6 @@ static void adb_post_response_2(apple2gs_state *state, UINT8 b1, UINT8 b2)
 	b[1] = b2;
 	adb_post_response(state, b, 2);
 }
-
 
 
 static void adb_do_command(apple2gs_state *state)
@@ -473,7 +472,6 @@ static void adb_do_command(apple2gs_state *state)
 }
 
 
-
 UINT8 apple2gs_state::adb_read_datareg()
 {
 	UINT8 result;
@@ -502,7 +500,6 @@ UINT8 apple2gs_state::adb_read_datareg()
 }
 
 
-
 static void adb_write_datareg(running_machine &machine, UINT8 data)
 {
 	apple2gs_state *state = machine.driver_data<apple2gs_state>();
@@ -516,6 +513,7 @@ static void adb_write_datareg(running_machine &machine, UINT8 data)
 			state->m_adb_command_length = 0;
 			state->m_adb_command_pos = 0;
 
+//          printf("ADB command %02x\n", data);
 			switch(data)
 			{
 				case 0x00:  /* ??? */
@@ -537,10 +535,10 @@ static void adb_write_datareg(running_machine &machine, UINT8 data)
 					break;
 
 				case 0x07:  /* synchronize */
-					if (state->memregion("maincpu")->bytes() == 0x40000)    /* HACK */
-						state->m_adb_command_length = 8;
+					if (state->m_is_rom3)
+						state->m_adb_command_length = 8;    // ROM 3 has 8 bytes: mode byte, 3 config bytes, kbd/mouse params, disk eject options
 					else
-						state->m_adb_command_length = 4;
+						state->m_adb_command_length = 4;    // ROM 0/1 has 4 bytes sync
 					break;
 
 				case 0x08:  /* write memory */
@@ -606,6 +604,7 @@ static void adb_write_datareg(running_machine &machine, UINT8 data)
 
 		case ADBSTATE_INCOMMAND:
 			assert(state->m_adb_command_pos < ARRAY_LENGTH(state->m_adb_command_bytes));
+//          printf("ADB param %02x\n", data);
 			state->m_adb_command_bytes[state->m_adb_command_pos++] = data;
 			break;
 
@@ -619,14 +618,12 @@ static void adb_write_datareg(running_machine &machine, UINT8 data)
 		adb_do_command(state);
 }
 
-
 // real rom 3 h/w reads 0x90 when idle, 0x98 when key pressed
 // current MESS reads back 0xb0 when idle
 UINT8 apple2gs_state::adb_read_kmstatus()
 {
 	return m_adb_kmstatus;
 }
-
 
 
 static void adb_write_kmstatus(apple2gs_state *state, UINT8 data)
@@ -671,7 +668,6 @@ static UINT8 adb_read_mousedata(running_machine &machine)
 }
 
 
-
 static INT8 seven_bit_diff(UINT8 v1, UINT8 v2)
 {
 	v1 -= v2;
@@ -692,8 +688,8 @@ static void adb_check_mouse(running_machine &machine)
 	/* read mouse values */
 	if ((state->m_adb_kmstatus & 0x80) == 0x00)
 	{
-		new_mouse_x = machine.root_device().ioport("adb_mouse_x")->read();
-		new_mouse_y = machine.root_device().ioport("adb_mouse_y")->read();
+		new_mouse_x = state->m_adb_mousex->read();
+		new_mouse_y = state->m_adb_mousey->read();
 
 		if ((state->m_mouse_x != new_mouse_x) || (state->m_mouse_y != new_mouse_y))
 		{
@@ -709,7 +705,7 @@ static void adb_check_mouse(running_machine &machine)
 		}
 	}
 }
-
+#endif
 
 
 static void apple2gs_set_scanint(running_machine &machine, UINT8 data)
@@ -775,7 +771,9 @@ TIMER_CALLBACK_MEMBER(apple2gs_state::apple2gs_scanline_tick)
 	/* check the mouse status */
 	if ((scanline % 8) == 0)
 	{
+		#if !RUN_ADB_MICRO
 		adb_check_mouse(machine());
+		#endif
 
 		/* call Apple II interrupt handler */
 		if ((machine().primary_screen->vpos() % 8) == 7)
@@ -921,6 +919,16 @@ READ8_MEMBER( apple2gs_state::apple2gs_c0xx_r )
 
 	switch(offset)
 	{
+		#if RUN_ADB_MICRO
+		case 0x00:  /* C000 - KEYDATA */
+			result = keyglu_816_read(GLU_C000);
+			break;
+
+		case 0x10:  /* C010 - KBDSTRB */
+			result = keyglu_816_read(GLU_C010);
+			break;
+		#endif
+
 		case 0x19:  /* C019 - RDVBLBAR */
 			result = (space.machine().primary_screen->vpos() >= (192+BORDER_TOP)) ? 0x80 : 0x00;
 			break;
@@ -934,19 +942,35 @@ READ8_MEMBER( apple2gs_state::apple2gs_c0xx_r )
 			break;
 
 		case 0x24:  /* C024 - MOUSEDATA */
+			#if RUN_ADB_MICRO
+			result = keyglu_816_read(GLU_MOUSEX);
+			#else
 			result = adb_read_mousedata(space.machine());
+			#endif
 			break;
 
 		case 0x25:  /* C025 - KEYMODREG */
+			#if RUN_ADB_MICRO
+			result = keyglu_816_read(GLU_KEYMOD);
+			#else
 			result = AY3600_keymod_r(space.machine());
+			#endif
 			break;
 
 		case 0x26:  /* C026 - DATAREG */
+			#if RUN_ADB_MICRO
+			result = keyglu_816_read(GLU_DATA);
+			#else
 			result = adb_read_datareg();
+			#endif
 			break;
 
 		case 0x27:  /* C027 - KMSTATUS */
+			#if RUN_ADB_MICRO
+			result = keyglu_816_read(GLU_SYSSTAT);
+			#else
 			result = adb_read_kmstatus();
+			#endif
 			break;
 
 		case 0x29:  /* C029 - NEWVIDEO */
@@ -1023,20 +1047,20 @@ READ8_MEMBER( apple2gs_state::apple2gs_c0xx_r )
 
 		case 0x68:  /* C068 - STATEREG */
 			result = ((m_flags & VAR_ALTZP) ? 0x80 : 0x00)
-				|   ((m_flags & VAR_PAGE2)  ? 0x40 : 0x00)
-				|   ((m_flags & VAR_RAMRD)  ? 0x20 : 0x00)
-				|   ((m_flags & VAR_RAMWRT) ? 0x10 : 0x00)
-				|   ((m_flags & VAR_LCRAM)  ? 0x00 : 0x08)
-				|   ((m_flags & VAR_LCRAM2) ? 0x04 : 0x00)
-				|   ((m_flags & VAR_INTCXROM)? 0x01 : 0x00);
+			|   ((m_flags & VAR_PAGE2)  ? 0x40 : 0x00)
+			|   ((m_flags & VAR_RAMRD)  ? 0x20 : 0x00)
+			|   ((m_flags & VAR_RAMWRT) ? 0x10 : 0x00)
+			|   ((m_flags & VAR_LCRAM)  ? 0x00 : 0x08)
+			|   ((m_flags & VAR_LCRAM2) ? 0x04 : 0x00)
+			|   ((m_flags & VAR_INTCXROM)? 0x01 : 0x00);
 			break;
 
 		case 0x71: case 0x72: case 0x73:
 		case 0x74: case 0x75: case 0x76: case 0x77:
 		case 0x78: case 0x79: case 0x7a: case 0x7b:
 		case 0x7c: case 0x7d: case 0x7e: case 0x7f:
-			offset |= (space.machine().root_device().memregion("maincpu")->bytes() - 1) & ~0x3FFF;
-			result = space.machine().root_device().memregion("maincpu")->base()[offset];
+			offset |= (memregion("maincpu")->bytes() - 1) & ~0x3FFF;
+			result = m_rom[offset];
 			break;
 
 		case 0x21:  /* C021 - MONOCOLOR */
@@ -1071,6 +1095,7 @@ READ8_MEMBER( apple2gs_state::apple2gs_c0xx_r )
 
 	if (LOG_C0XX)
 		logerror("apple2gs_c0xx_r(): offset=0x%02x result=0x%02x\n", offset, result);
+
 	return result;
 }
 
@@ -1087,6 +1112,11 @@ WRITE8_MEMBER( apple2gs_state::apple2gs_c0xx_w )
 
 	switch(offset)
 	{
+		#if RUN_ADB_MICRO
+		case 0x10:
+			break;
+		#endif
+
 		case 0x22:  /* C022 - TBCOLOR */
 			m_fgcolor = (data >> 4) & 0x0F;
 			m_bgcolor = (data >> 0) & 0x0F;
@@ -1107,11 +1137,19 @@ WRITE8_MEMBER( apple2gs_state::apple2gs_c0xx_w )
 			break;
 
 		case 0x26:  /* C026 - DATAREG */
+			#if RUN_ADB_MICRO
+			keyglu_816_write(GLU_COMMAND, data);
+			#else
 			adb_write_datareg(space.machine(), data);
+			#endif
 			break;
 
 		case 0x27:  /* C027 - KMSTATUS */
+			#if RUN_ADB_MICRO
+			keyglu_816_write(GLU_SYSSTAT, data);
+			#else
 			adb_write_kmstatus(this, data);
+			#endif
 			break;
 
 		case 0x29:  /* C029 - NEWVIDEO */
@@ -1124,7 +1162,7 @@ WRITE8_MEMBER( apple2gs_state::apple2gs_c0xx_w )
 
 		case 0x2D:  /* C02D - SLTROMSEL */
 			m_sltromsel = data;
-			apple2_update_memory(space.machine());
+			apple2_update_memory();
 			break;
 
 		case 0x31:  /* C031 - DISKREG */
@@ -1150,13 +1188,13 @@ WRITE8_MEMBER( apple2gs_state::apple2gs_c0xx_w )
 			if (m_shadow != data)
 			{
 				m_shadow = data;
-				apple2_update_memory(space.machine());
+				apple2_update_memory();
 			}
 			break;
 
 		case 0x36:  /* C036 - CYAREG */
 			m_cyareg = data & ~0x20;
-			space.machine().device("maincpu")->set_unscaled_clock((data & 0x80) ? APPLE2GS_14M/5 : APPLE2GS_7M/7);
+			m_maincpu->set_unscaled_clock((data & 0x80) ? APPLE2GS_14M/5 : APPLE2GS_7M/7);
 			break;
 
 		case 0x38:  /* C038 - SCCBREG */
@@ -1190,14 +1228,14 @@ WRITE8_MEMBER( apple2gs_state::apple2gs_c0xx_w )
 
 		case 0x68:  /* C068 - STATEREG */
 			apple2_setvar(space.machine(),
-				((data & 0x80) ? VAR_ALTZP : 0) |
-				((data & 0x40) ? VAR_PAGE2 : 0) |
-				((data & 0x20) ? VAR_RAMRD : 0) |
-				((data & 0x10) ? VAR_RAMWRT : 0) |
-				((data & 0x08) ? 0 : VAR_LCRAM) |
-				((data & 0x04) ? VAR_LCRAM2 : 0) |
-				((data & 0x01) ? VAR_INTCXROM : 0),
-				VAR_ALTZP | VAR_PAGE2 | VAR_RAMRD | VAR_RAMWRT | VAR_LCRAM | VAR_LCRAM2 | VAR_INTCXROM);
+							((data & 0x80) ? VAR_ALTZP : 0) |
+							((data & 0x40) ? VAR_PAGE2 : 0) |
+							((data & 0x20) ? VAR_RAMRD : 0) |
+							((data & 0x10) ? VAR_RAMWRT : 0) |
+							((data & 0x08) ? 0 : VAR_LCRAM) |
+							((data & 0x04) ? VAR_LCRAM2 : 0) |
+							((data & 0x01) ? VAR_INTCXROM : 0),
+							VAR_ALTZP | VAR_PAGE2 | VAR_RAMRD | VAR_RAMWRT | VAR_LCRAM | VAR_LCRAM2 | VAR_INTCXROM);
 			break;
 
 		// slot 6 registers should go to applefdc if slot 6 not "Your Card"
@@ -1526,13 +1564,14 @@ static const apple2_memmap_entry apple2gs_memmap_entries[] =
 
 static UINT8 *apple2gs_getslotmem(running_machine &machine, offs_t address)
 {
+	apple2gs_state *state = machine.driver_data<apple2gs_state>();
 	UINT8 *rom;
 
 	address %= 0x00FFFF;
 	assert(address >= 0xC000);
 	assert(address <= 0xCFFF);
 
-	rom = machine.root_device().memregion("maincpu")->base();
+	rom = state->m_rom;
 	rom += 0x030000 % machine.root_device().memregion("maincpu")->bytes();
 	return &rom[address];
 }
@@ -1551,7 +1590,7 @@ static UINT8 apple2gs_xxCxxx_r(address_space &space, running_machine &machine, o
 	}
 	else if ((address & 0x000F00) == 0x000000)  // accessing C0xx?
 	{
-		result = state->apple2gs_c0xx_r(machine.device("maincpu")->memory().space(AS_PROGRAM), address, 0);
+		result = state->apple2gs_c0xx_r(state->m_maincpu->space(AS_PROGRAM), address, 0);
 	}
 	else
 	{
@@ -1567,7 +1606,7 @@ static UINT8 apple2gs_xxCxxx_r(address_space &space, running_machine &machine, o
 			{
 				// accessing a slot mapped to internal, let's put back the internal ROM
 				state->m_a2_cnxx_slot = -1;
-				apple2_update_memory(space.machine());
+				state->apple2_update_memory();
 				result = *apple2gs_getslotmem(machine, address);
 			}
 			else
@@ -1578,7 +1617,7 @@ static UINT8 apple2gs_xxCxxx_r(address_space &space, running_machine &machine, o
 					if (slotdevice->take_c800())
 					{
 						state->m_a2_cnxx_slot = slot;
-						apple2_update_memory(space.machine());
+						state->apple2_update_memory();
 					}
 					result = slotdevice->read_cnxx(space, address&0xff);
 				}
@@ -1598,7 +1637,7 @@ static UINT8 apple2gs_xxCxxx_r(address_space &space, running_machine &machine, o
 				if ((address & 0xfff) == 0xfff)
 				{
 					state->m_a2_cnxx_slot = -1;
-					apple2_update_memory(space.machine());
+					state->apple2_update_memory();
 				}
 			}
 
@@ -1633,7 +1672,7 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 		if ((address & 0xfff) == 0xfff)
 		{
 			state->m_a2_cnxx_slot = -1;
-			apple2_update_memory(space.machine());
+			state->apple2_update_memory();
 		}
 	}
 
@@ -1643,7 +1682,7 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 	}
 	else if ((address & 0x000F00) == 0x000000)
 	{
-		state->apple2gs_c0xx_w(machine.device("maincpu")->memory().space(AS_PROGRAM), address, data, 0);
+		state->apple2gs_c0xx_w(state->m_maincpu->space(AS_PROGRAM), address, data, 0);
 	}
 	else
 	{
@@ -1660,7 +1699,7 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 			{
 				// accessing a slot mapped to internal, let's put back the internal ROM
 				state->m_a2_cnxx_slot = -1;
-				apple2_update_memory(space.machine());
+				state->apple2_update_memory();
 				*apple2gs_getslotmem(machine, address) = data;
 			}
 			else
@@ -1671,7 +1710,7 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 					if (slotdevice->take_c800())
 					{
 						state->m_a2_cnxx_slot = slot;
-						apple2_update_memory(space.machine());
+						state->apple2_update_memory();
 					}
 					slotdevice->write_cnxx(space, address&0xff, data);
 				}
@@ -1686,7 +1725,7 @@ static void apple2gs_xxCxxx_w(address_space &space, running_machine &machine, of
 			if ((address & 0xfff) == 0xfff)
 			{
 				state->m_a2_cnxx_slot = -1;
-				apple2_update_memory(space.machine());
+				state->apple2_update_memory();
 			}
 
 			if ( state->m_a2_cnxx_slot >= 0 && state->m_a2_cnxx_slot <= 7 )
@@ -1793,7 +1832,7 @@ static READ8_HANDLER(apple2gs_bank_echo_r)
 static void apple2gs_setup_memory(running_machine &machine)
 {
 	apple2gs_state *state = machine.driver_data<apple2gs_state>();
-	address_space& space = machine.device("maincpu")->memory().space(AS_PROGRAM);
+	address_space& space = state->m_maincpu->space(AS_PROGRAM);
 	offs_t begin, end;
 	apple2_memmap_config cfg;
 
@@ -1837,10 +1876,10 @@ static void apple2gs_setup_memory(running_machine &machine)
 	state->membank("bank2")->set_base(state->m_slowmem);
 
 	/* install alternate ROM bank */
-	begin = 0x1000000 - machine.root_device().memregion("maincpu")->bytes();
+	begin = 0x1000000 - state->memregion("maincpu")->bytes();
 	end = 0xffffff;
 	space.install_read_bank(begin, end, "bank3");
-	state->membank("bank3")->set_base(machine.root_device().memregion("maincpu")->base());
+	state->membank("bank3")->set_base(state->m_rom);
 
 	/* install new xxC000-xxCFFF handlers */
 	space.install_legacy_read_handler(0x00c000, 0x00cfff, FUNC(apple2gs_00Cxxx_r));
@@ -1865,7 +1904,7 @@ static void apple2gs_setup_memory(running_machine &machine)
 	cfg.memmap = apple2gs_memmap_entries;
 	cfg.auxmem = state->m_slowmem;
 	cfg.auxmem_length = 0x20000;
-	apple2_setup_memory(machine, &cfg);
+	state->apple2_setup_memory(&cfg);
 }
 
 
@@ -1881,8 +1920,10 @@ READ8_MEMBER(apple2gs_state::apple2gs_read_vector)
 
 MACHINE_RESET_MEMBER(apple2gs_state,apple2gs)
 {
-
 	apple2gs_refresh_delegates();
+
+	// call "base class" machine reset to set up m_rambase and the language card
+	machine_reset();
 
 	m_cur_slot6_image = NULL;
 	m_newvideo = 0x00;
@@ -1898,6 +1939,7 @@ MACHINE_RESET_MEMBER(apple2gs_state,apple2gs)
 	m_mouse_y = 0x00;
 	m_mouse_dx = 0x00;
 	m_mouse_dy = 0x00;
+	#if !RUN_ADB_MICRO
 	m_adb_state = ADBSTATE_IDLE;
 	m_adb_kmstatus = 0x00;
 	m_adb_command = 0;
@@ -1912,6 +1954,7 @@ MACHINE_RESET_MEMBER(apple2gs_state,apple2gs)
 	memset(m_adb_memory, 0, sizeof(m_adb_memory));
 	m_adb_address_keyboard = 2;
 	m_adb_address_mouse = 3;
+	#endif
 
 	/* init time */
 	m_clock_data = 0;
@@ -1929,12 +1972,11 @@ MACHINE_RESET_MEMBER(apple2gs_state,apple2gs)
 
 MACHINE_START_MEMBER(apple2gs_state,apple2gscommon)
 {
-
 	apple2gs_refresh_delegates();
 	apple2_init_common(machine());
 
 	/* set up Apple IIgs vectoring */
-	g65816_set_read_vector_callback(machine().device("maincpu"), read8_delegate(FUNC(apple2gs_state::apple2gs_read_vector),this));
+	g65816_set_read_vector_callback(m_maincpu, read8_delegate(FUNC(apple2gs_state::apple2gs_read_vector),this));
 
 	/* setup globals */
 	m_is_rom3 = true;
@@ -1968,7 +2010,7 @@ MACHINE_START_MEMBER(apple2gs_state,apple2gscommon)
 	state_save_register_item(machine(), "CLKCURTIMEINT", NULL,0, m_clock_curtime_interval);
 //  state_save_register_item(machine(), "CLKMODE", NULL,0, m_clock_mode);
 	save_item(NAME(m_clock_bram));
-
+#if !RUN_ADB_MICRO
 	save_item(NAME(m_adb_memory));
 	save_item(NAME(m_adb_command_bytes));
 	save_item(NAME(m_adb_response_bytes));
@@ -1983,7 +2025,7 @@ MACHINE_START_MEMBER(apple2gs_state,apple2gscommon)
 	state_save_register_item(machine(), "ADB", NULL,0, m_adb_response_pos);
 	state_save_register_item(machine(), "ADB", NULL,0, m_adb_address_keyboard);
 	state_save_register_item(machine(), "ADB", NULL,0, m_adb_address_mouse);
-
+#endif
 	state_save_register_item(machine(), "SNDGLUCTRL", NULL,0, m_sndglu_ctrl);
 	state_save_register_item(machine(), "SNDGLUADDR", NULL,0, m_sndglu_addr);
 	state_save_register_item(machine(), "SNDGLUDUMMYRD", NULL,0, m_sndglu_dummy_read);
@@ -2026,3 +2068,173 @@ void apple2gs_state::apple2gs_refresh_delegates()
 	write_delegates_2gs4000[0] = write8_delegate(FUNC(apple2gs_state::apple2gs_aux4000_w), this);
 	write_delegates_2gs4000[1] = write8_delegate(FUNC(apple2gs_state::apple2gs_main4000_w), this);
 }
+
+/* -----------------------------------------------------------------------
+ * Keym_glu / low-level ADB emulation
+ * ----------------------------------------------------------------------- */
+#if RUN_ADB_MICRO
+UINT8 apple2gs_state::keyglu_mcu_read(UINT8 offset)
+{
+	UINT8 rv = m_glu_regs[offset];
+
+	// the command full flag is cleared by the MCU reading
+	// first the KGS register and then the command register
+	if ((offset == GLU_COMMAND) && (m_glu_mcu_read_kgs))
+	{
+		m_glu_regs[GLU_KG_STATUS] &= ~KGS_COMMAND_FULL;
+		m_glu_mcu_read_kgs = false;
+		printf("MCU reads COMMAND = %02x (drop command full)\n", rv);
+	}
+
+	// prime for the next command register read to clear the command full flag
+	if (offset == GLU_KG_STATUS)
+	{
+		m_glu_mcu_read_kgs = true;
+	}
+
+	return rv;
+}
+
+void  apple2gs_state::keyglu_mcu_write(UINT8 offset, UINT8 data)
+{
+	m_glu_regs[offset] = data;
+
+	switch (offset)
+	{
+		case GLU_MOUSEX:
+		case GLU_MOUSEY:
+			m_glu_regs[GLU_KG_STATUS] |= KGS_MOUSEX_FULL;
+			m_glu_mouse_read_stat = false;  // signal next read will be mouse X
+			break;
+
+		case GLU_ANY_KEY_DOWN:
+			m_glu_regs[GLU_KG_STATUS] |= KGS_ANY_KEY_DOWN | KGS_KEYSTROBE;
+			break;
+
+		case GLU_DATA:
+			m_glu_regs[GLU_KG_STATUS] |= KGS_DATA_FULL;
+			m_glu_816_read_dstat = false;
+			printf("MCU writes %02x to DATA\n", data);
+			break;
+	}
+}
+
+/*
+   Keym_glu registers map as follows on the 816:
+
+   C000           = key data + any key down, clears strobe
+   C010           = clears keystrobe
+
+   C024 MOUSEDATA = reads GLU mouseX and mouseY
+   C025 KEYMODREG = reads GLU keymod register
+   C026 DATAREG   = writes from the 816 go to COMMAND, reads from DATA
+   C027 KMSTATUS  = GLU system status register
+
+*/
+UINT8 apple2gs_state::keyglu_816_read(UINT8 offset)
+{
+	switch (offset)
+	{
+		case GLU_C000:
+			{
+				UINT8 rv;
+				rv = m_glu_regs[GLU_KEY_DATA] & 0x7f;
+				if (m_glu_regs[GLU_KG_STATUS] & KGS_KEYSTROBE)
+				{
+					rv |= 0x80;
+				}
+				return rv;
+			}
+			break;
+
+		case GLU_C010:
+			{
+				UINT8 rv;
+				rv = m_glu_regs[GLU_KEY_DATA] & 0x7f;
+				if (m_glu_regs[GLU_KG_STATUS] & KGS_KEYSTROBE)
+				{
+					rv |= 0x80;
+				}
+				m_glu_regs[GLU_KG_STATUS] &= ~KGS_KEYSTROBE;
+				return rv;
+			}
+			break;
+
+		case GLU_MOUSEX:
+		case GLU_MOUSEY:
+			if (!m_glu_mouse_read_stat)
+			{
+				m_glu_mouse_read_stat = 1;
+				return m_glu_regs[GLU_MOUSEY];
+			}
+			return m_glu_regs[GLU_MOUSEX];
+
+		case GLU_SYSSTAT:
+			// regenerate sysstat bits
+			m_glu_sysstat &= ~0xab; // mask off read/write bits
+			if (m_glu_regs[GLU_KG_STATUS] & KGS_COMMAND_FULL)
+			{
+				m_glu_sysstat |= 1;
+			}
+			if (m_glu_regs[GLU_KG_STATUS] & m_glu_mouse_read_stat)
+			{
+				m_glu_sysstat |= 2;
+			}
+			if (m_glu_regs[GLU_KG_STATUS] & KGS_KEYSTROBE)
+			{
+				m_glu_sysstat |= 8;
+			}
+			if (m_glu_regs[GLU_KG_STATUS] & KGS_DATA_FULL)
+			{
+				m_glu_sysstat |= 0x20;
+			}
+			if (m_glu_regs[GLU_KG_STATUS] & KGS_MOUSEX_FULL)
+			{
+				m_glu_sysstat |= 0x80;
+			}
+			m_glu_816_read_dstat = true;
+//        printf("816 gets %02x in sysstat (data avail %02x)\n", m_glu_sysstat, m_glu_sysstat & 0x20);
+			return m_glu_sysstat;
+
+		case GLU_DATA:
+			if (m_glu_816_read_dstat)
+			{
+				m_glu_816_read_dstat = false;
+				m_glu_regs[GLU_KG_STATUS] &= ~KGS_DATA_FULL;
+				printf("816 reads %02x from DATA\n", m_glu_regs[GLU_DATA]);
+			}
+			return m_glu_regs[GLU_DATA];
+
+		default:
+			return m_glu_regs[offset];
+			break;
+	}
+
+	return 0xff;
+}
+
+void  apple2gs_state::keyglu_816_write(UINT8 offset, UINT8 data)
+{
+	if (offset < GLU_C000)
+	{
+		m_glu_regs[offset&7] = data;
+	}
+
+	switch (offset)
+	{
+		case GLU_C010:
+			m_glu_regs[GLU_KG_STATUS] &= ~KGS_KEYSTROBE;
+			break;
+
+		case GLU_COMMAND:
+			printf("816 sets COMMAND to %02x (raise command full)\n", data);
+			m_glu_regs[GLU_KG_STATUS] |= KGS_COMMAND_FULL;
+			break;
+
+		case GLU_SYSSTAT:
+			m_glu_sysstat &= 0xab;  // clear the non-read-only fields
+			m_glu_sysstat |= (data & ~0xab);
+			break;
+	}
+}
+#endif

@@ -43,6 +43,9 @@
 #include "emu.h"
 #include "machine/isa.h"
 #include "machine/6850acia.h"
+#include "machine/serial.h"
+#include "machine/midiinport.h"
+#include "machine/midioutport.h"
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -102,7 +105,7 @@ public:
 		gf1_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 
 		// current IRQ/DMA channel getters
-		UINT8 gf1_irq() { return m_gf1_irq; }
+		UINT8 gf1_irq() { if(m_gf1_irq != 0) return m_gf1_irq; else return m_midi_irq; }  // workaround for win95 loading dumb values
 		UINT8 midi_irq() { if(m_irq_combine == 0) return m_midi_irq; else return m_gf1_irq; }
 		UINT8 dma_channel1() { return m_dma_channel1; }
 		UINT8 dma_channel2() { if(m_dma_combine == 0) return m_dma_channel2; else return m_dma_channel1; }
@@ -251,6 +254,9 @@ public:
 		DECLARE_WRITE_LINE_MEMBER(drq1_w);
 		DECLARE_WRITE_LINE_MEMBER(drq2_w);
 		DECLARE_WRITE_LINE_MEMBER(nmi_w);
+		DECLARE_WRITE_LINE_MEMBER( midi_rx_w );
+		DECLARE_READ_LINE_MEMBER( rx_in );
+		DECLARE_WRITE_LINE_MEMBER( tx_out );
 
 		// DMA overrides
 		virtual UINT8 dack_r(int line);
@@ -269,9 +275,11 @@ protected:
 private:
 		gf1_device* m_gf1;
 		acia6850_device* m_midi;
+		serial_port_device* m_mdout;
 
 		UINT8 m_irq_status;
 		attotime m_joy_time;
+		int m_rx_state;
 };
 
 // device type definition

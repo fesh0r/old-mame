@@ -94,7 +94,6 @@
 
 INTERRUPT_GEN_MEMBER(mac_state::mac_rbv_vbl)
 {
-
 	m_rbv_regs[2] &= ~0x40; // set vblank signal
 	m_rbv_vbltime = 10;
 
@@ -127,8 +126,8 @@ WRITE32_MEMBER( mac_state::rbv_ramdac_w )
 			// for portrait display, force monochrome by using the blue channel
 			if (m_model != MODEL_MAC_CLASSIC_II)
 			{
-				// Color Classic has no MONTYPE so the safe read gets us 512x384, which is right
-				if (space.machine().root_device().ioport("MONTYPE")->read_safe(2) == 1)
+				// Color Classic has no MONTYPE so the default gets us 512x384, which is right
+				if ((m_montype ? m_montype->read() : 2) == 1)
 				{
 					palette_set_color(space.machine(), m_rbv_clutoffs, MAKE_RGB(m_rbv_colors[2], m_rbv_colors[2], m_rbv_colors[2]));
 					m_rbv_palette[m_rbv_clutoffs] = MAKE_RGB(m_rbv_colors[2], m_rbv_colors[2], m_rbv_colors[2]);
@@ -163,8 +162,8 @@ WRITE32_MEMBER( mac_state::ariel_ramdac_w ) // this is for the "Ariel" style RAM
 			// for portrait display, force monochrome by using the blue channel
 			if (m_model != MODEL_MAC_CLASSIC_II)
 			{
-				// Color Classic has no MONTYPE so the safe read gets us 512x384, which is right
-				if (space.machine().root_device().ioport("MONTYPE")->read_safe(2) == 1)
+				// Color Classic has no MONTYPE so the default gets us 512x384, which is right
+				if ((m_montype ? m_montype->read() : 2) == 1)
 				{
 					palette_set_color(space.machine(), m_rbv_clutoffs, MAKE_RGB(m_rbv_colors[2], m_rbv_colors[2], m_rbv_colors[2]));
 					m_rbv_palette[m_rbv_clutoffs] = MAKE_RGB(m_rbv_colors[2], m_rbv_colors[2], m_rbv_colors[2]);
@@ -196,7 +195,7 @@ READ8_MEMBER( mac_state::mac_sonora_vctl_r )
 	if (offset == 2)
 	{
 //        printf("Sonora: read monitor ID at PC=%x\n", m_maincpu->pc());
-		return (space.machine().root_device().ioport("MONTYPE")->read_safe(6)<<4);
+		return (m_montype->read_safe(6)<<4);
 	}
 
 	return m_sonora_vctl[offset];
@@ -252,7 +251,7 @@ READ8_MEMBER ( mac_state::mac_rbv_r )
 		if (offset == 0x10)
 		{
 			data &= ~0x38;
-			data |= (space.machine().root_device().ioport("MONTYPE")->read_safe(2)<<3);
+			data |= ((m_montype ? m_montype->read() : 2)<<3);
 //            printf("rbv_r montype: %02x (PC %x)\n", data, space.cpu->safe_pc());
 		}
 

@@ -194,6 +194,8 @@ public:
 	void screen_eof_crystal(screen_device &screen, bool state);
 	INTERRUPT_GEN_MEMBER(crystal_interrupt);
 	TIMER_CALLBACK_MEMBER(Timercb);
+	IRQ_CALLBACK_MEMBER(icallback);
+	void crystal_banksw_postload();
 };
 
 static void IntReq( running_machine &machine, int num )
@@ -216,7 +218,6 @@ static void IntReq( running_machine &machine, int num )
 
 READ32_MEMBER(crystal_state::FlipCount_r)
 {
-
 #ifdef IDLE_LOOP_SPEEDUP
 	UINT32 IntPend = space.read_dword(0x01800c0c);
 	m_FlipCntRead++;
@@ -228,7 +229,6 @@ READ32_MEMBER(crystal_state::FlipCount_r)
 
 WRITE32_MEMBER(crystal_state::FlipCount_w)
 {
-
 	if (mem_mask & 0x00ff0000)
 	{
 		int fc = (data >> 16) & 0xff;
@@ -241,7 +241,6 @@ WRITE32_MEMBER(crystal_state::FlipCount_w)
 
 READ32_MEMBER(crystal_state::Input_r)
 {
-
 	if (offset == 0)
 		return ioport("P1_P2")->read();
 	else if (offset == 1)
@@ -274,10 +273,9 @@ WRITE32_MEMBER(crystal_state::IntAck_w)
 		m_IntHigh = (data >> 8) & 7;
 }
 
-static IRQ_CALLBACK( icallback )
+IRQ_CALLBACK_MEMBER(crystal_state::icallback)
 {
-	crystal_state *state = device->machine().driver_data<crystal_state>();
-	address_space &space = device->memory().space(AS_PROGRAM);
+	address_space &space = device.memory().space(AS_PROGRAM);
 	UINT32 IntPend = space.read_dword(0x01800c0c);
 	int i;
 
@@ -285,7 +283,7 @@ static IRQ_CALLBACK( icallback )
 	{
 		if (BIT(IntPend, i))
 		{
-			return (state->m_IntHigh << 5) | i;
+			return (m_IntHigh << 5) | i;
 		}
 	}
 	return 0;       //This should never happen
@@ -293,7 +291,6 @@ static IRQ_CALLBACK( icallback )
 
 WRITE32_MEMBER(crystal_state::Banksw_w)
 {
-
 	m_Bank = (data >> 1) & 7;
 	if (m_Bank <= 2)
 		membank("bank1")->set_base(machine().root_device().memregion("user1")->base() + m_Bank * 0x1000000);
@@ -372,7 +369,6 @@ READ32_MEMBER(crystal_state::Timer3_r)
 
 READ32_MEMBER(crystal_state::FlashCmd_r)
 {
-
 	if ((m_FlashCmd & 0xff) == 0xff)
 	{
 		if (m_Bank <= 2)
@@ -569,14 +565,12 @@ loop:
 #endif
 }
 
-static void crystal_banksw_postload(running_machine &machine)
+void crystal_state::crystal_banksw_postload()
 {
-	crystal_state *state = machine.driver_data<crystal_state>();
-
-	if (state->m_Bank <= 2)
-		state->membank("bank1")->set_base(state->memregion("user1")->base() + state->m_Bank * 0x1000000);
+	if (m_Bank <= 2)
+		membank("bank1")->set_base(memregion("user1")->base() + m_Bank * 0x1000000);
 	else
-		state->membank("bank1")->set_base(state->memregion("user2")->base());
+		membank("bank1")->set_base(memregion("user2")->base());
 }
 
 void crystal_state::machine_start()
@@ -587,7 +581,7 @@ void crystal_state::machine_start()
 	m_ds1302 = machine().device<ds1302_device>("rtc");
 	m_vr0video = machine().device("vr0");
 
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(icallback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(crystal_state::icallback),this));
 	for (i = 0; i < 4; i++)
 		m_Timer[i] = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(crystal_state::Timercb),this), (void*)(FPTR)i);
 
@@ -605,7 +599,7 @@ void crystal_state::machine_start()
 	save_item(NAME(m_PIO));
 	save_item(NAME(m_DMActrl));
 	save_item(NAME(m_OldPort4));
-	machine().save().register_postload(save_prepost_delegate(FUNC(crystal_banksw_postload), &machine()));
+	machine().save().register_postload(save_prepost_delegate(FUNC(crystal_state::crystal_banksw_postload), this));
 }
 
 void crystal_state::machine_reset()
@@ -616,7 +610,7 @@ void crystal_state::machine_reset()
 	memset(m_vidregs, 0, 0x10000);
 	m_FlipCount = 0;
 	m_IntHigh = 0;
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(icallback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(crystal_state::icallback),this));
 	m_Bank = 0;
 	membank("bank1")->set_base(memregion("user1")->base() + 0);
 	m_FlashCmd = 0xff;

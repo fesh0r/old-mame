@@ -14,7 +14,7 @@
 #include "machine/6821pia.h"
 #include "machine/mc6846.h"
 #include "machine/6850acia.h"
-#include "machine/6551acia.h"
+#include "machine/mos6551.h"
 #include "sound/dac.h"
 #include "audio/mea8000.h"
 #include "machine/ctronics.h"
@@ -27,6 +27,17 @@
 #include "formats/thom_dsk.h"
 #include "machine/thomflop.h"
 
+
+class thomson_state : public driver_device
+{
+public:
+	thomson_state(const machine_config &mconfig, device_type type, const char *tag)
+		: driver_device(mconfig, type, tag)
+	{ }
+
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( to7_cartridge );
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( mo5_cartridge );
+};
 
 /*----------- defined in machine/thomson.c -----------*/
 
@@ -66,7 +77,6 @@ extern const pia6821_interface mo5nr_pia6821_game;
 /***************************** TO7 / T9000 *************************/
 
 /* cartridge bank-switching */
-extern DEVICE_IMAGE_LOAD( to7_cartridge );
 extern DECLARE_WRITE8_HANDLER ( to7_cartridge_w );
 extern DECLARE_READ8_HANDLER  ( to7_cartridge_r );
 
@@ -113,7 +123,6 @@ extern DECLARE_READ8_HANDLER  ( mo5_gatearray_r );
 extern DECLARE_WRITE8_HANDLER ( mo5_gatearray_w );
 
 /* cartridge / extended RAM bank-switching */
-extern DEVICE_IMAGE_LOAD( mo5_cartridge );
 extern DECLARE_WRITE8_HANDLER ( mo5_ext_w );
 extern DECLARE_WRITE8_HANDLER ( mo5_cartridge_w );
 extern DECLARE_READ8_HANDLER  ( mo5_cartridge_r );

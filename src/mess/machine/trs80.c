@@ -37,7 +37,7 @@ TIMER_CALLBACK_MEMBER(trs80_state::cassette_data_callback)
 		{
 			m_cassette_data = 0;
 			m_irq |= CASS_FALL;
-			machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+			m_maincpu->set_input_line(0, HOLD_LINE);
 		}
 	}
 	else
@@ -47,7 +47,7 @@ TIMER_CALLBACK_MEMBER(trs80_state::cassette_data_callback)
 		{
 			m_cassette_data = 1;
 			m_irq |= CASS_RISE;
-			machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+			m_maincpu->set_input_line(0, HOLD_LINE);
 		}
 	}
 
@@ -78,7 +78,7 @@ READ8_MEMBER( trs80_state::trs80m4_e0_r )
     d1 Cass 1500 baud Falling
     d0 Cass 1500 baud Rising */
 
-	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	m_maincpu->set_input_line(0, CLEAR_LINE);
 	return ~(m_mask & m_irq);
 }
 
@@ -94,7 +94,7 @@ READ8_MEMBER( trs80_state::trs80m4_e4_r )
     d6 status of Motor Timeout (0=true)
     d5 status of Reset signal (0=true - this will reboot the computer) */
 
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 
 	return ~(m_nmi_mask & m_nmi_data);
 }
@@ -216,7 +216,7 @@ WRITE8_MEMBER( trs80_state::trs80m4_84_w )
 
 	/* get address space instead of io space */
 	address_space &mem = m_maincpu->space(AS_PROGRAM);
-	UINT8 *base = memregion("maincpu")->base();
+	UINT8 *base = m_region_maincpu->base();
 
 	m_mode = (m_mode & 0x73) | (data & 0x8c);
 
@@ -230,30 +230,30 @@ WRITE8_MEMBER( trs80_state::trs80m4_84_w )
 			if (m_model4 & 4)   /* Model 4P gets RAM while Model 4 gets ROM */
 			{
 				if (m_model4 & 8)
-					membank("bank1")->set_base(base);
+					m_bank1->set_base(base);
 				else
-					membank("bank1")->set_base(base + 0x10000);
+					m_bank1->set_base(base + 0x10000);
 
-				membank("bank2")->set_base(base + 0x11000);
-				membank("bank4")->set_base(base + 0x137ea);
+				m_bank2->set_base(base + 0x11000);
+				m_bank4->set_base(base + 0x137ea);
 			}
 			else
 			{
-				membank("bank1")->set_base(base);
-				membank("bank2")->set_base(base + 0x01000);
-				membank("bank4")->set_base(base + 0x037ea);
+				m_bank1->set_base(base);
+				m_bank2->set_base(base + 0x01000);
+				m_bank4->set_base(base + 0x037ea);
 			}
 
-			membank("bank7")->set_base(base + 0x14000);
-			membank("bank8")->set_base(base + 0x1f400);
-			membank("bank9")->set_base(base + 0x1f800);
-			membank("bank11")->set_base(base + 0x05000);
-			membank("bank12")->set_base(base + 0x06000);
-			membank("bank14")->set_base(base + 0x09000);
-			membank("bank15")->set_base(base + 0x0a000);
-			membank("bank17")->set_base(base + 0x14000);
-			membank("bank18")->set_base(base + 0x1f400);
-			membank("bank19")->set_base(base + 0x1f800);
+			m_bank7->set_base(base + 0x14000);
+			m_bank8->set_base(base + 0x1f400);
+			m_bank9->set_base(base + 0x1f800);
+			m_bank11->set_base(base + 0x05000);
+			m_bank12->set_base(base + 0x06000);
+			m_bank14->set_base(base + 0x09000);
+			m_bank15->set_base(base + 0x0a000);
+			m_bank17->set_base(base + 0x14000);
+			m_bank18->set_base(base + 0x1f400);
+			m_bank19->set_base(base + 0x1f800);
 			mem.install_readwrite_handler (0x37e8, 0x37e9, read8_delegate(FUNC(trs80_state::trs80_printer_r), this), write8_delegate(FUNC(trs80_state::trs80_printer_w), this));    /* 3 & 13 */
 			mem.install_read_handler (0x3800, 0x3bff, read8_delegate(FUNC(trs80_state::trs80_keyboard_r), this));   /* 5 */
 			mem.install_readwrite_handler (0x3c00, 0x3fff, read8_delegate(FUNC(trs80_state::trs80_videoram_r), this), write8_delegate(FUNC(trs80_state::trs80_videoram_w), this));  /* 6 & 16 */
@@ -264,77 +264,77 @@ WRITE8_MEMBER( trs80_state::trs80m4_84_w )
 			if (m_model4 & 4)   /* Model 4P gets RAM while Model 4 gets ROM */
 			{
 				if (m_model4 & 8)
-					membank("bank1")->set_base(base);
+					m_bank1->set_base(base);
 				else
-					membank("bank1")->set_base(base + 0x10000);
+					m_bank1->set_base(base + 0x10000);
 
-				membank("bank2")->set_base(base + 0x11000);
-				membank("bank3")->set_base(base + 0x137e8);
-				membank("bank4")->set_base(base + 0x137ea);
+				m_bank2->set_base(base + 0x11000);
+				m_bank3->set_base(base + 0x137e8);
+				m_bank4->set_base(base + 0x137ea);
 			}
 			else
 			{
-				membank("bank1")->set_base(base);
-				membank("bank2")->set_base(base + 0x01000);
-				membank("bank3")->set_base(base + 0x037e8);
-				membank("bank4")->set_base(base + 0x037ea);
+				m_bank1->set_base(base);
+				m_bank2->set_base(base + 0x01000);
+				m_bank3->set_base(base + 0x037e8);
+				m_bank4->set_base(base + 0x037ea);
 			}
 
-			membank("bank7")->set_base(base + 0x14000);
-			membank("bank8")->set_base(base + 0x1f400);
-			membank("bank9")->set_base(base + 0x1f800);
-			membank("bank11")->set_base(base + 0x10000);
-			membank("bank12")->set_base(base + 0x11000);
-			membank("bank13")->set_base(base + 0x137e8);
-			membank("bank14")->set_base(base + 0x137ea);
-			membank("bank15")->set_base(base + 0x0a000);
-			membank("bank17")->set_base(base + 0x14000);
-			membank("bank18")->set_base(base + 0x1f400);
-			membank("bank19")->set_base(base + 0x1f800);
+			m_bank7->set_base(base + 0x14000);
+			m_bank8->set_base(base + 0x1f400);
+			m_bank9->set_base(base + 0x1f800);
+			m_bank11->set_base(base + 0x10000);
+			m_bank12->set_base(base + 0x11000);
+			m_bank13->set_base(base + 0x137e8);
+			m_bank14->set_base(base + 0x137ea);
+			m_bank15->set_base(base + 0x0a000);
+			m_bank17->set_base(base + 0x14000);
+			m_bank18->set_base(base + 0x1f400);
+			m_bank19->set_base(base + 0x1f800);
 			mem.install_read_handler (0x3800, 0x3bff, read8_delegate(FUNC(trs80_state::trs80_keyboard_r), this));   /* 5 */
 			mem.install_readwrite_handler (0x3c00, 0x3fff, read8_delegate(FUNC(trs80_state::trs80_videoram_r), this), write8_delegate(FUNC(trs80_state::trs80_videoram_w), this));  /* 6 & 16 */
 			break;
 
 		case 2: /* keyboard and video are moved to high memory, and the rest is ram */
-			membank("bank1")->set_base(base + 0x10000);
-			membank("bank2")->set_base(base + 0x11000);
-			membank("bank3")->set_base(base + 0x137e8);
-			membank("bank4")->set_base(base + 0x137ea);
-			membank("bank5")->set_base(base + 0x13800);
-			membank("bank6")->set_base(base + 0x13c00);
-			membank("bank7")->set_base(base + 0x14000);
-			membank("bank11")->set_base(base + 0x10000);
-			membank("bank12")->set_base(base + 0x11000);
-			membank("bank13")->set_base(base + 0x137e8);
-			membank("bank14")->set_base(base + 0x137ea);
-			membank("bank15")->set_base(base + 0x13800);
-			membank("bank16")->set_base(base + 0x13c00);
-			membank("bank17")->set_base(base + 0x14000);
-			membank("bank18")->set_base(base + 0x0a000);
+			m_bank1->set_base(base + 0x10000);
+			m_bank2->set_base(base + 0x11000);
+			m_bank3->set_base(base + 0x137e8);
+			m_bank4->set_base(base + 0x137ea);
+			m_bank5->set_base(base + 0x13800);
+			m_bank6->set_base(base + 0x13c00);
+			m_bank7->set_base(base + 0x14000);
+			m_bank11->set_base(base + 0x10000);
+			m_bank12->set_base(base + 0x11000);
+			m_bank13->set_base(base + 0x137e8);
+			m_bank14->set_base(base + 0x137ea);
+			m_bank15->set_base(base + 0x13800);
+			m_bank16->set_base(base + 0x13c00);
+			m_bank17->set_base(base + 0x14000);
+			m_bank18->set_base(base + 0x0a000);
 			mem.install_read_handler (0xf400, 0xf7ff, read8_delegate(FUNC(trs80_state::trs80_keyboard_r), this));   /* 8 */
 			mem.install_readwrite_handler (0xf800, 0xffff, read8_delegate(FUNC(trs80_state::trs80_videoram_r), this), write8_delegate(FUNC(trs80_state::trs80_videoram_w), this));  /* 9 & 19 */
 			m_model4++;
 			break;
 
 		case 3: /* 64k of ram */
-			membank("bank1")->set_base(base + 0x10000);
-			membank("bank2")->set_base(base + 0x11000);
-			membank("bank3")->set_base(base + 0x137e8);
-			membank("bank4")->set_base(base + 0x137ea);
-			membank("bank5")->set_base(base + 0x13800);
-			membank("bank6")->set_base(base + 0x13c00);
-			membank("bank7")->set_base(base + 0x14000);
-			membank("bank8")->set_base(base + 0x1f400);
-			membank("bank9")->set_base(base + 0x1f800);
-			membank("bank11")->set_base(base + 0x10000);
-			membank("bank12")->set_base(base + 0x11000);
-			membank("bank13")->set_base(base + 0x137e8);
-			membank("bank14")->set_base(base + 0x137ea);
-			membank("bank15")->set_base(base + 0x13800);
-			membank("bank16")->set_base(base + 0x13c00);
-			membank("bank17")->set_base(base + 0x14000);
-			membank("bank18")->set_base(base + 0x1f400);
-			membank("bank19")->set_base(base + 0x1f800);
+			m_bank1->set_base(base + 0x10000);
+			m_bank2->set_base(base + 0x11000);
+			m_bank3->set_base(base + 0x137e8);
+			m_bank4->set_base(base + 0x137ea);
+			m_bank5->set_base(base + 0x13800);
+			m_bank6->set_base(base + 0x13c00);
+			m_bank7->set_base(base + 0x14000);
+			m_bank8->set_base(base + 0x1f400);
+			m_bank9->set_base(base + 0x1f800);
+			m_bank11->set_base(base + 0x10000);
+			m_bank12->set_base(base + 0x11000);
+			m_bank13->set_base(base + 0x137e8);
+			m_bank14->set_base(base + 0x137ea);
+			m_bank15->set_base(base + 0x13800);
+			m_bank16->set_base(base + 0x13c00);
+			m_bank17->set_base(base + 0x14000);
+			m_bank18->set_base(base + 0x1f400);
+			m_bank19->set_base(base + 0x1f800);
 			break;
 	}
 }
@@ -361,10 +361,10 @@ WRITE8_MEMBER( trs80_state::trs80m4p_9c_w )     /* model 4P only - swaps the ROM
 		switch (m_model4 & 8)
 		{
 			case 0:     /* Read-only RAM replaces rom */
-				membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base() + 0x10000);
+				m_bank1->set_base(m_region_maincpu->base() + 0x10000);
 				break;
 			case 8:     /* Normal setup - rom enabled */
-				membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base());
+				m_bank1->set_base(m_region_maincpu->base());
 				break;
 		}
 	}
@@ -452,7 +452,6 @@ WRITE8_MEMBER( trs80_state::trs80m4_ea_w )
 	}
 	else
 	{
-
 /* not emulated
     d7,d6 Not used
     d5 Secondary Unassigned, pin 18
@@ -573,7 +572,7 @@ WRITE8_MEMBER( trs80_state::lnw80_fe_w )
 	{
 		mem.unmap_readwrite (0x0000, 0x3fff);
 		mem.install_read_bank (0x0000, 0x2fff, "bank1");
-		membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base());
+		membank("bank1")->set_base(m_region_maincpu->base());
 		mem.install_readwrite_handler (0x37e0, 0x37e3, read8_delegate(FUNC(trs80_state::trs80_irq_status_r), this), write8_delegate(FUNC(trs80_state::trs80_motor_w), this));
 		mem.install_readwrite_handler (0x37e8, 0x37eb, read8_delegate(FUNC(trs80_state::trs80_printer_r), this), write8_delegate(FUNC(trs80_state::trs80_printer_w), this));
 		mem.install_read_handler (0x37ec, 0x37ec, read8_delegate(FUNC(trs80_state::trs80_wd179x_r), this));
@@ -644,34 +643,33 @@ INTERRUPT_GEN_MEMBER(trs80_state::trs80_rtc_interrupt)
 	}
 }
 
-static void trs80_fdc_interrupt_internal(running_machine &machine)
+void trs80_state::trs80_fdc_interrupt_internal()
 {
-	trs80_state *state = machine.driver_data<trs80_state>();
-	if (state->m_model4)
+	if (m_model4)
 	{
-		if (state->m_nmi_mask & 0x80)   // Model 4 does a NMI
+		if (m_nmi_mask & 0x80)   // Model 4 does a NMI
 		{
-			state->m_nmi_data = 0x80;
-			machine.device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+			m_nmi_data = 0x80;
+			m_maincpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 	else        // Model 1 does a IRQ
 	{
-		state->m_irq |= IRQ_M1_FDC;
-		machine.device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+		m_irq |= IRQ_M1_FDC;
+		m_maincpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
 INTERRUPT_GEN_MEMBER(trs80_state::trs80_fdc_interrupt)/* not used - should it be? */
 {
-	trs80_fdc_interrupt_internal(machine());
+	trs80_fdc_interrupt_internal();
 }
 
 WRITE_LINE_MEMBER(trs80_state::trs80_fdc_intrq_w)
 {
 	if (state)
 	{
-		trs80_fdc_interrupt_internal(machine());
+		trs80_fdc_interrupt_internal();
 	}
 	else
 	{
@@ -700,7 +698,7 @@ const wd17xx_interface trs80_wd17xx_interface =
 READ8_MEMBER( trs80_state::trs80_wd179x_r )
 {
 	UINT8 data = 0xff;
-	if (BIT(ioport("CONFIG")->read(), 7))
+	if (BIT(m_io_config->read(), 7))
 		data = wd17xx_status_r(m_fdc, space, offset);
 
 	return data;
@@ -749,7 +747,7 @@ READ8_MEMBER( trs80_state::trs80_irq_status_r )
     which is dealt with by the DOS. We take the opportunity to reset the cpu INT line. */
 
 	int result = m_irq;
-	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	m_maincpu->set_input_line(0, CLEAR_LINE);
 	m_irq = 0;
 	return result;
 }
@@ -820,21 +818,21 @@ READ8_MEMBER( trs80_state::trs80_keyboard_r )
 	UINT8 result = 0;
 
 	if (offset & 1)
-		result |= ioport("LINE0")->read();
+		result |= m_io_line0->read();
 	if (offset & 2)
-		result |= ioport("LINE1")->read();
+		result |= m_io_line1->read();
 	if (offset & 4)
-		result |= ioport("LINE2")->read();
+		result |= m_io_line2->read();
 	if (offset & 8)
-		result |= ioport("LINE3")->read();
+		result |= m_io_line3->read();
 	if (offset & 16)
-		result |= ioport("LINE4")->read();
+		result |= m_io_line4->read();
 	if (offset & 32)
-		result |= ioport("LINE5")->read();
+		result |= m_io_line5->read();
 	if (offset & 64)
-		result |= ioport("LINE6")->read();
+		result |= m_io_line6->read();
 	if (offset & 128)
-		result |= ioport("LINE7")->read();
+		result |= m_io_line7->read();
 
 	return result;
 }
@@ -865,24 +863,42 @@ MACHINE_RESET_MEMBER(trs80_state,trs80m4)
 	m_cassette_data = 0;
 
 	mem.install_read_bank (0x0000, 0x0fff, "bank1");
+	m_bank1 = membank("bank1");
 	mem.install_read_bank (0x1000, 0x37e7, "bank2");
+	m_bank2 = membank("bank2");
 	mem.install_read_bank (0x37e8, 0x37e9, "bank3");
+	m_bank3 = membank("bank3");
 	mem.install_read_bank (0x37ea, 0x37ff, "bank4");
+	m_bank4 = membank("bank4");
 	mem.install_read_bank (0x3800, 0x3bff, "bank5");
+	m_bank5 = membank("bank5");
 	mem.install_read_bank (0x3c00, 0x3fff, "bank6");
+	m_bank6 = membank("bank6");
 	mem.install_read_bank (0x4000, 0xf3ff, "bank7");
+	m_bank7 = membank("bank7");
 	mem.install_read_bank (0xf400, 0xf7ff, "bank8");
+	m_bank8 = membank("bank8");
 	mem.install_read_bank (0xf800, 0xffff, "bank9");
+	m_bank9 = membank("bank9");
 
 	mem.install_write_bank (0x0000, 0x0fff, "bank11");
+	m_bank11 = membank("bank11");
 	mem.install_write_bank (0x1000, 0x37e7, "bank12");
+	m_bank12 = membank("bank12");
 	mem.install_write_bank (0x37e8, 0x37e9, "bank13");
+	m_bank13 = membank("bank13");
 	mem.install_write_bank (0x37ea, 0x37ff, "bank14");
+	m_bank14 = membank("bank14");
 	mem.install_write_bank (0x3800, 0x3bff, "bank15");
+	m_bank15 = membank("bank15");
 	mem.install_write_bank (0x3c00, 0x3fff, "bank16");
+	m_bank16 = membank("bank16");
 	mem.install_write_bank (0x4000, 0xf3ff, "bank17");
+	m_bank17 = membank("bank17");
 	mem.install_write_bank (0xf400, 0xf7ff, "bank18");
+	m_bank18 = membank("bank18");
 	mem.install_write_bank (0xf800, 0xffff, "bank19");
+	m_bank19 = membank("bank19");
 	trs80m4p_9c_w(mem, 0, 1);   /* Enable the ROM */
 	trs80m4_84_w(mem, 0, 0);    /* switch in devices at power-on */
 }

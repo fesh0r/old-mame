@@ -25,12 +25,18 @@ public:
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, CDP1802_TAG),
 			m_speaker(*this, BEEPER_TAG),
-			m_vdc(*this, CDP1861_TAG)
+			m_vdc(*this, CDP1861_TAG),
+			m_clear(*this, "CLEAR"),
+			m_a(*this, "A"),
+			m_b(*this, "B")
 	{ }
 
 	required_device<cosmac_device> m_maincpu;
 	required_device<beep_device> m_speaker;
 	optional_device<cdp1861_device> m_vdc;
+	required_ioport m_clear;
+	required_ioport m_a;
+	required_ioport m_b;
 
 	virtual void machine_start();
 	virtual void machine_reset();
@@ -45,6 +51,7 @@ public:
 	DECLARE_READ_LINE_MEMBER( ef4_r );
 	DECLARE_WRITE_LINE_MEMBER( q_w );
 	DECLARE_INPUT_CHANGED_MEMBER( reset_w );
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( studio2_cart_load );
 
 	/* keyboard state */
 	UINT8 m_keylatch;

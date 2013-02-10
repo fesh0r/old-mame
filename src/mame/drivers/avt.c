@@ -847,9 +847,10 @@ GFXDECODE_END
 *              CRTC Interface              *
 *******************************************/
 
-static const mc6845_interface mc6845_intf =
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
@@ -884,7 +885,6 @@ static const ay8910_interface ay8910_config =
 /* IM 2 */
 INTERRUPT_GEN_MEMBER(avt_state::avt_vblank_irq)
 {
-
 	m_maincpu->set_input_line_and_vector(0, HOLD_LINE, 0x06);
 }
 

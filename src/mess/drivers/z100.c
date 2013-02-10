@@ -206,6 +206,7 @@ public:
 	virtual void palette_init();
 	UINT32 screen_update_z100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	DECLARE_INPUT_CHANGED_MEMBER(key_stroke);
+	IRQ_CALLBACK_MEMBER(z100_irq_callback);
 };
 
 #define mc6845_h_char_total     (m_crtc_vreg[0])
@@ -228,7 +229,6 @@ public:
 
 void z100_state::video_start()
 {
-
 	m_gvram = auto_alloc_array_clear(machine(), UINT8, 0x30000);
 }
 
@@ -423,7 +423,6 @@ ADDRESS_MAP_END
 
 INPUT_CHANGED_MEMBER(z100_state::key_stroke)
 {
-
 	if(newval && !oldval)
 	{
 		/* TODO: table */
@@ -596,21 +595,21 @@ INPUT_PORTS_START( z100 )
 	PORT_CONFSETTING( 0x01, "Color" )
 INPUT_PORTS_END
 
-static IRQ_CALLBACK(z100_irq_callback)
+IRQ_CALLBACK_MEMBER(z100_state::z100_irq_callback)
 {
-	return pic8259_acknowledge( device->machine().device( "pic8259_master" ) );
+	return m_picm->inta_r();
 }
 
 WRITE_LINE_MEMBER( z100_state::z100_pic_irq )
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 //  logerror("PIC#1: set IRQ line to %i\n",interrupt);
 }
 
 READ8_MEMBER( z100_state::get_slave_ack )
 {
 	if (offset==7) { // IRQ = 7
-		return pic8259_acknowledge(m_pics);
+		return m_pics->inta_r();
 	}
 	return 0;
 }
@@ -624,14 +623,16 @@ static const struct pic8259_interface z100_pic8259_master_config =
 
 static const struct pic8259_interface z100_pic8259_slave_config =
 {
-	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir3_w),
+	DEVCB_DEVICE_LINE_MEMBER("pic8259_master", pic8259_device, ir3_w),
 	DEVCB_LINE_GND,
 	DEVCB_NULL
 };
 
-static const mc6845_interface mc6845_intf =
+
+static MC6845_INTERFACE( mc6845_intf )
 {
 	"screen",   /* screen we are acting on */
+	false,      /* show border area */
 	8,          /* number of pixels per video memory address */
 	NULL,       /* before pixel update callback */
 	NULL,       /* row update callback */
@@ -751,8 +752,7 @@ void z100_state::palette_init()
 
 void z100_state::machine_start()
 {
-
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(z100_irq_callback);
+	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(z100_state::z100_irq_callback),this));
 	m_mc6845 = machine().device<mc6845_device>("crtc");
 }
 

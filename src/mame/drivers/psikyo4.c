@@ -254,7 +254,6 @@ WRITE32_MEMBER(psikyo4_state::ps4_bgpen_2_dword_w)
 
 WRITE32_MEMBER(psikyo4_state::ps4_screen1_brt_w)
 {
-
 	if (ACCESSING_BITS_0_7)
 	{
 		/* Need separate brightness for both screens if displaying together */
@@ -284,7 +283,6 @@ WRITE32_MEMBER(psikyo4_state::ps4_screen1_brt_w)
 
 WRITE32_MEMBER(psikyo4_state::ps4_screen2_brt_w)
 {
-
 	if (ACCESSING_BITS_0_7)
 	{
 		/* Need separate brightness for both screens if displaying together */
@@ -662,7 +660,6 @@ static const ymf278b_interface ymf278b_config =
 
 void psikyo4_state::machine_start()
 {
-
 	m_maincpu = machine().device<cpu_device>("maincpu");
 
 	save_item(NAME(m_oldbrt1));
@@ -671,7 +668,6 @@ void psikyo4_state::machine_start()
 
 void psikyo4_state::machine_reset()
 {
-
 	m_oldbrt1 = -1;
 	m_oldbrt2 = -1;
 }
@@ -942,10 +938,10 @@ ROM_START( hotdebut )
 ROM_END
 
 
-static void hotgmck_pcm_bank_postload(running_machine &machine)
+void psikyo4_state::hotgmck_pcm_bank_postload()
 {
-	set_hotgmck_pcm_bank(machine, 0);
-	set_hotgmck_pcm_bank(machine, 1);
+	set_hotgmck_pcm_bank(machine(), 0);
+	set_hotgmck_pcm_bank(machine(), 1);
 }
 
 static void install_hotgmck_pcm_bank(running_machine &machine)
@@ -961,7 +957,7 @@ static void install_hotgmck_pcm_bank(running_machine &machine)
 	set_hotgmck_pcm_bank(machine, 1);
 
 	machine.device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x5800008, 0x580000b, write32_delegate(FUNC(psikyo4_state::hotgmck_pcm_bank_w),state));
-	machine.save().register_postload(save_prepost_delegate(FUNC(hotgmck_pcm_bank_postload), &machine));
+	machine.save().register_postload(save_prepost_delegate(FUNC(psikyo4_state::hotgmck_pcm_bank_postload), state));
 }
 
 DRIVER_INIT_MEMBER(psikyo4_state,hotgmck)
