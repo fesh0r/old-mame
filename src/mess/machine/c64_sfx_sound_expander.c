@@ -30,54 +30,14 @@ const device_type C64_SFX_SOUND_EXPANDER = &device_creator<c64_sfx_sound_expande
 //  ym3526_interface ym3526_config
 //-------------------------------------------------
 
-static const ym3526_interface ym3526_config =
-{
-	DEVCB_LINE_MEMBER(c64_sfx_sound_expander_cartridge_device, irq_w)
-};
-
-
-//-------------------------------------------------
-//  C64_EXPANSION_INTERFACE( expansion_intf )
-//-------------------------------------------------
-
-READ8_MEMBER( c64_sfx_sound_expander_cartridge_device::dma_cd_r )
-{
-	return m_slot->dma_cd_r(offset);
-}
-
-WRITE8_MEMBER( c64_sfx_sound_expander_cartridge_device::dma_cd_w )
-{
-	m_slot->dma_cd_w(offset, data);
-}
-
-WRITE_LINE_MEMBER( c64_sfx_sound_expander_cartridge_device::irq_w )
+WRITE_LINE_MEMBER( c64_sfx_sound_expander_cartridge_device::opl_irq_w )
 {
 	m_slot->irq_w(state);
 }
 
-WRITE_LINE_MEMBER( c64_sfx_sound_expander_cartridge_device::nmi_w )
+static const ym3526_interface ym3526_config =
 {
-	m_slot->nmi_w(state);
-}
-
-WRITE_LINE_MEMBER( c64_sfx_sound_expander_cartridge_device::dma_w )
-{
-	m_slot->dma_w(state);
-}
-
-WRITE_LINE_MEMBER( c64_sfx_sound_expander_cartridge_device::reset_w )
-{
-	m_slot->reset_w(state);
-}
-
-static C64_EXPANSION_INTERFACE( expansion_intf )
-{
-	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, dma_cd_r),
-	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, dma_cd_w),
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, irq_w),
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, nmi_w),
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, dma_w),
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, reset_w)
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, c64_sfx_sound_expander_cartridge_device, opl_irq_w)
 };
 
 
@@ -91,7 +51,7 @@ static MACHINE_CONFIG_FRAGMENT( c64_sfx_sound_expander )
 	MCFG_SOUND_CONFIG(ym3526_config)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.70)
 
-	MCFG_C64_EXPANSION_SLOT_ADD(C64_EXPANSION_SLOT_TAG, 0, expansion_intf, c64_expansion_cards, NULL, NULL)
+	MCFG_C64_PASSTHRU_EXPANSION_SLOT_ADD()
 MACHINE_CONFIG_END
 
 
@@ -205,6 +165,22 @@ ioport_constructor c64_sfx_sound_expander_cartridge_device::device_input_ports()
 
 
 //**************************************************************************
+//  INLINE HELPERS
+//**************************************************************************
+
+//-------------------------------------------------
+//  get_offset - get passthru expansion port offset
+//-------------------------------------------------
+
+inline offs_t c64_sfx_sound_expander_cartridge_device::get_offset(offs_t offset, int rw)
+{
+	// assimilate the 3 different MIDI cartridge 6850 ACIA register mappings?
+	return (offset & 0xfffc) | (rw << 1) | BIT(offset, 1);
+}
+
+
+
+//**************************************************************************
 //  LIVE DEVICE
 //**************************************************************************
 
@@ -244,6 +220,7 @@ void c64_sfx_sound_expander_cartridge_device::device_start()
 
 void c64_sfx_sound_expander_cartridge_device::device_reset()
 {
+	m_opl->reset();
 }
 
 
@@ -253,7 +230,7 @@ void c64_sfx_sound_expander_cartridge_device::device_reset()
 
 UINT8 c64_sfx_sound_expander_cartridge_device::c64_cd_r(address_space &space, offs_t offset, UINT8 data, int sphi2, int ba, int roml, int romh, int io1, int io2)
 {
-	data = m_exp->cd_r(space, offset, data, sphi2, ba, roml, romh, io1, io2);
+	data = m_exp->cd_r(space, get_offset(offset, 1), data, sphi2, ba, roml, romh, io1, io2);
 
 	if (!io2)
 	{
@@ -292,7 +269,7 @@ void c64_sfx_sound_expander_cartridge_device::c64_cd_w(address_space &space, off
 		ym3526_w(m_opl, space, BIT(offset, 4), data);
 	}
 
-	m_exp->cd_w(space, offset, data, sphi2, ba, roml, romh, io1, io2);
+	m_exp->cd_w(space, get_offset(offset, 0), data, sphi2, ba, roml, romh, io1, io2);
 }
 
 
@@ -302,7 +279,7 @@ void c64_sfx_sound_expander_cartridge_device::c64_cd_w(address_space &space, off
 
 int c64_sfx_sound_expander_cartridge_device::c64_game_r(offs_t offset, int sphi2, int ba, int rw, int hiram)
 {
-	return m_exp->game_r(offset, sphi2, ba, rw, hiram);
+	return m_exp->game_r(get_offset(offset, rw), sphi2, ba, rw, hiram);
 }
 
 
@@ -312,5 +289,5 @@ int c64_sfx_sound_expander_cartridge_device::c64_game_r(offs_t offset, int sphi2
 
 int c64_sfx_sound_expander_cartridge_device::c64_exrom_r(offs_t offset, int sphi2, int ba, int rw, int hiram)
 {
-	return m_exp->exrom_r(offset, sphi2, ba, rw, hiram);
+	return m_exp->exrom_r(get_offset(offset, rw), sphi2, ba, rw, hiram);
 }

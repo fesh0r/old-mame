@@ -63,6 +63,7 @@ public:
 	INTERRUPT_GEN_MEMBER(vt100_vertical_interrupt);
 	TIMER_DEVICE_CALLBACK_MEMBER(keyboard_callback);
 	IRQ_CALLBACK_MEMBER(vt100_irq_callback);
+	UINT8 bit_sel(UINT8 data);
 };
 
 
@@ -107,7 +108,7 @@ READ8_MEMBER( vt100_state::vt100_flags_r )
 	return ret;
 }
 
-static UINT8 bit_sel(UINT8 data)
+UINT8 vt100_state::bit_sel(UINT8 data)
 {
 	if (!BIT(data,7)) return 0x70;
 	if (!BIT(data,6)) return 0x60;
@@ -144,7 +145,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(vt100_state::keyboard_callback)
 
 WRITE8_MEMBER( vt100_state::vt100_keyboard_w )
 {
-	beep_set_frequency( m_speaker, 786 ); // 7.945us per serial clock = ~125865.324hz, / 160 clocks per char = ~ 786 hz
+	m_speaker->set_frequency(786); // 7.945us per serial clock = ~125865.324hz, / 160 clocks per char = ~ 786 hz
 	output_set_value("online_led",BIT(data, 5) ? 0 : 1);
 	output_set_value("local_led", BIT(data, 5));
 	output_set_value("locked_led",BIT(data, 4) ? 0 : 1);
@@ -153,7 +154,7 @@ WRITE8_MEMBER( vt100_state::vt100_keyboard_w )
 	output_set_value("l3_led", BIT(data, 1) ? 0 : 1);
 	output_set_value("l4_led", BIT(data, 0) ? 0 : 1);
 	m_key_scan = BIT(data, 6);
-	beep_set_state( m_speaker, BIT(data, 7));
+	m_speaker->set_state(BIT(data, 7));
 }
 
 READ8_MEMBER( vt100_state::vt100_keyboard_r )
@@ -352,7 +353,7 @@ void vt100_state::machine_reset()
 	m_keyboard_int = 0;
 	m_receiver_int = 0;
 	m_vertical_int = 0;
-	beep_set_frequency( m_speaker, 786 ); // 7.945us per serial clock = ~125865.324hz, / 160 clocks per char = ~ 786 hz
+	m_speaker->set_frequency(786); // 7.945us per serial clock = ~125865.324hz, / 160 clocks per char = ~ 786 hz
 	output_set_value("online_led",1);
 	output_set_value("local_led", 0);
 	output_set_value("locked_led",1);

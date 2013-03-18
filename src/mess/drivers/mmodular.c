@@ -205,9 +205,12 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(timer_update_irq2);
 	TIMER_DEVICE_CALLBACK_MEMBER(timer_update_irq_academy);
 	void common_chess_start();
+	UINT8 convert_imputmask(UINT8 input);
+	UINT8 convertMCIV2LED(UINT8 codedchar);
+	void write_IOenable(unsigned char data,address_space &space);
 };
 
-static UINT8 convert_imputmask(UINT8 input)
+UINT8 polgar_state::convert_imputmask(UINT8 input)
 {
 	input^=0xff;
 	switch (input) {
@@ -240,7 +243,10 @@ WRITE8_MEMBER(polgar_state::write_polgar_IO)
 		m_lcdc->write(space, BIT(data,0), lcd_char);
 	}
 
-	if (BIT(data,2) || BIT(data,3)) beep_set_state(machine().device("beep"),1); else beep_set_state(machine().device("beep"),0);
+	if (BIT(data,2) || BIT(data,3))
+			machine().device<beep_device>("beep")->set_state(1);
+		else
+			machine().device<beep_device>("beep")->set_state(0);
 
 	if (BIT(data,7) && BIT(data, 4)) {
 		for (i = 0;i < 8;i++)
@@ -405,9 +411,12 @@ WRITE8_MEMBER(polgar_state::milano_write_LED)
 
 WRITE8_MEMBER(polgar_state::megaiv_write_LED)
 {
-if (BIT(data,7)) beep_set_state(machine().device("beep"),1); else beep_set_state(machine().device("beep"),0);
-output_set_led_value(102,BIT(data,1)?1:0);
-output_set_led_value(107,BIT(data,6)?1:0);
+	if (BIT(data,7))
+		machine().device<beep_device>("beep")->set_state(1);
+	else
+		machine().device<beep_device>("beep")->set_state(0);
+	output_set_led_value(102,BIT(data,1)?1:0);
+	output_set_led_value(107,BIT(data,6)?1:0);
 
 //  logerror("LEDs  FUNC = %02x found = %d\n",data,found);
 	logerror("LED mask %d\n",data);
@@ -465,8 +474,14 @@ if ((data & 0xa1) == 0xa1) {
 	found = 1;
 }
 
-if (BIT(data,7)) beep_set_state(machine().device("beep"),1); else beep_set_state(machine().device("beep"),0);
-if (BIT(data,1)) beep_set_state(machine().device("beep"),1); else beep_set_state(machine().device("beep"),0);
+if (BIT(data,7))
+	machine().device<beep_device>("beep")->set_state(1);
+else
+	machine().device<beep_device>("beep")->set_state(0);
+if (BIT(data,1))
+	machine().device<beep_device>("beep")->set_state(1);
+else
+	machine().device<beep_device>("beep")->set_state(0);
 //  logerror("LEDs  FUNC = %02x found = %d\n",data,found);
 	if (!found) {
 		logerror("unknown LED mask %d\n",data);
@@ -513,7 +528,7 @@ WRITE8_MEMBER(polgar_state::polgar_write_LED)
 	logerror("LEDs  Offset = %d Data = %d\n",offset,data);
 }
 
-static UINT8 convertMCIV2LED(UINT8 codedchar)
+UINT8 polgar_state::convertMCIV2LED(UINT8 codedchar)
 {
 	UINT8 data = 0;
 	if (BIT(codedchar,0)) data |= 0x80;
@@ -708,7 +723,10 @@ READ32_MEMBER(polgar_state::read_keys_BPL32)
 
 WRITE8_MEMBER(polgar_state::beep_academy)
 {
-	if (!BIT(data,7)) beep_set_state(machine().device("beep"),1); else beep_set_state(machine().device("beep"),0);
+	if (!BIT(data,7))
+			machine().device<beep_device>("beep")->set_state(1);
+		else
+			machine().device<beep_device>("beep")->set_state(0);
 }
 
 WRITE8_MEMBER(polgar_state::megaiv_IO)
@@ -857,9 +875,10 @@ WRITE16_MEMBER(polgar_state::write_LCD_data)
 
 }
 
-static void write_IOenable(unsigned char data,address_space &space) {
+void polgar_state::write_IOenable(unsigned char data,address_space &space)
+{
 	hd44780_device * hd44780 = space.machine().device<hd44780_device>("hd44780");
-	device_t *speaker = space.machine().device("beep");
+	beep_device *speaker = machine().device<beep_device>("beep");
 
 	if (BIT(data,5) && BIT(data,4)) {
 		if (BIT(data,1)) {
@@ -884,7 +903,10 @@ static void write_IOenable(unsigned char data,address_space &space) {
 
 	logerror("Write to IOENBL data: %08x\n",data);
 
-		if (BIT(data,2) || BIT(data,3)) beep_set_state(speaker,1); else beep_set_state(speaker,0);
+		if (BIT(data,2) || BIT(data,3))
+					speaker->set_state(1);
+				else
+					speaker->set_state(0);
 	}
 
 }

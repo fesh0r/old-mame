@@ -655,6 +655,7 @@ public:
 
 	DECLARE_DRIVER_INIT(pc9801_kanji);
 	IRQ_CALLBACK_MEMBER(irq_callback);
+	inline void set_dma_channel(int channel, int state);
 };
 
 
@@ -3036,16 +3037,15 @@ WRITE8_MEMBER(pc9801_state::pc9801_dma_write_byte)
 	program.write_byte(addr, data);
 }
 
-static void set_dma_channel(running_machine &machine, int channel, int state)
+void pc9801_state::set_dma_channel(int channel, int state)
 {
-	pc9801_state *drvstate = machine.driver_data<pc9801_state>();
-	if (!state) drvstate->m_dack = channel;
+	if (!state) m_dack = channel;
 }
 
-WRITE_LINE_MEMBER(pc9801_state::pc9801_dack0_w){ /*printf("%02x 0\n",state);*/ set_dma_channel(machine(), 0, state); }
-WRITE_LINE_MEMBER(pc9801_state::pc9801_dack1_w){ /*printf("%02x 1\n",state);*/ set_dma_channel(machine(), 1, state); }
-WRITE_LINE_MEMBER(pc9801_state::pc9801_dack2_w){ /*printf("%02x 2\n",state);*/ set_dma_channel(machine(), 2, state); }
-WRITE_LINE_MEMBER(pc9801_state::pc9801_dack3_w){ /*printf("%02x 3\n",state);*/ set_dma_channel(machine(), 3, state); }
+WRITE_LINE_MEMBER(pc9801_state::pc9801_dack0_w){ /*printf("%02x 0\n",state);*/ set_dma_channel(0, state); }
+WRITE_LINE_MEMBER(pc9801_state::pc9801_dack1_w){ /*printf("%02x 1\n",state);*/ set_dma_channel(1, state); }
+WRITE_LINE_MEMBER(pc9801_state::pc9801_dack2_w){ /*printf("%02x 2\n",state);*/ set_dma_channel(2, state); }
+WRITE_LINE_MEMBER(pc9801_state::pc9801_dack3_w){ /*printf("%02x 3\n",state);*/ set_dma_channel(3, state); }
 
 READ8_MEMBER(pc9801_state::fdc_2hd_r)
 {
@@ -3109,7 +3109,7 @@ READ8_MEMBER(pc9801_state::ppi_prn_portb_r){ return machine().root_device().iopo
 
 WRITE8_MEMBER(pc9801_state::ppi_sys_portc_w)
 {
-	beep_set_state(machine().device(BEEPER_TAG),!(data & 0x08));
+	machine().device<beep_device>(BEEPER_TAG)->set_state(!(data & 0x08));
 }
 
 static I8255A_INTERFACE( ppi_system_intf )
@@ -3413,6 +3413,7 @@ MACHINE_START_MEMBER(pc9801_state,pc9821)
 
 MACHINE_RESET_MEMBER(pc9801_state,pc9801_common)
 {
+	memset(m_tvram, 0, sizeof(UINT8) * 0x4000);
 	/* this looks like to be some kind of backup ram, system will boot with green colors otherwise */
 	{
 		int i;
@@ -3426,8 +3427,8 @@ MACHINE_RESET_MEMBER(pc9801_state,pc9801_common)
 			m_tvram[(0x3fe0)+i*2] = default_memsw_data[i];
 	}
 
-	beep_set_frequency(machine().device(BEEPER_TAG),2400);
-	beep_set_state(machine().device(BEEPER_TAG),0);
+	machine().device<beep_device>(BEEPER_TAG)->set_frequency(2400);
+	machine().device<beep_device>(BEEPER_TAG)->set_state(0);
 
 	m_nmi_ff = 0;
 	m_mouse.control = 0xff;
@@ -3478,6 +3479,7 @@ MACHINE_RESET_MEMBER(pc9801_state,pc9801rs)
 	m_access_ctrl = 0;
 	m_keyb_press = 0xff; // temp kludge, for PC-9821 booting
 //  m_has_opna = machine().root_device().ioport("SOUND_CONFIG")->read() & 1;
+	memset(m_work_ram, 0, sizeof(UINT8) * 0xa0000);
 }
 
 MACHINE_RESET_MEMBER(pc9801_state,pc9821)

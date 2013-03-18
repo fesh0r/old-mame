@@ -112,6 +112,72 @@ Hardware:   PPIA 8255
 */
 
 #include "includes/atom.h"
+#include "formats/imageutl.h"
+
+/***************************************************************************
+    PARAMETERS
+***************************************************************************/
+
+#define LOG 1
+
+/***************************************************************************
+    IMPLEMENTATION
+***************************************************************************/
+
+/*-------------------------------------------------
+    image_fread_memory - read image to memory
+-------------------------------------------------*/
+
+static void image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count)
+{
+	void *ptr = image.device().machine().firstcpu->space(AS_PROGRAM).get_write_ptr(addr);
+
+	image.fread( ptr, count);
+}
+
+/*-------------------------------------------------
+    QUICKLOAD_LOAD( atom_atm )
+-------------------------------------------------*/
+
+QUICKLOAD_LOAD( atom_atm )
+{
+	/*
+
+	    The format for the .ATM files is as follows:
+
+	    Offset Size     Description
+	    ------ -------- -----------------------------------------------------------
+	    0000h  16 BYTEs ATOM filename (if less than 16 BYTEs, rest is 00h bytes)
+	    0010h  WORD     Start address for load
+	    0012h  WORD     Execution address
+	    0014h  WORD     Size of data in BYTEs
+	    0016h  Size     Data
+
+	*/
+
+	UINT8 header[0x16] = { 0 };
+
+	image.fread(header, 0x16);
+
+	UINT16 start_address = pick_integer_le(header, 0x10, 2);
+	UINT16 run_address = pick_integer_le(header, 0x12, 2);
+	UINT16 size = pick_integer_le(header, 0x14, 2);
+
+	if (LOG)
+	{
+		header[16] = 0;
+		logerror("ATM filename: %s\n", header);
+		logerror("ATM start address: %04x\n", start_address);
+		logerror("ATM run address: %04x\n", run_address);
+		logerror("ATM size: %04x\n", size);
+	}
+
+	image_fread_memory(image, start_address, size);
+
+	image.device().machine().firstcpu->set_pc(run_address);
+
+	return IMAGE_INIT_PASS;
+}
 
 /***************************************************************************
     READ/WRITE HANDLERS
@@ -679,24 +745,24 @@ struct atom_cart_range
 static const struct atom_cart_range atom_cart_table[] =
 {
 	{ ":cart", 0x0000, "a000" },
-	{ "a0",   0x0000, "a000" },
-	{ "a1",   0x1000, "a000" },
-	{ "a2",   0x2000, "a000" },
-	{ "a3",   0x3000, "a000" },
-	{ "a4",   0x4000, "a000" },
-	{ "a5",   0x5000, "a000" },
-	{ "a6",   0x6000, "a000" },
-	{ "a7",   0x7000, "a000" },
-	{ "a8",   0x8000, "a000" },
-	{ "a9",   0x9000, "a000" },
-	{ "aa",   0xa000, "a000" },
-	{ "ab",   0xb000, "a000" },
-	{ "ac",   0xc000, "a000" },
-	{ "ad",   0xd000, "a000" },
-	{ "ae",   0xe000, "a000" },
-	{ "af",   0xf000, "a000" },
-	{ "e0",   0x0000, "e000" },
-	{ "e1",   0x1000, "e000" },
+	{ ":a0",   0x0000, "a000" },
+	{ ":a1",   0x1000, "a000" },
+	{ ":a2",   0x2000, "a000" },
+	{ ":a3",   0x3000, "a000" },
+	{ ":a4",   0x4000, "a000" },
+	{ ":a5",   0x5000, "a000" },
+	{ ":a6",   0x6000, "a000" },
+	{ ":a7",   0x7000, "a000" },
+	{ ":a8",   0x8000, "a000" },
+	{ ":a9",   0x9000, "a000" },
+	{ ":aa",   0xa000, "a000" },
+	{ ":ab",   0xb000, "a000" },
+	{ ":ac",   0xc000, "a000" },
+	{ ":ad",   0xd000, "a000" },
+	{ ":ae",   0xe000, "a000" },
+	{ ":af",   0xf000, "a000" },
+	{ ":e0",   0x0000, "e000" },
+	{ ":e1",   0x1000, "e000" },
 	{ 0 }
 };
 

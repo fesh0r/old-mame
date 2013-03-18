@@ -117,6 +117,8 @@ protected:
 	required_ioport m_board_7;
 	required_ioport m_board_8;
 	void mouse_update();
+	int get_first_cleared_bit(UINT8 data);
+	int get_first_bit(UINT8 data);
 };
 
 
@@ -199,7 +201,7 @@ void supercon_state::clear_pieces()
 	}
 }
 
-static int get_first_cleared_bit(UINT8 data)
+int supercon_state::get_first_cleared_bit(UINT8 data)
 {
 	int i;
 
@@ -210,7 +212,7 @@ static int get_first_cleared_bit(UINT8 data)
 	return NOT_VALID;
 }
 
-static int get_first_bit(UINT8 data)
+int supercon_state::get_first_bit(UINT8 data)
 {
 	int i;
 
@@ -376,14 +378,14 @@ READ8_MEMBER( supercon_state::supercon_port3_r )
 
 	switch ( i )
 	{
-		case 0: m_status_1->read(); break;
-		case 1: m_status_2->read(); break;
-		case 2: m_status_3->read(); break;
-		case 3: m_status_4->read(); break;
-		case 4: m_status_5->read(); break;
-		case 5: m_status_6->read(); break;
-		case 6: m_status_7->read(); break;
-		case 7: m_status_8->read(); break;
+		case 0: key_data=m_status_1->read(); break;
+		case 1: key_data=m_status_2->read(); break;
+		case 2: key_data=m_status_3->read(); break;
+		case 3: key_data=m_status_4->read(); break;
+		case 4: key_data=m_status_5->read(); break;
+		case 5: key_data=m_status_6->read(); break;
+		case 6: key_data=m_status_7->read(); break;
+		case 7: key_data=m_status_8->read(); break;
 	}
 
 	if (key_data != 0xc0)
@@ -442,14 +444,14 @@ READ8_MEMBER( supercon_state::supercon_port4_r )
 
 	switch ( i_18 )
 	{
-		case 0: m_board_1->read(); break;
-		case 1: m_board_2->read(); break;
-		case 2: m_board_3->read(); break;
-		case 3: m_board_4->read(); break;
-		case 4: m_board_5->read(); break;
-		case 5: m_board_6->read(); break;
-		case 6: m_board_7->read(); break;
-		case 7: m_board_8->read(); break;
+		case 0: key_data=m_board_1->read(); break;
+		case 1: key_data=m_board_2->read(); break;
+		case 2: key_data=m_board_3->read(); break;
+		case 3: key_data=m_board_4->read(); break;
+		case 4: key_data=m_board_5->read(); break;
+		case 5: key_data=m_board_6->read(); break;
+		case 6: key_data=m_board_7->read(); break;
+		case 7: key_data=m_board_8->read(); break;
 	}
 
 	if (key_data != 0xff)
@@ -564,11 +566,11 @@ WRITE8_MEMBER( supercon_state::supercon_port4_w )
 
 	if ( m_data_1F00 & 0x80 )
 	{
-		beep_set_state(m_beep, 1);
+		m_beep->set_state(1);
 		m_emu_started=TRUE;
 	}
 	else
-		beep_set_state(m_beep ,0);
+		m_beep->set_state(0);
 }
 
 TIMER_CALLBACK_MEMBER(supercon_state::mouse_click)

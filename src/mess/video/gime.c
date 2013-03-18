@@ -346,6 +346,10 @@ void gime_base_device::device_reset(void)
 	m_firq = 0x00;
 	m_is_blinking = false;
 
+	m_legacy_video = false;
+
+	m_displayed_rgb = false;
+
 	update_memory();
 	reset_timer();
 }

@@ -8,6 +8,8 @@
     and http://www.vr32.de/modules/dokuwiki/doku.php?
 
     TODO:
+    - sound is way incomplete
+    - various timing issues (irq & events aren't known)
     - 3dtetris: missing gfxs on gameplay (writes to framebuffer)
     - boundh: game is way too fast
     - galactic: ball goes out of bounds sometimes?
@@ -17,8 +19,6 @@
     - redalarm: gameplay doesn't work
     - spaceinv: Taito logo only if you press the button, framebuffer?
     - spaceinv: missing shots
-    - telerobo: crashes if you die
-    - telerobo: hangs after winning first match;
     - vlab: doesn't boot (irq issue?)
     - wariolnd: brightness gets suddently darker during intro.
 
@@ -142,7 +142,7 @@ public:
 		m_vboy_regs.tlb = 0;
 		m_vboy_regs.tcr = 0;
 		m_vboy_regs.wcr = 0;
-		m_vboy_regs.kcr = 0;
+		m_vboy_regs.kcr = 0x80;
 
 		m_vboy_timer.count = 0;
 		m_vboy_timer.latch = 0;
@@ -236,6 +236,7 @@ void vboy_state::video_start()
 
 	m_font  = auto_alloc_array_clear(machine(), UINT16, (0x8000 >> 1)*4 * 2);
 	m_bgmap = auto_alloc_array(machine(), UINT16, 0x20000 >> 1);
+	memset(m_bgmap, 0, sizeof(UINT16) * (0x20000 >> 1));
 }
 
 void vboy_state::put_obj(bitmap_ind16 &bitmap, const rectangle &cliprect, int x, int y, UINT16 code, UINT8 pal)
@@ -1196,7 +1197,7 @@ void vboy_state::machine_reset()
 	m_vboy_regs.thb = 0xff;
 	m_vboy_regs.tcr = 0xe4;
 	m_vboy_regs.wcr = 0xfc;
-	m_vboy_regs.kcr = 0x4c;
+	m_vboy_regs.kcr = 0x4c | 0x80;
 	m_vip_regs.DPCTRL = 2; // ssquash relies on this at boot otherwise no frame_start irq is fired
 	m_displayfb = 0;
 	m_drawfb = 0;

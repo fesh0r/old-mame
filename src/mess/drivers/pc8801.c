@@ -484,6 +484,7 @@ public:
 	DECLARE_READ8_MEMBER(opn_porta_r);
 	DECLARE_READ8_MEMBER(opn_portb_r);
 	IRQ_CALLBACK_MEMBER(pc8801_irq_callback);
+	void pc8801_raise_irq(UINT8 irq,UINT8 state);
 };
 
 
@@ -1183,10 +1184,10 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
 	m_rtc->clk_w((data & 4) >> 2);
 
 	if(((m_device_ctrl_data & 0x20) == 0x00) && ((data & 0x20) == 0x20))
-		beep_set_state(machine().device(BEEPER_TAG),1);
+		machine().device<beep_device>(BEEPER_TAG)->set_state(1);
 
 	if(((m_device_ctrl_data & 0x20) == 0x20) && ((data & 0x20) == 0x00))
-		beep_set_state(machine().device(BEEPER_TAG),0);
+		machine().device<beep_device>(BEEPER_TAG)->set_state(0);
 
 	if((m_device_ctrl_data & 0x40) != (data & 0x40))
 	{
@@ -1213,7 +1214,7 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
 
 	/* TODO: is SING a buzzer mask? Bastard Special relies on this ... */
 	if(m_device_ctrl_data & 0x80)
-		beep_set_state(machine().device(BEEPER_TAG),0);
+		machine().device<beep_device>(BEEPER_TAG)->set_state(0);
 
 	m_device_ctrl_data = data;
 }
@@ -2268,20 +2269,19 @@ static const cassette_interface pc88_cassette_interface =
 };
 
 #ifdef USE_PROPER_I8214
-void pc8801_raise_irq(running_machine &machine,UINT8 irq,UINT8 state)
+void pc8801_state::pc8801_raise_irq(UINT8 irq,UINT8 state)
 {
-	pc8801_state *drvstate = machine.driver_data<pc8801_state>();
 	if(state)
 	{
-		drvstate->m_int_state |= irq;
+		drvm_int_state |= irq;
 
-		drvstate->m_pic->r_w(~irq);
+		drvm_pic->r_w(~irq);
 
 		m_maincpu->set_input_line(0,ASSERT_LINE);
 	}
 	else
 	{
-		//drvstate->m_int_state &= ~irq;
+		//drvm_int_state &= ~irq;
 
 		//m_maincpu->set_input_line(0,CLEAR_LINE);
 	}
@@ -2475,8 +2475,8 @@ void pc8801_state::machine_reset()
 		m_crtc.status = 0;
 	}
 
-	beep_set_frequency(machine().device(BEEPER_TAG),2400);
-	beep_set_state(machine().device(BEEPER_TAG),0);
+	machine().device<beep_device>(BEEPER_TAG)->set_frequency(2400);
+	machine().device<beep_device>(BEEPER_TAG)->set_state(0);
 
 	#ifdef USE_PROPER_I8214
 	{

@@ -27,8 +27,8 @@ public:
 			m_beep(*this, BEEPER_TAG),
 			m_pack1(*this, "pack1"),
 			m_pack2(*this, "pack2"),
-		m_sys_register(*this, "sys_register"),
-		m_ram(*this, "ram"){ }
+			m_sys_register(*this, "sys_register"),
+			m_ram(*this, "ram"){ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<hd44780_device> m_lcdc;

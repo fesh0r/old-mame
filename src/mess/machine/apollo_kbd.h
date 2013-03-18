@@ -15,6 +15,7 @@
 #define __APOLLO_KBD_H__
 
 #include "emu.h"
+#include "sound/beep.h"
 
 // BSD-derived systems get very sad when you party with system reserved names.
 #ifdef getchar
@@ -105,7 +106,7 @@ private:
 		static TIMER_CALLBACK( static_beeper_callback );
 
 		apollo_kbd_device *m_device; // pointer back to our device
-		device_t *m_beeper; // the keyboard beeper device
+		beep_device *m_beeper; // the keyboard beeper device
 		emu_timer * m_timer; // timer to clock data in
 	};
 
@@ -179,6 +180,14 @@ private:
 	keyboard_tty  m_keyboard_tty;
 
 	apollo_kbd_device *m_device; // pointer to myself (nasty: used for cpu_context)
+
+	ioport_port *m_io_keyboard1;
+	ioport_port *m_io_keyboard2;
+	ioport_port *m_io_keyboard3;
+	ioport_port *m_io_keyboard4;
+	ioport_port *m_io_mouse1;
+	ioport_port *m_io_mouse2;
+	ioport_port *m_io_mouse3;
 
 	/* Receiver */
 	UINT32 m_rx_message;

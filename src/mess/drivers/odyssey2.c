@@ -29,6 +29,7 @@ public:
 		, m_maincpu(*this, "maincpu")
 		, m_screen(*this, "screen")
 		, m_i8244(*this, "i8244")
+		, m_sp0256(*this, "sp0256_speech")
 		, m_user1(*this, "user1")
 		, m_bank1(*this, "bank1")
 		, m_bank2(*this, "bank2")
@@ -45,6 +46,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<screen_device> m_screen;
 	required_device<i8244_device> m_i8244;
+	required_device<sp0256_device> m_sp0256;
 
 	int m_the_voice_lrq_state;
 	UINT8 m_ram[256];
@@ -245,22 +247,22 @@ const UINT8 odyssey2_colors[] =
 {
 	/* Background,Grid Dim */
 	0x00,0x00,0x00,   /* Black */                                         // i r g b
-	0x13,0x35,0xA5,   /* Blue           - Calibrated To Real VideoPac */  // i r g B
-	0x02,0x70,0x02,   /* Green          - Calibrated To Real VideoPac */  // i r G b
-	0x38,0x85,0x8C,   /* Blue-Green     - Calibrated To Real VideoPac */  // i r G B
-	0x91,0x00,0x00,   /* Dk Red         - Calibrated To Real VideoPac */  // i R g b
-	0x86,0x49,0xA3,   /* Violet         - Calibrated To Real VideoPac */  // i R g B
-	0x68,0x5A,0x0A,   /* Khaki          - Calibrated To Real VideoPac */  // i R g B
-	0xcc,0xcc,0xcc,   /* Lt Grey */                                       // i R G B
+	0x1A,0x37,0xBE,   /* Blue           - Calibrated To Real VideoPac */  // i r g B
+	0x00,0x6D,0x07,   /* Green          - Calibrated To Real VideoPac */  // i r G b
+	0x2A,0xAA,0xBE,   /* Blue-Green     - Calibrated To Real VideoPac */  // i r G B
+	0x79,0x00,0x00,   /* Red            - Calibrated To Real VideoPac */  // i R g b
+	0x94,0x30,0x9F,   /* Violet         - Calibrated To Real VideoPac */  // i R g B
+	0x77,0x67,0x0B,   /* Khaki          - Calibrated To Real VideoPac */  // i R g B
+	0xCE,0xCE,0xCE,   /* Lt Grey */                                       // i R G B
 
 	/* Background,Grid Bright */
-	0x5B,0x5B,0x5B,   /* Grey           - Calibrated To Real VideoPac */  // I R g B
-	0x60,0x89,0xDB,   /* Ltr Blue       - Calibrated To Real VideoPac */  // I R g B
-	0x54,0xBF,0x54,   /* Lt Green       - Calibrated To Real VideoPac */  // I R g B
-	0x6B,0xDD,0xF4,   /* Lt Blue        - Calibrated To Real VideoPac */  // I R g b
-	0xE5,0x5E,0x5E,   /* Red            - Calibrated To Real VideoPac */  // I R g b
-	0xD9,0x83,0xDB,   /* Lt Violet      - Calibrated To Real VideoPac */  // I R g B
-	0xC4,0xBD,0x5C,   /* Lt Yellow      - Calibrated To Real VideoPac */  // I R G b
+	0x67,0x67,0x67,   /* Grey           - Calibrated To Real VideoPac */  // I R g B
+	0x5C,0x80,0xF6,   /* Lt Blue        - Calibrated To Real VideoPac */  // I R g B
+	0x56,0xC4,0x69,   /* Lt Green       - Calibrated To Real VideoPac */  // I R g B
+	0x77,0xE6,0xEB,   /* Lt Blue-Green  - Calibrated To Real VideoPac */  // I R g b
+	0xC7,0x51,0x51,   /* Lt Red         - Calibrated To Real VideoPac */  // I R g b
+	0xDC,0x84,0xE8,   /* Lt Violet      - Calibrated To Real VideoPac */  // I R g B
+	0xC6,0xB8,0x6A,   /* Lt Yellow      - Calibrated To Real VideoPac */  // I R G b
 	0xFF,0xFF,0xFF,   /* White */                                         // I R G B
 };
 
@@ -278,11 +280,23 @@ void g7400_state::palette_init()
 {
 	const UINT8 g7400_colors[] =
 	{
-		0x00,0x00,0x00, 0x00,0x00,0xb6, 0x00,0xb6,0x00, 0x00,0xb6,0xb6,
-		0xb6,0x00,0x00, 0xb6,0x00,0xb6, 0xb6,0xb6,0x00, 0xb6,0xb6,0xb6,
+	0x00,0x00,0x00, // Black
+	0x1A,0x37,0xBE, // Blue
+	0x00,0x6D,0x07, // Green
+	0x2A,0xAA,0xBE, // Blue-Green
+	0x79,0x00,0x00, // Red
+	0x94,0x30,0x9F, // Violet
+	0x77,0x67,0x0B, // Khaki
+	0xCE,0xCE,0xCE, // Lt Grey
 
-		0x49,0x49,0x49, 0x49,0x49,0xff, 0x49,0xff,0x49, 0x49,0xff,0xff,
-		0xff,0x49,0x49, 0xff,0x49,0xff, 0xff,0xff,0x49, 0xff,0xff,0xff
+	0x67,0x67,0x67, // Grey
+	0x5C,0x80,0xF6, // Lt Blue
+	0x56,0xC4,0x69, // Lt Green
+	0x77,0xE6,0xEB, // Lt Blue-Green
+	0xC7,0x51,0x51, // Lt Red
+	0xDC,0x84,0xE8, // Lt Violet
+	0xC6,0xB8,0x6A, // Lt Yellow
+	0xff,0xff,0xff  // White
 
 	};
 
@@ -331,7 +345,7 @@ WRITE_LINE_MEMBER(odyssey2_state::the_voice_lrq_callback)
 
 READ8_MEMBER(odyssey2_state::t0_read)
 {
-	return ( m_the_voice_lrq_state == ASSERT_LINE ) ? 0 : 1;
+	return sp0256_lrq_r( m_sp0256 ) ? 0 : 1;
 }
 
 
@@ -432,11 +446,11 @@ WRITE8_MEMBER(odyssey2_state::io_write)
 			if ( data & 0x20 )
 			{
 				logerror("voice write %02X, data = %02X (p1 = %02X)\n", offset, data, m_p1 );
-				sp0256_ALD_w( machine().device("sp0256_speech"), space, 0, offset & 0x7F );
+				sp0256_ALD_w( m_sp0256, space, 0, offset & 0x7F );
 			}
 			else
 			{
-				/* TODO: Reset sp0256 in this case */
+				m_sp0256->reset();
 			}
 		}
 	}
@@ -514,8 +528,8 @@ WRITE16_MEMBER(g7400_state::scanline_postprocess)
 	}
 
 	// apply external LUM setting
-	int x_real_start = i8244_device::START_ACTIVE_SCAN + i8244_device::BORDER_SIZE + 2;
-	int x_real_end = i8244_device::END_ACTIVE_SCAN - i8244_device::BORDER_SIZE + 2;
+	int x_real_start = i8244_device::START_ACTIVE_SCAN + i8244_device::BORDER_SIZE + 5;
+	int x_real_end = i8244_device::END_ACTIVE_SCAN - i8244_device::BORDER_SIZE + 5;
 	for ( int x = i8244_device::START_ACTIVE_SCAN; x < i8244_device::END_ACTIVE_SCAN; x++ )
 	{
 		UINT16 d = bitmap->pix16( vpos, x );
@@ -833,6 +847,44 @@ static MACHINE_CONFIG_START( g7400, g7400_state )
 	MCFG_I8245_ADD( "i8244", 3540000 * 2, "screen", WRITELINE( odyssey2_state, irq_callback ), WRITE16( g7400_state, scanline_postprocess ) )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
+	MCFG_SOUND_ADD("sp0256_speech", SP0256, 3120000)
+	MCFG_SOUND_CONFIG(the_voice_sp0256)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MCFG_FRAGMENT_ADD(odyssey2_cartslot)
+	MCFG_DEVICE_REMOVE("cart_list")
+	MCFG_SOFTWARE_LIST_ADD("cart_list","g7400")
+	MCFG_SOFTWARE_LIST_COMPATIBLE_ADD("ody2_list","odyssey2")
+MACHINE_CONFIG_END
+
+
+static MACHINE_CONFIG_START( odyssey3, g7400_state )
+	/* basic machine hardware */
+	MCFG_CPU_ADD("maincpu", I8048, XTAL_5_911MHz )
+	MCFG_CPU_PROGRAM_MAP(odyssey2_mem)
+	MCFG_CPU_IO_MAP(g7400_io)
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+
+	/* video hardware */
+	MCFG_SCREEN_ADD("screen", RASTER)
+	MCFG_SCREEN_RAW_PARAMS( 3540000 * 2, i8244_device::LINE_CLOCKS, i8244_device::START_ACTIVE_SCAN, i8244_device::END_ACTIVE_SCAN, i8244_device::LINES, i8244_device::START_Y, i8244_device::START_Y + i8244_device::SCREEN_HEIGHT )
+	MCFG_SCREEN_UPDATE_DRIVER(odyssey2_state, screen_update_odyssey2)
+
+	MCFG_GFXDECODE( odyssey2 )
+	MCFG_PALETTE_LENGTH(16)
+
+	MCFG_I8243_ADD( "i8243", NOOP, WRITE8(g7400_state,i8243_port_w))
+
+	MCFG_EF9340_1_ADD( "ef9340_1", 3540000, "screen" )
+
+	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_I8244_ADD( "i8244", 3540000 * 2, "screen", WRITELINE( odyssey2_state, irq_callback ), WRITE16( g7400_state, scanline_postprocess ) )
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
+
+	MCFG_SOUND_ADD("sp0256_speech", SP0256, 3120000)
+	MCFG_SOUND_CONFIG(the_voice_sp0256)
+	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
 	MCFG_FRAGMENT_ADD(odyssey2_cartslot)
 	MCFG_DEVICE_REMOVE("cart_list")
 	MCFG_SOFTWARE_LIST_ADD("cart_list","g7400")
@@ -908,8 +960,19 @@ ROM_START (jopac)
 ROM_END
 
 
+ROM_START (odyssey3)
+	ROM_REGION(0x10000, "maincpu", 0)
+	ROM_LOAD ("odyssey3.bin", 0x0000, 0x0400, CRC(e2b23324) SHA1(0a38c5f2cea929d2fe0a23e5e1a60de9155815dc))
+
+	ROM_REGION(0x100, "gfx1", ROMREGION_ERASEFF)
+
+	ROM_REGION(0x4000, "user1", 0)
+	ROM_CART_LOAD("cart", 0x000, 0x4000, ROM_MIRROR)
+ROM_END
+
 /*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT     INIT      COMPANY     FULLNAME     FLAGS */
 COMP( 1978, odyssey2, 0,        0,      odyssey2, odyssey2, odyssey2_state, odyssey2, "Magnavox", "Odyssey 2", 0 )
 COMP( 1979, videopac, odyssey2, 0,      videopac, odyssey2, odyssey2_state, odyssey2, "Philips", "Videopac G7000/C52", 0 )
-COMP( 1983, g7400, odyssey2, 0,         g7400,    odyssey2, odyssey2_state, odyssey2, "Philips", "Videopac Plus G7400", GAME_NOT_WORKING )
-COMP( 1983, jopac, odyssey2, 0,         g7400,    odyssey2, odyssey2_state, odyssey2, "Brandt", "Jopac JO7400", GAME_NOT_WORKING )
+COMP( 1983, g7400, odyssey2, 0,         g7400,    odyssey2, odyssey2_state, odyssey2, "Philips", "Videopac Plus G7400", GAME_IMPERFECT_GRAPHICS )
+COMP( 1983, jopac, odyssey2, 0,         g7400,    odyssey2, odyssey2_state, odyssey2, "Brandt", "Jopac JO7400", GAME_IMPERFECT_GRAPHICS )
+COMP( 1983, odyssey3, odyssey2, 0,      odyssey3, odyssey2, odyssey2_state, odyssey2, "Maganvox", "Odyssey 3 Command Center (prototype)", GAME_IMPERFECT_GRAPHICS )

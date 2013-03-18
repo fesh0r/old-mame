@@ -52,16 +52,28 @@ bus serial (available in all modes), a Fast and a Burst serial bus
 
 #include "emu.h"
 #include "cpu/m6502/m4510.h"
-#include "sound/sid6581.h"
+#include "sound/mos6581.h"
 #include "machine/6526cia.h"
 #include "machine/cbmipt.h"
 #include "video/vic4567.h"
 #include "includes/cbm.h"
-#include "formats/cbm_snqk.h"
-#include "includes/c64_legacy.h"
+#include "machine/cbm_snqk.h"
 #include "includes/c65.h"
 #include "machine/cbmiec.h"
 #include "machine/ram.h"
+
+static void cbm_c65_quick_sethiaddress( running_machine &machine, UINT16 hiaddress )
+{
+	address_space &space = machine.firstcpu->space(AS_PROGRAM);
+
+	space.write_byte(0x82, hiaddress & 0xff);
+	space.write_byte(0x83, hiaddress >> 8);
+}
+
+static QUICKLOAD_LOAD( cbm_c65 )
+{
+	return general_cbm_loadsnap(image, file_type, quickload_size, 0, cbm_c65_quick_sethiaddress);
+}
 
 /*************************************
  *
@@ -189,6 +201,120 @@ PALETTE_INIT_MEMBER(c65_state,c65)
  *
  *************************************/
 
+static int c64_paddle_read( device_t *device, address_space &space, int which )
+{
+	running_machine &machine = device->machine();
+	int pot1 = 0xff, pot2 = 0xff, pot3 = 0xff, pot4 = 0xff, temp;
+	UINT8 cia0porta = mos6526_pa_r(machine.device("cia_0"), space, 0);
+	int controller1 = machine.root_device().ioport("CTRLSEL")->read() & 0x07;
+	int controller2 = machine.root_device().ioport("CTRLSEL")->read() & 0x70;
+	/* Notice that only a single input is defined for Mouse & Lightpen in both ports */
+	switch (controller1)
+	{
+		case 0x01:
+			if (which)
+				pot2 = machine.root_device().ioport("PADDLE2")->read();
+			else
+				pot1 = machine.root_device().ioport("PADDLE1")->read();
+			break;
+
+		case 0x02:
+			if (which)
+				pot2 = machine.root_device().ioport("TRACKY")->read();
+			else
+				pot1 = machine.root_device().ioport("TRACKX")->read();
+			break;
+
+		case 0x03:
+			if (which && (machine.root_device().ioport("JOY1_2B")->read() & 0x20))  /* Joy1 Button 2 */
+				pot1 = 0x00;
+			break;
+
+		case 0x04:
+			if (which)
+				pot2 = machine.root_device().ioport("LIGHTY")->read();
+			else
+				pot1 = machine.root_device().ioport("LIGHTX")->read();
+			break;
+
+		case 0x06:
+			if (which && (machine.root_device().ioport("OTHER")->read() & 0x04))    /* Lightpen Signal */
+				pot2 = 0x00;
+			break;
+
+		case 0x00:
+		case 0x07:
+			break;
+
+		default:
+			logerror("Invalid Controller Setting %d\n", controller1);
+			break;
+	}
+
+	switch (controller2)
+	{
+		case 0x10:
+			if (which)
+				pot4 = machine.root_device().ioport("PADDLE4")->read();
+			else
+				pot3 = machine.root_device().ioport("PADDLE3")->read();
+			break;
+
+		case 0x20:
+			if (which)
+				pot4 = machine.root_device().ioport("TRACKY")->read();
+			else
+				pot3 = machine.root_device().ioport("TRACKX")->read();
+			break;
+
+		case 0x30:
+			if (which && (machine.root_device().ioport("JOY2_2B")->read() & 0x20))  /* Joy2 Button 2 */
+				pot4 = 0x00;
+			break;
+
+		case 0x40:
+			if (which)
+				pot4 = machine.root_device().ioport("LIGHTY")->read();
+			else
+				pot3 = machine.root_device().ioport("LIGHTX")->read();
+			break;
+
+		case 0x60:
+			if (which && (machine.root_device().ioport("OTHER")->read() & 0x04))    /* Lightpen Signal */
+				pot4 = 0x00;
+			break;
+
+		case 0x00:
+		case 0x70:
+			break;
+
+		default:
+			logerror("Invalid Controller Setting %d\n", controller1);
+			break;
+	}
+
+	if (machine.root_device().ioport("CTRLSEL")->read() & 0x80)     /* Swap */
+	{
+		temp = pot1; pot1 = pot3; pot3 = temp;
+		temp = pot2; pot2 = pot4; pot4 = temp;
+	}
+
+	switch (cia0porta & 0xc0)
+	{
+		case 0x40:
+			return which ? pot2 : pot1;
+
+		case 0x80:
+			return which ? pot4 : pot3;
+
+		case 0xc0:
+			return which ? pot2 : pot1;
+
+		default:
+			return 0;
+	}
+}
+
 READ8_MEMBER( c65_state::sid_potx_r )
 {
 	device_t *sid = machine().device("sid_r");
@@ -202,28 +328,6 @@ READ8_MEMBER( c65_state::sid_poty_r )
 
 	return c64_paddle_read(sid, space, 1);
 }
-
-static MOS6581_INTERFACE( sidr_intf )
-{
-	DEVCB_DRIVER_MEMBER(c65_state, sid_potx_r),
-	DEVCB_DRIVER_MEMBER(c65_state, sid_poty_r)
-};
-
-static MOS6581_INTERFACE( sidl_intf )
-{
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
-
-static CBM_IEC_INTERFACE( cbm_iec_intf )
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
-};
 
 
 /*************************************
@@ -326,12 +430,11 @@ static MACHINE_CONFIG_START( c65, c65_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MCFG_SOUND_ADD("sid_r", SID8580, 985248)
-	MCFG_SOUND_CONFIG(sidr_intf)
+	MCFG_SOUND_ADD("sid_r", MOS8580, 985248)
+	MCFG_MOS6581_POTXY_CALLBACKS(DEVREAD8(DEVICE_SELF, c65_state, sid_potx_r), DEVREAD8(DEVICE_SELF, c65_state, sid_poty_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
-	MCFG_SOUND_ADD("sid_l", SID8580, 985248)
+	MCFG_SOUND_ADD("sid_l", MOS8580, 985248)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
-	MCFG_SOUND_CONFIG(sidl_intf)
 
 	/* quickload */
 	MCFG_QUICKLOAD_ADD("quickload", cbm_c65, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
@@ -341,9 +444,7 @@ static MACHINE_CONFIG_START( c65, c65_state )
 	MCFG_LEGACY_MOS6526R1_ADD("cia_1", 3500000, 60, c65_cia1)
 
 	/* floppy from serial bus */
-	MCFG_CBM_IEC_ADD(cbm_iec_intf, NULL)
-
-	MCFG_FRAGMENT_ADD(c64_cartslot)
+	MCFG_CBM_IEC_ADD(NULL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -361,11 +462,10 @@ static MACHINE_CONFIG_DERIVED( c65pal, c65 )
 	MCFG_VIC3_ADD("vic3", c65_vic3_pal_intf)
 
 	/* sound hardware */
-	MCFG_SOUND_REPLACE("sid_r", SID8580, 1022727)
-	MCFG_SOUND_CONFIG(sidr_intf)
+	MCFG_SOUND_REPLACE("sid_r", MOS8580, 1022727)
+	MCFG_MOS6581_POTXY_CALLBACKS(DEVREAD8(DEVICE_SELF, c65_state, sid_potx_r), DEVREAD8(DEVICE_SELF, c65_state, sid_poty_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
-	MCFG_SOUND_REPLACE("sid_l", SID8580, 1022727)
-	MCFG_SOUND_CONFIG(sidl_intf)
+	MCFG_SOUND_REPLACE("sid_l", MOS8580, 1022727)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
 
 	/* cia */

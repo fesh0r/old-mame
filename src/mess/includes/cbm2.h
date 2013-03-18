@@ -6,7 +6,7 @@
 #include "emu.h"
 #include "cpu/m6502/m6509.h"
 #include "cpu/i86/i86.h"
-#include "formats/cbm_snqk.h"
+#include "machine/cbm_snqk.h"
 #include "includes/cbm.h"
 #include "machine/6525tpi.h"
 #include "machine/cbm2exp.h"
@@ -24,7 +24,7 @@
 #include "machine/serial.h"
 #include "machine/vcsctrl.h"
 #include "sound/dac.h"
-#include "sound/sid6581.h"
+#include "sound/mos6581.h"
 #include "video/mc6845.h"
 #include "video/mos6566.h"
 
@@ -34,7 +34,7 @@
 #define MOS6567_TAG     "u23"
 #define MOS6569_TAG     "u23"
 #define MC68B45_TAG     "u10"
-#define MOS6851_TAG     "u4"
+#define MOS6581_TAG     "u4"
 #define MOS6525_1_TAG   "u20"
 #define MOS6525_2_TAG   "u102"
 #define MOS6551A_TAG    "u19"
@@ -60,7 +60,7 @@ public:
 			m_maincpu(*this, M6509_TAG),
 			m_pla1(*this, PLA1_TAG),
 			m_crtc(*this, MC68B45_TAG),
-			m_sid(*this, MOS6851_TAG),
+			m_sid(*this, MOS6581_TAG),
 			m_tpi1(*this, MOS6525_1_TAG),
 			m_tpi2(*this, MOS6525_2_TAG),
 			m_acia(*this, MOS6551A_TAG),
@@ -115,7 +115,7 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<pls100_device> m_pla1;
 	optional_device<mc6845_device> m_crtc;
-	required_device<sid6581_device> m_sid;
+	required_device<mos6581_device> m_sid;
 	required_device<tpi6525_device> m_tpi1;
 	required_device<tpi6525_device> m_tpi2;
 	required_device<mos6551_device> m_acia;
@@ -175,6 +175,7 @@ public:
 		int *crtccs, int *cs1, int *sidcs, int *extprtcs, int *ciacs, int *aciacs, int *tript1cs, int *tript2cs);
 
 	UINT8 read_keyboard();
+	void set_busy2(int state);
 
 	DECLARE_READ8_MEMBER( read );
 	DECLARE_WRITE8_MEMBER( write );
@@ -206,6 +207,7 @@ public:
 	DECLARE_WRITE8_MEMBER( ext_tpi_pb_w );
 	DECLARE_WRITE8_MEMBER( ext_tpi_pc_w );
 
+	DECLARE_WRITE_LINE_MEMBER( ext_cia_irq_w );
 	DECLARE_READ8_MEMBER( ext_cia_pb_r );
 	DECLARE_WRITE8_MEMBER( ext_cia_pb_w );
 
@@ -233,6 +235,9 @@ public:
 	UINT8 m_tpi2_pa;
 	UINT8 m_tpi2_pb;
 	UINT8 m_cia_pa;
+
+	UINT8 m_ext_cia_pb;
+	UINT8 m_ext_tpi_pb;
 
 	// timers
 	emu_timer *m_todclk_timer;

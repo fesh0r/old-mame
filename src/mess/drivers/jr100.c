@@ -63,11 +63,12 @@ public:
 	DECLARE_WRITE8_MEMBER(jr100_via_write_a);
 	DECLARE_WRITE8_MEMBER(jr100_via_write_b);
 	DECLARE_WRITE_LINE_MEMBER(jr100_via_write_cb2);
+	UINT32 readByLittleEndian(UINT8 *buf,int pos);
 
 protected:
 	required_device<via6522_device> m_via;
 	required_device<cassette_image_device> m_cassette;
-	required_device<device_t> m_beeper;
+	required_device<beep_device> m_beeper;
 	required_device<device_t> m_speaker;
 	required_memory_region m_region_maincpu;
 	required_ioport m_line0;
@@ -93,7 +94,7 @@ WRITE8_MEMBER(jr100_state::jr100_via_w)
 		m_beep_en = ((data & 0xe0) == 0xe0);
 
 		if(!m_beep_en)
-			beep_set_state(m_beeper,0);
+			m_beeper->set_state(0);
 	}
 
 	/* T1L-L */
@@ -112,8 +113,8 @@ WRITE8_MEMBER(jr100_state::jr100_via_w)
 		/* writing here actually enables the beeper, if above masking condition is satisfied */
 		if(m_beep_en)
 		{
-			beep_set_state(m_beeper,1);
-			beep_set_frequency(m_beeper,894886.25 / (double)(m_t1latch) / 2.0);
+			m_beeper->set_state(1);
+			m_beeper->set_frequency(894886.25 / (double)(m_t1latch) / 2.0);
 		}
 	}
 	m_via->write(space,offset,data);
@@ -197,8 +198,8 @@ INPUT_PORTS_END
 
 void jr100_state::machine_start()
 {
-	beep_set_frequency(m_beeper,0);
-	beep_set_state(m_beeper,0);
+	m_beeper->set_frequency(0);
+	m_beeper->set_state(0);
 }
 
 void jr100_state::machine_reset()
@@ -329,7 +330,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(jr100_state::sound_tick)
 	}
 }
 
-static UINT32 readByLittleEndian(UINT8 *buf,int pos)
+UINT32 jr100_state::readByLittleEndian(UINT8 *buf,int pos)
 {
 	return buf[pos] + (buf[pos+1] << 8) + (buf[pos+2] << 16) + (buf[pos+3] << 24);
 }
@@ -352,16 +353,16 @@ static QUICKLOAD_LOAD(jr100)
 		return IMAGE_INIT_FAIL;
 	}
 	int pos = 4;
-	if (readByLittleEndian(buf,pos)!=1) {
+	if (state->readByLittleEndian(buf,pos)!=1) {
 		// not version 1 of PRG file
 		return IMAGE_INIT_FAIL;
 	}
 	pos += 4;
-	UINT32 len =readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 len =state->readByLittleEndian(buf,pos); pos+= 4;
 	pos += len; // skip name
-	UINT32 start_address = readByLittleEndian(buf,pos); pos+= 4;
-	UINT32 code_length   = readByLittleEndian(buf,pos); pos+= 4;
-	UINT32 flag          = readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 start_address = state->readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 code_length   = state->readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 flag          = state->readByLittleEndian(buf,pos); pos+= 4;
 
 	UINT32 end_address = start_address + code_length - 1;
 	// copy code

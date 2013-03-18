@@ -39,7 +39,7 @@ public:
 	{
 		int code  = m_ram.target()[((tile_index / 80) * 128) + (tile_index % 80) + 0x800];
 
-		SET_TILE_INFO_MEMBER(0, code, 0, 0);
+		SET_TILE_INFO_MEMBER(0, code & 0x7f, ( code & 0x80 ) >> 7, 0);
 	}
 
 	virtual void machine_start()
@@ -59,15 +59,75 @@ public:
 		return 0;
 	}
 
-	DECLARE_WRITE8_MEMBER(rambank_w)
+	DECLARE_WRITE8_MEMBER(ramwrite_w)
 	{
-//      printf( "ram bank:%02x %02x\n", offset, data );
+		// this area might be shared between rom & ram or it might be ram only
+//      printf( "ram write:%04x %02x\n", offset, data );
+	}
+
+	// these seem to control what appears in the memory space at various addresses.
+	// whether they just affect data access or instruction fetching as well is unknown.
+
+	DECLARE_WRITE8_MEMBER(fa00_w)
+	{
+//      printf( "fa00\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fa80_w)
+	{
+//      printf( "fa80\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fb00_w)
+	{
+//      printf( "fb00\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fb80_w)
+	{
+//      printf( "fb80\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fc00_w)
+	{
+//      printf( "fc00\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fc80_w)
+	{
+//      printf( "fc80\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fd00_w)
+	{
+//      printf( "fd00\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fd80_w)
+	{
+//      printf( "fd80\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fe00_w)
+	{
+//      printf( "fe00\n" );
+	}
+
+	DECLARE_WRITE8_MEMBER(fe80_w)
+	{
+//      printf( "fe80\n" );
 	}
 
 	DECLARE_WRITE8_MEMBER(rombank_w)
 	{
 //      printf( "rom bank %02x\n", data);
+		// this might be for ram banking
 		membank("bankedroms")->set_entry(0);
+	}
+
+	DECLARE_WRITE8_MEMBER(ff80_w)
+	{
+//      printf( "ff80:%02x %02x\n", offset, data );
 	}
 
 	WRITE8_MEMBER( via0_pa_w )
@@ -179,10 +239,20 @@ static ADDRESS_MAP_START( clcd_mem, AS_PROGRAM, 8, clcd_state )
 	AM_RANGE(0xf800, 0xf80f) AM_DEVREADWRITE("via0", via6522_device, read, write)
 	AM_RANGE(0xf880, 0xf88f) AM_DEVREADWRITE("via1", via6522_device, read, write)
 	AM_RANGE(0xf980, 0xf981) AM_DEVREADWRITE("acia", mos6551_device, read, write)
+	AM_RANGE(0xfa00, 0xfa00) AM_WRITE(fa00_w)
+	AM_RANGE(0xfa80, 0xfa80) AM_WRITE(fa80_w)
+	AM_RANGE(0xfb00, 0xfb00) AM_WRITE(fb00_w)
+	AM_RANGE(0xfb80, 0xfb80) AM_WRITE(fb80_w)
+	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(fc00_w)
+	AM_RANGE(0xfc80, 0xfc80) AM_WRITE(fc80_w)
+	AM_RANGE(0xfd00, 0xfd00) AM_WRITE(fd00_w)
+	AM_RANGE(0xfd80, 0xfd80) AM_WRITE(fd80_w)
+	AM_RANGE(0xfe00, 0xfe00) AM_WRITE(fe00_w)
+	AM_RANGE(0xfe80, 0xfe80) AM_WRITE(fe80_w)
 	AM_RANGE(0xff00, 0xff00) AM_WRITE(rombank_w)
-	AM_RANGE(0xff80, 0xff83) AM_WRITE(rambank_w)
+	AM_RANGE(0xff80, 0xff83) AM_WRITE(ff80_w)
 	AM_RANGE(0x0000, 0x3fff) AM_RAM AM_SHARE("ram")
-	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bankedroms")
+	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bankedroms") AM_WRITE(ramwrite_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("maincpu", 0)
 ADDRESS_MAP_END
 
@@ -284,6 +354,9 @@ void clcd_state::palette_init()
 {
 	palette_set_color(machine(), 0, MAKE_RGB(32,240,32));
 	palette_set_color(machine(), 1, MAKE_RGB(32,32,32));
+
+	palette_set_color(machine(), 2, MAKE_RGB(32,32,32));
+	palette_set_color(machine(), 3, MAKE_RGB(32,240,32));
 }
 
 static const via6522_interface via0_intf =
@@ -326,16 +399,16 @@ static const via6522_interface via1_intf =
 static const gfx_layout charset_8x8 =
 {
 	6,8,
-	256,
+	128,
 	1,
 	{ 0 },
-	{ 0, 1, 2, 3, 4, 5},
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8 },
+	{ 7, 6, 5, 4, 3, 2, 1, 0 },
+	6*8
 };
 
 static GFXDECODE_START( clcd )
-	GFXDECODE_ENTRY( "charrom", 0, charset_8x8, 0, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0x7700, charset_8x8, 0, 1 )
 GFXDECODE_END
 
 static MACHINE_CONFIG_START( clcd, clcd_state )
@@ -356,16 +429,12 @@ static MACHINE_CONFIG_START( clcd, clcd_state )
 
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 
-	MCFG_PALETTE_LENGTH(2)
+	MCFG_PALETTE_LENGTH(4)
 	MCFG_GFXDECODE(clcd)
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( clcd )
-
-	ROM_REGION( 0x1000, "charrom", 0 )
-	ROM_LOAD( "charrom",            0x00800, 0x0800, BAD_DUMP CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa))
-	ROM_CONTINUE( 0x00000, 0x0800 )
 
 	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "kizapr.u102",        0x00000, 0x8000, CRC(59103d52) SHA1(e49c20b237a78b54c2cb26b133d5903bb60bd8ef))

@@ -266,7 +266,7 @@ public:
 	DECLARE_WRITE8_MEMBER(pc6001_8255_portc_w);
 	DECLARE_READ8_MEMBER(pc6001_8255_portc_r);
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(pc6001_cass);
-
+	IRQ_CALLBACK_MEMBER(pc6001_irq_callback);
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_device<device_t> m_cassette;
@@ -299,6 +299,9 @@ protected:
 	UINT8 check_joy_press();
 	UINT8 check_keyboard_press();
 	void vram_bank_change(UINT8 vram_bank);
+	ATTR_CONST UINT8 pc6001_get_attributes(UINT8 c,int scanline, int pos);
+	const UINT8 *pc6001_get_video_ram(int scanline);
+	UINT8 pc6001_get_char_rom(UINT8 ch, int line);
 };
 
 
@@ -838,11 +841,10 @@ WRITE8_MEMBER(pc6001_state::pc6001_system_latch_w)
 }
 
 #if 0
-static ATTR_CONST UINT8 pc6001_get_attributes(running_machine &machine, UINT8 c,int scanline, int pos)
+ATTR_CONST pc6001_state::UINT8 pc6001_get_attributes(UINT8 c,int scanline, int pos)
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
 	UINT8 result = 0x00;
-	UINT8 val = state->m_video_ram [(scanline / 12) * 0x20 + pos];
+	UINT8 val = m_video_ram [(scanline / 12) * 0x20 + pos];
 
 	if (val & 0x01) {
 		result |= M6847_INV;
@@ -854,13 +856,12 @@ static ATTR_CONST UINT8 pc6001_get_attributes(running_machine &machine, UINT8 c,
 	return result;
 }
 
-static const UINT8 *pc6001_get_video_ram(running_machine &machine, int scanline)
+const pc6001_state::UINT8 *pc6001_get_video_ram(int scanline)
 {
-	pc6001_state *state = machine.driver_data<pc6001_state>();
-	return state->m_video_ram +0x0200+ (scanline / 12) * 0x20;
+	return m_video_ram +0x0200+ (scanline / 12) * 0x20;
 }
 
-static UINT8 pc6001_get_char_rom(running_machine &machine, UINT8 ch, int line)
+UINT8 pc6001_state::pc6001_get_char_rom(UINT8 ch, int line)
 {
 	UINT8 *gfx = m_region_gfx1->base();
 	return gfx[ch*16+line];
@@ -1906,11 +1907,10 @@ INTERRUPT_GEN_MEMBER(pc6001_state::pc6001sr_interrupt)
 	device.execute().set_input_line(0, ASSERT_LINE);
 }
 
-static IRQ_CALLBACK ( pc6001_irq_callback )
+IRQ_CALLBACK_MEMBER(pc6001_state::pc6001_irq_callback)
 {
-	pc6001_state *state = device->machine().driver_data<pc6001_state>();
-	device->execute().set_input_line(0, CLEAR_LINE);
-	return state->m_irq_vector;
+	device.execute().set_input_line(0, CLEAR_LINE);
+	return m_irq_vector;
 }
 
 READ8_MEMBER(pc6001_state::pc6001_8255_porta_r)
@@ -2156,7 +2156,7 @@ void pc6001_state::machine_reset()
 
 	m_port_c_8255=0;
 
-	m_maincpu->set_irq_acknowledge_callback(pc6001_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc6001_state::pc6001_irq_callback),this));
 	m_cas_switch = 0;
 	m_cas_offset = 0;
 	m_timer_irq_mask = 1;
@@ -2173,7 +2173,7 @@ MACHINE_RESET_MEMBER(pc6001_state,pc6001m2)
 
 	m_port_c_8255=0;
 
-	m_maincpu->set_irq_acknowledge_callback(pc6001_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc6001_state::pc6001_irq_callback),this));
 	m_cas_switch = 0;
 	m_cas_offset = 0;
 
@@ -2208,7 +2208,7 @@ MACHINE_RESET_MEMBER(pc6001_state,pc6001sr)
 
 	m_port_c_8255=0;
 
-	m_maincpu->set_irq_acknowledge_callback(pc6001_irq_callback);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc6001_state::pc6001_irq_callback),this));
 	m_cas_switch = 0;
 	m_cas_offset = 0;
 

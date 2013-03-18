@@ -29,7 +29,23 @@
 #define A0 BIT(offset, 0)
 #define VA12 BIT(va, 12)
 
+static void cbmb_quick_sethiaddress(running_machine &machine, UINT16 hiaddress)
+{
+	address_space &space = machine.firstcpu->space(AS_PROGRAM);
 
+	space.write_byte(0xf0046, hiaddress & 0xff);
+	space.write_byte(0xf0047, hiaddress >> 8);
+}
+
+static QUICKLOAD_LOAD( cbmb )
+{
+	return general_cbm_loadsnap(image, file_type, quickload_size, 0x10000, cbmb_quick_sethiaddress);
+}
+
+static QUICKLOAD_LOAD( p500 )
+{
+	return general_cbm_loadsnap(image, file_type, quickload_size, 0, cbmb_quick_sethiaddress);
+}
 
 //**************************************************************************
 //  ADDRESS DECODING
@@ -145,7 +161,7 @@ void cbm2_state::bankswitch(offs_t offset, int eras, int ecas, int refen, int ca
 
 READ8_MEMBER( cbm2_state::read )
 {
-	int eras = 1, ecas = 0, refen = 0, cas = 0, ras = 1, sysioen = 1, dramen = 1;
+	int eras = 1, ecas = 1, refen = 0, cas = 0, ras = 1, sysioen = 1, dramen = 1;
 	int casseg1 = 1, casseg2 = 1, casseg3 = 1, casseg4 = 1, buframcs = 1, extbufcs = 1, vidramcs = 1;
 	int diskromcs = 1, csbank1 = 1, csbank2 = 1, csbank3 = 1, basiccs = 1, knbcs = 1, kernalcs = 1;
 	int crtccs = 1, cs1 = 1, sidcs = 1, extprtcs = 1, ciacs = 1, aciacs = 1, tript1cs = 1, tript2cs = 1;
@@ -248,7 +264,7 @@ READ8_MEMBER( cbm2_state::read )
 
 WRITE8_MEMBER( cbm2_state::write )
 {
-	int eras = 1, ecas = 0, refen = 0, cas = 0, ras = 1, sysioen = 1, dramen = 1;
+	int eras = 1, ecas = 1, refen = 0, cas = 0, ras = 1, sysioen = 1, dramen = 1;
 	int casseg1 = 1, casseg2 = 1, casseg3 = 1, casseg4 = 1, buframcs = 1, extbufcs = 1, vidramcs = 1;
 	int diskromcs = 1, csbank1 = 1, csbank2 = 1, csbank3 = 1, basiccs = 1, knbcs = 1, kernalcs = 1;
 	int crtccs = 1, cs1 = 1, sidcs = 1, extprtcs = 1, ciacs = 1, aciacs = 1, tript1cs = 1, tript2cs = 1;
@@ -339,32 +355,35 @@ WRITE8_MEMBER( cbm2_state::write )
 
 READ8_MEMBER( cbm2_state::ext_read )
 {
-	/*int ras = 1, cas = 1, refen = 1, eras = 1, ecas = 0;
+#ifdef USE_PLA_DECODE
+	int ras = 1, cas = 1, refen = 0, eras = 1, ecas = 0;
 	int casseg1 = 1, casseg2 = 1, casseg3 = 1, casseg4 = 1, rasseg1 = 1, rasseg2 = 1, rasseg3 = 1, rasseg4 = 1;
 
-	this->read_pla(offset, ras, cas, refen, eras, ecas, &casseg1, &casseg2, &casseg3, &casseg4, &rasseg1, &rasseg2, &rasseg3, &rasseg4);*/
+	this->read_pla(offset, ras, cas, refen, eras, ecas, &casseg1, &casseg2, &casseg3, &casseg4, &rasseg1, &rasseg2, &rasseg3, &rasseg4);
 	UINT8 data = 0xff;
 
-	if (offset < 0x40000)
-	data = m_ram->pointer()[offset];
-
-	/*if (!casseg1)
+	if (!casseg1)
 	{
-	    data = m_ram->pointer()[offset & 0xffff];
+		data = m_ram->pointer()[offset & 0xffff];
 	}
 	if (!casseg2)
 	{
-	    data = m_ram->pointer()[0x10000 | (offset & 0xffff)];
+		data = m_ram->pointer()[0x10000 | (offset & 0xffff)];
 	}
 	if (!casseg3 && (m_ram->size() > 0x20000))
 	{
-	    data = m_ram->pointer()[0x20000 | (offset & 0xffff)];
+		data = m_ram->pointer()[0x20000 | (offset & 0xffff)];
 	}
 	if (!casseg4 && (m_ram->size() > 0x30000))
 	{
-	    data = m_ram->pointer()[0x30000 | (offset & 0xffff)];
-	}*/
+		data = m_ram->pointer()[0x30000 | (offset & 0xffff)];
+	}
 
+	return data;
+#endif
+
+	UINT8 data = 0;
+	if (offset < 0x40000) data = m_ram->pointer()[offset];
 	return data;
 }
 
@@ -375,30 +394,31 @@ READ8_MEMBER( cbm2_state::ext_read )
 
 WRITE8_MEMBER( cbm2_state::ext_write )
 {
-	/*int ras = 1, cas = 1, refen = 1, eras = 1, ecas = 0;
+#ifdef USE_PLA_DECODE
+	int ras = 1, cas = 1, refen = 0, eras = 1, ecas = 0;
 	int casseg1 = 1, casseg2 = 1, casseg3 = 1, casseg4 = 1, rasseg1 = 1, rasseg2 = 1, rasseg3 = 1, rasseg4 = 1;
 
 	this->read_pla(offset, ras, cas, refen, eras, ecas, &casseg1, &casseg2, &casseg3, &casseg4, &rasseg1, &rasseg2, &rasseg3, &rasseg4);
 
 	if (!casseg1)
 	{
-	    m_ram->pointer()[offset & 0xffff] = data;
+		m_ram->pointer()[offset & 0xffff] = data;
 	}
 	if (!casseg2)
 	{
-	    m_ram->pointer()[0x10000 | (offset & 0xffff)] = data;
+		m_ram->pointer()[0x10000 | (offset & 0xffff)] = data;
 	}
 	if (!casseg3 && (m_ram->size() > 0x20000))
 	{
-	    m_ram->pointer()[0x20000 | (offset & 0xffff)] = data;
+		m_ram->pointer()[0x20000 | (offset & 0xffff)] = data;
 	}
 	if (!casseg4 && (m_ram->size() > 0x30000))
 	{
-	    m_ram->pointer()[0x30000 | (offset & 0xffff)] = data;
-	}*/
+		m_ram->pointer()[0x30000 | (offset & 0xffff)] = data;
+	}
+#endif
 
-	if (offset < 0x40000)
-	m_ram->pointer()[offset] = data;
+	if (offset < 0x40000) m_ram->pointer()[offset] = data;
 }
 
 
@@ -1135,16 +1155,6 @@ WRITE_LINE_MEMBER( p500_state::vic_irq_w )
 	m_maincpu->set_input_line(INPUT_LINE_IRQ0, m_vic_irq || m_tpi1_irq || m_user_irq);
 }
 
-static MOS6567_INTERFACE( vic_intf )
-{
-	SCREEN_TAG,
-	M6509_TAG,
-	DEVCB_DRIVER_LINE_MEMBER(p500_state, vic_irq_w),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
 
 //-------------------------------------------------
 //  MOS6581_INTERFACE( sid_intf )
@@ -1203,12 +1213,6 @@ READ8_MEMBER( cbm2_state::sid_poty_r )
 
 	return data;
 }
-
-static MOS6581_INTERFACE( sid_intf )
-{
-	DEVCB_DRIVER_MEMBER(cbm2_state, sid_potx_r),
-	DEVCB_DRIVER_MEMBER(cbm2_state, sid_poty_r)
-};
 
 
 //-------------------------------------------------
@@ -1649,18 +1653,6 @@ READ8_MEMBER( cbm2_state::cia_pb_r )
 	return data;
 }
 
-static MOS6526_INTERFACE( cia_intf )
-{
-	DEVCB_DEVICE_LINE_MEMBER(MOS6525_1_TAG, tpi6525_device, i2_w),
-	DEVCB_DEVICE_LINE_MEMBER(CBM2_USER_PORT_TAG, cbm2_user_port_device, pc_w),
-	DEVCB_DEVICE_LINE_MEMBER(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w),
-	DEVCB_DEVICE_LINE_MEMBER(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w),
-	DEVCB_DRIVER_MEMBER(cbm2_state, cia_pa_r),
-	DEVCB_DRIVER_MEMBER(cbm2_state, cia_pa_w),
-	DEVCB_DRIVER_MEMBER(cbm2_state, cia_pb_r),
-	DEVCB_DEVICE_MEMBER(CBM2_USER_PORT_TAG, cbm2_user_port_device, d2_w)
-};
-
 
 //-------------------------------------------------
 //  DS75161A_INTERFACE( ds75161a_intf )
@@ -1688,23 +1680,6 @@ static DS75161A_INTERFACE( ds75161a_intf )
 
 
 //-------------------------------------------------
-//  IEEE488_INTERFACE( ieee488_intf )
-//-------------------------------------------------
-
-static IEEE488_INTERFACE( ieee488_intf )
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER(MOS6525_1_TAG, tpi6525_device, i1_w),
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
-
-//-------------------------------------------------
 //  pic8259_interface ext_pic_intf
 //-------------------------------------------------
 
@@ -1725,6 +1700,24 @@ static pic8259_interface ext_pic_intf =
 //  tpi6525_interface ext_tpi_intf
 //-------------------------------------------------
 
+void cbm2_state::set_busy2(int state)
+{
+	m_busy2 = state;
+
+	if (m_busy2)
+	{
+		//m_maincpu->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+
+		m_busen1 = m_dramon;
+	}
+	else
+	{
+		//m_maincpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+
+		m_busen1 = 0;
+	}
+}
+
 READ8_MEMBER( cbm2_state::ext_tpi_pb_r )
 {
 	/*
@@ -1732,11 +1725,11 @@ READ8_MEMBER( cbm2_state::ext_tpi_pb_r )
 	    bit     description
 
 	    0       _BUSY1
-	    1       CIA PB1
-	    2       CIA PB2
-	    3       CIA PB3
-	    4       CIA PB4
-	    5       CIA PB5
+	    1       _BUSY2
+	    2       _REQ
+	    3       _ACK
+	    4       DATA/_CMD
+	    5       DIR
 	    6       1
 	    7       1
 
@@ -1747,8 +1740,11 @@ READ8_MEMBER( cbm2_state::ext_tpi_pb_r )
 	// _BUSY1
 	data |= !m_busen1;
 
+	// _BUSY2
+	data |= m_busy2 << 1;
+
 	// CIA
-	data = m_ext_cia->pb_r() & 0x3e;
+	data |= m_ext_tpi_pb & m_ext_cia_pb & 0x3c;
 
 	return data;
 }
@@ -1759,8 +1755,8 @@ WRITE8_MEMBER( cbm2_state::ext_tpi_pb_w )
 
 	    bit     description
 
-	    0       U22B CL
-	    1
+	    0
+	    1       _BUSY2
 	    2
 	    3
 	    4
@@ -1770,14 +1766,15 @@ WRITE8_MEMBER( cbm2_state::ext_tpi_pb_w )
 
 	*/
 
+	m_ext_tpi_pb = data;
+
 	// _BUSY2
-	if (!BIT(data, 0))
+	if (!BIT(data, 1))
 	{
-		logerror("BUSY2 1\n");
-		m_busy2 = 1;
-		m_busen1 = m_dramon;
+		set_busy2(0);
 	}
 
+	// FLAG
 	m_ext_cia->flag_w(BIT(data, 6));
 }
 
@@ -1792,7 +1789,7 @@ WRITE8_MEMBER( cbm2_state::ext_tpi_pc_w )
 	    2
 	    3
 	    4
-	    5       U22B CLK
+	    5       BSYCLK
 	    6
 	    7
 
@@ -1801,9 +1798,7 @@ WRITE8_MEMBER( cbm2_state::ext_tpi_pc_w )
 	// _BUSY2
 	if (BIT(data, 5))
 	{
-		logerror("BUSY2 1\n");
-		m_busy2 = 1;
-		m_busen1 = m_dramon;
+		set_busy2(1);
 	}
 }
 
@@ -1825,6 +1820,11 @@ static const tpi6525_interface ext_tpi_intf =
 //  MOS6526_INTERFACE( ext_cia_intf )
 //-------------------------------------------------
 
+WRITE_LINE_MEMBER( cbm2_state::ext_cia_irq_w )
+{
+	m_tpi1->i3_w(!state);
+}
+
 READ8_MEMBER( cbm2_state::ext_cia_pb_r )
 {
 	/*
@@ -1832,11 +1832,11 @@ READ8_MEMBER( cbm2_state::ext_cia_pb_r )
 	    bit     description
 
 	    0       _BUSY1
-	    1       TPI PB1
-	    2       TPI PB2
-	    3       TPI PB3
-	    4       TPI PB4
-	    5       TPI PB5
+	    1       _BUSY2
+	    2       _REQ
+	    3       _ACK
+	    4       DATA/_CMD
+	    5       DIR
 	    6       1
 	    7       1
 
@@ -1847,8 +1847,11 @@ READ8_MEMBER( cbm2_state::ext_cia_pb_r )
 	// _BUSY1
 	data |= !m_busen1;
 
+	// _BUSY2
+	data |= m_busy2 << 1;
+
 	// TPI
-	data |= tpi6525_portb_r(m_ext_tpi, space, 0) & 0x3e;
+	data |= m_ext_tpi_pb & m_ext_cia_pb & 0x3c;
 
 	return data;
 }
@@ -1859,46 +1862,33 @@ WRITE8_MEMBER( cbm2_state::ext_cia_pb_w )
 
 	    bit     description
 
-	    0       U22B CL
-	    1
+	    0
+	    1       _BUSY2
 	    2
 	    3
 	    4
 	    5
-	    6       PIC IR0, U29B CL, U22B PR
-	    7       PIC IR7
+	    6       _INT1
+	    7       _INT2
 
 	*/
 
+	m_ext_cia_pb = data;
+
 	// _BUSY2
-	if (!BIT(data, 0))
+	if (!BIT(data, 1))
 	{
-		logerror("BUSY2 1\n");
-		m_busy2 = 1;
-		m_busen1 = m_dramon;
+		set_busy2(0);
 	}
-	else if (!BIT(data, 6))
+
+	if (!BIT(data, 6))
 	{
-		logerror("BUSY2 0\n");
-		m_busy2 = 0;
-		m_busen1 = 0;
+		set_busy2(0);
 	}
 
 	m_ext_pic->ir0_w(!BIT(data, 6));
 	m_ext_pic->ir7_w(BIT(data, 7));
 }
-
-static MOS6526_INTERFACE( ext_cia_intf )
-{
-	DEVCB_DEVICE_LINE_MEMBER(MOS6525_1_TAG, tpi6525_device, i3_w),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_DEVICE_HANDLER(EXT_MOS6525_TAG, tpi6525_porta_r),
-	DEVCB_NULL,
-	DEVCB_DRIVER_MEMBER(cbm2_state, ext_cia_pb_r),
-	DEVCB_DRIVER_MEMBER(cbm2_state, ext_cia_pb_w)
-};
 
 
 //-------------------------------------------------
@@ -1945,16 +1935,13 @@ static CBM2_USER_PORT_INTERFACE( p500_user_intf )
 //  rs232_port_interface rs232_intf
 //-------------------------------------------------
 
-static SLOT_INTERFACE_START( rs232_devices )
-SLOT_INTERFACE_END
-
 static const rs232_port_interface rs232_intf =
 {
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551A_TAG, mos6551_device, rxd_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551A_TAG, mos6551_device, dcd_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551A_TAG, mos6551_device, dsr_w),
 	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551A_TAG, mos6551_device, cts_w)
 };
 
 
@@ -2121,8 +2108,13 @@ MACHINE_RESET_MEMBER( cbm2_state, cbm2 )
 	m_tpi1_irq = CLEAR_LINE;
 	m_user_irq = CLEAR_LINE;
 
+m_ext_tpi_pb = 0xff;
+m_ext_cia_pb = 0xff;
+
 	m_maincpu->reset();
 
+	if (m_crtc) m_crtc->reset();
+	m_sid->reset();
 	m_tpi1->reset();
 	m_tpi2->reset();
 	m_acia->reset();
@@ -2139,6 +2131,8 @@ MACHINE_RESET_MEMBER( cbm2_state, cbm2 )
 MACHINE_RESET_MEMBER( p500_state, p500 )
 {
 	MACHINE_RESET_CALL_MEMBER(cbm2);
+
+	m_vic->reset();
 
 	m_statvid = 1;
 	m_vicdotsel = 1;
@@ -2187,12 +2181,12 @@ static MACHINE_CONFIG_START( p500_ntsc, p500_state )
 	MCFG_QUANTUM_PERFECT_CPU(M6509_TAG)
 
 	// video hardware
-	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
+	MCFG_MOS6567_ADD(MOS6567_TAG, SCREEN_TAG, VIC6567_CLOCK, vic_videoram_map, vic_colorram_map, DEVWRITELINE(DEVICE_SELF, p500_state, vic_irq_w))
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6567_CLOCK)
-	MCFG_SOUND_CONFIG(sid_intf)
+	MCFG_SOUND_ADD(MOS6581_TAG, MOS6581, VIC6567_CLOCK)
+	MCFG_MOS6581_POTXY_CALLBACKS(DEVREAD8(DEVICE_SELF, p500_state, sid_potx_r), DEVREAD8(DEVICE_SELF, p500_state, sid_poty_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	// devices
@@ -2201,17 +2195,22 @@ static MACHINE_CONFIG_START( p500_ntsc, p500_state )
 	MCFG_TPI6525_ADD(MOS6525_1_TAG, p500_tpi1_intf)
 	MCFG_TPI6525_ADD(MOS6525_2_TAG, p500_tpi2_intf)
 	MCFG_MOS6551_ADD(MOS6551A_TAG, XTAL_1_8432MHz, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i4_w))
-	MCFG_MOS6526_ADD(MOS6526_TAG, VIC6567_CLOCK, 60, cia_intf)
+	MCFG_MOS6551_RXD_TXD_CALLBACKS(NULL, DEVWRITELINE(RS232_TAG, rs232_port_device, tx))
+	MCFG_MOS6526_ADD(MOS6526_TAG, VIC6567_CLOCK, 60, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i2_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pa_r), DEVWRITE8(DEVICE_SELF, cbm2_state, cia_pa_w))
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pb_r), DEVWRITE8(CBM2_USER_PORT_TAG, cbm2_user_port_device, d2_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, pc_w))
 	MCFG_DS75160A_ADD(DS75160A_TAG, DEVREAD8(IEEE488_TAG, ieee488_device, dio_r), DEVWRITE8(IEEE488_TAG, ieee488_device, dio_w))
 	MCFG_DS75161A_ADD(DS75161A_TAG, ds75161a_intf)
-	MCFG_CBM_IEEE488_ADD(ieee488_intf, "c8050")
+	MCFG_CBM_IEEE488_ADD("c8050")
+	MCFG_IEEE488_SRQ_CALLBACK(DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i1_w))
 	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, cbm_datassette_devices, NULL, NULL, DEVWRITELINE(MOS6526_TAG, mos6526_device, flag_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_VCS_CONTROL_PORT_TRIGGER_HANDLER(DEVWRITELINE(MOS6567_TAG, mos6567_device, lp_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_CBM2_EXPANSION_SLOT_ADD(CBM2_EXPANSION_SLOT_TAG, VIC6567_CLOCK, cbm2_expansion_cards, NULL, NULL)
 	MCFG_CBM2_USER_PORT_ADD(CBM2_USER_PORT_TAG, p500_user_intf, cbm2_user_port_cards, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
 	MCFG_QUICKLOAD_ADD("quickload", p500, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	// internal ram
@@ -2239,12 +2238,12 @@ static MACHINE_CONFIG_START( p500_pal, p500_state )
 	MCFG_QUANTUM_PERFECT_CPU(M6509_TAG)
 
 	// video hardware
-	MCFG_MOS6569_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
+	MCFG_MOS6569_ADD(MOS6569_TAG, SCREEN_TAG, VIC6569_CLOCK, vic_videoram_map, vic_colorram_map, DEVWRITELINE(DEVICE_SELF, p500_state, vic_irq_w))
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, VIC6569_CLOCK)
-	MCFG_SOUND_CONFIG(sid_intf)
+	MCFG_SOUND_ADD(MOS6581_TAG, MOS6581, VIC6569_CLOCK)
+	MCFG_MOS6581_POTXY_CALLBACKS(DEVREAD8(DEVICE_SELF, p500_state, sid_potx_r), DEVREAD8(DEVICE_SELF, p500_state, sid_poty_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	// devices
@@ -2253,17 +2252,22 @@ static MACHINE_CONFIG_START( p500_pal, p500_state )
 	MCFG_TPI6525_ADD(MOS6525_1_TAG, p500_tpi1_intf)
 	MCFG_TPI6525_ADD(MOS6525_2_TAG, p500_tpi2_intf)
 	MCFG_MOS6551_ADD(MOS6551A_TAG, XTAL_1_8432MHz, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i4_w))
-	MCFG_MOS6526_ADD(MOS6526_TAG, VIC6569_CLOCK, 50, cia_intf)
+	MCFG_MOS6551_RXD_TXD_CALLBACKS(NULL, DEVWRITELINE(RS232_TAG, rs232_port_device, tx))
+	MCFG_MOS6526_ADD(MOS6526_TAG, VIC6569_CLOCK, 50, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i2_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pa_r), DEVWRITE8(DEVICE_SELF, cbm2_state, cia_pa_w))
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pb_r), DEVWRITE8(CBM2_USER_PORT_TAG, cbm2_user_port_device, d2_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, pc_w))
 	MCFG_DS75160A_ADD(DS75160A_TAG, DEVREAD8(IEEE488_TAG, ieee488_device, dio_r), DEVWRITE8(IEEE488_TAG, ieee488_device, dio_w))
 	MCFG_DS75161A_ADD(DS75161A_TAG, ds75161a_intf)
-	MCFG_CBM_IEEE488_ADD(ieee488_intf, "c8050")
+	MCFG_CBM_IEEE488_ADD("c8050")
+	MCFG_IEEE488_SRQ_CALLBACK(DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i1_w))
 	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, cbm_datassette_devices, NULL, NULL, DEVWRITELINE(MOS6526_TAG, mos6526_device, flag_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_VCS_CONTROL_PORT_TRIGGER_HANDLER(DEVWRITELINE(MOS6569_TAG, mos6569_device, lp_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_CBM2_EXPANSION_SLOT_ADD(CBM2_EXPANSION_SLOT_TAG, VIC6569_CLOCK, cbm2_expansion_cards, NULL, NULL)
 	MCFG_CBM2_USER_PORT_ADD(CBM2_USER_PORT_TAG, p500_user_intf, cbm2_user_port_cards, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
 	MCFG_QUICKLOAD_ADD("quickload", p500, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	// internal ram
@@ -2303,8 +2307,8 @@ static MACHINE_CONFIG_START( cbm2lp_ntsc, cbm2_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(MOS6851_TAG, SID6581, XTAL_18MHz/9)
-	MCFG_SOUND_CONFIG(sid_intf)
+	MCFG_SOUND_ADD(MOS6581_TAG, MOS6581, XTAL_18MHz/9)
+	MCFG_MOS6581_POTXY_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, sid_potx_r), DEVREAD8(DEVICE_SELF, cbm2_state, sid_poty_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	// devices
@@ -2312,16 +2316,21 @@ static MACHINE_CONFIG_START( cbm2lp_ntsc, cbm2_state )
 	MCFG_TPI6525_ADD(MOS6525_1_TAG, tpi1_intf)
 	MCFG_TPI6525_ADD(MOS6525_2_TAG, tpi2_intf)
 	MCFG_MOS6551_ADD(MOS6551A_TAG, XTAL_1_8432MHz, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i4_w))
-	MCFG_MOS6526_ADD(MOS6526_TAG, XTAL_18MHz/9, 60, cia_intf)
+	MCFG_MOS6551_RXD_TXD_CALLBACKS(NULL, DEVWRITELINE(RS232_TAG, rs232_port_device, tx))
+	MCFG_MOS6526_ADD(MOS6526_TAG, XTAL_18MHz/9, 60, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i2_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pa_r), DEVWRITE8(DEVICE_SELF, cbm2_state, cia_pa_w))
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pb_r), DEVWRITE8(CBM2_USER_PORT_TAG, cbm2_user_port_device, d2_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, pc_w))
 	MCFG_DS75160A_ADD(DS75160A_TAG, DEVREAD8(IEEE488_TAG, ieee488_device, dio_r), DEVWRITE8(IEEE488_TAG, ieee488_device, dio_w))
 	MCFG_DS75161A_ADD(DS75161A_TAG, ds75161a_intf)
-	MCFG_CBM_IEEE488_ADD(ieee488_intf, "c8050")
+	MCFG_CBM_IEEE488_ADD("c8050")
+	MCFG_IEEE488_SRQ_CALLBACK(DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i1_w))
 	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, cbm_datassette_devices, NULL, NULL, DEVWRITELINE(MOS6526_TAG, mos6526_device, flag_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL2_TAG, vcs_control_port_devices, NULL, NULL)
 	MCFG_CBM2_EXPANSION_SLOT_ADD(CBM2_EXPANSION_SLOT_TAG, XTAL_18MHz/9, cbm2_expansion_cards, NULL, NULL)
 	MCFG_CBM2_USER_PORT_ADD(CBM2_USER_PORT_TAG, user_intf, cbm2_user_port_cards, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
 	MCFG_QUICKLOAD_ADD("quickload", cbmb, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	// software list
@@ -2358,7 +2367,10 @@ static MACHINE_CONFIG_DERIVED( cbm2lp_pal, cbm2lp_ntsc )
 	MCFG_MACHINE_START_OVERRIDE(cbm2_state, cbm2_pal)
 
 	MCFG_DEVICE_REMOVE(MOS6526_TAG)
-	MCFG_MOS6526_ADD(MOS6526_TAG, XTAL_18MHz/9, 50, cia_intf)
+	MCFG_MOS6526_ADD(MOS6526_TAG, VIC6569_CLOCK, 50, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i2_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pa_r), DEVWRITE8(DEVICE_SELF, cbm2_state, cia_pa_w))
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pb_r), DEVWRITE8(CBM2_USER_PORT_TAG, cbm2_user_port_device, d2_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, pc_w))
 MACHINE_CONFIG_END
 
 
@@ -2421,7 +2433,12 @@ static MACHINE_CONFIG_DERIVED( bx256hp, b256hp )
 
 	MCFG_PIC8259_ADD(EXT_I8259A_TAG, ext_pic_intf)
 	MCFG_TPI6525_ADD(EXT_MOS6525_TAG, ext_tpi_intf)
-	MCFG_MOS6526_ADD(EXT_MOS6526_TAG, XTAL_18MHz/9, 50, ext_cia_intf)
+	MCFG_MOS6526_ADD(EXT_MOS6526_TAG, XTAL_18MHz/9, 60, DEVWRITELINE(DEVICE_SELF, cbm2_state, ext_cia_irq_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(EXT_MOS6525_TAG, tpi6525_device, pa_r), NULL)
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, ext_cia_pb_r), DEVWRITE8(DEVICE_SELF, cbm2_state, ext_cia_pb_w), NULL)
+
+	MCFG_SOFTWARE_LIST_ADD("flop_list2", "bx256hp_flop")
 MACHINE_CONFIG_END
 
 
@@ -2437,7 +2454,10 @@ static MACHINE_CONFIG_DERIVED( cbm2hp_pal, cbm2hp_ntsc )
 	MCFG_TPI6525_ADD(MOS6525_2_TAG, hp_tpi2_intf)
 
 	MCFG_DEVICE_REMOVE(MOS6526_TAG)
-	MCFG_MOS6526_ADD(MOS6526_TAG, XTAL_18MHz/9, 50, cia_intf)
+	MCFG_MOS6526_ADD(MOS6526_TAG, XTAL_18MHz/9, 50, DEVWRITELINE(MOS6525_1_TAG, tpi6525_device, i2_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pa_r), DEVWRITE8(DEVICE_SELF, cbm2_state, cia_pa_w))
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, cia_pb_r), DEVWRITE8(CBM2_USER_PORT_TAG, cbm2_user_port_device, d2_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, pc_w))
 MACHINE_CONFIG_END
 
 
@@ -2472,7 +2492,12 @@ static MACHINE_CONFIG_DERIVED( cbm730, cbm720 )
 
 	MCFG_PIC8259_ADD(EXT_I8259A_TAG, ext_pic_intf)
 	MCFG_TPI6525_ADD(EXT_MOS6525_TAG, ext_tpi_intf)
-	MCFG_MOS6526_ADD(EXT_MOS6526_TAG, XTAL_18MHz/9, 60, ext_cia_intf)
+	MCFG_MOS6526_ADD(EXT_MOS6526_TAG, XTAL_18MHz/9, 50, DEVWRITELINE(DEVICE_SELF, cbm2_state, ext_cia_irq_w))
+	MCFG_MOS6526_SERIAL_CALLBACKS(DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, cnt_w), DEVWRITELINE(CBM2_USER_PORT_TAG, cbm2_user_port_device, sp_w))
+	MCFG_MOS6526_PORT_A_CALLBACKS(DEVREAD8(EXT_MOS6525_TAG, tpi6525_device, pa_r), NULL)
+	MCFG_MOS6526_PORT_B_CALLBACKS(DEVREAD8(DEVICE_SELF, cbm2_state, ext_cia_pb_r), DEVWRITE8(DEVICE_SELF, cbm2_state, ext_cia_pb_w), NULL)
+
+	MCFG_SOFTWARE_LIST_ADD("flop_list2", "bx256hp_flop")
 MACHINE_CONFIG_END
 
 

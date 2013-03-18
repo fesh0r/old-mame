@@ -131,7 +131,8 @@
 gromport_device::gromport_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	:   bus8z_device(mconfig, GROMPORT, "Cartridge port", tag, owner, clock),
 		device_slot_interface(mconfig, *this),
-		m_connector(NULL)
+		m_connector(NULL),
+		m_reset_on_insert(true)
 {
 }
 
@@ -236,7 +237,8 @@ const device_type GROMPORT_MULTI = &device_creator<multi_conn_device>;
 const device_type GROMPORT_GK = &device_creator<gkracker_device>;
 
 ti99_cartridge_connector_device::ti99_cartridge_connector_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
-: bus8z_device(mconfig, type, name, tag, owner, clock)
+	: bus8z_device(mconfig, type, name, tag, owner, clock),
+	m_gromport(NULL)
 {
 }
 
@@ -246,7 +248,8 @@ void ti99_cartridge_connector_device::ready_line(int state)
 }
 
 single_conn_device::single_conn_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-: ti99_cartridge_connector_device(mconfig, GROMPORT_SINGLE, "Standard cartridge connector", tag, owner, clock)
+	: ti99_cartridge_connector_device(mconfig, GROMPORT_SINGLE, "Standard cartridge connector", tag, owner, clock),
+	m_cartridge(NULL)
 {
 	m_shortname = "single";
 }
@@ -340,7 +343,10 @@ void single_conn_device::device_config_complete()
 #define AUTO -1
 
 multi_conn_device::multi_conn_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: ti99_cartridge_connector_device(mconfig, GROMPORT_MULTI, "Multi-cartridge extender", tag, owner, clock)
+	: ti99_cartridge_connector_device(mconfig, GROMPORT_MULTI, "Multi-cartridge extender", tag, owner, clock),
+	m_active_slot(0),
+	m_fixed_slot(0),
+	m_next_free_slot(0)
 {
 	m_shortname = "multi";
 }
@@ -666,7 +672,13 @@ enum
 
 gkracker_device::gkracker_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 	:   ti99_cartridge_connector_device(mconfig, GROMPORT_GK, "GRAMKracker", tag, owner, clock),
-		device_nvram_interface(mconfig, *this)
+		device_nvram_interface(mconfig, *this),
+		m_ram_page(0),
+		m_grom_address(0),
+		m_ram_ptr(NULL),
+		m_grom_ptr(NULL),
+		m_waddr_LSB(false),
+		m_cartridge(NULL)
 {
 	m_shortname = "ti99_gkracker";
 }
@@ -963,7 +975,6 @@ void gkracker_device::device_start()
 	m_ram_ptr = memregion(GKRACKER_NVRAM_TAG)->base();
 	m_grom_ptr = memregion(GKRACKER_ROM_TAG)->base();
 	m_cartridge = NULL;
-	m_grom_address = 0; // for the GROM emulation
 	for (int i=1; i < 6; i++) m_gk_switch[i] = 0;
 	m_gromport = static_cast<gromport_device*>(owner());
 }
@@ -975,6 +986,9 @@ void gkracker_device::device_reset()
 	m_gk_switch[3] = ioport(GKSWITCH3_TAG)->read();
 	m_gk_switch[4] = ioport(GKSWITCH4_TAG)->read();
 	m_gk_switch[5] = ioport(GKSWITCH5_TAG)->read();
+	m_grom_address = 0; // for the GROM emulation
+	m_ram_page = 0;
+	m_waddr_LSB = false;
 }
 
 static MACHINE_CONFIG_FRAGMENT( gkracker_slot )
@@ -1082,7 +1096,12 @@ static const pcb_type sw_pcbdefs[] =
 ti99_cartridge_device::ti99_cartridge_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
 :   bus8z_device(mconfig, TI99CART, "TI-99 cartridge", tag, owner, clock),
 	device_image_interface(mconfig, *this),
-	m_pcb(NULL)
+	m_softlist(false),
+	m_pcbtype(0),
+	m_slot(0),
+	m_pcb(NULL),
+	m_connector(NULL),
+	m_rpk(NULL)
 {
 	m_shortname = "cartridge";
 }
@@ -1097,6 +1116,16 @@ void ti99_cartridge_device::prepare_cartridge()
 	memory_region *regr;
 	memory_region *regr2;
 
+	// Initialize some values.
+	m_pcb->m_rom_page = 0;
+	m_pcb->m_rom_ptr = NULL;
+	m_pcb->m_rom2_ptr = NULL;
+	m_pcb->m_ram_size = 0;
+	m_pcb->m_ram_ptr = NULL;
+	m_pcb->m_ram_page = 0;
+
+	for (int i=0; i < 5; i++) m_pcb->m_grom[i] = NULL;
+
 	m_pcb->m_grom_size = m_softlist? get_software_region_length("grom_socket") : m_rpk->get_resource_length("grom_socket");
 	if (VERBOSE>6) LOG("gromport: grom_socket.size=0x%04x\n", m_pcb->m_grom_size);
 
@@ -1106,6 +1135,7 @@ void ti99_cartridge_device::prepare_cartridge()
 		grom_ptr = m_softlist? get_software_region("grom_socket") : (UINT8*)m_rpk->get_contents_of_socket("grom_socket");
 		memcpy(regg->base(), grom_ptr, m_pcb->m_grom_size);
 		m_pcb->m_grom_ptr = regg->base();   // for gromemu
+		m_pcb->m_grom_address = 0;          // for gromemu
 
 		// Find the GROMs and keep their pointers
 		m_pcb->set_grom_pointer(0, subdevice(GROM3_TAG));
@@ -1122,6 +1152,8 @@ void ti99_cartridge_device::prepare_cartridge()
 		regr = memregion(CARTROM_TAG);
 		m_pcb->m_rom_ptr = m_softlist? get_software_region("rom_socket") : (UINT8*)m_rpk->get_contents_of_socket("rom_socket");
 		memcpy(regr->base(), m_pcb->m_rom_ptr, m_pcb->m_rom_size);
+		// Set both pointers to the same region for now
+		m_pcb->m_rom_ptr = m_pcb->m_rom2_ptr = regr->base();
 	}
 
 	rom2_length = m_softlist? get_software_region_length("rom2_socket") : m_rpk->get_resource_length("rom2_socket");
@@ -1131,6 +1163,7 @@ void ti99_cartridge_device::prepare_cartridge()
 		regr2 = memregion(CARTROM2_TAG);
 		m_pcb->m_rom2_ptr = m_softlist? get_software_region("rom2_socket") : (UINT8*)m_rpk->get_contents_of_socket("rom2_socket");
 		memcpy(regr2->base(), m_pcb->m_rom2_ptr, rom2_length);
+		m_pcb->m_rom2_ptr = regr2->base();
 	}
 
 	// NVRAM cartridges are not supported by softlists (we need to find a way to load the nvram contents first)

@@ -49,8 +49,8 @@
 #include "formats/ap2_dsk.h"
 #include "formats/ap_dsk35.h"
 #include "includes/apple2gs.h"
-#include "devices/sonydriv.h"
-#include "devices/appldriv.h"
+#include "machine/sonydriv.h"
+#include "machine/appldriv.h"
 #include "sound/es5503.h"
 #include "machine/applefdc.h"
 #include "machine/8530scc.h"
@@ -64,11 +64,17 @@
 #include "machine/a2cffa.h"
 #include "machine/a2memexp.h"
 #include "machine/a2scsi.h"
+#include "machine/a2thunderclock.h"
+#include "machine/a2ssc.h"
 #include "machine/a2softcard.h"
 #include "machine/a2sam.h"
 #include "machine/a2alfam2.h"
+#include "machine/a2echoii.h"
+#include "machine/a2arcadebd.h"
 #include "machine/a2midi.h"
 #include "machine/a2vulcan.h"
+#include "machine/a2zipdrive.h"
+//#include "machine/a2udrive.h"
 
 static const gfx_layout apple2gs_text_layout =
 {
@@ -292,12 +298,20 @@ static SLOT_INTERFACE_START(apple2_cards)
 	SLOT_INTERFACE("cffa202", A2BUS_CFFA2_6502)  /* CFFA2000 Compact Flash for Apple II (www.dreher.net), 6502 firmware */
 	SLOT_INTERFACE("memexp", A2BUS_MEMEXP)  /* Apple II Memory Expansion Card */
 	SLOT_INTERFACE("ramfactor", A2BUS_RAMFACTOR)    /* Applied Engineering RamFactor */
+	SLOT_INTERFACE("thclock", A2BUS_THUNDERCLOCK)    /* ThunderWare ThunderClock Plus */
+	SLOT_INTERFACE("ssc", A2BUS_SSC)    /* Apple Super Serial Card */
 	SLOT_INTERFACE("sam", A2BUS_SAM)    /* SAM Software Automated Mouth (8-bit DAC + speaker) */
 	SLOT_INTERFACE("alfam2", A2BUS_ALFAM2)    /* ALF Apple Music II */
+	SLOT_INTERFACE("echoii", A2BUS_ECHOII)    /* Street Electronics Echo II */
+	SLOT_INTERFACE("arcbd", A2BUS_ARCADEBOARD)    /* Third Millenium Engineering Arcade Board */
 	SLOT_INTERFACE("midi", A2BUS_MIDI)  /* Generic 6840+6850 MIDI board */
 	SLOT_INTERFACE("vulcan", A2BUS_VULCAN)  /* AE Vulcan IDE card */
+	SLOT_INTERFACE("zipdrive", A2BUS_ZIPDRIVE)  /* ZIP Technologies IDE card */
+	SLOT_INTERFACE("echoiiplus", A2BUS_ECHOPLUS)    /* Street Electronics Echo Plus (Echo II + Mockingboard clone) */
+//  SLOT_INTERFACE("mdturbo", A2BUS_UDRIVE_TURBO)  /* ///SHH Systeme MicroDrive Turbo IDE card */
+
 //    SLOT_INTERFACE("softcard", A2BUS_SOFTCARD)  /* Microsoft SoftCard */  // appears not to be IIgs compatible?
-//    SLOT_INTERFACE("scsi", A2BUS_SCSI)  /* Apple II SCSI Card */
+	SLOT_INTERFACE("scsi", A2BUS_SCSI)  /* Apple II SCSI Card */
 SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_START( apple2gs, apple2gs_state )

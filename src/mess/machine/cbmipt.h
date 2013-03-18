@@ -35,6 +35,11 @@
 #include "machine/c64_magic_desk.h"
 #include "machine/c64_magic_formel.h"
 #include "machine/c64_magic_voice.h"
+#include "machine/c64_midi_maplin.h"
+#include "machine/c64_midi_namesoft.h"
+#include "machine/c64_midi_passport.h"
+#include "machine/c64_midi_sci.h"
+#include "machine/c64_midi_siel.h"
 #include "machine/c64_mikro_assembler.h"
 #include "machine/c64_multiscreen.h"
 #include "machine/c64_neoram.h"
@@ -61,6 +66,7 @@
 #include "machine/c64_tdos.h"
 #include "machine/c64_turbo232.h"
 #include "machine/c64_vizastar.h"
+#include "machine/c64_vic1011.h"
 #include "machine/c64_vw64.h"
 #include "machine/c64_warp_speed.h"
 #include "machine/c64_westermann.h"
@@ -84,12 +90,14 @@
 #include "machine/diag264_lb_user.h"
 #include "machine/fd2000.h"
 #include "machine/interpod.h"
+#include "machine/pet_64k.h"
 #include "machine/plus4_sid.h"
 #include "machine/plus4_std.h"
 #include "machine/serialbox.h"
 #include "machine/softbox.h"
 #include "machine/superpet.h"
 #include "machine/vic1010.h"
+#include "machine/vic1011.h"
 #include "machine/vic1110.h"
 #include "machine/vic1111.h"
 #include "machine/vic1112.h"
@@ -99,21 +107,21 @@
 #include "machine/vic20_megacart.h"
 
 
-#define MCFG_CBM_IEC_ADD(_intf, _default_drive) \
-	MCFG_CBM_IEC_BUS_ADD(_intf) \
+#define MCFG_CBM_IEC_ADD(_default_drive) \
 	MCFG_CBM_IEC_SLOT_ADD("iec4", 4, cbm_iec_devices, NULL, NULL) \
 	MCFG_CBM_IEC_SLOT_ADD("iec8", 8, cbm_iec_devices, _default_drive, NULL) \
 	MCFG_CBM_IEC_SLOT_ADD("iec9", 9, cbm_iec_devices, NULL, NULL) \
 	MCFG_CBM_IEC_SLOT_ADD("iec10", 10, cbm_iec_devices, NULL, NULL) \
-	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL)
+	MCFG_CBM_IEC_SLOT_ADD("iec11", 11, cbm_iec_devices, NULL, NULL) \
+	MCFG_CBM_IEC_BUS_ADD()
 
 
-#define MCFG_CBM_IEEE488_ADD(_intf, _default_drive) \
-	MCFG_IEEE488_BUS_ADD(_intf) \
+#define MCFG_CBM_IEEE488_ADD(_default_drive) \
 	MCFG_IEEE488_SLOT_ADD("ieee8", 8, cbm_ieee488_devices, _default_drive, NULL) \
 	MCFG_IEEE488_SLOT_ADD("ieee9", 9, cbm_ieee488_devices, NULL, NULL) \
 	MCFG_IEEE488_SLOT_ADD("ieee10", 10, cbm_ieee488_devices, NULL, NULL) \
-	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL, NULL)
+	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL, NULL) \
+	MCFG_IEEE488_BUS_ADD()
 
 
 /* Commodore 64 */
@@ -165,6 +173,7 @@ SLOT_INTERFACE_EXTERN( sx1541_iec_devices );
 SLOT_INTERFACE_EXTERN( c128dcr_iec_devices );
 SLOT_INTERFACE_EXTERN( c128d81_iec_devices );
 SLOT_INTERFACE_EXTERN( cbm_ieee488_devices );
+SLOT_INTERFACE_EXTERN( cbm8296d_ieee488_devices );
 SLOT_INTERFACE_EXTERN( vic20_control_port_devices );
 SLOT_INTERFACE_EXTERN( vic20_expansion_cards );
 SLOT_INTERFACE_EXTERN( vic20_user_port_cards );

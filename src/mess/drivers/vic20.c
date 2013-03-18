@@ -1,66 +1,7 @@
 /*
-
-[CBM systems which belong to this driver (info to be moved to sysinfo.dat soon)]
-(most of the informations are taken from http://www.zimmers.net/cbmpics/ )
-
-
-* VIC-1001 (1981, Japan)
-
-  The first model released was the Japanese one. It featured support for the
-Japanese katakana character.
-
-CPU: MOS Technology 6502 (1.01 MHz)
-RAM: 5 kilobytes (Expanded to 21k though an external 16k unit)
-ROM: 20 kilobytes
-Video: MOS Technology 6560 "VIC"(Text: 22 columns, 23 rows; Hires: 176x184
-pixels bitmapped; 8 text colors, 16 background colors)
-Sound: MOS Technology 6560 "VIC" (3 voices -square wave-, noise and volume)
-Ports: 6522 VIA x2 (1 Joystick/Mouse port; CBM Serial port; 'Cartridge /
-    Game / Expansion' port; CBM Monitor port; CBM 'USER' port; Power and
-    reset switches; Power connector)
-Keyboard: Full-sized QWERTY 66 key (8 programmable function keys; 2 sets of
-    Keyboardable graphic characters; 2 key direction cursor-pad)
-
-
-* VIC 20 (1981)
-
-  This system was the first computer to sell more than one million units
-worldwide. It was sold both in Europe and in the US. In Germany the
-computer was renamed as VC 20 (apparently, it stands for 'VolksComputer'
-
-CPU: MOS Technology 6502A (1.01 MHz)
-RAM: 5 kilobytes (Expanded to 32k)
-ROM: 20 kilobytes
-Video: MOS Technology 6560 "VIC"(Text: 22 columns, 23 rows; Hires: 176x184
-pixels bitmapped; 8 text colors, 16 background colors)
-Sound: MOS Technology 6560 "VIC" (3 voices -square wave-, noise and volume)
-Ports: 6522 VIA x2 (1 Joystick/Mouse port; CBM Serial port; 'Cartridge /
-    Game / Expansion' port; CBM Monitor port; CBM 'USER' port; Power and
-    reset switches; Power connector)
-Keyboard: Full-sized QWERTY 66 key (8 programmable function keys; 2 sets of
-    Keyboardable graphic characters; 2 key direction cursor-pad)
-
-
-* VIC 21 (1983)
-
-  It consists of a VIC 20 with built-in RAM expansion, to reach a RAM
-  capability of 21 kilobytes.
-
-
-* VIC 20CR
-
-  CR stands for Cost Reduced, as it consisted of a board with only 2 (larger)
-block of RAM instead of 8.
-
-*******************************************************************************
-
     TODO:
 
     - C1540 is not working currently
-    - access violation in mos6560.c
-        * In the Chips (Japan, USA).60
-        * K-Star Patrol (Europe).60
-        * Seafox (Japan, USA).60
     - mos6560_port_r/w should respond at 0x1000-0x100f
     - VIC21 (built in 21K ram)
 
@@ -70,45 +11,10 @@ block of RAM instead of 8.
 
 
 
-//**************************************************************************
-//  MACROS/CONSTANTS
-//**************************************************************************
-
-enum
+static QUICKLOAD_LOAD( cbm_vc20 )
 {
-	BLK0 = 0,
-	BLK1,
-	BLK2,
-	BLK3,
-	BLK4,
-	BLK5,
-	BLK6,
-	BLK7
-};
-
-
-enum
-{
-	RAM0 = 0,
-	RAM1,
-	RAM2,
-	RAM3,
-	RAM4,
-	RAM5,
-	RAM6,
-	RAM7
-};
-
-
-enum
-{
-	IO0 = 4,
-	COLOR = 5,
-	IO2 = 6,
-	IO3 = 7
-};
-
-
+	return general_cbm_loadsnap(image, file_type, quickload_size, 0, cbm_quick_sethiaddress);
+}
 
 //**************************************************************************
 //  MEMORY MANAGEMENT
@@ -159,11 +65,11 @@ READ8_MEMBER( vic20_state::read )
 		case IO0:
 			if (BIT(offset, 4))
 			{
-				data = m_via0->read(space, offset & 0x0f);
+				data = m_via1->read(space, offset & 0x0f);
 			}
 			else if (BIT(offset, 5))
 			{
-				data = m_via1->read(space, offset & 0x0f);
+				data = m_via2->read(space, offset & 0x0f);
 			}
 			else if (offset >= 0x9000 && offset < 0x9010)
 			{
@@ -234,11 +140,11 @@ WRITE8_MEMBER( vic20_state::write )
 		case IO0:
 			if (BIT(offset, 4))
 			{
-				m_via0->write(space, offset & 0x0f, data);
+				m_via1->write(space, offset & 0x0f, data);
 			}
 			else if (BIT(offset, 5))
 			{
-				m_via1->write(space, offset & 0x0f, data);
+				m_via2->write(space, offset & 0x0f, data);
 			}
 			else if (offset >= 0x9000 && offset < 0x9010)
 			{
@@ -302,17 +208,6 @@ READ8_MEMBER( vic20_state::vic_videoram_r )
 
 
 //**************************************************************************
-//  VIDEO
-//**************************************************************************
-
-INTERRUPT_GEN_MEMBER(vic20_state::vic20_raster_interrupt)
-{
-	m_vic->raster_interrupt_gen();
-}
-
-
-
-//**************************************************************************
 //  ADDRESS MAPS
 //**************************************************************************
 
@@ -351,11 +246,6 @@ ADDRESS_MAP_END
 //-------------------------------------------------
 //  INPUT_PORTS( vic20 )
 //-------------------------------------------------
-
-INPUT_CHANGED_MEMBER( vic20_state::restore_w )
-{
-	m_via0->write_ca1(newval);
-}
 
 static INPUT_PORTS_START( vic20 )
 	PORT_START( "ROW0" )
@@ -439,7 +329,7 @@ static INPUT_PORTS_START( vic20 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2)              PORT_CHAR('2') PORT_CHAR('"')
 
 	PORT_START( "RESTORE" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RESTORE") PORT_CODE(KEYCODE_PRTSCR) PORT_CHANGED_MEMBER(DEVICE_SELF, vic20_state, restore_w, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RESTORE") PORT_CODE(KEYCODE_PRTSCR) PORT_WRITE_LINE_DEVICE_MEMBER(M6522_1_TAG, via6522_device, write_ca1)
 
 	PORT_START( "LOCK" )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SHIFT LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
@@ -494,10 +384,10 @@ INPUT_PORTS_END
 //**************************************************************************
 
 //-------------------------------------------------
-//  via6522_interface via0_intf
+//  via6522_interface via1_intf
 //-------------------------------------------------
 
-READ8_MEMBER( vic20_state::via0_pa_r )
+READ8_MEMBER( vic20_state::via1_pa_r )
 {
 	/*
 
@@ -536,7 +426,7 @@ READ8_MEMBER( vic20_state::via0_pa_r )
 	return data;
 }
 
-WRITE8_MEMBER( vic20_state::via0_pa_w )
+WRITE8_MEMBER( vic20_state::via1_pa_w )
 {
 	/*
 
@@ -560,34 +450,29 @@ WRITE8_MEMBER( vic20_state::via0_pa_w )
 	m_iec->atn_w(!BIT(data, 7));
 }
 
-READ_LINE_MEMBER( vic20_state::via0_ca1_r )
+static const via6522_interface via1_intf =
 {
-	return m_restore->read();
-}
-
-static const via6522_interface via0_intf =
-{
-	DEVCB_DRIVER_MEMBER(vic20_state, via0_pa_r),
+	DEVCB_DRIVER_MEMBER(vic20_state, via1_pa_r),
 	DEVCB_DEVICE_MEMBER(VIC20_USER_PORT_TAG, vic20_user_port_device, pb_r),
-	DEVCB_DRIVER_LINE_MEMBER(vic20_state, via0_ca1_r),
+	DEVCB_INPUT_PORT("RESTORE"),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DRIVER_MEMBER(vic20_state, via0_pa_w),
+	DEVCB_DRIVER_MEMBER(vic20_state, via1_pa_w),
 	DEVCB_DEVICE_MEMBER(VIC20_USER_PORT_TAG, vic20_user_port_device, pb_w),
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE_MEMBER(VIC20_USER_PORT_TAG, vic20_user_port_device, cb1_w),
 	DEVCB_DEVICE_LINE_MEMBER(PET_DATASSETTE_PORT_TAG, pet_datassette_port_device, motor_w),
 	DEVCB_DEVICE_LINE_MEMBER(VIC20_USER_PORT_TAG, vic20_user_port_device, cb2_w),
-	DEVCB_CPU_INPUT_LINE(M6502_TAG, INPUT_LINE_NMI)
+	DEVCB_CPU_INPUT_LINE(M6502_TAG, M6502_NMI_LINE)
 };
 
 
 //-------------------------------------------------
-//  via6522_interface via1_intf
+//  via6522_interface via2_intf
 //-------------------------------------------------
 
-READ8_MEMBER( vic20_state::via1_pa_r )
+READ8_MEMBER( vic20_state::via2_pa_r )
 {
 	/*
 
@@ -618,7 +503,7 @@ READ8_MEMBER( vic20_state::via1_pa_r )
 	return data;
 }
 
-READ8_MEMBER( vic20_state::via1_pb_r )
+READ8_MEMBER( vic20_state::via2_pb_r )
 {
 	/*
 
@@ -645,7 +530,7 @@ READ8_MEMBER( vic20_state::via1_pb_r )
 	return data;
 }
 
-WRITE8_MEMBER( vic20_state::via1_pb_w )
+WRITE8_MEMBER( vic20_state::via2_pb_w )
 {
 	/*
 
@@ -669,61 +554,35 @@ WRITE8_MEMBER( vic20_state::via1_pb_w )
 	m_key_col = data;
 }
 
-WRITE_LINE_MEMBER( vic20_state::via1_ca2_w )
+WRITE_LINE_MEMBER( vic20_state::via2_ca2_w )
 {
 	// serial clock out
 	m_iec->clk_w(!state);
 }
 
-WRITE_LINE_MEMBER( vic20_state::via1_cb2_w )
+WRITE_LINE_MEMBER( vic20_state::via2_cb2_w )
 {
 	// serial data out
 	m_iec->data_w(!state);
 }
 
-static const via6522_interface via1_intf =
+static const via6522_interface via2_intf =
 {
-	DEVCB_DRIVER_MEMBER(vic20_state, via1_pa_r),
-	DEVCB_DRIVER_MEMBER(vic20_state, via1_pb_r),
+	DEVCB_DRIVER_MEMBER(vic20_state, via2_pa_r),
+	DEVCB_DRIVER_MEMBER(vic20_state, via2_pb_r),
 	DEVCB_DEVICE_LINE_MEMBER(PET_DATASSETTE_PORT_TAG, pet_datassette_port_device, read),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 
 	DEVCB_NULL,
-	DEVCB_DRIVER_MEMBER(vic20_state, via1_pb_w),
+	DEVCB_DRIVER_MEMBER(vic20_state, via2_pb_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DRIVER_LINE_MEMBER(vic20_state, via1_ca2_w),
-	DEVCB_DRIVER_LINE_MEMBER(vic20_state, via1_cb2_w),
+	DEVCB_DRIVER_LINE_MEMBER(vic20_state, via2_ca2_w),
+	DEVCB_DRIVER_LINE_MEMBER(vic20_state, via2_cb2_w),
 
 	DEVCB_CPU_INPUT_LINE(M6502_TAG, M6502_IRQ_LINE)
-};
-
-
-//-------------------------------------------------
-//  CBM_IEC_INTERFACE( cbm_iec_intf )
-//-------------------------------------------------
-
-static CBM_IEC_INTERFACE( cbm_iec_intf )
-{
-	DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb1),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
-
-//-------------------------------------------------
-//  mos6560_interface vic_ntsc_intf
-//-------------------------------------------------
-
-static MOS6560_INTERFACE( vic_intf )
-{
-	SCREEN_TAG,
-	DEVCB_DEVICE_MEMBER(CONTROL1_TAG, vcs_control_port_device, pot_x_r),
-	DEVCB_DEVICE_MEMBER(CONTROL1_TAG, vcs_control_port_device, pot_y_r)
 };
 
 
@@ -739,13 +598,6 @@ WRITE_LINE_MEMBER( vic20_state::exp_reset_w )
 	}
 }
 
-static VIC20_EXPANSION_INTERFACE( expansion_intf )
-{
-	DEVCB_CPU_INPUT_LINE(M6502_TAG, INPUT_LINE_IRQ0),
-	DEVCB_CPU_INPUT_LINE(M6502_TAG, INPUT_LINE_NMI),
-	DEVCB_DRIVER_LINE_MEMBER(vic20_state, exp_reset_w)
-};
-
 
 //-------------------------------------------------
 //  VIC20_USER_PORT_INTERFACE( user_intf )
@@ -754,8 +606,8 @@ static VIC20_EXPANSION_INTERFACE( expansion_intf )
 static VIC20_USER_PORT_INTERFACE( user_intf )
 {
 	DEVCB_DEVICE_LINE_MEMBER(M6560_TAG, mos6560_device, lp_w),
-	DEVCB_DEVICE_LINE_MEMBER(M6522_0_TAG, via6522_device, write_cb1),
-	DEVCB_DEVICE_LINE_MEMBER(M6522_0_TAG, via6522_device, write_cb2),
+	DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb1),
+	DEVCB_DEVICE_LINE_MEMBER(M6522_1_TAG, via6522_device, write_cb2),
 	DEVCB_DRIVER_LINE_MEMBER(vic20_state, exp_reset_w)
 };
 
@@ -793,6 +645,10 @@ void vic20_state::machine_reset()
 {
 	m_maincpu->reset();
 
+	m_vic->reset();
+	m_via1->reset();
+	m_via2->reset();
+
 	m_iec->reset();
 	m_exp->reset();
 	m_user->reset();
@@ -810,10 +666,11 @@ void vic20_state::machine_reset()
 
 static MACHINE_CONFIG_START( vic20, vic20_state )
 	// devices
-	MCFG_VIA6522_ADD(M6522_0_TAG, 0, via0_intf)
 	MCFG_VIA6522_ADD(M6522_1_TAG, 0, via1_intf)
-	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, cbm_datassette_devices, "c1530", NULL, DEVWRITELINE(M6522_1_TAG, via6522_device, write_ca1))
-	MCFG_CBM_IEC_ADD(cbm_iec_intf, "c1541")
+	MCFG_VIA6522_ADD(M6522_2_TAG, 0, via2_intf)
+	MCFG_PET_DATASSETTE_PORT_ADD(PET_DATASSETTE_PORT_TAG, cbm_datassette_devices, "c1530", NULL, DEVWRITELINE(M6522_2_TAG, via6522_device, write_ca1))
+	MCFG_CBM_IEC_ADD("c1541")
+	MCFG_CBM_IEC_BUS_SRQ_CALLBACK(DEVWRITELINE(M6522_2_TAG, via6522_device, write_cb1))
 	MCFG_VIC20_USER_PORT_ADD(VIC20_USER_PORT_TAG, user_intf, vic20_user_port_cards, NULL, NULL)
 	MCFG_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
@@ -836,15 +693,15 @@ static MACHINE_CONFIG_DERIVED( ntsc, vic20 )
 	// basic machine hardware
 	MCFG_CPU_ADD(M6502_TAG, M6502, MOS6560_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(vic20_mem)
-	MCFG_CPU_PERIODIC_INT_DRIVER(vic20_state, vic20_raster_interrupt,  MOS656X_HRETRACERATE)
 
 	// video/sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_MOS6560_ADD(M6560_TAG, SCREEN_TAG, MOS6560_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
+	MCFG_MOS6560_ADD(M6560_TAG, SCREEN_TAG, MOS6560_CLOCK, vic_videoram_map, vic_colorram_map, DEVREAD8(CONTROL1_TAG, vcs_control_port_device, pot_x_r), DEVREAD8(CONTROL1_TAG, vcs_control_port_device, pot_y_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_VIC20_EXPANSION_SLOT_ADD(VIC20_EXPANSION_SLOT_TAG, MOS6560_CLOCK, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD(VIC20_EXPANSION_SLOT_TAG, MOS6560_CLOCK, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_IRQ_CALLBACKS(INPUTLINE(M6502_TAG, M6502_IRQ_LINE), INPUTLINE(M6502_TAG, M6502_NMI_LINE), DEVWRITELINE(DEVICE_SELF, vic20_state, exp_reset_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, "joy", NULL)
 	MCFG_VCS_CONTROL_PORT_TRIGGER_HANDLER(DEVWRITELINE(M6560_TAG, mos6560_device, lp_w))
 
@@ -863,15 +720,15 @@ static MACHINE_CONFIG_DERIVED( pal, vic20 )
 	// basic machine hardware
 	MCFG_CPU_ADD(M6502_TAG, M6502, MOS6561_CLOCK)
 	MCFG_CPU_PROGRAM_MAP(vic20_mem)
-	MCFG_CPU_PERIODIC_INT_DRIVER(vic20_state, vic20_raster_interrupt,  MOS656X_HRETRACERATE)
 
 	// video/sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_MOS6561_ADD(M6560_TAG, SCREEN_TAG, MOS6561_CLOCK, vic_intf, vic_videoram_map, vic_colorram_map)
+	MCFG_MOS6561_ADD(M6560_TAG, SCREEN_TAG, MOS6561_CLOCK, vic_videoram_map, vic_colorram_map, DEVREAD8(CONTROL1_TAG, vcs_control_port_device, pot_x_r), DEVREAD8(CONTROL1_TAG, vcs_control_port_device, pot_y_r))
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_VIC20_EXPANSION_SLOT_ADD(VIC20_EXPANSION_SLOT_TAG, MOS6561_CLOCK, expansion_intf, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_ADD(VIC20_EXPANSION_SLOT_TAG, MOS6561_CLOCK, vic20_expansion_cards, NULL, NULL)
+	MCFG_VIC20_EXPANSION_SLOT_IRQ_CALLBACKS(INPUTLINE(M6502_TAG, M6502_IRQ_LINE), INPUTLINE(M6502_TAG, M6502_NMI_LINE), DEVWRITELINE(DEVICE_SELF, vic20_state, exp_reset_w))
 	MCFG_VCS_CONTROL_PORT_ADD(CONTROL1_TAG, vcs_control_port_devices, "joy", NULL)
 	MCFG_VCS_CONTROL_PORT_TRIGGER_HANDLER(DEVWRITELINE(M6561_TAG, mos6561_device, lp_w))
 

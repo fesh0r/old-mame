@@ -156,7 +156,7 @@ READ16_MEMBER( ti99_datamux_device::read )
 	m_ready(CLEAR_LINE);
 
 	// use the latch and the currently read byte and put it on the 16bit bus
-	return (hbyte<<8) | m_latch ;
+	return (hbyte<<8) | m_latch;
 }
 
 /*
@@ -307,6 +307,9 @@ void ti99_datamux_device::device_reset(void)
 	}
 	if (VERBOSE>8) LOG("datamux: Device count = %d\n", m_devices.count());
 	m_ready(ASSERT_LINE);
+
+	m_waitcount = 0;
+	m_latch = 0;
 }
 
 INPUT_PORTS_START( datamux )

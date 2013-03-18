@@ -212,6 +212,7 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 #include "machine/a2echoii.h"
 #include "machine/a2arcadebd.h"
 #include "machine/a2midi.h"
+#include "machine/a2zipdrive.h"
 #include "machine/a2estd80col.h"
 #include "machine/a2eext80col.h"
 #include "machine/a2eramworks3.h"
@@ -634,7 +635,9 @@ static SLOT_INTERFACE_START(apple2_cards)
 	SLOT_INTERFACE("vtc2", A2BUS_VTC2)    /* Unknown VideoTerm clone #2 */
 	SLOT_INTERFACE("arcbd", A2BUS_ARCADEBOARD)    /* Third Millenium Engineering Arcade Board */
 	SLOT_INTERFACE("midi", A2BUS_MIDI)  /* Generic 6840+6850 MIDI board */
-//    SLOT_INTERFACE("scsi", A2BUS_SCSI)  /* Apple II SCSI Card */
+	SLOT_INTERFACE("zipdrive", A2BUS_ZIPDRIVE)  /* ZIP Technologies IDE card */
+	SLOT_INTERFACE("echoiiplus", A2BUS_ECHOPLUS)    /* Street Electronics Echo Plus (Echo II + Mockingboard clone) */
+	SLOT_INTERFACE("scsi", A2BUS_SCSI)  /* Apple II SCSI Card */
 SLOT_INTERFACE_END
 
 static SLOT_INTERFACE_START(apple2eaux_cards)
@@ -784,6 +787,8 @@ static MACHINE_CONFIG_DERIVED( apple2c, apple2ee )
 	MCFG_A2BUS_SLOT_REMOVE("sl7")
 
 	// TODO: populate the IIc's other virtual slots with ONBOARD_ADD
+	MCFG_A2BUS_ONBOARD_ADD("a2bus", "sl1", A2BUS_SSC, NULL)
+	MCFG_A2BUS_ONBOARD_ADD("a2bus", "sl2", A2BUS_SSC, NULL)
 	MCFG_A2BUS_ONBOARD_ADD("a2bus", "sl6", A2BUS_DISKII, NULL)
 
 	MCFG_A2EAUXSLOT_SLOT_REMOVE("aux")
@@ -803,6 +808,8 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_DERIVED( laser128, apple2c )
 	MCFG_MACHINE_START_OVERRIDE(apple2_state,laser128)
 
+	MCFG_A2BUS_SLOT_REMOVE("sl1")
+	MCFG_A2BUS_SLOT_REMOVE("sl2")
 	MCFG_A2BUS_SLOT_REMOVE("sl6")
 
 	MCFG_A2BUS_ONBOARD_ADD("a2bus", "sl1", A2BUS_LASER128, NULL)

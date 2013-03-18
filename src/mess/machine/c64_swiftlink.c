@@ -37,16 +37,13 @@ const device_type C64_SWIFTLINK = &device_creator<c64_swiftlink_cartridge_device
 //  rs232_port_interface rs232_intf
 //-------------------------------------------------
 
-static SLOT_INTERFACE_START( rs232_devices )
-SLOT_INTERFACE_END
-
 static const rs232_port_interface rs232_intf =
 {
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551_TAG, mos6551_device, rxd_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551_TAG, mos6551_device, dcd_w),
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551_TAG, mos6551_device, dsr_w),
 	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_DEVICE_LINE_MEMBER(MOS6551_TAG, mos6551_device, cts_w)
 };
 
 
@@ -56,8 +53,9 @@ static const rs232_port_interface rs232_intf =
 
 static MACHINE_CONFIG_FRAGMENT( c64_swiftlink )
 	MCFG_MOS6551_ADD(MOS6551_TAG, XTAL_3_6864MHz, DEVWRITELINE(DEVICE_SELF, c64_swiftlink_cartridge_device, acia_irq_w))
+	MCFG_MOS6551_RXD_TXD_CALLBACKS(NULL, DEVWRITELINE(RS232_TAG, rs232_port_device, tx))
 
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
 MACHINE_CONFIG_END
 
 

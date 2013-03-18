@@ -1477,6 +1477,8 @@ c2040_device::c2040_device(const machine_config &mconfig, device_type type, cons
 		m_atna(1),
 		m_ds(-1),
 		m_bit_count(0),
+		m_sr(0),
+		m_pi(0),
 		m_ready(0),
 		m_mode(0),
 		m_rw(0),
@@ -1490,6 +1492,7 @@ c2040_device::c2040_device(const machine_config &mconfig, device_type type, cons
 		m_unit[i].m_track_len = 0;
 		m_unit[i].m_buffer_pos = 0;
 		m_unit[i].m_bit_pos = 0;
+		memset(m_unit[i].m_track_buffer, 0, sizeof(m_unit[i].m_track_buffer));
 	}
 }
 
@@ -1512,6 +1515,8 @@ c2040_device::c2040_device(const machine_config &mconfig, const char *tag, devic
 		m_atna(1),
 		m_ds(-1),
 		m_bit_count(0),
+		m_sr(0),
+		m_pi(0),
 		m_ready(0),
 		m_mode(0),
 		m_rw(0),

@@ -7,7 +7,6 @@
 #include "emu.h"
 #include "cpu/cosmac/cosmac.h"
 #include "imagedev/cartslot.h"
-#include "formats/studio2_st2.h"
 #include "sound/beep.h"
 #include "sound/cdp1864.h"
 #include "sound/discrete.h"
@@ -51,6 +50,7 @@ public:
 	DECLARE_READ_LINE_MEMBER( ef4_r );
 	DECLARE_WRITE_LINE_MEMBER( q_w );
 	DECLARE_INPUT_CHANGED_MEMBER( reset_w );
+	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( st2_cartslot_load );
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( studio2_cart_load );
 
 	/* keyboard state */

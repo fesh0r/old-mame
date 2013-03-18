@@ -131,6 +131,11 @@ public:
 	INTERRUPT_GEN_MEMBER(assert_irq);
 	TIMER_CALLBACK_MEMBER(clear_speech_cb);
 	TIMER_CALLBACK_MEMBER(clear_irq_cb);
+	void socrates_set_rom_bank();
+	void socrates_set_ram_bank();
+	void socrates_update_kb();
+	void socrates_check_kb_latch();
+	rgb_t socrates_create_color(UINT8 color);
 };
 
 
@@ -140,51 +145,48 @@ public:
 
 /* Devices */
 
-static void socrates_set_rom_bank( running_machine &machine )
+void socrates_state::socrates_set_rom_bank(  )
 {
-	socrates_state *state = machine.driver_data<socrates_state>();
-	state->membank( "bank1" )->set_base( state->memregion("maincpu")->base() + ( state->m_rom_bank * 0x4000 ));
+	membank( "bank1" )->set_base( memregion("maincpu")->base() + ( m_rom_bank * 0x4000 ));
 }
 
-static void socrates_set_ram_bank( running_machine &machine )
+void socrates_state::socrates_set_ram_bank(  )
 {
-	socrates_state *state = machine.driver_data<socrates_state>();
-	state->membank( "bank2" )->set_base( machine.root_device().memregion("vram")->base() + ( (state->m_ram_bank&0x3) * 0x4000 )); // window 0
-	state->membank( "bank3" )->set_base( state->memregion("vram")->base() + ( ((state->m_ram_bank&0xC)>>2) * 0x4000 )); // window 1
+	membank( "bank2" )->set_base( machine().root_device().memregion("vram")->base() + ( (m_ram_bank&0x3) * 0x4000 )); // window 0
+	membank( "bank3" )->set_base( memregion("vram")->base() + ( ((m_ram_bank&0xC)>>2) * 0x4000 )); // window 1
 }
 
-static void socrates_update_kb( running_machine &machine )
+void socrates_state::socrates_update_kb(  )
 {
-	socrates_state *state = machine.driver_data<socrates_state>();
 	static const char *const rownames[] = { "keyboard_40", "keyboard_41", "keyboard_42", "keyboard_43", "keyboard_44" };
 	int row, keyvalue, powerof2;
 	int shift = 0;
 	// first check that the kb latch[1] is clear; if it isn't, don't touch it!
-	if ((state->m_kb_latch_low[1] != 0) || (state->m_kb_latch_high[1] != 1)) return;
+	if ((m_kb_latch_low[1] != 0) || (m_kb_latch_high[1] != 1)) return;
 	// next check for joypad buttons
-	keyvalue = machine.root_device().ioport("keyboard_jp")->read();
+	keyvalue = machine().root_device().ioport("keyboard_jp")->read();
 	if (keyvalue != 0)
 	{
-		state->m_kb_latch_low[1] = (keyvalue & 0xFF0)>>4;
-		state->m_kb_latch_high[1] = 0x80 | (keyvalue & 0xF);
+		m_kb_latch_low[1] = (keyvalue & 0xFF0)>>4;
+		m_kb_latch_high[1] = 0x80 | (keyvalue & 0xF);
 		return; // get out of this function; due to the way key priorities work, we're done here.
 	}
 	// next check for mouse movement.
 	// this isn't written yet, so write me please!
 	// next check if shift is down
-	shift = machine.root_device().ioport("keyboard_50")->read();
+	shift = machine().root_device().ioport("keyboard_50")->read();
 	// find key low and high byte ok keyboard section
 	for (row = 4; row>=0; row--)
 	{
-		keyvalue = machine.root_device().ioport(rownames[row])->read();
+		keyvalue = machine().root_device().ioport(rownames[row])->read();
 		if (keyvalue != 0)
 		{
 			for (powerof2 = 9; powerof2 >= 0; powerof2--)
 			{
 				if ((keyvalue&(1<<powerof2)) == (1<<powerof2))
 				{
-					state->m_kb_latch_low[1] = (shift?0x50:0x40)+row;
-					state->m_kb_latch_high[1] = (0x80 | powerof2);
+					m_kb_latch_low[1] = (shift?0x50:0x40)+row;
+					m_kb_latch_high[1] = (0x80 | powerof2);
 					return; // get out of the for loop; due to the way key priorities work, we're done here.
 				}
 			}
@@ -193,30 +195,29 @@ static void socrates_update_kb( running_machine &machine )
 	// no key was pressed... check if shift was hit then?
 	if (shift != 0)
 	{
-		state->m_kb_latch_low[1] = 0x50;
-		state->m_kb_latch_high[1] = 0x80;
+		m_kb_latch_low[1] = 0x50;
+		m_kb_latch_high[1] = 0x80;
 	}
 }
 
-static void socrates_check_kb_latch( running_machine &machine ) // if kb[1] is full and kb[0] is not, shift [1] to [0] and clear [1]
+void socrates_state::socrates_check_kb_latch(  ) // if kb[1] is full and kb[0] is not, shift [1] to [0] and clear [1]
 {
-	socrates_state *state = machine.driver_data<socrates_state>();
-	if (((state->m_kb_latch_low[1] != 0) || (state->m_kb_latch_high[1] != 1)) &&
-	((state->m_kb_latch_low[0] == 0) && (state->m_kb_latch_high[0] == 1)))
+	if (((m_kb_latch_low[1] != 0) || (m_kb_latch_high[1] != 1)) &&
+	((m_kb_latch_low[0] == 0) && (m_kb_latch_high[0] == 1)))
 	{
-		state->m_kb_latch_low[0] = state->m_kb_latch_low[1];
-		state->m_kb_latch_low[1] = 0;
-		state->m_kb_latch_high[0] = state->m_kb_latch_high[1];
-		state->m_kb_latch_high[1] = 1;
+		m_kb_latch_low[0] = m_kb_latch_low[1];
+		m_kb_latch_low[1] = 0;
+		m_kb_latch_high[0] = m_kb_latch_high[1];
+		m_kb_latch_high[1] = 1;
 	}
 }
 
 void socrates_state::machine_reset()
 {
 	m_rom_bank = 0xF3; // actually set semi-randomly on real console but we need to initialize it somewhere...
-	socrates_set_rom_bank( machine() );
+	socrates_set_rom_bank();
 	m_ram_bank = 0;  // the actual console sets it semi randomly on power up, and the bios cleans it up.
-	socrates_set_ram_bank( machine() );
+	socrates_set_ram_bank();
 	m_kb_latch_low[0] = 0xFF;
 	m_kb_latch_high[0] = 0x8F;
 	m_kb_latch_low[1] = 0x00;
@@ -253,7 +254,7 @@ READ8_MEMBER(socrates_state::socrates_rom_bank_r)
 WRITE8_MEMBER(socrates_state::socrates_rom_bank_w)
 {
 	m_rom_bank = data;
-	socrates_set_rom_bank(machine());
+	socrates_set_rom_bank();
 }
 
 READ8_MEMBER(socrates_state::socrates_ram_bank_r)
@@ -264,7 +265,7 @@ READ8_MEMBER(socrates_state::socrates_ram_bank_r)
 WRITE8_MEMBER(socrates_state::socrates_ram_bank_w)
 {
 	m_ram_bank = data&0xF;
-	socrates_set_ram_bank(machine());
+	socrates_set_ram_bank();
 }
 
 READ8_MEMBER(socrates_state::read_f3)// used for read-only i/o ports as mame/mess doesn't have a way to set the unmapped area to read as 0xF3
@@ -449,15 +450,15 @@ end hd38880 info.*/
 
 READ8_MEMBER(socrates_state::socrates_keyboard_low_r)// keyboard code low
 {
-	socrates_update_kb(machine());
-	socrates_check_kb_latch(machine());
+	socrates_update_kb();
+	socrates_check_kb_latch();
 	return m_kb_latch_low[0];
 }
 
 READ8_MEMBER(socrates_state::socrates_keyboard_high_r)// keyboard code high
 {
-	socrates_update_kb(machine());
-	socrates_check_kb_latch(machine());
+	socrates_update_kb();
+	socrates_check_kb_latch();
 	return m_kb_latch_high[0];
 }
 
@@ -510,7 +511,7 @@ WRITE8_MEMBER(socrates_state::socrates_scroll_w)
 // gamma: this needs to be messed with... may differ on different systems... attach to slider somehow?
 #define GAMMA 1.5
 
-static rgb_t socrates_create_color(UINT8 color)
+rgb_t socrates_state::socrates_create_color(UINT8 color)
 {
 	rgb_t composedcolor;
 	static const double lumatable[256] = {
@@ -651,23 +652,22 @@ UINT32 socrates_state::screen_update_socrates(screen_device &screen, bitmap_ind1
 
 WRITE8_MEMBER(socrates_state::socrates_sound_w)
 {
-	device_t *socr_snd = machine().device("soc_snd");
 	switch(offset)
 	{
 		case 0:
-		socrates_snd_reg0_w(socr_snd, data);
+		m_sound->reg0_w(data);
 		break;
 		case 1:
-		socrates_snd_reg1_w(socr_snd, data);
+		m_sound->reg1_w(data);
 		break;
 		case 2:
-		socrates_snd_reg2_w(socr_snd, data);
+		m_sound->reg2_w(data);
 		break;
 		case 3:
-		socrates_snd_reg3_w(socr_snd, data);
+		m_sound->reg3_w(data);
 		break;
 		case 4: case 5: case 6: case 7: default:
-		socrates_snd_reg4_w(socr_snd, data);
+		m_sound->reg4_w(data);
 		break;
 	}
 }
@@ -941,7 +941,7 @@ static MACHINE_CONFIG_START( socrates, socrates_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("soc_snd", SOCRATES, XTAL_21_4772MHz/(512+256)) // this is correct, as strange as it sounds.
+	MCFG_SOUND_ADD("soc_snd", SOCRATES_SOUND, XTAL_21_4772MHz/(512+256)) // this is correct, as strange as it sounds.
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_CARTSLOT_ADD("cart")
@@ -975,7 +975,7 @@ static MACHINE_CONFIG_START( socrates_pal, socrates_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("soc_snd", SOCRATES, XTAL_26_601712MHz/(512+256)) // TODO: verify divider for pal mode
+	MCFG_SOUND_ADD("soc_snd", SOCRATES_SOUND, XTAL_26_601712MHz/(512+256)) // TODO: verify divider for pal mode
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_CARTSLOT_ADD("cart")
@@ -996,7 +996,7 @@ static MACHINE_CONFIG_DERIVED( socrates_pal, socrates )
     MCFG_SCREEN_SIZE(264, 256) // technically the screen size is 256x228 but super painter abuses what I suspect is a hardware bug to display repeated pixels of the very last pixel beyond this horizontal space, well into hblank
     MCFG_SCREEN_VISIBLE_AREA(0, 263, 0, 256) // the last few rows are usually cut off by the screen bottom but are indeed displayed if you mess with v-hold
     MCFG_SCREEN_UPDATE_DRIVER(socrates_state, screen_update_socrates)
-    MCFG_SOUND_REPLACE("soc_snd", SOCRATES, XTAL_26_601712MHz/(512+256)) // this is correct, as strange as it sounds.
+    MCFG_SOUND_REPLACE("soc_snd", SOCRATES_SOUND, XTAL_26_601712MHz/(512+256)) // this is correct, as strange as it sounds.
     MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_CONFIG_END
 */
@@ -1082,7 +1082,10 @@ ROM_END
 ROM_START(profweis)
 	ROM_REGION(0x80000, "maincpu", ROMREGION_ERASEVAL(0xF3))
 	/* Yeno Professor Weiss-Alles (German PAL) */
-	ROM_LOAD("27-00885-001-000.u1", 0x00000, 0x40000, CRC(fcaf8850) SHA1(a99011ee6a1ef63461c00d062278951252f117db)) // Label: "(Vtech) 27-00884-001-000 // (C)1988 VIDEO TECHNOLOGY // 8911 D"
+	ROM_SYSTEM_BIOS(0, "89", "1989")
+	ROMX_LOAD("lh53216d.u1", 0x00000, 0x40000, CRC(6e801762) SHA1(b80574a3abacf18133dacb9d3a8d9e2916730423), ROM_BIOS(1)) // Label: "(Vtech) LH53216D // (C)1989 VIDEO TECHNOLOGY // 9119 D"
+	ROM_SYSTEM_BIOS(1, "88", "1988")
+	ROMX_LOAD("27-00885-001-000.u1", 0x00000, 0x40000, CRC(fcaf8850) SHA1(a99011ee6a1ef63461c00d062278951252f117db), ROM_BIOS(2)) // Label: "(Vtech) 27-00884-001-000 // (C)1988 VIDEO TECHNOLOGY // 8911 D"
 	ROM_CART_LOAD( "cart", 0x40000, 0x20000, 0 )
 
 	ROM_REGION(0x10000, "vram", ROMREGION_ERASEFF) /* fill with ff, driver_init changes this to the 'correct' startup pattern */
@@ -1110,6 +1113,5 @@ ROM_END
 COMP( 1988, socrates,   0,          0,      socrates,   socrates, socrates_state, socrates, "Video Technology",        "Socrates Educational Video System", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // English NTSC, no title copyright
 COMP( 1988, socratfc,   socrates,   0,      socrates,   socrates, socrates_state, socrates, "Video Technology",        "Socrates SAITOUT", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // French Canandian NTSC, 1988 title copyright
 COMP( 1988, profweis,   socrates,   0,      socrates_pal,   socrates, socrates_state, socrates, "Video Technology/Yeno",        "Professor Weiss-Alles", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // German PAL, 1988 title copyright
-// there exists a later version of professor weiss-alles with a 1989 titlescreen copyright
 // Yeno Professeur Saitout goes here (french SECAM)
 // ? goes here (spanish PAL)

@@ -132,7 +132,9 @@ void dp8390_device::recv(UINT8 *buf, int len) {
 	offset = start + 4;
 	high16 = (m_regs.dcr & 4)?m_regs.rsar<<16:0;
 	if(buf[0] & 1) {
-		if(!(m_regs.rcr & 4) && !memcmp((const char *)buf, "\xff\xff\xff\xff\xff\xff", 6)) return;
+		if(!memcmp((const char *)buf, "\xff\xff\xff\xff\xff\xff", 6)) {
+			if(!(m_regs.rcr & 4)) return;
+		} else return; // multicast
 		m_regs.rsr = 0x20;
 	} else m_regs.rsr = 0;
 	len &= 0xffff;
@@ -145,6 +147,15 @@ void dp8390_device::recv(UINT8 *buf, int len) {
 			if((offset >> 8) == m_regs.bnry) return recv_overflow();
 		}
 	}
+	if(len < 60) {
+		// this can't pass to the next page
+		for(; i < 60; i++) {
+			mem_write(high16 + offset, 0);
+			offset++;
+		}
+		len = 60;
+	}
+
 	m_regs.rsr |= 1;
 	m_regs.isr |= 1;
 	m_regs.curr = (offset >> 8) + ((offset & 0xff)?1:0);
@@ -159,12 +170,6 @@ void dp8390_device::recv(UINT8 *buf, int len) {
 
 void dp8390_device::recv_cb(UINT8 *buf, int len) {
 	if(!LOOPBACK) recv(buf, len);
-}
-
-bool dp8390_device::mcast_chk(const UINT8 *buf, int len) {
-	if(!(m_regs.rcr & 8)) return false;
-
-	return false; // TODO: multicast
 }
 
 WRITE_LINE_MEMBER(dp8390_device::dp8390_cs) {
