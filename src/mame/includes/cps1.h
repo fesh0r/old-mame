@@ -199,6 +199,8 @@ public:
 	DECLARE_WRITE16_MEMBER(cps2_objram1_w);
 	DECLARE_WRITE16_MEMBER(cps2_objram2_w);
 	DECLARE_WRITE8_MEMBER(cps1_oki_pin7_w);
+	DECLARE_WRITE16_MEMBER(sf2m1_layer_w);
+	DECLARE_WRITE16_MEMBER(sf2m3_layer_w);
 	DECLARE_DRIVER_INIT(sf2rb);
 	DECLARE_DRIVER_INIT(sf2rb2);
 	DECLARE_DRIVER_INIT(sf2thndr);
@@ -209,6 +211,7 @@ public:
 	DECLARE_DRIVER_INIT(pang3b);
 	DECLARE_DRIVER_INIT(pang3);
 	DECLARE_DRIVER_INIT(sf2ee);
+	DECLARE_DRIVER_INIT(sf2m8);
 	DECLARE_DRIVER_INIT(cps1);
 	DECLARE_DRIVER_INIT(dino);
 	DECLARE_DRIVER_INIT(punisher);
@@ -237,6 +240,7 @@ public:
 	DECLARE_MACHINE_START(ganbare);
 	DECLARE_MACHINE_RESET(cps);
 	DECLARE_VIDEO_START(cps);
+	DECLARE_MACHINE_START(sf2m1);
 	UINT32 screen_update_cps1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void screen_eof_cps1(screen_device &screen, bool state);
 	INTERRUPT_GEN_MEMBER(cps1_interrupt);
@@ -248,21 +252,33 @@ public:
 	/* fcrash handlers */
 	DECLARE_DRIVER_INIT(kodb);
 	DECLARE_DRIVER_INIT(cawingbl);
+	DECLARE_DRIVER_INIT(dinopic);
 	DECLARE_DRIVER_INIT(knightsb);
+	DECLARE_DRIVER_INIT(punipic);
+	DECLARE_DRIVER_INIT(punipic3);
+	DECLARE_DRIVER_INIT(sf2m1);
 	DECLARE_DRIVER_INIT(sf2mdt);
 	DECLARE_DRIVER_INIT(sf2mdta);
+	DECLARE_DRIVER_INIT(slampic);
 	DECLARE_MACHINE_START(fcrash);
 	DECLARE_MACHINE_RESET(fcrash);
-	DECLARE_MACHINE_START(kodb);
 	DECLARE_MACHINE_START(cawingbl);
+	DECLARE_MACHINE_START(dinopic);
 	DECLARE_MACHINE_START(knightsb);
+	DECLARE_MACHINE_START(kodb);
+	DECLARE_MACHINE_START(punipic);
 	DECLARE_MACHINE_START(sf2mdt);
+	DECLARE_MACHINE_START(slampic);
 	DECLARE_MACHINE_START(sgyxz);
-	DECLARE_WRITE16_MEMBER(kodb_layer_w);
 	DECLARE_WRITE16_MEMBER(cawingbl_soundlatch_w);
+	DECLARE_WRITE16_MEMBER(dinopic_layer_w);
+	DECLARE_WRITE16_MEMBER(dinopic_layer2_w);
 	DECLARE_WRITE16_MEMBER(knightsb_layer_w);
+	DECLARE_WRITE16_MEMBER(kodb_layer_w);
+	DECLARE_WRITE16_MEMBER(punipic_layer_w);
 	DECLARE_WRITE16_MEMBER(sf2mdt_layer_w);
 	DECLARE_WRITE16_MEMBER(sf2mdta_layer_w);
+	DECLARE_WRITE16_MEMBER(slampic_layer_w);
 	DECLARE_WRITE16_MEMBER(fcrash_soundlatch_w);
 	DECLARE_WRITE8_MEMBER(fcrash_snd_bankswitch_w);
 	DECLARE_WRITE8_MEMBER(sf2mdt_snd_bankswitch_w);
@@ -306,7 +322,8 @@ public:
 	DECLARE_READ16_MEMBER(cps2_qsound_volume_r);
 	DECLARE_READ16_MEMBER(kludge_r);
 	DECLARE_READ16_MEMBER(joy_or_paddle_r);
-
+	DECLARE_WRITE_LINE_MEMBER(m5205_int1);
+	DECLARE_WRITE_LINE_MEMBER(m5205_int2);
 };
 
 /*----------- defined in drivers/cps1.c -----------*/
@@ -315,7 +332,11 @@ ADDRESS_MAP_EXTERN( qsound_sub_map, 8 );
 
 GFXDECODE_EXTERN( cps1 );
 
+INPUT_PORTS_EXTERN( dino );
 INPUT_PORTS_EXTERN( knights );
+INPUT_PORTS_EXTERN( punisher );
+INPUT_PORTS_EXTERN( sf2 );
+INPUT_PORTS_EXTERN( slammast );
 
 
 #endif

@@ -139,11 +139,10 @@ INTERRUPT_GEN_MEMBER(cave_state::cave_interrupt)
 }
 
 /* Called by the YMZ280B to set the IRQ state */
-static void sound_irq_gen( device_t *device, int state )
+WRITE_LINE_MEMBER(cave_state::sound_irq_gen)
 {
-	cave_state *cave = device->machine().driver_data<cave_state>();
-	cave->m_sound_irq = (state != 0);
-	update_irq_state(device->machine());
+	m_sound_irq = (state != 0);
+	update_irq_state(machine());
 }
 
 
@@ -313,7 +312,7 @@ WRITE16_MEMBER(cave_state::cave_eeprom_msb_w)
 
 WRITE16_MEMBER(cave_state::sailormn_eeprom_msb_w)
 {
-	sailormn_tilebank_w(machine(), data & 0x0100);
+	sailormn_tilebank_w(data & 0x0100);
 	cave_eeprom_msb_w(space, offset, data & ~0x0100, mem_mask);
 }
 
@@ -1817,12 +1816,12 @@ MACHINE_RESET_MEMBER(cave_state,cave)
 
 static const ymz280b_interface ymz280b_intf =
 {
-	sound_irq_gen
+	DEVCB_DRIVER_LINE_MEMBER(cave_state,sound_irq_gen)
 };
 
-static void irqhandler(device_t *device, int irq)
+WRITE_LINE_MEMBER(cave_state::irqhandler)
 {
-	device->machine().device("audiocpu")->execute().set_input_line(0, irq ? ASSERT_LINE : CLEAR_LINE);
+	machine().device("audiocpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -1832,7 +1831,7 @@ static const ym2203_interface ym2203_config =
 		AY8910_DEFAULT_LOADS,
 		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	},
-	DEVCB_LINE(irqhandler)
+	DEVCB_DRIVER_LINE_MEMBER(cave_state,irqhandler)
 };
 
 /***************************************************************************

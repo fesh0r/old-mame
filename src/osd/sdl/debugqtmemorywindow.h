@@ -31,6 +31,8 @@ private slots:
 
 private:
 	void populateComboBox();
+	void setToCurrentCpu();
+	QAction* chunkSizeMenuItem(const QString& itemName);
 
 
 private:

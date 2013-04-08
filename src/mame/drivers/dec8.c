@@ -478,15 +478,14 @@ WRITE8_MEMBER(dec8_state::dec8_sound_w)
 	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static void csilver_adpcm_int( device_t *device )
+WRITE_LINE_MEMBER(dec8_state::csilver_adpcm_int)
 {
-	dec8_state *state = device->machine().driver_data<dec8_state>();
-	state->m_toggle ^= 1;
-	if (state->m_toggle)
-		state->m_audiocpu->set_input_line(M6502_IRQ_LINE, HOLD_LINE);
+	m_toggle ^= 1;
+	if (m_toggle)
+		m_audiocpu->set_input_line(M6502_IRQ_LINE, HOLD_LINE);
 
-	msm5205_data_w(device, state->m_msm5205next >> 4);
-	state->m_msm5205next <<= 4;
+	msm5205_data_w(machine().device("msm"), m_msm5205next >> 4);
+	m_msm5205next <<= 4;
 }
 
 READ8_MEMBER(dec8_state::csilver_adpcm_reset_r)
@@ -1905,10 +1904,9 @@ GFXDECODE_END
 /******************************************************************************/
 
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
-static void irqhandler( device_t *device, int linestate )
+WRITE_LINE_MEMBER(dec8_state::irqhandler)
 {
-	dec8_state *state = device->machine().driver_data<dec8_state>();
-	state->m_audiocpu->set_input_line(0, linestate); /* M6502_IRQ_LINE */
+	m_audiocpu->set_input_line(0, state); /* M6502_IRQ_LINE */
 }
 
 static const ym3526_interface ym3526_config =
@@ -1918,12 +1916,12 @@ static const ym3526_interface ym3526_config =
 
 static const ym3812_interface ym3812_config =
 {
-	irqhandler
+	DEVCB_DRIVER_LINE_MEMBER(dec8_state,irqhandler)
 };
 
 static const msm5205_interface msm5205_config =
 {
-	csilver_adpcm_int,  /* interrupt function */
+	DEVCB_DRIVER_LINE_MEMBER(dec8_state,csilver_adpcm_int),  /* interrupt function */
 	MSM5205_S48_4B      /* 8KHz            */
 };
 

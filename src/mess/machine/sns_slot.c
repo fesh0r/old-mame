@@ -281,6 +281,8 @@ static const sns_slot slot_list[] =
 	{ SNES_BSMEMPAK,    "bsmempak"},
 	// Sufami Turbo carts
 	{ SNES_STROM,       "strom"},
+	// Event carts
+	{ SNES_PFEST94,     "pfest94" },
 	// pirate carts
 	{ SNES_POKEMON,      "lorom_poke"},
 	{ SNES_TEKKEN2,      "lorom_tekken2"},
@@ -670,6 +672,11 @@ bool base_sns_cart_slot_device::call_load()
 
 		if (software_entry() == NULL)
 			setup_addon_from_fullpath();
+
+		// in carts with an add-on CPU having internal dump, this speeds up access to the internal rom
+		// by installing read_bank in address space and mapping m_bios there
+		m_cart->speedup_addon_bios_access();
+
 
 		setup_nvram();
 

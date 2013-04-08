@@ -190,9 +190,9 @@ private:
 
 		UINT8 m_current_voice;
 		UINT8 m_current_reg;
-		UINT8 m_port;
-		UINT8 m_irq;
-		UINT8 m_dma;
+		//UINT8 m_port;
+		//UINT8 m_irq;
+		//UINT8 m_dma;
 
 		UINT8 m_adlib_cmd;
 		UINT8 m_mix_ctrl;
@@ -271,7 +271,6 @@ protected:
 		virtual void device_start();
 		virtual void device_reset();
 		virtual void device_stop();
-		virtual void device_config_complete() { m_shortname = "isa_gus"; }
 private:
 		gf1_device* m_gf1;
 		acia6850_device* m_midi;

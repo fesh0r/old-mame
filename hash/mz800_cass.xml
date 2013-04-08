@@ -4,10 +4,10 @@
 <!--
 List
 MZ-821 Sharp BASIC Trainer (Germany):   Account Manager: Einnahmen/Ausgaben-Verwaltung
-										Address Data: Adressverwaltung
-										Advoka:         )
-										Head Driver:    } Spiele
-										Egg:            )
+                                        Address Data: Adressverwaltung
+                                        Advoka:         )
+                                        Head Driver:    } Spiele
+                                        Egg:            )
 
 -->
 
@@ -52,7 +52,7 @@ MZ-821 Sharp BASIC Trainer (Germany):   Account Manager: Einnahmen/Ausgaben-Verw
 		<year>19??</year>
 		<publisher>Proton Software</publisher>
 		<part name="cass" interface="mz_cass">
-			<dataarea name="cass" size="">
+			<dataarea name="cass" size="48256">
 				<rom name="g.p.s. program.mzf" size="48256" crc="16bba2ba" sha1="7b4394bc88a1f0d37ddcb0951addfdca7f683b90" offset="0" />
 			</dataarea>
 		</part>
@@ -86,11 +86,11 @@ MZ-821 Sharp BASIC Trainer (Germany):   Account Manager: Einnahmen/Ausgaben-Verw
 		<year>19??</year>
 		<publisher>BBG Software</publisher>
 <!--
-		<part name="cass1" interface="mz_cass">
-			<dataarea name="cass" size="16585">
-				<rom name="mucmac700.mzf" size="16585" crc="5a49451e" sha1="b4d3f23019df154e1a7bf5db32388dabf5f43c66" offset="0" />
-			</dataarea>
-		</part>
+        <part name="cass1" interface="mz_cass">
+            <dataarea name="cass" size="16585">
+                <rom name="mucmac700.mzf" size="16585" crc="5a49451e" sha1="b4d3f23019df154e1a7bf5db32388dabf5f43c66" offset="0" />
+            </dataarea>
+        </part>
 -->
 		<part name="cass1" interface="mz_cass">
 			<dataarea name="cass" size="20896">

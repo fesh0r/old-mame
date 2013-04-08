@@ -24,6 +24,7 @@
 #include "machine/3c505.h"
 #include "machine/68681.h"
 #include "machine/pc_fdc.h"
+#include "machine/8237dma.h"
 
 #ifndef VERBOSE
 #define VERBOSE 0
@@ -120,8 +121,8 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<sc499_device> m_ctape;
 
-	device_t *dma8237_1;
-	device_t *dma8237_2;
+	i8237_device *dma8237_1;
+	i8237_device *dma8237_2;
 	device_t *pic8259_master;
 	device_t *pic8259_slave;
 
@@ -192,6 +193,19 @@ public:
 	IRQ_CALLBACK_MEMBER(apollo_irq_acknowledge);
 	IRQ_CALLBACK_MEMBER(apollo_pic_acknowledge);
 	void apollo_bus_error();
+	DECLARE_WRITE8_MEMBER( apollo_kbd_putchar );
+	DECLARE_READ8_MEMBER( apollo_kbd_has_beeper );
+	DECLARE_READ8_MEMBER( apollo_kbd_is_german );
+	DECLARE_WRITE8_MEMBER( terminal_kbd_putchar );
+	DECLARE_READ8_MEMBER( apollo_dma8237_ctape_dack_r );
+	DECLARE_WRITE8_MEMBER( apollo_dma8237_ctape_dack_w );
+	DECLARE_READ8_MEMBER( apollo_dma8237_fdc_dack_r );
+	DECLARE_WRITE8_MEMBER( apollo_dma8237_fdc_dack_w );
+	DECLARE_READ8_MEMBER( apollo_dma8237_wdc_dack_r );
+	DECLARE_WRITE8_MEMBER( apollo_dma8237_wdc_dack_w );
+	DECLARE_WRITE_LINE_MEMBER( apollo_dma8237_out_eop );
+	DECLARE_WRITE_LINE_MEMBER( apollo_dma_1_hrq_changed );
+	DECLARE_WRITE_LINE_MEMBER( apollo_dma_2_hrq_changed );
 };
 
 MACHINE_CONFIG_EXTERN( apollo );
@@ -309,7 +323,7 @@ void apollo_netserver_init(const char *root_path,  apollo_netserver_transmit tx_
 class apollo_mono_device : public device_t
 {
 public:
-	apollo_mono_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock);
+	apollo_mono_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source);
 	~apollo_mono_device() { global_free(m_token); }
 
 	// access to legacy token

@@ -104,6 +104,9 @@ public:
 	void v_set_videorom_bank(  int start, int count, int vrom_start_bank );
 	void mapper4_set_prg(  );
 	void mapper4_set_chr(  );
+	void mapper4_irq( int scanline, int vblank, int blanked );
+	void ppu_irq_1(int *ppu_regs);
+	void ppu_irq_2(int *ppu_regs);
 };
 
 /*----------- defined in video/vsnes.c -----------*/

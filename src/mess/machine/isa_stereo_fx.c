@@ -8,7 +8,7 @@ const device_type ISA8_STEREO_FX = &device_creator<stereo_fx_device>;
 
 static const ym3812_interface pc_ym3812_interface =
 {
-	NULL
+	DEVCB_NULL
 };
 
 READ8_MEMBER( stereo_fx_device::dev_dsp_data_r )
@@ -191,7 +191,7 @@ READ8_MEMBER( stereo_fx_device::invalid_r )
 }
 
 stereo_fx_device::stereo_fx_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
-	device_t(mconfig, ISA8_STEREO_FX, "ATI Stereo F/X Audio Adapter", tag, owner, clock),
+	device_t(mconfig, ISA8_STEREO_FX, "ATI Stereo F/X Audio Adapter", tag, owner, clock, "stereo_fx", __FILE__),
 	device_isa8_card_interface(mconfig, *this),
 	m_dacl(*this, "dacl"),
 	m_dacr(*this, "dacr"),
@@ -199,11 +199,6 @@ stereo_fx_device::stereo_fx_device(const machine_config &mconfig, const char *ta
 	m_cpu(*this, "stereo_fx_cpu")
 {
 	m_t1 = 0;
-}
-
-void stereo_fx_device::device_config_complete()
-{
-	m_shortname = "stereo_fx";
 }
 
 void stereo_fx_device::device_start()

@@ -4,62 +4,62 @@
 
 <!--
 
-	Hardware to be emulated
+    Hardware to be emulated
 
-	CPU replacements:
-	- Turbo Master CPU (R65C02P4 @ 4.09 MHz)
-	- Turbo Process Accelerator (65C816P-4  @ 50kHz-4MHz)
-	- Flash 8 (65816 @ 8 MHz, 4/8 MB RAM)
-	- CMD SuperCPU 64 (65C816S, 64 KB RAM)
-	- Data 20 Z-80 Video Pak (Z80, 80 column video)
+    CPU replacements:
+    - Turbo Master CPU (R65C02P4 @ 4.09 MHz)
+    - Turbo Process Accelerator (65C816P-4  @ 50kHz-4MHz)
+    - Flash 8 (65816 @ 8 MHz, 4/8 MB RAM)
+    - CMD SuperCPU 64 (65C816S, 64 KB RAM)
+    - Data 20 Z-80 Video Pak (Z80, 80 column video)
 
-	Serial I/O:
-	- HART (8251)
+    Serial I/O:
+    - HART (8251)
 
-	RAM expansions:
-	- CMD RAMLink
-	- CMD RAMDrive
-	- CMD REU 1750XL
-	- Commodore REU 1700/1750/1764
-	- Rex RAM-Floppy 256K
-	- Rex Goliath 1MB
-	- RAM-Cart
-	- Silicon Disk System
+    RAM expansions:
+    - CMD RAMLink
+    - CMD RAMDrive
+    - CMD REU 1750XL
+    - Commodore REU 1700/1750/1764
+    - Rex RAM-Floppy 256K
+    - Rex Goliath 1MB
+    - RAM-Cart
+    - Silicon Disk System
 
-	Hard disks:
-	- Lt. Kernal
+    Hard disks:
+    - Lt. Kernal
 
-	Audio:
-	- Easy Speech 64 (Currah, 1984)
-	- Voice Messenger (Currah, 1984)
-	- Votalker (Votrax, 1986)
-	- ProVoice (Genesis, 1986)
-	- SID Symphony
-	- MSSIAH
-	- Synthetiseur Vocal
-	- 64er MIDI
-	- FB-MIDI
-	- C-LAB MIDI
-	- Speech Maker (Adman)
-	- Song Producer (Moog, 1983)
+    Audio:
+    - Easy Speech 64 (Currah, 1984)
+    - Voice Messenger (Currah, 1984)
+    - Votalker (Votrax, 1986)
+    - ProVoice (Genesis, 1986)
+    - SID Symphony
+    - MSSIAH
+    - Synthetiseur Vocal
+    - 64er MIDI
+    - FB-MIDI
+    - C-LAB MIDI
+    - Speech Maker (Adman)
+    - Song Producer (Moog, 1983)
 
-	EPROM burners:
-	- J-R Promenade C1
-	- Rex Quickbyte 2
-	- Rex Goliath Eprommer
+    EPROM burners:
+    - J-R Promenade C1
+    - Rex Quickbyte 2
+    - Rex Goliath Eprommer
 
-	Missing dumps that exist as .crt but are missing from this list:
+    Missing dumps that exist as .crt but are missing from this list:
 
-	- Ariolasoft Structured BASIC
-	- MSSIAH
-	- Rex Diashow-Maker
+    - Ariolasoft Structured BASIC
+    - MSSIAH
+    - Rex Diashow-Maker
 
-	If you have any of these, please forward them to messdev :)
+    If you have any of these, please forward them to messdev :)
 
-	List of mostly undumped cartridges:
-	http://www.retroport.de/C64_C128_Hardware.html
-	http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
-	http://members.optusnet.com.au/spacetaxi64/SPEED-UP-CARTS/SPEED-C64-CPU.htm
+    List of mostly undumped cartridges:
+    http://www.retroport.de/C64_C128_Hardware.html
+    http://members.optusnet.com.au/spacetaxi64/DRIVERS/DRIVERS.htm
+    http://members.optusnet.com.au/spacetaxi64/SPEED-UP-CARTS/SPEED-C64-CPU.htm
 
 -->
 
@@ -6625,6 +6625,70 @@
 		<part name="flop1" interface="floppy_5_25">
 			<dataarea name="flop" size="174848">
 				<rom name="vizastar 64 xl8.d64" status="nodump" size="174848" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="final1" supported="partial">
+		<!-- missing on/off and reset switch -->
+		<description>Final I (Pol)</description>
+		<year>198?</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="1" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x2000">
+				<rom name="final1.bin" size="0x1000" crc="2637962a" sha1="bfcf38cd187a84093e822bd7cf991a6751c8524b" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="futurbox" supported="partial">
+		<!-- missing reset switch -->
+		<description>Future Box I (Pol)</description>
+		<year>1992</year>
+		<publisher>&lt;unknown&gt;</publisher>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="0" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x4000">
+				<rom name="bbv1.bin" size="0x4000" crc="47930727" sha1="e0cedb54023b5ac6ed9adf5c1cf5a37e4f58c301" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="bb3d" supported="partial">
+		<!-- missing reset switch -->
+		<description>Black Box III (Pol)</description>
+		<year>198?</year>
+		<publisher>Domainsoft</publisher>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="1" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x2000">
+				<rom name="bb3d.bin" size="0x2000" crc="36d882ca" sha1="06c7a49080a6103c39739e82b06c5699a596f9ab" offset="0" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="bisplus" supported="partial">
+		<!-- missing reset switch -->
+		<description>Bis-Plus</description>
+		<year>1990</year>
+		<publisher>Micro-LUC</publisher>
+
+		<part name="cart" interface="c64_cart">
+			<feature name="game" value="1" />
+			<feature name="exrom" value="0" />
+
+			<dataarea name="roml" size="0x2000">
+				<rom name="bisplus.bin" size="0x2000" crc="26328a96" sha1="27cecacba10cf88c42940350413a3c7e82c9e0ec" offset="0" />
 			</dataarea>
 		</part>
 	</software>

@@ -376,10 +376,9 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-static void sound_irq( device_t *device, int irq )
+WRITE_LINE_MEMBER(psikyo_state::sound_irq)
 {
-	psikyo_state *state = device->machine().driver_data<psikyo_state>();
-	state->m_audiocpu->set_input_line(0, irq ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER(psikyo_state::psikyo_soundlatch_r)
@@ -1036,7 +1035,7 @@ void psikyo_state::machine_reset()
 
 static const ym2610_interface sngkace_ym2610_interface =
 {
-	sound_irq
+	DEVCB_DRIVER_LINE_MEMBER(psikyo_state,sound_irq)
 };
 
 static MACHINE_CONFIG_START( sngkace, psikyo_state )
@@ -1085,7 +1084,7 @@ MACHINE_CONFIG_END
 
 static const ym2610_interface gunbird_ym2610_interface =
 {
-	sound_irq   /* irq */
+	DEVCB_DRIVER_LINE_MEMBER(psikyo_state,sound_irq)   /* irq */
 };
 
 static MACHINE_CONFIG_START( gunbird, psikyo_state )
@@ -1162,15 +1161,14 @@ MACHINE_CONFIG_END
 ***************************************************************************/
 
 
-static void irqhandler( device_t *device, int linestate )
+WRITE_LINE_MEMBER(psikyo_state::irqhandler)
 {
-	psikyo_state *state = device->machine().driver_data<psikyo_state>();
-	state->m_audiocpu->set_input_line(0, linestate ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ymf278b_interface ymf278b_config =
 {
-	irqhandler
+	DEVCB_DRIVER_LINE_MEMBER(psikyo_state,irqhandler)
 };
 
 static MACHINE_CONFIG_START( s1945, psikyo_state )

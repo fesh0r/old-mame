@@ -169,7 +169,7 @@ DMA TODO:
 #define DnMV_0(_ch_) m_scu.status&=~(0x10 << 4 * _ch_)
 
 /*For area checking*/
-#define BIOS_BUS(var)   (var & 0x07000000) == 0
+#define BIOS_BUS(var)   (var & 0x07f00000) == 0
 #define ABUS(_lv_)       ((m_scu.src[_lv_] & 0x07000000) >= 0x02000000) && ((m_scu.src[_lv_] & 0x07000000) <= 0x04000000)
 #define BBUS(_lv_)       ((scu_##_lv_ & 0x07ffffff) >= 0x05a00000) && ((scu_##_lv_ & 0x07ffffff) <= 0x05ffffff)
 #define VDP1_REGS(_lv_)  ((scu_##_lv_ & 0x07ffffff) >= 0x05d00000) && ((scu_##_lv_ & 0x07ffffff) <= 0x05dfffff)
@@ -751,28 +751,26 @@ void saturn_state::m68k_reset_callback(device_t *device)
 	printf("m68k RESET opcode triggered\n");
 }
 
-void scsp_irq(device_t *device, int irq)
+WRITE_LINE_MEMBER(saturn_state::scsp_irq)
 {
-	saturn_state *state = device->machine().driver_data<saturn_state>();
-
 	// don't bother the 68k if it's off
-	if (!state->m_en_68k)
+	if (!m_en_68k)
 	{
 		return;
 	}
 
-	if (irq > 0)
+	if (state > 0)
 	{
-		state->m_scsp_last_line = irq;
-		device->machine().device("audiocpu")->execute().set_input_line(irq, ASSERT_LINE);
+		m_scsp_last_line = state;
+		machine().device("audiocpu")->execute().set_input_line(state, ASSERT_LINE);
 	}
-	else if (irq < 0)
+	else if (state < 0)
 	{
-		device->machine().device("audiocpu")->execute().set_input_line(-irq, CLEAR_LINE);
+		machine().device("audiocpu")->execute().set_input_line(-state, CLEAR_LINE);
 	}
 	else
 	{
-		device->machine().device("audiocpu")->execute().set_input_line(state->m_scsp_last_line, CLEAR_LINE);
+		machine().device("audiocpu")->execute().set_input_line(m_scsp_last_line, CLEAR_LINE);
 	}
 }
 

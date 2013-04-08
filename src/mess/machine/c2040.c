@@ -11,6 +11,8 @@
 
     TODO:
 
+    - 2040/3040/4040 have a Shugart SA390 drive (FLOPPY_525_SSSD_35T)
+
     - 2040 DOS 1 FDC rom (jumps to 104d while getting block header)
 
         FE70: jsr  $104D
@@ -76,48 +78,6 @@ const device_type SFD1001 = &device_creator<sfd1001_device>;
 
 
 //-------------------------------------------------
-//  device_config_complete - perform any
-//  operations now that the configuration is
-//  complete
-//-------------------------------------------------
-
-void c2040_device::device_config_complete()
-{
-	switch (m_variant)
-	{
-	default:
-	case TYPE_2040:
-		m_shortname = "c2040";
-		break;
-
-	case TYPE_3040:
-		m_shortname = "c3040";
-		break;
-
-	case TYPE_4040:
-		m_shortname = "c4040";
-		break;
-
-	case TYPE_8050:
-		m_shortname = "c8050";
-		break;
-
-	case TYPE_8250:
-		m_shortname = "c8250";
-		break;
-
-	case TYPE_8250LP:
-		m_shortname = "c8250lp";
-		break;
-
-	case TYPE_SFD1001:
-		m_shortname = "sfd1001";
-		break;
-	}
-}
-
-
-//-------------------------------------------------
 //  ROM( c2040 )
 //-------------------------------------------------
 
@@ -132,8 +92,8 @@ ROM_START( c2040 ) // schematic 320806
 	ROMX_LOAD( "901468-07.uh1", 0x2000, 0x1000, CRC(9b09ae83) SHA1(6a51c7954938439ca8342fc295bda050c06e1791), ROM_BIOS(2) )
 
 	ROM_REGION( 0x400, M6504_TAG, 0 )
-	ROMX_LOAD( "901466-01.uk3", 0x000, 0x400, NO_DUMP, ROM_BIOS(1) )
-	ROMX_LOAD( "901466-02.uk3", 0x000, 0x400, NO_DUMP, ROM_BIOS(2) ) // 6530-028 BAD_DUMP CRC(e1c86c43) SHA1(d8209c66fde3f2937688ba934ba968678a9d2ebb) ) // parsed in from disassembly
+	ROMX_LOAD( "901466-01.uk3", 0x000, 0x400, CRC(9d1e25ce) SHA1(d539858f839f96393f218307df7394362a84a26a), ROM_BIOS(1) )
+	ROMX_LOAD( "901466-02.uk3", 0x000, 0x400, CRC(9d1e25ce) SHA1(d539858f839f96393f218307df7394362a84a26a), ROM_BIOS(2) )
 
 	ROM_REGION( 0x800, "gcr", 0)
 	ROM_LOAD( "901467.uk6",    0x000, 0x800, CRC(a23337eb) SHA1(97df576397608455616331f8e837cb3404363fa2) )
@@ -201,7 +161,7 @@ ROM_START( c8050 ) // schematic 8050001
 	ROMX_LOAD( "901888-01.uh1", 0x2000, 0x2000, CRC(de9b6132) SHA1(2e6c2d7ca934e5c550ad14bd5e9e7749686b7af4), ROM_BIOS(4) )
 
 	ROM_REGION( 0x400, M6504_TAG, 0 )
-	ROM_LOAD_OPTIONAL( "901483-02.uk3", 0x000, 0x400, NO_DUMP ) // 6530-036
+	ROM_LOAD_OPTIONAL( "901483-02.uk3", 0x000, 0x400, CRC(d7277f95) SHA1(7607f9357f3a08f2a9f20931058d60d9e3c17d39) ) // 6530-036
 	ROM_LOAD_OPTIONAL( "901483-03.uk3", 0x000, 0x400, CRC(9e83fa70) SHA1(e367ea8a5ddbd47f13570088427293138a10784b) ) // 6530-038 RIOT DOS 2.5 Micropolis
 	ROM_LOAD_OPTIONAL( "901483-04.uk3", 0x000, 0x400, NO_DUMP ) // 6530-039 RIOT DOS 2.5 Tandon
 	ROM_LOAD_OPTIONAL( "901884-01.uk3", 0x000, 0x400, NO_DUMP ) // 6530-40 RIOT DOS 2.7 Tandon
@@ -1458,8 +1418,8 @@ inline void c2040_device::mpi_step_motor(int unit, int stp)
 //  c2040_device - constructor
 //-------------------------------------------------
 
-c2040_device::c2040_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, UINT32 variant)
-	: device_t(mconfig, type, name, tag, owner, clock),
+c2040_device::c2040_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, UINT32 variant, const char *shortname, const char *source)
+	: device_t(mconfig, type, name, tag, owner, clock, shortname, source),
 		device_ieee488_interface(mconfig, *this),
 		m_maincpu(*this, M6502_TAG),
 		m_fdccpu(*this, M6504_TAG),
@@ -1497,7 +1457,7 @@ c2040_device::c2040_device(const machine_config &mconfig, device_type type, cons
 }
 
 c2040_device::c2040_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, C2040, "C2040", tag, owner, clock),
+	: device_t(mconfig, C2040, "C2040", tag, owner, clock, "c2040", __FILE__),
 		device_ieee488_interface(mconfig, *this),
 		m_maincpu(*this, M6502_TAG),
 		m_fdccpu(*this, M6504_TAG),
@@ -1539,7 +1499,7 @@ c2040_device::c2040_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 c3040_device::c3040_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: c2040_device(mconfig, C3040, "C3040", tag, owner, clock, TYPE_3040) { }
+	: c2040_device(mconfig, C3040, "C3040", tag, owner, clock, TYPE_3040, "c3040", __FILE__) { }
 
 
 //-------------------------------------------------
@@ -1547,18 +1507,18 @@ c3040_device::c3040_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 c4040_device::c4040_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: c2040_device(mconfig, C4040, "C4040", tag, owner, clock, TYPE_4040) { }
+	: c2040_device(mconfig, C4040, "C4040", tag, owner, clock, TYPE_4040, "c4040", __FILE__) { }
 
 
 //-------------------------------------------------
 //  c8050_device - constructor
 //-------------------------------------------------
 
-c8050_device::c8050_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, UINT32 variant)
-	: c2040_device(mconfig, type, name, tag, owner, clock, variant) { }
+c8050_device::c8050_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, UINT32 variant, const char *shortname, const char *source)
+	: c2040_device(mconfig, type, name, tag, owner, clock, variant, shortname, source) { }
 
 c8050_device::c8050_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: c2040_device(mconfig, C8050, "C8050", tag, owner, clock, TYPE_8050) { }
+	: c2040_device(mconfig, C8050, "C8050", tag, owner, clock, TYPE_8050, "c8050", __FILE__) { }
 
 
 //-------------------------------------------------
@@ -1566,7 +1526,7 @@ c8050_device::c8050_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 c8250_device::c8250_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: c8050_device(mconfig, C8250, "C8250", tag, owner, clock, TYPE_8250) { }
+	: c8050_device(mconfig, C8250, "C8250", tag, owner, clock, TYPE_8250, "c8250", __FILE__) { }
 
 
 //-------------------------------------------------
@@ -1574,7 +1534,7 @@ c8250_device::c8250_device(const machine_config &mconfig, const char *tag, devic
 //-------------------------------------------------
 
 c8250lp_device::c8250lp_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: c8050_device(mconfig, C8250LP, "C8250LP", tag, owner, clock, TYPE_8250LP) { }
+	: c8050_device(mconfig, C8250LP, "C8250LP", tag, owner, clock, TYPE_8250LP, "c8250lp", __FILE__) { }
 
 
 //-------------------------------------------------
@@ -1582,7 +1542,7 @@ c8250lp_device::c8250lp_device(const machine_config &mconfig, const char *tag, d
 //-------------------------------------------------
 
 sfd1001_device::sfd1001_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: c8050_device(mconfig, SFD1001, "SFD1001", tag, owner, clock, TYPE_SFD1001) { }
+	: c8050_device(mconfig, SFD1001, "SFD1001", tag, owner, clock, TYPE_SFD1001, "sfd1001", __FILE__) { }
 
 
 //-------------------------------------------------

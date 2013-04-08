@@ -481,8 +481,8 @@ static Z80STI_INTERFACE( sti_intf )
 	DEVCB_NULL,                                             // serial output
 	DEVCB_NULL,                                             // timer A output
 	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, grip_device, speaker_w),    // timer B output
-	DEVCB_LINE(z80sti_tc_w),                                // timer C output
-	DEVCB_LINE(z80sti_rc_w)                                 // timer D output
+	DEVCB_DEVICE_LINE(DEVICE_SELF, z80sti_tc_w),                                // timer C output
+	DEVCB_DEVICE_LINE(DEVICE_SELF, z80sti_rc_w)                                 // timer D output
 };
 
 
@@ -666,7 +666,7 @@ ioport_constructor grip_device::device_input_ports() const
 //-------------------------------------------------
 
 grip_device::grip_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
-	device_t(mconfig, ECB_GRIP21, "GRIP-2.1", tag, owner, clock),
+	device_t(mconfig, ECB_GRIP21, "GRIP-2.1", tag, owner, clock, "grip", __FILE__),
 	device_ecbbus_card_interface(mconfig, *this),
 	m_ppi(*this, I8255A_TAG),
 	m_sti(*this, Z80STI_TAG),

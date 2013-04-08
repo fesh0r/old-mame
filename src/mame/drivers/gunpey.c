@@ -257,6 +257,8 @@ public:
 
 	int write_dest_byte(UINT8 usedata);
 	//UINT16 main_m_vram[0x800][0x800];
+
+	DECLARE_WRITE_LINE_MEMBER(sound_irq_gen);
 };
 
 
@@ -1093,7 +1095,6 @@ WRITE8_MEMBER(gunpey_state::gunpey_blitter_w)
 		{
 			if(rle == 8)
 			{
-
 				// compressed stream format:
 				//
 				// byte 0 = source width   (data is often stored in fairly narrow columns)
@@ -1126,7 +1127,6 @@ WRITE8_MEMBER(gunpey_state::gunpey_blitter_w)
 
 				for (;;)
 				{
-
 					int test = gunpey_state_get_stream_bits(2);
 					int data;
 					int getbits = 1;
@@ -1163,7 +1163,6 @@ WRITE8_MEMBER(gunpey_state::gunpey_blitter_w)
 						//if (count<512)
 						{
 							{
-
 								if (test==0x0)
 								{
 									printf("00");
@@ -1312,14 +1311,14 @@ ADDRESS_MAP_END
 /***************************************************************************************/
 
 
-static void sound_irq_gen(device_t *device, int state)
+WRITE_LINE_MEMBER(gunpey_state::sound_irq_gen)
 {
 	logerror("sound irq\n");
 }
 
 static const ymz280b_interface ymz280b_intf =
 {
-	sound_irq_gen
+	DEVCB_DRIVER_LINE_MEMBER(gunpey_state,sound_irq_gen)
 };
 
 
@@ -1507,7 +1506,6 @@ ROM_END
 
 DRIVER_INIT_MEMBER(gunpey_state,gunpey)
 {
-
 	m_blit_rom = memregion("blit_data")->base();
 	m_blit_rom2 = memregion("blit_data2")->base();
 

@@ -337,13 +337,13 @@ MACHINE_CONFIG_END
 //-------------------------------------------------
 
 gottlieb_sound_r1_device::gottlieb_sound_r1_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, GOTTLIEB_SOUND_REV1, "Gottlieb Sound rev. 1", "gotsndr1", tag, owner, clock),
+	: device_t(mconfig, GOTTLIEB_SOUND_REV1, "Gottlieb Sound rev. 1", tag, owner, clock, "gotsndr1", __FILE__),
 		device_mixer_interface(mconfig, *this),
 		m_audiocpu(*this, "audiocpu"),
 		m_riot(*this, "riot"),
 		m_dac(*this, "dac"),
 		m_votrax(*this, "votrax"),
-		m_populate_votrax(false),
+		//m_populate_votrax(false),
 		m_last_speech_clock(0)
 #if USE_FAKE_VOTRAX
 		, m_samples(*this, ":samples"),
@@ -355,13 +355,13 @@ gottlieb_sound_r1_device::gottlieb_sound_r1_device(const machine_config &mconfig
 }
 
 gottlieb_sound_r1_device::gottlieb_sound_r1_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock, bool populate_votrax)
-	: device_t(mconfig, GOTTLIEB_SOUND_REV1, "Gottlieb Sound rev. 1", "gotsndr1", tag, owner, clock),
+	: device_t(mconfig, GOTTLIEB_SOUND_REV1, "Gottlieb Sound rev. 1", tag, owner, clock, "gotsndr1", __FILE__),
 		device_mixer_interface(mconfig, *this),
 		m_audiocpu(*this, "audiocpu"),
 		m_riot(*this, "riot"),
 		m_dac(*this, "dac"),
 		m_votrax(*this, "votrax"),
-		m_populate_votrax(populate_votrax),
+		//m_populate_votrax(populate_votrax),
 		m_last_speech_clock(0)
 #if USE_FAKE_VOTRAX
 		, m_samples(*this, ":samples"),
@@ -636,7 +636,7 @@ ioport_constructor gottlieb_sound_r1_with_votrax_device::device_input_ports() co
 //-------------------------------------------------
 
 gottlieb_sound_r2_device::gottlieb_sound_r2_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, GOTTLIEB_SOUND_REV2, "Gottlieb Sound rev. 2", "gotsndr2", tag, owner, clock),
+	: device_t(mconfig, GOTTLIEB_SOUND_REV2, "Gottlieb Sound rev. 2", tag, owner, clock, "gotsndr2", __FILE__),
 		device_mixer_interface(mconfig, *this),
 		m_audiocpu(*this, "audiocpu"),
 		m_speechcpu(*this, "speechcpu"),

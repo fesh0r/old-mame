@@ -17,7 +17,7 @@
      Massive rewrite and reorganization by Lord Nightmare
      Additional IP, PC, subcycle timing rewrite by Lord Nightmare
 
-     Much information regarding these lpc encoding comes from US patent 4,209,844
+     Much information regarding the lpc encoding used here comes from US patent 4,209,844
      US patent 4,331,836 describes the complete 51xx chip
      US patent 4,335,277 describes the complete 52xx chip
      Special Thanks to Larry Brantingham for answering questions regarding the chip details
@@ -167,7 +167,7 @@ Interpolation is inhibited (i.e. interpolation at IP frames will not happen
     x101xxxx: SPEAK (SPK) Begins speaking, pulling spech data from the current address pointer location of the VSM modules.
 
     x110xxxx: SPEAK EXTERNAL (SPKEXT) Clears the FIFO using SPKEE line, then sets TALKD (TALKST remains zero) until 8 bytes have been written to the FIFO, at which point it begins speaking, pulling data from the 16 byte fifo.
-    TALK STATUS must be CLEAR for this command to work; otherwise it is treated as a NOP.
+    The patent implies TALK STATUS must be CLEAR for this command to work; otherwise it is treated as a NOP, but the decap shows that this is not true, and is an error on the patent diagram.
 
     x111xxxx: RESET (RST) Resets the speech synthesis core immediately, and clears the FIFO.
 
@@ -180,9 +180,6 @@ Interpolation is inhibited (i.e. interpolation at IP frames will not happen
 
 
 ***MAME Driver specific notes:***
-
-    Looping has the tms5220 hooked up directly to the cpu. However currently the
-    tms9900 cpu core does not support a ready line.
 
     Victory's initial audio selftest is pretty brutal to the FIFO: it sends a
     sequence of bytes to the FIFO and checks the status bits after each one; if
@@ -400,8 +397,8 @@ struct tms5220_state
 	UINT8 subcycle;         /* contains the current subcycle for a given PC: 0 is A' (only used on SPKSLOW mode on 51xx), 1 is A, 2 is B */
 	UINT8 subc_reload;      /* contains 1 for normal speech, 0 when SPKSLOW is active */
 	UINT8 PC;               /* current parameter counter (what param is being interpolated), ranges from 0 to 12 */
-	/* TODO/NOTE: the current interpolation period, counts 1,2,3,4,5,6,7,0 for divide by 8,8,8,4,4,4,2,1 */
-	UINT8 interp_period;        /* the current interpolation period */
+	/* TODO/NOTE: the current interpolation period, counts 1,2,3,4,5,6,7,0 for divide by 8,8,8,4,4,2,2,1 */
+	UINT8 interp_period;    /* the current interpolation period */
 	UINT8 inhibit;          /* If 1, interpolation is inhibited until the DIV1 period */
 	UINT8 tms5220c_rate;    /* only relevant for tms5220C's multi frame rate feature; is the actual 4 bit value written on a 0x2* or 0x0* command */
 	UINT16 pitch_count;     /* pitch counter; provides chirp rom address */
@@ -433,7 +430,7 @@ struct tms5220_state
 	/* The TMS52xx has two different ways of providing output data: the
 	   analog speaker pin (which was usually used) and the Digital I/O pin.
 	   The internal DAC used to feed the analog pin is only 8 bits, and has the
-	   funny clipping/clamping logic, while the digital pin gives full 12? bit
+	   funny clipping/clamping logic, while the digital pin gives full 10 bit
 	   resolution of the output data.
 	   TODO: add a way to set/reset this other than the FORCE_DIGITAL define
 	 */
@@ -479,7 +476,6 @@ static void tms5220_set_variant(tms5220_state *tms, int variant)
 			break;
 		case TMS5220_IS_5200:
 			tms->coeff = &tms5200_coeff;
-			//tms->coeff = &pat4335277_coeff;
 			break;
 		case TMS5220_IS_5220:
 			tms->coeff = &tms5220_coeff;
@@ -942,10 +938,10 @@ static void tms5220_process(tms5220_state *tms, INT16 *buffer, unsigned int size
 			   Interpolation inhibit cases:
 			 * Old frame was voiced, new is unvoiced
 			 * Old frame was silence/zero energy, new has nonzero energy
-			 * Old frame was unvoiced, new is voiced
+			 * Old frame was unvoiced, new is voiced (note this is the case on the patent but may not be correct on the real final chip)
 			 */
 			if ( ((OLD_FRAME_UNVOICED_FLAG == 0) && (NEW_FRAME_UNVOICED_FLAG == 1))
-				|| ((OLD_FRAME_UNVOICED_FLAG == 1) && (NEW_FRAME_UNVOICED_FLAG == 0))
+				|| ((OLD_FRAME_UNVOICED_FLAG == 1) && (NEW_FRAME_UNVOICED_FLAG == 0)) /* this line needs further investigation, starwars tie fighters may sound better without it */
 				|| ((OLD_FRAME_SILENCE_FLAG == 1) && (NEW_FRAME_SILENCE_FLAG == 0)) )
 				tms->inhibit = 1;
 			else // normal frame, normal interpolation
@@ -1366,13 +1362,10 @@ static void process_command(tms5220_state *tms, unsigned char cmd)
 			break;
 
 		case 0x60 : /* speak external */
-			if (tms->talk_status == 0) /* TALKST must be clear for SPKEXT */
-			{
-				//SPKEXT going active activates SPKEE which clears the fifo
-				tms->fifo_head = tms->fifo_tail = tms->fifo_count = tms->fifo_bits_taken = 0;
-				tms->speak_external = 1;
-				tms->RDB_flag = FALSE;
-			}
+			//SPKEXT going active activates SPKEE which clears the fifo
+			tms->fifo_head = tms->fifo_tail = tms->fifo_count = tms->fifo_bits_taken = 0;
+			tms->speak_external = 1;
+			tms->RDB_flag = FALSE;
 			break;
 
 		case 0x70 : /* reset */
@@ -2376,7 +2369,7 @@ void tms52xx_device::process(INT16 *buffer, unsigned int size)
 			// * Old frame was unvoiced, new is voiced
 
 			if ( ((M_OLD_FRAME_UNVOICED_FLAG == false) && (M_NEW_FRAME_UNVOICED_FLAG == true))
-				|| ((M_OLD_FRAME_UNVOICED_FLAG == true) && (M_NEW_FRAME_UNVOICED_FLAG == false))
+				|| ((M_OLD_FRAME_UNVOICED_FLAG == true) && (M_NEW_FRAME_UNVOICED_FLAG == false)) /* this line needs further investigation, starwars tie fighters may sound better without it */
 				|| ((M_OLD_FRAME_SILENCE_FLAG == true) && (M_NEW_FRAME_SILENCE_FLAG == false)) )
 				m_inhibit = true;
 			else // normal frame, normal interpolation
@@ -2808,14 +2801,11 @@ void tms52xx_device::process_command(unsigned char cmd)
 		break;
 
 	case 0x60: // speak external
-		if (!m_talk_status) // TALKST must be clear for SPKEXT
-		{
-			//SPKEXT going active activates SPKEE which clears the fifo
-			m_fifo_head = m_fifo_tail = 0;
-			m_fifo_count = m_fifo_bits_taken = 0;
-			m_speak_external = true;
-			m_RDB_flag = false;
-		}
+		//SPKEXT going active activates SPKEE which clears the fifo
+		m_fifo_head = m_fifo_tail = 0;
+		m_fifo_count = m_fifo_bits_taken = 0;
+		m_speak_external = true;
+		m_RDB_flag = false;
 		break;
 
 	case 0x70: // reset

@@ -228,8 +228,7 @@ struct md_slot
 static const md_slot slot_list[] =
 {
 	{ SEGA_SK, "rom_sk" },
-	{ SEGA_STD, "rom_svp"},
-//  { SEGA_SVP, "rom_svp"},     // not ready yet...
+	{ SEGA_SVP, "rom_svp"},
 
 	{ SEGA_SRAM, "rom_sram" },
 	{ SEGA_FRAM, "rom_fram" },
@@ -336,6 +335,10 @@ bool base_md_cart_slot_device::call_load()
 
 		if (res == IMAGE_INIT_PASS)
 		{
+			//speed-up rom access from SVP add-on, if present
+			if (m_type == SEGA_SVP)
+				m_cart->set_bank_to_rom("cart_svp", 0x800/2);
+
 			// STEP 3: install memory handlers for this type of cart
 			setup_custom_mappers();
 
@@ -344,10 +347,11 @@ bool base_md_cart_slot_device::call_load()
 
 			if (m_cart->get_nvram_size())
 				battery_load(m_cart->get_nvram_base(), m_cart->get_nvram_size(), 0xff);
+
+			file_logging((UINT8 *)m_cart->get_rom_base(), m_cart->get_rom_size(), m_cart->get_nvram_size());
 		}
 
 		return res;
-
 	}
 
 	return IMAGE_INIT_PASS;
@@ -389,7 +393,7 @@ int base_md_cart_slot_device::load_list()
  *************************************/
 
 /* code taken directly from GoodGEN by Cowering */
-static int genesis_is_SMD(unsigned char *buf,unsigned int len)
+static int genesis_is_SMD(unsigned char *buf, unsigned int len)
 {
 	if (buf[0x2080] == 'S' && buf[0x80] == 'E' && buf[0x2081] == 'G' && buf[0x81] == 'A')
 		return 1;
@@ -459,47 +463,55 @@ static int genesis_is_SMD(unsigned char *buf,unsigned int len)
 int base_md_cart_slot_device::load_nonlist()
 {
 	unsigned char *ROM, *tmpROM;
-	UINT32 len = m_cart->get_padded_size(length()); // if cart size is not (2^n * 64K), the system will see anyway that size so we need to alloc a bit more space
+	bool is_smd, is_md;
+	UINT32 tmplen = length(), offset, len;
 
+	// STEP 1: store a (possibly headered) copy of the file and determine its type (SMD? MD? BIN?)
+	tmpROM = global_alloc_array(unsigned char, tmplen);
+	fread(tmpROM, tmplen);
+	is_smd = genesis_is_SMD(&tmpROM[0x200], tmplen - 0x200);
+	is_md = (tmpROM[0x80] == 'E') && (tmpROM[0x81] == 'A') && (tmpROM[0x82] == 'M' || tmpROM[0x82] == 'G');
+
+	// take header into account, if any
+	offset = is_smd ? 0x200 : 0;
+
+	// STEP 2: allocate space for the real copy of the game
+	// if cart size is not (2^n * 64K), the system will see anyway that size so we need to alloc a bit more space
+	len = m_cart->get_padded_size(tmplen - offset);
 	// this contains an hack for SSF2: its current bankswitch code needs larger rom space to work
 	m_cart->rom_alloc(machine(), (len == 0x500000) ? 0x900000 : len);
 
+
+	// STEP 3: copy the game data in the appropriate way
 	ROM = (unsigned char *)m_cart->get_rom_base();
-	tmpROM = global_alloc_array(unsigned char, len);
 
-	// STEP 1: determine the file type (SMD? MD? BIN?)
-	fread(tmpROM, len);
-
-	/* is this a SMD file? */
-	if (genesis_is_SMD(&tmpROM[0x200], len))
+	if (is_smd)
 	{
 		mame_printf_debug("SMD!\n");
 
-		for (int ptr = 0; ptr < (len - 0x200) / 0x2000; ptr += 2)
+		for (int ptr = 0; ptr < (tmplen - 0x200) / 0x2000; ptr += 2)
 		{
 			for (int x = 0; x < 0x2000; x++)
 			{
-				*ROM++ = *(tmpROM + 0x200 + ((ptr + 1) * 0x2000) + x);
-				*ROM++ = *(tmpROM + 0x200 + ((ptr + 0) * 0x2000) + x);
+				ROM[ptr * 0x2000 + x * 2 + 0] = tmpROM[0x200 + ((ptr + 1) * 0x2000) + x];
+				ROM[ptr * 0x2000 + x * 2 + 1] = tmpROM[0x200 + ((ptr + 0) * 0x2000) + x];
 			}
 		}
-
-		len -= 0x200;
 	}
-	/* is this a MD file? */
-	else if ((tmpROM[0x80] == 'E') && (tmpROM[0x81] == 'A') && (tmpROM[0x82] == 'M' || tmpROM[0x82] == 'G'))
+	else if (is_md)
 	{
 		mame_printf_debug("MD!\n");
 
-		for (int ptr = 0; ptr < len; ptr += 2)
+		for (int ptr = 0; ptr < tmplen; ptr += 2)
 		{
-			ROM[ptr] = tmpROM[(len >> 1) + (ptr >> 1)];
+			ROM[ptr] = tmpROM[(tmplen >> 1) + (ptr >> 1)];
 			ROM[ptr + 1] = tmpROM[(ptr >> 1)];
 		}
 	}
-	/* BIN it is, then */
 	else
 	{
+		mame_printf_debug("BIN!\n");
+
 		fseek(0, SEEK_SET);
 		fread(ROM, len);
 	}
@@ -507,19 +519,21 @@ int base_md_cart_slot_device::load_nonlist()
 	global_free(tmpROM);
 
 	// if we allocated a ROM larger that the file (e.g. due to uneven cart size), set remaining space to 0xff
-	if (len > length())
-		memset(m_cart->get_rom_base() + length()/2, 0xffff, (len - length())/2);
+	if (len > (tmplen - offset))
+		memset(m_cart->get_rom_base() + (tmplen - offset)/2, 0xffff, (len - tmplen + offset)/2);
 
-	// STEP 2: determine the cart type (to deal with pirate mappers & eeprom)
-	m_type = get_cart_type(ROM, length());
+
+	// STEP 4: determine the cart type (to deal with sram/eeprom & pirate mappers)
+	m_type = get_cart_type(ROM, len);
 
 	// handle mirroring of ROM, unless it's SSF2 or Pier Solar
 	if (m_type != SSF2 && m_type != PSOLAR)
 		m_cart->rom_map_setup(len);
 
+
+// CPU needs to access ROM as a ROM_REGION16_BE, so we need to compensate on LE machines
 #ifdef LSB_FIRST
 	unsigned char fliptemp;
-	// is this really needed nowadays?
 	for (int ptr = 0; ptr < len; ptr += 2)
 	{
 		fliptemp = ROM[ptr];
@@ -532,7 +546,7 @@ int base_md_cart_slot_device::load_nonlist()
 }
 
 /*-------------------------------------------------
- call_unloadload
+ call_unload
  -------------------------------------------------*/
 
 void base_md_cart_slot_device::call_unload()
@@ -600,6 +614,8 @@ void base_md_cart_slot_device::setup_nvram()
 		case SEGA_SRAM_FALLBACK:
 			m_cart->m_nvram_start = 0x200000;
 			m_cart->m_nvram_end = m_cart->m_nvram_start + 0xffff;
+			logerror("No SRAM detected from header, using fallback SRAM in case this is a broken header\n");
+
 			m_cart->nvram_alloc(machine(), m_cart->m_nvram_end - m_cart->m_nvram_start + 1);
 			if (m_cart->m_rom_size <= m_cart->m_nvram_start)
 				m_cart->m_nvram_active = 1;
@@ -792,6 +808,9 @@ int base_md_cart_slot_device::get_cart_type(UINT8 *ROM, UINT32 len)
 				(!memcmp((char *)&ROM[0x0180], "GM T-12053", 10) && !memcmp(&ROM[0x18e], rockman_sig, sizeof(rockman_sig)))) // / Rock Man (EEPROM version)
 				type = SEGA_EEPROM;
 
+			if (!memcmp((char *)&ROM[0x0150], "Virtua Racing", 13))
+				type = SEGA_SVP;
+
 			break;
 
 		case 0x200005:
@@ -854,13 +873,10 @@ int base_md_cart_slot_device::get_cart_type(UINT8 *ROM, UINT32 len)
 	if (type == SEGA_STD)
 	{
 		// If the cart is not of a special type, we check the header for SRAM.
-		if (ROM[0x1b1] == 'R' && ROM[0x1b0] == 'A')
+		if (ROM[0x1b1] == 'A' && ROM[0x1b0] == 'R')
 		{
-			UINT32 start, end;
-			start = (ROM[0x1b5] << 24 | ROM[0x1b4] << 16 | ROM[0x1b7] << 8 | ROM[0x1b6]);
-			end = (ROM[0x1b9] << 24 | ROM[0x1b8] << 16 | ROM[0x1bb] << 8 | ROM[0x1ba]);
-			logerror("SRAM detected from header: starting location %X - SRAM Length %X\n", start, end - start + 1);
-
+			UINT32 start = (ROM[0x1b4] << 24 | ROM[0x1b5] << 16 | ROM[0x1b6] << 8 | ROM[0x1b7]);
+			UINT32 end = (ROM[0x1b8] << 24 | ROM[0x1b9] << 16 | ROM[0x1ba] << 8 | ROM[0x1bb]);
 			// For some games using serial EEPROM, difference between SRAM end to start is 0 or 1.
 			// Carts with EEPROM should have been already detected above, but better safe than sorry
 			if (end - start < 2)
@@ -889,13 +905,16 @@ const char * base_md_cart_slot_device::get_default_card_software(const machine_c
 
 	if (open_image_file(options))
 	{
-		UINT32 len = core_fsize(m_file);
+		UINT32 len = core_fsize(m_file), offset = 0;;
 		UINT8 *ROM = global_alloc_array(UINT8, len);
 		int type;
 
 		core_fread(m_file, ROM, len);
 
-		type = get_cart_type(ROM, len);
+		if (genesis_is_SMD(&ROM[0x200], len - 0x200))
+				offset = 0x200;
+
+		type = get_cart_type(ROM + offset, len - offset);
 		slot_string = md_get_slot(type);
 
 		global_free(ROM);
@@ -916,7 +935,7 @@ const char * base_md_cart_slot_device::get_default_card_software(const machine_c
 READ16_MEMBER(base_md_cart_slot_device::read)
 {
 	if (m_cart)
-		return m_cart->read(space, offset);
+		return m_cart->read(space, offset, mem_mask);
 	else
 		return 0xffff;
 }
@@ -924,7 +943,7 @@ READ16_MEMBER(base_md_cart_slot_device::read)
 READ16_MEMBER(base_md_cart_slot_device::read_a13)
 {
 	if (m_cart)
-		return m_cart->read_a13(space, offset);
+		return m_cart->read_a13(space, offset, mem_mask);
 	else
 		return 0xffff;
 }
@@ -932,7 +951,7 @@ READ16_MEMBER(base_md_cart_slot_device::read_a13)
 READ16_MEMBER(base_md_cart_slot_device::read_a15)
 {
 	if (m_cart)
-		return m_cart->read_a15(space, offset);
+		return m_cart->read_a15(space, offset, mem_mask);
 	else
 		return 0xffff;
 }
@@ -945,17 +964,137 @@ READ16_MEMBER(base_md_cart_slot_device::read_a15)
 WRITE16_MEMBER(base_md_cart_slot_device::write)
 {
 	if (m_cart)
-		m_cart->write(space, offset, data);
+		m_cart->write(space, offset, data, mem_mask);
 }
 
 WRITE16_MEMBER(base_md_cart_slot_device::write_a13)
 {
 	if (m_cart)
-		m_cart->write_a13(space, offset, data);
+		m_cart->write_a13(space, offset, data, mem_mask);
 }
 
 WRITE16_MEMBER(base_md_cart_slot_device::write_a15)
 {
 	if (m_cart)
-		m_cart->write_a15(space, offset, data);
+		m_cart->write_a15(space, offset, data, mem_mask);
+}
+
+/*-------------------------------------------------
+ Image loading logging
+ -------------------------------------------------*/
+
+void base_md_cart_slot_device::file_logging(UINT8 *ROM8, UINT32 rom_len, UINT32 nvram_len)
+{
+	char console[16], copyright[16], domestic_name[48], overseas_name[48];
+	char serial[14], io[16], modem[12], memo[40], country[16];
+	UINT32 rom_start, rom_end, ram_start, ram_end, sram_start = 0, sram_end = 0;
+	UINT16 checksum, csum = 0;
+	bool valid_sram = FALSE, is_pico = FALSE;
+	astring ctrl(""), reg("");
+
+	// LOG FILE DETAILS
+	logerror("FILE DETAILS\n" );
+	logerror("============\n" );
+	logerror("Name: %s\n", basename());
+	logerror("File Size: 0x%" I64FMT "x\n", (software_entry() == NULL) ? length() : get_software_region_length("rom"));
+	logerror("Detected type: %s\n", md_get_slot(m_type));
+	logerror("ROM (Allocated) Size: 0x%X\n", rom_len);
+	logerror("NVRAM: %s\n", nvram_len ? "Yes" : "No");
+	if (nvram_len)
+		logerror("NVRAM (Allocated) Size: 0x%X\n", nvram_len);
+	logerror("\n" );
+
+
+	// LOG HEADER DETAILS
+	if (rom_len < 0x200)
+		return;
+
+	for (int i = 0; i < 16; i++)
+		console[i] = ROM8[0x100 + (i ^ 1)];
+	if (!strncmp("SEGA PICO", console, 9))
+		is_pico = TRUE;
+	for (int i = 0; i < 16; i++)
+		copyright[i] = ROM8[0x110 + (i ^ 1)];
+	for (int i = 0; i < 48; i++)
+		domestic_name[i] = ROM8[0x120 + (i ^ 1)];
+	for (int i = 0; i < 48; i++)
+		overseas_name[i] = ROM8[0x150 + (i ^ 1)];
+	for (int i = 0; i < 14; i++)
+		serial[i] = ROM8[0x180 + (i ^ 1)];
+
+	checksum = ROM8[0x18e] | (ROM8[0x18f] << 8);
+
+	for (int i = 0; i < 16; i++)
+	{
+		io[i] = ROM8[0x190 + (i ^ 1)];
+		if (io[i] == 'J')
+			ctrl.cat(" - Joypad 3 buttons [J]\n");
+		if (io[i] == '6')
+			ctrl.cat(" - Joypad 6 buttons [6]\n");
+	}
+
+	rom_start = (ROM8[0x1a1] << 24 | ROM8[0x1a0] << 16 | ROM8[0x1a3] << 8 | ROM8[0x1a2]);
+	rom_end = (ROM8[0x1a5] << 24 | ROM8[0x1a4] << 16 | ROM8[0x1a7] << 8 | ROM8[0x1a6]);
+	ram_start =  (ROM8[0x1a9] << 24 | ROM8[0x1a8] << 16 | ROM8[0x1ab] << 8 | ROM8[0x1aa]);;
+	ram_end = (ROM8[0x1ad] << 24 | ROM8[0x1ac] << 16 | ROM8[0x1af] << 8 | ROM8[0x1ae]);;
+	if (ROM8[0x1b1] == 'R' && ROM8[0x1b0] == 'A')
+	{
+		valid_sram = TRUE;
+		sram_start = (ROM8[0x1b5] << 24 | ROM8[0x1b4] << 16 | ROM8[0x1b7] << 8 | ROM8[0x1b6]);
+		sram_end = (ROM8[0x1b9] << 24 | ROM8[0x1b8] << 16 | ROM8[0x1bb] << 8 | ROM8[0x1ba]);
+	}
+
+	for (int i = 0; i < 12; i++)
+		modem[i] = ROM8[0x1bc + (i ^ 1)];
+	for (int i = 0; i < 40; i++)
+		memo[i] = ROM8[0x1c8 + (i ^ 1)];
+	for (int i = 0; i < 16; i++)
+	{
+		country[i] = ROM8[0x1f0 + (i ^ 1)];
+		if (country[i] == 'J')
+			reg.cat(" - Japan [J]\n");
+		if (country[i] == 'U')
+			reg.cat(" - USA [U]\n");
+		if (country[i] == 'E')
+			reg.cat(" - Europe [E]\n");
+	}
+
+	// compute cart checksum to compare with expected one
+	for (int i = 0x200; i < (rom_end + 1) && i < rom_len; i += 2)
+	{
+		csum += (ROM8[i] | (ROM8[i + 1] << 8));
+		csum &= 0xffff;
+	}
+
+	logerror("INTERNAL HEADER\n" );
+	logerror("===============\n" );
+	logerror("Console: %.16s\n", console);
+	logerror("Copyright String: %.16s\n", copyright);
+	logerror(" - Manufacturer: %.4s\n", copyright + 3); // TODO: convert code to manufacturer name!
+	logerror(" - Date: %.8s\n", copyright + 8);
+	logerror("Name (domestic): %.48s\n", domestic_name);
+	logerror("Name (overseas): %.48s\n", overseas_name);
+	logerror("Serial String: %.14s\n", serial);
+	if (!is_pico)
+	{
+		logerror(" - Type: %.2s (%s)\n", serial, !strncmp("GM", serial, 2) ? "Game" : "Unknown");
+		logerror(" - Serial Code: %.8s\n", serial + 3);
+		logerror(" - Revision: %.2s\n", serial + 12);
+	}
+	logerror("Checksum: %X\n", checksum);
+	logerror(" - Calculated Checksum: %X\n", csum);
+	logerror("Supported I/O Devices: %.16s\n%s", io, ctrl.cstr());
+	logerror("Modem: %.12s\n", modem);
+	logerror("Memo: %.40s\n", memo);
+	logerror("Country: %.16s\n%s", country, reg.cstr());
+	logerror("ROM Start:  0x%.8X\n", rom_start);
+	logerror("ROM End:    0x%.8X\n", rom_end);
+	logerror("RAM Start:  0x%.8X\n", ram_start);
+	logerror("RAM End:    0x%.8X\n", ram_end);
+	logerror("SRAM detected from header: %s\n", valid_sram ? "Yes" : "No");
+	if (valid_sram)
+	{
+		logerror("SRAM Start: 0x%.8X\n", sram_start);
+		logerror("SRAM End:   0x%.8X\n", sram_end);
+	}
 }

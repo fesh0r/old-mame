@@ -5,7 +5,7 @@
 
 
 MainWindow::MainWindow(running_machine* machine, QWidget* parent) :
-	WindowQt(machine, parent),
+	WindowQt(machine, NULL),
 	m_historyIndex(0),
 	m_inputHistory()
 {
@@ -290,8 +290,7 @@ void MainWindow::executeCommand(bool withClear)
 
 	// Refresh
 	m_consoleView->viewport()->update();
-	m_procFrame->view()->update();
-	m_dasmFrame->view()->update();
+	refreshAll();
 }
 
 

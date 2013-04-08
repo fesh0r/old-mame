@@ -1,9 +1,9 @@
-/**********************************************************************
+	/**********************************************************************
 
-    Wang PC keyboard emulation
+	Wang PC keyboard emulation
 
-    Copyright MESS Team.
-    Visit http://mamedev.org for licensing and usage restrictions.
+	Copyright MESS Team.
+	Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
 
@@ -60,12 +60,11 @@ public:
 	DECLARE_WRITE8_MEMBER( kb_p2_w );
 	DECLARE_WRITE8_MEMBER( kb_p3_w );
 
-	static int mcs51_rx_callback(device_t *device);
-	static void mcs51_tx_callback(device_t *device, int data);
+	DECLARE_READ8_MEMBER(mcs51_rx_callback);
+	DECLARE_WRITE8_MEMBER(mcs51_tx_callback);
 
 protected:
 	// device-level overrides
-	virtual void device_config_complete() { m_shortname = "wangpckb"; }
 	virtual void device_start();
 	virtual void device_reset();
 

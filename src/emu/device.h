@@ -145,8 +145,7 @@ class device_t : public delegate_late_bind
 
 protected:
 	// construction/destruction
-	device_t(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock);
-	device_t(const machine_config &mconfig, device_type type, const char *name, const char *shortname, const char *tag, device_t *owner, UINT32 clock);
+	device_t(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock,const char *shortname = "", const char *source = __FILE__);
 	virtual ~device_t();
 
 public:
@@ -158,6 +157,7 @@ public:
 	const char *name() const { return m_name; }
 	const char *shortname() const { return m_shortname; }
 	const char *searchpath() const { return m_searchpath; }
+	const char *source() const { return m_source; }
 	device_t *owner() const { return m_owner; }
 	device_t *next() const { return m_next; }
 	UINT32 configured_clock() const { return m_configured_clock; }
@@ -298,6 +298,7 @@ protected:
 	astring                 m_name;                 // name of the device
 	astring                 m_shortname;            // short name of the device
 	astring                 m_searchpath;           // search path, used for media loading
+	astring                 m_source;               // device source file name
 
 	// device relationships
 	device_t *              m_owner;                // device that owns us

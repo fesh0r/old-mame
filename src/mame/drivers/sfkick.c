@@ -82,6 +82,8 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(sfkick_interrupt);
 	void sfkick_remap_banks();
 	void sfkick_bank_set(int num, int data);
+	DECLARE_WRITE_LINE_MEMBER(irqhandler);
+	DECLARE_WRITE_LINE_MEMBER(sfkick_vdp_interrupt);
 };
 
 
@@ -431,9 +433,9 @@ static INPUT_PORTS_START( sfkick )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_5C ) )
 INPUT_PORTS_END
 
-static void sfkick_vdp_interrupt(device_t *, v99x8_device &device, int i)
+WRITE_LINE_MEMBER(sfkick_state::sfkick_vdp_interrupt)
 {
-	device.machine().device("maincpu")->execute().set_input_line(0, (i ? HOLD_LINE : CLEAR_LINE));
+	machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 void sfkick_state::machine_reset()
@@ -455,9 +457,9 @@ TIMER_DEVICE_CALLBACK_MEMBER(sfkick_state::sfkick_interrupt)
 	m_v9938->interrupt();
 }
 
-static void irqhandler(device_t *device, int irq)
+WRITE_LINE_MEMBER(sfkick_state::irqhandler)
 {
-	device->machine().device("soundcpu")->execute().set_input_line_and_vector(0, irq ? ASSERT_LINE : CLEAR_LINE, 0xff);
+	machine().device("soundcpu")->execute().set_input_line_and_vector(0, state ? ASSERT_LINE : CLEAR_LINE, 0xff);
 }
 
 static const ym2203_interface ym2203_config =
@@ -467,7 +469,7 @@ static const ym2203_interface ym2203_config =
 		AY8910_DEFAULT_LOADS,
 		DEVCB_NULL,DEVCB_NULL,DEVCB_NULL,DEVCB_NULL,
 	},
-	DEVCB_LINE(irqhandler)
+	DEVCB_DRIVER_LINE_MEMBER(sfkick_state,irqhandler)
 };
 
 static MACHINE_CONFIG_START( sfkick, sfkick_state )
@@ -484,7 +486,7 @@ static MACHINE_CONFIG_START( sfkick, sfkick_state )
 	MCFG_CPU_IO_MAP(sfkick_sound_io_map)
 
 	MCFG_V9938_ADD("v9938", "screen", 0x80000)
-	MCFG_V99X8_INTERRUPT_CALLBACK_STATIC(sfkick_vdp_interrupt)
+	MCFG_V99X8_INTERRUPT_CALLBACK(WRITELINE(sfkick_state,sfkick_vdp_interrupt))
 
 	MCFG_SCREEN_ADD("screen", RASTER)
 	MCFG_SCREEN_REFRESH_RATE(60)

@@ -341,9 +341,9 @@ private:
 
 	vga_device* m_vga;  // for pass-through
 	astring m_vga_tag;  // pass-through device tag
-	UINT8* m_vram;  // the original 8514/A has it's own VRAM, but most VGA+8514 combination cards will have
+	//UINT8* m_vram;  // the original 8514/A has it's own VRAM, but most VGA+8514 combination cards will have
 					// only one set of VRAM, so this will only be needed in standalone 8514/A cards
-	UINT32 m_vramsize;
+	//UINT32 m_vramsize;
 };
 
 // device type definition
@@ -519,6 +519,7 @@ class s3_vga_device :  public ati_vga_device
 public:
 	// construction/destruction
 	s3_vga_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
+	s3_vga_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock);
 
 	virtual READ8_MEMBER(port_03b0_r);
 	virtual WRITE8_MEMBER(port_03b0_w);
@@ -545,8 +546,15 @@ protected:
 		UINT8 reg_lock1;
 		UINT8 reg_lock2;
 		UINT8 enable_8514;
+		UINT8 enable_s3d;
+		UINT8 cr3a;
 		UINT8 cr42;
+		UINT8 cr43;
 		UINT8 cr53;
+		UINT8 id_high;
+		UINT8 id_low;
+		UINT8 revision;
+		UINT8 id_cr30;
 
 		// data for memory-mapped I/O
 		UINT16 mmio_9ae8;
@@ -566,6 +574,7 @@ protected:
 		UINT8 cursor_bg_ptr;
 		UINT8 extended_dac_ctrl;
 	} s3;
+
 private:
 	UINT8 s3_crtc_reg_read(UINT8 index);
 	void s3_define_video_mode(void);
@@ -575,7 +584,6 @@ private:
 
 // device type definition
 extern const device_type S3_VGA;
-
 
 // ======================> gamtor_vga_device
 

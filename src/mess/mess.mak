@@ -49,7 +49,7 @@ CPUS += TMS9995
 CPUS += TMS9900L
 CPUS += TMS9995L
 CPUS += Z8000
-#CPUS += Z8001
+CPUS += Z8001
 CPUS += TMS32010
 CPUS += TMS32025
 CPUS += TMS32031
@@ -178,8 +178,10 @@ SOUNDS += MSM5205
 SOUNDS += OKIM6258
 SOUNDS += OKIM6295
 #SOUNDS += OKIM6376
+#SOUNDS += OKIM9810
 SOUNDS += UPD7759
 SOUNDS += HC55516
+#SOUNDS += TC8830F
 #SOUNDS += K005289
 #SOUNDS += K007232
 SOUNDS += K051649
@@ -207,6 +209,7 @@ SOUNDS += C6280
 SOUNDS += SPU
 SOUNDS += CDDA
 #SOUNDS += ICS2115
+#SOUNDS += I5000_SND
 #SOUNDS += ST0016
 #SOUNDS += NILE
 #SOUNDS += X1_010
@@ -226,7 +229,7 @@ SOUNDS += CDP1864
 SOUNDS += MOS656X
 #SOUNDS += S2636
 SOUNDS += ASC
-#SOUNDS += CUSTOM
+#SOUNDS += MAS3507D
 SOUNDS += SOCRATES
 SOUNDS += TMC0285
 SOUNDS += TMS5200
@@ -238,6 +241,7 @@ SOUNDS += TMS5200
 #SOUNDS += TMS5110A
 SOUNDS += LMC1992
 SOUNDS += AWACS
+#SOUNDS += YMZ770
 SOUNDS += T6721A
 SOUNDS += MOS7360
 
@@ -1411,6 +1415,7 @@ $(MESSOBJ)/nintendo.a:          \
 	$(MESS_MACHINE)/sns_spc7110.o \
 	$(MESS_MACHINE)/sns_sufami.o\
 	$(MESS_MACHINE)/sns_upd.o   \
+	$(MESS_MACHINE)/sns_event.o  \
 	$(MESS_DRIVERS)/snes.o      \
 	$(MESS_DRIVERS)/n64.o       \
 	$(MESS_AUDIO)/gb.o          \
@@ -1522,6 +1527,7 @@ $(MESSOBJ)/pcshare.a:           \
 	$(MESS_VIDEO)/isa_vga_ati.o \
 	$(MESS_VIDEO)/isa_svga_tseng.o      \
 	$(MESS_VIDEO)/isa_svga_s3.o \
+	$(MESS_VIDEO)/s3virge.o \
 	$(MESS_VIDEO)/isa_svga_cirrus.o \
 	$(MESS_MACHINE)/i82371ab.o  \
 	$(MESS_MACHINE)/i82371sb.o  \
@@ -1629,11 +1635,15 @@ $(MESSOBJ)/sega.a:              \
 	$(MESS_MACHINE)/md_eeprom.o \
 	$(MESS_MACHINE)/md_jcart.o  \
 	$(MESS_MACHINE)/md_stm95.o  \
-	$(MESS_MACHINE)/megasvp.o   \
+	$(MESS_MACHINE)/md_svp.o    \
 	$(MESS_DRIVERS)/megadriv.o  \
 	$(MESS_DRIVERS)/dccons.o    \
 	$(MAME_MACHINE)/gdrom.o     \
 	$(MESS_MACHINE)/dccons.o    \
+	$(MESS_MACHINE)/sat_slot.o  \
+	$(MESS_MACHINE)/sat_rom.o   \
+	$(MESS_MACHINE)/sat_dram.o  \
+	$(MESS_MACHINE)/sat_bram.o  \
 	$(MESS_DRIVERS)/saturn.o    \
 	$(MESS_MACHINE)/sms.o       \
 	$(MESS_DRIVERS)/sms.o       \
@@ -1678,6 +1688,7 @@ $(MESSOBJ)/sharp.a:             \
 	$(MESS_MACHINE)/x1.o        \
 	$(MESS_DRIVERS)/x1twin.o    \
 	$(MESS_DRIVERS)/mz2500.o    \
+	$(MESS_DRIVERS)/mz3500.o    \
 	$(MESS_DRIVERS)/pce220.o    \
 	$(MESS_MACHINE)/pce220_ser.o\
 	$(MESS_DRIVERS)/mz6500.o    \
@@ -1715,7 +1726,6 @@ $(MESSOBJ)/sony.a:              \
 	$(MESS_DRIVERS)/psx.o       \
 	$(MESS_MACHINE)/psxcport.o  \
 	$(MESS_MACHINE)/psxcd.o     \
-	$(MESS_MACHINE)/psxcddrv.o  \
 	$(MESS_MACHINE)/psxcard.o   \
 	$(MESS_MACHINE)/psxanalog.o \
 	$(MESS_DRIVERS)/pockstat.o  \

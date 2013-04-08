@@ -33,59 +33,64 @@ const device_type SNS_LOROM_SETA10 = &device_creator<sns_rom_seta10dsp_device>;
 const device_type SNS_LOROM_SETA11 = &device_creator<sns_rom_seta11dsp_device>;
 
 
-sns_rom20_necdsp_device::sns_rom20_necdsp_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_device(mconfig, type, name, tag, owner, clock),
+sns_rom20_necdsp_device::sns_rom20_necdsp_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source)
+					: sns_rom_device(mconfig, type, name, tag, owner, clock, shortname, source),
 						m_upd7725(*this, "dsp")
 {
 }
 
 sns_rom20_necdsp_device::sns_rom20_necdsp_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_device(mconfig, SNS_LOROM_NECDSP, "SNES Cart (LoROM) + NEC DSP", tag, owner, clock),
+					: sns_rom_device(mconfig, SNS_LOROM_NECDSP, "SNES Cart (LoROM) + NEC DSP", tag, owner, clock, "sns_rom_necdsp", __FILE__),
 						m_upd7725(*this, "dsp")
 {
 }
 
-sns_rom21_necdsp_device::sns_rom21_necdsp_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom21_device(mconfig, type, name, tag, owner, clock),
+sns_rom21_necdsp_device::sns_rom21_necdsp_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source)
+					: sns_rom21_device(mconfig, type, name, tag, owner, clock, shortname, source),
 						m_upd7725(*this, "dsp")
 {
 }
 
 sns_rom21_necdsp_device::sns_rom21_necdsp_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom21_device(mconfig, SNS_HIROM_NECDSP, "SNES Cart (HiROM) + NEC DSP", tag, owner, clock),
+					: sns_rom21_device(mconfig, SNS_HIROM_NECDSP, "SNES Cart (HiROM) + NEC DSP", tag, owner, clock, "sns_rom21_necdsp", __FILE__),
 						m_upd7725(*this, "dsp")
 {
 }
 
-sns_rom_setadsp_device::sns_rom_setadsp_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_device(mconfig, type, name, tag, owner, clock),
+sns_rom_setadsp_device::sns_rom_setadsp_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source)
+					: sns_rom_device(mconfig, type, name, tag, owner, clock, shortname, source),
 						m_upd96050(*this, "dsp")
 {
 }
 
 sns_rom_seta10dsp_device::sns_rom_seta10dsp_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA10, "SNES Cart (LoROM) + Seta ST010 DSP", tag, owner, clock)
+					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA10, "SNES Cart (LoROM) + Seta ST010 DSP", tag, owner, clock, "sns_rom_seta10", __FILE__)
 {
 }
 
 sns_rom_seta11dsp_device::sns_rom_seta11dsp_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA11, "SNES Cart (LoROM) + Seta ST011 DSP", tag, owner, clock)
+					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA11, "SNES Cart (LoROM) + Seta ST011 DSP", tag, owner, clock, "sns_rom_seta11", __FILE__)
 {
 }
 
 
 void sns_rom20_necdsp_device::device_start()
 {
+	m_dsp_prg = auto_alloc_array(machine(), UINT32, 0x2000/4);
+	m_dsp_data = auto_alloc_array(machine(), UINT16, 0x800/2);
 }
 
 void sns_rom21_necdsp_device::device_start()
 {
+	m_dsp_prg = auto_alloc_array(machine(), UINT32, 0x2000/4);
+	m_dsp_data = auto_alloc_array(machine(), UINT16, 0x800/2);
 }
 
 void sns_rom_setadsp_device::device_start()
 {
+	m_dsp_prg = auto_alloc_array(machine(), UINT32, 0x10000/4);
+	m_dsp_data = auto_alloc_array(machine(), UINT16, 0x1000/2);
 }
-
 
 /*-------------------------------------------------
  mapper specific handlers
@@ -348,6 +353,48 @@ machine_config_constructor sns_rom_seta11dsp_device::device_mconfig_additions() 
 }
 
 
+// To make faster DSP access to its internal rom, let's install read banks and map m_bios there with correct byte order
+
+void sns_rom20_necdsp_device::speedup_addon_bios_access()
+{
+	m_upd7725->space(AS_PROGRAM).install_read_bank(0x0000, 0x07ff, "dsp_prg");
+	m_upd7725->space(AS_DATA).install_read_bank(0x0000, 0x03ff, "dsp_data");
+	membank("dsp_prg")->set_base(m_dsp_prg);
+	membank("dsp_data")->set_base(m_dsp_data);
+	// copy data in the correct format
+	for (int x = 0; x < 0x800; x++)
+		m_dsp_prg[x] = (m_bios[x * 4] << 24) | (m_bios[x * 4 + 1] << 16) | (m_bios[x * 4 + 2] << 8) | 0x00;
+	for (int x = 0; x < 0x400; x++)
+		m_dsp_data[x] = (m_bios[0x2000 + x * 2] << 8) | m_bios[0x2000 + x * 2 + 1];
+}
+
+void sns_rom21_necdsp_device::speedup_addon_bios_access()
+{
+	m_upd7725->space(AS_PROGRAM).install_read_bank(0x0000, 0x07ff, "dsp_prg");
+	m_upd7725->space(AS_DATA).install_read_bank(0x0000, 0x03ff, "dsp_data");
+	membank("dsp_prg")->set_base(m_dsp_prg);
+	membank("dsp_data")->set_base(m_dsp_data);
+	// copy data in the correct format
+	for (int x = 0; x < 0x800; x++)
+		m_dsp_prg[x] = (m_bios[x * 4] << 24) | (m_bios[x * 4 + 1] << 16) | (m_bios[x * 4 + 2] << 8) | 0x00;
+	for (int x = 0; x < 0x400; x++)
+		m_dsp_data[x] = (m_bios[0x2000 + x * 2] << 8) | m_bios[0x2000 + x * 2 + 1];
+}
+
+void sns_rom_setadsp_device::speedup_addon_bios_access()
+{
+	m_upd96050->space(AS_PROGRAM).install_read_bank(0x0000, 0x3fff, "dsp_prg");
+	m_upd96050->space(AS_DATA).install_read_bank(0x0000, 0x07ff, "dsp_data");
+	membank("dsp_prg")->set_base(m_dsp_prg);
+	membank("dsp_data")->set_base(m_dsp_data);
+	// copy data in the correct format
+	for (int x = 0; x < 0x3fff; x++)
+		m_dsp_prg[x] = (m_bios[x * 4] << 24) | (m_bios[x * 4 + 1] << 16) | (m_bios[x * 4 + 2] << 8) | 0x00;
+	for (int x = 0; x < 0x07ff; x++)
+		m_dsp_data[x] = (m_bios[0x10000 + x * 2] << 8) | m_bios[0x10000 + x * 2 + 1];
+}
+
+
 
 
 // Legacy versions including DSP dump roms, in order to support faulty dumps missing DSP data...
@@ -363,42 +410,42 @@ const device_type SNS_LOROM_SETA11_LEG = &device_creator<sns_rom_seta11dsp_legac
 
 
 sns_rom20_necdsp1_legacy_device::sns_rom20_necdsp1_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP1_LEG, "SNES Cart (LoROM) + NEC DSP1 Legacy", tag, owner, clock)
+					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP1_LEG, "SNES Cart (LoROM) + NEC DSP1 Legacy", tag, owner, clock, "dsp1leg", __FILE__)
 {
 }
 
 sns_rom20_necdsp1b_legacy_device::sns_rom20_necdsp1b_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP1B_LEG, "SNES Cart (LoROM) + NEC DSP1B Legacy", tag, owner, clock)
+					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP1B_LEG, "SNES Cart (LoROM) + NEC DSP1B Legacy", tag, owner, clock, "dsp1bleg", __FILE__)
 {
 }
 
 sns_rom20_necdsp2_legacy_device::sns_rom20_necdsp2_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP2_LEG, "SNES Cart (LoROM) + NEC DSP2 Legacy", tag, owner, clock)
+					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP2_LEG, "SNES Cart (LoROM) + NEC DSP2 Legacy", tag, owner, clock, "dsp2leg", __FILE__)
 {
 }
 
 sns_rom20_necdsp3_legacy_device::sns_rom20_necdsp3_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP3_LEG, "SNES Cart (LoROM) + NEC DSP3 Legacy", tag, owner, clock)
+					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP3_LEG, "SNES Cart (LoROM) + NEC DSP3 Legacy", tag, owner, clock, "dsp3leg", __FILE__)
 {
 }
 
 sns_rom20_necdsp4_legacy_device::sns_rom20_necdsp4_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP4_LEG, "SNES Cart (LoROM) + NEC DSP4 Legacy", tag, owner, clock)
+					: sns_rom20_necdsp_device(mconfig, SNS_LOROM_NECDSP4_LEG, "SNES Cart (LoROM) + NEC DSP4 Legacy", tag, owner, clock, "dsp4leg", __FILE__)
 {
 }
 
 sns_rom21_necdsp1_legacy_device::sns_rom21_necdsp1_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom21_necdsp_device(mconfig, SNS_HIROM_NECDSP1_LEG, "SNES Cart (HiROM) + NEC DSP1 Legacy", tag, owner, clock)
+					: sns_rom21_necdsp_device(mconfig, SNS_HIROM_NECDSP1_LEG, "SNES Cart (HiROM) + NEC DSP1 Legacy", tag, owner, clock, "dsp1leg_hi", __FILE__)
 {
 }
 
 sns_rom_seta10dsp_legacy_device::sns_rom_seta10dsp_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA10_LEG, "SNES Cart (LoROM) + Seta ST010 DSP Legacy", tag, owner, clock)
+					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA10_LEG, "SNES Cart (LoROM) + Seta ST010 DSP Legacy", tag, owner, clock, "seta10leg", __FILE__)
 {
 }
 
 sns_rom_seta11dsp_legacy_device::sns_rom_seta11dsp_legacy_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA11_LEG, "SNES Cart (LoROM) + Seta ST011 DSP Legacy", tag, owner, clock)
+					: sns_rom_setadsp_device(mconfig, SNS_LOROM_SETA11_LEG, "SNES Cart (LoROM) + Seta ST011 DSP Legacy", tag, owner, clock, "seta11leg", __FILE__)
 {
 }
 

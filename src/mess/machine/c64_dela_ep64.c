@@ -23,7 +23,7 @@ const device_type C64_DELA_EP64 = &device_creator<c64_dela_ep64_cartridge_device
 //-------------------------------------------------
 
 ROM_START( c64_dela_ep64 )
-	ROM_REGION( 0x10000, "rom", 0 )
+	ROM_REGION( 0x10000, "eprom", 0 )
 	ROM_CART_LOAD( "rom1", 0x0000, 0x08000, ROM_MIRROR )
 	ROM_CART_LOAD( "rom2", 0x8000, 0x08000, ROM_MIRROR )
 ROM_END
@@ -71,7 +71,7 @@ machine_config_constructor c64_dela_ep64_cartridge_device::device_mconfig_additi
 //-------------------------------------------------
 
 c64_dela_ep64_cartridge_device::c64_dela_ep64_cartridge_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock) :
-	device_t(mconfig, C64_DELA_EP64, "C64 Rex 64KB EPROM cartridge", tag, owner, clock),
+	device_t(mconfig, C64_DELA_EP64, "C64 Rex 64KB EPROM cartridge", tag, owner, clock, "c64_dela_ep64", __FILE__),
 	device_c64_expansion_card_interface(mconfig, *this),
 	m_eprom(*this, "eprom")
 {

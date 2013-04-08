@@ -4,7 +4,7 @@
 <!--
 
 To investigate:
-	- Shanghai Pocket by Sunsoft: are serial and release date correct or do they refer to the GB version?
+  - Shanghai Pocket by Sunsoft: are serial and release date correct or do they refer to the GB version?
 
 Undumped:
 - Elmo's ABCs DMG-AEAP-EUR
@@ -17,11 +17,11 @@ nointro guys also list the following
 - The New Adventures of Mary-Kate &amp; Ashley (Euro)
 
 Undumped GBC protos:
-	- Jet Force Gemini
+  - Jet Force Gemini
 
 
 Undumped Pirates:
-	-  Sachen EB-004 Street Hero
+  -  Sachen EB-004 Street Hero
 
 -->
 
@@ -3518,7 +3518,7 @@ Undumped Pirates:
 		<info name="release" value="19990319"/>
 		<info name="alt_title" value="大貝獣物語 ザ・ミラクル オブ ザ・ゾーンII"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc1" />
+			<feature name="slot" value="rom_huc1" />
 			<dataarea name="rom" size="1048576">
 				<rom name="daikaijuu monogatari - the miracle of the zone ii (japan).bin" size="1048576" crc="692d6794" sha1="7bf6e2d7fc58e8abe61785e413bcf4150fa8bee5" offset="000000" />
 			</dataarea>
@@ -14561,7 +14561,7 @@ Undumped Pirates:
 		<info name="release" value="19990806"/>
 		<info name="alt_title" value="ポケットファミリーGB2"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc3" />
+			<feature name="slot" value="rom_huc3" />
 			<dataarea name="rom" size="2097152">
 				<rom name="pocket family gb2 (japan).bin" size="2097152" crc="2a273244" sha1="fc88fcf5aab548936cd6617c4e2ea07b77ee43c8" offset="000000" />
 			</dataarea>
@@ -15252,7 +15252,7 @@ Undumped Pirates:
 		<info name="release" value="19981218"/>
 		<info name="alt_title" value="ポケモンカードGB"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc1" />
+			<feature name="slot" value="rom_huc1" />
 			<dataarea name="rom" size="1048576">
 				<rom name="pokemon card gb (japan).bin" size="1048576" crc="1926f570" sha1="2287627c5b4d56bd9a01aab83408c301b9cf1a6c" offset="000000" />
 			</dataarea>
@@ -17114,7 +17114,7 @@ Undumped Pirates:
 		<publisher>Atlus</publisher>
 		<info name="serial" value="DMG-HREE-USA"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc3" />
+			<feature name="slot" value="rom_huc3" />
 			<dataarea name="rom" size="1048576">
 				<rom name="robopon - sun version (usa).bin" size="1048576" crc="32caef11" sha1="399c928a38a3901b7a1093bd61f5a4d8c05b9771" offset="000000" />
 			</dataarea>
@@ -17130,7 +17130,7 @@ Undumped Pirates:
 		<publisher>Hudson Soft</publisher>
 		<info name="serial" value="DMG-H5UJ-JPN"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc3" />
+			<feature name="slot" value="rom_huc3" />
 			<dataarea name="rom" size="1048576">
 				<rom name="robot poncots - comic bom bom special version (japan).bin" size="1048576" crc="4aa209cd" sha1="79d1eda07e792497506ff1494e5222db2a52702f" offset="000000" />
 			</dataarea>
@@ -17148,7 +17148,7 @@ Undumped Pirates:
 		<info name="release" value="19991224"/>
 		<info name="alt_title" value="ロボットポンコッツ月バージョン"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc3" />
+			<feature name="slot" value="rom_huc3" />
 			<dataarea name="rom" size="1048576">
 				<rom name="robot poncots - moon version (japan).bin" size="1048576" crc="87a29030" sha1="7d6424bfecfeb17aee9f779dcb9bac47114730cd" offset="000000" />
 			</dataarea>
@@ -17166,7 +17166,7 @@ Undumped Pirates:
 		<info name="release" value="19981204"/>
 		<info name="alt_title" value="ロボットポンコッツ星バージョン"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc3" />
+			<feature name="slot" value="rom_huc3" />
 			<dataarea name="rom" size="1048576">
 				<rom name="robot poncots - star version (japan).bin" size="1048576" crc="b28f32ac" sha1="27a96410b38e695d9b80ae861af3b472f0e84c60" offset="000000" />
 			</dataarea>
@@ -17184,7 +17184,7 @@ Undumped Pirates:
 		<info name="release" value="19981204"/>
 		<info name="alt_title" value="ロボットポンコッツ太陽バージョン"/>
 		<part name="cart" interface="gameboy_cart">
-			<feature name="slot" value="slot_huc3" />
+			<feature name="slot" value="rom_huc3" />
 			<dataarea name="rom" size="1048576">
 				<rom name="robot poncots - sun version (japan).bin" size="1048576" crc="cb0b8003" sha1="2f82dd4a1537111d14f11eb13c7ce6fc748e83fe" offset="000000" />
 			</dataarea>
@@ -21055,6 +21055,22 @@ Undumped Pirates:
 		</part>
 	</software>
 
+	<software name="ttex" supported="no">
+		<!-- Notes: GBC only -->
+		<description>Tyrannosaurus Tex (Prototype)</description>
+		<year>19??</year>
+		<publisher>&lt;unknown&gt;</publisher>
+		<part name="cart" interface="gameboy_cart">
+			<feature name="slot" value="rom_mbc5" />
+			<!-- cartridge ram -->
+			<dataarea name="rom" size="2097152">
+				<rom name="maze b.bin" size="2097152" crc="1bd4e588" sha1="e2fcc7fcc643f9d7fc61acce6c5ed1f8abc13fa0" offset="000000" />
+			</dataarea>
+			<dataarea name="nvram" size="8192">
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="rpgtsuk2">
 		<!-- Notes: GBC only -->
 		<description>Uchuu Nin Tanaka Tarou de RPG Tsukuru GB2 (Jpn)</description>
@@ -22741,7 +22757,7 @@ Undumped Pirates:
 <!-- GOWIN games -->
 <!--
 
-	see list of games in gameboy.xml
+  see list of games in gameboy.xml
 
 -->
 
@@ -22763,7 +22779,7 @@ Undumped Pirates:
 	</software>
 
 <!-- This version bypasses the protection, but I think it's been hacked by whoever dumped
-		the real card, so it can be removed once we properly emulate the parent -->
+     the real card, so it can be removed once we properly emulate the parent -->
 	<software name="leinujsh" cloneof="leinujs">
 		<description>Lei Nu Ji Shen (Tw, Hacked)</description>
 		<year>2000</year>
@@ -22822,30 +22838,30 @@ Undumped Pirates:
 
 <!-- Sintax games -->
 <!--
-	* ST-0206002E Harry Boy Second Edition: The secretx of the chamber of secrets (english)
-	* ST-0206003E True Thre Kingdoms (english)
-	* ST-0206005E Donkey Kong 5: The journey of over time and space (english)
-	* ST-0206007 指环王 (Lord of the Rings) (Chinese)
-	* ST-0210010C 真三國無雙II (True Three Kingdoms II) (chinese)
-	* SAT-0212014C Tai Kong Bao Bei (Lilo and Stitch) [Jump Technology]
-	* JP-0301018C Crash Bandicoot 2003 [Jump Technology]
-	* ST-0301019C Lion King 3
-	* ST-0301020C Quan Ba Tian Xia
-	* ST-0210021C Super Robot War X
-	* ST-0211022E 2003 Pocket Monster Carbuncle (english)
-	* ST-0304027C 神鬼帝國之惡魔城 ("Castlevania of the Ghost Empire" or something) (Chinese)
-	* ST-0306030C 重装机兵/METAL MAXⅡ
-	* ST-0306034C Dragon Ball Z3
-	* ST-0310041C 大话西游/Saiyuuki
-	* ST-0425072C 口袋宝贝火红/Pocket Monstor-Red (Fire Red)
-	* 0405073C Pokemon Leaf Green
-	* ST-0405075C Metal Slug II
-	* ST-0405077C 越南战役3 (Metal Slug 3) (chinese)
-	* ST-0409078C Super Sonik II (chinese)
-	* ST-0409084C 口袋妖怪-白金版/Pocketmon-platina
-	* ST-0409085C 口袋妖怪-绿宝石/pocketmon-emerald
-	* ST-0502092C 勇者斗恶龙/Dragon Quest
-	* ST-0504093C 口袋宝贝-珍珠/Poketmon-pearl
+  * ST-0206002E Harry Boy Second Edition: The secretx of the chamber of secrets (english)
+  * ST-0206003E True Thre Kingdoms (english)
+  * ST-0206005E Donkey Kong 5: The journey of over time and space (english)
+  * ST-0206007 指环王 (Lord of the Rings) (Chinese)
+  * ST-0210010C 真三國無雙II (True Three Kingdoms II) (chinese)
+  * SAT-0212014C Tai Kong Bao Bei (Lilo and Stitch) [Jump Technology]
+  * JP-0301018C Crash Bandicoot 2003 [Jump Technology]
+  * ST-0301019C Lion King 3
+  * ST-0301020C Quan Ba Tian Xia
+  * ST-0210021C Super Robot War X
+  * ST-0211022E 2003 Pocket Monster Carbuncle (english)
+  * ST-0304027C 神鬼帝國之惡魔城 ("Castlevania of the Ghost Empire" or something) (Chinese)
+  * ST-0306030C 重装机兵/METAL MAXⅡ
+  * ST-0306034C Dragon Ball Z3
+  * ST-0310041C 大话西游/Saiyuuki
+  * ST-0425072C 口袋宝贝火红/Pocket Monstor-Red (Fire Red)
+  * 0405073C Pokemon Leaf Green
+  * ST-0405075C Metal Slug II
+  * ST-0405077C 越南战役3 (Metal Slug 3) (chinese)
+  * ST-0409078C Super Sonik II (chinese)
+  * ST-0409084C 口袋妖怪-白金版/Pocketmon-platina
+  * ST-0409085C 口袋妖怪-绿宝石/pocketmon-emerald
+  * ST-0502092C 勇者斗恶龙/Dragon Quest
+  * ST-0504093C 口袋宝贝-珍珠/Poketmon-pearl
 -->
 
 	<software name="hpotter">
@@ -23468,10 +23484,10 @@ Undumped Pirates:
 <!-- 1byte difference between this and the hacked version... check what is about! -->
 	<software name="chongwu">
 	<!-- at 0x1e0 starts a routine which (at 0x1ec) reads from $41c3, then compares
-			the value with 0x5d. if comparison fails, the code enters a routine at 0x780
-			where it gets stuck. if comparison works, then the code goes to 0x150 as the
-			patched version does (because the single modified byte replaces the jump to
-			0x1e0 with the jump to 0x150). Not sure yet if current workaround is correct... -->
+	     the value with 0x5d. if comparison fails, the code enters a routine at 0x780
+	     where it gets stuck. if comparison works, then the code goes to 0x150 as the
+	     patched version does (because the single modified byte replaces the jump to
+	     0x1e0 with the jump to 0x150). Not sure yet if current workaround is correct... -->
 		<description>Chong Wu Xiao Jing Ling - Jie Jin Ta Zhi Wang (Chi)</description>
 		<year>20??</year>
 		<publisher>&lt;unknown&gt;</publisher>
@@ -24222,7 +24238,7 @@ but the 256KB version is definitely underdumped and misses sprite data
 	</software>
 
 <!-- This version bypasses the protection, but I think it's been hacked by whoever dumped
-		the real card, so it can be removed once we properly emulate the parent -->
+     the real card, so it can be removed once we properly emulate the parent -->
 	<software name="digimn2h" cloneof="digimn2">
 		<description>Digimon 2 (Chi, Hacked)</description>
 		<year>20??</year>
@@ -24267,7 +24283,7 @@ but the 256KB version is definitely underdumped and misses sprite data
 	</software>
 
 <!-- This version bypasses the protection, but I think it's been hacked by whoever dumped
-		the real card, so it can be removed once we properly emulate the parent -->
+     the real card, so it can be removed once we properly emulate the parent -->
 	<software name="digimn4h" cloneof="digimn4">
 		<description>Digimon 02 4 (Chi, Hacked)</description>
 		<year>20??</year>

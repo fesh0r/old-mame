@@ -5,19 +5,19 @@
 
 There appear to exist some undumped N64 protos
 
-	- Air Boardin' USA,
-	- Echo Delta,
-	- Looney Tunes Space Race,
-	- Ohcouchi Gengorou Ikka,
-	- Star Soldier Vanishing Earth (Europe),
-	- Wild Waters (a more complete version than the available proto was shown)
+  - Air Boardin' USA,
+  - Echo Delta,
+  - Looney Tunes Space Race,
+  - Ohcouchi Gengorou Ikka,
+  - Star Soldier Vanishing Earth (Europe),
+  - Wild Waters (a more complete version than the available proto was shown)
 
 Canceled games (possibly never got to the proto stage)
-	- Acclaim Sports Soccer / Ultra Soccer,
-	- Addams Family Pinball,
-	- Freak Boy,
-	- Ikazuchi No Go Toku,
-	- X-Men Mutant Academy
+  - Acclaim Sports Soccer / Ultra Soccer,
+  - Addams Family Pinball,
+  - Freak Boy,
+  - Ikazuchi No Go Toku,
+  - X-Men Mutant Academy
 -->
 
 <softwarelist name="n64" description="Nintendo 64 cartridges">
@@ -2427,7 +2427,7 @@ Canceled games (possibly never got to the proto stage)
 		</part>
 	</software>
 
-	<software name="excitbiku1" cloneof="excitbik">
+	<software name="excitbikud" cloneof="excitbik">
 		<description>Excitebike 64 (USA, Demo Kiosk)</description>
 		<year>2000</year>
 		<publisher>Nintendo</publisher>
@@ -2439,6 +2439,17 @@ Canceled games (possibly never got to the proto stage)
 	</software>
 
 	<software name="excitbiku" cloneof="excitbik">
+		<description>Excitebike 64 (USA, Rev. A)</description>
+		<year>2000</year>
+		<publisher>Nintendo</publisher>
+		<part name="cart" interface="n64_cart">
+			<dataarea name="rom" size="16777216">
+				<rom name="excitebike 64 (usa) (v1.1).bin" size="16777216" crc="820a12db" sha1="88214240204ab3c01f31c0a19d74a4eafe53c027" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="excitbiku1" cloneof="excitbik">
 		<description>Excitebike 64 (USA)</description>
 		<year>2000</year>
 		<publisher>Nintendo</publisher>
@@ -8861,6 +8872,17 @@ Canceled games (possibly never got to the proto stage)
 		<part name="cart" interface="n64_cart">
 			<dataarea name="rom" size="8388608">
 				<rom name="superman (europe) (en,fr,de,es,it,nl).bin" size="8388608" crc="9cef1753" sha1="660cbd7f4808d928f8c3dada9851267b6058fa80" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="supermanp" cloneof="superman">
+		<description>Superman (Prototype)</description>
+		<year>1999</year>
+		<publisher>Titus</publisher>
+		<part name="cart" interface="n64_cart">
+			<dataarea name="rom" size="33554432">
+				<rom name="superman64_prototype_raw.bin" size="33554432" crc="fea2232b" sha1="af23cee64673738145f1fec9203cbc1ddadb3ef5" offset="000000" />
 			</dataarea>
 		</part>
 	</software>
